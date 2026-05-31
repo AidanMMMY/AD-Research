@@ -1,0 +1,52 @@
+[tool.poetry]
+name = "etf-research-platform"
+version = "0.1.0"
+description = "ETF 投研平台"
+authors = ["Your Name <your.email@example.com>"]
+readme = "README.md"
+packages = [{ include = "app" }]
+
+[tool.poetry.dependencies]
+python = "^3.12"
+fastapi = "^0.115"
+uvicorn = { extras = ["standard"], version = "^0.32" }
+sqlalchemy = { extras = ["asyncpg"], version = "^2.0.36" }
+alembic = "^1.14"
+psycopg2-binary = "^2.9"
+redis = "^5.2"
+apscheduler = "^3.11"
+pydantic = "^2.10"
+pydantic-settings = "^2.7"
+pandas = "^2.2"
+numpy = "^2.1"
+akshare = "^1.15"
+yfinance = "^0.2.50"
+httpx = "^0.28"
+python-dotenv = "^1.0"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.3"
+pytest-asyncio = "^0.24"
+httpx = "^0.28"
+black = "^24.10"
+ruff = "^0.8"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.black]
+line-length = 100
+target-version = ["py312"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "N", "UP", "B", "C4", "SIM"]
+ignore = ["E501"]
+
+[tool.pytest.ini_options]
+testpaths = ["app/tests"]
+asyncio_mode = "auto"
