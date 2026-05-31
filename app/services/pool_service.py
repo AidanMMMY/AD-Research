@@ -144,7 +144,7 @@ class PoolService:
         member_responses = [
             PoolMemberResponse(
                 etf_code=m.PoolMember.etf_code,
-                etf_name=name,
+                etf_name=m.name,
                 added_at=m.PoolMember.added_at,
                 notes=m.PoolMember.notes,
             )

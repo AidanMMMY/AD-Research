@@ -3,6 +3,7 @@
 Provides queries for historical OHLCV bars and market snapshots.
 """
 
+import math
 from datetime import date
 from typing import List, Optional
 
@@ -16,6 +17,19 @@ from app.schemas.market_data import (
     MarketSnapshotResponse,
     SnapshotItem,
 )
+
+
+def _safe_float(value) -> Optional[float]:
+    """Convert a value to float, returning None for NaN/Inf."""
+    if value is None:
+        return None
+    try:
+        f = float(value)
+        if math.isnan(f) or math.isinf(f):
+            return None
+        return f
+    except (ValueError, TypeError):
+        return None
 
 
 class MarketDataService:
@@ -60,18 +74,14 @@ class MarketDataService:
         items = [
             DailyBarResponse(
                 trade_date=bar.trade_date,
-                open=float(bar.open) if bar.open is not None else None,
-                high=float(bar.high) if bar.high is not None else None,
-                low=float(bar.low) if bar.low is not None else None,
-                close=float(bar.close) if bar.close is not None else None,
+                open=_safe_float(bar.open),
+                high=_safe_float(bar.high),
+                low=_safe_float(bar.low),
+                close=_safe_float(bar.close),
                 volume=int(bar.volume) if bar.volume is not None else None,
-                amount=float(bar.amount) if bar.amount is not None else None,
-                change_pct=float(bar.change_pct)
-                if bar.change_pct is not None
-                else None,
-                turnover_rate=float(bar.turnover_rate)
-                if bar.turnover_rate is not None
-                else None,
+                amount=_safe_float(bar.amount),
+                change_pct=_safe_float(bar.change_pct),
+                turnover_rate=_safe_float(bar.turnover_rate),
             )
             for bar in bars
         ]
@@ -129,12 +139,10 @@ class MarketDataService:
             SnapshotItem(
                 etf_code=r.etf_code,
                 etf_name=r.name,
-                close=float(r.close) if r.close is not None else None,
-                change_pct=float(r.change_pct)
-                if r.change_pct is not None
-                else None,
+                close=_safe_float(r.close),
+                change_pct=_safe_float(r.change_pct),
                 volume=int(r.volume) if r.volume is not None else None,
-                amount=float(r.amount) if r.amount is not None else None,
+                amount=_safe_float(r.amount),
             )
             for r in results
         ]
