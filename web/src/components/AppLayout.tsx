@@ -29,9 +29,9 @@ export default function AppLayout() {
   const { user, logout } = useAuthStore();
 
   const menuItems = menuRoutes.map((route) => ({
-    key: route.path,
+    path: route.path,
+    name: route.menu?.name,
     icon: route.menu?.icon ? React.createElement(iconMap[route.menu.icon]) : null,
-    label: route.menu?.name,
   }));
 
   return (
@@ -45,7 +45,7 @@ export default function AppLayout() {
       route={{ path: '/', routes: menuItems }}
       location={{ pathname: location.pathname }}
       menuItemRender={(item, dom) => (
-        <a onClick={() => navigate(item.key || '/dashboard')}>{dom}</a>
+        <a onClick={() => navigate(item.path || '/dashboard')}>{dom}</a>
       )}
       avatarProps={{
         src: null,
