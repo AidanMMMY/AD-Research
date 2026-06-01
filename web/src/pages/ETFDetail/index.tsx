@@ -1,21 +1,41 @@
+import { useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { Card, Tabs, Row, Col, Statistic, Spin, Descriptions } from 'antd';
+import { Card, Tabs, Row, Col, Statistic, Spin, Descriptions, Radio, Checkbox, Space } from 'antd';
 import { useETFDetail } from '@/hooks/useETFList';
 import { useETFScore } from '@/hooks/useScores';
 import { marketApi } from '@/api';
 import { useQuery } from '@tanstack/react-query';
-import KLineChart from '@/components/KLineChart';
+import KLineChart, { DEFAULT_OVERLAYS } from '@/components/KLineChart';
 import ScoreRadar from '@/components/ScoreRadar';
 import { formatPercent } from '@/utils/format';
+
+const TIME_RANGE_OPTIONS = [
+  { label: '30日', value: 30 },
+  { label: '60日', value: 60 },
+  { label: '120日', value: 120 },
+  { label: '250日', value: 250 },
+];
+
+const INDICATOR_OPTIONS = [
+  { label: 'MA5', value: 'ma5' },
+  { label: 'MA10', value: 'ma10' },
+  { label: 'MA20', value: 'ma20' },
+  { label: 'MA60', value: 'ma60' },
+  { label: '布林带', value: 'bb' },
+  { label: 'RSI14', value: 'rsi' },
+  { label: 'MACD', value: 'macd' },
+];
 
 export default function ETFDetail() {
   const { code } = useParams<{ code: string }>();
   const { data: etf, isLoading: etfLoading } = useETFDetail(code || '');
   const { data: score } = useETFScore(code || '');
+  const [timeRange, setTimeRange] = useState(120);
+  const [overlays, setOverlays] = useState(DEFAULT_OVERLAYS);
 
   const { data: historyData, isLoading: historyLoading } = useQuery({
-    queryKey: ['etf-history', code],
-    queryFn: () => marketApi.history(code || '', { limit: 120 }).then((r) => r.data),
+    queryKey: ['etf-history', code, timeRange],
+    queryFn: () => marketApi.history(code || '', { limit: timeRange }).then((r) => r.data),
     enabled: !!code,
   });
 
@@ -34,8 +54,49 @@ export default function ETFDetail() {
       label: 'K线行情',
       children: (
         <div>
+          <Card size="small" style={{ marginBottom: 12 }}>
+            <Space size="large" wrap>
+              <Space>
+                <span>时间范围：</span>
+                <Radio.Group
+                  value={timeRange}
+                  onChange={(e) => setTimeRange(e.target.value)}
+                  optionType="button"
+                  buttonStyle="solid"
+                  size="small"
+                >
+                  {TIME_RANGE_OPTIONS.map((opt) => (
+                    <Radio.Button key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </Radio.Button>
+                  ))}
+                </Radio.Group>
+              </Space>
+              <Space>
+                <span>技术指标：</span>
+                <Checkbox.Group
+                  value={Object.entries(overlays)
+                    .filter(([, v]) => v)
+                    .map(([k]) => k)}
+                  onChange={(checkedValues) => {
+                    const newOverlays: Record<string, boolean> = {};
+                    INDICATOR_OPTIONS.forEach((opt) => {
+                      newOverlays[opt.value] = checkedValues.includes(opt.value);
+                    });
+                    setOverlays(newOverlays as typeof overlays);
+                  }}
+                >
+                  {INDICATOR_OPTIONS.map((opt) => (
+                    <Checkbox key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </Checkbox>
+                  ))}
+                </Checkbox.Group>
+              </Space>
+            </Space>
+          </Card>
           {historyLoading ? <Spin /> : (
-            <KLineChart data={historyData?.items || []} />
+            <KLineChart data={historyData?.items || []} overlays={overlays} />
           )}
         </div>
       ),

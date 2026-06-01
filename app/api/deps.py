@@ -18,6 +18,14 @@ from app.services.scoring_service import ScoringService
 from app.services.screening_service import ScreeningService
 from app.services.pool_enhancement_service import PoolEnhancementService
 from app.services.report_service import ReportService
+from app.services.sector_rotation_service import SectorRotationService
+from app.services.etf_scanner_service import ETFScannerService
+from app.services.notification_service import NotificationService
+from app.services.strategy_service import StrategyService
+from app.services.backtest_service import BacktestService
+from app.services.signal_service import SignalService
+from app.services.attribution_service import AttributionService
+from app.services.strategy_comparison_service import StrategyComparisonService
 
 
 def get_db() -> Generator[Session, None, None]:
@@ -72,3 +80,43 @@ def get_pool_enhancement_service(db: Session = Depends(get_db)) -> PoolEnhanceme
 def get_report_service(db: Session = Depends(get_db)) -> ReportService:
     """Provide a ReportService instance with a DB session."""
     return ReportService(db)
+
+
+def get_sector_rotation_service(db: Session = Depends(get_db)) -> SectorRotationService:
+    """Provide a SectorRotationService instance with a DB session."""
+    return SectorRotationService(db)
+
+
+def get_etf_scanner_service(db: Session = Depends(get_db)) -> ETFScannerService:
+    """Provide an ETFScannerService instance with a DB session."""
+    return ETFScannerService(db)
+
+
+def get_notification_service(db: Session = Depends(get_db)) -> NotificationService:
+    """Provide a NotificationService instance with a DB session."""
+    return NotificationService(db)
+
+
+def get_strategy_service(db: Session = Depends(get_db)) -> StrategyService:
+    """Provide a StrategyService instance with a DB session."""
+    return StrategyService(db)
+
+
+def get_backtest_service(db: Session = Depends(get_db)) -> BacktestService:
+    """Provide a BacktestService instance with a DB session."""
+    return BacktestService(db)
+
+
+def get_signal_service(db: Session = Depends(get_db)) -> SignalService:
+    """Provide a SignalService instance with a DB session."""
+    return SignalService(db)
+
+
+def get_attribution_service(db: Session = Depends(get_db)) -> AttributionService:
+    """Provide an AttributionService instance with a DB session."""
+    return AttributionService(db)
+
+
+def get_strategy_comparison_service(db: Session = Depends(get_db)) -> StrategyComparisonService:
+    """Provide a StrategyComparisonService instance with a DB session."""
+    return StrategyComparisonService(db)

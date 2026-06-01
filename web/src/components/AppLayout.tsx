@@ -10,6 +10,14 @@ import {
   AppstoreOutlined,
   TrophyOutlined,
   FileTextOutlined,
+  ApartmentOutlined,
+  LineChartOutlined,
+  BarChartOutlined,
+  ScanOutlined,
+  NotificationOutlined,
+  SettingOutlined,
+  ExperimentOutlined,
+  ThunderboltOutlined,
 } from '@ant-design/icons';
 import { useAuthStore } from '@/stores/auth';
 import { menuRoutes } from '@/routes';
@@ -21,6 +29,14 @@ const iconMap: Record<string, React.ComponentType> = {
   AppstoreOutlined,
   TrophyOutlined,
   FileTextOutlined,
+  ApartmentOutlined,
+  LineChartOutlined,
+  BarChartOutlined,
+  ScanOutlined,
+  NotificationOutlined,
+  SettingOutlined,
+  ExperimentOutlined,
+  ThunderboltOutlined,
 };
 
 export default function AppLayout() {

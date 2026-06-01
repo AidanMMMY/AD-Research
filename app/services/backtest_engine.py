@@ -1,0 +1,264 @@
+"""Backtest engine core.
+
+Simulates trading based on strategy signals and calculates performance metrics.
+"""
+
+from datetime import date
+from typing import Any, Dict, List, Optional, Tuple
+
+import numpy as np
+import pandas as pd
+
+from app.data.providers.akshare_provider import AkshareProvider
+
+
+class Trade:
+    """Represents a single trade."""
+
+    def __init__(
+        self,
+        entry_date: date,
+        exit_date: Optional[date] = None,
+        entry_price: float = 0,
+        exit_price: float = 0,
+        side: str = "long",
+        pnl: float = 0,
+        pnl_pct: float = 0,
+    ):
+        self.entry_date = entry_date
+        self.exit_date = exit_date
+        self.entry_price = entry_price
+        self.exit_price = exit_price
+        self.side = side
+        self.pnl = pnl
+        self.pnl_pct = pnl_pct
+
+
+class BacktestResult:
+    """Container for backtest results."""
+
+    def __init__(self):
+        self.daily_nav: List[Dict[str, Any]] = []
+        self.trades: List[Trade] = []
+        self.metrics: Dict[str, float] = {}
+        self.signals: List[Dict[str, Any]] = []
+
+
+def get_strategy_signals(
+    data: pd.DataFrame,
+    strategy_type: str,
+    params: Dict[str, Any],
+) -> pd.Series:
+    """Generate trading signals based on strategy type.
+
+    Returns a pandas Series with values:
+      1 = BUY, -1 = SELL, 0 = HOLD
+    """
+    signals = pd.Series(0, index=data.index)
+
+    if strategy_type == "momentum":
+        window = params.get("momentum_window", 20)
+        threshold = params.get("threshold", 0.05)
+        momentum = data["close"].pct_change(window)
+        signals[momentum > threshold] = 1
+        signals[momentum < -threshold] = -1
+
+    elif strategy_type == "mean_reversion":
+        window = params.get("lookback_window", 20)
+        z_threshold = params.get("z_score_threshold", 2.0)
+        ma = data["close"].rolling(window).mean()
+        std = data["close"].rolling(window).std()
+        z_score = (data["close"] - ma) / std
+        signals[z_score < -z_threshold] = 1
+        signals[z_score > z_threshold] = -1
+
+    elif strategy_type == "rsi":
+        period = params.get("rsi_period", 14)
+        overbought = params.get("overbought", 70)
+        oversold = params.get("oversold", 30)
+        delta = data["close"].diff()
+        gain = delta.where(delta > 0, 0).rolling(period).mean()
+        loss = (-delta.where(delta < 0, 0)).rolling(period).mean()
+        rs = gain / loss
+        rsi = 100 - 100 / (1 + rs)
+        signals[rsi < oversold] = 1
+        signals[rsi > overbought] = -1
+
+    return signals
+
+
+def run_backtest(
+    etf_code: str,
+    strategy_type: str,
+    params: Dict[str, Any],
+    start_date: date,
+    end_date: date,
+    initial_capital: float = 100000.0,
+) -> BacktestResult:
+    """Run a backtest for a single ETF with a strategy.
+
+    Args:
+        etf_code: ETF code to backtest.
+        strategy_type: Type of strategy (momentum/mean_reversion/rsi).
+        params: Strategy parameters.
+        start_date: Backtest start date.
+        end_date: Backtest end date.
+        initial_capital: Starting capital.
+
+    Returns:
+        BacktestResult with NAV, trades, metrics, and signals.
+    """
+    result = BacktestResult()
+
+    # Fetch historical data
+    try:
+        provider = AkshareProvider()
+        df = provider.fetch_daily_bars([etf_code], start_date, end_date)
+    except Exception:
+        return result
+
+    if df.empty:
+        return result
+
+    df = df.sort_values("trade_date").reset_index(drop=True)
+    df["trade_date"] = pd.to_datetime(df["trade_date"]).dt.date
+
+    # Generate signals
+    signals = get_strategy_signals(df, strategy_type, params)
+
+    # Simulation
+    capital = initial_capital
+    position = 0.0  # number of shares held
+    holding_period = params.get("holding_period", 20)
+    days_held = 0
+    current_trade: Optional[Trade] = None
+
+    for i, row in df.iterrows():
+        trade_date = row["trade_date"]
+        price = row["close"]
+        signal = signals.iloc[i]
+
+        # Record daily NAV
+        nav = capital + position * price
+        result.daily_nav.append({
+            "date": trade_date.isoformat(),
+            "nav": nav,
+            "price": price,
+            "signal": int(signal),
+        })
+
+        # Signal execution logic
+        if current_trade is None:
+            # No position - check for entry signal
+            if signal == 1 and capital > 0:
+                # BUY
+                position = capital / price * 0.99  # 1% transaction cost buffer
+                capital = 0
+                current_trade = Trade(
+                    entry_date=trade_date,
+                    entry_price=price,
+                    side="long",
+                )
+                days_held = 0
+                result.signals.append({
+                    "date": trade_date.isoformat(),
+                    "type": "BUY",
+                    "price": price,
+                    "signal_strength": abs(signal),
+                })
+        else:
+            # Have position - check for exit conditions
+            days_held += 1
+            should_exit = False
+
+            if signal == -1:
+                should_exit = True  # SELL signal
+            elif days_held >= holding_period:
+                should_exit = True  # Max holding period reached
+
+            if should_exit:
+                # SELL
+                capital = position * price * 0.99  # 1% transaction cost
+                pnl = capital - initial_capital if not result.trades else capital - (result.trades[-1].entry_price * position * 0.99)
+                pnl_pct = (price - current_trade.entry_price) / current_trade.entry_price
+
+                current_trade.exit_date = trade_date
+                current_trade.exit_price = price
+                current_trade.pnl = capital - (current_trade.entry_price * position * 0.99)
+                current_trade.pnl_pct = pnl_pct
+                result.trades.append(current_trade)
+
+                result.signals.append({
+                    "date": trade_date.isoformat(),
+                    "type": "SELL",
+                    "price": price,
+                    "pnl": current_trade.pnl,
+                    "pnl_pct": pnl_pct,
+                })
+
+                position = 0
+                current_trade = None
+                days_held = 0
+
+    # Close any open position at the end
+    if current_trade is not None and position > 0:
+        last_price = df["close"].iloc[-1]
+        last_date = df["trade_date"].iloc[-1]
+        capital = position * last_price * 0.99
+        pnl_pct = (last_price - current_trade.entry_price) / current_trade.entry_price
+        current_trade.exit_date = last_date
+        current_trade.exit_price = last_price
+        current_trade.pnl = capital - (current_trade.entry_price * position * 0.99)
+        current_trade.pnl_pct = pnl_pct
+        result.trades.append(current_trade)
+
+    # Calculate metrics
+    final_nav = result.daily_nav[-1]["nav"] if result.daily_nav else initial_capital
+    total_return = (final_nav - initial_capital) / initial_capital
+
+    # Daily returns for risk metrics
+    nav_series = pd.Series([d["nav"] for d in result.daily_nav])
+    daily_returns = nav_series.pct_change().dropna()
+
+    # Max drawdown
+    cummax = nav_series.cummax()
+    drawdown = (nav_series - cummax) / cummax
+    max_drawdown = drawdown.min()
+
+    # Sharpe ratio (annualized)
+    if len(daily_returns) > 1 and daily_returns.std() > 0:
+        sharpe = (daily_returns.mean() / daily_returns.std()) * np.sqrt(252)
+    else:
+        sharpe = 0
+
+    # Win rate
+    if result.trades:
+        wins = sum(1 for t in result.trades if t.pnl_pct > 0)
+        win_rate = wins / len(result.trades)
+        avg_win = sum(t.pnl_pct for t in result.trades if t.pnl_pct > 0) / wins if wins > 0 else 0
+        avg_loss = sum(t.pnl_pct for t in result.trades if t.pnl_pct <= 0) / (len(result.trades) - wins) if len(result.trades) > wins else 0
+    else:
+        win_rate = 0
+        avg_win = 0
+        avg_loss = 0
+
+    # Trading days count
+    trading_days = len(df)
+    years = trading_days / 252 if trading_days > 0 else 1
+    annualized_return = (1 + total_return) ** (1 / years) - 1 if years > 0 and total_return > -1 else total_return
+
+    result.metrics = {
+        "initial_capital": initial_capital,
+        "final_nav": final_nav,
+        "total_return": round(total_return * 100, 2),
+        "annualized_return": round(annualized_return * 100, 2),
+        "max_drawdown": round(max_drawdown * 100, 2),
+        "sharpe_ratio": round(sharpe, 2),
+        "win_rate": round(win_rate * 100, 2),
+        "trade_count": len(result.trades),
+        "avg_win": round(avg_win * 100, 2),
+        "avg_loss": round(avg_loss * 100, 2),
+        "trading_days": trading_days,
+    }
+
+    return result

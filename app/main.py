@@ -9,7 +9,7 @@ from fastapi.staticfiles import StaticFiles
 
 from app.config import get_settings
 from app.core.scheduler import init_scheduler, shutdown_scheduler
-from app.api.v1 import auth, etfs, pools, market_data, indicators, analysis, etl, scoring, screening, reports, stats
+from app.api.v1 import auth, etfs, pools, market_data, indicators, analysis, etl, scoring, screening, reports, stats, sector_rotation, etf_scanner, notifications, strategies, backtests, signals, attribution
 
 settings = get_settings()
 
@@ -61,6 +61,27 @@ app.include_router(
 )
 app.include_router(
     stats.router, prefix=f"{settings.api_v1_prefix}/stats", tags=["Statistics"]
+)
+app.include_router(
+    sector_rotation.router, prefix=f"{settings.api_v1_prefix}/analysis", tags=["Analysis"]
+)
+app.include_router(
+    etf_scanner.router, prefix=f"{settings.api_v1_prefix}/etfs", tags=["ETF Scanner"]
+)
+app.include_router(
+    notifications.router, prefix=f"{settings.api_v1_prefix}/notifications", tags=["Notifications"]
+)
+app.include_router(
+    strategies.router, prefix=f"{settings.api_v1_prefix}/strategies", tags=["Strategies"]
+)
+app.include_router(
+    backtests.router, prefix=f"{settings.api_v1_prefix}/backtests", tags=["Backtests"]
+)
+app.include_router(
+    signals.router, prefix=f"{settings.api_v1_prefix}/signals", tags=["Signals"]
+)
+app.include_router(
+    attribution.router, prefix=f"{settings.api_v1_prefix}/analysis", tags=["Analysis"]
 )
 
 # Serve frontend static files
