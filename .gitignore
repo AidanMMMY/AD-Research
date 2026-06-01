@@ -156,3 +156,4 @@ alembic/versions/*.pyc
 *.parquet
 *.db
 *.sqlite
+.worktrees/
