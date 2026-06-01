@@ -140,13 +140,15 @@ class ScreeningService:
         )
 
         # Build main query joining ETFInfo, latest indicator, and optional score
+        # Join order: first join the subquery (to make its columns available),
+        # then join ETFIndicator using the subquery's latest_date
         query = self.db.query(ETFInfo, ETFIndicator).join(
+            latest_ind_subq,
+            ETFInfo.code == latest_ind_subq.c.etf_code,
+        ).join(
             ETFIndicator,
             (ETFInfo.code == ETFIndicator.etf_code)
             & (ETFIndicator.trade_date == latest_ind_subq.c.latest_date),
-        ).join(
-            latest_ind_subq,
-            ETFInfo.code == latest_ind_subq.c.etf_code,
         )
 
         # Optional: join with ETFScore for score-based filtering/sorting
