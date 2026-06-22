@@ -1,13 +1,23 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { routes } from './routes';
 import AppLayout from './components/AppLayout';
 import { useAuthStore } from './stores/auth';
+import { useMe } from './hooks/useAuth';
+import { useEffect } from 'react';
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const { isAuthenticated } = useAuthStore();
+  const { isError } = useMe();
+  const { logout } = useAuthStore();
+
+  useEffect(() => {
+    if (isError) {
+      logout();
+    }
+  }, [isError, logout]);
+
   if (!isAuthenticated) {
-    window.location.href = '/login';
-    return null;
+    return <Navigate to="/login" replace />;
   }
   return <>{children}</>;
 }

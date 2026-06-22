@@ -1,39 +1,59 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Table, Card, Space, Select, InputNumber, Button, Tag, Row, Col } from 'antd';
+import { Table, Space, Select, InputNumber, Button, Tag, Row, Col } from 'antd';
 import { useScreenResults, useScreenPresets, useScreenCategories } from '@/hooks/useScreenResults';
 import { useScreenStore } from '@/stores/screen';
+import GlassCard from '@/components/GlassCard';
 import ETFCodeTag from '@/components/ETFCodeTag';
 import ReturnTag from '@/components/ReturnTag';
 
 export default function Screen() {
   const navigate = useNavigate();
   const { filters, preset, setFilter, resetFilters, applyPreset } = useScreenStore();
-  const { data: results, isLoading } = useScreenResults(filters);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(50);
+
+  // Include pagination and active preset in API request
+  const queryFilters = {
+    ...filters,
+    ...(preset ? { preset } : {}),
+    offset: (page - 1) * pageSize,
+    limit: pageSize,
+  };
+  const { data: results, isLoading } = useScreenResults(queryFilters);
   const { data: presets } = useScreenPresets();
   const { data: categories } = useScreenCategories();
 
   const columns = [
-    { title: '代码', dataIndex: 'code', width: 90, render: (v: string, r: any) => <ETFCodeTag code={v} name={r.name} /> },
-    { title: '分类', dataIndex: 'category', width: 100 },
-    { title: '评分', dataIndex: 'composite_score', width: 80 },
-    { title: 'RSI', dataIndex: 'rsi14', width: 70, render: (v: number) => v?.toFixed(1) },
-    { title: '夏普', dataIndex: 'sharpe_1y', width: 80, render: (v: number) => v?.toFixed(2) },
-    { title: '1月', dataIndex: 'return_1m', width: 90, render: (v: number) => <ReturnTag value={v} /> },
-    { title: '3月', dataIndex: 'return_3m', width: 90, render: (v: number) => <ReturnTag value={v} /> },
-    { title: '1年', dataIndex: 'return_1y', width: 90, render: (v: number) => <ReturnTag value={v} /> },
-    { title: '波动率', dataIndex: 'volatility_20d', width: 90, render: (v: number) => v ? `${v.toFixed(1)}%` : '-' },
+    { title: '代码', dataIndex: 'code', width: 100, render: (v: string, r: any) => <ETFCodeTag code={v} name={r.name} /> },
+    { title: '分类', dataIndex: 'category', width: 100, render: (v: string) => v ? <span style={{ fontSize: 12, color: '#94a3b8' }}>{v}</span> : '-' },
+    { title: '评分', dataIndex: 'composite_score', width: 80, render: (v: number) => <span style={{ fontWeight: 700, color: '#818cf8', fontFamily: "'SF Mono', monospace" }}>{v?.toFixed(1)}</span> },
+    { title: 'RSI', dataIndex: 'rsi14', width: 70, render: (v: number) => <span style={{ fontFamily: "'SF Mono', monospace", color: '#94a3b8' }}>{v?.toFixed(1)}</span> },
+    { title: '夏普', dataIndex: 'sharpe_1y', width: 80, render: (v: number) => <span style={{ fontFamily: "'SF Mono', monospace", color: '#94a3b8' }}>{v?.toFixed(2)}</span> },
+    { title: '1月', dataIndex: 'return_1m', width: 100, render: (v: number) => <ReturnTag value={v} /> },
+    { title: '3月', dataIndex: 'return_3m', width: 100, render: (v: number) => <ReturnTag value={v} /> },
+    { title: '1年', dataIndex: 'return_1y', width: 100, render: (v: number) => <ReturnTag value={v} /> },
+    { title: '波动率', dataIndex: 'volatility_20d', width: 90, render: (v: number) => v ? <span style={{ fontFamily: "'SF Mono', monospace", color: '#94a3b8' }}>{v.toFixed(1)}%</span> : '-' },
   ];
 
   return (
     <div>
-      <Card size="small" style={{ marginBottom: 16 }}>
-        <div style={{ marginBottom: 12 }}>
-          <span style={{ marginRight: 8 }}>快速筛选:</span>
+      <GlassCard>
+        <div style={{ marginBottom: 16 }}>
+          <span style={{ fontSize: 13, color: '#94a3b8', marginRight: 12 }}>快速筛选:</span>
           {presets?.map((p) => (
             <Tag
               key={p.key}
-              color={preset === p.key ? 'blue' : 'default'}
-              style={{ cursor: 'pointer' }}
+              style={{
+                cursor: 'pointer',
+                borderRadius: 8,
+                padding: '3px 12px',
+                fontSize: 12,
+                border: `1px solid ${preset === p.key ? 'rgba(99,102,241,0.4)' : 'rgba(255,255,255,0.08)'}`,
+                background: preset === p.key ? 'rgba(99,102,241,0.15)' : 'rgba(255,255,255,0.03)',
+                color: preset === p.key ? '#818cf8' : '#94a3b8',
+                transition: 'all 200ms',
+              }}
               onClick={() => applyPreset(preset === p.key ? null : p.key)}
             >
               {p.name}
@@ -41,7 +61,7 @@ export default function Screen() {
           ))}
         </div>
 
-        <Row gutter={[16, 8]}>
+        <Row gutter={[16, 12]}>
           <Col xs={12} sm={8} md={6}>
             <Select
               placeholder="市场"
@@ -98,24 +118,46 @@ export default function Screen() {
           </Col>
         </Row>
 
-        <Space style={{ marginTop: 12 }}>
-          <Button onClick={resetFilters}>重置条件</Button>
-          <span style={{ color: '#888' }}>共 {results?.count || 0} 只</span>
+        <Space style={{ marginTop: 16 }}>
+          <Button onClick={() => { resetFilters(); setPage(1); }}>重置条件</Button>
+          <span style={{ color: '#64748b', fontSize: 13 }}>
+            共 <span style={{ color: '#818cf8', fontWeight: 700 }}>{results?.count || 0}</span> 只
+            {(results?.count || 0) > pageSize && (
+              <span style={{ color: '#475569', marginLeft: 8 }}>
+                (第 {page}/{Math.ceil((results?.count || 0) / pageSize)} 页)
+              </span>
+            )}
+          </span>
         </Space>
-      </Card>
+      </GlassCard>
 
-      <Table
-        dataSource={results?.items || []}
-        columns={columns}
-        rowKey="code"
-        loading={isLoading}
-        pagination={{ pageSize: 50 }}
-        scroll={{ x: 900 }}
-        onRow={(record) => ({
-          onClick: () => navigate(`/etfs/${record.code}`),
-          style: { cursor: 'pointer' },
-        })}
-      />
+      <div style={{ marginTop: 20 }}>
+        <Table
+          dataSource={results?.items || []}
+          columns={columns}
+          rowKey="code"
+          loading={isLoading}
+          pagination={{
+            current: page,
+            pageSize: pageSize,
+            total: results?.count || 0,
+            pageSizeOptions: [20, 50, 100, 200],
+            showSizeChanger: true,
+            showTotal: (total) => `共 ${total} 只ETF`,
+            onChange: (newPage, newSize) => {
+              setPage(newPage);
+              if (newSize !== pageSize) {
+                setPageSize(newSize);
+                setPage(1);
+              }
+            },
+          }}
+          scroll={{ x: 900 }}
+          onRow={(record) => ({
+            onClick: () => navigate(`/etfs/${record.code}`),
+          })}
+        />
+      </div>
     </div>
   );
 }

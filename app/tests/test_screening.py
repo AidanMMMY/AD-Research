@@ -11,8 +11,8 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from app.core.database import Base
-from app.models.etf import ETFInfo, ETFIndicator
-from app.models.scoring import ScoreTemplate, ETFScore
+from app.models.etf import ETFIndicator, ETFInfo
+from app.models.scoring import ETFScore, ScoreTemplate
 from app.services.screening_service import ScreeningService
 
 
@@ -21,8 +21,8 @@ def db_session():
     """Create an in-memory SQLite database session for testing."""
     engine = create_engine("sqlite:///:memory:", echo=False)
     Base.metadata.create_all(engine)
-    Session = sessionmaker(bind=engine)
-    session = Session()
+    session_maker = sessionmaker(bind=engine)
+    session = session_maker()
     yield session
     session.close()
 
@@ -232,7 +232,7 @@ def test_screen_by_market(db_session, sample_etfs_and_indicators):
     result = service.screen(market="SH")
 
     assert result["count"] == 4  # 510300, 510500, 518880, 511010
-    codes = {item["etf_code"] for item in result["items"]}
+    codes = {item["code"] for item in result["items"]}
     assert "510300" in codes
     assert "510500" in codes
     assert "518880" in codes
@@ -246,7 +246,7 @@ def test_screen_by_category(db_session, sample_etfs_and_indicators):
     result = service.screen(category="股票型")
 
     assert result["count"] == 3  # 510300, 510500, 159915
-    codes = {item["etf_code"] for item in result["items"]}
+    codes = {item["code"] for item in result["items"]}
     assert "510300" in codes
     assert "510500" in codes
     assert "159915" in codes
@@ -258,7 +258,7 @@ def test_screen_by_sharpe_range(db_session, sample_etfs_and_indicators):
     result = service.screen(sharpe_min=1.0)
 
     assert result["count"] == 2  # 510300 (1.5), 159915 (1.2)
-    codes = {item["etf_code"] for item in result["items"]}
+    codes = {item["code"] for item in result["items"]}
     assert "510300" in codes
     assert "159915" in codes
 
@@ -269,7 +269,7 @@ def test_screen_by_volatility_range(db_session, sample_etfs_and_indicators):
     result = service.screen(volatility_max=15.0)
 
     assert result["count"] == 3  # 510300 (15), 518880 (12), 511010 (5)
-    codes = {item["etf_code"] for item in result["items"]}
+    codes = {item["code"] for item in result["items"]}
     assert "510300" in codes
     assert "518880" in codes
     assert "511010" in codes
@@ -281,7 +281,7 @@ def test_screen_by_rsi_range(db_session, sample_etfs_and_indicators):
     result = service.screen(rsi_min=50.0, rsi_max=70.0)
 
     assert result["count"] == 2  # 510300 (55), 510500 (65)
-    codes = {item["etf_code"] for item in result["items"]}
+    codes = {item["code"] for item in result["items"]}
     assert "510300" in codes
     assert "510500" in codes
 
@@ -314,7 +314,7 @@ def test_screen_combined_filters(db_session, sample_etfs_and_indicators):
     # 510500: SH, 股票型, sharpe=0.8 -> fails sharpe
     # 159915: SZ -> fails market
     assert result["count"] == 1
-    assert result["items"][0]["etf_code"] == "510300"
+    assert result["items"][0]["code"] == "510300"
 
 
 def test_screen_sorting(db_session, sample_etfs_and_indicators):
@@ -323,17 +323,17 @@ def test_screen_sorting(db_session, sample_etfs_and_indicators):
 
     # Sort by sharpe desc
     result = service.screen(sort_by="sharpe_1y", sort_order="desc")
-    codes = [item["etf_code"] for item in result["items"]]
+    codes = [item["code"] for item in result["items"]]
     assert codes[0] == "510300"  # sharpe 1.5
 
     # Sort by volatility asc
     result = service.screen(sort_by="volatility_20d", sort_order="asc")
-    codes = [item["etf_code"] for item in result["items"]]
+    codes = [item["code"] for item in result["items"]]
     assert codes[0] == "511010"  # vol 5.0
 
     # Sort by return_1y desc
     result = service.screen(sort_by="return_1y", sort_order="desc")
-    codes = [item["etf_code"] for item in result["items"]]
+    codes = [item["code"] for item in result["items"]]
     assert codes[0] == "159915"  # return 30.0
 
 
@@ -371,7 +371,7 @@ def test_screen_by_preset_high_sharpe(db_session, sample_etfs_and_indicators):
     # 159915: sharpe=1.2, vol=25 -> fails vol
     # 510500: sharpe=0.8 -> fails
     assert result["count"] == 1
-    assert result["items"][0]["etf_code"] == "510300"
+    assert result["items"][0]["code"] == "510300"
     assert result["preset"]["name"] == "高夏普低波动"
 
 
@@ -385,7 +385,7 @@ def test_screen_by_preset_trend_strong(db_session, sample_etfs_and_indicators):
     # 510500: rsi=65, return_1m=1.5 -> fails return
     # 159915: rsi=72, return_1m=4.0 -> matches
     assert result["count"] == 2
-    codes = {item["etf_code"] for item in result["items"]}
+    codes = {item["code"] for item in result["items"]}
     assert "510300" in codes
     assert "159915" in codes
 
@@ -536,7 +536,7 @@ def test_screen_result_structure(db_session, sample_etfs_and_indicators):
 
     item = result["items"][0]
     expected_keys = {
-        "etf_code", "etf_name", "market", "category", "trade_date",
+        "code", "name", "market", "category", "trade_date",
         "sharpe_1y", "volatility_20d", "rsi14",
         "return_1m", "return_3m", "return_1y", "max_drawdown_1y",
     }

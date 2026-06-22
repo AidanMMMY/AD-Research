@@ -4,7 +4,6 @@ Provides endpoints for score template management and ETF composite score queries
 """
 
 from datetime import date
-from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
@@ -25,7 +24,7 @@ router = APIRouter()
 # Template routes
 # ------------------------------------------------------------------
 
-@router.get("/templates", response_model=List[ScoreTemplateResponse])
+@router.get("/templates", response_model=list[ScoreTemplateResponse])
 def list_templates(service: ScoringService = Depends(get_scoring_service)):
     """List all score templates."""
     templates = service.get_templates()
@@ -97,10 +96,10 @@ def delete_template(
 
 @router.get("", response_model=ETFScoreListResponse)
 def list_scores(
-    template_id: Optional[int] = Query(None, description="Filter by template ID"),
-    market: Optional[str] = Query(None, description="Filter by market (e.g. SH, SZ)"),
-    category: Optional[str] = Query(None, description="Filter by ETF category"),
-    trade_date: Optional[date] = Query(None, description="Filter by trade date"),
+    template_id: int | None = Query(None, description="Filter by template ID"),
+    market: str | None = Query(None, description="Filter by market (e.g. SH, SZ)"),
+    category: str | None = Query(None, description="Filter by ETF category"),
+    trade_date: date | None = Query(None, description="Filter by trade date"),
     limit: int = Query(50, ge=1, le=500, description="Maximum number of results"),
     service: ScoringService = Depends(get_scoring_service),
 ):
@@ -126,6 +125,7 @@ def list_scores(
     effective_trade_date = trade_date
     if effective_trade_date is None:
         from sqlalchemy import func
+
         from app.models.scoring import ETFScore
 
         effective_trade_date = (
@@ -145,8 +145,8 @@ def list_scores(
 @router.get("/{etf_code}", response_model=ETFScoreResponse)
 def get_etf_score(
     etf_code: str,
-    template_id: Optional[int] = Query(None, description="Filter by template ID"),
-    trade_date: Optional[date] = Query(None, description="Filter by trade date"),
+    template_id: int | None = Query(None, description="Filter by template ID"),
+    trade_date: date | None = Query(None, description="Filter by trade date"),
     service: ScoringService = Depends(get_scoring_service),
 ):
     """Get the composite score for a single ETF."""
@@ -163,6 +163,7 @@ def get_etf_score(
 
     # If not found in the default query, try a broader search
     from sqlalchemy import func
+
     from app.models.etf import ETFInfo
     from app.models.scoring import ETFScore
 

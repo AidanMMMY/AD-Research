@@ -3,15 +3,14 @@
 Provides CRUD for strategy configs and preset strategy templates.
 """
 
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from sqlalchemy.orm import Session
 
 from app.models.etl import StrategyConfig
 
-
 # Preset strategy templates
-STRATEGY_TEMPLATES: List[Dict[str, Any]] = [
+STRATEGY_TEMPLATES: list[dict[str, Any]] = [
     {
         "name": "动量策略",
         "description": "基于价格动量的趋势跟踪策略",
@@ -52,11 +51,11 @@ class StrategyService:
     def __init__(self, db: Session):
         self.db = db
 
-    def get_templates(self) -> List[Dict[str, Any]]:
+    def get_templates(self) -> list[dict[str, Any]]:
         """Get all preset strategy templates."""
         return STRATEGY_TEMPLATES
 
-    def get_strategies(self) -> List[Dict[str, Any]]:
+    def get_strategies(self) -> list[dict[str, Any]]:
         """Get all user-created strategies."""
         strategies = self.db.query(StrategyConfig).all()
         return [
@@ -72,7 +71,7 @@ class StrategyService:
             for s in strategies
         ]
 
-    def get_strategy(self, strategy_id: int) -> Optional[Dict[str, Any]]:
+    def get_strategy(self, strategy_id: int) -> dict[str, Any] | None:
         """Get a single strategy by ID."""
         s = self.db.query(StrategyConfig).filter(StrategyConfig.id == strategy_id).first()
         if not s:
@@ -92,9 +91,9 @@ class StrategyService:
         name: str,
         description: str,
         strategy_type: str,
-        params: Dict[str, Any],
+        params: dict[str, Any],
         is_active: bool = True,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Create a new strategy configuration."""
         strategy = StrategyConfig(
             name=name,
@@ -108,7 +107,7 @@ class StrategyService:
         self.db.refresh(strategy)
         return self.get_strategy(strategy.id)
 
-    def update_strategy(self, strategy_id: int, **kwargs) -> Optional[Dict[str, Any]]:
+    def update_strategy(self, strategy_id: int, **kwargs) -> dict[str, Any] | None:
         """Update a strategy configuration."""
         strategy = self.db.query(StrategyConfig).filter(StrategyConfig.id == strategy_id).first()
         if not strategy:

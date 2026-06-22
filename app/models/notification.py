@@ -1,6 +1,6 @@
 """Notification configuration and log models."""
 
-from sqlalchemy import Column, DateTime, Integer, JSON, String, Boolean, ForeignKey, func
+from sqlalchemy import JSON, Boolean, Column, DateTime, ForeignKey, Integer, String, func
 
 from app.core.database import Base
 

@@ -4,20 +4,18 @@ Contains tables for ETF basic info, daily OHLCV bars, technical indicators,
 and foreign exchange rates.
 """
 
-from datetime import datetime
 
 from sqlalchemy import (
+    DECIMAL,
     BigInteger,
     Boolean,
     Column,
     Date,
     DateTime,
-    DECIMAL,
     ForeignKey,
     Index,
     Integer,
     String,
-    Text,
     UniqueConstraint,
     func,
 )
@@ -40,6 +38,7 @@ class ETFInfo(Base):
     currency = Column(String(10), default="CNY", comment="Currency")
     is_qdii = Column(Boolean, default=False, comment="Is QDII")
     underlying_index = Column(String(200), comment="Underlying index name")
+    fund_size = Column(DECIMAL(18, 4), comment="Fund size in CNY (AUM)")
     inception_date = Column(Date, comment="Inception date")
     status = Column(String(20), default="active", comment="Status")
     created_at = Column(
@@ -85,6 +84,9 @@ class ETFDailyBar(Base):
     shares_outstanding = Column(BigInteger, comment="Shares outstanding")
     nav = Column(DECIMAL(12, 4), comment="Net asset value")
     discount_rate = Column(DECIMAL(8, 4), comment="Discount rate")
+    is_synthetic = Column(
+        Boolean, default=False, nullable=False, comment="Whether this bar is synthetic/demo data"
+    )
     created_at = Column(DateTime, server_default=func.now(), comment="Creation time")
 
 
@@ -118,6 +120,7 @@ class ETFIndicator(Base):
     return_3m = Column(DECIMAL(8, 4), comment="3-month return")
     return_6m = Column(DECIMAL(8, 4), comment="6-month return")
     return_1y = Column(DECIMAL(8, 4), comment="1-year return")
+    amount = Column(DECIMAL(18, 4), comment="Turnover amount")
     atr14 = Column(DECIMAL(12, 4), comment="ATR14")
     bb_upper = Column(DECIMAL(12, 4), comment="Bollinger upper band")
     bb_lower = Column(DECIMAL(12, 4), comment="Bollinger lower band")

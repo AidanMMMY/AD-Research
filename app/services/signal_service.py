@@ -1,7 +1,7 @@
 """Signal service for persistence and queries."""
 
 from datetime import date
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from sqlalchemy.orm import Session
 
@@ -20,11 +20,12 @@ class SignalService:
         strategy_id: int,
         etf_code: str,
         strategy_type: str,
-        params: Dict[str, Any],
+        params: dict[str, Any],
         trade_date: date,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Generate and persist signals for a strategy."""
         signals = generate_signals_for_strategy(
+            db=self.db,
             etf_code=etf_code,
             strategy_type=strategy_type,
             params=params,
@@ -33,6 +34,19 @@ class SignalService:
 
         persisted = []
         for sig in signals:
+            # Skip if a signal already exists for this (strategy, etf, date)
+            existing = (
+                self.db.query(Signal)
+                .filter(
+                    Signal.strategy_id == strategy_id,
+                    Signal.etf_code == etf_code,
+                    Signal.trade_date == trade_date,
+                )
+                .first()
+            )
+            if existing:
+                continue
+
             signal = Signal(
                 strategy_id=strategy_id,
                 etf_code=etf_code,
@@ -50,16 +64,17 @@ class SignalService:
                 "strength": sig.get("strength", 50),
             })
 
-        self.db.commit()
+        if persisted:
+            self.db.commit()
         return persisted
 
     def get_signals(
         self,
-        strategy_id: Optional[int] = None,
-        etf_code: Optional[str] = None,
-        trade_date: Optional[date] = None,
+        strategy_id: int | None = None,
+        etf_code: str | None = None,
+        trade_date: date | None = None,
         limit: int = 100,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Get signals with optional filtering."""
         query = self.db.query(Signal)
         if strategy_id:
@@ -83,7 +98,7 @@ class SignalService:
             for r in results
         ]
 
-    def get_latest_signals(self, limit: int = 50) -> List[Dict[str, Any]]:
+    def get_latest_signals(self, limit: int = 50) -> list[dict[str, Any]]:
         """Get the latest signals."""
         # Get the most recent trade date
         latest = (

@@ -1,27 +1,11 @@
 import { useState } from 'react';
 import {
-  Card, Table, Button, Modal, Form, Input, Select, Switch, Space, Tag, message,
+  Table, Button, Modal, Form, Input, Select, Switch, Space, Tag, message,
 } from 'antd';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import GlassCard from '@/components/GlassCard';
+import { useStrategies } from '@/hooks/useStrategies';
 import { PlusOutlined, PlayCircleOutlined, DeleteOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
-
-interface Strategy {
-  id: number;
-  name: string;
-  description: string;
-  strategy_type: string;
-  params: Record<string, any>;
-  is_active: boolean;
-  created_at?: string;
-}
-
-interface Template {
-  name: string;
-  description: string;
-  strategy_type: string;
-  params: Record<string, any>;
-}
 
 const TYPE_COLORS: Record<string, string> = {
   momentum: 'blue',
@@ -38,64 +22,40 @@ const TYPE_LABELS: Record<string, string> = {
 export default function StrategyList() {
   const navigate = useNavigate();
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(null);
+  const [selectedTemplate, setSelectedTemplate] = useState<any>(null);
   const [form] = Form.useForm();
-  const queryClient = useQueryClient();
 
-  const { data: strategies, isLoading } = useQuery({
-    queryKey: ['strategies'],
-    queryFn: async () => {
-      const res = await fetch('/api/v1/strategies');
-      return res.json();
-    },
-    staleTime: 30_000,
-  });
+  const { strategies, templates, isLoading, create, delete: deleteStrategy } = useStrategies();
 
-  const { data: templates } = useQuery({
-    queryKey: ['strategy-templates'],
-    queryFn: async () => {
-      const res = await fetch('/api/v1/strategies/templates');
-      return res.json();
-    },
-    staleTime: 5 * 60_000,
-  });
-
-  const createMutation = useMutation({
-    mutationFn: async (values: any) => {
-      const res = await fetch('/api/v1/strategies', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: values.name,
-          description: selectedTemplate?.description || '',
-          strategy_type: selectedTemplate?.strategy_type || '',
-          params: values.params || {},
-          is_active: values.is_active,
-        }),
+  const handleCreate = async (values: any) => {
+    try {
+      await create({
+        name: values.name,
+        description: selectedTemplate?.description || '',
+        strategy_type: selectedTemplate?.strategy_type || '',
+        params: values.params || {},
+        is_active: values.is_active,
       });
-      return res.json();
-    },
-    onSuccess: () => {
       message.success('策略创建成功');
       setIsModalOpen(false);
       form.resetFields();
       setSelectedTemplate(null);
-      queryClient.invalidateQueries({ queryKey: ['strategies'] });
-    },
-  });
+    } catch {
+      message.error('创建失败');
+    }
+  };
 
-  const deleteMutation = useMutation({
-    mutationFn: async (id: number) => {
-      await fetch(`/api/v1/strategies/${id}`, { method: 'DELETE' });
-    },
-    onSuccess: () => {
+  const handleDelete = async (id: number) => {
+    try {
+      await deleteStrategy(id);
       message.success('删除成功');
-      queryClient.invalidateQueries({ queryKey: ['strategies'] });
-    },
-  });
+    } catch {
+      message.error('删除失败');
+    }
+  };
 
   const handleTemplateSelect = (templateName: string) => {
-    const tmpl = templates?.find((t: Template) => t.name === templateName);
+    const tmpl = templates?.find((t: any) => t.name === templateName);
     if (tmpl) {
       setSelectedTemplate(tmpl);
       form.setFieldsValue({
@@ -115,12 +75,12 @@ export default function StrategyList() {
     { title: '状态', dataIndex: 'is_active', render: (v: boolean) => v ? <Tag color="success">启用</Tag> : <Tag>禁用</Tag>, width: 80 },
     {
       title: '操作',
-      render: (_: any, record: Strategy) => (
+      render: (_: any, record: any) => (
         <Space>
           <Button size="small" icon={<PlayCircleOutlined />} onClick={() => navigate(`/backtests?strategy_id=${record.id}`)}>
             回测
           </Button>
-          <Button size="small" danger icon={<DeleteOutlined />} onClick={() => deleteMutation.mutate(record.id)}>
+          <Button size="small" danger icon={<DeleteOutlined />} onClick={() => handleDelete(record.id)}>
             删除
           </Button>
         </Space>
@@ -131,35 +91,34 @@ export default function StrategyList() {
 
   return (
     <div>
-      <Card title="策略管理" extra={
+      <GlassCard title="策略管理" extra={
         <Button type="primary" icon={<PlusOutlined />} onClick={() => setIsModalOpen(true)}>
           新建策略
         </Button>
       }>
         <Table
-          dataSource={strategies?.items || []}
+          dataSource={strategies}
           columns={columns}
           rowKey="id"
           size="small"
           loading={isLoading}
           pagination={false}
         />
-      </Card>
+      </GlassCard>
 
       <Modal
         title="新建策略"
         open={isModalOpen}
         onCancel={() => { setIsModalOpen(false); setSelectedTemplate(null); form.resetFields(); }}
         onOk={() => form.submit()}
-        confirmLoading={createMutation.isPending}
         width={600}
       >
-        <Form form={form} layout="vertical" onFinish={(v) => createMutation.mutate(v)}>
+        <Form form={form} layout="vertical" onFinish={handleCreate}>
           <Form.Item name="template" label="选择模板" rules={[{ required: true }]}>
             <Select
               placeholder="选择策略模板"
               onChange={handleTemplateSelect}
-              options={templates?.map((t: Template) => ({ label: t.name, value: t.name }))}
+              options={templates?.map((t: any) => ({ label: t.name, value: t.name }))}
             />
           </Form.Item>
           <Form.Item name="name" label="策略名称" rules={[{ required: true }]}>

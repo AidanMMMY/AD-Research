@@ -1,8 +1,12 @@
 """Redis client wrapper.
 
-Provides a cached Redis client instance for caching and pub/sub.
+Provides a cached Redis client instance for caching, pub/sub, and
+distributed locking.
 """
 
+import time
+from collections.abc import Generator
+from contextlib import contextmanager
 from functools import lru_cache
 
 import redis
@@ -21,3 +25,55 @@ def get_redis_client() -> redis.Redis:
         settings.redis_url,
         decode_responses=True,
     )
+
+
+@contextmanager
+def redis_lock(
+    lock_name: str,
+    expire_seconds: int = 300,
+    wait_timeout: float | None = None,
+) -> Generator[bool, None, None]:
+    """A simple distributed lock using Redis.
+
+    Usage:
+        with redis_lock("my_lock") as acquired:
+            if acquired:
+                do_work()
+            else:
+                print("Could not acquire lock")
+
+    Args:
+        lock_name: Unique name for the lock.
+        expire_seconds: Lock auto-expiry time to avoid deadlocks.
+        wait_timeout: If None, try once and return immediately.
+                      If set, retry every 0.5s until timeout.
+
+    Yields:
+        True if the lock was acquired, False otherwise.
+    """
+    client = get_redis_client()
+    lock_key = f"lock:{lock_name}"
+    token = f"{time.time()}"
+    acquired = False
+
+    def _acquire() -> bool:
+        return client.set(lock_key, token, nx=True, ex=expire_seconds) is True
+
+    if wait_timeout is None:
+        acquired = _acquire()
+    else:
+        deadline = time.time() + wait_timeout
+        while time.time() < deadline:
+            acquired = _acquire()
+            if acquired:
+                break
+            time.sleep(0.5)
+
+    try:
+        yield acquired
+    finally:
+        if acquired:
+            # Only delete if we still own the lock (simple best-effort)
+            current = client.get(lock_key)
+            if current == token:
+                client.delete(lock_key)

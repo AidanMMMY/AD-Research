@@ -5,14 +5,14 @@ with soft-delete design.
 """
 
 from sqlalchemy import (
+    DECIMAL,
+    JSON,
     Column,
     Date,
     DateTime,
-    DECIMAL,
     ForeignKey,
     Index,
     Integer,
-    JSON,
     String,
     Text,
     UniqueConstraint,
@@ -23,13 +23,18 @@ from app.core.database import Base
 
 
 class ETFPools(Base):
-    """ETF pool definition table."""
+    """ETF pool definition table with soft-delete design."""
 
     __tablename__ = "etf_pools"
 
     id = Column(Integer, primary_key=True, autoincrement=True, comment="ID")
     name = Column(String(100), nullable=False, comment="Pool name")
     description = Column(Text, comment="Pool description")
+    deleted_at = Column(
+        DateTime(timezone=True),
+        nullable=True,
+        comment="Deletion time (NULL = active)",
+    )
     created_at = Column(
         DateTime(timezone=True),
         server_default=func.now(),
@@ -78,8 +83,12 @@ class PoolMember(Base):
     notes = Column(Text, comment="Notes")
 
     __table_args__ = (
-        UniqueConstraint(
-            "pool_id", "etf_code", "removed_at", name="uq_pool_member_pool_etf_removed"
+        Index(
+            "uq_pool_member_active",
+            "pool_id",
+            "etf_code",
+            unique=True,
+            postgresql_where=(removed_at.is_(None)),
         ),
         Index(
             "idx_pool_members_pool",
@@ -98,7 +107,8 @@ class PoolWeight(Base):
     """ETF pool weight allocation table.
 
     Stores target and suggested weight allocations for each ETF in a pool,
-    along with the source of the weight recommendation.
+    along with the source of the weight recommendation. Uses soft-delete so
+    historical weight data is preserved when a member is removed.
     """
 
     __tablename__ = "pool_weight"
@@ -129,6 +139,11 @@ class PoolWeight(Base):
         nullable=False,
         comment="Weight source: manual/equal/score/risk_parity",
     )
+    removed_at = Column(
+        DateTime(timezone=True),
+        nullable=True,
+        comment="Removed time (NULL = active)",
+    )
     created_at = Column(
         DateTime(timezone=True),
         server_default=func.now(),
@@ -142,8 +157,12 @@ class PoolWeight(Base):
     )
 
     __table_args__ = (
-        UniqueConstraint(
-            "pool_id", "etf_code", name="uq_pool_weight_pool_etf"
+        Index(
+            "uq_pool_weight_active",
+            "pool_id",
+            "etf_code",
+            unique=True,
+            postgresql_where=(removed_at.is_(None)),
         ),
     )
 

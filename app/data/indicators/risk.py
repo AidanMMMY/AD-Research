@@ -99,8 +99,8 @@ def calculate_risk_indicators(df: pd.DataFrame) -> pd.DataFrame:
     # Ensure numeric close prices
     result["close"] = pd.to_numeric(result["close"], errors="coerce")
 
-    # Daily returns
-    returns = result["close"].pct_change().dropna()
+    # Daily returns (kept as a column for downstream use)
+    result["daily_return"] = result["close"].pct_change()
 
     # Rolling calculations using expanding windows where appropriate
     # Volatility: rolling std over fixed windows

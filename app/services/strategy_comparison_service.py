@@ -3,7 +3,7 @@
 Compares performance across multiple backtests.
 """
 
-from typing import Any, Dict, List
+from typing import Any
 
 from sqlalchemy.orm import Session
 
@@ -16,7 +16,7 @@ class StrategyComparisonService:
     def __init__(self, db: Session):
         self.db = db
 
-    def compare_backtests(self, backtest_ids: List[int]) -> Dict[str, Any]:
+    def compare_backtests(self, backtest_ids: list[int]) -> dict[str, Any]:
         """Compare multiple backtest results.
 
         Args:

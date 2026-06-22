@@ -4,8 +4,8 @@ Provides weight management, analytics, correlation analysis, and snapshot
 operations for ETF pools.
 """
 
-from datetime import date, datetime
-from typing import Any, Dict, List, Optional
+from datetime import date
+from typing import Any
 
 import numpy as np
 from sqlalchemy import func
@@ -28,16 +28,20 @@ class PoolEnhancementService:
     # Weight management
     # ------------------------------------------------------------------
 
-    def get_weights(self, pool_id: int) -> List[Dict[str, Any]]:
-        """Get all weight configurations for a pool.
+    def get_weights(self, pool_id: int) -> list[dict[str, Any]]:
+        """Get all weight configurations for active members of a pool.
 
         Returns a list of weight dicts with ETF metadata, including
-        both target_weight and suggested_weight.
+        both target_weight and suggested_weight. Removed members are excluded.
         """
         weights = (
             self.db.query(PoolWeight, ETFInfo.name)
             .join(ETFInfo, PoolWeight.etf_code == ETFInfo.code)
+            .join(PoolMember, (PoolWeight.etf_code == PoolMember.etf_code)
+                  & (PoolMember.pool_id == pool_id))
             .filter(PoolWeight.pool_id == pool_id)
+            .filter(PoolMember.removed_at.is_(None))
+            .filter(PoolWeight.removed_at.is_(None))
             .all()
         )
 
@@ -55,14 +59,54 @@ class PoolEnhancementService:
 
     def update_weight(
         self, pool_id: int, etf_code: str, target_weight: float
-    ) -> Optional[Dict[str, Any]]:
-        """Update the target weight for an ETF in a pool.
+    ) -> dict[str, Any] | None:
+        """Update the target weight for an active ETF in a pool.
 
-        Creates a new weight record if one doesn't exist.
+        Creates a new weight record if one doesn't exist. Returns None if
+        the ETF is not an active member of the pool. Rejects negative weights
+        or weights that would push the pool total above 100%.
         """
+        if target_weight < 0 or target_weight > 100:
+            raise ValueError("target_weight must be between 0 and 100")
+
+        # Only allow weight updates for active members
+        member = (
+            self.db.query(PoolMember)
+            .filter(
+                PoolMember.pool_id == pool_id,
+                PoolMember.etf_code == etf_code,
+                PoolMember.removed_at.is_(None),
+            )
+            .first()
+        )
+        if not member:
+            return None
+
+        # Calculate current total weight for active weights in this pool,
+        # excluding the ETF being updated.
+        other_total = (
+            self.db.query(func.coalesce(func.sum(PoolWeight.target_weight), 0))
+            .filter(
+                PoolWeight.pool_id == pool_id,
+                PoolWeight.etf_code != etf_code,
+                PoolWeight.removed_at.is_(None),
+            )
+            .scalar()
+        ) or 0
+
+        new_total = float(other_total) + target_weight
+        if new_total > 100.01:
+            raise ValueError(
+                f"Pool weight total would be {new_total:.2f}%; must not exceed 100%"
+            )
+
         weight = (
             self.db.query(PoolWeight)
-            .filter(PoolWeight.pool_id == pool_id, PoolWeight.etf_code == etf_code)
+            .filter(
+                PoolWeight.pool_id == pool_id,
+                PoolWeight.etf_code == etf_code,
+                PoolWeight.removed_at.is_(None),
+            )
             .first()
         )
 
@@ -96,8 +140,8 @@ class PoolEnhancementService:
         self,
         pool_id: int,
         algorithm: str = "equal",
-        template_id: Optional[int] = None,
-    ) -> List[Dict[str, Any]]:
+        template_id: int | None = None,
+    ) -> list[dict[str, Any]]:
         """Generate suggested weights for pool members using an algorithm.
 
         Args:
@@ -123,13 +167,14 @@ class PoolEnhancementService:
         else:
             suggestions = self._suggest_by_equal(codes)
 
-        # Store suggestions in the database
+        # Store suggestions in the database (only for active weight records)
         for suggestion in suggestions:
             weight = (
                 self.db.query(PoolWeight)
                 .filter(
                     PoolWeight.pool_id == pool_id,
                     PoolWeight.etf_code == suggestion["etf_code"],
+                    PoolWeight.removed_at.is_(None),
                 )
                 .first()
             )
@@ -148,7 +193,7 @@ class PoolEnhancementService:
         self.db.commit()
         return suggestions
 
-    def _suggest_by_equal(self, codes: List[str]) -> List[Dict[str, Any]]:
+    def _suggest_by_equal(self, codes: list[str]) -> list[dict[str, Any]]:
         """Suggest equal weights for all members."""
         n = len(codes)
         weight = round(100.0 / n, 2)
@@ -168,12 +213,12 @@ class PoolEnhancementService:
                 "suggested_weight": w,
                 "algorithm": "equal",
             }
-            for code, w in zip(codes, weights)
+            for code, w in zip(codes, weights, strict=False)
         ]
 
     def _suggest_by_score(
-        self, codes: List[str], template_id: Optional[int] = None
-    ) -> List[Dict[str, Any]]:
+        self, codes: list[str], template_id: int | None = None
+    ) -> list[dict[str, Any]]:
         """Suggest weights proportional to composite scores."""
         # Get latest scores for the codes
         if template_id is None:
@@ -226,7 +271,7 @@ class PoolEnhancementService:
             for code in codes
         ]
 
-    def _suggest_by_risk_parity(self, codes: List[str]) -> List[Dict[str, Any]]:
+    def _suggest_by_risk_parity(self, codes: list[str]) -> list[dict[str, Any]]:
         """Suggest weights inversely proportional to volatility (risk parity).
 
         Higher volatility gets lower weight. Uses 20-day volatility from
@@ -275,13 +320,18 @@ class PoolEnhancementService:
     # Analytics
     # ------------------------------------------------------------------
 
-    def get_analytics(self, pool_id: int) -> Optional[Dict[str, Any]]:
+    def get_analytics(self, pool_id: int) -> dict[str, Any] | None:
         """Get comprehensive analytics for a pool.
 
         Returns members, category distribution, weighted performance,
         and rebalance alerts.
         """
-        pool = self.db.query(ETFPools).filter(ETFPools.id == pool_id).first()
+        pool = (
+            self.db.query(ETFPools)
+            .filter(ETFPools.id == pool_id)
+            .filter(ETFPools.deleted_at.is_(None))
+            .first()
+        )
         if not pool:
             return None
 
@@ -300,10 +350,14 @@ class PoolEnhancementService:
 
         codes = [m.etf_code for m in members]
 
-        # Get weights
+        # Get weights (active only)
         weights = (
             self.db.query(PoolWeight)
-            .filter(PoolWeight.pool_id == pool_id, PoolWeight.etf_code.in_(codes))
+            .filter(
+                PoolWeight.pool_id == pool_id,
+                PoolWeight.etf_code.in_(codes),
+                PoolWeight.removed_at.is_(None),
+            )
             .all()
         )
         weight_map = {w.etf_code: float(w.target_weight) if w.target_weight else 0 for w in weights}
@@ -358,7 +412,7 @@ class PoolEnhancementService:
             "rebalance_alerts": rebalance_alerts,
         }
 
-    def get_correlation_matrix(self, pool_id: int) -> Optional[Dict[str, Any]]:
+    def get_correlation_matrix(self, pool_id: int) -> dict[str, Any] | None:
         """Get correlation matrix for pool members based on daily returns.
 
         Returns a dict with codes list and correlation matrix.
@@ -430,13 +484,18 @@ class PoolEnhancementService:
     # ------------------------------------------------------------------
 
     def create_snapshot(
-        self, pool_id: int, snapshot_date: Optional[date] = None
-    ) -> Optional[Dict[str, Any]]:
+        self, pool_id: int, snapshot_date: date | None = None
+    ) -> dict[str, Any] | None:
         """Create a snapshot of pool data for a given date.
 
         Captures current weights, member list, and performance metrics.
         """
-        pool = self.db.query(ETFPools).filter(ETFPools.id == pool_id).first()
+        pool = (
+            self.db.query(ETFPools)
+            .filter(ETFPools.id == pool_id)
+            .filter(ETFPools.deleted_at.is_(None))
+            .first()
+        )
         if not pool:
             return None
 
@@ -446,10 +505,14 @@ class PoolEnhancementService:
         members = self._get_active_members(pool_id)
         codes = [m.etf_code for m in members]
 
-        # Get weights
+        # Get weights (active only)
         weights = (
             self.db.query(PoolWeight)
-            .filter(PoolWeight.pool_id == pool_id, PoolWeight.etf_code.in_(codes))
+            .filter(
+                PoolWeight.pool_id == pool_id,
+                PoolWeight.etf_code.in_(codes),
+                PoolWeight.removed_at.is_(None),
+            )
             .all()
         )
         weight_map = {w.etf_code: float(w.target_weight) if w.target_weight else 0 for w in weights}
@@ -466,6 +529,15 @@ class PoolEnhancementService:
         # Get latest indicators
         indicators = self._get_latest_indicators(codes)
         ind_map = {ind.etf_code: ind for ind in indicators}
+
+        # Use the latest trade date from indicator data rather than calendar date,
+        # so the snapshot date is consistent with the market data it contains.
+        if indicators:
+            latest_trade_date = max(
+                (ind.trade_date for ind in indicators if ind.trade_date),
+                default=snapshot_date,
+            )
+            snapshot_date = latest_trade_date
 
         # Build holdings snapshot
         holdings = []
@@ -528,7 +600,7 @@ class PoolEnhancementService:
 
     def get_snapshots(
         self, pool_id: int, limit: int = 10
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Get recent snapshots for a pool."""
         snapshots = (
             self.db.query(PoolSnapshot)
@@ -544,6 +616,7 @@ class PoolEnhancementService:
                 "pool_id": s.pool_id,
                 "snapshot_date": s.snapshot_date,
                 "created_at": s.created_at,
+                "data": s.data or {},
             }
             for s in snapshots
         ]
@@ -552,7 +625,7 @@ class PoolEnhancementService:
     # Helpers
     # ------------------------------------------------------------------
 
-    def _get_active_members(self, pool_id: int) -> List[PoolMember]:
+    def _get_active_members(self, pool_id: int) -> list[PoolMember]:
         """Get active (not soft-deleted) pool members."""
         return (
             self.db.query(PoolMember)
@@ -560,7 +633,7 @@ class PoolEnhancementService:
             .all()
         )
 
-    def _get_latest_indicators(self, codes: List[str]) -> List[ETFIndicator]:
+    def _get_latest_indicators(self, codes: list[str]) -> list[ETFIndicator]:
         """Get the latest indicator for each ETF code."""
         if not codes:
             return []
@@ -587,8 +660,8 @@ class PoolEnhancementService:
         )
 
     def _calculate_category_distribution(
-        self, codes: List[str], weight_map: Dict[str, float]
-    ) -> Dict[str, Any]:
+        self, codes: list[str], weight_map: dict[str, float]
+    ) -> dict[str, Any]:
         """Calculate category distribution by weight and count."""
         etf_info = (
             self.db.query(ETFInfo)
@@ -597,7 +670,7 @@ class PoolEnhancementService:
         )
         cat_map = {e.code: e.category or "未分类" for e in etf_info}
 
-        dist: Dict[str, Dict[str, Any]] = {}
+        dist: dict[str, dict[str, Any]] = {}
         for code in codes:
             cat = cat_map.get(code, "未分类")
             if cat not in dist:
@@ -612,8 +685,8 @@ class PoolEnhancementService:
         return dist
 
     def _calculate_weighted_performance(
-        self, indicators: List[ETFIndicator], weight_map: Dict[str, float]
-    ) -> Dict[str, Any]:
+        self, indicators: list[ETFIndicator], weight_map: dict[str, float]
+    ) -> dict[str, Any]:
         """Calculate weighted portfolio performance metrics."""
         total_weight = sum(weight_map.values())
         if total_weight == 0:
@@ -658,38 +731,70 @@ class PoolEnhancementService:
     def _check_rebalance(
         self,
         pool_id: int,
-        codes: List[str],
-        weight_map: Dict[str, float],
-    ) -> tuple[bool, List[Dict[str, Any]]]:
+        codes: list[str],
+        weight_map: dict[str, float],
+    ) -> tuple[bool, list[dict[str, Any]]]:
         """Check if any ETF deviates from target weight beyond threshold.
 
-        Compares current target weights against suggested weights.
+        Computes current market-value weights from latest close prices
+        (assuming equal number of shares for simplicity) and compares them
+        to the configured target weights.
+
         Returns (needs_rebalance, list of alert dicts).
         """
-        suggestions = (
-            self.db.query(PoolWeight)
-            .filter(
-                PoolWeight.pool_id == pool_id,
-                PoolWeight.etf_code.in_(codes),
-                PoolWeight.suggested_weight.isnot(None),
+        close_prices = self._get_latest_close_prices(codes)
+
+        if not close_prices:
+            # No price data available; cannot compute actual weights.
+            return False, []
+
+        total_value = sum(close_prices.values())
+        if total_value == 0:
+            return False, []
+
+        alerts = []
+        for code in codes:
+            target = float(weight_map.get(code, 0))
+            actual = (close_prices.get(code, 0) / total_value) * 100.0
+            deviation = abs(target - actual) / 100.0
+
+            if deviation > self.REBALANCE_THRESHOLD:
+                etf = self.db.query(ETFInfo).filter(ETFInfo.code == code).first()
+                alerts.append({
+                    "etf_code": code,
+                    "etf_name": etf.name if etf else None,
+                    "target_weight": target,
+                    "actual_weight": round(actual, 2),
+                    "deviation": round(deviation * 100, 2),
+                })
+
+        return len(alerts) > 0, alerts
+
+    def _get_latest_close_prices(self, codes: list[str]) -> dict[str, float]:
+        """Get the latest close price for each ETF code from daily bars."""
+        from app.models.etf import ETFDailyBar
+
+        if not codes:
+            return {}
+
+        latest_subq = (
+            self.db.query(
+                ETFDailyBar.etf_code,
+                func.max(ETFDailyBar.trade_date).label("latest_date"),
+            )
+            .filter(ETFDailyBar.etf_code.in_(codes))
+            .group_by(ETFDailyBar.etf_code)
+            .subquery()
+        )
+
+        bars = (
+            self.db.query(ETFDailyBar)
+            .join(
+                latest_subq,
+                (ETFDailyBar.etf_code == latest_subq.c.etf_code)
+                & (ETFDailyBar.trade_date == latest_subq.c.latest_date),
             )
             .all()
         )
 
-        alerts = []
-        for s in suggestions:
-            target = float(s.target_weight) if s.target_weight else 0
-            suggested = float(s.suggested_weight) if s.suggested_weight else 0
-            deviation = abs(target - suggested) / 100.0  # Convert percentage to ratio
-
-            if deviation > self.REBALANCE_THRESHOLD:
-                etf = self.db.query(ETFInfo).filter(ETFInfo.code == s.etf_code).first()
-                alerts.append({
-                    "etf_code": s.etf_code,
-                    "etf_name": etf.name if etf else None,
-                    "target_weight": target,
-                    "suggested_weight": suggested,
-                    "deviation": round(deviation * 100, 2),  # Back to percentage
-                })
-
-        return len(alerts) > 0, alerts
+        return {b.etf_code: float(b.close) for b in bars if b.close is not None}

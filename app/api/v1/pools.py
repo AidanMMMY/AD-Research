@@ -5,7 +5,6 @@ weight management, analytics, and snapshots.
 """
 
 from datetime import date
-from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException
 
@@ -193,7 +192,7 @@ def get_pool_snapshots(
 @router.post("/{pool_id}/snapshots", response_model=PoolSnapshotResponse)
 def create_pool_snapshot(
     pool_id: int,
-    snapshot_date: Optional[date] = None,
+    snapshot_date: date | None = None,
     service: PoolEnhancementService = Depends(get_pool_enhancement_service),
 ):
     """Create a snapshot of pool data for a given date."""

@@ -3,8 +3,7 @@
 Provides correlation analysis, ranking, and screening capabilities.
 """
 
-from datetime import date
-from typing import List, Literal, Optional
+from typing import Literal
 
 import numpy as np
 from sqlalchemy import func
@@ -21,13 +20,13 @@ class AnalysisService:
 
     def correlation_matrix(
         self,
-        codes: List[str],
+        codes: list[str],
         window: int = 60,
         method: Literal["pearson", "spearman"] = "pearson",
     ) -> dict:
         """Compute the return correlation matrix for a list of ETFs.
 
-        Uses ma5 from ETFIndicator as a price proxy to compute daily
+        Uses close prices from ETFDailyBar to compute daily
         returns, then calculates the correlation over the last `window`
         days.
 
@@ -46,19 +45,21 @@ class AnalysisService:
                 "method": method,
             }
 
-        # Fetch ma5 values for each code, ordered by date
+        # Fetch close prices from daily bars for each code, ordered by date
+        from app.models.etf import ETFDailyBar
+
         data = {}
         for code in codes:
             rows = (
-                self.db.query(ETFIndicator.trade_date, ETFIndicator.ma5)
-                .filter(ETFIndicator.etf_code == code)
-                .filter(ETFIndicator.ma5.isnot(None))
-                .order_by(ETFIndicator.trade_date.asc())
+                self.db.query(ETFDailyBar.trade_date, ETFDailyBar.close)
+                .filter(ETFDailyBar.etf_code == code)
+                .filter(ETFDailyBar.close.isnot(None))
+                .order_by(ETFDailyBar.trade_date.asc())
                 .limit(window * 2)
                 .all()
             )
             if len(rows) >= 2:
-                prices = np.array([float(r.ma5) for r in rows])
+                prices = np.array([float(r.close) for r in rows])
                 returns = np.diff(prices) / prices[:-1]
                 # Take the last `window` returns
                 data[code] = returns[-window:]
@@ -128,8 +129,8 @@ class AnalysisService:
         sort_by: str = "sharpe_1y",
         order: Literal["asc", "desc"] = "desc",
         limit: int = 20,
-        market: Optional[str] = None,
-    ) -> List[dict]:
+        market: str | None = None,
+    ) -> list[dict]:
         """Rank ETFs by a specific indicator field.
 
         Takes the latest indicator for each ETF and sorts by the
@@ -207,13 +208,13 @@ class AnalysisService:
 
     def screen(
         self,
-        market: Optional[str] = None,
-        category: Optional[str] = None,
-        rsi_min: Optional[float] = None,
-        rsi_max: Optional[float] = None,
-        sharpe_min: Optional[float] = None,
-        volatility_max: Optional[float] = None,
-    ) -> List[dict]:
+        market: str | None = None,
+        category: str | None = None,
+        rsi_min: float | None = None,
+        rsi_max: float | None = None,
+        sharpe_min: float | None = None,
+        volatility_max: float | None = None,
+    ) -> list[dict]:
         """Screen ETFs based on indicator criteria.
 
         Takes the latest indicator for each ETF and filters by the

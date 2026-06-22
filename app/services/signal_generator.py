@@ -1,54 +1,103 @@
 """Signal generation engine.
 
 Generates BUY/SELL/HOLD signals based on strategy configurations.
+Reads historical data from the local etf_daily_bar table instead of
+making external API calls.
 """
 
 from datetime import date
-from typing import Any, Dict, List
+from typing import Any
 
 import pandas as pd
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 
-from app.data.providers.akshare_provider import AkshareProvider
+from app.models.etf import ETFDailyBar
+
+
+def _fetch_bars_from_db(
+    db: Session,
+    etf_code: str,
+    start_date: date,
+    end_date: date,
+) -> pd.DataFrame:
+    """Fetch daily bars from the local database.
+
+    Args:
+        db: SQLAlchemy session.
+        etf_code: ETF code.
+        start_date: Start date (inclusive).
+        end_date: End date (inclusive).
+
+    Returns:
+        DataFrame with columns: etf_code, trade_date, open, high, low,
+        close, volume. Empty DataFrame if no data.
+    """
+    bars = db.execute(
+        select(ETFDailyBar)
+        .where(ETFDailyBar.etf_code == etf_code)
+        .where(ETFDailyBar.trade_date >= start_date)
+        .where(ETFDailyBar.trade_date <= end_date)
+        .order_by(ETFDailyBar.trade_date.asc())
+    ).scalars().all()
+
+    if not bars:
+        return pd.DataFrame()
+
+    return pd.DataFrame(
+        [
+            {
+                "etf_code": b.etf_code,
+                "trade_date": b.trade_date,
+                "open": b.open,
+                "high": b.high,
+                "low": b.low,
+                "close": b.close,
+                "volume": b.volume,
+            }
+            for b in bars
+        ]
+    )
 
 
 def generate_signals_for_strategy(
+    db: Session,
     etf_code: str,
     strategy_type: str,
-    params: Dict[str, Any],
+    params: dict[str, Any],
     trade_date: date,
     lookback_days: int = 60,
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     """Generate signals for a single strategy on a single ETF.
 
     Args:
+        db: SQLAlchemy session for reading local daily bars.
         etf_code: ETF code.
         strategy_type: Type of strategy.
         params: Strategy parameters.
-        trade_date: Date to generate signals for.
+        trade_date: Date to generate signals for. Uses the latest
+            available bar on or before this date if exact date is missing.
         lookback_days: Number of days to fetch for calculation.
 
     Returns:
         List of signal dicts with type and strength.
     """
-    # Fetch historical data
-    try:
-        provider = AkshareProvider()
-        start = trade_date - pd.Timedelta(days=lookback_days)
-        df = provider.fetch_daily_bars([etf_code], start, trade_date)
-    except Exception:
-        return []
+    start = trade_date - pd.Timedelta(days=lookback_days + 10)
+    df = _fetch_bars_from_db(db, etf_code, start, trade_date)
 
     if df.empty or len(df) < 30:
         return []
 
+    # Convert Decimal columns to float for pandas arithmetic
+    numeric_cols = ["open", "high", "low", "close", "volume"]
+    for col in numeric_cols:
+        if col in df.columns:
+            df[col] = pd.to_numeric(df[col], errors="coerce")
+
     df = df.sort_values("trade_date").reset_index(drop=True)
 
-    # Get latest data point
+    # Use the latest available bar (may differ from trade_date on weekends/holidays)
     latest = df.iloc[-1]
-    latest_date = pd.to_datetime(latest["trade_date"]).date()
-
-    if latest_date != trade_date:
-        return []
 
     signals = []
 

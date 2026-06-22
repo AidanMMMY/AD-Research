@@ -1,6 +1,7 @@
-"""Tests for pool models.
+"""Tests for pool models and services.
 
-Covers creation and basic attribute validation of PoolWeight and PoolSnapshot.
+Covers creation, validation, soft-delete, weight constraints, and suggestion
+algorithms for pools.
 """
 
 from datetime import date, datetime
@@ -9,20 +10,44 @@ import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from app.models.pool import ETFPools, PoolMember, PoolWeight, PoolSnapshot
-from app.models.etf import ETFInfo
 from app.core.database import Base
+from app.models.etf import ETFInfo
+from app.models.pool import ETFPools, PoolMember, PoolSnapshot, PoolWeight
+from app.schemas.pool import PoolMemberCreate
+from app.services.pool_enhancement_service import PoolEnhancementService
+from app.services.pool_service import PoolService
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture
 def db_session():
     """Create an in-memory SQLite database session for testing."""
     engine = create_engine("sqlite:///:memory:", echo=False)
     Base.metadata.create_all(engine)
-    Session = sessionmaker(bind=engine)
-    session = Session()
+    session_maker = sessionmaker(bind=engine)
+    session = session_maker()
     yield session
     session.close()
+
+
+@pytest.fixture
+def pool_with_etfs(db_session):
+    """Create a pool with three ETFs for service-level tests."""
+    pool = ETFPools(name="Service Test Pool", description="For service tests")
+    db_session.add(pool)
+    db_session.commit()
+
+    codes = ["510300", "510500", "159915"]
+    for code in codes:
+        etf = ETFInfo(code=code, name=f"ETF {code}", category="Equity")
+        db_session.add(etf)
+    db_session.commit()
+
+    for code in codes:
+        member = PoolMember(pool_id=pool.id, etf_code=code)
+        db_session.add(member)
+    db_session.commit()
+
+    return pool, codes
 
 
 def test_create_pool_weight(db_session):
@@ -176,3 +201,169 @@ def test_pool_member_soft_delete(db_session):
     assert member.removed_at is None
     assert member.notes == "Test member"
     assert isinstance(member.added_at, datetime)
+
+
+# ---------------------------------------------------------------------------
+# Pool service: member uniqueness and soft-delete
+# ---------------------------------------------------------------------------
+
+
+def test_add_member_idempotent(pool_with_etfs, db_session):
+    """Adding the same active ETF twice should not create duplicate members."""
+    pool, codes = pool_with_etfs
+    service = PoolService(db_session)
+
+    first = service.add_member(pool.id, PoolMemberCreate(etf_code=codes[0], notes="first"))
+    second = service.add_member(pool.id, PoolMemberCreate(etf_code=codes[0], notes="second"))
+
+    assert first is not None
+    assert second is not None
+    assert first.id == second.id
+
+    active_members = (
+        db_session.query(PoolMember)
+        .filter(PoolMember.pool_id == pool.id, PoolMember.etf_code == codes[0])
+        .filter(PoolMember.removed_at.is_(None))
+        .all()
+    )
+    assert len(active_members) == 1
+
+
+def test_remove_member_soft_deletes_weight(pool_with_etfs, db_session):
+    """Removing a member should soft-delete its active PoolWeight records."""
+    pool, codes = pool_with_etfs
+    target_code = codes[0]
+
+    weight = PoolWeight(
+        pool_id=pool.id,
+        etf_code=target_code,
+        target_weight=30.0,
+        weight_source="manual",
+    )
+    db_session.add(weight)
+    db_session.commit()
+
+    service = PoolService(db_session)
+    service.remove_member(pool.id, target_code)
+
+    member = (
+        db_session.query(PoolMember)
+        .filter(
+            PoolMember.pool_id == pool.id,
+            PoolMember.etf_code == target_code,
+        )
+        .first()
+    )
+    assert member.removed_at is not None
+
+    weight_after = (
+        db_session.query(PoolWeight)
+        .filter(
+            PoolWeight.pool_id == pool.id,
+            PoolWeight.etf_code == target_code,
+        )
+        .first()
+    )
+    assert weight_after.removed_at is not None
+
+
+# ---------------------------------------------------------------------------
+# Weight validation
+# ---------------------------------------------------------------------------
+
+
+def test_update_weight_rejects_negative(pool_with_etfs, db_session):
+    """Negative target weights should be rejected."""
+    pool, codes = pool_with_etfs
+    service = PoolEnhancementService(db_session)
+
+    with pytest.raises(ValueError, match="between 0 and 100"):
+        service.update_weight(pool.id, codes[0], -5.0)
+
+
+def test_update_weight_rejects_over_100(pool_with_etfs, db_session):
+    """Weights that push the pool total above 100% should be rejected."""
+    pool, codes = pool_with_etfs
+    service = PoolEnhancementService(db_session)
+
+    # Set first two weights to 50% each
+    service.update_weight(pool.id, codes[0], 50.0)
+    service.update_weight(pool.id, codes[1], 50.0)
+
+    # Third weight would exceed 100.01% threshold
+    with pytest.raises(ValueError, match="must not exceed 100%"):
+        service.update_weight(pool.id, codes[2], 10.0)
+
+
+def test_update_weight_accepts_near_100(pool_with_etfs, db_session):
+    """Weights summing to exactly 100% should be accepted."""
+    pool, codes = pool_with_etfs
+    service = PoolEnhancementService(db_session)
+
+    result = service.update_weight(pool.id, codes[0], 100.0)
+    assert result is not None
+    assert result["target_weight"] == 100.0
+
+
+def test_update_weight_creates_record(pool_with_etfs, db_session):
+    """Updating weight for a member without a weight record should create one."""
+    pool, codes = pool_with_etfs
+    service = PoolEnhancementService(db_session)
+
+    result = service.update_weight(pool.id, codes[0], 25.0)
+    assert result is not None
+    assert result["etf_code"] == codes[0]
+    assert result["target_weight"] == 25.0
+    assert result["weight_source"] == "manual"
+
+    stored = (
+        db_session.query(PoolWeight)
+        .filter(
+            PoolWeight.pool_id == pool.id,
+            PoolWeight.etf_code == codes[0],
+            PoolWeight.removed_at.is_(None),
+        )
+        .first()
+    )
+    assert stored is not None
+    assert float(stored.target_weight) == 25.0
+
+
+# ---------------------------------------------------------------------------
+# Weight suggestion algorithms
+# ---------------------------------------------------------------------------
+
+
+def test_suggest_equal_weights(pool_with_etfs, db_session):
+    """Equal-weight algorithm should split 100% across active members."""
+    pool, codes = pool_with_etfs
+    service = PoolEnhancementService(db_session)
+
+    suggestions = service.suggest_weights(pool.id, algorithm="equal")
+    assert len(suggestions) == len(codes)
+
+    total = sum(s["suggested_weight"] for s in suggestions)
+    assert total == 100.0
+    assert all(s["algorithm"] == "equal" for s in suggestions)
+
+
+def test_suggest_weights_stores_values(pool_with_etfs, db_session):
+    """Suggested weights should be persisted on PoolWeight rows."""
+    pool, codes = pool_with_etfs
+    service = PoolEnhancementService(db_session)
+
+    service.suggest_weights(pool.id, algorithm="equal")
+
+    for code in codes:
+        weight = (
+            db_session.query(PoolWeight)
+            .filter(
+                PoolWeight.pool_id == pool.id,
+                PoolWeight.etf_code == code,
+                PoolWeight.removed_at.is_(None),
+            )
+            .first()
+        )
+        assert weight is not None
+        assert weight.weight_source == "equal"
+        assert weight.suggested_weight is not None

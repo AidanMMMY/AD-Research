@@ -1,35 +1,35 @@
 from datetime import date
-from typing import List, Optional
+
 from pydantic import BaseModel
 
 
 class DailyBarResponse(BaseModel):
     trade_date: date
-    open: Optional[float] = None
-    high: Optional[float] = None
-    low: Optional[float] = None
-    close: Optional[float] = None
-    volume: Optional[int] = None
-    amount: Optional[float] = None
-    change_pct: Optional[float] = None
-    turnover_rate: Optional[float] = None
+    open: float | None = None
+    high: float | None = None
+    low: float | None = None
+    close: float | None = None
+    volume: int | None = None
+    amount: float | None = None
+    change_pct: float | None = None
+    turnover_rate: float | None = None
 
 
 class MarketDataHistoryResponse(BaseModel):
     etf_code: str
-    etf_name: Optional[str] = None
-    items: List[DailyBarResponse]
+    etf_name: str | None = None
+    items: list[DailyBarResponse]
 
 
 class SnapshotItem(BaseModel):
     etf_code: str
-    etf_name: Optional[str] = None
-    close: Optional[float] = None
-    change_pct: Optional[float] = None
-    volume: Optional[int] = None
-    amount: Optional[float] = None
+    etf_name: str | None = None
+    close: float | None = None
+    change_pct: float | None = None
+    volume: int | None = None
+    amount: float | None = None
 
 
 class MarketSnapshotResponse(BaseModel):
-    items: List[SnapshotItem]
+    items: list[SnapshotItem]
     count: int

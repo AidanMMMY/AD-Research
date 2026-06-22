@@ -3,7 +3,6 @@
 Provides endpoints for querying ETL job execution status and logs.
 """
 
-from typing import Optional
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
@@ -16,8 +15,8 @@ router = APIRouter()
 
 @router.get("/status")
 def get_etl_status(
-    job_name: Optional[str] = Query(None),
-    status: Optional[str] = Query(None),
+    job_name: str | None = Query(None),
+    status: str | None = Query(None),
     limit: int = Query(20, ge=1, le=100),
     db: Session = Depends(get_db),
 ):

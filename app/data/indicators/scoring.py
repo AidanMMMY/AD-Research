@@ -4,7 +4,7 @@ Provides percentile-based scoring for ETFs across multiple dimensions
 with configurable weight templates.
 """
 
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import numpy as np
 from scipy.stats import rankdata
@@ -19,9 +19,9 @@ class ScoreCalculator:
 
     def calculate_scores(
         self,
-        indicators: List[Dict[str, Any]],
-        template_weights: Dict[str, Dict[str, Any]],
-    ) -> Dict[str, Dict[str, float]]:
+        indicators: list[dict[str, Any]],
+        template_weights: dict[str, dict[str, Any]],
+    ) -> dict[str, dict[str, float]]:
         """Calculate composite scores for all ETFs.
 
         Args:
@@ -90,19 +90,25 @@ class ScoreCalculator:
             if not dim_values:
                 continue
 
-            # Percentile ranking (1 to 100)
+            # Percentile ranking (0 to 100).
+            # rankdata assigns ranks starting at 1; transform to 0-based percentiles
+            # so the worst performer gets 0 and the best gets 100.
             ranks = rankdata(dim_values, method="average")
-            percentiles = (ranks / len(dim_values)) * 100
+            n = len(dim_values)
+            if n > 1:
+                percentiles = ((ranks - 1) / (n - 1)) * 100
+            else:
+                percentiles = np.full_like(ranks, 50.0, dtype=float)
 
             # Adjust direction
             if direction == "desc":
                 percentiles = 100 - percentiles
 
-            # Assign dimension scores
-            for code, pct in zip(valid_codes, percentiles):
-                dim_score = pct * dim_weight
+            # Assign dimension scores (raw 0-100 percentile) and accumulate composite
+            for code, pct in zip(valid_codes, percentiles, strict=False):
+                dim_score = float(pct)
                 results[code][dimension] = round(dim_score, 2)
-                results[code]["composite"] += dim_score
+                results[code]["composite"] += dim_score * dim_weight
 
         # Round composite scores
         for code in results:
@@ -112,8 +118,8 @@ class ScoreCalculator:
 
     def rank_scores(
         self,
-        scores: Dict[str, Dict[str, float]],
-    ) -> Dict[str, int]:
+        scores: dict[str, dict[str, float]],
+    ) -> dict[str, int]:
         """Compute overall rankings from composite scores.
 
         Returns dict mapping etf_code to 1-based rank (1 = highest score).

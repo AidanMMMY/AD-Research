@@ -1,14 +1,7 @@
-import { Card, Table, Tag, Row, Col, Statistic } from 'antd';
-import { useQuery } from '@tanstack/react-query';
-
-interface Signal {
-  id: number;
-  strategy_id: number;
-  etf_code: string;
-  trade_date: string;
-  signal_type: string;
-  strength: number;
-}
+import { Table, Tag, Row, Col, Statistic } from 'antd';
+import GlassCard from '@/components/GlassCard';
+import { useSignals } from '@/hooks/useSignals';
+import type { Signal } from '@/types/signal';
 
 const SIGNAL_COLORS: Record<string, string> = {
   BUY: 'red',
@@ -23,14 +16,7 @@ const SIGNAL_LABELS: Record<string, string> = {
 };
 
 export default function SignalDashboard() {
-  const { data: signals, isLoading } = useQuery({
-    queryKey: ['signals-latest'],
-    queryFn: async () => {
-      const res = await fetch('/api/v1/signals/latest');
-      return res.json();
-    },
-    staleTime: 60_000,
-  });
+  const { data: signals, isLoading } = useSignals();
 
   const items: Signal[] = signals?.items || [];
 
@@ -54,12 +40,12 @@ export default function SignalDashboard() {
   return (
     <div>
       <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
-        <Col xs={8}><Card><Statistic title="买入信号" value={buyCount} valueStyle={{ color: '#cf1322' }} /></Card></Col>
-        <Col xs={8}><Card><Statistic title="卖出信号" value={sellCount} valueStyle={{ color: '#3f8600' }} /></Card></Col>
-        <Col xs={8}><Card><Statistic title="持有信号" value={holdCount} /></Card></Col>
+        <Col xs={8}><GlassCard><Statistic title="买入信号" value={buyCount} valueStyle={{ color: '#ef4444' }} /></GlassCard></Col>
+        <Col xs={8}><GlassCard><Statistic title="卖出信号" value={sellCount} valueStyle={{ color: '#22c55e' }} /></GlassCard></Col>
+        <Col xs={8}><GlassCard><Statistic title="持有信号" value={holdCount} /></GlassCard></Col>
       </Row>
 
-      <Card title="最新交易信号">
+      <GlassCard title="最新交易信号">
         <Table
           dataSource={items}
           columns={columns}
@@ -68,7 +54,7 @@ export default function SignalDashboard() {
           loading={isLoading}
           pagination={{ pageSize: 20 }}
         />
-      </Card>
+      </GlassCard>
     </div>
   );
 }

@@ -4,7 +4,6 @@ Provides endpoints for latest, historical, and batch technical indicators.
 """
 
 from datetime import date
-from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
@@ -30,8 +29,8 @@ def get_latest_indicators(
 @router.get("/{code}/history", response_model=list[IndicatorResponse])
 def get_indicator_history(
     code: str,
-    start: date = Query(None),
-    end: date = Query(None),
+    start: date = Query(None, alias="start_date"),
+    end: date = Query(None, alias="end_date"),
     service: IndicatorService = Depends(get_indicator_service),
 ):
     """Get historical technical indicators for an ETF."""
@@ -40,8 +39,8 @@ def get_indicator_history(
 
 @router.get("/batch/latest", response_model=IndicatorBatchResponse)
 def get_batch_indicators(
-    codes: List[str] = Query(...),
-    fields: List[str] = Query(None),
+    codes: list[str] = Query(...),
+    fields: list[str] = Query(None),
     service: IndicatorService = Depends(get_indicator_service),
 ):
     """Get the latest indicators for a batch of ETF codes."""

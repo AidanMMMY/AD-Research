@@ -5,7 +5,6 @@ Provides queries for historical OHLCV bars and market snapshots.
 
 import math
 from datetime import date
-from typing import List, Optional
 
 from sqlalchemy import func
 from sqlalchemy.orm import Session
@@ -19,7 +18,7 @@ from app.schemas.market_data import (
 )
 
 
-def _safe_float(value) -> Optional[float]:
+def _safe_float(value) -> float | None:
     """Convert a value to float, returning None for NaN/Inf."""
     if value is None:
         return None
@@ -41,8 +40,9 @@ class MarketDataService:
     def get_history(
         self,
         code: str,
-        start: Optional[date] = None,
-        end: Optional[date] = None,
+        start: date | None = None,
+        end: date | None = None,
+        limit: int | None = None,
     ) -> MarketDataHistoryResponse:
         """Get historical OHLCV bars for an ETF.
 
@@ -50,6 +50,7 @@ class MarketDataService:
             code: ETF code.
             start: Start date (inclusive).
             end: End date (inclusive).
+            limit: Maximum number of most recent bars to return.
 
         Returns:
             MarketDataHistoryResponse with bars and ETF info.
@@ -63,7 +64,12 @@ class MarketDataService:
         if end:
             query = query.filter(ETFDailyBar.trade_date <= end)
 
-        bars = query.order_by(ETFDailyBar.trade_date.asc()).all()
+        # Apply limit: get most recent N bars, then reverse to chronological order
+        if limit and limit > 0:
+            bars_desc = query.order_by(ETFDailyBar.trade_date.desc()).limit(limit).all()
+            bars = list(reversed(bars_desc))
+        else:
+            bars = query.order_by(ETFDailyBar.trade_date.asc()).all()
 
         etf = (
             self.db.query(ETFInfo.name)
@@ -92,7 +98,7 @@ class MarketDataService:
             items=items,
         )
 
-    def get_snapshot(self, codes: List[str]) -> MarketSnapshotResponse:
+    def get_snapshot(self, codes: list[str]) -> MarketSnapshotResponse:
         """Get the latest market snapshot for a list of ETF codes.
 
         For each code, returns the most recent daily bar.

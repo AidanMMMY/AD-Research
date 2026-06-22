@@ -1,7 +1,6 @@
 """Signal API routes."""
 
 from datetime import date
-from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
 
@@ -19,9 +18,9 @@ router = APIRouter()
 
 @router.get("", response_model=SignalListResponse)
 def list_signals(
-    strategy_id: Optional[int] = None,
-    etf_code: Optional[str] = None,
-    trade_date: Optional[date] = None,
+    strategy_id: int | None = None,
+    etf_code: str | None = None,
+    trade_date: date | None = None,
     limit: int = 100,
     service: SignalService = Depends(get_signal_service),
 ):

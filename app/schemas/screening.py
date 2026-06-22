@@ -3,11 +3,9 @@
 Provides request/response models for ETF screening, ranking, and preset queries.
 """
 
-from datetime import date
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from pydantic import BaseModel, Field
-
 
 # ------------------------------------------------------------------
 # Screening filter / result schemas
@@ -20,23 +18,23 @@ class ScreenFilter(BaseModel):
     criteria applied to the latest indicator data per ETF.
     """
 
-    market: Optional[str] = Field(None, description="Filter by market (e.g. SH, SZ)")
-    category: Optional[str] = Field(None, description="Filter by ETF category")
-    rsi_min: Optional[float] = Field(None, ge=0, le=100, description="Minimum RSI14")
-    rsi_max: Optional[float] = Field(None, ge=0, le=100, description="Maximum RSI14")
-    sharpe_min: Optional[float] = Field(None, description="Minimum Sharpe ratio (1y)")
-    sharpe_max: Optional[float] = Field(None, description="Maximum Sharpe ratio (1y)")
-    volatility_min: Optional[float] = Field(None, ge=0, description="Minimum 20d volatility")
-    volatility_max: Optional[float] = Field(None, ge=0, description="Maximum 20d volatility")
-    return_1m_min: Optional[float] = Field(None, description="Minimum 1-month return")
-    return_1m_max: Optional[float] = Field(None, description="Maximum 1-month return")
-    return_3m_min: Optional[float] = Field(None, description="Minimum 3-month return")
-    return_3m_max: Optional[float] = Field(None, description="Maximum 3-month return")
-    return_1y_min: Optional[float] = Field(None, description="Minimum 1-year return")
-    return_1y_max: Optional[float] = Field(None, description="Maximum 1-year return")
-    score_min: Optional[float] = Field(None, ge=0, le=100, description="Minimum composite score")
-    score_max: Optional[float] = Field(None, ge=0, le=100, description="Maximum composite score")
-    template_id: Optional[int] = Field(None, description="Score template ID for score filtering")
+    market: str | None = Field(None, description="Filter by market (e.g. SH, SZ)")
+    category: str | None = Field(None, description="Filter by ETF category")
+    rsi_min: float | None = Field(None, ge=0, le=100, description="Minimum RSI14")
+    rsi_max: float | None = Field(None, ge=0, le=100, description="Maximum RSI14")
+    sharpe_min: float | None = Field(None, description="Minimum Sharpe ratio (1y)")
+    sharpe_max: float | None = Field(None, description="Maximum Sharpe ratio (1y)")
+    volatility_min: float | None = Field(None, ge=0, description="Minimum 20d volatility")
+    volatility_max: float | None = Field(None, ge=0, description="Maximum 20d volatility")
+    return_1m_min: float | None = Field(None, description="Minimum 1-month return")
+    return_1m_max: float | None = Field(None, description="Maximum 1-month return")
+    return_3m_min: float | None = Field(None, description="Minimum 3-month return")
+    return_3m_max: float | None = Field(None, description="Maximum 3-month return")
+    return_1y_min: float | None = Field(None, description="Minimum 1-year return")
+    return_1y_max: float | None = Field(None, description="Maximum 1-year return")
+    score_min: float | None = Field(None, ge=0, le=100, description="Minimum composite score")
+    score_max: float | None = Field(None, ge=0, le=100, description="Maximum composite score")
+    template_id: int | None = Field(None, description="Score template ID for score filtering")
     sort_by: str = Field("composite_score", description="Field to sort by")
     sort_order: str = Field("desc", description="Sort order: asc or desc")
     offset: int = Field(0, ge=0, description="Pagination offset")
@@ -46,36 +44,36 @@ class ScreenFilter(BaseModel):
 class ScreenResultItem(BaseModel):
     """Schema for a single ETF screening result."""
 
-    etf_code: str
-    etf_name: Optional[str] = None
-    market: Optional[str] = None
-    category: Optional[str] = None
-    trade_date: Optional[str] = None
-    sharpe_1y: Optional[float] = None
-    volatility_20d: Optional[float] = None
-    rsi14: Optional[float] = None
-    return_1m: Optional[float] = None
-    return_3m: Optional[float] = None
-    return_1y: Optional[float] = None
-    max_drawdown_1y: Optional[float] = None
-    composite_score: Optional[float] = None
-    score_return: Optional[float] = None
-    score_risk: Optional[float] = None
-    score_sharpe: Optional[float] = None
-    score_liquidity: Optional[float] = None
-    score_trend: Optional[float] = None
-    rank_overall: Optional[int] = None
-    rank_category: Optional[int] = None
+    code: str
+    name: str | None = None
+    market: str | None = None
+    category: str | None = None
+    trade_date: str | None = None
+    sharpe_1y: float | None = None
+    volatility_20d: float | None = None
+    rsi14: float | None = None
+    return_1m: float | None = None
+    return_3m: float | None = None
+    return_1y: float | None = None
+    max_drawdown_1y: float | None = None
+    composite_score: float | None = None
+    score_return: float | None = None
+    score_risk: float | None = None
+    score_sharpe: float | None = None
+    score_liquidity: float | None = None
+    score_trend: float | None = None
+    rank_overall: int | None = None
+    rank_category: int | None = None
 
 
 class ScreenResult(BaseModel):
     """Schema for ETF screening response."""
 
-    items: List[ScreenResultItem]
+    items: list[ScreenResultItem]
     count: int
     offset: int
     limit: int
-    preset: Optional[Dict[str, Any]] = None
+    preset: dict[str, Any] | None = None
 
 
 # ------------------------------------------------------------------
@@ -88,7 +86,7 @@ class PresetItem(BaseModel):
     key: str
     name: str
     description: str
-    filters: Dict[str, Any]
+    filters: dict[str, Any]
     sort_by: str
     sort_order: str
 
@@ -96,7 +94,7 @@ class PresetItem(BaseModel):
 class PresetListResponse(BaseModel):
     """Schema for preset list response."""
 
-    presets: List[PresetItem]
+    presets: list[PresetItem]
 
 
 # ------------------------------------------------------------------
@@ -113,4 +111,4 @@ class CategoryItem(BaseModel):
 class CategoryListResponse(BaseModel):
     """Schema for category list response."""
 
-    categories: List[CategoryItem]
+    categories: list[CategoryItem]

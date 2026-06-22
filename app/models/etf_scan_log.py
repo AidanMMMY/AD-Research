@@ -1,6 +1,6 @@
 """ETF market scan log model."""
 
-from sqlalchemy import Column, Date, DateTime, Integer, JSON, String, func
+from sqlalchemy import JSON, Column, Date, DateTime, Integer, String, func
 
 from app.core.database import Base
 

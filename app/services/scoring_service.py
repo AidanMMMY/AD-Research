@@ -4,7 +4,7 @@ Provides score calculation, template management, and score queries.
 """
 
 from datetime import date
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from sqlalchemy import func
 from sqlalchemy.orm import Session
@@ -12,6 +12,21 @@ from sqlalchemy.orm import Session
 from app.data.indicators.scoring import ScoreCalculator
 from app.models.etf import ETFIndicator, ETFInfo
 from app.models.scoring import ETFScore, ScoreTemplate
+
+
+def _safe_float(value: Any) -> float | None:
+    """Convert a value to float, returning None for invalid/missing values."""
+    if value is None:
+        return None
+    try:
+        import math
+
+        f = float(value)
+        if math.isnan(f) or math.isinf(f):
+            return None
+        return f
+    except (TypeError, ValueError):
+        return None
 
 
 class ScoringService:
@@ -41,7 +56,7 @@ class ScoringService:
             "direction": "asc",
         },
         "trend": {
-            "metrics": ["rsi14"],
+            "metrics": ["rsi14", "ma_position"],
             "weight": 0.1,
             "direction": "asc",
         },
@@ -55,15 +70,15 @@ class ScoringService:
     # Template CRUD
     # ------------------------------------------------------------------
 
-    def get_templates(self) -> List[ScoreTemplate]:
+    def get_templates(self) -> list[ScoreTemplate]:
         """Get all score templates."""
         return self.db.query(ScoreTemplate).all()
 
-    def get_template(self, template_id: int) -> Optional[ScoreTemplate]:
+    def get_template(self, template_id: int) -> ScoreTemplate | None:
         """Get a single template by ID."""
         return self.db.query(ScoreTemplate).filter(ScoreTemplate.id == template_id).first()
 
-    def get_default_template(self) -> Optional[ScoreTemplate]:
+    def get_default_template(self) -> ScoreTemplate | None:
         """Get the default template."""
         return self.db.query(ScoreTemplate).filter(ScoreTemplate.is_default.is_(True)).first()
 
@@ -71,7 +86,7 @@ class ScoringService:
         self,
         name: str,
         description: str,
-        weights: Dict[str, float],
+        weights: dict[str, float],
         is_default: bool = False,
     ) -> ScoreTemplate:
         """Create a new score template."""
@@ -91,8 +106,8 @@ class ScoringService:
     # ------------------------------------------------------------------
 
     def calculate_daily_scores(
-        self, trade_date: Optional[date] = None
-    ) -> Dict[int, int]:
+        self, trade_date: date | None = None
+    ) -> dict[int, int]:
         """Calculate scores for all active ETFs for all templates.
 
         Args:
@@ -124,7 +139,7 @@ class ScoringService:
         if not indicators:
             return {}
 
-        results: Dict[int, int] = {}
+        results: dict[int, int] = {}
         for template in templates:
             count = self._calculate_scores_for_template(
                 template, indicators, trade_date
@@ -136,17 +151,26 @@ class ScoringService:
     def _calculate_scores_for_template(
         self,
         template: ScoreTemplate,
-        indicators: List[ETFIndicator],
+        indicators: list[ETFIndicator],
         trade_date: date,
     ) -> int:
         """Calculate and persist scores for a single template."""
         template_weights = self._build_template_weights(template)
 
-        # Convert ORM objects to plain dicts for the calculator
-        indicator_dicts: List[Dict[str, Any]] = []
+        # Convert ORM objects to plain dicts for the calculator.
+        # Derive trend metrics that combine multiple raw indicators.
+        indicator_dicts: list[dict[str, Any]] = []
         for ind in indicators:
             d = {c.name: getattr(ind, c.name) for c in ind.__table__.columns}
             d["etf_code"] = ind.etf_code
+            # MA position: ratio of short-term to medium-term MA.
+            # > 1 indicates price/momentum above the medium-term trend.
+            ma5 = _safe_float(d.get("ma5"))
+            ma20 = _safe_float(d.get("ma20"))
+            if ma5 is not None and ma20 is not None and ma20 != 0:
+                d["ma_position"] = ma5 / ma20
+            else:
+                d["ma_position"] = None
             indicator_dicts.append(d)
 
         # Run scoring
@@ -161,7 +185,7 @@ class ScoringService:
         category_rankings = self._calculate_category_rankings(scores, indicators)
 
         # Build score records
-        score_records: List[Dict[str, Any]] = []
+        score_records: list[dict[str, Any]] = []
         for ind in indicators:
             code = ind.etf_code
             if code not in scores:
@@ -188,7 +212,7 @@ class ScoringService:
 
         return len(score_records)
 
-    def _upsert_scores(self, score_records: List[Dict[str, Any]]) -> None:
+    def _upsert_scores(self, score_records: list[dict[str, Any]]) -> None:
         """Bulk insert ETFScore rows, updating on conflict.
 
         Uses PostgreSQL ``INSERT ... ON CONFLICT DO UPDATE`` when available.
@@ -198,7 +222,7 @@ class ScoringService:
         import numpy as np
 
         def _convert(value):
-            if isinstance(value, (np.integer, np.floating)):
+            if isinstance(value, np.integer | np.floating):
                 return float(value)
             if isinstance(value, np.ndarray):
                 return value.tolist()
@@ -252,10 +276,10 @@ class ScoringService:
 
     def _build_template_weights(
         self, template: ScoreTemplate
-    ) -> Dict[str, Dict[str, Any]]:
+    ) -> dict[str, dict[str, Any]]:
         """Build calculator-compatible weights from a template config."""
         weights = template.weights or {}
-        result: Dict[str, Dict[str, Any]] = {}
+        result: dict[str, dict[str, Any]] = {}
 
         for dim_name, dim_config in self.DIMENSION_MAP.items():
             dim_weight = weights.get(dim_name, dim_config["weight"])
@@ -270,9 +294,9 @@ class ScoringService:
 
     def _calculate_category_rankings(
         self,
-        scores: Dict[str, Dict[str, float]],
-        indicators: List[ETFIndicator],
-    ) -> Dict[str, Optional[int]]:
+        scores: dict[str, dict[str, float]],
+        indicators: list[ETFIndicator],
+    ) -> dict[str, int | None]:
         """Calculate per-category rankings based on composite scores."""
         codes = list(scores.keys())
         etf_info_map = {
@@ -280,14 +304,14 @@ class ScoringService:
             for e in self.db.query(ETFInfo).filter(ETFInfo.code.in_(codes)).all()
         }
 
-        category_groups: Dict[str, List[tuple]] = {}
+        category_groups: dict[str, list[tuple]] = {}
         for code in codes:
             cat = etf_info_map.get(code, "其他")
             category_groups.setdefault(cat, []).append(
                 (code, scores[code].get("composite", 0))
             )
 
-        category_rankings: Dict[str, Optional[int]] = {}
+        category_rankings: dict[str, int | None] = {}
         for items in category_groups.values():
             sorted_items = sorted(items, key=lambda x: x[1], reverse=True)
             for rank, (code, _) in enumerate(sorted_items, 1):
@@ -349,12 +373,12 @@ class ScoringService:
 
     def get_scores(
         self,
-        template_id: Optional[int] = None,
-        trade_date: Optional[date] = None,
+        template_id: int | None = None,
+        trade_date: date | None = None,
         limit: int = 50,
-        market: Optional[str] = None,
-        category: Optional[str] = None,
-    ) -> List[Dict[str, Any]]:
+        market: str | None = None,
+        category: str | None = None,
+    ) -> list[dict[str, Any]]:
         """Query ETF scores with optional filtering.
 
         Args:
@@ -377,8 +401,13 @@ class ScoringService:
             ).scalar()
 
         query = (
-            self.db.query(ETFScore, ETFInfo)
+            self.db.query(ETFScore, ETFInfo, ETFIndicator)
             .join(ETFInfo, ETFScore.etf_code == ETFInfo.code)
+            .outerjoin(
+                ETFIndicator,
+                (ETFScore.etf_code == ETFIndicator.etf_code)
+                & (ETFScore.trade_date == ETFIndicator.trade_date),
+            )
             .filter(ETFScore.template_id == template_id)
         )
 
@@ -393,8 +422,8 @@ class ScoringService:
         query = query.order_by(ETFScore.rank_overall.asc().nullslast())
         results = query.limit(limit).all()
 
-        output: List[Dict[str, Any]] = []
-        for score, info in results:
+        output: list[dict[str, Any]] = []
+        for score, info, indicator in results:
             output.append({
                 "etf_code": score.etf_code,
                 "etf_name": info.name,
@@ -408,6 +437,9 @@ class ScoringService:
                 "score_trend": float(score.score_trend) if score.score_trend is not None else None,
                 "rank_overall": score.rank_overall,
                 "rank_category": score.rank_category,
+                "return_1m": float(indicator.return_1m) if indicator and indicator.return_1m is not None else None,
+                "return_3m": float(indicator.return_3m) if indicator and indicator.return_3m is not None else None,
+                "return_1y": float(indicator.return_1y) if indicator and indicator.return_1y is not None else None,
             })
 
         return output

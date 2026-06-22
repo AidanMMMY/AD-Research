@@ -4,10 +4,9 @@ Provides request/response models for score templates and ETF composite scores.
 """
 
 from datetime import date, datetime
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict
-
 
 # ------------------------------------------------------------------
 # ScoreTemplate schemas
@@ -17,8 +16,8 @@ class ScoreTemplateBase(BaseModel):
     """Base schema for score template fields."""
 
     name: str
-    description: Optional[str] = None
-    weights: Dict[str, Any]
+    description: str | None = None
+    weights: dict[str, Any]
     is_default: bool = False
 
 
@@ -31,10 +30,10 @@ class ScoreTemplateCreate(ScoreTemplateBase):
 class ScoreTemplateUpdate(BaseModel):
     """Schema for updating an existing score template."""
 
-    name: Optional[str] = None
-    description: Optional[str] = None
-    weights: Optional[Dict[str, Any]] = None
-    is_default: Optional[bool] = None
+    name: str | None = None
+    description: str | None = None
+    weights: dict[str, Any] | None = None
+    is_default: bool | None = None
 
 
 class ScoreTemplateResponse(ScoreTemplateBase):
@@ -43,8 +42,8 @@ class ScoreTemplateResponse(ScoreTemplateBase):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
-    created_at: Optional[datetime] = None
-    updated_at: Optional[datetime] = None
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
 
 
 # ------------------------------------------------------------------
@@ -59,24 +58,27 @@ class ETFScoreResponse(BaseModel):
     """
 
     etf_code: str
-    etf_name: Optional[str] = None
-    market: Optional[str] = None
-    category: Optional[str] = None
-    trade_date: Optional[date] = None
-    composite_score: Optional[float] = None
-    score_return: Optional[float] = None
-    score_risk: Optional[float] = None
-    score_sharpe: Optional[float] = None
-    score_liquidity: Optional[float] = None
-    score_trend: Optional[float] = None
-    rank_overall: Optional[int] = None
-    rank_category: Optional[int] = None
+    etf_name: str | None = None
+    market: str | None = None
+    category: str | None = None
+    trade_date: date | None = None
+    composite_score: float | None = None
+    score_return: float | None = None
+    score_risk: float | None = None
+    score_sharpe: float | None = None
+    score_liquidity: float | None = None
+    score_trend: float | None = None
+    rank_overall: int | None = None
+    rank_category: int | None = None
+    return_1m: float | None = None
+    return_3m: float | None = None
+    return_1y: float | None = None
 
 
 class ETFScoreListResponse(BaseModel):
     """Schema for a paginated list of ETF scores."""
 
-    items: List[ETFScoreResponse]
+    items: list[ETFScoreResponse]
     total: int
     template_id: int
-    trade_date: Optional[date] = None
+    trade_date: date | None = None

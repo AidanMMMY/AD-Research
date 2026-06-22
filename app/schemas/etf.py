@@ -1,39 +1,41 @@
 from datetime import date, datetime
-from typing import List, Optional
+
 from pydantic import BaseModel, ConfigDict
 
 
 class ETFInfoBase(BaseModel):
     code: str
     name: str
-    exchange: Optional[str] = None
-    market: Optional[str] = None
-    category: Optional[str] = None
-    sub_category: Optional[str] = None
-    manager: Optional[str] = None
+    exchange: str | None = None
+    market: str | None = None
+    category: str | None = None
+    sub_category: str | None = None
+    manager: str | None = None
     currency: str = "CNY"
     is_qdii: bool = False
-    underlying_index: Optional[str] = None
-    inception_date: Optional[date] = None
+    underlying_index: str | None = None
+    inception_date: date | None = None
     status: str = "active"
 
 
 class ETFInfoResponse(ETFInfoBase):
     model_config = ConfigDict(from_attributes=True)
-    created_at: Optional[datetime] = None
-    updated_at: Optional[datetime] = None
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
+    fund_manager: str | None = None
+    fund_size: float | None = None
 
 
 class ETFListResponse(BaseModel):
-    items: List[ETFInfoResponse]
+    items: list[ETFInfoResponse]
     total: int
     page: int
     page_size: int
 
 
 class ETFFilterParams(BaseModel):
-    market: Optional[str] = None
-    category: Optional[str] = None
-    search: Optional[str] = None
+    market: str | None = None
+    category: str | None = None
+    search: str | None = None
     page: int = 1
     page_size: int = 50

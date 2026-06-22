@@ -4,7 +4,7 @@ Provides endpoints for listing reports, triggering generation,
 checking status, and downloading generated report files.
 """
 
-from typing import List, Optional
+import os
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import FileResponse
@@ -20,10 +20,10 @@ from app.services.report_service import ReportService
 router = APIRouter()
 
 
-@router.get("", response_model=List[ReportResponse])
+@router.get("", response_model=list[ReportResponse])
 def list_reports(
-    report_type: Optional[str] = Query(None, description="Filter by report type"),
-    pool_id: Optional[int] = Query(None, description="Filter by pool ID"),
+    report_type: str | None = Query(None, description="Filter by report type"),
+    pool_id: int | None = Query(None, description="Filter by pool ID"),
     limit: int = Query(50, ge=1, le=200, description="Maximum number of results"),
     service: ReportService = Depends(get_report_service),
 ):
@@ -92,7 +92,7 @@ def download_report(
             detail=f"Report is not ready (status: {report.status})",
         )
 
-    if not report.file_path or not report.file_path.exists():
+    if not report.file_path or not os.path.exists(report.file_path):
         raise HTTPException(status_code=404, detail="Report file not found")
 
     media_type = "text/html" if report.format == "html" else "text/markdown"

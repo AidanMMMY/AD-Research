@@ -11,6 +11,7 @@ from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
+from app.core.cache import cache_invalidate_pattern
 from app.data.indicators.risk import calculate_risk_indicators
 from app.data.indicators.technical import calculate_technical_indicators
 from app.models.etf import ETFDailyBar, ETFIndicator, ETFInfo
@@ -41,6 +42,7 @@ _INDICATOR_COLUMNS = [
     "return_3m",
     "return_6m",
     "return_1y",
+    "amount",
 ]
 
 
@@ -48,7 +50,7 @@ def _safe_float(value) -> float | None:
     """Convert a value to float, returning None for NaN/inf."""
     if value is None or pd.isna(value):
         return None
-    if isinstance(value, (int, float)):
+    if isinstance(value, int | float):
         if pd.isna(value) or (isinstance(value, float) and (value == float("inf") or value == float("-inf"))):
             return None
         return float(value)
@@ -105,17 +107,21 @@ def _build_indicator_record(etf_code: str, row: pd.Series) -> dict:
 def batch_calculate_indicators(
     db: Session,
     target_date: date | None = None,
+    full_history: bool = False,
 ) -> int:
     """Batch-calculate indicators for all active ETFs.
 
     For each active ETF, fetches all historical daily bars, computes
-    technical and risk indicators, keeps only the latest day's results,
-    and UPSERTs them into the etf_indicator table.
+    technical and risk indicators, and UPSERTs them into the
+    etf_indicator table.
 
     Args:
         db: SQLAlchemy database session.
         target_date: If provided, only compute indicators up to and
             including this date. If None, use all available data.
+        full_history: If True, upsert indicators for every historical
+            trade date instead of only the latest day. Useful for
+            backfilling missing indicator history.
 
     Returns:
         Number of indicator records updated/inserted.
@@ -160,6 +166,7 @@ def batch_calculate_indicators(
                         "low": b.low,
                         "close": b.close,
                         "volume": b.volume,
+                        "amount": b.amount,
                     }
                     for b in bars
                 ]
@@ -171,33 +178,51 @@ def batch_calculate_indicators(
             if result_df.empty:
                 continue
 
-            # Keep only the latest day's record
-            latest_row = result_df.iloc[-1]
-            record = _build_indicator_record(etf_code, latest_row)
+            if full_history:
+                # Upsert indicators for every historical row that has data
+                records = [
+                    _build_indicator_record(etf_code, row)
+                    for _, row in result_df.iterrows()
+                ]
+            else:
+                # Keep only the latest day's record
+                latest_row = result_df.iloc[-1]
+                records = [_build_indicator_record(etf_code, latest_row)]
+
+            if not records:
+                continue
 
             # UPSERT into etf_indicator table
-            upsert_stmt = (
-                insert(ETFIndicator)
-                .values(record)
-                .on_conflict_do_update(
-                    index_elements=["etf_code", "trade_date"],
-                    set_={
-                        col: record[col]
-                        for col in _INDICATOR_COLUMNS
-                        if col in record
-                    },
+            for record in records:
+                upsert_stmt = (
+                    insert(ETFIndicator)
+                    .values(record)
+                    .on_conflict_do_update(
+                        index_elements=["etf_code", "trade_date"],
+                        set_={
+                            col: record[col]
+                            for col in _INDICATOR_COLUMNS
+                            if col in record
+                        },
+                    )
                 )
-            )
-            db.execute(upsert_stmt)
-            updated_count += 1
+                db.execute(upsert_stmt)
+            db.commit()
+            updated_count += len(records)
 
         except Exception as exc:
+            db.rollback()
             errors.append(f"{etf_code}: {exc}")
             # Continue with next ETF
             continue
 
-    # Commit all UPSERTs
-    db.commit()
+    # Final cache invalidation (outside the per-ETF loop)
+    try:
+        cache_invalidate_pattern("indicator:*")
+        cache_invalidate_pattern("screen:*")
+    except Exception:
+        # Cache invalidation failure should not fail the calculation
+        pass
 
     # Record ETL log
     status = "success" if not errors else "partial"

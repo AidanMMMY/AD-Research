@@ -4,11 +4,10 @@ Provides the standard Extract-Transform-Load flow with logging,
 validation, and retry logic for all data ingestion pipelines.
 """
 
+import time
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from datetime import date, datetime
-from typing import List, Optional
-import time
+from datetime import datetime
 
 import pandas as pd
 from sqlalchemy.orm import Session
@@ -25,8 +24,8 @@ class ETLResult:
 
     success: bool = False
     records: int = 0
-    error: Optional[str] = None
-    warnings: List[str] = field(default_factory=list)
+    error: str | None = None
+    warnings: list[str] = field(default_factory=list)
 
 
 class ETLPipeline(ABC):
@@ -44,7 +43,8 @@ class ETLPipeline(ABC):
     def __init__(self, provider: DataProvider, db: Session) -> None:
         self.provider = provider
         self.db = db
-        self._log: Optional[ETLLog] = None
+        self._log: ETLLog | None = None
+        self._expected_codes: list[str] | None = None
 
     @property
     @abstractmethod
@@ -70,7 +70,7 @@ class ETLPipeline(ABC):
         self,
         status: str,
         records: int = 0,
-        error: Optional[str] = None,
+        error: str | None = None,
     ) -> None:
         """Update the current ETLLog record."""
         if self._log is None:
@@ -99,12 +99,13 @@ class ETLPipeline(ABC):
         """
         ...
 
-    def post_process(self) -> None:
+    def post_process(self) -> None:  # noqa: B027
         """Optional post-load hook (e.g. refresh materialized views).
 
-        Subclasses may override this method.
+        Subclasses may override this method. It is intentionally a no-op
+        rather than abstract because overriding is optional.
         """
-        pass
+        ...
 
     def run(self) -> ETLResult:
         """Execute the full ETL pipeline.
@@ -133,7 +134,7 @@ class ETLPipeline(ABC):
             normalized_df = normalize(raw_df)
 
             # 3. Validate
-            validation = validate_all(normalized_df)
+            validation = validate_all(normalized_df, expected_codes=self._expected_codes)
             result.warnings.extend(validation.warnings)
             if not validation.is_valid:
                 raise ValueError(f"Validation failed: {'; '.join(validation.errors)}")

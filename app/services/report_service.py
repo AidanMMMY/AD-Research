@@ -6,7 +6,7 @@ aggregation from indicators, scores, and pool metadata.
 
 import os
 from datetime import date, datetime
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 from sqlalchemy import func
@@ -52,7 +52,7 @@ class ReportService:
         pool_id: int,
         report_type: str = "pool_weekly",
         format: str = "html",
-        template_id: Optional[int] = None,
+        template_id: int | None = None,
     ) -> ReportMetadata:
         """Generate a report for an ETF pool.
 
@@ -124,7 +124,7 @@ class ReportService:
     # ------------------------------------------------------------------
 
     def _generate_pool_html(
-        self, pool_id: int, template_id: Optional[int] = None
+        self, pool_id: int, template_id: int | None = None
     ) -> str:
         """Generate HTML report for a pool using Jinja2 templates."""
         pool = self.db.query(ETFPools).filter(ETFPools.id == pool_id).first()
@@ -272,7 +272,7 @@ class ReportService:
     # ------------------------------------------------------------------
 
     def _generate_pool_markdown(
-        self, pool_id: int, template_id: Optional[int] = None
+        self, pool_id: int, template_id: int | None = None
     ) -> str:
         """Generate Markdown report for a pool."""
         pool = self.db.query(ETFPools).filter(ETFPools.id == pool_id).first()
@@ -334,7 +334,7 @@ class ReportService:
     # Data builders
     # ------------------------------------------------------------------
 
-    def _build_returns_data(self, codes: List[str]) -> List[Dict[str, Any]]:
+    def _build_returns_data(self, codes: list[str]) -> list[dict[str, Any]]:
         """Build returns analysis data from indicators."""
         indicators = self._get_latest_indicators(codes)
         etf_info = self.db.query(ETFInfo).filter(ETFInfo.code.in_(codes)).all()
@@ -353,7 +353,7 @@ class ReportService:
             })
         return data
 
-    def _build_risk_data(self, codes: List[str]) -> List[Dict[str, Any]]:
+    def _build_risk_data(self, codes: list[str]) -> list[dict[str, Any]]:
         """Build risk analysis data with level classification."""
         indicators = self._get_latest_indicators(codes)
         etf_info = self.db.query(ETFInfo).filter(ETFInfo.code.in_(codes)).all()
@@ -375,8 +375,8 @@ class ReportService:
         return data
 
     def _build_scores_data(
-        self, codes: List[str], template_id: Optional[int] = None
-    ) -> List[Dict[str, Any]]:
+        self, codes: list[str], template_id: int | None = None
+    ) -> list[dict[str, Any]]:
         """Build composite scoring data with progress bar classes."""
         scores = self._get_latest_scores(codes, template_id)
         etf_info = self.db.query(ETFInfo).filter(ETFInfo.code.in_(codes)).all()
@@ -452,7 +452,7 @@ class ReportService:
     # Queries
     # ------------------------------------------------------------------
 
-    def _get_latest_indicators(self, codes: List[str]) -> List[ETFIndicator]:
+    def _get_latest_indicators(self, codes: list[str]) -> list[ETFIndicator]:
         """Get the latest indicator for each ETF code."""
         if not codes:
             return []
@@ -478,8 +478,8 @@ class ReportService:
         )
 
     def _get_latest_scores(
-        self, codes: List[str], template_id: Optional[int] = None
-    ) -> List[ETFScore]:
+        self, codes: list[str], template_id: int | None = None
+    ) -> list[ETFScore]:
         """Get the latest scores for given ETF codes."""
         if not codes:
             return []
@@ -497,15 +497,23 @@ class ReportService:
         if template_id:
             query = query.filter(ETFScore.template_id == template_id)
 
-        # Get the latest trade date for these scores
-        latest_date = (
-            self.db.query(func.max(ETFScore.trade_date))
+        # Get the latest trade date per ETF (not global) so we never silently
+        # omit ETFs whose latest score is one day behind the pack.
+        latest_score_subq = (
+            self.db.query(
+                ETFScore.etf_code,
+                func.max(ETFScore.trade_date).label("latest_score_date"),
+            )
             .filter(ETFScore.etf_code.in_(codes))
-            .scalar()
+            .filter(ETFScore.template_id == template_id)
+            .group_by(ETFScore.etf_code)
+            .subquery()
         )
-
-        if latest_date:
-            query = query.filter(ETFScore.trade_date == latest_date)
+        query = query.join(
+            latest_score_subq,
+            (ETFScore.etf_code == latest_score_subq.c.etf_code)
+            & (ETFScore.trade_date == latest_score_subq.c.latest_score_date),
+        )
 
         return query.order_by(ETFScore.rank_overall.asc().nullslast()).all()
 
@@ -515,10 +523,10 @@ class ReportService:
 
     def get_reports(
         self,
-        report_type: Optional[str] = None,
-        pool_id: Optional[int] = None,
+        report_type: str | None = None,
+        pool_id: int | None = None,
         limit: int = 50,
-    ) -> List[ReportMetadata]:
+    ) -> list[ReportMetadata]:
         """Get a list of generated reports with optional filtering."""
         query = self.db.query(ReportMetadata)
 
@@ -533,7 +541,7 @@ class ReportService:
             .all()
         )
 
-    def get_report_status(self, report_id: int) -> Optional[ReportMetadata]:
+    def get_report_status(self, report_id: int) -> ReportMetadata | None:
         """Get the status of a report generation job."""
         return (
             self.db.query(ReportMetadata)

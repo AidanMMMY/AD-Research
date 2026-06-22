@@ -15,8 +15,12 @@ export default function CorrelationHeatmap({ codes, matrix }: CorrelationHeatmap
   });
 
   const option: EChartsOption = {
+    backgroundColor: 'transparent',
     tooltip: {
       position: 'top',
+      backgroundColor: '#0f1729',
+      borderColor: 'rgba(255,255,255,0.08)',
+      textStyle: { color: '#f1f5f9' },
       formatter: (params: any) => {
         const i = params.data[0];
         const j = params.data[1];
@@ -28,14 +32,18 @@ export default function CorrelationHeatmap({ codes, matrix }: CorrelationHeatmap
     xAxis: {
       type: 'category',
       data: codes,
-      splitArea: { show: true },
-      axisLabel: { rotate: 45, fontSize: 10 },
+      splitArea: { show: true, areaStyle: { color: ['rgba(255,255,255,0.02)', 'rgba(255,255,255,0.04)'] } },
+      axisLabel: { rotate: 45, fontSize: 10, color: '#94a3b8' },
+      axisLine: { lineStyle: { color: 'rgba(255,255,255,0.06)' } },
+      axisTick: { lineStyle: { color: 'rgba(255,255,255,0.06)' } },
     },
     yAxis: {
       type: 'category',
       data: codes,
-      splitArea: { show: true },
-      axisLabel: { fontSize: 10 },
+      splitArea: { show: true, areaStyle: { color: ['rgba(255,255,255,0.02)', 'rgba(255,255,255,0.04)'] } },
+      axisLabel: { fontSize: 10, color: '#94a3b8' },
+      axisLine: { lineStyle: { color: 'rgba(255,255,255,0.06)' } },
+      axisTick: { lineStyle: { color: 'rgba(255,255,255,0.06)' } },
     },
     visualMap: {
       min: -1,
@@ -44,12 +52,13 @@ export default function CorrelationHeatmap({ codes, matrix }: CorrelationHeatmap
       orient: 'horizontal',
       left: 'center',
       bottom: 0,
-      inRange: { color: ['#3f8600', '#fff', '#cf1322'] },
+      textStyle: { color: '#94a3b8' },
+      inRange: { color: ['#22c55e', '#070b14', '#ef4444'] },
     },
     series: [{
       type: 'heatmap',
       data,
-      label: { show: true, fontSize: 10 },
+      label: { show: true, fontSize: 10, color: '#f1f5f9' },
       emphasis: { itemStyle: { shadowBlur: 10, shadowColor: 'rgba(0,0,0,0.5)' } },
     }],
   };

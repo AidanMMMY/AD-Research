@@ -41,6 +41,36 @@ export function usePoolCorrelation(id: number) {
   });
 }
 
+export function usePoolSnapshots(id: number, limit?: number) {
+  return useQuery({
+    queryKey: ['pool-snapshots', id, limit],
+    queryFn: () => poolApi.snapshots(id, limit).then((r) => r.data),
+    enabled: !!id,
+  });
+}
+
+export function useCreateSnapshot() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (poolId: number) => poolApi.createSnapshot(poolId),
+    onSuccess: (_, poolId) => {
+      qc.invalidateQueries({ queryKey: ['pool-snapshots', poolId] });
+    },
+  });
+}
+
+export function useSuggestWeights() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ poolId, algorithm, templateId }: { poolId: number; algorithm: string; templateId?: number }) =>
+      poolApi.suggestWeights(poolId, algorithm, templateId),
+    onSuccess: (_, vars) => {
+      qc.invalidateQueries({ queryKey: ['pool-weights', vars.poolId] });
+      qc.invalidateQueries({ queryKey: ['pool-analytics', vars.poolId] });
+    },
+  });
+}
+
 export function useUpdateWeight() {
   const qc = useQueryClient();
   return useMutation({

@@ -1,7 +1,6 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import date
-from typing import List, Optional
 
 import pandas as pd
 
@@ -17,7 +16,7 @@ class ETFInfo:
     currency: str = "CNY"
     is_qdii: bool = False
     underlying_index: str = ""
-    inception_date: Optional[date] = None
+    inception_date: date | None = None
 
 
 @dataclass
@@ -34,21 +33,21 @@ class DataProvider(ABC):
         pass
 
     @abstractmethod
-    def fetch_etf_list(self) -> List[ETFInfo]:
+    def fetch_etf_list(self) -> list[ETFInfo]:
         pass
 
     @abstractmethod
     def fetch_daily_bars(
-        self, codes: List[str], start_date: date, end_date: date
+        self, codes: list[str], start_date: date, end_date: date
     ) -> pd.DataFrame:
         pass
 
     @abstractmethod
-    def fetch_realtime_quotes(self, codes: List[str]) -> pd.DataFrame:
+    def fetch_realtime_quotes(self, codes: list[str]) -> pd.DataFrame:
         pass
 
     @abstractmethod
-    def get_market_hours(self) -> MarketHours:
+    def get_market_hours(self, code: str | None = None) -> MarketHours:
         pass
 
     def check_health(self) -> bool:

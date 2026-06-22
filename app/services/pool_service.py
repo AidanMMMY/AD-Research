@@ -4,13 +4,12 @@ Provides CRUD operations for ETF pools and member management
 with soft-delete support.
 """
 
-from datetime import datetime
-from typing import List, Optional
+from datetime import UTC, datetime
 
 from sqlalchemy.orm import Session
 
 from app.models.etf import ETFInfo
-from app.models.pool import ETFPools, PoolMember
+from app.models.pool import ETFPools, PoolMember, PoolWeight
 from app.schemas.pool import (
     PoolCreate,
     PoolMemberCreate,
@@ -26,14 +25,23 @@ class PoolService:
     def __init__(self, db: Session):
         self.db = db
 
-    def list_pools(self) -> List[PoolResponse]:
-        """List all pools with their active members."""
-        pools = self.db.query(ETFPools).all()
+    def list_pools(self) -> list[PoolResponse]:
+        """List all active pools with their active members."""
+        pools = (
+            self.db.query(ETFPools)
+            .filter(ETFPools.deleted_at.is_(None))
+            .all()
+        )
         return [self._to_response(pool) for pool in pools]
 
-    def get_pool(self, pool_id: int) -> Optional[PoolResponse]:
-        """Get a single pool by ID."""
-        pool = self.db.query(ETFPools).filter(ETFPools.id == pool_id).first()
+    def get_pool(self, pool_id: int) -> PoolResponse | None:
+        """Get a single active pool by ID."""
+        pool = (
+            self.db.query(ETFPools)
+            .filter(ETFPools.id == pool_id)
+            .filter(ETFPools.deleted_at.is_(None))
+            .first()
+        )
         return self._to_response(pool) if pool else None
 
     def create_pool(self, data: PoolCreate) -> PoolResponse:
@@ -46,9 +54,14 @@ class PoolService:
 
     def update_pool(
         self, pool_id: int, data: PoolUpdate
-    ) -> Optional[PoolResponse]:
-        """Update an existing pool."""
-        pool = self.db.query(ETFPools).filter(ETFPools.id == pool_id).first()
+    ) -> PoolResponse | None:
+        """Update an existing active pool."""
+        pool = (
+            self.db.query(ETFPools)
+            .filter(ETFPools.id == pool_id)
+            .filter(ETFPools.deleted_at.is_(None))
+            .first()
+        )
         if not pool:
             return None
 
@@ -62,20 +75,30 @@ class PoolService:
         return self._to_response(pool)
 
     def delete_pool(self, pool_id: int) -> bool:
-        """Delete a pool (hard delete)."""
-        pool = self.db.query(ETFPools).filter(ETFPools.id == pool_id).first()
+        """Soft-delete a pool."""
+        pool = (
+            self.db.query(ETFPools)
+            .filter(ETFPools.id == pool_id)
+            .filter(ETFPools.deleted_at.is_(None))
+            .first()
+        )
         if not pool:
             return False
 
-        self.db.delete(pool)
+        pool.deleted_at = datetime.now(UTC)
         self.db.commit()
         return True
 
     def add_member(
         self, pool_id: int, data: PoolMemberCreate
-    ) -> Optional[PoolResponse]:
-        """Add an ETF to a pool."""
-        pool = self.db.query(ETFPools).filter(ETFPools.id == pool_id).first()
+    ) -> PoolResponse | None:
+        """Add an ETF to an active pool."""
+        pool = (
+            self.db.query(ETFPools)
+            .filter(ETFPools.id == pool_id)
+            .filter(ETFPools.deleted_at.is_(None))
+            .first()
+        )
         if not pool:
             return None
 
@@ -103,9 +126,14 @@ class PoolService:
 
     def remove_member(
         self, pool_id: int, etf_code: str
-    ) -> Optional[PoolResponse]:
-        """Soft-remove an ETF from a pool."""
-        pool = self.db.query(ETFPools).filter(ETFPools.id == pool_id).first()
+    ) -> PoolResponse | None:
+        """Soft-remove an ETF from a pool and clear its weight records."""
+        pool = (
+            self.db.query(ETFPools)
+            .filter(ETFPools.id == pool_id)
+            .filter(ETFPools.deleted_at.is_(None))
+            .first()
+        )
         if not pool:
             return None
 
@@ -119,7 +147,14 @@ class PoolService:
             .first()
         )
         if member:
-            member.removed_at = datetime.utcnow()
+            member.removed_at = datetime.now(UTC)
+            # Soft-delete weight records for the removed member so they do not
+            # leak into analytics or the UI, while preserving history.
+            self.db.query(PoolWeight).filter(
+                PoolWeight.pool_id == pool_id,
+                PoolWeight.etf_code == etf_code,
+                PoolWeight.removed_at.is_(None),
+            ).update({"removed_at": datetime.now(UTC)})
             self.db.commit()
             self.db.refresh(pool)
 

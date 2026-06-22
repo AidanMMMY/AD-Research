@@ -5,7 +5,7 @@ momentum ranking, and rotation signal detection.
 """
 
 from datetime import date, timedelta
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from sqlalchemy import func
 from sqlalchemy.orm import Session
@@ -19,7 +19,7 @@ class SectorRotationService:
     def __init__(self, db: Session):
         self.db = db
 
-    def get_sector_list(self) -> List[Dict[str, Any]]:
+    def get_sector_list(self) -> list[dict[str, Any]]:
         """Get all ETF categories (sectors) with counts."""
         results = (
             self.db.query(
@@ -39,9 +39,9 @@ class SectorRotationService:
 
     def analyze_sectors(
         self,
-        trade_date: Optional[date] = None,
+        trade_date: date | None = None,
         window_weeks: int = 4,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Analyze sector performance and rotation signals.
 
         Args:
@@ -70,10 +70,10 @@ class SectorRotationService:
             return {"sectors": [], "market_avg": None, "rotation_signals": []}
 
         # Calculate per-sector averages
-        sector_data: Dict[str, Dict[str, List[float]]] = {}
-        all_returns_1m: List[float] = []
-        all_returns_3m: List[float] = []
-        all_sharpe: List[float] = []
+        sector_data: dict[str, dict[str, list[float]]] = {}
+        all_returns_1m: list[float] = []
+        all_returns_3m: list[float] = []
+        all_sharpe: list[float] = []
 
         for ind, info in indicators:
             cat = info.category or "其他"
@@ -107,7 +107,7 @@ class SectorRotationService:
         }
 
         # Build sector summary
-        sectors: List[Dict[str, Any]] = []
+        sectors: list[dict[str, Any]] = []
         for cat, values in sector_data.items():
             if not values["return_1m"]:
                 continue
@@ -150,9 +150,9 @@ class SectorRotationService:
 
     def _detect_rotation_signals(
         self,
-        current_sectors: List[Dict[str, Any]],
+        current_sectors: list[dict[str, Any]],
         trade_date: date,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Detect sector rotation signals by comparing with previous period.
 
         Looks at the previous week's sector ranking and identifies sectors
@@ -172,7 +172,7 @@ class SectorRotationService:
             return []
 
         # Calculate previous period sector averages
-        prev_sector_returns: Dict[str, List[float]] = {}
+        prev_sector_returns: dict[str, list[float]] = {}
         for ind, info in prev_indicators:
             cat = info.category or "其他"
             if cat not in prev_sector_returns:
@@ -180,7 +180,7 @@ class SectorRotationService:
             if ind.return_1m is not None:
                 prev_sector_returns[cat].append(float(ind.return_1m))
 
-        prev_avg: Dict[str, float] = {}
+        prev_avg: dict[str, float] = {}
         for cat, returns in prev_sector_returns.items():
             if returns:
                 prev_avg[cat] = sum(returns) / len(returns)

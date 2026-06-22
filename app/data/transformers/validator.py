@@ -1,7 +1,6 @@
 """Four-layer data quality validation module for ETF data."""
 
 from dataclasses import dataclass, field
-from typing import List, Optional
 
 import pandas as pd
 
@@ -11,8 +10,8 @@ class ValidationResult:
     """Result of a validation run."""
 
     is_valid: bool = True
-    errors: List[str] = field(default_factory=list)
-    warnings: List[str] = field(default_factory=list)
+    errors: list[str] = field(default_factory=list)
+    warnings: list[str] = field(default_factory=list)
     data: pd.DataFrame = field(default_factory=pd.DataFrame)
 
 
@@ -94,7 +93,7 @@ def validate_level3_timeseries(df: pd.DataFrame) -> ValidationResult:
 
 
 def validate_level4_completeness(
-    df: pd.DataFrame, expected_codes: Optional[List[str]] = None
+    df: pd.DataFrame, expected_codes: list[str] | None = None
 ) -> ValidationResult:
     """L4 completeness validation: warnings only, does not block."""
     result = ValidationResult(data=df)
@@ -113,7 +112,7 @@ def validate_level4_completeness(
 
 
 def validate_all(
-    df: pd.DataFrame, expected_codes: Optional[List[str]] = None
+    df: pd.DataFrame, expected_codes: list[str] | None = None
 ) -> ValidationResult:
     """Run all four validation levels.
 

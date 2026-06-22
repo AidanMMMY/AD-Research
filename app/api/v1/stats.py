@@ -5,9 +5,8 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_db
-from app.models.etf import ETFInfo
+from app.models.etf import ETFIndicator, ETFInfo
 from app.models.scoring import ETFScore, ScoreTemplate
-from app.models.etf import ETFIndicator
 
 router = APIRouter()
 

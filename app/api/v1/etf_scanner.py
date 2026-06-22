@@ -1,6 +1,6 @@
 """ETF scanner API routes."""
 
-from typing import Any, Dict, List
+from typing import Any
 
 from fastapi import APIRouter, Depends
 
@@ -10,7 +10,7 @@ from app.services.etf_scanner_service import ETFScannerService
 router = APIRouter()
 
 
-@router.post("/scan", response_model=Dict[str, Any])
+@router.post("/scan", response_model=dict[str, Any])
 def trigger_scan(
     service: ETFScannerService = Depends(get_etf_scanner_service),
 ):
@@ -18,7 +18,7 @@ def trigger_scan(
     return service.scan_market()
 
 
-@router.get("/scan/logs", response_model=List[Dict[str, Any]])
+@router.get("/scan/logs", response_model=list[dict[str, Any]])
 def get_scan_logs(
     limit: int = 50,
     service: ETFScannerService = Depends(get_etf_scanner_service),

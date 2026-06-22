@@ -6,7 +6,7 @@ Provides endpoints for listing, filtering, and retrieving ETF basic information.
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.api.deps import get_etf_service
-from app.schemas.etf import ETFInfoResponse, ETFListResponse, ETFFilterParams
+from app.schemas.etf import ETFFilterParams, ETFInfoResponse, ETFListResponse
 from app.services.etf_service import ETFService
 
 router = APIRouter()

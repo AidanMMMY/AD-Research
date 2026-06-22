@@ -22,6 +22,9 @@ export interface ETFScore {
   score_trend: number;
   rank_overall: number;
   rank_category: number;
+  return_1m?: number;
+  return_3m?: number;
+  return_1y?: number;
 }
 
 export interface ETFScoreListResponse {

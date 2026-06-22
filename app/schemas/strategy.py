@@ -1,7 +1,7 @@
 """Strategy Pydantic schemas."""
 
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict
 
@@ -12,16 +12,16 @@ class StrategyTemplate(BaseModel):
     name: str
     description: str
     strategy_type: str
-    params: Dict[str, Any]
+    params: dict[str, Any]
 
 
 class StrategyBase(BaseModel):
     """Base strategy schema."""
 
     name: str
-    description: Optional[str] = None
+    description: str | None = None
     strategy_type: str
-    params: Dict[str, Any]
+    params: dict[str, Any]
     is_active: bool = True
 
 
@@ -34,11 +34,11 @@ class StrategyCreate(StrategyBase):
 class StrategyUpdate(BaseModel):
     """Update strategy schema."""
 
-    name: Optional[str] = None
-    description: Optional[str] = None
-    strategy_type: Optional[str] = None
-    params: Optional[Dict[str, Any]] = None
-    is_active: Optional[bool] = None
+    name: str | None = None
+    description: str | None = None
+    strategy_type: str | None = None
+    params: dict[str, Any] | None = None
+    is_active: bool | None = None
 
 
 class StrategyResponse(StrategyBase):
@@ -47,10 +47,10 @@ class StrategyResponse(StrategyBase):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
-    created_at: Optional[datetime] = None
+    created_at: datetime | None = None
 
 
 class StrategyListResponse(BaseModel):
     """Strategy list response."""
 
-    items: List[StrategyResponse]
+    items: list[StrategyResponse]

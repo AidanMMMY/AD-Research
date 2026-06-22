@@ -1,9 +1,7 @@
 """Sector rotation Pydantic schemas."""
 
-from datetime import date
-from typing import Any, Dict, List, Optional
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel
 
 
 class SectorPerformance(BaseModel):
@@ -43,9 +41,9 @@ class SectorRotationResponse(BaseModel):
     """Sector rotation analysis response."""
 
     trade_date: str
-    sectors: List[SectorPerformance]
+    sectors: list[SectorPerformance]
     market_avg: MarketAverage
-    rotation_signals: List[RotationSignal]
+    rotation_signals: list[RotationSignal]
 
 
 class SectorListItem(BaseModel):
@@ -58,4 +56,4 @@ class SectorListItem(BaseModel):
 class SectorListResponse(BaseModel):
     """Sector list response."""
 
-    items: List[SectorListItem]
+    items: list[SectorListItem]

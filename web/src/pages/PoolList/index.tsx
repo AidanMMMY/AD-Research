@@ -2,12 +2,15 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Table, Button, Modal, Form, Input, message } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
+import { useQueryClient } from '@tanstack/react-query';
 import { usePoolList } from '@/hooks/usePoolDetail';
 import { poolApi } from '@/api';
+import GlassCard from '@/components/GlassCard';
 
 export default function PoolList() {
   const navigate = useNavigate();
-  const { data: pools, refetch } = usePoolList();
+  const queryClient = useQueryClient();
+  const { data: pools } = usePoolList();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [form] = Form.useForm();
 
@@ -17,7 +20,7 @@ export default function PoolList() {
       message.success('创建成功');
       setIsModalOpen(false);
       form.resetFields();
-      refetch();
+      queryClient.invalidateQueries({ queryKey: ['pools'], exact: false });
     } catch {
       message.error('创建失败');
     }
@@ -44,15 +47,18 @@ export default function PoolList() {
         </Button>
       </div>
 
-      <Table
-        dataSource={pools || []}
-        columns={columns}
-        rowKey="id"
-        onRow={(record) => ({
-          onClick: () => navigate(`/pools/${record.id}`),
-          style: { cursor: 'pointer' },
-        })}
-      />
+      <GlassCard>
+        <Table
+          dataSource={pools || []}
+          columns={columns}
+          rowKey="id"
+          onRow={(record) => ({
+            onClick: () => navigate(`/pools/${record.id}`),
+            style: { cursor: 'pointer' },
+          })}
+          pagination={false}
+        />
+      </GlassCard>
 
       <Modal
         title="新建标的池"

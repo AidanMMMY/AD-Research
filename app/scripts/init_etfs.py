@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 """初始化 ETF 列表数据到数据库"""
 
+from sqlalchemy import func
+from sqlalchemy.dialects.postgresql import insert
+
 from app.core.database import SessionLocal
 from app.data.providers.akshare_provider import AkshareProvider
 from app.models.etf import ETFInfo
-from sqlalchemy.dialects.postgresql import insert
-from sqlalchemy import func
 
 
 def init_etfs():

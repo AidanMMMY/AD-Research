@@ -1,9 +1,8 @@
 """Signal Pydantic schemas."""
 
 from datetime import date
-from typing import Any, Dict, List, Optional
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel
 
 
 class SignalItem(BaseModel):
@@ -12,16 +11,16 @@ class SignalItem(BaseModel):
     id: int
     strategy_id: int
     etf_code: str
-    trade_date: Optional[str] = None
+    trade_date: str | None = None
     signal_type: str
-    strength: Optional[int] = None
-    created_at: Optional[str] = None
+    strength: int | None = None
+    created_at: str | None = None
 
 
 class SignalListResponse(BaseModel):
     """Signal list response."""
 
-    items: List[SignalItem]
+    items: list[SignalItem]
 
 
 class SignalGenerateRequest(BaseModel):
@@ -29,10 +28,10 @@ class SignalGenerateRequest(BaseModel):
 
     strategy_id: int
     etf_code: str
-    trade_date: Optional[date] = None
+    trade_date: date | None = None
 
 
 class SignalGenerateResponse(BaseModel):
     """Signal generation response."""
 
-    signals: List[SignalItem]
+    signals: list[SignalItem]

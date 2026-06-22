@@ -1,0 +1,1063 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ETF投研平台 — 用户操作手册</title>
+  <style>
+    :root {
+      --bg: #070b14;
+      --bg-elevated: #0f1729;
+      --text: #f1f5f9;
+      --text-secondary: #94a3b8;
+      --text-muted: #64748b;
+      --primary: #818cf8;
+      --accent: #06b6d4;
+      --border: rgba(255,255,255,0.08);
+      --card-bg: rgba(255,255,255,0.03);
+    }
+    html { scroll-behavior: smooth; }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.7;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ===== 侧边栏 ===== */
+    .sidebar {
+      position: fixed; left: 0; top: 0; bottom: 0; width: 260px;
+      background: linear-gradient(180deg, #0a0f1e, #0d1326);
+      border-right: 1px solid var(--border);
+      padding: 24px 0;
+      overflow-y: auto; z-index: 100;
+    }
+    .sidebar::-webkit-scrollbar { width: 4px; }
+    .sidebar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
+    .sidebar h1 {
+      font-size: 18px; font-weight: 700; padding: 0 24px 20px;
+      color: var(--primary); letter-spacing: 1px;
+      border-bottom: 1px solid var(--border); margin-bottom: 16px;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .sidebar nav a {
+      display: block; padding: 9px 24px; color: var(--text-secondary);
+      text-decoration: none; font-size: 13.5px;
+      border-radius: 0 8px 8px 0; margin-right: 12px;
+      transition: all 200ms; position: relative;
+    }
+    .sidebar nav a:hover, .sidebar nav a.active {
+      background: linear-gradient(90deg, rgba(99,102,241,0.15), transparent);
+      color: var(--primary);
+    }
+    .sidebar nav a.active::before {
+      content: ''; position: absolute; left: 0; top: 4px; bottom: 4px;
+      width: 3px; background: linear-gradient(180deg, #6366f1, #818cf8);
+      border-radius: 0 2px 2px 0;
+    }
+    .sidebar .nav-group {
+      font-size: 11px; font-weight: 600; color: var(--text-muted);
+      text-transform: uppercase; letter-spacing: 1.5px;
+      padding: 20px 24px 8px;
+    }
+
+    /* ===== 主内容区 ===== */
+    .main { margin-left: 260px; padding: 40px 52px; max-width: 960px; }
+
+    h2 {
+      font-size: 28px; font-weight: 700; margin: 56px 0 20px;
+      color: var(--text); padding-bottom: 12px;
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; gap: 12px;
+    }
+    h2:first-child { margin-top: 0; }
+    h3 {
+      font-size: 20px; font-weight: 600; margin: 36px 0 16px;
+      color: var(--primary); display: flex; align-items: center; gap: 8px;
+    }
+    h4 { font-size: 16px; font-weight: 600; margin: 24px 0 12px; color: var(--accent); }
+    p { margin-bottom: 14px; color: var(--text-secondary); font-size: 15px; }
+
+    .card {
+      background: var(--card-bg); border: 1px solid var(--border);
+      border-radius: 16px; padding: 24px; margin: 20px 0;
+      backdrop-filter: blur(12px);
+    }
+    .card h4 { margin-top: 0; margin-bottom: 14px; }
+    ul, ol { margin: 10px 0 16px 22px; color: var(--text-secondary); font-size: 14.5px; }
+    li { margin-bottom: 7px; }
+
+    code {
+      background: rgba(99,102,241,0.1); color: var(--primary);
+      padding: 2px 8px; border-radius: 4px;
+      font-family: 'SF Mono', 'JetBrains Mono', 'Consolas', monospace;
+      font-size: 13px;
+    }
+
+    .badge {
+      display: inline-block; padding: 2px 10px; border-radius: 6px;
+      font-size: 12px; font-weight: 600; margin-right: 6px;
+    }
+    .badge-purple { background: rgba(99,102,241,0.15); color: #818cf8; }
+    .badge-cyan    { background: rgba(6,182,212,0.15);  color: #06b6d4; }
+    .badge-green   { background: rgba(34,197,94,0.15);  color: #22c55e; }
+    .badge-orange  { background: rgba(249,115,22,0.15); color: #f97316; }
+    .badge-red     { background: rgba(239,68,68,0.15);  color: #ef4444; }
+    .badge-yellow  { background: rgba(234,179,8,0.15);  color: #eab308; }
+
+    .step { display: flex; gap: 16px; margin: 16px 0; }
+    .step-num {
+      width: 32px; height: 32px; min-width: 32px; border-radius: 50%;
+      background: linear-gradient(135deg, #6366f1, #8b5cf6);
+      color: #fff; display: flex; align-items: center;
+      justify-content: center; font-weight: 700; flex-shrink: 0;
+      font-size: 14px;
+    }
+    .step-content { flex: 1; }
+    .step-content h5 { font-size: 15px; font-weight: 600; color: var(--text); margin-bottom: 4px; }
+    .step-content p { margin-bottom: 0; font-size: 14px; }
+
+    .tip {
+      background: linear-gradient(90deg, rgba(6,182,212,0.08), transparent);
+      border-left: 3px solid var(--accent); padding: 12px 16px;
+      border-radius: 0 8px 8px 0; margin: 16px 0;
+    }
+    .tip strong { color: var(--accent); }
+    .warning {
+      background: linear-gradient(90deg, rgba(249,115,22,0.08), transparent);
+      border-left: 3px solid #f97316;
+      padding: 12px 16px; border-radius: 0 8px 8px 0; margin: 16px 0;
+    }
+    .warning strong { color: #f97316; }
+
+    /* ===== 表格 ===== */
+    table {
+      width: 100%; border-collapse: collapse; margin: 12px 0;
+      font-size: 14px;
+    }
+    th, td {
+      padding: 11px 14px; text-align: left;
+      border-bottom: 1px solid var(--border);
+    }
+    th { color: var(--text-muted); font-weight: 500; font-size: 12.5px; text-transform: uppercase; letter-spacing: 0.5px; }
+    td { color: var(--text-secondary); }
+    tr:last-child td { border-bottom: none; }
+
+    /* ===== 底部 ===== */
+    footer {
+      margin-top: 60px; padding-top: 24px;
+      border-top: 1px solid var(--border);
+      color: var(--text-muted); font-size: 13px; text-align: center;
+    }
+
+    .back-to-top {
+      position: fixed; bottom: 24px; right: 24px;
+      width: 44px; height: 44px; border-radius: 12px;
+      background: linear-gradient(135deg, #6366f1, #8b5cf6);
+      color: #fff; display: flex; align-items: center;
+      justify-content: center; text-decoration: none;
+      box-shadow: 0 4px 16px rgba(99,102,241,0.3);
+      font-size: 18px; transition: all 200ms; z-index: 200;
+    }
+    .back-to-top:hover { transform: translateY(-2px); box-shadow: 0 6px 24px rgba(99,102,241,0.4); }
+
+    /* ===== 响应式 ===== */
+    @media (max-width: 768px) {
+      .sidebar { display: none; }
+      .main { margin-left: 0; padding: 24px 18px; }
+      h2 { font-size: 22px; }
+    }
+
+    /* ===== 打印 ===== */
+    @media print {
+      .sidebar, .back-to-top { display: none; }
+      .main { margin-left: 0; padding: 0; max-width: 100%; }
+      body { background: #fff; color: #000; }
+      .card { background: #f9fafb; border: 1px solid #e5e7eb; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ========== 侧边栏导航 ========== -->
+<nav class="sidebar">
+  <h1>📘 用户操作手册</h1>
+  <nav>
+    <a href="#overview" class="active">平台概览</a>
+    <a href="#quickstart">快速入门</a>
+
+    <div class="nav-group">📊 核心功能</div>
+    <a href="#dashboard">首页看板</a>
+    <a href="#etflist">ETF列表</a>
+    <a href="#etfdetail">ETF详情</a>
+    <a href="#screen">全市场筛选器</a>
+    <a href="#scores">评分排名</a>
+    <a href="#pools">标的池管理</a>
+
+    <div class="nav-group">📈 投研分析</div>
+    <a href="#correlation">相关性分析</a>
+    <a href="#comparison">收益对比</a>
+    <a href="#sector">板块轮动</a>
+
+    <div class="nav-group">⚙️ 策略系统</div>
+    <a href="#strategies">策略管理</a>
+    <a href="#backtest">回测管理</a>
+    <a href="#attribution">绩效归因</a>
+    <a href="#signals">交易信号</a>
+
+    <div class="nav-group">🔧 系统工具</div>
+    <a href="#scanner">全市场扫描</a>
+    <a href="#reports">报告浏览</a>
+    <a href="#notifications">推送配置</a>
+
+    <div class="nav-group">📖 附录</div>
+    <a href="#indicators">技术指标说明</a>
+    <a href="#faq">常见问题</a>
+    <a href="#glossary">术语表</a>
+    <a href="#shortcuts">快捷键速查</a>
+  </nav>
+</nav>
+
+<!-- ========== 主内容区 ========== -->
+<main class="main">
+
+<!-- ============================================ -->
+<!-- 平台概览 -->
+<!-- ============================================ -->
+<h2 id="overview">🚀 平台概览</h2>
+<p>
+  <strong>ETF投研平台</strong>是一款面向专业投资者和机构的全市场ETF数据投研工具。
+  覆盖A股、港股、美股等市场的<strong>1,500+只ETF</strong>产品，提供实时行情、技术指标、
+  综合评分、板块轮动、策略回测等核心投研能力。
+</p>
+
+<div class="card">
+  <h4>🎯 核心功能一览</h4>
+  <table>
+    <tr><td style="width:140px"><span class="badge badge-purple">全市场ETF数据库</span></td><td>1,500+只ETF的基础信息、实时规模、分类归属、管理公司，每周自动扫描新增/退市</td></tr>
+    <tr><td><span class="badge badge-cyan">多维度综合评分</span></td><td>收益、风险、夏普、流动性、趋势五维度加权打分，全市场+分类内双重排名</td></tr>
+    <tr><td><span class="badge badge-green">智能筛选器</span></td><td>按市场、分类、RSI、夏普、波动率、收益率等20+条件组合筛选，支持常用预设</td></tr>
+    <tr><td><span class="badge badge-orange">K线技术分析</span></td><td>Candlestick K线图 + MA均线 + 布林带 + RSI14 + MACD副图，30/60/120/250日时间范围</td></tr>
+    <tr><td><span class="badge badge-red">板块轮动分析</span></td><td>多周期板块收益排名、相对强度(RS)、动量排名、轮动切换信号检测</td></tr>
+    <tr><td><span class="badge badge-yellow">策略回测引擎</span></td><td>动量/均值回归/RSI策略模板，历史回测 + NAV曲线 + 交易记录 + 绩效归因</td></tr>
+    <tr><td><span class="badge badge-purple">标的池管理</span></td><td>自定义组合、权重配置（等权/评分/风险平价）、分类分布、相关性热力图、快照</td></tr>
+    <tr><td><span class="badge badge-cyan">报告与推送</span></td><td>HTML/Markdown报告自动生成，企业微信/飞书/钉钉 Webhook 定时推送</td></tr>
+  </table>
+</div>
+
+<div class="card">
+  <h4>📊 数据覆盖 &amp; 更新节奏</h4>
+  <table>
+    <tr><th>数据层</th><th>内容</th><th>覆盖量</th><th>更新频率</th><th>更新时段</th></tr>
+    <tr><td>ETF基础信息</td><td>代码/名称/分类/公司/指数/规模</td><td>1,500+ 只</td><td>每周</td><td>周日 03:00</td></tr>
+    <tr><td>日K行情</td><td>OHLCV + 涨跌幅 + 换手率</td><td>5个核心ETF + 按需扩展</td><td>每日</td><td>收盘后 15:30</td></tr>
+    <tr><td>技术指标</td><td>MA/RSI/MACD/布林带/ATR/夏普/波动率/回撤</td><td>全量计算</td><td>每日</td><td>08:00</td></tr>
+    <tr><td>综合评分</td><td>五维度加权打分 + 全市场排名</td><td>全量计算</td><td>每日</td><td>08:30</td></tr>
+    <tr><td>板块轮动</td><td>行业分类收益对比</td><td>40+ 分类</td><td>每日</td><td>08:30</td></tr>
+    <tr><td>交易信号</td><td>BUY/SELL/HOLD</td><td>按激活策略</td><td>每日</td><td>09:00</td></tr>
+  </table>
+</div>
+
+<div class="card">
+  <h4>🖥️ 技术架构（供运维参考）</h4>
+  <table>
+    <tr><td>后端框架</td><td>Python 3.11+ / FastAPI (异步) / Uvicorn</td></tr>
+    <tr><td>数据库</td><td>PostgreSQL 15 + SQLAlchemy ORM + Alembic迁移</td></tr>
+    <tr><td>前端框架</td><td>React 18 + TypeScript + Vite + Ant Design 5 (暗色主题)</td></tr>
+    <tr><td>图表库</td><td>Lightweight Charts (K线) + ECharts (散点图/雷达图/热力图)</td></tr>
+    <tr><td>数据源</td><td>Akshare (主) / yfinance / OKX / CCXT (多源自动回退)</td></tr>
+    <tr><td>状态管理</td><td>TanStack Query (服务端) + Zustand (客户端状态持久化)</td></tr>
+    <tr><td>认证授权</td><td>JWT Bearer Token + bcrypt 密码哈希</td></tr>
+  </table>
+</div>
+
+<!-- ============================================ -->
+<!-- 快速入门 -->
+<!-- ============================================ -->
+<h2 id="quickstart">⚡ 快速入门（5分钟上手）</h2>
+
+<div class="step">
+  <div class="step-num">1</div>
+  <div class="step-content">
+    <h5>登录系统</h5>
+    <p>打开浏览器访问平台地址，进入登录页面。输入用户名和密码，点击「登录」按钮进入首页看板。</p>
+  </div>
+</div>
+
+<div class="step">
+  <div class="step-num">2</div>
+  <div class="step-content">
+    <h5>浏览首页，了解全局</h5>
+    <p>首页看板展示ETF总数、评分覆盖、分类数等统计卡片，以及<strong>综合评分 Top 10</strong>和<strong>最近关注列表</strong>。点击任意统计卡片可快速跳转到对应功能页。</p>
+  </div>
+</div>
+
+<div class="step">
+  <div class="step-num">3</div>
+  <div class="step-content">
+    <h5>筛选高评分ETF</h5>
+    <p>进入「全市场筛选器」页面 → 点击预设标签「高分高流动性」或手动设置"评分最小: 70" → 查看结果。表格每行可点击跳转到ETF详情。</p>
+  </div>
+</div>
+
+<div class="step">
+  <div class="step-num">4</div>
+  <div class="step-content">
+    <h5>查看K线和指标</h5>
+    <p>在详情页的「K线行情」Tab中查看蜡烛图，勾选 MA / 布林带 / RSI14 / MACD 复选框叠加技术指标。切换时间范围（30/60/120/250日）查看不同周期走势。</p>
+  </div>
+</div>
+
+<div class="step">
+  <div class="step-num">5</div>
+  <div class="step-content">
+    <h5>创建标的池</h5>
+    <p>进入「标的池管理」→ 点击「新建池」→ 输入名称 → 在详情页添加ETF成员 → 调整权重 → 查看分类分布饼图和相关性热力图。</p>
+  </div>
+</div>
+
+<div class="step">
+  <div class="step-num">6</div>
+  <div class="step-content">
+    <h5>运行策略回测</h5>
+    <p>进入「策略管理」选择模板 → 创建策略 → 进入「回测管理」点击「新建回测」→ 选择策略和ETF → 设定日期区间和初始资金 → 开始回测，查看净值曲线和绩效指标。</p>
+  </div>
+</div>
+
+<div class="tip">
+  <strong>💡 提示：</strong> 绝大多数页面的表格行、卡片、统计数字都是可点击的，点击即跳转到对应的详情页。这种"下钻"设计让你能快速从概览深入到细节。
+</div>
+
+<!-- ============================================ -->
+<!-- 首页看板 -->
+<!-- ============================================ -->
+<h2 id="dashboard">📊 首页看板</h2>
+<p>登录后的默认页面，聚合展示平台核心数据的全景视图。</p>
+
+<div class="card">
+  <h4>统计卡片区</h4>
+  <p>页面顶部展示4个统计卡片，每个卡片带渐变色图标和实时数值：</p>
+  <ul>
+    <li><span class="badge badge-purple">ETF总数</span> 平台覆盖的ETF总数量，点击跳转ETF列表</li>
+    <li><span class="badge badge-cyan">评分覆盖</span> 已有综合评分的ETF数量，点击跳转评分排名</li>
+    <li><span class="badge badge-green">分类数</span> ETF涉及的行业/主题分类数量，点击跳转板块轮动</li>
+    <li><span class="badge badge-orange">评分模板</span> 可用的评分模板数，点击跳转评分排名</li>
+  </ul>
+</div>
+
+<div class="card">
+  <h4>综合评分 Top 10 表格</h4>
+  <ul>
+    <li>显示<strong>全市场排名前10</strong>的ETF，前三名带 🥇🥈🥉 标识</li>
+    <li>列：排名、ETF代码+名称、评分数值条、1月收益（红涨绿跌）、趋势箭头</li>
+    <li>点击任意行跳转至该ETF的详情页</li>
+  </ul>
+</div>
+
+<div class="card">
+  <h4>最近关注列表</h4>
+  <p>展示你最近查看过的ETF（浏览器本地记录），方便快速回到之前关注的内容。</p>
+</div>
+
+<!-- ============================================ -->
+<!-- ETF列表 -->
+<!-- ============================================ -->
+<h2 id="etflist">📋 ETF列表 — 全市场浏览</h2>
+<p>全市场ETF的统一浏览入口，支持搜索、筛选和分页。</p>
+
+<div class="card">
+  <h4>搜索与筛选</h4>
+  <ul>
+    <li><strong>关键词搜索</strong> — 输入ETF代码（如 <code>510300</code>）或名称关键词（如"沪深300"），支持模糊匹配</li>
+    <li><strong>市场筛选</strong> — 按 <code>SH</code>（上海证券交易所）/ <code>SZ</code>（深圳证券交易所）过滤</li>
+    <li><strong>分类筛选</strong> — 按ETF分类（宽基指数、行业主题、策略型等40+分类）过滤</li>
+  </ul>
+</div>
+
+<div class="card">
+  <h4>列表字段详解</h4>
+  <table>
+    <tr><th style="width:120px">字段</th><th>说明</th><th>示例</th></tr>
+    <tr><td>ETF</td><td>代码 + 名称，点击跳转详情</td><td><code>510300.SH</code> 沪深300ETF</td></tr>
+    <tr><td>分类</td><td>ETF所属类别</td><td>宽基指数、行业主题、固定收益…</td></tr>
+    <tr><td>市场</td><td>上市交易所</td><td>上海 / 深圳</td></tr>
+    <tr><td>管理公司</td><td>基金管理人</td><td>华夏基金、南方基金、易方达…</td></tr>
+    <tr><td>跟踪指数</td><td>跟踪的基准指数</td><td>沪深300、中证500…</td></tr>
+    <tr><td>规模</td><td>基金资产净值（AUM），单位：亿元</td><td>126.50</td></tr>
+    <tr><td>成立日期</td><td>基金成立日 / 上市日</td><td>2012-05-28</td></tr>
+    <tr><td>QDII</td><td>是否为合格境内机构投资者基金（可投海外）</td><td>是 / 否</td></tr>
+  </table>
+</div>
+
+<!-- ============================================ -->
+<!-- ETF详情 -->
+<!-- ============================================ -->
+<h2 id="etfdetail">🔍 ETF详情 — 深度分析</h2>
+<p>单只ETF的完整画像，三个Tab覆盖行情、指标、评分。</p>
+
+<div class="card">
+  <h4>📈 Tab 1 — K线行情</h4>
+  <ul>
+    <li><strong>蜡烛图</strong> — 红涨绿跌，支持缩放拖拽，下方附成交量柱状图</li>
+    <li><strong>时间范围</strong> — 30日 / 60日 / 120日 / 250日，一键切换</li>
+    <li><strong>技术指标叠加</strong>（复选框控制显示/隐藏）：
+      <ul>
+        <li><strong>MA均线</strong> — MA5（白）、MA10（黄）、MA20（紫）、MA60（蓝）</li>
+        <li><strong>布林带</strong> — 上轨/中轨(MA20)/下轨，价格触及上下轨提示超买超卖</li>
+        <li><strong>RSI14 副图</strong> — 0-100范围，水平虚线标注70超买线和30超卖线</li>
+        <li><strong>MACD 副图</strong> — DIF快线 + DEA慢线 + 红绿柱状图，金叉死叉一目了然</li>
+      </ul>
+    </li>
+  </ul>
+</div>
+
+<div class="card">
+  <h4>📊 Tab 2 — 指标统计</h4>
+  <p>以卡片形式展示该ETF最新的12个核心技术指标：</p>
+  <table>
+    <tr><th>指标</th><th>说明</th><th>典型用途</th></tr>
+    <tr><td>RSI14</td><td>14日相对强弱</td><td>>70超买、<30超卖</td></tr>
+    <tr><td>夏普比率(1Y)</td><td>年化风险调整收益</td><td>>1优秀、>0.5合格</td></tr>
+    <tr><td>波动率(20d)</td><td>20日年化波动率</td><td>越低越稳定</td></tr>
+    <tr><td>最大回撤(1Y)</td><td>一年内最大峰谷跌幅</td><td>越小抗跌性越强</td></tr>
+    <tr><td>1月 / 3月 / 1年 收益</td><td>不同持仓周期的回报率</td><td>评估短中长期表现</td></tr>
+    <tr><td>MA5 / MA20</td><td>5日/20日均线值</td><td>判断短期/中期趋势方向</td></tr>
+    <tr><td>ATR14</td><td>14日平均真实波幅</td><td>波动剧烈程度</td></tr>
+  </table>
+</div>
+
+<div class="card">
+  <h4>🎯 Tab 3 — 综合评分</h4>
+  <ul>
+    <li><strong>雷达图</strong> — 五维度蛛网图（收益/风险/夏普/流动性/趋势），面积越大综合实力越强</li>
+    <li><strong>综合评分</strong> — 加权总分（0-100），配合颜色渐变进度条</li>
+    <li><strong>全市场排名 / 分类排名</strong> — 完全市场排名和同类别内的相对位置</li>
+    <li><strong>各维度详细分数</strong> — 五维度单独分数，方便定位强弱项</li>
+  </ul>
+</div>
+
+<div class="tip">
+  <strong>💡 提示：</strong> K线图支持鼠标滚轮缩放和拖拽平移。双击图表可重置视图。指标复选框状态会保存在浏览器中，下次打开同页面自动恢复。
+</div>
+
+<!-- ============================================ -->
+<!-- 全市场筛选器 -->
+<!-- ============================================ -->
+<h2 id="screen">🔎 全市场筛选器 — 精准定位</h2>
+<p>基于多维度技术指标的智能筛选工具，20+筛选条件自由组合。</p>
+
+<div class="card">
+  <h4>快速筛选预设</h4>
+  <p>页面顶部提供一键预设标签，点击即筛选：</p>
+  <ul>
+    <li><span class="badge badge-cyan">高分高流动性</span> — 综合评分高 + 换手率充足</li>
+    <li><span class="badge badge-green">低波动稳健</span> — 波动率低 + 夏普比率高</li>
+    <li><span class="badge badge-purple">强势趋势</span> — 趋势得分高 + 近期动量强</li>
+    <li><span class="badge badge-orange">超跌反弹关注</span> — RSI偏低 + 存在均值回归可能</li>
+  </ul>
+  <p>再次点击已选中的标签可以取消该预设（恢复该维度为不限）。</p>
+</div>
+
+<div class="card">
+  <h4>高级筛选条件</h4>
+  <table>
+    <tr><th>条件</th><th>说明</th><th>常用参考范围</th></tr>
+    <tr><td>市场</td><td>SH(上海) / SZ(深圳)</td><td>—</td></tr>
+    <tr><td>分类</td><td>ETF行业/主题分类，下拉列表显示各分类ETF个数</td><td>—</td></tr>
+    <tr><td>评分 ≥</td><td>综合评分下限（0-100）</td><td>60 ~ 80</td></tr>
+    <tr><td>RSI ≥</td><td>14日RSI下限</td><td>30 ~ 50（避开超买区）</td></tr>
+    <tr><td>夏普 ≥</td><td>1年夏普比率下限</td><td>0.5 ~ 1.0</td></tr>
+    <tr><td>波动率 ≤</td><td>20日年化波动率上限</td><td>0.2 ~ 0.3（稳健型）</td></tr>
+  </ul>
+</div>
+
+<div class="card">
+  <h4>结果表格与分页</h4>
+  <ul>
+    <li>显示：代码、分类、评分、RSI、夏普、1月/3月/1年收益、波动率</li>
+    <li>支持每页 20 / 50 / 100 / 200 条切换，页码导航浏览全部结果</li>
+    <li>顶部显示"共 <strong style="color:#818cf8">X</strong> 只ETF，第 Y/Z 页"</li>
+    <li>点击「重置条件」清空所有筛选条件</li>
+  </ul>
+</div>
+
+<!-- ============================================ -->
+<!-- 评分排名 -->
+<!-- ============================================ -->
+<h2 id="scores">🏆 评分排名 — 多维对比</h2>
+<p>全市场ETF综合评分排行榜，支持按不同评分模板查看。</p>
+
+<div class="card">
+  <h4>评分模板切换</h4>
+  <p>顶部Tab栏可切换不同的评分维度组合：</p>
+  <ul>
+    <li><span class="badge badge-purple">均衡型</span> — 五维度等权重（各20%）</li>
+    <li><span class="badge badge-cyan">收益优先</span> — 收益维度权重更高（40%）</li>
+    <li><span class="badge badge-green">稳健型</span> — 风险和夏普权重更高</li>
+  </ul>
+  <p>管理员可在模板管理界面创建、编辑、删除评分模板，自定义各维度的权重分配。</p>
+</div>
+
+<div class="card">
+  <h4>排名列表字段</h4>
+  <ul>
+    <li><strong>全市场排名</strong> + <strong>分类排名</strong> — 双重排名定位</li>
+    <li><strong>综合评分</strong> — 可视化颜色进度条（红→黄→绿） + 数值</li>
+    <li><strong>五维度子分数</strong> — 收益/风险/夏普/流动性/趋势各维度具体得分</li>
+    <li>支持按评分模板筛选和按市场/分类过滤</li>
+  </ul>
+</div>
+
+<!-- ============================================ -->
+<!-- 标的池管理 -->
+<!-- ============================================ -->
+<h2 id="pools">🎯 标的池管理 — 组合构建</h2>
+<p>自定义ETF投资组合的全生命周期管理工具。</p>
+
+<div class="card">
+  <h4>池列表与创建</h4>
+  <ul>
+    <li><strong>创建池</strong> — 点击「新建池」按钮，输入名称和描述</li>
+    <li><strong>池列表</strong> — 展示所有池，含成员数、创建时间等信息</li>
+    <li><strong>删除池</strong> — 确认后彻底移除</li>
+  </ul>
+</div>
+
+<div class="card">
+  <h4>池详情（三Tab布局）</h4>
+
+  <p><span class="badge badge-purple">Tab 1 — 成员与权重</span></p>
+  <ul>
+    <li>添加/移除ETF成员，查看成员列表</li>
+    <li><strong>目标权重</strong> — 使用滑块或输入框调整各成员的权重占比（自动归一化至100%）</li>
+    <li><strong>建议权重</strong> — 一键生成三种算法权重方案：
+      <ul>
+        <li><strong>等权</strong> — 所有成员相同权重</li>
+        <li><strong>评分加权</strong> — 按综合评分高低分配权重</li>
+        <li><strong>风险平价</strong> — 按波动率倒数分配，低波高配</li>
+      </ul>
+    </li>
+  </ul>
+
+  <p><span class="badge badge-cyan">Tab 2 — 持仓分布</span></p>
+  <ul>
+    <li><strong>分类饼图</strong> — 按分类维度展示池内ETF的分布（支持数量和权重两种模式）</li>
+    <li><strong>池绩效统计</strong> — 组合整体1月/3月收益、夏普比率、最大回撤</li>
+  </ul>
+
+  <p><span class="badge badge-green">Tab 3 — 相关性热力图</span></p>
+  <ul>
+    <li>池内ETF两两价格相关性矩阵</li>
+    <li>颜色从深绿（正相关+1.0）到深红（负相关-1.0）</li>
+    <li>帮助发现过度集中风险（高相关性）或构建分散化组合</li>
+  </ul>
+</div>
+
+<div class="card">
+  <h4>快照功能</h4>
+  <p>创建池快照可保存某个时间点的池配置和权重，用于后续对比分析。在「快照记录」区查看历史快照列表。</p>
+</div>
+
+<!-- ============================================ -->
+<!-- 相关性分析 -->
+<!-- ============================================ -->
+<h2 id="correlation">🔗 相关性分析</h2>
+<p>分析多只ETF之间的价格相关性，辅助构建低相关性的分散化投资组合。</p>
+
+<div class="card">
+  <h4>操作步骤</h4>
+  <ol>
+    <li>在ETF选择器中搜索并添加ETF（<strong>2~20只</strong>）</li>
+    <li>选择计算窗口期：<code>30日</code> / <code>60日</code> / <code>120日</code> / <code>250日</code></li>
+    <li>选择相关系数方法：<strong>Pearson</strong>（线性相关）或 <strong>Spearman</strong>（秩相关，更稳健）</li>
+    <li>查看热力图 — 每格显示相关系数，颜色从绿（正相关）到红（负相关）渐变</li>
+  </ol>
+  <p>提供快捷添加按钮：宽基指数组 / 科技组 / 消费组 / 医药组，一键添加常用ETF组合。</p>
+</div>
+
+<div class="tip">
+  <strong>💡 使用场景：</strong> 如果你想构建一个分散化的组合，应选择相关性较低的ETF（热力图中颜色偏红/浅色的配对）。如果两只ETF相关性 > 0.85，说明它们高度同涨同跌，同时持有没有分散效果。
+</div>
+
+<!-- ============================================ -->
+<!-- 收益对比 -->
+<!-- ============================================ -->
+<h2 id="comparison">📊 收益对比</h2>
+<p>多只ETF的历史收益曲线叠加对比，直观比较不同标的表现。</p>
+
+<div class="card">
+  <h4>操作步骤</h4>
+  <ol>
+    <li>在ETF选择器中搜索并添加ETF（<strong>2~10只</strong>）</li>
+    <li>选择时间范围：<code>1月</code> / <code>3月</code> / <code>6月</code> / <code>1年</code> / <code>全部</code></li>
+    <li>选择显示模式：
+      <ul>
+        <li><strong>归一化收益</strong> — 将所有ETF的起点设为单位净值1，对比相对涨幅</li>
+        <li><strong>每日百分比</strong> — 展示每日涨跌幅的百分比变化</li>
+      </ul>
+    </li>
+    <li>曲线图中每条线代表一只ETF，颜色图例标注在下方</li>
+  </ol>
+  <p>同样提供快捷添加按钮，方便快速选中常用对比组。</p>
+</div>
+
+<!-- ============================================ -->
+<!-- 板块轮动 -->
+<!-- ============================================ -->
+<h2 id="sector">📈 板块轮动分析</h2>
+<p>分析不同ETF分类（板块/行业）之间的轮动节奏，识别市场热点切换。</p>
+
+<div class="card">
+  <h4>核心指标解读</h4>
+  <table>
+    <tr><th>指标</th><th>公式/口径</th><th>解读</th></tr>
+    <tr><td>板块收益</td><td>该分类下ETF在时间窗口内的平均收益率</td><td>单位：%</td></tr>
+    <tr><td>相对强度 (RS)</td><td>板块收益率 ÷ 市场平均收益率</td><td>RS &gt; 1 表示跑赢市场</td></tr>
+    <tr><td>动量排名</td><td>按过去N周收益排序（1为最佳）</td><td>排名上升 = 动能增强</td></tr>
+    <tr><td>夏普比率</td><td>（板块年化收益 - 无风险利率）÷ 年化波动率</td><td>风险调整后收益质量</td></tr>
+    <tr><td>轮动信号</td><td>检测领先板块在两个周期之间的切换</td><td>上一期领先→本期落后的切换</td></tr>
+  </table>
+</div>
+
+<div class="card">
+  <h4>页面布局</h4>
+  <ul>
+    <li><strong>顶部统计栏</strong> — 分析日期、市场平均1月收益、板块数量</li>
+    <li><strong>轮动信号警告</strong> — 当检测到领先板块切换时显示提醒</li>
+    <li><strong>收益率柱状图</strong> — 各板块1月收益率排名（正收益红色，负收益绿色）</li>
+    <li><strong>相对强度柱状图</strong> — 各板块RS值，虚线标注 RS=1.0 基准线</li>
+    <li><strong>详细数据表</strong> — 动量排名、收益率、夏普、波动率、RSI、相对强度</li>
+  </ul>
+</div>
+
+<div class="tip">
+  <strong>💡 使用场景：</strong> 在月末或季末查看板块轮动，了解资金在不同行业间的流向变化。关注排名稳步上升的板块（动能积聚），警惕前期领先板块开始走弱（可能反转）。
+</div>
+
+<!-- ============================================ -->
+<!-- 策略管理 -->
+<!-- ============================================ -->
+<h2 id="strategies">⚙️ 策略管理</h2>
+<p>管理量化策略配置，每个策略基于一个预设模板，可自定义关键参数。</p>
+
+<div class="card">
+  <h4>3种预设策略模板</h4>
+  <table>
+    <tr><th>模板</th><th>核心逻辑</th><th>关键参数</th></tr>
+    <tr>
+      <td><span class="badge badge-purple">动量策略</span></td>
+      <td>价格趋势追踪：N日收益超过阈值则买入，低于负阈值则卖出</td>
+      <td>momentum_window (20-60), threshold (0.03=3%)</td>
+    </tr>
+    <tr>
+      <td><span class="badge badge-green">均值回归</span></td>
+      <td>价格偏离均值后倾向于回归：Z-score低于下限买入，高于上限卖出</td>
+      <td>mean_reversion_window (20-60), z_score_threshold (1.5-2.5)</td>
+    </tr>
+    <tr>
+      <td><span class="badge badge-orange">RSI策略</span></td>
+      <td>基于超买超卖：RSI低于超卖区买入，高于超买区卖出</td>
+      <td>rsi_period (14), overbought (70), oversold (30)</td>
+    </tr>
+  </table>
+</div>
+
+<div class="card">
+  <h4>策略生命周期</h4>
+  <ol>
+    <li><strong>创建</strong> — 选择模板 → 命名策略 → 调整参数 → 保存</li>
+    <li><strong>编辑</strong> — 修改参数值，保存后下次信号生成和回测使用新参数</li>
+    <li><strong>激活/停用</strong> — 切换 <code>is_active</code> 开关，停用的策略不参与信号生成</li>
+    <li><strong>删除</strong> — 确认后移除此策略（已关联的回测结果保留）</li>
+  </ol>
+</div>
+
+<!-- ============================================ -->
+<!-- 回测管理 -->
+<!-- ============================================ -->
+<h2 id="backtest">🔬 回测管理 — 策略验证</h2>
+<p>策略回测引擎，用历史数据验证策略效果，输出完整的绩效指标和交易明细。</p>
+
+<div class="card">
+  <h4>创建回测步骤</h4>
+  <ol>
+    <li>进入「回测管理」页面，点击「新建回测」</li>
+    <li>选择策略（从已创建的策略列表中选）</li>
+    <li>选择标的ETF（输入代码，如 <code>510300.SH</code>）</li>
+    <li>设置回测区间：开始日期 ~ 结束日期</li>
+    <li>设置初始资金（默认 100,000，单位：元）</li>
+    <li>点击「开始回测」，后台异步计算，完成后显示结果</li>
+  </ol>
+</div>
+
+<div class="card">
+  <h4>回测详情页</h4>
+  <ul>
+    <li><strong>绩效指标卡片</strong> — 总收益率 / 年化收益率 / 最大回撤 / 夏普比率 / 胜率 / 交易次数</li>
+    <li><strong>净值曲线图</strong> — 展示每日净值变动，可直观判断策略的稳定性</li>
+    <li><strong>交易记录表</strong> — 每笔交易的进场日期/价格、出场日期/价格、盈亏百分比</li>
+  </ul>
+</div>
+
+<div class="warning">
+  <strong>⚠️ 重要提示：</strong> 回测基于历史数据，存在过拟合风险。未来表现可能与历史回测结果存在显著差异。回测结果仅供参考，不构成投资建议。实盘前建议结合样本外验证。
+</div>
+
+<!-- ============================================ -->
+<!-- 绩效归因 -->
+<!-- ============================================ -->
+<h2 id="attribution">📐 绩效归因</h2>
+<p>对回测结果进行收益来源拆解，理解策略超额收益的来源。</p>
+
+<div class="card">
+  <h4>Brinson归因模型</h4>
+  <p>将策略超额收益分解为三部分：</p>
+  <ul>
+    <li><span class="badge badge-purple">配置效应（选股）</span> — 因持有不同于基准ETF权重而产生的收益差异</li>
+    <li><span class="badge badge-cyan">择时效应</span> — 因买卖时机不同于基准而产生的收益差异</li>
+    <li><span class="badge badge-green">交互效应</span> — 配置和择时交叉影响的部分 = 总超额 - 配置 - 择时</li>
+  </ul>
+  <p>页面展示归因瀑布图和收益来源饼图，帮助理解策略的收益来源结构。</p>
+</div>
+
+<div class="card">
+  <h4>访问方式</h4>
+  <p>在回测详情页点击「绩效归因」按钮，或在策略/回测关联菜单中进入归因分析页。基准默认为等权ETF市场组合。</p>
+</div>
+
+<!-- ============================================ -->
+<!-- 交易信号 -->
+<!-- ============================================ -->
+<h2 id="signals">⚡ 交易信号 — 实时看板</h2>
+<p>基于已激活策略自动生成的买卖信号看板。</p>
+
+<div class="card">
+  <h4>信号类型</h4>
+  <table>
+    <tr><td><span class="badge" style="background:rgba(239,68,68,0.15);color:#ef4444">BUY</span></td><td>买入信号 —— 策略模型判断当前条件满足买入标准</td></tr>
+    <tr><td><span class="badge" style="background:rgba(34,197,94,0.15);color:#22c55e">SELL</span></td><td>卖出信号 —— 策略模型判断当前条件满足卖出标准</td></tr>
+    <tr><td><span class="badge" style="background:rgba(234,179,8,0.15);color:#eab308">HOLD</span></td><td>持有信号 —— 不触发买卖，建议保持仓位现状</td></tr>
+  </table>
+</div>
+
+<div class="card">
+  <h4>页面功能</h4>
+  <ul>
+    <li><strong>信号统计</strong> — 顶部显示当日BUY/SELL/HOLD信号数量统计</li>
+    <li><strong>最新信号列表</strong> — 策略ID / ETF代码 / 日期 / 信号类型 / 信号强度</li>
+    <li><strong>手动生成</strong> — 点击「生成信号」按钮手动触发信号计算</li>
+    <li><strong>自动调度</strong> — 系统每交易日 09:00 自动为所有激活策略生成当日信号</li>
+  </ul>
+</div>
+
+<div class="warning">
+  <strong>⚠️ 免责声明：</strong> 交易信号由算法模型自动生成，仅供参考研究，不构成投资建议。投资有风险，决策需谨慎。请勿仅依据信号进行实盘交易。
+</div>
+
+<!-- ============================================ -->
+<!-- 全市场扫描 -->
+<!-- ============================================ -->
+<h2 id="scanner">🔭 全市场扫描</h2>
+<p>自动对比平台数据库与Akshare数据源，发现ETF市场变动。</p>
+
+<div class="card">
+  <h4>扫描结果类型</h4>
+  <ul>
+    <li><span class="badge badge-green">新增ETF</span> — 数据源中有但数据库中无的新上市ETF</li>
+    <li><span class="badge badge-red">退市ETF</span> — 数据库中标记但数据源中已不存在的退市ETF</li>
+    <li><span class="badge badge-orange">变更ETF</span> — 名称、分类等关键信息发生变化的ETF</li>
+  </ul>
+</div>
+
+<div class="card">
+  <h4>使用方式</h4>
+  <ul>
+    <li><strong>手动触发</strong> — 点击「执行扫描」按钮立即扫描，结果实时展示</li>
+    <li><strong>自动调度</strong> — 系统每周日 03:00 自动执行一次全市场扫描</li>
+    <li><strong>扫描日志</strong> — 查看历史扫描记录，含扫描日期、新增/退市/变更数量、执行状态</li>
+  </ul>
+</div>
+
+<!-- ============================================ -->
+<!-- 报告浏览 -->
+<!-- ============================================ -->
+<h2 id="reports">📑 报告浏览</h2>
+<p>生成和浏览ETF投研报告，支持HTML和Markdown格式。</p>
+
+<div class="card">
+  <h4>报告生成</h4>
+  <ol>
+    <li>点击「生成报告」按钮</li>
+    <li>选择报告类型：
+      <ul>
+        <li><strong>标的池周报</strong> — 基于指定池的周度表现分析</li>
+        <li><strong>每日市场快报</strong> — 当日市场概况和信号汇总</li>
+      </ul>
+    </li>
+    <li>选择目标标的池（周报）</li>
+    <li>选择输出格式：HTML 或 Markdown</li>
+    <li>点击「生成」，后台异步创建报告</li>
+  </ol>
+</div>
+
+<div class="card">
+  <h4>报告管理</h4>
+  <ul>
+    <li>报告列表按生成时间倒序排列，显示状态标签：<span class="badge badge-yellow">pending</span> / <span class="badge badge-cyan">running</span> / <span class="badge badge-green">done</span> / <span class="badge badge-red">failed</span></li>
+    <li><strong>预览</strong> — 在页面内嵌入iframe预览HTML报告</li>
+    <li><strong>下载</strong> — 下载报告文件到本地</li>
+  </ul>
+</div>
+
+<!-- ============================================ -->
+<!-- 推送配置 -->
+<!-- ============================================ -->
+<h2 id="notifications">🔔 推送配置</h2>
+<p>配置报告和信号的自动推送，支持主流企业通讯工具Webhook。</p>
+
+<div class="card">
+  <h4>支持渠道</h4>
+  <table>
+    <tr><th>渠道</th><th>接入方式</th><th>适用场景</th></tr>
+    <tr><td><span class="badge badge-green">企业微信</span></td><td>群机器人 Webhook URL</td><td>内部团队接收每日报告</td></tr>
+    <tr><td><span class="badge badge-cyan">飞书</span></td><td>自定义机器人 Webhook</td><td>团队协作接收信号提醒</td></tr>
+    <tr><td><span class="badge badge-purple">钉钉</span></td><td>群机器人 Webhook + 加签密钥</td><td>企业内部群通知</td></tr>
+  </table>
+</div>
+
+<div class="card">
+  <h4>配置步骤</h4>
+  <ol>
+    <li>点击「新增配置」</li>
+    <li>输入配置名称（如"周一报告推送"）</li>
+    <li>选择推送渠道（企业微信 / 飞书 / 钉钉）</li>
+    <li>填写对应平台机器人的 <strong>Webhook 地址</strong>（和加签密钥，钉钉需要）</li>
+    <li>点击「测试发送」验证配置是否正确</li>
+    <li>确认后启用开关，系统将在报告生成后自动推送</li>
+  </ol>
+</div>
+
+<div class="tip">
+  <strong>💡 提示：</strong> 各平台Webhook地址获取方式请参考对应平台的开发者文档。推送日志页可查看历史发送记录和成功/失败状态。
+</div>
+
+<!-- ============================================ -->
+<!-- 技术指标说明 -->
+<!-- ============================================ -->
+<h2 id="indicators">📖 技术指标详解</h2>
+
+<div class="card">
+  <h4>MA — 移动平均线 (Moving Average)</h4>
+  <p>计算指定周期内收盘价的算术平均值。MA5 = 近5日均价（周线），MA20 = 近20日均价（月线），MA60 = 近60日均价（季线）。</p>
+  <p><strong>常用信号：</strong> 短期均线上穿长期均线 = <span class="badge badge-green">金叉（看涨）</span>；短期均线下穿长期均线 = <span class="badge badge-red">死叉（看跌）</span>。</p>
+</div>
+
+<div class="card">
+  <h4>RSI — 相对强弱指标 (Relative Strength Index, 14日)</h4>
+  <p>衡量价格变动的速度和幅度，取值0-100。由 Wilder 于1978年提出。</p>
+  <p><strong>解读：</strong> RSI &gt; 70 = 超买区域（可能回调）；RSI &lt; 30 = 超卖区域（可能反弹）。注意：强势趋势中RSI可在超买区持续较长时间。</p>
+</div>
+
+<div class="card">
+  <h4>MACD — 指数平滑异同移动平均线</h4>
+  <p>由 DIF（快线，EMA12-EMA26）、DEA（慢线，DIF的9日EMA）和 MACD柱（DIF-DEA，×2）组成。</p>
+  <p><strong>信号：</strong> DIF上穿DEA = <span class="badge badge-green">金叉</span>；DIF下穿DEA = <span class="badge badge-red">死叉</span>；MACD柱由负转正 = 多头动能增强；顶背离/底背离 = 趋势反转预警。</p>
+</div>
+
+<div class="card">
+  <h4>布林带 — Bollinger Bands</h4>
+  <p>中轨 = 20日均线；上轨 = 中轨 + 2×标准差；下轨 = 中轨 - 2×标准差。覆盖约95%的价格波动区间。</p>
+  <p><strong>信号：</strong> 价格触及上轨 = 短期偏高；触及下轨 = 短期偏低；带宽收窄 = 波动率收缩，可能预示突破；带宽扩大 = 波动率放大，趋势行情。</p>
+</div>
+
+<div class="card">
+  <h4>ATR — 平均真实波幅 (Average True Range)</h4>
+  <p>衡量价格波动幅度（非方向），取真实波幅的N日移动平均。ATR越高，日内或日间波动越剧烈。</p>
+  <p><strong>用途：</strong> 设定止损位（如2×ATR）、评估交易标的的波动风险、仓位管理参考。</p>
+</div>
+
+<div class="card">
+  <h4>夏普比率 — Sharpe Ratio</h4>
+  <p>公式：(Rp - Rf) / σp，其中Rp = 年化收益率，Rf = 无风险利率，σp = 年化波动率。衡量单位风险获得的超额回报。</p>
+  <p><strong>评价标准：</strong> &gt; 1.0 = 优秀；0.5 ~ 1.0 = 良好；&lt; 0.5 = 一般。注意：负夏普表示收益低于无风险利率。</p>
+</div>
+
+<div class="card">
+  <h4>波动率 — Volatility (20日年化)</h4>
+  <p>日收益率的标准差 × √252。衡量价格相对于均值的偏离程度，是资产风险的核心度量。</p>
+  <p>低波动率（&lt; 20%）适合稳健型投资者；高波动率（&gt; 40%）潜在收益大但回撤风险也大。</p>
+</div>
+
+<div class="card">
+  <h4>最大回撤 — Max Drawdown</h4>
+  <p>从历史最高净值点到之后最低点的累计跌幅百分比。衡量最坏情况下的潜在亏损。</p>
+  <p>回撤 &lt; 10% = 优秀风控；10%-20% = 正常范围；&gt; 30% = 风险较高。关注回撤修复时间（回到前高所需天数）。</p>
+</div>
+
+<!-- ============================================ -->
+<!-- FAQ -->
+<!-- ============================================ -->
+<h2 id="faq">❓ 常见问题</h2>
+
+<div class="card"><h4>Q: 数据更新频率是多少？</h4><p>日K行情和技术指标每日收盘后更新（约18:00-20:00），综合评分和板块轮动在指标更新后自动计算。交易信号每日09:00自动生成。ETF基础信息每周日03:00扫描更新。</p></div>
+
+<div class="card"><h4>Q: 为什么收益率是红涨绿跌？</h4><p>平台遵循中国A股市场惯例：<strong>红色表示上涨/正收益，绿色表示下跌/负收益</strong>。这与中国投资者的视觉习惯一致，与欧美市场颜色惯例相反。</p></div>
+
+<div class="card"><h4>Q: 综合评分是怎么计算的？</h4><p>综合评分基于五个维度：收益能力、风险控制、夏普比率、流动性、趋势强度。每个维度先做全市场百分位排名（0-100），再按评分模板的权重加权求和。不同模板（均衡型/收益优先/稳健型）的权重分配不同。最终得分是相对排名分，而非绝对指标值。</p></div>
+
+<div class="card"><h4>Q: 为什么我只看到50条数据？怎么看到全部ETF？</h4><p>全市场筛选器和ETF列表都支持分页。顶部状态栏显示"共 X 只ETF"，使用分页控件可以浏览全部数据。可在右下角切换每页显示条数：20/50/100/200。</p></div>
+
+<div class="card"><h4>Q: 如何创建自定义标的池？</h4><p>进入「标的池管理」→ 点击「新建池」→ 输入名称和描述 → 进入详情页 → 点击「添加成员」→ 输入ETF代码（如 510300.SH）→ 设置权重 → 保存。也可以使用「建议权重」一键生成等权/评分加权/风险平价方案。</p></div>
+
+<div class="card"><h4>Q: 回测结果可信吗？</h4><p>回测基于历史数据模拟，存在<strong>过拟合、幸存者偏差、未来函数、交易成本未计入</strong>等固有限制。回测表现好的策略在实盘中可能显著走弱。建议：①样本外验证 ②使用多ETF交叉验证 ③关注夏普比率和最大回撤而非仅有总收益 ④不要仅凭回测结果做出投资决策。</p></div>
+
+<div class="card"><h4>Q: 平台支持哪些ETF市场？</h4><p>目前主要覆盖中国A股市场ETF（上海证券交易所 + 深圳证券交易所），总计1,500+只。港股、美股ETF数据可通过yfinance数据源获取，加密货币通过OKX/CCXT获取。</p></div>
+
+<div class="card"><h4>Q: 布林带和RSI同时显示，K线图会不会很乱？</h4><p>不会。所有技术指标通过复选框独立控制，你可以只勾选需要查看的指标。MA均线叠加在主图上；布林带也用半透明色叠加在主图；RSI和MACD有独立的副图区域。推荐同时开启MA20 + 布林带 + MACD，关闭其他以保持图面清晰。</p></div>
+
+<div class="card"><h4>Q: 如何获取各平台机器人的Webhook地址？</h4><p>①企业微信：群设置 → 群机器人 → 添加 → 复制Webhook地址。②飞书：群设置 → 群机器人 → 添加自定义机器人 → 复制Webhook地址。③钉钉：群设置 → 智能群助手 → 添加机器人 → 自定义 → 复制Webhook地址（可选择加签验证）。</p></div>
+
+<div class="card"><h4>Q: 忘记密码怎么办？</h4><p>目前平台使用简单的用户名/密码认证。如忘记密码，请联系系统管理员在数据库中重置。后续版本将增加密码找回功能。</p></div>
+
+<!-- ============================================ -->
+<!-- 快捷键速查 -->
+<!-- ============================================ -->
+<h2 id="shortcuts">⌨️ 快捷键速查</h2>
+
+<div class="card">
+  <table>
+    <tr><th style="width:160px">操作</th><th>快捷键</th></tr>
+    <tr><td>部署到阿里云</td><td><code>Ctrl+Shift+P</code> → <code>Run Task</code> → 🚀 Deploy</td></tr>
+    <tr><td>打开命令面板</td><td><code>Ctrl+Shift+P</code></td></tr>
+    <tr><td>快速打开文件</td><td><code>Ctrl+P</code></td></tr>
+    <tr><td>K线图：缩放</td><td>鼠标滚轮</td></tr>
+    <tr><td>K线图：平移</td><td>鼠标拖拽</td></tr>
+    <tr><td>K线图：重置视图</td><td>双击图表区域</td></tr>
+    <tr><td>筛选器：重置条件</td><td>点击「重置条件」按钮</td></tr>
+    <tr><td>表格行：跳转详情</td><td>点击任意数据行</td></tr>
+  </table>
+</div>
+
+<!-- ============================================ -->
+<!-- 术语表 -->
+<!-- ============================================ -->
+<h2 id="glossary">📚 术语表</h2>
+
+<div class="card">
+  <table>
+    <tr><th style="width:120px">术语</th><th style="width:100px">英文</th><th>释义</th></tr>
+    <tr><td>ETF</td><td>Exchange-Traded Fund</td><td>交易型开放式指数基金，在交易所上市交易、可像股票一样买卖的基金</td></tr>
+    <tr><td>QDII</td><td>Qualified Domestic Institutional Investor</td><td>合格境内机构投资者，可投资海外市场的基金产品</td></tr>
+    <tr><td>OHLCV</td><td>Open/High/Low/Close/Volume</td><td>开盘价/最高价/最低价/收盘价/成交量，行情五要素</td></tr>
+    <tr><td>MA</td><td>Moving Average</td><td>移动平均线，N日收盘价的平均值连线</td></tr>
+    <tr><td>RSI</td><td>Relative Strength Index</td><td>相对强弱指标，衡量价格变动速度和幅度的震荡指标</td></tr>
+    <tr><td>MACD</td><td>Moving Average Convergence Divergence</td><td>异同移动平均线，由快慢线和柱状图组成的趋势指标</td></tr>
+    <tr><td>布林带</td><td>Bollinger Bands</td><td>基于标准差的价格通道，由上中下三条轨组成</td></tr>
+    <tr><td>ATR</td><td>Average True Range</td><td>平均真实波幅，衡量价格波动剧烈程度（不判断方向）</td></tr>
+    <tr><td>夏普比率</td><td>Sharpe Ratio</td><td>风险调整后收益，衡量每单位风险带来的超额回报</td></tr>
+    <tr><td>最大回撤</td><td>Max Drawdown</td><td>从净值高点到后续低点的最大跌幅百分比</td></tr>
+    <tr><td>标的池</td><td>Watchlist / Pool</td><td>用户自定义的ETF关注组合，可配置权重和进行分析</td></tr>
+    <tr><td>回测</td><td>Backtest</td><td>用历史行情数据验证交易策略在过去的理论表现</td></tr>
+    <tr><td>动量</td><td>Momentum</td><td>价格上涨/下跌趋势的惯性持续效应</td></tr>
+    <tr><td>均值回归</td><td>Mean Reversion</td><td>价格大幅偏离均值后倾向于向均值回归的统计规律</td></tr>
+    <tr><td>Z-Score</td><td>Standard Score</td><td>标准化得分：(当前值 - 均值) / 标准差，衡量偏离程度</td></tr>
+    <tr><td>Pearson</td><td>Pearson Correlation</td><td>皮尔逊线性相关系数，衡量两变量线性关系强度</td></tr>
+    <tr><td>Spearman</td><td>Spearman Rank Correlation</td><td>斯皮尔曼秩相关系数，对异常值和分布假设更稳健</td></tr>
+    <tr><td>Brinson模型</td><td>Brinson Attribution</td><td>将投资组合超额收益分解为配置效应、择时效应和交互效应的归因框架</td></tr>
+    <tr><td>Webhook</td><td>—</td><td>HTTP回调，当事件发生时向指定URL发送POST请求</td></tr>
+    <tr><td>风险平价</td><td>Risk Parity</td><td>按风险贡献等量分配权重的方法，低波动资产配更高权重</td></tr>
+  </table>
+</div>
+
+<!-- ============================================ -->
+<!-- 页脚 -->
+<!-- ============================================ -->
+<footer>
+  <p>ETF投研平台 — 用户操作手册</p>
+  <p>版本 2.0 | 2026年6月 | 适用于平台 v2.x</p>
+  <p style="margin-top:8px">
+    本手册中所有数据、信号、回测结果仅供参考研究，不构成任何形式的投资建议。<br>
+    投资有风险，入市需谨慎。过往业绩不代表未来表现。
+  </p>
+</footer>
+
+</main>
+
+<a href="#overview" class="back-to-top" title="回到顶部">↑</a>
+
+<script>
+  (function() {
+    'use strict';
+
+    const sections = document.querySelectorAll('h2[id]');
+    const navLinks = document.querySelectorAll('.sidebar nav a[href^="#"]');
+
+    function setActiveNav(targetId) {
+      navLinks.forEach((link) => {
+        const isMatch = link.getAttribute('href') === '#' + targetId;
+        link.classList.toggle('active', isMatch);
+      });
+    }
+
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          setActiveNav(entry.target.getAttribute('id'));
+        }
+      });
+    }, {
+      rootMargin: '-100px 0px -75% 0px',
+      threshold: 0,
+    });
+
+    sections.forEach((s) => observer.observe(s));
+
+    navLinks.forEach((link) => {
+      link.addEventListener('click', (e) => {
+        e.preventDefault();
+        const targetId = link.getAttribute('href').slice(1);
+        const target = document.getElementById(targetId);
+        if (!target) return;
+
+        setActiveNav(targetId);
+        window.scrollTo({
+          top: target.offsetTop - 80,
+          behavior: 'smooth',
+        });
+      });
+    });
+
+    function initActiveNav() {
+      const hash = window.location.hash.slice(1);
+      if (hash) {
+        const target = document.getElementById(hash);
+        if (target) {
+          setActiveNav(hash);
+          setTimeout(() => {
+            window.scrollTo({ top: target.offsetTop - 80 });
+          }, 0);
+          return;
+        }
+      }
+      const scrollPos = window.scrollY || document.documentElement.scrollTop;
+      let current = '';
+      sections.forEach((s) => {
+        if (scrollPos >= s.offsetTop - 120) {
+          current = s.getAttribute('id');
+        }
+      });
+      if (current) setActiveNav(current);
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initActiveNav);
+    } else {
+      initActiveNav();
+    }
+  })();
+</script>
+
+</body>
+</html>

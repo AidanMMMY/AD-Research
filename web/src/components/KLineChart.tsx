@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { createChart, IChartApi, ISeriesApi, CandlestickData, HistogramData, LineData, Time } from 'lightweight-charts';
+import { createChart, IChartApi, ISeriesApi, CandlestickData, HistogramData, LineData, Time, ColorType, LineStyle } from 'lightweight-charts';
 import type { OHLCV } from '@/types/etf';
 
 interface IndicatorOverlay {
@@ -17,7 +17,6 @@ interface KLineChartProps {
   overlays?: IndicatorOverlay;
 }
 
-// Simple SMA calculator
 function calcSMA(data: { close: number }[], period: number): (number | null)[] {
   const result: (number | null)[] = [];
   for (let i = 0; i < data.length; i++) {
@@ -34,7 +33,6 @@ function calcSMA(data: { close: number }[], period: number): (number | null)[] {
   return result;
 }
 
-// Bollinger Bands
 function calcBB(data: { close: number }[], period: number = 20, stdDev: number = 2) {
   const upper: (number | null)[] = [];
   const lower: (number | null)[] = [];
@@ -57,9 +55,11 @@ function calcBB(data: { close: number }[], period: number = 20, stdDev: number =
   return { upper, lower, sma };
 }
 
-// RSI
 function calcRSI(data: { close: number }[], period: number = 14): (number | null)[] {
   const result: (number | null)[] = [];
+  if (data.length <= period) {
+    return data.map(() => null);
+  }
   let gains = 0;
   let losses = 0;
   for (let i = 1; i <= period; i++) {
@@ -91,7 +91,6 @@ function calcRSI(data: { close: number }[], period: number = 14): (number | null
   return result;
 }
 
-// MACD
 function calcMACD(data: { close: number }[], fast: number = 12, slow: number = 26, signal: number = 9) {
   const ema = (arr: number[], period: number): number[] => {
     const k = 2 / (period + 1);
@@ -137,184 +136,205 @@ export default function KLineChart({ data, overlays = DEFAULT_OVERLAYS }: KLineC
   const macdDeaRef = useRef<ISeriesApi<'Line'> | null>(null);
 
   const [containerHeight] = useState(500);
+  const [initError, setInitError] = useState<string | null>(null);
+  const [dataError, setDataError] = useState<string | null>(null);
 
+  // Initialize chart
   useEffect(() => {
     if (!chartContainerRef.current) return;
 
-    const chart = createChart(chartContainerRef.current, {
-      layout: {
-        background: { color: '#ffffff' },
-        textColor: '#333',
-      },
-      grid: {
-        vertLines: { color: '#f0f0f0' },
-        horzLines: { color: '#f0f0f0' },
-      },
-      crosshair: { mode: 1 },
-      rightPriceScale: { borderColor: '#d9d9d9' },
-      timeScale: { borderColor: '#d9d9d9' },
-      height: containerHeight,
-    });
+    try {
+      const chart = createChart(chartContainerRef.current, {
+        layout: {
+          background: { type: ColorType.Solid, color: '#0f1729' },
+          textColor: '#94a3b8',
+        },
+        grid: {
+          vertLines: { color: 'rgba(255,255,255,0.06)' },
+          horzLines: { color: 'rgba(255,255,255,0.06)' },
+        },
+        crosshair: { mode: 1 as any },
+        rightPriceScale: { borderColor: 'rgba(255,255,255,0.08)' },
+        timeScale: { borderColor: 'rgba(255,255,255,0.08)' },
+        height: containerHeight,
+      });
 
-    chartRef.current = chart;
+      chartRef.current = chart;
 
-    // Main candlestick series
-    const candlestick = chart.addCandlestickSeries({
-      upColor: '#cf1322',
-      downColor: '#3f8600',
-      borderUpColor: '#cf1322',
-      borderDownColor: '#3f8600',
-      wickUpColor: '#cf1322',
-      wickDownColor: '#3f8600',
-    });
-    candlestickRef.current = candlestick;
+      const candlestick = chart.addCandlestickSeries({
+        upColor: '#ef4444',
+        downColor: '#22c55e',
+        borderUpColor: '#ef4444',
+        borderDownColor: '#22c55e',
+        wickUpColor: '#ef4444',
+        wickDownColor: '#22c55e',
+      });
+      candlestickRef.current = candlestick;
 
-    // Volume on main pane (overlay)
-    const volume = chart.addHistogramSeries({
-      color: '#1890ff',
-      priceFormat: { type: 'volume' },
-      priceScaleId: '',
-    });
-    volume.priceScale().applyOptions({ scaleMargins: { top: 0.85, bottom: 0 } });
-    volumeRef.current = volume;
+      const volume = chart.addHistogramSeries({
+        color: '#06b6d4',
+        priceFormat: { type: 'volume' },
+        priceScaleId: '',
+      });
+      volume.priceScale().applyOptions({ scaleMargins: { top: 0.85, bottom: 0 } });
+      volumeRef.current = volume;
 
-    // MA lines on main pane
-    const maOptions = { lastValueVisible: false, priceLineVisible: false, priceScaleId: 'right' };
-    ma5Ref.current = chart.addLineSeries({ color: '#ff7f0e', lineWidth: 1, ...maOptions });
-    ma10Ref.current = chart.addLineSeries({ color: '#2ca02c', lineWidth: 1, ...maOptions });
-    ma20Ref.current = chart.addLineSeries({ color: '#d62728', lineWidth: 1, ...maOptions });
-    ma60Ref.current = chart.addLineSeries({ color: '#9467bd', lineWidth: 1, ...maOptions });
+      const maOptions = { lastValueVisible: false, priceLineVisible: false, priceScaleId: 'right' };
+      ma5Ref.current = chart.addLineSeries({ color: '#eab308', lineWidth: 1, ...maOptions });
+      ma10Ref.current = chart.addLineSeries({ color: '#22c55e', lineWidth: 1, ...maOptions });
+      ma20Ref.current = chart.addLineSeries({ color: '#ef4444', lineWidth: 1, ...maOptions });
+      ma60Ref.current = chart.addLineSeries({ color: '#6366f1', lineWidth: 1, ...maOptions });
 
-    // Bollinger Bands
-    bbUpperRef.current = chart.addLineSeries({ color: '#17becf', lineWidth: 1, lineStyle: 2, ...maOptions });
-    bbLowerRef.current = chart.addLineSeries({ color: '#17becf', lineWidth: 1, lineStyle: 2, ...maOptions });
+      bbUpperRef.current = chart.addLineSeries({ color: '#06b6d4', lineWidth: 1, lineStyle: LineStyle.Dashed, ...maOptions });
+      bbLowerRef.current = chart.addLineSeries({ color: '#06b6d4', lineWidth: 1, lineStyle: LineStyle.Dashed, ...maOptions });
 
-    // RSI pane
-    rsiRef.current = chart.addLineSeries({
-      color: '#e377c2',
-      lineWidth: 1,
-      lastValueVisible: false,
-      priceLineVisible: false,
-      priceScaleId: 'rsi',
-    });
-    chart.priceScale('rsi').applyOptions({
-      scaleMargins: { top: 0.1, bottom: 0.1 },
-      visible: false,
-    });
+      rsiRef.current = chart.addLineSeries({
+        color: '#6366f1',
+        lineWidth: 1,
+        lastValueVisible: false,
+        priceLineVisible: false,
+        priceScaleId: 'rsi',
+      });
 
-    // MACD pane
-    macdHistRef.current = chart.addHistogramSeries({
-      priceScaleId: 'macd',
-      lastValueVisible: false,
-      priceLineVisible: false,
-    });
-    macdDifRef.current = chart.addLineSeries({ color: '#ff7f0e', lineWidth: 1, priceScaleId: 'macd', lastValueVisible: false, priceLineVisible: false });
-    macdDeaRef.current = chart.addLineSeries({ color: '#1f77b4', lineWidth: 1, priceScaleId: 'macd', lastValueVisible: false, priceLineVisible: false });
-    chart.priceScale('macd').applyOptions({
-      scaleMargins: { top: 0.2, bottom: 0.2 },
-      visible: false,
-    });
+      macdHistRef.current = chart.addHistogramSeries({
+        priceScaleId: 'macd',
+        lastValueVisible: false,
+        priceLineVisible: false,
+      });
+      macdDifRef.current = chart.addLineSeries({ color: '#eab308', lineWidth: 1, priceScaleId: 'macd', lastValueVisible: false, priceLineVisible: false });
+      macdDeaRef.current = chart.addLineSeries({ color: '#6366f1', lineWidth: 1, priceScaleId: 'macd', lastValueVisible: false, priceLineVisible: false });
 
-    const handleResize = () => {
-      if (chartContainerRef.current) {
-        chart.applyOptions({ width: chartContainerRef.current.clientWidth });
-      }
-    };
-    window.addEventListener('resize', handleResize);
+      const handleResize = () => {
+        if (chartContainerRef.current) {
+          chart.applyOptions({ width: chartContainerRef.current.clientWidth });
+        }
+      };
+      window.addEventListener('resize', handleResize);
 
-    return () => {
-      window.removeEventListener('resize', handleResize);
-      chart.remove();
-    };
+      const handleDoubleClick = () => {
+        chart.timeScale().fitContent();
+      };
+      chartContainerRef.current?.addEventListener('dblclick', handleDoubleClick);
+
+      return () => {
+        window.removeEventListener('resize', handleResize);
+        chartContainerRef.current?.removeEventListener('dblclick', handleDoubleClick);
+        chart.remove();
+      };
+    } catch (e: any) {
+      setInitError(e?.message || String(e));
+    }
   }, [containerHeight]);
 
-  // Update data when props change
+  // Update data
   useEffect(() => {
     if (!data.length || !candlestickRef.current || !volumeRef.current) return;
 
-    const times = data.map((d) => d.trade_date.replace(/-/g, '/') as Time);
+    try {
+      const validData = data.filter(
+        (d) => d.trade_date && d.open != null && d.high != null && d.low != null && d.close != null
+      );
+      if (!validData.length) return;
 
-    const candleData: CandlestickData[] = data.map((d) => ({
-      time: d.trade_date.replace(/-/g, '/') as Time,
-      open: d.open,
-      high: d.high,
-      low: d.low,
-      close: d.close,
-    }));
+      const toTime = (d: { trade_date: string }) => d.trade_date as Time;
+      const times = validData.map(toTime);
 
-    const volumeData: HistogramData[] = data.map((d) => ({
-      time: d.trade_date.replace(/-/g, '/') as Time,
-      value: d.volume,
-      color: d.close >= d.open ? '#cf1322' : '#3f8600',
-    }));
-
-    candlestickRef.current.setData(candleData);
-    volumeRef.current.setData(volumeData);
-
-    // MA overlays
-    const ma5Data = calcSMA(data, 5);
-    const ma10Data = calcSMA(data, 10);
-    const ma20Data = calcSMA(data, 20);
-    const ma60Data = calcSMA(data, 60);
-
-    const toLineData = (values: (number | null)[]): LineData[] =>
-      values
-        .map((v, i) => (v !== null ? { time: times[i], value: v } : null))
-        .filter((d): d is LineData => d !== null);
-
-    if (overlays.ma5) ma5Ref.current?.setData(toLineData(ma5Data));
-    else ma5Ref.current?.setData([]);
-
-    if (overlays.ma10) ma10Ref.current?.setData(toLineData(ma10Data));
-    else ma10Ref.current?.setData([]);
-
-    if (overlays.ma20) ma20Ref.current?.setData(toLineData(ma20Data));
-    else ma20Ref.current?.setData([]);
-
-    if (overlays.ma60) ma60Ref.current?.setData(toLineData(ma60Data));
-    else ma60Ref.current?.setData([]);
-
-    // Bollinger Bands
-    if (overlays.bb) {
-      const bb = calcBB(data, 20, 2);
-      bbUpperRef.current?.setData(toLineData(bb.upper));
-      bbLowerRef.current?.setData(toLineData(bb.lower));
-    } else {
-      bbUpperRef.current?.setData([]);
-      bbLowerRef.current?.setData([]);
-    }
-
-    // RSI
-    if (overlays.rsi) {
-      const rsiData = calcRSI(data, 14);
-      rsiRef.current?.setData(toLineData(rsiData));
-      chartRef.current?.priceScale('rsi').applyOptions({ visible: true });
-    } else {
-      rsiRef.current?.setData([]);
-      chartRef.current?.priceScale('rsi').applyOptions({ visible: false });
-    }
-
-    // MACD
-    if (overlays.macd) {
-      const macd = calcMACD(data, 12, 26, 9);
-      const histData: HistogramData[] = macd.hist.map((v, i) => ({
-        time: times[i],
-        value: v,
-        color: v >= 0 ? '#cf1322' : '#3f8600',
+      const candleData: CandlestickData[] = validData.map((d) => ({
+        time: toTime(d),
+        open: d.open,
+        high: d.high,
+        low: d.low,
+        close: d.close,
       }));
-      macdHistRef.current?.setData(histData);
-      macdDifRef.current?.setData(toLineData(macd.dif));
-      macdDeaRef.current?.setData(toLineData(macd.dea));
-      chartRef.current?.priceScale('macd').applyOptions({ visible: true });
-    } else {
-      macdHistRef.current?.setData([]);
-      macdDifRef.current?.setData([]);
-      macdDeaRef.current?.setData([]);
-      chartRef.current?.priceScale('macd').applyOptions({ visible: false });
-    }
 
-    chartRef.current?.timeScale().fitContent();
+      const volumeData: HistogramData[] = validData.map((d) => ({
+        time: toTime(d),
+        value: d.volume ?? 0,
+        color: d.close >= d.open ? '#ef4444' : '#22c55e',
+      }));
+
+      candlestickRef.current.setData(candleData);
+      volumeRef.current.setData(volumeData);
+
+      const ma5Data = calcSMA(validData, 5);
+      const ma10Data = calcSMA(validData, 10);
+      const ma20Data = calcSMA(validData, 20);
+      const ma60Data = calcSMA(validData, 60);
+
+      const toLineData = (values: (number | null)[]): LineData[] =>
+        values
+          .map((v, i) => (v !== null ? { time: times[i], value: v } : null))
+          .filter((d): d is LineData => d !== null);
+
+      if (overlays.ma5) ma5Ref.current?.setData(toLineData(ma5Data));
+      else ma5Ref.current?.setData([]);
+
+      if (overlays.ma10) ma10Ref.current?.setData(toLineData(ma10Data));
+      else ma10Ref.current?.setData([]);
+
+      if (overlays.ma20) ma20Ref.current?.setData(toLineData(ma20Data));
+      else ma20Ref.current?.setData([]);
+
+      if (overlays.ma60) ma60Ref.current?.setData(toLineData(ma60Data));
+      else ma60Ref.current?.setData([]);
+
+      if (overlays.bb) {
+        const bb = calcBB(validData, 20, 2);
+        bbUpperRef.current?.setData(toLineData(bb.upper));
+        bbLowerRef.current?.setData(toLineData(bb.lower));
+      } else {
+        bbUpperRef.current?.setData([]);
+        bbLowerRef.current?.setData([]);
+      }
+
+      if (overlays.rsi) {
+        const rsiData = calcRSI(validData, 14);
+        rsiRef.current?.setData(toLineData(rsiData));
+        chartRef.current?.priceScale('rsi').applyOptions({ visible: true });
+      } else {
+        rsiRef.current?.setData([]);
+        chartRef.current?.priceScale('rsi').applyOptions({ visible: false });
+      }
+
+      if (overlays.macd) {
+        const macd = calcMACD(validData, 12, 26, 9);
+        const histData: HistogramData[] = macd.hist.map((v, i) => ({
+          time: times[i],
+          value: v,
+          color: v >= 0 ? '#ef4444' : '#22c55e',
+        }));
+        macdHistRef.current?.setData(histData);
+        macdDifRef.current?.setData(toLineData(macd.dif));
+        macdDeaRef.current?.setData(toLineData(macd.dea));
+        chartRef.current?.priceScale('macd').applyOptions({ visible: true });
+      } else {
+        macdHistRef.current?.setData([]);
+        macdDifRef.current?.setData([]);
+        macdDeaRef.current?.setData([]);
+        chartRef.current?.priceScale('macd').applyOptions({ visible: false });
+      }
+
+      chartRef.current?.timeScale().fitContent();
+    } catch (e: any) {
+      setDataError(e?.message || String(e));
+    }
   }, [data, overlays]);
+
+  if (initError) {
+    return (
+      <div style={{ padding: 20, color: '#ef4444', background: 'rgba(239,68,68,0.1)', borderRadius: 8 }}>
+        <strong>图表初始化错误:</strong> {initError}
+      </div>
+    );
+  }
+
+  if (dataError) {
+    return (
+      <div style={{ padding: 20, color: '#ef4444', background: 'rgba(239,68,68,0.1)', borderRadius: 8 }}>
+        <strong>数据渲染错误:</strong> {dataError}
+      </div>
+    );
+  }
 
   return <div ref={chartContainerRef} style={{ width: '100%', height: containerHeight }} />;
 }

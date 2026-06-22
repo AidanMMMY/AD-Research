@@ -13,6 +13,7 @@ interface ScoreRadarProps {
 
 export default function ScoreRadar({ data }: ScoreRadarProps) {
   const option: EChartsOption = {
+    backgroundColor: 'transparent',
     radar: {
       indicator: [
         { name: '收益能力', max: 100 },
@@ -22,6 +23,24 @@ export default function ScoreRadar({ data }: ScoreRadarProps) {
         { name: '趋势强度', max: 100 },
       ],
       radius: '65%',
+      axisName: {
+        color: '#94a3b8',
+      },
+      splitArea: {
+        areaStyle: {
+          color: ['rgba(99,102,241,0.05)', 'rgba(99,102,241,0.1)', 'rgba(99,102,241,0.05)', 'rgba(99,102,241,0.1)'],
+        },
+      },
+      splitLine: {
+        lineStyle: {
+          color: 'rgba(255,255,255,0.06)',
+        },
+      },
+      axisLine: {
+        lineStyle: {
+          color: 'rgba(255,255,255,0.06)',
+        },
+      },
     },
     series: [{
       type: 'radar',
@@ -34,10 +53,17 @@ export default function ScoreRadar({ data }: ScoreRadarProps) {
           data.score_trend,
         ],
         name: '评分',
-        areaStyle: { opacity: 0.3 },
+        areaStyle: { opacity: 0.3, color: '#6366f1' },
+        lineStyle: { color: '#6366f1', width: 2 },
+        itemStyle: { color: '#6366f1' },
       }],
     }],
-    tooltip: { trigger: 'item' },
+    tooltip: {
+      trigger: 'item',
+      backgroundColor: '#0f1729',
+      borderColor: 'rgba(255,255,255,0.08)',
+      textStyle: { color: '#f1f5f9' },
+    },
   };
 
   return <ReactECharts option={option} style={{ height: 300 }} />;

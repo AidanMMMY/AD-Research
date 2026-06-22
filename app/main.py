@@ -4,12 +4,31 @@ from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
+from app.api.v1 import (
+    analysis,
+    attribution,
+    auth,
+    backtests,
+    etf_scanner,
+    etfs,
+    etl,
+    favorites,
+    indicators,
+    market_data,
+    notifications,
+    pools,
+    reports,
+    scoring,
+    screening,
+    sector_rotation,
+    signals,
+    stats,
+    strategies,
+)
 from app.config import get_settings
 from app.core.scheduler import init_scheduler, shutdown_scheduler
-from app.api.v1 import auth, etfs, pools, market_data, indicators, analysis, etl, scoring, screening, reports, stats, sector_rotation, etf_scanner, notifications, strategies, backtests, signals, attribution
 
 settings = get_settings()
 
@@ -82,6 +101,9 @@ app.include_router(
 )
 app.include_router(
     attribution.router, prefix=f"{settings.api_v1_prefix}/analysis", tags=["Analysis"]
+)
+app.include_router(
+    favorites.router, prefix=f"{settings.api_v1_prefix}/favorites", tags=["Favorites"]
 )
 
 # Serve frontend static files

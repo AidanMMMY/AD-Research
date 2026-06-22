@@ -4,11 +4,11 @@ Provides queries for latest, historical, and batch technical indicators.
 """
 
 from datetime import date
-from typing import List, Optional
 
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
+from app.core.cache import cache_get, cache_set
 from app.models.etf import ETFIndicator
 from app.schemas.indicators import IndicatorBatchResponse, IndicatorResponse
 
@@ -19,7 +19,7 @@ class IndicatorService:
     def __init__(self, db: Session):
         self.db = db
 
-    def get_latest(self, code: str) -> Optional[IndicatorResponse]:
+    def get_latest(self, code: str) -> IndicatorResponse | None:
         """Get the latest technical indicators for an ETF.
 
         Args:
@@ -28,20 +28,27 @@ class IndicatorService:
         Returns:
             IndicatorResponse or None if no data.
         """
+        cache_key = f"indicator:latest:{code}"
+        cached = cache_get(cache_key)
+        if cached is not None:
+            return IndicatorResponse(**cached) if cached else None
+
         indicator = (
             self.db.query(ETFIndicator)
             .filter(ETFIndicator.etf_code == code)
             .order_by(ETFIndicator.trade_date.desc())
             .first()
         )
-        return self._to_response(indicator) if indicator else None
+        response = self._to_response(indicator) if indicator else None
+        cache_set(cache_key, response.model_dump() if response else None, ttl=300)
+        return response
 
     def get_history(
         self,
         code: str,
-        start: Optional[date] = None,
-        end: Optional[date] = None,
-    ) -> List[IndicatorResponse]:
+        start: date | None = None,
+        end: date | None = None,
+    ) -> list[IndicatorResponse]:
         """Get historical technical indicators for an ETF.
 
         Args:
@@ -52,6 +59,11 @@ class IndicatorService:
         Returns:
             List of IndicatorResponse.
         """
+        cache_key = f"indicator:history:{code}:{start}:{end}"
+        cached = cache_get(cache_key)
+        if cached is not None:
+            return [IndicatorResponse(**item) for item in cached]
+
         query = self.db.query(ETFIndicator).filter(
             ETFIndicator.etf_code == code
         )
@@ -62,10 +74,12 @@ class IndicatorService:
             query = query.filter(ETFIndicator.trade_date <= end)
 
         indicators = query.order_by(ETFIndicator.trade_date.asc()).all()
-        return [self._to_response(ind) for ind in indicators]
+        response = [self._to_response(ind) for ind in indicators]
+        cache_set(cache_key, [item.model_dump() for item in response], ttl=300)
+        return response
 
     def get_batch(
-        self, codes: List[str], fields: Optional[List[str]] = None
+        self, codes: list[str], fields: list[str] | None = None
     ) -> IndicatorBatchResponse:
         """Get the latest indicators for a batch of ETF codes.
 
@@ -77,6 +91,11 @@ class IndicatorService:
         Returns:
             IndicatorBatchResponse.
         """
+        cache_key = f"indicator:batch:{','.join(sorted(codes))}:{','.join(sorted(fields)) if fields else 'all'}"
+        cached = cache_get(cache_key)
+        if cached is not None:
+            return IndicatorBatchResponse(**cached)
+
         if not codes:
             return IndicatorBatchResponse(items=[], count=0)
 
@@ -116,7 +135,9 @@ class IndicatorService:
                 for item in items
             ]
 
-        return IndicatorBatchResponse(items=items, count=len(items))
+        response = IndicatorBatchResponse(items=items, count=len(items))
+        cache_set(cache_key, response.model_dump(), ttl=300)
+        return response
 
     @staticmethod
     def _to_response(indicator: ETFIndicator) -> IndicatorResponse:

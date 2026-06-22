@@ -15,6 +15,7 @@ from sqlalchemy import (
     Integer,
     String,
     Text,
+    UniqueConstraint,
     func,
 )
 
@@ -163,4 +164,11 @@ class Signal(Base):
         DateTime(timezone=True),
         server_default=func.now(),
         comment="Creation time",
+    )
+
+    __table_args__ = (
+        UniqueConstraint(
+            "strategy_id", "etf_code", "trade_date",
+            name="uq_signal_strategy_etf_date",
+        ),
     )

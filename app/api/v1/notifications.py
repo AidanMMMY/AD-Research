@@ -1,6 +1,5 @@
 """Notification API routes."""
 
-from typing import Any, Dict, List
 
 from fastapi import APIRouter, Depends, HTTPException
 
@@ -17,7 +16,7 @@ from app.services.notification_service import NotificationService
 router = APIRouter()
 
 
-@router.get("/configs", response_model=List[NotificationConfigResponse])
+@router.get("/configs", response_model=list[NotificationConfigResponse])
 def list_configs(
     service: NotificationService = Depends(get_notification_service),
 ):

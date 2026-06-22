@@ -1,19 +1,13 @@
 import { useParams } from 'react-router-dom';
-import { Card, Row, Col, Statistic, Table, Spin } from 'antd';
-import { useQuery } from '@tanstack/react-query';
+import { Row, Col, Statistic, Table, Spin } from 'antd';
+import GlassCard from '@/components/GlassCard';
+import { useBacktestDetail } from '@/hooks/useBacktests';
 import ReactECharts from 'echarts-for-react';
 import type { EChartsOption } from 'echarts';
 
 export default function BacktestDetail() {
   const { id } = useParams<{ id: string }>();
-
-  const { data, isLoading } = useQuery({
-    queryKey: ['backtest', id],
-    queryFn: async () => {
-      const res = await fetch(`/api/v1/backtests/${id}`);
-      return res.json();
-    },
-  });
+  const { data, isLoading } = useBacktestDetail(id || '');
 
   if (isLoading) return <Spin size="large" style={{ display: 'block', margin: '100px auto' }} />;
   if (!data) return <div>回测未找到</div>;
@@ -42,28 +36,28 @@ export default function BacktestDetail() {
     {
       title: '收益',
       dataIndex: 'pnl_pct',
-      render: (v: number) => <span style={{ color: v >= 0 ? '#cf1322' : '#3f8600' }}>{v}%</span>,
+      render: (v: number) => <span style={{ color: v >= 0 ? '#ef4444' : '#22c55e' }}>{v}%</span>,
     },
   ];
 
   return (
     <div>
-      <Card title={`回测详情 #${data.id}`} style={{ marginBottom: 16 }}>
+      <GlassCard title={`回测详情 #${data.id}`} style={{ marginBottom: 16 }}>
         <Row gutter={[16, 16]}>
-          <Col xs={12} sm={8}><Card><Statistic title="总收益" value={metrics.total_return} suffix="%" precision={2} /></Card></Col>
-          <Col xs={12} sm={8}><Card><Statistic title="年化收益" value={metrics.annualized_return} suffix="%" precision={2} /></Card></Col>
-          <Col xs={12} sm={8}><Card><Statistic title="最大回撤" value={metrics.max_drawdown} suffix="%" precision={2} /></Card></Col>
-          <Col xs={12} sm={8}><Card><Statistic title="夏普比率" value={metrics.sharpe_ratio} precision={2} /></Card></Col>
-          <Col xs={12} sm={8}><Card><Statistic title="胜率" value={metrics.win_rate} suffix="%" precision={2} /></Card></Col>
-          <Col xs={12} sm={8}><Card><Statistic title="交易次数" value={metrics.trade_count} /></Card></Col>
+          <Col xs={12} sm={8}><GlassCard padding="sm"><Statistic title="总收益" value={metrics.total_return} suffix="%" precision={2} /></GlassCard></Col>
+          <Col xs={12} sm={8}><GlassCard padding="sm"><Statistic title="年化收益" value={metrics.annualized_return} suffix="%" precision={2} /></GlassCard></Col>
+          <Col xs={12} sm={8}><GlassCard padding="sm"><Statistic title="最大回撤" value={metrics.max_drawdown} suffix="%" precision={2} /></GlassCard></Col>
+          <Col xs={12} sm={8}><GlassCard padding="sm"><Statistic title="夏普比率" value={metrics.sharpe_ratio} precision={2} /></GlassCard></Col>
+          <Col xs={12} sm={8}><GlassCard padding="sm"><Statistic title="胜率" value={metrics.win_rate} suffix="%" precision={2} /></GlassCard></Col>
+          <Col xs={12} sm={8}><GlassCard padding="sm"><Statistic title="交易次数" value={metrics.trade_count} /></GlassCard></Col>
         </Row>
-      </Card>
+      </GlassCard>
 
-      <Card title="净值曲线" style={{ marginBottom: 16 }}>
+      <GlassCard title="净值曲线" style={{ marginBottom: 16 }}>
         <ReactECharts option={navOption} style={{ height: 320 }} />
-      </Card>
+      </GlassCard>
 
-      <Card title="交易记录">
+      <GlassCard title="交易记录">
         <Table
           dataSource={data.trades || []}
           columns={tradeColumns}
@@ -71,7 +65,7 @@ export default function BacktestDetail() {
           size="small"
           pagination={{ pageSize: 10 }}
         />
-      </Card>
+      </GlassCard>
     </div>
   );
 }

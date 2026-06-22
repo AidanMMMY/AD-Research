@@ -7,9 +7,10 @@ upserts them into the ``etf_daily_bar`` table.
 from datetime import date, timedelta
 
 import pandas as pd
-from sqlalchemy.orm import Session
 from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy.orm import Session
 
+from app.core.cache import cache_invalidate_pattern
 from app.data.pipelines.base import ETLPipeline
 from app.data.providers.akshare_provider import AkshareProvider
 from app.models.etf import ETFDailyBar, ETFInfo
@@ -20,16 +21,22 @@ class AShareETLPipeline(ETLPipeline):
 
     job_name = "a_share_daily_etl"
 
-    def __init__(self, db: Session) -> None:
-        provider = AkshareProvider()
+    def __init__(self, db: Session, target_date: date | None = None, prefer_sina: bool = False) -> None:
+        provider = AkshareProvider(prefer_sina=prefer_sina)
         super().__init__(provider=provider, db=db)
+        self.target_date = target_date
+        self.prefer_sina = prefer_sina
 
     def extract(self) -> pd.DataFrame:
-        """Fetch yesterday's daily bars for active A-share ETFs."""
+        """Fetch daily bars for active A-share ETFs.
+
+        By default fetches yesterday's bars. If ``target_date`` is provided,
+        fetches bars for that date instead (used for backfilling missed runs).
+        """
         # 1. Query active A-share ETFs from DB
         etfs = (
             self.db.query(ETFInfo)
-            .filter(ETFInfo.market == "china_a")
+            .filter(ETFInfo.market == "A股")
             .filter(ETFInfo.status == "active")
             .all()
         )
@@ -38,21 +45,22 @@ class AShareETLPipeline(ETLPipeline):
             return pd.DataFrame()
 
         codes = [etf.code for etf in etfs]
+        self._expected_codes = codes
 
-        # 2. Determine yesterday's trade date
-        yesterday = date.today() - timedelta(days=1)
+        # 2. Determine target trade date
+        target_date = self.target_date or (date.today() - timedelta(days=1))
 
         # 3. Fetch daily bars (fetch a small window to cover weekends/holidays)
-        start_date = yesterday - timedelta(days=7)
-        end_date = yesterday
+        start_date = target_date - timedelta(days=7)
+        end_date = target_date
 
         df = self.provider.fetch_daily_bars(codes, start_date, end_date)
 
         if df.empty:
             return df
 
-        # 4. Keep only yesterday's data
-        df = df[df["trade_date"] == yesterday].copy()
+        # 4. Keep only target date's data
+        df = df[df["trade_date"] == target_date].copy()
 
         return df
 
@@ -108,5 +116,13 @@ class AShareETLPipeline(ETLPipeline):
 
         self.db.execute(stmt)
         self.db.commit()
+
+        # Invalidate caches that depend on daily bar data
+        try:
+            cache_invalidate_pattern("indicator:*")
+            cache_invalidate_pattern("screen:*")
+            cache_invalidate_pattern("etf:list:*")
+        except Exception:
+            pass
 
         return len(records)

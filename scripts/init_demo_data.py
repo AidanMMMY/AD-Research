@@ -20,8 +20,8 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from app.config import get_settings
-from app.models.etf import ETFInfo, ETFIndicator
-from app.models.scoring import ScoreTemplate, ETFScore
+from app.models.etf import ETFIndicator, ETFInfo
+from app.models.scoring import ETFScore, ScoreTemplate
 from app.services.scoring_service import ScoringService
 
 
@@ -34,7 +34,7 @@ def generate_mock_indicators(db, trade_date: date):
     batch_size = 500
     count = 0
 
-    for i, (etf_code,) in enumerate(etfs):
+    for _i, (etf_code,) in enumerate(etfs):
         # Generate realistic random values
         base_price = random.uniform(0.5, 5.0)
         indicators = ETFIndicator(
@@ -151,8 +151,8 @@ def calculate_scores(db):
 def main():
     settings = get_settings()
     engine = create_engine(settings.database_url)
-    Session = sessionmaker(bind=engine)
-    db = Session()
+    session_maker = sessionmaker(bind=engine)
+    db = session_maker()
 
     try:
         # 1. Generate mock indicators
@@ -170,7 +170,7 @@ def main():
         create_default_templates(db)
 
         # 3. Calculate scores
-        score_count = calculate_scores(db)
+        calculate_scores(db)
 
         print("\n=== Demo data initialization complete ===")
         print(f"Indicators: {db.query(ETFIndicator).count()}")

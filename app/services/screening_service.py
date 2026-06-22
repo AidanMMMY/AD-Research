@@ -4,12 +4,13 @@ Provides multi-condition ETF screening with dynamic filtering, sorting,
 and preset configurations for common screening patterns.
 """
 
-from typing import Any, Dict, List, Optional
+from typing import Any
 
-from sqlalchemy import func, desc, asc
-from sqlalchemy.orm import Session, aliased
+from sqlalchemy import asc, desc, func
+from sqlalchemy.orm import Session
 
-from app.models.etf import ETFInfo, ETFIndicator
+from app.core.cache import cache_get, cache_set
+from app.models.etf import ETFIndicator, ETFInfo
 from app.models.scoring import ETFScore
 
 
@@ -17,7 +18,7 @@ class ScreeningService:
     """Service for ETF screening and ranking operations."""
 
     # Preset screening configurations
-    PRESETS: Dict[str, Dict[str, Any]] = {
+    PRESETS: dict[str, dict[str, Any]] = {
         "high_sharpe_low_vol": {
             "name": "高夏普低波动",
             "description": "夏普比率大于1.0，波动率低于20%，追求风险调整后收益",
@@ -44,6 +45,7 @@ class ScreeningService:
             "description": "1年回撤大于15%，但夏普比率大于0.5，寻找反弹机会",
             "filters": {
                 "sharpe_min": 0.5,
+                "max_drawdown_1y_min": -15.0,
             },
             "sort_by": "return_1y",
             "sort_order": "asc",
@@ -83,28 +85,30 @@ class ScreeningService:
 
     def screen(
         self,
-        market: Optional[str] = None,
-        category: Optional[str] = None,
-        rsi_min: Optional[float] = None,
-        rsi_max: Optional[float] = None,
-        sharpe_min: Optional[float] = None,
-        sharpe_max: Optional[float] = None,
-        volatility_min: Optional[float] = None,
-        volatility_max: Optional[float] = None,
-        return_1m_min: Optional[float] = None,
-        return_1m_max: Optional[float] = None,
-        return_3m_min: Optional[float] = None,
-        return_3m_max: Optional[float] = None,
-        return_1y_min: Optional[float] = None,
-        return_1y_max: Optional[float] = None,
-        score_min: Optional[float] = None,
-        score_max: Optional[float] = None,
-        template_id: Optional[int] = None,
+        market: str | None = None,
+        category: str | None = None,
+        rsi_min: float | None = None,
+        rsi_max: float | None = None,
+        sharpe_min: float | None = None,
+        sharpe_max: float | None = None,
+        volatility_min: float | None = None,
+        volatility_max: float | None = None,
+        return_1m_min: float | None = None,
+        return_1m_max: float | None = None,
+        return_3m_min: float | None = None,
+        return_3m_max: float | None = None,
+        return_1y_min: float | None = None,
+        return_1y_max: float | None = None,
+        max_drawdown_1y_min: float | None = None,
+        max_drawdown_1y_max: float | None = None,
+        score_min: float | None = None,
+        score_max: float | None = None,
+        template_id: int | None = None,
         sort_by: str = "composite_score",
         sort_order: str = "desc",
         offset: int = 0,
         limit: int = 50,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Screen ETFs with multiple conditions using latest indicators per ETF.
 
         Uses a subquery to get the most recent indicator record for each ETF,
@@ -119,6 +123,7 @@ class ScreeningService:
             return_1m_min/max: 1-month return range filter.
             return_3m_min/max: 3-month return range filter.
             return_1y_min/max: 1-year return range filter.
+            max_drawdown_1y_min/max: 1-year max drawdown range filter.
             score_min/max: Composite score range filter.
             template_id: Filter by score template (for score-based sorting).
             sort_by: Field to sort by (see SORT_FIELD_MAP).
@@ -129,6 +134,17 @@ class ScreeningService:
         Returns:
             Dict with items (list of result dicts), count, offset, limit.
         """
+        cache_key = (
+            f"screen:{market}:{category}:{rsi_min}:{rsi_max}:{sharpe_min}:{sharpe_max}:"
+            f"{volatility_min}:{volatility_max}:{return_1m_min}:{return_1m_max}:"
+            f"{return_3m_min}:{return_3m_max}:{return_1y_min}:{return_1y_max}:"
+            f"{max_drawdown_1y_min}:{max_drawdown_1y_max}:"
+            f"{score_min}:{score_max}:{template_id}:{sort_by}:{sort_order}:{offset}:{limit}"
+        )
+        cached = cache_get(cache_key)
+        if cached is not None:
+            return cached
+
         # Subquery: get the latest indicator per ETF
         latest_ind_subq = (
             self.db.query(
@@ -150,6 +166,14 @@ class ScreeningService:
             (ETFInfo.code == ETFIndicator.etf_code)
             & (ETFIndicator.trade_date == latest_ind_subq.c.latest_date),
         )
+
+        # Auto-use default template (id=2) when sorting by score fields
+        default_template_id = 2
+        if template_id is None and sort_by in self.SORT_FIELD_MAP and self.SORT_FIELD_MAP.get(sort_by) in {
+            "composite_score", "score_return", "score_risk", "score_sharpe",
+            "score_liquidity", "score_trend", "rank_overall", "rank_category",
+        }:
+            template_id = default_template_id
 
         # Optional: join with ETFScore for score-based filtering/sorting
         score_joined = False
@@ -208,6 +232,10 @@ class ScreeningService:
             query = query.filter(ETFIndicator.return_1y >= return_1y_min)
         if return_1y_max is not None:
             query = query.filter(ETFIndicator.return_1y <= return_1y_max)
+        if max_drawdown_1y_min is not None:
+            query = query.filter(ETFIndicator.max_drawdown_1y >= max_drawdown_1y_min)
+        if max_drawdown_1y_max is not None:
+            query = query.filter(ETFIndicator.max_drawdown_1y <= max_drawdown_1y_max)
 
         # Score filters
         if score_min is not None and score_joined:
@@ -248,6 +276,7 @@ class ScreeningService:
                 "score_return": "return_1y",
                 "score_risk": "volatility_20d",
                 "score_trend": "rsi14",
+                "score_liquidity": "amount",
             }
             fallback = fallback_map.get(sort_col_name, "sharpe_1y")
             sort_col = getattr(ETFIndicator, fallback)
@@ -264,8 +293,8 @@ class ScreeningService:
         items = []
         for info, indicator in results:
             item = {
-                "etf_code": info.code,
-                "etf_name": info.name,
+                "code": info.code,
+                "name": info.name,
                 "market": info.market,
                 "category": info.category,
                 "trade_date": indicator.trade_date.isoformat() if indicator.trade_date else None,
@@ -286,18 +315,32 @@ class ScreeningService:
 
             items.append(item)
 
-        # If score was requested, fetch scores separately for the result set
+        # If score was requested, fetch the latest score per ETF for the result set.
         if score_joined and items:
-            codes = [item["etf_code"] for item in items]
+            codes = [item["code"] for item in items]
+            latest_score_subq = (
+                self.db.query(
+                    ETFScore.etf_code,
+                    func.max(ETFScore.trade_date).label("latest_score_date"),
+                )
+                .filter(ETFScore.etf_code.in_(codes))
+                .filter(ETFScore.template_id == template_id)
+                .group_by(ETFScore.etf_code)
+                .subquery()
+            )
             scores = (
                 self.db.query(ETFScore)
-                .filter(ETFScore.etf_code.in_(codes))
+                .join(
+                    latest_score_subq,
+                    (ETFScore.etf_code == latest_score_subq.c.etf_code)
+                    & (ETFScore.trade_date == latest_score_subq.c.latest_score_date),
+                )
                 .filter(ETFScore.template_id == template_id)
                 .all()
             )
             score_map = {s.etf_code: s for s in scores}
             for item in items:
-                score = score_map.get(item["etf_code"])
+                score = score_map.get(item["code"])
                 if score:
                     item["composite_score"] = float(score.composite_score) if score.composite_score is not None else None
                     item["score_return"] = float(score.score_return) if score.score_return is not None else None
@@ -317,19 +360,21 @@ class ScreeningService:
                     item["rank_overall"] = None
                     item["rank_category"] = None
 
-        return {
+        result = {
             "items": items,
             "count": count,
             "offset": offset,
             "limit": limit,
         }
+        cache_set(cache_key, result, ttl=300)
+        return result
 
     def screen_by_preset(
         self,
         preset_key: str,
         offset: int = 0,
         limit: int = 50,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Screen ETFs using a preset configuration.
 
         Args:
@@ -365,13 +410,18 @@ class ScreeningService:
         }
         return result
 
-    def get_presets(self) -> List[Dict[str, Any]]:
+    def get_presets(self) -> list[dict[str, Any]]:
         """Return list of available screening presets.
 
         Returns:
             List of preset dicts with key, name, description, filters, sort config.
         """
-        return [
+        cache_key = "screen:presets"
+        cached = cache_get(cache_key)
+        if cached is not None:
+            return cached
+
+        presets = [
             {
                 "key": key,
                 "name": preset["name"],
@@ -382,13 +432,20 @@ class ScreeningService:
             }
             for key, preset in self.PRESETS.items()
         ]
+        cache_set(cache_key, presets, ttl=600)
+        return presets
 
-    def get_categories(self) -> List[Dict[str, Any]]:
+    def get_categories(self) -> list[dict[str, Any]]:
         """Return ETF categories with ETF counts.
 
         Returns:
             List of dicts with category name and count of active ETFs.
         """
+        cache_key = "screen:categories"
+        cached = cache_get(cache_key)
+        if cached is not None:
+            return cached
+
         results = (
             self.db.query(
                 ETFInfo.category,
@@ -400,10 +457,12 @@ class ScreeningService:
             .all()
         )
 
-        return [
+        categories = [
             {
                 "category": cat or "未分类",
                 "count": count,
             }
             for cat, count in results
         ]
+        cache_set(cache_key, categories, ttl=600)
+        return categories

@@ -1,11 +1,10 @@
 from datetime import date
-from typing import List
 
 import pandas as pd
 import yfinance as yf
 
-from app.data.providers.base import DataProvider, ETFInfo, MarketHours
 from app.core.exceptions import DataProviderError
+from app.data.providers.base import DataProvider, ETFInfo, MarketHours
 
 
 class YFinanceProvider(DataProvider):
@@ -56,12 +55,12 @@ class YFinanceProvider(DataProvider):
         # Fallback: return as-is
         return code
 
-    def fetch_etf_list(self) -> List[ETFInfo]:
+    def fetch_etf_list(self) -> list[ETFInfo]:
         """yfinance does not provide a list interface; return empty list."""
         return []
 
     def fetch_daily_bars(
-        self, codes: List[str], start_date: date, end_date: date
+        self, codes: list[str], start_date: date, end_date: date
     ) -> pd.DataFrame:
         """Fetch daily OHLCV bars for the given ETF codes.
 
@@ -125,7 +124,7 @@ class YFinanceProvider(DataProvider):
         df["trade_date"] = pd.to_datetime(df["trade_date"]).dt.date
         return df
 
-    def fetch_realtime_quotes(self, codes: List[str]) -> pd.DataFrame:
+    def fetch_realtime_quotes(self, codes: list[str]) -> pd.DataFrame:
         """Fetch latest quotes using yf.download().
 
         Raises DataProviderError on failure.
@@ -151,7 +150,7 @@ class YFinanceProvider(DataProvider):
         # yf.download returns a MultiIndex DataFrame when multiple tickers
         # are requested; normalise to a flat DataFrame.
         rows = []
-        for code, ticker in zip(codes, tickers):
+        for code, ticker in zip(codes, tickers, strict=False):
             try:
                 if len(tickers) == 1:
                     row = data.iloc[-1]
@@ -172,16 +171,35 @@ class YFinanceProvider(DataProvider):
 
         return pd.DataFrame(rows)
 
-    def get_market_hours(self) -> MarketHours:
-        """Return US market hours (Beijing time perspective: 21:30-04:00)."""
+    def get_market_hours(self, code: str | None = None) -> MarketHours:
+        """Return market hours for the given ETF code.
+
+        Infers the market from the code suffix:
+          - .US -> US (NYSE/NASDAQ) 09:30-16:00 America/New_York
+          - .HK -> Hong Kong 09:30-16:00 Asia/Hong_Kong
+          - .JP -> Japan 09:00-15:00 Asia/Tokyo
+          - default -> US
+        """
+        if code and code.endswith(".HK"):
+            return MarketHours(
+                open_time="09:30",
+                close_time="16:00",
+                timezone="Asia/Hong_Kong",
+            )
+        if code and code.endswith(".JP"):
+            return MarketHours(
+                open_time="09:00",
+                close_time="15:00",
+                timezone="Asia/Tokyo",
+            )
         return MarketHours(
-            open_time="21:30",
-            close_time="04:00",
+            open_time="09:30",
+            close_time="16:00",
             timezone="America/New_York",
         )
 
     def fetch_fx_rates(
-        self, pairs: List[str], start_date: date, end_date: date
+        self, pairs: list[str], start_date: date, end_date: date
     ) -> pd.DataFrame:
         """Fetch FX rates (e.g. USDCNY=X, HKDCNY=X, JPYCNY=X).
 

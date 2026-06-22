@@ -3,7 +3,7 @@
 Provides endpoints for correlation analysis, ranking, and ETF screening.
 """
 
-from typing import List, Literal, Optional
+from typing import Literal
 
 from fastapi import APIRouter, Depends, Query
 
@@ -15,7 +15,7 @@ router = APIRouter()
 
 @router.get("/correlation")
 def get_correlation(
-    codes: List[str] = Query(...),
+    codes: list[str] = Query(...),
     window: int = Query(60, ge=10, le=252),
     method: Literal["pearson", "spearman"] = Query("pearson"),
     service: AnalysisService = Depends(get_analysis_service),
@@ -29,7 +29,7 @@ def get_ranking(
     sort_by: str = Query("sharpe_1y"),
     order: Literal["asc", "desc"] = Query("desc"),
     limit: int = Query(20, ge=1, le=100),
-    market: Optional[str] = Query(None),
+    market: str | None = Query(None),
     service: AnalysisService = Depends(get_analysis_service),
 ):
     """Rank ETFs by a specific indicator field."""
@@ -38,12 +38,12 @@ def get_ranking(
 
 @router.get("/screen")
 def get_screen(
-    market: Optional[str] = Query(None),
-    category: Optional[str] = Query(None),
-    rsi_min: Optional[float] = Query(None),
-    rsi_max: Optional[float] = Query(None),
-    sharpe_min: Optional[float] = Query(None),
-    volatility_max: Optional[float] = Query(None),
+    market: str | None = Query(None),
+    category: str | None = Query(None),
+    rsi_min: float | None = Query(None),
+    rsi_max: float | None = Query(None),
+    sharpe_min: float | None = Query(None),
+    volatility_max: float | None = Query(None),
     service: AnalysisService = Depends(get_analysis_service),
 ):
     """Screen ETFs based on indicator criteria."""

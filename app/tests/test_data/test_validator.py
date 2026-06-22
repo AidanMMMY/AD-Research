@@ -1,7 +1,6 @@
 """Tests for the four-layer data validator."""
 
 import pandas as pd
-import pytest
 
 from app.data.transformers.validator import validate_all
 

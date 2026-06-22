@@ -1,9 +1,10 @@
 import { useMemo } from 'react';
-import { Card, Row, Col, Table, Spin, Tag, Statistic, Alert, Space } from 'antd';
+import { Row, Col, Table, Spin, Tag, Statistic, Alert, Space } from 'antd';
 import ReactECharts from 'echarts-for-react';
 import type { EChartsOption } from 'echarts';
 import { useSectorRotation } from '@/hooks/useSectorRotation';
 import ReturnTag from '@/components/ReturnTag';
+import GlassCard from '@/components/GlassCard';
 
 export default function SectorRotation() {
   const { data, isLoading } = useSectorRotation();
@@ -27,7 +28,7 @@ export default function SectorRotation() {
           type: 'bar',
           data: [...sectors].reverse().map((s) => ({
             value: s.return_1m,
-            itemStyle: { color: s.return_1m >= 0 ? '#cf1322' : '#3f8600' },
+            itemStyle: { color: s.return_1m >= 0 ? '#ef4444' : '#22c55e' },
           })),
           label: { show: true, formatter: '{c}%', fontSize: 10 },
         },
@@ -50,7 +51,7 @@ export default function SectorRotation() {
           type: 'bar',
           data: sectors.map((s) => ({
             value: s.relative_strength_1m,
-            itemStyle: { color: s.relative_strength_1m >= 1 ? '#cf1322' : '#3f8600' },
+            itemStyle: { color: s.relative_strength_1m >= 1 ? '#ef4444' : '#22c55e' },
           })),
           markLine: { data: [{ yAxis: 1, label: { formatter: '市场平均' } }] },
         },
@@ -81,7 +82,7 @@ export default function SectorRotation() {
       title: '相对强弱',
       dataIndex: 'relative_strength_1m',
       render: (v: number) => (
-        <Tag color={v >= 1 ? 'red' : 'green'}>{v.toFixed(2)}</Tag>
+        <Tag color={v >= 1 ? '#ef4444' : '#22c55e'}>{v.toFixed(2)}</Tag>
       ),
       width: 100,
     },
@@ -91,38 +92,38 @@ export default function SectorRotation() {
     <div>
       <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
         <Col xs={24} md={8}>
-          <Card>
+          <GlassCard>
             <Statistic
               title="分析日期"
               value={data?.trade_date || '-'}
             />
-          </Card>
+          </GlassCard>
         </Col>
         <Col xs={24} md={8}>
-          <Card>
+          <GlassCard>
             <Statistic
               title="市场平均1月收益"
               value={marketAvg?.return_1m ?? 0}
               precision={2}
               suffix="%"
-              valueStyle={{ color: (marketAvg?.return_1m || 0) >= 0 ? '#cf1322' : '#3f8600' }}
+              valueStyle={{ color: (marketAvg?.return_1m || 0) >= 0 ? '#ef4444' : '#22c55e' }}
             />
-          </Card>
+          </GlassCard>
         </Col>
         <Col xs={24} md={8}>
-          <Card>
+          <GlassCard>
             <Statistic
               title="板块数量"
               value={sectors.length}
             />
-          </Card>
+          </GlassCard>
         </Col>
       </Row>
 
       {signals.length > 0 && (
         <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
           <Col span={24}>
-            <Card title="轮动信号" size="small">
+            <GlassCard title="轮动信号">
               <Space direction="vertical" style={{ width: '100%' }}>
                 {signals.map((signal, idx) => (
                   <Alert
@@ -133,25 +134,25 @@ export default function SectorRotation() {
                   />
                 ))}
               </Space>
-            </Card>
+            </GlassCard>
           </Col>
         </Row>
       )}
 
       <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
         <Col xs={24} lg={12}>
-          <Card title="板块1月收益排名">
+          <GlassCard title="板块1月收益排名">
             {isLoading ? <Spin /> : <ReactECharts option={barOption} style={{ height: 300 }} />}
-          </Card>
+          </GlassCard>
         </Col>
         <Col xs={24} lg={12}>
-          <Card title="板块相对强弱（vs 市场平均）">
+          <GlassCard title="板块相对强弱（vs 市场平均）">
             {isLoading ? <Spin /> : <ReactECharts option={rsOption} style={{ height: 300 }} />}
-          </Card>
+          </GlassCard>
         </Col>
       </Row>
 
-      <Card title="板块详细数据">
+      <GlassCard title="板块详细数据">
         <Table
           dataSource={sectors}
           columns={columns}
@@ -160,7 +161,7 @@ export default function SectorRotation() {
           pagination={false}
           loading={isLoading}
         />
-      </Card>
+      </GlassCard>
     </div>
   );
 }

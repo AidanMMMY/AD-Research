@@ -2,13 +2,20 @@ export interface ETFInfo {
   code: string;
   name: string;
   market: string;
+  exchange?: string;
   category?: string;
   sub_category?: string;
+  manager?: string;
   fund_manager?: string;
   fund_size?: number;
-  tracking_index?: string;
+  underlying_index?: string;
   expense_ratio?: number;
+  currency?: string;
+  is_qdii?: boolean;
+  inception_date?: string;
+  status?: string;
   created_at?: string;
+  updated_at?: string;
 }
 
 export interface ETFListResponse {
@@ -54,17 +61,17 @@ export interface IndicatorData {
   rsi14?: number;
   macd_dif?: number;
   macd_dea?: number;
-  macd_histogram?: number;
-  boll_upper?: number;
-  boll_mid?: number;
-  boll_lower?: number;
+  macd_hist?: number;
+  bb_upper?: number;
+  bb_lower?: number;
   atr14?: number;
   volatility_20d?: number;
+  volatility_60d?: number;
   sharpe_1y?: number;
   max_drawdown_1y?: number;
+  return_1w?: number;
   return_1m?: number;
   return_3m?: number;
   return_6m?: number;
   return_1y?: number;
-  avg_amount_20d?: number;
 }

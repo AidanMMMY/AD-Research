@@ -1,6 +1,5 @@
 """Strategy configuration API routes."""
 
-from typing import Any, Dict, List
 
 from fastapi import APIRouter, Depends, HTTPException
 
@@ -17,7 +16,7 @@ from app.services.strategy_service import StrategyService
 router = APIRouter()
 
 
-@router.get("/templates", response_model=List[StrategyTemplate])
+@router.get("/templates", response_model=list[StrategyTemplate])
 def list_templates(
     service: StrategyService = Depends(get_strategy_service),
 ):

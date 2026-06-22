@@ -4,7 +4,6 @@ Provides endpoints for multi-condition ETF screening, preset-based screening,
 and category enumeration with ETF counts.
 """
 
-from typing import List, Optional
 
 from fastapi import APIRouter, Depends, Query
 
@@ -21,28 +20,30 @@ router = APIRouter()
 
 @router.get("", response_model=ScreenResult)
 def screen_etfs(
-    market: Optional[str] = Query(None, description="Filter by market (e.g. SH, SZ)"),
-    category: Optional[str] = Query(None, description="Filter by ETF category"),
-    rsi_min: Optional[float] = Query(None, ge=0, le=100, description="Minimum RSI14"),
-    rsi_max: Optional[float] = Query(None, ge=0, le=100, description="Maximum RSI14"),
-    sharpe_min: Optional[float] = Query(None, description="Minimum Sharpe ratio (1y)"),
-    sharpe_max: Optional[float] = Query(None, description="Maximum Sharpe ratio (1y)"),
-    volatility_min: Optional[float] = Query(None, ge=0, description="Minimum 20d volatility"),
-    volatility_max: Optional[float] = Query(None, ge=0, description="Maximum 20d volatility"),
-    return_1m_min: Optional[float] = Query(None, description="Minimum 1-month return (%)"),
-    return_1m_max: Optional[float] = Query(None, description="Maximum 1-month return (%)"),
-    return_3m_min: Optional[float] = Query(None, description="Minimum 3-month return (%)"),
-    return_3m_max: Optional[float] = Query(None, description="Maximum 3-month return (%)"),
-    return_1y_min: Optional[float] = Query(None, description="Minimum 1-year return (%)"),
-    return_1y_max: Optional[float] = Query(None, description="Maximum 1-year return (%)"),
-    score_min: Optional[float] = Query(None, ge=0, le=100, description="Minimum composite score"),
-    score_max: Optional[float] = Query(None, ge=0, le=100, description="Maximum composite score"),
-    template_id: Optional[int] = Query(None, description="Score template ID"),
+    market: str | None = Query(None, description="Filter by market (e.g. SH, SZ)"),
+    category: str | None = Query(None, description="Filter by ETF category"),
+    rsi_min: float | None = Query(None, ge=0, le=100, description="Minimum RSI14"),
+    rsi_max: float | None = Query(None, ge=0, le=100, description="Maximum RSI14"),
+    sharpe_min: float | None = Query(None, description="Minimum Sharpe ratio (1y)"),
+    sharpe_max: float | None = Query(None, description="Maximum Sharpe ratio (1y)"),
+    volatility_min: float | None = Query(None, ge=0, description="Minimum 20d volatility"),
+    volatility_max: float | None = Query(None, ge=0, description="Maximum 20d volatility"),
+    return_1m_min: float | None = Query(None, description="Minimum 1-month return (%)"),
+    return_1m_max: float | None = Query(None, description="Maximum 1-month return (%)"),
+    return_3m_min: float | None = Query(None, description="Minimum 3-month return (%)"),
+    return_3m_max: float | None = Query(None, description="Maximum 3-month return (%)"),
+    return_1y_min: float | None = Query(None, description="Minimum 1-year return (%)"),
+    return_1y_max: float | None = Query(None, description="Maximum 1-year return (%)"),
+    max_drawdown_1y_min: float | None = Query(None, description="Minimum 1-year max drawdown (%)"),
+    max_drawdown_1y_max: float | None = Query(None, description="Maximum 1-year max drawdown (%)"),
+    score_min: float | None = Query(None, ge=0, le=100, description="Minimum composite score"),
+    score_max: float | None = Query(None, ge=0, le=100, description="Maximum composite score"),
+    template_id: int | None = Query(None, description="Score template ID"),
     sort_by: str = Query("composite_score", description="Sort field"),
     sort_order: str = Query("desc", description="Sort order: asc or desc"),
     offset: int = Query(0, ge=0, description="Pagination offset"),
     limit: int = Query(50, ge=1, le=500, description="Pagination limit"),
-    preset: Optional[str] = Query(None, description="Use a preset (high_sharpe_low_vol, trend_strong, value_pit, liquidity_sufficient)"),
+    preset: str | None = Query(None, description="Use a preset (high_sharpe_low_vol, trend_strong, value_pit, liquidity_sufficient)"),
     service: ScreeningService = Depends(get_screening_service),
 ):
     """Screen ETFs with multiple filter conditions.
@@ -73,6 +74,8 @@ def screen_etfs(
         return_3m_max=return_3m_max,
         return_1y_min=return_1y_min,
         return_1y_max=return_1y_max,
+        max_drawdown_1y_min=max_drawdown_1y_min,
+        max_drawdown_1y_max=max_drawdown_1y_max,
         score_min=score_min,
         score_max=score_max,
         template_id=template_id,

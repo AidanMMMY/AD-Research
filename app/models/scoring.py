@@ -4,15 +4,15 @@ Contains tables for score templates, ETF composite scores, and report generation
 """
 
 from sqlalchemy import (
+    DECIMAL,
+    JSON,
     Boolean,
     Column,
     Date,
     DateTime,
-    DECIMAL,
     ForeignKey,
     Index,
     Integer,
-    JSON,
     String,
     Text,
     UniqueConstraint,

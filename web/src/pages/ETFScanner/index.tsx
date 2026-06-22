@@ -1,34 +1,21 @@
 import { useState } from 'react';
-import { Card, Table, Button, Tag, Alert, Descriptions, Row, Col } from 'antd';
-import { useQuery } from '@tanstack/react-query';
+import { Table, Button, Tag, Alert, Descriptions, Row, Col } from 'antd';
+import GlassCard from '@/components/GlassCard';
+import { useScanner } from '@/hooks/useScanner';
 import { ReloadOutlined } from '@ant-design/icons';
-
-interface ScanResult {
-  success: boolean;
-  new: { code: string; name: string; market: string }[];
-  delisted: { code: string; name: string; market: string }[];
-  changed: { code: string; changes: Record<string, { old: string; new: string }> }[];
-  scan_date: string;
-  error?: string;
-}
+import type { ScanResult } from '@/types/scanner';
 
 export default function ETFScanner() {
   const [lastScan, setLastScan] = useState<ScanResult | null>(null);
-
-  const { data: logs, isLoading: logsLoading, refetch: refetchLogs } = useQuery({
-    queryKey: ['etf-scan-logs'],
-    queryFn: async () => {
-      const res = await fetch('/api/v1/etfs/scan/logs');
-      return res.json();
-    },
-    staleTime: 60_000,
-  });
+  const { logs, isLoading, scan, isScanning } = useScanner();
 
   const handleScan = async () => {
-    const res = await fetch('/api/v1/etfs/scan', { method: 'POST' });
-    const result = await res.json();
-    setLastScan(result);
-    refetchLogs();
+    try {
+      const result = await scan();
+      setLastScan(result.data);
+    } catch {
+      // error handled by mutation
+    }
   };
 
   const columns = [
@@ -43,26 +30,26 @@ export default function ETFScanner() {
 
   return (
     <div>
-      <Card title="全市场ETF扫描" extra={
-        <Button type="primary" icon={<ReloadOutlined />} onClick={handleScan}>
+      <GlassCard title="全市场ETF扫描" extra={
+        <Button type="primary" icon={<ReloadOutlined />} onClick={handleScan} loading={isScanning}>
           立即扫描
         </Button>
       } style={{ marginBottom: 16 }}>
-        <p style={{ color: '#666' }}>
+        <p style={{ color: '#94a3b8' }}>
           对比 akshare 最新ETF列表与数据库，自动发现新增、退市、变更的ETF。
           定时任务：每周日凌晨 03:00 自动执行。
         </p>
-      </Card>
+      </GlassCard>
 
       {result && (
-        <Card title={`扫描结果 - ${result.scan_date}`} style={{ marginBottom: 16 }}>
+        <GlassCard title={`扫描结果 - ${result.scan_date}`} style={{ marginBottom: 16 }}>
           {result.error ? (
             <Alert type="error" message={result.error} />
           ) : (
             <>
               <Row gutter={[16, 16]}>
                 <Col xs={24} md={8}>
-                  <Card size="small">
+                  <GlassCard padding="sm">
                     <Descriptions title="新增ETF" column={1} size="small">
                       {result.new.length > 0 ? result.new.map((e) => (
                         <Descriptions.Item key={e.code} label={e.code}>
@@ -70,10 +57,10 @@ export default function ETFScanner() {
                         </Descriptions.Item>
                       )) : <Descriptions.Item>无</Descriptions.Item>}
                     </Descriptions>
-                  </Card>
+                  </GlassCard>
                 </Col>
                 <Col xs={24} md={8}>
-                  <Card size="small">
+                  <GlassCard padding="sm">
                     <Descriptions title="退市ETF" column={1} size="small">
                       {result.delisted.length > 0 ? result.delisted.map((e) => (
                         <Descriptions.Item key={e.code} label={e.code}>
@@ -81,10 +68,10 @@ export default function ETFScanner() {
                         </Descriptions.Item>
                       )) : <Descriptions.Item>无</Descriptions.Item>}
                     </Descriptions>
-                  </Card>
+                  </GlassCard>
                 </Col>
                 <Col xs={24} md={8}>
-                  <Card size="small">
+                  <GlassCard padding="sm">
                     <Descriptions title="变更ETF" column={1} size="small">
                       {result.changed.length > 0 ? result.changed.map((e) => (
                         <Descriptions.Item key={e.code} label={e.code}>
@@ -92,24 +79,24 @@ export default function ETFScanner() {
                         </Descriptions.Item>
                       )) : <Descriptions.Item>无</Descriptions.Item>}
                     </Descriptions>
-                  </Card>
+                  </GlassCard>
                 </Col>
               </Row>
             </>
           )}
-        </Card>
+        </GlassCard>
       )}
 
-      <Card title="扫描历史">
+      <GlassCard title="扫描历史">
         <Table
-          dataSource={logs || []}
+          dataSource={logs}
           columns={columns}
           rowKey="id"
           size="small"
           pagination={{ pageSize: 10 }}
-          loading={logsLoading}
+          loading={isLoading}
         />
-      </Card>
+      </GlassCard>
     </div>
   );
 }

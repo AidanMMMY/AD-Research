@@ -1,5 +1,5 @@
 from datetime import date
-from typing import List, Optional
+
 from pydantic import BaseModel
 
 
@@ -7,32 +7,32 @@ class IndicatorResponse(BaseModel):
     etf_code: str
     trade_date: date
     # 移动平均
-    ma5: Optional[float] = None
-    ma10: Optional[float] = None
-    ma20: Optional[float] = None
-    ma60: Optional[float] = None
+    ma5: float | None = None
+    ma10: float | None = None
+    ma20: float | None = None
+    ma60: float | None = None
     # 动量
-    rsi14: Optional[float] = None
-    macd_dif: Optional[float] = None
-    macd_dea: Optional[float] = None
-    macd_hist: Optional[float] = None
+    rsi14: float | None = None
+    macd_dif: float | None = None
+    macd_dea: float | None = None
+    macd_hist: float | None = None
     # 风险
-    volatility_20d: Optional[float] = None
-    volatility_60d: Optional[float] = None
-    max_drawdown_1y: Optional[float] = None
-    sharpe_1y: Optional[float] = None
+    volatility_20d: float | None = None
+    volatility_60d: float | None = None
+    max_drawdown_1y: float | None = None
+    sharpe_1y: float | None = None
     # 收益
-    return_1w: Optional[float] = None
-    return_1m: Optional[float] = None
-    return_3m: Optional[float] = None
-    return_6m: Optional[float] = None
-    return_1y: Optional[float] = None
+    return_1w: float | None = None
+    return_1m: float | None = None
+    return_3m: float | None = None
+    return_6m: float | None = None
+    return_1y: float | None = None
     # 其他
-    atr14: Optional[float] = None
-    bb_upper: Optional[float] = None
-    bb_lower: Optional[float] = None
+    atr14: float | None = None
+    bb_upper: float | None = None
+    bb_lower: float | None = None
 
 
 class IndicatorBatchResponse(BaseModel):
-    items: List[IndicatorResponse]
+    items: list[IndicatorResponse]
     count: int

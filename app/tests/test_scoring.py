@@ -10,10 +10,10 @@ import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from app.models.scoring import ScoreTemplate, ETFScore, ReportMetadata
+from app.core.database import Base
 from app.models.etf import ETFInfo
 from app.models.pool import ETFPools
-from app.core.database import Base
+from app.models.scoring import ETFScore, ReportMetadata, ScoreTemplate
 
 
 @pytest.fixture(scope="module")
@@ -21,8 +21,8 @@ def db_session():
     """Create an in-memory SQLite database session for testing."""
     engine = create_engine("sqlite:///:memory:", echo=False)
     Base.metadata.create_all(engine)
-    Session = sessionmaker(bind=engine)
-    session = Session()
+    session_maker = sessionmaker(bind=engine)
+    session = session_maker()
     yield session
     session.close()
 
@@ -335,7 +335,7 @@ def test_scoring_service_dimension_map():
     assert dm["risk"]["metrics"] == ["volatility_20d", "max_drawdown_1y"]
     assert dm["sharpe"]["metrics"] == ["sharpe_1y"]
     assert dm["liquidity"]["metrics"] == ["amount"]
-    assert dm["trend"]["metrics"] == ["rsi14"]
+    assert dm["trend"]["metrics"] == ["rsi14", "ma_position"]
 
 
 def test_scoring_service_template_crud(db_session):
@@ -366,7 +366,7 @@ def test_scoring_service_template_crud(db_session):
 
     # get_default_template (none set yet for this test's data)
     # There may be a default from earlier tests, so just check it returns something
-    default = service.get_default_template()
+    service.get_default_template()
     # We don't assert None here because module-scoped fixture may have defaults
 
 

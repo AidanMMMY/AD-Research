@@ -1,5 +1,15 @@
 export * from './useAuth';
 export * from './useETFList';
 export * from './usePoolDetail';
+export { usePoolList } from './usePoolDetail';
 export * from './useScreenResults';
 export * from './useScores';
+export * from './useCorrelation';
+export * from './useReturnComparison';
+export * from './useSectorRotation';
+export * from './useStrategies';
+export * from './useBacktests';
+export * from './useSignals';
+export * from './useScanner';
+export * from './useNotifications';
+export * from './useFavorites';

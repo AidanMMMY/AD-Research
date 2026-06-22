@@ -5,7 +5,7 @@ akshare's latest ETF list with the database.
 """
 
 from datetime import date
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from sqlalchemy.orm import Session
 
@@ -19,7 +19,7 @@ class ETFScannerService:
     def __init__(self, db: Session):
         self.db = db
 
-    def scan_market(self) -> Dict[str, Any]:
+    def scan_market(self) -> dict[str, Any]:
         """Scan the ETF market and detect changes.
 
         Returns:
@@ -40,15 +40,15 @@ class ETFScannerService:
             }
 
         # Build maps
-        latest_map: Dict[str, Any] = {}
+        latest_map: dict[str, Any] = {}
         for etf in latest_etfs:
             latest_map[etf.code] = etf
 
         db_etfs = self.db.query(ETFInfo).all()
-        db_map: Dict[str, ETFInfo] = {e.code: e for e in db_etfs}
+        db_map: dict[str, ETFInfo] = {e.code: e for e in db_etfs}
 
         # Find new ETFs
-        new_etfs: List[Dict[str, Any]] = []
+        new_etfs: list[dict[str, Any]] = []
         for code, etf in latest_map.items():
             if code not in db_map:
                 new_etfs.append({
@@ -60,7 +60,7 @@ class ETFScannerService:
                 })
 
         # Find delisted ETFs (active in DB but not in latest)
-        delisted_etfs: List[Dict[str, Any]] = []
+        delisted_etfs: list[dict[str, Any]] = []
         for code, db_etf in db_map.items():
             if code not in latest_map and db_etf.status == "active":
                 delisted_etfs.append({
@@ -70,11 +70,11 @@ class ETFScannerService:
                 })
 
         # Find changed ETFs
-        changed_etfs: List[Dict[str, Any]] = []
+        changed_etfs: list[dict[str, Any]] = []
         for code, db_etf in db_map.items():
             if code in latest_map:
                 latest = latest_map[code]
-                changes: Dict[str, Any] = {}
+                changes: dict[str, Any] = {}
                 if latest.name != db_etf.name:
                     changes["name"] = {"old": db_etf.name, "new": latest.name}
                 if latest.category != db_etf.category:
@@ -86,6 +86,54 @@ class ETFScannerService:
                         "code": code,
                         "changes": changes,
                     })
+
+        # Persist changes to the database
+        try:
+            for etf_data in new_etfs:
+                new_etf = ETFInfo(
+                    code=etf_data["code"],
+                    name=etf_data["name"],
+                    market=etf_data.get("market"),
+                    exchange=etf_data.get("exchange"),
+                    category=etf_data.get("category"),
+                    status="active",
+                )
+                self.db.add(new_etf)
+
+            for etf_data in delisted_etfs:
+                db_etf = db_map.get(etf_data["code"])
+                if db_etf:
+                    db_etf.status = "delisted"
+
+            for etf_data in changed_etfs:
+                db_etf = db_map.get(etf_data["code"])
+                latest = latest_map.get(etf_data["code"])
+                if not db_etf or not latest:
+                    continue
+                if latest.name != db_etf.name:
+                    db_etf.name = latest.name
+                if latest.category != db_etf.category:
+                    db_etf.category = latest.category
+                if latest.market != db_etf.market:
+                    db_etf.market = latest.market
+                if latest.exchange != db_etf.exchange:
+                    db_etf.exchange = latest.exchange
+                if latest.manager != db_etf.manager:
+                    db_etf.manager = latest.manager
+                if latest.underlying_index != db_etf.underlying_index:
+                    db_etf.underlying_index = latest.underlying_index
+
+            self.db.commit()
+        except Exception as e:
+            self.db.rollback()
+            return {
+                "success": False,
+                "error": f"Failed to persist ETF changes: {e}",
+                "new": new_etfs,
+                "delisted": delisted_etfs,
+                "changed": changed_etfs,
+                "scan_date": date.today().isoformat(),
+            }
 
         # Log the scan
         scan_log = ETFScanLog(
@@ -111,7 +159,7 @@ class ETFScannerService:
             "scan_date": date.today().isoformat(),
         }
 
-    def get_scan_logs(self, limit: int = 50) -> List[Dict[str, Any]]:
+    def get_scan_logs(self, limit: int = 50) -> list[dict[str, Any]]:
         """Get scan history logs."""
         logs = (
             self.db.query(ETFScanLog)

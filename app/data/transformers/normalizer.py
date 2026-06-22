@@ -2,7 +2,6 @@
 
 import pandas as pd
 
-
 COLUMN_MAP: dict[str, str] = {
     # Chinese column names
     "日期": "trade_date",

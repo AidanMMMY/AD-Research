@@ -1,7 +1,7 @@
 """Notification Pydantic schemas."""
 
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict
 
@@ -11,7 +11,7 @@ class NotificationConfigBase(BaseModel):
 
     name: str
     channel_type: str
-    config_json: Dict[str, Any]
+    config_json: dict[str, Any]
     is_active: bool = True
 
 
@@ -24,10 +24,10 @@ class NotificationConfigCreate(NotificationConfigBase):
 class NotificationConfigUpdate(BaseModel):
     """Update notification config schema."""
 
-    name: Optional[str] = None
-    channel_type: Optional[str] = None
-    config_json: Optional[Dict[str, Any]] = None
-    is_active: Optional[bool] = None
+    name: str | None = None
+    channel_type: str | None = None
+    config_json: dict[str, Any] | None = None
+    is_active: bool | None = None
 
 
 class NotificationConfigResponse(NotificationConfigBase):
@@ -36,8 +36,8 @@ class NotificationConfigResponse(NotificationConfigBase):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
-    created_at: Optional[datetime] = None
-    updated_at: Optional[datetime] = None
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
 
 
 class NotificationLogItem(BaseModel):
@@ -45,21 +45,21 @@ class NotificationLogItem(BaseModel):
 
     id: int
     config_id: int
-    report_id: Optional[int] = None
+    report_id: int | None = None
     status: str
-    error_msg: Optional[str] = None
-    sent_at: Optional[str] = None
-    created_at: Optional[str] = None
+    error_msg: str | None = None
+    sent_at: str | None = None
+    created_at: str | None = None
 
 
 class NotificationLogListResponse(BaseModel):
     """Notification log list response."""
 
-    items: List[NotificationLogItem]
+    items: list[NotificationLogItem]
 
 
 class SendTestResponse(BaseModel):
     """Send test response."""
 
     success: bool
-    error: Optional[str] = None
+    error: str | None = None
