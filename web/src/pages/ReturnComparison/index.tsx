@@ -1,8 +1,11 @@
-import { useState, useMemo } from 'react';
-import { Card, Row, Col, Select, Radio, Button, Tag, Space, Spin, message } from 'antd';
+import { useMemo, useState } from 'react';
+import { Row, Col, Select, Radio, Button, Tag, Space, Spin, message } from 'antd';
+import { FolderOpenOutlined } from '@ant-design/icons';
+import GlassCard from '@/components/GlassCard';
 import { useQuery } from '@tanstack/react-query';
 import { marketApi } from '@/api/market';
 import { useETFList } from '@/hooks/useETFList';
+import { usePoolList } from '@/hooks/usePoolDetail';
 import ReturnCurve from '@/components/ReturnCurve';
 
 const TIME_RANGE_OPTIONS = [
@@ -13,12 +16,14 @@ const TIME_RANGE_OPTIONS = [
   { label: '全部', value: 0 },
 ];
 
-const PRESET_GROUPS = [
-  { label: '宽基', codes: ['510300', '510050', '510500', '159915'] },
-  { label: '科技', codes: ['512480', '515030', '159819', '159995'] },
-  { label: '消费', codes: ['159928', '512690', '515650', '159996'] },
-  { label: '医药', codes: ['512010', '512170', '159992', '159938'] },
-];
+const PRESET_TOP_N = 4;
+
+interface ETFItem {
+  code: string;
+  name: string;
+  category?: string;
+  fund_size?: number;
+}
 
 interface SeriesData {
   name: string;
@@ -32,6 +37,28 @@ export default function ReturnComparison() {
   const [mode, setMode] = useState<'normalized' | 'percentage'>('normalized');
 
   const { data: etfList } = useETFList({ page_size: 200 });
+  const { data: pools, isLoading: poolsLoading } = usePoolList();
+
+  const presetGroups = useMemo(() => {
+    const items: ETFItem[] = etfList?.items || [];
+    const byCategory: Record<string, ETFItem[]> = {};
+    items.forEach((item) => {
+      const category = item.category || '未分类';
+      if (!byCategory[category]) byCategory[category] = [];
+      byCategory[category].push(item);
+    });
+
+    return Object.entries(byCategory)
+      .sort(([a], [b]) => a.localeCompare(b, 'zh-CN'))
+      .map(([category, members]) => ({
+        label: category,
+        codes: members
+          .sort((a, b) => (b.fund_size || 0) - (a.fund_size || 0))
+          .slice(0, PRESET_TOP_N)
+          .map((item) => item.code),
+      }))
+      .filter((group) => group.codes.length > 0);
+  }, [etfList]);
 
   const etfQueries = useQuery({
     queryKey: ['return-comparison', selectedCodes, timeRange],
@@ -53,6 +80,12 @@ export default function ReturnComparison() {
   const etfOptions = (etfList?.items || []).map((item) => ({
     label: `${item.code} ${item.name}`,
     value: item.code,
+  }));
+
+  const poolOptions = (pools || []).map((pool) => ({
+    label: `${pool.name} (${pool.members?.length || 0}只)`,
+    value: pool.id,
+    codes: (pool.members || []).map((m) => m.etf_code),
   }));
 
   const series: SeriesData[] = useMemo(() => {
@@ -92,13 +125,27 @@ export default function ReturnComparison() {
     setSelectedCodes(newCodes);
   };
 
+  const handleSelectPool = (poolId: number | undefined) => {
+    if (!poolId) return;
+    const pool = poolOptions.find((p) => p.value === poolId);
+    if (!pool) return;
+    const newCodes = Array.from(new Set([...selectedCodes, ...pool.codes]));
+    if (newCodes.length > 10) {
+      message.warning('标的池ETF数量较多，仅添加前10只');
+      setSelectedCodes(newCodes.slice(0, 10));
+      return;
+    }
+    setSelectedCodes(newCodes);
+    message.success(`已添加「${pool.label}」中的 ${pool.codes.length} 只ETF`);
+  };
+
   const handleRemoveCode = (code: string) => {
     setSelectedCodes(selectedCodes.filter((c) => c !== code));
   };
 
   return (
     <div>
-      <Card title="收益曲线对比配置" style={{ marginBottom: 16 }}>
+      <GlassCard title="收益曲线对比配置" style={{ marginBottom: 16 }}>
         <Row gutter={[16, 16]}>
           <Col xs={24} md={12}>
             <div style={{ marginBottom: 8 }}>选择ETF（{selectedCodes.length}/10）：</div>
@@ -157,22 +204,31 @@ export default function ReturnComparison() {
           <Col span={24}>
             <Space>
               <span>快速选择：</span>
-              {PRESET_GROUPS.map((group) => (
+              {presetGroups.map((group) => (
                 <Button key={group.label} size="small" onClick={() => handleAddPreset(group.codes)}>
                   +{group.label}
                 </Button>
               ))}
+              <Select
+                size="small"
+                placeholder={<span><FolderOpenOutlined /> 从标的池导入</span>}
+                style={{ minWidth: 160 }}
+                loading={poolsLoading}
+                onChange={handleSelectPool}
+                options={poolOptions}
+                allowClear
+              />
               <Button size="small" danger onClick={() => setSelectedCodes([])}>
                 清空
               </Button>
             </Space>
           </Col>
         </Row>
-      </Card>
+      </GlassCard>
 
-      <Card title={mode === 'normalized' ? '归一化收益曲线' : '日收益率'}>
+      <GlassCard title={mode === 'normalized' ? '归一化收益曲线' : '日收益率'}>
         {selectedCodes.length < 1 ? (
-          <div style={{ textAlign: 'center', padding: 60, color: '#999' }}>
+          <div style={{ textAlign: 'center', padding: 60, color: '#64748b' }}>
             请至少选择1只ETF
           </div>
         ) : etfQueries.isLoading ? (
@@ -180,7 +236,7 @@ export default function ReturnComparison() {
         ) : series.length > 0 ? (
           <ReturnCurve series={series} />
         ) : null}
-      </Card>
+      </GlassCard>
     </div>
   );
 }

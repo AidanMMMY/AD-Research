@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Table, Card, Button, Tag, Space, Modal, Form, Select, message } from 'antd';
+import { Table, Button, Tag, Space, Modal, Form, Select, message } from 'antd';
+import GlassCard from '@/components/GlassCard';
 import { EyeOutlined, DownloadOutlined, PlusOutlined } from '@ant-design/icons';
 import { useQuery } from '@tanstack/react-query';
 import { reportApi, poolApi } from '@/api';
@@ -35,6 +36,7 @@ export default function ReportBrowser() {
       message.error('提交失败');
     }
   };
+
 
   const statusColors: Record<string, string> = {
     pending: 'default',
@@ -78,12 +80,12 @@ export default function ReportBrowser() {
       <Table dataSource={reports || []} columns={columns} rowKey="id" />
 
       {selectedReport?.status === 'done' && (
-        <Card title={`报告预览: ${selectedReport.report_type} (${selectedReport.report_date})`} style={{ marginTop: 16 }}>
+        <GlassCard title={`报告预览: ${selectedReport.report_type} (${selectedReport.report_date})`} style={{ marginTop: 16 }}>
           <iframe
             src={reportApi.downloadUrl(selectedReport.id)}
-            style={{ width: '100%', height: 600, border: '1px solid #d9d9d9' }}
+            style={{ width: '100%', height: 600, border: '1px solid rgba(255,255,255,0.06)' }}
           />
-        </Card>
+        </GlassCard>
       )}
 
       <Modal
@@ -93,8 +95,11 @@ export default function ReportBrowser() {
         onOk={() => form.submit()}
       >
         <Form form={form} onFinish={handleGenerate} layout="vertical">
-          <Form.Item name="report_type" label="报告类型" rules={[{ required: true }]}>
-            <Select options={[{ label: '池周报', value: 'pool' }, { label: '日报', value: 'daily' }]} />
+          <Form.Item name="report_type" label="报告类型" rules={[{ required: true }]} initialValue="pool_weekly">
+            <Select options={[
+              { label: '池周报', value: 'pool_weekly' },
+              { label: '日报', value: 'daily' },
+            ]} />
           </Form.Item>
           <Form.Item name="pool_id" label="标的池" rules={[{ required: true }]}>
             <Select

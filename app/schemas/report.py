@@ -5,10 +5,8 @@ and report listing operations.
 """
 
 from datetime import date, datetime
-from typing import Optional
 
 from pydantic import BaseModel, ConfigDict
-
 
 # ------------------------------------------------------------------
 # Report generation request
@@ -18,9 +16,9 @@ class ReportGenerateRequest(BaseModel):
     """Request model for triggering report generation."""
 
     report_type: str = "pool_weekly"
-    pool_id: Optional[int] = None
+    pool_id: int | None = None
     format: str = "html"
-    template_id: Optional[int] = None
+    template_id: int | None = None
 
 
 # ------------------------------------------------------------------
@@ -35,12 +33,12 @@ class ReportResponse(BaseModel):
     id: int
     report_type: str
     report_date: date
-    pool_id: Optional[int] = None
+    pool_id: int | None = None
     status: str
     format: str
-    file_path: Optional[str] = None
-    file_size: Optional[int] = None
-    created_at: Optional[datetime] = None
+    file_path: str | None = None
+    file_size: int | None = None
+    created_at: datetime | None = None
 
 
 class ReportStatusResponse(BaseModel):
@@ -50,8 +48,8 @@ class ReportStatusResponse(BaseModel):
 
     id: int
     status: str
-    file_path: Optional[str] = None
-    file_size: Optional[int] = None
-    error_msg: Optional[str] = None
-    started_at: Optional[datetime] = None
-    finished_at: Optional[datetime] = None
+    file_path: str | None = None
+    file_size: int | None = None
+    error_msg: str | None = None
+    started_at: datetime | None = None
+    finished_at: datetime | None = None

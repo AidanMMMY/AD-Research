@@ -1,7 +1,7 @@
 """Backtest service for persistence and management."""
 
 from datetime import date
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from sqlalchemy.orm import Session
 
@@ -20,11 +20,14 @@ class BacktestService:
         strategy_id: int,
         etf_code: str,
         strategy_type: str,
-        params: Dict[str, Any],
+        params: dict[str, Any],
         start_date: date,
         end_date: date,
         initial_capital: float = 100000.0,
-    ) -> Dict[str, Any]:
+        commission_rate: float = 0.001,
+        slippage_rate: float = 0.001,
+        position_size: float = 1.0,
+    ) -> dict[str, Any]:
         """Run a backtest and persist results.
 
         Args:
@@ -35,6 +38,9 @@ class BacktestService:
             start_date: Backtest start date.
             end_date: Backtest end date.
             initial_capital: Starting capital.
+            commission_rate: Per-trade commission rate (single side).
+            slippage_rate: Per-trade slippage rate (single side).
+            position_size: Position size ratio (0.0 - 1.0).
 
         Returns:
             Dict with backtest results and metadata.
@@ -47,6 +53,9 @@ class BacktestService:
             start_date=start_date,
             end_date=end_date,
             initial_capital=initial_capital,
+            commission_rate=commission_rate,
+            slippage_rate=slippage_rate,
+            position_size=position_size,
         )
 
         # Persist to database
@@ -72,6 +81,9 @@ class BacktestService:
                 "strategy_type": strategy_type,
                 "params": params,
                 "initial_capital": initial_capital,
+                "commission_rate": commission_rate,
+                "slippage_rate": slippage_rate,
+                "position_size": position_size,
             },
         )
         self.db.add(backtest)
@@ -90,7 +102,7 @@ class BacktestService:
             "created_at": backtest.created_at.isoformat() if backtest.created_at else None,
         }
 
-    def get_backtests(self, strategy_id: Optional[int] = None, limit: int = 50) -> List[Dict[str, Any]]:
+    def get_backtests(self, strategy_id: int | None = None, limit: int = 50) -> list[dict[str, Any]]:
         """Get backtest results."""
         query = self.db.query(BacktestResult)
         if strategy_id:
@@ -109,7 +121,7 @@ class BacktestService:
             for r in results
         ]
 
-    def get_backtest(self, backtest_id: int) -> Optional[Dict[str, Any]]:
+    def get_backtest(self, backtest_id: int) -> dict[str, Any] | None:
         """Get a single backtest by ID."""
         r = self.db.query(BacktestResult).filter(BacktestResult.id == backtest_id).first()
         if not r:

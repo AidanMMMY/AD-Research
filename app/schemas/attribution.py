@@ -1,6 +1,5 @@
 """Attribution Pydantic schemas."""
 
-from typing import Any, Dict
 
 from pydantic import BaseModel
 

@@ -1,7 +1,6 @@
 from logging.config import fileConfig
 
-from sqlalchemy import engine_from_config
-from sqlalchemy import pool
+from sqlalchemy import engine_from_config, pool
 
 from alembic import context
 
@@ -18,8 +17,12 @@ if config.config_file_name is not None:
 # for 'autogenerate' support
 from app.core.database import Base
 from app.models.etf import *
-from app.models.pool import *
+from app.models.etf_scan_log import *
 from app.models.etl import *
+from app.models.favorite import *
+from app.models.notification import *
+from app.models.pool import *
+from app.models.scoring import *
 
 target_metadata = Base.metadata
 

@@ -31,6 +31,14 @@ class Settings(BaseSettings):
     app_env: str = "development"
     log_level: str = "INFO"
 
+    # SMTP / Email
+    smtp_host: str = ""
+    smtp_port: int = 587
+    smtp_user: str = ""
+    smtp_password: str = ""
+    smtp_from: str = ""
+    smtp_use_tls: bool = True
+
     # Constants
     api_v1_prefix: str = "/api/v1"
     project_name: str = "ETF Research Platform"
@@ -48,6 +56,7 @@ class AuthSettings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24  # 1 day
     ADMIN_USERNAME: str = "admin"
     ADMIN_PASSWORD: str = "admin123"
+    NOTIFICATION_ENCRYPTION_KEY: str = ""
 
     # Multi-user credentials: username -> password
     USERS: dict[str, str] = {

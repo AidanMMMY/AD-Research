@@ -1,18 +1,15 @@
 import { useState } from 'react';
 import {
-  Card, Table, Button, Modal, Form, Input, Select, Switch, Tag, Space, message, Alert,
+  Table, Button, Modal, Form, Input, Select, Switch, Tag, Space, message, Alert, Tabs,
 } from 'antd';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { PlusOutlined, DeleteOutlined, SendOutlined } from '@ant-design/icons';
+import GlassCard from '@/components/GlassCard';
+import { useNotifications } from '@/hooks/useNotifications';
+import { PlusOutlined, DeleteOutlined, SendOutlined, MailOutlined, LinkOutlined } from '@ant-design/icons';
 
-interface NotificationConfig {
-  id: number;
-  name: string;
-  channel_type: string;
-  config_json: Record<string, any>;
-  is_active: boolean;
-  created_at?: string;
-}
+const CHANNEL_OPTIONS = [
+  { label: 'Webhook 机器人', value: 'webhook' },
+  { label: '邮件 SMTP', value: 'email' },
+];
 
 const PLATFORM_OPTIONS = [
   { label: '企业微信', value: 'wechat' },
@@ -23,80 +20,124 @@ const PLATFORM_OPTIONS = [
 export default function NotificationConfigPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [form] = Form.useForm();
-  const queryClient = useQueryClient();
+  const [channelType, setChannelType] = useState('webhook');
+  const [activeTab, setActiveTab] = useState('all');
 
-  const { data: configs, isLoading } = useQuery({
-    queryKey: ['notification-configs'],
-    queryFn: async () => {
-      const res = await fetch('/api/v1/notifications/configs');
-      return res.json();
-    },
-    staleTime: 30_000,
-  });
+  const { configs, isLoading, create, delete: deleteConfig, test } = useNotifications();
 
-  const createMutation = useMutation({
-    mutationFn: async (values: any) => {
-      const res = await fetch('/api/v1/notifications/configs', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: values.name,
-          channel_type: 'webhook',
-          config_json: {
-            platform: values.platform,
-            webhook_url: values.webhook_url,
-          },
-          is_active: values.is_active,
-        }),
+  const handleCreate = async (values: any) => {
+    try {
+      const config_json: Record<string, any> = {};
+      if (values.channel_type === 'webhook') {
+        config_json.platform = values.platform;
+        config_json.webhook_url = values.webhook_url;
+      } else {
+        config_json.to_emails = values.to_emails;
+        config_json.subject_prefix = values.subject_prefix || 'ETF投研平台';
+        if (values.smtp_host) config_json.smtp_host = values.smtp_host;
+        if (values.smtp_port) config_json.smtp_port = values.smtp_port;
+        if (values.smtp_user) config_json.smtp_user = values.smtp_user;
+        if (values.smtp_password) config_json.smtp_password = values.smtp_password;
+        config_json.use_tls = values.use_tls !== false;
+      }
+
+      await create({
+        name: values.name,
+        channel_type: values.channel_type,
+        config_json,
+        is_active: values.is_active,
       });
-      return res.json();
-    },
-    onSuccess: () => {
       message.success('创建成功');
       setIsModalOpen(false);
       form.resetFields();
-      queryClient.invalidateQueries({ queryKey: ['notification-configs'] });
-    },
-    onError: () => message.error('创建失败'),
-  });
+      setChannelType('webhook');
+    } catch {
+      message.error('创建失败');
+    }
+  };
 
-  const deleteMutation = useMutation({
-    mutationFn: async (id: number) => {
-      await fetch(`/api/v1/notifications/configs/${id}`, { method: 'DELETE' });
-    },
-    onSuccess: () => {
+  const handleDelete = async (id: number) => {
+    try {
+      await deleteConfig(id);
       message.success('删除成功');
-      queryClient.invalidateQueries({ queryKey: ['notification-configs'] });
-    },
-  });
+    } catch {
+      message.error('删除失败');
+    }
+  };
 
-  const testMutation = useMutation({
-    mutationFn: async (id: number) => {
-      const res = await fetch(`/api/v1/notifications/configs/${id}/test`, { method: 'POST' });
-      return res.json();
-    },
-    onSuccess: (data) => {
-      if (data.success) {
+  const handleTest = async (id: number) => {
+    try {
+      const response = await test(id);
+      const result = response.data;
+      if (result.success) {
         message.success('测试发送成功');
       } else {
-        message.error(`测试发送失败: ${data.error}`);
+        message.error(`测试发送失败: ${result.error}`);
       }
-    },
-  });
+    } catch {
+      message.error('测试发送失败');
+    }
+  };
+
+  const filteredConfigs = activeTab === 'all'
+    ? configs
+    : configs.filter((c: any) => c.channel_type === activeTab);
 
   const columns = [
-    { title: '名称', dataIndex: 'name' },
-    { title: '渠道', dataIndex: 'config_json', render: (v: any) => PLATFORM_OPTIONS.find(p => p.value === v?.platform)?.label || v?.platform },
-    { title: 'Webhook', dataIndex: 'config_json', render: (v: any) => v?.webhook_url ? `${v.webhook_url.slice(0, 30)}...` : '-' },
-    { title: '状态', dataIndex: 'is_active', render: (v: boolean) => v ? <Tag color="success">启用</Tag> : <Tag>禁用</Tag> },
+    { title: '名称', dataIndex: 'name', width: 180 },
+    {
+      title: '渠道',
+      dataIndex: 'channel_type',
+      width: 120,
+      render: (v: string) => {
+        if (v === 'webhook') return <Tag icon={<LinkOutlined />} color="blue">Webhook</Tag>;
+        if (v === 'email') return <Tag icon={<MailOutlined />} color="green">邮件</Tag>;
+        return <Tag>{v}</Tag>;
+      },
+    },
+    {
+      title: '详情',
+      dataIndex: 'config_json',
+      render: (v: any, record: any) => {
+        if (record.channel_type === 'webhook') {
+          const platform = PLATFORM_OPTIONS.find(p => p.value === v?.platform)?.label || v?.platform;
+          return (
+            <span>
+              <Tag>{platform}</Tag>
+              <span style={{ fontSize: 12, color: '#64748b', marginLeft: 8 }}>
+                {v?.webhook_url ? `${v.webhook_url.slice(0, 40)}...` : '-'}
+              </span>
+            </span>
+          );
+        }
+        if (record.channel_type === 'email') {
+          return (
+            <span>
+              <Tag color="green">{v?.to_emails}</Tag>
+              <span style={{ fontSize: 12, color: '#64748b', marginLeft: 8 }}>
+                {v?.subject_prefix ? `主题: ${v.subject_prefix}` : ''}
+              </span>
+            </span>
+          );
+        }
+        return null;
+      },
+    },
+    {
+      title: '状态',
+      dataIndex: 'is_active',
+      width: 90,
+      render: (v: boolean) => v ? <Tag color="success">启用</Tag> : <Tag>禁用</Tag>,
+    },
     {
       title: '操作',
-      render: (_: any, record: NotificationConfig) => (
+      width: 160,
+      render: (_: any, record: any) => (
         <Space>
-          <Button size="small" icon={<SendOutlined />} onClick={() => testMutation.mutate(record.id)} loading={testMutation.isPending}>
+          <Button size="small" icon={<SendOutlined />} onClick={() => handleTest(record.id)}>
             测试
           </Button>
-          <Button size="small" danger icon={<DeleteOutlined />} onClick={() => deleteMutation.mutate(record.id)} loading={deleteMutation.isPending}>
+          <Button size="small" danger icon={<DeleteOutlined />} onClick={() => handleDelete(record.id)}>
             删除
           </Button>
         </Space>
@@ -104,52 +145,142 @@ export default function NotificationConfigPage() {
     },
   ];
 
-  const handleSubmit = (values: any) => {
-    createMutation.mutate(values);
-  };
-
   return (
     <div>
-      <Card title="推送配置管理" extra={
+      <GlassCard title="推送配置管理" extra={
         <Button type="primary" icon={<PlusOutlined />} onClick={() => setIsModalOpen(true)}>
           新增配置
         </Button>
       }>
         <Alert
           message="推送说明"
-          description="支持企业微信、飞书、钉钉的Webhook机器人推送。配置Webhook地址后，报告生成完成时会自动推送通知。"
+          description={
+            <div>
+              <p><strong>Webhook 机器人</strong>：支持企业微信、飞书、钉钉的机器人推送，配置 Webhook 地址即可。</p>
+              <p><strong>邮件 SMTP</strong>：支持通过 SMTP 发送邮件通知。SMTP 服务器地址、用户名和密码建议通过环境变量全局配置，每个配置只需设置收件人邮箱。</p>
+            </div>
+          }
           type="info"
           showIcon
           style={{ marginBottom: 16 }}
         />
+
+        <Tabs
+          activeKey={activeTab}
+          onChange={setActiveTab}
+          items={[
+            { key: 'all', label: `全部 (${configs.length})` },
+            { key: 'webhook', label: `Webhook (${configs.filter((c: any) => c.channel_type === 'webhook').length})` },
+            { key: 'email', label: `邮件 (${configs.filter((c: any) => c.channel_type === 'email').length})` },
+          ]}
+          style={{ marginBottom: 12 }}
+        />
+
         <Table
-          dataSource={configs || []}
+          dataSource={filteredConfigs}
           columns={columns}
           rowKey="id"
           size="small"
           loading={isLoading}
           pagination={false}
         />
-      </Card>
+      </GlassCard>
 
       <Modal
         title="新增推送配置"
         open={isModalOpen}
-        onCancel={() => { setIsModalOpen(false); form.resetFields(); }}
+        onCancel={() => { setIsModalOpen(false); form.resetFields(); setChannelType('webhook'); }}
         onOk={() => form.submit()}
-        confirmLoading={createMutation.isPending}
+        width={560}
       >
-        <Form form={form} layout="vertical" onFinish={handleSubmit}>
+        <Form
+          form={form}
+          layout="vertical"
+          onFinish={handleCreate}
+          initialValues={{ channel_type: 'webhook', is_active: true }}
+        >
           <Form.Item name="name" label="配置名称" rules={[{ required: true }]}>
             <Input placeholder="如：企业微信通知" />
           </Form.Item>
-          <Form.Item name="platform" label="推送平台" rules={[{ required: true }]} initialValue="wechat">
-            <Select options={PLATFORM_OPTIONS} />
+
+          <Form.Item name="channel_type" label="推送渠道" rules={[{ required: true }]}>
+            <Select
+              options={CHANNEL_OPTIONS}
+              onChange={(value) => {
+                setChannelType(value);
+                form.setFieldsValue({
+                  platform: undefined,
+                  webhook_url: undefined,
+                  to_emails: undefined,
+                  subject_prefix: undefined,
+                  smtp_host: undefined,
+                  smtp_port: undefined,
+                  smtp_user: undefined,
+                  smtp_password: undefined,
+                });
+              }}
+            />
           </Form.Item>
-          <Form.Item name="webhook_url" label="Webhook地址" rules={[{ required: true }]}>
-            <Input.TextArea placeholder="https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=..." rows={2} />
-          </Form.Item>
-          <Form.Item name="is_active" label="启用状态" valuePropName="checked" initialValue={true}>
+
+          {channelType === 'webhook' && (
+            <>
+              <Form.Item name="platform" label="推送平台" rules={[{ required: true }]} initialValue="wechat">
+                <Select options={PLATFORM_OPTIONS} />
+              </Form.Item>
+              <Form.Item name="webhook_url" label="Webhook 地址" rules={[{ required: true }]}>
+                <Input.TextArea placeholder="https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=..." rows={2} />
+              </Form.Item>
+            </>
+          )}
+
+          {channelType === 'email' && (
+            <>
+              <Form.Item
+                name="to_emails"
+                label="收件人邮箱"
+                rules={[{ required: true }]}
+                extra="多个邮箱用逗号分隔，如: user1@example.com, user2@example.com"
+              >
+                <Input placeholder="user@example.com" />
+              </Form.Item>
+
+              <Form.Item name="subject_prefix" label="邮件主题前缀" initialValue="ETF投研平台">
+                <Input placeholder="ETF投研平台" />
+              </Form.Item>
+
+              <Form.Item name="use_tls" label="使用 TLS 加密" valuePropName="checked" initialValue={true}>
+                <Switch />
+              </Form.Item>
+
+              <Alert
+                message="SMTP 配置说明"
+                description={
+                  <span>
+                    SMTP 服务器地址、用户名和密码建议通过 <strong>环境变量</strong> 全局配置（SMTP_HOST, SMTP_USER, SMTP_PASSWORD），
+                    这样所有邮件配置共享同一个 SMTP 账号。如需单独配置，可在下方填写。
+                  </span>
+                }
+                type="warning"
+                showIcon
+                style={{ marginBottom: 16, marginTop: 8 }}
+              />
+
+              <Form.Item name="smtp_host" label="SMTP 服务器">
+                <Input placeholder="smtp.example.com（可选，优先使用环境变量）" />
+              </Form.Item>
+              <Form.Item name="smtp_port" label="SMTP 端口">
+                <Input placeholder="587（可选）" />
+              </Form.Item>
+              <Form.Item name="smtp_user" label="SMTP 用户名">
+                <Input placeholder="user@example.com（可选）" />
+              </Form.Item>
+              <Form.Item name="smtp_password" label="SMTP 密码">
+                <Input.Password placeholder="（可选）" />
+              </Form.Item>
+            </>
+          )}
+
+          <Form.Item name="is_active" label="启用状态" valuePropName="checked">
             <Switch />
           </Form.Item>
         </Form>

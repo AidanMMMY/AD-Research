@@ -4,7 +4,7 @@ Simulates trading based on strategy signals and calculates performance metrics.
 """
 
 from datetime import date
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -18,7 +18,7 @@ class Trade:
     def __init__(
         self,
         entry_date: date,
-        exit_date: Optional[date] = None,
+        exit_date: date | None = None,
         entry_price: float = 0,
         exit_price: float = 0,
         side: str = "long",
@@ -38,16 +38,16 @@ class BacktestResult:
     """Container for backtest results."""
 
     def __init__(self):
-        self.daily_nav: List[Dict[str, Any]] = []
-        self.trades: List[Trade] = []
-        self.metrics: Dict[str, float] = {}
-        self.signals: List[Dict[str, Any]] = []
+        self.daily_nav: list[dict[str, Any]] = []
+        self.trades: list[Trade] = []
+        self.metrics: dict[str, float] = {}
+        self.signals: list[dict[str, Any]] = []
 
 
 def get_strategy_signals(
     data: pd.DataFrame,
     strategy_type: str,
-    params: Dict[str, Any],
+    params: dict[str, Any],
 ) -> pd.Series:
     """Generate trading signals based on strategy type.
 
@@ -87,13 +87,26 @@ def get_strategy_signals(
     return signals
 
 
+def _apply_transaction_costs(price: float, commission_rate: float, slippage_rate: float) -> float:
+    """Return the effective price after commission and slippage.
+
+    Costs are applied symmetrically: entering at a slightly higher price and
+    exiting at a slightly lower price (both reduced by total cost).
+    """
+    total_cost = commission_rate + slippage_rate
+    return price * (1 - total_cost)
+
+
 def run_backtest(
     etf_code: str,
     strategy_type: str,
-    params: Dict[str, Any],
+    params: dict[str, Any],
     start_date: date,
     end_date: date,
     initial_capital: float = 100000.0,
+    commission_rate: float = 0.001,
+    slippage_rate: float = 0.001,
+    position_size: float = 1.0,
 ) -> BacktestResult:
     """Run a backtest for a single ETF with a strategy.
 
@@ -104,11 +117,17 @@ def run_backtest(
         start_date: Backtest start date.
         end_date: Backtest end date.
         initial_capital: Starting capital.
+        commission_rate: Per-trade commission rate (single side).
+        slippage_rate: Per-trade slippage rate (single side).
+        position_size: Position size ratio (0.0 - 1.0).
 
     Returns:
         BacktestResult with NAV, trades, metrics, and signals.
     """
     result = BacktestResult()
+
+    # Clamp position size to a sensible range
+    position_size = max(0.0, min(1.0, position_size))
 
     # Fetch historical data
     try:
@@ -131,14 +150,14 @@ def run_backtest(
     position = 0.0  # number of shares held
     holding_period = params.get("holding_period", 20)
     days_held = 0
-    current_trade: Optional[Trade] = None
+    current_trade: Trade | None = None
 
     for i, row in df.iterrows():
         trade_date = row["trade_date"]
         price = row["close"]
         signal = signals.iloc[i]
 
-        # Record daily NAV
+        # Record daily NAV using current market price
         nav = capital + position * price
         result.daily_nav.append({
             "date": trade_date.isoformat(),
@@ -151,9 +170,12 @@ def run_backtest(
         if current_trade is None:
             # No position - check for entry signal
             if signal == 1 and capital > 0:
-                # BUY
-                position = capital / price * 0.99  # 1% transaction cost buffer
-                capital = 0
+                # BUY: deploy only position_size of available cash
+                cash_to_deploy = capital * position_size
+                remaining_cash = capital - cash_to_deploy
+                effective_price = _apply_transaction_costs(price, commission_rate, slippage_rate)
+                position = cash_to_deploy / effective_price
+                capital = remaining_cash
                 current_trade = Trade(
                     entry_date=trade_date,
                     entry_price=price,
@@ -165,6 +187,8 @@ def run_backtest(
                     "type": "BUY",
                     "price": price,
                     "signal_strength": abs(signal),
+                    "shares": position,
+                    "cost": cash_to_deploy,
                 })
         else:
             # Have position - check for exit conditions
@@ -177,14 +201,16 @@ def run_backtest(
                 should_exit = True  # Max holding period reached
 
             if should_exit:
-                # SELL
-                capital = position * price * 0.99  # 1% transaction cost
-                pnl = capital - initial_capital if not result.trades else capital - (result.trades[-1].entry_price * position * 0.99)
-                pnl_pct = (price - current_trade.entry_price) / current_trade.entry_price
+                # SELL: close position at effective price
+                effective_price = _apply_transaction_costs(price, commission_rate, slippage_rate)
+                sale_proceeds = position * effective_price
+                pnl_pct = (effective_price - current_trade.entry_price) / current_trade.entry_price
+                trade_pnl = sale_proceeds - (current_trade.entry_price * position)
 
+                capital = capital + sale_proceeds
                 current_trade.exit_date = trade_date
                 current_trade.exit_price = price
-                current_trade.pnl = capital - (current_trade.entry_price * position * 0.99)
+                current_trade.pnl = trade_pnl
                 current_trade.pnl_pct = pnl_pct
                 result.trades.append(current_trade)
 
@@ -192,7 +218,7 @@ def run_backtest(
                     "date": trade_date.isoformat(),
                     "type": "SELL",
                     "price": price,
-                    "pnl": current_trade.pnl,
+                    "pnl": trade_pnl,
                     "pnl_pct": pnl_pct,
                 })
 
@@ -204,11 +230,15 @@ def run_backtest(
     if current_trade is not None and position > 0:
         last_price = df["close"].iloc[-1]
         last_date = df["trade_date"].iloc[-1]
-        capital = position * last_price * 0.99
-        pnl_pct = (last_price - current_trade.entry_price) / current_trade.entry_price
+        effective_price = _apply_transaction_costs(last_price, commission_rate, slippage_rate)
+        sale_proceeds = position * effective_price
+        pnl_pct = (effective_price - current_trade.entry_price) / current_trade.entry_price
+        trade_pnl = sale_proceeds - (current_trade.entry_price * position)
+
+        capital = capital + sale_proceeds
         current_trade.exit_date = last_date
         current_trade.exit_price = last_price
-        current_trade.pnl = capital - (current_trade.entry_price * position * 0.99)
+        current_trade.pnl = trade_pnl
         current_trade.pnl_pct = pnl_pct
         result.trades.append(current_trade)
 
@@ -249,7 +279,7 @@ def run_backtest(
 
     result.metrics = {
         "initial_capital": initial_capital,
-        "final_nav": final_nav,
+        "final_nav": round(final_nav, 2),
         "total_return": round(total_return * 100, 2),
         "annualized_return": round(annualized_return * 100, 2),
         "max_drawdown": round(max_drawdown * 100, 2),
@@ -259,6 +289,9 @@ def run_backtest(
         "avg_win": round(avg_win * 100, 2),
         "avg_loss": round(avg_loss * 100, 2),
         "trading_days": trading_days,
+        "commission_rate": commission_rate,
+        "slippage_rate": slippage_rate,
+        "position_size": position_size,
     }
 
     return result

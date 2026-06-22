@@ -24,6 +24,8 @@ yfinance = "^0.2.50"
 httpx = "^0.28"
 python-dotenv = "^1.0"
 python-jose = "^3.3.0"
+bcrypt = "^4.2"
+cryptography = "^43.0"
 scipy = "^1.14"
 jinja2 = "^3.1"
 
@@ -49,6 +51,11 @@ target-version = "py312"
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "N", "UP", "B", "C4", "SIM"]
 ignore = ["E501"]
+
+[tool.ruff.lint.per-file-ignores]
+"app/api/**/*.py" = ["B008"]
+"scripts/**/*.py" = ["E402"]
+"alembic/**/*.py" = ["E402", "F403"]
 
 [tool.pytest.ini_options]
 testpaths = ["app/tests"]

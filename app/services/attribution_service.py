@@ -3,10 +3,13 @@
 Simplified Brinson model for analyzing return sources.
 """
 
-from typing import Any, Dict, List
+from datetime import date
+from typing import Any
 
 from sqlalchemy.orm import Session
 
+from app.data.providers.akshare_provider import AkshareProvider
+from app.models.etf import ETFDailyBar
 from app.models.etl import BacktestResult
 
 
@@ -16,7 +19,61 @@ class AttributionService:
     def __init__(self, db: Session):
         self.db = db
 
-    def analyze_backtest(self, backtest_id: int) -> Dict[str, Any]:
+    def _calculate_benchmark_return(
+        self,
+        etf_code: str,
+        start_date: date,
+        end_date: date,
+    ) -> float:
+        """Calculate buy-and-hold benchmark return for the ETF over the period.
+
+        Uses ETFDailyBar from the database first, falling back to Akshare if
+        no local bars are available.
+        """
+        bars = (
+            self.db.query(ETFDailyBar)
+            .filter(
+                ETFDailyBar.etf_code == etf_code,
+                ETFDailyBar.trade_date >= start_date,
+                ETFDailyBar.trade_date <= end_date,
+            )
+            .order_by(ETFDailyBar.trade_date)
+            .all()
+        )
+
+        if len(bars) >= 2:
+            first_close = float(bars[0].close) if bars[0].close else 0.0
+            last_close = float(bars[-1].close) if bars[-1].close else 0.0
+            if first_close > 0:
+                return (last_close - first_close) / first_close * 100
+
+        # Fallback to Akshare provider
+        try:
+            provider = AkshareProvider()
+            df = provider.fetch_daily_bars([etf_code], start_date, end_date)
+            if df.empty or len(df) < 2:
+                return 0.0
+            df = df.sort_values("trade_date").reset_index(drop=True)
+            first_close = float(df["close"].iloc[0])
+            last_close = float(df["close"].iloc[-1])
+            if first_close > 0:
+                return (last_close - first_close) / first_close * 100
+        except Exception:
+            pass
+
+        return 0.0
+
+    def _parse_date(self, value: Any) -> date | None:
+        """Parse a date value from string or date object."""
+        if value is None:
+            return None
+        if isinstance(value, date):
+            return value
+        if isinstance(value, str):
+            return date.fromisoformat(value)
+        return None
+
+    def analyze_backtest(self, backtest_id: int) -> dict[str, Any]:
         """Analyze a backtest's return attribution.
 
         Uses a simplified Brinson model:
@@ -42,43 +99,61 @@ class AttributionService:
         trades = backtest.trades or []
         config = backtest.config_snapshot or {}
 
+        total_return = metrics.get("total_return", 0)
+        etf_code = config.get("etf_code") or ""
+        start_date = self._parse_date(backtest.start_date)
+        end_date = self._parse_date(backtest.end_date)
+
         # Calculate benchmark return (buy and hold)
-        benchmark_return = metrics.get("total_return", 0)
-
-        # If there are trades, calculate attribution
-        if trades:
-            # Allocation effect: proportion of time in market vs out
-            in_market_days = sum(
-                1 for t in trades if t.get("exit_date")
+        benchmark_return = 0.0
+        if etf_code and start_date and end_date:
+            benchmark_return = self._calculate_benchmark_return(
+                etf_code, start_date, end_date
             )
-            total_days = metrics.get("trading_days", 252)
-            allocation_ratio = in_market_days / total_days if total_days > 0 else 1.0
 
-            # Selection effect: average trade return vs benchmark
+        excess_return = total_return - benchmark_return
+        total_days = metrics.get("trading_days", 252)
+
+        # Calculate actual days in market across all closed trades
+        in_market_days = 0
+        if trades:
+            for t in trades:
+                entry = self._parse_date(t.get("entry_date"))
+                exit_ = self._parse_date(t.get("exit_date"))
+                if entry and exit_ and exit_ >= entry:
+                    in_market_days += (exit_ - entry).days + 1
+
+            allocation_ratio = in_market_days / total_days if total_days > 0 else 1.0
             avg_trade_return = sum(t.get("pnl_pct", 0) for t in trades) / len(trades) if trades else 0
 
             allocation_effect = benchmark_return * (allocation_ratio - 1.0)
             selection_effect = avg_trade_return * allocation_ratio
-            interaction_effect = metrics.get("total_return", 0) - allocation_effect - selection_effect
+            interaction_effect = total_return - allocation_effect - selection_effect
         else:
+            allocation_ratio = 0.0
             allocation_effect = 0
             selection_effect = 0
             interaction_effect = 0
+            avg_trade_return = 0
+
+        denominator = total_return if total_return != 0 else 1
 
         return {
             "backtest_id": backtest_id,
-            "total_return": round(metrics.get("total_return", 0), 2),
+            "total_return": round(total_return, 2),
             "benchmark_return": round(benchmark_return, 2),
-            "excess_return": round(metrics.get("total_return", 0) - benchmark_return, 2),
+            "excess_return": round(excess_return, 2),
             "attribution": {
                 "allocation_effect": round(allocation_effect, 2),
                 "selection_effect": round(selection_effect, 2),
                 "interaction_effect": round(interaction_effect, 2),
             },
             "summary": {
-                "allocation_pct": round(allocation_effect / metrics.get("total_return", 1) * 100, 2) if metrics.get("total_return", 0) != 0 else 0,
-                "selection_pct": round(selection_effect / metrics.get("total_return", 1) * 100, 2) if metrics.get("total_return", 0) != 0 else 0,
-                "interaction_pct": round(interaction_effect / metrics.get("total_return", 1) * 100, 2) if metrics.get("total_return", 0) != 0 else 0,
+                "allocation_pct": round(allocation_effect / denominator * 100, 2),
+                "selection_pct": round(selection_effect / denominator * 100, 2),
+                "interaction_pct": round(interaction_effect / denominator * 100, 2),
+                "in_market_pct": round(allocation_ratio * 100, 2),
+                "avg_trade_return": round(avg_trade_return, 2),
             },
             "trade_stats": {
                 "total_trades": len(trades),

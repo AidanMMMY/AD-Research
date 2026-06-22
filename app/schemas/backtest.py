@@ -1,9 +1,9 @@
 """Backtest Pydantic schemas."""
 
-from datetime import date, datetime
-from typing import Any, Dict, List, Optional
+from datetime import date
+from typing import Any
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel
 
 
 class BacktestCreate(BaseModel):
@@ -14,6 +14,9 @@ class BacktestCreate(BaseModel):
     start_date: date
     end_date: date
     initial_capital: float = 100000.0
+    commission_rate: float = 0.001
+    slippage_rate: float = 0.001
+    position_size: float = 1.0
 
 
 class BacktestMetrics(BaseModel):
@@ -30,13 +33,16 @@ class BacktestMetrics(BaseModel):
     avg_win: float
     avg_loss: float
     trading_days: int
+    commission_rate: float = 0.001
+    slippage_rate: float = 0.001
+    position_size: float = 1.0
 
 
 class BacktestTrade(BaseModel):
     """Backtest trade record."""
 
     entry_date: str
-    exit_date: Optional[str] = None
+    exit_date: str | None = None
     entry_price: float
     exit_price: float
     side: str
@@ -51,11 +57,12 @@ class BacktestResponse(BaseModel):
     strategy_id: int
     start_date: str
     end_date: str
-    metrics: Dict[str, Any]
-    trades: List[Dict[str, Any]]
-    daily_nav: List[Dict[str, Any]]
-    signals: List[Dict[str, Any]]
-    created_at: Optional[str] = None
+    metrics: dict[str, Any]
+    trades: list[dict[str, Any]]
+    daily_nav: list[dict[str, Any]]
+    signals: list[dict[str, Any]]
+    config_snapshot: dict[str, Any] | None = None
+    created_at: str | None = None
 
 
 class BacktestListItem(BaseModel):
@@ -63,14 +70,14 @@ class BacktestListItem(BaseModel):
 
     id: int
     strategy_id: int
-    start_date: Optional[str] = None
-    end_date: Optional[str] = None
-    metrics: Dict[str, Any]
+    start_date: str | None = None
+    end_date: str | None = None
+    metrics: dict[str, Any]
     trade_count: int
-    created_at: Optional[str] = None
+    created_at: str | None = None
 
 
 class BacktestListResponse(BaseModel):
     """Backtest list response."""
 
-    items: List[BacktestListItem]
+    items: list[BacktestListItem]

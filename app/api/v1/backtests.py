@@ -1,7 +1,5 @@
 """Backtest API routes."""
 
-from datetime import date
-from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
 
@@ -36,13 +34,16 @@ def create_backtest(
         start_date=data.start_date,
         end_date=data.end_date,
         initial_capital=data.initial_capital,
+        commission_rate=data.commission_rate,
+        slippage_rate=data.slippage_rate,
+        position_size=data.position_size,
     )
     return result
 
 
 @router.get("", response_model=BacktestListResponse)
 def list_backtests(
-    strategy_id: Optional[int] = None,
+    strategy_id: int | None = None,
     limit: int = 50,
     service: BacktestService = Depends(get_backtest_service),
 ):
