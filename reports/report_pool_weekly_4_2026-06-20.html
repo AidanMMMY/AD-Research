@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>科技成长池 - 池周报</title>
+    <style>
+        :root {
+            --primary: #1565c0;
+            --primary-light: #42a5f5;
+            --primary-dark: #0d47a1;
+            --bg: #f5f7fa;
+            --card-bg: #ffffff;
+            --text: #1a1a2e;
+            --text-secondary: #5a5a6e;
+            --border: #e0e4e8;
+            --success: #2e7d32;
+            --warning: #ed6c02;
+            --danger: #d32f2f;
+            --info: #0288d1;
+            --radius: 8px;
+            --shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 24px;
+        }
+
+        /* Header */
+        .report-header {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white;
+            padding: 32px 24px;
+            border-radius: var(--radius);
+            margin-bottom: 24px;
+            box-shadow: var(--shadow);
+        }
+        .report-header h1 {
+            margin: 0 0 8px 0;
+            font-size: 28px;
+            font-weight: 600;
+        }
+        .report-header .meta {
+            opacity: 0.85;
+            font-size: 14px;
+        }
+
+        /* Cards */
+        .card {
+            background: var(--card-bg);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            margin-bottom: 24px;
+            overflow: hidden;
+        }
+        .card-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .card-header h2 {
+            margin: 0;
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--primary-dark);
+        }
+        .card-body {
+            padding: 20px;
+        }
+
+        /* Grid layouts */
+        .grid-2 {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 16px;
+        }
+        .grid-3 {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+        }
+        .grid-4 {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+        }
+
+        /* Stat boxes */
+        .stat-box {
+            background: var(--bg);
+            border-radius: var(--radius);
+            padding: 16px;
+            text-align: center;
+        }
+        .stat-box .stat-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--primary);
+            margin-bottom: 4px;
+        }
+        .stat-box .stat-label {
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+        .stat-box .stat-change {
+            font-size: 13px;
+            margin-top: 4px;
+        }
+        .stat-change.up { color: var(--danger); }
+        .stat-change.down { color: var(--success); }
+
+        /* Tables */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+        th {
+            background: var(--bg);
+            color: var(--text-secondary);
+            font-weight: 600;
+            text-align: left;
+            padding: 12px 16px;
+            border-bottom: 2px solid var(--border);
+            white-space: nowrap;
+        }
+        td {
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border);
+        }
+        tr:hover td {
+            background: #f8fafc;
+        }
+        tr:last-child td {
+            border-bottom: none;
+        }
+        .text-right { text-align: right; }
+        .text-center { text-align: center; }
+
+        /* Badges */
+        .badge {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .badge-success { background: #e8f5e9; color: var(--success); }
+        .badge-warning { background: #fff3e0; color: var(--warning); }
+        .badge-danger { background: #ffebee; color: var(--danger); }
+        .badge-info { background: #e3f2fd; color: var(--info); }
+        .badge-primary { background: #e8eaf6; color: var(--primary); }
+
+        /* Score bars */
+        .score-bar-container {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .score-bar {
+            flex: 1;
+            height: 8px;
+            background: var(--border);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        .score-bar-fill {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 0.3s ease;
+        }
+        .score-bar-fill.high { background: linear-gradient(90deg, var(--success), #66bb6a); }
+        .score-bar-fill.medium { background: linear-gradient(90deg, var(--warning), #ffb74d); }
+        .score-bar-fill.low { background: linear-gradient(90deg, var(--danger), #ef5350); }
+        .score-value {
+            font-size: 13px;
+            font-weight: 600;
+            min-width: 36px;
+            text-align: right;
+        }
+
+        /* Rank */
+        .rank {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            font-size: 13px;
+            font-weight: 700;
+        }
+        .rank-1 { background: #ffd700; color: #5a4a00; }
+        .rank-2 { background: #c0c0c0; color: #333; }
+        .rank-3 { background: #cd7f32; color: white; }
+        .rank-other { background: var(--bg); color: var(--text-secondary); }
+
+        /* Footer */
+        .report-footer {
+            text-align: center;
+            padding: 24px;
+            color: var(--text-secondary);
+            font-size: 12px;
+            border-top: 1px solid var(--border);
+            margin-top: 24px;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .grid-2, .grid-3, .grid-4 {
+                grid-template-columns: 1fr;
+            }
+            .container {
+                padding: 12px;
+            }
+            .report-header h1 {
+                font-size: 22px;
+            }
+            table {
+                font-size: 12px;
+            }
+            th, td {
+                padding: 8px 10px;
+            }
+        }
+
+        /* Print styles */
+        @media print {
+            body { background: white; }
+            .card { box-shadow: none; border: 1px solid var(--border); }
+            .report-header { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        }
+    </style>
+    
+</head>
+<body>
+    <div class="container">
+        
+        <div class="report-header">
+            <h1>科技成长池 - 池周报</h1>
+            <div class="meta">报告日期：2026-06-20 | 成员数：3 | 生成时间：2026-06-20 12:56:48</div>
+        </div>
+        
+
+        
+
+<!-- Module 1: Overview -->
+<div class="card">
+    <div class="card-header">
+        <h2>📊 概览</h2>
+    </div>
+    <div class="card-body">
+        <div class="grid-4">
+            <div class="stat-box">
+                <div class="stat-value">3</div>
+                <div class="stat-label">池内成员</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-value" style="color: var(--success);">2</div>
+                <div class="stat-label">上涨</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-value" style="color: var(--danger);">1</div>
+                <div class="stat-label">下跌</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-value">41.0</div>
+                <div class="stat-label">平均综合评分</div>
+            </div>
+        </div>
+
+        <h3 style="margin-top: 24px; font-size: 15px; color: var(--text-secondary);">实时快照</h3>
+        <table style="margin-top: 12px;">
+            <thead>
+                <tr>
+                    <th>代码</th>
+                    <th>名称</th>
+                    <th>类别</th>
+                    <th class="text-right">周收益</th>
+                    <th class="text-right">月收益</th>
+                    <th class="text-right">年收益</th>
+                    <th class="text-center">风险等级</th>
+                </tr>
+            </thead>
+            <tbody>
+                
+                <tr>
+                    <td><strong>159915.SZ</strong></td>
+                    <td>创业板ETF易方达</td>
+                    <td>宽基指数</td>
+                    <td class="text-right stat-change up">11.00%</td>
+                    <td class="text-right stat-change up">8.85%</td>
+                    <td class="text-right stat-change up">72.23%</td>
+                    <td class="text-center"><span class="badge badge-danger">高风险</span></td>
+                </tr>
+                
+                <tr>
+                    <td><strong>512000.SH</strong></td>
+                    <td>券商ETF华宝</td>
+                    <td>行业主题</td>
+                    <td class="text-right stat-change up">0.60%</td>
+                    <td class="text-right stat-change down">-0.59%</td>
+                    <td class="text-right stat-change down">-55.05%</td>
+                    <td class="text-center"><span class="badge badge-danger">高风险</span></td>
+                </tr>
+                
+                <tr>
+                    <td><strong>159928.SZ</strong></td>
+                    <td>消费ETF汇添富</td>
+                    <td>行业主题</td>
+                    <td class="text-right stat-change down">-5.17%</td>
+                    <td class="text-right stat-change down">-11.00%</td>
+                    <td class="text-right stat-change down">-10.18%</td>
+                    <td class="text-center"><span class="badge badge-danger">高风险</span></td>
+                </tr>
+                
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Module 2: Returns Analysis -->
+<div class="card">
+    <div class="card-header">
+        <h2>📈 收益分析</h2>
+    </div>
+    <div class="card-body">
+        <table>
+            <thead>
+                <tr>
+                    <th>代码</th>
+                    <th>名称</th>
+                    <th class="text-right">周收益</th>
+                    <th class="text-right">月收益</th>
+                    <th class="text-right">季收益</th>
+                    <th class="text-right">半年收益</th>
+                    <th class="text-right">年收益</th>
+                </tr>
+            </thead>
+            <tbody>
+                
+                <tr>
+                    <td><strong>159915.SZ</strong></td>
+                    <td>创业板ETF易方达</td>
+                    <td class="text-right stat-change up">11.00%</td>
+                    <td class="text-right stat-change up">8.85%</td>
+                    <td class="text-right stat-change up">27.47%</td>
+                    <td class="text-right stat-change up">38.20%</td>
+                    <td class="text-right stat-change up">72.23%</td>
+                </tr>
+                
+                <tr>
+                    <td><strong>512000.SH</strong></td>
+                    <td>券商ETF华宝</td>
+                    <td class="text-right stat-change up">0.60%</td>
+                    <td class="text-right stat-change down">-0.59%</td>
+                    <td class="text-right stat-change down">-5.10%</td>
+                    <td class="text-right stat-change down">-12.08%</td>
+                    <td class="text-right stat-change down">-55.05%</td>
+                </tr>
+                
+                <tr>
+                    <td><strong>159928.SZ</strong></td>
+                    <td>消费ETF汇添富</td>
+                    <td class="text-right stat-change down">-5.17%</td>
+                    <td class="text-right stat-change down">-11.00%</td>
+                    <td class="text-right stat-change down">-21.14%</td>
+                    <td class="text-right stat-change down">-22.99%</td>
+                    <td class="text-right stat-change down">-10.18%</td>
+                </tr>
+                
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Module 3: Risk Analysis -->
+<div class="card">
+    <div class="card-header">
+        <h2>⚠️ 风险分析</h2>
+    </div>
+    <div class="card-body">
+        <table>
+            <thead>
+                <tr>
+                    <th>代码</th>
+                    <th>名称</th>
+                    <th class="text-right">20日波动率</th>
+                    <th class="text-right">最大回撤</th>
+                    <th class="text-right">夏普比率</th>
+                    <th class="text-center">风险等级</th>
+                </tr>
+            </thead>
+            <tbody>
+                
+                <tr>
+                    <td><strong>159915.SZ</strong></td>
+                    <td>创业板ETF易方达</td>
+                    <td class="text-right">40.22%</td>
+                    <td class="text-right">-21.49%</td>
+                    <td class="text-right">1.27</td>
+                    <td class="text-center"><span class="badge badge-danger">高风险</span></td>
+                </tr>
+                
+                <tr>
+                    <td><strong>512000.SH</strong></td>
+                    <td>券商ETF华宝</td>
+                    <td class="text-right">25.33%</td>
+                    <td class="text-right">-57.68%</td>
+                    <td class="text-right">-1.51</td>
+                    <td class="text-center"><span class="badge badge-danger">高风险</span></td>
+                </tr>
+                
+                <tr>
+                    <td><strong>159928.SZ</strong></td>
+                    <td>消费ETF汇添富</td>
+                    <td class="text-right">20.38%</td>
+                    <td class="text-right">-26.96%</td>
+                    <td class="text-right">-0.03</td>
+                    <td class="text-center"><span class="badge badge-danger">高风险</span></td>
+                </tr>
+                
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Module 4: Composite Scoring -->
+<div class="card">
+    <div class="card-header">
+        <h2>🏆 综合评分</h2>
+    </div>
+    <div class="card-body">
+        <table>
+            <thead>
+                <tr>
+                    <th class="text-center">排名</th>
+                    <th>代码</th>
+                    <th>名称</th>
+                    <th class="text-right">综合评分</th>
+                    <th>收益维度</th>
+                    <th>风险维度</th>
+                    <th>夏普维度</th>
+                    <th>流动性</th>
+                    <th>趋势</th>
+                </tr>
+            </thead>
+            <tbody>
+                
+                <tr>
+                    <td class="text-center">
+                        
+                        <span class="rank rank-1">1</span>
+                        
+                    </td>
+                    <td><strong>159915.SZ</strong></td>
+                    <td>创业板ETF易方达</td>
+                    <td class="text-right"><strong>55.1</strong></td>
+                    <td>
+                        <div class="score-bar-container">
+                            <div class="score-bar">
+                                <div class="score-bar-fill low" style="width: 25.81%;"></div>
+                            </div>
+                            <span class="score-value">26</span>
+                        </div>
+                    </td>
+                    <td>
+                        <div class="score-bar-container">
+                            <div class="score-bar">
+                                <div class="score-bar-fill low" style="width: 7.12%;"></div>
+                            </div>
+                            <span class="score-value">7</span>
+                        </div>
+                    </td>
+                    <td>
+                        <div class="score-bar-container">
+                            <div class="score-bar">
+                                <div class="score-bar-fill low" style="width: 13.75%;"></div>
+                            </div>
+                            <span class="score-value">14</span>
+                        </div>
+                    </td>
+                    <td>
+                        <div class="score-bar-container">
+                            <div class="score-bar">
+                                <div class="score-bar-fill low" style="width: 0.0%;"></div>
+                            </div>
+                            <span class="score-value">0</span>
+                        </div>
+                    </td>
+                    <td>
+                        <div class="score-bar-container">
+                            <div class="score-bar">
+                                <div class="score-bar-fill low" style="width: 8.46%;"></div>
+                            </div>
+                            <span class="score-value">8</span>
+                        </div>
+                    </td>
+                </tr>
+                
+                <tr>
+                    <td class="text-center">
+                        
+                        <span class="rank rank-2">2</span>
+                        
+                    </td>
+                    <td><strong>159928.SZ</strong></td>
+                    <td>消费ETF汇添富</td>
+                    <td class="text-right"><strong>34.3</strong></td>
+                    <td>
+                        <div class="score-bar-container">
+                            <div class="score-bar">
+                                <div class="score-bar-fill low" style="width: 2.82%;"></div>
+                            </div>
+                            <span class="score-value">3</span>
+                        </div>
+                    </td>
+                    <td>
+                        <div class="score-bar-container">
+                            <div class="score-bar">
+                                <div class="score-bar-fill low" style="width: 22.41%;"></div>
+                            </div>
+                            <span class="score-value">22</span>
+                        </div>
+                    </td>
+                    <td>
+                        <div class="score-bar-container">
+                            <div class="score-bar">
+                                <div class="score-bar-fill low" style="width: 8.04%;"></div>
+                            </div>
+                            <span class="score-value">8</span>
+                        </div>
+                    </td>
+                    <td>
+                        <div class="score-bar-container">
+                            <div class="score-bar">
+                                <div class="score-bar-fill low" style="width: 0.0%;"></div>
+                            </div>
+                            <span class="score-value">0</span>
+                        </div>
+                    </td>
+                    <td>
+                        <div class="score-bar-container">
+                            <div class="score-bar">
+                                <div class="score-bar-fill low" style="width: 0.99%;"></div>
+                            </div>
+                            <span class="score-value">1</span>
+                        </div>
+                    </td>
+                </tr>
+                
+                <tr>
+                    <td class="text-center">
+                        
+                        <span class="rank rank-3">3</span>
+                        
+                    </td>
+                    <td><strong>512000.SH</strong></td>
+                    <td>券商ETF华宝</td>
+                    <td class="text-right"><strong>33.7</strong></td>
+                    <td>
+                        <div class="score-bar-container">
+                            <div class="score-bar">
+                                <div class="score-bar-fill low" style="width: 0.59%;"></div>
+                            </div>
+                            <span class="score-value">1</span>
+                        </div>
+                    </td>
+                    <td>
+                        <div class="score-bar-container">
+                            <div class="score-bar">
+                                <div class="score-bar-fill low" style="width: 24.73%;"></div>
+                            </div>
+                            <span class="score-value">25</span>
+                        </div>
+                    </td>
+                    <td>
+                        <div class="score-bar-container">
+                            <div class="score-bar">
+                                <div class="score-bar-fill low" style="width: 2.27%;"></div>
+                            </div>
+                            <span class="score-value">2</span>
+                        </div>
+                    </td>
+                    <td>
+                        <div class="score-bar-container">
+                            <div class="score-bar">
+                                <div class="score-bar-fill low" style="width: 0.0%;"></div>
+                            </div>
+                            <span class="score-value">0</span>
+                        </div>
+                    </td>
+                    <td>
+                        <div class="score-bar-container">
+                            <div class="score-bar">
+                                <div class="score-bar-fill low" style="width: 6.07%;"></div>
+                            </div>
+                            <span class="score-value">6</span>
+                        </div>
+                    </td>
+                </tr>
+                
+            </tbody>
+        </table>
+    </div>
+</div>
+
+
+
+        
+        <div class="report-footer">
+            Generated at 2026-06-20 12:56:48 | ETF Research Platform
+        </div>
+        
+    </div>
+</body>
+</html>
