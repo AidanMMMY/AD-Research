@@ -1,12 +1,14 @@
-"""Seed user accounts from legacy hardcoded config into the database.
+"""Seed the initial admin user from environment variables into the database.
 
 Run once after creating the users table:
 
     python scripts/seed_users.py
 
-This will bcrypt-hash the legacy credentials from app.config.auth_settings
-and insert them into the database users table.
+The admin username and password are read from the AUTH_ADMIN_USERNAME and
+AUTH_ADMIN_PASSWORD environment variables (or .env file). The password is
+bcrypt-hashed before being stored.
 """
+import sys
 
 import bcrypt
 from sqlalchemy.orm import Session
@@ -20,26 +22,33 @@ def _hash_password(password: str) -> str:
     return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
 
 
-def seed_users(db: Session) -> None:
-    """Insert legacy users as hashed database accounts."""
-    existing = {u.username for u in db.query(User.username).all()}
+def seed_admin(db: Session) -> None:
+    """Create the initial admin account if it does not already exist."""
+    username = auth_settings.ADMIN_USERNAME
+    password = auth_settings.ADMIN_PASSWORD
 
-    for username, password in auth_settings.USERS.items():
-        if username in existing:
-            print(f"[seed] User '{username}' already exists, skipping.")
-            continue
-
-        role = "admin" if username == "admin" else "user"
-        user = User(
-            username=username,
-            password_hash=_hash_password(password),
-            role=role,
-            is_active=True,
+    if not password:
+        print(
+            "Error: AUTH_ADMIN_PASSWORD is not set. "
+            "Set it in the environment or .env file before seeding.",
+            file=sys.stderr,
         )
-        db.add(user)
-        print(f"[seed] Created user '{username}' with role '{role}'.")
+        sys.exit(1)
 
+    existing = db.query(User).filter(User.username == username).first()
+    if existing:
+        print(f"[seed] Admin user '{username}' already exists, skipping.")
+        return
+
+    user = User(
+        username=username,
+        password_hash=_hash_password(password),
+        role="admin",
+        is_active=True,
+    )
+    db.add(user)
     db.commit()
+    print(f"[seed] Created admin user '{username}'.")
 
 
 def main() -> None:
@@ -48,7 +57,7 @@ def main() -> None:
 
     db = SessionLocal()
     try:
-        seed_users(db)
+        seed_admin(db)
         print("[seed] Done.")
     finally:
         db.close()

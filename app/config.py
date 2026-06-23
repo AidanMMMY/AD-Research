@@ -19,7 +19,7 @@ class Settings(BaseSettings):
     )
 
     # Database
-    database_url: str = "postgresql+psycopg2://etf:etf_research_password@localhost:5432/etf_research"
+    database_url: str = "postgresql+psycopg2://etf:etf_research_password@localhost:5432/ad_research"
 
     # Redis
     redis_url: str = "redis://localhost:6379/0"
@@ -39,9 +39,14 @@ class Settings(BaseSettings):
     smtp_from: str = ""
     smtp_use_tls: bool = True
 
+    # Notification encryption (used by NotificationService to encrypt
+    # sensitive webhook/email credentials at rest). Kept here rather than
+    # AuthSettings because it is not an authentication concern.
+    notification_encryption_key: str = ""
+
     # Constants
     api_v1_prefix: str = "/api/v1"
-    project_name: str = "ETF Research Platform"
+    project_name: str = "AD-Research"
 
     @property
     def is_development(self) -> bool:
@@ -50,22 +55,16 @@ class Settings(BaseSettings):
 
 
 class AuthSettings(BaseSettings):
-    """Authentication settings."""
+    """Authentication settings loaded from environment variables.
+
+    Never commit plaintext passwords to source control. Set these via
+    environment variables or a secrets manager in production.
+    """
 
     SECRET_KEY: str = "your-secret-key-change-in-production"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24  # 1 day
     ADMIN_USERNAME: str = "admin"
-    ADMIN_PASSWORD: str = "admin123"
-    NOTIFICATION_ENCRYPTION_KEY: str = ""
-
-    # Multi-user credentials: username -> password
-    USERS: dict[str, str] = {
-        "admin": "admin123",
-        "Aidan": "19880402",
-        "Tee": "19790615",
-        "Zack": "19911213",
-        "Philip": "19900225",
-    }
+    ADMIN_PASSWORD: str = ""
 
     model_config = SettingsConfigDict(
         env_prefix="AUTH_",
