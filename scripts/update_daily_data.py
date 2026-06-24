@@ -281,14 +281,18 @@ def run_backtests(db):
     total = 0
     skipped = 0
 
-    # Only re-run backtests that haven't been run in the last 7 days
+    # Only re-run backtests that haven't been run in the last 7 days.
+    # BacktestResult stores etf_code inside the config_snapshot JSON.
     lookback_until = date.today() - timedelta(days=7)
-    recent_backtests = set(
-        db.execute(
-            select(BacktestResult.strategy_id, BacktestResult.etf_code)
-            .where(BacktestResult.created_at >= lookback_until)
-        ).all()
-    )
+    recent_rows = db.execute(
+        select(BacktestResult.strategy_id, BacktestResult.config_snapshot)
+        .where(BacktestResult.created_at >= lookback_until)
+    ).all()
+    recent_backtests: set[tuple[int, str]] = set()
+    for sid, snapshot in recent_rows:
+        code = snapshot.get("etf_code") if isinstance(snapshot, dict) else None
+        if code:
+            recent_backtests.add((sid, code))
 
     for strategy in strategies:
         for etf_code in etfs_with_bars:
