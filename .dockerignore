@@ -44,7 +44,7 @@ docker-compose*.yml
 deploy/
 docs/
 reports/
-scripts/
+# scripts/ 保留，部署时需要 scripts/seed_users.py 初始化管理员账号
 
 # Data files
 *.csv

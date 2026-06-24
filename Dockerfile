@@ -27,6 +27,7 @@ RUN pip install poetry && \
 COPY app/ ./app/
 COPY alembic/ ./alembic/
 COPY alembic.ini ./
+COPY scripts/ ./scripts/
 
 # Copy frontend build output
 COPY --from=frontend-build /app/web/dist ./web/dist
