@@ -17,6 +17,7 @@ import {
   SettingOutlined,
   ExperimentOutlined,
   ThunderboltOutlined,
+  TeamOutlined,
   MenuFoldOutlined,
   MenuUnfoldOutlined,
 } from '@ant-design/icons';
@@ -38,6 +39,7 @@ const iconMap: Record<string, React.ComponentType> = {
   SettingOutlined,
   ExperimentOutlined,
   ThunderboltOutlined,
+  TeamOutlined,
 };
 
 const SIDEBAR_WIDTH = 220;
@@ -118,6 +120,10 @@ export default function AppLayout() {
         {/* Menu Items */}
         <nav style={{ flex: 1, padding: '16px 12px', overflowY: 'auto' }}>
           {menuRoutes.map((route) => {
+            if (route.path === '/admin/users' && user?.role !== 'admin') {
+              return null;
+            }
+
             const isActive = location.pathname === route.path;
             const Icon = route.menu?.icon ? iconMap[route.menu.icon] : null;
 

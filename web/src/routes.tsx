@@ -19,6 +19,7 @@ const StrategyList = lazy(() => import('./pages/StrategyList'));
 const BacktestList = lazy(() => import('./pages/BacktestList'));
 const BacktestDetail = lazy(() => import('./pages/BacktestDetail'));
 const SignalDashboard = lazy(() => import('./pages/SignalDashboard'));
+const AdminUsers = lazy(() => import('./pages/AdminUsers'));
 
 export interface RouteConfig {
   path: string;
@@ -55,6 +56,7 @@ export const routes: RouteConfig[] = [
   { path: '/backtests', element: wrap(BacktestList), auth: true, menu: { name: '回测管理', icon: 'ExperimentOutlined' } },
   { path: '/backtests/:id', element: wrap(BacktestDetail), auth: true },
   { path: '/signals', element: wrap(SignalDashboard), auth: true, menu: { name: '交易信号', icon: 'ThunderboltOutlined' } },
+  { path: '/admin/users', element: wrap(AdminUsers), auth: true, menu: { name: '用户管理', icon: 'TeamOutlined' } },
   { path: '/', element: <Navigate to="/dashboard" replace />, auth: true },
 ];
 

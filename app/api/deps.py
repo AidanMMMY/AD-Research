@@ -5,11 +5,14 @@ Provides database session and service instance dependencies for all API routes.
 
 from collections.abc import Generator
 
-from fastapi import Depends
+from fastapi import Depends, HTTPException
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from jose import JWTError, jwt
 from sqlalchemy.orm import Session
 
-from app.api.v1.auth import get_current_user
+from app.config import auth_settings
 from app.core.database import SessionLocal
+from app.schemas.auth import UserResponse
 from app.services.analysis_service import AnalysisService
 from app.services.attribution_service import AttributionService
 from app.services.backtest_service import BacktestService
@@ -32,6 +35,7 @@ from app.services.strategy_service import StrategyService
 __all__ = [
     "get_current_user",
     "get_db",
+    "require_admin",
     "get_etf_service",
     "get_pool_service",
     "get_market_data_service",
@@ -51,6 +55,46 @@ __all__ = [
     "get_strategy_comparison_service",
     "get_favorite_service",
 ]
+
+
+security = HTTPBearer()
+
+
+def get_current_user(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+) -> UserResponse:
+    """Validate JWT and return the current user, querying the DB for status."""
+    try:
+        payload = jwt.decode(
+            credentials.credentials,
+            auth_settings.SECRET_KEY,
+            algorithms=["HS256"],
+        )
+        username = payload.get("sub")
+        if not username:
+            raise HTTPException(status_code=401, detail="Invalid token")
+    except JWTError as err:
+        raise HTTPException(status_code=401, detail="Invalid token") from err
+
+    db = SessionLocal()
+    try:
+        from app.models.user import User
+
+        user = db.query(User).filter(User.username == username).first()
+        if not user or not user.is_active:
+            raise HTTPException(status_code=401, detail="Invalid or inactive user")
+        return UserResponse(username=user.username, role=user.role)
+    finally:
+        db.close()
+
+
+def require_admin(
+    current_user: UserResponse = Depends(get_current_user),
+) -> UserResponse:
+    """Dependency that enforces admin role."""
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    return current_user
 
 
 def get_db() -> Generator[Session, None, None]:

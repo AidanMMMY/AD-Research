@@ -22,6 +22,14 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+function AdminRouteGuard({ children }: { children: React.ReactNode }) {
+  const { user } = useAuthStore();
+  if (user?.role !== 'admin') {
+    return <Navigate to="/dashboard" replace />;
+  }
+  return <>{children}</>;
+}
+
 export default function App() {
   return (
     <BrowserRouter>
@@ -39,7 +47,13 @@ export default function App() {
                 path={route.path}
                 element={
                   route.auth ? (
-                    <RequireAuth>{route.element}</RequireAuth>
+                    route.path === '/admin/users' ? (
+                      <RequireAuth>
+                        <AdminRouteGuard>{route.element}</AdminRouteGuard>
+                      </RequireAuth>
+                    ) : (
+                      <RequireAuth>{route.element}</RequireAuth>
+                    )
                   ) : (
                     route.element
                   )

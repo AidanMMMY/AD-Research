@@ -7,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from app.api.v1 import (
+    admin_users,
     analysis,
     attribution,
     auth,
@@ -77,6 +78,11 @@ app.include_router(
 )
 app.include_router(
     auth.router, prefix=f"{settings.api_v1_prefix}/auth", tags=["auth"]
+)
+app.include_router(
+    admin_users.router,
+    prefix=f"{settings.api_v1_prefix}/admin/users",
+    tags=["Admin"],
 )
 app.include_router(
     stats.router, prefix=f"{settings.api_v1_prefix}/stats", tags=["Statistics"]
