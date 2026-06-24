@@ -1,0 +1,90 @@
+# 阿里云 ECS 生产环境部署配置
+# 使用说明见同目录 README.md
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: etf-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-ad_research}
+      POSTGRES_USER: ${POSTGRES_USER:-etf}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?error POSTGRES_PASSWORD is required}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-etf} -d ${POSTGRES_DB:-ad_research}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - etf-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "3"
+
+  redis:
+    image: redis:7-alpine
+    container_name: etf-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+    networks:
+      - etf-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "3"
+
+  backend:
+    build:
+      context: ../..
+      dockerfile: Dockerfile
+    image: ad-research:latest
+    container_name: etf-backend
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-etf}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-ad_research}
+      REDIS_URL: redis://redis:6379/0
+      APP_ENV: production
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      TUSHARE_TOKEN: ${TUSHARE_TOKEN:-}
+      AUTH_SECRET_KEY: ${AUTH_SECRET_KEY:?error AUTH_SECRET_KEY is required}
+      AUTH_ADMIN_PASSWORD: ${AUTH_ADMIN_PASSWORD:?error AUTH_ADMIN_PASSWORD is required}
+      AUTH_ACCESS_TOKEN_EXPIRE_MINUTES: ${AUTH_ACCESS_TOKEN_EXPIRE_MINUTES:-480}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: >
+      sh -c "alembic upgrade head &&
+             uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers ${UVICORN_WORKERS:-2}"
+    networks:
+      - etf-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "5"
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  etf-network:
+    driver: bridge

@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AD-Research 阿里云 ECS 部署手册</title>
+    <style>
+        :root {
+            --bg: #f8fafc;
+            --card-bg: #ffffff;
+            --text: #1e293b;
+            --text-secondary: #64748b;
+            --primary: #2563eb;
+            --primary-light: #dbeafe;
+            --border: #e2e8f0;
+            --code-bg: #f1f5f9;
+            --success: #16a34a;
+            --warning: #ca8a04;
+            --danger: #dc2626;
+        }
+        
+        * {
+            box-sizing: border-box;
+        }
+        
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "PingFang SC", "Microsoft YaHei", sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.7;
+        }
+        
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, var(--primary) 0%, #1d4ed8 100%);
+            color: white;
+            padding: 60px 40px;
+            border-radius: 16px;
+            margin-bottom: 40px;
+            box-shadow: 0 10px 40px rgba(37, 99, 235, 0.2);
+        }
+        
+        .header h1 {
+            margin: 0 0 16px 0;
+            font-size: 2.2em;
+            font-weight: 700;
+        }
+        
+        .header p {
+            margin: 0;
+            opacity: 0.9;
+            font-size: 1.1em;
+        }
+        
+        .content {
+            background: var(--card-bg);
+            padding: 48px;
+            border-radius: 16px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+        }
+        
+        h1, h2, h3, h4 {
+            color: var(--text);
+            margin-top: 2em;
+            margin-bottom: 0.8em;
+        }
+        
+        h1 {
+            font-size: 1.8em;
+            border-bottom: 3px solid var(--primary);
+            padding-bottom: 12px;
+        }
+        
+        h2 {
+            font-size: 1.5em;
+            color: var(--primary);
+            margin-top: 2.5em;
+        }
+        
+        h3 {
+            font-size: 1.2em;
+            margin-top: 2em;
+        }
+        
+        p {
+            margin: 1em 0;
+        }
+        
+        a {
+            color: var(--primary);
+            text-decoration: none;
+        }
+        
+        a:hover {
+            text-decoration: underline;
+        }
+        
+        ul, ol {
+            padding-left: 24px;
+            margin: 1em 0;
+        }
+        
+        li {
+            margin: 0.5em 0;
+        }
+        
+        code {
+            background: var(--code-bg);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: "SF Mono", Monaco, "Cascadia Code", "Roboto Mono", Consolas, monospace;
+            font-size: 0.9em;
+            color: #334155;
+        }
+        
+        pre {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 20px;
+            border-radius: 12px;
+            overflow-x: auto;
+            margin: 1.5em 0;
+        }
+        
+        pre code {
+            background: transparent;
+            color: inherit;
+            padding: 0;
+            font-size: 0.85em;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1.5em 0;
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+        }
+        
+        th {
+            background: var(--primary);
+            color: white;
+            padding: 14px 16px;
+            text-align: left;
+            font-weight: 600;
+        }
+        
+        td {
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        tr:hover {
+            background: #f8fafc;
+        }
+        
+        blockquote {
+            border-left: 4px solid var(--primary);
+            background: var(--primary-light);
+            padding: 16px 20px;
+            margin: 1.5em 0;
+            border-radius: 0 8px 8px 0;
+        }
+        
+        blockquote p {
+            margin: 0;
+        }
+        
+        .toc {
+            background: #f8fafc;
+            padding: 24px;
+            border-radius: 12px;
+            margin-bottom: 40px;
+            border: 1px solid var(--border);
+        }
+        
+        .toc ul {
+            margin: 0;
+            padding-left: 20px;
+        }
+        
+        .toc li {
+            margin: 0.4em 0;
+        }
+        
+        hr {
+            border: none;
+            border-top: 1px solid var(--border);
+            margin: 2.5em 0;
+        }
+        
+        strong {
+            color: var(--text);
+            font-weight: 600;
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                padding: 20px 16px;
+            }
+            .header {
+                padding: 40px 24px;
+            }
+            .header h1 {
+                font-size: 1.6em;
+            }
+            .content {
+                padding: 24px;
+            }
+        }
+        
+        @media print {
+            .header {
+                box-shadow: none;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            .content {
+                box-shadow: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>AD-Research 阿里云 ECS 部署手册</h1>
+            <p>面向小白的零基础部署指南 · 一步一步跟着做</p>
+        </div>
+        <div class="content">
+            <h1 id="ecs">阿里云 ECS 部署手册（小白版）</h1>
+<p>本手册面向没有服务器运维经验的同学，一步一步教你把 <strong>AD-Research</strong> 平台部署到阿里云 ECS 云服务器上。</p>
+<p>只要照着做，一般 15～30 分钟就能完成。</p>
+<hr />
+<h2 id="_1">目录</h2>
+<ol>
+<li><a href="#一部署前你需要准备什么">部署前你需要准备什么</a></li>
+<li><a href="#二第一步购买阿里云-ecs-服务器">第一步：购买阿里云 ECS 服务器</a></li>
+<li><a href="#三第二步配置安全组放行端口">第二步：配置安全组（放行端口）</a></li>
+<li><a href="#四第三步连接你的服务器">第三步：连接你的服务器</a></li>
+<li><a href="#五第四步把代码传到服务器">第四步：把代码传到服务器</a></li>
+<li><a href="#六第五步运行一键部署脚本">第五步：运行一键部署脚本</a></li>
+<li><a href="#七第六步访问平台">第六步：访问平台</a></li>
+<li><a href="#八第七步配置-tushare-token重要">第七步：配置 Tushare Token（重要）</a></li>
+<li><a href="#九日常运维命令">日常运维命令</a></li>
+<li><a href="#十常见问题排查">常见问题排查</a></li>
+<li><a href="#十一安全建议">安全建议</a></li>
+<li><a href="#十二备份建议">备份建议</a></li>
+</ol>
+<hr />
+<h2 id="_2">一、部署前你需要准备什么</h2>
+<h3 id="11">1.1 必备条件</h3>
+<ul>
+<li>[ ] 一个阿里云账号（并完成实名认证）</li>
+<li>[ ] 一台可以上网的电脑（Mac 或 Windows 都行）</li>
+<li>[ ] 你的本地已经能运行 Git 命令（如果不会，下面会教）</li>
+</ul>
+<h3 id="12">1.2 大概要花多少钱</h3>
+<p>按本手册推荐的配置，阿里云 ECS 首年大约 <strong>100～300 元</strong>（取决于活动和地域）。如果你只是测试，可以随时释放实例，按量付费更便宜。</p>
+<h3 id="13">1.3 需要准备的数据</h3>
+<ul>
+<li>[ ] <strong>Tushare Pro Token</strong>（可选但强烈建议）</li>
+<li>这是获取中国 A 股数据的 API Token</li>
+<li>没有它，平台能启动，但很多数据功能无法使用</li>
+<li>获取方式：访问 https://tushare.pro 注册并获取 Token</li>
+</ul>
+<hr />
+<h2 id="ecs_1">二、第一步：购买阿里云 ECS 服务器</h2>
+<h3 id="21-ecs">2.1 进入 ECS 控制台</h3>
+<ol>
+<li>打开阿里云官网：https://www.aliyun.com</li>
+<li>登录你的账号</li>
+<li>在顶部搜索框输入 <strong>"云服务器 ECS"</strong>，点击进入</li>
+</ol>
+<h3 id="22">2.2 点击创建实例</h3>
+<p>在 ECS 控制台页面，找到 <strong>"创建实例"</strong> 按钮，点击进入购买页面。</p>
+<h3 id="23">2.3 选择配置（按下面表格选）</h3>
+<table>
+<thead>
+<tr>
+<th>配置项</th>
+<th>推荐选择</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>计费方式</strong></td>
+<td>按量付费 或 包年包月</td>
+<td>测试选按量付费，长期使用选包年包月</td>
+</tr>
+<tr>
+<td><strong>地域</strong></td>
+<td>华东 1（杭州）或 华东 2（上海）</td>
+<td>离你和数据源越近越好</td>
+</tr>
+<tr>
+<td><strong>实例规格</strong></td>
+<td><code>ecs.c7.large</code> 或 <code>ecs.u1-c1m2.large</code></td>
+<td>2 核 4G，够用了</td>
+</tr>
+<tr>
+<td><strong>镜像</strong></td>
+<td>Alibaba Cloud Linux 3 / Ubuntu 22.04</td>
+<td>部署脚本对这两个系统做了适配</td>
+</tr>
+<tr>
+<td><strong>系统盘</strong></td>
+<td>40GB ESSD</td>
+<td>系统和 Docker 镜像</td>
+</tr>
+<tr>
+<td><strong>数据盘</strong></td>
+<td>100GB ESSD（可选但建议）</td>
+<td>放数据库数据，更安全</td>
+</tr>
+<tr>
+<td><strong>公网 IP</strong></td>
+<td>勾选分配公网 IPv4 地址</td>
+<td>否则你无法访问</td>
+</tr>
+<tr>
+<td><strong>带宽</strong></td>
+<td>按量付费，5 Mbps</td>
+<td>初期够用</td>
+</tr>
+<tr>
+<td><strong>登录方式</strong></td>
+<td>密码登录 或 密钥对登录</td>
+<td>新手建议选密码登录，记得保存密码</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>预算有限怎么办？</strong> 可以选 <code>ecs.t6-c1m1.large</code>（1 核 2G），但只建议体验和测试，正式使用会卡。</p>
+</blockquote>
+<h3 id="24">2.4 确认订单并创建</h3>
+<ol>
+<li>检查配置无误后，点击 <strong>"立即购买"</strong> 或 <strong>"确认订单"</strong></li>
+<li>支付完成后，等待 1～2 分钟，实例状态变成 <strong>"运行中"</strong></li>
+<li>在实例列表中，找到你的服务器，记录下 <strong>公网 IP</strong>（类似 <code>47.xxx.xxx.xxx</code>）</li>
+</ol>
+<hr />
+<h2 id="_3">三、第二步：配置安全组（放行端口）</h2>
+<p>安全组是阿里云的防火墙，默认只放行 22 端口（SSH）。我们需要放行 8000 端口，才能通过浏览器访问平台。</p>
+<h3 id="31">3.1 找到安全组配置</h3>
+<ol>
+<li>在 ECS 控制台，点击你的实例名称</li>
+<li>左侧菜单找到 <strong>"安全组"</strong>，点击</li>
+<li>点击 <strong>"管理规则"</strong> 或 <strong>"配置规则"</strong></li>
+</ol>
+<h3 id="32">3.2 添加放行规则</h3>
+<p>点击 <strong>"手动添加"</strong> 或 <strong>"添加安全组规则"</strong>，添加以下规则：</p>
+<table>
+<thead>
+<tr>
+<th>类型</th>
+<th>端口范围</th>
+<th>授权对象</th>
+<th>描述</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>自定义 TCP</td>
+<td>8000</td>
+<td>0.0.0.0/0</td>
+<td>AD-Research 平台访问端口</td>
+</tr>
+<tr>
+<td>自定义 TCP</td>
+<td>22</td>
+<td>你的本地 IP/32</td>
+<td>SSH 远程连接（更安全）</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><code>0.0.0.0/0</code> 表示允许任何 IP 访问。如果你有自己的固定 IP，建议把授权对象改成你的 IP，更安全。</p>
+</blockquote>
+<h3 id="33">3.3 保存规则</h3>
+<p>点击 <strong>"保存"</strong> 或 <strong>"确认"</strong>。</p>
+<hr />
+<h2 id="_4">四、第三步：连接你的服务器</h2>
+<h3 id="41-mac">4.1 Mac 用户</h3>
+<p>打开 <strong>终端（Terminal）</strong>，输入：</p>
+<pre><code class="language-bash">ssh root@你的服务器公网IP
+</code></pre>
+<p>例如：</p>
+<pre><code class="language-bash">ssh root@47.100.123.45
+</code></pre>
+<p>第一次连接会提示：</p>
+<pre><code class="language-text">Are you sure you want to continue connecting (yes/no/[fingerprint])?
+</code></pre>
+<p>输入 <code>yes</code> 回车，然后输入你设置的密码（密码不会显示，直接输完回车）。</p>
+<h3 id="42-windows">4.2 Windows 用户</h3>
+<p>Windows 10/11 自带 SSH，打开 <strong>PowerShell</strong> 或 <strong>命令提示符</strong>，输入：</p>
+<pre><code class="language-bash">ssh root@你的服务器公网IP
+</code></pre>
+<p>如果提示没有 ssh 命令，可以下载 <a href="https://www.putty.org/">PuTTY</a> 或使用 Windows Terminal。</p>
+<h3 id="43">4.3 连接成功后的样子</h3>
+<p>看到类似下面的提示，说明连接成功：</p>
+<pre><code class="language-text">Welcome to Alibaba Cloud Elastic Compute Service !
+[root@iZbp1xxxxxx ~]#
+</code></pre>
+<hr />
+<h2 id="_5">五、第四步：把代码传到服务器</h2>
+<h3 id="git">方式一：用 Git 克隆（推荐，最简单）</h3>
+<h4 id="511-git">5.1.1 在服务器上安装 Git</h4>
+<p>连接服务器后，根据系统选择命令：</p>
+<p><strong>Alibaba Cloud Linux / CentOS：</strong></p>
+<pre><code class="language-bash">yum install -y git
+</code></pre>
+<p><strong>Ubuntu：</strong></p>
+<pre><code class="language-bash">apt-get update
+apt-get install -y git
+</code></pre>
+<h4 id="512">5.1.2 克隆代码</h4>
+<pre><code class="language-bash">cd /opt
+git clone 你的代码仓库地址 ad-research
+</code></pre>
+<p>例如：</p>
+<pre><code class="language-bash">cd /opt
+git clone https://github.com/yourname/ad-research.git ad-research
+</code></pre>
+<h4 id="513">5.1.3 进入项目目录</h4>
+<pre><code class="language-bash">cd ad-research
+</code></pre>
+<h3 id="zip-git">方式二：用 zip 上传（不会 Git 就用这个）</h3>
+<h4 id="521">5.2.1 在本地打包代码</h4>
+<ol>
+<li>在你的电脑上，打开终端/命令行</li>
+<li>进入项目文件夹</li>
+<li>执行：</li>
+</ol>
+<pre><code class="language-bash">zip -r ad-research.zip . -x &quot;*.git*&quot; -x &quot;node_modules/*&quot; -x &quot;.venv/*&quot; -x &quot;web/node_modules/*&quot;
+</code></pre>
+<h4 id="522">5.2.2 上传到服务器</h4>
+<p><strong>Mac/Linux：</strong></p>
+<pre><code class="language-bash">scp ad-research.zip root@你的服务器公网IP:/opt/
+</code></pre>
+<p><strong>Windows：</strong></p>
+<p>用 WinSCP 或 Xftp 等工具上传 <code>/opt/</code> 目录。</p>
+<h4 id="523">5.2.3 在服务器上解压</h4>
+<pre><code class="language-bash">cd /opt
+unzip ad-research.zip -d ad-research
+cd ad-research
+</code></pre>
+<hr />
+<h2 id="_6">六、第五步：运行一键部署脚本</h2>
+<h3 id="61">6.1 进入部署目录</h3>
+<pre><code class="language-bash">cd /opt/ad-research/deploy/aliyun-ecs
+</code></pre>
+<h3 id="62">6.2 给脚本执行权限</h3>
+<pre><code class="language-bash">chmod +x deploy.sh
+</code></pre>
+<h3 id="63">6.3 运行部署脚本</h3>
+<pre><code class="language-bash">./deploy.sh
+</code></pre>
+<h3 id="64">6.4 脚本会做什么</h3>
+<p>运行后，脚本会自动完成以下事情：</p>
+<ol>
+<li><strong>安装 Docker</strong>（如果还没装）</li>
+<li><strong>安装 Docker Compose 插件</strong>（随 Docker 一起安装）</li>
+<li><strong>生成 .env 文件</strong>（从 .env.example 复制，并自动生成强密码）</li>
+<li><strong>构建 Docker 镜像</strong>（包含前端和后端）</li>
+<li><strong>启动 PostgreSQL 和 Redis</strong></li>
+<li><strong>执行数据库迁移</strong>（创建表结构）</li>
+<li><strong>启动后端服务</strong></li>
+<li><strong>健康检查</strong>（确认服务正常）</li>
+</ol>
+<h3 id="65">6.5 过程中可能需要你输入</h3>
+<p>脚本生成 <code>.env</code> 文件后，会显示自动生成的管理员密码，并停下来让你按回车继续。<strong>请务必把这个密码记下来</strong>，这是你第一次登录后台的密码。</p>
+<h3 id="66">6.6 部署成功后的输出</h3>
+<p>如果一切正常，你会看到类似输出：</p>
+<pre><code class="language-text">[INFO] ✅ 部署成功！
+[INFO] 访问地址：http://47.100.123.45:8000
+[INFO] API 文档：http://47.100.123.45:8000/docs
+[INFO] 健康检查：http://47.100.123.45:8000/health
+</code></pre>
+<hr />
+<h2 id="_7">七、第六步：访问平台</h2>
+<h3 id="71">7.1 用浏览器打开</h3>
+<p>把脚本输出的地址复制到浏览器：</p>
+<pre><code class="language-text">http://你的服务器公网IP:8000
+</code></pre>
+<p>例如：</p>
+<pre><code class="language-text">http://47.100.123.45:8000
+</code></pre>
+<h3 id="72">7.2 登录</h3>
+<ul>
+<li>用户名：<code>admin</code></li>
+<li>密码：部署脚本显示的那个密码（在 <code>.env</code> 文件里也能看到 <code>AUTH_ADMIN_PASSWORD</code>）</li>
+</ul>
+<h3 id="73">7.3 如果打不开怎么办</h3>
+<p>先不要着急，跳到 <a href="#十常见问题排查">第十步：常见问题排查</a>。</p>
+<hr />
+<h2 id="tushare-token">八、第七步：配置 Tushare Token（重要）</h2>
+<p>平台启动后已经可以使用了，但如果要做中国 A 股的数据分析，必须配置 Tushare Token。</p>
+<h3 id="81-env">8.1 编辑 .env 文件</h3>
+<pre><code class="language-bash">vim /opt/ad-research/deploy/aliyun-ecs/.env
+</code></pre>
+<h3 id="82-tushare_token">8.2 找到 TUSHARE_TOKEN 并修改</h3>
+<pre><code class="language-bash">TUSHARE_TOKEN=your_tushare_token_here
+</code></pre>
+<p>改成你从 Tushare 获取的真实 Token：</p>
+<pre><code class="language-bash">TUSHARE_TOKEN=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+</code></pre>
+<h3 id="83">8.3 保存并退出</h3>
+<ul>
+<li>按 <code>Esc</code> 键</li>
+<li>输入 <code>:wq</code> 回车</li>
+</ul>
+<h3 id="84">8.4 重启服务让配置生效</h3>
+<pre><code class="language-bash">cd /opt/ad-research/deploy/aliyun-ecs
+docker compose restart backend
+</code></pre>
+<hr />
+<h2 id="_8">九、日常运维命令</h2>
+<p>以下命令都需要先进入部署目录：</p>
+<pre><code class="language-bash">cd /opt/ad-research/deploy/aliyun-ecs
+</code></pre>
+<h3 id="91">9.1 查看服务状态</h3>
+<pre><code class="language-bash">docker compose ps
+</code></pre>
+<h3 id="92">9.2 查看后端日志</h3>
+<pre><code class="language-bash">docker compose logs -f backend
+</code></pre>
+<p>按 <code>Ctrl + C</code> 退出日志查看。</p>
+<h3 id="93">9.3 查看数据库日志</h3>
+<pre><code class="language-bash">docker compose logs -f postgres
+</code></pre>
+<h3 id="94">9.4 重启所有服务</h3>
+<pre><code class="language-bash">docker compose restart
+</code></pre>
+<h3 id="95">9.5 停止所有服务（保留数据）</h3>
+<pre><code class="language-bash">docker compose down
+</code></pre>
+<h3 id="96">9.6 完全停止并删除数据（⚠️ 慎用）</h3>
+<pre><code class="language-bash">docker compose down -v
+</code></pre>
+<h3 id="97">9.7 更新代码后重新部署</h3>
+<pre><code class="language-bash">cd /opt/ad-research
+git pull  # 如果用 Git
+cd deploy/aliyun-ecs
+docker compose down
+docker compose build --no-cache
+docker compose up -d
+</code></pre>
+<hr />
+<h2 id="_9">十、常见问题排查</h2>
+<h3 id="q1-httpip8000">Q1：浏览器访问 <code>http://IP:8000</code> 打不开</h3>
+<p><strong>检查清单：</strong></p>
+<ol>
+<li>
+<p>服务是否真的启动了？<br />
+<code>bash
+   docker compose ps</code><br />
+   应该看到 <code>etf-backend</code>、<code>etf-postgres</code>、<code>etf-redis</code> 都是 <code>running</code>。</p>
+</li>
+<li>
+<p>安全组是否放行了 8000 端口？</p>
+</li>
+<li>
+<p>回到阿里云控制台 → ECS → 安全组 → 确认有 8000 端口的规则</p>
+</li>
+<li>
+<p>防火墙是否拦截？<br />
+<code>bash
+   systemctl stop firewalld</code><br />
+   （仅临时测试，确认后建议重新开启并放行 8000）</p>
+</li>
+<li>
+<p>后端服务是否健康？<br />
+<code>bash
+   curl http://localhost:8000/health</code><br />
+   在服务器上执行，应该返回 <code>{"status":"ok"...}</code>。</p>
+</li>
+</ol>
+<h3 id="q2-etf_research">Q2：部署脚本提示 "源数据库 etf_research 不存在"</h3>
+<p>这是正常的。说明你是全新部署，没有旧数据需要迁移。脚本会自动创建 <code>ad_research</code> 数据库。</p>
+<h3 id="q3-docker-compose">Q3：部署脚本提示 "未检测到 docker compose 插件"</h3>
+<p>这种情况很少见，如果发生，手动安装：</p>
+<pre><code class="language-bash">mkdir -p ~/.docker/cli-plugins
+curl -SL https://github.com/docker/compose/releases/latest/download/docker-compose-linux-x86_64 -o ~/.docker/cli-plugins/docker-compose
+chmod +x ~/.docker/cli-plugins/docker-compose
+</code></pre>
+<p>然后重新运行 <code>./deploy.sh</code>。</p>
+<h3 id="q4">Q4：忘记管理员密码</h3>
+<p>查看 <code>.env</code> 文件：</p>
+<pre><code class="language-bash">cat /opt/ad-research/deploy/aliyun-ecs/.env | grep AUTH_ADMIN_PASSWORD
+</code></pre>
+<p>如果要修改，编辑 <code>.env</code> 文件后重启 backend：</p>
+<pre><code class="language-bash">docker compose restart backend
+</code></pre>
+<h3 id="q5">Q5：如何查看平台日志找错误</h3>
+<pre><code class="language-bash">cd /opt/ad-research/deploy/aliyun-ecs
+docker compose logs -f backend
+</code></pre>
+<p>看到红色 <code>ERROR</code> 字样，把错误信息复制给我，我帮你排查。</p>
+<h3 id="q6">Q6：服务器重启后平台没自动启动</h3>
+<p>正常情况下容器设置了 <code>restart: unless-stopped</code>，重启服务器后会自动启动。如果没有，手动执行：</p>
+<pre><code class="language-bash">cd /opt/ad-research/deploy/aliyun-ecs
+docker compose up -d
+</code></pre>
+<hr />
+<h2 id="_10">十一、安全建议</h2>
+<p>平台现在是 HTTP + IP 访问，虽然方便但不安全。正式使用前建议：</p>
+<ol>
+<li><strong>修改默认密码</strong></li>
+<li>部署后尽快修改 <code>AUTH_ADMIN_PASSWORD</code></li>
+<li>
+<p>修改 <code>AUTH_SECRET_KEY</code>（脚本已自动生成，通常不用改）</p>
+</li>
+<li>
+<p><strong>限制安全组</strong></p>
+</li>
+<li>不要把 22 端口放行给 <code>0.0.0.0/0</code></li>
+<li>
+<p>只放行你自己的 IP</p>
+</li>
+<li>
+<p><strong>后续升级 HTTPS</strong></p>
+</li>
+<li>购买域名并解析到 ECS IP</li>
+<li>安装 Nginx + SSL 证书</li>
+<li>
+<p>这是另一个话题，需要时我可以单独写手册</p>
+</li>
+<li>
+<p><strong>数据库独立化</strong></p>
+</li>
+<li>正式上线后，建议把 PostgreSQL 迁到阿里云 RDS</li>
+<li>Redis 迁到阿里云云数据库 Redis</li>
+</ol>
+<hr />
+<h2 id="_11">十二、备份建议</h2>
+<p>当前数据库数据存在 Docker Volume 里，虽然方便但不如云盘安全。建议：</p>
+<h3 id="121">12.1 定期备份数据库</h3>
+<pre><code class="language-bash">cd /opt/ad-research/deploy/aliyun-ecs
+docker compose exec postgres pg_dump -U etf -d ad_research &gt; /opt/ad-research-backup-$(date +%Y%m%d).sql
+</code></pre>
+<h3 id="122">12.2 下载备份到本地</h3>
+<p><strong>Mac/Linux：</strong></p>
+<pre><code class="language-bash">scp root@你的服务器公网IP:/opt/ad-research-backup-20260623.sql ./
+</code></pre>
+<p><strong>Windows：</strong> 用 WinSCP 下载。</p>
+<h3 id="123-ecs">12.3 为 ECS 挂载独立数据盘</h3>
+<p>如果还没买，可以在阿里云控制台为 ECS 挂载一块数据盘，并把数据库 volume 放在数据盘上。具体操作可以问我。</p>
+<hr />
+<h2 id="_12">附录：文件说明</h2>
+<pre><code>deploy/aliyun-ecs/
+├── docker-compose.yml   # 生产环境 Docker 编排配置
+├── .env.example         # 环境变量模板
+├── deploy.sh            # 一键部署脚本
+└── README.md            # 本手册
+</code></pre>
+<p>如果你在任何一步卡住，把报错信息复制发给我，我会继续帮你解决。</p>
+        </div>
+    </div>
+</body>
+</html>

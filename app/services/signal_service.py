@@ -33,7 +33,13 @@ class SignalService:
         )
 
         persisted = []
+        seen_keys = set()
         for sig in signals:
+            key = (strategy_id, etf_code, trade_date)
+            if key in seen_keys:
+                continue
+            seen_keys.add(key)
+
             # Skip if a signal already exists for this (strategy, etf, date)
             existing = (
                 self.db.query(Signal)

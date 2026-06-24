@@ -45,13 +45,23 @@ def _get_active_etf_codes(db) -> list:
     ).scalars().all()
 
 
-def _get_etf_latest_date(db, etf_code: str) -> date | None:
-    """Get the latest trade date for a specific ETF."""
+def _get_latest_dates_for_etfs(db, etf_codes: list[str]) -> dict[str, date]:
+    """Get the latest trade date for each ETF in one aggregate query."""
     result = db.execute(
-        select(func.max(ETFDailyBar.trade_date))
-        .where(ETFDailyBar.etf_code == etf_code)
-    ).scalar()
-    return result
+        select(ETFDailyBar.etf_code, func.max(ETFDailyBar.trade_date))
+        .where(ETFDailyBar.etf_code.in_(etf_codes))
+        .group_by(ETFDailyBar.etf_code)
+    ).all()
+    return dict(result)
+
+
+def _clean_daily_bar_value(v):
+    """Clean a single value for insertion into etf_daily_bar."""
+    if v is None or pd.isna(v):
+        return None
+    if isinstance(v, int | float):
+        return float(v)
+    return v
 
 
 def fetch_and_insert_daily_bars(db, end_date: date):
@@ -78,10 +88,11 @@ def fetch_and_insert_daily_bars(db, end_date: date):
         total_batches = (len(etf_codes) + _BATCH_SIZE - 1) // _BATCH_SIZE
         print(f"   Batch {batch_num}/{total_batches}: {len(batch)} ETFs")
 
-        # Determine per-ETF start dates for this batch
+        # Determine per-ETF start dates for this batch in one query
+        latest_dates = _get_latest_dates_for_etfs(db, batch)
         batch_with_dates = []
         for code in batch:
-            latest = _get_etf_latest_date(db, code)
+            latest = latest_dates.get(code)
             start = latest + timedelta(days=1) if latest else date(2025, 1, 1)
             if start <= end_date:
                 batch_with_dates.append((code, start))
@@ -116,24 +127,17 @@ def fetch_and_insert_daily_bars(db, end_date: date):
             if etf_start and trade_date < etf_start:
                 continue
 
-            def _clean(v):
-                if v is None or pd.isna(v):
-                    return None
-                if isinstance(v, int | float):
-                    return float(v)
-                return v
-
             record = {
                 "etf_code": code,
                 "trade_date": trade_date,
-                "open": _clean(row.get("open")),
-                "high": _clean(row.get("high")),
-                "low": _clean(row.get("low")),
-                "close": _clean(row.get("close")),
+                "open": _clean_daily_bar_value(row.get("open")),
+                "high": _clean_daily_bar_value(row.get("high")),
+                "low": _clean_daily_bar_value(row.get("low")),
+                "close": _clean_daily_bar_value(row.get("close")),
                 "volume": int(row.get("volume")) if pd.notna(row.get("volume")) else None,
-                "amount": _clean(row.get("amount")),
-                "change_pct": _clean(row.get("change_pct")),
-                "turnover_rate": _clean(row.get("turnover_rate")),
+                "amount": _clean_daily_bar_value(row.get("amount")),
+                "change_pct": _clean_daily_bar_value(row.get("change_pct")),
+                "turnover_rate": _clean_daily_bar_value(row.get("turnover_rate")),
             }
             record = {k: v for k, v in record.items() if v is not None}
             records.append(record)

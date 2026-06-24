@@ -1,6 +1,7 @@
 """Favorite/watchlist business logic service."""
 
 
+from fastapi import HTTPException
 from sqlalchemy import desc
 from sqlalchemy.orm import Session
 
@@ -80,6 +81,11 @@ class FavoriteService:
 
     def add_favorite(self, username: str, etf_code: str) -> bool:
         """Add an ETF to favorites. Returns True if added, False if already exists."""
+        # Validate ETF exists
+        etf = self.db.query(ETFInfo.code).filter(ETFInfo.code == etf_code).first()
+        if not etf:
+            raise HTTPException(status_code=404, detail="ETF not found")
+
         fav_id = self._make_id(username, etf_code)
         existing = (
             self.db.query(UserFavorite)

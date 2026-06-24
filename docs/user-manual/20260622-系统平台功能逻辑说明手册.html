@@ -1,0 +1,2008 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AD-Research — 系统功能逻辑说明手册</title>
+<style>
+:root {
+  --bg: #0b1020;
+  --card: #131a2e;
+  --text: #e2e8f0;
+  --muted: #94a3b8;
+  --border: #1e293b;
+  --accent: #818cf8;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 32px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.7;
+}
+.container {
+  max-width: 1000px;
+  margin: 0 auto;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 40px;
+}
+h1 { color: var(--accent); border-bottom: 2px solid var(--accent); padding-bottom: 12px; }
+h2 { margin-top: 36px; color: #60a5fa; border-bottom: 1px solid var(--border); padding-bottom: 8px; }
+h3 { color: #38bdf8; margin-top: 24px; }
+h4 { color: #a78bfa; }
+p { margin: 12px 0; }
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 16px 0;
+  font-size: 14px;
+}
+th, td {
+  border: 1px solid var(--border);
+  padding: 10px 12px;
+  text-align: left;
+}
+th { background: #1e293b; color: #e2e8f0; font-weight: 600; }
+tr:nth-child(even) { background: rgba(255,255,255,0.02); }
+code {
+  background: #1e293b;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  font-size: 0.9em;
+}
+pre {
+  background: #0f172a;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px;
+  overflow-x: auto;
+  font-size: 13px;
+  line-height: 1.5;
+}
+pre code { background: transparent; padding: 0; }
+ul, ol { margin: 12px 0; padding-left: 24px; }
+li { margin: 6px 0; }
+hr { border: none; border-top: 1px solid var(--border); margin: 24px 0; }
+strong { color: #f472b6; }
+@media print {
+  body { background: #fff; color: #000; }
+  .container { border: none; }
+}
+</style>
+</head>
+<body>
+<div class="container">
+<h1>AD-Research — 系统功能逻辑说明手册</h1>
+
+<p><strong>版本</strong>：v1.0  </p>
+<p><strong>更新日期</strong>：2026-06-22  </p>
+<p><strong>项目路径</strong>：<code>/Users/aidanliu/Documents/Coding-Project/Investment-Research-Platform</code></p>
+
+<hr>
+
+<h2>目录</h2>
+
+<ol>
+<li><a href="#一项目概述">项目概述</a></li>
+<li><a href="#二系统架构">系统架构</a></li>
+<li><a href="#三数据模型与存储">数据模型与存储</a></li>
+<li><a href="#四数据管道与-etl">数据管道与 ETL</a></li>
+<li><a href="#五指标计算体系">指标计算体系</a></li>
+<li><a href="#六综合评分系统">综合评分系统</a></li>
+<li><a href="#七筛选与排名">筛选与排名</a></li>
+<li><a href="#八标的池管理">标的池管理</a></li>
+<li><a href="#九策略回测与信号">策略、回测与信号</a></li>
+<li><a href="#十板块轮动分析">板块轮动分析</a></li>
+<li><a href="#十一报告生成引擎">报告生成引擎</a></li>
+<li><a href="#十二web-前端功能">Web 前端功能</a></li>
+<li><a href="#十三api-接口清单">API 接口清单</a></li>
+<li><a href="#十四定时任务与自动化">定时任务与自动化</a></li>
+<li><a href="#十五部署与配置">部署与配置</a></li>
+<li><a href="#十六运维脚本与测试">运维脚本与测试</a></li>
+<li><a href="#十七附录目录结构">附录：目录结构</a></li>
+</ol>
+
+<hr>
+
+<h2>一、项目概述</h2>
+
+<h3>1.1 目标</h3>
+
+<p>将手工化的 ETF 投研工作流升级为<strong>一体化 Web 投研平台</strong>，覆盖：</p>
+
+<ul>
+<li>全市场 ETF 基础信息与行情数据自动化采集</li>
+<li>技术指标与风险指标批量计算</li>
+<li>ETF 综合评分与多维度排名</li>
+<li>标的池创建、权重配置、相关性分析与再平衡提示</li>
+<li>策略配置、回测验证、交易信号生成与绩效归因</li>
+<li>板块/行业轮动分析</li>
+<li>自动化 HTML/Markdown 研究报告生成</li>
+<li>可视化 Web 仪表盘与通知推送</li>
+</ul>
+
+<h3>1.2 业务范围</h3>
+
+<table>
+<thead><tr>
+<th>子系统</th>
+<th>说明</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>数据基础设施</td>
+<td>数据采集、清洗校验、存储、指标计算、REST API</td>
+</tr>
+<tr>
+<td>投研核心</td>
+<td>评分、筛选、标的池增强、报告生成</td>
+</tr>
+<tr>
+<td>Web 仪表盘</td>
+<td>React 前端可视化、交互式分析</td>
+</tr>
+<tr>
+<td>策略系统</td>
+<td>策略配置、回测引擎、信号生成、绩效归因</td>
+</tr>
+</tbody></table>
+
+<h3>1.3 用户角色</h3>
+
+<p>平台内置 5 个账号（<code>AuthSettings.USERS</code> + <code>users</code> 表），由 JWT 认证保护：</p>
+
+<table>
+<thead><tr>
+<th>角色</th>
+<th>说明</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>admin</td>
+<td>管理员</td>
+</tr>
+<tr>
+<td>Aidan / Tee / Zack / Philip</td>
+<td>普通投研用户</td>
+</tr>
+</tbody></table>
+
+<hr>
+
+<h2>二、系统架构</h2>
+
+<h3>2.1 技术栈</h3>
+
+<table>
+<thead><tr>
+<th>层级</th>
+<th>技术</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>后端框架</td>
+<td>FastAPI 0.115 + SQLAlchemy 2.0 + Alembic</td>
+</tr>
+<tr>
+<td>数据库</td>
+<td>PostgreSQL 16 + Redis 7</td>
+</tr>
+<tr>
+<td>数据源</td>
+<td>akshare（A 股场内 ETF）+ yfinance（跨境 ETF）</td>
+</tr>
+<tr>
+<td>指标计算</td>
+<td>pandas + numpy + scipy</td>
+</tr>
+<tr>
+<td>定时任务</td>
+<td>APScheduler</td>
+</tr>
+<tr>
+<td>认证</td>
+<td>JWT（python-jose）+ bcrypt</td>
+</tr>
+<tr>
+<td>前端</td>
+<td>React 18 + Vite + TypeScript + Ant Design 5</td>
+</tr>
+<tr>
+<td>图表</td>
+<td>ECharts + lightweight-charts</td>
+</tr>
+<tr>
+<td>状态管理</td>
+<td>Zustand + TanStack React Query</td>
+</tr>
+<tr>
+<td>部署</td>
+<td>Docker Compose</td>
+</tr>
+<tr>
+<td>测试</td>
+<td>pytest + pytest-asyncio</td>
+</tr>
+</tbody></table>
+
+<h3>2.2 数据流</h3>
+
+<pre><code>│  外部数据源                                                   │
+│  akshare (A 股)        yfinance (美股/港股/日股)              │
+└───────────────────────────┬─────────────────────────────────┘
+                            ↓
+┌─────────────────────────────────────────────────────────────┐
+│  数据管道层                                                   │
+│  Providers → Transformers → Validators → Pipelines → DB       │
+└───────────────────────────┬─────────────────────────────────┘
+                            ↓
+┌─────────────────────────────────────────────────────────────┐
+│  指标与评分层                                                 │
+│  技术指标 → 风险指标 → 综合评分 → 排名/筛选                    │
+└───────┬───────────────┬───────────────┬───────────────────────┘
+        ↓               ↓               ↓
+   标的池管理      策略回测/信号      板块轮动分析
+        │               │               │
+        └───────────────┼───────────────┘
+                        ↓
+               报告生成引擎
+                        ↓
+        ┌───────────────┼───────────────┐
+        ↓               ↓               ↓
+   HTML/Markdown   Web 仪表盘       通知推送</code></pre>
+
+<h3>2.3 后端分层</h3>
+
+<table>
+<thead><tr>
+<th>目录</th>
+<th>职责</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>app/api/v1/</code></td>
+<td>REST 路由与输入校验</td>
+</tr>
+<tr>
+<td><code>app/services/</code></td>
+<td>业务逻辑编排</td>
+</tr>
+<tr>
+<td><code>app/data/</code></td>
+<td>数据采集、转换、校验、指标计算</td>
+</tr>
+<tr>
+<td><code>app/models/</code></td>
+<td>SQLAlchemy ORM 模型</td>
+</tr>
+<tr>
+<td><code>app/schemas/</code></td>
+<td>Pydantic 请求/响应模型</td>
+</tr>
+<tr>
+<td><code>app/core/</code></td>
+<td>数据库、Redis、缓存、调度器、异常</td>
+</tr>
+</tbody></table>
+
+<hr>
+
+<h2>三、数据模型与存储</h2>
+
+<h3>3.1 核心数据表</h3>
+
+<table>
+<thead><tr>
+<th>表名</th>
+<th>说明</th>
+<th>关键字段</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>etf_info</code></td>
+<td>ETF 基础信息</td>
+<td><code>code</code>(PK), <code>name</code>, <code>market</code>, <code>category</code>, <code>sub_category</code>, <code>manager</code>, <code>fund_size</code>, <code>currency</code>, <code>is_qdii</code>, <code>status</code></td>
+</tr>
+<tr>
+<td><code>etf_daily_bar</code></td>
+<td>日行情 OHLCV</td>
+<td>(<code>etf_code</code>, <code>trade_date</code>) PK, <code>open/high/low/close</code>, <code>volume</code>, <code>amount</code>, <code>change_pct</code>, <code>turnover_rate</code>, <code>nav</code>, <code>discount_rate</code>, <code>is_synthetic</code></td>
+</tr>
+<tr>
+<td><code>etf_indicator</code></td>
+<td>日技术指标</td>
+<td>(<code>etf_code</code>, <code>trade_date</code>) unique, MA/RSI/MACD/ATR/布林带, 波动率/回撤/夏普, 各期收益</td>
+</tr>
+<tr>
+<td><code>etf_score</code></td>
+<td>综合评分结果</td>
+<td><code>etf_code</code>, <code>trade_date</code>, <code>template_id</code>, 5 维度得分, 综合得分, 全市场/分类排名</td>
+</tr>
+<tr>
+<td><code>etf_pools</code></td>
+<td>标的池</td>
+<td><code>id</code>, <code>name</code>, <code>description</code>, <code>deleted_at</code>(软删)</td>
+</tr>
+<tr>
+<td><code>pool_member</code></td>
+<td>池成员</td>
+<td><code>pool_id</code>, <code>etf_code</code>, <code>added_at</code>, <code>removed_at</code>(软删)</td>
+</tr>
+<tr>
+<td><code>pool_weight</code></td>
+<td>目标/建议权重</td>
+<td><code>target_weight</code>, <code>suggested_weight</code>, <code>weight_source</code>, <code>removed_at</code></td>
+</tr>
+<tr>
+<td><code>pool_snapshot</code></td>
+<td>池快照(JSON)</td>
+<td><code>pool_id</code>, <code>snapshot_date</code>, <code>data</code></td>
+</tr>
+<tr>
+<td><code>strategy_config</code></td>
+<td>策略配置</td>
+<td><code>name</code>, <code>strategy_type</code>, <code>params</code>(JSON), <code>is_active</code></td>
+</tr>
+<tr>
+<td><code>backtest_result</code></td>
+<td>回测结果</td>
+<td><code>strategy_id</code>, 起止日期, <code>metrics</code>(JSON), <code>trades</code>(JSON), <code>daily_nav</code>(JSON)</td>
+</tr>
+<tr>
+<td><code>signal</code></td>
+<td>交易信号</td>
+<td><code>strategy_id</code>, <code>etf_code</code>, <code>trade_date</code>, <code>signal_type</code>(BUY/SELL/HOLD), <code>strength</code></td>
+</tr>
+<tr>
+<td><code>score_template</code></td>
+<td>评分模板</td>
+<td><code>name</code>, <code>weights</code>(JSON), <code>is_default</code></td>
+</tr>
+<tr>
+<td><code>report_metadata</code></td>
+<td>报告元数据</td>
+<td><code>report_type</code>, <code>report_date</code>, <code>pool_id</code>, <code>status</code>, <code>format</code>, <code>file_path</code>, <code>file_size</code></td>
+</tr>
+<tr>
+<td><code>notification_config</code></td>
+<td>通知渠道配置</td>
+<td><code>name</code>, <code>channel_type</code>, <code>config_json</code></td>
+</tr>
+<tr>
+<td><code>notification_log</code></td>
+<td>通知发送日志</td>
+<td><code>config_id</code>, <code>report_id</code>, <code>status</code>, <code>error_msg</code>, <code>sent_at</code></td>
+</tr>
+<tr>
+<td><code>user_favorite</code></td>
+<td>用户自选</td>
+<td><code>username</code>, <code>etf_code</code></td>
+</tr>
+<tr>
+<td><code>users</code></td>
+<td>用户表</td>
+<td><code>username</code>, <code>password_hash</code>, <code>role</code>, <code>is_active</code></td>
+</tr>
+<tr>
+<td><code>etl_log</code></td>
+<td>ETL 执行日志</td>
+<td><code>job_name</code>, <code>source</code>, <code>status</code>, <code>records_count</code>, <code>error_msg</code></td>
+</tr>
+<tr>
+<td><code>etf_scan_log</code></td>
+<td>全市场扫描日志</td>
+<td><code>scan_date</code>, <code>new_count</code>, <code>delisted_count</code>, <code>changed_count</code>, <code>details</code>(JSON)</td>
+</tr>
+<tr>
+<td><code>fx_rate</code></td>
+<td>外汇汇率</td>
+<td><code>from_currency</code>, <code>to_currency</code>, <code>trade_date</code>, <code>rate</code></td>
+</tr>
+</tbody></table>
+
+<h3>3.2 软删除设计</h3>
+
+<table>
+<thead><tr>
+<th>表</th>
+<th>软删除字段</th>
+<th>说明</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>etf_pools</code></td>
+<td><code>deleted_at</code></td>
+<td>池删除后保留历史记录</td>
+</tr>
+<tr>
+<td><code>pool_member</code></td>
+<td><code>removed_at</code></td>
+<td>成员移除后保留历史记录</td>
+</tr>
+<tr>
+<td><code>pool_weight</code></td>
+<td><code>removed_at</code></td>
+<td>权重失效后保留历史记录</td>
+</tr>
+</tbody></table>
+
+<h3>3.3 关键约束</h3>
+
+<ul>
+<li><code>etf_daily_bar</code>: 复合主键 (<code>etf_code</code>, <code>trade_date</code>)</li>
+<li><code>etf_indicator</code>: 复合唯一 (<code>etf_code</code>, <code>trade_date</code>)</li>
+<li><code>pool_member</code>: 部分唯一索引 <code>uq_pool_member_active</code>，仅对 <code>removed_at IS NULL</code> 生效</li>
+<li><code>pool_weight</code>: 部分唯一索引 <code>uq_pool_weight_active</code>，仅对 <code>removed_at IS NULL</code> 生效</li>
+<li><code>signal</code>: 唯一 (<code>strategy_id</code>, <code>etf_code</code>, <code>trade_date</code>)</li>
+</ul>
+
+<hr>
+
+<h2>四、数据管道与 ETL</h2>
+
+<h3>4.1 数据源抽象</h3>
+
+<p><code>app/data/providers/base.py</code> 定义 <code>DataProvider</code> 抽象接口：</p>
+
+<table>
+<thead><tr>
+<th>方法</th>
+<th>说明</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>fetch_etf_list()</code></td>
+<td>获取 ETF 基础信息列表</td>
+</tr>
+<tr>
+<td><code>fetch_daily_bars(codes, start, end)</code></td>
+<td>批量获取日 K 线</td>
+</tr>
+<tr>
+<td><code>fetch_realtime_quotes(codes)</code></td>
+<td>获取实时行情</td>
+</tr>
+<tr>
+<td><code>get_market_hours(code)</code></td>
+<td>获取交易时段</td>
+</tr>
+<tr>
+<td><code>check_health()</code></td>
+<td>健康检查</td>
+</tr>
+</tbody></table>
+
+<h3>4.2 AkshareProvider（A 股）</h3>
+
+<p>文件：<code>app/data/providers/akshare_provider.py</code></p>
+
+<ul>
+<li><strong>数据源</strong>：默认东方财富 <code>fund_etf_hist_em</code>，连续失败 2 次后回退到新浪财经 <code>fund_etf_hist_sina</code>。</li>
+<li><strong>并发控制</strong>：5 线程线程池，单 API 调用延迟 0.3s，批次间隔 2.0s。</li>
+<li><strong>重试机制</strong>：最大 3 次重试。</li>
+<li><strong>代码规则</strong>：代码以 <code>5</code> 开头后缀 <code>.SH</code>，以 <code>1/0</code> 开头后缀 <code>.SZ</code>。</li>
+<li><strong>返回字段</strong>：<code>etf_code</code>, <code>trade_date</code>, <code>open</code>, <code>high</code>, <code>low</code>, <code>close</code>, <code>volume</code>, <code>amount</code>, <code>change_pct</code>, <code>turnover_rate</code>。</li>
+</ul>
+
+<h3>4.3 YFinanceProvider（跨境）</h3>
+
+<p>文件：<code>app/data/providers/yfinance_provider.py</code></p>
+
+<ul>
+<li><strong>支持市场</strong>：US、JP、HK。</li>
+<li><strong>代码映射</strong>：</li>
+<li><code>.US</code> → 去除后缀（如 <code>SPY.US</code> → <code>SPY</code>）</li>
+<li><code>.JP</code> → <code>.T</code>（如 <code>1321.JP</code> → <code>1321.T</code>）</li>
+<li><code>.HK</code> → 保留 <code>.HK</code></li>
+<li><strong>日线获取</strong>：逐个 ticker 调用 <code>yf.Ticker.history()</code>，<code>amount</code> 由 <code>volume * close</code> 估算。</li>
+<li><strong>实时行情</strong>：<code>yf.download(period=&quot;1d&quot;, interval=&quot;1d&quot;)</code>。</li>
+<li><strong>外汇</strong>：通过 <code>USDCNY=X</code> 等货币对获取汇率。</li>
+</ul>
+
+<h3>4.4 ETL 流程</h3>
+
+<p><code>app/data/pipelines/base.py</code> 定义 <code>ETLPipeline</code> 抽象：</p>
+
+<pre><code>    ↓
+normalize() 列名/类型标准化
+    ↓
+validate_all() 四层校验
+    ↓
+load() 写入数据库（UPSERT）
+    ↓
+post_process() 后处理/缓存失效</code></pre>
+
+<h3>4.5 四层数据校验</h3>
+
+<p><code>app/data/transformers/validator.py</code></p>
+
+<table>
+<thead><tr>
+<th>层级</th>
+<th>名称</th>
+<th>检查内容</th>
+<th>是否阻断</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>L1</td>
+<td>格式校验</td>
+<td>必填列、缺失值</td>
+<td>是</td>
+</tr>
+<tr>
+<td>L2</td>
+<td>业务校验</td>
+<td><code>high &gt;= low</code>、<code>close</code> 在 <code>[low, high]</code> 内、成交量非负</td>
+<td>是</td>
+</tr>
+<tr>
+<td>L3</td>
+<td>时序校验</td>
+<td>涨跌幅绝对值是否异常（&gt;20% 仅警告）</td>
+<td>否</td>
+</tr>
+<tr>
+<td>L4</td>
+<td>完整性校验</td>
+<td>预期 ETF 是否有缺失</td>
+<td>否</td>
+</tr>
+</tbody></table>
+
+<h3>4.6 A 股日终 ETL</h3>
+
+<p><code>app/data/pipelines/a_share.py</code></p>
+
+<ul>
+<li>作业名：<code>a_share_daily_etl</code></li>
+<li>默认采集前一日数据，向前取 7 天窗口覆盖节假日。</li>
+<li>仅保留目标交易日数据。</li>
+<li>使用 PostgreSQL <code>INSERT ... ON CONFLICT DO UPDATE</code> 实现 upsert。</li>
+<li>完成后清除缓存：<code>indicator:<em></code>、<code>screen:</em></code>、<code>etf:list:*</code>。</li>
+</ul>
+
+<h3>4.7 数据标准化</h3>
+
+<p><code>app/data/transformers/normalizer.py</code></p>
+
+<ul>
+<li>列名映射：兼容中文列名（日期、开盘、收盘、最高、最低、成交量、成交额、涨跌幅、换手率）与英文列名。</li>
+<li>类型转换：<code>trade_date</code> → date，价格/金额 → numeric，<code>volume</code> → Int64，涨跌幅 → numeric。</li>
+</ul>
+
+<hr>
+
+<h2>五、指标计算体系</h2>
+
+<h3>5.1 技术指标</h3>
+
+<p><code>app/data/indicators/technical.py</code></p>
+
+<table>
+<thead><tr>
+<th>指标</th>
+<th>公式/说明</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>MA5/10/20/60</td>
+<td>简单移动平均</td>
+</tr>
+<tr>
+<td>RSI14</td>
+<td>Wilder 平滑 RSI，<code>RS = avg_gain / avg_loss</code>，<code>RSI = 100 - 100/(1+RS)</code></td>
+</tr>
+<tr>
+<td>MACD</td>
+<td>DIF = EMA12 - EMA26；DEA = EMA9(DIF)；Histogram = DIF - DEA</td>
+</tr>
+<tr>
+<td>ATR14</td>
+<td>True Range 滚动 14 日均值</td>
+</tr>
+<tr>
+<td>布林带</td>
+<td>MA20 ± 2 × std20</td>
+</tr>
+</tbody></table>
+
+<h3>5.2 风险与收益指标</h3>
+
+<p><code>app/data/indicators/risk.py</code></p>
+
+<table>
+<thead><tr>
+<th>指标</th>
+<th>窗口</th>
+<th>说明</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>volatility_20d</code></td>
+<td>20 日</td>
+<td>年化波动率，<code>std(returns) <em> sqrt(252) </em> 100</code></td>
+</tr>
+<tr>
+<td><code>volatility_60d</code></td>
+<td>60 日</td>
+<td>同上</td>
+</tr>
+<tr>
+<td><code>max_drawdown_1y</code></td>
+<td>252 日</td>
+<td><code>(prices - cummax) / cummax * 100</code></td>
+</tr>
+<tr>
+<td><code>sharpe_1y</code></td>
+<td>252 日</td>
+<td><code>(mean(return)<em>252 - 2%) / (std</em>sqrt(252))</code></td>
+</tr>
+<tr>
+<td><code>return_1w</code></td>
+<td>5 日</td>
+<td>近一周收益</td>
+</tr>
+<tr>
+<td><code>return_1m</code></td>
+<td>21 日</td>
+<td>近一月收益</td>
+</tr>
+<tr>
+<td><code>return_3m</code></td>
+<td>63 日</td>
+<td>近三月收益</td>
+</tr>
+<tr>
+<td><code>return_6m</code></td>
+<td>126 日</td>
+<td>近半年收益</td>
+</tr>
+<tr>
+<td><code>return_1y</code></td>
+<td>252 日</td>
+<td>近一年收益</td>
+</tr>
+</tbody></table>
+
+<h3>5.3 批量指标计算</h3>
+
+<p><code>app/data/indicators/calculator.py</code></p>
+
+<ul>
+<li><code>batch_calculate_indicators(db, target_date=None, full_history=False)</code></li>
+<li>遍历所有 active ETF，读取历史日线，计算技术/风险指标。</li>
+<li><code>full_history=True</code> 时重算全部历史；否则仅计算最新日期。</li>
+<li>结果通过 upsert 写入 <code>etf_indicator</code> 表。</li>
+<li>写入 <code>ETLLog</code> 记录执行状态（success / partial）。</li>
+</ul>
+
+<hr>
+
+<h2>六、综合评分系统</h2>
+
+<h3>6.1 评分维度</h3>
+
+<p><code>app/services/scoring_service.py</code> 定义 5 个维度：</p>
+
+<table>
+<thead><tr>
+<th>维度</th>
+<th>默认权重</th>
+<th>关联指标</th>
+<th>方向</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>收益能力</td>
+<td>30%</td>
+<td><code>return_1m</code>, <code>return_3m</code>, <code>return_1y</code></td>
+<td>越高越好（desc）</td>
+</tr>
+<tr>
+<td>风险控制</td>
+<td>25%</td>
+<td><code>volatility_20d</code>, <code>max_drawdown_1y</code></td>
+<td>越低越好（asc）</td>
+</tr>
+<tr>
+<td>夏普比率</td>
+<td>25%</td>
+<td><code>sharpe_1y</code></td>
+<td>越高越好（desc）</td>
+</tr>
+<tr>
+<td>流动性</td>
+<td>10%</td>
+<td><code>amount</code>（日均成交额）</td>
+<td>越高越好（desc）</td>
+</tr>
+<tr>
+<td>趋势强度</td>
+<td>10%</td>
+<td><code>rsi14</code>, <code>ma_position</code></td>
+<td>越高越好（desc）</td>
+</tr>
+</tbody></table>
+
+<h3>6.2 内置评分模板</h3>
+
+<table>
+<thead><tr>
+<th>模板</th>
+<th>特点</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>保守型</td>
+<td>风险权重更高，收益权重更低</td>
+</tr>
+<tr>
+<td>均衡型</td>
+<td>收益、风险、夏普均衡</td>
+</tr>
+<tr>
+<td>进取型</td>
+<td>收益权重更高，风险容忍更高</td>
+</tr>
+</tbody></table>
+
+<h3>6.3 计分逻辑</h3>
+
+<p><code>app/data/indicators/scoring.py</code></p>
+
+<ol>
+<li>对每个维度内的多个指标取平均。</li>
+<li>使用 <code>scipy.stats.rankdata</code> 计算百分位得分（0-100）。</li>
+<li><code>direction=&quot;asc&quot;</code> 时反转百分位（用于风险类指标，越低越好）。</li>
+<li>综合得分 = Σ(维度得分 × 维度权重)。</li>
+<li>按综合得分降序排列，生成 1-based 排名。</li>
+</ol>
+
+<h3>6.4 排名输出</h3>
+
+<ul>
+<li><code>rank_overall</code>：全市场排名</li>
+<li><code>rank_category</code>：同分类内排名</li>
+</ul>
+
+<hr>
+
+<h2>七、筛选与排名</h2>
+
+<h3>7.1 全市场筛选</h3>
+
+<p><code>app/services/screening_service.py</code></p>
+
+<p>筛选条件支持：</p>
+
+<table>
+<thead><tr>
+<th>条件</th>
+<th>说明</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>market</code></td>
+<td>市场</td>
+</tr>
+<tr>
+<td><code>category</code></td>
+<td>分类</td>
+</tr>
+<tr>
+<td><code>rsi_min/max</code></td>
+<td>RSI 区间</td>
+</tr>
+<tr>
+<td><code>sharpe_min/max</code></td>
+<td>夏普区间</td>
+</tr>
+<tr>
+<td><code>volatility_min/max</code></td>
+<td>波动率区间</td>
+</tr>
+<tr>
+<td><code>return_1m/3m/1y_min/max</code></td>
+<td>收益区间</td>
+</tr>
+<tr>
+<td><code>max_drawdown_1y_min/max</code></td>
+<td>回撤区间</td>
+</tr>
+<tr>
+<td><code>score_min/max</code></td>
+<td>综合评分区间</td>
+</tr>
+<tr>
+<td><code>template_id</code></td>
+<td>评分模板</td>
+</tr>
+<tr>
+<td><code>sort_by</code> / <code>sort_order</code></td>
+<td>排序字段与方向</td>
+</tr>
+<tr>
+<td><code>offset</code> / <code>limit</code></td>
+<td>分页</td>
+</tr>
+</tbody></table>
+
+<h3>7.2 内置筛选预设</h3>
+
+<table>
+<thead><tr>
+<th>预设</th>
+<th>说明</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>high_sharpe_low_vol</code></td>
+<td>高夏普、低波动</td>
+</tr>
+<tr>
+<td><code>trend_strong</code></td>
+<td>趋势强劲</td>
+</tr>
+<tr>
+<td><code>value_pit</code></td>
+<td>超跌价值</td>
+</tr>
+<tr>
+<td><code>liquidity_sufficient</code></td>
+<td>流动性充足</td>
+</tr>
+</tbody></table>
+
+<h3>7.3 排名接口</h3>
+
+<p><code>app/services/analysis_service.py</code></p>
+
+<ul>
+<li><code>ranking(sort_by, order, limit, market)</code>：按任意指标字段排序。</li>
+<li><code>correlation_matrix(codes, window, method)</code>：计算收益相关性矩阵，支持 Pearson / Spearman。</li>
+</ul>
+
+<hr>
+
+<h2>八、标的池管理</h2>
+
+<h3>8.1 池 CRUD</h3>
+
+<p><code>app/services/pool_service.py</code></p>
+
+<ul>
+<li>创建、更新、软删除池。</li>
+<li>添加/移除成员（软删除）。</li>
+<li>防止同一池内存在重复 active 成员。</li>
+</ul>
+
+<h3>8.2 权重管理</h3>
+
+<p><code>app/services/pool_enhancement_service.py</code></p>
+
+<table>
+<thead><tr>
+<th>功能</th>
+<th>说明</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>目标权重</td>
+<td>用户可设置每只 ETF 的目标权重，范围 0-100%，池内总和 ≤100%</td>
+</tr>
+<tr>
+<td>建议权重</td>
+<td>支持 3 种算法生成建议权重</td>
+</tr>
+<tr>
+<td>再平衡提示</td>
+<td>实际市值权重偏离目标权重 &gt;10% 时生成告警</td>
+</tr>
+</tbody></table>
+
+<h3>8.3 建议权重算法</h3>
+
+<table>
+<thead><tr>
+<th>算法</th>
+<th>逻辑</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>等权（equal）</td>
+<td>100% / 成员数</td>
+</tr>
+<tr>
+<td>评分加权（score）</td>
+<td>按综合评分占比分配</td>
+</tr>
+<tr>
+<td>风险平价（risk_parity）</td>
+<td>按波动率倒数加权，低波动品种权重更高</td>
+</tr>
+</tbody></table>
+
+<h3>8.4 持仓分析</h3>
+
+<p><code>get_analytics()</code> 返回：</p>
+
+<ul>
+<li>成员列表与最新指标</li>
+<li>分类分布（数量 / 权重）</li>
+<li>加权收益表现</li>
+<li>再平衡告警列表</li>
+</ul>
+
+<h3>8.5 相关性矩阵</h3>
+
+<ul>
+<li>取最近 60 日收盘价计算日收益。</li>
+<li>使用 numpy 计算 Pearson 相关系数。</li>
+</ul>
+
+<h3>8.6 快照</h3>
+
+<ul>
+<li><code>create_snapshot()</code> 将当前持仓、权重、分类分布、收益指标打包为 JSON 存入 <code>pool_snapshot</code>。</li>
+<li>支持历史回溯与池间对比。</li>
+</ul>
+
+<hr>
+
+<h2>九、策略、回测与信号</h2>
+
+<h3>9.1 策略模板</h3>
+
+<p><code>app/services/strategy_service.py</code></p>
+
+<table>
+<thead><tr>
+<th>策略类型</th>
+<th>参数</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>动量（momentum）</td>
+<td><code>window</code>（动量窗口）, <code>threshold</code>（阈值）</td>
+</tr>
+<tr>
+<td>均值回归（mean_reversion）</td>
+<td><code>z_score_threshold</code></td>
+</tr>
+<tr>
+<td>RSI（rsi）</td>
+<td><code>overbought</code>, <code>oversold</code>, <code>window</code></td>
+</tr>
+</tbody></table>
+
+<h3>9.2 信号生成</h3>
+
+<p><code>app/services/signal_generator.py</code></p>
+
+<ul>
+<li>读取 <code>ETFDailyBar</code> 最近 60+ 日数据。</li>
+<li>根据策略类型计算信号：</li>
+<li><strong>动量</strong>：收益率超过阈值 → BUY；低于负阈值 → SELL。</li>
+<li><strong>均值回归</strong>：Z-score 超过正阈值 → SELL；低于负阈值 → BUY。</li>
+<li><strong>RSI</strong>：超买 → SELL；超卖 → BUY。</li>
+<li>返回 <code>BUY / SELL / HOLD</code> 及信号强度。</li>
+</ul>
+
+<h3>9.3 回测引擎</h3>
+
+<p><code>app/services/backtest_engine.py</code></p>
+
+<table>
+<thead><tr>
+<th>配置项</th>
+<th>默认值</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>初始资金</td>
+<td>100,000</td>
+</tr>
+<tr>
+<td>佣金率</td>
+<td>0.001</td>
+</tr>
+<tr>
+<td>滑点率</td>
+<td>0.001</td>
+</tr>
+<tr>
+<td>仓位比例</td>
+<td>1.0（满仓）</td>
+</tr>
+</tbody></table>
+
+<p><strong>输出指标</strong>：</p>
+
+<ul>
+<li>总收益、年化收益、最大回撤、夏普比率</li>
+<li>胜率、平均盈利/亏损、交易次数</li>
+<li>每日 NAV 曲线、交易清单、信号序列</li>
+</ul>
+
+<h3>9.4 绩效归因</h3>
+
+<p><code>app/services/attribution_service.py</code></p>
+
+<ul>
+<li>计算策略相对买入持有基准的超额收益。</li>
+<li>采用简化 Brinson 模型：</li>
+<li><strong>配置效应（Allocation Effect）</strong>：择时贡献</li>
+<li><strong>选择效应（Selection Effect）</strong>：选股贡献</li>
+<li><strong>交互效应（Interaction Effect）</strong>：残差</li>
+</ul>
+
+<h3>9.5 策略对比</h3>
+
+<p><code>app/services/strategy_comparison_service.py</code></p>
+
+<ul>
+<li>接收多个 <code>backtest_id</code>。</li>
+<li>对比总收益、年化收益、最大回撤、夏普、胜率、交易次数。</li>
+</ul>
+
+<hr>
+
+<h2>十、板块轮动分析</h2>
+
+<p><code>app/services/sector_rotation_service.py</code></p>
+
+<h3>10.1 计算逻辑</h3>
+
+<ol>
+<li>按 <code>category</code> 分组聚合 ETF 指标。</li>
+<li>计算板块平均收益（1 月 / 3 月）、夏普、波动率、RSI。</li>
+<li>计算相对强弱 <code>relative_strength</code> = 板块收益 - 全市场平均收益。</li>
+<li>按动量排序生成 <code>momentum_rank</code>。</li>
+</ol>
+
+<h3>10.2 轮动信号</h3>
+
+<ul>
+<li>对比当前排名与上一周排名。</li>
+<li>排名上升 ≥3 位：生成 <code>up</code> 信号。</li>
+<li>排名下降 ≥3 位：生成 <code>down</code> 信号。</li>
+</ul>
+
+<hr>
+
+<h2>十一、报告生成引擎</h2>
+
+<p><code>app/services/report_service.py</code></p>
+
+<h3>11.1 报告类型</h3>
+
+<table>
+<thead><tr>
+<th>类型</th>
+<th>频率</th>
+<th>内容</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>池周报（pool_weekly）</td>
+<td>每周</td>
+<td>池概览、收益分析、风险分析、综合评分</td>
+</tr>
+<tr>
+<td>池分析（pool_analysis）</td>
+<td>按需</td>
+<td>同上</td>
+</tr>
+</tbody></table>
+
+<h3>11.2 输出格式</h3>
+
+<ul>
+<li><strong>HTML</strong>：使用 Jinja2 模板渲染，内联 CSS，可直接浏览器打开。</li>
+<li><strong>Markdown</strong>：表格形式，便于存档与版本管理。</li>
+<li><strong>JSON</strong>：供前端消费。</li>
+</ul>
+
+<h3>11.3 HTML 报告模块</h3>
+
+<ol>
+<li>头部：池名称、报告日期、成员数量</li>
+<li>概览：涨跌数量、平均综合得分、实时快照表</li>
+<li>收益分析：1 周 / 1 月 / 3 月 / 半年 / 1 年收益</li>
+<li>风险分析：20 日波动率、最大回撤、夏普、风险等级标签</li>
+<li>综合评分：排名表、维度得分条、金/银/铜等级</li>
+<li>页脚：生成时间戳</li>
+</ol>
+
+<h3>11.4 报告元数据</h3>
+
+<ul>
+<li>生成时先写入 <code>report_metadata</code> 状态为 <code>running</code>。</li>
+<li>完成后更新 <code>status=done</code>、<code>file_path</code>、<code>file_size</code>。</li>
+<li>失败时记录 <code>error_msg</code>。</li>
+</ul>
+
+<hr>
+
+<h2>十二、Web 前端功能</h2>
+
+<h3>12.1 技术架构</h3>
+
+<ul>
+<li><strong>框架</strong>：React 18 + Vite + TypeScript</li>
+<li><strong>UI</strong>：Ant Design 5 + 自定义深色主题</li>
+<li><strong>图表</strong>：ECharts（通用图表）、lightweight-charts（K 线）</li>
+<li><strong>状态</strong>：Zustand（auth、screen filters、pool editing）</li>
+<li><strong>服务端状态</strong>：TanStack React Query</li>
+<li><strong>路由</strong>：React Router v6，支持懒加载</li>
+</ul>
+
+<h3>12.2 页面清单</h3>
+
+<table>
+<thead><tr>
+<th>页面</th>
+<th>路径</th>
+<th>功能</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>登录</td>
+<td><code>/login</code></td>
+<td>JWT 登录</td>
+</tr>
+<tr>
+<td>仪表盘</td>
+<td><code>/dashboard</code></td>
+<td>平台概览、Top10 评分、自选、池列表</td>
+</tr>
+<tr>
+<td>ETF 列表</td>
+<td><code>/etfs</code></td>
+<td>分页、搜索、市场/分类筛选</td>
+</tr>
+<tr>
+<td>ETF 详情</td>
+<td><code>/etfs/:code</code></td>
+<td>K 线图、指标、综合评分雷达图、自选</td>
+</tr>
+<tr>
+<td>筛选器</td>
+<td><code>/screen</code></td>
+<td>多条件筛选、预设、分页</td>
+</tr>
+<tr>
+<td>池列表</td>
+<td><code>/pools</code></td>
+<td>创建/查看池</td>
+</tr>
+<tr>
+<td>池详情</td>
+<td><code>/pools/:id</code></td>
+<td>成员权重、持仓分布、相关性、快照</td>
+</tr>
+<tr>
+<td>评分排名</td>
+<td><code>/scores</code></td>
+<td>按模板查看综合评分排名</td>
+</tr>
+<tr>
+<td>收益对比</td>
+<td><code>/comparison</code></td>
+<td>多只 ETF 收益曲线叠加</td>
+</tr>
+<tr>
+<td>相关性分析</td>
+<td><code>/correlation</code></td>
+<td>相关性热力图</td>
+</tr>
+<tr>
+<td>板块轮动</td>
+<td><code>/sector-rotation</code></td>
+<td>板块表现与轮动信号</td>
+</tr>
+<tr>
+<td>ETF 扫描</td>
+<td><code>/scanner</code></td>
+<td>触发/查看全市场扫描</td>
+</tr>
+<tr>
+<td>信号看板</td>
+<td><code>/signals</code></td>
+<td>最新交易信号</td>
+</tr>
+<tr>
+<td>策略列表</td>
+<td><code>/strategies</code></td>
+<td>策略模板、创建、删除</td>
+</tr>
+<tr>
+<td>回测列表</td>
+<td><code>/backtests</code></td>
+<td>创建/查看回测</td>
+</tr>
+<tr>
+<td>回测详情</td>
+<td><code>/backtests/:id</code></td>
+<td>NAV 曲线、交易记录</td>
+</tr>
+<tr>
+<td>报告浏览</td>
+<td><code>/reports</code></td>
+<td>生成/下载/预览报告</td>
+</tr>
+<tr>
+<td>通知配置</td>
+<td><code>/notifications</code></td>
+<td>Webhook/邮件配置与测试</td>
+</tr>
+</tbody></table>
+
+<h3>12.3 全局组件</h3>
+
+<table>
+<thead><tr>
+<th>组件</th>
+<th>用途</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>AppLayout</code></td>
+<td>侧边栏 + 顶部栏 + 内容区</td>
+</tr>
+<tr>
+<td><code>GlassCard</code></td>
+<td>毛玻璃卡片容器</td>
+</tr>
+<tr>
+<td><code>GradientStatCard</code></td>
+<td>渐变统计卡片</td>
+</tr>
+<tr>
+<td><code>KLineChart</code></td>
+<td>K 线 + 指标叠加</td>
+</tr>
+<tr>
+<td><code>ScoreRadar</code></td>
+<td>五维评分雷达图</td>
+</tr>
+<tr>
+<td><code>CorrelationHeatmap</code></td>
+<td>相关性热力图</td>
+</tr>
+<tr>
+<td><code>ReturnCurve</code></td>
+<td>收益对比曲线</td>
+</tr>
+<tr>
+<td><code>CategoryPie</code></td>
+<td>分类饼图</td>
+</tr>
+<tr>
+<td><code>ScoreBar</code></td>
+<td>得分进度条</td>
+</tr>
+<tr>
+<td><code>ReturnTag</code></td>
+<td>涨跌幅标签（红涨绿跌）</td>
+</tr>
+<tr>
+<td><code>ETFCodeTag</code></td>
+<td>ETF 代码标签</td>
+</tr>
+</tbody></table>
+
+<h3>12.4 状态管理</h3>
+
+<table>
+<thead><tr>
+<th>Store</th>
+<th>用途</th>
+<th>持久化</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>auth</code></td>
+<td>token、user、登录态</td>
+<td>localStorage</td>
+</tr>
+<tr>
+<td><code>screen</code></td>
+<td>筛选条件与预设</td>
+<td>localStorage</td>
+</tr>
+<tr>
+<td><code>pool</code></td>
+<td>当前选中池、编辑中权重</td>
+<td>无</td>
+</tr>
+</tbody></table>
+
+<h3>12.5 数据请求</h3>
+
+<ul>
+<li>统一 Axios 客户端，自动附加 <code>Authorization: Bearer &lt;token&gt;</code>。</li>
+<li>401 时自动登出并跳转登录页。</li>
+<li>React Query hooks 封装所有 API 调用，统一缓存与失效策略。</li>
+</ul>
+
+<hr>
+
+<h2>十三、API 接口清单</h2>
+
+<h3>13.1 认证</h3>
+
+<table>
+<thead><tr>
+<th>方法</th>
+<th>路径</th>
+<th>说明</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>POST</td>
+<td><code>/api/v1/auth/login</code></td>
+<td>登录获取 JWT</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/api/v1/auth/me</code></td>
+<td>当前用户信息</td>
+</tr>
+</tbody></table>
+
+<h3>13.2 ETF</h3>
+
+<table>
+<thead><tr>
+<th>方法</th>
+<th>路径</th>
+<th>说明</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>GET</td>
+<td><code>/api/v1/etfs</code></td>
+<td>ETF 列表（分页/筛选/搜索）</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/api/v1/etfs/{code}</code></td>
+<td>ETF 详情</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/api/v1/etfs/categories/list</code></td>
+<td>分类列表</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/api/v1/etfs/markets/list</code></td>
+<td>市场列表</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/api/v1/etfs/scan</code></td>
+<td>触发全市场扫描</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/api/v1/etfs/scan/logs</code></td>
+<td>扫描日志</td>
+</tr>
+</tbody></table>
+
+<h3>13.3 标的池</h3>
+
+<table>
+<thead><tr>
+<th>方法</th>
+<th>路径</th>
+<th>说明</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>GET/POST</td>
+<td><code>/api/v1/pools</code></td>
+<td>列表/创建</td>
+</tr>
+<tr>
+<td>GET/PUT/DELETE</td>
+<td><code>/api/v1/pools/{id}</code></td>
+<td>详情/更新/删除</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/api/v1/pools/{id}/members</code></td>
+<td>添加成员</td>
+</tr>
+<tr>
+<td>DELETE</td>
+<td><code>/api/v1/pools/{id}/members/{code}</code></td>
+<td>移除成员</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/api/v1/pools/{id}/weights</code></td>
+<td>权重列表</td>
+</tr>
+<tr>
+<td>PUT</td>
+<td><code>/api/v1/pools/{id}/weights/{code}</code></td>
+<td>更新目标权重</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/api/v1/pools/{id}/weights/suggest</code></td>
+<td>建议权重</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/api/v1/pools/{id}/analytics</code></td>
+<td>持仓分析</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/api/v1/pools/{id}/correlation</code></td>
+<td>相关性矩阵</td>
+</tr>
+<tr>
+<td>GET/POST</td>
+<td><code>/api/v1/pools/{id}/snapshots</code></td>
+<td>快照列表/创建</td>
+</tr>
+</tbody></table>
+
+<h3>13.4 行情与指标</h3>
+
+<table>
+<thead><tr>
+<th>方法</th>
+<th>路径</th>
+<th>说明</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>GET</td>
+<td><code>/api/v1/market-data/{code}/history</code></td>
+<td>历史日线</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/api/v1/market-data/snapshot</code></td>
+<td>最新行情快照</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/api/v1/indicators/{code}</code></td>
+<td>最新指标</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/api/v1/indicators/{code}/history</code></td>
+<td>指标历史</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/api/v1/indicators/batch/latest</code></td>
+<td>批量最新指标</td>
+</tr>
+</tbody></table>
+
+<h3>13.5 评分与筛选</h3>
+
+<table>
+<thead><tr>
+<th>方法</th>
+<th>路径</th>
+<th>说明</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>GET</td>
+<td><code>/api/v1/scores</code></td>
+<td>评分列表</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/api/v1/scores/{code}</code></td>
+<td>单 ETF 评分</td>
+</tr>
+<tr>
+<td>GET/POST/PUT/DELETE</td>
+<td><code>/api/v1/scores/templates</code></td>
+<td>评分模板 CRUD</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/api/v1/screen</code></td>
+<td>条件筛选</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/api/v1/screen/presets</code></td>
+<td>筛选预设</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/api/v1/screen/categories</code></td>
+<td>分类统计</td>
+</tr>
+</tbody></table>
+
+<h3>13.6 分析</h3>
+
+<table>
+<thead><tr>
+<th>方法</th>
+<th>路径</th>
+<th>说明</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>GET</td>
+<td><code>/api/v1/analysis/correlation</code></td>
+<td>相关性矩阵</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/api/v1/analysis/ranking</code></td>
+<td>指标排名</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/api/v1/analysis/sector-rotation</code></td>
+<td>板块轮动</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/api/v1/analysis/sector-rotation/sectors</code></td>
+<td>板块列表</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/api/v1/analysis/attribution/{backtest_id}</code></td>
+<td>绩效归因</td>
+</tr>
+</tbody></table>
+
+<h3>13.7 策略、回测、信号</h3>
+
+<table>
+<thead><tr>
+<th>方法</th>
+<th>路径</th>
+<th>说明</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>GET/POST/PUT/DELETE</td>
+<td><code>/api/v1/strategies</code></td>
+<td>策略 CRUD</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/api/v1/strategies/templates</code></td>
+<td>策略模板</td>
+</tr>
+<tr>
+<td>POST/GET</td>
+<td><code>/api/v1/backtests</code></td>
+<td>运行回测/列表</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/api/v1/backtests/{id}</code></td>
+<td>回测详情</td>
+</tr>
+<tr>
+<td>GET/POST</td>
+<td><code>/api/v1/signals</code></td>
+<td>信号列表/生成</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/api/v1/signals/latest</code></td>
+<td>最新信号</td>
+</tr>
+</tbody></table>
+
+<h3>13.8 报告与通知</h3>
+
+<table>
+<thead><tr>
+<th>方法</th>
+<th>路径</th>
+<th>说明</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>GET</td>
+<td><code>/api/v1/reports</code></td>
+<td>报告列表</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/api/v1/reports/generate</code></td>
+<td>生成报告</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/api/v1/reports/{id}/status</code></td>
+<td>报告状态</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/api/v1/reports/{id}/download</code></td>
+<td>下载报告</td>
+</tr>
+<tr>
+<td>GET/POST/PUT/DELETE</td>
+<td><code>/api/v1/notifications/configs</code></td>
+<td>通知配置 CRUD</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/api/v1/notifications/configs/{id}/test</code></td>
+<td>测试通知</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/api/v1/notifications/logs</code></td>
+<td>通知日志</td>
+</tr>
+</tbody></table>
+
+<h3>13.9 自选与统计</h3>
+
+<table>
+<thead><tr>
+<th>方法</th>
+<th>路径</th>
+<th>说明</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>GET</td>
+<td><code>/api/v1/favorites</code></td>
+<td>自选列表</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/api/v1/favorites/{code}/status</code></td>
+<td>自选状态</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/api/v1/favorites/{code}/toggle</code></td>
+<td>切换自选</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/api/v1/stats/overview</code></td>
+<td>平台概览统计</td>
+</tr>
+</tbody></table>
+
+<h3>13.10 ETL</h3>
+
+<table>
+<thead><tr>
+<th>方法</th>
+<th>路径</th>
+<th>说明</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>GET</td>
+<td><code>/api/v1/etl/status</code></td>
+<td>ETL 日志查询</td>
+</tr>
+</tbody></table>
+
+<hr>
+
+<h2>十四、定时任务与自动化</h2>
+
+<p><code>app/core/scheduler.py</code></p>
+
+<table>
+<thead><tr>
+<th>任务 ID</th>
+<th>Cron</th>
+<th>说明</th>
+<th>分布式锁</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>a_share_daily_etl</code></td>
+<td>每天 15:30</td>
+<td>A 股 ETF 日终采集</td>
+<td><code>_LOCK_DAILY_PIPELINE</code></td>
+</tr>
+<tr>
+<td><code>indicator_calculation</code></td>
+<td>每天 08:00</td>
+<td>批量计算指标</td>
+<td>等待 <code>_LOCK_DAILY_PIPELINE</code></td>
+</tr>
+<tr>
+<td><code>score_calculation</code></td>
+<td>每天 08:30</td>
+<td>评分日终计算</td>
+<td>等待 <code>_LOCK_DAILY_PIPELINE</code></td>
+</tr>
+<tr>
+<td><code>signal_generation</code></td>
+<td>每天 09:00</td>
+<td>生成交易信号</td>
+<td>等待 <code>_LOCK_DAILY_PIPELINE</code></td>
+</tr>
+<tr>
+<td><code>weekly_pool_reports</code></td>
+<td>每周日 22:00</td>
+<td>生成所有池周报</td>
+<td>无</td>
+</tr>
+<tr>
+<td><code>etf_market_scan</code></td>
+<td>每周日 03:00</td>
+<td>全市场 ETF 扫描</td>
+<td>无</td>
+</tr>
+</tbody></table>
+
+<p>所有任务 <code>max_instances=1</code>、<code>replace_existing=True</code>，防止重复执行。</p>
+
+<hr>
+
+<h2>十五、部署与配置</h2>
+
+<h3>15.1 Docker Compose 服务</h3>
+
+<p><code>docker-compose.yml</code></p>
+
+<table>
+<thead><tr>
+<th>服务</th>
+<th>镜像</th>
+<th>端口</th>
+<th>说明</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>postgres</td>
+<td>postgres:16-alpine</td>
+<td>5432</td>
+<td>主数据库</td>
+</tr>
+<tr>
+<td>redis</td>
+<td>redis:7-alpine</td>
+<td>6379</td>
+<td>缓存与分布式锁</td>
+</tr>
+<tr>
+<td>backend</td>
+<td>本地 Dockerfile</td>
+<td>8000</td>
+<td>FastAPI + 前端静态资源</td>
+</tr>
+</tbody></table>
+
+<h3>15.2 Dockerfile</h3>
+
+<ul>
+<li>Stage 1：Node 20 构建前端 <code>web/dist</code>。</li>
+<li>Stage 2：Python 3.11 安装 Poetry 依赖，复制后端代码与前端产物，暴露 8000 端口。</li>
+</ul>
+
+<h3>15.3 环境变量</h3>
+
+<p><code>.env.example</code> / <code>app/config.py</code></p>
+
+<table>
+<thead><tr>
+<th>变量</th>
+<th>说明</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>DATABASE_URL</code></td>
+<td>PostgreSQL 连接串（asyncpg）</td>
+</tr>
+<tr>
+<td><code>REDIS_URL</code></td>
+<td>Redis 连接串</td>
+</tr>
+<tr>
+<td><code>DB_PASSWORD</code></td>
+<td>数据库密码</td>
+</tr>
+<tr>
+<td><code>TUSHARE_TOKEN</code></td>
+<td>Tushare Token（预留）</td>
+</tr>
+<tr>
+<td><code>APP_ENV</code></td>
+<td>development/staging/production</td>
+</tr>
+<tr>
+<td><code>LOG_LEVEL</code></td>
+<td>日志级别</td>
+</tr>
+<tr>
+<td><code>AUTH_SECRET_KEY</code></td>
+<td>JWT 密钥</td>
+</tr>
+<tr>
+<td><code>AUTH_ACCESS_TOKEN_EXPIRE_MINUTES</code></td>
+<td>Token 有效期（默认 1 天）</td>
+</tr>
+<tr>
+<td>SMTP 相关</td>
+<td>邮件通知配置</td>
+</tr>
+</tbody></table>
+
+<h3>15.4 缓存策略</h3>
+
+<p><code>app/core/cache.py</code></p>
+
+<ul>
+<li>Redis key 前缀：<code>etf</code></li>
+<li>默认 TTL：300s（5 分钟）</li>
+<li>提供 <code>@cached</code> 装饰器、按模式清除缓存、<code>cache_invalidate_pattern</code>。</li>
+</ul>
+
+<hr>
+
+<h2>十六、运维脚本与测试</h2>
+
+<h3>16.1 核心运维脚本</h3>
+
+<table>
+<thead><tr>
+<th>脚本</th>
+<th>用途</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>app/scripts/init_etfs.py</code></td>
+<td>从 akshare 初始化全市场 ETF 基础信息</td>
+</tr>
+<tr>
+<td><code>scripts/run_etf_scan.py</code></td>
+<td>手动触发全市场扫描</td>
+</tr>
+<tr>
+<td><code>scripts/update_daily_data.py</code></td>
+<td>增量更新：日线 → 指标 → 评分 → 信号 → 回测</td>
+</tr>
+<tr>
+<td><code>scripts/catchup_data.py</code></td>
+<td>按日期范围补录</td>
+</tr>
+<tr>
+<td><code>scripts/backfill_missed_tasks.py</code></td>
+<td>优化批量补录</td>
+</tr>
+<tr>
+<td><code>scripts/backfill_indicators_full_history.py</code></td>
+<td>全历史指标回算</td>
+</tr>
+<tr>
+<td><code>scripts/fetch_all_missing_bars.py</code></td>
+<td>全量补日线</td>
+</tr>
+<tr>
+<td><code>scripts/fill_missing_560000.py</code></td>
+<td>为数据缺失 ETF 生成合成数据</td>
+</tr>
+<tr>
+<td><code>scripts/db_consistency_check.py</code></td>
+<td>数据库一致性检查</td>
+</tr>
+<tr>
+<td><code>scripts/data_completeness_check.py</code></td>
+<td>数据完整性报告</td>
+</tr>
+<tr>
+<td><code>scripts/seed_all_demo_data.py</code></td>
+<td>种子演示数据</td>
+</tr>
+<tr>
+<td><code>scripts/seed_users.py</code></td>
+<td>初始化用户表</td>
+</tr>
+<tr>
+<td><code>scripts/seed_fx_rates.py</code></td>
+<td>初始化汇率数据</td>
+</tr>
+<tr>
+<td><code>scripts/generate_pool_snapshots.py</code></td>
+<td>生成池快照</td>
+</tr>
+</tbody></table>
+
+<h3>16.2 测试覆盖</h3>
+
+<p><code>app/tests/</code></p>
+
+<table>
+<thead><tr>
+<th>测试文件</th>
+<th>覆盖内容</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>test_scoring.py</code></td>
+<td>ScoreTemplate、ETFScore 模型；ScoreCalculator 百分位计分；ScoringService 模板 CRUD、默认模板、日终评分</td>
+</tr>
+<tr>
+<td><code>test_screening.py</code></td>
+<td>筛选服务初始化、预设、分类统计、组合过滤、评分过滤与排序</td>
+</tr>
+<tr>
+<td><code>test_pool.py</code></td>
+<td>PoolWeight、PoolSnapshot 模型；成员幂等添加、软删除、权重校验、建议算法</td>
+</tr>
+</tbody></table>
+
+<hr>
+
+<h2>十七、附录：目录结构</h2>
+
+<pre><code>├── app/
+│   ├── main.py                  # FastAPI 入口
+│   ├── config.py                # 配置管理
+│   ├── api/
+│   │   ├── deps.py              # 依赖注入
+│   │   └── v1/                  # REST 路由
+│   ├── core/                    # 数据库/Redis/缓存/调度器/异常/交易日历
+│   ├── data/
+│   │   ├── providers/           # akshare / yfinance 数据源
+│   │   ├── pipelines/           # ETL 管道
+│   │   ├── transformers/        # 数据清洗与校验
+│   │   └── indicators/          # 指标与评分计算
+│   ├── models/                  # ORM 模型
+│   ├── schemas/                 # Pydantic 模型
+│   ├── services/                # 业务逻辑服务
+│   ├── tests/                   # 测试
+│   └── scripts/                 # 初始化脚本
+├── alembic/                     # 数据库迁移
+├── web/                         # React 前端
+│   ├── src/
+│   │   ├── App.tsx
+│   │   ├── routes.tsx
+│   │   ├── main.tsx
+│   │   ├── api/                 # API 客户端
+│   │   ├── components/          # 共享组件
+│   │   ├── hooks/               # React Query hooks
+│   │   ├── pages/               # 页面
+│   │   ├── stores/              # Zustand 状态
+│   │   ├── types/               # TypeScript 类型
+│   │   └── utils/               # 工具函数
+├── scripts/                     # 运维脚本
+├── reports/                     # 生成报告
+├── docs/                        # 文档
+├── docker-compose.yml
+├── Dockerfile
+├── pyproject.toml
+└── alembic.ini</code></pre>
+
+<hr>
+
+<p><strong>文档生成说明</strong>：本手册基于 2026-06-22 对项目代码库的全面扫描生成，涵盖后端模型、数据管道、业务服务、REST API、前端页面、定时任务、部署配置及运维脚本的功能逻辑。如需更新，请在对应模块变更后重新扫描并同步本手册。</p>
+
+</div>
+</body>
+</html>

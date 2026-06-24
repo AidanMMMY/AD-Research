@@ -64,6 +64,18 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     """Downgrade schema."""
+    # Before recreating the unique constraint on pool_weight, clean up duplicate
+    # soft-deleted rows so the constraint can be enforced. Keep the latest removed_at.
+    op.execute("""
+        DELETE FROM pool_weight a
+        USING pool_weight b
+        WHERE a.id < b.id
+          AND a.pool_id = b.pool_id
+          AND a.etf_code = b.etf_code
+          AND a.removed_at IS NOT NULL
+          AND b.removed_at IS NOT NULL
+    """)
+
     op.drop_index('uq_pool_weight_active', table_name='pool_weight', postgresql_where=sa.text('removed_at IS NULL'))
     op.create_unique_constraint('uq_pool_weight_pool_etf', 'pool_weight', ['pool_id', 'etf_code'])
     op.drop_column('pool_weight', 'removed_at')

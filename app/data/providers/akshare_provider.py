@@ -146,11 +146,6 @@ class AkshareProvider(DataProvider):
         if df.empty:
             return df
 
-        # 过滤日期范围
-        df = df[(df["date"] >= start_date) & (df["date"] <= end_date)].copy()
-        if df.empty:
-            return df
-
         df = df.rename(columns={"date": "trade_date"})
         df["etf_code"] = code
         # Sina 接口没有 turnover_rate，保留为 NaN；change_pct 从收盘价推导
@@ -158,11 +153,15 @@ class AkshareProvider(DataProvider):
             if col in df.columns:
                 df[col] = pd.to_numeric(df[col], errors="coerce")
         df = df.sort_values("trade_date").reset_index(drop=True)
+        # Compute change_pct on the FULL sorted DataFrame BEFORE filtering by date range
         if "close" in df.columns and len(df) > 1:
             df["change_pct"] = df["close"].pct_change() * 100.0
         else:
             df["change_pct"] = pd.NA
         df["turnover_rate"] = pd.NA
+
+        # 过滤日期范围
+        df = df[(df["trade_date"] >= start_date) & (df["trade_date"] <= end_date)].copy()
         return df
 
     def _fetch_single_etf(

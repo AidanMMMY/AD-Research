@@ -32,7 +32,8 @@ class NotificationService:
 
     def _get_fernet(self) -> Fernet | None:
         """Build a Fernet instance from the configured encryption key."""
-        key = auth_settings.NOTIFICATION_ENCRYPTION_KEY or auth_settings.SECRET_KEY
+        settings = get_settings()
+        key = settings.notification_encryption_key or auth_settings.SECRET_KEY
         if not key:
             return None
         # Derive a URL-safe base64-encoded 32-byte key

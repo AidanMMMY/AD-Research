@@ -4,6 +4,7 @@ Provides a cached Redis client instance for caching, pub/sub, and
 distributed locking.
 """
 
+import contextlib
 import time
 from collections.abc import Generator
 from contextlib import contextmanager
@@ -73,7 +74,7 @@ def redis_lock(
         yield acquired
     finally:
         if acquired:
-            # Only delete if we still own the lock (simple best-effort)
-            current = client.get(lock_key)
-            if current == token:
-                client.delete(lock_key)
+            # Atomically delete only if we still own the lock
+            lua_script = "if redis.call('get', KEYS[1]) == ARGV[1] then return redis.call('del', KEYS[1]) else return 0 end"
+            with contextlib.suppress(redis.RedisError):
+                client.eval(lua_script, 1, lock_key, token)

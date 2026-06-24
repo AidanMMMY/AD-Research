@@ -1,13 +1,12 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { message, Tabs } from 'antd';
+import { message } from 'antd';
 import { UserOutlined, LockOutlined, StockOutlined } from '@ant-design/icons';
 import { useAuthStore } from '@/stores/auth';
 
 export default function Login() {
   const navigate = useNavigate();
   const { login, isAuthenticated } = useAuthStore();
-  const [loginType] = useState<'account'>('account');
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({ username: '', password: '' });
 
@@ -119,12 +118,7 @@ export default function Login() {
           </p>
         </div>
 
-        <Tabs
-          centered
-          activeKey={loginType}
-          items={[{ key: 'account', label: '账户密码登录' }]}
-          style={{ marginBottom: 24 }}
-        />
+        <h2 style={{ textAlign: 'center', marginBottom: 24, color: '#e2e8f0', fontSize: 16, fontWeight: 500 }}>账户密码登录</h2>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div

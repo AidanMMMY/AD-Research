@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Table, Space, Select, InputNumber, Button, Tag, Row, Col } from 'antd';
 import { useScreenResults, useScreenPresets, useScreenCategories } from '@/hooks/useScreenResults';
@@ -14,12 +14,15 @@ export default function Screen() {
   const [pageSize, setPageSize] = useState(50);
 
   // Include pagination and active preset in API request
-  const queryFilters = {
-    ...filters,
-    ...(preset ? { preset } : {}),
-    offset: (page - 1) * pageSize,
-    limit: pageSize,
-  };
+  const queryFilters = useMemo(
+    () => ({
+      ...filters,
+      ...(preset ? { preset } : {}),
+      offset: (page - 1) * pageSize,
+      limit: pageSize,
+    }),
+    [filters, preset, page, pageSize]
+  );
   const { data: results, isLoading } = useScreenResults(queryFilters);
   const { data: presets } = useScreenPresets();
   const { data: categories } = useScreenCategories();

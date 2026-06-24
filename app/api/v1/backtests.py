@@ -27,16 +27,9 @@ def create_backtest(
         raise HTTPException(status_code=404, detail="Strategy not found")
 
     result = backtest_service.run_backtest(
-        strategy_id=data.strategy_id,
-        etf_code=data.etf_code,
+        **data.model_dump(),
         strategy_type=strategy["strategy_type"],
         params=strategy["params"],
-        start_date=data.start_date,
-        end_date=data.end_date,
-        initial_capital=data.initial_capital,
-        commission_rate=data.commission_rate,
-        slippage_rate=data.slippage_rate,
-        position_size=data.position_size,
     )
     return result
 

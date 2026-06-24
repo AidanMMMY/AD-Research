@@ -91,6 +91,14 @@ class PoolMember(Base):
             postgresql_where=(removed_at.is_(None)),
         ),
         Index(
+            "uq_pool_member_removed",
+            "pool_id",
+            "etf_code",
+            "removed_at",
+            unique=True,
+            postgresql_where=(removed_at.isnot(None)),
+        ),
+        Index(
             "idx_pool_members_pool",
             "pool_id",
             postgresql_where=(removed_at.is_(None)),

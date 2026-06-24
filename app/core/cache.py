@@ -69,8 +69,11 @@ def cached(ttl: int = DEFAULT_TTL, key_func: Callable[..., str] | None = None):
             if key_func:
                 cache_key = key_func(*args, **kwargs)
             else:
+                kw_parts = [
+                    f"{k}={v}" for k, v in sorted(kwargs.items()) if v is not None
+                ]
                 cache_key = _make_key(
-                    func.__module__, func.__name__, *args, *kwargs.values()
+                    func.__module__, func.__name__, *args, *kw_parts
                 )
 
             cached_value = cache_get(cache_key)

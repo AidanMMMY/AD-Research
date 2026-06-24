@@ -744,6 +744,10 @@ class PoolEnhancementService:
         """
         close_prices = self._get_latest_close_prices(codes)
 
+        missing_codes = set(codes) - set(close_prices.keys())
+        if missing_codes:
+            return False, []
+
         if not close_prices:
             # No price data available; cannot compute actual weights.
             return False, []

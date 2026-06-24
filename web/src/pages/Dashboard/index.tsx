@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { Table, List, Row, Col, Empty, Spin } from 'antd';
+import type { ReactNode } from 'react';
 import {
   DatabaseOutlined,
   BarChartOutlined,
@@ -19,6 +20,25 @@ import GlassCard from '@/components/GlassCard';
 import ETFCodeTag from '@/components/ETFCodeTag';
 import ReturnTag from '@/components/ReturnTag';
 import ScoreBar from '@/components/ScoreBar';
+
+interface DashboardCardProps {
+  title: string;
+  extra?: ReactNode;
+  style?: React.CSSProperties;
+  loading: boolean;
+  loadingPlaceholder?: ReactNode;
+  empty: boolean;
+  emptyPlaceholder: ReactNode;
+  children: ReactNode;
+}
+
+function DashboardCard({ title, extra, style, loading, loadingPlaceholder, empty, emptyPlaceholder, children }: DashboardCardProps) {
+  return (
+    <GlassCard title={title} extra={extra} style={style}>
+      {loading ? loadingPlaceholder : empty ? emptyPlaceholder : children}
+    </GlassCard>
+  );
+}
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -143,7 +163,7 @@ export default function Dashboard() {
           </GlassCard>
         </Col>
         <Col xs={24} lg={8}>
-          <GlassCard
+          <DashboardCard
             title="⭐ 我的收藏"
             extra={
               favCount > 0 ? (
@@ -155,10 +175,10 @@ export default function Dashboard() {
                 </span>
               ) : null
             }
-          >
-            {favLoading ? (
-              <div style={{ textAlign: 'center', padding: 40 }}><Spin /></div>
-            ) : favCount === 0 ? (
+            loading={favLoading}
+            loadingPlaceholder={<div style={{ textAlign: 'center', padding: 40 }}><Spin /></div>}
+            empty={favCount === 0}
+            emptyPlaceholder={
               <Empty
                 description="暂无收藏的ETF"
                 image={Empty.PRESENTED_IMAGE_SIMPLE}
@@ -168,50 +188,50 @@ export default function Dashboard() {
                   在ETF详情页点击⭐收藏，这里会显示你关注的ETF
                 </span>
               </Empty>
-            ) : (
-              <List
-                dataSource={favorites}
-                renderItem={(item: any) => (
-                  <List.Item
-                    onClick={() => navigate(`/etfs/${item.etf_code}`)}
-                    style={{ padding: '12px 0', cursor: 'pointer' }}
-                  >
-                    <List.Item.Meta
-                      title={
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <span
-                            style={{
-                              fontSize: 13,
-                              fontWeight: 700,
-                              fontFamily: "'SF Mono', monospace",
-                              color: '#818cf8',
-                              background: 'rgba(99,102,241,0.12)',
-                              padding: '2px 8px',
-                              borderRadius: 6,
-                            }}
-                          >
-                            {item.etf_code}
-                          </span>
-                          <span style={{ fontSize: 14, color: '#e2e8f0', fontWeight: 500 }}>
-                            {item.etf_name}
-                          </span>
-                        </div>
-                      }
-                      description={
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
-                          <span style={{ fontSize: 12, color: '#64748b' }}>{item.category}</span>
-                          <span style={{ fontSize: 12, color: '#475569' }}>|</span>
-                          <span style={{ fontSize: 12, color: '#64748b' }}>{item.market}</span>
-                        </div>
-                      }
-                    />
-                  </List.Item>
-                )}
-              />
-            )}
-          </GlassCard>
+            }
+          >
+            <List
+              dataSource={favorites}
+              renderItem={(item: any) => (
+                <List.Item
+                  onClick={() => navigate(`/etfs/${item.etf_code}`)}
+                  style={{ padding: '12px 0', cursor: 'pointer' }}
+                >
+                  <List.Item.Meta
+                    title={
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span
+                          style={{
+                            fontSize: 13,
+                            fontWeight: 700,
+                            fontFamily: "'SF Mono', monospace",
+                            color: '#818cf8',
+                            background: 'rgba(99,102,241,0.12)',
+                            padding: '2px 8px',
+                            borderRadius: 6,
+                          }}
+                        >
+                          {item.etf_code}
+                        </span>
+                        <span style={{ fontSize: 14, color: '#e2e8f0', fontWeight: 500 }}>
+                          {item.etf_name}
+                        </span>
+                      </div>
+                    }
+                    description={
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
+                        <span style={{ fontSize: 12, color: '#64748b' }}>{item.category}</span>
+                        <span style={{ fontSize: 12, color: '#475569' }}>|</span>
+                        <span style={{ fontSize: 12, color: '#64748b' }}>{item.market}</span>
+                      </div>
+                    }
+                  />
+                </List.Item>
+              )}
+            />
+          </DashboardCard>
 
-          <GlassCard
+          <DashboardCard
             title="📂 我的标的池"
             style={{ marginTop: 20 }}
             extra={
@@ -224,10 +244,10 @@ export default function Dashboard() {
                 </span>
               ) : null
             }
-          >
-            {poolsLoading ? (
-              <div style={{ textAlign: 'center', padding: 40 }}><Spin /></div>
-            ) : (pools?.length || 0) === 0 ? (
+            loading={poolsLoading}
+            loadingPlaceholder={<div style={{ textAlign: 'center', padding: 40 }}><Spin /></div>}
+            empty={(pools?.length || 0) === 0}
+            emptyPlaceholder={
               <Empty
                 description="暂无标的池"
                 image={Empty.PRESENTED_IMAGE_SIMPLE}
@@ -237,42 +257,42 @@ export default function Dashboard() {
                   在标的池管理中创建池并添加ETF，这里会汇总展示
                 </span>
               </Empty>
-            ) : (
-              <List
-                dataSource={pools?.slice(0, 6) || []}
-                renderItem={(pool: any) => (
-                  <List.Item
-                    onClick={() => navigate(`/pools/${pool.id}`)}
-                    style={{ padding: '10px 0', cursor: 'pointer' }}
-                  >
-                    <List.Item.Meta
-                      title={
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <FolderOpenOutlined style={{ color: '#22c55e', fontSize: 14 }} />
-                          <span style={{ fontSize: 14, color: '#e2e8f0', fontWeight: 500 }}>
-                            {pool.name}
-                          </span>
-                        </div>
-                      }
-                      description={
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
-                          <span style={{ fontSize: 12, color: '#64748b' }}>
-                            {pool.members?.length || 0} 只ETF
-                          </span>
-                          {pool.description && (
-                            <>
-                              <span style={{ fontSize: 12, color: '#475569' }}>|</span>
-                              <span style={{ fontSize: 12, color: '#64748b' }}>{pool.description}</span>
-                            </>
-                          )}
-                        </div>
-                      }
-                    />
-                  </List.Item>
-                )}
-              />
-            )}
-          </GlassCard>
+            }
+          >
+            <List
+              dataSource={pools?.slice(0, 6) || []}
+              renderItem={(pool: any) => (
+                <List.Item
+                  onClick={() => navigate(`/pools/${pool.id}`)}
+                  style={{ padding: '10px 0', cursor: 'pointer' }}
+                >
+                  <List.Item.Meta
+                    title={
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <FolderOpenOutlined style={{ color: '#22c55e', fontSize: 14 }} />
+                        <span style={{ fontSize: 14, color: '#e2e8f0', fontWeight: 500 }}>
+                          {pool.name}
+                        </span>
+                      </div>
+                    }
+                    description={
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
+                        <span style={{ fontSize: 12, color: '#64748b' }}>
+                          {pool.members?.length || 0} 只ETF
+                        </span>
+                        {pool.description && (
+                          <>
+                            <span style={{ fontSize: 12, color: '#475569' }}>|</span>
+                            <span style={{ fontSize: 12, color: '#64748b' }}>{pool.description}</span>
+                          </>
+                        )}
+                      </div>
+                    }
+                  />
+                </List.Item>
+              )}
+            />
+          </DashboardCard>
         </Col>
       </Row>
     </div>

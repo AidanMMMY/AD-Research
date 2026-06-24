@@ -12,6 +12,13 @@ export default function ScoreRanking() {
   const { data: scoresData } = useScores({ template_id: templateId, limit: 50 });
   const { data: templates } = useScoreTemplates();
 
+  const scoreColumn = (title: string, dataIndex: string, width: number) => ({
+    title,
+    dataIndex,
+    width,
+    render: (v: number) => <span style={{ fontFamily: "'SF Mono', monospace", color: '#94a3b8' }}>{v?.toFixed(1)}</span>,
+  });
+
   const columns = [
     {
       title: '全市场排名',
@@ -40,36 +47,11 @@ export default function ScoreRanking() {
       render: (_: unknown, record: any) => <ScoreBar score={record.composite_score} />,
       width: 180,
     },
-    {
-      title: '收益',
-      dataIndex: 'score_return',
-      width: 80,
-      render: (v: number) => <span style={{ fontFamily: "'SF Mono', monospace", color: '#94a3b8' }}>{v?.toFixed(1)}</span>,
-    },
-    {
-      title: '风险',
-      dataIndex: 'score_risk',
-      width: 80,
-      render: (v: number) => <span style={{ fontFamily: "'SF Mono', monospace", color: '#94a3b8' }}>{v?.toFixed(1)}</span>,
-    },
-    {
-      title: '夏普',
-      dataIndex: 'score_sharpe',
-      width: 80,
-      render: (v: number) => <span style={{ fontFamily: "'SF Mono', monospace", color: '#94a3b8' }}>{v?.toFixed(1)}</span>,
-    },
-    {
-      title: '流动性',
-      dataIndex: 'score_liquidity',
-      width: 90,
-      render: (v: number) => <span style={{ fontFamily: "'SF Mono', monospace", color: '#94a3b8' }}>{v?.toFixed(1)}</span>,
-    },
-    {
-      title: '趋势',
-      dataIndex: 'score_trend',
-      width: 80,
-      render: (v: number) => <span style={{ fontFamily: "'SF Mono', monospace", color: '#94a3b8' }}>{v?.toFixed(1)}</span>,
-    },
+    scoreColumn('收益', 'score_return', 80),
+    scoreColumn('风险', 'score_risk', 80),
+    scoreColumn('夏普', 'score_sharpe', 80),
+    scoreColumn('流动性', 'score_liquidity', 90),
+    scoreColumn('趋势', 'score_trend', 80),
   ];
 
   const tabItems = templates?.map((t) => ({

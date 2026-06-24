@@ -4,6 +4,7 @@ Provides functions for computing technical and risk indicators
 for single or multiple ETFs, with database UPSERT support.
 """
 
+import logging
 from datetime import date, datetime
 
 import pandas as pd
@@ -16,6 +17,8 @@ from app.data.indicators.risk import calculate_risk_indicators
 from app.data.indicators.technical import calculate_technical_indicators
 from app.models.etf import ETFDailyBar, ETFIndicator, ETFInfo
 from app.models.etl import ETLLog
+
+logger = logging.getLogger(__name__)
 
 # Minimum number of bars required for meaningful indicator calculation
 _MIN_BARS = 5
@@ -192,21 +195,13 @@ def batch_calculate_indicators(
             if not records:
                 continue
 
-            # UPSERT into etf_indicator table
-            for record in records:
-                upsert_stmt = (
-                    insert(ETFIndicator)
-                    .values(record)
-                    .on_conflict_do_update(
-                        index_elements=["etf_code", "trade_date"],
-                        set_={
-                            col: record[col]
-                            for col in _INDICATOR_COLUMNS
-                            if col in record
-                        },
-                    )
-                )
-                db.execute(upsert_stmt)
+            # Bulk UPSERT into etf_indicator table
+            insert_stmt = insert(ETFIndicator).values(records)
+            upsert_stmt = insert_stmt.on_conflict_do_update(
+                index_elements=["etf_code", "trade_date"],
+                set_={col: insert_stmt.excluded[col] for col in _INDICATOR_COLUMNS},
+            )
+            db.execute(upsert_stmt)
             db.commit()
             updated_count += len(records)
 
@@ -221,8 +216,7 @@ def batch_calculate_indicators(
         cache_invalidate_pattern("indicator:*")
         cache_invalidate_pattern("screen:*")
     except Exception:
-        # Cache invalidation failure should not fail the calculation
-        pass
+        logger.exception("Failed to invalidate indicator/screen caches")
 
     # Record ETL log
     status = "success" if not errors else "partial"

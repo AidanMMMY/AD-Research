@@ -25,6 +25,17 @@ from app.data.providers.akshare_provider import AkshareProvider
 from app.models.etf import ETFDailyBar, ETFInfo
 
 
+def _clean_value(v):
+    """Clean a single value for insertion into etf_daily_bar."""
+    if v is None:
+        return None
+    if isinstance(v, float) and math.isnan(v):
+        return None
+    if v is pd.NA:
+        return None
+    return v
+
+
 def backfill_daily_bars(target_dates: list[date]):
     """Fetch and upsert daily bars for target dates using Sina (stable)."""
     db = SessionLocal()
@@ -57,15 +68,6 @@ def backfill_daily_bars(target_dates: list[date]):
                 df = df[df["trade_date"].isin(target_dates_set)].copy()
                 if df.empty:
                     continue
-
-                def _clean_value(v):
-                    if v is None:
-                        return None
-                    if isinstance(v, float) and math.isnan(v):
-                        return None
-                    if v is pd.NA:
-                        return None
-                    return v
 
                 for _, row in df.iterrows():
                     record = {

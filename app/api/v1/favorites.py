@@ -1,7 +1,9 @@
 """User favorite/watchlist API routes."""
 
 
-from fastapi import APIRouter, Depends
+from typing import Annotated
+
+from fastapi import APIRouter, Depends, Query
 
 from app.api.deps import get_current_user, get_favorite_service
 from app.schemas.favorite import (
@@ -16,7 +18,7 @@ router = APIRouter()
 
 @router.get("", response_model=FavoriteListResponse)
 def list_favorites(
-    limit: int = 50,
+    limit: Annotated[int, Query(ge=1, le=200)] = 50,
     service: FavoriteService = Depends(get_favorite_service),
     user=Depends(get_current_user),
 ):

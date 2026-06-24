@@ -4,6 +4,7 @@ Fetches daily OHLCV bars for all active China A-share ETFs and
 upserts them into the ``etf_daily_bar`` table.
 """
 
+import logging
 from datetime import date, timedelta
 
 import pandas as pd
@@ -14,6 +15,8 @@ from app.core.cache import cache_invalidate_pattern
 from app.data.pipelines.base import ETLPipeline
 from app.data.providers.akshare_provider import AkshareProvider
 from app.models.etf import ETFDailyBar, ETFInfo
+
+logger = logging.getLogger(__name__)
 
 
 class AShareETLPipeline(ETLPipeline):
@@ -123,6 +126,6 @@ class AShareETLPipeline(ETLPipeline):
             cache_invalidate_pattern("screen:*")
             cache_invalidate_pattern("etf:list:*")
         except Exception:
-            pass
+            logger.exception("Failed to invalidate caches after daily bar ETL")
 
         return len(records)

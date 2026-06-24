@@ -105,7 +105,10 @@ def generate_signals_for_strategy(
         window = params.get("momentum_window", 20)
         threshold = params.get("threshold", 0.05)
         if len(df) >= window + 1:
-            momentum = (latest["close"] - df.iloc[-window - 1]["close"]) / df.iloc[-window - 1]["close"]
+            prev_close = df.iloc[-window - 1]["close"]
+            if prev_close == 0 or pd.isna(prev_close):
+                return signals
+            momentum = (latest["close"] - prev_close) / prev_close
             if momentum > threshold:
                 signals.append({"type": "BUY", "strength": min(int(momentum * 100), 100)})
             elif momentum < -threshold:

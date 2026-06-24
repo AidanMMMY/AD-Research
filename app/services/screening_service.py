@@ -45,7 +45,7 @@ class ScreeningService:
             "description": "1年回撤大于15%，但夏普比率大于0.5，寻找反弹机会",
             "filters": {
                 "sharpe_min": 0.5,
-                "max_drawdown_1y_min": -15.0,
+                "max_drawdown_1y_max": -15.0,
             },
             "sort_by": "return_1y",
             "sort_order": "asc",

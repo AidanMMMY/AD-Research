@@ -18,6 +18,7 @@ class UserFavorite(Base):
     )
     username = Column(
         String(50),
+        ForeignKey("users.username", ondelete="CASCADE"),
         nullable=False,
         comment="Username from JWT token",
     )

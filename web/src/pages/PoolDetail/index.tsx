@@ -23,6 +23,8 @@ const SUGGEST_ALGORITHMS: { key: string; label: string }[] = [
   { key: 'risk_parity', label: '风险平价' },
 ];
 
+const round2 = (v: number) => Math.round(v * 100) / 100;
+
 export default function PoolDetail() {
   const { id } = useParams<{ id: string }>();
   const poolId = Number(id);
@@ -59,17 +61,16 @@ export default function PoolDetail() {
   const normalizeWeights = (weightsMap: Record<string, number>): Record<string, number> => {
     const entries = Object.entries(weightsMap);
     const sum = entries.reduce((acc, [, v]) => acc + v, 0);
-    if (sum === 0 || Math.abs(sum - 100) < 0.01) return weightsMap;
+    if (sum === 0) return weightsMap;
     const scaled: Record<string, number> = {};
     entries.forEach(([code, v]) => {
-      scaled[code] = Math.round((v / sum) * 100 * 100) / 100;
+      scaled[code] = round2((v / sum) * 100);
     });
     // Fix rounding drift on the largest weight so the total is exactly 100
-    const scaledSum = Object.values(scaled).reduce((a, b) => a + b, 0);
-    const drift = Math.round((100 - scaledSum) * 100) / 100;
+    const drift = round2(100 - Object.values(scaled).reduce((a, b) => a + b, 0));
     if (drift !== 0) {
       const largestCode = Object.entries(scaled).sort((a, b) => b[1] - a[1])[0][0];
-      scaled[largestCode] = Math.round((scaled[largestCode] + drift) * 100) / 100;
+      scaled[largestCode] = round2(scaled[largestCode] + drift);
     }
     return scaled;
   };
@@ -87,10 +88,10 @@ export default function PoolDetail() {
   const handleEqualWeights = () => {
     const codes = weights?.map((w: any) => w.etf_code) || [];
     if (codes.length === 0) return;
-    const equal = Math.floor(10000 / codes.length) / 100;
+    const equal = round2(100 / codes.length);
     const newWeights: Record<string, number> = {};
     codes.forEach((code: string, idx: number) => {
-      newWeights[code] = idx === codes.length - 1 ? Math.round((100 - equal * (codes.length - 1)) * 100) / 100 : equal;
+      newWeights[code] = idx === codes.length - 1 ? round2(100 - equal * (codes.length - 1)) : equal;
     });
     setLocalWeights(newWeights);
   };

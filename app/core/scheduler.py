@@ -142,21 +142,27 @@ def run_signal_generation(target_date: date | None = None):
     Args:
         target_date: If provided, generate signals for this date instead of today.
     """
-    with redis_lock(_LOCK_DAILY_PIPELINE, expire_seconds=1800, wait_timeout=1800) as acquired:
+    db = SessionLocal()
+    try:
+        strategy_service = StrategyService(db)
+        signal_service = SignalService(db)
+        strategies = strategy_service.get_strategies()
+        active_strategies = [s for s in strategies if s.get("is_active")]
+
+        # Get all active ETFs (previously capped at 50, which contradicted docs).
+        etfs = db.query(ETFInfo).filter(ETFInfo.status == "active").all()
+    finally:
+        db.close()
+
+    expire_seconds = max(1800, min(14400, len(active_strategies) * len(etfs) * 2))
+
+    with redis_lock(_LOCK_DAILY_PIPELINE, expire_seconds=expire_seconds, wait_timeout=1800) as acquired:
         if not acquired:
             print("[Scheduler] Signal generation skipped: could not acquire pipeline lock")
             return
 
         db = SessionLocal()
         try:
-            strategy_service = StrategyService(db)
-            signal_service = SignalService(db)
-            strategies = strategy_service.get_strategies()
-            active_strategies = [s for s in strategies if s.get("is_active")]
-
-            # Get all active ETFs (previously capped at 50, which contradicted docs).
-            etfs = db.query(ETFInfo).filter(ETFInfo.status == "active").all()
-
             trade_date = target_date or date.today()
             total_signals = 0
             for strategy in active_strategies:

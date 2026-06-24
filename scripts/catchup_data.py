@@ -55,10 +55,9 @@ def get_missing_dates(db, table, date_column, code_filter=None):
     return get_trading_dates(start, end)
 
 
-def fetch_and_insert_daily_bars_for_date(db, trade_date: date):
+def fetch_and_insert_daily_bars_for_date(db, trade_date: date, provider: AkshareProvider):
     """Fetch daily bars for a single trading date."""
     print(f"\n  📅 Fetching daily bars for {trade_date}...")
-    provider = AkshareProvider()
 
     try:
         df = provider.fetch_daily_bars(ETF_CODES, trade_date, trade_date)
@@ -177,6 +176,7 @@ def run_signals_for_date(db, trade_date: date):
             print("    ℹ️  No active strategies found")
             return 0
 
+        signal_rows = []
         total_signals = 0
         buy_count = sell_count = hold_count = 0
 
@@ -191,16 +191,7 @@ def run_signals_for_date(db, trade_date: date):
                 )
 
                 for sig in signals:
-                    # Insert signal into database
-                    db.execute(text("""
-                        INSERT INTO signal (strategy_id, etf_code, trade_date, signal_type, strength, extra_data, created_at)
-                        VALUES (:strategy_id, :etf_code, :trade_date, :signal_type, :strength, :extra_data, NOW())
-                        ON CONFLICT (strategy_id, etf_code, trade_date) DO UPDATE SET
-                            signal_type = EXCLUDED.signal_type,
-                            strength = EXCLUDED.strength,
-                            extra_data = EXCLUDED.extra_data,
-                            created_at = NOW()
-                    """), {
+                    signal_rows.append({
                         "strategy_id": strategy_id,
                         "etf_code": etf_code,
                         "trade_date": trade_date,
@@ -215,6 +206,17 @@ def run_signals_for_date(db, trade_date: date):
                         sell_count += 1
                     else:
                         hold_count += 1
+
+        if signal_rows:
+            db.execute(text("""
+                INSERT INTO signal (strategy_id, etf_code, trade_date, signal_type, strength, extra_data, created_at)
+                VALUES (:strategy_id, :etf_code, :trade_date, :signal_type, :strength, :extra_data, NOW())
+                ON CONFLICT (strategy_id, etf_code, trade_date) DO UPDATE SET
+                    signal_type = EXCLUDED.signal_type,
+                    strength = EXCLUDED.strength,
+                    extra_data = EXCLUDED.extra_data,
+                    created_at = NOW()
+            """), signal_rows)
 
         db.commit()
 
@@ -292,8 +294,9 @@ def main():
                 print("STEP 1: 数据采集 (Daily Bars)")
                 print("-" * 60)
                 total_bars = 0
+                provider = AkshareProvider()
                 for trade_date in trading_days:
-                    count = fetch_and_insert_daily_bars_for_date(db, trade_date)
+                    count = fetch_and_insert_daily_bars_for_date(db, trade_date, provider)
                     total_bars += count
                 print(f"\n📊 Step 1 完成: 共插入/更新 {total_bars} 条日K记录")
 
