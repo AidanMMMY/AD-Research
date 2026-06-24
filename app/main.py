@@ -22,6 +22,7 @@ from app.api.v1 import (
     notifications,
     pools,
     reports,
+    research,
     scoring,
     screening,
     sector_rotation,
@@ -111,6 +112,11 @@ app.include_router(
 )
 app.include_router(
     favorites.router, prefix=f"{settings.api_v1_prefix}/favorites", tags=["Favorites"]
+)
+app.include_router(
+    research.router,
+    prefix=f"{settings.api_v1_prefix}/research",
+    tags=["AI Research"],
 )
 
 # Serve frontend static files with cache-control headers

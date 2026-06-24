@@ -160,7 +160,7 @@ export default function Screen() {
             total: results?.count || 0,
             pageSizeOptions: [20, 50, 100, 200],
             showSizeChanger: true,
-            showTotal: (total) => `共 ${total} 只ETF`,
+            showTotal: (total) => `共 ${total} 只`,
             onChange: (newPage, newSize) => {
               setPage(newPage);
               if (newSize !== pageSize) {

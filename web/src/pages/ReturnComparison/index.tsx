@@ -119,7 +119,7 @@ export default function ReturnComparison() {
   const handleAddPreset = (codes: string[]) => {
     const newCodes = Array.from(new Set([...selectedCodes, ...codes]));
     if (newCodes.length > 10) {
-      message.warning('最多选择10只ETF');
+      message.warning('最多选择10只标的');
       return;
     }
     setSelectedCodes(newCodes);
@@ -136,7 +136,7 @@ export default function ReturnComparison() {
       return;
     }
     setSelectedCodes(newCodes);
-    message.success(`已添加「${pool.label}」中的 ${pool.codes.length} 只ETF`);
+    message.success(`已添加「${pool.label}」中的 ${pool.codes.length} 只标的`);
   };
 
   const handleRemoveCode = (code: string) => {
@@ -229,7 +229,7 @@ export default function ReturnComparison() {
       <GlassCard title={mode === 'normalized' ? '归一化收益曲线' : '日收益率'}>
         {selectedCodes.length < 1 ? (
           <div style={{ textAlign: 'center', padding: 60, color: '#64748b' }}>
-            请至少选择1只ETF
+            请至少选择1只标的
           </div>
         ) : etfQueries.isLoading ? (
           <Spin size="large" style={{ display: 'block', margin: '60px auto' }} />

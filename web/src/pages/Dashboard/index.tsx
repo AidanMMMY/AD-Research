@@ -106,7 +106,7 @@ export default function Dashboard() {
       <Row gutter={[20, 20]} style={{ marginBottom: 28 }}>
         <Col xs={12} sm={6}>
           <GradientStatCard
-            title="ETF总数"
+            title="标的总数"
             value={stats?.etf_count ?? 0}
             icon={<DatabaseOutlined style={{ color: '#818cf8' }} />}
             gradient="purple"
@@ -181,12 +181,12 @@ export default function Dashboard() {
             empty={favCount === 0}
             emptyPlaceholder={
               <Empty
-                description="暂无收藏的ETF"
+                description="暂无收藏的标的"
                 image={Empty.PRESENTED_IMAGE_SIMPLE}
                 style={{ padding: 20 }}
               >
                 <span style={{ fontSize: 12, color: '#64748b' }}>
-                  在ETF详情页点击⭐收藏，这里会显示你关注的ETF
+                  在详情页点击⭐收藏，这里会显示你关注的标的
                 </span>
               </Empty>
             }
@@ -279,7 +279,7 @@ export default function Dashboard() {
                     description={
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
                         <span style={{ fontSize: 12, color: '#64748b' }}>
-                          {pool.members?.length || 0} 只ETF
+                          {pool.members?.length || 0} 只标的
                         </span>
                         {pool.description && (
                           <>

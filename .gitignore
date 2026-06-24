@@ -161,5 +161,10 @@ alembic/versions/*.pyc
 .claude/
 .superpowers/
 
+# Node (root-level accidental installs; real package.json is in web/)
+node_modules/
+/package.json
+/package-lock.json
+
 # MCP configuration with secrets
 .mcp.json

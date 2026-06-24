@@ -33,7 +33,7 @@ export default function NotificationConfigPage() {
         config_json.webhook_url = values.webhook_url;
       } else {
         config_json.to_emails = values.to_emails;
-        config_json.subject_prefix = values.subject_prefix || 'ETF投研平台';
+        config_json.subject_prefix = values.subject_prefix || '投研平台';
         if (values.smtp_host) config_json.smtp_host = values.smtp_host;
         if (values.smtp_port) config_json.smtp_port = values.smtp_port;
         if (values.smtp_user) config_json.smtp_user = values.smtp_user;
@@ -245,8 +245,8 @@ export default function NotificationConfigPage() {
                 <Input placeholder="user@example.com" />
               </Form.Item>
 
-              <Form.Item name="subject_prefix" label="邮件主题前缀" initialValue="ETF投研平台">
-                <Input placeholder="ETF投研平台" />
+              <Form.Item name="subject_prefix" label="邮件主题前缀" initialValue="投研平台">
+                <Input placeholder="投研平台" />
               </Form.Item>
 
               <Form.Item name="use_tls" label="使用 TLS 加密" valuePropName="checked" initialValue={true}>

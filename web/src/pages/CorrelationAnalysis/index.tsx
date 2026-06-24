@@ -80,7 +80,7 @@ export default function CorrelationAnalysis() {
   const handleAddPreset = (codes: string[]) => {
     const newCodes = Array.from(new Set([...selectedCodes, ...codes]));
     if (newCodes.length > 20) {
-      message.warning('最多选择20只ETF');
+      message.warning('最多选择20只标的');
       return;
     }
     setSelectedCodes(newCodes);
@@ -97,7 +97,7 @@ export default function CorrelationAnalysis() {
       return;
     }
     setSelectedCodes(newCodes);
-    message.success(`已添加「${pool.label}」中的 ${pool.codes.length} 只ETF`);
+    message.success(`已添加「${pool.label}」中的 ${pool.codes.length} 只标的`);
   };
 
   const handleRemoveCode = (code: string) => {
@@ -181,7 +181,7 @@ export default function CorrelationAnalysis() {
       <GlassCard title="相关性热力图">
         {selectedCodes.length < 2 ? (
           <div style={{ textAlign: 'center', padding: 60, color: '#64748b' }}>
-            请至少选择2只ETF进行分析
+            请至少选择2只标的进行分析
           </div>
         ) : isLoading ? (
           <Spin size="large" style={{ display: 'block', margin: '60px auto' }} />

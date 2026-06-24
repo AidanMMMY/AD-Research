@@ -20,6 +20,9 @@ const BacktestList = lazy(() => import('./pages/BacktestList'));
 const BacktestDetail = lazy(() => import('./pages/BacktestDetail'));
 const SignalDashboard = lazy(() => import('./pages/SignalDashboard'));
 const AdminUsers = lazy(() => import('./pages/AdminUsers'));
+const ResearchNotes = lazy(() => import('./pages/ResearchNotes'));
+const SentimentDashboard = lazy(() => import('./pages/SentimentDashboard'));
+const AIChat = lazy(() => import('./pages/AIChat'));
 
 export interface RouteConfig {
   path: string;
@@ -28,6 +31,8 @@ export interface RouteConfig {
   menu?: {
     name: string;
     icon?: string;
+    /** Render a divider line before this item */
+    dividerBefore?: boolean;
   };
 }
 
@@ -40,7 +45,7 @@ const wrap = (Component: React.ComponentType) => (
 export const routes: RouteConfig[] = [
   { path: '/login', element: wrap(Login), auth: false },
   { path: '/dashboard', element: wrap(Dashboard), auth: true, menu: { name: '首页看板', icon: 'DashboardOutlined' } },
-  { path: '/etfs', element: wrap(ETFList), auth: true, menu: { name: 'ETF列表', icon: 'OrderedListOutlined' } },
+  { path: '/etfs', element: wrap(ETFList), auth: true, menu: { name: '标的列表', icon: 'OrderedListOutlined' } },
   { path: '/etfs/:code', element: wrap(ETFDetail), auth: true },
   { path: '/screen', element: wrap(Screen), auth: true, menu: { name: '全市场筛选器', icon: 'FilterOutlined' } },
   { path: '/pools', element: wrap(PoolList), auth: true, menu: { name: '标的池管理', icon: 'AppstoreOutlined' } },
@@ -56,6 +61,10 @@ export const routes: RouteConfig[] = [
   { path: '/backtests', element: wrap(BacktestList), auth: true, menu: { name: '回测管理', icon: 'ExperimentOutlined' } },
   { path: '/backtests/:id', element: wrap(BacktestDetail), auth: true },
   { path: '/signals', element: wrap(SignalDashboard), auth: true, menu: { name: '交易信号', icon: 'ThunderboltOutlined' } },
+  // ---- AI 研究 ----
+  { path: '/research', element: wrap(ResearchNotes), auth: true, menu: { name: 'AI研究笔记', icon: 'ReadOutlined', dividerBefore: true } },
+  { path: '/sentiment', element: wrap(SentimentDashboard), auth: true, menu: { name: '情绪分析', icon: 'SmileOutlined' } },
+  { path: '/chat', element: wrap(AIChat), auth: true, menu: { name: 'AI助手', icon: 'RobotOutlined' } },
   { path: '/admin/users', element: wrap(AdminUsers), auth: true, menu: { name: '用户管理', icon: 'TeamOutlined' } },
   { path: '/', element: <Navigate to="/dashboard" replace />, auth: true },
 ];

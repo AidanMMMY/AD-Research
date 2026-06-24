@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>投资研究平台 — 美股 & AI 功能集成指南</title>
+<style>
+  :root {
+    --bg: #070b14;
+    --surface: #0f1729;
+    --border: rgba(255,255,255,0.06);
+    --text: #e2e8f0;
+    --text-secondary: #94a3b8;
+    --text-muted: #64748b;
+    --accent: #818cf8;
+    --accent-dim: rgba(99,102,241,0.12);
+    --green: #22c55e;
+    --red: #ef4444;
+    --yellow: #eab308;
+    --radius: 12px;
+    --font-mono: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', sans-serif;
+    line-height: 1.8;
+    font-size: 15px;
+    padding: 0;
+  }
+  .container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 40px 24px 80px;
+  }
+  .header {
+    background: linear-gradient(135deg, #0a0f1e 0%, #0d1326 50%, #0f1729 100%);
+    border-bottom: 1px solid var(--border);
+    padding: 48px 24px;
+    text-align: center;
+    margin-bottom: 40px;
+  }
+  .header h1 {
+    font-size: 2rem;
+    font-weight: 800;
+    background: linear-gradient(135deg, #818cf8 0%, #c084fc 50%, #6366f1 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 12px;
+  }
+  .header .meta {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+  }
+  .header .meta strong { color: var(--text-secondary); }
+
+  h1 { font-size: 1.6rem; margin: 40px 0 16px; color: #f1f5f9; border-bottom: 1px solid var(--border); padding-bottom: 8px; }
+  h2 { font-size: 1.35rem; margin: 32px 0 12px; color: #f1f5f9; }
+  h3 { font-size: 1.15rem; margin: 24px 0 10px; color: #e2e8f0; }
+  h4 { font-size: 1rem; margin: 20px 0 8px; color: #cbd5e1; }
+  p { margin: 10px 0; }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  hr {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 32px 0;
+  }
+
+  blockquote {
+    border-left: 3px solid var(--accent);
+    margin: 12px 0;
+    padding: 8px 16px;
+    background: var(--accent-dim);
+    border-radius: 0 var(--radius) var(--radius) 0;
+    color: var(--text-secondary);
+  }
+
+  code {
+    font-family: var(--font-mono);
+    font-size: 0.88em;
+    background: rgba(255,255,255,0.08);
+    padding: 2px 7px;
+    border-radius: 4px;
+    color: #a5b4fc;
+  }
+
+  pre {
+    background: #0a0f1e;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px 20px;
+    overflow-x: auto;
+    margin: 12px 0;
+  }
+  pre code {
+    background: none;
+    padding: 0;
+    color: var(--text);
+    font-size: 0.85rem;
+    line-height: 1.7;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 12px 0 20px;
+    font-size: 0.92rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+  thead { background: rgba(99,102,241,0.08); }
+  th {
+    padding: 10px 14px;
+    text-align: left;
+    font-weight: 600;
+    color: var(--accent);
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+  td {
+    padding: 8px 14px;
+    border-bottom: 1px solid rgba(255,255,255,0.03);
+    color: var(--text-secondary);
+  }
+  tr:last-child td { border-bottom: none; }
+  tbody tr:hover { background: rgba(255,255,255,0.02); }
+
+  strong { color: #f1f5f9; }
+  ul, ol { margin: 8px 0 8px 24px; }
+
+  .nav-toc {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px 24px;
+    margin-bottom: 32px;
+  }
+  .nav-toc h3 { margin-top: 0; }
+  .nav-toc ol { margin: 8px 0 0 20px; }
+  .nav-toc li { margin: 6px 0; font-size: 0.95rem; }
+
+  .badge {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 6px;
+    font-size: 0.78rem;
+    font-weight: 600;
+  }
+  .badge-new { background: rgba(99,102,241,0.15); color: #818cf8; }
+  .badge-done { background: rgba(34,197,94,0.12); color: #22c55e; }
+
+  @media (max-width: 768px) {
+    .container { padding: 20px 16px 60px; }
+    .header { padding: 32px 16px; }
+    .header h1 { font-size: 1.5rem; }
+    pre { padding: 12px; font-size: 0.8rem; }
+    table { font-size: 0.8rem; }
+    th, td { padding: 6px 8px; }
+  }
+
+  @media print {
+    body { background: #fff; color: #000; }
+    .container { max-width: 100%; }
+    pre, code { background: #f5f5f5; color: #000; }
+  }
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>投资研究平台 — 美股 & AI 功能集成指南</h1>
+  <p class="meta">
+    <strong>项目</strong>: Investment Research Platform (AD-Research) &nbsp;|&nbsp;
+    <strong>最后更新</strong>: 2025-06-25 &nbsp;|&nbsp;
+    <strong>覆盖</strong>: 阶段1（美股数据管道）+ 阶段2（个股支持）+ 阶段3（AI Vibe Trading）
+  </p>
+</div>
+<div class="container">
+<h1>投资研究平台 — 美股 & AI 功能集成指南</h1>
+<blockquote><strong>项目</strong>: Investment Research Platform (AD-Research)  </blockquote>
+<blockquote><strong>最后更新</strong>: 2025-06-25  </blockquote>
+<blockquote><strong>覆盖</strong>: 阶段1（美股数据管道）+ 阶段2（个股支持）+ 阶段3（AI Vibe Trading）</blockquote>
+<hr>
+<h2>目录</h2>
+<p>1. <a href="#1-平台架构概览" target="_blank">平台架构概览</a>
+2. <a href="#2-环境配置" target="_blank">环境配置</a>
+3. <a href="#3-阶段1美股数据管道" target="_blank">阶段1：美股数据管道</a>
+4. <a href="#4-阶段2个股支持" target="_blank">阶段2：个股支持</a>
+5. <a href="#5-阶段3ai-vibe-trading-研究层" target="_blank">阶段3：AI Vibe Trading 研究层</a>
+6. <a href="#6-前端功能指南" target="_blank">前端功能指南</a>
+7. <a href="#7-api-参考" target="_blank">API 参考</a>
+8. <a href="#8-运维指南" target="_blank">运维指南</a>
+9. <a href="#9-常见问题" target="_blank">常见问题</a></p>
+<hr>
+<h2>1. 平台架构概览</h2>
+<h3>技术栈</h3>
+<table>
+<thead><tr><td>层级</td><td>技术</td></tr></thead>
+<tbody>
+<tr><th><strong>后端</strong></th><th>Python 3.12, FastAPI, SQLAlchemy 2.0, PostgreSQL 16, Redis 7</th></tr>
+<tr><th><strong>前端</strong></th><th>React 18, TypeScript 5, Vite 5, Ant Design 5.12</th></tr>
+<tr><th><strong>AI/LLM</strong></th><th>Anthropic Claude (Haiku 默认 / Sonnet 可选), Redis缓存</th></tr>
+<tr><th><strong>图表</strong></th><th>lightweight-charts (K线), ECharts (曲线/雷达/热力图)</th></tr>
+<tr><th><strong>数据源</strong></th><th>yfinance, Finnhub, Tiingo, FMP, ROIC.ai, Alpha Vantage</th></tr>
+<tr><th><strong>部署</strong></th><th>Docker Compose (PG + Redis + Uvicorn), Nginx 反向代理</th></tr>
+</tbody></table>
+<h3>数据流架构</h3>
+<pre><code class="language-">┌──────────────────────────────────────────────────────┐
+│                    数据源层                            │
+│  yfinance  │  Finnhub  │  Tiingo  │  FMP  │  ROIC.ai  │
+└────────────────────┬─────────────────────────────────┘
+                     │ ETL Pipeline (降级链)
+                     ▼
+┌──────────────────────────────────────────────────────┐
+│                    存储层                              │
+│  PostgreSQL: etf_info, etf_daily_bar, etf_indicator,  │
+│  research_note, sentiment_data, ai_chat_*              │
+│  Redis: API缓存 + 分布式锁 + LLM响应缓存               │
+└────────────────────┬─────────────────────────────────┘
+                     │
+                     ▼
+┌──────────────────────────────────────────────────────┐
+│                    服务层                              │
+│  指标计算 → 评分引擎 → 筛选 → 回测 → 信号生成          │
+│  ResearchService (AI研报)                              │
+│  SentimentService (情绪分析)                           │
+│  ChatService (AI对话助手)                              │
+└────────────────────┬─────────────────────────────────┘
+                     │ REST API (/api/v1/*)
+                     ▼
+┌──────────────────────────────────────────────────────┐
+│                    前端                                │
+│  React 18 + Ant Design 5 + 颜色惯例切换(中/美)        │
+│  AI页面: /research, /sentiment, /chat                 │
+└──────────────────────────────────────────────────────┘
+</code></pre>
+<h3>市场编码规范</h3>
+<table>
+<thead><tr><td>市场</td><td>代码后缀</td><td>示例</td><td>交易时间</td></tr></thead>
+<tbody>
+<tr><th>A股上海</th><th><code>.SH</code></th><th><code>510050.SH</code></th><th>09:30-15:00 CST</th></tr>
+<tr><th>A股深圳</th><th><code>.SZ</code></th><th><code>159915.SZ</code></th><th>09:30-15:00 CST</th></tr>
+<tr><th>美股</th><th><code>.US</code></th><th><code>SPY.US</code>, <code>AAPL.US</code></th><th>09:30-16:00 ET</th></tr>
+<tr><th>港股</th><th><code>.HK</code></th><th><code>2800.HK</code></th><th>09:30-16:00 HKT</th></tr>
+<tr><th>日股</th><th><code>.JP</code></th><th><code>1321.JP</code></th><th>09:00-15:00 JST</th></tr>
+</tbody></table>
+<h3>调度任务一览</h3>
+<table>
+<thead><tr><td>时间 (北京时间)</td><td>任务</td></tr></thead>
+<tbody>
+<tr><th>02:00 (周日)</th><th>美股个股发现 (S&P 500)</th></tr>
+<tr><th>03:00 (周日)</th><th>全市场ETF扫描</th></tr>
+<tr><th>05:00 (每日)</th><th>美股日线ETL</th></tr>
+<tr><th>05:30 (每日)</th><th>美股指标计算</th></tr>
+<tr><th>08:00 (每日)</th><th>A股指标计算</th></tr>
+<tr><th>08:30 (每日)</th><th>评分计算</th></tr>
+<tr><th>09:00 (每日)</th><th>交易信号生成</th></tr>
+<tr><th>15:30 (每日)</th><th>A股日线ETL</th></tr>
+<tr><th>22:00 (周日)</th><th>池周报生成</th></tr>
+</tbody></table>
+<hr>
+<h2>2. 环境配置</h2>
+<h3>2.1 必需环境变量</h3>
+<pre><code class="language-bash"># ---- 数据库 ----
+DATABASE_URL=postgresql://etf:etf_research_password@localhost:5432/ad_research
+REDIS_URL=redis://localhost:6379/0
+<h1>---- 美股数据源 ----</h1>
+<h1>Finnhub (免费 60次/分): https://finnhub.io/register</h1>
+FINNHUB_API_KEY=your_free_key
+<h1>以下可选（降级链 & 阶段2）:</h1>
+<h1>Tiingo (免费 1000次/天): https://www.tiingo.com/account/token</h1>
+TIINGO_API_KEY=
+<h1>FMP (免费 250次/天): https://site.financialmodelingprep.com/register</h1>
+FMP_API_KEY=
+<h1>---- AI/LLM (阶段3) ----</h1>
+<h1>Anthropic: https://console.anthropic.com/</h1>
+ANTHROPIC_API_KEY=sk-ant-...
+<h1>---- 认证 ----</h1>
+AUTH_SECRET_KEY=your-random-secret-key
+AUTH_ADMIN_USERNAME=admin
+AUTH_ADMIN_PASSWORD=your-secure-password
+</code></pre>
+<h3>2.2 免费API额度汇总</h3>
+<table>
+<thead><tr><td>Provider</td><td>免费额度</td><td>用途</td><td>注册链接</td></tr></thead>
+<tbody>
+<tr><th><strong>yfinance</strong></th><th>~2000次/时</th><th>美股EOD日线（主）</th><th>无需注册</th></tr>
+<tr><th><strong>Finnhub</strong></th><th>60次/分</th><th>实时报价、新闻情绪</th><th><a href="https://finnhub.io/register" target="_blank">finnhub.io/register</a></th></tr>
+<tr><th><strong>Tiingo</strong></th><th>1000次/天</th><th>EOD降级链</th><th><a href="https://www.tiingo.com/account/token" target="_blank">tiingo.com/account/token</a></th></tr>
+<tr><th><strong>FMP</strong></th><th>250次/天</th><th>S&P 500发现、基本面</th><th><a href="https://site.financialmodelingprep.com/register" target="_blank">site.financialmodelingprep.com</a></th></tr>
+<tr><th><strong>ROIC.ai</strong></th><th>5次/分</th><th>业绩会纪要</th><th><a href="https://www.roic.ai/api" target="_blank">roic.ai/api</a></th></tr>
+<tr><th><strong>Alpha Vantage</strong></th><th>25次/天</th><th>纪要+AI摘要（备）</th><th><a href="https://www.alphavantage.co/support/#api-key" target="_blank">alphavantage.co</a></th></tr>
+<tr><th><strong>Anthropic</strong></th><th>按量付费</th><th>AI研报/情绪/对话</th><th><a href="https://console.anthropic.com/" target="_blank">console.anthropic.com</a></th></tr>
+</tbody></table>
+<strong>月度成本预估</strong>: 数据 $0 + LLM ~$5-15 (Claude Haiku)
+<h3>2.3 安装依赖</h3>
+<pre><code class="language-bash"># Python 依赖
+pip install anthropic requests
+<h1>前端依赖</h1>
+cd web && npm install react-markdown remark-gfm
+</code></pre>
+<hr>
+<h2>3. 阶段1：美股数据管道</h2>
+<h3>3.1 新增文件清单</h3>
+<table>
+<thead><tr><td>文件</td><td>说明</td></tr></thead>
+<tbody>
+<tr><th><code>app/data/providers/finnhub_provider.py</code></th><th>Finnhub数据Provider：实时报价、日线蜡烛图、公司新闻、~70只精选ETF</th></tr>
+<tr><th><code>app/data/providers/tiingo_provider.py</code></th><th>Tiingo EOD Provider：30+年历史、调整价</th></tr>
+<tr><th><code>app/data/providers/yfinance_provider.py</code></th><th><strong>已扩展</strong>：动态ticker映射、批量yf.download()、限速2s、单ticker降级</th></tr>
+<tr><th><code>app/data/pipelines/us_etf.py</code></th><th><code>USDailyPipeline</code>：yfinance→Tiingo→Finnhub三级降级链</th></tr>
+<tr><th><code>app/core/scheduler.py</code></th><th><strong>已扩展</strong>：新增 <code>run_us_etl()</code> 和 <code>run_us_indicator_calculation()</code></th></tr>
+<tr><th><code>scripts/init_us_etfs.py</code></th><th>美股ETF种子数据脚本</th></tr>
+<tr><th><code>alembic/versions/d3f4e5a6b7c8_*.py</code></th><th>新增 instrument_type/sector/industry/market_cap/country 列</th></tr>
+</tbody></table>
+<h3>3.2 美股ETF初始化</h3>
+<pre><code class="language-bash"># 1. 预览要添加的ETF列表
+python scripts/init_us_etfs.py
+<h1>2. 实际写入数据库</h1>
+python scripts/init_us_etfs.py --apply
+</code></pre>
+<strong>内置ETF列表</strong> (70只精选): SPY, QQQ, IWM, DIA, VTI, VOO, IVV, XLK, XLF, XLV, XLE, SMH, SOXX, ARKK, BND, AGG, TLT, GLD, SLV, VNQ, 等。
+<h3>3.3 手动运行US ETL</h3>
+<pre><code class="language-bash"># 运行一次美股日线ETL
+python -c "
+from app.core.database import SessionLocal
+from app.data.pipelines.us_etf import USDailyPipeline
+db = SessionLocal()
+pipeline = USDailyPipeline(db)
+result = pipeline.run_with_retry()
+print(f'success={result.success}, records={result.records}')
+db.close()
+"
+</code></pre>
+<h3>3.4 前端改动</h3>
+<table>
+<thead><tr><td>文件</td><td>改动</td></tr></thead>
+<tbody>
+<tr><th><code>web/src/stores/settings.ts</code></th><th><strong>新建</strong>：Zustand+persist，管理 <code>colorConvention</code> (china/us)</th></tr>
+<tr><th><code>web/src/utils/color.ts</code></th><th><strong>已扩展</strong>：所有颜色函数接受 <code>convention</code> 参数</th></tr>
+<tr><th><code>web/src/components/ReturnTag.tsx</code></th><th>读取settings store，传递convention</th></tr>
+<tr><th><code>web/src/components/KLineChart.tsx</code></th><th>蜡烛图颜色随convention动态切换</th></tr>
+<tr><th><code>web/src/components/AppLayout.tsx</code></th><th>Header增加 <code>Segmented</code> 颜色惯例切换按钮（红涨绿跌/绿涨红跌）</th></tr>
+<tr><th><code>web/src/pages/Screen/index.tsx</code></th><th>市场选择器从硬编码SH/SZ改为API动态获取</th></tr>
+</tbody></table>
+<hr>
+<h2>4. 阶段2：个股支持</h2>
+<h3>4.1 新增文件清单</h3>
+<table>
+<thead><tr><td>文件</td><td>说明</td></tr></thead>
+<tbody>
+<tr><th><code>app/data/providers/fmp_provider.py</code></th><th>FMP Provider：S&P 500列表、公司资料、三表(IS/BS/CF)、关键ratio、财报日历</th></tr>
+<tr><th><code>app/data/pipelines/us_stock_discovery.py</code></th><th><code>USStockDiscoveryPipeline</code>：以 instrument_type="STOCK" upsert到 etf_info</th></tr>
+<tr><th><code>app/schemas/etf.py</code></th><th><strong>已扩展</strong>：新增 instrument_type/sector/industry/market_cap/country 字段</th></tr>
+<tr><th><code>app/services/etf_service.py</code></th><th><strong>已扩展</strong>：支持 instrument_type 筛选</th></tr>
+</tbody></table>
+<h3>4.2 S&P 500 个股初始化</h3>
+<pre><code class="language-bash"># 设置FMP Key后运行
+export FMP_API_KEY=your_free_key
+<p>python -c "
+from app.core.database import SessionLocal
+from app.data.pipelines.us_stock_discovery import USStockDiscoveryPipeline
+db = SessionLocal()
+pipeline = USStockDiscoveryPipeline(db)
+result = pipeline.run_with_retry()
+print(f'success={result.success}, records={result.records}')
+db.close()
+"
+</code></pre></p>
+<strong>产出</strong>: ~500只 S&P 500 成分股以 <code>instrument_type="STOCK"</code>, <code>market="US"</code> 写入 <code>etf_info</code>，与ETF共用日线/指标/评分基础设施。
+<h3>4.3 前端改动</h3>
+<table>
+<thead><tr><td>文件</td><td>改动</td></tr></thead>
+<tbody>
+<tr><th><code>web/src/types/etf.ts</code></th><th>新增 instrument_type/sector/market_cap 字段</th></tr>
+<tr><th><code>web/src/pages/ETFList/index.tsx</code></th><th>新增"类型"下拉筛选(ETF/个股) + Tag标签 + 规模列支持美股B/M/T显示</th></tr>
+</tbody></table>
+<hr>
+<h2>5. 阶段3：AI Vibe Trading 研究层</h2>
+<h3>5.1 新增文件清单</h3>
+<pre><code class="language-">app/services/llm/                    # LLM基础设施
+├── base.py                          # LLMProvider 抽象基类
+├── anthropic_provider.py            # Claude 实现（Haiku + Sonnet）
+├── llm_service.py                   # 缓存、限流、模板管理
+└── __init__.py
+<p>app/services/
+├── research_service.py              # AI研报生成
+├── sentiment_service.py             # 新闻情绪分析
+└── chat_service.py                  # AI对话助手</p>
+<p>app/api/v1/research.py               # 8个AI REST端点</p>
+<p>app/models/research.py               # 4张新表 (ResearchNote, SentimentData,
+                                     #   AIChatSession, AIChatMessage)</p>
+<p>web/src/pages/ResearchNotes/         # AI研究笔记页面
+web/src/pages/SentimentDashboard/    # 情绪仪表盘页面
+web/src/pages/AIChat/               # AI对话助手页面
+web/src/api/research.ts             # 研报+情绪API客户端
+web/src/api/chat.ts                 # 聊天API客户端
+</code></pre></p>
+<h3>5.2 LLM 技术选型</h3>
+<table>
+<thead><tr><td>场景</td><td>模型</td><td>成本 (每1M token)</td><td>用途</td></tr></thead>
+<tbody>
+<tr><th><strong>默认</strong></th><th>Claude Haiku 3.5</th><th>$0.25 输入 / $1.25 输出</th><th>研报生成、情绪分类、日常对话</th></tr>
+<tr><th><strong>复杂分析</strong></th><th>Claude Sonnet 4</th><th>$3 输入 / $15 输出</th><th>深度研报、财报全面解读</th></tr>
+<tr><th><strong>Embeddings</strong></th><th>all-MiniLM-L6-v2 (本地)</th><th>免费</th><th>未来语义搜索</th></tr>
+</tbody></table>
+<strong>月度成本预估</strong>: $5-15 (Redis缓存后更低)
+<h3>5.3 AI 功能指南</h3>
+<h4>A. 研究笔记生成</h4>
+<pre><code class="language-bash"># API方式生成研报
+curl -X POST http://localhost:8000/api/v1/research/notes/generate \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{"instrument_code": "SPY.US"}'
+<h1>查询研报</h1>
+curl http://localhost:8000/api/v1/research/notes/SPY.US \
+  -H "Authorization: Bearer <token>"
+</code></pre>
+<strong>生成逻辑</strong>:
+1. 拉取近30天日线、最新指标(RSI/MA/MACD/波动率)、综合评分
+2. 构建数据化Prompt → LLM生成2-3段中文研报
+3. 解析JSON输出 (content/summary/sentiment/confidence)
+4. 存储到 <code>research_note</code> 表
+<h4>B. 情绪分析</h4>
+<pre><code class="language-bash"># 触发新闻抓取+情绪分类
+curl -X POST "http://localhost:8000/api/v1/research/sentiment/AAPL.US/ingest?days=3" \
+  -H "Authorization: Bearer <token>"
+<h1>查询情绪聚合</h1>
+curl "http://localhost:8000/api/v1/research/sentiment/AAPL.US?days=7" \
+  -H "Authorization: Bearer <token>"
+</code></pre>
+<strong>数据流</strong>: Finnhub新闻 → LLM逐条分类(positive/negative/neutral + score) → 入库 → 聚合统计
+<h4>C. AI对话助手</h4>
+<pre><code class="language-bash"># 创建会话
+curl -X POST http://localhost:8000/api/v1/research/chat/sessions \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json"
+<h1>发送消息</h1>
+curl -X POST http://localhost:8000/api/v1/research/chat/sessions/1/messages \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{"content": "SPY最近表现怎么样？技术面怎么看？"}'
+</code></pre>
+<strong>数据感知机制</strong>:
+1. 用户消息中正则提取标的代码 (如 <code>SPY.US</code>)
+2. 自动查询最新指标 + 评分数据
+3. 作为System Prompt附件注入LLM上下文
+4. AI回答引用的真实数据而非幻觉
+<h3>5.4 前端AI页面</h3>
+<table>
+<thead><tr><td>页面</td><td>路由</td><td>核心功能</td></tr></thead>
+<tbody>
+<tr><th><strong>AI研究笔记</strong></th><th><code>/research</code></th><th>输入代码→生成研报→Markdown全文查看→情绪badge/置信度</th></tr>
+<tr><th><strong>情绪仪表盘</strong></th><th><code>/sentiment</code></th><th>情绪得分仪表、正/中/负面计数、可调回溯期Slider</th></tr>
+<tr><th><strong>AI助手</strong></th><th><code>/chat</code></th><th>左侧会话列表+右侧Markdown气泡、数据感知回答、Enter发送</th></tr>
+</tbody></table>
+<h3>5.5 成本控制</h3>
+<pre><code class="language-python"># config.py
+anthropic_model: str = "claude-haiku-3-5-20241022"  # 默认低成本
+llm_monthly_budget: float = 15.0                      # 月度预算上限
+<h1>LLM服务缓存TTL配置</h1>
+CACHE_TTL_VOLATILE = 3600   # 价格数据1小时
+CACHE_TTL_STATIC = 86400    # 公司资料24小时
+</code></pre>
+<hr>
+<h2>6. 前端功能指南</h2>
+<h3>6.1 颜色惯例切换</h3>
+<p>平台支持 <strong>中国惯例（红涨绿跌）</strong> 和 <strong>美国惯例（绿涨红跌）</strong> 一键切换。</p>
+<p>- 位置：顶部Header右侧 <code>Segmented</code> 控件
+- 持久化：localStorage (<code>settings-storage</code>)
+- 影响范围：K线蜡烛图颜色、ReturnTag、Dashboard、ScoreRanking等所有使用颜色函数的地方</p>
+<h3>6.2 市场选择器</h3>
+<p>- 筛选页 (<code>/screen</code>) 市场下拉框动态从API获取可用市场列表
+- ETF列表页 (<code>/etfs</code>) 支持市场 + 分类 + 类型三维筛选
+- 市场标签映射：<code>A股</code>→A股, <code>US</code>→美股, <code>HK</code>→港股, <code>JP</code>→日股</p>
+<h3>6.3 页面路由地图</h3>
+<pre><code class="language-">/login              # 登录
+/dashboard          # 首页看板
+/etfs               # ETF/个股列表（支持类型筛选）
+/etfs/:code         # 详情页（K线 + 指标 + AI分析Tab）
+/screen             # 全市场筛选器
+/pools              # 标的池管理
+/pools/:id          # 池详情
+/scores             # 评分排名
+/research           # AI研究笔记 [NEW]
+/sentiment          # 情绪仪表盘   [NEW]
+/chat               # AI助手       [NEW]
+/correlation        # 相关性分析
+/comparison         # 收益对比
+/sector-rotation    # 板块轮动
+/scanner            # 全市场扫描
+/notifications      # 推送配置
+/strategies         # 策略管理
+/backtests          # 回测管理
+/signals            # 交易信号
+/admin/users        # 用户管理（admin）
+</code></pre>
+<hr>
+<h2>7. API 参考</h2>
+<h3>7.1 研究API (Phase 3 新增)</h3>
+<table>
+<thead><tr><td>方法</td><td>路径</td><td>说明</td></tr></thead>
+<tbody>
+<tr><th><code>POST</code></th><th><code>/api/v1/research/notes/generate</code></th><th>生成AI研报</th></tr>
+<tr><th><code>GET</code></th><th><code>/api/v1/research/notes/{code}</code></th><th>查询研报列表</th></tr>
+<tr><th><code>GET</code></th><th><code>/api/v1/research/sentiment/{code}</code></th><th>查询情绪聚合 (7天/可调)</th></tr>
+<tr><th><code>POST</code></th><th><code>/api/v1/research/sentiment/{code}/ingest</code></th><th>触发新闻情绪采集</th></tr>
+<tr><th><code>POST</code></th><th><code>/api/v1/research/chat/sessions</code></th><th>创建AI对话会话</th></tr>
+<tr><th><code>GET</code></th><th><code>/api/v1/research/chat/sessions</code></th><th>列出用户所有会话</th></tr>
+<tr><th><code>DELETE</code></th><th><code>/api/v1/research/chat/sessions/{id}</code></th><th>删除会话</th></tr>
+<tr><th><code>POST</code></th><th><code>/api/v1/research/chat/sessions/{id}/messages</code></th><th>发送消息</th></tr>
+<tr><th><code>GET</code></th><th><code>/api/v1/research/chat/sessions/{id}/messages</code></th><th>获取历史消息</th></tr>
+</tbody></table>
+<h3>7.2 ETF API (扩展后)</h3>
+<code>GET /api/v1/etfs</code> 新增查询参数：
+<table>
+<thead><tr><td>参数</td><td>类型</td><td>说明</td></tr></thead>
+<tbody>
+<tr><th><code>market</code></th><th>string</th><th>市场筛选 (A股/US/HK/JP)</th></tr>
+<tr><th><code>category</code></th><th>string</th><th>分类</th></tr>
+<tr><th><code>instrument_type</code></th><th>string</th><th>类型 (ETF/STOCK)</th></tr>
+<tr><th><code>search</code></th><th>string</th><th>代码/名称搜索</th></tr>
+<tr><th><code>page</code></th><th>int</th><th>页码</th></tr>
+<tr><th><code>page_size</code></th><th>int</th><th>每页条数</th></tr>
+</tbody></table>
+<h3>7.3 响应模型</h3>
+<code>ETFInfoResponse</code> 新增字段：
+<pre><code class="language-json">{
+  "code": "AAPL.US",
+  "name": "Apple Inc.",
+  "market": "US",
+  "exchange": "NASDAQ",
+  "instrument_type": "STOCK",
+  "sector": "Technology",
+  "industry": "Consumer Electronics",
+  "market_cap": 2800000000000.0,
+  "country": "US",
+  "currency": "USD",
+  ...
+}
+</code></pre>
+<hr>
+<h2>8. 运维指南</h2>
+<h3>8.1 数据库迁移</h3>
+<pre><code class="language-bash"># 查看当前状态
+python -m alembic current
+<h1>执行所有待处理迁移</h1>
+python -m alembic upgrade head
+<h1>回滚一个版本</h1>
+python -m alembic downgrade -1
+</code></pre>
+<h3>8.2 常用运维脚本</h3>
+<pre><code class="language-bash"># 美股ETF种子数据
+python scripts/init_us_etfs.py           # 预览
+python scripts/init_us_etfs.py --apply   # 写入
+<h1>日线更新</h1>
+python scripts/update_daily_data.py
+<h1>数据补录</h1>
+python scripts/catchup_data.py
+<h1>数据完整性检查</h1>
+python scripts/data_completeness_check.py
+</code></pre>
+<h3>8.3 健康检查</h3>
+<pre><code class="language-bash"># API健康检查
+curl http://localhost:8000/health
+<h1>验证数据源</h1>
+python -c "
+from app.data.providers.yfinance_provider import YFinanceProvider
+p = YFinanceProvider()
+print('yfinance health:', p.check_health())
+"
+</code></pre>
+<h3>8.4 Docker Compose 启动</h3>
+<pre><code class="language-bash">docker-compose up -d
+<h1>PostgreSQL 16 + Redis 7 + Backend (Uvicorn on :8000)</h1>
+</code></pre>
+<hr>
+<h2>9. 常见问题</h2>
+<h3>Q: yfinance报429/无数据？</h3>
+<p>A: yfinance是第三方库，Yahoo随时可能限流或改HTML。系统已内置三重降级链：
+1. Tiingo (需 <code>TIINGO_API_KEY</code>, 1000次/天)
+2. Finnhub (需 <code>FINNHUB_API_KEY</code>, 60次/分)
+3. FMP (需 <code>FMP_API_KEY</code>, 250次/天)</p>
+<h3>Q: LLM API费用会超预算吗？</h3>
+<p>A: 系统默认使用Claude Haiku ($0.25/MTok)，加上Redis缓存，月度$5-15即可。可在 <code>app/config.py</code> 设 <code>llm_monthly_budget</code> 控制上限。如果未设 <code>ANTHROPIC_API_KEY</code>，AI功能会自动跳过（不会crash）。</p>
+<h3>Q: S&P 500个股发现只跑了一次？</h3>
+<p>A: 调度器每周日02:00自动运行。手动运行：
+<pre><code class="language-bash">python -c "
+from app.core.database import SessionLocal
+from app.data.pipelines.us_stock_discovery import USStockDiscoveryPipeline
+p = USStockDiscoveryPipeline(SessionLocal())
+p.run_with_retry()
+"
+</code></pre></p>
+<h3>Q: 颜色惯例切换后所有页面都生效了吗？</h3>
+<p>A: 以下组件已支持：
+- ✅ KLineChart (蜡烛图颜色、成交量、MACD)
+- ✅ ReturnTag (收益率标签)
+- ✅ Dashboard, ScoreRanking, PoolDetail (通过ReturnTag)
+- ❌ CorrelationHeatmap (待优化，热力图颜色通常与市场方向无关)</p>
+<h3>Q: AI对话如何获取数据？</h3>
+<p>A: ChatService会自动正则匹配消息中的代码（如 <code>AAPL.US</code>），查询最新指标和评分，作为System Prompt附件。AI回答会引用真实数据而非生成幻觉。</p>
+<hr>
+<h2>版本历史</h2>
+<table>
+<thead><tr><td>日期</td><td>变更</td></tr></thead>
+<tbody>
+<tr><th>2025-06-25</th><th>初始版本：阶段1-3完整文档</th></tr>
+</tbody></table>
+</div>
+</body>
+</html>

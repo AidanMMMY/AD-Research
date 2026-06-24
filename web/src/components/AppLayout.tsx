@@ -105,7 +105,7 @@ function SidebarContent({ collapsed, onItemClick }: SidebarContentProps) {
               whiteSpace: 'nowrap',
             }}
           >
-            ETF投研
+            投研平台
           </span>
         )}
       </div>
@@ -119,10 +119,19 @@ function SidebarContent({ collapsed, onItemClick }: SidebarContentProps) {
 
           const isActive = location.pathname === route.path;
           const Icon = route.menu?.icon ? iconMap[route.menu.icon] : null;
+          const showDivider = route.menu?.dividerBefore;
 
           return (
-            <div
-              key={route.path}
+            <React.Fragment key={route.path}>
+              {showDivider && (
+                <div
+                  style={{
+                    margin: '8px 12px',
+                    borderTop: '1px solid rgba(255,255,255,0.06)',
+                  }}
+                />
+              )}
+              <div
               onClick={() => {
                 navigate(route.path);
                 onItemClick?.();
@@ -201,6 +210,7 @@ function SidebarContent({ collapsed, onItemClick }: SidebarContentProps) {
                 </span>
               )}
             </div>
+            </React.Fragment>
           );
         })}
       </nav>

@@ -23,6 +23,7 @@ from app.models.etl import *
 from app.models.favorite import *
 from app.models.notification import *
 from app.models.pool import *
+from app.models.research import *
 from app.models.scoring import *
 
 target_metadata = Base.metadata

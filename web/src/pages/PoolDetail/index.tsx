@@ -236,7 +236,7 @@ export default function PoolDetail() {
     <div>
       <GlassCard style={{ marginBottom: 16 }}>
         <h2 style={{ margin: 0, color: '#f1f5f9' }}>{pool?.name}</h2>
-        <div style={{ color: '#94a3b8' }}>{pool?.description} | {pool?.members?.length || 0} 只ETF</div>
+        <div style={{ color: '#94a3b8' }}>{pool?.description} | {pool?.members?.length || 0} 只标的</div>
       </GlassCard>
       <Tabs items={tabItems} />
     </div>

@@ -15,4 +15,6 @@ export { signalApi } from './signal';
 export { scannerApi } from './scanner';
 export { notificationApi } from './notification';
 export { favoriteApi } from './favorite';
+export { researchApi } from './research';
+export { chatApi } from './chat';
 export { default as client } from './client';
