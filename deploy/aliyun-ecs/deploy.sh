@@ -23,34 +23,67 @@ log_warn() { echo -e "${YELLOW}[WARN]${NC} $1"; }
 log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
 
 # 检测 Linux 发行版
+# 输出格式：ID|VERSION_CODENAME，例如 ubuntu|plucky
 detect_os() {
     if [ -f /etc/os-release ]; then
         . /etc/os-release
-        echo "$ID"
+        echo "${ID}|${VERSION_CODENAME:-}"
     else
-        echo "unknown"
+        echo "unknown|"
     fi
+}
+
+# 安装基础工具（git、curl、gnupg、ca-certificates 等）
+install_base_tools() {
+    local os_id
+    os_id=$(detect_os | cut -d'|' -f1)
+
+    log_info "安装基础工具..."
+    case "$os_id" in
+        ubuntu|debian)
+            apt-get update
+            apt-get install -y git curl gnupg ca-certificates openssl
+            ;;
+        centos|rhel|almalinux|rocky|alinux)
+            yum install -y git curl gnupg ca-certificates openssl
+            ;;
+        *)
+            log_warn "未知发行版，跳过基础工具安装"
+            ;;
+    esac
 }
 
 # 安装 Docker
 install_docker() {
-    local os_id
-    os_id=$(detect_os)
-
     if command -v docker > /dev/null 2>&1; then
         log_info "Docker 已安装：$(docker --version)"
         return
     fi
 
-    log_info "正在安装 Docker（发行版：$os_id）..."
+    local os_info os_id os_codename
+    os_info=$(detect_os)
+    os_id=$(echo "$os_info" | cut -d'|' -f1)
+    os_codename=$(echo "$os_info" | cut -d'|' -f2)
+
+    log_info "正在安装 Docker（发行版：$os_id，代号：$os_codename）..."
+
     case "$os_id" in
         ubuntu|debian)
             apt-get update
             apt-get install -y ca-certificates curl gnupg
             install -m 0755 -d /etc/apt/keyrings
-            curl -fsSL https://download.docker.com/linux/$os_id/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+            curl -fsSL "https://download.docker.com/linux/$os_id/gpg" | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
             chmod a+r /etc/apt/keyrings/docker.gpg
-            echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/$os_id $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
+
+            # Docker 官方可能暂未提供 Ubuntu 26.04 (plucky) 的仓库，
+            # 临时回退到上一个 LTS (noble / 24.04) 的仓库，兼容性良好
+            local docker_codename="$os_codename"
+            if [ "$os_id" = "ubuntu" ] && [ "$os_codename" = "plucky" ]; then
+                docker_codename="noble"
+                log_warn "Ubuntu 26.04 (plucky) 暂无官方 Docker 仓库，临时使用 Ubuntu 24.04 (noble) 仓库"
+            fi
+
+            echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/$os_id $docker_codename stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
             apt-get update
             apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
             ;;
@@ -58,14 +91,16 @@ install_docker() {
             yum install -y yum-utils
             yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
             yum install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
-            systemctl start docker
-            systemctl enable docker
             ;;
         *)
             log_error "不支持的发行版：$os_id，请手动安装 Docker"
             exit 1
             ;;
     esac
+
+    # 启动 Docker 并设置开机自启
+    systemctl start docker || true
+    systemctl enable docker || true
 }
 
 # 确保 docker compose 可用
@@ -109,6 +144,7 @@ main() {
     log_info "开始部署 AD-Research 到阿里云 ECS..."
     log_info "项目目录：${PROJECT_ROOT}"
 
+    install_base_tools
     install_docker
     ensure_docker_compose
 

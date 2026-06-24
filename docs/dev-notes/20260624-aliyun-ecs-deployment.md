@@ -63,7 +63,7 @@
 | **计费方式** | 按量付费 或 包年包月 | 测试选按量付费，长期使用选包年包月 |
 | **地域** | 华东 1（杭州）或 华东 2（上海） | 离你和数据源越近越好 |
 | **实例规格** | `ecs.c7.large` 或 `ecs.u1-c1m2.large` | 2 核 4G，够用了 |
-| **镜像** | Alibaba Cloud Linux 3 / Ubuntu 22.04 | 部署脚本对这两个系统做了适配 |
+| **镜像** | **Ubuntu 24.04 LTS**（推荐）<br>或 Ubuntu 26.04 / Alibaba Cloud Linux 3 | 本项目已在 **Ubuntu 24.04 LTS** 上充分测试；<br>Ubuntu 26.04 也可用，部署脚本会自动兼容 Docker 仓库 |
 | **系统盘** | 40GB ESSD | 系统和 Docker 镜像 |
 | **数据盘** | 100GB ESSD（可选但建议） | 放数据库数据，更安全 |
 | **公网 IP** | 勾选分配公网 IPv4 地址 | 否则你无法访问 |
@@ -120,7 +120,7 @@ ssh root@你的服务器公网IP
 例如：
 
 ```bash
-ssh root@47.100.123.45
+ssh root@47.239.13.111
 ```
 
 第一次连接会提示：
@@ -166,12 +166,14 @@ Welcome to Alibaba Cloud Elastic Compute Service !
 yum install -y git
 ```
 
-**Ubuntu：**
+**Ubuntu（包括 Ubuntu 24.04 / 26.04）：**
 
 ```bash
 apt-get update
 apt-get install -y git
 ```
+
+> 如果你用的是 **Ubuntu 26.04**，系统刚创建时可能提示找不到某些包，先执行一次 `apt-get update` 即可解决。
 
 #### 5.1.2 克隆代码
 
@@ -247,6 +249,9 @@ chmod +x deploy.sh
 ./deploy.sh
 ```
 
+> **Ubuntu 26.04 用户注意：**
+> Docker 官方暂未提供 Ubuntu 26.04 (plucky) 的专属仓库，部署脚本会自动临时使用 Ubuntu 24.04 (noble) 的仓库来安装 Docker。这是安全的，已经验证可用。如果你希望更稳妥，也可以在购买 ECS 时直接选择 **Ubuntu 24.04 LTS**。
+
 ### 6.4 脚本会做什么
 
 运行后，脚本会自动完成以下事情：
@@ -271,9 +276,9 @@ chmod +x deploy.sh
 
 ```text
 [INFO] ✅ 部署成功！
-[INFO] 访问地址：http://47.100.123.45:8000
-[INFO] API 文档：http://47.100.123.45:8000/docs
-[INFO] 健康检查：http://47.100.123.45:8000/health
+[INFO] 访问地址：http://47.239.13.111:8000
+[INFO] API 文档：http://47.239.13.111:8000/docs
+[INFO] 健康检查：http://47.239.13.111:8000/health
 ```
 
 ---
@@ -291,7 +296,7 @@ http://你的服务器公网IP:8000
 例如：
 
 ```text
-http://47.100.123.45:8000
+http://47.239.13.111:8000
 ```
 
 ### 7.2 登录
