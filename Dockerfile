@@ -29,8 +29,10 @@ COPY alembic/ ./alembic/
 COPY alembic.ini ./
 COPY scripts/ ./scripts/
 
-# Copy frontend build output
-COPY --from=frontend-build /app/web/dist ./web/dist
+# Copy frontend build output to a staging directory; it is copied into the
+# shared volume at runtime so Nginx always serves the latest build.
+COPY --from=frontend-build /app/web/dist ./web/dist-image
+RUN mkdir -p web/dist
 
 # Create reports directory
 RUN mkdir -p reports

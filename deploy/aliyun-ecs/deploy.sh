@@ -179,6 +179,9 @@ main() {
     log_info "启动后端服务..."
     docker compose up -d backend
 
+    log_info "启动 Nginx 网关..."
+    docker compose up -d nginx
+
     log_info "等待服务启动..."
     sleep 3
 

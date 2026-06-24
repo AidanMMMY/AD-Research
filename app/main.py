@@ -5,6 +5,7 @@ from pathlib import Path
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from starlette.types import Scope
 
 from app.api.v1 import (
     admin_users,
@@ -112,10 +113,34 @@ app.include_router(
     favorites.router, prefix=f"{settings.api_v1_prefix}/favorites", tags=["Favorites"]
 )
 
-# Serve frontend static files
+# Serve frontend static files with cache-control headers
 web_dist = Path(__file__).parent.parent / "web" / "dist"
+
+
+class CacheControlledStaticFiles(StaticFiles):
+    """StaticFiles subclass that sets cache headers for hashed assets and HTML entry."""
+
+    async def get_response(self, path: str, scope: Scope):
+        response = await super().get_response(path, scope)
+        request_path = scope.get("path", "/")
+
+        if request_path in ("/", "/index.html") or request_path.endswith(".html"):
+            response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+            response.headers["Pragma"] = "no-cache"
+            response.headers["Expires"] = "0"
+        elif "/assets/" in request_path:
+            # Hashed filenames change on every build, safe to cache forever
+            response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+
+        return response
+
+
 if web_dist.exists():
-    app.mount("/", StaticFiles(directory=str(web_dist), html=True), name="static")
+    app.mount(
+        "/",
+        CacheControlledStaticFiles(directory=str(web_dist), html=True),
+        name="static",
+    )
 
 
 @app.on_event("startup")
