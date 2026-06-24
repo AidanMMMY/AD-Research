@@ -159,3 +159,6 @@ alembic/versions/*.pyc
 .worktrees/
 .claude/
 .superpowers/
+
+# MCP configuration with secrets
+.mcp.json
