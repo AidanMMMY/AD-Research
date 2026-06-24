@@ -1,7 +1,7 @@
 [tool.poetry]
-name = "etf-research-platform"
+name = "ad-research"
 version = "0.1.0"
-description = "ETF 投研平台"
+description = "AD-Research"
 authors = ["Your Name <your.email@example.com>"]
 readme = "README.md"
 packages = [{ include = "app" }]

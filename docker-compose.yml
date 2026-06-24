@@ -1,11 +1,9 @@
-version: "3.9"
-
 services:
   postgres:
     image: postgres:16-alpine
     container_name: etf-postgres
     environment:
-      POSTGRES_DB: etf_research
+      POSTGRES_DB: ad_research
       POSTGRES_USER: etf
       POSTGRES_PASSWORD: ${DB_PASSWORD:-etf_research_password}
     ports:
@@ -13,7 +11,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U etf -d etf_research"]
+      test: ["CMD-SHELL", "pg_isready -U etf -d ad_research"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -43,7 +41,7 @@ services:
     ports:
       - "8000:8000"
     environment:
-      DATABASE_URL: postgresql+asyncpg://etf:${DB_PASSWORD:-etf_research_password}@postgres:5432/etf_research
+      DATABASE_URL: postgresql+asyncpg://etf:${DB_PASSWORD:-etf_research_password}@postgres:5432/ad_research
       REDIS_URL: redis://redis:6379/0
       APP_ENV: ${APP_ENV:-development}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
