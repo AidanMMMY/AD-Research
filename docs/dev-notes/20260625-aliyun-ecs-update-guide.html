@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>阿里云 ECS 更新部署指南</title>
+<style>
+  :root {
+    --bg: #0d1117;
+    --bg-card: #161b22;
+    --border: #30363d;
+    --text: #c9d1d9;
+    --text-secondary: #8b949e;
+    --accent: #58a6ff;
+    --green: #3fb950;
+    --yellow: #d2991d;
+    --red: #f85149;
+    --code-bg: #1c2128;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    line-height: 1.7;
+    padding: 40px 24px;
+    max-width: 860px;
+    margin: 0 auto;
+  }
+  h1 { font-size: 28px; border-bottom: 1px solid var(--border); padding-bottom: 16px; margin-bottom: 8px; }
+  h2 { font-size: 22px; margin: 40px 0 16px; color: var(--accent); }
+  h3 { font-size: 17px; margin: 24px 0 12px; }
+  p { margin: 12px 0; }
+  blockquote {
+    border-left: 3px solid var(--accent);
+    padding: 4px 16px;
+    margin: 16px 0;
+    color: var(--text-secondary);
+    background: var(--bg-card);
+    border-radius: 0 8px 8px 0;
+  }
+  code {
+    background: var(--code-bg);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    font-size: 13px;
+  }
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px 20px;
+    overflow-x: auto;
+    margin: 16px 0;
+    font-size: 13px;
+    line-height: 1.6;
+  }
+  pre code { background: none; padding: 0; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 16px 0;
+    font-size: 14px;
+  }
+  th, td {
+    border: 1px solid var(--border);
+    padding: 10px 14px;
+    text-align: left;
+  }
+  th { background: var(--bg-card); font-weight: 600; }
+  tr:hover td { background: rgba(255,255,255,0.02); }
+  .date { color: var(--text-secondary); font-size: 14px; margin-bottom: 24px; }
+  .highlight { color: var(--yellow); }
+  .success { color: var(--green); }
+  .danger { color: var(--red); }
+</style>
+</head>
+<body>
+
+<h1>阿里云 ECS 更新部署指南</h1>
+<p class="date">2026-06-25 · 基于 <code>deploy/aliyun-ecs/</code> 部署套件</p>
+
+<h2>部署架构</h2>
+
+<pre><code>Browser → Nginx(:8000) → /api/* → Backend(:8000)
+                       → /*     → 前端静态文件 (web_dist volume)
+                                    ↑
+                              Backend 启动时 cp dist-image → web_dist</code></pre>
+
+<table>
+  <tr><th>服务</th><th>镜像</th><th>端口</th><th>职责</th></tr>
+  <tr><td>postgres</td><td><code>postgres:16-alpine</code></td><td>内部</td><td>数据库</td></tr>
+  <tr><td>redis</td><td><code>redis:7-alpine</code></td><td>内部</td><td>缓存</td></tr>
+  <tr><td>backend</td><td><code>ad-research:latest</code> (自构建)</td><td>expose 8000</td><td>API + 前端文件复制</td></tr>
+  <tr><td>nginx</td><td><code>nginx:alpine</code></td><td>8000</td><td>反向代理 + 静态文件</td></tr>
+</table>
+
+<h2>快速更新（推荐）</h2>
+
+<pre><code># 1. SSH 登录 ECS
+ssh root@&lt;服务器IP&gt;
+
+# 2. 进入部署目录
+cd /opt/ad-research/deploy/aliyun-ecs
+
+# 3. 一键更新
+./update.sh</code></pre>
+
+<h2>手动更新步骤</h2>
+
+<h3>完整更新（代码 + 前端 + 后端）</h3>
+
+<pre><code>cd /opt/ad-research
+git pull origin main
+cd deploy/aliyun-ecs
+
+# 重新构建镜像（--no-cache 确保重新编译前端）
+docker compose build backend --no-cache
+
+# 重启服务
+docker compose up -d
+
+# 查看日志
+docker compose logs -f backend --tail 50</code></pre>
+
+<h3>仅更新前端（无后端代码变更）</h3>
+
+<pre><code>cd /opt/ad-research
+git pull
+cd deploy/aliyun-ecs
+docker compose build backend     # 前端在 Dockerfile 阶段1编译
+docker compose restart backend nginx</code></pre>
+
+<h2><code>update.sh</code> 选项</h2>
+
+<table>
+  <tr><th>选项</th><th>说明</th></tr>
+  <tr><td><code>--frontend-only</code></td><td>仅更新前端 UI，约 30 秒</td></tr>
+  <tr><td><code>--no-db</code></td><td>跳过手动数据库迁移（backend 启动时自动执行）</td></tr>
+  <tr><td><code>FORCE=1</code></td><td>强制重编，即使代码无变更</td></tr>
+</table>
+
+<h2>关键机制</h2>
+
+<h3>前端自动更新</h3>
+<p>Dockerfile 采用多阶段构建：</p>
+<ol>
+  <li>阶段 1（node:20-alpine）：<code>npm run build</code> → <code>/app/web/dist</code></li>
+  <li>阶段 2（python:3.11-slim）：从阶段 1 复制产物到 <code>/app/web/dist-image</code></li>
+  <li>backend 容器启动命令：<code>cp -r /app/web/dist-image/* /app/web/dist/</code></li>
+  <li><code>web_dist</code> 是 backend 和 nginx 共享的 Docker Volume</li>
+  <li>nginx 从 <code>/usr/share/nginx/html</code>（= <code>web_dist</code>）提供静态文件</li>
+</ol>
+
+<h3>数据库迁移</h3>
+<p>backend 启动命令中已包含 <code>alembic upgrade head</code>，容器启动时自动执行。</p>
+
+<h3>Nginx 缓存策略</h3>
+<table>
+  <tr><th>路径</th><th>缓存策略</th></tr>
+  <tr><td><code>/index.html</code></td><td>禁止缓存（每次刷新拿到最新 SPA 入口）</td></tr>
+  <tr><td><code>/assets/</code></td><td>长期缓存 1 年（Vite 打包文件名带 hash）</td></tr>
+  <tr><td><code>/api/</code></td><td>反向代理到 backend</td></tr>
+</table>
+
+<h2>常用运维命令</h2>
+
+<table>
+  <tr><th>场景</th><th>命令</th></tr>
+  <tr><td>查看所有容器状态</td><td><code>docker compose ps</code></td></tr>
+  <tr><td>查看后端日志</td><td><code>docker compose logs -f backend --tail 100</code></td></tr>
+  <tr><td>查看 nginx 日志</td><td><code>docker compose logs -f nginx</code></td></tr>
+  <tr><td>数据库迁移（手动）</td><td><code>docker compose exec backend alembic upgrade head</code></td></tr>
+  <tr><td>重启单个服务</td><td><code>docker compose restart backend</code></td></tr>
+  <tr><td>全部停止</td><td><code>docker compose down</code></td></tr>
+  <tr><td>全部重启</td><td><code>docker compose up -d</code></td></tr>
+  <tr><td>进入后端容器</td><td><code>docker compose exec backend bash</code></td></tr>
+</table>
+
+<h2>首次部署</h2>
+<p>首次部署使用 <code>deploy.sh</code>（一键脚本），自动完成：</p>
+<ol>
+  <li>安装 Docker 及依赖</li>
+  <li>生成强密码（DB、AUTH_SECRET_KEY、管理员密码）</li>
+  <li>构建镜像并启动所有服务</li>
+  <li>执行数据库初始化和种子用户创建</li>
+</ol>
+<blockquote>详见 <code>deploy/aliyun-ecs/README.md</code></blockquote>
+
+<h2>ECS 推荐配置</h2>
+
+<table>
+  <tr><th>配置项</th><th>推荐值</th></tr>
+  <tr><td>实例规格</td><td><code>ecs.c7.large</code>（2核4G）</td></tr>
+  <tr><td>操作系统</td><td>Ubuntu 24.04 LTS</td></tr>
+  <tr><td>系统盘</td><td>40GB ESSD</td></tr>
+  <tr><td>安全组端口</td><td>8000（平台）+ 22（SSH）</td></tr>
+  <tr><td>部署路径</td><td><code>/opt/ad-research/</code></td></tr>
+</table>
+
+</body>
+</html>
