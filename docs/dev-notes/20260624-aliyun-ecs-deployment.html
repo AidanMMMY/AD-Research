@@ -79,18 +79,18 @@
         }
         
         h2 {
-            font-size: 1.5em;
-            color: var(--primary);
+            font-size: 1.4em;
             margin-top: 2.5em;
+            color: #1e40af;
         }
         
         h3 {
-            font-size: 1.2em;
+            font-size: 1.15em;
             margin-top: 2em;
         }
         
         p {
-            margin: 1em 0;
+            margin: 0 0 1em 0;
         }
         
         a {
@@ -103,19 +103,19 @@
         }
         
         ul, ol {
-            padding-left: 24px;
-            margin: 1em 0;
+            margin: 0 0 1.2em 0;
+            padding-left: 1.5em;
         }
         
         li {
-            margin: 0.5em 0;
+            margin-bottom: 0.5em;
         }
         
         code {
             background: var(--code-bg);
             padding: 2px 6px;
             border-radius: 4px;
-            font-family: "SF Mono", Monaco, "Cascadia Code", "Roboto Mono", Consolas, monospace;
+            font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
             font-size: 0.9em;
             color: #334155;
         }
@@ -126,7 +126,7 @@
             padding: 20px;
             border-radius: 12px;
             overflow-x: auto;
-            margin: 1.5em 0;
+            margin: 1.2em 0;
         }
         
         pre code {
@@ -140,56 +140,39 @@
             width: 100%;
             border-collapse: collapse;
             margin: 1.5em 0;
-            background: white;
-            border-radius: 8px;
-            overflow: hidden;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+            font-size: 0.95em;
+        }
+        
+        th, td {
+            padding: 12px 16px;
+            text-align: left;
+            border: 1px solid var(--border);
         }
         
         th {
-            background: var(--primary);
-            color: white;
-            padding: 14px 16px;
-            text-align: left;
+            background: var(--primary-light);
             font-weight: 600;
+            color: #1e40af;
         }
         
-        td {
-            padding: 12px 16px;
-            border-bottom: 1px solid var(--border);
-        }
-        
-        tr:hover {
+        tr:nth-child(even) {
             background: #f8fafc;
         }
         
         blockquote {
-            border-left: 4px solid var(--primary);
-            background: var(--primary-light);
-            padding: 16px 20px;
             margin: 1.5em 0;
-            border-radius: 0 8px 8px 0;
+            padding: 16px 20px;
+            background: #fffbeb;
+            border-left: 4px solid var(--warning);
+            border-radius: 8px;
         }
         
         blockquote p {
-            margin: 0;
+            margin: 0 0 0.5em 0;
         }
         
-        .toc {
-            background: #f8fafc;
-            padding: 24px;
-            border-radius: 12px;
-            margin-bottom: 40px;
-            border: 1px solid var(--border);
-        }
-        
-        .toc ul {
-            margin: 0;
-            padding-left: 20px;
-        }
-        
-        .toc li {
-            margin: 0.4em 0;
+        blockquote p:last-child {
+            margin-bottom: 0;
         }
         
         hr {
@@ -198,34 +181,44 @@
             margin: 2.5em 0;
         }
         
-        strong {
-            color: var(--text);
-            font-weight: 600;
+        .toc {
+            background: #f1f5f9;
+            padding: 24px;
+            border-radius: 12px;
+            margin-bottom: 2em;
+        }
+        
+        .toc ul {
+            margin: 0;
         }
         
         @media (max-width: 768px) {
             .container {
                 padding: 20px 16px;
             }
+            
             .header {
                 padding: 40px 24px;
             }
+            
             .header h1 {
                 font-size: 1.6em;
             }
+            
             .content {
-                padding: 24px;
+                padding: 28px;
             }
-        }
-        
-        @media print {
-            .header {
-                box-shadow: none;
-                -webkit-print-color-adjust: exact;
-                print-color-adjust: exact;
+            
+            pre {
+                padding: 14px;
             }
-            .content {
-                box-shadow: none;
+            
+            table {
+                font-size: 0.85em;
+            }
+            
+            th, td {
+                padding: 8px 10px;
             }
         }
     </style>
@@ -234,10 +227,10 @@
     <div class="container">
         <div class="header">
             <h1>AD-Research 阿里云 ECS 部署手册</h1>
-            <p>面向小白的零基础部署指南 · 一步一步跟着做</p>
+            <p>面向运维小白的完整部署指南，照着做 15～30 分钟完成上线</p>
         </div>
         <div class="content">
-            <h1 id="ecs">阿里云 ECS 部署手册（小白版）</h1>
+<h1 id="ecs">阿里云 ECS 部署手册（小白版）</h1>
 <p>本手册面向没有服务器运维经验的同学，一步一步教你把 <strong>AD-Research</strong> 平台部署到阿里云 ECS 云服务器上。</p>
 <p>只要照着做，一般 15～30 分钟就能完成。</p>
 <hr />
@@ -475,6 +468,7 @@ cd ad-research
 <li><strong>构建 Docker 镜像</strong>（包含前端和后端）</li>
 <li><strong>启动 PostgreSQL 和 Redis</strong></li>
 <li><strong>执行数据库迁移</strong>（创建表结构）</li>
+<li><strong>初始化管理员账号</strong>（在数据库中创建 <code>admin</code> 用户，仅首次执行）</li>
 <li><strong>启动后端服务</strong></li>
 <li><strong>健康检查</strong>（确认服务正常）</li>
 </ol>
@@ -498,9 +492,10 @@ cd ad-research
 </code></pre>
 <h3 id="72">7.2 登录</h3>
 <ul>
-<li>用户名：<code>admin</code></li>
+<li>用户名：<code>admin</code>（默认管理员账号，可在 <code>.env</code> 中通过 <code>AUTH_ADMIN_USERNAME</code> 修改）</li>
 <li>密码：部署脚本显示的那个密码（在 <code>.env</code> 文件里也能看到 <code>AUTH_ADMIN_PASSWORD</code>）</li>
 </ul>
+<p>登录后，你可以在左侧菜单的 <strong>"管理员用户管理"</strong> 页面创建、启用/禁用或重置其他用户的密码。</p>
 <h3 id="73">7.3 如果打不开怎么办</h3>
 <p>先不要着急，跳到 <a href="#十常见问题排查">第十步：常见问题排查</a>。</p>
 <hr />
@@ -556,6 +551,12 @@ docker compose down
 docker compose build --no-cache
 docker compose up -d
 </code></pre>
+<blockquote>
+<p><strong>注意：</strong> 更新后 <code>backend</code> 容器启动时会自动执行数据库迁移。如果更新涉及用户表变更，或你想重新初始化管理员账号，可以手动执行：</p>
+<p><code>bash
+docker compose run --rm backend python scripts/seed_users.py</code></p>
+<p>该命令是幂等的：如果 <code>admin</code> 用户已存在则跳过，不会重复创建。</p>
+</blockquote>
 <hr />
 <h2 id="_9">十、常见问题排查</h2>
 <h3 id="q1-httpip8000">Q1：浏览器访问 <code>http://IP:8000</code> 打不开</h3>

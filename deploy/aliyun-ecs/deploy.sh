@@ -135,6 +135,9 @@ main() {
     log_info "执行数据库迁移..."
     docker compose run --rm backend alembic upgrade head
 
+    log_info "初始化管理员账号..."
+    docker compose run --rm backend python scripts/seed_users.py
+
     log_info "启动后端服务..."
     docker compose up -d backend
 

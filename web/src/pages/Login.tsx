@@ -111,10 +111,10 @@ export default function Login() {
               letterSpacing: '1px',
             }}
           >
-            ETF 投研平台
+            AD-Research
           </h1>
           <p style={{ fontSize: 14, color: '#64748b', margin: 0 }}>
-            全市场ETF数据分析与投研工具
+            全市场数据分析与投研工具
           </p>
         </div>
 

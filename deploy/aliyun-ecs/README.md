@@ -257,8 +257,9 @@ chmod +x deploy.sh
 4. **构建 Docker 镜像**（包含前端和后端）
 5. **启动 PostgreSQL 和 Redis**
 6. **执行数据库迁移**（创建表结构）
-7. **启动后端服务**
-8. **健康检查**（确认服务正常）
+7. **初始化管理员账号**（在数据库中创建 `admin` 用户，仅首次执行）
+8. **启动后端服务**
+9. **健康检查**（确认服务正常）
 
 ### 6.5 过程中可能需要你输入
 
@@ -295,8 +296,10 @@ http://47.100.123.45:8000
 
 ### 7.2 登录
 
-- 用户名：`admin`
+- 用户名：`admin`（默认管理员账号，可在 `.env` 中通过 `AUTH_ADMIN_USERNAME` 修改）
 - 密码：部署脚本显示的那个密码（在 `.env` 文件里也能看到 `AUTH_ADMIN_PASSWORD`）
+
+登录后，你可以在左侧菜单的 **"管理员用户管理"** 页面创建、启用/禁用或重置其他用户的密码。
 
 ### 7.3 如果打不开怎么办
 
@@ -396,6 +399,14 @@ docker compose down
 docker compose build --no-cache
 docker compose up -d
 ```
+
+> **注意：** 更新后 `backend` 容器启动时会自动执行数据库迁移。如果更新涉及用户表变更，或你想重新初始化管理员账号，可以手动执行：
+>
+> ```bash
+> docker compose run --rm backend python scripts/seed_users.py
+> ```
+>
+> 该命令是幂等的：如果 `admin` 用户已存在则跳过，不会重复创建。
 
 ---
 
