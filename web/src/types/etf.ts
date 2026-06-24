@@ -16,6 +16,11 @@ export interface ETFInfo {
   status?: string;
   created_at?: string;
   updated_at?: string;
+  instrument_type?: string;
+  sector?: string;
+  industry?: string;
+  market_cap?: number;
+  country?: string;
 }
 
 export interface ETFListResponse {
@@ -28,6 +33,7 @@ export interface ETFListResponse {
 export interface ETFFilterParams {
   market?: string;
   category?: string;
+  instrument_type?: string;
   search?: string;
   page?: number;
   page_size?: number;

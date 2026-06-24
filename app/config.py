@@ -27,6 +27,14 @@ class Settings(BaseSettings):
     # Data provider
     tushare_token: str = ""
 
+    # US market data providers (free tiers sufficient for hobby use)
+    finnhub_api_key: str = ""   # https://finnhub.io/register (60 req/min free)
+    tiingo_api_key: str = ""    # https://www.tiingo.com/account/token (1k/day free)
+    fmp_api_key: str = ""       # https://site.financialmodelingprep.com (250/day free)
+
+    # AI / LLM (Phase 3)
+    anthropic_api_key: str = ""
+
     # Application
     app_env: str = "development"
     log_level: str = "INFO"

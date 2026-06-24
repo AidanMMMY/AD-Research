@@ -24,23 +24,38 @@ from app.core.database import Base
 
 
 class ETFInfo(Base):
-    """ETF basic information table."""
+    """Unified instrument information table (ETFs & individual stocks).
+
+    Stores basic information for both ETFs and individual equities across
+    multiple markets (A-Share, US, HK, JP). The ``instrument_type`` column
+    distinguishes ETFs from individual stocks.
+    """
 
     __tablename__ = "etf_info"
 
-    code = Column(String(20), primary_key=True, comment="ETF code")
-    name = Column(String(100), nullable=False, comment="ETF name")
-    exchange = Column(String(10), comment="Exchange code")
-    market = Column(String(20), comment="Market (e.g. SH, SZ)")
+    code = Column(String(20), primary_key=True, comment="Instrument code (e.g. 510050.SH, AAPL.US)")
+    name = Column(String(200), nullable=False, comment="Instrument name")
+    exchange = Column(String(10), comment="Exchange code (SH, SZ, NYSE, NASDAQ, etc.)")
+    market = Column(String(20), comment="Market (A股, US, HK, JP)")
     category = Column(String(50), comment="Category")
     sub_category = Column(String(50), comment="Sub-category")
     manager = Column(String(100), comment="Fund manager")
-    currency = Column(String(10), default="CNY", comment="Currency")
+    currency = Column(String(10), default="CNY", comment="Currency (CNY, USD, HKD, JPY)")
     is_qdii = Column(Boolean, default=False, comment="Is QDII")
     underlying_index = Column(String(200), comment="Underlying index name")
-    fund_size = Column(DECIMAL(18, 4), comment="Fund size in CNY (AUM)")
-    inception_date = Column(Date, comment="Inception date")
-    status = Column(String(20), default="active", comment="Status")
+    fund_size = Column(DECIMAL(18, 4), comment="Fund size / market cap in base currency")
+    inception_date = Column(Date, comment="Inception date / IPO date")
+    status = Column(String(20), default="active", comment="Status (active, delisted, suspended)")
+
+    # Extended columns for US stocks (Phase 1-2)
+    instrument_type = Column(
+        String(20), server_default="ETF", comment="Instrument type: ETF or STOCK"
+    )
+    sector = Column(String(100), comment="GICS sector")
+    industry = Column(String(100), comment="GICS industry")
+    market_cap = Column(DECIMAL(18, 4), comment="Market capitalization (USD for US stocks)")
+    country = Column(String(50), comment="Country of listing")
+
     created_at = Column(
         DateTime(timezone=True),
         server_default=func.now(),
@@ -57,6 +72,7 @@ class ETFInfo(Base):
         Index("idx_etf_info_market", "market"),
         Index("idx_etf_info_category", "category"),
         Index("idx_etf_info_status", "status"),
+        Index("idx_etf_info_instrument_type", "instrument_type"),
     )
 
 

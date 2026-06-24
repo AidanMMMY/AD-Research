@@ -13,6 +13,8 @@ from app.core.database import SessionLocal
 from app.core.redis_client import redis_lock
 from app.data.indicators.calculator import batch_calculate_indicators
 from app.data.pipelines.a_share import AShareETLPipeline
+from app.data.pipelines.us_etf import USDailyPipeline
+from app.data.pipelines.us_stock_discovery import USStockDiscoveryPipeline
 from app.models.etf import ETFInfo
 from app.models.pool import ETFPools
 from app.services.etf_scanner_service import ETFScannerService
@@ -48,6 +50,63 @@ def run_a_share_etl(target_date: date | None = None, prefer_sina: bool = False):
             result = pipeline.run_with_retry(max_attempts=3)
             print(
                 f"[Scheduler] A-share ETL (target={target_date}, sina={prefer_sina}): success={result.success}, records={result.records}"
+            )
+        finally:
+            db.close()
+
+
+def run_us_etl(target_date: date | None = None):
+    """Run the US equity daily ETL pipeline.
+
+    Fetches daily OHLCV bars for all active US instruments (ETFs + stocks)
+    using yfinance as primary with Tiingo → Finnhub fallback.
+
+    Scheduled at 05:00 Beijing time (17:00 ET, 1 hour after US market close).
+
+    Args:
+        target_date: If provided, fetch bars for this date instead of yesterday.
+    """
+    with redis_lock("us_daily_pipeline", expire_seconds=3600) as acquired:
+        if not acquired:
+            print("[Scheduler] US ETL skipped: US pipeline lock in use")
+            return
+
+        db = SessionLocal()
+        try:
+            pipeline = USDailyPipeline(db, target_date=target_date)
+            result = pipeline.run_with_retry(max_attempts=3)
+            print(
+                f"[Scheduler] US ETL (target={target_date}): "
+                f"success={result.success}, records={result.records}"
+            )
+        finally:
+            db.close()
+
+
+def run_us_indicator_calculation(target_date: date | None = None):
+    """Run indicator calculation specifically for US instruments.
+
+    This is a thin wrapper around run_indicator_calculation that runs
+    after the US ETL completes. Reuses the same batch_calculate_indicators
+    which operates on all active instruments regardless of market.
+
+    Args:
+        target_date: If provided, calculate indicators up to this date.
+    """
+    # Wait for US pipeline lock to be released
+    with redis_lock("us_daily_pipeline", expire_seconds=3600, wait_timeout=1800) as acquired:
+        if not acquired:
+            print("[Scheduler] US indicator calculation skipped: could not acquire pipeline lock")
+            return
+
+        db = SessionLocal()
+        try:
+            count = batch_calculate_indicators(
+                db, target_date=target_date, full_history=False
+            )
+            print(
+                f"[Scheduler] US indicator calculation (target={target_date}): "
+                f"{count} records updated"
             )
         finally:
             db.close()
@@ -124,6 +183,24 @@ def run_weekly_pool_reports():
         db.close()
 
 
+def run_us_stock_discovery():
+    """Run the US stock discovery pipeline (weekly Sunday 02:00).
+
+    Fetches S&P 500 constituents from FMP and upserts them as
+    instrument_type="STOCK", market="US" into etf_info.
+    """
+    db = SessionLocal()
+    try:
+        pipeline = USStockDiscoveryPipeline(db)
+        result = pipeline.run_with_retry(max_attempts=2)
+        print(
+            f"[Scheduler] US stock discovery: success={result.success}, "
+            f"records={result.records}"
+        )
+    finally:
+        db.close()
+
+
 def run_etf_scan():
     """Run the ETF market scan (Sunday 03:00)."""
     db = SessionLocal()
@@ -188,6 +265,8 @@ def init_scheduler():
     """Initialize and start the background scheduler.
 
     Registers cron jobs:
+      - US ETL at 05:00 daily (Beijing time = 17:00 ET, post-market)
+      - US indicator calculation at 05:30 daily
       - A-share ETL at 15:30 daily
       - Indicator calculation at 08:00 daily
       - Score calculation at 08:30 daily
@@ -195,6 +274,22 @@ def init_scheduler():
       - ETF market scan on Sunday at 03:00
       - Signal generation at 09:00 daily
     """
+    scheduler.add_job(
+        run_us_etl,
+        trigger=CronTrigger(hour=5, minute=0),
+        id="us_daily_etl",
+        name="美股日终采集",
+        replace_existing=True,
+        max_instances=1,
+    )
+    scheduler.add_job(
+        run_us_indicator_calculation,
+        trigger=CronTrigger(hour=5, minute=30),
+        id="us_indicator_calculation",
+        name="美股指标批量计算",
+        replace_existing=True,
+        max_instances=1,
+    )
     scheduler.add_job(
         run_a_share_etl,
         trigger=CronTrigger(hour=15, minute=30),
@@ -224,6 +319,14 @@ def init_scheduler():
         trigger=CronTrigger(day_of_week="sun", hour=22, minute=0),
         id="weekly_pool_reports",
         name="池周报生成",
+        replace_existing=True,
+        max_instances=1,
+    )
+    scheduler.add_job(
+        run_us_stock_discovery,
+        trigger=CronTrigger(day_of_week="sun", hour=2, minute=0),
+        id="us_stock_discovery",
+        name="美股个股发现",
         replace_existing=True,
         max_instances=1,
     )

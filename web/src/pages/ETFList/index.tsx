@@ -13,9 +13,17 @@ export default function ETFList() {
   const [search, setSearch] = useState('');
   const [market, setMarket] = useState<string | undefined>();
   const [category, setCategory] = useState<string | undefined>();
+  const [instrumentType, setInstrumentType] = useState<string | undefined>();
   const [page, setPage] = useState(1);
 
-  const { data, isLoading } = useETFList({ search: search || undefined, market, category, page, page_size: 50 });
+  const { data, isLoading } = useETFList({
+    search: search || undefined,
+    market,
+    category,
+    instrument_type: instrumentType,
+    page,
+    page_size: 50,
+  });
   const { data: categories } = useETFCategories();
   const { data: markets } = useETFMarkets();
 
@@ -42,6 +50,16 @@ export default function ETFList() {
       ),
     },
     {
+      title: '类型',
+      dataIndex: 'instrument_type',
+      width: 70,
+      render: (v: string) => v === 'STOCK' ? (
+        <Tag style={{ margin: 0, fontSize: 11, borderRadius: 6 }} color="blue">个股</Tag>
+      ) : (
+        <Tag style={{ margin: 0, fontSize: 11, borderRadius: 6 }} color="purple">ETF</Tag>
+      ),
+    },
+    {
       title: '管理公司',
       dataIndex: 'fund_manager',
       render: (v: string) => v ? (
@@ -60,12 +78,22 @@ export default function ETFList() {
     {
       title: '规模',
       dataIndex: 'fund_size',
-      render: (v: number) => v ? (
-        <span style={{ fontSize: 13, fontWeight: 600, color: '#e2e8f0', fontFamily: "'SF Mono', monospace" }}>
-          {(v / 1e8).toFixed(1)}亿
-        </span>
-      ) : '-',
-      width: 100,
+      render: (v: number, record: any) => {
+        // For US stocks, show market cap in USD; for ETFs show fund size
+        if (record.market_cap) {
+          const cap = record.market_cap;
+          if (cap >= 1e12) return <span style={{ fontSize: 13, fontWeight: 600, color: '#e2e8f0', fontFamily: "'SF Mono', monospace" }}>{(cap / 1e12).toFixed(2)}T</span>;
+          if (cap >= 1e9) return <span style={{ fontSize: 13, fontWeight: 600, color: '#e2e8f0', fontFamily: "'SF Mono', monospace" }}>{(cap / 1e9).toFixed(1)}B</span>;
+          if (cap >= 1e6) return <span style={{ fontSize: 13, fontWeight: 600, color: '#e2e8f0', fontFamily: "'SF Mono', monospace" }}>{(cap / 1e6).toFixed(1)}M</span>;
+        }
+        if (v) return (
+          <span style={{ fontSize: 13, fontWeight: 600, color: '#e2e8f0', fontFamily: "'SF Mono', monospace" }}>
+            {(v / 1e8).toFixed(1)}亿
+          </span>
+        );
+        return '-';
+      },
+      width: 110,
     },
   ];
 
@@ -100,9 +128,27 @@ export default function ETFList() {
               onChange={(v) => { setCategory(v); setPage(1); }}
             />
           </Col>
-          <Col xs={24} sm={24} md={7} style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
+          <Col xs={12} sm={8} md={4}>
+            <Select
+              placeholder="类型"
+              allowClear
+              style={{ width: '100%' }}
+              options={[
+                { label: 'ETF', value: 'ETF' },
+                { label: '个股', value: 'STOCK' },
+              ]}
+              value={instrumentType}
+              onChange={(v) => { setInstrumentType(v); setPage(1); }}
+            />
+          </Col>
+          <Col xs={0} sm={0} md={7} style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
             <span style={{ fontSize: 13, color: '#64748b' }}>
-              共 <span style={{ color: '#818cf8', fontWeight: 700 }}>{data?.total || 0}</span> 只ETF
+              共 <span style={{ color: '#818cf8', fontWeight: 700 }}>{data?.total || 0}</span> 只
+            </span>
+          </Col>
+          <Col xs={24} sm={24} md={0} style={{ display: 'flex', alignItems: 'center' }}>
+            <span style={{ fontSize: 13, color: '#64748b' }}>
+              共 <span style={{ color: '#818cf8', fontWeight: 700 }}>{data?.total || 0}</span> 只
             </span>
           </Col>
         </Row>

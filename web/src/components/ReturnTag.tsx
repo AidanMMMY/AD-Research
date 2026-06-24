@@ -1,11 +1,14 @@
 import { getReturnColor, getReturnBgColor, getReturnBorderColor } from '@/utils/color';
 import { formatPercent } from '@/utils/format';
+import { useSettingsStore } from '@/stores/settings';
 
 interface ReturnTagProps {
   value?: number | null;
 }
 
 export default function ReturnTag({ value }: ReturnTagProps) {
+  const colorConvention = useSettingsStore((s) => s.colorConvention);
+
   if (value === undefined || value === null) {
     return (
       <span
@@ -34,9 +37,9 @@ export default function ReturnTag({ value }: ReturnTagProps) {
         fontSize: 12,
         fontWeight: 600,
         fontFamily: "'SF Mono', 'Fira Code', monospace",
-        color: getReturnColor(value),
-        background: getReturnBgColor(value),
-        border: `1px solid ${getReturnBorderColor(value)}`,
+        color: getReturnColor(value, colorConvention),
+        background: getReturnBgColor(value, colorConvention),
+        border: `1px solid ${getReturnBorderColor(value, colorConvention)}`,
         transition: 'all 150ms ease',
       }}
     >

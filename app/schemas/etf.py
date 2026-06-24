@@ -24,6 +24,11 @@ class ETFInfoResponse(ETFInfoBase):
     updated_at: datetime | None = None
     fund_manager: str | None = None
     fund_size: float | None = None
+    instrument_type: str | None = None
+    sector: str | None = None
+    industry: str | None = None
+    market_cap: float | None = None
+    country: str | None = None
 
 
 class ETFListResponse(BaseModel):
@@ -36,6 +41,7 @@ class ETFListResponse(BaseModel):
 class ETFFilterParams(BaseModel):
     market: str | None = None
     category: str | None = None
+    instrument_type: str | None = None
     search: str | None = None
     page: int = 1
     page_size: int = 50

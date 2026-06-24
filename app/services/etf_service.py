@@ -37,6 +37,11 @@ class ETFService:
             updated_at=etf.updated_at,
             fund_manager=etf.manager,
             fund_size=float(etf.fund_size) if etf.fund_size is not None else None,
+            instrument_type=etf.instrument_type,
+            sector=etf.sector,
+            industry=etf.industry,
+            market_cap=float(etf.market_cap) if etf.market_cap is not None else None,
+            country=etf.country,
         )
 
     def list_etfs(self, params: ETFFilterParams) -> ETFListResponse:
@@ -52,6 +57,8 @@ class ETFService:
             query = query.filter(ETFInfo.market == params.market)
         if params.category:
             query = query.filter(ETFInfo.category == params.category)
+        if params.instrument_type:
+            query = query.filter(ETFInfo.instrument_type == params.instrument_type)
         if params.search:
             search = f"%{params.search}%"
             query = query.filter(
