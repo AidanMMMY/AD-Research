@@ -44,7 +44,19 @@ def upgrade() -> None:
     )
 
     # Enforce uniqueness of signals per (strategy, ETF, date) to prevent duplicates.
-    op.drop_constraint('signal_unique_strategy_etf_date', 'signal', type_='unique')
+    # The old constraint may not exist on fresh databases, so only drop it if present.
+    connection = op.get_bind()
+    constraint_exists = connection.execute(
+        sa.text(
+            """
+            SELECT 1 FROM pg_constraint
+            WHERE conname = 'signal_unique_strategy_etf_date'
+            AND conrelid = 'signal'::regclass
+            """
+        )
+    ).fetchone()
+    if constraint_exists:
+        op.drop_constraint('signal_unique_strategy_etf_date', 'signal', type_='unique')
     op.create_unique_constraint(
         'uq_signal_strategy_etf_date',
         'signal',
