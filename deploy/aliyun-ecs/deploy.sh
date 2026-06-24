@@ -179,11 +179,29 @@ main() {
     log_info "启动后端服务..."
     docker compose up -d backend
 
+    log_info "等待后端就绪..."
+    local retries=0
+    while [ $retries -lt 30 ]; do
+        if docker compose exec -T backend curl -sf http://localhost:8000/health > /dev/null 2>&1; then
+            log_info "后端健康检查通过"
+            break
+        fi
+        retries=$((retries + 1))
+        echo -n "."
+        sleep 2
+    done
+
+    if [ $retries -eq 30 ]; then
+        log_error "后端启动超时，请查看日志："
+        log_error "  docker compose -f ${SCRIPT_DIR}/docker-compose.yml logs backend"
+        exit 1
+    fi
+
     log_info "启动 Nginx 网关..."
     docker compose up -d nginx
 
-    log_info "等待服务启动..."
-    sleep 3
+    log_info "等待 Nginx 就绪..."
+    sleep 2
 
     # 健康检查
     local public_ip
