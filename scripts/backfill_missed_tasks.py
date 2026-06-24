@@ -83,7 +83,6 @@ def backfill_daily_bars(target_dates: list[date]):
                         "change_pct": _clean_value(row.get("change_pct")),
                         "turnover_rate": _clean_value(row.get("turnover_rate")),
                     }
-                    record = {k: v for k, v in record.items() if v is not None}
                     all_records.append(record)
 
                 if idx % 100 == 0:

@@ -139,7 +139,6 @@ def fetch_and_insert_daily_bars(db, end_date: date):
                 "change_pct": _clean_daily_bar_value(row.get("change_pct")),
                 "turnover_rate": _clean_daily_bar_value(row.get("turnover_rate")),
             }
-            record = {k: v for k, v in record.items() if v is not None}
             records.append(record)
 
         if not records:
