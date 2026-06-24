@@ -176,7 +176,7 @@ export default function PoolDetail() {
               </span>
             )}
           </Space>
-          <Table dataSource={weights || []} columns={weightColumns} rowKey="etf_code" pagination={false} />
+          <Table dataSource={weights || []} columns={weightColumns} rowKey="etf_code" scroll={{ x: 'max-content' }} pagination={false} />
         </div>
       ),
     },
@@ -223,6 +223,7 @@ export default function PoolDetail() {
             dataSource={snapshots || []}
             columns={snapshotColumns}
             rowKey="id"
+            scroll={{ x: 'max-content' }}
             pagination={false}
             locale={{ emptyText: '暂无快照' }}
           />

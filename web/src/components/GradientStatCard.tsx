@@ -45,6 +45,7 @@ export default function GradientStatCard({
 }: GradientStatCardProps) {
   return (
     <div
+      className="gradient-stat-card"
       onClick={onClick}
       style={{
         background: gradientMap[gradient],
@@ -74,6 +75,7 @@ export default function GradientStatCard({
     >
       {/* Top-right decorative circle */}
       <div
+        className="gradient-stat-decor"
         style={{
           position: 'absolute',
           top: '-20px',
@@ -90,6 +92,7 @@ export default function GradientStatCard({
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
         <div style={{ flex: 1 }}>
           <div
+            className="gradient-stat-title"
             style={{
               fontSize: '13px',
               color: '#94a3b8',
@@ -113,6 +116,7 @@ export default function GradientStatCard({
           ) : (
             <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px' }}>
               <span
+                className="gradient-stat-value"
                 style={{
                   fontSize: '32px',
                   fontWeight: 700,
@@ -127,6 +131,7 @@ export default function GradientStatCard({
               </span>
               {suffix && (
                 <span
+                  className="gradient-stat-suffix"
                   style={{
                     fontSize: '14px',
                     color: '#64748b',
@@ -141,6 +146,7 @@ export default function GradientStatCard({
         </div>
         {icon && (
           <div
+            className="gradient-stat-icon"
             style={{
               width: '44px',
               height: '44px',

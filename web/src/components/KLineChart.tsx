@@ -1,6 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { createChart, IChartApi, ISeriesApi, CandlestickData, HistogramData, LineData, Time, ColorType, LineStyle } from 'lightweight-charts';
 import type { OHLCV } from '@/types/etf';
+import { useIsMobile } from '@/hooks/useBreakpoint';
+import { useSettingsStore } from '@/stores/settings';
+import { getUpColor, getDownColor } from '@/utils/color';
 
 interface IndicatorOverlay {
   ma5?: boolean;
@@ -135,7 +138,11 @@ export default function KLineChart({ data, overlays = DEFAULT_OVERLAYS }: KLineC
   const macdDifRef = useRef<ISeriesApi<'Line'> | null>(null);
   const macdDeaRef = useRef<ISeriesApi<'Line'> | null>(null);
 
-  const [containerHeight] = useState(500);
+  const isMobile = useIsMobile();
+  const colorConvention = useSettingsStore((s) => s.colorConvention);
+  const upColor = getUpColor(colorConvention);
+  const downColor = getDownColor(colorConvention);
+  const containerHeight = isMobile ? 350 : 500;
   const [initError, setInitError] = useState<string | null>(null);
   const [dataError, setDataError] = useState<string | null>(null);
 
@@ -162,12 +169,12 @@ export default function KLineChart({ data, overlays = DEFAULT_OVERLAYS }: KLineC
       chartRef.current = chart;
 
       const candlestick = chart.addCandlestickSeries({
-        upColor: '#ef4444',
-        downColor: '#22c55e',
-        borderUpColor: '#ef4444',
-        borderDownColor: '#22c55e',
-        wickUpColor: '#ef4444',
-        wickDownColor: '#22c55e',
+        upColor,
+        downColor,
+        borderUpColor: upColor,
+        borderDownColor: downColor,
+        wickUpColor: upColor,
+        wickDownColor: downColor,
       });
       candlestickRef.current = candlestick;
 
@@ -206,10 +213,13 @@ export default function KLineChart({ data, overlays = DEFAULT_OVERLAYS }: KLineC
 
       const handleResize = () => {
         if (chartContainerRef.current) {
-          chart.applyOptions({ width: chartContainerRef.current.clientWidth });
+          chart.applyOptions({ width: chartContainerRef.current.clientWidth, height: chartContainerRef.current.clientHeight || containerHeight });
         }
       };
-      window.addEventListener('resize', handleResize);
+
+      // Use ResizeObserver for container-driven resize (works for drawer open/close, orientation change etc.)
+      const ro = new ResizeObserver(handleResize);
+      ro.observe(chartContainerRef.current);
 
       const handleDoubleClick = () => {
         chart.timeScale().fitContent();
@@ -217,7 +227,7 @@ export default function KLineChart({ data, overlays = DEFAULT_OVERLAYS }: KLineC
       chartContainerRef.current?.addEventListener('dblclick', handleDoubleClick);
 
       return () => {
-        window.removeEventListener('resize', handleResize);
+        ro.disconnect();
         chartContainerRef.current?.removeEventListener('dblclick', handleDoubleClick);
         chart.remove();
       };
@@ -250,7 +260,7 @@ export default function KLineChart({ data, overlays = DEFAULT_OVERLAYS }: KLineC
       const volumeData: HistogramData[] = validData.map((d) => ({
         time: toTime(d),
         value: d.volume ?? 0,
-        color: d.close >= d.open ? '#ef4444' : '#22c55e',
+        color: d.close >= d.open ? upColor : downColor,
       }));
 
       candlestickRef.current.setData(candleData);
@@ -301,7 +311,7 @@ export default function KLineChart({ data, overlays = DEFAULT_OVERLAYS }: KLineC
         const histData: HistogramData[] = macd.hist.map((v, i) => ({
           time: times[i],
           value: v,
-          color: v >= 0 ? '#ef4444' : '#22c55e',
+          color: v >= 0 ? upColor : downColor,
         }));
         macdHistRef.current?.setData(histData);
         macdDifRef.current?.setData(toLineData(macd.dif));
@@ -318,7 +328,21 @@ export default function KLineChart({ data, overlays = DEFAULT_OVERLAYS }: KLineC
     } catch (e: any) {
       setDataError(e?.message || String(e));
     }
-  }, [data, overlays]);
+  }, [data, overlays, upColor, downColor]);
+
+  // Update candlestick colors when convention changes
+  useEffect(() => {
+    if (candlestickRef.current) {
+      candlestickRef.current.applyOptions({
+        upColor,
+        downColor,
+        borderUpColor: upColor,
+        borderDownColor: downColor,
+        wickUpColor: upColor,
+        wickDownColor: downColor,
+      });
+    }
+  }, [upColor, downColor]);
 
   if (initError) {
     return (

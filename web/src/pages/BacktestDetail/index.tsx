@@ -4,10 +4,12 @@ import GlassCard from '@/components/GlassCard';
 import { useBacktestDetail } from '@/hooks/useBacktests';
 import ReactECharts from 'echarts-for-react';
 import type { EChartsOption } from 'echarts';
+import { useIsMobile } from '@/hooks/useBreakpoint';
 
 export default function BacktestDetail() {
   const { id } = useParams<{ id: string }>();
   const { data, isLoading } = useBacktestDetail(id || '');
+  const isMobile = useIsMobile();
 
   if (isLoading) return <Spin size="large" style={{ display: 'block', margin: '100px auto' }} />;
   if (!data) return <div>回测未找到</div>;
@@ -54,7 +56,7 @@ export default function BacktestDetail() {
       </GlassCard>
 
       <GlassCard title="净值曲线" style={{ marginBottom: 16 }}>
-        <ReactECharts option={navOption} style={{ height: 320 }} />
+        <ReactECharts option={navOption} style={{ height: isMobile ? 250 : 320 }} />
       </GlassCard>
 
       <GlassCard title="交易记录">
@@ -63,6 +65,7 @@ export default function BacktestDetail() {
           columns={tradeColumns}
           rowKey={(r: any) => `${r.entry_date}-${r.entry_price}`}
           size="small"
+          scroll={{ x: 'max-content' }}
           pagination={{ pageSize: 10 }}
         />
       </GlassCard>

@@ -11,6 +11,16 @@ interface GlassCardProps {
   glow?: boolean;
 }
 
+/**
+ * 玻璃拟态卡片，padding 在移动端自适应缩小。
+ * sm: 紧凑, md: 默认, lg: 宽松
+ */
+const paddingMap: Record<string, { desktop: [number, number]; mobile: [number, number] }> = {
+  sm: { desktop: [16, 20], mobile: [12, 14] },
+  md: { desktop: [20, 24], mobile: [14, 16] },
+  lg: { desktop: [24, 28], mobile: [16, 18] },
+};
+
 export default function GlassCard({
   children,
   title,
@@ -21,12 +31,12 @@ export default function GlassCard({
   padding = 'md',
   glow = false,
 }: GlassCardProps) {
-  const paddingMap: Record<string, [number, number]> = { sm: [16, 20], md: [20, 24], lg: [24, 28] };
-  const [py, px] = paddingMap[padding];
+  const p = paddingMap[padding];
 
   return (
     <div
-      className={className}
+      className={`glass-card ${className}`}
+      data-glass-padding={padding}
       style={{
         background: 'rgba(255, 255, 255, 0.03)',
         backdropFilter: 'blur(12px)',
@@ -65,11 +75,12 @@ export default function GlassCard({
     >
       {(title || extra) && (
         <div
+          className="glass-card-header"
           style={{
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            padding: `${py}px ${px}px 12px`,
+            padding: `${p.desktop[0]}px ${p.desktop[1]}px 12px`,
             borderBottom: '1px solid rgba(255, 255, 255, 0.06)',
             gap: 12,
             minWidth: 0,
@@ -96,7 +107,14 @@ export default function GlassCard({
           {extra && <div style={{ flexShrink: 0 }}>{extra}</div>}
         </div>
       )}
-      <div style={{ padding: title ? `12px ${px}px ${py}px` : `${py}px ${px}px` }}>
+      <div
+        className="glass-card-body"
+        style={{
+          padding: title
+            ? `12px ${p.desktop[1]}px ${p.desktop[0]}px`
+            : `${p.desktop[0]}px ${p.desktop[1]}px`,
+        }}
+      >
         {children}
       </div>
     </div>

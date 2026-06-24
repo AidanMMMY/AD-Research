@@ -76,6 +76,7 @@ export default function ScoreRanking() {
           columns={columns}
           rowKey="etf_code"
           size="small"
+          scroll={{ x: 'max-content' }}
           pagination={false}
           onRow={(record) => ({
             onClick: () => navigate(`/etfs/${record.etf_code}`),

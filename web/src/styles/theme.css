@@ -101,3 +101,150 @@ body,
   background: rgba(99, 102, 241, 0.3);
   color: var(--text-primary);
 }
+
+/* ============================================================
+   Mobile Responsive Overrides
+   ============================================================ */
+
+/* Breakpoints (aligned with Ant Design):
+   xs: <576px, sm: ≥576px, md: ≥768px, lg: ≥992px, xl: ≥1200px */
+
+/* -- Mobile (<768px) -- */
+@media (max-width: 767px) {
+  /* Touch targets: minimum 44px for comfortable tap */
+  .ant-btn {
+    min-height: 40px;
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
+  .ant-btn-sm {
+    min-height: 32px;
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+
+  .ant-select-selector {
+    min-height: 40px !important;
+    display: flex;
+    align-items: center;
+  }
+
+  .ant-input {
+    min-height: 40px;
+  }
+
+  .ant-input-number {
+    min-height: 40px;
+  }
+
+  /* Tighter card padding */
+  .ant-card-head {
+    padding: 12px 16px !important;
+    font-size: 15px !important;
+  }
+
+  .ant-card-body {
+    padding: 16px !important;
+  }
+
+  .ant-card-small .ant-card-head {
+    padding: 10px 14px !important;
+    font-size: 14px !important;
+  }
+
+  .ant-card-small .ant-card-body {
+    padding: 12px 14px !important;
+  }
+
+  /* Table row height for touch */
+  .ant-table-thead > tr > th {
+    padding: 10px 12px !important;
+    font-size: 12px !important;
+  }
+
+  .ant-table-tbody > tr > td {
+    padding: 12px !important;
+    font-size: 13px !important;
+  }
+
+  /* Font size floor: no text smaller than 12px */
+  .ant-tag {
+    font-size: 12px;
+  }
+
+  /* Statistic: reduce oversized numbers */
+  .ant-statistic-content {
+    font-size: 22px !important;
+  }
+
+  /* Pagination: compact */
+  .ant-pagination-item {
+    min-width: 36px;
+    height: 36px;
+    line-height: 36px;
+  }
+
+  /* Tabs: equal-width fill on mobile */
+  .ant-tabs-tab {
+    font-size: 13px;
+    padding: 8px 12px;
+  }
+
+  /* Modal: full-screen on mobile */
+  .ant-modal {
+    max-width: calc(100vw - 32px) !important;
+    margin: 16px;
+  }
+
+  .ant-modal-content {
+    border-radius: var(--radius-md) !important;
+  }
+
+  /* Drawer: nearly full-width */
+  .ant-drawer-content-wrapper {
+    max-width: 85vw !important;
+  }
+
+  /* Row gutters: tighter on mobile */
+  .ant-row {
+    margin-left: -6px !important;
+    margin-right: -6px !important;
+  }
+
+  .ant-row > .ant-col {
+    padding-left: 6px !important;
+    padding-right: 6px !important;
+  }
+
+  /* Safe area for bottom-fixed elements */
+  .ant-drawer-footer,
+  .ant-modal-footer {
+    padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  }
+
+  /* Reduce large dropdowns */
+  .ant-select-dropdown {
+    max-width: 90vw;
+  }
+
+  /* DatePicker / TimePicker full width */
+  .ant-picker {
+    width: 100%;
+  }
+}
+
+/* -- Tablet (768px - 991px) -- */
+@media (min-width: 768px) and (max-width: 991px) {
+  .ant-card-head {
+    padding: 14px 20px !important;
+  }
+
+  .ant-card-body {
+    padding: 18px 20px !important;
+  }
+
+  .ant-statistic-content {
+    font-size: 26px !important;
+  }
+}

@@ -1,5 +1,6 @@
 import ReactECharts from 'echarts-for-react';
 import type { EChartsOption } from 'echarts';
+import { useIsMobile } from '@/hooks/useBreakpoint';
 
 interface SeriesData {
   name: string;
@@ -12,6 +13,12 @@ interface ReturnCurveProps {
 }
 
 export default function ReturnCurve({ series }: ReturnCurveProps) {
+  const isMobile = useIsMobile();
+
+  const allDates = series[0]?.dates || [];
+  // On mobile, show fewer x-axis labels
+  const labelInterval = isMobile ? Math.max(1, Math.floor(allDates.length / 6)) : 0;
+
   const option: EChartsOption = {
     backgroundColor: 'transparent',
     tooltip: {
@@ -22,21 +29,25 @@ export default function ReturnCurve({ series }: ReturnCurveProps) {
     },
     legend: {
       top: 0,
-      textStyle: { color: '#94a3b8' },
+      textStyle: { color: '#94a3b8', fontSize: isMobile ? 11 : 12 },
       pageTextStyle: { color: '#94a3b8' },
     },
-    grid: { left: 50, right: 20, top: 40, bottom: 30 },
+    grid: { left: isMobile ? 45 : 50, right: 20, top: 40, bottom: 30 },
     xAxis: {
       type: 'category',
-      data: series[0]?.dates || [],
-      axisLabel: { fontSize: 10, color: '#94a3b8' },
+      data: allDates,
+      axisLabel: {
+        fontSize: isMobile ? 9 : 10,
+        color: '#94a3b8',
+        interval: labelInterval,
+      },
       axisLine: { lineStyle: { color: 'rgba(255,255,255,0.06)' } },
       axisTick: { lineStyle: { color: 'rgba(255,255,255,0.06)' } },
       splitLine: { show: true, lineStyle: { color: 'rgba(255,255,255,0.06)' } },
     },
     yAxis: {
       type: 'value',
-      axisLabel: { formatter: '{value}%', fontSize: 10, color: '#94a3b8' },
+      axisLabel: { formatter: '{value}%', fontSize: isMobile ? 9 : 10, color: '#94a3b8' },
       axisLine: { lineStyle: { color: 'rgba(255,255,255,0.06)' } },
       axisTick: { lineStyle: { color: 'rgba(255,255,255,0.06)' } },
       splitLine: { show: true, lineStyle: { color: 'rgba(255,255,255,0.06)' } },
@@ -56,5 +67,5 @@ export default function ReturnCurve({ series }: ReturnCurveProps) {
     })),
   };
 
-  return <ReactECharts option={option} style={{ height: 320 }} />;
+  return <ReactECharts option={option} style={{ height: isMobile ? 240 : 320 }} />;
 }

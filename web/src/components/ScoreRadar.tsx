@@ -1,5 +1,6 @@
 import ReactECharts from 'echarts-for-react';
 import type { EChartsOption } from 'echarts';
+import { useIsMobile } from '@/hooks/useBreakpoint';
 
 interface ScoreRadarProps {
   data: {
@@ -12,6 +13,8 @@ interface ScoreRadarProps {
 }
 
 export default function ScoreRadar({ data }: ScoreRadarProps) {
+  const isMobile = useIsMobile();
+
   const option: EChartsOption = {
     backgroundColor: 'transparent',
     radar: {
@@ -22,9 +25,10 @@ export default function ScoreRadar({ data }: ScoreRadarProps) {
         { name: '流动性', max: 100 },
         { name: '趋势强度', max: 100 },
       ],
-      radius: '65%',
+      radius: isMobile ? '55%' : '65%',
       axisName: {
         color: '#94a3b8',
+        fontSize: isMobile ? 10 : 12,
       },
       splitArea: {
         areaStyle: {
@@ -66,5 +70,5 @@ export default function ScoreRadar({ data }: ScoreRadarProps) {
     },
   };
 
-  return <ReactECharts option={option} style={{ height: 300 }} />;
+  return <ReactECharts option={option} style={{ height: isMobile ? 240 : 300 }} />;
 }

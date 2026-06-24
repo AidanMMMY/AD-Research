@@ -202,7 +202,6 @@ function SidebarContent({ collapsed, onItemClick }: SidebarContentProps) {
 }
 
 export default function AppLayout() {
-  const navigate = useNavigate();
   const { user, logout } = useAuthStore();
   const [collapsed, setCollapsed] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -354,6 +353,17 @@ export default function AppLayout() {
             )}
             {/* Breadcrumb or page title could go here */}
           </div>
+
+          {/* Color convention toggle */}
+          <Segmented
+            value={colorConvention}
+            onChange={(v) => setColorConvention(v as 'china' | 'us')}
+            options={[
+              { label: '红涨绿跌', value: 'china' },
+              { label: '绿涨红跌', value: 'us' },
+            ]}
+            style={{ background: 'rgba(255,255,255,0.04)', borderRadius: 10 }}
+          />
 
           <Dropdown
             menu={{

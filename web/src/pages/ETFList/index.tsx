@@ -1,13 +1,15 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Table, Input, Select, Row, Col } from 'antd';
+import { Table, Input, Select, Row, Col, List, Tag, Skeleton } from 'antd';
 import { SearchOutlined } from '@ant-design/icons';
 import { useETFList, useETFCategories, useETFMarkets } from '@/hooks/useETFList';
 import GlassCard from '@/components/GlassCard';
 import ETFCodeTag from '@/components/ETFCodeTag';
+import { useIsMobile } from '@/hooks/useBreakpoint';
 
 export default function ETFList() {
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
   const [search, setSearch] = useState('');
   const [market, setMarket] = useState<string | undefined>();
   const [category, setCategory] = useState<string | undefined>();
@@ -107,22 +109,84 @@ export default function ETFList() {
       </GlassCard>
 
       <div style={{ marginTop: 20 }}>
-        <Table
-          dataSource={data?.items || []}
-          columns={columns}
-          rowKey="code"
-          loading={isLoading}
-          pagination={{
-            current: page,
-            pageSize: 50,
-            total: data?.total || 0,
-            onChange: setPage,
-            showSizeChanger: false,
-          }}
-          onRow={(record) => ({
-            onClick: () => navigate(`/etfs/${record.code}`),
-          })}
-        />
+        {isLoading ? (
+          <Skeleton active paragraph={{ rows: 10 }} />
+        ) : isMobile ? (
+          /* Mobile: card-style list */
+          <List
+            dataSource={data?.items || []}
+            renderItem={(item: any) => (
+              <div
+                onClick={() => navigate(`/etfs/${item.code}`)}
+                style={{
+                  background: 'rgba(255,255,255,0.03)',
+                  border: '1px solid rgba(255,255,255,0.06)',
+                  borderRadius: 12,
+                  padding: '14px 16px',
+                  marginBottom: 10,
+                  cursor: 'pointer',
+                  transition: 'all 200ms',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 8,
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.borderColor = 'rgba(255,255,255,0.12)';
+                  e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.borderColor = 'rgba(255,255,255,0.06)';
+                  e.currentTarget.style.background = 'rgba(255,255,255,0.03)';
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <ETFCodeTag code={item.code} name={item.name} />
+                  <span style={{ fontSize: 13, fontWeight: 600, color: '#e2e8f0', fontFamily: "'SF Mono', monospace" }}>
+                    {item.fund_size ? `${(item.fund_size / 1e8).toFixed(1)}亿` : '-'}
+                  </span>
+                </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                  {item.category && (
+                    <Tag style={{ margin: 0, fontSize: 11 }}>{item.category}</Tag>
+                  )}
+                  {item.market && (
+                    <Tag style={{ margin: 0, fontSize: 11 }}>{item.market}</Tag>
+                  )}
+                  {item.fund_manager && (
+                    <span style={{ fontSize: 12, color: '#64748b' }}>{item.fund_manager}</span>
+                  )}
+                </div>
+              </div>
+            )}
+            pagination={{
+              current: page,
+              pageSize: 50,
+              total: data?.total || 0,
+              onChange: setPage,
+              showSizeChanger: false,
+              style: { textAlign: 'center', marginTop: 16 },
+            }}
+          />
+        ) : (
+          /* Desktop: table view */
+          <Table
+            dataSource={data?.items || []}
+            columns={columns}
+            rowKey="code"
+            loading={isLoading}
+            scroll={{ x: 'max-content' }}
+            pagination={{
+              current: page,
+              pageSize: 50,
+              total: data?.total || 0,
+              onChange: setPage,
+              showSizeChanger: false,
+            }}
+            onRow={(record) => ({
+              onClick: () => navigate(`/etfs/${record.code}`),
+            })}
+          />
+        )}
       </div>
     </div>
   );

@@ -1,5 +1,6 @@
 import ReactECharts from 'echarts-for-react';
 import type { EChartsOption } from 'echarts';
+import { useIsMobile } from '@/hooks/useBreakpoint';
 
 interface CategoryPieProps {
   data: Record<string, { count: number; weight: number }>;
@@ -7,6 +8,7 @@ interface CategoryPieProps {
 }
 
 export default function CategoryPie({ data, mode = 'count' }: CategoryPieProps) {
+  const isMobile = useIsMobile();
   const entries = Object.entries(data);
   const pieData = entries.map(([name, val]) => ({
     name,
@@ -24,12 +26,12 @@ export default function CategoryPie({ data, mode = 'count' }: CategoryPieProps) 
     legend: {
       bottom: 0,
       type: 'scroll',
-      textStyle: { color: '#94a3b8' },
+      textStyle: { color: '#94a3b8', fontSize: isMobile ? 10 : 12 },
       pageTextStyle: { color: '#94a3b8' },
     },
     series: [{
       type: 'pie',
-      radius: ['40%', '70%'],
+      radius: isMobile ? ['30%', '60%'] : ['40%', '70%'],
       avoidLabelOverlap: false,
       itemStyle: { borderRadius: 8, borderColor: '#0f1729', borderWidth: 2 },
       label: { show: false, color: '#94a3b8' },
@@ -44,5 +46,5 @@ export default function CategoryPie({ data, mode = 'count' }: CategoryPieProps) 
     }],
   };
 
-  return <ReactECharts option={option} style={{ height: 280 }} />;
+  return <ReactECharts option={option} style={{ height: isMobile ? 220 : 280 }} />;
 }

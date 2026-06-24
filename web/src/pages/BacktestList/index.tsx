@@ -94,6 +94,7 @@ export default function BacktestList() {
           rowKey="id"
           size="small"
           loading={isLoading}
+          scroll={{ x: 'max-content' }}
           pagination={{ pageSize: 20 }}
         />
       </GlassCard>

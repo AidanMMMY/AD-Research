@@ -77,7 +77,7 @@ export default function ReportBrowser() {
         </Button>
       </div>
 
-      <Table dataSource={reports || []} columns={columns} rowKey="id" />
+      <Table dataSource={reports || []} columns={columns} rowKey="id" scroll={{ x: 'max-content' }} />
 
       {selectedReport?.status === 'done' && (
         <GlassCard title={`报告预览: ${selectedReport.report_type} (${selectedReport.report_date})`} style={{ marginTop: 16 }}>

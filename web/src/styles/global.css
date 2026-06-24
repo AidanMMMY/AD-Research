@@ -3,6 +3,65 @@
    ============================================================ */
 
 /* Ant Design 全局暗色覆盖 */
+
+/* ============================================================
+   GlassCard Responsive (data-glass-padding attribute)
+   ============================================================ */
+@media (max-width: 767px) {
+  .glass-card[data-glass-padding="sm"] .glass-card-header,
+  .glass-card[data-glass-padding="sm"] .glass-card-body {
+    padding-left: 14px !important;
+    padding-right: 14px !important;
+  }
+
+  .glass-card[data-glass-padding="md"] .glass-card-header,
+  .glass-card[data-glass-padding="md"] .glass-card-body {
+    padding-left: 16px !important;
+    padding-right: 16px !important;
+  }
+
+  .glass-card[data-glass-padding="lg"] .glass-card-header,
+  .glass-card[data-glass-padding="lg"] .glass-card-body {
+    padding-left: 18px !important;
+    padding-right: 18px !important;
+  }
+}
+
+/* ============================================================
+   GradientStatCard Responsive
+   ============================================================ */
+@media (max-width: 767px) {
+  .gradient-stat-card {
+    padding: 16px !important;
+  }
+
+  .gradient-stat-card .gradient-stat-value {
+    font-size: 24px !important;
+  }
+
+  .gradient-stat-card .gradient-stat-title {
+    font-size: 12px !important;
+    margin-bottom: 6px !important;
+  }
+
+  .gradient-stat-card .gradient-stat-suffix {
+    font-size: 12px !important;
+  }
+
+  .gradient-stat-card .gradient-stat-icon {
+    width: 36px !important;
+    height: 36px !important;
+    border-radius: 10px !important;
+    font-size: 18px !important;
+  }
+
+  .gradient-stat-card .gradient-stat-decor {
+    width: 60px !important;
+    height: 60px !important;
+    top: -15px !important;
+    right: -15px !important;
+  }
+}
 .ant-layout {
   background: var(--bg-base) !important;
 }
@@ -344,4 +403,146 @@
 
 .ant-dropdown-menu-item:hover {
   background: var(--bg-surface-hover) !important;
+}
+
+/* ============================================================
+   Mobile Responsive Overrides (< 768px)
+   ============================================================ */
+@media (max-width: 767px) {
+  /* Tables: enable horizontal scroll wrapper */
+  .ant-table-wrapper {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .ant-table {
+    min-width: 100%;
+  }
+
+  /* Reduce table cell font */
+  .ant-table-thead > tr > th {
+    font-size: 12px !important;
+    padding: 10px 8px !important;
+    white-space: nowrap;
+  }
+
+  .ant-table-tbody > tr > td {
+    font-size: 13px !important;
+    padding: 10px 8px !important;
+  }
+
+  /* Wider touch row */
+  .ant-table-row {
+    min-height: 48px;
+  }
+
+  /* Buttons: adequate touch area */
+  .ant-btn {
+    min-height: 40px;
+    font-size: 14px;
+  }
+
+  .ant-btn-sm {
+    min-height: 32px;
+  }
+
+  /* Form controls: taller touch targets */
+  .ant-input,
+  .ant-select-selector,
+  .ant-input-number,
+  .ant-input-number-input {
+    min-height: 40px !important;
+    font-size: 16px !important; /* Prevent iOS zoom on focus */
+  }
+
+  .ant-select-selector {
+    display: flex !important;
+    align-items: center !important;
+  }
+
+  /* Card: reduced padding */
+  .ant-card-head {
+    padding: 12px 16px !important;
+  }
+
+  .ant-card-body {
+    padding: 14px 16px !important;
+  }
+
+  /* Statistic: smaller numbers */
+  .ant-statistic-content {
+    font-size: 22px !important;
+  }
+
+  .ant-statistic-title {
+    font-size: 12px !important;
+  }
+
+  /* Tabs: scrollable on mobile */
+  .ant-tabs-nav {
+    margin-bottom: 12px !important;
+  }
+
+  .ant-tabs-tab {
+    font-size: 13px;
+    padding: 8px 12px !important;
+  }
+
+  /* Pagination: compact */
+  .ant-pagination {
+    font-size: 13px;
+  }
+
+  .ant-pagination-item {
+    min-width: 34px;
+    height: 34px;
+    line-height: 34px;
+    margin-right: 4px;
+  }
+
+  .ant-pagination-prev,
+  .ant-pagination-next {
+    min-width: 34px;
+    height: 34px;
+    line-height: 34px;
+  }
+
+  /* Select dropdown: prevent overflow */
+  .ant-select-dropdown {
+    max-width: 92vw;
+  }
+
+  /* Popover / Tooltip: prevent overflow */
+  .ant-popover,
+  .ant-tooltip {
+    max-width: 85vw;
+  }
+
+  /* Space: reduce gap */
+  .ant-space {
+    gap: 8px !important;
+  }
+
+  /* Float buttons: ensure visibility */
+  .ant-float-btn {
+    right: 16px;
+    bottom: calc(80px + env(safe-area-inset-bottom, 0px));
+  }
+}
+
+/* ============================================================
+   Tablet Responsive Overrides (768px - 991px)
+   ============================================================ */
+@media (min-width: 768px) and (max-width: 991px) {
+  .ant-card-head {
+    padding: 14px 20px !important;
+  }
+
+  .ant-card-body {
+    padding: 16px 20px !important;
+  }
+
+  .ant-statistic-content {
+    font-size: 26px !important;
+  }
 }

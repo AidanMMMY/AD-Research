@@ -2,10 +2,20 @@ import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Table, Space, Select, InputNumber, Button, Tag, Row, Col } from 'antd';
 import { useScreenResults, useScreenPresets, useScreenCategories } from '@/hooks/useScreenResults';
+import { useETFMarkets } from '@/hooks/useETFList';
 import { useScreenStore } from '@/stores/screen';
 import GlassCard from '@/components/GlassCard';
 import ETFCodeTag from '@/components/ETFCodeTag';
 import ReturnTag from '@/components/ReturnTag';
+
+/** Map market codes to display labels */
+const MARKET_LABELS: Record<string, string> = {
+  'A股': 'A股',
+  'US': '美股',
+  'HK': '港股',
+  'JP': '日股',
+};
+
 
 export default function Screen() {
   const navigate = useNavigate();
@@ -26,6 +36,7 @@ export default function Screen() {
   const { data: results, isLoading } = useScreenResults(queryFilters);
   const { data: presets } = useScreenPresets();
   const { data: categories } = useScreenCategories();
+  const { data: markets } = useETFMarkets();
 
   const columns = [
     { title: '代码', dataIndex: 'code', width: 100, render: (v: string, r: any) => <ETFCodeTag code={v} name={r.name} /> },
@@ -71,7 +82,10 @@ export default function Screen() {
               allowClear
               style={{ width: '100%' }}
               value={filters.market}
-              options={[{ label: '上海', value: 'SH' }, { label: '深圳', value: 'SZ' }]}
+              options={(markets || []).map((m: string) => ({
+                label: MARKET_LABELS[m] || m,
+                value: m,
+              }))}
               onChange={(v) => setFilter('market', v)}
             />
           </Col>
@@ -155,7 +169,7 @@ export default function Screen() {
               }
             },
           }}
-          scroll={{ x: 900 }}
+          scroll={{ x: 'max-content' }}
           onRow={(record) => ({
             onClick: () => navigate(`/etfs/${record.code}`),
           })}

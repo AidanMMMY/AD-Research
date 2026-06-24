@@ -102,6 +102,7 @@ export default function StrategyList() {
           rowKey="id"
           size="small"
           loading={isLoading}
+          scroll={{ x: 'max-content' }}
           pagination={false}
         />
       </GlassCard>

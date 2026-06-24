@@ -52,6 +52,7 @@ export default function PoolList() {
           dataSource={pools || []}
           columns={columns}
           rowKey="id"
+          scroll={{ x: 'max-content' }}
           onRow={(record) => ({
             onClick: () => navigate(`/pools/${record.id}`),
             style: { cursor: 'pointer' },

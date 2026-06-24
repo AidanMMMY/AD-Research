@@ -214,6 +214,7 @@ export default function AdminUsers() {
           rowKey="id"
           size="small"
           loading={isLoading}
+          scroll={{ x: 'max-content' }}
           pagination={false}
         />
       </GlassCard>

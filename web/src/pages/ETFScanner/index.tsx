@@ -93,6 +93,7 @@ export default function ETFScanner() {
           columns={columns}
           rowKey="id"
           size="small"
+          scroll={{ x: 'max-content' }}
           pagination={{ pageSize: 10 }}
           loading={isLoading}
         />
