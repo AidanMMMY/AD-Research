@@ -158,8 +158,10 @@ main() {
 
     cd "$SCRIPT_DIR"
 
-    log_info "拉取/构建 Docker 镜像..."
-    docker compose pull || true
+    log_info "拉取基础镜像（PostgreSQL / Redis）..."
+    docker compose pull postgres redis || true
+
+    log_info "构建 AD-Research 后端镜像..."
     docker compose build --no-cache
 
     log_info "启动 PostgreSQL 和 Redis..."

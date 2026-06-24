@@ -52,6 +52,7 @@ services:
       context: ../..
       dockerfile: Dockerfile
     image: ad-research:latest
+    pull_policy: never
     container_name: etf-backend
     restart: unless-stopped
     ports:

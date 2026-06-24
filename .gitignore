@@ -87,7 +87,8 @@ ipython_config.py
 Pipfile.lock
 
 # poetry
-poetry.lock
+# poetry.lock 需要提交到仓库，用于生产构建时锁定依赖版本
+# .python-version
 
 # pdm
 .pdm.toml
