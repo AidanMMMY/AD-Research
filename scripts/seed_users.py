@@ -10,6 +10,9 @@ bcrypt-hashed before being stored.
 """
 import sys
 
+# Allow imports from the project root when running inside the Docker container
+sys.path.insert(0, "/app")
+
 import bcrypt
 from sqlalchemy.orm import Session
 
