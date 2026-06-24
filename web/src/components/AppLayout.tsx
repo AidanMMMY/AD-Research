@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
-import { Dropdown, Drawer } from 'antd';
+import { Dropdown, Drawer, Segmented } from 'antd';
 import {
   LogoutOutlined,
   DashboardOutlined,
@@ -18,11 +18,15 @@ import {
   ExperimentOutlined,
   ThunderboltOutlined,
   TeamOutlined,
+  ReadOutlined,
+  SmileOutlined,
+  RobotOutlined,
   MenuFoldOutlined,
   MenuUnfoldOutlined,
   MenuOutlined,
 } from '@ant-design/icons';
 import { useAuthStore } from '@/stores/auth';
+import { useSettingsStore } from '@/stores/settings';
 import { menuRoutes } from '@/routes';
 import { useIsMobile } from '@/hooks/useBreakpoint';
 
@@ -42,6 +46,9 @@ const iconMap: Record<string, React.ComponentType> = {
   ExperimentOutlined,
   ThunderboltOutlined,
   TeamOutlined,
+  ReadOutlined,
+  SmileOutlined,
+  RobotOutlined,
 };
 
 const SIDEBAR_WIDTH = 220;
@@ -203,6 +210,7 @@ function SidebarContent({ collapsed, onItemClick }: SidebarContentProps) {
 
 export default function AppLayout() {
   const { user, logout } = useAuthStore();
+  const { colorConvention, setColorConvention } = useSettingsStore();
   const [collapsed, setCollapsed] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const isMobile = useIsMobile();
