@@ -58,7 +58,7 @@ services:
     ports:
       - "8000:8000"
     environment:
-      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-etf}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-ad_research}
+      DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER:-etf}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-ad_research}
       REDIS_URL: redis://redis:6379/0
       APP_ENV: production
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
