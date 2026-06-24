@@ -1,5 +1,13 @@
 import client from './client';
 
+export interface AIStatus {
+  available: boolean;
+  provider: string;
+  model: string;
+  setup_url: string;
+  monthly_cost_estimate: string;
+}
+
 export interface ResearchNote {
   id: number;
   instrument_code: string;
@@ -24,6 +32,9 @@ export interface SentimentAggregate {
 }
 
 export const researchApi = {
+  getAIStatus: () =>
+    client.get<AIStatus>('/research/ai/status'),
+
   generateNote: (instrument_code: string) =>
     client.post<ResearchNote>('/research/notes/generate', { instrument_code }),
 

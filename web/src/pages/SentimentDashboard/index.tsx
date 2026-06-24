@@ -3,6 +3,7 @@ import { useQuery, useMutation } from '@tanstack/react-query';
 import { Input, Button, Slider, Tag, Tooltip, Skeleton, Empty } from 'antd';
 import { SmileOutlined, FrownOutlined, MehOutlined, SyncOutlined } from '@ant-design/icons';
 import { researchApi, SentimentAggregate } from '@/api/research';
+import AISetupBanner from "@/components/AISetupBanner";
 import GlassCard from '@/components/GlassCard';
 
 const SENTIMENT_ICONS: Record<string, React.ReactNode> = {
@@ -39,6 +40,7 @@ export default function SentimentDashboard() {
 
   return (
     <div>
+      <AISetupBanner />
       <GlassCard>
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
           <Input

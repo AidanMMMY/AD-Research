@@ -8,18 +8,53 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
+import os
+
 from app.api.deps import get_current_user, get_db
 from app.models.user import User
 from app.services.chat_service import ChatService
+from app.services.llm.anthropic_provider import AnthropicProvider
 from app.services.research_service import ResearchService
 from app.services.sentiment_service import SentimentService
 
 router = APIRouter()
 
+# ------------------------------------------------------------------
+# Helpers
+# ------------------------------------------------------------------
+
+_AI_AVAILABLE: bool | None = None
+
+
+def _ai_is_available() -> bool:
+    """Check if AI features are available (cached per process)."""
+    global _AI_AVAILABLE
+    if _AI_AVAILABLE is None:
+        _AI_AVAILABLE = bool(os.getenv("ANTHROPIC_API_KEY", ""))
+    return _AI_AVAILABLE
+
+
+def _require_ai():
+    """Raise 503 if AI is not configured."""
+    if not _ai_is_available():
+        raise HTTPException(
+            status_code=503,
+            detail="AI 功能未配置。请在 .env 中设置 ANTHROPIC_API_KEY。"
+                   "获取 Key: https://console.anthropic.com/",
+        )
+
 
 # ------------------------------------------------------------------
 # Schemas
 # ------------------------------------------------------------------
+
+class AIStatusResponse(BaseModel):
+    available: bool
+    provider: str = "anthropic"
+    model: str = "claude-haiku-3-5-20241022"
+    setup_url: str = "https://console.anthropic.com/"
+    monthly_cost_estimate: str = "$5-15"
+
 
 class GenerateNoteRequest(BaseModel):
     instrument_code: str
@@ -81,6 +116,16 @@ class ChatMessageResponse(BaseModel):
 
 
 # ------------------------------------------------------------------
+# AI Status
+# ------------------------------------------------------------------
+
+@router.get("/ai/status", response_model=AIStatusResponse)
+def get_ai_status():
+    """Check whether AI features are available."""
+    return AIStatusResponse(available=_ai_is_available())
+
+
+# ------------------------------------------------------------------
 # Research Notes
 # ------------------------------------------------------------------
 
@@ -91,6 +136,7 @@ def generate_research_note(
     current_user: User = Depends(get_current_user),
 ):
     """Generate an AI research note for an instrument."""
+    _require_ai()
     service = ResearchService(db)
     note = service.generate_daily_note(req.instrument_code)
     if not note:
@@ -111,6 +157,7 @@ def get_research_notes(
     current_user: User = Depends(get_current_user),
 ):
     """Get AI research notes for an instrument."""
+    _require_ai()
     service = ResearchService(db)
     notes = service.get_notes(instrument_code=instrument_code, note_type=note_type, limit=limit)
     return [_note_to_response(n) for n in notes]
@@ -128,6 +175,7 @@ def get_sentiment(
     current_user: User = Depends(get_current_user),
 ):
     """Get aggregate sentiment for an instrument."""
+    _require_ai()
     service = SentimentService(db)
     result = service.get_aggregate_sentiment(instrument_code, lookback_days=days)
     if not result:
@@ -143,6 +191,7 @@ def ingest_sentiment(
     current_user: User = Depends(get_current_user),
 ):
     """Manually trigger news sentiment ingestion for an instrument."""
+    _require_ai()
     service = SentimentService(db)
     count = service.ingest_finnhub_news(instrument_code, lookback_days=days)
     return {"instrument_code": instrument_code, "articles_ingested": count}
@@ -159,6 +208,7 @@ def create_chat_session(
     current_user: User = Depends(get_current_user),
 ):
     """Create a new AI chat session."""
+    _require_ai()
     service = ChatService(db)
     session = service.create_session(current_user.id, title=req.title if req else None)
     return _session_to_response(session)
@@ -170,6 +220,7 @@ def list_chat_sessions(
     current_user: User = Depends(get_current_user),
 ):
     """List all AI chat sessions for the current user."""
+    _require_ai()
     service = ChatService(db)
     sessions = service.get_sessions(current_user.id)
     return [_session_to_response(s) for s in sessions]
@@ -182,6 +233,7 @@ def delete_chat_session(
     current_user: User = Depends(get_current_user),
 ):
     """Delete a chat session."""
+    _require_ai()
     service = ChatService(db)
     ok = service.delete_session(session_id)
     if not ok:
@@ -197,6 +249,7 @@ def send_chat_message(
     current_user: User = Depends(get_current_user),
 ):
     """Send a message in an AI chat session. Returns the AI response."""
+    _require_ai()
     service = ChatService(db)
     try:
         msg = service.send_message(session_id, req.content)
@@ -212,6 +265,7 @@ def get_chat_messages(
     current_user: User = Depends(get_current_user),
 ):
     """Get all messages in a chat session."""
+    _require_ai()
     service = ChatService(db)
     messages = service.get_messages(session_id)
     return [_message_to_response(m) for m in messages]

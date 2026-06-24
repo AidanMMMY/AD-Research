@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Select, Button, Input, Tag, Skeleton, Modal, Empty } from 'antd';
 import { RobotOutlined, ThunderboltOutlined } from '@ant-design/icons';
 import { researchApi, ResearchNote } from '@/api/research';
+import AISetupBanner from "@/components/AISetupBanner";
 import GlassCard from '@/components/GlassCard';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -50,6 +51,7 @@ export default function ResearchNotes() {
 
   return (
     <div>
+      <AISetupBanner />
       <GlassCard>
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
           <Input

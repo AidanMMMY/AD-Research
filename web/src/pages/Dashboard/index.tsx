@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { Table, List, Row, Col, Empty, Spin } from 'antd';
+import { Table, List, Row, Col, Empty, Spin, Card } from 'antd';
 import type { ReactNode } from 'react';
 import {
   DatabaseOutlined,
@@ -9,6 +9,10 @@ import {
   ArrowUpOutlined,
   ArrowDownOutlined,
   FolderOpenOutlined,
+  RobotOutlined,
+  ReadOutlined,
+  SmileOutlined,
+  ThunderboltOutlined,
 } from '@ant-design/icons';
 import { useQuery } from '@tanstack/react-query';
 import { useScores } from '@/hooks/useScores';
@@ -143,6 +147,90 @@ export default function Dashboard() {
             loading={statsLoading}
             onClick={() => navigate('/scores')}
           />
+        </Col>
+      </Row>
+
+      {/* AI Quick Entry */}
+      <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
+        <Col xs={12} sm={6}>
+          <Card
+            hoverable
+            size="small"
+            onClick={() => navigate('/research')}
+            style={{
+              background: 'linear-gradient(135deg, rgba(99,102,241,0.08), rgba(139,92,246,0.04))',
+              border: '1px solid rgba(99,102,241,0.15)',
+              borderRadius: 12,
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <ReadOutlined style={{ fontSize: 24, color: '#818cf8' }} />
+              <div>
+                <div style={{ fontSize: 14, fontWeight: 600, color: '#e2e8f0' }}>AI 研报</div>
+                <div style={{ fontSize: 11, color: '#64748b' }}>智能生成研究笔记</div>
+              </div>
+            </div>
+          </Card>
+        </Col>
+        <Col xs={12} sm={6}>
+          <Card
+            hoverable
+            size="small"
+            onClick={() => navigate('/sentiment')}
+            style={{
+              background: 'linear-gradient(135deg, rgba(34,197,94,0.06), rgba(234,179,8,0.04))',
+              border: '1px solid rgba(34,197,94,0.12)',
+              borderRadius: 12,
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <SmileOutlined style={{ fontSize: 24, color: '#22c55e' }} />
+              <div>
+                <div style={{ fontSize: 14, fontWeight: 600, color: '#e2e8f0' }}>情绪分析</div>
+                <div style={{ fontSize: 11, color: '#64748b' }}>多源新闻情绪汇聚</div>
+              </div>
+            </div>
+          </Card>
+        </Col>
+        <Col xs={12} sm={6}>
+          <Card
+            hoverable
+            size="small"
+            onClick={() => navigate('/chat')}
+            style={{
+              background: 'linear-gradient(135deg, rgba(6,182,212,0.06), rgba(99,102,241,0.04))',
+              border: '1px solid rgba(6,182,212,0.12)',
+              borderRadius: 12,
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <RobotOutlined style={{ fontSize: 24, color: '#06b6d4' }} />
+              <div>
+                <div style={{ fontSize: 14, fontWeight: 600, color: '#e2e8f0' }}>AI 助手</div>
+                <div style={{ fontSize: 11, color: '#64748b' }}>数据感知智能对话</div>
+              </div>
+            </div>
+          </Card>
+        </Col>
+        <Col xs={12} sm={6}>
+          <Card
+            hoverable
+            size="small"
+            onClick={() => navigate('/screen')}
+            style={{
+              background: 'linear-gradient(135deg, rgba(245,158,11,0.06), rgba(234,179,8,0.04))',
+              border: '1px solid rgba(245,158,11,0.12)',
+              borderRadius: 12,
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <ThunderboltOutlined style={{ fontSize: 24, color: '#f59e0b' }} />
+              <div>
+                <div style={{ fontSize: 14, fontWeight: 600, color: '#e2e8f0' }}>全市场筛选</div>
+                <div style={{ fontSize: 11, color: '#64748b' }}>中美多维度条件</div>
+              </div>
+            </div>
+          </Card>
         </Col>
       </Row>
 

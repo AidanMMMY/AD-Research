@@ -12,7 +12,7 @@ import ScoreRadar from '@/components/ScoreRadar';
 import { formatPercent } from '@/utils/format';
 import { useSettingsStore } from '@/stores/settings';
 import { getReturnColor } from '@/utils/color';
-import type { ResearchNote, SentimentAggregate } from '@/api/research';
+import type { ResearchNote } from '@/api/research';
 
 const TIME_RANGE_OPTIONS = [
   { label: '30日', value: 30 },
