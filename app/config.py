@@ -32,8 +32,8 @@ class Settings(BaseSettings):
     tiingo_api_key: str = ""    # https://www.tiingo.com/account/token (1k/day free)
     fmp_api_key: str = ""       # https://site.financialmodelingprep.com (250/day free)
 
-    # AI / LLM (Phase 3)
-    anthropic_api_key: str = ""
+    # AI / LLM
+    deepseek_api_key: str = ""   # https://platform.deepseek.com/
 
     # Application
     app_env: str = "development"
