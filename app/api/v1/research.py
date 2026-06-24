@@ -13,7 +13,6 @@ import os
 from app.api.deps import get_current_user, get_db
 from app.models.user import User
 from app.services.chat_service import ChatService
-from app.services.llm.anthropic_provider import AnthropicProvider
 from app.services.research_service import ResearchService
 from app.services.sentiment_service import SentimentService
 
@@ -30,7 +29,7 @@ def _ai_is_available() -> bool:
     """Check if AI features are available (cached per process)."""
     global _AI_AVAILABLE
     if _AI_AVAILABLE is None:
-        _AI_AVAILABLE = bool(os.getenv("ANTHROPIC_API_KEY", ""))
+        _AI_AVAILABLE = bool(os.getenv("DEEPSEEK_API_KEY", ""))
     return _AI_AVAILABLE
 
 
@@ -39,8 +38,8 @@ def _require_ai():
     if not _ai_is_available():
         raise HTTPException(
             status_code=503,
-            detail="AI 功能未配置。请在 .env 中设置 ANTHROPIC_API_KEY。"
-                   "获取 Key: https://console.anthropic.com/",
+            detail="AI 功能未配置。请在 .env 中设置 DEEPSEEK_API_KEY。"
+                   "获取 Key: https://platform.deepseek.com/",
         )
 
 
@@ -50,10 +49,10 @@ def _require_ai():
 
 class AIStatusResponse(BaseModel):
     available: bool
-    provider: str = "anthropic"
-    model: str = "claude-haiku-3-5-20241022"
-    setup_url: str = "https://console.anthropic.com/"
-    monthly_cost_estimate: str = "$5-15"
+    provider: str = "deepseek"
+    model: str = "deepseek-v4-pro"
+    setup_url: str = "https://platform.deepseek.com/"
+    monthly_cost_estimate: str = "极低 (¥2/百万token)"
 
 
 class GenerateNoteRequest(BaseModel):

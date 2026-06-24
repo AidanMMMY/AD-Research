@@ -18,7 +18,7 @@ from sqlalchemy.orm import Session
 from app.data.providers.finnhub_provider import FinnhubProvider
 from app.models.etf import ETFInfo
 from app.models.research import SentimentData
-from app.services.llm import AnthropicProvider, LLMService
+from app.services.llm import DeepSeekProvider, LLMService
 
 logger = logging.getLogger(__name__)
 
@@ -28,7 +28,7 @@ class SentimentService:
 
     def __init__(self, db: Session) -> None:
         self.db = db
-        provider = AnthropicProvider.haiku()
+        provider = DeepSeekProvider()
         self.llm = LLMService(provider)
         self.finnhub = FinnhubProvider()
 

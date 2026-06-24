@@ -294,12 +294,27 @@ def run_backtests(db):
         if code:
             recent_backtests.add((sid, code))
 
+    total_combos = len(strategies) * len(etfs_with_bars)
+    processed = 0
+
     for strategy in strategies:
         for etf_code in etfs_with_bars:
+            processed += 1
             if (strategy.id, etf_code) in recent_backtests:
                 skipped += 1
+                # Update progress even for skipped items
+                print(
+                    f"\r   [{processed}/{total_combos}] {etf_code} + {strategy.name} (skip)",
+                    end="",
+                    flush=True,
+                )
                 continue
             try:
+                print(
+                    f"\r   [{processed}/{total_combos}] {etf_code} + {strategy.name}...",
+                    end="",
+                    flush=True,
+                )
                 service.run_backtest(
                     strategy_id=strategy.id,
                     etf_code=etf_code,
@@ -310,9 +325,10 @@ def run_backtests(db):
                 )
                 total += 1
             except Exception as exc:
-                print(f"   ⚠️ Backtest failed for {etf_code} / {strategy.name}: {exc}")
+                print(f"\n   ⚠️ Backtest failed for {etf_code} / {strategy.name}: {exc}")
 
-    print(f"   Completed {total} backtests (skipped {skipped} recent)")
+    # Clear the progress line and print final summary
+    print(f"\r   Completed {total} backtests (skipped {skipped} recent)          ")
     return total
 
 
