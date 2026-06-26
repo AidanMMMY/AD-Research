@@ -39,7 +39,7 @@ export default function ScoreRanking() {
       ),
     },
     {
-      title: 'ETF',
+      title: '标的',
       render: (_: unknown, record: any) => <ETFCodeTag code={record.etf_code} name={record.etf_name} />,
     },
     {

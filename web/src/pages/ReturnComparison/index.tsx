@@ -131,7 +131,7 @@ export default function ReturnComparison() {
     if (!pool) return;
     const newCodes = Array.from(new Set([...selectedCodes, ...pool.codes]));
     if (newCodes.length > 10) {
-      message.warning('标的池ETF数量较多，仅添加前10只');
+      message.warning('标的池成员数量较多，仅添加前10只');
       setSelectedCodes(newCodes.slice(0, 10));
       return;
     }
@@ -148,11 +148,11 @@ export default function ReturnComparison() {
       <GlassCard title="收益曲线对比配置" style={{ marginBottom: 16 }}>
         <Row gutter={[16, 16]}>
           <Col xs={24} md={12}>
-            <div style={{ marginBottom: 8 }}>选择ETF（{selectedCodes.length}/10）：</div>
+            <div style={{ marginBottom: 8 }}>选择标的（{selectedCodes.length}/10）：</div>
             <Select
               mode="multiple"
               showSearch
-              placeholder="搜索并选择ETF"
+              placeholder="搜索并选择标的"
               value={selectedCodes}
               onChange={setSelectedCodes}
               options={etfOptions}

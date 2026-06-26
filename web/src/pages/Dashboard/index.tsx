@@ -75,7 +75,7 @@ export default function Dashboard() {
       ),
     },
     {
-      title: 'ETF',
+      title: '标的',
       render: (_: unknown, record: any) => (
         <ETFCodeTag code={record.etf_code} name={record.etf_name} />
       ),
@@ -343,7 +343,7 @@ export default function Dashboard() {
                 style={{ padding: 20 }}
               >
                 <span style={{ fontSize: 12, color: '#64748b' }}>
-                  在标的池管理中创建池并添加ETF，这里会汇总展示
+                  在标的池管理中创建池并添加标的，这里会汇总展示
                 </span>
               </Empty>
             }

@@ -62,7 +62,7 @@ export default function SectorRotation() {
   const columns = [
     { title: '排名', dataIndex: 'momentum_rank', width: 60 },
     { title: '板块', dataIndex: 'category' },
-    { title: 'ETF数量', dataIndex: 'count', width: 80 },
+    { title: '标的数量', dataIndex: 'count', width: 80 },
     {
       title: '1月收益',
       dataIndex: 'return_1m',

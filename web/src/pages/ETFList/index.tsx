@@ -29,7 +29,7 @@ export default function ETFList() {
 
   const columns = [
     {
-      title: 'ETF',
+      title: '标的',
       render: (_: unknown, record: any) => <ETFCodeTag code={record.code} name={record.name} />,
     },
     {
@@ -103,7 +103,7 @@ export default function ETFList() {
         <Row gutter={[16, 16]} style={{ marginBottom: 4 }}>
           <Col xs={24} sm={8} md={6}>
             <Input
-              placeholder="搜索ETF代码或名称"
+              placeholder="搜索标的代码或名称"
               allowClear
               prefix={<SearchOutlined style={{ color: '#475569' }} />}
               onChange={(e) => { setSearch(e.target.value); setPage(1); }}

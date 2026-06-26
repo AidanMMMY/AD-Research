@@ -107,8 +107,8 @@ export default function ETFDetail() {
   });
 
   if (etfLoading) return <Spin size="large" style={{ display: 'block', margin: '100px auto' }} />;
-  if (etfError) return <Alert message="加载ETF信息失败" description={(etfError as Error).message} type="error" style={{ margin: 24 }} />;
-  if (!etf) return <Alert message="ETF不存在" description={`未找到代码为 ${code} 的ETF`} type="warning" style={{ margin: 24 }} />;
+  if (etfError) return <Alert message="加载标的详情失败" description={(etfError as Error).message} type="error" style={{ margin: 24 }} />;
+  if (!etf) return <Alert message="标的不存在" description={`未找到代码为 ${code} 的标的`} type="warning" style={{ margin: 24 }} />;
 
   const safeHistoryItems = historyData?.items || [];
   const latestNote: ResearchNote | null = researchNotes?.[0] || null;
