@@ -243,9 +243,12 @@ class AkshareProvider(DataProvider):
             for future in as_completed(futures):
                 code = futures[future]
                 try:
-                    df = future.result()
+                    # 单个 ETF 最多等 60 秒，避免某只 ETF 网络请求 hang 死拖垮整批
+                    df = future.result(timeout=60)
                     if not df.empty:
                         all_frames.append(df)
+                except TimeoutError:
+                    print(f"[AkshareProvider] 获取 {code} 日线数据超时，跳过")
                 except Exception as exc:
                     print(f"[AkshareProvider] 获取 {code} 日线数据失败: {exc}")
 
