@@ -1,0 +1,24 @@
+name: Deploy to Aliyun
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: self-hosted
+    steps:
+      - name: Pull latest code
+        run: |
+          cd /opt/ad-research
+          git pull origin main
+
+      - name: Rebuild backend
+        run: |
+          cd /opt/ad-research
+          docker compose up -d --build --no-deps backend
+
+      - name: Verify deployment
+        run: |
+          sleep 5
+          docker ps | grep etf-backend
