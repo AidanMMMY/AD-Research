@@ -17,10 +17,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     postgresql-client \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Python dependencies
+# Install Python dependencies (use domestic PyPI mirror for Colima/China networks)
 COPY pyproject.toml poetry.lock ./
-RUN pip install poetry && \
+RUN pip install poetry -i https://pypi.tuna.tsinghua.edu.cn/simple && \
     poetry config virtualenvs.create false && \
+    poetry config repositories.pypi https://pypi.tuna.tsinghua.edu.cn/simple && \
     poetry install --without dev --no-root
 
 # Copy backend code
