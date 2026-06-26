@@ -30,13 +30,13 @@ export default function ETFScanner() {
 
   return (
     <div>
-      <GlassCard title="全市场ETF扫描" extra={
+      <GlassCard title="全市场扫描" extra={
         <Button type="primary" icon={<ReloadOutlined />} onClick={handleScan} loading={isScanning}>
           立即扫描
         </Button>
       } style={{ marginBottom: 16 }}>
         <p style={{ color: '#94a3b8' }}>
-          对比 akshare 最新ETF列表与数据库，自动发现新增、退市、变更的ETF。
+          对比 akshare 最新标的列表与数据库，自动发现新增、退市、变更的标的。
           定时任务：每周日凌晨 03:00 自动执行。
         </p>
       </GlassCard>
@@ -50,7 +50,7 @@ export default function ETFScanner() {
               <Row gutter={[16, 16]}>
                 <Col xs={24} md={8}>
                   <GlassCard padding="sm">
-                    <Descriptions title="新增ETF" column={1} size="small">
+                    <Descriptions title="新增标的" column={1} size="small">
                       {result.new.length > 0 ? result.new.map((e) => (
                         <Descriptions.Item key={e.code} label={e.code}>
                           {e.name} ({e.market})
@@ -61,7 +61,7 @@ export default function ETFScanner() {
                 </Col>
                 <Col xs={24} md={8}>
                   <GlassCard padding="sm">
-                    <Descriptions title="退市ETF" column={1} size="small">
+                    <Descriptions title="退市标的" column={1} size="small">
                       {result.delisted.length > 0 ? result.delisted.map((e) => (
                         <Descriptions.Item key={e.code} label={e.code}>
                           {e.name} ({e.market})
@@ -72,7 +72,7 @@ export default function ETFScanner() {
                 </Col>
                 <Col xs={24} md={8}>
                   <GlassCard padding="sm">
-                    <Descriptions title="变更ETF" column={1} size="small">
+                    <Descriptions title="变更标的" column={1} size="small">
                       {result.changed.length > 0 ? result.changed.map((e) => (
                         <Descriptions.Item key={e.code} label={e.code}>
                           {Object.entries(e.changes).map(([k, v]) => `${k}: ${v.old} → ${v.new}`).join(', ')}

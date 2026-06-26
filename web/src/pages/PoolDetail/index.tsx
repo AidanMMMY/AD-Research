@@ -122,7 +122,7 @@ export default function PoolDetail() {
 
   const weightColumns = [
     {
-      title: 'ETF',
+      title: '标的',
       render: (_: unknown, record: any) => <ETFCodeTag code={record.etf_code} name={record.etf_name} />,
     },
     {

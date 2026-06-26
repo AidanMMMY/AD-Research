@@ -112,11 +112,11 @@ export default function BacktestList() {
               options={strategies?.map((s: any) => ({ label: s.name, value: s.id }))}
             />
           </Form.Item>
-          <Form.Item name="etf_code" label="ETF代码" rules={[{ required: true }]}>
+          <Form.Item name="etf_code" label="标的代码" rules={[{ required: true }]}>
             <Select
               showSearch
               loading={etfLoading}
-              placeholder="输入ETF代码或名称搜索"
+              placeholder="输入标的代码或名称搜索"
               options={etfOptions}
               filterOption={(input, option) =>
                 (option?.label ?? '').toLowerCase().includes(input.toLowerCase())

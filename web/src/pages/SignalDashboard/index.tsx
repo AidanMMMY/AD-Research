@@ -26,7 +26,7 @@ export default function SignalDashboard() {
 
   const columns = [
     { title: '策略ID', dataIndex: 'strategy_id', width: 80 },
-    { title: 'ETF代码', dataIndex: 'etf_code' },
+    { title: '标的代码', dataIndex: 'etf_code' },
     { title: '日期', dataIndex: 'trade_date' },
     {
       title: '信号',

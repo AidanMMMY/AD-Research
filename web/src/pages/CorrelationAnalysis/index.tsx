@@ -92,7 +92,7 @@ export default function CorrelationAnalysis() {
     if (!pool) return;
     const newCodes = Array.from(new Set([...selectedCodes, ...pool.codes]));
     if (newCodes.length > 20) {
-      message.warning('标的池ETF数量较多，仅添加前20只');
+      message.warning('标的池成员数量较多，仅添加前20只');
       setSelectedCodes(newCodes.slice(0, 20));
       return;
     }
@@ -109,11 +109,11 @@ export default function CorrelationAnalysis() {
       <GlassCard title="相关性分析配置" style={{ marginBottom: 16 }}>
         <Row gutter={[16, 16]}>
           <Col xs={24} md={12}>
-            <div style={{ marginBottom: 8 }}>选择ETF（{selectedCodes.length}/20）：</div>
+            <div style={{ marginBottom: 8 }}>选择标的（{selectedCodes.length}/20）：</div>
             <Select
               mode="multiple"
               showSearch
-              placeholder="搜索并选择ETF"
+              placeholder="搜索并选择标的"
               value={selectedCodes}
               onChange={setSelectedCodes}
               options={etfOptions}
