@@ -2,7 +2,7 @@ import { useState } from 'react';
 import {
   Table, Button, Modal, Form, Input, Select, Switch, Space, Tag, message,
 } from 'antd';
-import GlassCard from '@/components/GlassCard';
+import Panel from '@/components/Panel';
 import HelpTrigger from '@/components/HelpTrigger';
 import HelpPopover from '@/components/HelpPopover';
 import { useStrategies } from '@/hooks/useStrategies';
@@ -126,7 +126,7 @@ export default function StrategyList() {
 
   return (
     <div>
-      <GlassCard title="策略管理" extra={
+      <Panel title="策略管理" extra={
         <Space>
           <HelpTrigger tooltip="AI 解释策略逻辑" onClick={handleOpenHelp} />
           <Button type="primary" icon={<PlusOutlined />} onClick={() => setIsModalOpen(true)}>
@@ -143,7 +143,7 @@ export default function StrategyList() {
           scroll={{ x: 'max-content' }}
           pagination={false}
         />
-      </GlassCard>
+      </Panel>
 
       <Modal
         title="新建策略"
