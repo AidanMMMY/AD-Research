@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Tabs, Row, Col, Statistic, Spin, Descriptions, Radio, Checkbox, Space, Alert, Button, message, Tag, Skeleton, Card } from 'antd';
+import { Tabs, Row, Col, Statistic, Spin, Descriptions, Radio, Checkbox, Space, Alert, Button, message, Tag, Skeleton } from 'antd';
 import { StarOutlined, StarFilled, RobotOutlined, ReadOutlined, SmileOutlined } from '@ant-design/icons';
 import { useETFDetail } from '@/hooks/useETFList';
 import { useETFScore } from '@/hooks/useScores';
@@ -15,7 +15,7 @@ import HelpTrigger from '@/components/HelpTrigger';
 import HelpPopover from '@/components/HelpPopover';
 import { formatPercent } from '@/utils/format';
 import { useSettingsStore } from '@/stores/settings';
-import { getReturnColor } from '@/utils/color';
+import { getReturnColor, getUpColor, getDownColor } from '@/utils/color';
 import { buildETFDetailContext } from '@/utils/helpContext';
 import { getQuickQuestions } from '@/utils/helpPrompts';
 import type { ResearchNote } from '@/api/research';
@@ -48,14 +48,18 @@ const INDICATOR_OPTION_TERMS: Record<string, string> = {
 };
 
 const SENTIMENT_COLORS: Record<string, string> = {
-  bullish: '#22c55e',
-  bearish: '#ef4444',
+  bullish: getUpColor(),
+  positive: getUpColor(),
+  bearish: getDownColor(),
+  negative: getDownColor(),
   neutral: '#eab308',
 };
 
 const SENTIMENT_LABELS: Record<string, string> = {
   bullish: '看多',
+  positive: '看多',
   bearish: '看空',
+  negative: '看空',
   neutral: '中性',
 };
 
@@ -263,7 +267,7 @@ export default function ETFDetail() {
                 <ScoreRadar data={score} />
               </Col>
               <Col xs={24} md={12}>
-                <Card title="评分详情">
+                <Panel variant="minimal" title="评分详情" padding="md">
                   <Descriptions column={1}>
                     <Descriptions.Item label={<HelpPopover termKey="composite_score">综合评分</HelpPopover>}>{score.composite_score}</Descriptions.Item>
                     <Descriptions.Item label={<HelpPopover termKey="rank_overall">全市场排名</HelpPopover>}>{score.rank_overall}</Descriptions.Item>
@@ -274,7 +278,7 @@ export default function ETFDetail() {
                     <Descriptions.Item label={<HelpPopover termKey="score_liquidity">流动性得分</HelpPopover>}>{score.score_liquidity}</Descriptions.Item>
                     <Descriptions.Item label={<HelpPopover termKey="score_trend">趋势得分</HelpPopover>}>{score.score_trend}</Descriptions.Item>
                   </Descriptions>
-                </Card>
+                </Panel>
               </Col>
             </Row>
           </div>
@@ -300,6 +304,7 @@ export default function ETFDetail() {
               {/* Latest Research Note */}
               <Col xs={24} md={12}>
                 <Panel
+                  variant="minimal"
                   title={<span><ReadOutlined style={{ marginRight: 6 }} /><HelpPopover termKey="ai_research_note">AI 研究笔记</HelpPopover></span>}
                   extra={
                     <Button
@@ -321,23 +326,20 @@ export default function ETFDetail() {
                     <div>
                       <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8 }}>
                         {latestNote.sentiment && (
-                          <Tag color={
-                            latestNote.sentiment === 'bullish' ? 'green' :
-                            latestNote.sentiment === 'bearish' ? 'red' : 'gold'
-                          }>
+                          <Tag color={SENTIMENT_COLORS[latestNote.sentiment] || 'var(--text-secondary)'}>
                             {SENTIMENT_LABELS[latestNote.sentiment] || latestNote.sentiment}
                           </Tag>
                         )}
                         {latestNote.confidence && (
-                          <span style={{ fontSize: 11, color: '#64748b' }}>
+                          <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>
                             置信度 {latestNote.confidence}/10
                           </span>
                         )}
-                        <span style={{ fontSize: 11, color: '#475569', marginLeft: 'auto' }}>
+                        <span style={{ fontSize: 11, color: 'var(--text-tertiary)', marginLeft: 'auto' }}>
                           {latestNote.generated_at?.slice(0, 16) || latestNote.created_at?.slice(0, 16)}
                         </span>
                       </div>
-                      <p style={{ fontSize: 13, color: '#e2e8f0', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
+                      <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
                         {latestNote.summary}
                       </p>
                       <Button
@@ -350,7 +352,7 @@ export default function ETFDetail() {
                       </Button>
                     </div>
                   ) : (
-                    <div style={{ textAlign: 'center', padding: 24, color: '#64748b' }}>
+                    <div style={{ textAlign: 'center', padding: 24, color: 'var(--text-tertiary)' }}>
                       <RobotOutlined style={{ fontSize: 32, marginBottom: 8, display: 'block' }} />
                       <p>暂无AI研报</p>
                       <p style={{ fontSize: 12 }}>点击上方"生成研报"按钮开始分析</p>
@@ -361,18 +363,19 @@ export default function ETFDetail() {
 
               {/* Sentiment Gauge */}
               <Col xs={24} md={12}>
-                <Card title={<span><SmileOutlined style={{ marginRight: 6 }} /><HelpPopover termKey="market_sentiment">市场情绪</HelpPopover></span>}>
+                <Panel
+                  variant="minimal"
+                  title={<span><SmileOutlined style={{ marginRight: 6 }} /><HelpPopover termKey="market_sentiment">市场情绪</HelpPopover></span>}
+                  padding="md"
+                >
                   {sentiment ? (
                     <div style={{ textAlign: 'center' }}>
                       {/* Score display */}
-                      <div style={{ fontSize: 48, fontWeight: 700, color: SENTIMENT_COLORS[sentiment.label] || '#94a3b8', fontFamily: "'SF Mono', monospace" }}>
+                      <div style={{ fontSize: 48, fontWeight: 700, color: SENTIMENT_COLORS[sentiment.label] || 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>
                         {sentiment.avg_score.toFixed(2)}
                       </div>
                       <Tag
-                        color={
-                          sentiment.label === 'positive' ? 'green' :
-                          sentiment.label === 'negative' ? 'red' : 'gold'
-                        }
+                        color={SENTIMENT_COLORS[sentiment.label] || 'var(--text-secondary)'}
                         style={{ fontSize: 13, padding: '2px 12px', marginTop: 4 }}
                       >
                         {SENTIMENT_LABELS[sentiment.label] || sentiment.label}
@@ -385,28 +388,28 @@ export default function ETFDetail() {
 
                       {/* Counts */}
                       <div style={{ display: 'flex', justifyContent: 'center', gap: 24, marginTop: 16 }}>
-                        <span style={{ color: '#22c55e', fontSize: 13 }}>正面 {sentiment.positive_count}</span>
+                        <span style={{ color: getUpColor(), fontSize: 13 }}>正面 {sentiment.positive_count}</span>
                         <span style={{ color: '#eab308', fontSize: 13 }}>中性 {sentiment.neutral_count}</span>
-                        <span style={{ color: '#ef4444', fontSize: 13 }}>负面 {sentiment.negative_count}</span>
+                        <span style={{ color: getDownColor(), fontSize: 13 }}>负面 {sentiment.negative_count}</span>
                       </div>
-                      <div style={{ fontSize: 12, color: '#475569', marginTop: 8 }}>
+                      <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 8 }}>
                         共 {sentiment.total_articles} 篇 · 近 {sentiment.period_days} 天
                       </div>
                     </div>
                   ) : (
-                    <div style={{ textAlign: 'center', padding: 24, color: '#64748b' }}>
+                    <div style={{ textAlign: 'center', padding: 24, color: 'var(--text-tertiary)' }}>
                       <SmileOutlined style={{ fontSize: 32, marginBottom: 8, display: 'block' }} />
                       <p>暂无情绪数据</p>
                       <p style={{ fontSize: 12 }}>访问情绪仪表盘页面采集数据</p>
                     </div>
                   )}
-                </Card>
+                </Panel>
               </Col>
             </Row>
           )}
 
           {/* Quick Chat Button */}
-          <Panel style={{ marginTop: 'var(--space-4)', textAlign: 'center' }} padding="md">
+          <Panel variant="minimal" style={{ marginTop: 'var(--space-4)', textAlign: 'center' }} padding="md">
             <RobotOutlined style={{ fontSize: 20, color: 'var(--accent)', marginRight: 8 }} />
             <span style={{ color: 'var(--text-secondary)', marginRight: 12 }}>想问AI关于 {code} 的分析？</span>
             <Button type="primary" icon={<RobotOutlined />} onClick={() => navigate('/chat')}>

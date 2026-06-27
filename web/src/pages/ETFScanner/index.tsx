@@ -35,7 +35,7 @@ export default function ETFScanner() {
           立即扫描
         </Button>
       } style={{ marginBottom: 16 }}>
-        <p style={{ color: '#94a3b8' }}>
+        <p style={{ color: 'var(--text-secondary)' }}>
           对比 akshare 最新标的列表与数据库，自动发现新增、退市、变更的标的。
           定时任务：每周日凌晨 03:00 自动执行。
         </p>
@@ -46,43 +46,44 @@ export default function ETFScanner() {
           {result.error ? (
             <Alert type="error" message={result.error} />
           ) : (
-            <>
-              <Row gutter={[16, 16]}>
-                <Col xs={24} md={8}>
-                  <GlassCard padding="sm">
-                    <Descriptions title="新增标的" column={1} size="small">
-                      {result.new.length > 0 ? result.new.map((e) => (
-                        <Descriptions.Item key={e.code} label={e.code}>
-                          {e.name} ({e.market})
-                        </Descriptions.Item>
-                      )) : <Descriptions.Item>无</Descriptions.Item>}
-                    </Descriptions>
-                  </GlassCard>
-                </Col>
-                <Col xs={24} md={8}>
-                  <GlassCard padding="sm">
-                    <Descriptions title="退市标的" column={1} size="small">
-                      {result.delisted.length > 0 ? result.delisted.map((e) => (
-                        <Descriptions.Item key={e.code} label={e.code}>
-                          {e.name} ({e.market})
-                        </Descriptions.Item>
-                      )) : <Descriptions.Item>无</Descriptions.Item>}
-                    </Descriptions>
-                  </GlassCard>
-                </Col>
-                <Col xs={24} md={8}>
-                  <GlassCard padding="sm">
-                    <Descriptions title="变更标的" column={1} size="small">
-                      {result.changed.length > 0 ? result.changed.map((e) => (
-                        <Descriptions.Item key={e.code} label={e.code}>
-                          {Object.entries(e.changes).map(([k, v]) => `${k}: ${v.old} → ${v.new}`).join(', ')}
-                        </Descriptions.Item>
-                      )) : <Descriptions.Item>无</Descriptions.Item>}
-                    </Descriptions>
-                  </GlassCard>
-                </Col>
-              </Row>
-            </>
+            <Row gutter={[16, 16]}>
+              <Col xs={24} md={8}>
+                <div style={{ paddingRight: 16, borderRight: '1px solid var(--border-default)' }}>
+                  <div style={{ fontSize: 'var(--text-label-size)', color: 'var(--text-tertiary)', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 12 }}>新增标的</div>
+                  <Descriptions column={1} size="small">
+                    {result.new.length > 0 ? result.new.map((e) => (
+                      <Descriptions.Item key={e.code} label={e.code}>
+                        {e.name} ({e.market})
+                      </Descriptions.Item>
+                    )) : <Descriptions.Item>无</Descriptions.Item>}
+                  </Descriptions>
+                </div>
+              </Col>
+              <Col xs={24} md={8}>
+                <div style={{ paddingRight: 16, borderRight: '1px solid var(--border-default)' }}>
+                  <div style={{ fontSize: 'var(--text-label-size)', color: 'var(--text-tertiary)', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 12 }}>退市标的</div>
+                  <Descriptions column={1} size="small">
+                    {result.delisted.length > 0 ? result.delisted.map((e) => (
+                      <Descriptions.Item key={e.code} label={e.code}>
+                        {e.name} ({e.market})
+                      </Descriptions.Item>
+                    )) : <Descriptions.Item>无</Descriptions.Item>}
+                  </Descriptions>
+                </div>
+              </Col>
+              <Col xs={24} md={8}>
+                <div>
+                  <div style={{ fontSize: 'var(--text-label-size)', color: 'var(--text-tertiary)', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 12 }}>变更标的</div>
+                  <Descriptions column={1} size="small">
+                    {result.changed.length > 0 ? result.changed.map((e) => (
+                      <Descriptions.Item key={e.code} label={e.code}>
+                        {Object.entries(e.changes).map(([k, v]) => `${k}: ${v.old} → ${v.new}`).join(', ')}
+                      </Descriptions.Item>
+                    )) : <Descriptions.Item>无</Descriptions.Item>}
+                  </Descriptions>
+                </div>
+              </Col>
+            </Row>
           )}
         </GlassCard>
       )}

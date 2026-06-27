@@ -1,5 +1,5 @@
 import React from 'react';
-import Panel from './Panel';
+import Panel, { PanelVariant } from './Panel';
 
 interface GlassCardProps {
   children: React.ReactNode;
@@ -10,11 +10,13 @@ interface GlassCardProps {
   hover?: boolean;
   padding?: 'sm' | 'md' | 'lg';
   glow?: boolean;
+  variant?: PanelVariant;
 }
 
 /**
  * 兼容性包装：GlassCard 现在内部使用 Panel。
  * hover/glow 参数保留但不再产生视觉差异。
+ * 默认 variant 为 minimal，以统一 Swiss Minimal 风格。
  */
 export default function GlassCard({
   children,
@@ -23,6 +25,7 @@ export default function GlassCard({
   className = '',
   style,
   padding = 'md',
+  variant = 'minimal',
 }: GlassCardProps) {
   return (
     <Panel
@@ -30,6 +33,7 @@ export default function GlassCard({
       extra={extra}
       className={`glass-card ${className}`}
       style={style}
+      variant={variant}
       padding={padding}
       data-glass-padding={padding}
     >

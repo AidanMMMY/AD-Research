@@ -38,7 +38,7 @@ export default function ScoreRanking() {
       width: 90,
       render: (v: number) => (
         <span style={{ fontWeight: 700, color: v <= 3 ? 'var(--accent)' : 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>
-          {v <= 3 && '🏆 '}{v}
+          {v}
         </span>
       ),
     },
@@ -73,7 +73,7 @@ export default function ScoreRanking() {
 
   return (
     <div>
-      <Panel style={{ marginBottom: 20 }}>
+      <Panel variant="minimal" style={{ marginBottom: 20 }}>
         <Tabs
           activeKey={String(templateId || templates?.find((t) => t.is_default)?.id || '')}
           onChange={(key) => setTemplateId(Number(key))}
@@ -83,6 +83,7 @@ export default function ScoreRanking() {
       </Panel>
 
       <Panel
+        variant="minimal"
         title={`综合评分 Top ${scoresData?.items.length || 0}`}
         extra={
           <HelpTrigger
