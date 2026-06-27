@@ -152,7 +152,11 @@ if web_dist.exists():
 # Start the background scheduler immediately when the module is loaded.
 # This is more reliable than relying solely on the ASGI startup event,
 # which some deployment configurations may not trigger consistently.
-init_scheduler()
+try:
+    init_scheduler()
+    logging.getLogger(__name__).warning("[Scheduler] Started at module load")
+except Exception as exc:
+    logging.getLogger(__name__).exception("[Scheduler] Failed to start at module load: %s", exc)
 
 
 @app.on_event("startup")
