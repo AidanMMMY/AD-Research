@@ -1,20 +1,35 @@
 import { useParams } from 'react-router-dom';
 import { Row, Col, Statistic, Table, Spin } from 'antd';
 import GlassCard from '@/components/GlassCard';
+import HelpTrigger from '@/components/HelpTrigger';
+import HelpPopover from '@/components/HelpPopover';
 import { useBacktestDetail } from '@/hooks/useBacktests';
+import { useAIHelp } from '@/hooks/useAIHelp';
 import ReactECharts from 'echarts-for-react';
 import type { EChartsOption } from 'echarts';
 import { useIsMobile } from '@/hooks/useBreakpoint';
+import { buildBacktestDetailContext } from '@/utils/helpContext';
+import { getQuickQuestions } from '@/utils/helpPrompts';
 
 export default function BacktestDetail() {
   const { id } = useParams<{ id: string }>();
   const { data, isLoading } = useBacktestDetail(id || '');
+  const { open } = useAIHelp();
   const isMobile = useIsMobile();
 
   if (isLoading) return <Spin size="large" style={{ display: 'block', margin: '100px auto' }} />;
   if (!data) return <div>回测未找到</div>;
 
   const metrics = data.metrics || {};
+
+  const handleOpenHelp = () => {
+    open({
+      pageType: 'backtest_detail',
+      pageTitle: '回测详情',
+      contextData: buildBacktestDetailContext(data),
+      quickQuestions: getQuickQuestions('backtest_detail'),
+    });
+  };
 
   const navData = data.daily_nav || [];
   const navOption: EChartsOption = {
@@ -44,22 +59,26 @@ export default function BacktestDetail() {
 
   return (
     <div>
-      <GlassCard title={`回测详情 #${data.id}`} style={{ marginBottom: 16 }}>
+      <GlassCard
+        title={`回测详情 #${data.id}`}
+        style={{ marginBottom: 16 }}
+        extra={<HelpTrigger tooltip="AI 解释回测指标" onClick={handleOpenHelp} />}
+      >
         <Row gutter={[16, 16]}>
-          <Col xs={12} sm={8}><GlassCard padding="sm"><Statistic title="总收益" value={metrics.total_return} suffix="%" precision={2} /></GlassCard></Col>
-          <Col xs={12} sm={8}><GlassCard padding="sm"><Statistic title="年化收益" value={metrics.annualized_return} suffix="%" precision={2} /></GlassCard></Col>
-          <Col xs={12} sm={8}><GlassCard padding="sm"><Statistic title="最大回撤" value={metrics.max_drawdown} suffix="%" precision={2} /></GlassCard></Col>
-          <Col xs={12} sm={8}><GlassCard padding="sm"><Statistic title="夏普比率" value={metrics.sharpe_ratio} precision={2} /></GlassCard></Col>
-          <Col xs={12} sm={8}><GlassCard padding="sm"><Statistic title="胜率" value={metrics.win_rate} suffix="%" precision={2} /></GlassCard></Col>
-          <Col xs={12} sm={8}><GlassCard padding="sm"><Statistic title="交易次数" value={metrics.trade_count} /></GlassCard></Col>
+          <Col xs={12} sm={8}><GlassCard padding="sm"><Statistic title={<HelpPopover termKey="total_return">总收益</HelpPopover>} value={metrics.total_return} suffix="%" precision={2} /></GlassCard></Col>
+          <Col xs={12} sm={8}><GlassCard padding="sm"><Statistic title={<HelpPopover termKey="annualized_return">年化收益</HelpPopover>} value={metrics.annualized_return} suffix="%" precision={2} /></GlassCard></Col>
+          <Col xs={12} sm={8}><GlassCard padding="sm"><Statistic title={<HelpPopover termKey="max_drawdown_1y">最大回撤</HelpPopover>} value={metrics.max_drawdown} suffix="%" precision={2} /></GlassCard></Col>
+          <Col xs={12} sm={8}><GlassCard padding="sm"><Statistic title={<HelpPopover termKey="sharpe_ratio">夏普比率</HelpPopover>} value={metrics.sharpe_ratio} precision={2} /></GlassCard></Col>
+          <Col xs={12} sm={8}><GlassCard padding="sm"><Statistic title={<HelpPopover termKey="win_rate">胜率</HelpPopover>} value={metrics.win_rate} suffix="%" precision={2} /></GlassCard></Col>
+          <Col xs={12} sm={8}><GlassCard padding="sm"><Statistic title={<HelpPopover termKey="trade_count">交易次数</HelpPopover>} value={metrics.trade_count} /></GlassCard></Col>
         </Row>
       </GlassCard>
 
-      <GlassCard title="净值曲线" style={{ marginBottom: 16 }}>
+      <GlassCard title={<HelpPopover termKey="nav_curve">净值曲线</HelpPopover>} style={{ marginBottom: 16 }}>
         <ReactECharts option={navOption} style={{ height: isMobile ? 250 : 320 }} />
       </GlassCard>
 
-      <GlassCard title="交易记录">
+      <GlassCard title={<HelpPopover termKey="trade_record">交易记录</HelpPopover>} style={{ marginBottom: 16 }}>
         <Table
           dataSource={data.trades || []}
           columns={tradeColumns}

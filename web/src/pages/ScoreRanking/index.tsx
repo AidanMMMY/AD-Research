@@ -2,26 +2,38 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Table, Tabs } from 'antd';
 import { useScores, useScoreTemplates } from '@/hooks/useScores';
+import { useAIHelp } from '@/hooks/useAIHelp';
 import GlassCard from '@/components/GlassCard';
+import HelpTrigger from '@/components/HelpTrigger';
+import HelpPopover from '@/components/HelpPopover';
 import ETFCodeTag from '@/components/ETFCodeTag';
 import ScoreBar from '@/components/ScoreBar';
+import { buildScoreRankingContext } from '@/utils/helpContext';
+import { getQuickQuestions } from '@/utils/helpPrompts';
 
 export default function ScoreRanking() {
   const navigate = useNavigate();
+  const { open } = useAIHelp();
   const [templateId, setTemplateId] = useState<number | undefined>();
   const { data: scoresData } = useScores({ template_id: templateId, limit: 50 });
   const { data: templates } = useScoreTemplates();
 
-  const scoreColumn = (title: string, dataIndex: string, width: number) => ({
-    title,
-    dataIndex,
-    width,
-    render: (v: number) => <span style={{ fontFamily: "'SF Mono', monospace", color: '#94a3b8' }}>{v?.toFixed(1)}</span>,
-  });
+  const activeTemplate = templates?.find((t) =>
+    templateId ? t.id === templateId : t.is_default
+  );
+
+  const handleOpenHelp = () => {
+    open({
+      pageType: 'score_ranking',
+      pageTitle: '评分排名',
+      contextData: buildScoreRankingContext(scoresData, activeTemplate?.name, activeTemplate?.id),
+      quickQuestions: getQuickQuestions('score_ranking'),
+    });
+  };
 
   const columns = [
     {
-      title: '全市场排名',
+      title: <HelpPopover termKey="rank_overall">全市场排名</HelpPopover>,
       dataIndex: 'rank_overall',
       width: 90,
       render: (v: number) => (
@@ -31,7 +43,7 @@ export default function ScoreRanking() {
       ),
     },
     {
-      title: '分类排名',
+      title: <HelpPopover termKey="rank_category">分类排名</HelpPopover>,
       dataIndex: 'rank_category',
       width: 90,
       render: (v: number) => (
@@ -43,15 +55,15 @@ export default function ScoreRanking() {
       render: (_: unknown, record: any) => <ETFCodeTag code={record.etf_code} name={record.etf_name} />,
     },
     {
-      title: '综合评分',
+      title: <HelpPopover termKey="composite_score">综合评分</HelpPopover>,
       render: (_: unknown, record: any) => <ScoreBar score={record.composite_score} />,
       width: 180,
     },
-    scoreColumn('收益', 'score_return', 80),
-    scoreColumn('风险', 'score_risk', 80),
-    scoreColumn('夏普', 'score_sharpe', 80),
-    scoreColumn('流动性', 'score_liquidity', 90),
-    scoreColumn('趋势', 'score_trend', 80),
+    { title: <HelpPopover termKey="score_return">收益</HelpPopover>, dataIndex: 'score_return', width: 80, render: (v: number) => <span style={{ fontFamily: "'SF Mono', monospace", color: '#94a3b8' }}>{v?.toFixed(1)}</span> },
+    { title: <HelpPopover termKey="score_risk">风险</HelpPopover>, dataIndex: 'score_risk', width: 80, render: (v: number) => <span style={{ fontFamily: "'SF Mono', monospace", color: '#94a3b8' }}>{v?.toFixed(1)}</span> },
+    { title: <HelpPopover termKey="score_sharpe">夏普</HelpPopover>, dataIndex: 'score_sharpe', width: 80, render: (v: number) => <span style={{ fontFamily: "'SF Mono', monospace", color: '#94a3b8' }}>{v?.toFixed(1)}</span> },
+    { title: <HelpPopover termKey="score_liquidity">流动性</HelpPopover>, dataIndex: 'score_liquidity', width: 90, render: (v: number) => <span style={{ fontFamily: "'SF Mono', monospace", color: '#94a3b8' }}>{v?.toFixed(1)}</span> },
+    { title: <HelpPopover termKey="score_trend">趋势</HelpPopover>, dataIndex: 'score_trend', width: 80, render: (v: number) => <span style={{ fontFamily: "'SF Mono', monospace", color: '#94a3b8' }}>{v?.toFixed(1)}</span> },
   ];
 
   const tabItems = templates?.map((t) => ({
@@ -70,7 +82,15 @@ export default function ScoreRanking() {
         />
       </GlassCard>
 
-      <GlassCard title={`综合评分 Top ${scoresData?.items.length || 0}`}>
+      <GlassCard
+        title={`综合评分 Top ${scoresData?.items.length || 0}`}
+        extra={
+          <HelpTrigger
+            tooltip="AI 解释评分逻辑"
+            onClick={handleOpenHelp}
+          />
+        }
+      >
         <Table
           dataSource={scoresData?.items || []}
           columns={columns}

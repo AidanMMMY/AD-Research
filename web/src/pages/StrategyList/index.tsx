@@ -3,9 +3,14 @@ import {
   Table, Button, Modal, Form, Input, Select, Switch, Space, Tag, message,
 } from 'antd';
 import GlassCard from '@/components/GlassCard';
+import HelpTrigger from '@/components/HelpTrigger';
+import HelpPopover from '@/components/HelpPopover';
 import { useStrategies } from '@/hooks/useStrategies';
+import { useAIHelp } from '@/hooks/useAIHelp';
 import { PlusOutlined, PlayCircleOutlined, DeleteOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
+import { buildStrategyListContext } from '@/utils/helpContext';
+import { getQuickQuestions } from '@/utils/helpPrompts';
 
 const TYPE_COLORS: Record<string, string> = {
   momentum: 'blue',
@@ -19,13 +24,29 @@ const TYPE_LABELS: Record<string, string> = {
   rsi: 'RSI',
 };
 
+const TYPE_TERM_KEYS: Record<string, string> = {
+  momentum: 'momentum',
+  mean_reversion: 'mean_reversion',
+  rsi: 'rsi_strategy',
+};
+
 export default function StrategyList() {
   const navigate = useNavigate();
+  const { open } = useAIHelp();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState<any>(null);
   const [form] = Form.useForm();
 
   const { strategies, templates, isLoading, create, delete: deleteStrategy } = useStrategies();
+
+  const handleOpenHelp = () => {
+    open({
+      pageType: 'strategy_list',
+      pageTitle: '策略管理',
+      contextData: buildStrategyListContext(strategies, templates),
+      quickQuestions: getQuickQuestions('strategy_list'),
+    });
+  };
 
   const handleCreate = async (values: any) => {
     try {
@@ -71,7 +92,21 @@ export default function StrategyList() {
   const columns = [
     { title: 'ID', dataIndex: 'id', width: 60 },
     { title: '名称', dataIndex: 'name' },
-    { title: '类型', dataIndex: 'strategy_type', render: (v: string) => <Tag color={TYPE_COLORS[v]}>{TYPE_LABELS[v] || v}</Tag> },
+    {
+      title: <HelpPopover termKey="strategy_type">类型</HelpPopover>,
+      dataIndex: 'strategy_type',
+      render: (v: string) => {
+        const termKey = TYPE_TERM_KEYS[v];
+        const label = TYPE_LABELS[v] || v;
+        return termKey ? (
+          <HelpPopover termKey={termKey}>
+            <Tag color={TYPE_COLORS[v]}>{label}</Tag>
+          </HelpPopover>
+        ) : (
+          <Tag color={TYPE_COLORS[v]}>{label}</Tag>
+        );
+      },
+    },
     { title: '状态', dataIndex: 'is_active', render: (v: boolean) => v ? <Tag color="success">启用</Tag> : <Tag>禁用</Tag>, width: 80 },
     {
       title: '操作',
@@ -92,9 +127,12 @@ export default function StrategyList() {
   return (
     <div>
       <GlassCard title="策略管理" extra={
-        <Button type="primary" icon={<PlusOutlined />} onClick={() => setIsModalOpen(true)}>
-          新建策略
-        </Button>
+        <Space>
+          <HelpTrigger tooltip="AI 解释策略逻辑" onClick={handleOpenHelp} />
+          <Button type="primary" icon={<PlusOutlined />} onClick={() => setIsModalOpen(true)}>
+            新建策略
+          </Button>
+        </Space>
       }>
         <Table
           dataSource={strategies}
@@ -115,7 +153,7 @@ export default function StrategyList() {
         width={600}
       >
         <Form form={form} layout="vertical" onFinish={handleCreate}>
-          <Form.Item name="template" label="选择模板" rules={[{ required: true }]}>
+          <Form.Item name="template" label={<HelpPopover termKey="strategy_template">选择模板</HelpPopover>} rules={[{ required: true }]}>
             <Select
               placeholder="选择策略模板"
               onChange={handleTemplateSelect}

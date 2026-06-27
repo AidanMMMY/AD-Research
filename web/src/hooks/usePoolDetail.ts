@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { poolApi } from '@/api';
+import type { PoolUpdate } from '@/types/pool';
 
 export function usePoolList() {
   return useQuery({
@@ -79,6 +80,46 @@ export function useUpdateWeight() {
     onSuccess: (_, vars) => {
       qc.invalidateQueries({ queryKey: ['pool-weights', vars.poolId] });
       qc.invalidateQueries({ queryKey: ['pool-analytics', vars.poolId] });
+    },
+  });
+}
+
+export function useUpdatePool() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ poolId, data }: { poolId: number; data: PoolUpdate }) =>
+      poolApi.update(poolId, data),
+    onSuccess: (_, vars) => {
+      qc.invalidateQueries({ queryKey: ['pool', vars.poolId] });
+      qc.invalidateQueries({ queryKey: ['pools'] });
+    },
+  });
+}
+
+export function useAddPoolMember() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ poolId, etf_code }: { poolId: number; etf_code: string }) =>
+      poolApi.addMember(poolId, etf_code),
+    onSuccess: (_, vars) => {
+      qc.invalidateQueries({ queryKey: ['pool', vars.poolId] });
+      qc.invalidateQueries({ queryKey: ['pool-weights', vars.poolId] });
+      qc.invalidateQueries({ queryKey: ['pool-analytics', vars.poolId] });
+      qc.invalidateQueries({ queryKey: ['pool-correlation', vars.poolId] });
+    },
+  });
+}
+
+export function useRemovePoolMember() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ poolId, etf_code }: { poolId: number; etf_code: string }) =>
+      poolApi.removeMember(poolId, etf_code),
+    onSuccess: (_, vars) => {
+      qc.invalidateQueries({ queryKey: ['pool', vars.poolId] });
+      qc.invalidateQueries({ queryKey: ['pool-weights', vars.poolId] });
+      qc.invalidateQueries({ queryKey: ['pool-analytics', vars.poolId] });
+      qc.invalidateQueries({ queryKey: ['pool-correlation', vars.poolId] });
     },
   });
 }
