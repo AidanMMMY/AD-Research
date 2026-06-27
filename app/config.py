@@ -32,6 +32,10 @@ class Settings(BaseSettings):
     tiingo_api_key: str = ""    # https://www.tiingo.com/account/token (1k/day free)
     fmp_api_key: str = ""       # https://site.financialmodelingprep.com (250/day free)
 
+    # Binance / Crypto (public REST endpoints do not require API key)
+    binance_api_key: str = ""        # https://www.binance.com/en/my/settings/api-management
+    binance_api_secret: str = ""      # Needed only for account/trading endpoints (Phase 3)
+
     # AI / LLM
     deepseek_api_key: str = ""   # https://platform.deepseek.com/
 
@@ -51,6 +55,11 @@ class Settings(BaseSettings):
     # sensitive webhook/email credentials at rest). Kept here rather than
     # AuthSettings because it is not an authentication concern.
     notification_encryption_key: str = ""
+
+    # Deployment dashboard (Vercel-like admin page)
+    github_token: str = ""          # GitHub personal access token for Actions API
+    github_repo: str = ""           # e.g. "owner/repo-name"
+    deploy_docker_socket: str = "/var/run/docker.sock"
 
     # Constants
     api_v1_prefix: str = "/api/v1"
@@ -83,6 +92,26 @@ class AuthSettings(BaseSettings):
 
 
 auth_settings = AuthSettings()
+
+
+class PushSettings(BaseSettings):
+    """APNs & push notification configuration."""
+
+    apns_key_path: str = ""       # Path to .p8 private key
+    apns_key_id: str = ""         # Key ID from Apple Developer
+    apns_team_id: str = ""        # Apple Developer Team ID
+    apns_topic: str = ""          # App Bundle ID
+    apns_use_sandbox: bool = True  # Use sandbox for dev, production for release
+
+    model_config = SettingsConfigDict(
+        env_prefix="APNS_",
+        env_file=".env",
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
+
+
+push_settings = PushSettings()
 
 
 @lru_cache
