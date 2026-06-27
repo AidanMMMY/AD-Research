@@ -1,8 +1,9 @@
 """FastAPI dependency injection utilities.
 
-Provides database session and service instance dependencies for all API routes.
+Provides database session, service instance, and auth dependencies for all API routes.
 """
 
+import contextvars
 from collections.abc import Generator
 
 from fastapi import Depends, HTTPException
@@ -12,7 +13,13 @@ from sqlalchemy.orm import Session
 
 from app.config import auth_settings
 from app.core.database import SessionLocal
+from app.core.redis_client import is_token_blacklisted
 from app.schemas.auth import UserResponse
+
+# Context variable to expose the current request's jti (for logout blacklist)
+_current_jti: contextvars.ContextVar[str | None] = contextvars.ContextVar(
+    "_current_jti", default=None
+)
 from app.services.analysis_service import AnalysisService
 from app.services.attribution_service import AttributionService
 from app.services.backtest_service import BacktestService
@@ -33,6 +40,7 @@ from app.services.strategy_comparison_service import StrategyComparisonService
 from app.services.strategy_service import StrategyService
 
 __all__ = [
+    "_current_jti",
     "get_current_user",
     "get_db",
     "require_admin",
@@ -63,18 +71,32 @@ security = HTTPBearer()
 def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security),
 ) -> UserResponse:
-    """Validate JWT and return the current user, querying the DB for status."""
+    """Validate JWT, check Redis blacklist, and return the current user.
+
+    Also sets _current_jti for use by the logout endpoint.
+    """
+    token = credentials.credentials
+
     try:
         payload = jwt.decode(
-            credentials.credentials,
+            token,
             auth_settings.SECRET_KEY,
             algorithms=["HS256"],
         )
-        username = payload.get("sub")
+        username: str | None = payload.get("sub")
+        jti: str | None = payload.get("jti")
+
         if not username:
             raise HTTPException(status_code=401, detail="Invalid token")
     except JWTError as err:
         raise HTTPException(status_code=401, detail="Invalid token") from err
+
+    # Check token revocation (Redis blacklist)
+    if jti and is_token_blacklisted(jti):
+        raise HTTPException(status_code=401, detail="Token has been revoked")
+
+    # Expose jti for logout
+    _current_jti.set(jti)
 
     db = SessionLocal()
     try:
