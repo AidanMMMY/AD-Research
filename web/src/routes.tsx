@@ -20,9 +20,12 @@ const BacktestList = lazy(() => import('./pages/BacktestList'));
 const BacktestDetail = lazy(() => import('./pages/BacktestDetail'));
 const SignalDashboard = lazy(() => import('./pages/SignalDashboard'));
 const AdminUsers = lazy(() => import('./pages/AdminUsers'));
+const AdminDeployments = lazy(() => import('./pages/AdminDeployments'));
 const ResearchNotes = lazy(() => import('./pages/ResearchNotes'));
 const SentimentDashboard = lazy(() => import('./pages/SentimentDashboard'));
 const AIChat = lazy(() => import('./pages/AIChat'));
+const CryptoList = lazy(() => import('./pages/CryptoList'));
+const CryptoDetail = lazy(() => import('./pages/CryptoDetail'));
 
 export interface RouteConfig {
   path: string;
@@ -61,11 +64,15 @@ export const routes: RouteConfig[] = [
   { path: '/backtests', element: wrap(BacktestList), auth: true, menu: { name: '回测管理', icon: 'ExperimentOutlined' } },
   { path: '/backtests/:id', element: wrap(BacktestDetail), auth: true },
   { path: '/signals', element: wrap(SignalDashboard), auth: true, menu: { name: '交易信号', icon: 'ThunderboltOutlined' } },
+  // ---- 加密货币 ----
+  { path: '/crypto', element: wrap(CryptoList), auth: true, menu: { name: '加密货币', icon: 'BitcoinOutlined', dividerBefore: true } },
+  { path: '/crypto/:code', element: wrap(CryptoDetail), auth: true },
   // ---- AI 研究 ----
-  { path: '/research', element: wrap(ResearchNotes), auth: true, menu: { name: 'AI研究笔记', icon: 'ReadOutlined', dividerBefore: true } },
+  { path: '/research', element: wrap(ResearchNotes), auth: true, menu: { name: 'AI研究笔记', icon: 'ReadOutlined' } },
   { path: '/sentiment', element: wrap(SentimentDashboard), auth: true, menu: { name: '情绪分析', icon: 'SmileOutlined' } },
   { path: '/chat', element: wrap(AIChat), auth: true, menu: { name: 'AI助手', icon: 'RobotOutlined' } },
   { path: '/admin/users', element: wrap(AdminUsers), auth: true, menu: { name: '用户管理', icon: 'TeamOutlined', dividerBefore: true } },
+  { path: '/admin/deployments', element: wrap(AdminDeployments), auth: true, menu: { name: '部署管理', icon: 'CloudServerOutlined' } },
   { path: '/', element: <Navigate to="/dashboard" replace />, auth: true },
 ];
 
