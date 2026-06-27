@@ -24,21 +24,24 @@ export default function StatCard({
       className="stat-card"
       onClick={onClick}
       style={{
-        background: 'transparent',
-        border: bordered ? '1px solid var(--border-default)' : 'none',
-        borderRadius: 0,
-        padding: '20px',
-        transition: 'border-color var(--transition-fast), background var(--transition-fast)',
+        background: 'var(--card-bg)',
+        border: bordered ? '1px solid var(--card-border)' : 'none',
+        borderRadius: 'var(--card-radius)',
+        padding: '24px',
+        boxShadow: 'var(--shadow-card)',
+        transition: 'border-color var(--transition-fast), background var(--transition-fast), box-shadow var(--transition-fast)',
         cursor: onClick ? 'pointer' : 'default',
         position: 'relative',
       }}
       onMouseEnter={(e) => {
         e.currentTarget.style.borderColor = 'var(--border-hover)';
-        e.currentTarget.style.background = 'var(--bg-hover)';
+        e.currentTarget.style.background = 'var(--bg-elevated)';
+        e.currentTarget.style.boxShadow = 'var(--shadow-card-hover)';
       }}
       onMouseLeave={(e) => {
-        e.currentTarget.style.borderColor = 'var(--border-default)';
-        e.currentTarget.style.background = 'transparent';
+        e.currentTarget.style.borderColor = 'var(--card-border)';
+        e.currentTarget.style.background = 'var(--card-bg)';
+        e.currentTarget.style.boxShadow = 'var(--shadow-card)';
       }}
     >
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
@@ -49,8 +52,8 @@ export default function StatCard({
               fontSize: 'var(--text-label-size)',
               color: 'var(--text-tertiary)',
               fontWeight: 500,
-              marginBottom: '10px',
-              letterSpacing: '0.08em',
+              marginBottom: '14px',
+              letterSpacing: '0.12em',
               textTransform: 'uppercase',
             }}
           >
@@ -62,7 +65,7 @@ export default function StatCard({
                 height: '36px',
                 width: '80px',
                 background: 'var(--bg-hover)',
-                borderRadius: '4px',
+                borderRadius: 'var(--radius-md)',
                 animation: 'pulse 1.5s ease-in-out infinite',
               }}
             />
@@ -71,10 +74,10 @@ export default function StatCard({
               <span
                 className="stat-value"
                 style={{
-                  fontSize: 'var(--text-data-lg-size)',
+                  fontSize: 'var(--text-data-xl-size)',
                   fontWeight: 400,
                   color: 'var(--text-primary)',
-                  lineHeight: 1.2,
+                  lineHeight: 1.1,
                   fontFamily: 'var(--font-mono)',
                   letterSpacing: '-0.02em',
                 }}
@@ -100,18 +103,17 @@ export default function StatCard({
           <div
             className="stat-icon"
             style={{
-              width: '40px',
-              height: '40px',
-              borderRadius: 'var(--radius-md)',
-              background: 'var(--bg-input)',
+              width: '44px',
+              height: '44px',
+              borderRadius: 'var(--radius-lg)',
+              background: 'var(--accent-dim)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              fontSize: '18px',
+              fontSize: '20px',
               flexShrink: 0,
               marginLeft: '12px',
               color: 'var(--accent)',
-              border: '1px solid var(--border-default)',
             }}
           >
             {icon}

@@ -33,7 +33,7 @@ export default function ScoreRadar({ data }: ScoreRadarProps) {
       },
       splitArea: {
         areaStyle: {
-          color: ['rgba(34,211,238,0.05)', 'rgba(85,85,85,0.05)', 'rgba(34,211,238,0.05)', 'rgba(85,85,85,0.05)'],
+          color: ['var(--accent-dim)', 'var(--text-tertiary)', 'var(--accent-dim)', 'var(--text-tertiary)'],
         },
       },
       splitLine: {
@@ -58,9 +58,9 @@ export default function ScoreRadar({ data }: ScoreRadarProps) {
           data.score_trend,
         ],
         name: '评分',
-        areaStyle: { opacity: 0.3, color: '#22d3ee' },
-        lineStyle: { color: '#22d3ee', width: 2 },
-        itemStyle: { color: '#22d3ee' },
+        areaStyle: { opacity: 0.3, color: 'var(--accent)' },
+        lineStyle: { color: 'var(--accent)', width: 2 },
+        itemStyle: { color: 'var(--accent)' },
       }],
     }],
     tooltip: {

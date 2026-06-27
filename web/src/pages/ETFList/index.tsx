@@ -93,6 +93,8 @@ export default function ETFList() {
 
   return (
     <div>
+      <h1 style={{ fontSize: 'var(--text-h1-size)', fontWeight: 500, color: 'var(--text-primary)', margin: '0 0 8px', letterSpacing: '-0.03em' }}>标的列表</h1>
+      <p style={{ margin: '0 0 32px', color: 'var(--text-tertiary)', fontSize: 'var(--text-body-size)' }}>浏览和搜索全市场标的，按市场、分类、类型筛选</p>
       <div
         style={{
           display: 'flex',

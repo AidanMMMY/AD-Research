@@ -10,12 +10,12 @@
   background: var(--bg-base) !important;
 }
 
-/* Card — Minimal, only for real containers */
+/* Card — Hybrid surface (Bento radius + shadow, Swiss hairline) */
 .ant-card {
-  background: transparent !important;
-  border: none !important;
-  border-radius: 0 !important;
-  box-shadow: none !important;
+  background: var(--card-bg) !important;
+  border: 1px solid var(--card-border) !important;
+  border-radius: var(--card-radius) !important;
+  box-shadow: var(--shadow-card) !important;
 }
 
 .ant-card-head {
@@ -23,30 +23,26 @@
   border-bottom: 1px solid var(--border-default) !important;
   color: var(--text-tertiary) !important;
   font-weight: 500;
-  font-size: var(--text-label-size);
+  font-size: var(--text-small-size);
   text-transform: uppercase;
-  letter-spacing: 0.10em;
-  padding: var(--space-4) 0 !important;
+  letter-spacing: 0.12em;
+  padding: var(--space-4) !important;
 }
 
 .ant-card-body {
-  padding: var(--space-4) 0 !important;
-}
-
-.ant-card-small {
-  border-radius: 0 !important;
+  padding: var(--space-4) !important;
 }
 
 .ant-card-small .ant-card-head {
-  padding: var(--space-3) 0 !important;
-  font-size: var(--text-label-size);
+  padding: var(--space-3) var(--space-4) !important;
+  font-size: var(--text-small-size);
 }
 
 .ant-card-small .ant-card-body {
-  padding: var(--space-3) 0 !important;
+  padding: var(--space-3) var(--space-4) !important;
 }
 
-/* Table */
+/* Table — minimal hairlines, no card wrapping */
 .ant-table {
   background: transparent !important;
   color: var(--text-primary);
@@ -58,7 +54,7 @@
   font-weight: 500;
   font-size: var(--text-label-size);
   text-transform: uppercase;
-  letter-spacing: 0.10em;
+  letter-spacing: 0.12em;
   border-bottom: 1px solid var(--border-default) !important;
   padding: var(--space-3) var(--space-4) !important;
 }
@@ -66,7 +62,7 @@
 .ant-table-tbody > tr > td {
   border-bottom: 1px solid var(--border-default) !important;
   color: var(--text-secondary);
-  padding: var(--space-3) var(--space-4) !important;
+  padding: 14px var(--space-4) !important;
   transition: color var(--transition-fast), background var(--transition-fast);
 }
 
@@ -81,18 +77,7 @@
 
 .ant-table-tbody > tr.ant-table-row-selected > td,
 .ant-table-tbody > tr[aria-selected="true"] > td {
-  background: var(--bg-active) !important;
-}
-
-.ant-table-row-selected::before,
-.ant-table-tbody > tr[aria-selected="true"]::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 2px;
-  background: var(--accent);
+  background: var(--accent-dim) !important;
 }
 
 /* Pagination */
@@ -228,7 +213,7 @@
   font-size: var(--text-small-size);
   padding: 2px 8px;
   border: 1px solid var(--border-default);
-  background: var(--bg-input);
+  background: transparent;
   color: var(--text-secondary);
 }
 

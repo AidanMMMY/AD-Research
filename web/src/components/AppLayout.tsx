@@ -21,6 +21,7 @@ import {
   ReadOutlined,
   SmileOutlined,
   RobotOutlined,
+  CloudServerOutlined,
   MenuFoldOutlined,
   MenuUnfoldOutlined,
   MenuOutlined,
@@ -49,6 +50,7 @@ const iconMap: Record<string, React.ComponentType> = {
   ReadOutlined,
   SmileOutlined,
   RobotOutlined,
+  CloudServerOutlined,
 };
 
 const SIDEBAR_WIDTH = 220;
@@ -81,14 +83,14 @@ function SidebarContent({ collapsed, onItemClick }: SidebarContentProps) {
           style={{
             width: 32,
             height: 32,
-            borderRadius: 'var(--radius-md)',
+            borderRadius: 'var(--radius-lg)',
             background: 'var(--accent)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             fontSize: 16,
             fontWeight: 700,
-            color: '#000',
+            color: '#0a0a0a',
             flexShrink: 0,
           }}
         >
@@ -110,9 +112,9 @@ function SidebarContent({ collapsed, onItemClick }: SidebarContentProps) {
       </div>
 
       {/* Menu Items */}
-      <nav style={{ flex: 1, padding: '16px 12px', overflowY: 'auto' }}>
+      <nav style={{ flex: 1, padding: '12px 8px', overflowY: 'auto' }}>
         {menuRoutes.map((route) => {
-          if (route.path === '/admin/users' && user?.role !== 'admin') {
+          if (route.path.startsWith('/admin/') && user?.role !== 'admin') {
             return null;
           }
 
@@ -141,11 +143,10 @@ function SidebarContent({ collapsed, onItemClick }: SidebarContentProps) {
                 gap: 12,
                 padding: collapsed ? '10px 0' : '10px 14px',
                 marginBottom: 2,
-                borderRadius: 0,
+                borderRadius: 'var(--radius-lg)',
                 cursor: 'pointer',
                 transition: 'all var(--transition-fast)',
                 justifyContent: collapsed ? 'center' : 'flex-start',
-                position: 'relative',
                 color: isActive ? 'var(--text-primary)' : 'var(--text-secondary)',
                 background: isActive ? 'var(--bg-active)' : 'transparent',
               }}
@@ -162,19 +163,6 @@ function SidebarContent({ collapsed, onItemClick }: SidebarContentProps) {
                 }
               }}
             >
-              {isActive && (
-                <div
-                  style={{
-                    position: 'absolute',
-                    left: 0,
-                    top: '50%',
-                    transform: 'translateY(-50%)',
-                    width: 2,
-                    height: 18,
-                    background: 'var(--accent)',
-                  }}
-                />
-              )}
               {Icon && (
                 <span
                   style={{
@@ -192,7 +180,7 @@ function SidebarContent({ collapsed, onItemClick }: SidebarContentProps) {
                 <span
                   style={{
                     fontSize: 14,
-                    fontWeight: isActive ? 600 : 400,
+                    fontWeight: isActive ? 500 : 400,
                     whiteSpace: 'nowrap',
                   }}
                 >

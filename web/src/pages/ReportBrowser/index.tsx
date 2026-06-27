@@ -72,6 +72,8 @@ export default function ReportBrowser() {
 
   return (
     <div>
+      <h1 style={{ fontSize: 'var(--text-h1-size)', fontWeight: 500, color: 'var(--text-primary)', margin: '0 0 8px', letterSpacing: '-0.03em' }}>报告浏览</h1>
+      <p style={{ margin: '0 0 32px', color: 'var(--text-tertiary)', fontSize: 'var(--text-body-size)' }}>浏览和下载已生成的投研报告，支持按标的池定制报告</p>
       <div style={{ marginBottom: 'var(--space-md)', display: 'flex', justifyContent: 'flex-end' }}>
         <Button type="primary" icon={<PlusOutlined />} onClick={() => setIsModalOpen(true)}>
           生成报告

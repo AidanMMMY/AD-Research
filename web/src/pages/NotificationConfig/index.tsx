@@ -148,6 +148,8 @@ export default function NotificationConfigPage() {
 
   return (
     <div>
+      <h1 style={{ fontSize: 'var(--text-h1-size)', fontWeight: 500, color: 'var(--text-primary)', margin: '0 0 8px', letterSpacing: '-0.03em' }}>推送配置</h1>
+      <p style={{ margin: '0 0 32px', color: 'var(--text-tertiary)', fontSize: 'var(--text-body-size)' }}>配置消息推送渠道，支持企业微信、飞书、钉钉 Webhook 和邮件通知</p>
       <GlassCard title="推送配置管理" extra={
         <Button type="primary" icon={<PlusOutlined />} onClick={() => setIsModalOpen(true)}>
           新增配置

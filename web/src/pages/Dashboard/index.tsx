@@ -1,10 +1,6 @@
 import { useNavigate } from 'react-router-dom';
-import { Table, List, Empty, Spin } from 'antd';
+import { Table, List, Spin } from 'antd';
 import {
-  DatabaseOutlined,
-  BarChartOutlined,
-  AppstoreOutlined,
-  FileTextOutlined,
   ArrowUpOutlined,
   ArrowDownOutlined,
   FolderOpenOutlined,
@@ -15,7 +11,6 @@ import { useFavorites } from '@/hooks/useFavorites';
 import { usePoolList } from '@/hooks/usePoolDetail';
 import { statsApi } from '@/api/stats';
 import StatCard from '@/components/StatCard';
-import Panel from '@/components/Panel';
 import ETFCodeTag from '@/components/ETFCodeTag';
 import ReturnTag from '@/components/ReturnTag';
 import ScoreBar from '@/components/ScoreBar';
@@ -79,70 +74,59 @@ export default function Dashboard() {
     },
   ];
 
-  const statCards = [
-    <StatCard
-      title="标的总数"
-      value={stats?.etf_count ?? 0}
-      icon={<DatabaseOutlined style={{ color: 'var(--accent)' }} />}
-      loading={statsLoading}
-      onClick={() => navigate('/etfs')}
-      bordered={false}
-    />,
-    <StatCard
-      title="评分覆盖"
-      value={stats?.score_count ?? 0}
-      suffix={`/ ${stats?.etf_count ?? 0}`}
-      icon={<BarChartOutlined style={{ color: 'var(--accent)' }} />}
-      loading={statsLoading}
-      onClick={() => navigate('/scores')}
-      bordered={false}
-    />,
-    <StatCard
-      title="分类数"
-      value={stats?.category_count ?? 0}
-      icon={<AppstoreOutlined style={{ color: 'var(--accent)' }} />}
-      loading={statsLoading}
-      bordered={false}
-    />,
-    <StatCard
-      title="评分模板"
-      value={stats?.template_count ?? 0}
-      icon={<FileTextOutlined style={{ color: 'var(--accent)' }} />}
-      loading={statsLoading}
-      onClick={() => navigate('/scores')}
-      bordered={false}
-    />,
-  ];
-
   return (
     <div>
-      {/* Stats Hero */}
+      <h1
+        style={{
+          fontSize: 'var(--text-h1-size)',
+          fontWeight: 500,
+          color: 'var(--text-primary)',
+          margin: '0 0 8px',
+          letterSpacing: '-0.03em',
+        }}
+      >
+        首页看板
+      </h1>
+      <p
+        style={{
+          margin: '0 0 32px',
+          color: 'var(--text-tertiary)',
+          fontSize: 'var(--text-body-size)',
+        }}
+      >
+        综合评分、收藏与标的池概览 · {new Date().toISOString().slice(0, 10)}
+      </p>
+
       <div
         style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(4, 1fr)',
-          gap: 0,
-          borderTop: '1px solid var(--border-default)',
-          borderBottom: '1px solid var(--border-default)',
-          marginBottom: 'var(--space-6)',
+          gap: '20px',
+          marginBottom: '28px',
         }}
       >
-        {statCards.map((card, idx) => (
-          <div
-            key={idx}
-            style={{
-              borderRight: idx < 3 ? '1px solid var(--border-default)' : 'none',
-              padding: 'var(--space-4)',
-            }}
-          >
-            {card}
-          </div>
-        ))}
+        <StatCard title="标的总数" value={stats?.etf_count ?? 0} loading={statsLoading} onClick={() => navigate('/etfs')} bordered />
+        <StatCard title="评分覆盖" value={stats?.score_count ?? 0} suffix={`/ ${stats?.etf_count ?? 0}`} loading={statsLoading} onClick={() => navigate('/scores')} bordered />
+        <StatCard title="分类数" value={stats?.category_count ?? 0} loading={statsLoading} bordered />
+        <StatCard title="评分模板" value={stats?.template_count ?? 0} loading={statsLoading} onClick={() => navigate('/scores')} bordered />
       </div>
 
-      {/* Main Content */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: 'var(--space-6)' }}>
-        <Panel title="综合评分 Top 10" variant="minimal" padding="md">
+      <div style={{ display: 'grid', gridTemplateColumns: '1.55fr 1fr', gap: '28px' }}>
+        <div style={{
+          background: 'var(--card-bg)',
+          border: '1px solid var(--card-border)',
+          borderRadius: 'var(--card-radius)',
+          padding: '24px',
+          boxShadow: 'var(--shadow-card)',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
+            <span style={{ fontSize: 'var(--text-small-size)', fontWeight: 500, color: 'var(--text-tertiary)', letterSpacing: '0.12em', textTransform: 'uppercase' }}>
+              综合评分 Top 10
+            </span>
+            <span style={{ fontSize: 'var(--text-small-size)', color: 'var(--text-tertiary)', cursor: 'pointer' }} onClick={() => navigate('/scores')}>
+              查看全部 →
+            </span>
+          </div>
           <Table
             dataSource={scoresData?.items || []}
             columns={scoreColumns}
@@ -150,58 +134,46 @@ export default function Dashboard() {
             size="small"
             scroll={{ x: 'max-content' }}
             pagination={false}
-            onRow={(record) => ({
-              onClick: () => navigate(`/etfs/${record.etf_code}`),
-            })}
+            showHeader={false}
+            onRow={(record) => ({ onClick: () => navigate(`/etfs/${record.etf_code}`) })}
           />
-        </Panel>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-5)' }}>
-          <Panel
-            title="我的收藏"
-            variant="minimal"
-            extra={
-              favCount > 0 ? (
-                <span
-                  style={{ fontSize: 'var(--text-small-size)', color: 'var(--text-secondary)', cursor: 'pointer' }}
-                  onClick={() => navigate('/etfs')}
-                >
-                  查看全部 →
-                </span>
-              ) : null
-            }
-            padding="md"
-          >
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          <div style={{
+            background: 'var(--card-bg)',
+            border: '1px solid var(--card-border)',
+            borderRadius: 'var(--card-radius)',
+            padding: '24px',
+            boxShadow: 'var(--shadow-card)',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+              <span style={{ fontSize: 'var(--text-small-size)', fontWeight: 500, color: 'var(--text-tertiary)', letterSpacing: '0.12em', textTransform: 'uppercase' }}>
+                我的收藏
+              </span>
+              {favCount > 0 && (
+                <span style={{ fontSize: 'var(--text-small-size)', color: 'var(--text-tertiary)', cursor: 'pointer' }} onClick={() => navigate('/etfs')}>查看全部 →</span>
+              )}
+            </div>
             {favLoading ? (
-              <div style={{ textAlign: 'center', padding: 'var(--space-7)' }}><Spin /></div>
+              <div style={{ textAlign: 'center', padding: '40px 0' }}><Spin /></div>
             ) : favCount === 0 ? (
-              <Empty
-                description="暂无收藏的标的"
-                image={Empty.PRESENTED_IMAGE_SIMPLE}
-                style={{ padding: 'var(--space-5)' }}
-              >
-                <span style={{ fontSize: 'var(--text-small-size)', color: 'var(--text-secondary)' }}>
-                  在详情页点击⭐收藏，这里会显示你关注的标的
-                </span>
-              </Empty>
+              <div style={{ textAlign: 'center', padding: '44px 0', color: 'var(--text-tertiary)' }}>
+                <div style={{ fontSize: 'var(--text-body-size)', marginBottom: 4 }}>暂无收藏的标的</div>
+                <div style={{ fontSize: 'var(--text-small-size)', color: 'var(--text-muted)' }}>在详情页点击收藏，这里会显示你关注的标的</div>
+              </div>
             ) : (
               <List
                 dataSource={favorites}
                 renderItem={(item: any) => (
-                  <List.Item
-                    onClick={() => navigate(`/etfs/${item.etf_code}`)}
-                    style={{ padding: '12px 0', cursor: 'pointer' }}
-                  >
+                  <List.Item onClick={() => navigate(`/etfs/${item.etf_code}`)} style={{ padding: '12px 0', cursor: 'pointer' }}>
                     <List.Item.Meta
-                      title={
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
-                          <ETFCodeTag code={item.etf_code} name={item.etf_name} />
-                        </div>
-                      }
+                      title={<div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}><ETFCodeTag code={item.etf_code} name={item.etf_name} /></div>}
                       description={
                         <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', marginTop: 'var(--space-1)' }}>
-                          <span style={{ fontSize: 'var(--text-small-size)', color: 'var(--text-secondary)' }}>{item.category}</span>
-                          <span style={{ fontSize: 'var(--text-small-size)', color: 'var(--text-tertiary)' }}>|</span>
-                          <span style={{ fontSize: 'var(--text-small-size)', color: 'var(--text-secondary)' }}>{item.market}</span>
+                          <span style={{ fontSize: 'var(--text-small-size)', color: 'var(--text-tertiary)' }}>{item.category}</span>
+                          <span style={{ fontSize: 'var(--text-small-size)', color: 'var(--text-muted)' }}>|</span>
+                          <span style={{ fontSize: 'var(--text-small-size)', color: 'var(--text-tertiary)' }}>{item.market}</span>
                         </div>
                       }
                     />
@@ -209,61 +181,49 @@ export default function Dashboard() {
                 )}
               />
             )}
-          </Panel>
+          </div>
 
-          <Panel
-            title="我的标的池"
-            variant="minimal"
-            extra={
-              (pools?.length || 0) > 0 ? (
-                <span
-                  style={{ fontSize: 'var(--text-small-size)', color: 'var(--text-secondary)', cursor: 'pointer' }}
-                  onClick={() => navigate('/pools')}
-                >
-                  查看全部 →
-                </span>
-              ) : null
-            }
-            padding="md"
-          >
+          <div style={{
+            background: 'var(--card-bg)',
+            border: '1px solid var(--card-border)',
+            borderRadius: 'var(--card-radius)',
+            padding: '24px',
+            boxShadow: 'var(--shadow-card)',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+              <span style={{ fontSize: 'var(--text-small-size)', fontWeight: 500, color: 'var(--text-tertiary)', letterSpacing: '0.12em', textTransform: 'uppercase' }}>
+                我的标的池
+              </span>
+              {(pools?.length || 0) > 0 && (
+                <span style={{ fontSize: 'var(--text-small-size)', color: 'var(--text-tertiary)', cursor: 'pointer' }} onClick={() => navigate('/pools')}>查看全部 →</span>
+              )}
+            </div>
             {poolsLoading ? (
-              <div style={{ textAlign: 'center', padding: 'var(--space-7)' }}><Spin /></div>
+              <div style={{ textAlign: 'center', padding: '40px 0' }}><Spin /></div>
             ) : (pools?.length || 0) === 0 ? (
-              <Empty
-                description="暂无标的池"
-                image={Empty.PRESENTED_IMAGE_SIMPLE}
-                style={{ padding: 'var(--space-5)' }}
-              >
-                <span style={{ fontSize: 'var(--text-small-size)', color: 'var(--text-secondary)' }}>
-                  在标的池管理中创建池并添加标的，这里会汇总展示
-                </span>
-              </Empty>
+              <div style={{ textAlign: 'center', padding: '44px 0', color: 'var(--text-tertiary)' }}>
+                <div style={{ fontSize: 'var(--text-body-size)', marginBottom: 4 }}>暂无标的池</div>
+                <div style={{ fontSize: 'var(--text-small-size)', color: 'var(--text-muted)' }}>在标的池管理中创建池并添加标的，这里会汇总展示</div>
+              </div>
             ) : (
               <List
                 dataSource={pools?.slice(0, 6) || []}
                 renderItem={(pool: any) => (
-                  <List.Item
-                    onClick={() => navigate(`/pools/${pool.id}`)}
-                    style={{ padding: '10px 0', cursor: 'pointer' }}
-                  >
+                  <List.Item onClick={() => navigate(`/pools/${pool.id}`)} style={{ padding: '12px 0', cursor: 'pointer' }}>
                     <List.Item.Meta
                       title={
                         <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
                           <FolderOpenOutlined style={{ color: 'var(--accent)', fontSize: 'var(--text-body-size)' }} />
-                          <span style={{ fontSize: 'var(--text-body-size)', color: 'var(--text-primary)', fontWeight: 500 }}>
-                            {pool.name}
-                          </span>
+                          <span style={{ fontSize: 'var(--text-body-size)', color: 'var(--text-primary)', fontWeight: 500 }}>{pool.name}</span>
                         </div>
                       }
                       description={
                         <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', marginTop: 'var(--space-1)' }}>
-                          <span style={{ fontSize: 'var(--text-small-size)', color: 'var(--text-secondary)' }}>
-                            {pool.members?.length || 0} 只标的
-                          </span>
+                          <span style={{ fontSize: 'var(--text-small-size)', color: 'var(--text-tertiary)' }}>{pool.members?.length || 0} 只标的</span>
                           {pool.description && (
                             <>
-                              <span style={{ fontSize: 'var(--text-small-size)', color: 'var(--text-tertiary)' }}>|</span>
-                              <span style={{ fontSize: 'var(--text-small-size)', color: 'var(--text-secondary)' }}>{pool.description}</span>
+                              <span style={{ fontSize: 'var(--text-small-size)', color: 'var(--text-muted)' }}>|</span>
+                              <span style={{ fontSize: 'var(--text-small-size)', color: 'var(--text-tertiary)' }}>{pool.description}</span>
                             </>
                           )}
                         </div>
@@ -273,7 +233,7 @@ export default function Dashboard() {
                 )}
               />
             )}
-          </Panel>
+          </div>
         </div>
       </div>
     </div>

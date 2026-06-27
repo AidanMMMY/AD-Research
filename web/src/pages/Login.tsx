@@ -40,47 +40,21 @@ export default function Login() {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        background: 'linear-gradient(135deg, #070b14 0%, #0f1729 50%, #1e1b4b 100%)',
+        background: 'linear-gradient(180deg, var(--bg-base) 0%, var(--bg-elevated) 100%)',
         position: 'relative',
         overflow: 'hidden',
       }}
     >
-      {/* Background decorative elements */}
-      <div
-        style={{
-          position: 'absolute',
-          top: '10%',
-          left: '10%',
-          width: 300,
-          height: 300,
-          borderRadius: '50%',
-          background: 'radial-gradient(circle, rgba(99,102,241,0.15) 0%, transparent 70%)',
-          filter: 'blur(40px)',
-        }}
-      />
-      <div
-        style={{
-          position: 'absolute',
-          bottom: '10%',
-          right: '10%',
-          width: 400,
-          height: 400,
-          borderRadius: '50%',
-          background: 'radial-gradient(circle, rgba(6,182,212,0.1) 0%, transparent 70%)',
-          filter: 'blur(50px)',
-        }}
-      />
-
       <div
         style={{
           width: 420,
           padding: '48px 40px',
-          background: 'rgba(255, 255, 255, 0.03)',
+          background: 'var(--card-bg)',
           backdropFilter: 'blur(20px)',
           WebkitBackdropFilter: 'blur(20px)',
-          border: '1px solid rgba(255, 255, 255, 0.08)',
-          borderRadius: 24,
-          boxShadow: '0 8px 48px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255,255,255,0.04)',
+          border: '1px solid var(--card-border)',
+          borderRadius: 'var(--card-radius)',
+          boxShadow: 'var(--shadow-card)',
           position: 'relative',
           zIndex: 1,
         }}
@@ -92,12 +66,11 @@ export default function Login() {
               width: 64,
               height: 64,
               borderRadius: 20,
-              background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
+              background: 'var(--accent)',
               display: 'inline-flex',
               alignItems: 'center',
               justifyContent: 'center',
               marginBottom: 20,
-              boxShadow: '0 0 32px rgba(99, 102, 241, 0.4)',
             }}
           >
             <StockOutlined style={{ fontSize: 32, color: '#fff' }} />
@@ -106,19 +79,21 @@ export default function Login() {
             style={{
               fontSize: 24,
               fontWeight: 700,
-              color: '#f1f5f9',
+              color: 'var(--text-primary)',
               margin: '0 0 8px 0',
               letterSpacing: '1px',
             }}
           >
             AD-Research
           </h1>
-          <p style={{ fontSize: 14, color: '#64748b', margin: 0 }}>
+          <p style={{ fontSize: 14, color: 'var(--text-secondary)', margin: 0 }}>
             全市场数据分析与投研工具
           </p>
         </div>
 
-        <h2 style={{ textAlign: 'center', marginBottom: 24, color: '#e2e8f0', fontSize: 16, fontWeight: 500 }}>账户密码登录</h2>
+        <h2 style={{ textAlign: 'center', marginBottom: 24, color: 'var(--text-primary)', fontSize: 16, fontWeight: 500 }}>
+          账户密码登录
+        </h2>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div
@@ -127,13 +102,13 @@ export default function Login() {
               alignItems: 'center',
               gap: 12,
               padding: '12px 16px',
-              background: 'rgba(255, 255, 255, 0.04)',
-              border: '1px solid rgba(255, 255, 255, 0.08)',
-              borderRadius: 12,
+              background: 'var(--bg-input)',
+              border: '1px solid var(--border-default)',
+              borderRadius: 'var(--radius-lg)',
               transition: 'all 200ms',
             }}
           >
-            <UserOutlined style={{ color: '#64748b', fontSize: 16 }} />
+            <UserOutlined style={{ color: 'var(--text-secondary)', fontSize: 16 }} />
             <input
               type="text"
               placeholder="用户名"
@@ -145,7 +120,7 @@ export default function Login() {
                 background: 'transparent',
                 border: 'none',
                 outline: 'none',
-                color: '#f1f5f9',
+                color: 'var(--text-primary)',
                 fontSize: 14,
                 fontFamily: 'inherit',
               }}
@@ -158,13 +133,13 @@ export default function Login() {
               alignItems: 'center',
               gap: 12,
               padding: '12px 16px',
-              background: 'rgba(255, 255, 255, 0.04)',
-              border: '1px solid rgba(255, 255, 255, 0.08)',
-              borderRadius: 12,
+              background: 'var(--bg-input)',
+              border: '1px solid var(--border-default)',
+              borderRadius: 'var(--radius-lg)',
               transition: 'all 200ms',
             }}
           >
-            <LockOutlined style={{ color: '#64748b', fontSize: 16 }} />
+            <LockOutlined style={{ color: 'var(--text-secondary)', fontSize: 16 }} />
             <input
               type="password"
               placeholder="密码"
@@ -176,7 +151,7 @@ export default function Login() {
                 background: 'transparent',
                 border: 'none',
                 outline: 'none',
-                color: '#f1f5f9',
+                color: 'var(--text-primary)',
                 fontSize: 14,
                 fontFamily: 'inherit',
               }}
@@ -190,25 +165,24 @@ export default function Login() {
               width: '100%',
               padding: '14px',
               marginTop: 8,
-              borderRadius: 12,
+              borderRadius: 'var(--radius-lg)',
               border: 'none',
-              background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
+              background: 'var(--accent)',
               color: '#fff',
               fontSize: 15,
               fontWeight: 600,
               cursor: loading ? 'not-allowed' : 'pointer',
               opacity: loading ? 0.7 : 1,
               transition: 'all 200ms',
-              boxShadow: '0 4px 16px rgba(99, 102, 241, 0.3)',
             }}
             onMouseEnter={(e) => {
               if (!loading) {
-                e.currentTarget.style.boxShadow = '0 6px 24px rgba(99, 102, 241, 0.5)';
+                e.currentTarget.style.opacity = '0.9';
                 e.currentTarget.style.transform = 'translateY(-1px)';
               }
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.boxShadow = '0 4px 16px rgba(99, 102, 241, 0.3)';
+              e.currentTarget.style.opacity = '1';
               e.currentTarget.style.transform = 'translateY(0)';
             }}
           >

@@ -66,7 +66,7 @@ export default function CorrelationHeatmap({ codes, matrix }: CorrelationHeatmap
       left: 'center',
       bottom: 0,
       textStyle: { color: 'var(--text-secondary)', fontSize: isMobile ? 10 : 12 },
-      inRange: { color: ['#22c55e', '#0a0a0a', '#ef4444'] },
+      inRange: { color: ['var(--color-fall)', 'var(--bg-base)', 'var(--color-rise)'] },
     },
     series: [{
       type: 'heatmap',
