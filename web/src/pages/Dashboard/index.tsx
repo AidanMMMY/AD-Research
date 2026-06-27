@@ -112,8 +112,7 @@ export default function Dashboard() {
           <GradientStatCard
             title="标的总数"
             value={stats?.etf_count ?? 0}
-            icon={<DatabaseOutlined style={{ color: '#818cf8' }} />}
-            gradient="purple"
+            icon={<DatabaseOutlined style={{ color: 'var(--accent)' }} />}
             loading={statsLoading}
             onClick={() => navigate('/etfs')}
           />
@@ -123,8 +122,7 @@ export default function Dashboard() {
             title="评分覆盖"
             value={stats?.score_count ?? 0}
             suffix={`/ ${stats?.etf_count ?? 0}`}
-            icon={<BarChartOutlined style={{ color: '#06b6d4' }} />}
-            gradient="cyan"
+            icon={<BarChartOutlined style={{ color: 'var(--accent)' }} />}
             loading={statsLoading}
             onClick={() => navigate('/scores')}
           />
@@ -133,8 +131,7 @@ export default function Dashboard() {
           <GradientStatCard
             title="分类数"
             value={stats?.category_count ?? 0}
-            icon={<AppstoreOutlined style={{ color: '#22c55e' }} />}
-            gradient="green"
+            icon={<AppstoreOutlined style={{ color: 'var(--accent)' }} />}
             loading={statsLoading}
           />
         </Col>
@@ -142,8 +139,7 @@ export default function Dashboard() {
           <GradientStatCard
             title="评分模板"
             value={stats?.template_count ?? 0}
-            icon={<FileTextOutlined style={{ color: '#f59e0b' }} />}
-            gradient="orange"
+            icon={<FileTextOutlined style={{ color: 'var(--accent)' }} />}
             loading={statsLoading}
             onClick={() => navigate('/scores')}
           />
