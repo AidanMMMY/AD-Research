@@ -1,29 +1,31 @@
 import React from 'react';
 
-interface GradientStatCardProps {
+interface StatCardProps {
   title: string;
   value: string | number;
   suffix?: string;
   icon?: React.ReactNode;
   loading?: boolean;
   onClick?: () => void;
+  bordered?: boolean;
 }
 
-export default function GradientStatCard({
+export default function StatCard({
   title,
   value,
   suffix,
   icon,
   loading = false,
   onClick,
-}: GradientStatCardProps) {
+  bordered = true,
+}: StatCardProps) {
   return (
     <div
-      className="gradient-stat-card"
+      className="stat-card"
       onClick={onClick}
       style={{
         background: 'transparent',
-        border: '1px solid var(--border-default)',
+        border: bordered ? '1px solid var(--border-default)' : 'none',
         borderRadius: 0,
         padding: '20px',
         transition: 'border-color var(--transition-fast), background var(--transition-fast)',
@@ -42,7 +44,7 @@ export default function GradientStatCard({
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
         <div style={{ flex: 1 }}>
           <div
-            className="gradient-stat-title"
+            className="stat-title"
             style={{
               fontSize: 'var(--text-label-size)',
               color: 'var(--text-tertiary)',
@@ -67,7 +69,7 @@ export default function GradientStatCard({
           ) : (
             <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px' }}>
               <span
-                className="gradient-stat-value"
+                className="stat-value"
                 style={{
                   fontSize: 'var(--text-data-lg-size)',
                   fontWeight: 400,
@@ -81,7 +83,7 @@ export default function GradientStatCard({
               </span>
               {suffix && (
                 <span
-                  className="gradient-stat-suffix"
+                  className="stat-suffix"
                   style={{
                     fontSize: 'var(--text-small-size)',
                     color: 'var(--text-tertiary)',
@@ -96,7 +98,7 @@ export default function GradientStatCard({
         </div>
         {icon && (
           <div
-            className="gradient-stat-icon"
+            className="stat-icon"
             style={{
               width: '40px',
               height: '40px',

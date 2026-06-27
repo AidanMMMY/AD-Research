@@ -14,7 +14,7 @@ import { useScores } from '@/hooks/useScores';
 import { useFavorites } from '@/hooks/useFavorites';
 import { usePoolList } from '@/hooks/usePoolDetail';
 import { statsApi } from '@/api/stats';
-import GradientStatCard from '@/components/GradientStatCard';
+import StatCard from '@/components/StatCard';
 import Panel from '@/components/Panel';
 import ETFCodeTag from '@/components/ETFCodeTag';
 import ReturnTag from '@/components/ReturnTag';
@@ -40,13 +40,12 @@ export default function Dashboard() {
         <span
           style={{
             fontSize: 'var(--text-body-size)',
-            fontWeight: 700,
-            color:
-              v <= 3 ? 'var(--accent)' : 'var(--text-secondary)',
+            fontWeight: v <= 3 ? 700 : 500,
+            color: v <= 3 ? 'var(--accent)' : 'var(--text-secondary)',
             fontFamily: 'var(--font-mono)',
           }}
         >
-          {v <= 3 && '🏆 '}{v}
+          {v}
         </span>
       ),
     },
@@ -81,33 +80,37 @@ export default function Dashboard() {
   ];
 
   const statCards = [
-    <GradientStatCard
+    <StatCard
       title="标的总数"
       value={stats?.etf_count ?? 0}
       icon={<DatabaseOutlined style={{ color: 'var(--accent)' }} />}
       loading={statsLoading}
       onClick={() => navigate('/etfs')}
+      bordered={false}
     />,
-    <GradientStatCard
+    <StatCard
       title="评分覆盖"
       value={stats?.score_count ?? 0}
       suffix={`/ ${stats?.etf_count ?? 0}`}
       icon={<BarChartOutlined style={{ color: 'var(--accent)' }} />}
       loading={statsLoading}
       onClick={() => navigate('/scores')}
+      bordered={false}
     />,
-    <GradientStatCard
+    <StatCard
       title="分类数"
       value={stats?.category_count ?? 0}
       icon={<AppstoreOutlined style={{ color: 'var(--accent)' }} />}
       loading={statsLoading}
+      bordered={false}
     />,
-    <GradientStatCard
+    <StatCard
       title="评分模板"
       value={stats?.template_count ?? 0}
       icon={<FileTextOutlined style={{ color: 'var(--accent)' }} />}
       loading={statsLoading}
       onClick={() => navigate('/scores')}
+      bordered={false}
     />,
   ];
 
@@ -139,7 +142,7 @@ export default function Dashboard() {
 
       {/* Main Content */}
       <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: 'var(--space-6)' }}>
-        <Panel title="🏆 综合评分 Top 10" padding="md">
+        <Panel title="综合评分 Top 10" variant="minimal" padding="md">
           <Table
             dataSource={scoresData?.items || []}
             columns={scoreColumns}
@@ -154,7 +157,8 @@ export default function Dashboard() {
         </Panel>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-5)' }}>
           <Panel
-            title="⭐ 我的收藏"
+            title="我的收藏"
+            variant="minimal"
             extra={
               favCount > 0 ? (
                 <span
@@ -208,7 +212,8 @@ export default function Dashboard() {
           </Panel>
 
           <Panel
-            title="📂 我的标的池"
+            title="我的标的池"
+            variant="minimal"
             extra={
               (pools?.length || 0) > 0 ? (
                 <span
