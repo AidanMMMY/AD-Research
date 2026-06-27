@@ -1,7 +1,8 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Table, Space, Select, InputNumber, Button, Tag, Row, Col } from 'antd';
+import { Table, Space, Select, InputNumber, Button, Row, Col } from 'antd';
 import { useScreenResults, useScreenPresets, useScreenCategories } from '@/hooks/useScreenResults';
+import ThemeTag from '@/components/ThemeTag';
 import { useETFMarkets } from '@/hooks/useETFList';
 import { useScreenStore } from '@/stores/screen';
 import { useAIHelp } from '@/hooks/useAIHelp';
@@ -76,8 +77,9 @@ export default function Screen() {
             <HelpPopover termKey="screen_presets">快速筛选</HelpPopover>:
           </span>
           {presets?.map((p) => (
-            <Tag
+            <ThemeTag
               key={p.key}
+              variant={preset === p.key ? 'accent' : 'default'}
               style={{
                 cursor: 'pointer',
                 borderRadius: 'var(--radius-md)',
@@ -91,7 +93,7 @@ export default function Screen() {
               onClick={() => applyPreset(preset === p.key ? null : p.key)}
             >
               {p.name}
-            </Tag>
+            </ThemeTag>
           ))}
         </div>
 

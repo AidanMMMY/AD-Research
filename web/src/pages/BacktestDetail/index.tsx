@@ -41,8 +41,8 @@ export default function BacktestDetail() {
       type: 'line',
       data: navData.map((d: any) => d.nav),
       smooth: true,
-      lineStyle: { color: '#22d3ee', width: 2 },
-      itemStyle: { color: '#22d3ee' },
+      lineStyle: { color: 'var(--accent)', width: 2 },
+      itemStyle: { color: 'var(--accent)' },
       areaStyle: { color: 'rgba(34,211,238,0.08)' },
     }],
   };
@@ -55,7 +55,7 @@ export default function BacktestDetail() {
     {
       title: '收益',
       dataIndex: 'pnl_pct',
-      render: (v: number) => <span style={{ color: v >= 0 ? '#ef4444' : '#22c55e' }}>{v}%</span>,
+      render: (v: number) => <span style={{ color: v >= 0 ? 'var(--color-rise)' : 'var(--color-fall)' }}>{v}%</span>,
     },
   ];
 

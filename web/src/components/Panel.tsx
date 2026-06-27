@@ -65,7 +65,7 @@ export default function Panel({
                 fontSize: 'var(--text-label-size)',
                 fontWeight: 500,
                 color: 'var(--text-tertiary)',
-                letterSpacing: '0.08em',
+                letterSpacing: '0.10em',
                 lineHeight: 1.4,
                 textTransform: 'uppercase',
                 overflow: 'hidden',

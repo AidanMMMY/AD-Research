@@ -311,7 +311,7 @@ export default function PoolDetail() {
               </>
             )}
             {editing && (
-              <span style={{ color: Math.abs(weightSum - 100) < 0.01 ? 'var(--color-rise)' : 'var(--color-fall)' }}>
+              <span style={{ color: Math.abs(weightSum - 100) < 0.01 ? 'var(--text-secondary)' : 'var(--color-error)' }}>
                 当前合计：{weightSum.toFixed(2)}%（保存时自动归一化）
               </span>
             )}

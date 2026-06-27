@@ -25,7 +25,7 @@
   font-weight: 500;
   font-size: var(--text-label-size);
   text-transform: uppercase;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.10em;
   padding: var(--space-4) 0 !important;
 }
 
@@ -58,7 +58,7 @@
   font-weight: 500;
   font-size: var(--text-label-size);
   text-transform: uppercase;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.10em;
   border-bottom: 1px solid var(--border-default) !important;
   padding: var(--space-3) var(--space-4) !important;
 }

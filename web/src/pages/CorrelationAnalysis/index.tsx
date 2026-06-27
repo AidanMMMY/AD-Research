@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react';
-import { Row, Col, Select, Button, Tag, Space, Spin, message } from 'antd';
+import { Row, Col, Select, Button, Space, Spin, message } from 'antd';
 import { FolderOpenOutlined } from '@ant-design/icons';
 import GlassCard from '@/components/GlassCard';
+import ThemeTag from '@/components/ThemeTag';
 import { useQuery } from '@tanstack/react-query';
 import { analysisApi } from '@/api/analysis';
 import { useETFList } from '@/hooks/useETFList';
@@ -106,7 +107,7 @@ export default function CorrelationAnalysis() {
 
   return (
     <div>
-      <GlassCard title="相关性分析配置" style={{ marginBottom: 16 }}>
+      <GlassCard title="相关性分析配置" style={{ marginBottom: 'var(--space-4)' }}>
         <Row gutter={[16, 16]}>
           <Col xs={24} md={12}>
             <div style={{ marginBottom: 8 }}>选择标的（{selectedCodes.length}/20）：</div>
@@ -126,9 +127,10 @@ export default function CorrelationAnalysis() {
             <div style={{ marginTop: 8 }}>
               <Space size={[8, 8]} wrap>
                 {selectedCodes.map((code) => (
-                  <Tag key={code} closable onClose={() => handleRemoveCode(code)}>
+                  <ThemeTag key={code} variant="accent" style={{ cursor: 'default' }}>
                     {code}
-                  </Tag>
+                    <span style={{ marginLeft: 4, cursor: 'pointer' }} onClick={() => handleRemoveCode(code)}>×</span>
+                  </ThemeTag>
                 ))}
               </Space>
             </div>
@@ -180,7 +182,7 @@ export default function CorrelationAnalysis() {
 
       <GlassCard title="相关性热力图">
         {selectedCodes.length < 2 ? (
-          <div style={{ textAlign: 'center', padding: 60, color: '#64748b' }}>
+          <div style={{ textAlign: 'center', padding: 60, color: 'var(--text-secondary)' }}>
             请至少选择2只标的进行分析
           </div>
         ) : isLoading ? (

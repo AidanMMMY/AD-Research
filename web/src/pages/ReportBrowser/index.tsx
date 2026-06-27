@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { Table, Button, Tag, Space, Modal, Form, Select, message } from 'antd';
+import { Table, Button, Space, Modal, Form, Select, message } from 'antd';
 import GlassCard from '@/components/GlassCard';
+import ThemeTag, { ThemeTagVariant } from '@/components/ThemeTag';
 import { EyeOutlined, DownloadOutlined, PlusOutlined } from '@ant-design/icons';
 import { useQuery } from '@tanstack/react-query';
 import { reportApi, poolApi } from '@/api';
@@ -34,13 +35,13 @@ export default function ReportBrowser() {
       refetch();
     } catch {
       message.error('提交失败');
-    }
+    };
   };
 
 
-  const statusColors: Record<string, string> = {
+  const statusVariants: Record<string, ThemeTagVariant> = {
     pending: 'default',
-    running: 'processing',
+    running: 'accent',
     done: 'success',
     failed: 'error',
   };
@@ -53,7 +54,7 @@ export default function ReportBrowser() {
       title: '状态',
       dataIndex: 'status',
       width: 100,
-      render: (v: string) => <Tag color={statusColors[v] || 'default'}>{v}</Tag>,
+      render: (v: string) => <ThemeTag variant={statusVariants[v] || 'default'}>{v}</ThemeTag>,
     },
     {
       title: '操作',
@@ -71,7 +72,7 @@ export default function ReportBrowser() {
 
   return (
     <div>
-      <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'flex-end' }}>
+      <div style={{ marginBottom: 'var(--space-md)', display: 'flex', justifyContent: 'flex-end' }}>
         <Button type="primary" icon={<PlusOutlined />} onClick={() => setIsModalOpen(true)}>
           生成报告
         </Button>
@@ -80,10 +81,10 @@ export default function ReportBrowser() {
       <Table dataSource={reports || []} columns={columns} rowKey="id" scroll={{ x: 'max-content' }} />
 
       {selectedReport?.status === 'done' && (
-        <GlassCard title={`报告预览: ${selectedReport.report_type} (${selectedReport.report_date})`} style={{ marginTop: 16 }}>
+        <GlassCard title={`报告预览: ${selectedReport.report_type} (${selectedReport.report_date})`} style={{ marginTop: 'var(--space-md)' }}>
           <iframe
             src={reportApi.downloadUrl(selectedReport.id)}
-            style={{ width: '100%', height: 600, border: '1px solid rgba(255,255,255,0.06)' }}
+            style={{ width: '100%', height: 600, border: '1px solid var(--border-default)' }}
           />
         </GlassCard>
       )}

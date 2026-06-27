@@ -172,12 +172,12 @@ export default function Dashboard() {
             padding="md"
           >
             {favLoading ? (
-              <div style={{ textAlign: 'center', padding: 40 }}><Spin /></div>
+              <div style={{ textAlign: 'center', padding: 'var(--space-7)' }}><Spin /></div>
             ) : favCount === 0 ? (
               <Empty
                 description="暂无收藏的标的"
                 image={Empty.PRESENTED_IMAGE_SIMPLE}
-                style={{ padding: 20 }}
+                style={{ padding: 'var(--space-5)' }}
               >
                 <span style={{ fontSize: 'var(--text-small-size)', color: 'var(--text-secondary)' }}>
                   在详情页点击⭐收藏，这里会显示你关注的标的
@@ -193,12 +193,12 @@ export default function Dashboard() {
                   >
                     <List.Item.Meta
                       title={
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
                           <ETFCodeTag code={item.etf_code} name={item.etf_name} />
                         </div>
                       }
                       description={
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', marginTop: 'var(--space-1)' }}>
                           <span style={{ fontSize: 'var(--text-small-size)', color: 'var(--text-secondary)' }}>{item.category}</span>
                           <span style={{ fontSize: 'var(--text-small-size)', color: 'var(--text-tertiary)' }}>|</span>
                           <span style={{ fontSize: 'var(--text-small-size)', color: 'var(--text-secondary)' }}>{item.market}</span>
@@ -227,12 +227,12 @@ export default function Dashboard() {
             padding="md"
           >
             {poolsLoading ? (
-              <div style={{ textAlign: 'center', padding: 40 }}><Spin /></div>
+              <div style={{ textAlign: 'center', padding: 'var(--space-7)' }}><Spin /></div>
             ) : (pools?.length || 0) === 0 ? (
               <Empty
                 description="暂无标的池"
                 image={Empty.PRESENTED_IMAGE_SIMPLE}
-                style={{ padding: 20 }}
+                style={{ padding: 'var(--space-5)' }}
               >
                 <span style={{ fontSize: 'var(--text-small-size)', color: 'var(--text-secondary)' }}>
                   在标的池管理中创建池并添加标的，这里会汇总展示
@@ -248,7 +248,7 @@ export default function Dashboard() {
                   >
                     <List.Item.Meta
                       title={
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
                           <FolderOpenOutlined style={{ color: 'var(--accent)', fontSize: 'var(--text-body-size)' }} />
                           <span style={{ fontSize: 'var(--text-body-size)', color: 'var(--text-primary)', fontWeight: 500 }}>
                             {pool.name}
@@ -256,7 +256,7 @@ export default function Dashboard() {
                         </div>
                       }
                       description={
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', marginTop: 'var(--space-1)' }}>
                           <span style={{ fontSize: 'var(--text-small-size)', color: 'var(--text-secondary)' }}>
                             {pool.members?.length || 0} 只标的
                           </span>

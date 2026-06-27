@@ -1,9 +1,10 @@
 import { useMemo } from 'react';
-import { Row, Col, Table, Spin, Tag, Statistic, Alert, Space } from 'antd';
+import { Row, Col, Table, Spin, Statistic, Alert, Space } from 'antd';
 import ReactECharts from 'echarts-for-react';
 import type { EChartsOption } from 'echarts';
 import { useSectorRotation } from '@/hooks/useSectorRotation';
 import ReturnTag from '@/components/ReturnTag';
+import ThemeTag from '@/components/ThemeTag';
 import GlassCard from '@/components/GlassCard';
 import { getReturnColor, getUpColor, getDownColor } from '@/utils/color';
 
@@ -83,10 +84,10 @@ export default function SectorRotation() {
       title: '相对强弱',
       dataIndex: 'relative_strength_1m',
       render: (v: number) => {
-        let color = '#eab308';
-        if (v > 1) color = getUpColor();
-        if (v < 1) color = getDownColor();
-        return <Tag color={color}>{v.toFixed(2)}</Tag>;
+        let variant: 'rise' | 'fall' | 'neutral' = 'neutral';
+        if (v > 1) variant = 'rise';
+        if (v < 1) variant = 'fall';
+        return <ThemeTag variant={variant}>{v.toFixed(2)}</ThemeTag>;
       },
       width: 100,
     },

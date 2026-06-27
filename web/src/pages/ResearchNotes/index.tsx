@@ -1,17 +1,18 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Select, Button, Input, Tag, Skeleton, Modal, Empty } from 'antd';
+import { Select, Button, Input, Skeleton, Modal, Empty } from 'antd';
 import { RobotOutlined, ThunderboltOutlined } from '@ant-design/icons';
 import { researchApi, ResearchNote } from '@/api/research';
 import AISetupBanner from "@/components/AISetupBanner";
 import GlassCard from '@/components/GlassCard';
+import ThemeTag, { ThemeTagVariant } from '@/components/ThemeTag';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
-const SENTIMENT_COLORS: Record<string, string> = {
-  bullish: '#22c55e',
-  bearish: '#ef4444',
-  neutral: '#eab308',
+const SENTIMENT_VARIANTS: Record<string, ThemeTagVariant> = {
+  bullish: 'rise',
+  bearish: 'fall',
+  neutral: 'neutral',
 };
 
 const SENTIMENT_LABELS: Record<string, string> = {
@@ -53,21 +54,20 @@ export default function ResearchNotes() {
     <div>
       <AISetupBanner />
       <GlassCard>
-        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: 'var(--space-sm)', flexWrap: 'wrap', alignItems: 'center' }}>
           <Input
             placeholder="输入标的代码 (如 SPY.US, AAPL.US)"
             value={code}
             onChange={(e) => setCode(e.target.value)}
             onPressEnter={handleGenerate}
             style={{ flex: 1, minWidth: 200 }}
-            prefix={<ThunderboltOutlined style={{ color: '#818cf8' }} />}
+            prefix={<ThunderboltOutlined style={{ color: 'var(--accent)' }} />}
           />
           <Button
             type="primary"
             icon={<RobotOutlined />}
             loading={generateMutation.isPending}
             onClick={handleGenerate}
-            style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', border: 'none' }}
           >
             生成研报
           </Button>
@@ -87,7 +87,7 @@ export default function ResearchNotes() {
         </div>
       </GlassCard>
 
-      <div style={{ marginTop: 20 }}>
+      <div style={{ marginTop: 'var(--space-lg)' }}>
         {isLoading ? (
           <Skeleton active paragraph={{ rows: 8 }} />
         ) : !selectedCode ? (
@@ -99,51 +99,42 @@ export default function ResearchNotes() {
           <Empty description={`暂无 ${selectedCode} 的研报`} style={{ marginTop: 60 }} />
         ) : (
           notes.map((note) => (
-            <GlassCard key={note.id} style={{ marginBottom: 16 }}>
+            <GlassCard key={note.id} style={{ marginBottom: 'var(--space-md)' }}>
               <div
                 style={{ cursor: 'pointer' }}
                 onClick={() => setModalNote(note)}
               >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
-                  <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-                    <span style={{ fontSize: 14, fontWeight: 600, color: '#818cf8', fontFamily: "'SF Mono', monospace" }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 'var(--space-xs)' }}>
+                  <div style={{ display: 'flex', gap: 'var(--space-xs)', alignItems: 'center', flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--accent)', fontFamily: "'SF Mono', monospace" }}>
                       {note.instrument_code}
                     </span>
-                    <Tag style={{ margin: 0, borderRadius: 6, fontSize: 11 }}>{note.note_type}</Tag>
+                    <ThemeTag variant="default">{note.note_type}</ThemeTag>
                     {note.sentiment && (
-                      <span
-                        style={{
-                          fontSize: 12,
-                          fontWeight: 600,
-                          color: SENTIMENT_COLORS[note.sentiment] || '#94a3b8',
-                          padding: '2px 8px',
-                          borderRadius: 6,
-                          background: `${SENTIMENT_COLORS[note.sentiment]}15` || 'rgba(255,255,255,0.04)',
-                        }}
-                      >
+                      <ThemeTag variant={SENTIMENT_VARIANTS[note.sentiment] || 'default'}>
                         {SENTIMENT_LABELS[note.sentiment] || note.sentiment}
-                      </span>
+                      </ThemeTag>
                     )}
                     {note.confidence && (
-                      <span style={{ fontSize: 11, color: '#64748b' }}>
+                      <span style={{ fontSize: 'var(--text-small-size)', color: 'var(--text-tertiary)' }}>
                         置信度 {note.confidence}/10
                       </span>
                     )}
                   </div>
-                  <span style={{ fontSize: 11, color: '#475569', whiteSpace: 'nowrap' }}>
+                  <span style={{ fontSize: 'var(--text-small-size)', color: 'var(--text-tertiary)', whiteSpace: 'nowrap' }}>
                     {note.generated_at?.slice(0, 16) || note.created_at?.slice(0, 16)}
                   </span>
                 </div>
                 {note.summary && (
-                  <p style={{ margin: 0, fontSize: 13, color: '#e2e8f0', lineHeight: 1.6 }}>
+                  <p style={{ margin: 0, fontSize: 13, color: 'var(--text-primary)', lineHeight: 1.6 }}>
                     {note.summary}
                   </p>
                 )}
                 <div
                   style={{
-                    marginTop: 8,
-                    fontSize: 12,
-                    color: '#64748b',
+                    marginTop: 'var(--space-xs)',
+                    fontSize: 'var(--text-small-size)',
+                    color: 'var(--text-tertiary)',
                     cursor: 'pointer',
                     textDecoration: 'underline',
                     textUnderlineOffset: 2,
@@ -162,10 +153,10 @@ export default function ResearchNotes() {
         onCancel={() => setModalNote(null)}
         footer={null}
         width={720}
-        styles={{ body: { background: '#0f1729', maxHeight: '70vh', overflow: 'auto' } }}
+        styles={{ body: { background: 'var(--bg-primary)', maxHeight: '70vh', overflow: 'auto' } }}
       >
         {modalNote && (
-          <div className="markdown-body" style={{ color: '#e2e8f0', fontSize: 14, lineHeight: 1.8 }}>
+          <div className="markdown-body" style={{ color: 'var(--text-primary)', fontSize: 14, lineHeight: 1.8 }}>
             <ReactMarkdown remarkPlugins={[remarkGfm]}>
               {modalNote.content}
             </ReactMarkdown>
