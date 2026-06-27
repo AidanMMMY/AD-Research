@@ -5,13 +5,18 @@ import { StarOutlined, StarFilled, RobotOutlined, ReadOutlined, SmileOutlined } 
 import { useETFDetail } from '@/hooks/useETFList';
 import { useETFScore } from '@/hooks/useScores';
 import { useFavoriteStatus } from '@/hooks/useFavorites';
+import { useAIHelp } from '@/hooks/useAIHelp';
 import { marketApi, researchApi } from '@/api';
 import { useQuery } from '@tanstack/react-query';
 import KLineChart, { DEFAULT_OVERLAYS } from '@/components/KLineChart';
 import ScoreRadar from '@/components/ScoreRadar';
+import HelpTrigger from '@/components/HelpTrigger';
+import HelpPopover from '@/components/HelpPopover';
 import { formatPercent } from '@/utils/format';
 import { useSettingsStore } from '@/stores/settings';
 import { getReturnColor } from '@/utils/color';
+import { buildETFDetailContext } from '@/utils/helpContext';
+import { getQuickQuestions } from '@/utils/helpPrompts';
 import type { ResearchNote } from '@/api/research';
 
 const TIME_RANGE_OPTIONS = [
@@ -31,6 +36,16 @@ const INDICATOR_OPTIONS = [
   { label: 'MACD', value: 'macd' },
 ];
 
+const INDICATOR_OPTION_TERMS: Record<string, string> = {
+  ma5: 'ma5',
+  ma10: 'ma10',
+  ma20: 'ma20',
+  ma60: 'ma60',
+  bb: 'bollinger_bands',
+  rsi: 'rsi14',
+  macd: 'macd',
+};
+
 const SENTIMENT_COLORS: Record<string, string> = {
   bullish: '#22c55e',
   bearish: '#ef4444',
@@ -46,6 +61,7 @@ const SENTIMENT_LABELS: Record<string, string> = {
 export default function ETFDetail() {
   const { code } = useParams<{ code: string }>();
   const navigate = useNavigate();
+  const { open } = useAIHelp();
   const colorConvention = useSettingsStore((s) => s.colorConvention);
   const { data: etf, isLoading: etfLoading, error: etfError } = useETFDetail(code || '');
   const { data: score } = useETFScore(code || '');
@@ -110,6 +126,15 @@ export default function ETFDetail() {
   if (etfError) return <Alert message="加载标的详情失败" description={(etfError as Error).message} type="error" style={{ margin: 24 }} />;
   if (!etf) return <Alert message="标的不存在" description={`未找到代码为 ${code} 的标的`} type="warning" style={{ margin: 24 }} />;
 
+  const handleOpenHelp = () => {
+    open({
+      pageType: 'etf_detail',
+      pageTitle: `ETF 详情 - ${etf.name || code}`,
+      contextData: buildETFDetailContext(code, etf, score, indicator, sentiment, timeRange),
+      quickQuestions: getQuickQuestions('etf_detail'),
+    });
+  };
+
   const safeHistoryItems = historyData?.items || [];
   const latestNote: ResearchNote | null = researchNotes?.[0] || null;
 
@@ -122,7 +147,7 @@ export default function ETFDetail() {
           <Card size="small" style={{ marginBottom: 12 }}>
             <Space size="large" wrap>
               <Space>
-                <span>时间范围：</span>
+                <HelpPopover termKey="time_range">时间范围</HelpPopover>：
                 <Radio.Group
                   value={timeRange}
                   onChange={(e) => setTimeRange(e.target.value)}
@@ -153,7 +178,7 @@ export default function ETFDetail() {
                 >
                   {INDICATOR_OPTIONS.map((opt) => (
                     <Checkbox key={opt.value} value={opt.value}>
-                      {opt.label}
+                      <HelpPopover termKey={INDICATOR_OPTION_TERMS[opt.value]}>{opt.label}</HelpPopover>
                     </Checkbox>
                   ))}
                 </Checkbox.Group>
@@ -174,32 +199,37 @@ export default function ETFDetail() {
       key: 'indicators',
       label: '指标数据',
       children: (
-        <Row gutter={[16, 16]}>
-          <Col xs={12} sm={8} md={6}>
-            <Card><Statistic title="RSI14" value={indicator?.rsi14} precision={1} /></Card>
-          </Col>
-          <Col xs={12} sm={8} md={6}>
-            <Card><Statistic title="夏普1年" value={indicator?.sharpe_1y} precision={2} /></Card>
-          </Col>
-          <Col xs={12} sm={8} md={6}>
-            <Card><Statistic title="波动率20日" value={indicator?.volatility_20d} precision={2} suffix="%" /></Card>
-          </Col>
-          <Col xs={12} sm={8} md={6}>
-            <Card><Statistic title="最大回撤" value={indicator?.max_drawdown_1y} precision={2} suffix="%" /></Card>
-          </Col>
-          <Col xs={12} sm={8} md={6}>
-            <Card><Statistic title="1月收益" value={indicator?.return_1m} precision={2} suffix="%" /></Card>
-          </Col>
-          <Col xs={12} sm={8} md={6}>
-            <Card><Statistic title="3月收益" value={indicator?.return_3m} precision={2} suffix="%" /></Card>
-          </Col>
-          <Col xs={12} sm={8} md={6}>
-            <Card><Statistic title="1年收益" value={indicator?.return_1y} precision={2} suffix="%" /></Card>
-          </Col>
-          <Col xs={12} sm={8} md={6}>
-            <Card><Statistic title="MA5" value={indicator?.ma5} precision={2} /></Card>
-          </Col>
-        </Row>
+        <div>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
+            <HelpTrigger tooltip="AI 解释技术指标" onClick={handleOpenHelp} />
+          </div>
+          <Row gutter={[16, 16]}>
+            <Col xs={12} sm={8} md={6}>
+              <Card><Statistic title={<HelpPopover termKey="rsi14">RSI14</HelpPopover>} value={indicator?.rsi14} precision={1} /></Card>
+            </Col>
+            <Col xs={12} sm={8} md={6}>
+              <Card><Statistic title={<HelpPopover termKey="sharpe_1y">夏普1年</HelpPopover>} value={indicator?.sharpe_1y} precision={2} /></Card>
+            </Col>
+            <Col xs={12} sm={8} md={6}>
+              <Card><Statistic title={<HelpPopover termKey="volatility_20d">波动率20日</HelpPopover>} value={indicator?.volatility_20d} precision={2} suffix="%" /></Card>
+            </Col>
+            <Col xs={12} sm={8} md={6}>
+              <Card><Statistic title={<HelpPopover termKey="max_drawdown_1y">最大回撤</HelpPopover>} value={indicator?.max_drawdown_1y} precision={2} suffix="%" /></Card>
+            </Col>
+            <Col xs={12} sm={8} md={6}>
+              <Card><Statistic title={<HelpPopover termKey="return_1m">1月收益</HelpPopover>} value={indicator?.return_1m} precision={2} suffix="%" /></Card>
+            </Col>
+            <Col xs={12} sm={8} md={6}>
+              <Card><Statistic title={<HelpPopover termKey="return_3m">3月收益</HelpPopover>} value={indicator?.return_3m} precision={2} suffix="%" /></Card>
+            </Col>
+            <Col xs={12} sm={8} md={6}>
+              <Card><Statistic title={<HelpPopover termKey="return_1y">1年收益</HelpPopover>} value={indicator?.return_1y} precision={2} suffix="%" /></Card>
+            </Col>
+            <Col xs={12} sm={8} md={6}>
+              <Card><Statistic title={<HelpPopover termKey="ma5">MA5</HelpPopover>} value={indicator?.ma5} precision={2} /></Card>
+            </Col>
+          </Row>
+        </div>
       ),
     },
     {
@@ -207,25 +237,30 @@ export default function ETFDetail() {
       label: '综合评分',
       children: (
         score ? (
-          <Row gutter={[16, 16]}>
-            <Col xs={24} md={12}>
-              <ScoreRadar data={score} />
-            </Col>
-            <Col xs={24} md={12}>
-              <Card title="评分详情">
-                <Descriptions column={1}>
-                  <Descriptions.Item label="综合评分">{score.composite_score}</Descriptions.Item>
-                  <Descriptions.Item label="全市场排名">{score.rank_overall}</Descriptions.Item>
-                  <Descriptions.Item label="分类排名">{score.rank_category}</Descriptions.Item>
-                  <Descriptions.Item label="收益得分">{score.score_return}</Descriptions.Item>
-                  <Descriptions.Item label="风险得分">{score.score_risk}</Descriptions.Item>
-                  <Descriptions.Item label="夏普得分">{score.score_sharpe}</Descriptions.Item>
-                  <Descriptions.Item label="流动性得分">{score.score_liquidity}</Descriptions.Item>
-                  <Descriptions.Item label="趋势得分">{score.score_trend}</Descriptions.Item>
-                </Descriptions>
-              </Card>
-            </Col>
-          </Row>
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
+              <HelpTrigger tooltip="AI 解释评分维度" onClick={handleOpenHelp} />
+            </div>
+            <Row gutter={[16, 16]}>
+              <Col xs={24} md={12}>
+                <ScoreRadar data={score} />
+              </Col>
+              <Col xs={24} md={12}>
+                <Card title="评分详情">
+                  <Descriptions column={1}>
+                    <Descriptions.Item label={<HelpPopover termKey="composite_score">综合评分</HelpPopover>}>{score.composite_score}</Descriptions.Item>
+                    <Descriptions.Item label={<HelpPopover termKey="rank_overall">全市场排名</HelpPopover>}>{score.rank_overall}</Descriptions.Item>
+                    <Descriptions.Item label={<HelpPopover termKey="rank_category">分类排名</HelpPopover>}>{score.rank_category}</Descriptions.Item>
+                    <Descriptions.Item label={<HelpPopover termKey="score_return">收益得分</HelpPopover>}>{score.score_return}</Descriptions.Item>
+                    <Descriptions.Item label={<HelpPopover termKey="score_risk">风险得分</HelpPopover>}>{score.score_risk}</Descriptions.Item>
+                    <Descriptions.Item label={<HelpPopover termKey="score_sharpe">夏普得分</HelpPopover>}>{score.score_sharpe}</Descriptions.Item>
+                    <Descriptions.Item label={<HelpPopover termKey="score_liquidity">流动性得分</HelpPopover>}>{score.score_liquidity}</Descriptions.Item>
+                    <Descriptions.Item label={<HelpPopover termKey="score_trend">趋势得分</HelpPopover>}>{score.score_trend}</Descriptions.Item>
+                  </Descriptions>
+                </Card>
+              </Col>
+            </Row>
+          </div>
         ) : (
           <div>暂无评分数据</div>
         )
@@ -248,7 +283,7 @@ export default function ETFDetail() {
               {/* Latest Research Note */}
               <Col xs={24} md={12}>
                 <Card
-                  title={<span><ReadOutlined style={{ marginRight: 6 }} />AI 研究笔记</span>}
+                  title={<span><ReadOutlined style={{ marginRight: 6 }} /><HelpPopover termKey="ai_research_note">AI 研究笔记</HelpPopover></span>}
                   extra={
                     <Button
                       size="small"
@@ -309,7 +344,7 @@ export default function ETFDetail() {
 
               {/* Sentiment Gauge */}
               <Col xs={24} md={12}>
-                <Card title={<span><SmileOutlined style={{ marginRight: 6 }} />市场情绪</span>}>
+                <Card title={<span><SmileOutlined style={{ marginRight: 6 }} /><HelpPopover termKey="market_sentiment">市场情绪</HelpPopover></span>}>
                   {sentiment ? (
                     <div style={{ textAlign: 'center' }}>
                       {/* Score display */}

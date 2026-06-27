@@ -1,6 +1,8 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { routes } from './routes';
 import AppLayout from './components/AppLayout';
+import { AIHelpProvider } from './components/AIHelpProvider';
+import AIHelpDrawer from './components/AIHelpDrawer';
 import { useAuthStore } from './stores/auth';
 import { useMe } from './hooks/useAuth';
 import { useEffect } from 'react';
@@ -33,35 +35,38 @@ function AdminRouteGuard({ children }: { children: React.ReactNode }) {
 export default function App() {
   return (
     <BrowserRouter>
-      <Routes>
-        <Route
-          path="/login"
-          element={routes.find((r) => r.path === '/login')?.element}
-        />
-        <Route element={<AppLayout />}>
-          {routes
-            .filter((r) => r.auth !== false && r.path !== '/login')
-            .map((route) => (
-              <Route
-                key={route.path}
-                path={route.path}
-                element={
-                  route.auth ? (
-                    route.path === '/admin/users' ? (
-                      <RequireAuth>
-                        <AdminRouteGuard>{route.element}</AdminRouteGuard>
-                      </RequireAuth>
+      <AIHelpProvider>
+        <Routes>
+          <Route
+            path="/login"
+            element={routes.find((r) => r.path === '/login')?.element}
+          />
+          <Route element={<AppLayout />}>
+            {routes
+              .filter((r) => r.auth !== false && r.path !== '/login')
+              .map((route) => (
+                <Route
+                  key={route.path}
+                  path={route.path}
+                  element={
+                    route.auth ? (
+                      route.path === '/admin/users' ? (
+                        <RequireAuth>
+                          <AdminRouteGuard>{route.element}</AdminRouteGuard>
+                        </RequireAuth>
+                      ) : (
+                        <RequireAuth>{route.element}</RequireAuth>
+                      )
                     ) : (
-                      <RequireAuth>{route.element}</RequireAuth>
+                      route.element
                     )
-                  ) : (
-                    route.element
-                  )
-                }
-              />
-            ))}
-        </Route>
-      </Routes>
+                  }
+                />
+              ))}
+          </Route>
+        </Routes>
+        <AIHelpDrawer />
+      </AIHelpProvider>
     </BrowserRouter>
   );
 }

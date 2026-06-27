@@ -4,9 +4,14 @@ import { Table, Space, Select, InputNumber, Button, Tag, Row, Col } from 'antd';
 import { useScreenResults, useScreenPresets, useScreenCategories } from '@/hooks/useScreenResults';
 import { useETFMarkets } from '@/hooks/useETFList';
 import { useScreenStore } from '@/stores/screen';
+import { useAIHelp } from '@/hooks/useAIHelp';
 import GlassCard from '@/components/GlassCard';
+import HelpTrigger from '@/components/HelpTrigger';
+import HelpPopover from '@/components/HelpPopover';
 import ETFCodeTag from '@/components/ETFCodeTag';
 import ReturnTag from '@/components/ReturnTag';
+import { buildScreenContext } from '@/utils/helpContext';
+import { getQuickQuestions } from '@/utils/helpPrompts';
 
 /** Map market codes to display labels */
 const MARKET_LABELS: Record<string, string> = {
@@ -19,6 +24,7 @@ const MARKET_LABELS: Record<string, string> = {
 
 export default function Screen() {
   const navigate = useNavigate();
+  const { open } = useAIHelp();
   const { filters, preset, setFilter, resetFilters, applyPreset } = useScreenStore();
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(50);
@@ -38,23 +44,37 @@ export default function Screen() {
   const { data: categories } = useScreenCategories();
   const { data: markets } = useETFMarkets();
 
+  const handleOpenHelp = () => {
+    open({
+      pageType: 'screen',
+      pageTitle: '全市场筛选器',
+      contextData: buildScreenContext(filters, preset, results),
+      quickQuestions: getQuickQuestions('screen'),
+    });
+  };
+
   const columns = [
     { title: '代码', dataIndex: 'code', width: 100, render: (v: string, r: any) => <ETFCodeTag code={v} name={r.name} /> },
     { title: '分类', dataIndex: 'category', width: 100, render: (v: string) => v ? <span style={{ fontSize: 12, color: '#94a3b8' }}>{v}</span> : '-' },
-    { title: '评分', dataIndex: 'composite_score', width: 80, render: (v: number) => <span style={{ fontWeight: 700, color: '#818cf8', fontFamily: "'SF Mono', monospace" }}>{v?.toFixed(1)}</span> },
-    { title: 'RSI', dataIndex: 'rsi14', width: 70, render: (v: number) => <span style={{ fontFamily: "'SF Mono', monospace", color: '#94a3b8' }}>{v?.toFixed(1)}</span> },
-    { title: '夏普', dataIndex: 'sharpe_1y', width: 80, render: (v: number) => <span style={{ fontFamily: "'SF Mono', monospace", color: '#94a3b8' }}>{v?.toFixed(2)}</span> },
-    { title: '1月', dataIndex: 'return_1m', width: 100, render: (v: number) => <ReturnTag value={v} /> },
-    { title: '3月', dataIndex: 'return_3m', width: 100, render: (v: number) => <ReturnTag value={v} /> },
-    { title: '1年', dataIndex: 'return_1y', width: 100, render: (v: number) => <ReturnTag value={v} /> },
-    { title: '波动率', dataIndex: 'volatility_20d', width: 90, render: (v: number) => v ? <span style={{ fontFamily: "'SF Mono', monospace", color: '#94a3b8' }}>{v.toFixed(1)}%</span> : '-' },
+    { title: <HelpPopover termKey="composite_score_filter">评分</HelpPopover>, dataIndex: 'composite_score', width: 80, render: (v: number) => <span style={{ fontWeight: 700, color: '#818cf8', fontFamily: "'SF Mono', monospace" }}>{v?.toFixed(1)}</span> },
+    { title: <HelpPopover termKey="rsi14">RSI</HelpPopover>, dataIndex: 'rsi14', width: 70, render: (v: number) => <span style={{ fontFamily: "'SF Mono', monospace", color: '#94a3b8' }}>{v?.toFixed(1)}</span> },
+    { title: <HelpPopover termKey="sharpe_1y">夏普</HelpPopover>, dataIndex: 'sharpe_1y', width: 80, render: (v: number) => <span style={{ fontFamily: "'SF Mono', monospace", color: '#94a3b8' }}>{v?.toFixed(2)}</span> },
+    { title: <HelpPopover termKey="return_1m">1月</HelpPopover>, dataIndex: 'return_1m', width: 100, render: (v: number) => <ReturnTag value={v} /> },
+    { title: <HelpPopover termKey="return_3m">3月</HelpPopover>, dataIndex: 'return_3m', width: 100, render: (v: number) => <ReturnTag value={v} /> },
+    { title: <HelpPopover termKey="return_1y">1年</HelpPopover>, dataIndex: 'return_1y', width: 100, render: (v: number) => <ReturnTag value={v} /> },
+    { title: <HelpPopover termKey="volatility_20d">波动率</HelpPopover>, dataIndex: 'volatility_20d', width: 90, render: (v: number) => v ? <span style={{ fontFamily: "'SF Mono', monospace", color: '#94a3b8' }}>{v.toFixed(1)}%</span> : '-' },
   ];
 
   return (
     <div>
-      <GlassCard>
+      <GlassCard
+        title="筛选条件"
+        extra={<HelpTrigger tooltip="AI 解释筛选逻辑" onClick={handleOpenHelp} />}
+      >
         <div style={{ marginBottom: 16 }}>
-          <span style={{ fontSize: 13, color: '#94a3b8', marginRight: 12 }}>快速筛选:</span>
+          <span style={{ fontSize: 13, color: '#94a3b8', marginRight: 12 }}>
+            <HelpPopover termKey="screen_presets">快速筛选</HelpPopover>:
+          </span>
           {presets?.map((p) => (
             <Tag
               key={p.key}
