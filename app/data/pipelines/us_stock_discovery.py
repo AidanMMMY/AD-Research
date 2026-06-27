@@ -16,7 +16,7 @@ import pandas as pd
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
-from app.data.pipelines.base import ETLPipeline
+from app.data.pipelines.base import ETLPipeline, ETLResult
 from app.data.providers.fmp_provider import FMPProvider
 from app.models.etf import ETFInfo
 
@@ -44,6 +44,35 @@ class USStockDiscoveryPipeline(ETLPipeline):
     def __init__(self, db: Session) -> None:
         provider = FMPProvider()
         super().__init__(provider=provider, db=db)
+
+    def run(self) -> ETLResult:
+        """Override base run() to skip price-bar validation.
+
+        Discovery produces instrument metadata, not OHLCV bars, so the
+        standard four-layer validator does not apply.
+        """
+        result = ETLResult()
+        self._create_log()
+
+        try:
+            raw_df = self.extract()
+            if raw_df.empty:
+                result.warnings.append("Extract returned empty DataFrame")
+
+            records = self.load(raw_df)
+            result.records = records
+            result.success = True
+            self._update_log(status="success", records=records)
+            logger.info("USStockDiscoveryPipeline: Loaded %d stocks", records)
+
+        except Exception as exc:
+            error_msg = str(exc)
+            result.success = False
+            result.error = error_msg
+            self._update_log(status="failed", error=error_msg)
+            logger.error("USStockDiscoveryPipeline failed: %s", error_msg)
+
+        return result
 
     def extract(self) -> pd.DataFrame:
         """Fetch S&P 500 list and return as a DataFrame of stock info.
