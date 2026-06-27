@@ -17,30 +17,28 @@ export default function CategoryPie({ data, mode = 'count' }: CategoryPieProps) 
 
   const option: EChartsOption = {
     backgroundColor: 'transparent',
+    textStyle: { fontFamily: 'var(--font-sans)' },
     tooltip: {
       trigger: 'item',
-      backgroundColor: '#0f1729',
-      borderColor: 'rgba(255,255,255,0.08)',
-      textStyle: { color: '#f1f5f9' },
+      backgroundColor: 'var(--bg-elevated)',
+      borderColor: 'var(--border-default)',
+      textStyle: { color: 'var(--text-primary)' },
     },
     legend: {
       bottom: 0,
       type: 'scroll',
-      textStyle: { color: '#94a3b8', fontSize: isMobile ? 10 : 12 },
-      pageTextStyle: { color: '#94a3b8' },
+      textStyle: { color: 'var(--text-secondary)', fontSize: isMobile ? 10 : 12 },
+      pageTextStyle: { color: 'var(--text-secondary)' },
     },
+    color: ['#22d3ee', '#555555', '#22c55e', '#ef4444', '#eab308', '#0ea5e9', '#8b5cf6', '#f97316'],
     series: [{
       type: 'pie',
       radius: isMobile ? ['30%', '60%'] : ['40%', '70%'],
       avoidLabelOverlap: false,
-      itemStyle: { borderRadius: 8, borderColor: '#0f1729', borderWidth: 2 },
-      label: { show: false, color: '#94a3b8' },
+      itemStyle: { borderRadius: 8, borderColor: 'var(--bg-elevated)', borderWidth: 2 },
+      label: { show: false, color: 'var(--text-secondary)' },
       emphasis: {
-        label: { show: true, fontSize: 14, fontWeight: 'bold', color: '#f1f5f9' },
-        itemStyle: {
-          shadowBlur: 10,
-          shadowColor: 'rgba(0,0,0,0.5)',
-        },
+        label: { show: true, fontSize: 14, fontWeight: 'bold', color: 'var(--text-primary)' },
       },
       data: pieData,
     }],

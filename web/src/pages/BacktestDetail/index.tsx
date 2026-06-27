@@ -1,6 +1,6 @@
 import { useParams } from 'react-router-dom';
-import { Row, Col, Statistic, Table, Spin } from 'antd';
-import GlassCard from '@/components/GlassCard';
+import { Statistic, Table, Spin } from 'antd';
+import Panel from '@/components/Panel';
 import HelpTrigger from '@/components/HelpTrigger';
 import HelpPopover from '@/components/HelpPopover';
 import { useBacktestDetail } from '@/hooks/useBacktests';
@@ -35,13 +35,15 @@ export default function BacktestDetail() {
   const navOption: EChartsOption = {
     tooltip: { trigger: 'axis' },
     grid: { left: 50, right: 20, top: 30, bottom: 30 },
-    xAxis: { type: 'category', data: navData.map((d: any) => d.date) },
-    yAxis: { type: 'value' },
+    xAxis: { type: 'category', data: navData.map((d: any) => d.date), axisLine: { lineStyle: { color: 'var(--text-tertiary)' } } },
+    yAxis: { type: 'value', splitLine: { lineStyle: { color: 'var(--border-default)' } } },
     series: [{
       type: 'line',
       data: navData.map((d: any) => d.nav),
       smooth: true,
-      areaStyle: { opacity: 0.1 },
+      lineStyle: { color: '#22d3ee', width: 2 },
+      itemStyle: { color: '#22d3ee' },
+      areaStyle: { color: 'rgba(34,211,238,0.08)' },
     }],
   };
 
@@ -59,26 +61,35 @@ export default function BacktestDetail() {
 
   return (
     <div>
-      <GlassCard
-        title={`回测详情 #${data.id}`}
-        style={{ marginBottom: 16 }}
-        extra={<HelpTrigger tooltip="AI 解释回测指标" onClick={handleOpenHelp} />}
-      >
-        <Row gutter={[16, 16]}>
-          <Col xs={12} sm={8}><GlassCard padding="sm"><Statistic title={<HelpPopover termKey="total_return">总收益</HelpPopover>} value={metrics.total_return} suffix="%" precision={2} /></GlassCard></Col>
-          <Col xs={12} sm={8}><GlassCard padding="sm"><Statistic title={<HelpPopover termKey="annualized_return">年化收益</HelpPopover>} value={metrics.annualized_return} suffix="%" precision={2} /></GlassCard></Col>
-          <Col xs={12} sm={8}><GlassCard padding="sm"><Statistic title={<HelpPopover termKey="max_drawdown_1y">最大回撤</HelpPopover>} value={metrics.max_drawdown} suffix="%" precision={2} /></GlassCard></Col>
-          <Col xs={12} sm={8}><GlassCard padding="sm"><Statistic title={<HelpPopover termKey="sharpe_ratio">夏普比率</HelpPopover>} value={metrics.sharpe_ratio} precision={2} /></GlassCard></Col>
-          <Col xs={12} sm={8}><GlassCard padding="sm"><Statistic title={<HelpPopover termKey="win_rate">胜率</HelpPopover>} value={metrics.win_rate} suffix="%" precision={2} /></GlassCard></Col>
-          <Col xs={12} sm={8}><GlassCard padding="sm"><Statistic title={<HelpPopover termKey="trade_count">交易次数</HelpPopover>} value={metrics.trade_count} /></GlassCard></Col>
-        </Row>
-      </GlassCard>
+      <Panel title={`回测详情 #${data.id}`} padding="md" style={{ marginBottom: 'var(--space-5)' }} extra={<HelpTrigger tooltip="AI 解释回测指标" onClick={handleOpenHelp} />}>
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(3, 1fr)', gap: 0, borderTop: '1px solid var(--border-default)' }}>
+          {[
+            { title: <HelpPopover termKey="total_return">总收益</HelpPopover>, value: metrics.total_return, suffix: '%' },
+            { title: <HelpPopover termKey="annualized_return">年化收益</HelpPopover>, value: metrics.annualized_return, suffix: '%' },
+            { title: <HelpPopover termKey="max_drawdown_1y">最大回撤</HelpPopover>, value: metrics.max_drawdown, suffix: '%' },
+            { title: <HelpPopover termKey="sharpe_ratio">夏普比率</HelpPopover>, value: metrics.sharpe_ratio },
+            { title: <HelpPopover termKey="win_rate">胜率</HelpPopover>, value: metrics.win_rate, suffix: '%' },
+            { title: <HelpPopover termKey="trade_count">交易次数</HelpPopover>, value: metrics.trade_count, precision: undefined },
+          ].map((m, idx) => (
+            <div
+              key={idx}
+              style={{
+                padding: 'var(--space-4)',
+                borderBottom: '1px solid var(--border-default)',
+                borderRight: (idx + 1) % (isMobile ? 2 : 3) !== 0 ? '1px solid var(--border-default)' : 'none',
+              }}
+            >
+              <Statistic title={m.title} value={m.value} suffix={m.suffix} precision={m.precision !== undefined ? m.precision : 2} />
+            </div>
+          ))}
+        </div>
+      </Panel>
 
-      <GlassCard title={<HelpPopover termKey="nav_curve">净值曲线</HelpPopover>} style={{ marginBottom: 16 }}>
+      <Panel title={<HelpPopover termKey="nav_curve">净值曲线</HelpPopover>} padding="md" style={{ marginBottom: 'var(--space-5)' }}>
         <ReactECharts option={navOption} style={{ height: isMobile ? 250 : 320 }} />
-      </GlassCard>
+      </Panel>
 
-      <GlassCard title={<HelpPopover termKey="trade_record">交易记录</HelpPopover>} style={{ marginBottom: 16 }}>
+      <Panel title={<HelpPopover termKey="trade_record">交易记录</HelpPopover>} padding="md" style={{ marginBottom: 'var(--space-5)' }}>
         <Table
           dataSource={data.trades || []}
           columns={tradeColumns}
@@ -87,7 +98,7 @@ export default function BacktestDetail() {
           scroll={{ x: 'max-content' }}
           pagination={{ pageSize: 10 }}
         />
-      </GlassCard>
+      </Panel>
     </div>
   );
 }

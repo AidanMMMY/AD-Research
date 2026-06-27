@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Card, Tabs, Row, Col, Statistic, Spin, Descriptions, Radio, Checkbox, Space, Alert, Button, message, Tag, Skeleton } from 'antd';
+import { Tabs, Row, Col, Statistic, Spin, Descriptions, Radio, Checkbox, Space, Alert, Button, message, Tag, Skeleton, Card } from 'antd';
 import { StarOutlined, StarFilled, RobotOutlined, ReadOutlined, SmileOutlined } from '@ant-design/icons';
 import { useETFDetail } from '@/hooks/useETFList';
 import { useETFScore } from '@/hooks/useScores';
@@ -10,6 +10,7 @@ import { marketApi, researchApi } from '@/api';
 import { useQuery } from '@tanstack/react-query';
 import KLineChart, { DEFAULT_OVERLAYS } from '@/components/KLineChart';
 import ScoreRadar from '@/components/ScoreRadar';
+import Panel from '@/components/Panel';
 import HelpTrigger from '@/components/HelpTrigger';
 import HelpPopover from '@/components/HelpPopover';
 import { formatPercent } from '@/utils/format';
@@ -144,7 +145,7 @@ export default function ETFDetail() {
       label: 'K线行情',
       children: (
         <div>
-          <Card size="small" style={{ marginBottom: 12 }}>
+          <div style={{ padding: 'var(--space-3) 0', borderBottom: '1px solid var(--border-default)', marginBottom: 'var(--space-4)' }}>
             <Space size="large" wrap>
               <Space>
                 <HelpPopover termKey="time_range">时间范围</HelpPopover>：
@@ -184,7 +185,7 @@ export default function ETFDetail() {
                 </Checkbox.Group>
               </Space>
             </Space>
-          </Card>
+          </div>
           {historyLoading ? <Spin /> : (
             safeHistoryItems.length ? (
               <KLineChart data={safeHistoryItems} overlays={overlays} />
@@ -205,28 +206,44 @@ export default function ETFDetail() {
           </div>
           <Row gutter={[16, 16]}>
             <Col xs={12} sm={8} md={6}>
-              <Card><Statistic title={<HelpPopover termKey="rsi14">RSI14</HelpPopover>} value={indicator?.rsi14} precision={1} /></Card>
+              <div style={{ borderBottom: '1px solid var(--border-default)', padding: 'var(--space-3) 0' }}>
+                <Statistic title={<HelpPopover termKey="rsi14">RSI14</HelpPopover>} value={indicator?.rsi14} precision={1} />
+              </div>
             </Col>
             <Col xs={12} sm={8} md={6}>
-              <Card><Statistic title={<HelpPopover termKey="sharpe_1y">夏普1年</HelpPopover>} value={indicator?.sharpe_1y} precision={2} /></Card>
+              <div style={{ borderBottom: '1px solid var(--border-default)', padding: 'var(--space-3) 0' }}>
+                <Statistic title={<HelpPopover termKey="sharpe_1y">夏普1年</HelpPopover>} value={indicator?.sharpe_1y} precision={2} />
+              </div>
             </Col>
             <Col xs={12} sm={8} md={6}>
-              <Card><Statistic title={<HelpPopover termKey="volatility_20d">波动率20日</HelpPopover>} value={indicator?.volatility_20d} precision={2} suffix="%" /></Card>
+              <div style={{ borderBottom: '1px solid var(--border-default)', padding: 'var(--space-3) 0' }}>
+                <Statistic title={<HelpPopover termKey="volatility_20d">波动率20日</HelpPopover>} value={indicator?.volatility_20d} precision={2} suffix="%" />
+              </div>
             </Col>
             <Col xs={12} sm={8} md={6}>
-              <Card><Statistic title={<HelpPopover termKey="max_drawdown_1y">最大回撤</HelpPopover>} value={indicator?.max_drawdown_1y} precision={2} suffix="%" /></Card>
+              <div style={{ borderBottom: '1px solid var(--border-default)', padding: 'var(--space-3) 0' }}>
+                <Statistic title={<HelpPopover termKey="max_drawdown_1y">最大回撤</HelpPopover>} value={indicator?.max_drawdown_1y} precision={2} suffix="%" />
+              </div>
             </Col>
             <Col xs={12} sm={8} md={6}>
-              <Card><Statistic title={<HelpPopover termKey="return_1m">1月收益</HelpPopover>} value={indicator?.return_1m} precision={2} suffix="%" /></Card>
+              <div style={{ borderBottom: '1px solid var(--border-default)', padding: 'var(--space-3) 0' }}>
+                <Statistic title={<HelpPopover termKey="return_1m">1月收益</HelpPopover>} value={indicator?.return_1m} precision={2} suffix="%" />
+              </div>
             </Col>
             <Col xs={12} sm={8} md={6}>
-              <Card><Statistic title={<HelpPopover termKey="return_3m">3月收益</HelpPopover>} value={indicator?.return_3m} precision={2} suffix="%" /></Card>
+              <div style={{ borderBottom: '1px solid var(--border-default)', padding: 'var(--space-3) 0' }}>
+                <Statistic title={<HelpPopover termKey="return_3m">3月收益</HelpPopover>} value={indicator?.return_3m} precision={2} suffix="%" />
+              </div>
             </Col>
             <Col xs={12} sm={8} md={6}>
-              <Card><Statistic title={<HelpPopover termKey="return_1y">1年收益</HelpPopover>} value={indicator?.return_1y} precision={2} suffix="%" /></Card>
+              <div style={{ borderBottom: '1px solid var(--border-default)', padding: 'var(--space-3) 0' }}>
+                <Statistic title={<HelpPopover termKey="return_1y">1年收益</HelpPopover>} value={indicator?.return_1y} precision={2} suffix="%" />
+              </div>
             </Col>
             <Col xs={12} sm={8} md={6}>
-              <Card><Statistic title={<HelpPopover termKey="ma5">MA5</HelpPopover>} value={indicator?.ma5} precision={2} /></Card>
+              <div style={{ borderBottom: '1px solid var(--border-default)', padding: 'var(--space-3) 0' }}>
+                <Statistic title={<HelpPopover termKey="ma5">MA5</HelpPopover>} value={indicator?.ma5} precision={2} />
+              </div>
             </Col>
           </Row>
         </div>
@@ -282,7 +299,7 @@ export default function ETFDetail() {
             <Row gutter={[16, 16]}>
               {/* Latest Research Note */}
               <Col xs={24} md={12}>
-                <Card
+                <Panel
                   title={<span><ReadOutlined style={{ marginRight: 6 }} /><HelpPopover termKey="ai_research_note">AI 研究笔记</HelpPopover></span>}
                   extra={
                     <Button
@@ -294,11 +311,11 @@ export default function ETFDetail() {
                           message.success('研报生成中，请稍后刷新');
                         }).catch(() => message.error('生成失败'));
                       }}
-                      style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', border: 'none' }}
                     >
                       生成研报
                     </Button>
                   }
+                  padding="md"
                 >
                   {latestNote ? (
                     <div>
@@ -339,7 +356,7 @@ export default function ETFDetail() {
                       <p style={{ fontSize: 12 }}>点击上方"生成研报"按钮开始分析</p>
                     </div>
                   )}
-                </Card>
+                </Panel>
               </Col>
 
               {/* Sentiment Gauge */}
@@ -362,8 +379,8 @@ export default function ETFDetail() {
                       </Tag>
 
                       {/* Score bar */}
-                      <div style={{ margin: '16px auto 0', maxWidth: 240, height: 6, borderRadius: 3, background: 'rgba(255,255,255,0.06)', position: 'relative', overflow: 'hidden' }}>
-                        <div style={{ width: `${((sentiment.avg_score + 1) / 2) * 100}%`, height: '100%', borderRadius: 3, background: `linear-gradient(90deg, #ef4444, #eab308, #22c55e)` }} />
+                      <div style={{ margin: '16px auto 0', maxWidth: 240, height: 6, borderRadius: 3, background: 'var(--bg-input)', position: 'relative', overflow: 'hidden' }}>
+                        <div style={{ width: `${((sentiment.avg_score + 1) / 2) * 100}%`, height: '100%', borderRadius: 3, background: SENTIMENT_COLORS[sentiment.label] || 'var(--text-secondary)' }} />
                       </div>
 
                       {/* Counts */}
@@ -389,18 +406,13 @@ export default function ETFDetail() {
           )}
 
           {/* Quick Chat Button */}
-          <Card style={{ marginTop: 16, textAlign: 'center', background: 'linear-gradient(135deg, rgba(99,102,241,0.06), rgba(139,92,246,0.04))' }}>
-            <RobotOutlined style={{ fontSize: 20, color: '#818cf8', marginRight: 8 }} />
-            <span style={{ color: '#94a3b8', marginRight: 12 }}>想问AI关于 {code} 的分析？</span>
-            <Button
-              type="primary"
-              icon={<RobotOutlined />}
-              onClick={() => navigate('/chat')}
-              style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', border: 'none' }}
-            >
+          <Panel style={{ marginTop: 'var(--space-4)', textAlign: 'center' }} padding="md">
+            <RobotOutlined style={{ fontSize: 20, color: 'var(--accent)', marginRight: 8 }} />
+            <span style={{ color: 'var(--text-secondary)', marginRight: 12 }}>想问AI关于 {code} 的分析？</span>
+            <Button type="primary" icon={<RobotOutlined />} onClick={() => navigate('/chat')}>
               打开AI助手
             </Button>
-          </Card>
+          </Panel>
         </div>
       ),
     },
@@ -408,23 +420,27 @@ export default function ETFDetail() {
 
   return (
     <div>
-      <Card style={{ marginBottom: 16 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+      <div
+        style={{
+          borderBottom: '1px solid var(--border-default)',
+          paddingBottom: 'var(--space-5)',
+          marginBottom: 'var(--space-5)',
+        }}
+      >
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 'var(--space-4)' }}>
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-              <h2 style={{ margin: 0 }}>{etf.code} {etf.name}</h2>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', marginBottom: 'var(--space-2)' }}>
+              <h2 style={{ margin: 0, fontSize: 'var(--text-h1-size)', fontWeight: 500, letterSpacing: '-0.03em' }}>
+                {etf.code} {etf.name}
+              </h2>
               {etf.instrument_type && (
-                <Tag color={etf.instrument_type === 'STOCK' ? 'blue' : 'purple'} style={{ borderRadius: 6 }}>
+                <Tag color={etf.instrument_type === 'STOCK' ? 'blue' : 'purple'}>
                   {etf.instrument_type === 'STOCK' ? '个股' : 'ETF'}
                 </Tag>
               )}
-              {etf.market && (
-                <Tag style={{ borderRadius: 6, background: 'rgba(255,255,255,0.04)', color: '#94a3b8', border: '1px solid rgba(255,255,255,0.08)' }}>
-                  {etf.market}
-                </Tag>
-              )}
+              {etf.market && <Tag>{etf.market}</Tag>}
             </div>
-            <div style={{ color: '#94a3b8', fontSize: 14 }}>
+            <div style={{ color: 'var(--text-secondary)', fontSize: 'var(--text-body-size)' }}>
               {etf.category || '—'}
               {etf.sector && ` | ${etf.sector}`}
               {etf.industry && ` | ${etf.industry}`}
@@ -434,7 +450,7 @@ export default function ETFDetail() {
               {etf.market_cap && ` | 市值: ${etf.market_cap >= 1e12 ? `${(etf.market_cap / 1e12).toFixed(2)}T` : etf.market_cap >= 1e9 ? `${(etf.market_cap / 1e9).toFixed(1)}B` : `${(etf.market_cap / 1e6).toFixed(1)}M`} USD`}
             </div>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-4)' }}>
             <Button
               type={isFavorite ? 'primary' : 'default'}
               icon={isFavorite ? <StarFilled /> : <StarOutlined />}
@@ -445,19 +461,15 @@ export default function ETFDetail() {
             </Button>
             {indicator?.return_1m !== undefined && (
               <div style={{ textAlign: 'right' }}>
-                <div style={{
-                  fontSize: 28,
-                  fontWeight: 'bold',
-                  color: getReturnColor(indicator.return_1m, colorConvention),
-                }}>
+                <div style={{ fontSize: 'var(--text-data-lg-size)', fontWeight: 400, fontFamily: 'var(--font-mono)', color: getReturnColor(indicator.return_1m, colorConvention) }}>
                   {formatPercent(indicator.return_1m)}
                 </div>
-                <div style={{ color: '#94a3b8', fontSize: 12 }}>1月收益</div>
+                <div style={{ color: 'var(--text-tertiary)', fontSize: 'var(--text-small-size)' }}>1月收益</div>
               </div>
             )}
           </div>
         </div>
-      </Card>
+      </div>
 
       <Tabs items={tabItems} defaultActiveKey="kline" />
     </div>

@@ -5,7 +5,7 @@ import { useScreenResults, useScreenPresets, useScreenCategories } from '@/hooks
 import { useETFMarkets } from '@/hooks/useETFList';
 import { useScreenStore } from '@/stores/screen';
 import { useAIHelp } from '@/hooks/useAIHelp';
-import GlassCard from '@/components/GlassCard';
+import Panel from '@/components/Panel';
 import HelpTrigger from '@/components/HelpTrigger';
 import HelpPopover from '@/components/HelpPopover';
 import ETFCodeTag from '@/components/ETFCodeTag';
@@ -55,24 +55,24 @@ export default function Screen() {
 
   const columns = [
     { title: '代码', dataIndex: 'code', width: 100, render: (v: string, r: any) => <ETFCodeTag code={v} name={r.name} /> },
-    { title: '分类', dataIndex: 'category', width: 100, render: (v: string) => v ? <span style={{ fontSize: 12, color: '#94a3b8' }}>{v}</span> : '-' },
-    { title: <HelpPopover termKey="composite_score_filter">评分</HelpPopover>, dataIndex: 'composite_score', width: 80, render: (v: number) => <span style={{ fontWeight: 700, color: '#818cf8', fontFamily: "'SF Mono', monospace" }}>{v?.toFixed(1)}</span> },
-    { title: <HelpPopover termKey="rsi14">RSI</HelpPopover>, dataIndex: 'rsi14', width: 70, render: (v: number) => <span style={{ fontFamily: "'SF Mono', monospace", color: '#94a3b8' }}>{v?.toFixed(1)}</span> },
-    { title: <HelpPopover termKey="sharpe_1y">夏普</HelpPopover>, dataIndex: 'sharpe_1y', width: 80, render: (v: number) => <span style={{ fontFamily: "'SF Mono', monospace", color: '#94a3b8' }}>{v?.toFixed(2)}</span> },
+    { title: '分类', dataIndex: 'category', width: 100, render: (v: string) => v ? <span style={{ fontSize: 'var(--text-small-size)', color: 'var(--text-secondary)' }}>{v}</span> : '-' },
+    { title: <HelpPopover termKey="composite_score_filter">评分</HelpPopover>, dataIndex: 'composite_score', width: 80, render: (v: number) => <span style={{ fontWeight: 700, color: 'var(--accent)', fontFamily: 'var(--font-mono)' }}>{v?.toFixed(1)}</span> },
+    { title: <HelpPopover termKey="rsi14">RSI</HelpPopover>, dataIndex: 'rsi14', width: 70, render: (v: number) => <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)' }}>{v?.toFixed(1)}</span> },
+    { title: <HelpPopover termKey="sharpe_1y">夏普</HelpPopover>, dataIndex: 'sharpe_1y', width: 80, render: (v: number) => <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)' }}>{v?.toFixed(2)}</span> },
     { title: <HelpPopover termKey="return_1m">1月</HelpPopover>, dataIndex: 'return_1m', width: 100, render: (v: number) => <ReturnTag value={v} /> },
     { title: <HelpPopover termKey="return_3m">3月</HelpPopover>, dataIndex: 'return_3m', width: 100, render: (v: number) => <ReturnTag value={v} /> },
     { title: <HelpPopover termKey="return_1y">1年</HelpPopover>, dataIndex: 'return_1y', width: 100, render: (v: number) => <ReturnTag value={v} /> },
-    { title: <HelpPopover termKey="volatility_20d">波动率</HelpPopover>, dataIndex: 'volatility_20d', width: 90, render: (v: number) => v ? <span style={{ fontFamily: "'SF Mono', monospace", color: '#94a3b8' }}>{v.toFixed(1)}%</span> : '-' },
+    { title: <HelpPopover termKey="volatility_20d">波动率</HelpPopover>, dataIndex: 'volatility_20d', width: 90, render: (v: number) => v ? <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)' }}>{v.toFixed(1)}%</span> : '-' },
   ];
 
   return (
     <div>
-      <GlassCard
+      <Panel
         title="筛选条件"
         extra={<HelpTrigger tooltip="AI 解释筛选逻辑" onClick={handleOpenHelp} />}
       >
         <div style={{ marginBottom: 16 }}>
-          <span style={{ fontSize: 13, color: '#94a3b8', marginRight: 12 }}>
+          <span style={{ fontSize: 'var(--text-small-size)', color: 'var(--text-secondary)', marginRight: 12 }}>
             <HelpPopover termKey="screen_presets">快速筛选</HelpPopover>:
           </span>
           {presets?.map((p) => (
@@ -80,12 +80,12 @@ export default function Screen() {
               key={p.key}
               style={{
                 cursor: 'pointer',
-                borderRadius: 8,
+                borderRadius: 'var(--radius-md)',
                 padding: '3px 12px',
-                fontSize: 12,
-                border: `1px solid ${preset === p.key ? 'rgba(99,102,241,0.4)' : 'rgba(255,255,255,0.08)'}`,
-                background: preset === p.key ? 'rgba(99,102,241,0.15)' : 'rgba(255,255,255,0.03)',
-                color: preset === p.key ? '#818cf8' : '#94a3b8',
+                fontSize: 'var(--text-small-size)',
+                border: `1px solid ${preset === p.key ? 'var(--accent-border)' : 'var(--border-default)'}`,
+                background: preset === p.key ? 'var(--accent-dim)' : 'var(--bg-input)',
+                color: preset === p.key ? 'var(--accent)' : 'var(--text-secondary)',
                 transition: 'all 200ms',
               }}
               onClick={() => applyPreset(preset === p.key ? null : p.key)}
@@ -157,16 +157,16 @@ export default function Screen() {
 
         <Space style={{ marginTop: 16 }}>
           <Button onClick={() => { resetFilters(); setPage(1); }}>重置条件</Button>
-          <span style={{ color: '#64748b', fontSize: 13 }}>
-            共 <span style={{ color: '#818cf8', fontWeight: 700 }}>{results?.count || 0}</span> 只
+          <span style={{ color: 'var(--text-tertiary)', fontSize: 'var(--text-small-size)' }}>
+            共 <span style={{ color: 'var(--accent)', fontWeight: 700 }}>{results?.count || 0}</span> 只
             {(results?.count || 0) > pageSize && (
-              <span style={{ color: '#475569', marginLeft: 8 }}>
+              <span style={{ color: 'var(--text-tertiary)', marginLeft: 8 }}>
                 (第 {page}/{Math.ceil((results?.count || 0) / pageSize)} 页)
               </span>
             )}
           </span>
         </Space>
-      </GlassCard>
+      </Panel>
 
       <div style={{ marginTop: 20 }}>
         <Table

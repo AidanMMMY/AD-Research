@@ -14,7 +14,7 @@ export default function ETFCodeTag({ code, name }: ETFCodeTagProps) {
             display: 'inline-block',
             padding: '2px 8px',
             borderRadius: 'var(--radius-sm)',
-            fontSize: 'var(--text-code)',
+            fontSize: 'var(--text-code-size)',
             fontWeight: 500,
             fontFamily: 'var(--font-mono)',
             color: 'var(--accent)',
@@ -28,7 +28,7 @@ export default function ETFCodeTag({ code, name }: ETFCodeTagProps) {
         {name && (
           <span
             style={{
-              fontSize: 'var(--text-body)',
+              fontSize: 'var(--text-body-size)',
               color: 'var(--text-secondary)',
               fontWeight: 400,
               maxWidth: 160,

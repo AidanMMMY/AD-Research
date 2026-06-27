@@ -32,7 +32,7 @@ export default function ScoreBar({ score, size = 'default' }: ScoreBarProps) {
       {size !== 'small' && (
         <span
           style={{
-            fontSize: 'var(--text-body)',
+            fontSize: 'var(--text-body-size)',
             fontWeight: 500,
             color: getScoreColor(score),
             fontFamily: 'var(--font-mono)',
