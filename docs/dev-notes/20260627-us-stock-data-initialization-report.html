@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>美股数据初始化报告 - 2026-06-27</title>
+  <style>
+    :root {
+      --bg: #070b14;
+      --card: #0d1326;
+      --text: #e2e8f0;
+      --muted: #94a3b8;
+      --accent: #818cf8;
+      --border: rgba(255, 255, 255, 0.08);
+      --success: #22c55e;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.7;
+    }
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 48px 24px;
+    }
+    h1 {
+      font-size: 28px;
+      margin-bottom: 8px;
+      background: linear-gradient(90deg, #818cf8, #c084fc);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .meta {
+      color: var(--muted);
+      font-size: 14px;
+      margin-bottom: 32px;
+    }
+    h2 {
+      font-size: 20px;
+      margin-top: 40px;
+      margin-bottom: 16px;
+      color: var(--accent);
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 8px;
+    }
+    h3 {
+      font-size: 16px;
+      margin-top: 28px;
+      margin-bottom: 12px;
+      color: #c4b5fd;
+    }
+    p { margin: 12px 0; }
+    pre {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px;
+      overflow-x: auto;
+      font-size: 13px;
+      line-height: 1.5;
+      color: var(--text);
+    }
+    code {
+      font-family: "SF Mono", "Fira Code", Consolas, monospace;
+      background: rgba(129, 140, 248, 0.1);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 0.9em;
+    }
+    pre code {
+      background: transparent;
+      padding: 0;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 16px 0;
+      font-size: 14px;
+    }
+    th, td {
+      text-align: left;
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--border);
+    }
+    th {
+      color: var(--accent);
+      font-weight: 600;
+      background: rgba(129, 140, 248, 0.05);
+    }
+    tr:hover td { background: rgba(255, 255, 255, 0.02); }
+    ul, ol { padding-left: 22px; }
+    li { margin: 8px 0; }
+    .highlight {
+      background: rgba(34, 197, 94, 0.08);
+      border-left: 3px solid var(--success);
+      padding: 12px 16px;
+      border-radius: 0 8px 8px 0;
+      margin: 16px 0;
+    }
+    .warning-box {
+      background: rgba(245, 158, 11, 0.08);
+      border-left: 3px solid var(--warning);
+      padding: 12px 16px;
+      border-radius: 0 8px 8px 0;
+      margin: 16px 0;
+    }
+    .note {
+      color: var(--muted);
+      font-size: 13px;
+      border-left: 2px solid var(--border);
+      padding-left: 12px;
+      margin: 12px 0;
+    }
+    .status-good { color: var(--success); font-weight: 600; }
+    .status-warn { color: var(--warning); font-weight: 600; }
+    .status-bad { color: var(--danger); font-weight: 600; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>美股数据初始化报告</h1>
+    <div class="meta">
+      日期：2026-06-27 · 分支：<code>fix/etf-list-type-filter</code>
+    </div>
+
+    <h2>执行摘要</h2>
+    <p>
+      已完成美股标的批量灌入本地数据库，平台现可浏览、筛选、查看
+      <strong>569 只美股标的</strong>（69 只 ETF + 500 只 S&P 500 个股）。
+      同时为核心标的补入了 30 天日线数据，可用于 K 线、技术指标及 AI 分析演示。
+    </p>
+
+    <h2>当前数据状态</h2>
+    <pre>ETFInfo 总数: 2083
+市场分布: [('US', 569), ('A股', 1514)]
+类型分布: [('STOCK', 500), ('ETF', 1583)]
+US 日线数据: 294 条（覆盖 14 只核心 ETF/个股）</pre>
+
+    <table>
+      <thead>
+        <tr>
+          <th>数据来源</th>
+          <th>数量</th>
+          <th>说明</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Finnhub 精选美股 ETF</td>
+          <td>69</td>
+          <td>SPY、QQQ、VOO、VTI 等高流动性 ETF</td>
+        </tr>
+        <tr>
+          <td>公开 S&P 500 CSV</td>
+          <td>500</td>
+          <td>AAPL、MSFT、GOOGL、AMZN、TSLA、NVDA、META 等成分股</td>
+        </tr>
+        <tr>
+          <td>Tiingo 日线回填</td>
+          <td>14</td>
+          <td>SPY、QQQ、VOO、IVV、VTI、DIA、IWM、AAPL、MSFT、GOOGL、AMZN、TSLA、NVDA、META</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2>此前看不到美股的原因</h2>
+    <ol>
+      <li><strong>数据库为空</strong>：<code>etf_info</code> 中仅存在 1514 只 A 股 ETF，无美股记录。</li>
+      <li><strong>缺少 API Key</strong>：<code>.env</code> 中仅配置了 <code>DEEPSEEK_API_KEY</code>，未配置美股数据源 Key。</li>
+      <li><strong>未执行初始化脚本</strong>：<code>scripts/init_us_etfs.py</code> 与 <code>USStockDiscoveryPipeline</code> 从未运行。</li>
+      <li><strong>FMP 旧接口已下线</strong>：2025-08-31 后新注册的 FMP 免费 Key 访问 <code>/sp500_constituent</code> 等 legacy endpoint 会返回 403。</li>
+    </ol>
+
+    <h2>本次代码修复</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>文件</th>
+          <th>修复内容</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>app/data/providers/fmp_provider.py</code></td>
+          <td>FMP 旧接口 403 时自动 fallback 到公开 S&P 500 CSV（datasets/s-and-p-500-companies）</td>
+        </tr>
+        <tr>
+          <td><code>app/data/pipelines/us_stock_discovery.py</code></td>
+          <td>重写 run()，跳过针对 OHLCV 的四层校验，正确写入 instrument 元数据</td>
+        </tr>
+        <tr>
+          <td><code>app/data/providers/tiingo_provider.py</code></td>
+          <td>修复 Tiingo 返回 ISO 日期时间字符串（如 2026-06-22T00:00:00.000Z）的解析错误</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="note">
+      注：以上 3 个文件已提交到当前分支 <code>fix/etf-list-type-filter</code>，尚未 push。
+    </div>
+
+    <h2>用户当前可使用的功能</h2>
+
+    <h3>1. 标的列表 /etfs</h3>
+    <ul>
+      <li>市场列显示 <span class="status-good">US</span></li>
+      <li>类型列显示 ETF 或 个股</li>
+      <li>支持搜索 <code>SPY.US</code>、<code>AAPL.US</code> 等代码</li>
+    </ul>
+
+    <h3>2. 全市场筛选器 /screen</h3>
+    <ul>
+      <li>市场选择器可选择「美股」</li>
+      <li>类型选择器可选择「ETF」/「个股」</li>
+    </ul>
+
+    <h3>3. 标的详情页 /etfs/:code</h3>
+    <ul>
+      <li>查看 K 线行情、技术指标、综合评分、AI 分析 Tab</li>
+      <li>仅上述 14 只核心标的有价格数据，其余会显示「暂无历史行情数据」</li>
+    </ul>
+
+    <h3>4. AI 功能</h3>
+    <ul>
+      <li><strong>AI 研究笔记 /research</strong>：输入美股代码生成研报</li>
+      <li><strong>情绪分析 /sentiment</strong>：输入美股代码查看市场情绪</li>
+      <li><strong>AI 助手 /chat</strong>：向 AI 询问关于美股标的的分析</li>
+    </ul>
+
+    <h2>环境配置</h2>
+    <p>已写入 <code>.env</code>（git 不追踪）：</p>
+    <pre>FINNHUB_API_KEY=d8vpuu1r01qgrv4q83p0d8vpuu1r01qgrv4q83pg
+TIINGO_API_KEY=86b255545bbb149eccec830e11f8261d821f3984
+FMP_API_KEY=pQpEqdBaKeAC7Fo5klihDLZKm6iv4MJI</pre>
+
+    <h2>后续工作</h2>
+
+    <h3>补全价格数据</h3>
+    <p>
+      yfinance 对批量下载做了严格限流，本次仅成功抓回 14 只核心标的。
+      完整覆盖 569 只标的价格需依赖调度器逐步回填：
+    </p>
+    <pre>python -m app.core.scheduler</pre>
+    <p>调度器已配置：</p>
+    <ul>
+      <li><code>us_daily_etl</code>：每天北京时间 05:00 执行</li>
+      <li><code>us_indicator_calculation</code>：每天北京时间 05:30 执行</li>
+      <li><code>us_stock_discovery</code>：每周日 02:00 执行</li>
+    </ul>
+
+    <h3>服务器首次部署脚本</h3>
+    <p>在新服务器或清理后的环境首次启用美股时，需手动执行：</p>
+    <pre># 1. 确保 .env 中已配置 FINNHUB_API_KEY / TIINGO_API_KEY / FMP_API_KEY
+
+# 2. 初始化美股 ETF
+python scripts/init_us_etfs.py --apply
+
+# 3. 初始化美股个股（S&P 500）
+python -c "
+from app.core.database import SessionLocal
+from app.data.pipelines.us_stock_discovery import USStockDiscoveryPipeline
+db = SessionLocal()
+USStockDiscoveryPipeline(db).run()
+"
+
+# 4. 启动调度器，后续自动回填价格
+python -m app.core.scheduler</pre>
+
+    <h2>已知限制</h2>
+    <ul>
+      <li>FMP 免费 Key 已无法获取 S&P 500 成分股，当前使用公开 CSV 作为 fallback。</li>
+      <li>yfinance 限流导致大规模历史回填较慢，建议通过调度器分日增量补充。</li>
+      <li>Tiingo 免费档 50 请求/小时，不适合一次性回填全部 569 只标的。</li>
+    </ul>
+  </div>
+</body>
+</html>
