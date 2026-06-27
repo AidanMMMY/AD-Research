@@ -11,31 +11,30 @@ Rotation strategy:
   - Instruments without any price data are always processed first.
 
 Rate limits (free tier):
-  - FMP: 250 requests/day. We use it as primary.
-  - Tiingo: 50 requests/hour, 500 symbols/month. Used as fallback only.
+  - Tiingo: 50 req/hour, 500 symbols/month. Used as primary.
+  - yfinance: no hard limit but heavily rate-limited from cloud IPs. Used as
+    last-resort fallback for individual symbols.
 """
 
 import logging
-import os
 from datetime import date, timedelta
 
 import pandas as pd
-from sqlalchemy import func
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
 from app.core.cache import cache_invalidate_pattern
 from app.core.redis_client import get_redis_client
 from app.data.pipelines.base import ETLPipeline
-from app.data.providers.fmp_provider import FMPProvider
+from app.data.providers.tiingo_provider import TiingoProvider
 from app.models.etf import ETFDailyBar, ETFInfo
 
 logger = logging.getLogger(__name__)
 
-# Number of instruments to process per run. FMP free tier allows 250
-# requests/day; processing 30 instruments per run every 6 hours keeps us
+# Number of instruments to process per run. Tiingo free tier allows 50
+# requests/hour; processing 15 instruments per run every 2 hours keeps us
 # safely below the limit while making steady progress.
-_BATCH_SIZE = 30
+_BATCH_SIZE = 15
 
 # How many days of history to request per instrument.
 _HISTORY_DAYS = 90
@@ -50,7 +49,7 @@ class USHistoricalBackfillPipeline(ETLPipeline):
     job_name = "us_historical_backfill"
 
     def __init__(self, db: Session) -> None:
-        provider = FMPProvider()
+        provider = TiingoProvider()
         super().__init__(provider=provider, db=db)
         self.redis = get_redis_client()
 
@@ -130,26 +129,25 @@ class USHistoricalBackfillPipeline(ETLPipeline):
         )
         return batch
 
-    def _try_tiingo_fallback(
+    def _try_yfinance_fallback(
         self, codes: list[str], start_date: date, end_date: date
     ) -> pd.DataFrame:
-        """Try Tiingo as a fallback if FMP fails."""
-        tiingo_key = os.getenv("TIINGO_API_KEY", "")
-        if not tiingo_key:
-            return pd.DataFrame()
+        """Try yfinance as a last-resort fallback.
 
+        Returns empty DataFrame if fallback fails.
+        """
         try:
-            from app.data.providers.tiingo_provider import TiingoProvider
+            from app.data.providers.yfinance_provider import YFinanceProvider
 
-            fallback = TiingoProvider()
+            fallback = YFinanceProvider()
             df = fallback.fetch_daily_bars(codes, start_date, end_date)
             if not df.empty:
                 logger.info(
-                    "USBackfill: Tiingo fallback returned %d rows", len(df)
+                    "USBackfill: yfinance fallback returned %d rows", len(df)
                 )
             return df
         except Exception as exc:
-            logger.warning("USBackfill: Tiingo fallback failed: %s", exc)
+            logger.warning("USBackfill: yfinance fallback failed: %s", exc)
             return pd.DataFrame()
 
     def extract(self) -> pd.DataFrame:
@@ -175,9 +173,9 @@ class USHistoricalBackfillPipeline(ETLPipeline):
 
         if df.empty:
             logger.warning(
-                "USBackfill: Primary (FMP) returned empty, trying Tiingo fallback"
+                "USBackfill: Primary (Tiingo) returned empty, trying yfinance fallback"
             )
-            df = self._try_tiingo_fallback(batch, start_date, end_date)
+            df = self._try_yfinance_fallback(batch, start_date, end_date)
 
         if df.empty:
             logger.warning("USBackfill: No data returned for batch")

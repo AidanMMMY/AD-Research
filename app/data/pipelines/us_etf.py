@@ -1,9 +1,13 @@
 """US equity daily ETL pipeline.
 
-Fetches daily OHLCV bars for all active US instruments (ETFs and stocks)
-and upserts them into the ``etf_daily_bar`` table.
+Fetches daily OHLCV bars for active US instruments that already have
+historical price data, and upserts them into the ``etf_daily_bar`` table.
 
-Uses a fallback chain: yfinance (primary) → Tiingo → Finnhub.
+Production data source: Tiingo (free tier: 50 req/hour, 500 symbols/month).
+FMP is no longer used because its `historical-price-full` endpoint returns
+403 for free-tier keys registered after the legacy endpoint deprecation.
+yfinance is kept only as a last-resort fallback because batch downloads are
+heavily rate-limited from cloud server IPs.
 """
 
 import logging
@@ -16,7 +20,7 @@ from sqlalchemy.orm import Session
 
 from app.core.cache import cache_invalidate_pattern
 from app.data.pipelines.base import ETLPipeline
-from app.data.providers.fmp_provider import FMPProvider
+from app.data.providers.tiingo_provider import TiingoProvider
 from app.models.etf import ETFDailyBar, ETFInfo
 
 logger = logging.getLogger(__name__)
@@ -25,13 +29,13 @@ logger = logging.getLogger(__name__)
 class USDailyPipeline(ETLPipeline):
     """ETL pipeline for US equity daily bars.
 
-    Covers all active instruments with market="US" (ETFs + individual stocks).
-    Uses FMP as primary source (free tier: 250 req/day) with Tiingo fallback.
-    yfinance is intentionally not used in production because batch downloads
-    are heavily rate-limited from cloud server IPs.
+    Covers active instruments with market="US" that already have historical
+    price data. Uses Tiingo as primary source with yfinance fallback.
+    Instruments without any price data are skipped here and handled by
+    USHistoricalBackfillPipeline to avoid burning Tiingo's 500 symbols/month
+    limit on symbols that may not be available.
 
-    Target date: yesterday's date (US market closes 16:00 ET → next day
-    Beijing time). Run at 05:00 Beijing time = 17:00 ET previous day.
+    Scheduled at 05:00 Beijing time (17:00 ET, post-market).
     """
 
     job_name = "us_daily_etl"
@@ -41,39 +45,43 @@ class USDailyPipeline(ETLPipeline):
         db: Session,
         target_date: date | None = None,
     ) -> None:
-        provider = FMPProvider()
+        provider = TiingoProvider()
         super().__init__(provider=provider, db=db)
         self.target_date = target_date
 
-    def _try_fallback(self, codes: list[str], start_date: date, end_date: date) -> pd.DataFrame:
-        """Try Tiingo fallback if FMP fails.
+    def _try_yfinance_fallback(
+        self, codes: list[str], start_date: date, end_date: date
+    ) -> pd.DataFrame:
+        """Try yfinance as a last-resort fallback.
 
         Returns empty DataFrame if fallback fails.
         """
-        tiingo_key = os.getenv("TIINGO_API_KEY", "")
-        if not tiingo_key:
-            return pd.DataFrame()
-
         try:
-            from app.data.providers.tiingo_provider import TiingoProvider
+            from app.data.providers.yfinance_provider import YFinanceProvider
 
-            fallback = TiingoProvider()
+            fallback = YFinanceProvider()
             df = fallback.fetch_daily_bars(codes, start_date, end_date)
             if not df.empty:
-                logger.info("USDailyPipeline: Tiingo fallback returned %d rows", len(df))
+                logger.info(
+                    "USDailyPipeline: yfinance fallback returned %d rows", len(df)
+                )
             return df
         except Exception as exc:
-            logger.warning("USDailyPipeline: Tiingo fallback failed: %s", exc)
+            logger.warning("USDailyPipeline: yfinance fallback failed: %s", exc)
+            return pd.DataFrame()
 
-        return pd.DataFrame()
+    def _codes_with_price_data(self) -> set[str]:
+        """Return set of US codes that already have at least one daily bar."""
+        rows = (
+            self.db.query(ETFDailyBar.etf_code)
+            .distinct()
+            .filter(ETFDailyBar.etf_code.like("%.US"))
+            .all()
+        )
+        return {code for (code,) in rows}
 
     def extract(self) -> pd.DataFrame:
-        """Fetch daily bars for all active US instruments.
-
-        Queries instruments with market="US" and status="active",
-        then fetches OHLCV bars via yfinance (batch) with fallback chain.
-        """
-        # 1. Query active US instruments from DB
+        """Fetch daily bars for active US instruments with existing data."""
         instruments = (
             self.db.query(ETFInfo)
             .filter(ETFInfo.market == "US")
@@ -81,18 +89,23 @@ class USDailyPipeline(ETLPipeline):
             .all()
         )
 
-        if not instruments:
-            logger.info("USDailyPipeline: No active US instruments found")
+        codes = [inst.code for inst in instruments]
+        codes_with_data = self._codes_with_price_data()
+
+        # Only update instruments that already have price history. New symbols
+        # are backfilled by USHistoricalBackfillPipeline.
+        codes = [c for c in codes if c in codes_with_data]
+
+        if not codes:
+            logger.info("USDailyPipeline: No US instruments with price data found")
             return pd.DataFrame()
 
-        codes = [inst.code for inst in instruments]
+        # Respect Tiingo free tier: 50 req/hour. Cap at 30 symbols per run.
+        codes = codes[:30]
         self._expected_codes = codes
         logger.info("USDailyPipeline: Fetching %d US instruments", len(codes))
 
-        # 2. Determine target trade date
         target_date = self.target_date or (date.today() - timedelta(days=1))
-
-        # 3. Fetch daily bars (7-day window to cover weekends/holidays)
         start_date = target_date - timedelta(days=7)
         end_date = target_date
 
@@ -100,14 +113,13 @@ class USDailyPipeline(ETLPipeline):
 
         if df.empty:
             logger.warning(
-                "USDailyPipeline: Primary (FMP) returned empty, trying Tiingo fallback"
+                "USDailyPipeline: Primary (Tiingo) returned empty, trying yfinance fallback"
             )
-            df = self._try_fallback(codes, start_date, end_date)
+            df = self._try_yfinance_fallback(codes, start_date, end_date)
 
         if df.empty:
             return df
 
-        # 4. Keep only target date's data
         df = df[df["trade_date"] == target_date].copy()
         logger.info(
             "USDailyPipeline: Extracted %d rows for target date %s",
