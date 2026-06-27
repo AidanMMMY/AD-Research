@@ -141,12 +141,7 @@ export default function ETFList() {
               onChange={(v) => { setInstrumentType(v); setPage(1); }}
             />
           </Col>
-          <Col xs={0} sm={0} md={7} style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
-            <span style={{ fontSize: 13, color: '#64748b' }}>
-              共 <span style={{ color: '#818cf8', fontWeight: 700 }}>{data?.total || 0}</span> 只
-            </span>
-          </Col>
-          <Col xs={24} sm={24} md={0} style={{ display: 'flex', alignItems: 'center' }}>
+          <Col md={7} style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
             <span style={{ fontSize: 13, color: '#64748b' }}>
               共 <span style={{ color: '#818cf8', fontWeight: 700 }}>{data?.total || 0}</span> 只
             </span>
