@@ -19,15 +19,19 @@
 5. 批量计算技术指标与 3 套评分模板；
 6. 通过 API 验证 `SPY.US` 等核心标的已具备 K 线、指标、评分、AI 研报能力。
 
+2026-06-28 02:08 CST 第一次自动 backfill 触发成功，写入 868 条记录，美股有价格标的从 33 只逐步增长到 92 只。
+
 ## 当前数据状态
 
 | 指标 | 数值 | 说明 |
 |------|------|------|
 | 美股标的总数 | 569 | 69 ETF + 500 S&P 500 个股 |
-| 有历史价格的标的 | 33 | 核心 ETF/个股，见下方列表 |
-| 美股日线记录 | 1,386 | `etf_daily_bar` |
+| 有历史价格的标的 | 92 | 持续增长中 |
+| 美股日线记录 | 5,044 | `etf_daily_bar` |
 | 美股指标记录 | 1,546 | `etf_indicator` |
 | 美股评分记录 | 1,546 × 3 | `etf_score`，覆盖 3 套模板 |
+
+> 最后更新：2026-06-28 02:08 CST（第一次自动 backfill 后）
 
 ### 33 只已回填核心标的
 
@@ -81,29 +85,29 @@ TUSHARE_TOKEN=...
 
 ## 持续获取方案
 
-由于免费数据源对云服务器 IP 极不友好，放弃一次性全量回填，改用**低频率轮换调度**：
+由于免费数据源对云服务器 IP 极不友好，放弃一次性全量回填，改用**低频率轮换调度 + 多数据源补漏**：
 
 ### 数据源选择
 
-| 数据源 | 免费档限制 | 适用场景 |
+| 数据源 | 免费档限制 | 当前角色 |
 |--------|-----------|---------|
-| FMP | 250 req/day | 主要历史回填与日常日线 |
-| Tiingo | 50 req/hour，500 symbols/month | FMP 失败时的 fallback |
-| yfinance | 云服务器基本不可用 | 仅在本地开发时使用 |
-| Finnhub | candle endpoint 对新 Key 403 | 仅用于实时行情与新闻 |
+| Tiingo | 50 req/hour，500 symbols/month，1,000 req/day | 主要回填与日常日线源 |
+| yfinance | 云服务器批量下载易限流，单只请求可用 | Tiingo 失败/404 时的同批补漏 |
+| FMP | `historical-price-full` 对新 Key 403 | 生产环境不再使用 |
+| Finnhub | candle endpoint 对新 Key 403 | 生产环境不再使用 |
 
 ### 调度策略
 
 1. **美股日终采集 `us_daily_etl`**
    - 时间：每天北京时间 05:00（美股收盘后 1 小时）
-   - 数据源：FMP → Tiingo fallback
-   - 任务：获取全部 569 只标的最新交易日数据
-   - 限制：FMP 250 req/day，分 5 批，每批 ~114 只不可行，因此改为**每次只请求有数据缺失的标的 + 核心标的优先**
+   - 数据源：Tiingo primary → yfinance fallback
+   - 仅覆盖已有历史数据的标的，最多 30 只/次，避免 Tiingo 月限额浪费在不可用标的上
+   - 新标的由 `us_historical_backfill` 负责
 
 2. **美股历史回填 `us_historical_backfill`**（新增）
-   - 时间：每 6 小时一次
-   - 数据源：FMP primary，Tiingo fallback
-   - 每批 30 只标的，轮询覆盖全部 569 只
+   - 时间：每小时一次（整点）
+   - 数据源：Tiingo primary + yfinance 同批补漏
+   - 每批 15 只标的，优先回填尚无价格数据的标的；全部有数据后按 Redis 偏移轮询
    - 每次拉取最近 90 天历史，补全缺失日线
    - 通过 Redis 记录轮换偏移量，保证断点续跑
 
@@ -111,11 +115,23 @@ TUSHARE_TOKEN=...
    - `us_indicator_calculation`：每天 05:30，在日线任务完成后执行
    - `score_calculation`：每天 08:30，覆盖全部活跃标的
 
+### 多数据源补漏逻辑
+
+`USHistoricalBackfillPipeline.extract()` 的执行流程：
+
+1. 选出当前 batch（15 只）；
+2. 先用 Tiingo 逐个请求，单只间隔 1.5 秒以遵守 50 req/hour；
+3. 对 Tiingo 返回 404 / 空数据 / 失败的 code，立即用 yfinance 批量/单只补抓；
+4. 合并两个来源的结果写入 `etf_daily_bar`。
+
+这样同一 batch 内，Tiingo 能覆盖的用 Tiingo，Tiingo 覆盖不到的由 yfinance 兜底，最大化单次成功率。
+
 ### 进度估算
 
-- 历史回填每批 30 只，569 只约需 19 批
-- 每 6 小时一批，理论上约 4.75 天完成一轮全量历史回填
-- 实际受 FMP 日限额、周末休市、网络波动影响，可能需要 1 周左右
+- 历史回填每批 15 只，569 只约需 38 批
+- 每小时一批，理论上约 38 小时完成一轮全量历史回填
+- 实际受 Tiingo 500 symbols/month、周末休市、网络波动、yfinance 限流影响，可能需要 2–4 周才能让全部 569 只有稳定数据
+- Tiingo 500 symbols/month 的硬上限意味着：即使有 yfinance 补漏，最多也只能让 500 只标的首选通过 Tiingo 回填；其余标的将主要依赖 yfinance
 
 ## 监控方式
 
@@ -139,13 +155,15 @@ db.close()
 
 ## 已知限制
 
-- FMP 免费 Key 无法使用 `/sp500_constituent` 等 legacy endpoint，已用公开 CSV 替代。
-- Tiingo 免费档 500 symbols/month，不适合作为全部 569 只标的的主要回填源。
-- yfinance 对云服务器批量下载限流严重，生产环境不再依赖。
-- 历史回填速度受免费档限制，无法一次性补全，需持续运行数天。
+- FMP `historical-price-full` 对新注册免费 Key 返回 403，生产环境已弃用。
+- Tiingo 免费档 500 symbols/month，569 只标的中最多 500 只能通过 Tiingo 稳定回填，剩余标的依赖 yfinance。
+- yfinance 对云服务器批量下载限流严重，单只请求可用但不稳定，仅作为补漏手段。
+- 历史回填速度受免费档限制，无法一次性补全，需持续运行数天到数周。
+- 部分非标准 ticker（如 `BRK.B.US`、`BF.B.US`）可能在 Tiingo/yfinance 上映射不一致，需逐步加入 `TIINGO_CODE_MAP` / `CODE_MAP` 兼容。
 
 ## 后续优化方向
 
 - 当免费档不足以支撑全量时，可考虑付费数据源（如 Tiingo 付费档、Polygon、Alpha Vantage 付费）。
 - 对核心 33 只标的保持高频更新，其余标的按评分/热度优先级回填。
 - 前端增加"数据覆盖度"提示，让用户了解哪些美股已有价格数据。
+- 监控 Tiingo 月度 symbol 消耗，接近 500 时自动切换为纯 yfinance 模式。

@@ -151,7 +151,12 @@ class USHistoricalBackfillPipeline(ETLPipeline):
             return pd.DataFrame()
 
     def extract(self) -> pd.DataFrame:
-        """Fetch historical daily bars for the current batch."""
+        """Fetch historical daily bars for the current batch.
+
+        Primary source is Tiingo. Any instruments that Tiingo fails to
+        return (404, empty, or rate-limited) are retried with yfinance in
+        the same run so the batch is covered by multiple data sources.
+        """
         codes = self._get_active_us_codes()
         codes_with_data = self._get_codes_with_price_data()
         batch = self._select_batch(codes, codes_with_data)
@@ -169,13 +174,27 @@ class USHistoricalBackfillPipeline(ETLPipeline):
         end_date = date.today()
         start_date = end_date - timedelta(days=_HISTORY_DAYS)
 
+        # Primary: Tiingo
         df = self.provider.fetch_daily_bars(batch, start_date, end_date)
 
-        if df.empty:
+        # Fallback: yfinance for any codes Tiingo missed
+        fetched_codes = set(df["etf_code"].unique()) if not df.empty else set()
+        missing_codes = [c for c in batch if c not in fetched_codes]
+
+        if missing_codes:
             logger.warning(
-                "USBackfill: Primary (Tiingo) returned empty, trying yfinance fallback"
+                "USBackfill: Tiingo missed %d/%d codes, trying yfinance fallback",
+                len(missing_codes),
+                len(batch),
             )
-            df = self._try_yfinance_fallback(batch, start_date, end_date)
+            yf_df = self._try_yfinance_fallback(missing_codes, start_date, end_date)
+            if not yf_df.empty:
+                df = pd.concat([df, yf_df], ignore_index=True)
+                logger.info(
+                    "USBackfill: Combined Tiingo + yfinance: %d rows for %d instruments",
+                    len(df),
+                    df["etf_code"].nunique(),
+                )
 
         if df.empty:
             logger.warning("USBackfill: No data returned for batch")
