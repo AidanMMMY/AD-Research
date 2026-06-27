@@ -73,6 +73,8 @@ export default function ScoreRanking() {
 
   return (
     <div>
+      <h1 style={{ fontSize: 'var(--text-h1-size)', fontWeight: 500, color: 'var(--text-primary)', margin: '0 0 8px', letterSpacing: '-0.03em' }}>评分排名</h1>
+      <p style={{ margin: '0 0 32px', color: 'var(--text-tertiary)', fontSize: 'var(--text-body-size)' }}>查看全市场标的综合评分排名，对比不同模板下的多维评估结果</p>
       <Panel variant="minimal" style={{ marginBottom: 20 }}>
         <Tabs
           activeKey={String(templateId || templates?.find((t) => t.is_default)?.id || '')}

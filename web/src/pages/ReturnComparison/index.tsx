@@ -146,6 +146,8 @@ export default function ReturnComparison() {
 
   return (
     <div>
+      <h1 style={{ fontSize: 'var(--text-h1-size)', fontWeight: 500, color: 'var(--text-primary)', margin: '0 0 8px', letterSpacing: '-0.03em' }}>收益对比</h1>
+      <p style={{ margin: '0 0 32px', color: 'var(--text-tertiary)', fontSize: 'var(--text-body-size)' }}>对比多只标的的历史收益曲线，支持归一化和日收益率两种模式</p>
       <GlassCard title="收益曲线对比配置" style={{ marginBottom: 'var(--space-4)' }}>
         <Row gutter={[16, 16]}>
           <Col xs={24} md={12}>

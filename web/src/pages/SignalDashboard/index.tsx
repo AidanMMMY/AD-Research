@@ -40,6 +40,8 @@ export default function SignalDashboard() {
 
   return (
     <div>
+      <h1 style={{ fontSize: 'var(--text-h1-size)', fontWeight: 500, color: 'var(--text-primary)', margin: '0 0 8px', letterSpacing: '-0.03em' }}>信号看板</h1>
+      <p style={{ margin: '0 0 32px', color: 'var(--text-tertiary)', fontSize: 'var(--text-body-size)' }}>查看最新交易信号汇总，监控买入、卖出、持有信号分布</p>
       <Row gutter={[16, 16]} style={{ marginBottom: 'var(--space-md)' }}>
         <Col xs={8}><GlassCard><Statistic title="买入信号" value={buyCount} valueStyle={{ color: 'var(--color-rise)' }} /></GlassCard></Col>
         <Col xs={8}><GlassCard><Statistic title="卖出信号" value={sellCount} valueStyle={{ color: 'var(--color-fall)' }} /></GlassCard></Col>

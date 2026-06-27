@@ -84,7 +84,7 @@ export default function AIChat() {
         loading={createMutation.isPending}
         onClick={() => createMutation.mutate()}
         block
-        style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', border: 'none' }}
+        style={{ background: 'var(--accent)', border: 'none' }}
       >
         新对话
       </Button>
@@ -102,19 +102,19 @@ export default function AIChat() {
                 onClick={() => setActiveSession(s.id)}
                 style={{
                   padding: '10px 12px',
-                  borderRadius: 8,
+                  borderRadius: 'var(--radius-lg)',
                   cursor: 'pointer',
                   marginBottom: 4,
                   display: 'flex',
                   justifyContent: 'space-between',
                   alignItems: 'center',
-                  background: activeSession === s.id ? 'rgba(99,102,241,0.12)' : 'transparent',
-                  border: activeSession === s.id ? '1px solid rgba(99,102,241,0.2)' : '1px solid transparent',
+                  background: activeSession === s.id ? 'var(--accent-dim)' : 'transparent',
+                  border: activeSession === s.id ? '1px solid var(--card-border)' : '1px solid transparent',
                 }}
               >
                 <span style={{
                   fontSize: 13,
-                  color: activeSession === s.id ? '#818cf8' : '#94a3b8',
+                  color: activeSession === s.id ? 'var(--accent)' : 'var(--text-secondary)',
                   fontWeight: activeSession === s.id ? 600 : 400,
                   overflow: 'hidden',
                   textOverflow: 'ellipsis',
@@ -132,7 +132,7 @@ export default function AIChat() {
                   onCancel={(e) => e?.stopPropagation()}
                 >
                   <DeleteOutlined
-                    style={{ color: '#475569', fontSize: 12, flexShrink: 0 }}
+                    style={{ color: 'var(--text-tertiary)', fontSize: 12, flexShrink: 0 }}
                     onClick={(e) => e.stopPropagation()}
                   />
                 </Popconfirm>
@@ -149,14 +149,14 @@ export default function AIChat() {
       flex: 1,
       display: 'flex',
       flexDirection: 'column',
-      background: 'rgba(255,255,255,0.02)',
+      background: 'var(--bg-input)',
       borderRadius: 16,
-      border: '1px solid rgba(255,255,255,0.06)',
+      border: '1px solid var(--border-default)',
       overflow: 'hidden',
     }}>
       {/* Mobile back button */}
       {isMobile && activeSession && (
-        <div style={{ padding: '8px 12px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+        <div style={{ padding: '8px 12px', borderBottom: '1px solid var(--border-default)' }}>
           <Button type="text" onClick={() => setActiveSession(null)}>
             ← 返回列表
           </Button>
@@ -169,7 +169,7 @@ export default function AIChat() {
           <Empty
             description="选择一个对话或创建新对话"
             style={{ marginTop: 80 }}
-            image={<RobotOutlined style={{ fontSize: 48, color: '#475569' }} />}
+            image={<RobotOutlined style={{ fontSize: 48, color: 'var(--text-tertiary)' }} />}
           />
         ) : messagesLoading ? (
           <Skeleton active paragraph={{ rows: 6 }} />
@@ -186,14 +186,14 @@ export default function AIChat() {
               <div style={{
                 maxWidth: '80%',
                 padding: '12px 16px',
-                borderRadius: 14,
-                borderTopRightRadius: msg.role === 'user' ? 4 : 14,
-                borderTopLeftRadius: msg.role === 'assistant' ? 4 : 14,
+                borderRadius: 'var(--radius-lg)',
+                borderTopRightRadius: msg.role === 'user' ? 4 : 'var(--radius-lg)',
+                borderTopLeftRadius: msg.role === 'assistant' ? 4 : 'var(--radius-lg)',
                 background:
                   msg.role === 'user'
-                    ? 'linear-gradient(135deg, #6366f1, #8b5cf6)'
-                    : 'rgba(255,255,255,0.06)',
-                color: msg.role === 'user' ? '#fff' : '#e2e8f0',
+                    ? 'var(--accent-dim)'
+                    : 'var(--bg-elevated)',
+                color: msg.role === 'user' ? 'var(--accent)' : 'var(--text-primary)',
                 fontSize: 14,
                 lineHeight: 1.7,
               }}>
@@ -215,7 +215,7 @@ export default function AIChat() {
       {activeSession && (
         <div style={{
           padding: '12px 20px',
-          borderTop: '1px solid rgba(255,255,255,0.06)',
+          borderTop: '1px solid var(--border-default)',
           display: 'flex',
           gap: 10,
         }}>
@@ -240,7 +240,7 @@ export default function AIChat() {
             loading={sending}
             disabled={!input.trim()}
             style={{
-              background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+              background: 'var(--accent)',
               border: 'none',
               alignSelf: 'flex-end',
             }}

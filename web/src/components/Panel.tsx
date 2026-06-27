@@ -33,17 +33,17 @@ export default function Panel({
   const p = paddingMap[padding];
 
   const isDefault = variant === 'default';
-  const isMinimal = variant === 'minimal';
-  const showHeaderBorder = isDefault || isMinimal;
+  const showHeaderBorder = variant !== 'transparent';
 
   return (
     <div
       className={`swiss-panel ${className}`}
       data-glass-padding={dataGlassPadding}
       style={{
-        background: isDefault ? 'var(--bg-elevated)' : 'transparent',
-        border: isDefault ? '1px solid var(--border-default)' : 'none',
-        borderRadius: 0,
+        background: isDefault ? 'var(--card-bg)' : 'transparent',
+        border: isDefault ? '1px solid var(--card-border)' : 'none',
+        borderRadius: isDefault ? 'var(--card-radius)' : 0,
+        boxShadow: isDefault ? 'var(--shadow-card)' : 'none',
         ...style,
       }}
     >
@@ -62,10 +62,10 @@ export default function Panel({
           {title && (
             <span
               style={{
-                fontSize: 'var(--text-label-size)',
+                fontSize: 'var(--text-small-size)',
                 fontWeight: 500,
                 color: 'var(--text-tertiary)',
-                letterSpacing: '0.10em',
+                letterSpacing: '0.12em',
                 lineHeight: 1.4,
                 textTransform: 'uppercase',
                 overflow: 'hidden',

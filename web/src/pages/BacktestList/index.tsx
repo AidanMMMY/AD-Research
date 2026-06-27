@@ -83,6 +83,8 @@ export default function BacktestList() {
 
   return (
     <div>
+      <h1 style={{ fontSize: 'var(--text-h1-size)', fontWeight: 500, color: 'var(--text-primary)', margin: '0 0 8px', letterSpacing: '-0.03em' }}>回测管理</h1>
+      <p style={{ margin: '0 0 32px', color: 'var(--text-tertiary)', fontSize: 'var(--text-body-size)' }}>创建和查看策略回测结果，评估策略历史表现与风险指标</p>
       <GlassCard title="回测管理" extra={
         <Button type="primary" icon={<PlusOutlined />} onClick={() => setIsModalOpen(true)}>
           新建回测

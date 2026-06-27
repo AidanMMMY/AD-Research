@@ -153,8 +153,8 @@ export default function KLineChart({ data, overlays = DEFAULT_OVERLAYS }: KLineC
     try {
       const chart = createChart(chartContainerRef.current, {
         layout: {
-          background: { type: ColorType.Solid, color: '#0a0a0a' },
-          textColor: '#aaaaaa',
+          background: { type: ColorType.Solid, color: 'var(--bg-base)' },
+          textColor: 'var(--text-secondary)',
         },
         grid: {
           vertLines: { color: 'rgba(255,255,255,0.06)' },
@@ -179,7 +179,7 @@ export default function KLineChart({ data, overlays = DEFAULT_OVERLAYS }: KLineC
       candlestickRef.current = candlestick;
 
       const volume = chart.addHistogramSeries({
-        color: 'rgba(34,211,238,0.5)',
+        color: 'var(--accent-dim)',
         priceFormat: { type: 'volume' },
         priceScaleId: '',
       });
@@ -187,16 +187,16 @@ export default function KLineChart({ data, overlays = DEFAULT_OVERLAYS }: KLineC
       volumeRef.current = volume;
 
       const maOptions = { lastValueVisible: false, priceLineVisible: false, priceScaleId: 'right' };
-      ma5Ref.current = chart.addLineSeries({ color: '#22d3ee', lineWidth: 1, ...maOptions });
-      ma10Ref.current = chart.addLineSeries({ color: '#888888', lineWidth: 1, ...maOptions });
-      ma20Ref.current = chart.addLineSeries({ color: 'rgba(34, 211, 238, 0.6)', lineWidth: 1, ...maOptions });
-      ma60Ref.current = chart.addLineSeries({ color: '#555555', lineWidth: 1, ...maOptions });
+      ma5Ref.current = chart.addLineSeries({ color: 'var(--accent)', lineWidth: 1, ...maOptions });
+      ma10Ref.current = chart.addLineSeries({ color: 'var(--text-secondary)', lineWidth: 1, ...maOptions });
+      ma20Ref.current = chart.addLineSeries({ color: 'var(--accent-dim)', lineWidth: 1, ...maOptions });
+      ma60Ref.current = chart.addLineSeries({ color: 'var(--text-tertiary)', lineWidth: 1, ...maOptions });
 
-      bbUpperRef.current = chart.addLineSeries({ color: '#22d3ee', lineWidth: 1, lineStyle: LineStyle.Dashed, ...maOptions });
-      bbLowerRef.current = chart.addLineSeries({ color: '#22d3ee', lineWidth: 1, lineStyle: LineStyle.Dashed, ...maOptions });
+      bbUpperRef.current = chart.addLineSeries({ color: 'var(--accent)', lineWidth: 1, lineStyle: LineStyle.Dashed, ...maOptions });
+      bbLowerRef.current = chart.addLineSeries({ color: 'var(--accent)', lineWidth: 1, lineStyle: LineStyle.Dashed, ...maOptions });
 
       rsiRef.current = chart.addLineSeries({
-        color: '#555555',
+        color: 'var(--text-tertiary)',
         lineWidth: 1,
         lastValueVisible: false,
         priceLineVisible: false,
@@ -208,8 +208,8 @@ export default function KLineChart({ data, overlays = DEFAULT_OVERLAYS }: KLineC
         lastValueVisible: false,
         priceLineVisible: false,
       });
-      macdDifRef.current = chart.addLineSeries({ color: '#555555', lineWidth: 1, priceScaleId: 'macd', lastValueVisible: false, priceLineVisible: false });
-      macdDeaRef.current = chart.addLineSeries({ color: '#22d3ee', lineWidth: 1, priceScaleId: 'macd', lastValueVisible: false, priceLineVisible: false });
+      macdDifRef.current = chart.addLineSeries({ color: 'var(--text-tertiary)', lineWidth: 1, priceScaleId: 'macd', lastValueVisible: false, priceLineVisible: false });
+      macdDeaRef.current = chart.addLineSeries({ color: 'var(--accent)', lineWidth: 1, priceScaleId: 'macd', lastValueVisible: false, priceLineVisible: false });
 
       const handleResize = () => {
         if (chartContainerRef.current) {
@@ -346,7 +346,7 @@ export default function KLineChart({ data, overlays = DEFAULT_OVERLAYS }: KLineC
 
   if (initError) {
     return (
-      <div style={{ padding: 20, color: '#ef4444', background: 'rgba(239,68,68,0.1)', borderRadius: 8 }}>
+      <div style={{ padding: 20, color: 'var(--color-rise)', background: 'var(--color-rise-dim)', borderRadius: 8 }}>
         <strong>图表初始化错误:</strong> {initError}
       </div>
     );
@@ -354,7 +354,7 @@ export default function KLineChart({ data, overlays = DEFAULT_OVERLAYS }: KLineC
 
   if (dataError) {
     return (
-      <div style={{ padding: 20, color: '#ef4444', background: 'rgba(239,68,68,0.1)', borderRadius: 8 }}>
+      <div style={{ padding: 20, color: 'var(--color-rise)', background: 'var(--color-rise-dim)', borderRadius: 8 }}>
         <strong>数据渲染错误:</strong> {dataError}
       </div>
     );

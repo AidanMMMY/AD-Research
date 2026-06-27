@@ -196,6 +196,8 @@ export default function AdminUsers() {
 
   return (
     <div>
+      <h1 style={{ fontSize: 'var(--text-h1-size)', fontWeight: 500, color: 'var(--text-primary)', margin: '0 0 8px', letterSpacing: '-0.03em' }}>用户管理</h1>
+      <p style={{ margin: '0 0 32px', color: 'var(--text-tertiary)', fontSize: 'var(--text-body-size)' }}>管理平台用户账号，配置角色权限与启用状态</p>
       <GlassCard
         title="用户管理"
         extra={

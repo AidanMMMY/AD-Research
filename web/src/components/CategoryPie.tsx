@@ -30,7 +30,7 @@ export default function CategoryPie({ data, mode = 'count' }: CategoryPieProps) 
       textStyle: { color: 'var(--text-secondary)', fontSize: isMobile ? 10 : 12 },
       pageTextStyle: { color: 'var(--text-secondary)' },
     },
-    color: ['#22d3ee', '#555555', '#22c55e', '#ef4444', '#eab308', '#0ea5e9', '#8b5cf6', '#f97316'],
+    color: ['var(--accent)', 'var(--color-rise)', 'var(--color-fall)', 'var(--text-tertiary)', 'var(--text-secondary)', 'var(--accent-dim)', 'var(--color-rise-dim)', 'var(--color-fall-dim)'],
     series: [{
       type: 'pie',
       radius: isMobile ? ['30%', '60%'] : ['40%', '70%'],

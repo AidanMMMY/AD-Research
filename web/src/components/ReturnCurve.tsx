@@ -63,7 +63,7 @@ export default function ReturnCurve({ series }: ReturnCurveProps) {
         width: 2,
       },
       itemStyle: {
-        color: ['#22d3ee', '#555555', '#22c55e', '#ef4444', '#eab308'][idx % 5],
+        color: ['var(--accent)', 'var(--color-rise)', 'var(--color-fall)', 'var(--text-secondary)', 'var(--text-tertiary)'][idx % 5],
       },
     })),
   };

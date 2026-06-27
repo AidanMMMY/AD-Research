@@ -52,6 +52,8 @@ export default function ResearchNotes() {
 
   return (
     <div>
+      <h1 style={{ fontSize: 'var(--text-h1-size)', fontWeight: 500, color: 'var(--text-primary)', margin: '0 0 8px', letterSpacing: '-0.03em' }}>研究笔记</h1>
+      <p style={{ margin: '0 0 32px', color: 'var(--text-tertiary)', fontSize: 'var(--text-body-size)' }}>AI 驱动的投研报告生成，支持日报、周报、财报分析等多种类型</p>
       <AISetupBanner />
       <GlassCard>
         <div style={{ display: 'flex', gap: 'var(--space-sm)', flexWrap: 'wrap', alignItems: 'center' }}>

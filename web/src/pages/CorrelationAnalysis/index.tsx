@@ -107,6 +107,8 @@ export default function CorrelationAnalysis() {
 
   return (
     <div>
+      <h1 style={{ fontSize: 'var(--text-h1-size)', fontWeight: 500, color: 'var(--text-primary)', margin: '0 0 8px', letterSpacing: '-0.03em' }}>相关性分析</h1>
+      <p style={{ margin: '0 0 32px', color: 'var(--text-tertiary)', fontSize: 'var(--text-body-size)' }}>分析多只标的之间的价格相关性，支持多种计算方法和时间窗口</p>
       <GlassCard title="相关性分析配置" style={{ marginBottom: 'var(--space-4)' }}>
         <Row gutter={[16, 16]}>
           <Col xs={24} md={12}>

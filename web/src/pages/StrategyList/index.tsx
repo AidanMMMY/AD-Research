@@ -121,6 +121,8 @@ export default function StrategyList() {
 
   return (
     <div>
+      <h1 style={{ fontSize: 'var(--text-h1-size)', fontWeight: 500, color: 'var(--text-primary)', margin: '0 0 8px', letterSpacing: '-0.03em' }}>策略管理</h1>
+      <p style={{ margin: '0 0 32px', color: 'var(--text-tertiary)', fontSize: 'var(--text-body-size)' }}>创建和管理交易策略，配置策略参数与启用状态</p>
       <Panel variant="minimal" title="策略管理" extra={
         <Space>
           <HelpTrigger tooltip="AI 解释策略逻辑" onClick={handleOpenHelp} />

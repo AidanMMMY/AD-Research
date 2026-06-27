@@ -406,6 +406,8 @@ export default function PoolDetail() {
 
   return (
     <div>
+      <h1 style={{ fontSize: 'var(--text-h1-size)', fontWeight: 500, color: 'var(--text-primary)', margin: '0 0 8px', letterSpacing: '-0.03em' }}>标的池详情</h1>
+      <p style={{ margin: '0 0 32px', color: 'var(--text-tertiary)', fontSize: 'var(--text-body-size)' }}>查看和管理标的池成员、权重配置、持仓分布与历史快照</p>
       <Panel style={{ marginBottom: 16 }}>
         {editingMeta ? (
           <Space direction="vertical" style={{ width: '100%' }} size="middle">

@@ -95,6 +95,8 @@ export default function SectorRotation() {
 
   return (
     <div>
+      <h1 style={{ fontSize: 'var(--text-h1-size)', fontWeight: 500, color: 'var(--text-primary)', margin: '0 0 8px', letterSpacing: '-0.03em' }}>板块轮动</h1>
+      <p style={{ margin: '0 0 32px', color: 'var(--text-tertiary)', fontSize: 'var(--text-body-size)' }}>分析各板块收益排名与相对强弱，跟踪轮动信号</p>
       <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
         <Col xs={24} md={8}>
           <GlassCard>
