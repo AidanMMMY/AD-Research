@@ -15,7 +15,7 @@ jobs:
 
       - name: Rebuild backend
         run: |
-          cd /opt/ad-research
+          cd /opt/ad-research/deploy/aliyun-ecs
           docker compose up -d --build --no-deps backend
 
       - name: Verify deployment
