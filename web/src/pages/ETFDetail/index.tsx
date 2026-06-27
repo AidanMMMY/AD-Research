@@ -379,8 +379,8 @@ export default function ETFDetail() {
                       </Tag>
 
                       {/* Score bar */}
-                      <div style={{ margin: '16px auto 0', maxWidth: 240, height: 6, borderRadius: 3, background: 'rgba(255,255,255,0.06)', position: 'relative', overflow: 'hidden' }}>
-                        <div style={{ width: `${((sentiment.avg_score + 1) / 2) * 100}%`, height: '100%', borderRadius: 3, background: `linear-gradient(90deg, #ef4444, #eab308, #22c55e)` }} />
+                      <div style={{ margin: '16px auto 0', maxWidth: 240, height: 6, borderRadius: 3, background: 'var(--bg-input)', position: 'relative', overflow: 'hidden' }}>
+                        <div style={{ width: `${((sentiment.avg_score + 1) / 2) * 100}%`, height: '100%', borderRadius: 3, background: SENTIMENT_COLORS[sentiment.label] || 'var(--text-secondary)' }} />
                       </div>
 
                       {/* Counts */}
