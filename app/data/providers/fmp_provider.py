@@ -52,6 +52,49 @@ def _get(endpoint: str, params: dict[str, Any] | None = None) -> Any:
         raise DataProviderError(f"FMP request failed: {exc}") from exc
 
 
+_SP500_CSV_URL = (
+    "https://raw.githubusercontent.com/datasets/s-and-p-500-companies/"
+    "main/data/constituents.csv"
+)
+
+
+def _fetch_sp500_from_public_csv() -> list[ETFInfo]:
+    """Fallback S&P 500 source when FMP legacy endpoints are unavailable.
+
+    FMP no longer allows new free API keys to access legacy endpoints such as
+    /sp500_constituent. This public dataset is updated regularly and provides
+    the current S&P 500 constituent list.
+    """
+    try:
+        resp = requests.get(_SP500_CSV_URL, timeout=30)
+        resp.raise_for_status()
+    except requests.RequestException as exc:
+        raise DataProviderError(f"Failed to fetch S&P 500 CSV: {exc}") from exc
+
+    df = pd.read_csv(pd.io.common.StringIO(resp.text))
+    if "Symbol" not in df.columns or "Security" not in df.columns:
+        raise DataProviderError("S&P 500 CSV has unexpected format")
+
+    result = []
+    for _, row in df.iterrows():
+        symbol = str(row.get("Symbol", "")).strip().upper()
+        name = str(row.get("Security", "")).strip()
+        if not symbol or not name:
+            continue
+        result.append(
+            ETFInfo(
+                code=f"{symbol}.US",
+                name=name,
+                market="US",
+                exchange="NYSE",
+                currency="USD",
+            )
+        )
+
+    result.sort(key=lambda x: x.code)
+    return result
+
+
 # ---------------------------------------------------------------------------
 # S&P 500 constituent tickers fetched once and cached. We fetch the full
 # list on pipeline init and store it locally to avoid repeated API calls.
@@ -80,48 +123,50 @@ class FMPProvider(DataProvider):
         return []
 
     def fetch_sp500_list(self) -> list[ETFInfo]:
-        """Fetch S&P 500 constituent list from FMP.
+        """Fetch S&P 500 constituent list.
+
+        Tries FMP first, then falls back to a public S&P 500 CSV dataset
+        because FMP legacy endpoints are no longer available to new free keys.
 
         Each stock is mapped to ETFInfo with:
           code = TICKER.US, market = US, instrument_type = STOCK
 
         Returns a list of ETFInfo dataclass instances.
         """
+        # Try FMP legacy endpoint first
         try:
-            data = _get("/stock/list")
+            data = _get("/sp500_constituent")
+            if isinstance(data, list) and data:
+                result = []
+                for item in data:
+                    symbol = str(item.get("symbol", "")).upper()
+                    name = str(item.get("name", "") or item.get("companyName", ""))
+                    exchange = str(
+                        item.get("exchangeShortName", "") or item.get("exchange", "")
+                    )
+                    if not symbol or not name:
+                        continue
+                    result.append(
+                        ETFInfo(
+                            code=f"{symbol}.US",
+                            name=name,
+                            market="US",
+                            exchange=exchange or "NYSE",
+                            currency="USD",
+                        )
+                    )
+                result.sort(key=lambda x: x.code)
+                return result
         except DataProviderError as exc:
-            print(f"[FMPProvider] Failed to fetch S&P 500 list: {exc}")
+            print(f"[FMPProvider] FMP S&P 500 failed: {exc}")
+            print("[FMPProvider] Falling back to public S&P 500 CSV...")
+
+        # Fallback to public CSV
+        try:
+            return _fetch_sp500_from_public_csv()
+        except DataProviderError as exc:
+            print(f"[FMPProvider] Fallback CSV failed: {exc}")
             return []
-
-        if not isinstance(data, list):
-            return []
-
-        result = []
-        for item in data:
-            symbol = str(item.get("symbol", "")).upper()
-            name = str(item.get("name", "") or item.get("companyName", ""))
-            exchange = str(item.get("exchangeShortName", "") or item.get("exchange", ""))
-            price = item.get("price")
-
-            # Filter to NYSE and NASDAQ only (FMP includes crypto, OTC, etc.)
-            if exchange not in ("NASDAQ", "NYSE", "AMEX"):
-                continue
-            if not symbol or not name:
-                continue
-
-            result.append(
-                ETFInfo(
-                    code=f"{symbol}.US",
-                    name=name,
-                    market="US",
-                    exchange=exchange,
-                    currency="USD",
-                )
-            )
-
-        # Sort by symbol for consistent ordering
-        result.sort(key=lambda x: x.code)
-        return result
 
     def fetch_company_profile(self, code: str) -> dict[str, Any] | None:
         """Fetch detailed company profile for a single stock.
