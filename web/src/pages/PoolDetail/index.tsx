@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
-import { Tabs, Table, Button, Slider, message, Row, Col, Statistic, Dropdown, Space } from 'antd';
+import { Tabs, Table, Button, Slider, message, Row, Col, Statistic, Dropdown, Space, Input, Popconfirm, Select } from 'antd';
+import { EditOutlined, DeleteOutlined, PlusOutlined } from '@ant-design/icons';
 import type { MenuProps } from 'antd';
 import {
   usePoolDetail,
@@ -11,11 +12,19 @@ import {
   usePoolSnapshots,
   useCreateSnapshot,
   useSuggestWeights,
+  useUpdatePool,
+  useAddPoolMember,
+  useRemovePoolMember,
 } from '@/hooks/usePoolDetail';
+import { useETFList } from '@/hooks/useETFList';
+import { useAIHelp } from '@/hooks/useAIHelp';
 import CategoryPie from '@/components/CategoryPie';
 import CorrelationHeatmap from '@/components/CorrelationHeatmap';
 import ETFCodeTag from '@/components/ETFCodeTag';
 import GlassCard from '@/components/GlassCard';
+import HelpTrigger from '@/components/HelpTrigger';
+import { buildPoolDetailContext } from '@/utils/helpContext';
+import { getQuickQuestions } from '@/utils/helpPrompts';
 
 const SUGGEST_ALGORITHMS: { key: string; label: string }[] = [
   { key: 'equal', label: '等权' },
@@ -28,17 +37,27 @@ const round2 = (v: number) => Math.round(v * 100) / 100;
 export default function PoolDetail() {
   const { id } = useParams<{ id: string }>();
   const poolId = Number(id);
+  const { open } = useAIHelp();
   const [editing, setEditing] = useState(false);
   const [localWeights, setLocalWeights] = useState<Record<string, number>>({});
+  const [activeAlgorithm, setActiveAlgorithm] = useState<string | undefined>();
+  const [editingMeta, setEditingMeta] = useState(false);
+  const [editName, setEditName] = useState('');
+  const [editDescription, setEditDescription] = useState('');
+  const [selectedCodeForAdd, setSelectedCodeForAdd] = useState<string | undefined>();
 
   const { data: pool } = usePoolDetail(poolId);
   const { data: weights } = usePoolWeights(poolId);
   const { data: analytics } = usePoolAnalytics(poolId);
   const { data: correlation } = usePoolCorrelation(poolId);
   const { data: snapshots } = usePoolSnapshots(poolId, 20);
+  const { data: etfList } = useETFList({ page_size: 500 });
   const updateWeight = useUpdateWeight();
   const createSnapshot = useCreateSnapshot();
   const suggestWeights = useSuggestWeights();
+  const updatePool = useUpdatePool();
+  const addMember = useAddPoolMember();
+  const removeMember = useRemovePoolMember();
 
   // Current weights in the editor: local overrides fall back to API values
   const currentWeights = useMemo(() => {
@@ -99,6 +118,7 @@ export default function PoolDetail() {
   const handleSuggest = async (algorithm: string) => {
     try {
       await suggestWeights.mutateAsync({ poolId, algorithm });
+      setActiveAlgorithm(algorithm);
       message.success(`已生成${SUGGEST_ALGORITHMS.find((a) => a.key === algorithm)?.label}建议`);
     } catch {
       message.error('建议权重生成失败');
@@ -113,6 +133,62 @@ export default function PoolDetail() {
       message.error('快照创建失败');
     }
   };
+
+  const handleUpdatePool = async () => {
+    try {
+      await updatePool.mutateAsync({
+        poolId,
+        data: { name: editName, description: editDescription },
+      });
+      message.success('标的池信息已更新');
+      setEditingMeta(false);
+    } catch {
+      message.error('更新失败');
+    }
+  };
+
+  const handleAddMember = async () => {
+    if (!selectedCodeForAdd) return;
+    const code = selectedCodeForAdd;
+    const existing = weights?.some((w: any) => w.etf_code === code);
+    if (existing) {
+      message.warning('该标的已在池中');
+      return;
+    }
+    try {
+      await addMember.mutateAsync({ poolId, etf_code: code });
+      message.success('标的已添加');
+      setSelectedCodeForAdd(undefined);
+    } catch {
+      message.error('添加失败');
+    }
+  };
+
+  const handleRemoveMember = async (code: string) => {
+    try {
+      await removeMember.mutateAsync({ poolId, etf_code: code });
+      message.success('标的已移除');
+    } catch {
+      message.error('移除失败');
+    }
+  };
+
+  const startEditMeta = () => {
+    setEditName(pool?.name || '');
+    setEditDescription(pool?.description || '');
+    setEditingMeta(true);
+  };
+
+  const existingCodes = useMemo(() => new Set(weights?.map((w: any) => w.etf_code) || []), [weights]);
+
+  const etfOptions = useMemo(() => {
+    return (etfList?.items || [])
+      .filter((item) => !existingCodes.has(item.code))
+      .map((item) => ({
+        label: `${item.code} ${item.name}`,
+        value: item.code,
+      }));
+  }, [etfList, existingCodes]);
 
   const suggestMenuItems: MenuProps['items'] = SUGGEST_ALGORITHMS.map((algo) => ({
     key: algo.key,
@@ -140,6 +216,22 @@ export default function PoolDetail() {
     },
     { title: '建议权重', dataIndex: 'suggested_weight', render: (v: number) => v ? `${v.toFixed(1)}%` : '-' },
     { title: '来源', dataIndex: 'weight_source' },
+    {
+      title: '操作',
+      key: 'action',
+      render: (_: unknown, record: any) => (
+        !editing ? (
+          <Popconfirm
+            title="确认移除该标的？"
+            onConfirm={() => handleRemoveMember(record.etf_code)}
+            okText="确认"
+            cancelText="取消"
+          >
+            <Button type="text" danger icon={<DeleteOutlined />} size="small" />
+          </Popconfirm>
+        ) : null
+      ),
+    },
   ];
 
   const snapshotColumns = [
@@ -157,6 +249,19 @@ export default function PoolDetail() {
       label: '成员与权重',
       children: (
         <div>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
+            <HelpTrigger
+              tooltip="AI 解释权重算法"
+              onClick={() =>
+                open({
+                  pageType: 'pool_detail',
+                  pageTitle: '标的池 - 成员与权重',
+                  contextData: buildPoolDetailContext(pool, weights, analytics, correlation, activeAlgorithm),
+                  quickQuestions: getQuickQuestions('pool_detail'),
+                })
+              }
+            />
+          </div>
           <Space style={{ marginBottom: 16 }} wrap>
             {editing ? (
               <>
@@ -170,6 +275,30 @@ export default function PoolDetail() {
             <Dropdown menu={{ items: suggestMenuItems }} placement="bottomLeft">
               <Button>生成建议权重</Button>
             </Dropdown>
+            {!editing && (
+              <>
+                <Select
+                  showSearch
+                  placeholder="选择要添加的标的"
+                  value={selectedCodeForAdd}
+                  onChange={setSelectedCodeForAdd}
+                  options={etfOptions}
+                  style={{ minWidth: 220 }}
+                  filterOption={(input, option) =>
+                    (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+                  }
+                />
+                <Button
+                  type="primary"
+                  icon={<PlusOutlined />}
+                  onClick={handleAddMember}
+                  disabled={!selectedCodeForAdd || addMember.isPending}
+                  loading={addMember.isPending}
+                >
+                  添加标的
+                </Button>
+              </>
+            )}
             {editing && (
               <span style={{ color: Math.abs(weightSum - 100) < 0.01 ? '#22c55e' : '#ef4444' }}>
                 当前合计：{weightSum.toFixed(2)}%（保存时自动归一化）
@@ -184,31 +313,61 @@ export default function PoolDetail() {
       key: 'distribution',
       label: '持仓分布',
       children: analytics?.category_distribution ? (
-        <Row gutter={[16, 16]}>
-          <Col xs={24} md={12}>
-            <GlassCard title="分类分布"><CategoryPie data={analytics.category_distribution} mode="count" /></GlassCard>
-          </Col>
-          <Col xs={24} md={12}>
-            <GlassCard title="权重分布"><CategoryPie data={analytics.category_distribution} mode="weight" /></GlassCard>
-          </Col>
-          <Col xs={24}>
-            <GlassCard title="池整体表现">
-              <Row gutter={16}>
-                <Col span={6}><Statistic title="1月收益" value={analytics.performance?.return_1m} suffix="%" precision={2} /></Col>
-                <Col span={6}><Statistic title="3月收益" value={analytics.performance?.return_3m} suffix="%" precision={2} /></Col>
-                <Col span={6}><Statistic title="夏普" value={analytics.performance?.sharpe_1y} precision={2} /></Col>
-                <Col span={6}><Statistic title="最大回撤" value={analytics.performance?.max_drawdown} suffix="%" precision={2} /></Col>
-              </Row>
-            </GlassCard>
-          </Col>
-        </Row>
+        <div>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
+            <HelpTrigger
+              tooltip="AI 解释持仓分析"
+              onClick={() =>
+                open({
+                  pageType: 'pool_detail',
+                  pageTitle: '标的池 - 持仓分布',
+                  contextData: buildPoolDetailContext(pool, weights, analytics, correlation, activeAlgorithm),
+                  quickQuestions: getQuickQuestions('pool_detail'),
+                })
+              }
+            />
+          </div>
+          <Row gutter={[16, 16]}>
+            <Col xs={24} md={12}>
+              <GlassCard title="分类分布"><CategoryPie data={analytics.category_distribution} mode="count" /></GlassCard>
+            </Col>
+            <Col xs={24} md={12}>
+              <GlassCard title="权重分布"><CategoryPie data={analytics.category_distribution} mode="weight" /></GlassCard>
+            </Col>
+            <Col xs={24}>
+              <GlassCard title="池整体表现">
+                <Row gutter={16}>
+                  <Col span={6}><Statistic title="1月收益" value={analytics.performance?.return_1m} suffix="%" precision={2} /></Col>
+                  <Col span={6}><Statistic title="3月收益" value={analytics.performance?.return_3m} suffix="%" precision={2} /></Col>
+                  <Col span={6}><Statistic title="夏普" value={analytics.performance?.sharpe_1y} precision={2} /></Col>
+                  <Col span={6}><Statistic title="最大回撤" value={analytics.performance?.max_drawdown} suffix="%" precision={2} /></Col>
+                </Row>
+              </GlassCard>
+            </Col>
+          </Row>
+        </div>
       ) : <div>暂无分析数据</div>,
     },
     {
       key: 'correlation',
       label: '相关性热力图',
       children: correlation ? (
-        <CorrelationHeatmap codes={correlation.codes} matrix={correlation.matrix} />
+        <div>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
+            <HelpTrigger
+              tooltip="AI 解释相关性"
+              onClick={() =>
+                open({
+                  pageType: 'pool_detail',
+                  pageTitle: '标的池 - 相关性热力图',
+                  contextData: buildPoolDetailContext(pool, weights, analytics, correlation, activeAlgorithm),
+                  quickQuestions: getQuickQuestions('pool_detail'),
+                })
+              }
+            />
+          </div>
+          <CorrelationHeatmap codes={correlation.codes} matrix={correlation.matrix} />
+        </div>
       ) : <div>暂无数据</div>,
     },
     {
@@ -235,8 +394,40 @@ export default function PoolDetail() {
   return (
     <div>
       <GlassCard style={{ marginBottom: 16 }}>
-        <h2 style={{ margin: 0, color: '#f1f5f9' }}>{pool?.name}</h2>
-        <div style={{ color: '#94a3b8' }}>{pool?.description} | {pool?.members?.length || 0} 只标的</div>
+        {editingMeta ? (
+          <Space direction="vertical" style={{ width: '100%' }} size="middle">
+            <Input
+              value={editName}
+              onChange={(e) => setEditName(e.target.value)}
+              placeholder="标的池名称"
+              style={{ maxWidth: 400, fontSize: 18, fontWeight: 600 }}
+            />
+            <Input
+              value={editDescription}
+              onChange={(e) => setEditDescription(e.target.value)}
+              placeholder="描述（可选）"
+              style={{ maxWidth: 400 }}
+            />
+            <Space>
+              <Button type="primary" onClick={handleUpdatePool} loading={updatePool.isPending}>
+                保存
+              </Button>
+              <Button onClick={() => setEditingMeta(false)}>取消</Button>
+            </Space>
+          </Space>
+        ) : (
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+            <div>
+              <h2 style={{ margin: 0, color: '#f1f5f9' }}>{pool?.name}</h2>
+              <div style={{ color: '#94a3b8' }}>
+                {pool?.description || '暂无描述'} | {pool?.members?.length || 0} 只标的
+              </div>
+            </div>
+            <Button icon={<EditOutlined />} onClick={startEditMeta}>
+              编辑信息
+            </Button>
+          </div>
+        )}
       </GlassCard>
       <Tabs items={tabItems} />
     </div>
