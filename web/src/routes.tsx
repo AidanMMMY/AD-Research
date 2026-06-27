@@ -25,7 +25,6 @@ const ResearchNotes = lazy(() => import('./pages/ResearchNotes'));
 const SentimentDashboard = lazy(() => import('./pages/SentimentDashboard'));
 const AIChat = lazy(() => import('./pages/AIChat'));
 const CryptoList = lazy(() => import('./pages/CryptoList'));
-const CryptoDetail = lazy(() => import('./pages/CryptoDetail'));
 
 export interface RouteConfig {
   path: string;
@@ -66,7 +65,8 @@ export const routes: RouteConfig[] = [
   { path: '/signals', element: wrap(SignalDashboard), auth: true, menu: { name: '交易信号', icon: 'ThunderboltOutlined' } },
   // ---- 加密货币 ----
   { path: '/crypto', element: wrap(CryptoList), auth: true, menu: { name: '加密货币', icon: 'BitcoinOutlined', dividerBefore: true } },
-  { path: '/crypto/:code', element: wrap(CryptoDetail), auth: true },
+  // CryptoDetail route disabled until backend endpoints are ready
+  // { path: '/crypto/:code', element: wrap(CryptoDetail), auth: true },
   // ---- AI 研究 ----
   { path: '/research', element: wrap(ResearchNotes), auth: true, menu: { name: 'AI研究笔记', icon: 'ReadOutlined' } },
   { path: '/sentiment', element: wrap(SentimentDashboard), auth: true, menu: { name: '情绪分析', icon: 'SmileOutlined' } },
