@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>iOS APP UI/UX 原型设计文档</title>
+<style>
+  :root {
+    --bg: #0d1117; --bg-card: #161b22; --border: #30363d;
+    --text: #c9d1d9; --text-secondary: #8b949e; --accent: #58a6ff;
+    --green: #3fb950; --code-bg: #1c2128;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    line-height: 1.7; padding: 40px 24px; max-width: 900px; margin: 0 auto;
+  }
+  h1 { font-size: 28px; border-bottom: 1px solid var(--border); padding-bottom: 16px; margin-bottom: 8px; }
+  h2 { font-size: 22px; margin: 40px 0 16px; color: var(--accent); border-bottom: 1px solid var(--border); padding-bottom: 8px; }
+  h3 { font-size: 17px; margin: 24px 0 12px; }
+  p { margin: 12px 0; }
+  code { background: var(--code-bg); padding: 2px 6px; border-radius: 4px; font-family: 'SF Mono', 'Fira Code', monospace; font-size: 13px; }
+  pre { background: var(--code-bg); border: 1px solid var(--border); border-radius: 8px; padding: 16px 20px; overflow-x: auto; margin: 16px 0; font-size: 13px; line-height: 1.6; font-family: 'SF Mono', 'Fira Code', monospace; }
+  pre code { background: none; padding: 0; }
+  table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 14px; }
+  th, td { border: 1px solid var(--border); padding: 10px 14px; text-align: left; }
+  th { background: var(--bg-card); font-weight: 600; }
+  tr:hover td { background: rgba(255,255,255,0.02); }
+  .date { color: var(--text-secondary); font-size: 14px; margin-bottom: 24px; }
+  ul, ol { margin: 12px 0 12px 24px; }
+  li { margin: 6px 0; }
+  .wireframe { background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 20px; margin: 16px 0; font-family: 'SF Mono', monospace; font-size: 12px; line-height: 1.5; white-space: pre; overflow-x: auto; color: var(--text-secondary); }
+  .toc { background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 20px 24px; margin: 24px 0; }
+  .toc a { color: var(--accent); text-decoration: none; }
+  .toc a:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+
+<h1>iOS APP UI/UX 原型设计文档</h1>
+<p class="date">2026-06-28 · 基于投研平台功能，原生 Swift 实现</p>
+
+<div class="toc">
+<strong>目录</strong>
+<ol>
+<li><a href="#s1">设计原则</a></li>
+<li><a href="#s2">信息架构</a></li>
+<li><a href="#s3">页面设计详述</a></li>
+<li><a href="#s4">iOS 原生交互规范</a></li>
+<li><a href="#s5">页面过渡动画</a></li>
+<li><a href="#s6">Widget 与系统集成</a></li>
+<li><a href="#s7">无障碍设计</a></li>
+<li><a href="#s8">MVP 范围 vs 完整版</a></li>
+</ol>
+</div>
+
+<h2 id="s1">一、设计原则</h2>
+
+<h3>核心原则</h3>
+
+<table>
+  <tr><th>原则</th><th>说明</th></tr>
+  <tr><td><strong>本地优先</strong></td><td>打开即有数据，网络请求不阻塞 UI</td></tr>
+  <tr><td><strong>手势优先</strong></td><td>用原生手势替代 Web 端按钮操作</td></tr>
+  <tr><td><strong>信息分层</strong></td><td>重要信息前置，详情按需展开</td></tr>
+  <tr><td><strong>触控友好</strong></td><td>44pt 最小热区，不留死角</td></tr>
+  <tr><td><strong>统一主题</strong></td><td>与 Web 端 Swiss Minimal + Neon Cyan 对齐</td></tr>
+</table>
+
+<h3>与 Web 端的关键差异</h3>
+
+<table>
+  <tr><th>维度</th><th>Web 端</th><th>iOS App</th></tr>
+  <tr><td>导航</td><td>固定侧边栏 + 页面跳转</td><td>底部 TabBar + NavigationStack push</td></tr>
+  <tr><td>信息密度</td><td>大屏，表格为主</td><td>小屏，卡片 + 列表为主</td></tr>
+  <tr><td>交互</td><td>点击、hover、右键菜单</td><td>点击、长按、滑动、捏合</td></tr>
+  <tr><td>操作</td><td>多按钮并列</td><td>关键操作突出，次要收进更多菜单</td></tr>
+  <tr><td>刷新</td><td>页面加载</td><td>下拉刷新 / 自动刷新</td></tr>
+</table>
+
+<h2 id="s2">二、信息架构</h2>
+
+<h3>页面导航树</h3>
+
+<pre><code>App Launch
+  ├── 已登录 → MainTabView
+  │     ├── Tab 1: 首页 (Dashboard)
+  │     │     ├── 统计卡片
+  │     │     ├── 评分 Top 10 → push 标的详情
+  │     │     ├── 我的收藏 → push 标的详情
+  │     │     └── 我的池子 → push 池子详情
+  │     │
+  │     ├── Tab 2: 标的 (Instruments)
+  │     │     └── 标的列表 → push 标的详情
+  │     │           ├── K线 (默认)
+  │     │           ├── 指标
+  │     │           ├── AI 笔记
+  │     │           └── 收藏 / 加入池子
+  │     │
+  │     ├── Tab 3: 池子 (Pools)
+  │     │     └── 池子列表 → push 池子详情
+  │     │           ├── 成员与权重
+  │     │           ├── 持仓分布 (饼图)
+  │     │           └── 表现分析 (收益曲线)
+  │     │
+  │     └── Tab 4: 我的 (Profile)
+  │           ├── 账户 / 订阅
+  │           ├── 已登录设备
+  │           ├── 推送设置
+  │           ├── AI 聊天 (独立入口)
+  │           └── 退出登录
+  │
+  └── 未登录 → LoginView → MainTabView</code></pre>
+
+<h2 id="s3">三、页面设计详述</h2>
+
+<h3>3.1 登录页</h3>
+
+<div class="wireframe">┌──────────────────────────────────┐
+│                                  │
+│            [App Logo]            │
+│          投研平台                │
+│                                  │
+│     ┌──────────────────────┐     │
+│     │  👤  用户名           │     │
+│     └──────────────────────┘     │
+│     ┌──────────────────────┐     │
+│     │  🔒  密码             │     │
+│     └──────────────────────┘     │
+│                                  │
+│     ┌──────────────────────┐     │
+│     │       登  录          │     │
+│     └──────────────────────┘     │
+│                                  │
+│     没有账号？联系管理员         │
+│                                  │
+└──────────────────────────────────┘</div>
+
+<h3>3.2 首页 (Dashboard)</h3>
+
+<div class="wireframe">┌──────────────────────────────────┐
+│  首页看板           2026-06-28   │
+├──────────────────────────────────┤
+│  ┌────────┐ ┌────────┐          │
+│  │ 1,234  │ │  892   │          │
+│  │标的总数│ │评分覆盖│          │
+│  └────────┘ └────────┘          │
+│  ┌────────┐ ┌────────┐          │
+│  │   42   │ │   12   │          │
+│  │ 分类数 │ │评分模板│          │
+│  └────────┘ └────────┘          │
+├──────────────────────────────────┤
+│  综合评分 Top 10         查看全部→│
+│  ┌──────────────────────────┐   │
+│  │ 1 510300 沪深300ETF  92.5│   │
+│  │ 2 159915  创业板ETF  89.3│   │
+│  │ 3 510050 上证50ETF  87.1 │   │
+│  └──────────────────────────┘   │
+├──────────────────────────────────┤
+│  ⭐ 我的收藏 (3)        查看全部→│
+│  510300 沪深300ETF              │
+│  159915 创业板ETF               │
+│  AAPL   Apple Inc.              │
+├──────────────────────────────────┤
+│  📂 我的标的池 (2)      查看全部→│
+│  📊 A股核心池  8只               │
+│  📊 美股成长池  5只              │
+└──────────────────────────────────┘
+       [🏠]   [📈]   [📂]   [👤]</div>
+
+<h3>3.3 标的详情 — 核心页面</h3>
+
+<div class="wireframe">┌──────────────────────────────────┐
+│  ← 返回          ⭐  ⋯          │
+├──────────────────────────────────┤
+│  沪深300ETF                       │
+│  510300 · A股 · 规模 320亿        │
+│  ──────────────────────────────  │
+│  ¥3.845  +0.32%  ↑               │
+├──────────────────────────────────┤
+│  [1日] [1周] [1月] [3月] [1年]   │
+│                                  │
+│  ┌──────────────────────────┐   │
+│  │                          │   │
+│  │       K 线 图            │   │
+│  │     (DGCharts)           │   │
+│  │     捏合缩放·滑动·长按    │   │
+│  │                          │   │
+│  └──────────────────────────┘   │
+│  成交量 ▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁   │
+├──────────────────────────────────┤
+│  [K线] [指标] [笔记] [情绪]      │
+├──────────────────────────────────┤
+│  关键指标                         │
+│  1月:+2.3%  3月:-1.2%  1年:+15.8% │
+│  夏普:1.25  波动率:18.3%  RSI:52.1│
+│                                  │
+│  评分雷达图                       │
+│         ┌───┐                    │
+│        ╱ 收益╲                   │
+│       ╱  80   ╲                  │
+│      ╱         ╲                 │
+│     ╱趋势    风险╲                │
+│    ╱  75      70 ╲               │
+│   ╱               ╲              │
+│  ╱流动性  85   夏普╲             │
+│   ╲     90      ╱               │
+│    ╲           ╱                 │
+│     ╲         ╱                  │
+│      ╲       ╱                   │
+│       ╲     ╱                    │
+│        └───┘                     │
+├──────────────────────────────────┤
+│  AI 研究笔记 (AI生成·仅供参考)    │
+│  该标的近期呈现震荡上行...        │
+├──────────────────────────────────┤
+│  [+ 加入标的池]                   │
+└──────────────────────────────────┘</div>
+
+<h3>3.4 其他页面</h3>
+
+<p>详见 Markdown 原文档，包含：</p>
+<ul>
+  <li>标的列表 — 搜索栏吸顶 + Segment Control + 卡片列表</li>
+  <li>池子列表/详情 — 成员权重可视化 + 饼图 + 收益</li>
+  <li>我的页面 — Grouped List 设置页</li>
+  <li>AI 聊天 — 流式输出 + 历史会话</li>
+</ul>
+
+<h2 id="s4">四、iOS 原生交互规范</h2>
+
+<h3>导航手势</h3>
+<table>
+  <tr><th>手势</th><th>场景</th><th>反馈</th></tr>
+  <tr><td>右滑返回</td><td>所有 push 页面</td><td>跟随手指动画</td></tr>
+  <tr><td>下拉</td><td>列表刷新</td><td>RefreshControl 旋转</td></tr>
+  <tr><td>捏合</td><td>K线缩放</td><td>实时缩放</td></tr>
+  <tr><td>长按</td><td>列表/图表</td><td>Context Menu + Haptic</td></tr>
+  <tr><td>左滑</td><td>列表项</td><td>操作按钮（删除/收藏）</td></tr>
+</table>
+
+<h3>Haptic 触觉反馈</h3>
+<table>
+  <tr><th>场景</th><th>反馈类型</th></tr>
+  <tr><td>登录成功</td><td><code>.notification(.success)</code></td></tr>
+  <tr><td>收藏/取消</td><td><code>.impact(.light)</code></td></tr>
+  <tr><td>下拉刷新完成</td><td><code>.impact(.medium)</code></td></tr>
+  <tr><td>删除确认</td><td><code>.notification(.warning)</code></td></tr>
+</table>
+
+<h3>字体系统（与 Web theme.css 对齐）</h3>
+<table>
+  <tr><th>用途</th><th>Web 变量</th><th>iOS Dynamic Type</th></tr>
+  <tr><td>大标题</td><td><code>26px</code></td><td><code>.largeTitle</code></td></tr>
+  <tr><td>页面标题</td><td><code>20px</code></td><td><code>.title3</code></td></tr>
+  <tr><td>正文</td><td><code>13px</code></td><td><code>.body</code></td></tr>
+  <tr><td>辅助文字</td><td><code>11px</code></td><td><code>.caption</code></td></tr>
+  <tr><td>价格数字</td><td><code>24px</code></td><td><code>.system(24, mono)</code></td></tr>
+</table>
+
+<h2 id="s5">五、页面过渡动画</h2>
+<table>
+  <tr><th>转场</th><th>动画</th><th>时长</th></tr>
+  <tr><td>Push 详情</td><td>从右滑入</td><td>300ms</td></tr>
+  <tr><td>Sheet 弹出</td><td>从底部升入</td><td>400ms spring</td></tr>
+  <tr><td>Tab 切换</td><td>淡入淡出</td><td>200ms</td></tr>
+  <tr><td>登录→首页</td><td>溶解 + 缩放</td><td>500ms</td></tr>
+</table>
+
+<h2 id="s6">六、Widget 与系统集成</h2>
+<ul>
+  <li><strong>桌面 Widget</strong>：Small/Medium 尺寸，显示自选标的价格</li>
+  <li><strong>Live Activity</strong>：灵动岛实时价格（5秒更新）</li>
+  <li><strong>Siri 捷径</strong>："打开我的标的池"</li>
+  <li><strong>Apple Watch</strong>：complications 显示自选</li>
+</ul>
+
+<h2 id="s7">七、无障碍设计</h2>
+<ul>
+  <li>VoiceOver：所有按钮、标签、图表有 <code>accessibilityLabel</code></li>
+  <li>动态字体：支持系统 Dynamic Type</li>
+  <li>减少动效：尊重系统设置</li>
+  <li>色彩对比：Dark Mode 下 ≥ 4.5:1</li>
+  <li>触控区域：最小 44x44pt</li>
+</ul>
+
+<h2 id="s8">八、MVP 范围</h2>
+
+<table>
+  <tr><th>页面</th><th>导航方式</th><th>MVP</th></tr>
+  <tr><td>登录页</td><td>Root</td><td>✅</td></tr>
+  <tr><td>首页</td><td>Tab 1</td><td>✅</td></tr>
+  <tr><td>标的列表</td><td>Tab 2</td><td>✅</td></tr>
+  <tr><td>标的详情</td><td>Push</td><td>✅</td></tr>
+  <tr><td>池子列表</td><td>Tab 3</td><td>✅</td></tr>
+  <tr><td>池子详情</td><td>Push</td><td>✅</td></tr>
+  <tr><td>AI 聊天</td><td>Tab 4 / Push</td><td>✅</td></tr>
+  <tr><td>我的/设置</td><td>Tab 4</td><td>✅</td></tr>
+  <tr><td>全市场筛选器</td><td>Push</td><td>❌</td></tr>
+  <tr><td>回测列表</td><td>Push</td><td>❌</td></tr>
+  <tr><td>板块轮动</td><td>Push</td><td>❌</td></tr>
+</table>
+
+</body>
+</html>
