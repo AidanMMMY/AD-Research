@@ -17,6 +17,7 @@ export default function ScoreRadar({ data }: ScoreRadarProps) {
 
   const option: EChartsOption = {
     backgroundColor: 'transparent',
+    textStyle: { fontFamily: 'var(--font-sans)' },
     radar: {
       indicator: [
         { name: '收益能力', max: 100 },
@@ -27,22 +28,22 @@ export default function ScoreRadar({ data }: ScoreRadarProps) {
       ],
       radius: isMobile ? '55%' : '65%',
       axisName: {
-        color: '#94a3b8',
+        color: 'var(--text-secondary)',
         fontSize: isMobile ? 10 : 12,
       },
       splitArea: {
         areaStyle: {
-          color: ['rgba(99,102,241,0.05)', 'rgba(99,102,241,0.1)', 'rgba(99,102,241,0.05)', 'rgba(99,102,241,0.1)'],
+          color: ['rgba(34,211,238,0.05)', 'rgba(85,85,85,0.05)', 'rgba(34,211,238,0.05)', 'rgba(85,85,85,0.05)'],
         },
       },
       splitLine: {
         lineStyle: {
-          color: 'rgba(255,255,255,0.06)',
+          color: 'var(--border-default)',
         },
       },
       axisLine: {
         lineStyle: {
-          color: 'rgba(255,255,255,0.06)',
+          color: 'var(--border-default)',
         },
       },
     },
@@ -57,16 +58,16 @@ export default function ScoreRadar({ data }: ScoreRadarProps) {
           data.score_trend,
         ],
         name: '评分',
-        areaStyle: { opacity: 0.3, color: '#6366f1' },
-        lineStyle: { color: '#6366f1', width: 2 },
-        itemStyle: { color: '#6366f1' },
+        areaStyle: { opacity: 0.3, color: '#22d3ee' },
+        lineStyle: { color: '#22d3ee', width: 2 },
+        itemStyle: { color: '#22d3ee' },
       }],
     }],
     tooltip: {
       trigger: 'item',
-      backgroundColor: '#0f1729',
-      borderColor: 'rgba(255,255,255,0.08)',
-      textStyle: { color: '#f1f5f9' },
+      backgroundColor: 'var(--bg-elevated)',
+      borderColor: 'var(--border-default)',
+      textStyle: { color: 'var(--text-primary)' },
     },
   };
 

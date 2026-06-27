@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Table, Tabs } from 'antd';
 import { useScores, useScoreTemplates } from '@/hooks/useScores';
 import { useAIHelp } from '@/hooks/useAIHelp';
-import GlassCard from '@/components/GlassCard';
+import Panel from '@/components/Panel';
 import HelpTrigger from '@/components/HelpTrigger';
 import HelpPopover from '@/components/HelpPopover';
 import ETFCodeTag from '@/components/ETFCodeTag';
@@ -37,7 +37,7 @@ export default function ScoreRanking() {
       dataIndex: 'rank_overall',
       width: 90,
       render: (v: number) => (
-        <span style={{ fontWeight: 700, color: v <= 3 ? '#eab308' : '#94a3b8', fontFamily: "'SF Mono', monospace" }}>
+        <span style={{ fontWeight: 700, color: v <= 3 ? 'var(--accent)' : 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>
           {v <= 3 && '🏆 '}{v}
         </span>
       ),
@@ -47,7 +47,7 @@ export default function ScoreRanking() {
       dataIndex: 'rank_category',
       width: 90,
       render: (v: number) => (
-        <span style={{ fontFamily: "'SF Mono', monospace", color: '#64748b' }}>{v}</span>
+        <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-tertiary)' }}>{v}</span>
       ),
     },
     {
@@ -59,11 +59,11 @@ export default function ScoreRanking() {
       render: (_: unknown, record: any) => <ScoreBar score={record.composite_score} />,
       width: 180,
     },
-    { title: <HelpPopover termKey="score_return">收益</HelpPopover>, dataIndex: 'score_return', width: 80, render: (v: number) => <span style={{ fontFamily: "'SF Mono', monospace", color: '#94a3b8' }}>{v?.toFixed(1)}</span> },
-    { title: <HelpPopover termKey="score_risk">风险</HelpPopover>, dataIndex: 'score_risk', width: 80, render: (v: number) => <span style={{ fontFamily: "'SF Mono', monospace", color: '#94a3b8' }}>{v?.toFixed(1)}</span> },
-    { title: <HelpPopover termKey="score_sharpe">夏普</HelpPopover>, dataIndex: 'score_sharpe', width: 80, render: (v: number) => <span style={{ fontFamily: "'SF Mono', monospace", color: '#94a3b8' }}>{v?.toFixed(1)}</span> },
-    { title: <HelpPopover termKey="score_liquidity">流动性</HelpPopover>, dataIndex: 'score_liquidity', width: 90, render: (v: number) => <span style={{ fontFamily: "'SF Mono', monospace", color: '#94a3b8' }}>{v?.toFixed(1)}</span> },
-    { title: <HelpPopover termKey="score_trend">趋势</HelpPopover>, dataIndex: 'score_trend', width: 80, render: (v: number) => <span style={{ fontFamily: "'SF Mono', monospace", color: '#94a3b8' }}>{v?.toFixed(1)}</span> },
+    { title: <HelpPopover termKey="score_return">收益</HelpPopover>, dataIndex: 'score_return', width: 80, render: (v: number) => <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)' }}>{v?.toFixed(1)}</span> },
+    { title: <HelpPopover termKey="score_risk">风险</HelpPopover>, dataIndex: 'score_risk', width: 80, render: (v: number) => <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)' }}>{v?.toFixed(1)}</span> },
+    { title: <HelpPopover termKey="score_sharpe">夏普</HelpPopover>, dataIndex: 'score_sharpe', width: 80, render: (v: number) => <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)' }}>{v?.toFixed(1)}</span> },
+    { title: <HelpPopover termKey="score_liquidity">流动性</HelpPopover>, dataIndex: 'score_liquidity', width: 90, render: (v: number) => <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)' }}>{v?.toFixed(1)}</span> },
+    { title: <HelpPopover termKey="score_trend">趋势</HelpPopover>, dataIndex: 'score_trend', width: 80, render: (v: number) => <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)' }}>{v?.toFixed(1)}</span> },
   ];
 
   const tabItems = templates?.map((t) => ({
@@ -73,16 +73,16 @@ export default function ScoreRanking() {
 
   return (
     <div>
-      <GlassCard style={{ marginBottom: 20 }}>
+      <Panel style={{ marginBottom: 20 }}>
         <Tabs
           activeKey={String(templateId || templates?.find((t) => t.is_default)?.id || '')}
           onChange={(key) => setTemplateId(Number(key))}
           items={tabItems}
           style={{ marginBottom: 0 }}
         />
-      </GlassCard>
+      </Panel>
 
-      <GlassCard
+      <Panel
         title={`综合评分 Top ${scoresData?.items.length || 0}`}
         extra={
           <HelpTrigger
@@ -102,7 +102,7 @@ export default function ScoreRanking() {
             onClick: () => navigate(`/etfs/${record.etf_code}`),
           })}
         />
-      </GlassCard>
+      </Panel>
     </div>
   );
 }
