@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>iOS 原生 APP 产品规划文档</title>
+<style>
+  :root {
+    --bg: #0d1117; --bg-card: #161b22; --border: #30363d;
+    --text: #c9d1d9; --text-secondary: #8b949e; --accent: #58a6ff;
+    --green: #3fb950; --yellow: #d2991d; --code-bg: #1c2128;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    line-height: 1.7; padding: 40px 24px; max-width: 900px; margin: 0 auto;
+  }
+  h1 { font-size: 28px; border-bottom: 1px solid var(--border); padding-bottom: 16px; margin-bottom: 8px; }
+  h2 { font-size: 22px; margin: 40px 0 16px; color: var(--accent); border-bottom: 1px solid var(--border); padding-bottom: 8px; }
+  h3 { font-size: 17px; margin: 24px 0 12px; }
+  p { margin: 12px 0; }
+  code { background: var(--code-bg); padding: 2px 6px; border-radius: 4px; font-family: 'SF Mono', 'Fira Code', monospace; font-size: 13px; }
+  pre { background: var(--code-bg); border: 1px solid var(--border); border-radius: 8px; padding: 16px 20px; overflow-x: auto; margin: 16px 0; font-size: 13px; line-height: 1.6; }
+  pre code { background: none; padding: 0; }
+  table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 14px; }
+  th, td { border: 1px solid var(--border); padding: 10px 14px; text-align: left; }
+  th { background: var(--bg-card); font-weight: 600; }
+  tr:hover td { background: rgba(255,255,255,0.02); }
+  .date { color: var(--text-secondary); font-size: 14px; margin-bottom: 24px; }
+  ul, ol { margin: 12px 0 12px 24px; }
+  li { margin: 6px 0; }
+  blockquote { border-left: 3px solid var(--accent); padding: 4px 16px; margin: 16px 0; color: var(--text-secondary); background: var(--bg-card); border-radius: 0 8px 8px 0; }
+  hr { border: none; border-top: 1px solid var(--border); margin: 40px 0; }
+  .toc { background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 20px 24px; margin: 24px 0; }
+  .toc a { color: var(--accent); text-decoration: none; }
+  .toc a:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+
+<h1>iOS 原生 APP 产品规划文档</h1>
+<p class="date">2026-06-28 · 基于投研平台现有架构的完整规划</p>
+
+<p>前置阅读：<a href="./20260628-ios-app-feasibility-report.html" style="color:var(--accent)">iOS APP 可行性评估报告</a></p>
+
+<div class="toc">
+<strong>目录</strong>
+<ol>
+<li><a href="#s1">总体决策</a></li>
+<li><a href="#s2">技术选型</a></li>
+<li><a href="#s3">Swift 工程结构</a></li>
+<li><a href="#s4">认证与安全</a></li>
+<li><a href="#s5">图表方案</a></li>
+<li><a href="#s6">实时行情与离线缓存</a></li>
+<li><a href="#s7">数据同步策略</a></li>
+<li><a href="#s8">商业化与 App Store</a></li>
+<li><a href="#s9">开发排期</a></li>
+<li><a href="#s10">后端改造清单</a></li>
+</ol>
+</div>
+
+<h2 id="s1">一、总体决策</h2>
+
+<table>
+  <tr><th>决策</th><th>结论</th></tr>
+  <tr><td>平台</td><td><strong>iOS 原生</strong>（Swift + SwiftUI/UIKit 混合）</td></tr>
+  <tr><td>底座</td><td><strong>复用现有 FastAPI 后端</strong>，API 直接调用</td></tr>
+  <tr><td>开发模式</td><td><strong>MVVM + Combine + async/await</strong></td></tr>
+  <tr><td>图表</td><td><strong>DGCharts（K线）+ Swift Charts（辅助）</strong> — 免费</td></tr>
+  <tr><td>实时行情</td><td><strong>SSE 推送</strong> — 1-5秒刷新</td></tr>
+  <tr><td>本地数据库</td><td><strong>GRDB</strong> — SQL 友好、高性能</td></tr>
+  <tr><td>离线策略</td><td><strong>本地优先展示 + 后台静默刷新</strong></td></tr>
+  <tr><td>商业化</td><td><strong>免费 + 内购订阅</strong>（Pro 版 ¥18-38/月）</td></tr>
+  <tr><td>首发市场</td><td><strong>香港区或美国区 App Store</strong></td></tr>
+</table>
+
+<h2 id="s2">二、技术选型</h2>
+
+<table>
+  <tr><th>层级</th><th>推荐方案</th><th>选型理由</th></tr>
+  <tr><td>UI 框架</td><td>SwiftUI 主体 + UIKitRepresentable 包裹图表</td><td>新页面 SwiftUI 开发快；图表需 UIKit 性能</td></tr>
+  <tr><td>架构模式</td><td>MVVM + Combine</td><td>Combine 适合响应式数据流</td></tr>
+  <tr><td>网络层</td><td>Alamofire + Codable</td><td>拦截器、重试机制成熟</td></tr>
+  <tr><td>本地缓存</td><td>GRDB</td><td>金融查询复杂，SQL 更直接</td></tr>
+  <tr><td>认证存储</td><td>Keychain</td><td>JWT 必须安全存储</td></tr>
+  <tr><td>K线图表</td><td>DGCharts</td><td>Apache 2.0 免费、散户级够用</td></tr>
+  <tr><td>辅助图表</td><td>Swift Charts</td><td>系统原生，收益曲线/饼图</td></tr>
+  <tr><td>图片加载</td><td>Kingfisher</td><td>列表缩略图缓存</td></tr>
+  <tr><td>推送</td><td>APNs 原生</td><td>系统级推送</td></tr>
+</table>
+
+<h2 id="s3">三、Swift 工程结构</h2>
+
+<pre><code>ADResearch/
+├── App/                    # 入口 + 生命周期
+│   ├── ADResearchApp.swift
+│   ├── AppDelegate.swift   # APNs / Background Fetch
+│   └── Info.plist
+├── Models/
+│   ├── Domain/             # 业务模型（纯 struct）
+│   ├── DTO/                # API 传输对象（Codable）
+│   └── Local/              # GRDB 持久化模型
+├── Services/
+│   ├── Network/            # Alamofire + 拦截器
+│   ├── API/                # 按后端 api/*.ts 一对一翻译（17个 Service）
+│   ├── Local/              # Repository（GRDB CRUD）
+│   ├── Stream/             # SSE 实时行情
+│   ├── Sync/               # 数据同步 + 冲突解决
+│   ├── Auth/               # 登录/登出/refresh/Keychain
+│   └── Push/               # APNs 注册/接收
+├── ViewModels/             # MVVM ViewModel
+│   ├── Dashboard/          # 首页
+│   ├── Instruments/        # 标的列表
+│   ├── InstrumentDetail/   # 标的详情（K线）
+│   ├── Pools/              # 池子
+│   ├── AI/                 # 聊天 + 研究笔记
+│   └── Settings/           # 设置
+├── Views/                  # SwiftUI View
+│   ├── Common/             # 通用组件
+│   │   ├── KLineChartView.swift   # DGCharts UIViewRepresentable
+│   │   ├── SimpleChartView.swift  # Swift Charts 封装
+│   │   └── OfflineBanner.swift
+│   ├── Tab/MainTabView.swift
+│   ├── Dashboard/
+│   ├── Instruments/
+│   ├── Pools/
+│   ├── AI/
+│   └── Settings/
+├── Theme/                  # 色彩/字体（与 Web theme.css 对齐）
+├── Utilities/              # 格式化/扩展
+└── Resources/              # 图标/多语言</code></pre>
+
+<h2 id="s4">四、认证与安全</h2>
+
+<h3>改造后的认证接口</h3>
+
+<table>
+  <tr><th>端点</th><th>说明</th></tr>
+  <tr><td><code>POST /auth/login</code></td><td>返回 access_token（15min）+ refresh_token（30天）</td></tr>
+  <tr><td><code>POST /auth/refresh</code></td><td>刷新短期 token</td></tr>
+  <tr><td><code>POST /auth/logout</code></td><td>置失效 token（Redis 黑名单）</td></tr>
+  <tr><td><code>POST /auth/device</code></td><td>注册设备</td></tr>
+  <tr><td><code>GET /auth/devices</code></td><td>查看已登录设备</td></tr>
+</table>
+
+<h3>Token 安全</h3>
+<ul>
+  <li>access_token 存内存，refresh_token 存 Keychain</li>
+  <li>AuthInterceptor 自动注入 Bearer Token，401 自动刷新</li>
+  <li>支持多端登录、设备解绑</li>
+</ul>
+
+<h2 id="s5">五、图表方案</h2>
+
+<h3>K线：DGCharts</h3>
+<ul>
+  <li>Apache 2.0 免费许可</li>
+  <li>GitHub 27k+ stars</li>
+  <li>支持捏合缩放、滑动、十字光标</li>
+  <li>内置 MA/EMA/MACD/RSI/Bollinger</li>
+  <li>需用 UIViewRepresentable 包进 SwiftUI</li>
+</ul>
+
+<h3>辅助图表：Swift Charts</h3>
+<ul>
+  <li>收益曲线、饼图用系统原生</li>
+  <li>声明式 API，与 SwiftUI 配合佳</li>
+  <li>热力图/雷达图用 DGCharts 补充</li>
+</ul>
+
+<h2 id="s6">六、实时行情与离线缓存</h2>
+
+<h3>数据层架构</h3>
+<pre><code>
+┌──────────────┐    SSE（实时价格）     ┌──────────────┐
+│   iOS App    │ ◄──────────────────►   │   FastAPI    │
+│              │    REST（历史K线）       │   Backend    │
+│ ┌──────────┐ │                        │              │
+│ │  GRDB    │ │◄── 后台定时同步 ──────► │  Market      │
+│ │ (本地DB) │ │                        │  Service     │
+│ └────┬─────┘ │                        │              │
+│      │ read  │                        │  SSE Stream  │
+│ ┌────┴─────┐ │                        └──────────────┘
+│ │ SwiftUI  │ │
+│ │   View   │ │
+│ └──────────┘ │
+└──────────────┘</code></pre>
+
+<h3>数据分层与同步</h3>
+<table>
+  <tr><th>数据</th><th>存储</th><th>更新频率</th><th>离线可用</th></tr>
+  <tr><td>历史 K线</td><td>GRDB</td><td>每天 1 次</td><td>✅</td></tr>
+  <tr><td>当日分时</td><td>GRDB + 内存</td><td>1-5s</td><td>⚠️ 有限</td></tr>
+  <tr><td>最新快照</td><td>内存</td><td>1-5s</td><td>❌</td></tr>
+  <tr><td>标的元数据</td><td>GRDB</td><td>每天 1 次</td><td>✅</td></tr>
+  <tr><td>收藏/池子</td><td>GRDB</td><td>即时</td><td>✅</td></tr>
+  <tr><td>评分/指标</td><td>GRDB</td><td>每天 1 次</td><td>✅</td></tr>
+  <tr><td>AI 笔记</td><td>GRDB</td><td>打开时刷新</td><td>✅</td></tr>
+</table>
+
+<h3>SSE 推送协议</h3>
+<pre><code>GET /api/v1/stream/prices?codes=510300,159915
+
+data: {"code":"510300","price":3.845,"change_pct":0.32,"volume":123456789}
+data: {"code":"159915","price":4.210,"change_pct":-0.15,"volume":98765432}</code></pre>
+
+<h2 id="s7">七、数据同步策略</h2>
+
+<h3>核心原则</h3>
+<ol>
+  <li><strong>本地优先展示</strong> — 打开 App 永远有数据</li>
+  <li><strong>后台静默刷新</strong> — 不阻塞用户操作</li>
+  <li><strong>乐观更新</strong> — 收藏/编辑等操作立即反馈</li>
+  <li><strong>自动重试</strong> — 网络恢复后自动同步 pending</li>
+  <li><strong>冲突用时间戳</strong> — 最后修改时间胜出</li>
+  <li><strong>定期清理</strong> — 防止数据库膨胀</li>
+</ol>
+
+<h2 id="s8">八、商业化与 App Store</h2>
+
+<h3>订阅策略</h3>
+<table>
+  <tr><th>等级</th><th>价格</th><th>功能</th></tr>
+  <tr><td>免费版</td><td>¥0</td><td>基础行情、标的列表、3条评分</td></tr>
+  <tr><td>Pro 版</td><td>¥18-38/月</td><td>全部评分、高级筛选、回测、AI 笔记</td></tr>
+  <tr><td>机构版</td><td>联系销售</td><td>API 接入、自定义策略、白标</td></tr>
+</table>
+
+<h3>审核关键</h3>
+<ul>
+  <li>产品定位："数据分析工具"，不是"投资建议"</li>
+  <li>所有页面标注"仅供参考，不构成投资建议"</li>
+  <li>AI 生成内容标注"AI 生成，需人工复核"</li>
+  <li>不承诺任何收益率</li>
+</ul>
+
+<h3>上线路径</h3>
+<ol>
+  <li>TestFlight 内测（1-3 个月）</li>
+  <li>App Store 香港/美国区上架</li>
+  <li>增加内购订阅</li>
+  <li>中国大陆区上架（视备案进展）</li>
+</ol>
+
+<h2 id="s9">九、开发排期（8 周 MVP）</h2>
+
+<table>
+  <tr><th>周次</th><th>目标</th><th>产出</th></tr>
+  <tr><td>W1</td><td>工程搭建 + 网络层</td><td>Xcode 项目、Alamofire、AuthInterceptor、Keychain</td></tr>
+  <tr><td>W2</td><td>登录 + 首页</td><td>登录页、统计卡片、评分 Top10</td></tr>
+  <tr><td>W3</td><td>标的列表 + 筛选器</td><td>搜索、筛选、本地缓存</td></tr>
+  <tr><td>W4</td><td>标的详情 + K线</td><td>DGCharts K线、关键指标卡片</td></tr>
+  <tr><td>W5</td><td>池子列表 + 详情</td><td>池子成员、权重、收益分析</td></tr>
+  <tr><td>W6</td><td>AI 笔记 + 收藏</td><td>Research 页面、收藏 toggle</td></tr>
+  <tr><td>W7</td><td>推送 + 我的页面</td><td>APNs、设备注册、设置</td></tr>
+  <tr><td>W8</td><td>测试 + 优化</td><td>离线体验、UI 打磨、TestFlight</td></tr>
+</table>
+
+<p><strong>砍掉的功能（第二阶段）：</strong> 全市场筛选器、回测创建/管理、策略管理、相关性分析、板块轮动、管理员功能</p>
+
+<h2 id="s10">十、后端改造清单</h2>
+
+<table>
+  <tr><th>优先级</th><th>改造项</th><th>估算</th></tr>
+  <tr><td>P0</td><td>Refresh Token + /auth/refresh</td><td>3-5 天</td></tr>
+  <tr><td>P0</td><td>Token 黑名单（Redis）</td><td>1-2 天</td></tr>
+  <tr><td>P0</td><td>设备绑定表 + API</td><td>2-3 天</td></tr>
+  <tr><td>P1</td><td>SSE 价格流端点</td><td>5-7 天</td></tr>
+  <tr><td>P1</td><td>批量快照接口</td><td>1-2 天</td></tr>
+  <tr><td>P1</td><td>API 分页统一</td><td>2-3 天</td></tr>
+  <tr><td>P2</td><td>APNs 推送集成</td><td>3-5 天</td></tr>
+  <tr><td>P2</td><td>增量接口（ETag/since）</td><td>2-3 天</td></tr>
+  <tr><td>P2</td><td>PDF 报告导出</td><td>2-3 天</td></tr>
+</table>
+
+</body>
+</html>
