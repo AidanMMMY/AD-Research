@@ -21,7 +21,7 @@ import { useAIHelp } from '@/hooks/useAIHelp';
 import CategoryPie from '@/components/CategoryPie';
 import CorrelationHeatmap from '@/components/CorrelationHeatmap';
 import ETFCodeTag from '@/components/ETFCodeTag';
-import GlassCard from '@/components/GlassCard';
+import Panel from '@/components/Panel';
 import HelpTrigger from '@/components/HelpTrigger';
 import HelpPopover from '@/components/HelpPopover';
 import { buildPoolDetailContext } from '@/utils/helpContext';
@@ -311,7 +311,7 @@ export default function PoolDetail() {
               </>
             )}
             {editing && (
-              <span style={{ color: Math.abs(weightSum - 100) < 0.01 ? '#22c55e' : '#ef4444' }}>
+              <span style={{ color: Math.abs(weightSum - 100) < 0.01 ? 'var(--color-rise)' : 'var(--color-fall)' }}>
                 当前合计：{weightSum.toFixed(2)}%（保存时自动归一化）
               </span>
             )}
@@ -340,20 +340,18 @@ export default function PoolDetail() {
           </div>
           <Row gutter={[16, 16]}>
             <Col xs={24} md={12}>
-              <GlassCard title="分类分布"><CategoryPie data={analytics.category_distribution} mode="count" /></GlassCard>
+              <Panel title="分类分布"><CategoryPie data={analytics.category_distribution} mode="count" /></Panel>
             </Col>
             <Col xs={24} md={12}>
-              <GlassCard title="权重分布"><CategoryPie data={analytics.category_distribution} mode="weight" /></GlassCard>
+              <Panel title="权重分布"><CategoryPie data={analytics.category_distribution} mode="weight" /></Panel>
             </Col>
             <Col xs={24}>
-              <GlassCard title={<HelpPopover termKey="pool_performance">池整体表现</HelpPopover>}>
-                <Row gutter={16}>
-                  <Col span={6}><Statistic title={<HelpPopover termKey="return_1m">1月收益</HelpPopover>} value={analytics.performance?.return_1m} suffix="%" precision={2} /></Col>
-                  <Col span={6}><Statistic title={<HelpPopover termKey="return_3m">3月收益</HelpPopover>} value={analytics.performance?.return_3m} suffix="%" precision={2} /></Col>
-                  <Col span={6}><Statistic title={<HelpPopover termKey="sharpe_1y">夏普</HelpPopover>} value={analytics.performance?.sharpe_1y} precision={2} /></Col>
-                  <Col span={6}><Statistic title={<HelpPopover termKey="max_drawdown_1y">最大回撤</HelpPopover>} value={analytics.performance?.max_drawdown} suffix="%" precision={2} /></Col>
-                </Row>
-              </GlassCard>
+              <Row gutter={16}>
+                <Col span={6}><Statistic title={<HelpPopover termKey="return_1m">1月收益</HelpPopover>} value={analytics.performance?.return_1m} suffix="%" precision={2} /></Col>
+                <Col span={6}><Statistic title={<HelpPopover termKey="return_3m">3月收益</HelpPopover>} value={analytics.performance?.return_3m} suffix="%" precision={2} /></Col>
+                <Col span={6}><Statistic title={<HelpPopover termKey="sharpe_1y">夏普</HelpPopover>} value={analytics.performance?.sharpe_1y} precision={2} /></Col>
+                <Col span={6}><Statistic title={<HelpPopover termKey="max_drawdown_1y">最大回撤</HelpPopover>} value={analytics.performance?.max_drawdown} suffix="%" precision={2} /></Col>
+              </Row>
             </Col>
           </Row>
         </div>
@@ -408,14 +406,14 @@ export default function PoolDetail() {
 
   return (
     <div>
-      <GlassCard style={{ marginBottom: 16 }}>
+      <Panel style={{ marginBottom: 16 }}>
         {editingMeta ? (
           <Space direction="vertical" style={{ width: '100%' }} size="middle">
             <Input
               value={editName}
               onChange={(e) => setEditName(e.target.value)}
               placeholder="标的池名称"
-              style={{ maxWidth: 400, fontSize: 18, fontWeight: 600 }}
+              style={{ maxWidth: 400, fontSize: 'var(--text-h3-size)', fontWeight: 600 }}
             />
             <Input
               value={editDescription}
@@ -433,8 +431,8 @@ export default function PoolDetail() {
         ) : (
           <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
             <div>
-              <h2 style={{ margin: 0, color: '#f1f5f9' }}>{pool?.name}</h2>
-              <div style={{ color: '#94a3b8' }}>
+              <h2 style={{ margin: 0, color: 'var(--text-primary)' }}>{pool?.name}</h2>
+              <div style={{ color: 'var(--text-secondary)' }}>
                 {pool?.description || '暂无描述'} | {pool?.members?.length || 0} 只标的
               </div>
             </div>
@@ -443,7 +441,7 @@ export default function PoolDetail() {
             </Button>
           </div>
         )}
-      </GlassCard>
+      </Panel>
       <Tabs items={tabItems} />
     </div>
   );
