@@ -119,6 +119,39 @@ def require_admin(
     return current_user
 
 
+def get_current_user_optional(request) -> UserResponse | None:
+    """Optionally authenticate the user — returns None if no/invalid token.
+
+    Used by SSE streams and public endpoints that optionally scope data.
+    """
+    auth_header = request.headers.get("Authorization", "")
+    if not auth_header.startswith("Bearer "):
+        return None
+
+    token = auth_header.removeprefix("Bearer ")
+    try:
+        payload = jwt.decode(token, auth_settings.SECRET_KEY, algorithms=["HS256"])
+        username = payload.get("sub")
+        jti = payload.get("jti")
+        if not username:
+            return None
+        if jti and is_token_blacklisted(jti):
+            return None
+    except JWTError:
+        return None
+
+    db = SessionLocal()
+    try:
+        from app.models.user import User
+
+        user = db.query(User).filter(User.username == username).first()
+        if not user or not user.is_active:
+            return None
+        return UserResponse(username=user.username, role=user.role)
+    finally:
+        db.close()
+
+
 def get_db() -> Generator[Session, None, None]:
     """Yield a database session."""
     db = SessionLocal()

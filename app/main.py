@@ -14,6 +14,8 @@ from app.api.v1 import (
     attribution,
     auth,
     backtests,
+    crypto,
+    deployments,
     etf_scanner,
     etfs,
     etl,
@@ -30,6 +32,7 @@ from app.api.v1 import (
     signals,
     stats,
     strategies,
+    stream,
 )
 from app.config import get_settings
 from app.core.scheduler import init_scheduler, shutdown_scheduler
@@ -88,6 +91,11 @@ app.include_router(
     tags=["Admin"],
 )
 app.include_router(
+    deployments.router,
+    prefix=f"{settings.api_v1_prefix}/admin",
+    tags=["Admin"],
+)
+app.include_router(
     stats.router, prefix=f"{settings.api_v1_prefix}/stats", tags=["Statistics"]
 )
 app.include_router(
@@ -118,6 +126,16 @@ app.include_router(
     research.router,
     prefix=f"{settings.api_v1_prefix}/research",
     tags=["AI Research"],
+)
+app.include_router(
+    crypto.router,
+    prefix=f"{settings.api_v1_prefix}/crypto",
+    tags=["Crypto"],
+)
+app.include_router(
+    stream.router,
+    prefix=f"{settings.api_v1_prefix}/stream",
+    tags=["Stream"],
 )
 
 # Serve frontend static files with cache-control headers
