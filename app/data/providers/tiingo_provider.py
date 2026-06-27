@@ -9,7 +9,7 @@ API docs: https://www.tiingo.com/documentation/end-of-day
 
 import os
 import time
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 
 import pandas as pd
 import requests
@@ -90,7 +90,15 @@ class TiingoProvider(DataProvider):
                 continue
 
             for item in data:
-                trade_date_val = date.fromisoformat(item.get("date", ""))
+                # Tiingo returns ISO datetimes like '2026-06-22T00:00:00.000Z'
+                raw_date = item.get("date", "")
+                try:
+                    trade_date_val = datetime.fromisoformat(
+                        raw_date.replace("Z", "+00:00")
+                    ).date()
+                except ValueError:
+                    trade_date_val = pd.to_datetime(raw_date).date()
+
                 close_price = float(item.get("close", 0) or 0)
                 volume_val = int(item.get("volume", 0) or 0)
 

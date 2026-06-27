@@ -46,7 +46,7 @@ class ETFService:
 
     def list_etfs(self, params: ETFFilterParams) -> ETFListResponse:
         """List ETFs with filtering and pagination."""
-        cache_key = f"etf:list:{params.market}:{params.category}:{params.search}:{params.page}:{params.page_size}"
+        cache_key = f"etf:list:{params.market}:{params.category}:{params.instrument_type}:{params.search}:{params.page}:{params.page_size}"
         cached = cache_get(cache_key)
         if cached is not None:
             return ETFListResponse(**cached)
