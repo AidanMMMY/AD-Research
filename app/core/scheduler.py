@@ -87,11 +87,11 @@ def run_us_etl(target_date: date | None = None):
 def run_us_historical_backfill():
     """Run a small batch of US equity historical backfill.
 
-    Processes ~30 instruments per run, rotating through the full list of
-    active US instruments. Designed to stay within FMP free tier limits
-    (250 requests/day) while steadily filling historical gaps.
+    Processes ~15 instruments per run, rotating through the full list of
+    active US instruments. Designed to stay within Tiingo free tier limits
+    (50 req/hour, 500 symbols/month) while steadily filling historical gaps.
 
-    Scheduled every 6 hours.
+    Scheduled every 2 hours.
     """
     with redis_lock("us_backfill_pipeline", expire_seconds=7200) as acquired:
         if not acquired:
@@ -293,7 +293,7 @@ def init_scheduler():
 
     Registers cron jobs:
       - US ETL at 05:00 daily (Beijing time = 17:00 ET, post-market)
-      - US historical backfill every 6 hours
+      - US historical backfill every 2 hours
       - US indicator calculation at 05:30 daily
       - A-share ETL at 15:30 daily
       - Indicator calculation at 08:00 daily
@@ -312,7 +312,7 @@ def init_scheduler():
     )
     scheduler.add_job(
         run_us_historical_backfill,
-        trigger=CronTrigger(hour="*/6", minute=0),
+        trigger=CronTrigger(hour="*/2", minute=0),
         id="us_historical_backfill",
         name="美股历史数据回填",
         replace_existing=True,
