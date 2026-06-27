@@ -13,6 +13,7 @@ from app.core.database import SessionLocal
 from app.core.redis_client import redis_lock
 from app.data.indicators.calculator import batch_calculate_indicators
 from app.data.pipelines.a_share import AShareETLPipeline
+from app.data.pipelines.us_backfill import USHistoricalBackfillPipeline
 from app.data.pipelines.us_etf import USDailyPipeline
 from app.data.pipelines.us_stock_discovery import USStockDiscoveryPipeline
 from app.models.etf import ETFInfo
@@ -59,7 +60,7 @@ def run_us_etl(target_date: date | None = None):
     """Run the US equity daily ETL pipeline.
 
     Fetches daily OHLCV bars for all active US instruments (ETFs + stocks)
-    using yfinance as primary with Tiingo → Finnhub fallback.
+    using FMP as primary with Tiingo fallback.
 
     Scheduled at 05:00 Beijing time (17:00 ET, 1 hour after US market close).
 
@@ -77,6 +78,32 @@ def run_us_etl(target_date: date | None = None):
             result = pipeline.run_with_retry(max_attempts=3)
             print(
                 f"[Scheduler] US ETL (target={target_date}): "
+                f"success={result.success}, records={result.records}"
+            )
+        finally:
+            db.close()
+
+
+def run_us_historical_backfill():
+    """Run a small batch of US equity historical backfill.
+
+    Processes ~30 instruments per run, rotating through the full list of
+    active US instruments. Designed to stay within FMP free tier limits
+    (250 requests/day) while steadily filling historical gaps.
+
+    Scheduled every 6 hours.
+    """
+    with redis_lock("us_backfill_pipeline", expire_seconds=7200) as acquired:
+        if not acquired:
+            print("[Scheduler] US historical backfill skipped: lock in use")
+            return
+
+        db = SessionLocal()
+        try:
+            pipeline = USHistoricalBackfillPipeline(db)
+            result = pipeline.run_with_retry(max_attempts=2)
+            print(
+                f"[Scheduler] US historical backfill: "
                 f"success={result.success}, records={result.records}"
             )
         finally:
@@ -266,6 +293,7 @@ def init_scheduler():
 
     Registers cron jobs:
       - US ETL at 05:00 daily (Beijing time = 17:00 ET, post-market)
+      - US historical backfill every 6 hours
       - US indicator calculation at 05:30 daily
       - A-share ETL at 15:30 daily
       - Indicator calculation at 08:00 daily
@@ -279,6 +307,14 @@ def init_scheduler():
         trigger=CronTrigger(hour=5, minute=0),
         id="us_daily_etl",
         name="美股日终采集",
+        replace_existing=True,
+        max_instances=1,
+    )
+    scheduler.add_job(
+        run_us_historical_backfill,
+        trigger=CronTrigger(hour="*/6", minute=0),
+        id="us_historical_backfill",
+        name="美股历史数据回填",
         replace_existing=True,
         max_instances=1,
     )
