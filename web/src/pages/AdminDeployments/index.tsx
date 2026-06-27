@@ -466,7 +466,7 @@ export default function AdminDeployments() {
           </div>
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 16 }}>
-            {containers.map((c) => (
+            {containers.map((c: ContainerStats) => (
               <ServerHealthCard key={c.name} container={c} />
             ))}
           </div>
