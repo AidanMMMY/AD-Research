@@ -21,36 +21,37 @@ export default function ReturnCurve({ series }: ReturnCurveProps) {
 
   const option: EChartsOption = {
     backgroundColor: 'transparent',
+    textStyle: { fontFamily: 'var(--font-sans)' },
     tooltip: {
       trigger: 'axis',
-      backgroundColor: '#0f1729',
-      borderColor: 'rgba(255,255,255,0.08)',
-      textStyle: { color: '#f1f5f9' },
+      backgroundColor: 'var(--bg-elevated)',
+      borderColor: 'var(--border-default)',
+      textStyle: { color: 'var(--text-primary)' },
     },
     legend: {
       top: 0,
-      textStyle: { color: '#94a3b8', fontSize: isMobile ? 11 : 12 },
-      pageTextStyle: { color: '#94a3b8' },
+      textStyle: { color: 'var(--text-secondary)', fontSize: isMobile ? 11 : 12 },
+      pageTextStyle: { color: 'var(--text-secondary)' },
     },
-    grid: { left: isMobile ? 45 : 50, right: 20, top: 40, bottom: 30 },
+    grid: { left: isMobile ? 45 : 50, right: 20, top: 40, bottom: 30, borderColor: 'var(--border-default)' },
     xAxis: {
       type: 'category',
       data: allDates,
       axisLabel: {
         fontSize: isMobile ? 9 : 10,
-        color: '#94a3b8',
+        color: 'var(--text-secondary)',
         interval: labelInterval,
       },
-      axisLine: { lineStyle: { color: 'rgba(255,255,255,0.06)' } },
-      axisTick: { lineStyle: { color: 'rgba(255,255,255,0.06)' } },
-      splitLine: { show: true, lineStyle: { color: 'rgba(255,255,255,0.06)' } },
+      axisLine: { lineStyle: { color: 'var(--text-tertiary)' } },
+      axisTick: { lineStyle: { color: 'var(--text-tertiary)' } },
+      splitLine: { show: true, lineStyle: { color: 'var(--border-default)' } },
     },
     yAxis: {
       type: 'value',
-      axisLabel: { formatter: '{value}%', fontSize: isMobile ? 9 : 10, color: '#94a3b8' },
-      axisLine: { lineStyle: { color: 'rgba(255,255,255,0.06)' } },
-      axisTick: { lineStyle: { color: 'rgba(255,255,255,0.06)' } },
-      splitLine: { show: true, lineStyle: { color: 'rgba(255,255,255,0.06)' } },
+      axisLabel: { formatter: '{value}%', fontSize: isMobile ? 9 : 10, color: 'var(--text-secondary)' },
+      axisLine: { lineStyle: { color: 'var(--text-tertiary)' } },
+      axisTick: { lineStyle: { color: 'var(--text-tertiary)' } },
+      splitLine: { show: true, lineStyle: { color: 'var(--border-default)' } },
     },
     series: series.map((s, idx) => ({
       name: s.name,
@@ -62,7 +63,7 @@ export default function ReturnCurve({ series }: ReturnCurveProps) {
         width: 2,
       },
       itemStyle: {
-        color: ['#6366f1', '#06b6d4', '#22c55e', '#ef4444', '#eab308'][idx % 5],
+        color: ['#22d3ee', '#555555', '#22c55e', '#ef4444', '#eab308'][idx % 5],
       },
     })),
   };

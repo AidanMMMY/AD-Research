@@ -153,16 +153,16 @@ export default function KLineChart({ data, overlays = DEFAULT_OVERLAYS }: KLineC
     try {
       const chart = createChart(chartContainerRef.current, {
         layout: {
-          background: { type: ColorType.Solid, color: '#0f1729' },
-          textColor: '#94a3b8',
+          background: { type: ColorType.Solid, color: '#0a0a0a' },
+          textColor: '#aaaaaa',
         },
         grid: {
           vertLines: { color: 'rgba(255,255,255,0.06)' },
           horzLines: { color: 'rgba(255,255,255,0.06)' },
         },
         crosshair: { mode: 1 as any },
-        rightPriceScale: { borderColor: 'rgba(255,255,255,0.08)' },
-        timeScale: { borderColor: 'rgba(255,255,255,0.08)' },
+        rightPriceScale: { borderColor: 'rgba(255,255,255,0.06)' },
+        timeScale: { borderColor: 'rgba(255,255,255,0.06)' },
         height: containerHeight,
       });
 
@@ -179,7 +179,7 @@ export default function KLineChart({ data, overlays = DEFAULT_OVERLAYS }: KLineC
       candlestickRef.current = candlestick;
 
       const volume = chart.addHistogramSeries({
-        color: '#06b6d4',
+        color: 'rgba(34,211,238,0.5)',
         priceFormat: { type: 'volume' },
         priceScaleId: '',
       });
@@ -187,16 +187,16 @@ export default function KLineChart({ data, overlays = DEFAULT_OVERLAYS }: KLineC
       volumeRef.current = volume;
 
       const maOptions = { lastValueVisible: false, priceLineVisible: false, priceScaleId: 'right' };
-      ma5Ref.current = chart.addLineSeries({ color: '#eab308', lineWidth: 1, ...maOptions });
-      ma10Ref.current = chart.addLineSeries({ color: '#22c55e', lineWidth: 1, ...maOptions });
-      ma20Ref.current = chart.addLineSeries({ color: '#ef4444', lineWidth: 1, ...maOptions });
-      ma60Ref.current = chart.addLineSeries({ color: '#6366f1', lineWidth: 1, ...maOptions });
+      ma5Ref.current = chart.addLineSeries({ color: '#22d3ee', lineWidth: 1, ...maOptions });
+      ma10Ref.current = chart.addLineSeries({ color: '#888888', lineWidth: 1, ...maOptions });
+      ma20Ref.current = chart.addLineSeries({ color: 'rgba(34, 211, 238, 0.6)', lineWidth: 1, ...maOptions });
+      ma60Ref.current = chart.addLineSeries({ color: '#555555', lineWidth: 1, ...maOptions });
 
-      bbUpperRef.current = chart.addLineSeries({ color: '#06b6d4', lineWidth: 1, lineStyle: LineStyle.Dashed, ...maOptions });
-      bbLowerRef.current = chart.addLineSeries({ color: '#06b6d4', lineWidth: 1, lineStyle: LineStyle.Dashed, ...maOptions });
+      bbUpperRef.current = chart.addLineSeries({ color: '#22d3ee', lineWidth: 1, lineStyle: LineStyle.Dashed, ...maOptions });
+      bbLowerRef.current = chart.addLineSeries({ color: '#22d3ee', lineWidth: 1, lineStyle: LineStyle.Dashed, ...maOptions });
 
       rsiRef.current = chart.addLineSeries({
-        color: '#6366f1',
+        color: '#555555',
         lineWidth: 1,
         lastValueVisible: false,
         priceLineVisible: false,
@@ -208,8 +208,8 @@ export default function KLineChart({ data, overlays = DEFAULT_OVERLAYS }: KLineC
         lastValueVisible: false,
         priceLineVisible: false,
       });
-      macdDifRef.current = chart.addLineSeries({ color: '#eab308', lineWidth: 1, priceScaleId: 'macd', lastValueVisible: false, priceLineVisible: false });
-      macdDeaRef.current = chart.addLineSeries({ color: '#6366f1', lineWidth: 1, priceScaleId: 'macd', lastValueVisible: false, priceLineVisible: false });
+      macdDifRef.current = chart.addLineSeries({ color: '#555555', lineWidth: 1, priceScaleId: 'macd', lastValueVisible: false, priceLineVisible: false });
+      macdDeaRef.current = chart.addLineSeries({ color: '#22d3ee', lineWidth: 1, priceScaleId: 'macd', lastValueVisible: false, priceLineVisible: false });
 
       const handleResize = () => {
         if (chartContainerRef.current) {
