@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import {
-  Table, Button, Modal, Form, Input, Select, Switch, Space, Tag, message,
+  Table, Button, Modal, Form, Input, Select, Switch, Space, message,
 } from 'antd';
 import Panel from '@/components/Panel';
+import ThemeTag from '@/components/ThemeTag';
 import HelpTrigger from '@/components/HelpTrigger';
 import HelpPopover from '@/components/HelpPopover';
 import { useStrategies } from '@/hooks/useStrategies';
@@ -11,12 +12,6 @@ import { PlusOutlined, PlayCircleOutlined, DeleteOutlined } from '@ant-design/ic
 import { useNavigate } from 'react-router-dom';
 import { buildStrategyListContext } from '@/utils/helpContext';
 import { getQuickQuestions } from '@/utils/helpPrompts';
-
-const TYPE_COLORS: Record<string, string> = {
-  momentum: 'blue',
-  mean_reversion: 'green',
-  rsi: 'purple',
-};
 
 const TYPE_LABELS: Record<string, string> = {
   momentum: '动量',
@@ -100,14 +95,14 @@ export default function StrategyList() {
         const label = TYPE_LABELS[v] || v;
         return termKey ? (
           <HelpPopover termKey={termKey}>
-            <Tag color={TYPE_COLORS[v]}>{label}</Tag>
+            <ThemeTag variant="accent">{label}</ThemeTag>
           </HelpPopover>
         ) : (
-          <Tag color={TYPE_COLORS[v]}>{label}</Tag>
+          <ThemeTag variant="accent">{label}</ThemeTag>
         );
       },
     },
-    { title: '状态', dataIndex: 'is_active', render: (v: boolean) => v ? <Tag color="success">启用</Tag> : <Tag>禁用</Tag>, width: 80 },
+    { title: '状态', dataIndex: 'is_active', render: (v: boolean) => v ? <ThemeTag variant="success">启用</ThemeTag> : <ThemeTag variant="default">禁用</ThemeTag>, width: 80 },
     {
       title: '操作',
       render: (_: any, record: any) => (

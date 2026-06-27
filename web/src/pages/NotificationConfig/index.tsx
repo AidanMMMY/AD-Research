@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import {
-  Table, Button, Modal, Form, Input, Select, Switch, Tag, Space, message, Alert, Tabs,
+  Table, Button, Modal, Form, Input, Select, Switch, Space, message, Alert, Tabs,
 } from 'antd';
 import GlassCard from '@/components/GlassCard';
+import ThemeTag from '@/components/ThemeTag';
 import { useNotifications } from '@/hooks/useNotifications';
 import { PlusOutlined, DeleteOutlined, SendOutlined, MailOutlined, LinkOutlined } from '@ant-design/icons';
 
@@ -90,9 +91,9 @@ export default function NotificationConfigPage() {
       dataIndex: 'channel_type',
       width: 120,
       render: (v: string) => {
-        if (v === 'webhook') return <Tag icon={<LinkOutlined />} color="blue">Webhook</Tag>;
-        if (v === 'email') return <Tag icon={<MailOutlined />} color="green">邮件</Tag>;
-        return <Tag>{v}</Tag>;
+        if (v === 'webhook') return <ThemeTag variant="accent"><LinkOutlined /> Webhook</ThemeTag>;
+        if (v === 'email') return <ThemeTag variant="success"><MailOutlined /> 邮件</ThemeTag>;
+        return <ThemeTag variant="default">{v}</ThemeTag>;
       },
     },
     {
@@ -103,8 +104,8 @@ export default function NotificationConfigPage() {
           const platform = PLATFORM_OPTIONS.find(p => p.value === v?.platform)?.label || v?.platform;
           return (
             <span>
-              <Tag>{platform}</Tag>
-              <span style={{ fontSize: 12, color: '#64748b', marginLeft: 8 }}>
+              <ThemeTag variant="default">{platform}</ThemeTag>
+              <span style={{ fontSize: 'var(--text-small-size)', color: 'var(--text-secondary)', marginLeft: 8 }}>
                 {v?.webhook_url ? `${v.webhook_url.slice(0, 40)}...` : '-'}
               </span>
             </span>
@@ -113,8 +114,8 @@ export default function NotificationConfigPage() {
         if (record.channel_type === 'email') {
           return (
             <span>
-              <Tag color="green">{v?.to_emails}</Tag>
-              <span style={{ fontSize: 12, color: '#64748b', marginLeft: 8 }}>
+              <ThemeTag variant="success">{v?.to_emails}</ThemeTag>
+              <span style={{ fontSize: 'var(--text-small-size)', color: 'var(--text-secondary)', marginLeft: 8 }}>
                 {v?.subject_prefix ? `主题: ${v.subject_prefix}` : ''}
               </span>
             </span>
@@ -127,7 +128,7 @@ export default function NotificationConfigPage() {
       title: '状态',
       dataIndex: 'is_active',
       width: 90,
-      render: (v: boolean) => v ? <Tag color="success">启用</Tag> : <Tag>禁用</Tag>,
+      render: (v: boolean) => v ? <ThemeTag variant="success">启用</ThemeTag> : <ThemeTag variant="default">禁用</ThemeTag>,
     },
     {
       title: '操作',
@@ -162,7 +163,7 @@ export default function NotificationConfigPage() {
           }
           type="info"
           showIcon
-          style={{ marginBottom: 16 }}
+          style={{ marginBottom: 'var(--space-4)' }}
         />
 
         <Tabs
@@ -173,7 +174,7 @@ export default function NotificationConfigPage() {
             { key: 'webhook', label: `Webhook (${configs.filter((c: any) => c.channel_type === 'webhook').length})` },
             { key: 'email', label: `邮件 (${configs.filter((c: any) => c.channel_type === 'email').length})` },
           ]}
-          style={{ marginBottom: 12 }}
+          style={{ marginBottom: 'var(--space-3)' }}
         />
 
         <Table
@@ -263,7 +264,7 @@ export default function NotificationConfigPage() {
                 }
                 type="warning"
                 showIcon
-                style={{ marginBottom: 16, marginTop: 8 }}
+                style={{ marginBottom: 'var(--space-4)', marginTop: 'var(--space-2)' }}
               />
 
               <Form.Item name="smtp_host" label="SMTP 服务器">

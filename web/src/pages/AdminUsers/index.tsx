@@ -7,7 +7,6 @@ import {
   Input,
   Select,
   Switch,
-  Tag,
   Space,
   message,
   Popconfirm,
@@ -19,6 +18,7 @@ import {
   KeyOutlined,
 } from '@ant-design/icons';
 import GlassCard from '@/components/GlassCard';
+import ThemeTag from '@/components/ThemeTag';
 import { useAdminUsers } from '@/hooks/useAdminUsers';
 import { useAuthStore } from '@/stores/auth';
 import type { UserAdminItem } from '@/types/user';
@@ -133,9 +133,9 @@ export default function AdminUsers() {
       width: 100,
       render: (v: string) =>
         v === 'admin' ? (
-          <Tag color="purple">管理员</Tag>
+          <ThemeTag variant="accent">管理员</ThemeTag>
         ) : (
-          <Tag color="default">普通用户</Tag>
+          <ThemeTag variant="default">普通用户</ThemeTag>
         ),
     },
     {
@@ -143,7 +143,7 @@ export default function AdminUsers() {
       dataIndex: 'is_active',
       width: 90,
       render: (v: boolean) =>
-        v ? <Tag color="success">启用</Tag> : <Tag color="error">禁用</Tag>,
+        v ? <ThemeTag variant="success">启用</ThemeTag> : <ThemeTag variant="error">禁用</ThemeTag>,
     },
     {
       title: '创建时间',

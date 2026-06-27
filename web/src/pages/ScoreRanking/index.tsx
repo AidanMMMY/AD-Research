@@ -37,7 +37,7 @@ export default function ScoreRanking() {
       dataIndex: 'rank_overall',
       width: 90,
       render: (v: number) => (
-        <span style={{ fontWeight: 700, color: v <= 3 ? 'var(--accent)' : 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>
+        <span style={{ fontWeight: 500, color: v <= 3 ? 'var(--accent)' : 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>
           {v}
         </span>
       ),

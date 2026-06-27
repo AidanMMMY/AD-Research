@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Tabs, Row, Col, Statistic, Spin, Descriptions, Radio, Checkbox, Space, Alert, Button, message, Tag, Skeleton } from 'antd';
+import { Tabs, Row, Col, Statistic, Spin, Descriptions, Radio, Checkbox, Space, Alert, Button, message, Skeleton } from 'antd';
 import { StarOutlined, StarFilled, RobotOutlined, ReadOutlined, SmileOutlined } from '@ant-design/icons';
 import { useETFDetail } from '@/hooks/useETFList';
 import { useETFScore } from '@/hooks/useScores';
@@ -13,9 +13,10 @@ import ScoreRadar from '@/components/ScoreRadar';
 import Panel from '@/components/Panel';
 import HelpTrigger from '@/components/HelpTrigger';
 import HelpPopover from '@/components/HelpPopover';
+import ThemeTag from '@/components/ThemeTag';
 import { formatPercent } from '@/utils/format';
 import { useSettingsStore } from '@/stores/settings';
-import { getReturnColor, getUpColor, getDownColor } from '@/utils/color';
+import { getReturnColor } from '@/utils/color';
 import { buildETFDetailContext } from '@/utils/helpContext';
 import { getQuickQuestions } from '@/utils/helpPrompts';
 import type { ResearchNote } from '@/api/research';
@@ -48,11 +49,11 @@ const INDICATOR_OPTION_TERMS: Record<string, string> = {
 };
 
 const SENTIMENT_COLORS: Record<string, string> = {
-  bullish: getUpColor(),
-  positive: getUpColor(),
-  bearish: getDownColor(),
-  negative: getDownColor(),
-  neutral: '#eab308',
+  bullish: 'var(--color-rise)',
+  positive: 'var(--color-rise)',
+  bearish: 'var(--color-fall)',
+  negative: 'var(--color-fall)',
+  neutral: 'var(--text-tertiary)',
 };
 
 const SENTIMENT_LABELS: Record<string, string> = {
@@ -128,8 +129,8 @@ export default function ETFDetail() {
   });
 
   if (etfLoading) return <Spin size="large" style={{ display: 'block', margin: '100px auto' }} />;
-  if (etfError) return <Alert message="加载标的详情失败" description={(etfError as Error).message} type="error" style={{ margin: 24 }} />;
-  if (!etf) return <Alert message="标的不存在" description={`未找到代码为 ${code} 的标的`} type="warning" style={{ margin: 24 }} />;
+  if (etfError) return <Alert message="加载标的详情失败" description={(etfError as Error).message} type="error" style={{ margin: 'var(--space-6)' }} />;
+  if (!etf) return <Alert message="标的不存在" description={`未找到代码为 ${code} 的标的`} type="warning" style={{ margin: 'var(--space-6)' }} />;
 
   const handleOpenHelp = () => {
     open({
@@ -205,7 +206,7 @@ export default function ETFDetail() {
       label: '指标数据',
       children: (
         <div>
-          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 'var(--space-3)' }}>
             <HelpTrigger tooltip="AI 解释技术指标" onClick={handleOpenHelp} />
           </div>
           <Row gutter={[16, 16]}>
@@ -259,7 +260,7 @@ export default function ETFDetail() {
       children: (
         score ? (
           <div>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 'var(--space-3)' }}>
               <HelpTrigger tooltip="AI 解释评分维度" onClick={handleOpenHelp} />
             </div>
             <Row gutter={[16, 16]}>
@@ -291,7 +292,7 @@ export default function ETFDetail() {
       key: 'ai',
       label: (
         <span>
-          <RobotOutlined style={{ marginRight: 4 }} />
+          <RobotOutlined style={{ marginRight: 'var(--space-1)' }} />
           AI分析
         </span>
       ),
@@ -305,7 +306,7 @@ export default function ETFDetail() {
               <Col xs={24} md={12}>
                 <Panel
                   variant="minimal"
-                  title={<span><ReadOutlined style={{ marginRight: 6 }} /><HelpPopover termKey="ai_research_note">AI 研究笔记</HelpPopover></span>}
+                  title={<span><ReadOutlined style={{ marginRight: 'var(--space-1-5)' }} /><HelpPopover termKey="ai_research_note">AI 研究笔记</HelpPopover></span>}
                   extra={
                     <Button
                       size="small"
@@ -324,11 +325,19 @@ export default function ETFDetail() {
                 >
                   {latestNote ? (
                     <div>
-                      <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8 }}>
+                      <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 'var(--space-2)' }}>
                         {latestNote.sentiment && (
-                          <Tag color={SENTIMENT_COLORS[latestNote.sentiment] || 'var(--text-secondary)'}>
+                          <ThemeTag
+                            variant={
+                              latestNote.sentiment === 'bullish' || latestNote.sentiment === 'positive'
+                                ? 'rise'
+                                : latestNote.sentiment === 'bearish' || latestNote.sentiment === 'negative'
+                                  ? 'fall'
+                                  : 'neutral'
+                            }
+                          >
                             {SENTIMENT_LABELS[latestNote.sentiment] || latestNote.sentiment}
-                          </Tag>
+                          </ThemeTag>
                         )}
                         {latestNote.confidence && (
                           <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>
@@ -352,8 +361,8 @@ export default function ETFDetail() {
                       </Button>
                     </div>
                   ) : (
-                    <div style={{ textAlign: 'center', padding: 24, color: 'var(--text-tertiary)' }}>
-                      <RobotOutlined style={{ fontSize: 32, marginBottom: 8, display: 'block' }} />
+                    <div style={{ textAlign: 'center', padding: 'var(--space-6)', color: 'var(--text-tertiary)' }}>
+                      <RobotOutlined style={{ fontSize: 32, marginBottom: 'var(--space-2)', display: 'block' }} />
                       <p>暂无AI研报</p>
                       <p style={{ fontSize: 12 }}>点击上方"生成研报"按钮开始分析</p>
                     </div>
@@ -365,7 +374,7 @@ export default function ETFDetail() {
               <Col xs={24} md={12}>
                 <Panel
                   variant="minimal"
-                  title={<span><SmileOutlined style={{ marginRight: 6 }} /><HelpPopover termKey="market_sentiment">市场情绪</HelpPopover></span>}
+                  title={<span><SmileOutlined style={{ marginRight: 'var(--space-1-5)' }} /><HelpPopover termKey="market_sentiment">市场情绪</HelpPopover></span>}
                   padding="md"
                 >
                   {sentiment ? (
@@ -374,31 +383,37 @@ export default function ETFDetail() {
                       <div style={{ fontSize: 48, fontWeight: 700, color: SENTIMENT_COLORS[sentiment.label] || 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>
                         {sentiment.avg_score.toFixed(2)}
                       </div>
-                      <Tag
-                        color={SENTIMENT_COLORS[sentiment.label] || 'var(--text-secondary)'}
+                      <ThemeTag
+                        variant={
+                          sentiment.label === 'bullish' || sentiment.label === 'positive'
+                            ? 'rise'
+                            : sentiment.label === 'bearish' || sentiment.label === 'negative'
+                              ? 'fall'
+                              : 'neutral'
+                        }
                         style={{ fontSize: 13, padding: '2px 12px', marginTop: 4 }}
                       >
                         {SENTIMENT_LABELS[sentiment.label] || sentiment.label}
-                      </Tag>
+                      </ThemeTag>
 
                       {/* Score bar */}
-                      <div style={{ margin: '16px auto 0', maxWidth: 240, height: 6, borderRadius: 3, background: 'var(--bg-input)', position: 'relative', overflow: 'hidden' }}>
+                      <div style={{ margin: 'var(--space-4) auto 0', maxWidth: 240, height: 6, borderRadius: 3, background: 'var(--bg-input)', position: 'relative', overflow: 'hidden' }}>
                         <div style={{ width: `${((sentiment.avg_score + 1) / 2) * 100}%`, height: '100%', borderRadius: 3, background: SENTIMENT_COLORS[sentiment.label] || 'var(--text-secondary)' }} />
                       </div>
 
                       {/* Counts */}
-                      <div style={{ display: 'flex', justifyContent: 'center', gap: 24, marginTop: 16 }}>
-                        <span style={{ color: getUpColor(), fontSize: 13 }}>正面 {sentiment.positive_count}</span>
-                        <span style={{ color: '#eab308', fontSize: 13 }}>中性 {sentiment.neutral_count}</span>
-                        <span style={{ color: getDownColor(), fontSize: 13 }}>负面 {sentiment.negative_count}</span>
+                      <div style={{ display: 'flex', justifyContent: 'center', gap: 24, marginTop: 'var(--space-4)' }}>
+                        <span style={{ color: 'var(--color-rise)', fontSize: 13 }}>正面 {sentiment.positive_count}</span>
+                        <span style={{ color: 'var(--text-tertiary)', fontSize: 13 }}>中性 {sentiment.neutral_count}</span>
+                        <span style={{ color: 'var(--color-fall)', fontSize: 13 }}>负面 {sentiment.negative_count}</span>
                       </div>
-                      <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 8 }}>
+                      <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 'var(--space-2)' }}>
                         共 {sentiment.total_articles} 篇 · 近 {sentiment.period_days} 天
                       </div>
                     </div>
                   ) : (
-                    <div style={{ textAlign: 'center', padding: 24, color: 'var(--text-tertiary)' }}>
-                      <SmileOutlined style={{ fontSize: 32, marginBottom: 8, display: 'block' }} />
+                    <div style={{ textAlign: 'center', padding: 'var(--space-6)', color: 'var(--text-tertiary)' }}>
+                      <SmileOutlined style={{ fontSize: 32, marginBottom: 'var(--space-2)', display: 'block' }} />
                       <p>暂无情绪数据</p>
                       <p style={{ fontSize: 12 }}>访问情绪仪表盘页面采集数据</p>
                     </div>
@@ -410,8 +425,8 @@ export default function ETFDetail() {
 
           {/* Quick Chat Button */}
           <Panel variant="minimal" style={{ marginTop: 'var(--space-4)', textAlign: 'center' }} padding="md">
-            <RobotOutlined style={{ fontSize: 20, color: 'var(--accent)', marginRight: 8 }} />
-            <span style={{ color: 'var(--text-secondary)', marginRight: 12 }}>想问AI关于 {code} 的分析？</span>
+            <RobotOutlined style={{ fontSize: 20, color: 'var(--accent)', marginRight: 'var(--space-2)' }} />
+            <span style={{ color: 'var(--text-secondary)', marginRight: 'var(--space-3)' }}>想问AI关于 {code} 的分析？</span>
             <Button type="primary" icon={<RobotOutlined />} onClick={() => navigate('/chat')}>
               打开AI助手
             </Button>
@@ -437,11 +452,11 @@ export default function ETFDetail() {
                 {etf.code} {etf.name}
               </h2>
               {etf.instrument_type && (
-                <Tag color={etf.instrument_type === 'STOCK' ? 'blue' : 'purple'}>
+                <ThemeTag variant={etf.instrument_type === 'STOCK' ? 'accent' : 'default'}>
                   {etf.instrument_type === 'STOCK' ? '个股' : 'ETF'}
-                </Tag>
+                </ThemeTag>
               )}
-              {etf.market && <Tag>{etf.market}</Tag>}
+              {etf.market && <ThemeTag>{etf.market}</ThemeTag>}
             </div>
             <div style={{ color: 'var(--text-secondary)', fontSize: 'var(--text-body-size)' }}>
               {etf.category || '—'}

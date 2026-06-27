@@ -1,11 +1,12 @@
-import { Table, Tag, Row, Col, Statistic } from 'antd';
+import { Table, Row, Col, Statistic } from 'antd';
 import GlassCard from '@/components/GlassCard';
+import ThemeTag, { ThemeTagVariant } from '@/components/ThemeTag';
 import { useSignals } from '@/hooks/useSignals';
 import type { Signal } from '@/types/signal';
 
-const SIGNAL_COLORS: Record<string, string> = {
-  BUY: 'red',
-  SELL: 'green',
+const SIGNAL_VARIANTS: Record<string, ThemeTagVariant> = {
+  BUY: 'rise',
+  SELL: 'fall',
   HOLD: 'default',
 };
 
@@ -31,7 +32,7 @@ export default function SignalDashboard() {
     {
       title: '信号',
       dataIndex: 'signal_type',
-      render: (v: string) => <Tag color={SIGNAL_COLORS[v]}>{SIGNAL_LABELS[v] || v}</Tag>,
+      render: (v: string) => <ThemeTag variant={SIGNAL_VARIANTS[v]}>{SIGNAL_LABELS[v] || v}</ThemeTag>,
       width: 80,
     },
     { title: '强度', dataIndex: 'strength', width: 80 },
@@ -39,9 +40,9 @@ export default function SignalDashboard() {
 
   return (
     <div>
-      <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
-        <Col xs={8}><GlassCard><Statistic title="买入信号" value={buyCount} valueStyle={{ color: '#ef4444' }} /></GlassCard></Col>
-        <Col xs={8}><GlassCard><Statistic title="卖出信号" value={sellCount} valueStyle={{ color: '#22c55e' }} /></GlassCard></Col>
+      <Row gutter={[16, 16]} style={{ marginBottom: 'var(--space-md)' }}>
+        <Col xs={8}><GlassCard><Statistic title="买入信号" value={buyCount} valueStyle={{ color: 'var(--color-rise)' }} /></GlassCard></Col>
+        <Col xs={8}><GlassCard><Statistic title="卖出信号" value={sellCount} valueStyle={{ color: 'var(--color-fall)' }} /></GlassCard></Col>
         <Col xs={8}><GlassCard><Statistic title="持有信号" value={holdCount} /></GlassCard></Col>
       </Row>
 

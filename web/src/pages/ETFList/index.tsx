@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Table, Input, Select, List, Tag, Skeleton } from 'antd';
+import { Table, Input, Select, List, Skeleton } from 'antd';
 import { SearchOutlined } from '@ant-design/icons';
 import { useETFList, useETFCategories, useETFMarkets } from '@/hooks/useETFList';
 import ETFCodeTag from '@/components/ETFCodeTag';
+import ThemeTag from '@/components/ThemeTag';
 import { useIsMobile } from '@/hooks/useBreakpoint';
 
 export default function ETFList() {
@@ -34,7 +35,7 @@ export default function ETFList() {
     {
       title: '分类',
       dataIndex: 'category',
-      render: (v: string) => v ? <Tag>{v}</Tag> : '-',
+      render: (v: string) => v ? <ThemeTag>{v}</ThemeTag> : '-',
     },
     {
       title: '市场',
@@ -49,7 +50,7 @@ export default function ETFList() {
       dataIndex: 'instrument_type',
       width: 70,
       render: (v: string) => (
-        <Tag color={v === 'STOCK' ? 'blue' : 'purple'}>{v === 'STOCK' ? '个股' : 'ETF'}</Tag>
+        <ThemeTag variant={v === 'STOCK' ? 'accent' : 'default'}>{v === 'STOCK' ? '个股' : 'ETF'}</ThemeTag>
       ),
     },
     {
@@ -167,10 +168,10 @@ export default function ETFList() {
                 </div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-2)' }}>
                   {item.category && (
-                    <Tag style={{ margin: 0, fontSize: 'var(--text-small-size)' }}>{item.category}</Tag>
+                    <ThemeTag>{item.category}</ThemeTag>
                   )}
                   {item.market && (
-                    <Tag style={{ margin: 0, fontSize: 'var(--text-small-size)' }}>{item.market}</Tag>
+                    <ThemeTag>{item.market}</ThemeTag>
                   )}
                   {item.fund_manager && (
                     <span style={{ fontSize: 'var(--text-small-size)', color: 'var(--text-tertiary)' }}>{item.fund_manager}</span>
@@ -184,7 +185,7 @@ export default function ETFList() {
               total: data?.total || 0,
               onChange: setPage,
               showSizeChanger: false,
-              style: { textAlign: 'center', marginTop: 16 },
+              style: { textAlign: 'center', marginTop: 'var(--space-4)' },
             }}
           />
         ) : (

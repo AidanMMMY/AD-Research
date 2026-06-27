@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react';
-import { Row, Col, Select, Radio, Button, Tag, Space, Spin, message } from 'antd';
+import { Row, Col, Select, Radio, Button, Space, Spin, message } from 'antd';
 import { FolderOpenOutlined } from '@ant-design/icons';
 import GlassCard from '@/components/GlassCard';
+import ThemeTag from '@/components/ThemeTag';
 import { useQuery } from '@tanstack/react-query';
 import { marketApi } from '@/api/market';
 import { useETFList } from '@/hooks/useETFList';
@@ -145,7 +146,7 @@ export default function ReturnComparison() {
 
   return (
     <div>
-      <GlassCard title="收益曲线对比配置" style={{ marginBottom: 16 }}>
+      <GlassCard title="收益曲线对比配置" style={{ marginBottom: 'var(--space-4)' }}>
         <Row gutter={[16, 16]}>
           <Col xs={24} md={12}>
             <div style={{ marginBottom: 8 }}>选择标的（{selectedCodes.length}/10）：</div>
@@ -165,9 +166,10 @@ export default function ReturnComparison() {
             <div style={{ marginTop: 8 }}>
               <Space size={[8, 8]} wrap>
                 {selectedCodes.map((code) => (
-                  <Tag key={code} closable onClose={() => handleRemoveCode(code)}>
+                  <ThemeTag key={code} variant="accent" style={{ cursor: 'default' }}>
                     {code}
-                  </Tag>
+                    <span style={{ marginLeft: 4, cursor: 'pointer' }} onClick={() => handleRemoveCode(code)}>×</span>
+                  </ThemeTag>
                 ))}
               </Space>
             </div>
@@ -228,7 +230,7 @@ export default function ReturnComparison() {
 
       <GlassCard title={mode === 'normalized' ? '归一化收益曲线' : '日收益率'}>
         {selectedCodes.length < 1 ? (
-          <div style={{ textAlign: 'center', padding: 60, color: '#64748b' }}>
+          <div style={{ textAlign: 'center', padding: 60, color: 'var(--text-secondary)' }}>
             请至少选择1只标的
           </div>
         ) : etfQueries.isLoading ? (

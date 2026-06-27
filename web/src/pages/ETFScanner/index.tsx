@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { Table, Button, Tag, Alert, Descriptions, Row, Col } from 'antd';
+import { Table, Button, Alert, Descriptions, Row, Col } from 'antd';
 import GlassCard from '@/components/GlassCard';
+import ThemeTag from '@/components/ThemeTag';
 import { useScanner } from '@/hooks/useScanner';
 import { ReloadOutlined } from '@ant-design/icons';
 import type { ScanResult } from '@/types/scanner';
@@ -20,10 +21,10 @@ export default function ETFScanner() {
 
   const columns = [
     { title: '扫描日期', dataIndex: 'scan_date', width: 120 },
-    { title: '新增', dataIndex: 'new_count', width: 80, render: (v: number) => v > 0 ? <Tag color="green">+{v}</Tag> : <Tag>{v}</Tag> },
-    { title: '退市', dataIndex: 'delisted_count', width: 80, render: (v: number) => v > 0 ? <Tag color="red">-{v}</Tag> : <Tag>{v}</Tag> },
-    { title: '变更', dataIndex: 'changed_count', width: 80, render: (v: number) => v > 0 ? <Tag color="orange">~{v}</Tag> : <Tag>{v}</Tag> },
-    { title: '状态', dataIndex: 'status', width: 100, render: (v: string) => v === 'success' ? <Tag color="success">成功</Tag> : <Tag color="error">失败</Tag> },
+    { title: '新增', dataIndex: 'new_count', width: 80, render: (v: number) => v > 0 ? <ThemeTag variant="rise">+{v}</ThemeTag> : <ThemeTag variant="default">{v}</ThemeTag> },
+    { title: '退市', dataIndex: 'delisted_count', width: 80, render: (v: number) => v > 0 ? <ThemeTag variant="fall">-{v}</ThemeTag> : <ThemeTag variant="default">{v}</ThemeTag> },
+    { title: '变更', dataIndex: 'changed_count', width: 80, render: (v: number) => v > 0 ? <ThemeTag variant="warning">~{v}</ThemeTag> : <ThemeTag variant="default">{v}</ThemeTag> },
+    { title: '状态', dataIndex: 'status', width: 100, render: (v: string) => v === 'success' ? <ThemeTag variant="success">成功</ThemeTag> : <ThemeTag variant="error">失败</ThemeTag> },
   ];
 
   const result = lastScan;
