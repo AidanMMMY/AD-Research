@@ -99,6 +99,18 @@
   --text-label: 500 10px/1.2 var(--font-sans);
   --text-code: 400 12px/1.4 var(--font-mono);
 
+  /* Size-only aliases for fontSize property */
+  --text-h1-size: 26px;
+  --text-h2-size: 20px;
+  --text-h3-size: 16px;
+  --text-data-xl-size: 40px;
+  --text-data-lg-size: 24px;
+  --text-data-md-size: 16px;
+  --text-body-size: 13px;
+  --text-small-size: 11px;
+  --text-label-size: 10px;
+  --text-code-size: 12px;
+
   /* ---- Animation ---- */
   --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
   --transition-base: 200ms cubic-bezier(0.4, 0, 0.2, 1);

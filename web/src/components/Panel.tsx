@@ -56,7 +56,7 @@ export default function Panel({
           {title && (
             <span
               style={{
-                fontSize: '16px',
+                fontSize: 'var(--text-h3-size)',
                 fontWeight: 500,
                 color: 'var(--text-primary)',
                 letterSpacing: '-0.01em',

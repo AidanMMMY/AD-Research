@@ -44,7 +44,7 @@ export default function GradientStatCard({
           <div
             className="gradient-stat-title"
             style={{
-              fontSize: 'var(--text-label)',
+              fontSize: 'var(--text-label-size)',
               color: 'var(--text-tertiary)',
               fontWeight: 500,
               marginBottom: '10px',
@@ -69,7 +69,7 @@ export default function GradientStatCard({
               <span
                 className="gradient-stat-value"
                 style={{
-                  fontSize: 'var(--text-data-lg)',
+                  fontSize: 'var(--text-data-lg-size)',
                   fontWeight: 400,
                   color: 'var(--text-primary)',
                   lineHeight: 1.2,
@@ -83,7 +83,7 @@ export default function GradientStatCard({
                 <span
                   className="gradient-stat-suffix"
                   style={{
-                    fontSize: 'var(--text-small)',
+                    fontSize: 'var(--text-small-size)',
                     color: 'var(--text-tertiary)',
                     fontWeight: 500,
                   }}
