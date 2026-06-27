@@ -218,7 +218,7 @@ export default function AppLayout() {
   const sidebarWidth = isMobile ? 0 : collapsed ? SIDEBAR_COLLAPSED : SIDEBAR_WIDTH;
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', background: '#070b14' }}>
+    <div style={{ display: 'flex', minHeight: '100vh', background: 'var(--bg-base)' }}>
       {/* Mobile Drawer */}
       {isMobile && (
         <Drawer
@@ -319,7 +319,7 @@ export default function AppLayout() {
         <header
           style={{
             height: 64,
-            background: 'rgba(10, 10, 10, 0.9)',
+            background: 'rgba(10, 10, 10, 0.85)',
             backdropFilter: 'blur(12px)',
             borderBottom: '1px solid var(--border-default)',
             display: 'flex',

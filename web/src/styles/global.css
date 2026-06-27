@@ -12,36 +12,38 @@
 
 /* Card — Minimal, only for real containers */
 .ant-card {
-  background: var(--bg-elevated) !important;
-  border: 1px solid var(--border-default) !important;
-  border-radius: var(--radius-lg) !important;
+  background: transparent !important;
+  border: none !important;
+  border-radius: 0 !important;
   box-shadow: none !important;
 }
 
 .ant-card-head {
   background: transparent !important;
   border-bottom: 1px solid var(--border-default) !important;
-  color: var(--text-primary) !important;
+  color: var(--text-tertiary) !important;
   font-weight: 500;
-  font-size: var(--text-h3-size);
-  padding: var(--space-4) var(--space-5) !important;
+  font-size: var(--text-label-size);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: var(--space-4) 0 !important;
 }
 
 .ant-card-body {
-  padding: var(--space-4) var(--space-5) !important;
+  padding: var(--space-4) 0 !important;
 }
 
 .ant-card-small {
-  border-radius: var(--radius-md) !important;
+  border-radius: 0 !important;
 }
 
 .ant-card-small .ant-card-head {
-  padding: var(--space-3) var(--space-4) !important;
-  font-size: var(--text-body-size);
+  padding: var(--space-3) 0 !important;
+  font-size: var(--text-label-size);
 }
 
 .ant-card-small .ant-card-body {
-  padding: var(--space-3) var(--space-4) !important;
+  padding: var(--space-3) 0 !important;
 }
 
 /* Table */
@@ -444,11 +446,11 @@
 
   /* Card */
   .ant-card-head {
-    padding: var(--space-3) var(--space-4) !important;
+    padding: var(--space-3) 0 !important;
   }
 
   .ant-card-body {
-    padding: var(--space-3) var(--space-4) !important;
+    padding: var(--space-3) 0 !important;
   }
 
   /* Statistic */
@@ -517,11 +519,11 @@
    ============================================================ */
 @media (min-width: 768px) and (max-width: 991px) {
   .ant-card-head {
-    padding: var(--space-3) var(--space-5) !important;
+    padding: var(--space-3) 0 !important;
   }
 
   .ant-card-body {
-    padding: var(--space-3) var(--space-5) !important;
+    padding: var(--space-3) 0 !important;
   }
 
   .ant-statistic-content {

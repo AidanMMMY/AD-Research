@@ -58,14 +58,6 @@ export function getScoreColor(score: number): string {
   return '#ef4444';
 }
 
-/** Get gradient for score */
-export function getScoreGradient(score: number): string {
-  if (score >= 80) return 'linear-gradient(90deg, #22c55e, #4ade80)';
-  if (score >= 60) return 'linear-gradient(90deg, #84cc16, #a3e635)';
-  if (score >= 40) return 'linear-gradient(90deg, #eab308, #facc15)';
-  return 'linear-gradient(90deg, #ef4444, #f87171)';
-}
-
 /** Get signal type color */
 export function getSignalColor(type: string): string {
   const map: Record<string, string> = {

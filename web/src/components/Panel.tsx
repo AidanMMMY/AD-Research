@@ -1,12 +1,14 @@
 import React from 'react';
 
+export type PanelVariant = 'default' | 'minimal' | 'transparent';
+
 export interface PanelProps {
   children: React.ReactNode;
   title?: React.ReactNode;
   extra?: React.ReactNode;
   className?: string;
   style?: React.CSSProperties;
-  bordered?: boolean;
+  variant?: PanelVariant;
   padding?: 'none' | 'sm' | 'md' | 'lg';
   'data-glass-padding'?: string;
 }
@@ -24,19 +26,23 @@ export default function Panel({
   extra,
   className = '',
   style,
-  bordered = true,
+  variant = 'default',
   padding = 'md',
   'data-glass-padding': dataGlassPadding,
 }: PanelProps) {
   const p = paddingMap[padding];
+
+  const isDefault = variant === 'default';
+  const isMinimal = variant === 'minimal';
+  const showHeaderBorder = isDefault || isMinimal;
 
   return (
     <div
       className={`swiss-panel ${className}`}
       data-glass-padding={dataGlassPadding}
       style={{
-        background: 'var(--bg-elevated)',
-        border: bordered ? '1px solid var(--border-default)' : 'none',
+        background: isDefault ? 'var(--bg-elevated)' : 'transparent',
+        border: isDefault ? '1px solid var(--border-default)' : 'none',
         borderRadius: 0,
         ...style,
       }}
@@ -48,7 +54,7 @@ export default function Panel({
             alignItems: 'center',
             justifyContent: 'space-between',
             padding: `${p.desktop}px ${p.desktop}px 12px`,
-            borderBottom: '1px solid var(--border-default)',
+            borderBottom: showHeaderBorder ? '1px solid var(--border-default)' : 'none',
             gap: 12,
             minWidth: 0,
           }}
@@ -56,11 +62,12 @@ export default function Panel({
           {title && (
             <span
               style={{
-                fontSize: 'var(--text-h3-size)',
+                fontSize: 'var(--text-label-size)',
                 fontWeight: 500,
-                color: 'var(--text-primary)',
-                letterSpacing: '-0.01em',
+                color: 'var(--text-tertiary)',
+                letterSpacing: '0.08em',
                 lineHeight: 1.4,
+                textTransform: 'uppercase',
                 overflow: 'hidden',
                 textOverflow: 'ellipsis',
                 whiteSpace: 'nowrap',

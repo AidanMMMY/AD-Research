@@ -1,4 +1,4 @@
-import { getScoreColor, getScoreGradient } from '@/utils/color';
+import { getScoreColor } from '@/utils/color';
 
 interface ScoreBarProps {
   score: number;
@@ -23,7 +23,7 @@ export default function ScoreBar({ score, size = 'default' }: ScoreBarProps) {
           style={{
             width: `${Math.min(score, 100)}%`,
             height: '100%',
-            background: getScoreGradient(score),
+            background: getScoreColor(score),
             borderRadius: height / 2,
             transition: 'width 600ms cubic-bezier(0.4, 0, 0.2, 1)',
           }}
