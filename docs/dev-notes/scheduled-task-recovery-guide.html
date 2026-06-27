@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ETF Research Platform - 定时任务恢复操作指南</title>
+  <style>
+    :root {
+      --bg: #f8f9fa;
+      --text: #212529;
+      --code-bg: #f1f3f5;
+      --border: #dee2e6;
+      --accent: #0d6efd;
+      --warn: #dc3545;
+      --note: #0f5132;
+      --note-bg: #d1e7dd;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      line-height: 1.7;
+      color: var(--text);
+      background: var(--bg);
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 2rem 1rem;
+    }
+    h1 { font-size: 2rem; border-bottom: 3px solid var(--accent); padding-bottom: .5rem; }
+    h2 { font-size: 1.5rem; margin-top: 2.5rem; border-left: 5px solid var(--accent); padding-left: .75rem; }
+    h3 { font-size: 1.2rem; margin-top: 2rem; }
+    code {
+      background: var(--code-bg);
+      padding: .15rem .4rem;
+      border-radius: 4px;
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+      font-size: .9em;
+    }
+    pre {
+      background: var(--code-bg);
+      padding: 1rem;
+      border-radius: 8px;
+      overflow-x: auto;
+      border: 1px solid var(--border);
+    }
+    pre code { background: none; padding: 0; }
+    blockquote {
+      margin: 1rem 0;
+      padding: .75rem 1rem;
+      background: var(--note-bg);
+      color: var(--note);
+      border-left: 4px solid var(--accent);
+      border-radius: 4px;
+    }
+    blockquote.warn {
+      background: #f8d7da;
+      color: #842029;
+      border-left-color: var(--warn);
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1rem 0;
+      background: #fff;
+    }
+    th, td {
+      border: 1px solid var(--border);
+      padding: .6rem .8rem;
+      text-align: left;
+    }
+    th { background: #e9ecef; }
+    tr:nth-child(even) { background: #f8f9fa; }
+    .meta { color: #6c757d; font-size: .9rem; }
+  </style>
+</head>
+<body>
+
+<h1>ETF Research Platform - 定时任务恢复操作指南</h1>
+
+<blockquote>
+  本文档记录当服务端定时任务中断、数据落后时的完整恢复流程。
+  适用场景：A 股 ETF 日线数据未自动更新、指标/评分/信号停滞。
+</blockquote>
+
+<p class="meta">文档生成时间：2026-06-27</p>
+
+<hr>
+
+<h2>一、问题判断标准</h2>
+<p>出现以下任一情况，即说明服务端定时任务可能已中断：</p>
+<ol>
+  <li><code>etf_daily_bar</code> 最新交易日明显落后当天（如落后 2 个以上交易日）。</li>
+  <li><code>etl_log</code> 表中 <code>a_share_daily_etl</code> 最近一次成功时间距现在超过 1 天。</li>
+  <li>服务器进程列表中无 <code>uvicorn</code> / <code>python app/main.py</code> / APScheduler 相关进程。</li>
+  <li><code>data_completeness_check.py</code> 输出中“最新日线日期”不是最近交易日。</li>
+</ol>
+
+<h2>二、前置检查</h2>
+
+<h3>2.1 确认基础设施（PostgreSQL + Redis）</h3>
+
+<h4>方式 A：本地或裸机部署</h4>
+<pre><code># PostgreSQL
+pg_isready -h localhost -p 5432 -U etf
+
+# Redis
+redis-cli ping
+# 应返回 PONG
+</code></pre>
+
+<p>如果 <code>pg_isready</code> 命令不存在，可安装客户端：</p>
+<pre><code>apt update &amp;&amp; apt install -y postgresql-client-common postgresql-client
+</code></pre>
+
+<h4>方式 B：Docker Compose 部署</h4>
+<pre><code>cd /opt/ad-research  # 或你的项目根目录
+docker compose ps
+</code></pre>
+
+<p>应看到 <code>etf-postgres</code>、<code>etf-redis</code> 状态为 <code>running</code>。如果不在：</p>
+<pre><code>docker compose up -d postgres redis
+</code></pre>
+
+<h2>三、启动后端服务</h2>
+
+<h3>3.1 本地 Python 启动</h3>
+<pre><code>cd /opt/ad-research
+source .venv/bin/activate
+uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 1
+</code></pre>
+
+<p>成功标志：</p>
+<pre><code>INFO:     Started server process [xxxxx]
+INFO:     Waiting for application startup.
+[Scheduler] Started
+INFO:     Application startup complete.
+</code></pre>
+
+<blockquote class="warn">
+  <strong>必须看到 <code>[Scheduler] Started</code></strong>，否则 APScheduler 定时任务不会执行。
+</blockquote>
+
+<h3>3.2 Docker Compose 启动</h3>
+<pre><code>cd /opt/ad-research
+docker compose up -d --build backend
+</code></pre>
+
+<p>查看日志：</p>
+<pre><code>docker compose logs -f backend
+</code></pre>
+
+<h3>3.3 使用 tmux/screen 后台运行</h3>
+<p>SSH 会话断开后服务会被杀掉，建议挂到 tmux：</p>
+<pre><code>tmux new -s etf-backend
+cd /opt/ad-research
+source .venv/bin/activate
+uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 1
+
+# 按 Ctrl+B，然后按 D，退出 tmux 但保留服务
+</code></pre>
+
+<p>重新进入：</p>
+<pre><code>tmux attach -t etf-backend
+</code></pre>
+
+<h2>四、补跑缺失数据</h2>
+
+<h3>4.1 创建不回测版本（推荐首次恢复使用）</h3>
+<p><code>scripts/update_daily_data.py</code> 第 5 步会执行全量回测，数量级为 <code>3 策略 × 1511 ETF ≈ 4533</code> 个任务，耗时数小时。首次恢复数据时建议跳过回测，只补齐日线、指标、评分、信号。</p>
+
+<pre><code>cd /opt/ad-research
+cp scripts/update_daily_data.py scripts/update_daily_data_nobacktest.py
+</code></pre>
+
+<p>编辑 <code>scripts/update_daily_data_nobacktest.py</code>，注释掉 <code>main()</code> 中的回测调用：</p>
+<pre><code>def main():
+    db = Session()
+    try:
+        end_date = date.today() - timedelta(days=1)
+        count = fetch_and_insert_daily_bars(db, end_date)
+        print(f"   Inserted/updated {count} daily bar records")
+
+        ind_count = run_indicator_calculation(db)
+        print(f"   已更新 {ind_count} 条指标记录")
+
+        score_count = run_score_calculation(db)
+        print(f"   已更新 {score_count} 条评分记录")
+
+        signal_count = run_signal_generation(db)
+        print(f"   已生成 {signal_count} 个信号")
+
+        # 首次恢复时跳过回测，避免跑数小时
+        # backtest_count = run_backtests(db)
+        # print(f"   已完成 {backtest_count} 个回测")
+
+        verify_data(db)
+        print("\n🎉 All data updated successfully!")
+</code></pre>
+
+<p>执行：</p>
+<pre><code>source .venv/bin/activate
+python scripts/update_daily_data_nobacktest.py
+</code></pre>
+
+<h3>4.2 预期输出</h3>
+<pre><code>📊 Step 1: Fetching daily bars for 1514 ETFs up to 2026-06-26...
+   Batch 1/152: 10 ETFs
+   ...
+   Inserted/updated XXXX daily bar records
+   已更新 XXXX 条指标记录
+   已更新 XXXX 条评分记录
+   已生成 XXXX 个信号
+✅ Data Update Summary:
+   Daily bars: 1514 ETFs, latest=2026-06-26
+   Indicators: XXXXXX records, latest=2026-06-26
+   Scores: XXXXX records, latest=2026-06-26
+   Signals: XXXX records for 2026-06-26
+</code></pre>
+
+<p>如果 Step 1 仍显示 <code>Fetched 0 raw records</code>，说明 akshare 数据源接口异常，参考第六节排错。</p>
+
+<h3>4.3 单独跑回测（可选）</h3>
+<p>数据补齐且服务稳定后，再执行完整回测：</p>
+<pre><code># 挂到 tmux，因为可能跑数小时
+tmux new -s etf-backtest
+cd /opt/ad-research
+source .venv/bin/activate
+python scripts/update_daily_data.py
+</code></pre>
+
+<h2>五、验证数据恢复</h2>
+
+<h3>5.1 快速检查最新日线日期</h3>
+<pre><code>source .venv/bin/activate
+python - <<'PY'
+from app.core.database import SessionLocal
+from sqlalchemy import func
+from app.models.etf import ETFDailyBar
+
+db = SessionLocal()
+latest = db.query(func.max(ETFDailyBar.trade_date)).scalar()
+print(f"最新日线日期: {latest}")
+db.close()
+PY
+</code></pre>
+
+<p>应返回最近一个交易日（如 <code>2026-06-26</code> 或 <code>2026-06-25</code>，取决于当天是否开市）。</p>
+
+<h3>5.2 完整数据健康检查</h3>
+<pre><code>cd /opt/ad-research
+source .venv/bin/activate
+python scripts/data_completeness_check.py
+</code></pre>
+
+<p>重点关注第三节输出：</p>
+<pre><code>最新日线日期: 2026-06-26
+最新指标日期: 2026-06-26
+最新评分日期: 2026-06-26
+最新信号日期: 2026-06-26
+</code></pre>
+
+<p>四项一致且为最近交易日，即表示恢复成功。</p>
+
+<h2>六、补数据失败排错</h2>
+
+<h3>6.1 检查 akshare 数据源</h3>
+<pre><code>source .venv/bin/activate
+python - <<'PY'
+from datetime import date, timedelta
+from app.data.providers.akshare_provider import AkshareProvider
+
+p = AkshareProvider(prefer_sina=True)
+df = p.fetch_daily_bars(
+    ["510300.SH"],
+    date.today() - timedelta(days=7),
+    date.today() - timedelta(days=1)
+)
+print(df.head())
+print(f"records: {len(df)}")
+PY
+</code></pre>
+
+<p>如果返回空，尝试：</p>
+<ol>
+  <li>升级到最新 akshare：<pre><code>pip install -U akshare
+</code></pre>
+  </li>
+  <li>在 <code>scripts/update_daily_data.py</code> 中把 <code>AkshareProvider()</code> 改为 <code>AkshareProvider(prefer_sina=True)</code>，使用新浪接口更稳定。</li>
+</ol>
+
+<h3>6.2 检查数据库连接</h3>
+<pre><code>source .venv/bin/activate
+python - <<'PY'
+from app.core.database import SessionLocal
+db = SessionLocal()
+print("DB connected")
+db.close()
+PY
+</code></pre>
+
+<h3>6.3 查看服务日志</h3>
+<pre><code># Docker
+cd /opt/ad-research
+docker compose logs -f backend
+
+# 本地（如果启动时重定向了日志）
+tail -f /var/log/etf-backend.log
+</code></pre>
+
+<h2>七、防止服务再次掉线</h2>
+
+<h3>7.1 Docker Compose 设置自动重启</h3>
+<p>编辑 <code>docker-compose.yml</code>，在 <code>backend</code> 服务下添加：</p>
+<pre><code>backend:
+  restart: always
+  deploy:
+    restart_policy:
+      condition: any
+      delay: 5s
+      max_attempts: 3
+</code></pre>
+
+<p>然后：</p>
+<pre><code>docker compose up -d
+</code></pre>
+
+<h3>7.2 systemd 服务（Linux 裸机部署）</h3>
+<p>创建 <code>/etc/systemd/system/etf-backend.service</code>：</p>
+<pre><code>[Unit]
+Description=ETF Research Platform Backend
+After=network.target postgresql.service redis.service
+
+[Service]
+Type=simple
+User=aidanliu
+WorkingDirectory=/opt/ad-research
+Environment=PATH=/opt/ad-research/.venv/bin
+ExecStart=/opt/ad-research/.venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 1
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
+</code></pre>
+
+<p>加载并启动：</p>
+<pre><code>sudo systemctl daemon-reload
+sudo systemctl enable etf-backend
+sudo systemctl start etf-backend
+sudo systemctl status etf-backend
+</code></pre>
+
+<h3>7.3 定时任务监控</h3>
+<p>每天可通过 API 检查最近 ETL 状态：</p>
+<pre><code>curl http://localhost:8000/api/v1/etl/status?limit=5
+</code></pre>
+
+<h2>八、定时任务清单</h2>
+<p>服务启动后，APScheduler 会自动按以下 cron 执行任务（见 <code>app/core/scheduler.py</code>）：</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>时间（北京时间）</th>
+      <th>任务</th>
+      <th>对应函数</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><td>05:00</td><td>美股日终采集</td><td><code>run_us_etl</code></td></tr>
+    <tr><td>05:30</td><td>美股指标计算</td><td><code>run_us_indicator_calculation</code></td></tr>
+    <tr><td>08:00</td><td>A 股指标计算</td><td><code>run_indicator_calculation</code></td></tr>
+    <tr><td>08:30</td><td>评分计算</td><td><code>run_score_calculation</code></td></tr>
+    <tr><td>09:00</td><td>交易信号生成</td><td><code>run_signal_generation</code></td></tr>
+    <tr><td>15:30</td><td><strong>A 股 ETF 日终采集</strong></td><td><code>run_a_share_etl</code></td></tr>
+    <tr><td>周日 02:00</td><td>美股个股发现</td><td><code>run_us_stock_discovery</code></td></tr>
+    <tr><td>周日 03:00</td><td>全市场 ETF 扫描</td><td><code>run_etf_scan</code></td></tr>
+    <tr><td>周日 22:00</td><td>池周报生成</td><td><code>run_weekly_pool_reports</code></td></tr>
+  </tbody>
+</table>
+
+<h2>九、常用命令速查</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>目的</th>
+      <th>命令</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><td>启动后端</td><td><code>uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 1</code></td></tr>
+    <tr><td>Docker 启动全部</td><td><code>docker compose up -d</code></td></tr>
+    <tr><td>查看后端日志</td><td><code>docker compose logs -f backend</code></td></tr>
+    <tr><td>补数据（跳过回测）</td><td><code>python scripts/update_daily_data_nobacktest.py</code></td></tr>
+    <tr><td>完整补数据</td><td><code>python scripts/update_daily_data.py</code></td></tr>
+    <tr><td>数据健康检查</td><td><code>python scripts/data_completeness_check.py</code></td></tr>
+    <tr><td>进入 tmux 会话</td><td><code>tmux attach -t etf-backend</code></td></tr>
+    <tr><td>查看 ETL 日志 API</td><td><code>curl http://localhost:8000/api/v1/etl/status?limit=5</code></td></tr>
+  </tbody>
+</table>
+
+<hr>
+
+<p class="meta">文档生成时间：2026-06-27</p>
+
+</body>
+</html>
