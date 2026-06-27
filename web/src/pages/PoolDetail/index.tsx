@@ -30,7 +30,7 @@ import { getQuickQuestions } from '@/utils/helpPrompts';
 const SUGGEST_ALGORITHMS: { key: string; label: string }[] = [
   { key: 'equal', label: '等权' },
   { key: 'score', label: '评分加权' },
-  { key: 'risk_parity', label: '风险平价' },
+  { key: 'risk_parity', label: '风险平价（逆波动率）' },
 ];
 
 const ALGORITHM_TERM_KEYS: Record<string, string> = {
