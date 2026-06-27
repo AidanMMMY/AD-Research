@@ -8,19 +8,19 @@ interface ETFCodeTagProps {
 export default function ETFCodeTag({ code, name }: ETFCodeTagProps) {
   return (
     <Tooltip title={name || code}>
-      <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+      <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
         <span
           style={{
             display: 'inline-block',
-            padding: '3px 10px',
-            borderRadius: 6,
-            fontSize: 12,
-            fontWeight: 700,
-            fontFamily: "'SF Mono', 'Fira Code', monospace",
-            color: '#818cf8',
-            background: 'rgba(99, 102, 241, 0.12)',
-            border: '1px solid rgba(99, 102, 241, 0.2)',
-            letterSpacing: '0.3px',
+            padding: '2px 8px',
+            borderRadius: 'var(--radius-sm)',
+            fontSize: 'var(--text-code)',
+            fontWeight: 500,
+            fontFamily: 'var(--font-mono)',
+            color: 'var(--accent)',
+            background: 'var(--accent-dim)',
+            border: '1px solid var(--accent-border)',
+            letterSpacing: '0.02em',
           }}
         >
           {code}
@@ -28,8 +28,8 @@ export default function ETFCodeTag({ code, name }: ETFCodeTagProps) {
         {name && (
           <span
             style={{
-              fontSize: 13,
-              color: '#94a3b8',
+              fontSize: 'var(--text-body)',
+              color: 'var(--text-secondary)',
               fontWeight: 400,
               maxWidth: 160,
               overflow: 'hidden',

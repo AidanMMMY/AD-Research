@@ -1,10 +1,21 @@
 import { getReturnColor, getReturnBgColor, getReturnBorderColor } from '@/utils/color';
 import { formatPercent } from '@/utils/format';
 import { useSettingsStore } from '@/stores/settings';
+import React from 'react';
 
 interface ReturnTagProps {
   value?: number | null;
 }
+
+const baseStyle = {
+  display: 'inline-block',
+  padding: '2px 8px',
+  borderRadius: 'var(--radius-sm)',
+  fontSize: 'var(--text-code)',
+  fontWeight: 500,
+  fontFamily: 'var(--font-mono)',
+  transition: 'all var(--transition-fast)',
+} as React.CSSProperties;
 
 export default function ReturnTag({ value }: ReturnTagProps) {
   const colorConvention = useSettingsStore((s) => s.colorConvention);
@@ -13,15 +24,10 @@ export default function ReturnTag({ value }: ReturnTagProps) {
     return (
       <span
         style={{
-          display: 'inline-block',
-          padding: '3px 10px',
-          borderRadius: 6,
-          fontSize: 12,
-          fontWeight: 600,
-          fontFamily: "'SF Mono', 'Fira Code', monospace",
-          color: '#64748b',
-          background: 'rgba(255,255,255,0.03)',
-          border: '1px solid rgba(255,255,255,0.06)',
+          ...baseStyle,
+          color: 'var(--text-tertiary)',
+          background: 'var(--bg-input)',
+          border: '1px solid var(--border-default)',
         }}
       >
         -
@@ -31,16 +37,10 @@ export default function ReturnTag({ value }: ReturnTagProps) {
   return (
     <span
       style={{
-        display: 'inline-block',
-        padding: '3px 10px',
-        borderRadius: 6,
-        fontSize: 12,
-        fontWeight: 600,
-        fontFamily: "'SF Mono', 'Fira Code', monospace",
+        ...baseStyle,
         color: getReturnColor(value, colorConvention),
         background: getReturnBgColor(value, colorConvention),
         border: `1px solid ${getReturnBorderColor(value, colorConvention)}`,
-        transition: 'all 150ms ease',
       }}
     >
       {formatPercent(value)}
