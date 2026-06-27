@@ -16,7 +16,7 @@ from sqlalchemy.orm import Session
 
 from app.core.cache import cache_invalidate_pattern
 from app.data.pipelines.base import ETLPipeline
-from app.data.providers.yfinance_provider import YFinanceProvider
+from app.data.providers.fmp_provider import FMPProvider
 from app.models.etf import ETFDailyBar, ETFInfo
 
 logger = logging.getLogger(__name__)
@@ -26,7 +26,9 @@ class USDailyPipeline(ETLPipeline):
     """ETL pipeline for US equity daily bars.
 
     Covers all active instruments with market="US" (ETFs + individual stocks).
-    Uses yfinance as primary source with Tiingo → Finnhub fallback chain.
+    Uses FMP as primary source (free tier: 250 req/day) with Tiingo fallback.
+    yfinance is intentionally not used in production because batch downloads
+    are heavily rate-limited from cloud server IPs.
 
     Target date: yesterday's date (US market closes 16:00 ET → next day
     Beijing time). Run at 05:00 Beijing time = 17:00 ET previous day.
@@ -39,40 +41,29 @@ class USDailyPipeline(ETLPipeline):
         db: Session,
         target_date: date | None = None,
     ) -> None:
-        provider = YFinanceProvider()
+        provider = FMPProvider()
         super().__init__(provider=provider, db=db)
         self.target_date = target_date
 
     def _try_fallback(self, codes: list[str], start_date: date, end_date: date) -> pd.DataFrame:
-        """Try Tiingo → Finnhub fallback chain if primary provider fails.
+        """Try Tiingo fallback if FMP fails.
 
-        Returns empty DataFrame if all providers fail.
+        Returns empty DataFrame if fallback fails.
         """
-        # Fallback 1: Tiingo
         tiingo_key = os.getenv("TIINGO_API_KEY", "")
-        if tiingo_key:
-            try:
-                from app.data.providers.tiingo_provider import TiingoProvider
-                fallback = TiingoProvider()
-                df = fallback.fetch_daily_bars(codes, start_date, end_date)
-                if not df.empty:
-                    logger.info("USDailyPipeline: Tiingo fallback returned %d rows", len(df))
-                    return df
-            except Exception as exc:
-                logger.warning("USDailyPipeline: Tiingo fallback failed: %s", exc)
+        if not tiingo_key:
+            return pd.DataFrame()
 
-        # Fallback 2: Finnhub
-        finnhub_key = os.getenv("FINNHUB_API_KEY", "")
-        if finnhub_key:
-            try:
-                from app.data.providers.finnhub_provider import FinnhubProvider
-                fallback = FinnhubProvider()
-                df = fallback.fetch_daily_bars(codes, start_date, end_date)
-                if not df.empty:
-                    logger.info("USDailyPipeline: Finnhub fallback returned %d rows", len(df))
-                    return df
-            except Exception as exc:
-                logger.warning("USDailyPipeline: Finnhub fallback failed: %s", exc)
+        try:
+            from app.data.providers.tiingo_provider import TiingoProvider
+
+            fallback = TiingoProvider()
+            df = fallback.fetch_daily_bars(codes, start_date, end_date)
+            if not df.empty:
+                logger.info("USDailyPipeline: Tiingo fallback returned %d rows", len(df))
+            return df
+        except Exception as exc:
+            logger.warning("USDailyPipeline: Tiingo fallback failed: %s", exc)
 
         return pd.DataFrame()
 
@@ -109,7 +100,7 @@ class USDailyPipeline(ETLPipeline):
 
         if df.empty:
             logger.warning(
-                "USDailyPipeline: Primary (yfinance) returned empty, trying fallbacks"
+                "USDailyPipeline: Primary (FMP) returned empty, trying Tiingo fallback"
             )
             df = self._try_fallback(codes, start_date, end_date)
 
