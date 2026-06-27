@@ -17,6 +17,7 @@ class BacktestCreate(BaseModel):
     commission_rate: float = 0.001
     slippage_rate: float = 0.001
     position_size: float = 1.0
+    risk_free_rate: float = 0.02
 
 
 class BacktestMetrics(BaseModel):
@@ -36,6 +37,7 @@ class BacktestMetrics(BaseModel):
     commission_rate: float = 0.001
     slippage_rate: float = 0.001
     position_size: float = 1.0
+    risk_free_rate: float = 0.02
 
 
 class BacktestTrade(BaseModel):

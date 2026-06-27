@@ -27,6 +27,7 @@ class BacktestService:
         commission_rate: float = 0.001,
         slippage_rate: float = 0.001,
         position_size: float = 1.0,
+        risk_free_rate: float = 0.02,
     ) -> dict[str, Any]:
         """Run a backtest and persist results.
 
@@ -41,6 +42,7 @@ class BacktestService:
             commission_rate: Per-trade commission rate (single side).
             slippage_rate: Per-trade slippage rate (single side).
             position_size: Position size ratio (0.0 - 1.0).
+            risk_free_rate: Annual risk-free rate used in Sharpe calculation.
 
         Returns:
             Dict with backtest results and metadata.
@@ -56,6 +58,7 @@ class BacktestService:
             commission_rate=commission_rate,
             slippage_rate=slippage_rate,
             position_size=position_size,
+            risk_free_rate=risk_free_rate,
         )
 
         # Persist to database
@@ -84,6 +87,7 @@ class BacktestService:
                 "commission_rate": commission_rate,
                 "slippage_rate": slippage_rate,
                 "position_size": position_size,
+                "risk_free_rate": risk_free_rate,
             },
         )
         self.db.add(backtest)

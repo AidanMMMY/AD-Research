@@ -12,6 +12,7 @@ import pandas as pd
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.data.indicators.technical import calc_rsi
 from app.models.etf import ETFDailyBar
 
 
@@ -137,18 +138,14 @@ def generate_signals_for_strategy(
         overbought = params.get("overbought", 70)
         oversold = params.get("oversold", 30)
         if len(df) >= period + 1:
-            closes = df["close"].values
-            deltas = pd.Series(closes).diff().dropna()
-            gains = deltas.where(deltas > 0, 0).rolling(period).mean().iloc[-1]
-            losses = (-deltas.where(deltas < 0, 0)).rolling(period).mean().iloc[-1]
-            if losses > 0:
-                rs = gains / losses
-                rsi = 100 - 100 / (1 + rs)
-                if rsi < oversold:
-                    signals.append({"type": "BUY", "strength": min(int((oversold - rsi) * 3), 100)})
-                elif rsi > overbought:
-                    signals.append({"type": "SELL", "strength": min(int((rsi - overbought) * 3), 100)})
-                else:
-                    signals.append({"type": "HOLD", "strength": 50})
+            rsi = calc_rsi(df["close"], window=period).iloc[-1]
+            if pd.isna(rsi):
+                signals.append({"type": "HOLD", "strength": 50})
+            elif rsi < oversold:
+                signals.append({"type": "BUY", "strength": min(int((oversold - rsi) * 3), 100)})
+            elif rsi > overbought:
+                signals.append({"type": "SELL", "strength": min(int((rsi - overbought) * 3), 100)})
+            else:
+                signals.append({"type": "HOLD", "strength": 50})
 
     return signals

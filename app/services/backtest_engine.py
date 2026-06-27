@@ -9,6 +9,7 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
+from app.data.indicators.technical import calc_rsi
 from app.data.providers.akshare_provider import AkshareProvider
 
 
@@ -76,11 +77,7 @@ def get_strategy_signals(
         period = params.get("rsi_period", 14)
         overbought = params.get("overbought", 70)
         oversold = params.get("oversold", 30)
-        delta = data["close"].diff()
-        gain = delta.where(delta > 0, 0).rolling(period).mean()
-        loss = (-delta.where(delta < 0, 0)).rolling(period).mean()
-        rs = gain / loss
-        rsi = 100 - 100 / (1 + rs)
+        rsi = calc_rsi(data["close"], window=period)
         signals[rsi < oversold] = 1
         signals[rsi > overbought] = -1
 
@@ -107,6 +104,7 @@ def run_backtest(
     commission_rate: float = 0.001,
     slippage_rate: float = 0.001,
     position_size: float = 1.0,
+    risk_free_rate: float = 0.02,
 ) -> BacktestResult:
     """Run a backtest for a single ETF with a strategy.
 
@@ -120,6 +118,7 @@ def run_backtest(
         commission_rate: Per-trade commission rate (single side).
         slippage_rate: Per-trade slippage rate (single side).
         position_size: Position size ratio (0.0 - 1.0).
+        risk_free_rate: Annual risk-free rate used in Sharpe calculation.
 
     Returns:
         BacktestResult with NAV, trades, metrics, and signals.
@@ -257,7 +256,9 @@ def run_backtest(
 
     # Sharpe ratio (annualized)
     if len(daily_returns) > 1 and daily_returns.std() > 0:
-        sharpe = (daily_returns.mean() / daily_returns.std()) * np.sqrt(252)
+        annual_return = daily_returns.mean() * 252
+        annual_vol = daily_returns.std() * np.sqrt(252)
+        sharpe = (annual_return - risk_free_rate) / annual_vol
     else:
         sharpe = 0
 
@@ -292,6 +293,7 @@ def run_backtest(
         "commission_rate": commission_rate,
         "slippage_rate": slippage_rate,
         "position_size": position_size,
+        "risk_free_rate": risk_free_rate,
     }
 
     return result
