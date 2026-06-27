@@ -78,3 +78,20 @@ def redis_lock(
             lua_script = "if redis.call('get', KEYS[1]) == ARGV[1] then return redis.call('del', KEYS[1]) else return 0 end"
             with contextlib.suppress(redis.RedisError):
                 client.eval(lua_script, 1, lock_key, token)
+
+
+# ── Token Blacklist Helpers ──
+
+TOKEN_BLACKLIST_PREFIX = "bl:"
+
+
+def blacklist_token(jti: str, ttl: int) -> None:
+    """Add a JWT jti to the blacklist with TTL matching the token's remaining lifetime."""
+    client = get_redis_client()
+    client.setex(f"{TOKEN_BLACKLIST_PREFIX}{jti}", ttl, "1")
+
+
+def is_token_blacklisted(jti: str) -> bool:
+    """Check whether a JWT jti has been revoked."""
+    client = get_redis_client()
+    return client.exists(f"{TOKEN_BLACKLIST_PREFIX}{jti}") > 0
