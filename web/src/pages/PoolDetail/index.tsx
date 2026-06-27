@@ -23,6 +23,7 @@ import CorrelationHeatmap from '@/components/CorrelationHeatmap';
 import ETFCodeTag from '@/components/ETFCodeTag';
 import GlassCard from '@/components/GlassCard';
 import HelpTrigger from '@/components/HelpTrigger';
+import HelpPopover from '@/components/HelpPopover';
 import { buildPoolDetailContext } from '@/utils/helpContext';
 import { getQuickQuestions } from '@/utils/helpPrompts';
 
@@ -31,6 +32,12 @@ const SUGGEST_ALGORITHMS: { key: string; label: string }[] = [
   { key: 'score', label: '评分加权' },
   { key: 'risk_parity', label: '风险平价' },
 ];
+
+const ALGORITHM_TERM_KEYS: Record<string, string> = {
+  equal: 'equal_weight',
+  score: 'score_weighted',
+  risk_parity: 'risk_parity',
+};
 
 const round2 = (v: number) => Math.round(v * 100) / 100;
 
@@ -192,7 +199,11 @@ export default function PoolDetail() {
 
   const suggestMenuItems: MenuProps['items'] = SUGGEST_ALGORITHMS.map((algo) => ({
     key: algo.key,
-    label: algo.label,
+    label: (
+      <HelpPopover termKey={ALGORITHM_TERM_KEYS[algo.key]}>
+        {algo.label}
+      </HelpPopover>
+    ),
     onClick: () => handleSuggest(algo.key),
   }));
 
@@ -202,7 +213,7 @@ export default function PoolDetail() {
       render: (_: unknown, record: any) => <ETFCodeTag code={record.etf_code} name={record.etf_name} />,
     },
     {
-      title: '目标权重',
+      title: <HelpPopover termKey="target_weight">目标权重</HelpPopover>,
       render: (_: unknown, record: any) => (
         editing ? (
           <Slider
@@ -214,8 +225,8 @@ export default function PoolDetail() {
         ) : `${record.target_weight ?? 0}%`
       ),
     },
-    { title: '建议权重', dataIndex: 'suggested_weight', render: (v: number) => v ? `${v.toFixed(1)}%` : '-' },
-    { title: '来源', dataIndex: 'weight_source' },
+    { title: <HelpPopover termKey="suggested_weight">建议权重</HelpPopover>, dataIndex: 'suggested_weight', render: (v: number) => v ? `${v.toFixed(1)}%` : '-' },
+    { title: <HelpPopover termKey="weight_source">来源</HelpPopover>, dataIndex: 'weight_source' },
     {
       title: '操作',
       key: 'action',
@@ -335,12 +346,12 @@ export default function PoolDetail() {
               <GlassCard title="权重分布"><CategoryPie data={analytics.category_distribution} mode="weight" /></GlassCard>
             </Col>
             <Col xs={24}>
-              <GlassCard title="池整体表现">
+              <GlassCard title={<HelpPopover termKey="pool_performance">池整体表现</HelpPopover>}>
                 <Row gutter={16}>
-                  <Col span={6}><Statistic title="1月收益" value={analytics.performance?.return_1m} suffix="%" precision={2} /></Col>
-                  <Col span={6}><Statistic title="3月收益" value={analytics.performance?.return_3m} suffix="%" precision={2} /></Col>
-                  <Col span={6}><Statistic title="夏普" value={analytics.performance?.sharpe_1y} precision={2} /></Col>
-                  <Col span={6}><Statistic title="最大回撤" value={analytics.performance?.max_drawdown} suffix="%" precision={2} /></Col>
+                  <Col span={6}><Statistic title={<HelpPopover termKey="return_1m">1月收益</HelpPopover>} value={analytics.performance?.return_1m} suffix="%" precision={2} /></Col>
+                  <Col span={6}><Statistic title={<HelpPopover termKey="return_3m">3月收益</HelpPopover>} value={analytics.performance?.return_3m} suffix="%" precision={2} /></Col>
+                  <Col span={6}><Statistic title={<HelpPopover termKey="sharpe_1y">夏普</HelpPopover>} value={analytics.performance?.sharpe_1y} precision={2} /></Col>
+                  <Col span={6}><Statistic title={<HelpPopover termKey="max_drawdown_1y">最大回撤</HelpPopover>} value={analytics.performance?.max_drawdown} suffix="%" precision={2} /></Col>
                 </Row>
               </GlassCard>
             </Col>
@@ -350,7 +361,11 @@ export default function PoolDetail() {
     },
     {
       key: 'correlation',
-      label: '相关性热力图',
+      label: (
+        <HelpPopover termKey="correlation_heatmap">
+          相关性热力图
+        </HelpPopover>
+      ),
       children: correlation ? (
         <div>
           <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
@@ -372,7 +387,7 @@ export default function PoolDetail() {
     },
     {
       key: 'snapshots',
-      label: '快照记录',
+      label: <HelpPopover termKey="snapshot">快照记录</HelpPopover>,
       children: (
         <div>
           <Button type="primary" onClick={handleCreateSnapshot} style={{ marginBottom: 16 }}>
