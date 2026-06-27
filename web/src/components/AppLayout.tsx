@@ -73,24 +73,23 @@ function SidebarContent({ collapsed, onItemClick }: SidebarContentProps) {
           display: 'flex',
           alignItems: 'center',
           padding: collapsed ? '0 20px' : '0 24px',
-          borderBottom: '1px solid rgba(255, 255, 255, 0.06)',
+          borderBottom: '1px solid var(--border-default)',
           gap: 12,
         }}
       >
         <div
           style={{
-            width: 36,
-            height: 36,
-            borderRadius: 10,
-            background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
+            width: 32,
+            height: 32,
+            borderRadius: 'var(--radius-md)',
+            background: 'var(--accent)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            fontSize: 18,
+            fontSize: 16,
             fontWeight: 700,
-            color: '#fff',
+            color: '#000',
             flexShrink: 0,
-            boxShadow: '0 0 16px rgba(99, 102, 241, 0.4)',
           }}
         >
           E
@@ -98,10 +97,10 @@ function SidebarContent({ collapsed, onItemClick }: SidebarContentProps) {
         {!collapsed && (
           <span
             style={{
-              fontSize: 16,
-              fontWeight: 700,
-              color: '#f1f5f9',
-              letterSpacing: '1px',
+              fontSize: 'var(--text-body-size)',
+              fontWeight: 500,
+              color: 'var(--text-primary)',
+              letterSpacing: '0.02em',
               whiteSpace: 'nowrap',
             }}
           >
@@ -127,7 +126,7 @@ function SidebarContent({ collapsed, onItemClick }: SidebarContentProps) {
                 <div
                   style={{
                     margin: '8px 12px',
-                    borderTop: '1px solid rgba(255,255,255,0.06)',
+                    borderTop: '1px solid var(--border-default)',
                   }}
                 />
               )}
@@ -140,33 +139,26 @@ function SidebarContent({ collapsed, onItemClick }: SidebarContentProps) {
                 display: 'flex',
                 alignItems: 'center',
                 gap: 12,
-                padding: collapsed ? '12px 0' : '12px 16px',
-                marginBottom: 4,
-                borderRadius: 12,
+                padding: collapsed ? '10px 0' : '10px 14px',
+                marginBottom: 2,
+                borderRadius: 0,
                 cursor: 'pointer',
-                transition: 'all 200ms ease',
+                transition: 'all var(--transition-fast)',
                 justifyContent: collapsed ? 'center' : 'flex-start',
                 position: 'relative',
-                ...(isActive
-                  ? {
-                      background:
-                        'linear-gradient(90deg, rgba(99,102,241,0.15) 0%, rgba(139,92,246,0.08) 100%)',
-                      color: '#818cf8',
-                    }
-                  : {
-                      color: '#94a3b8',
-                    }),
+                color: isActive ? 'var(--text-primary)' : 'var(--text-secondary)',
+                background: isActive ? 'var(--bg-active)' : 'transparent',
               }}
               onMouseEnter={(e) => {
                 if (!isActive) {
-                  e.currentTarget.style.background = 'rgba(255,255,255,0.04)';
-                  e.currentTarget.style.color = '#e2e8f0';
+                  e.currentTarget.style.background = 'var(--bg-hover)';
+                  e.currentTarget.style.color = 'var(--text-primary)';
                 }
               }}
               onMouseLeave={(e) => {
                 if (!isActive) {
                   e.currentTarget.style.background = 'transparent';
-                  e.currentTarget.style.color = '#94a3b8';
+                  e.currentTarget.style.color = 'var(--text-secondary)';
                 }
               }}
             >
@@ -177,11 +169,9 @@ function SidebarContent({ collapsed, onItemClick }: SidebarContentProps) {
                     left: 0,
                     top: '50%',
                     transform: 'translateY(-50%)',
-                    width: 3,
-                    height: 20,
-                    borderRadius: '0 3px 3px 0',
-                    background: 'linear-gradient(180deg, #6366f1, #8b5cf6)',
-                    boxShadow: '0 0 8px rgba(99, 102, 241, 0.5)',
+                    width: 2,
+                    height: 18,
+                    background: 'var(--accent)',
                   }}
                 />
               )}
@@ -238,7 +228,7 @@ export default function AppLayout() {
           width={260}
           closable={false}
           styles={{
-            body: { padding: 0, background: 'linear-gradient(180deg, #0a0f1e 0%, #0d1326 100%)' },
+            body: { padding: 0, background: 'var(--bg-elevated)' },
             header: { display: 'none' },
             mask: { background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)' },
           }}
@@ -261,8 +251,8 @@ export default function AppLayout() {
           style={{
             width: sidebarWidth,
             flexShrink: 0,
-            background: 'linear-gradient(180deg, #0a0f1e 0%, #0d1326 100%)',
-            borderRight: '1px solid rgba(255, 255, 255, 0.06)',
+            background: 'var(--bg-elevated)',
+            borderRight: '1px solid var(--border-default)',
             display: 'flex',
             flexDirection: 'column',
             position: 'fixed',
@@ -280,7 +270,7 @@ export default function AppLayout() {
           <div
             style={{
               padding: '12px 16px',
-              borderTop: '1px solid rgba(255, 255, 255, 0.06)',
+              borderTop: '1px solid var(--border-default)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: collapsed ? 'center' : 'flex-end',
@@ -296,16 +286,16 @@ export default function AppLayout() {
                 alignItems: 'center',
                 justifyContent: 'center',
                 cursor: 'pointer',
-                color: '#64748b',
+                color: 'var(--text-secondary)',
                 transition: 'all 200ms',
               }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.background = 'rgba(255,255,255,0.06)';
-                e.currentTarget.style.color = '#e2e8f0';
+                e.currentTarget.style.color = 'var(--text-primary)';
               }}
               onMouseLeave={(e) => {
                 e.currentTarget.style.background = 'transparent';
-                e.currentTarget.style.color = '#64748b';
+                e.currentTarget.style.color = 'var(--text-secondary)';
               }}
             >
               {collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
@@ -329,9 +319,9 @@ export default function AppLayout() {
         <header
           style={{
             height: 64,
-            background: 'rgba(7, 11, 20, 0.8)',
+            background: 'rgba(10, 10, 10, 0.9)',
             backdropFilter: 'blur(12px)',
-            borderBottom: '1px solid rgba(255, 255, 255, 0.06)',
+            borderBottom: '1px solid var(--border-default)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
@@ -354,16 +344,16 @@ export default function AppLayout() {
                   alignItems: 'center',
                   justifyContent: 'center',
                   cursor: 'pointer',
-                  color: '#94a3b8',
+                  color: 'var(--text-secondary)',
                   transition: 'all 200ms',
                 }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.background = 'rgba(255,255,255,0.06)';
-                  e.currentTarget.style.color = '#e2e8f0';
+                  e.currentTarget.style.color = 'var(--text-primary)';
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.background = 'transparent';
-                  e.currentTarget.style.color = '#94a3b8';
+                  e.currentTarget.style.color = 'var(--text-secondary)';
                 }}
               >
                 <MenuOutlined style={{ fontSize: 18 }} />
@@ -417,19 +407,20 @@ export default function AppLayout() {
                   width: 32,
                   height: 32,
                   borderRadius: '50%',
-                  background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+                  background: 'var(--bg-input)',
+                  border: '1px solid var(--border-default)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   fontSize: 14,
                   fontWeight: 600,
-                  color: '#fff',
+                  color: 'var(--text-primary)',
                 }}
               >
                 {(user?.username || 'U')[0].toUpperCase()}
               </div>
               {!isMobile && (
-                <span style={{ color: '#e2e8f0', fontSize: 14, fontWeight: 500 }}>
+                <span style={{ color: 'var(--text-primary)', fontSize: 14, fontWeight: 500 }}>
                   {user?.username || '用户'}
                 </span>
               )}
