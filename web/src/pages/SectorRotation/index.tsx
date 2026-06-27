@@ -5,6 +5,7 @@ import type { EChartsOption } from 'echarts';
 import { useSectorRotation } from '@/hooks/useSectorRotation';
 import ReturnTag from '@/components/ReturnTag';
 import GlassCard from '@/components/GlassCard';
+import { getReturnColor, getUpColor, getDownColor } from '@/utils/color';
 
 export default function SectorRotation() {
   const { data, isLoading } = useSectorRotation();
@@ -28,7 +29,7 @@ export default function SectorRotation() {
           type: 'bar',
           data: [...sectors].reverse().map((s) => ({
             value: s.return_1m,
-            itemStyle: { color: s.return_1m >= 0 ? '#ef4444' : '#22c55e' },
+            itemStyle: { color: s.return_1m >= 0 ? getUpColor() : getDownColor() },
           })),
           label: { show: true, formatter: '{c}%', fontSize: 10 },
         },
@@ -51,7 +52,7 @@ export default function SectorRotation() {
           type: 'bar',
           data: sectors.map((s) => ({
             value: s.relative_strength_1m,
-            itemStyle: { color: s.relative_strength_1m >= 1 ? '#ef4444' : '#22c55e' },
+            itemStyle: { color: s.relative_strength_1m >= 1 ? getUpColor() : getDownColor() },
           })),
           markLine: { data: [{ yAxis: 1, label: { formatter: '市场平均' } }] },
         },
@@ -81,9 +82,12 @@ export default function SectorRotation() {
     {
       title: '相对强弱',
       dataIndex: 'relative_strength_1m',
-      render: (v: number) => (
-        <Tag color={v >= 1 ? '#ef4444' : '#22c55e'}>{v.toFixed(2)}</Tag>
-      ),
+      render: (v: number) => {
+        let color = '#eab308';
+        if (v > 1) color = getUpColor();
+        if (v < 1) color = getDownColor();
+        return <Tag color={color}>{v.toFixed(2)}</Tag>;
+      },
       width: 100,
     },
   ];
@@ -106,7 +110,7 @@ export default function SectorRotation() {
               value={marketAvg?.return_1m ?? 0}
               precision={2}
               suffix="%"
-              valueStyle={{ color: (marketAvg?.return_1m || 0) >= 0 ? '#ef4444' : '#22c55e' }}
+              valueStyle={{ color: getReturnColor(marketAvg?.return_1m ?? 0) }}
             />
           </GlassCard>
         </Col>

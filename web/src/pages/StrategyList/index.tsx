@@ -126,7 +126,7 @@ export default function StrategyList() {
 
   return (
     <div>
-      <Panel title="策略管理" extra={
+      <Panel variant="minimal" title="策略管理" extra={
         <Space>
           <HelpTrigger tooltip="AI 解释策略逻辑" onClick={handleOpenHelp} />
           <Button type="primary" icon={<PlusOutlined />} onClick={() => setIsModalOpen(true)}>
