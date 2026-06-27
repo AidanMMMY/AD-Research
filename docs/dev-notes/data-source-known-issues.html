@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ETF Research Platform - 数据源已知问题备忘</title>
+  <style>
+    :root {
+      --bg: #f8f9fa;
+      --text: #212529;
+      --code-bg: #f1f3f5;
+      --border: #dee2e6;
+      --accent: #0d6efd;
+      --warn: #dc3545;
+      --note: #0f5132;
+      --note-bg: #d1e7dd;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      line-height: 1.7;
+      color: var(--text);
+      background: var(--bg);
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 2rem 1rem;
+    }
+    h1 { font-size: 2rem; border-bottom: 3px solid var(--accent); padding-bottom: .5rem; }
+    h2 { font-size: 1.5rem; margin-top: 2.5rem; border-left: 5px solid var(--accent); padding-left: .75rem; }
+    h3 { font-size: 1.2rem; margin-top: 2rem; }
+    code {
+      background: var(--code-bg);
+      padding: .15rem .4rem;
+      border-radius: 4px;
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+      font-size: .9em;
+    }
+    pre {
+      background: var(--code-bg);
+      padding: 1rem;
+      border-radius: 8px;
+      overflow-x: auto;
+      border: 1px solid var(--border);
+    }
+    pre code { background: none; padding: 0; }
+    blockquote {
+      margin: 1rem 0;
+      padding: .75rem 1rem;
+      background: var(--note-bg);
+      color: var(--note);
+      border-left: 4px solid var(--accent);
+      border-radius: 4px;
+    }
+    blockquote.warn {
+      background: #f8d7da;
+      color: #842029;
+      border-left-color: var(--warn);
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1rem 0;
+      background: #fff;
+    }
+    th, td {
+      border: 1px solid var(--border);
+      padding: .6rem .8rem;
+      text-align: left;
+    }
+    th { background: #e9ecef; }
+    tr:nth-child(even) { background: #f8f9fa; }
+    .meta { color: #6c757d; font-size: .9rem; }
+  </style>
+</head>
+<body>
+
+<h1>ETF Research Platform - 数据源已知问题备忘</h1>
+
+<blockquote>
+  记录 A 股 ETF 数据采集中遇到的已知数据源问题及处理决策。<br>
+  最后更新：2026-06-27
+</blockquote>
+
+<p class="meta">文档生成时间：2026-06-27</p>
+
+<hr>
+
+<h2>560000.SH 智能电车ETF浦银</h2>
+
+<h3>问题现象</h3>
+<p>在 2026-06-27 的 A 股 ETF 日线补数据过程中，<code>AShareETLPipeline</code> 报告：</p>
+<pre><code>Missing expected ETF codes: ['560000.SH']</code></pre>
+<p>即该 ETF 在目标交易日（2026-06-26）没有获取到日线数据。</p>
+
+<h3>根因分析</h3>
+<ol>
+  <li><strong>ETF 仍存在且交易正常</strong>：<code>akshare.fund_etf_spot_em()</code> 实时行情接口可查到该 ETF，最新价 0.939，涨跌幅 0.0%。</li>
+  <li><strong>新浪历史数据断层</strong>：<code>akshare.fund_etf_hist_sina(symbol='sh560000')</code> 返回的历史数据仅到 <strong>2026-04-30</strong>，2026-05-01 至 2026-06-26 期间无任何日线数据。</li>
+  <li><strong>东方财富接口存在 2026 年份解析 bug</strong>：
+    <pre><code>akshare.fund_etf_hist_em(symbol='560000', start_date='20250620', end_date='20250626')</code></pre>
+    实际返回的是 <strong>2025-06-20 至 2025-06-26</strong> 的数据；使用 <code>20260620</code> 作为参数时返回空。
+  </li>
+</ol>
+
+<h3>处理决策</h3>
+<p>已于 2026-06-27 将该 ETF 在 <code>etf_info</code> 表中的状态从 <code>active</code> 更新为 <code>inactive</code>：</p>
+<pre><code>UPDATE etf_info
+SET status = 'inactive', updated_at = NOW()
+WHERE code = '560000.SH';</code></pre>
+<p>后续 <code>AShareETLPipeline</code> 和定时任务不会再尝试获取该 ETF 的数据，pipeline 警告也会随之消除。</p>
+
+<h3>恢复条件</h3>
+<p>当满足以下任一条件时，可重新将其置为 <code>active</code>：</p>
+<ol>
+  <li><code>akshare.fund_etf_hist_sina('sh560000')</code> 能正常返回 2026-04-30 之后的数据</li>
+  <li><code>akshare.fund_etf_hist_em()</code> 修复了 2026 年份解析 bug</li>
+  <li>切换到其他能覆盖该 ETF 的数据源</li>
+</ol>
+<p>恢复命令：</p>
+<pre><code>UPDATE etf_info
+SET status = 'active', updated_at = NOW()
+WHERE code = '560000.SH';</code></pre>
+
+<hr>
+
+<h2>相关命令</h2>
+
+<h3>检查某只 ETF 的数据源状态</h3>
+<pre><code>ssh ad-research
+docker exec -i -w /app etf-backend python3 - <<'PY'
+import akshare as ak
+import pandas as pd
+from datetime import date
+
+code = '560000.SH'
+pure = code.split('.')[0]
+exchange = 'sh' if code.endswith('.SH') else 'sz'
+
+# 新浪接口
+df = ak.fund_etf_hist_sina(symbol=f'{exchange}{pure}')
+df['date'] = pd.to_datetime(df['date']).dt.date
+recent = df[(df['date'] >= date(2026, 6, 20)) & (df['date'] <= date(2026, 6, 26))]
+print(f'新浪 {code}: 最近 7 天记录数 {len(recent)}')
+
+# 东方财富接口
+df2 = ak.fund_etf_hist_em(symbol=pure, period='daily', start_date='20260101', end_date='20260626', adjust='qfq')
+print(f'东方财富 {code}: 2026 年记录数 {len(df2)}')
+PY</code></pre>
+
+<h3>查看当前 inactive ETF 列表</h3>
+<pre><code>SELECT code, name, updated_at
+FROM etf_info
+WHERE status = 'inactive'
+ORDER BY updated_at DESC;</code></pre>
+
+<hr>
+
+<p class="meta">文档生成时间：2026-06-27</p>
+
+</body>
+</html>
