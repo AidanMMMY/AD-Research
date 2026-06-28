@@ -1,4 +1,5 @@
 import { createContext, useState, useCallback, useRef } from 'react';
+import type { AxiosError } from 'axios';
 import { chatApi } from '@/api/chat';
 import type { AIHelpContextValue, HelpContext, HelpMessage } from '@/types/help';
 import { getSystemPrompt } from '@/utils/helpPrompts';
@@ -16,6 +17,31 @@ function generateId(): string {
 function buildHelpMessage(pageType: HelpContext['pageType'], contextData: string, question: string): string {
   const systemPrompt = getSystemPrompt(pageType);
   return `[系统提示]\n${systemPrompt}\n\n[当前页面上下文数据]\n${contextData}\n\n[用户问题]\n${question}`;
+}
+
+function friendlyErrorMessage(err: unknown): string {
+  if (err instanceof Error) {
+    const axiosErr = err as AxiosError;
+    // Timeout
+    if (axiosErr.code === 'ECONNABORTED' || err.message.includes('timeout')) {
+      return 'AI 响应超时，模型推理中…请点击重试按钮，或稍后再试。';
+    }
+    // Server errors
+    if (axiosErr.response) {
+      const status = axiosErr.response.status;
+      if (status === 503) {
+        return 'AI 服务未配置。请在服务端设置 DEEPSEEK_API_KEY 后重启服务。';
+      }
+      if (status >= 500) {
+        return `服务器错误（${status}），请稍后重试或联系管理员。`;
+      }
+      if (status === 401) {
+        return '登录已过期，请刷新页面重新登录。';
+      }
+    }
+    return err.message;
+  }
+  return '请求失败，请重试';
 }
 
 export function AIHelpProvider({ children }: AIHelpProviderProps) {
@@ -56,7 +82,7 @@ export function AIHelpProvider({ children }: AIHelpProviderProps) {
       const res = await chatApi.sendMessage(newSessionId, payload);
       setMessages((prev) => [...prev, { id: generateId(), role: 'assistant', content: res.data.content }]);
     } catch (err) {
-      setError(err instanceof Error ? err.message : '创建帮助会话失败');
+      setError(friendlyErrorMessage(err));
     } finally {
       setIsLoading(false);
     }
@@ -76,7 +102,7 @@ export function AIHelpProvider({ children }: AIHelpProviderProps) {
       const res = await chatApi.sendMessage(sessionId, payload);
       setMessages((prev) => [...prev, { id: generateId(), role: 'assistant', content: res.data.content }]);
     } catch (err) {
-      setError(err instanceof Error ? err.message : '请求失败，请重试');
+      setError(friendlyErrorMessage(err));
     } finally {
       setIsLoading(false);
     }
@@ -90,7 +116,7 @@ export function AIHelpProvider({ children }: AIHelpProviderProps) {
       const res = await chatApi.sendMessage(sessionId, lastPayloadRef.current);
       setMessages((prev) => [...prev, { id: generateId(), role: 'assistant', content: res.data.content }]);
     } catch (err) {
-      setError(err instanceof Error ? err.message : '请求失败，请重试');
+      setError(friendlyErrorMessage(err));
     } finally {
       setIsLoading(false);
     }
