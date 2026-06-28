@@ -41,6 +41,7 @@ services:
     ports:
       - "8000:8000"
     environment:
+      TZ: Asia/Shanghai
       DATABASE_URL: postgresql+psycopg2://etf:${DB_PASSWORD:-etf_research_password}@postgres:5432/ad_research
       REDIS_URL: redis://redis:6379/0
       APP_ENV: ${APP_ENV:-development}
