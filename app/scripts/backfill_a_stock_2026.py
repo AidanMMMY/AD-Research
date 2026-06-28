@@ -585,17 +585,18 @@ Examples:
         """,
     )
     parser.add_argument(
-        "--mode", choices=["bars", "fundamental", "financials", "all"],
+        "--mode", choices=["bars", "bars-stock", "fundamental", "financials", "all"],
         default="all",
-        help="Data type to backfill (default: all = bars + fundamental)",
+        help="Data type to backfill (default: all = bars + fundamental). "
+             "bars-stock uses per-stock API for deep history.",
     )
     parser.add_argument(
         "--start", type=parse_date, default=None,
-        help="Start date YYYYMMDD (required for bars/fundamental/all)",
+        help="Start date YYYYMMDD (required for bars/bars-stock/fundamental/all)",
     )
     parser.add_argument(
         "--end", type=parse_date, default=None,
-        help="End date YYYYMMDD (required for bars/fundamental/all)",
+        help="End date YYYYMMDD (required for bars/bars-stock/fundamental/all)",
     )
     parser.add_argument(
         "--batch-size", type=int, default=500,
@@ -616,7 +617,7 @@ Examples:
     args = parser.parse_args()
 
     # Validate args
-    if args.mode in ("bars", "fundamental", "all"):
+    if args.mode in ("bars", "bars-stock", "fundamental", "all"):
         if args.start is None or args.end is None:
             parser.error(f"--start and --end are required for --mode {args.mode}")
         if args.start > args.end:
@@ -640,6 +641,26 @@ Examples:
                 dry_run=args.dry_run, rate_limit=args.rate_limit,
             )
             _print_summary("Daily Bars", result)
+
+        elif args.mode == "bars-stock":
+            print("=" * 60)
+            print(
+                f"Backfill: DAILY BARS (per-stock)  |  {args.start} → {args.end}  |  "
+                f"batch={args.batch_size}, offset={args.batch_offset}"
+            )
+            if args.dry_run:
+                print("DRY RUN — no writes")
+            print("=" * 60)
+            result = backfill_bars_per_stock(
+                db,
+                start=args.start,
+                end=args.end,
+                batch_size=args.batch_size,
+                batch_offset=args.batch_offset,
+                dry_run=args.dry_run,
+                rate_limit=args.rate_limit,
+            )
+            _print_bars_stock_summary(result)
 
         elif args.mode == "fundamental":
             print("=" * 60)
@@ -723,6 +744,20 @@ def _print_financials_summary(result: dict):
     print(f"  Balance records:  {result['bs_records']}")
     print(f"  Income errors:    {result['income_errors']}")
     print(f"  BS errors:        {result['bs_errors']}")
+
+
+def _print_bars_stock_summary(result: dict):
+    print()
+    print("── Per-Stock Daily Bars Summary ──")
+    print(f"  Total stocks:     {result['total_stocks']}")
+    print(f"  Processed:        {result['processed']}")
+    print(f"  Records upserted: {result['records']:,}")
+    if result.get("errors"):
+        print(f"  Errors:           {len(result['errors'])}")
+        for err in result["errors"][:5]:
+            print(f"    - {err}")
+        if len(result["errors"]) > 5:
+            print(f"    ... and {len(result['errors']) - 5} more")
 
 
 if __name__ == "__main__":
