@@ -36,6 +36,16 @@ class Settings(BaseSettings):
     binance_api_key: str = ""        # https://www.binance.com/en/my/settings/api-management
     binance_api_secret: str = ""      # Needed only for account/trading endpoints (Phase 3)
 
+    # Binance trading (Phase 3 – live trading)
+    # Testnet: https://testnet.binance.vision/
+    # Production: https://www.binance.com/
+    binance_testnet_key: str = ""          # Testnet API key
+    binance_testnet_secret: str = ""        # Testnet API secret
+    binance_trading_enabled: bool = False   # Master switch — must be True for live orders
+    binance_max_order_value_usdt: float = 100.0   # Max USDT per single order
+    binance_max_daily_loss_usdt: float = 500.0     # Max daily realised loss before circuit-breaker
+    binance_max_daily_orders: int = 20              # Max orders per calendar day
+
     # AI / LLM
     deepseek_api_key: str = ""   # https://platform.deepseek.com/
 
