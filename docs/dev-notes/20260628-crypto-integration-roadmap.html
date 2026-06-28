@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>数字货币交易/分析功能集成建议报告</title>
+    <style>
+        :root {
+            --bg: #0d1117;
+            --fg: #c9d1d9;
+            --heading: #e6edf3;
+            --border: #30363d;
+            --accent: #58a6ff;
+            --code-bg: #161b22;
+            --table-header: #21262d;
+            --table-row: #0d1117;
+            --table-alt: #161b22;
+            --warn: #d29922;
+            --danger: #f85149;
+            --success: #3fb950;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans SC", Helvetica, Arial, sans-serif;
+            background: var(--bg);
+            color: var(--fg);
+            line-height: 1.7;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+        h1, h2, h3, h4 {
+            color: var(--heading);
+            margin-top: 1.8em;
+            margin-bottom: 0.6em;
+        }
+        h1 { border-bottom: 2px solid var(--accent); padding-bottom: 0.3em; }
+        h2 { border-bottom: 1px solid var(--border); padding-bottom: 0.2em; }
+        a { color: var(--accent); text-decoration: none; }
+        a:hover { text-decoration: underline; }
+        blockquote {
+            border-left: 4px solid var(--accent);
+            margin: 1em 0;
+            padding: 0.5em 1em;
+            background: var(--code-bg);
+            color: #8b949e;
+        }
+        code {
+            background: var(--code-bg);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+            font-size: 0.9em;
+        }
+        pre {
+            background: var(--code-bg);
+            padding: 16px;
+            border-radius: 8px;
+            overflow-x: auto;
+            border: 1px solid var(--border);
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1.2em 0;
+            font-size: 0.95em;
+        }
+        th, td {
+            border: 1px solid var(--border);
+            padding: 10px 12px;
+            text-align: left;
+        }
+        th {
+            background: var(--table-header);
+            color: var(--heading);
+            font-weight: 600;
+        }
+        tr:nth-child(even) { background: var(--table-alt); }
+        tr:nth-child(odd) { background: var(--table-row); }
+        .warn { color: var(--warn); font-weight: 600; }
+        .danger { color: var(--danger); font-weight: 600; }
+        .success { color: var(--success); font-weight: 600; }
+        ul, ol { padding-left: 1.5em; }
+        li { margin: 0.4em 0; }
+        hr {
+            border: none;
+            border-top: 1px solid var(--border);
+            margin: 2em 0;
+        }
+    </style>
+</head>
+<body>
+
+<h1>数字货币交易/分析功能集成建议报告</h1>
+
+<blockquote>
+    <p>生成日期：2026/06/28<br>
+    目标：基于现有 AD-Research 投资研究平台，评估并规划接入 Binance 数字货币数据与交易能力的可行路径。</p>
+</blockquote>
+
+<hr>
+
+<h2>一、现有平台能力与定位</h2>
+
+<p>AD-Research 当前是一个以 ETF 和个股研究为核心的 Web 投资研究平台：</p>
+
+<ul>
+    <li><strong>后端</strong>：FastAPI + SQLAlchemy（asyncpg）+ Alembic + PostgreSQL 16 + Redis 7</li>
+    <li><strong>前端</strong>：React 18 + Vite + TypeScript + Ant Design 5 + ECharts / lightweight-charts</li>
+    <li><strong>数据层</strong>：已模块化封装 akshare / yfinance / Finnhub / Tiingo / FMP 等 provider</li>
+    <li><strong>核心能力</strong>：ETL 管道、技术指标、复合评分、回测引擎、信号生成、组合管理、AI 研报、调度任务</li>
+    <li><strong>当前资产</strong>：A 股 ETF、美股 ETF/个股、港股/日股 ETF</li>
+    <li><strong>现状</strong>：<span class="warn">无加密货币相关代码</span>，无券商/交易所交易执行能力</li>
+</ul>
+
+<p>因此，接入数字货币并非从零开始，而是对现有数据、指标、评分、回测、信号等模块的横向扩展。</p>
+
+<hr>
+
+<h2>二、可实现的完整功能全景</h2>
+
+<p>按风险与复杂度由低到高可分为三个阶段。</p>
+
+<h3>阶段一：只读数据分析（强烈推荐优先做）</h3>
+
+<p>这是风险最低、与现有架构最契合的切入点。</p>
+
+<table>
+    <thead>
+        <tr><th>功能</th><th>可复用模块</th><th>说明</th></tr>
+    </thead>
+    <tbody>
+        <tr><td>币种列表与基础信息</td><td><code>etf_info</code> / 抽象为 <code>instrument_info</code></td><td>BTC、ETH、SOL、BNB、DOGE 等现货基础信息</td></tr>
+        <tr><td>K 线/日线数据抓取</td><td>现有 ETL pipeline 模式</td><td>接入 Binance <code>klines</code> API，日线/4h/1h</td></tr>
+        <tr><td>技术指标计算</td><td><code>indicator_engine</code></td><td>RSI、MACD、MA、ATR、Bollinger、波动率、夏普、最大回撤</td></tr>
+        <tr><td>评分与排名</td><td><code>etf_score</code> 评分服务</td><td>5 维度评分，生成排名</td></tr>
+        <tr><td>信号生成</td><td><code>signal_generator</code></td><td>动量、均值回归、RSI 等信号</td></tr>
+        <tr><td>回测</td><td><code>backtest_engine</code></td><td>对数字货币历史 K 线跑策略</td></tr>
+        <tr><td>组合/池子管理</td><td><code>etf_pools</code>、<code>pool_member</code></td><td>建立 crypto-only 或混合 pool</td></tr>
+        <tr><td>AI 研究报告</td><td><code>research_service</code></td><td>对 BTC/ETH 生成技术面/趋势研报</td></tr>
+        <tr><td>Dashboard 展示</td><td>前端 KLineChart、ScoreRadar 等</td><td>新增 Crypto 路由和页面</td></tr>
+    </tbody>
+</table>
+
+<p><strong>推荐数据源</strong>：</p>
+
+<ul>
+    <li>Binance REST API（免费，有频率限制）</li>
+    <li><code>ccxt</code> 统一库（便于未来切换 OKX、Coinbase 等）</li>
+</ul>
+
+<p><strong>推荐粒度</strong>：先从日线开始，再扩展到 4h/1h，不建议一开始做秒级/高频。</p>
+
+<hr>
+
+<h3>阶段二：模拟交易与纸上验证</h3>
+
+<p>在真实资金风险之前，验证策略与系统稳定性。</p>
+
+<table>
+    <thead>
+        <tr><th>功能</th><th>说明</th></tr>
+    </thead>
+    <tbody>
+        <tr><td>Binance Testnet 接入</td><td><code>testnet.binance.vision</code>，免费测试 API</td></tr>
+        <tr><td>模拟仓位跟踪</td><td>记录虚拟买入/卖出，计算 PnL</td></tr>
+        <tr><td>信号 → 模拟下单</td><td>完整闭环验证，但不碰真实资金</td></tr>
+        <tr><td>执行质量分析</td><td>滑点、成交率、延迟、部分成交</td></tr>
+        <tr><td>24/7 调度适配</td><td>数字货币全年无休，需调整 scheduler 逻辑</td></tr>
+    </tbody>
+</table>
+
+<p><strong>为什么先这样做</strong>：</p>
+
+<ul>
+    <li>币安 API 限流、维护、网络抖动比传统金融数据更常见</li>
+    <li>24/7 交易对 scheduler、重试、补偿机制要求更高</li>
+    <li>可在零资金风险下验证信号→下单→成交→PnL 全链路</li>
+</ul>
+
+<hr>
+
+<h3>阶段三：真实交易执行（按风险分层）</h3>
+
+<h4>低风险（可做，但需严格控制）</h4>
+
+<table>
+    <thead>
+        <tr><th>功能</th><th>风险</th><th>必要措施</th></tr>
+    </thead>
+    <tbody>
+        <tr><td>查询余额与持仓</td><td>低</td><td>API Key 仅授予 <code>SPOT</code> 读取权限</td></tr>
+        <tr><td>查询订单/历史成交</td><td>低</td><td>只读权限即可</td></tr>
+        <tr><td>价格/行情订阅</td><td>低</td><td>无资金风险</td></tr>
+    </tbody>
+</table>
+
+<h4>中风险（谨慎做，必须加风控）</h4>
+
+<table>
+    <thead>
+        <tr><th>功能</th><th>风险</th><th>必要措施</th></tr>
+    </thead>
+    <tbody>
+        <tr><td>现货下单/撤单</td><td>中</td><td>单笔限额、日限额、IP 白名单、签名安全</td></tr>
+        <tr><td>现货止损/止盈/条件单</td><td>中</td><td>本地 + 交易所双重风控</td></tr>
+        <tr><td>小额自动化策略（现货）</td><td>中</td><td>独立风控模块、熔断、异常监控</td></tr>
+    </tbody>
+</table>
+
+<h4>高风险（强烈不建议做）</h4>
+
+<table>
+    <thead>
+        <tr><th>功能</th><th>风险</th><th>建议</th></tr>
+    </thead>
+    <tbody>
+        <tr><td>合约/杠杆/期权</td><td><span class="danger">极高</span></td><td>不建议在个人研究平台中实现</td></tr>
+        <tr><td>高频/量化自动交易</td><td><span class="danger">极高</span></td><td>需要专门的风控系统、低延迟基础设施</td></tr>
+        <tr><td>子账户划转/提现</td><td><span class="danger">高</span></td><td>避免开放此类权限</td></tr>
+    </tbody>
+</table>
+
+<hr>
+
+<h2>三、现有架构改造清单</h2>
+
+<h3>后端改造</h3>
+
+<ul>
+    <li>新增 <code>app/data/providers/binance_provider.py</code>：获取 K 线、币种信息、实时价格</li>
+    <li>扩展 <code>etf_info</code> 或新建 <code>instrument_info</code>：统一 ETF / 股票 / 加密货币的 instrument 模型</li>
+    <li>新增 <code>app/data/pipelines/crypto_daily.py</code>：加密货币 ETL 管道</li>
+    <li>在 <code>app/core/scheduler.py</code> 中增加币安数据任务（考虑 24/7）</li>
+    <li>新增 <code>app/services/trading/binance_client.py</code>：封装 Binance API 交互</li>
+    <li>新增 <code>app/services/risk_control.py</code>：真实交易必需的风控模块</li>
+    <li>新增 API routers：crypto instruments、bars、scores、signals、paper trading、live trading</li>
+</ul>
+
+<h3>前端改造</h3>
+
+<ul>
+    <li>新增 Crypto 路由与页面（列表、详情、K 线、评分、信号）</li>
+    <li>复用 <code>KLineChart</code>、<code>ScoreRadar</code>、<code>CorrelationHeatmap</code> 等组件</li>
+    <li>新增 API Key 配置页面（仅限本地/安全环境存储）</li>
+    <li>新增模拟交易/真实交易状态面板</li>
+</ul>
+
+<h3>数据库改造</h3>
+
+<ul>
+    <li>将 <code>etf_info</code> 抽象为 <code>instrument_info</code>，增加 <code>asset_class</code> 字段（<code>etf</code> / <code>stock</code> / <code>crypto</code>）</li>
+    <li><code>etf_daily_bar</code>、<code>etf_indicator</code>、<code>etf_score</code>、<code>signal</code> 等表已具备 <code>(code, trade_date)</code> 复合键，可直接复用</li>
+    <li>新增交易相关表：<code>paper_trade</code>、<code>live_trade</code>、<code>trade_config</code>、<code>risk_rule</code></li>
+</ul>
+
+<hr>
+
+<h2>四、安全、合规与风控要求</h2>
+
+<h3>API Key 安全</h3>
+
+<ol>
+    <li><strong>绝不将 API Key 写入代码库</strong>，使用环境变量 / Vault / 密钥管理服务</li>
+    <li><strong>权限最小化</strong>：分析阶段只读；交易阶段仅开通 <code>SPOT</code> 交易权限</li>
+    <li><strong>配置 IP 白名单</strong>：仅允许服务器公网 IP 访问</li>
+    <li><strong>日志脱敏</strong>：禁止在日志中打印 API Key、签名、余额等敏感信息</li>
+    <li><strong>资金隔离</strong>：仅将可承受完全损失的小部分资金放入交易账户</li>
+</ol>
+
+<h3>交易风控（真实交易必备）</h3>
+
+<ul>
+    <li>单笔金额上限</li>
+    <li>每日累计亏损上限 / 连续亏损熔断</li>
+    <li>API 超时/异常重试与熔断</li>
+    <li>防止重复下单</li>
+    <li>价格异常波动熔断（如 5 分钟内波动 > 10%）</li>
+    <li>非交易时段/维护窗口保护</li>
+</ul>
+
+<h3>合规提醒</h3>
+
+<ul>
+    <li><strong>中国大陆</strong>：个人持有加密货币不违法，但境内加密货币交易所已被清退，Binance 对大陆用户 KYC 与访问有政策限制，需自行确认账户合规状态</li>
+    <li><strong>税务</strong>：多数国家/地区对加密货币交易收益有税务申报要求</li>
+    <li><strong>平台责任</strong>：若系统向他人提供资金管理或下单服务，可能触发金融监管牌照要求；仅供个人研究分析使用风险较低</li>
+</ul>
+
+<hr>
+
+<h2>五、建议实施路线</h2>
+
+<table>
+    <thead>
+        <tr><th>阶段</th><th>目标</th><th>预计周期</th><th>资金风险</th></tr>
+    </thead>
+    <tbody>
+        <tr><td>阶段一 MVP</td><td>接入币安日线数据，展示 BTC/ETH K 线、指标、评分</td><td>1-2 周</td><td>无</td></tr>
+        <tr><td>阶段二 扩展</td><td>增加更多币种，接入 4h/1h 数据，crypto pool 与回测</td><td>2-4 周</td><td>无</td></tr>
+        <tr><td>阶段三 模拟验证</td><td>接入 Binance Testnet 做模拟交易，跑 1-2 个月</td><td>1-2 个月</td><td>无</td></tr>
+        <tr><td>阶段四 真实交易（可选）</td><td>小资金、严格风控、只做现货、单一策略</td><td>长期迭代</td><td>中</td></tr>
+    </tbody>
+</table>
+
+<hr>
+
+<h2>六、关键结论</h2>
+
+<ul>
+    <li><strong>数据分析/技术指标/回测/评分</strong>：与现有平台高度契合，强烈建议优先实现。</li>
+    <li><strong>模拟交易</strong>：推荐作为验证策略与系统稳定性的必经阶段。</li>
+    <li><strong>真实自动交易</strong>：技术上可行，但需把安全、风控、合规放在第一位；建议只做现货，避免杠杆/合约/高频。</li>
+    <li>如果目标只是增强研究分析能力，阶段一+阶段二已能覆盖 80% 价值；真实交易应作为可选的、长期谨慎迭代的扩展。</li>
+</ul>
+
+<hr>
+
+<p><em>本报告作为后续开发规划与实施的参考依据。</em></p>
+
+</body>
+</html>

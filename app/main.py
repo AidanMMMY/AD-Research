@@ -23,6 +23,7 @@ from app.api.v1 import (
     indicators,
     market_data,
     notifications,
+    paper_trading,
     pools,
     reports,
     research,
@@ -31,6 +32,7 @@ from app.api.v1 import (
     sector_rotation,
     signals,
     stats,
+    stock_fundamentals,
     strategies,
     stream,
 )
@@ -136,6 +138,16 @@ app.include_router(
     stream.router,
     prefix=f"{settings.api_v1_prefix}/stream",
     tags=["Stream"],
+)
+app.include_router(
+    paper_trading.router,
+    prefix=f"{settings.api_v1_prefix}/paper-trading",
+    tags=["Paper Trading"],
+)
+app.include_router(
+    stock_fundamentals.router,
+    prefix=f"{settings.api_v1_prefix}/stock-fundamentals",
+    tags=["Stock Fundamentals"],
 )
 
 # Serve frontend static files with cache-control headers

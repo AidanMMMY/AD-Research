@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Hybrid — Swiss 骨架 + Bento 材质</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; }
+    body {
+      font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #0a0a0a;
+      color: #888;
+    }
+
+    .page {
+      display: flex;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    /* Sidebar: Swiss hairline + Bento rounded hover */
+    .sidebar {
+      width: 210px;
+      padding: 32px 24px;
+      border-right: 1px solid #222;
+      display: flex;
+      flex-direction: column;
+    }
+    .brand {
+      font-size: 17px;
+      font-weight: 500;
+      color: #f5f5f0;
+      margin-bottom: 48px;
+      letter-spacing: -0.02em;
+    }
+    .nav-item {
+      padding: 10px 14px;
+      border-radius: 10px;
+      color: #555;
+      font-size: 14px;
+      margin-bottom: 4px;
+      cursor: pointer;
+      transition: all .15s ease;
+    }
+    .nav-item:hover { background: #141414; color: #aaa; }
+    .nav-item.active {
+      background: #141414;
+      color: #f5f5f0;
+      box-shadow: inset 2px 0 0 #d4a373;
+      border-radius: 10px 0 0 10px;
+      margin-right: -24px;
+    }
+
+    .main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      padding: 0 44px;
+      overflow: auto;
+    }
+
+    .header {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      padding: 36px 0 28px;
+      border-bottom: 1px solid #222;
+    }
+    .header h1 {
+      font-size: 38px;
+      font-weight: 500;
+      color: #f5f5f0;
+      margin: 0;
+      letter-spacing: -0.03em;
+    }
+    .header p {
+      margin: 8px 0 0;
+      color: #444;
+      font-size: 14px;
+    }
+    .user {
+      display: flex; align-items: center; gap: 12px;
+      color: #555; font-size: 14px;
+    }
+    .avatar {
+      width: 32px; height: 32px; border-radius: 50%;
+      background: #141414;
+      border: 1px solid #222;
+      display: flex; align-items: center; justify-content: center;
+      color: #f5f5f0; font-weight: 500;
+    }
+
+    .label {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: #444;
+      font-weight: 500;
+    }
+
+    /* Card surface: Bento softness + Swiss hairline */
+    .card {
+      background: #111;
+      border: 1px solid #222;
+      border-radius: 14px;
+      padding: 26px;
+      box-shadow: 0 4px 28px rgba(0,0,0,0.35);
+    }
+
+    /* KPI: floating cards, no internal lines */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 20px;
+      margin: 32px 0 36px;
+    }
+    .kpi-card {
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+    .kpi-value {
+      font-size: 36px;
+      font-weight: 500;
+      color: #f5f5f0;
+      letter-spacing: -0.02em;
+    }
+    .kpi-value .suffix {
+      font-size: 15px;
+      color: #444;
+      margin-left: 6px;
+      font-weight: 400;
+    }
+
+    /* Body grid */
+    .body-grid {
+      display: grid;
+      grid-template-columns: 1.55fr 1fr;
+      gap: 28px;
+      margin-bottom: 40px;
+    }
+
+    .section-title {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: #444;
+      margin-bottom: 18px;
+      font-weight: 500;
+    }
+
+    /* List rows as rounded row-cards */
+    .list-header {
+      display: grid;
+      grid-template-columns: 50px 1fr 80px 80px 50px;
+      gap: 14px;
+      padding: 0 16px 12px;
+      color: #444;
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      font-weight: 500;
+    }
+    .list-row {
+      display: grid;
+      grid-template-columns: 50px 1fr 80px 80px 50px;
+      gap: 14px;
+      align-items: center;
+      padding: 14px 16px;
+      border-radius: 12px;
+      background: #0f0f0f;
+      border: 1px solid #1a1a1a;
+      transition: all .12s ease;
+      cursor: pointer;
+    }
+    .list-row:hover {
+      background: #151515;
+      border-color: #262626;
+    }
+    .list-row + .list-row { margin-top: 8px; }
+
+    .rank { color: #f5f5f0; font-weight: 500; font-size: 14px; }
+    .rank.hot { color: #d4a373; }
+    .code-tag {
+      display: inline-flex;
+      padding: 3px 8px;
+      border: 1px solid #2a2a2a;
+      border-radius: 5px;
+      color: #f5f5f0;
+      font-size: 12px;
+      font-family: "JetBrains Mono", monospace;
+      margin-right: 8px;
+    }
+    .score-pill {
+      display: inline-flex;
+      justify-content: center;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: rgba(212,163,115,0.10);
+      color: #d4a373;
+      font-size: 12px;
+      font-weight: 500;
+      min-width: 56px;
+    }
+    .return-up { color: #c27878; font-weight: 500; font-size: 14px; }
+    .return-down { color: #6fa98e; font-weight: 500; font-size: 14px; }
+    .trend { color: #444; font-size: 14px; }
+
+    .right-col { display: flex; flex-direction: column; gap: 20px; }
+
+    .empty-state {
+      display: flex; flex-direction: column; align-items: center;
+      justify-content: center;
+      padding: 44px 0;
+      color: #333;
+      text-align: center;
+    }
+    .empty-box {
+      width: 52px; height: 36px;
+      border-radius: 8px;
+      background: rgba(255,255,255,0.04);
+      margin-bottom: 12px;
+      position: relative;
+    }
+    .empty-box::after {
+      content: "";
+      position: absolute; left: 10px; right: 10px; top: 12px; height: 2px;
+      border-radius: 1px;
+      background: rgba(255,255,255,0.06);
+    }
+
+    .pool-item {
+      display: flex; align-items: flex-start; gap: 14px;
+      padding: 14px 0;
+      border-bottom: 1px solid #1a1a1a;
+    }
+    .pool-item:last-child { border-bottom: none; }
+    .pool-icon { color: #d4a373; font-size: 16px; }
+    .pool-name { color: #f5f5f0; font-weight: 500; margin-bottom: 4px; font-size: 14px; }
+    .pool-meta { font-size: 12px; color: #444; }
+
+    .mini-chart {
+      display: flex;
+      align-items: flex-end;
+      gap: 8px;
+      height: 80px;
+      padding-top: 8px;
+    }
+    .bar {
+      flex: 1;
+      border-radius: 4px;
+      background: rgba(255,255,255,0.05);
+    }
+    .bar.up { background: #6fa98e; }
+    .bar.down { background: #c27878; }
+    .chart-labels {
+      display: flex; justify-content: space-between;
+      margin-top: 10px; font-size: 11px; color: #333;
+    }
+
+    .note {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: #111;
+      border: 1px solid #222;
+      color: #777;
+      padding: 16px 18px;
+      border-radius: 12px;
+      font-size: 13px;
+      max-width: 360px;
+      line-height: 1.6;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+    }
+    .note strong { color: #f5f5f0; font-weight: 500; }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <aside class="sidebar">
+      <div class="brand">投研平台</div>
+      <div class="nav-item active">首页看板</div>
+      <div class="nav-item">标的列表</div>
+      <div class="nav-item">全市场筛选器</div>
+      <div class="nav-item">标的池管理</div>
+      <div class="nav-item">评分排名</div>
+      <div class="nav-item">报告浏览</div>
+      <div class="nav-item">板块轮动</div>
+    </aside>
+
+    <main class="main">
+      <header class="header">
+        <div>
+          <h1>首页看板</h1>
+          <p>综合评分、收藏与标的池概览 · 2026-06-28</p>
+        </div>
+        <div class="user">
+          <div class="avatar">A</div>
+          Aidan
+        </div>
+      </header>
+
+      <section class="kpi-grid">
+        <div class="card kpi-card">
+          <div class="label">标的总数</div>
+          <div class="kpi-value">2085</div>
+        </div>
+        <div class="card kpi-card">
+          <div class="label">评分覆盖</div>
+          <div class="kpi-value">13,692<span class="suffix">/ 2085</span></div>
+        </div>
+        <div class="card kpi-card">
+          <div class="label">分类数</div>
+          <div class="kpi-value">6</div>
+        </div>
+        <div class="card kpi-card">
+          <div class="label">评分模板</div>
+          <div class="kpi-value">3</div>
+        </div>
+      </section>
+
+      <section class="body-grid">
+        <div class="card">
+          <div class="section-title">综合评分 Top 10</div>
+          <div class="list-header">
+            <span>排名</span>
+            <span>标的</span>
+            <span>评分</span>
+            <span>1月收益</span>
+            <span>趋势</span>
+          </div>
+          <div class="list-row">
+            <span class="rank hot">1</span>
+            <span><span class="code-tag">515880.SH</span>通信ETF国泰</span>
+            <span><span class="score-pill">92.4</span></span>
+            <span class="return-up">+14.16%</span>
+            <span class="trend">↑</span>
+          </div>
+          <div class="list-row">
+            <span class="rank hot">2</span>
+            <span><span class="code-tag">159516.SZ</span>半导体设备ETF国泰</span>
+            <span><span class="score-pill">88.1</span></span>
+            <span class="return-up">+39.51%</span>
+            <span class="trend">↑</span>
+          </div>
+          <div class="list-row">
+            <span class="rank hot">3</span>
+            <span><span class="code-tag">159583.SZ</span>通信ETF富国</span>
+            <span><span class="score-pill">85.6</span></span>
+            <span class="return-up">+9.22%</span>
+            <span class="trend">↑</span>
+          </div>
+          <div class="list-row">
+            <span class="rank">4</span>
+            <span><span class="code-tag">159388.SZ</span>创业板人工智能ETF国泰</span>
+            <span><span class="score-pill">82.3</span></span>
+            <span class="return-up">+8.33%</span>
+            <span class="trend">↑</span>
+          </div>
+          <div class="list-row">
+            <span class="rank">5</span>
+            <span><span class="code-tag">159558.SZ</span>半导体设备ETF易方达</span>
+            <span><span class="score-pill">80.7</span></span>
+            <span class="return-up">+40.05%</span>
+            <span class="trend">↑</span>
+          </div>
+        </div>
+
+        <div class="right-col">
+          <div class="card">
+            <div class="section-title">板块情绪</div>
+            <div class="mini-chart">
+              <div class="bar down" style="height: 28%"></div>
+              <div class="bar down" style="height: 42%"></div>
+              <div class="bar up" style="height: 55%"></div>
+              <div class="bar up" style="height: 74%"></div>
+              <div class="bar up" style="height: 62%"></div>
+              <div class="bar down" style="height: 36%"></div>
+              <div class="bar up" style="height: 88%"></div>
+            </div>
+            <div class="chart-labels">
+              <span>Mon</span>
+              <span>Tue</span>
+              <span>Wed</span>
+              <span>Thu</span>
+              <span>Fri</span>
+              <span>Sat</span>
+              <span>Sun</span>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="section-title">我的收藏</div>
+            <div class="empty-state">
+              <div class="empty-box"></div>
+              <div style="color:#555; margin-bottom:4px;">暂无收藏的标的</div>
+              <div style="font-size:12px;">在详情页点击收藏，这里会显示你关注的标的</div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="section-title">我的标的池</div>
+            <div class="pool-item">
+              <div class="pool-icon">●</div>
+              <div>
+                <div class="pool-name">宽基指数池</div>
+                <div class="pool-meta">3 只标的 · 大盘宽基ETF组合</div>
+              </div>
+            </div>
+            <div class="pool-item">
+              <div class="pool-icon">●</div>
+              <div>
+                <div class="pool-name">科技成长池</div>
+                <div class="pool-meta">3 只标的 · 科技、新能源、创业板ETF</div>
+              </div>
+            </div>
+            <div class="pool-item">
+              <div class="pool-icon">●</div>
+              <div>
+                <div class="pool-name">稳健防御池</div>
+                <div class="pool-meta">5 只标的 · 低波动、红利、债券ETF</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div class="note">
+    <strong>Hybrid 混搭特征</strong><br/>
+    · Swiss：大标题、小写大写标签、细线网格、无 emoji、低信息密度<br/>
+    · Bento：卡片圆角 14px、行项目圆角块、hover 面色、柔和阴影<br/>
+    · 强调色用琥珀金，比瑞士红更温润，比霓虹青更安静
+  </div>
+</body>
+</html>
