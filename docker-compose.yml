@@ -54,7 +54,7 @@ services:
       redis:
         condition: service_healthy
     command: >
-      sh -c "cp -r /dist-image/* /app/web/dist/ && alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload --workers 1"
+      sh -c "mkdir -p /app/web/dist && cp -r /dist-image/* /app/web/dist/ && alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload --workers 1"
     networks:
       - etf-network
 
