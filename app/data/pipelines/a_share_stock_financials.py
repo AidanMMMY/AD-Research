@@ -119,6 +119,7 @@ class AStockFinancialsPipeline(ETLPipeline):
                     inc = self._upsert_income(df_income)
                     income_records += inc
             except Exception as exc:
+                self.db.rollback()
                 logger.warning(
                     "AStockFinancialsPipeline: income_vip(%s) failed: %s", code, exc
                 )
@@ -130,6 +131,7 @@ class AStockFinancialsPipeline(ETLPipeline):
                     bs = self._upsert_balance_sheet(df_bs)
                     bs_records += bs
             except Exception as exc:
+                self.db.rollback()
                 logger.warning(
                     "AStockFinancialsPipeline: balancesheet_vip(%s) failed: %s", code, exc
                 )
