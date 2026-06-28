@@ -320,6 +320,84 @@ class TushareProvider(DataProvider):
         return result
 
     # ------------------------------------------------------------------
+    # Bulk Daily — single API call for entire market on one date
+    # ------------------------------------------------------------------
+
+    def fetch_daily_all_market(self, trade_date: date) -> pd.DataFrame:
+        """Fetch daily OHLCV for ALL A-share stocks on a single trade date.
+
+        Uses the Tushare daily() endpoint **without** ts_code, which returns
+        the entire market in one API call (~5000+ stocks).  This is 5000×
+        more efficient than per-stock looping.
+
+        Tushare daily() with only trade_date:
+          - Returns all listed stocks for that date
+          - ~5000 rows × 2 pts/row ≈ 10000 pts (free tier = 5000 pts/day)
+          - For bulk backfill, spread across multiple days
+
+        Returns DataFrame with standard columns:
+          etf_code, trade_date, open, high, low, close, volume, amount,
+          pre_close, change_pct, turnover_rate
+        """
+        trade_date_str = trade_date.strftime("%Y%m%d")
+
+        try:
+            self._limiter.acquire()
+            df = self._pro.daily(
+                trade_date=trade_date_str,
+                fields="ts_code,trade_date,open,high,low,close,vol,amount,"
+                       "pre_close,pct_chg,turnover_rate,turnover_rate_f",
+            )
+        except Exception as exc:
+            raise DataProviderError(
+                f"Tushare daily(all market, {trade_date}) failed: {exc}"
+            ) from exc
+
+        if df is None or df.empty:
+            return pd.DataFrame(
+                columns=[
+                    "etf_code", "trade_date", "open", "high", "low", "close",
+                    "volume", "amount", "pre_close", "change_pct", "turnover_rate",
+                ]
+            )
+
+        # Standardize column names
+        df = df.rename(
+            columns={
+                "ts_code": "etf_code",
+                "vol": "volume",
+                "pct_chg": "change_pct",
+            }
+        )
+        df["etf_code"] = df["etf_code"].apply(_to_internal_code)
+
+        # Convert types
+        if "trade_date" in df.columns:
+            df["trade_date"] = pd.to_datetime(
+                df["trade_date"], format="%Y%m%d"
+            ).dt.date
+
+        numeric_cols = [
+            "open", "high", "low", "close", "volume", "amount",
+            "pre_close", "change_pct", "turnover_rate",
+        ]
+        for col in numeric_cols:
+            if col in df.columns:
+                df[col] = pd.to_numeric(df[col], errors="coerce")
+
+        # Prefer turnover_rate_f (free-float) if present
+        if "turnover_rate_f" in df.columns:
+            mask = df["turnover_rate"].isna()
+            df.loc[mask, "turnover_rate"] = df.loc[mask, "turnover_rate_f"]
+            df = df.drop(columns=["turnover_rate_f"])
+
+        logger.info(
+            "[TushareProvider] fetch_daily_all_market(%s): %d rows",
+            trade_date_str, len(df),
+        )
+        return df
+
+    # ------------------------------------------------------------------
     # Valuation / Market Data (daily_basic)
     # ------------------------------------------------------------------
 
