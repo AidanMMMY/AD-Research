@@ -11,17 +11,10 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# Install system dependencies (including Docker CLI for container health/logs)
+# Install system dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     postgresql-client \
-    ca-certificates \
-    curl \
-    && rm -rf /var/lib/apt/lists/* \
-    && curl -fsSL https://download.docker.com/linux/debian/gpg -o /etc/apt/keyrings/docker.asc \
-    && chmod a+r /etc/apt/keyrings/docker.asc \
-    && echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/debian bookworm stable" > /etc/apt/sources.list.d/docker.list \
-    && apt-get update && apt-get install -y --no-install-recommends docker-ce-cli \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Python dependencies (use domestic PyPI mirror for Colima/China networks)
