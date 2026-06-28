@@ -147,7 +147,7 @@ class AStockFinancialsPipeline(ETLPipeline):
             ("report_type", "report_type"),
             ("ann_date", "ann_date"),
             ("total_revenue", "total_revenue"),
-            ("revenue_yoy", "rev_yoy"),
+            ("revenue_yoy", "revenue_yoy"),
             ("operate_profit", "operate_profit"),
             ("total_profit", "total_profit"),
             ("n_income", "n_income"),
@@ -167,6 +167,8 @@ class AStockFinancialsPipeline(ETLPipeline):
                 val = row.get(src_col)
                 if val is not None and not (isinstance(val, float) and pd.isna(val)):
                     record[dst_col] = val
+                else:
+                    record[dst_col] = None  # always include — required for excluded.<col> resolution
             if record.get("stock_code") and record.get("end_date"):
                 records.append(record)
 
@@ -224,6 +226,8 @@ class AStockFinancialsPipeline(ETLPipeline):
                 val = row.get(src_col)
                 if val is not None and not (isinstance(val, float) and pd.isna(val)):
                     record[dst_col] = val
+                else:
+                    record[dst_col] = None  # always include — required for excluded.<col> resolution
             if record.get("stock_code") and record.get("end_date"):
                 records.append(record)
 
