@@ -15,6 +15,7 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     postgresql-client \
+    rsync \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Python dependencies (use domestic PyPI mirror for Colima/China networks)

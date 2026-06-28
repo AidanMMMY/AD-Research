@@ -82,7 +82,7 @@ services:
       - web_dist:/app/web/dist
       - /var/run/docker.sock:/var/run/docker.sock:ro
     command: >
-      sh -c "cp -r /app/web/dist-image/* /app/web/dist/ &&
+      sh -c "rsync -a --delete /app/web/dist-image/ /app/web/dist/ &&
              alembic upgrade head &&
              uvicorn app.main:app --host 0.0.0.0 --port 8000"
     networks:
