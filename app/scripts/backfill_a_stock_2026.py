@@ -202,6 +202,141 @@ def backfill_bars(
 
 
 # ---------------------------------------------------------------------------
+# Per-stock bar backfill (for deep historical ranges like 2010+)
+# ---------------------------------------------------------------------------
+
+
+def backfill_bars_per_stock(
+    db,
+    start: date,
+    end: date,
+    batch_size: int = 500,
+    batch_offset: int = 0,
+    dry_run: bool = False,
+    rate_limit: float = 0.5,
+) -> dict:
+    """Backfill etf_daily_bar using per-stock API calls for deep history.
+
+    Unlike ``backfill_bars`` which uses the market-wide endpoint (1 call/date,
+    ~5000 pts/call — economical for recent dates), this function calls
+    ``pro.daily(ts_code=xxx, start_date=..., end_date=...)`` per stock.
+
+    **Point budget** (Tushare free tier, ~5000 pts/day):
+      - Per-stock daily call: ~5 pts (returns ALL days for one stock)
+      - 500 stocks × 5 pts = 2500 pts per batch
+      - Full 6030 stocks = ~30,000 pts = 6 days at 1000 stocks/day
+
+    Use this for filling 2010–2024 data where the market-wide approach
+    (4250 dates × 5000 pts) would be impossibly expensive.
+
+    Args:
+        start, end: Date range for daily bars (e.g. 2010-01-01 → 2026-06-27).
+        batch_size: Stocks per run (default 500, ~2500 pts).
+        batch_offset: Starting offset into sorted stock list.
+    """
+    from app.data.providers.tushare_provider import TushareProvider
+    from app.models.etf import ETFDailyBar, ETFInfo
+
+    provider = TushareProvider()
+
+    # Pre-load active A-share stock codes
+    stocks = (
+        db.query(ETFInfo)
+        .filter(ETFInfo.market == "A股")
+        .filter(ETFInfo.instrument_type == "STOCK")
+        .filter(ETFInfo.status == "active")
+        .order_by(ETFInfo.code)
+        .all()
+    )
+    all_codes = [s.code for s in stocks]
+    logger.info("Active A-share stocks: %d total", len(all_codes))
+    if not all_codes:
+        logger.error("No active A-share stocks registered.")
+        return {"total_stocks": 0, "processed": 0, "records": 0, "errors": []}
+
+    total_stocks = len(all_codes)
+    batch = all_codes[batch_offset : batch_offset + batch_size]
+    logger.info(
+        "Per-stock bar backfill: batch [%d:%d] (%d stocks), %s → %s",
+        batch_offset, batch_offset + len(batch), len(batch), start, end,
+    )
+
+    total_records = 0
+    processed = 0
+    errors: list[str] = []
+
+    for i, code in enumerate(batch):
+        label = f"[{batch_offset + i + 1}/{total_stocks}] {code}"
+        print(f"  {label} ...", end=" ", flush=True)
+
+        if dry_run:
+            print("DRY-RUN")
+            continue
+
+        try:
+            df = provider.fetch_daily_bars(
+                codes=[code], start_date=start, end_date=end,
+            )
+        except Exception as exc:
+            msg = f"API error: {exc}"
+            print(f"FAILED — {msg}")
+            errors.append(f"{code}: {msg}")
+            db.rollback()
+            time.sleep(rate_limit)
+            continue
+
+        if df is None or df.empty:
+            print("no data")
+            time.sleep(rate_limit)
+            continue
+
+        records = _df_to_bar_records(df)
+        if not records:
+            print("no valid records")
+            time.sleep(rate_limit)
+            continue
+
+        try:
+            stmt = (
+                insert(ETFDailyBar)
+                .values(records)
+                .on_conflict_do_update(
+                    index_elements=["etf_code", "trade_date"],
+                    set_={
+                        "open": insert(ETFDailyBar).excluded.open,
+                        "high": insert(ETFDailyBar).excluded.high,
+                        "low": insert(ETFDailyBar).excluded.low,
+                        "close": insert(ETFDailyBar).excluded.close,
+                        "volume": insert(ETFDailyBar).excluded.volume,
+                        "amount": insert(ETFDailyBar).excluded.amount,
+                        "pre_close": insert(ETFDailyBar).excluded.pre_close,
+                        "change_pct": insert(ETFDailyBar).excluded.change_pct,
+                        "turnover_rate": insert(ETFDailyBar).excluded.turnover_rate,
+                    },
+                )
+            )
+            db.execute(stmt)
+            db.commit()
+            processed += 1
+            total_records += len(records)
+            print(f"OK ({len(records)} days)")
+        except Exception as exc:
+            db.rollback()
+            msg = f"DB error: {exc}"
+            print(f"FAILED — {msg}")
+            errors.append(f"{code}: {msg}")
+
+        time.sleep(rate_limit)
+
+    return {
+        "total_stocks": total_stocks,
+        "processed": processed,
+        "records": total_records,
+        "errors": errors,
+    }
+
+
+# ---------------------------------------------------------------------------
 # Fundamental backfill (PE/PB/market cap via daily_basic)
 # ---------------------------------------------------------------------------
 
@@ -348,6 +483,7 @@ def backfill_financials(
     batch_offset: int = 0,
     dry_run: bool = False,
     rate_limit: float = 0.5,
+    start_date: date | None = None,
 ) -> dict:
     """Backfill stock_income + stock_balance_sheet using per-stock API calls.
 
@@ -357,6 +493,8 @@ def backfill_financials(
     Args:
         batch_size: Number of stocks to process in this run.
         batch_offset: Starting offset into the sorted stock list (0-based).
+        start_date: If set, fetch from this date (e.g. 2010-01-01) instead of
+                    the latest 4 reports. Useful for historical backfill.
     """
     from app.data.providers.tushare_provider import TushareProvider
     from app.models.etf import ETFInfo, StockBalanceSheet, StockIncome
@@ -392,7 +530,7 @@ def backfill_financials(
         ("report_type", "report_type"),
         ("ann_date", "ann_date"),
         ("total_revenue", "total_revenue"),
-        ("revenue_yoy", "rev_yoy"),
+        ("revenue_yoy", "revenue_yoy"),
         ("operate_profit", "operate_profit"),
         ("total_profit", "total_profit"),
         ("n_income", "n_income"),
@@ -430,16 +568,25 @@ def backfill_financials(
         # ── Income Statement ──
         inc_added = 0
         try:
-            df_income = provider.fetch_income_vip(code, limit=4)
+            df_income = provider.fetch_income_vip(
+                code, start_date=start_date, limit=200 if start_date else 4,
+            )
             if df_income is not None and not df_income.empty:
-                # Build records
+                # Build records, dedup by (stock_code, end_date, report_type)
                 inc_records = []
+                seen = set()
                 for _, row in df_income.iterrows():
+                    key = (row.get("etf_code"), row.get("end_date"), row.get("report_type"))
+                    if key in seen:
+                        continue
+                    seen.add(key)
                     record = {}
                     for src_col, dst_col in income_field_map:
                         val = row.get(src_col)
                         if val is not None and not (isinstance(val, float) and pd.isna(val)):
                             record[dst_col] = val
+                        else:
+                            record[dst_col] = None  # required for excluded.<col> resolution
                     if record.get("stock_code") and record.get("end_date"):
                         inc_records.append(record)
 
@@ -482,15 +629,24 @@ def backfill_financials(
         # ── Balance Sheet ──
         bs_added = 0
         try:
-            df_bs = provider.fetch_balancesheet_vip(code, limit=4)
+            df_bs = provider.fetch_balancesheet_vip(
+                code, start_date=start_date, limit=200 if start_date else 4,
+            )
             if df_bs is not None and not df_bs.empty:
                 bs_recs = []
+                seen = set()
                 for _, row in df_bs.iterrows():
+                    key = (row.get("etf_code"), row.get("end_date"), row.get("report_type"))
+                    if key in seen:
+                        continue
+                    seen.add(key)
                     record = {}
                     for src_col, dst_col in bs_field_map:
                         val = row.get(src_col)
                         if val is not None and not (isinstance(val, float) and pd.isna(val)):
                             record[dst_col] = val
+                        else:
+                            record[dst_col] = None  # required for excluded.<col> resolution
                     if record.get("stock_code") and record.get("end_date"):
                         bs_recs.append(record)
 
@@ -544,24 +700,21 @@ def backfill_financials(
 # ---------------------------------------------------------------------------
 
 
+_BAR_FIELDS = [
+    "etf_code", "trade_date", "open", "high", "low", "close",
+    "volume", "amount", "pre_close", "change_pct", "turnover_rate",
+]
+
+
 def _df_to_bar_records(df: pd.DataFrame) -> list[dict]:
-    """Convert a standardized daily bars DataFrame to upsert-ready records."""
+    """Convert a standardized daily bars DataFrame to upsert-ready records.
+
+    All fields are always included (None where missing) so that the
+    ON CONFLICT … SET excluded.<col> references always resolve.
+    """
     records = []
     for _, row in df.iterrows():
-        record = {
-            "etf_code": row.get("etf_code"),
-            "trade_date": row.get("trade_date"),
-            "open": row.get("open"),
-            "high": row.get("high"),
-            "low": row.get("low"),
-            "close": row.get("close"),
-            "volume": row.get("volume"),
-            "amount": row.get("amount"),
-            "pre_close": row.get("pre_close"),
-            "change_pct": row.get("change_pct"),
-            "turnover_rate": row.get("turnover_rate"),
-        }
-        record = {k: v for k, v in record.items() if v is not None}
+        record = {f: row.get(f) for f in _BAR_FIELDS}
         records.append(record)
     return records
 
@@ -600,11 +753,11 @@ Examples:
     )
     parser.add_argument(
         "--batch-size", type=int, default=500,
-        help="Financials: stocks per run (default: 500)",
+        help="Stocks per run for financials/bars-stock (default: 500)",
     )
     parser.add_argument(
         "--batch-offset", type=int, default=0,
-        help="Financials: starting offset in sorted stock list (default: 0)",
+        help="Starting offset for financials/bars-stock (default: 0)",
     )
     parser.add_argument(
         "--dry-run", action="store_true",
@@ -689,6 +842,7 @@ Examples:
                 batch_offset=args.batch_offset,
                 dry_run=args.dry_run,
                 rate_limit=args.rate_limit,
+                start_date=args.start,
             )
             _print_financials_summary(result)
 
