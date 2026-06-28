@@ -33,7 +33,7 @@ COPY scripts/ ./scripts/
 
 # Copy frontend build output to a staging directory; it is copied into the
 # shared volume at runtime so Nginx always serves the latest build.
-COPY --from=frontend-build /app/web/dist /dist-image
+COPY --from=frontend-build /app/web/dist /app/web/dist-image
 RUN mkdir -p web/dist
 
 # Create reports directory
