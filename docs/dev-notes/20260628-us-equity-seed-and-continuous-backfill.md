@@ -28,12 +28,14 @@
 | 指标 | 数值 | 说明 |
 |------|------|------|
 | 美股标的总数 | 569 | 69 ETF + 500 S&P 500 个股 |
-| 有历史价格的标的 | 118 | 持续增长中 |
-| 美股日线记录 | 6,656 | `etf_daily_bar` |
-| 美股指标记录 | 1,546 | `etf_indicator` |
+| 有历史价格的标的 | 235 | 持续增长中（覆盖率 41.3%） |
+| 美股日线记录 | 13,812 | `etf_daily_bar` |
+| A 股有价格标的 | 1,516 | `etf_daily_bar` |
+| A 股日线记录 | 444,363 | `etf_daily_bar` |
+| 美股指标记录 | 1,546 | `etf_indicator`（仅 33 只核心标的） |
 | 美股评分记录 | 1,546 × 3 | `etf_score`，覆盖 3 套模板 |
 
-> 最后更新：2026-06-28 04:00 CST（每小时 backfill 按新策略运行后）
+> 最后更新：2026-06-28 16:00 CST（扫描器误杀修复 + 重新部署后）
 
 ### 33 只已回填核心标的
 
@@ -69,6 +71,8 @@ AVGO.US TMO.US  COST.US WMT.US  MRK.US  ABT.US  MCD.US
 | 美股全量回填 records=0 | yfinance 从云服务器 IP 被限流；Finnhub candle 对新 Key 403 | 改用 Tiingo 单标的手工种子，再让调度器细水长流 |
 | `BRK.B.US` Tiingo 失败 | Tiingo 使用 `BRK-B` 而非 `BRK.B` | 种子脚本中做 `TIINGO_CODE_MAP` 映射 |
 | `batch_calculate_indicators() got unexpected keyword argument 'codes'` | 函数签名只有 `db`、`target_date`、`full_history` | 移除 `codes` 参数，计算全量活跃标的 |
+| 美股 569 只标的被标记为 delisted | `run_etf_scan` 扫描全库与仅含 A 股的 akshare 列表对比，非 A 股标的全部误判为退市 | `etf_scanner_service.py` 查询限定 `market == "A股"`，不再碰 US 标的 |
+| Docker 构建 `npm run build` 失败 | 服务器上存在未提交的 `TradingPanel` 文件，引用类型不存在且有隐式 `any` | 清理未提交文件，scp 同步缺失类型，重建镜像 |
 
 ## 环境配置
 

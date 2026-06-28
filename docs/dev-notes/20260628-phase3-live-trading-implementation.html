@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>阶段三：真实交易实现报告 — AD-Research</title>
+  <style>
+    :root {
+      --bg: #0d1117;
+      --surface: #161b22;
+      --surface-secondary: #1c2129;
+      --border: #30363d;
+      --text-primary: #e6edf3;
+      --text-secondary: #8b949e;
+      --text-tertiary: #6e7681;
+      --accent: #58a6ff;
+      --color-rise: #3fb950;
+      --color-fall: #f85149;
+      --color-warn: #d29922;
+      --font-mono: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+      --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', sans-serif;
+      --radius: 8px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: var(--font-sans);
+      background: var(--bg);
+      color: var(--text-primary);
+      line-height: 1.7;
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 40px 24px 80px;
+    }
+
+    h1 {
+      font-size: 2rem;
+      font-weight: 600;
+      letter-spacing: -0.03em;
+      margin-bottom: 8px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    h2 {
+      font-size: 1.35rem;
+      font-weight: 600;
+      margin-top: 48px;
+      margin-bottom: 16px;
+      padding-bottom: 6px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    h3 {
+      font-size: 1.1rem;
+      font-weight: 600;
+      margin-top: 28px;
+      margin-bottom: 10px;
+    }
+
+    blockquote {
+      border-left: 3px solid var(--accent);
+      padding: 8px 16px;
+      margin: 16px 0;
+      color: var(--text-secondary);
+      background: var(--surface);
+      border-radius: 0 var(--radius) var(--radius) 0;
+    }
+
+    blockquote a {
+      color: var(--accent);
+    }
+
+    hr {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: 24px 0;
+    }
+
+    p { margin: 10px 0; }
+
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    code {
+      font-family: var(--font-mono);
+      font-size: 0.9em;
+      background: var(--surface-secondary);
+      padding: 2px 6px;
+      border-radius: 4px;
+      white-space: nowrap;
+    }
+
+    pre {
+      font-family: var(--font-mono);
+      font-size: 0.85em;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px;
+      overflow-x: auto;
+      margin: 12px 0;
+      line-height: 1.5;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 16px 0;
+      font-size: 0.92em;
+    }
+
+    th, td {
+      padding: 10px 14px;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+    }
+
+    th {
+      font-weight: 600;
+      color: var(--text-secondary);
+      background: var(--surface);
+      white-space: nowrap;
+    }
+
+    tr:hover td { background: var(--surface-secondary); }
+
+    td:first-child {
+      font-family: var(--font-mono);
+      font-size: 0.88em;
+      white-space: nowrap;
+    }
+
+    ul, ol { padding-left: 24px; margin: 10px 0; }
+    li { margin: 4px 0; }
+
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: 0.8em;
+      font-weight: 600;
+    }
+    .badge-green { background: #1a3a2a; color: var(--color-rise); }
+    .badge-red   { background: #3a1a1a; color: var(--color-fall); }
+    .badge-amber { background: #3a2e1a; color: var(--color-warn); }
+
+    .checklist {
+      list-style: none;
+      padding-left: 0;
+    }
+    .checklist li::before {
+      content: '✅ ';
+    }
+
+    .section-file-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 12px;
+      margin: 12px 0;
+    }
+
+    .file-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 12px 16px;
+    }
+    .file-card .path {
+      font-family: var(--font-mono);
+      font-size: 0.85em;
+      color: var(--accent);
+      margin-bottom: 4px;
+    }
+    .file-card .meta {
+      font-size: 0.8em;
+      color: var(--text-tertiary);
+      margin-bottom: 4px;
+    }
+    .file-card .desc {
+      font-size: 0.88em;
+      color: var(--text-secondary);
+    }
+
+    .risk-table td:first-child {
+      font-family: var(--font-mono);
+      font-size: 0.85em;
+    }
+    .risk-table td:nth-child(2) {
+      font-family: var(--font-mono);
+      font-size: 0.82em;
+    }
+
+    .endpoint-list {
+      font-family: var(--font-mono);
+      font-size: 0.85em;
+      line-height: 1.8;
+      color: var(--text-secondary);
+    }
+    .endpoint-list .method {
+      display: inline-block;
+      width: 52px;
+      font-weight: 600;
+    }
+    .endpoint-list .method.get    { color: var(--accent); }
+    .endpoint-list .method.post   { color: var(--color-rise); }
+    .endpoint-list .method.put    { color: var(--color-warn); }
+    .endpoint-list .method.delete { color: var(--color-fall); }
+  </style>
+</head>
+<body>
+
+<h1>阶段三：真实交易（低/中风险）实现报告</h1>
+
+<blockquote>
+  日期：2026-06-28
+  &nbsp;·&nbsp;
+  状态：<span class="badge badge-green">已完成</span>
+  &nbsp;·&nbsp;
+  关联：
+  <a href="20260627-scheduled-task-recovery-guide.md">定时任务恢复指南</a>
+  &nbsp;|&nbsp;
+  <a href="../系统平台功能逻辑说明手册.md">平台功能手册</a>
+</blockquote>
+
+<hr>
+
+<h2>概述</h2>
+
+<p>在阶段二（模拟交易）基础上，完成阶段三低/中风险内容：Binance 真实交易客户端、风控模块、真实交易 API、前端交易面板。</p>
+
+<hr>
+
+<h2>新建文件（7 个）</h2>
+
+<h3>后端 — 服务层</h3>
+
+<table>
+  <thead>
+    <tr><th>文件</th><th style="width:60px">行数</th><th>说明</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>app/services/trading/__init__.py</td>
+      <td>5</td>
+      <td>包入口，导出 <code>BinanceClient</code></td>
+    </tr>
+    <tr>
+      <td>app/services/trading/binance_client.py</td>
+      <td>329</td>
+      <td>带签名的 Binance REST 客户端 — HMAC-SHA256 签名、速率限制、<code>place_order</code> / <code>cancel_order</code> 写操作 + 余额/订单历史读操作</td>
+    </tr>
+    <tr>
+      <td>app/services/risk_control.py</td>
+      <td>312</td>
+      <td>风控模块 — 全局开关、熔断、单笔限额、日亏损/下单数限制、60s 重复订单检测、币种白名单</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3>后端 — API 层</h3>
+
+<table>
+  <thead>
+    <tr><th>文件</th><th style="width:60px">行数</th><th>说明</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>app/api/v1/live_trading.py</td>
+      <td>354</td>
+      <td>13 个真实交易 API 端点</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3>前端</h3>
+
+<table>
+  <thead>
+    <tr><th>文件</th><th style="width:60px">行数</th><th>说明</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>web/src/api/liveTrading.ts</td>
+      <td>37</td>
+      <td>前端 API 客户端（10 个方法）</td>
+    </tr>
+    <tr>
+      <td>web/src/hooks/useLiveTrading.ts</td>
+      <td>131</td>
+      <td>9 个 React Query hooks + 4 个 mutations</td>
+    </tr>
+    <tr>
+      <td>web/src/pages/TradingPanel/index.tsx</td>
+      <td>410</td>
+      <td>交易面板：配置管理、余额总览、持仓/订单表格、下单弹窗、风控状态指示灯</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr>
+
+<h2>修改文件（6 个）</h2>
+
+<table>
+  <thead>
+    <tr><th>文件</th><th>变更</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>app/config.py</td>
+      <td>新增 6 个 Phase 3 配置项</td>
+    </tr>
+    <tr>
+      <td>.env.example</td>
+      <td>新增测试网 + 风控环境变量说明</td>
+    </tr>
+    <tr>
+      <td>app/main.py</td>
+      <td>导入 <code>live_trading</code> 并注册路由 <code>/api/v1/live-trading</code></td>
+    </tr>
+    <tr>
+      <td>web/src/routes.tsx</td>
+      <td>新增 <code>/trading</code> 路由 + <code>TradingPanel</code> 懒加载，菜单图标 <code>TransactionOutlined</code></td>
+    </tr>
+    <tr>
+      <td>web/src/types/trading.ts</td>
+      <td>新增 8 个 Phase 3 TypeScript 接口</td>
+    </tr>
+    <tr>
+      <td>web/src/api/index.ts</td>
+      <td>导出 <code>liveTradingApi</code></td>
+    </tr>
+  </tbody>
+</table>
+
+<hr>
+
+<h2>13 个 API 端点</h2>
+
+<div class="endpoint-list">
+<div><span class="method get">GET</span>    /api/v1/live-trading/configs                       — 列表</div>
+<div><span class="method post">POST</span>   /api/v1/live-trading/configs                       — 创建（加密存储凭据）</div>
+<div><span class="method put">PUT</span>    /api/v1/live-trading/configs/{id}                  — 更新</div>
+<div><span class="method delete">DELETE</span> /api/v1/live-trading/configs/{id}                  — 删除</div>
+<div><span class="method get">GET</span>    /api/v1/live-trading/configs/{id}/account          — 账户余额</div>
+<div><span class="method get">GET</span>    /api/v1/live-trading/configs/{id}/positions        — 持仓</div>
+<div><span class="method get">GET</span>    /api/v1/live-trading/configs/{id}/orders           — 订单历史</div>
+<div><span class="method get">GET</span>    /api/v1/live-trading/configs/{id}/trades           — 成交历史</div>
+<div><span class="method post">POST</span>   /api/v1/live-trading/configs/{id}/orders           — 下单（风控检查 → Binance）</div>
+<div><span class="method delete">DELETE</span> /api/v1/live-trading/configs/{id}/orders/{order_id} — 撤单</div>
+<div><span class="method get">GET</span>    /api/v1/live-trading/configs/{id}/risk-status      — 风控状态</div>
+<div><span class="method post">POST</span>   /api/v1/live-trading/configs/{id}/circuit-breaker/reset — 重置熔断</div>
+<div><span class="method get">GET</span>    /api/v1/live-trading/risk-rules                    — 风控规则列表</div>
+</div>
+
+<hr>
+
+<h2>风控设计</h2>
+
+<table class="risk-table">
+  <thead>
+    <tr><th>检查项</th><th>类型</th><th>行为</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>binance_trading_enabled</td>
+      <td>全局</td>
+      <td>关闭时拒绝所有订单</td>
+    </tr>
+    <tr>
+      <td>熔断状态</td>
+      <td>断路器</td>
+      <td>触发后拒绝所有订单，需 admin 手动重置</td>
+    </tr>
+    <tr>
+      <td>币种白名单</td>
+      <td>per_order</td>
+      <td>不在 <code>allowed_symbols</code> 的代码拒绝</td>
+    </tr>
+    <tr>
+      <td>单笔金额上限</td>
+      <td>per_order</td>
+      <td>超过 <code>max_order_value</code> → 拒绝</td>
+    </tr>
+    <tr>
+      <td>每日下单数</td>
+      <td>daily</td>
+      <td>≥ <code>max_daily_orders</code> → <span class="badge badge-red">触发熔断</span></td>
+    </tr>
+    <tr>
+      <td>每日亏损</td>
+      <td>daily</td>
+      <td>超过 <code>max_daily_loss</code> → <span class="badge badge-red">触发熔断</span></td>
+    </tr>
+    <tr>
+      <td>重复订单</td>
+      <td>duplicate</td>
+      <td>60s 内相同 (symbol, side) → 拒绝</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3>CircuitBreaker 类</h3>
+
+<ul>
+  <li>内存级熔断器，按 <code>config_id</code> 隔离</li>
+  <li><code>trip(config_id, reason)</code> — 触发熔断</li>
+  <li><code>reset(config_id)</code> — 手动重置</li>
+  <li><code>is_tripped(config_id)</code> — 查询状态</li>
+  <li><span class="badge badge-amber">建议</span> 生产环境改为 Redis 实现以支持进程重启后状态持久化</li>
+</ul>
+
+<hr>
+
+<h2>安全设计</h2>
+
+<ol>
+  <li><strong>API Key 加密存储</strong>：使用 <code>cryptography.fernet</code>（与 <code>NotificationService</code> 相同模式），Fernet 加密后以 <code>enc:</code> 前缀存入数据库</li>
+  <li><strong>API 返回绝不包含明文密钥</strong>：<code>LiveConfigOut</code> schema 不包含加密后的密钥字段</li>
+  <li><strong>默认关闭</strong>：<code>binance_trading_enabled=False</code>，需手动设为 <code>True</code></li>
+  <li><strong>创建配置默认 Testnet 模式</strong>：<code>is_testnet=True</code></li>
+  <li><strong>日志脱敏</strong>：<code>BinanceClient</code> 不记录 API key/secret</li>
+  <li><strong>权限控制</strong>：配置 CRUD 和熔断重置需要 admin 角色</li>
+  <li><strong>IP 白名单提醒</strong>：文档中提醒用户在 Binance 后台配置 IP 白名单</li>
+</ol>
+
+<hr>
+
+<h2>关键组件说明</h2>
+
+<h3>BinanceClient <small style="font-weight:400;color:var(--text-tertiary)">— app/services/trading/binance_client.py</small></h3>
+
+<p>独立的签名 REST 客户端，与阶段一的 <code>BinanceProvider</code>（只读）互补：</p>
+
+<pre>
+BinanceClient (authenticated):
+  - ping()
+  - get_account_info() / get_balances()
+  - get_open_orders() / get_order_history() / get_trades()
+  - get_exchange_info() / get_ticker_price()
+  - place_order() / cancel_order() / get_order()
+
+BinanceProvider (public, from Phase 1):
+  - fetch_etf_list() / fetch_daily_bars() / fetch_realtime_quotes()
+  - check_health() / get_market_hours()
+</pre>
+
+<p>两者共享相同的 <code>to_binance_symbol()</code> / <code>from_binance_symbol()</code> 转换逻辑。</p>
+
+<h3>RiskControl <small style="font-weight:400;color:var(--text-tertiary)">— app/services/risk_control.py</small></h3>
+
+<ul>
+  <li><code>RiskControl.__init__(db, config, settings)</code> — 接收 ORM 对象和 Settings</li>
+  <li><code>check_order(...)</code> → <code>RiskCheckResult</code></li>
+  <li><code>get_risk_status()</code> → dict（供 API 使用）</li>
+  <li><code>reset_circuit_breaker()</code> → dict</li>
+</ul>
+
+<h3>Live Trading API <small style="font-weight:400;color:var(--text-tertiary)">— app/api/v1/live_trading.py</small></h3>
+
+<ul>
+  <li>低风险（只读）endpoint 需要登录</li>
+  <li>中风险（写操作）endpoint 需要登录 + 风控检查</li>
+  <li>配置管理端点需要 admin 角色</li>
+</ul>
+
+<hr>
+
+<h2>前端页面：TradingPanel</h2>
+
+<blockquote>
+  路由：<code>/trading</code>
+  &nbsp;·&nbsp;
+  菜单：真实交易 (<code>TransactionOutlined</code>)
+</blockquote>
+
+<h3>功能模块</h3>
+<ol>
+  <li><strong>配置选择器</strong> — 下拉选择 + Testnet/LIVE 标签 + 启用/禁用开关 + 删除</li>
+  <li><strong>风控指标卡片</strong> — 今日订单数、单笔上限、今日已实现盈亏、熔断状态 + 重置按钮</li>
+  <li><strong>账户余额</strong> — 从 Binance 拉取并展示各资产可用/冻结/总量</li>
+  <li><strong>持仓表格</strong> — 币种、数量、均价、现价、市值、未实现盈亏</li>
+  <li><strong>订单表格</strong> — 时间、方向、币种、类型、状态 + 撤单按钮</li>
+  <li><strong>下单弹窗</strong> — 币种代码、方向、限价/市价、数量、限价</li>
+  <li><strong>创建配置弹窗</strong> — API Key/Secret（密码框）、Testnet 开关、风控参数</li>
+</ol>
+
+<hr>
+
+<h2>验证结果</h2>
+
+<ul class="checklist">
+  <li><strong>Python</strong> — 全部 imports 通过，13 条路由已注册到 <code>app.main</code></li>
+  <li><strong>TypeScript</strong> — <code>tsc --noEmit</code> 零错误</li>
+  <li><strong>配置</strong> — <code>.env.example</code> 和 <code>config.py</code> 包含所有 Phase 3 设置项</li>
+  <li><strong>数据库</strong> — <code>LiveTradeConfig</code>、<code>LiveTradeOrder</code>、<code>LiveTradePosition</code>、<code>RiskRule</code> 4 张表已在阶段二的 migration 中创建（<code>7d05c7c0d4f0</code>）</li>
+</ul>
+
+<hr>
+
+<h2>使用方式</h2>
+
+<ol>
+  <li>在 <a href="https://testnet.binance.vision" target="_blank">testnet.binance.vision</a> 注册测试 API Key</li>
+  <li>启动后端 → 前端 <code>/trading</code> 页面 → 点击「创建配置」，填入 Testnet API Key/Secret</li>
+  <li>启用配置 → 查看余额 → 挂小额定单（建议先挂一个不会成交的限价单）</li>
+  <li>观察订单状态、持仓、风控指标</li>
+  <li><strong style="color:var(--color-fall)">永远不要用真实 API Key 做测试</strong></li>
+</ol>
+
+<hr>
+
+<h2>后续迭代建议</h2>
+
+<ol>
+  <li>CircuitBreaker 改为 Redis 实现（重启后状态持久化）</li>
+  <li>增加 WebSocket 实时行情推送至交易面板</li>
+  <li>支持基于信号的自动真实交易（参考 <code>paper_trading_service.auto_trade_from_signals</code>）</li>
+  <li>增加订单确认二次弹窗（防误触）</li>
+  <li>增加 Binance 账户快照历史记录</li>
+</ol>
+
+</body>
+</html>

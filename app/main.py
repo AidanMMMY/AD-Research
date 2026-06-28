@@ -21,6 +21,7 @@ from app.api.v1 import (
     etl,
     favorites,
     indicators,
+    live_trading,
     market_data,
     notifications,
     paper_trading,
@@ -143,6 +144,11 @@ app.include_router(
     paper_trading.router,
     prefix=f"{settings.api_v1_prefix}/paper-trading",
     tags=["Paper Trading"],
+)
+app.include_router(
+    live_trading.router,
+    prefix=f"{settings.api_v1_prefix}/live-trading",
+    tags=["Live Trading"],
 )
 app.include_router(
     stock_fundamentals.router,
