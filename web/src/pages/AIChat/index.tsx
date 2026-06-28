@@ -149,9 +149,10 @@ export default function AIChat() {
       flex: 1,
       display: 'flex',
       flexDirection: 'column',
-      background: 'var(--bg-input)',
-      borderRadius: 16,
-      border: '1px solid var(--border-default)',
+      background: 'var(--card-bg)',
+      borderRadius: 'var(--card-radius)',
+      border: '1px solid var(--card-border)',
+      boxShadow: 'var(--shadow-card)',
       overflow: 'hidden',
     }}>
       {/* Mobile back button */}
@@ -253,7 +254,27 @@ export default function AIChat() {
   return (
     <div>
       <AISetupBanner />
-      <div style={{ display: 'flex', gap: 16, height: isMobile ? 'calc(100vh - 140px)' : 'calc(100vh - 180px)' }}>
+      <h1
+        style={{
+          fontSize: 'var(--text-h1-size)',
+          fontWeight: 500,
+          color: 'var(--text-primary)',
+          margin: '0 0 8px',
+          letterSpacing: '-0.03em',
+        }}
+      >
+        AI 助手
+      </h1>
+      <p
+        style={{
+          margin: '0 0 32px',
+          color: 'var(--text-tertiary)',
+          fontSize: 'var(--text-body-size)',
+        }}
+      >
+        多会话 AI 对话，支持 Markdown 与代码高亮
+      </p>
+      <div style={{ display: 'flex', gap: 16, height: isMobile ? 'calc(100vh - 240px)' : 'calc(100vh - 280px)' }}>
         {(showSidebar || !isMobile) && sidebar}
         {(!showSidebar || !isMobile) && chatArea}
       </div>

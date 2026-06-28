@@ -28,6 +28,7 @@ const CryptoList = lazy(() => import('./pages/CryptoList'));
 // CryptoDetail disabled until backend endpoints are ready
 // const CryptoDetail = lazy(() => import('./pages/CryptoDetail'));
 const PaperTrading = lazy(() => import('./pages/PaperTrading'));
+const TradingPanel = lazy(() => import('./pages/TradingPanel'));
 
 export interface RouteConfig {
   path: string;
@@ -70,6 +71,7 @@ export const routes: RouteConfig[] = [
   { path: '/crypto', element: wrap(CryptoList), auth: true, menu: { name: '加密货币', icon: 'BitcoinOutlined', dividerBefore: true } },
   // { path: '/crypto/:code', element: wrap(CryptoDetail), auth: true }, // disabled until backend ready
   { path: '/paper-trading', element: wrap(PaperTrading), auth: true, menu: { name: '模拟交易', icon: 'DollarOutlined' } },
+  { path: '/trading', element: wrap(TradingPanel), auth: true, menu: { name: '真实交易', icon: 'TransactionOutlined' } },
   // ---- AI 研究 ----
   { path: '/research', element: wrap(ResearchNotes), auth: true, menu: { name: 'AI研究笔记', icon: 'ReadOutlined' } },
   { path: '/sentiment', element: wrap(SentimentDashboard), auth: true, menu: { name: '情绪分析', icon: 'SmileOutlined' } },

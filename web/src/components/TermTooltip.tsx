@@ -43,7 +43,7 @@ export default function TermTooltip({
           alignItems: 'center',
           gap: 4,
           cursor: 'help',
-          borderBottom: '1px dashed rgba(129, 140, 248, 0.35)',
+          borderBottom: '1px dashed var(--accent-border)',
           color: 'inherit',
           ...style,
         }}
@@ -53,7 +53,7 @@ export default function TermTooltip({
           <InfoCircleOutlined
             style={{
               fontSize: 12,
-              color: '#64748b',
+              color: 'var(--text-tertiary)',
               opacity: 0.8,
             }}
           />
