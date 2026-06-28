@@ -10,7 +10,53 @@ import numpy as np
 import pandas as pd
 
 from app.data.indicators.technical import calc_rsi
-from app.data.providers.akshare_provider import AkshareProvider
+
+
+def _load_bars(etf_code: str, start_date: date, end_date: date, db: Any | None) -> pd.DataFrame:
+    """Load historical bars for backtesting.
+
+    If a SQLAlchemy session is provided, read from etf_daily_bar so that
+    split/dividend adjusted prices are available. Otherwise fall back to
+    AkshareProvider (legacy A-share path).
+    """
+    if db is not None:
+        from sqlalchemy import select
+        from app.models.etf import ETFDailyBar
+
+        stmt = (
+            select(ETFDailyBar)
+            .where(ETFDailyBar.etf_code == etf_code)
+            .where(ETFDailyBar.trade_date >= start_date)
+            .where(ETFDailyBar.trade_date <= end_date)
+            .order_by(ETFDailyBar.trade_date.asc())
+        )
+        bars = db.execute(stmt).scalars().all()
+        if not bars:
+            return pd.DataFrame()
+        return pd.DataFrame(
+            [
+                {
+                    "trade_date": b.trade_date,
+                    "open": b.open,
+                    "high": b.high,
+                    "low": b.low,
+                    "close": float(b.close),
+                    "adj_close": float(b.close) * float(b.adj_factor or 1.0),
+                    "volume": b.volume,
+                }
+                for b in bars
+            ]
+        )
+
+    # Legacy fallback: A-share via Akshare (no adjustment info)
+    from app.data.providers.akshare_provider import AkshareProvider
+
+    provider = AkshareProvider()
+    df = provider.fetch_daily_bars([etf_code], start_date, end_date)
+    if df.empty:
+        return df
+    df = df.assign(adj_close=df["close"])
+    return df
 
 
 class Trade:
@@ -105,6 +151,7 @@ def run_backtest(
     slippage_rate: float = 0.001,
     position_size: float = 1.0,
     risk_free_rate: float = 0.02,
+    db: Any | None = None,
 ) -> BacktestResult:
     """Run a backtest for a single ETF with a strategy.
 
@@ -119,6 +166,8 @@ def run_backtest(
         slippage_rate: Per-trade slippage rate (single side).
         position_size: Position size ratio (0.0 - 1.0).
         risk_free_rate: Annual risk-free rate used in Sharpe calculation.
+        db: Optional SQLAlchemy session. If provided, reads adjusted bars
+            from etf_daily_bar; otherwise falls back to AkshareProvider.
 
     Returns:
         BacktestResult with NAV, trades, metrics, and signals.
@@ -130,8 +179,7 @@ def run_backtest(
 
     # Fetch historical data
     try:
-        provider = AkshareProvider()
-        df = provider.fetch_daily_bars([etf_code], start_date, end_date)
+        df = _load_bars(etf_code, start_date, end_date, db)
     except Exception:
         return result
 
@@ -141,8 +189,10 @@ def run_backtest(
     df = df.sort_values("trade_date").reset_index(drop=True)
     df["trade_date"] = pd.to_datetime(df["trade_date"]).dt.date
 
-    # Generate signals
-    signals = get_strategy_signals(df, strategy_type, params)
+    # Generate signals using split/dividend adjusted close
+    signal_df = df.copy()
+    signal_df["close"] = signal_df["adj_close"]
+    signals = get_strategy_signals(signal_df, strategy_type, params)
 
     # Simulation
     capital = initial_capital
@@ -153,7 +203,7 @@ def run_backtest(
 
     for i, row in df.iterrows():
         trade_date = row["trade_date"]
-        price = row["close"]
+        price = row["close"]  # execution uses real (unadjusted) close
         signal = signals.iloc[i]
 
         # Record daily NAV using current market price

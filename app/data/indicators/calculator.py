@@ -172,7 +172,8 @@ def batch_calculate_indicators(
                         "open": b.open,
                         "high": b.high,
                         "low": b.low,
-                        "close": b.close,
+                        # Use split/dividend adjusted close for indicator calculation
+                        "close": float(b.close) * float(b.adj_factor or 1.0),
                         "volume": b.volume,
                         "amount": b.amount,
                     }

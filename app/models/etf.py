@@ -94,6 +94,12 @@ class ETFDailyBar(Base):
     close = Column(DECIMAL(12, 4), comment="Close price")
     volume = Column(BigInteger, comment="Volume")
     amount = Column(DECIMAL(18, 4), comment="Turnover amount")
+    adj_factor = Column(
+        DECIMAL(18, 8),
+        default=1.0,
+        nullable=False,
+        comment="Adjustment factor: close * adj_factor = split/dividend adjusted close",
+    )
     pre_close = Column(DECIMAL(12, 4), comment="Previous close")
     change_pct = Column(DECIMAL(8, 4), comment="Change percentage")
     turnover_rate = Column(DECIMAL(8, 4), comment="Turnover rate")
@@ -104,6 +110,51 @@ class ETFDailyBar(Base):
         Boolean, default=False, nullable=False, comment="Whether this bar is synthetic/demo data"
     )
     created_at = Column(DateTime, server_default=func.now(), comment="Creation time")
+
+
+class ETFCorporateAction(Base):
+    """Corporate actions: splits, reverse splits, and dividends.
+
+    Used to reconstruct adjustment factors and audit price changes.
+    """
+
+    __tablename__ = "etf_corporate_action"
+
+    id = Column(Integer, primary_key=True, autoincrement=True, comment="ID")
+    etf_code = Column(
+        String(20),
+        ForeignKey("etf_info.code", ondelete="CASCADE"),
+        nullable=False,
+        comment="Instrument code",
+    )
+    action_date = Column(Date, nullable=False, comment="Effective date of the action")
+    action_type = Column(
+        String(20),
+        nullable=False,
+        comment="Action type: split / reverse_split / dividend",
+    )
+    ratio = Column(
+        DECIMAL(18, 8),
+        nullable=False,
+        comment="Split ratio or dividend adjustment factor",
+    )
+    source = Column(String(50), comment="Data source (yfinance, tiingo, manual)")
+    created_at = Column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        comment="Creation time",
+    )
+
+    __table_args__ = (
+        UniqueConstraint(
+            "etf_code",
+            "action_date",
+            "action_type",
+            name="uq_corp_action_code_date_type",
+        ),
+        Index("idx_corp_action_code", "etf_code"),
+        Index("idx_corp_action_date", "action_date"),
+    )
 
 
 class ETFIndicator(Base):

@@ -85,16 +85,22 @@ class YFinanceProvider(DataProvider):
         fetch for failures.
 
         Returns a DataFrame with columns:
-          etf_code, trade_date, open, high, low, close, volume, amount
+          etf_code, trade_date, open, high, low, close, volume, amount, adj_factor
 
         amount is estimated as volume * close (yfinance does not provide
         turnover amount separately).
+
+        Note:
+          - Batch downloads do not expose split/dividend actions, so
+            adj_factor is set to 1.0 for batch-fetched rows.
+          - Single-ticker fetches request actions=True and compute a proper
+            cumulative adjustment factor.
         """
         if not codes:
             return pd.DataFrame(
                 columns=[
                     "etf_code", "trade_date", "open", "high", "low",
-                    "close", "volume", "amount",
+                    "close", "volume", "amount", "adj_factor",
                 ]
             )
 
@@ -148,17 +154,18 @@ class YFinanceProvider(DataProvider):
                                     "close": close_price,
                                     "volume": volume_val,
                                     "amount": volume_val * close_price,
+                                    "adj_factor": 1.0,  # batch download lacks actions
                                 }
                             )
                     except Exception:
                         continue
             else:
-                # Fallback: single-ticker fetch
+                # Fallback: single-ticker fetch with corporate actions
                 for code in chunk_codes:
                     ticker = self._to_ticker(code)
                     try:
                         hist = yf.Ticker(ticker).history(
-                            start=start_date, end=end_date
+                            start=start_date, end=end_date, auto_adjust=False, actions=True
                         )
                     except Exception as exc:
                         print(
@@ -170,6 +177,7 @@ class YFinanceProvider(DataProvider):
                     if hist.empty:
                         continue
 
+                    adj_factors = self._compute_adj_factors(hist)
                     for trade_date_val, row in hist.iterrows():
                         td = (
                             trade_date_val.date()
@@ -188,6 +196,7 @@ class YFinanceProvider(DataProvider):
                                 "close": close_price,
                                 "volume": volume_val,
                                 "amount": volume_val * close_price,
+                                "adj_factor": adj_factors.get(trade_date_val, 1.0),
                             }
                         )
 
@@ -198,13 +207,41 @@ class YFinanceProvider(DataProvider):
             return pd.DataFrame(
                 columns=[
                     "etf_code", "trade_date", "open", "high", "low",
-                    "close", "volume", "amount",
+                    "close", "volume", "amount", "adj_factor",
                 ]
             )
 
         df = pd.DataFrame(rows)
         df["trade_date"] = pd.to_datetime(df["trade_date"]).dt.date
         return df
+
+    @staticmethod
+    def _compute_adj_factors(hist: pd.DataFrame) -> dict:
+        """Compute cumulative front-adjustment factors from yfinance history.
+
+        yfinance history with actions=True contains 'Stock Splits' and
+        'Dividends' columns. We walk backwards from the latest date and
+        accumulate the adjustment so that:
+            adj_close = close * adj_factor
+        """
+        if hist.empty:
+            return {}
+
+        splits = hist.get("Stock Splits", pd.Series(0, index=hist.index)).replace(0, 1)
+        dividends = hist.get("Dividends", pd.Series(0, index=hist.index))
+        close = hist.get("Close", pd.Series(0, index=hist.index))
+
+        adj_factors: dict = {}
+        cum_factor = 1.0
+        for dt in reversed(hist.index):
+            adj_factors[dt] = cum_factor
+            split = splits.loc[dt]
+            div = dividends.loc[dt]
+            if split != 1:
+                cum_factor *= float(split)
+            if div > 0 and close.loc[dt] > 0:
+                cum_factor *= (float(close.loc[dt]) - float(div)) / float(close.loc[dt])
+        return adj_factors
 
     def fetch_realtime_quotes(self, codes: list[str]) -> pd.DataFrame:
         """Fetch latest quotes using yf.download().
