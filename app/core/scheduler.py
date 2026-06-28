@@ -47,7 +47,7 @@ def run_a_share_etl(target_date: date | None = None, prefer_sina: bool = False):
     """
     with redis_lock(_LOCK_DAILY_PIPELINE, expire_seconds=3600) as acquired:
         if not acquired:
-            print("[Scheduler] A-share ETL skipped: daily pipeline lock in use")
+            print("⚠️ [SCHEDULER_WARN] A-share ETL skipped: daily pipeline lock in use")
             return
 
         db = SessionLocal()
@@ -74,7 +74,7 @@ def run_a_share_stock_etl(target_date: date | None = None):
     """
     with redis_lock("a_stock_daily_pipeline", expire_seconds=7200) as acquired:
         if not acquired:
-            print("[Scheduler] A-stock daily ETL skipped: lock in use")
+            print("⚠️ [SCHEDULER_WARN] A-stock daily ETL skipped: lock in use")
             return
 
         db = SessionLocal()
@@ -102,7 +102,7 @@ def run_a_share_stock_fundamental(target_date: date | None = None):
     """
     with redis_lock("a_stock_fundamental_pipeline", expire_seconds=3600) as acquired:
         if not acquired:
-            print("[Scheduler] A-stock fundamental ETL skipped: lock in use")
+            print("⚠️ [SCHEDULER_WARN] A-stock fundamental ETL skipped: lock in use")
             return
 
         db = SessionLocal()
@@ -123,16 +123,20 @@ def run_a_share_stock_discovery():
     Fetches the full A-share stock list from Tushare stock_basic across
     SSE, SZSE, and BSE, and upserts into etf_info.
     """
-    db = SessionLocal()
-    try:
-        pipeline = AShareStockDiscoveryPipeline(db)
-        result = pipeline.run_with_retry(max_attempts=2)
-        print(
-            f"[Scheduler] A-share stock discovery: "
-            f"success={result.success}, records={result.records}"
-        )
-    finally:
-        db.close()
+    with redis_lock("a_stock_discovery", expire_seconds=7200) as acquired:
+        if not acquired:
+            print("⚠️ [SCHEDULER_WARN] A-share stock discovery skipped: lock in use")
+            return
+        db = SessionLocal()
+        try:
+            pipeline = AShareStockDiscoveryPipeline(db)
+            result = pipeline.run_with_retry(max_attempts=2)
+            print(
+                f"[Scheduler] A-share stock discovery: "
+                f"success={result.success}, records={result.records}"
+            )
+        finally:
+            db.close()
 
 
 def run_a_share_stock_financials():
@@ -142,16 +146,20 @@ def run_a_share_stock_financials():
     income_vip and balancesheet_vip endpoints. Processes a rotating batch
     of ~50 stocks per run to stay within rate limits.
     """
-    db = SessionLocal()
-    try:
-        pipeline = AStockFinancialsPipeline(db)
-        result = pipeline.run_with_retry(max_attempts=2)
-        print(
-            f"[Scheduler] A-share stock financials: "
-            f"success={result.success}, records={result.records}"
-        )
-    finally:
-        db.close()
+    with redis_lock("a_stock_financials", expire_seconds=7200) as acquired:
+        if not acquired:
+            print("⚠️ [SCHEDULER_WARN] A-share stock financials skipped: lock in use")
+            return
+        db = SessionLocal()
+        try:
+            pipeline = AStockFinancialsPipeline(db)
+            result = pipeline.run_with_retry(max_attempts=2)
+            print(
+                f"[Scheduler] A-share stock financials: "
+                f"success={result.success}, records={result.records}"
+            )
+        finally:
+            db.close()
 
 
 def run_us_etl(target_date: date | None = None):
@@ -167,7 +175,7 @@ def run_us_etl(target_date: date | None = None):
     """
     with redis_lock("us_daily_pipeline", expire_seconds=3600) as acquired:
         if not acquired:
-            print("[Scheduler] US ETL skipped: US pipeline lock in use")
+            print("⚠️ [SCHEDULER_WARN] US ETL skipped: US pipeline lock in use")
             return
 
         db = SessionLocal()
@@ -194,7 +202,7 @@ def run_us_historical_backfill():
     """
     with redis_lock("us_backfill_pipeline", expire_seconds=7200) as acquired:
         if not acquired:
-            print("[Scheduler] US historical backfill skipped: lock in use")
+            print("⚠️ [SCHEDULER_WARN] US historical backfill skipped: lock in use")
             return
 
         db = SessionLocal()
@@ -212,9 +220,8 @@ def run_us_historical_backfill():
 def run_us_indicator_calculation(target_date: date | None = None):
     """Run indicator calculation specifically for US instruments.
 
-    This is a thin wrapper around run_indicator_calculation that runs
-    after the US ETL completes. Reuses the same batch_calculate_indicators
-    which operates on all active instruments regardless of market.
+    Runs after the US ETL completes. Only processes US-market instruments
+    to avoid redundant calculation of A-share / Crypto instruments.
 
     Args:
         target_date: If provided, calculate indicators up to this date.
@@ -222,13 +229,13 @@ def run_us_indicator_calculation(target_date: date | None = None):
     # Wait for US pipeline lock to be released
     with redis_lock("us_daily_pipeline", expire_seconds=3600, wait_timeout=1800) as acquired:
         if not acquired:
-            print("[Scheduler] US indicator calculation skipped: could not acquire pipeline lock")
+            print("⚠️ [SCHEDULER_WARN] US indicator calculation skipped: could not acquire pipeline lock")
             return
 
         db = SessionLocal()
         try:
             count = batch_calculate_indicators(
-                db, target_date=target_date, full_history=False
+                db, target_date=target_date, full_history=False, market_filter="US"
             )
             print(
                 f"[Scheduler] US indicator calculation (target={target_date}): "
@@ -239,7 +246,11 @@ def run_us_indicator_calculation(target_date: date | None = None):
 
 
 def run_indicator_calculation(target_date: date | None = None, full_history: bool = False):
-    """Run the batch indicator calculation for all active ETFs.
+    """Run the batch indicator calculation for A-share instruments.
+
+    US and Crypto instruments have their own indicator calculation jobs
+    (run_us_indicator_calculation, run_crypto_indicator_calculation) that
+    run immediately after their respective ETL pipelines.
 
     Args:
         target_date: If provided, calculate indicators up to this date.
@@ -250,13 +261,13 @@ def run_indicator_calculation(target_date: date | None = None, full_history: boo
     # indicators while bars are still being written.
     with redis_lock(_LOCK_DAILY_PIPELINE, expire_seconds=3600, wait_timeout=1800) as acquired:
         if not acquired:
-            print("[Scheduler] Indicator calculation skipped: could not acquire pipeline lock")
+            print("⚠️ [SCHEDULER_WARN] Indicator calculation skipped: could not acquire pipeline lock")
             return
 
         db = SessionLocal()
         try:
             count = batch_calculate_indicators(
-                db, target_date=target_date, full_history=full_history
+                db, target_date=target_date, full_history=full_history, market_filter="A股"
             )
             print(
                 f"[Scheduler] Indicator calculation (target={target_date}, "
@@ -274,7 +285,7 @@ def run_score_calculation(target_date: date | None = None):
     """
     with redis_lock(_LOCK_DAILY_PIPELINE, expire_seconds=1800, wait_timeout=1800) as acquired:
         if not acquired:
-            print("[Scheduler] Score calculation skipped: could not acquire pipeline lock")
+            print("⚠️ [SCHEDULER_WARN] Score calculation skipped: could not acquire pipeline lock")
             return
 
         db = SessionLocal()
@@ -289,24 +300,28 @@ def run_score_calculation(target_date: date | None = None):
 
 def run_weekly_pool_reports():
     """Generate weekly reports for all ETF pools (Sunday 22:00)."""
-    db = SessionLocal()
-    try:
-        service = ReportService(db)
-        pools = db.query(ETFPools).all()
-        for pool in pools:
-            try:
-                metadata = service.generate_pool_report(
-                    pool_id=pool.id,
-                    report_type="pool_weekly",
-                    format="html",
-                )
-                print(
-                    f"[Scheduler] Weekly report for pool {pool.id}: {metadata.status}"
-                )
-            except Exception as e:
-                print(f"[Scheduler] Failed to generate report for pool {pool.id}: {e}")
-    finally:
-        db.close()
+    with redis_lock("weekly_pool_reports", expire_seconds=3600) as acquired:
+        if not acquired:
+            print("⚠️ [SCHEDULER_WARN] Weekly pool reports skipped: lock in use")
+            return
+        db = SessionLocal()
+        try:
+            service = ReportService(db)
+            pools = db.query(ETFPools).all()
+            for pool in pools:
+                try:
+                    metadata = service.generate_pool_report(
+                        pool_id=pool.id,
+                        report_type="pool_weekly",
+                        format="html",
+                    )
+                    print(
+                        f"[Scheduler] Weekly report for pool {pool.id}: {metadata.status}"
+                    )
+                except Exception as e:
+                    print(f"[Scheduler] Failed to generate report for pool {pool.id}: {e}")
+        finally:
+            db.close()
 
 
 def run_us_stock_discovery():
@@ -315,28 +330,36 @@ def run_us_stock_discovery():
     Fetches S&P 500 constituents from FMP and upserts them as
     instrument_type="STOCK", market="US" into etf_info.
     """
-    db = SessionLocal()
-    try:
-        pipeline = USStockDiscoveryPipeline(db)
-        result = pipeline.run_with_retry(max_attempts=2)
-        print(
-            f"[Scheduler] US stock discovery: success={result.success}, "
-            f"records={result.records}"
-        )
-    finally:
-        db.close()
+    with redis_lock("us_stock_discovery", expire_seconds=7200) as acquired:
+        if not acquired:
+            print("⚠️ [SCHEDULER_WARN] US stock discovery skipped: lock in use")
+            return
+        db = SessionLocal()
+        try:
+            pipeline = USStockDiscoveryPipeline(db)
+            result = pipeline.run_with_retry(max_attempts=2)
+            print(
+                f"[Scheduler] US stock discovery: success={result.success}, "
+                f"records={result.records}"
+            )
+        finally:
+            db.close()
 
 
 def run_etf_scan():
     """Run the ETF market scan (Sunday 03:00)."""
-    db = SessionLocal()
-    try:
-        service = ETFScannerService(db)
-        result = service.scan_market()
-        total = len(result.get("new", [])) + len(result.get("delisted", [])) + len(result.get("changed", []))
-        print(f"[Scheduler] ETF scan: {total} changes found")
-    finally:
-        db.close()
+    with redis_lock("etf_scan", expire_seconds=7200) as acquired:
+        if not acquired:
+            print("⚠️ [SCHEDULER_WARN] ETF scan skipped: lock in use")
+            return
+        db = SessionLocal()
+        try:
+            service = ETFScannerService(db)
+            result = service.scan_market()
+            total = len(result.get("new", [])) + len(result.get("delisted", [])) + len(result.get("changed", []))
+            print(f"[Scheduler] ETF scan: {total} changes found")
+        finally:
+            db.close()
 
 
 def run_crypto_etl(target_date: date | None = None):
@@ -350,7 +373,7 @@ def run_crypto_etl(target_date: date | None = None):
     """
     with redis_lock("crypto_daily_pipeline", expire_seconds=3600) as acquired:
         if not acquired:
-            print("[Scheduler] Crypto ETL skipped: lock in use")
+            print("⚠️ [SCHEDULER_WARN] Crypto ETL skipped: lock in use")
             return
 
         db = SessionLocal()
@@ -378,7 +401,7 @@ def run_crypto_indicator_calculation(target_date: date | None = None):
     ) as acquired:
         if not acquired:
             print(
-                "[Scheduler] Crypto indicator calculation skipped: "
+                "⚠️ [SCHEDULER_WARN] Crypto indicator calculation skipped: "
                 "could not acquire pipeline lock"
             )
             return
@@ -406,6 +429,7 @@ def run_paper_trade_market_update():
         "paper_trade_market_update", expire_seconds=600
     ) as acquired:
         if not acquired:
+            print("⚠️ [SCHEDULER_WARN] Paper trade market update skipped: lock in use")
             return
         db = SessionLocal()
         try:
@@ -423,11 +447,23 @@ def run_paper_trade_auto():
 
     Runs once daily after signal generation.  Each BUY signal allocates ~10%
     of account equity; each SELL signal closes the full position.
+
+    Waits for the daily_pipeline lock (held by signal generation at 09:00)
+    to be released before executing, ensuring signals are fully generated.
     """
+    # Wait for signal generation to complete before trading
+    with redis_lock(
+        _LOCK_DAILY_PIPELINE, expire_seconds=3600, wait_timeout=3600
+    ) as acquired:
+        if not acquired:
+            print("⚠️ [SCHEDULER_WARN] Paper trade auto skipped: signal generation still running after 1h")
+            return
+
     with redis_lock(
         "paper_trade_auto", expire_seconds=1800, wait_timeout=600
     ) as acquired:
         if not acquired:
+            print("⚠️ [SCHEDULER_WARN] Paper trade auto skipped: lock in use")
             return
         db = SessionLocal()
         try:
@@ -472,7 +508,7 @@ def run_signal_generation(target_date: date | None = None):
 
     with redis_lock(_LOCK_DAILY_PIPELINE, expire_seconds=expire_seconds, wait_timeout=1800) as acquired:
         if not acquired:
-            print("[Scheduler] Signal generation skipped: could not acquire pipeline lock")
+            print("⚠️ [SCHEDULER_WARN] Signal generation skipped: could not acquire pipeline lock")
             return
 
         db = SessionLocal()
@@ -504,19 +540,20 @@ def init_scheduler():
     Registers cron jobs:
       - US ETL at 05:00 daily (Beijing time = 17:00 ET, post-market)
       - US historical backfill every hour
-      - US indicator calculation at 05:30 daily
+      - US indicator calculation at 05:30 daily (US market only)
       - A-share ETF ETL at 15:30 daily
       - A-share stock ETL at 16:00 daily
       - A-share stock fundamental at 16:30 daily
       - A-share stock discovery weekly Monday 01:00
       - A-share stock financials weekly Monday 02:00
-      - Indicator calculation at 08:00 daily
+      - Indicator calculation at 08:00 daily (A-share market only)
       - Score calculation at 08:30 daily
       - Weekly pool reports on Sunday at 22:00
       - ETF market scan on Sunday at 03:00
       - Signal generation at 09:00 daily
-      - Crypto ETL at 00:05 daily
-      - Crypto indicator calculation at 00:30 daily
+      - Paper trade auto at 09:30 daily (waits for signal generation)
+      - Crypto ETL at 08:05 daily (00:05 UTC, post-UTC-midnight)
+      - Crypto indicator calculation at 08:30 daily
     """
     scheduler.add_job(
         run_us_etl,
@@ -600,7 +637,7 @@ def init_scheduler():
     )
     scheduler.add_job(
         run_crypto_etl,
-        trigger=CronTrigger(hour=0, minute=5),
+        trigger=CronTrigger(hour=8, minute=5),
         id="crypto_daily_etl",
         name="加密货币日终采集",
         replace_existing=True,
@@ -608,7 +645,7 @@ def init_scheduler():
     )
     scheduler.add_job(
         run_crypto_indicator_calculation,
-        trigger=CronTrigger(hour=0, minute=30),
+        trigger=CronTrigger(hour=8, minute=30),
         id="crypto_indicator_calculation",
         name="加密货币指标计算",
         replace_existing=True,
