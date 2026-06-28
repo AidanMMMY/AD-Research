@@ -36,12 +36,13 @@ class AStockDailyPipeline(ETLPipeline):
     def extract(self) -> pd.DataFrame:
         """Fetch daily bars for active A-share individual stocks.
 
-        By default fetches yesterday's bars (last complete trading day).
-        If ``target_date`` is provided, fetches bars for that date instead
-        (used for backfilling missed runs).
+        Uses the market-wide bulk endpoint (1 API call for all ~5000 stocks)
+        when targeting a single date — the scheduler always targets yesterday.
+
+        Falls back to per-stock fetching for date-range requests (legacy).
         """
 
-        # 1. Query active A-share individual stocks from DB
+        # 1. Query active A-share individual stocks from DB (for FK filtering)
         stocks = (
             self.db.query(ETFInfo)
             .filter(ETFInfo.market == "A股")
@@ -61,21 +62,23 @@ class AStockDailyPipeline(ETLPipeline):
         # 2. Determine target trade date
         target_date = self.target_date or (date.today() - timedelta(days=1))
 
-        # 3. Fetch daily bars (fetch a 7-day window to cover weekends/holidays)
-        start_date = target_date - timedelta(days=7)
-        end_date = target_date
-
-        df = self.provider.fetch_daily_bars(codes, start_date, end_date)
+        # 3. Fetch daily bars — use bulk endpoint for single-date fetches
+        #    (1 API call for ~5000 stocks vs 5000 per-stock calls)
+        df = self.provider.fetch_daily_all_market(trade_date=target_date)
 
         if df.empty:
-            logger.info("AStockDailyPipeline: No bars found for %s", target_date)
+            logger.info(
+                "AStockDailyPipeline: No bars returned for %s (market closed?)",
+                target_date,
+            )
             return df
 
-        # 4. Keep only target date's data
+        # 4. Keep only our registered A-share stocks (filter out B-shares, etc.)
+        known_codes = set(codes)
         before = len(df)
-        df = df[df["trade_date"] == target_date].copy()
+        df = df[df["etf_code"].isin(known_codes)].copy()
         logger.info(
-            "AStockDailyPipeline: Filtered %d→%d rows for target date %s",
+            "AStockDailyPipeline: Bulk fetch %d rows → %d after filtering for %s",
             before, len(df), target_date,
         )
 
