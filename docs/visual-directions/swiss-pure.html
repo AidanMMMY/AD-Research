@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Swiss Minimal — 真正方向</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; }
+    body {
+      font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #0a0a0a;
+      color: #888;
+    }
+
+    .page {
+      display: flex;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    /* Swiss = zero radius, hairlines only */
+    .sidebar {
+      width: 220px;
+      padding: 36px 28px;
+      border-right: 1px solid #222;
+      display: flex;
+      flex-direction: column;
+    }
+    .brand {
+      font-size: 18px;
+      font-weight: 500;
+      color: #f5f5f0;
+      margin-bottom: 56px;
+      letter-spacing: -0.02em;
+    }
+    .nav-item {
+      padding: 10px 0;
+      color: #555;
+      font-size: 14px;
+      border-left: 2px solid transparent;
+      margin-left: -28px;
+      padding-left: 26px;
+      cursor: pointer;
+      transition: color .15s;
+    }
+    .nav-item:hover { color: #aaa; }
+    .nav-item.active { color: #f5f5f0; border-left-color: #ff3b30; }
+
+    .main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      padding: 0 48px;
+      overflow: auto;
+    }
+    .header {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      padding: 36px 0 28px;
+      border-bottom: 1px solid #222;
+    }
+    .header h1 {
+      font-size: 40px;
+      font-weight: 500;
+      color: #f5f5f0;
+      margin: 0;
+      letter-spacing: -0.03em;
+    }
+    .user {
+      font-size: 14px;
+      color: #555;
+    }
+
+    .label {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      color: #444;
+      font-weight: 500;
+    }
+
+    /* KPI — separated by vertical hairlines, no cards */
+    .kpi-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      border-bottom: 1px solid #222;
+      margin-bottom: 40px;
+    }
+    .kpi-cell {
+      padding: 36px 28px;
+      border-right: 1px solid #222;
+    }
+    .kpi-cell:last-child { border-right: none; }
+    .kpi-value {
+      font-size: 42px;
+      font-weight: 500;
+      color: #f5f5f0;
+      letter-spacing: -0.02em;
+      margin-top: 14px;
+    }
+    .kpi-value .suffix {
+      font-size: 16px;
+      color: #444;
+      margin-left: 8px;
+      font-weight: 400;
+    }
+
+    /* Body grid */
+    .body-grid {
+      display: grid;
+      grid-template-columns: 1.5fr 1fr;
+      gap: 48px;
+    }
+
+    .section-title {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: #444;
+      margin-bottom: 20px;
+      font-weight: 500;
+    }
+
+    .table { width: 100%; border-collapse: collapse; }
+    .table th {
+      text-align: left;
+      padding: 14px 12px;
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: #444;
+      font-weight: 500;
+      border-bottom: 1px solid #222;
+    }
+    .table td {
+      padding: 16px 12px;
+      border-bottom: 1px solid #1a1a1a;
+      color: #999;
+      font-size: 14px;
+    }
+    .table tr:hover td { background: rgba(255,255,255,0.02); }
+    .table th:first-child, .table td:first-child { padding-left: 0; }
+    .table th:last-child, .table td:last-child { padding-right: 0; }
+
+    .rank { color: #f5f5f0; font-weight: 500; }
+    .rank.hot { color: #ff3b30; }
+    .code-tag {
+      display: inline-flex;
+      padding: 3px 8px;
+      border: 1px solid #333;
+      color: #f5f5f0;
+      font-size: 12px;
+      font-family: "JetBrains Mono", monospace;
+      margin-right: 8px;
+    }
+    .scorebar-wrap { width: 100%; max-width: 110px; }
+    .scorebar {
+      height: 4px;
+      background: #1a1a1a;
+    }
+    .scorebar-fill {
+      height: 100%;
+      background: #ff3b30;
+    }
+    .return-up { color: #ff6b6b; }
+    .return-down { color: #6fcf97; }
+
+    .right-col { display: flex; flex-direction: column; gap: 40px; }
+    .divider { height: 1px; background: #222; margin: 8px 0; }
+
+    .empty {
+      padding: 48px 0;
+      text-align: center;
+      color: #333;
+      font-size: 14px;
+    }
+    .pool-item {
+      padding: 16px 0;
+      border-bottom: 1px solid #1a1a1a;
+    }
+    .pool-item:last-child { border-bottom: none; }
+    .pool-name { color: #f5f5f0; font-weight: 500; margin-bottom: 6px; font-size: 15px; }
+    .pool-meta { font-size: 12px; color: #444; }
+
+    .note {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: #111;
+      border: 1px solid #222;
+      color: #777;
+      padding: 16px 18px;
+      font-size: 13px;
+      max-width: 340px;
+      line-height: 1.6;
+    }
+    .note strong { color: #f5f5f0; font-weight: 500; }
+    .note em { color: #ff3b30; font-style: normal; }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <aside class="sidebar">
+      <div class="brand">投研平台</div>
+      <div class="nav-item active">首页看板</div>
+      <div class="nav-item">标的列表</div>
+      <div class="nav-item">全市场筛选器</div>
+      <div class="nav-item">标的池管理</div>
+      <div class="nav-item">评分排名</div>
+      <div class="nav-item">报告浏览</div>
+      <div class="nav-item">板块轮动</div>
+    </aside>
+
+    <main class="main">
+      <header class="header">
+        <h1>首页看板</h1>
+        <div class="user">Aidan</div>
+      </header>
+
+      <section class="kpi-row">
+        <div class="kpi-cell">
+          <div class="label">标的总数</div>
+          <div class="kpi-value">2085</div>
+        </div>
+        <div class="kpi-cell">
+          <div class="label">评分覆盖</div>
+          <div class="kpi-value">13,692<span class="suffix">/ 2085</span></div>
+        </div>
+        <div class="kpi-cell">
+          <div class="label">分类数</div>
+          <div class="kpi-value">6</div>
+        </div>
+        <div class="kpi-cell">
+          <div class="label">评分模板</div>
+          <div class="kpi-value">3</div>
+        </div>
+      </section>
+
+      <section class="body-grid">
+        <div>
+          <div class="section-title">综合评分 Top 10</div>
+          <table class="table">
+            <tr>
+              <th>排名</th><th>标的</th><th>评分</th><th>1月收益</th><th>趋势</th>
+            </tr>
+            <tr>
+              <td><span class="rank hot">1</span></td>
+              <td><span class="code-tag">515880.SH</span>通信ETF国泰</td>
+              <td><div class="scorebar-wrap"><div class="scorebar"><div class="scorebar-fill" style="width:92%"></div></div></div></td>
+              <td class="return-up">+14.16%</td>
+              <td>↑</td>
+            </tr>
+            <tr>
+              <td><span class="rank hot">2</span></td>
+              <td><span class="code-tag">159516.SZ</span>半导体设备ETF国泰</td>
+              <td><div class="scorebar-wrap"><div class="scorebar"><div class="scorebar-fill" style="width:88%"></div></div></div></td>
+              <td class="return-up">+39.51%</td>
+              <td>↑</td>
+            </tr>
+            <tr>
+              <td><span class="rank hot">3</span></td>
+              <td><span class="code-tag">159583.SZ</span>通信ETF富国</td>
+              <td><div class="scorebar-wrap"><div class="scorebar"><div class="scorebar-fill" style="width:85%"></div></div></div></td>
+              <td class="return-up">+9.22%</td>
+              <td>↑</td>
+            </tr>
+            <tr>
+              <td><span class="rank">4</span></td>
+              <td><span class="code-tag">159388.SZ</span>创业板人工智能ETF国泰</td>
+              <td><div class="scorebar-wrap"><div class="scorebar"><div class="scorebar-fill" style="width:82%"></div></div></div></td>
+              <td class="return-up">+8.33%</td>
+              <td>↑</td>
+            </tr>
+            <tr>
+              <td><span class="rank">5</span></td>
+              <td><span class="code-tag">159558.SZ</span>半导体设备ETF易方达</td>
+              <td><div class="scorebar-wrap"><div class="scorebar"><div class="scorebar-fill" style="width:80%"></div></div></div></td>
+              <td class="return-up">+40.05%</td>
+              <td>↑</td>
+            </tr>
+          </table>
+        </div>
+
+        <div class="right-col">
+          <div>
+            <div class="section-title">我的收藏</div>
+            <div class="empty">暂无收藏的标的</div>
+          </div>
+
+          <div class="divider"></div>
+
+          <div>
+            <div class="section-title">我的标的池</div>
+            <div class="pool-item">
+              <div class="pool-name">宽基指数池</div>
+              <div class="pool-meta">3 只标的 · 大盘宽基ETF组合</div>
+            </div>
+            <div class="pool-item">
+              <div class="pool-name">科技成长池</div>
+              <div class="pool-meta">3 只标的 · 科技、新能源、创业板ETF</div>
+            </div>
+            <div class="pool-item">
+              <div class="pool-name">稳健防御池</div>
+              <div class="pool-meta">5 只标的 · 低波动、红利、债券ETF</div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div class="note">
+    <strong>Swiss Minimal 真正特征</strong><br/>
+    · 零圆角、零阴影、零渐变、零 emoji<br/>
+    · 用 1px 细线（hairline）代替卡片背景</br>
+    · 大字号标题 + 小写大写标签形成强烈层级</br>
+    · 颜色极克制：黑、白、灰 + 一个强调色（这里是 <em>Swiss Red</em>）</br>
+    · 信息密度比 Bento 更低，更像编辑排版
+  </div>
+</body>
+</html>

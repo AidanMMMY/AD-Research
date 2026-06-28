@@ -82,13 +82,14 @@ class ResearchService:
         score_text = self._build_score_text(score)
 
         # 6. Build prompt
+        market_label = instrument.market or "US"
         prompt = f"""分析以下标的的近况并撰写一份简短的研究笔记（2-3段，中文）：
 
 **基本信息：**
 - 代码: {instrument.code}
 - 名称: {instrument.name}
 - 类型: {instrument.instrument_type or 'ETF'}
-- 市场: US
+- 市场: {market_label}
 
 **近30个交易日价格走势：**
 {price_summary}

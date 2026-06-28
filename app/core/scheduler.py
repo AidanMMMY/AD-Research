@@ -13,6 +13,11 @@ from app.core.database import SessionLocal
 from app.core.redis_client import redis_lock
 from app.data.indicators.calculator import batch_calculate_indicators
 from app.data.pipelines.a_share import AShareETLPipeline
+from app.data.pipelines.a_share_stock_daily import AStockDailyPipeline
+from app.data.pipelines.a_share_stock_discovery import AShareStockDiscoveryPipeline
+from app.data.pipelines.a_share_stock_financials import AStockFinancialsPipeline
+from app.data.pipelines.a_share_stock_fundamental import AStockFundamentalPipeline
+from app.data.pipelines.crypto_daily import CryptoDailyPipeline
 from app.data.pipelines.us_backfill import USHistoricalBackfillPipeline
 from app.data.pipelines.us_etf import USDailyPipeline
 from app.data.pipelines.us_stock_discovery import USStockDiscoveryPipeline
@@ -54,6 +59,99 @@ def run_a_share_etl(target_date: date | None = None, prefer_sina: bool = False):
             )
         finally:
             db.close()
+
+
+def run_a_share_stock_etl(target_date: date | None = None):
+    """Run the A-share individual stock daily ETL pipeline.
+
+    Fetches daily OHLCV bars for all active A-share individual stocks
+    using Tushare as the data source.
+
+    Scheduled at 16:00 Beijing time (1 hour after A-share market close).
+
+    Args:
+        target_date: If provided, fetch bars for this date instead of yesterday.
+    """
+    with redis_lock("a_stock_daily_pipeline", expire_seconds=7200) as acquired:
+        if not acquired:
+            print("[Scheduler] A-stock daily ETL skipped: lock in use")
+            return
+
+        db = SessionLocal()
+        try:
+            pipeline = AStockDailyPipeline(db, target_date=target_date)
+            result = pipeline.run_with_retry(max_attempts=3)
+            print(
+                f"[Scheduler] A-stock daily ETL (target={target_date}): "
+                f"success={result.success}, records={result.records}"
+            )
+        finally:
+            db.close()
+
+
+def run_a_share_stock_fundamental(target_date: date | None = None):
+    """Run the A-share individual stock fundamental/valuation ETL pipeline.
+
+    Fetches daily_basic (PE, PB, market cap, turnover) from Tushare
+    for all A-share stocks. Uses the market-wide endpoint for efficiency.
+
+    Scheduled at 16:30 daily (after the daily bar ETL completes).
+
+    Args:
+        target_date: If provided, fetch fundamentals for this date instead of yesterday.
+    """
+    with redis_lock("a_stock_fundamental_pipeline", expire_seconds=3600) as acquired:
+        if not acquired:
+            print("[Scheduler] A-stock fundamental ETL skipped: lock in use")
+            return
+
+        db = SessionLocal()
+        try:
+            pipeline = AStockFundamentalPipeline(db, target_date=target_date)
+            result = pipeline.run_with_retry(max_attempts=2)
+            print(
+                f"[Scheduler] A-stock fundamental ETL (target={target_date}): "
+                f"success={result.success}, records={result.records}"
+            )
+        finally:
+            db.close()
+
+
+def run_a_share_stock_discovery():
+    """Run the A-share individual stock discovery pipeline (weekly Monday 01:00).
+
+    Fetches the full A-share stock list from Tushare stock_basic across
+    SSE, SZSE, and BSE, and upserts into etf_info.
+    """
+    db = SessionLocal()
+    try:
+        pipeline = AShareStockDiscoveryPipeline(db)
+        result = pipeline.run_with_retry(max_attempts=2)
+        print(
+            f"[Scheduler] A-share stock discovery: "
+            f"success={result.success}, records={result.records}"
+        )
+    finally:
+        db.close()
+
+
+def run_a_share_stock_financials():
+    """Run the A-share individual stock financial statements pipeline (weekly Monday 02:00).
+
+    Fetches quarterly income statements and balance sheets from Tushare
+    income_vip and balancesheet_vip endpoints. Processes a rotating batch
+    of ~50 stocks per run to stay within rate limits.
+    """
+    db = SessionLocal()
+    try:
+        pipeline = AStockFinancialsPipeline(db)
+        result = pipeline.run_with_retry(max_attempts=2)
+        print(
+            f"[Scheduler] A-share stock financials: "
+            f"success={result.success}, records={result.records}"
+        )
+    finally:
+        db.close()
 
 
 def run_us_etl(target_date: date | None = None):
@@ -241,6 +339,117 @@ def run_etf_scan():
         db.close()
 
 
+def run_crypto_etl(target_date: date | None = None):
+    """Run the cryptocurrency daily ETL pipeline.
+
+    Crypto markets are 24/7.  Runs at 00:05 UTC daily to capture the
+    previous day's complete daily candle (midnight UTC boundary).
+
+    Args:
+        target_date: If provided, fetch bars for this date instead of yesterday.
+    """
+    with redis_lock("crypto_daily_pipeline", expire_seconds=3600) as acquired:
+        if not acquired:
+            print("[Scheduler] Crypto ETL skipped: lock in use")
+            return
+
+        db = SessionLocal()
+        try:
+            pipeline = CryptoDailyPipeline(db, target_date=target_date)
+            result = pipeline.run_with_retry(max_attempts=3)
+            print(
+                f"[Scheduler] Crypto ETL (target={target_date}): "
+                f"success={result.success}, records={result.records}"
+            )
+        finally:
+            db.close()
+
+
+def run_crypto_indicator_calculation(target_date: date | None = None):
+    """Run indicator calculation for cryptocurrency instruments.
+
+    Waits for the crypto ETL lock to be released before calculating.
+
+    Args:
+        target_date: If provided, calculate indicators up to this date.
+    """
+    with redis_lock(
+        "crypto_daily_pipeline", expire_seconds=3600, wait_timeout=1800
+    ) as acquired:
+        if not acquired:
+            print(
+                "[Scheduler] Crypto indicator calculation skipped: "
+                "could not acquire pipeline lock"
+            )
+            return
+
+        db = SessionLocal()
+        try:
+            count = batch_calculate_indicators(
+                db, target_date=target_date, full_history=False, market_filter="CRYPTO"
+            )
+            print(
+                f"[Scheduler] Crypto indicator (target={target_date}): "
+                f"{count} records updated"
+            )
+        finally:
+            db.close()
+
+
+def run_paper_trade_market_update():
+    """Update market values for all active paper-trade positions (hourly).
+
+    Fetches latest Binance prices and recalculates unrealized PnL for every
+    position with quantity > 0 across all active accounts.
+    """
+    with redis_lock(
+        "paper_trade_market_update", expire_seconds=600
+    ) as acquired:
+        if not acquired:
+            return
+        db = SessionLocal()
+        try:
+            from app.services.paper_trading_service import PaperTradingService
+
+            service = PaperTradingService(db)
+            updated = service.update_market_values()
+            print(f"[Scheduler] Paper trade market update: {updated} positions refreshed")
+        finally:
+            db.close()
+
+
+def run_paper_trade_auto():
+    """Auto-execute paper trades from today's BUY/SELL signals.
+
+    Runs once daily after signal generation.  Each BUY signal allocates ~10%
+    of account equity; each SELL signal closes the full position.
+    """
+    with redis_lock(
+        "paper_trade_auto", expire_seconds=1800, wait_timeout=600
+    ) as acquired:
+        if not acquired:
+            return
+        db = SessionLocal()
+        try:
+            from app.services.paper_trading_service import PaperTradingService
+
+            service = PaperTradingService(db)
+            accounts = service.get_accounts()
+            total_orders = 0
+            for acct in accounts:
+                try:
+                    orders = service.auto_trade_from_signals(acct.id)
+                    total_orders += len(orders)
+                except Exception:
+                    continue
+            print(
+                f"[Scheduler] Paper trade auto: {total_orders} orders "
+                f"across {len(accounts)} accounts"
+            )
+        finally:
+            db.close()
+
+
 def run_signal_generation(target_date: date | None = None):
     """Generate trading signals for all active strategies (daily 09:00).
 
@@ -296,12 +505,18 @@ def init_scheduler():
       - US ETL at 05:00 daily (Beijing time = 17:00 ET, post-market)
       - US historical backfill every hour
       - US indicator calculation at 05:30 daily
-      - A-share ETL at 15:30 daily
+      - A-share ETF ETL at 15:30 daily
+      - A-share stock ETL at 16:00 daily
+      - A-share stock fundamental at 16:30 daily
+      - A-share stock discovery weekly Monday 01:00
+      - A-share stock financials weekly Monday 02:00
       - Indicator calculation at 08:00 daily
       - Score calculation at 08:30 daily
       - Weekly pool reports on Sunday at 22:00
       - ETF market scan on Sunday at 03:00
       - Signal generation at 09:00 daily
+      - Crypto ETL at 00:05 daily
+      - Crypto indicator calculation at 00:30 daily
     """
     scheduler.add_job(
         run_us_etl,
@@ -380,6 +595,72 @@ def init_scheduler():
         trigger=CronTrigger(hour=9, minute=0),
         id="signal_generation",
         name="交易信号生成",
+        replace_existing=True,
+        max_instances=1,
+    )
+    scheduler.add_job(
+        run_crypto_etl,
+        trigger=CronTrigger(hour=0, minute=5),
+        id="crypto_daily_etl",
+        name="加密货币日终采集",
+        replace_existing=True,
+        max_instances=1,
+    )
+    scheduler.add_job(
+        run_crypto_indicator_calculation,
+        trigger=CronTrigger(hour=0, minute=30),
+        id="crypto_indicator_calculation",
+        name="加密货币指标计算",
+        replace_existing=True,
+        max_instances=1,
+    )
+    # ── Paper Trading Jobs ──
+    scheduler.add_job(
+        run_paper_trade_market_update,
+        trigger=CronTrigger(hour="*", minute=15),
+        id="paper_trade_market_update",
+        name="模拟仓市值更新",
+        replace_existing=True,
+        max_instances=1,
+    )
+    scheduler.add_job(
+        run_paper_trade_auto,
+        trigger=CronTrigger(hour=9, minute=30),
+        id="paper_trade_auto",
+        name="模拟仓信号自动交易",
+        replace_existing=True,
+        max_instances=1,
+    )
+    # ── A-Share Individual Stock Jobs ──
+    scheduler.add_job(
+        run_a_share_stock_etl,
+        trigger=CronTrigger(hour=16, minute=0),
+        id="a_stock_daily_etl",
+        name="A股个股日终采集",
+        replace_existing=True,
+        max_instances=1,
+    )
+    scheduler.add_job(
+        run_a_share_stock_fundamental,
+        trigger=CronTrigger(hour=16, minute=30),
+        id="a_stock_fundamental_etl",
+        name="A股个股估值数据采集",
+        replace_existing=True,
+        max_instances=1,
+    )
+    scheduler.add_job(
+        run_a_share_stock_discovery,
+        trigger=CronTrigger(day_of_week="mon", hour=1, minute=0),
+        id="a_stock_discovery",
+        name="A股个股发现",
+        replace_existing=True,
+        max_instances=1,
+    )
+    scheduler.add_job(
+        run_a_share_stock_financials,
+        trigger=CronTrigger(day_of_week="mon", hour=2, minute=0),
+        id="a_stock_financials",
+        name="A股个股财报采集",
         replace_existing=True,
         max_instances=1,
     )

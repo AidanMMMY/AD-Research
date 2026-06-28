@@ -170,3 +170,155 @@ class FXRate(Base):
         ),
         Index("idx_fx_rates_date", "trade_date"),
     )
+
+
+# ===========================================================================
+# A-Share Individual Stock Models
+# ===========================================================================
+
+
+class StockFundamental(Base):
+    """A-share individual stock daily valuation & market data.
+
+    Sources from Tushare daily_basic endpoint. One row per stock per trading day.
+    """
+
+    __tablename__ = "stock_fundamental"
+
+    stock_code = Column(
+        String(20),
+        ForeignKey("etf_info.code", ondelete="CASCADE"),
+        primary_key=True,
+        comment="Stock code (e.g. 000001.SZ)",
+    )
+    trade_date = Column(Date, primary_key=True, comment="Trade date")
+
+    # Valuation
+    pe_ttm = Column(DECIMAL(12, 4), comment="PE (TTM)")
+    pb = Column(DECIMAL(12, 4), comment="PB (latest)")
+    total_mv = Column(DECIMAL(18, 4), comment="Total market cap (万元 CNY)")
+    float_mv = Column(DECIMAL(18, 4), comment="Free float market cap (万元 CNY)")
+    circ_mv = Column(DECIMAL(18, 4), comment="Circulating market cap (万元 CNY)")
+
+    # Liquidity
+    turnover_rate_f = Column(DECIMAL(8, 4), comment="Free float turnover rate (%)")
+    volume_ratio = Column(DECIMAL(8, 4), comment="Volume ratio")
+
+    # Shares (万股)
+    total_share = Column(DECIMAL(18, 4), comment="Total shares (万股)")
+    float_share = Column(DECIMAL(18, 4), comment="Free float shares (万股)")
+    free_share = Column(DECIMAL(18, 4), comment="Unrestricted shares (万股)")
+
+    created_at = Column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        comment="Creation time",
+    )
+
+    __table_args__ = (
+        UniqueConstraint(
+            "stock_code", "trade_date", name="uq_stock_fundamental_code_date"
+        ),
+        Index("idx_stock_fundamental_date", "trade_date"),
+        Index("idx_stock_fundamental_code_date", "stock_code", "trade_date"),
+    )
+
+
+class StockIncome(Base):
+    """A-share individual stock quarterly income statements.
+
+    Source: Tushare income_vip endpoint. One row per report period per stock.
+    """
+
+    __tablename__ = "stock_income"
+
+    id = Column(Integer, primary_key=True, autoincrement=True, comment="ID")
+    stock_code = Column(
+        String(20),
+        ForeignKey("etf_info.code", ondelete="CASCADE"),
+        nullable=False,
+        comment="Stock code",
+    )
+    end_date = Column(Date, nullable=False, comment="Report period end date")
+    report_type = Column(String(20), default="Q4", comment="Report type (Q1/Q2/Q3/Q4)")
+    ann_date = Column(Date, comment="Announcement date")
+
+    # Revenue & Profit
+    total_revenue = Column(DECIMAL(18, 4), comment="Total revenue (万元)")
+    revenue_yoy = Column(DECIMAL(8, 4), comment="Revenue YoY growth (%)")
+    operate_profit = Column(DECIMAL(18, 4), comment="Operating profit (万元)")
+    total_profit = Column(DECIMAL(18, 4), comment="Total profit (万元)")
+    n_income = Column(DECIMAL(18, 4), comment="Net income (万元)")
+    n_income_yoy = Column(DECIMAL(8, 4), comment="Net income YoY growth (%)")
+    basic_eps = Column(DECIMAL(12, 4), comment="Basic EPS (元)")
+
+    # Margins & ROE
+    grossprofit_margin = Column(DECIMAL(8, 4), comment="Gross profit margin (%)")
+    netprofit_margin = Column(DECIMAL(8, 4), comment="Net profit margin (%)")
+    roe = Column(DECIMAL(8, 4), comment="ROE (%)")
+    roe_dt = Column(DECIMAL(8, 4), comment="Deducted ROE (%)")
+
+    # Cash flow
+    n_operate_cashflow = Column(DECIMAL(18, 4), comment="Operating cash flow (万元)")
+
+    created_at = Column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        comment="Creation time",
+    )
+
+    __table_args__ = (
+        UniqueConstraint(
+            "stock_code", "end_date", "report_type", name="uq_stock_income_code_period"
+        ),
+        Index("idx_stock_income_code", "stock_code"),
+        Index("idx_stock_income_end_date", "end_date"),
+    )
+
+
+class StockBalanceSheet(Base):
+    """A-share individual stock quarterly balance sheets.
+
+    Source: Tushare balancesheet_vip endpoint. One row per report period per stock.
+    """
+
+    __tablename__ = "stock_balance_sheet"
+
+    id = Column(Integer, primary_key=True, autoincrement=True, comment="ID")
+    stock_code = Column(
+        String(20),
+        ForeignKey("etf_info.code", ondelete="CASCADE"),
+        nullable=False,
+        comment="Stock code",
+    )
+    end_date = Column(Date, nullable=False, comment="Report period end date")
+    report_type = Column(String(20), default="Q4", comment="Report type (Q1/Q2/Q3/Q4)")
+    ann_date = Column(Date, comment="Announcement date")
+
+    # Balance Sheet Key Items (万元)
+    total_assets = Column(DECIMAL(18, 4), comment="Total assets (万元)")
+    total_liab = Column(DECIMAL(18, 4), comment="Total liabilities (万元)")
+    total_hldr_eqy_exc_min_int = Column(
+        DECIMAL(18, 4), comment="Shareholders' equity excl. minority interest (万元)"
+    )
+    total_cur_assets = Column(DECIMAL(18, 4), comment="Total current assets (万元)")
+    total_cur_liab = Column(DECIMAL(18, 4), comment="Total current liabilities (万元)")
+
+    # Ratios
+    current_ratio = Column(DECIMAL(8, 4), comment="Current ratio")
+    debt_to_assets = Column(DECIMAL(8, 4), comment="Debt to assets ratio (%)")
+
+    created_at = Column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        comment="Creation time",
+    )
+
+    __table_args__ = (
+        UniqueConstraint(
+            "stock_code", "end_date", "report_type",
+            name="uq_stock_balance_sheet_code_period",
+        ),
+        Index("idx_stock_bs_code", "stock_code"),
+        Index("idx_stock_bs_end_date", "end_date"),
+    )

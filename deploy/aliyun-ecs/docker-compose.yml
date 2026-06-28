@@ -71,6 +71,8 @@ services:
       AUTH_SECRET_KEY: ${AUTH_SECRET_KEY:?error AUTH_SECRET_KEY is required}
       AUTH_ADMIN_PASSWORD: ${AUTH_ADMIN_PASSWORD:?error AUTH_ADMIN_PASSWORD is required}
       AUTH_ACCESS_TOKEN_EXPIRE_MINUTES: ${AUTH_ACCESS_TOKEN_EXPIRE_MINUTES:-480}
+      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
+      GITHUB_REPO: ${GITHUB_REPO:-}
     depends_on:
       postgres:
         condition: service_healthy
@@ -78,6 +80,7 @@ services:
         condition: service_healthy
     volumes:
       - web_dist:/app/web/dist
+      - /var/run/docker.sock:/var/run/docker.sock:ro
     command: >
       sh -c "cp -r /app/web/dist-image/* /app/web/dist/ &&
              alembic upgrade head &&

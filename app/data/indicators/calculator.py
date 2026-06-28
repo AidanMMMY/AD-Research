@@ -111,6 +111,7 @@ def batch_calculate_indicators(
     db: Session,
     target_date: date | None = None,
     full_history: bool = False,
+    market_filter: str | None = None,
 ) -> int:
     """Batch-calculate indicators for all active ETFs.
 
@@ -125,6 +126,9 @@ def batch_calculate_indicators(
         full_history: If True, upsert indicators for every historical
             trade date instead of only the latest day. Useful for
             backfilling missing indicator history.
+        market_filter: If provided (e.g. ``"CRYPTO"``, ``"US"``),
+            only calculate indicators for instruments in that market.
+            If None, calculate for all active instruments.
 
     Returns:
         Number of indicator records updated/inserted.
@@ -133,10 +137,11 @@ def batch_calculate_indicators(
     updated_count = 0
     errors = []
 
-    # Query all active ETFs
-    active_etfs = db.execute(
-        select(ETFInfo.code).where(ETFInfo.status == "active")
-    ).scalars().all()
+    # Query all active ETFs, optionally filtering by market
+    stmt = select(ETFInfo.code).where(ETFInfo.status == "active")
+    if market_filter is not None:
+        stmt = stmt.where(ETFInfo.market == market_filter)
+    active_etfs = db.execute(stmt).scalars().all()
 
     if not active_etfs:
         # Log and return 0

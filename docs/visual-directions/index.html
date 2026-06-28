@@ -1,0 +1,797 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Visual Directions — Investment Research Platform</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; }
+    body {
+      font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #050505;
+      color: #e5e5e5;
+    }
+
+    .intro {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 48px 24px 32px;
+    }
+    .intro h1 { font-size: 32px; font-weight: 500; margin: 0 0 12px; letter-spacing: -0.02em; }
+    .intro p { margin: 0; color: #888; line-height: 1.7; max-width: 760px; }
+    .intro strong { color: #d4a373; font-weight: 500; }
+
+    .mockup {
+      position: relative;
+      height: 900px;
+      overflow: hidden;
+      border-top: 1px solid #222;
+      display: flex;
+      font-size: 13px;
+    }
+    .badge {
+      position: absolute;
+      top: 18px;
+      left: 24px;
+      z-index: 10;
+      padding: 6px 12px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      background: rgba(255,255,255,0.08);
+      color: #aaa;
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+
+    /* ===== Theme variables ===== */
+    .theme-current {
+      --bg-base: #0a0a0a;
+      --bg-elevated: #111;
+      --panel-bg: transparent;
+      --panel-border: none;
+      --panel-radius: 0px;
+      --panel-padding: 0px;
+      --panel-shadow: none;
+      --accent: #22d3ee;
+      --accent-dim: rgba(34, 211, 238, 0.10);
+      --accent-border: rgba(34, 211, 238, 0.25);
+      --text-primary: #f5f5f5;
+      --text-secondary: #a1a1aa;
+      --text-tertiary: #71717a;
+      --border: #27272a;
+      --title-size: 0px;
+      --title-visible: none;
+      --label-transform: uppercase;
+      --label-spacing: 0.10em;
+      --panel-title-size: 11px;
+      --panel-title-transform: uppercase;
+      --panel-title-spacing: 0.10em;
+      --color-rise: #ef4444;
+      --color-fall: #22c55e;
+      --scorebar-bg: #27272a;
+      --scorebar-fill: linear-gradient(90deg, #22d3ee, #a3e635);
+      --radius: 6px;
+      --row-hover: rgba(255,255,255,0.02);
+    }
+
+    .theme-quiet {
+      --bg-base: #0e0f11;
+      --bg-elevated: #151619;
+      --panel-bg: transparent;
+      --panel-border: none;
+      --panel-radius: 0px;
+      --panel-padding: 0px;
+      --panel-shadow: none;
+      --accent: #d4a373;
+      --accent-dim: rgba(212, 163, 115, 0.10);
+      --accent-border: rgba(212, 163, 115, 0.25);
+      --text-primary: #f2f2f0;
+      --text-secondary: #8b8d91;
+      --text-tertiary: #4a4c50;
+      --border: #232428;
+      --title-size: 28px;
+      --title-visible: block;
+      --label-transform: none;
+      --label-spacing: 0em;
+      --panel-title-size: 14px;
+      --panel-title-transform: none;
+      --panel-title-spacing: 0em;
+      --color-rise: #c96b6b;
+      --color-fall: #5fa87a;
+      --scorebar-bg: #232428;
+      --scorebar-fill: #d4a373;
+      --radius: 6px;
+      --row-hover: rgba(255,255,255,0.03);
+    }
+
+    .theme-bento {
+      --bg-base: #0d0d0d;
+      --bg-elevated: #111;
+      --panel-bg: #151515;
+      --panel-border: 1px solid #1c1c1c;
+      --panel-radius: 16px;
+      --panel-padding: 20px;
+      --panel-shadow: 0 4px 24px rgba(0,0,0,0.35);
+      --accent: #f5f5f0;
+      --accent-dim: rgba(255, 255, 255, 0.08);
+      --accent-border: rgba(255, 255, 255, 0.14);
+      --text-primary: #f5f5f0;
+      --text-secondary: #888;
+      --text-tertiary: #555;
+      --border: #222;
+      --title-size: 28px;
+      --title-visible: block;
+      --label-transform: none;
+      --label-spacing: 0em;
+      --panel-title-size: 14px;
+      --panel-title-transform: none;
+      --panel-title-spacing: 0em;
+      --color-rise: #ff6b6b;
+      --color-fall: #6fcf97;
+      --scorebar-bg: #222;
+      --scorebar-fill: #f5f5f0;
+      --radius: 12px;
+      --row-hover: rgba(255,255,255,0.03);
+    }
+
+    .theme-nordic {
+      --bg-base: #0b0f17;
+      --bg-elevated: #101622;
+      --panel-bg: rgba(255,255,255,0.02);
+      --panel-border: 1px solid rgba(255,255,255,0.06);
+      --panel-radius: 4px;
+      --panel-padding: 20px;
+      --panel-shadow: none;
+      --accent: #5e9aa8;
+      --accent-dim: rgba(94, 154, 168, 0.12);
+      --accent-border: rgba(94, 154, 168, 0.25);
+      --text-primary: #e8e9eb;
+      --text-secondary: #7a8a99;
+      --text-tertiary: #4a5568;
+      --border: #1a2330;
+      --title-size: 28px;
+      --title-visible: block;
+      --label-transform: none;
+      --label-spacing: 0em;
+      --panel-title-size: 14px;
+      --panel-title-transform: none;
+      --panel-title-spacing: 0em;
+      --color-rise: #c27878;
+      --color-fall: #6fa98e;
+      --scorebar-bg: #1a2330;
+      --scorebar-fill: #5e9aa8;
+      --radius: 4px;
+      --row-hover: rgba(255,255,255,0.03);
+    }
+
+    /* ===== Shared layout ===== */
+    .mockup { background: var(--bg-base); color: var(--text-secondary); }
+    .sidebar {
+      width: 220px;
+      background: var(--bg-base);
+      border-right: 1px solid var(--border);
+      padding: 20px 0;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 0 20px 24px;
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+    .brand-mark {
+      width: 32px; height: 32px;
+      border-radius: 8px;
+      background: var(--accent);
+      color: var(--bg-base);
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 700;
+    }
+    .nav-item {
+      display: flex; align-items: center; gap: 12px;
+      padding: 10px 20px;
+      margin: 0 10px;
+      border-radius: var(--radius);
+      color: var(--text-secondary);
+      font-size: 14px;
+      cursor: pointer;
+      transition: background .15s, color .15s;
+    }
+    .nav-item:hover { background: var(--bg-elevated); color: var(--text-primary); }
+    .nav-item.active { background: var(--bg-elevated); color: var(--text-primary); box-shadow: inset 2px 0 0 var(--accent); }
+
+    .main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+    .topbar {
+      height: 56px;
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 24px;
+    }
+    .toggles {
+      display: flex; gap: 8px;
+    }
+    .toggle {
+      padding: 6px 14px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--text-secondary);
+      font-size: 12px;
+      cursor: pointer;
+    }
+    .toggle.active { border-color: var(--accent); color: var(--accent); background: var(--accent-dim); }
+    .user { display: flex; align-items: center; gap: 12px; color: var(--text-secondary); font-size: 14px; }
+    .avatar {
+      width: 28px; height: 28px; border-radius: 50%;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: center;
+      color: var(--text-primary); font-weight: 500;
+    }
+
+    .content { flex: 1; padding: 28px; overflow: auto; }
+    .page-title {
+      display: var(--title-visible);
+      font-size: var(--title-size);
+      font-weight: 500;
+      color: var(--text-primary);
+      margin: 0 0 28px;
+      letter-spacing: -0.02em;
+    }
+
+    .kpi-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 28px;
+    }
+    .kpi-cell {
+      padding: 24px;
+      border-right: 1px solid var(--border);
+    }
+    .kpi-cell:last-child { border-right: none; }
+    .kpi-label {
+      font-size: 11px;
+      color: var(--text-tertiary);
+      margin-bottom: 10px;
+      text-transform: var(--label-transform);
+      letter-spacing: var(--label-spacing);
+    }
+    .kpi-value {
+      font-size: 32px;
+      font-weight: 500;
+      color: var(--text-primary);
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .kpi-suffix { font-size: 14px; color: var(--text-tertiary); margin-left: 6px; font-weight: 400; }
+    .kpi-icon {
+      width: 38px; height: 38px;
+      border-radius: var(--radius);
+      background: var(--accent-dim);
+      color: var(--accent);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px;
+    }
+
+    .grid { display: grid; grid-template-columns: 1.45fr 1fr; gap: 28px; }
+    .panel {
+      background: var(--panel-bg);
+      border: var(--panel-border);
+      border-radius: var(--panel-radius);
+      padding: var(--panel-padding);
+      box-shadow: var(--panel-shadow);
+    }
+    .panel-title {
+      font-size: var(--panel-title-size);
+      font-weight: 500;
+      color: var(--text-primary);
+      margin-bottom: 16px;
+      text-transform: var(--panel-title-transform);
+      letter-spacing: var(--panel-title-spacing);
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .panel-extra {
+      font-size: 12px;
+      color: var(--text-secondary);
+      font-weight: 400;
+      text-transform: none;
+      letter-spacing: 0;
+      cursor: pointer;
+    }
+
+    .table { width: 100%; border-collapse: collapse; }
+    .table th {
+      text-align: left;
+      padding: 12px;
+      font-size: 11px;
+      color: var(--text-tertiary);
+      font-weight: 500;
+      border-bottom: 1px solid var(--border);
+      text-transform: var(--label-transform);
+      letter-spacing: var(--label-spacing);
+    }
+    .table td {
+      padding: 12px;
+      border-bottom: 1px solid var(--border);
+      color: var(--text-secondary);
+      font-size: 13px;
+    }
+    .table tr:hover td { background: var(--row-hover); }
+    .table td:first-child, .table th:first-child { padding-left: 0; }
+    .table td:last-child, .table th:last-child { padding-right: 0; }
+
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 500;
+      border: 1px solid;
+      font-family: "JetBrains Mono", monospace;
+    }
+    .tag-accent { background: var(--accent-dim); border-color: var(--accent-border); color: var(--accent); }
+    .tag-neutral { background: transparent; border-color: var(--border); color: var(--text-secondary); }
+
+    .scorebar-wrap { width: 100%; max-width: 120px; }
+    .scorebar {
+      height: 6px;
+      border-radius: 3px;
+      background: var(--scorebar-bg);
+      overflow: hidden;
+    }
+    .scorebar-fill {
+      height: 100%;
+      border-radius: 3px;
+      background: var(--scorebar-fill);
+    }
+    .rank { font-family: "JetBrains Mono", monospace; font-weight: 500; color: var(--text-secondary); }
+    .rank.hot { color: var(--accent); }
+    .return-up { color: var(--color-rise); font-weight: 500; }
+    .return-down { color: var(--color-fall); font-weight: 500; }
+    .arrow { font-size: 11px; margin-left: 4px; }
+
+    .right-col { display: flex; flex-direction: column; gap: 24px; }
+    .empty {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      padding: 48px 0;
+      color: var(--text-tertiary);
+      text-align: center;
+    }
+    .empty-box {
+      width: 64px; height: 40px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      margin-bottom: 12px;
+      position: relative;
+    }
+    .empty-box::after {
+      content: "";
+      position: absolute; left: 8px; right: 8px; top: 12px; height: 1px;
+      background: var(--border);
+    }
+    .pool-item {
+      display: flex; align-items: flex-start; gap: 12px;
+      padding: 14px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .pool-item:last-child { border-bottom: none; }
+    .pool-icon { color: var(--accent); font-size: 16px; }
+    .pool-name { color: var(--text-primary); font-weight: 500; margin-bottom: 4px; }
+    .pool-meta { font-size: 12px; color: var(--text-secondary); }
+
+    .theme-bento .kpi-cell,
+    .theme-bento .table td,
+    .theme-bento .table th,
+    .theme-bento .pool-item { border-color: #1c1c1c; }
+    .theme-bento .kpi-row { border-color: #1c1c1c; }
+
+    .theme-nordic .panel { backdrop-filter: blur(4px); }
+  </style>
+</head>
+<body>
+
+  <div class="intro">
+    <h1>Visual Directions</h1>
+    <p>下面 4 个区块是同一 Dashboard 在不同视觉方向下的完整渲染。每个方向保留了相同的信息结构，只改变色彩、材质、排版层级和容器处理。推荐重点看 <strong>Quiet Luxury</strong>。</p>
+  </div>
+
+  <!-- CURRENT -->
+  <section class="mockup theme-current">
+    <div class="badge">当前线上 · Swiss + Neon Cyan</div>
+    <aside class="sidebar">
+      <div class="brand"><div class="brand-mark">E</div> 投研平台</div>
+      <div class="nav-item active">📊 首页看板</div>
+      <div class="nav-item">📋 标的列表</div>
+      <div class="nav-item">🔎 全市场筛选器</div>
+      <div class="nav-item">🗂️ 标的池管理</div>
+      <div class="nav-item">🏆 评分排名</div>
+      <div class="nav-item">📄 报告浏览</div>
+      <div class="nav-item">🔗 相关性分析</div>
+      <div class="nav-item">📈 收益对比</div>
+      <div class="nav-item">🌐 板块轮动</div>
+    </aside>
+    <div class="main">
+      <header class="topbar">
+        <div class="toggles">
+          <span class="toggle active">红涨绿跌</span>
+          <span class="toggle">绿涨红跌</span>
+        </div>
+        <div class="user"><div class="avatar">A</div> Aidan</div>
+      </header>
+      <div class="content">
+        <div class="page-title"></div>
+        <div class="kpi-row">
+          <div class="kpi-cell">
+            <div class="kpi-label">标的总数</div>
+            <div class="kpi-value">2085 <div class="kpi-icon">🗃</div></div>
+          </div>
+          <div class="kpi-cell">
+            <div class="kpi-label">评分覆盖</div>
+            <div class="kpi-value">13692<span class="kpi-suffix">/ 2085</span><div class="kpi-icon">📊</div></div>
+          </div>
+          <div class="kpi-cell">
+            <div class="kpi-label">分类数</div>
+            <div class="kpi-value">6 <div class="kpi-icon">🧩</div></div>
+          </div>
+          <div class="kpi-cell">
+            <div class="kpi-label">评分模板</div>
+            <div class="kpi-value">3 <div class="kpi-icon">📝</div></div>
+          </div>
+        </div>
+
+        <div class="grid">
+          <div class="panel">
+            <div class="panel-title">综合评分 TOP 10</div>
+            <table class="table">
+              <tr>
+                <th>排名</th><th>标的</th><th>评分</th><th>1月收益</th><th>趋势</th>
+              </tr>
+              <tr><td><span class="rank hot">1</span></td><td><span class="tag tag-accent">515880.SH</span> 通信ETF国泰</td><td><div class="scorebar-wrap"><div class="scorebar"><div class="scorebar-fill" style="width:92%"></div></div></div></td><td class="return-up">+14.16%</td><td>↑</td></tr>
+              <tr><td><span class="rank hot">2</span></td><td><span class="tag tag-accent">159516.SZ</span> 半导体设备ETF国泰</td><td><div class="scorebar-wrap"><div class="scorebar"><div class="scorebar-fill" style="width:88%"></div></div></div></td><td class="return-up">+39.51%</td><td>↑</td></tr>
+              <tr><td><span class="rank hot">3</span></td><td><span class="tag tag-accent">159583.SZ</span> 通信ETF富国</td><td><div class="scorebar-wrap"><div class="scorebar"><div class="scorebar-fill" style="width:85%"></div></div></div></td><td class="return-up">+9.22%</td><td>↑</td></tr>
+              <tr><td><span class="rank">4</span></td><td><span class="tag tag-accent">159388.SZ</span> 创业板人工智能ETF国泰</td><td><div class="scorebar-wrap"><div class="scorebar"><div class="scorebar-fill" style="width:82%"></div></div></div></td><td class="return-up">+8.33%</td><td>↑</td></tr>
+              <tr><td><span class="rank">5</span></td><td><span class="tag tag-accent">159558.SZ</span> 半导体设备ETF易方达</td><td><div class="scorebar-wrap"><div class="scorebar"><div class="scorebar-fill" style="width:80%"></div></div></div></td><td class="return-up">+40.05%</td><td>↑</td></tr>
+            </table>
+          </div>
+          <div class="right-col">
+            <div class="panel">
+              <div class="panel-title">我的收藏 <span class="panel-extra">查看全部 →</span></div>
+              <div class="empty">
+                <div class="empty-box"></div>
+                <div style="color:var(--text-secondary); margin-bottom:4px;">暂无收藏的标的</div>
+                <div style="font-size:12px;">在详情页点击⭐收藏，这里会显示你关注的标的</div>
+              </div>
+            </div>
+            <div class="panel">
+              <div class="panel-title">我的标的池 <span class="panel-extra">查看全部 →</span></div>
+              <div class="pool-item">
+                <div class="pool-icon">📁</div>
+                <div>
+                  <div class="pool-name">宽基指数池</div>
+                  <div class="pool-meta">3 只标的 · 大盘宽基ETF组合</div>
+                </div>
+              </div>
+              <div class="pool-item">
+                <div class="pool-icon">📁</div>
+                <div>
+                  <div class="pool-name">科技成长池</div>
+                  <div class="pool-meta">3 只标的 · 科技、新能源、创业板ETF</div>
+                </div>
+              </div>
+              <div class="pool-item">
+                <div class="pool-icon">📁</div>
+                <div>
+                  <div class="pool-name">稳健防御池</div>
+                  <div class="pool-meta">5 只标的 · 低波动、红利、债券ETF</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- QUIET LUXURY -->
+  <section class="mockup theme-quiet">
+    <div class="badge" style="color:#d4a373; border-color:rgba(212,163,115,.3); background:rgba(212,163,115,.10);">方案 A · Quiet Luxury</div>
+    <aside class="sidebar">
+      <div class="brand"><div class="brand-mark">E</div> 投研平台</div>
+      <div class="nav-item active">Dashboard</div>
+      <div class="nav-item">ETFs</div>
+      <div class="nav-item">Screener</div>
+      <div class="nav-item">Pools</div>
+      <div class="nav-item">Rankings</div>
+      <div class="nav-item">Reports</div>
+      <div class="nav-item">Correlation</div>
+      <div class="nav-item">Returns</div>
+      <div class="nav-item">Rotation</div>
+    </aside>
+    <div class="main">
+      <header class="topbar">
+        <div class="toggles">
+          <span class="toggle active">红涨绿跌</span>
+          <span class="toggle">绿涨红跌</span>
+        </div>
+        <div class="user"><div class="avatar">A</div> Aidan</div>
+      </header>
+      <div class="content">
+        <div class="page-title">首页看板</div>
+        <div class="kpi-row">
+          <div class="kpi-cell">
+            <div class="kpi-label">标的总数</div>
+            <div class="kpi-value">2085 <div class="kpi-icon">🗃</div></div>
+          </div>
+          <div class="kpi-cell">
+            <div class="kpi-label">评分覆盖</div>
+            <div class="kpi-value">13692<span class="kpi-suffix">/ 2085</span><div class="kpi-icon">📊</div></div>
+          </div>
+          <div class="kpi-cell">
+            <div class="kpi-label">分类数</div>
+            <div class="kpi-value">6 <div class="kpi-icon">🧩</div></div>
+          </div>
+          <div class="kpi-cell">
+            <div class="kpi-label">评分模板</div>
+            <div class="kpi-value">3 <div class="kpi-icon">📝</div></div>
+          </div>
+        </div>
+
+        <div class="grid">
+          <div class="panel">
+            <div class="panel-title">综合评分 Top 10</div>
+            <table class="table">
+              <tr>
+                <th>排名</th><th>标的</th><th>评分</th><th>1月收益</th><th>趋势</th>
+              </tr>
+              <tr><td><span class="rank hot">1</span></td><td><span class="tag tag-accent">515880.SH</span> 通信ETF国泰</td><td><div class="scorebar-wrap"><div class="scorebar"><div class="scorebar-fill" style="width:92%"></div></div></div></td><td class="return-up">+14.16%</td><td>↑</td></tr>
+              <tr><td><span class="rank hot">2</span></td><td><span class="tag tag-accent">159516.SZ</span> 半导体设备ETF国泰</td><td><div class="scorebar-wrap"><div class="scorebar"><div class="scorebar-fill" style="width:88%"></div></div></div></td><td class="return-up">+39.51%</td><td>↑</td></tr>
+              <tr><td><span class="rank hot">3</span></td><td><span class="tag tag-accent">159583.SZ</span> 通信ETF富国</td><td><div class="scorebar-wrap"><div class="scorebar"><div class="scorebar-fill" style="width:85%"></div></div></div></td><td class="return-up">+9.22%</td><td>↑</td></tr>
+              <tr><td><span class="rank">4</span></td><td><span class="tag tag-accent">159388.SZ</span> 创业板人工智能ETF国泰</td><td><div class="scorebar-wrap"><div class="scorebar"><div class="scorebar-fill" style="width:82%"></div></div></div></td><td class="return-up">+8.33%</td><td>↑</td></tr>
+              <tr><td><span class="rank">5</span></td><td><span class="tag tag-accent">159558.SZ</span> 半导体设备ETF易方达</td><td><div class="scorebar-wrap"><div class="scorebar"><div class="scorebar-fill" style="width:80%"></div></div></div></td><td class="return-up">+40.05%</td><td>↑</td></tr>
+            </table>
+          </div>
+          <div class="right-col">
+            <div class="panel">
+              <div class="panel-title">我的收藏 <span class="panel-extra">查看全部 →</span></div>
+              <div class="empty">
+                <div class="empty-box"></div>
+                <div style="color:var(--text-secondary); margin-bottom:4px;">暂无收藏的标的</div>
+                <div style="font-size:12px;">在详情页点击收藏，这里会显示你关注的标的</div>
+              </div>
+            </div>
+            <div class="panel">
+              <div class="panel-title">我的标的池 <span class="panel-extra">查看全部 →</span></div>
+              <div class="pool-item">
+                <div class="pool-icon">📁</div>
+                <div>
+                  <div class="pool-name">宽基指数池</div>
+                  <div class="pool-meta">3 只标的 · 大盘宽基ETF组合</div>
+                </div>
+              </div>
+              <div class="pool-item">
+                <div class="pool-icon">📁</div>
+                <div>
+                  <div class="pool-name">科技成长池</div>
+                  <div class="pool-meta">3 只标的 · 科技、新能源、创业板ETF</div>
+                </div>
+              </div>
+              <div class="pool-item">
+                <div class="pool-icon">📁</div>
+                <div>
+                  <div class="pool-name">稳健防御池</div>
+                  <div class="pool-meta">5 只标的 · 低波动、红利、债券ETF</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- BENTO GRID -->
+  <section class="mockup theme-bento">
+    <div class="badge" style="color:#f5f5f0; border-color:rgba(255,255,255,.15); background:rgba(255,255,255,.08);">方案 B · Bento Grid</div>
+    <aside class="sidebar">
+      <div class="brand"><div class="brand-mark">E</div> 投研平台</div>
+      <div class="nav-item active">Dashboard</div>
+      <div class="nav-item">ETFs</div>
+      <div class="nav-item">Screener</div>
+      <div class="nav-item">Pools</div>
+      <div class="nav-item">Rankings</div>
+      <div class="nav-item">Reports</div>
+      <div class="nav-item">Correlation</div>
+      <div class="nav-item">Returns</div>
+      <div class="nav-item">Rotation</div>
+    </aside>
+    <div class="main">
+      <header class="topbar">
+        <div class="toggles">
+          <span class="toggle active">红涨绿跌</span>
+          <span class="toggle">绿涨红跌</span>
+        </div>
+        <div class="user"><div class="avatar">A</div> Aidan</div>
+      </header>
+      <div class="content">
+        <div class="page-title">首页看板</div>
+        <div class="kpi-row">
+          <div class="kpi-cell">
+            <div class="kpi-label">标的总数</div>
+            <div class="kpi-value">2085 <div class="kpi-icon">🗃</div></div>
+          </div>
+          <div class="kpi-cell">
+            <div class="kpi-label">评分覆盖</div>
+            <div class="kpi-value">13692<span class="kpi-suffix">/ 2085</span><div class="kpi-icon">📊</div></div>
+          </div>
+          <div class="kpi-cell">
+            <div class="kpi-label">分类数</div>
+            <div class="kpi-value">6 <div class="kpi-icon">🧩</div></div>
+          </div>
+          <div class="kpi-cell">
+            <div class="kpi-label">评分模板</div>
+            <div class="kpi-value">3 <div class="kpi-icon">📝</div></div>
+          </div>
+        </div>
+
+        <div class="grid">
+          <div class="panel">
+            <div class="panel-title">综合评分 Top 10</div>
+            <table class="table">
+              <tr>
+                <th>排名</th><th>标的</th><th>评分</th><th>1月收益</th><th>趋势</th>
+              </tr>
+              <tr><td><span class="rank hot">1</span></td><td><span class="tag tag-accent">515880.SH</span> 通信ETF国泰</td><td><div class="scorebar-wrap"><div class="scorebar"><div class="scorebar-fill" style="width:92%"></div></div></div></td><td class="return-up">+14.16%</td><td>↑</td></tr>
+              <tr><td><span class="rank hot">2</span></td><td><span class="tag tag-accent">159516.SZ</span> 半导体设备ETF国泰</td><td><div class="scorebar-wrap"><div class="scorebar"><div class="scorebar-fill" style="width:88%"></div></div></div></td><td class="return-up">+39.51%</td><td>↑</td></tr>
+              <tr><td><span class="rank hot">3</span></td><td><span class="tag tag-accent">159583.SZ</span> 通信ETF富国</td><td><div class="scorebar-wrap"><div class="scorebar"><div class="scorebar-fill" style="width:85%"></div></div></div></td><td class="return-up">+9.22%</td><td>↑</td></tr>
+              <tr><td><span class="rank">4</span></td><td><span class="tag tag-accent">159388.SZ</span> 创业板人工智能ETF国泰</td><td><div class="scorebar-wrap"><div class="scorebar"><div class="scorebar-fill" style="width:82%"></div></div></div></td><td class="return-up">+8.33%</td><td>↑</td></tr>
+              <tr><td><span class="rank">5</span></td><td><span class="tag tag-accent">159558.SZ</span> 半导体设备ETF易方达</td><td><div class="scorebar-wrap"><div class="scorebar"><div class="scorebar-fill" style="width:80%"></div></div></div></td><td class="return-up">+40.05%</td><td>↑</td></tr>
+            </table>
+          </div>
+          <div class="right-col">
+            <div class="panel">
+              <div class="panel-title">我的收藏 <span class="panel-extra">查看全部 →</span></div>
+              <div class="empty">
+                <div class="empty-box"></div>
+                <div style="color:var(--text-secondary); margin-bottom:4px;">暂无收藏的标的</div>
+                <div style="font-size:12px;">在详情页点击收藏，这里会显示你关注的标的</div>
+              </div>
+            </div>
+            <div class="panel">
+              <div class="panel-title">我的标的池 <span class="panel-extra">查看全部 →</span></div>
+              <div class="pool-item">
+                <div class="pool-icon">📁</div>
+                <div>
+                  <div class="pool-name">宽基指数池</div>
+                  <div class="pool-meta">3 只标的 · 大盘宽基ETF组合</div>
+                </div>
+              </div>
+              <div class="pool-item">
+                <div class="pool-icon">📁</div>
+                <div>
+                  <div class="pool-name">科技成长池</div>
+                  <div class="pool-meta">3 只标的 · 科技、新能源、创业板ETF</div>
+                </div>
+              </div>
+              <div class="pool-item">
+                <div class="pool-icon">📁</div>
+                <div>
+                  <div class="pool-name">稳健防御池</div>
+                  <div class="pool-meta">5 只标的 · 低波动、红利、债券ETF</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- NORDIC DARK -->
+  <section class="mockup theme-nordic">
+    <div class="badge" style="color:#5e9aa8; border-color:rgba(94,154,168,.3); background:rgba(94,154,168,.12);">方案 C · Nordic Dark</div>
+    <aside class="sidebar">
+      <div class="brand"><div class="brand-mark">E</div> 投研平台</div>
+      <div class="nav-item active">Dashboard</div>
+      <div class="nav-item">ETFs</div>
+      <div class="nav-item">Screener</div>
+      <div class="nav-item">Pools</div>
+      <div class="nav-item">Rankings</div>
+      <div class="nav-item">Reports</div>
+      <div class="nav-item">Correlation</div>
+      <div class="nav-item">Returns</div>
+      <div class="nav-item">Rotation</div>
+    </aside>
+    <div class="main">
+      <header class="topbar">
+        <div class="toggles">
+          <span class="toggle active">红涨绿跌</span>
+          <span class="toggle">绿涨红跌</span>
+        </div>
+        <div class="user"><div class="avatar">A</div> Aidan</div>
+      </header>
+      <div class="content">
+        <div class="page-title">首页看板</div>
+        <div class="kpi-row">
+          <div class="kpi-cell">
+            <div class="kpi-label">标的总数</div>
+            <div class="kpi-value">2085 <div class="kpi-icon">🗃</div></div>
+          </div>
+          <div class="kpi-cell">
+            <div class="kpi-label">评分覆盖</div>
+            <div class="kpi-value">13692<span class="kpi-suffix">/ 2085</span><div class="kpi-icon">📊</div></div>
+          </div>
+          <div class="kpi-cell">
+            <div class="kpi-label">分类数</div>
+            <div class="kpi-value">6 <div class="kpi-icon">🧩</div></div>
+          </div>
+          <div class="kpi-cell">
+            <div class="kpi-label">评分模板</div>
+            <div class="kpi-value">3 <div class="kpi-icon">📝</div></div>
+          </div>
+        </div>
+
+        <div class="grid">
+          <div class="panel">
+            <div class="panel-title">综合评分 Top 10</div>
+            <table class="table">
+              <tr>
+                <th>排名</th><th>标的</th><th>评分</th><th>1月收益</th><th>趋势</th>
+              </tr>
+              <tr><td><span class="rank hot">1</span></td><td><span class="tag tag-accent">515880.SH</span> 通信ETF国泰</td><td><div class="scorebar-wrap"><div class="scorebar"><div class="scorebar-fill" style="width:92%"></div></div></div></td><td class="return-up">+14.16%</td><td>↑</td></tr>
+              <tr><td><span class="rank hot">2</span></td><td><span class="tag tag-accent">159516.SZ</span> 半导体设备ETF国泰</td><td><div class="scorebar-wrap"><div class="scorebar"><div class="scorebar-fill" style="width:88%"></div></div></div></td><td class="return-up">+39.51%</td><td>↑</td></tr>
+              <tr><td><span class="rank hot">3</span></td><td><span class="tag tag-accent">159583.SZ</span> 通信ETF富国</td><td><div class="scorebar-wrap"><div class="scorebar"><div class="scorebar-fill" style="width:85%"></div></div></div></td><td class="return-up">+9.22%</td><td>↑</td></tr>
+              <tr><td><span class="rank">4</span></td><td><span class="tag tag-accent">159388.SZ</span> 创业板人工智能ETF国泰</td><td><div class="scorebar-wrap"><div class="scorebar"><div class="scorebar-fill" style="width:82%"></div></div></div></td><td class="return-up">+8.33%</td><td>↑</td></tr>
+              <tr><td><span class="rank">5</span></td><td><span class="tag tag-accent">159558.SZ</span> 半导体设备ETF易方达</td><td><div class="scorebar-wrap"><div class="scorebar"><div class="scorebar-fill" style="width:80%"></div></div></div></td><td class="return-up">+40.05%</td><td>↑</td></tr>
+            </table>
+          </div>
+          <div class="right-col">
+            <div class="panel">
+              <div class="panel-title">我的收藏 <span class="panel-extra">查看全部 →</span></div>
+              <div class="empty">
+                <div class="empty-box"></div>
+                <div style="color:var(--text-secondary); margin-bottom:4px;">暂无收藏的标的</div>
+                <div style="font-size:12px;">在详情页点击收藏，这里会显示你关注的标的</div>
+              </div>
+            </div>
+            <div class="panel">
+              <div class="panel-title">我的标的池 <span class="panel-extra">查看全部 →</span></div>
+              <div class="pool-item">
+                <div class="pool-icon">📁</div>
+                <div>
+                  <div class="pool-name">宽基指数池</div>
+                  <div class="pool-meta">3 只标的 · 大盘宽基ETF组合</div>
+                </div>
+              </div>
+              <div class="pool-item">
+                <div class="pool-icon">📁</div>
+                <div>
+                  <div class="pool-name">科技成长池</div>
+                  <div class="pool-meta">3 只标的 · 科技、新能源、创业板ETF</div>
+                </div>
+              </div>
+              <div class="pool-item">
+                <div class="pool-icon">📁</div>
+                <div>
+                  <div class="pool-name">稳健防御池</div>
+                  <div class="pool-meta">5 只标的 · 低波动、红利、债券ETF</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</body>
+</html>

@@ -29,6 +29,7 @@ from app.services.favorite_service import FavoriteService
 from app.services.indicator_service import IndicatorService
 from app.services.market_data_service import MarketDataService
 from app.services.notification_service import NotificationService
+from app.services.paper_trading_service import PaperTradingService
 from app.services.pool_enhancement_service import PoolEnhancementService
 from app.services.pool_service import PoolService
 from app.services.report_service import ReportService
@@ -36,6 +37,7 @@ from app.services.scoring_service import ScoringService
 from app.services.screening_service import ScreeningService
 from app.services.sector_rotation_service import SectorRotationService
 from app.services.signal_service import SignalService
+from app.services.stock_fundamental_service import StockFundamentalService
 from app.services.strategy_comparison_service import StrategyComparisonService
 from app.services.strategy_service import StrategyService
 
@@ -62,6 +64,8 @@ __all__ = [
     "get_attribution_service",
     "get_strategy_comparison_service",
     "get_favorite_service",
+    "get_paper_trading_service",
+    "get_stock_fundamental_service",
 ]
 
 
@@ -249,3 +253,13 @@ def get_strategy_comparison_service(db: Session = Depends(get_db)) -> StrategyCo
 def get_favorite_service(db: Session = Depends(get_db)) -> FavoriteService:
     """Provide a FavoriteService instance with a DB session."""
     return FavoriteService(db)
+
+
+def get_paper_trading_service(db: Session = Depends(get_db)) -> PaperTradingService:
+    """Provide a PaperTradingService instance with a DB session."""
+    return PaperTradingService(db)
+
+
+def get_stock_fundamental_service(db: Session = Depends(get_db)) -> StockFundamentalService:
+    """Provide a StockFundamentalService instance with a DB session."""
+    return StockFundamentalService(db)
