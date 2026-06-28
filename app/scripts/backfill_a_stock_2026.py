@@ -474,6 +474,7 @@ def backfill_financials(
 
         except Exception as exc:
             income_errors += 1
+            db.rollback()
             logger.warning("income_vip(%s) failed: %s", code, exc)
 
         time.sleep(rate_limit)
@@ -519,6 +520,7 @@ def backfill_financials(
 
         except Exception as exc:
             bs_errors += 1
+            db.rollback()
             logger.warning("balancesheet_vip(%s) failed: %s", code, exc)
 
         time.sleep(rate_limit)
