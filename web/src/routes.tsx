@@ -25,7 +25,8 @@ const ResearchNotes = lazy(() => import('./pages/ResearchNotes'));
 const SentimentDashboard = lazy(() => import('./pages/SentimentDashboard'));
 const AIChat = lazy(() => import('./pages/AIChat'));
 const CryptoList = lazy(() => import('./pages/CryptoList'));
-const CryptoDetail = lazy(() => import('./pages/CryptoDetail'));
+// CryptoDetail disabled until backend endpoints are ready
+// const CryptoDetail = lazy(() => import('./pages/CryptoDetail'));
 const PaperTrading = lazy(() => import('./pages/PaperTrading'));
 
 export interface RouteConfig {
@@ -67,7 +68,7 @@ export const routes: RouteConfig[] = [
   { path: '/signals', element: wrap(SignalDashboard), auth: true, menu: { name: '交易信号', icon: 'ThunderboltOutlined' } },
   // ---- 加密货币 ----
   { path: '/crypto', element: wrap(CryptoList), auth: true, menu: { name: '加密货币', icon: 'BitcoinOutlined', dividerBefore: true } },
-  { path: '/crypto/:code', element: wrap(CryptoDetail), auth: true },
+  // { path: '/crypto/:code', element: wrap(CryptoDetail), auth: true }, // disabled until backend ready
   { path: '/paper-trading', element: wrap(PaperTrading), auth: true, menu: { name: '模拟交易', icon: 'DollarOutlined' } },
   // ---- AI 研究 ----
   { path: '/research', element: wrap(ResearchNotes), auth: true, menu: { name: 'AI研究笔记', icon: 'ReadOutlined' } },

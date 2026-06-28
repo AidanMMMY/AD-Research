@@ -2,7 +2,6 @@ import { useState } from 'react';
 import {
   Button,
   Card,
-  Descriptions,
   Form,
   Input,
   InputNumber,
@@ -13,7 +12,6 @@ import {
   Space,
   Statistic,
   Table,
-  Typography,
 } from 'antd';
 import {
   PlusOutlined,
@@ -33,9 +31,7 @@ import {
   useSyncMarketValues,
   useAutoTrade,
 } from '@/hooks/usePaperTrading';
-import type { PaperAccount, PaperPosition } from '@/types/trading';
-
-const { Title, Text } = Typography;
+import type { PaperPosition } from '@/types/trading';
 
 /** Format a number as USDT with appropriate precision. */
 function fmtUSDT(v: number | null | undefined): string {
@@ -92,8 +88,6 @@ export default function PaperTrading() {
   const [orderModalOpen, setOrderModalOpen] = useState(false);
   const [createForm] = Form.useForm();
   const [orderForm] = Form.useForm();
-
-  const selectedAccount = accounts.find((a) => a.id === selectedAccountId);
 
   // --- Handlers ---
   const handleCreateAccount = async (values: { name: string; initial_balance: number }) => {
