@@ -39,6 +39,8 @@ import sys
 import time
 from datetime import date, datetime
 
+import pandas as pd
+
 logger = logging.getLogger(__name__)
 logging.basicConfig(
     level=logging.INFO,
@@ -157,6 +159,8 @@ def _fetch_tiingo_bars(
                 continue
 
             close_price = float(item.get("close", 0) or 0)
+            adj_close = float(item.get("adjClose", close_price) or close_price)
+            adj_factor = adj_close / close_price if close_price else 1.0
             volume_val = int(item.get("volume", 0) or 0)
             bars.append(
                 {
@@ -168,6 +172,7 @@ def _fetch_tiingo_bars(
                     "close": close_price,
                     "volume": volume_val,
                     "amount": volume_val * close_price,
+                    "adj_factor": adj_factor,
                 }
             )
         results[code] = bars
@@ -181,6 +186,8 @@ def _fetch_yfinance_bars(
     """Fetch bars from yfinance (single-ticker, slow but reliable).
 
     Returns {code: [bar_dict, ...]}. Empty list for a code means it failed.
+    Uses auto_adjust=False so we can store raw prices and compute a proper
+    cumulative adjustment factor from splits/dividends.
     """
     import yfinance as yf
 
@@ -188,7 +195,9 @@ def _fetch_yfinance_bars(
     for code in codes:
         ticker = code.replace(".US", "")
         try:
-            hist = yf.Ticker(ticker).history(start=start_date, end=end_date)
+            hist = yf.Ticker(ticker).history(
+                start=start_date, end=end_date, auto_adjust=False, actions=True
+            )
         except Exception as exc:
             logger.warning("yfinance failed for %s: %s", code, exc)
             results[code] = []
@@ -201,29 +210,81 @@ def _fetch_yfinance_bars(
             time.sleep(3.0)
             continue
 
+        adj_factors = _compute_yf_adj_factors(hist)
         bars = []
+        skipped = 0
         for idx, row in hist.iterrows():
             td = idx.date() if hasattr(idx, "date") else idx
             close_price = float(row.get("Close", 0) or 0)
             volume_val = int(row.get("Volume", 0) or 0)
+            open_price = float(row.get("Open", 0) or 0)
+            high_price = float(row.get("High", 0) or 0)
+            low_price = float(row.get("Low", 0) or 0)
+            amount_val = volume_val * close_price
+            adj_factor = adj_factors.get(idx, 1.0)
+
+            # Skip rows with clearly bogus split-adjusted prices (e.g. UVXY in 2011)
+            # that would overflow DECIMAL(12, 4) / DECIMAL(18, 4).
+            max_price = 100_000_000.0  # DECIMAL(12, 4) ~ 1e8
+            max_amount = 100_000_000_000_000.0  # DECIMAL(18, 4) ~ 1e14
+            if (
+                open_price > max_price
+                or high_price > max_price
+                or low_price > max_price
+                or close_price > max_price
+                or amount_val > max_amount
+                or amount_val < 0
+            ):
+                skipped += 1
+                continue
+
             bars.append(
                 {
                     "etf_code": code,
                     "trade_date": td,
-                    "open": float(row.get("Open", 0) or 0),
-                    "high": float(row.get("High", 0) or 0),
-                    "low": float(row.get("Low", 0) or 0),
+                    "open": open_price,
+                    "high": high_price,
+                    "low": low_price,
                     "close": close_price,
                     "volume": volume_val,
-                    "amount": volume_val * close_price,
+                    "amount": amount_val,
+                    "adj_factor": adj_factor,
                 }
             )
+        if skipped:
+            logger.warning("  yfinance %s: skipped %d bogus rows", code, skipped)
         results[code] = bars
         logger.info(
             "  yfinance ✓ %s → %d bars", code, len(bars)
         )
         time.sleep(3.0)  # be gentle to Yahoo
     return results
+
+
+def _compute_yf_adj_factors(hist) -> dict:
+    """Compute cumulative front-adjustment factors from yfinance history.
+
+    Walks backwards from the latest date, accumulating split and dividend
+    adjustments so that: adj_close = close * adj_factor.
+    """
+    if hist.empty:
+        return {}
+
+    splits = hist.get("Stock Splits", pd.Series(0, index=hist.index)).replace(0, 1)
+    dividends = hist.get("Dividends", pd.Series(0, index=hist.index))
+    close = hist.get("Close", pd.Series(0, index=hist.index))
+
+    adj_factors: dict = {}
+    cum_factor = 1.0
+    for dt in reversed(hist.index):
+        adj_factors[dt] = cum_factor
+        split = splits.loc[dt]
+        div = dividends.loc[dt]
+        if split != 1:
+            cum_factor *= float(split)
+        if div > 0 and close.loc[dt] > 0:
+            cum_factor *= (float(close.loc[dt]) - float(div)) / float(close.loc[dt])
+    return adj_factors
 
 
 # ── DB write ───────────────────────────────────────────────────────────

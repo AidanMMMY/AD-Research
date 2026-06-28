@@ -61,10 +61,11 @@ class TiingoProvider(DataProvider):
         """Fetch EOD OHLCV bars from Tiingo.
 
         Returns a DataFrame with columns:
-          etf_code, trade_date, open, high, low, close, volume, amount
+          etf_code, trade_date, open, high, low, close, volume, amount, adj_factor
 
-        Tiingo provides adjusted close prices by default (split + dividend
-        adjusted). We use the unadjusted close with adjClose for reference.
+        Tiingo provides adjusted close prices via adjClose. We store the raw
+        close and set adj_factor = adjClose / close so consumers can compute
+        split/dividend adjusted prices as close * adj_factor.
 
         Single-code failures are logged and skipped.
         """
@@ -100,6 +101,8 @@ class TiingoProvider(DataProvider):
                     trade_date_val = pd.to_datetime(raw_date).date()
 
                 close_price = float(item.get("close", 0) or 0)
+                adj_close = float(item.get("adjClose", close_price) or close_price)
+                adj_factor = adj_close / close_price if close_price else 1.0
                 volume_val = int(item.get("volume", 0) or 0)
 
                 rows.append(
@@ -112,6 +115,7 @@ class TiingoProvider(DataProvider):
                         "close": close_price,
                         "volume": volume_val,
                         "amount": volume_val * close_price,
+                        "adj_factor": adj_factor,
                     }
                 )
 
@@ -121,7 +125,7 @@ class TiingoProvider(DataProvider):
             return pd.DataFrame(
                 columns=[
                     "etf_code", "trade_date", "open", "high", "low",
-                    "close", "volume", "amount",
+                    "close", "volume", "amount", "adj_factor",
                 ]
             )
 
