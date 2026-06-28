@@ -1,4 +1,4 @@
-# ETF 投研平台 — 功能路线图
+# AD-Research — 功能路线图
 
 **版本：** v1.0  
 **日期：** 2026-06-01  
@@ -340,7 +340,7 @@
 ### 8.2 项目目录结构
 
 ```
-etf-research-platform/
+ad-research/
 ├── app/
 │   ├── main.py                 # FastAPI 入口
 │   ├── config.py               # 配置管理

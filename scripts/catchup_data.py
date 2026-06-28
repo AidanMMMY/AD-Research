@@ -179,6 +179,7 @@ def run_signals_for_date(db, trade_date: date):
         signal_rows = []
         total_signals = 0
         buy_count = sell_count = hold_count = 0
+        signal_rows = []
 
         for strategy in strategies:
             strategy_id, name, strategy_type, params = strategy
@@ -293,6 +294,7 @@ def main():
                 print("\n" + "-" * 60)
                 print("STEP 1: 数据采集 (Daily Bars)")
                 print("-" * 60)
+                provider = AkshareProvider()
                 total_bars = 0
                 provider = AkshareProvider()
                 for trade_date in trading_days:

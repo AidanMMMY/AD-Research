@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Comprehensive database consistency check for ETF Research Platform."""
+"""Comprehensive database consistency check for AD-Research."""
 
 import sys
 
@@ -345,7 +345,7 @@ def check_extra(db):
 
 def main():
     print("=" * 70)
-    print("ETF RESEARCH PLATFORM - DATABASE CONSISTENCY CHECK")
+    print("AD-RESEARCH - DATABASE CONSISTENCY CHECK")
     print(f"Database: {engine.url}")
     print("=" * 70)
 

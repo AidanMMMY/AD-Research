@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}ETF Research Report{% endblock %}</title>
+    <title>{% block title %}AD-Research Report{% endblock %}</title>
     <style>
         :root {
             --primary: #1565c0;
@@ -252,7 +252,7 @@
     <div class="container">
         {% block header %}
         <div class="report-header">
-            <h1>{% block report_title %}ETF Research Report{% endblock %}</h1>
+            <h1>{% block report_title %}AD-Research Report{% endblock %}</h1>
             <div class="meta">{% block report_meta %}{% endblock %}</div>
         </div>
         {% endblock %}
@@ -261,7 +261,7 @@
 
         {% block footer %}
         <div class="report-footer">
-            Generated at {{ generated_at }} | ETF Research Platform
+            Generated at {{ generated_at }} | AD-Research
         </div>
         {% endblock %}
     </div>

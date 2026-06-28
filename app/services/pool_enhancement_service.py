@@ -752,6 +752,13 @@ class PoolEnhancementService:
             # No price data available; cannot compute actual weights.
             return False, []
 
+        missing_codes = set(codes) - set(close_prices.keys())
+        if missing_codes:
+            # Skip rebalance check when any member lacks price data; otherwise
+            # the total_value denominator excludes missing ETFs and inflates
+            # the actual weights of the others, producing false alerts.
+            return False, []
+
         total_value = sum(close_prices.values())
         if total_value == 0:
             return False, []
