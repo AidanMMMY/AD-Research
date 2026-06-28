@@ -10,7 +10,7 @@ import { useScores } from '@/hooks/useScores';
 import { useFavorites } from '@/hooks/useFavorites';
 import { usePoolList } from '@/hooks/usePoolDetail';
 import { statsApi } from '@/api/stats';
-import StatCard from '@/components/StatCard';
+import Panel from '@/components/Panel';
 import ETFCodeTag from '@/components/ETFCodeTag';
 import ReturnTag from '@/components/ReturnTag';
 import ScoreBar from '@/components/ScoreBar';
@@ -101,32 +101,92 @@ export default function Dashboard() {
         style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(4, 1fr)',
-          gap: '20px',
-          marginBottom: '28px',
+          borderTop: '1px solid var(--border-default)',
+          borderBottom: '1px solid var(--border-default)',
+          marginBottom: '32px',
         }}
       >
-        <StatCard title="标的总数" value={stats?.etf_count ?? 0} loading={statsLoading} onClick={() => navigate('/etfs')} bordered />
-        <StatCard title="评分覆盖" value={stats?.score_count ?? 0} suffix={`/ ${stats?.etf_count ?? 0}`} loading={statsLoading} onClick={() => navigate('/scores')} bordered />
-        <StatCard title="分类数" value={stats?.category_count ?? 0} loading={statsLoading} bordered />
-        <StatCard title="评分模板" value={stats?.template_count ?? 0} loading={statsLoading} onClick={() => navigate('/scores')} bordered />
+        {[
+          { title: '标的总数', value: stats?.etf_count ?? 0, suffix: undefined, onClick: () => navigate('/etfs') },
+          { title: '评分覆盖', value: stats?.score_count ?? 0, suffix: `/ ${stats?.etf_count ?? 0}`, onClick: () => navigate('/scores') },
+          { title: '分类数', value: stats?.category_count ?? 0, suffix: undefined },
+          { title: '评分模板', value: stats?.template_count ?? 0, suffix: undefined, onClick: () => navigate('/scores') },
+        ].map((item, i) => (
+          <div
+            key={item.title}
+            onClick={item.onClick}
+            style={{
+              padding: '24px 20px',
+              cursor: item.onClick ? 'pointer' : 'default',
+              borderRight: i < 3 ? '1px solid var(--border-default)' : 'none',
+              transition: 'background var(--transition-fast)',
+            }}
+            onMouseEnter={(e) => {
+              if (item.onClick) e.currentTarget.style.background = 'var(--bg-hover)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'transparent';
+            }}
+          >
+            <div
+              style={{
+                fontSize: 'var(--text-label-size)',
+                color: 'var(--text-tertiary)',
+                fontWeight: 500,
+                marginBottom: '14px',
+                letterSpacing: '0.12em',
+                textTransform: 'uppercase',
+              }}
+            >
+              {item.title}
+            </div>
+            {statsLoading ? (
+              <div
+                style={{
+                  height: '36px',
+                  width: '80px',
+                  background: 'var(--bg-hover)',
+                  borderRadius: 'var(--radius-md)',
+                  animation: 'pulse 1.5s ease-in-out infinite',
+                }}
+              />
+            ) : (
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px' }}>
+                <span
+                  style={{
+                    fontSize: 'var(--text-data-xl-size)',
+                    fontWeight: 400,
+                    color: 'var(--text-primary)',
+                    lineHeight: 1.1,
+                    fontFamily: 'var(--font-mono)',
+                    letterSpacing: '-0.02em',
+                  }}
+                >
+                  {item.value}
+                </span>
+                {item.suffix && (
+                  <span
+                    style={{
+                      fontSize: 'var(--text-small-size)',
+                      color: 'var(--text-tertiary)',
+                      fontWeight: 500,
+                    }}
+                  >
+                    {item.suffix}
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
+        ))}
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1.55fr 1fr', gap: '28px' }}>
-        <div style={{
-          background: 'var(--card-bg)',
-          border: '1px solid var(--card-border)',
-          borderRadius: 'var(--card-radius)',
-          padding: '24px',
-          boxShadow: 'var(--shadow-card)',
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
-            <span style={{ fontSize: 'var(--text-small-size)', fontWeight: 500, color: 'var(--text-tertiary)', letterSpacing: '0.12em', textTransform: 'uppercase' }}>
-              综合评分 Top 10
-            </span>
-            <span style={{ fontSize: 'var(--text-small-size)', color: 'var(--text-tertiary)', cursor: 'pointer' }} onClick={() => navigate('/scores')}>
-              查看全部 →
-            </span>
-          </div>
+        <Panel
+          variant="minimal"
+          title="综合评分 Top 10"
+          extra={<span style={{ fontSize: 'var(--text-small-size)', color: 'var(--text-tertiary)', cursor: 'pointer' }} onClick={() => navigate('/scores')}>查看全部 →</span>}
+        >
           <Table
             dataSource={scoresData?.items || []}
             columns={scoreColumns}
@@ -137,24 +197,14 @@ export default function Dashboard() {
             showHeader={false}
             onRow={(record) => ({ onClick: () => navigate(`/etfs/${record.etf_code}`) })}
           />
-        </div>
+        </Panel>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          <div style={{
-            background: 'var(--card-bg)',
-            border: '1px solid var(--card-border)',
-            borderRadius: 'var(--card-radius)',
-            padding: '24px',
-            boxShadow: 'var(--shadow-card)',
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-              <span style={{ fontSize: 'var(--text-small-size)', fontWeight: 500, color: 'var(--text-tertiary)', letterSpacing: '0.12em', textTransform: 'uppercase' }}>
-                我的收藏
-              </span>
-              {favCount > 0 && (
-                <span style={{ fontSize: 'var(--text-small-size)', color: 'var(--text-tertiary)', cursor: 'pointer' }} onClick={() => navigate('/etfs')}>查看全部 →</span>
-              )}
-            </div>
+          <Panel
+            variant="minimal"
+            title="我的收藏"
+            extra={favCount > 0 ? <span style={{ fontSize: 'var(--text-small-size)', color: 'var(--text-tertiary)', cursor: 'pointer' }} onClick={() => navigate('/etfs')}>查看全部 →</span> : undefined}
+          >
             {favLoading ? (
               <div style={{ textAlign: 'center', padding: '40px 0' }}><Spin /></div>
             ) : favCount === 0 ? (
@@ -181,23 +231,13 @@ export default function Dashboard() {
                 )}
               />
             )}
-          </div>
+          </Panel>
 
-          <div style={{
-            background: 'var(--card-bg)',
-            border: '1px solid var(--card-border)',
-            borderRadius: 'var(--card-radius)',
-            padding: '24px',
-            boxShadow: 'var(--shadow-card)',
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-              <span style={{ fontSize: 'var(--text-small-size)', fontWeight: 500, color: 'var(--text-tertiary)', letterSpacing: '0.12em', textTransform: 'uppercase' }}>
-                我的标的池
-              </span>
-              {(pools?.length || 0) > 0 && (
-                <span style={{ fontSize: 'var(--text-small-size)', color: 'var(--text-tertiary)', cursor: 'pointer' }} onClick={() => navigate('/pools')}>查看全部 →</span>
-              )}
-            </div>
+          <Panel
+            variant="minimal"
+            title="我的标的池"
+            extra={(pools?.length || 0) > 0 ? <span style={{ fontSize: 'var(--text-small-size)', color: 'var(--text-tertiary)', cursor: 'pointer' }} onClick={() => navigate('/pools')}>查看全部 →</span> : undefined}
+          >
             {poolsLoading ? (
               <div style={{ textAlign: 'center', padding: '40px 0' }}><Spin /></div>
             ) : (pools?.length || 0) === 0 ? (
@@ -233,7 +273,7 @@ export default function Dashboard() {
                 )}
               />
             )}
-          </div>
+          </Panel>
         </div>
       </div>
     </div>

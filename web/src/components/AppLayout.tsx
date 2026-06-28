@@ -278,7 +278,7 @@ export default function AppLayout() {
                 transition: 'all 200ms',
               }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.background = 'rgba(255,255,255,0.06)';
+                e.currentTarget.style.background = 'var(--bg-active)';
                 e.currentTarget.style.color = 'var(--text-primary)';
               }}
               onMouseLeave={(e) => {
@@ -307,7 +307,7 @@ export default function AppLayout() {
         <header
           style={{
             height: 64,
-            background: 'rgba(10, 10, 10, 0.85)',
+            background: 'rgba(10, 10, 10, 0.85)', /* var(--bg-base) at 85% opacity for frosted glass */
             backdropFilter: 'blur(12px)',
             borderBottom: '1px solid var(--border-default)',
             display: 'flex',
@@ -336,7 +336,7 @@ export default function AppLayout() {
                   transition: 'all 200ms',
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.background = 'rgba(255,255,255,0.06)';
+                  e.currentTarget.style.background = 'var(--bg-active)';
                   e.currentTarget.style.color = 'var(--text-primary)';
                 }}
                 onMouseLeave={(e) => {
@@ -358,7 +358,7 @@ export default function AppLayout() {
               { label: '红涨绿跌', value: 'china' },
               { label: '绿涨红跌', value: 'us' },
             ]}
-            style={{ background: 'rgba(255,255,255,0.04)', borderRadius: 10 }}
+            style={{ background: 'var(--bg-hover)', borderRadius: 10 }}
           />
 
           <Dropdown
@@ -384,7 +384,7 @@ export default function AppLayout() {
                 transition: 'background 200ms',
               }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.background = 'rgba(255,255,255,0.04)';
+                e.currentTarget.style.background = 'var(--bg-hover)';
               }}
               onMouseLeave={(e) => {
                 e.currentTarget.style.background = 'transparent';
