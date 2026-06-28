@@ -1,4 +1,4 @@
-"""Initialize demo data for ETF research platform.
+"""Initialize demo data for AD-Research.
 
 Generates mock indicator data for all ETFs, creates default score templates,
 and calculates composite scores.

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Comprehensive data completeness check for ETF Research Platform."""
+"""Comprehensive data completeness check for AD-Research."""
 
 import sys
 from collections import Counter
@@ -272,7 +272,7 @@ def check_redis():
 
 def main():
     print("=" * 70)
-    print("ETF RESEARCH PLATFORM - DATA COMPLETENESS CHECK")
+    print("AD-RESEARCH - DATA COMPLETENESS CHECK")
     print(f"检查时间: {date.today()}")
     print("=" * 70)
 

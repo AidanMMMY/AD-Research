@@ -1,4 +1,4 @@
-"""Custom exception classes for the ETF Research Platform.
+"""Custom exception classes for AD-Research.
 
 All platform-specific exceptions inherit from ETFPlatformError.
 """
