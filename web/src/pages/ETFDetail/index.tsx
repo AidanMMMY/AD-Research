@@ -143,7 +143,7 @@ export default function ETFDetail() {
   const handleOpenHelp = () => {
     open({
       pageType: 'etf_detail',
-      pageTitle: `ETF 详情 - ${etf.name || code}`,
+      pageTitle: `标的详情 - ${etf.name || code}`,
       contextData: buildETFDetailContext(code, etf, score, indicator, sentiment, timeRange),
       quickQuestions: getQuickQuestions('etf_detail'),
     });
