@@ -3,9 +3,9 @@
 Fetches daily OHLCV bars for active cryptocurrency instruments from
 Binance and upserts them into the ``etf_daily_bar`` table.
 
-Scheduled at 00:05 UTC daily (08:05 Beijing time) to capture the
-previous day's complete daily candle. Because crypto trades 24/7
-the "day" boundary is midnight UTC.
+Scheduled at 08:05 CST (00:05 UTC) daily, immediately after the
+UTC-midnight daily candle closes. The container runs in Asia/Shanghai
+timezone so the CronTrigger value is 08:05 local time.
 """
 
 import logging
