@@ -463,7 +463,7 @@ def run_backfill(
                 for code, bars in tiingo_results.items():
                     all_bars[code] = bars
                 tiingo_used_this_run = len(tiingo_to_fetch)
-                _incr_tiingo_consumed(redis_client, tiingo_used_this_run)
+                _incr_tiingo_consumed(redis_client, ym, tiingo_used_this_run)
                 logger.info(
                     "Tiingo consumed: %d this run, %d this month",
                     tiingo_used_this_run,
