@@ -33,12 +33,12 @@ function MessageBubble({ msg }: { msg: HelpMessage }) {
           borderTopRightRadius: isUser ? 4 : 14,
           borderTopLeftRadius: isUser ? 14 : 4,
           background: isUser
-            ? 'linear-gradient(135deg, #6366f1, #8b5cf6)'
-            : 'rgba(255,255,255,0.06)',
-          color: isUser ? '#fff' : '#e2e8f0',
+            ? 'var(--accent-dim)'
+            : 'var(--bg-elevated)',
+          color: isUser ? 'var(--accent)' : 'var(--text-primary)',
           fontSize: 14,
           lineHeight: 1.7,
-          border: isUser ? 'none' : '1px solid rgba(255,255,255,0.08)',
+          border: isUser ? 'none' : '1px solid var(--border-default)',
         }}
       >
         {isUser ? (
@@ -54,11 +54,11 @@ function MessageBubble({ msg }: { msg: HelpMessage }) {
               code: ({ children }) => (
                 <code
                   style={{
-                    background: 'rgba(255,255,255,0.08)',
+                    background: 'var(--bg-input)',
                     padding: '2px 6px',
                     borderRadius: 4,
                     fontSize: 13,
-                    color: '#e2e8f0',
+                    color: 'var(--text-secondary)',
                   }}
                 >
                   {children}
@@ -67,7 +67,7 @@ function MessageBubble({ msg }: { msg: HelpMessage }) {
               pre: ({ children }) => (
                 <pre
                   style={{
-                    background: 'rgba(255,255,255,0.05)',
+                    background: 'var(--bg-input)',
                     padding: 10,
                     borderRadius: 8,
                     overflow: 'auto',
@@ -92,9 +92,9 @@ function MessageBubble({ msg }: { msg: HelpMessage }) {
               th: ({ children }) => (
                 <th
                   style={{
-                    border: '1px solid rgba(255,255,255,0.1)',
+                    border: '1px solid var(--border-default)',
                     padding: '6px 10px',
-                    background: 'rgba(255,255,255,0.06)',
+                    background: 'var(--bg-elevated)',
                     textAlign: 'left',
                   }}
                 >
@@ -104,7 +104,7 @@ function MessageBubble({ msg }: { msg: HelpMessage }) {
               td: ({ children }) => (
                 <td
                   style={{
-                    border: '1px solid rgba(255,255,255,0.08)',
+                    border: '1px solid var(--border-default)',
                     padding: '6px 10px',
                   }}
                 >
@@ -174,7 +174,7 @@ export default function AIHelpDrawer() {
       width={isMobile ? '100%' : 480}
       closable={false}
       styles={{
-        body: { padding: 0, background: 'linear-gradient(180deg, #0a0f1e 0%, #0d1326 100%)' },
+        body: { padding: 0, background: 'var(--bg-base)' },
         header: { display: 'none' },
         mask: { background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)' },
       }}
@@ -184,7 +184,7 @@ export default function AIHelpDrawer() {
         <div
           style={{
             padding: '16px 20px',
-            borderBottom: '1px solid rgba(255,255,255,0.06)',
+            borderBottom: '1px solid var(--border-default)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
@@ -197,22 +197,21 @@ export default function AIHelpDrawer() {
                 width: 36,
                 height: 36,
                 borderRadius: 10,
-                background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
+                background: 'var(--accent)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 flexShrink: 0,
-                boxShadow: '0 0 12px rgba(99, 102, 241, 0.4)',
               }}
             >
-              <RobotOutlined style={{ color: '#fff', fontSize: 18 }} />
+              <RobotOutlined style={{ color: '#0a0a0a', fontSize: 18 }} />
             </div>
             <div style={{ minWidth: 0 }}>
               <div
                 style={{
                   fontSize: 16,
                   fontWeight: 600,
-                  color: '#f1f5f9',
+                  color: 'var(--text-primary)',
                   lineHeight: '22px',
                   overflow: 'hidden',
                   textOverflow: 'ellipsis',
@@ -225,7 +224,7 @@ export default function AIHelpDrawer() {
                 <div
                   style={{
                     fontSize: 12,
-                    color: '#64748b',
+                    color: 'var(--text-tertiary)',
                     lineHeight: '18px',
                     overflow: 'hidden',
                     textOverflow: 'ellipsis',
@@ -241,11 +240,10 @@ export default function AIHelpDrawer() {
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
             {context?.contextData && (
               <Tag
-                color="purple"
                 style={{
-                  background: 'rgba(99,102,241,0.12)',
-                  border: '1px solid rgba(99,102,241,0.2)',
-                  color: '#818cf8',
+                  background: 'var(--accent-dim)',
+                  border: '1px solid var(--accent-border)',
+                  color: 'var(--accent)',
                 }}
               >
                 <ThunderboltOutlined style={{ marginRight: 4 }} />
@@ -254,7 +252,7 @@ export default function AIHelpDrawer() {
             )}
             <Button
               type="text"
-              icon={<CloseOutlined style={{ color: '#94a3b8', fontSize: 16 }} />}
+              icon={<CloseOutlined style={{ color: 'var(--text-tertiary)', fontSize: 16 }} />}
               onClick={close}
               style={{ width: 32, height: 32, padding: 0 }}
             />
@@ -271,8 +269,8 @@ export default function AIHelpDrawer() {
             style={{
               margin: 12,
               borderRadius: 10,
-              background: 'rgba(234,179,8,0.08)',
-              border: '1px solid rgba(234,179,8,0.2)',
+              background: 'var(--color-warning-dim)',
+              border: '1px solid var(--color-warning-border)',
             }}
           />
         )}
@@ -286,8 +284,8 @@ export default function AIHelpDrawer() {
           }}
         >
           {messages.length === 0 && !isLoading && (
-            <div style={{ textAlign: 'center', marginTop: 80, color: '#64748b' }}>
-              <RobotOutlined style={{ fontSize: 40, marginBottom: 12, color: '#475569' }} />
+            <div style={{ textAlign: 'center', marginTop: 80, color: 'var(--text-tertiary)' }}>
+              <RobotOutlined style={{ fontSize: 40, marginBottom: 12, color: 'var(--text-tertiary)' }} />
               <div style={{ fontSize: 14 }}>点击右上角帮助图标开始提问</div>
             </div>
           )}
@@ -303,15 +301,15 @@ export default function AIHelpDrawer() {
                   padding: '12px 16px',
                   borderRadius: 14,
                   borderTopLeftRadius: 4,
-                  background: 'rgba(255,255,255,0.06)',
-                  border: '1px solid rgba(255,255,255,0.08)',
+                  background: 'var(--bg-elevated)',
+                  border: '1px solid var(--border-default)',
                   display: 'flex',
                   alignItems: 'center',
                   gap: 8,
                 }}
               >
                 <Spin size="small" />
-                <span style={{ color: '#94a3b8', fontSize: 14 }}>AI 思考中...</span>
+                <span style={{ color: 'var(--text-tertiary)', fontSize: 14 }}>AI 思考中...</span>
               </div>
             </div>
           )}
@@ -327,9 +325,9 @@ export default function AIHelpDrawer() {
                   icon={<ReloadOutlined />}
                   onClick={handleRetry}
                   style={{
-                    background: 'rgba(239,68,68,0.15)',
-                    border: '1px solid rgba(239,68,68,0.3)',
-                    color: '#fca5a5',
+                    background: 'var(--color-rise-dim)',
+                    border: '1px solid var(--color-rise-border)',
+                    color: 'var(--color-rise)',
                   }}
                 >
                   重试
@@ -338,8 +336,8 @@ export default function AIHelpDrawer() {
               style={{
                 marginTop: 8,
                 borderRadius: 10,
-                background: 'rgba(239,68,68,0.08)',
-                border: '1px solid rgba(239,68,68,0.2)',
+                background: 'var(--color-rise-dim)',
+                border: '1px solid var(--color-rise-border)',
               }}
             />
           )}
@@ -352,10 +350,10 @@ export default function AIHelpDrawer() {
           <div
             style={{
               padding: '12px 20px 0',
-              borderTop: '1px solid rgba(255,255,255,0.06)',
+              borderTop: '1px solid var(--border-default)',
             }}
           >
-            <div style={{ fontSize: 12, color: '#64748b', marginBottom: 8 }}>快捷问题</div>
+            <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginBottom: 8 }}>快捷问题</div>
             <Space size={8} wrap style={{ width: '100%' }}>
               {context.quickQuestions.map((q) => (
                 <Tag
@@ -364,9 +362,9 @@ export default function AIHelpDrawer() {
                     cursor: isLoading || !aiAvailable ? 'not-allowed' : 'pointer',
                     borderRadius: 8,
                     padding: '4px 10px',
-                    background: 'rgba(99,102,241,0.12)',
-                    border: '1px solid rgba(99,102,241,0.25)',
-                    color: '#a5b4fc',
+                    background: 'var(--accent-dim)',
+                    border: '1px solid var(--accent-border)',
+                    color: 'var(--accent)',
                     fontSize: 13,
                     opacity: isLoading || !aiAvailable ? 0.5 : 1,
                   }}
@@ -383,7 +381,7 @@ export default function AIHelpDrawer() {
         <div
           style={{
             padding: '12px 20px 16px',
-            borderTop: '1px solid rgba(255,255,255,0.06)',
+            borderTop: '1px solid var(--border-default)',
             display: 'flex',
             gap: 10,
           }}
@@ -409,8 +407,9 @@ export default function AIHelpDrawer() {
             loading={isLoading}
             disabled={!input.trim() || !aiAvailable}
             style={{
-              background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+              background: 'var(--accent)',
               border: 'none',
+              color: '#0a0a0a',
               alignSelf: 'flex-end',
             }}
           />

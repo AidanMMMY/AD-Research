@@ -21,12 +21,12 @@ export default function HelpTrigger({
         onClick={onClick}
         icon={
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-            <RobotOutlined style={{ fontSize: iconSize, color: '#818cf8' }} />
-            <QuestionCircleOutlined style={{ fontSize: iconSize - 2, color: '#94a3b8' }} />
+            <RobotOutlined style={{ fontSize: iconSize, color: 'var(--accent)' }} />
+            <QuestionCircleOutlined style={{ fontSize: iconSize - 2, color: 'var(--text-tertiary)' }} />
           </span>
         }
         style={{
-          color: '#94a3b8',
+          color: 'var(--text-secondary)',
           padding: size === 'small' ? '0 6px' : '0 8px',
           height: size === 'small' ? 28 : 32,
           display: 'inline-flex',
@@ -36,11 +36,11 @@ export default function HelpTrigger({
           ...style,
         }}
         onMouseEnter={(e) => {
-          e.currentTarget.style.color = '#e2e8f0';
-          e.currentTarget.style.background = 'rgba(99,102,241,0.1)';
+          e.currentTarget.style.color = 'var(--text-primary)';
+          e.currentTarget.style.background = 'var(--bg-hover)';
         }}
         onMouseLeave={(e) => {
-          e.currentTarget.style.color = '#94a3b8';
+          e.currentTarget.style.color = 'var(--text-secondary)';
           e.currentTarget.style.background = 'transparent';
         }}
       />

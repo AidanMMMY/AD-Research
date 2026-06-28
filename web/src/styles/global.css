@@ -286,6 +286,47 @@
   color: var(--text-secondary);
 }
 
+/* Popover */
+.ant-popover {
+  max-width: 360px;
+}
+
+.ant-popover-inner {
+  background: var(--card-bg) !important;
+  border: 1px solid var(--card-border) !important;
+  border-radius: var(--card-radius) !important;
+  box-shadow: var(--shadow-card) !important;
+  padding: 0 !important;
+}
+
+.ant-popover-title {
+  color: var(--text-primary) !important;
+  border-bottom: 1px solid var(--border-default) !important;
+}
+
+.ant-popover-inner-content {
+  color: var(--text-primary) !important;
+}
+
+.ant-popover-arrow::before {
+  background: var(--card-bg) !important;
+  border-color: var(--card-border) !important;
+}
+
+/* Tooltip */
+.ant-tooltip-inner {
+  background: var(--card-bg) !important;
+  border: 1px solid var(--card-border) !important;
+  border-radius: var(--radius-md) !important;
+  color: var(--text-primary) !important;
+  box-shadow: var(--shadow-card) !important;
+}
+
+.ant-tooltip-arrow::before {
+  background: var(--card-bg) !important;
+  border-color: var(--card-border) !important;
+}
+
 /* Modal / Drawer */
 .ant-modal-content,
 .ant-drawer-content {
@@ -302,6 +343,10 @@
 
 .ant-modal-title {
   color: var(--text-primary) !important;
+}
+
+.ant-drawer-body {
+  background: var(--bg-base) !important;
 }
 
 /* Radio */
