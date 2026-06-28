@@ -40,7 +40,7 @@ export default function HelpPopover({
     const pageType = relatedPageType || 'etf_detail';
     const pageTitleMap: Record<HelpContext['pageType'], string> = {
       score_ranking: '评分排名',
-      etf_detail: 'ETF 详情',
+      etf_detail: '标的详情',
       strategy_list: '策略管理',
       backtest_detail: '回测详情',
       screen: '全市场筛选器',

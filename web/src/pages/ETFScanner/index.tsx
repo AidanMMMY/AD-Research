@@ -31,7 +31,7 @@ export default function ETFScanner() {
 
   return (
     <div>
-      <h1 style={{ fontSize: 'var(--text-h1-size)', fontWeight: 500, color: 'var(--text-primary)', margin: '0 0 8px', letterSpacing: '-0.03em' }}>全市场筛选器</h1>
+      <h1 style={{ fontSize: 'var(--text-h1-size)', fontWeight: 500, color: 'var(--text-primary)', margin: '0 0 8px', letterSpacing: '-0.03em' }}>全市场扫描</h1>
       <p style={{ margin: '0 0 32px', color: 'var(--text-tertiary)', fontSize: 'var(--text-body-size)' }}>自动发现新增、退市、变更的标的，保持数据库与市场同步</p>
       <GlassCard title="全市场扫描" extra={
         <Button type="primary" icon={<ReloadOutlined />} onClick={handleScan} loading={isScanning}>
