@@ -44,11 +44,12 @@ class ETFScannerService:
         for etf in latest_etfs:
             latest_map[etf.code] = etf
 
-        # Only compare against A-share instruments — the akshare provider
-        # only returns A-share ETFs, so non-A-share instruments (US stocks,
-        # etc.) would otherwise be incorrectly marked as delisted.
+        # Only compare against A-share ETFs — the akshare provider only returns
+        # A-share ETFs. Filter by instrument_type to avoid marking A-share
+        # individual STOCKs (from Tushare discovery) as "delisted".
         db_etfs = self.db.query(ETFInfo).filter(
-            ETFInfo.market == "A股"
+            ETFInfo.market == "A股",
+            ETFInfo.instrument_type == "ETF",
         ).all()
         db_map: dict[str, ETFInfo] = {e.code: e for e in db_etfs}
 
