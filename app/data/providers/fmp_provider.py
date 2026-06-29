@@ -63,7 +63,7 @@ def _fetch_sp500_from_public_csv() -> list[ETFInfo]:
 
     FMP no longer allows new free API keys to access legacy endpoints such as
     /sp500_constituent. This public dataset is updated regularly and provides
-    the current S&P 500 constituent list.
+    the current S&P 500 constituent list together with GICS sector data.
     """
     try:
         resp = requests.get(_SP500_CSV_URL, timeout=30)
@@ -72,13 +72,16 @@ def _fetch_sp500_from_public_csv() -> list[ETFInfo]:
         raise DataProviderError(f"Failed to fetch S&P 500 CSV: {exc}") from exc
 
     df = pd.read_csv(pd.io.common.StringIO(resp.text))
-    if "Symbol" not in df.columns or "Security" not in df.columns:
+    required = {"Symbol", "Security"}
+    if not required.issubset(df.columns):
         raise DataProviderError("S&P 500 CSV has unexpected format")
 
     result = []
     for _, row in df.iterrows():
         symbol = str(row.get("Symbol", "")).strip().upper()
         name = str(row.get("Security", "")).strip()
+        sector = str(row.get("GICS Sector", "")).strip() or None
+        industry = str(row.get("GICS Sub-Industry", "")).strip() or None
         if not symbol or not name:
             continue
         result.append(
@@ -87,6 +90,9 @@ def _fetch_sp500_from_public_csv() -> list[ETFInfo]:
                 name=name,
                 market="US",
                 exchange="NYSE",
+                category=sector,
+                sector=sector,
+                industry=industry,
                 currency="USD",
             )
         )
