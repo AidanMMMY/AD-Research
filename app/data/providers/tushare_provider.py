@@ -196,6 +196,7 @@ class TushareProvider(DataProvider):
                         exchange=internal_exchange,
                         category=industry,  # industry as category for compatibility
                         inception_date=inception_date,
+                        list_date=inception_date,
                     )
                 )
 
@@ -470,6 +471,57 @@ class TushareProvider(DataProvider):
             "[TushareProvider] fetch_daily_all_market(%s): %d rows",
             trade_date_str, len(df),
         )
+        return df
+
+    # ------------------------------------------------------------------
+    # ETF metadata enrichment (fund_basic)
+    # ------------------------------------------------------------------
+
+    def fetch_etf_metadata(self) -> pd.DataFrame:
+        """Fetch A-share ETF metadata from Tushare ``fund_basic()``.
+
+        Returns a DataFrame with standardized columns suitable for updating
+        ``ETFInfo``:
+          code, name, manager, category, sub_category, underlying_index,
+          inception_date, list_date, fund_size
+        """
+        try:
+            self._limiter.acquire()
+            df = self._pro.fund_basic(market="E", status="L")
+        except Exception as exc:
+            raise DataProviderError(
+                f"Tushare fund_basic failed: {exc}"
+            ) from exc
+
+        if df is None or df.empty:
+            return pd.DataFrame(
+                columns=[
+                    "code", "name", "manager", "category", "sub_category",
+                    "underlying_index", "inception_date", "list_date", "fund_size",
+                ]
+            )
+
+        column_map = {
+            "ts_code": "code",
+            "name": "name",
+            "management": "manager",
+            "fund_type": "category",
+            "invest_type": "sub_category",
+            "benchmark": "underlying_index",
+            "found_date": "inception_date",
+            "list_date": "list_date",
+            "issue_amount": "fund_size",
+        }
+        df = df.rename(columns=column_map)
+        df["code"] = df["code"].apply(_to_internal_code)
+
+        for col in ("inception_date", "list_date"):
+            if col in df.columns:
+                df[col] = pd.to_datetime(df[col], format="%Y%m%d", errors="coerce").dt.date
+
+        if "fund_size" in df.columns:
+            df["fund_size"] = pd.to_numeric(df["fund_size"], errors="coerce")
+
         return df
 
     # ------------------------------------------------------------------
