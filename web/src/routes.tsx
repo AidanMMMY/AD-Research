@@ -67,7 +67,7 @@ export const routes: RouteConfig[] = [
   { path: '/backtests/:id', element: wrap(BacktestDetail), auth: true },
   { path: '/signals', element: wrap(SignalDashboard), auth: true, menu: { name: '交易信号', icon: 'ThunderboltOutlined' } },
   // ---- 加密货币 ----
-  { path: '/crypto', element: wrap(CryptoList), auth: true, menu: { name: '加密货币', icon: 'BitcoinOutlined', dividerBefore: true } },
+  { path: '/crypto', element: wrap(CryptoList), auth: true, menu: { name: '加密货币', icon: 'GoldOutlined', dividerBefore: true } },
   // { path: '/crypto/:code', element: wrap(CryptoDetail), auth: true }, // disabled until backend ready
   { path: '/paper-trading', element: wrap(PaperTrading), auth: true, menu: { name: '模拟交易', icon: 'DollarOutlined' } },
   // ---- AI 研究 ----
