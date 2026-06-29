@@ -91,6 +91,8 @@ class USStockDiscoveryPipeline(ETLPipeline):
 
         rows = []
         for stock in stocks[: _MAX_COMPANIES]:
+            sector = stock.sector
+            category = stock.category or sector
             rows.append(
                 {
                     "code": stock.code,
@@ -99,9 +101,9 @@ class USStockDiscoveryPipeline(ETLPipeline):
                     "market": stock.market or "US",
                     "currency": stock.currency or "USD",
                     "instrument_type": "STOCK",
-                    "sector": None,
-                    "industry": None,
-                    "market_cap": None,
+                    "sector": sector,
+                    "industry": stock.industry,
+                    "category": category,
                     "country": "US",
                     "status": "active",
                 }
@@ -112,11 +114,9 @@ class USStockDiscoveryPipeline(ETLPipeline):
     def load(self, data: pd.DataFrame) -> int:
         """Upsert stock records into etf_info.
 
-        Uses ON CONFLICT DO UPDATE to refresh names, exchanges, and
-        status while preserving existing category/indicator/bar data.
-
-        Only updates name, exchange, and status — does NOT overwrite
-        sector/industry/market_cap if already populated by enrichment.
+        Uses ON CONFLICT DO UPDATE to refresh names, exchanges, sector,
+        industry, category, and status while preserving existing
+        indicator/bar data.
         """
         if data.empty:
             return 0
@@ -130,6 +130,9 @@ class USStockDiscoveryPipeline(ETLPipeline):
                 "market": str(row.get("market", "US")),
                 "currency": str(row.get("currency", "USD")),
                 "instrument_type": str(row.get("instrument_type", "STOCK")),
+                "sector": row.get("sector"),
+                "industry": row.get("industry"),
+                "category": row.get("category"),
                 "country": str(row.get("country", "US")),
                 "status": str(row.get("status", "active")),
             }
@@ -148,6 +151,9 @@ class USStockDiscoveryPipeline(ETLPipeline):
                     "exchange": insert(ETFInfo).excluded.exchange,
                     "status": insert(ETFInfo).excluded.status,
                     "instrument_type": insert(ETFInfo).excluded.instrument_type,
+                    "sector": insert(ETFInfo).excluded.sector,
+                    "industry": insert(ETFInfo).excluded.industry,
+                    "category": insert(ETFInfo).excluded.category,
                     "updated_at": insert(ETFInfo).excluded.updated_at,
                 },
             )
