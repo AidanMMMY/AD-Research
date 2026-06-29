@@ -18,6 +18,7 @@ from app.data.pipelines.a_share_stock_discovery import AShareStockDiscoveryPipel
 from app.data.pipelines.a_share_stock_financials import AStockFinancialsPipeline
 from app.data.pipelines.a_share_stock_fundamental import AStockFundamentalPipeline
 from app.data.pipelines.crypto_daily import CryptoDailyPipeline
+from app.data.pipelines.etf_metadata_enrichment import ETFMetadataEnrichmentPipeline
 from app.data.pipelines.us_backfill import USHistoricalBackfillPipeline
 from app.data.pipelines.us_etf import USDailyPipeline
 from app.data.pipelines.us_stock_discovery import USStockDiscoveryPipeline
@@ -362,6 +363,28 @@ def run_etf_scan():
             db.close()
 
 
+def run_etf_metadata_enrichment():
+    """Run the ETF metadata enrichment pipeline (Sunday 04:00).
+
+    Fills missing ETF product metadata (manager, category, underlying index,
+    fund size, inception_date, list_date) from Tushare fund_basic.
+    """
+    with redis_lock("etf_metadata_enrichment", expire_seconds=7200) as acquired:
+        if not acquired:
+            print("⚠️ [SCHEDULER_WARN] ETF metadata enrichment skipped: lock in use")
+            return
+        db = SessionLocal()
+        try:
+            pipeline = ETFMetadataEnrichmentPipeline(db)
+            result = pipeline.run_with_retry(max_attempts=2)
+            print(
+                f"[Scheduler] ETF metadata enrichment: "
+                f"success={result.success}, records={result.records}"
+            )
+        finally:
+            db.close()
+
+
 def run_crypto_etl(target_date: date | None = None):
     """Run the cryptocurrency daily ETL pipeline.
 
@@ -648,6 +671,14 @@ def init_scheduler():
         trigger=CronTrigger(hour=8, minute=30),
         id="crypto_indicator_calculation",
         name="加密货币指标计算",
+        replace_existing=True,
+        max_instances=1,
+    )
+    scheduler.add_job(
+        run_etf_metadata_enrichment,
+        trigger=CronTrigger(day_of_week="sun", hour=4, minute=0),
+        id="etf_metadata_enrichment",
+        name="ETF元数据补全",
         replace_existing=True,
         max_instances=1,
     )
