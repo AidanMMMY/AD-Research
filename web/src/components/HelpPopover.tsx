@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { Popover, Button, Space, Divider } from 'antd';
+import { Popover, Button } from 'antd';
 import { InfoCircleOutlined, RobotOutlined, BookOutlined } from '@ant-design/icons';
 import { getTerm } from '@/utils/termDictionary';
 import { useAIHelp } from '@/hooks/useAIHelp';
@@ -48,7 +48,9 @@ export default function HelpPopover({
     };
 
     const question = `请详细解释"${title}"这个概念。${shortDesc}`;
-    const fullContext = ctx ? `当前页面上下文：\n${ctx}\n\n用户想了解的术语：${title}` : `用户想了解的术语：${title}`;
+    const fullContext = ctx
+      ? `当前页面上下文：\n${ctx}\n\n用户想了解的术语：${title}`
+      : `用户想了解的术语：${title}`;
 
     open({
       pageType,
@@ -67,72 +69,184 @@ export default function HelpPopover({
     if (!term) return null;
 
     return (
-      <div style={{ maxWidth: 320 }}>
+      <div
+        style={{
+          maxWidth: 340,
+          padding: 20,
+          color: 'var(--text-primary)',
+        }}
+      >
+        {/* Header */}
         <div
           style={{
-            fontSize: 15,
-            fontWeight: 600,
-            color: 'var(--text-primary)',
-            marginBottom: 8,
             display: 'flex',
             alignItems: 'center',
-            gap: 8,
+            gap: 10,
+            marginBottom: 12,
           }}
         >
-          <BookOutlined style={{ color: 'var(--accent)' }} />
-          {term.title}
+          <div
+            style={{
+              width: 28,
+              height: 28,
+              borderRadius: 8,
+              background: 'var(--accent-dim)',
+              border: '1px solid var(--accent-border)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0,
+            }}
+          >
+            <BookOutlined style={{ color: 'var(--accent)', fontSize: 14 }} />
+          </div>
+          <span
+            style={{
+              fontSize: 15,
+              fontWeight: 600,
+              color: 'var(--text-primary)',
+              lineHeight: 1.3,
+            }}
+          >
+            {term.title}
+          </span>
         </div>
 
-        <div style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.7, marginBottom: 10 }}>
+        {/* Short description / full description */}
+        <div
+          style={{
+            fontSize: 13,
+            color: 'var(--text-secondary)',
+            lineHeight: 1.7,
+            marginBottom: 14,
+          }}
+        >
           {term.fullDesc}
         </div>
 
+        {/* Formula */}
         {term.formula && (
           <div
             style={{
               background: 'var(--bg-input)',
               border: '1px solid var(--border-default)',
-              borderRadius: 8,
-              padding: '8px 12px',
-              marginBottom: 10,
-              fontSize: 13,
-              color: 'var(--accent)',
-              fontFamily: "'SF Mono', 'Fira Code', monospace",
+              borderLeft: '3px solid var(--accent)',
+              borderRadius: '0 8px 8px 0',
+              padding: '10px 12px',
+              marginBottom: 14,
             }}
           >
-            {term.formula}
+            <div
+              style={{
+                fontSize: 10,
+                fontWeight: 500,
+                color: 'var(--text-tertiary)',
+                textTransform: 'uppercase',
+                letterSpacing: '0.08em',
+                marginBottom: 6,
+              }}
+            >
+              公式
+            </div>
+            <div
+              style={{
+                fontSize: 13,
+                color: 'var(--accent)',
+                fontFamily: "'SF Mono', 'Fira Code', 'Cascadia Code', monospace",
+                lineHeight: 1.5,
+                wordBreak: 'break-word',
+              }}
+            >
+              {term.formula}
+            </div>
           </div>
         )}
 
+        {/* Interpretation */}
         {term.interpretation && (
-          <div style={{ fontSize: 12, color: 'var(--text-tertiary)', lineHeight: 1.6, marginBottom: 8 }}>
-            <strong style={{ color: 'var(--text-secondary)' }}>解读：</strong> {term.interpretation}
+          <div
+            style={{
+              marginBottom: term.example ? 10 : 16,
+            }}
+          >
+            <span
+              style={{
+                fontSize: 12,
+                fontWeight: 600,
+                color: 'var(--accent)',
+                marginRight: 6,
+              }}
+            >
+              解读：
+            </span>
+            <span
+              style={{
+                fontSize: 12,
+                color: 'var(--text-secondary)',
+                lineHeight: 1.7,
+              }}
+            >
+              {term.interpretation}
+            </span>
           </div>
         )}
 
+        {/* Example */}
         {term.example && (
-          <div style={{ fontSize: 12, color: 'var(--text-tertiary)', lineHeight: 1.6, marginBottom: 12 }}>
-            <strong style={{ color: 'var(--text-secondary)' }}>案例：</strong> {term.example}
+          <div style={{ marginBottom: 16 }}>
+            <span
+              style={{
+                fontSize: 12,
+                fontWeight: 600,
+                color: 'var(--accent)',
+                marginRight: 6,
+              }}
+            >
+              案例：
+            </span>
+            <span
+              style={{
+                fontSize: 12,
+                color: 'var(--text-secondary)',
+                lineHeight: 1.7,
+              }}
+            >
+              {term.example}
+            </span>
           </div>
         )}
 
-        <Divider style={{ margin: '12px 0', borderColor: 'var(--border-default)' }} />
+        {/* Divider */}
+        <div
+          style={{
+            height: 1,
+            background: 'var(--border-default)',
+            margin: '16px 0',
+          }}
+        />
 
-        <Space size={8}>
+        {/* Footer action */}
+        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
           <Button
             type="primary"
             size="small"
             icon={<RobotOutlined />}
-            onClick={() => handleAskAI(term.title, term.shortDesc, term.relatedPageType, contextData)}
+            onClick={() =>
+              handleAskAI(term.title, term.shortDesc, term.relatedPageType, contextData)
+            }
             style={{
               background: 'var(--accent)',
               border: 'none',
               color: '#0a0a0a',
+              borderRadius: 8,
+              fontWeight: 500,
+              height: 32,
+              padding: '0 14px',
             }}
           >
             问 AI
           </Button>
-        </Space>
+        </div>
       </div>
     );
   }, [term, contextData]);
@@ -146,16 +260,7 @@ export default function HelpPopover({
       content={content}
       trigger={trigger}
       placement="top"
-      overlayStyle={{ width: 'auto', maxWidth: 360 }}
-      styles={{
-        body: {
-          background: 'var(--card-bg)',
-          border: '1px solid var(--card-border)',
-          borderRadius: 'var(--card-radius)',
-          padding: 16,
-          boxShadow: 'var(--shadow-card)',
-        },
-      }}
+      overlayStyle={{ width: 'auto', maxWidth: 380 }}
     >
       <span
         style={{
