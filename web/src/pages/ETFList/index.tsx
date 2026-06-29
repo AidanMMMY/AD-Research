@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Table, Input, Select, List, Skeleton } from 'antd';
 import { SearchOutlined } from '@ant-design/icons';
@@ -24,8 +24,19 @@ export default function ETFList() {
     page,
     page_size: 50,
   });
-  const { data: categories } = useETFCategories();
+  const { data: categories } = useETFCategories({
+    market,
+    instrument_type: instrumentType,
+  });
   const { data: markets } = useETFMarkets();
+
+  // Clear the selected category if it no longer exists under the current
+  // market / instrument type filters.
+  useEffect(() => {
+    if (category && categories && !categories.includes(category)) {
+      setCategory(undefined);
+    }
+  }, [categories, category]);
 
   const columns = [
     {

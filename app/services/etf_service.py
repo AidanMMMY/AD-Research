@@ -170,14 +170,26 @@ class ETFService:
         cache_set(cache_key, response.model_dump() if response else None, ttl=600)
         return response
 
-    def get_categories(self) -> list[str]:
-        """Get all distinct ETF categories."""
-        cache_key = "etf:categories"
+    def get_categories(
+        self, market: str | None = None, instrument_type: str | None = None
+    ) -> list[str]:
+        """Get distinct ETF categories, optionally filtered by market and type."""
+        segments = ["etf:categories"]
+        if market is not None:
+            segments.append(f"market={market}")
+        if instrument_type is not None:
+            segments.append(f"instrument_type={instrument_type}")
+        cache_key = ":".join(segments)
         cached = cache_get(cache_key)
         if cached is not None:
             return cached
 
-        results = self.db.query(ETFInfo.category).distinct().all()
+        query = self.db.query(ETFInfo.category).distinct()
+        if market is not None:
+            query = query.filter(ETFInfo.market == market)
+        if instrument_type is not None:
+            query = query.filter(ETFInfo.instrument_type == instrument_type)
+        results = query.all()
         categories = [r[0] for r in results if r[0]]
         cache_set(cache_key, categories, ttl=600)
         return categories
