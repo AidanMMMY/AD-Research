@@ -18,10 +18,10 @@ export function useETFDetail(code: string) {
   });
 }
 
-export function useETFCategories() {
+export function useETFCategories(filters?: { market?: string; instrument_type?: string }) {
   return useQuery({
-    queryKey: ['etf-categories'],
-    queryFn: () => etfApi.categories().then((r) => r.data.categories),
+    queryKey: ['etf-categories', filters],
+    queryFn: () => etfApi.categories(filters).then((r) => r.data.categories),
     staleTime: 300_000,
   });
 }

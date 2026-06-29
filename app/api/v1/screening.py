@@ -97,8 +97,9 @@ def list_presets(
 
 @router.get("/categories", response_model=CategoryListResponse)
 def list_categories(
+    market: str = Query(None, description="Filter by market"),
     service: ScreeningService = Depends(get_screening_service),
 ):
-    """List ETF categories with active ETF counts."""
-    categories = service.get_categories()
+    """List ETF categories with active ETF counts, optionally filtered by market."""
+    categories = service.get_categories(market=market)
     return CategoryListResponse(categories=categories)

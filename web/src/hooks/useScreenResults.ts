@@ -18,10 +18,10 @@ export function useScreenPresets() {
   });
 }
 
-export function useScreenCategories() {
+export function useScreenCategories(filters?: { market?: string }) {
   return useQuery({
-    queryKey: ['screen-categories'],
-    queryFn: () => screenApi.categories().then((r) => r.data.categories),
+    queryKey: ['screen-categories', filters],
+    queryFn: () => screenApi.categories(filters).then((r) => r.data.categories),
     staleTime: 300_000,
   });
 }

@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Table, Space, Select, InputNumber, Button, Row, Col } from 'antd';
 import { useScreenResults, useScreenPresets, useScreenCategories } from '@/hooks/useScreenResults';
@@ -42,8 +42,18 @@ export default function Screen() {
   );
   const { data: results, isLoading } = useScreenResults(queryFilters);
   const { data: presets } = useScreenPresets();
-  const { data: categories } = useScreenCategories();
+  const { data: categories } = useScreenCategories({ market: filters.market });
   const { data: markets } = useETFMarkets();
+
+  // Clear the selected category if it is not available in the current market.
+  useEffect(() => {
+    if (filters.category && categories) {
+      const available = categories.some((c: any) => c.category === filters.category);
+      if (!available) {
+        setFilter('category', undefined);
+      }
+    }
+  }, [categories, filters.category, setFilter]);
 
   const handleOpenHelp = () => {
     open({

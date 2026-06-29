@@ -44,9 +44,13 @@ def get_etf(code: str, service: ETFService = Depends(get_etf_service)):
 
 
 @router.get("/categories/list")
-def list_categories(service: ETFService = Depends(get_etf_service)):
-    """List all distinct ETF categories."""
-    return {"categories": service.get_categories()}
+def list_categories(
+    market: str = Query(None),
+    instrument_type: str = Query(None),
+    service: ETFService = Depends(get_etf_service),
+):
+    """List distinct ETF categories, optionally filtered by market and type."""
+    return {"categories": service.get_categories(market=market, instrument_type=instrument_type)}
 
 
 @router.get("/markets/list")

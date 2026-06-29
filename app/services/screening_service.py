@@ -435,24 +435,31 @@ class ScreeningService:
         cache_set(cache_key, presets, ttl=600)
         return presets
 
-    def get_categories(self) -> list[dict[str, Any]]:
-        """Return ETF categories with ETF counts.
+    def get_categories(self, market: str | None = None) -> list[dict[str, Any]]:
+        """Return ETF categories with active ETF counts, optionally filtered by market.
 
         Returns:
             List of dicts with category name and count of active ETFs.
         """
-        cache_key = "screen:categories"
+        segments = ["screen:categories"]
+        if market is not None:
+            segments.append(f"market={market}")
+        cache_key = ":".join(segments)
         cached = cache_get(cache_key)
         if cached is not None:
             return cached
 
-        results = (
+        query = (
             self.db.query(
                 ETFInfo.category,
                 func.count(ETFInfo.code).label("count"),
             )
             .filter(ETFInfo.status == "active")
-            .group_by(ETFInfo.category)
+        )
+        if market is not None:
+            query = query.filter(ETFInfo.market == market)
+        results = (
+            query.group_by(ETFInfo.category)
             .order_by(desc("count"))
             .all()
         )

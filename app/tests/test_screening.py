@@ -418,6 +418,24 @@ def test_get_categories(db_session, sample_etfs_and_indicators):
     assert cat_map["债券型"] == 1
 
 
+def test_get_categories_with_market_filter(db_session, sample_etfs_and_indicators):
+    """get_categories should filter by market and update counts."""
+    service = ScreeningService(db_session)
+    categories = service.get_categories(market="SH")
+
+    cat_map = {c["category"]: c["count"] for c in categories}
+    assert cat_map["股票型"] == 2
+    assert cat_map["商品型"] == 1
+    assert cat_map["债券型"] == 1
+
+
+def test_get_categories_with_empty_market_filter(db_session, sample_etfs_and_indicators):
+    """get_categories with a non-matching market should return empty list."""
+    service = ScreeningService(db_session)
+    categories = service.get_categories(market="US")
+    assert categories == []
+
+
 # ---------------------------------------------------------------------------
 # Score filtering tests
 # ---------------------------------------------------------------------------
