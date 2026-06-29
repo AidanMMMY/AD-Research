@@ -60,9 +60,19 @@ export default function ETFList() {
       title: '类型',
       dataIndex: 'instrument_type',
       width: 70,
-      render: (v: string) => (
-        <ThemeTag variant={v === 'STOCK' ? 'accent' : 'default'}>{v === 'STOCK' ? '个股' : 'ETF'}</ThemeTag>
-      ),
+      render: (v: string) => {
+        const labelMap: Record<string, string> = {
+          STOCK: '个股',
+          CRYPTO: '数字货币',
+          ETF: 'ETF',
+        };
+        const variantMap: Record<string, 'accent' | 'default'> = {
+          STOCK: 'accent',
+          CRYPTO: 'accent',
+          ETF: 'default',
+        };
+        return <ThemeTag variant={variantMap[v] || 'default'}>{labelMap[v] || v}</ThemeTag>;
+      },
     },
     {
       title: '管理公司',
@@ -138,6 +148,7 @@ export default function ETFList() {
           options={[
             { label: 'ETF', value: 'ETF' },
             { label: '个股', value: 'STOCK' },
+            { label: '数字货币', value: 'CRYPTO' },
           ]}
           value={instrumentType}
           onChange={(v) => { setInstrumentType(v); setPage(1); }}
