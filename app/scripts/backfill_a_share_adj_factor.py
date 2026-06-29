@@ -2,7 +2,7 @@
 """Backfill adj_factor for existing A-share daily bars.
 
 Fetches Tushare ``adj_factor()`` per stock over the full date range where
-local bars exist, then bulk-updates ``etf_daily_bar.adj_factor``.
+local bars exist, then bulk-updates ``instrument_daily_bar.adj_factor``.
 
 Usage (inside container):
     cd /app && PYTHONPATH=/app python3 app/scripts/backfill_a_share_adj_factor.py
@@ -44,7 +44,7 @@ def main() -> int:
                 COALESCE(MIN(b.trade_date), CURRENT_DATE) AS min_date,
                 COALESCE(MAX(b.trade_date), CURRENT_DATE) AS max_date
             FROM etf_info e
-            LEFT JOIN etf_daily_bar b ON b.etf_code = e.code
+            LEFT JOIN instrument_daily_bar b ON b.etf_code = e.code
             WHERE e.market = 'A股'
               AND e.instrument_type = 'STOCK'
               AND e.status = 'active'
@@ -112,7 +112,7 @@ def main() -> int:
             )
             update_sql = text(
                 f"""
-                UPDATE etf_daily_bar AS t
+                UPDATE instrument_daily_bar AS t
                 SET adj_factor = v.adj_factor
                 FROM (VALUES {values}) AS v(etf_code, trade_date, adj_factor)
                 WHERE t.etf_code = v.etf_code
@@ -129,7 +129,7 @@ def main() -> int:
                 errors.append(f"bulk update: {exc}")
 
         logger.info(
-            "Updated %d / %d etf_daily_bar rows (fetched %d adj_factor records)",
+            "Updated %d / %d instrument_daily_bar rows (fetched %d adj_factor records)",
             updated, len(records), len(records),
         )
         if errors:

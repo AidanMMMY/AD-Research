@@ -11,7 +11,7 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
-from app.models.etf import ETFDailyBar, ETFIndicator, ETFInfo
+from app.models.etf import InstrumentDailyBar, ETFIndicator, ETFInfo
 from app.models.research import ResearchNote
 from app.models.scoring import ETFScore
 from app.services.llm import DeepSeekProvider, LLMService
@@ -51,10 +51,10 @@ class ResearchService:
         # 2. Fetch recent daily bars
         start = date.today() - timedelta(days=_CONTEXT_DAYS + 5)
         bars = (
-            self.db.query(ETFDailyBar)
-            .filter(ETFDailyBar.etf_code == instrument_code)
-            .filter(ETFDailyBar.trade_date >= start)
-            .order_by(ETFDailyBar.trade_date.asc())
+            self.db.query(InstrumentDailyBar)
+            .filter(InstrumentDailyBar.etf_code == instrument_code)
+            .filter(InstrumentDailyBar.trade_date >= start)
+            .order_by(InstrumentDailyBar.trade_date.asc())
             .all()
         )
         if len(bars) < 5:
@@ -229,7 +229,7 @@ class ResearchService:
     # Helpers
     # ------------------------------------------------------------------
 
-    def _build_price_summary(self, instrument: ETFInfo, bars: list[ETFDailyBar]) -> str:
+    def _build_price_summary(self, instrument: ETFInfo, bars: list[InstrumentDailyBar]) -> str:
         if not bars:
             return "无数据"
 

@@ -21,7 +21,7 @@ from sqlalchemy.orm import sessionmaker
 
 from app.config import get_settings
 from app.data.providers.akshare_provider import AkshareProvider
-from app.models.etf import ETFDailyBar
+from app.models.etf import InstrumentDailyBar
 
 settings = get_settings()
 engine = create_engine(settings.database_url)
@@ -34,7 +34,7 @@ def get_etf_latest_dates(db):
     """Get latest trade_date for each ETF."""
     result = db.execute(text('''
         SELECT etf_code, MAX(trade_date) as max_date
-        FROM etf_daily_bar
+        FROM instrument_daily_bar
         GROUP BY etf_code
         ORDER BY max_date DESC
     ''')).fetchall()
@@ -137,19 +137,19 @@ def main():
         # UPSERT
         print("\n写入数据库...")
         stmt = (
-            insert(ETFDailyBar)
+            insert(InstrumentDailyBar)
             .values(records)
             .on_conflict_do_update(
                 index_elements=["etf_code", "trade_date"],
                 set_={
-                    "open": insert(ETFDailyBar).excluded.open,
-                    "high": insert(ETFDailyBar).excluded.high,
-                    "low": insert(ETFDailyBar).excluded.low,
-                    "close": insert(ETFDailyBar).excluded.close,
-                    "volume": insert(ETFDailyBar).excluded.volume,
-                    "amount": insert(ETFDailyBar).excluded.amount,
-                    "change_pct": insert(ETFDailyBar).excluded.change_pct,
-                    "turnover_rate": insert(ETFDailyBar).excluded.turnover_rate,
+                    "open": insert(InstrumentDailyBar).excluded.open,
+                    "high": insert(InstrumentDailyBar).excluded.high,
+                    "low": insert(InstrumentDailyBar).excluded.low,
+                    "close": insert(InstrumentDailyBar).excluded.close,
+                    "volume": insert(InstrumentDailyBar).excluded.volume,
+                    "amount": insert(InstrumentDailyBar).excluded.amount,
+                    "change_pct": insert(InstrumentDailyBar).excluded.change_pct,
+                    "turnover_rate": insert(InstrumentDailyBar).excluded.turnover_rate,
                 },
             )
         )
@@ -161,7 +161,7 @@ def main():
         # Verify
         result = db.execute(text('''
             SELECT MAX(trade_date) as max_date, COUNT(DISTINCT etf_code) as etf_count
-            FROM etf_daily_bar
+            FROM instrument_daily_bar
             WHERE trade_date = '2026-06-08'
         ''')).fetchone()
         print(f"\n验证: 2026-06-08 有 {result[1]} 只ETF的数据")

@@ -4,7 +4,7 @@ Re-exports all model classes for convenient imports.
 """
 
 from app.models.etf import (
-    ETFDailyBar,
+    InstrumentDailyBar,
     ETFIndicator,
     ETFInfo,
     FXRate,
@@ -29,7 +29,7 @@ from app.models.user import User
 __all__ = [
     # ETF models
     "ETFInfo",
-    "ETFDailyBar",
+    "InstrumentDailyBar",
     "ETFIndicator",
     "FXRate",
     # A-Share stock models

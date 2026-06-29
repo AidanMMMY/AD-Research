@@ -8,7 +8,7 @@ sys.path.insert(0, "/Users/aidanliu/Documents/vibe-trading/etf-research-platform
 from sqlalchemy import func, text
 
 from app.core.database import SessionLocal, engine
-from app.models.etf import ETFDailyBar, ETFIndicator, ETFInfo
+from app.models.etf import InstrumentDailyBar, ETFIndicator, ETFInfo
 from app.models.etl import BacktestResult, Signal, StrategyConfig
 from app.models.pool import ETFPools, PoolMember, PoolSnapshot, PoolWeight
 from app.models.scoring import ETFScore, ReportMetadata, ScoreTemplate
@@ -141,9 +141,9 @@ def check_6_active_vs_daily_bars(db):
     inactive_etfs = db.query(func.count(ETFInfo.code)).filter(ETFInfo.status != "active").filter(ETFInfo.status.isnot(None)).scalar()
     null_status = db.query(func.count(ETFInfo.code)).filter(ETFInfo.status.is_(None)).scalar()
 
-    etfs_with_bars = db.query(ETFDailyBar.etf_code).distinct().count()
-    active_with_bars = db.query(ETFDailyBar.etf_code).filter(
-        ETFDailyBar.etf_code.in_(
+    etfs_with_bars = db.query(InstrumentDailyBar.etf_code).distinct().count()
+    active_with_bars = db.query(InstrumentDailyBar.etf_code).filter(
+        InstrumentDailyBar.etf_code.in_(
             db.query(ETFInfo.code).filter(ETFInfo.status == "active")
         )
     ).distinct().count()
@@ -163,7 +163,7 @@ def check_6_active_vs_daily_bars(db):
         missing = db.query(ETFInfo.code, ETFInfo.name).filter(
             ETFInfo.status == "active"
         ).filter(
-            ~ETFInfo.code.in_(db.query(ETFDailyBar.etf_code).distinct())
+            ~ETFInfo.code.in_(db.query(InstrumentDailyBar.etf_code).distinct())
         ).limit(20).all()
         for code, name in missing:
             print(f"    - {code}: {name}")
@@ -180,7 +180,7 @@ def check_7_latest_dates(db):
     print("-" * 70)
 
     tables_with_dates = [
-        ("etf_daily_bar", "trade_date"),
+        ("instrument_daily_bar", "trade_date"),
         ("etf_indicator", "trade_date"),
         ("etf_score", "trade_date"),
         ("etf_scan_log", "scan_date"),
@@ -228,9 +228,9 @@ def check_8_null_critical_columns(db):
         ("etf_info", "code", "PRIMARY KEY"),
         ("etf_info", "name", "NOT NULL"),
         ("etf_info", "status", "has default"),
-        ("etf_daily_bar", "etf_code", "PRIMARY KEY"),
-        ("etf_daily_bar", "trade_date", "PRIMARY KEY"),
-        ("etf_daily_bar", "close", "price data"),
+        ("instrument_daily_bar", "etf_code", "PRIMARY KEY"),
+        ("instrument_daily_bar", "trade_date", "PRIMARY KEY"),
+        ("instrument_daily_bar", "close", "price data"),
         ("etf_indicator", "etf_code", "NOT NULL FK"),
         ("etf_indicator", "trade_date", "NOT NULL"),
         ("etf_score", "etf_code", "NOT NULL FK"),
@@ -329,7 +329,7 @@ def check_extra(db):
     # Row counts per table
     print("\n  Row counts per table:")
     tables = [
-        "etf_info", "etf_daily_bar", "etf_indicator", "etf_score",
+        "etf_info", "instrument_daily_bar", "etf_indicator", "etf_score",
         "score_template", "etf_pools", "pool_member", "pool_weight",
         "pool_snapshot", "strategy_config", "backtest_result", "signal",
         "etf_scan_log", "etl_log", "report_metadata", "data_source_config",

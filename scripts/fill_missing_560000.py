@@ -18,7 +18,7 @@ from sqlalchemy.dialects.postgresql import insert
 
 from app.config import get_settings
 from app.core.calendar import get_trading_dates
-from app.models.etf import ETFDailyBar
+from app.models.etf import InstrumentDailyBar
 
 settings = get_settings()
 engine = create_engine(settings.database_url)
@@ -30,7 +30,7 @@ def get_last_real_bar() -> dict:
     with engine.connect() as conn:
         result = conn.execute(text(f"""
             SELECT trade_date, close
-            FROM etf_daily_bar
+            FROM instrument_daily_bar
             WHERE etf_code = '{TARGET_CODE}' AND (is_synthetic IS NULL OR is_synthetic = false)
             ORDER BY trade_date DESC
             LIMIT 1
@@ -72,7 +72,7 @@ def generate_synthetic_bars(last_close: float, trade_dates: list[date]) -> list[
 def upsert_bars(records: list[dict]) -> int:
     if not records:
         return 0
-    insert_stmt = insert(ETFDailyBar).values(records)
+    insert_stmt = insert(InstrumentDailyBar).values(records)
     upsert_stmt = insert_stmt.on_conflict_do_update(
         index_elements=["etf_code", "trade_date"],
         set_={
@@ -97,7 +97,7 @@ def main():
     print(f"Last real bar: {last['trade_date']} @ {last['close']}")
 
     with engine.connect() as conn:
-        latest = conn.execute(text("SELECT MAX(trade_date) FROM etf_daily_bar")).scalar()
+        latest = conn.execute(text("SELECT MAX(trade_date) FROM instrument_daily_bar")).scalar()
 
     trade_dates = get_trading_dates(last["trade_date"] + timedelta(days=1), latest)
     print(f"Generating {len(trade_dates)} synthetic bars up to {latest}")

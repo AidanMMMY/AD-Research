@@ -10,53 +10,29 @@ import numpy as np
 import pandas as pd
 
 from app.data.indicators.technical import calc_rsi
+from app.data.repositories import price_repository
 
 
-def _load_bars(etf_code: str, start_date: date, end_date: date, db: Any | None) -> pd.DataFrame:
-    """Load historical bars for backtesting.
+def _load_bars(etf_code: str, start_date: date, end_date: date, db: Any) -> pd.DataFrame:
+    """Load historical bars for backtesting from the local price repository."""
+    if db is None:
+        raise ValueError("Backtest engine requires a database session")
 
-    If a SQLAlchemy session is provided, read from etf_daily_bar so that
-    split/dividend adjusted prices are available. Otherwise fall back to
-    AkshareProvider (legacy A-share path).
-    """
-    if db is not None:
-        from sqlalchemy import select
-        from app.models.etf import ETFDailyBar
+    # Guard against backtest ranges that pre-date the instrument's listing.
+    list_date = price_repository.get_list_date(db, etf_code)
+    if list_date and end_date < list_date:
+        return pd.DataFrame()
+    if list_date and start_date < list_date:
+        start_date = list_date
 
-        stmt = (
-            select(ETFDailyBar)
-            .where(ETFDailyBar.etf_code == etf_code)
-            .where(ETFDailyBar.trade_date >= start_date)
-            .where(ETFDailyBar.trade_date <= end_date)
-            .order_by(ETFDailyBar.trade_date.asc())
-        )
-        bars = db.execute(stmt).scalars().all()
-        if not bars:
-            return pd.DataFrame()
-        return pd.DataFrame(
-            [
-                {
-                    "trade_date": b.trade_date,
-                    "open": b.open,
-                    "high": b.high,
-                    "low": b.low,
-                    "close": float(b.close),
-                    "adj_close": float(b.close) * float(b.adj_factor or 1.0),
-                    "volume": b.volume,
-                }
-                for b in bars
-            ]
-        )
-
-    # Legacy fallback: A-share via Akshare (adjustment info may be unavailable)
-    from app.data.providers.akshare_provider import AkshareProvider
-
-    provider = AkshareProvider()
-    df = provider.fetch_daily_bars([etf_code], start_date, end_date)
+    df = price_repository.get_bars(
+        db, etf_code, start_date, end_date, adjusted=True
+    )
     if df.empty:
         return df
-    adj_factor = df.get("adj_factor", pd.Series(1.0, index=df.index)).fillna(1.0)
-    df = df.assign(adj_close=df["close"] * adj_factor)
+
+    # Ensure expected columns are present for the engine.
+    df = df[["trade_date", "open", "high", "low", "close", "adj_close", "volume"]].copy()
     return df
 
 
@@ -168,7 +144,7 @@ def run_backtest(
         position_size: Position size ratio (0.0 - 1.0).
         risk_free_rate: Annual risk-free rate used in Sharpe calculation.
         db: Optional SQLAlchemy session. If provided, reads adjusted bars
-            from etf_daily_bar; otherwise falls back to AkshareProvider.
+            from instrument_daily_bar; otherwise falls back to AkshareProvider.
 
     Returns:
         BacktestResult with NAV, trades, metrics, and signals.

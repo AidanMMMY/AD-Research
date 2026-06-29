@@ -21,7 +21,7 @@ def main():
     try:
         print("=== Cleaning daily bar anomalies ===")
         result = db.execute(text("""
-            UPDATE etf_daily_bar
+            UPDATE instrument_daily_bar
             SET volume = 0
             WHERE volume <= 0
             RETURNING etf_code, trade_date, close

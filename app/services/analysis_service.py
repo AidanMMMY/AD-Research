@@ -26,7 +26,7 @@ class AnalysisService:
     ) -> dict:
         """Compute the return correlation matrix for a list of ETFs.
 
-        Uses close prices from ETFDailyBar to compute daily
+        Uses close prices from InstrumentDailyBar to compute daily
         returns, then calculates the correlation over the last `window`
         days.
 
@@ -45,24 +45,20 @@ class AnalysisService:
                 "method": method,
             }
 
-        # Fetch close prices from daily bars for each code, ordered by date
-        from app.models.etf import ETFDailyBar
+        # Fetch adjusted close prices from the local price repository
+        from app.data.repositories import price_repository
 
         data = {}
         for code in codes:
-            rows = (
-                self.db.query(ETFDailyBar.trade_date, ETFDailyBar.close)
-                .filter(ETFDailyBar.etf_code == code)
-                .filter(ETFDailyBar.close.isnot(None))
-                .order_by(ETFDailyBar.trade_date.asc())
-                .limit(window * 2)
-                .all()
+            df = price_repository.get_bars(
+                self.db, code, adjusted=True, limit=window * 2
             )
-            if len(rows) >= 2:
-                prices = np.array([float(r.close) for r in rows])
-                returns = np.diff(prices) / prices[:-1]
-                # Take the last `window` returns
-                data[code] = returns[-window:]
+            if df.empty or len(df) < 2:
+                continue
+            df = df.sort_values("trade_date").reset_index(drop=True)
+            prices = df["adj_close"].astype(float).to_numpy()
+            returns = np.diff(prices) / prices[:-1]
+            data[code] = returns[-window:]
 
         # Only keep codes with sufficient data
         valid_codes = [c for c in codes if c in data and len(data[c]) >= 2]

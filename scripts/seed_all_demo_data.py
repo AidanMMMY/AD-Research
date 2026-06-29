@@ -35,7 +35,7 @@ ETF_NAMES = {
     "510050.SH": "上证50ETF",
 }
 
-SEED_DATE = date(2025, 10, 27)  # Latest date in etf_daily_bar
+SEED_DATE = date(2025, 10, 27)  # Latest date in instrument_daily_bar
 
 
 def ensure_missing_tables(conn):

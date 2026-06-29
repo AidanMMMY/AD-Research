@@ -429,15 +429,15 @@ class PoolEnhancementService:
             }
 
         # Get daily returns for the last 60 trading days
-        from app.models.etf import ETFDailyBar
+        from app.models.etf import InstrumentDailyBar
 
         returns_data = {}
         for code in codes:
             bars = (
-                self.db.query(ETFDailyBar)
-                .filter(ETFDailyBar.etf_code == code)
-                .filter(ETFDailyBar.change_pct.isnot(None))
-                .order_by(ETFDailyBar.trade_date.desc())
+                self.db.query(InstrumentDailyBar)
+                .filter(InstrumentDailyBar.etf_code == code)
+                .filter(InstrumentDailyBar.change_pct.isnot(None))
+                .order_by(InstrumentDailyBar.trade_date.desc())
                 .limit(60)
                 .all()
             )
@@ -783,27 +783,27 @@ class PoolEnhancementService:
 
     def _get_latest_close_prices(self, codes: list[str]) -> dict[str, float]:
         """Get the latest close price for each ETF code from daily bars."""
-        from app.models.etf import ETFDailyBar
+        from app.models.etf import InstrumentDailyBar
 
         if not codes:
             return {}
 
         latest_subq = (
             self.db.query(
-                ETFDailyBar.etf_code,
-                func.max(ETFDailyBar.trade_date).label("latest_date"),
+                InstrumentDailyBar.etf_code,
+                func.max(InstrumentDailyBar.trade_date).label("latest_date"),
             )
-            .filter(ETFDailyBar.etf_code.in_(codes))
-            .group_by(ETFDailyBar.etf_code)
+            .filter(InstrumentDailyBar.etf_code.in_(codes))
+            .group_by(InstrumentDailyBar.etf_code)
             .subquery()
         )
 
         bars = (
-            self.db.query(ETFDailyBar)
+            self.db.query(InstrumentDailyBar)
             .join(
                 latest_subq,
-                (ETFDailyBar.etf_code == latest_subq.c.etf_code)
-                & (ETFDailyBar.trade_date == latest_subq.c.latest_date),
+                (InstrumentDailyBar.etf_code == latest_subq.c.etf_code)
+                & (InstrumentDailyBar.trade_date == latest_subq.c.latest_date),
             )
             .all()
         )

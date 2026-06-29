@@ -93,13 +93,13 @@ def _resolve_tier(
         return codes, "non-core"
     elif tier == "remaining":
         # Symbols that have NO price data yet
-        from app.models.etf import ETFDailyBar
+        from app.models.etf import InstrumentDailyBar
 
         with_price = {
             c
-            for (c,) in db_session.query(ETFDailyBar.etf_code)
+            for (c,) in db_session.query(InstrumentDailyBar.etf_code)
             .distinct()
-            .filter(ETFDailyBar.etf_code.like("%.US"))
+            .filter(InstrumentDailyBar.etf_code.like("%.US"))
             .all()
         }
         codes = sorted(set(all_codes) - with_price)
@@ -290,9 +290,9 @@ def _compute_yf_adj_factors(hist) -> dict:
 # ── DB write ───────────────────────────────────────────────────────────
 
 def _upsert_bars(db_session, bars: list[dict]) -> int:
-    """Insert or update bars into etf_daily_bar. Returns count of rows written."""
+    """Insert or update bars into instrument_daily_bar. Returns count of rows written."""
     from sqlalchemy.dialects.postgresql import insert
-    from app.models.etf import ETFDailyBar
+    from app.models.etf import InstrumentDailyBar
 
     if not bars:
         return 0
@@ -303,17 +303,17 @@ def _upsert_bars(db_session, bars: list[dict]) -> int:
         records.append(r)
 
     stmt = (
-        insert(ETFDailyBar)
+        insert(InstrumentDailyBar)
         .values(records)
         .on_conflict_do_update(
             index_elements=["etf_code", "trade_date"],
             set_={
-                "open": insert(ETFDailyBar).excluded.open,
-                "high": insert(ETFDailyBar).excluded.high,
-                "low": insert(ETFDailyBar).excluded.low,
-                "close": insert(ETFDailyBar).excluded.close,
-                "volume": insert(ETFDailyBar).excluded.volume,
-                "amount": insert(ETFDailyBar).excluded.amount,
+                "open": insert(InstrumentDailyBar).excluded.open,
+                "high": insert(InstrumentDailyBar).excluded.high,
+                "low": insert(InstrumentDailyBar).excluded.low,
+                "close": insert(InstrumentDailyBar).excluded.close,
+                "volume": insert(InstrumentDailyBar).excluded.volume,
+                "amount": insert(InstrumentDailyBar).excluded.amount,
             },
         )
     )

@@ -1,7 +1,7 @@
 """Signal generation engine.
 
 Generates BUY/SELL/HOLD signals based on strategy configurations.
-Reads historical data from the local etf_daily_bar table instead of
+Reads historical data from the local instrument_daily_bar table instead of
 making external API calls.
 """
 
@@ -9,11 +9,10 @@ from datetime import date
 from typing import Any
 
 import pandas as pd
-from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.data.indicators.technical import calc_rsi
-from app.models.etf import ETFDailyBar
+from app.data.repositories import price_repository
 
 
 def _fetch_bars_from_db(
@@ -22,43 +21,24 @@ def _fetch_bars_from_db(
     start_date: date,
     end_date: date,
 ) -> pd.DataFrame:
-    """Fetch daily bars from the local database.
-
-    Args:
-        db: SQLAlchemy session.
-        etf_code: ETF code.
-        start_date: Start date (inclusive).
-        end_date: End date (inclusive).
+    """Fetch adjusted daily bars from the local price repository.
 
     Returns:
         DataFrame with columns: etf_code, trade_date, open, high, low,
-        close, volume. Empty DataFrame if no data.
+        close, adj_close, volume. Empty DataFrame if no data.
     """
-    bars = db.execute(
-        select(ETFDailyBar)
-        .where(ETFDailyBar.etf_code == etf_code)
-        .where(ETFDailyBar.trade_date >= start_date)
-        .where(ETFDailyBar.trade_date <= end_date)
-        .order_by(ETFDailyBar.trade_date.asc())
-    ).scalars().all()
-
-    if not bars:
+    if price_repository.is_before_list_date(db, etf_code, end_date):
         return pd.DataFrame()
 
-    return pd.DataFrame(
-        [
-            {
-                "etf_code": b.etf_code,
-                "trade_date": b.trade_date,
-                "open": b.open,
-                "high": b.high,
-                "low": b.low,
-                "close": b.close,
-                "volume": b.volume,
-            }
-            for b in bars
-        ]
+    df = price_repository.get_bars(
+        db, etf_code, start_date, end_date, adjusted=True
     )
+    if df.empty:
+        return df
+
+    df = df.rename(columns={"close": "raw_close", "adj_close": "close"})
+    df["etf_code"] = etf_code
+    return df[["etf_code", "trade_date", "open", "high", "low", "close", "volume"]]
 
 
 def generate_signals_for_strategy(
