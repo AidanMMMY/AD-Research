@@ -711,10 +711,33 @@ def _df_to_bar_records(df: pd.DataFrame) -> list[dict]:
 
     All fields are always included (None where missing) so that the
     ON CONFLICT … SET excluded.<col> references always resolve.
+
+    ``change_pct`` is capped to the ``DECIMAL(8, 4)`` range so that extreme
+    outliers (e.g. BJ stocks jumping from 0.01 to 20.05) do not trigger a
+    numeric overflow on INSERT.
     """
+    # DECIMAL(8, 4) supports values in [-9999.9999, 9999.9999]
+    _MAX_CHANGE_PCT = 9999.9999
+    _MIN_CHANGE_PCT = -9999.9999
+
     records = []
     for _, row in df.iterrows():
         record = {f: row.get(f) for f in _BAR_FIELDS}
+
+        cp = record.get("change_pct")
+        if cp is not None and not (isinstance(cp, float) and pd.isna(cp)):
+            try:
+                cp = float(cp)
+                if cp > _MAX_CHANGE_PCT:
+                    cp = _MAX_CHANGE_PCT
+                elif cp < _MIN_CHANGE_PCT:
+                    cp = _MIN_CHANGE_PCT
+                record["change_pct"] = cp
+            except (ValueError, TypeError):
+                record["change_pct"] = None
+        else:
+            record["change_pct"] = None
+
         records.append(record)
     return records
 
