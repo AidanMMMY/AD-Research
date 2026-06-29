@@ -21,6 +21,7 @@ from app.data.pipelines.crypto_daily import CryptoDailyPipeline
 from app.data.pipelines.etf_metadata_enrichment import ETFMetadataEnrichmentPipeline
 from app.data.pipelines.us_backfill import USHistoricalBackfillPipeline
 from app.data.pipelines.us_etf import USDailyPipeline
+from app.data.pipelines.us_etf_discovery import USEtfDiscoveryPipeline
 from app.data.pipelines.us_stock_discovery import USStockDiscoveryPipeline
 from app.models.etf import ETFInfo
 from app.models.pool import ETFPools
@@ -325,6 +326,29 @@ def run_weekly_pool_reports():
             db.close()
 
 
+def run_us_etf_discovery():
+    """Run the US ETF discovery pipeline (weekly Sunday 01:00).
+
+    Fetches the curated US ETF list from Finnhub and upserts them as
+    instrument_type="ETF", market="US" into etf_info, keeping category
+    metadata in sync.
+    """
+    with redis_lock("us_etf_discovery", expire_seconds=7200) as acquired:
+        if not acquired:
+            print("⚠️ [SCHEDULER_WARN] US ETF discovery skipped: lock in use")
+            return
+        db = SessionLocal()
+        try:
+            pipeline = USEtfDiscoveryPipeline(db)
+            result = pipeline.run_with_retry(max_attempts=2)
+            print(
+                f"[Scheduler] US ETF discovery: success={result.success}, "
+                f"records={result.records}"
+            )
+        finally:
+            db.close()
+
+
 def run_us_stock_discovery():
     """Run the US stock discovery pipeline (weekly Sunday 02:00).
 
@@ -562,6 +586,8 @@ def init_scheduler():
 
     Registers cron jobs:
       - US ETL at 05:00 daily (Beijing time = 17:00 ET, post-market)
+      - US ETF discovery weekly Sunday 01:00
+      - US stock discovery weekly Sunday 02:00
       - US historical backfill every hour
       - US indicator calculation at 05:30 daily (US market only)
       - A-share ETF ETL at 15:30 daily
@@ -631,6 +657,14 @@ def init_scheduler():
         trigger=CronTrigger(day_of_week="sun", hour=22, minute=0),
         id="weekly_pool_reports",
         name="池周报生成",
+        replace_existing=True,
+        max_instances=1,
+    )
+    scheduler.add_job(
+        run_us_etf_discovery,
+        trigger=CronTrigger(day_of_week="sun", hour=1, minute=0),
+        id="us_etf_discovery",
+        name="美股ETF发现",
         replace_existing=True,
         max_instances=1,
     )
