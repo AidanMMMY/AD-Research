@@ -22,11 +22,11 @@ from app.core.scheduler import (
     run_weekly_pool_reports,
 )
 from app.data.providers.akshare_provider import AkshareProvider
-from app.models.etf import ETFDailyBar, ETFInfo
+from app.models.etf import InstrumentDailyBar, ETFInfo
 
 
 def _clean_value(v):
-    """Clean a single value for insertion into etf_daily_bar."""
+    """Clean a single value for insertion into instrument_daily_bar."""
     if v is None:
         return None
     if isinstance(v, float) and math.isnan(v):
@@ -97,20 +97,20 @@ def backfill_daily_bars(target_dates: list[date]):
 
         # Bulk upsert
         stmt = (
-            insert(ETFDailyBar)
+            insert(InstrumentDailyBar)
             .values(all_records)
             .on_conflict_do_update(
                 index_elements=["etf_code", "trade_date"],
                 set_={
-                    "open": insert(ETFDailyBar).excluded.open,
-                    "high": insert(ETFDailyBar).excluded.high,
-                    "low": insert(ETFDailyBar).excluded.low,
-                    "close": insert(ETFDailyBar).excluded.close,
-                    "volume": insert(ETFDailyBar).excluded.volume,
-                    "amount": insert(ETFDailyBar).excluded.amount,
-                    "pre_close": insert(ETFDailyBar).excluded.pre_close,
-                    "change_pct": insert(ETFDailyBar).excluded.change_pct,
-                    "turnover_rate": insert(ETFDailyBar).excluded.turnover_rate,
+                    "open": insert(InstrumentDailyBar).excluded.open,
+                    "high": insert(InstrumentDailyBar).excluded.high,
+                    "low": insert(InstrumentDailyBar).excluded.low,
+                    "close": insert(InstrumentDailyBar).excluded.close,
+                    "volume": insert(InstrumentDailyBar).excluded.volume,
+                    "amount": insert(InstrumentDailyBar).excluded.amount,
+                    "pre_close": insert(InstrumentDailyBar).excluded.pre_close,
+                    "change_pct": insert(InstrumentDailyBar).excluded.change_pct,
+                    "turnover_rate": insert(InstrumentDailyBar).excluded.turnover_rate,
                 },
             )
         )

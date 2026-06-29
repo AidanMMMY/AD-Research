@@ -81,5 +81,5 @@ class ETFMetadataEnrichmentPipeline(ETLPipeline):
     def post_process(self, result) -> None:
         """Log summary after load."""
         print(
-            f"[ETFMetadataEnrichmentPipeline] Updated {result.records} ETFInfo rows"
+            f"[ETFMetadataEnrichmentPipeline] Updated {result} ETFInfo rows"
         )

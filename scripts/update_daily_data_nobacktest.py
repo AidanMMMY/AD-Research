@@ -23,7 +23,7 @@ from sqlalchemy.orm import sessionmaker
 from app.config import get_settings
 from app.data.indicators.calculator import batch_calculate_indicators
 from app.data.providers.akshare_provider import AkshareProvider
-from app.models.etf import ETFDailyBar, ETFIndicator, ETFInfo
+from app.models.etf import InstrumentDailyBar, ETFIndicator, ETFInfo
 from app.models.etl import BacktestResult, Signal, StrategyConfig
 from app.services.backtest_service import BacktestService
 from app.services.scoring_service import ScoringService
@@ -49,15 +49,15 @@ def _get_active_etf_codes(db) -> list:
 def _get_latest_dates_for_etfs(db, etf_codes: list[str]) -> dict[str, date]:
     """Get the latest trade date for each ETF in one aggregate query."""
     result = db.execute(
-        select(ETFDailyBar.etf_code, func.max(ETFDailyBar.trade_date))
-        .where(ETFDailyBar.etf_code.in_(etf_codes))
-        .group_by(ETFDailyBar.etf_code)
+        select(InstrumentDailyBar.etf_code, func.max(InstrumentDailyBar.trade_date))
+        .where(InstrumentDailyBar.etf_code.in_(etf_codes))
+        .group_by(InstrumentDailyBar.etf_code)
     ).all()
     return dict(result)
 
 
 def _clean_daily_bar_value(v):
-    """Clean a single value for insertion into etf_daily_bar."""
+    """Clean a single value for insertion into instrument_daily_bar."""
     if v is None or pd.isna(v):
         return None
     if isinstance(v, int | float):
@@ -147,19 +147,19 @@ def fetch_and_insert_daily_bars(db, end_date: date):
 
         # Use ON CONFLICT DO UPDATE to handle duplicates
         stmt = (
-            insert(ETFDailyBar)
+            insert(InstrumentDailyBar)
             .values(records)
             .on_conflict_do_update(
                 index_elements=["etf_code", "trade_date"],
                 set_={
-                    "open": insert(ETFDailyBar).excluded.open,
-                    "high": insert(ETFDailyBar).excluded.high,
-                    "low": insert(ETFDailyBar).excluded.low,
-                    "close": insert(ETFDailyBar).excluded.close,
-                    "volume": insert(ETFDailyBar).excluded.volume,
-                    "amount": insert(ETFDailyBar).excluded.amount,
-                    "change_pct": insert(ETFDailyBar).excluded.change_pct,
-                    "turnover_rate": insert(ETFDailyBar).excluded.turnover_rate,
+                    "open": insert(InstrumentDailyBar).excluded.open,
+                    "high": insert(InstrumentDailyBar).excluded.high,
+                    "low": insert(InstrumentDailyBar).excluded.low,
+                    "close": insert(InstrumentDailyBar).excluded.close,
+                    "volume": insert(InstrumentDailyBar).excluded.volume,
+                    "amount": insert(InstrumentDailyBar).excluded.amount,
+                    "change_pct": insert(InstrumentDailyBar).excluded.change_pct,
+                    "turnover_rate": insert(InstrumentDailyBar).excluded.turnover_rate,
                 },
             )
         )
@@ -200,7 +200,7 @@ def run_signal_generation(db):
 
     # Get latest trade date from daily bars
     latest_date = db.execute(
-        select(func.max(ETFDailyBar.trade_date))
+        select(func.max(InstrumentDailyBar.trade_date))
     ).scalar()
     if not latest_date:
         print("   ⚠️ No daily bar data available, skipping signal generation")
@@ -216,8 +216,8 @@ def run_signal_generation(db):
 
     # Get ETFs that actually have daily bar data (not all active ETFs)
     etfs_with_bars = db.execute(
-        select(ETFDailyBar.etf_code)
-        .where(ETFDailyBar.trade_date == latest_date)
+        select(InstrumentDailyBar.etf_code)
+        .where(InstrumentDailyBar.trade_date == latest_date)
         .distinct()
     ).scalars().all()
     if not etfs_with_bars:
@@ -272,7 +272,7 @@ def run_backtests(db):
 
     # Get ETFs with daily bar data
     etfs_with_bars = db.execute(
-        select(ETFDailyBar.etf_code).distinct()
+        select(InstrumentDailyBar.etf_code).distinct()
     ).scalars().all()
     if not etfs_with_bars:
         print("   ⚠️ No ETFs with daily bar data found, skipping backtests")
@@ -340,9 +340,9 @@ def verify_data(db):
 
     # ETFs with daily bars
     bar_etfs = db.execute(
-        select(func.count(ETFDailyBar.etf_code.distinct()))
+        select(func.count(InstrumentDailyBar.etf_code.distinct()))
     ).scalar()
-    bar_max = db.execute(select(func.max(ETFDailyBar.trade_date))).scalar()
+    bar_max = db.execute(select(func.max(InstrumentDailyBar.trade_date))).scalar()
     print(f"   Daily bars: {bar_etfs} ETFs, latest={bar_max}")
 
     # Indicator summary

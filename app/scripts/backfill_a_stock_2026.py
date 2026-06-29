@@ -6,7 +6,7 @@ statements for a specified date range. Designed to run in batches to stay
 within Tushare free-tier limits (~5000 points/day).
 
 Modes:
-  bars          Daily OHLCV bars → etf_daily_bar      (1 API call/date)
+  bars          Daily OHLCV bars → instrument_daily_bar      (1 API call/date)
   fundamental   PE/PB/market cap → stock_fundamental   (1 API call/date)
   financials    Income + balance → stock_income/_sheet  (2 API calls/stock)
   all           Run bars + fundamental sequentially (not financials)
@@ -97,13 +97,13 @@ def backfill_bars(
     dry_run: bool = False,
     rate_limit: float = 0.5,
 ) -> dict:
-    """Backfill etf_daily_bar using market-wide bulk endpoint.
+    """Backfill instrument_daily_bar using market-wide bulk endpoint.
 
     One API call per calendar date. Non-trading days will return empty
     and are skipped automatically.
     """
     from app.data.providers.tushare_provider import TushareProvider
-    from app.models.etf import ETFDailyBar, ETFInfo
+    from app.models.etf import InstrumentDailyBar, ETFInfo
 
     provider = TushareProvider()
 
@@ -163,21 +163,21 @@ def backfill_bars(
 
         try:
             stmt = (
-                insert(ETFDailyBar)
+                insert(InstrumentDailyBar)
                 .values(records)
                 .on_conflict_do_update(
                     index_elements=["etf_code", "trade_date"],
                     set_={
-                        "open": insert(ETFDailyBar).excluded.open,
-                        "high": insert(ETFDailyBar).excluded.high,
-                        "low": insert(ETFDailyBar).excluded.low,
-                        "close": insert(ETFDailyBar).excluded.close,
-                        "volume": insert(ETFDailyBar).excluded.volume,
-                        "amount": insert(ETFDailyBar).excluded.amount,
-                        "pre_close": insert(ETFDailyBar).excluded.pre_close,
-                        "change_pct": insert(ETFDailyBar).excluded.change_pct,
-                        "turnover_rate": insert(ETFDailyBar).excluded.turnover_rate,
-                        "adj_factor": insert(ETFDailyBar).excluded.adj_factor,
+                        "open": insert(InstrumentDailyBar).excluded.open,
+                        "high": insert(InstrumentDailyBar).excluded.high,
+                        "low": insert(InstrumentDailyBar).excluded.low,
+                        "close": insert(InstrumentDailyBar).excluded.close,
+                        "volume": insert(InstrumentDailyBar).excluded.volume,
+                        "amount": insert(InstrumentDailyBar).excluded.amount,
+                        "pre_close": insert(InstrumentDailyBar).excluded.pre_close,
+                        "change_pct": insert(InstrumentDailyBar).excluded.change_pct,
+                        "turnover_rate": insert(InstrumentDailyBar).excluded.turnover_rate,
+                        "adj_factor": insert(InstrumentDailyBar).excluded.adj_factor,
                     },
                 )
             )
@@ -216,7 +216,7 @@ def backfill_bars_per_stock(
     dry_run: bool = False,
     rate_limit: float = 0.5,
 ) -> dict:
-    """Backfill etf_daily_bar using per-stock API calls for deep history.
+    """Backfill instrument_daily_bar using per-stock API calls for deep history.
 
     Unlike ``backfill_bars`` which uses the market-wide endpoint (1 call/date,
     ~5000 pts/call — economical for recent dates), this function calls
@@ -236,7 +236,7 @@ def backfill_bars_per_stock(
         batch_offset: Starting offset into sorted stock list.
     """
     from app.data.providers.tushare_provider import TushareProvider
-    from app.models.etf import ETFDailyBar, ETFInfo
+    from app.models.etf import InstrumentDailyBar, ETFInfo
 
     provider = TushareProvider()
 
@@ -299,21 +299,21 @@ def backfill_bars_per_stock(
 
         try:
             stmt = (
-                insert(ETFDailyBar)
+                insert(InstrumentDailyBar)
                 .values(records)
                 .on_conflict_do_update(
                     index_elements=["etf_code", "trade_date"],
                     set_={
-                        "open": insert(ETFDailyBar).excluded.open,
-                        "high": insert(ETFDailyBar).excluded.high,
-                        "low": insert(ETFDailyBar).excluded.low,
-                        "close": insert(ETFDailyBar).excluded.close,
-                        "volume": insert(ETFDailyBar).excluded.volume,
-                        "amount": insert(ETFDailyBar).excluded.amount,
-                        "pre_close": insert(ETFDailyBar).excluded.pre_close,
-                        "change_pct": insert(ETFDailyBar).excluded.change_pct,
-                        "turnover_rate": insert(ETFDailyBar).excluded.turnover_rate,
-                        "adj_factor": insert(ETFDailyBar).excluded.adj_factor,
+                        "open": insert(InstrumentDailyBar).excluded.open,
+                        "high": insert(InstrumentDailyBar).excluded.high,
+                        "low": insert(InstrumentDailyBar).excluded.low,
+                        "close": insert(InstrumentDailyBar).excluded.close,
+                        "volume": insert(InstrumentDailyBar).excluded.volume,
+                        "amount": insert(InstrumentDailyBar).excluded.amount,
+                        "pre_close": insert(InstrumentDailyBar).excluded.pre_close,
+                        "change_pct": insert(InstrumentDailyBar).excluded.change_pct,
+                        "turnover_rate": insert(InstrumentDailyBar).excluded.turnover_rate,
+                        "adj_factor": insert(InstrumentDailyBar).excluded.adj_factor,
                     },
                 )
             )

@@ -77,10 +77,10 @@ class ETFInfo(Base):
     )
 
 
-class ETFDailyBar(Base):
+class InstrumentDailyBar(Base):
     """ETF daily OHLCV bar data."""
 
-    __tablename__ = "etf_daily_bar"
+    __tablename__ = "instrument_daily_bar"
 
     etf_code = Column(
         String(20),

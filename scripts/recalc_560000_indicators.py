@@ -16,7 +16,7 @@ from app.data.indicators.calculator import (
     _build_indicator_record,
     calculate_single_etf,
 )
-from app.models.etf import ETFDailyBar, ETFIndicator
+from app.models.etf import InstrumentDailyBar, ETFIndicator
 
 TARGET_CODE = "560000.SH"
 
@@ -25,7 +25,7 @@ def main():
     db = SessionLocal()
     try:
         bars = db.execute(
-            select(ETFDailyBar).where(ETFDailyBar.etf_code == TARGET_CODE).order_by(ETFDailyBar.trade_date.asc())
+            select(InstrumentDailyBar).where(InstrumentDailyBar.etf_code == TARGET_CODE).order_by(InstrumentDailyBar.trade_date.asc())
         ).scalars().all()
 
         if len(bars) < 5:

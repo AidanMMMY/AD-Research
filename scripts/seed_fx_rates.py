@@ -3,7 +3,7 @@
 
 Since live FX data for 2026 is not available, this script generates
 realistic synthetic daily FX rates (USD/CNY, HKD/CNY, JPY/CNY, EUR/CNY)
-for every trading day present in etf_daily_bar.
+for every trading day present in instrument_daily_bar.
 """
 
 import os
@@ -35,7 +35,7 @@ BASE_RATES = {
 
 def get_trading_dates() -> list[date]:
     with engine.connect() as conn:
-        result = conn.execute(text("SELECT DISTINCT trade_date FROM etf_daily_bar ORDER BY trade_date"))
+        result = conn.execute(text("SELECT DISTINCT trade_date FROM instrument_daily_bar ORDER BY trade_date"))
         return [row[0] for row in result]
 
 

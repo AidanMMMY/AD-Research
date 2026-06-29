@@ -11,7 +11,7 @@ from sqlalchemy import func, text
 
 from app.core.calendar import get_trading_dates
 from app.core.database import SessionLocal
-from app.models.etf import ETFDailyBar, ETFIndicator, ETFInfo
+from app.models.etf import InstrumentDailyBar, ETFIndicator, ETFInfo
 from app.models.etf_scan_log import ETFScanLog
 from app.models.etl import BacktestResult, ETLLog, Signal, StrategyConfig
 from app.models.notification import NotificationConfig, NotificationLog
@@ -31,7 +31,7 @@ def check_basic_counts(db):
         "ETF 总数": db.query(func.count(ETFInfo.code)).scalar(),
         "活跃 ETF": db.query(func.count(ETFInfo.code)).filter(ETFInfo.status == "active").scalar(),
         "退市/暂停 ETF": db.query(func.count(ETFInfo.code)).filter(ETFInfo.status != "active").scalar(),
-        "日线总条数": db.execute(text("SELECT COUNT(*) FROM etf_daily_bar")).scalar(),
+        "日线总条数": db.execute(text("SELECT COUNT(*) FROM instrument_daily_bar")).scalar(),
         "指标总条数": db.query(func.count(ETFIndicator.id)).scalar(),
         "评分总条数": db.query(func.count(ETFScore.id)).scalar(),
         "评分模板数": db.query(func.count(ScoreTemplate.id)).scalar(),
@@ -75,7 +75,7 @@ def check_latest_data_coverage(db):
     today = date.today()
     print(f"  今天日期: {today} ({['周一','周二','周三','周四','周五','周六','周日'][today.weekday()]})")
 
-    latest_bar = db.query(func.max(ETFDailyBar.trade_date)).scalar()
+    latest_bar = db.query(func.max(InstrumentDailyBar.trade_date)).scalar()
     latest_ind = db.query(func.max(ETFIndicator.trade_date)).scalar()
     latest_score = db.query(func.max(ETFScore.trade_date)).scalar()
     latest_signal = db.query(func.max(Signal.trade_date)).scalar()
@@ -103,7 +103,7 @@ def check_latest_data_coverage(db):
 
     # Count ETFs with latest date data
     if latest_bar:
-        bar_count = db.execute(text(f"SELECT COUNT(*) FROM etf_daily_bar WHERE trade_date = '{latest_bar}'")).scalar()
+        bar_count = db.execute(text(f"SELECT COUNT(*) FROM instrument_daily_bar WHERE trade_date = '{latest_bar}'")).scalar()
         print(f"\n  {latest_bar} 日线覆盖 ETF 数: {bar_count:,} / {db.query(func.count(ETFInfo.code)).scalar():,}")
     if latest_ind:
         ind_count = db.query(func.count(ETFIndicator.id)).filter(ETFIndicator.trade_date == latest_ind).scalar()
@@ -120,7 +120,7 @@ def check_historical_coverage(db):
     db.query(func.count(ETFInfo.code)).scalar()
 
     # Daily bars per ETF stats
-    result = db.query(ETFDailyBar.etf_code, func.count('*')).group_by(ETFDailyBar.etf_code).all()
+    result = db.query(InstrumentDailyBar.etf_code, func.count('*')).group_by(InstrumentDailyBar.etf_code).all()
     bar_counts = [r[1] for r in result]
     if bar_counts:
         avg = sum(bar_counts) / len(bar_counts)
@@ -134,11 +134,11 @@ def check_historical_coverage(db):
                 print(f"    - {code}: {c} 条")
 
     # Date range
-    bar_min = db.query(func.min(ETFDailyBar.trade_date)).scalar()
-    bar_max = db.query(func.max(ETFDailyBar.trade_date)).scalar()
+    bar_min = db.query(func.min(InstrumentDailyBar.trade_date)).scalar()
+    bar_max = db.query(func.max(InstrumentDailyBar.trade_date)).scalar()
     if bar_min and bar_max:
         trading_days_expected = len(get_trading_dates(bar_min, bar_max))
-        all_dates = set(db.query(ETFDailyBar.trade_date).distinct().all())
+        all_dates = set(db.query(InstrumentDailyBar.trade_date).distinct().all())
         print(f"  日线时间范围: {bar_min} ~ {bar_max}")
         print(f"  日线不同交易日数: {len(all_dates):,} (预期交易日约 {trading_days_expected:,})")
 
@@ -238,8 +238,8 @@ def check_fx_rate(db):
 def check_price_quality(db):
     section("十、价格数据质量")
     # Check for zero/negative prices
-    zero_close = db.execute(text("SELECT COUNT(*) FROM etf_daily_bar WHERE close <= 0")).scalar()
-    null_volume = db.execute(text("SELECT COUNT(*) FROM etf_daily_bar WHERE volume IS NULL")).scalar()
+    zero_close = db.execute(text("SELECT COUNT(*) FROM instrument_daily_bar WHERE close <= 0")).scalar()
+    null_volume = db.execute(text("SELECT COUNT(*) FROM instrument_daily_bar WHERE volume IS NULL")).scalar()
     print(f"  收盘价 <= 0 的记录: {zero_close:,}")
     print(f"  成交量为 NULL 的记录: {null_volume:,}")
     issues = []

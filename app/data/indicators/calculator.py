@@ -15,7 +15,7 @@ from sqlalchemy.orm import Session
 from app.core.cache import cache_invalidate_pattern
 from app.data.indicators.risk import calculate_risk_indicators
 from app.data.indicators.technical import calculate_technical_indicators
-from app.models.etf import ETFDailyBar, ETFIndicator, ETFInfo
+from app.models.etf import InstrumentDailyBar, ETFIndicator, ETFInfo
 from app.models.etl import ETLLog
 
 logger = logging.getLogger(__name__)
@@ -138,26 +138,39 @@ def batch_calculate_indicators(
     errors = []
 
     # Query all active ETFs, optionally filtering by market
-    stmt = select(ETFInfo.code).where(ETFInfo.status == "active")
+    stmt = select(
+        ETFInfo.code,
+        ETFInfo.list_date,
+        ETFInfo.inception_date,
+    ).where(ETFInfo.status == "active")
     if market_filter is not None:
         stmt = stmt.where(ETFInfo.market == market_filter)
-    active_etfs = db.execute(stmt).scalars().all()
+    active_rows = db.execute(stmt).all()
 
-    if not active_etfs:
+    if not active_rows:
         # Log and return 0
         _log_etl(db, "indicator_calc", "success", 0, start_time, None)
         return 0
 
-    for etf_code in active_etfs:
+    for row in active_rows:
+        etf_code = row.code
+        list_date = row.list_date or row.inception_date
+
+        # Skip instruments that are not yet listed as of the target date.
+        if target_date is not None and list_date is not None and target_date < list_date:
+            continue
+
         try:
-            # Fetch all historical bars for this ETF
+            # Fetch all historical bars for this ETF, starting from listing date
             stmt = (
-                select(ETFDailyBar)
-                .where(ETFDailyBar.etf_code == etf_code)
-                .order_by(ETFDailyBar.trade_date.asc())
+                select(InstrumentDailyBar)
+                .where(InstrumentDailyBar.etf_code == etf_code)
+                .order_by(InstrumentDailyBar.trade_date.asc())
             )
+            if list_date is not None:
+                stmt = stmt.where(InstrumentDailyBar.trade_date >= list_date)
             if target_date is not None:
-                stmt = stmt.where(ETFDailyBar.trade_date <= target_date)
+                stmt = stmt.where(InstrumentDailyBar.trade_date <= target_date)
 
             bars = db.execute(stmt).scalars().all()
 

@@ -26,7 +26,7 @@ from app.config import get_settings
 from app.core.calendar import get_trading_dates
 from app.data.indicators.calculator import batch_calculate_indicators
 from app.data.providers.akshare_provider import AkshareProvider
-from app.models.etf import ETFDailyBar, ETFIndicator
+from app.models.etf import InstrumentDailyBar, ETFIndicator
 from app.services.scoring_service import ScoringService
 
 settings = get_settings()
@@ -103,19 +103,19 @@ def fetch_and_insert_daily_bars_for_date(db, trade_date: date, provider: Akshare
 
     # UPSERT
     stmt = (
-        insert(ETFDailyBar)
+        insert(InstrumentDailyBar)
         .values(records)
         .on_conflict_do_update(
             index_elements=["etf_code", "trade_date"],
             set_={
-                "open": insert(ETFDailyBar).excluded.open,
-                "high": insert(ETFDailyBar).excluded.high,
-                "low": insert(ETFDailyBar).excluded.low,
-                "close": insert(ETFDailyBar).excluded.close,
-                "volume": insert(ETFDailyBar).excluded.volume,
-                "amount": insert(ETFDailyBar).excluded.amount,
-                "change_pct": insert(ETFDailyBar).excluded.change_pct,
-                "turnover_rate": insert(ETFDailyBar).excluded.turnover_rate,
+                "open": insert(InstrumentDailyBar).excluded.open,
+                "high": insert(InstrumentDailyBar).excluded.high,
+                "low": insert(InstrumentDailyBar).excluded.low,
+                "close": insert(InstrumentDailyBar).excluded.close,
+                "volume": insert(InstrumentDailyBar).excluded.volume,
+                "amount": insert(InstrumentDailyBar).excluded.amount,
+                "change_pct": insert(InstrumentDailyBar).excluded.change_pct,
+                "turnover_rate": insert(InstrumentDailyBar).excluded.turnover_rate,
             },
         )
     )
@@ -244,12 +244,12 @@ def verify_data(db):
     print("\nDaily bars latest dates:")
     for code in ETF_CODES:
         max_date = db.execute(
-            select(func.max(ETFDailyBar.trade_date))
-            .where(ETFDailyBar.etf_code == code)
+            select(func.max(InstrumentDailyBar.trade_date))
+            .where(InstrumentDailyBar.etf_code == code)
         ).scalar()
         count = db.execute(
             select(func.count())
-            .where(ETFDailyBar.etf_code == code)
+            .where(InstrumentDailyBar.etf_code == code)
         ).scalar()
         print(f"  {code}: {count} days, latest={max_date}")
 
@@ -272,7 +272,7 @@ def main():
         print("=" * 60)
 
         # Step 1: Determine date range
-        latest_daily = db.query(func.max(ETFDailyBar.trade_date)).scalar()
+        latest_daily = db.query(func.max(InstrumentDailyBar.trade_date)).scalar()
         start_date = latest_daily + timedelta(days=1) if latest_daily else date(2026, 6, 1)
 
         end_date = date.today() - timedelta(days=1)

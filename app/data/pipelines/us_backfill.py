@@ -27,7 +27,7 @@ from app.core.cache import cache_invalidate_pattern
 from app.core.redis_client import get_redis_client
 from app.data.pipelines.base import ETLPipeline
 from app.data.providers.tiingo_provider import TiingoProvider
-from app.models.etf import ETFDailyBar, ETFInfo
+from app.models.etf import InstrumentDailyBar, ETFInfo
 
 logger = logging.getLogger(__name__)
 
@@ -67,9 +67,9 @@ class USHistoricalBackfillPipeline(ETLPipeline):
     def _get_codes_with_price_data(self) -> set[str]:
         """Return set of US codes that already have at least one daily bar."""
         rows = (
-            self.db.query(ETFDailyBar.etf_code)
+            self.db.query(InstrumentDailyBar.etf_code)
             .distinct()
-            .filter(ETFDailyBar.etf_code.like("%.US"))
+            .filter(InstrumentDailyBar.etf_code.like("%.US"))
             .all()
         )
         return {code for (code,) in rows}
@@ -208,7 +208,7 @@ class USHistoricalBackfillPipeline(ETLPipeline):
         return df
 
     def load(self, data: pd.DataFrame) -> int:
-        """Upsert daily bar records into ``etf_daily_bar``."""
+        """Upsert daily bar records into ``instrument_daily_bar``."""
         if data.empty:
             return 0
 
@@ -234,20 +234,20 @@ class USHistoricalBackfillPipeline(ETLPipeline):
             return 0
 
         stmt = (
-            insert(ETFDailyBar)
+            insert(InstrumentDailyBar)
             .values(records)
             .on_conflict_do_update(
                 index_elements=["etf_code", "trade_date"],
                 set_={
-                    "open": insert(ETFDailyBar).excluded.open,
-                    "high": insert(ETFDailyBar).excluded.high,
-                    "low": insert(ETFDailyBar).excluded.low,
-                    "close": insert(ETFDailyBar).excluded.close,
-                    "volume": insert(ETFDailyBar).excluded.volume,
-                    "amount": insert(ETFDailyBar).excluded.amount,
-                    "pre_close": insert(ETFDailyBar).excluded.pre_close,
-                    "change_pct": insert(ETFDailyBar).excluded.change_pct,
-                    "turnover_rate": insert(ETFDailyBar).excluded.turnover_rate,
+                    "open": insert(InstrumentDailyBar).excluded.open,
+                    "high": insert(InstrumentDailyBar).excluded.high,
+                    "low": insert(InstrumentDailyBar).excluded.low,
+                    "close": insert(InstrumentDailyBar).excluded.close,
+                    "volume": insert(InstrumentDailyBar).excluded.volume,
+                    "amount": insert(InstrumentDailyBar).excluded.amount,
+                    "pre_close": insert(InstrumentDailyBar).excluded.pre_close,
+                    "change_pct": insert(InstrumentDailyBar).excluded.change_pct,
+                    "turnover_rate": insert(InstrumentDailyBar).excluded.turnover_rate,
                 },
             )
         )

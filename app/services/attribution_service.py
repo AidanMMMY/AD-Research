@@ -8,8 +8,7 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
-from app.data.providers.akshare_provider import AkshareProvider
-from app.models.etf import ETFDailyBar
+from app.data.repositories import price_repository
 from app.models.etl import BacktestResult
 
 
@@ -25,42 +24,17 @@ class AttributionService:
         start_date: date,
         end_date: date,
     ) -> float:
-        """Calculate buy-and-hold benchmark return for the ETF over the period.
-
-        Uses ETFDailyBar from the database first, falling back to Akshare if
-        no local bars are available.
-        """
-        bars = (
-            self.db.query(ETFDailyBar)
-            .filter(
-                ETFDailyBar.etf_code == etf_code,
-                ETFDailyBar.trade_date >= start_date,
-                ETFDailyBar.trade_date <= end_date,
-            )
-            .order_by(ETFDailyBar.trade_date)
-            .all()
+        """Calculate buy-and-hold benchmark return using adjusted close prices."""
+        df = price_repository.get_bars(
+            self.db, etf_code, start_date, end_date, adjusted=True
         )
+        if df.empty or len(df) < 2:
+            return 0.0
 
-        if len(bars) >= 2:
-            first_close = float(bars[0].close) if bars[0].close else 0.0
-            last_close = float(bars[-1].close) if bars[-1].close else 0.0
-            if first_close > 0:
-                return (last_close - first_close) / first_close * 100
-
-        # Fallback to Akshare provider
-        try:
-            provider = AkshareProvider()
-            df = provider.fetch_daily_bars([etf_code], start_date, end_date)
-            if df.empty or len(df) < 2:
-                return 0.0
-            df = df.sort_values("trade_date").reset_index(drop=True)
-            first_close = float(df["close"].iloc[0])
-            last_close = float(df["close"].iloc[-1])
-            if first_close > 0:
-                return (last_close - first_close) / first_close * 100
-        except Exception:
-            pass
-
+        first_close = float(df["adj_close"].iloc[0])
+        last_close = float(df["adj_close"].iloc[-1])
+        if first_close > 0:
+            return (last_close - first_close) / first_close * 100
         return 0.0
 
     def _parse_date(self, value: Any) -> date | None:
