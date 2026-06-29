@@ -22,7 +22,7 @@ import {
   SmileOutlined,
   RobotOutlined,
   CloudServerOutlined,
-  BitcoinOutlined,
+  GoldOutlined,
   DollarOutlined,
   MenuFoldOutlined,
   MenuUnfoldOutlined,
@@ -53,7 +53,7 @@ const iconMap: Record<string, React.ComponentType> = {
   SmileOutlined,
   RobotOutlined,
   CloudServerOutlined,
-  BitcoinOutlined,
+  GoldOutlined,
   DollarOutlined,
 };
 
