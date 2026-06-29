@@ -22,6 +22,8 @@ import {
   SmileOutlined,
   RobotOutlined,
   CloudServerOutlined,
+  BitcoinOutlined,
+  DollarOutlined,
   MenuFoldOutlined,
   MenuUnfoldOutlined,
   MenuOutlined,
@@ -51,6 +53,8 @@ const iconMap: Record<string, React.ComponentType> = {
   SmileOutlined,
   RobotOutlined,
   CloudServerOutlined,
+  BitcoinOutlined,
+  DollarOutlined,
 };
 
 const SIDEBAR_WIDTH = 220;
