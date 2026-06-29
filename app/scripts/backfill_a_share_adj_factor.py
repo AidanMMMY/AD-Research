@@ -82,12 +82,10 @@ def main() -> int:
                 msg = f"API error: {exc}"
                 print(f"FAILED — {msg}")
                 errors.append(f"{code}: {msg}")
-                time.sleep(0.5)
                 continue
 
             if df is None or df.empty:
                 print("no data")
-                time.sleep(0.5)
                 continue
 
             added = 0
@@ -99,7 +97,6 @@ def main() -> int:
                     added += 1
 
             print(f"OK ({added} rows)")
-            time.sleep(0.5)
 
         if not records:
             logger.warning("No adj_factor records fetched")
