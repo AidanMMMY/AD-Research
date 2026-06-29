@@ -157,12 +157,12 @@ export default function KLineChart({ data, overlays = DEFAULT_OVERLAYS }: KLineC
           textColor: 'var(--text-secondary)',
         },
         grid: {
-          vertLines: { color: 'rgba(255,255,255,0.06)' },
-          horzLines: { color: 'rgba(255,255,255,0.06)' },
+          vertLines: { color: 'var(--border-default)' },
+          horzLines: { color: 'var(--border-default)' },
         },
         crosshair: { mode: 1 as any },
-        rightPriceScale: { borderColor: 'rgba(255,255,255,0.06)' },
-        timeScale: { borderColor: 'rgba(255,255,255,0.06)' },
+        rightPriceScale: { borderColor: 'var(--border-default)' },
+        timeScale: { borderColor: 'var(--border-default)' },
         height: containerHeight,
       });
 
