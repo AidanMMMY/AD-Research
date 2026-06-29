@@ -1,8 +1,8 @@
 """rename etf_daily_bar to instrument_daily_bar
 
-Revision ID: 5aa173a041d5
-Revises: 1505324a3d5d
-Create Date: 2026-06-29 16:19:39.422099
+Revision ID: db105fd25327
+Revises: 5aa173a041d5
+Create Date: 2026-06-29 17:51:30.123772
 
 """
 from typing import Sequence, Union
@@ -12,8 +12,8 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = '5aa173a041d5'
-down_revision: Union[str, Sequence[str], None] = '1505324a3d5d'
+revision: str = 'db105fd25327'
+down_revision: Union[str, Sequence[str], None] = 'a1b2c3d4e5f6'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
