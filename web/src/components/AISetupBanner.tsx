@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { Alert, Button, Tag } from 'antd';
+import { Alert, Button } from 'antd';
 import { ApiOutlined, KeyOutlined } from '@ant-design/icons';
 import { researchApi } from '@/api/research';
 import ThemeTag from '@/components/ThemeTag';
@@ -41,7 +41,7 @@ export default function AISetupBanner({ onlyWhenUnavailable = true }: AISetupBan
             <span>
               <strong>AI 功能未配置</strong>
               <span style={{ color: 'var(--text-secondary)', marginLeft: 8 }}>
-                当前模型 <Tag style={{ margin: '0 4px' }}>{status.provider} / {status.model}</Tag>
+                当前模型 <ThemeTag variant="neutral" style={{ margin: '0 4px' }}>{status.provider} / {status.model}</ThemeTag>
                 预估成本 <ThemeTag variant="success" style={{ margin: '0 4px' }}>{status.monthly_cost_estimate}</ThemeTag>
               </span>
             </span>
@@ -79,7 +79,7 @@ export default function AISetupBanner({ onlyWhenUnavailable = true }: AISetupBan
       }}
       message={
         <span>
-          AI 已就绪 — 使用 <Tag style={{ margin: '0 4px' }}>{status.provider} {status.model}</Tag>
+          AI 已就绪 — 使用 <ThemeTag variant="neutral" style={{ margin: '0 4px' }}>{status.provider} {status.model}</ThemeTag>
         </span>
       }
     />

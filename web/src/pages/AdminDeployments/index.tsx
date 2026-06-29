@@ -42,8 +42,8 @@ const { Option } = Select;
 
 const STATUS_CONFIG: Record<string, { color: string; icon: React.ReactNode }> = {
   success: { color: 'var(--accent)', icon: <CheckCircleOutlined /> },
-  failure: { color: 'var(--red, #ff4d4f)', icon: <CloseCircleOutlined /> },
-  in_progress: { color: 'var(--blue, #1677ff)', icon: <SyncOutlined spin /> },
+  failure: { color: 'var(--color-error)', icon: <CloseCircleOutlined /> },
+  in_progress: { color: 'var(--color-warning)', icon: <SyncOutlined spin /> },
   queued: { color: 'var(--text-secondary)', icon: <ClockCircleOutlined /> },
 };
 
@@ -167,9 +167,9 @@ function DeploymentsTable({ data, loading }: { data: DeploymentRun[]; loading: b
 
 const CONTAINER_COLORS: Record<string, string> = {
   'etf-backend': 'var(--accent)',
-  'etf-postgres': 'var(--blue, #1677ff)',
-  'etf-redis': 'var(--orange, #fa8c16)',
-  'etf-nginx': 'var(--green, #52c41a)',
+  'etf-postgres': 'var(--text-secondary)',
+  'etf-redis': 'var(--color-warning)',
+  'etf-nginx': 'var(--color-success)',
 };
 
 function ServerHealthCard({ container }: { container: ContainerStats }) {
@@ -182,7 +182,7 @@ function ServerHealthCard({ container }: { container: ContainerStats }) {
       style={{
         background: 'var(--bg-elevated)',
         borderRadius: 12,
-        border: `1px solid ${isRunning ? 'var(--border-default)' : 'var(--red, #ff4d4f)'}`,
+        border: `1px solid ${isRunning ? 'var(--border-default)' : 'var(--color-error)'}`,
         padding: '20px 24px',
         minWidth: 200,
         transition: 'all var(--transition-fast)',
