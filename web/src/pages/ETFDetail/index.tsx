@@ -453,121 +453,81 @@ export default function ETFDetail() {
                 {!stockFund ? (
                   <Skeleton active paragraph={{ rows: 4 }} />
                 ) : (
-                  <Row gutter={[24, 16]}>
-                    <Col xs={24} sm={12} md={8}>
-                      <Panel variant="default" padding="md">
-                        <Statistic
-                          title="PE (TTM)"
-                          value={stockFund.pe_ttm ?? undefined}
-                          precision={2}
-                          suffix="倍"
-                        />
-                      </Panel>
-                    </Col>
-                    <Col xs={24} sm={12} md={8}>
-                      <Panel variant="default" padding="md">
-                        <Statistic
-                          title="PB"
-                          value={stockFund.pb ?? undefined}
-                          precision={2}
-                          suffix="倍"
-                        />
-                      </Panel>
-                    </Col>
-                    <Col xs={24} sm={12} md={8}>
-                      <Panel variant="default" padding="md">
-                        <Statistic
-                          title="总市值"
-                          value={stockFund.total_mv ? (stockFund.total_mv / 10000).toFixed(2) : undefined}
-                          suffix="亿 CNY"
-                        />
-                      </Panel>
-                    </Col>
-                    <Col xs={24} sm={12} md={8}>
-                      <Panel variant="default" padding="md">
-                        <Statistic
-                          title="流通市值"
-                          value={stockFund.circ_mv ? (stockFund.circ_mv / 10000).toFixed(2) : undefined}
-                          suffix="亿 CNY"
-                        />
-                      </Panel>
-                    </Col>
-                    <Col xs={24} sm={12} md={8}>
-                      <Panel variant="default" padding="md">
-                        <Statistic
-                          title="换手率（自由流通）"
-                          value={stockFund.turnover_rate_f ?? undefined}
-                          precision={2}
-                          suffix="%"
-                        />
-                      </Panel>
-                    </Col>
-                    <Col xs={24} sm={12} md={8}>
-                      <Panel variant="default" padding="md">
-                        <Statistic
-                          title="量比"
-                          value={stockFund.volume_ratio ?? undefined}
-                          precision={2}
-                        />
-                      </Panel>
-                    </Col>
-                    {stockFund.eps != null && (
-                      <Col xs={24} sm={12} md={8}>
-                        <Panel variant="default" padding="md">
-                          <Statistic
-                            title="EPS（最新财报）"
-                            value={stockFund.eps}
-                            precision={2}
-                            suffix="元"
-                          />
-                        </Panel>
-                      </Col>
-                    )}
-                    {stockFund.roe != null && (
-                      <Col xs={24} sm={12} md={8}>
-                        <Panel variant="default" padding="md">
-                          <Statistic
-                            title="ROE（最新财报）"
-                            value={stockFund.roe}
-                            precision={2}
-                            suffix="%"
-                          />
-                        </Panel>
-                      </Col>
-                    )}
-                    {stockFund.revenue_yoy != null && (
-                      <Col xs={24} sm={12} md={8}>
-                        <Panel variant="default" padding="md">
-                          <Statistic
-                            title="营收 YoY"
-                            value={stockFund.revenue_yoy}
-                            precision={2}
-                            suffix="%"
-                          />
-                        </Panel>
-                      </Col>
-                    )}
-                    {stockFund.grossprofit_margin != null && (
-                      <Col xs={24} sm={12} md={8}>
-                        <Panel variant="default" padding="md">
-                          <Statistic
-                            title="毛利率"
-                            value={stockFund.grossprofit_margin}
-                            precision={2}
-                            suffix="%"
-                          />
-                        </Panel>
-                      </Col>
-                    )}
-                    <Col xs={24}>
-                      <Alert
-                        type="info"
-                        message="数据来源：Tushare Pro"
-                        description={`估值日期：${stockFund.trade_date}。基本面数据（EPS/ROE/毛利率等）需运行财报采集管道后获取。`}
-                        style={{ marginTop: 'var(--space-3)' }}
-                      />
-                    </Col>
-                  </Row>
+                  <div>
+                    <div
+                      style={{
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(3, 1fr)',
+                        borderTop: '1px solid var(--border-default)',
+                        borderBottom: '1px solid var(--border-default)',
+                      }}
+                    >
+                      {[
+                        { title: 'PE (TTM)', value: stockFund.pe_ttm, suffix: '倍', precision: 2 },
+                        { title: 'PB', value: stockFund.pb, suffix: '倍', precision: 2 },
+                        { title: '总市值', value: stockFund.total_mv ? (stockFund.total_mv / 10000).toFixed(2) : undefined, suffix: '亿 CNY' },
+                        { title: '流通市值', value: stockFund.circ_mv ? (stockFund.circ_mv / 10000).toFixed(2) : undefined, suffix: '亿 CNY' },
+                        { title: '换手率（自由流通）', value: stockFund.turnover_rate_f, suffix: '%', precision: 2 },
+                        { title: '量比', value: stockFund.volume_ratio, precision: 2 },
+                        stockFund.eps != null ? { title: 'EPS（最新财报）', value: stockFund.eps, suffix: '元', precision: 2 } : null,
+                        stockFund.roe != null ? { title: 'ROE（最新财报）', value: stockFund.roe, suffix: '%', precision: 2 } : null,
+                        stockFund.revenue_yoy != null ? { title: '营收 YoY', value: stockFund.revenue_yoy, suffix: '%', precision: 2 } : null,
+                        stockFund.grossprofit_margin != null ? { title: '毛利率', value: stockFund.grossprofit_margin, suffix: '%', precision: 2 } : null,
+                      ].filter(Boolean).map((m: any, i, arr) => {
+                        const isLastRow = i >= arr.length - (arr.length % 3 || 3);
+                        const hasRightBorder = (i + 1) % 3 !== 0;
+                        return (
+                          <div
+                            key={m.title}
+                            style={{
+                              padding: '20px 16px',
+                              borderRight: hasRightBorder ? '1px solid var(--border-default)' : 'none',
+                              borderBottom: isLastRow ? 'none' : '1px solid var(--border-default)',
+                            }}
+                          >
+                            <div
+                              style={{
+                                fontSize: 'var(--text-label-size)',
+                                color: 'var(--text-tertiary)',
+                                fontWeight: 500,
+                                marginBottom: '12px',
+                                letterSpacing: '0.12em',
+                                textTransform: 'uppercase',
+                              }}
+                            >
+                              {m.title}
+                            </div>
+                            <div
+                              style={{
+                                fontSize: 'var(--text-data-lg-size)',
+                                fontWeight: 400,
+                                color: 'var(--text-primary)',
+                                fontFamily: 'var(--font-mono)',
+                                lineHeight: 1.2,
+                              }}
+                            >
+                              {m.value !== undefined && m.value !== null ? (
+                                <>
+                                  {typeof m.value === 'number' && m.precision !== undefined
+                                    ? m.value.toFixed(m.precision)
+                                    : m.value}
+                                  {m.suffix && <span style={{ fontSize: 'var(--text-small-size)', color: 'var(--text-tertiary)', marginLeft: 4 }}>{m.suffix}</span>}
+                                </>
+                              ) : (
+                                <span style={{ color: 'var(--text-tertiary)' }}>—</span>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <Alert
+                      type="info"
+                      message="数据来源：Tushare Pro"
+                      description={`估值日期：${stockFund.trade_date}。基本面数据（EPS/ROE/毛利率等）需运行财报采集管道后获取。`}
+                      style={{ marginTop: 'var(--space-4)' }}
+                    />
+                  </div>
                 )}
               </div>
             ),

@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { Row, Col, Table, Spin, Statistic, Alert, Space } from 'antd';
+import { Row, Col, Table, Spin, Alert, Space } from 'antd';
 import ReactECharts from 'echarts-for-react';
 import type { EChartsOption } from 'echarts';
 import { useSectorRotation } from '@/hooks/useSectorRotation';
@@ -97,35 +97,60 @@ export default function SectorRotation() {
     <div>
       <h1 style={{ fontSize: 'var(--text-h1-size)', fontWeight: 500, color: 'var(--text-primary)', margin: '0 0 8px', letterSpacing: '-0.03em' }}>板块轮动</h1>
       <p style={{ margin: '0 0 32px', color: 'var(--text-tertiary)', fontSize: 'var(--text-body-size)' }}>分析各板块收益排名与相对强弱，跟踪轮动信号</p>
-      <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
-        <Col xs={24} md={8}>
-          <GlassCard>
-            <Statistic
-              title="分析日期"
-              value={data?.trade_date || '-'}
-            />
-          </GlassCard>
-        </Col>
-        <Col xs={24} md={8}>
-          <GlassCard>
-            <Statistic
-              title="市场平均1月收益"
-              value={marketAvg?.return_1m ?? 0}
-              precision={2}
-              suffix="%"
-              valueStyle={{ color: getReturnColor(marketAvg?.return_1m ?? 0) }}
-            />
-          </GlassCard>
-        </Col>
-        <Col xs={24} md={8}>
-          <GlassCard>
-            <Statistic
-              title="板块数量"
-              value={sectors.length}
-            />
-          </GlassCard>
-        </Col>
-      </Row>
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(3, 1fr)',
+          borderTop: '1px solid var(--border-default)',
+          borderBottom: '1px solid var(--border-default)',
+          marginBottom: 24,
+        }}
+      >
+        {[
+          { title: '分析日期', value: data?.trade_date || '—' },
+          { title: '市场平均1月收益', value: marketAvg?.return_1m ?? 0, suffix: '%', precision: 2, colored: true },
+          { title: '板块数量', value: sectors.length },
+        ].map((m, i) => (
+          <div
+            key={m.title}
+            style={{
+              padding: '20px 16px',
+              borderRight: i < 2 ? '1px solid var(--border-default)' : 'none',
+            }}
+          >
+            <div
+              style={{
+                fontSize: 'var(--text-label-size)',
+                color: 'var(--text-tertiary)',
+                fontWeight: 500,
+                marginBottom: '12px',
+                letterSpacing: '0.12em',
+                textTransform: 'uppercase',
+              }}
+            >
+              {m.title}
+            </div>
+            <div
+              style={{
+                fontSize: 'var(--text-data-lg-size)',
+                fontWeight: 400,
+                color: m.colored ? getReturnColor(m.value as number) : 'var(--text-primary)',
+                fontFamily: 'var(--font-mono)',
+                lineHeight: 1.2,
+              }}
+            >
+              {typeof m.value === 'number' && m.precision !== undefined
+                ? (m.value as number).toFixed(m.precision)
+                : m.value}
+              {m.suffix && (
+                <span style={{ fontSize: 'var(--text-small-size)', color: 'var(--text-tertiary)', marginLeft: 4 }}>
+                  {m.suffix}
+                </span>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
 
       {signals.length > 0 && (
         <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>

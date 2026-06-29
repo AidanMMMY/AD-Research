@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { Table, Button, Alert, Descriptions, Row, Col } from 'antd';
-import GlassCard from '@/components/GlassCard';
+import { Table, Button, Alert, Descriptions } from 'antd';
+import Panel from '@/components/Panel';
 import ThemeTag from '@/components/ThemeTag';
 import { useScanner } from '@/hooks/useScanner';
 import { ReloadOutlined } from '@ant-design/icons';
@@ -33,65 +33,74 @@ export default function ETFScanner() {
     <div>
       <h1 style={{ fontSize: 'var(--text-h1-size)', fontWeight: 500, color: 'var(--text-primary)', margin: '0 0 8px', letterSpacing: '-0.03em' }}>全市场扫描</h1>
       <p style={{ margin: '0 0 32px', color: 'var(--text-tertiary)', fontSize: 'var(--text-body-size)' }}>自动发现新增、退市、变更的标的，保持数据库与市场同步</p>
-      <GlassCard title="全市场扫描" extra={
-        <Button type="primary" icon={<ReloadOutlined />} onClick={handleScan} loading={isScanning}>
-          立即扫描
-        </Button>
-      } style={{ marginBottom: 16 }}>
+      <Panel
+        title="全市场扫描"
+        extra={
+          <Button type="primary" icon={<ReloadOutlined />} onClick={handleScan} loading={isScanning}>
+            立即扫描
+          </Button>
+        }
+        variant="minimal"
+        style={{ marginBottom: 16 }}
+      >
         <p style={{ color: 'var(--text-secondary)' }}>
           对比 akshare 最新标的列表与数据库，自动发现新增、退市、变更的标的。
           定时任务：每周日凌晨 03:00 自动执行。
         </p>
-      </GlassCard>
+      </Panel>
 
       {result && (
-        <GlassCard title={`扫描结果 - ${result.scan_date}`} style={{ marginBottom: 16 }}>
+        <Panel title={`扫描结果 - ${result.scan_date}`} variant="minimal" style={{ marginBottom: 16 }}>
           {result.error ? (
             <Alert type="error" message={result.error} />
           ) : (
-            <Row gutter={[16, 16]}>
-              <Col xs={24} md={8}>
-                <div style={{ paddingRight: 16, borderRight: '1px solid var(--border-default)' }}>
-                  <div style={{ fontSize: 'var(--text-label-size)', color: 'var(--text-tertiary)', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 12 }}>新增标的</div>
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(3, 1fr)',
+                borderTop: '1px solid var(--border-default)',
+                borderBottom: '1px solid var(--border-default)',
+              }}
+            >
+              {[
+                { title: '新增标的', items: result.new, render: (e: any) => `${e.name} (${e.market})` },
+                { title: '退市标的', items: result.delisted, render: (e: any) => `${e.name} (${e.market})` },
+                { title: '变更标的', items: result.changed, render: (e: any) => Object.entries(e.changes).map(([k, v]: [string, any]) => `${k}: ${v.old} → ${v.new}`).join(', ') },
+              ].map((section, i) => (
+                <div
+                  key={section.title}
+                  style={{
+                    padding: '16px',
+                    borderRight: i < 2 ? '1px solid var(--border-default)' : 'none',
+                  }}
+                >
+                  <div
+                    style={{
+                      fontSize: 'var(--text-label-size)',
+                      color: 'var(--text-tertiary)',
+                      fontWeight: 500,
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.08em',
+                      marginBottom: 12,
+                    }}
+                  >
+                    {section.title}
+                  </div>
                   <Descriptions column={1} size="small">
-                    {result.new.length > 0 ? result.new.map((e) => (
+                    {section.items.length > 0 ? section.items.map((e: any) => (
                       <Descriptions.Item key={e.code} label={e.code}>
-                        {e.name} ({e.market})
+                        {section.render(e)}
                       </Descriptions.Item>
                     )) : <Descriptions.Item>无</Descriptions.Item>}
                   </Descriptions>
                 </div>
-              </Col>
-              <Col xs={24} md={8}>
-                <div style={{ paddingRight: 16, borderRight: '1px solid var(--border-default)' }}>
-                  <div style={{ fontSize: 'var(--text-label-size)', color: 'var(--text-tertiary)', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 12 }}>退市标的</div>
-                  <Descriptions column={1} size="small">
-                    {result.delisted.length > 0 ? result.delisted.map((e) => (
-                      <Descriptions.Item key={e.code} label={e.code}>
-                        {e.name} ({e.market})
-                      </Descriptions.Item>
-                    )) : <Descriptions.Item>无</Descriptions.Item>}
-                  </Descriptions>
-                </div>
-              </Col>
-              <Col xs={24} md={8}>
-                <div>
-                  <div style={{ fontSize: 'var(--text-label-size)', color: 'var(--text-tertiary)', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 12 }}>变更标的</div>
-                  <Descriptions column={1} size="small">
-                    {result.changed.length > 0 ? result.changed.map((e) => (
-                      <Descriptions.Item key={e.code} label={e.code}>
-                        {Object.entries(e.changes).map(([k, v]) => `${k}: ${v.old} → ${v.new}`).join(', ')}
-                      </Descriptions.Item>
-                    )) : <Descriptions.Item>无</Descriptions.Item>}
-                  </Descriptions>
-                </div>
-              </Col>
-            </Row>
+              ))}
+            </div>
           )}
-        </GlassCard>
+        </Panel>
       )}
 
-      <GlassCard title="扫描历史">
+      <Panel title="扫描历史" variant="minimal">
         <Table
           dataSource={logs}
           columns={columns}
@@ -101,7 +110,7 @@ export default function ETFScanner() {
           pagination={{ pageSize: 10 }}
           loading={isLoading}
         />
-      </GlassCard>
+      </Panel>
     </div>
   );
 }
