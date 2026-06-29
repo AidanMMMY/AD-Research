@@ -48,14 +48,15 @@ def _load_bars(etf_code: str, start_date: date, end_date: date, db: Any | None) 
             ]
         )
 
-    # Legacy fallback: A-share via Akshare (no adjustment info)
+    # Legacy fallback: A-share via Akshare (adjustment info may be unavailable)
     from app.data.providers.akshare_provider import AkshareProvider
 
     provider = AkshareProvider()
     df = provider.fetch_daily_bars([etf_code], start_date, end_date)
     if df.empty:
         return df
-    df = df.assign(adj_close=df["close"])
+    adj_factor = df.get("adj_factor", pd.Series(1.0, index=df.index)).fillna(1.0)
+    df = df.assign(adj_close=df["close"] * adj_factor)
     return df
 
 
