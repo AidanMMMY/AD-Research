@@ -130,6 +130,7 @@ class BinanceProvider(DataProvider):
                     exchange="BINANCE",
                     category=category,
                     currency="USDT",
+                    instrument_type="CRYPTO",
                 )
             )
         return instruments

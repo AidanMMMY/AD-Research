@@ -24,11 +24,11 @@ from app.core.database import Base
 
 
 class ETFInfo(Base):
-    """Unified instrument information table (ETFs & individual stocks).
+    """Unified instrument information table (ETFs, individual stocks & crypto).
 
-    Stores basic information for both ETFs and individual equities across
-    multiple markets (A-Share, US, HK, JP). The ``instrument_type`` column
-    distinguishes ETFs from individual stocks.
+    Stores basic information for ETFs, individual equities, and cryptocurrency
+    trading pairs across multiple markets. The ``instrument_type`` column
+    distinguishes ETFs from individual stocks and crypto assets.
     """
 
     __tablename__ = "etf_info"
@@ -50,7 +50,7 @@ class ETFInfo(Base):
 
     # Extended columns for US stocks (Phase 1-2)
     instrument_type = Column(
-        String(20), server_default="ETF", comment="Instrument type: ETF or STOCK"
+        String(20), server_default="ETF", comment="Instrument type: ETF, STOCK or CRYPTO"
     )
     sector = Column(String(100), comment="GICS sector")
     industry = Column(String(100), comment="GICS industry")

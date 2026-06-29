@@ -17,6 +17,7 @@ class ETFInfo:
     is_qdii: bool = False
     underlying_index: str = ""
     inception_date: date | None = None
+    instrument_type: str = "ETF"
 
 
 @dataclass
