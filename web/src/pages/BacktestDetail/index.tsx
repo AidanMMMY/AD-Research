@@ -43,7 +43,7 @@ export default function BacktestDetail() {
       smooth: true,
       lineStyle: { color: 'var(--accent)', width: 2 },
       itemStyle: { color: 'var(--accent)' },
-      areaStyle: { color: 'rgba(34,211,238,0.08)' },
+      areaStyle: { color: 'var(--accent-dim)' },
     }],
   };
 

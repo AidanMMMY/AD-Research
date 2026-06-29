@@ -1,5 +1,7 @@
 import { Statistic } from 'antd';
 import { ArrowUpOutlined, ArrowDownOutlined } from '@ant-design/icons';
+import { useSettingsStore } from '@/stores/settings';
+import { getReturnColor } from '@/utils/color';
 import GlassCard from './GlassCard';
 
 interface IndicatorCardProps {
@@ -12,6 +14,7 @@ interface IndicatorCardProps {
 
 export default function IndicatorCard({ title, value, suffix, precision = 2, prefix }: IndicatorCardProps) {
   const isPositive = value !== undefined && value !== null && value >= 0;
+  const colorConvention = useSettingsStore((s) => s.colorConvention);
   return (
     <GlassCard padding="sm">
       <Statistic
@@ -20,7 +23,7 @@ export default function IndicatorCard({ title, value, suffix, precision = 2, pre
         precision={precision}
         suffix={suffix}
         prefix={prefix || (isPositive ? <ArrowUpOutlined /> : <ArrowDownOutlined />)}
-        valueStyle={{ color: isPositive ? '#ef4444' : '#22c55e', fontSize: 20 }}
+        valueStyle={{ color: getReturnColor(value, colorConvention), fontSize: 20 }}
       />
     </GlassCard>
   );

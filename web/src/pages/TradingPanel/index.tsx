@@ -15,8 +15,8 @@ import {
   Statistic,
   Switch,
   Table,
-  Tag,
 } from 'antd';
+import ThemeTag from '@/components/ThemeTag';
 import {
   PlusOutlined,
   DeleteOutlined,
@@ -256,23 +256,23 @@ export default function TradingPanel() {
       title: '类型',
       dataIndex: 'order_type',
       key: 'type',
-      render: (v: string) => <Tag>{v}</Tag>,
+      render: (v: string) => <ThemeTag variant="default">{v}</ThemeTag>,
     },
     {
       title: '状态',
       dataIndex: 'status',
       key: 'status',
       render: (v: string) => {
-        const colorMap: Record<string, string> = {
-          filled: '#52c41a',
-          partially_filled: '#faad14',
-          pending: '#1890ff',
-          new: '#1890ff',
-          cancelled: '#999',
-          rejected: '#ff4d4f',
-          expired: '#999',
+        const variantMap: Record<string, any> = {
+          filled: 'success',
+          partially_filled: 'warning',
+          pending: 'accent',
+          new: 'accent',
+          cancelled: 'neutral',
+          rejected: 'error',
+          expired: 'neutral',
         };
-        return <Tag color={colorMap[v] || '#999'}>{v}</Tag>;
+        return <ThemeTag variant={variantMap[v] || 'neutral'}>{v}</ThemeTag>;
       },
     },
     {
@@ -353,13 +353,13 @@ export default function TradingPanel() {
                   <Space>
                     <span>{c.name}</span>
                     {c.is_testnet ? (
-                      <Tag color="orange" style={{ fontSize: 10 }}>
+                      <ThemeTag variant="warning" style={{ fontSize: 10 }}>
                         TESTNET
-                      </Tag>
+                      </ThemeTag>
                     ) : (
-                      <Tag color="red" style={{ fontSize: 10 }}>
+                      <ThemeTag variant="error" style={{ fontSize: 10 }}>
                         LIVE
-                      </Tag>
+                      </ThemeTag>
                     )}
                   </Space>
                 ),
