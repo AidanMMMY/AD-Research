@@ -177,6 +177,7 @@ def backfill_bars(
                         "pre_close": insert(ETFDailyBar).excluded.pre_close,
                         "change_pct": insert(ETFDailyBar).excluded.change_pct,
                         "turnover_rate": insert(ETFDailyBar).excluded.turnover_rate,
+                        "adj_factor": insert(ETFDailyBar).excluded.adj_factor,
                     },
                 )
             )
@@ -312,6 +313,7 @@ def backfill_bars_per_stock(
                         "pre_close": insert(ETFDailyBar).excluded.pre_close,
                         "change_pct": insert(ETFDailyBar).excluded.change_pct,
                         "turnover_rate": insert(ETFDailyBar).excluded.turnover_rate,
+                        "adj_factor": insert(ETFDailyBar).excluded.adj_factor,
                     },
                 )
             )
@@ -702,7 +704,7 @@ def backfill_financials(
 
 _BAR_FIELDS = [
     "etf_code", "trade_date", "open", "high", "low", "close",
-    "volume", "amount", "pre_close", "change_pct", "turnover_rate",
+    "volume", "amount", "pre_close", "change_pct", "turnover_rate", "adj_factor",
 ]
 
 
