@@ -296,7 +296,6 @@
   border: 1px solid var(--card-border) !important;
   border-radius: var(--card-radius) !important;
   box-shadow: var(--shadow-card) !important;
-  padding: 0 !important;
 }
 
 .ant-popover-title {
