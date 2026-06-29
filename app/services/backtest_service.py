@@ -59,6 +59,7 @@ class BacktestService:
             slippage_rate=slippage_rate,
             position_size=position_size,
             risk_free_rate=risk_free_rate,
+            db=self.db,
         )
 
         # Persist to database
