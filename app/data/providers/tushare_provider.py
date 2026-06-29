@@ -208,6 +208,53 @@ class TushareProvider(DataProvider):
         )
         return all_stocks
 
+    def fetch_adj_factor(
+        self,
+        ts_code: str | None = None,
+        trade_date: date | None = None,
+        start_date: date | None = None,
+        end_date: date | None = None,
+    ) -> pd.DataFrame:
+        """Fetch cumulative adjustment factors from Tushare ``adj_factor()``.
+
+        Returns a DataFrame with columns:
+          etf_code, trade_date, adj_factor
+
+        The adjustment factor is cumulative front-adjusted:
+          adj_close = close * adj_factor
+        """
+        params: dict[str, Any] = {}
+        if ts_code:
+            params["ts_code"] = _to_ts_code(ts_code)
+        if trade_date is not None:
+            params["trade_date"] = trade_date.strftime("%Y%m%d")
+        if start_date is not None:
+            params["start_date"] = start_date.strftime("%Y%m%d")
+        if end_date is not None:
+            params["end_date"] = end_date.strftime("%Y%m%d")
+
+        try:
+            self._limiter.acquire()
+            df = self._pro.adj_factor(**params)
+        except Exception as exc:
+            raise DataProviderError(
+                f"Tushare adj_factor({params}) failed: {exc}"
+            ) from exc
+
+        if df is None or df.empty:
+            return pd.DataFrame(columns=["etf_code", "trade_date", "adj_factor"])
+
+        df = df.rename(columns={"ts_code": "etf_code"})
+        df["etf_code"] = df["etf_code"].apply(_to_internal_code)
+        if "trade_date" in df.columns:
+            df["trade_date"] = pd.to_datetime(
+                df["trade_date"], format="%Y%m%d"
+            ).dt.date
+        if "adj_factor" in df.columns:
+            df["adj_factor"] = pd.to_numeric(df["adj_factor"], errors="coerce")
+
+        return df
+
     # ------------------------------------------------------------------
     # Daily OHLCV Bars
     # ------------------------------------------------------------------
@@ -220,7 +267,7 @@ class TushareProvider(DataProvider):
         Uses Tushare daily() which supports batch fetching by trade date range.
         Returns DataFrame with standard columns:
           etf_code, trade_date, open, high, low, close, volume, amount,
-          pre_close, change_pct, turnover_rate
+          pre_close, change_pct, turnover_rate, adj_factor
         """
 
         if not codes:
@@ -236,56 +283,18 @@ class TushareProvider(DataProvider):
         # Tushare daily() with ts_code filter fetches per stock; we loop
         for code in codes:
             ts_code = _to_ts_code(code)
+            df_daily: pd.DataFrame | None = None
             for attempt in range(_RETRIES + 1):
                 try:
                     self._limiter.acquire()
-                    df = self._pro.daily(
+                    df_daily = self._pro.daily(
                         ts_code=ts_code,
                         start_date=start_str,
                         end_date=end_str,
                         fields="ts_code,trade_date,open,high,low,close,vol,amount,"
                                "pre_close,pct_chg,turnover_rate,turnover_rate_f",
                     )
-                    if df is not None and not df.empty:
-                        # Standardize column names
-                        df = df.rename(
-                            columns={
-                                "ts_code": "etf_code",
-                                "vol": "volume",
-                                "pct_chg": "change_pct",
-                            }
-                        )
-                        df["etf_code"] = df["etf_code"].apply(_to_internal_code)
-
-                        # Convert types
-                        if "trade_date" in df.columns:
-                            df["trade_date"] = pd.to_datetime(
-                                df["trade_date"], format="%Y%m%d"
-                            ).dt.date
-
-                        numeric_cols = [
-                            "open", "high", "low", "close", "volume", "amount",
-                            "pre_close", "change_pct", "turnover_rate",
-                        ]
-                        for col in numeric_cols:
-                            if col in df.columns:
-                                df[col] = pd.to_numeric(
-                                    df[col], errors="coerce"
-                                )
-
-                        # Tushare daily_basic has turnover_rate_f (free float),
-                        # daily() has turnover_rate. Prefer turnover_rate_f if present.
-                        if "turnover_rate_f" in df.columns:
-                            # Only fill missing turnover_rate with turnover_rate_f
-                            mask = df["turnover_rate"].isna()
-                            df.loc[mask, "turnover_rate"] = df.loc[
-                                mask, "turnover_rate_f"
-                            ]
-                            df = df.drop(columns=["turnover_rate_f"])
-
-                        all_frames.append(df)
                     break  # success, exit retry loop
-
                 except Exception as exc:
                     if attempt < _RETRIES:
                         logger.warning(
@@ -299,11 +308,65 @@ class TushareProvider(DataProvider):
                             ts_code, _RETRIES, exc,
                         )
 
+            if df_daily is None or df_daily.empty:
+                continue
+
+            # Standardize column names
+            df_daily = df_daily.rename(
+                columns={
+                    "ts_code": "etf_code",
+                    "vol": "volume",
+                    "pct_chg": "change_pct",
+                }
+            )
+            df_daily["etf_code"] = df_daily["etf_code"].apply(_to_internal_code)
+
+            # Convert types
+            if "trade_date" in df_daily.columns:
+                df_daily["trade_date"] = pd.to_datetime(
+                    df_daily["trade_date"], format="%Y%m%d"
+                ).dt.date
+
+            numeric_cols = [
+                "open", "high", "low", "close", "volume", "amount",
+                "pre_close", "change_pct", "turnover_rate",
+            ]
+            for col in numeric_cols:
+                if col in df_daily.columns:
+                    df_daily[col] = pd.to_numeric(df_daily[col], errors="coerce")
+
+            # Tushare daily_basic has turnover_rate_f (free float),
+            # daily() has turnover_rate. Prefer turnover_rate_f if present.
+            if "turnover_rate_f" in df_daily.columns:
+                mask = df_daily["turnover_rate"].isna()
+                df_daily.loc[mask, "turnover_rate"] = df_daily.loc[
+                    mask, "turnover_rate_f"
+                ]
+                df_daily = df_daily.drop(columns=["turnover_rate_f"])
+
+            # Merge adjustment factor for this stock
+            try:
+                adj_df = self.fetch_adj_factor(
+                    ts_code=code, start_date=start_date, end_date=end_date
+                )
+                if not adj_df.empty:
+                    df_daily = df_daily.merge(
+                        adj_df, on=["etf_code", "trade_date"], how="left"
+                    )
+            except Exception:
+                logger.warning(
+                    "Failed to fetch adj_factor for %s, defaulting to 1.0", code
+                )
+            df_daily["adj_factor"] = df_daily.get("adj_factor", pd.Series()).fillna(1.0)
+
+            all_frames.append(df_daily)
+
         if not all_frames:
             return pd.DataFrame(
                 columns=[
                     "etf_code", "trade_date", "open", "high", "low", "close",
                     "volume", "amount", "pre_close", "change_pct", "turnover_rate",
+                    "adj_factor",
                 ]
             )
 
@@ -337,7 +400,7 @@ class TushareProvider(DataProvider):
 
         Returns DataFrame with standard columns:
           etf_code, trade_date, open, high, low, close, volume, amount,
-          pre_close, change_pct, turnover_rate
+          pre_close, change_pct, turnover_rate, adj_factor
         """
         trade_date_str = trade_date.strftime("%Y%m%d")
 
@@ -358,6 +421,7 @@ class TushareProvider(DataProvider):
                 columns=[
                     "etf_code", "trade_date", "open", "high", "low", "close",
                     "volume", "amount", "pre_close", "change_pct", "turnover_rate",
+                    "adj_factor",
                 ]
             )
 
@@ -390,6 +454,17 @@ class TushareProvider(DataProvider):
             mask = df["turnover_rate"].isna()
             df.loc[mask, "turnover_rate"] = df.loc[mask, "turnover_rate_f"]
             df = df.drop(columns=["turnover_rate_f"])
+
+        # Merge adjustment factors for the entire market on this date
+        try:
+            adj_df = self.fetch_adj_factor(trade_date=trade_date)
+            if not adj_df.empty:
+                df = df.merge(adj_df, on=["etf_code", "trade_date"], how="left")
+        except Exception:
+            logger.warning(
+                "Failed to fetch adj_factor for %s, defaulting to 1.0", trade_date
+            )
+        df["adj_factor"] = df.get("adj_factor", pd.Series()).fillna(1.0)
 
         logger.info(
             "[TushareProvider] fetch_daily_all_market(%s): %d rows",
