@@ -16,7 +16,7 @@ interface GlassCardProps {
 /**
  * 兼容性包装：GlassCard 现在内部使用 Panel。
  * hover/glow 参数保留但不再产生视觉差异。
- * 默认 variant 为 default（Bento card surface with rounded corners & shadow）。
+ * 默认 variant 为 minimal（Swiss flat：标题 + 细线分隔，无卡框）。
  */
 export default function GlassCard({
   children,
@@ -25,7 +25,7 @@ export default function GlassCard({
   className = '',
   style,
   padding = 'md',
-  variant = 'default',
+  variant = 'minimal',
 }: GlassCardProps) {
   return (
     <Panel

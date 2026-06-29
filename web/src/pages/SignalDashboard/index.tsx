@@ -1,4 +1,4 @@
-import { Table, Row, Col, Statistic } from 'antd';
+import { Table } from 'antd';
 import GlassCard from '@/components/GlassCard';
 import ThemeTag, { ThemeTagVariant } from '@/components/ThemeTag';
 import { useSignals } from '@/hooks/useSignals';
@@ -42,11 +42,53 @@ export default function SignalDashboard() {
     <div>
       <h1 style={{ fontSize: 'var(--text-h1-size)', fontWeight: 500, color: 'var(--text-primary)', margin: '0 0 8px', letterSpacing: '-0.03em' }}>信号看板</h1>
       <p style={{ margin: '0 0 32px', color: 'var(--text-tertiary)', fontSize: 'var(--text-body-size)' }}>查看最新交易信号汇总，监控买入、卖出、持有信号分布</p>
-      <Row gutter={[16, 16]} style={{ marginBottom: 'var(--space-md)' }}>
-        <Col xs={8}><GlassCard><Statistic title="买入信号" value={buyCount} valueStyle={{ color: 'var(--color-rise)' }} /></GlassCard></Col>
-        <Col xs={8}><GlassCard><Statistic title="卖出信号" value={sellCount} valueStyle={{ color: 'var(--color-fall)' }} /></GlassCard></Col>
-        <Col xs={8}><GlassCard><Statistic title="持有信号" value={holdCount} /></GlassCard></Col>
-      </Row>
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(3, 1fr)',
+          borderTop: '1px solid var(--border-default)',
+          borderBottom: '1px solid var(--border-default)',
+          marginBottom: 'var(--space-md)',
+        }}
+      >
+        {[
+          { title: '买入信号', value: buyCount, color: 'var(--color-rise)' },
+          { title: '卖出信号', value: sellCount, color: 'var(--color-fall)' },
+          { title: '持有信号', value: holdCount, color: 'var(--text-primary)' },
+        ].map((m, i) => (
+          <div
+            key={m.title}
+            style={{
+              padding: '20px 16px',
+              borderRight: i < 2 ? '1px solid var(--border-default)' : 'none',
+            }}
+          >
+            <div
+              style={{
+                fontSize: 'var(--text-label-size)',
+                color: 'var(--text-tertiary)',
+                fontWeight: 500,
+                marginBottom: '12px',
+                letterSpacing: '0.12em',
+                textTransform: 'uppercase',
+              }}
+            >
+              {m.title}
+            </div>
+            <div
+              style={{
+                fontSize: 'var(--text-data-lg-size)',
+                fontWeight: 400,
+                color: m.color,
+                fontFamily: 'var(--font-mono)',
+                lineHeight: 1.2,
+              }}
+            >
+              {m.value}
+            </div>
+          </div>
+        ))}
+      </div>
 
       <GlassCard title="最新交易信号">
         <Table
