@@ -132,13 +132,6 @@ export default function ETFList() {
           onChange={(v) => { setMarket(v); setPage(1); }}
         />
         <Select
-          placeholder="分类"
-          allowClear
-          style={{ width: 160 }}
-          options={categories?.map((c: string) => ({ label: c, value: c }))}
-          onChange={(v) => { setCategory(v); setPage(1); }}
-        />
-        <Select
           placeholder="类型"
           allowClear
           style={{ width: 120 }}
@@ -148,6 +141,13 @@ export default function ETFList() {
           ]}
           value={instrumentType}
           onChange={(v) => { setInstrumentType(v); setPage(1); }}
+        />
+        <Select
+          placeholder="分类"
+          allowClear
+          style={{ width: 160 }}
+          options={categories?.map((c: string) => ({ label: c, value: c }))}
+          onChange={(v) => { setCategory(v); setPage(1); }}
         />
         <div style={{ marginLeft: 'auto', fontSize: 'var(--text-small-size)', color: 'var(--text-tertiary)' }}>
           共 <span style={{ color: 'var(--accent)', fontWeight: 500 }}>{data?.total || 0}</span> 只
