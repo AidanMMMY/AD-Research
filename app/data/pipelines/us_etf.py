@@ -187,6 +187,18 @@ class USDailyPipeline(ETLPipeline):
             return pd.DataFrame()
 
         df = pd.concat(frames, ignore_index=True)
+
+        # Drop rows with missing required fields before validation.
+        required_cols = ["etf_code", "trade_date", "open", "high", "low", "close"]
+        before = len(df)
+        df = df.dropna(subset=required_cols)
+        dropped = before - len(df)
+        if dropped:
+            logger.warning(
+                "USDailyPipeline: Dropped %d rows with missing required fields",
+                dropped,
+            )
+
         logger.info(
             "USDailyPipeline: Extracted %d rows for target date %s",
             len(df), target_date,
