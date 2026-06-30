@@ -14,6 +14,7 @@ import Panel from '@/components/Panel';
 import ETFCodeTag from '@/components/ETFCodeTag';
 import ReturnTag from '@/components/ReturnTag';
 import ScoreBar from '@/components/ScoreBar';
+import { usePriceStream } from '@/hooks/usePriceStream';
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -25,6 +26,9 @@ export default function Dashboard() {
     queryFn: () => statsApi.overview().then((r) => r.data),
     staleTime: 60_000,
   });
+
+  const INDEX_CODES = ['510300.SH', '159915.SZ', 'SPY.US', 'BTC.US'];
+  const { prices } = usePriceStream(INDEX_CODES);
 
   const scoreColumns = [
     {
@@ -179,6 +183,74 @@ export default function Dashboard() {
             )}
           </div>
         ))}
+      </div>
+
+      <div style={{ marginBottom: '32px' }}>
+        <h2
+          style={{
+            fontSize: 'var(--text-h4-size)',
+            fontWeight: 500,
+            color: 'var(--text-primary)',
+            margin: '0 0 16px',
+            letterSpacing: '-0.02em',
+          }}
+        >
+          实时行情
+        </h2>
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(4, 1fr)',
+            borderTop: '1px solid var(--border-default)',
+            borderBottom: '1px solid var(--border-default)',
+          }}
+        >
+          {INDEX_CODES.map((code, i) => {
+            const tick = prices[code];
+            return (
+              <div
+                key={code}
+                style={{
+                  padding: '20px 16px',
+                  borderRight: i < 3 ? '1px solid var(--border-default)' : 'none',
+                }}
+              >
+                <div
+                  style={{
+                    fontSize: 'var(--text-label-size)',
+                    color: 'var(--text-tertiary)',
+                    fontWeight: 500,
+                    marginBottom: '12px',
+                    letterSpacing: '0.12em',
+                    textTransform: 'uppercase',
+                  }}
+                >
+                  {code}
+                </div>
+                <div
+                  style={{
+                    fontSize: 'var(--text-data-lg-size)',
+                    fontWeight: 400,
+                    color: 'var(--text-primary)',
+                    fontFamily: 'var(--font-mono)',
+                    lineHeight: 1.2,
+                  }}
+                >
+                  {tick ? tick.price.toFixed(2) : '-'}
+                </div>
+                <div style={{ marginTop: 8 }}>
+                  {tick ? (
+                    <ReturnTag value={tick.change_pct} />
+                  ) : (
+                    <span style={{ fontSize: 'var(--text-small-size)', color: 'var(--text-tertiary)' }}>
+                      暂无数据
+                    </span>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1.55fr 1fr', gap: '28px' }}>

@@ -18,4 +18,6 @@ export const notificationApi = {
     client.post<SendTestResponse>(`/notifications/configs/${id}/test`),
   getLogs: (limit?: number) =>
     client.get<NotificationLogListResponse>('/notifications/logs', { params: { limit } }),
+  logs: (limit = 50) =>
+    client.get<NotificationLogListResponse>('/notifications/logs', { params: { limit } }),
 };

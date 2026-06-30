@@ -13,6 +13,7 @@ export { strategyApi } from './strategy';
 export { backtestApi } from './backtest';
 export { signalApi } from './signal';
 export { scannerApi } from './scanner';
+export { etlApi } from './etl';
 export { notificationApi } from './notification';
 export { favoriteApi } from './favorite';
 export { researchApi } from './research';

@@ -10,6 +10,7 @@ import asyncio
 import json
 import logging
 from collections.abc import AsyncGenerator
+from decimal import Decimal
 from typing import Optional
 
 from fastapi import APIRouter, Query
@@ -29,16 +30,16 @@ STREAM_TIMEOUT = 300
 
 def _fetch_snapshot(db: Session, code: str) -> Optional[dict]:
     """Look up a single instrument's latest price snapshot."""
-    from app.models.etf import ETF, ETFDaily
+    from app.models.etf import ETFInfo, InstrumentDailyBar
 
-    instrument = db.query(ETF).filter(ETF.code == code).first()
+    instrument = db.query(ETFInfo).filter(ETFInfo.code == code).first()
     if not instrument:
         return None
 
     latest = (
-        db.query(ETFDaily)
-        .filter(ETFDaily.etf_id == instrument.id)
-        .order_by(ETFDaily.trade_date.desc())
+        db.query(InstrumentDailyBar)
+        .filter(InstrumentDailyBar.etf_code == code)
+        .order_by(InstrumentDailyBar.trade_date.desc())
         .first()
     )
 
@@ -46,23 +47,26 @@ def _fetch_snapshot(db: Session, code: str) -> Optional[dict]:
         return None
 
     prev = (
-        db.query(ETFDaily)
-        .filter(ETFDaily.etf_id == instrument.id)
-        .order_by(ETFDaily.trade_date.desc())
+        db.query(InstrumentDailyBar)
+        .filter(InstrumentDailyBar.etf_code == code)
+        .order_by(InstrumentDailyBar.trade_date.desc())
         .offset(1)
         .first()
     )
 
-    change_pct = 0.0
-    if prev and prev.close and prev.close != 0:
-        change_pct = round((latest.close - prev.close) / prev.close * 100, 2)
+    latest_close = latest.close or Decimal("0")
+    prev_close = prev.close if prev else None
+
+    change_pct = Decimal("0")
+    if prev_close and prev_close != 0:
+        change_pct = round((latest_close - prev_close) / prev_close * 100, 2)
 
     return {
         "code": instrument.code,
         "name": instrument.name,
         "market": instrument.market,
-        "price": latest.close,
-        "change_pct": change_pct,
+        "price": float(latest_close) if latest_close else 0.0,
+        "change_pct": float(change_pct),
         "volume": latest.volume or 0,
         "timestamp": int(latest.trade_date.timestamp() * 1000) if latest.trade_date else 0,
     }

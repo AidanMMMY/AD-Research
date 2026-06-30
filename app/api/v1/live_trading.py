@@ -25,6 +25,7 @@ import hashlib
 import json
 from datetime import datetime, timezone
 from decimal import Decimal
+from typing import Any
 
 from cryptography.fernet import Fernet
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -328,12 +329,12 @@ def place_order(
 
     # Determine price for risk check
     binance_symbol = BinanceClient.to_binance_symbol(payload.instrument_code)
+    client = _make_binance_client(config)
 
     if payload.price:
         risk_price = payload.price
     else:
         # MARKET order — fetch current price for risk check
-        client = _make_binance_client(config)
         try:
             risk_price = client.get_ticker_price(binance_symbol)
             if risk_price is None or risk_price <= 0:
@@ -341,39 +342,63 @@ def place_order(
         except BinanceClientError as exc:
             raise HTTPException(status_code=502, detail=f"Binance API error: {exc}")
 
+    # ── Apply Binance symbol filters before risk check and placement ──
+    try:
+        adjusted_qty, adjusted_price, filter_errors = client.apply_symbol_filters(
+            symbol=binance_symbol,
+            side=payload.side,
+            quantity=payload.quantity,
+            price=risk_price,
+            order_type=payload.order_type,
+        )
+    except BinanceClientError as exc:
+        raise HTTPException(status_code=502, detail=f"Binance filter check failed: {exc}")
+
+    if filter_errors:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Symbol filter violation: {'; '.join(filter_errors)}",
+        )
+
     # ── Risk check ──
-    rc = RiskControl(db, config, get_settings())
+    rc = RiskControl(db, config, get_settings(), client=client)
     risk_result = rc.check_order(
         instrument_code=payload.instrument_code,
         side=payload.side,
-        quantity=payload.quantity,
-        price=risk_price,
+        quantity=adjusted_qty,
+        price=adjusted_price if payload.price else risk_price,
+        order_type=payload.order_type,
     )
     if not risk_result.allowed:
         raise HTTPException(status_code=400, detail=f"Risk check failed: {risk_result.reason}")
 
     # ── Place order on Binance ──
-    client = _make_binance_client(config)
     try:
-        binance_order = client.place_order(
-            symbol=binance_symbol,
-            side=payload.side,
-            quantity=payload.quantity,
-            order_type=payload.order_type,
-            price=payload.price,
-        )
+        place_kwargs: dict[str, Any] = {
+            "symbol": binance_symbol,
+            "side": payload.side,
+            "quantity": adjusted_qty,
+            "order_type": payload.order_type,
+        }
+        if payload.order_type.upper() != "MARKET":
+            place_kwargs["price"] = adjusted_price
+        binance_order = client.place_order(**place_kwargs)
     except BinanceClientError as exc:
         raise HTTPException(status_code=502, detail=f"Binance order failed: {exc}")
 
     # ── Record in local DB ──
+    recorded_price = (
+        adjusted_price if payload.price and adjusted_price != payload.price
+        else payload.price or Decimal(str(binance_order.get("price", risk_price)))
+    )
     order = LiveTradeOrder(
         config_id=config_id,
         order_id_from_exchange=str(binance_order.get("orderId", "")),
         instrument_code=payload.instrument_code,
         side=payload.side,
         order_type=payload.order_type,
-        price=payload.price or Decimal(str(binance_order.get("price", risk_price))),
-        quantity=payload.quantity,
+        price=recorded_price,
+        quantity=adjusted_qty,
         filled_quantity=Decimal(str(binance_order.get("executedQty", "0"))),
         status=binance_order.get("status", "pending").lower(),
         signal_id=payload.signal_id,

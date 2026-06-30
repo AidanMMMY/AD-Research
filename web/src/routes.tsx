@@ -25,8 +25,9 @@ const ResearchNotes = lazy(() => import('./pages/ResearchNotes'));
 const SentimentDashboard = lazy(() => import('./pages/SentimentDashboard'));
 const AIChat = lazy(() => import('./pages/AIChat'));
 const CryptoList = lazy(() => import('./pages/CryptoList'));
-// CryptoDetail disabled until backend endpoints are ready
-// const CryptoDetail = lazy(() => import('./pages/CryptoDetail'));
+const CryptoDetail = lazy(() => import('./pages/CryptoDetail'));
+const ETLStatus = lazy(() => import('./pages/ETLStatus'));
+const NotificationLogs = lazy(() => import('./pages/NotificationLogs'));
 const PaperTrading = lazy(() => import('./pages/PaperTrading'));
 const TradingPanel = lazy(() => import('./pages/TradingPanel'));
 
@@ -63,19 +64,21 @@ export const routes: RouteConfig[] = [
   { path: '/sector-rotation', element: wrap(SectorRotation), auth: true, menu: { name: '板块轮动', icon: 'BarChartOutlined' } },
   { path: '/scanner', element: wrap(ETFScanner), auth: true, menu: { name: '全市场扫描', icon: 'ScanOutlined' } },
   { path: '/notifications', element: wrap(NotificationConfig), auth: true, menu: { name: '推送配置', icon: 'NotificationOutlined', dividerBefore: true } },
+  { path: '/notification-logs', element: wrap(NotificationLogs), auth: true, menu: { name: '通知日志', icon: 'FileTextOutlined' } },
   { path: '/strategies', element: wrap(StrategyList), auth: true, menu: { name: '策略管理', icon: 'SettingOutlined' } },
   { path: '/backtests', element: wrap(BacktestList), auth: true, menu: { name: '回测管理', icon: 'ExperimentOutlined' } },
   { path: '/backtests/:id', element: wrap(BacktestDetail), auth: true },
   { path: '/signals', element: wrap(SignalDashboard), auth: true, menu: { name: '交易信号', icon: 'ThunderboltOutlined' } },
   // ---- 加密货币 ----
   { path: '/crypto', element: wrap(CryptoList), auth: true, menu: { name: '加密货币', icon: 'GoldOutlined', dividerBefore: true } },
-  // { path: '/crypto/:code', element: wrap(CryptoDetail), auth: true }, // disabled until backend ready
+  { path: '/crypto/:code', element: wrap(CryptoDetail), auth: true },
   { path: '/paper-trading', element: wrap(PaperTrading), auth: true, menu: { name: '模拟交易', icon: 'DollarOutlined' } },
   { path: '/live-trading', element: wrap(TradingPanel), auth: true, menu: { name: '真实交易', icon: 'ThunderboltOutlined' } },
   // ---- AI 研究 ----
   { path: '/research', element: wrap(ResearchNotes), auth: true, menu: { name: 'AI研究笔记', icon: 'ReadOutlined' } },
   { path: '/sentiment', element: wrap(SentimentDashboard), auth: true, menu: { name: '情绪分析', icon: 'SmileOutlined' } },
   { path: '/chat', element: wrap(AIChat), auth: true, menu: { name: 'AI助手', icon: 'RobotOutlined' } },
+  { path: '/etl-status', element: wrap(ETLStatus), auth: true, menu: { name: 'ETL状态', icon: 'ClockCircleOutlined' } },
   { path: '/admin/users', element: wrap(AdminUsers), auth: true, menu: { name: '用户管理', icon: 'TeamOutlined', dividerBefore: true } },
   { path: '/admin/deployments', element: wrap(AdminDeployments), auth: true, menu: { name: '部署管理', icon: 'CloudServerOutlined' } },
   { path: '/', element: <Navigate to="/dashboard" replace />, auth: true },

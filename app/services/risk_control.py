@@ -33,6 +33,7 @@ from sqlalchemy.orm import Session
 
 from app.config import Settings, get_settings
 from app.models.trading import LiveTradeConfig, LiveTradeOrder, RiskRule
+from app.services.trading.binance_client import BinanceClient, BinanceClientError
 
 
 class RiskCheckResult:
@@ -106,10 +107,17 @@ class RiskControl:
         settings: Application settings (for global switch).
     """
 
-    def __init__(self, db: Session, config: LiveTradeConfig, settings: Settings):
+    def __init__(
+        self,
+        db: Session,
+        config: LiveTradeConfig,
+        settings: Settings,
+        client: BinanceClient | None = None,
+    ):
         self.db = db
         self.config = config
         self.settings = settings
+        self.client = client
 
     # ------------------------------------------------------------------
     # Main entry point
@@ -121,12 +129,22 @@ class RiskControl:
         side: str,
         quantity: Decimal,
         price: Decimal,
+        order_type: str = "LIMIT",
     ) -> RiskCheckResult:
         """Run all applicable risk checks.  Returns the first rejection or allow."""
+        # For MARKET orders, apply slippage buffer to the risk-check price so
+        # notional and balance checks are conservative.
+        risk_price = price
+        if order_type.upper() == "MARKET":
+            slippage = Decimal(str(self.settings.binance_market_order_slippage))
+            risk_price = price * (Decimal("1") + slippage)
+
         checks = [
             self._check_global_switch,
             self._check_circuit_breaker,
             self._check_symbol_allowlist,
+            self._check_symbol_filters,
+            self._check_account_balance,
             self._check_order_value,
             self._check_daily_order_count,
             self._check_daily_loss,
@@ -134,7 +152,9 @@ class RiskControl:
         ]
 
         for check_fn in checks:
-            result = check_fn(instrument_code, side, quantity, price)
+            result = check_fn(
+                instrument_code, side, quantity, risk_price, order_type
+            )
             if not result.allowed:
                 return result
 
@@ -190,7 +210,7 @@ class RiskControl:
     # ------------------------------------------------------------------
 
     def _check_global_switch(
-        self, code: str, side: str, qty: Decimal, px: Decimal
+        self, code: str, side: str, qty: Decimal, px: Decimal, order_type: str
     ) -> RiskCheckResult:
         """Master trading switch from settings."""
         if not self.settings.binance_trading_enabled:
@@ -198,7 +218,7 @@ class RiskControl:
         return RiskCheckResult.allow()
 
     def _check_circuit_breaker(
-        self, code: str, side: str, qty: Decimal, px: Decimal
+        self, code: str, side: str, qty: Decimal, px: Decimal, order_type: str
     ) -> RiskCheckResult:
         """Reject if circuit breaker is tripped."""
         tripped, reason = CircuitBreaker.is_tripped(self.config.id)
@@ -207,7 +227,7 @@ class RiskControl:
         return RiskCheckResult.allow()
 
     def _check_symbol_allowlist(
-        self, code: str, side: str, qty: Decimal, px: Decimal
+        self, code: str, side: str, qty: Decimal, px: Decimal, order_type: str
     ) -> RiskCheckResult:
         """Check instrument code against allowed_symbols (if configured)."""
         allowed = self.config.allowed_symbols
@@ -229,8 +249,58 @@ class RiskControl:
             )
         return RiskCheckResult.allow()
 
+    def _check_symbol_filters(
+        self, code: str, side: str, qty: Decimal, px: Decimal, order_type: str
+    ) -> RiskCheckResult:
+        """Reject if the order violates Binance symbol filters."""
+        if self.client is None:
+            return RiskCheckResult.allow()
+
+        binance_symbol = BinanceClient.to_binance_symbol(code)
+        try:
+            _, _, errors = self.client.apply_symbol_filters(
+                symbol=binance_symbol,
+                side=side,
+                quantity=qty,
+                price=px,
+                order_type=order_type,
+            )
+        except BinanceClientError as exc:
+            return RiskCheckResult.reject(f"Symbol filter check failed: {exc}")
+
+        if errors:
+            return RiskCheckResult.reject(
+                f"Binance filter violation: {'; '.join(errors)}"
+            )
+        return RiskCheckResult.allow()
+
+    def _check_account_balance(
+        self, code: str, side: str, qty: Decimal, px: Decimal, order_type: str
+    ) -> RiskCheckResult:
+        """For BUY orders, ensure free USDT covers the order notional + buffer."""
+        if side.upper() != "BUY" or self.client is None:
+            return RiskCheckResult.allow()
+
+        try:
+            balances = self.client.get_balances()
+        except BinanceClientError as exc:
+            return RiskCheckResult.reject(f"Could not fetch account balance: {exc}")
+
+        usdt = balances.get("USDT", {})
+        free_usdt = usdt.get("free", Decimal("0"))
+
+        notional = qty * px
+        # Small buffer (1%) to cover price movement / fees during submission.
+        required = notional * Decimal("1.01")
+
+        if free_usdt < required:
+            return RiskCheckResult.reject(
+                f"Insufficient USDT balance: free {free_usdt:.4f} < required {required:.4f}"
+            )
+        return RiskCheckResult.allow()
+
     def _check_order_value(
-        self, code: str, side: str, qty: Decimal, px: Decimal
+        self, code: str, side: str, qty: Decimal, px: Decimal, order_type: str
     ) -> RiskCheckResult:
         """Reject if order value exceeds per-order max."""
         notional = qty * px
@@ -242,7 +312,7 @@ class RiskControl:
         return RiskCheckResult.allow()
 
     def _check_daily_order_count(
-        self, code: str, side: str, qty: Decimal, px: Decimal
+        self, code: str, side: str, qty: Decimal, px: Decimal, order_type: str
     ) -> RiskCheckResult:
         """Reject if today's order count exceeds the daily limit."""
         max_orders = self.config.max_daily_orders
@@ -259,7 +329,7 @@ class RiskControl:
         return RiskCheckResult.allow()
 
     def _check_daily_loss(
-        self, code: str, side: str, qty: Decimal, px: Decimal
+        self, code: str, side: str, qty: Decimal, px: Decimal, order_type: str
     ) -> RiskCheckResult:
         """Reject (and trip breaker) if daily realised loss exceeds limit."""
         max_loss = self.config.max_daily_loss
@@ -276,7 +346,7 @@ class RiskControl:
         return RiskCheckResult.allow()
 
     def _check_duplicate(
-        self, code: str, side: str, qty: Decimal, px: Decimal
+        self, code: str, side: str, qty: Decimal, px: Decimal, order_type: str
     ) -> RiskCheckResult:
         """Reject orders with identical (symbol, side) within 60 seconds."""
         window_start = datetime.now(timezone.utc) - timedelta(seconds=60)
