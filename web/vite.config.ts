@@ -29,10 +29,10 @@ export default defineConfig({
           if (id.includes('node_modules/react') || id.includes('node_modules/react-dom') || id.includes('node_modules/react-router-dom')) {
             return 'vendor';
           }
-          // Ant Design icons are huge; keep them separate from antd components.
-          if (id.includes('node_modules/@ant-design/icons')) {
-            return 'icons';
-          }
+          // Keep all Ant Design code (antd + icons + colors + helpers) in a
+          // single chunk. Splitting icons into its own chunk creates a runtime
+          // cyclic dependency: icons top-level init needs color helpers that
+          // end up in the ui chunk, while ui chunk imports icons.
           if (id.includes('node_modules/antd') || id.includes('node_modules/@ant-design')) {
             return 'ui';
           }
