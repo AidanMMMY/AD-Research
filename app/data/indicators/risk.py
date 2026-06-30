@@ -2,6 +2,21 @@
 
 Provides functions for computing risk metrics
 (volatility, max drawdown, Sharpe ratio, period returns).
+
+## Unit convention (consistent across this module + calculate_risk_indicators)
+
+| Function                         | Returns                  | Notes                    |
+|----------------------------------|--------------------------|--------------------------|
+| ``calc_volatility``              | percentage (e.g. 16.48)  | × 100 (annualised)       |
+| ``calc_max_drawdown``            | percentage, negative     | × 100                    |
+| ``calc_return``                  | percentage               | × 100                    |
+| ``calc_sharpe``                  | ratio (dimensionless)     | no scaling (already a ratio) |
+| ``calculate_risk_indicators``    | mixed (see columns)      | volatility_*, max_drawdown_*, return_* are %; sharpe_* is ratio |
+
+PITFALL: callers comparing across columns MUST be aware that
+``volatility_20d`` is "16.48" while ``sharpe_1y`` is "1.5" (no × 100).
+Future refactor (Sprint N+1) should standardise all outputs to
+decimal form (0.1648) for consistency with the rest of the platform.
 """
 
 import numpy as np
