@@ -50,6 +50,17 @@ class Settings(BaseSettings):
     # AI / LLM
     deepseek_api_key: str = ""   # https://platform.deepseek.com/
 
+    # Xueqiu (雪球) cookie — raw "Cookie:" header value from a logged-in
+    # browser session. Must include xq_a_token=...; u=...; device_id=...
+    # The crawler is read-only and never attempts to log in.
+    xueqiu_cookie: str = ""
+
+    # News crawler tuning
+    xueqiu_per_minute: int = 30           # Per-instance rate limit
+    xueqiu_batch_size: int = 50           # Symbols per scheduler tick
+    xueqiu_posts_per_symbol: int = 20     # Posts per timeline page
+    xueqiu_user_cache_ttl_days: int = 7   # How long to keep user profiles
+
     # Application
     app_env: str = "development"
     log_level: str = "INFO"

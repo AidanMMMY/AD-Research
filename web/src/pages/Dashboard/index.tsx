@@ -1,20 +1,150 @@
 import { useNavigate } from 'react-router-dom';
-import { Table, List, Spin } from 'antd';
+import { Table, List, Spin, Empty, Skeleton, Tag, Badge, Tooltip } from 'antd';
 import {
   ArrowUpOutlined,
   ArrowDownOutlined,
   FolderOpenOutlined,
+  FireOutlined,
+  StarFilled,
+  ReadOutlined,
 } from '@ant-design/icons';
 import { useQuery } from '@tanstack/react-query';
 import { useScores } from '@/hooks/useScores';
 import { useFavorites } from '@/hooks/useFavorites';
 import { usePoolList } from '@/hooks/usePoolDetail';
 import { statsApi } from '@/api/stats';
+import { newsApi } from '@/api/news';
 import Panel from '@/components/Panel';
 import ETFCodeTag from '@/components/ETFCodeTag';
 import ReturnTag from '@/components/ReturnTag';
 import ScoreBar from '@/components/ScoreBar';
 import { usePriceStream } from '@/hooks/usePriceStream';
+import type { NewsArticle, SentimentLabel } from '@/types/news';
+import dayjs from 'dayjs';
+
+const SENTIMENT_COLORS: Record<SentimentLabel, string> = {
+  positive: '#52c41a',
+  neutral: '#8c8c8c',
+  negative: '#f5222d',
+};
+
+const SENTIMENT_LABELS: Record<SentimentLabel, string> = {
+  positive: '看多',
+  neutral: '中性',
+  negative: '看空',
+};
+
+const IMPORTANCE_COLOR = '#facc15';
+
+function formatRelative(iso: string): string {
+  const t = dayjs(iso);
+  if (!t.isValid()) return '';
+  const diff = dayjs().diff(t, 'minute');
+  if (diff < 60) return diff < 1 ? '刚刚' : `${diff} 分钟前`;
+  const h = Math.floor(diff / 60);
+  if (h < 24) return `${h} 小时前`;
+  const d = Math.floor(h / 24);
+  if (d < 7) return `${d} 天前`;
+  return t.format('MM-DD');
+}
+
+/** Compact news row used in dashboard cards. */
+function NewsRow({
+  article,
+  onOpen,
+}: {
+  article: NewsArticle;
+  onOpen: (id: number) => void;
+}) {
+  const filled = article.importance ? Math.max(0, Math.min(5, article.importance)) : 0;
+  return (
+    <div
+      onClick={() => onOpen(article.id)}
+      style={{
+        padding: '10px 0',
+        borderBottom: '1px solid var(--border-default)',
+        cursor: 'pointer',
+        transition: 'background var(--transition-fast)',
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.background = 'var(--bg-hover)';
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.background = 'transparent';
+      }}
+    >
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 6,
+          fontSize: 11,
+          color: 'var(--text-tertiary)',
+          marginBottom: 4,
+        }}
+      >
+        <span>{article.source}</span>
+        <span style={{ color: 'var(--text-muted)' }}>·</span>
+        <Tooltip title={dayjs(article.published_at).format('YYYY-MM-DD HH:mm')}>
+          <span>{formatRelative(article.published_at)}</span>
+        </Tooltip>
+        {article.importance ? (
+          <span style={{ marginLeft: 'auto', letterSpacing: 1 }}>
+            {Array.from({ length: 5 }).map((_, i) => (
+              <StarFilled
+                key={i}
+                style={{
+                  color: i < filled ? IMPORTANCE_COLOR : 'var(--text-muted)',
+                  opacity: i < filled ? 1 : 0.4,
+                  fontSize: 9,
+                  marginRight: 1,
+                }}
+              />
+            ))}
+          </span>
+        ) : null}
+      </div>
+      <div
+        style={{
+          fontSize: 13,
+          color: 'var(--text-primary)',
+          lineHeight: 1.5,
+          display: '-webkit-box',
+          WebkitLineClamp: 2,
+          WebkitBoxOrient: 'vertical',
+          overflow: 'hidden',
+          marginBottom: 4,
+        }}
+      >
+        {article.title}
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+        {article.symbols.slice(0, 4).map((s) => (
+          <Tag key={`${s.symbol}-${s.match_type}`} style={{ margin: 0, fontSize: 10 }}>
+            {s.symbol}
+          </Tag>
+        ))}
+        <span style={{ flex: 1 }} />
+        {article.sentiment_label && (
+          <Badge
+            color={SENTIMENT_COLORS[article.sentiment_label]}
+            text={
+              <span
+                style={{
+                  fontSize: 11,
+                  color: SENTIMENT_COLORS[article.sentiment_label],
+                  fontWeight: 500,
+                }}
+              >
+                {SENTIMENT_LABELS[article.sentiment_label]}
+              </span>
+            }
+          />
+        )}
+      </div>
+    </div>
+  );
+}
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -24,6 +154,50 @@ export default function Dashboard() {
   const { data: stats, isLoading: statsLoading } = useQuery({
     queryKey: ['stats-overview'],
     queryFn: () => statsApi.overview().then((r) => r.data),
+    staleTime: 60_000,
+  });
+
+  // Hot news: importance >= 4, latest 6.
+  const { data: hotNews, isLoading: hotNewsLoading } = useQuery({
+    queryKey: ['dashboard-hot-news'],
+    queryFn: () =>
+      newsApi
+        .list({ importance_min: 4, page: 1, page_size: 6 })
+        .then((r) => r.data.items),
+    staleTime: 60_000,
+  });
+
+  // Favorites news: pull each favorite's news, dedup, sort by recency.
+  const { data: favoritesNews, isLoading: favNewsLoading } = useQuery({
+    queryKey: ['dashboard-favorites-news', favorites?.map((f: any) => f.etf_code).join(',')],
+    queryFn: async () => {
+      if (!favorites || favorites.length === 0) return [] as NewsArticle[];
+      const codes = favorites.slice(0, 5).map((f: any) => f.etf_code);
+      const results = await Promise.all(
+        codes.map((code: string) =>
+          newsApi
+            .list({ symbol: code, page: 1, page_size: 4 })
+            .then((r) => r.data.items)
+            .catch(() => [] as NewsArticle[])
+        )
+      );
+      const merged = results
+        .flat()
+        .sort(
+          (a, b) =>
+            new Date(b.published_at).getTime() - new Date(a.published_at).getTime()
+        );
+      // Dedup by id.
+      const seen = new Set<number>();
+      const dedup: NewsArticle[] = [];
+      for (const n of merged) {
+        if (seen.has(n.id)) continue;
+        seen.add(n.id);
+        dedup.push(n);
+      }
+      return dedup.slice(0, 6);
+    },
+    enabled: favCount > 0,
     staleTime: 60_000,
   });
 
@@ -251,6 +425,80 @@ export default function Dashboard() {
             );
           })}
         </div>
+      </div>
+
+      {/* News row: hot news + favorites news */}
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: '1fr 1fr',
+          gap: '28px',
+          marginBottom: '32px',
+        }}
+      >
+        <Panel
+          variant="minimal"
+          title={
+            <span>
+              <FireOutlined style={{ marginRight: 'var(--space-1-5)', color: 'var(--accent)' }} />
+              今日热点
+            </span>
+          }
+          extra={
+            <span
+              style={{ fontSize: 'var(--text-small-size)', color: 'var(--text-tertiary)', cursor: 'pointer' }}
+              onClick={() => navigate('/news')}
+            >
+              查看全部 →
+            </span>
+          }
+        >
+          {hotNewsLoading ? (
+            <Skeleton active paragraph={{ rows: 5 }} />
+          ) : !hotNews || hotNews.length === 0 ? (
+            <Empty description="暂无重要资讯" image={Empty.PRESENTED_IMAGE_SIMPLE} style={{ padding: '24px 0' }} />
+          ) : (
+            hotNews.map((a) => (
+              <NewsRow key={a.id} article={a} onOpen={(id) => navigate(`/news/${id}`)} />
+            ))
+          )}
+        </Panel>
+
+        <Panel
+          variant="minimal"
+          title={
+            <span>
+              <ReadOutlined style={{ marginRight: 'var(--space-1-5)' }} />
+              自选股动态
+            </span>
+          }
+          extra={
+            favCount > 0 ? (
+              <span
+                style={{ fontSize: 'var(--text-small-size)', color: 'var(--text-tertiary)', cursor: 'pointer' }}
+                onClick={() => navigate('/news')}
+              >
+                查看全部 →
+              </span>
+            ) : undefined
+          }
+        >
+          {favNewsLoading ? (
+            <Skeleton active paragraph={{ rows: 5 }} />
+          ) : favCount === 0 ? (
+            <Empty
+              description="收藏自选股后，这里会汇总相关新闻"
+              image={Empty.PRESENTED_IMAGE_SIMPLE}
+              style={{ padding: '24px 0' }}
+            />
+          ) : !favoritesNews || favoritesNews.length === 0 ? (
+            <Empty description="暂无自选股相关资讯" image={Empty.PRESENTED_IMAGE_SIMPLE} style={{ padding: '24px 0' }} />
+          ) : (
+            favoritesNews.map((a) => (
+              <NewsRow key={a.id} article={a} onOpen={(id) => navigate(`/news/${id}`)} />
+            ))
+          )}
+        </Panel>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1.55fr 1fr', gap: '28px' }}>

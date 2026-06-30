@@ -1,7 +1,14 @@
 import { useState, useRef, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Input, Button, List, Popconfirm, Empty, Skeleton } from 'antd';
-import { PlusOutlined, DeleteOutlined, RobotOutlined, SendOutlined } from '@ant-design/icons';
+import { Input, Button, List, Popconfirm, Empty, Skeleton, Tag } from 'antd';
+import {
+  PlusOutlined,
+  DeleteOutlined,
+  RobotOutlined,
+  SendOutlined,
+  HeartOutlined,
+} from '@ant-design/icons';
 import { chatApi, ChatSession, ChatMessage } from '@/api/chat';
 import AISetupBanner from '@/components/AISetupBanner';
 import StepProgress from '@/components/StepProgress';
@@ -12,6 +19,7 @@ import remarkGfm from 'remark-gfm';
 
 export default function AIChat() {
   const isMobile = useIsMobile();
+  const navigate = useNavigate();
   const [activeSession, setActiveSession] = useState<number | null>(null);
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
@@ -282,10 +290,48 @@ export default function AIChat() {
         <div style={{
           padding: '12px 20px',
           borderTop: '1px solid var(--border-default)',
-          display: 'flex',
-          gap: 10,
         }}>
-          <Input.TextArea
+          {/* Sentiment quick-prompt hint. Tells the user the assistant has
+              access to news/sentiment data and surfaces a clickable tag to
+              jump to the sentiment dashboard. */}
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              flexWrap: 'wrap',
+              marginBottom: 8,
+              fontSize: 12,
+              color: 'var(--text-tertiary)',
+            }}
+          >
+            <HeartOutlined style={{ color: '#f5222d' }} />
+            <span>AI 可访问资讯与情绪数据：</span>
+            {[
+              { label: '分析 AAPL 的散户情绪', prompt: '请分析 AAPL 最近 7 日的散户情绪与多空比' },
+              { label: '今日热点解读', prompt: '请总结今日 importance ≥ 4 的热点资讯' },
+              { label: '自选股舆情', prompt: '我自选股的最新舆情和情绪如何？' },
+            ].map((s) => (
+              <Tag
+                key={s.label}
+                style={{ cursor: 'pointer', fontSize: 11, margin: 0 }}
+                onClick={() => setInput(s.prompt)}
+              >
+                {s.label}
+              </Tag>
+            ))}
+            <span style={{ flex: 1 }} />
+            <Tag
+              icon={<HeartOutlined />}
+              color="default"
+              style={{ cursor: 'pointer', margin: 0, fontSize: 11 }}
+              onClick={() => navigate('/sentiment')}
+            >
+              打开情绪看板
+            </Tag>
+          </div>
+          <div style={{ display: 'flex', gap: 10 }}>
+            <Input.TextArea
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onPressEnter={(e) => {
@@ -311,6 +357,7 @@ export default function AIChat() {
               alignSelf: 'flex-end',
             }}
           />
+          </div>
         </div>
       )}
     </div>
