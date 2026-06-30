@@ -3,9 +3,10 @@
 Provides read-only queries against stock_fundamental and stock_income tables.
 """
 
+from sqlalchemy import desc
 from sqlalchemy.orm import Session
 
-from app.models.etf import StockFundamental, StockIncome
+from app.models.etf import StockBalanceSheet, StockFundamental, StockIncome
 
 
 class StockFundamentalService:
@@ -63,3 +64,74 @@ class StockFundamentalService:
             result["netprofit_margin"] = float(income.netprofit_margin) if income.netprofit_margin is not None else None
 
         return result
+
+    def get_financials_history(
+        self, stock_code: str, limit: int = 20
+    ) -> dict:
+        """Return historical income statements and balance sheets for a stock.
+
+        Returns a dict with ``income`` and ``balance_sheet`` arrays, each
+        ordered by ``end_date`` descending (most recent quarter first).
+        """
+
+        def _to_float(value) -> float | None:
+            return float(value) if value is not None else None
+
+        income_rows = (
+            self.db.query(StockIncome)
+            .filter(StockIncome.stock_code == stock_code)
+            .order_by(desc(StockIncome.end_date))
+            .limit(limit)
+            .all()
+        )
+
+        balance_rows = (
+            self.db.query(StockBalanceSheet)
+            .filter(StockBalanceSheet.stock_code == stock_code)
+            .order_by(desc(StockBalanceSheet.end_date))
+            .limit(limit)
+            .all()
+        )
+
+        income = [
+            {
+                "end_date": row.end_date,
+                "report_type": row.report_type,
+                "ann_date": row.ann_date,
+                "total_revenue": _to_float(row.total_revenue),
+                "revenue_yoy": _to_float(row.revenue_yoy),
+                "operate_profit": _to_float(row.operate_profit),
+                "total_profit": _to_float(row.total_profit),
+                "n_income": _to_float(row.n_income),
+                "n_income_yoy": _to_float(row.n_income_yoy),
+                "basic_eps": _to_float(row.basic_eps),
+                "grossprofit_margin": _to_float(row.grossprofit_margin),
+                "netprofit_margin": _to_float(row.netprofit_margin),
+                "roe": _to_float(row.roe),
+                "roe_dt": _to_float(row.roe_dt),
+                "n_operate_cashflow": _to_float(row.n_operate_cashflow),
+            }
+            for row in income_rows
+        ]
+
+        balance_sheet = [
+            {
+                "end_date": row.end_date,
+                "report_type": row.report_type,
+                "ann_date": row.ann_date,
+                "total_assets": _to_float(row.total_assets),
+                "total_liab": _to_float(row.total_liab),
+                "total_hldr_eqy_exc_min_int": _to_float(row.total_hldr_eqy_exc_min_int),
+                "total_cur_assets": _to_float(row.total_cur_assets),
+                "total_cur_liab": _to_float(row.total_cur_liab),
+                "current_ratio": _to_float(row.current_ratio),
+                "debt_to_assets": _to_float(row.debt_to_assets),
+            }
+            for row in balance_rows
+        ]
+
+        return {
+            "stock_code": stock_code,
+            "income": income,
+            "balance_sheet": balance_sheet,
+        }

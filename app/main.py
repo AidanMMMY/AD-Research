@@ -34,6 +34,7 @@ from app.api.v1 import (
     signals,
     stats,
     stock_fundamentals,
+    stocks,
     strategies,
     stream,
 )
@@ -154,6 +155,11 @@ app.include_router(
     stock_fundamentals.router,
     prefix=f"{settings.api_v1_prefix}/stock-fundamentals",
     tags=["Stock Fundamentals"],
+)
+app.include_router(
+    stocks.router,
+    prefix=f"{settings.api_v1_prefix}/stocks",
+    tags=["Stocks"],
 )
 
 # Serve frontend static files with cache-control headers
