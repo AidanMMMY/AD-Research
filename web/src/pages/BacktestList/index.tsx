@@ -17,7 +17,7 @@ export default function BacktestList() {
 
   const { backtests, isLoading, create } = useBacktests();
   const { strategies } = useStrategies();
-  const { data: etfList, isLoading: etfLoading } = useETFList({ page_size: 2000 });
+  const { data: etfList, isLoading: etfLoading } = useETFList({ page_size: 10000 });
 
   const etfOptions = (etfList?.items || []).map((item: any) => ({
     label: `${item.code} ${item.name}`,

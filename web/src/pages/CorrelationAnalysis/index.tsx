@@ -31,11 +31,11 @@ interface ETFItem {
 }
 
 export default function CorrelationAnalysis() {
-  const [selectedCodes, setSelectedCodes] = useState<string[]>(['510300', '510050', '510500', '159915']);
+  const [selectedCodes, setSelectedCodes] = useState<string[]>(['510300.SH', '510050.SH', '510500.SH', '159915.SZ']);
   const [window, setWindow] = useState<number>(60);
   const [method, setMethod] = useState<'pearson' | 'spearman'>('pearson');
 
-  const { data: etfList } = useETFList({ page_size: 200 });
+  const { data: etfList } = useETFList({ page_size: 10000 });
   const { data: pools, isLoading: poolsLoading } = usePoolList();
 
   const presetGroups = useMemo(() => {

@@ -33,11 +33,11 @@ interface SeriesData {
 }
 
 export default function ReturnComparison() {
-  const [selectedCodes, setSelectedCodes] = useState<string[]>(['510300', '510050', '510500']);
+  const [selectedCodes, setSelectedCodes] = useState<string[]>(['510300.SH', '510050.SH', '510500.SH']);
   const [timeRange, setTimeRange] = useState<number>(252);
   const [mode, setMode] = useState<'normalized' | 'percentage'>('normalized');
 
-  const { data: etfList } = useETFList({ page_size: 200 });
+  const { data: etfList } = useETFList({ page_size: 10000 });
   const { data: pools, isLoading: poolsLoading } = usePoolList();
 
   const presetGroups = useMemo(() => {
@@ -66,7 +66,7 @@ export default function ReturnComparison() {
     queryFn: async () => {
       const results = await Promise.all(
         selectedCodes.map((code) =>
-          marketApi.history(code, { limit: timeRange || 500 }).then((r) => ({
+          marketApi.history(code, { limit: timeRange || undefined }).then((r) => ({
             code,
             items: r.data.items,
           }))
@@ -237,9 +237,13 @@ export default function ReturnComparison() {
           </div>
         ) : etfQueries.isLoading ? (
           <Spin size="large" style={{ display: 'block', margin: '60px auto' }} />
-        ) : series.length > 0 ? (
-          <ReturnCurve series={series} />
-        ) : null}
+        ) : series.filter((s) => s.dates.length > 0).length > 0 ? (
+          <ReturnCurve series={series.filter((s) => s.dates.length > 0)} />
+        ) : (
+          <div style={{ textAlign: 'center', padding: 60, color: 'var(--text-secondary)' }}>
+            所选标的暂无历史行情数据
+          </div>
+        )}
       </GlassCard>
     </div>
   );
