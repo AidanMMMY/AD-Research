@@ -36,6 +36,7 @@ export default function ReturnComparison() {
   const [selectedCodes, setSelectedCodes] = useState<string[]>(['510300.SH', '510050.SH', '510500.SH']);
   const [timeRange, setTimeRange] = useState<number>(252);
   const [mode, setMode] = useState<'normalized' | 'percentage'>('normalized');
+  const [showAllPresets, setShowAllPresets] = useState(false);
 
   const { data: etfList } = useETFList({ page_size: 10000 });
   const { data: pools, isLoading: poolsLoading } = usePoolList();
@@ -60,6 +61,11 @@ export default function ReturnComparison() {
       }))
       .filter((group) => group.codes.length > 0);
   }, [etfList]);
+
+  const visiblePresetGroups = useMemo(() => {
+    if (showAllPresets) return presetGroups;
+    return presetGroups.slice(0, 8);
+  }, [presetGroups, showAllPresets]);
 
   const etfQueries = useQuery({
     queryKey: ['return-comparison', selectedCodes, timeRange],
@@ -206,26 +212,35 @@ export default function ReturnComparison() {
         </Row>
         <Row style={{ marginTop: 12 }}>
           <Col span={24}>
-            <Space>
-              <span>快速选择：</span>
-              {presetGroups.map((group) => (
-                <Button key={group.label} size="small" onClick={() => handleAddPreset(group.codes)}>
-                  +{group.label}
+            <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+              <span style={{ flexShrink: 0, color: 'var(--text-secondary)', fontSize: 'var(--text-body-size)', paddingTop: 4 }}>
+                快速选择：
+              </span>
+              <Space size={[8, 8]} wrap>
+                {visiblePresetGroups.map((group) => (
+                  <Button key={group.label} size="small" onClick={() => handleAddPreset(group.codes)}>
+                    +{group.label}
+                  </Button>
+                ))}
+                {presetGroups.length > 8 && (
+                  <Button size="small" type="link" onClick={() => setShowAllPresets((v) => !v)}>
+                    {showAllPresets ? '收起' : `更多 (${presetGroups.length - 8})`}
+                  </Button>
+                )}
+                <Select
+                  size="small"
+                  placeholder={<span><FolderOpenOutlined /> 从标的池导入</span>}
+                  style={{ minWidth: 160 }}
+                  loading={poolsLoading}
+                  onChange={handleSelectPool}
+                  options={poolOptions}
+                  allowClear
+                />
+                <Button size="small" danger onClick={() => setSelectedCodes([])}>
+                  清空
                 </Button>
-              ))}
-              <Select
-                size="small"
-                placeholder={<span><FolderOpenOutlined /> 从标的池导入</span>}
-                style={{ minWidth: 160 }}
-                loading={poolsLoading}
-                onChange={handleSelectPool}
-                options={poolOptions}
-                allowClear
-              />
-              <Button size="small" danger onClick={() => setSelectedCodes([])}>
-                清空
-              </Button>
-            </Space>
+              </Space>
+            </div>
           </Col>
         </Row>
       </GlassCard>
