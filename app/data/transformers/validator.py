@@ -51,6 +51,20 @@ def validate_level2_business(df: pd.DataFrame) -> ValidationResult:
             f"high < low on {len(invalid_hl)} row(s): indices {invalid_hl.index.tolist()}"
         )
 
+    # open in [low, high] (allow 0.1% tolerance)
+    if "open" in df.columns:
+        tolerance = 0.001
+        invalid_open = df[
+            (df["open"] < df["low"] * (1 - tolerance))
+            | (df["open"] > df["high"] * (1 + tolerance))
+        ]
+        if not invalid_open.empty:
+            result.is_valid = False
+            result.errors.append(
+                f"open outside [low, high] on {len(invalid_open)} row(s): "
+                f"indices {invalid_open.index.tolist()}"
+            )
+
     # close in [low, high] (allow 0.1% tolerance)
     tolerance = 0.001
     invalid_close = df[
@@ -76,26 +90,50 @@ def validate_level2_business(df: pd.DataFrame) -> ValidationResult:
     return result
 
 
-def validate_level3_timeseries(df: pd.DataFrame) -> ValidationResult:
+# Market-specific thresholds for |change_pct| warnings.
+# Crypto and small-cap names can move more than 20% in a day.
+CHANGE_PCT_THRESHOLDS = {
+    "CRYPTO": 50.0,
+    "A股": 20.0,
+    "US": 20.0,
+    "HK": 30.0,
+    "JP": 20.0,
+}
+DEFAULT_CHANGE_PCT_THRESHOLD = 20.0
+
+
+def validate_level3_timeseries(
+    df: pd.DataFrame, market: str | None = None
+) -> ValidationResult:
     """L3 time-series validation: warnings only, does not block."""
     result = ValidationResult(data=df)
 
     if "change_pct" in df.columns:
-        extreme = df[df["change_pct"].abs() > 20]
+        threshold = CHANGE_PCT_THRESHOLDS.get(
+            market, DEFAULT_CHANGE_PCT_THRESHOLD
+        )
+        extreme = df[df["change_pct"].abs() > threshold]
         if not extreme.empty:
             for idx in extreme.index:
                 result.warnings.append(
                     f"Row {idx}: change_pct = {extreme.loc[idx, 'change_pct']:.2f}% "
-                    f"(exceeds 20% threshold)"
+                    f"(exceeds {market or 'default'} threshold {threshold}%)"
                 )
 
     return result
 
 
 def validate_level4_completeness(
-    df: pd.DataFrame, expected_codes: list[str] | None = None
+    df: pd.DataFrame,
+    expected_codes: list[str] | None = None,
+    block_missing_ratio: float | None = None,
 ) -> ValidationResult:
-    """L4 completeness validation: warnings only, does not block."""
+    """L4 completeness validation.
+
+    By default this only produces warnings. If ``block_missing_ratio`` is set
+    (e.g. 0.5), a missing ratio above that threshold will mark the result as
+    invalid and block the load.
+    """
     result = ValidationResult(data=df)
 
     if expected_codes is None or expected_codes == []:
@@ -108,16 +146,28 @@ def validate_level4_completeness(
             f"Missing expected ETF codes: {sorted(missing_codes)}"
         )
 
+        if block_missing_ratio is not None and block_missing_ratio >= 0:
+            missing_ratio = len(missing_codes) / len(expected_codes)
+            if missing_ratio > block_missing_ratio:
+                result.is_valid = False
+                result.errors.append(
+                    f"Missing ratio {missing_ratio:.1%} exceeds threshold "
+                    f"{block_missing_ratio:.1%}"
+                )
+
     return result
 
 
 def validate_all(
-    df: pd.DataFrame, expected_codes: list[str] | None = None
+    df: pd.DataFrame,
+    expected_codes: list[str] | None = None,
+    market: str | None = None,
+    block_missing_ratio: float | None = None,
 ) -> ValidationResult:
     """Run all four validation levels.
 
     L1/L2 failures set is_valid=False and stop further validation.
-    L3/L4 only add warnings and never block.
+    L3/L4 only add warnings unless ``block_missing_ratio`` is set.
     """
     result = ValidationResult(data=df)
 
@@ -136,11 +186,16 @@ def validate_all(
         return result
 
     # L3: Time-series (warnings only)
-    l3 = validate_level3_timeseries(df)
+    l3 = validate_level3_timeseries(df, market=market)
     result.warnings.extend(l3.warnings)
 
-    # L4: Completeness (warnings only)
-    l4 = validate_level4_completeness(df, expected_codes)
+    # L4: Completeness (warnings only unless block_missing_ratio set)
+    l4 = validate_level4_completeness(
+        df, expected_codes, block_missing_ratio=block_missing_ratio
+    )
     result.warnings.extend(l4.warnings)
+    if not l4.is_valid:
+        result.is_valid = False
+        result.errors.extend(l4.errors)
 
     return result

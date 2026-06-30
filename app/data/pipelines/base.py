@@ -14,8 +14,21 @@ from sqlalchemy.orm import Session
 
 from app.data.providers.base import DataProvider
 from app.data.transformers.normalizer import normalize
-from app.data.transformers.validator import validate_all
+from app.data.transformers.validator import validate_all, CHANGE_PCT_THRESHOLDS
 from app.models.etl import ETLLog
+
+
+# Map data provider names to the market they represent, used for market-specific
+# validation thresholds.
+_PROVIDER_MARKET_MAP = {
+    "akshare": "A股",
+    "tushare": "A股",
+    "fmp": "US",
+    "yfinance": "US",
+    "tiingo": "US",
+    "finnhub": "US",
+    "binance": "CRYPTO",
+}
 
 
 @dataclass
@@ -134,7 +147,12 @@ class ETLPipeline(ABC):
             normalized_df = normalize(raw_df)
 
             # 3. Validate
-            validation = validate_all(normalized_df, expected_codes=self._expected_codes)
+            market = _PROVIDER_MARKET_MAP.get(self.provider.name)
+            validation = validate_all(
+                normalized_df,
+                expected_codes=self._expected_codes,
+                market=market,
+            )
             result.warnings.extend(validation.warnings)
             if not validation.is_valid:
                 raise ValueError(f"Validation failed: {'; '.join(validation.errors)}")

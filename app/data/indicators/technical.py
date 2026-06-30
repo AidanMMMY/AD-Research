@@ -67,7 +67,12 @@ def calc_macd(
 def calc_atr(
     high: pd.Series, low: pd.Series, close: pd.Series, window: int = 14
 ) -> pd.Series:
-    """Calculate Average True Range (ATR).
+    """Calculate Average True Range (ATR) using Wilder smoothing.
+
+    This matches the classic ATR definition used by TradingView, Bloomberg,
+    and most charting packages: the first value is the simple mean of the
+    first ``window`` true ranges, and subsequent values are smoothed with
+    ``alpha = 1 / window``.
 
     Args:
         high: High price series.
@@ -83,7 +88,7 @@ def calc_atr(
     tr2 = (high - prev_close).abs()
     tr3 = (low - prev_close).abs()
     tr = pd.concat([tr1, tr2, tr3], axis=1).max(axis=1)
-    return tr.rolling(window=window, min_periods=1).mean()
+    return tr.ewm(alpha=1 / window, adjust=False, min_periods=window).mean()
 
 
 def calc_bollinger(
