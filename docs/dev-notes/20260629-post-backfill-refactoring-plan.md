@@ -70,7 +70,7 @@ US-Stock 02 的方案明确把 A 股复权细节列为"不纳入本轮的范围"
 
 ---
 
-## 2. `etf_daily_bar` 表重命名为 `instrument_daily_bar`
+## 2. `instrument_daily_bar` 表重命名为 `instrument_daily_bar`
 
 **原因**：该表现在存储 ETF、A 股个股、美股、加密等多种品种的日线，表名已产生误导。
 
@@ -154,14 +154,14 @@ US-Stock 02 的方案明确把 A 股复权细节列为"不纳入本轮的范围"
 2. **合并 `feature/adj-factor-corporate-actions` 到 main**
    - 包含：模型、`adj_factor` migration、美股 provider/backfill 改造、指标/回测消费侧改造
 3. **跑 Alembic migration**：`alembic upgrade head`
-   - 新增 `etf_daily_bar.adj_factor` 列 + `etf_corporate_action` 表
+   - 新增 `instrument_daily_bar.adj_factor` 列 + `etf_corporate_action` 表
 4. **补 A 股 `adj_factor`**
    - 改 `TushareProvider` 拉取 adj_factor
    - 改 `backfill_a_stock_2026.py` 的 `_BAR_FIELDS`
    - 运行独立脚本回填已有 A 股日线数据的 `adj_factor`
 5. **修复 `backtest_engine.py` A 股 fallback**：`adj_close = close * adj_factor`
 6. **新增 `ETFInfo.list_date` 字段 + ETF metadata enrichment pipeline**
-7. **重命名 `etf_daily_bar` → `instrument_daily_bar`**
+7. **重命名 `instrument_daily_bar` → `instrument_daily_bar`**
 8. **统一价格查询层**，改造 `backtest_engine.py` 不再直接调外部 API
 9. **重新计算所有技术指标**（因复权价变化）
 10. **在指标计算中接入 `inception_date` / `list_date` 兜底逻辑**

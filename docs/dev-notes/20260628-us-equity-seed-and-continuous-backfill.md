@@ -29,9 +29,9 @@
 |------|------|------|
 | 美股标的总数 | 569 | 69 ETF + 500 S&P 500 个股 |
 | 有历史价格的标的 | 235 | 持续增长中（覆盖率 41.3%） |
-| 美股日线记录 | 13,812 | `etf_daily_bar` |
-| A 股有价格标的 | 1,516 | `etf_daily_bar` |
-| A 股日线记录 | 444,363 | `etf_daily_bar` |
+| 美股日线记录 | 13,812 | `instrument_daily_bar` |
+| A 股有价格标的 | 1,516 | `instrument_daily_bar` |
+| A 股日线记录 | 444,363 | `instrument_daily_bar` |
 | 美股指标记录 | 1,546 | `etf_indicator`（仅 33 只核心标的） |
 | 美股评分记录 | 1,546 × 3 | `etf_score`，覆盖 3 套模板 |
 
@@ -128,7 +128,7 @@ TUSHARE_TOKEN=...
 1. 选出当前 batch（15 只）；
 2. 先用 Tiingo 逐个请求，单只间隔 1.5 秒以遵守 50 req/hour；
 3. 对 Tiingo 返回 404 / 空数据 / 失败的 code，立即用 yfinance 批量/单只补抓；
-4. 合并两个来源的结果写入 `etf_daily_bar`。
+4. 合并两个来源的结果写入 `instrument_daily_bar`。
 
 这样同一 batch 内，Tiingo 能覆盖的用 Tiingo，Tiingo 覆盖不到的由 yfinance 兜底，最大化单次成功率。
 

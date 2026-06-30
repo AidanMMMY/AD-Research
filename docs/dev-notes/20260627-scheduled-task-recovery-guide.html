@@ -87,7 +87,7 @@
 <h2>一、问题判断标准</h2>
 <p>出现以下任一情况，即说明服务端定时任务可能已中断：</p>
 <ol>
-  <li><code>etf_daily_bar</code> 最新交易日明显落后当天（如落后 2 个以上交易日）。</li>
+  <li><code>instrument_daily_bar</code> 最新交易日明显落后当天（如落后 2 个以上交易日）。</li>
   <li><code>etl_log</code> 表中 <code>a_share_daily_etl</code> 最近一次成功时间距现在超过 1 天。</li>
   <li>服务器进程列表中无 <code>uvicorn</code> / <code>python app/main.py</code> / APScheduler 相关进程。</li>
   <li><code>data_completeness_check.py</code> 输出中“最新日线日期”不是最近交易日。</li>
