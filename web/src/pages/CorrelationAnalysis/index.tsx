@@ -121,21 +121,29 @@ export default function CorrelationAnalysis() {
               onChange={setSelectedCodes}
               options={etfOptions}
               style={{ width: '100%' }}
-              maxTagCount={5}
+              maxTagCount={0}
+              tagRender={() => <span />}
               filterOption={(input, option) =>
                 (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
               }
             />
-            <div style={{ marginTop: 8 }}>
-              <Space size={[8, 8]} wrap>
-                {selectedCodes.map((code) => (
-                  <ThemeTag key={code} variant="accent" style={{ cursor: 'default' }}>
-                    {code}
-                    <span style={{ marginLeft: 4, cursor: 'pointer' }} onClick={() => handleRemoveCode(code)}>×</span>
-                  </ThemeTag>
-                ))}
-              </Space>
-            </div>
+            {selectedCodes.length > 0 && (
+              <div style={{ marginTop: 10 }}>
+                <Space size={[8, 8]} wrap>
+                  {selectedCodes.map((code) => (
+                    <ThemeTag key={code} variant="accent" style={{ cursor: 'default' }}>
+                      {code}
+                      <span
+                        style={{ marginLeft: 6, cursor: 'pointer', fontWeight: 500 }}
+                        onClick={() => handleRemoveCode(code)}
+                      >
+                        ×
+                      </span>
+                    </ThemeTag>
+                  ))}
+                </Space>
+              </div>
+            )}
           </Col>
           <Col xs={24} md={6}>
             <div style={{ marginBottom: 8 }}>窗口期：</div>
@@ -156,28 +164,32 @@ export default function CorrelationAnalysis() {
             />
           </Col>
         </Row>
-        <Row style={{ marginTop: 12 }}>
+        <Row style={{ marginTop: 16 }}>
           <Col span={24}>
-            <Space>
-              <span>快速选择：</span>
-              {presetGroups.map((group) => (
-                <Button key={group.label} size="small" onClick={() => handleAddPreset(group.codes)}>
-                  +{group.label}
+            <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+              <span style={{ flexShrink: 0, color: 'var(--text-secondary)', fontSize: 'var(--text-body-size)', paddingTop: 4 }}>
+                快速选择：
+              </span>
+              <Space size={[8, 8]} wrap>
+                {presetGroups.map((group) => (
+                  <Button key={group.label} size="small" onClick={() => handleAddPreset(group.codes)}>
+                    +{group.label}
+                  </Button>
+                ))}
+                <Select
+                  size="small"
+                  placeholder={<span><FolderOpenOutlined /> 从标的池导入</span>}
+                  style={{ minWidth: 160 }}
+                  loading={poolsLoading}
+                  onChange={handleSelectPool}
+                  options={poolOptions}
+                  allowClear
+                />
+                <Button size="small" danger onClick={() => setSelectedCodes([])}>
+                  清空
                 </Button>
-              ))}
-              <Select
-                size="small"
-                placeholder={<span><FolderOpenOutlined /> 从标的池导入</span>}
-                style={{ minWidth: 160 }}
-                loading={poolsLoading}
-                onChange={handleSelectPool}
-                options={poolOptions}
-                allowClear
-              />
-              <Button size="small" danger onClick={() => setSelectedCodes([])}>
-                清空
-              </Button>
-            </Space>
+              </Space>
+            </div>
           </Col>
         </Row>
       </GlassCard>
