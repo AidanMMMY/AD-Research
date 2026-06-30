@@ -171,12 +171,18 @@ class RiskControl:
         return datetime.combine(now_local.date(), datetime.min.time(), tzinfo=ZoneInfo("Asia/Shanghai"))
 
     def _daily_filled(self) -> list[LiveTradeOrder]:
-        """Return today's filled orders for this config."""
+        """Return today's filled orders for this config.
+
+        Timezone normalisation mirrors :meth:`_daily_realized_pnl`: the
+        column is naive in SQLite and may be either in PostgreSQL depending
+        on session settings, while ``_today_start`` is tz-aware. Strip the
+        tzinfo before comparison so the daily filter actually returns rows.
+        """
         return (
             self.db.query(LiveTradeOrder)
             .filter(
                 LiveTradeOrder.config_id == self.config.id,
-                LiveTradeOrder.created_at >= self._today_start(),
+                LiveTradeOrder.created_at >= self._today_start().replace(tzinfo=None),
                 LiveTradeOrder.status.in_(["filled", "partially_filled"]),
             )
             .all()
@@ -191,10 +197,17 @@ class RiskControl:
         so the daily loss limit reflects today's trading activity rather than
         all historical PnL.  In production this should be replaced by a
         first-class daily PnL ledger or order-level fill PnL.
+
+        Timezone note: ``_today_start`` returns tz-aware Asia/Shanghai,
+        but the ``updated_at`` column on SQLite is stored as naive UTC and
+        PostgreSQL may store either depending on session settings. Stripping
+        the tzinfo here makes the comparison robust across backends — the
+        caller still computes "today" in the trading-day timezone via
+        ``_today_start``, just normalising for the column's local repr.
         """
         from app.models.trading import LiveTradePosition
 
-        today_start = self._today_start()
+        today_start = self._today_start().replace(tzinfo=None)
         positions = (
             self.db.query(LiveTradePosition)
             .filter(
