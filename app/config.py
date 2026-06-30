@@ -45,6 +45,7 @@ class Settings(BaseSettings):
     binance_max_order_value_usdt: float = 100.0   # Max USDT per single order
     binance_max_daily_loss_usdt: float = 500.0     # Max daily realised loss before circuit-breaker
     binance_max_daily_orders: int = 20              # Max orders per calendar day
+    binance_market_order_slippage: float = 0.001    # Slippage buffer for MARKET order risk checks (0.1%)
 
     # AI / LLM
     deepseek_api_key: str = ""   # https://platform.deepseek.com/

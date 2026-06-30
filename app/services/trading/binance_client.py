@@ -20,7 +20,7 @@ import hashlib
 import hmac
 import json
 import time
-from decimal import Decimal
+from decimal import Decimal, ROUND_DOWN
 from typing import Any
 from urllib.parse import urlencode
 
@@ -61,6 +61,9 @@ class BinanceClient:
         self.base_url = _BASE_URL_TESTNET if testnet else _BASE_URL_PROD
         self.recv_window = recv_window
         self._last_request_time = 0.0
+        self._exchange_info_cache: dict | None = None
+        self._exchange_info_at: float = 0.0
+        self._exchange_info_ttl: float = 300.0  # 5 minutes
 
     # ------------------------------------------------------------------
     # Rate limiting
@@ -245,6 +248,146 @@ class BinanceClient:
             return resp.json()
         except requests.RequestException as exc:
             raise BinanceClientError(f"exchangeInfo failed: {exc}") from exc
+
+    def _load_exchange_info(self) -> dict:
+        """Return cached exchangeInfo if fresh, otherwise fetch and cache."""
+        now = time.monotonic()
+        if self._exchange_info_cache is None or (
+            now - self._exchange_info_at > self._exchange_info_ttl
+        ):
+            self._exchange_info_cache = self.get_exchange_info()
+            self._exchange_info_at = now
+        return self._exchange_info_cache
+
+    @staticmethod
+    def _decimal_places_from_step(step: Decimal) -> int:
+        """Return the number of decimal places implied by a step size."""
+        step_str = str(step.normalize())
+        if "." not in step_str:
+            return 0
+        return len(step_str.split(".", 1)[1])
+
+    def get_symbol_filters(self, symbol: str) -> dict[str, dict[str, Decimal]]:
+        """Fetch exchangeInfo (cached) and return relevant filters for a symbol.
+
+        Returns a dict keyed by filter type (LOT_SIZE, MIN_NOTIONAL,
+        PRICE_FILTER).  Each value maps the Binance filter attributes to
+        Decimals (minQty, maxQty, stepSize, minPrice, maxPrice, tickSize,
+        minNotional, applyToMarket).
+        """
+        target = symbol.upper()
+        info = self._load_exchange_info()
+        symbols = info.get("symbols", [])
+        for sym in symbols:
+            if sym.get("symbol") == target:
+                result: dict[str, dict[str, Decimal]] = {}
+                for f in sym.get("filters", []):
+                    ftype = f.get("filterType")
+                    if ftype == "LOT_SIZE":
+                        result["LOT_SIZE"] = {
+                            "minQty": Decimal(str(f.get("minQty", "0"))),
+                            "maxQty": Decimal(str(f.get("maxQty", "0"))),
+                            "stepSize": Decimal(str(f.get("stepSize", "0"))),
+                        }
+                    elif ftype == "MIN_NOTIONAL":
+                        result["MIN_NOTIONAL"] = {
+                            "minNotional": Decimal(
+                                str(f.get("minNotional", "0"))
+                            ),
+                            "applyToMarket": f.get("applyToMarket", False),
+                        }
+                    elif ftype == "PRICE_FILTER":
+                        result["PRICE_FILTER"] = {
+                            "minPrice": Decimal(str(f.get("minPrice", "0"))),
+                            "maxPrice": Decimal(str(f.get("maxPrice", "0"))),
+                            "tickSize": Decimal(str(f.get("tickSize", "0"))),
+                        }
+                return result
+        raise BinanceClientError(f"Symbol {symbol} not found in exchangeInfo")
+
+    def apply_symbol_filters(
+        self,
+        symbol: str,
+        side: str,
+        quantity: Decimal,
+        price: Decimal,
+        order_type: str,
+    ) -> tuple[Decimal, Decimal | None, list[str]]:
+        """Apply Binance symbol filters and return adjusted values.
+
+        Args:
+            symbol: Binance trading pair (e.g. "BTCUSDT").
+            side: "BUY" or "SELL".
+            quantity: Desired base asset quantity as Decimal.
+            price: Reference price as Decimal (may be None for MARKET).
+            order_type: "LIMIT" or "MARKET".
+
+        Returns:
+            Tuple of (adjusted_quantity, adjusted_price, errors).  For MARKET
+            orders adjusted_price is returned as None.  errors is a list of
+            human-readable rejection reasons (empty if all filters pass).
+        """
+        adjusted_qty = quantity
+        adjusted_price = price if order_type.upper() != "MARKET" else None
+        errors: list[str] = []
+
+        try:
+            filters = self.get_symbol_filters(symbol)
+        except BinanceClientError as exc:
+            return adjusted_qty, adjusted_price, [str(exc)]
+
+        # LOT_SIZE
+        lot = filters.get("LOT_SIZE")
+        if lot:
+            step_size = lot["stepSize"]
+            min_qty = lot["minQty"]
+            max_qty = lot["maxQty"]
+            if step_size > 0:
+                adjusted_qty = (
+                    (adjusted_qty // step_size) * step_size
+                ).quantize(step_size, rounding=ROUND_DOWN)
+            if adjusted_qty < min_qty:
+                errors.append(
+                    f"Quantity {adjusted_qty} below LOT_SIZE min {min_qty}"
+                )
+            if max_qty > 0 and adjusted_qty > max_qty:
+                errors.append(
+                    f"Quantity {adjusted_qty} above LOT_SIZE max {max_qty}"
+                )
+
+        # PRICE_FILTER
+        price_filter = filters.get("PRICE_FILTER")
+        if price_filter and adjusted_price is not None:
+            tick_size = price_filter["tickSize"]
+            min_price = price_filter["minPrice"]
+            max_price = price_filter["maxPrice"]
+            if tick_size > 0:
+                adjusted_price = (
+                    (adjusted_price // tick_size) * tick_size
+                ).quantize(tick_size, rounding=ROUND_DOWN)
+            if adjusted_price < min_price:
+                errors.append(
+                    f"Price {adjusted_price} below PRICE_FILTER min {min_price}"
+                )
+            if max_price > 0 and adjusted_price > max_price:
+                errors.append(
+                    f"Price {adjusted_price} above PRICE_FILTER max {max_price}"
+                )
+
+        # MIN_NOTIONAL
+        notional_filter = filters.get("MIN_NOTIONAL")
+        if notional_filter:
+            min_notional = notional_filter["minNotional"]
+            apply_to_market = notional_filter.get("applyToMarket", False)
+            check_notional = order_type.upper() == "LIMIT" or apply_to_market
+            if check_notional and adjusted_price is not None and adjusted_qty > 0:
+                notional = adjusted_qty * adjusted_price
+                if notional < min_notional:
+                    errors.append(
+                        f"Order notional {notional:.8f} below MIN_NOTIONAL {min_notional}"
+                    )
+
+        return adjusted_qty, adjusted_price, errors
 
     def get_ticker_price(self, symbol: str) -> Decimal | None:
         """GET /api/v3/ticker/price — return last price for a symbol."""

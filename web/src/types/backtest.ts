@@ -70,3 +70,35 @@ export interface BacktestCreate {
   slippage_rate?: number;
   position_size?: number;
 }
+
+export interface AttributionEffect {
+  sector?: string;
+  allocation?: number;
+  selection?: number;
+  interaction?: number;
+  total?: number;
+}
+
+export interface AttributionSummary {
+  allocation_pct?: number;
+  selection_pct?: number;
+  interaction_pct?: number;
+}
+
+export interface AttributionTradeStats {
+  total_trades?: number;
+  winning_trades?: number;
+  losing_trades?: number;
+  win_rate?: number;
+  avg_return?: number;
+}
+
+export interface AttributionResponse {
+  backtest_id?: number;
+  total_return: number;
+  benchmark_return: number;
+  excess_return: number;
+  effects?: AttributionEffect[];
+  summary?: AttributionSummary;
+  trade_stats?: AttributionTradeStats;
+}
