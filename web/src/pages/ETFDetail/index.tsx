@@ -11,6 +11,7 @@ import { useQuery } from '@tanstack/react-query';
 import KLineChart, { DEFAULT_OVERLAYS } from '@/components/KLineChart';
 import ScoreRadar from '@/components/ScoreRadar';
 import Panel from '@/components/Panel';
+import NewsListPanel from '@/components/NewsListPanel';
 import HelpTrigger from '@/components/HelpTrigger';
 import HelpPopover from '@/components/HelpPopover';
 import ThemeTag from '@/components/ThemeTag';
@@ -441,6 +442,17 @@ export default function ETFDetail() {
           </Panel>
         </div>
       ),
+    },
+    // ── Related news (works for both ETFs and individual stocks) ──
+    {
+      key: 'news',
+      label: (
+        <span>
+          <ReadOutlined style={{ marginRight: 'var(--space-1)' }} />
+          相关新闻
+        </span>
+      ),
+      children: <NewsListPanel symbol={code || ''} limit={15} bare />,
     },
     // ── A-share stock valuation tab (only for individual stocks) ──
     ...(isStock

@@ -8,6 +8,7 @@ from datetime import date
 
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
+from apscheduler.triggers.interval import IntervalTrigger
 
 from app.core.database import SessionLocal
 from app.core.redis_client import redis_lock
@@ -799,6 +800,102 @@ def init_scheduler():
         replace_existing=True,
         max_instances=1,
     )
+    # ── News / Sentiment Jobs ──
+    # A-share RSS feeds (every 5 minutes)
+    try:
+        from app.services.news.scheduler_jobs import (
+            run_xinhua_crawl, run_cninfo_crawl, run_sina_crawl,
+            run_yahoo_crawl, run_cnbc_crawl, run_sec_edgar_crawl,
+            run_reddit_crawl,
+        )
+        scheduler.add_job(
+            run_xinhua_crawl,
+            trigger=IntervalTrigger(minutes=5),
+            id="news_xinhua_5m",
+            name="新华财经RSS",
+            replace_existing=True,
+            max_instances=1,
+            coalesce=True,
+        )
+        scheduler.add_job(
+            run_cninfo_crawl,
+            trigger=IntervalTrigger(minutes=10),
+            id="news_cninfo_10m",
+            name="巨潮公告",
+            replace_existing=True,
+            max_instances=1,
+            coalesce=True,
+        )
+        scheduler.add_job(
+            run_sina_crawl,
+            trigger=IntervalTrigger(minutes=5),
+            id="news_sina_5m",
+            name="新浪财经",
+            replace_existing=True,
+            max_instances=1,
+            coalesce=True,
+        )
+        scheduler.add_job(
+            run_yahoo_crawl,
+            trigger=IntervalTrigger(minutes=5),
+            id="news_yahoo_5m",
+            name="Yahoo Finance RSS",
+            replace_existing=True,
+            max_instances=1,
+            coalesce=True,
+        )
+        scheduler.add_job(
+            run_cnbc_crawl,
+            trigger=IntervalTrigger(minutes=5),
+            id="news_cnbc_5m",
+            name="CNBC RSS",
+            replace_existing=True,
+            max_instances=1,
+            coalesce=True,
+        )
+        scheduler.add_job(
+            run_sec_edgar_crawl,
+            trigger=IntervalTrigger(minutes=30),
+            id="news_sec_edgar_30m",
+            name="SEC EDGAR 公告",
+            replace_existing=True,
+            max_instances=1,
+            coalesce=True,
+        )
+        scheduler.add_job(
+            run_reddit_crawl,
+            trigger=IntervalTrigger(minutes=5),
+            id="news_reddit_5m",
+            name="Reddit 散户讨论",
+            replace_existing=True,
+            max_instances=1,
+            coalesce=True,
+        )
+    except ImportError:
+        pass
+
+    # Xueqiu (every 5 minutes; needs XUEQIU_COOKIE env)
+    try:
+        from app.services.news.scheduler_xueqiu_sync import run_xueqiu_crawl_sync
+        scheduler.add_job(
+            run_xueqiu_crawl_sync,
+            trigger=IntervalTrigger(minutes=5),
+            id="news_xueqiu_5m",
+            name="雪球 散户讨论",
+            replace_existing=True,
+            max_instances=1,
+            coalesce=True,
+        )
+    except ImportError:
+        pass
+
+    # LLM sentiment pipeline (Agent E)
+    try:
+        from app.services.news.sentiment.scheduler_sentiment import init_sentiment_jobs
+        init_sentiment_jobs(scheduler)
+    except ImportError:
+        pass
+
     scheduler.start()
     print("[Scheduler] Started")
 

@@ -13,6 +13,7 @@ import KLineChart, { DEFAULT_OVERLAYS } from '@/components/KLineChart';
 import Panel from '@/components/Panel';
 import ThemeTag from '@/components/ThemeTag';
 import ReturnTag from '@/components/ReturnTag';
+import NewsListPanel from '@/components/NewsListPanel';
 import type { DailyBar, ResearchNote } from '@/types/crypto';
 import type { OHLCV } from '@/types/etf';
 
@@ -163,6 +164,16 @@ export default function CryptoDetail() {
           />
         </Panel>
       ),
+    },
+    {
+      key: 'news',
+      label: (
+        <span>
+          <ReadOutlined style={{ marginRight: 'var(--space-1)' }} />
+          相关新闻
+        </span>
+      ),
+      children: <NewsListPanel symbol={code || ''} limit={15} bare />,
     },
     {
       key: 'ai',

@@ -13,6 +13,7 @@ from app.models.etf import (
     StockIncome,
 )
 from app.models.etl import BacktestResult, DataSourceConfig, ETLLog, Signal, StrategyConfig
+from app.models.news import XueqiuFetchState, XueqiuUserCache
 from app.models.pool import ETFPools, PoolMember, PoolSnapshot, PoolWeight
 from app.models.scoring import ETFScore, ReportMetadata, ScoreTemplate
 from app.models.trading import (
@@ -61,4 +62,7 @@ __all__ = [
     "LiveTradeOrder",
     "LiveTradePosition",
     "RiskRule",
+    # News / Xueqiu
+    "XueqiuUserCache",
+    "XueqiuFetchState",
 ]

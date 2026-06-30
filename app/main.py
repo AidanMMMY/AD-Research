@@ -27,6 +27,7 @@ from app.api.v1 import (
     indicators,
     live_trading,
     market_data,
+    news,
     notifications,
     paper_trading,
     pools,
@@ -176,6 +177,11 @@ app.include_router(
     stocks.router,
     prefix=f"{settings.api_v1_prefix}/stocks",
     tags=["Stocks"],
+)
+app.include_router(
+    news.router,
+    prefix=f"{settings.api_v1_prefix}/news",
+    tags=["News"],
 )
 
 # Serve frontend static files with cache-control headers

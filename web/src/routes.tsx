@@ -22,7 +22,6 @@ const SignalDashboard = lazy(() => import('./pages/SignalDashboard'));
 const AdminUsers = lazy(() => import('./pages/AdminUsers'));
 const AdminDeployments = lazy(() => import('./pages/AdminDeployments'));
 const ResearchNotes = lazy(() => import('./pages/ResearchNotes'));
-const SentimentDashboard = lazy(() => import('./pages/SentimentDashboard'));
 const AIChat = lazy(() => import('./pages/AIChat'));
 const CryptoList = lazy(() => import('./pages/CryptoList'));
 const CryptoDetail = lazy(() => import('./pages/CryptoDetail'));
@@ -31,6 +30,9 @@ const ETLOpsDashboard = lazy(() => import('./pages/ETLOpsDashboard'));
 const NotificationLogs = lazy(() => import('./pages/NotificationLogs'));
 const PaperTrading = lazy(() => import('./pages/PaperTrading'));
 const TradingPanel = lazy(() => import('./pages/TradingPanel'));
+const NewsFeed = lazy(() => import('./pages/News'));
+const NewsDetail = lazy(() => import('./pages/News/detail'));
+const SentimentOverview = lazy(() => import('./pages/Sentiment'));
 
 export interface RouteConfig {
   path: string;
@@ -77,7 +79,9 @@ export const routes: RouteConfig[] = [
   { path: '/live-trading', element: wrap(TradingPanel), auth: true, menu: { name: '真实交易', icon: 'ThunderboltOutlined' } },
   // ---- AI 研究 ----
   { path: '/research', element: wrap(ResearchNotes), auth: true, menu: { name: 'AI研究笔记', icon: 'ReadOutlined' } },
-  { path: '/sentiment', element: wrap(SentimentDashboard), auth: true, menu: { name: '情绪分析', icon: 'SmileOutlined' } },
+  { path: '/sentiment', element: wrap(SentimentOverview), auth: true, menu: { name: '情绪', icon: 'HeartOutlined' } },
+  { path: '/news', element: wrap(NewsFeed), auth: true, menu: { name: '资讯', icon: 'ReadOutlined' } },
+  { path: '/news/:id', element: wrap(NewsDetail), auth: true },
   { path: '/chat', element: wrap(AIChat), auth: true, menu: { name: 'AI助手', icon: 'RobotOutlined' } },
   { path: '/etl-status', element: wrap(ETLStatus), auth: true, menu: { name: 'ETL状态', icon: 'ClockCircleOutlined' } },
   { path: '/admin/users', element: wrap(AdminUsers), auth: true, menu: { name: '用户管理', icon: 'TeamOutlined', dividerBefore: true } },
