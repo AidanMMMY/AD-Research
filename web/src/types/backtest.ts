@@ -95,9 +95,9 @@ export interface AttributionTradeStats {
 
 export interface AttributionResponse {
   backtest_id?: number;
-  total_return: number;
-  benchmark_return: number;
-  excess_return: number;
+  total_return?: number;
+  benchmark_return?: number;
+  excess_return?: number;
   effects?: AttributionEffect[];
   summary?: AttributionSummary;
   trade_stats?: AttributionTradeStats;

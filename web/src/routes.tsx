@@ -27,6 +27,7 @@ const AIChat = lazy(() => import('./pages/AIChat'));
 const CryptoList = lazy(() => import('./pages/CryptoList'));
 const CryptoDetail = lazy(() => import('./pages/CryptoDetail'));
 const ETLStatus = lazy(() => import('./pages/ETLStatus'));
+const ETLOpsDashboard = lazy(() => import('./pages/ETLOpsDashboard'));
 const NotificationLogs = lazy(() => import('./pages/NotificationLogs'));
 const PaperTrading = lazy(() => import('./pages/PaperTrading'));
 const TradingPanel = lazy(() => import('./pages/TradingPanel'));
@@ -81,6 +82,7 @@ export const routes: RouteConfig[] = [
   { path: '/etl-status', element: wrap(ETLStatus), auth: true, menu: { name: 'ETL状态', icon: 'ClockCircleOutlined' } },
   { path: '/admin/users', element: wrap(AdminUsers), auth: true, menu: { name: '用户管理', icon: 'TeamOutlined', dividerBefore: true } },
   { path: '/admin/deployments', element: wrap(AdminDeployments), auth: true, menu: { name: '部署管理', icon: 'CloudServerOutlined' } },
+  { path: '/admin/etl-status', element: wrap(ETLOpsDashboard), auth: true, menu: { name: 'ETL 运维看板', icon: 'MonitorOutlined' } },
   { path: '/', element: <Navigate to="/dashboard" replace />, auth: true },
 ];
 

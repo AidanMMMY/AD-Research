@@ -1,7 +1,7 @@
 """Notification API routes."""
 
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.api.deps import get_notification_service
 from app.schemas.notification import (
@@ -74,9 +74,13 @@ def test_config(
 
 @router.get("/logs", response_model=NotificationLogListResponse)
 def get_logs(
-    limit: int = 50,
+    page: int = Query(1, ge=1, description="Page number (1-indexed)"),
+    page_size: int = Query(20, ge=1, le=200, description="Items per page"),
     service: NotificationService = Depends(get_notification_service),
 ):
-    """Get notification send logs."""
-    items = service.get_logs(limit=limit)
-    return NotificationLogListResponse(items=items)
+    """Get notification send logs (paginated).
+
+    Each item contains: id, user_id (config name), channel, target,
+    report_id, status, error, sent_at, created_at.
+    """
+    return service.get_logs(page=page, page_size=page_size)

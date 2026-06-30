@@ -1,6 +1,9 @@
 """FastAPI application entry point."""
 
+import fcntl
 import logging
+import os
+import tempfile
 from pathlib import Path
 
 from fastapi import FastAPI
@@ -19,6 +22,7 @@ from app.api.v1 import (
     etf_scanner,
     etfs,
     etl,
+    etl_status,
     favorites,
     indicators,
     live_trading,
@@ -51,10 +55,15 @@ app = FastAPI(
 )
 
 # CORS middleware
-# Wildcard origins are not allowed together with credentials per the Fetch spec.
-# When CORS_ORIGINS is unset we allow all origins but disable credentials.
+# Origins are loaded from the CORS_ORIGINS env var (comma-separated).
+# Defaults:
+#   - APP_ENV=development  → http://localhost:5173, http://localhost:3000
+#   - otherwise            → empty list (same-origin only)
+# A bare "*" in CORS_ORIGINS is only honored when APP_ENV=development;
+# credentials are then disabled (Fetch spec disallows the combination).
 _origins = settings.cors_origins_list
-_allow_credentials = "*" not in _origins
+_uses_wildcard = "*" in _origins
+_allow_credentials = not _uses_wildcard
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_origins,
@@ -81,6 +90,9 @@ app.include_router(
     analysis.router, prefix=f"{settings.api_v1_prefix}/analysis", tags=["Analysis"]
 )
 app.include_router(etl.router, prefix=f"{settings.api_v1_prefix}/etl", tags=["ETL"])
+app.include_router(
+    etl_status.router, prefix=f"{settings.api_v1_prefix}/etl", tags=["ETL"]
+)
 app.include_router(
     scoring.router, prefix=f"{settings.api_v1_prefix}/scores", tags=["Scoring"]
 )
@@ -199,18 +211,63 @@ if web_dist.exists():
 # Start the background scheduler from the ASGI startup event rather than at
 # module import time. Module-level startup causes duplicate jobs when multiple
 # workers import the same module.
+#
+# Multi-worker safety: APScheduler's BackgroundScheduler is a per-process
+# object, but @app.on_event("startup") still fires once per Gunicorn worker.
+# We use a file lock (flock on /tmp) plus an opt-in env flag (ENABLE_SCHEDULER)
+# so that at most one worker actually runs the cron jobs. The other workers
+# short-circuit cleanly and just serve HTTP traffic.
+_SCHEDULER_LOCK_PATH = os.path.join(
+    tempfile.gettempdir(), "ad_research_scheduler.lock"
+)
+
+
+def _try_acquire_scheduler_leadership() -> bool:
+    """Attempt to become the worker that runs the scheduler.
+
+    Uses a non-blocking flock on a temp file. The lock is held for the lifetime
+    of the process; whoever holds it is the designated scheduler leader. We
+    also honour ENABLE_SCHEDULER — when unset/false every worker skips the
+    scheduler entirely, which is the safest default for multi-worker deploys
+    where an external cron (or docker-compose command:) starts the job instead.
+    """
+    if os.environ.get("ENABLE_SCHEDULER", "").lower() not in {"1", "true", "yes"}:
+        return False
+
+    lock_fd = open(_SCHEDULER_LOCK_PATH, "w")
+    try:
+        fcntl.flock(lock_fd.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except (BlockingIOError, OSError):
+        return False
+
+    # Stash the fd on the module so the OS keeps the lock until process exit.
+    _SCHEDULER_LOCK_PATH_fd = lock_fd  # noqa: F841 (intentionally held)
+    return True
 
 
 @app.on_event("startup")
 async def startup_event():
     """Run on application startup."""
-    if not scheduler.running:
-        try:
-            init_scheduler()
-            logging.getLogger(__name__).warning("[Scheduler] Started at startup")
-        except Exception as exc:
-            logging.getLogger(__name__).exception("[Scheduler] Failed to start at startup: %s", exc)
+    if scheduler.running:
+        return
 
+    if not _try_acquire_scheduler_leadership():
+        logging.getLogger(__name__).warning(
+            "[Scheduler] Skipped on worker pid=%s "
+            "(ENABLE_SCHEDULER not set, or another worker already holds the lock)",
+            os.getpid(),
+        )
+        return
+
+    try:
+        init_scheduler()
+        logging.getLogger(__name__).warning(
+            "[Scheduler] Started on worker pid=%s", os.getpid()
+        )
+    except Exception as exc:
+        logging.getLogger(__name__).exception(
+            "[Scheduler] Failed to start at startup: %s", exc
+        )
 
 @app.on_event("shutdown")
 async def shutdown_event():
