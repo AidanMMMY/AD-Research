@@ -171,3 +171,6 @@ node_modules/
 
 # Temporary runtime files (e.g. one-off recalc scripts/logs)
 tmp/
+
+# Git credentials store (server-only secret)
+.git-credentials
