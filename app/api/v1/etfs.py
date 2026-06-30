@@ -19,7 +19,7 @@ def list_etfs(
     instrument_type: str = Query(None),
     search: str = Query(None),
     page: int = Query(1, ge=1),
-    page_size: int = Query(50, ge=1, le=200),
+    page_size: int = Query(50, ge=1, le=10000),
     service: ETFService = Depends(get_etf_service),
 ):
     """List ETFs with optional filtering and pagination."""
