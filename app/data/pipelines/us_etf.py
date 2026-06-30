@@ -164,7 +164,11 @@ class USDailyPipeline(ETLPipeline):
                 "USDailyPipeline: Fetching %d symbols via yfinance", len(yf_codes)
             )
             yf_provider = YFinanceProvider()
-            df_yf = yf_provider.fetch_daily_bars(yf_codes, start_date, end_date)
+            # yfinance's end date is exclusive, so extend by one day to
+            # ensure the target_date is included.
+            df_yf = yf_provider.fetch_daily_bars(
+                yf_codes, start_date, end_date + timedelta(days=1)
+            )
             if not df_yf.empty:
                 df_yf = df_yf[df_yf["trade_date"] == target_date].copy()
                 if not df_yf.empty:
