@@ -33,6 +33,7 @@ from app.services.paper_trading_service import PaperTradingService
 from app.services.pool_enhancement_service import PoolEnhancementService
 from app.services.pool_service import PoolService
 from app.services.report_service import ReportService
+from app.services.risk_analysis_service import RiskAnalysisService
 from app.services.scoring_service import ScoringService
 from app.services.screening_service import ScreeningService
 from app.services.sector_rotation_service import SectorRotationService
@@ -55,6 +56,7 @@ __all__ = [
     "get_screening_service",
     "get_pool_enhancement_service",
     "get_report_service",
+    "get_risk_analysis_service",
     "get_sector_rotation_service",
     "get_etf_scanner_service",
     "get_notification_service",
@@ -263,3 +265,8 @@ def get_paper_trading_service(db: Session = Depends(get_db)) -> PaperTradingServ
 def get_stock_fundamental_service(db: Session = Depends(get_db)) -> StockFundamentalService:
     """Provide a StockFundamentalService instance with a DB session."""
     return StockFundamentalService(db)
+
+
+def get_risk_analysis_service(db: Session = Depends(get_db)) -> RiskAnalysisService:
+    """Provide a RiskAnalysisService instance with a DB session."""
+    return RiskAnalysisService(db)

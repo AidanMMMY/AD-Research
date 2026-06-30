@@ -3,12 +3,14 @@
 Provides endpoints for correlation analysis, ranking, and ETF screening.
 """
 
+from datetime import date
 from typing import Literal
 
 from fastapi import APIRouter, Depends, Query
 
-from app.api.deps import get_analysis_service
+from app.api.deps import get_analysis_service, get_risk_analysis_service
 from app.services.analysis_service import AnalysisService
+from app.services.risk_analysis_service import RiskAnalysisService
 
 router = APIRouter()
 
@@ -56,3 +58,34 @@ def get_screen(
         volatility_max=volatility_max,
     )
     return {"items": results, "count": len(results)}
+
+
+@router.get("/risk/instrument")
+def get_instrument_risk(
+    code: str = Query(..., description="Instrument code, e.g. 510300.SH"),
+    window: int = Query(252, ge=30, le=756),
+    end_date: date | None = Query(None),
+    confidence: float = Query(0.95, ge=0.8, le=0.999),
+    service: RiskAnalysisService = Depends(get_risk_analysis_service),
+):
+    """Compute risk metrics (volatility, VaR, ES, max drawdown) for a single instrument."""
+    return service.analyze_instrument(code, window=window, end_date=end_date, confidence=confidence)
+
+
+@router.get("/risk/portfolio")
+def get_portfolio_risk(
+    codes: list[str] = Query(..., description="Portfolio instrument codes"),
+    weights: list[float] | None = Query(None, description="Optional weights; equal weight if omitted"),
+    window: int = Query(252, ge=30, le=756),
+    end_date: date | None = Query(None),
+    confidence: float = Query(0.95, ge=0.8, le=0.999),
+    service: RiskAnalysisService = Depends(get_risk_analysis_service),
+):
+    """Compute portfolio-level risk metrics and volatility contribution per instrument."""
+    return service.analyze_portfolio(
+        codes=codes,
+        weights=weights,
+        window=window,
+        end_date=end_date,
+        confidence=confidence,
+    )
