@@ -254,9 +254,9 @@ class BinanceProvider(DataProvider):
                             "volume": float(candle[5]),
                             "amount": float(candle[7]),   # quote volume in USDT
                             "change_pct": (
-                                (close_px - float(candle[2]))
-                                / float(candle[2]) * 100
-                                if float(candle[2]) != 0
+                                (close_px - open_px)
+                                / open_px * 100
+                                if open_px != 0
                                 else 0
                             ),
                         }

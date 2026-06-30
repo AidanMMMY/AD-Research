@@ -107,14 +107,21 @@ def get_strategy_signals(
     return signals
 
 
-def _apply_transaction_costs(price: float, commission_rate: float, slippage_rate: float) -> float:
-    """Return the effective price after commission and slippage.
+def _apply_transaction_costs(
+    price: float,
+    commission_rate: float,
+    slippage_rate: float,
+    side: str,
+) -> float:
+    """Return the effective execution price after commission and slippage.
 
-    Costs are applied symmetrically: entering at a slightly higher price and
-    exiting at a slightly lower price (both reduced by total cost).
+    BUY executions are filled at a slightly higher price (cost added);
+    SELL executions are filled at a slightly lower price (cost subtracted).
+    This asymmetry correctly reflects the bid-ask spread and fees.
     """
     total_cost = commission_rate + slippage_rate
-    return price * (1 - total_cost)
+    multiplier = 1 + total_cost if side == "buy" else 1 - total_cost
+    return price * multiplier
 
 
 def run_backtest(
@@ -180,7 +187,7 @@ def run_backtest(
 
     for i, row in df.iterrows():
         trade_date = row["trade_date"]
-        price = row["close"]  # execution uses real (unadjusted) close
+        price = row["adj_close"]  # execution uses adjusted close to stay consistent with signals
         signal = signals.iloc[i]
 
         # Record daily NAV using current market price
@@ -199,7 +206,7 @@ def run_backtest(
                 # BUY: deploy only position_size of available cash
                 cash_to_deploy = capital * position_size
                 remaining_cash = capital - cash_to_deploy
-                effective_price = _apply_transaction_costs(price, commission_rate, slippage_rate)
+                effective_price = _apply_transaction_costs(price, commission_rate, slippage_rate, "buy")
                 position = cash_to_deploy / effective_price
                 capital = remaining_cash
                 current_trade = Trade(
@@ -228,7 +235,7 @@ def run_backtest(
 
             if should_exit:
                 # SELL: close position at effective price
-                effective_price = _apply_transaction_costs(price, commission_rate, slippage_rate)
+                effective_price = _apply_transaction_costs(price, commission_rate, slippage_rate, "sell")
                 sale_proceeds = position * effective_price
                 pnl_pct = (effective_price - current_trade.entry_price) / current_trade.entry_price
                 trade_pnl = sale_proceeds - (current_trade.entry_price * position)
@@ -254,9 +261,9 @@ def run_backtest(
 
     # Close any open position at the end
     if current_trade is not None and position > 0:
-        last_price = df["close"].iloc[-1]
+        last_price = df["adj_close"].iloc[-1]
         last_date = df["trade_date"].iloc[-1]
-        effective_price = _apply_transaction_costs(last_price, commission_rate, slippage_rate)
+        effective_price = _apply_transaction_costs(last_price, commission_rate, slippage_rate, "sell")
         sale_proceeds = position * effective_price
         pnl_pct = (effective_price - current_trade.entry_price) / current_trade.entry_price
         trade_pnl = sale_proceeds - (current_trade.entry_price * position)

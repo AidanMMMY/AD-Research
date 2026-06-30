@@ -17,31 +17,14 @@ from sqlalchemy.orm import Session
 
 from app.core.cache import cache_invalidate_pattern
 from app.data.pipelines.base import ETLPipeline
-from app.data.providers.binance_provider import BinanceProvider
+from app.data.providers.binance_provider import BinanceProvider, _DEFAULT_CRYPTO
 from app.models.etf import InstrumentDailyBar, ETFInfo
 
 logger = logging.getLogger(__name__)
 
-# Burnt-in list of crypto instruments to register on first run (symbol, name,
-# category).  Matches BinanceProvider._DEFAULT_CRYPTO so the provider and
-# pipeline stay in sync.
-_SEED_INSTRUMENTS = [
-    ("BTC.US", "Bitcoin", "Layer1"),
-    ("ETH.US", "Ethereum", "Layer1"),
-    ("BNB.US", "BNB", "Exchange"),
-    ("SOL.US", "Solana", "Layer1"),
-    ("XRP.US", "XRP", "Payments"),
-    ("DOGE.US", "Dogecoin", "Meme"),
-    ("ADA.US", "Cardano", "Layer1"),
-    ("AVAX.US", "Avalanche", "Layer1"),
-    ("DOT.US", "Polkadot", "Layer1"),
-    ("LINK.US", "Chainlink", "Oracle"),
-    ("MATIC.US", "Polygon", "L2"),
-    ("UNI.US", "Uniswap", "DeFi"),
-    ("ATOM.US", "Cosmos", "Layer1"),
-    ("LTC.US", "Litecoin", "Payments"),
-    ("ETC.US", "Ethereum Classic", "Layer1"),
-]
+# Keep the pipeline seed list identical to the provider's curated list so the
+# two stay in sync automatically.
+_SEED_INSTRUMENTS = _DEFAULT_CRYPTO
 
 
 class CryptoDailyPipeline(ETLPipeline):
@@ -188,8 +171,9 @@ class CryptoDailyPipeline(ETLPipeline):
                 "change_pct": row.get("change_pct"),
                 "turnover_rate": row.get("turnover_rate"),
             }
-            # Drop None values so they don't overwrite real data on conflict
-            record = {k: v for k, v in record.items() if v is not None}
+            # Drop None/NaN values so they don't overwrite existing data on conflict,
+            # but keep legitimate zeros.
+            record = {k: v for k, v in record.items() if pd.notna(v)}
             records.append(record)
 
         if not records:

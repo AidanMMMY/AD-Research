@@ -39,7 +39,7 @@ from app.api.v1 import (
     stream,
 )
 from app.config import get_settings
-from app.core.scheduler import init_scheduler, shutdown_scheduler
+from app.core.scheduler import init_scheduler, scheduler, shutdown_scheduler
 
 settings = get_settings()
 
@@ -51,10 +51,14 @@ app = FastAPI(
 )
 
 # CORS middleware
+# Wildcard origins are not allowed together with credentials per the Fetch spec.
+# When CORS_ORIGINS is unset we allow all origins but disable credentials.
+_origins = settings.cors_origins_list
+_allow_credentials = "*" not in _origins
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
+    allow_origins=_origins,
+    allow_credentials=_allow_credentials,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -192,22 +196,20 @@ if web_dist.exists():
     )
 
 
-# Start the background scheduler immediately when the module is loaded.
-# This is more reliable than relying solely on the ASGI startup event,
-# which some deployment configurations may not trigger consistently.
-try:
-    init_scheduler()
-    logging.getLogger(__name__).warning("[Scheduler] Started at module load")
-except Exception as exc:
-    logging.getLogger(__name__).exception("[Scheduler] Failed to start at module load: %s", exc)
+# Start the background scheduler from the ASGI startup event rather than at
+# module import time. Module-level startup causes duplicate jobs when multiple
+# workers import the same module.
 
 
 @app.on_event("startup")
 async def startup_event():
     """Run on application startup."""
-    # Scheduler is already running at module level; keep this hook for
-    # future startup-only tasks.
-    pass
+    if not scheduler.running:
+        try:
+            init_scheduler()
+            logging.getLogger(__name__).warning("[Scheduler] Started at startup")
+        except Exception as exc:
+            logging.getLogger(__name__).exception("[Scheduler] Failed to start at startup: %s", exc)
 
 
 @app.on_event("shutdown")

@@ -285,12 +285,12 @@ class ResearchService:
         if not score:
             return "无评分数据"
         parts = [f"综合评分: {float(score.composite_score or 0):.1f}"]
-        if score.return_score is not None:
-            parts.append(f"  收益: {float(score.return_score):.1f}")
-        if score.risk_score is not None:
-            parts.append(f"  风险: {float(score.risk_score):.1f}")
-        if score.trend_score is not None:
-            parts.append(f"  趋势: {float(score.trend_score):.1f}")
+        if score.score_return is not None:
+            parts.append(f"  收益: {float(score.score_return):.1f}")
+        if score.score_risk is not None:
+            parts.append(f"  风险: {float(score.score_risk):.1f}")
+        if score.score_trend is not None:
+            parts.append(f"  趋势: {float(score.score_trend):.1f}")
         return "\n".join(parts)
 
     def _parse_json_response(self, text: str) -> dict[str, Any]:

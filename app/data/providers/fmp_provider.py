@@ -94,6 +94,7 @@ def _fetch_sp500_from_public_csv() -> list[ETFInfo]:
                 sector=sector,
                 industry=industry,
                 currency="USD",
+                instrument_type="STOCK",
             )
         )
 
@@ -159,6 +160,7 @@ class FMPProvider(DataProvider):
                             market="US",
                             exchange=exchange or "NYSE",
                             currency="USD",
+                            instrument_type="STOCK",
                         )
                     )
                 result.sort(key=lambda x: x.code)

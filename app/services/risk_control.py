@@ -161,16 +161,24 @@ class RiskControl:
         )
 
     def _daily_realized_pnl(self) -> Decimal:
-        """Return today's realised PnL by summing filled SELL order proceeds.
+        """Return today's realised PnL by summing realised PnL on positions
+        that have been synced or updated today.
 
-        Simplified: SELL quantity * fill_price - BUY quantity * avg_cost.
-        For a more accurate metric we rely on LiveTradePosition.realized_pnl.
+        Because ``LiveTradePosition.realized_pnl`` is a cumulative lifetime
+        value, we restrict the sum to rows touched today (``updated_at``)
+        so the daily loss limit reflects today's trading activity rather than
+        all historical PnL.  In production this should be replaced by a
+        first-class daily PnL ledger or order-level fill PnL.
         """
         from app.models.trading import LiveTradePosition
 
+        today_start = self._today_start()
         positions = (
             self.db.query(LiveTradePosition)
-            .filter(LiveTradePosition.config_id == self.config.id)
+            .filter(
+                LiveTradePosition.config_id == self.config.id,
+                LiveTradePosition.updated_at >= today_start,
+            )
             .all()
         )
         return sum(

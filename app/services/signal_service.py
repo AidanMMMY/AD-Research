@@ -35,18 +35,20 @@ class SignalService:
         persisted = []
         seen_keys = set()
         for sig in signals:
-            key = (strategy_id, etf_code, trade_date)
+            # Deduplicate within this batch by (strategy, code, date, type)
+            key = (strategy_id, etf_code, trade_date, sig.get("type"))
             if key in seen_keys:
                 continue
             seen_keys.add(key)
 
-            # Skip if a signal already exists for this (strategy, etf, date)
+            # Skip if a signal already exists for this (strategy, etf, date, type)
             existing = (
                 self.db.query(Signal)
                 .filter(
                     Signal.strategy_id == strategy_id,
                     Signal.etf_code == etf_code,
                     Signal.trade_date == trade_date,
+                    Signal.signal_type == sig.get("type"),
                 )
                 .first()
             )

@@ -313,7 +313,7 @@ def place_order(
     config_id: int,
     payload: LiveOrderCreate,
     db: Session = Depends(get_db),
-    current_user: UserResponse = Depends(get_current_user),
+    current_user: UserResponse = Depends(require_admin),
 ):
     """Place a live order on Binance (risk-checked).
 
@@ -390,7 +390,7 @@ def cancel_order(
     config_id: int,
     order_id: int,
     db: Session = Depends(get_db),
-    current_user: UserResponse = Depends(get_current_user),
+    current_user: UserResponse = Depends(require_admin),
 ):
     """Cancel an open order (first on Binance, then mark locally)."""
     config = db.query(LiveTradeConfig).filter(LiveTradeConfig.id == config_id).first()
