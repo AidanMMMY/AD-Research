@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { createChart, IChartApi, ISeriesApi, CandlestickData, HistogramData, LineData, Time, ColorType, LineStyle } from 'lightweight-charts';
 import type { OHLCV } from '@/types/etf';
 import { useIsMobile } from '@/hooks/useBreakpoint';
@@ -133,6 +133,15 @@ function getCssColor(name: string, fallback: string): string {
   return value || fallback;
 }
 
+/** Resolve a color string, converting CSS variables to concrete values. */
+function resolveChartColor(color: string, fallback: string): string {
+  if (color.startsWith('var(')) {
+    const varName = color.slice(4, -1).trim();
+    return getCssColor(varName, fallback);
+  }
+  return color;
+}
+
 export default function KLineChart({ data, overlays = DEFAULT_OVERLAYS }: KLineChartProps) {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
@@ -153,6 +162,14 @@ export default function KLineChart({ data, overlays = DEFAULT_OVERLAYS }: KLineC
   const colorConvention = useSettingsStore((s) => s.colorConvention);
   const upColor = getUpColor(colorConvention);
   const downColor = getDownColor(colorConvention);
+  const resolvedUpColor = useMemo(
+    () => resolveChartColor(upColor, '#c96b6b'),
+    [upColor]
+  );
+  const resolvedDownColor = useMemo(
+    () => resolveChartColor(downColor, '#5fa87a'),
+    [downColor]
+  );
   const containerHeight = isMobile ? 350 : 500;
   const [initError, setInitError] = useState<string | null>(null);
   const [dataError, setDataError] = useState<string | null>(null);
@@ -189,12 +206,12 @@ export default function KLineChart({ data, overlays = DEFAULT_OVERLAYS }: KLineC
       chartRef.current = chart;
 
       const candlestick = chart.addCandlestickSeries({
-        upColor,
-        downColor,
-        borderUpColor: upColor,
-        borderDownColor: downColor,
-        wickUpColor: upColor,
-        wickDownColor: downColor,
+        upColor: resolvedUpColor,
+        downColor: resolvedDownColor,
+        borderUpColor: resolvedUpColor,
+        borderDownColor: resolvedDownColor,
+        wickUpColor: resolvedUpColor,
+        wickDownColor: resolvedDownColor,
       });
       candlestickRef.current = candlestick;
 
@@ -254,7 +271,7 @@ export default function KLineChart({ data, overlays = DEFAULT_OVERLAYS }: KLineC
     } catch (e: any) {
       setInitError(e?.message || String(e));
     }
-  }, [containerHeight, upColor, downColor]);
+  }, [containerHeight, resolvedUpColor, resolvedDownColor]);
 
   // Update data
   useEffect(() => {
@@ -280,7 +297,7 @@ export default function KLineChart({ data, overlays = DEFAULT_OVERLAYS }: KLineC
       const volumeData: HistogramData[] = validData.map((d) => ({
         time: toTime(d),
         value: d.volume ?? 0,
-        color: d.close >= d.open ? upColor : downColor,
+        color: d.close >= d.open ? resolvedUpColor : resolvedDownColor,
       }));
 
       candlestickRef.current.setData(candleData);
@@ -331,7 +348,7 @@ export default function KLineChart({ data, overlays = DEFAULT_OVERLAYS }: KLineC
         const histData: HistogramData[] = macd.hist.map((v, i) => ({
           time: times[i],
           value: v,
-          color: v >= 0 ? upColor : downColor,
+          color: v >= 0 ? resolvedUpColor : resolvedDownColor,
         }));
         macdHistRef.current?.setData(histData);
         macdDifRef.current?.setData(toLineData(macd.dif));
@@ -348,21 +365,21 @@ export default function KLineChart({ data, overlays = DEFAULT_OVERLAYS }: KLineC
     } catch (e: any) {
       setDataError(e?.message || String(e));
     }
-  }, [data, overlays, upColor, downColor]);
+  }, [data, overlays, resolvedUpColor, resolvedDownColor]);
 
   // Update candlestick colors when convention changes
   useEffect(() => {
     if (candlestickRef.current) {
       candlestickRef.current.applyOptions({
-        upColor,
-        downColor,
-        borderUpColor: upColor,
-        borderDownColor: downColor,
-        wickUpColor: upColor,
-        wickDownColor: downColor,
+        upColor: resolvedUpColor,
+        downColor: resolvedDownColor,
+        borderUpColor: resolvedUpColor,
+        borderDownColor: resolvedDownColor,
+        wickUpColor: resolvedUpColor,
+        wickDownColor: resolvedDownColor,
       });
     }
-  }, [upColor, downColor]);
+  }, [resolvedUpColor, resolvedDownColor]);
 
   if (initError) {
     return (
