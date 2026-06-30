@@ -23,6 +23,16 @@ from app.services.llm import DeepSeekProvider, LLMService
 logger = logging.getLogger(__name__)
 
 
+class SentimentFetchError(Exception):
+    """Raised when sentiment data cannot be retrieved from an external source.
+
+    Distinct from "no sentiment data exists yet" — this is a hard failure
+    (network error, auth issue, upstream provider outage) that the caller
+    should surface to the user as 503 rather than silently treat as
+    "no data".
+    """
+
+
 class SentimentService:
     """Multi-source sentiment analysis service."""
 
@@ -42,6 +52,11 @@ class SentimentService:
         """Fetch and classify news articles for a single instrument.
 
         Returns count of new articles ingested.
+
+        Raises ``SentimentFetchError`` when the upstream Finnhub fetch
+        fails. This is intentionally distinct from "no articles available"
+        (which is a normal, non-error state) so callers can return a 503
+        to the user instead of silently masking a provider outage.
         """
         to_date = date.today()
         from_date = to_date - timedelta(days=lookback_days)
@@ -51,8 +66,12 @@ class SentimentService:
                 instrument_code, from_date, to_date
             )
         except Exception as exc:
-            logger.warning("Finnhub news fetch failed for %s: %s", instrument_code, exc)
-            return 0
+            logger.warning(
+                "Finnhub news fetch failed for %s: %s", instrument_code, exc
+            )
+            raise SentimentFetchError(
+                f"Failed to fetch news for {instrument_code} from Finnhub: {exc}"
+            ) from exc
 
         count = 0
         for article in articles[:20]:  # Limit per run to manage LLM costs

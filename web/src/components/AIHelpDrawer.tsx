@@ -1,5 +1,5 @@
 import { useRef, useEffect, useState } from 'react';
-import { Drawer, Input, Button, Tag, Space, Alert, Spin } from 'antd';
+import { Drawer, Input, Button, Tag, Space, Alert } from 'antd';
 import {
   RobotOutlined,
   SendOutlined,
@@ -12,6 +12,7 @@ import remarkGfm from 'remark-gfm';
 import { useAIHelp } from '@/hooks/useAIHelp';
 import { useAIStatus } from '@/components/AISetupBanner';
 import { useIsMobile } from '@/hooks/useBreakpoint';
+import StepProgress from '@/components/StepProgress';
 import type { HelpMessage } from '@/types/help';
 
 function MessageBubble({ msg }: { msg: HelpMessage }) {
@@ -128,6 +129,8 @@ export default function AIHelpDrawer() {
     messages,
     isLoading,
     error,
+    steps,
+    streamedText,
     close,
     sendMessage,
     retryLast,
@@ -303,13 +306,26 @@ export default function AIHelpDrawer() {
                   borderTopLeftRadius: 4,
                   background: 'var(--bg-elevated)',
                   border: '1px solid var(--border-default)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 8,
+                  maxWidth: '85%',
                 }}
               >
-                <Spin size="small" />
-                <span style={{ color: 'var(--text-tertiary)', fontSize: 14 }}>AI 思考中...</span>
+                <StepProgress steps={steps} compact />
+                {streamedText && (
+                  <div
+                    style={{
+                      marginTop: 8,
+                      paddingTop: 8,
+                      borderTop: '1px solid var(--border-default)',
+                      color: 'var(--text-primary)',
+                      fontSize: 14,
+                      lineHeight: 1.7,
+                    }}
+                  >
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                      {streamedText}
+                    </ReactMarkdown>
+                  </div>
+                )}
               </div>
             </div>
           )}

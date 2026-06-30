@@ -69,6 +69,7 @@ def _enrich_with_realtime(
     enriched: list[CryptoInfoOut] = []
     for item in items:
         q = quotes.get(item.code, {}) if quotes else {}
+        change_pct = q.get("price_change_pct")
         enriched.append(
             CryptoInfoOut(
                 code=item.code,
@@ -80,7 +81,8 @@ def _enrich_with_realtime(
                 instrument_type=item.instrument_type,
                 status=item.status,
                 price=q.get("price"),
-                change_24h=q.get("price_change_pct"),
+                change_24h=change_pct,  # deprecated alias for change_pct
+                change_pct=change_pct,
                 volume_24h=q.get("volume"),
             )
         )
@@ -178,7 +180,8 @@ def get_crypto(
         instrument_type=etf.instrument_type,
         status=etf.status,
         price=price,
-        change_24h=change_24h,
+        change_24h=change_24h,  # deprecated alias for change_pct
+        change_pct=change_24h,
         high_24h=high_24h,
         low_24h=low_24h,
         volume_24h=volume_24h,

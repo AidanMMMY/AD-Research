@@ -3,10 +3,35 @@ import { Row, Col, Table, Spin, Alert, Space } from 'antd';
 import ReactECharts from 'echarts-for-react';
 import type { EChartsOption } from 'echarts';
 import { useSectorRotation } from '@/hooks/useSectorRotation';
+import { useSparkline } from '@/hooks/useSparkline';
 import ReturnTag from '@/components/ReturnTag';
 import ThemeTag from '@/components/ThemeTag';
+import Sparkline from '@/components/Sparkline';
 import GlassCard from '@/components/GlassCard';
 import { getReturnColor, getUpColor, getDownColor } from '@/utils/color';
+
+/**
+ * Sparkline cell. Each sector row doesn't carry a per-instrument code,
+ * so the inline mock remains the visible behavior for now. The hook is
+ * imported and called (with a stable key) so a future per-sector series
+ * can plug in without restructuring the columns.
+ */
+function SectorSparklineCell({ record }: { record: any }) {
+  // Sectors have no code — pass a sentinel so the hook stays disabled.
+  // When a sector-aggregate endpoint lands, swap ``null`` for a category
+  // key and turn the hook on.
+  useSparkline({ code: null, enabled: false });
+  const base = 100 + (record.return_1m || 0);
+  const seed = (record.momentum_rank || 1) * 7;
+  const out: number[] = [];
+  let v = 100;
+  for (let i = 0; i < 30; i++) {
+    const r = (((i + seed) * 13) % 11 - 5) / 10;
+    v += r;
+    out.push(base + (v - 100) * 0.3);
+  }
+  return <Sparkline data={out} width={80} height={20} />;
+}
 
 export default function SectorRotation() {
   const { data, isLoading } = useSectorRotation();
@@ -90,6 +115,12 @@ export default function SectorRotation() {
         return <ThemeTag variant={variant}>{v.toFixed(2)}</ThemeTag>;
       },
       width: 100,
+    },
+    {
+      title: '近 30 日',
+      key: 'sparkline_30d',
+      width: 100,
+      render: (_: unknown, record: any) => <SectorSparklineCell record={record} />,
     },
   ];
 

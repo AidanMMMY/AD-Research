@@ -3,7 +3,7 @@
 
 from fastapi import APIRouter, Depends, HTTPException
 
-from app.api.deps import get_backtest_service, get_strategy_service
+from app.api.deps import get_backtest_service, get_current_user, get_strategy_service
 from app.schemas.backtest import (
     BacktestCreate,
     BacktestListResponse,
@@ -12,7 +12,7 @@ from app.schemas.backtest import (
 from app.services.backtest_service import BacktestService
 from app.services.strategy_service import StrategyService
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(get_current_user)])
 
 
 @router.post("", response_model=BacktestResponse, status_code=201)

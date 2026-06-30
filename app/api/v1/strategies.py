@@ -3,7 +3,7 @@
 
 from fastapi import APIRouter, Depends, HTTPException
 
-from app.api.deps import get_strategy_service
+from app.api.deps import get_current_user, get_strategy_service
 from app.schemas.strategy import (
     StrategyCreate,
     StrategyListResponse,
@@ -13,7 +13,7 @@ from app.schemas.strategy import (
 )
 from app.services.strategy_service import StrategyService
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(get_current_user)])
 
 
 @router.get("/templates", response_model=list[StrategyTemplate])

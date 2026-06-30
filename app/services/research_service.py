@@ -11,6 +11,7 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
+from app.core.exceptions import DataProviderError
 from app.models.etf import InstrumentDailyBar, ETFIndicator, ETFInfo
 from app.models.research import ResearchNote
 from app.models.scoring import ETFScore
@@ -20,6 +21,72 @@ logger = logging.getLogger(__name__)
 
 # Number of trading days to include in the prompt context
 _CONTEXT_DAYS = 30
+
+# Number of times to retry the LLM call before giving up
+_LLM_MAX_ATTEMPTS = 2
+
+
+class ResearchNoteResult:
+    """Structured outcome of a research-note generation attempt.
+
+    Returned by ``ResearchService.generate_daily_note`` so callers can
+    distinguish between "no data" (None) and "AI provider failure".
+    """
+
+    def __init__(
+        self,
+        note: ResearchNote | None = None,
+        error_code: str | None = None,
+        error_message: str | None = None,
+    ) -> None:
+        self.note = note
+        self.error_code = error_code
+        self.error_message = error_message
+
+    @property
+    def is_error(self) -> bool:
+        return self.error_code is not None
+
+    def to_dict(self) -> dict:
+        if self.is_error:
+            return {
+                "note": None,
+                "error_code": self.error_code,
+                "error_message": self.error_message,
+            }
+        return {
+            "note": self.note,
+            "error_code": None,
+            "error_message": None,
+        }
+
+
+def _call_llm_with_retry(llm: LLMService, prompt: str, system: str,
+                         max_tokens: int, temperature: float) -> str:
+    """Call the LLM with a single retry on transient failure.
+
+    Raises ``DataProviderError`` if both attempts fail.
+    """
+    last_exc: Exception | None = None
+    for attempt in range(1, _LLM_MAX_ATTEMPTS + 1):
+        try:
+            return llm.complete_with_cache(
+                prompt=prompt,
+                system=system,
+                max_tokens=max_tokens,
+                temperature=temperature,
+            )
+        except DataProviderError as exc:
+            last_exc = exc
+            logger.warning(
+                "LLM call attempt %d/%d failed: %s",
+                attempt, _LLM_MAX_ATTEMPTS, exc,
+            )
+            if attempt >= _LLM_MAX_ATTEMPTS:
+                break
+    raise DataProviderError(
+        f"LLM call failed after {_LLM_MAX_ATTEMPTS} attempts: {last_exc}"
+    ) from last_exc
 
 
 class ResearchService:
@@ -34,19 +101,26 @@ class ResearchService:
     # Daily Note
     # ------------------------------------------------------------------
 
-    def generate_daily_note(self, instrument_code: str) -> ResearchNote | None:
+    def generate_daily_note(self, instrument_code: str) -> ResearchNoteResult:
         """Generate a daily research note for a single instrument.
 
         Fetches the last 30 days of price data, latest indicators, and
         composite score, then prompts the LLM to write a concise
         research summary in Chinese.
+
+        Returns a ``ResearchNoteResult`` that wraps the note on success
+        or an ``error_code`` / ``error_message`` on failure so callers
+        can distinguish "no data" from "AI provider failure".
         """
         # 1. Fetch instrument info
         instrument = (
             self.db.query(ETFInfo).filter(ETFInfo.code == instrument_code).first()
         )
         if not instrument:
-            return None
+            return ResearchNoteResult(
+                error_code="INSTRUMENT_NOT_FOUND",
+                error_message=f"Unknown instrument: {instrument_code}",
+            )
 
         # 2. Fetch recent daily bars
         start = date.today() - timedelta(days=_CONTEXT_DAYS + 5)
@@ -58,7 +132,12 @@ class ResearchService:
             .all()
         )
         if len(bars) < 5:
-            return None
+            return ResearchNoteResult(
+                error_code="INSUFFICIENT_DATA",
+                error_message=(
+                    f"Need >= 5 daily bars for {instrument_code}, got {len(bars)}"
+                ),
+            )
 
         # 3. Fetch latest indicator
         indicator = (
@@ -110,15 +189,25 @@ class ResearchService:
 {{"summary": "一句话摘要", "content": "完整研报(markdown)", "sentiment": "bullish或bearish或neutral", "confidence": 1-10}}
 """
         try:
-            result = self.llm.complete_with_cache(
+            result = _call_llm_with_retry(
+                llm=self.llm,
                 prompt=prompt,
                 system=self.llm.RESEARCH_ANALYST_SYSTEM,
                 max_tokens=800,
                 temperature=0.5,
             )
-        except Exception as exc:
-            logger.error("Failed to generate note for %s: %s", instrument_code, exc)
-            return None
+        except DataProviderError as exc:
+            logger.error(
+                "Failed to generate note for %s after retries: %s",
+                instrument_code, exc,
+            )
+            return ResearchNoteResult(
+                error_code="LLM_UNAVAILABLE",
+                error_message=(
+                    f"AI provider failed to generate a note for {instrument_code}. "
+                    "Please try again later."
+                ),
+            )
 
         # 7. Parse response
         parsed = self._parse_json_response(result)
@@ -144,7 +233,7 @@ class ResearchService:
         self.db.commit()
 
         logger.info("Generated research note for %s: %s", instrument_code, note.summary)
-        return note
+        return ResearchNoteResult(note=note)
 
     # ------------------------------------------------------------------
     # Pool Weekly Review

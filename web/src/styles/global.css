@@ -595,3 +595,18 @@ a {
 a:hover {
   color: var(--accent-hover);
 }
+
+/* ============================================================
+   Density Modes (S1)
+   ============================================================ */
+:root {
+  --row-height-dense: 32px;
+  --row-height-comfortable: 40px;
+  --row-height-spacious: 52px;
+}
+.ad-density-dense .ant-table-tbody > tr > td,
+.ad-density-dense .ant-table-thead > tr > th { padding: 4px 8px !important; }
+.ad-density-comfortable .ant-table-tbody > tr > td,
+.ad-density-comfortable .ant-table-thead > tr > th { padding: 8px 12px !important; }
+.ad-density-spacious .ant-table-tbody > tr > td,
+.ad-density-spacious .ant-table-thead > tr > th { padding: 12px 16px !important; }

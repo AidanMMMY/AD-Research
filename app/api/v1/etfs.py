@@ -4,12 +4,19 @@ Provides endpoints for listing, filtering, and retrieving ETF basic information.
 """
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy.orm import Session
 
-from app.api.deps import get_etf_service
-from app.schemas.etf import ETFFilterParams, ETFInfoResponse, ETFListResponse
+from app.api.deps import get_current_user, get_db, get_etf_service
+from app.models.etf import ETFInfo, InstrumentDailyBar
+from app.schemas.etf import (
+    ETFFilterParams,
+    ETFInfoResponse,
+    ETFListResponse,
+    SparklineOut,
+)
 from app.services.etf_service import ETFService
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(get_current_user)])
 
 
 @router.get("", response_model=ETFListResponse)
@@ -41,6 +48,41 @@ def get_etf(code: str, service: ETFService = Depends(get_etf_service)):
     if not etf:
         raise HTTPException(status_code=404, detail=f"ETF {code} not found")
     return etf
+
+
+@router.get("/{code}/sparkline", response_model=SparklineOut)
+def get_sparkline(
+    code: str,
+    days: int = Query(30, ge=1, le=365, description="Number of recent trading days to return"),
+    db: Session = Depends(get_db),
+):
+    """Return the most recent ``days`` close prices for ``code``.
+
+    Used for row-level sparkline previews in list pages. The series is
+    returned chronologically (oldest -> newest) so the frontend can plot
+    directly without reversing.
+    """
+    instrument = db.query(ETFInfo).filter(ETFInfo.code == code).first()
+    if not instrument:
+        raise HTTPException(status_code=404, detail=f"ETF {code} not found")
+
+    rows = (
+        db.query(InstrumentDailyBar.trade_date, InstrumentDailyBar.close)
+        .filter(InstrumentDailyBar.etf_code == code)
+        .order_by(InstrumentDailyBar.trade_date.desc())
+        .limit(days)
+        .all()
+    )
+
+    # Reverse so caller gets oldest -> newest (plotting convention).
+    rows = list(reversed(rows))
+
+    return SparklineOut(
+        code=code,
+        days=len(rows),
+        points=[float(r.close) for r in rows if r.close is not None],
+        dates=[r.trade_date.isoformat() for r in rows],
+    )
 
 
 @router.get("/categories/list")

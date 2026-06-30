@@ -10,7 +10,15 @@ export interface CryptoInfo {
   status?: string;
   /** Latest price in USDT */
   price?: number;
-  /** 24h price change percent */
+  /**
+   * 24h price change percent (canonical field).
+   * New code should prefer this over the deprecated `change_24h`.
+   */
+  change_pct?: number;
+  /**
+   * @deprecated Use `change_pct` instead. Same value, kept for
+   * backward compatibility with existing UI components.
+   */
   change_24h?: number;
   /** 24h base-asset volume */
   volume_24h?: number;
@@ -35,6 +43,15 @@ export interface CryptoDetail {
   instrument_type?: string;
   status?: string;
   price?: number;
+  /**
+   * 24h price change percent (canonical field).
+   * New code should prefer this over the deprecated `change_24h`.
+   */
+  change_pct?: number;
+  /**
+   * @deprecated Use `change_pct` instead. Same value, kept for
+   * backward compatibility with existing UI components.
+   */
   change_24h?: number;
   high_24h?: number;
   low_24h?: number;

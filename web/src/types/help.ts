@@ -1,3 +1,5 @@
+import type { Step } from '@/hooks/useStepStream';
+
 export type HelpPageType =
   | 'score_ranking'
   | 'etf_detail'
@@ -28,6 +30,10 @@ export interface AIHelpState {
   isLoading: boolean;
   error: string | null;
   sessionId: number | null;
+  /** 步骤状态机（S3） */
+  steps: Step[];
+  /** 打字机渲染中的临时文本（S3） */
+  streamedText: string;
 }
 
 export interface AIHelpContextValue extends AIHelpState {

@@ -3,9 +3,21 @@ import { useNavigate } from 'react-router-dom';
 import { Table, Input, Select, List, Skeleton } from 'antd';
 import { SearchOutlined } from '@ant-design/icons';
 import { useETFList, useETFCategories, useETFMarkets } from '@/hooks/useETFList';
+import { useSparkline } from '@/hooks/useSparkline';
 import ETFCodeTag from '@/components/ETFCodeTag';
 import ThemeTag from '@/components/ThemeTag';
+import Sparkline from '@/components/Sparkline';
 import { useIsMobile } from '@/hooks/useBreakpoint';
+
+/** Row-level sparkline cell. Owns its own query so per-row caching
+ *  works without re-fetching the whole list. */
+function SparklineCell({ code }: { code: string }) {
+  const { data } = useSparkline({ code, days: 30 });
+  if (!data || !data.points || data.points.length === 0) {
+    return <span style={{ color: 'var(--text-tertiary)', fontSize: 11 }}>-</span>;
+  }
+  return <Sparkline data={data.points} width={80} height={20} />;
+}
 
 export default function ETFList() {
   const navigate = useNavigate();
@@ -109,6 +121,12 @@ export default function ETFList() {
         return '-';
       },
       width: 110,
+    },
+    {
+      title: '近 30 日',
+      key: 'sparkline_30d',
+      width: 100,
+      render: (_: unknown, record: any) => <SparklineCell code={record.code} />,
     },
   ];
 
