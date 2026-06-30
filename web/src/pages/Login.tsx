@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { message } from 'antd';
 import { UserOutlined, LockOutlined, StockOutlined } from '@ant-design/icons';
 import { useAuthStore } from '@/stores/auth';
+import ParticleBackground from '@/components/ParticleBackground';
 
 export default function Login() {
   const navigate = useNavigate();
@@ -40,16 +41,45 @@ export default function Login() {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        background: 'linear-gradient(180deg, var(--bg-base) 0%, var(--bg-elevated) 100%)',
+        background: 'var(--bg-base)',
         position: 'relative',
         overflow: 'hidden',
       }}
     >
+      {/* Animated particle network */}
+      <ParticleBackground />
+
+      {/* Subtle tech grid */}
+      <div
+        style={{
+          position: 'absolute',
+          inset: 0,
+          backgroundImage: `
+            linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px)
+          `,
+          backgroundSize: '60px 60px',
+          pointerEvents: 'none',
+          zIndex: 0,
+        }}
+      />
+
+      {/* Radial vignette to keep the form readable */}
+      <div
+        style={{
+          position: 'absolute',
+          inset: 0,
+          background: 'radial-gradient(circle at center, transparent 0%, var(--bg-base) 75%)',
+          pointerEvents: 'none',
+          zIndex: 0,
+        }}
+      />
+
       <div
         style={{
           width: 420,
           padding: '48px 40px',
-          background: 'var(--card-bg)',
+          background: 'rgba(17, 17, 17, 0.72)',
           backdropFilter: 'blur(20px)',
           WebkitBackdropFilter: 'blur(20px)',
           border: '1px solid var(--card-border)',
