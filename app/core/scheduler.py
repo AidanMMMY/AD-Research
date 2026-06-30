@@ -23,6 +23,7 @@ from app.data.pipelines.us_backfill import USHistoricalBackfillPipeline
 from app.data.pipelines.us_etf import USDailyPipeline
 from app.data.pipelines.us_etf_discovery import USEtfDiscoveryPipeline
 from app.data.pipelines.us_stock_discovery import USStockDiscoveryPipeline
+from app.data.pipelines.us_stock_enrichment import USStockEnrichmentPipeline
 from app.models.etf import ETFInfo
 from app.models.pool import ETFPools
 from app.services.etf_scanner_service import ETFScannerService
@@ -371,6 +372,29 @@ def run_us_stock_discovery():
             db.close()
 
 
+def run_us_stock_enrichment():
+    """Run the US stock metadata enrichment pipeline (daily 02:30).
+
+    Backfills missing sector/industry/category for US individual stocks
+    from the public S&P 500 CSV.  Uses a small batch size to stay
+    within upstream rate limits and to finish quickly.
+    """
+    with redis_lock("us_stock_enrichment", expire_seconds=1800) as acquired:
+        if not acquired:
+            print("⚠️ [SCHEDULER_WARN] US stock enrichment skipped: lock in use")
+            return
+        db = SessionLocal()
+        try:
+            pipeline = USStockEnrichmentPipeline(db, batch_size=200)
+            result = pipeline.run_with_retry(max_attempts=2)
+            print(
+                f"[Scheduler] US stock enrichment: success={result.success}, "
+                f"records={result.records}"
+            )
+        finally:
+            db.close()
+
+
 def run_etf_scan():
     """Run the ETF market scan (Sunday 03:00)."""
     with redis_lock("etf_scan", expire_seconds=7200) as acquired:
@@ -673,6 +697,15 @@ def init_scheduler():
         trigger=CronTrigger(day_of_week="sun", hour=2, minute=0),
         id="us_stock_discovery",
         name="美股个股发现",
+        replace_existing=True,
+        max_instances=1,
+    )
+
+    scheduler.add_job(
+        run_us_stock_enrichment,
+        trigger=CronTrigger(hour=2, minute=30),
+        id="us_stock_enrichment",
+        name="美股个股元数据补全",
         replace_existing=True,
         max_instances=1,
     )
