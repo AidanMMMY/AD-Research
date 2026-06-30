@@ -71,9 +71,20 @@ class Settings(BaseSettings):
     github_repo: str = ""           # e.g. "owner/repo-name"
     deploy_docker_socket: str = "/var/run/docker.sock"
 
+    # CORS: comma-separated list of allowed origins. Empty means allow all origins
+    # but credentials will be disabled; production should list exact origins.
+    cors_origins: str = ""
+
     # Constants
     api_v1_prefix: str = "/api/v1"
     project_name: str = "AD-Research"
+
+    @property
+    def cors_origins_list(self) -> list[str]:
+        """Return parsed CORS origin list."""
+        if not self.cors_origins:
+            return ["*"]
+        return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
 
     @property
     def is_development(self) -> bool:

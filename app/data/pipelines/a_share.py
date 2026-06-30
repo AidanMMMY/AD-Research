@@ -40,6 +40,7 @@ class AShareETLPipeline(ETLPipeline):
         etfs = (
             self.db.query(ETFInfo)
             .filter(ETFInfo.market == "A股")
+            .filter(ETFInfo.instrument_type == "ETF")
             .filter(ETFInfo.status == "active")
             .all()
         )
@@ -91,8 +92,9 @@ class AShareETLPipeline(ETLPipeline):
                 "change_pct": row.get("change_pct"),
                 "turnover_rate": row.get("turnover_rate"),
             }
-            # Drop None values so they don't overwrite existing data on conflict
-            record = {k: v for k, v in record.items() if v is not None}
+            # Drop None/NaN values so they don't overwrite existing data on conflict,
+            # but keep legitimate zeros.
+            record = {k: v for k, v in record.items() if pd.notna(v)}
             records.append(record)
 
         if not records:

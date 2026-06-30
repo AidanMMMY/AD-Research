@@ -630,7 +630,7 @@ def init_scheduler():
     """
     scheduler.add_job(
         run_us_etl,
-        trigger=CronTrigger(hour=5, minute=0),
+        trigger=CronTrigger(hour=5, minute=0, timezone="Asia/Shanghai"),
         id="us_daily_etl",
         name="美股日终采集",
         replace_existing=True,
@@ -638,7 +638,7 @@ def init_scheduler():
     )
     scheduler.add_job(
         run_us_historical_backfill,
-        trigger=CronTrigger(hour="*", minute=0),
+        trigger=CronTrigger(hour="*", minute=0, timezone="Asia/Shanghai"),
         id="us_historical_backfill",
         name="美股历史数据回填",
         replace_existing=True,
@@ -646,7 +646,7 @@ def init_scheduler():
     )
     scheduler.add_job(
         run_us_indicator_calculation,
-        trigger=CronTrigger(hour=5, minute=30),
+        trigger=CronTrigger(hour=5, minute=30, timezone="Asia/Shanghai"),
         id="us_indicator_calculation",
         name="美股指标批量计算",
         replace_existing=True,
@@ -654,7 +654,7 @@ def init_scheduler():
     )
     scheduler.add_job(
         run_a_share_etl,
-        trigger=CronTrigger(hour=15, minute=30),
+        trigger=CronTrigger(hour=15, minute=30, timezone="Asia/Shanghai"),
         id="a_share_daily_etl",
         name="A股ETF日终采集",
         replace_existing=True,
@@ -662,7 +662,7 @@ def init_scheduler():
     )
     scheduler.add_job(
         run_indicator_calculation,
-        trigger=CronTrigger(hour=8, minute=0),
+        trigger=CronTrigger(hour=8, minute=0, timezone="Asia/Shanghai"),
         id="indicator_calculation",
         name="指标批量计算",
         replace_existing=True,
@@ -670,7 +670,7 @@ def init_scheduler():
     )
     scheduler.add_job(
         run_score_calculation,
-        trigger=CronTrigger(hour=8, minute=30),
+        trigger=CronTrigger(hour=8, minute=30, timezone="Asia/Shanghai"),
         id="score_calculation",
         name="评分日终计算",
         replace_existing=True,
@@ -678,7 +678,7 @@ def init_scheduler():
     )
     scheduler.add_job(
         run_weekly_pool_reports,
-        trigger=CronTrigger(day_of_week="sun", hour=22, minute=0),
+        trigger=CronTrigger(day_of_week="sun", hour=22, minute=0, timezone="Asia/Shanghai"),
         id="weekly_pool_reports",
         name="池周报生成",
         replace_existing=True,
@@ -686,7 +686,7 @@ def init_scheduler():
     )
     scheduler.add_job(
         run_us_etf_discovery,
-        trigger=CronTrigger(day_of_week="sun", hour=1, minute=0),
+        trigger=CronTrigger(day_of_week="sun", hour=1, minute=0, timezone="Asia/Shanghai"),
         id="us_etf_discovery",
         name="美股ETF发现",
         replace_existing=True,
@@ -694,7 +694,7 @@ def init_scheduler():
     )
     scheduler.add_job(
         run_us_stock_discovery,
-        trigger=CronTrigger(day_of_week="sun", hour=2, minute=0),
+        trigger=CronTrigger(day_of_week="sun", hour=2, minute=0, timezone="Asia/Shanghai"),
         id="us_stock_discovery",
         name="美股个股发现",
         replace_existing=True,
@@ -703,7 +703,7 @@ def init_scheduler():
 
     scheduler.add_job(
         run_us_stock_enrichment,
-        trigger=CronTrigger(hour=2, minute=30),
+        trigger=CronTrigger(hour=2, minute=30, timezone="Asia/Shanghai"),
         id="us_stock_enrichment",
         name="美股个股元数据补全",
         replace_existing=True,
@@ -711,7 +711,7 @@ def init_scheduler():
     )
     scheduler.add_job(
         run_etf_scan,
-        trigger=CronTrigger(day_of_week="sun", hour=3, minute=0),
+        trigger=CronTrigger(day_of_week="sun", hour=3, minute=0, timezone="Asia/Shanghai"),
         id="etf_market_scan",
         name="全市场ETF扫描",
         replace_existing=True,
@@ -719,7 +719,7 @@ def init_scheduler():
     )
     scheduler.add_job(
         run_signal_generation,
-        trigger=CronTrigger(hour=9, minute=0),
+        trigger=CronTrigger(hour=9, minute=0, timezone="Asia/Shanghai"),
         id="signal_generation",
         name="交易信号生成",
         replace_existing=True,
@@ -727,7 +727,7 @@ def init_scheduler():
     )
     scheduler.add_job(
         run_crypto_etl,
-        trigger=CronTrigger(hour=8, minute=5),
+        trigger=CronTrigger(hour=8, minute=5, timezone="Asia/Shanghai"),
         id="crypto_daily_etl",
         name="加密货币日终采集",
         replace_existing=True,
@@ -735,7 +735,7 @@ def init_scheduler():
     )
     scheduler.add_job(
         run_crypto_indicator_calculation,
-        trigger=CronTrigger(hour=8, minute=30),
+        trigger=CronTrigger(hour=8, minute=30, timezone="Asia/Shanghai"),
         id="crypto_indicator_calculation",
         name="加密货币指标计算",
         replace_existing=True,
@@ -743,7 +743,7 @@ def init_scheduler():
     )
     scheduler.add_job(
         run_etf_metadata_enrichment,
-        trigger=CronTrigger(day_of_week="sun", hour=4, minute=0),
+        trigger=CronTrigger(day_of_week="sun", hour=4, minute=0, timezone="Asia/Shanghai"),
         id="etf_metadata_enrichment",
         name="ETF元数据补全",
         replace_existing=True,
@@ -752,7 +752,7 @@ def init_scheduler():
     # ── Paper Trading Jobs ──
     scheduler.add_job(
         run_paper_trade_market_update,
-        trigger=CronTrigger(hour="*", minute=15),
+        trigger=CronTrigger(hour="*", minute=15, timezone="Asia/Shanghai"),
         id="paper_trade_market_update",
         name="模拟仓市值更新",
         replace_existing=True,
@@ -760,7 +760,7 @@ def init_scheduler():
     )
     scheduler.add_job(
         run_paper_trade_auto,
-        trigger=CronTrigger(hour=9, minute=30),
+        trigger=CronTrigger(hour=9, minute=30, timezone="Asia/Shanghai"),
         id="paper_trade_auto",
         name="模拟仓信号自动交易",
         replace_existing=True,
@@ -769,7 +769,7 @@ def init_scheduler():
     # ── A-Share Individual Stock Jobs ──
     scheduler.add_job(
         run_a_share_stock_etl,
-        trigger=CronTrigger(hour=16, minute=0),
+        trigger=CronTrigger(hour=16, minute=0, timezone="Asia/Shanghai"),
         id="a_stock_daily_etl",
         name="A股个股日终采集",
         replace_existing=True,
@@ -777,7 +777,7 @@ def init_scheduler():
     )
     scheduler.add_job(
         run_a_share_stock_fundamental,
-        trigger=CronTrigger(hour=16, minute=30),
+        trigger=CronTrigger(hour=16, minute=30, timezone="Asia/Shanghai"),
         id="a_stock_fundamental_etl",
         name="A股个股估值数据采集",
         replace_existing=True,
@@ -785,7 +785,7 @@ def init_scheduler():
     )
     scheduler.add_job(
         run_a_share_stock_discovery,
-        trigger=CronTrigger(day_of_week="mon", hour=1, minute=0),
+        trigger=CronTrigger(day_of_week="mon", hour=1, minute=0, timezone="Asia/Shanghai"),
         id="a_stock_discovery",
         name="A股个股发现",
         replace_existing=True,
@@ -793,7 +793,7 @@ def init_scheduler():
     )
     scheduler.add_job(
         run_a_share_stock_financials,
-        trigger=CronTrigger(day_of_week="mon", hour=2, minute=0),
+        trigger=CronTrigger(day_of_week="mon", hour=2, minute=0, timezone="Asia/Shanghai"),
         id="a_stock_financials",
         name="A股个股财报采集",
         replace_existing=True,

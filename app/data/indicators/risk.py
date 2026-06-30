@@ -136,31 +136,14 @@ def calculate_risk_indicators(df: pd.DataFrame) -> pd.DataFrame:
         .apply(lambda x: calc_sharpe(x), raw=False)
     )
 
-    # Period returns: rolling lookback returns
-    result["return_1w"] = (
-        result["close"]
-        .rolling(window=6, min_periods=2)
-        .apply(lambda x: calc_return(x, 5), raw=False)
-    )
-    result["return_1m"] = (
-        result["close"]
-        .rolling(window=22, min_periods=5)
-        .apply(lambda x: calc_return(x, 21), raw=False)
-    )
-    result["return_3m"] = (
-        result["close"]
-        .rolling(window=64, min_periods=10)
-        .apply(lambda x: calc_return(x, 63), raw=False)
-    )
-    result["return_6m"] = (
-        result["close"]
-        .rolling(window=126, min_periods=15)
-        .apply(lambda x: calc_return(x, 126), raw=False)
-    )
-    result["return_1y"] = (
-        result["close"]
-        .rolling(window=252, min_periods=20)
-        .apply(lambda x: calc_return(x, 252), raw=False)
-    )
+    # Period returns: true N-period lookback returns.
+    # pct_change(periods=N) computes close_t / close_{t-N} - 1, which is the
+    # conventional N-day return.  Using this directly removes the previous
+    # window/calc_return mismatch that produced one-period-too-short returns.
+    result["return_1w"] = result["close"].pct_change(periods=5) * 100
+    result["return_1m"] = result["close"].pct_change(periods=21) * 100
+    result["return_3m"] = result["close"].pct_change(periods=63) * 100
+    result["return_6m"] = result["close"].pct_change(periods=126) * 100
+    result["return_1y"] = result["close"].pct_change(periods=252) * 100
 
     return result

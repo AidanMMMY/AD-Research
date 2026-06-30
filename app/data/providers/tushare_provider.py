@@ -197,6 +197,7 @@ class TushareProvider(DataProvider):
                         category=industry,  # industry as category for compatibility
                         inception_date=inception_date,
                         list_date=inception_date,
+                        instrument_type="STOCK",
                     )
                 )
 

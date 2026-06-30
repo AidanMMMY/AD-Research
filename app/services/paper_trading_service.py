@@ -336,15 +336,14 @@ class PaperTradingService:
         trade_count = len(orders)
         win_count = 0
         if trade_count > 0:
-            # Group SELL orders to compute win/loss
-            sell_orders = [o for o in orders if o.order_type == "SELL"]
-            for so in sell_orders:
-                # Find matching BUY positions at time of sale
-                # Simplified: if realized_pnl > 0 from positions, count as win
-                pass
-            # Simplified win rate based on position realized PnL
-            if total_realized > 0:
-                win_count = max(1, trade_count // 2)  # rough estimate
+            # A "win" is a closed position (quantity == 0) with positive realised PnL.
+            # This is an approximation when multiple round-trips occur on the same
+            # instrument, but it removes the previous arbitrary placeholder.
+            closed_positions = [
+                p for p in positions
+                if (p.quantity or 0) <= 0 and (p.realized_pnl or 0) > 0
+            ]
+            win_count = len(closed_positions)
             win_rate = Decimal(str(win_count)) / Decimal(str(max(1, trade_count)))
         else:
             win_rate = None
