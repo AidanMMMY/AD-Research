@@ -29,7 +29,9 @@ def calc_rsi(series: pd.Series, window: int = 14) -> pd.Series:
         window: RSI lookback window (default 14).
 
     Returns:
-        RSI series (0-100).
+        RSI series (0-100). On a perfectly rising series (avg_loss == 0),
+        returns 100 (extreme overbought). On a perfectly falling series
+        (avg_gain == 0), returns 0. NaN only before the first window samples.
     """
     delta = series.diff()
     gain = delta.where(delta > 0, 0.0)
@@ -38,8 +40,16 @@ def calc_rsi(series: pd.Series, window: int = 14) -> pd.Series:
     # which is the standard definition for RSI.
     avg_gain = gain.ewm(alpha=1 / window, adjust=False, min_periods=window).mean()
     avg_loss = loss.ewm(alpha=1 / window, adjust=False, min_periods=window).mean()
-    rs = avg_gain / avg_loss.replace(0, np.nan)
-    return 100 - (100 / (1 + rs))
+    # Treat avg_loss == 0 (perfectly rising) as RS = +inf → RSI = 100
+    # Treat avg_gain == 0 (perfectly falling) as RS = 0 → RSI = 0
+    # Avoid division-by-zero that would otherwise propagate NaN forever
+    # (the previous replace(0, NaN) caused RSI to never trigger SELL on
+    # monotonic uptrends, which is the exact opposite of what RSI is for).
+    rs = avg_gain / avg_loss.where(avg_loss > 0, np.nan)
+    rsi = 100 - (100 / (1 + rs))
+    rsi = rsi.where(avg_loss > 0, 100.0)  # perfectly rising → 100
+    rsi = rsi.where(avg_gain > 0, 0.0)    # perfectly falling → 0
+    return rsi
 
 
 def calc_macd(
