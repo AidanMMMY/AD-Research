@@ -19,11 +19,19 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
 from app.core.cache import cache_invalidate_pattern
+from app.core.redis_client import get_redis_client
 from app.data.pipelines.base import ETLPipeline
 from app.data.providers.tiingo_provider import TiingoProvider
+from app.data.providers.yfinance_provider import YFinanceProvider
 from app.models.etf import InstrumentDailyBar, ETFInfo
 
 logger = logging.getLogger(__name__)
+
+# Tiingo free-tier daily limit for US daily bars.
+_TIINGO_DAILY_LIMIT = 50
+
+# Redis key for rotating which symbols are fetched via Tiingo each run.
+_TIINGO_OFFSET_KEY = "us_daily:tiingo_offset"
 
 
 class USDailyPipeline(ETLPipeline):
@@ -81,11 +89,18 @@ class USDailyPipeline(ETLPipeline):
         return {code for (code,) in rows}
 
     def extract(self) -> pd.DataFrame:
-        """Fetch daily bars for active US instruments with existing data."""
+        """Fetch daily bars for all active US instruments with existing data.
+
+        Uses a rotating Tiingo batch (up to _TIINGO_DAILY_LIMIT symbols per
+        run) and yfinance for the rest.  This spreads Tiingo's free-tier
+        quota across all symbols while keeping daily coverage complete via
+        yfinance fallback.
+        """
         instruments = (
             self.db.query(ETFInfo)
             .filter(ETFInfo.market == "US")
             .filter(ETFInfo.status == "active")
+            .order_by(ETFInfo.code.asc())
             .all()
         )
 
@@ -100,34 +115,98 @@ class USDailyPipeline(ETLPipeline):
             logger.info("USDailyPipeline: No US instruments with price data found")
             return pd.DataFrame()
 
-        # Respect Tiingo free tier: 50 req/hour. Cap at 30 symbols per run.
-        codes = codes[:30]
         self._expected_codes = codes
-        logger.info("USDailyPipeline: Fetching %d US instruments", len(codes))
 
         target_date = self.target_date or (date.today() - timedelta(days=1))
         start_date = target_date - timedelta(days=7)
         end_date = target_date
 
-        df = self.provider.fetch_daily_bars(codes, start_date, end_date)
-
-        if df.empty:
-            logger.warning(
-                "USDailyPipeline: Primary (Tiingo) returned empty, trying yfinance fallback"
-            )
-            df = self._try_yfinance_fallback(codes, start_date, end_date)
-
-        if df.empty:
-            return df
-
-        df = df[df["trade_date"] == target_date].copy()
+        # Rotate the Tiingo batch so quota is spread across all symbols.
+        offset = self._get_tiingo_offset()
+        if offset >= len(codes):
+            offset = 0
+        tiingo_codes = codes[offset : offset + _TIINGO_DAILY_LIMIT]
+        new_offset = (offset + len(tiingo_codes)) % len(codes)
+        self._set_tiingo_offset(new_offset)
         logger.info(
-            "USDailyPipeline: Extracted %d rows for target date %s",
-            len(df),
-            target_date,
+            "USDailyPipeline: Tiingo batch %d symbols, offset %d -> %d",
+            len(tiingo_codes), offset, new_offset,
         )
 
+        frames: list[pd.DataFrame] = []
+
+        # Primary: Tiingo for the rotating batch.
+        if tiingo_codes:
+            df_tiingo = self.provider.fetch_daily_bars(
+                tiingo_codes, start_date, end_date
+            )
+            if not df_tiingo.empty:
+                df_tiingo = df_tiingo[df_tiingo["trade_date"] == target_date].copy()
+                if not df_tiingo.empty:
+                    frames.append(df_tiingo)
+                    logger.info(
+                        "USDailyPipeline: Tiingo returned %d rows for target date %s",
+                        len(df_tiingo), target_date,
+                    )
+            else:
+                logger.warning(
+                    "USDailyPipeline: Tiingo returned empty for batch, will rely on yfinance"
+                )
+
+        tiingo_fetched = set()
+        if frames:
+            tiingo_fetched = set(frames[0]["etf_code"].unique())
+
+        # Fallback / remainder: yfinance for all symbols Tiingo did not cover.
+        yf_codes = [c for c in codes if c not in tiingo_fetched]
+        if yf_codes:
+            logger.info(
+                "USDailyPipeline: Fetching %d symbols via yfinance", len(yf_codes)
+            )
+            yf_provider = YFinanceProvider()
+            df_yf = yf_provider.fetch_daily_bars(yf_codes, start_date, end_date)
+            if not df_yf.empty:
+                df_yf = df_yf[df_yf["trade_date"] == target_date].copy()
+                if not df_yf.empty:
+                    frames.append(df_yf)
+                    logger.info(
+                        "USDailyPipeline: yfinance returned %d rows for target date %s",
+                        len(df_yf), target_date,
+                    )
+            else:
+                logger.warning("USDailyPipeline: yfinance also returned empty")
+
+        if not frames:
+            logger.warning(
+                "USDailyPipeline: No data returned for any symbol on %s", target_date
+            )
+            return pd.DataFrame()
+
+        df = pd.concat(frames, ignore_index=True)
+        logger.info(
+            "USDailyPipeline: Extracted %d rows for target date %s",
+            len(df), target_date,
+        )
         return df
+
+    def _get_tiingo_offset(self) -> int:
+        """Return persisted Tiingo rotation offset, defaulting to 0."""
+        try:
+            redis_client = get_redis_client()
+            value = redis_client.get(_TIINGO_OFFSET_KEY)
+            return int(value) if value else 0
+        except Exception as exc:
+            logger.warning("Failed to read Tiingo offset from Redis: %s", exc)
+            return 0
+
+    def _set_tiingo_offset(self, offset: int) -> None:
+        """Persist Tiingo rotation offset to Redis."""
+        try:
+            redis_client = get_redis_client()
+            redis_client.set(_TIINGO_OFFSET_KEY, str(offset))
+        except Exception as exc:
+            logger.warning("Failed to write Tiingo offset to Redis: %s", exc)
+
 
     def load(self, data: pd.DataFrame) -> int:
         """Upsert daily bar records into ``instrument_daily_bar``.
