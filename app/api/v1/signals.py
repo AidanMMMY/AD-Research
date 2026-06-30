@@ -4,7 +4,7 @@ from datetime import date
 
 from fastapi import APIRouter, Depends, HTTPException
 
-from app.api.deps import get_signal_service, get_strategy_service
+from app.api.deps import get_current_user, get_signal_service, get_strategy_service
 from app.schemas.signal import (
     SignalGenerateRequest,
     SignalGenerateResponse,
@@ -13,7 +13,7 @@ from app.schemas.signal import (
 from app.services.signal_service import SignalService
 from app.services.strategy_service import StrategyService
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(get_current_user)])
 
 
 @router.get("", response_model=SignalListResponse)

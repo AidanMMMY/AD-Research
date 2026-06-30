@@ -69,9 +69,15 @@ export default function CryptoList() {
     },
     {
       title: '24h 涨跌',
-      dataIndex: 'change_24h',
+      dataIndex: 'change_pct',
       width: 120,
-      render: (v: number) => <ReturnTag value={v} />,
+      // Prefer canonical change_pct; fall back to deprecated change_24h
+      // so older API responses (or cache) keep rendering.
+      render: (_: unknown, record: any) => (
+        <ReturnTag
+          value={record.change_pct ?? record.change_24h}
+        />
+      ),
     },
     {
       title: '24h 成交量',
@@ -221,7 +227,7 @@ export default function CryptoList() {
                   >
                     {item.price != null ? `$${item.price < 0.01 ? item.price.toFixed(6) : item.price < 1 ? item.price.toFixed(4) : item.price.toFixed(2)}` : '-'}
                   </div>
-                  <ReturnTag value={item.change_24h} />
+                  <ReturnTag value={item.change_pct ?? item.change_24h} />
                 </div>
               </List.Item>
             )}

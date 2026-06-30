@@ -6,9 +6,8 @@ with soft-delete support.
 
 from datetime import UTC, datetime
 
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
-from app.models.etf import ETFInfo
 from app.models.pool import ETFPools, PoolMember, PoolWeight
 from app.schemas.pool import (
     PoolCreate,
@@ -26,9 +25,18 @@ class PoolService:
         self.db = db
 
     def list_pools(self) -> list[PoolResponse]:
-        """List all active pools with their active members."""
+        """List all active pools with their active members.
+
+        Uses ``selectinload`` so each pool's members + their joined
+        ETFInfo rows are fetched in two batched SELECTs (instead of
+        one query per pool inside ``_to_response``). This eliminates
+        the N+1 query pattern of the previous implementation.
+        """
         pools = (
             self.db.query(ETFPools)
+            .options(
+                selectinload(ETFPools.members).selectinload(PoolMember.etf_info)
+            )
             .filter(ETFPools.deleted_at.is_(None))
             .all()
         )
@@ -38,6 +46,9 @@ class PoolService:
         """Get a single active pool by ID."""
         pool = (
             self.db.query(ETFPools)
+            .options(
+                selectinload(ETFPools.members).selectinload(PoolMember.etf_info)
+            )
             .filter(ETFPools.id == pool_id)
             .filter(ETFPools.deleted_at.is_(None))
             .first()
@@ -58,6 +69,9 @@ class PoolService:
         """Update an existing active pool."""
         pool = (
             self.db.query(ETFPools)
+            .options(
+                selectinload(ETFPools.members).selectinload(PoolMember.etf_info)
+            )
             .filter(ETFPools.id == pool_id)
             .filter(ETFPools.deleted_at.is_(None))
             .first()
@@ -95,8 +109,12 @@ class PoolService:
         """Add an ETF to an active pool."""
         pool = (
             self.db.query(ETFPools)
+            .options(
+                selectinload(ETFPools.members).selectinload(PoolMember.etf_info)
+            )
             .filter(ETFPools.id == pool_id)
             .filter(ETFPools.deleted_at.is_(None))
+            .with_for_update()
             .first()
         )
         if not pool:
@@ -110,6 +128,7 @@ class PoolService:
                 PoolMember.etf_code == data.etf_code,
                 PoolMember.removed_at.is_(None),
             )
+            .with_for_update()
             .first()
         )
         if existing:
@@ -130,8 +149,12 @@ class PoolService:
         """Soft-remove an ETF from a pool and clear its weight records."""
         pool = (
             self.db.query(ETFPools)
+            .options(
+                selectinload(ETFPools.members).selectinload(PoolMember.etf_info)
+            )
             .filter(ETFPools.id == pool_id)
             .filter(ETFPools.deleted_at.is_(None))
+            .with_for_update()
             .first()
         )
         if not pool:
@@ -144,6 +167,7 @@ class PoolService:
                 PoolMember.etf_code == etf_code,
                 PoolMember.removed_at.is_(None),
             )
+            .with_for_update()
             .first()
         )
         if member:
@@ -163,27 +187,20 @@ class PoolService:
     def _to_response(self, pool: ETFPools) -> PoolResponse:
         """Build a PoolResponse from an ETFPools ORM object.
 
-        Queries active members (removed_at IS NULL) and joins with
-        ETFInfo to get ETF names.
+        Reads members and their ETFInfo from the eagerly-loaded
+        ``pool.members`` relationship so this method issues no
+        additional queries. Only currently-active members
+        (``removed_at IS NULL``) are included in the response.
         """
-        members = (
-            self.db.query(PoolMember, ETFInfo.name)
-            .join(ETFInfo, PoolMember.etf_code == ETFInfo.code)
-            .filter(
-                PoolMember.pool_id == pool.id,
-                PoolMember.removed_at.is_(None),
-            )
-            .all()
-        )
-
         member_responses = [
             PoolMemberResponse(
-                etf_code=m.PoolMember.etf_code,
-                etf_name=m.name,
-                added_at=m.PoolMember.added_at,
-                notes=m.PoolMember.notes,
+                etf_code=m.etf_code,
+                etf_name=m.etf_info.name if m.etf_info is not None else None,
+                added_at=m.added_at,
+                notes=m.notes,
             )
-            for m in members
+            for m in pool.members
+            if m.removed_at is None
         ]
 
         return PoolResponse(

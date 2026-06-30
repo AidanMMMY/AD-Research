@@ -4,7 +4,13 @@ Endpoints for AI-generated research notes, sentiment analysis,
 earnings analysis, and AI chat assistant.
 """
 
+import asyncio
+import json
+import logging
+from collections.abc import AsyncGenerator
+
 from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
@@ -14,7 +20,9 @@ from app.api.deps import get_current_user, get_db
 from app.models.user import User
 from app.services.chat_service import ChatService
 from app.services.research_service import ResearchService
-from app.services.sentiment_service import SentimentService
+from app.services.sentiment_service import SentimentService, SentimentFetchError
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -137,14 +145,26 @@ def generate_research_note(
     """Generate an AI research note for an instrument."""
     _require_ai()
     service = ResearchService(db)
-    note = service.generate_daily_note(req.instrument_code)
-    if not note:
+    result = service.generate_daily_note(req.instrument_code)
+    if result.is_error:
+        # LLM provider failure -> 503 so caller can retry
+        if result.error_code == "LLM_UNAVAILABLE":
+            raise HTTPException(
+                status_code=503,
+                detail={
+                    "error_code": result.error_code,
+                    "error_message": result.error_message,
+                },
+            )
+        # Other errors (INSTRUMENT_NOT_FOUND / INSUFFICIENT_DATA) -> 400
         raise HTTPException(
             status_code=400,
-            detail=f"Could not generate note for {req.instrument_code}. "
-                   "Check that the instrument has price data.",
+            detail={
+                "error_code": result.error_code,
+                "error_message": result.error_message,
+            },
         )
-    return _note_to_response(note)
+    return _note_to_response(result.note)
 
 
 @router.get("/notes/{instrument_code}", response_model=list[NoteResponse])
@@ -192,7 +212,18 @@ def ingest_sentiment(
     """Manually trigger news sentiment ingestion for an instrument."""
     _require_ai()
     service = SentimentService(db)
-    count = service.ingest_finnhub_news(instrument_code, lookback_days=days)
+    try:
+        count = service.ingest_finnhub_news(instrument_code, lookback_days=days)
+    except SentimentFetchError as exc:
+        # Provider failure: surface as 503 so the user knows it's not
+        # "no data" but an actual upstream problem.
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "error_code": "SENTIMENT_PROVIDER_UNAVAILABLE",
+                "error_message": str(exc),
+            },
+        ) from exc
     return {"instrument_code": instrument_code, "articles_ingested": count}
 
 
@@ -268,6 +299,124 @@ def get_chat_messages(
     service = ChatService(db)
     messages = service.get_messages(session_id)
     return [_message_to_response(m) for m in messages]
+
+
+# ------------------------------------------------------------------
+# AI Chat — streaming variant
+# ------------------------------------------------------------------
+
+# Chunk size (chars) and per-chunk delay used when the LLM provider does
+# not expose true streaming. Tuned for an "AI-like" cadence: roughly
+# 60-80 chars / second, ~20 ms pause between chunks.
+_STREAM_CHUNK_SIZE = 4
+_STREAM_CHUNK_DELAY_S = 0.02
+
+
+def _sse(event: str, data: dict) -> str:
+    """Format a single SSE frame with named ``event`` and JSON ``data``."""
+    return f"event: {event}\ndata: {json.dumps(data, ensure_ascii=False)}\n\n"
+
+
+async def _chat_stream(
+    session_id: int,
+    content: str,
+    db: Session,
+) -> AsyncGenerator[str, None]:
+    """Yield SSE frames carrying the assistant reply in chunks.
+
+    Strategy:
+      1. Reuse ChatService.send_message to perform detection, context
+         loading, LLM call, and message persistence (single source of truth).
+      2. After persistence, fan the assistant content out as small text
+         chunks so the frontend gets a true streaming experience without
+         awaiting the full reply.
+
+    Events:
+      - ``meta``    -> {message_id, session_id, role, content_length}
+      - ``delta``   -> {chunk: str} (multiple)
+      - ``done``    -> {message_id} terminal success
+      - ``error``   -> {error: str} on failure (also sent as done)
+    """
+    try:
+        # Run synchronous LLM call + persistence in a worker thread so it
+        # doesn't block the event loop while we stream chunks out.
+        def _call() -> "AIChatMessage":
+            svc = ChatService(db)
+            return svc.send_message(session_id, content)
+
+        msg = await asyncio.get_running_loop().run_in_executor(None, _call)
+        text = msg.content or ""
+
+        # Optional first frame: metadata about the persisted message.
+        yield _sse(
+            "meta",
+            {
+                "message_id": msg.id,
+                "session_id": msg.session_id,
+                "role": msg.role,
+                "content_length": len(text),
+            },
+        )
+
+        # Char-by-char chunked push (provider doesn't expose streaming).
+        for i in range(0, len(text), _STREAM_CHUNK_SIZE):
+            yield _sse("delta", {"chunk": text[i : i + _STREAM_CHUNK_SIZE]})
+            await asyncio.sleep(_STREAM_CHUNK_DELAY_S)
+
+        yield _sse("done", {"message_id": msg.id})
+    except ValueError as exc:
+        # Session not found (sent by ChatService).
+        logger.info("Chat stream session-not-found: %s", exc)
+        yield _sse("error", {"error": str(exc), "code": "SESSION_NOT_FOUND"})
+        yield _sse("done", {"message_id": None})
+    except Exception as exc:  # pragma: no cover - defensive
+        logger.exception("Chat stream failure: %s", exc)
+        yield _sse("error", {"error": str(exc), "code": "STREAM_ERROR"})
+        yield _sse("done", {"message_id": None})
+
+
+@router.post("/chat/sessions/{session_id}/messages/stream")
+async def stream_chat_message(
+    session_id: int,
+    req: ChatMessageRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Send a message and stream the assistant reply as Server-Sent Events.
+
+    Reuses ``ChatService.send_message`` so context detection, data loading,
+    and message persistence stay in one place. The SSE feed then pushes the
+    persisted reply out in small text chunks so the UI can render a
+    typewriter animation as the response arrives.
+
+    Frontend usage:
+
+        const resp = await fetch(
+          `${API}/research/chat/sessions/${id}/messages/stream`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({ content }),
+          },
+        );
+        const reader = resp.body.getReader();
+        const decoder = new TextDecoder();
+        // Parse ``event: xxx\\ndata: {json}\\n\\n`` frames...
+    """
+    _require_ai()
+
+    return StreamingResponse(
+        _chat_stream(session_id, req.content, db),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
 
 
 # ------------------------------------------------------------------

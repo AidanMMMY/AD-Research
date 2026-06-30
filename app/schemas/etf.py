@@ -45,3 +45,17 @@ class ETFFilterParams(BaseModel):
     search: str | None = None
     page: int = 1
     page_size: int = 50
+
+
+class SparklineOut(BaseModel):
+    """Recent N-day close price series for inline chart previews.
+
+    Returned by ``GET /etfs/{code}/sparkline``. ``points`` and ``dates`` are
+    ordered chronologically (oldest -> newest), so the frontend can render
+    the series directly without reversing.
+    """
+
+    code: str
+    days: int
+    points: list[float]
+    dates: list[str]  # ISO date strings (YYYY-MM-DD), same length as points

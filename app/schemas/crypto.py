@@ -57,6 +57,9 @@ class CryptoInfoOut(BaseModel):
 
     price: float | None = None
     change_24h: float | None = None
+    # Canonical 24hr percentage change (same value as change_24h).
+    # Prefer this in new code; change_24h is preserved for backward compat.
+    change_pct: float | None = None
     volume_24h: float | None = None
 
     class Config:
@@ -136,6 +139,9 @@ class CryptoDetailOut(BaseModel):
 
     price: float | None = None
     change_24h: float | None = None
+    # Canonical 24hr percentage change. Same value as change_24h;
+    # change_24h is preserved as a deprecated alias for backward compat.
+    change_pct: float | None = None
     high_24h: float | None = None
     low_24h: float | None = None
     volume_24h: float | None = None

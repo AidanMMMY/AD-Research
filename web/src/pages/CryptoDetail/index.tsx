@@ -288,7 +288,8 @@ export default function CryptoDetail() {
               {crypto.price != null ? `$${crypto.price < 0.01 ? crypto.price.toFixed(6) : crypto.price < 1 ? crypto.price.toFixed(4) : crypto.price.toFixed(2)}` : '-'}
             </div>
             <div style={{ marginTop: 4 }}>
-              <ReturnTag value={crypto.change_24h} />
+              {/* Prefer canonical change_pct; fallback to deprecated change_24h. */}
+              <ReturnTag value={crypto.change_pct ?? crypto.change_24h} />
             </div>
           </div>
         </div>

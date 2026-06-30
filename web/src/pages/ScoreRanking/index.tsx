@@ -2,14 +2,26 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Table, Tabs } from 'antd';
 import { useScores, useScoreTemplates } from '@/hooks/useScores';
+import { useSparkline } from '@/hooks/useSparkline';
 import { useAIHelp } from '@/hooks/useAIHelp';
 import Panel from '@/components/Panel';
 import HelpTrigger from '@/components/HelpTrigger';
 import HelpPopover from '@/components/HelpPopover';
 import ETFCodeTag from '@/components/ETFCodeTag';
 import ScoreBar from '@/components/ScoreBar';
+import Sparkline from '@/components/Sparkline';
 import { buildScoreRankingContext } from '@/utils/helpContext';
 import { getQuickQuestions } from '@/utils/helpPrompts';
+
+/** Row-level sparkline cell for scoring table.
+ *  Uses the same backend sparkline endpoint as ETFList. */
+function SparklineCell({ code }: { code: string }) {
+  const { data } = useSparkline({ code, days: 7 });
+  if (!data || !data.points || data.points.length === 0) {
+    return <span style={{ color: 'var(--text-tertiary)', fontSize: 11 }}>-</span>;
+  }
+  return <Sparkline data={data.points} width={80} height={20} />;
+}
 
 export default function ScoreRanking() {
   const navigate = useNavigate();
@@ -64,6 +76,12 @@ export default function ScoreRanking() {
     { title: <HelpPopover termKey="score_sharpe">夏普</HelpPopover>, dataIndex: 'score_sharpe', width: 80, render: (v: number) => <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)' }}>{v?.toFixed(1)}</span> },
     { title: <HelpPopover termKey="score_liquidity">流动性</HelpPopover>, dataIndex: 'score_liquidity', width: 90, render: (v: number) => <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)' }}>{v?.toFixed(1)}</span> },
     { title: <HelpPopover termKey="score_trend">趋势</HelpPopover>, dataIndex: 'score_trend', width: 80, render: (v: number) => <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)' }}>{v?.toFixed(1)}</span> },
+    {
+      title: '近 7 日',
+      key: 'sparkline_7d',
+      width: 100,
+      render: (_: unknown, record: any) => <SparklineCell code={record.etf_code} />,
+    },
   ];
 
   const tabItems = templates?.map((t) => ({

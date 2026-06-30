@@ -27,6 +27,7 @@ Usage::
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 from functools import lru_cache
+from zoneinfo import ZoneInfo
 
 from sqlalchemy import func
 from sqlalchemy.orm import Session
@@ -165,8 +166,9 @@ class RiskControl:
     # ------------------------------------------------------------------
 
     def _today_start(self) -> datetime:
-        """Return start of today in UTC."""
-        return datetime.combine(date.today(), datetime.min.time(), tzinfo=timezone.utc)
+        """Return start of today in Asia/Shanghai (local trading day)."""
+        now_local = datetime.now(ZoneInfo("Asia/Shanghai"))
+        return datetime.combine(now_local.date(), datetime.min.time(), tzinfo=ZoneInfo("Asia/Shanghai"))
 
     def _daily_filled(self) -> list[LiveTradeOrder]:
         """Return today's filled orders for this config."""

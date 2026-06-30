@@ -4,6 +4,8 @@ import { Input, Button, List, Popconfirm, Empty, Skeleton } from 'antd';
 import { PlusOutlined, DeleteOutlined, RobotOutlined, SendOutlined } from '@ant-design/icons';
 import { chatApi, ChatSession, ChatMessage } from '@/api/chat';
 import AISetupBanner from '@/components/AISetupBanner';
+import StepProgress from '@/components/StepProgress';
+import { useStepStream } from '@/hooks/useStepStream';
 import { useIsMobile } from '@/hooks/useBreakpoint';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -15,6 +17,13 @@ export default function AIChat() {
   const [sending, setSending] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const queryClient = useQueryClient();
+
+  const STEP_DEFS = [
+    { id: 'fetch', label: '准备上下文' },
+    { id: 'llm', label: '调用大模型' },
+    { id: 'stream', label: '生成回答' },
+  ];
+  const { steps, streamedText, start, finish, reset, appendStreamed } = useStepStream(STEP_DEFS);
 
   const { data: sessions, isLoading: sessionsLoading } = useQuery({
     queryKey: ['chat-sessions'],
@@ -53,11 +62,45 @@ export default function AIChat() {
     const content = input;
     setInput('');
     setSending(true);
+    reset(STEP_DEFS);
     try {
-      await chatApi.sendMessage(activeSession, content);
+      start('fetch');
+      await new Promise((r) => setTimeout(r, 120));
+      finish('fetch', 'done');
+      start('llm');
+      // Real SSE stream — parses meta/delta/done frames server-side.
+      let receivedContent = false;
+      await new Promise<void>((resolve, reject) => {
+        chatApi.streamMessage(activeSession, content, {
+          onDelta: (chunk) => {
+            receivedContent = true;
+            appendStreamed(chunk);
+          },
+          onDone: () => {
+            finish('llm', 'done');
+            finish('stream', 'done');
+            resolve();
+          },
+          onError: (err) => {
+            finish('llm', 'error');
+            // If no chunks arrived, fall back to the legacy POST.
+            if (!receivedContent) {
+              chatApi.sendMessage(activeSession, content)
+                .then((res) => {
+                  appendStreamed(res.data.content);
+                  finish('stream', 'done');
+                  resolve();
+                })
+                .catch(() => reject(new Error(err.error)));
+              return;
+            }
+            resolve();
+          },
+        }).catch(reject);
+      });
       queryClient.invalidateQueries({ queryKey: ['chat-messages', activeSession] });
     } catch {
-      // ignore
+      finish('llm', 'error');
     }
     setSending(false);
   };
@@ -208,6 +251,28 @@ export default function AIChat() {
               </div>
             </div>
           ))
+        )}
+        {sending && (
+          <div
+            style={{
+              padding: '12px 16px',
+              marginBottom: 16,
+              background: 'var(--bg-elevated)',
+              border: '1px solid var(--border-default)',
+              borderRadius: 'var(--radius-lg)',
+              borderTopLeftRadius: 4,
+              maxWidth: '80%',
+            }}
+          >
+            <StepProgress steps={steps} compact />
+            {streamedText && (
+              <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px solid var(--border-default)', fontSize: 14, lineHeight: 1.7, color: 'var(--text-primary)' }}>
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                  {streamedText}
+                </ReactMarkdown>
+              </div>
+            )}
+          </div>
         )}
         <div ref={messagesEndRef} />
       </div>

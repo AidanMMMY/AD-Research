@@ -7,11 +7,11 @@ from datetime import date
 
 from fastapi import APIRouter, Depends, Query
 
-from app.api.deps import get_market_data_service
+from app.api.deps import get_current_user, get_market_data_service
 from app.schemas.market_data import MarketDataHistoryResponse, MarketSnapshotResponse
 from app.services.market_data_service import MarketDataService
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(get_current_user)])
 
 
 @router.get("/{code}/history", response_model=MarketDataHistoryResponse)

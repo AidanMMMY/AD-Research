@@ -4,6 +4,8 @@ Contains tables for ETF pools, pool members, weights, and snapshots
 with soft-delete design.
 """
 
+from typing import TYPE_CHECKING
+
 from sqlalchemy import (
     DECIMAL,
     JSON,
@@ -18,8 +20,12 @@ from sqlalchemy import (
     UniqueConstraint,
     func,
 )
+from sqlalchemy.orm import Mapped, relationship
 
 from app.core.database import Base
+
+if TYPE_CHECKING:
+    from app.models.etf import ETFInfo
 
 
 class ETFPools(Base):
@@ -45,6 +51,13 @@ class ETFPools(Base):
         server_default=func.now(),
         onupdate=func.now(),
         comment="Update time",
+    )
+
+    members: Mapped[list["PoolMember"]] = relationship(
+        "PoolMember",
+        back_populates="pool",
+        cascade="all, delete-orphan",
+        lazy="selectin",
     )
 
 
@@ -81,6 +94,9 @@ class PoolMember(Base):
         comment="Removed time (NULL = currently in pool)",
     )
     notes = Column(Text, comment="Notes")
+
+    pool: Mapped["ETFPools"] = relationship("ETFPools", back_populates="members")
+    etf_info: Mapped["ETFInfo"] = relationship("ETFInfo", lazy="selectin")
 
     __table_args__ = (
         Index(

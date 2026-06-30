@@ -32,6 +32,7 @@ import { useAuthStore } from '@/stores/auth';
 import { useSettingsStore } from '@/stores/settings';
 import { menuRoutes } from '@/routes';
 import { useIsMobile } from '@/hooks/useBreakpoint';
+import DensityToggle from '@/components/DensityToggle';
 
 const iconMap: Record<string, React.ComponentType> = {
   DashboardOutlined,
@@ -364,6 +365,9 @@ export default function AppLayout() {
             ]}
             style={{ background: 'var(--bg-hover)', borderRadius: 10 }}
           />
+
+          {/* Density toggle (S1) */}
+          <DensityToggle />
 
           <Dropdown
             menu={{

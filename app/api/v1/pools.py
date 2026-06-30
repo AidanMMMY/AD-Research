@@ -8,7 +8,7 @@ from datetime import date
 
 from fastapi import APIRouter, Depends, HTTPException
 
-from app.api.deps import get_pool_enhancement_service, get_pool_service
+from app.api.deps import get_current_user, get_pool_enhancement_service, get_pool_service
 from app.schemas.pool import (
     PoolAnalyticsResponse,
     PoolCorrelationResponse,
@@ -25,7 +25,7 @@ from app.schemas.pool import (
 from app.services.pool_enhancement_service import PoolEnhancementService
 from app.services.pool_service import PoolService
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(get_current_user)])
 
 
 # ------------------------------------------------------------------
