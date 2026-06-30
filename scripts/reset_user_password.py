@@ -9,21 +9,23 @@ Usage:
 
     # Non-interactive
     python scripts/reset_user_password.py admin Aidan --password 'new-secret'
-
-    # Different passwords per user (interactive)
-    python scripts/reset_user_password.py admin --password 'admin-secret' \\
-                                       Aidan --password 'aidan-secret'
 """
 
 import argparse
 import getpass
+import os
 import sys
+from pathlib import Path
 
 import bcrypt
 from sqlalchemy.orm import Session
 
-# Allow running from project root OR app/ — works in container too
-sys.path.insert(0, "/app")
+# Make the project root importable whether we're running from /app
+# (Docker) or from the project root on the host.
+_THIS_DIR = Path(__file__).resolve().parent
+_PROJECT_ROOT = _THIS_DIR.parent  # scripts/.. → repo root
+sys.path.insert(0, str(_PROJECT_ROOT))
+sys.path.insert(0, "/app")  # Docker convention
 
 from app.core.database import SessionLocal
 from app.models.user import User
