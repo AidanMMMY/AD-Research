@@ -50,7 +50,9 @@ export default function App() {
                   path={route.path}
                   element={
                     route.auth ? (
-                      route.path === '/admin/users' || route.path === '/admin/deployments' ? (
+                      route.path === '/admin/users' ||
+                      route.path === '/admin/deployments' ||
+                      route.path === '/admin/etl-status' ? (
                         <RequireAuth>
                           <AdminRouteGuard>{route.element}</AdminRouteGuard>
                         </RequireAuth>

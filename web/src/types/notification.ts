@@ -27,15 +27,21 @@ export interface NotificationConfigUpdate {
 export interface NotificationLog {
   id: number;
   config_id: number;
+  user_id?: string;
+  channel?: string;
+  target?: string;
   report_id?: number;
   status: string;
-  error_msg?: string;
+  error?: string;
   sent_at?: string;
   created_at?: string;
 }
 
 export interface NotificationLogListResponse {
   items: NotificationLog[];
+  total: number;
+  page: number;
+  page_size: number;
 }
 
 export interface SendTestResponse {

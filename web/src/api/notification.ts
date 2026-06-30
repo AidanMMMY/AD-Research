@@ -16,8 +16,10 @@ export const notificationApi = {
   deleteConfig: (id: number) => client.delete(`/notifications/configs/${id}`),
   testConfig: (id: number) =>
     client.post<SendTestResponse>(`/notifications/configs/${id}/test`),
-  getLogs: (limit?: number) =>
-    client.get<NotificationLogListResponse>('/notifications/logs', { params: { limit } }),
-  logs: (limit = 50) =>
-    client.get<NotificationLogListResponse>('/notifications/logs', { params: { limit } }),
+  getLogs: (params?: { page?: number; page_size?: number }) =>
+    client.get<NotificationLogListResponse>('/notifications/logs', { params }),
+  logs: (page = 1, pageSize = 20) =>
+    client.get<NotificationLogListResponse>('/notifications/logs', {
+      params: { page, page_size: pageSize },
+    }),
 };

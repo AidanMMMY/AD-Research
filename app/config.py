@@ -72,8 +72,10 @@ class Settings(BaseSettings):
     github_repo: str = ""           # e.g. "owner/repo-name"
     deploy_docker_socket: str = "/var/run/docker.sock"
 
-    # CORS: comma-separated list of allowed origins. Empty means allow all origins
-    # but credentials will be disabled; production should list exact origins.
+    # CORS: comma-separated list of allowed origins. Empty falls back to a
+    # localhost-only dev default (Vite + Next.js). For production set
+    # CORS_ORIGINS to the exact frontend origin(s) — never use "*" with
+    # credentials.
     cors_origins: str = ""
 
     # Constants
@@ -82,10 +84,29 @@ class Settings(BaseSettings):
 
     @property
     def cors_origins_list(self) -> list[str]:
-        """Return parsed CORS origin list."""
-        if not self.cors_origins:
-            return ["*"]
-        return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
+        """Return parsed CORS origin list.
+
+        Resolution order:
+          1. CORS_ORIGINS env var (comma-separated, e.g.
+             "https://app.example.com,https://admin.example.com").
+             A bare "*" is accepted ONLY when APP_ENV=development, for
+             local/test convenience. In production the wildcard is dropped
+             silently.
+          2. Development fallback — localhost Vite (5173) + Next.js (3000).
+          3. Non-dev fallback — empty list (no cross-origin allowed).
+        """
+        if self.cors_origins.strip():
+            origins = [o.strip() for o in self.cors_origins.split(",") if o.strip()]
+        elif self.is_development:
+            origins = ["http://localhost:5173", "http://localhost:3000"]
+        else:
+            origins = []
+
+        # Wildcard is only legal in development.
+        if "*" in origins and not self.is_development:
+            origins = [o for o in origins if o != "*"]
+
+        return origins
 
     @property
     def is_development(self) -> bool:

@@ -45,17 +45,23 @@ class NotificationLogItem(BaseModel):
 
     id: int
     config_id: int
+    user_id: str | None = None
+    channel: str | None = None
+    target: str | None = None
     report_id: int | None = None
     status: str
-    error_msg: str | None = None
+    error: str | None = None
     sent_at: str | None = None
     created_at: str | None = None
 
 
 class NotificationLogListResponse(BaseModel):
-    """Notification log list response."""
+    """Notification log list response (paginated)."""
 
     items: list[NotificationLogItem]
+    total: int
+    page: int
+    page_size: int
 
 
 class SendTestResponse(BaseModel):

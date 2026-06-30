@@ -5,6 +5,7 @@ import ThemeTag, { ThemeTagVariant } from '@/components/ThemeTag';
 import { EyeOutlined, DownloadOutlined, PlusOutlined } from '@ant-design/icons';
 import { useQuery } from '@tanstack/react-query';
 import { reportApi, poolApi } from '@/api';
+import { useReports } from '@/hooks/useReportStatus';
 import type { ReportMetadata } from '@/types/report';
 
 export default function ReportBrowser() {
@@ -12,10 +13,10 @@ export default function ReportBrowser() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [form] = Form.useForm();
 
-  const { data: reports, refetch } = useQuery({
-    queryKey: ['reports'],
-    queryFn: () => reportApi.list({ limit: 50 }).then((r) => r.data),
-  });
+  // useReports polls every 2s while any in-flight report exists and
+  // automatically stops polling once all rows reach a terminal state
+  // (handled inside the hook by inspecting the latest data).
+  const { data: reports, refetch } = useReports();
 
   const { data: pools } = useQuery({
     queryKey: ['pools-for-report'],

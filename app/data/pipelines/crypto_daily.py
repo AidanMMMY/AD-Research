@@ -172,8 +172,13 @@ class CryptoDailyPipeline(ETLPipeline):
                 "turnover_rate": row.get("turnover_rate"),
             }
             # Drop None/NaN values so they don't overwrite existing data on conflict,
-            # but keep legitimate zeros.
-            record = {k: v for k, v in record.items() if pd.notna(v)}
+            # but keep legitimate zeros (e.g. volume=0, change_pct=0).
+            record = {
+                k: v
+                for k, v in record.items()
+                if v is not None
+                and not (isinstance(v, float) and pd.isna(v))
+            }
             records.append(record)
 
         if not records:

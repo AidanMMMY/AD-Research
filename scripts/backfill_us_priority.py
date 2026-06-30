@@ -17,11 +17,9 @@ us_backfill.py`` 是「按 code 字典序 + Redis 偏移」轮询的：一旦某
 Tier 1: S&P 500 成分股。识别方法：
         ``etf_info.instrument_type = 'STOCK' AND etf_info.market = 'US'``
         （由 ``app/data/pipelines/us_stock_discovery.py`` 从 FMP S&P 500 列表写入）
-Tier 2: QQQ 重仓 ETF（硬编码 top 30 名单；QQQ 持仓变化不频繁，季度复审即可）
-Tier 3: 道琼斯 30 指数 ETF（DIA / DOG 等跟踪 ETF，30 只成分股硬编码）
-Tier 4: 美股大盘 ETF（underlying_index LIKE '%S&P%' / 'Dow%' / 'Nasdaq%'）
-Tier 5: 其他 active ETF
-Tier 6: 其他 active STOCK（不在 S&P 500 列表里的美股个股 — 当前应为空）
+Tier 2: 核心宽基 ETF（SPY/QQQ/DIA/IWM/VOO/IVV/VTI — 流动性最高的指数 ETF）
+Tier 3: 行业 / 主题 / 杠杆 ETF（XL* 11 大行业 + ARKK/SOXL/TQQQ 等主题与杠杆）
+Tier 4: 其他 ETF + 其他 STOCK（港股 / 小盘 / 已退市等）
 
 用法
 ----
@@ -54,22 +52,44 @@ from app.core.database import SessionLocal
 from app.models.etf import ETFInfo, InstrumentDailyBar
 
 
-# Tier 2: QQQ 重仓 ETF (粗略 Top 30 — 季度复审)
-# 数据来源：公开的 Invesco QQQ Holdings 季度披露（截至 2025-2026）
-QQQ_TOP_HOLDINGS = [
-    "AAPL", "MSFT", "NVDA", "AMZN", "META", "GOOGL", "GOOG", "TSLA",
-    "AVGO", "COST", "NFLX", "AMD", "PEP", "CSCO", "TMUS", "INTC",
-    "QCOM", "INTU", "TXN", "AMGN", "ISRG", "HON", "BKNG", "SBUX",
-    "GILD", "ADP", "VRTX", "REGN", "MDLZ", "PANW",
-]
+# Tier 2: 核心宽基 ETF（流动性最高、跟踪 A 股 / 大盘主要指数的 ETF）
+CORE_BROAD_ETFS = frozenset({
+    "SPY",   # SPDR S&P 500
+    "VOO",   # Vanguard S&P 500
+    "IVV",   # iShares Core S&P 500
+    "QQQ",   # Invesco QQQ (Nasdaq-100)
+    "DIA",   # SPDR Dow Jones Industrial Average
+    "IWM",   # iShares Russell 2000
+    "VTI",   # Vanguard Total Stock Market
+    "VTV",   # Vanguard Value
+    "VUG",   # Vanguard Growth
+    "SCHB",  # Schwab US Broad Market
+})
 
-# Tier 3: 道琼斯 30 指数成分股（截至 2025-2026，季度复审）
-DOW30_CONSTITUENTS = [
-    "AAPL", "AMGN", "AXP", "BA", "CAT", "CRM", "CSCO", "CVX",
-    "DIS", "DOW", "GS", "HD", "HON", "IBM", "INTC", "JNJ",
-    "JPM", "KO", "MCD", "MMM", "MRK", "MSFT", "NKE", "PG",
-    "TRV", "UNH", "V", "VZ", "WMT", "WBA",
-]
+# Tier 3: 行业 / 主题 / 杠杆 ETF（11 大行业 + 杠杆 / 反向 + 主题 ETF）
+# - Select Sector SPDRs (XL*) — 标普 11 大行业
+# - Invesco 主要杠杆 / 反向 ETF（TQQQ/SQQQ/SPYU 等）
+# - 主题 ETF（ARKK/SOXL/JNUG 等）
+SECTOR_THEMED_ETFS = frozenset({
+    # 11 大 Select Sector SPDRs
+    "XLK", "XLF", "XLE", "XLV", "XLY", "XLP",
+    "XLI", "XLU", "XLB", "XLRE", "XLC",
+    # 杠杆 / 反向（主要宽基）
+    "TQQQ", "SQQQ", "SPXL", "SPXS", "UPRO", "SDS",
+    "TNA", "TZA", "UDOW", "SDOW", "UMDD", "SMDD",
+    # 行业杠杆 / 反向
+    "SOXL", "SOXS", "FAS", "FAZ", "XLE",
+    "TBT", "TMV", "TZA",
+    # 主题 ETF
+    "ARKK", "ARKW", "ARKG", "ARKF", "ARKQ",
+    "SOXL", "JNUG", "JDST", "NUGT", "DUST",
+    "UVXY", "SVXY", "VXX", "VIXY",
+    "KRE", "KWEB", "MCHI", "FXI", "EWH",
+    "GLD", "SLV", "GDX", "GDXJ", "USO",
+    "UNG", "BNO",
+    "IBB", "XBI", "LABU", "LABD",
+    "ITA", "XAR", "JETS",
+})
 
 
 def _codes_with_any_bar(db) -> set[str]:
@@ -130,7 +150,14 @@ def _fetch_us_candidates(db, codes_with_data: set[str]) -> list[dict]:
 
 
 def _assign_tier(row: dict) -> tuple[int, str]:
-    """返回 (tier, reason)。tier 数字越小越优先。"""
+    """返回 (tier, reason)。tier 数字越小越优先。
+
+    梯队定义：
+      Tier 1: S&P 500 成分股 (STOCK)
+      Tier 2: 核心宽基 ETF (CORE_BROAD_ETFS)
+      Tier 3: 行业 / 主题 / 杠杆 ETF (SECTOR_THEMED_ETFS)
+      Tier 4: 其他 ETF + 其他 STOCK
+    """
     code = row["code"]
     itype = row["instrument_type"]
     # 只对「无数据」标的打分；已有数据的默认放到 tier 99（最低）
@@ -143,29 +170,26 @@ def _assign_tier(row: dict) -> tuple[int, str]:
     if itype == "STOCK":
         return (1, "S&P 500 成分股 (instrument_type=STOCK)")
 
-    # Tier 2: QQQ 重仓（仅限 ETF 标的）
-    if itype == "ETF" and bare in QQQ_TOP_HOLDINGS:
-        return (2, f"QQQ 重仓 ETF (code={bare})")
+    # Tier 2: 核心宽基 ETF
+    if itype == "ETF" and bare in CORE_BROAD_ETFS:
+        return (2, f"核心宽基 ETF (code={bare})")
 
-    # Tier 3: 道指 30 成分
-    if itype == "STOCK" and bare in DOW30_CONSTITUENTS:
-        return (3, f"道琼斯 30 成分 ({bare})")
+    # Tier 3: 行业 / 主题 / 杠杆 ETF
+    if itype == "ETF" and bare in SECTOR_THEMED_ETFS:
+        return (3, f"行业主题 ETF (code={bare})")
 
-    # Tier 4: 跟踪主要指数的 ETF
+    # Tier 4: 其他 ETF（含 underlying_index 含主要指数关键词但不在硬编码名单）
     if itype == "ETF":
         ui = (row.get("underlying_index") or "").lower()
         if any(
             kw in ui
             for kw in ["s&p", "dow", "nasdaq", "russell", "total market"]
         ):
-            return (4, f"主要指数 ETF (underlying={row.get('underlying_index')})")
+            return (4, f"次要宽基 ETF (underlying={row.get('underlying_index')})")
+        return (4, "其他美股 ETF")
 
-    # Tier 5: 其他 ETF
-    if itype == "ETF":
-        return (5, "其他美股 ETF")
-
-    # Tier 6: 其他 STOCK（理论上不会到这里，因为 Tier 1 已收完 STOCK）
-    return (6, "其他美股 STOCK")
+    # Tier 4: 其他 STOCK（理论上不会到这里，因为 Tier 1 已收完 STOCK）
+    return (4, "其他美股 STOCK")
 
 
 def main():
@@ -300,12 +324,10 @@ def main():
         tier_counts = Counter(r["tier"] for r in all_rows)
         for t in sorted(tier_counts):
             label = {
-                1: "S&P 500 成分股",
-                2: "QQQ 重仓 ETF",
-                3: "道指 30",
-                4: "主要指数 ETF",
-                5: "其他 ETF",
-                6: "其他 STOCK",
+                1: "S&P 500 STOCK",
+                2: "核心宽基 ETF",
+                3: "行业主题 ETF",
+                4: "其他 ETF / STOCK",
                 99: "已有数据",
             }.get(t, "?")
             print(f"  Tier {t:>2}: {tier_counts[t]:>4,}  ({label})")

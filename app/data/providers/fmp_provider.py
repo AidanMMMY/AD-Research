@@ -148,6 +148,8 @@ class FMPProvider(DataProvider):
                 for item in data:
                     symbol = str(item.get("symbol", "")).upper()
                     name = str(item.get("name", "") or item.get("companyName", ""))
+                    sector = str(item.get("sector", "") or "").strip() or None
+                    industry = str(item.get("industry", "") or "").strip() or None
                     exchange = str(
                         item.get("exchangeShortName", "") or item.get("exchange", "")
                     )
@@ -159,6 +161,9 @@ class FMPProvider(DataProvider):
                             name=name,
                             market="US",
                             exchange=exchange or "NYSE",
+                            category=sector,
+                            sector=sector,
+                            industry=industry,
                             currency="USD",
                             instrument_type="STOCK",
                         )

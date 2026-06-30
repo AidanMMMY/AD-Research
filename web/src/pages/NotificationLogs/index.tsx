@@ -1,19 +1,30 @@
 import { useState } from 'react';
-import { Table, InputNumber } from 'antd';
+import { Table, InputNumber, Space } from 'antd';
 import { useQuery } from '@tanstack/react-query';
 import { notificationApi } from '@/api/notification';
 import Panel from '@/components/Panel';
 import StatusTag from '@/components/StatusTag';
 
 export default function NotificationLogs() {
-  const [limit, setLimit] = useState(50);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
   const { data, isLoading } = useQuery({
-    queryKey: ['notification-logs', limit],
-    queryFn: () => notificationApi.logs(limit).then((r) => r.data),
+    queryKey: ['notification-logs', page, pageSize],
+    queryFn: () =>
+      notificationApi.logs(page, pageSize).then((r) => r.data),
   });
 
   const columns = [
     { title: 'ID', dataIndex: 'id', width: 70 },
+    { title: '用户', dataIndex: 'user_id', width: 120, render: (v?: string) => v || '-' },
+    { title: '渠道', dataIndex: 'channel', width: 100, render: (v?: string) => v || '-' },
+    {
+      title: '目标',
+      dataIndex: 'target',
+      width: 220,
+      ellipsis: true,
+      render: (v?: string) => v || '-',
+    },
     { title: '配置ID', dataIndex: 'config_id', width: 90 },
     {
       title: '报告ID',
@@ -24,21 +35,26 @@ export default function NotificationLogs() {
     {
       title: '状态',
       dataIndex: 'status',
+      width: 100,
       render: (v: string) => <StatusTag status={v} />,
     },
     {
       title: '错误信息',
-      dataIndex: 'error_msg',
+      dataIndex: 'error',
+      width: 200,
+      ellipsis: true,
       render: (v?: string) => v || '-',
     },
     {
       title: '发送时间',
       dataIndex: 'sent_at',
+      width: 170,
       render: (v?: string) => (v ? new Date(v).toLocaleString() : '-'),
     },
     {
       title: '创建时间',
       dataIndex: 'created_at',
+      width: 170,
       render: (v?: string) => (v ? new Date(v).toLocaleString() : '-'),
     },
   ];
@@ -66,23 +82,22 @@ export default function NotificationLogs() {
         查看通知发送历史与状态
       </p>
 
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 'var(--space-3)',
-          marginBottom: 'var(--space-4)',
-        }}
-      >
-        <span style={{ color: 'var(--text-secondary)' }}>显示条数：</span>
+      <Space style={{ marginBottom: 'var(--space-4)' }}>
+        <span style={{ color: 'var(--text-secondary)' }}>每页条数：</span>
         <InputNumber
           min={1}
-          max={500}
-          value={limit}
-          onChange={(v) => setLimit(v || 50)}
+          max={200}
+          value={pageSize}
+          onChange={(v) => {
+            setPage(1);
+            setPageSize(v || 20);
+          }}
           style={{ width: 100 }}
         />
-      </div>
+        <span style={{ color: 'var(--text-tertiary)' }}>
+          共 {data?.total ?? 0} 条
+        </span>
+      </Space>
 
       <Panel title="通知发送日志" padding="md">
         <Table
@@ -90,7 +105,18 @@ export default function NotificationLogs() {
           columns={columns}
           rowKey="id"
           loading={isLoading}
-          pagination={{ pageSize: 20 }}
+          pagination={{
+            current: page,
+            pageSize,
+            total: data?.total ?? 0,
+            showSizeChanger: true,
+            pageSizeOptions: ['10', '20', '50', '100'],
+            onChange: (p, ps) => {
+              setPage(p);
+              setPageSize(ps);
+            },
+            showTotal: (total) => `共 ${total} 条`,
+          }}
           scroll={{ x: 'max-content' }}
         />
       </Panel>

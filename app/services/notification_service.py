@@ -327,23 +327,57 @@ class NotificationService:
         except Exception as e:
             return {"success": False, "error": f"邮件发送失败: {e}"}
 
-    def get_logs(self, limit: int = 50) -> list[dict[str, Any]]:
-        """Get notification send logs."""
-        logs = (
-            self.db.query(NotificationLog)
-            .order_by(NotificationLog.created_at.desc())
-            .limit(limit)
-            .all()
-        )
-        return [
-            {
-                "id": log.id,
-                "config_id": log.config_id,
-                "report_id": log.report_id,
-                "status": log.status,
-                "error_msg": log.error_msg,
-                "sent_at": log.sent_at.isoformat() if log.sent_at else None,
-                "created_at": log.created_at.isoformat() if log.created_at else None,
-            }
-            for log in logs
-        ]
+    def get_logs(
+        self,
+        page: int = 1,
+        page_size: int = 20,
+    ) -> dict[str, Any]:
+        """Get notification send logs with pagination.
+
+        Returns:
+            Dict with keys: items (list), total, page, page_size.
+        Each item contains user_id/channel/target joined from the related
+        NotificationConfig when available.
+        """
+        page = max(1, page)
+        page_size = max(1, min(200, page_size))
+        offset = (page - 1) * page_size
+
+        query = self.db.query(NotificationLog, NotificationConfig).outerjoin(
+            NotificationConfig,
+            NotificationLog.config_id == NotificationConfig.id,
+        ).order_by(NotificationLog.created_at.desc())
+
+        total = query.count()
+        rows = query.offset(offset).limit(page_size).all()
+
+        items: list[dict[str, Any]] = []
+        for log, cfg in rows:
+            target: str | None = None
+            if cfg is not None and isinstance(cfg.config_json, dict):
+                target = (
+                    cfg.config_json.get("webhook_url")
+                    or cfg.config_json.get("to")
+                    or cfg.config_json.get("email")
+                )
+            items.append(
+                {
+                    "id": log.id,
+                    "config_id": log.config_id,
+                    "user_id": cfg.name if cfg is not None else None,
+                    "channel": cfg.channel_type if cfg is not None else None,
+                    "target": target,
+                    "report_id": log.report_id,
+                    "status": log.status,
+                    "error": log.error_msg,
+                    "sent_at": log.sent_at.isoformat() if log.sent_at else None,
+                    "created_at": log.created_at.isoformat() if log.created_at else None,
+                }
+            )
+
+        return {
+            "items": items,
+            "total": total,
+            "page": page,
+            "page_size": page_size,
+        }

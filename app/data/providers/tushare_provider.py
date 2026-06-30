@@ -195,6 +195,7 @@ class TushareProvider(DataProvider):
                         market="A股",
                         exchange=internal_exchange,
                         category=industry,  # industry as category for compatibility
+                        industry=industry or None,
                         inception_date=inception_date,
                         list_date=inception_date,
                         instrument_type="STOCK",

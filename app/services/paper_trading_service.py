@@ -330,21 +330,45 @@ class PaperTradingService:
                 PaperTradeOrder.account_id == account_id,
                 PaperTradeOrder.status == "filled",
             )
+            .order_by(PaperTradeOrder.created_at.asc())
             .all()
         )
 
         trade_count = len(orders)
         win_count = 0
         if trade_count > 0:
-            # A "win" is a closed position (quantity == 0) with positive realised PnL.
-            # This is an approximation when multiple round-trips occur on the same
-            # instrument, but it removes the previous arbitrary placeholder.
-            closed_positions = [
-                p for p in positions
-                if (p.quantity or 0) <= 0 and (p.realized_pnl or 0) > 0
-            ]
-            win_count = len(closed_positions)
-            win_rate = Decimal(str(win_count)) / Decimal(str(max(1, trade_count)))
+            # Per-SELL realised PnL via FIFO cost-basis matching against
+            # prior BUY orders on the same instrument.  This correctly
+            # attributes wins/losses to each closing trade, including
+            # multiple round-trips on the same instrument.
+            buy_lots: dict[str, list[dict]] = {}
+            realised_pnls: list[Decimal] = []
+            for o in orders:
+                if o.order_type == "BUY":
+                    buy_lots.setdefault(o.instrument_code, []).append({
+                        "qty": Decimal(o.filled_quantity or 0),
+                        "price": Decimal(o.price or 0),
+                    })
+                elif o.order_type == "SELL":
+                    remaining = Decimal(o.filled_quantity or 0)
+                    sell_price = Decimal(o.price or 0)
+                    lots = buy_lots.get(o.instrument_code, [])
+                    pnl = Decimal("0")
+                    while remaining > 0 and lots:
+                        lot = lots[0]
+                        take = min(remaining, lot["qty"])
+                        pnl += take * (sell_price - lot["price"])
+                        lot["qty"] -= take
+                        remaining -= take
+                        if lot["qty"] <= 0:
+                            lots.pop(0)
+                    # If we sold more than held, treat unmatched quantity
+                    # as a flat break-even so the win-rate count is not
+                    # distorted by short positions.
+                    realised_pnls.append(pnl)
+            win_count = sum(1 for p in realised_pnls if p > 0)
+            denom = max(1, len(realised_pnls))
+            win_rate = Decimal(str(win_count)) / Decimal(str(denom))
         else:
             win_rate = None
 

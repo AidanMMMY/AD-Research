@@ -107,21 +107,23 @@ def get_strategy_signals(
     return signals
 
 
-def _apply_transaction_costs(
-    price: float,
+def _calculate_transaction_cost(
+    notional: float,
     commission_rate: float,
     slippage_rate: float,
-    side: str,
 ) -> float:
-    """Return the effective execution price after commission and slippage.
+    """Return the absolute transaction cost charged on a notional trade.
 
-    BUY executions are filled at a slightly higher price (cost added);
-    SELL executions are filled at a slightly lower price (cost subtracted).
-    This asymmetry correctly reflects the bid-ask spread and fees.
+    Costs are charged symmetrically on both BUY and SELL: every filled
+    trade pays ``notional * (commission_rate + slippage_rate)``.
+
+    On BUY the cash is reduced by ``notional + cost``; on SELL the cash
+    is increased by ``notional - cost``. This correctly accounts for the
+    bid-ask spread and round-trip fees instead of treating a single
+    price-multiplier as if it were a symmetric adjustment.
     """
-    total_cost = commission_rate + slippage_rate
-    multiplier = 1 + total_cost if side == "buy" else 1 - total_cost
-    return price * multiplier
+    total_cost_rate = commission_rate + slippage_rate
+    return notional * total_cost_rate
 
 
 def run_backtest(
@@ -203,11 +205,17 @@ def run_backtest(
         if current_trade is None:
             # No position - check for entry signal
             if signal == 1 and capital > 0:
-                # BUY: deploy only position_size of available cash
+                # BUY: deploy only position_size of available cash.
+                # Apply commission + slippage on the notional trade size:
+                # cash decreases by notional + cost so the cost is paid
+                # out of the deployed cash, reducing shares acquired.
                 cash_to_deploy = capital * position_size
+                cost = _calculate_transaction_cost(
+                    cash_to_deploy, commission_rate, slippage_rate
+                )
+                net_cash_to_invest = cash_to_deploy - cost
                 remaining_cash = capital - cash_to_deploy
-                effective_price = _apply_transaction_costs(price, commission_rate, slippage_rate, "buy")
-                position = cash_to_deploy / effective_price
+                position = net_cash_to_invest / price
                 capital = remaining_cash
                 current_trade = Trade(
                     entry_date=trade_date,
@@ -234,10 +242,15 @@ def run_backtest(
                 should_exit = True  # Max holding period reached
 
             if should_exit:
-                # SELL: close position at effective price
-                effective_price = _apply_transaction_costs(price, commission_rate, slippage_rate, "sell")
-                sale_proceeds = position * effective_price
-                pnl_pct = (effective_price - current_trade.entry_price) / current_trade.entry_price
+                # SELL: close position at current price, then subtract
+                # transaction cost from sale proceeds. Use position as
+                # notional since shares are sold at `price`.
+                notional = position * price
+                cost = _calculate_transaction_cost(
+                    notional, commission_rate, slippage_rate
+                )
+                sale_proceeds = notional - cost
+                pnl_pct = (price - current_trade.entry_price) / current_trade.entry_price
                 trade_pnl = sale_proceeds - (current_trade.entry_price * position)
 
                 capital = capital + sale_proceeds
@@ -263,9 +276,12 @@ def run_backtest(
     if current_trade is not None and position > 0:
         last_price = df["adj_close"].iloc[-1]
         last_date = df["trade_date"].iloc[-1]
-        effective_price = _apply_transaction_costs(last_price, commission_rate, slippage_rate, "sell")
-        sale_proceeds = position * effective_price
-        pnl_pct = (effective_price - current_trade.entry_price) / current_trade.entry_price
+        notional = position * last_price
+        cost = _calculate_transaction_cost(
+            notional, commission_rate, slippage_rate
+        )
+        sale_proceeds = notional - cost
+        pnl_pct = (last_price - current_trade.entry_price) / current_trade.entry_price
         trade_pnl = sale_proceeds - (current_trade.entry_price * position)
 
         capital = capital + sale_proceeds
