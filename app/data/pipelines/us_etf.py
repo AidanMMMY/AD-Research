@@ -152,6 +152,7 @@ class USDailyPipeline(ETLPipeline):
                 "pre_close": row.get("pre_close"),
                 "change_pct": row.get("change_pct"),
                 "turnover_rate": row.get("turnover_rate"),
+                "adj_factor": row.get("adj_factor"),
             }
             record = {k: v for k, v in record.items() if v is not None}
             records.append(record)
@@ -174,6 +175,7 @@ class USDailyPipeline(ETLPipeline):
                     "pre_close": insert(InstrumentDailyBar).excluded.pre_close,
                     "change_pct": insert(InstrumentDailyBar).excluded.change_pct,
                     "turnover_rate": insert(InstrumentDailyBar).excluded.turnover_rate,
+                    "adj_factor": insert(InstrumentDailyBar).excluded.adj_factor,
                 },
             )
         )
