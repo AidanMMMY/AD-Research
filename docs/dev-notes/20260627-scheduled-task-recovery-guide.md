@@ -9,7 +9,7 @@
 
 出现以下任一情况，即说明服务端定时任务可能已中断：
 
-1. `etf_daily_bar` 最新交易日明显落后当天（如落后 2 个以上交易日）。
+1. `instrument_daily_bar` 最新交易日明显落后当天（如落后 2 个以上交易日）。
 2. `etl_log` 表中 `a_share_daily_etl` 最近一次成功时间距现在超过 1 天。
 3. 服务器进程列表中无 `uvicorn` / `python app/main.py` / APScheduler 相关进程。
 4. `data_completeness_check.py` 输出中“最新日线日期”不是最近交易日。

@@ -249,7 +249,7 @@
 
 <ul>
     <li>将 <code>etf_info</code> 抽象为 <code>instrument_info</code>，增加 <code>asset_class</code> 字段（<code>etf</code> / <code>stock</code> / <code>crypto</code>）</li>
-    <li><code>etf_daily_bar</code>、<code>etf_indicator</code>、<code>etf_score</code>、<code>signal</code> 等表已具备 <code>(code, trade_date)</code> 复合键，可直接复用</li>
+    <li><code>instrument_daily_bar</code>、<code>etf_indicator</code>、<code>etf_score</code>、<code>signal</code> 等表已具备 <code>(code, trade_date)</code> 复合键，可直接复用</li>
     <li>新增交易相关表：<code>paper_trade</code>、<code>live_trade</code>、<code>trade_config</code>、<code>risk_rule</code></li>
 </ul>
 

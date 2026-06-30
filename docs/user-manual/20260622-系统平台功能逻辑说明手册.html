@@ -311,7 +311,7 @@ strong { color: #f472b6; }
 <td><code>code</code>(PK), <code>name</code>, <code>market</code>, <code>category</code>, <code>sub_category</code>, <code>manager</code>, <code>fund_size</code>, <code>currency</code>, <code>is_qdii</code>, <code>status</code></td>
 </tr>
 <tr>
-<td><code>etf_daily_bar</code></td>
+<td><code>instrument_daily_bar</code></td>
 <td>日行情 OHLCV</td>
 <td>(<code>etf_code</code>, <code>trade_date</code>) PK, <code>open/high/low/close</code>, <code>volume</code>, <code>amount</code>, <code>change_pct</code>, <code>turnover_rate</code>, <code>nav</code>, <code>discount_rate</code>, <code>is_synthetic</code></td>
 </tr>
@@ -436,7 +436,7 @@ strong { color: #f472b6; }
 <h3>3.3 关键约束</h3>
 
 <ul>
-<li><code>etf_daily_bar</code>: 复合主键 (<code>etf_code</code>, <code>trade_date</code>)</li>
+<li><code>instrument_daily_bar</code>: 复合主键 (<code>etf_code</code>, <code>trade_date</code>)</li>
 <li><code>etf_indicator</code>: 复合唯一 (<code>etf_code</code>, <code>trade_date</code>)</li>
 <li><code>pool_member</code>: 部分唯一索引 <code>uq_pool_member_active</code>，仅对 <code>removed_at IS NULL</code> 生效</li>
 <li><code>pool_weight</code>: 部分唯一索引 <code>uq_pool_weight_active</code>，仅对 <code>removed_at IS NULL</code> 生效</li>

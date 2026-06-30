@@ -13,7 +13,7 @@
 
 ## 背景
 
-当前 `etf_daily_bar` 只存储 OHLCV + amount，没有记录拆股、分红等复权事件。yfinance 默认返回的是**已拆股调整的价格**，但存在两个问题：
+当前 `instrument_daily_bar` 只存储 OHLCV + amount，没有记录拆股、分红等复权事件。yfinance 默认返回的是**已拆股调整的价格**，但存在两个问题：
 
 1. **调整数据错误**：如 `UVXY.US` 2011 年出现 $5145 亿的异常 close，导致 `volume * close` 溢出 `DECIMAL(18,4)`。
 2. **无法区分真实行情与复权行情**：回测如果用复权价计算信号但用真实价成交，会不一致；反之若完全用真实价，拆股前后会出现跳空，指标失真。
@@ -30,7 +30,7 @@
 
 ### 1. 数据库模型改造
 
-#### `etf_daily_bar` 新增字段
+#### `instrument_daily_bar` 新增字段
 
 ```python
 adj_factor = Column(DECIMAL(18, 8), default=1.0, comment="复权因子：当日收盘价相对最新日期的累计调整系数")
@@ -141,7 +141,7 @@ df = pd.DataFrame([{
 
 `app/services/backtest_engine.py` 当前完全从 `AkshareProvider` 拉取 A 股数据，且未处理复权。需要：
 
-1. 支持从 `etf_daily_bar` 读取数据（已有 DB session 或新 query）。
+1. 支持从 `instrument_daily_bar` 读取数据（已有 DB session 或新 query）。
 2. 信号生成用 `close * adj_factor`。
 3. 成交价格用真实 `close`（因为交易发生在真实市场价格）。
 4. 分红再投资：可在卖出时按 `adj_factor` 变化追加现金，或简化为信号用复权价、成交用真实价。
@@ -203,7 +203,7 @@ if open_ > MAX_PRICE or high > MAX_PRICE or low > MAX_PRICE or close > MAX_PRICE
 
 ## 风险与回滚
 
-- 加 nullable 字段 `adj_factor` 到 `etf_daily_bar` 需要短暂表锁，但 PostgreSQL 加 nullable DEFAULT 列是 O(1)。
+- 加 nullable 字段 `adj_factor` 到 `instrument_daily_bar` 需要短暂表锁，但 PostgreSQL 加 nullable DEFAULT 列是 O(1)。
 - 新增 `etf_corporate_action` 空表无影响。
 - 若 provider 改造后数据异常，可快速将 `adj_factor` 重置为 1.0，回退到当前行为。
 
