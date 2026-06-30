@@ -261,8 +261,9 @@ class AnalysisService:
         if sharpe_min is not None:
             query = query.filter(ETFIndicator.sharpe_1y >= sharpe_min)
         if volatility_max is not None:
+            # volatility_20d is stored as decimal; API passes % threshold.
             query = query.filter(
-                ETFIndicator.volatility_20d <= volatility_max
+                ETFIndicator.volatility_20d <= volatility_max / 100.0
             )
 
         results = query.all()

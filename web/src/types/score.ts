@@ -2,10 +2,20 @@ export interface ScoreTemplate {
   id: number;
   name: string;
   description?: string;
-  weights: Record<string, { weight: number; direction: 'asc' | 'desc' }>;
+  /**
+   * Dimension -> weight (0..1).  The server-side calculator decorates
+   * this with its own `metrics` and `direction` from a fixed DIMENSION_MAP
+   * at runtime, so the wire format is intentionally flat.
+   * Common keys: return / risk / sharpe / liquidity / trend.
+   */
+  weights: Record<string, number>;
   is_default: boolean;
-  created_at: string;
+  created_at?: string;
+  updated_at?: string;
 }
+
+export type ScoreTemplateCreate = Omit<ScoreTemplate, 'id' | 'created_at' | 'updated_at'>;
+export type ScoreTemplateUpdate = Partial<ScoreTemplateCreate>;
 
 export interface ETFScore {
   etf_code: string;

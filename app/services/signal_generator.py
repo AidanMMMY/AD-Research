@@ -14,6 +14,11 @@ from sqlalchemy.orm import Session
 from app.data.indicators.technical import calc_rsi
 from app.data.repositories import price_repository
 
+# Extra calendar days added to the requested ``lookback_days`` when fetching
+# bars, to absorb weekends, public holidays, and exchange closures.  Sized to
+# comfortably cover a 7-day window plus a multi-day holiday stretch.
+LOOKBACK_BUFFER = 30
+
 
 def _fetch_bars_from_db(
     db: Session,
@@ -63,7 +68,7 @@ def generate_signals_for_strategy(
     Returns:
         List of signal dicts with type and strength.
     """
-    start = trade_date - pd.Timedelta(days=lookback_days + 10)
+    start = trade_date - pd.Timedelta(days=lookback_days + LOOKBACK_BUFFER)
     df = _fetch_bars_from_db(db, etf_code, start, trade_date)
 
     if df.empty or len(df) < 30:

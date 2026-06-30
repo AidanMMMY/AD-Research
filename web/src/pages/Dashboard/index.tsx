@@ -19,6 +19,7 @@ import ETFCodeTag from '@/components/ETFCodeTag';
 import ReturnTag from '@/components/ReturnTag';
 import ScoreBar from '@/components/ScoreBar';
 import { usePriceStream } from '@/hooks/usePriceStream';
+import { useMarketStream } from '@/hooks/useMarketStream';
 import type { NewsArticle, SentimentLabel } from '@/types/news';
 import dayjs from 'dayjs';
 
@@ -203,6 +204,10 @@ export default function Dashboard() {
 
   const INDEX_CODES = ['510300.SH', '159915.SZ', 'SPY.US', 'BTC.US'];
   const { prices } = usePriceStream(INDEX_CODES);
+  // MarketStream supersedes the price stream for the live tickers: it
+  // surfaces timestamps and the upstream connection state, so the four
+  // dashboard cards can show "updated 3s ago" hints.
+  const { latest: marketLatest, isConnected: marketConnected } = useMarketStream(INDEX_CODES);
 
   const scoreColumns = [
     {
@@ -380,7 +385,9 @@ export default function Dashboard() {
           }}
         >
           {INDEX_CODES.map((code, i) => {
-            const tick = prices[code];
+            const tick = marketLatest[code] ?? (prices[code]
+              ? { ...prices[code], ts: 0, name: undefined, market: undefined }
+              : undefined);
             return (
               <div
                 key={code}
@@ -391,15 +398,39 @@ export default function Dashboard() {
               >
                 <div
                   style={{
-                    fontSize: 'var(--text-label-size)',
-                    color: 'var(--text-tertiary)',
-                    fontWeight: 500,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
                     marginBottom: '12px',
-                    letterSpacing: '0.12em',
-                    textTransform: 'uppercase',
                   }}
                 >
-                  {code}
+                  <span
+                    style={{
+                      fontSize: 'var(--text-label-size)',
+                      color: 'var(--text-tertiary)',
+                      fontWeight: 500,
+                      letterSpacing: '0.12em',
+                      textTransform: 'uppercase',
+                    }}
+                  >
+                    {code}
+                  </span>
+                  {i === 0 ? (
+                    <Tooltip
+                      title={marketConnected ? 'SSE 已连接，3 秒刷新' : 'SSE 未连接，正在重连'}
+                    >
+                      <span
+                        aria-label={marketConnected ? '实时连接中' : '连接断开'}
+                        style={{
+                          display: 'inline-block',
+                          width: 6,
+                          height: 6,
+                          borderRadius: '50%',
+                          background: marketConnected ? 'var(--color-rise, #52c41a)' : 'var(--text-muted)',
+                        }}
+                      />
+                    </Tooltip>
+                  ) : null}
                 </div>
                 <div
                   style={{
@@ -412,9 +443,24 @@ export default function Dashboard() {
                 >
                   {tick ? tick.price.toFixed(2) : '-'}
                 </div>
-                <div style={{ marginTop: 8 }}>
+                <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
                   {tick ? (
-                    <ReturnTag value={tick.change_pct} />
+                    <>
+                      <ReturnTag value={tick.change_pct} />
+                      {tick.ts ? (
+                        <Tooltip title={dayjs(tick.ts).format('YYYY-MM-DD HH:mm:ss')}>
+                          <span
+                            style={{
+                              fontSize: 'var(--text-small-size)',
+                              color: 'var(--text-tertiary)',
+                              fontFamily: 'var(--font-mono)',
+                            }}
+                          >
+                            {dayjs(tick.ts).format('MM-DD HH:mm')}
+                          </span>
+                        </Tooltip>
+                      ) : null}
+                    </>
                   ) : (
                     <span style={{ fontSize: 'var(--text-small-size)', color: 'var(--text-tertiary)' }}>
                       暂无数据

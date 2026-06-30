@@ -143,11 +143,12 @@ def test_create_report_metadata(db_session):
 
 def test_calculate_percentile_scores():
     """Test scoring with sample indicator data using percentile ranking."""
+    # Volatility and return are now stored as decimals (0.15 ≈ 15%).
     indicators = [
-        {"etf_code": "A", "sharpe_1y": 2.0, "volatility_20d": 15.0, "return_1y": 30.0},
-        {"etf_code": "B", "sharpe_1y": 1.0, "volatility_20d": 25.0, "return_1y": 15.0},
-        {"etf_code": "C", "sharpe_1y": 0.5, "volatility_20d": 35.0, "return_1y": 5.0},
-        {"etf_code": "D", "sharpe_1y": 1.5, "volatility_20d": 20.0, "return_1y": 20.0},
+        {"etf_code": "A", "sharpe_1y": 2.0, "volatility_20d": 0.15, "return_1y": 0.30},
+        {"etf_code": "B", "sharpe_1y": 1.0, "volatility_20d": 0.25, "return_1y": 0.15},
+        {"etf_code": "C", "sharpe_1y": 0.5, "volatility_20d": 0.35, "return_1y": 0.05},
+        {"etf_code": "D", "sharpe_1y": 1.5, "volatility_20d": 0.20, "return_1y": 0.20},
     ]
 
     template_weights = {
@@ -213,7 +214,7 @@ def test_rank_scores_empty_input():
 def test_calculate_scores_missing_values():
     """ScoreCalculator should handle missing metric values gracefully."""
     indicators = [
-        {"etf_code": "A", "sharpe_1y": 2.0, "volatility_20d": 15.0},
+        {"etf_code": "A", "sharpe_1y": 2.0, "volatility_20d": 0.15},
         {"etf_code": "B", "sharpe_1y": 1.0},  # missing volatility_20d
         {"etf_code": "C"},  # missing all metrics
     ]
@@ -240,9 +241,9 @@ def test_calculate_scores_missing_values():
 def test_calculate_scores_multi_metric_dimension():
     """ScoreCalculator should average multiple metrics within a dimension."""
     indicators = [
-        {"etf_code": "A", "return_1m": 5.0, "return_3m": 15.0},
-        {"etf_code": "B", "return_1m": 3.0, "return_3m": 9.0},
-        {"etf_code": "C", "return_1m": 1.0, "return_3m": 3.0},
+        {"etf_code": "A", "return_1m": 0.05, "return_3m": 0.15},
+        {"etf_code": "B", "return_1m": 0.03, "return_3m": 0.09},
+        {"etf_code": "C", "return_1m": 0.01, "return_3m": 0.03},
     ]
 
     template_weights = {
@@ -263,9 +264,9 @@ def test_calculate_scores_multi_metric_dimension():
 def test_calculate_scores_direction_desc():
     """Direction 'desc' should invert percentiles so lower values score higher."""
     indicators = [
-        {"etf_code": "A", "volatility_20d": 10.0},
-        {"etf_code": "B", "volatility_20d": 20.0},
-        {"etf_code": "C", "volatility_20d": 30.0},
+        {"etf_code": "A", "volatility_20d": 0.10},
+        {"etf_code": "B", "volatility_20d": 0.20},
+        {"etf_code": "C", "volatility_20d": 0.30},
     ]
 
     template_weights = {
@@ -285,9 +286,9 @@ def test_calculate_scores_direction_desc():
 def test_calculate_scores_direction_asc():
     """Direction 'asc' should keep percentiles so higher values score higher."""
     indicators = [
-        {"etf_code": "A", "return_1y": 30.0},
-        {"etf_code": "B", "return_1y": 20.0},
-        {"etf_code": "C", "return_1y": 10.0},
+        {"etf_code": "A", "return_1y": 0.30},
+        {"etf_code": "B", "return_1y": 0.20},
+        {"etf_code": "C", "return_1y": 0.10},
     ]
 
     template_weights = {

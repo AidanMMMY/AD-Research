@@ -162,8 +162,14 @@ def test_backtest_sharpe_ratio_is_finite_on_clean_data(db_session):
 
 
 def test_backtest_empty_on_no_data(db_session):
-    """Backtest on a non-existent instrument should return an empty result, not raise."""
+    """Backtest on a non-existent instrument should return a structured
+    no-data result, not raise.  ``metrics`` carries the
+    ``BacktestResult.NO_DATA_ERROR`` sentinel so callers can distinguish
+    "no data" from a clean backtest that simply produced zero trades.
+    """
     from datetime import date
+
+    from app.services.backtest_engine import BacktestResult
 
     result = run_backtest(
         etf_code="NOPE.SH",
@@ -176,7 +182,7 @@ def test_backtest_empty_on_no_data(db_session):
     )
     assert result.daily_nav == []
     assert result.trades == []
-    assert result.metrics == {}
+    assert result.metrics == {"error": BacktestResult.NO_DATA_ERROR}
 
 
 def test_backtest_win_rate_in_unit_range(db_session):

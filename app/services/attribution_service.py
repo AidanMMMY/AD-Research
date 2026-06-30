@@ -3,6 +3,7 @@
 Simplified Brinson model for analyzing return sources.
 """
 
+import logging
 from datetime import date
 from typing import Any
 
@@ -10,6 +11,14 @@ from sqlalchemy.orm import Session
 
 from app.data.repositories import price_repository
 from app.models.etl import BacktestResult
+
+logger = logging.getLogger(__name__)
+
+# Threshold below which ``total_return`` is treated as effectively zero
+# for the purposes of computing percentage-of-return attribution.  Chosen
+# to be well below the precision of a meaningful backtest outcome while
+# large enough to absorb floating-point noise.
+ZERO_RETURN_EPSILON = 1e-6
 
 
 class AttributionService:
@@ -110,7 +119,25 @@ class AttributionService:
             interaction_effect = 0
             avg_trade_return = 0
 
-        denominator = total_return if total_return != 0 else 1
+        denominator: float | None
+        if abs(total_return) > ZERO_RETURN_EPSILON:
+            denominator = float(total_return)
+        else:
+            # Near-zero total return makes the percentage-of-return split
+            # meaningless.  Surface this explicitly instead of dividing by 1
+            # and silently inventing a 100% allocation_pct figure.
+            denominator = None
+            logger.warning(
+                "Backtest %s has total_return=%.6f, treating as zero; "
+                "attribution percentages will be reported as None.",
+                backtest_id,
+                total_return,
+            )
+
+        def _pct(value: float) -> float | None:
+            if denominator is None:
+                return None
+            return round(value / denominator * 100, 2)
 
         return {
             "backtest_id": backtest_id,
@@ -123,9 +150,9 @@ class AttributionService:
                 "interaction_effect": round(interaction_effect, 2),
             },
             "summary": {
-                "allocation_pct": round(allocation_effect / denominator * 100, 2),
-                "selection_pct": round(selection_effect / denominator * 100, 2),
-                "interaction_pct": round(interaction_effect / denominator * 100, 2),
+                "allocation_pct": _pct(allocation_effect),
+                "selection_pct": _pct(selection_effect),
+                "interaction_pct": _pct(interaction_effect),
                 "in_market_pct": round(allocation_ratio * 100, 2),
                 "avg_trade_return": round(avg_trade_return, 2),
             },

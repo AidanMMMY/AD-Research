@@ -201,11 +201,12 @@ class ChatService:
                 if indicator.rsi14 is not None:
                     info_lines.append(f"  RSI(14): {float(indicator.rsi14):.1f}")
                 if indicator.return_1m is not None:
-                    info_lines.append(f"  1月收益: {float(indicator.return_1m):+.2f}%")
+                    # Stored as decimal; multiply by 100 for percentage display.
+                    info_lines.append(f"  1月收益: {float(indicator.return_1m) * 100:+.2f}%")
                 if indicator.return_3m is not None:
-                    info_lines.append(f"  3月收益: {float(indicator.return_3m):+.2f}%")
+                    info_lines.append(f"  3月收益: {float(indicator.return_3m) * 100:+.2f}%")
                 if indicator.volatility_20d is not None:
-                    info_lines.append(f"  20日波动率: {float(indicator.volatility_20d):.2f}%")
+                    info_lines.append(f"  20日波动率: {float(indicator.volatility_20d) * 100:.2f}%")
                 if indicator.sharpe_1y is not None:
                     info_lines.append(f"  1年夏普: {float(indicator.sharpe_1y):.2f}")
             if score and score.composite_score is not None:

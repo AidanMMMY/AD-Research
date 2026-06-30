@@ -42,63 +42,65 @@ def sample_etfs_and_indicators(db_session):
         db_session.add(etf)
     db_session.commit()
 
-    # Create indicators (latest date)
+    # Create indicators (latest date).
+    # Volatility / returns / max_drawdown are stored as DECIMALS (0.15 ≈ 15%)
+    # since the 2026-07-01 risk-unit unification.
     latest_date = date(2024, 6, 1)
     indicators = [
         ETFIndicator(
             etf_code="510300",
             trade_date=latest_date,
             sharpe_1y=1.5,
-            volatility_20d=15.0,
+            volatility_20d=0.15,
             rsi14=55.0,
-            return_1m=3.0,
-            return_3m=8.0,
-            return_1y=25.0,
-            max_drawdown_1y=-10.0,
+            return_1m=0.03,
+            return_3m=0.08,
+            return_1y=0.25,
+            max_drawdown_1y=-0.10,
         ),
         ETFIndicator(
             etf_code="510500",
             trade_date=latest_date,
             sharpe_1y=0.8,
-            volatility_20d=22.0,
+            volatility_20d=0.22,
             rsi14=65.0,
-            return_1m=1.5,
-            return_3m=5.0,
-            return_1y=15.0,
-            max_drawdown_1y=-18.0,
+            return_1m=0.015,
+            return_3m=0.05,
+            return_1y=0.15,
+            max_drawdown_1y=-0.18,
         ),
         ETFIndicator(
             etf_code="159915",
             trade_date=latest_date,
             sharpe_1y=1.2,
-            volatility_20d=25.0,
+            volatility_20d=0.25,
             rsi14=72.0,
-            return_1m=4.0,
-            return_3m=12.0,
-            return_1y=30.0,
-            max_drawdown_1y=-20.0,
+            return_1m=0.04,
+            return_3m=0.12,
+            return_1y=0.30,
+            max_drawdown_1y=-0.20,
         ),
         ETFIndicator(
             etf_code="518880",
             trade_date=latest_date,
             sharpe_1y=0.5,
-            volatility_20d=12.0,
+            volatility_20d=0.12,
             rsi14=45.0,
-            return_1m=0.5,
-            return_3m=2.0,
-            return_1y=8.0,
-            max_drawdown_1y=-5.0,
+            return_1m=0.005,
+            return_3m=0.02,
+            return_1y=0.08,
+            max_drawdown_1y=-0.05,
         ),
         ETFIndicator(
             etf_code="511010",
             trade_date=latest_date,
             sharpe_1y=0.3,
-            volatility_20d=5.0,
+            volatility_20d=0.05,
             rsi14=40.0,
-            return_1m=0.2,
-            return_3m=1.0,
-            return_1y=4.0,
-            max_drawdown_1y=-2.0,
+            return_1m=0.002,
+            return_3m=0.01,
+            return_1y=0.04,
+            max_drawdown_1y=-0.02,
         ),
     ]
     for ind in indicators:
@@ -264,11 +266,17 @@ def test_screen_by_sharpe_range(db_session, sample_etfs_and_indicators):
 
 
 def test_screen_by_volatility_range(db_session, sample_etfs_and_indicators):
-    """screen() should filter by volatility range."""
-    service = ScreeningService(db_session)
-    result = service.screen(volatility_max=15.0)
+    """screen() should filter by volatility range.
 
-    assert result["count"] == 3  # 510300 (15), 518880 (12), 511010 (5)
+    The service API accepts percentage thresholds (e.g. 16.0 = 16%),
+    and the service internally divides by 100 to compare against the
+    decimal values stored in the DB.
+    """
+    service = ScreeningService(db_session)
+    # 16% threshold catches 15%, 12%, 5% (all the SH + 商品型/股票型).
+    result = service.screen(volatility_max=16.0)
+
+    assert result["count"] == 3  # 510300 (15%), 518880 (12%), 511010 (5%)
     codes = {item["code"] for item in result["items"]}
     assert "510300" in codes
     assert "518880" in codes
@@ -287,16 +295,20 @@ def test_screen_by_rsi_range(db_session, sample_etfs_and_indicators):
 
 
 def test_screen_by_return_ranges(db_session, sample_etfs_and_indicators):
-    """screen() should filter by return ranges."""
+    """screen() should filter by return ranges.
+
+    The service API accepts percentage thresholds; the service converts
+    to decimal internally before comparing against the DB.
+    """
     service = ScreeningService(db_session)
 
-    # 1-month return
+    # 1-month return — 2% threshold catches 3% and 4%.
     result = service.screen(return_1m_min=2.0)
-    assert result["count"] == 2  # 510300 (3.0), 159915 (4.0)
+    assert result["count"] == 2  # 510300 (3%), 159915 (4%)
 
-    # 1-year return
+    # 1-year return — 20% threshold catches 25% and 30%.
     result = service.screen(return_1y_min=20.0)
-    assert result["count"] == 2  # 510300 (25), 159915 (30)
+    assert result["count"] == 2  # 510300 (25%), 159915 (30%)
 
 
 def test_screen_combined_filters(db_session, sample_etfs_and_indicators):
@@ -306,11 +318,11 @@ def test_screen_combined_filters(db_session, sample_etfs_and_indicators):
         market="SH",
         category="股票型",
         sharpe_min=1.0,
-        volatility_max=20.0,
+        volatility_max=20.0,  # 20% threshold (service divides by 100)
     )
 
-    # SH + 股票型 + sharpe >= 1.0 + vol <= 20
-    # 510300: SH, 股票型, sharpe=1.5, vol=15 -> matches
+    # SH + 股票型 + sharpe >= 1.0 + vol <= 20%
+    # 510300: SH, 股票型, sharpe=1.5, vol=15% -> matches
     # 510500: SH, 股票型, sharpe=0.8 -> fails sharpe
     # 159915: SZ -> fails market
     assert result["count"] == 1

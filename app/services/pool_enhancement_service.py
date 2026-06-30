@@ -275,18 +275,18 @@ class PoolEnhancementService:
         """Suggest weights inversely proportional to volatility (risk parity).
 
         Higher volatility gets lower weight. Uses 20-day volatility from
-        the latest indicator data.
+        the latest indicator data (stored as decimal, e.g. 0.20 ≈ 20%).
         """
         indicators = self._get_latest_indicators(codes)
         vol_map = {}
         for ind in indicators:
-            vol = float(ind.volatility_20d) if ind.volatility_20d else 20.0
+            vol = float(ind.volatility_20d) if ind.volatility_20d else 0.20
             if vol <= 0:
-                vol = 20.0
+                vol = 0.20
             vol_map[ind.etf_code] = vol
 
         # Default volatility for missing data
-        avg_vol = sum(vol_map.values()) / len(vol_map) if vol_map else 20.0
+        avg_vol = sum(vol_map.values()) / len(vol_map) if vol_map else 0.20
         for code in codes:
             if code not in vol_map:
                 vol_map[code] = avg_vol

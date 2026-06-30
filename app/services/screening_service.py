@@ -207,7 +207,13 @@ class ScreeningService:
         if category:
             query = query.filter(ETFInfo.category == category)
 
-        # Indicator numeric filters
+        # Indicator numeric filters.
+        # NOTE: volatility_*, return_*, max_drawdown_1y are stored in the
+        # DB as decimals (e.g. 0.15 ≈ 15%). The API and presets pass
+        # thresholds as percentages, so we divide by 100 to match the
+        # stored values. rsi14 and sharpe_1y are dimensionless and are
+        # compared directly.
+        _pct = lambda v: v / 100.0  # noqa: E731 — convert % threshold → decimal
         if rsi_min is not None:
             query = query.filter(ETFIndicator.rsi14 >= rsi_min)
         if rsi_max is not None:
@@ -217,25 +223,25 @@ class ScreeningService:
         if sharpe_max is not None:
             query = query.filter(ETFIndicator.sharpe_1y <= sharpe_max)
         if volatility_min is not None:
-            query = query.filter(ETFIndicator.volatility_20d >= volatility_min)
+            query = query.filter(ETFIndicator.volatility_20d >= _pct(volatility_min))
         if volatility_max is not None:
-            query = query.filter(ETFIndicator.volatility_20d <= volatility_max)
+            query = query.filter(ETFIndicator.volatility_20d <= _pct(volatility_max))
         if return_1m_min is not None:
-            query = query.filter(ETFIndicator.return_1m >= return_1m_min)
+            query = query.filter(ETFIndicator.return_1m >= _pct(return_1m_min))
         if return_1m_max is not None:
-            query = query.filter(ETFIndicator.return_1m <= return_1m_max)
+            query = query.filter(ETFIndicator.return_1m <= _pct(return_1m_max))
         if return_3m_min is not None:
-            query = query.filter(ETFIndicator.return_3m >= return_3m_min)
+            query = query.filter(ETFIndicator.return_3m >= _pct(return_3m_min))
         if return_3m_max is not None:
-            query = query.filter(ETFIndicator.return_3m <= return_3m_max)
+            query = query.filter(ETFIndicator.return_3m <= _pct(return_3m_max))
         if return_1y_min is not None:
-            query = query.filter(ETFIndicator.return_1y >= return_1y_min)
+            query = query.filter(ETFIndicator.return_1y >= _pct(return_1y_min))
         if return_1y_max is not None:
-            query = query.filter(ETFIndicator.return_1y <= return_1y_max)
+            query = query.filter(ETFIndicator.return_1y <= _pct(return_1y_max))
         if max_drawdown_1y_min is not None:
-            query = query.filter(ETFIndicator.max_drawdown_1y >= max_drawdown_1y_min)
+            query = query.filter(ETFIndicator.max_drawdown_1y >= _pct(max_drawdown_1y_min))
         if max_drawdown_1y_max is not None:
-            query = query.filter(ETFIndicator.max_drawdown_1y <= max_drawdown_1y_max)
+            query = query.filter(ETFIndicator.max_drawdown_1y <= _pct(max_drawdown_1y_max))
 
         # Score filters
         if score_min is not None and score_joined:

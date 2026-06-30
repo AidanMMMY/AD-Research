@@ -16,3 +16,4 @@ export * from './useNotifications';
 export * from './useFavorites';
 export * from './useAttribution';
 export * from './usePriceStream';
+export * from './useMarketStream';

@@ -88,9 +88,10 @@ def test_score_calculator_pure_returns_monotonic_ordering():
 
     calc = ScoreCalculator()
     indicators = [
-        {"etf_code": "A", "return_1y": 50.0},
-        {"etf_code": "B", "return_1y": 25.0},
-        {"etf_code": "C", "return_1y": 5.0},
+        # Returns are stored as decimals (0.50 ≈ 50%).
+        {"etf_code": "A", "return_1y": 0.50},
+        {"etf_code": "B", "return_1y": 0.25},
+        {"etf_code": "C", "return_1y": 0.05},
     ]
     weights = {
         "return": {
@@ -112,10 +113,11 @@ def test_score_calculator_desc_direction_inverts_ordering():
     from app.data.indicators.scoring import ScoreCalculator
 
     calc = ScoreCalculator()
+    # Volatility is stored as decimal (0.05 ≈ 5%).
     indicators = [
-        {"etf_code": "A", "volatility_20d": 5.0},
-        {"etf_code": "B", "volatility_20d": 20.0},
-        {"etf_code": "C", "volatility_20d": 40.0},
+        {"etf_code": "A", "volatility_20d": 0.05},
+        {"etf_code": "B", "volatility_20d": 0.20},
+        {"etf_code": "C", "volatility_20d": 0.40},
     ]
     weights = {
         "risk": {

@@ -1,12 +1,14 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Table, Input, Select, List, Skeleton } from 'antd';
 import { SearchOutlined } from '@ant-design/icons';
 import { useETFList, useETFCategories, useETFMarkets } from '@/hooks/useETFList';
 import { useSparkline } from '@/hooks/useSparkline';
+import { useMarketStream } from '@/hooks/useMarketStream';
 import ETFCodeTag from '@/components/ETFCodeTag';
 import ThemeTag from '@/components/ThemeTag';
 import Sparkline from '@/components/Sparkline';
+import ReturnTag from '@/components/ReturnTag';
 import { useIsMobile } from '@/hooks/useBreakpoint';
 
 /** Row-level sparkline cell. Owns its own query so per-row caching
@@ -17,6 +19,39 @@ function SparklineCell({ code }: { code: string }) {
     return <span style={{ color: 'var(--text-tertiary)', fontSize: 11 }}>-</span>;
   }
   return <Sparkline data={data.points} width={80} height={20} />;
+}
+
+/** Row-level live price cell. Reads from the shared MarketStream map so we
+ *  do not open one SSE connection per row. */
+function LivePriceCell({ tick }: { code: string; tick: ReturnType<typeof useMarketStream>['latest'][string] | undefined }) {
+  if (!tick) {
+    return (
+      <span
+        style={{
+          fontSize: 'var(--text-small-size)',
+          color: 'var(--text-tertiary)',
+          fontFamily: 'var(--font-mono)',
+        }}
+      >
+        -
+      </span>
+    );
+  }
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 2, lineHeight: 1.2 }}>
+      <span
+        style={{
+          fontSize: 'var(--text-body-size)',
+          color: 'var(--text-primary)',
+          fontFamily: 'var(--font-mono)',
+          fontWeight: 500,
+        }}
+      >
+        {tick.price.toFixed(2)}
+      </span>
+      <ReturnTag value={tick.change_pct} />
+    </div>
+  );
 }
 
 export default function ETFList() {
@@ -49,6 +84,15 @@ export default function ETFList() {
       setCategory(undefined);
     }
   }, [categories, category]);
+
+  // Stream live prices for the current page only. The backend page_size is
+  // already capped at 50, so this keeps the SSE query param list small and
+  // avoids re-subscribing on every keystroke in the search box.
+  const pageCodes = useMemo(
+    () => (data?.items || []).map((it: { code: string }) => it.code).filter(Boolean),
+    [data?.items]
+  );
+  const { latest: liveLatest } = useMarketStream(pageCodes);
 
   const columns = [
     {
@@ -127,6 +171,14 @@ export default function ETFList() {
       key: 'sparkline_30d',
       width: 100,
       render: (_: unknown, record: any) => <SparklineCell code={record.code} />,
+    },
+    {
+      title: '实时价',
+      key: 'live_price',
+      width: 110,
+      render: (_: unknown, record: any) => (
+        <LivePriceCell code={record.code} tick={liveLatest[record.code]} />
+      ),
     },
   ];
 
@@ -207,6 +259,9 @@ export default function ETFList() {
                   <span style={{ fontSize: 'var(--text-body-size)', fontWeight: 600, color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>
                     {item.fund_size ? `${(item.fund_size / 1e8).toFixed(1)}亿` : '-'}
                   </span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+                  <LivePriceCell code={item.code} tick={liveLatest[item.code]} />
                 </div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-2)' }}>
                   {item.category && (

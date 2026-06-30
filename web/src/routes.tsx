@@ -5,6 +5,8 @@ const Login = lazy(() => import('./pages/Login'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const ETFList = lazy(() => import('./pages/ETFList'));
 const ETFDetail = lazy(() => import('./pages/ETFDetail'));
+const StocksList = lazy(() => import('./pages/StocksList'));
+const StockDetail = lazy(() => import('./pages/StockDetail'));
 const Screen = lazy(() => import('./pages/Screen'));
 const PoolList = lazy(() => import('./pages/PoolList'));
 const PoolDetail = lazy(() => import('./pages/PoolDetail'));
@@ -57,6 +59,8 @@ export const routes: RouteConfig[] = [
   { path: '/dashboard', element: wrap(Dashboard), auth: true, menu: { name: '首页看板', icon: 'DashboardOutlined' } },
   { path: '/etfs', element: wrap(ETFList), auth: true, menu: { name: '标的列表', icon: 'OrderedListOutlined' } },
   { path: '/etfs/:code', element: wrap(ETFDetail), auth: true },
+  { path: '/stocks', element: wrap(StocksList), auth: true, menu: { name: '个股', icon: 'StockOutlined' } },
+  { path: '/stocks/:code', element: wrap(StockDetail), auth: true },
   { path: '/screen', element: wrap(Screen), auth: true, menu: { name: '全市场筛选器', icon: 'FilterOutlined' } },
   { path: '/pools', element: wrap(PoolList), auth: true, menu: { name: '标的池管理', icon: 'AppstoreOutlined' } },
   { path: '/pools/:id', element: wrap(PoolDetail), auth: true },

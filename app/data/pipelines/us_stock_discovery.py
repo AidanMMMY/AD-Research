@@ -101,9 +101,15 @@ class USStockDiscoveryPipeline(ETLPipeline):
                     "market": stock.market or "US",
                     "currency": stock.currency or "USD",
                     "instrument_type": "STOCK",
-                    "sector": sector,
+                    # Resolution: prefer the locally-derived `sector` /
+                    # `category` from this pipeline's own logic (updated
+                    # upstream) since they reflect the discovery run; fall
+                    # back to the upstream stock fields only if the local
+                    # values are empty. `industry` always comes from the
+                    # upstream source (no local override).
+                    "sector": sector or stock.sector,
                     "industry": stock.industry,
-                    "category": category,
+                    "category": category or (stock.category or stock.sector),
                     "country": "US",
                     "status": "active",
                 }

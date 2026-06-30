@@ -149,9 +149,9 @@ class RiskAnalysisService:
         var_hist = sorted_returns.iloc[max(var_idx, 0)] * 100
         es_hist = sorted_returns.iloc[: max(var_idx, 1)].mean() * 100
 
-        # Parametric VaR / ES (assuming normal distribution)
-        z_score = np.abs(np.percentile(np.random.standard_normal(100000), alpha * 100))
-        # Use stats.norm.ppf for exact z-score
+        # Parametric VaR / ES (assuming normal distribution).
+        # Use scipy.stats.norm.ppf for the exact analytical z-score at the
+        # requested confidence level; no Monte-Carlo sample is required.
         from scipy.stats import norm
 
         z = abs(norm.ppf(alpha))

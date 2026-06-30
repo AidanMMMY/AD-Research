@@ -10,7 +10,10 @@ Endpoint
 Rate limit
 ----------
 We self-impose 30 requests/minute to be polite. Yahoo's actual limit
-is undocumented but well above that for non-abusive usage.
+is undocumented but well above that for non-abusive usage. As of mid
+2026 Yahoo is returning HTTP 429 to non-browser UAs from server
+infrastructure, so a 429 / 403 response is treated as a fallback
+trigger: see :meth:`YahooFinanceCrawler._fetch_with_fallback`.
 
 Symbols
 -------
@@ -23,13 +26,15 @@ the ``news_article_symbol`` link.
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import xml.etree.ElementTree as ET
-from datetime import datetime, timezone
-from typing import Iterable
+from datetime import date, datetime, timedelta, timezone
+from typing import Any, Iterable
 
 import httpx
 
+from app.config import get_settings
 from app.services.news.crawler.rate_limiter import AsyncTokenBucket
 from app.services.news.crawler.symbol_extractor import extract_symbols
 from app.services.news.crawler.types import RawArticle
@@ -38,13 +43,34 @@ logger = logging.getLogger(__name__)
 
 YAHOO_RSS_URL = "https://feeds.finance.yahoo.com/rss/2.0/headline"
 
+# Status codes that signal Yahoo is rejecting our non-browser UA / IP
+# and that we should fall back to Finnhub company-news instead.
+_FALLBACK_STATUS_CODES = frozenset({429, 403})
+
+# How far back to ask Finnhub for when we fall back. Finnhub's free
+# company-news endpoint returns at most one week of headlines per call.
+_FALLBACK_LOOKBACK_DAYS = 7
+
+# Article ``source`` value used for items produced by the Finnhub
+# fallback. The primary Yahoo path still tags articles as
+# ``"yahoo_finance"`` so downstream consumers can distinguish them.
+_FALLBACK_SOURCE_NAME = "yahoo_finance_finnhub_fallback"
+
 
 def _to_internal(ticker: str) -> str:
     return f"{ticker.upper().strip()}.US"
 
 
 class YahooFinanceCrawler:
-    """Crawl Yahoo Finance per-ticker headline RSS feeds."""
+    """Crawl Yahoo Finance per-ticker headline RSS feeds.
+
+    On HTTP 429 / 403 (Yahoo rejecting non-browser traffic) this
+    crawler transparently falls back to Finnhub's
+    ``/company-news`` endpoint, provided ``FINNHUB_API_KEY`` is set
+    in the environment / settings. If no key is configured the
+    fallback is silently skipped and the failing ticker returns no
+    articles (matching the existing warning + continue behavior).
+    """
 
     source_name = "yahoo_finance"
     rate_limit_per_min = 30
@@ -55,10 +81,14 @@ class YahooFinanceCrawler:
         *,
         client: httpx.AsyncClient | None = None,
         rate_limiter: AsyncTokenBucket | None = None,
+        finnhub_provider: Any | None = None,
     ) -> None:
         self._client = client
         self._owns_client = client is None
         self._limiter = rate_limiter or AsyncTokenBucket(self.rate_limit_per_min)
+        # Allow tests / callers to inject a mock provider. Lazy-built
+        # from settings on first fallback attempt.
+        self._finnhub_provider_override = finnhub_provider
 
     async def __aenter__(self) -> "YahooFinanceCrawler":
         if self._client is None:
@@ -94,6 +124,8 @@ class YahooFinanceCrawler:
 
         Returns a list of :class:`RawArticle`. The ``extra`` dict on
         each article carries ``{"ticker": "AAPL"}`` for traceability.
+        On a 429 / 403 the per-ticker fetch transparently falls back
+        to Finnhub's company-news endpoint.
         """
         if isinstance(tickers, str):
             ticker_list = [tickers]
@@ -106,7 +138,7 @@ class YahooFinanceCrawler:
         async with self:
             for ticker in ticker_list:
                 try:
-                    arts = await self._fetch_one(ticker)
+                    arts = await self._fetch_with_fallback(ticker)
                 except Exception as exc:  # noqa: BLE001
                     logger.warning("Yahoo RSS failed for %s: %s", ticker, exc)
                     continue
@@ -116,6 +148,87 @@ class YahooFinanceCrawler:
     # ------------------------------------------------------------------
     # Internals
     # ------------------------------------------------------------------
+
+    async def _fetch_with_fallback(self, ticker: str) -> list[RawArticle]:
+        """Fetch one ticker, falling back to Finnhub on 429 / 403."""
+        try:
+            return await self._fetch_one(ticker)
+        except httpx.HTTPStatusError as exc:
+            status = getattr(getattr(exc, "response", None), "status_code", None)
+            if status not in _FALLBACK_STATUS_CODES:
+                raise
+            return await self._fetch_finnhub_fallback(ticker, status=status)
+        except httpx.RequestError as exc:
+            # Connection reset / DNS / TLS — also treat as transient
+            # enough to try the fallback. (Yahoo intermittently throws
+            # these when their edge redirects aggressively.)
+            logger.info(
+                "Yahoo RSS transport error for %s (%s); trying Finnhub fallback",
+                ticker,
+                exc,
+            )
+            return await self._fetch_finnhub_fallback(ticker, status=None)
+
+    async def _fetch_finnhub_fallback(
+        self, ticker: str, *, status: int | None
+    ) -> list[RawArticle]:
+        """Fetch ``ticker`` news from Finnhub as a fallback.
+
+        Returns an empty list (with a warning log) when no API key is
+        configured, so the caller can keep going without raising.
+        """
+        if not self._finnhub_key_available():
+            logger.warning(
+                "Yahoo RSS returned HTTP %s for %s and FINNHUB_API_KEY is "
+                "not set — no fallback available.",
+                status if status is not None else "transport-error",
+                ticker,
+            )
+            return []
+
+        provider = self._get_finnhub_provider()
+        to_date = date.today()
+        from_date = to_date - timedelta(days=_FALLBACK_LOOKBACK_DAYS)
+        try:
+            # ``fetch_company_news`` is a blocking HTTP call (uses
+            # ``requests``); push it to a worker thread so we don't
+            # stall the event loop for the rest of the crawl batch.
+            news = await asyncio.to_thread(
+                provider.fetch_company_news,
+                ticker,
+                from_date,
+                to_date,
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.warning(
+                "Finnhub fallback failed for %s: %s", ticker, exc
+            )
+            return []
+
+        articles = [_finnhub_item_to_article(item, ticker) for item in news]
+        articles = [a for a in articles if a is not None]
+        if articles:
+            logger.info(
+                "Yahoo RSS fallback to Finnhub succeeded for %s "
+                "(status=%s, articles=%d)",
+                ticker,
+                status if status is not None else "transport-error",
+                len(articles),
+            )
+        return articles
+
+    def _finnhub_key_available(self) -> bool:
+        try:
+            return bool(get_settings().finnhub_api_key)
+        except Exception:  # pragma: no cover - defensive
+            return False
+
+    def _get_finnhub_provider(self) -> Any:
+        if self._finnhub_provider_override is not None:
+            return self._finnhub_provider_override
+        from app.data.providers.finnhub_provider import FinnhubProvider
+
+        return FinnhubProvider()
 
     async def _fetch_one(self, ticker: str) -> list[RawArticle]:
         await self._limiter.acquire()
@@ -170,6 +283,60 @@ class YahooFinanceCrawler:
             art.engagement = {"symbols_extracted": sorted(symbols)}
             out.append(art)
         return out
+
+
+def _finnhub_item_to_article(
+    item: dict[str, Any], ticker: str
+) -> RawArticle | None:
+    """Convert a Finnhub company-news dict into a :class:`RawArticle`.
+
+    Returns ``None`` if the item is missing the required fields.
+    """
+    headline = (item.get("headline") or "").strip()
+    url = (item.get("url") or "").strip()
+    if not headline or not url:
+        return None
+
+    ts = item.get("datetime")
+    if isinstance(ts, (int, float)):
+        published_at = datetime.fromtimestamp(int(ts), tz=timezone.utc)
+    elif isinstance(ts, str) and ts:
+        try:
+            published_at = datetime.fromisoformat(ts)
+            if published_at.tzinfo is None:
+                published_at = published_at.replace(tzinfo=timezone.utc)
+        except ValueError:
+            published_at = datetime.now(tz=timezone.utc)
+    else:
+        published_at = datetime.now(tz=timezone.utc)
+
+    summary = (item.get("summary") or "").strip()
+    source_name = (item.get("source") or "").strip() or None
+    category = (item.get("category") or "").strip() or None
+
+    art = RawArticle(
+        source=_FALLBACK_SOURCE_NAME,
+        source_id=url,
+        url=url,
+        title=headline,
+        published_at=published_at,
+        body=summary or None,
+        body_html=summary or None,
+        author=source_name,
+        language="en",
+        market="us",
+        extra={
+            "ticker": ticker.upper(),
+            "fallback_from": "yahoo_finance",
+            "finnhub_category": category,
+            "finnhub_source": source_name,
+        },
+    )
+    symbols = extract_symbols(f"{headline}\n{summary}", url=url)
+    if ticker:
+        symbols.add(_to_internal(ticker))
+    art.engagement = {"symbols_extracted": sorted(symbols)}
+    return art
 
 
 def _parse_rfc822_date(value: str) -> datetime | None:
