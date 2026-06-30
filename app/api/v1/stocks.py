@@ -17,7 +17,7 @@ router = APIRouter()
 
 @router.get("", response_model=ETFListResponse)
 def list_stocks(
-    market: str = Query(None),
+    market: str = Query("A股"),
     category: str = Query(None),
     search: str = Query(None),
     page: int = Query(1, ge=1),
