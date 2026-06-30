@@ -16,8 +16,8 @@ export default function ReturnCurve({ series }: ReturnCurveProps) {
   const isMobile = useIsMobile();
 
   const allDates = series[0]?.dates || [];
-  // On mobile, show fewer x-axis labels
-  const labelInterval = isMobile ? Math.max(1, Math.floor(allDates.length / 6)) : 0;
+  // Keep x-axis labels readable: target ~8 labels across the chart
+  const labelInterval = Math.max(0, Math.floor(allDates.length / 8));
 
   const option: EChartsOption = {
     backgroundColor: 'transparent',
@@ -44,14 +44,14 @@ export default function ReturnCurve({ series }: ReturnCurveProps) {
       },
       axisLine: { lineStyle: { color: 'var(--text-tertiary)' } },
       axisTick: { lineStyle: { color: 'var(--text-tertiary)' } },
-      splitLine: { show: true, lineStyle: { color: 'var(--border-default)' } },
+      splitLine: { show: false },
     },
     yAxis: {
       type: 'value',
       axisLabel: { formatter: '{value}%', fontSize: isMobile ? 9 : 10, color: 'var(--text-secondary)' },
       axisLine: { lineStyle: { color: 'var(--text-tertiary)' } },
       axisTick: { lineStyle: { color: 'var(--text-tertiary)' } },
-      splitLine: { show: true, lineStyle: { color: 'var(--border-default)' } },
+      splitLine: { show: true, lineStyle: { color: 'var(--border-default)', type: 'dashed', opacity: 0.5 } },
     },
     series: series.map((s, idx) => ({
       name: s.name,

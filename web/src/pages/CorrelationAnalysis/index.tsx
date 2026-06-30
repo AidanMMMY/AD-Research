@@ -34,6 +34,7 @@ export default function CorrelationAnalysis() {
   const [selectedCodes, setSelectedCodes] = useState<string[]>(['510300.SH', '510050.SH', '510500.SH', '159915.SZ']);
   const [window, setWindow] = useState<number>(60);
   const [method, setMethod] = useState<'pearson' | 'spearman'>('pearson');
+  const [showAllPresets, setShowAllPresets] = useState(false);
 
   const { data: etfList } = useETFList({ page_size: 10000 });
   const { data: pools, isLoading: poolsLoading } = usePoolList();
@@ -58,6 +59,11 @@ export default function CorrelationAnalysis() {
       }))
       .filter((group) => group.codes.length > 0);
   }, [etfList]);
+
+  const visiblePresetGroups = useMemo(() => {
+    if (showAllPresets) return presetGroups;
+    return presetGroups.slice(0, 8);
+  }, [presetGroups, showAllPresets]);
 
   const { data: correlationData, isLoading } = useQuery({
     queryKey: ['correlation', selectedCodes, window, method],
@@ -171,11 +177,16 @@ export default function CorrelationAnalysis() {
                 快速选择：
               </span>
               <Space size={[8, 8]} wrap>
-                {presetGroups.map((group) => (
+                {visiblePresetGroups.map((group) => (
                   <Button key={group.label} size="small" onClick={() => handleAddPreset(group.codes)}>
                     +{group.label}
                   </Button>
                 ))}
+                {presetGroups.length > 8 && (
+                  <Button size="small" type="link" onClick={() => setShowAllPresets((v) => !v)}>
+                    {showAllPresets ? '收起' : `更多 (${presetGroups.length - 8})`}
+                  </Button>
+                )}
                 <Select
                   size="small"
                   placeholder={<span><FolderOpenOutlined /> 从标的池导入</span>}
