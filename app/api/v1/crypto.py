@@ -32,7 +32,7 @@ from app.schemas.crypto import (
     IndicatorHistoryOut,
     IndicatorOut,
 )
-from app.schemas.etf import ETFInfoResponse
+from app.schemas.etf import ETFInfoResponse, ETFFilterParams
 from app.services.etf_service import ETFService
 from app.services.indicator_service import IndicatorService
 from app.services.market_data_service import MarketDataService
