@@ -23,5 +23,6 @@ export { cryptoApi } from './crypto';
 export { paperTradingApi } from './trading';
 export { liveTradingApi } from './liveTrading';
 export { stockFundamentalApi } from './stockFundamental';
+export { stocksApi } from './stocks';
 export { newsApi } from './news';
 export { default as client } from './client';

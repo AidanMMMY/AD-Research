@@ -361,13 +361,14 @@ class ResearchService:
         if indicator.ma60 is not None:
             parts.append(f"MA60: {float(indicator.ma60):.2f}")
         if indicator.volatility_20d is not None:
-            parts.append(f"20日波动率: {float(indicator.volatility_20d):.2f}%")
+            # Stored as decimal; multiply by 100 for percentage display.
+            parts.append(f"20日波动率: {float(indicator.volatility_20d) * 100:.2f}%")
         if indicator.sharpe_1y is not None:
             parts.append(f"1年夏普: {float(indicator.sharpe_1y):.2f}")
         if indicator.return_1m is not None:
-            parts.append(f"1月收益: {float(indicator.return_1m):+.2f}%")
+            parts.append(f"1月收益: {float(indicator.return_1m) * 100:+.2f}%")
         if indicator.return_3m is not None:
-            parts.append(f"3月收益: {float(indicator.return_3m):+.2f}%")
+            parts.append(f"3月收益: {float(indicator.return_3m) * 100:+.2f}%")
         return "\n".join(parts) if parts else "无指标数据"
 
     def _build_score_text(self, score: ETFScore | None) -> str:

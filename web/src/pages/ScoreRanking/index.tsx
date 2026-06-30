@@ -10,6 +10,7 @@ import HelpPopover from '@/components/HelpPopover';
 import ETFCodeTag from '@/components/ETFCodeTag';
 import ScoreBar from '@/components/ScoreBar';
 import Sparkline from '@/components/Sparkline';
+import TemplateManagement from '@/components/TemplateManagement';
 import { buildScoreRankingContext } from '@/utils/helpContext';
 import { getQuickQuestions } from '@/utils/helpPrompts';
 
@@ -23,15 +24,18 @@ function SparklineCell({ code }: { code: string }) {
   return <Sparkline data={data.points} width={80} height={20} />;
 }
 
+type TopTab = 'ranking' | 'templates';
+
 export default function ScoreRanking() {
   const navigate = useNavigate();
   const { open } = useAIHelp();
+  const [topTab, setTopTab] = useState<TopTab>('ranking');
   const [templateId, setTemplateId] = useState<number | undefined>();
   const { data: scoresData } = useScores({ template_id: templateId, limit: 50 });
   const { data: templates } = useScoreTemplates();
 
   const activeTemplate = templates?.find((t) =>
-    templateId ? t.id === templateId : t.is_default
+    templateId ? t.id === templateId : t.is_default,
   );
 
   const handleOpenHelp = () => {
@@ -58,9 +62,7 @@ export default function ScoreRanking() {
       title: <HelpPopover termKey="rank_category">分类排名</HelpPopover>,
       dataIndex: 'rank_category',
       width: 90,
-      render: (v: number) => (
-        <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-tertiary)' }}>{v}</span>
-      ),
+      render: (v: number) => <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-tertiary)' }}>{v}</span>,
     },
     {
       title: '标的',
@@ -84,7 +86,7 @@ export default function ScoreRanking() {
     },
   ];
 
-  const tabItems = templates?.map((t) => ({
+  const templateTabItems = templates?.map((t) => ({
     key: String(t.id),
     label: t.name,
   })) || [];
@@ -93,37 +95,54 @@ export default function ScoreRanking() {
     <div>
       <h1 style={{ fontSize: 'var(--text-h1-size)', fontWeight: 500, color: 'var(--text-primary)', margin: '0 0 8px', letterSpacing: '-0.03em' }}>评分排名</h1>
       <p style={{ margin: '0 0 32px', color: 'var(--text-tertiary)', fontSize: 'var(--text-body-size)' }}>查看全市场标的综合评分排名，对比不同模板下的多维评估结果</p>
-      <Panel variant="minimal" style={{ marginBottom: 20 }}>
-        <Tabs
-          activeKey={String(templateId || templates?.find((t) => t.is_default)?.id || '')}
-          onChange={(key) => setTemplateId(Number(key))}
-          items={tabItems}
-          style={{ marginBottom: 0 }}
-        />
-      </Panel>
 
-      <Panel
-        variant="minimal"
-        title={`综合评分 Top ${scoresData?.items.length || 0}`}
-        extra={
-          <HelpTrigger
-            tooltip="AI 解释评分逻辑"
-            onClick={handleOpenHelp}
-          />
-        }
-      >
-        <Table
-          dataSource={scoresData?.items || []}
-          columns={columns}
-          rowKey="etf_code"
-          size="small"
-          scroll={{ x: 'max-content' }}
-          pagination={false}
-          onRow={(record) => ({
-            onClick: () => navigate(`/etfs/${record.etf_code}`),
-          })}
-        />
-      </Panel>
+      <Tabs
+        activeKey={topTab}
+        onChange={(k) => setTopTab(k as TopTab)}
+        style={{ marginBottom: 20 }}
+        items={[
+          { key: 'ranking', label: '排名' },
+          { key: 'templates', label: '模板管理' },
+        ]}
+      />
+
+      {topTab === 'ranking' && (
+        <>
+          <Panel variant="minimal" style={{ marginBottom: 20 }}>
+            <Tabs
+              activeKey={String(templateId || templates?.find((t) => t.is_default)?.id || '')}
+              onChange={(key) => setTemplateId(Number(key))}
+              items={templateTabItems}
+              style={{ marginBottom: 0 }}
+            />
+          </Panel>
+
+          <Panel
+            variant="minimal"
+            title={`综合评分 Top ${scoresData?.items.length || 0}`}
+            extra={
+              <HelpTrigger
+                tooltip="AI 解释评分逻辑"
+                onClick={handleOpenHelp}
+              />
+            }
+          >
+            <Table
+              dataSource={scoresData?.items || []}
+              columns={columns}
+              rowKey="etf_code"
+              size="small"
+              scroll={{ x: 'max-content' }}
+              pagination={false}
+              onRow={(record) => ({
+                onClick: () => navigate(`/etfs/${record.etf_code}`),
+              })}
+            />
+          </Panel>
+        </>
+      )}
+
+      {topTab === 'templates' && <TemplateManagement />}
     </div>
   );
 }

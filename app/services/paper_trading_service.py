@@ -296,18 +296,41 @@ class PaperTradingService:
         if not account:
             raise PaperTradingError(f"Account {account_id} not found")
 
-        # Update market values first
-        try:
-            self.update_market_values(account_id)
-        except Exception:
-            pass
-
-        # Aggregate positions
+        # Aggregate positions in a single query.  We previously delegated
+        # to ``update_market_values`` here, which issued its own
+        # ``SELECT * FROM paper_trade_position`` plus a commit — a
+        # textbook N+1 pattern (extra DB round-trip per call).  Instead,
+        # we now fetch positions once and refresh market values inline
+        # with a single batched Binance quote request.
         positions = (
             self.db.query(PaperTradePosition)
             .filter(PaperTradePosition.account_id == account_id)
             .all()
         )
+
+        # Refresh market values inline: one batched quote fetch, in-memory
+        # update, single commit.  Failures are swallowed (same behaviour
+        # as the previous implementation) so a transient Binance outage
+        # doesn't break the summary endpoint.
+        try:
+            open_codes = list({p.instrument_code for p in positions if p.quantity > 0})
+            if open_codes:
+                quotes_df = self.provider.fetch_realtime_quotes(open_codes)
+                quotes: dict[str, Decimal] = {}
+                if not quotes_df.empty:
+                    for _, row in quotes_df.iterrows():
+                        quotes[row["etf_code"]] = Decimal(str(row["price"]))
+                for pos in positions:
+                    if pos.quantity <= 0:
+                        continue
+                    price = quotes.get(pos.instrument_code)
+                    if price is None or price <= 0:
+                        continue
+                    pos.market_value = pos.quantity * price
+                    pos.unrealized_pnl = pos.quantity * (price - pos.avg_cost)
+                self.db.commit()
+        except Exception:
+            pass
 
         total_market_value = Decimal("0")
         total_unrealized = Decimal("0")

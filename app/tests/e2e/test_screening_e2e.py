@@ -45,14 +45,15 @@ def test_screening_filters_by_sharpe_and_return(db_session, seeded_etf_universe)
     codes = {item["code"] for item in result["items"]}
     assert "511010.SH" not in codes, "Treasury ETF should be filtered out by sharpe/return"
 
-    # All returned rows must satisfy the filter
+    # All returned rows must satisfy the filter.
+    # Note: return_1m is stored as a decimal (0.02 ≈ 2%).
     for item in result["items"]:
         sharpe = item["sharpe_1y"]
         return_1m = item["return_1m"]
         if sharpe is not None:
             assert sharpe >= 1.2, f"ETF {item['code']} has sharpe {sharpe} < 1.2"
         if return_1m is not None:
-            assert return_1m >= 2.0, f"ETF {item['code']} has return_1m {return_1m} < 2.0"
+            assert return_1m >= 0.02, f"ETF {item['code']} has return_1m {return_1m} < 2%"
 
 
 def test_screening_sort_order_desc(db_session, seeded_etf_universe):
@@ -84,7 +85,8 @@ def test_screening_preset_high_sharpe_low_vol(db_session, seeded_etf_universe):
         if sharpe is not None:
             assert sharpe >= 1.0, f"Sharpe {sharpe} < 1.0 in preset result"
         if vol is not None:
-            assert vol <= 20.0, f"Volatility {vol} > 20% in preset result"
+            # vol is stored as decimal; 20% threshold → 0.20
+            assert vol <= 0.20, f"Volatility {vol} > 20% in preset result"
 
 
 def test_screening_get_presets_returns_four(db_session):

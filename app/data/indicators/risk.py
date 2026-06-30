@@ -5,18 +5,23 @@ Provides functions for computing risk metrics
 
 ## Unit convention (consistent across this module + calculate_risk_indicators)
 
-| Function                         | Returns                  | Notes                    |
-|----------------------------------|--------------------------|--------------------------|
-| ``calc_volatility``              | percentage (e.g. 16.48)  | × 100 (annualised)       |
-| ``calc_max_drawdown``            | percentage, negative     | × 100                    |
-| ``calc_return``                  | percentage               | × 100                    |
-| ``calc_sharpe``                  | ratio (dimensionless)     | no scaling (already a ratio) |
-| ``calculate_risk_indicators``    | mixed (see columns)      | volatility_*, max_drawdown_*, return_* are %; sharpe_* is ratio |
+All risk metrics are returned as **decimals** (0.1648 not 16.48). Callers
+that need to display the value as a percentage must multiply by 100 at
+the presentation layer only. The ``sharpe`` ratio is dimensionless
+and therefore has no scaling applied.
 
-PITFALL: callers comparing across columns MUST be aware that
-``volatility_20d`` is "16.48" while ``sharpe_1y`` is "1.5" (no × 100).
-Future refactor (Sprint N+1) should standardise all outputs to
-decimal form (0.1648) for consistency with the rest of the platform.
+| Function                         | Returns                  | Notes                       |
+|----------------------------------|--------------------------|-----------------------------|
+| ``calc_volatility``              | decimal (e.g. 0.1648)    | annualised (× sqrt(252))    |
+| ``calc_max_drawdown``            | decimal, negative        | no scaling                  |
+| ``calc_return``                  | decimal                  | no scaling                  |
+| ``calc_sharpe``                  | ratio (dimensionless)    | no scaling (already a ratio)|
+| ``calculate_risk_indicators``    | decimals                 | volatility_*, max_drawdown_*, return_* are decimals; sharpe_* is ratio |
+
+This module is the single source of truth for these unit conventions.
+The historical V1 behaviour (× 100) was inconsistent with ``sharpe`` and
+made cross-column comparisons (e.g. vol vs sharpe) require bespoke
+scaling in every caller.
 """
 
 import numpy as np
@@ -31,12 +36,12 @@ def calc_volatility(returns: pd.Series, window: int = 20) -> float:
         window: Lookback window for std calculation.
 
     Returns:
-        Annualized volatility as a percentage.
+        Annualized volatility as a decimal (e.g. 0.1648 ≈ 16.48%).
     """
     recent = returns.tail(window)
     if len(recent) < 2:
         return np.nan
-    return recent.std() * np.sqrt(252) * 100
+    return recent.std() * np.sqrt(252)
 
 
 def calc_max_drawdown(prices: pd.Series) -> float:
@@ -46,13 +51,14 @@ def calc_max_drawdown(prices: pd.Series) -> float:
         prices: Price series.
 
     Returns:
-        Maximum drawdown as a percentage (negative number).
+        Maximum drawdown as a decimal negative number
+        (e.g. -0.10 ≈ -10%).
     """
     if len(prices) < 2:
         return np.nan
     cummax = prices.cummax()
     drawdown = (prices - cummax) / cummax
-    return drawdown.min() * 100
+    return drawdown.min()
 
 
 def calc_sharpe(returns: pd.Series, risk_free_rate: float = 0.02) -> float:
@@ -82,11 +88,11 @@ def calc_return(prices: pd.Series, window: int) -> float:
         window: Number of periods to look back.
 
     Returns:
-        Period return as a percentage.
+        Period return as a decimal (e.g. 0.05 ≈ 5%).
     """
     if len(prices) < window:
         return np.nan
-    return (prices.iloc[-1] / prices.iloc[-window] - 1) * 100
+    return prices.iloc[-1] / prices.iloc[-window] - 1
 
 
 def calculate_risk_indicators(df: pd.DataFrame) -> pd.DataFrame:
@@ -99,7 +105,7 @@ def calculate_risk_indicators(df: pd.DataFrame) -> pd.DataFrame:
     Input DataFrame must contain columns:
         trade_date, open, high, low, close, volume
 
-    Output DataFrame adds columns:
+    Output DataFrame adds columns (all decimals except sharpe_1y):
         volatility_20d, volatility_60d, max_drawdown_1y, sharpe_1y,
         return_1w, return_1m, return_3m, return_6m, return_1y
 
@@ -118,14 +124,13 @@ def calculate_risk_indicators(df: pd.DataFrame) -> pd.DataFrame:
     result["daily_return"] = result["close"].pct_change()
 
     # Rolling calculations using expanding windows where appropriate
-    # Volatility: rolling std over fixed windows
+    # Volatility: rolling std over fixed windows, annualized
     result["volatility_20d"] = (
         result["close"]
         .pct_change()
         .rolling(window=20, min_periods=5)
         .std()
         * np.sqrt(252)
-        * 100
     )
     result["volatility_60d"] = (
         result["close"]
@@ -133,7 +138,6 @@ def calculate_risk_indicators(df: pd.DataFrame) -> pd.DataFrame:
         .rolling(window=60, min_periods=10)
         .std()
         * np.sqrt(252)
-        * 100
     )
 
     # Max drawdown: rolling 252-day max drawdown
@@ -151,14 +155,14 @@ def calculate_risk_indicators(df: pd.DataFrame) -> pd.DataFrame:
         .apply(lambda x: calc_sharpe(x), raw=False)
     )
 
-    # Period returns: true N-period lookback returns.
+    # Period returns: true N-period lookback returns (decimals).
     # pct_change(periods=N) computes close_t / close_{t-N} - 1, which is the
     # conventional N-day return.  Using this directly removes the previous
     # window/calc_return mismatch that produced one-period-too-short returns.
-    result["return_1w"] = result["close"].pct_change(periods=5) * 100
-    result["return_1m"] = result["close"].pct_change(periods=21) * 100
-    result["return_3m"] = result["close"].pct_change(periods=63) * 100
-    result["return_6m"] = result["close"].pct_change(periods=126) * 100
-    result["return_1y"] = result["close"].pct_change(periods=252) * 100
+    result["return_1w"] = result["close"].pct_change(periods=5)
+    result["return_1m"] = result["close"].pct_change(periods=21)
+    result["return_3m"] = result["close"].pct_change(periods=63)
+    result["return_6m"] = result["close"].pct_change(periods=126)
+    result["return_1y"] = result["close"].pct_change(periods=252)
 
     return result

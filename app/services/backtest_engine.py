@@ -61,6 +61,11 @@ class Trade:
 class BacktestResult:
     """Container for backtest results."""
 
+    # Sentinel value stored in metrics["error"] when the engine could not
+    # load any price data. Distinguishes "no data available" from a clean
+    # run with zero trades (where trade_count == 0 but no error key).
+    NO_DATA_ERROR = "no_data"
+
     def __init__(self):
         self.daily_nav: list[dict[str, Any]] = []
         self.trades: list[Trade] = []
@@ -167,9 +172,17 @@ def run_backtest(
     try:
         df = _load_bars(etf_code, start_date, end_date, db)
     except Exception:
+        # Structured "no data" result — callers can distinguish this from
+        # a clean backtest that simply produced zero trades by checking
+        # for metrics["error"] == BacktestResult.NO_DATA_ERROR.
+        result.metrics = {"error": BacktestResult.NO_DATA_ERROR}
         return result
 
     if df.empty:
+        # Structured "no data" result — callers can distinguish this from
+        # a clean backtest that simply produced zero trades by checking
+        # for metrics["error"] == BacktestResult.NO_DATA_ERROR.
+        result.metrics = {"error": BacktestResult.NO_DATA_ERROR}
         return result
 
     df = df.sort_values("trade_date").reset_index(drop=True)

@@ -34,8 +34,8 @@ export interface SectorRotationData {
 
 export const sectorRotationApi = {
   analyze: (trade_date?: string, window_weeks?: number) =>
-    client.get<SectorRotationData>('/analysis/sector-rotation', {
+    client.get<SectorRotationData>('/sector-rotation', {
       params: { trade_date, window_weeks },
     }),
-  sectors: () => client.get<{ items: { category: string; count: number }[] }>('/analysis/sector-rotation/sectors'),
+  sectors: () => client.get<{ items: { category: string; count: number }[] }>('/sector-rotation/sectors'),
 };

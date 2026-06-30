@@ -122,6 +122,14 @@ app.include_router(
 app.include_router(
     sector_rotation.router, prefix=f"{settings.api_v1_prefix}/analysis", tags=["Analysis"]
 )
+# Backward-compatible alias: expose the same sector-rotation endpoints
+# at /api/v1/sector-rotation (and /api/v1/sector-rotation/sectors) so
+# clients / docs that reference the documented shorter path still
+# resolve. The router's own paths already start with "/sector-rotation",
+# so the prefix here is just the API root.
+app.include_router(
+    sector_rotation.router, prefix=f"{settings.api_v1_prefix}", tags=["Sector Rotation"]
+)
 app.include_router(
     etf_scanner.router, prefix=f"{settings.api_v1_prefix}/etfs", tags=["ETF Scanner"]
 )

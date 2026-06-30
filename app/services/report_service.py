@@ -308,9 +308,10 @@ class ReportService:
         for code in codes:
             ind = ind_map.get(code)
             name = etf_name_map.get(code, code)
-            r1w = f"{float(ind.return_1w):.2f}%" if ind and ind.return_1w else "-"
-            r1m = f"{float(ind.return_1m):.2f}%" if ind and ind.return_1m else "-"
-            r1y = f"{float(ind.return_1y):.2f}%" if ind and ind.return_1y else "-"
+            # Stored as decimals; multiply by 100 for percentage display.
+            r1w = f"{float(ind.return_1w) * 100:.2f}%" if ind and ind.return_1w else "-"
+            r1m = f"{float(ind.return_1m) * 100:.2f}%" if ind and ind.return_1m else "-"
+            r1y = f"{float(ind.return_1y) * 100:.2f}%" if ind and ind.return_1y else "-"
             lines.append(f"| {code} | {name} | {r1w} | {r1m} | {r1y} |")
 
         lines.extend(["", "## 风险分析", ""])
@@ -320,8 +321,9 @@ class ReportService:
         for code in codes:
             ind = ind_map.get(code)
             name = etf_name_map.get(code, code)
-            vol = f"{float(ind.volatility_20d):.2f}%" if ind and ind.volatility_20d else "-"
-            mdd = f"{float(ind.max_drawdown_1y):.2f}%" if ind and ind.max_drawdown_1y else "-"
+            # Stored as decimals; multiply by 100 for percentage display.
+            vol = f"{float(ind.volatility_20d) * 100:.2f}%" if ind and ind.volatility_20d else "-"
+            mdd = f"{float(ind.max_drawdown_1y) * 100:.2f}%" if ind and ind.max_drawdown_1y else "-"
             sharpe = f"{float(ind.sharpe_1y):.2f}" if ind and ind.sharpe_1y else "-"
             risk = self._classify_risk_level(float(ind.sharpe_1y) if ind and ind.sharpe_1y else 0)
             lines.append(f"| {code} | {name} | {vol} | {mdd} | {sharpe} | {risk} |")
