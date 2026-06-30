@@ -38,8 +38,11 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: etf-backend
-    ports:
-      - "8000:8000"
+    # Note: backend is reached via the docker internal network only.
+    # etf-nginx (host-network) proxies /api/ → http://backend:8000.
+    # We do NOT publish 8000 on the host because etf-nginx already binds
+    # it for external traffic.
+    env_file: .env
     environment:
       TZ: Asia/Shanghai
       DATABASE_URL: postgresql+psycopg2://etf:${DB_PASSWORD:-etf_research_password}@postgres:5432/ad_research
@@ -64,4 +67,12 @@ volumes:
 
 networks:
   etf-network:
-    driver: bridge
+    # NOTE: existing redis/postgres containers are attached to a
+    # project-prefixed network (e.g. aliyun-ecs_etf-network), not the
+    # default ad-research_etf-network that docker compose would create
+    # when this file is invoked. Declaring the network external avoids
+    # creating a duplicate network that the redis/postgres containers
+    # are NOT on, which would otherwise produce
+    # "Temporary failure in name resolution" on backend startup.
+    external: true
+    name: aliyun-ecs_etf-network
