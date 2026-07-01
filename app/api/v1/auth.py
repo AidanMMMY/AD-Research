@@ -134,7 +134,7 @@ def login(request: LoginRequest, db: Session = Depends(_get_db)):
     return LoginResponse(
         access_token=access_token,
         refresh_token=raw_refresh,
-        user=UserResponse(username=user.username, role=user.role),
+        user=UserResponse(id=user.id, username=user.username, role=user.role),
     )
 
 
