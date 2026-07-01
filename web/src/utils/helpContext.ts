@@ -253,6 +253,34 @@ export function buildPoolDetailContext(
   ].join('\n');
 }
 
+export function buildListingPreviewContext(data: Record<string, any>): string {
+  const items = Array.isArray(data.items) ? data.items : [];
+  const itemSummary = items.slice(0, 10).map((it: any) => ({
+    id: it.id,
+    ts_code: it.ts_code,
+    name: it.name,
+    market: it.market,
+    board: it.board,
+    industry: it.industry,
+    issue_date: it.issue_date,
+    list_date: it.list_date,
+    issue_price: it.issue_price,
+    pe_ratio: it.pe_ratio,
+    funds_raised: it.funds_raised,
+    status: it.status,
+    sponsor: it.sponsor,
+  }));
+
+  return [
+    '页面：上市预告',
+    `符合条件的总数：${data.total ?? 0}`,
+    '当前筛选条件：',
+    summarizeObject((data.filters ?? {}) as Record<string, unknown>),
+    '前 10 条记录：',
+    summarizeList(itemSummary, 10),
+  ].join('\n');
+}
+
 export function buildContext(
   pageType: HelpPageType,
   data: Record<string, any>
@@ -283,6 +311,8 @@ export function buildContext(
         data.correlation,
         data.activeAlgorithm
       );
+    case 'listing_preview':
+      return buildListingPreviewContext(data);
     default:
       return summarizeObject(data);
   }

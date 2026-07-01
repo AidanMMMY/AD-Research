@@ -1,0 +1,86 @@
+import { Descriptions, Modal, Space, Tag } from 'antd';
+import type { ListingEventDetail, ListingStatus } from '@/types/listingEvent';
+import { STATUS_LABEL } from '@/types/listingEvent';
+
+interface DetailModalProps {
+  open: boolean;
+  loading: boolean;
+  event: ListingEventDetail | null | undefined;
+  onClose: () => void;
+}
+
+const STATUS_COLOR: Record<ListingStatus, string> = {
+  upcoming: 'blue',
+  subscribing: 'orange',
+  listed: 'green',
+  unknown: 'default',
+};
+
+const formatNumber = (v: number | null | undefined, suffix?: string): string => {
+  if (v === null || v === undefined) return '-';
+  return `${v.toLocaleString('zh-CN', { maximumFractionDigits: 4 })}${suffix ?? ''}`;
+};
+
+const formatYuan = (v: number | null | undefined): string => {
+  if (v === null || v === undefined) return '-';
+  // funds_raised is in 万元 (10K CNY); display in 亿元 for readability
+  return `${(v / 1e4).toFixed(2)} 亿元`;
+};
+
+const formatDate = (v: string | null | undefined): string => v ?? '-';
+
+export default function ListingEventDetailModal({ open, loading, event, onClose }: DetailModalProps) {
+  return (
+    <Modal
+      open={open}
+      onCancel={onClose}
+      footer={null}
+      width={720}
+      destroyOnClose
+      title={
+        event ? (
+          <Space>
+            <span style={{ fontWeight: 500 }}>{event.name}</span>
+            <Tag color={STATUS_COLOR[event.status]}>{STATUS_LABEL[event.status]}</Tag>
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-tertiary)' }}>
+              {event.ts_code}
+            </span>
+          </Space>
+        ) : (
+          '上市预告详情'
+        )
+      }
+    >
+      {loading ? (
+        <div style={{ padding: 24, textAlign: 'center', color: 'var(--text-tertiary)' }}>加载中...</div>
+      ) : event ? (
+        <Descriptions
+          bordered
+          size="small"
+          column={{ xs: 1, sm: 2, md: 2 }}
+          labelStyle={{ width: 120, color: 'var(--text-secondary)' }}
+        >
+          <Descriptions.Item label="证券代码">{event.ts_code}</Descriptions.Item>
+          <Descriptions.Item label="申购代码">{event.sub_code ?? '-'}</Descriptions.Item>
+          <Descriptions.Item label="证券简称">{event.name}</Descriptions.Item>
+          <Descriptions.Item label="交易所">{event.market ?? '-'}</Descriptions.Item>
+          <Descriptions.Item label="板块">{event.board ?? '-'}</Descriptions.Item>
+          <Descriptions.Item label="行业">{event.industry ?? '-'}</Descriptions.Item>
+          <Descriptions.Item label="发行日期">{formatDate(event.issue_date)}</Descriptions.Item>
+          <Descriptions.Item label="上市日期">{formatDate(event.list_date)}</Descriptions.Item>
+          <Descriptions.Item label="发行价 (元)">{formatNumber(event.issue_price)}</Descriptions.Item>
+          <Descriptions.Item label="发行市盈率">{formatNumber(event.pe_ratio)}</Descriptions.Item>
+          <Descriptions.Item label="申购上限 (万元)">{formatNumber(event.limit_amount)}</Descriptions.Item>
+          <Descriptions.Item label="募集资金">{formatYuan(event.funds_raised)}</Descriptions.Item>
+          <Descriptions.Item label="发行后总股本 (万股)">{formatNumber(event.market_amount)}</Descriptions.Item>
+          <Descriptions.Item label="保荐机构" span={2}>{event.sponsor ?? '-'}</Descriptions.Item>
+          <Descriptions.Item label="承销商" span={2}>{event.underwriter ?? '-'}</Descriptions.Item>
+          <Descriptions.Item label="数据来源">{event.source}</Descriptions.Item>
+          <Descriptions.Item label="更新时间">{event.updated_at ?? '-'}</Descriptions.Item>
+        </Descriptions>
+      ) : (
+        <div style={{ padding: 24, textAlign: 'center', color: 'var(--text-tertiary)' }}>未找到记录</div>
+      )}
+    </Modal>
+  );
+}
