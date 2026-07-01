@@ -13,6 +13,7 @@ from app.models.etf import (
     StockIncome,
 )
 from app.models.etl import BacktestResult, DataSourceConfig, ETLLog, Signal, StrategyConfig
+from app.models.listing import ListingEvent
 from app.models.news import XueqiuFetchState, XueqiuUserCache
 from app.models.pool import ETFPools, PoolMember, PoolSnapshot, PoolWeight
 from app.models.scoring import ETFScore, ReportMetadata, ScoreTemplate
@@ -65,4 +66,6 @@ __all__ = [
     # News / Xueqiu
     "XueqiuUserCache",
     "XueqiuFetchState",
+    # Listing / IPO events
+    "ListingEvent",
 ]

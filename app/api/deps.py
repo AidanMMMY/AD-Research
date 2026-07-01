@@ -27,6 +27,7 @@ from app.services.etf_scanner_service import ETFScannerService
 from app.services.etf_service import ETFService
 from app.services.favorite_service import FavoriteService
 from app.services.indicator_service import IndicatorService
+from app.services.listing_event_service import ListingEventService
 from app.services.market_data_service import MarketDataService
 from app.services.notification_service import NotificationService
 from app.services.paper_trading_service import PaperTradingService
@@ -68,6 +69,7 @@ __all__ = [
     "get_favorite_service",
     "get_paper_trading_service",
     "get_stock_fundamental_service",
+    "get_listing_event_service",
 ]
 
 
@@ -270,3 +272,8 @@ def get_stock_fundamental_service(db: Session = Depends(get_db)) -> StockFundame
 def get_risk_analysis_service(db: Session = Depends(get_db)) -> RiskAnalysisService:
     """Provide a RiskAnalysisService instance with a DB session."""
     return RiskAnalysisService(db)
+
+
+def get_listing_event_service(db: Session = Depends(get_db)) -> ListingEventService:
+    """Provide a ListingEventService instance with a DB session."""
+    return ListingEventService(db)

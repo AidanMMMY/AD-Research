@@ -26,6 +26,7 @@ from app.api.v1 import (
     favorites,
     indicators,
     live_trading,
+    listing_events,
     market_data,
     news,
     notifications,
@@ -45,6 +46,9 @@ from app.api.v1 import (
 )
 from app.config import get_settings
 from app.core.scheduler import init_scheduler, scheduler, shutdown_scheduler
+
+# Import strategy modules so all built-in strategies self-register.
+import app.strategies  # noqa: F401
 
 settings = get_settings()
 
@@ -175,6 +179,11 @@ app.include_router(
     live_trading.router,
     prefix=f"{settings.api_v1_prefix}/live-trading",
     tags=["Live Trading"],
+)
+app.include_router(
+    listing_events.router,
+    prefix=f"{settings.api_v1_prefix}",
+    tags=["Listing Events"],
 )
 app.include_router(
     stock_fundamentals.router,

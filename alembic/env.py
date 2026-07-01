@@ -21,6 +21,7 @@ from app.models.etf import *
 from app.models.etf_scan_log import *
 from app.models.etl import *
 from app.models.favorite import *
+from app.models.listing import *
 from app.models.notification import *
 from app.models.pool import *
 from app.models.research import *
