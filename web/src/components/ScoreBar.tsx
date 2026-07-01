@@ -31,6 +31,7 @@ export default function ScoreBar({ score, size = 'default' }: ScoreBarProps) {
       </div>
       {size !== 'small' && (
         <span
+          className="tabular-nums"
           style={{
             fontSize: 'var(--text-body-size)',
             fontWeight: 500,

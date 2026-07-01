@@ -35,7 +35,7 @@ const SENTIMENT_LABELS: Record<SentimentLabel, string> = {
   negative: '看空',
 };
 
-const IMPORTANCE_COLOR = '#facc15';
+const IMPORTANCE_COLOR = 'var(--color-warning-bright)';
 
 function formatRelative(iso: string): string {
   const t = dayjs(iso);

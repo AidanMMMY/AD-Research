@@ -43,6 +43,18 @@ function parseColor(value: string, alpha: number): string {
  */
 export default function ParticleBackground() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  // Accessibility: respect prefers-reduced-motion. The particle network is a
+  // continuous 60fps canvas animation that can be visually intense, so we skip
+  // rendering entirely when the user has opted out of motion.
+  const prefersReducedMotion =
+    typeof window !== 'undefined' &&
+    typeof window.matchMedia === 'function' &&
+    window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  if (prefersReducedMotion) {
+    return null;
+  }
   const particlesRef = useRef<Particle[]>([]);
   const mouseRef = useRef({ x: -1000, y: -1000 });
   const rafRef = useRef<number>();

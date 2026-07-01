@@ -74,7 +74,7 @@ function StatusChip({ status, count, active, onClick }: StatusChipProps) {
       <Tag color={STATUS_COLOR[status]} style={{ margin: 0 }}>
         {STATUS_LABEL[status]}
       </Tag>
-      <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 600 }}>{count}</span>
+      <span className="tabular-nums" style={{ fontFamily: 'var(--font-mono)', fontWeight: 600 }}>{count}</span>
     </button>
   );
 }
@@ -185,6 +185,7 @@ export default function ListingPreview() {
         <button
           type="button"
           onClick={() => handleOpenDetail(record.id)}
+          className="tabular-nums"
           style={{
             background: 'none',
             border: 'none',
@@ -240,7 +241,7 @@ export default function ListingPreview() {
       dataIndex: 'issue_price',
       width: 80,
       render: (v: number | null) => (
-        <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)' }}>
+        <span className="tabular-nums" style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)' }}>
           {formatPrice(v)}
         </span>
       ),
@@ -250,7 +251,7 @@ export default function ListingPreview() {
       dataIndex: 'pe_ratio',
       width: 90,
       render: (v: number | null) => (
-        <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)' }}>
+        <span className="tabular-nums" style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)' }}>
           {formatPe(v)}
         </span>
       ),
@@ -260,7 +261,7 @@ export default function ListingPreview() {
       dataIndex: 'funds_raised',
       width: 110,
       render: (v: number | null) => (
-        <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)' }}>
+        <span className="tabular-nums" style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)' }}>
           {formatMoney(v)}
         </span>
       ),
@@ -334,7 +335,7 @@ export default function ListingPreview() {
           />
         ))}
         <span style={{ marginLeft: 'auto', fontSize: 'var(--text-small-size)', color: 'var(--text-tertiary)' }}>
-          共 <span style={{ color: 'var(--accent)', fontWeight: 500 }}>{total}</span> 条
+          共 <span className="tabular-nums" style={{ color: 'var(--accent)', fontWeight: 500 }}>{total}</span> 条
         </span>
       </div>
 

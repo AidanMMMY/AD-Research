@@ -42,7 +42,7 @@ export default function ListingEventDetailModal({ open, loading, event, onClose 
           <Space>
             <span style={{ fontWeight: 500 }}>{event.name}</span>
             <Tag color={STATUS_COLOR[event.status]}>{STATUS_LABEL[event.status]}</Tag>
-            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-tertiary)' }}>
+            <span className="tabular-nums" style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-tertiary)' }}>
               {event.ts_code}
             </span>
           </Space>
@@ -59,6 +59,8 @@ export default function ListingEventDetailModal({ open, loading, event, onClose 
           size="small"
           column={{ xs: 1, sm: 2, md: 2 }}
           labelStyle={{ width: 120, color: 'var(--text-secondary)' }}
+          contentStyle={{}}
+          rootClassName="tabular-nums"
         >
           <Descriptions.Item label="证券代码">{event.ts_code}</Descriptions.Item>
           <Descriptions.Item label="申购代码">{event.sub_code ?? '-'}</Descriptions.Item>

@@ -72,7 +72,7 @@ export default function StatCard({
           ) : (
             <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px' }}>
               <span
-                className="stat-value"
+                className="stat-value tabular-nums"
                 style={{
                   fontSize: 'var(--text-data-xl-size)',
                   fontWeight: 400,

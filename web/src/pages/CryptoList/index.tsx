@@ -54,6 +54,7 @@ export default function CryptoList() {
       render: (v: number) =>
         v != null ? (
           <span
+            className="tabular-nums"
             style={{
               fontSize: 'var(--text-body-size)',
               fontWeight: 600,
@@ -86,6 +87,7 @@ export default function CryptoList() {
       render: (v: number) =>
         v != null ? (
           <span
+            className="tabular-nums"
             style={{
               fontSize: 'var(--text-small-size)',
               color: 'var(--text-tertiary)',
@@ -110,6 +112,7 @@ export default function CryptoList() {
       width: 90,
       render: (v: string) => (
         <span
+          className="tabular-nums"
           style={{
             fontSize: 'var(--text-small-size)',
             color: 'var(--text-tertiary)',
@@ -219,6 +222,7 @@ export default function CryptoList() {
                 />
                 <div style={{ textAlign: 'right' }}>
                   <div
+                    className="tabular-nums"
                     style={{
                       fontFamily: 'var(--font-mono)',
                       fontWeight: 600,

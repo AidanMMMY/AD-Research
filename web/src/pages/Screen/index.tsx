@@ -98,7 +98,7 @@ export default function Screen() {
                 border: `1px solid ${preset === p.key ? 'var(--accent-border)' : 'var(--border-default)'}`,
                 background: preset === p.key ? 'var(--accent-dim)' : 'var(--bg-input)',
                 color: preset === p.key ? 'var(--accent)' : 'var(--text-secondary)',
-                transition: 'all 200ms',
+                transition: 'background-color 200ms ease, color 200ms ease, border-color 200ms ease',
               }}
               onClick={() => applyPreset(preset === p.key ? null : p.key)}
             >

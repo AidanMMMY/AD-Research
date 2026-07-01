@@ -14,7 +14,7 @@ const baseStyle: CSSProperties = {
   fontSize: 'var(--text-code-size)',
   fontWeight: 500,
   fontFamily: 'var(--font-mono)',
-  transition: 'all var(--transition-fast)',
+  transition: 'background var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast)',
 };
 
 export default function ReturnTag({ value }: ReturnTagProps) {
@@ -23,6 +23,7 @@ export default function ReturnTag({ value }: ReturnTagProps) {
   if (value === undefined || value === null) {
     return (
       <span
+        className="tabular-nums"
         style={{
           ...baseStyle,
           color: 'var(--text-tertiary)',
@@ -36,6 +37,7 @@ export default function ReturnTag({ value }: ReturnTagProps) {
   }
   return (
     <span
+      className="tabular-nums"
       style={{
         ...baseStyle,
         color: getReturnColor(value, colorConvention),

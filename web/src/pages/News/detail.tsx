@@ -47,7 +47,7 @@ const SENTIMENT_LABELS: Record<SentimentLabel, string> = {
 
 const SOCIAL_SOURCES = new Set(['xueqiu', 'reddit', 'weibo']);
 
-const IMPORTANCE_COLOR = '#facc15';
+const IMPORTANCE_COLOR = 'var(--color-warning-bright)';
 
 function ImportanceStars({ level }: { level: ImportanceLevel | null }) {
   if (!level) return null;

@@ -2,6 +2,23 @@
    Global Ant Design Overrides — Swiss Minimal + Hybrid Amber
    ============================================================ */
 
+/* Utility: stable-width numbers in tables and stat cells
+   Use className="tabular-nums" on any element that renders numeric data
+   so columns don't jiggle when values change width. */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+}
+
+/* Utility: font families — prefer className over inline style={{ fontFamily }} */
+.font-mono {
+  font-family: var(--font-mono);
+}
+
+.font-sans {
+  font-family: var(--font-sans);
+}
+
 .ant-layout {
   background: var(--bg-base) !important;
 }
@@ -138,7 +155,7 @@
   border-color: var(--border-default) !important;
   color: var(--text-primary) !important;
   border-radius: var(--radius-md) !important;
-  transition: all var(--transition-fast);
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
 }
 
 .ant-input:hover,
@@ -179,7 +196,7 @@
 /* Button */
 .ant-btn {
   border-radius: var(--radius-md);
-  transition: all var(--transition-fast);
+  transition: background var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast), box-shadow var(--transition-fast);
   font-weight: 500;
 }
 
@@ -610,3 +627,20 @@ a:hover {
 .ad-density-comfortable .ant-table-thead > tr > th { padding: 8px 12px !important; }
 .ad-density-spacious .ant-table-tbody > tr > td,
 .ad-density-spacious .ant-table-thead > tr > th { padding: 12px 16px !important; }
+
+/* ============================================================
+   Accessibility: respect prefers-reduced-motion
+   Disables non-essential CSS animations and transitions for
+   users who have opted into reduced motion in their OS
+   (vestibular disorders, focus, performance).
+   ============================================================ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

@@ -177,7 +177,7 @@ export default function PaperTrading() {
       dataIndex: 'quantity',
       key: 'qty',
       render: (v: number) => (
-        <span style={{ fontFamily: 'var(--font-mono)' }}>{v}</span>
+        <span className="font-mono">{v}</span>
       ),
     },
     {
@@ -185,7 +185,7 @@ export default function PaperTrading() {
       dataIndex: 'avg_cost',
       key: 'avg',
       render: (v: number) => (
-        <span style={{ fontFamily: 'var(--font-mono)' }}>{fmtUSDT(v)}</span>
+        <span className="font-mono">{fmtUSDT(v)}</span>
       ),
     },
     {
@@ -193,7 +193,7 @@ export default function PaperTrading() {
       dataIndex: 'current_price',
       key: 'price',
       render: (v: number | null) => (
-        <span style={{ fontFamily: 'var(--font-mono)' }}>{fmtUSDT(v)}</span>
+        <span className="font-mono">{fmtUSDT(v)}</span>
       ),
     },
     {
@@ -260,7 +260,7 @@ export default function PaperTrading() {
       dataIndex: 'instrument_code',
       key: 'code',
       render: (v: string) => (
-        <span style={{ fontFamily: 'var(--font-mono)' }}>{v}</span>
+        <span className="font-mono">{v}</span>
       ),
     },
     {
@@ -268,7 +268,7 @@ export default function PaperTrading() {
       dataIndex: 'quantity',
       key: 'qty',
       render: (v: number) => (
-        <span style={{ fontFamily: 'var(--font-mono)' }}>{v}</span>
+        <span className="font-mono">{v}</span>
       ),
     },
     {
@@ -276,7 +276,7 @@ export default function PaperTrading() {
       dataIndex: 'price',
       key: 'price',
       render: (v: number | null) => (
-        <span style={{ fontFamily: 'var(--font-mono)' }}>{fmtUSDT(v)}</span>
+        <span className="font-mono">{fmtUSDT(v)}</span>
       ),
     },
     {

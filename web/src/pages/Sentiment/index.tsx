@@ -242,7 +242,7 @@ function DistributionRadar({ row }: { row: SymbolAggregate }) {
   return (
     <svg width={size} height={size}>
       <circle cx={cx} cy={cy} r={r} fill="none" stroke="var(--border-default)" strokeWidth={0.5} />
-      <path d={path} fill="rgba(250, 204, 21, 0.18)" stroke="#facc15" strokeWidth={1.25} />
+      <path d={path} fill="var(--color-warning-bright-dim)" stroke="var(--color-warning-bright)" strokeWidth={1.25} />
       {points.map((p, i) => (
         <text
           key={i}
@@ -464,7 +464,7 @@ export default function SentimentOverview() {
                         borderRadius: 'var(--radius-md)',
                         padding: '10px 12px',
                         cursor: 'pointer',
-                        transition: 'all var(--transition-fast)',
+                        transition: 'transform var(--transition-fast)',
                         minHeight: 64,
                         display: 'flex',
                         flexDirection: 'column',

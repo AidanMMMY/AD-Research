@@ -78,7 +78,7 @@ const SENTIMENT_LABELS: Record<SentimentLabel, string> = {
   negative: '看空',
 };
 
-const IMPORTANCE_COLOR = '#facc15';
+const IMPORTANCE_COLOR = 'var(--color-warning-bright)';
 
 /** Build ISO date for `dayjs()` value. */
 function toIso(d: Dayjs | null | undefined, endOfDay = false): string | undefined {

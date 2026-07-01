@@ -185,7 +185,7 @@ function ServerHealthCard({ container }: { container: ContainerStats }) {
         border: `1px solid ${isRunning ? 'var(--border-default)' : 'var(--color-error)'}`,
         padding: '20px 24px',
         minWidth: 200,
-        transition: 'all var(--transition-fast)',
+        transition: 'background var(--transition-fast), border-color var(--transition-fast)',
       }}
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>

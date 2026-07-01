@@ -150,7 +150,7 @@ function SidebarContent({ collapsed, onItemClick }: SidebarContentProps) {
                 marginBottom: 2,
                 borderRadius: 'var(--radius-lg)',
                 cursor: 'pointer',
-                transition: 'all var(--transition-fast)',
+                transition: 'background var(--transition-fast), color var(--transition-fast)',
                 justifyContent: collapsed ? 'center' : 'flex-start',
                 color: isActive ? 'var(--text-primary)' : 'var(--text-secondary)',
                 background: isActive ? 'var(--bg-active)' : 'transparent',
@@ -280,7 +280,7 @@ export default function AppLayout() {
                 justifyContent: 'center',
                 cursor: 'pointer',
                 color: 'var(--text-secondary)',
-                transition: 'all 200ms',
+                transition: 'background 200ms ease, color 200ms ease',
               }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.background = 'var(--bg-active)';
@@ -338,7 +338,7 @@ export default function AppLayout() {
                   justifyContent: 'center',
                   cursor: 'pointer',
                   color: 'var(--text-secondary)',
-                  transition: 'all 200ms',
+                  transition: 'background 200ms ease, color 200ms ease',
                 }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.background = 'var(--bg-active)';
