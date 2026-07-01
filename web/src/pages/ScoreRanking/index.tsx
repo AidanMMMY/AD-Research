@@ -11,6 +11,8 @@ import InstrumentCodeTag from '@/components/InstrumentCodeTag';
 import ScoreBar from '@/components/ScoreBar';
 import Sparkline from '@/components/Sparkline';
 import TemplateManagement from '@/components/TemplateManagement';
+import PageHeader from '@/components/PageHeader';
+import LastUpdated from '@/components/LastUpdated';
 import { buildScoreRankingContext } from '@/utils/helpContext';
 import { getQuickQuestions } from '@/utils/helpPrompts';
 
@@ -31,7 +33,7 @@ export default function ScoreRanking() {
   const { open } = useAIHelp();
   const [topTab, setTopTab] = useState<TopTab>('ranking');
   const [templateId, setTemplateId] = useState<number | undefined>();
-  const { data: scoresData } = useScores({ template_id: templateId, limit: 50 });
+  const { data: scoresData, dataUpdatedAt: scoresUpdatedAt, isFetching } = useScores({ template_id: templateId, limit: 50 });
   const { data: templates } = useScoreTemplates();
 
   const activeTemplate = templates?.find((t) =>
@@ -93,8 +95,12 @@ export default function ScoreRanking() {
 
   return (
     <div>
-      <h1 style={{ fontSize: 'var(--text-h1-size)', fontWeight: 500, color: 'var(--text-primary)', margin: '0 0 8px', letterSpacing: '-0.03em' }}>评分排名</h1>
-      <p style={{ margin: '0 0 32px', color: 'var(--text-tertiary)', fontSize: 'var(--text-body-size)' }}>查看全市场标的综合评分排名，对比不同模板下的多维评估结果</p>
+      <PageHeader
+        eyebrow="评分"
+        title="评分排名"
+        description="查看全市场标的综合评分排名，对比不同模板下的多维评估结果"
+        extra={<LastUpdated at={scoresUpdatedAt} loading={isFetching && !scoresData} />}
+      />
 
       <Tabs
         activeKey={topTab}
@@ -108,6 +114,63 @@ export default function ScoreRanking() {
 
       {topTab === 'ranking' && (
         <>
+          {/* Top-ranked instrument summary strip — gives the page a
+              single visual anchor before the table. */}
+          {scoresData?.items && scoresData.items.length > 0 && (
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(4, 1fr)',
+                borderTop: '1px solid var(--border-default)',
+                borderBottom: '1px solid var(--border-default)',
+                marginBottom: 'var(--space-5)',
+              }}
+            >
+              <div style={{ padding: '20px 16px', borderRight: '1px solid var(--border-default)' }}>
+                <div style={{ fontSize: 'var(--text-label-size)', color: 'var(--text-tertiary)', fontWeight: 500, marginBottom: 12, letterSpacing: '0.12em', textTransform: 'uppercase' }}>
+                  榜首标的
+                </div>
+                <InstrumentCodeTag code={scoresData.items[0].etf_code} name={scoresData.items[0].etf_name} />
+                <div className="tabular-nums" style={{ marginTop: 8, fontSize: 'var(--text-data-md-size)', fontFamily: 'var(--font-mono)', color: 'var(--text-primary)' }}>
+                  {scoresData.items[0].composite_score?.toFixed(1) ?? '—'}
+                </div>
+              </div>
+              <div style={{ padding: '20px 16px', borderRight: '1px solid var(--border-default)' }}>
+                <div style={{ fontSize: 'var(--text-label-size)', color: 'var(--text-tertiary)', fontWeight: 500, marginBottom: 12, letterSpacing: '0.12em', textTransform: 'uppercase' }}>
+                  使用模板
+                </div>
+                <div style={{ fontSize: 'var(--text-data-md-size)', color: 'var(--text-primary)' }}>
+                  {activeTemplate?.name ?? '默认'}
+                </div>
+                <div style={{ marginTop: 8, fontSize: 'var(--text-small-size)', color: 'var(--text-tertiary)' }}>
+                  {activeTemplate ? `${Object.keys(activeTemplate.weights ?? {}).length} 个维度` : '系统内置'}
+                </div>
+              </div>
+              <div style={{ padding: '20px 16px', borderRight: '1px solid var(--border-default)' }}>
+                <div style={{ fontSize: 'var(--text-label-size)', color: 'var(--text-tertiary)', fontWeight: 500, marginBottom: 12, letterSpacing: '0.12em', textTransform: 'uppercase' }}>
+                  排名数量
+                </div>
+                <div className="tabular-nums" style={{ fontSize: 'var(--text-data-md-size)', color: 'var(--text-primary)', fontFamily: 'var(--font-mono)' }}>
+                  {scoresData.items.length}
+                </div>
+                <div style={{ marginTop: 8, fontSize: 'var(--text-small-size)', color: 'var(--text-tertiary)' }}>
+                  当前页 Top {scoresData.items.length}
+                </div>
+              </div>
+              <div style={{ padding: '20px 16px' }}>
+                <div style={{ fontSize: 'var(--text-label-size)', color: 'var(--text-tertiary)', fontWeight: 500, marginBottom: 12, letterSpacing: '0.12em', textTransform: 'uppercase' }}>
+                  榜首收益得分
+                </div>
+                <div className="tabular-nums" style={{ fontSize: 'var(--text-data-md-size)', color: 'var(--text-primary)', fontFamily: 'var(--font-mono)' }}>
+                  {scoresData.items[0].score_return?.toFixed(1) ?? '—'}
+                </div>
+                <div style={{ marginTop: 8, fontSize: 'var(--text-small-size)', color: 'var(--text-tertiary)' }}>
+                  满分 100
+                </div>
+              </div>
+            </div>
+          )}
+
           <Panel variant="minimal" style={{ marginBottom: 20 }}>
             <Tabs
               activeKey={String(templateId || templates?.find((t) => t.is_default)?.id || '')}

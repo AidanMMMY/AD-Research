@@ -92,7 +92,7 @@ export default function Login() {
       <div
         style={{
           width: 420,
-          padding: '48px 40px',
+          padding: 'var(--space-8) var(--space-7)',
           background: 'rgba(17, 17, 17, 0.72)',
           backdropFilter: 'blur(20px)',
           WebkitBackdropFilter: 'blur(20px)',
@@ -209,7 +209,7 @@ export default function Login() {
             disabled={loading}
             style={{
               width: '100%',
-              padding: '14px',
+              padding: 'var(--space-4)',
               marginTop: 8,
               borderRadius: 'var(--radius-lg)',
               border: 'none',

@@ -145,7 +145,7 @@ export default function SectorRotation() {
           <div
             key={m.title}
             style={{
-              padding: '20px 16px',
+              padding: 'var(--space-5) var(--space-4)',
               borderRight: i < 2 ? '1px solid var(--border-default)' : 'none',
             }}
           >

@@ -7,6 +7,7 @@ import Panel from '@/components/Panel';
 import StrategyCard from '@/components/StrategyCard';
 import StrategyParamForm from '@/components/StrategyParamForm';
 import InstrumentSelector from '@/components/InstrumentSelector';
+import PageHeader from '@/components/PageHeader';
 import { useStrategyCatalog } from '@/hooks/useStrategyCatalog';
 import { useRunStrategy } from '@/hooks/useRunStrategy';
 import { useStrategies } from '@/hooks/useStrategies';
@@ -110,27 +111,16 @@ export default function StrategyLibrary() {
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 32 }}>
-        <div>
-          <h1
-            style={{
-              fontSize: 'var(--text-h1-size)',
-              fontWeight: 500,
-              color: 'var(--text-primary)',
-              margin: '0 0 8px',
-              letterSpacing: '-0.03em',
-            }}
-          >
-            策略库
-          </h1>
-          <p style={{ margin: 0, color: 'var(--text-tertiary)', fontSize: 'var(--text-body-size)' }}>
-            浏览系统内置策略，按家族快速筛选，一键创建配置或运行回测
-          </p>
-        </div>
-        <Button icon={<BookOutlined />} onClick={() => navigate('/strategies')}>
-          策略管理
-        </Button>
-      </div>
+      <PageHeader
+        eyebrow="策略"
+        title="策略库"
+        description="浏览系统内置策略，按家族快速筛选，一键创建配置或运行回测"
+        extra={
+          <Button icon={<BookOutlined />} onClick={() => navigate('/strategies')}>
+            策略管理
+          </Button>
+        }
+      />
 
       <Tabs
         activeKey={activeFamily}

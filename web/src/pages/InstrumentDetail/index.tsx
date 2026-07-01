@@ -137,7 +137,7 @@ export default function InstrumentDetail() {
     enabled: !!code && isStock,
   });
 
-  if (instrumentLoading) return <Spin size="large" style={{ display: 'block', margin: '100px auto' }} />;
+  if (instrumentLoading) return <Spin size="large" style={{ display: 'block', margin: 'var(--space-9) auto' }} />;
   if (instrumentError) return <Alert message="加载标的详情失败" description={(instrumentError as Error).message} type="error" style={{ margin: 'var(--space-6)' }} />;
   if (!instrument) return <Alert message="标的不存在" description={`未找到代码为 ${code} 的标的`} type="warning" style={{ margin: 'var(--space-6)' }} />;
 
@@ -389,7 +389,7 @@ export default function InstrumentDetail() {
                   {sentiment ? (
                     <div style={{ textAlign: 'center' }}>
                       {/* Score display */}
-                      <div style={{ fontSize: 48, fontWeight: 700, color: SENTIMENT_COLORS[sentiment.label] || 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>
+                      <div style={{ fontSize: 'var(--text-data-xl-size)', fontWeight: 700, color: SENTIMENT_COLORS[sentiment.label] || 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>
                         {sentiment.avg_score.toFixed(2)}
                       </div>
                       <ThemeTag
@@ -492,7 +492,7 @@ export default function InstrumentDetail() {
                           <div
                             key={m.title}
                             style={{
-                              padding: '20px 16px',
+                              padding: 'var(--space-5) var(--space-4)',
                               borderRight: hasRightBorder ? '1px solid var(--border-default)' : 'none',
                               borderBottom: isLastRow ? 'none' : '1px solid var(--border-default)',
                             }}

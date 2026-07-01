@@ -1,7 +1,8 @@
-import { useParams } from 'react-router-dom';
-import { Statistic, Table, Spin, Tabs } from 'antd';
-import { ArrowUpOutlined, ArrowDownOutlined } from '@ant-design/icons';
+import { useParams, useNavigate } from 'react-router-dom';
+import { Statistic, Table, Spin, Tabs, Alert, Button } from 'antd';
+import { ArrowUpOutlined, ArrowDownOutlined, ExperimentOutlined } from '@ant-design/icons';
 import Panel from '@/components/Panel';
+import PageHeader from '@/components/PageHeader';
 import HelpTrigger from '@/components/HelpTrigger';
 import HelpPopover from '@/components/HelpPopover';
 import { useBacktestDetail } from '@/hooks/useBacktests';
@@ -13,16 +14,60 @@ import { useIsMobile } from '@/hooks/useBreakpoint';
 import { buildBacktestDetailContext } from '@/utils/helpContext';
 import { getQuickQuestions } from '@/utils/helpPrompts';
 import type { AttributionEffect } from '@/types/backtest';
+import dayjs from 'dayjs';
 
 export default function BacktestDetail() {
   const { id } = useParams<{ id: string }>();
-  const { data, isLoading } = useBacktestDetail(id || '');
+  const navigate = useNavigate();
+  const { data, isLoading, error } = useBacktestDetail(id || '');
   const { data: attribution, isLoading: attributionLoading } = useAttribution(id || '');
   const { open } = useAIHelp();
   const isMobile = useIsMobile();
 
-  if (isLoading) return <Spin size="large" style={{ display: 'block', margin: '100px auto' }} />;
-  if (!data) return <div>回测未找到</div>;
+  if (isLoading) {
+    return (
+      <div role="status" aria-live="polite" style={{ padding: 'var(--space-9) 0', textAlign: 'center' }}>
+        <Spin size="large" />
+        <div style={{ marginTop: 'var(--space-4)', color: 'var(--text-tertiary)', fontSize: 'var(--text-body-size)' }}>
+          正在加载回测结果…
+        </div>
+      </div>
+    );
+  }
+  if (error) {
+    return (
+      <div style={{ marginTop: 'var(--space-6)' }}>
+        <Alert
+          message="加载回测失败"
+          description={(error as Error)?.message ?? '网络异常，请稍后重试'}
+          type="error"
+          showIcon
+          action={
+            <Button size="small" onClick={() => navigate('/backtests')}>
+              返回回测列表
+            </Button>
+          }
+        />
+      </div>
+    );
+  }
+  if (!data) {
+    return (
+      <div style={{ marginTop: 'var(--space-6)' }}>
+        <Alert
+          message="回测不存在"
+          description={`未找到 ID 为 ${id} 的回测记录，可能已被删除或尚未生成`}
+          type="warning"
+          showIcon
+          action={
+            <Button size="small" onClick={() => navigate('/backtests')}>
+              返回回测列表
+            </Button>
+          }
+        />
+      </div>
+    );
+  }
 
   const metrics = data.metrics || {};
 
@@ -207,5 +252,122 @@ export default function BacktestDetail() {
     { key: 'trades', label: '交易记录', children: tradesTab },
   ];
 
-  return <Tabs items={tabItems} defaultActiveKey="overview" />;
+  // Build a compact meta line: strategy type, date range, status.
+  const dateRange = (data.daily_nav && data.daily_nav.length > 0)
+    ? `${data.daily_nav[0].date} ~ ${data.daily_nav[data.daily_nav.length - 1].date}`
+    : null;
+
+  return (
+    <div>
+      <PageHeader
+        eyebrow={<span><ExperimentOutlined style={{ marginRight: 6 }} />回测 #{data.id}</span>}
+        title={`回测详情 #${data.id}`}
+        description={
+          [
+            data.strategy_id ? `策略 ID：${data.strategy_id}` : null,
+            dateRange,
+            data.created_at ? `创建于 ${dayjs(data.created_at).format('YYYY-MM-DD HH:mm')}` : null,
+          ].filter(Boolean).join(' · ')
+        }
+        extra={
+          <HelpTrigger tooltip="AI 解释回测指标" onClick={handleOpenHelp} />
+        }
+      />
+
+      {/* Hero KPI strip — the page's single visual anchor. */}
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)',
+          borderTop: '1px solid var(--border-default)',
+          borderBottom: '1px solid var(--border-default)',
+          marginBottom: 'var(--space-5)',
+        }}
+      >
+        {[
+          {
+            label: '总收益',
+            value: metrics.total_return,
+            suffix: '%',
+            colorKey: 'total_return',
+          },
+          {
+            label: '夏普比率',
+            value: metrics.sharpe_ratio,
+            suffix: undefined,
+            colorKey: 'sharpe',
+          },
+          {
+            label: '最大回撤',
+            value: metrics.max_drawdown,
+            suffix: '%',
+            colorKey: 'drawdown',
+          },
+          {
+            label: '胜率',
+            value: metrics.win_rate,
+            suffix: '%',
+            colorKey: 'win_rate',
+          },
+        ].map((kpi, i) => {
+          const isLastCol = (i + 1) % (isMobile ? 2 : 4) === 0;
+          const color = kpi.value == null
+            ? 'var(--text-tertiary)'
+            : kpi.colorKey === 'drawdown'
+              ? 'var(--color-fall)'
+              : kpi.colorKey === 'total_return'
+                ? (kpi.value >= 0 ? 'var(--color-rise)' : 'var(--color-fall)')
+                : 'var(--text-primary)';
+          return (
+            <div
+              key={kpi.label}
+              style={{
+                padding: '20px 16px',
+                borderRight: isLastCol ? 'none' : '1px solid var(--border-default)',
+              }}
+            >
+              <div
+                style={{
+                  fontSize: 'var(--text-label-size)',
+                  color: 'var(--text-tertiary)',
+                  fontWeight: 500,
+                  marginBottom: 12,
+                  letterSpacing: '0.12em',
+                  textTransform: 'uppercase',
+                }}
+              >
+                {kpi.label}
+              </div>
+              <div
+                className="tabular-nums"
+                style={{
+                  fontSize: 'var(--text-data-xl-size)',
+                  fontWeight: 400,
+                  color,
+                  fontFamily: 'var(--font-mono)',
+                  lineHeight: 1.1,
+                  letterSpacing: '-0.02em',
+                }}
+              >
+                {kpi.value != null
+                  ? (
+                    <>
+                      {typeof kpi.value === 'number' ? kpi.value.toFixed(2) : kpi.value}
+                      {kpi.suffix && (
+                        <span style={{ fontSize: 'var(--text-body-size)', color: 'var(--text-tertiary)', marginLeft: 4, fontWeight: 500 }}>
+                          {kpi.suffix}
+                        </span>
+                      )}
+                    </>
+                  )
+                  : <span style={{ color: 'var(--text-tertiary)' }}>—</span>}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      <Tabs items={tabItems} defaultActiveKey="overview" />
+    </div>
+  );
 }

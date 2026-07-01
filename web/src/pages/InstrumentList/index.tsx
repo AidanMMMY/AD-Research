@@ -9,6 +9,8 @@ import InstrumentCodeTag from '@/components/InstrumentCodeTag';
 import ThemeTag from '@/components/ThemeTag';
 import Sparkline from '@/components/Sparkline';
 import ReturnTag from '@/components/ReturnTag';
+import PageHeader from '@/components/PageHeader';
+import LastUpdated from '@/components/LastUpdated';
 import { useIsMobile } from '@/hooks/useBreakpoint';
 
 /** Row-level sparkline cell. Owns its own query so per-row caching
@@ -65,7 +67,7 @@ export default function InstrumentList() {
   const [instrumentType, setInstrumentType] = useState<string | undefined>();
   const [page, setPage] = useState(1);
 
-  const { data, isLoading } = useInstrumentList({
+  const { data, isLoading, dataUpdatedAt, isFetching } = useInstrumentList({
     search: search || undefined,
     market,
     category,
@@ -186,8 +188,12 @@ export default function InstrumentList() {
 
   return (
     <div>
-      <h1 style={{ fontSize: 'var(--text-h1-size)', fontWeight: 500, color: 'var(--text-primary)', margin: '0 0 8px', letterSpacing: '-0.03em' }}>标的列表</h1>
-      <p style={{ margin: '0 0 32px', color: 'var(--text-tertiary)', fontSize: 'var(--text-body-size)' }}>浏览和搜索全市场标的，按市场、分类、类型筛选</p>
+      <PageHeader
+        eyebrow="全市场"
+        title="标的列表"
+        description="浏览和搜索全市场标的，按市场、分类、类型筛选"
+        extra={<LastUpdated at={dataUpdatedAt} loading={isFetching && !data} />}
+      />
       <div
         style={{
           display: 'flex',
@@ -240,6 +246,32 @@ export default function InstrumentList() {
       <div>
         {isLoading ? (
           <Skeleton active paragraph={{ rows: 10 }} />
+        ) : (data?.items?.length || 0) === 0 ? (
+          <div
+            role="status"
+            aria-live="polite"
+            style={{
+              padding: 'var(--space-9) 0',
+              textAlign: 'center',
+              color: 'var(--text-tertiary)',
+              border: '1px dashed var(--border-default)',
+              borderRadius: 'var(--radius-lg)',
+              background: 'var(--bg-surface)',
+            }}
+          >
+            <div
+              style={{
+                fontSize: 'var(--text-h3-size)',
+                color: 'var(--text-primary)',
+                marginBottom: 'var(--space-2)',
+              }}
+            >
+              没有符合条件的标的
+            </div>
+            <div style={{ fontSize: 'var(--text-small-size)', color: 'var(--text-muted)' }}>
+              尝试调整上方筛选条件，或清空搜索关键词查看全部标的
+            </div>
+          </div>
         ) : isMobile ? (
           /* Mobile: card-style list */
           <List

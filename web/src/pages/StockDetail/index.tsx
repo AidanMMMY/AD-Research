@@ -137,7 +137,7 @@ export default function StockDetail() {
     enabled: !!code,
   });
 
-  if (stockLoading) return <Spin size="large" style={{ display: 'block', margin: '100px auto' }} />;
+  if (stockLoading) return <Spin size="large" style={{ display: 'block', margin: 'var(--space-9) auto' }} />;
   if (stockError) return <Alert message="加载个股详情失败" description={(stockError as Error).message} type="error" style={{ margin: 'var(--space-6)' }} />;
   if (!stock) return <Alert message="个股不存在" description={`未找到代码为 ${code} 的个股`} type="warning" style={{ margin: 'var(--space-6)' }} />;
 
@@ -390,7 +390,7 @@ export default function StockDetail() {
                 >
                   {sentiment ? (
                     <div style={{ textAlign: 'center' }}>
-                      <div className="tabular-nums" style={{ fontSize: 48, fontWeight: 700, color: SENTIMENT_COLORS[sentiment.label] || 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>
+                      <div className="tabular-nums" style={{ fontSize: 'var(--text-data-xl-size)', fontWeight: 700, color: SENTIMENT_COLORS[sentiment.label] || 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>
                         {sentiment.avg_score.toFixed(2)}
                       </div>
                       <ThemeTag
@@ -486,7 +486,7 @@ export default function StockDetail() {
                     <div
                       key={m.title}
                       style={{
-                        padding: '20px 16px',
+                        padding: 'var(--space-5) var(--space-4)',
                         borderRight: hasRightBorder ? '1px solid var(--border-default)' : 'none',
                         borderBottom: isLastRow ? 'none' : '1px solid var(--border-default)',
                       }}

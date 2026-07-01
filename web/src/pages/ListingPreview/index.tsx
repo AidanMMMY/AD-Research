@@ -7,6 +7,8 @@ import { type Dayjs } from 'dayjs';
 import Panel from '@/components/Panel';
 import HelpTrigger from '@/components/HelpTrigger';
 import ThemeTag from '@/components/ThemeTag';
+import PageHeader from '@/components/PageHeader';
+import LastUpdated from '@/components/LastUpdated';
 import {
   useListingEventList,
   useListingEventFacets,
@@ -63,7 +65,7 @@ function StatusChip({ status, count, active, onClick }: StatusChipProps) {
         background: active ? 'var(--accent-dim)' : 'var(--card-bg)',
         border: `1px solid ${active ? 'var(--accent-border)' : 'var(--border-default)'}`,
         borderRadius: 'var(--radius-md)',
-        padding: '8px 14px',
+        padding: 'var(--space-2) var(--space-4)',
         display: 'inline-flex',
         alignItems: 'center',
         gap: 8,
@@ -110,7 +112,7 @@ export default function ListingPreview() {
     [page, pageSize, boards, markets, statuses, industry, dateRange, search],
   );
 
-  const { data, isLoading, refetch } = useListingEventList(listParams);
+  const { data, isLoading, refetch, dataUpdatedAt, isFetching } = useListingEventList(listParams);
   const { data: facets } = useListingEventFacets();
   const { data: detail, isLoading: detailLoading } = useListingEventDetail(detailId);
   const refreshMutation = useRefreshListingEvents();
@@ -291,34 +293,24 @@ export default function ListingPreview() {
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
-        <div>
-          <h1
-            style={{
-              fontSize: 'var(--text-h1-size)',
-              fontWeight: 500,
-              color: 'var(--text-primary)',
-              margin: '0 0 8px',
-              letterSpacing: '-0.03em',
-            }}
-          >
-            上市预告
-          </h1>
-          <p style={{ margin: 0, color: 'var(--text-tertiary)', fontSize: 'var(--text-body-size)' }}>
-            A 股近期上市与即将上市新股追踪，覆盖主板 / 创业板 / 科创板 / 北交所
-          </p>
-        </div>
-        <Space>
-          <HelpTrigger tooltip="AI 解读上市预告数据" onClick={handleOpenHelp} />
-          <Button
-            icon={<ReloadOutlined />}
-            loading={refreshMutation.isPending}
-            onClick={handleRefresh}
-          >
-            刷新
-          </Button>
-        </Space>
-      </div>
+      <PageHeader
+        eyebrow="新股"
+        title="上市预告"
+        description="A 股近期上市与即将上市新股追踪，覆盖主板 / 创业板 / 科创板 / 北交所"
+        extra={
+          <Space size="middle">
+            <LastUpdated at={dataUpdatedAt} loading={isFetching && !data} />
+            <HelpTrigger tooltip="AI 解读上市预告数据" onClick={handleOpenHelp} />
+            <Button
+              icon={<ReloadOutlined />}
+              loading={refreshMutation.isPending}
+              onClick={handleRefresh}
+            >
+              刷新
+            </Button>
+          </Space>
+        }
+      />
 
       {/* Summary chips */}
       <div style={{ display: 'flex', gap: 'var(--space-2)', marginTop: 24, marginBottom: 16, flexWrap: 'wrap' }}>
