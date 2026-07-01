@@ -15,7 +15,7 @@ import ThemeTag from '@/components/ThemeTag';
 import ReturnTag from '@/components/ReturnTag';
 import NewsListPanel from '@/components/NewsListPanel';
 import type { DailyBar, ResearchNote } from '@/types/crypto';
-import type { OHLCV } from '@/types/etf';
+import type { OHLCV } from '@/types/instrument';
 
 const TIME_RANGE_OPTIONS = [
   { label: '30日', value: 30 },

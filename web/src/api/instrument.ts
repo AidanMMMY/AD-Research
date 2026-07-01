@@ -1,5 +1,5 @@
 import client from './client';
-import type { ETFListResponse, ETFInfo, ETFFilterParams } from '@/types/etf';
+import type { InstrumentListResponse, InstrumentInfo, InstrumentFilterParams } from '@/types/instrument';
 
 export interface SparklineResponse {
   code: string;
@@ -8,10 +8,10 @@ export interface SparklineResponse {
   dates: string[];
 }
 
-export const etfApi = {
-  list: (params?: ETFFilterParams) =>
-    client.get<ETFListResponse>('/etfs', { params }),
-  get: (code: string) => client.get<ETFInfo>(`/etfs/${code}`),
+export const instrumentApi = {
+  list: (params?: InstrumentFilterParams) =>
+    client.get<InstrumentListResponse>('/etfs', { params }),
+  get: (code: string) => client.get<InstrumentInfo>(`/etfs/${code}`),
   categories: (params?: { market?: string; instrument_type?: string }) =>
     client.get<{ categories: string[] }>('/etfs/categories/list', { params }),
   markets: () => client.get<{ markets: string[] }>('/etfs/markets/list'),

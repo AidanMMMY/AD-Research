@@ -7,7 +7,7 @@ import { useAIHelp } from '@/hooks/useAIHelp';
 import Panel from '@/components/Panel';
 import HelpTrigger from '@/components/HelpTrigger';
 import HelpPopover from '@/components/HelpPopover';
-import ETFCodeTag from '@/components/ETFCodeTag';
+import InstrumentCodeTag from '@/components/InstrumentCodeTag';
 import ScoreBar from '@/components/ScoreBar';
 import Sparkline from '@/components/Sparkline';
 import TemplateManagement from '@/components/TemplateManagement';
@@ -66,7 +66,7 @@ export default function ScoreRanking() {
     },
     {
       title: '标的',
-      render: (_: unknown, record: any) => <ETFCodeTag code={record.etf_code} name={record.etf_name} />,
+      render: (_: unknown, record: any) => <InstrumentCodeTag code={record.etf_code} name={record.etf_name} />,
     },
     {
       title: <HelpPopover termKey="composite_score">综合评分</HelpPopover>,

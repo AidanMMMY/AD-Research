@@ -19,9 +19,9 @@ export function useScoreTemplates() {
   });
 }
 
-export function useETFScore(code: string, templateId?: number) {
+export function useInstrumentScore(code: string, templateId?: number) {
   return useQuery({
-    queryKey: ['etf-score', code, templateId],
+    queryKey: ['instrument-score', code, templateId],
     queryFn: () => scoreApi.get(code, { template_id: templateId }).then((r) => r.data),
     enabled: !!code,
   });

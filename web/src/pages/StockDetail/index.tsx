@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Tabs, Row, Col, Statistic, Spin, Descriptions, Radio, Checkbox, Space, Alert, Button, message, Skeleton } from 'antd';
 import { StarOutlined, StarFilled, RobotOutlined, ReadOutlined, SmileOutlined, StockOutlined } from '@ant-design/icons';
 import { useStockDetail } from '@/hooks/useStocks';
-import { useETFScore } from '@/hooks/useScores';
+import { useInstrumentScore } from '@/hooks/useScores';
 import { useFavoriteStatus } from '@/hooks/useFavorites';
 import { useAIHelp } from '@/hooks/useAIHelp';
 import { marketApi, researchApi, stockFundamentalApi } from '@/api';
@@ -18,7 +18,7 @@ import ThemeTag from '@/components/ThemeTag';
 import { formatPercent } from '@/utils/format';
 import { useSettingsStore } from '@/stores/settings';
 import { getReturnColor } from '@/utils/color';
-import { buildETFDetailContext } from '@/utils/helpContext';
+import { buildInstrumentDetailContext } from '@/utils/helpContext';
 import { getQuickQuestions } from '@/utils/helpPrompts';
 import type { ResearchNote } from '@/api/research';
 
@@ -71,7 +71,7 @@ export default function StockDetail() {
   const { open } = useAIHelp();
   const colorConvention = useSettingsStore((s) => s.colorConvention);
   const { data: stock, isLoading: stockLoading, error: stockError } = useStockDetail(code || '');
-  const { data: score } = useETFScore(code || '');
+  const { data: score } = useInstrumentScore(code || '');
   const { isFavorite, isLoading: favLoading, toggle, isToggling } = useFavoriteStatus(code || '');
   const [timeRange, setTimeRange] = useState(120);
 
@@ -142,10 +142,10 @@ export default function StockDetail() {
 
   const handleOpenHelp = () => {
     open({
-      pageType: 'etf_detail',
+      pageType: 'instrument_detail',
       pageTitle: `个股详情 - ${stock.name || code}`,
-      contextData: buildETFDetailContext(code, stock, score, indicator, sentiment, timeRange),
-      quickQuestions: getQuickQuestions('etf_detail'),
+      contextData: buildInstrumentDetailContext(code, stock, score, indicator, sentiment, timeRange),
+      quickQuestions: getQuickQuestions('instrument_detail'),
     });
   };
 

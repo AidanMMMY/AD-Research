@@ -37,10 +37,10 @@ export default function HelpPopover({
     relatedPageType: HelpContext['pageType'] | undefined,
     ctx: string
   ) => {
-    const pageType = relatedPageType || 'etf_detail';
+    const pageType = relatedPageType || 'instrument_detail';
     const pageTitleMap: Record<HelpContext['pageType'], string> = {
       score_ranking: '评分排名',
-      etf_detail: '标的详情',
+      instrument_detail: '标的详情',
       strategy_list: '策略管理',
       backtest_detail: '回测详情',
       screen: '全市场筛选器',

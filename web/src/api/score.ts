@@ -1,7 +1,7 @@
 import client from './client';
 import type {
   ETFScoreListResponse,
-  ETFScore,
+  InstrumentScore,
   ScoreTemplate,
   ScoreTemplateCreate,
   ScoreTemplateUpdate,
@@ -11,7 +11,7 @@ export const scoreApi = {
   list: (params?: { template_id?: number; market?: string; category?: string; trade_date?: string; limit?: number }) =>
     client.get<ETFScoreListResponse>('/scores', { params }),
   get: (code: string, params?: { template_id?: number; trade_date?: string }) =>
-    client.get<ETFScore>(`/scores/${code}`, { params }),
+    client.get<InstrumentScore>(`/scores/${code}`, { params }),
 
   // Template management
   listTemplates: () => client.get<ScoreTemplate[]>('/scores/templates'),

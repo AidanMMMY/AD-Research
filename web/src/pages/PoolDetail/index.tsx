@@ -16,11 +16,11 @@ import {
   useAddPoolMember,
   useRemovePoolMember,
 } from '@/hooks/usePoolDetail';
-import { useETFList } from '@/hooks/useETFList';
+import { useInstrumentList } from '@/hooks/useInstrumentList';
 import { useAIHelp } from '@/hooks/useAIHelp';
 import CategoryPie from '@/components/CategoryPie';
 import CorrelationHeatmap from '@/components/CorrelationHeatmap';
-import ETFCodeTag from '@/components/ETFCodeTag';
+import InstrumentCodeTag from '@/components/InstrumentCodeTag';
 import Panel from '@/components/Panel';
 import HelpTrigger from '@/components/HelpTrigger';
 import HelpPopover from '@/components/HelpPopover';
@@ -58,7 +58,7 @@ export default function PoolDetail() {
   const { data: analytics } = usePoolAnalytics(poolId);
   const { data: correlation } = usePoolCorrelation(poolId);
   const { data: snapshots } = usePoolSnapshots(poolId, 20);
-  const { data: etfList } = useETFList({ page_size: 500 });
+  const { data: etfList } = useInstrumentList({ page_size: 500 });
   const updateWeight = useUpdateWeight();
   const createSnapshot = useCreateSnapshot();
   const suggestWeights = useSuggestWeights();
@@ -210,7 +210,7 @@ export default function PoolDetail() {
   const weightColumns = [
     {
       title: '标的',
-      render: (_: unknown, record: any) => <ETFCodeTag code={record.etf_code} name={record.etf_name} />,
+      render: (_: unknown, record: any) => <InstrumentCodeTag code={record.etf_code} name={record.etf_name} />,
     },
     {
       title: <HelpPopover termKey="target_weight">目标权重</HelpPopover>,

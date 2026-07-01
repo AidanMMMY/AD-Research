@@ -1,12 +1,10 @@
 import { useMemo, useState } from 'react';
-import { Row, Col, Select, Radio, Button, Space, Spin, message } from 'antd';
-import { FolderOpenOutlined } from '@ant-design/icons';
+import { Row, Col, Radio, Spin } from 'antd';
 import GlassCard from '@/components/GlassCard';
-import ThemeTag from '@/components/ThemeTag';
 import { useQuery } from '@tanstack/react-query';
 import { marketApi } from '@/api/market';
-import { useETFList } from '@/hooks/useETFList';
-import { usePoolList } from '@/hooks/usePoolDetail';
+import { useInstrumentList } from '@/hooks/useInstrumentList';
+import InstrumentSelector from '@/components/InstrumentSelector';
 import ReturnCurve from '@/components/ReturnCurve';
 
 const TIME_RANGE_OPTIONS = [
@@ -16,15 +14,6 @@ const TIME_RANGE_OPTIONS = [
   { label: '1年', value: 252 },
   { label: '全部', value: 0 },
 ];
-
-const PRESET_TOP_N = 4;
-
-interface ETFItem {
-  code: string;
-  name: string;
-  category?: string;
-  fund_size?: number;
-}
 
 interface SeriesData {
   name: string;
@@ -36,36 +25,8 @@ export default function ReturnComparison() {
   const [selectedCodes, setSelectedCodes] = useState<string[]>(['510300.SH', '510050.SH', '510500.SH']);
   const [timeRange, setTimeRange] = useState<number>(252);
   const [mode, setMode] = useState<'normalized' | 'percentage'>('normalized');
-  const [showAllPresets, setShowAllPresets] = useState(false);
 
-  const { data: etfList } = useETFList({ page_size: 10000 });
-  const { data: pools, isLoading: poolsLoading } = usePoolList();
-
-  const presetGroups = useMemo(() => {
-    const items: ETFItem[] = etfList?.items || [];
-    const byCategory: Record<string, ETFItem[]> = {};
-    items.forEach((item) => {
-      const category = item.category || '未分类';
-      if (!byCategory[category]) byCategory[category] = [];
-      byCategory[category].push(item);
-    });
-
-    return Object.entries(byCategory)
-      .sort(([a], [b]) => a.localeCompare(b, 'zh-CN'))
-      .map(([category, members]) => ({
-        label: category,
-        codes: members
-          .sort((a, b) => (b.fund_size || 0) - (a.fund_size || 0))
-          .slice(0, PRESET_TOP_N)
-          .map((item) => item.code),
-      }))
-      .filter((group) => group.codes.length > 0);
-  }, [etfList]);
-
-  const visiblePresetGroups = useMemo(() => {
-    if (showAllPresets) return presetGroups;
-    return presetGroups.slice(0, 8);
-  }, [presetGroups, showAllPresets]);
+  const { data: etfList } = useInstrumentList({ page_size: 10000 });
 
   const etfQueries = useQuery({
     queryKey: ['return-comparison', selectedCodes, timeRange],
@@ -83,17 +44,6 @@ export default function ReturnComparison() {
     enabled: selectedCodes.length >= 1,
     staleTime: 60_000,
   });
-
-  const etfOptions = (etfList?.items || []).map((item) => ({
-    label: `${item.code} ${item.name}`,
-    value: item.code,
-  }));
-
-  const poolOptions = (pools || []).map((pool) => ({
-    label: `${pool.name} (${pool.members?.length || 0}只)`,
-    value: pool.id,
-    codes: (pool.members || []).map((m) => m.etf_code),
-  }));
 
   const series: SeriesData[] = useMemo(() => {
     if (!etfQueries.data) return [];
@@ -123,33 +73,6 @@ export default function ReturnComparison() {
     });
   }, [etfQueries.data, mode, etfList]);
 
-  const handleAddPreset = (codes: string[]) => {
-    const newCodes = Array.from(new Set([...selectedCodes, ...codes]));
-    if (newCodes.length > 10) {
-      message.warning('最多选择10只标的');
-      return;
-    }
-    setSelectedCodes(newCodes);
-  };
-
-  const handleSelectPool = (poolId: number | undefined) => {
-    if (!poolId) return;
-    const pool = poolOptions.find((p) => p.value === poolId);
-    if (!pool) return;
-    const newCodes = Array.from(new Set([...selectedCodes, ...pool.codes]));
-    if (newCodes.length > 10) {
-      message.warning('标的池成员数量较多，仅添加前10只');
-      setSelectedCodes(newCodes.slice(0, 10));
-      return;
-    }
-    setSelectedCodes(newCodes);
-    message.success(`已添加「${pool.label}」中的 ${pool.codes.length} 只标的`);
-  };
-
-  const handleRemoveCode = (code: string) => {
-    setSelectedCodes(selectedCodes.filter((c) => c !== code));
-  };
-
   return (
     <div>
       <h1 style={{ fontSize: 'var(--text-h1-size)', fontWeight: 500, color: 'var(--text-primary)', margin: '0 0 8px', letterSpacing: '-0.03em' }}>收益对比</h1>
@@ -157,30 +80,11 @@ export default function ReturnComparison() {
       <GlassCard title="收益曲线对比配置" style={{ marginBottom: 'var(--space-4)' }}>
         <Row gutter={[16, 16]}>
           <Col xs={24} md={12}>
-            <div style={{ marginBottom: 8 }}>选择标的（{selectedCodes.length}/10）：</div>
-            <Select
-              mode="multiple"
-              showSearch
-              placeholder="搜索并选择标的"
+            <InstrumentSelector
               value={selectedCodes}
               onChange={setSelectedCodes}
-              options={etfOptions}
-              style={{ width: '100%' }}
-              maxTagCount={5}
-              filterOption={(input, option) =>
-                (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
-              }
+              maxCount={10}
             />
-            <div style={{ marginTop: 8 }}>
-              <Space size={[8, 8]} wrap>
-                {selectedCodes.map((code) => (
-                  <ThemeTag key={code} variant="accent" style={{ cursor: 'default' }}>
-                    {code}
-                    <span style={{ marginLeft: 4, cursor: 'pointer' }} onClick={() => handleRemoveCode(code)}>×</span>
-                  </ThemeTag>
-                ))}
-              </Space>
-            </div>
           </Col>
           <Col xs={24} md={6}>
             <div style={{ marginBottom: 8 }}>时间范围：</div>
@@ -208,39 +112,6 @@ export default function ReturnComparison() {
               <Radio.Button value="normalized">归一化</Radio.Button>
               <Radio.Button value="percentage">日收益</Radio.Button>
             </Radio.Group>
-          </Col>
-        </Row>
-        <Row style={{ marginTop: 12 }}>
-          <Col span={24}>
-            <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start', flexWrap: 'wrap' }}>
-              <span style={{ flexShrink: 0, color: 'var(--text-secondary)', fontSize: 'var(--text-body-size)', paddingTop: 4 }}>
-                快速选择：
-              </span>
-              <Space size={[8, 8]} wrap>
-                {visiblePresetGroups.map((group) => (
-                  <Button key={group.label} size="small" onClick={() => handleAddPreset(group.codes)}>
-                    +{group.label}
-                  </Button>
-                ))}
-                {presetGroups.length > 8 && (
-                  <Button size="small" type="link" onClick={() => setShowAllPresets((v) => !v)}>
-                    {showAllPresets ? '收起' : `更多 (${presetGroups.length - 8})`}
-                  </Button>
-                )}
-                <Select
-                  size="small"
-                  placeholder={<span><FolderOpenOutlined /> 从标的池导入</span>}
-                  style={{ minWidth: 160 }}
-                  loading={poolsLoading}
-                  onChange={handleSelectPool}
-                  options={poolOptions}
-                  allowClear
-                />
-                <Button size="small" danger onClick={() => setSelectedCodes([])}>
-                  清空
-                </Button>
-              </Space>
-            </div>
           </Col>
         </Row>
       </GlassCard>

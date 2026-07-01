@@ -15,7 +15,7 @@ import { usePoolList } from '@/hooks/usePoolDetail';
 import { statsApi } from '@/api/stats';
 import { newsApi } from '@/api/news';
 import Panel from '@/components/Panel';
-import ETFCodeTag from '@/components/ETFCodeTag';
+import InstrumentCodeTag from '@/components/InstrumentCodeTag';
 import ReturnTag from '@/components/ReturnTag';
 import ScoreBar from '@/components/ScoreBar';
 import { usePriceStream } from '@/hooks/usePriceStream';
@@ -230,7 +230,7 @@ export default function Dashboard() {
     {
       title: '标的',
       render: (_: unknown, record: any) => (
-        <ETFCodeTag code={record.etf_code} name={record.etf_name} />
+        <InstrumentCodeTag code={record.etf_code} name={record.etf_name} />
       ),
     },
     {
@@ -584,7 +584,7 @@ export default function Dashboard() {
                 renderItem={(item: any) => (
                   <List.Item onClick={() => navigate(`/etfs/${item.etf_code}`)} style={{ padding: '12px 0', cursor: 'pointer' }}>
                     <List.Item.Meta
-                      title={<div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}><ETFCodeTag code={item.etf_code} name={item.etf_name} /></div>}
+                      title={<div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}><InstrumentCodeTag code={item.etf_code} name={item.etf_name} /></div>}
                       description={
                         <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', marginTop: 'var(--space-1)' }}>
                           <span style={{ fontSize: 'var(--text-small-size)', color: 'var(--text-tertiary)' }}>{item.category}</span>

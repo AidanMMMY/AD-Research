@@ -1,11 +1,11 @@
 import { Tooltip } from 'antd';
 
-interface ETFCodeTagProps {
+interface InstrumentCodeTagProps {
   code: string;
   name?: string;
 }
 
-export default function ETFCodeTag({ code, name }: ETFCodeTagProps) {
+export default function InstrumentCodeTag({ code, name }: InstrumentCodeTagProps) {
   return (
     <Tooltip title={name || code}>
       <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>

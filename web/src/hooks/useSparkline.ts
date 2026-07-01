@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { etfApi } from '@/api/etf';
+import { instrumentApi } from '@/api/instrument';
 
 interface SparklineParams {
   code: string | null | undefined;
@@ -17,7 +17,7 @@ const DEFAULT_DAYS = 30;
 export function useSparkline({ code, days = DEFAULT_DAYS, enabled }: SparklineParams) {
   return useQuery({
     queryKey: ['sparkline', code, days],
-    queryFn: () => etfApi.sparkline(code as string, days).then((r) => r.data),
+    queryFn: () => instrumentApi.sparkline(code as string, days).then((r) => r.data),
     enabled: enabled ?? !!code,
     staleTime: 5 * 60_000,
     // Don't refetch on window focus — sparklines are coarse-grained.

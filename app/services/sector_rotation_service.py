@@ -76,7 +76,7 @@ class SectorRotationService:
         all_sharpe: list[float] = []
 
         for ind, info in indicators:
-            cat = info.category or "其他"
+            cat = info.category if info.category else (info.sub_category or "其他")
             if cat not in sector_data:
                 sector_data[cat] = {
                     "return_1m": [],
@@ -174,7 +174,7 @@ class SectorRotationService:
         # Calculate previous period sector averages
         prev_sector_returns: dict[str, list[float]] = {}
         for ind, info in prev_indicators:
-            cat = info.category or "其他"
+            cat = info.category if info.category else (info.sub_category or "其他")
             if cat not in prev_sector_returns:
                 prev_sector_returns[cat] = []
             if ind.return_1m is not None:

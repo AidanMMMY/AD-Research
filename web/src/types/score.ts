@@ -17,7 +17,7 @@ export interface ScoreTemplate {
 export type ScoreTemplateCreate = Omit<ScoreTemplate, 'id' | 'created_at' | 'updated_at'>;
 export type ScoreTemplateUpdate = Partial<ScoreTemplateCreate>;
 
-export interface ETFScore {
+export interface InstrumentScore {
   etf_code: string;
   etf_name?: string;
   market?: string;
@@ -38,7 +38,7 @@ export interface ETFScore {
 }
 
 export interface ETFScoreListResponse {
-  items: ETFScore[];
+  items: InstrumentScore[];
   total: number;
   template_id: number;
   trade_date: string;

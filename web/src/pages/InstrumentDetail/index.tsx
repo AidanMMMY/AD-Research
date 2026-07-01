@@ -2,8 +2,8 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Tabs, Row, Col, Statistic, Spin, Descriptions, Radio, Checkbox, Space, Alert, Button, message, Skeleton } from 'antd';
 import { StarOutlined, StarFilled, RobotOutlined, ReadOutlined, SmileOutlined } from '@ant-design/icons';
-import { useETFDetail } from '@/hooks/useETFList';
-import { useETFScore } from '@/hooks/useScores';
+import { useInstrumentDetail } from '@/hooks/useInstrumentList';
+import { useInstrumentScore } from '@/hooks/useScores';
 import { useFavoriteStatus } from '@/hooks/useFavorites';
 import { useAIHelp } from '@/hooks/useAIHelp';
 import { marketApi, researchApi, stockFundamentalApi } from '@/api';
@@ -18,7 +18,7 @@ import ThemeTag from '@/components/ThemeTag';
 import { formatPercent } from '@/utils/format';
 import { useSettingsStore } from '@/stores/settings';
 import { getReturnColor } from '@/utils/color';
-import { buildETFDetailContext } from '@/utils/helpContext';
+import { buildInstrumentDetailContext } from '@/utils/helpContext';
 import { getQuickQuestions } from '@/utils/helpPrompts';
 import type { ResearchNote } from '@/api/research';
 
@@ -65,20 +65,20 @@ const SENTIMENT_LABELS: Record<string, string> = {
   neutral: '中性',
 };
 
-export default function ETFDetail() {
+export default function InstrumentDetail() {
   const { code } = useParams<{ code: string }>();
   const navigate = useNavigate();
   const { open } = useAIHelp();
   const colorConvention = useSettingsStore((s) => s.colorConvention);
-  const { data: etf, isLoading: etfLoading, error: etfError } = useETFDetail(code || '');
-  const { data: score } = useETFScore(code || '');
+  const { data: instrument, isLoading: instrumentLoading, error: instrumentError } = useInstrumentDetail(code || '');
+  const { data: score } = useInstrumentScore(code || '');
   const { isFavorite, isLoading: favLoading, toggle, isToggling } = useFavoriteStatus(code || '');
   const [timeRange, setTimeRange] = useState(120);
 
   // Persist K-line overlay preferences in localStorage
   const [overlays, setOverlays] = useState(() => {
     try {
-      const saved = localStorage.getItem('etf-detail-overlays');
+      const saved = localStorage.getItem('instrument-detail-overlays');
       return saved ? { ...DEFAULT_OVERLAYS, ...JSON.parse(saved) } : DEFAULT_OVERLAYS;
     } catch {
       return DEFAULT_OVERLAYS;
@@ -87,7 +87,7 @@ export default function ETFDetail() {
 
   useEffect(() => {
     try {
-      localStorage.setItem('etf-detail-overlays', JSON.stringify(overlays));
+      localStorage.setItem('instrument-detail-overlays', JSON.stringify(overlays));
     } catch {
       // ignore storage errors
     }
@@ -103,14 +103,14 @@ export default function ETFDetail() {
   };
 
   const { data: historyData, isLoading: historyLoading } = useQuery({
-    queryKey: ['etf-history', code, timeRange],
+    queryKey: ['instrument-history', code, timeRange],
     queryFn: () => marketApi.history(code || '', { limit: timeRange }).then((r) => r.data),
     enabled: !!code,
     retry: 1,
   });
 
   const { data: indicator } = useQuery({
-    queryKey: ['etf-indicator', code],
+    queryKey: ['instrument-indicator', code],
     queryFn: () => marketApi.indicators(code || '').then((r) => r.data),
     enabled: !!code,
     retry: 1,
@@ -130,23 +130,23 @@ export default function ETFDetail() {
   });
 
   // A-share individual stock fundamentals (only for stocks)
-  const isStock = etf?.instrument_type === 'STOCK';
+  const isStock = instrument?.instrument_type === 'STOCK';
   const { data: stockFund } = useQuery({
     queryKey: ['stock-fundamental', code],
     queryFn: () => stockFundamentalApi.get(code || '').then((r) => r.data),
     enabled: !!code && isStock,
   });
 
-  if (etfLoading) return <Spin size="large" style={{ display: 'block', margin: '100px auto' }} />;
-  if (etfError) return <Alert message="加载标的详情失败" description={(etfError as Error).message} type="error" style={{ margin: 'var(--space-6)' }} />;
-  if (!etf) return <Alert message="标的不存在" description={`未找到代码为 ${code} 的标的`} type="warning" style={{ margin: 'var(--space-6)' }} />;
+  if (instrumentLoading) return <Spin size="large" style={{ display: 'block', margin: '100px auto' }} />;
+  if (instrumentError) return <Alert message="加载标的详情失败" description={(instrumentError as Error).message} type="error" style={{ margin: 'var(--space-6)' }} />;
+  if (!instrument) return <Alert message="标的不存在" description={`未找到代码为 ${code} 的标的`} type="warning" style={{ margin: 'var(--space-6)' }} />;
 
   const handleOpenHelp = () => {
     open({
-      pageType: 'etf_detail',
-      pageTitle: `标的详情 - ${etf.name || code}`,
-      contextData: buildETFDetailContext(code, etf, score, indicator, sentiment, timeRange),
-      quickQuestions: getQuickQuestions('etf_detail'),
+      pageType: 'instrument_detail',
+      pageTitle: `标的详情 - ${instrument.name || code}`,
+      contextData: buildInstrumentDetailContext(code, instrument, score, indicator, sentiment, timeRange),
+      quickQuestions: getQuickQuestions('instrument_detail'),
     });
   };
 
@@ -561,28 +561,28 @@ export default function ETFDetail() {
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', marginBottom: 'var(--space-2)' }}>
               <h2 style={{ margin: 0, fontSize: 'var(--text-h1-size)', fontWeight: 500, letterSpacing: '-0.03em' }}>
-                {etf.code} {etf.name}
+                {instrument.code} {instrument.name}
               </h2>
-              {etf.instrument_type && (
-                <ThemeTag variant={etf.instrument_type === 'STOCK' ? 'accent' : 'default'}>
-                  {etf.instrument_type === 'STOCK' ? '个股' : 'ETF'}
+              {instrument.instrument_type && (
+                <ThemeTag variant={instrument.instrument_type === 'ETF' ? 'default' : 'accent'}>
+                  {({ STOCK: '个股', CRYPTO: '数字货币', ETF: 'ETF' } as Record<string, string>)[instrument.instrument_type] || instrument.instrument_type}
                 </ThemeTag>
               )}
-              {etf.market && <ThemeTag>{etf.market}</ThemeTag>}
+              {instrument.market && <ThemeTag>{instrument.market}</ThemeTag>}
             </div>
             <div style={{ color: 'var(--text-secondary)', fontSize: 'var(--text-body-size)' }}>
-              {etf.category || '—'}
-              {etf.sector && ` | ${etf.sector}`}
-              {etf.industry && ` | ${etf.industry}`}
-              {etf.exchange && ` | ${etf.exchange}`}
-              {etf.fund_manager && ` | ${etf.fund_manager}`}
-              {etf.fund_size && (etf.market === 'US'
-                ? ` | 规模: ${etf.fund_size >= 1e12 ? `${(etf.fund_size / 1e12).toFixed(2)}T` : etf.fund_size >= 1e9 ? `${(etf.fund_size / 1e9).toFixed(1)}B` : `${(etf.fund_size / 1e6).toFixed(1)}M`} USD`
-                : ` | 规模: ${(etf.fund_size / 1e8).toFixed(1)}亿`
+              {instrument.category || '—'}
+              {instrument.sector && ` | ${instrument.sector}`}
+              {instrument.industry && ` | ${instrument.industry}`}
+              {instrument.exchange && ` | ${instrument.exchange}`}
+              {instrument.fund_manager && ` | ${instrument.fund_manager}`}
+              {instrument.fund_size && (instrument.market === 'US'
+                ? ` | 规模: ${instrument.fund_size >= 1e12 ? `${(instrument.fund_size / 1e12).toFixed(2)}T` : instrument.fund_size >= 1e9 ? `${(instrument.fund_size / 1e9).toFixed(1)}B` : `${(instrument.fund_size / 1e6).toFixed(1)}M`} USD`
+                : ` | 规模: ${(instrument.fund_size / 1e8).toFixed(1)}亿`
               )}
-              {etf.market_cap && (etf.market === 'A股'
-                ? ` | 市值: ${(etf.market_cap / 1e8).toFixed(1)}亿 CNY`
-                : ` | 市值: ${etf.market_cap >= 1e12 ? `${(etf.market_cap / 1e12).toFixed(2)}T` : etf.market_cap >= 1e9 ? `${(etf.market_cap / 1e9).toFixed(1)}B` : `${(etf.market_cap / 1e6).toFixed(1)}M`} USD`
+              {instrument.market_cap && (instrument.market === 'A股'
+                ? ` | 市值: ${(instrument.market_cap / 1e8).toFixed(1)}亿 CNY`
+                : ` | 市值: ${instrument.market_cap >= 1e12 ? `${(instrument.market_cap / 1e12).toFixed(2)}T` : instrument.market_cap >= 1e9 ? `${(instrument.market_cap / 1e9).toFixed(1)}B` : `${(instrument.market_cap / 1e6).toFixed(1)}M`} USD`
               )}
             </div>
           </div>
