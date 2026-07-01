@@ -261,26 +261,21 @@ export default function Dashboard() {
   return (
     <div>
       <TickerTape limit={20} />
-      <h1
-        style={{
-          fontSize: 'var(--text-h1-size)',
-          fontWeight: 500,
-          color: 'var(--text-primary)',
-          margin: '0 0 8px',
-          letterSpacing: '-0.03em',
-        }}
-      >
-        首页看板
-      </h1>
-      <p
-        style={{
-          margin: '0 0 32px',
-          color: 'var(--text-tertiary)',
-          fontSize: 'var(--text-body-size)',
-        }}
-      >
-        综合评分、收藏与标的池概览 · {new Date().toISOString().slice(0, 10)}
-      </p>
+      <header className="masthead">
+        <div className="masthead-dateline">
+          AD-RESEARCH ·{' '}
+          {new Date().toLocaleDateString('zh-CN', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+          })}{' '}
+          · A股全市场综述
+        </div>
+        <h1 className="display-heading masthead-title">首页看板</h1>
+        <p className="masthead-kicker">
+          综合评分 · 收藏 · 标的池概览 · {new Date().toISOString().slice(0, 10)}
+        </p>
+      </header>
 
       <div
         style={{
