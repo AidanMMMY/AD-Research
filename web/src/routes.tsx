@@ -18,6 +18,7 @@ const SectorRotation = lazy(() => import('./pages/SectorRotation'));
 const MarketScanner = lazy(() => import('./pages/MarketScanner'));
 const NotificationConfig = lazy(() => import('./pages/NotificationConfig'));
 const StrategyList = lazy(() => import('./pages/StrategyList'));
+const StrategyLibrary = lazy(() => import('./pages/StrategyLibrary'));
 const BacktestList = lazy(() => import('./pages/BacktestList'));
 const BacktestDetail = lazy(() => import('./pages/BacktestDetail'));
 const SignalDashboard = lazy(() => import('./pages/SignalDashboard'));
@@ -78,6 +79,7 @@ export const routes: RouteConfig[] = [
   { path: '/notifications', element: wrap(NotificationConfig), auth: true, menu: { name: '推送配置', icon: 'NotificationOutlined', dividerBefore: true } },
   { path: '/notification-logs', element: wrap(NotificationLogs), auth: true, menu: { name: '通知日志', icon: 'FileTextOutlined' } },
   { path: '/strategies', element: wrap(StrategyList), auth: true, menu: { name: '策略管理', icon: 'SettingOutlined' } },
+  { path: '/strategy-library', element: wrap(StrategyLibrary), auth: true, menu: { name: '策略库', icon: 'BookOutlined' } },
   { path: '/backtests', element: wrap(BacktestList), auth: true, menu: { name: '回测管理', icon: 'ExperimentOutlined' } },
   { path: '/backtests/:id', element: wrap(BacktestDetail), auth: true },
   { path: '/signals', element: wrap(SignalDashboard), auth: true, menu: { name: '交易信号', icon: 'ThunderboltOutlined' } },

@@ -5,22 +5,70 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from app.api.deps import get_current_user, get_strategy_service
 from app.schemas.strategy import (
+    StrategyCatalogItem,
     StrategyCreate,
     StrategyListResponse,
     StrategyResponse,
+    StrategyRunRequest,
+    StrategyRunResponse,
     StrategyTemplate,
     StrategyUpdate,
 )
+from app.services.strategy_engine import run_strategy_on_universe
 from app.services.strategy_service import StrategyService
 
 router = APIRouter(dependencies=[Depends(get_current_user)])
+
+
+@router.get("/catalog", response_model=list[StrategyCatalogItem])
+def list_catalog(
+    service: StrategyService = Depends(get_strategy_service),
+):
+    """Get all registered strategy templates with metadata."""
+    return service.get_templates()
+
+
+@router.get("/catalog/{family}", response_model=list[StrategyCatalogItem])
+def list_catalog_by_family(
+    family: str,
+    service: StrategyService = Depends(get_strategy_service),
+):
+    """Get registered strategy templates filtered by family."""
+    all_templates = service.get_templates()
+    return [t for t in all_templates if t.get("family") == family]
+
+
+@router.post("/run", response_model=StrategyRunResponse)
+def run_strategy(
+    data: StrategyRunRequest,
+    service: StrategyService = Depends(get_strategy_service),
+):
+    """Run a strategy on demand for a single instrument or a universe."""
+    from datetime import date
+
+    trade_date = data.trade_date or date.today()
+    signals = run_strategy_on_universe(
+        db=service.db,
+        etf_codes=data.etf_codes,
+        strategy_type=data.strategy_type,
+        params=data.params,
+        trade_date=trade_date,
+        lookback_days=data.lookback_days,
+    )
+    return StrategyRunResponse(
+        signals=signals,
+        strategy_type=data.strategy_type,
+        trade_date=trade_date.isoformat(),
+        instrument_count=len(data.etf_codes),
+        signal_count=len(signals),
+    )
 
 
 @router.get("/templates", response_model=list[StrategyTemplate])
 def list_templates(
     service: StrategyService = Depends(get_strategy_service),
 ):
-    """Get all preset strategy templates."""
+    """Get all preset strategy templates (backward-compatible)."""
     return service.get_templates()
 
 

@@ -1,9 +1,32 @@
 """Strategy Pydantic schemas."""
 
-from datetime import datetime
+from datetime import date, datetime
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict
+
+
+class ParamSpecSchema(BaseModel):
+    """Parameter specification schema returned in the strategy catalog."""
+
+    label: str
+    type: str
+    default: Any
+    min: float | None = None
+    max: float | None = None
+    options: list[str] | None = None
+    description: str = ""
+
+
+class StrategyCatalogItem(BaseModel):
+    """Single strategy catalog entry."""
+
+    strategy_type: str
+    name: str
+    description: str
+    family: str
+    param_specs: dict[str, ParamSpecSchema]
+    min_bars: int
 
 
 class StrategyTemplate(BaseModel):
@@ -54,3 +77,23 @@ class StrategyListResponse(BaseModel):
     """Strategy list response."""
 
     items: list[StrategyResponse]
+
+
+class StrategyRunRequest(BaseModel):
+    """Request to run a strategy on demand."""
+
+    strategy_type: str
+    params: dict[str, Any]
+    etf_codes: list[str]
+    trade_date: date | None = None
+    lookback_days: int = 120
+
+
+class StrategyRunResponse(BaseModel):
+    """Response from running a strategy on demand."""
+
+    signals: list[dict[str, Any]]
+    strategy_type: str
+    trade_date: str
+    instrument_count: int
+    signal_count: int

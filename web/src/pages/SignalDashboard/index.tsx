@@ -1,5 +1,6 @@
-import { Table } from 'antd';
-import GlassCard from '@/components/GlassCard';
+import { useMemo, useState } from 'react';
+import { Table, Select, Space } from 'antd';
+import Panel from '@/components/Panel';
 import ThemeTag, { ThemeTagVariant } from '@/components/ThemeTag';
 import { useSignals } from '@/hooks/useSignals';
 import type { Signal } from '@/types/signal';
@@ -16,14 +17,39 @@ const SIGNAL_LABELS: Record<string, string> = {
   HOLD: '持有',
 };
 
+const FAMILY_LABELS: Record<string, string> = {
+  trend_following: '趋势跟踪',
+  mean_reversion: '均值回归',
+  momentum: '动量',
+  volatility: '波动率',
+  volume: '成交量',
+  composite: '复合因子',
+  cross_sectional: '横截面',
+  event: '事件驱动',
+};
+
 export default function SignalDashboard() {
   const { data: signals, isLoading } = useSignals();
+  const [familyFilter] = useState<string>('all');
+  const [typeFilter, setTypeFilter] = useState<string>('all');
 
   const items: Signal[] = signals?.items || [];
 
-  const buyCount = items.filter((s) => s.signal_type === 'BUY').length;
-  const sellCount = items.filter((s) => s.signal_type === 'SELL').length;
-  const holdCount = items.filter((s) => s.signal_type === 'HOLD').length;
+  const filteredItems = useMemo(() => {
+    if (typeFilter === 'all' && familyFilter === 'all') {
+      return items;
+    }
+    return items.filter((item) => {
+      if (typeFilter !== 'all' && item.signal_type !== typeFilter) {
+        return false;
+      }
+      return true;
+    });
+  }, [items, typeFilter, familyFilter]);
+
+  const buyCount = filteredItems.filter((s) => s.signal_type === 'BUY').length;
+  const sellCount = filteredItems.filter((s) => s.signal_type === 'SELL').length;
+  const holdCount = filteredItems.filter((s) => s.signal_type === 'HOLD').length;
 
   const columns = [
     { title: '策略ID', dataIndex: 'strategy_id', width: 80 },
@@ -36,6 +62,18 @@ export default function SignalDashboard() {
       width: 80,
     },
     { title: '强度', dataIndex: 'strength', width: 80 },
+  ];
+
+  const familyOptions = [
+    { label: '全部家族', value: 'all' },
+    ...Object.entries(FAMILY_LABELS).map(([key, label]) => ({ label, value: key })),
+  ];
+
+  const typeOptions = [
+    { label: '全部信号', value: 'all' },
+    { label: '买入', value: 'BUY' },
+    { label: '卖出', value: 'SELL' },
+    { label: '持有', value: 'HOLD' },
   ];
 
   return (
@@ -90,9 +128,26 @@ export default function SignalDashboard() {
         ))}
       </div>
 
-      <GlassCard title="最新交易信号">
+      <Panel variant="minimal" title="最新交易信号" extra={
+        <Space>
+          <Select
+            value={typeFilter}
+            onChange={setTypeFilter}
+            options={typeOptions}
+            style={{ width: 120 }}
+          />
+          <Select
+            value={familyFilter}
+            onChange={() => undefined}
+            options={familyOptions}
+            style={{ width: 140 }}
+            disabled
+            placeholder="家族筛选（待后端支持）"
+          />
+        </Space>
+      }>
         <Table
-          dataSource={items}
+          dataSource={filteredItems}
           columns={columns}
           rowKey="id"
           size="small"
@@ -100,7 +155,7 @@ export default function SignalDashboard() {
           scroll={{ x: 'max-content' }}
           pagination={{ pageSize: 20 }}
         />
-      </GlassCard>
+      </Panel>
     </div>
   );
 }

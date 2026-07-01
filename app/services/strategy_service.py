@@ -8,41 +8,7 @@ from typing import Any
 from sqlalchemy.orm import Session
 
 from app.models.etl import StrategyConfig
-
-# Preset strategy templates
-STRATEGY_TEMPLATES: list[dict[str, Any]] = [
-    {
-        "name": "动量策略",
-        "description": "基于价格动量的趋势跟踪策略",
-        "strategy_type": "momentum",
-        "params": {
-            "momentum_window": {"label": "动量窗口", "type": "int", "default": 20, "min": 5, "max": 252},
-            "threshold": {"label": "动量阈值", "type": "float", "default": 0.05, "min": 0.01, "max": 0.5},
-            "holding_period": {"label": "持有周期", "type": "int", "default": 20, "min": 5, "max": 60},
-        },
-    },
-    {
-        "name": "均值回归",
-        "description": "基于价格偏离均值的反转策略",
-        "strategy_type": "mean_reversion",
-        "params": {
-            "lookback_window": {"label": "回望窗口", "type": "int", "default": 20, "min": 5, "max": 60},
-            "z_score_threshold": {"label": "Z-Score阈值", "type": "float", "default": 2.0, "min": 1.0, "max": 4.0},
-            "holding_period": {"label": "持有周期", "type": "int", "default": 5, "min": 1, "max": 20},
-        },
-    },
-    {
-        "name": "RSI策略",
-        "description": "基于RSI超买超卖的动量策略",
-        "strategy_type": "rsi",
-        "params": {
-            "rsi_period": {"label": "RSI周期", "type": "int", "default": 14, "min": 5, "max": 30},
-            "overbought": {"label": "超买阈值", "type": "int", "default": 70, "min": 60, "max": 90},
-            "oversold": {"label": "超卖阈值", "type": "int", "default": 30, "min": 10, "max": 40},
-            "holding_period": {"label": "持有周期", "type": "int", "default": 5, "min": 1, "max": 20},
-        },
-    },
-]
+from app.strategies.base import StrategyRegistry
 
 
 class StrategyService:
@@ -52,8 +18,8 @@ class StrategyService:
         self.db = db
 
     def get_templates(self) -> list[dict[str, Any]]:
-        """Get all preset strategy templates."""
-        return STRATEGY_TEMPLATES
+        """Get all preset strategy templates from the registry."""
+        return StrategyRegistry.list_all()
 
     def get_strategies(self) -> list[dict[str, Any]]:
         """Get all user-created strategies."""
