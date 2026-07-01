@@ -18,6 +18,7 @@ import Panel from '@/components/Panel';
 import InstrumentCodeTag from '@/components/InstrumentCodeTag';
 import ReturnTag from '@/components/ReturnTag';
 import ScoreBar from '@/components/ScoreBar';
+import TickerTape from '@/components/TickerTape';
 import { usePriceStream } from '@/hooks/usePriceStream';
 import { useMarketStream } from '@/hooks/useMarketStream';
 import type { NewsArticle, SentimentLabel } from '@/types/news';
@@ -259,6 +260,7 @@ export default function Dashboard() {
 
   return (
     <div>
+      <TickerTape limit={20} />
       <h1
         style={{
           fontSize: 'var(--text-h1-size)',

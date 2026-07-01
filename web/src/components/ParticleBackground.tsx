@@ -70,7 +70,7 @@ export default function ParticleBackground() {
       return value || fallback;
     };
 
-    const accent = getCssColor('--accent', '#d4a373');
+    const accent = getCssColor('--accent', '#5fa87a');
     const textSecondary = getCssColor('--text-secondary', '#888888');
 
     const resize = () => {
