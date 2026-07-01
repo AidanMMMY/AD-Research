@@ -64,7 +64,7 @@ export default function StocksList() {
       dataIndex: 'market',
       width: 80,
       render: (v: string) => (
-        <span style={{ fontSize: 'var(--text-small-size)', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>{v}</span>
+        <span className="tabular-nums" style={{ fontSize: 'var(--text-small-size)', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>{v}</span>
       ),
     },
     {
@@ -85,10 +85,10 @@ export default function StocksList() {
       width: 110,
       render: (v: number) => {
         if (!v) return <span style={{ color: 'var(--text-tertiary)' }}>-</span>;
-        if (v >= 1e12) return <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 600, color: 'var(--text-secondary)' }}>{(v / 1e12).toFixed(2)}T</span>;
-        if (v >= 1e9) return <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 600, color: 'var(--text-secondary)' }}>{(v / 1e9).toFixed(1)}B</span>;
-        if (v >= 1e8) return <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 600, color: 'var(--text-secondary)' }}>{(v / 1e8).toFixed(1)}亿</span>;
-        return <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)' }}>{(v / 1e4).toFixed(0)}万</span>;
+        if (v >= 1e12) return <span className="tabular-nums" style={{ fontFamily: 'var(--font-mono)', fontWeight: 600, color: 'var(--text-secondary)' }}>{(v / 1e12).toFixed(2)}T</span>;
+        if (v >= 1e9) return <span className="tabular-nums" style={{ fontFamily: 'var(--font-mono)', fontWeight: 600, color: 'var(--text-secondary)' }}>{(v / 1e9).toFixed(1)}B</span>;
+        if (v >= 1e8) return <span className="tabular-nums" style={{ fontFamily: 'var(--font-mono)', fontWeight: 600, color: 'var(--text-secondary)' }}>{(v / 1e8).toFixed(1)}亿</span>;
+        return <span className="tabular-nums" style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)' }}>{(v / 1e4).toFixed(0)}万</span>;
       },
     },
     {
@@ -145,7 +145,7 @@ export default function StocksList() {
           onChange={(v) => { setCategory(v); setPage(1); }}
         />
         <div style={{ marginLeft: 'auto', fontSize: 'var(--text-small-size)', color: 'var(--text-tertiary)' }}>
-          共 <span style={{ color: 'var(--accent)', fontWeight: 500 }}>{data?.total || 0}</span> 只
+          共 <span className="tabular-nums" style={{ color: 'var(--accent)', fontWeight: 500 }}>{data?.total || 0}</span> 只
         </div>
       </div>
 
@@ -170,7 +170,7 @@ export default function StocksList() {
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <InstrumentCodeTag code={item.code} name={item.name} />
                   {item.market_cap ? (
-                    <span style={{ fontSize: 'var(--text-body-size)', fontWeight: 600, color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>
+                    <span className="tabular-nums" style={{ fontSize: 'var(--text-body-size)', fontWeight: 600, color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>
                       {item.market_cap >= 1e8 ? `${(item.market_cap / 1e8).toFixed(1)}亿` : `${(item.market_cap / 1e4).toFixed(0)}万`}
                     </span>
                   ) : null}

@@ -9,8 +9,8 @@ interface StepProgressProps {
 const STATUS_ICONS: Record<Step['status'], React.ReactNode> = {
   pending: <ClockCircleOutlined style={{ color: 'var(--text-tertiary)' }} />,
   running: <LoadingOutlined style={{ color: 'var(--accent)' }} />,
-  done: <CheckOutlined style={{ color: '#22c55e' }} />,
-  error: <CloseCircleOutlined style={{ color: '#ef4444' }} />,
+  done: <CheckOutlined style={{ color: 'var(--color-success-bright)' }} />,
+  error: <CloseCircleOutlined style={{ color: 'var(--color-error-bright)' }} />,
 };
 
 export default function StepProgress({ steps, compact = false }: StepProgressProps) {

@@ -18,10 +18,10 @@ export interface SparklineProps {
   style?: React.CSSProperties;
 }
 
-const DEFAULT_UP = '#22c55e';
-const DEFAULT_DOWN = '#ef4444';
-const DEFAULT_UP_CN = '#ef4444';
-const DEFAULT_DOWN_CN = '#22c55e';
+const DEFAULT_UP = 'var(--color-success-bright)';
+const DEFAULT_DOWN = 'var(--color-error-bright)';
+const DEFAULT_UP_CN = 'var(--color-error-bright)';
+const DEFAULT_DOWN_CN = 'var(--color-success-bright)';
 
 /**
  * 80x20 迷你折线图。

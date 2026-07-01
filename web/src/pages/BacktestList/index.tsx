@@ -45,29 +45,29 @@ export default function BacktestList() {
   };
 
   const columns = [
-    { title: 'ID', dataIndex: 'id', width: 60 },
-    { title: '策略ID', dataIndex: 'strategy_id', width: 80 },
+    { title: 'ID', dataIndex: 'id', width: 60, render: (v: any) => <span className="tabular-nums">{v}</span> },
+    { title: '策略ID', dataIndex: 'strategy_id', width: 80, render: (v: any) => <span className="tabular-nums">{v}</span> },
     { title: '起始日期', dataIndex: 'start_date' },
     { title: '结束日期', dataIndex: 'end_date' },
     {
       title: '总收益',
       dataIndex: 'metrics',
-      render: (v: any) => `${v?.total_return?.toFixed?.(2) ?? v?.total_return ?? 0}%`,
+      render: (v: any) => <span className="tabular-nums">{`${v?.total_return?.toFixed?.(2) ?? v?.total_return ?? 0}%`}</span>,
       width: 100,
     },
     {
       title: '最大回撤',
       dataIndex: 'metrics',
-      render: (v: any) => `${v?.max_drawdown?.toFixed?.(2) ?? v?.max_drawdown ?? 0}%`,
+      render: (v: any) => <span className="tabular-nums">{`${v?.max_drawdown?.toFixed?.(2) ?? v?.max_drawdown ?? 0}%`}</span>,
       width: 100,
     },
     {
       title: '夏普比率',
       dataIndex: 'metrics',
-      render: (v: any) => v?.sharpe_ratio?.toFixed?.(2) ?? v?.sharpe_ratio ?? '-',
+      render: (v: any) => <span className="tabular-nums">{v?.sharpe_ratio?.toFixed?.(2) ?? v?.sharpe_ratio ?? '-'}</span>,
       width: 90,
     },
-    { title: '交易次数', dataIndex: 'trade_count', width: 90 },
+    { title: '交易次数', dataIndex: 'trade_count', width: 90, render: (v: any) => <span className="tabular-nums">{v}</span> },
     {
       title: '操作',
       render: (_: any, record: any) => (

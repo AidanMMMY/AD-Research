@@ -53,12 +53,12 @@ export default function BacktestDetail() {
   const tradeColumns = [
     { title: '入场日期', dataIndex: 'entry_date' },
     { title: '出场日期', dataIndex: 'exit_date' },
-    { title: '入场价', dataIndex: 'entry_price' },
-    { title: '出场价', dataIndex: 'exit_price' },
+    { title: '入场价', dataIndex: 'entry_price', render: (v: any) => <span className="tabular-nums">{v}</span> },
+    { title: '出场价', dataIndex: 'exit_price', render: (v: any) => <span className="tabular-nums">{v}</span> },
     {
       title: '收益',
       dataIndex: 'pnl_pct',
-      render: (v: number) => <span style={{ color: v >= 0 ? 'var(--color-rise)' : 'var(--color-fall)' }}>{v}%</span>,
+      render: (v: number) => <span className="tabular-nums" style={{ color: v >= 0 ? 'var(--color-rise)' : 'var(--color-fall)' }}>{v}%</span>,
     },
   ];
 
@@ -67,22 +67,22 @@ export default function BacktestDetail() {
     {
       title: '配置效应',
       dataIndex: 'allocation',
-      render: (v?: number) => (v != null ? `${v >= 0 ? '+' : ''}${v.toFixed(2)}%` : '-'),
+      render: (v?: number) => (v != null ? <span className="tabular-nums">{`${v >= 0 ? '+' : ''}${v.toFixed(2)}%`}</span> : '-'),
     },
     {
       title: '选股效应',
       dataIndex: 'selection',
-      render: (v?: number) => (v != null ? `${v >= 0 ? '+' : ''}${v.toFixed(2)}%` : '-'),
+      render: (v?: number) => (v != null ? <span className="tabular-nums">{`${v >= 0 ? '+' : ''}${v.toFixed(2)}%`}</span> : '-'),
     },
     {
       title: '交互效应',
       dataIndex: 'interaction',
-      render: (v?: number) => (v != null ? `${v >= 0 ? '+' : ''}${v.toFixed(2)}%` : '-'),
+      render: (v?: number) => (v != null ? <span className="tabular-nums">{`${v >= 0 ? '+' : ''}${v.toFixed(2)}%`}</span> : '-'),
     },
     {
       title: '合计',
       dataIndex: 'total',
-      render: (v?: number) => (v != null ? `${v >= 0 ? '+' : ''}${v.toFixed(2)}%` : '-'),
+      render: (v?: number) => (v != null ? <span className="tabular-nums">{`${v >= 0 ? '+' : ''}${v.toFixed(2)}%`}</span> : '-'),
     },
   ];
 
@@ -101,7 +101,7 @@ export default function BacktestDetail() {
   const overviewTab = (
     <div>
       <Panel title={`回测详情 #${data.id}`} padding="md" style={{ marginBottom: 'var(--space-5)' }} extra={<HelpTrigger tooltip="AI 解释回测指标" onClick={handleOpenHelp} />}>
-        <div style={{ ...gridStyle, borderTop: 'none' }}>
+        <div className="tabular-nums" style={{ ...gridStyle, borderTop: 'none' }}>
           {[
             { title: <HelpPopover termKey="total_return">总收益</HelpPopover>, value: metrics.total_return, suffix: '%' },
             { title: <HelpPopover termKey="annualized_return">年化收益</HelpPopover>, value: metrics.annualized_return, suffix: '%' },
@@ -126,7 +126,7 @@ export default function BacktestDetail() {
   const attributionTab = (
     <div>
       <Panel title="归因概览" padding="md" style={{ marginBottom: 'var(--space-5)' }}>
-        <div style={gridStyle}>
+        <div className="tabular-nums" style={gridStyle}>
           {[
             { title: '策略收益', value: attribution?.total_return, suffix: '%' },
             { title: '基准收益', value: attribution?.benchmark_return, suffix: '%' },
@@ -158,7 +158,7 @@ export default function BacktestDetail() {
       </Panel>
 
       <Panel title="交易统计" padding="md" style={{ marginBottom: 'var(--space-5)' }}>
-        <div style={gridStyle}>
+        <div className="tabular-nums" style={gridStyle}>
           {[
             { title: '总交易次数', value: attribution?.trade_stats?.total_trades, suffix: undefined },
             { title: '盈利次数', value: attribution?.trade_stats?.winning_trades, suffix: undefined },

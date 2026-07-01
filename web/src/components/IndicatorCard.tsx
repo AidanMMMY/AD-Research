@@ -17,14 +17,16 @@ export default function IndicatorCard({ title, value, suffix, precision = 2, pre
   const colorConvention = useSettingsStore((s) => s.colorConvention);
   return (
     <GlassCard padding="sm">
-      <Statistic
-        title={title}
-        value={value ?? 0}
-        precision={precision}
-        suffix={suffix}
-        prefix={prefix || (isPositive ? <ArrowUpOutlined /> : <ArrowDownOutlined />)}
-        valueStyle={{ color: getReturnColor(value, colorConvention), fontSize: 20 }}
-      />
+      <div className="tabular-nums">
+        <Statistic
+          title={title}
+          value={value ?? 0}
+          precision={precision}
+          suffix={suffix}
+          prefix={prefix || (isPositive ? <ArrowUpOutlined /> : <ArrowDownOutlined />)}
+          valueStyle={{ color: getReturnColor(value, colorConvention), fontSize: 20 }}
+        />
+      </div>
     </GlassCard>
   );
 }

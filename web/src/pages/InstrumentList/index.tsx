@@ -27,6 +27,7 @@ function LivePriceCell({ tick }: { code: string; tick: ReturnType<typeof useMark
   if (!tick) {
     return (
       <span
+        className="tabular-nums"
         style={{
           fontSize: 'var(--text-small-size)',
           color: 'var(--text-tertiary)',
@@ -40,6 +41,7 @@ function LivePriceCell({ tick }: { code: string; tick: ReturnType<typeof useMark
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 2, lineHeight: 1.2 }}>
       <span
+        className="tabular-nums"
         style={{
           fontSize: 'var(--text-body-size)',
           color: 'var(--text-primary)',
@@ -109,7 +111,7 @@ export default function InstrumentList() {
       dataIndex: 'market',
       width: 80,
       render: (v: string) => (
-        <span style={{ fontSize: 'var(--text-small-size)', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>{v}</span>
+        <span className="tabular-nums" style={{ fontSize: 'var(--text-small-size)', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>{v}</span>
       ),
     },
     {
@@ -153,12 +155,12 @@ export default function InstrumentList() {
         // For US stocks, show market cap in USD; for ETFs show fund size
         if (record.market_cap) {
           const cap = record.market_cap;
-          if (cap >= 1e12) return <span style={{ fontSize: 'var(--text-body-size)', fontWeight: 600, color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>{(cap / 1e12).toFixed(2)}T</span>;
-          if (cap >= 1e9) return <span style={{ fontSize: 'var(--text-body-size)', fontWeight: 600, color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>{(cap / 1e9).toFixed(1)}B</span>;
-          if (cap >= 1e6) return <span style={{ fontSize: 'var(--text-body-size)', fontWeight: 600, color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>{(cap / 1e6).toFixed(1)}M</span>;
+          if (cap >= 1e12) return <span className="tabular-nums" style={{ fontSize: 'var(--text-body-size)', fontWeight: 600, color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>{(cap / 1e12).toFixed(2)}T</span>;
+          if (cap >= 1e9) return <span className="tabular-nums" style={{ fontSize: 'var(--text-body-size)', fontWeight: 600, color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>{(cap / 1e9).toFixed(1)}B</span>;
+          if (cap >= 1e6) return <span className="tabular-nums" style={{ fontSize: 'var(--text-body-size)', fontWeight: 600, color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>{(cap / 1e6).toFixed(1)}M</span>;
         }
         if (v) return (
-          <span style={{ fontSize: 'var(--text-body-size)', fontWeight: 600, color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>
+          <span className="tabular-nums" style={{ fontSize: 'var(--text-body-size)', fontWeight: 600, color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>
             {(v / 1e8).toFixed(1)}亿
           </span>
         );
@@ -231,7 +233,7 @@ export default function InstrumentList() {
           onChange={(v) => { setCategory(v); setPage(1); }}
         />
         <div style={{ marginLeft: 'auto', fontSize: 'var(--text-small-size)', color: 'var(--text-tertiary)' }}>
-          共 <span style={{ color: 'var(--accent)', fontWeight: 500 }}>{data?.total || 0}</span> 只
+          共 <span className="tabular-nums" style={{ color: 'var(--accent)', fontWeight: 500 }}>{data?.total || 0}</span> 只
         </div>
       </div>
 
@@ -256,7 +258,7 @@ export default function InstrumentList() {
               >
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <InstrumentCodeTag code={item.code} name={item.name} />
-                  <span style={{ fontSize: 'var(--text-body-size)', fontWeight: 600, color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>
+                  <span className="tabular-nums" style={{ fontSize: 'var(--text-body-size)', fontWeight: 600, color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>
                     {item.fund_size ? `${(item.fund_size / 1e8).toFixed(1)}亿` : '-'}
                   </span>
                 </div>

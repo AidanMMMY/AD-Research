@@ -52,7 +52,7 @@ export default function SignalDashboard() {
   const holdCount = filteredItems.filter((s) => s.signal_type === 'HOLD').length;
 
   const columns = [
-    { title: '策略ID', dataIndex: 'strategy_id', width: 80 },
+    { title: '策略ID', dataIndex: 'strategy_id', width: 80, render: (v: any) => <span className="tabular-nums">{v}</span> },
     { title: '标的代码', dataIndex: 'etf_code' },
     { title: '日期', dataIndex: 'trade_date' },
     {
@@ -61,7 +61,7 @@ export default function SignalDashboard() {
       render: (v: string) => <ThemeTag variant={SIGNAL_VARIANTS[v]}>{SIGNAL_LABELS[v] || v}</ThemeTag>,
       width: 80,
     },
-    { title: '强度', dataIndex: 'strength', width: 80 },
+    { title: '强度', dataIndex: 'strength', width: 80, render: (v: any) => <span className="tabular-nums">{v}</span> },
   ];
 
   const familyOptions = [
@@ -114,6 +114,7 @@ export default function SignalDashboard() {
               {m.title}
             </div>
             <div
+              className="tabular-nums"
               style={{
                 fontSize: 'var(--text-data-lg-size)',
                 fontWeight: 400,

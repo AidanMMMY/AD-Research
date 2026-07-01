@@ -219,42 +219,42 @@ export default function StockDetail() {
           </div>
           <Row gutter={[16, 16]}>
             <Col xs={12} sm={8} md={6}>
-              <div style={{ borderBottom: '1px solid var(--border-default)', padding: 'var(--space-3) 0' }}>
+              <div className="tabular-nums" style={{ borderBottom: '1px solid var(--border-default)', padding: 'var(--space-3) 0' }}>
                 <Statistic title={<HelpPopover termKey="rsi14">RSI14</HelpPopover>} value={indicator?.rsi14} precision={1} />
               </div>
             </Col>
             <Col xs={12} sm={8} md={6}>
-              <div style={{ borderBottom: '1px solid var(--border-default)', padding: 'var(--space-3) 0' }}>
+              <div className="tabular-nums" style={{ borderBottom: '1px solid var(--border-default)', padding: 'var(--space-3) 0' }}>
                 <Statistic title={<HelpPopover termKey="sharpe_1y">夏普1年</HelpPopover>} value={indicator?.sharpe_1y} precision={2} />
               </div>
             </Col>
             <Col xs={12} sm={8} md={6}>
-              <div style={{ borderBottom: '1px solid var(--border-default)', padding: 'var(--space-3) 0' }}>
+              <div className="tabular-nums" style={{ borderBottom: '1px solid var(--border-default)', padding: 'var(--space-3) 0' }}>
                 <Statistic title={<HelpPopover termKey="volatility_20d">波动率20日</HelpPopover>} value={indicator?.volatility_20d} precision={2} suffix="%" />
               </div>
             </Col>
             <Col xs={12} sm={8} md={6}>
-              <div style={{ borderBottom: '1px solid var(--border-default)', padding: 'var(--space-3) 0' }}>
+              <div className="tabular-nums" style={{ borderBottom: '1px solid var(--border-default)', padding: 'var(--space-3) 0' }}>
                 <Statistic title={<HelpPopover termKey="max_drawdown_1y">最大回撤</HelpPopover>} value={indicator?.max_drawdown_1y} precision={2} suffix="%" />
               </div>
             </Col>
             <Col xs={12} sm={8} md={6}>
-              <div style={{ borderBottom: '1px solid var(--border-default)', padding: 'var(--space-3) 0' }}>
+              <div className="tabular-nums" style={{ borderBottom: '1px solid var(--border-default)', padding: 'var(--space-3) 0' }}>
                 <Statistic title={<HelpPopover termKey="return_1m">1月收益</HelpPopover>} value={indicator?.return_1m} precision={2} suffix="%" />
               </div>
             </Col>
             <Col xs={12} sm={8} md={6}>
-              <div style={{ borderBottom: '1px solid var(--border-default)', padding: 'var(--space-3) 0' }}>
+              <div className="tabular-nums" style={{ borderBottom: '1px solid var(--border-default)', padding: 'var(--space-3) 0' }}>
                 <Statistic title={<HelpPopover termKey="return_3m">3月收益</HelpPopover>} value={indicator?.return_3m} precision={2} suffix="%" />
               </div>
             </Col>
             <Col xs={12} sm={8} md={6}>
-              <div style={{ borderBottom: '1px solid var(--border-default)', padding: 'var(--space-3) 0' }}>
+              <div className="tabular-nums" style={{ borderBottom: '1px solid var(--border-default)', padding: 'var(--space-3) 0' }}>
                 <Statistic title={<HelpPopover termKey="return_1y">1年收益</HelpPopover>} value={indicator?.return_1y} precision={2} suffix="%" />
               </div>
             </Col>
             <Col xs={12} sm={8} md={6}>
-              <div style={{ borderBottom: '1px solid var(--border-default)', padding: 'var(--space-3) 0' }}>
+              <div className="tabular-nums" style={{ borderBottom: '1px solid var(--border-default)', padding: 'var(--space-3) 0' }}>
                 <Statistic title={<HelpPopover termKey="ma5">MA5</HelpPopover>} value={indicator?.ma5} precision={2} />
               </div>
             </Col>
@@ -277,16 +277,18 @@ export default function StockDetail() {
               </Col>
               <Col xs={24} md={12}>
                 <Panel variant="minimal" title="评分详情" padding="md">
-                  <Descriptions column={1}>
-                    <Descriptions.Item label={<HelpPopover termKey="composite_score">综合评分</HelpPopover>}>{score.composite_score}</Descriptions.Item>
-                    <Descriptions.Item label={<HelpPopover termKey="rank_overall">全市场排名</HelpPopover>}>{score.rank_overall}</Descriptions.Item>
-                    <Descriptions.Item label={<HelpPopover termKey="rank_category">分类排名</HelpPopover>}>{score.rank_category}</Descriptions.Item>
-                    <Descriptions.Item label={<HelpPopover termKey="score_return">收益得分</HelpPopover>}>{score.score_return}</Descriptions.Item>
-                    <Descriptions.Item label={<HelpPopover termKey="score_risk">风险得分</HelpPopover>}>{score.score_risk}</Descriptions.Item>
-                    <Descriptions.Item label={<HelpPopover termKey="score_sharpe">夏普得分</HelpPopover>}>{score.score_sharpe}</Descriptions.Item>
-                    <Descriptions.Item label={<HelpPopover termKey="score_liquidity">流动性得分</HelpPopover>}>{score.score_liquidity}</Descriptions.Item>
-                    <Descriptions.Item label={<HelpPopover termKey="score_trend">趋势得分</HelpPopover>}>{score.score_trend}</Descriptions.Item>
-                  </Descriptions>
+                  <div className="tabular-nums">
+                    <Descriptions column={1}>
+                      <Descriptions.Item label={<HelpPopover termKey="composite_score">综合评分</HelpPopover>}>{score.composite_score}</Descriptions.Item>
+                      <Descriptions.Item label={<HelpPopover termKey="rank_overall">全市场排名</HelpPopover>}>{score.rank_overall}</Descriptions.Item>
+                      <Descriptions.Item label={<HelpPopover termKey="rank_category">分类排名</HelpPopover>}>{score.rank_category}</Descriptions.Item>
+                      <Descriptions.Item label={<HelpPopover termKey="score_return">收益得分</HelpPopover>}>{score.score_return}</Descriptions.Item>
+                      <Descriptions.Item label={<HelpPopover termKey="score_risk">风险得分</HelpPopover>}>{score.score_risk}</Descriptions.Item>
+                      <Descriptions.Item label={<HelpPopover termKey="score_sharpe">夏普得分</HelpPopover>}>{score.score_sharpe}</Descriptions.Item>
+                      <Descriptions.Item label={<HelpPopover termKey="score_liquidity">流动性得分</HelpPopover>}>{score.score_liquidity}</Descriptions.Item>
+                      <Descriptions.Item label={<HelpPopover termKey="score_trend">趋势得分</HelpPopover>}>{score.score_trend}</Descriptions.Item>
+                    </Descriptions>
+                  </div>
                 </Panel>
               </Col>
             </Row>
@@ -387,7 +389,7 @@ export default function StockDetail() {
                 >
                   {sentiment ? (
                     <div style={{ textAlign: 'center' }}>
-                      <div style={{ fontSize: 48, fontWeight: 700, color: SENTIMENT_COLORS[sentiment.label] || 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>
+                      <div className="tabular-nums" style={{ fontSize: 48, fontWeight: 700, color: SENTIMENT_COLORS[sentiment.label] || 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>
                         {sentiment.avg_score.toFixed(2)}
                       </div>
                       <ThemeTag
@@ -408,9 +410,9 @@ export default function StockDetail() {
                       </div>
 
                       <div style={{ display: 'flex', justifyContent: 'center', gap: 24, marginTop: 'var(--space-4)' }}>
-                        <span style={{ color: 'var(--color-rise)', fontSize: 13 }}>正面 {sentiment.positive_count}</span>
-                        <span style={{ color: 'var(--text-tertiary)', fontSize: 13 }}>中性 {sentiment.neutral_count}</span>
-                        <span style={{ color: 'var(--color-fall)', fontSize: 13 }}>负面 {sentiment.negative_count}</span>
+                        <span className="tabular-nums" style={{ color: 'var(--color-rise)', fontSize: 13 }}>正面 {sentiment.positive_count}</span>
+                        <span className="tabular-nums" style={{ color: 'var(--text-tertiary)', fontSize: 13 }}>中性 {sentiment.neutral_count}</span>
+                        <span className="tabular-nums" style={{ color: 'var(--color-fall)', fontSize: 13 }}>负面 {sentiment.negative_count}</span>
                       </div>
                       <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 'var(--space-2)' }}>
                         共 {sentiment.total_articles} 篇 · 近 {sentiment.period_days} 天
@@ -501,6 +503,7 @@ export default function StockDetail() {
                         {m.title}
                       </div>
                       <div
+                        className="tabular-nums"
                         style={{
                           fontSize: 'var(--text-data-lg-size)',
                           fontWeight: 400,
@@ -557,7 +560,7 @@ export default function StockDetail() {
               {stock.market && <ThemeTag>{stock.market}</ThemeTag>}
               {stock.exchange && <ThemeTag>{stock.exchange}</ThemeTag>}
             </div>
-            <div style={{ color: 'var(--text-secondary)', fontSize: 'var(--text-body-size)' }}>
+            <div className="tabular-nums" style={{ color: 'var(--text-secondary)', fontSize: 'var(--text-body-size)' }}>
               {stock.industry || '—'}
               {stock.sector && ` | ${stock.sector}`}
               {stock.category && ` | ${stock.category}`}
@@ -580,7 +583,7 @@ export default function StockDetail() {
             </Button>
             {indicator?.return_1m !== undefined && (
               <div style={{ textAlign: 'right' }}>
-                <div style={{ fontSize: 'var(--text-data-lg-size)', fontWeight: 400, fontFamily: 'var(--font-mono)', color: getReturnColor(indicator.return_1m, colorConvention) }}>
+                <div className="tabular-nums" style={{ fontSize: 'var(--text-data-lg-size)', fontWeight: 400, fontFamily: 'var(--font-mono)', color: getReturnColor(indicator.return_1m, colorConvention) }}>
                   {formatPercent(indicator.return_1m)}
                 </div>
                 <div style={{ color: 'var(--text-tertiary)', fontSize: 'var(--text-small-size)' }}>1月收益</div>

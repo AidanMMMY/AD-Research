@@ -159,7 +159,7 @@ export default function CryptoDetail() {
             columns={[
               { title: '日期', dataIndex: 'trade_date' },
               { title: '信号', dataIndex: 'signal_type' },
-              { title: '强度', dataIndex: 'strength' },
+              { title: '强度', dataIndex: 'strength', render: (v: any) => <span className="tabular-nums">{v}</span> },
             ]}
           />
         </Panel>
@@ -295,7 +295,7 @@ export default function CryptoDetail() {
             </div>
           </div>
           <div style={{ textAlign: 'right' }}>
-            <div style={{ fontSize: 'var(--text-data-lg-size)', fontWeight: 400, fontFamily: 'var(--font-mono)', color: 'var(--text-primary)' }}>
+            <div className="tabular-nums" style={{ fontSize: 'var(--text-data-lg-size)', fontWeight: 400, fontFamily: 'var(--font-mono)', color: 'var(--text-primary)' }}>
               {crypto.price != null ? `$${crypto.price < 0.01 ? crypto.price.toFixed(6) : crypto.price < 1 ? crypto.price.toFixed(4) : crypto.price.toFixed(2)}` : '-'}
             </div>
             <div style={{ marginTop: 4 }}>
@@ -307,42 +307,42 @@ export default function CryptoDetail() {
 
         <Row gutter={[16, 16]} style={{ marginTop: 'var(--space-4)' }}>
           <Col xs={12} sm={8} md={6}>
-            <div style={{ borderBottom: '1px solid var(--border-default)', padding: 'var(--space-3) 0' }}>
+            <div className="tabular-nums" style={{ borderBottom: '1px solid var(--border-default)', padding: 'var(--space-3) 0' }}>
               <Statistic title="24h最高" value={crypto.high_24h} precision={crypto.high_24h != null && crypto.high_24h < 1 ? 4 : 2} prefix="$" />
             </div>
           </Col>
           <Col xs={12} sm={8} md={6}>
-            <div style={{ borderBottom: '1px solid var(--border-default)', padding: 'var(--space-3) 0' }}>
+            <div className="tabular-nums" style={{ borderBottom: '1px solid var(--border-default)', padding: 'var(--space-3) 0' }}>
               <Statistic title="24h最低" value={crypto.low_24h} precision={crypto.low_24h != null && crypto.low_24h < 1 ? 4 : 2} prefix="$" />
             </div>
           </Col>
           <Col xs={12} sm={8} md={6}>
-            <div style={{ borderBottom: '1px solid var(--border-default)', padding: 'var(--space-3) 0' }}>
+            <div className="tabular-nums" style={{ borderBottom: '1px solid var(--border-default)', padding: 'var(--space-3) 0' }}>
               <Statistic title="24h成交量" value={crypto.volume_24h} precision={2} />
             </div>
           </Col>
           <Col xs={12} sm={8} md={6}>
-            <div style={{ borderBottom: '1px solid var(--border-default)', padding: 'var(--space-3) 0' }}>
+            <div className="tabular-nums" style={{ borderBottom: '1px solid var(--border-default)', padding: 'var(--space-3) 0' }}>
               <Statistic title="RSI14" value={indicator?.rsi14} precision={1} />
             </div>
           </Col>
           <Col xs={12} sm={8} md={6}>
-            <div style={{ borderBottom: '1px solid var(--border-default)', padding: 'var(--space-3) 0' }}>
+            <div className="tabular-nums" style={{ borderBottom: '1px solid var(--border-default)', padding: 'var(--space-3) 0' }}>
               <Statistic title="波动率20日" value={indicator?.volatility_20d} precision={2} suffix="%" />
             </div>
           </Col>
           <Col xs={12} sm={8} md={6}>
-            <div style={{ borderBottom: '1px solid var(--border-default)', padding: 'var(--space-3) 0' }}>
+            <div className="tabular-nums" style={{ borderBottom: '1px solid var(--border-default)', padding: 'var(--space-3) 0' }}>
               <Statistic title="最大回撤1年" value={indicator?.max_drawdown_1y} precision={2} suffix="%" />
             </div>
           </Col>
           <Col xs={12} sm={8} md={6}>
-            <div style={{ borderBottom: '1px solid var(--border-default)', padding: 'var(--space-3) 0' }}>
+            <div className="tabular-nums" style={{ borderBottom: '1px solid var(--border-default)', padding: 'var(--space-3) 0' }}>
               <Statistic title="1月收益" value={indicator?.return_1m} precision={2} suffix="%" />
             </div>
           </Col>
           <Col xs={12} sm={8} md={6}>
-            <div style={{ borderBottom: '1px solid var(--border-default)', padding: 'var(--space-3) 0' }}>
+            <div className="tabular-nums" style={{ borderBottom: '1px solid var(--border-default)', padding: 'var(--space-3) 0' }}>
               <Statistic title="MA5" value={indicator?.ma5} precision={2} prefix="$" />
             </div>
           </Col>
