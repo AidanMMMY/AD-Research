@@ -20,10 +20,10 @@ const queryClient = new QueryClient({
 const antdTheme = {
   algorithm: theme.darkAlgorithm,
   token: {
-    colorPrimary: '#d4a373',
-    colorInfo: '#d4a373',
+    colorPrimary: '#5fa87a',
+    colorInfo: '#5fa87a',
     colorSuccess: '#5fa87a',
-    colorWarning: '#d4a373',
+    colorWarning: '#eab308',
     colorError: '#c96b6b',
     colorBgBase: '#0a0a0a',
     colorBgContainer: '#111111',
@@ -79,18 +79,18 @@ const antdTheme = {
     Input: {
       borderRadius: 8,
       colorBgContainer: 'rgba(255,255,255,0.02)',
-      activeBorderColor: '#d4a373',
-      activeShadow: '0 0 0 2px rgba(212,163,115,0.10)',
+      activeBorderColor: '#5fa87a',
+      activeShadow: '0 0 0 2px rgba(95,168,122,0.10)',
     },
     Select: {
       borderRadius: 8,
       colorBgContainer: 'rgba(255,255,255,0.02)',
-      optionSelectedBg: 'rgba(212,163,115,0.10)',
-      optionSelectedColor: '#d4a373',
+      optionSelectedBg: 'rgba(95,168,122,0.10)',
+      optionSelectedColor: '#5fa87a',
     },
     Tabs: {
-      inkBarColor: '#d4a373',
-      itemSelectedColor: '#d4a373',
+      inkBarColor: '#5fa87a',
+      itemSelectedColor: '#5fa87a',
       itemHoverColor: '#f5f5f0',
       itemColor: '#444444',
     },

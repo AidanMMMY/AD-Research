@@ -184,8 +184,8 @@ export default function KLineChart({ data, overlays = DEFAULT_OVERLAYS }: KLineC
         textSecondary: getCssColor('--text-secondary', '#888888'),
         textTertiary: getCssColor('--text-tertiary', '#444444'),
         borderDefault: getCssColor('--border-default', 'rgba(255, 255, 255, 0.06)'),
-        accent: getCssColor('--accent', '#d4a373'),
-        accentDim: getCssColor('--accent-dim', 'rgba(212, 163, 115, 0.10)'),
+        accent: getCssColor('--accent', '#5fa87a'),
+        accentDim: getCssColor('--accent-dim', 'rgba(95, 168, 122, 0.10)'),
       };
 
       const chart = createChart(chartContainerRef.current, {
