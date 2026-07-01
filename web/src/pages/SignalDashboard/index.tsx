@@ -79,7 +79,7 @@ export default function SignalDashboard() {
   return (
     <div>
       <h1 style={{ fontSize: 'var(--text-h1-size)', fontWeight: 500, color: 'var(--text-primary)', margin: '0 0 8px', letterSpacing: '-0.03em' }}>信号看板</h1>
-      <p style={{ margin: '0 0 32px', color: 'var(--text-tertiary)', fontSize: 'var(--text-body-size)' }}>查看最新交易信号汇总，监控买入、卖出、持有信号分布</p>
+      <p style={{ margin: '0 0 var(--space-6)', color: 'var(--text-tertiary)', fontSize: 'var(--text-body-size)' }}>查看最新交易信号汇总，监控买入、卖出、持有信号分布</p>
       <div
         style={{
           display: 'grid',
@@ -97,7 +97,7 @@ export default function SignalDashboard() {
           <div
             key={m.title}
             style={{
-              padding: '20px 16px',
+              padding: 'var(--space-5) var(--space-4)',
               borderRight: i < 2 ? '1px solid var(--border-default)' : 'none',
             }}
           >

@@ -71,7 +71,7 @@ export default function CorrelationAnalysis() {
             请至少选择2只标的进行分析
           </div>
         ) : isLoading ? (
-          <Spin size="large" style={{ display: 'block', margin: '60px auto' }} />
+          <Spin size="large" style={{ display: 'block', margin: 'var(--space-8) auto' }} />
         ) : correlationData ? (
           <CorrelationHeatmap codes={correlationData.codes} matrix={correlationData.matrix} />
         ) : null}

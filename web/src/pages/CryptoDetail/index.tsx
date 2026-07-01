@@ -81,7 +81,7 @@ export default function CryptoDetail() {
     }
   }, [overlays]);
 
-  if (detailLoading) return <Spin size="large" style={{ display: 'block', margin: '100px auto' }} />;
+  if (detailLoading) return <Spin size="large" style={{ display: 'block', margin: 'var(--space-9) auto' }} />;
   if (detailError) return <Alert message="加载加密货币详情失败" description={(detailError as Error).message} type="error" style={{ margin: 'var(--space-6)' }} />;
   if (!crypto) return <Alert message="币种不存在" description={`未找到代码为 ${code} 的加密货币`} type="warning" style={{ margin: 'var(--space-6)' }} />;
 

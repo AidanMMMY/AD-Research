@@ -122,7 +122,7 @@ export default function ReturnComparison() {
             请至少选择1只标的
           </div>
         ) : etfQueries.isLoading ? (
-          <Spin size="large" style={{ display: 'block', margin: '60px auto' }} />
+          <Spin size="large" style={{ display: 'block', margin: 'var(--space-8) auto' }} />
         ) : series.filter((s) => s.dates.length > 0).length > 0 ? (
           <ReturnCurve series={series.filter((s) => s.dates.length > 0)} />
         ) : (

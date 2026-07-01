@@ -11,6 +11,8 @@ import HelpTrigger from '@/components/HelpTrigger';
 import HelpPopover from '@/components/HelpPopover';
 import InstrumentCodeTag from '@/components/InstrumentCodeTag';
 import ReturnTag from '@/components/ReturnTag';
+import PageHeader from '@/components/PageHeader';
+import LastUpdated from '@/components/LastUpdated';
 import { buildScreenContext } from '@/utils/helpContext';
 import { getQuickQuestions } from '@/utils/helpPrompts';
 
@@ -40,7 +42,7 @@ export default function Screen() {
     }),
     [filters, preset, page, pageSize]
   );
-  const { data: results, isLoading } = useScreenResults(queryFilters);
+  const { data: results, isLoading, dataUpdatedAt: resultsUpdatedAt, isFetching: resultsFetching } = useScreenResults(queryFilters);
   const { data: presets } = useScreenPresets();
   const { data: categories } = useScreenCategories({ market: filters.market });
   const { data: markets } = useInstrumentMarkets();
@@ -78,9 +80,19 @@ export default function Screen() {
 
   return (
     <div>
+      <PageHeader
+        eyebrow="全市场"
+        title="全市场筛选器"
+        description="按评分、风险、收益、夏普等多维条件筛选全市场标的"
+        extra={
+          <Space size="middle">
+            <LastUpdated at={resultsUpdatedAt} loading={resultsFetching && !results} />
+            <HelpTrigger tooltip="AI 解释筛选逻辑" onClick={handleOpenHelp} />
+          </Space>
+        }
+      />
       <Panel
         title="筛选条件"
-        extra={<HelpTrigger tooltip="AI 解释筛选逻辑" onClick={handleOpenHelp} />}
       >
         <div style={{ marginBottom: 16 }}>
           <span style={{ fontSize: 'var(--text-small-size)', color: 'var(--text-secondary)', marginRight: 12 }}>

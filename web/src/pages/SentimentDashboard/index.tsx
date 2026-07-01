@@ -106,12 +106,12 @@ function SentimentCard({ sentiment }: { sentiment: SentimentAggregate }) {
         <div style={{ fontSize: 'var(--text-small-size)', color: 'var(--text-tertiary)', marginBottom: 'var(--space-xs)' }}>
           {sentiment.instrument_code}
         </div>
-        <div style={{ fontSize: 48, marginTop: 'var(--space-xs)' }}>
+        <div style={{ fontSize: 'var(--text-data-xl-size)', marginTop: 'var(--space-xs)' }}>
           {SENTIMENT_ICONS[sentiment.label] || SENTIMENT_ICONS.neutral}
         </div>
         <div
           style={{
-            fontSize: 36,
+            fontSize: 40,
             fontWeight: 700,
             color,
             fontFamily: "'SF Mono', monospace",
