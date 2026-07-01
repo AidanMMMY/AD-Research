@@ -1,5 +1,6 @@
 import { useParams } from 'react-router-dom';
 import { Statistic, Table, Spin, Tabs } from 'antd';
+import { ArrowUpOutlined, ArrowDownOutlined } from '@ant-design/icons';
 import Panel from '@/components/Panel';
 import HelpTrigger from '@/components/HelpTrigger';
 import HelpPopover from '@/components/HelpPopover';
@@ -58,7 +59,19 @@ export default function BacktestDetail() {
     {
       title: '收益',
       dataIndex: 'pnl_pct',
-      render: (v: number) => <span className="tabular-nums" style={{ color: v >= 0 ? 'var(--color-rise)' : 'var(--color-fall)' }}>{v}%</span>,
+      render: (v: number) => (
+        <span
+          className="tabular-nums"
+          style={{ color: v >= 0 ? 'var(--color-rise)' : 'var(--color-fall)', display: 'inline-flex', alignItems: 'baseline', gap: 2 }}
+        >
+          {v > 0 ? (
+            <ArrowUpOutlined style={{ fontSize: '0.85em' }} aria-label="up" />
+          ) : v < 0 ? (
+            <ArrowDownOutlined style={{ fontSize: '0.85em' }} aria-label="down" />
+          ) : null}
+          {v}%
+        </span>
+      ),
     },
   ];
 

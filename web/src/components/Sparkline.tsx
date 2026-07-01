@@ -90,6 +90,36 @@ export default function Sparkline({
     );
   }
 
+  // Compute direction for the right-edge arrow marker (color-blind friendly cue).
+  // We render a tiny triangle inside the SVG so it scales with the same width/height
+  // and does not cause layout reflow in callers.
+  const directionMarker = useMemo(() => {
+    if (!data || data.length < 2) return null;
+    const first = data[0];
+    const last = data[data.length - 1];
+    if (last === first) return null;
+    const up = last > first;
+    // triangle pointing up or down, sized within the height
+    const cx = width - 3;
+    const cy = height / 2;
+    const half = Math.min(2.2, height / 4 - 0.5);
+    if (up) {
+      // apex up: (cx, cy-half), base at (cx-half, cy+half/2), (cx+half, cy+half/2)
+      return `M ${cx} ${cy - half} L ${cx - half} ${cy + half / 2} L ${cx + half} ${cy + half / 2} Z`;
+    }
+    // apex down: (cx, cy+half)
+    return `M ${cx} ${cy + half} L ${cx - half} ${cy - half / 2} L ${cx + half} ${cy - half / 2} Z`;
+  }, [data, width, height]);
+
+  // aria-label that includes direction so screen-reader users also get the cue.
+  const ariaLabel = (() => {
+    if (!data || data.length < 2) return 'sparkline';
+    const first = data[0];
+    const last = data[data.length - 1];
+    if (last === first) return 'sparkline flat';
+    return last > first ? 'sparkline up' : 'sparkline down';
+  })();
+
   return (
     <svg
       width={width}
@@ -98,9 +128,11 @@ export default function Sparkline({
       preserveAspectRatio="none"
       style={{ display: 'inline-block', verticalAlign: 'middle', ...style }}
       className={className}
-      aria-label="sparkline"
+      aria-label={ariaLabel}
+      role={data && data.length >= 2 ? 'img' : undefined}
     >
       <path d={path} fill="none" stroke={stroke} strokeWidth={strokeWidth} strokeLinejoin="round" strokeLinecap="round" />
+      {directionMarker && <path d={directionMarker} fill={stroke} />}
     </svg>
   );
 }

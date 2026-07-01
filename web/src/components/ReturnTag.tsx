@@ -1,4 +1,5 @@
 import type { CSSProperties } from 'react';
+import { ArrowUpOutlined, ArrowDownOutlined, MinusOutlined } from '@ant-design/icons';
 import { getReturnColor, getReturnBgColor, getReturnBorderColor } from '@/utils/color';
 import { formatPercent } from '@/utils/format';
 import { useSettingsStore } from '@/stores/settings';
@@ -8,7 +9,9 @@ interface ReturnTagProps {
 }
 
 const baseStyle: CSSProperties = {
-  display: 'inline-block',
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: 2,
   padding: '2px 8px',
   borderRadius: 'var(--radius-sm)',
   fontSize: 'var(--text-code-size)',
@@ -16,6 +19,15 @@ const baseStyle: CSSProperties = {
   fontFamily: 'var(--font-mono)',
   transition: 'background var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast)',
 };
+
+function getArrow(value: number | null | undefined) {
+  if (value === undefined || value === null || value === 0) {
+    return <MinusOutlined style={{ fontSize: '0.85em' }} aria-label="flat" />;
+  }
+  return value > 0
+    ? <ArrowUpOutlined style={{ fontSize: '0.85em' }} aria-label="up" />
+    : <ArrowDownOutlined style={{ fontSize: '0.85em' }} aria-label="down" />;
+}
 
 export default function ReturnTag({ value }: ReturnTagProps) {
   const colorConvention = useSettingsStore((s) => s.colorConvention);
@@ -45,6 +57,7 @@ export default function ReturnTag({ value }: ReturnTagProps) {
         border: `1px solid ${getReturnBorderColor(value, colorConvention)}`,
       }}
     >
+      {getArrow(value)}
       {formatPercent(value)}
     </span>
   );
