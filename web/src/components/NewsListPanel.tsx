@@ -8,9 +8,9 @@ import type { NewsArticle, SentimentLabel } from '@/types/news';
 import Panel from './Panel';
 
 const SENTIMENT_COLORS: Record<SentimentLabel, string> = {
-  positive: '#52c41a',
-  neutral: '#8c8c8c',
-  negative: '#f5222d',
+  positive: 'var(--color-rise)',
+  neutral: 'var(--text-tertiary)',
+  negative: 'var(--color-fall)',
 };
 
 const SENTIMENT_LABELS: Record<SentimentLabel, string> = {

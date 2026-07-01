@@ -81,6 +81,12 @@
   --shadow-card: 0 4px 28px rgba(0, 0, 0, 0.35);
   --shadow-card-hover: 0 8px 36px rgba(0, 0, 0, 0.45);
 
+  /* ---- Foreground colors when painted ON TOP of --accent ----
+     Terminal: accent is light green → dark text reads well.
+     Print: accent is dark red → light/cream text reads better. */
+  --text-on-accent: #0a0a0a;
+  --bg-on-accent: rgba(255, 255, 255, 0.85);
+
   /* ---- Spacing (4px base) ---- */
   --space-1: 4px;
   --space-2: 8px;
@@ -373,6 +379,9 @@ body,
   --shadow-lg: none;
   --shadow-card: none;
   --shadow-card-hover: 0 0 0 1px #1a1a1a;
+
+  /* Foreground-on-accent flips so the brick-red --accent is legible */
+  --text-on-accent: #fbf7ec;
 
   /* Disable scanlines (covered by separate override too) */
   --transition-fast: 150ms ease;

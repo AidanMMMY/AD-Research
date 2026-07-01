@@ -25,9 +25,9 @@ import type { NewsArticle, SentimentLabel } from '@/types/news';
 import dayjs from 'dayjs';
 
 const SENTIMENT_COLORS: Record<SentimentLabel, string> = {
-  positive: '#52c41a',
-  neutral: '#8c8c8c',
-  negative: '#f5222d',
+  positive: 'var(--color-rise)',
+  neutral: 'var(--text-tertiary)',
+  negative: 'var(--color-fall)',
 };
 
 const SENTIMENT_LABELS: Record<SentimentLabel, string> = {
@@ -63,7 +63,7 @@ function NewsRow({
     <div
       onClick={() => onOpen(article.id)}
       style={{
-        padding: '10px 0',
+        padding: 'var(--space-3) 0',
         borderBottom: '1px solid var(--border-default)',
         cursor: 'pointer',
         transition: 'background var(--transition-fast)',
@@ -79,7 +79,7 @@ function NewsRow({
         style={{
           display: 'flex',
           alignItems: 'center',
-          gap: 6,
+          gap: 'var(--space-2)',
           fontSize: 11,
           color: 'var(--text-tertiary)',
           marginBottom: 4,
@@ -98,7 +98,7 @@ function NewsRow({
                 style={{
                   color: i < filled ? IMPORTANCE_COLOR : 'var(--text-muted)',
                   opacity: i < filled ? 1 : 0.4,
-                  fontSize: 9,
+                  fontSize: 'var(--text-small-size)',
                   marginRight: 1,
                 }}
               />
@@ -120,7 +120,7 @@ function NewsRow({
       >
         {article.title}
       </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
         {article.symbols.slice(0, 4).map((s) => (
           <Tag key={`${s.symbol}-${s.match_type}`} style={{ margin: 0, fontSize: 10 }}>
             {s.symbol}
@@ -283,7 +283,7 @@ export default function Dashboard() {
           gridTemplateColumns: 'repeat(4, 1fr)',
           borderTop: '1px solid var(--border-default)',
           borderBottom: '1px solid var(--border-default)',
-          marginBottom: '32px',
+          marginBottom: 'var(--space-6)',
         }}
       >
         {[
@@ -296,7 +296,7 @@ export default function Dashboard() {
             key={item.title}
             onClick={item.onClick}
             style={{
-              padding: '24px 20px',
+              padding: 'var(--space-5) var(--space-5)',
               cursor: item.onClick ? 'pointer' : 'default',
               borderRight: i < 3 ? '1px solid var(--border-default)' : 'none',
               transition: 'background var(--transition-fast)',
@@ -313,7 +313,7 @@ export default function Dashboard() {
                 fontSize: 'var(--text-label-size)',
                 color: 'var(--text-tertiary)',
                 fontWeight: 500,
-                marginBottom: '14px',
+                marginBottom: 'var(--space-3)',
                 letterSpacing: '0.12em',
                 textTransform: 'uppercase',
               }}
@@ -361,18 +361,8 @@ export default function Dashboard() {
         ))}
       </div>
 
-      <div style={{ marginBottom: '32px' }}>
-        <h2
-          style={{
-            fontSize: 'var(--text-h4-size)',
-            fontWeight: 500,
-            color: 'var(--text-primary)',
-            margin: '0 0 16px',
-            letterSpacing: '-0.02em',
-          }}
-        >
-          实时行情
-        </h2>
+      <div style={{ marginBottom: 'var(--space-6)' }}>
+        <h2 className="section-heading">实时行情</h2>
         <div
           style={{
             display: 'grid',
@@ -389,7 +379,7 @@ export default function Dashboard() {
               <div
                 key={code}
                 style={{
-                  padding: '20px 16px',
+                  padding: 'var(--space-5) var(--space-4)',
                   borderRight: i < 3 ? '1px solid var(--border-default)' : 'none',
                 }}
               >
@@ -423,7 +413,7 @@ export default function Dashboard() {
                           width: 6,
                           height: 6,
                           borderRadius: '50%',
-                          background: marketConnected ? 'var(--color-rise, #52c41a)' : 'var(--text-muted)',
+                          background: marketConnected ? 'var(--color-rise)' : 'var(--text-muted)',
                         }}
                       />
                     </Tooltip>
@@ -475,8 +465,8 @@ export default function Dashboard() {
         style={{
           display: 'grid',
           gridTemplateColumns: '1fr 1fr',
-          gap: '28px',
-          marginBottom: '32px',
+          gap: 'var(--space-6)',
+          marginBottom: 'var(--space-6)',
         }}
       >
         <Panel
@@ -499,7 +489,7 @@ export default function Dashboard() {
           {hotNewsLoading ? (
             <Skeleton active paragraph={{ rows: 5 }} />
           ) : !hotNews || hotNews.length === 0 ? (
-            <Empty description="暂无重要资讯" image={Empty.PRESENTED_IMAGE_SIMPLE} style={{ padding: '24px 0' }} />
+            <Empty description="暂无重要资讯" image={Empty.PRESENTED_IMAGE_SIMPLE} style={{ padding: 'var(--space-5) 0' }} />
           ) : (
             hotNews.map((a) => (
               <NewsRow key={a.id} article={a} onOpen={(id) => navigate(`/news/${id}`)} />
@@ -532,10 +522,10 @@ export default function Dashboard() {
             <Empty
               description="收藏自选股后，这里会汇总相关新闻"
               image={Empty.PRESENTED_IMAGE_SIMPLE}
-              style={{ padding: '24px 0' }}
+              style={{ padding: 'var(--space-5) 0' }}
             />
           ) : !favoritesNews || favoritesNews.length === 0 ? (
-            <Empty description="暂无自选股相关资讯" image={Empty.PRESENTED_IMAGE_SIMPLE} style={{ padding: '24px 0' }} />
+            <Empty description="暂无自选股相关资讯" image={Empty.PRESENTED_IMAGE_SIMPLE} style={{ padding: 'var(--space-5) 0' }} />
           ) : (
             favoritesNews.map((a) => (
               <NewsRow key={a.id} article={a} onOpen={(id) => navigate(`/news/${id}`)} />
@@ -544,7 +534,7 @@ export default function Dashboard() {
         </Panel>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1.55fr 1fr', gap: '28px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1.55fr 1fr', gap: 'var(--space-6)' }}>
         <Panel
           variant="minimal"
           title="综合评分 Top 10"
@@ -562,16 +552,16 @@ export default function Dashboard() {
           />
         </Panel>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-5)' }}>
           <Panel
             variant="minimal"
             title="我的收藏"
             extra={favCount > 0 ? <span style={{ fontSize: 'var(--text-small-size)', color: 'var(--text-tertiary)', cursor: 'pointer' }} onClick={() => navigate('/etfs')}>查看全部 →</span> : undefined}
           >
             {favLoading ? (
-              <div style={{ textAlign: 'center', padding: '40px 0' }}><Spin /></div>
+              <div style={{ textAlign: 'center', padding: 'var(--space-7) 0' }}><Spin /></div>
             ) : favCount === 0 ? (
-              <div style={{ textAlign: 'center', padding: '44px 0', color: 'var(--text-tertiary)' }}>
+              <div style={{ textAlign: 'center', padding: 'var(--space-7) 0', color: 'var(--text-tertiary)' }}>
                 <div style={{ fontSize: 'var(--text-body-size)', marginBottom: 4 }}>暂无收藏的标的</div>
                 <div style={{ fontSize: 'var(--text-small-size)', color: 'var(--text-muted)' }}>在详情页点击收藏，这里会显示你关注的标的</div>
               </div>
@@ -602,9 +592,9 @@ export default function Dashboard() {
             extra={(pools?.length || 0) > 0 ? <span style={{ fontSize: 'var(--text-small-size)', color: 'var(--text-tertiary)', cursor: 'pointer' }} onClick={() => navigate('/pools')}>查看全部 →</span> : undefined}
           >
             {poolsLoading ? (
-              <div style={{ textAlign: 'center', padding: '40px 0' }}><Spin /></div>
+              <div style={{ textAlign: 'center', padding: 'var(--space-7) 0' }}><Spin /></div>
             ) : (pools?.length || 0) === 0 ? (
-              <div style={{ textAlign: 'center', padding: '44px 0', color: 'var(--text-tertiary)' }}>
+              <div style={{ textAlign: 'center', padding: 'var(--space-7) 0', color: 'var(--text-tertiary)' }}>
                 <div style={{ fontSize: 'var(--text-body-size)', marginBottom: 4 }}>暂无标的池</div>
                 <div style={{ fontSize: 'var(--text-small-size)', color: 'var(--text-muted)' }}>在标的池管理中创建池并添加标的，这里会汇总展示</div>
               </div>

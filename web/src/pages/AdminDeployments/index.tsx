@@ -183,12 +183,12 @@ function ServerHealthCard({ container }: { container: ContainerStats }) {
         background: 'var(--bg-elevated)',
         borderRadius: 12,
         border: `1px solid ${isRunning ? 'var(--border-default)' : 'var(--color-error)'}`,
-        padding: '20px 24px',
+        padding: 'var(--space-5) var(--space-6)',
         minWidth: 200,
         transition: 'background var(--transition-fast), border-color var(--transition-fast)',
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', marginBottom: 16 }}>
         <Badge status={isRunning ? 'success' : 'error'} />
         <Text strong style={{ color: 'var(--text-primary)', fontSize: 14 }}>
           {container.name.replace('etf-', '')}
@@ -328,7 +328,7 @@ function LogViewer({
       <div
         ref={scrollRef}
         style={{
-          background: '#0a0e17',
+          background: 'var(--bg-base)',
           border: '1px solid var(--border-default)',
           borderRadius: 8,
           height: 360,
@@ -337,17 +337,17 @@ function LogViewer({
           fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
           fontSize: 12,
           lineHeight: '1.8',
-          color: '#a8b8c8',
+          color: 'var(--text-secondary)',
         }}
       >
         {lines.length === 0 && (
-          <div style={{ color: 'var(--text-secondary)', padding: '40px 0', textAlign: 'center' }}>
+          <div style={{ color: 'var(--text-secondary)', padding: 'var(--space-7) 0', textAlign: 'center' }}>
             {connected ? '等待日志 ...' : '点击「连接」开始查看实时日志'}
           </div>
         )}
         {lines.map((line, i) => (
           <div key={i} style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
-            <span style={{ color: '#5a6a7a' }}>{line.timestamp ? line.timestamp.slice(0, 19).replace('T', ' ') : '-'}</span>{' '}
+            <span style={{ color: 'var(--text-tertiary)' }}>{line.timestamp ? line.timestamp.slice(0, 19).replace('T', ' ') : '-'}</span>{' '}
             {line.message}
           </div>
         ))}
@@ -428,7 +428,7 @@ export default function AdminDeployments() {
             icon={<RocketOutlined />}
             onClick={handleTrigger}
             loading={isTriggering}
-            style={{ background: 'var(--accent)', borderColor: 'var(--accent)', color: '#000' }}
+            style={{ background: 'var(--accent)', borderColor: 'var(--accent)', color: 'var(--text-on-accent)' }}
           >
             手动部署
           </Button>

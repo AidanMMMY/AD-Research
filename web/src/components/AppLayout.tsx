@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 import { Dropdown, Drawer, Segmented, Tooltip } from 'antd';
 import {
@@ -28,6 +28,8 @@ import {
   MenuUnfoldOutlined,
   MenuOutlined,
   MonitorOutlined,
+  HomeOutlined,
+  RightOutlined,
 } from '@ant-design/icons';
 import { useAuthStore } from '@/stores/auth';
 import { useSettingsStore } from '@/stores/settings';
@@ -98,7 +100,7 @@ function SidebarContent({ collapsed, onItemClick }: SidebarContentProps) {
             justifyContent: 'center',
             fontSize: 16,
             fontWeight: 700,
-            color: '#0a0a0a',
+            color: 'var(--text-on-accent)',
             flexShrink: 0,
           }}
         >
@@ -211,8 +213,46 @@ export default function AppLayout() {
   const [collapsed, setCollapsed] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const isMobile = useIsMobile();
+  const navigate = useNavigate();
+  const location = useLocation();
 
   const sidebarWidth = isMobile ? 0 : collapsed ? SIDEBAR_COLLAPSED : SIDEBAR_WIDTH;
+
+  // Build a 1- or 2-segment breadcrumb from the route config + current URL.
+  // e.g. /instruments/510300.SH -> [首页, 标的列表, 510300.SH]
+  const breadcrumb = useMemo(() => {
+    const path = location.pathname;
+    if (path === '/' || path === '/dashboard') return null;
+
+    // Find the deepest menu route whose path is a prefix of the current
+    // path and either an exact match or followed by a "/" + param segment.
+    const segments = path.split('/').filter(Boolean);
+    let matchedPath = '';
+    let matchedRoute: typeof menuRoutes[number] | undefined;
+    for (const seg of segments) {
+      const candidate = `/${segments.slice(0, segments.indexOf(seg) + 1).join('/')}`;
+      const found = menuRoutes.find((r) => r.path === candidate);
+      if (found) {
+        matchedPath = candidate;
+        matchedRoute = found;
+      }
+    }
+    if (!matchedRoute || !matchedRoute.menu) return null;
+
+    const tail = path.slice(matchedPath.length).replace(/^\/+/, '');
+    const items: { label: string; path?: string }[] = [
+      { label: '首页', path: '/dashboard' },
+    ];
+    if (matchedPath !== '/dashboard') {
+      items.push({ label: matchedRoute.menu.name, path: matchedPath });
+    }
+    if (tail) {
+      // Last segment is the detail id/code; show as-is (already user-readable
+      // in most pages, and short enough not to need ellipsizing).
+      items.push({ label: tail });
+    }
+    return items;
+  }, [location.pathname]);
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh', background: 'var(--bg-base)' }}>
@@ -274,7 +314,16 @@ export default function AppLayout() {
             }}
           >
             <div
+              role="button"
+              tabIndex={0}
+              aria-label={collapsed ? '展开侧边栏' : '折叠侧边栏'}
               onClick={() => setCollapsed(!collapsed)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  setCollapsed(!collapsed);
+                }
+              }}
               style={{
                 width: 32,
                 height: 32,
@@ -295,7 +344,7 @@ export default function AppLayout() {
                 e.currentTarget.style.color = 'var(--text-secondary)';
               }}
             >
-              {collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
+              {collapsed ? <MenuUnfoldOutlined aria-hidden="true" /> : <MenuFoldOutlined aria-hidden="true" />}
             </div>
           </div>
         </aside>
@@ -329,10 +378,19 @@ export default function AppLayout() {
             gap: 12,
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0, flex: '1 1 auto' }}>
             {isMobile && (
               <div
+                role="button"
+                tabIndex={0}
+                aria-label="打开导航菜单"
                 onClick={() => setDrawerOpen(true)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    setDrawerOpen(true);
+                  }
+                }}
                 style={{
                   width: 40,
                   height: 40,
@@ -353,16 +411,90 @@ export default function AppLayout() {
                   e.currentTarget.style.color = 'var(--text-secondary)';
                 }}
               >
-                <MenuOutlined style={{ fontSize: 18 }} />
+                <MenuOutlined style={{ fontSize: 18 }} aria-hidden="true" />
               </div>
             )}
-            {/* Breadcrumb or page title could go here */}
+            {/* Breadcrumb */}
+            {breadcrumb && breadcrumb.length > 0 && (
+              <nav
+                aria-label="页面路径"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  minWidth: 0,
+                  flex: '1 1 auto',
+                  fontSize: 'var(--text-small-size)',
+                  color: 'var(--text-tertiary)',
+                  letterSpacing: '0.04em',
+                  overflow: 'hidden',
+                  whiteSpace: 'nowrap',
+                  textOverflow: 'ellipsis',
+                }}
+              >
+                {breadcrumb.map((item, idx) => {
+                  const isLast = idx === breadcrumb.length - 1;
+                  return (
+                    <React.Fragment key={`${idx}-${item.label}`}>
+                      {idx === 0 ? (
+                        <HomeOutlined aria-hidden="true" style={{ fontSize: 12, opacity: 0.7 }} />
+                      ) : null}
+                      {item.path && !isLast ? (
+                        <span
+                          role="link"
+                          tabIndex={0}
+                          onClick={() => navigate(item.path!)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault();
+                              navigate(item.path!);
+                            }
+                          }}
+                          style={{
+                            cursor: 'pointer',
+                            color: 'var(--text-tertiary)',
+                            transition: 'color var(--transition-fast)',
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.color = 'var(--text-primary)';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.color = 'var(--text-tertiary)';
+                          }}
+                        >
+                          {item.label}
+                        </span>
+                      ) : (
+                        <span
+                          style={{
+                            color: 'var(--text-primary)',
+                            fontWeight: 500,
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                          }}
+                          aria-current={isLast ? 'page' : undefined}
+                        >
+                          {item.label}
+                        </span>
+                      )}
+                      {!isLast && (
+                        <RightOutlined
+                          aria-hidden="true"
+                          style={{ fontSize: 9, opacity: 0.4 }}
+                        />
+                      )}
+                    </React.Fragment>
+                  );
+                })}
+              </nav>
+            )}
           </div>
 
           {/* Color convention toggle */}
           <Segmented
             value={colorConvention}
             onChange={(v) => setColorConvention(v as 'china' | 'us')}
+            aria-label="切换涨跌色约定"
             options={[
               { label: '红涨绿跌', value: 'china' },
               { label: '绿涨红跌', value: 'us' },
@@ -374,11 +506,12 @@ export default function AppLayout() {
           <Segmented
             value={theme}
             onChange={(v) => setTheme(v as 'terminal' | 'print')}
+            aria-label="切换主题"
             options={[
               {
                 label: (
                   <Tooltip title="终端主题（深色 / 绿）">
-                    <MonitorOutlined />
+                    <MonitorOutlined aria-label="终端主题" />
                   </Tooltip>
                 ),
                 value: 'terminal',
@@ -386,7 +519,7 @@ export default function AppLayout() {
               {
                 label: (
                   <Tooltip title="印刷主题（暖米 / 衬线）">
-                    <ReadOutlined />
+                    <ReadOutlined aria-label="印刷主题" />
                   </Tooltip>
                 ),
                 value: 'print',
@@ -415,7 +548,7 @@ export default function AppLayout() {
               style={{
                 display: 'flex',
                 alignItems: 'center',
-                gap: 10,
+                gap: 'var(--space-3)',
                 cursor: 'pointer',
                 padding: '6px 12px',
                 borderRadius: 10,

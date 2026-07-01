@@ -34,9 +34,9 @@ import type {
 import Panel from '@/components/Panel';
 
 const SENTIMENT_COLORS: Record<SentimentLabel, string> = {
-  positive: '#52c41a',
-  neutral: '#8c8c8c',
-  negative: '#f5222d',
+  positive: 'var(--color-rise)',
+  neutral: 'var(--text-tertiary)',
+  negative: 'var(--color-fall)',
 };
 
 const SENTIMENT_LABELS: Record<SentimentLabel, string> = {
@@ -167,7 +167,7 @@ export default function NewsDetail() {
           style={{
             display: 'flex',
             alignItems: 'center',
-            gap: 10,
+            gap: 'var(--space-3)',
             fontSize: 12,
             color: 'var(--text-tertiary)',
             marginBottom: 12,
@@ -271,14 +271,14 @@ export default function NewsDetail() {
               background: 'var(--card-bg)',
               border: '1px solid var(--card-border)',
               borderRadius: 'var(--card-radius)',
-              padding: '24px 28px',
+              padding: 'var(--space-5) var(--space-6)',
             }}
           >
             {data.body ? (
               <div
                 style={{
                   fontSize: 15,
-                  lineHeight: 1.85,
+                  lineHeight: 1.7,
                   color: 'var(--text-primary)',
                   whiteSpace: 'pre-wrap',
                   wordBreak: 'break-word',
@@ -410,7 +410,7 @@ export default function NewsDetail() {
                 <div
                   key={m.label}
                   style={{
-                    padding: '10px 12px',
+                    padding: 'var(--space-3) var(--space-3)',
                     background: 'var(--bg-elevated)',
                     borderRadius: 'var(--radius-md)',
                     border: '1px solid var(--border-default)',

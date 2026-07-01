@@ -74,6 +74,12 @@ const useAntdTheme = () => {
         colorTextTertiary: '#7a7a7a',
         colorBorder: '#d4cebd',
         colorBorderSecondary: '#d4cebd',
+        // Explicit text-on-color overrides so primary/danger buttons and
+        // filled tags render WHITE text on the brick-red background.
+        // Without these Ant Design v5 derives dark text on dark accents
+        // and the contrast collapses.
+        colorTextLightSolid: '#ffffff',
+        colorTextDark: '#1a1a1a',
         borderRadius: 0,
         borderRadiusSM: 0,
         borderRadiusLG: 0,
@@ -99,6 +105,17 @@ const useAntdTheme = () => {
           borderRadius: 0,
           borderRadiusSM: 0,
           primaryShadow: 'none',
+          // Primary button — brick red bg, white text + matching hover/active
+          colorPrimary: '#8b1a1a',
+          colorPrimaryHover: '#a52828',
+          colorPrimaryActive: '#6b1010',
+          // Danger / error button — slightly brighter red, white text
+          colorError: '#b91c1c',
+          colorErrorHover: '#dc2626',
+          colorErrorActive: '#991b1b',
+          // Force white text on any solid colored button bg
+          colorTextLightSolid: '#ffffff',
+          colorTextSecondary: '#555555',
         },
         Card: {
           borderRadius: 0,
@@ -116,6 +133,8 @@ const useAntdTheme = () => {
           borderRadiusSM: 0,
           defaultBg: '#fffdf6',
           defaultColor: '#555555',
+          // Filled tags rendered with primary/error colors get white text
+          colorTextLightSolid: '#ffffff',
         },
         Input: {
           borderRadius: 0,
@@ -134,6 +153,17 @@ const useAntdTheme = () => {
           itemSelectedColor: '#1a1a1a',
           itemHoverColor: '#1a1a1a',
           itemColor: '#7a7a7a',
+        },
+        Alert: {
+          colorError: '#b91c1c',
+          colorErrorBg: '#fef2f2',
+          colorErrorBorder: '#fecaca',
+        },
+        Tooltip: {
+          colorTextLightSolid: '#ffffff',
+        },
+        Notification: {
+          colorTextLightSolid: '#ffffff',
         },
       },
     };
