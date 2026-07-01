@@ -177,12 +177,12 @@ main() {
     docker compose run --rm backend python scripts/seed_users.py
 
     log_info "启动后端服务..."
-    docker compose up -d backend
+    docker compose up -d --force-recreate backend
 
     log_info "等待后端就绪..."
     local retries=0
     while [ $retries -lt 30 ]; do
-        if docker compose exec -T backend curl -sf http://localhost:8000/health > /dev/null 2>&1; then
+        if docker compose exec -T backend python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health').read()" > /dev/null 2>&1; then
             log_info "后端健康检查通过"
             break
         fi
