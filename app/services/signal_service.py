@@ -6,7 +6,7 @@ from typing import Any
 from sqlalchemy.orm import Session
 
 from app.models.etl import Signal
-from app.services.signal_generator import generate_signals_for_strategy
+from app.services.strategy_engine import run_strategy_on_instrument, run_strategy_on_universe
 
 
 class SignalService:
@@ -23,8 +23,8 @@ class SignalService:
         params: dict[str, Any],
         trade_date: date,
     ) -> list[dict[str, Any]]:
-        """Generate and persist signals for a strategy."""
-        signals = generate_signals_for_strategy(
+        """Generate and persist signals for a single instrument."""
+        signals = run_strategy_on_instrument(
             db=self.db,
             etf_code=etf_code,
             strategy_type=strategy_type,
@@ -41,40 +41,93 @@ class SignalService:
                 continue
             seen_keys.add(key)
 
-            # Skip if a signal already exists for this (strategy, etf, date, type)
-            existing = (
-                self.db.query(Signal)
-                .filter(
-                    Signal.strategy_id == strategy_id,
-                    Signal.etf_code == etf_code,
-                    Signal.trade_date == trade_date,
-                    Signal.signal_type == sig.get("type"),
-                )
-                .first()
+            persisted.extend(
+                self._persist_signal(strategy_id, etf_code, trade_date, sig, params)
             )
-            if existing:
-                continue
-
-            signal = Signal(
-                strategy_id=strategy_id,
-                etf_code=etf_code,
-                trade_date=trade_date,
-                signal_type=sig["type"],
-                strength=sig.get("strength", 50),
-                extra_data=params,
-            )
-            self.db.add(signal)
-            persisted.append({
-                "strategy_id": strategy_id,
-                "etf_code": etf_code,
-                "trade_date": trade_date.isoformat(),
-                "signal_type": sig["type"],
-                "strength": sig.get("strength", 50),
-            })
 
         if persisted:
             self.db.commit()
         return persisted
+
+    def generate_signals_universe(
+        self,
+        strategy_id: int,
+        etf_codes: list[str],
+        strategy_type: str,
+        params: dict[str, Any],
+        trade_date: date,
+    ) -> list[dict[str, Any]]:
+        """Generate and persist signals for a cross-sectional strategy."""
+        signals = run_strategy_on_universe(
+            db=self.db,
+            etf_codes=etf_codes,
+            strategy_type=strategy_type,
+            params=params,
+            trade_date=trade_date,
+        )
+
+        persisted = []
+        seen_keys = set()
+        for sig in signals:
+            etf_code = sig.get("etf_code")
+            if not etf_code:
+                continue
+
+            key = (strategy_id, etf_code, trade_date, sig.get("type"))
+            if key in seen_keys:
+                continue
+            seen_keys.add(key)
+
+            persisted.extend(
+                self._persist_signal(strategy_id, etf_code, trade_date, sig, params)
+            )
+
+        if persisted:
+            self.db.commit()
+        return persisted
+
+    def _persist_signal(
+        self,
+        strategy_id: int,
+        etf_code: str,
+        trade_date: date,
+        sig: dict[str, Any],
+        params: dict[str, Any],
+    ) -> list[dict[str, Any]]:
+        """Persist a single signal if it does not already exist.
+
+        The signal table has a unique constraint on
+        (strategy_id, etf_code, trade_date), so we skip if any signal already
+        exists for that key regardless of type.
+        """
+        existing = (
+            self.db.query(Signal)
+            .filter(
+                Signal.strategy_id == strategy_id,
+                Signal.etf_code == etf_code,
+                Signal.trade_date == trade_date,
+            )
+            .first()
+        )
+        if existing:
+            return []
+
+        signal = Signal(
+            strategy_id=strategy_id,
+            etf_code=etf_code,
+            trade_date=trade_date,
+            signal_type=sig["type"],
+            strength=sig.get("strength", 50),
+            extra_data={**params, **sig.get("metadata", {})},
+        )
+        self.db.add(signal)
+        return [{
+            "strategy_id": strategy_id,
+            "etf_code": etf_code,
+            "trade_date": trade_date.isoformat(),
+            "signal_type": sig["type"],
+            "strength": sig.get("strength", 50),
+        }]
 
     def get_signals(
         self,

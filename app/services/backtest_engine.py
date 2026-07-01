@@ -9,8 +9,8 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
-from app.data.indicators.technical import calc_rsi
 from app.data.repositories import price_repository
+from app.strategies.base import StrategyRegistry
 
 
 def _load_bars(etf_code: str, start_date: date, end_date: date, db: Any) -> pd.DataFrame:
@@ -78,38 +78,17 @@ def get_strategy_signals(
     strategy_type: str,
     params: dict[str, Any],
 ) -> pd.Series:
-    """Generate trading signals based on strategy type.
+    """Generate trading signals for backtesting using the strategy registry.
 
     Returns a pandas Series with values:
       1 = BUY, -1 = SELL, 0 = HOLD
     """
-    signals = pd.Series(0, index=data.index)
+    strategy_class = StrategyRegistry.get(strategy_type)
+    if strategy_class is None:
+        return pd.Series(0, index=data.index)
 
-    if strategy_type == "momentum":
-        window = params.get("momentum_window", 20)
-        threshold = params.get("threshold", 0.05)
-        momentum = data["close"].pct_change(window)
-        signals[momentum > threshold] = 1
-        signals[momentum < -threshold] = -1
-
-    elif strategy_type == "mean_reversion":
-        window = params.get("lookback_window", 20)
-        z_threshold = params.get("z_score_threshold", 2.0)
-        ma = data["close"].rolling(window).mean()
-        std = data["close"].rolling(window).std()
-        z_score = (data["close"] - ma) / std
-        signals[z_score < -z_threshold] = 1
-        signals[z_score > z_threshold] = -1
-
-    elif strategy_type == "rsi":
-        period = params.get("rsi_period", 14)
-        overbought = params.get("overbought", 70)
-        oversold = params.get("oversold", 30)
-        rsi = calc_rsi(data["close"], window=period)
-        signals[rsi < oversold] = 1
-        signals[rsi > overbought] = -1
-
-    return signals
+    strategy = strategy_class(params)
+    return strategy.generate_series(data)
 
 
 def _calculate_transaction_cost(

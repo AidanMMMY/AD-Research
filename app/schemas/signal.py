@@ -31,6 +31,14 @@ class SignalGenerateRequest(BaseModel):
     trade_date: date | None = None
 
 
+class SignalBulkGenerateRequest(BaseModel):
+    """Bulk signal generation request for a universe of instruments."""
+
+    strategy_id: int
+    etf_codes: list[str]
+    trade_date: date | None = None
+
+
 class SignalGenerateResponse(BaseModel):
     """Signal generation response."""
 

@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from app.api.deps import get_current_user, get_signal_service, get_strategy_service
 from app.schemas.signal import (
+    SignalBulkGenerateRequest,
     SignalGenerateRequest,
     SignalGenerateResponse,
     SignalListResponse,
@@ -59,6 +60,28 @@ def generate_signals(
     signals = signal_service.generate_signals(
         strategy_id=data.strategy_id,
         etf_code=data.etf_code,
+        strategy_type=strategy["strategy_type"],
+        params=strategy["params"],
+        trade_date=trade_date,
+    )
+    return SignalGenerateResponse(signals=signals)
+
+
+@router.post("/bulk-generate", response_model=SignalGenerateResponse)
+def bulk_generate_signals(
+    data: SignalBulkGenerateRequest,
+    signal_service: SignalService = Depends(get_signal_service),
+    strategy_service: StrategyService = Depends(get_strategy_service),
+):
+    """Generate signals for a strategy across a universe of instruments."""
+    strategy = strategy_service.get_strategy(data.strategy_id)
+    if not strategy:
+        raise HTTPException(status_code=404, detail="Strategy not found")
+
+    trade_date = data.trade_date or date.today()
+    signals = signal_service.generate_signals_universe(
+        strategy_id=data.strategy_id,
+        etf_codes=data.etf_codes,
         strategy_type=strategy["strategy_type"],
         params=strategy["params"],
         trade_date=trade_date,
