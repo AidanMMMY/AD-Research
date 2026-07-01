@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
-import { Dropdown, Drawer, Segmented } from 'antd';
+import { Dropdown, Drawer, Segmented, Tooltip } from 'antd';
 import {
   LogoutOutlined,
   DashboardOutlined,
@@ -27,11 +27,13 @@ import {
   MenuFoldOutlined,
   MenuUnfoldOutlined,
   MenuOutlined,
+  MonitorOutlined,
 } from '@ant-design/icons';
 import { useAuthStore } from '@/stores/auth';
 import { useSettingsStore } from '@/stores/settings';
 import { menuRoutes } from '@/routes';
 import { useIsMobile } from '@/hooks/useBreakpoint';
+import { useTheme } from '@/hooks/useTheme';
 import DensityToggle from '@/components/DensityToggle';
 
 const iconMap: Record<string, React.ComponentType> = {
@@ -56,6 +58,7 @@ const iconMap: Record<string, React.ComponentType> = {
   CloudServerOutlined,
   GoldOutlined,
   DollarOutlined,
+  MonitorOutlined,
 };
 
 const SIDEBAR_WIDTH = 220;
@@ -204,6 +207,7 @@ function SidebarContent({ collapsed, onItemClick }: SidebarContentProps) {
 export default function AppLayout() {
   const { user, logout } = useAuthStore();
   const { colorConvention, setColorConvention } = useSettingsStore();
+  const [theme, setTheme] = useTheme();
   const [collapsed, setCollapsed] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const isMobile = useIsMobile();
@@ -363,6 +367,32 @@ export default function AppLayout() {
               { label: '红涨绿跌', value: 'china' },
               { label: '绿涨红跌', value: 'us' },
             ]}
+            style={{ background: 'var(--bg-hover)', borderRadius: 10 }}
+          />
+
+          {/* Theme toggle (terminal / print) */}
+          <Segmented
+            value={theme}
+            onChange={(v) => setTheme(v as 'terminal' | 'print')}
+            options={[
+              {
+                label: (
+                  <Tooltip title="终端主题（深色 / 绿）">
+                    <MonitorOutlined />
+                  </Tooltip>
+                ),
+                value: 'terminal',
+              },
+              {
+                label: (
+                  <Tooltip title="印刷主题（暖米 / 衬线）">
+                    <ReadOutlined />
+                  </Tooltip>
+                ),
+                value: 'print',
+              },
+            ]}
+            size="small"
             style={{ background: 'var(--bg-hover)', borderRadius: 10 }}
           />
 

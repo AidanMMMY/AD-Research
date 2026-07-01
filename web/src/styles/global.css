@@ -19,6 +19,27 @@
   font-family: var(--font-sans);
 }
 
+/* Display heading — used in masthead, hero titles.
+   Falls back to the regular sans stack when print theme inactive. */
+.display-heading {
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+
+:root[data-theme="print"] body {
+  font-family: var(--font-sans);
+}
+
+:root[data-theme="print"] h1,
+:root[data-theme="print"] h2,
+:root[data-theme="print"] h3 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: -0.015em;
+}
+
 .ant-layout {
   background: var(--bg-base) !important;
 }
@@ -871,4 +892,157 @@ body::after {
     animation: none;
     transform: translateX(0);
   }
+}
+
+/* ============================================================
+   Print-theme hairline rules (newspaper table style)
+
+   Activated only when <html data-theme="print">. Tables get a
+   double horizontal rule (thick top, thick bottom) with thin
+   row dividers — classic FT/WSJ equity-table look. Section
+   breaks use a thin centered rule rather than whitespace.
+   ============================================================ */
+
+:root[data-theme="print"] .ant-table {
+  background: transparent !important;
+}
+
+:root[data-theme="print"] .ant-table-thead > tr > th {
+  background: transparent !important;
+  border-bottom: 2px solid #1a1a1a !important;
+  border-top: none !important;
+  font-family: var(--font-display) !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.05em !important;
+  font-size: 11px !important;
+  color: #1a1a1a !important;
+}
+
+:root[data-theme="print"] .ant-table-tbody > tr > td {
+  background: transparent !important;
+  border-bottom: 1px solid #d4cebd !important;
+}
+
+:root[data-theme="print"] .ant-table-tbody > tr:last-child > td {
+  border-bottom: 2px solid #1a1a1a !important;
+}
+
+/* Panels and cards: paper feel */
+:root[data-theme="print"] .swiss-panel {
+  background: var(--bg-elevated) !important;
+  border: 1px solid #1a1a1a !important;
+  box-shadow: none !important;
+}
+
+/* Page heading underline */
+:root[data-theme="print"] h1 {
+  border-bottom: 2px solid #1a1a1a;
+  padding-bottom: 8px;
+}
+
+/* Drop cap on lead paragraph (first <p> in main content) */
+:root[data-theme="print"] main p:first-of-type::first-letter {
+  font-family: var(--font-display);
+  font-size: 3.5em;
+  float: left;
+  line-height: 0.85;
+  font-weight: 700;
+  margin-right: 8px;
+  margin-top: 4px;
+}
+
+/* Section break: thin centered rule with optional § character */
+:root[data-theme="print"] .section-break {
+  text-align: center;
+  margin: 32px 0;
+  position: relative;
+  color: #7a7a7a;
+}
+:root[data-theme="print"] .section-break::before,
+:root[data-theme="print"] .section-break::after {
+  content: '';
+  display: inline-block;
+  width: 60px;
+  height: 1px;
+  background: #1a1a1a;
+  vertical-align: middle;
+  margin: 0 16px;
+}
+
+/* === Masthead (print theme only) ===
+   Newspaper masthead: double rule frame, dateline above title,
+   italic kicker below. Hidden by default (terminal theme prefers
+   a flat hero). */
+.masthead {
+  margin-bottom: 32px;
+}
+
+/* Print-theme masthead styling */
+:root[data-theme="print"] .masthead {
+  border-top: 4px double #1a1a1a;
+  border-bottom: 1px solid #1a1a1a;
+  padding: 16px 0 20px;
+}
+
+:root[data-theme="print"] .masthead-dateline {
+  text-align: center;
+  font-family: var(--font-display);
+  font-size: 11px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: #555555;
+  margin-bottom: 8px;
+}
+
+:root[data-theme="print"] .masthead-title {
+  font-family: var(--font-display);
+  font-size: 56px;
+  font-weight: 900;
+  text-align: center;
+  letter-spacing: -0.02em;
+  line-height: 1;
+  margin: 12px 0;
+  color: #1a1a1a;
+}
+
+:root[data-theme="print"] .masthead-kicker {
+  text-align: center;
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 14px;
+  color: #555555;
+  margin: 8px 0 0;
+}
+
+/* Terminal theme: masthead is invisible (default hero styling wins) */
+:root:not([data-theme="print"]) .masthead {
+  /* terminal theme uses existing h1 + tagline styling */
+}
+
+:root:not([data-theme="print"]) .masthead-dateline,
+:root:not([data-theme="print"]) .masthead-kicker {
+  display: none;
+}
+
+:root:not([data-theme="print"]) .masthead-title {
+  /* Use the existing h1 styling — strip display-heading to keep current look */
+  font-family: var(--font-sans);
+  font-weight: 500;
+  letter-spacing: -0.03em;
+  font-size: var(--text-h1-size, 32px);
+  text-align: left;
+  line-height: 1.2;
+  color: var(--text-primary);
+  margin: 0 0 8px;
+}
+
+/* ============================================================
+   Print theme (B-1): disable CRT scanlines + vignette
+   The terminal aesthetic's green scanline + corner-vignette
+   pseudo-elements would clash with the cream paper background.
+   ============================================================ */
+:root[data-theme="print"] body::before,
+:root[data-theme="print"] body::after {
+  display: none !important;
 }

@@ -302,3 +302,79 @@ body,
     font-size: 26px !important;
   }
 }
+
+/* ============================================================
+   Print Theme (B-2) — Serif newspaper typography stack
+   Activated only when `<html data-theme="print">` is set.
+   Default theme (no attribute) keeps Inter / JetBrains Mono.
+   Tokens override at the :root[data-theme=...] level; any
+   component using var(--font-sans) / --font-display / --font-mono
+   will swap automatically when the attribute is toggled.
+   ============================================================ */
+
+:root[data-theme="print"] {
+  /* Serif newspaper typography */
+  --font-sans: 'Source Serif 4', Georgia, 'Times New Roman', serif;
+  --font-display: 'Playfair Display', 'Source Serif 4', Georgia, serif;
+  --font-mono: 'JetBrains Mono', 'SF Mono', Menlo, monospace;
+}
+
+/* ============================================================
+   Print theme (B-1) — Financial Times / Wall Street Journal-inspired
+   Warm cream + dark ink + brick-red accent + hairline rules.
+   Activated when <html data-theme="print">. Default remains terminal.
+   ============================================================ */
+:root[data-theme="print"] {
+  /* Warm cream paper, deep ink text */
+  --bg-base: #f5f1e8;
+  --bg-elevated: #fbf7ec;
+  --bg-hover: rgba(15, 15, 15, 0.04);
+  --bg-active: rgba(15, 15, 15, 0.08);
+  --bg-input: #fffdf6;
+
+  /* Dark ink accent (replaces green) */
+  --accent: #8b1a1a;          /* FT-style brick red */
+  --accent-dim: rgba(139, 26, 26, 0.10);
+  --accent-border: rgba(139, 26, 26, 0.25);
+  --accent-glow: rgba(139, 26, 26, 0.10);
+  --accent-hover: #a52828;
+
+  /* Warm-grey text (high contrast on cream) */
+  --text-primary: #1a1a1a;
+  --text-secondary: #555555;
+  --text-tertiary: #7a7a7a;
+  --text-muted: #a8a8a8;
+
+  /* Hairline borders */
+  --card-border: #1a1a1a;
+  --border-default: #d4cebd;
+
+  /* CN A-share rise/fall — slightly darker for cream background */
+  --color-rise: #b91c1c;
+  --color-fall: #166534;
+  --color-neutral: #6b7280;
+  --color-success: #166534;
+  --color-error: #b91c1c;
+  --color-warning: #b45309;
+
+  /* Score colors — slightly muted for paper feel */
+  --score-excellent: #166534;
+  --score-good: #4d7c0f;
+  --score-average: #b45309;
+  --score-poor: #c2410c;
+  --score-bad: #b91c1c;
+
+  /* Card */
+  --card-bg: #fbf7ec;
+  --card-radius: 0;            /* sharp corners = newspaper feel */
+
+  /* Shadows softened — replaced by hairlines */
+  --shadow-md: none;
+  --shadow-lg: none;
+  --shadow-card: none;
+  --shadow-card-hover: 0 0 0 1px #1a1a1a;
+
+  /* Disable scanlines (covered by separate override too) */
+  --transition-fast: 150ms ease;
+  --transition-slow: 250ms ease;
+}
