@@ -20,6 +20,7 @@ from app.data.pipelines.a_share_stock_financials import AStockFinancialsPipeline
 from app.data.pipelines.a_share_stock_fundamental import AStockFundamentalPipeline
 from app.data.pipelines.crypto_daily import CryptoDailyPipeline
 from app.data.pipelines.etf_metadata_enrichment import ETFMetadataEnrichmentPipeline
+from app.data.pipelines.listing_events import ListingEventsPipeline
 from app.data.pipelines.us_backfill import USHistoricalBackfillPipeline
 from app.data.pipelines.us_etf import USDailyPipeline
 from app.data.pipelines.us_etf_discovery import USEtfDiscoveryPipeline
@@ -32,6 +33,7 @@ from app.services.report_service import ReportService
 from app.services.scoring_service import ScoringService
 from app.services.signal_service import SignalService
 from app.services.strategy_service import StrategyService
+from app.strategies.base import StrategyRegistry
 
 scheduler = BackgroundScheduler()
 
@@ -434,6 +436,28 @@ def run_etf_metadata_enrichment():
             db.close()
 
 
+def run_listing_events():
+    """Refresh the listing_events table from Tushare (daily 09:30).
+
+    Free-tier users are gracefully handled: the pipeline falls back to
+    stock_basic + 30-day window when ``new_share`` is denied.
+    """
+    with redis_lock("listing_events_daily", expire_seconds=3600, wait_timeout=600) as acquired:
+        if not acquired:
+            print("⚠️ [SCHEDULER_WARN] Listing events refresh skipped: lock in use")
+            return
+        db = SessionLocal()
+        try:
+            pipeline = ListingEventsPipeline(db)
+            result = pipeline.run_with_retry(max_attempts=2)
+            print(
+                f"[Scheduler] Listing events refresh: "
+                f"success={result.success}, records={result.records}"
+            )
+        finally:
+            db.close()
+
+
 def run_crypto_etl(target_date: date | None = None):
     """Run the cryptocurrency daily ETL pipeline.
 
@@ -571,7 +595,7 @@ def run_signal_generation(target_date: date | None = None):
         strategies = strategy_service.get_strategies()
         active_strategies = [s for s in strategies if s.get("is_active")]
 
-        # Get all active ETFs (previously capped at 50, which contradicted docs).
+        # Get all active instruments (ETFs, stocks, crypto).
         etfs = db.query(ETFInfo).filter(ETFInfo.status == "active").all()
     finally:
         db.close()
@@ -587,19 +611,43 @@ def run_signal_generation(target_date: date | None = None):
         try:
             trade_date = target_date or date.today()
             total_signals = 0
+            etf_codes = [e.code for e in etfs]
+
             for strategy in active_strategies:
-                for etf in etfs:
-                    try:
-                        signals = signal_service.generate_signals(
-                            strategy_id=strategy["id"],
-                            etf_code=etf.code,
-                            strategy_type=strategy["strategy_type"],
-                            params=strategy["params"],
+                strategy_type = strategy["strategy_type"]
+                params = strategy["params"]
+                strategy_id = strategy["id"]
+
+                strategy_class = StrategyRegistry.get(strategy_type)
+                is_cross_sectional = (
+                    strategy_class is not None and strategy_class.family == "cross_sectional"
+                )
+
+                try:
+                    if is_cross_sectional:
+                        signals = signal_service.generate_signals_universe(
+                            strategy_id=strategy_id,
+                            etf_codes=etf_codes,
+                            strategy_type=strategy_type,
+                            params=params,
                             trade_date=trade_date,
                         )
                         total_signals += len(signals)
-                    except Exception as e:
-                        print(f"[Scheduler] Signal generation failed for {etf.code}: {e}")
+                    else:
+                        for etf in etfs:
+                            try:
+                                signals = signal_service.generate_signals(
+                                    strategy_id=strategy_id,
+                                    etf_code=etf.code,
+                                    strategy_type=strategy_type,
+                                    params=params,
+                                    trade_date=trade_date,
+                                )
+                                total_signals += len(signals)
+                            except Exception as e:
+                                print(f"[Scheduler] Signal generation failed for {etf.code}: {e}")
+                except Exception as e:
+                    print(f"[Scheduler] Signal generation failed for strategy {strategy_id}: {e}")
 
             print(f"[Scheduler] Signal generation (target={target_date}): {total_signals} signals generated")
         finally:
@@ -747,6 +795,14 @@ def init_scheduler():
         trigger=CronTrigger(day_of_week="sun", hour=4, minute=0, timezone="Asia/Shanghai"),
         id="etf_metadata_enrichment",
         name="ETF元数据补全",
+        replace_existing=True,
+        max_instances=1,
+    )
+    scheduler.add_job(
+        run_listing_events,
+        trigger=CronTrigger(hour=9, minute=30, timezone="Asia/Shanghai"),
+        id="listing_events_daily",
+        name="上市预告日刷",
         replace_existing=True,
         max_instances=1,
     )

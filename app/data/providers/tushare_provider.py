@@ -43,6 +43,83 @@ _RETRIES = 2
 # We stay well within the 200 req/min rate limit with _API_DELAY=0.5.
 
 
+# Strings that indicate the user's Tushare tier lacks permission for a
+# particular endpoint (e.g. ``new_share`` requires higher 积分).
+_PERMISSION_ERROR_MARKERS = (
+    "权限不足",
+    "无权限",
+    "积分",
+    "permission",
+    "forbidden",
+    "401",
+    "403",
+)
+
+
+def _is_tushare_permission_error(message: str) -> bool:
+    """Heuristic check for Tushare permission / quota errors."""
+    lowered = message.lower()
+    return any(marker.lower() in lowered for marker in _PERMISSION_ERROR_MARKERS)
+
+
+def derive_market(ts_code: str | None) -> str:
+    """Derive internal market code (SH/SZ/BJ) from a Tushare ``ts_code``."""
+    if not ts_code or "." not in ts_code:
+        return ""
+    suffix = ts_code.split(".")[-1].upper()
+    if suffix in ("SH", "SZ", "BJ"):
+        return suffix
+    if suffix == "SSE":
+        return "SH"
+    if suffix == "SZSE":
+        return "SZ"
+    if suffix == "BSE":
+        return "BJ"
+    return suffix
+
+
+def derive_board(ts_code: str | None) -> str:
+    """Derive A-share board from a Tushare ``ts_code`` prefix.
+
+    Mapping:
+      * 60xxxx / 00xxxx -> 主板
+      * 30xxxx          -> 创业板
+      * 68xxxx          -> 科创板
+      * 8xxxxx / 92xxxx -> 北交所
+    """
+    if not ts_code:
+        return "主板"
+    code = ts_code.split(".")[0]
+    market = derive_market(ts_code)
+    if market == "BJ":
+        if code.startswith(("8", "92", "43")):
+            return "北交所"
+        return "主板"
+    if code.startswith("68"):
+        return "科创板"
+    if code.startswith("30"):
+        return "创业板"
+    return "主板"
+
+
+def compute_listing_status(
+    issue_date: date | None,
+    list_date: date | None,
+    today: date | None = None,
+) -> str:
+    """Compute the listing event status given the two key dates."""
+    if today is None:
+        today = date.today()
+    if list_date and list_date <= today:
+        return "listed"
+    if issue_date and issue_date <= today:
+        return "subscribing"
+    if list_date or issue_date:
+        return "upcoming"
+    return "unknown"
+
+
+
 class _RateLimiter:
     """Thread-safe rate limiter enforcing a minimum interval between acquires."""
 
@@ -210,6 +287,123 @@ class TushareProvider(DataProvider):
             len(all_stocks),
         )
         return all_stocks
+
+    # ------------------------------------------------------------------
+    # Listing / IPO — fetch upcoming and recently-listed A-share IPO events
+    # ------------------------------------------------------------------
+
+    def fetch_new_share(
+        self,
+        start_date: str | None = None,
+        end_date: str | None = None,
+    ) -> list[dict[str, Any]]:
+        """Fetch IPO / listing events from Tushare ``new_share``.
+
+        Args:
+            start_date: Optional ``YYYYMMDD`` start of issue_date window.
+            end_date: Optional ``YYYYMMDD`` end of issue_date window.
+
+        Returns:
+            List of raw record dicts from ``new_share``. Each dict is in
+            Tushare's native format. The pipeline is responsible for
+            mapping to the ``listing_events`` table.
+
+        Free-tier fallback: ``new_share`` requires Tushare积分. If the call
+        raises a permission / 积分 error, transparently fall back to
+        ``stock_basic`` with ``list_date`` in the recent 30-day window.
+        Returns ``[]`` if both endpoints return no rows.
+        """
+        params: dict[str, Any] = {}
+        if start_date:
+            params["start_date"] = start_date
+        if end_date:
+            params["end_date"] = end_date
+
+        try:
+            self._limiter.acquire()
+            df = self._pro.new_share(**params)
+        except Exception as exc:
+            error_text = str(exc) or exc.__class__.__name__
+            if _is_tushare_permission_error(error_text):
+                logger.warning(
+                    "[TushareProvider] new_share denied (积分/权限), "
+                    "falling back to stock_basic: %s",
+                    error_text,
+                )
+                return self._fallback_recent_listings(lookback_days=30)
+            raise DataProviderError(
+                f"Tushare new_share({params}) failed: {exc}"
+            ) from exc
+
+        if df is None or df.empty:
+            return []
+
+        records: list[dict[str, Any]] = []
+        for _, row in df.iterrows():
+            record: dict[str, Any] = {}
+            for col in df.columns:
+                val = row[col]
+                if val is None:
+                    record[col] = None
+                elif hasattr(val, "isoformat"):
+                    record[col] = val
+                else:
+                    record[col] = val
+            records.append(record)
+        return records
+
+    def _fallback_recent_listings(self, lookback_days: int = 30) -> list[dict[str, Any]]:
+        """Fallback: fetch recently-listed stocks from stock_basic.
+
+        Returns rows with the same shape as ``new_share`` so the pipeline
+        can process them uniformly. ``issue_date`` and ``list_date`` are
+        set to the same value (the actual list_date).
+        """
+        try:
+            self._limiter.acquire()
+            df = self._pro.stock_basic(
+                list_status="L",
+                fields="ts_code,name,list_date,industry",
+            )
+        except Exception as exc:
+            logger.warning(
+                "[TushareProvider] stock_basic fallback also failed: %s",
+                exc,
+            )
+            return []
+
+        if df is None or df.empty:
+            return []
+
+        cutoff = (date.today() - pd.Timedelta(days=lookback_days))
+        records: list[dict[str, Any]] = []
+        for _, row in df.iterrows():
+            raw_list_date = row.get("list_date")
+            if not raw_list_date or not str(raw_list_date).isdigit():
+                continue
+            try:
+                parsed = datetime.strptime(str(raw_list_date), "%Y%m%d").date()
+            except (ValueError, TypeError):
+                continue
+            if parsed < cutoff:
+                continue
+            records.append({
+                "ts_code": row.get("ts_code"),
+                "sub_code": None,
+                "name": row.get("name"),
+                "ipo_date": parsed,
+                "issue_date": parsed,
+                "list_date": parsed,
+                "price": None,
+                "pe": None,
+                "limit_amount": None,
+                "funds": None,
+                "market_amount": None,
+                "industry": row.get("industry"),
+                "sponsor": None,
+                "underwriter": None,
+            })
+        return records
 
     def fetch_adj_factor(
         self,
