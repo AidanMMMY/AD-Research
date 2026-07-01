@@ -79,10 +79,11 @@ class ETFService:
             # total_mv from Tushare daily_basic is in 万元 (10k CNY).
             # Convert to 元 (base currency unit) so frontend formatting
             # (v / 1e8 → 亿) works correctly.
-            # Only populate fund_size — market_cap is designed for USD display
-            # in the frontend and should remain None for A-shares.
+            # Populate both fund_size and market_cap for A-shares so the
+            # unified instrument list shows market cap for all instrument types.
             if fundamental.total_mv is not None:
                 fund_size = float(fundamental.total_mv) * 10_000  # 万元 → 元
+                market_cap = fund_size
 
         return ETFInfoResponse(
             code=etf.code,

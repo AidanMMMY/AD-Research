@@ -3,8 +3,8 @@ import { Navigate } from 'react-router-dom';
 
 const Login = lazy(() => import('./pages/Login'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
-const ETFList = lazy(() => import('./pages/ETFList'));
-const ETFDetail = lazy(() => import('./pages/ETFDetail'));
+const InstrumentList = lazy(() => import('./pages/InstrumentList'));
+const InstrumentDetail = lazy(() => import('./pages/InstrumentDetail'));
 const StocksList = lazy(() => import('./pages/StocksList'));
 const StockDetail = lazy(() => import('./pages/StockDetail'));
 const Screen = lazy(() => import('./pages/Screen'));
@@ -15,7 +15,7 @@ const ReportBrowser = lazy(() => import('./pages/ReportBrowser'));
 const CorrelationAnalysis = lazy(() => import('./pages/CorrelationAnalysis'));
 const ReturnComparison = lazy(() => import('./pages/ReturnComparison'));
 const SectorRotation = lazy(() => import('./pages/SectorRotation'));
-const ETFScanner = lazy(() => import('./pages/ETFScanner'));
+const MarketScanner = lazy(() => import('./pages/MarketScanner'));
 const NotificationConfig = lazy(() => import('./pages/NotificationConfig'));
 const StrategyList = lazy(() => import('./pages/StrategyList'));
 const BacktestList = lazy(() => import('./pages/BacktestList'));
@@ -57,9 +57,14 @@ const wrap = (Component: React.ComponentType) => (
 export const routes: RouteConfig[] = [
   { path: '/login', element: wrap(Login), auth: false },
   { path: '/dashboard', element: wrap(Dashboard), auth: true, menu: { name: '首页看板', icon: 'DashboardOutlined' } },
-  { path: '/etfs', element: wrap(ETFList), auth: true, menu: { name: '标的列表', icon: 'OrderedListOutlined' } },
-  { path: '/etfs/:code', element: wrap(ETFDetail), auth: true },
-  { path: '/stocks', element: wrap(StocksList), auth: true, menu: { name: '个股', icon: 'StockOutlined' } },
+  // New canonical routes
+  { path: '/instruments', element: wrap(InstrumentList), auth: true, menu: { name: '标的列表', icon: 'OrderedListOutlined' } },
+  { path: '/instruments/:code', element: wrap(InstrumentDetail), auth: true },
+  // Backward-compatible redirects
+  { path: '/etfs', element: <Navigate to="/instruments" replace />, auth: true },
+  { path: '/etfs/:code', element: <Navigate to="/instruments/:code" replace />, auth: true },
+  // ---- 个股（合并到标的列表，通过 instrument_type=STOCK 筛选） ----
+  { path: '/stocks', element: wrap(StocksList), auth: true },
   { path: '/stocks/:code', element: wrap(StockDetail), auth: true },
   { path: '/screen', element: wrap(Screen), auth: true, menu: { name: '全市场筛选器', icon: 'FilterOutlined' } },
   { path: '/pools', element: wrap(PoolList), auth: true, menu: { name: '标的池管理', icon: 'AppstoreOutlined' } },
@@ -69,7 +74,7 @@ export const routes: RouteConfig[] = [
   { path: '/correlation', element: wrap(CorrelationAnalysis), auth: true, menu: { name: '相关性分析', icon: 'ApartmentOutlined' } },
   { path: '/comparison', element: wrap(ReturnComparison), auth: true, menu: { name: '收益对比', icon: 'LineChartOutlined' } },
   { path: '/sector-rotation', element: wrap(SectorRotation), auth: true, menu: { name: '板块轮动', icon: 'BarChartOutlined' } },
-  { path: '/scanner', element: wrap(ETFScanner), auth: true, menu: { name: '全市场扫描', icon: 'ScanOutlined' } },
+  { path: '/scanner', element: wrap(MarketScanner), auth: true, menu: { name: '全市场扫描', icon: 'ScanOutlined' } },
   { path: '/notifications', element: wrap(NotificationConfig), auth: true, menu: { name: '推送配置', icon: 'NotificationOutlined', dividerBefore: true } },
   { path: '/notification-logs', element: wrap(NotificationLogs), auth: true, menu: { name: '通知日志', icon: 'FileTextOutlined' } },
   { path: '/strategies', element: wrap(StrategyList), auth: true, menu: { name: '策略管理', icon: 'SettingOutlined' } },

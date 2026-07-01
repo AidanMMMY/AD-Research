@@ -5,7 +5,7 @@ import {
 import GlassCard from '@/components/GlassCard';
 import { useBacktests } from '@/hooks/useBacktests';
 import { useStrategies } from '@/hooks/useStrategies';
-import { useETFList } from '@/hooks/useETFList';
+import { useInstrumentList } from '@/hooks/useInstrumentList';
 import { PlusOutlined, EyeOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import dayjs from 'dayjs';
@@ -17,7 +17,7 @@ export default function BacktestList() {
 
   const { backtests, isLoading, create } = useBacktests();
   const { strategies } = useStrategies();
-  const { data: etfList, isLoading: etfLoading } = useETFList({ page_size: 10000 });
+  const { data: etfList, isLoading: etfLoading } = useInstrumentList({ page_size: 10000 });
 
   const etfOptions = (etfList?.items || []).map((item: any) => ({
     label: `${item.code} ${item.name}`,

@@ -3,13 +3,13 @@ import { useNavigate } from 'react-router-dom';
 import { Table, Space, Select, InputNumber, Button, Row, Col } from 'antd';
 import { useScreenResults, useScreenPresets, useScreenCategories } from '@/hooks/useScreenResults';
 import ThemeTag from '@/components/ThemeTag';
-import { useETFMarkets } from '@/hooks/useETFList';
+import { useInstrumentMarkets } from '@/hooks/useInstrumentList';
 import { useScreenStore } from '@/stores/screen';
 import { useAIHelp } from '@/hooks/useAIHelp';
 import Panel from '@/components/Panel';
 import HelpTrigger from '@/components/HelpTrigger';
 import HelpPopover from '@/components/HelpPopover';
-import ETFCodeTag from '@/components/ETFCodeTag';
+import InstrumentCodeTag from '@/components/InstrumentCodeTag';
 import ReturnTag from '@/components/ReturnTag';
 import { buildScreenContext } from '@/utils/helpContext';
 import { getQuickQuestions } from '@/utils/helpPrompts';
@@ -43,7 +43,7 @@ export default function Screen() {
   const { data: results, isLoading } = useScreenResults(queryFilters);
   const { data: presets } = useScreenPresets();
   const { data: categories } = useScreenCategories({ market: filters.market });
-  const { data: markets } = useETFMarkets();
+  const { data: markets } = useInstrumentMarkets();
 
   // Clear the selected category if it is not available in the current market.
   useEffect(() => {
@@ -65,7 +65,7 @@ export default function Screen() {
   };
 
   const columns = [
-    { title: '代码', dataIndex: 'code', width: 100, render: (v: string, r: any) => <ETFCodeTag code={v} name={r.name} /> },
+    { title: '代码', dataIndex: 'code', width: 100, render: (v: string, r: any) => <InstrumentCodeTag code={v} name={r.name} /> },
     { title: '分类', dataIndex: 'category', width: 100, render: (v: string) => v ? <span style={{ fontSize: 'var(--text-small-size)', color: 'var(--text-secondary)' }}>{v}</span> : '-' },
     { title: <HelpPopover termKey="composite_score_filter">评分</HelpPopover>, dataIndex: 'composite_score', width: 80, render: (v: number) => <span style={{ fontWeight: 700, color: 'var(--accent)', fontFamily: 'var(--font-mono)' }}>{v?.toFixed(1)}</span> },
     { title: <HelpPopover termKey="rsi14">RSI</HelpPopover>, dataIndex: 'rsi14', width: 70, render: (v: number) => <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)' }}>{v?.toFixed(1)}</span> },

@@ -5,7 +5,7 @@ import { SearchOutlined } from '@ant-design/icons';
 import { useCryptoList } from '@/hooks/useCrypto';
 import { useCryptoStore } from '@/stores/crypto';
 import { useIsMobile } from '@/hooks/useBreakpoint';
-import ETFCodeTag from '@/components/ETFCodeTag';
+import InstrumentCodeTag from '@/components/InstrumentCodeTag';
 import ReturnTag from '@/components/ReturnTag';
 import ThemeTag from '@/components/ThemeTag';
 
@@ -39,7 +39,7 @@ export default function CryptoList() {
     {
       title: '代币',
       render: (_: unknown, record: any) => (
-        <ETFCodeTag code={record.code} name={record.name} />
+        <InstrumentCodeTag code={record.code} name={record.name} />
       ),
     },
     {
@@ -210,7 +210,7 @@ export default function CryptoList() {
                 style={{ cursor: 'pointer' }}
               >
                 <List.Item.Meta
-                  title={<ETFCodeTag code={item.code} name={item.name} />}
+                  title={<InstrumentCodeTag code={item.code} name={item.name} />}
                   description={
                     <span style={{ fontSize: 'var(--text-small-size)', color: 'var(--text-tertiary)' }}>
                       {item.category} · {item.exchange}

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createChart, IChartApi, ISeriesApi, CandlestickData, HistogramData, LineData, Time, ColorType, LineStyle } from 'lightweight-charts';
-import type { OHLCV } from '@/types/etf';
+import type { OHLCV } from '@/types/instrument';
 import { useIsMobile } from '@/hooks/useBreakpoint';
 import { useSettingsStore } from '@/stores/settings';
 import { getUpColor, getDownColor } from '@/utils/color';

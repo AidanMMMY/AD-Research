@@ -41,23 +41,23 @@ export function buildScoreRankingContext(
   ].join('\n');
 }
 
-export function buildETFDetailContext(
+export function buildInstrumentDetailContext(
   code: string | undefined,
-  etf: any,
+  instrument: any,
   score: any,
   indicator: any,
   sentiment: any,
   timeRange: number
 ): string {
-  const etfSummary = etf
+  const instrumentSummary = instrument
     ? {
-        code: etf.code,
-        name: etf.name,
-        category: etf.category,
-        sub_category: etf.sub_category,
-        market: etf.market,
-        fund_manager: etf.fund_manager,
-        fund_size: etf.fund_size,
+        code: instrument.code,
+        name: instrument.name,
+        category: instrument.category,
+        sub_category: instrument.sub_category,
+        market: instrument.market,
+        fund_manager: instrument.fund_manager,
+        fund_size: instrument.fund_size,
       }
     : { code };
 
@@ -99,10 +99,10 @@ export function buildETFDetailContext(
     : '无情绪数据';
 
   return [
-    '页面：ETF 详情',
+    '页面：标的详情',
     `标的代码：${code}`,
     '标的概览：',
-    summarizeObject(etfSummary as Record<string, unknown>),
+    summarizeObject(instrumentSummary as Record<string, unknown>),
     '综合评分：',
     typeof scoreSummary === 'string' ? scoreSummary : summarizeObject(scoreSummary as Record<string, unknown>),
     '关键技术指标：',
@@ -260,10 +260,10 @@ export function buildContext(
   switch (pageType) {
     case 'score_ranking':
       return buildScoreRankingContext(data.scoresData, data.templateName, data.templateId);
-    case 'etf_detail':
-      return buildETFDetailContext(
+    case 'instrument_detail':
+      return buildInstrumentDetailContext(
         data.code,
-        data.etf,
+        data.instrument,
         data.score,
         data.indicator,
         data.sentiment,

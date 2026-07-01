@@ -6,7 +6,7 @@ import { useScanner } from '@/hooks/useScanner';
 import { ReloadOutlined } from '@ant-design/icons';
 import type { ScanResult } from '@/types/scanner';
 
-export default function ETFScanner() {
+export default function MarketScanner() {
   const [lastScan, setLastScan] = useState<ScanResult | null>(null);
   const { logs, isLoading, scan, isScanning } = useScanner();
 

@@ -2,10 +2,10 @@ import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Table, Input, Select, List, Skeleton } from 'antd';
 import { SearchOutlined } from '@ant-design/icons';
-import { useETFList, useETFCategories, useETFMarkets } from '@/hooks/useETFList';
+import { useInstrumentList, useInstrumentCategories, useInstrumentMarkets } from '@/hooks/useInstrumentList';
 import { useSparkline } from '@/hooks/useSparkline';
 import { useMarketStream } from '@/hooks/useMarketStream';
-import ETFCodeTag from '@/components/ETFCodeTag';
+import InstrumentCodeTag from '@/components/InstrumentCodeTag';
 import ThemeTag from '@/components/ThemeTag';
 import Sparkline from '@/components/Sparkline';
 import ReturnTag from '@/components/ReturnTag';
@@ -54,7 +54,7 @@ function LivePriceCell({ tick }: { code: string; tick: ReturnType<typeof useMark
   );
 }
 
-export default function ETFList() {
+export default function InstrumentList() {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const [search, setSearch] = useState('');
@@ -63,7 +63,7 @@ export default function ETFList() {
   const [instrumentType, setInstrumentType] = useState<string | undefined>();
   const [page, setPage] = useState(1);
 
-  const { data, isLoading } = useETFList({
+  const { data, isLoading } = useInstrumentList({
     search: search || undefined,
     market,
     category,
@@ -71,11 +71,11 @@ export default function ETFList() {
     page,
     page_size: 50,
   });
-  const { data: categories } = useETFCategories({
+  const { data: categories } = useInstrumentCategories({
     market,
     instrument_type: instrumentType,
   });
-  const { data: markets } = useETFMarkets();
+  const { data: markets } = useInstrumentMarkets();
 
   // Clear the selected category if it no longer exists under the current
   // market / instrument type filters.
@@ -97,7 +97,7 @@ export default function ETFList() {
   const columns = [
     {
       title: '标的',
-      render: (_: unknown, record: any) => <ETFCodeTag code={record.code} name={record.name} />,
+      render: (_: unknown, record: any) => <InstrumentCodeTag code={record.code} name={record.name} />,
     },
     {
       title: '分类',
@@ -244,7 +244,7 @@ export default function ETFList() {
             dataSource={data?.items || []}
             renderItem={(item: any) => (
               <div
-                onClick={() => navigate(`/etfs/${item.code}`)}
+                onClick={() => navigate(`/instruments/${item.code}`)}
                 style={{
                   borderBottom: '1px solid var(--border-default)',
                   padding: 'var(--space-3) 0',
@@ -255,7 +255,7 @@ export default function ETFList() {
                 }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <ETFCodeTag code={item.code} name={item.name} />
+                  <InstrumentCodeTag code={item.code} name={item.name} />
                   <span style={{ fontSize: 'var(--text-body-size)', fontWeight: 600, color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>
                     {item.fund_size ? `${(item.fund_size / 1e8).toFixed(1)}亿` : '-'}
                   </span>
@@ -301,7 +301,7 @@ export default function ETFList() {
               showSizeChanger: false,
             }}
             onRow={(record) => ({
-              onClick: () => navigate(`/etfs/${record.code}`),
+              onClick: () => navigate(`/instruments/${record.code}`),
             })}
           />
         )}

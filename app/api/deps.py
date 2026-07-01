@@ -111,7 +111,7 @@ def get_current_user(
         user = db.query(User).filter(User.username == username).first()
         if not user or not user.is_active:
             raise HTTPException(status_code=401, detail="Invalid or inactive user")
-        return UserResponse(username=user.username, role=user.role)
+        return UserResponse(id=user.id, username=user.username, role=user.role)
     finally:
         db.close()
 
@@ -153,7 +153,7 @@ def get_current_user_optional(request) -> UserResponse | None:
         user = db.query(User).filter(User.username == username).first()
         if not user or not user.is_active:
             return None
-        return UserResponse(username=user.username, role=user.role)
+        return UserResponse(id=user.id, username=user.username, role=user.role)
     finally:
         db.close()
 

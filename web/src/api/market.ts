@@ -1,5 +1,5 @@
 import client from './client';
-import type { OHLCV, MarketSnapshot, IndicatorData } from '@/types/etf';
+import type { OHLCV, MarketSnapshot, IndicatorData } from '@/types/instrument';
 
 export const marketApi = {
   history: (code: string, params?: { start_date?: string; end_date?: string; limit?: number }) =>

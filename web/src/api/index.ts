@@ -1,6 +1,6 @@
 export { authApi } from './auth';
 export { adminUsersApi } from './adminUsers';
-export { etfApi } from './etf';
+export { instrumentApi } from './instrument';
 export { marketApi } from './market';
 export { poolApi } from './pool';
 export { scoreApi } from './score';

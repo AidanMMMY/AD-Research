@@ -1,6 +1,6 @@
 export type HelpPageType =
   | 'score_ranking'
-  | 'etf_detail'
+  | 'instrument_detail'
   | 'strategy_list'
   | 'backtest_detail'
   | 'screen'
@@ -113,7 +113,7 @@ const entries: TermEntry[] = [
     formula: 'RS = 平均上涨幅度 / 平均下跌幅度；RSI = 100 - 100 / (1 + RS)',
     interpretation: 'RSI > 70 通常视为超买，可能回调；RSI < 30 通常视为超卖，可能反弹。但强势趋势中可能长期超买或超卖。',
     example: '某 ETF 的 RSI14 = 75，说明近期上涨动能较强，短期存在过热风险；RSI14 = 25 则可能处于短期低点。',
-    relatedPageType: 'etf_detail',
+    relatedPageType: 'instrument_detail',
   },
   {
     key: 'sharpe_1y',
@@ -122,7 +122,7 @@ const entries: TermEntry[] = [
     fullDesc: '用近 1 年的收益率和波动率计算夏普比率，反映过去一年每承担一单位风险获得的超额收益。',
     formula: 'Sharpe = (年化收益 - 无风险利率) / 年化波动率',
     interpretation: '数值越高越好。>1 通常认为风险补偿较充分。',
-    relatedPageType: 'etf_detail',
+    relatedPageType: 'instrument_detail',
   },
   {
     key: 'volatility_20d',
@@ -132,7 +132,7 @@ const entries: TermEntry[] = [
     formula: 'std(近20日收益率) × √252 × 100%',
     interpretation: '数值越高，价格波动越大，风险也越高。适合用于仓位控制和止损设置。早期数据样本不足时需谨慎参考。',
     example: '波动率 10% 的 ETF 日内波动通常远小于波动率 40% 的行业主题 ETF。',
-    relatedPageType: 'etf_detail',
+    relatedPageType: 'instrument_detail',
   },
   {
     key: 'max_drawdown_1y',
@@ -142,7 +142,7 @@ const entries: TermEntry[] = [
     formula: 'Max Drawdown = (历史高点 - 后续最低点) / 历史高点 × 100%',
     interpretation: '回撤越小，持有体验越好。回撤大的品种需要更强的风险承受能力。',
     example: '某 ETF 去年最高净值 1.5，随后最低跌到 1.2，最大回撤为 20%。',
-    relatedPageType: 'etf_detail',
+    relatedPageType: 'instrument_detail',
   },
   {
     key: 'return_1m',
@@ -150,7 +150,7 @@ const entries: TermEntry[] = [
     shortDesc: '近 1 个月（约 21 个交易日）的累计收益率。',
     fullDesc: '反映 ETF 短期表现。1 个月窗口对近期趋势敏感，但噪音也较大。',
     interpretation: '正值表示上涨，负值表示下跌。单独看容易受短期情绪影响。',
-    relatedPageType: 'etf_detail',
+    relatedPageType: 'instrument_detail',
   },
   {
     key: 'return_3m',
@@ -158,7 +158,7 @@ const entries: TermEntry[] = [
     shortDesc: '近 3 个月（约 63 个交易日）的累计收益率。',
     fullDesc: '反映 ETF 中期表现，比 1 个月更能过滤短期噪音。',
     interpretation: '正值且排名靠前，说明中期趋势较强。',
-    relatedPageType: 'etf_detail',
+    relatedPageType: 'instrument_detail',
   },
   {
     key: 'return_1y',
@@ -166,7 +166,7 @@ const entries: TermEntry[] = [
     shortDesc: '近 1 年（约 252 个交易日）的累计收益率。',
     fullDesc: '反映 ETF 中长期表现，是评估一年持有回报的重要参考。',
     interpretation: '长期正收益代表趋势向上，但也要结合回撤和波动一起看。',
-    relatedPageType: 'etf_detail',
+    relatedPageType: 'instrument_detail',
   },
   {
     key: 'ma5',
@@ -175,7 +175,7 @@ const entries: TermEntry[] = [
     fullDesc: 'MA5 是最近 5 个交易日收盘价的平均值，常作为短期支撑或阻力位参考。',
     formula: 'MA5 = (近 5 日收盘价之和) / 5',
     interpretation: '价格在 MA5 上方，短期偏强；跌破 MA5，短期可能转弱。',
-    relatedPageType: 'etf_detail',
+    relatedPageType: 'instrument_detail',
   },
   {
     key: 'ma20',
@@ -183,7 +183,7 @@ const entries: TermEntry[] = [
     shortDesc: '20 日移动平均线，反映中期趋势。',
     fullDesc: 'MA20 是最近 20 个交易日收盘价的平均值，常被看作中期趋势的参考线。',
     interpretation: '价格在 MA20 上方且 MA20 向上，中期趋势偏多；反之偏空。',
-    relatedPageType: 'etf_detail',
+    relatedPageType: 'instrument_detail',
   },
   {
     key: 'bollinger_bands',
@@ -192,7 +192,7 @@ const entries: TermEntry[] = [
     fullDesc: '布林带通过价格的标准差构建波动通道。价格触及上轨可能超买，触及下轨可能超卖。平台使用 MA20 和 2 倍标准差；由于计算时允许样本不足（min_periods=1），前 19 根 K 线的布林带可能基于较少样本，稳定性较差。',
     formula: '中轨 = MA20；上轨 = MA20 + 2 × std20；下轨 = MA20 - 2 × std20',
     interpretation: '通道收窄预示波动即将放大；价格突破上轨或下轨可能意味着趋势延续或反转。早期数据样本不足时需谨慎使用。',
-    relatedPageType: 'etf_detail',
+    relatedPageType: 'instrument_detail',
   },
   {
     key: 'macd',
@@ -201,7 +201,7 @@ const entries: TermEntry[] = [
     fullDesc: 'MACD 由快线 DIF、慢线 DEA 和柱状图组成，常用于识别趋势转折和动能强弱。',
     formula: 'DIF = EMA12 - EMA26；DEA = EMA9(DIF)；Histogram = DIF - DEA',
     interpretation: 'DIF 上穿 DEA 为金叉，偏多；DIF 下穿 DEA 为死叉，偏空。柱状图放大代表动能增强。',
-    relatedPageType: 'etf_detail',
+    relatedPageType: 'instrument_detail',
   },
   {
     key: 'ma10',
@@ -210,7 +210,7 @@ const entries: TermEntry[] = [
     fullDesc: 'MA10 是最近 10 个交易日收盘价的平均值，介于 MA5 和 MA20 之间，常用于观察短期趋势变化。',
     formula: 'MA10 = (近 10 日收盘价之和) / 10',
     interpretation: '价格站稳 MA10 上方，短期偏强；跌破 MA10 可能进入短期调整。',
-    relatedPageType: 'etf_detail',
+    relatedPageType: 'instrument_detail',
   },
   {
     key: 'ma60',
@@ -219,7 +219,7 @@ const entries: TermEntry[] = [
     fullDesc: 'MA60 是最近 60 个交易日收盘价的平均值，常被看作季度趋势的参考线，也常被称为“生命线”。',
     formula: 'MA60 = (近 60 日收盘价之和) / 60',
     interpretation: '价格在 MA60 上方且 MA60 向上，中长期趋势偏多；有效跌破 MA60 可能意味着趋势转弱。',
-    relatedPageType: 'etf_detail',
+    relatedPageType: 'instrument_detail',
   },
   {
     key: 'kline',
@@ -227,7 +227,7 @@ const entries: TermEntry[] = [
     shortDesc: '用蜡烛线展示开盘价、收盘价、最高价、最低价的行情图表。',
     fullDesc: 'K 线图（Candlestick Chart）每根蜡烛代表一个时间周期，实体表示开盘到收盘的涨跌，上下影线表示该周期的最高最低价。',
     interpretation: '阳线（通常红色）表示收盘价高于开盘价，阴线（通常绿色）表示收盘价低于开盘价。长上影线说明上方抛压大，长下影线说明下方有支撑。',
-    relatedPageType: 'etf_detail',
+    relatedPageType: 'instrument_detail',
   },
   {
     key: 'time_range',
@@ -235,7 +235,7 @@ const entries: TermEntry[] = [
     shortDesc: 'K 线图展示的历史交易日数量。',
     fullDesc: '时间范围决定 K 线图上显示多少根蜡烛。范围越短，越能看清近期细节；范围越长，越能把握中长期趋势。',
     interpretation: '30 日/60 日适合短期交易参考；120 日/250 日适合中长期趋势判断。',
-    relatedPageType: 'etf_detail',
+    relatedPageType: 'instrument_detail',
   },
   {
     key: 'ai_analysis',
@@ -243,7 +243,7 @@ const entries: TermEntry[] = [
     shortDesc: '基于历史数据和文本信息的自动化分析结论。',
     fullDesc: 'AI 分析模块利用大语言模型对 ETF 的技术指标、市场情绪、研究笔记等信息进行整合，生成可读性较强的分析结论。',
     interpretation: 'AI 分析是辅助参考，不构成投资建议。重要决策仍需结合自己的判断和风险承受能力。',
-    relatedPageType: 'etf_detail',
+    relatedPageType: 'instrument_detail',
   },
   {
     key: 'ai_research_note',
@@ -251,7 +251,7 @@ const entries: TermEntry[] = [
     shortDesc: '平台自动生成的关于某只 ETF 的研究摘要报告。',
     fullDesc: 'AI 研究笔记基于公开数据、技术指标和市场信息，由大语言模型生成的简短研报。可以点击“生成研报”按钮重新生成。',
     interpretation: '研究笔记提供快速概览，但不能替代深度研究和尽职调查。',
-    relatedPageType: 'etf_detail',
+    relatedPageType: 'instrument_detail',
   },
   {
     key: 'market_sentiment',
@@ -259,7 +259,7 @@ const entries: TermEntry[] = [
     shortDesc: '基于相关新闻或研报文本计算出的看多/看空/中性倾向分数。',
     fullDesc: '市场情绪通过自然语言处理分析近期相关文本，给出一个 -1 到 +1 之间的情绪分数。越接近 +1 越偏乐观，越接近 -1 越偏悲观。',
     interpretation: '情绪指标反映市场短期共识，常用于判断是否存在过热或过冷风险，但不应作为唯一买卖依据。',
-    relatedPageType: 'etf_detail',
+    relatedPageType: 'instrument_detail',
   },
 
   // ===== 策略 =====

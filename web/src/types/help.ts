@@ -2,7 +2,7 @@ import type { Step } from '@/hooks/useStepStream';
 
 export type HelpPageType =
   | 'score_ranking'
-  | 'etf_detail'
+  | 'instrument_detail'
   | 'strategy_list'
   | 'backtest_detail'
   | 'screen'

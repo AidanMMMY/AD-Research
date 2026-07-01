@@ -3,9 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { Table, Input, Select, List, Skeleton } from 'antd';
 import { SearchOutlined, StockOutlined } from '@ant-design/icons';
 import { useStockList } from '@/hooks/useStocks';
-import { useETFMarkets, useETFCategories } from '@/hooks/useETFList';
+import { useInstrumentMarkets, useInstrumentCategories } from '@/hooks/useInstrumentList';
 import { useSparkline } from '@/hooks/useSparkline';
-import ETFCodeTag from '@/components/ETFCodeTag';
+import InstrumentCodeTag from '@/components/InstrumentCodeTag';
 import ThemeTag from '@/components/ThemeTag';
 import Sparkline from '@/components/Sparkline';
 import { useIsMobile } from '@/hooks/useBreakpoint';
@@ -37,11 +37,11 @@ export default function StocksList() {
     page,
     page_size: 50,
   });
-  const { data: categories } = useETFCategories({
+  const { data: categories } = useInstrumentCategories({
     market,
     instrument_type: 'STOCK',
   });
-  const { data: markets } = useETFMarkets();
+  const { data: markets } = useInstrumentMarkets();
 
   // Reset category if it disappears under current filters.
   useEffect(() => {
@@ -57,7 +57,7 @@ export default function StocksList() {
       title: '代码',
       dataIndex: 'code',
       width: 110,
-      render: (_: unknown, record: any) => <ETFCodeTag code={record.code} name={record.name} />,
+      render: (_: unknown, record: any) => <InstrumentCodeTag code={record.code} name={record.name} />,
     },
     {
       title: '市场',
@@ -168,7 +168,7 @@ export default function StocksList() {
                 }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <ETFCodeTag code={item.code} name={item.name} />
+                  <InstrumentCodeTag code={item.code} name={item.name} />
                   {item.market_cap ? (
                     <span style={{ fontSize: 'var(--text-body-size)', fontWeight: 600, color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>
                       {item.market_cap >= 1e8 ? `${(item.market_cap / 1e8).toFixed(1)}亿` : `${(item.market_cap / 1e4).toFixed(0)}万`}

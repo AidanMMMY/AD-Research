@@ -1,4 +1,4 @@
-export interface ETFInfo {
+export interface InstrumentInfo {
   code: string;
   name: string;
   market: string;
@@ -23,14 +23,14 @@ export interface ETFInfo {
   country?: string;
 }
 
-export interface ETFListResponse {
-  items: ETFInfo[];
+export interface InstrumentListResponse {
+  items: InstrumentInfo[];
   total: number;
   page: number;
   page_size: number;
 }
 
-export interface ETFFilterParams {
+export interface InstrumentFilterParams {
   market?: string;
   category?: string;
   instrument_type?: string;
