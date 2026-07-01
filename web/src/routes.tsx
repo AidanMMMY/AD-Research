@@ -36,6 +36,7 @@ const TradingPanel = lazy(() => import('./pages/TradingPanel'));
 const NewsFeed = lazy(() => import('./pages/News'));
 const NewsDetail = lazy(() => import('./pages/News/detail'));
 const SentimentOverview = lazy(() => import('./pages/Sentiment'));
+const ListingPreview = lazy(() => import('./pages/ListingPreview'));
 
 export interface RouteConfig {
   path: string;
@@ -91,6 +92,7 @@ export const routes: RouteConfig[] = [
   // ---- AI 研究 ----
   { path: '/research', element: wrap(ResearchNotes), auth: true, menu: { name: 'AI研究笔记', icon: 'ReadOutlined' } },
   { path: '/sentiment', element: wrap(SentimentOverview), auth: true, menu: { name: '情绪', icon: 'HeartOutlined' } },
+  { path: '/listing-preview', element: wrap(ListingPreview), auth: true, menu: { name: '上市预告', icon: 'CalendarOutlined' } },
   { path: '/news', element: wrap(NewsFeed), auth: true, menu: { name: '资讯', icon: 'ReadOutlined' } },
   { path: '/news/:id', element: wrap(NewsDetail), auth: true },
   { path: '/chat', element: wrap(AIChat), auth: true, menu: { name: 'AI助手', icon: 'RobotOutlined' } },

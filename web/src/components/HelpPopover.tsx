@@ -45,6 +45,7 @@ export default function HelpPopover({
       backtest_detail: '回测详情',
       screen: '全市场筛选器',
       pool_detail: '标的池详情',
+      listing_preview: '上市预告',
     };
 
     const question = `请详细解释"${title}"这个概念。${shortDesc}`;

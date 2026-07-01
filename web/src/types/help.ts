@@ -6,7 +6,8 @@ export type HelpPageType =
   | 'strategy_list'
   | 'backtest_detail'
   | 'screen'
-  | 'pool_detail';
+  | 'pool_detail'
+  | 'listing_preview';
 
 export interface HelpMessage {
   id: string;

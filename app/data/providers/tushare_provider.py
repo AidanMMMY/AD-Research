@@ -48,6 +48,7 @@ _RETRIES = 2
 _PERMISSION_ERROR_MARKERS = (
     "权限不足",
     "无权限",
+    "权限",  # generic catch-all: "您没有该接口权限", "无访问权限", etc.
     "积分",
     "permission",
     "forbidden",
