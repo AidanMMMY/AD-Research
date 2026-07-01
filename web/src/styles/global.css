@@ -25,6 +25,8 @@
 
 .ant-layout-content {
   background: var(--bg-base) !important;
+  position: relative;
+  z-index: 2;
 }
 
 /* Card — Hybrid surface (Bento radius + shadow, Swiss hairline) */
@@ -614,6 +616,50 @@ a:hover {
 }
 
 /* ============================================================
+   Accessibility: Global focus indicator for keyboard users.
+
+   - Native <input>/<textarea>/<select> use their own border-color /
+     box-shadow focus styling (see .ant-input:focus above and the
+     .login-input-wrapper:focus-within rule below). Suppress the
+     default outline so we don't double-render.
+
+   - All other interactive elements (button, a, [tabindex], etc.)
+     get a visible 2px ring in --accent. Mouse users do NOT trigger
+     :focus-visible, so they keep the existing hover styling.
+
+   - Non-interactive elements (div, span, section, …) get NO ring.
+
+   --accent: #5fa87a (terminal green) on --bg-base (#0a0a0a) clears
+   WCAG 2.1 non-text-contrast (3:1) by a wide margin.
+   ============================================================ */
+
+*:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: none;
+}
+
+button:focus-visible,
+a:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Login.tsx input wrappers — keyboard users get the same amber ring
+   the .ant-input focus uses, applied to the wrapper so the icon +
+   caret both sit inside the highlighted region. */
+.login-input-wrapper:focus-within {
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 0 2px var(--accent-dim);
+}
+
+/* ============================================================
    Density Modes (S1)
    ============================================================ */
 :root {
@@ -642,5 +688,187 @@ a:hover {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+  }
+
+  /* Hide CRT scanline + vignette overlays for reduced-motion users
+     (visual effect, not motion — but still an ambient visual layer
+     that some users prefer to disable). */
+  body::before,
+  body::after {
+    display: none;
+  }
+}
+
+/* ============================================================
+   CRT scanline overlay — terminal aesthetic
+   Subtle horizontal lines + faint vignette to evoke a CRT monitor.
+   Pointer-events: none ensures interactivity is unaffected.
+   Z-index: 1 places it above --bg-base but below content containers
+   (which sit at z-index: 2 via position: relative on the layout root).
+   ============================================================ */
+
+/* Ensure the layout root + content stack above the fixed overlays
+   (the CRT pseudo-elements render at z-index: 1, fixed). */
+#root,
+.ant-layout,
+.ant-layout-content,
+main {
+  position: relative;
+  z-index: 2;
+}
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  background-image:
+    repeating-linear-gradient(
+      0deg,
+      rgba(95, 168, 122, 0.025) 0px,
+      rgba(95, 168, 122, 0.025) 1px,
+      transparent 1px,
+      transparent 3px
+    );
+  background-size: 100% 3px;
+  mix-blend-mode: screen;
+}
+
+/* Slight corner vignette */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  background: radial-gradient(
+    ellipse at center,
+    transparent 50%,
+    rgba(0, 0, 0, 0.4) 100%
+  );
+}
+
+/* ============================================================
+   Ticker Tape — Dashboard hero Bloomberg-style marquee
+   Horizontally scrolling strip of instrument codes, names, and
+   live price/change data. Track is duplicated; CSS translates by
+   -50% so the loop is seamless. Hover pauses the animation;
+   prefers-reduced-motion freezes it.
+   ============================================================ */
+.ticker-tape {
+  position: relative;
+  overflow: hidden;
+  height: 36px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  margin-bottom: 24px;
+  mask-image: linear-gradient(
+    to right,
+    transparent 0,
+    #000 24px,
+    #000 calc(100% - 24px),
+    transparent 100%
+  );
+  -webkit-mask-image: linear-gradient(
+    to right,
+    transparent 0,
+    #000 24px,
+    #000 calc(100% - 24px),
+    transparent 100%
+  );
+}
+
+.ticker-track {
+  display: inline-flex;
+  align-items: center;
+  gap: 28px;
+  padding: 0 14px;
+  white-space: nowrap;
+  animation: ticker-scroll 60s linear infinite;
+  will-change: transform;
+}
+
+.ticker-tape:hover .ticker-track,
+.ticker-tape:focus-within .ticker-track {
+  animation-play-state: paused;
+}
+
+.ticker-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--text-small-size);
+  color: var(--text-secondary);
+  cursor: pointer;
+  user-select: none;
+  padding: 0 6px;
+  border-right: 1px solid var(--card-border);
+  transition: color var(--transition-fast), background var(--transition-fast);
+}
+
+.ticker-cell:last-child {
+  border-right: none;
+}
+
+.ticker-cell:hover,
+.ticker-cell:focus-visible {
+  color: var(--text-primary);
+  background: var(--bg-hover);
+  outline: none;
+}
+
+.ticker-code {
+  font-family: var(--font-mono);
+  color: var(--accent);
+  letter-spacing: 0.04em;
+}
+
+.ticker-name {
+  color: var(--text-primary);
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ticker-price {
+  font-family: var(--font-mono);
+  color: var(--text-secondary);
+}
+
+.ticker-change {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-family: var(--font-mono);
+}
+
+.ticker-change.rise {
+  color: var(--color-rise);
+}
+
+.ticker-change.fall {
+  color: var(--color-fall);
+}
+
+.ticker-change.flat {
+  color: var(--text-tertiary);
+}
+
+@keyframes ticker-scroll {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ticker-track {
+    animation: none;
+    transform: translateX(0);
   }
 }

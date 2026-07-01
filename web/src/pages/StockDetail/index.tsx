@@ -18,6 +18,7 @@ import ThemeTag from '@/components/ThemeTag';
 import { formatPercent } from '@/utils/format';
 import { useSettingsStore } from '@/stores/settings';
 import { getReturnColor } from '@/utils/color';
+import { ArrowUpOutlined, ArrowDownOutlined, MinusOutlined } from '@ant-design/icons';
 import { buildInstrumentDetailContext } from '@/utils/helpContext';
 import { getQuickQuestions } from '@/utils/helpPrompts';
 import type { ResearchNote } from '@/api/research';
@@ -583,7 +584,14 @@ export default function StockDetail() {
             </Button>
             {indicator?.return_1m !== undefined && (
               <div style={{ textAlign: 'right' }}>
-                <div className="tabular-nums" style={{ fontSize: 'var(--text-data-lg-size)', fontWeight: 400, fontFamily: 'var(--font-mono)', color: getReturnColor(indicator.return_1m, colorConvention) }}>
+                <div className="tabular-nums" style={{ fontSize: 'var(--text-data-lg-size)', fontWeight: 400, fontFamily: 'var(--font-mono)', color: getReturnColor(indicator.return_1m, colorConvention), display: 'inline-flex', alignItems: 'baseline', gap: 2 }}>
+                  {indicator.return_1m > 0 ? (
+                    <ArrowUpOutlined style={{ fontSize: '0.85em' }} aria-label="up" />
+                  ) : indicator.return_1m < 0 ? (
+                    <ArrowDownOutlined style={{ fontSize: '0.85em' }} aria-label="down" />
+                  ) : (
+                    <MinusOutlined style={{ fontSize: '0.85em' }} aria-label="flat" />
+                  )}
                   {formatPercent(indicator.return_1m)}
                 </div>
                 <div style={{ color: 'var(--text-tertiary)', fontSize: 'var(--text-small-size)' }}>1月收益</div>

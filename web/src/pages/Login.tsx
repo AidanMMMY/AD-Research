@@ -141,6 +141,7 @@ export default function Login() {
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div
+            className="login-input-wrapper"
             style={{
               display: 'flex',
               alignItems: 'center',
@@ -149,7 +150,7 @@ export default function Login() {
               background: 'var(--bg-input)',
               border: '1px solid var(--border-default)',
               borderRadius: 'var(--radius-lg)',
-              transition: 'border-color 200ms ease, background-color 200ms ease',
+              transition: 'border-color 200ms ease, background-color 200ms ease, box-shadow 200ms ease',
             }}
           >
             <UserOutlined style={{ color: 'var(--text-secondary)', fontSize: 16 }} />
@@ -172,6 +173,7 @@ export default function Login() {
           </div>
 
           <div
+            className="login-input-wrapper"
             style={{
               display: 'flex',
               alignItems: 'center',
@@ -180,7 +182,7 @@ export default function Login() {
               background: 'var(--bg-input)',
               border: '1px solid var(--border-default)',
               borderRadius: 'var(--radius-lg)',
-              transition: 'border-color 200ms ease, background-color 200ms ease',
+              transition: 'border-color 200ms ease, background-color 200ms ease, box-shadow 200ms ease',
             }}
           >
             <LockOutlined style={{ color: 'var(--text-secondary)', fontSize: 16 }} />
