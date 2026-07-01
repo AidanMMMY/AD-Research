@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { message } from 'antd';
+import { AxiosError } from 'axios';
 import { UserOutlined, LockOutlined, StockOutlined } from '@ant-design/icons';
 import { useAuthStore } from '@/stores/auth';
 import ParticleBackground from '@/components/ParticleBackground';
@@ -27,8 +28,21 @@ export default function Login() {
       await login(form.username, form.password);
       message.success('登录成功');
       navigate('/dashboard', { replace: true });
-    } catch {
-      message.error('登录失败，请检查用户名和密码');
+    } catch (err) {
+      // Distinguish 401 (bad credentials) from 5xx (server fault).
+      // Collapsing both into "用户名密码不正确" hid real bugs in the past
+      // (e.g. 2026-07-01 UserResponse missing 'id' → 500 → user thought
+      // password was wrong). See runbook 20260701 § 4-B.
+      const status = (err as AxiosError)?.response?.status;
+      if (status === 401) {
+        message.error('用户名或密码错误');
+      } else if (status && status >= 500) {
+        message.error('服务器错误，请稍后再试');
+      } else if (!status) {
+        message.error('无法连接到服务器，请检查网络');
+      } else {
+        message.error(`登录失败（HTTP ${status}）`);
+      }
     } finally {
       setLoading(false);
     }
@@ -135,7 +149,7 @@ export default function Login() {
               background: 'var(--bg-input)',
               border: '1px solid var(--border-default)',
               borderRadius: 'var(--radius-lg)',
-              transition: 'all 200ms',
+              transition: 'border-color 200ms ease, background-color 200ms ease',
             }}
           >
             <UserOutlined style={{ color: 'var(--text-secondary)', fontSize: 16 }} />
@@ -166,7 +180,7 @@ export default function Login() {
               background: 'var(--bg-input)',
               border: '1px solid var(--border-default)',
               borderRadius: 'var(--radius-lg)',
-              transition: 'all 200ms',
+              transition: 'border-color 200ms ease, background-color 200ms ease',
             }}
           >
             <LockOutlined style={{ color: 'var(--text-secondary)', fontSize: 16 }} />
@@ -203,7 +217,7 @@ export default function Login() {
               fontWeight: 600,
               cursor: loading ? 'not-allowed' : 'pointer',
               opacity: loading ? 0.7 : 1,
-              transition: 'all 200ms',
+              transition: 'opacity 200ms ease, transform 200ms ease',
             }}
             onMouseEnter={(e) => {
               if (!loading) {
