@@ -143,6 +143,118 @@ curl -X POST https://your-domain/api/v1/auth/login \
 
 ---
 
+## 四 B、追加事故：2026-07-01 登录 500 误诊为密码错误
+
+### 症状
+
+按 § 3.1 重置 admin / Aidan 密码后，前端登录依然报"用户名密码不正确"。但
+`docker exec etf-postgres psql` 查询 `users.password_hash` 显示是合法的
+`$2b$12$` 60 位 bcrypt，`updated_at` 是刚刚 reset 的时间。
+
+### 真正的根因
+
+不是密码问题 —— 而是 `app/api/v1/auth.py:137` 的 `login` endpoint 构造
+`UserResponse` 时漏传了 `id` 字段：
+
+```python
+# 错误（commit 1fce9dd 引入的 bug）
+return LoginResponse(
+    ...
+    user=UserResponse(username=user.username, role=user.role),
+)
+
+# 正确
+return LoginResponse(
+    ...
+    user=UserResponse(id=user.id, username=user.username, role=user.role),
+)
+```
+
+`UserResponse` schema 强制 `id` 必填（`app/schemas/auth.py:10`）。后端
+bcrypt 校验**确实通过**了，但在响应序列化阶段抛 `ValidationError` → HTTP 500。
+前端把所有非 2xx 都笼统显示成"用户名密码不正确"，于是看起来像密码错。
+
+### 诊断路径
+
+```bash
+# 在 backend 容器内直接 POST 一次，看 HTTP 状态码和 body
+ssh ad-research "docker exec etf-backend python3 -c \"
+import requests
+r = requests.post('http://127.0.0.1:8000/api/v1/auth/login',
+                  json={'username':'admin','password':'<password>'})
+print(r.status_code, r.text[:200])
+\""
+```
+
+看到 `HTTP 500` 而不是 `HTTP 401`，就是后端逻辑错误，不是密码错。然后：
+
+```bash
+ssh ad-research "docker logs --tail=200 etf-backend 2>&1 \
+  | grep -A 20 'auth.py.*137\\|UserResponse'"
+```
+
+看到 `ValidationError ... id Field required` 就是本 bug。
+
+### 修复 + 验证
+
+1. 修改 `app/api/v1/auth.py:137`，加 `id=user.id`。
+2. 加回归测试 `app/tests/test_auth_login.py`：
+   - 登录成功响应里必须包含 `user.id`
+   - 错密码返回 401（不是 500）
+   - 停用账户返回 401（不是 500）
+3. commit + push 到 origin main。
+
+### ⚠️ 关键陷阱：服务器部署拓扑
+
+**仅 git pull 不够 —— 必须 rebuild image + recreate container**。
+
+服务器实际 mounts（`docker inspect etf-backend --format '{{json .Mounts}}'`）：
+
+```json
+[
+  {"Type":"volume","Destination":"/app/web/dist",...},   // 前端产物
+  {"Type":"bind","Destination":"/var/run/docker.sock",...} // Docker socket
+]
+```
+
+注意：**没有 `.:/app` bind mount**。`/app/app/...` 是 `Dockerfile` 里
+`COPY app/ ./app/` 拷贝到镜像层的。所以本地代码修改 ≠ 容器内代码修改。
+
+正确的代码部署路径：
+
+```bash
+# 1. 本地
+git add -A && git commit -m "..." && git push origin main
+
+# 2. 服务器
+cd /opt/ad-research
+git pull --ff-only origin main   # 或 fetch + reset --hard origin/main
+bash redeploy.sh                  # rebuild image + recreate container
+```
+
+`redeploy.sh` 实际做的事（看 `cat redeploy.sh`）：
+
+```bash
+cd /opt/ad-research/deploy/aliyun-ecs
+docker compose up -d --build --no-deps backend
+```
+
+`--build` 触发 Dockerfile 重 build，`--no-deps` 不动 Postgres/Redis，
+`-d` 后台运行。recreate 期间 backend 短暂不可用（约 30-90 秒），数据库不受影响。
+
+### 重建后一定要 curl 验证
+
+```bash
+ssh ad-research "curl -s -X POST http://127.0.0.1:8000/api/v1/auth/login \
+  -H 'Content-Type: application/json' \
+  -d '{\"username\":\"admin\",\"password\":\"<NEW_PASSWORD>\"}' \
+  -w '\nHTTP %{http_code}\n'"
+```
+
+必须看到 `HTTP 200` 和完整的 `user` 对象（含 `id`），**不要只 rebuild 不验证**。
+
+---
+
 ## 五、长期改进（待办）
 
 - [ ] 给 `reset_user_password.py` 加 `--password-stdin` 支持，避免明文密码进
@@ -154,6 +266,13 @@ curl -X POST https://your-domain/api/v1/auth/login \
   `app/api/v1/auth.py` 的登录逻辑 + `users` 表加 `must_change_password` 字段。
 - [ ] 把"admin 密码"加入 deploy checklist 的强制项，每次部署后 grep
   `.env` 确认存在；不存在则运维告警。
+- [ ] **前端区分 HTTP 500 和 401 提示**：现在所有非 2xx 都显示"用户名密码不正确"，
+  应该是 500 → "服务器错误，请稍后再试" / 401 → "用户名或密码错误"。
+  这能避免下次再把 500 误诊为密码问题。
+- [ ] **CI 加 lint 防止 Pydantic schema 构造漏字段**：用 `model_validate(obj)`
+  替代 `Model(**obj)`，强制走 schema 校验，缺字段直接报错而不是运行时崩溃。
+- [ ] **在 README / CLAUDE.md 里写明部署拓扑**：本地代码 ≠ 容器代码，
+  代码变更必须走 `redeploy.sh`，避免下次再绕远路。
 
 ---
 
