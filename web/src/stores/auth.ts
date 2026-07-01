@@ -3,6 +3,7 @@ import { persist } from 'zustand/middleware';
 import { authApi } from '@/api';
 
 interface User {
+  id: number;
   username: string;
   role: string;
 }
@@ -26,6 +27,9 @@ export const useAuthStore = create<AuthState>()(
       isAuthenticated: false,
 
       login: async (username, password) => {
+        // Let axios errors propagate so the caller (Login page) can
+        // distinguish 401 (bad credentials) from 5xx (server fault)
+        // instead of collapsing them into one generic message.
         const { data } = await authApi.login({ username, password });
         localStorage.setItem('token', data.access_token);
         localStorage.setItem('refresh_token', data.refresh_token);

@@ -186,6 +186,46 @@ cd web && npm run build && npx tsc --noEmit
 - `AUTH_SECRET_KEY` / `NOTIFICATION_ENCRYPTION_KEY` 通过 env 注入，禁止硬编码
 - 真实交易启用前必须配置 Binance API key（建议 testnet）
 
+## 🚢 部署拓扑（重要！）
+
+服务器上 `etf-backend` 容器的代码来源：
+
+- **`/app/app/...`** 来自镜像 `ad-research:latest` 的 `COPY app/ ./app/` 层，**不是 host 的 bind mount**
+- host 上的 `/opt/ad-research/app/` 修改 → 容器内**不会**自动更新
+- 必须 rebuild image + recreate container 才生效
+
+```bash
+# 本地：改完代码
+git add -A && git commit -m "..." && git push origin main
+
+# 服务器：
+cd /opt/ad-research
+git pull --ff-only origin main   # 或 fetch + reset --hard origin/main
+bash redeploy.sh                  # 触发 docker build + recreate
+```
+
+`redeploy.sh` 做的事：
+
+```bash
+cd /opt/ad-research/deploy/aliyun-ecs
+docker compose up -d --build --no-deps backend
+```
+
+- `--build`：触发 Dockerfile 重 build（拷进新的 `app/`）
+- `--no-deps`：只重建 backend，不动 Postgres/Redis
+- recreate 期间 backend 短暂不可用（30–90 秒），数据不受影响
+
+**必须重建后验证**，否则容易出现"代码改了但 500 还在"的诡异现象：
+
+```bash
+ssh ad-research "docker exec etf-backend sed -n '137p' /app/app/api/v1/auth.py"
+ssh ad-research "curl -s -X POST http://127.0.0.1:8000/api/v1/auth/login \
+  -H 'Content-Type: application/json' \
+  -d '{\"username\":\"<user>\",\"password\":\"<pw>\"}' -w '\nHTTP %{http_code}\n'"
+```
+
+详见事故复盘：`docs/dev-notes/20260701-admin-password-reset-runbook.md` § 4-B。
+
 ## 📄 License
 
 TBD（内部项目）

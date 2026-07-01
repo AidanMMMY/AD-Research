@@ -74,7 +74,7 @@ async def _require_admin_for_sse(request: Request) -> UserResponse:
             raise HTTPException(status_code=401, detail="Invalid or inactive user")
         if user.role != "admin":
             raise HTTPException(status_code=403, detail="Admin access required")
-        return UserResponse(username=user.username, role=user.role)
+        return UserResponse(id=user.id, username=user.username, role=user.role)
     finally:
         db.close()
 
