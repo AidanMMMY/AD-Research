@@ -82,7 +82,7 @@ export default function HelpPopover({
           style={{
             display: 'flex',
             alignItems: 'center',
-            gap: 10,
+            gap: 'var(--space-3)',
             marginBottom: 12,
           }}
         >
@@ -133,7 +133,7 @@ export default function HelpPopover({
               border: '1px solid var(--border-default)',
               borderLeft: '3px solid var(--accent)',
               borderRadius: '0 8px 8px 0',
-              padding: '10px 12px',
+              padding: 'var(--space-3) var(--space-3)',
               marginBottom: 14,
             }}
           >
@@ -238,7 +238,7 @@ export default function HelpPopover({
             style={{
               background: 'var(--accent)',
               border: 'none',
-              color: '#0a0a0a',
+              color: 'var(--text-on-accent)',
               borderRadius: 8,
               fontWeight: 500,
               height: 32,

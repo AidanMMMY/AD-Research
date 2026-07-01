@@ -67,9 +67,9 @@ const SOURCE_LABELS: Record<string, { emoji: string; label: string }> = {
 };
 
 const SENTIMENT_COLORS: Record<SentimentLabel, string> = {
-  positive: '#52c41a',
-  neutral: '#8c8c8c',
-  negative: '#f5222d',
+  positive: 'var(--color-rise)',
+  neutral: 'var(--text-tertiary)',
+  negative: 'var(--color-fall)',
 };
 
 const SENTIMENT_LABELS: Record<SentimentLabel, string> = {
@@ -145,7 +145,7 @@ function NewsCard({
   return (
     <div
       style={{
-        padding: '16px 20px',
+        padding: 'var(--space-4) var(--space-5)',
         borderBottom: '1px solid var(--border-default)',
         cursor: 'pointer',
         transition: 'background var(--transition-fast)',
@@ -163,7 +163,7 @@ function NewsCard({
         style={{
           display: 'flex',
           alignItems: 'center',
-          gap: 10,
+          gap: 'var(--space-3)',
           fontSize: 12,
           color: 'var(--text-tertiary)',
           marginBottom: 8,
@@ -350,7 +350,7 @@ function HotSymbolSidebar({
                 style={{
                   display: 'flex',
                   alignItems: 'center',
-                  gap: 10,
+                  gap: 'var(--space-3)',
                   padding: '8px 0',
                   borderBottom: '1px solid var(--border-default)',
                   cursor: 'pointer',
@@ -563,7 +563,7 @@ export default function NewsFeed() {
           background: 'var(--card-bg)',
           border: '1px solid var(--card-border)',
           borderRadius: 'var(--card-radius)',
-          padding: '16px 20px',
+          padding: 'var(--space-4) var(--space-5)',
           marginBottom: 20,
           display: 'flex',
           flexDirection: 'column',
@@ -626,7 +626,7 @@ export default function NewsFeed() {
         style={{
           display: 'grid',
           gridTemplateColumns: 'minmax(0, 1fr) 320px',
-          gap: 20,
+          gap: 'var(--space-5)',
         }}
       >
         {/* Feed */}

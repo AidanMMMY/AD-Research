@@ -1,6 +1,8 @@
+import { useEffect, useMemo, useState } from 'react';
 import ReactECharts from 'echarts-for-react';
 import type { EChartsOption } from 'echarts';
 import { useIsMobile } from '@/hooks/useBreakpoint';
+import { resolveChartColors } from '@/utils/cssVar';
 
 interface CorrelationHeatmapProps {
   codes: string[];
@@ -9,6 +11,13 @@ interface CorrelationHeatmapProps {
 
 export default function CorrelationHeatmap({ codes, matrix }: CorrelationHeatmapProps) {
   const isMobile = useIsMobile();
+  const [, setThemeTick] = useState(0);
+  useEffect(() => {
+    const handler = () => setThemeTick((t) => t + 1);
+    document.addEventListener('themechange', handler);
+    return () => document.removeEventListener('themechange', handler);
+  }, []);
+
   const data: [number, number, number][] = [];
   matrix.forEach((row, i) => {
     row.forEach((val, j) => {
@@ -18,14 +27,58 @@ export default function CorrelationHeatmap({ codes, matrix }: CorrelationHeatmap
 
   const labelFontSize = isMobile ? 8 : 10;
 
+  // Resolve all CSS-variable colors at render time. Fallbacks are the
+  // terminal-theme defaults so SSR / no-DOM still renders correctly.
+  const bgElevated = useMemo(
+    () => resolveChartColors(['var(--bg-elevated)'], ['#111111'])[0],
+    [],
+  );
+  const bgBase = useMemo(
+    () => resolveChartColors(['var(--bg-base)'], ['#0a0a0a'])[0],
+    [],
+  );
+  const colorFall = useMemo(
+    () => resolveChartColors(['var(--color-fall)'], ['#5fa87a'])[0],
+    [],
+  );
+  const colorRise = useMemo(
+    () => resolveChartColors(['var(--color-rise)'], ['#c96b6b'])[0],
+    [],
+  );
+  const textPrimary = useMemo(
+    () => resolveChartColors(['var(--text-primary)'], ['#f5f5f0'])[0],
+    [],
+  );
+  const textSecondary = useMemo(
+    () => resolveChartColors(['var(--text-secondary)'], ['#888888'])[0],
+    [],
+  );
+  const textTertiary = useMemo(
+    () => resolveChartColors(['var(--text-tertiary)'], ['#444444'])[0],
+    [],
+  );
+  const borderDefault = useMemo(
+    () => resolveChartColors(['var(--border-default)'], ['rgba(255,255,255,0.06)'])[0],
+    [],
+  );
+
+  // The splitArea checkerboard uses the elevated background tone; in
+  // terminal it's a faint white overlay, in print a faint dark overlay on
+  // cream. We derive it from --bg-elevated via alpha so it follows the
+  // active palette automatically.
+  const splitAreaColors = useMemo(() => {
+    const base = bgElevated;
+    return [base, base];
+  }, [bgElevated]);
+
   const option: EChartsOption = {
     backgroundColor: 'transparent',
     textStyle: { fontFamily: 'var(--font-sans)' },
     tooltip: {
       position: 'top',
-      backgroundColor: 'var(--bg-elevated)',
-      borderColor: 'var(--border-default)',
-      textStyle: { color: 'var(--text-primary)' },
+      backgroundColor: bgElevated,
+      borderColor: borderDefault,
+      textStyle: { color: textPrimary },
       formatter: (params: any) => {
         const i = params.data[0];
         const j = params.data[1];
@@ -38,25 +91,25 @@ export default function CorrelationHeatmap({ codes, matrix }: CorrelationHeatmap
       bottom: isMobile ? 50 : 60,
       left: isMobile ? 45 : 60,
       right: 20,
-      borderColor: 'var(--border-default)',
+      borderColor: borderDefault,
     },
     xAxis: {
       type: 'category',
       data: codes,
-      splitArea: { show: true, areaStyle: { color: ['rgba(255,255,255,0.02)', 'rgba(255,255,255,0.04)'] } },
-      axisLabel: { rotate: 45, fontSize: labelFontSize, color: 'var(--text-secondary)' },
-      axisLine: { lineStyle: { color: 'var(--text-tertiary)' } },
-      axisTick: { lineStyle: { color: 'var(--text-tertiary)' } },
-      splitLine: { lineStyle: { color: 'var(--border-default)' } },
+      splitArea: { show: true, areaStyle: { color: splitAreaColors } },
+      axisLabel: { rotate: 45, fontSize: labelFontSize, color: textSecondary },
+      axisLine: { lineStyle: { color: textTertiary } },
+      axisTick: { lineStyle: { color: textTertiary } },
+      splitLine: { lineStyle: { color: borderDefault } },
     },
     yAxis: {
       type: 'category',
       data: codes,
-      splitArea: { show: true, areaStyle: { color: ['rgba(255,255,255,0.02)', 'rgba(255,255,255,0.04)'] } },
-      axisLabel: { fontSize: labelFontSize, color: 'var(--text-secondary)' },
-      axisLine: { lineStyle: { color: 'var(--text-tertiary)' } },
-      axisTick: { lineStyle: { color: 'var(--text-tertiary)' } },
-      splitLine: { lineStyle: { color: 'var(--border-default)' } },
+      splitArea: { show: true, areaStyle: { color: splitAreaColors } },
+      axisLabel: { fontSize: labelFontSize, color: textSecondary },
+      axisLine: { lineStyle: { color: textTertiary } },
+      axisTick: { lineStyle: { color: textTertiary } },
+      splitLine: { lineStyle: { color: borderDefault } },
     },
     visualMap: {
       min: -1,
@@ -65,13 +118,13 @@ export default function CorrelationHeatmap({ codes, matrix }: CorrelationHeatmap
       orient: 'horizontal',
       left: 'center',
       bottom: 0,
-      textStyle: { color: 'var(--text-secondary)', fontSize: isMobile ? 10 : 12 },
-      inRange: { color: ['var(--color-fall)', 'var(--bg-base)', 'var(--color-rise)'] },
+      textStyle: { color: textSecondary, fontSize: isMobile ? 10 : 12 },
+      inRange: { color: [colorFall, bgBase, colorRise] },
     },
     series: [{
       type: 'heatmap',
       data,
-      label: { show: true, fontSize: labelFontSize, color: 'var(--text-primary)' },
+      label: { show: true, fontSize: labelFontSize, color: textPrimary },
       emphasis: { itemStyle: { shadowBlur: 0 } },
     }],
   };

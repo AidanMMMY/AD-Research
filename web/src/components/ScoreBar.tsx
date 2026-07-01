@@ -8,7 +8,7 @@ interface ScoreBarProps {
 export default function ScoreBar({ score, size = 'default' }: ScoreBarProps) {
   const height = size === 'small' ? 4 : 6;
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%' }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', width: '100%' }}>
       <div
         style={{
           flex: 1,

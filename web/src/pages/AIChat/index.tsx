@@ -158,7 +158,7 @@ export default function AIChat() {
               <div
                 onClick={() => setActiveSession(s.id)}
                 style={{
-                  padding: '10px 12px',
+                  padding: 'var(--space-3) var(--space-3)',
                   borderRadius: 'var(--radius-lg)',
                   cursor: 'pointer',
                   marginBottom: 4,
@@ -222,7 +222,7 @@ export default function AIChat() {
       )}
 
       {/* Messages */}
-      <div style={{ flex: 1, overflow: 'auto', padding: '16px 20px' }}>
+      <div style={{ flex: 1, overflow: 'auto', padding: 'var(--space-4) var(--space-5)' }}>
         {!activeSession ? (
           <Empty
             description="选择一个对话或创建新对话"
@@ -294,7 +294,7 @@ export default function AIChat() {
       {/* Input */}
       {activeSession && (
         <div style={{
-          padding: '12px 20px',
+          padding: 'var(--space-3) var(--space-5)',
           borderTop: '1px solid var(--border-default)',
         }}>
           {/* Sentiment quick-prompt hint. Tells the user the assistant has
@@ -304,14 +304,14 @@ export default function AIChat() {
             style={{
               display: 'flex',
               alignItems: 'center',
-              gap: 6,
+              gap: 'var(--space-2)',
               flexWrap: 'wrap',
               marginBottom: 8,
               fontSize: 12,
               color: 'var(--text-tertiary)',
             }}
           >
-            <HeartOutlined style={{ color: '#f5222d' }} />
+            <HeartOutlined style={{ color: 'var(--color-rise)' }} />
             <span>AI 可访问资讯与情绪数据：</span>
             {[
               { label: '分析 AAPL 的散户情绪', prompt: '请分析 AAPL 最近 7 日的散户情绪与多空比' },

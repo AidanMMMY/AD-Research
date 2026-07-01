@@ -39,9 +39,9 @@ const MARKET_OPTIONS: { label: string; value: NewsMarket | 'all' }[] = [
 ];
 
 const SENTIMENT_COLORS: Record<SentimentLabel, string> = {
-  positive: '#52c41a',
-  neutral: '#8c8c8c',
-  negative: '#f5222d',
+  positive: 'var(--color-fall)',
+  neutral: 'var(--text-tertiary)',
+  negative: 'var(--color-rise)',
 };
 
 const SENTIMENT_LABELS: Record<SentimentLabel, string> = {
@@ -400,7 +400,7 @@ export default function SentimentOverview() {
         style={{
           display: 'grid',
           gridTemplateColumns: 'minmax(0, 2.2fr) minmax(0, 1fr)',
-          gap: 20,
+          gap: 'var(--space-5)',
         }}
       >
         {/* Heatmap */}
@@ -462,7 +462,7 @@ export default function SentimentOverview() {
                             ? '1px solid var(--accent)'
                             : '1px solid var(--border-default)',
                         borderRadius: 'var(--radius-md)',
-                        padding: '10px 12px',
+                        padding: 'var(--space-3) var(--space-3)',
                         cursor: 'pointer',
                         transition: 'transform var(--transition-fast)',
                         minHeight: 64,
@@ -534,7 +534,7 @@ export default function SentimentOverview() {
               <Empty
                 description="在左侧热力图选择一个标的"
                 image={Empty.PRESENTED_IMAGE_SIMPLE}
-                style={{ padding: '20px 0' }}
+                style={{ padding: 'var(--space-5) 0' }}
               />
             ) : (
               <div>
@@ -670,7 +670,7 @@ export default function SentimentOverview() {
                       display: 'flex',
                       alignItems: 'center',
                       gap: 8,
-                      padding: '6px 0',
+                      padding: 'var(--space-2) 0',
                       cursor: 'pointer',
                       borderBottom: '1px solid var(--border-default)',
                     }}

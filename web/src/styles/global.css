@@ -238,7 +238,7 @@
 .ant-btn-primary {
   background: var(--accent);
   border: none;
-  color: #000;
+  color: var(--text-on-accent);
   box-shadow: none;
 }
 
@@ -624,6 +624,112 @@
 }
 
 /* ============================================================
+   Page Header (S2) — standardized H1 + tagline block
+
+   Replaces the ad-hoc inline-style H1 pairs that used to live
+   in every page. Pair with <PageHeader /> component.
+
+   Sections within a page should use .section-heading for the
+   uppercase eyebrow style — consistent across Dashboard,
+   InstrumentList, ListingPreview, etc.
+   ============================================================ */
+.page-header {
+  margin: 0 0 32px;
+}
+.page-header[data-compact] {
+  margin: 0 0 20px;
+}
+
+.page-header-breadcrumb {
+  font-size: var(--text-small-size);
+  color: var(--text-tertiary);
+  margin-bottom: var(--space-3);
+  letter-spacing: 0.04em;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.page-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--space-5);
+  flex-wrap: wrap;
+}
+
+.page-header-text {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.page-header-eyebrow {
+  font-size: var(--text-small-size);
+  color: var(--text-tertiary);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  margin-bottom: var(--space-2);
+  font-weight: 500;
+}
+
+.page-header-title {
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-h1-size);
+  font-weight: 500;
+  color: var(--text-primary);
+  letter-spacing: -0.03em;
+  line-height: 1.2;
+}
+
+.page-header-description {
+  margin: 0;
+  color: var(--text-tertiary);
+  font-size: var(--text-body-size);
+  line-height: 1.55;
+  max-width: 720px;
+}
+
+.page-header-extra {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-shrink: 0;
+  padding-top: var(--space-1);
+}
+
+/* Section heading — uppercase eyebrow used within a page.
+   Use for "实时行情", "今日热点", "筛选条件" etc. so the
+   treatment stays consistent across pages. */
+.section-heading {
+  margin: 0 0 var(--space-4);
+  font-size: var(--text-small-size);
+  font-weight: 500;
+  color: var(--text-tertiary);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.section-heading-meta {
+  font-size: var(--text-small-size);
+  color: var(--text-muted);
+  letter-spacing: 0;
+  text-transform: none;
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Ensure anchor jumps clear the sticky AppLayout header (64px). */
+main,
+[role="main"] {
+  scroll-margin-top: 80px;
+}
+
+/* ============================================================
    Links & interactive elements
    ============================================================ */
 
@@ -939,17 +1045,6 @@ body::after {
 :root[data-theme="print"] h1 {
   border-bottom: 2px solid #1a1a1a;
   padding-bottom: 8px;
-}
-
-/* Drop cap on lead paragraph (first <p> in main content) */
-:root[data-theme="print"] main p:first-of-type::first-letter {
-  font-family: var(--font-display);
-  font-size: 3.5em;
-  float: left;
-  line-height: 0.85;
-  font-weight: 700;
-  margin-right: 8px;
-  margin-top: 4px;
 }
 
 /* Section break: thin centered rule with optional § character */

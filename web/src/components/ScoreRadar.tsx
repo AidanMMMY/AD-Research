@@ -1,6 +1,8 @@
+import { useEffect, useMemo, useState } from 'react';
 import ReactECharts from 'echarts-for-react';
 import type { EChartsOption } from 'echarts';
 import { useIsMobile } from '@/hooks/useBreakpoint';
+import { resolveChartColors } from '@/utils/cssVar';
 
 interface ScoreRadarProps {
   data: {
@@ -14,6 +16,41 @@ interface ScoreRadarProps {
 
 export default function ScoreRadar({ data }: ScoreRadarProps) {
   const isMobile = useIsMobile();
+  const [, setThemeTick] = useState(0);
+  useEffect(() => {
+    const handler = () => setThemeTick((t) => t + 1);
+    document.addEventListener('themechange', handler);
+    return () => document.removeEventListener('themechange', handler);
+  }, []);
+
+  const accent = useMemo(
+    () => resolveChartColors(['var(--accent)'], ['#5fa87a'])[0],
+    [],
+  );
+  const accentDim = useMemo(
+    () => resolveChartColors(['var(--accent-dim)'], ['rgba(95,168,122,0.10)'])[0],
+    [],
+  );
+  const textTertiary = useMemo(
+    () => resolveChartColors(['var(--text-tertiary)'], ['#444444'])[0],
+    [],
+  );
+  const textSecondary = useMemo(
+    () => resolveChartColors(['var(--text-secondary)'], ['#888888'])[0],
+    [],
+  );
+  const borderDefault = useMemo(
+    () => resolveChartColors(['var(--border-default)'], ['rgba(255,255,255,0.06)'])[0],
+    [],
+  );
+  const bgElevated = useMemo(
+    () => resolveChartColors(['var(--bg-elevated)'], ['#111111'])[0],
+    [],
+  );
+  const textPrimary = useMemo(
+    () => resolveChartColors(['var(--text-primary)'], ['#f5f5f0'])[0],
+    [],
+  );
 
   const option: EChartsOption = {
     backgroundColor: 'transparent',
@@ -28,22 +65,22 @@ export default function ScoreRadar({ data }: ScoreRadarProps) {
       ],
       radius: isMobile ? '55%' : '65%',
       axisName: {
-        color: 'var(--text-secondary)',
+        color: textSecondary,
         fontSize: isMobile ? 10 : 12,
       },
       splitArea: {
         areaStyle: {
-          color: ['var(--accent-dim)', 'var(--text-tertiary)', 'var(--accent-dim)', 'var(--text-tertiary)'],
+          color: [accentDim, textTertiary, accentDim, textTertiary],
         },
       },
       splitLine: {
         lineStyle: {
-          color: 'var(--border-default)',
+          color: borderDefault,
         },
       },
       axisLine: {
         lineStyle: {
-          color: 'var(--border-default)',
+          color: borderDefault,
         },
       },
     },
@@ -58,16 +95,16 @@ export default function ScoreRadar({ data }: ScoreRadarProps) {
           data.score_trend,
         ],
         name: '评分',
-        areaStyle: { opacity: 0.3, color: 'var(--accent)' },
-        lineStyle: { color: 'var(--accent)', width: 2 },
-        itemStyle: { color: 'var(--accent)' },
+        areaStyle: { opacity: 0.3, color: accent },
+        lineStyle: { color: accent, width: 2 },
+        itemStyle: { color: accent },
       }],
     }],
     tooltip: {
       trigger: 'item',
-      backgroundColor: 'var(--bg-elevated)',
-      borderColor: 'var(--border-default)',
-      textStyle: { color: 'var(--text-primary)' },
+      backgroundColor: bgElevated,
+      borderColor: borderDefault,
+      textStyle: { color: textPrimary },
     },
   };
 

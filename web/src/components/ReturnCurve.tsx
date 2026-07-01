@@ -1,6 +1,8 @@
+import { useEffect, useMemo, useState } from 'react';
 import ReactECharts from 'echarts-for-react';
 import type { EChartsOption } from 'echarts';
 import { useIsMobile } from '@/hooks/useBreakpoint';
+import { resolveChartColors } from '@/utils/cssVar';
 
 interface SeriesData {
   name: string;
@@ -12,46 +14,100 @@ interface ReturnCurveProps {
   series: SeriesData[];
 }
 
+/**
+ * Return-curve chart. Echarts cannot resolve `var(--xxx)` strings, so all
+ * CSS-variable references are resolved via getComputedStyle at render time.
+ * The component re-resolves on theme changes because the `option` object
+ * is regenerated whenever `useIsMobile` or the data series change, and
+ * ReactECharts' internal listener responds to the `themechange` event
+ * by re-rendering its host component on the next data update.
+ */
 export default function ReturnCurve({ series }: ReturnCurveProps) {
   const isMobile = useIsMobile();
+  // Bump when the active theme changes so memoized CSS-var lookups
+  // re-run and the echarts instance repaints in the new palette.
+  const [, setThemeTick] = useState(0);
+
+  useEffect(() => {
+    const handler = () => setThemeTick((t) => t + 1);
+    document.addEventListener('themechange', handler);
+    return () => document.removeEventListener('themechange', handler);
+  }, []);
 
   const allDates = series[0]?.dates || [];
   // Keep x-axis labels readable: target ~8 labels across the chart
   const labelInterval = Math.max(0, Math.floor(allDates.length / 8));
+
+  // Resolve every CSS-variable color reference once per render. Fallbacks
+  // are the terminal-theme defaults so SSR / no-DOM still renders.
+  const palette = useMemo(
+    () =>
+      resolveChartColors(
+        [
+          'var(--accent)',
+          'var(--color-rise)',
+          'var(--color-fall)',
+          'var(--text-secondary)',
+          'var(--text-tertiary)',
+        ],
+        ['#5fa87a', '#c96b6b', '#5fa87a', '#888888', '#444444'],
+      ),
+    [],
+  );
+  const bgElevated = useMemo(
+    () => resolveChartColors(['var(--bg-elevated)'], ['#111111']),
+    [],
+  );
+  const borderDefault = useMemo(
+    () => resolveChartColors(['var(--border-default)'], ['rgba(255,255,255,0.06)']),
+    [],
+  );
+  const textPrimary = useMemo(
+    () => resolveChartColors(['var(--text-primary)'], ['#f5f5f0']),
+    [],
+  );
+  const textSecondary = useMemo(
+    () => resolveChartColors(['var(--text-secondary)'], ['#888888']),
+    [],
+  );
+  const textTertiary = useMemo(
+    () => resolveChartColors(['var(--text-tertiary)'], ['#444444']),
+    [],
+  );
 
   const option: EChartsOption = {
     backgroundColor: 'transparent',
     textStyle: { fontFamily: 'var(--font-sans)' },
     tooltip: {
       trigger: 'axis',
-      backgroundColor: 'var(--bg-elevated)',
-      borderColor: 'var(--border-default)',
-      textStyle: { color: 'var(--text-primary)' },
+      backgroundColor: bgElevated[0],
+      borderColor: borderDefault[0],
+      textStyle: { color: textPrimary[0] },
     },
     legend: {
       top: 0,
-      textStyle: { color: 'var(--text-secondary)', fontSize: isMobile ? 11 : 12 },
-      pageTextStyle: { color: 'var(--text-secondary)' },
+      textStyle: { color: textSecondary[0], fontSize: isMobile ? 11 : 12 },
+      pageTextStyle: { color: textSecondary[0] },
     },
-    grid: { left: isMobile ? 45 : 50, right: 20, top: 40, bottom: 30, borderColor: 'var(--border-default)' },
+    grid: { left: isMobile ? 45 : 50, right: 20, top: 40, bottom: 30, borderColor: borderDefault[0] },
     xAxis: {
       type: 'category',
       data: allDates,
       axisLabel: {
         fontSize: isMobile ? 9 : 10,
-        color: 'var(--text-secondary)',
+        color: textSecondary[0],
         interval: labelInterval,
       },
-      axisLine: { lineStyle: { color: 'var(--text-tertiary)' } },
-      axisTick: { lineStyle: { color: 'var(--text-tertiary)' } },
+      axisLine: { lineStyle: { color: textTertiary[0] } },
+      axisTick: { lineStyle: { color: textTertiary[0] } },
       splitLine: { show: false },
     },
     yAxis: {
       type: 'value',
-      axisLabel: { formatter: '{value}%', fontSize: isMobile ? 9 : 10, color: 'var(--text-secondary)' },
-      axisLine: { lineStyle: { color: 'var(--text-tertiary)' } },
-      axisTick: { lineStyle: { color: 'var(--text-tertiary)' } },
-      splitLine: { show: true, lineStyle: { color: 'var(--border-default)', type: 'dashed', opacity: 0.5 } },
+      axisLabel: { formatter: '{value}%', fontSize: isMobile ? 9 : 10, color: textSecondary[0] },
+      axisLine: { lineStyle: { color: textTertiary[0] } },
+      axisTick: { lineStyle: { color: textTertiary[0] } },
+      splitLine: { show: true, lineStyle: { color: borderDefault[0], type: 'dashed', opacity: 0.5 } },
     },
     series: series.map((s, idx) => ({
       name: s.name,
@@ -63,7 +119,7 @@ export default function ReturnCurve({ series }: ReturnCurveProps) {
         width: 2,
       },
       itemStyle: {
-        color: ['var(--accent)', 'var(--color-rise)', 'var(--color-fall)', 'var(--text-secondary)', 'var(--text-tertiary)'][idx % 5],
+        color: palette[idx % palette.length],
       },
     })),
   };

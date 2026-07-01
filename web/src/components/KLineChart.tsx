@@ -4,6 +4,7 @@ import type { OHLCV } from '@/types/instrument';
 import { useIsMobile } from '@/hooks/useBreakpoint';
 import { useSettingsStore } from '@/stores/settings';
 import { getUpColor, getDownColor } from '@/utils/color';
+import { resolveChartColor, readCssVar } from '@/utils/cssVar';
 
 interface IndicatorOverlay {
   ma5?: boolean;
@@ -128,18 +129,7 @@ export const DEFAULT_OVERLAYS: IndicatorOverlay = {
  * so we read the computed value from :root before passing it to the chart.
  */
 function getCssColor(name: string, fallback: string): string {
-  if (typeof window === 'undefined') return fallback;
-  const value = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
-  return value || fallback;
-}
-
-/** Resolve a color string, converting CSS variables to concrete values. */
-function resolveChartColor(color: string, fallback: string): string {
-  if (color.startsWith('var(')) {
-    const varName = color.slice(4, -1).trim();
-    return getCssColor(varName, fallback);
-  }
-  return color;
+  return readCssVar(name, fallback);
 }
 
 export default function KLineChart({ data, overlays = DEFAULT_OVERLAYS }: KLineChartProps) {

@@ -94,7 +94,7 @@ function MessageBubble({ msg }: { msg: HelpMessage }) {
                 <th
                   style={{
                     border: '1px solid var(--border-default)',
-                    padding: '6px 10px',
+                    padding: 'var(--space-2) var(--space-3)',
                     background: 'var(--bg-elevated)',
                     textAlign: 'left',
                   }}
@@ -186,7 +186,7 @@ export default function AIHelpDrawer() {
         {/* Header */}
         <div
           style={{
-            padding: '16px 20px',
+            padding: 'var(--space-4) var(--space-5)',
             borderBottom: '1px solid var(--border-default)',
             display: 'flex',
             alignItems: 'center',
@@ -207,7 +207,7 @@ export default function AIHelpDrawer() {
                 flexShrink: 0,
               }}
             >
-              <RobotOutlined style={{ color: '#0a0a0a', fontSize: 18 }} />
+              <RobotOutlined style={{ color: 'var(--text-on-accent)', fontSize: 18 }} />
             </div>
             <div style={{ minWidth: 0 }}>
               <div
@@ -283,7 +283,7 @@ export default function AIHelpDrawer() {
           style={{
             flex: 1,
             overflow: 'auto',
-            padding: '16px 20px',
+            padding: 'var(--space-4) var(--space-5)',
           }}
         >
           {messages.length === 0 && !isLoading && (
@@ -365,7 +365,7 @@ export default function AIHelpDrawer() {
         {context?.quickQuestions && messages.length <= 2 && (
           <div
             style={{
-              padding: '12px 20px 0',
+              padding: 'var(--space-3) var(--space-5) 0',
               borderTop: '1px solid var(--border-default)',
             }}
           >
@@ -396,10 +396,10 @@ export default function AIHelpDrawer() {
         {/* Input */}
         <div
           style={{
-            padding: '12px 20px 16px',
+            padding: 'var(--space-3) var(--space-5) var(--space-4)',
             borderTop: '1px solid var(--border-default)',
             display: 'flex',
-            gap: 10,
+            gap: 'var(--space-3)',
           }}
         >
           <Input.TextArea
@@ -425,7 +425,7 @@ export default function AIHelpDrawer() {
             style={{
               background: 'var(--accent)',
               border: 'none',
-              color: '#0a0a0a',
+              color: 'var(--text-on-accent)',
               alignSelf: 'flex-end',
             }}
           />
