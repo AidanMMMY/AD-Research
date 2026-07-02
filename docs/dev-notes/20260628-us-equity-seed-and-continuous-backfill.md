@@ -147,7 +147,7 @@ curl -s http://localhost:8000/api/v1/etl/status?job_name=us_daily_etl | jq
 curl -s http://localhost:8000/api/v1/etl/status?job_name=us_historical_backfill | jq
 
 # 查看美股数据覆盖情况（在容器内执行）
-docker exec -it etf-backend python -c "
+docker exec -it adresearch-backend python -c "
 from app.core.database import SessionLocal
 from sqlalchemy import func
 from app.models.etf import ETFInfo, ETFDailyBar

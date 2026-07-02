@@ -188,7 +188,7 @@ cd web && npm run build && npx tsc --noEmit
 
 ## 🚢 部署拓扑（重要！）
 
-服务器上 `etf-backend` 容器的代码来源：
+服务器上 `adresearch-backend` 容器的代码来源：
 
 - **`/app/app/...`** 来自镜像 `ad-research:latest` 的 `COPY app/ ./app/` 层，**不是 host 的 bind mount**
 - host 上的 `/opt/ad-research/app/` 修改 → 容器内**不会**自动更新
@@ -218,7 +218,7 @@ docker compose up -d --build --no-deps backend
 **必须重建后验证**，否则容易出现"代码改了但 500 还在"的诡异现象：
 
 ```bash
-ssh ad-research "docker exec etf-backend sed -n '137p' /app/app/api/v1/auth.py"
+ssh ad-research "docker exec adresearch-backend sed -n '137p' /app/app/api/v1/auth.py"
 ssh ad-research "curl -s -X POST http://127.0.0.1:8000/api/v1/auth/login \
   -H 'Content-Type: application/json' \
   -d '{\"username\":\"<user>\",\"password\":\"<pw>\"}' -w '\nHTTP %{http_code}\n'"

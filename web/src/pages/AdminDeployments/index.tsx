@@ -166,10 +166,10 @@ function DeploymentsTable({ data, loading }: { data: DeploymentRun[]; loading: b
 // ---------------------------------------------------------------------------
 
 const CONTAINER_COLORS: Record<string, string> = {
-  'etf-backend': 'var(--accent)',
-  'etf-postgres': 'var(--text-secondary)',
-  'etf-redis': 'var(--color-warning)',
-  'etf-nginx': 'var(--color-success)',
+  'adresearch-backend': 'var(--accent)',
+  'adresearch-postgres': 'var(--text-secondary)',
+  'adresearch-redis': 'var(--color-warning)',
+  'adresearch-nginx': 'var(--color-success)',
 };
 
 function ServerHealthCard({ container }: { container: ContainerStats }) {
@@ -191,7 +191,7 @@ function ServerHealthCard({ container }: { container: ContainerStats }) {
       <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', marginBottom: 16 }}>
         <Badge status={isRunning ? 'success' : 'error'} />
         <Text strong style={{ color: 'var(--text-primary)', fontSize: 14 }}>
-          {container.name.replace('etf-', '')}
+          {container.name.replace('adresearch-', '')}
         </Text>
       </div>
 
@@ -302,10 +302,10 @@ function LogViewer({
             size="small"
             style={{ width: 130 }}
           >
-            <Option value="etf-backend">backend</Option>
-            <Option value="etf-postgres">postgres</Option>
-            <Option value="etf-redis">redis</Option>
-            <Option value="etf-nginx">nginx</Option>
+            <Option value="adresearch-backend">backend</Option>
+            <Option value="adresearch-postgres">postgres</Option>
+            <Option value="adresearch-redis">redis</Option>
+            <Option value="adresearch-nginx">nginx</Option>
           </Select>
           <Button
             size="small"
@@ -370,7 +370,7 @@ export default function AdminDeployments() {
     isTriggering,
   } = useDeployments();
 
-  const [logContainer, setLogContainer] = useState('etf-backend');
+  const [logContainer, setLogContainer] = useState('adresearch-backend');
   const { lines, connected, connect, disconnect } = useLogStream(logContainer);
 
   const handleLogContainerChange = useCallback(

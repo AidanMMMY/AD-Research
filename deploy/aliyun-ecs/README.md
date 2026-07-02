@@ -426,7 +426,7 @@ docker compose up -d
    ```bash
    docker compose ps
    ```
-   应该看到 `etf-backend`、`etf-postgres`、`etf-redis` 都是 `running`。
+   应该看到 `adresearch-backend`、`adresearch-postgres`、`adresearch-redis` 都是 `running`。
 
 2. 安全组是否放行了 8000 端口？
    - 回到阿里云控制台 → ECS → 安全组 → 确认有 8000 端口的规则

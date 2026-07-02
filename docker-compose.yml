@@ -1,7 +1,7 @@
 services:
   postgres:
     image: postgres:16-alpine
-    container_name: etf-postgres
+    container_name: adresearch-postgres
     environment:
       POSTGRES_DB: ad_research
       POSTGRES_USER: etf
@@ -16,11 +16,11 @@ services:
       timeout: 5s
       retries: 5
     networks:
-      - etf-network
+      - adresearch-network
 
   redis:
     image: redis:7-alpine
-    container_name: etf-redis
+    container_name: adresearch-redis
     ports:
       - "6379:6379"
     volumes:
@@ -31,16 +31,16 @@ services:
       timeout: 5s
       retries: 5
     networks:
-      - etf-network
+      - adresearch-network
 
   backend:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: etf-backend
+    container_name: adresearch-backend
     # Note: backend is reached via the docker internal network only.
-    # etf-nginx (host-network) proxies /api/ → http://backend:8000.
-    # We do NOT publish 8000 on the host because etf-nginx already binds
+    # adresearch-nginx (host-network) proxies /api/ → http://backend:8000.
+    # We do NOT publish 8000 on the host because adresearch-nginx already binds
     # it for external traffic.
     env_file: .env
     environment:
@@ -59,20 +59,20 @@ services:
     command: >
       sh -c "mkdir -p /app/web/dist && cp -r /dist-image/* /app/web/dist/ && alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload --workers 1"
     networks:
-      - etf-network
+      - adresearch-network
 
 volumes:
   postgres_data:
   redis_data:
 
 networks:
-  etf-network:
+  adresearch-network:
     # NOTE: existing redis/postgres containers are attached to a
-    # project-prefixed network (e.g. aliyun-ecs_etf-network), not the
-    # default ad-research_etf-network that docker compose would create
+    # project-prefixed network (e.g. aliyun-ecs_adresearch-network), not the
+    # default ad-research_adresearch-network that docker compose would create
     # when this file is invoked. Declaring the network external avoids
     # creating a duplicate network that the redis/postgres containers
     # are NOT on, which would otherwise produce
     # "Temporary failure in name resolution" on backend startup.
     external: true
-    name: aliyun-ecs_etf-network
+    name: aliyun-ecs_adresearch-network

@@ -13,19 +13,19 @@ Modes:
 
 Usage:
     # Backfill daily bars for Jan 2026 (~20 trading days, ~20 API calls)
-    docker exec etf-backend python3 app/scripts/backfill_a_stock_2026.py \\
+    docker exec adresearch-backend python3 app/scripts/backfill_a_stock_2026.py \\
         --mode bars --start 20260102 --end 20260131
 
     # Backfill fundamentals for a month
-    docker exec etf-backend python3 app/scripts/backfill_a_stock_2026.py \\
+    docker exec adresearch-backend python3 app/scripts/backfill_a_stock_2026.py \\
         --mode fundamental --start 20260301 --end 20260331
 
     # Dry-run to see what would be fetched (no DB writes)
-    docker exec etf-backend python3 app/scripts/backfill_a_stock_2026.py \\
+    docker exec adresearch-backend python3 app/scripts/backfill_a_stock_2026.py \\
         --mode bars --start 20260601 --end 20260628 --dry-run
 
     # Backfill financials (per-stock, rotating batch of 500)
-    docker exec etf-backend python3 app/scripts/backfill_a_stock_2026.py \\
+    docker exec adresearch-backend python3 app/scripts/backfill_a_stock_2026.py \\
         --mode financials --batch-offset 0
 
 Point budget (Tushare free tier: 5000 pts/day):
