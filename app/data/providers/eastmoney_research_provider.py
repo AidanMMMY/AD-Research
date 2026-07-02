@@ -48,6 +48,21 @@ def _to_iso_date(value: Any) -> date | None:
     return None
 
 
+def _serialize_row(row: Any) -> dict[str, Any]:
+    """Convert a row to dict, serializing date/datetime objects to ISO strings."""
+    if hasattr(row, "to_dict"):
+        d = row.to_dict()
+    else:
+        d = dict(row)
+    result = {}
+    for k, v in d.items():
+        if isinstance(v, (date, datetime)):
+            result[k] = v.isoformat()
+        else:
+            result[k] = v
+    return result
+
+
 def _to_ts_code(symbol: str) -> str:
     """Convert a plain A-share code like ``600519`` to ``600519.SH``.
 
@@ -155,5 +170,5 @@ def _normalize_row(row: Any) -> dict[str, Any]:
         "rating": str(rating).strip() if rating is not None else None,
         "publish_date": publish_date,
         "pdf_url": str(pdf_url).strip() if pdf_url is not None else None,
-        "raw": row.to_dict() if hasattr(row, "to_dict") else dict(row),
+        "raw": _serialize_row(row),
     }

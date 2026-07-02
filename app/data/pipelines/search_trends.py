@@ -65,7 +65,24 @@ class SearchTrendsPipeline(ETLPipeline):
         from app.data.providers.base import DataProvider
 
         class _StubProvider(DataProvider):
-            name = "search_trends"
+            @property
+            def name(self) -> str:
+                return "search_trends"
+
+            def fetch_etf_list(self):
+                return []
+
+            def fetch_daily_bars(self, codes, start_date, end_date):
+                import pandas as pd
+                return pd.DataFrame()
+
+            def fetch_realtime_quotes(self, codes):
+                import pandas as pd
+                return pd.DataFrame()
+
+            def get_market_hours(self, code=None):
+                from app.data.providers.base import MarketHours
+                return MarketHours()
 
         super().__init__(provider=_StubProvider(), db=db)
         self.daily_limit = max(1, int(daily_limit))
