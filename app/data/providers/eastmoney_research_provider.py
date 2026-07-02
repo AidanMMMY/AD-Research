@@ -49,17 +49,30 @@ def _to_iso_date(value: Any) -> date | None:
 
 
 def _serialize_row(row: Any) -> dict[str, Any]:
-    """Convert a row to dict, serializing date/datetime objects to ISO strings."""
+    """Convert a row to dict, serializing all values to JSON-compatible types."""
+    import json
+    import pandas as pd
+
     if hasattr(row, "to_dict"):
         d = row.to_dict()
     else:
         d = dict(row)
+
+    # Handle pandas types and other non-JSON-serializable objects
     result = {}
     for k, v in d.items():
         if isinstance(v, (date, datetime)):
             result[k] = v.isoformat()
-        else:
+        elif isinstance(v, pd.Timestamp):
+            result[k] = v.isoformat()
+        elif pd.isna(v):
+            result[k] = None
+        elif isinstance(v, (int, float, str, bool, list, dict)):
             result[k] = v
+        else:
+            # Convert to string for anything else
+            result[k] = str(v)
+
     return result
 
 
