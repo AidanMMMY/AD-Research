@@ -20,6 +20,7 @@
 10. [常见问题排查](#十常见问题排查)
 11. [安全建议](#十一安全建议)
 12. [备份建议](#十二备份建议)
+13. [绑定域名与 HTTPS](#十三绑定域名与-https)
 
 ---
 
@@ -505,9 +506,7 @@ docker compose up -d
    - 只放行你自己的 IP
 
 3. **后续升级 HTTPS**
-   - 购买域名并解析到 ECS IP
-   - 安装 Nginx + SSL 证书
-   - 这是另一个话题，需要时我可以单独写手册
+   - 见 [第十三节：绑定域名与 HTTPS](#十三绑定域名与-https)
 
 4. **数据库独立化**
    - 正式上线后，建议把 PostgreSQL 迁到阿里云 RDS
@@ -542,11 +541,103 @@ scp root@你的服务器公网IP:/opt/ad-research-backup-20260623.sql ./
 
 ---
 
+## 十三、绑定域名与 HTTPS
+
+平台默认通过 `http://IP:8000` 访问，正式上线前建议购买域名并启用 HTTPS。本项目的 Nginx 已经内置 HTTPS 支持，只需完成 DNS 解析并上传 SSL 证书即可。
+
+### 13.1 购买域名
+
+1. 在阿里云（或其他注册商）购买域名，例如 `adresearch.net`
+2. 记录你的 ECS **公网 IP**（例如 `47.xxx.xxx.xxx`）
+
+### 13.2 配置 DNS 解析
+
+进入域名解析控制台，添加两条 **A 记录**：
+
+| 主机记录 | 记录类型 | 记录值 | 说明 |
+|---|---|---|---|
+| `@` | A | 你的 ECS 公网 IP | 裸域 `adresearch.net` |
+| `www` | A | 你的 ECS 公网 IP | 子域名 `www.adresearch.net` |
+
+> DNS 生效通常需要 **几分钟到几小时**，可用 `dig adresearch.net` 或 `dig www.adresearch.net` 查看是否解析到服务器 IP。
+
+### 13.3 申请 SSL 证书
+
+1. 在阿里云 **SSL 证书** 控制台申请免费证书
+2. 证书域名必须同时包含：
+   - `adresearch.net`
+   - `www.adresearch.net`
+   > 建议直接申请通配符证书 `*.adresearch.net`，或在申请时同时填写两个域名。
+3. 完成域名验证（文件验证或 DNS 验证）后下载 **Nginx 版** 证书
+4. 解压后得到 `.pem`（或 `.crt`）和 `.key` 文件
+
+### 13.4 上传证书到服务器
+
+将证书文件重命名为：
+
+```text
+adresearch.net.pem
+adresearch.net.key
+```
+
+上传到服务器的证书目录：
+
+```bash
+scp adresearch.net.pem root@你的服务器公网IP:/opt/ad-research/deploy/aliyun-ecs/ssl/
+scp adresearch.net.key root@你的服务器公网IP:/opt/ad-research/deploy/aliyun-ecs/ssl/
+```
+
+> 注意：旧版 `nginx.conf` 和文档里把域名错写成 `adreasearch.net`（多了一个 `e`），现在已经修正为 `adresearch.net`。如果服务器上已有的证书文件名是 `adreasearch.net.pem/.key`，请重命名：
+> ```bash
+> cd /opt/ad-research/deploy/aliyun-ecs/ssl
+> mv adreasearch.net.pem adresearch.net.pem
+> mv adreasearch.net.key adresearch.net.key
+> ```
+
+### 13.5 重定向规则说明
+
+当前 `nginx.conf` 已经配置好以下规则：
+
+- `http://adresearch.net` → `https://www.adresearch.net`
+- `http://www.adresearch.net` → `https://www.adresearch.net`
+- `https://adresearch.net` → `https://www.adresearch.net`
+- `https://www.adresearch.net` → 正常显示平台
+
+### 13.6 重载 Nginx 使配置生效
+
+代码更新后，`nginx.conf` 会通过 volume 挂载到容器内，但 Nginx 进程不会自动重载。执行：
+
+```bash
+cd /opt/ad-research/deploy/aliyun-ecs
+docker compose exec nginx nginx -t       # 先测试配置是否正确
+docker compose exec nginx nginx -s reload # 再热重载
+```
+
+如果配置测试失败，Nginx 不会重载，请根据报错修正后再试。
+
+### 13.7 验证
+
+```bash
+# 测试 HTTP 重定向
+curl -I -L http://adresearch.net
+curl -I -L http://www.adresearch.net
+
+# 测试 HTTPS 重定向（证书正确时）
+curl -I -L https://adresearch.net
+curl -I -L https://www.adresearch.net
+```
+
+预期 `https://adresearch.net` 最终返回 `https://www.adresearch.net` 的内容，且状态链中包含 `301`。
+
+---
+
 ## 附录：文件说明
 
 ```
 deploy/aliyun-ecs/
 ├── docker-compose.yml   # 生产环境 Docker 编排配置
+├── nginx.conf           # Nginx 反向代理 / HTTPS / 重定向配置
+├── ssl/                 # SSL 证书目录（.key 不要提交到 Git）
 ├── .env.example         # 环境变量模板
 ├── deploy.sh            # 一键部署脚本
 └── README.md            # 本手册

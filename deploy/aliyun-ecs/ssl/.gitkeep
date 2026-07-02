@@ -1,9 +1,7 @@
 # SSL 证书目录
 #
 # 将阿里云下载的 Nginx 版证书解压后放到此处：
-# - adreasearch.net.pem   (证书文件)
-# - adreasearch.net.key   (私钥文件)
-#
-# 然后取消 nginx.conf 中 443 server 的注释并重新部署。
+# - adresearch.net.pem   (证书文件)
+# - adresearch.net.key   (私钥文件)
 #
 # 注意：.key 私钥文件不要提交到 Git 仓库。
