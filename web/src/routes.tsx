@@ -66,8 +66,8 @@ const wrap = (Component: React.ComponentType) => (
 
 export const routes: RouteConfig[] = [
   { path: '/login', element: wrap(Login), auth: false },
+  // === 首页与数据 ===
   { path: '/dashboard', element: wrap(Dashboard), auth: true, menu: { name: '首页看板', icon: 'DashboardOutlined' } },
-  // New canonical routes
   { path: '/instruments', element: wrap(InstrumentList), auth: true, menu: { name: '标的列表', icon: 'OrderedListOutlined' } },
   { path: '/instruments/:code', element: wrap(InstrumentDetail), auth: true },
   // Backward-compatible redirects
@@ -76,43 +76,50 @@ export const routes: RouteConfig[] = [
   // ---- 个股（合并到标的列表，通过 instrument_type=STOCK 筛选） ----
   { path: '/stocks', element: wrap(StocksList), auth: true },
   { path: '/stocks/:code', element: wrap(StockDetail), auth: true },
-  { path: '/screen', element: wrap(Screen), auth: true, menu: { name: '全市场筛选器', icon: 'FilterOutlined' } },
+  // === 选股工具 ===
+  { path: '/screen', element: wrap(Screen), auth: true, menu: { name: '全市场筛选器', icon: 'FilterOutlined', dividerBefore: true } },
+  { path: '/scores', element: wrap(ScoreRanking), auth: true, menu: { name: '评分排名', icon: 'TrophyOutlined' } },
   { path: '/pools', element: wrap(PoolList), auth: true, menu: { name: '标的池管理', icon: 'AppstoreOutlined' } },
   { path: '/pools/:id', element: wrap(PoolDetail), auth: true },
-  { path: '/scores', element: wrap(ScoreRanking), auth: true, menu: { name: '评分排名', icon: 'TrophyOutlined', dividerBefore: true } },
-  { path: '/reports', element: wrap(ReportBrowser), auth: true, menu: { name: '报告浏览', icon: 'FileTextOutlined' } },
-  { path: '/correlation', element: wrap(CorrelationAnalysis), auth: true, menu: { name: '相关性分析', icon: 'ApartmentOutlined' } },
+  // === 分析工具 ===
+  { path: '/correlation', element: wrap(CorrelationAnalysis), auth: true, menu: { name: '相关性分析', icon: 'ApartmentOutlined', dividerBefore: true } },
   { path: '/comparison', element: wrap(ReturnComparison), auth: true, menu: { name: '收益对比', icon: 'LineChartOutlined' } },
   { path: '/sector-rotation', element: wrap(SectorRotation), auth: true, menu: { name: '板块轮动', icon: 'BarChartOutlined' } },
   { path: '/macro', element: wrap(Macro), auth: true, menu: { name: '宏观经济', icon: 'LineChartOutlined' } },
   { path: '/scanner', element: wrap(MarketScanner), auth: true, menu: { name: '全市场扫描', icon: 'ScanOutlined' } },
-  { path: '/notifications', element: wrap(NotificationConfig), auth: true, menu: { name: '推送配置', icon: 'NotificationOutlined', dividerBefore: true } },
-  { path: '/notification-logs', element: wrap(NotificationLogs), auth: true, menu: { name: '通知日志', icon: 'FileTextOutlined' } },
-  { path: '/strategies', element: wrap(StrategyList), auth: true, menu: { name: '策略管理', icon: 'SettingOutlined' } },
+  // === 报告与数据 ===
+  { path: '/reports', element: wrap(ReportBrowser), auth: true, menu: { name: '报告浏览', icon: 'FileTextOutlined', dividerBefore: true } },
+  { path: '/research-reports', element: wrap(ResearchReports), auth: true, menu: { name: '研报库', icon: 'FilePdfOutlined' } },
+  { path: '/cninfo-reports', element: wrap(CninfoReports), auth: true, menu: { name: '巨潮报告', icon: 'FilePdfOutlined' } },
+  { path: '/sec-filings', element: wrap(SECFilings), auth: true, menu: { name: 'SEC 公告', icon: 'BankOutlined' } },
+  { path: '/microstructure', element: wrap(Microstructure), auth: true, menu: { name: '微结构数据', icon: 'FundOutlined' } },
+  { path: '/search-trends', element: wrap(SearchTrends), auth: true, menu: { name: '搜索热度', icon: 'FireOutlined' } },
+  { path: '/listing-preview', element: wrap(ListingPreview), auth: true, menu: { name: '上市预告', icon: 'CalendarOutlined' } },
+  { path: '/futures', element: wrap(Futures), auth: true, menu: { name: '商品期货', icon: 'BlockOutlined' } },
+  // === 资讯与 AI ===
+  { path: '/news', element: wrap(NewsFeed), auth: true, menu: { name: '资讯', icon: 'ReadOutlined', dividerBefore: true } },
+  { path: '/news/:id', element: wrap(NewsDetail), auth: true },
+  { path: '/news/health', element: wrap(NewsHealth), auth: true, menu: { name: '资讯健康度', icon: 'MonitorOutlined' } },
+  { path: '/sentiment', element: wrap(SentimentOverview), auth: true, menu: { name: '市场情绪', icon: 'HeartOutlined' } },
+  { path: '/research', element: wrap(ResearchNotes), auth: true, menu: { name: 'AI研究笔记', icon: 'ReadOutlined' } },
+  { path: '/chat', element: wrap(AIChat), auth: true, menu: { name: 'AI助手', icon: 'RobotOutlined' } },
+  // === 策略与回测 ===
+  { path: '/strategies', element: wrap(StrategyList), auth: true, menu: { name: '策略管理', icon: 'SettingOutlined', dividerBefore: true } },
   { path: '/strategy-library', element: wrap(StrategyLibrary), auth: true, menu: { name: '策略库', icon: 'BookOutlined' } },
   { path: '/backtests', element: wrap(BacktestList), auth: true, menu: { name: '回测管理', icon: 'ExperimentOutlined' } },
   { path: '/backtests/:id', element: wrap(BacktestDetail), auth: true },
   { path: '/signals', element: wrap(SignalDashboard), auth: true, menu: { name: '交易信号', icon: 'ThunderboltOutlined' } },
-  // ---- 加密货币 ----
+  // === 通知 ===
+  { path: '/notifications', element: wrap(NotificationConfig), auth: true, menu: { name: '推送配置', icon: 'NotificationOutlined', dividerBefore: true } },
+  { path: '/notification-logs', element: wrap(NotificationLogs), auth: true, menu: { name: '通知日志', icon: 'FileTextOutlined' } },
+  // === 交易 ===
   { path: '/crypto', element: wrap(CryptoList), auth: true, menu: { name: '加密货币', icon: 'GoldOutlined', dividerBefore: true } },
   { path: '/crypto/:code', element: wrap(CryptoDetail), auth: true },
   { path: '/paper-trading', element: wrap(PaperTrading), auth: true, menu: { name: '模拟交易', icon: 'DollarOutlined' } },
   { path: '/live-trading', element: wrap(TradingPanel), auth: true, menu: { name: '真实交易', icon: 'ThunderboltOutlined' } },
-  // ---- AI 研究 ----
-  { path: '/research', element: wrap(ResearchNotes), auth: true, menu: { name: 'AI研究笔记', icon: 'ReadOutlined' } },
-  { path: '/sentiment', element: wrap(SentimentOverview), auth: true, menu: { name: '情绪', icon: 'HeartOutlined' } },
-  { path: '/listing-preview', element: wrap(ListingPreview), auth: true, menu: { name: '上市预告', icon: 'CalendarOutlined' } },
-  { path: '/sec-filings', element: wrap(SECFilings), auth: true, menu: { name: 'SEC 公告', icon: 'BankOutlined' } },
-  { path: '/microstructure', element: wrap(Microstructure), auth: true, menu: { name: '微结构数据', icon: 'FundOutlined' } },
-  { path: '/search-trends', element: wrap(SearchTrends), auth: true, menu: { name: '搜索热度', icon: 'FireOutlined' } },
-  { path: '/cninfo-reports', element: wrap(CninfoReports), auth: true, menu: { name: '巨潮报告', icon: 'FilePdfOutlined' } },
-  { path: '/research-reports', element: wrap(ResearchReports), auth: true, menu: { name: '研报库', icon: 'FilePdfOutlined' } },
-  { path: '/futures', element: wrap(Futures), auth: true, menu: { name: '商品期货', icon: 'BlockOutlined' } },
-  { path: '/news', element: wrap(NewsFeed), auth: true, menu: { name: '资讯', icon: 'ReadOutlined' } },
-  { path: '/news/:id', element: wrap(NewsDetail), auth: true },
-  { path: '/news/health', element: wrap(NewsHealth), auth: true, menu: { name: '资讯健康度', icon: 'MonitorOutlined' } },
-  { path: '/chat', element: wrap(AIChat), auth: true, menu: { name: 'AI助手', icon: 'RobotOutlined' } },
-  { path: '/etl-status', element: wrap(ETLStatus), auth: true, menu: { name: 'ETL状态', icon: 'ClockCircleOutlined' } },
+  // === 运维 ===
+  { path: '/etl-status', element: wrap(ETLStatus), auth: true, menu: { name: 'ETL状态', icon: 'ClockCircleOutlined', dividerBefore: true } },
+  // === 管理 ===
   { path: '/admin/users', element: wrap(AdminUsers), auth: true, menu: { name: '用户管理', icon: 'TeamOutlined', dividerBefore: true } },
   { path: '/admin/deployments', element: wrap(AdminDeployments), auth: true, menu: { name: '部署管理', icon: 'CloudServerOutlined' } },
   { path: '/admin/etl-status', element: wrap(ETLOpsDashboard), auth: true, menu: { name: 'ETL 运维看板', icon: 'MonitorOutlined' } },
