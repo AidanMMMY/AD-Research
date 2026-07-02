@@ -74,7 +74,7 @@ export default function NotificationLogs() {
       <Panel variant="default" title="通知发送日志">
         <FilterToolbar total={data?.total ?? 0}>
           <Space>
-            <span style={{ color: 'var(--text-secondary)' }}>每页条数：</span>
+            <span className="ad-text-secondary">每页条数：</span>
             <InputNumber
               min={1}
               max={200}
@@ -83,7 +83,7 @@ export default function NotificationLogs() {
                 setPage(1);
                 setPageSize(v || 20);
               }}
-              style={{ width: 100 }}
+              className="phase5c-input--sm"
             />
           </Space>
         </FilterToolbar>

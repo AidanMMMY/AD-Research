@@ -177,7 +177,7 @@ export default function SECFilingsPage() {
         </div>
       </ResponsiveGrid>
 
-      <Panel variant="default" title="公告列表" style={{ marginTop: 'var(--space-5)' }}>
+      <Panel variant="default" title="公告列表" className="ad-mt-5">
         <FilterToolbar total={data?.total}>
           <Input
             placeholder="Ticker (如 AAPL)"

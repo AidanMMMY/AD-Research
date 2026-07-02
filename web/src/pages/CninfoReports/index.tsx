@@ -357,8 +357,8 @@ function CninfoReportDetailDrawer({
               <span>{formatDate(report.announcement_time)}</span>
             </Space>
 
-            <Panel variant="minimal" title="元数据" style={{ marginTop: 16 }}>
-              <pre className="font-mono" style={{ whiteSpace: 'pre-wrap' }}>
+            <Panel variant="minimal" title="元数据" className="ad-mt-4">
+              <pre className="font-mono ad-pre-wrap">
 {JSON.stringify(
                   {
                     announcement_id: report.announcement_id,
@@ -378,8 +378,8 @@ function CninfoReportDetailDrawer({
             </Panel>
 
             {report.extracted_text_preview ? (
-              <Panel variant="minimal" title="文本预览 (前 500 字)" style={{ marginTop: 16 }}>
-                <div style={{ whiteSpace: 'pre-wrap' }}>
+              <Panel variant="minimal" title="文本预览 (前 500 字)" className="ad-mt-4">
+                <div className="ad-pre-wrap">
                   {report.extracted_text_preview}
                 </div>
               </Panel>

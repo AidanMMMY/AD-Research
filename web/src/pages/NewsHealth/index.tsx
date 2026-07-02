@@ -64,8 +64,8 @@ export default function NewsHealth() {
       width: 200,
       render: (v: string, row) => (
         <div>
-          <div style={{ fontWeight: 500 }}>{v}</div>
-          <div style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>{row.job_id ?? '—'}</div>
+          <div className="ad-font-medium">{v}</div>
+          <div className="ad-text-xs ad-text-tertiary">{row.job_id ?? '—'}</div>
         </div>
       ),
     },
@@ -107,7 +107,7 @@ export default function NewsHealth() {
         return (
           <Tooltip title={base}>
             <span style={{ color: tone }}>
-              {base} <span style={{ fontSize: 12 }}>({minutes}m 前)</span>
+              {base} <span className="ad-text-xs">({minutes}m 前)</span>
             </span>
           </Tooltip>
         );
@@ -125,7 +125,7 @@ export default function NewsHealth() {
       key: 'latest_etl',
       render: (_v, row) => {
         const etl = row.latest_etl;
-        if (!etl) return <span style={{ color: 'var(--text-tertiary)' }}>暂无记录</span>;
+        if (!etl) return <span className="ad-text-tertiary">暂无记录</span>;
         const color =
           etl.status === 'success'
             ? 'green'
@@ -135,20 +135,12 @@ export default function NewsHealth() {
         return (
           <div>
             <Tag color={color}>{etl.status}</Tag>
-            <span style={{ marginLeft: 8, fontSize: 12 }}>
+            <span className="ad-text-xs ad-ml-2">
               {etl.records != null ? `${etl.records} 条` : '-'}
             </span>
             {etl.error_msg && (
               <div
-                style={{
-                  marginTop: 4,
-                  color: '#cf1322',
-                  fontSize: 12,
-                  maxWidth: 320,
-                  whiteSpace: 'nowrap',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                }}
+                className="ad-error-ellipsis"
                 title={etl.error_msg}
               >
                 {etl.error_msg}
@@ -162,19 +154,12 @@ export default function NewsHealth() {
 
   return (
     <div>
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          marginBottom: 8,
-        }}
-      >
-        <Title level={2} style={{ margin: 0 }}>
+      <div className="ad-page-header">
+        <Title level={2} className="ad-page-header__title">
           资讯健康度
         </Title>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>
+        <div className="ad-page-header__actions">
+          <span className="ad-timestamp">
             {dataUpdatedAt
               ? `更新于 ${new Date(dataUpdatedAt).toLocaleTimeString()}`
               : '加载中…'}
@@ -184,34 +169,27 @@ export default function NewsHealth() {
           </Button>
         </div>
       </div>
-      <Paragraph type="secondary" style={{ marginBottom: 24 }}>
+      <Paragraph type="secondary" className="ad-mb-5">
         按数据源展示最近 24h 收录量与最新发布时间，并附 scheduler 任务运行状态。
         自动每 30 秒刷新。
       </Paragraph>
 
-      <Panel title="Scheduler 状态" padding="md" style={{ marginBottom: 16 }}>
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 16,
-            flexWrap: 'wrap',
-          }}
-        >
+      <Panel title="Scheduler 状态" padding="md" className="ad-mb-4">
+        <div className="ad-flex ad-flex-wrap ad-gap-4 ad-items-center">
           <Badge
             status={schedulerRunning ? 'success' : 'error'}
             text={
-              <span style={{ fontWeight: 500 }}>
+              <span className="ad-font-medium">
                 {schedulerRunning ? 'APScheduler 运行中' : 'APScheduler 未运行'}
               </span>
             }
           />
-          <span style={{ color: 'var(--text-tertiary)', fontSize: 12 }}>
+          <span className="ad-timestamp">
             当前进程共注册 {data?.scheduler_total_jobs ?? 0} 个任务，其中 news_* {jobs.length} 个
           </span>
         </div>
         {jobs.length > 0 && (
-          <div style={{ marginTop: 12, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <div className="ad-flex ad-flex-wrap ad-gap-2 ad-mt-3">
             {jobs.map((j) => (
               <Tag key={j.id} color="blue">
                 {j.name} · 下次 {j.next_run_time ? new Date(j.next_run_time).toLocaleString() : '—'}

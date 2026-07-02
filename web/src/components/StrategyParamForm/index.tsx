@@ -55,7 +55,7 @@ export default function StrategyParamForm({ paramSpecs, prefix = ['params'] }: S
               help={help}
             >
               <InputNumber
-                style={{ width: '100%' }}
+                className="phase5c-form-input--full"
                 min={spec.min}
                 max={spec.max}
                 step={spec.type === 'int' ? 1 : 0.01}

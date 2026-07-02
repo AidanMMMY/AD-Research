@@ -156,7 +156,7 @@ export default function SectorRotation() {
 
       {signals.length > 0 && (
         <Panel title="轮动信号" variant="default" className="ad-mb-4">
-          <Space direction="vertical" style={{ width: '100%' }}>
+          <Space direction="vertical" className="ad-stack-full">
             {signals.map((signal, idx) => (
               <Alert
                 key={idx}

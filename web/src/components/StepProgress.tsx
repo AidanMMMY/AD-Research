@@ -16,32 +16,19 @@ const STATUS_ICONS: Record<Step['status'], React.ReactNode> = {
 export default function StepProgress({ steps, compact = false }: StepProgressProps) {
   return (
     <div
-      style={{
-        display: 'flex',
-        flexDirection: 'column',
-        gap: compact ? 4 : 6,
-        padding: compact ? '6px 0' : '8px 0',
-        fontSize: compact ? 12 : 13,
-        color: 'var(--text-secondary)',
-      }}
+      className={`step-progress ${compact ? 'step-progress--compact' : 'step-progress--default'}`}
     >
       {steps.map((s) => {
         const dim = s.status === 'pending';
         return (
           <div
             key={s.id}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 8,
-              opacity: dim ? 0.55 : 1,
-              transition: 'opacity 200ms',
-            }}
+            className={`step-progress__row ${dim ? 'step-progress__row--dim' : ''}`}
           >
-            <span style={{ display: 'inline-flex', alignItems: 'center', fontSize: compact ? 12 : 14 }}>
+            <span className={`step-progress__icon ${compact ? 'step-progress__icon--compact' : 'step-progress__icon--default'}`}>
               {STATUS_ICONS[s.status]}
             </span>
-            <span style={{ color: s.status === 'running' ? 'var(--text-primary)' : 'var(--text-secondary)' }}>
+            <span className={`step-progress__label ${s.status === 'running' ? 'step-progress__label--running' : ''}`}>
               {s.label}
             </span>
           </div>

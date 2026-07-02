@@ -86,7 +86,7 @@ export default function CryptoList() {
       width: 140,
       render: (v: number) =>
         v != null ? (
-          <span className="tabular-nums mobile-list-item__meta" style={{ fontFamily: 'var(--font-mono)' }}>
+          <span className="tabular-nums mobile-list-item__meta font-mono">
             {v >= 1e9
               ? `${(v / 1e9).toFixed(1)}B`
               : v >= 1e6
@@ -104,7 +104,7 @@ export default function CryptoList() {
       dataIndex: 'exchange',
       width: 90,
       render: (v: string) => (
-        <span className="tabular-nums mobile-list-item__meta" style={{ fontFamily: 'var(--font-mono)' }}>
+        <span className="tabular-nums mobile-list-item__meta font-mono">
           {v || '-'}
         </span>
       ),
@@ -123,7 +123,7 @@ export default function CryptoList() {
         <Input
           placeholder="搜索币种代码或名称"
           allowClear
-          prefix={<SearchOutlined style={{ color: 'var(--text-tertiary)' }} />}
+          prefix={<SearchOutlined className="ad-icon-tertiary" />}
           value={filters.search}
           onChange={(e) => {
             filters.setSearch(e.target.value);
@@ -174,7 +174,7 @@ export default function CryptoList() {
             renderItem={(item: any) => (
               <List.Item
                 onClick={() => navigate(`/crypto/${item.code}`)}
-                style={{ cursor: 'pointer' }}
+                className="ad-cursor-pointer"
               >
                 <List.Item.Meta
                   title={<InstrumentCodeTag code={item.code} name={item.name} />}
@@ -212,7 +212,6 @@ export default function CryptoList() {
           scroll={{ x: 'max-content' }}
           onRow={(record) => ({
             onClick: () => navigate(`/crypto/${record.code}`),
-            style: { cursor: 'pointer' },
           })}
           pagination={{
             current: page,

@@ -178,7 +178,7 @@ export default function ResearchReports() {
           type="link"
           size="small"
           onClick={() => handleOpenDetail(record.id)}
-          style={{ textAlign: 'left' }}
+          className="ad-text-left"
         >
           {v}
         </Button>

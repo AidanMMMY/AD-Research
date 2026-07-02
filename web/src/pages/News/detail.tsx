@@ -60,14 +60,14 @@ function ImportanceStars({ level }: { level: ImportanceLevel | null }) {
   const filled = Math.max(0, Math.min(5, level));
   return (
     <Tooltip title={`重要性 ${level}/5`}>
-      <span style={{ fontSize: 13, letterSpacing: 1 }}>
+      <span className="ad-text-sm ad-letter-spacing">
         {Array.from({ length: 5 }).map((_, i) => (
           <StarFilled
             key={i}
+            className="ad-text-sm"
             style={{
               color: i < filled ? IMPORTANCE_COLOR : 'var(--text-muted)',
               opacity: i < filled ? 1 : 0.4,
-              fontSize: 13,
               marginRight: 1,
             }}
           />
@@ -194,8 +194,7 @@ export default function NewsDetail() {
           size="small"
           icon={<ArrowLeftOutlined />}
           onClick={() => navigate('/news')}
-          className="ad-mb-3"
-          style={{ padding: 0 }}
+          className="ad-mb-3 ad-p-0"
         >
           返回资讯
         </Button>
@@ -226,7 +225,7 @@ export default function NewsDetail() {
                 <Tag
                   key={`${s.symbol}-${s.match_type}`}
                   color="default"
-                  style={{ margin: 0, fontSize: 12 }}
+                  className="ad-detail-tag"
                 >
                   {s.symbol}
                 </Tag>
@@ -234,7 +233,7 @@ export default function NewsDetail() {
             </Space>
           )}
           {data.event_category && (
-            <Tag color="geekblue" style={{ margin: 0, fontSize: 12 }}>
+            <Tag color="geekblue" className="ad-detail-tag">
               {data.event_category}
             </Tag>
           )}
@@ -243,11 +242,8 @@ export default function NewsDetail() {
               color={SENTIMENT_COLORS[sentiment]}
               text={
                 <span
-                  style={{
-                    color: SENTIMENT_COLORS[sentiment],
-                    fontSize: 13,
-                    fontWeight: 500,
-                  }}
+                  className="ad-sentiment-label--detail"
+                  style={{ color: SENTIMENT_COLORS[sentiment] }}
                 >
                   {SENTIMENT_LABELS[sentiment]}
                   {data.sentiment_score != null &&
@@ -334,7 +330,7 @@ export default function NewsDetail() {
               variant="default"
               title={
                 <span>
-                  <BulbOutlined style={{ marginRight: 6, color: 'var(--accent)' }} />
+                  <BulbOutlined className="ad-icon-accent" />
                   情绪解读
                 </span>
               }
@@ -346,7 +342,7 @@ export default function NewsDetail() {
                   <span className="ad-text-small ad-text-tertiary">
                     LLM 置信度
                   </span>
-                  <div className="ad-sentiment-bar" style={{ flex: 1, maxWidth: 240 }}>
+                  <div className="ad-sentiment-bar ad-flex-1" style={{ maxWidth: 240 }}>
                     <div
                       className="ad-sentiment-bar__fill"
                       style={{
@@ -370,7 +366,7 @@ export default function NewsDetail() {
                   </div>
                   <Space wrap>
                     {data.sentiment_drivers.map((d) => (
-                      <Tag key={d} color="default" style={{ fontSize: 12 }}>
+                      <Tag key={d} color="default" className="ad-detail-tag">
                         {d}
                       </Tag>
                     ))}
@@ -386,7 +382,7 @@ export default function NewsDetail() {
               variant="default"
               title={
                 <span>
-                  <ChatOutlined style={{ marginRight: 6 }} />
+                  <ChatOutlined className="ad-icon-mr" />
                   散户讨论
                 </span>
               }
@@ -436,7 +432,7 @@ export default function NewsDetail() {
               <Space wrap>
                 {otherSymbols.map((sym) => (
                   <Link key={sym} to={`/news?symbol=${encodeURIComponent(sym)}`}>
-                    <Tag style={{ cursor: 'pointer', fontSize: 12 }}>{sym}</Tag>
+                    <Tag className="ad-detail-tag ad-chip-tag">{sym}</Tag>
                   </Link>
                 ))}
               </Space>
@@ -465,7 +461,7 @@ export default function NewsDetail() {
                   >
                     <List.Item.Meta
                       title={
-                        <div className="ad-line-clamp-2" style={{ fontSize: 13, color: 'var(--text-primary)', lineHeight: 1.5 }}>
+                        <div className="ad-line-clamp-2 ad-text-sm ad-text-primary ad-leading-normal">
                           {item.title}
                         </div>
                       }

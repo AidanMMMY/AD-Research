@@ -70,14 +70,14 @@ export default function Screen() {
 
   const columns = [
     { title: '代码', dataIndex: 'code', width: 100, render: (v: string, r: any) => <InstrumentCodeTag code={v} name={r.name} /> },
-    { title: '分类', dataIndex: 'category', width: 100, render: (v: string) => v ? <span style={{ fontSize: 'var(--text-small-size)', color: 'var(--text-secondary)' }}>{v}</span> : '-' },
-    { title: <HelpPopover termKey="composite_score_filter">评分</HelpPopover>, dataIndex: 'composite_score', width: 80, render: (v: number) => <span className="font-mono" style={{ fontWeight: 700, color: 'var(--accent)' }}>{v?.toFixed(1)}</span> },
-    { title: <HelpPopover termKey="rsi14">RSI</HelpPopover>, dataIndex: 'rsi14', width: 70, render: (v: number) => <span className="font-mono" style={{ color: 'var(--text-secondary)' }}>{v?.toFixed(1)}</span> },
-    { title: <HelpPopover termKey="sharpe_1y">夏普</HelpPopover>, dataIndex: 'sharpe_1y', width: 80, render: (v: number) => <span className="font-mono" style={{ color: 'var(--text-secondary)' }}>{v?.toFixed(2)}</span> },
+    { title: '分类', dataIndex: 'category', width: 100, render: (v: string) => v ? <span className="ad-table-text-secondary">{v}</span> : '-' },
+    { title: <HelpPopover termKey="composite_score_filter">评分</HelpPopover>, dataIndex: 'composite_score', width: 80, render: (v: number) => <span className="font-mono ad-table-accent">{v?.toFixed(1)}</span> },
+    { title: <HelpPopover termKey="rsi14">RSI</HelpPopover>, dataIndex: 'rsi14', width: 70, render: (v: number) => <span className="font-mono ad-table-mono">{v?.toFixed(1)}</span> },
+    { title: <HelpPopover termKey="sharpe_1y">夏普</HelpPopover>, dataIndex: 'sharpe_1y', width: 80, render: (v: number) => <span className="font-mono ad-table-mono">{v?.toFixed(2)}</span> },
     { title: <HelpPopover termKey="return_1m">1月</HelpPopover>, dataIndex: 'return_1m', width: 100, render: (v: number) => <ReturnTag value={v} /> },
     { title: <HelpPopover termKey="return_3m">3月</HelpPopover>, dataIndex: 'return_3m', width: 100, render: (v: number) => <ReturnTag value={v} /> },
     { title: <HelpPopover termKey="return_1y">1年</HelpPopover>, dataIndex: 'return_1y', width: 100, render: (v: number) => <ReturnTag value={v} /> },
-    { title: <HelpPopover termKey="volatility_20d">波动率</HelpPopover>, dataIndex: 'volatility_20d', width: 90, render: (v: number) => v ? <span className="font-mono" style={{ color: 'var(--text-secondary)' }}>{v.toFixed(1)}%</span> : '-' },
+    { title: <HelpPopover termKey="volatility_20d">波动率</HelpPopover>, dataIndex: 'volatility_20d', width: 90, render: (v: number) => v ? <span className="font-mono ad-table-mono">{v.toFixed(1)}%</span> : '-' },
   ];
 
   return (

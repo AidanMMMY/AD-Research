@@ -32,22 +32,14 @@ function SparklineCell({ code }: { code: string }) {
 function LivePriceCell({ tick }: { code: string; tick: ReturnType<typeof useMarketStream>['latest'][string] | undefined }) {
   if (!tick) {
     return (
-      <span className="tabular-nums mobile-list-item__meta" style={{ fontFamily: 'var(--font-mono)' }}>
+      <span className="tabular-nums mobile-list-item__meta font-mono">
         -
       </span>
     );
   }
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 2, lineHeight: 1.2 }}>
-      <span
-        className="tabular-nums"
-        style={{
-          fontSize: 'var(--text-body-size)',
-          color: 'var(--text-primary)',
-          fontFamily: 'var(--font-mono)',
-          fontWeight: 500,
-        }}
-      >
+    <div className="live-price-cell">
+      <span className="tabular-nums live-price-cell__price">
         {tick.price.toFixed(2)}
       </span>
       <ReturnTag value={tick.change_pct} />
@@ -113,7 +105,7 @@ export default function InstrumentList() {
       dataIndex: 'market',
       width: 80,
       render: (v: string) => (
-        <span className="tabular-nums mobile-list-item__meta" style={{ fontFamily: 'var(--font-mono)' }}>{v}</span>
+        <span className="tabular-nums mobile-list-item__meta font-mono">{v}</span>
       ),
     },
     {
@@ -138,14 +130,14 @@ export default function InstrumentList() {
       title: '管理公司',
       dataIndex: 'fund_manager',
       render: (v: string) => v ? (
-        <span style={{ color: 'var(--text-secondary)' }}>{v}</span>
+        <span className="ad-text-secondary">{v}</span>
       ) : '-',
     },
     {
       title: '跟踪指数',
       dataIndex: 'underlying_index',
       render: (v: string) => v ? (
-        <span className="mobile-list-item__meta" style={{ maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', display: 'inline-block' }}>
+        <span className="mobile-list-item__meta instrument-index-cell">
           {v}
         </span>
       ) : '-',
@@ -199,7 +191,7 @@ export default function InstrumentList() {
         <Input
           placeholder="搜索标的代码或名称"
           allowClear
-          prefix={<SearchOutlined style={{ color: 'var(--text-tertiary)' }} />}
+          prefix={<SearchOutlined className="ad-icon-tertiary" />}
           onChange={(e) => { setSearch(e.target.value); setPage(1); }}
           style={{ width: 240 }}
         />

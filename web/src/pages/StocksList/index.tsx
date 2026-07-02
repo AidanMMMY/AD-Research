@@ -68,7 +68,7 @@ export default function StocksList() {
       dataIndex: 'market',
       width: 80,
       render: (v: string) => (
-        <span className="tabular-nums mobile-list-item__meta" style={{ fontFamily: 'var(--font-mono)' }}>{v}</span>
+        <span className="tabular-nums mobile-list-item__meta font-mono">{v}</span>
       ),
     },
     {
@@ -115,7 +115,7 @@ export default function StocksList() {
         <Input
           placeholder="搜索代码或名称"
           allowClear
-          prefix={<SearchOutlined style={{ color: 'var(--text-tertiary)' }} />}
+          prefix={<SearchOutlined className="ad-icon-tertiary" />}
           onChange={(e) => { setSearch(e.target.value); setPage(1); }}
           style={{ width: 240 }}
         />

@@ -110,15 +110,14 @@ function ImportanceStars({ level }: { level: ImportanceLevel | null }) {
   const filled = Math.max(0, Math.min(5, level));
   return (
     <Tooltip title={`重要性 ${level}/5`}>
-      <span className="ad-text-small" style={{ letterSpacing: 1, color: 'var(--text-tertiary)' }}>
+      <span className="ad-text-small ad-text-tertiary ad-letter-spacing">
         {Array.from({ length: 5 }).map((_, i) => (
           <StarFilled
             key={i}
+            className="ad-text-xs ad-mr-1"
             style={{
               color: i < filled ? IMPORTANCE_COLOR : 'var(--text-muted)',
               opacity: i < filled ? 1 : 0.4,
-              fontSize: 11,
-              marginRight: 1,
             }}
           />
         ))}
@@ -154,8 +153,8 @@ function NewsCard({
       {/* Row 1: source · market · time · importance */}
       <div className="ad-news-card__meta">
         <span>{source.emoji} {source.label}</span>
-        <span style={{ color: 'var(--text-muted)' }}>·</span>
-        {market && <Tag color={market.color} style={{ margin: 0, fontSize: 11 }}>{market.label}</Tag>}
+        <span className="ad-text-muted">·</span>
+        {market && <Tag color={market.color} className="ad-detail-tag">{market.label}</Tag>}
         {article.event_category && (
           <span className="ad-text-small ad-text-tertiary">{article.event_category}</span>
         )}
@@ -185,8 +184,7 @@ function NewsCard({
             <Tag
               key={`${s.symbol}-${s.match_type}`}
               color="default"
-              className="ad-mr-1"
-              style={{ cursor: 'pointer' }}
+              className="ad-mr-1 ad-chip-tag"
               onClick={(e) => {
                 e.stopPropagation();
                 onPickSymbol(s.symbol);
@@ -213,11 +211,8 @@ function NewsCard({
               color={SENTIMENT_COLORS[sentiment]}
               text={
                 <span
-                  style={{
-                    color: SENTIMENT_COLORS[sentiment],
-                    fontSize: 12,
-                    fontWeight: 500,
-                  }}
+                  className="ad-sentiment-label"
+                  style={{ color: SENTIMENT_COLORS[sentiment] }}
                 >
                   {SENTIMENT_LABELS[sentiment]}
                 </span>
@@ -272,7 +267,7 @@ function HotSymbolSidebar({
       variant="default"
       title={
         <span>
-          <FireOutlined style={{ marginRight: 6, color: 'var(--accent)' }} />
+          <FireOutlined className="ad-icon-accent" />
           热门情绪标的
         </span>
       }
@@ -295,7 +290,7 @@ function HotSymbolSidebar({
                 className="ad-mover-row"
               >
                 <div className="ad-flex-1 ad-min-w-0">
-                  <div className="ad-font-medium ad-text-primary" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  <div className="ad-font-medium ad-text-primary ad-truncate">
                     {row.symbol}
                   </div>
                   <div className="ad-text-small ad-text-tertiary ad-mt-2">
@@ -304,8 +299,8 @@ function HotSymbolSidebar({
                 </div>
                 <div className="ad-text-right">
                   <div
-                    className="ad-font-semibold"
-                    style={{ fontSize: 14, color: tone, fontFamily: 'var(--font-mono)' }}
+                    className="ad-font-semibold font-mono"
+                    style={{ color: tone }}
                   >
                     {row.score != null ? row.score.toFixed(2) : '—'}
                   </div>
@@ -521,7 +516,7 @@ export default function NewsFeed() {
           }}
           className={`ad-status-chip ${watchlistMode ? 'ad-status-chip--active' : ''}`}
         >
-          <StarFilled style={{ marginRight: 4, fontSize: 11 }} />
+          <StarFilled className="ad-mr-1 ad-text-xs" />
           我的自选
         </Tag.CheckableTag>
         <Segmented
@@ -618,10 +613,10 @@ export default function NewsFeed() {
                 </div>
               ))}
               <div className="ad-flex ad-items-center ad-gap-1 ad-mt-2 ad-text-small ad-text-tertiary">
-                <StarOutlined style={{ color: IMPORTANCE_COLOR }} /> 重要性 1-5
+                <StarOutlined className="ad-icon-warning" /> 重要性 1-5
               </div>
               <div className="ad-text-small ad-text-tertiary ad-mt-2">
-                <LinkOutlined style={{ marginRight: 4 }} />
+                <LinkOutlined className="ad-mr-1" />
                 点击标的 chip 自动筛选
               </div>
             </Space>

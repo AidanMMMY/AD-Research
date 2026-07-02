@@ -160,7 +160,7 @@ export default function TemplateManagement() {
       width: 180,
       render: (v: string, record: ScoreTemplate) => (
         <Space size={6}>
-          <span style={{ color: 'var(--text-primary)', fontWeight: 500 }}>{v}</span>
+          <span className="template-mgmt__name">{v}</span>
           {record.is_default && <Tag color="accent">默认</Tag>}
         </Space>
       ),
@@ -169,7 +169,7 @@ export default function TemplateManagement() {
       title: '维度',
       key: 'dimensions',
       render: (_: unknown, record: ScoreTemplate) => (
-        <span style={{ color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>
+        <span className="template-mgmt__dimensions">
           {DIMENSION_KEYS.filter((k) => record.weights[k] != null && record.weights[k] > 0).join(' / ') || '—'}
         </span>
       ),
@@ -178,7 +178,7 @@ export default function TemplateManagement() {
       title: '权重',
       key: 'weights',
       render: (_: unknown, record: ScoreTemplate) => (
-        <span style={{ color: 'var(--text-secondary)', fontSize: 12 }}>{weightSummary(record.weights)}</span>
+        <span className="template-mgmt__weights">{weightSummary(record.weights)}</span>
       ),
     },
     {
@@ -245,18 +245,7 @@ export default function TemplateManagement() {
           scroll={{ x: 'max-content' }}
           expandable={{
             expandedRowRender: (record: ScoreTemplate) => (
-              <pre
-                style={{
-                  margin: 0,
-                  padding: 12,
-                  background: 'var(--bg-elevated)',
-                  border: '1px solid var(--border-default)',
-                  borderRadius: 4,
-                  fontSize: 12,
-                  color: 'var(--text-secondary)',
-                  overflow: 'auto',
-                }}
-              >
+              <pre className="template-mgmt__expanded">
                 {JSON.stringify(record, null, 2)}
               </pre>
             ),
@@ -314,7 +303,7 @@ export default function TemplateManagement() {
             <Switch disabled={isDefaultLocked} />
           </Form.Item>
 
-          <div style={{ marginTop: 8, marginBottom: 12, color: 'var(--text-tertiary)', fontSize: 12 }}>
+          <div className="template-mgmt__hint">
             维度权重（0 表示不参与评分；同模板内权重不要求和为 1，服务端会按各维度的权重计算综合分）
           </div>
 
@@ -330,7 +319,7 @@ export default function TemplateManagement() {
                 min={0}
                 max={1}
                 step={0.05}
-                style={{ width: 160 }}
+                className="template-mgmt__input-number"
                 formatter={(v) => (v != null ? `${(Number(v) * 100).toFixed(0)}%` : '')}
                 parser={(v) => {
                   const s = (v ?? '').replace(/[^\d.]/g, '');
@@ -342,7 +331,7 @@ export default function TemplateManagement() {
           ))}
 
           {isDefaultValue && !isDefaultLocked && (
-            <Text type="warning" style={{ fontSize: 12 }}>
+            <Text type="warning" className="template-mgmt__warning">
               将此模板设为默认后，评分排名页将默认使用此模板进行排序。
             </Text>
           )}

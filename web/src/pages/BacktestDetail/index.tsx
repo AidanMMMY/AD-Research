@@ -126,8 +126,7 @@ export default function BacktestDetail() {
       dataIndex: 'pnl_pct',
       render: (v: number) => (
         <span
-          className="tabular-nums detail-return-cell"
-          style={{ color: v >= 0 ? 'var(--color-rise)' : 'var(--color-fall)' }}
+          className={`tabular-nums detail-return-cell ${v >= 0 ? 'detail-return-cell--rise' : 'detail-return-cell--fall'}`}
         >
           {v > 0 ? (
             <ArrowUpOutlined className="detail-arrow-icon" aria-label="up" />

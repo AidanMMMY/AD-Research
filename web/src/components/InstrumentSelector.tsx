@@ -110,7 +110,7 @@ export default function InstrumentSelector({
 
   return (
     <div>
-      <div style={{ marginBottom: 8 }}>
+      <div className="instrument-selector__label">
         选择标的（{value.length}/{maxCount}）：
       </div>
       <Select
@@ -128,13 +128,13 @@ export default function InstrumentSelector({
         }
       />
       {value.length > 0 && (
-        <div style={{ marginTop: 10 }}>
+        <div className="instrument-selector__tags">
           <Space size={[8, 8]} wrap>
             {value.map((code) => (
-              <ThemeTag key={code} variant="accent" style={{ cursor: 'default' }}>
+              <ThemeTag key={code} variant="accent" className="instrument-selector__tag">
                 {code}
                 <span
-                  style={{ marginLeft: 6, cursor: 'pointer', fontWeight: 500 }}
+                  className="instrument-selector__remove"
                   onClick={() => handleRemoveCode(code)}
                 >
                   ×
@@ -146,25 +146,8 @@ export default function InstrumentSelector({
       )}
 
       {(showPresets || showPoolImport || showClear) && (
-        <div
-          style={{
-            display: 'flex',
-            gap: 12,
-            alignItems: 'flex-start',
-            flexWrap: 'wrap',
-            marginTop: 16,
-          }}
-        >
-          <span
-            style={{
-              flexShrink: 0,
-              color: 'var(--text-secondary)',
-              fontSize: 'var(--text-body-size)',
-              paddingTop: 4,
-            }}
-          >
-            快速选择：
-          </span>
+        <div className="instrument-selector__presets">
+          <span className="instrument-selector__presets-label">快速选择：</span>
           <Space size={[8, 8]} wrap>
             {showPresets &&
               visiblePresetGroups.map((group) => (
@@ -185,7 +168,7 @@ export default function InstrumentSelector({
                     <FolderOpenOutlined /> 从标的池导入
                   </span>
                 }
-                style={{ minWidth: 160 }}
+                className="instrument-selector__pool-select"
                 loading={poolsLoading}
                 onChange={handleSelectPool}
                 options={poolOptions}

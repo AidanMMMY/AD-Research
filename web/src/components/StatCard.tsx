@@ -21,9 +21,8 @@ export default function StatCard({
 }: StatCardProps) {
   return (
     <div
-      className={`stat-card ${onClick ? 'stat-card--clickable' : ''}`}
+      className={`stat-card ${onClick ? 'stat-card--clickable' : ''} ${bordered ? '' : 'stat-card--borderless'}`}
       onClick={onClick}
-      style={{ border: bordered ? undefined : 'none' }}
     >
       <div className="stat-card__inner">
         <div className="stat-card__main">

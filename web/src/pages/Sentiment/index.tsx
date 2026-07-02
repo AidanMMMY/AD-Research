@@ -166,7 +166,7 @@ function heatmapColor(score: number | null, importance: ImportanceLevel | null):
 function PieBreakdown({ row }: { row: SymbolAggregate }) {
   const total = row.bull + row.bear + row.neutral;
   if (total === 0) {
-    return <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>—</span>;
+    return <span className="ad-text-small ad-text-tertiary">—</span>;
   }
   const slices = [
     { label: '多', value: row.bull, color: SENTIMENT_COLORS.positive },
@@ -181,7 +181,7 @@ function PieBreakdown({ row }: { row: SymbolAggregate }) {
   return (
     <Tooltip
       title={
-        <div style={{ fontSize: 12 }}>
+        <div className="ad-tooltip-list">
           <div>多 {(row.bull / total * 100).toFixed(0)}%</div>
           <div>空 {(row.bear / total * 100).toFixed(0)}%</div>
           <div>中 {(row.neutral / total * 100).toFixed(0)}%</div>
@@ -346,7 +346,7 @@ export default function SentimentOverview() {
           value={importanceMin}
           onChange={setImportanceMin}
           options={[1, 2, 3, 4, 5].map((n) => ({ value: n, label: `${n} ★` }))}
-          style={{ width: 90 }}
+          className="phase5c-select--xxs"
         />
         <Input
           allowClear
@@ -354,7 +354,7 @@ export default function SentimentOverview() {
           placeholder="搜索标的代码…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          style={{ width: 220 }}
+          className="phase5c-input--md"
         />
       </FilterToolbar>
 
@@ -363,7 +363,7 @@ export default function SentimentOverview() {
           type="error"
           message="加载情绪数据失败"
           showIcon
-          style={{ marginBottom: 20 }}
+          className="ad-mb-5"
         />
       ) : null}
 
@@ -373,7 +373,7 @@ export default function SentimentOverview() {
           variant="default"
           title={
             <span>
-              <HeartOutlined style={{ marginRight: 6, color: 'var(--accent)' }} />
+              <HeartOutlined className="phase5c-icon-title" />
               全市场情绪热力图
             </span>
           }
@@ -399,7 +399,7 @@ export default function SentimentOverview() {
                   <Tooltip
                     key={row.symbol}
                     title={
-                      <div style={{ fontSize: 12 }}>
+                      <div className="ad-tooltip-list">
                         <div>
                           <strong>{row.symbol}</strong> · {row.market}
                         </div>
@@ -422,8 +422,7 @@ export default function SentimentOverview() {
                       </div>
                       <div className="ad-heatmap-cell__row">
                         <span
-                          className="ad-heatmap-cell__score"
-                          style={{ color: row.label ? SENTIMENT_COLORS[row.label] : 'var(--text-tertiary)' }}
+                          className={`ad-heatmap-cell__score ${row.label ? `ad-heatmap-cell__score--${row.label}` : 'ad-heatmap-cell__score--neutral'}`}
                         >
                           {row.score != null ? row.score.toFixed(2) : '—'}
                         </span>
@@ -455,23 +454,9 @@ export default function SentimentOverview() {
               <EmptyState title="在左侧热力图选择一个标的" />
             ) : (
               <div>
-                <div
-                  style={{
-                    display: 'flex',
-                    alignItems: 'baseline',
-                    justifyContent: 'space-between',
-                    marginBottom: 12,
-                  }}
-                >
+                <div className="ad-detail-score-header">
                   <span
-                    style={{
-                      fontSize: 28,
-                      fontWeight: 700,
-                      color: selected.label
-                        ? SENTIMENT_COLORS[selected.label]
-                        : 'var(--text-primary)',
-                      fontFamily: 'var(--font-mono)',
-                    }}
+                    className={`ad-detail-score-value ${selected.label ? `ad-detail-score-value--${selected.label}` : 'ad-detail-score-value--neutral'}`}
                   >
                     {selected.score != null ? selected.score.toFixed(2) : '—'}
                   </span>
@@ -488,16 +473,10 @@ export default function SentimentOverview() {
                   </Tag>
                 </div>
 
-                <div
-                  style={{
-                    fontSize: 12,
-                    color: 'var(--text-tertiary)',
-                    marginBottom: 8,
-                  }}
-                >
+                <div className="ad-text-small ad-text-tertiary ad-mb-2">
                   14 日情绪曲线
                 </div>
-                <div style={{ marginBottom: 16 }}>
+                <div className="ad-mb-4">
                   <Sparkline
                     data={selected.sparkline}
                     width={240}
@@ -507,21 +486,14 @@ export default function SentimentOverview() {
                 </div>
 
                 <ResponsiveGrid cols={2} gap="sm">
-                  <div style={{ display: 'flex', alignItems: 'center' }}>
+                  <div className="ad-flex ad-items-center">
                     <PieBreakdown row={selected} />
                   </div>
                   <div>
-                    <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>
+                    <div className="ad-text-small ad-text-tertiary">
                       多空比
                     </div>
-                    <div
-                      style={{
-                        fontSize: 14,
-                        color: 'var(--text-primary)',
-                        fontWeight: 500,
-                        marginBottom: 6,
-                      }}
-                    >
+                    <div className="ad-text-primary ad-font-medium ad-mb-2">
                       {selected.bear > 0
                         ? (selected.bull / selected.bear).toFixed(2)
                         : '∞'}
@@ -537,14 +509,8 @@ export default function SentimentOverview() {
                   </div>
                 </ResponsiveGrid>
 
-                <div style={{ marginTop: 16 }}>
-                  <div
-                    style={{
-                      fontSize: 12,
-                      color: 'var(--text-tertiary)',
-                      marginBottom: 8,
-                    }}
-                  >
+                <div className="ad-mt-4">
+                  <div className="ad-text-small ad-text-tertiary ad-mb-2">
                     观点分布
                   </div>
                   <DistributionRadar row={selected} />
@@ -558,7 +524,7 @@ export default function SentimentOverview() {
             variant="default"
             title={
               <span>
-                <FireOutlined style={{ marginRight: 6, color: 'var(--accent)' }} />
+                <FireOutlined className="phase5c-icon-title" />
                 情绪最强烈
               </span>
             }
@@ -569,7 +535,7 @@ export default function SentimentOverview() {
             ) : topMovers.length === 0 ? (
               <EmptyState title="暂无数据" />
             ) : (
-              <Space direction="vertical" size={6} style={{ width: '100%' }}>
+              <Space direction="vertical" size={6} className="ad-w-full">
                 {topMovers.map((row) => (
                   <div
                     key={row.symbol}
@@ -577,20 +543,15 @@ export default function SentimentOverview() {
                     className="ad-mover-row"
                   >
                     {(row.score ?? 0) >= 0 ? (
-                      <ArrowUpOutlined style={{ color: SENTIMENT_COLORS.positive, fontSize: 12 }} />
+                      <ArrowUpOutlined className="ad-mover-arrow--up" />
                     ) : (
-                      <ArrowDownOutlined style={{ color: SENTIMENT_COLORS.negative, fontSize: 12 }} />
+                      <ArrowDownOutlined className="ad-mover-arrow--down" />
                     )}
-                    <span style={{ fontSize: 13, color: 'var(--text-primary)', flex: 1 }}>
+                    <span className="ad-mover-name">
                       {row.symbol}
                     </span>
                     <span
-                      style={{
-                        fontSize: 13,
-                        fontFamily: 'var(--font-mono)',
-                        color: row.label ? SENTIMENT_COLORS[row.label] : 'var(--text-tertiary)',
-                        fontWeight: 500,
-                      }}
+                      className={`ad-mover-score ${row.label ? `ad-mover-score--${row.label}` : 'ad-mover-score--neutral'}`}
                     >
                       {row.score != null ? row.score.toFixed(2) : '—'}
                     </span>

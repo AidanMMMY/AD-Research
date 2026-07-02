@@ -135,7 +135,7 @@ export default function Macro() {
         <Space direction="vertical" size={0}>
           <Text strong>{name}</Text>
           {row.name_en && (
-            <Text type="secondary" style={{ fontSize: 11 }}>
+            <Text type="secondary" className="ad-text-xs">
               {row.name_en}
             </Text>
           )}
@@ -182,7 +182,7 @@ export default function Macro() {
       width: 180,
       render: (t?: string | null) =>
         t ? (
-          <Text type="secondary" style={{ fontSize: 11 }}>
+          <Text type="secondary" className="ad-text-xs">
             {new Date(t).toLocaleString()}
           </Text>
         ) : (
@@ -342,7 +342,7 @@ export default function Macro() {
                   <EmptyState title="暂无历史数据" />
                 )}
                 {series && series.points.length > 0 && (
-                  <div style={{ marginTop: 12, color: 'var(--text-tertiary)', fontSize: 12 }}>
+                  <div className="ad-mt-3 ad-timestamp">
                     共 {series.points.length} 个观测点 · 最近一期：
                     {series.points[series.points.length - 1].period}
                     （{formatValue(series.points[series.points.length - 1].value, series.unit)}）

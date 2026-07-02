@@ -109,7 +109,7 @@ export default function NotificationConfigPage() {
           return (
             <span>
               <ThemeTag variant="default">{platform}</ThemeTag>
-              <span style={{ fontSize: 'var(--text-small-size)', color: 'var(--text-secondary)', marginLeft: 8 }}>
+              <span className="ad-text-small ad-text-secondary ad-ml-2">
                 {v?.webhook_url ? `${v.webhook_url.slice(0, 40)}...` : '-'}
               </span>
             </span>
@@ -119,7 +119,7 @@ export default function NotificationConfigPage() {
           return (
             <span>
               <ThemeTag variant="success">{v?.to_emails}</ThemeTag>
-              <span style={{ fontSize: 'var(--text-small-size)', color: 'var(--text-secondary)', marginLeft: 8 }}>
+              <span className="ad-text-small ad-text-secondary ad-ml-2">
                 {v?.subject_prefix ? `主题: ${v.subject_prefix}` : ''}
               </span>
             </span>
@@ -174,7 +174,7 @@ export default function NotificationConfigPage() {
           }
           type="info"
           showIcon
-          style={{ marginBottom: 'var(--space-4)' }}
+          className="ad-mb-4"
         />
 
         <FilterToolbar total={filteredConfigs.length}>
@@ -281,7 +281,7 @@ export default function NotificationConfigPage() {
                 }
                 type="warning"
                 showIcon
-                style={{ marginBottom: 'var(--space-4)', marginTop: 'var(--space-2)' }}
+                className="ad-mb-4 ad-mt-2"
               />
 
               <Form.Item name="smtp_host" label="SMTP 服务器">

@@ -51,21 +51,15 @@ function changeColor(pct: number | null | undefined): string {
 }
 
 function changeCell(pct: number | null | undefined) {
-  if (pct === null || pct === undefined) return <span style={{ color: 'var(--text-tertiary)' }}>-</span>;
+  if (pct === null || pct === undefined) return <span className="ad-text-tertiary">-</span>;
   const positive = pct >= 0;
   const Icon = positive ? CaretUpOutlined : CaretDownOutlined;
   return (
     <span
-      className="tabular-nums font-mono"
-      style={{
-        color: changeColor(pct),
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: 2,
-        fontWeight: 600,
-      }}
+      className="tabular-nums font-mono ad-change-cell"
+      style={{ color: changeColor(pct) }}
     >
-      <Icon style={{ fontSize: 10 }} />
+      <Icon className="ad-icon-xs" />
       {Math.abs(pct).toFixed(2)}%
     </span>
   );
@@ -170,13 +164,13 @@ function ProductSummary({ section }: ProductSummaryProps) {
         <Statistic
           title={
             <Tooltip title="当日涨幅最大合约">
-              <span style={{ color: 'var(--color-up, #ef232a)' }}>涨幅最大</span>
+              <span className="ad-text-rise">涨幅最大</span>
             </Tooltip>
           }
           value={best_performer?.code ?? '-'}
           suffix={
             best_performer ? (
-              <span style={{ color: changeColor(best_performer.settle_change_pct), marginLeft: 6, fontSize: 14 }}>
+              <span className="ad-statistic-suffix" style={{ color: changeColor(best_performer.settle_change_pct) }}>
                 {best_performer.settle_change_pct !== null && best_performer.settle_change_pct !== undefined
                   ? `${best_performer.settle_change_pct >= 0 ? '+' : ''}${best_performer.settle_change_pct.toFixed(2)}%`
                   : '-'}
@@ -189,13 +183,13 @@ function ProductSummary({ section }: ProductSummaryProps) {
         <Statistic
           title={
             <Tooltip title="当日跌幅最大合约">
-              <span style={{ color: 'var(--color-down, #14b143)' }}>跌幅最大</span>
+              <span className="ad-text-fall">跌幅最大</span>
             </Tooltip>
           }
           value={worst_performer?.code ?? '-'}
           suffix={
             worst_performer ? (
-              <span style={{ color: changeColor(worst_performer.settle_change_pct), marginLeft: 6, fontSize: 14 }}>
+              <span className="ad-statistic-suffix" style={{ color: changeColor(worst_performer.settle_change_pct) }}>
                 {worst_performer.settle_change_pct !== null && worst_performer.settle_change_pct !== undefined
                   ? `${worst_performer.settle_change_pct >= 0 ? '+' : ''}${worst_performer.settle_change_pct.toFixed(2)}%`
                   : '-'}
@@ -238,7 +232,7 @@ function ProductTab({ product, section }: TabContentProps) {
               className="ad-table-card"
               title={
                 <Space>
-                  <CaretUpOutlined style={{ color: 'var(--color-up, #ef232a)' }} />
+                  <CaretUpOutlined className="ad-text-rise" />
                   <span>涨幅榜 TOP 5</span>
                 </Space>
               }
@@ -252,7 +246,7 @@ function ProductTab({ product, section }: TabContentProps) {
               className="ad-table-card"
               title={
                 <Space>
-                  <CaretDownOutlined style={{ color: 'var(--color-down, #14b143)' }} />
+                  <CaretDownOutlined className="ad-text-fall" />
                   <span>跌幅榜 TOP 5</span>
                 </Space>
               }
@@ -296,7 +290,7 @@ export default function Futures() {
       <Space size={6}>
         <span>{PRODUCT_ICON[p]}</span>
         <span>{p}</span>
-        <Tag color={sectionsByProduct[p] ? 'blue' : 'default'} style={{ marginLeft: 4 }}>
+        <Tag color={sectionsByProduct[p] ? 'blue' : 'default'} className="ad-ml-2">
           {sectionsByProduct[p]?.count ?? 0}
         </Tag>
       </Space>

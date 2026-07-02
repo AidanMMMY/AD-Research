@@ -73,17 +73,13 @@ export default function Sparkline({
   if (!data || data.length === 0) {
     return (
       <span
+        className={`sparkline__empty ${className || ''}`}
         style={{
-          display: 'inline-block',
           width,
           height,
-          color: 'var(--text-tertiary)',
-          fontSize: 11,
           lineHeight: `${height}px`,
-          textAlign: 'center',
           ...style,
         }}
-        className={className}
       >
         —
       </span>
@@ -126,8 +122,8 @@ export default function Sparkline({
       height={height}
       viewBox={`0 0 ${width} ${height}`}
       preserveAspectRatio="none"
-      style={{ display: 'inline-block', verticalAlign: 'middle', ...style }}
-      className={className}
+      className={`sparkline ${className || ''}`}
+      style={style}
       aria-label={ariaLabel}
       role={data && data.length >= 2 ? 'img' : undefined}
     >

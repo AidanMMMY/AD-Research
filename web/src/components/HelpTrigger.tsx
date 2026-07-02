@@ -17,32 +17,15 @@ export default function HelpTrigger({
       <Button
         type="text"
         size={buttonSize}
-        className={className}
+        className={`help-trigger help-trigger--${buttonSize} ${className || ''}`}
         onClick={onClick}
+        style={style}
         icon={
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-            <RobotOutlined style={{ fontSize: iconSize, color: 'var(--accent)' }} />
-            <QuestionCircleOutlined style={{ fontSize: iconSize - 2, color: 'var(--text-tertiary)' }} />
+          <span className="help-trigger__icons">
+            <RobotOutlined className="help-trigger__icon-ai" style={{ fontSize: iconSize }} />
+            <QuestionCircleOutlined className="help-trigger__icon-help" style={{ fontSize: iconSize - 2 }} />
           </span>
         }
-        style={{
-          color: 'var(--text-secondary)',
-          padding: size === 'small' ? '0 6px' : '0 8px',
-          height: size === 'small' ? 28 : 32,
-          display: 'inline-flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          borderRadius: 8,
-          ...style,
-        }}
-        onMouseEnter={(e) => {
-          e.currentTarget.style.color = 'var(--text-primary)';
-          e.currentTarget.style.background = 'var(--bg-hover)';
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.color = 'var(--text-secondary)';
-          e.currentTarget.style.background = 'transparent';
-        }}
       />
     </Tooltip>
   );
