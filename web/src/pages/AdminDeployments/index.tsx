@@ -80,11 +80,7 @@ function DeploymentsTable({ data, loading }: { data: DeploymentRun[]; loading: b
         return (
           <Tag
             icon={config.icon}
-            className="admin-deploy-status-tag"
-            style={{
-              color: config.color,
-              borderColor: config.color,
-            }}
+            className={`admin-deploy-status-tag admin-deploy-status-tag--${key}`}
           >
             {key === 'in_progress' ? '运行中' : key === 'success' ? '成功' : key === 'failure' ? '失败' : key}
           </Tag>
@@ -178,10 +174,7 @@ function ServerHealthCard({ container }: { container: ContainerStats }) {
 
   return (
     <div
-      className="admin-server-card"
-      style={{
-        borderColor: isRunning ? undefined : 'var(--color-error)',
-      }}
+      className={`admin-server-card ${!isRunning ? 'admin-server-card--stopped' : ''}`}
     >
       <div className="admin-server-card__header">
         <Badge status={isRunning ? 'success' : 'error'} />
@@ -196,19 +189,13 @@ function ServerHealthCard({ container }: { container: ContainerStats }) {
             title="CPU"
             value={container.cpu_percent}
             suffix="%"
-            valueStyle={{
-              color: 'var(--text-primary)',
-            }}
-          />
+                      />
         </Col>
         <Col span={12}>
           <Statistic
             title="内存"
             value={container.memory_usage.split('/')[0] || '-'}
-            valueStyle={{
-              color: 'var(--text-primary)',
-            }}
-          />
+                      />
         </Col>
       </Row>
 

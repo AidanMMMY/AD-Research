@@ -38,24 +38,13 @@ export default function TermTooltip({
       overlayStyle={{ maxWidth: 320 }}
     >
       <span
-        style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: 4,
-          cursor: 'help',
-          borderBottom: '1px dashed var(--accent-border)',
-          color: 'inherit',
-          ...style,
-        }}
+        className="term-tooltip"
+        style={style}
       >
         {children || term.title}
         {showIcon && (
           <InfoCircleOutlined
-            style={{
-              fontSize: 12,
-              color: 'var(--text-tertiary)',
-              opacity: 0.8,
-            }}
+            className="term-tooltip__icon"
           />
         )}
       </span>

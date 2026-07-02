@@ -8,9 +8,9 @@ import GlassCard from '@/components/GlassCard';
 import ThemeTag from '@/components/ThemeTag';
 
 const SENTIMENT_ICONS: Record<string, React.ReactNode> = {
-  positive: <SmileOutlined style={{ color: 'var(--color-rise)', fontSize: 24 }} />,
-  negative: <FrownOutlined style={{ color: 'var(--color-fall)', fontSize: 24 }} />,
-  neutral: <MehOutlined style={{ color: 'var(--text-tertiary)', fontSize: 24 }} />,
+  positive: <SmileOutlined className="sentiment-icon--positive" />,
+  negative: <FrownOutlined className="sentiment-icon--negative" />,
+  neutral: <MehOutlined className="sentiment-icon--neutral" />,
 };
 
 export default function SentimentDashboard() {
@@ -41,19 +41,19 @@ export default function SentimentDashboard() {
 
   return (
     <div>
-      <h1 style={{ fontSize: 'var(--text-h1-size)', fontWeight: 500, color: 'var(--text-primary)', margin: '0 0 8px', letterSpacing: '-0.03em' }}>情绪看板</h1>
-      <p style={{ margin: '0 0 32px', color: 'var(--text-tertiary)', fontSize: 'var(--text-body-size)' }}>基于新闻情绪分析，评估市场对特定标的的情绪倾向</p>
+      <h1 className="page-header-title">情绪看板</h1>
+      <p className="page-header-description ad-mb-8">基于新闻情绪分析，评估市场对特定标的的情绪倾向</p>
       <AISetupBanner />
       <GlassCard>
-        <div style={{ display: 'flex', gap: 'var(--space-sm)', flexWrap: 'wrap', alignItems: 'center' }}>
+        <div className="phase5c-flex-wrap">
           <Input
             placeholder="标的代码 (如 AAPL.US)"
             value={code}
             onChange={(e) => setCode(e.target.value)}
             onPressEnter={handleLookup}
-            style={{ flex: 1, minWidth: 200 }}
+            className="ad-form-row__grow"
           />
-          <span style={{ fontSize: 'var(--text-small-size)', color: 'var(--text-tertiary)', whiteSpace: 'nowrap' }}>
+          <span className="ad-text-small ad-text-tertiary ad-whitespace-nowrap">
             回溯 {days} 天
           </span>
           <Slider
@@ -61,7 +61,7 @@ export default function SentimentDashboard() {
             max={30}
             value={days}
             onChange={setDays}
-            style={{ width: 120 }}
+            className="ad-slider--sm"
             tooltip={{ formatter: (v) => `${v}天` }}
           />
           <Button
@@ -75,13 +75,13 @@ export default function SentimentDashboard() {
         </div>
       </GlassCard>
 
-      <div style={{ marginTop: 'var(--space-lg)' }}>
+      <div className="ad-mt-5">
         {isLoading ? (
           <Skeleton active paragraph={{ rows: 8 }} />
         ) : !selectedCode ? (
-          <Empty description="输入标的代码开始情绪分析" style={{ marginTop: 60 }} />
+          <Empty description="输入标的代码开始情绪分析" className="ad-mt-9" />
         ) : !sentiment ? (
-          <Empty description={`暂无 ${selectedCode} 的情绪数据。请等待新闻抓取完成后重试`} style={{ marginTop: 60 }} />
+          <Empty description={`暂无 ${selectedCode} 的情绪数据。请等待新闻抓取完成后重试`} className="ad-mt-9" />
         ) : (
           <SentimentCard sentiment={sentiment} />
         )}
@@ -92,9 +92,6 @@ export default function SentimentDashboard() {
 
 function SentimentCard({ sentiment }: { sentiment: SentimentAggregate }) {
   const scorePct = ((sentiment.avg_score + 1) / 2) * 100; // map -1..1 to 0..100
-  const color =
-    sentiment.label === 'positive' ? 'var(--color-rise)' :
-    sentiment.label === 'negative' ? 'var(--color-fall)' : 'var(--text-tertiary)';
 
   const tagVariant =
     sentiment.label === 'positive' ? 'rise' :
@@ -102,25 +99,19 @@ function SentimentCard({ sentiment }: { sentiment: SentimentAggregate }) {
 
   return (
     <GlassCard>
-      <div style={{ textAlign: 'center' }}>
-        <div style={{ fontSize: 'var(--text-small-size)', color: 'var(--text-tertiary)', marginBottom: 'var(--space-xs)' }}>
+      <div className="ad-text-center">
+        <div className="ad-text-small ad-text-tertiary ad-mb-1">
           {sentiment.instrument_code}
         </div>
-        <div style={{ fontSize: 'var(--text-data-xl-size)', marginTop: 'var(--space-xs)' }}>
+        <div className="sentiment-icon-wrapper">
           {SENTIMENT_ICONS[sentiment.label] || SENTIMENT_ICONS.neutral}
         </div>
         <div
-          style={{
-            fontSize: 40,
-            fontWeight: 700,
-            color,
-            fontFamily: "'SF Mono', monospace",
-            marginTop: 'var(--space-xs)',
-          }}
+          className={`sentiment-score-value ${sentiment.label ? `sentiment-score-value--${sentiment.label}` : 'sentiment-score-value--neutral'}`}
         >
           {sentiment.avg_score.toFixed(2)}
         </div>
-        <div style={{ marginTop: 'var(--space-sm)' }}>
+        <div className="ad-mt-2">
           <ThemeTag variant={tagVariant}>
             {sentiment.label === 'positive' ? '看多' :
              sentiment.label === 'negative' ? '看空' : '中性'}
@@ -128,57 +119,32 @@ function SentimentCard({ sentiment }: { sentiment: SentimentAggregate }) {
         </div>
 
         {/* Score bar — flat accent fill */}
-        <div
-          style={{
-            margin: 'var(--space-lg) auto 0',
-            maxWidth: 320,
-            height: 8,
-            borderRadius: 'var(--radius-sm)',
-            background: 'var(--bg-hover)',
-            position: 'relative',
-            overflow: 'hidden',
-          }}
-        >
+        <div className="ad-sentiment-bar">
           <div
-            style={{
-              width: `${scorePct}%`,
-              height: '100%',
-              borderRadius: 'var(--radius-sm)',
-              background: 'var(--accent)',
-            }}
+            className="ad-sentiment-bar__fill"
+            style={{ width: `${scorePct}%` }}
           />
-          <div
-            style={{
-              position: 'absolute',
-              top: -4,
-              left: '50%',
-              width: 2,
-              height: 16,
-              background: 'var(--text-primary)',
-              borderRadius: 1,
-              opacity: 0.3,
-            }}
-          />
+          <div className="ad-sentiment-bar__center" />
         </div>
 
-        <div style={{ display: 'flex', justifyContent: 'center', gap: 'var(--space-lg)', marginTop: 'var(--space-lg)' }}>
+        <div className="ad-flex ad-justify-center ad-gap-5">
           <Tooltip title="正面">
-            <span style={{ color: 'var(--color-rise)', fontSize: 14, fontWeight: 600 }}>
+            <span className="sentiment-count sentiment-count--positive">
               <SmileOutlined /> {sentiment.positive_count}
             </span>
           </Tooltip>
           <Tooltip title="中性">
-            <span style={{ color: 'var(--text-tertiary)', fontSize: 14, fontWeight: 600 }}>
+            <span className="sentiment-count sentiment-count--neutral">
               <MehOutlined /> {sentiment.neutral_count}
             </span>
           </Tooltip>
           <Tooltip title="负面">
-            <span style={{ color: 'var(--color-fall)', fontSize: 14, fontWeight: 600 }}>
+            <span className="sentiment-count sentiment-count--negative">
               <FrownOutlined /> {sentiment.negative_count}
             </span>
           </Tooltip>
         </div>
-        <div style={{ fontSize: 'var(--text-small-size)', color: 'var(--text-tertiary)', marginTop: 'var(--space-sm)' }}>
+        <div className="ad-text-small ad-text-tertiary ad-mt-2">
           共 {sentiment.total_articles} 篇文章 · 近 {sentiment.period_days} 天
         </div>
       </div>

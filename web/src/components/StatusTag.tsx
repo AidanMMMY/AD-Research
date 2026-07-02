@@ -49,14 +49,11 @@ export default function StatusTag({ status }: StatusTagProps) {
 
   return (
     <Tag
+      className="status-tag"
       style={{
-        borderRadius: 'var(--radius-sm)',
-        fontSize: 'var(--text-small-size)',
-        fontWeight: 500,
-        padding: '2px 8px',
         color: config.color,
         background: config.bg,
-        border: `1px solid ${config.border}`,
+        borderColor: config.border,
       }}
     >
       {config.label}

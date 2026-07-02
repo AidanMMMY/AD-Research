@@ -169,7 +169,7 @@ export default function TradingPanel() {
       dataIndex: 'instrument_code',
       key: 'code',
       render: (v: string) => (
-        <span className="font-mono" style={{ fontWeight: 600 }}>{v}</span>
+        <span className="font-mono ad-font-semibold">{v}</span>
       ),
     },
     {
@@ -195,7 +195,7 @@ export default function TradingPanel() {
       dataIndex: 'market_value',
       key: 'mv',
       render: (v: number | null) => (
-        <span className="font-mono" style={{ fontWeight: 600 }}>{fmtUSDT(v)}</span>
+        <span className="font-mono ad-font-semibold">{fmtUSDT(v)}</span>
       ),
     },
     {
@@ -205,7 +205,7 @@ export default function TradingPanel() {
       render: (v: number | null) => {
         const p = fmtPnL(v);
         return (
-          <span className="font-mono" style={{ fontWeight: 600, color: p.color }}>
+          <span className="font-mono ad-font-semibold" style={{ color: p.color }}>
             {p.text}
           </span>
         );
@@ -226,12 +226,7 @@ export default function TradingPanel() {
       dataIndex: 'side',
       key: 'side',
       render: (v: string) => (
-        <span
-          style={{
-            fontWeight: 600,
-            color: v === 'BUY' ? 'var(--color-rise)' : 'var(--color-fall)',
-          }}
-        >
+        <span className={v === 'BUY' ? 'phase5c-order-side--buy' : 'phase5c-order-side--sell'}>
           {v === 'BUY' ? '买入' : '卖出'}
         </span>
       ),
@@ -318,25 +313,25 @@ export default function TradingPanel() {
           {configsLoading ? (
             <Skeleton.Input active size="small" />
           ) : configs.length === 0 ? (
-            <span style={{ color: 'var(--text-tertiary)' }}>
+            <span className="ad-text-tertiary">
               还没有交易配置 — 请先创建
             </span>
           ) : (
             <Select
               value={selectedConfigId}
               onChange={setSelectedConfigId}
-              style={{ minWidth: 200 }}
+              className="phase5c-select-min"
               options={configs.map((c) => ({
                 value: c.id,
                 label: (
                   <Space>
                     <span>{c.name}</span>
                     {c.is_testnet ? (
-                      <ThemeTag variant="warning" style={{ fontSize: 10 }}>
+                      <ThemeTag variant="warning" className="phase5c-tag-xs">
                         TESTNET
                       </ThemeTag>
                     ) : (
-                      <ThemeTag variant="error" style={{ fontSize: 10 }}>
+                      <ThemeTag variant="error" className="phase5c-tag-xs">
                         LIVE
                       </ThemeTag>
                     )}
@@ -379,7 +374,6 @@ export default function TradingPanel() {
                 value={risk?.orders_today ?? 0}
                 suffix={`/ ${selectedConfig.max_daily_orders}`}
                 loading={riskLoading}
-                valueStyle={{ fontFamily: 'var(--font-mono)' }}
               />
             </Card>
             <Card size="small" className="phase5c-trading-card">
@@ -388,26 +382,18 @@ export default function TradingPanel() {
                 value={selectedConfig.max_order_value}
                 prefix="$"
                 loading={configsLoading}
-                valueStyle={{ fontFamily: 'var(--font-mono)' }}
               />
             </Card>
             <Card size="small" className="phase5c-trading-card">
-              <Statistic
-                title="今日已实现"
-                value={risk?.realized_pnl_today ? parseFloat(risk.realized_pnl_today) : 0}
-                precision={2}
-                prefix="$"
-                loading={riskLoading}
-                valueStyle={{
-                  fontFamily: 'var(--font-mono)',
-                  color:
-                    risk && parseFloat(risk.realized_pnl_today) > 0
-                      ? 'var(--color-rise)'
-                      : risk && parseFloat(risk.realized_pnl_today) < 0
-                        ? 'var(--color-fall)'
-                        : undefined,
-                }}
-              />
+              <div className={risk && parseFloat(risk.realized_pnl_today) > 0 ? 'phase5c-pnl-stat--rise' : risk && parseFloat(risk.realized_pnl_today) < 0 ? 'phase5c-pnl-stat--fall' : 'phase5c-pnl-stat--neutral'}>
+                <Statistic
+                  title="今日已实现"
+                  value={risk?.realized_pnl_today ? parseFloat(risk.realized_pnl_today) : 0}
+                  precision={2}
+                  prefix="$"
+                  loading={riskLoading}
+                />
+              </div>
             </Card>
             <Card size="small" className="phase5c-trading-card">
               <div className="phase5c-flex-center">
@@ -474,7 +460,7 @@ export default function TradingPanel() {
           <Panel variant="default" className="phase5c-section">
             <div className="phase5c-table-wrap">
               {positionsLoading ? (
-                <Skeleton active paragraph={{ rows: 5 }} style={{ padding: 16 }} />
+                <Skeleton active paragraph={{ rows: 5 }} className="phase5c-skeleton-pad" />
               ) : positions && positions.length > 0 ? (
                 <Table
                   columns={positionColumns}
@@ -496,7 +482,7 @@ export default function TradingPanel() {
           <Panel variant="default">
             <div className="phase5c-table-wrap">
               {ordersLoading ? (
-                <Skeleton active paragraph={{ rows: 5 }} style={{ padding: 16 }} />
+                <Skeleton active paragraph={{ rows: 5 }} className="phase5c-skeleton-pad" />
               ) : orders && orders.length > 0 ? (
                 <Table
                   columns={orderColumns}
@@ -548,13 +534,13 @@ export default function TradingPanel() {
             <Switch />
           </Form.Item>
           <Form.Item name="max_order_value" label="单笔最大金额 (USDT)">
-            <InputNumber min={0} style={{ width: '100%' }} />
+            <InputNumber min={0} className="phase5c-form-input--full" />
           </Form.Item>
           <Form.Item name="max_daily_loss" label="每日最大亏损 (USDT)">
-            <InputNumber min={0} style={{ width: '100%' }} />
+            <InputNumber min={0} className="phase5c-form-input--full" />
           </Form.Item>
           <Form.Item name="max_daily_orders" label="每日最多下单次数">
-            <InputNumber min={1} max={1000} style={{ width: '100%' }} />
+            <InputNumber min={1} max={1000} className="phase5c-form-input--full" />
           </Form.Item>
         </Form>
       </Modal>
@@ -596,10 +582,10 @@ export default function TradingPanel() {
             />
           </Form.Item>
           <Form.Item name="quantity" label="数量" rules={[{ required: true }]}>
-            <InputNumber min={0.00000001} step={0.001} style={{ width: '100%' }} />
+            <InputNumber min={0.00000001} step={0.001} className="phase5c-form-input--full" />
           </Form.Item>
           <Form.Item name="price" label="限价 (市价单留空)">
-            <InputNumber min={0} style={{ width: '100%' }} placeholder="市价" />
+            <InputNumber min={0} className="phase5c-form-input--full" placeholder="市价" />
           </Form.Item>
         </Form>
       </Modal>

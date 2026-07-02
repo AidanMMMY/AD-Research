@@ -181,13 +181,7 @@ export default function Dashboard() {
       width: 70,
       render: (v: number) => (
         <span
-          className="tabular-nums"
-          style={{
-            fontSize: 'var(--text-body-size)',
-            fontWeight: v <= 3 ? 700 : 500,
-            color: v <= 3 ? 'var(--accent)' : 'var(--text-secondary)',
-            fontFamily: 'var(--font-mono)',
-          }}
+          className={`tabular-nums dashboard-rank-cell ${v <= 3 ? 'dashboard-rank-cell--top3' : 'dashboard-rank-cell--normal'}`}
         >
           {v}
         </span>
@@ -216,9 +210,9 @@ export default function Dashboard() {
       width: 60,
       render: (_: unknown, record: any) =>
         record.return_1m >= 0 ? (
-          <ArrowUpOutlined style={{ color: 'var(--color-rise)', fontSize: 'var(--text-body-size)' }} />
+          <ArrowUpOutlined className="ad-icon-rise" />
         ) : (
-          <ArrowDownOutlined style={{ color: 'var(--color-fall)', fontSize: 'var(--text-body-size)' }} />
+          <ArrowDownOutlined className="ad-icon-fall" />
         ),
     },
   ];
@@ -313,7 +307,7 @@ export default function Dashboard() {
           variant="default"
           title={
             <span>
-              <FireOutlined style={{ marginRight: 'var(--space-1-5)', color: 'var(--accent)' }} />
+              <FireOutlined className="ad-icon-accent" />
               今日热点
             </span>
           }
@@ -338,7 +332,7 @@ export default function Dashboard() {
           variant="default"
           title={
             <span>
-              <ReadOutlined style={{ marginRight: 'var(--space-1-5)' }} />
+              <ReadOutlined className="ad-icon-leading" />
               自选股动态
             </span>
           }
@@ -402,7 +396,7 @@ export default function Dashboard() {
             }
           >
             {favLoading ? (
-              <div style={{ textAlign: 'center', padding: 'var(--space-7) 0' }}>
+              <div className="ad-text-center ad-py-7">
                 <Spin />
               </div>
             ) : favCount === 0 ? (
@@ -427,7 +421,7 @@ export default function Dashboard() {
                       description={
                         <div className="dashboard-favorite-item__desc">
                           <span>{item.category}</span>
-                          <span style={{ color: 'var(--text-muted)' }}>|</span>
+                          <span className="ad-text-muted">|</span>
                           <span>{item.market}</span>
                         </div>
                       }
@@ -450,7 +444,7 @@ export default function Dashboard() {
             }
           >
             {poolsLoading ? (
-              <div style={{ textAlign: 'center', padding: 'var(--space-7) 0' }}>
+              <div className="ad-text-center ad-py-7">
                 <Spin />
               </div>
             ) : (pools?.length || 0) === 0 ? (
@@ -469,7 +463,7 @@ export default function Dashboard() {
                     <List.Item.Meta
                       title={
                         <div className="dashboard-pool-item__title">
-                          <FolderOpenOutlined style={{ color: 'var(--accent)', fontSize: 'var(--text-body-size)' }} />
+                          <FolderOpenOutlined className="ad-icon-accent" />
                           <span className="dashboard-pool-item__name">{pool.name}</span>
                         </div>
                       }
@@ -478,7 +472,7 @@ export default function Dashboard() {
                           <span>{pool.members?.length || 0} 只标的</span>
                           {pool.description && (
                             <>
-                              <span style={{ color: 'var(--text-muted)' }}>|</span>
+                              <span className="ad-text-muted">|</span>
                               <span>{pool.description}</span>
                             </>
                           )}

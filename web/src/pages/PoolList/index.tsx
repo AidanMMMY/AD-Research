@@ -73,7 +73,6 @@ export default function PoolList() {
           scroll={{ x: 'max-content' }}
           onRow={(record) => ({
             onClick: () => navigate(`/pools/${record.id}`),
-            style: { cursor: 'pointer' },
           })}
           pagination={false}
         />

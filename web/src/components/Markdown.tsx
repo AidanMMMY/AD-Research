@@ -8,14 +8,7 @@ import remarkGfm from 'remark-gfm';
  */
 export default function Markdown({ source }: { source: string }) {
   return (
-    <div
-      style={{
-        fontSize: 15,
-        lineHeight: 1.7,
-        color: 'var(--text-primary)',
-        wordBreak: 'break-word',
-      }}
-    >
+    <div className="ad-markdown">
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         components={{

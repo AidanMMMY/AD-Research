@@ -59,7 +59,7 @@ export interface RouteConfig {
 }
 
 const wrap = (Component: React.ComponentType) => (
-  <Suspense fallback={<div style={{ padding: 40, textAlign: 'center' }}>加载中...</div>}>
+  <Suspense fallback={<div className="route-suspense">加载中...</div>}>
     <Component />
   </Suspense>
 );

@@ -108,7 +108,7 @@ export default function ReportBrowser() {
       )}
 
       {selectedReport?.status === 'done' && (
-        <Panel title={`报告预览: ${selectedReport.report_type} (${selectedReport.report_date})`} style={{ marginTop: 'var(--space-5)' }}>
+        <Panel title={`报告预览: ${selectedReport.report_type} (${selectedReport.report_date})`} className="ad-mt-5">
           <iframe
             className="ad-preview-frame"
             src={reportApi.downloadUrl(selectedReport.id)}

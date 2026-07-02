@@ -75,8 +75,8 @@ export default function ResearchNotes() {
             value={code}
             onChange={(e) => setCode(e.target.value)}
             onPressEnter={handleGenerate}
-            style={{ flex: 1, minWidth: 200 }}
-            prefix={<ThunderboltOutlined style={{ color: 'var(--accent)' }} />}
+            className="ad-form-row__grow"
+            prefix={<ThunderboltOutlined className="phase5c-icon-accent" />}
           />
           <Button
             type="primary"
@@ -89,7 +89,7 @@ export default function ResearchNotes() {
           <Select
             placeholder="类型筛选"
             allowClear
-            style={{ width: 140 }}
+            className="phase5c-select--sm"
             value={noteType}
             options={NOTE_TYPE_OPTIONS}
             onChange={setNoteType}
@@ -159,7 +159,7 @@ export default function ResearchNotes() {
         onCancel={() => setModalNote(null)}
         footer={null}
         width={720}
-        styles={{ body: { maxHeight: '70vh', overflow: 'auto' } }}
+        className="phase5c-markdown-modal"
       >
         {modalNote && (
           <div className="markdown-body phase5c-markdown-body">

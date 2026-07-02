@@ -142,22 +142,22 @@ export default function BacktestList() {
             />
           </Form.Item>
           <Form.Item name="start_date" label="开始日期" rules={[{ required: true }]} initialValue={dayjs().subtract(1, 'year')}>
-            <DatePicker style={{ width: '100%' }} />
+            <DatePicker className="phase5c-form-input--full" />
           </Form.Item>
           <Form.Item name="end_date" label="结束日期" rules={[{ required: true }]} initialValue={dayjs()}>
-            <DatePicker style={{ width: '100%' }} />
+            <DatePicker className="phase5c-form-input--full" />
           </Form.Item>
           <Form.Item name="initial_capital" label="初始资金" initialValue={100000}>
-            <InputNumber style={{ width: '100%' }} min={10000} step={10000} />
+            <InputNumber className="phase5c-form-input--full" min={10000} step={10000} />
           </Form.Item>
           <Form.Item name="commission_rate" label="交易成本（单边，默认千1）" initialValue={0.001}>
-            <InputNumber style={{ width: '100%' }} min={0} max={0.5} step={0.0005} precision={4} />
+            <InputNumber className="phase5c-form-input--full" min={0} max={0.5} step={0.0005} precision={4} />
           </Form.Item>
           <Form.Item name="slippage_rate" label="滑点（单边，默认千1）" initialValue={0.001}>
-            <InputNumber style={{ width: '100%' }} min={0} max={0.5} step={0.0005} precision={4} />
+            <InputNumber className="phase5c-form-input--full" min={0} max={0.5} step={0.0005} precision={4} />
           </Form.Item>
           <Form.Item name="position_size" label="仓位比例（0-1，默认全仓）" initialValue={1.0}>
-            <InputNumber style={{ width: '100%' }} min={0} max={1} step={0.05} precision={2} />
+            <InputNumber className="phase5c-form-input--full" min={0} max={1} step={0.05} precision={2} />
           </Form.Item>
         </Form>
       </Modal>

@@ -201,7 +201,7 @@ export default function AIChat() {
           <Empty
             description="选择一个对话或创建新对话"
             className="phase5c-empty-robot"
-            image={<RobotOutlined style={{ fontSize: 48, color: 'var(--text-tertiary)' }} />}
+            image={<RobotOutlined className="phase5c-empty-icon" />}
           />
         ) : messagesLoading ? (
           <Skeleton active paragraph={{ rows: 6 }} />
@@ -247,12 +247,12 @@ export default function AIChat() {
               access to news/sentiment data and surfaces a clickable tag to
               jump to the sentiment dashboard. */}
           <div className="phase5c-quick-prompts">
-            <HeartOutlined style={{ color: 'var(--color-rise)' }} />
+            <HeartOutlined className="phase5c-icon-rise" />
             <span>AI 可访问资讯与情绪数据：</span>
             {QUICK_PROMPTS.map((s) => (
               <Tag
                 key={s.label}
-                style={{ cursor: 'pointer', fontSize: 11, margin: 0 }}
+                className="phase5c-quick-tag"
                 onClick={() => setInput(s.prompt)}
               >
                 {s.label}
@@ -262,7 +262,7 @@ export default function AIChat() {
             <Tag
               icon={<HeartOutlined />}
               color="default"
-              style={{ cursor: 'pointer', margin: 0, fontSize: 11 }}
+              className="phase5c-quick-tag"
               onClick={() => navigate('/sentiment')}
             >
               打开情绪看板

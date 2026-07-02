@@ -200,7 +200,7 @@ export default function PaperTrading() {
       dataIndex: 'market_value',
       key: 'mv',
       render: (v: number | null) => (
-        <span className="font-mono" style={{ fontWeight: 600 }}>{fmtUSDT(v)}</span>
+        <span className="font-mono ad-font-semibold">{fmtUSDT(v)}</span>
       ),
     },
     {
@@ -211,7 +211,7 @@ export default function PaperTrading() {
         const p = fmtPnL(v);
         const pct = fmtPercent(r.pnl_pct);
         return (
-          <span className="font-mono" style={{ fontWeight: 600, color: p.color }}>
+          <span className="font-mono ad-font-semibold" style={{ color: p.color }}>
             {p.text} ({pct.text})
           </span>
         );
@@ -244,12 +244,7 @@ export default function PaperTrading() {
       dataIndex: 'order_type',
       key: 'type',
       render: (v: string) => (
-        <span
-          style={{
-            fontWeight: 600,
-            color: v === 'BUY' ? 'var(--color-rise)' : 'var(--color-fall)',
-          }}
-        >
+        <span className={v === 'BUY' ? 'phase5c-order-side--buy' : 'phase5c-order-side--sell'}>
           {v === 'BUY' ? '买入' : '卖出'}
         </span>
       ),
@@ -277,13 +272,13 @@ export default function PaperTrading() {
       dataIndex: 'status',
       key: 'status',
       render: (v: string) => {
-        const colorMap: Record<string, string> = {
-          filled: 'var(--color-rise)',
-          pending: 'var(--accent)',
-          cancelled: 'var(--text-tertiary)',
-          rejected: 'var(--color-fall)',
+        const classMap: Record<string, string> = {
+          filled: 'phase5c-status--filled',
+          pending: 'phase5c-status--pending',
+          cancelled: 'phase5c-status--cancelled',
+          rejected: 'phase5c-status--rejected',
         };
-        return <span style={{ color: colorMap[v] || 'var(--text-secondary)' }}>{v}</span>;
+        return <span className={classMap[v] || 'ad-text-secondary'}>{v}</span>;
       },
     },
   ];
@@ -319,13 +314,13 @@ export default function PaperTrading() {
           <Select
             value={selectedAccountId}
             onChange={setSelectedAccountId}
-            style={{ minWidth: 260 }}
+            className="phase5c-select--lg"
             options={accounts.map((a) => ({
               value: a.id,
               label: (
                 <span>
                   {a.name}
-                  <span className="font-mono" style={{ marginLeft: 8, color: 'var(--text-tertiary)' }}>
+                  <span className="font-mono ad-ml-2 ad-text-tertiary">
                     {fmtUSDT(a.total_value || a.cash)}
                   </span>
                 </span>
@@ -346,7 +341,6 @@ export default function PaperTrading() {
                 precision={2}
                 prefix="$"
                 loading={pnlLoading && accountLoading}
-                valueStyle={{ fontFamily: 'var(--font-mono)', fontWeight: 600 }}
               />
             </Card>
             <Card size="small" className="phase5c-trading-card">
@@ -356,7 +350,6 @@ export default function PaperTrading() {
                 precision={2}
                 prefix="$"
                 loading={accountLoading}
-                valueStyle={{ fontFamily: 'var(--font-mono)' }}
               />
             </Card>
             <Card size="small" className="phase5c-trading-card">
@@ -366,39 +359,20 @@ export default function PaperTrading() {
                 precision={2}
                 prefix="$"
                 loading={pnlLoading}
-                valueStyle={{ fontFamily: 'var(--font-mono)' }}
               />
             </Card>
             <Card size="small" className="phase5c-trading-card">
-              <Statistic
-                title="总盈亏"
-                value={pnl?.total_pnl ?? 0}
-                precision={2}
-                prefix={pnl && pnl.total_pnl >= 0 ? '+$' : '-$'}
-                loading={pnlLoading}
-                valueStyle={{
-                  fontFamily: 'var(--font-mono)',
-                  fontWeight: 600,
-                  color:
-                    pnl && pnl.total_pnl > 0
-                      ? 'var(--color-rise)'
-                      : pnl && pnl.total_pnl < 0
-                        ? 'var(--color-fall)'
-                        : undefined,
-                }}
-              />
+              <div className={pnl && pnl.total_pnl > 0 ? 'phase5c-pnl-stat--rise' : pnl && pnl.total_pnl < 0 ? 'phase5c-pnl-stat--fall' : 'phase5c-pnl-stat--neutral'}>
+                <Statistic
+                  title="总盈亏"
+                  value={pnl?.total_pnl ?? 0}
+                  precision={2}
+                  prefix={pnl && pnl.total_pnl >= 0 ? '+$' : '-$'}
+                  loading={pnlLoading}
+                />
+              </div>
               {pnl?.pnl_pct != null && (
-                <div
-                  style={{
-                    fontSize: 'var(--text-small-size)',
-                    color:
-                      pnl.pnl_pct > 0
-                        ? 'var(--color-rise)'
-                        : pnl.pnl_pct < 0
-                          ? 'var(--color-fall)'
-                          : 'var(--text-tertiary)',
-                  }}
-                >
+                <div className={pnl.pnl_pct > 0 ? 'phase5c-pnl-pct--rise' : pnl.pnl_pct < 0 ? 'phase5c-pnl-pct--fall' : 'phase5c-pnl-pct--neutral'}>
                   {pnl.pnl_pct >= 0 ? '+' : ''}
                   {pnl.pnl_pct.toFixed(2)}%
                 </div>
@@ -409,10 +383,9 @@ export default function PaperTrading() {
                 title="交易次数"
                 value={pnl?.trade_count ?? 0}
                 loading={pnlLoading}
-                valueStyle={{ fontFamily: 'var(--font-mono)' }}
               />
               {pnl?.win_rate != null && (
-                <div style={{ fontSize: 'var(--text-small-size)', color: 'var(--text-tertiary)' }}>
+                <div className="ad-text-small ad-text-tertiary">
                   胜率: {(pnl.win_rate * 100).toFixed(0)}%
                 </div>
               )}
@@ -456,7 +429,7 @@ export default function PaperTrading() {
           <Panel variant="default" className="phase5c-section">
             <div className="phase5c-table-wrap">
               {positionsLoading ? (
-                <Skeleton active paragraph={{ rows: 5 }} style={{ padding: 16 }} />
+                <Skeleton active paragraph={{ rows: 5 }} className="phase5c-skeleton-pad" />
               ) : positions && positions.length > 0 ? (
                 <Table
                   columns={positionColumns}
@@ -478,7 +451,7 @@ export default function PaperTrading() {
           <Panel variant="default">
             <div className="phase5c-table-wrap">
               {ordersLoading ? (
-                <Skeleton active paragraph={{ rows: 5 }} style={{ padding: 16 }} />
+                <Skeleton active paragraph={{ rows: 5 }} className="phase5c-skeleton-pad" />
               ) : orders && orders.items.length > 0 ? (
                 <Table
                   columns={orderColumns}
@@ -523,7 +496,7 @@ export default function PaperTrading() {
             label="初始资金 (USDT)"
             rules={[{ required: true, message: '请输入初始资金' }]}
           >
-            <InputNumber min={100} max={10000000} style={{ width: '100%' }} />
+            <InputNumber min={100} max={10000000} className="phase5c-form-input--full" />
           </Form.Item>
         </Form>
       </Modal>
@@ -565,10 +538,10 @@ export default function PaperTrading() {
             label="数量"
             rules={[{ required: true, message: '请输入数量' }]}
           >
-            <InputNumber min={0.00000001} step={0.001} style={{ width: '100%' }} />
+            <InputNumber min={0.00000001} step={0.001} className="phase5c-form-input--full" />
           </Form.Item>
           <Form.Item name="price" label="限价 (留空则市价成交)">
-            <InputNumber min={0} style={{ width: '100%' }} placeholder="市价" />
+            <InputNumber min={0} className="phase5c-form-input--full" placeholder="市价" />
           </Form.Item>
         </Form>
       </Modal>

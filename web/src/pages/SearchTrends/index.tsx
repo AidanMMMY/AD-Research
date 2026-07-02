@@ -163,7 +163,7 @@ export default function SearchTrendsPage() {
               key: 'list',
               label: '历史明细',
               children: (
-                <Space direction="vertical" style={{ width: '100%' }} size="middle">
+                <Space direction="vertical" className="ad-stack-full" size="middle">
                   <FilterToolbar total={listData?.total}>
                     <Select
                       placeholder="来源"
@@ -217,7 +217,7 @@ export default function SearchTrendsPage() {
               key: 'compare',
               label: '关键词对比',
               children: (
-                <Space direction="vertical" style={{ width: '100%' }} size="middle">
+                <Space direction="vertical" className="ad-stack-full" size="middle">
                   <FilterToolbar>
                     <Input
                       placeholder="输入关键词 (如 上证指数)"

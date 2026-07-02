@@ -80,7 +80,7 @@ export default function CorrelationAnalysis() {
             description="请至少选择2只标的进行分析"
           />
         ) : isLoading ? (
-          <Spin size="large" style={{ display: 'block', margin: 'var(--space-8) auto' }} />
+          <Spin size="large" className="ad-spin-center" />
         ) : correlationData ? (
           <div className="ad-chart-container">
             <CorrelationHeatmap codes={correlationData.codes} matrix={correlationData.matrix} />

@@ -19,8 +19,6 @@ const SENTIMENT_LABELS: Record<SentimentLabel, string> = {
   negative: '看空',
 };
 
-const IMPORTANCE_COLOR = 'var(--color-warning-bright)';
-
 export interface NewsListPanelProps {
   /** Stock / ETF / crypto code to filter by. */
   symbol: string;
@@ -73,29 +71,13 @@ export default function NewsListPanel({ symbol, limit = 10, bare = false }: News
         const filled = a.importance ? Math.max(0, Math.min(5, a.importance)) : 0;
         return (
           <List.Item
-            style={{ padding: '12px 0', cursor: 'pointer' }}
+            className="news-list-panel__item"
             onClick={() => navigate(`/news/${a.id}`)}
           >
             <List.Item.Meta
               title={
-                <div
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 8,
-                    fontSize: 13,
-                    color: 'var(--text-primary)',
-                    lineHeight: 1.5,
-                  }}
-                >
-                  <span
-                    style={{
-                      flex: 1,
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap',
-                    }}
-                  >
+                <div className="news-list-panel__title-row">
+                  <span className="news-list-panel__title-text">
                     {a.title}
                   </span>
                   {a.sentiment_label && (
@@ -103,11 +85,8 @@ export default function NewsListPanel({ symbol, limit = 10, bare = false }: News
                       color={SENTIMENT_COLORS[a.sentiment_label]}
                       text={
                         <span
-                          style={{
-                            fontSize: 11,
-                            color: SENTIMENT_COLORS[a.sentiment_label],
-                            fontWeight: 500,
-                          }}
+                          className="news-list-panel__badge-text"
+                          style={{ color: SENTIMENT_COLORS[a.sentiment_label] }}
                         >
                           {SENTIMENT_LABELS[a.sentiment_label]}
                         </span>
@@ -117,46 +96,31 @@ export default function NewsListPanel({ symbol, limit = 10, bare = false }: News
                 </div>
               }
               description={
-                <div
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 8,
-                    marginTop: 4,
-                    flexWrap: 'wrap',
-                  }}
-                >
-                  <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>
-                    {a.source}
-                  </span>
-                  <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>·</span>
+                <div className="news-list-panel__meta">
+                  <span className="news-list-panel__meta-text">{a.source}</span>
+                  <span className="news-list-panel__meta-dot">·</span>
                   <Tooltip title={dayjs(a.published_at).format('YYYY-MM-DD HH:mm')}>
-                    <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>
+                    <span className="news-list-panel__meta-text">
                       {formatRelative(a.published_at)}
                     </span>
                   </Tooltip>
                   {a.importance && (
-                    <span style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>
+                    <span className="news-list-panel__importance">
                       {Array.from({ length: 5 }).map((_, i) => (
                         <StarFilled
                           key={i}
-                          style={{
-                            color: i < filled ? IMPORTANCE_COLOR : 'var(--text-muted)',
-                            opacity: i < filled ? 1 : 0.4,
-                            fontSize: 9,
-                            marginRight: 1,
-                          }}
+                          className={`news-list-panel__star ${i < filled ? 'news-list-panel__star--filled' : 'news-list-panel__star--empty'}`}
                         />
                       ))}
                     </span>
                   )}
                   {a.event_category && (
-                    <Tag style={{ margin: 0, fontSize: 10 }}>{a.event_category}</Tag>
+                    <Tag className="news-list-panel__category">{a.event_category}</Tag>
                   )}
-                  <span style={{ flex: 1 }} />
+                  <span className="news-list-panel__spacer" />
                   <Tooltip title="原文">
                     <LinkOutlined
-                      style={{ fontSize: 12, color: 'var(--text-tertiary)' }}
+                      className="news-list-panel__link"
                       onClick={(e) => {
                         e.stopPropagation();
                         window.open(a.url, '_blank', 'noopener,noreferrer');
@@ -180,7 +144,7 @@ export default function NewsListPanel({ symbol, limit = 10, bare = false }: News
       title="相关新闻"
       extra={
         <span
-          style={{ fontSize: 12, color: 'var(--text-tertiary)', cursor: 'pointer' }}
+          className="news-list-panel__extra"
           onClick={() => navigate(`/news?symbol=${encodeURIComponent(symbol)}`)}
         >
           查看全部 →
@@ -196,7 +160,7 @@ export default function NewsListPanel({ symbol, limit = 10, bare = false }: News
 /** Tiny inline loader wrapper for direct embed (no panel chrome). */
 export function NewsListLoading() {
   return (
-    <div style={{ textAlign: 'center', padding: 40 }}>
+    <div className="news-list-panel__loader">
       <Spin />
     </div>
   );

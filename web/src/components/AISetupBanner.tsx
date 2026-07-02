@@ -35,9 +35,9 @@ export default function AISetupBanner({ onlyWhenUnavailable = true }: AISetupBan
           <div className="ai-setup-banner__message">
             <span>
               <strong>AI 功能未配置</strong>
-              <span style={{ color: 'var(--text-secondary)', marginLeft: 8 }}>
-                当前模型 <ThemeTag variant="neutral" style={{ margin: '0 4px' }}>{status.provider} / {status.model}</ThemeTag>
-                预估成本 <ThemeTag variant="success" style={{ margin: '0 4px' }}>{status.monthly_cost_estimate}</ThemeTag>
+              <span className="ai-setup-banner__muted">
+                当前模型 <ThemeTag variant="neutral" className="ai-setup-banner__tag">{status.provider} / {status.model}</ThemeTag>
+                预估成本 <ThemeTag variant="success" className="ai-setup-banner__tag">{status.monthly_cost_estimate}</ThemeTag>
               </span>
             </span>
             <Button
@@ -69,7 +69,7 @@ export default function AISetupBanner({ onlyWhenUnavailable = true }: AISetupBan
       className="ai-setup-banner ai-setup-banner__info"
       message={
         <span>
-          AI 已就绪 — 使用 <ThemeTag variant="neutral" style={{ margin: '0 4px' }}>{status.provider} {status.model}</ThemeTag>
+          AI 已就绪 — 使用 <ThemeTag variant="neutral" className="ai-setup-banner__tag">{status.provider} {status.model}</ThemeTag>
         </span>
       }
     />

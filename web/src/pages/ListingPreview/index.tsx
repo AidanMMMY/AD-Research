@@ -65,7 +65,7 @@ function StatusChip({ status, count, active, onClick }: StatusChipProps) {
       onClick={onClick}
       className={`ad-status-chip ${active ? 'ad-status-chip--active' : ''}`}
     >
-      <Tag color={STATUS_COLOR[status]} style={{ margin: 0 }}>
+      <Tag color={STATUS_COLOR[status]} className="ad-detail-tag">
         {STATUS_LABEL[status]}
       </Tag>
       <span className="tabular-nums">{count}</span>

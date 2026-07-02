@@ -32,21 +32,7 @@ export default function StrategyCard({
   return (
     <Card
       hoverable
-      style={{
-        background: 'var(--surface-elevated)',
-        border: '1px solid var(--border-default)',
-        borderRadius: 'var(--radius-md)',
-        height: '100%', // fill the grid row (set via gridAutoRows: '1fr' on parent)
-        display: 'flex',
-        flexDirection: 'column',
-      }}
-      bodyStyle={{
-        padding: 'var(--space-md)',
-        display: 'flex',
-        flexDirection: 'column',
-        flex: 1,
-        gap: 12,
-      }}
+      className="strategy-card"
       actions={[
         <Button
           key="create"
@@ -74,28 +60,17 @@ export default function StrategyCard({
         </Button>,
       ]}
     >
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
-        <h3
-          style={{
-            margin: 0,
-            fontSize: 'var(--text-h3-size)',
-            fontWeight: 500,
-            color: 'var(--text-primary)',
-          }}
-        >
-          {strategy.name}
-        </h3>
+      <div className="strategy-card__header">
+        <h3 className="strategy-card__title">{strategy.name}</h3>
         <ThemeTag variant="accent">{FAMILY_LABELS[strategy.family] || strategy.family}</ThemeTag>
       </div>
-      <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: 'var(--text-body-size)' }}>
-        {strategy.description}
-      </p>
-      <div style={{ flex: 1, minHeight: 0 }}>
+      <p className="strategy-card__description">{strategy.description}</p>
+      <div className="strategy-card__params">
         {paramEntries.length > 0 && (
-          <Descriptions size="small" column={2} style={{ marginBottom: 0 }}>
+          <Descriptions size="small" column={2} className="strategy-card__params-list">
             {paramEntries.slice(0, 4).map(([key, spec]) => (
               <Descriptions.Item key={key} label={spec.label}>
-                <Tag style={{ background: 'var(--surface-default)', borderColor: 'var(--border-default)' }}>
+                <Tag className="strategy-card__param-tag">
                   {String(spec.default)}
                 </Tag>
               </Descriptions.Item>
@@ -103,9 +78,7 @@ export default function StrategyCard({
           </Descriptions>
         )}
         {paramEntries.length > 4 && (
-          <p style={{ margin: '8px 0 0', color: 'var(--text-tertiary)', fontSize: 12 }}>
-            等 {paramEntries.length} 个参数
-          </p>
+          <p className="strategy-card__more">等 {paramEntries.length} 个参数</p>
         )}
       </div>
     </Card>

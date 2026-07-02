@@ -192,13 +192,7 @@ export default function AppLayout() {
           width={260}
           closable={false}
         >
-          <div
-            style={{
-              display: 'flex',
-              flexDirection: 'column',
-              height: '100%',
-            }}
-          >
+          <div className="app-layout__mobile-drawer">
             <SidebarContent collapsed={false} onItemClick={() => setDrawerOpen(false)} />
           </div>
         </Drawer>
@@ -233,7 +227,7 @@ export default function AppLayout() {
       )}
 
       {/* Main Content */}
-      <main className="app-layout__main" style={{ marginLeft: isMobile ? 0 : undefined }}>
+      <main className={`app-layout__main ${isMobile ? 'app-layout__main--mobile' : ''}`}>
         {/* Header */}
         <header className="app-layout__header">
           <div className="app-layout__header-left">
@@ -251,7 +245,7 @@ export default function AppLayout() {
                 }}
                 className="app-layout__icon-btn"
               >
-                <MenuOutlined style={{ fontSize: 18 }} aria-hidden="true" />
+                <MenuOutlined className="app-layout__menu-icon" aria-hidden="true" />
               </div>
             )}
             {/* Breadcrumb */}
@@ -262,7 +256,7 @@ export default function AppLayout() {
                   return (
                     <React.Fragment key={`${idx}-${item.label}`}>
                       {idx === 0 ? (
-                        <HomeOutlined aria-hidden="true" style={{ fontSize: 12, opacity: 0.7 }} />
+                        <HomeOutlined aria-hidden="true" className="app-layout__breadcrumb-home" />
                       ) : null}
                       {item.path && !isLast ? (
                         <span
@@ -290,7 +284,7 @@ export default function AppLayout() {
                       {!isLast && (
                         <RightOutlined
                           aria-hidden="true"
-                          style={{ fontSize: 9, opacity: 0.4 }}
+                          className="app-layout__breadcrumb-chevron"
                         />
                       )}
                     </React.Fragment>

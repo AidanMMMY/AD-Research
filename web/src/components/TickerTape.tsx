@@ -122,9 +122,9 @@ export default function TickerTape({
               <span className="ticker-price">{priceDisplay}</span>
               <span className={`ticker-change ${dirClass}`}>
                 {dir === 'up' ? (
-                  <ArrowUpOutlined style={{ fontSize: 10 }} />
+                  <ArrowUpOutlined className="ticker-arrow" />
                 ) : dir === 'down' ? (
-                  <ArrowDownOutlined style={{ fontSize: 10 }} />
+                  <ArrowDownOutlined className="ticker-arrow" />
                 ) : null}
                 <span>{cpDisplay}</span>
               </span>

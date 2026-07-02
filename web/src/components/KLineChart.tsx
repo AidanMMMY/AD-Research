@@ -373,7 +373,7 @@ export default function KLineChart({ data, overlays = DEFAULT_OVERLAYS }: KLineC
 
   if (initError) {
     return (
-      <div style={{ padding: 20, color: 'var(--color-rise)', background: 'var(--color-rise-dim)', borderRadius: 8 }}>
+      <div className="kline-chart__error">
         <strong>图表初始化错误:</strong> {initError}
       </div>
     );
@@ -381,11 +381,11 @@ export default function KLineChart({ data, overlays = DEFAULT_OVERLAYS }: KLineC
 
   if (dataError) {
     return (
-      <div style={{ padding: 20, color: 'var(--color-rise)', background: 'var(--color-rise-dim)', borderRadius: 8 }}>
+      <div className="kline-chart__error">
         <strong>数据渲染错误:</strong> {dataError}
       </div>
     );
   }
 
-  return <div ref={chartContainerRef} style={{ width: '100%', height: containerHeight }} />;
+  return <div ref={chartContainerRef} className="kline-chart" style={{ height: containerHeight }} />;
 }

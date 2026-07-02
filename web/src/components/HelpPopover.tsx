@@ -70,164 +70,47 @@ export default function HelpPopover({
     if (!term) return null;
 
     return (
-      <div
-        style={{
-          maxWidth: 340,
-          padding: 20,
-          color: 'var(--text-primary)',
-        }}
-      >
+      <div className="help-popover">
         {/* Header */}
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 'var(--space-3)',
-            marginBottom: 12,
-          }}
-        >
-          <div
-            style={{
-              width: 28,
-              height: 28,
-              borderRadius: 8,
-              background: 'var(--accent-dim)',
-              border: '1px solid var(--accent-border)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              flexShrink: 0,
-            }}
-          >
-            <BookOutlined style={{ color: 'var(--accent)', fontSize: 14 }} />
+        <div className="help-popover__header">
+          <div className="help-popover__icon-wrap">
+            <BookOutlined className="help-popover__icon" />
           </div>
-          <span
-            style={{
-              fontSize: 15,
-              fontWeight: 600,
-              color: 'var(--text-primary)',
-              lineHeight: 1.3,
-            }}
-          >
-            {term.title}
-          </span>
+          <span className="help-popover__title">{term.title}</span>
         </div>
 
         {/* Short description / full description */}
-        <div
-          style={{
-            fontSize: 13,
-            color: 'var(--text-secondary)',
-            lineHeight: 1.7,
-            marginBottom: 14,
-          }}
-        >
-          {term.fullDesc}
-        </div>
+        <div className="help-popover__body">{term.fullDesc}</div>
 
         {/* Formula */}
         {term.formula && (
-          <div
-            style={{
-              background: 'var(--bg-input)',
-              border: '1px solid var(--border-default)',
-              borderLeft: '3px solid var(--accent)',
-              borderRadius: '0 8px 8px 0',
-              padding: 'var(--space-3) var(--space-3)',
-              marginBottom: 14,
-            }}
-          >
-            <div
-              style={{
-                fontSize: 10,
-                fontWeight: 500,
-                color: 'var(--text-tertiary)',
-                textTransform: 'uppercase',
-                letterSpacing: '0.08em',
-                marginBottom: 6,
-              }}
-            >
-              公式
-            </div>
-            <div
-              style={{
-                fontSize: 13,
-                color: 'var(--accent)',
-                fontFamily: "'SF Mono', 'Fira Code', 'Cascadia Code', monospace",
-                lineHeight: 1.5,
-                wordBreak: 'break-word',
-              }}
-            >
-              {term.formula}
-            </div>
+          <div className="help-popover__formula">
+            <div className="help-popover__label">公式</div>
+            <div className="help-popover__code">{term.formula}</div>
           </div>
         )}
 
         {/* Interpretation */}
         {term.interpretation && (
-          <div
-            style={{
-              marginBottom: term.example ? 10 : 16,
-            }}
-          >
-            <span
-              style={{
-                fontSize: 12,
-                fontWeight: 600,
-                color: 'var(--accent)',
-                marginRight: 6,
-              }}
-            >
-              解读：
-            </span>
-            <span
-              style={{
-                fontSize: 12,
-                color: 'var(--text-secondary)',
-                lineHeight: 1.7,
-              }}
-            >
-              {term.interpretation}
-            </span>
+          <div className={`help-popover__section ${term.example ? '' : 'help-popover__section--spaced'}`}>
+            <span className="help-popover__caption">解读：</span>
+            <span className="help-popover__text">{term.interpretation}</span>
           </div>
         )}
 
         {/* Example */}
         {term.example && (
-          <div style={{ marginBottom: 16 }}>
-            <span
-              style={{
-                fontSize: 12,
-                fontWeight: 600,
-                color: 'var(--accent)',
-                marginRight: 6,
-              }}
-            >
-              案例：
-            </span>
-            <span
-              style={{
-                fontSize: 12,
-                color: 'var(--text-secondary)',
-                lineHeight: 1.7,
-              }}
-            >
-              {term.example}
-            </span>
+          <div className="help-popover__section help-popover__section--spaced">
+            <span className="help-popover__caption">案例：</span>
+            <span className="help-popover__text">{term.example}</span>
           </div>
         )}
 
         {/* Divider */}
-        <div
-          style={{
-            height: 1,
-            background: 'var(--border-default)',
-            margin: '16px 0',
-          }}
-        />
+        <div className="help-popover__divider" />
 
         {/* Footer action */}
-        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+        <div className="help-popover__footer">
           <Button
             type="primary"
             size="small"
@@ -235,15 +118,7 @@ export default function HelpPopover({
             onClick={() =>
               handleAskAI(term.title, term.shortDesc, term.relatedPageType, contextData)
             }
-            style={{
-              background: 'var(--accent)',
-              border: 'none',
-              color: 'var(--text-on-accent)',
-              borderRadius: 8,
-              fontWeight: 500,
-              height: 32,
-              padding: '0 14px',
-            }}
+            className="help-popover__ask-btn"
           >
             问 AI
           </Button>
@@ -264,24 +139,12 @@ export default function HelpPopover({
       overlayStyle={{ width: 'auto', maxWidth: 380 }}
     >
       <span
-        style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: 4,
-          cursor: 'help',
-          color: 'inherit',
-          ...style,
-        }}
+        className="help-popover__trigger"
+        style={style}
       >
         {children || term.title}
         <InfoCircleOutlined
-          style={{
-            fontSize: 12,
-            color: 'var(--text-tertiary)',
-            opacity: 0.7,
-            transition: 'opacity 200ms',
-          }}
-          className="help-popover-icon"
+          className="help-popover__info-icon"
         />
       </span>
     </Popover>

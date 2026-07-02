@@ -96,7 +96,15 @@ export default function SignalDashboard() {
         ].map((m) => (
           <div key={m.title} className="phase5c-kpi-cell">
             <div className="phase5c-kpi-cell__label">{m.title}</div>
-            <div className="phase5c-kpi-cell__value tabular-nums" style={{ color: m.color }}>
+            <div
+              className={`phase5c-kpi-cell__value tabular-nums ${
+                m.color === 'var(--color-rise)'
+                  ? 'phase5c-kpi-cell__value--rise'
+                  : m.color === 'var(--color-fall)'
+                    ? 'phase5c-kpi-cell__value--fall'
+                    : 'phase5c-kpi-cell__value--primary'
+              }`}
+            >
               {m.value}
             </div>
           </div>
@@ -110,13 +118,13 @@ export default function SignalDashboard() {
               value={typeFilter}
               onChange={setTypeFilter}
               options={typeOptions}
-              style={{ width: 120 }}
+              className="phase5c-select--xs"
             />
             <Select
               value={familyFilter}
               onChange={() => undefined}
               options={familyOptions}
-              style={{ width: 140 }}
+              className="phase5c-select--sm"
               disabled
               placeholder="家族筛选（待后端支持）"
             />

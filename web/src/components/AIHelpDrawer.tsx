@@ -20,102 +20,19 @@ function MessageBubble({ msg }: { msg: HelpMessage }) {
 
   return (
     <div
-      style={{
-        display: 'flex',
-        justifyContent: isUser ? 'flex-end' : 'flex-start',
-        marginBottom: 16,
-      }}
+      className={`ai-message-row ${isUser ? 'ai-message-row--user' : 'ai-message-row--assistant'}`}
     >
       <div
-        style={{
-          maxWidth: '85%',
-          padding: '12px 16px',
-          borderRadius: 14,
-          borderTopRightRadius: isUser ? 4 : 14,
-          borderTopLeftRadius: isUser ? 14 : 4,
-          background: isUser
-            ? 'var(--accent-dim)'
-            : 'var(--bg-elevated)',
-          color: isUser ? 'var(--accent)' : 'var(--text-primary)',
-          fontSize: 14,
-          lineHeight: 1.7,
-          border: isUser ? 'none' : '1px solid var(--border-default)',
-        }}
+        className={`ai-message-bubble ${isUser ? 'ai-message-bubble--user' : 'ai-message-bubble--assistant'}`}
       >
         {isUser ? (
           msg.content
         ) : (
-          <ReactMarkdown
-            remarkPlugins={[remarkGfm]}
-            components={{
-              p: ({ children }) => <p style={{ margin: '0 0 8px' }}>{children}</p>,
-              ul: ({ children }) => <ul style={{ margin: '0 0 8px', paddingLeft: 18 }}>{children}</ul>,
-              ol: ({ children }) => <ol style={{ margin: '0 0 8px', paddingLeft: 18 }}>{children}</ol>,
-              li: ({ children }) => <li style={{ marginBottom: 4 }}>{children}</li>,
-              code: ({ children }) => (
-                <code
-                  style={{
-                    background: 'var(--bg-input)',
-                    padding: '2px 6px',
-                    borderRadius: 4,
-                    fontSize: 13,
-                    color: 'var(--text-secondary)',
-                  }}
-                >
-                  {children}
-                </code>
-              ),
-              pre: ({ children }) => (
-                <pre
-                  style={{
-                    background: 'var(--bg-input)',
-                    padding: 10,
-                    borderRadius: 8,
-                    overflow: 'auto',
-                    fontSize: 13,
-                  }}
-                >
-                  {children}
-                </pre>
-              ),
-              table: ({ children }) => (
-                <table
-                  style={{
-                    width: '100%',
-                    borderCollapse: 'collapse',
-                    marginBottom: 8,
-                    fontSize: 13,
-                  }}
-                >
-                  {children}
-                </table>
-              ),
-              th: ({ children }) => (
-                <th
-                  style={{
-                    border: '1px solid var(--border-default)',
-                    padding: 'var(--space-2) var(--space-3)',
-                    background: 'var(--bg-elevated)',
-                    textAlign: 'left',
-                  }}
-                >
-                  {children}
-                </th>
-              ),
-              td: ({ children }) => (
-                <td
-                  style={{
-                    border: '1px solid var(--border-default)',
-                    padding: '6px 10px',
-                  }}
-                >
-                  {children}
-                </td>
-              ),
-            }}
-          >
-            {msg.content}
-          </ReactMarkdown>
+          <div className="ai-markdown">
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+              {msg.content}
+            </ReactMarkdown>
+          </div>
         )}
       </div>
     </div>
@@ -176,88 +93,35 @@ export default function AIHelpDrawer() {
       onClose={close}
       width={isMobile ? '100%' : 480}
       closable={false}
-      styles={{
-        body: { padding: 0, background: 'var(--bg-base)' },
-        header: { display: 'none' },
-        mask: { background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)' },
-      }}
+      className="ai-drawer"
     >
-      <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      <div className="ai-drawer">
         {/* Header */}
-        <div
-          style={{
-            padding: 'var(--space-4) var(--space-5)',
-            borderBottom: '1px solid var(--border-default)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: 12,
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
-            <div
-              style={{
-                width: 36,
-                height: 36,
-                borderRadius: 10,
-                background: 'var(--accent)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                flexShrink: 0,
-              }}
-            >
-              <RobotOutlined style={{ color: 'var(--text-on-accent)', fontSize: 18 }} />
+        <div className="ai-drawer__header">
+          <div className="ai-drawer__title-row">
+            <div className="ai-drawer__avatar">
+              <RobotOutlined className="ai-drawer__avatar-icon" />
             </div>
-            <div style={{ minWidth: 0 }}>
-              <div
-                style={{
-                  fontSize: 16,
-                  fontWeight: 600,
-                  color: 'var(--text-primary)',
-                  lineHeight: '22px',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap',
-                }}
-              >
-                AI 教学助手
-              </div>
+            <div className="ai-drawer__titles">
+              <div className="ai-drawer__title">AI 教学助手</div>
               {context && (
-                <div
-                  style={{
-                    fontSize: 12,
-                    color: 'var(--text-tertiary)',
-                    lineHeight: '18px',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap',
-                  }}
-                >
-                  {context.pageTitle}
-                </div>
+                <div className="ai-drawer__subtitle">{context.pageTitle}</div>
               )}
             </div>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+          <div className="ai-drawer__header-actions">
             {context?.contextData && (
-              <Tag
-                style={{
-                  background: 'var(--accent-dim)',
-                  border: '1px solid var(--accent-border)',
-                  color: 'var(--accent)',
-                }}
-              >
-                <ThunderboltOutlined style={{ marginRight: 4 }} />
+              <Tag className="ai-drawer__context-tag">
+                <ThunderboltOutlined className="ai-drawer__context-tag-icon" />
                 上下文已加载
               </Tag>
             )}
             <Button
               type="text"
-              icon={<CloseOutlined style={{ color: 'var(--text-tertiary)', fontSize: 16 }} />}
+              icon={<CloseOutlined className="ai-drawer__close-icon" />}
               onClick={close}
-              style={{ width: 32, height: 32, padding: 0 }}
+              className="ai-drawer__close"
             />
           </div>
         </div>
@@ -269,27 +133,16 @@ export default function AIHelpDrawer() {
             showIcon
             message="AI 功能未配置"
             description="当前无法使用 AI 帮助。请在服务端配置 DEEPSEEK_API_KEY 后重启服务。"
-            style={{
-              margin: 12,
-              borderRadius: 10,
-              background: 'var(--color-warning-dim)',
-              border: '1px solid var(--color-warning-border)',
-            }}
+            className="ai-drawer__alert"
           />
         )}
 
         {/* Messages */}
-        <div
-          style={{
-            flex: 1,
-            overflow: 'auto',
-            padding: 'var(--space-4) var(--space-5)',
-          }}
-        >
+        <div className="ai-drawer__messages">
           {messages.length === 0 && !isLoading && (
-            <div style={{ textAlign: 'center', marginTop: 80, color: 'var(--text-tertiary)' }}>
-              <RobotOutlined style={{ fontSize: 40, marginBottom: 12, color: 'var(--text-tertiary)' }} />
-              <div style={{ fontSize: 14 }}>点击右上角帮助图标开始提问</div>
+            <div className="ai-drawer__empty">
+              <RobotOutlined className="ai-drawer__empty-icon" />
+              <div>点击右上角帮助图标开始提问</div>
             </div>
           )}
 
@@ -298,29 +151,11 @@ export default function AIHelpDrawer() {
           ))}
 
           {isLoading && (
-            <div style={{ display: 'flex', justifyContent: 'flex-start', marginBottom: 16 }}>
-              <div
-                style={{
-                  padding: '12px 16px',
-                  borderRadius: 14,
-                  borderTopLeftRadius: 4,
-                  background: 'var(--bg-elevated)',
-                  border: '1px solid var(--border-default)',
-                  maxWidth: '85%',
-                }}
-              >
+            <div className="ai-message-row ai-message-row--assistant">
+              <div className="ai-message-bubble ai-message-bubble--assistant">
                 <StepProgress steps={steps} compact />
                 {streamedText && (
-                  <div
-                    style={{
-                      marginTop: 8,
-                      paddingTop: 8,
-                      borderTop: '1px solid var(--border-default)',
-                      color: 'var(--text-primary)',
-                      fontSize: 14,
-                      lineHeight: 1.7,
-                    }}
-                  >
+                  <div className="ai-message-bubble__streamed ai-markdown">
                     <ReactMarkdown remarkPlugins={[remarkGfm]}>
                       {streamedText}
                     </ReactMarkdown>
@@ -340,21 +175,12 @@ export default function AIHelpDrawer() {
                   size="small"
                   icon={<ReloadOutlined />}
                   onClick={handleRetry}
-                  style={{
-                    background: 'var(--color-rise-dim)',
-                    border: '1px solid var(--color-rise-border)',
-                    color: 'var(--color-rise)',
-                  }}
+                  className="ai-retry-btn"
                 >
                   重试
                 </Button>
               }
-              style={{
-                marginTop: 8,
-                borderRadius: 10,
-                background: 'var(--color-rise-dim)',
-                border: '1px solid var(--color-rise-border)',
-              }}
+              className="ai-error-alert"
             />
           )}
 
@@ -363,27 +189,13 @@ export default function AIHelpDrawer() {
 
         {/* Quick Questions */}
         {context?.quickQuestions && messages.length <= 2 && (
-          <div
-            style={{
-              padding: 'var(--space-3) var(--space-5) 0',
-              borderTop: '1px solid var(--border-default)',
-            }}
-          >
-            <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginBottom: 8 }}>快捷问题</div>
-            <Space size={8} wrap style={{ width: '100%' }}>
+          <div className="ai-drawer__quick">
+            <div className="ai-drawer__quick-title">快捷问题</div>
+            <Space size={8} wrap className="ai-drawer__quick-tags">
               {context.quickQuestions.map((q) => (
                 <Tag
                   key={q}
-                  style={{
-                    cursor: isLoading || !aiAvailable ? 'not-allowed' : 'pointer',
-                    borderRadius: 8,
-                    padding: '4px 10px',
-                    background: 'var(--accent-dim)',
-                    border: '1px solid var(--accent-border)',
-                    color: 'var(--accent)',
-                    fontSize: 13,
-                    opacity: isLoading || !aiAvailable ? 0.5 : 1,
-                  }}
+                  className={`ai-drawer__quick-tag ${isLoading || !aiAvailable ? 'ai-drawer__quick-tag--disabled' : ''}`}
                   onClick={() => handleQuickQuestion(q)}
                 >
                   {q}
@@ -394,14 +206,7 @@ export default function AIHelpDrawer() {
         )}
 
         {/* Input */}
-        <div
-          style={{
-            padding: 'var(--space-3) var(--space-5) var(--space-4)',
-            borderTop: '1px solid var(--border-default)',
-            display: 'flex',
-            gap: 'var(--space-3)',
-          }}
-        >
+        <div className="ai-drawer__input-row">
           <Input.TextArea
             value={input}
             onChange={(e) => setInput(e.target.value)}
@@ -414,7 +219,7 @@ export default function AIHelpDrawer() {
             placeholder={aiAvailable ? '输入问题...（Shift+Enter 换行，Enter 发送）' : 'AI 未配置，无法提问'}
             autoSize={{ minRows: 1, maxRows: 4 }}
             disabled={isLoading || !aiAvailable}
-            style={{ flex: 1 }}
+            className="ai-drawer__input"
           />
           <Button
             type="primary"
@@ -422,12 +227,7 @@ export default function AIHelpDrawer() {
             onClick={handleSend}
             loading={isLoading}
             disabled={!input.trim() || !aiAvailable}
-            style={{
-              background: 'var(--accent)',
-              border: 'none',
-              color: 'var(--text-on-accent)',
-              alignSelf: 'flex-end',
-            }}
+            className="ai-drawer__send"
           />
         </div>
       </div>

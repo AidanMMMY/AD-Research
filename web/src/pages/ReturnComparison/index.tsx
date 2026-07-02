@@ -133,7 +133,7 @@ export default function ReturnComparison() {
             description="请至少选择1只标的"
           />
         ) : etfQueries.isLoading ? (
-          <Spin size="large" style={{ display: 'block', margin: 'var(--space-8) auto' }} />
+          <Spin size="large" className="ad-spin-center" />
         ) : visibleSeries.length > 0 ? (
           <div className="ad-chart-container">
             <ReturnCurve series={visibleSeries} />
