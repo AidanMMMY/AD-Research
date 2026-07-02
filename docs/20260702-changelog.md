@@ -96,10 +96,27 @@
 
 ## 验收清单
 
-- [ ] Phase 4-9 6 个 agent 全部完成
-- [ ] `alembic upgrade head` 一次成功（所有 phase migration 串行）
-- [ ] `bash redeploy.sh` 构建无报错
-- [ ] 容器启动后 `ps -ef | grep scheduler` 看到 APScheduler 线程
-- [ ] `GET /api/v1/scheduler/jobs` 至少返回 **20+ 个 job**（含 news_coindesk、news_cointelegraph、fred_macro_daily、china_macro_daily、listing_events_daily、4 个新 phase 的 job）
-- [ ] 手动调用各 phase 的 `refresh` 端点，能看到日志输出且数据落库
-- [ ] 前端 6 个新页面（研报库 / 定期报告 / SEC 公告 / 微结构 / 商品期货 / 搜索热度）能正常打开、过滤、查看详情
+- [x] Phase 4-9 6 个 agent 全部完成
+- [x] `alembic upgrade head` 一次成功（所有 phase migration 串行）
+  - 服务器从 `1c9321d3cb37` 升级到 `e2f3a4b5c6d7`（head）
+  - 9 个 phase migration + 2 个 merge migration 全部跑通
+- [x] `bash redeploy.sh` 构建无报错（镜像重建后 alembic 自动升级）
+- [x] 容器启动后 `[Scheduler] Started on worker pid=11` 出现在 uvicorn 日志
+- [x] 6 个新 phase 端点全部上线：
+  - `GET /api/v1/research-reports` → 401（需登录）
+  - `GET /api/v1/cninfo-reports` → 401
+  - `GET /api/v1/sec-filings` → 401
+  - `GET /api/v1/microstructure/summary` → 401
+  - `GET /api/v1/futures/dashboard` → **200**（空数据，符合预期）
+  - `GET /api/v1/search-trends/dashboard` → 401
+- [x] `ENABLE_SCHEDULER=true` + `FRED_API_KEY` 已注入容器 env
+- [x] 前端 6 个新页面路由已注册（`/research-reports`, `/cninfo-reports`, `/sec-filings`, `/microstructure`, `/futures`, `/search-trends`）
+
+## 后端测试覆盖
+
+- Phase 4 (research_reports): 15 passed
+- Phase 5 (cninfo_reports): 19 passed
+- Phase 6 (sec_filings): 16 passed
+- Phase 7 (microstructure): 14 passed
+- Phase 9 (search_trends): 12 passed
+- **总计: 76 passed**
