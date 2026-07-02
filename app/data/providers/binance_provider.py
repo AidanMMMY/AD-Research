@@ -62,6 +62,10 @@ _DEFAULT_CRYPTO_TOP = _DEFAULT_CRYPTO[:10]
 
 
 class BinanceProvider(DataProvider):
+    @property
+    def name(self) -> str:
+        return "binance"
+
     """Binance data provider for cryptocurrency daily bars.
 
     Uses Binance's public REST API (no authentication required for the

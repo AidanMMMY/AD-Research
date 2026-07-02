@@ -104,6 +104,10 @@ class _RateLimiter:
 
 
 class AkshareProvider(DataProvider):
+    @property
+    def name(self) -> str:
+        return "akshare"
+
     def __init__(self, prefer_sina: bool = False):
         self._prefer_sina = prefer_sina
         self._em_available = True  # Adaptive: set to False if EM keeps failing
