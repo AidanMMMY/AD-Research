@@ -33,6 +33,11 @@ import {
   MonitorOutlined,
   HomeOutlined,
   RightOutlined,
+  BankOutlined,
+  FundOutlined,
+  FireOutlined,
+  FilePdfOutlined,
+  BlockOutlined,
 } from '@ant-design/icons';
 import { useAuthStore } from '@/stores/auth';
 import { useSettingsStore } from '@/stores/settings';
@@ -67,6 +72,11 @@ const iconMap: Record<string, React.ComponentType> = {
   BookOutlined,
   CalendarOutlined,
   ClockCircleOutlined,
+  BankOutlined,
+  FundOutlined,
+  FireOutlined,
+  FilePdfOutlined,
+  BlockOutlined,
 };
 
 const SIDEBAR_WIDTH = 220;
