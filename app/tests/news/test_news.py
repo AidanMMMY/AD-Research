@@ -408,6 +408,186 @@ class TestNewsApi:
         assert sources["xinhua_rss"]["total"] == 2
         assert sources["sina_finance"]["total"] == 2
 
+    def test_health_returns_all_sources(self, api_client, news_db):
+        # Seed a single recent article on cninfo to confirm aggregation.
+        now = datetime.now(tz=timezone.utc)
+        news_db.add(
+            NewsArticle(
+                source="cninfo",
+                source_id="h-1",
+                url="https://example.com/h1",
+                url_hash="hash-h-1",
+                title="cninfo article",
+                language="zh",
+                market="cn_a",
+                published_at=now,
+                fetched_at=now,
+            )
+        )
+        news_db.commit()
+        resp = api_client.get("/api/v1/news/health")
+        assert resp.status_code == 200
+        payload = resp.json()
+        # 8 source rows must always be returned, even when DB is empty.
+        source_ids = {s["source"] for s in payload["sources"]}
+        assert source_ids == {
+            "xinhua_rss",
+            "cninfo",
+            "sina_finance",
+            "yahoo_finance",
+            "cnbc",
+            "sec_edgar",
+            "reddit",
+            "xueqiu",
+        }
+        cninfo_row = next(s for s in payload["sources"] if s["source"] == "cninfo")
+        assert cninfo_row["total"] == 1
+        assert cninfo_row["last_24h"] == 1
+        assert cninfo_row["last_published_at"] is not None
+        assert cninfo_row["job_id"] == "news_cninfo_10m"
+        # Empty source still in list with 0/null.
+        xueqiu_row = next(s for s in payload["sources"] if s["source"] == "xueqiu")
+        assert xueqiu_row["total"] == 0
+        assert xueqiu_row["last_published_at"] is None
+        assert xueqiu_row["job_id"] == "news_xueqiu_5m"
+        # Scheduler introspection is included.
+        assert "scheduler_running" in payload
+        assert isinstance(payload["scheduler_jobs"], list)
+        assert "as_of" in payload
+
+    # ------------------------------------------------------------------
+    # /news/watchlist — scoped to the current user's favorites
+    # ------------------------------------------------------------------
+
+    def _add_favorite(self, news_db, *, username: str, etf_code: str):
+        from app.models.favorite import UserFavorite
+
+        news_db.add(
+            UserFavorite(
+                id=f"{username}_{etf_code}",
+                username=username,
+                etf_code=etf_code,
+            )
+        )
+        news_db.commit()
+
+    def test_watchlist_returns_only_favorite_articles(self, api_client, news_db):
+        seeded = _seed_articles(news_db, n=2)
+        # Link first article to 510300.SH; second to 510500.SH.
+        news_db.add(
+            NewsArticleSymbol(
+                article_id=seeded[0].id, symbol="510300.SH", match_type="code"
+            )
+        )
+        news_db.add(
+            NewsArticleSymbol(
+                article_id=seeded[1].id, symbol="510500.SH", match_type="code"
+            )
+        )
+        news_db.commit()
+        # User only favorites 510300.SH.
+        self._add_favorite(news_db, username="tester", etf_code="510300.SH")
+
+        resp = api_client.get("/api/v1/news/watchlist")
+        assert resp.status_code == 200
+        payload = resp.json()
+        assert payload["total"] == 1
+        assert payload["items"][0]["id"] == seeded[0].id
+        assert "510300.SH" in payload["items"][0]["symbols"]
+        assert payload["watchlist"]["symbols"] == ["510300.SH"]
+        assert payload["watchlist"]["symbols_with_news"] == 1
+        assert payload["watchlist"]["total_articles"] == 1
+
+    def test_watchlist_empty_for_user_with_no_favorites(self, api_client, news_db):
+        _seed_articles(news_db, n=2)
+        resp = api_client.get("/api/v1/news/watchlist")
+        assert resp.status_code == 200
+        payload = resp.json()
+        assert payload["items"] == []
+        assert payload["total"] == 0
+        assert payload["watchlist"]["symbols"] == []
+        assert payload["watchlist"]["symbols_with_news"] == 0
+
+    def test_watchlist_includes_all_user_favorites(self, api_client, news_db):
+        seeded = _seed_articles(news_db, n=3)
+        news_db.add(NewsArticleSymbol(article_id=seeded[0].id, symbol="510300.SH"))
+        news_db.add(NewsArticleSymbol(article_id=seeded[1].id, symbol="510500.SH"))
+        news_db.add(NewsArticleSymbol(article_id=seeded[2].id, symbol="159915.SZ"))
+        news_db.commit()
+        self._add_favorite(news_db, username="tester", etf_code="510300.SH")
+        self._add_favorite(news_db, username="tester", etf_code="510500.SH")
+        # 159915.SZ is NOT favorited -> article excluded.
+
+        resp = api_client.get("/api/v1/news/watchlist")
+        assert resp.status_code == 200
+        payload = resp.json()
+        ids = {item["id"] for item in payload["items"]}
+        assert ids == {seeded[0].id, seeded[1].id}
+        assert set(payload["watchlist"]["symbols"]) == {"510300.SH", "510500.SH"}
+        assert payload["watchlist"]["symbols_with_news"] == 2
+
+    def test_watchlist_respects_market_filter(self, api_client, news_db):
+        seeded = _seed_articles(news_db, n=1)
+        news_db.add(NewsArticleSymbol(article_id=seeded[0].id, symbol="510300.SH"))
+        # Add a US article linked to a US favorite.
+        us_article = NewsArticle(
+            source="yahoo_finance",
+            source_id="us-1",
+            url="https://example.com/us",
+            url_hash="hash-us-1",
+            title="US Article",
+            language="en",
+            market="us",
+            published_at=datetime.now(tz=timezone.utc),
+        )
+        news_db.add(us_article)
+        news_db.commit()
+        news_db.refresh(us_article)
+        news_db.add(NewsArticleSymbol(article_id=us_article.id, symbol="AAPL.US"))
+        news_db.commit()
+        self._add_favorite(news_db, username="tester", etf_code="510300.SH")
+        self._add_favorite(news_db, username="tester", etf_code="AAPL.US")
+
+        resp = api_client.get("/api/v1/news/watchlist", params={"market": "us"})
+        assert resp.status_code == 200
+        payload = resp.json()
+        assert payload["total"] == 1
+        assert payload["items"][0]["title"] == "US Article"
+        assert payload["watchlist"]["symbols_with_news"] == 1
+
+    def test_watchlist_isolated_by_user(self, api_client, news_db):
+        """Articles should match only the *current* user's favorites."""
+        seeded = _seed_articles(news_db, n=1)
+        news_db.add(NewsArticleSymbol(article_id=seeded[0].id, symbol="510300.SH"))
+        news_db.commit()
+        # Favorite belongs to a *different* user.
+        self._add_favorite(news_db, username="someone-else", etf_code="510300.SH")
+
+        resp = api_client.get("/api/v1/news/watchlist")
+        assert resp.status_code == 200
+        payload = resp.json()
+        assert payload["items"] == []
+        assert payload["total"] == 0
+        assert payload["watchlist"]["symbols"] == []
+
+    def test_watchlist_paginates(self, api_client, news_db):
+        articles = _seed_articles(news_db, n=5)
+        for a in articles:
+            news_db.add(NewsArticleSymbol(article_id=a.id, symbol="510300.SH"))
+        news_db.commit()
+        self._add_favorite(news_db, username="tester", etf_code="510300.SH")
+
+        resp = api_client.get(
+            "/api/v1/news/watchlist", params={"page": 2, "page_size": 2}
+        )
+        assert resp.status_code == 200
+        payload = resp.json()
+        assert payload["total"] == 5
+        assert payload["page"] == 2
+        assert payload["page_size"] == 2
+        assert payload["total_pages"] == 3
+        assert len(payload["items"]) == 2
+
 
 # ---------------------------------------------------------------------------
 # Crawler XML/JSON parsing

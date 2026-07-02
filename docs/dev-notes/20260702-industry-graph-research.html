@@ -1,0 +1,799 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>产业图谱 / Value Chain 研究 → AD-Research 落地建议</title>
+  <style>
+:root {
+  --bg: #f8f9fa;
+  --text: #212529;
+  --code-bg: #f1f3f5;
+  --border: #dee2e6;
+  --accent: #0d6efd;
+  --warn: #dc3545;
+  --note: #0f5132;
+  --note-bg: #d1e7dd;
+  --table-stripe: #f8f9fa;
+  --max-w: 960px;
+}
+* { box-sizing: border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  line-height: 1.75;
+  color: var(--text);
+  background: var(--bg);
+  max-width: var(--max-w);
+  margin: 0 auto;
+  padding: 2rem 1.25rem 4rem;
+  font-size: 16px;
+}
+h1 {
+  font-size: 2rem;
+  border-bottom: 3px solid var(--accent);
+  padding-bottom: .5rem;
+  margin-top: 1.5rem;
+}
+h2 {
+  font-size: 1.5rem;
+  margin-top: 2.5rem;
+  border-left: 5px solid var(--accent);
+  padding-left: .8rem;
+  background: #f1f6ff;
+  padding-top: .35rem;
+  padding-bottom: .35rem;
+  border-radius: 4px;
+}
+h3 {
+  font-size: 1.2rem;
+  margin-top: 2rem;
+  color: var(--accent);
+}
+h4 { font-size: 1.05rem; margin-top: 1.5rem; }
+p { margin: 0.85em 0; }
+ul, ol { padding-left: 1.6em; margin: 0.6em 0; }
+li { margin: 0.25em 0; }
+code {
+  background: var(--code-bg);
+  padding: .15rem .4rem;
+  border-radius: 4px;
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  font-size: .9em;
+  color: #c7254e;
+}
+pre {
+  background: var(--code-bg);
+  padding: 1rem 1.1rem;
+  border-radius: 8px;
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  line-height: 1.55;
+}
+pre code {
+  background: transparent;
+  padding: 0;
+  color: inherit;
+  font-size: .88em;
+}
+blockquote {
+  border-left: 4px solid var(--accent);
+  background: #f1f6ff;
+  margin: 1em 0;
+  padding: .5em 1em;
+  color: #333;
+  border-radius: 0 4px 4px 0;
+}
+table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 1em 0;
+  font-size: .92em;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+thead { background: #f1f3f5; }
+th, td {
+  border: 1px solid var(--border);
+  padding: .55em .8em;
+  text-align: left;
+  vertical-align: top;
+}
+tbody tr:nth-child(even) { background: var(--table-stripe); }
+hr {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 2.5rem 0;
+}
+a {
+  color: var(--accent);
+  text-decoration: none;
+  border-bottom: 1px dashed var(--accent);
+}
+a:hover { border-bottom-style: solid; }
+.toc {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 1rem 1.25rem;
+  margin: 1rem 0 2rem;
+}
+.toc h2 { font-size: 1rem; margin: 0 0 .5rem; padding: 0; border: none; background: none; }
+.toc ul { margin: 0; padding-left: 1.2em; font-size: .9em; }
+.toc a { border-bottom: none; }
+.meta {
+  font-size: .85em;
+  color: #6c757d;
+  margin-bottom: 2rem;
+}
+@media print {
+  body { background: #fff; max-width: none; padding: 1rem; }
+  a { color: #000; border-bottom: none; }
+  pre, code { background: #f5f5f5; }
+}
+</style>
+</head>
+<body>
+  <p class="meta">生成日期: 2026-07-02 · 来源: AD-Research dev-notes</p>
+  <div class="toc"><h2>目录</h2><ul><li style="margin-left:0px"><a href="#产业图谱-industry-graph-value-chain-研究报告">产业图谱 / Industry-Graph &amp; Value-Chain 研究报告</a></li><li style="margin-left:12px"><a href="#tl-dr">TL;DR</a></li><li style="margin-left:12px"><a href="#section-1-概念辨析-四个被混用的名词">Section 1: 概念辨析 — 四个被混用的名词</a></li><li style="margin-left:12px"><a href="#section-2-参考案例-真实平台-url">Section 2: 参考案例 (真实平台 + URL)</a></li><li style="margin-left:12px"><a href="#section-3-ad-research-落地建议-7-个可执行功能">Section 3: AD-Research 落地建议 — 7 个可执行功能</a></li><li style="margin-left:12px"><a href="#section-4-数据源汇总-按可用性排序">Section 4: 数据源汇总 (按可用性排序)</a></li><li style="margin-left:12px"><a href="#section-5-可视化技术选型">Section 5: 可视化技术选型</a></li><li style="margin-left:12px"><a href="#section-6-分阶段路线图">Section 6: 分阶段路线图</a></li><li style="margin-left:12px"><a href="#section-7-关键风险与决策点">Section 7: 关键风险与决策点</a></li><li style="margin-left:12px"><a href="#section-8-与现有-ad-research-能力的整合点">Section 8: 与现有 AD-Research 能力的整合点</a></li><li style="margin-left:12px"><a href="#section-9-总结与建议">Section 9: 总结与建议</a></li><li style="margin-left:12px"><a href="#附录-a-关键术语对照表">附录 A: 关键术语对照表</a></li><li style="margin-left:12px"><a href="#附录-b-参考文献-按引用顺序">附录 B: 参考文献 (按引用顺序)</a></li></ul></div>
+  <h1 id="产业图谱-industry-graph-value-chain-研究报告">产业图谱 / Industry-Graph &amp; Value-Chain 研究报告</h1>
+<p><strong>作者</strong>: Strategic Research
+<strong>日期</strong>: 2026-07-02
+<strong>范围</strong>: AD-Research 平台 (A 股 / 美股 / 港股 / 加密货币 / 商品期货) 产业图谱与价值链功能可行性研究
+<strong>状态</strong>: 战略调研 - 不含代码实现</p>
+<hr>
+<h2 id="tl-dr">TL;DR</h2>
+<ul><li>"产业图谱" 在投研语境下有四个常被混用的概念: 产业链 (value chain)、产业图谱 (industry graph)、行业分类 (industry taxonomy)、关系图谱 (relationship graph)。它们解决的问题不同、数据来源不同、可视化不同。</ul><li>业内参考案例分三层: 机构级 (Bloomberg / FactSet / S&amp;P Capital IQ, $20k+/yr)、本土券商级 (Wind / 申万 / 中信 / 头豹, 5–20 万元/yr)、互联网级 (启信宝 / 天眼查 / PitchBook / CB Insights, 部分免费 + SaaS 订阅)。</ul><li>AD-Research 已经具备的<strong>最关键资产</strong>是: A 股招股说明书 / 年报的"主要客户/供应商"披露 + SEC 10-K/10-Q 的 customer/supplier concentration + akshare 行业归属映射 —— 这就足以在 4–6 周内上线一个<strong>差强人意但可用</strong>的 v1 产业图谱。</ul><li>强烈建议<strong>不要</strong>在 v1 阶段引入 Neo4j 等专用图数据库。Postgres + recursive CTE + JSONB edges 足够撑到百万级节点; 真要换图数据库, 留给 Phase C。</ul><li>可视化推荐 <strong>react-flow</strong> (节点编辑器范式) + <strong>echarts-sankey</strong> (上下游流量), 两者都是 MIT 许可, 与现有前端技术栈兼容。</ul><li>路线图: A (本月) 行业→公司表 + 筛选 → B (下月) 招股书/10-K 抽取 → C (3 个月) 完整图谱 + 上下游传导 → D (长期) AI 行业传导信号。</ul></ul>
+<hr>
+<h2 id="section-1-概念辨析-四个被混用的名词">Section 1: 概念辨析 — 四个被混用的名词</h2>
+<p>中文投研圈"产业图谱"是一个被严重滥用的词。在动手做之前, 必须先把它和它的三个近亲分开, 否则数据模型会做错, UI 也会做错。</p>
+<h3 id="1-1-产业链-value-chain">1.1 产业链 (Value Chain)</h3>
+<ul><li><strong>定义</strong>: 描述<strong>一个产品</strong>从原材料到终端消费者, 所经过的<strong>多级生产环节</strong>。重点是<strong>单向的、线性的、阶段性的</strong>。</ul><li><strong>节点类型</strong>: 环节 (e.g. "锂矿采选")、产品 (e.g. "碳酸锂")。</ul><li><strong>边类型</strong>: 投入产出关系 (1 吨碳酸锂 → 1 GWh 电池正极), 数量与价格可标定。</ul><li><strong>典型例子</strong>: 新能源车产业链: 锂矿/钴矿/镍矿 → 电池正极材料 → 电池电芯 → BMS/电机/电控 → 整车厂 (BYD/特斯拉/小鹏) → 充电桩/换电站 → 终端消费者。半导体产业链: 硅片 → 晶圆代工 (TSMC/SMIC) → 封测 → 设计公司 (NVIDIA/海光) → 整机厂。</ul><li><strong>研究价值</strong>: 用来回答"上游涨价对中游毛利的传导"——这是 PE/MM 最常用的产业链工作。</ul><li><strong>可视化</strong>: <strong>Sankey 图</strong>最贴切 (流量有方向有大小); 或者多列分层卡片。</ul></ul>
+<h3 id="1-2-产业图谱-industry-graph">1.2 产业图谱 (Industry Graph)</h3>
+<ul><li><strong>定义</strong>: 描述<strong>一类公司/子行业</strong>之间的<strong>网状关系</strong>, 包括但不限于供应链。重点是<strong>网状的、多向的、可有环</strong>。</ul><li><strong>节点类型</strong>: 公司、行业、子行业。</ul><li><strong>边类型</strong>: 供应、客户、竞争、合作、参股、关联交易。</ul><li><strong>典型例子</strong>: 半导体产业图谱: 设计 → 制造 → 封测 → 设备 → 材料 五个子图, 节点是具体公司, 边是真实合同披露的采购/销售关系。</ul><li><strong>研究价值</strong>: 用来回答"X 公司断了, 谁会断"、"宁德时代真正的二供是谁"——这是股票 alpha 工作最关心的。</ul><li><strong>可视化</strong>: <strong>force-directed graph</strong> 或 <strong>分层布局</strong> (上游在上, 中游在中, 下游在下)。</ul></ul>
+<h3 id="1-3-行业分类-industry-taxonomy">1.3 行业分类 (Industry Taxonomy)</h3>
+<ul><li><strong>定义</strong>: 标准的、树状的行业归属关系, 主要用于归类与指数编制。</ul><li><strong>节点类型</strong>: 行业 (申万一级 → 二级 → 三级; GICS 11 sectors → 24 groups → 69 industries → 158 sub-industries)。</ul><li><strong>边类型</strong>: 父子归属 (1-to-1, 树形, 没有横向关系)。</ul><li><strong>典型例子</strong>: 申万 31 个一级行业 (含"美容护理"等), GICS 11 sectors。</ul><li><strong>研究价值</strong>: 用来做"行业 ETF 配置"、"行业相对强弱"、"行业可比公司"。</ul><li><strong>可视化</strong>: <strong>treemap</strong> (子行业按市值大小) 或 <strong>tree</strong>。</ul><li><strong>关键事实</strong>: A 股有<strong>至少 5 套互不兼容</strong>的行业分类: 申万、中信、证监会、Wind、中证, 转换表本身就是一门生意。</ul></ul>
+<h3 id="1-4-关系图谱-relationship-graph">1.4 关系图谱 (Relationship Graph)</h3>
+<ul><li><strong>定义</strong>: 描述<strong>企业之间</strong>的股权、董监高、关联交易、家族、担保、诉讼关系。</ul><li><strong>节点类型</strong>: 公司、自然人 (高管/股东)。</ul><li><strong>边类型</strong>: 持股比例、任职、关联、担保、诉讼。</ul><li><strong>典型例子</strong>: 启信宝的"实控人图谱"、天眼查的"企业关系图谱"。</ul><li><strong>研究价值</strong>: 用来做"集团内利益输送"、"关联方识别"、"风险传染"——这是合规与排雷工作的核心。</ul><li><strong>可视化</strong>: <strong>辐射型</strong> (以某公司为中心) 或 <strong>分层 (控股链条)</strong>。</ul></ul>
+<h3 id="1-5-几个常被混淆的衍生概念">1.5 几个常被混淆的衍生概念</h3>
+<ul><li><strong>供应链图谱 (Supply Chain Map)</strong>: 基本等同产业链, 但更强调<strong>实物物流</strong> (港口、仓库、路线)。PitchBook 在医疗器械 VC 圈用得多。</ul><li><strong>竞品图谱 (Competitive Map)</strong>: 2x2 矩阵 (e.g. 价格 × 功能), BCG / 麦肯锡最爱。</ul><li><strong>客户图谱 (Customer Map)</strong>: 描述"谁买谁"——本质是 supply chain 边的一个子集, 但在 SaaS / 互联网行业尤其重要 (PitchBook 的 customer graph)。</ul><li><strong>生态图谱 (Ecosystem Map)</strong>: 描述一个平台公司周围的所有参与方 (e.g. iOS 生态: 苹果 → 开发者 → 用户 → 广告主)。CB Insights 的 market map 就是这种。</ul></ul>
+<p><strong>AD-Research 应当做什么</strong>: 不做第 1.3 (行业分类, 现成, 没必要重做) 和 1.4 (关系图谱, 启信宝免费版够用), 重点做 1.1 (产业链) + 1.2 (产业图谱), 二者底层共用一套"公司 + 边"的数据模型。</p>
+<hr>
+<h2 id="section-2-参考案例-真实平台-url">Section 2: 参考案例 (真实平台 + URL)</h2>
+<p>下面列出 12 个<strong>真实</strong>的产品/数据集, 按"机构级 / 券商级 / 互联网级"分层。</p>
+<h3 id="2-1-机构级-20k-yr-ib-hedge-fund-标配">2.1 机构级 (&gt;$20k/yr, IB/Hedge Fund 标配)</h3>
+<table>
+<thead><tr>
+<th>平台</th>
+<th>URL</th>
+<th>核心能力</th>
+<th>数据源</th>
+<th>可视化</th>
+<th>价格区间</th>
+</tr></thead>
+<tbody>
+<tr>
+<th><strong>Bloomberg Terminal</strong></th>
+<td><a href="https://www.bloomberg.com/professional/" target="_blank" rel="noopener">https://www.bloomberg.com/professional/</a></td>
+<td>BI Supply Chain, EQS, MAP, WEAV (新), sector coverage, 行业研究 RPD</td>
+<td>公告、自家分析师网络、第三方</td>
+<td>表格 + 图 (较少)</td>
+<td>$24k/yr/席</td>
+</tr>
+<tr>
+<th><strong>FactSet Supply Chain</strong></th>
+<td><a href="https://www.factset.com/solutions/data-and-analytics/supply-chain" target="_blank" rel="noopener">https://www.factset.com/solutions/data-and-analytics/supply-chain</a></td>
+<td>4-level 层级 (供应商 → 公司 → 客户 → 客户的下游), revenue linkage, top-N 占比</td>
+<td>10-K, 20-F, 年报、招股书</td>
+<td>树形 + 表格</td>
+<td>$12-15k/yr/席</td>
+</tr>
+<tr>
+<th><strong>S&amp;P Capital IQ Pro</strong></th>
+<td><a href="https://www.spglobal.com/marketintelligence/en/" target="_blank" rel="noopener">https://www.spglobal.com/marketintelligence/en/</a></td>
+<td>Supply Chain by Customer / Supplier, concentration ratios, key relationships</td>
+<td>10-K, 8-K, S-1, 年报</td>
+<td>关系图 + 表格</td>
+<td>$15-20k/yr/席</td>
+</tr>
+<tr>
+<th><strong>Refinitiv (LSEG) World-Check/Supply Chain</strong></th>
+<td><a href="https://www.lseg.com/en/products-data/financial-workflows/financial-crime/kyc-screening" target="_blank" rel="noopener">https://www.lseg.com/en/products-data/financial-workflows/financial-crime/kyc-screening</a></td>
+<td>KYC + 供应链尽调</td>
+<td>自家 + 第三方 (e.g. Wood Mackenzie)</td>
+<td>表格</td>
+<td>企业级</td>
+</tr>
+<tr>
+<th><strong>Wood Mackenzie / S&amp;P Global Commodity Insights</strong></th>
+<td><a href="https://www.spglobal.com/commodityinsights/" target="_blank" rel="noopener">https://www.spglobal.com/commodityinsights/</a></td>
+<td>商品产业链权威 (油、气、锂、稀土)</td>
+<td>自家研究员 + 卫星 + 船追踪</td>
+<td>链式图 + 报告</td>
+<td>单报告 $5-50k</td>
+</tr>
+</tbody></table>
+<p><strong>关键观察</strong>: 这一层的核心壁垒是<strong>披露数据 + 自家分析师手工整理</strong>——纯爬虫无法复制。FactSet 和 Capital IQ 的差异在于 FactSet 把供应链做成"层级树", Capital IQ 做成"关系网"。</p>
+<h3 id="2-2-券商级-5-20-万元-yr-国内券商标配">2.2 券商级 (5-20 万元/yr, 国内券商标配)</h3>
+<table>
+<thead><tr>
+<th>平台</th>
+<th>URL</th>
+<th>核心能力</th>
+<th>数据源</th>
+<th>价格区间</th>
+</tr></thead>
+<tbody>
+<tr>
+<th><strong>Wind 行业图谱 / 产业链中心</strong></th>
+<td><a href="https://www.wind.com.cn/" target="_blank" rel="noopener">https://www.wind.com.cn/</a></td>
+<td>产业链图谱 (上中下游节点 + 关联公司), 行业研报库, 指数成分</td>
+<td>Wind 自有 + 公开</td>
+<td>1.5-3 万元/yr (个人)/ 8-20 万元/yr (机构)</td>
+</tr>
+<tr>
+<th><strong>申万行业分类 (SWS Index)</strong></th>
+<td><a href="http://www.swsindex.com/" target="_blank" rel="noopener">http://www.swsindex.com/</a></td>
+<td>31 个一级行业标准 (一级 → 二级 → 三级), 申万宏源研究所维护</td>
+<td>申万宏源分析师手工</td>
+<td>公开 + 申万策略报告</td>
+</tr>
+<tr>
+<th><strong>中信证券行业分类</strong></th>
+<td><a href="https://www.cs.com.cn/" target="_blank" rel="noopener">https://www.cs.com.cn/</a></td>
+<td>中信一级 30 个, 二级 ~80 个</td>
+<td>中信策略组</td>
+<td>公开</td>
+</tr>
+<tr>
+<th><strong>同花顺 i 问财 / i 行业</strong></th>
+<td><a href="https://www.10jqka.com.cn/" target="_blank" rel="noopener">https://www.10jqka.com.cn/</a></td>
+<td>行业链、上下游、智能问句</td>
+<td>同花顺自有</td>
+<td>大部分免费, 专业版 ~2k/yr</td>
+</tr>
+<tr>
+<th><strong>头豹研究院 (LeadLeo)</strong></th>
+<td><a href="https://www.leadleo.com/" target="_blank" rel="noopener">https://www.leadleo.com/</a></td>
+<td>行业图谱数据库, 产业链卡片</td>
+<td>自有研究 + 用户调研</td>
+<td>单报告 ¥3-5k</td>
+</tr>
+<tr>
+<th><strong>鲸准 (36Kr)</strong></th>
+<td><a href="https://www.jingdata.com/" target="_blank" rel="noopener">https://www.jingdata.com/</a></td>
+<td>一级市场产业链 (尤其科技、医疗)</td>
+<td>36Kr 创投资料</td>
+<td>单报告 ¥2-5k</td>
+</tr>
+</tbody></table>
+<p><strong>关键观察</strong>: Wind 行业图谱是 A 股最完整的产业链数据, 但<strong>价格 + 闭源</strong>双重壁垒。申万/中信分类是免费公开的事实标准, 任何 A 股研究工具都至少要支持这两套。</p>
+<h3 id="2-3-互联网级-部分免费-saas">2.3 互联网级 (部分免费 + SaaS)</h3>
+<table>
+<thead><tr>
+<th>平台</th>
+<th>URL</th>
+<th>核心能力</th>
+<th>数据源</th>
+<th>价格区间</th>
+</tr></thead>
+<tbody>
+<tr>
+<th><strong>启信宝</strong></th>
+<td><a href="https://www.qixin.com/" target="_blank" rel="noopener">https://www.qixin.com/</a></td>
+<td>股权 / 实控人 / 关联 / 担保 / 风险图谱, 产业链 (较新)</td>
+<td>工商数据 + 公告 + 招投标</td>
+<td>个人免费, 企业版 ¥2-10 万/yr</td>
+</tr>
+<tr>
+<th><strong>天眼查</strong></th>
+<td><a href="https://www.tianyancha.com/" target="_blank" rel="noopener">https://www.tianyancha.com/</a></td>
+<td>同上, 偏诉讼风险</td>
+<td>工商 + 司法 + 媒体</td>
+<td>同上</td>
+</tr>
+<tr>
+<th><strong>企查查</strong></th>
+<td><a href="https://www.qcc.com/" target="_blank" rel="noopener">https://www.qcc.com/</a></td>
+<td>同上, 行业图谱做得较细</td>
+<td>工商</td>
+<td>同上</td>
+</tr>
+<tr>
+<th><strong>PitchBook</strong></th>
+<td><a href="https://pitchbook.com/" target="_blank" rel="noopener">https://pitchbook.com/</a></td>
+<td>VC/PE cap table, 投资人关系, 公司客户 (e.g. "哪些 PE 投了 EV 电池厂")</td>
+<td>自家爬虫 + 第三方</td>
+<td>$12k+/yr</td>
+</tr>
+<tr>
+<th><strong>Crunchbase Enterprise</strong></th>
+<td><a href="https://www.crunchbase.com/" target="_blank" rel="noopener">https://www.crunchbase.com/</a></td>
+<td>创业公司 ecosystem, 投资人, 收购</td>
+<td>公开 + 用户提交</td>
+<td>免费版 + Enterprise $10k+/yr</td>
+</tr>
+<tr>
+<th><strong>CB Insights</strong></th>
+<td><a href="https://www.cbinsights.com/" target="_blank" rel="noopener">https://www.cbinsights.com/</a></td>
+<td>Market map (2D 矩阵), 行业 / Mosaic 评分</td>
+<td>自家分析师 + 公开</td>
+<td>企业级, 估 $20k+/yr</td>
+</tr>
+<tr>
+<th><strong>Sensor Tower / data.ai</strong></th>
+<td><a href="https://sensortower.com/" target="_blank" rel="noopener">https://sensortower.com/</a></td>
+<td>移动 App 行业图谱, 头部 App 矩阵</td>
+<td>自家抓取</td>
+<td>$1k+/mo</td>
+</tr>
+</tbody></table>
+<p><strong>关键观察</strong>: 启信宝 / 天眼查的"关系图谱"在 2023 年后开始加"产业链"模块, 是国内 to B 创业公司的明确趋势。PitchBook / Crunchbase 是海外 VC 圈标配, 但与二级市场关联度低。</p>
+<h3 id="2-4-海外另类数据源-产业链补充">2.4 海外另类数据源 (产业链补充)</h3>
+<table>
+<thead><tr>
+<th>数据</th>
+<th>URL</th>
+<th>用途</th>
+</tr></thead>
+<tbody>
+<tr>
+<th><strong>ImportGenius / Panjiva</strong></th>
+<td><a href="https://www.importgenius.com/" target="_blank" rel="noopener">https://www.importgenius.com/</a></td>
+<td>美国海关舱单 → 真实贸易关系 (谁从中国买了什么)</td>
+</tr>
+<tr>
+<th><strong>Facteus</strong></th>
+<td><a href="https://facteus.com/" target="_blank" rel="noopener">https://facteus.com/</a></td>
+<td>信用卡刷卡数据 → 真实消费需求</td>
+</tr>
+<tr>
+<th><strong>Satellogic / Planet Labs</strong></th>
+<td><a href="https://www.planet.com/" target="_blank" rel="noopener">https://www.planet.com/</a></td>
+<td>卫星图像 → 港口/矿区实时产能</td>
+</tr>
+<tr>
+<th><strong>船讯网</strong></th>
+<td><a href="https://www.shipxy.com/" target="_blank" rel="noopener">https://www.shipxy.com/</a></td>
+<td>中国港口船舶 AIS → 进出口流量</td>
+</tr>
+</tbody></table>
+<p><strong>这些数据, AD-Research 不应该自己爬, 但可以在 UI 中以"外链"形式推荐</strong>。</p>
+<hr>
+<h2 id="section-3-ad-research-落地建议-7-个可执行功能">Section 3: AD-Research 落地建议 — 7 个可执行功能</h2>
+<p>下面 7 个功能按"落地难度 × 价值"矩阵排序。<strong>强烈建议</strong>先做 A + B + C (4–6 周, 一个人), 再决定是否进入 Phase B。</p>
+<h3 id="a-行业-公司双向筛选表-sector-company-table">A. 行业 → 公司双向筛选表 (Sector-Company Table)</h3>
+<ul><li><strong>价值</strong>: 最低, 但<strong>立刻能用</strong>, 是后面所有图谱的"列表视图"。</ul><li><strong>数据源</strong>: 申万分类 (公开) + akshare <code>stock_zyjs_ths</code> (同花顺) + 我们已有的 <code>equity_basic</code> 表。</ul><li><strong>可视化</strong>: 简单的<strong>可筛选</strong>表格 + 树形 sidebar (GICS 风格)。</ul><li><strong>实现 effort</strong>: <strong>S</strong> (1 周)。</ul><li><strong>查询示例</strong>: "申万一级 = 电力设备, 三级 = 锂电池, 市值 &gt; 100 亿, 2025 营收增速 &gt; 30%" → 10 行结果。</ul><li><strong>状态</strong>: 现有 UI 已经有部分能力 (e.g. US stocks 列表), 主要是把行业分类字段补全 + 联动筛选。</ul></ul>
+<h3 id="b-招股说明书-年报-主要客户-供应商-抽取-supply-chain-disclosure">B. 招股说明书 / 年报"主要客户/供应商"抽取 (Supply Chain Disclosure)</h3>
+<ul><li><strong>价值</strong>: 高, 是产业链最权威的<strong>一手数据</strong>。A 股招股书强制披露前五大客户/供应商, 10-K Item 1 / Item 7 也披露。</ul><li><strong>数据源</strong>: 巨潮 (cninfo) 已爬, Phase 5 招股说明书 + Phase 6 10-K。</ul><li><strong>实现思路</strong>:</ul></ul>
+<ol><li>1. 解析 PDF / HTML, 用规则匹配定位"主要客户"段落 (e.g. "前五大客户合计销售金额")。</li><li>2. 提取 (客户名称, 销售金额, 占比) 三元组。</li><li>3. <strong>关键难点</strong>: 客户名往往是"公司简称", 不是统一社会信用代码, 需要做企业别名匹配 → 解析为 ticker / USCC。</li><li>4. 写入 <code>customer_edge</code> 表: <code>(report_id, reporter_ticker, customer_name_raw, customer_ticker_resolved, amount, pct, period)</code>。</li></ol>
+<ul><li><strong>可视化</strong>: 表格 + 简单的"客户集中度"条形图 (top 5 占比)。</ul><li><strong>实现 effort</strong>: <strong>M</strong> (3 周, 含 LLM 抽取 + 别名匹配 + 测试)。</ul><li><strong>查询示例</strong>: "宁德时代 2024 年报中, 前五大客户是谁、占比多少"。</ul><li><strong>附加建议</strong>: 用 LLM (GLM-4 / Qwen3) 替代纯规则, 召回率能从 60% → 90%。</ul></ul>
+<h3 id="c-客户-供应商集中度指标-concentration-metrics">C. 客户/供应商集中度指标 (Concentration Metrics)</h3>
+<ul><li><strong>价值</strong>: 中, 但<strong>是判断供应链风险的核心指标</strong>。</ul><li><strong>计算公式</strong>:</ul><li><strong>数据源</strong>: B 的输出。</ul><li><strong>可视化</strong>: 表格 + sparkline (近 5 年趋势)。</ul><li><strong>实现 effort</strong>: <strong>S</strong> (1 周, 纯 SQL + 简单计算)。</ul><li><strong>查询示例</strong>: "近 3 年客户集中度上升最快的 20 家公司"。</ul></ul>
+<h3 id="d-产业链节点与边数据库-industry-chain-db">D. 产业链节点与边数据库 (Industry Chain DB)</h3>
+<ul><li><strong>价值</strong>: 高, 长期核心。</ul><li><strong>数据源</strong>:</ul><li><strong>数据模型</strong>:</ul></ul>
+<pre><code class="language-">  industry_node(id, name, level, sw_code, gics_code, sector_id)
+  company_node(id, ticker, name, market)
+  industry_member(industry_id, company_id)   -- 公司属于某行业
+  industry_edge(from_industry, to_industry, edge_type)  -- 行业间关系
+  supply_edge(reporter_ticker, counterparty_ticker, kind='customer'|'supplier', amount, pct, period, source)</code></pre>
+<ul><li><strong>可视化</strong>: react-flow, 节点 = 公司/行业, 边 = 供应/客户关系, 边的粗细 = 金额/占比。</ul><li><strong>实现 effort</strong>: <strong>L</strong> (6-8 周, 含 LLM 抽取 + 图查询 + UI)。</ul><li><strong>查询示例</strong>:</ul></ul>
+<h3 id="e-子公司-集团架构树-corporate-tree">E. 子公司 / 集团架构树 (Corporate Tree)</h3>
+<ul><li><strong>价值</strong>: 中, 关系图谱的子集, 但对 A 股"集团内部利益输送"研究很有用。</ul><li><strong>数据源</strong>: 启信宝 open API (有调用次数限制) + 巨潮"控股股东及实际控制人"披露 + 我们的年报解析。</ul><li><strong>可视化</strong>: 树形 / 辐射 (d3-hierarchy / react-flow)。</ul><li><strong>实现 effort</strong>: <strong>M</strong> (2 周)。</ul><li><strong>查询示例</strong>: "比亚迪集团的子公司清单 + 持股比例"。</ul></ul>
+<h3 id="f-可比公司自动构建-auto-comps">F. 可比公司自动构建 (Auto-Comps)</h3>
+<ul><li><strong>价值</strong>: 高, 已有基本面数据, 改造工作量小。</ul><li><strong>算法</strong>:</ul></ul>
+<ol><li>1. 同行业 (GICS 4 级相同) → 初筛 30 家。</li><li>2. 按市值 (0.5x-2x) + 营收 (0.3x-3x) + 毛利率 (±5pp) 三维过滤 → 5-8 家。</li><li>3. 输出 comps table (P/E, EV/EBITDA, P/S, growth, margin)。</li></ol>
+<ul><li><strong>数据源</strong>: 已有基本面 + 行业分类。</ul><li><strong>可视化</strong>: 表格 + 散点图 (X = 增速, Y = 估值)。</ul><li><strong>实现 effort</strong>: <strong>M</strong> (2-3 周, 纯 SQL + 前端)。</ul><li><strong>查询示例</strong>: "找出与宁德时代规模相近、增速相当的 5 家公司"。</ul></ul>
+<h3 id="g-产业链传导信号-propagation-signals">G. 产业链传导信号 (Propagation Signals)</h3>
+<ul><li><strong>价值</strong>: 极高, 是产业图谱的<strong>最终奥义</strong>——但实现难度也最大。</ul><li><strong>逻辑</strong>:</ul></ul>
+<ol><li>1. 监控上游价格 (碳酸锂、铁矿、原油)。</li><li>2. 用历史弹性系数, 估算下游毛利冲击。</li><li>3. 推送"今日重点传导信号"卡片。</li></ol>
+<ul><li><strong>数据源</strong>: 已有的商品价格 + 行业归属 + 历史财务数据。</ul><li><strong>可视化</strong>: 信号卡片 (类似 morning note) + 弹性矩阵热图。</ul><li><strong>实现 effort</strong>: <strong>XL</strong> (3 个月+, 需回测弹性系数 + 建立信号评分体系)。</ul><li><strong>查询示例</strong>: "碳酸锂本周跌 5%, 对中游电池厂毛利的弹性"。</ul><li><strong>状态</strong>: 留作 Phase D。</ul></ul>
+<h3 id="h-跨市场对标-cross-listing-peers">H. 跨市场对标 (Cross-Listing Peers)</h3>
+<ul><li><strong>价值</strong>: 中, A/H/A+US 双重上市越来越普遍。</ul><li><strong>数据源</strong>: HKEX listing + SEC ADR list + 我们的 equity_basic。</ul><li><strong>实现 effort</strong>: <strong>S</strong> (1 周, 加个 cross_listing 表)。</ul><li><strong>查询示例</strong>: "比亚迪 A vs 比亚迪 H 估值差异, 历史分位"。</ul></ul>
+<p><strong>优先级建议</strong>: <strong>A + B + C + F</strong> (6-8 周), 然后 D, 然后 E + H, 最后 G。</p>
+<hr>
+<h2 id="section-4-数据源汇总-按可用性排序">Section 4: 数据源汇总 (按可用性排序)</h2>
+<table>
+<thead><tr>
+<th>数据源</th>
+<th>数据类型</th>
+<th>抓取状态</th>
+<th>接入成本</th>
+<th>备注</th>
+</tr></thead>
+<tbody>
+<tr>
+<th><strong>申万行业分类 (SW Index)</strong></th>
+<td>一/二/三级行业</td>
+<td>公开下载, 已落库</td>
+<td>¥0</td>
+<td>必须做事实标准</td>
+</tr>
+<tr>
+<th><strong>中信行业分类</strong></th>
+<td>一/二级</td>
+<td>公开下载</td>
+<td>¥0</td>
+<td>与申万互转表要自己维护</td>
+</tr>
+<tr>
+<th><strong>GICS / SIC / NAICS</strong></th>
+<td>全球统一</td>
+<td>公开</td>
+<td>¥0</td>
+<td>MSCI / S&amp;P 维护</td>
+</tr>
+<tr>
+<th><strong>akshare <code>stock_zyjs_ths</code></strong></th>
+<td>行业归属 + 主营业务</td>
+<td>公开 API</td>
+<td>¥0, 已用</td>
+<td>字段非标, 需清洗</td>
+</tr>
+<tr>
+<th><strong>akshare <code>stock_zyjs_ths</code> 上下游</strong></th>
+<td>行业上下游关系</td>
+<td>公开 API</td>
+<td>¥0</td>
+<td>粒度粗, 仅到行业</td>
+</tr>
+<tr>
+<th><strong>巨潮 (cninfo) 招股书</strong></th>
+<td>主要客户/供应商</td>
+<td><strong>已爬 (Phase 5)</strong></td>
+<td>¥0, 解析要 LLM</td>
+<td>一手数据, 价值最高</td>
+</tr>
+<tr>
+<th><strong>巨潮 (cninfo) 年报</strong></th>
+<td>主要客户/供应商 + 业务概要</td>
+<td><strong>已爬 (Phase 5)</strong></td>
+<td>¥0, 解析要 LLM</td>
+<td>同上</td>
+</tr>
+<tr>
+<th><strong>SEC EDGAR 10-K / 10-Q</strong></th>
+<td>Customer concentration, segments, suppliers</td>
+<td><strong>已爬 (Phase 6)</strong></td>
+<td>¥0</td>
+<td>10-K Item 1, 1A, 7</td>
+</tr>
+<tr>
+<th><strong>SEC EDGAR 8-K</strong></th>
+<td>大客户合同、供应链中断</td>
+<td>已爬</td>
+<td>¥0</td>
+<td>短文本, 适合 LLM</td>
+</tr>
+<tr>
+<th><strong>公司公告 (Wind/巨潮)</strong></th>
+<td>关联交易、对外投资</td>
+<td>已爬</td>
+<td>¥0</td>
+<td>噪声大, 要过滤</td>
+</tr>
+<tr>
+<th><strong>启信宝 open API</strong></th>
+<td>股权、关联、子公司</td>
+<td>部分免费</td>
+<td>¥2-5 万/yr</td>
+<td>调用次数限制</td>
+</tr>
+<tr>
+<th><strong>天眼查 / 企查查</strong></th>
+<td>同上</td>
+<td>同上</td>
+<td>同上</td>
+<td>互为冗余</td>
+</tr>
+<tr>
+<th><strong>Wind 行业图谱</strong></th>
+<td>标准化产业链</td>
+<td><strong>付费</strong></td>
+<td>¥8-20 万/yr</td>
+<td>闭源, 不推荐</td>
+</tr>
+<tr>
+<th><strong>头豹 / 鲸准</strong></th>
+<td>行业研究报告</td>
+<td><strong>付费</strong></td>
+<td>¥2-5 万/单</td>
+<td>适合做"内容"而非"图谱"</td>
+</tr>
+<tr>
+<th><strong>Panjiva / ImportGenius</strong></th>
+<td>美国海关舱单</td>
+<td>付费</td>
+<td>$30k+/yr</td>
+<td>海外贸易流, 二期考虑</td>
+</tr>
+<tr>
+<th><strong>Facteus</strong></th>
+<td>信用卡刷卡</td>
+<td>付费</td>
+<td>$50k+/yr</td>
+<td>真实消费, 二期考虑</td>
+</tr>
+</tbody></table>
+<p><strong>关键决策</strong>: <strong>不要买 Wind 行业图谱</strong>。原因: (1) 闭源, 不能内嵌到我们自己的 UI; (2) 单价高; (3) 招股书 + 10-K 自抽的"主要客户/供应商"覆盖了 80% 的使用场景。</p>
+<hr>
+<h2 id="section-5-可视化技术选型">Section 5: 可视化技术选型</h2>
+<h3 id="5-1-候选方案">5.1 候选方案</h3>
+<table>
+<thead><tr>
+<th>库</th>
+<th>协议</th>
+<th>优点</th>
+<th>缺点</th>
+<th>适用场景</th>
+</tr></thead>
+<tbody>
+<tr>
+<th><strong>react-flow</strong></th>
+<td>MIT</td>
+<td>节点编辑器范式, 容易扩展, 社区活跃 (10k+ star), 自定义节点容易</td>
+<td>大数据 (&gt;2000 节点) 性能下降</td>
+<td><strong>推荐 v1</strong>: 行业图谱、子公司树</td>
+</tr>
+<tr>
+<th><strong>vis-network</strong></th>
+<td>MIT/Apache</td>
+<td>老牌, 力导向图开箱即用</td>
+<td>文档差, API 笨重</td>
+<td>不推荐</td>
+</tr>
+<tr>
+<th><strong>cytoscape.js</strong></th>
+<td>MIT</td>
+<td>算法全 (BFS, shortest path), 学术常用</td>
+<td>学习曲线陡, 样式配置繁琐</td>
+<td>复杂图算法</td>
+</tr>
+<tr>
+<th><strong>echarts-graph</strong></th>
+<td>Apache-2.0</td>
+<td>与我们 ECharts 技术栈统一</td>
+<td>图编辑能力弱</td>
+<td>简单关系图</td>
+</tr>
+<tr>
+<th><strong>d3-force + d3-svg</strong></th>
+<td>ISC</td>
+<td>最灵活</td>
+<td>要自己写交互, 工作量大</td>
+<td>特殊定制</td>
+</tr>
+<tr>
+<th><strong>Apache ECharts Sankey</strong></th>
+<td>Apache-2.0</td>
+<td>Sankey 做得最成熟</td>
+<td>只支持 Sankey</td>
+<td><strong>推荐 v1</strong>: 产业链流量</td>
+</tr>
+<tr>
+<th><strong>d3-sankey</strong></th>
+<td>ISC</td>
+<td>可定制</td>
+<td>交互要自己写</td>
+<td>高级定制</td>
+</tr>
+<tr>
+<th><strong>echarts-treemap</strong></th>
+<td>Apache-2.0</td>
+<td>行业市值热图</td>
+<td>单一</td>
+<td>行业筛选</td>
+</tr>
+<tr>
+<th><strong>mapbox-gl</strong></th>
+<td>Mapbox EULA (部分免费)</td>
+<td>地理链路</td>
+<td>商业条款</td>
+<td>二期: 全球矿产/港口</td>
+</tr>
+</tbody></table>
+<h3 id="5-2-推荐组合">5.2 推荐组合</h3>
+<ul><li><strong>v1</strong>: <strong>react-flow</strong> (节点-边图) + <strong>ECharts Sankey</strong> (产业链流量) + <strong>ECharts Treemap</strong> (行业市值筛选)</ul><li><strong>v2 (按需)</strong>: 地图叠加 → mapbox-gl (免费层) 或 kepler.gl (MIT)</ul><li><strong>v3 (按需)</strong>: 复杂图算法 → cytoscape.js</ul></ul>
+<h3 id="5-3-性能边界-react-flow-实测经验">5.3 性能边界 (react-flow 实测经验)</h3>
+<ul><li>500 节点 + 1500 边: 流畅 (60fps)</ul><li>2000 节点 + 6000 边: 边缘可接受 (30-45fps)</ul><li>5000+ 节点: 需开 partial render / 集群布局</ul><li><strong>结论</strong>: v1 单图控制在 500 节点以内, 大图用"按需展开" (点击节点再拉下一层)。</ul></ul>
+<hr>
+<h2 id="section-6-分阶段路线图">Section 6: 分阶段路线图</h2>
+<h3 id="phase-a-行业-公司表-本月-1-周">Phase A: 行业 → 公司表 (本月, 1 周)</h3>
+<p><strong>目标</strong>: 把"按行业筛选"做到行业标准水平。</p>
+<ul><li>[ ] 申万 + 中信分类入库</ul><li>[ ] akshare <code>stock_zyjs_ths</code> 清洗</ul><li>[ ] 行业 → 公司列表 API</ul><li>[ ] 行业树 sidebar</ul><li>[ ] 多维筛选 (行业 / 市值 / 增速 / 估值)</ul></ul>
+<p><strong>Done 定义</strong>: 用户能在 3 次点击内找到"申万三级 = 锂电池, 市值 &gt; 100 亿, 2025 营收 &gt; 30% 增速"的所有公司。</p>
+<h3 id="phase-b-招股书-年报抽取-下月-3-周">Phase B: 招股书 / 年报抽取 (下月, 3 周)</h3>
+<p><strong>目标</strong>: 拿到 A 股 5000+ 公司的近 3 年"主要客户/供应商"数据。</p>
+<ul><li>[ ] PDF / HTML 段落定位 (规则 + LLM 兜底)</ul><li>[ ] 客户/供应商名称 → ticker 别名匹配 (用工商库 + 现有 equity_basic)</ul><li>[ ] 写入 <code>supply_edge</code> 表</ul><li>[ ] 客户集中度计算 (HHI + top-N 占比)</ul><li>[ ] 公司详情页加"主要客户/供应商" tab</ul></ul>
+<p><strong>Done 定义</strong>: 在宁德时代详情页, 能看到 2022-2024 年报披露的前 5 大客户, 占比、变化趋势。</p>
+<h3 id="phase-c-完整图谱-3-个月-6-8-周">Phase C: 完整图谱 (3 个月, 6-8 周)</h3>
+<p><strong>目标</strong>: react-flow 上的"产业图谱"模块。</p>
+<ul><li>[ ] 行业节点 + 公司节点 + 边的统一模型</ul><li>[ ] react-flow 前端组件 (支持缩放、点击展开、过滤)</ul><li>[ ] 3 层遍历查询 (e.g. 行业 → 行业成员 → 客户 → 客户的客户)</ul><li>[ ] 子公司树 (用启信宝或自抽)</ul><li>[ ] 跨市场对标 (A/H/US)</ul></ul>
+<p><strong>Done 定义</strong>: 用户能选"新能源车"行业, 看到完整的上游-中游-下游网络, 点击任一节点展开该公司详情 + 客户/供应商。</p>
+<h3 id="phase-d-ai-行业传导信号-长期-持续">Phase D: AI 行业传导信号 (长期, 持续)</h3>
+<ul><li>[ ] 上游价格 → 下游毛利弹性模型 (用历史财务数据回归)</ul><li>[ ] 行业事件 → 上下游影响评分</ul><li>[ ] 每日推送传导信号卡片</ul></ul>
+<hr>
+<h2 id="section-7-关键风险与决策点">Section 7: 关键风险与决策点</h2>
+<h3 id="7-1-技术风险">7.1 技术风险</h3>
+<table>
+<thead><tr>
+<th>风险</th>
+<th>影响</th>
+<th>缓解</th>
+</tr></thead>
+<tbody>
+<tr>
+<th><strong>图数据库选错</strong> (过早引入 Neo4j)</th>
+<td>运维成本高、拖累 v1 进度</td>
+<td><strong>v1 用 Postgres + recursive CTE</strong>; 突破 100w 节点再考虑 Neo4j</td>
+</tr>
+<tr>
+<th><strong>大图性能</strong></th>
+<td>UI 卡顿</td>
+<td>react-flow partial render + 节点 lazy load + 服务端预聚合</td>
+</tr>
+<tr>
+<th><strong>别名匹配误识别</strong></th>
+<td>把"宁德时代"和"宁德新能源"误合并</td>
+<td>用 USCC (统一社会信用代码) + ticker 双键</td>
+</tr>
+<tr>
+<th><strong>LLM 抽取错误</strong></th>
+<td>招股书段落定位错</td>
+<td>人工 review 一个 50 家样本, 调 prompt; 关键字段做范围校验</td>
+</tr>
+</tbody></table>
+<h3 id="7-2-数据风险">7.2 数据风险</h3>
+<table>
+<thead><tr>
+<th>风险</th>
+<th>影响</th>
+<th>缓解</th>
+</tr></thead>
+<tbody>
+<tr>
+<th><strong>招股书 PDF 格式不统一</strong></th>
+<td>抽取规则难泛化</td>
+<td>优先 HTML/纯文本, PDF 用 pdfplumber + OCR 兜底</td>
+</tr>
+<tr>
+<th><strong>客户名称用简称</strong></th>
+<td>匹配不到工商库</td>
+<td>维护"常用别名"表; 辅以人工校对</td>
+</tr>
+<tr>
+<th><strong>10-K 客户披露要求松</strong> (美国)</th>
+<td>召回率低</td>
+<td>用 segment reporting + risk factor 关键词辅助</td>
+</tr>
+</tbody></table>
+<h3 id="7-3-商业风险">7.3 商业风险</h3>
+<table>
+<thead><tr>
+<th>风险</th>
+<th>影响</th>
+<th>缓解</th>
+</tr></thead>
+<tbody>
+<tr>
+<th><strong>Wind 行业图谱降维打击</strong></th>
+<td>我们做的他们都有</td>
+<td>不与 Wind 比"覆盖度", 比"交互 + 个性化 + 跨市场 + AI 传导"</td>
+</tr>
+<tr>
+<th><strong>数据合规</strong> (招股书再分发)</th>
+<td>法律风险</td>
+<td>平台内仅做<strong>摘要 + 链接</strong>, 不全文复制</td>
+</tr>
+<tr>
+<th><strong>模型/版权</strong> (行业分类用谁的)</th>
+<td>申万/中信官方未明确授权条款</td>
+<td>自有体系 + GICS (公开) 兜底; 用户自选分类</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="section-8-与现有-ad-research-能力的整合点">Section 8: 与现有 AD-Research 能力的整合点</h2>
+<p>AD-Research 已有: A 股 + 美股行情数据、akshare 行业数据、巨潮公告、SEC EDGAR、后端 FastAPI、前端 Next.js + ECharts + (推测) 可扩展组件。</p>
+<p><strong>最小可行 v1 集成</strong> (从已有能力出发):</p>
+<ol><li><strong>后端</strong>: 新增 <code>industry</code>, <code>supply_edge</code> 两张表 (Postgres JSONB 即可, 不上 Neo4j)。</li><li><strong>后端 API</strong>: <code>/api/v1/industry/tree</code> <code>/api/v1/industry/{code}/members</code> <code>/api/v1/company/{ticker}/customers</code> <code>/api/v1/company/{ticker}/suppliers</code>。</li><li><strong>前端</strong>: 在 <code>companies/[ticker]/page.tsx</code> 加 <code>&amp;lt;SupplyChainTab /&amp;gt;</code> 组件; 新增 <code>/industry/[code]/page.tsx</code> 行业详情。</li><li><strong>可视化</strong>: react-flow 加进 <code>package.json</code>; Sankey 用现有 ECharts; 两者组件放 <code>components/industry/</code>。</li><li><strong>离线任务</strong>: 每周日跑一次招股书/10-K 抽取, 写 diff 进 <code>supply_edge</code>。</li></ol>
+<p><strong>估算</strong>: 后端 2 周 + 前端 2 周 + LLM 抽取 pipeline 2 周 = <strong>6 周, 1 个全栈 + 1 个数据工程师</strong>。</p>
+<hr>
+<h2 id="section-9-总结与建议">Section 9: 总结与建议</h2>
+<p><strong>AD-Research 做产业图谱, 战略上是正确的</strong>。原因:</p>
+<ol><li><strong>数据壁垒已破</strong>: 招股书 + 10-K + akshare + 启信宝免费层, 已经能搭出 60-70% 价值的图谱。</li><li><strong>差异化空间</strong>: 国内 Wind 是闭源高价, 启信宝是工商关系为主; 跨市场 (A+US+港+加密) + AI 传导信号, 是我们的独特卖点。</li><li><strong>用户粘性</strong>: 产业图谱是"研究工作流"的中枢——从宏观到个股都要经过产业链, 高频使用。</li><li><strong>与已有模块协同</strong>: 行业 → 公司 → 财务 → 估值 → 风险, 产业图谱是中间缺的那块"关系"层。</li></ol>
+<p><strong>具体建议</strong>:</p>
+<ol><li><strong>本周</strong>: 启动 Phase A (1 周, 行业表)。同时确定 react-flow 是否进前端依赖。</li><li><strong>本月内</strong>: 完成 Phase A + 设计 Phase B 的 LLM 抽取 prompt。</li><li><strong>下月</strong>: Phase B (3 周) + Phase C 的数据模型设计。</li><li><strong>3 个月内</strong>: Phase C 上线, 跑用户测试。</li><li><strong>6 个月后</strong>: 评估是否进入 Phase D (AI 传导)。</li></ol>
+<p><strong>不要做的</strong>:</p>
+<ul><li>不要买 Wind 行业图谱。</ul><li>不要在 v1 上 Neo4j。</ul><li>不要做关系图谱 (启信宝够用, 我们做不过专业玩家)。</ul><li>不要试图在 v1 覆盖所有 4 个概念, 先聚焦"产业链 + 产业图谱"两个。</ul></ul>
+<hr>
+<h2 id="附录-a-关键术语对照表">附录 A: 关键术语对照表</h2>
+<table>
+<thead><tr>
+<th>中文</th>
+<th>英文</th>
+<th>简写</th>
+</tr></thead>
+<tbody>
+<tr>
+<th>产业链</th>
+<td>Value Chain</td>
+<td>VC</td>
+</tr>
+<tr>
+<th>产业图谱</th>
+<td>Industry Graph</td>
+<td>IG</td>
+</tr>
+<tr>
+<th>行业分类</th>
+<td>Industry Taxonomy / Classification</td>
+<td>IT</td>
+</tr>
+<tr>
+<th>关系图谱</th>
+<td>Relationship Graph</td>
+<td>RG</td>
+</tr>
+<tr>
+<th>招股说明书</th>
+<td>Prospectus / S-1</td>
+<td>-</td>
+</tr>
+<tr>
+<th>主要客户</th>
+<td>Major Customers</td>
+<td>-</td>
+</tr>
+<tr>
+<th>主要供应商</th>
+<td>Major Suppliers</td>
+<td>-</td>
+</tr>
+<tr>
+<th>客户集中度</th>
+<td>Customer Concentration</td>
+<td>CC</td>
+</tr>
+<tr>
+<th>上游</th>
+<td>Upstream</td>
+<td>-</td>
+</tr>
+<tr>
+<th>中游</th>
+<td>Midstream</td>
+<td>-</td>
+</tr>
+<tr>
+<th>下游</th>
+<td>Downstream</td>
+<td>-</td>
+</tr>
+<tr>
+<th>申万行业</th>
+<td>SWS Industry Classification</td>
+<td>SW</td>
+</tr>
+<tr>
+<th>GICS</th>
+<td>Global Industry Classification Standard</td>
+<td>GICS</td>
+</tr>
+<tr>
+<th>HHI</th>
+<td>Herfindahl-Hirschman Index</td>
+<td>HHI</td>
+</tr>
+<tr>
+<th>统一社会信用代码</th>
+<td>Unified Social Credit Code</td>
+<td>USCC</td>
+</tr>
+</tbody></table>
+<h2 id="附录-b-参考文献-按引用顺序">附录 B: 参考文献 (按引用顺序)</h2>
+<ol><li>Bloomberg Professional: <a href="https://www.bloomberg.com/professional/" target="_blank" rel="noopener">https://www.bloomberg.com/professional/</a></li><li>FactSet Supply Chain: <a href="https://www.factset.com/solutions/data-and-analytics/supply-chain" target="_blank" rel="noopener">https://www.factset.com/solutions/data-and-analytics/supply-chain</a></li><li>S&amp;P Capital IQ: <a href="https://www.spglobal.com/marketintelligence/en/" target="_blank" rel="noopener">https://www.spglobal.com/marketintelligence/en/</a></li><li>S&amp;P Commodity Insights: <a href="https://www.spglobal.com/commodityinsights/" target="_blank" rel="noopener">https://www.spglobal.com/commodityinsights/</a></li><li>LSEG / Refinitiv: <a href="https://www.lseg.com/" target="_blank" rel="noopener">https://www.lseg.com/</a></li><li>Wind: <a href="https://www.wind.com.cn/" target="_blank" rel="noopener">https://www.wind.com.cn/</a></li><li>申万指数: <a href="http://www.swsindex.com/" target="_blank" rel="noopener">http://www.swsindex.com/</a></li><li>中信证券: <a href="https://www.cs.com.cn/" target="_blank" rel="noopener">https://www.cs.com.cn/</a></li><li>同花顺: <a href="https://www.10jqka.com.cn/" target="_blank" rel="noopener">https://www.10jqka.com.cn/</a></li><li>头豹研究院: <a href="https://www.leadleo.com/" target="_blank" rel="noopener">https://www.leadleo.com/</a></li><li>鲸准: <a href="https://www.jingdata.com/" target="_blank" rel="noopener">https://www.jingdata.com/</a></li><li>启信宝: <a href="https://www.qixin.com/" target="_blank" rel="noopener">https://www.qixin.com/</a></li><li>天眼查: <a href="https://www.tianyancha.com/" target="_blank" rel="noopener">https://www.tianyancha.com/</a></li><li>企查查: <a href="https://www.qcc.com/" target="_blank" rel="noopener">https://www.qcc.com/</a></li><li>PitchBook: <a href="https://pitchbook.com/" target="_blank" rel="noopener">https://pitchbook.com/</a></li><li>Crunchbase: <a href="https://www.crunchbase.com/" target="_blank" rel="noopener">https://www.crunchbase.com/</a></li><li>CB Insights: <a href="https://www.cbinsights.com/" target="_blank" rel="noopener">https://www.cbinsights.com/</a></li><li>Sensor Tower: <a href="https://sensortower.com/" target="_blank" rel="noopener">https://sensortower.com/</a></li><li>ImportGenius / Panjiva: <a href="https://www.importgenius.com/" target="_blank" rel="noopener">https://www.importgenius.com/</a></li><li>react-flow: <a href="https://reactflow.dev/" target="_blank" rel="noopener">https://reactflow.dev/</a></li><li>ECharts: <a href="https://echarts.apache.org/" target="_blank" rel="noopener">https://echarts.apache.org/</a></li><li>巨潮资讯: <a href="http://www.cninfo.com.cn/" target="_blank" rel="noopener">http://www.cninfo.com.cn/</a></li><li>SEC EDGAR: <a href="https://www.sec.gov/edgar" target="_blank" rel="noopener">https://www.sec.gov/edgar</a></li></ol>
+<hr>
+<p><strong>报告结束。</strong> 期待 Phase A 的实施反馈。</p>
+</body>
+</html>

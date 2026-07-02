@@ -23,6 +23,7 @@ _current_jti: contextvars.ContextVar[str | None] = contextvars.ContextVar(
 from app.services.analysis_service import AnalysisService
 from app.services.attribution_service import AttributionService
 from app.services.backtest_service import BacktestService
+from app.services.cninfo_report_service import CninfoReportService
 from app.services.etf_scanner_service import ETFScannerService
 from app.services.etf_service import ETFService
 from app.services.favorite_service import FavoriteService
@@ -34,6 +35,7 @@ from app.services.paper_trading_service import PaperTradingService
 from app.services.pool_enhancement_service import PoolEnhancementService
 from app.services.pool_service import PoolService
 from app.services.report_service import ReportService
+from app.services.research_report_service import ResearchReportService
 from app.services.risk_analysis_service import RiskAnalysisService
 from app.services.scoring_service import ScoringService
 from app.services.screening_service import ScreeningService
@@ -63,6 +65,7 @@ __all__ = [
     "get_notification_service",
     "get_strategy_service",
     "get_backtest_service",
+    "get_cninfo_report_service",
     "get_signal_service",
     "get_attribution_service",
     "get_strategy_comparison_service",
@@ -70,6 +73,7 @@ __all__ = [
     "get_paper_trading_service",
     "get_stock_fundamental_service",
     "get_listing_event_service",
+    "get_research_report_service",
 ]
 
 
@@ -239,6 +243,11 @@ def get_backtest_service(db: Session = Depends(get_db)) -> BacktestService:
     return BacktestService(db)
 
 
+def get_cninfo_report_service(db: Session = Depends(get_db)) -> CninfoReportService:
+    """Provide a CninfoReportService instance with a DB session."""
+    return CninfoReportService(db)
+
+
 def get_signal_service(db: Session = Depends(get_db)) -> SignalService:
     """Provide a SignalService instance with a DB session."""
     return SignalService(db)
@@ -277,3 +286,8 @@ def get_risk_analysis_service(db: Session = Depends(get_db)) -> RiskAnalysisServ
 def get_listing_event_service(db: Session = Depends(get_db)) -> ListingEventService:
     """Provide a ListingEventService instance with a DB session."""
     return ListingEventService(db)
+
+
+def get_research_report_service(db: Session = Depends(get_db)) -> ResearchReportService:
+    """Provide a ResearchReportService instance with a DB session."""
+    return ResearchReportService(db)

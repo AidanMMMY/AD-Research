@@ -1,9 +1,10 @@
 """Synchronous wrappers for async news crawlers.
 
 Each wrapper is a thin facade that runs an async crawl and persists
-results. The actual crawlers (xinhua/cninfo/sina/yahoo/cnbc/sec/reddit)
-expose an async ``crawl()`` method; this module adds a thin DB-write
-layer and exposes a sync function suitable for APScheduler.
+results. The actual crawlers (xinhua/cninfo/sina/yahoo/cnbc/sec/reddit/
+coindesk/cointelegraph) expose an async ``crawl()`` method; this module
+adds a thin DB-write layer and exposes a sync function suitable for
+APScheduler.
 """
 
 import asyncio
@@ -169,3 +170,65 @@ def run_reddit_crawl() -> dict[str, int]:
     except Exception as exc:
         logger.exception("reddit crawl failed: %s", exc)
         return {"fetched": 0, "written": 0}
+
+
+# ── Crypto ──
+
+def run_coindesk_crawl() -> dict[str, int]:
+    from app.services.news.sources.coindesk import CoinDeskCrawler
+
+    async def _go():
+        async with CoinDeskCrawler() as c:
+            return await c.crawl()
+
+    try:
+        articles = _run_async(_go())
+        written = _write_to_db(articles)
+        return {"fetched": len(articles), "written": written}
+    except Exception as exc:
+        logger.exception("coindesk crawl failed: %s", exc)
+        return {"fetched": 0, "written": 0}
+
+
+def run_cointelegraph_crawl() -> dict[str, int]:
+    from app.services.news.sources.cointelegraph import CointelegraphCrawler
+
+    async def _go():
+        async with CointelegraphCrawler() as c:
+            return await c.crawl()
+
+    try:
+        articles = _run_async(_go())
+        written = _write_to_db(articles)
+        return {"fetched": len(articles), "written": written}
+    except Exception as exc:
+        logger.exception("cointelegraph crawl failed: %s", exc)
+        return {"fetched": 0, "written": 0}
+
+
+# ── Macro (FRED) ──
+
+def run_fred_refresh(lookback_days: int = 180) -> dict[str, Any]:
+    """Pull the latest ~N days for every registered FRED series.
+
+    Called from APScheduler on weekdays after FRED publishes the bulk
+    of its daily data (~15:00 ET).  Safe to re-run; the upsert is
+    idempotent.
+    """
+    from app.core.database import SessionLocal
+    from app.services.macro.fred_service import FredService
+
+    db = SessionLocal()
+    try:
+        service = FredService(db=db)
+        result = service.refresh(lookback_days=lookback_days)
+        return {
+            "written": result.get("written", 0),
+            "series_count": result.get("series_count", 0),
+            "failed": len(result.get("failed", [])),
+        }
+    except Exception as exc:
+        logger.exception("FRED refresh failed: %s", exc)
+        return {"written": 0, "series_count": 0, "failed": -1}
+    finally:
+        db.close()

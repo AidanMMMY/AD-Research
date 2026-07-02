@@ -1141,3 +1141,27 @@ body::after {
 :root[data-theme="print"] body::after {
   display: none !important;
 }
+
+/* ============================================================
+   Print theme — Layout shell (header / sidebar)
+
+   The AppLayout uses a hardcoded dark frosted-glass value
+   `rgba(10, 10, 10, 0.85)` on <header> for the terminal theme,
+   which would otherwise stay near-black on the cream theme.
+   Override it here so the header switches to the print palette
+   (cream wash + dark-ink border + ink text). The sidebar already
+   uses --bg-elevated, so it follows tokens automatically — but we
+   re-assert it under the print theme to be defensive against any
+   future inline-styles changes.
+   ============================================================ */
+:root[data-theme="print"] header {
+  background: rgba(245, 241, 232, 0.92) !important; /* --bg-base at 92% opacity for paper-glass */
+  color: var(--text-primary) !important;
+  border-bottom: 1px solid var(--border-default) !important;
+}
+
+:root[data-theme="print"] aside {
+  background: var(--bg-elevated) !important;
+  border-right-color: var(--border-default) !important;
+  color: var(--text-primary) !important;
+}

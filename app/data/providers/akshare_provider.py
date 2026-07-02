@@ -13,6 +13,65 @@ from app.data.providers.base import DataProvider, ETFInfo, MarketHours
 
 warnings.filterwarnings("ignore")
 
+
+def _coerce_date(value) -> str | None:
+    """Coerce a value to a YYYY-MM-DD string, returning None on failure.
+
+    Accepts pandas Timestamp, datetime.date, datetime.datetime, and
+    ISO-format strings.
+    """
+    if value is None:
+        return None
+    if isinstance(value, str):
+        try:
+            return pd.to_datetime(value).strftime("%Y-%m-%d")
+        except Exception:
+            return None
+    try:
+        return pd.to_datetime(value).strftime("%Y-%m-%d")
+    except Exception:
+        return None
+
+
+def _coerce_float(value) -> float | None:
+    """Coerce a value to float, returning None on failure or NaN."""
+    if value is None:
+        return None
+    try:
+        result = float(value)
+        import math
+        if math.isnan(result):
+            return None
+        return result
+    except (TypeError, ValueError):
+        return None
+
+
+def _coerce_ppi_month(value) -> str | None:
+    """Parse PPI 'YYYY年MM月份' strings to YYYY-MM-01."""
+    if value is None:
+        return None
+    if not isinstance(value, str):
+        return _coerce_date(value)
+    import re
+    match = re.match(r"(\d{4})年(\d{1,2})月份", value.strip())
+    if not match:
+        return _coerce_date(value)
+    year, month = match.group(1), match.group(2).zfill(2)
+    return f"{year}-{month}-01"
+
+
+def _coerce_chinese_date(value) -> str | None:
+    """Parse 'YYYY年MM月DD日' strings to YYYY-MM-DD."""
+    if value is None or not isinstance(value, str):
+        return _coerce_date(value)
+    import re
+    match = re.match(r"(\d{4})年(\d{1,2})月(\d{1,2})日", value.strip())
+    if not match:
+        return _coerce_date(value)
+    y, m, d = match.groups()
+    return f"{y}-{int(m):02d}-{int(d):02d}"
+
 # Rate limiting: minimum interval between API calls (seconds)
 _API_DELAY = 0.3
 # Delay between batches (seconds)
@@ -287,3 +346,224 @@ class AkshareProvider(DataProvider):
         return MarketHours(
             open_time="09:30", close_time="15:00", timezone="Asia/Shanghai"
         )
+
+    # ------------------------------------------------------------------
+    # China macro indicators (akshare ``macro_china_*`` family).
+    #
+    # Each method returns ``list[dict]`` shaped as:
+    #     [{"code", "period": YYYY-MM-DD, "value", "name_zh", "unit"}, ...]
+    # The fetch is best-effort: if the upstream endpoint changes shape,
+    # is rate-limited, or returns no data, the method logs and returns
+    # an empty list so the scheduler job can keep running.
+    # ------------------------------------------------------------------
+
+    def fetch_china_macro_gdp(self) -> list[dict]:
+        """GDP 年率报告 (%). akshare: macro_china_gdp_yearly."""
+        try:
+            df = ak.macro_china_gdp_yearly()
+        except Exception as exc:
+            print(f"[AkshareProvider] fetch_china_macro_gdp failed: {exc}")
+            return []
+
+        if df is None or df.empty:
+            return []
+
+        out: list[dict] = []
+        for _, row in df.iterrows():
+            period = _coerce_date(row.get("日期"))
+            value = _coerce_float(row.get("今值"))
+            if period is None or value is None:
+                continue
+            out.append({
+                "code": "gdp_yoy",
+                "period": period,
+                "value": value,
+                "name_zh": "GDP 年率",
+                "unit": "%",
+            })
+        return out
+
+    def fetch_china_macro_cpi(self) -> list[dict]:
+        """CPI 月率报告 (%). akshare: macro_china_cpi_monthly."""
+        try:
+            df = ak.macro_china_cpi_monthly()
+        except Exception as exc:
+            print(f"[AkshareProvider] fetch_china_macro_cpi failed: {exc}")
+            return []
+
+        if df is None or df.empty:
+            return []
+
+        out: list[dict] = []
+        for _, row in df.iterrows():
+            period = _coerce_date(row.get("日期"))
+            value = _coerce_float(row.get("今值"))
+            if period is None or value is None:
+                continue
+            out.append({
+                "code": "cpi_yoy",
+                "period": period,
+                "value": value,
+                "name_zh": "CPI 月率",
+                "unit": "%",
+            })
+        return out
+
+    def fetch_china_macro_ppi(self) -> list[dict]:
+        """PPI 月度同比增长 (%). akshare: macro_china_ppi (当月同比增长)."""
+        try:
+            df = ak.macro_china_ppi()
+        except Exception as exc:
+            print(f"[AkshareProvider] fetch_china_macro_ppi failed: {exc}")
+            return []
+
+        if df is None or df.empty:
+            return []
+
+        out: list[dict] = []
+        for _, row in df.iterrows():
+            period = _coerce_ppi_month(row.get("月份"))
+            value = _coerce_float(row.get("当月同比增长"))
+            if period is None or value is None:
+                continue
+            out.append({
+                "code": "ppi_yoy",
+                "period": period,
+                "value": value,
+                "name_zh": "PPI 同比增长",
+                "unit": "%",
+            })
+        return out
+
+    def fetch_china_macro_m2(self) -> list[dict]:
+        """M2 货币供应年率 (%). akshare: macro_china_m2_yearly."""
+        try:
+            df = ak.macro_china_m2_yearly()
+        except Exception as exc:
+            print(f"[AkshareProvider] fetch_china_macro_m2 failed: {exc}")
+            return []
+
+        if df is None or df.empty:
+            return []
+
+        out: list[dict] = []
+        for _, row in df.iterrows():
+            period = _coerce_date(row.get("日期"))
+            value = _coerce_float(row.get("今值"))
+            if period is None or value is None:
+                continue
+            out.append({
+                "code": "m2_yoy",
+                "period": period,
+                "value": value,
+                "name_zh": "M2 货币供应年率",
+                "unit": "%",
+            })
+        return out
+
+    def fetch_china_macro_pmi(self) -> list[dict]:
+        """官方制造业 PMI. akshare: macro_china_pmi_yearly."""
+        try:
+            df = ak.macro_china_pmi_yearly()
+        except Exception as exc:
+            print(f"[AkshareProvider] fetch_china_macro_pmi failed: {exc}")
+            return []
+
+        if df is None or df.empty:
+            return []
+
+        out: list[dict] = []
+        for _, row in df.iterrows():
+            period = _coerce_date(row.get("日期"))
+            value = _coerce_float(row.get("今值"))
+            if period is None or value is None:
+                continue
+            out.append({
+                "code": "pmi_manufacturing",
+                "period": period,
+                "value": value,
+                "name_zh": "官方制造业 PMI",
+                "unit": "",
+            })
+        return out
+
+    def fetch_china_macro_shibor(self) -> list[dict]:
+        """SHIBOR 各期限 (%). akshare: macro_china_shibor_all.
+
+        Each tenor (O/N, 1W, 2W, 1M, 3M, 6M, 9M, 1Y) becomes its own
+        indicator code so the frontend can plot them independently.
+        """
+        try:
+            df = ak.macro_china_shibor_all()
+        except Exception as exc:
+            print(f"[AkshareProvider] fetch_china_macro_shibor failed: {exc}")
+            return []
+
+        if df is None or df.empty:
+            return []
+
+        tenors = [
+            ("O/N", "shibor_on", "SHIBOR 隔夜"),
+            ("1W", "shibor_1w", "SHIBOR 1周"),
+            ("2W", "shibor_2w", "SHIBOR 2周"),
+            ("1M", "shibor_1m", "SHIBOR 1月"),
+            ("3M", "shibor_3m", "SHIBOR 3月"),
+            ("6M", "shibor_6m", "SHIBOR 6月"),
+            ("9M", "shibor_9m", "SHIBOR 9月"),
+            ("1Y", "shibor_1y", "SHIBOR 1年"),
+        ]
+        out: list[dict] = []
+        for _, row in df.iterrows():
+            period = _coerce_date(row.get("日期"))
+            if period is None:
+                continue
+            for prefix, code, name_zh in tenors:
+                value = _coerce_float(row.get(f"{prefix}-定价"))
+                if value is None:
+                    continue
+                out.append({
+                    "code": code,
+                    "period": period,
+                    "value": value,
+                    "name_zh": name_zh,
+                    "unit": "%",
+                })
+        return out
+
+    def fetch_china_macro_rrr(self) -> list[dict]:
+        """存款准备金率 - 大型/中小金融机构 (%). akshare: macro_china_reserve_requirement_ratio."""
+        try:
+            df = ak.macro_china_reserve_requirement_ratio()
+        except Exception as exc:
+            print(f"[AkshareProvider] fetch_china_macro_rrr failed: {exc}")
+            return []
+
+        if df is None or df.empty:
+            return []
+
+        out: list[dict] = []
+        for _, row in df.iterrows():
+            period = _coerce_date(row.get("生效时间"))
+            if period is None:
+                period = _coerce_chinese_date(row.get("生效时间"))
+            large = _coerce_float(row.get("大型金融机构-调整后"))
+            small = _coerce_float(row.get("中小金融机构-调整后"))
+            if period is None:
+                continue
+            if large is not None:
+                out.append({
+                    "code": "rrr_large",
+                    "period": period,
+                    "value": large,
+                    "name_zh": "存款准备金率 大型机构",
+                    "unit": "%",
+                })
+            if small is not None:
+                out.append({
+                    "code": "rrr_small",
+                    "period": period,
+                    "value": small,
+                    "name_zh": "存款准备金率 中小机构",
+                    "unit": "%",
+                })
+        return out

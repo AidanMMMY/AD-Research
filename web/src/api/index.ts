@@ -25,4 +25,5 @@ export { liveTradingApi } from './liveTrading';
 export { stockFundamentalApi } from './stockFundamental';
 export { stocksApi } from './stocks';
 export { newsApi } from './news';
+export { macroApi } from './macro';
 export { default as client } from './client';
