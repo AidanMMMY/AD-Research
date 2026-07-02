@@ -104,6 +104,10 @@ class SecEdgarProvider:
     DATA_BASE = "https://data.sec.gov"
     WWW_BASE = "https://www.sec.gov"
 
+    @property
+    def name(self) -> str:
+        return "sec_edgar"
+
     def __init__(self, user_agent: str | None = None) -> None:
         self.user_agent = (user_agent or _resolve_user_agent()).strip() or DEFAULT_USER_AGENT
         # Use a single ``requests.Session`` so the underlying connection
