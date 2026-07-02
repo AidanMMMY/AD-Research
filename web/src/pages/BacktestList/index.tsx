@@ -2,7 +2,10 @@ import { useState } from 'react';
 import {
   Table, Button, Modal, Form, Select, DatePicker, InputNumber, Space, message,
 } from 'antd';
-import GlassCard from '@/components/GlassCard';
+import PageShell from '@/components/PageShell';
+import PageHeader from '@/components/PageHeader';
+import Panel from '@/components/Panel';
+import EmptyState from '@/components/EmptyState';
 import { useBacktests } from '@/hooks/useBacktests';
 import { useStrategies } from '@/hooks/useStrategies';
 import { useInstrumentList } from '@/hooks/useInstrumentList';
@@ -82,24 +85,37 @@ export default function BacktestList() {
   ];
 
   return (
-    <div>
-      <h1 style={{ fontSize: 'var(--text-h1-size)', fontWeight: 500, color: 'var(--text-primary)', margin: '0 0 8px', letterSpacing: '-0.03em' }}>回测管理</h1>
-      <p style={{ margin: '0 0 32px', color: 'var(--text-tertiary)', fontSize: 'var(--text-body-size)' }}>创建和查看策略回测结果，评估策略历史表现与风险指标</p>
-      <GlassCard title="回测管理" extra={
-        <Button type="primary" icon={<PlusOutlined />} onClick={() => setIsModalOpen(true)}>
-          新建回测
-        </Button>
-      }>
-        <Table
-          dataSource={backtests}
-          columns={columns}
-          rowKey="id"
-          size="small"
-          loading={isLoading}
-          scroll={{ x: 'max-content' }}
-          pagination={{ pageSize: 20 }}
-        />
-      </GlassCard>
+    <PageShell maxWidth="wide">
+      <PageHeader
+        eyebrow="回测"
+        title="回测管理"
+        description="创建和查看策略回测结果，评估策略历史表现与风险指标"
+        extra={
+          <Button type="primary" icon={<PlusOutlined />} onClick={() => setIsModalOpen(true)}>
+            新建回测
+          </Button>
+        }
+      />
+
+      <Panel variant="default" title="回测管理">
+        <div className="phase5c-table-wrap">
+          <Table
+            dataSource={backtests}
+            columns={columns}
+            rowKey="id"
+            size="small"
+            loading={isLoading}
+            scroll={{ x: 'max-content' }}
+            pagination={{ pageSize: 20 }}
+            locale={{
+              emptyText: <EmptyState
+                title="暂无回测"
+                description="点击右上角「新建回测」创建第一个回测任务"
+              />,
+            }}
+          />
+        </div>
+      </Panel>
 
       <Modal
         title="新建回测"
@@ -145,6 +161,6 @@ export default function BacktestList() {
           </Form.Item>
         </Form>
       </Modal>
-    </div>
+    </PageShell>
   );
 }

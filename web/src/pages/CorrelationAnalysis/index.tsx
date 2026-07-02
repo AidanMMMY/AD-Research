@@ -1,8 +1,12 @@
 import { useState } from 'react';
 import { Row, Col, Select, Spin } from 'antd';
-import GlassCard from '@/components/GlassCard';
 import { useQuery } from '@tanstack/react-query';
 import { analysisApi } from '@/api/analysis';
+import PageShell from '@/components/PageShell';
+import PageHeader from '@/components/PageHeader';
+import Panel from '@/components/Panel';
+import FilterToolbar from '@/components/FilterToolbar';
+import EmptyState from '@/components/EmptyState';
 import InstrumentSelector from '@/components/InstrumentSelector';
 import CorrelationHeatmap from '@/components/CorrelationHeatmap';
 
@@ -32,50 +36,57 @@ export default function CorrelationAnalysis() {
   });
 
   return (
-    <div>
-      <h1 style={{ fontSize: 'var(--text-h1-size)', fontWeight: 500, color: 'var(--text-primary)', margin: '0 0 8px', letterSpacing: '-0.03em' }}>相关性分析</h1>
-      <p style={{ margin: '0 0 32px', color: 'var(--text-tertiary)', fontSize: 'var(--text-body-size)' }}>分析多只标的之间的价格相关性，支持多种计算方法和时间窗口</p>
-      <GlassCard title="相关性分析配置" style={{ marginBottom: 'var(--space-4)' }}>
-        <Row gutter={[16, 16]}>
-          <Col xs={24} md={12}>
-            <InstrumentSelector
-              value={selectedCodes}
-              onChange={setSelectedCodes}
-              maxCount={20}
-            />
-          </Col>
-          <Col xs={24} md={6}>
-            <div style={{ marginBottom: 8 }}>窗口期：</div>
-            <Select
-              value={window}
-              onChange={setWindow}
-              options={WINDOW_OPTIONS}
-              style={{ width: '100%' }}
-            />
-          </Col>
-          <Col xs={24} md={6}>
-            <div style={{ marginBottom: 8 }}>计算方法：</div>
-            <Select
-              value={method}
-              onChange={setMethod}
-              options={METHOD_OPTIONS}
-              style={{ width: '100%' }}
-            />
-          </Col>
-        </Row>
-      </GlassCard>
+    <PageShell maxWidth="wide">
+      <PageHeader
+        title="相关性分析"
+        description="分析多只标的之间的价格相关性，支持多种计算方法和时间窗口"
+      />
+      <Panel title="相关性分析配置" variant="default">
+        <FilterToolbar>
+          <Row gutter={[16, 16]}>
+            <Col xs={24} md={12}>
+              <InstrumentSelector
+                value={selectedCodes}
+                onChange={setSelectedCodes}
+                maxCount={20}
+              />
+            </Col>
+            <Col xs={24} md={6}>
+              <div className="ad-filter-label">窗口期：</div>
+              <Select
+                value={window}
+                onChange={setWindow}
+                options={WINDOW_OPTIONS}
+                style={{ width: '100%' }}
+              />
+            </Col>
+            <Col xs={24} md={6}>
+              <div className="ad-filter-label">计算方法：</div>
+              <Select
+                value={method}
+                onChange={setMethod}
+                options={METHOD_OPTIONS}
+                style={{ width: '100%' }}
+              />
+            </Col>
+          </Row>
+        </FilterToolbar>
+      </Panel>
 
-      <GlassCard title="相关性热力图">
+      <Panel title="相关性热力图" variant="default">
         {selectedCodes.length < 2 ? (
-          <div style={{ textAlign: 'center', padding: 60, color: 'var(--text-secondary)' }}>
-            请至少选择2只标的进行分析
-          </div>
+          <EmptyState
+            title="请选择标的"
+            description="请至少选择2只标的进行分析"
+          />
         ) : isLoading ? (
           <Spin size="large" style={{ display: 'block', margin: 'var(--space-8) auto' }} />
         ) : correlationData ? (
-          <CorrelationHeatmap codes={correlationData.codes} matrix={correlationData.matrix} />
+          <div className="ad-chart-container">
+            <CorrelationHeatmap codes={correlationData.codes} matrix={correlationData.matrix} />
+          </div>
         ) : null}
-      </GlassCard>
-    </div>
+      </Panel>
+    </PageShell>
   );
 }

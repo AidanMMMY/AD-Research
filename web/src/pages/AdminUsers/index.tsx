@@ -17,7 +17,11 @@ import {
   DeleteOutlined,
   KeyOutlined,
 } from '@ant-design/icons';
-import GlassCard from '@/components/GlassCard';
+import PageShell from '@/components/PageShell';
+import PageHeader from '@/components/PageHeader';
+import Panel from '@/components/Panel';
+import SectionHeading from '@/components/SectionHeading';
+import DensityToggle from '@/components/DensityToggle';
 import ThemeTag from '@/components/ThemeTag';
 import { useAdminUsers } from '@/hooks/useAdminUsers';
 import { useAuthStore } from '@/stores/auth';
@@ -195,11 +199,10 @@ export default function AdminUsers() {
   ];
 
   return (
-    <div>
-      <h1 style={{ fontSize: 'var(--text-h1-size)', fontWeight: 500, color: 'var(--text-primary)', margin: '0 0 8px', letterSpacing: '-0.03em' }}>用户管理</h1>
-      <p style={{ margin: '0 0 32px', color: 'var(--text-tertiary)', fontSize: 'var(--text-body-size)' }}>管理平台用户账号，配置角色权限与启用状态</p>
-      <GlassCard
+    <PageShell maxWidth="wide">
+      <PageHeader
         title="用户管理"
+        description="管理平台用户账号，配置角色权限与启用状态"
         extra={
           <Button
             type="primary"
@@ -209,7 +212,10 @@ export default function AdminUsers() {
             新增用户
           </Button>
         }
-      >
+      />
+
+      <SectionHeading title="用户列表" action={<DensityToggle />} />
+      <Panel variant="default" padding="md">
         <Table
           dataSource={users}
           columns={columns}
@@ -219,7 +225,7 @@ export default function AdminUsers() {
           scroll={{ x: 'max-content' }}
           pagination={false}
         />
-      </GlassCard>
+      </Panel>
 
       {/* Create Modal */}
       <Modal
@@ -321,6 +327,6 @@ export default function AdminUsers() {
           </Form.Item>
         </Form>
       </Modal>
-    </div>
+    </PageShell>
   );
 }

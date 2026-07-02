@@ -1,9 +1,13 @@
 import { useMemo, useState } from 'react';
 import { Row, Col, Radio, Spin } from 'antd';
-import GlassCard from '@/components/GlassCard';
 import { useQuery } from '@tanstack/react-query';
 import { marketApi } from '@/api/market';
 import { useInstrumentList } from '@/hooks/useInstrumentList';
+import PageShell from '@/components/PageShell';
+import PageHeader from '@/components/PageHeader';
+import Panel from '@/components/Panel';
+import FilterToolbar from '@/components/FilterToolbar';
+import EmptyState from '@/components/EmptyState';
 import InstrumentSelector from '@/components/InstrumentSelector';
 import ReturnCurve from '@/components/ReturnCurve';
 
@@ -73,64 +77,74 @@ export default function ReturnComparison() {
     });
   }, [etfQueries.data, mode, etfList]);
 
-  return (
-    <div>
-      <h1 style={{ fontSize: 'var(--text-h1-size)', fontWeight: 500, color: 'var(--text-primary)', margin: '0 0 8px', letterSpacing: '-0.03em' }}>收益对比</h1>
-      <p style={{ margin: '0 0 32px', color: 'var(--text-tertiary)', fontSize: 'var(--text-body-size)' }}>对比多只标的的历史收益曲线，支持归一化和日收益率两种模式</p>
-      <GlassCard title="收益曲线对比配置" style={{ marginBottom: 'var(--space-4)' }}>
-        <Row gutter={[16, 16]}>
-          <Col xs={24} md={12}>
-            <InstrumentSelector
-              value={selectedCodes}
-              onChange={setSelectedCodes}
-              maxCount={10}
-            />
-          </Col>
-          <Col xs={24} md={6}>
-            <div style={{ marginBottom: 8 }}>时间范围：</div>
-            <Radio.Group
-              value={timeRange}
-              onChange={(e) => setTimeRange(e.target.value)}
-              optionType="button"
-              buttonStyle="solid"
-            >
-              {TIME_RANGE_OPTIONS.map((opt) => (
-                <Radio.Button key={opt.value} value={opt.value}>
-                  {opt.label}
-                </Radio.Button>
-              ))}
-            </Radio.Group>
-          </Col>
-          <Col xs={24} md={6}>
-            <div style={{ marginBottom: 8 }}>显示模式：</div>
-            <Radio.Group
-              value={mode}
-              onChange={(e) => setMode(e.target.value)}
-              optionType="button"
-              buttonStyle="solid"
-            >
-              <Radio.Button value="normalized">归一化</Radio.Button>
-              <Radio.Button value="percentage">日收益</Radio.Button>
-            </Radio.Group>
-          </Col>
-        </Row>
-      </GlassCard>
+  const visibleSeries = series.filter((s) => s.dates.length > 0);
 
-      <GlassCard title={mode === 'normalized' ? '归一化收益曲线' : '日收益率'}>
+  return (
+    <PageShell maxWidth="wide">
+      <PageHeader
+        title="收益对比"
+        description="对比多只标的的历史收益曲线，支持归一化和日收益率两种模式"
+      />
+      <Panel title="收益曲线对比配置" variant="default">
+        <FilterToolbar>
+          <Row gutter={[16, 16]}>
+            <Col xs={24} md={12}>
+              <InstrumentSelector
+                value={selectedCodes}
+                onChange={setSelectedCodes}
+                maxCount={10}
+              />
+            </Col>
+            <Col xs={24} md={6}>
+              <div className="ad-filter-label">时间范围：</div>
+              <Radio.Group
+                value={timeRange}
+                onChange={(e) => setTimeRange(e.target.value)}
+                optionType="button"
+                buttonStyle="solid"
+              >
+                {TIME_RANGE_OPTIONS.map((opt) => (
+                  <Radio.Button key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </Radio.Button>
+                ))}
+              </Radio.Group>
+            </Col>
+            <Col xs={24} md={6}>
+              <div className="ad-filter-label">显示模式：</div>
+              <Radio.Group
+                value={mode}
+                onChange={(e) => setMode(e.target.value)}
+                optionType="button"
+                buttonStyle="solid"
+              >
+                <Radio.Button value="normalized">归一化</Radio.Button>
+                <Radio.Button value="percentage">日收益</Radio.Button>
+              </Radio.Group>
+            </Col>
+          </Row>
+        </FilterToolbar>
+      </Panel>
+
+      <Panel title={mode === 'normalized' ? '归一化收益曲线' : '日收益率'} variant="default">
         {selectedCodes.length < 1 ? (
-          <div style={{ textAlign: 'center', padding: 60, color: 'var(--text-secondary)' }}>
-            请至少选择1只标的
-          </div>
+          <EmptyState
+            title="请选择标的"
+            description="请至少选择1只标的"
+          />
         ) : etfQueries.isLoading ? (
           <Spin size="large" style={{ display: 'block', margin: 'var(--space-8) auto' }} />
-        ) : series.filter((s) => s.dates.length > 0).length > 0 ? (
-          <ReturnCurve series={series.filter((s) => s.dates.length > 0)} />
-        ) : (
-          <div style={{ textAlign: 'center', padding: 60, color: 'var(--text-secondary)' }}>
-            所选标的暂无历史行情数据
+        ) : visibleSeries.length > 0 ? (
+          <div className="ad-chart-container">
+            <ReturnCurve series={visibleSeries} />
           </div>
+        ) : (
+          <EmptyState
+            title="暂无数据"
+            description="所选标的暂无历史行情数据"
+          />
         )}
-      </GlassCard>
-    </div>
+      </Panel>
+    </PageShell>
   );
 }

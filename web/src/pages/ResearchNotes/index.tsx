@@ -3,8 +3,10 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Select, Button, Input, Skeleton, Modal, Empty } from 'antd';
 import { RobotOutlined, ThunderboltOutlined } from '@ant-design/icons';
 import { researchApi, ResearchNote } from '@/api/research';
-import AISetupBanner from "@/components/AISetupBanner";
-import GlassCard from '@/components/GlassCard';
+import AISetupBanner from '@/components/AISetupBanner';
+import PageShell from '@/components/PageShell';
+import PageHeader from '@/components/PageHeader';
+import Panel from '@/components/Panel';
 import ThemeTag, { ThemeTagVariant } from '@/components/ThemeTag';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -20,6 +22,13 @@ const SENTIMENT_LABELS: Record<string, string> = {
   bearish: '看空',
   neutral: '中性',
 };
+
+const NOTE_TYPE_OPTIONS = [
+  { label: '日报', value: 'daily_summary' },
+  { label: '周报', value: 'weekly_review' },
+  { label: '财报反应', value: 'earnings_reaction' },
+  { label: '财报前瞻', value: 'earnings_preview' },
+];
 
 export default function ResearchNotes() {
   const [code, setCode] = useState('');
@@ -51,12 +60,16 @@ export default function ResearchNotes() {
   };
 
   return (
-    <div>
-      <h1 style={{ fontSize: 'var(--text-h1-size)', fontWeight: 500, color: 'var(--text-primary)', margin: '0 0 8px', letterSpacing: '-0.03em' }}>研究笔记</h1>
-      <p style={{ margin: '0 0 32px', color: 'var(--text-tertiary)', fontSize: 'var(--text-body-size)' }}>AI 驱动的投研报告生成，支持日报、周报、财报分析等多种类型</p>
+    <PageShell maxWidth="wide">
+      <PageHeader
+        eyebrow="研究"
+        title="研究笔记"
+        description="AI 驱动的投研报告生成，支持日报、周报、财报分析等多种类型"
+      />
       <AISetupBanner />
-      <GlassCard>
-        <div style={{ display: 'flex', gap: 'var(--space-sm)', flexWrap: 'wrap', alignItems: 'center' }}>
+
+      <Panel variant="default" className="phase5c-section">
+        <div className="phase5c-form-row">
           <Input
             placeholder="输入标的代码 (如 SPY.US, AAPL.US)"
             value={code}
@@ -78,37 +91,37 @@ export default function ResearchNotes() {
             allowClear
             style={{ width: 140 }}
             value={noteType}
-            options={[
-              { label: '日报', value: 'daily_summary' },
-              { label: '周报', value: 'weekly_review' },
-              { label: '财报反应', value: 'earnings_reaction' },
-              { label: '财报前瞻', value: 'earnings_preview' },
-            ]}
+            options={NOTE_TYPE_OPTIONS}
             onChange={setNoteType}
           />
         </div>
-      </GlassCard>
+      </Panel>
 
-      <div style={{ marginTop: 'var(--space-lg)' }}>
+      <div className="phase5c-section">
         {isLoading ? (
           <Skeleton active paragraph={{ rows: 8 }} />
         ) : !selectedCode ? (
-          <Empty
-            description="输入标的代码并点击「生成研报」开始 AI 分析"
-            style={{ marginTop: 60 }}
-          />
+          <div className="phase5c-empty">
+            <Empty
+              description="输入标的代码并点击「生成研报」开始 AI 分析"
+            />
+          </div>
         ) : !notes?.length ? (
-          <Empty description={`暂无 ${selectedCode} 的研报`} style={{ marginTop: 60 }} />
+          <div className="phase5c-empty">
+            <Empty description={`暂无 ${selectedCode} 的研报`} />
+          </div>
         ) : (
           notes.map((note) => (
-            <GlassCard key={note.id} style={{ marginBottom: 'var(--space-md)' }}>
-              <div
-                style={{ cursor: 'pointer' }}
-                onClick={() => setModalNote(note)}
-              >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 'var(--space-xs)' }}>
-                  <div style={{ display: 'flex', gap: 'var(--space-xs)', alignItems: 'center', flexWrap: 'wrap' }}>
-                    <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--accent)', fontFamily: "'SF Mono', monospace" }}>
+            <Panel
+              key={note.id}
+              variant="default"
+              className="phase5c-research-card"
+              padding="md"
+            >
+              <div onClick={() => setModalNote(note)}>
+                <div className="phase5c-research-card__header">
+                  <div className="phase5c-research-card__meta">
+                    <span className="phase5c-research-card__code">
                       {note.instrument_code}
                     </span>
                     <ThemeTag variant="default">{note.note_type}</ThemeTag>
@@ -118,34 +131,25 @@ export default function ResearchNotes() {
                       </ThemeTag>
                     )}
                     {note.confidence && (
-                      <span style={{ fontSize: 'var(--text-small-size)', color: 'var(--text-tertiary)' }}>
+                      <span className="phase5c-detail-line">
                         置信度 {note.confidence}/10
                       </span>
                     )}
                   </div>
-                  <span style={{ fontSize: 'var(--text-small-size)', color: 'var(--text-tertiary)', whiteSpace: 'nowrap' }}>
+                  <span className="phase5c-research-card__date">
                     {note.generated_at?.slice(0, 16) || note.created_at?.slice(0, 16)}
                   </span>
                 </div>
                 {note.summary && (
-                  <p style={{ margin: 0, fontSize: 13, color: 'var(--text-primary)', lineHeight: 1.6 }}>
+                  <p className="phase5c-research-card__summary">
                     {note.summary}
                   </p>
                 )}
-                <div
-                  style={{
-                    marginTop: 'var(--space-xs)',
-                    fontSize: 'var(--text-small-size)',
-                    color: 'var(--text-tertiary)',
-                    cursor: 'pointer',
-                    textDecoration: 'underline',
-                    textUnderlineOffset: 2,
-                  }}
-                >
+                <div className="phase5c-research-card__more">
                   点击查看全文 →
                 </div>
               </div>
-            </GlassCard>
+            </Panel>
           ))
         )}
       </div>
@@ -155,16 +159,16 @@ export default function ResearchNotes() {
         onCancel={() => setModalNote(null)}
         footer={null}
         width={720}
-        styles={{ body: { background: 'var(--bg-primary)', maxHeight: '70vh', overflow: 'auto' } }}
+        styles={{ body: { maxHeight: '70vh', overflow: 'auto' } }}
       >
         {modalNote && (
-          <div className="markdown-body" style={{ color: 'var(--text-primary)', fontSize: 14, lineHeight: 1.8 }}>
+          <div className="markdown-body phase5c-markdown-body">
             <ReactMarkdown remarkPlugins={[remarkGfm]}>
               {modalNote.content}
             </ReactMarkdown>
           </div>
         )}
       </Modal>
-    </div>
+    </PageShell>
   );
 }

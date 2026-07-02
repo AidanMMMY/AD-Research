@@ -10,7 +10,6 @@ import {
   Badge,
   Space,
   Spin,
-  Empty,
   Skeleton,
   Tooltip,
   message,
@@ -35,7 +34,11 @@ import type {
   SentimentLabel,
   ImportanceLevel,
 } from '@/types/news';
+import PageShell from '@/components/PageShell';
+import PageHeader from '@/components/PageHeader';
+import FilterToolbar from '@/components/FilterToolbar';
 import Panel from '@/components/Panel';
+import EmptyState from '@/components/EmptyState';
 
 const { RangePicker } = DatePicker;
 
@@ -107,7 +110,7 @@ function ImportanceStars({ level }: { level: ImportanceLevel | null }) {
   const filled = Math.max(0, Math.min(5, level));
   return (
     <Tooltip title={`重要性 ${level}/5`}>
-      <span style={{ fontSize: 11, letterSpacing: 1, color: 'var(--text-tertiary)' }}>
+      <span className="ad-text-small" style={{ letterSpacing: 1, color: 'var(--text-tertiary)' }}>
         {Array.from({ length: 5 }).map((_, i) => (
           <StarFilled
             key={i}
@@ -145,38 +148,18 @@ function NewsCard({
 
   return (
     <div
-      style={{
-        padding: 'var(--space-4) var(--space-5)',
-        borderBottom: '1px solid var(--border-default)',
-        cursor: 'pointer',
-        transition: 'background var(--transition-fast)',
-      }}
+      className="ad-news-card"
       onClick={() => onOpen(article)}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.background = 'var(--bg-hover)';
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.background = 'transparent';
-      }}
     >
       {/* Row 1: source · market · time · importance */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 'var(--space-3)',
-          fontSize: 12,
-          color: 'var(--text-tertiary)',
-          marginBottom: 8,
-        }}
-      >
+      <div className="ad-news-card__meta">
         <span>{source.emoji} {source.label}</span>
         <span style={{ color: 'var(--text-muted)' }}>·</span>
         {market && <Tag color={market.color} style={{ margin: 0, fontSize: 11 }}>{market.label}</Tag>}
         {article.event_category && (
-          <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{article.event_category}</span>
+          <span className="ad-text-small ad-text-tertiary">{article.event_category}</span>
         )}
-        <span style={{ flex: 1 }} />
+        <span className="ad-flex-1" />
         <Tooltip title={dayjs(article.published_at).format('YYYY-MM-DD HH:mm:ss')}>
           <span>{formatRelative(article.published_at)}</span>
         </Tooltip>
@@ -184,57 +167,26 @@ function NewsCard({
       </div>
 
       {/* Title */}
-      <div
-        style={{
-          fontSize: 15,
-          fontWeight: 500,
-          color: 'var(--text-primary)',
-          lineHeight: 1.5,
-          marginBottom: 8,
-          letterSpacing: '-0.01em',
-        }}
-      >
+      <div className="ad-news-card__title">
         {article.title}
       </div>
 
       {/* Body preview */}
       {article.body && (
-        <div
-          style={{
-            fontSize: 13,
-            color: 'var(--text-secondary)',
-            lineHeight: 1.6,
-            marginBottom: 10,
-            display: '-webkit-box',
-            WebkitLineClamp: 2,
-            WebkitBoxOrient: 'vertical',
-            overflow: 'hidden',
-          }}
-        >
+        <div className="ad-news-card__body">
           {article.body}
         </div>
       )}
 
       {/* Row 3: symbols + sentiment + engagement */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 12,
-          flexWrap: 'wrap',
-        }}
-      >
+      <div className="ad-news-card__footer">
         <Space size={4} wrap>
           {article.symbols.slice(0, 6).map((s) => (
             <Tag
               key={`${s.symbol}-${s.match_type}`}
               color="default"
-              style={{
-                margin: 0,
-                fontSize: 11,
-                cursor: 'pointer',
-                borderColor: 'var(--card-border)',
-              }}
+              className="ad-mr-1"
+              style={{ cursor: 'pointer' }}
               onClick={(e) => {
                 e.stopPropagation();
                 onPickSymbol(s.symbol);
@@ -245,7 +197,7 @@ function NewsCard({
           ))}
         </Space>
 
-        <span style={{ flex: 1 }} />
+        <span className="ad-flex-1" />
 
         {sentiment && (
           <Tooltip
@@ -275,22 +227,22 @@ function NewsCard({
         )}
 
         {article.engagement?.likes != null && (
-          <span style={engagementStyle}>
+          <span className="ad-news-card__engagement">
             <LikeOutlined /> {formatBigNumber(article.engagement.likes)}
           </span>
         )}
         {article.engagement?.comments != null && (
-          <span style={engagementStyle}>
+          <span className="ad-news-card__engagement">
             <MessageOutlined /> {formatBigNumber(article.engagement.comments)}
           </span>
         )}
         {article.engagement?.shares != null && (
-          <span style={engagementStyle}>
+          <span className="ad-news-card__engagement">
             <ShareAltOutlined /> {formatBigNumber(article.engagement.shares)}
           </span>
         )}
         {article.engagement?.views != null && (
-          <span style={engagementStyle}>
+          <span className="ad-news-card__engagement">
             <EyeOutlined /> {formatBigNumber(article.engagement.views)}
           </span>
         )}
@@ -298,14 +250,6 @@ function NewsCard({
     </div>
   );
 }
-
-const engagementStyle: React.CSSProperties = {
-  fontSize: 11,
-  color: 'var(--text-tertiary)',
-  display: 'inline-flex',
-  alignItems: 'center',
-  gap: 3,
-};
 
 function formatBigNumber(n: number): string {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
@@ -325,7 +269,7 @@ function HotSymbolSidebar({
 }) {
   return (
     <Panel
-      variant="minimal"
+      variant="default"
       title={
         <span>
           <FireOutlined style={{ marginRight: 6, color: 'var(--accent)' }} />
@@ -337,7 +281,7 @@ function HotSymbolSidebar({
       {loading ? (
         <Skeleton active paragraph={{ rows: 6 }} />
       ) : data.length === 0 ? (
-        <Empty description="暂无情绪数据" image={Empty.PRESENTED_IMAGE_SIMPLE} />
+        <EmptyState title="暂无情绪数据" />
       ) : (
         <div>
           {data.map((row) => {
@@ -348,44 +292,24 @@ function HotSymbolSidebar({
               <div
                 key={row.symbol}
                 onClick={() => onPickSymbol(row.symbol)}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 'var(--space-3)',
-                  padding: '8px 0',
-                  borderBottom: '1px solid var(--border-default)',
-                  cursor: 'pointer',
-                  transition: 'background var(--transition-fast)',
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = 'var(--bg-hover)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = 'transparent';
-                }}
+                className="ad-mover-row"
               >
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div
-                    style={{
-                      fontSize: 13,
-                      fontWeight: 500,
-                      color: 'var(--text-primary)',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap',
-                    }}
-                  >
+                <div className="ad-flex-1 ad-min-w-0">
+                  <div className="ad-font-medium ad-text-primary" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {row.symbol}
                   </div>
-                  <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 2 }}>
+                  <div className="ad-text-small ad-text-tertiary ad-mt-2">
                     {row.count} 篇资讯
                   </div>
                 </div>
-                <div style={{ textAlign: 'right' }}>
-                  <div style={{ fontSize: 14, fontWeight: 600, color: tone, fontFamily: 'var(--font-mono)' }}>
+                <div className="ad-text-right">
+                  <div
+                    className="ad-font-semibold"
+                    style={{ fontSize: 14, color: tone, fontFamily: 'var(--font-mono)' }}
+                  >
                     {row.score != null ? row.score.toFixed(2) : '—'}
                   </div>
-                  <div style={{ fontSize: 11, color: tone }}>
+                  <div className="ad-text-small" style={{ color: tone }}>
                     {row.label ? SENTIMENT_LABELS[row.label] : '—'}
                   </div>
                 </div>
@@ -571,163 +495,84 @@ export default function NewsFeed() {
     message.info(`已筛选标的: ${sym}`);
   };
 
+  const totalLabel = watchlistMode && watchlistMeta
+    ? `自选标的 ${watchlistMeta.symbols.length} 个 · 相关资讯 ${watchlistMeta.total_articles} 条`
+    : `共 ${data?.pages?.[0]?.total ?? 0} 条`;
+
   return (
-    <div>
-      <h1
-        style={{
-          fontSize: 'var(--text-h1-size)',
-          fontWeight: 500,
-          color: 'var(--text-primary)',
-          margin: '0 0 8px',
-          letterSpacing: '-0.03em',
-        }}
-      >
-        资讯
-      </h1>
-      <p
-        style={{
-          margin: '0 0 24px',
-          color: 'var(--text-tertiary)',
-          fontSize: 'var(--text-body-size)',
-        }}
-      >
-        多市场新闻聚合 · 情绪与重要性实时标注
-      </p>
+    <PageShell maxWidth="wide">
+      <PageHeader
+        title="资讯"
+        description="多市场新闻聚合 · 情绪与重要性实时标注"
+      />
 
-      {/* Filter bar */}
-      <div
-        style={{
-          background: 'var(--card-bg)',
-          border: '1px solid var(--card-border)',
-          borderRadius: 'var(--card-radius)',
-          padding: 'var(--space-4) var(--space-5)',
-          marginBottom: 20,
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 12,
-        }}
-      >
-        <div
-          style={{
-            display: 'flex',
-            gap: 12,
-            flexWrap: 'wrap',
-            alignItems: 'center',
+      <FilterToolbar total={totalLabel}>
+        <Tag.CheckableTag
+          checked={watchlistMode}
+          onChange={(checked) => {
+            setWatchlistMode(checked);
+            if (checked) {
+              // Switching to the watchlist feed means the per-symbol
+              // tag and search no longer apply — clear them so the
+              // user does not see a chip pinned to a symbol that is
+              // no longer in scope.
+              setActiveSymbol(undefined);
+            }
           }}
+          className={`ad-status-chip ${watchlistMode ? 'ad-status-chip--active' : ''}`}
         >
-          <Tag.CheckableTag
-            checked={watchlistMode}
-            onChange={(checked) => {
-              setWatchlistMode(checked);
-              if (checked) {
-                // Switching to the watchlist feed means the per-symbol
-                // tag and search no longer apply — clear them so the
-                // user does not see a chip pinned to a symbol that is
-                // no longer in scope.
-                setActiveSymbol(undefined);
-              }
-            }}
-            style={{
-              padding: '4px 12px',
-              borderRadius: 16,
-              border: '1px solid var(--card-border)',
-              background: watchlistMode ? 'var(--accent-soft, rgba(82,196,26,0.12))' : 'transparent',
-              color: watchlistMode ? 'var(--accent)' : 'var(--text-secondary)',
-              fontSize: 13,
-              fontWeight: watchlistMode ? 500 : 400,
-              cursor: 'pointer',
-              userSelect: 'none',
-            }}
+          <StarFilled style={{ marginRight: 4, fontSize: 11 }} />
+          我的自选
+        </Tag.CheckableTag>
+        <Segmented
+          value={market}
+          onChange={(v) => setMarket(v as NewsMarket | 'all')}
+          options={MARKET_OPTIONS}
+        />
+        <Input
+          allowClear
+          prefix={<SearchOutlined />}
+          placeholder="搜索标题/正文…"
+          value={searchInput}
+          onChange={(e) => setSearchInput(e.target.value)}
+          style={{ width: 240 }}
+        />
+        <Select
+          allowClear
+          placeholder="来源"
+          loading={sourceStatsLoading}
+          value={source}
+          onChange={(v) => setSource(v)}
+          options={sourceOptions}
+          style={{ minWidth: 180 }}
+        />
+        <RangePicker
+          value={dateRange}
+          onChange={(v) => setDateRange(v as [Dayjs | null, Dayjs | null] | null)}
+          allowEmpty={[true, true]}
+        />
+        {activeSymbol && (
+          <Tag
+            closable
+            onClose={() => setActiveSymbol(undefined)}
+            color="accent"
           >
-            <StarFilled style={{ marginRight: 4, fontSize: 11 }} />
-            我的自选
-          </Tag.CheckableTag>
-          <Segmented
-            value={market}
-            onChange={(v) => setMarket(v as NewsMarket | 'all')}
-            options={MARKET_OPTIONS}
-          />
-          <Input
-            allowClear
-            prefix={<SearchOutlined />}
-            placeholder="搜索标题/正文…"
-            value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)}
-            style={{ width: 240 }}
-          />
-          <Select
-            allowClear
-            placeholder="来源"
-            loading={sourceStatsLoading}
-            value={source}
-            onChange={(v) => setSource(v)}
-            options={sourceOptions}
-            style={{ minWidth: 180 }}
-          />
-          <RangePicker
-            value={dateRange}
-            onChange={(v) => setDateRange(v as [Dayjs | null, Dayjs | null] | null)}
-            allowEmpty={[true, true]}
-          />
-          {activeSymbol && (
-            <Tag
-              closable
-              onClose={() => setActiveSymbol(undefined)}
-              color="accent"
-              style={{ margin: 0 }}
-            >
-              标的: {activeSymbol}
-            </Tag>
-          )}
-          <div style={{ flex: 1 }} />
-          {watchlistMode && watchlistMeta ? (
-            <Tooltip title="关联到当前用户自选标的的资讯（按自选/池内 ETF 代码匹配）">
-              <span
-                style={{
-                  fontSize: 12,
-                  color: 'var(--text-tertiary)',
-                  fontFamily: 'var(--font-mono)',
-                }}
-              >
-                自选标的 {watchlistMeta.symbols.length} 个 · 相关资讯 {watchlistMeta.total_articles} 条
-              </span>
-            </Tooltip>
-          ) : (
-            <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>
-              共 {data?.pages?.[0]?.total ?? 0} 条
-            </span>
-          )}
-        </div>
-      </div>
+            标的: {activeSymbol}
+          </Tag>
+        )}
+      </FilterToolbar>
 
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'minmax(0, 1fr) 320px',
-          gap: 'var(--space-5)',
-        }}
-      >
+      <div className="ad-news-layout">
         {/* Feed */}
-        <div
-          style={{
-            background: 'var(--card-bg)',
-            border: '1px solid var(--card-border)',
-            borderRadius: 'var(--card-radius)',
-            overflow: 'hidden',
-          }}
-        >
+        <div className="ad-news-feed">
           {isError ? (
-            <Empty
-              description="加载失败，请稍后重试"
-              image={Empty.PRESENTED_IMAGE_SIMPLE}
-              style={{ padding: 40 }}
-            />
+            <EmptyState title="加载失败，请稍后重试" />
           ) : isLoading ? (
-            <div style={{ padding: 20 }}>
+            <div className="ad-p-5">
               <Skeleton active paragraph={{ rows: 6 }} />
             </div>
           ) : articles.length === 0 ? (
-            <Empty description="暂无符合筛选条件的资讯" style={{ padding: 60 }} />
+            <EmptyState title="暂无符合筛选条件的资讯" />
           ) : (
             <>
               {articles.map((a) => (
@@ -741,14 +586,14 @@ export default function NewsFeed() {
               ))}
               <div
                 ref={sentinelRef}
-                style={{ padding: 20, textAlign: 'center', color: 'var(--text-tertiary)' }}
+                className="ad-news-sentinel"
               >
                 {isFetchingNextPage ? (
                   <Spin />
                 ) : hasNextPage ? (
                   '加载更多…'
                 ) : (
-                  <span style={{ fontSize: 12 }}>— 已加载全部 —</span>
+                  <span className="ad-text-small">— 已加载全部 —</span>
                 )}
               </div>
             </>
@@ -756,41 +601,26 @@ export default function NewsFeed() {
         </div>
 
         {/* Sidebar */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <div className="dashboard-side-stack">
           <HotSymbolSidebar
             data={hotSymbols}
             loading={isLoading}
             onPickSymbol={handlePickSymbol}
           />
-          <Panel variant="minimal" title="情绪图例" padding="md">
+          <Panel variant="default" title="情绪图例" padding="md">
             <Space direction="vertical" size={6}>
               {(['positive', 'neutral', 'negative'] as SentimentLabel[]).map((l) => (
-                <div key={l} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div key={l} className="ad-flex ad-items-center ad-gap-2">
                   <Badge color={SENTIMENT_COLORS[l]} />
-                  <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+                  <span className="ad-text-small ad-text-secondary">
                     {SENTIMENT_LABELS[l]} ({(l === 'positive' && '绿') || (l === 'neutral' && '灰') || '红'})
                   </span>
                 </div>
               ))}
-              <div
-                style={{
-                  marginTop: 8,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 4,
-                  fontSize: 12,
-                  color: 'var(--text-tertiary)',
-                }}
-              >
+              <div className="ad-flex ad-items-center ad-gap-1 ad-mt-2 ad-text-small ad-text-tertiary">
                 <StarOutlined style={{ color: IMPORTANCE_COLOR }} /> 重要性 1-5
               </div>
-              <div
-                style={{
-                  fontSize: 12,
-                  color: 'var(--text-tertiary)',
-                  marginTop: 4,
-                }}
-              >
+              <div className="ad-text-small ad-text-tertiary ad-mt-2">
                 <LinkOutlined style={{ marginRight: 4 }} />
                 点击标的 chip 自动筛选
               </div>
@@ -798,6 +628,6 @@ export default function NewsFeed() {
           </Panel>
         </div>
       </div>
-    </div>
+    </PageShell>
   );
 }

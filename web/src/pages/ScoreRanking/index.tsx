@@ -3,7 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import { Table, Tabs } from 'antd';
 import { useScores, useScoreTemplates } from '@/hooks/useScores';
 import { useSparkline } from '@/hooks/useSparkline';
+import { useDensity } from '@/hooks/useDensity';
 import { useAIHelp } from '@/hooks/useAIHelp';
+import PageShell from '@/components/PageShell';
+import ResponsiveGrid from '@/components/ResponsiveGrid';
 import Panel from '@/components/Panel';
 import HelpTrigger from '@/components/HelpTrigger';
 import HelpPopover from '@/components/HelpPopover';
@@ -21,7 +24,7 @@ import { getQuickQuestions } from '@/utils/helpPrompts';
 function SparklineCell({ code }: { code: string }) {
   const { data } = useSparkline({ code, days: 7 });
   if (!data || !data.points || data.points.length === 0) {
-    return <span style={{ color: 'var(--text-tertiary)', fontSize: 11 }}>-</span>;
+    return <span className="mobile-list-item__meta">-</span>;
   }
   return <Sparkline data={data.points} width={80} height={20} />;
 }
@@ -31,6 +34,7 @@ type TopTab = 'ranking' | 'templates';
 export default function ScoreRanking() {
   const navigate = useNavigate();
   const { open } = useAIHelp();
+  const { density } = useDensity();
   const [topTab, setTopTab] = useState<TopTab>('ranking');
   const [templateId, setTemplateId] = useState<number | undefined>();
   const { data: scoresData, dataUpdatedAt: scoresUpdatedAt, isFetching } = useScores({ template_id: templateId, limit: 50 });
@@ -48,6 +52,8 @@ export default function ScoreRanking() {
       quickQuestions: getQuickQuestions('score_ranking'),
     });
   };
+
+  const rowSize = density === 'dense' ? 'small' : density === 'spacious' ? 'large' : 'middle';
 
   const columns = [
     {
@@ -94,7 +100,7 @@ export default function ScoreRanking() {
   })) || [];
 
   return (
-    <div>
+    <PageShell maxWidth="wide">
       <PageHeader
         eyebrow="评分"
         title="评分排名"
@@ -117,61 +123,48 @@ export default function ScoreRanking() {
           {/* Top-ranked instrument summary strip — gives the page a
               single visual anchor before the table. */}
           {scoresData?.items && scoresData.items.length > 0 && (
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(4, 1fr)',
-                borderTop: '1px solid var(--border-default)',
-                borderBottom: '1px solid var(--border-default)',
-                marginBottom: 'var(--space-5)',
-              }}
-            >
-              <div style={{ padding: '20px 16px', borderRight: '1px solid var(--border-default)' }}>
-                <div style={{ fontSize: 'var(--text-label-size)', color: 'var(--text-tertiary)', fontWeight: 500, marginBottom: 12, letterSpacing: '0.12em', textTransform: 'uppercase' }}>
-                  榜首标的
-                </div>
+            <ResponsiveGrid cols={4} gap="md" className="dashboard-section">
+              <Panel variant="default" className="score-summary-card">
+                <div className="score-summary-card__label">榜首标的</div>
                 <InstrumentCodeTag code={scoresData.items[0].etf_code} name={scoresData.items[0].etf_name} />
-                <div className="tabular-nums" style={{ marginTop: 8, fontSize: 'var(--text-data-md-size)', fontFamily: 'var(--font-mono)', color: 'var(--text-primary)' }}>
+                <div className="tabular-nums score-summary-card__value score-summary-card__value--spaced">
                   {scoresData.items[0].composite_score?.toFixed(1) ?? '—'}
                 </div>
-              </div>
-              <div style={{ padding: '20px 16px', borderRight: '1px solid var(--border-default)' }}>
-                <div style={{ fontSize: 'var(--text-label-size)', color: 'var(--text-tertiary)', fontWeight: 500, marginBottom: 12, letterSpacing: '0.12em', textTransform: 'uppercase' }}>
-                  使用模板
-                </div>
-                <div style={{ fontSize: 'var(--text-data-md-size)', color: 'var(--text-primary)' }}>
+              </Panel>
+
+              <Panel variant="default" className="score-summary-card">
+                <div className="score-summary-card__label">使用模板</div>
+                <div className="score-summary-card__value score-summary-card__value--name">
                   {activeTemplate?.name ?? '默认'}
                 </div>
-                <div style={{ marginTop: 8, fontSize: 'var(--text-small-size)', color: 'var(--text-tertiary)' }}>
+                <div className="score-summary-card__sub">
                   {activeTemplate ? `${Object.keys(activeTemplate.weights ?? {}).length} 个维度` : '系统内置'}
                 </div>
-              </div>
-              <div style={{ padding: '20px 16px', borderRight: '1px solid var(--border-default)' }}>
-                <div style={{ fontSize: 'var(--text-label-size)', color: 'var(--text-tertiary)', fontWeight: 500, marginBottom: 12, letterSpacing: '0.12em', textTransform: 'uppercase' }}>
-                  排名数量
-                </div>
-                <div className="tabular-nums" style={{ fontSize: 'var(--text-data-md-size)', color: 'var(--text-primary)', fontFamily: 'var(--font-mono)' }}>
+              </Panel>
+
+              <Panel variant="default" className="score-summary-card">
+                <div className="score-summary-card__label">排名数量</div>
+                <div className="tabular-nums score-summary-card__value">
                   {scoresData.items.length}
                 </div>
-                <div style={{ marginTop: 8, fontSize: 'var(--text-small-size)', color: 'var(--text-tertiary)' }}>
+                <div className="score-summary-card__sub">
                   当前页 Top {scoresData.items.length}
                 </div>
-              </div>
-              <div style={{ padding: '20px 16px' }}>
-                <div style={{ fontSize: 'var(--text-label-size)', color: 'var(--text-tertiary)', fontWeight: 500, marginBottom: 12, letterSpacing: '0.12em', textTransform: 'uppercase' }}>
-                  榜首收益得分
-                </div>
-                <div className="tabular-nums" style={{ fontSize: 'var(--text-data-md-size)', color: 'var(--text-primary)', fontFamily: 'var(--font-mono)' }}>
+              </Panel>
+
+              <Panel variant="default" className="score-summary-card">
+                <div className="score-summary-card__label">榜首收益得分</div>
+                <div className="tabular-nums score-summary-card__value">
                   {scoresData.items[0].score_return?.toFixed(1) ?? '—'}
                 </div>
-                <div style={{ marginTop: 8, fontSize: 'var(--text-small-size)', color: 'var(--text-tertiary)' }}>
+                <div className="score-summary-card__sub">
                   满分 100
                 </div>
-              </div>
-            </div>
+              </Panel>
+            </ResponsiveGrid>
           )}
 
-          <Panel variant="minimal" style={{ marginBottom: 20 }}>
+          <Panel variant="default" style={{ marginBottom: 20 }}>
             <Tabs
               activeKey={String(templateId || templates?.find((t) => t.is_default)?.id || '')}
               onChange={(key) => setTemplateId(Number(key))}
@@ -181,7 +174,7 @@ export default function ScoreRanking() {
           </Panel>
 
           <Panel
-            variant="minimal"
+            variant="default"
             title={`综合评分 Top ${scoresData?.items.length || 0}`}
             extra={
               <HelpTrigger
@@ -194,7 +187,7 @@ export default function ScoreRanking() {
               dataSource={scoresData?.items || []}
               columns={columns}
               rowKey="etf_code"
-              size="small"
+              size={rowSize as any}
               scroll={{ x: 'max-content' }}
               pagination={false}
               onRow={(record) => ({
@@ -206,6 +199,6 @@ export default function ScoreRanking() {
       )}
 
       {topTab === 'templates' && <TemplateManagement />}
-    </div>
+    </PageShell>
   );
 }

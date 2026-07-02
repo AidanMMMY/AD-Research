@@ -1,8 +1,12 @@
 import { useState } from 'react';
 import { Table, Button, Space, Modal, Form, Select, message } from 'antd';
-import GlassCard from '@/components/GlassCard';
 import ThemeTag, { ThemeTagVariant } from '@/components/ThemeTag';
-import { EyeOutlined, DownloadOutlined, PlusOutlined } from '@ant-design/icons';
+import PageShell from '@/components/PageShell';
+import PageHeader from '@/components/PageHeader';
+import FilterToolbar from '@/components/FilterToolbar';
+import Panel from '@/components/Panel';
+import EmptyState from '@/components/EmptyState';
+import { EyeOutlined, DownloadOutlined, PlusOutlined, FileTextOutlined } from '@ant-design/icons';
 import { useQuery } from '@tanstack/react-query';
 import { reportApi, poolApi } from '@/api';
 import { useReports } from '@/hooks/useReportStatus';
@@ -36,9 +40,8 @@ export default function ReportBrowser() {
       refetch();
     } catch {
       message.error('提交失败');
-    };
+    }
   };
-
 
   const statusVariants: Record<string, ThemeTagVariant> = {
     pending: 'default',
@@ -71,25 +74,47 @@ export default function ReportBrowser() {
     },
   ];
 
+  const reportList = reports || [];
+
   return (
-    <div>
-      <h1 style={{ fontSize: 'var(--text-h1-size)', fontWeight: 500, color: 'var(--text-primary)', margin: '0 0 8px', letterSpacing: '-0.03em' }}>报告浏览</h1>
-      <p style={{ margin: '0 0 32px', color: 'var(--text-tertiary)', fontSize: 'var(--text-body-size)' }}>浏览和下载已生成的投研报告，支持按标的池定制报告</p>
-      <div style={{ marginBottom: 'var(--space-md)', display: 'flex', justifyContent: 'flex-end' }}>
+    <PageShell maxWidth="wide">
+      <PageHeader
+        eyebrow="研究"
+        title="报告浏览"
+        description="浏览和下载已生成的投研报告，支持按标的池定制报告"
+      />
+
+      <FilterToolbar total={reportList.length}>
         <Button type="primary" icon={<PlusOutlined />} onClick={() => setIsModalOpen(true)}>
           生成报告
         </Button>
-      </div>
+      </FilterToolbar>
 
-      <Table dataSource={reports || []} columns={columns} rowKey="id" scroll={{ x: 'max-content' }} />
+      {reportList.length === 0 ? (
+        <EmptyState
+          icon={<FileTextOutlined />}
+          title="暂无报告"
+          description="点击右上角按钮生成第一份报告"
+        />
+      ) : (
+        <div className="ad-density-dense ad-table-scroll ad-table-sticky">
+          <Table
+            dataSource={reportList}
+            columns={columns}
+            rowKey="id"
+            pagination={false}
+          />
+        </div>
+      )}
 
       {selectedReport?.status === 'done' && (
-        <GlassCard title={`报告预览: ${selectedReport.report_type} (${selectedReport.report_date})`} style={{ marginTop: 'var(--space-md)' }}>
+        <Panel title={`报告预览: ${selectedReport.report_type} (${selectedReport.report_date})`} style={{ marginTop: 'var(--space-5)' }}>
           <iframe
+            className="ad-preview-frame"
             src={reportApi.downloadUrl(selectedReport.id)}
-            style={{ width: '100%', height: 600, border: '1px solid var(--border-default)' }}
+            title={`报告预览 ${selectedReport.report_type}`}
           />
-        </GlassCard>
+        </Panel>
       )}
 
       <Modal
@@ -112,6 +137,6 @@ export default function ReportBrowser() {
           </Form.Item>
         </Form>
       </Modal>
-    </div>
+    </PageShell>
   );
 }

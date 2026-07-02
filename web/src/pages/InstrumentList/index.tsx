@@ -5,11 +5,15 @@ import { SearchOutlined } from '@ant-design/icons';
 import { useInstrumentList, useInstrumentCategories, useInstrumentMarkets } from '@/hooks/useInstrumentList';
 import { useSparkline } from '@/hooks/useSparkline';
 import { useMarketStream } from '@/hooks/useMarketStream';
+import { useDensity } from '@/hooks/useDensity';
+import PageShell from '@/components/PageShell';
+import PageHeader from '@/components/PageHeader';
+import FilterToolbar from '@/components/FilterToolbar';
+import EmptyState from '@/components/EmptyState';
 import InstrumentCodeTag from '@/components/InstrumentCodeTag';
 import ThemeTag from '@/components/ThemeTag';
 import Sparkline from '@/components/Sparkline';
 import ReturnTag from '@/components/ReturnTag';
-import PageHeader from '@/components/PageHeader';
 import LastUpdated from '@/components/LastUpdated';
 import { useIsMobile } from '@/hooks/useBreakpoint';
 
@@ -18,7 +22,7 @@ import { useIsMobile } from '@/hooks/useBreakpoint';
 function SparklineCell({ code }: { code: string }) {
   const { data } = useSparkline({ code, days: 30 });
   if (!data || !data.points || data.points.length === 0) {
-    return <span style={{ color: 'var(--text-tertiary)', fontSize: 11 }}>-</span>;
+    return <span className="mobile-list-item__meta">-</span>;
   }
   return <Sparkline data={data.points} width={80} height={20} />;
 }
@@ -28,14 +32,7 @@ function SparklineCell({ code }: { code: string }) {
 function LivePriceCell({ tick }: { code: string; tick: ReturnType<typeof useMarketStream>['latest'][string] | undefined }) {
   if (!tick) {
     return (
-      <span
-        className="tabular-nums"
-        style={{
-          fontSize: 'var(--text-small-size)',
-          color: 'var(--text-tertiary)',
-          fontFamily: 'var(--font-mono)',
-        }}
-      >
+      <span className="tabular-nums mobile-list-item__meta" style={{ fontFamily: 'var(--font-mono)' }}>
         -
       </span>
     );
@@ -61,6 +58,7 @@ function LivePriceCell({ tick }: { code: string; tick: ReturnType<typeof useMark
 export default function InstrumentList() {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
+  const { density } = useDensity();
   const [search, setSearch] = useState('');
   const [market, setMarket] = useState<string | undefined>();
   const [category, setCategory] = useState<string | undefined>();
@@ -98,6 +96,8 @@ export default function InstrumentList() {
   );
   const { latest: liveLatest } = useMarketStream(pageCodes);
 
+  const rowSize = density === 'dense' ? 'small' : density === 'spacious' ? 'large' : 'middle';
+
   const columns = [
     {
       title: '标的',
@@ -113,7 +113,7 @@ export default function InstrumentList() {
       dataIndex: 'market',
       width: 80,
       render: (v: string) => (
-        <span className="tabular-nums" style={{ fontSize: 'var(--text-small-size)', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>{v}</span>
+        <span className="tabular-nums mobile-list-item__meta" style={{ fontFamily: 'var(--font-mono)' }}>{v}</span>
       ),
     },
     {
@@ -138,14 +138,14 @@ export default function InstrumentList() {
       title: '管理公司',
       dataIndex: 'fund_manager',
       render: (v: string) => v ? (
-        <span style={{ fontSize: 'var(--text-body-size)', color: 'var(--text-secondary)' }}>{v}</span>
+        <span style={{ color: 'var(--text-secondary)' }}>{v}</span>
       ) : '-',
     },
     {
       title: '跟踪指数',
       dataIndex: 'underlying_index',
       render: (v: string) => v ? (
-        <span style={{ fontSize: 'var(--text-small-size)', color: 'var(--text-secondary)', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', display: 'inline-block' }}>
+        <span className="mobile-list-item__meta" style={{ maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', display: 'inline-block' }}>
           {v}
         </span>
       ) : '-',
@@ -157,12 +157,12 @@ export default function InstrumentList() {
         // For US stocks, show market cap in USD; for ETFs show fund size
         if (record.market_cap) {
           const cap = record.market_cap;
-          if (cap >= 1e12) return <span className="tabular-nums" style={{ fontSize: 'var(--text-body-size)', fontWeight: 600, color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>{(cap / 1e12).toFixed(2)}T</span>;
-          if (cap >= 1e9) return <span className="tabular-nums" style={{ fontSize: 'var(--text-body-size)', fontWeight: 600, color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>{(cap / 1e9).toFixed(1)}B</span>;
-          if (cap >= 1e6) return <span className="tabular-nums" style={{ fontSize: 'var(--text-body-size)', fontWeight: 600, color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>{(cap / 1e6).toFixed(1)}M</span>;
+          if (cap >= 1e12) return <span className="tabular-nums mobile-list-item__value">{(cap / 1e12).toFixed(2)}T</span>;
+          if (cap >= 1e9) return <span className="tabular-nums mobile-list-item__value">{(cap / 1e9).toFixed(1)}B</span>;
+          if (cap >= 1e6) return <span className="tabular-nums mobile-list-item__value">{(cap / 1e6).toFixed(1)}M</span>;
         }
         if (v) return (
-          <span className="tabular-nums" style={{ fontSize: 'var(--text-body-size)', fontWeight: 600, color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>
+          <span className="tabular-nums mobile-list-item__value">
             {(v / 1e8).toFixed(1)}亿
           </span>
         );
@@ -187,24 +187,15 @@ export default function InstrumentList() {
   ];
 
   return (
-    <div>
+    <PageShell maxWidth="wide">
       <PageHeader
         eyebrow="全市场"
         title="标的列表"
         description="浏览和搜索全市场标的，按市场、分类、类型筛选"
         extra={<LastUpdated at={dataUpdatedAt} loading={isFetching && !data} />}
       />
-      <div
-        style={{
-          display: 'flex',
-          flexWrap: 'wrap',
-          alignItems: 'center',
-          gap: 'var(--space-3)',
-          paddingBottom: 'var(--space-4)',
-          borderBottom: '1px solid var(--border-default)',
-          marginBottom: 'var(--space-5)',
-        }}
-      >
+
+      <FilterToolbar total={`共 ${data?.total || 0} 只`}>
         <Input
           placeholder="搜索标的代码或名称"
           allowClear
@@ -238,40 +229,16 @@ export default function InstrumentList() {
           options={categories?.map((c: string) => ({ label: c, value: c }))}
           onChange={(v) => { setCategory(v); setPage(1); }}
         />
-        <div style={{ marginLeft: 'auto', fontSize: 'var(--text-small-size)', color: 'var(--text-tertiary)' }}>
-          共 <span className="tabular-nums" style={{ color: 'var(--accent)', fontWeight: 500 }}>{data?.total || 0}</span> 只
-        </div>
-      </div>
+      </FilterToolbar>
 
       <div>
         {isLoading ? (
           <Skeleton active paragraph={{ rows: 10 }} />
         ) : (data?.items?.length || 0) === 0 ? (
-          <div
-            role="status"
-            aria-live="polite"
-            style={{
-              padding: 'var(--space-9) 0',
-              textAlign: 'center',
-              color: 'var(--text-tertiary)',
-              border: '1px dashed var(--border-default)',
-              borderRadius: 'var(--radius-lg)',
-              background: 'var(--bg-surface)',
-            }}
-          >
-            <div
-              style={{
-                fontSize: 'var(--text-h3-size)',
-                color: 'var(--text-primary)',
-                marginBottom: 'var(--space-2)',
-              }}
-            >
-              没有符合条件的标的
-            </div>
-            <div style={{ fontSize: 'var(--text-small-size)', color: 'var(--text-muted)' }}>
-              尝试调整上方筛选条件，或清空搜索关键词查看全部标的
-            </div>
-          </div>
+          <EmptyState
+            title="没有符合条件的标的"
+            description="尝试调整上方筛选条件，或清空搜索关键词查看全部标的"
+          />
         ) : isMobile ? (
           /* Mobile: card-style list */
           <List
@@ -279,25 +246,18 @@ export default function InstrumentList() {
             renderItem={(item: any) => (
               <div
                 onClick={() => navigate(`/instruments/${item.code}`)}
-                style={{
-                  borderBottom: '1px solid var(--border-default)',
-                  padding: 'var(--space-3) 0',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: 'var(--space-2)',
-                }}
+                className="mobile-list-item"
               >
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div className="mobile-list-item__row">
                   <InstrumentCodeTag code={item.code} name={item.name} />
-                  <span className="tabular-nums" style={{ fontSize: 'var(--text-body-size)', fontWeight: 600, color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>
+                  <span className="tabular-nums mobile-list-item__value">
                     {item.fund_size ? `${(item.fund_size / 1e8).toFixed(1)}亿` : '-'}
                   </span>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+                <div className="mobile-list-item__row">
                   <LivePriceCell code={item.code} tick={liveLatest[item.code]} />
                 </div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-2)' }}>
+                <div className="mobile-list-item__tags">
                   {item.category && (
                     <ThemeTag>{item.category}</ThemeTag>
                   )}
@@ -305,7 +265,7 @@ export default function InstrumentList() {
                     <ThemeTag>{item.market}</ThemeTag>
                   )}
                   {item.fund_manager && (
-                    <span style={{ fontSize: 'var(--text-small-size)', color: 'var(--text-tertiary)' }}>{item.fund_manager}</span>
+                    <span className="mobile-list-item__meta">{item.fund_manager}</span>
                   )}
                 </div>
               </div>
@@ -316,7 +276,7 @@ export default function InstrumentList() {
               total: data?.total || 0,
               onChange: setPage,
               showSizeChanger: false,
-              style: { textAlign: 'center', marginTop: 'var(--space-4)' },
+              className: 'mobile-list-pagination',
             }}
           />
         ) : (
@@ -326,6 +286,7 @@ export default function InstrumentList() {
             columns={columns}
             rowKey="code"
             loading={isLoading}
+            size={rowSize as any}
             scroll={{ x: 'max-content' }}
             pagination={{
               current: page,
@@ -340,6 +301,6 @@ export default function InstrumentList() {
           />
         )}
       </div>
-    </div>
+    </PageShell>
   );
 }

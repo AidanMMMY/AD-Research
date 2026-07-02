@@ -4,7 +4,6 @@ import { useQuery } from '@tanstack/react-query';
 import {
   Input,
   Segmented,
-  Empty,
   Skeleton,
   Tag,
   Tooltip,
@@ -28,7 +27,12 @@ import type {
   SentimentLabel,
   ImportanceLevel,
 } from '@/types/news';
+import PageShell from '@/components/PageShell';
+import PageHeader from '@/components/PageHeader';
+import FilterToolbar from '@/components/FilterToolbar';
 import Panel from '@/components/Panel';
+import ResponsiveGrid from '@/components/ResponsiveGrid';
+import EmptyState from '@/components/EmptyState';
 import Sparkline from '@/components/Sparkline';
 
 const MARKET_OPTIONS: { label: string; value: NewsMarket | 'all' }[] = [
@@ -162,7 +166,7 @@ function heatmapColor(score: number | null, importance: ImportanceLevel | null):
 function PieBreakdown({ row }: { row: SymbolAggregate }) {
   const total = row.bull + row.bear + row.neutral;
   if (total === 0) {
-    return <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>—</div>;
+    return <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>—</span>;
   }
   const slices = [
     { label: '多', value: row.bull, color: SENTIMENT_COLORS.positive },
@@ -325,48 +329,19 @@ export default function SentimentOverview() {
   }, [market]);
 
   return (
-    <div>
-      <h1
-        style={{
-          fontSize: 'var(--text-h1-size)',
-          fontWeight: 500,
-          color: 'var(--text-primary)',
-          margin: '0 0 8px',
-          letterSpacing: '-0.03em',
-        }}
-      >
-        散户情绪看板
-      </h1>
-      <p
-        style={{
-          margin: '0 0 24px',
-          color: 'var(--text-tertiary)',
-          fontSize: 'var(--text-body-size)',
-        }}
-      >
-        按市场聚合的新闻情绪分布 · 重要性与看多/看空比
-      </p>
+    <PageShell maxWidth="wide">
+      <PageHeader
+        title="散户情绪看板"
+        description="按市场聚合的新闻情绪分布 · 重要性与看多/看空比"
+      />
 
-      {/* Filter bar */}
-      <div
-        style={{
-          background: 'var(--card-bg)',
-          border: '1px solid var(--card-border)',
-          borderRadius: 'var(--card-radius)',
-          padding: '16px 20px',
-          marginBottom: 20,
-          display: 'flex',
-          gap: 12,
-          flexWrap: 'wrap',
-          alignItems: 'center',
-        }}
-      >
+      <FilterToolbar total={`${filtered.length} 个标的 · ${data?.length ?? 0} 条资讯`}>
         <Segmented
           value={market}
           onChange={(v) => setMarket(v as NewsMarket | 'all')}
           options={MARKET_OPTIONS}
         />
-        <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>重要性 ≥</span>
+        <span className="ad-filter-label">重要性 ≥</span>
         <Select
           value={importanceMin}
           onChange={setImportanceMin}
@@ -381,11 +356,7 @@ export default function SentimentOverview() {
           onChange={(e) => setSearch(e.target.value)}
           style={{ width: 220 }}
         />
-        <span style={{ flex: 1 }} />
-        <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>
-          {filtered.length} 个标的 · {data?.length ?? 0} 条资讯
-        </span>
-      </div>
+      </FilterToolbar>
 
       {isError ? (
         <Alert
@@ -396,16 +367,10 @@ export default function SentimentOverview() {
         />
       ) : null}
 
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'minmax(0, 2.2fr) minmax(0, 1fr)',
-          gap: 'var(--space-5)',
-        }}
-      >
+      <div className="ad-news-layout">
         {/* Heatmap */}
         <Panel
-          variant="minimal"
+          variant="default"
           title={
             <span>
               <HeartOutlined style={{ marginRight: 6, color: 'var(--accent)' }} />
@@ -417,15 +382,9 @@ export default function SentimentOverview() {
           {isLoading ? (
             <Skeleton active paragraph={{ rows: 8 }} />
           ) : filtered.length === 0 ? (
-            <Empty description="暂无符合条件的数据" />
+            <EmptyState title="暂无符合条件的数据" />
           ) : (
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))',
-                gap: 8,
-              }}
-            >
+            <div className="ad-heatmap-grid">
               {filtered.map((row) => {
                 // Average importance of source articles for color intensity.
                 const avgImportance = (() => {
@@ -455,58 +414,20 @@ export default function SentimentOverview() {
                         setSelectedSymbol(row.symbol);
                         message.info(`已选中: ${row.symbol}`);
                       }}
-                      style={{
-                        background: heatmapColor(row.score, avgImportance),
-                        border:
-                          selectedSymbol === row.symbol
-                            ? '1px solid var(--accent)'
-                            : '1px solid var(--border-default)',
-                        borderRadius: 'var(--radius-md)',
-                        padding: 'var(--space-3) var(--space-3)',
-                        cursor: 'pointer',
-                        transition: 'transform var(--transition-fast)',
-                        minHeight: 64,
-                        display: 'flex',
-                        flexDirection: 'column',
-                        justifyContent: 'space-between',
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.transform = 'translateY(-1px)';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.transform = 'translateY(0)';
-                      }}
+                      className={`ad-heatmap-cell ${selectedSymbol === row.symbol ? 'ad-heatmap-cell--active' : ''}`}
+                      style={{ background: heatmapColor(row.score, avgImportance) }}
                     >
-                      <div
-                        style={{
-                          fontSize: 13,
-                          fontWeight: 600,
-                          color: 'var(--text-primary)',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          whiteSpace: 'nowrap',
-                        }}
-                      >
+                      <div className="ad-heatmap-cell__symbol">
                         {row.symbol}
                       </div>
-                      <div
-                        style={{
-                          display: 'flex',
-                          justifyContent: 'space-between',
-                          alignItems: 'center',
-                          marginTop: 4,
-                        }}
-                      >
+                      <div className="ad-heatmap-cell__row">
                         <span
-                          style={{
-                            fontSize: 11,
-                            color: row.label ? SENTIMENT_COLORS[row.label] : 'var(--text-tertiary)',
-                            fontWeight: 500,
-                          }}
+                          className="ad-heatmap-cell__score"
+                          style={{ color: row.label ? SENTIMENT_COLORS[row.label] : 'var(--text-tertiary)' }}
                         >
                           {row.score != null ? row.score.toFixed(2) : '—'}
                         </span>
-                        <span style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>
+                        <span className="ad-heatmap-cell__count">
                           {row.count} 篇
                         </span>
                       </div>
@@ -519,10 +440,10 @@ export default function SentimentOverview() {
         </Panel>
 
         {/* Right column */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <div className="dashboard-side-stack">
           {/* Selected symbol detail */}
           <Panel
-            variant="minimal"
+            variant="default"
             title={
               selectedSymbol
                 ? `单标详情 · ${selectedSymbol}`
@@ -531,11 +452,7 @@ export default function SentimentOverview() {
             padding="md"
           >
             {!selected ? (
-              <Empty
-                description="在左侧热力图选择一个标的"
-                image={Empty.PRESENTED_IMAGE_SIMPLE}
-                style={{ padding: 'var(--space-5) 0' }}
-              />
+              <EmptyState title="在左侧热力图选择一个标的" />
             ) : (
               <div>
                 <div
@@ -550,10 +467,9 @@ export default function SentimentOverview() {
                     style={{
                       fontSize: 28,
                       fontWeight: 700,
-                      color:
-                        selected.label
-                          ? SENTIMENT_COLORS[selected.label]
-                          : 'var(--text-primary)',
+                      color: selected.label
+                        ? SENTIMENT_COLORS[selected.label]
+                        : 'var(--text-primary)',
                       fontFamily: 'var(--font-mono)',
                     }}
                   >
@@ -576,7 +492,7 @@ export default function SentimentOverview() {
                   style={{
                     fontSize: 12,
                     color: 'var(--text-tertiary)',
-                    marginBottom: 4,
+                    marginBottom: 8,
                   }}
                 >
                   14 日情绪曲线
@@ -590,15 +506,10 @@ export default function SentimentOverview() {
                   />
                 </div>
 
-                <div
-                  style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'auto 1fr',
-                    gap: 12,
-                    alignItems: 'center',
-                  }}
-                >
-                  <PieBreakdown row={selected} />
+                <ResponsiveGrid cols={2} gap="sm">
+                  <div style={{ display: 'flex', alignItems: 'center' }}>
+                    <PieBreakdown row={selected} />
+                  </div>
                   <div>
                     <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>
                       多空比
@@ -624,14 +535,14 @@ export default function SentimentOverview() {
                       查看资讯 →
                     </Button>
                   </div>
-                </div>
+                </ResponsiveGrid>
 
                 <div style={{ marginTop: 16 }}>
                   <div
                     style={{
                       fontSize: 12,
                       color: 'var(--text-tertiary)',
-                      marginBottom: 6,
+                      marginBottom: 8,
                     }}
                   >
                     观点分布
@@ -644,7 +555,7 @@ export default function SentimentOverview() {
 
           {/* Top movers */}
           <Panel
-            variant="minimal"
+            variant="default"
             title={
               <span>
                 <FireOutlined style={{ marginRight: 6, color: 'var(--accent)' }} />
@@ -656,24 +567,14 @@ export default function SentimentOverview() {
             {isLoading ? (
               <Skeleton active paragraph={{ rows: 4 }} />
             ) : topMovers.length === 0 ? (
-              <Empty
-                description="暂无数据"
-                image={Empty.PRESENTED_IMAGE_SIMPLE}
-              />
+              <EmptyState title="暂无数据" />
             ) : (
               <Space direction="vertical" size={6} style={{ width: '100%' }}>
                 {topMovers.map((row) => (
                   <div
                     key={row.symbol}
                     onClick={() => setSelectedSymbol(row.symbol)}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 8,
-                      padding: 'var(--space-2) 0',
-                      cursor: 'pointer',
-                      borderBottom: '1px solid var(--border-default)',
-                    }}
+                    className="ad-mover-row"
                   >
                     {(row.score ?? 0) >= 0 ? (
                       <ArrowUpOutlined style={{ color: SENTIMENT_COLORS.positive, fontSize: 12 }} />
@@ -700,6 +601,6 @@ export default function SentimentOverview() {
           </Panel>
         </div>
       </div>
-    </div>
+    </PageShell>
   );
 }

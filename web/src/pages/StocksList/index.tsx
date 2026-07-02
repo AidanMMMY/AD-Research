@@ -1,22 +1,26 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Table, Input, Select, List, Skeleton } from 'antd';
-import { SearchOutlined, StockOutlined } from '@ant-design/icons';
+import { SearchOutlined } from '@ant-design/icons';
 import { useStockList } from '@/hooks/useStocks';
 import { useInstrumentMarkets, useInstrumentCategories } from '@/hooks/useInstrumentList';
 import { useSparkline } from '@/hooks/useSparkline';
+import { useDensity } from '@/hooks/useDensity';
+import PageShell from '@/components/PageShell';
+import PageHeader from '@/components/PageHeader';
+import FilterToolbar from '@/components/FilterToolbar';
+import EmptyState from '@/components/EmptyState';
 import InstrumentCodeTag from '@/components/InstrumentCodeTag';
 import ThemeTag from '@/components/ThemeTag';
 import Sparkline from '@/components/Sparkline';
 import { useIsMobile } from '@/hooks/useBreakpoint';
-import { useDensity } from '@/hooks/useDensity';
 
 /** Row-level sparkline cell. Uses the shared ETF sparkline endpoint
  *  which works for any instrument via instrument_daily_bar. */
 function SparklineCell({ code }: { code: string }) {
   const { data } = useSparkline({ code, days: 30 });
   if (!data || !data.points || data.points.length === 0) {
-    return <span style={{ color: 'var(--text-tertiary)', fontSize: 11 }}>-</span>;
+    return <span className="mobile-list-item__meta">-</span>;
   }
   return <Sparkline data={data.points} width={80} height={20} />;
 }
@@ -64,31 +68,31 @@ export default function StocksList() {
       dataIndex: 'market',
       width: 80,
       render: (v: string) => (
-        <span className="tabular-nums" style={{ fontSize: 'var(--text-small-size)', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>{v}</span>
+        <span className="tabular-nums mobile-list-item__meta" style={{ fontFamily: 'var(--font-mono)' }}>{v}</span>
       ),
     },
     {
       title: '行业',
       dataIndex: 'industry',
       width: 140,
-      render: (v: string) => v ? <ThemeTag>{v}</ThemeTag> : <span style={{ color: 'var(--text-tertiary)' }}>-</span>,
+      render: (v: string) => v ? <ThemeTag>{v}</ThemeTag> : <span className="mobile-list-item__meta">-</span>,
     },
     {
       title: '分类',
       dataIndex: 'category',
       width: 120,
-      render: (v: string) => v ? <ThemeTag>{v}</ThemeTag> : <span style={{ color: 'var(--text-tertiary)' }}>-</span>,
+      render: (v: string) => v ? <ThemeTag>{v}</ThemeTag> : <span className="mobile-list-item__meta">-</span>,
     },
     {
       title: '市值',
       dataIndex: 'market_cap',
       width: 110,
       render: (v: number) => {
-        if (!v) return <span style={{ color: 'var(--text-tertiary)' }}>-</span>;
-        if (v >= 1e12) return <span className="tabular-nums" style={{ fontFamily: 'var(--font-mono)', fontWeight: 600, color: 'var(--text-secondary)' }}>{(v / 1e12).toFixed(2)}T</span>;
-        if (v >= 1e9) return <span className="tabular-nums" style={{ fontFamily: 'var(--font-mono)', fontWeight: 600, color: 'var(--text-secondary)' }}>{(v / 1e9).toFixed(1)}B</span>;
-        if (v >= 1e8) return <span className="tabular-nums" style={{ fontFamily: 'var(--font-mono)', fontWeight: 600, color: 'var(--text-secondary)' }}>{(v / 1e8).toFixed(1)}亿</span>;
-        return <span className="tabular-nums" style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)' }}>{(v / 1e4).toFixed(0)}万</span>;
+        if (!v) return <span className="mobile-list-item__meta">-</span>;
+        if (v >= 1e12) return <span className="tabular-nums mobile-list-item__value">{(v / 1e12).toFixed(2)}T</span>;
+        if (v >= 1e9) return <span className="tabular-nums mobile-list-item__value">{(v / 1e9).toFixed(1)}B</span>;
+        if (v >= 1e8) return <span className="tabular-nums mobile-list-item__value">{(v / 1e8).toFixed(1)}亿</span>;
+        return <span className="tabular-nums mobile-list-item__meta">{(v / 1e4).toFixed(0)}万</span>;
       },
     },
     {
@@ -100,27 +104,14 @@ export default function StocksList() {
   ];
 
   return (
-    <div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', marginBottom: 8 }}>
-        <StockOutlined style={{ fontSize: 22, color: 'var(--accent)' }} />
-        <h1 style={{ fontSize: 'var(--text-h1-size)', fontWeight: 500, color: 'var(--text-primary)', margin: 0, letterSpacing: '-0.03em' }}>
-          个股列表
-        </h1>
-      </div>
-      <p style={{ margin: '0 0 32px', color: 'var(--text-tertiary)', fontSize: 'var(--text-body-size)' }}>
-        浏览和搜索全市场 A 股个股，按市场、行业筛选
-      </p>
-      <div
-        style={{
-          display: 'flex',
-          flexWrap: 'wrap',
-          alignItems: 'center',
-          gap: 'var(--space-3)',
-          paddingBottom: 'var(--space-4)',
-          borderBottom: '1px solid var(--border-default)',
-          marginBottom: 'var(--space-5)',
-        }}
-      >
+    <PageShell maxWidth="wide">
+      <PageHeader
+        eyebrow="全市场"
+        title="个股列表"
+        description="浏览和搜索全市场 A 股个股，按市场、行业筛选"
+      />
+
+      <FilterToolbar total={`共 ${data?.total || 0} 只`}>
         <Input
           placeholder="搜索代码或名称"
           allowClear
@@ -144,38 +135,33 @@ export default function StocksList() {
           value={category}
           onChange={(v) => { setCategory(v); setPage(1); }}
         />
-        <div style={{ marginLeft: 'auto', fontSize: 'var(--text-small-size)', color: 'var(--text-tertiary)' }}>
-          共 <span className="tabular-nums" style={{ color: 'var(--accent)', fontWeight: 500 }}>{data?.total || 0}</span> 只
-        </div>
-      </div>
+      </FilterToolbar>
 
       <div>
         {isLoading ? (
           <Skeleton active paragraph={{ rows: 10 }} />
+        ) : (data?.items?.length || 0) === 0 ? (
+          <EmptyState
+            title="没有符合条件的个股"
+            description="尝试调整上方筛选条件，或清空搜索关键词查看全部个股"
+          />
         ) : isMobile ? (
           <List
             dataSource={data?.items || []}
             renderItem={(item: any) => (
               <div
                 onClick={() => navigate(`/stocks/${item.code}`)}
-                style={{
-                  borderBottom: '1px solid var(--border-default)',
-                  padding: 'var(--space-3) 0',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: 'var(--space-2)',
-                }}
+                className="mobile-list-item"
               >
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div className="mobile-list-item__row">
                   <InstrumentCodeTag code={item.code} name={item.name} />
                   {item.market_cap ? (
-                    <span className="tabular-nums" style={{ fontSize: 'var(--text-body-size)', fontWeight: 600, color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>
+                    <span className="tabular-nums mobile-list-item__value">
                       {item.market_cap >= 1e8 ? `${(item.market_cap / 1e8).toFixed(1)}亿` : `${(item.market_cap / 1e4).toFixed(0)}万`}
                     </span>
                   ) : null}
                 </div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-2)' }}>
+                <div className="mobile-list-item__tags">
                   {item.industry && <ThemeTag>{item.industry}</ThemeTag>}
                   {item.category && <ThemeTag>{item.category}</ThemeTag>}
                   {item.market && <ThemeTag>{item.market}</ThemeTag>}
@@ -188,7 +174,7 @@ export default function StocksList() {
               total: data?.total || 0,
               onChange: setPage,
               showSizeChanger: false,
-              style: { textAlign: 'center', marginTop: 'var(--space-4)' },
+              className: 'mobile-list-pagination',
             }}
           />
         ) : (
@@ -212,6 +198,6 @@ export default function StocksList() {
           />
         )}
       </div>
-    </div>
+    </PageShell>
   );
 }

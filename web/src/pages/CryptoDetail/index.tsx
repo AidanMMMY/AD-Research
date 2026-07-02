@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
-import { Tabs, Row, Col, Statistic, Spin, Alert, Table, List, Radio, Checkbox, Space } from 'antd';
+import { Tabs, Spin, Alert, Table, List, Radio, Checkbox, Space } from 'antd';
 import { RobotOutlined, ReadOutlined } from '@ant-design/icons';
 import {
   useCryptoDetail,
@@ -11,6 +11,11 @@ import {
 } from '@/hooks/useCrypto';
 import KLineChart, { DEFAULT_OVERLAYS } from '@/components/KLineChart';
 import Panel from '@/components/Panel';
+import PageShell from '@/components/PageShell';
+import ResponsiveGrid from '@/components/ResponsiveGrid';
+import StatCard from '@/components/StatCard';
+import SectionHeading from '@/components/SectionHeading';
+import InstrumentCodeTag from '@/components/InstrumentCodeTag';
 import ThemeTag from '@/components/ThemeTag';
 import ReturnTag from '@/components/ReturnTag';
 import NewsListPanel from '@/components/NewsListPanel';
@@ -55,6 +60,13 @@ function toOHLCV(data: DailyBar[]): OHLCV[] {
     }));
 }
 
+function formatPrice(price?: number | null) {
+  if (price == null) return '-';
+  if (price < 0.01) return price.toFixed(6);
+  if (price < 1) return price.toFixed(4);
+  return price.toFixed(2);
+}
+
 export default function CryptoDetail() {
   const { code } = useParams<{ code: string }>();
   const { data: crypto, isLoading: detailLoading, error: detailError } = useCryptoDetail(code || '');
@@ -81,21 +93,60 @@ export default function CryptoDetail() {
     }
   }, [overlays]);
 
-  if (detailLoading) return <Spin size="large" style={{ display: 'block', margin: 'var(--space-9) auto' }} />;
-  if (detailError) return <Alert message="加载加密货币详情失败" description={(detailError as Error).message} type="error" style={{ margin: 'var(--space-6)' }} />;
-  if (!crypto) return <Alert message="币种不存在" description={`未找到代码为 ${code} 的加密货币`} type="warning" style={{ margin: 'var(--space-6)' }} />;
+  if (detailLoading) {
+    return (
+      <PageShell maxWidth="wide">
+        <Spin size="large" className="detail-loading" />
+      </PageShell>
+    );
+  }
+  if (detailError) {
+    return (
+      <PageShell maxWidth="wide">
+        <Alert
+          className="detail-error"
+          message="加载加密货币详情失败"
+          description={(detailError as Error).message}
+          type="error"
+        />
+      </PageShell>
+    );
+  }
+  if (!crypto) {
+    return (
+      <PageShell maxWidth="wide">
+        <Alert
+          className="detail-error"
+          message="币种不存在"
+          description={`未找到代码为 ${code} 的加密货币`}
+          type="warning"
+        />
+      </PageShell>
+    );
+  }
 
   const ohlcv = toOHLCV(historyData || []);
-
   const latestNote: ResearchNote | null = researchNotes?.[0] || null;
+
+  const heroStats = [
+    { title: '24h最高', value: crypto.high_24h, suffix: '$', precision: crypto.high_24h != null && crypto.high_24h < 1 ? 4 : 2 },
+    { title: '24h最低', value: crypto.low_24h, suffix: '$', precision: crypto.low_24h != null && crypto.low_24h < 1 ? 4 : 2 },
+    { title: '24h成交量', value: crypto.volume_24h, suffix: undefined, precision: 2 },
+    { title: 'RSI14', value: indicator?.rsi14, suffix: undefined, precision: 1 },
+  ];
+
+  const formatStatValue = (v?: number | null, precision?: number) => {
+    if (v == null) return '—';
+    return precision !== undefined ? v.toFixed(precision) : String(v);
+  };
 
   const tabItems = [
     {
       key: 'kline',
       label: 'K线行情',
       children: (
-        <div>
-          <div style={{ padding: 'var(--space-3) 0', borderBottom: '1px solid var(--border-default)', marginBottom: 'var(--space-4)' }}>
+        <Panel title="K线行情" padding="md">
+          <div className="detail-toolbar">
             <Space size="large" wrap>
               <Space>
                 <span>时间范围：</span>
@@ -141,9 +192,9 @@ export default function CryptoDetail() {
           ) : ohlcv.length ? (
             <KLineChart data={ohlcv} overlays={overlays} />
           ) : (
-            <Alert message="暂无历史行情数据" type="info" showIcon />
+            <Alert className="detail-chart__empty" message="暂无历史行情数据" type="info" showIcon />
           )}
-        </div>
+        </Panel>
       ),
     },
     {
@@ -156,6 +207,7 @@ export default function CryptoDetail() {
             rowKey="id"
             size="small"
             pagination={{ pageSize: 10 }}
+            scroll={{ x: 'max-content' }}
             columns={[
               { title: '日期', dataIndex: 'trade_date' },
               { title: '信号', dataIndex: 'signal_type' },
@@ -169,29 +221,38 @@ export default function CryptoDetail() {
       key: 'news',
       label: (
         <span>
-          <ReadOutlined style={{ marginRight: 'var(--space-1)' }} />
+          <ReadOutlined className="detail-tab-icon" />
           相关新闻
         </span>
       ),
-      children: <NewsListPanel symbol={code || ''} limit={15} bare />,
+      children: (
+        <Panel title="相关新闻" padding="md">
+          <NewsListPanel symbol={code || ''} limit={15} bare />
+        </Panel>
+      ),
     },
     {
       key: 'ai',
       label: (
         <span>
-          <RobotOutlined style={{ marginRight: 'var(--space-1)' }} />
+          <RobotOutlined className="detail-tab-icon" />
           AI研究
         </span>
       ),
       children: (
         <Panel
-          variant="minimal"
-          title={<span><ReadOutlined style={{ marginRight: 'var(--space-1-5)' }} />AI 研究笔记</span>}
+          variant="default"
+          title={
+            <span>
+              <ReadOutlined className="detail-tab-icon detail-tab-icon--lg" />
+              AI 研究笔记
+            </span>
+          }
           padding="md"
         >
           {latestNote ? (
             <div>
-              <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 'var(--space-2)' }}>
+              <div className="ai-note-meta">
                 {latestNote.sentiment && (
                   <ThemeTag
                     variant={
@@ -206,38 +267,30 @@ export default function CryptoDetail() {
                   </ThemeTag>
                 )}
                 {latestNote.confidence && (
-                  <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>
-                    置信度 {latestNote.confidence}/10
-                  </span>
+                  <span className="ai-note-confidence">置信度 {latestNote.confidence}/10</span>
                 )}
-                <span style={{ fontSize: 11, color: 'var(--text-tertiary)', marginLeft: 'auto' }}>
-                  {latestNote.generated_at?.slice(0, 16)}
-                </span>
+                <span className="ai-note-time">{latestNote.generated_at?.slice(0, 16)}</span>
               </div>
-              <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
-                {latestNote.summary}
-              </p>
-              <p style={{ fontSize: 13, color: 'var(--text-tertiary)', lineHeight: 1.6, marginTop: 'var(--space-3)', whiteSpace: 'pre-wrap' }}>
-                {latestNote.content}
-              </p>
+              <p className="ai-note-summary">{latestNote.summary}</p>
+              <p className="ai-note-content">{latestNote.content}</p>
             </div>
           ) : (
-            <div style={{ textAlign: 'center', padding: 'var(--space-6)', color: 'var(--text-tertiary)' }}>
-              <RobotOutlined style={{ fontSize: 32, marginBottom: 'var(--space-2)', display: 'block' }} />
+            <div className="ai-empty">
+              <RobotOutlined className="ai-empty__icon" />
               <p>暂无AI研报</p>
             </div>
           )}
 
           {researchNotes && researchNotes.length > 1 && (
             <List
-              style={{ marginTop: 'var(--space-4)' }}
+              className="detail-list"
               dataSource={researchNotes.slice(1)}
               renderItem={(note: ResearchNote) => (
                 <List.Item>
                   <List.Item.Meta
                     title={
-                      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                        <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{note.note_type}</span>
+                      <div className="ai-note-meta">
+                        <span className="ai-note-type">{note.note_type}</span>
                         {note.sentiment && (
                           <ThemeTag
                             variant={
@@ -251,15 +304,11 @@ export default function CryptoDetail() {
                             {SENTIMENT_LABELS[note.sentiment] || note.sentiment}
                           </ThemeTag>
                         )}
-                        <span style={{ fontSize: 11, color: 'var(--text-tertiary)', marginLeft: 'auto' }}>
-                          {note.generated_at?.slice(0, 16)}
-                        </span>
+                        <span className="ai-note-time">{note.generated_at?.slice(0, 16)}</span>
                       </div>
                     }
                     description={
-                      <p style={{ fontSize: 12, color: 'var(--text-tertiary)', lineHeight: 1.5, marginTop: 4, whiteSpace: 'pre-wrap' }}>
-                        {note.summary}
-                      </p>
+                      <p className="ai-note-content">{note.summary}</p>
                     }
                   />
                 </List.Item>
@@ -272,84 +321,47 @@ export default function CryptoDetail() {
   ];
 
   return (
-    <div>
-      <div
-        style={{
-          borderBottom: '1px solid var(--border-default)',
-          paddingBottom: 'var(--space-5)',
-          marginBottom: 'var(--space-5)',
-        }}
-      >
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 'var(--space-4)' }}>
+    <PageShell maxWidth="wide">
+      <div className="detail-hero">
+        <div className="detail-hero__row">
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', marginBottom: 'var(--space-2)' }}>
-              <h2 style={{ margin: 0, fontSize: 'var(--text-h1-size)', fontWeight: 500, letterSpacing: '-0.03em' }}>
-                {crypto.code} {crypto.name}
-              </h2>
+            <div className="detail-hero__title">
+              <InstrumentCodeTag code={crypto.code} />
+              <h1 className="detail-hero__title-text">{crypto.name}</h1>
               {crypto.category && <ThemeTag>{crypto.category}</ThemeTag>}
               {crypto.market && <ThemeTag variant="accent">{crypto.market}</ThemeTag>}
             </div>
-            <div style={{ color: 'var(--text-secondary)', fontSize: 'var(--text-body-size)' }}>
-              {crypto.exchange && `交易所: ${crypto.exchange}`}
-              {crypto.currency && ` | 计价: ${crypto.currency}`}
+            <div className="detail-hero__meta">
+              {[
+                crypto.exchange && `交易所: ${crypto.exchange}`,
+                crypto.currency && `计价: ${crypto.currency}`,
+              ].filter(Boolean).join(' | ')}
             </div>
           </div>
-          <div style={{ textAlign: 'right' }}>
-            <div className="tabular-nums" style={{ fontSize: 'var(--text-data-lg-size)', fontWeight: 400, fontFamily: 'var(--font-mono)', color: 'var(--text-primary)' }}>
-              {crypto.price != null ? `$${crypto.price < 0.01 ? crypto.price.toFixed(6) : crypto.price < 1 ? crypto.price.toFixed(4) : crypto.price.toFixed(2)}` : '-'}
+          <div className="detail-hero__kpi">
+            <div className="detail-hero__kpi-value tabular-nums">
+              {crypto.price != null ? `$${formatPrice(crypto.price)}` : '-'}
             </div>
-            <div style={{ marginTop: 4 }}>
-              {/* Prefer canonical change_pct; fallback to deprecated change_24h. */}
+            <div className="detail-hero__kpi-tag">
               <ReturnTag value={crypto.change_pct ?? crypto.change_24h} />
             </div>
           </div>
         </div>
-
-        <Row gutter={[16, 16]} style={{ marginTop: 'var(--space-4)' }}>
-          <Col xs={12} sm={8} md={6}>
-            <div className="tabular-nums" style={{ borderBottom: '1px solid var(--border-default)', padding: 'var(--space-3) 0' }}>
-              <Statistic title="24h最高" value={crypto.high_24h} precision={crypto.high_24h != null && crypto.high_24h < 1 ? 4 : 2} prefix="$" />
-            </div>
-          </Col>
-          <Col xs={12} sm={8} md={6}>
-            <div className="tabular-nums" style={{ borderBottom: '1px solid var(--border-default)', padding: 'var(--space-3) 0' }}>
-              <Statistic title="24h最低" value={crypto.low_24h} precision={crypto.low_24h != null && crypto.low_24h < 1 ? 4 : 2} prefix="$" />
-            </div>
-          </Col>
-          <Col xs={12} sm={8} md={6}>
-            <div className="tabular-nums" style={{ borderBottom: '1px solid var(--border-default)', padding: 'var(--space-3) 0' }}>
-              <Statistic title="24h成交量" value={crypto.volume_24h} precision={2} />
-            </div>
-          </Col>
-          <Col xs={12} sm={8} md={6}>
-            <div className="tabular-nums" style={{ borderBottom: '1px solid var(--border-default)', padding: 'var(--space-3) 0' }}>
-              <Statistic title="RSI14" value={indicator?.rsi14} precision={1} />
-            </div>
-          </Col>
-          <Col xs={12} sm={8} md={6}>
-            <div className="tabular-nums" style={{ borderBottom: '1px solid var(--border-default)', padding: 'var(--space-3) 0' }}>
-              <Statistic title="波动率20日" value={indicator?.volatility_20d} precision={2} suffix="%" />
-            </div>
-          </Col>
-          <Col xs={12} sm={8} md={6}>
-            <div className="tabular-nums" style={{ borderBottom: '1px solid var(--border-default)', padding: 'var(--space-3) 0' }}>
-              <Statistic title="最大回撤1年" value={indicator?.max_drawdown_1y} precision={2} suffix="%" />
-            </div>
-          </Col>
-          <Col xs={12} sm={8} md={6}>
-            <div className="tabular-nums" style={{ borderBottom: '1px solid var(--border-default)', padding: 'var(--space-3) 0' }}>
-              <Statistic title="1月收益" value={indicator?.return_1m} precision={2} suffix="%" />
-            </div>
-          </Col>
-          <Col xs={12} sm={8} md={6}>
-            <div className="tabular-nums" style={{ borderBottom: '1px solid var(--border-default)', padding: 'var(--space-3) 0' }}>
-              <Statistic title="MA5" value={indicator?.ma5} precision={2} prefix="$" />
-            </div>
-          </Col>
-        </Row>
       </div>
 
+      <SectionHeading title="核心指标" />
+      <ResponsiveGrid cols={4} gap="md" className="detail-section">
+        {heroStats.map((stat) => (
+          <StatCard
+            key={stat.title}
+            title={stat.title}
+            value={formatStatValue(stat.value, stat.precision)}
+            suffix={stat.suffix}
+          />
+        ))}
+      </ResponsiveGrid>
+
       <Tabs items={tabItems} defaultActiveKey="kline" />
-    </div>
+    </PageShell>
   );
 }

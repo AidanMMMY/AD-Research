@@ -8,7 +8,6 @@ import {
   Alert,
   Space,
   Tag,
-  Empty,
   Typography,
   Button,
   Skeleton,
@@ -18,9 +17,12 @@ import { ReloadOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import ReactECharts from 'echarts-for-react';
 import type { EChartsOption } from 'echarts';
+import PageShell from '@/components/PageShell';
 import PageHeader from '@/components/PageHeader';
 import Panel from '@/components/Panel';
 import StatCard from '@/components/StatCard';
+import EmptyState from '@/components/EmptyState';
+import FilterToolbar from '@/components/FilterToolbar';
 import LastUpdated from '@/components/LastUpdated';
 import { useMacroIndicators, useMacroSeries } from '@/hooks/useMacro';
 import {
@@ -229,7 +231,7 @@ export default function Macro() {
   const headlineLoading = region === 'cn' ? latestFetching && !latestData : isLoading;
 
   return (
-    <div className="page-container">
+    <PageShell maxWidth="wide">
       <PageHeader
         eyebrow="宏观指标"
         title={region === 'cn' ? '中国宏观看板' : '美国宏观看板'}
@@ -246,71 +248,80 @@ export default function Macro() {
                 刷新
               </Button>
             )}
-            <Select
-              value={region}
-              onChange={(v) => {
-                setRegion(v);
-                setSelectedCode(null);
-              }}
-              options={REGION_OPTIONS}
-              style={{ width: 180 }}
-            />
           </Space>
         }
       />
 
       {error && (
-        <Alert
-          type="error"
-          showIcon
-          message="加载宏观指标失败"
-          description={(error as Error).message}
-          style={{ marginBottom: 16 }}
-        />
+        <div className="phase5c-section">
+          <Alert
+            type="error"
+            showIcon
+            message="加载宏观指标失败"
+            description={(error as Error).message}
+          />
+        </div>
       )}
 
       {/* ── Headline KPI strip ── */}
       {headlineLoading ? (
-        <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
-          {HEADLINE_CODES[region]?.map((code) => (
-            <Col xs={12} md={8} lg={4} key={code}>
-              <Skeleton active paragraph={{ rows: 2 }} />
-            </Col>
-          ))}
-        </Row>
+        <div className="phase5c-section">
+          <Row gutter={[16, 16]}>
+            {HEADLINE_CODES[region]?.map((code) => (
+              <Col xs={12} md={8} lg={4} key={code}>
+                <Skeleton active paragraph={{ rows: 2 }} />
+              </Col>
+            ))}
+          </Row>
+        </div>
       ) : headline.length > 0 ? (
-        <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
-          {headline.map((item) => (
-            <Col xs={12} md={8} lg={Math.max(4, 24 / headline.length)} key={item.code}>
-              <StatCard
-                title={item.name_zh}
-                value={formatValue(item.value, item.unit)}
-                suffix={item.period ? `${item.period}` : undefined}
-              />
-            </Col>
-          ))}
-        </Row>
+        <div className="phase5c-section">
+          <Row gutter={[16, 16]}>
+            {headline.map((item) => (
+              <Col xs={12} md={8} lg={Math.max(4, 24 / headline.length)} key={item.code}>
+                <StatCard
+                  title={item.name_zh}
+                  value={formatValue(item.value, item.unit)}
+                  suffix={item.period ? `${item.period}` : undefined}
+                />
+              </Col>
+            ))}
+          </Row>
+        </div>
       ) : null}
+
+      <FilterToolbar total={indicators?.length}>
+        <Select
+          value={region}
+          onChange={(v) => {
+            setRegion(v);
+            setSelectedCode(null);
+          }}
+          options={REGION_OPTIONS}
+          style={{ width: 180 }}
+        />
+      </FilterToolbar>
 
       <Row gutter={[16, 16]}>
         {/* ── Indicator list ── */}
         <Col xs={24} lg={selectedCode ? 12 : 24}>
           <Panel title="全部指标">
             <Spin spinning={isLoading}>
-              <Table<MacroIndicatorItem>
-                rowKey="code"
-                size="small"
-                dataSource={indicators ?? []}
-                columns={columns}
-                pagination={{ pageSize: 15, showSizeChanger: false }}
-                onRow={(record) => ({
-                  onClick: () => setSelectedCode(record.code),
-                  style: { cursor: 'pointer' },
-                })}
-                locale={{
-                  emptyText: isLoading ? '加载中...' : '暂无数据',
-                }}
-              />
+              <div className="ad-density-dense ad-table-scroll ad-table-sticky">
+                <Table<MacroIndicatorItem>
+                  rowKey="code"
+                  size="small"
+                  dataSource={indicators ?? []}
+                  columns={columns}
+                  pagination={{ pageSize: 15, showSizeChanger: false }}
+                  onRow={(record) => ({
+                    onClick: () => setSelectedCode(record.code),
+                  })}
+                  locale={{
+                    emptyText: isLoading ? '加载中...' : <EmptyState title="暂无指标数据" />,
+                  }}
+                />
+              </div>
             </Spin>
           </Panel>
         </Col>
@@ -320,24 +331,18 @@ export default function Macro() {
           <Col xs={24} lg={12}>
             <Panel
               title={series ? `${series.name_zh} · 走势` : '走势'}
-              extra={
-                <a onClick={() => setSelectedCode(null)} style={{ fontSize: 12 }}>
-                  关闭
-                </a>
-              }
+              extra={<a onClick={() => setSelectedCode(null)}>关闭</a>}
             >
               <Spin spinning={seriesLoading}>
                 {chartOption ? (
-                  <ReactECharts
-                    option={chartOption}
-                    style={{ height: 420, width: '100%' }}
-                    notMerge
-                  />
+                  <div className="ad-chart-container ad-chart-container--tall">
+                    <ReactECharts option={chartOption} notMerge />
+                  </div>
                 ) : (
-                  <Empty description="暂无历史数据" />
+                  <EmptyState title="暂无历史数据" />
                 )}
                 {series && series.points.length > 0 && (
-                  <div style={{ marginTop: 12, color: 'rgba(0,0,0,0.45)', fontSize: 12 }}>
+                  <div style={{ marginTop: 12, color: 'var(--text-tertiary)', fontSize: 12 }}>
                     共 {series.points.length} 个观测点 · 最近一期：
                     {series.points[series.points.length - 1].period}
                     （{formatValue(series.points[series.points.length - 1].value, series.unit)}）
@@ -348,6 +353,6 @@ export default function Macro() {
           </Col>
         )}
       </Row>
-    </div>
+    </PageShell>
   );
 }
