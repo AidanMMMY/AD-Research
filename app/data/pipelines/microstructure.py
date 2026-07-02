@@ -249,7 +249,7 @@ def _to_margin_upserts(records: list[dict[str, Any]], exchange: str) -> list[dic
             sec_sell = None
 
         ts_code = _code_to_ts_code(code)
-        if not ts_code or not name:
+        if not ts_code or not name or not trade_date:
             continue
 
         out.append({
