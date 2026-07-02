@@ -2,6 +2,8 @@ import { useMemo, useState } from 'react';
 import {
   Table, Button, Modal, Form, Input, Select, Switch, Space, message,
 } from 'antd';
+import PageShell from '@/components/PageShell';
+import PageHeader from '@/components/PageHeader';
 import Panel from '@/components/Panel';
 import ThemeTag from '@/components/ThemeTag';
 import HelpTrigger from '@/components/HelpTrigger';
@@ -168,17 +170,19 @@ export default function StrategyList() {
   ];
 
   return (
-    <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24 }}>
-        <div>
-          <h1 style={{ fontSize: 'var(--text-h1-size)', fontWeight: 500, color: 'var(--text-primary)', margin: '0 0 8px', letterSpacing: '-0.03em' }}>策略管理</h1>
-          <p style={{ margin: 0, color: 'var(--text-tertiary)', fontSize: 'var(--text-body-size)' }}>创建和管理交易策略，配置策略参数与启用状态</p>
-        </div>
-        <Button icon={<BookOutlined />} onClick={() => navigate('/strategy-library')}>
-          浏览策略库
-        </Button>
-      </div>
-      <Panel variant="minimal" title="策略管理" extra={
+    <PageShell maxWidth="wide">
+      <PageHeader
+        eyebrow="策略"
+        title="策略管理"
+        description="创建和管理交易策略，配置策略参数与启用状态"
+        extra={
+          <Button icon={<BookOutlined />} onClick={() => navigate('/strategy-library')}>
+            浏览策略库
+          </Button>
+        }
+      />
+
+      <Panel variant="default" title="策略管理" extra={
         <Space>
           <HelpTrigger tooltip="AI 解释策略逻辑" onClick={handleOpenHelp} />
           <Button type="primary" icon={<PlusOutlined />} onClick={() => setIsModalOpen(true)}>
@@ -261,6 +265,6 @@ export default function StrategyList() {
           </Form.Item>
         </Form>
       </Modal>
-    </div>
+    </PageShell>
   );
 }

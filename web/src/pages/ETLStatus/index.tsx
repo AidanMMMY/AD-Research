@@ -2,7 +2,12 @@ import { useState } from 'react';
 import { Table, Select, Input } from 'antd';
 import { useQuery } from '@tanstack/react-query';
 import { etlApi } from '@/api/etl';
+import PageShell from '@/components/PageShell';
+import PageHeader from '@/components/PageHeader';
 import Panel from '@/components/Panel';
+import SectionHeading from '@/components/SectionHeading';
+import FilterToolbar from '@/components/FilterToolbar';
+import DensityToggle from '@/components/DensityToggle';
 import StatusTag from '@/components/StatusTag';
 
 const STATUS_OPTIONS = [
@@ -63,42 +68,19 @@ export default function ETLStatus() {
   ];
 
   return (
-    <div>
-      <h1
-        style={{
-          fontSize: 'var(--text-h1-size)',
-          fontWeight: 500,
-          color: 'var(--text-primary)',
-          margin: '0 0 8px',
-          letterSpacing: '-0.03em',
-        }}
-      >
-        ETL 状态
-      </h1>
-      <p
-        style={{
-          margin: '0 0 32px',
-          color: 'var(--text-tertiary)',
-          fontSize: 'var(--text-body-size)',
-        }}
-      >
-        查看数据管道运行状态与近期日志
-      </p>
+    <PageShell maxWidth="wide">
+      <PageHeader
+        title="ETL 状态"
+        description="查看数据管道运行状态与近期日志"
+      />
 
-      <div
-        style={{
-          display: 'flex',
-          flexWrap: 'wrap',
-          alignItems: 'center',
-          gap: 'var(--space-3)',
-          marginBottom: 'var(--space-4)',
-        }}
-      >
+      <SectionHeading title="近期 ETL 日志" />
+      <FilterToolbar>
         <Input
           placeholder="任务名称"
           value={jobName}
           onChange={(e) => setJobName(e.target.value)}
-          style={{ width: 220 }}
+          className="admin-filter-input"
           allowClear
         />
         <Select
@@ -106,12 +88,13 @@ export default function ETLStatus() {
           value={status}
           onChange={setStatus}
           options={STATUS_OPTIONS}
-          style={{ width: 140 }}
+          className="admin-filter-select"
           allowClear
         />
-      </div>
+        <DensityToggle />
+      </FilterToolbar>
 
-      <Panel title="近期 ETL 日志" padding="md">
+      <Panel variant="default" padding="md">
         <Table
           dataSource={data?.items || []}
           columns={columns}
@@ -121,6 +104,6 @@ export default function ETLStatus() {
           scroll={{ x: 'max-content' }}
         />
       </Panel>
-    </div>
+    </PageShell>
   );
 }

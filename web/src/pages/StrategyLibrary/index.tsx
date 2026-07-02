@@ -3,11 +3,13 @@ import {
   Button, Form, Input, Modal, Tabs, message, Space,
 } from 'antd';
 import { BookOutlined, ExperimentOutlined, ThunderboltOutlined } from '@ant-design/icons';
+import PageShell from '@/components/PageShell';
+import PageHeader from '@/components/PageHeader';
 import Panel from '@/components/Panel';
+import ResponsiveGrid from '@/components/ResponsiveGrid';
 import StrategyCard from '@/components/StrategyCard';
 import StrategyParamForm from '@/components/StrategyParamForm';
 import InstrumentSelector from '@/components/InstrumentSelector';
-import PageHeader from '@/components/PageHeader';
 import { useStrategyCatalog } from '@/hooks/useStrategyCatalog';
 import { useRunStrategy } from '@/hooks/useRunStrategy';
 import { useStrategies } from '@/hooks/useStrategies';
@@ -110,7 +112,7 @@ export default function StrategyLibrary() {
   };
 
   return (
-    <div>
+    <PageShell maxWidth="wide">
       <PageHeader
         eyebrow="策略"
         title="策略库"
@@ -129,19 +131,11 @@ export default function StrategyLibrary() {
           key: tab.key,
           label: tab.label,
         }))}
-        style={{ marginBottom: 24 }}
+        className="phase5c-tabs--padded"
       />
 
-      <Panel variant="minimal" title={`共 ${strategies.length} 个策略`}>
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))',
-            gridAutoRows: '1fr', // all cards in the same grid row share the tallest card's height
-            gap: 16,
-            alignItems: 'stretch',
-          }}
-        >
+      <Panel variant="default" title={`共 ${strategies.length} 个策略`}>
+        <ResponsiveGrid cols={3} gap="md">
           {strategies.map((strategy) => (
             <StrategyCard
               key={strategy.strategy_type}
@@ -151,7 +145,7 @@ export default function StrategyLibrary() {
               onBacktest={handleBacktest}
             />
           ))}
-        </div>
+        </ResponsiveGrid>
       </Panel>
 
       <Modal
@@ -207,7 +201,7 @@ export default function StrategyLibrary() {
               maxCount={50}
             />
             {runCodes.length === 0 && (
-              <div style={{ color: 'var(--color-fall)', fontSize: 12, marginTop: 4 }}>
+              <div className="phase5c-error-hint">
                 请至少选择一个标的
               </div>
             )}
@@ -217,7 +211,7 @@ export default function StrategyLibrary() {
           )}
         </Form>
       </Modal>
-    </div>
+    </PageShell>
   );
 }
 

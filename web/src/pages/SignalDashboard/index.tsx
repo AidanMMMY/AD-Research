@@ -1,6 +1,10 @@
 import { useMemo, useState } from 'react';
 import { Table, Select, Space } from 'antd';
+import PageShell from '@/components/PageShell';
+import PageHeader from '@/components/PageHeader';
 import Panel from '@/components/Panel';
+import FilterToolbar from '@/components/FilterToolbar';
+import EmptyState from '@/components/EmptyState';
 import ThemeTag, { ThemeTagVariant } from '@/components/ThemeTag';
 import { useSignals } from '@/hooks/useSignals';
 import type { Signal } from '@/types/signal';
@@ -77,86 +81,63 @@ export default function SignalDashboard() {
   ];
 
   return (
-    <div>
-      <h1 style={{ fontSize: 'var(--text-h1-size)', fontWeight: 500, color: 'var(--text-primary)', margin: '0 0 8px', letterSpacing: '-0.03em' }}>信号看板</h1>
-      <p style={{ margin: '0 0 var(--space-6)', color: 'var(--text-tertiary)', fontSize: 'var(--text-body-size)' }}>查看最新交易信号汇总，监控买入、卖出、持有信号分布</p>
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(3, 1fr)',
-          borderTop: '1px solid var(--border-default)',
-          borderBottom: '1px solid var(--border-default)',
-          marginBottom: 'var(--space-md)',
-        }}
-      >
+    <PageShell maxWidth="wide">
+      <PageHeader
+        eyebrow="交易"
+        title="信号看板"
+        description="查看最新交易信号汇总，监控买入、卖出、持有信号分布"
+      />
+
+      <div className="phase5c-kpi-strip phase5c-kpi-strip--cols-3 phase5c-section">
         {[
           { title: '买入信号', value: buyCount, color: 'var(--color-rise)' },
           { title: '卖出信号', value: sellCount, color: 'var(--color-fall)' },
           { title: '持有信号', value: holdCount, color: 'var(--text-primary)' },
-        ].map((m, i) => (
-          <div
-            key={m.title}
-            style={{
-              padding: 'var(--space-5) var(--space-4)',
-              borderRight: i < 2 ? '1px solid var(--border-default)' : 'none',
-            }}
-          >
-            <div
-              style={{
-                fontSize: 'var(--text-label-size)',
-                color: 'var(--text-tertiary)',
-                fontWeight: 500,
-                marginBottom: '12px',
-                letterSpacing: '0.12em',
-                textTransform: 'uppercase',
-              }}
-            >
-              {m.title}
-            </div>
-            <div
-              className="tabular-nums"
-              style={{
-                fontSize: 'var(--text-data-lg-size)',
-                fontWeight: 400,
-                color: m.color,
-                fontFamily: 'var(--font-mono)',
-                lineHeight: 1.2,
-              }}
-            >
+        ].map((m) => (
+          <div key={m.title} className="phase5c-kpi-cell">
+            <div className="phase5c-kpi-cell__label">{m.title}</div>
+            <div className="phase5c-kpi-cell__value tabular-nums" style={{ color: m.color }}>
               {m.value}
             </div>
           </div>
         ))}
       </div>
 
-      <Panel variant="minimal" title="最新交易信号" extra={
-        <Space>
-          <Select
-            value={typeFilter}
-            onChange={setTypeFilter}
-            options={typeOptions}
-            style={{ width: 120 }}
+      <Panel variant="default" title="最新交易信号">
+        <FilterToolbar total={filteredItems.length}>
+          <Space>
+            <Select
+              value={typeFilter}
+              onChange={setTypeFilter}
+              options={typeOptions}
+              style={{ width: 120 }}
+            />
+            <Select
+              value={familyFilter}
+              onChange={() => undefined}
+              options={familyOptions}
+              style={{ width: 140 }}
+              disabled
+              placeholder="家族筛选（待后端支持）"
+            />
+          </Space>
+        </FilterToolbar>
+
+        <div className="phase5c-table-wrap">
+          <Table
+            dataSource={filteredItems}
+            columns={columns}
+            rowKey="id"
+            size="small"
+            loading={isLoading}
+            scroll={{ x: 'max-content' }}
+            pagination={{ pageSize: 20 }}
+            locale={{
+              emptyText: <EmptyState title="暂无信号" description="当前没有符合条件的交易信号" />,
+            }}
           />
-          <Select
-            value={familyFilter}
-            onChange={() => undefined}
-            options={familyOptions}
-            style={{ width: 140 }}
-            disabled
-            placeholder="家族筛选（待后端支持）"
-          />
-        </Space>
-      }>
-        <Table
-          dataSource={filteredItems}
-          columns={columns}
-          rowKey="id"
-          size="small"
-          loading={isLoading}
-          scroll={{ x: 'max-content' }}
-          pagination={{ pageSize: 20 }}
-        />
+        </div>
       </Panel>
-    </div>
+    </PageShell>
   );
 }

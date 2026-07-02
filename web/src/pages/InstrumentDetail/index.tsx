@@ -11,6 +11,11 @@ import { useQuery } from '@tanstack/react-query';
 import KLineChart, { DEFAULT_OVERLAYS } from '@/components/KLineChart';
 import ScoreRadar from '@/components/ScoreRadar';
 import Panel from '@/components/Panel';
+import PageShell from '@/components/PageShell';
+import ResponsiveGrid from '@/components/ResponsiveGrid';
+import StatCard from '@/components/StatCard';
+import SectionHeading from '@/components/SectionHeading';
+import InstrumentCodeTag from '@/components/InstrumentCodeTag';
 import NewsListPanel from '@/components/NewsListPanel';
 import HelpTrigger from '@/components/HelpTrigger';
 import HelpPopover from '@/components/HelpPopover';
@@ -65,6 +70,28 @@ const SENTIMENT_LABELS: Record<string, string> = {
   neutral: '中性',
 };
 
+const INSTRUMENT_TYPE_LABELS: Record<string, string> = {
+  STOCK: '个股',
+  CRYPTO: '数字货币',
+  ETF: 'ETF',
+};
+
+function formatFundSize(value: number, market?: string) {
+  if (market === 'US') {
+    if (value >= 1e12) return `${(value / 1e12).toFixed(2)}T USD`;
+    if (value >= 1e9) return `${(value / 1e9).toFixed(1)}B USD`;
+    return `${(value / 1e6).toFixed(1)}M USD`;
+  }
+  return `${(value / 1e8).toFixed(1)}亿`;
+}
+
+function formatMarketCap(value: number, market?: string) {
+  if (market === 'A股') return `${(value / 1e8).toFixed(1)}亿 CNY`;
+  if (value >= 1e12) return `${(value / 1e12).toFixed(2)}T USD`;
+  if (value >= 1e9) return `${(value / 1e9).toFixed(1)}B USD`;
+  return `${(value / 1e6).toFixed(1)}M USD`;
+}
+
 export default function InstrumentDetail() {
   const { code } = useParams<{ code: string }>();
   const navigate = useNavigate();
@@ -75,7 +102,6 @@ export default function InstrumentDetail() {
   const { isFavorite, isLoading: favLoading, toggle, isToggling } = useFavoriteStatus(code || '');
   const [timeRange, setTimeRange] = useState(120);
 
-  // Persist K-line overlay preferences in localStorage
   const [overlays, setOverlays] = useState(() => {
     try {
       const saved = localStorage.getItem('instrument-detail-overlays');
@@ -116,7 +142,6 @@ export default function InstrumentDetail() {
     retry: 1,
   });
 
-  // AI Analysis data
   const { data: researchNotes, isLoading: notesLoading } = useQuery({
     queryKey: ['research-notes', code],
     queryFn: () => researchApi.getNotes(code || '').then((r) => r.data),
@@ -129,7 +154,6 @@ export default function InstrumentDetail() {
     enabled: !!code,
   });
 
-  // A-share individual stock fundamentals (only for stocks)
   const isStock = instrument?.instrument_type === 'STOCK';
   const { data: stockFund } = useQuery({
     queryKey: ['stock-fundamental', code],
@@ -137,9 +161,37 @@ export default function InstrumentDetail() {
     enabled: !!code && isStock,
   });
 
-  if (instrumentLoading) return <Spin size="large" style={{ display: 'block', margin: 'var(--space-9) auto' }} />;
-  if (instrumentError) return <Alert message="加载标的详情失败" description={(instrumentError as Error).message} type="error" style={{ margin: 'var(--space-6)' }} />;
-  if (!instrument) return <Alert message="标的不存在" description={`未找到代码为 ${code} 的标的`} type="warning" style={{ margin: 'var(--space-6)' }} />;
+  if (instrumentLoading) {
+    return (
+      <PageShell maxWidth="wide">
+        <Spin size="large" className="detail-loading" />
+      </PageShell>
+    );
+  }
+  if (instrumentError) {
+    return (
+      <PageShell maxWidth="wide">
+        <Alert
+          className="detail-error"
+          message="加载标的详情失败"
+          description={(instrumentError as Error).message}
+          type="error"
+        />
+      </PageShell>
+    );
+  }
+  if (!instrument) {
+    return (
+      <PageShell maxWidth="wide">
+        <Alert
+          className="detail-error"
+          message="标的不存在"
+          description={`未找到代码为 ${code} 的标的`}
+          type="warning"
+        />
+      </PageShell>
+    );
+  }
 
   const handleOpenHelp = () => {
     open({
@@ -153,13 +205,40 @@ export default function InstrumentDetail() {
   const safeHistoryItems = historyData?.items || [];
   const latestNote: ResearchNote | null = researchNotes?.[0] || null;
 
+  const metaParts = [
+    instrument.category,
+    instrument.sector,
+    instrument.industry,
+    instrument.exchange,
+    instrument.fund_manager,
+    instrument.fund_size ? `规模: ${formatFundSize(instrument.fund_size, instrument.market)}` : null,
+    instrument.market_cap ? `市值: ${formatMarketCap(instrument.market_cap, instrument.market)}` : null,
+  ].filter(Boolean);
+
+  const heroStats = [
+    {
+      title: '1月收益',
+      value: indicator?.return_1m,
+      suffix: '%',
+      color: (indicator?.return_1m ?? 0) >= 0 ? 'detail-kpi-rise' : 'detail-kpi-fall',
+    },
+    { title: 'RSI14', value: indicator?.rsi14, suffix: undefined, color: 'detail-kpi-accent' },
+    { title: '波动率20日', value: indicator?.volatility_20d, suffix: '%', color: undefined },
+    { title: '最大回撤', value: indicator?.max_drawdown_1y, suffix: '%', color: 'detail-kpi-fall' },
+  ];
+
+  const formatSigned = (v?: number | null) => {
+    if (v == null) return '—';
+    return `${v >= 0 ? '+' : ''}${v.toFixed(2)}`;
+  };
+
   const tabItems = [
     {
       key: 'kline',
       label: 'K线行情',
       children: (
-        <div>
-          <div style={{ padding: 'var(--space-3) 0', borderBottom: '1px solid var(--border-default)', marginBottom: 'var(--space-4)' }}>
+        <Panel title="K线行情" padding="md" extra={<HelpTrigger tooltip="AI 解释K线" onClick={handleOpenHelp} />}>
+          <div className="detail-toolbar">
             <Space size="large" wrap>
               <Space>
                 <HelpPopover termKey="time_range">时间范围</HelpPopover>：
@@ -204,118 +283,96 @@ export default function InstrumentDetail() {
             safeHistoryItems.length ? (
               <KLineChart data={safeHistoryItems} overlays={overlays} />
             ) : (
-              <Alert message="暂无历史行情数据" type="info" showIcon />
+              <Alert className="detail-chart__empty" message="暂无历史行情数据" type="info" showIcon />
             )
           )}
-        </div>
+        </Panel>
       ),
     },
     {
       key: 'indicators',
       label: '指标数据',
       children: (
-        <div>
-          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 'var(--space-3)' }}>
-            <HelpTrigger tooltip="AI 解释技术指标" onClick={handleOpenHelp} />
+        <Panel
+          title="指标数据"
+          padding="md"
+          extra={<HelpTrigger tooltip="AI 解释技术指标" onClick={handleOpenHelp} />}
+        >
+          <div className="detail-indicator-grid">
+            {[
+              { title: <HelpPopover termKey="rsi14">RSI14</HelpPopover>, value: indicator?.rsi14, precision: 1 },
+              { title: <HelpPopover termKey="sharpe_1y">夏普1年</HelpPopover>, value: indicator?.sharpe_1y, precision: 2 },
+              { title: <HelpPopover termKey="volatility_20d">波动率20日</HelpPopover>, value: indicator?.volatility_20d, precision: 2, suffix: '%' },
+              { title: <HelpPopover termKey="max_drawdown_1y">最大回撤</HelpPopover>, value: indicator?.max_drawdown_1y, precision: 2, suffix: '%' },
+              { title: <HelpPopover termKey="return_1m">1月收益</HelpPopover>, value: indicator?.return_1m, precision: 2, suffix: '%' },
+              { title: <HelpPopover termKey="return_3m">3月收益</HelpPopover>, value: indicator?.return_3m, precision: 2, suffix: '%' },
+              { title: <HelpPopover termKey="return_1y">1年收益</HelpPopover>, value: indicator?.return_1y, precision: 2, suffix: '%' },
+              { title: <HelpPopover termKey="ma5">MA5</HelpPopover>, value: indicator?.ma5, precision: 2 },
+            ].map((m, i) => (
+              <div key={i} className="detail-indicator-item">
+                <Statistic title={m.title} value={m.value} precision={m.precision} suffix={m.suffix} />
+              </div>
+            ))}
           </div>
-          <Row gutter={[16, 16]}>
-            <Col xs={12} sm={8} md={6}>
-              <div style={{ borderBottom: '1px solid var(--border-default)', padding: 'var(--space-3) 0' }}>
-                <Statistic title={<HelpPopover termKey="rsi14">RSI14</HelpPopover>} value={indicator?.rsi14} precision={1} />
-              </div>
-            </Col>
-            <Col xs={12} sm={8} md={6}>
-              <div style={{ borderBottom: '1px solid var(--border-default)', padding: 'var(--space-3) 0' }}>
-                <Statistic title={<HelpPopover termKey="sharpe_1y">夏普1年</HelpPopover>} value={indicator?.sharpe_1y} precision={2} />
-              </div>
-            </Col>
-            <Col xs={12} sm={8} md={6}>
-              <div style={{ borderBottom: '1px solid var(--border-default)', padding: 'var(--space-3) 0' }}>
-                <Statistic title={<HelpPopover termKey="volatility_20d">波动率20日</HelpPopover>} value={indicator?.volatility_20d} precision={2} suffix="%" />
-              </div>
-            </Col>
-            <Col xs={12} sm={8} md={6}>
-              <div style={{ borderBottom: '1px solid var(--border-default)', padding: 'var(--space-3) 0' }}>
-                <Statistic title={<HelpPopover termKey="max_drawdown_1y">最大回撤</HelpPopover>} value={indicator?.max_drawdown_1y} precision={2} suffix="%" />
-              </div>
-            </Col>
-            <Col xs={12} sm={8} md={6}>
-              <div style={{ borderBottom: '1px solid var(--border-default)', padding: 'var(--space-3) 0' }}>
-                <Statistic title={<HelpPopover termKey="return_1m">1月收益</HelpPopover>} value={indicator?.return_1m} precision={2} suffix="%" />
-              </div>
-            </Col>
-            <Col xs={12} sm={8} md={6}>
-              <div style={{ borderBottom: '1px solid var(--border-default)', padding: 'var(--space-3) 0' }}>
-                <Statistic title={<HelpPopover termKey="return_3m">3月收益</HelpPopover>} value={indicator?.return_3m} precision={2} suffix="%" />
-              </div>
-            </Col>
-            <Col xs={12} sm={8} md={6}>
-              <div style={{ borderBottom: '1px solid var(--border-default)', padding: 'var(--space-3) 0' }}>
-                <Statistic title={<HelpPopover termKey="return_1y">1年收益</HelpPopover>} value={indicator?.return_1y} precision={2} suffix="%" />
-              </div>
-            </Col>
-            <Col xs={12} sm={8} md={6}>
-              <div style={{ borderBottom: '1px solid var(--border-default)', padding: 'var(--space-3) 0' }}>
-                <Statistic title={<HelpPopover termKey="ma5">MA5</HelpPopover>} value={indicator?.ma5} precision={2} />
-              </div>
-            </Col>
-          </Row>
-        </div>
+        </Panel>
       ),
     },
     {
       key: 'score',
       label: '综合评分',
-      children: (
-        score ? (
-          <div>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 'var(--space-3)' }}>
-              <HelpTrigger tooltip="AI 解释评分维度" onClick={handleOpenHelp} />
-            </div>
-            <Row gutter={[16, 16]}>
-              <Col xs={24} md={12}>
-                <ScoreRadar data={score} />
-              </Col>
-              <Col xs={24} md={12}>
-                <Panel variant="minimal" title="评分详情" padding="md">
-                  <Descriptions column={1}>
-                    <Descriptions.Item label={<HelpPopover termKey="composite_score">综合评分</HelpPopover>}>{score.composite_score}</Descriptions.Item>
-                    <Descriptions.Item label={<HelpPopover termKey="rank_overall">全市场排名</HelpPopover>}>{score.rank_overall}</Descriptions.Item>
-                    <Descriptions.Item label={<HelpPopover termKey="rank_category">分类排名</HelpPopover>}>{score.rank_category}</Descriptions.Item>
-                    <Descriptions.Item label={<HelpPopover termKey="score_return">收益得分</HelpPopover>}>{score.score_return}</Descriptions.Item>
-                    <Descriptions.Item label={<HelpPopover termKey="score_risk">风险得分</HelpPopover>}>{score.score_risk}</Descriptions.Item>
-                    <Descriptions.Item label={<HelpPopover termKey="score_sharpe">夏普得分</HelpPopover>}>{score.score_sharpe}</Descriptions.Item>
-                    <Descriptions.Item label={<HelpPopover termKey="score_liquidity">流动性得分</HelpPopover>}>{score.score_liquidity}</Descriptions.Item>
-                    <Descriptions.Item label={<HelpPopover termKey="score_trend">趋势得分</HelpPopover>}>{score.score_trend}</Descriptions.Item>
-                  </Descriptions>
-                </Panel>
-              </Col>
-            </Row>
-          </div>
-        ) : (
+      children: score ? (
+        <Panel title="综合评分" padding="md" extra={<HelpTrigger tooltip="AI 解释评分维度" onClick={handleOpenHelp} />}>
+          <Row gutter={[16, 16]}>
+            <Col xs={24} md={12}>
+              <ScoreRadar data={score} />
+            </Col>
+            <Col xs={24} md={12}>
+              <Panel variant="minimal" title="评分详情" padding="md">
+                <Descriptions column={1}>
+                  <Descriptions.Item label={<HelpPopover termKey="composite_score">综合评分</HelpPopover>}>{score.composite_score}</Descriptions.Item>
+                  <Descriptions.Item label={<HelpPopover termKey="rank_overall">全市场排名</HelpPopover>}>{score.rank_overall}</Descriptions.Item>
+                  <Descriptions.Item label={<HelpPopover termKey="rank_category">分类排名</HelpPopover>}>{score.rank_category}</Descriptions.Item>
+                  <Descriptions.Item label={<HelpPopover termKey="score_return">收益得分</HelpPopover>}>{score.score_return}</Descriptions.Item>
+                  <Descriptions.Item label={<HelpPopover termKey="score_risk">风险得分</HelpPopover>}>{score.score_risk}</Descriptions.Item>
+                  <Descriptions.Item label={<HelpPopover termKey="score_sharpe">夏普得分</HelpPopover>}>{score.score_sharpe}</Descriptions.Item>
+                  <Descriptions.Item label={<HelpPopover termKey="score_liquidity">流动性得分</HelpPopover>}>{score.score_liquidity}</Descriptions.Item>
+                  <Descriptions.Item label={<HelpPopover termKey="score_trend">趋势得分</HelpPopover>}>{score.score_trend}</Descriptions.Item>
+                </Descriptions>
+              </Panel>
+            </Col>
+          </Row>
+        </Panel>
+      ) : (
+        <Panel title="综合评分" padding="md">
           <div>暂无评分数据</div>
-        )
+        </Panel>
       ),
     },
     {
       key: 'ai',
       label: (
         <span>
-          <RobotOutlined style={{ marginRight: 'var(--space-1)' }} />
+          <RobotOutlined className="detail-tab-icon" />
           AI分析
         </span>
       ),
       children: (
-        <div>
+        <div className="detail-tab-panel">
           {notesLoading || sentimentLoading ? (
-            <Skeleton active paragraph={{ rows: 8 }} />
+            <Panel title="AI分析" padding="md">
+              <Skeleton active paragraph={{ rows: 8 }} />
+            </Panel>
           ) : (
             <Row gutter={[16, 16]}>
-              {/* Latest Research Note */}
               <Col xs={24} md={12}>
                 <Panel
-                  variant="minimal"
-                  title={<span><ReadOutlined style={{ marginRight: 'var(--space-1-5)' }} /><HelpPopover termKey="ai_research_note">AI 研究笔记</HelpPopover></span>}
+                  variant="default"
+                  title={
+                    <span>
+                      <ReadOutlined className="detail-tab-icon detail-tab-icon--lg" />
+                      <HelpPopover termKey="ai_research_note">AI 研究笔记</HelpPopover>
+                    </span>
+                  }
                   extra={
                     <Button
                       size="small"
@@ -334,7 +391,7 @@ export default function InstrumentDetail() {
                 >
                   {latestNote ? (
                     <div>
-                      <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 'var(--space-2)' }}>
+                      <div className="ai-note-meta">
                         {latestNote.sentiment && (
                           <ThemeTag
                             variant={
@@ -349,47 +406,51 @@ export default function InstrumentDetail() {
                           </ThemeTag>
                         )}
                         {latestNote.confidence && (
-                          <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>
+                          <span className="ai-note-confidence">
                             置信度 {latestNote.confidence}/10
                           </span>
                         )}
-                        <span style={{ fontSize: 11, color: 'var(--text-tertiary)', marginLeft: 'auto' }}>
+                        <span className="ai-note-time">
                           {latestNote.generated_at?.slice(0, 16) || latestNote.created_at?.slice(0, 16)}
                         </span>
                       </div>
-                      <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
-                        {latestNote.summary}
-                      </p>
+                      <p className="ai-note-summary">{latestNote.summary}</p>
                       <Button
                         type="link"
                         size="small"
                         onClick={() => navigate(`/research`)}
-                        style={{ padding: 0 }}
+                        className="detail-link-button"
                       >
                         查看全部研报 →
                       </Button>
                     </div>
                   ) : (
-                    <div style={{ textAlign: 'center', padding: 'var(--space-6)', color: 'var(--text-tertiary)' }}>
-                      <RobotOutlined style={{ fontSize: 32, marginBottom: 'var(--space-2)', display: 'block' }} />
+                    <div className="ai-empty">
+                      <RobotOutlined className="ai-empty__icon" />
                       <p>暂无AI研报</p>
-                      <p style={{ fontSize: 12 }}>点击上方"生成研报"按钮开始分析</p>
+                      <p className="ai-empty__hint">点击上方"生成研报"按钮开始分析</p>
                     </div>
                   )}
                 </Panel>
               </Col>
 
-              {/* Sentiment Gauge */}
               <Col xs={24} md={12}>
                 <Panel
-                  variant="minimal"
-                  title={<span><SmileOutlined style={{ marginRight: 'var(--space-1-5)' }} /><HelpPopover termKey="market_sentiment">市场情绪</HelpPopover></span>}
+                  variant="default"
+                  title={
+                    <span>
+                      <SmileOutlined className="detail-tab-icon detail-tab-icon--lg" />
+                      <HelpPopover termKey="market_sentiment">市场情绪</HelpPopover>
+                    </span>
+                  }
                   padding="md"
                 >
                   {sentiment ? (
-                    <div style={{ textAlign: 'center' }}>
-                      {/* Score display */}
-                      <div style={{ fontSize: 'var(--text-data-xl-size)', fontWeight: 700, color: SENTIMENT_COLORS[sentiment.label] || 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>
+                    <div className="ai-empty">
+                      <div
+                        className="sentiment-score"
+                        style={{ color: SENTIMENT_COLORS[sentiment.label] || 'var(--text-secondary)' }}
+                      >
                         {sentiment.avg_score.toFixed(2)}
                       </div>
                       <ThemeTag
@@ -400,31 +461,35 @@ export default function InstrumentDetail() {
                               ? 'fall'
                               : 'neutral'
                         }
-                        style={{ fontSize: 13, padding: '2px 12px', marginTop: 4 }}
+                        className="sentiment-tag"
                       >
                         {SENTIMENT_LABELS[sentiment.label] || sentiment.label}
                       </ThemeTag>
 
-                      {/* Score bar */}
-                      <div style={{ margin: 'var(--space-4) auto 0', maxWidth: 240, height: 6, borderRadius: 3, background: 'var(--bg-input)', position: 'relative', overflow: 'hidden' }}>
-                        <div style={{ width: `${((sentiment.avg_score + 1) / 2) * 100}%`, height: '100%', borderRadius: 3, background: SENTIMENT_COLORS[sentiment.label] || 'var(--text-secondary)' }} />
+                      <div className="sentiment-bar">
+                        <div
+                          className="sentiment-bar__fill"
+                          style={{
+                            width: `${((sentiment.avg_score + 1) / 2) * 100}%`,
+                            background: SENTIMENT_COLORS[sentiment.label] || 'var(--text-secondary)',
+                          }}
+                        />
                       </div>
 
-                      {/* Counts */}
-                      <div style={{ display: 'flex', justifyContent: 'center', gap: 24, marginTop: 'var(--space-4)' }}>
-                        <span style={{ color: 'var(--color-rise)', fontSize: 13 }}>正面 {sentiment.positive_count}</span>
-                        <span style={{ color: 'var(--text-tertiary)', fontSize: 13 }}>中性 {sentiment.neutral_count}</span>
-                        <span style={{ color: 'var(--color-fall)', fontSize: 13 }}>负面 {sentiment.negative_count}</span>
+                      <div className="sentiment-counts">
+                        <span className="sentiment-counts__item sentiment-counts__item--positive tabular-nums">正面 {sentiment.positive_count}</span>
+                        <span className="sentiment-counts__item sentiment-counts__item--neutral tabular-nums">中性 {sentiment.neutral_count}</span>
+                        <span className="sentiment-counts__item sentiment-counts__item--negative tabular-nums">负面 {sentiment.negative_count}</span>
                       </div>
-                      <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 'var(--space-2)' }}>
+                      <div className="sentiment-meta">
                         共 {sentiment.total_articles} 篇 · 近 {sentiment.period_days} 天
                       </div>
                     </div>
                   ) : (
-                    <div style={{ textAlign: 'center', padding: 'var(--space-6)', color: 'var(--text-tertiary)' }}>
-                      <SmileOutlined style={{ fontSize: 32, marginBottom: 'var(--space-2)', display: 'block' }} />
+                    <div className="ai-empty">
+                      <SmileOutlined className="ai-empty__icon" />
                       <p>暂无情绪数据</p>
-                      <p style={{ fontSize: 12 }}>访问情绪仪表盘页面采集数据</p>
+                      <p className="ai-empty__hint">访问情绪仪表盘页面采集数据</p>
                     </div>
                   )}
                 </Panel>
@@ -432,10 +497,9 @@ export default function InstrumentDetail() {
             </Row>
           )}
 
-          {/* Quick Chat Button */}
-          <Panel variant="minimal" style={{ marginTop: 'var(--space-4)', textAlign: 'center' }} padding="md">
-            <RobotOutlined style={{ fontSize: 20, color: 'var(--accent)', marginRight: 'var(--space-2)' }} />
-            <span style={{ color: 'var(--text-secondary)', marginRight: 'var(--space-3)' }}>想问AI关于 {code} 的分析？</span>
+          <Panel variant="default" className="ai-assistant-cta" padding="md">
+            <RobotOutlined className="ai-assistant-cta__icon" />
+            <span className="ai-assistant-cta__text">想问AI关于 {code} 的分析？</span>
             <Button type="primary" icon={<RobotOutlined />} onClick={() => navigate('/chat')}>
               打开AI助手
             </Button>
@@ -443,37 +507,32 @@ export default function InstrumentDetail() {
         </div>
       ),
     },
-    // ── Related news (works for both ETFs and individual stocks) ──
     {
       key: 'news',
       label: (
         <span>
-          <ReadOutlined style={{ marginRight: 'var(--space-1)' }} />
+          <ReadOutlined className="detail-tab-icon" />
           相关新闻
         </span>
       ),
-      children: <NewsListPanel symbol={code || ''} limit={15} bare />,
+      children: (
+        <Panel title="相关新闻" padding="md">
+          <NewsListPanel symbol={code || ''} limit={15} bare />
+        </Panel>
+      ),
     },
-    // ── A-share stock valuation tab (only for individual stocks) ──
     ...(isStock
       ? [
           {
             key: 'valuation',
             label: '估值数据',
             children: (
-              <div>
+              <Panel title="估值数据" padding="md">
                 {!stockFund ? (
                   <Skeleton active paragraph={{ rows: 4 }} />
                 ) : (
                   <div>
-                    <div
-                      style={{
-                        display: 'grid',
-                        gridTemplateColumns: 'repeat(3, 1fr)',
-                        borderTop: '1px solid var(--border-default)',
-                        borderBottom: '1px solid var(--border-default)',
-                      }}
-                    >
+                    <div className="valuation-grid">
                       {[
                         { title: 'PE (TTM)', value: stockFund.pe_ttm, suffix: '倍', precision: 2 },
                         { title: 'PB', value: stockFund.pb, suffix: '倍', precision: 2 },
@@ -485,63 +544,33 @@ export default function InstrumentDetail() {
                         stockFund.roe != null ? { title: 'ROE（最新财报）', value: stockFund.roe, suffix: '%', precision: 2 } : null,
                         stockFund.revenue_yoy != null ? { title: '营收 YoY', value: stockFund.revenue_yoy, suffix: '%', precision: 2 } : null,
                         stockFund.grossprofit_margin != null ? { title: '毛利率', value: stockFund.grossprofit_margin, suffix: '%', precision: 2 } : null,
-                      ].filter(Boolean).map((m: any, i, arr) => {
-                        const isLastRow = i >= arr.length - (arr.length % 3 || 3);
-                        const hasRightBorder = (i + 1) % 3 !== 0;
-                        return (
-                          <div
-                            key={m.title}
-                            style={{
-                              padding: 'var(--space-5) var(--space-4)',
-                              borderRight: hasRightBorder ? '1px solid var(--border-default)' : 'none',
-                              borderBottom: isLastRow ? 'none' : '1px solid var(--border-default)',
-                            }}
-                          >
-                            <div
-                              style={{
-                                fontSize: 'var(--text-label-size)',
-                                color: 'var(--text-tertiary)',
-                                fontWeight: 500,
-                                marginBottom: '12px',
-                                letterSpacing: '0.12em',
-                                textTransform: 'uppercase',
-                              }}
-                            >
-                              {m.title}
-                            </div>
-                            <div
-                              style={{
-                                fontSize: 'var(--text-data-lg-size)',
-                                fontWeight: 400,
-                                color: 'var(--text-primary)',
-                                fontFamily: 'var(--font-mono)',
-                                lineHeight: 1.2,
-                              }}
-                            >
-                              {m.value !== undefined && m.value !== null ? (
-                                <>
-                                  {typeof m.value === 'number' && m.precision !== undefined
-                                    ? m.value.toFixed(m.precision)
-                                    : m.value}
-                                  {m.suffix && <span style={{ fontSize: 'var(--text-small-size)', color: 'var(--text-tertiary)', marginLeft: 4 }}>{m.suffix}</span>}
-                                </>
-                              ) : (
-                                <span style={{ color: 'var(--text-tertiary)' }}>—</span>
-                              )}
-                            </div>
+                      ].filter(Boolean).map((m: any) => (
+                        <div key={m.title} className="valuation-cell">
+                          <div className="valuation-cell__label">{m.title}</div>
+                          <div className="valuation-cell__value tabular-nums">
+                            {m.value !== undefined && m.value !== null ? (
+                              <>
+                                {typeof m.value === 'number' && m.precision !== undefined
+                                  ? m.value.toFixed(m.precision)
+                                  : m.value}
+                                {m.suffix && <span className="valuation-cell__suffix">{m.suffix}</span>}
+                              </>
+                            ) : (
+                              <span className="valuation-cell__empty">—</span>
+                            )}
                           </div>
-                        );
-                      })}
+                        </div>
+                      ))}
                     </div>
                     <Alert
                       type="info"
                       message="数据来源：Tushare Pro"
                       description={`估值日期：${stockFund.trade_date}。基本面数据（EPS/ROE/毛利率等）需运行财报采集管道后获取。`}
-                      style={{ marginTop: 'var(--space-4)' }}
+                      className="valuation-alert"
                     />
                   </div>
                 )}
-              </div>
+              </Panel>
             ),
           },
         ]
@@ -549,44 +578,25 @@ export default function InstrumentDetail() {
   ];
 
   return (
-    <div>
-      <div
-        style={{
-          borderBottom: '1px solid var(--border-default)',
-          paddingBottom: 'var(--space-5)',
-          marginBottom: 'var(--space-5)',
-        }}
-      >
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 'var(--space-4)' }}>
+    <PageShell maxWidth="wide">
+      <div className="detail-hero">
+        <div className="detail-hero__row">
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', marginBottom: 'var(--space-2)' }}>
-              <h2 style={{ margin: 0, fontSize: 'var(--text-h1-size)', fontWeight: 500, letterSpacing: '-0.03em' }}>
-                {instrument.code} {instrument.name}
-              </h2>
+            <div className="detail-hero__title">
+              <InstrumentCodeTag code={instrument.code} />
+              <h1 className="detail-hero__title-text">{instrument.name}</h1>
               {instrument.instrument_type && (
                 <ThemeTag variant={instrument.instrument_type === 'ETF' ? 'default' : 'accent'}>
-                  {({ STOCK: '个股', CRYPTO: '数字货币', ETF: 'ETF' } as Record<string, string>)[instrument.instrument_type] || instrument.instrument_type}
+                  {INSTRUMENT_TYPE_LABELS[instrument.instrument_type] || instrument.instrument_type}
                 </ThemeTag>
               )}
               {instrument.market && <ThemeTag>{instrument.market}</ThemeTag>}
             </div>
-            <div style={{ color: 'var(--text-secondary)', fontSize: 'var(--text-body-size)' }}>
-              {instrument.category || '—'}
-              {instrument.sector && ` | ${instrument.sector}`}
-              {instrument.industry && ` | ${instrument.industry}`}
-              {instrument.exchange && ` | ${instrument.exchange}`}
-              {instrument.fund_manager && ` | ${instrument.fund_manager}`}
-              {instrument.fund_size && (instrument.market === 'US'
-                ? ` | 规模: ${instrument.fund_size >= 1e12 ? `${(instrument.fund_size / 1e12).toFixed(2)}T` : instrument.fund_size >= 1e9 ? `${(instrument.fund_size / 1e9).toFixed(1)}B` : `${(instrument.fund_size / 1e6).toFixed(1)}M`} USD`
-                : ` | 规模: ${(instrument.fund_size / 1e8).toFixed(1)}亿`
-              )}
-              {instrument.market_cap && (instrument.market === 'A股'
-                ? ` | 市值: ${(instrument.market_cap / 1e8).toFixed(1)}亿 CNY`
-                : ` | 市值: ${instrument.market_cap >= 1e12 ? `${(instrument.market_cap / 1e12).toFixed(2)}T` : instrument.market_cap >= 1e9 ? `${(instrument.market_cap / 1e9).toFixed(1)}B` : `${(instrument.market_cap / 1e6).toFixed(1)}M`} USD`
-              )}
+            <div className="detail-hero__meta">
+              {metaParts.join(' | ') || '—'}
             </div>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-4)' }}>
+          <div className="detail-hero__actions">
             <Button
               type={isFavorite ? 'primary' : 'default'}
               icon={isFavorite ? <StarFilled /> : <StarOutlined />}
@@ -596,18 +606,34 @@ export default function InstrumentDetail() {
               {isFavorite ? '已收藏' : '收藏'}
             </Button>
             {indicator?.return_1m !== undefined && (
-              <div style={{ textAlign: 'right' }}>
-                <div style={{ fontSize: 'var(--text-data-lg-size)', fontWeight: 400, fontFamily: 'var(--font-mono)', color: getReturnColor(indicator.return_1m, colorConvention) }}>
+              <div className="detail-hero__kpi">
+                <div
+                  className="detail-hero__kpi-value tabular-nums"
+                  style={{ color: getReturnColor(indicator.return_1m, colorConvention) }}
+                >
                   {formatPercent(indicator.return_1m)}
                 </div>
-                <div style={{ color: 'var(--text-tertiary)', fontSize: 'var(--text-small-size)' }}>1月收益</div>
+                <div className="detail-hero__kpi-label">1月收益</div>
               </div>
             )}
           </div>
         </div>
       </div>
 
+      <SectionHeading title="核心指标" />
+      <ResponsiveGrid cols={4} gap="md" className="detail-section">
+        {heroStats.map((stat) => (
+          <div key={stat.title} className={stat.color}>
+            <StatCard
+              title={stat.title}
+              value={stat.value != null ? formatSigned(stat.value) : '—'}
+              suffix={stat.suffix}
+            />
+          </div>
+        ))}
+      </ResponsiveGrid>
+
       <Tabs items={tabItems} defaultActiveKey="kline" />
-    </div>
+    </PageShell>
   );
 }

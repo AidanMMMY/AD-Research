@@ -1,10 +1,13 @@
 import { useMemo, useState } from 'react';
 import {
-  Table, Input, Select, DatePicker, Button, Space, Tag, Skeleton, message, Empty,
+  Table, Input, Select, DatePicker, Button, Space, Tag, Skeleton, message,
 } from 'antd';
-import { SearchOutlined, ReloadOutlined, CalendarOutlined } from '@ant-design/icons';
+import { SearchOutlined, ReloadOutlined, CalendarOutlined, FileTextOutlined } from '@ant-design/icons';
 import { type Dayjs } from 'dayjs';
+import PageShell from '@/components/PageShell';
 import Panel from '@/components/Panel';
+import FilterToolbar from '@/components/FilterToolbar';
+import EmptyState from '@/components/EmptyState';
 import HelpTrigger from '@/components/HelpTrigger';
 import ThemeTag from '@/components/ThemeTag';
 import PageHeader from '@/components/PageHeader';
@@ -60,23 +63,12 @@ function StatusChip({ status, count, active, onClick }: StatusChipProps) {
     <button
       type="button"
       onClick={onClick}
-      style={{
-        cursor: 'pointer',
-        background: active ? 'var(--accent-dim)' : 'var(--card-bg)',
-        border: `1px solid ${active ? 'var(--accent-border)' : 'var(--border-default)'}`,
-        borderRadius: 'var(--radius-md)',
-        padding: 'var(--space-2) var(--space-4)',
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: 8,
-        color: active ? 'var(--accent)' : 'var(--text-secondary)',
-        fontSize: 'var(--text-small-size)',
-      }}
+      className={`ad-status-chip ${active ? 'ad-status-chip--active' : ''}`}
     >
       <Tag color={STATUS_COLOR[status]} style={{ margin: 0 }}>
         {STATUS_LABEL[status]}
       </Tag>
-      <span className="tabular-nums" style={{ fontFamily: 'var(--font-mono)', fontWeight: 600 }}>{count}</span>
+      <span className="tabular-nums">{count}</span>
     </button>
   );
 }
@@ -184,30 +176,19 @@ export default function ListingPreview() {
       dataIndex: 'ts_code',
       width: 110,
       render: (v: string, record: ListingEvent) => (
-        <button
-          type="button"
-          onClick={() => handleOpenDetail(record.id)}
+        <Button
+          type="link"
+          size="small"
           className="tabular-nums"
-          style={{
-            background: 'none',
-            border: 'none',
-            padding: 0,
-            color: 'var(--accent)',
-            fontFamily: 'var(--font-mono)',
-            cursor: 'pointer',
-            fontSize: 'var(--text-small-size)',
-          }}
+          onClick={() => handleOpenDetail(record.id)}
         >
           {v}
-        </button>
+        </Button>
       ),
     },
     {
       title: '简称',
       dataIndex: 'name',
-      render: (v: string) => (
-        <span style={{ color: 'var(--text-primary)' }}>{v}</span>
-      ),
     },
     {
       title: '板块',
@@ -219,12 +200,7 @@ export default function ListingPreview() {
       title: '行业',
       dataIndex: 'industry',
       width: 120,
-      render: (v: string | null) =>
-        v ? (
-          <span style={{ fontSize: 'var(--text-small-size)', color: 'var(--text-secondary)' }}>{v}</span>
-        ) : (
-          '-'
-        ),
+      render: (v: string | null) => v ?? '-',
     },
     {
       title: '发行日期',
@@ -243,9 +219,7 @@ export default function ListingPreview() {
       dataIndex: 'issue_price',
       width: 80,
       render: (v: number | null) => (
-        <span className="tabular-nums" style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)' }}>
-          {formatPrice(v)}
-        </span>
+        <span className="tabular-nums">{formatPrice(v)}</span>
       ),
     },
     {
@@ -253,9 +227,7 @@ export default function ListingPreview() {
       dataIndex: 'pe_ratio',
       width: 90,
       render: (v: number | null) => (
-        <span className="tabular-nums" style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)' }}>
-          {formatPe(v)}
-        </span>
+        <span className="tabular-nums">{formatPe(v)}</span>
       ),
     },
     {
@@ -263,9 +235,7 @@ export default function ListingPreview() {
       dataIndex: 'funds_raised',
       width: 110,
       render: (v: number | null) => (
-        <span className="tabular-nums" style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)' }}>
-          {formatMoney(v)}
-        </span>
+        <span className="tabular-nums">{formatMoney(v)}</span>
       ),
     },
     {
@@ -273,12 +243,7 @@ export default function ListingPreview() {
       dataIndex: 'sponsor',
       width: 180,
       ellipsis: true,
-      render: (v: string | null) =>
-        v ? (
-          <span style={{ fontSize: 'var(--text-small-size)', color: 'var(--text-secondary)' }}>{v}</span>
-        ) : (
-          '-'
-        ),
+      render: (v: string | null) => v ?? '-',
     },
     {
       title: '状态',
@@ -292,7 +257,7 @@ export default function ListingPreview() {
   const total = data?.total ?? 0;
 
   return (
-    <div>
+    <PageShell maxWidth="wide">
       <PageHeader
         eyebrow="新股"
         title="上市预告"
@@ -312,8 +277,7 @@ export default function ListingPreview() {
         }
       />
 
-      {/* Summary chips */}
-      <div style={{ display: 'flex', gap: 'var(--space-2)', marginTop: 24, marginBottom: 16, flexWrap: 'wrap' }}>
+      <FilterToolbar total={total}>
         {(['upcoming', 'subscribing', 'listed'] as ListingStatus[]).map((s) => (
           <StatusChip
             key={s}
@@ -326,113 +290,112 @@ export default function ListingPreview() {
             }}
           />
         ))}
-        <span style={{ marginLeft: 'auto', fontSize: 'var(--text-small-size)', color: 'var(--text-tertiary)' }}>
-          共 <span className="tabular-nums" style={{ color: 'var(--accent)', fontWeight: 500 }}>{total}</span> 条
-        </span>
-      </div>
+      </FilterToolbar>
 
-      <Panel variant="minimal" title="筛选条件">
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-3)', alignItems: 'center' }}>
-          <Input
-            placeholder="搜索代码或简称"
-            allowClear
-            prefix={<SearchOutlined style={{ color: 'var(--text-tertiary)' }} />}
-            value={search}
-            onChange={(e) => {
-              setSearch(e.target.value);
-              setPage(1);
-            }}
-            style={{ width: 240 }}
-          />
-          <Select
-            mode="multiple"
-            placeholder="状态"
-            allowClear
-            style={{ width: 180 }}
-            value={statuses}
-            onChange={(v) => {
-              setStatuses(v);
-              setPage(1);
-            }}
-            options={(['upcoming', 'subscribing', 'listed', 'unknown'] as ListingStatus[]).map((s) => ({
-              label: STATUS_LABEL[s],
-              value: s,
-            }))}
-          />
-          <Select
-            mode="multiple"
-            placeholder="板块"
-            allowClear
-            style={{ width: 200 }}
-            value={boards}
-            onChange={(v) => {
-              setBoards(v);
-              setPage(1);
-            }}
-            options={(facets?.boards ?? []).map((b) => ({ label: b, value: b }))}
-          />
-          <Select
-            mode="multiple"
-            placeholder="交易所"
-            allowClear
-            style={{ width: 160 }}
-            value={markets}
-            onChange={(v) => {
-              setMarkets(v);
-              setPage(1);
-            }}
-            options={(facets?.markets ?? []).map((m) => ({ label: m, value: m }))}
-          />
-          <Select
-            placeholder="行业"
-            allowClear
-            style={{ width: 180 }}
-            value={industry}
-            onChange={(v) => {
-              setIndustry(v);
-              setPage(1);
-            }}
-            options={(facets?.industries ?? []).map((i) => ({ label: i, value: i }))}
-          />
-          <DatePicker.RangePicker
-            value={dateRange as [Dayjs, Dayjs] | null}
-            onChange={(v) => {
-              setDateRange(v);
-              setPage(1);
-            }}
-            placeholder={['上市日期 起', '上市日期 止']}
-            suffixIcon={<CalendarOutlined />}
-          />
-          <Button onClick={handleReset}>重置</Button>
-        </div>
-      </Panel>
+      <FilterToolbar>
+        <Input
+          placeholder="搜索代码或简称"
+          allowClear
+          prefix={<SearchOutlined />}
+          value={search}
+          onChange={(e) => {
+            setSearch(e.target.value);
+            setPage(1);
+          }}
+          style={{ width: 240 }}
+        />
+        <Select
+          mode="multiple"
+          placeholder="状态"
+          allowClear
+          style={{ width: 180 }}
+          value={statuses}
+          onChange={(v) => {
+            setStatuses(v);
+            setPage(1);
+          }}
+          options={(['upcoming', 'subscribing', 'listed', 'unknown'] as ListingStatus[]).map((s) => ({
+            label: STATUS_LABEL[s],
+            value: s,
+          }))}
+        />
+        <Select
+          mode="multiple"
+          placeholder="板块"
+          allowClear
+          style={{ width: 200 }}
+          value={boards}
+          onChange={(v) => {
+            setBoards(v);
+            setPage(1);
+          }}
+          options={(facets?.boards ?? []).map((b) => ({ label: b, value: b }))}
+        />
+        <Select
+          mode="multiple"
+          placeholder="交易所"
+          allowClear
+          style={{ width: 160 }}
+          value={markets}
+          onChange={(v) => {
+            setMarkets(v);
+            setPage(1);
+          }}
+          options={(facets?.markets ?? []).map((m) => ({ label: m, value: m }))}
+        />
+        <Select
+          placeholder="行业"
+          allowClear
+          style={{ width: 180 }}
+          value={industry}
+          onChange={(v) => {
+            setIndustry(v);
+            setPage(1);
+          }}
+          options={(facets?.industries ?? []).map((i) => ({ label: i, value: i }))}
+        />
+        <DatePicker.RangePicker
+          value={dateRange as [Dayjs, Dayjs] | null}
+          onChange={(v) => {
+            setDateRange(v);
+            setPage(1);
+          }}
+          placeholder={['上市日期 起', '上市日期 止']}
+          suffixIcon={<CalendarOutlined />}
+        />
+        <Button onClick={handleReset}>重置</Button>
+      </FilterToolbar>
 
-      <div style={{ marginTop: 'var(--space-4)' }}>
+      <Panel variant="default" padding="none">
         {isLoading ? (
           <Skeleton active paragraph={{ rows: 10 }} />
         ) : items.length === 0 ? (
-          <Empty description="暂无符合条件的上市预告数据" />
-        ) : (
-          <Table
-            dataSource={items}
-            columns={columns}
-            rowKey="id"
-            scroll={{ x: 'max-content' }}
-            pagination={{
-              current: page,
-              pageSize,
-              total,
-              onChange: setPage,
-              showSizeChanger: false,
-              showTotal: (t) => `共 ${t} 条`,
-            }}
-            onRow={(record) => ({
-              onClick: () => handleOpenDetail(record.id),
-              style: { cursor: 'pointer' },
-            })}
+          <EmptyState
+            icon={<FileTextOutlined />}
+            title="暂无符合条件的上市预告数据"
+            description="尝试调整筛选条件或刷新数据"
           />
+        ) : (
+          <div className="ad-density-dense ad-table-scroll ad-table-sticky">
+            <Table
+              dataSource={items}
+              columns={columns}
+              rowKey="id"
+              pagination={{
+                current: page,
+                pageSize,
+                total,
+                onChange: setPage,
+                showSizeChanger: false,
+                showTotal: (t) => `共 ${t} 条`,
+              }}
+              onRow={(record) => ({
+                onClick: () => handleOpenDetail(record.id),
+              })}
+            />
+          </div>
         )}
-      </div>
+      </Panel>
 
       <ListingEventDetailModal
         open={detailOpen}
@@ -440,6 +403,6 @@ export default function ListingPreview() {
         event={detail ?? null}
         onClose={handleCloseDetail}
       />
-    </div>
+    </PageShell>
   );
 }

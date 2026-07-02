@@ -62,11 +62,8 @@ export default function LastUpdated({
   return (
     <Tooltip title={absolute}>
       <span
-        className={className}
-        style={{
-          fontFamily: 'var(--font-mono)',
-          ...style,
-        }}
+        className={className ? `${className} last-updated` : 'last-updated'}
+        style={style}
         aria-label={`${prefix} ${absolute}`}
       >
         {prefix} {relative}

@@ -1,6 +1,4 @@
-import type { CSSProperties } from 'react';
 import { ArrowUpOutlined, ArrowDownOutlined, MinusOutlined } from '@ant-design/icons';
-import { getReturnColor, getReturnBgColor, getReturnBorderColor } from '@/utils/color';
 import { formatPercent } from '@/utils/format';
 import { useSettingsStore } from '@/stores/settings';
 
@@ -8,25 +6,23 @@ interface ReturnTagProps {
   value?: number | null;
 }
 
-const baseStyle: CSSProperties = {
-  display: 'inline-flex',
-  alignItems: 'center',
-  gap: 2,
-  padding: '2px 8px',
-  borderRadius: 'var(--radius-sm)',
-  fontSize: 'var(--text-code-size)',
-  fontWeight: 500,
-  fontFamily: 'var(--font-mono)',
-  transition: 'background var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast)',
-};
-
 function getArrow(value: number | null | undefined) {
   if (value === undefined || value === null || value === 0) {
-    return <MinusOutlined style={{ fontSize: '0.85em' }} aria-label="flat" />;
+    return <MinusOutlined className="return-tag__arrow" aria-label="flat" />;
   }
   return value > 0
-    ? <ArrowUpOutlined style={{ fontSize: '0.85em' }} aria-label="up" />
-    : <ArrowDownOutlined style={{ fontSize: '0.85em' }} aria-label="down" />;
+    ? <ArrowUpOutlined className="return-tag__arrow" aria-label="up" />
+    : <ArrowDownOutlined className="return-tag__arrow" aria-label="down" />;
+}
+
+function getVariantClass(value: number, colorConvention: 'china' | 'us'): string {
+  if (value === 0) {
+    return 'return-tag--flat';
+  }
+  if (value > 0) {
+    return colorConvention === 'us' ? 'return-tag--fall' : 'return-tag--rise';
+  }
+  return colorConvention === 'us' ? 'return-tag--rise' : 'return-tag--fall';
 }
 
 export default function ReturnTag({ value }: ReturnTagProps) {
@@ -34,29 +30,14 @@ export default function ReturnTag({ value }: ReturnTagProps) {
 
   if (value === undefined || value === null) {
     return (
-      <span
-        className="tabular-nums"
-        style={{
-          ...baseStyle,
-          color: 'var(--text-tertiary)',
-          background: 'var(--bg-input)',
-          border: '1px solid var(--border-default)',
-        }}
-      >
+      <span className="return-tag return-tag--empty tabular-nums">
         -
       </span>
     );
   }
+
   return (
-    <span
-      className="tabular-nums"
-      style={{
-        ...baseStyle,
-        color: getReturnColor(value, colorConvention),
-        background: getReturnBgColor(value, colorConvention),
-        border: `1px solid ${getReturnBorderColor(value, colorConvention)}`,
-      }}
-    >
+    <span className={`return-tag tabular-nums ${getVariantClass(value, colorConvention)}`}>
       {getArrow(value)}
       {formatPercent(value)}
     </span>

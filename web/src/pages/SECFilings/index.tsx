@@ -1,11 +1,16 @@
 import { useMemo, useState } from 'react';
 import {
-  Table, Input, Select, Button, Space, Tag, Skeleton, message, Empty, Row, Col, Statistic, Card,
+  Table, Input, Select, Button, Space, Tag, Skeleton, message,
 } from 'antd';
 import { ReloadOutlined, SearchOutlined, FileTextOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
+import PageShell from '@/components/PageShell';
 import PageHeader from '@/components/PageHeader';
 import Panel from '@/components/Panel';
+import FilterToolbar from '@/components/FilterToolbar';
+import EmptyState from '@/components/EmptyState';
+import ResponsiveGrid from '@/components/ResponsiveGrid';
+import StatCard from '@/components/StatCard';
 import LastUpdated from '@/components/LastUpdated';
 import {
   useSecFilingList,
@@ -129,7 +134,7 @@ export default function SECFilingsPage() {
   ];
 
   return (
-    <div style={{ padding: '0 0 24px' }}>
+    <PageShell maxWidth="reading">
       <PageHeader
         title="SEC 公告"
         description="由 SEC EDGAR 公开数据自动采集 S&P 500 成分股的 10-K / 10-Q / 20-F 公告及 GAAP 财务指标。每周六 06:00 UTC 自动刷新。"
@@ -148,97 +153,89 @@ export default function SECFilingsPage() {
         }
       />
 
-      <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
-        <Col xs={12} md={6}>
-          <Card>
-            <Statistic
-              title="总公告数"
-              value={coverage?.total_filings ?? 0}
-              prefix={<FileTextOutlined />}
-            />
-          </Card>
-        </Col>
-        <Col xs={12} md={6}>
-          <Card>
-            <Statistic title="覆盖 Ticker" value={coverage?.tracked_tickers ?? 0} />
-          </Card>
-        </Col>
-        <Col xs={12} md={6}>
-          <Card>
-            <Statistic
-              title="XBRL 已提取"
-              value={coverage?.extractions_completed ?? 0}
-              valueStyle={{ color: '#52c41a' }}
-            />
-          </Card>
-        </Col>
-        <Col xs={12} md={6}>
-          <Card>
-            <Statistic
-              title="XBRL 待提取"
-              value={coverage?.extractions_pending ?? 0}
-              valueStyle={{ color: '#faad14' }}
-            />
-          </Card>
-        </Col>
-      </Row>
+      <ResponsiveGrid cols={4} gap="md">
+        <StatCard
+          title="总公告数"
+          value={coverage?.total_filings ?? 0}
+          icon={<FileTextOutlined />}
+        />
+        <StatCard
+          title="覆盖 Ticker"
+          value={coverage?.tracked_tickers ?? 0}
+        />
+        <div className="detail-kpi-rise">
+          <StatCard
+            title="XBRL 已提取"
+            value={coverage?.extractions_completed ?? 0}
+          />
+        </div>
+        <div className="detail-kpi-accent">
+          <StatCard
+            title="XBRL 待提取"
+            value={coverage?.extractions_pending ?? 0}
+          />
+        </div>
+      </ResponsiveGrid>
 
-      <Panel
-        title="公告列表"
-        extra={
-          <Space wrap>
-            <Input
-              placeholder="Ticker (如 AAPL)"
-              value={ticker ?? ''}
-              onChange={(e) => setTicker(e.target.value.toUpperCase() || undefined)}
-              style={{ width: 120 }}
-              allowClear
-            />
-            <Select
-              placeholder="Form 类型"
-              value={formType}
-              onChange={(v) => setFormType(v)}
-              allowClear
-              style={{ width: 130 }}
-              options={FORM_TYPES.map((f) => ({ value: f, label: f }))}
-            />
-            <Input
-              placeholder="搜索公司名 / Ticker"
-              value={searchText}
-              onChange={(e) => setSearchText(e.target.value)}
-              style={{ width: 200 }}
-              prefix={<SearchOutlined />}
-              allowClear
-            />
-            <Button onClick={handleSync} loading={syncMutation.isPending}>
-              同步当前 Ticker
-            </Button>
-          </Space>
-        }
-      >
+      <Panel variant="default" title="公告列表" style={{ marginTop: 'var(--space-5)' }}>
+        <FilterToolbar total={data?.total}>
+          <Input
+            placeholder="Ticker (如 AAPL)"
+            value={ticker ?? ''}
+            onChange={(e) => setTicker(e.target.value.toUpperCase() || undefined)}
+            style={{ width: 120 }}
+            allowClear
+          />
+          <Select
+            placeholder="Form 类型"
+            value={formType}
+            onChange={(v) => setFormType(v)}
+            allowClear
+            style={{ width: 130 }}
+            options={FORM_TYPES.map((f) => ({ value: f, label: f }))}
+          />
+          <Input
+            placeholder="搜索公司名 / Ticker"
+            value={searchText}
+            onChange={(e) => setSearchText(e.target.value)}
+            style={{ width: 200 }}
+            prefix={<SearchOutlined />}
+            allowClear
+          />
+          <Button onClick={handleSync} loading={syncMutation.isPending}>
+            同步当前 Ticker
+          </Button>
+        </FilterToolbar>
+
         {isLoading ? (
           <Skeleton active />
         ) : !data || data.items.length === 0 ? (
-          <Empty description="暂无 SEC 公告" />
-        ) : (
-          <Table
-            rowKey="id"
-            dataSource={data.items}
-            columns={columns}
-            size="small"
-            pagination={{
-              current: page,
-              pageSize,
-              total: data.total,
-              showSizeChanger: true,
-              onChange: (p, ps) => {
-                setPage(p);
-                setPageSize(ps);
-              },
-            }}
+          <EmptyState
+            icon={<FileTextOutlined />}
+            title="暂无 SEC 公告"
+            description="尝试调整筛选条件或同步 Ticker"
           />
+        ) : (
+          <div className="ad-density-dense ad-table-scroll ad-table-sticky">
+            <Table
+              rowKey="id"
+              dataSource={data.items}
+              columns={columns}
+              size="small"
+              pagination={{
+                current: page,
+                pageSize,
+                total: data.total,
+                showSizeChanger: true,
+                onChange: (p, ps) => {
+                  setPage(p);
+                  setPageSize(ps);
+                },
+              }}
+            />
+          </div>
         )}
       </Panel>
-    </div>
+    </PageShell>
   );
 }

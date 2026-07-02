@@ -16,6 +16,12 @@ import {
   Switch,
   Table,
 } from 'antd';
+import PageShell from '@/components/PageShell';
+import PageHeader from '@/components/PageHeader';
+import Panel from '@/components/Panel';
+import SectionHeading from '@/components/SectionHeading';
+import EmptyState from '@/components/EmptyState';
+import ResponsiveGrid from '@/components/ResponsiveGrid';
 import ThemeTag from '@/components/ThemeTag';
 import {
   PlusOutlined,
@@ -163,39 +169,33 @@ export default function TradingPanel() {
       dataIndex: 'instrument_code',
       key: 'code',
       render: (v: string) => (
-        <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 600 }}>{v}</span>
+        <span className="font-mono" style={{ fontWeight: 600 }}>{v}</span>
       ),
     },
     {
       title: '数量',
       dataIndex: 'quantity',
       key: 'qty',
-      render: (v: number) => (
-        <span className="font-mono">{v}</span>
-      ),
+      render: (v: number) => <span className="font-mono">{v}</span>,
     },
     {
       title: '均价',
       dataIndex: 'avg_cost',
       key: 'avg',
-      render: (v: number) => (
-        <span className="font-mono">{fmtUSDT(v)}</span>
-      ),
+      render: (v: number) => <span className="font-mono">{fmtUSDT(v)}</span>,
     },
     {
       title: '现价',
       dataIndex: 'current_price',
       key: 'price',
-      render: (v: number | null) => (
-        <span className="font-mono">{fmtUSDT(v)}</span>
-      ),
+      render: (v: number | null) => <span className="font-mono">{fmtUSDT(v)}</span>,
     },
     {
       title: '市值',
       dataIndex: 'market_value',
       key: 'mv',
       render: (v: number | null) => (
-        <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 600 }}>{fmtUSDT(v)}</span>
+        <span className="font-mono" style={{ fontWeight: 600 }}>{fmtUSDT(v)}</span>
       ),
     },
     {
@@ -205,7 +205,7 @@ export default function TradingPanel() {
       render: (v: number | null) => {
         const p = fmtPnL(v);
         return (
-          <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 600, color: p.color }}>
+          <span className="font-mono" style={{ fontWeight: 600, color: p.color }}>
             {p.text}
           </span>
         );
@@ -240,17 +240,13 @@ export default function TradingPanel() {
       title: '币种',
       dataIndex: 'instrument_code',
       key: 'code',
-      render: (v: string) => (
-        <span className="font-mono">{v}</span>
-      ),
+      render: (v: string) => <span className="font-mono">{v}</span>,
     },
     {
       title: '数量',
       dataIndex: 'quantity',
       key: 'qty',
-      render: (v: number) => (
-        <span className="font-mono">{v}</span>
-      ),
+      render: (v: number) => <span className="font-mono">{v}</span>,
     },
     {
       title: '类型',
@@ -296,46 +292,29 @@ export default function TradingPanel() {
 
   // --- Render ---
   return (
-    <div>
-      {/* Header */}
-      <div
-        style={{
-          display: 'flex',
-          flexWrap: 'wrap',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: 'var(--space-6)',
-          gap: 'var(--space-4)',
-        }}
-      >
-        <h1
-          style={{
-            fontSize: 'var(--text-h1-size)',
-            fontWeight: 500,
-            color: 'var(--text-primary)',
-            margin: 0,
-            letterSpacing: '-0.03em',
-          }}
-        >
-          真实交易
-        </h1>
-        <Space>
-          {selectedConfig && risk && (
-            <RiskBadge risk={risk} />
-          )}
-          <Button
-            icon={<PlusOutlined />}
-            type="primary"
-            onClick={() => setCreateModalOpen(true)}
-          >
-            创建配置
-          </Button>
-        </Space>
-      </div>
+    <PageShell maxWidth="wide">
+      <PageHeader
+        eyebrow="交易"
+        title="真实交易"
+        description="连接交易所 API，执行实盘交易与风险管理"
+        extra={
+          <Space>
+            {selectedConfig && risk && (
+              <RiskBadge risk={risk} />
+            )}
+            <Button
+              icon={<PlusOutlined />}
+              type="primary"
+              onClick={() => setCreateModalOpen(true)}
+            >
+              创建配置
+            </Button>
+          </Space>
+        }
+      />
 
-      {/* Config selector & info */}
-      <Card size="small" style={{ marginBottom: 'var(--space-6)' }}>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, alignItems: 'center' }}>
+      <Panel variant="default" className="phase5c-account-selector">
+        <div className="phase5c-flex-wrap">
           {configsLoading ? (
             <Skeleton.Input active size="small" />
           ) : configs.length === 0 ? (
@@ -388,20 +367,13 @@ export default function TradingPanel() {
             </>
           )}
         </div>
-      </Card>
+      </Panel>
 
       {selectedConfig && (
         <>
-          {/* Risk status + limits */}
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
-              gap: 'var(--space-4)',
-              marginBottom: 'var(--space-6)',
-            }}
-          >
-            <Card size="small">
+          <SectionHeading title="风控与限额" />
+          <ResponsiveGrid cols={4} gap="md" className="phase5c-section">
+            <Card size="small" className="phase5c-trading-card">
               <Statistic
                 title="今日订单"
                 value={risk?.orders_today ?? 0}
@@ -410,7 +382,7 @@ export default function TradingPanel() {
                 valueStyle={{ fontFamily: 'var(--font-mono)' }}
               />
             </Card>
-            <Card size="small">
+            <Card size="small" className="phase5c-trading-card">
               <Statistic
                 title="单笔上限"
                 value={selectedConfig.max_order_value}
@@ -419,7 +391,7 @@ export default function TradingPanel() {
                 valueStyle={{ fontFamily: 'var(--font-mono)' }}
               />
             </Card>
-            <Card size="small">
+            <Card size="small" className="phase5c-trading-card">
               <Statistic
                 title="今日已实现"
                 value={risk?.realized_pnl_today ? parseFloat(risk.realized_pnl_today) : 0}
@@ -437,10 +409,10 @@ export default function TradingPanel() {
                 }}
               />
             </Card>
-            <Card size="small">
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Card size="small" className="phase5c-trading-card">
+              <div className="phase5c-flex-center">
                 <div>
-                  <div style={{ color: 'var(--text-tertiary)', fontSize: 12, marginBottom: 4 }}>
+                  <div className="phase5c-meta-label">
                     熔断状态
                   </div>
                   <RiskBadge risk={risk} />
@@ -457,50 +429,37 @@ export default function TradingPanel() {
                 )}
               </div>
             </Card>
-          </div>
+          </ResponsiveGrid>
 
-          {/* Account balances summary */}
-          <Card title="账户余额" size="small" style={{ marginBottom: 'var(--space-6)' }}>
+          <SectionHeading title="账户余额" />
+          <Panel variant="default" className="phase5c-section">
             {accountLoading ? (
               <Skeleton active paragraph={{ rows: 3 }} />
             ) : account && account.balances.length > 0 ? (
-              <div
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))',
-                  gap: 'var(--space-3)',
-                }}
-              >
+              <div className="phase5c-balance-grid">
                 {account.balances.map((b) => (
-                  <Card key={b.asset} size="small" style={{ background: 'var(--surface-secondary)' }}>
-                    <div style={{ fontFamily: 'var(--font-mono)', fontWeight: 600 }}>
+                  <Card key={b.asset} size="small" className="phase5c-balance-card">
+                    <div className="phase5c-balance-card__asset">
                       {b.asset}
                     </div>
-                    <div style={{ fontSize: 'var(--text-small-size)', color: 'var(--text-tertiary)' }}>
+                    <div className="phase5c-balance-card__row">
                       可用: {parseFloat(b.free).toFixed(6)}
                     </div>
-                    <div style={{ fontSize: 'var(--text-small-size)', color: 'var(--text-tertiary)' }}>
+                    <div className="phase5c-balance-card__row">
                       冻结: {parseFloat(b.locked).toFixed(6)}
                     </div>
                   </Card>
                 ))}
               </div>
             ) : (
-              <div style={{ color: 'var(--text-tertiary)', textAlign: 'center', padding: 20 }}>
-                无余额数据
+              <div className="phase5c-empty">
+                <EmptyState title="无余额数据" description="当前账户没有余额数据" />
               </div>
             )}
-          </Card>
+          </Panel>
 
-          {/* Action buttons */}
-          <div
-            style={{
-              display: 'flex',
-              gap: 'var(--space-3)',
-              marginBottom: 'var(--space-6)',
-              flexWrap: 'wrap',
-            }}
-          >
+          <SectionHeading title="操作" />
+          <div className="phase5c-action-bar phase5c-section">
             <Button
               icon={<PlusOutlined />}
               type="primary"
@@ -511,63 +470,52 @@ export default function TradingPanel() {
             </Button>
           </div>
 
-          {/* Positions */}
-          <Card
-            title="当前持仓"
-            style={{ marginBottom: 'var(--space-6)' }}
-            styles={{ body: { padding: 0 } }}
-          >
-            {positionsLoading ? (
-              <Skeleton active paragraph={{ rows: 5 }} style={{ padding: 16 }} />
-            ) : positions && positions.length > 0 ? (
-              <Table
-                columns={positionColumns}
-                dataSource={positions}
-                rowKey="id"
-                pagination={false}
-                size="small"
-              />
-            ) : (
-              <div
-                style={{
-                  padding: 40,
-                  textAlign: 'center',
-                  color: 'var(--text-tertiary)',
-                }}
-              >
-                暂无持仓
-              </div>
-            )}
-          </Card>
+          <SectionHeading title="当前持仓" />
+          <Panel variant="default" className="phase5c-section">
+            <div className="phase5c-table-wrap">
+              {positionsLoading ? (
+                <Skeleton active paragraph={{ rows: 5 }} style={{ padding: 16 }} />
+              ) : positions && positions.length > 0 ? (
+                <Table
+                  columns={positionColumns}
+                  dataSource={positions}
+                  rowKey="id"
+                  pagination={false}
+                  size="small"
+                  scroll={{ x: 'max-content' }}
+                />
+              ) : (
+                <div className="phase5c-empty">
+                  <EmptyState title="暂无持仓" description="当前账户没有持仓记录" />
+                </div>
+              )}
+            </div>
+          </Panel>
 
-          {/* Orders */}
-          <Card title="最近订单" styles={{ body: { padding: 0 } }}>
-            {ordersLoading ? (
-              <Skeleton active paragraph={{ rows: 5 }} style={{ padding: 16 }} />
-            ) : orders && orders.length > 0 ? (
-              <Table
-                columns={orderColumns}
-                dataSource={orders}
-                rowKey="id"
-                pagination={{ pageSize: 20, size: 'small' }}
-                size="small"
-              />
-            ) : (
-              <div
-                style={{
-                  padding: 40,
-                  textAlign: 'center',
-                  color: 'var(--text-tertiary)',
-                }}
-              >
-                暂无订单
-              </div>
-            )}
-          </Card>
+          <SectionHeading title="最近订单" />
+          <Panel variant="default">
+            <div className="phase5c-table-wrap">
+              {ordersLoading ? (
+                <Skeleton active paragraph={{ rows: 5 }} style={{ padding: 16 }} />
+              ) : orders && orders.length > 0 ? (
+                <Table
+                  columns={orderColumns}
+                  dataSource={orders}
+                  rowKey="id"
+                  pagination={{ pageSize: 20, size: 'small' }}
+                  size="small"
+                  scroll={{ x: 'max-content' }}
+                />
+              ) : (
+                <div className="phase5c-empty">
+                  <EmptyState title="暂无订单" description="当前账户没有订单记录" />
+                </div>
+              )}
+            </div>
+          </Panel>
         </>
       )}
 
-      {/* Create config modal */}
       <Modal
         title="创建交易配置"
         open={createModalOpen}
@@ -611,7 +559,6 @@ export default function TradingPanel() {
         </Form>
       </Modal>
 
-      {/* Place order modal */}
       <Modal
         title="下单"
         open={orderModalOpen}
@@ -656,6 +603,6 @@ export default function TradingPanel() {
           </Form.Item>
         </Form>
       </Modal>
-    </div>
+    </PageShell>
   );
 }

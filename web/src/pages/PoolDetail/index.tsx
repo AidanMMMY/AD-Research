@@ -22,6 +22,11 @@ import CategoryPie from '@/components/CategoryPie';
 import CorrelationHeatmap from '@/components/CorrelationHeatmap';
 import InstrumentCodeTag from '@/components/InstrumentCodeTag';
 import Panel from '@/components/Panel';
+import PageShell from '@/components/PageShell';
+import PageHeader from '@/components/PageHeader';
+import ResponsiveGrid from '@/components/ResponsiveGrid';
+import StatCard from '@/components/StatCard';
+import SectionHeading from '@/components/SectionHeading';
 import HelpTrigger from '@/components/HelpTrigger';
 import HelpPopover from '@/components/HelpPopover';
 import { buildPoolDetailContext } from '@/utils/helpContext';
@@ -66,7 +71,6 @@ export default function PoolDetail() {
   const addMember = useAddPoolMember();
   const removeMember = useRemovePoolMember();
 
-  // Current weights in the editor: local overrides fall back to API values
   const currentWeights = useMemo(() => {
     const base: Record<string, number> = {};
     weights?.forEach((w: any) => {
@@ -92,7 +96,6 @@ export default function PoolDetail() {
     entries.forEach(([code, v]) => {
       scaled[code] = round2((v / sum) * 100);
     });
-    // Fix rounding drift on the largest weight so the total is exactly 100
     const drift = round2(100 - Object.values(scaled).reduce((a, b) => a + b, 0));
     if (drift !== 0) {
       const largestCode = Object.entries(scaled).sort((a, b) => b[1] - a[1])[0][0];
@@ -220,7 +223,7 @@ export default function PoolDetail() {
             min={0} max={100} step={1}
             value={currentWeights[record.etf_code]}
             onChange={(v) => handleWeightChange(record.etf_code, v)}
-            style={{ width: 120 }}
+            className="pool-weight-slider"
           />
         ) : `${record.target_weight ?? 0}%`
       ),
@@ -254,13 +257,28 @@ export default function PoolDetail() {
     },
   ];
 
+  const perf = analytics?.performance;
+  const heroStats = [
+    { title: '1月收益', value: perf?.return_1m, suffix: '%', color: (perf?.return_1m ?? 0) >= 0 ? 'detail-kpi-rise' : 'detail-kpi-fall' },
+    { title: '3月收益', value: perf?.return_3m, suffix: '%', color: (perf?.return_3m ?? 0) >= 0 ? 'detail-kpi-rise' : 'detail-kpi-fall' },
+    { title: '夏普', value: perf?.sharpe_1y, suffix: undefined, color: 'detail-kpi-accent' },
+    { title: '最大回撤', value: perf?.max_drawdown, suffix: '%', color: 'detail-kpi-fall' },
+  ];
+
+  const formatSigned = (v?: number | null) => {
+    if (v == null) return '—';
+    return `${v >= 0 ? '+' : ''}${v.toFixed(2)}`;
+  };
+
   const tabItems = [
     {
       key: 'weights',
       label: '成员与权重',
       children: (
-        <div>
-          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
+        <Panel
+          title="成员与权重"
+          padding="md"
+          extra={
             <HelpTrigger
               tooltip="AI 解释权重算法"
               onClick={() =>
@@ -272,60 +290,65 @@ export default function PoolDetail() {
                 })
               }
             />
-          </div>
-          <Space style={{ marginBottom: 16 }} wrap>
-            {editing ? (
-              <>
-                <Button type="primary" onClick={handleSaveWeights}>保存</Button>
-                <Button onClick={() => { setEditing(false); setLocalWeights({}); }}>取消</Button>
-                <Button onClick={handleEqualWeights}>重置为等权</Button>
-              </>
-            ) : (
-              <Button onClick={() => setEditing(true)}>编辑权重</Button>
-            )}
-            <Dropdown menu={{ items: suggestMenuItems }} placement="bottomLeft">
-              <Button>生成建议权重</Button>
-            </Dropdown>
-            {!editing && (
-              <>
-                <Select
-                  showSearch
-                  placeholder="选择要添加的标的"
-                  value={selectedCodeForAdd}
-                  onChange={setSelectedCodeForAdd}
-                  options={etfOptions}
-                  style={{ minWidth: 220 }}
-                  filterOption={(input, option) =>
-                    (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
-                  }
-                />
-                <Button
-                  type="primary"
-                  icon={<PlusOutlined />}
-                  onClick={handleAddMember}
-                  disabled={!selectedCodeForAdd || addMember.isPending}
-                  loading={addMember.isPending}
-                >
-                  添加标的
-                </Button>
-              </>
-            )}
+          }
+        >
+          <div className="pool-toolbar">
+            <div className="pool-toolbar__actions">
+              {editing ? (
+                <>
+                  <Button type="primary" onClick={handleSaveWeights}>保存</Button>
+                  <Button onClick={() => { setEditing(false); setLocalWeights({}); }}>取消</Button>
+                  <Button onClick={handleEqualWeights}>重置为等权</Button>
+                </>
+              ) : (
+                <Button onClick={() => setEditing(true)}>编辑权重</Button>
+              )}
+              <Dropdown menu={{ items: suggestMenuItems }} placement="bottomLeft">
+                <Button>生成建议权重</Button>
+              </Dropdown>
+              {!editing && (
+                <>
+                  <Select
+                    showSearch
+                    placeholder="选择要添加的标的"
+                    value={selectedCodeForAdd}
+                    onChange={setSelectedCodeForAdd}
+                    options={etfOptions}
+                    className="pool-add-select"
+                    filterOption={(input, option) =>
+                      (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+                    }
+                  />
+                  <Button
+                    type="primary"
+                    icon={<PlusOutlined />}
+                    onClick={handleAddMember}
+                    disabled={!selectedCodeForAdd || addMember.isPending}
+                    loading={addMember.isPending}
+                  >
+                    添加标的
+                  </Button>
+                </>
+              )}
+            </div>
             {editing && (
-              <span style={{ color: Math.abs(weightSum - 100) < 0.01 ? 'var(--text-secondary)' : 'var(--color-error)' }}>
+              <span
+                className={`pool-weight-sum ${Math.abs(weightSum - 100) < 0.01 ? 'pool-weight-sum--ok' : 'pool-weight-sum--error'}`}
+              >
                 当前合计：{weightSum.toFixed(2)}%（保存时自动归一化）
               </span>
             )}
-          </Space>
+          </div>
           <Table dataSource={weights || []} columns={weightColumns} rowKey="etf_code" scroll={{ x: 'max-content' }} pagination={false} />
-        </div>
+        </Panel>
       ),
     },
     {
       key: 'distribution',
       label: '持仓分布',
       children: analytics?.category_distribution ? (
-        <div>
-          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
+        <div className="detail-tab-panel">
+          <div className="detail-panel-extra">
             <HelpTrigger
               tooltip="AI 解释持仓分析"
               onClick={() =>
@@ -346,16 +369,22 @@ export default function PoolDetail() {
               <Panel title="权重分布"><CategoryPie data={analytics.category_distribution} mode="weight" /></Panel>
             </Col>
             <Col xs={24}>
-              <Row gutter={16}>
-                <Col span={6}><Statistic title={<HelpPopover termKey="return_1m">1月收益</HelpPopover>} value={analytics.performance?.return_1m} suffix="%" precision={2} /></Col>
-                <Col span={6}><Statistic title={<HelpPopover termKey="return_3m">3月收益</HelpPopover>} value={analytics.performance?.return_3m} suffix="%" precision={2} /></Col>
-                <Col span={6}><Statistic title={<HelpPopover termKey="sharpe_1y">夏普</HelpPopover>} value={analytics.performance?.sharpe_1y} precision={2} /></Col>
-                <Col span={6}><Statistic title={<HelpPopover termKey="max_drawdown_1y">最大回撤</HelpPopover>} value={analytics.performance?.max_drawdown} suffix="%" precision={2} /></Col>
-              </Row>
+              <Panel title="收益表现" padding="md">
+                <ResponsiveGrid cols={4} gap="md">
+                  <Statistic title={<HelpPopover termKey="return_1m">1月收益</HelpPopover>} value={perf?.return_1m} suffix="%" precision={2} />
+                  <Statistic title={<HelpPopover termKey="return_3m">3月收益</HelpPopover>} value={perf?.return_3m} suffix="%" precision={2} />
+                  <Statistic title={<HelpPopover termKey="sharpe_1y">夏普</HelpPopover>} value={perf?.sharpe_1y} precision={2} />
+                  <Statistic title={<HelpPopover termKey="max_drawdown_1y">最大回撤</HelpPopover>} value={perf?.max_drawdown} suffix="%" precision={2} />
+                </ResponsiveGrid>
+              </Panel>
             </Col>
           </Row>
         </div>
-      ) : <div>暂无分析数据</div>,
+      ) : (
+        <Panel title="持仓分布" padding="md">
+          <div>暂无分析数据</div>
+        </Panel>
+      ),
     },
     {
       key: 'correlation',
@@ -365,8 +394,8 @@ export default function PoolDetail() {
         </HelpPopover>
       ),
       children: correlation ? (
-        <div>
-          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
+        <div className="detail-tab-panel">
+          <div className="detail-panel-extra">
             <HelpTrigger
               tooltip="AI 解释相关性"
               onClick={() =>
@@ -379,16 +408,22 @@ export default function PoolDetail() {
               }
             />
           </div>
-          <CorrelationHeatmap codes={correlation.codes} matrix={correlation.matrix} />
+          <Panel title="相关性热力图" padding="md">
+            <CorrelationHeatmap codes={correlation.codes} matrix={correlation.matrix} />
+          </Panel>
         </div>
-      ) : <div>暂无数据</div>,
+      ) : (
+        <Panel title="相关性热力图" padding="md">
+          <div>暂无数据</div>
+        </Panel>
+      ),
     },
     {
       key: 'snapshots',
       label: <HelpPopover termKey="snapshot">快照记录</HelpPopover>,
       children: (
-        <div>
-          <Button type="primary" onClick={handleCreateSnapshot} style={{ marginBottom: 16 }}>
+        <Panel title="快照记录" padding="md">
+          <Button type="primary" onClick={handleCreateSnapshot} className="detail-section">
             创建快照
           </Button>
           <Table
@@ -399,29 +434,40 @@ export default function PoolDetail() {
             pagination={false}
             locale={{ emptyText: '暂无快照' }}
           />
-        </div>
+        </Panel>
       ),
     },
   ];
 
   return (
-    <div>
-      <h1 style={{ fontSize: 'var(--text-h1-size)', fontWeight: 500, color: 'var(--text-primary)', margin: '0 0 8px', letterSpacing: '-0.03em' }}>标的池详情</h1>
-      <p style={{ margin: '0 0 32px', color: 'var(--text-tertiary)', fontSize: 'var(--text-body-size)' }}>查看和管理标的池成员、权重配置、持仓分布与历史快照</p>
-      <Panel style={{ marginBottom: 16 }}>
+    <PageShell maxWidth="wide">
+      <PageHeader
+        eyebrow="标的池"
+        title="标的池详情"
+        description="查看和管理标的池成员、权重配置、持仓分布与历史快照"
+        extra={
+          editingMeta ? (
+            <Button onClick={() => setEditingMeta(false)}>取消</Button>
+          ) : (
+            <Button icon={<EditOutlined />} onClick={startEditMeta}>编辑信息</Button>
+          )
+        }
+      />
+
+      <Panel className="detail-section">
         {editingMeta ? (
-          <Space direction="vertical" style={{ width: '100%' }} size="middle">
+          <Space direction="vertical" className="pool-meta-editor" size="middle">
             <Input
               value={editName}
               onChange={(e) => setEditName(e.target.value)}
               placeholder="标的池名称"
-              style={{ maxWidth: 400, fontSize: 'var(--text-h3-size)', fontWeight: 600 }}
+              className="pool-meta-editor__name"
             />
             <Input
               value={editDescription}
               onChange={(e) => setEditDescription(e.target.value)}
               placeholder="描述（可选）"
-              style={{ maxWidth: 400 }}
+              className="pool-meta-editor__desc"
             />
             <Space>
               <Button type="primary" onClick={handleUpdatePool} loading={updatePool.isPending}>
@@ -431,20 +477,31 @@ export default function PoolDetail() {
             </Space>
           </Space>
         ) : (
-          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+          <div className="detail-hero__row">
             <div>
-              <h2 style={{ margin: 0, color: 'var(--text-primary)' }}>{pool?.name}</h2>
-              <div style={{ color: 'var(--text-secondary)' }}>
+              <h2 className="detail-hero__title-text">{pool?.name}</h2>
+              <div className="detail-hero__meta">
                 {pool?.description || '暂无描述'} | {pool?.members?.length || 0} 只标的
               </div>
             </div>
-            <Button icon={<EditOutlined />} onClick={startEditMeta}>
-              编辑信息
-            </Button>
           </div>
         )}
       </Panel>
+
+      <SectionHeading title="核心指标" />
+      <ResponsiveGrid cols={4} gap="md" className="detail-section">
+        {heroStats.map((stat) => (
+          <div key={stat.title} className={stat.color}>
+            <StatCard
+              title={stat.title}
+              value={stat.value != null ? formatSigned(stat.value) : '—'}
+              suffix={stat.suffix}
+            />
+          </div>
+        ))}
+      </ResponsiveGrid>
+
       <Tabs items={tabItems} />
-    </div>
+    </PageShell>
   );
 }

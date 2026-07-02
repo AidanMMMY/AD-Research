@@ -4,12 +4,17 @@ import { Table, Button, Modal, Form, Input, message } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 import { useQueryClient } from '@tanstack/react-query';
 import { usePoolList } from '@/hooks/usePoolDetail';
+import { useDensity } from '@/hooks/useDensity';
 import { poolApi } from '@/api';
-import GlassCard from '@/components/GlassCard';
+import PageShell from '@/components/PageShell';
+import PageHeader from '@/components/PageHeader';
+import FilterToolbar from '@/components/FilterToolbar';
+import Panel from '@/components/Panel';
 
 export default function PoolList() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { density } = useDensity();
   const { data: pools } = usePoolList();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [form] = Form.useForm();
@@ -26,6 +31,8 @@ export default function PoolList() {
     }
   };
 
+  const rowSize = density === 'dense' ? 'small' : density === 'spacious' ? 'large' : 'middle';
+
   const columns = [
     { title: '名称', dataIndex: 'name' },
     { title: '描述', dataIndex: 'description' },
@@ -40,20 +47,29 @@ export default function PoolList() {
   ];
 
   return (
-    <div>
-      <h1 style={{ fontSize: 'var(--text-h1-size)', fontWeight: 500, color: 'var(--text-primary)', margin: '0 0 8px', letterSpacing: '-0.03em' }}>标的池管理</h1>
-      <p style={{ margin: '0 0 32px', color: 'var(--text-tertiary)', fontSize: 'var(--text-body-size)' }}>创建和管理自定义标的池，组织您关注的标的组合</p>
-      <div style={{ marginBottom: 'var(--space-4)', display: 'flex', justifyContent: 'flex-end' }}>
-        <Button type="primary" icon={<PlusOutlined />} onClick={() => setIsModalOpen(true)}>
-          新建池
-        </Button>
-      </div>
+    <PageShell maxWidth="wide">
+      <PageHeader
+        title="标的池管理"
+        description="创建和管理自定义标的池，组织您关注的标的组合"
+      />
 
-      <GlassCard>
+      <FilterToolbar
+        total={`共 ${pools?.length || 0} 个`}
+        extra={
+          <Button type="primary" icon={<PlusOutlined />} onClick={() => setIsModalOpen(true)}>
+            新建池
+          </Button>
+        }
+      >
+        {null}
+      </FilterToolbar>
+
+      <Panel variant="default">
         <Table
           dataSource={pools || []}
           columns={columns}
           rowKey="id"
+          size={rowSize as any}
           scroll={{ x: 'max-content' }}
           onRow={(record) => ({
             onClick: () => navigate(`/pools/${record.id}`),
@@ -61,7 +77,7 @@ export default function PoolList() {
           })}
           pagination={false}
         />
-      </GlassCard>
+      </Panel>
 
       <Modal
         title="新建标的池"
@@ -78,6 +94,6 @@ export default function PoolList() {
           </Form.Item>
         </Form>
       </Modal>
-    </div>
+    </PageShell>
   );
 }

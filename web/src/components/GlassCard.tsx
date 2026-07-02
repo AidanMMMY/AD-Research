@@ -35,7 +35,6 @@ export default function GlassCard({
       style={style}
       variant={variant}
       padding={padding}
-      data-glass-padding={padding}
     >
       {children}
     </Panel>

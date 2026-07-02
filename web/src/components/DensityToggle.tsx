@@ -25,7 +25,7 @@ export default function DensityToggle() {
           value: o.value,
         }))}
         size="small"
-        style={{ background: 'var(--bg-hover)', borderRadius: 10 }}
+        className="density-toggle"
         aria-label={GROUP_DESCRIPTION}
       />
     </Tooltip>

@@ -1,11 +1,15 @@
 import { useMemo, useState } from 'react';
 import {
-  Table, Input, Select, Button, Space, Tag, Skeleton, message, Empty, Row, Col, Statistic, Card, Tabs,
+  Table, Input, Select, Button, Space, Tag, Skeleton, message, Statistic, Card, Tabs,
 } from 'antd';
 import { ReloadOutlined, SearchOutlined, FundOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
+import PageShell from '@/components/PageShell';
 import PageHeader from '@/components/PageHeader';
 import Panel from '@/components/Panel';
+import FilterToolbar from '@/components/FilterToolbar';
+import EmptyState from '@/components/EmptyState';
+import ResponsiveGrid from '@/components/ResponsiveGrid';
 import LastUpdated from '@/components/LastUpdated';
 import {
   useMicrostructureLhb,
@@ -73,6 +77,21 @@ export default function MicrostructurePage() {
     }
   };
 
+  const tabTotal = useMemo(() => {
+    switch (tab) {
+      case 'lhb':
+        return lhbData?.total ?? 0;
+      case 'hsgt':
+        return hsgtData?.items.length ?? 0;
+      case 'margin':
+        return marginData?.items.length ?? 0;
+      case 'releases':
+        return releaseData?.total ?? 0;
+      default:
+        return 0;
+    }
+  }, [tab, lhbData, hsgtData, marginData, releaseData]);
+
   const lhbColumns: ColumnsType<LhbRecord> = [
     { title: '日期', dataIndex: 'trade_date', key: 'trade_date', width: 110 },
     { title: '代码', dataIndex: 'ts_code', key: 'ts_code', width: 110, render: (v: string) => <Tag color="blue">{v}</Tag> },
@@ -109,7 +128,7 @@ export default function MicrostructurePage() {
   ];
 
   return (
-    <div style={{ padding: '0 0 24px' }}>
+    <PageShell maxWidth="wide">
       <PageHeader
         title="微结构数据"
         description="A 股龙虎榜 / 沪深港通 / 融资融券 / 限售解禁 4 类微结构信号。每交易日 18:30 Asia/Shanghai 自动刷新。"
@@ -128,8 +147,8 @@ export default function MicrostructurePage() {
         }
       />
 
-      <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
-        <Col xs={12} md={6}>
+      <div className="phase5c-section">
+        <ResponsiveGrid cols={4} gap="md">
           <Card>
             <Statistic
               title="最新龙虎榜条数"
@@ -138,8 +157,6 @@ export default function MicrostructurePage() {
               suffix={summary?.lhb?.trade_date ? ` (${summary.lhb.trade_date})` : ''}
             />
           </Card>
-        </Col>
-        <Col xs={12} md={6}>
           <Card>
             <Statistic
               title="北向净流入"
@@ -151,8 +168,6 @@ export default function MicrostructurePage() {
               suffix="元"
             />
           </Card>
-        </Col>
-        <Col xs={12} md={6}>
           <Card>
             <Statistic
               title="融资余额合计"
@@ -161,8 +176,6 @@ export default function MicrostructurePage() {
               suffix="元"
             />
           </Card>
-        </Col>
-        <Col xs={12} md={6}>
           <Card>
             <Statistic
               title="30 日内解禁"
@@ -170,37 +183,36 @@ export default function MicrostructurePage() {
               suffix="次"
             />
           </Card>
-        </Col>
-      </Row>
+        </ResponsiveGrid>
+      </div>
 
-      <Panel
-        title="明细列表"
-        extra={
-          <Space wrap>
-            <Input
-              placeholder="证券代码 (000001.SZ)"
-              value={ticker ?? ''}
-              onChange={(e) => setTicker(e.target.value.toUpperCase() || undefined)}
-              style={{ width: 200 }}
-              prefix={<SearchOutlined />}
+      <div className="phase5c-section">
+        <FilterToolbar total={tabTotal}>
+          <Input
+            placeholder="证券代码 (000001.SZ)"
+            value={ticker ?? ''}
+            onChange={(e) => setTicker(e.target.value.toUpperCase() || undefined)}
+            style={{ width: 200 }}
+            prefix={<SearchOutlined />}
+            allowClear
+          />
+          {tab === 'margin' && (
+            <Select
+              placeholder="交易所"
+              value={marginExchange}
+              onChange={(v) => setMarginExchange(v)}
               allowClear
+              style={{ width: 120 }}
+              options={[
+                { value: 'SSE', label: 'SSE 上交所' },
+                { value: 'SZSE', label: 'SZSE 深交所' },
+              ]}
             />
-            {tab === 'margin' && (
-              <Select
-                placeholder="交易所"
-                value={marginExchange}
-                onChange={(v) => setMarginExchange(v)}
-                allowClear
-                style={{ width: 120 }}
-                options={[
-                  { value: 'SSE', label: 'SSE 上交所' },
-                  { value: 'SZSE', label: 'SZSE 深交所' },
-                ]}
-              />
-            )}
-          </Space>
-        }
-      >
+          )}
+        </FilterToolbar>
+      </div>
+
+      <Panel title="明细列表">
         <Tabs
           activeKey={tab}
           onChange={setTab}
@@ -211,20 +223,22 @@ export default function MicrostructurePage() {
               children: lhbLoading ? (
                 <Skeleton active />
               ) : !lhbData || lhbData.items.length === 0 ? (
-                <Empty description="暂无龙虎榜数据" />
+                <EmptyState title="暂无龙虎榜数据" />
               ) : (
-                <Table
-                  rowKey="id"
-                  dataSource={lhbData.items}
-                  columns={lhbColumns}
-                  size="small"
-                  pagination={{
-                    current: lhbPage,
-                    pageSize: 20,
-                    total: lhbData.total,
-                    onChange: setLhbPage,
-                  }}
-                />
+                <div className="ad-density-dense ad-table-scroll ad-table-sticky">
+                  <Table
+                    rowKey="id"
+                    dataSource={lhbData.items}
+                    columns={lhbColumns}
+                    size="small"
+                    pagination={{
+                      current: lhbPage,
+                      pageSize: 20,
+                      total: lhbData.total,
+                      onChange: setLhbPage,
+                    }}
+                  />
+                </div>
               ),
             },
             {
@@ -233,15 +247,17 @@ export default function MicrostructurePage() {
               children: hsgtLoading ? (
                 <Skeleton active />
               ) : !hsgtData || hsgtData.items.length === 0 ? (
-                <Empty description="暂无沪深港通数据" />
+                <EmptyState title="暂无沪深港通数据" />
               ) : (
-                <Table
-                  rowKey="id"
-                  dataSource={hsgtData.items}
-                  columns={hsgtColumns}
-                  size="small"
-                  pagination={false}
-                />
+                <div className="ad-density-dense ad-table-scroll ad-table-sticky">
+                  <Table
+                    rowKey="id"
+                    dataSource={hsgtData.items}
+                    columns={hsgtColumns}
+                    size="small"
+                    pagination={false}
+                  />
+                </div>
               ),
             },
             {
@@ -250,15 +266,17 @@ export default function MicrostructurePage() {
               children: marginLoading ? (
                 <Skeleton active />
               ) : !marginData || marginData.items.length === 0 ? (
-                <Empty description="暂无融资融券数据" />
+                <EmptyState title="暂无融资融券数据" />
               ) : (
-                <Table
-                  rowKey="id"
-                  dataSource={marginData.items}
-                  columns={marginColumns}
-                  size="small"
-                  pagination={false}
-                />
+                <div className="ad-density-dense ad-table-scroll ad-table-sticky">
+                  <Table
+                    rowKey="id"
+                    dataSource={marginData.items}
+                    columns={marginColumns}
+                    size="small"
+                    pagination={false}
+                  />
+                </div>
               ),
             },
             {
@@ -267,25 +285,27 @@ export default function MicrostructurePage() {
               children: releaseLoading ? (
                 <Skeleton active />
               ) : !releaseData || releaseData.items.length === 0 ? (
-                <Empty description="暂无限售解禁数据" />
+                <EmptyState title="暂无限售解禁数据" />
               ) : (
-                <Table
-                  rowKey="id"
-                  dataSource={releaseData.items}
-                  columns={releaseColumns}
-                  size="small"
-                  pagination={{
-                    current: releasePage,
-                    pageSize: 20,
-                    total: releaseData.total,
-                    onChange: setReleasePage,
-                  }}
-                />
+                <div className="ad-density-dense ad-table-scroll ad-table-sticky">
+                  <Table
+                    rowKey="id"
+                    dataSource={releaseData.items}
+                    columns={releaseColumns}
+                    size="small"
+                    pagination={{
+                      current: releasePage,
+                      pageSize: 20,
+                      total: releaseData.total,
+                      onChange: setReleasePage,
+                    }}
+                  />
+                </div>
               ),
             },
           ]}
         />
       </Panel>
-    </div>
+    </PageShell>
   );
 }

@@ -26,7 +26,13 @@ import {
   PauseCircleOutlined,
   ClearOutlined,
 } from '@ant-design/icons';
+import PageShell from '@/components/PageShell';
+import PageHeader from '@/components/PageHeader';
 import Panel from '@/components/Panel';
+import SectionHeading from '@/components/SectionHeading';
+import ResponsiveGrid from '@/components/ResponsiveGrid';
+import DensityToggle from '@/components/DensityToggle';
+import EmptyState from '@/components/EmptyState';
 import { useDeployments, useLogStream } from '@/hooks/useDeployments';
 import type { DeploymentRun, ContainerStats, LogLine } from '@/types/deployment';
 import dayjs from 'dayjs';
@@ -61,7 +67,7 @@ function DeploymentsTable({ data, loading }: { data: DeploymentRun[]; loading: b
       dataIndex: 'run_number',
       key: 'run_number',
       width: 70,
-      render: (n: number) => <Text style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 500 }}>#{n}</Text>,
+      render: (n: number) => <Text className="tabular-nums ad-font-medium">#{n}</Text>,
     },
     {
       title: '状态',
@@ -74,11 +80,10 @@ function DeploymentsTable({ data, loading }: { data: DeploymentRun[]; loading: b
         return (
           <Tag
             icon={config.icon}
+            className="admin-deploy-status-tag"
             style={{
               color: config.color,
               borderColor: config.color,
-              background: 'transparent',
-              borderRadius: 4,
             }}
           >
             {key === 'in_progress' ? '运行中' : key === 'success' ? '成功' : key === 'failure' ? '失败' : key}
@@ -91,7 +96,7 @@ function DeploymentsTable({ data, loading }: { data: DeploymentRun[]; loading: b
       dataIndex: 'head_branch',
       key: 'branch',
       width: 100,
-      render: (b: string) => <Text style={{ fontSize: 13 }}>{b}</Text>,
+      render: (b: string) => <Text className="ad-text-small">{b}</Text>,
     },
     {
       title: 'Commit',
@@ -104,7 +109,7 @@ function DeploymentsTable({ data, loading }: { data: DeploymentRun[]; loading: b
             href={record.html_url}
             target="_blank"
             rel="noopener noreferrer"
-            style={{ fontFamily: 'monospace', fontSize: 13, color: 'var(--accent)' }}
+            className="font-mono ad-text-small admin-deploy-commit"
           >
             {sha}
           </a>
@@ -116,14 +121,14 @@ function DeploymentsTable({ data, loading }: { data: DeploymentRun[]; loading: b
       dataIndex: 'duration_seconds',
       key: 'duration',
       width: 90,
-      render: (s: number) => <Text style={{ fontSize: 13 }}>{formatDuration(s)}</Text>,
+      render: (s: number) => <Text className="ad-text-small">{formatDuration(s)}</Text>,
     },
     {
       title: '触发',
       dataIndex: 'actor_login',
       key: 'actor',
       width: 100,
-      render: (actor: string) => <Text style={{ fontSize: 13 }}>{actor}</Text>,
+      render: (actor: string) => <Text className="ad-text-small">{actor}</Text>,
     },
     {
       title: '时间',
@@ -134,7 +139,7 @@ function DeploymentsTable({ data, loading }: { data: DeploymentRun[]; loading: b
         const d = dayjs(ts);
         return (
           <Tooltip title={d.format('YYYY-MM-DD HH:mm:ss')}>
-            <Text style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{d.fromNow()}</Text>
+            <Text className="ad-text-small ad-text-secondary">{d.fromNow()}</Text>
           </Tooltip>
         );
       },
@@ -150,13 +155,7 @@ function DeploymentsTable({ data, loading }: { data: DeploymentRun[]; loading: b
       size="small"
       pagination={{ pageSize: 10, showSizeChanger: false }}
       locale={{ emptyText: '暂无部署记录（请配置 GITHUB_TOKEN）' }}
-      style={{ background: 'transparent' }}
-      onRow={() => ({
-        style: {
-          background: 'transparent',
-          borderBottom: '1px solid var(--border-default)',
-        },
-      })}
+      scroll={{ x: 'max-content' }}
     />
   );
 }
@@ -179,18 +178,14 @@ function ServerHealthCard({ container }: { container: ContainerStats }) {
 
   return (
     <div
+      className="admin-server-card"
       style={{
-        background: 'var(--bg-elevated)',
-        borderRadius: 12,
-        border: `1px solid ${isRunning ? 'var(--border-default)' : 'var(--color-error)'}`,
-        padding: 'var(--space-5) var(--space-6)',
-        minWidth: 200,
-        transition: 'background var(--transition-fast), border-color var(--transition-fast)',
+        borderColor: isRunning ? undefined : 'var(--color-error)',
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', marginBottom: 16 }}>
+      <div className="admin-server-card__header">
         <Badge status={isRunning ? 'success' : 'error'} />
-        <Text strong style={{ color: 'var(--text-primary)', fontSize: 14 }}>
+        <Text strong className="admin-server-card__name">
           {container.name.replace('adresearch-', '')}
         </Text>
       </div>
@@ -202,8 +197,6 @@ function ServerHealthCard({ container }: { container: ContainerStats }) {
             value={container.cpu_percent}
             suffix="%"
             valueStyle={{
-              fontSize: 20,
-              fontWeight: 600,
               color: 'var(--text-primary)',
             }}
           />
@@ -213,15 +206,13 @@ function ServerHealthCard({ container }: { container: ContainerStats }) {
             title="内存"
             value={container.memory_usage.split('/')[0] || '-'}
             valueStyle={{
-              fontSize: 18,
-              fontWeight: 500,
               color: 'var(--text-primary)',
             }}
           />
         </Col>
       </Row>
 
-      <div style={{ marginTop: 12 }}>
+      <div className="admin-server-card__progress">
         <Progress
           percent={Math.round(memPercent * 100) / 100}
           size="small"
@@ -231,12 +222,12 @@ function ServerHealthCard({ container }: { container: ContainerStats }) {
         />
       </div>
 
-      <div style={{ marginTop: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Text style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+      <div className="admin-server-card__footer">
+        <Text className="ad-text-small ad-text-secondary">
           运行 {container.uptime}
         </Text>
         <Tooltip title={container.image}>
-          <Tag style={{ fontSize: 11, background: 'var(--bg-input)', border: 'none', color: 'var(--text-secondary)' }}>
+          <Tag className="admin-server-card__image">
             {container.image.split(':')[0]}
           </Tag>
         </Tooltip>
@@ -274,22 +265,13 @@ function LogViewer({
 
   return (
     <div>
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: 12,
-          gap: 12,
-          flexWrap: 'wrap',
-        }}
-      >
+      <div className="admin-log-section-header">
         <Space>
-          <Text strong style={{ color: 'var(--text-primary)', fontSize: 14 }}>实时日志</Text>
+          <Text strong>实时日志</Text>
           <Badge
             status={connected ? 'processing' : 'default'}
             text={
-              <Text style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+              <Text className="ad-text-small ad-text-secondary">
                 {connected ? '已连接' : '未连接'}
               </Text>
             }
@@ -300,7 +282,7 @@ function LogViewer({
             value={container}
             onChange={onContainerChange}
             size="small"
-            style={{ width: 130 }}
+            className="admin-log-container-select"
           >
             <Option value="adresearch-backend">backend</Option>
             <Option value="adresearch-postgres">postgres</Option>
@@ -325,29 +307,17 @@ function LogViewer({
         </Space>
       </div>
 
-      <div
-        ref={scrollRef}
-        style={{
-          background: 'var(--bg-base)',
-          border: '1px solid var(--border-default)',
-          borderRadius: 8,
-          height: 360,
-          overflow: 'auto',
-          padding: '12px 16px',
-          fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
-          fontSize: 12,
-          lineHeight: '1.8',
-          color: 'var(--text-secondary)',
-        }}
-      >
+      <div ref={scrollRef} className="admin-log-terminal">
         {lines.length === 0 && (
-          <div style={{ color: 'var(--text-secondary)', padding: 'var(--space-7) 0', textAlign: 'center' }}>
+          <div className="admin-log-terminal__empty">
             {connected ? '等待日志 ...' : '点击「连接」开始查看实时日志'}
           </div>
         )}
         {lines.map((line, i) => (
-          <div key={i} style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
-            <span style={{ color: 'var(--text-tertiary)' }}>{line.timestamp ? line.timestamp.slice(0, 19).replace('T', ' ') : '-'}</span>{' '}
+          <div key={i} className="admin-log-line">
+            <span className="admin-log-line__timestamp">
+              {line.timestamp ? line.timestamp.slice(0, 19).replace('T', ' ') : '-'}
+            </span>{' '}
             {line.message}
           </div>
         ))}
@@ -393,97 +363,79 @@ export default function AdminDeployments() {
   const containers = health?.containers || [];
 
   return (
-    <div style={{ maxWidth: 1200 }}>
-      {/* Page header */}
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: 28,
-          flexWrap: 'wrap',
-          gap: 12,
-        }}
-      >
-        <div>
-          <Text style={{ fontSize: 24, fontWeight: 600, color: 'var(--text-primary)' }}>
-            部署管理
-          </Text>
-          <Text style={{ display: 'block', fontSize: 13, color: 'var(--text-secondary)', marginTop: 4 }}>
-            Vercel 风格部署仪表盘 — 查看部署历史、服务器状态和实时日志
-          </Text>
-        </div>
-        <Space>
-          <Button
-            icon={<ReloadOutlined />}
-            onClick={() => {
-              window.location.reload();
-            }}
-            variant="outlined"
-          >
-            刷新
-          </Button>
-          <Button
-            type="primary"
-            icon={<RocketOutlined />}
-            onClick={handleTrigger}
-            loading={isTriggering}
-            style={{ background: 'var(--accent)', borderColor: 'var(--accent)', color: 'var(--text-on-accent)' }}
-          >
-            手动部署
-          </Button>
-        </Space>
-      </div>
-
-      {/* --- Deployment History --- */}
-      <Panel
-        title={
+    <PageShell maxWidth="wide">
+      <PageHeader
+        title="部署管理"
+        description="Vercel 风格部署仪表盘 — 查看部署历史、服务器状态和实时日志"
+        extra={
           <Space>
-            <GithubOutlined />
-            <span>部署历史</span>
+            <Button
+              icon={<ReloadOutlined />}
+              onClick={() => {
+                window.location.reload();
+              }}
+              variant="outlined"
+            >
+              刷新
+            </Button>
+            <Button
+              type="primary"
+              icon={<RocketOutlined />}
+              onClick={handleTrigger}
+              loading={isTriggering}
+            >
+              手动部署
+            </Button>
           </Space>
         }
-        extra={
-          <Text style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
-            来自 GitHub Actions
-          </Text>
-        }
-        variant="minimal"
-        style={{ marginBottom: 28 }}
-      >
-        <DeploymentsTable data={deployments} loading={isLoadingDeployments} />
-      </Panel>
+      />
 
-      {/* --- Server Health --- */}
-      <Panel
-        title="服务器健康"
-        variant="minimal"
-        style={{ marginBottom: 28 }}
-      >
-        {containers.length === 0 ? (
-          <div style={{ padding: 20, textAlign: 'center', color: 'var(--text-secondary)' }}>
-            {isLoadingHealth ? '加载中...' : '暂无容器数据（需要 Docker socket 访问权限）'}
-          </div>
-        ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 16 }}>
-            {containers.map((c: ContainerStats) => (
-              <ServerHealthCard key={c.name} container={c} />
-            ))}
-          </div>
-        )}
-      </Panel>
-
-      {/* --- Live Logs --- */}
-      <Panel title="实时日志" variant="minimal">
-        <LogViewer
-          lines={lines}
-          connected={connected}
-          onConnect={connect}
-          onDisconnect={disconnect}
-          container={logContainer}
-          onContainerChange={handleLogContainerChange}
+      <div className="admin-section">
+        <SectionHeading
+          title={
+            <Space>
+              <GithubOutlined />
+              <span>部署历史</span>
+            </Space>
+          }
+          action={<DensityToggle />}
         />
-      </Panel>
-    </div>
+        <Panel variant="default" padding="md">
+          <DeploymentsTable data={deployments} loading={isLoadingDeployments} />
+        </Panel>
+      </div>
+
+      <div className="admin-section">
+        <SectionHeading title="服务器健康" />
+        <Panel variant="default" padding="md">
+          {containers.length === 0 ? (
+            <EmptyState
+              title={isLoadingHealth ? '加载中...' : '暂无容器数据'}
+              description={isLoadingHealth ? undefined : '需要 Docker socket 访问权限'}
+            />
+          ) : (
+            <ResponsiveGrid cols={4} gap="md">
+              {containers.map((c: ContainerStats) => (
+                <ServerHealthCard key={c.name} container={c} />
+              ))}
+            </ResponsiveGrid>
+          )}
+        </Panel>
+      </div>
+
+      <div className="admin-section">
+        <SectionHeading title="实时日志" />
+        <Panel variant="default" padding="md">
+          <LogViewer
+            lines={lines}
+            connected={connected}
+            onConnect={connect}
+            onDisconnect={disconnect}
+            container={logContainer}
+            onContainerChange={handleLogContainerChange}
+          />
+        </Panel>
+      </div>
+    </PageShell>
   );
 }

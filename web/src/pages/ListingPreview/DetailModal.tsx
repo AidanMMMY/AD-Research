@@ -1,4 +1,6 @@
 import { Descriptions, Modal, Space, Tag } from 'antd';
+import { FileTextOutlined, InboxOutlined } from '@ant-design/icons';
+import EmptyState from '@/components/EmptyState';
 import type { ListingEventDetail, ListingStatus } from '@/types/listingEvent';
 import { STATUS_LABEL } from '@/types/listingEvent';
 
@@ -40,11 +42,9 @@ export default function ListingEventDetailModal({ open, loading, event, onClose 
       title={
         event ? (
           <Space>
-            <span style={{ fontWeight: 500 }}>{event.name}</span>
+            <strong>{event.name}</strong>
             <Tag color={STATUS_COLOR[event.status]}>{STATUS_LABEL[event.status]}</Tag>
-            <span className="tabular-nums" style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-tertiary)' }}>
-              {event.ts_code}
-            </span>
+            <span className="last-updated tabular-nums">{event.ts_code}</span>
           </Space>
         ) : (
           '上市预告详情'
@@ -52,14 +52,16 @@ export default function ListingEventDetailModal({ open, loading, event, onClose 
       }
     >
       {loading ? (
-        <div style={{ padding: 24, textAlign: 'center', color: 'var(--text-tertiary)' }}>加载中...</div>
+        <EmptyState
+          icon={<FileTextOutlined />}
+          title="加载中..."
+          description="正在获取上市预告详情"
+        />
       ) : event ? (
         <Descriptions
           bordered
           size="small"
           column={{ xs: 1, sm: 2, md: 2 }}
-          labelStyle={{ width: 120, color: 'var(--text-secondary)' }}
-          contentStyle={{}}
           rootClassName="tabular-nums"
         >
           <Descriptions.Item label="证券代码">{event.ts_code}</Descriptions.Item>
@@ -81,7 +83,10 @@ export default function ListingEventDetailModal({ open, loading, event, onClose 
           <Descriptions.Item label="更新时间">{event.updated_at ?? '-'}</Descriptions.Item>
         </Descriptions>
       ) : (
-        <div style={{ padding: 24, textAlign: 'center', color: 'var(--text-tertiary)' }}>未找到记录</div>
+        <EmptyState
+          icon={<InboxOutlined />}
+          title="未找到记录"
+        />
       )}
     </Modal>
   );

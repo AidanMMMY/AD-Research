@@ -11,11 +11,19 @@ import {
 } from '@ant-design/icons';
 import { chatApi, ChatSession, ChatMessage } from '@/api/chat';
 import AISetupBanner from '@/components/AISetupBanner';
+import PageShell from '@/components/PageShell';
+import PageHeader from '@/components/PageHeader';
 import StepProgress from '@/components/StepProgress';
 import { useStepStream } from '@/hooks/useStepStream';
 import { useIsMobile } from '@/hooks/useBreakpoint';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+
+const QUICK_PROMPTS = [
+  { label: '分析 AAPL 的散户情绪', prompt: '请分析 AAPL 最近 7 日的散户情绪与多空比' },
+  { label: '今日热点解读', prompt: '请总结今日 importance ≥ 4 的热点资讯' },
+  { label: '自选股舆情', prompt: '我自选股的最新舆情和情绪如何？' },
+];
 
 export default function AIChat() {
   const isMobile = useIsMobile();
@@ -128,25 +136,18 @@ export default function AIChat() {
   const showSidebar = !isMobile || !activeSession;
 
   const sidebar = (
-    <div style={{
-      width: isMobile ? '100%' : 240,
-      flexShrink: 0,
-      display: 'flex',
-      flexDirection: 'column',
-      gap: 8,
-    }}>
+    <div className="phase5c-chat-sidebar">
       <Button
         type="primary"
         icon={<PlusOutlined />}
         loading={createMutation.isPending}
         onClick={() => createMutation.mutate()}
         block
-        style={{ background: 'var(--accent)', border: 'none' }}
       >
         新对话
       </Button>
 
-      <div style={{ flex: 1, overflow: 'auto' }}>
+      <div className="phase5c-chat-sidebar__list">
         {sessionsLoading ? (
           <Skeleton active paragraph={{ rows: 4 }} />
         ) : !sessions?.length ? (
@@ -157,27 +158,9 @@ export default function AIChat() {
             renderItem={(s: ChatSession) => (
               <div
                 onClick={() => setActiveSession(s.id)}
-                style={{
-                  padding: 'var(--space-3) var(--space-3)',
-                  borderRadius: 'var(--radius-lg)',
-                  cursor: 'pointer',
-                  marginBottom: 4,
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  background: activeSession === s.id ? 'var(--accent-dim)' : 'transparent',
-                  border: activeSession === s.id ? '1px solid var(--card-border)' : '1px solid transparent',
-                }}
+                className={`phase5c-chat-sidebar__item ${activeSession === s.id ? 'phase5c-chat-sidebar__item--active' : ''}`}
               >
-                <span style={{
-                  fontSize: 13,
-                  color: activeSession === s.id ? 'var(--accent)' : 'var(--text-secondary)',
-                  fontWeight: activeSession === s.id ? 600 : 400,
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap',
-                  flex: 1,
-                }}>
+                <span className="phase5c-chat-sidebar__title">
                   {s.title || '新对话'}
                 </span>
                 <Popconfirm
@@ -189,7 +172,7 @@ export default function AIChat() {
                   onCancel={(e) => e?.stopPropagation()}
                 >
                   <DeleteOutlined
-                    style={{ color: 'var(--text-tertiary)', fontSize: 12, flexShrink: 0 }}
+                    className="phase5c-chat-sidebar__delete"
                     onClick={(e) => e.stopPropagation()}
                   />
                 </Popconfirm>
@@ -202,19 +185,10 @@ export default function AIChat() {
   );
 
   const chatArea = (
-    <div style={{
-      flex: 1,
-      display: 'flex',
-      flexDirection: 'column',
-      background: 'var(--card-bg)',
-      borderRadius: 'var(--card-radius)',
-      border: '1px solid var(--card-border)',
-      boxShadow: 'var(--shadow-card)',
-      overflow: 'hidden',
-    }}>
+    <div className="phase5c-chat-area">
       {/* Mobile back button */}
       {isMobile && activeSession && (
-        <div style={{ padding: '8px 12px', borderBottom: '1px solid var(--border-default)' }}>
+        <div className="phase5c-mobile-back">
           <Button type="text" onClick={() => setActiveSession(null)}>
             ← 返回列表
           </Button>
@@ -222,11 +196,11 @@ export default function AIChat() {
       )}
 
       {/* Messages */}
-      <div style={{ flex: 1, overflow: 'auto', padding: 'var(--space-4) var(--space-5)' }}>
+      <div className="phase5c-chat-messages">
         {!activeSession ? (
           <Empty
             description="选择一个对话或创建新对话"
-            style={{ marginTop: 80 }}
+            className="phase5c-empty-robot"
             image={<RobotOutlined style={{ fontSize: 48, color: 'var(--text-tertiary)' }} />}
           />
         ) : messagesLoading ? (
@@ -235,26 +209,9 @@ export default function AIChat() {
           messages?.map((msg: ChatMessage) => (
             <div
               key={msg.id}
-              style={{
-                display: 'flex',
-                justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start',
-                marginBottom: 16,
-              }}
+              className={`phase5c-message-row ${msg.role === 'user' ? 'phase5c-message-row--user' : 'phase5c-message-row--assistant'}`}
             >
-              <div style={{
-                maxWidth: '80%',
-                padding: '12px 16px',
-                borderRadius: 'var(--radius-lg)',
-                borderTopRightRadius: msg.role === 'user' ? 4 : 'var(--radius-lg)',
-                borderTopLeftRadius: msg.role === 'assistant' ? 4 : 'var(--radius-lg)',
-                background:
-                  msg.role === 'user'
-                    ? 'var(--accent-dim)'
-                    : 'var(--bg-elevated)',
-                color: msg.role === 'user' ? 'var(--accent)' : 'var(--text-primary)',
-                fontSize: 14,
-                lineHeight: 1.7,
-              }}>
+              <div className={`phase5c-message-bubble ${msg.role === 'user' ? 'phase5c-message-bubble--user' : 'phase5c-message-bubble--assistant'}`}>
                 {msg.role === 'assistant' ? (
                   <ReactMarkdown remarkPlugins={[remarkGfm]}>
                     {msg.content}
@@ -267,25 +224,17 @@ export default function AIChat() {
           ))
         )}
         {sending && (
-          <div
-            style={{
-              padding: '12px 16px',
-              marginBottom: 16,
-              background: 'var(--bg-elevated)',
-              border: '1px solid var(--border-default)',
-              borderRadius: 'var(--radius-lg)',
-              borderTopLeftRadius: 4,
-              maxWidth: '80%',
-            }}
-          >
-            <StepProgress steps={steps} compact />
-            {streamedText && (
-              <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px solid var(--border-default)', fontSize: 14, lineHeight: 1.7, color: 'var(--text-primary)' }}>
-                <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                  {streamedText}
-                </ReactMarkdown>
-              </div>
-            )}
+          <div className="phase5c-message-row phase5c-message-row--assistant">
+            <div className="phase5c-message-bubble phase5c-message-bubble--streaming">
+              <StepProgress steps={steps} compact />
+              {streamedText && (
+                <div className="phase5c-streaming-divider">
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                    {streamedText}
+                  </ReactMarkdown>
+                </div>
+              )}
+            </div>
           </div>
         )}
         <div ref={messagesEndRef} />
@@ -293,31 +242,14 @@ export default function AIChat() {
 
       {/* Input */}
       {activeSession && (
-        <div style={{
-          padding: 'var(--space-3) var(--space-5)',
-          borderTop: '1px solid var(--border-default)',
-        }}>
+        <div className="phase5c-input-bar">
           {/* Sentiment quick-prompt hint. Tells the user the assistant has
               access to news/sentiment data and surfaces a clickable tag to
               jump to the sentiment dashboard. */}
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 'var(--space-2)',
-              flexWrap: 'wrap',
-              marginBottom: 8,
-              fontSize: 12,
-              color: 'var(--text-tertiary)',
-            }}
-          >
+          <div className="phase5c-quick-prompts">
             <HeartOutlined style={{ color: 'var(--color-rise)' }} />
             <span>AI 可访问资讯与情绪数据：</span>
-            {[
-              { label: '分析 AAPL 的散户情绪', prompt: '请分析 AAPL 最近 7 日的散户情绪与多空比' },
-              { label: '今日热点解读', prompt: '请总结今日 importance ≥ 4 的热点资讯' },
-              { label: '自选股舆情', prompt: '我自选股的最新舆情和情绪如何？' },
-            ].map((s) => (
+            {QUICK_PROMPTS.map((s) => (
               <Tag
                 key={s.label}
                 style={{ cursor: 'pointer', fontSize: 11, margin: 0 }}
@@ -326,7 +258,7 @@ export default function AIChat() {
                 {s.label}
               </Tag>
             ))}
-            <span style={{ flex: 1 }} />
+            <span className="phase5c-quick-prompts__spacer" />
             <Tag
               icon={<HeartOutlined />}
               color="default"
@@ -336,33 +268,27 @@ export default function AIChat() {
               打开情绪看板
             </Tag>
           </div>
-          <div style={{ display: 'flex', gap: 10 }}>
+          <div className="phase5c-input-row">
             <Input.TextArea
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onPressEnter={(e) => {
-              if (!e.shiftKey) {
-                e.preventDefault();
-                handleSend();
-              }
-            }}
-            placeholder="输入问题... (Shift+Enter换行，Enter发送)"
-            autoSize={{ minRows: 1, maxRows: 4 }}
-            style={{ flex: 1 }}
-            disabled={sending}
-          />
-          <Button
-            type="primary"
-            icon={<SendOutlined />}
-            onClick={handleSend}
-            loading={sending}
-            disabled={!input.trim()}
-            style={{
-              background: 'var(--accent)',
-              border: 'none',
-              alignSelf: 'flex-end',
-            }}
-          />
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onPressEnter={(e) => {
+                if (!e.shiftKey) {
+                  e.preventDefault();
+                  handleSend();
+                }
+              }}
+              placeholder="输入问题... (Shift+Enter换行，Enter发送)"
+              autoSize={{ minRows: 1, maxRows: 4 }}
+              disabled={sending}
+            />
+            <Button
+              type="primary"
+              icon={<SendOutlined />}
+              onClick={handleSend}
+              loading={sending}
+              disabled={!input.trim()}
+            />
           </div>
         </div>
       )}
@@ -370,32 +296,17 @@ export default function AIChat() {
   );
 
   return (
-    <div>
+    <PageShell maxWidth="wide">
       <AISetupBanner />
-      <h1
-        style={{
-          fontSize: 'var(--text-h1-size)',
-          fontWeight: 500,
-          color: 'var(--text-primary)',
-          margin: '0 0 8px',
-          letterSpacing: '-0.03em',
-        }}
-      >
-        AI 助手
-      </h1>
-      <p
-        style={{
-          margin: '0 0 32px',
-          color: 'var(--text-tertiary)',
-          fontSize: 'var(--text-body-size)',
-        }}
-      >
-        多会话 AI 对话，支持 Markdown 与代码高亮
-      </p>
-      <div style={{ display: 'flex', gap: 16, height: isMobile ? 'calc(100vh - 240px)' : 'calc(100vh - 280px)' }}>
+      <PageHeader
+        eyebrow="AI"
+        title="AI 助手"
+        description="多会话 AI 对话，支持 Markdown 与代码高亮"
+      />
+      <div className="phase5c-chat-layout">
         {(showSidebar || !isMobile) && sidebar}
         {(!showSidebar || !isMobile) && chatArea}
       </div>
-    </div>
+    </PageShell>
   );
 }

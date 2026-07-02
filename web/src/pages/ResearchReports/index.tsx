@@ -1,11 +1,14 @@
 import { useMemo, useState } from 'react';
 import {
-  Table, Input, Select, Button, Space, Tag, Skeleton, message, Empty, Modal,
+  Table, Input, Select, Button, Space, Tag, Skeleton, message, Modal,
   Descriptions, Typography, Spin,
 } from 'antd';
-import { SearchOutlined, ReloadOutlined, ThunderboltOutlined } from '@ant-design/icons';
+import { SearchOutlined, ReloadOutlined, ThunderboltOutlined, FileTextOutlined } from '@ant-design/icons';
+import PageShell from '@/components/PageShell';
 import Panel from '@/components/Panel';
 import PageHeader from '@/components/PageHeader';
+import FilterToolbar from '@/components/FilterToolbar';
+import EmptyState from '@/components/EmptyState';
 import LastUpdated from '@/components/LastUpdated';
 import {
   useResearchReportList,
@@ -117,60 +120,39 @@ export default function ResearchReports() {
       dataIndex: 'ts_code',
       width: 110,
       render: (v: string, record: ResearchReportOut) => (
-        <button
-          type="button"
-          onClick={() => handleOpenDetail(record.id)}
+        <Button
+          type="link"
+          size="small"
           className="tabular-nums"
-          style={{
-            background: 'none',
-            border: 'none',
-            padding: 0,
-            color: 'var(--accent)',
-            fontFamily: 'var(--font-mono)',
-            cursor: 'pointer',
-            fontSize: 'var(--text-small-size)',
-          }}
+          onClick={() => handleOpenDetail(record.id)}
         >
           {v}
-        </button>
+        </Button>
       ),
     },
     {
       title: '简称',
       dataIndex: 'name',
       width: 90,
-      render: (v: string) => (
-        <span style={{ color: 'var(--text-primary)' }}>{v}</span>
-      ),
     },
     {
       title: '机构',
       dataIndex: 'org_name',
       width: 140,
       ellipsis: true,
-      render: (v: string) => (
-        <span style={{ fontSize: 'var(--text-small-size)', color: 'var(--text-secondary)' }}>{v}</span>
-      ),
     },
     {
       title: '行业',
       dataIndex: 'industry',
       width: 110,
-      render: (v: string | null) =>
-        v ? (
-          <span style={{ fontSize: 'var(--text-small-size)', color: 'var(--text-secondary)' }}>{v}</span>
-        ) : (
-          '-'
-        ),
+      render: (v: string | null) => v ?? '-',
     },
     {
       title: '发布日期',
       dataIndex: 'publish_date',
       width: 110,
       render: (v: string) => (
-        <span className="tabular-nums" style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)' }}>
-          {v ?? '-'}
-        </span>
+        <span className="tabular-nums">{v ?? '-'}</span>
       ),
     },
     {
@@ -184,9 +166,7 @@ export default function ResearchReports() {
       dataIndex: 'target_price',
       width: 80,
       render: (v: number | null) => (
-        <span className="tabular-nums" style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)' }}>
-          {formatPrice(v)}
-        </span>
+        <span className="tabular-nums">{formatPrice(v)}</span>
       ),
     },
     {
@@ -194,20 +174,14 @@ export default function ResearchReports() {
       dataIndex: 'title',
       ellipsis: true,
       render: (v: string, record: ResearchReportOut) => (
-        <button
-          type="button"
+        <Button
+          type="link"
+          size="small"
           onClick={() => handleOpenDetail(record.id)}
-          style={{
-            background: 'none',
-            border: 'none',
-            padding: 0,
-            color: 'var(--text-primary)',
-            cursor: 'pointer',
-            textAlign: 'left',
-          }}
+          style={{ textAlign: 'left' }}
         >
           {v}
-        </button>
+        </Button>
       ),
     },
     {
@@ -242,7 +216,7 @@ export default function ResearchReports() {
     : items;
 
   return (
-    <div>
+    <PageShell maxWidth="wide">
       <PageHeader
         eyebrow="研究"
         title="研报库"
@@ -261,95 +235,97 @@ export default function ResearchReports() {
         }
       />
 
-      <Panel variant="minimal" title="筛选条件">
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-3)', alignItems: 'center' }}>
-          <Input
-            placeholder="搜索证券代码"
-            allowClear
-            prefix={<SearchOutlined style={{ color: 'var(--text-tertiary)' }} />}
-            value={search}
-            onChange={(e) => {
-              setSearch(e.target.value);
-              setPage(1);
-            }}
-            style={{ width: 200 }}
-          />
-          <Select
-            placeholder="行业"
-            allowClear
-            style={{ width: 160 }}
-            value={industry}
-            onChange={(v) => {
-              setIndustry(v);
-              setPage(1);
-            }}
-            options={(facets?.industries ?? []).map((i) => ({ label: i, value: i }))}
-          />
-          <Select
-            placeholder="机构"
-            allowClear
-            style={{ width: 200 }}
-            value={orgName}
-            onChange={(v) => {
-              setOrgName(v);
-              setPage(1);
-            }}
-            options={(facets?.orgs ?? []).map((o) => ({ label: o, value: o }))}
-          />
-          <Select
-            placeholder="评级"
-            allowClear
-            style={{ width: 120 }}
-            value={rating}
-            onChange={(v) => {
-              setRating(v);
-              setPage(1);
-            }}
-            options={(facets?.ratings ?? []).map((r) => ({ label: r, value: r }))}
-          />
-          <Select
-            value={hasSummary}
-            style={{ width: 130 }}
-            onChange={(v) => {
-              setHasSummary(v);
-              setPage(1);
-            }}
-            options={[
-              { label: '全部', value: 'all' },
-              { label: '已有摘要', value: 'yes' },
-              { label: '未生成', value: 'no' },
-            ]}
-          />
-          <Button onClick={handleReset}>重置</Button>
-        </div>
-      </Panel>
+      <FilterToolbar total={filteredByRating.length}>
+        <Input
+          placeholder="搜索证券代码"
+          allowClear
+          prefix={<SearchOutlined />}
+          value={search}
+          onChange={(e) => {
+            setSearch(e.target.value);
+            setPage(1);
+          }}
+          style={{ width: 200 }}
+        />
+        <Select
+          placeholder="行业"
+          allowClear
+          style={{ width: 160 }}
+          value={industry}
+          onChange={(v) => {
+            setIndustry(v);
+            setPage(1);
+          }}
+          options={(facets?.industries ?? []).map((i) => ({ label: i, value: i }))}
+        />
+        <Select
+          placeholder="机构"
+          allowClear
+          style={{ width: 200 }}
+          value={orgName}
+          onChange={(v) => {
+            setOrgName(v);
+            setPage(1);
+          }}
+          options={(facets?.orgs ?? []).map((o) => ({ label: o, value: o }))}
+        />
+        <Select
+          placeholder="评级"
+          allowClear
+          style={{ width: 120 }}
+          value={rating}
+          onChange={(v) => {
+            setRating(v);
+            setPage(1);
+          }}
+          options={(facets?.ratings ?? []).map((r) => ({ label: r, value: r }))}
+        />
+        <Select
+          value={hasSummary}
+          style={{ width: 130 }}
+          onChange={(v) => {
+            setHasSummary(v);
+            setPage(1);
+          }}
+          options={[
+            { label: '全部', value: 'all' },
+            { label: '已有摘要', value: 'yes' },
+            { label: '未生成', value: 'no' },
+          ]}
+        />
+        <Button onClick={handleReset}>重置</Button>
+      </FilterToolbar>
 
-      <div style={{ marginTop: 'var(--space-4)' }}>
+      <Panel variant="default" padding="none">
         {isLoading ? (
           <Skeleton active paragraph={{ rows: 10 }} />
         ) : filteredByRating.length === 0 && items.length === 0 ? (
-          <Empty description="暂无符合条件的研报" />
-        ) : (
-          <Table
-            dataSource={filteredByRating}
-            columns={columns}
-            rowKey="id"
-            scroll={{ x: 'max-content' }}
-            pagination={{
-              current: page,
-              pageSize,
-              total,
-              onChange: setPage,
-              showSizeChanger: false,
-              showTotal: (t) => `共 ${t} 条`,
-            }}
-            onRow={(record) => ({
-              onClick: () => handleOpenDetail(record.id),
-              style: { cursor: 'pointer' },
-            })}
+          <EmptyState
+            icon={<FileTextOutlined />}
+            title="暂无符合条件的研报"
+            description="尝试调整筛选条件或刷新数据"
           />
+        ) : (
+          <div className="ad-density-dense ad-table-scroll ad-table-sticky">
+            <Table
+              dataSource={filteredByRating}
+              columns={columns}
+              rowKey="id"
+              pagination={{
+                current: page,
+                pageSize,
+                total,
+                onChange: setPage,
+                showSizeChanger: false,
+                showTotal: (t) => `共 ${t} 条`,
+              }}
+              onRow={(record) => ({
+                onClick: () => handleOpenDetail(record.id),
+              })}
+            />
+          </div>
         )}
-      </div>
+      </Panel>
 
       <Modal
         open={detailOpen}
@@ -377,7 +353,7 @@ export default function ResearchReports() {
           <Spin />
         ) : (
           <>
-            <Descriptions column={2} bordered size="small" style={{ marginBottom: 16 }}>
+            <Descriptions column={2} bordered size="small">
               <Descriptions.Item label="证券代码">{detail.ts_code}</Descriptions.Item>
               <Descriptions.Item label="简称">{detail.name}</Descriptions.Item>
               <Descriptions.Item label="机构">{detail.org_name}</Descriptions.Item>
@@ -423,6 +399,6 @@ export default function ResearchReports() {
           </>
         )}
       </Modal>
-    </div>
+    </PageShell>
   );
 }

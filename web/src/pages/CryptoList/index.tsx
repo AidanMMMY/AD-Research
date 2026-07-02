@@ -5,6 +5,11 @@ import { SearchOutlined } from '@ant-design/icons';
 import { useCryptoList } from '@/hooks/useCrypto';
 import { useCryptoStore } from '@/stores/crypto';
 import { useIsMobile } from '@/hooks/useBreakpoint';
+import { useDensity } from '@/hooks/useDensity';
+import PageShell from '@/components/PageShell';
+import PageHeader from '@/components/PageHeader';
+import FilterToolbar from '@/components/FilterToolbar';
+import EmptyState from '@/components/EmptyState';
 import InstrumentCodeTag from '@/components/InstrumentCodeTag';
 import ReturnTag from '@/components/ReturnTag';
 import ThemeTag from '@/components/ThemeTag';
@@ -23,6 +28,7 @@ const SORT_OPTIONS = [
 export default function CryptoList() {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
+  const { density } = useDensity();
   const filters = useCryptoStore();
   const [page, setPage] = useState(1);
 
@@ -34,6 +40,8 @@ export default function CryptoList() {
     page,
     page_size: 50,
   });
+
+  const rowSize = density === 'dense' ? 'small' : density === 'spacious' ? 'large' : 'middle';
 
   const columns = [
     {
@@ -53,15 +61,7 @@ export default function CryptoList() {
       width: 140,
       render: (v: number) =>
         v != null ? (
-          <span
-            className="tabular-nums"
-            style={{
-              fontSize: 'var(--text-body-size)',
-              fontWeight: 600,
-              color: 'var(--text-secondary)',
-              fontFamily: 'var(--font-mono)',
-            }}
-          >
+          <span className="tabular-nums mobile-list-item__value">
             {v < 0.01 ? v.toFixed(6) : v < 1 ? v.toFixed(4) : v.toFixed(2)}
           </span>
         ) : (
@@ -86,14 +86,7 @@ export default function CryptoList() {
       width: 140,
       render: (v: number) =>
         v != null ? (
-          <span
-            className="tabular-nums"
-            style={{
-              fontSize: 'var(--text-small-size)',
-              color: 'var(--text-tertiary)',
-              fontFamily: 'var(--font-mono)',
-            }}
-          >
+          <span className="tabular-nums mobile-list-item__meta" style={{ fontFamily: 'var(--font-mono)' }}>
             {v >= 1e9
               ? `${(v / 1e9).toFixed(1)}B`
               : v >= 1e6
@@ -111,14 +104,7 @@ export default function CryptoList() {
       dataIndex: 'exchange',
       width: 90,
       render: (v: string) => (
-        <span
-          className="tabular-nums"
-          style={{
-            fontSize: 'var(--text-small-size)',
-            color: 'var(--text-tertiary)',
-            fontFamily: 'var(--font-mono)',
-          }}
-        >
+        <span className="tabular-nums mobile-list-item__meta" style={{ fontFamily: 'var(--font-mono)' }}>
           {v || '-'}
         </span>
       ),
@@ -126,40 +112,14 @@ export default function CryptoList() {
   ];
 
   return (
-    <div>
-      <h1
-        style={{
-          fontSize: 'var(--text-h1-size)',
-          fontWeight: 500,
-          color: 'var(--text-primary)',
-          margin: '0 0 8px',
-          letterSpacing: '-0.03em',
-        }}
-      >
-        加密货币
-      </h1>
-      <p
-        style={{
-          margin: '0 0 32px',
-          color: 'var(--text-tertiary)',
-          fontSize: 'var(--text-body-size)',
-        }}
-      >
-        浏览和分析主流数字货币，数据来源于 Binance
-      </p>
+    <PageShell maxWidth="wide">
+      <PageHeader
+        eyebrow="数字货币"
+        title="加密货币"
+        description="浏览和分析主流数字货币，数据来源于 Binance"
+      />
 
-      {/* Filters */}
-      <div
-        style={{
-          display: 'flex',
-          flexWrap: 'wrap',
-          alignItems: 'center',
-          gap: 'var(--space-3)',
-          paddingBottom: 'var(--space-4)',
-          borderBottom: '1px solid var(--border-default)',
-          marginBottom: 'var(--space-5)',
-        }}
-      >
+      <FilterToolbar total={`共 ${data?.total ?? 0} 只`}>
         <Input
           placeholder="搜索币种代码或名称"
           allowClear
@@ -198,12 +158,16 @@ export default function CryptoList() {
             { label: '降序', value: 'desc' },
           ]}
         />
-      </div>
+      </FilterToolbar>
 
-      {/* Content */}
       {isMobile ? (
         isLoading ? (
           <Skeleton active paragraph={{ rows: 6 }} />
+        ) : (data?.items?.length ?? 0) === 0 ? (
+          <EmptyState
+            title="没有符合条件的币种"
+            description="尝试调整上方筛选条件"
+          />
         ) : (
           <List
             dataSource={data?.items ?? []}
@@ -215,20 +179,13 @@ export default function CryptoList() {
                 <List.Item.Meta
                   title={<InstrumentCodeTag code={item.code} name={item.name} />}
                   description={
-                    <span style={{ fontSize: 'var(--text-small-size)', color: 'var(--text-tertiary)' }}>
+                    <span className="mobile-list-item__meta">
                       {item.category} · {item.exchange}
                     </span>
                   }
                 />
-                <div style={{ textAlign: 'right' }}>
-                  <div
-                    className="tabular-nums"
-                    style={{
-                      fontFamily: 'var(--font-mono)',
-                      fontWeight: 600,
-                      color: 'var(--text-secondary)',
-                    }}
-                  >
+                <div className="crypto-list-item__right">
+                  <div className="tabular-nums crypto-list-item__price">
                     {item.price != null ? `$${item.price < 0.01 ? item.price.toFixed(6) : item.price < 1 ? item.price.toFixed(4) : item.price.toFixed(2)}` : '-'}
                   </div>
                   <ReturnTag value={item.change_pct ?? item.change_24h} />
@@ -241,6 +198,7 @@ export default function CryptoList() {
               total: data?.total ?? 0,
               onChange: setPage,
               size: 'small',
+              className: 'mobile-list-pagination',
             }}
           />
         )
@@ -250,6 +208,8 @@ export default function CryptoList() {
           dataSource={data?.items ?? []}
           rowKey="code"
           loading={isLoading}
+          size={rowSize as any}
+          scroll={{ x: 'max-content' }}
           onRow={(record) => ({
             onClick: () => navigate(`/crypto/${record.code}`),
             style: { cursor: 'pointer' },
@@ -263,6 +223,6 @@ export default function CryptoList() {
           }}
         />
       )}
-    </div>
+    </PageShell>
   );
 }

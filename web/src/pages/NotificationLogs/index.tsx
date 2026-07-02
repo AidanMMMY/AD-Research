@@ -1,8 +1,12 @@
 import { useState } from 'react';
 import { Table, InputNumber, Space } from 'antd';
 import { useQuery } from '@tanstack/react-query';
-import { notificationApi } from '@/api/notification';
+import PageShell from '@/components/PageShell';
+import PageHeader from '@/components/PageHeader';
 import Panel from '@/components/Panel';
+import FilterToolbar from '@/components/FilterToolbar';
+import EmptyState from '@/components/EmptyState';
+import { notificationApi } from '@/api/notification';
 import StatusTag from '@/components/StatusTag';
 
 export default function NotificationLogs() {
@@ -60,66 +64,55 @@ export default function NotificationLogs() {
   ];
 
   return (
-    <div>
-      <h1
-        style={{
-          fontSize: 'var(--text-h1-size)',
-          fontWeight: 500,
-          color: 'var(--text-primary)',
-          margin: '0 0 8px',
-          letterSpacing: '-0.03em',
-        }}
-      >
-        通知日志
-      </h1>
-      <p
-        style={{
-          margin: '0 0 32px',
-          color: 'var(--text-tertiary)',
-          fontSize: 'var(--text-body-size)',
-        }}
-      >
-        查看通知发送历史与状态
-      </p>
+    <PageShell maxWidth="wide">
+      <PageHeader
+        eyebrow="系统"
+        title="通知日志"
+        description="查看通知发送历史与状态"
+      />
 
-      <Space style={{ marginBottom: 'var(--space-4)' }}>
-        <span style={{ color: 'var(--text-secondary)' }}>每页条数：</span>
-        <InputNumber
-          min={1}
-          max={200}
-          value={pageSize}
-          onChange={(v) => {
-            setPage(1);
-            setPageSize(v || 20);
-          }}
-          style={{ width: 100 }}
-        />
-        <span style={{ color: 'var(--text-tertiary)' }}>
-          共 {data?.total ?? 0} 条
-        </span>
-      </Space>
+      <Panel variant="default" title="通知发送日志">
+        <FilterToolbar total={data?.total ?? 0}>
+          <Space>
+            <span style={{ color: 'var(--text-secondary)' }}>每页条数：</span>
+            <InputNumber
+              min={1}
+              max={200}
+              value={pageSize}
+              onChange={(v) => {
+                setPage(1);
+                setPageSize(v || 20);
+              }}
+              style={{ width: 100 }}
+            />
+          </Space>
+        </FilterToolbar>
 
-      <Panel title="通知发送日志" padding="md">
-        <Table
-          dataSource={data?.items || []}
-          columns={columns}
-          rowKey="id"
-          loading={isLoading}
-          pagination={{
-            current: page,
-            pageSize,
-            total: data?.total ?? 0,
-            showSizeChanger: true,
-            pageSizeOptions: ['10', '20', '50', '100'],
-            onChange: (p, ps) => {
-              setPage(p);
-              setPageSize(ps);
-            },
-            showTotal: (total) => `共 ${total} 条`,
-          }}
-          scroll={{ x: 'max-content' }}
-        />
+        <div className="phase5c-table-wrap">
+          <Table
+            dataSource={data?.items || []}
+            columns={columns}
+            rowKey="id"
+            loading={isLoading}
+            pagination={{
+              current: page,
+              pageSize,
+              total: data?.total ?? 0,
+              showSizeChanger: true,
+              pageSizeOptions: ['10', '20', '50', '100'],
+              onChange: (p, ps) => {
+                setPage(p);
+                setPageSize(ps);
+              },
+              showTotal: (total) => `共 ${total} 条`,
+            }}
+            scroll={{ x: 'max-content' }}
+            locale={{
+              emptyText: <EmptyState title="暂无通知日志" description="当前没有通知发送记录" />,
+            }}
+          />
+        </div>
       </Panel>
-    </div>
+    </PageShell>
   );
 }

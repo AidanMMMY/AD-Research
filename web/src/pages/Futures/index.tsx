@@ -1,10 +1,14 @@
 import { useMemo } from 'react';
 import {
-  Tabs, Table, Tag, Skeleton, Empty, Space, Statistic, Row, Col, Tooltip, Card,
+  Tabs, Table, Tag, Skeleton, Space, Statistic, Row, Col, Tooltip, Card,
 } from 'antd';
 import { CaretUpOutlined, CaretDownOutlined } from '@ant-design/icons';
+import PageShell from '@/components/PageShell';
 import Panel from '@/components/Panel';
 import PageHeader from '@/components/PageHeader';
+import StatCard from '@/components/StatCard';
+import EmptyState from '@/components/EmptyState';
+import ResponsiveGrid from '@/components/ResponsiveGrid';
 import LastUpdated from '@/components/LastUpdated';
 import {
   useFuturesDashboard,
@@ -52,9 +56,8 @@ function changeCell(pct: number | null | undefined) {
   const Icon = positive ? CaretUpOutlined : CaretDownOutlined;
   return (
     <span
-      className="tabular-nums"
+      className="tabular-nums font-mono"
       style={{
-        fontFamily: 'var(--font-mono)',
         color: changeColor(pct),
         display: 'inline-flex',
         alignItems: 'center',
@@ -81,7 +84,7 @@ function BarTable({ bars, showHeader = false, maxRows = 10 }: BarTableProps) {
       dataIndex: 'code',
       width: 80,
       render: (v: string) => (
-        <span className="tabular-nums" style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-primary)' }}>{v}</span>
+        <span className="tabular-nums font-mono">{v}</span>
       ),
     },
     {
@@ -89,7 +92,7 @@ function BarTable({ bars, showHeader = false, maxRows = 10 }: BarTableProps) {
       dataIndex: 'close',
       width: 90,
       render: (v: string | null) => (
-        <span className="tabular-nums" style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)' }}>
+        <span className="tabular-nums font-mono">
           {fmtNum(v)}
         </span>
       ),
@@ -99,7 +102,7 @@ function BarTable({ bars, showHeader = false, maxRows = 10 }: BarTableProps) {
       dataIndex: 'settle',
       width: 90,
       render: (v: string | null) => (
-        <span className="tabular-nums" style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)' }}>
+        <span className="tabular-nums font-mono">
           {fmtNum(v)}
         </span>
       ),
@@ -115,21 +118,23 @@ function BarTable({ bars, showHeader = false, maxRows = 10 }: BarTableProps) {
       dataIndex: 'volume',
       width: 100,
       render: (v: number | null) => (
-        <span className="tabular-nums" style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-tertiary)' }}>
+        <span className="tabular-nums font-mono">
           {fmtVol(v)}
         </span>
       ),
     },
   ];
   return (
-    <Table
-      dataSource={bars.slice(0, maxRows)}
-      columns={columns}
-      rowKey="code"
-      size="small"
-      pagination={false}
-      showHeader={showHeader}
-    />
+    <div className="ad-density-dense ad-table-scroll ad-table-sticky">
+      <Table
+        dataSource={bars.slice(0, maxRows)}
+        columns={columns}
+        rowKey="code"
+        size="small"
+        pagination={false}
+        showHeader={showHeader}
+      />
+    </div>
   );
 }
 
@@ -221,48 +226,52 @@ function ProductTab({ product, section }: TabContentProps) {
 
   return (
     <div>
-      <Panel variant="minimal" title="板块概况">
+      <Panel title="板块概况">
         <ProductSummary section={section} />
       </Panel>
 
-      <Row gutter={16} style={{ marginTop: 16 }}>
-        <Col span={12}>
-          <Card
-            size="small"
-            title={
-              <Space>
-                <CaretUpOutlined style={{ color: 'var(--color-up, #ef232a)' }} />
-                <span>涨幅榜 TOP 5</span>
-              </Space>
-            }
-            styles={{ header: { borderBottom: 'none' } }}
-          >
-            {gainers.length === 0 ? <Empty description="暂无数据" /> : <BarTable bars={gainers} />}
-          </Card>
-        </Col>
-        <Col span={12}>
-          <Card
-            size="small"
-            title={
-              <Space>
-                <CaretDownOutlined style={{ color: 'var(--color-down, #14b143)' }} />
-                <span>跌幅榜 TOP 5</span>
-              </Space>
-            }
-            styles={{ header: { borderBottom: 'none' } }}
-          >
-            {losers.length === 0 ? <Empty description="暂无数据" /> : <BarTable bars={losers} />}
-          </Card>
-        </Col>
-      </Row>
+      <div className="phase5c-section">
+        <Row gutter={16}>
+          <Col span={12}>
+            <Card
+              size="small"
+              className="ad-table-card"
+              title={
+                <Space>
+                  <CaretUpOutlined style={{ color: 'var(--color-up, #ef232a)' }} />
+                  <span>涨幅榜 TOP 5</span>
+                </Space>
+              }
+            >
+              {gainers.length === 0 ? <EmptyState title="暂无数据" /> : <BarTable bars={gainers} />}
+            </Card>
+          </Col>
+          <Col span={12}>
+            <Card
+              size="small"
+              className="ad-table-card"
+              title={
+                <Space>
+                  <CaretDownOutlined style={{ color: 'var(--color-down, #14b143)' }} />
+                  <span>跌幅榜 TOP 5</span>
+                </Space>
+              }
+            >
+              {losers.length === 0 ? <EmptyState title="暂无数据" /> : <BarTable bars={losers} />}
+            </Card>
+          </Col>
+        </Row>
+      </div>
 
-      <Panel variant="minimal" title="全板块合约" style={{ marginTop: 16 }}>
-        {bars.length === 0 ? (
-          <Empty description={`暂无${product}合约数据`} />
-        ) : (
-          <BarTable bars={bars} showHeader maxRows={20} />
-        )}
-      </Panel>
+      <div className="phase5c-section">
+        <Panel title="全板块合约">
+          {bars.length === 0 ? (
+            <EmptyState title={`暂无${product}合约数据`} />
+          ) : (
+            <BarTable bars={bars} showHeader maxRows={20} />
+          )}
+        </Panel>
+      </div>
     </div>
   );
 }
@@ -304,7 +313,7 @@ export default function Futures() {
   const latestDate = dashboard?.trade_date ?? stats?.latest_trade_date ?? null;
 
   return (
-    <div>
+    <PageShell maxWidth="wide">
       <PageHeader
         eyebrow="期货"
         title="商品期货"
@@ -312,37 +321,34 @@ export default function Futures() {
         extra={<LastUpdated at={dataUpdatedAt} loading={dashLoading} />}
       />
 
-      <Panel variant="minimal" title="市场概况">
-        <Row gutter={16}>
-          <Col span={6}>
-            <Statistic title="主力合约总数" value={stats?.total_contracts ?? dashboard?.total_contracts ?? 0} />
-          </Col>
-          <Col span={6}>
-            <Statistic title="K线记录总数" value={stats?.total_bars ?? 0} />
-          </Col>
-          <Col span={6}>
-            <Statistic
+      <div className="phase5c-section">
+        <Panel title="市场概况">
+          <ResponsiveGrid cols={4} gap="md">
+            <StatCard
+              title="主力合约总数"
+              value={stats?.total_contracts ?? dashboard?.total_contracts ?? 0}
+              suffix="个"
+            />
+            <StatCard
+              title="K线记录总数"
+              value={stats?.total_bars ?? 0}
+              suffix="条"
+            />
+            <StatCard
               title="数据日期"
               value={latestDate ?? '-'}
-              valueStyle={{ fontFamily: 'var(--font-mono)' }}
             />
-          </Col>
-          <Col span={6}>
-            <Statistic
+            <StatCard
               title="领头羊 / 领跌"
               value={totalUp && totalDown ? `${totalUp} / ${totalDown}` : (totalUp ?? totalDown ?? '-')}
-              valueStyle={{
-                fontFamily: 'var(--font-mono)',
-                fontSize: 14,
-              }}
             />
-          </Col>
-        </Row>
-      </Panel>
+          </ResponsiveGrid>
+        </Panel>
+      </div>
 
-      <div style={{ marginTop: 'var(--space-4)' }}>
+      <div className="phase5c-section">
         <Tabs items={tabItems} defaultActiveKey="金属" />
       </div>
-    </div>
+    </PageShell>
   );
 }

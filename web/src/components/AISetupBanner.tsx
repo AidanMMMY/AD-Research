@@ -30,14 +30,9 @@ export default function AISetupBanner({ onlyWhenUnavailable = true }: AISetupBan
         type="warning"
         showIcon
         icon={<KeyOutlined />}
-        style={{
-          marginBottom: 16,
-          borderRadius: 12,
-          background: 'var(--color-warning-dim)',
-          border: '1px solid var(--color-warning-border)',
-        }}
+        className="ai-setup-banner ai-setup-banner__warning"
         message={
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+          <div className="ai-setup-banner__message">
             <span>
               <strong>AI 功能未配置</strong>
               <span style={{ color: 'var(--text-secondary)', marginLeft: 8 }}>
@@ -51,15 +46,15 @@ export default function AISetupBanner({ onlyWhenUnavailable = true }: AISetupBan
               icon={<ApiOutlined />}
               href={status.setup_url}
               target="_blank"
-              style={{ background: 'var(--accent)', border: 'none' }}
+              className="ai-setup-banner__button"
             >
               获取 API Key
             </Button>
           </div>
         }
         description={
-          <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>
-            在 <code style={{ background: 'var(--bg-input)', padding: '1px 6px', borderRadius: 4 }}>.env</code> 中设置 <code style={{ background: 'var(--bg-input)', padding: '1px 6px', borderRadius: 4 }}>DEEPSEEK_API_KEY=sk-REMOVED-...</code> 后重启服务即可激活。
+          <span className="ai-setup-banner__description">
+            在 <code>.env</code> 中设置 <code>DEEPSEEK_API_KEY=sk-REMOVED-...</code> 后重启服务即可激活。
           </span>
         }
       />
@@ -71,12 +66,7 @@ export default function AISetupBanner({ onlyWhenUnavailable = true }: AISetupBan
       type="info"
       showIcon
       icon={<ApiOutlined />}
-      style={{
-        marginBottom: 16,
-        borderRadius: 12,
-        background: 'var(--accent-dim)',
-        border: '1px solid var(--accent-border)',
-      }}
+      className="ai-setup-banner ai-setup-banner__info"
       message={
         <span>
           AI 已就绪 — 使用 <ThemeTag variant="neutral" style={{ margin: '0 4px' }}>{status.provider} {status.model}</ThemeTag>

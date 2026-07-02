@@ -1,11 +1,16 @@
 import { useMemo, useState } from 'react';
 import {
-  Table, Input, Select, Button, Space, Tag, Skeleton, message, Empty, Row, Col, Statistic, Card, Tabs, Alert,
+  Table, Input, Select, Button, Space, Tag, Skeleton, message, Tabs, Alert,
 } from 'antd';
 import { ReloadOutlined, SearchOutlined, FireOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
+import PageShell from '@/components/PageShell';
 import PageHeader from '@/components/PageHeader';
+import FilterToolbar from '@/components/FilterToolbar';
 import Panel from '@/components/Panel';
+import ResponsiveGrid from '@/components/ResponsiveGrid';
+import EmptyState from '@/components/EmptyState';
+import StatCard from '@/components/StatCard';
 import LastUpdated from '@/components/LastUpdated';
 import {
   useSearchTrendList,
@@ -78,7 +83,7 @@ export default function SearchTrendsPage() {
   ];
 
   return (
-    <div style={{ padding: '0 0 24px' }}>
+    <PageShell maxWidth="wide">
       <PageHeader
         title="搜索热度"
         description="百度热搜 + Google Trends 每日观察值。覆盖指数 / 个股 / 宏观关键词。每日 03:00 Asia/Shanghai 自动刷新。"
@@ -102,39 +107,36 @@ export default function SearchTrendsPage() {
         showIcon
         message="数据仅供参考，非精确值"
         description="百度指数为搜索排名映射, Google Trends 为相对热度得分, 不同来源不可直接对比, 仅供趋势观察。"
-        style={{ marginBottom: 16 }}
+        className="ad-mb-4"
       />
 
-      <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
-        <Col xs={12} md={6}>
-          <Card>
-            <Statistic
-              title="百度当日条目"
-              value={dashboard?.baidu?.count ?? 0}
-              prefix={<FireOutlined />}
-              suffix={dashboard?.baidu?.trade_date ? ` (${dashboard.baidu.trade_date})` : ''}
-            />
-          </Card>
-        </Col>
-        <Col xs={12} md={6}>
-          <Card>
-            <Statistic
-              title="Google 当日条目"
-              value={dashboard?.google?.count ?? 0}
-              suffix={dashboard?.google?.trade_date ? ` (${dashboard.google.trade_date})` : ''}
-            />
-          </Card>
-        </Col>
-        <Col xs={12} md={12}>
-          <Card>
-            <Statistic
-              title="最新观察日期"
-              value={dashboard?.as_of ?? '-'}
-              valueStyle={{ fontSize: 18 }}
-            />
-          </Card>
-        </Col>
-      </Row>
+      <div className="ad-mb-4">
+        <ResponsiveGrid cols={2} gap="md">
+          <StatCard
+            title="百度当日条目"
+            value={dashboard?.baidu?.count ?? 0}
+            icon={<FireOutlined />}
+            suffix={dashboard?.baidu?.trade_date ? ` (${dashboard.baidu.trade_date})` : ''}
+            loading={dashLoading}
+          />
+          <StatCard
+            title="Google 当日条目"
+            value={dashboard?.google?.count ?? 0}
+            suffix={dashboard?.google?.trade_date ? ` (${dashboard.google.trade_date})` : ''}
+            loading={dashLoading}
+          />
+        </ResponsiveGrid>
+      </div>
+
+      <div className="ad-mb-4">
+        <ResponsiveGrid cols={1} gap="md">
+          <StatCard
+            title="最新观察日期"
+            value={dashboard?.as_of ?? '-'}
+            loading={dashLoading}
+          />
+        </ResponsiveGrid>
+      </div>
 
       <Panel title="搜索热度">
         <Tabs
@@ -147,18 +149,14 @@ export default function SearchTrendsPage() {
               children: dashLoading ? (
                 <Skeleton active />
               ) : (
-                <Row gutter={[16, 16]}>
-                  <Col xs={24} md={12}>
-                    <Card title="百度热搜 Top 10" size="small">
-                      <TopKeywordList items={dashboard?.baidu?.top_keywords ?? []} />
-                    </Card>
-                  </Col>
-                  <Col xs={24} md={12}>
-                    <Card title="Google Trends Top 10" size="small">
-                      <TopKeywordList items={dashboard?.google?.top_keywords ?? []} />
-                    </Card>
-                  </Col>
-                </Row>
+                <ResponsiveGrid cols={2} gap="md">
+                  <Panel title="百度热搜 Top 10" padding="sm">
+                    <TopKeywordList items={dashboard?.baidu?.top_keywords ?? []} />
+                  </Panel>
+                  <Panel title="Google Trends Top 10" padding="sm">
+                    <TopKeywordList items={dashboard?.google?.top_keywords ?? []} />
+                  </Panel>
+                </ResponsiveGrid>
               ),
             },
             {
@@ -166,7 +164,7 @@ export default function SearchTrendsPage() {
               label: '历史明细',
               children: (
                 <Space direction="vertical" style={{ width: '100%' }} size="middle">
-                  <Space wrap>
+                  <FilterToolbar total={listData?.total}>
                     <Select
                       placeholder="来源"
                       value={source}
@@ -191,24 +189,26 @@ export default function SearchTrendsPage() {
                       prefix={<SearchOutlined />}
                       allowClear
                     />
-                  </Space>
+                  </FilterToolbar>
                   {listLoading ? (
                     <Skeleton active />
                   ) : !listData || listData.items.length === 0 ? (
-                    <Empty description="暂无搜索热度数据" />
+                    <EmptyState title="暂无搜索热度数据" />
                   ) : (
-                    <Table
-                      rowKey="id"
-                      dataSource={listData.items}
-                      columns={listColumns}
-                      size="small"
-                      pagination={{
-                        current: page,
-                        pageSize: 20,
-                        total: listData.total,
-                        onChange: setPage,
-                      }}
-                    />
+                    <div className="ad-table-scroll ad-table-sticky ad-density-dense">
+                      <Table
+                        rowKey="id"
+                        dataSource={listData.items}
+                        columns={listColumns}
+                        size="small"
+                        pagination={{
+                          current: page,
+                          pageSize: 20,
+                          total: listData.total,
+                          onChange: setPage,
+                        }}
+                      />
+                    </div>
                   )}
                 </Space>
               ),
@@ -218,7 +218,7 @@ export default function SearchTrendsPage() {
               label: '关键词对比',
               children: (
                 <Space direction="vertical" style={{ width: '100%' }} size="middle">
-                  <Space>
+                  <FilterToolbar>
                     <Input
                       placeholder="输入关键词 (如 上证指数)"
                       value={compareKeyword ?? ''}
@@ -227,21 +227,23 @@ export default function SearchTrendsPage() {
                       prefix={<SearchOutlined />}
                       allowClear
                     />
-                  </Space>
+                  </FilterToolbar>
                   {!compareKeyword ? (
-                    <Empty description="请输入关键词以查看对比" />
+                    <EmptyState title="请输入关键词以查看对比" />
                   ) : compareLoading ? (
                     <Skeleton active />
                   ) : !compareData || compareData.series.length === 0 ? (
-                    <Empty description="暂无该关键词数据" />
+                    <EmptyState title="暂无该关键词数据" />
                   ) : (
-                    <Table
-                      rowKey="id"
-                      dataSource={compareData.series}
-                      columns={compareColumns}
-                      size="small"
-                      pagination={false}
-                    />
+                    <div className="ad-table-scroll ad-table-sticky ad-density-dense">
+                      <Table
+                        rowKey="id"
+                        dataSource={compareData.series}
+                        columns={compareColumns}
+                        size="small"
+                        pagination={false}
+                      />
+                    </div>
                   )}
                 </Space>
               ),
@@ -249,32 +251,27 @@ export default function SearchTrendsPage() {
           ]}
         />
       </Panel>
-    </div>
+    </PageShell>
   );
 }
 
 function TopKeywordList({ items }: { items: SearchTrend[] }) {
   if (items.length === 0) {
-    return <Empty description="暂无数据" />;
+    return <EmptyState title="暂无数据" />;
   }
   return (
     <div>
       {items.map((item, idx) => (
         <div
           key={item.id}
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            padding: '6px 0',
-            borderBottom: idx < items.length - 1 ? '1px solid var(--border-default)' : 'none',
-          }}
+          className="ad-list-row"
         >
           <Space>
             <Tag color={item.source === 'baidu' ? 'blue' : 'green'}>#{idx + 1}</Tag>
-            <span style={{ fontWeight: 500 }}>{item.keyword}</span>
+            <span className="ad-font-medium">{item.keyword}</span>
             {item.category && <Tag color="purple">{item.category}</Tag>}
           </Space>
-          <span style={{ fontFamily: 'var(--font-mono)' }}>
+          <span className="font-mono">
             {item.value.toLocaleString()}
           </span>
         </div>

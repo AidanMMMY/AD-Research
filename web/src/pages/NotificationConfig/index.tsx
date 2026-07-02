@@ -2,7 +2,11 @@ import { useState } from 'react';
 import {
   Table, Button, Modal, Form, Input, Select, Switch, Space, message, Alert, Tabs,
 } from 'antd';
-import GlassCard from '@/components/GlassCard';
+import PageShell from '@/components/PageShell';
+import PageHeader from '@/components/PageHeader';
+import Panel from '@/components/Panel';
+import FilterToolbar from '@/components/FilterToolbar';
+import EmptyState from '@/components/EmptyState';
 import ThemeTag from '@/components/ThemeTag';
 import { useNotifications } from '@/hooks/useNotifications';
 import { PlusOutlined, DeleteOutlined, SendOutlined, MailOutlined, LinkOutlined } from '@ant-design/icons';
@@ -147,14 +151,19 @@ export default function NotificationConfigPage() {
   ];
 
   return (
-    <div>
-      <h1 style={{ fontSize: 'var(--text-h1-size)', fontWeight: 500, color: 'var(--text-primary)', margin: '0 0 8px', letterSpacing: '-0.03em' }}>推送配置</h1>
-      <p style={{ margin: '0 0 32px', color: 'var(--text-tertiary)', fontSize: 'var(--text-body-size)' }}>配置消息推送渠道，支持企业微信、飞书、钉钉 Webhook 和邮件通知</p>
-      <GlassCard title="推送配置管理" extra={
-        <Button type="primary" icon={<PlusOutlined />} onClick={() => setIsModalOpen(true)}>
-          新增配置
-        </Button>
-      }>
+    <PageShell maxWidth="wide">
+      <PageHeader
+        eyebrow="系统"
+        title="推送配置"
+        description="配置消息推送渠道，支持企业微信、飞书、钉钉 Webhook 和邮件通知"
+        extra={
+          <Button type="primary" icon={<PlusOutlined />} onClick={() => setIsModalOpen(true)}>
+            新增配置
+          </Button>
+        }
+      />
+
+      <Panel variant="default">
         <Alert
           message="推送说明"
           description={
@@ -168,27 +177,33 @@ export default function NotificationConfigPage() {
           style={{ marginBottom: 'var(--space-4)' }}
         />
 
-        <Tabs
-          activeKey={activeTab}
-          onChange={setActiveTab}
-          items={[
-            { key: 'all', label: `全部 (${configs.length})` },
-            { key: 'webhook', label: `Webhook (${configs.filter((c: any) => c.channel_type === 'webhook').length})` },
-            { key: 'email', label: `邮件 (${configs.filter((c: any) => c.channel_type === 'email').length})` },
-          ]}
-          style={{ marginBottom: 'var(--space-3)' }}
-        />
+        <FilterToolbar total={filteredConfigs.length}>
+          <Tabs
+            activeKey={activeTab}
+            onChange={setActiveTab}
+            items={[
+              { key: 'all', label: `全部 (${configs.length})` },
+              { key: 'webhook', label: `Webhook (${configs.filter((c: any) => c.channel_type === 'webhook').length})` },
+              { key: 'email', label: `邮件 (${configs.filter((c: any) => c.channel_type === 'email').length})` },
+            ]}
+          />
+        </FilterToolbar>
 
-        <Table
-          dataSource={filteredConfigs}
-          columns={columns}
-          rowKey="id"
-          size="small"
-          loading={isLoading}
-          scroll={{ x: 'max-content' }}
-          pagination={false}
-        />
-      </GlassCard>
+        <div className="phase5c-table-wrap">
+          <Table
+            dataSource={filteredConfigs}
+            columns={columns}
+            rowKey="id"
+            size="small"
+            loading={isLoading}
+            scroll={{ x: 'max-content' }}
+            pagination={false}
+            locale={{
+              emptyText: <EmptyState title="暂无推送配置" description="点击右上角「新增配置」创建第一个推送渠道" />,
+            }}
+          />
+        </div>
+      </Panel>
 
       <Modal
         title="新增推送配置"
@@ -289,6 +304,6 @@ export default function NotificationConfigPage() {
           </Form.Item>
         </Form>
       </Modal>
-    </div>
+    </PageShell>
   );
 }

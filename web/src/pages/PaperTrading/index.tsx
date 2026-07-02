@@ -9,7 +9,6 @@ import {
   Modal,
   Select,
   Skeleton,
-  Space,
   Statistic,
   Table,
 } from 'antd';
@@ -19,6 +18,12 @@ import {
   ThunderboltOutlined,
   DeleteOutlined,
 } from '@ant-design/icons';
+import PageShell from '@/components/PageShell';
+import PageHeader from '@/components/PageHeader';
+import Panel from '@/components/Panel';
+import SectionHeading from '@/components/SectionHeading';
+import EmptyState from '@/components/EmptyState';
+import ResponsiveGrid from '@/components/ResponsiveGrid';
 import {
   usePaperAccounts,
   usePaperAccount,
@@ -165,9 +170,9 @@ export default function PaperTrading() {
       key: 'code',
       render: (_: unknown, r: PaperPosition) => (
         <span>
-          <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 600 }}>{r.instrument_code}</span>
+          <span className="phase5c-inline-code--bold">{r.instrument_code}</span>
           {r.instrument_name && (
-            <span style={{ marginLeft: 8, color: 'var(--text-tertiary)' }}>{r.instrument_name}</span>
+            <span className="phase5c-detail-line">{r.instrument_name}</span>
           )}
         </span>
       ),
@@ -176,32 +181,26 @@ export default function PaperTrading() {
       title: '持仓量',
       dataIndex: 'quantity',
       key: 'qty',
-      render: (v: number) => (
-        <span className="font-mono">{v}</span>
-      ),
+      render: (v: number) => <span className="font-mono">{v}</span>,
     },
     {
       title: '均价',
       dataIndex: 'avg_cost',
       key: 'avg',
-      render: (v: number) => (
-        <span className="font-mono">{fmtUSDT(v)}</span>
-      ),
+      render: (v: number) => <span className="font-mono">{fmtUSDT(v)}</span>,
     },
     {
       title: '现价',
       dataIndex: 'current_price',
       key: 'price',
-      render: (v: number | null) => (
-        <span className="font-mono">{fmtUSDT(v)}</span>
-      ),
+      render: (v: number | null) => <span className="font-mono">{fmtUSDT(v)}</span>,
     },
     {
       title: '市值',
       dataIndex: 'market_value',
       key: 'mv',
       render: (v: number | null) => (
-        <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 600 }}>{fmtUSDT(v)}</span>
+        <span className="font-mono" style={{ fontWeight: 600 }}>{fmtUSDT(v)}</span>
       ),
     },
     {
@@ -212,7 +211,7 @@ export default function PaperTrading() {
         const p = fmtPnL(v);
         const pct = fmtPercent(r.pnl_pct);
         return (
-          <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 600, color: p.color }}>
+          <span className="font-mono" style={{ fontWeight: 600, color: p.color }}>
             {p.text} ({pct.text})
           </span>
         );
@@ -225,7 +224,7 @@ export default function PaperTrading() {
       render: (v: number | null) => {
         const p = fmtPnL(v);
         return (
-          <span style={{ fontFamily: 'var(--font-mono)', color: p.color }}>{p.text}</span>
+          <span className="font-mono" style={{ color: p.color }}>{p.text}</span>
         );
       },
     },
@@ -259,25 +258,19 @@ export default function PaperTrading() {
       title: '币种',
       dataIndex: 'instrument_code',
       key: 'code',
-      render: (v: string) => (
-        <span className="font-mono">{v}</span>
-      ),
+      render: (v: string) => <span className="font-mono">{v}</span>,
     },
     {
       title: '数量',
       dataIndex: 'quantity',
       key: 'qty',
-      render: (v: number) => (
-        <span className="font-mono">{v}</span>
-      ),
+      render: (v: number) => <span className="font-mono">{v}</span>,
     },
     {
       title: '价格',
       dataIndex: 'price',
       key: 'price',
-      render: (v: number | null) => (
-        <span className="font-mono">{fmtUSDT(v)}</span>
-      ),
+      render: (v: number | null) => <span className="font-mono">{fmtUSDT(v)}</span>,
     },
     {
       title: '状态',
@@ -297,64 +290,31 @@ export default function PaperTrading() {
 
   // --- Render ---
   return (
-    <div>
-      {/* Header */}
-      <div
-        style={{
-          display: 'flex',
-          flexWrap: 'wrap',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: 'var(--space-6)',
-          gap: 'var(--space-4)',
-        }}
-      >
-        <h1
-          style={{
-            fontSize: 'var(--text-h1-size)',
-            fontWeight: 500,
-            color: 'var(--text-primary)',
-            margin: 0,
-            letterSpacing: '-0.03em',
-          }}
-        >
-          模拟交易
-        </h1>
-        <Space>
-          <Button
-            icon={<PlusOutlined />}
-            type="primary"
-            onClick={() => setCreateModalOpen(true)}
-          >
+    <PageShell maxWidth="wide">
+      <PageHeader
+        eyebrow="交易"
+        title="模拟交易"
+        description="使用虚拟资金测试交易策略，零风险验证信号执行效果"
+        extra={
+          <Button type="primary" icon={<PlusOutlined />} onClick={() => setCreateModalOpen(true)}>
             创建账户
           </Button>
-        </Space>
-      </div>
+        }
+      />
 
-      {/* Account selector */}
-      <div style={{ marginBottom: 'var(--space-6)' }}>
+      <div className="phase5c-account-selector">
         {accountsLoading ? (
           <Skeleton active paragraph={{ rows: 1 }} />
         ) : accounts.length === 0 ? (
-          <Card
-            style={{
-              textAlign: 'center',
-              padding: 60,
-              color: 'var(--text-tertiary)',
-              border: '1px dashed var(--border-default)',
-            }}
-          >
-            <div style={{ fontSize: 'var(--text-h2-size)', marginBottom: 16 }}>
-              还没有模拟账户
-            </div>
-            <Button
-              type="primary"
-              icon={<PlusOutlined />}
-              onClick={() => setCreateModalOpen(true)}
-            >
-              创建第一个账户
-            </Button>
-          </Card>
+          <EmptyState
+            title="还没有模拟账户"
+            description="创建第一个模拟账户，开始零风险交易验证"
+            action={
+              <Button type="primary" icon={<PlusOutlined />} onClick={() => setCreateModalOpen(true)}>
+                创建第一个账户
+              </Button>
+            }
+          />
         ) : (
           <Select
             value={selectedAccountId}
@@ -365,13 +325,7 @@ export default function PaperTrading() {
               label: (
                 <span>
                   {a.name}
-                  <span
-                    style={{
-                      marginLeft: 8,
-                      fontFamily: 'var(--font-mono)',
-                      color: 'var(--text-tertiary)',
-                    }}
-                  >
+                  <span className="font-mono" style={{ marginLeft: 8, color: 'var(--text-tertiary)' }}>
                     {fmtUSDT(a.total_value || a.cash)}
                   </span>
                 </span>
@@ -383,17 +337,9 @@ export default function PaperTrading() {
 
       {selectedAccountId && (
         <>
-          {/* Account overview + PnL cards */}
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
-              gap: 'var(--space-4)',
-              marginBottom: 'var(--space-6)',
-            }}
-          >
-            {/* Equity */}
-            <Card size="small">
+          <SectionHeading title="账户概览" />
+          <ResponsiveGrid cols={4} gap="md" className="phase5c-section">
+            <Card size="small" className="phase5c-trading-card">
               <Statistic
                 title="总权益"
                 value={pnl?.total_equity ?? account?.total_value ?? account?.cash}
@@ -403,8 +349,7 @@ export default function PaperTrading() {
                 valueStyle={{ fontFamily: 'var(--font-mono)', fontWeight: 600 }}
               />
             </Card>
-            {/* Cash */}
-            <Card size="small">
+            <Card size="small" className="phase5c-trading-card">
               <Statistic
                 title="可用现金"
                 value={account?.cash}
@@ -414,8 +359,7 @@ export default function PaperTrading() {
                 valueStyle={{ fontFamily: 'var(--font-mono)' }}
               />
             </Card>
-            {/* Market value */}
-            <Card size="small">
+            <Card size="small" className="phase5c-trading-card">
               <Statistic
                 title="持仓市值"
                 value={pnl?.market_value}
@@ -425,8 +369,7 @@ export default function PaperTrading() {
                 valueStyle={{ fontFamily: 'var(--font-mono)' }}
               />
             </Card>
-            {/* Total PnL */}
-            <Card size="small">
+            <Card size="small" className="phase5c-trading-card">
               <Statistic
                 title="总盈亏"
                 value={pnl?.total_pnl ?? 0}
@@ -461,8 +404,7 @@ export default function PaperTrading() {
                 </div>
               )}
             </Card>
-            {/* Win rate */}
-            <Card size="small">
+            <Card size="small" className="phase5c-trading-card">
               <Statistic
                 title="交易次数"
                 value={pnl?.trade_count ?? 0}
@@ -475,17 +417,10 @@ export default function PaperTrading() {
                 </div>
               )}
             </Card>
-          </div>
+          </ResponsiveGrid>
 
-          {/* Action buttons */}
-          <div
-            style={{
-              display: 'flex',
-              gap: 'var(--space-3)',
-              marginBottom: 'var(--space-6)',
-              flexWrap: 'wrap',
-            }}
-          >
+          <SectionHeading title="操作" />
+          <div className="phase5c-action-bar phase5c-section">
             <Button
               icon={<PlusOutlined />}
               onClick={() => setOrderModalOpen(true)}
@@ -517,66 +452,52 @@ export default function PaperTrading() {
             </Button>
           </div>
 
-          {/* Positions */}
-          <Card
-            title="当前持仓"
-            style={{ marginBottom: 'var(--space-6)' }}
-            styles={{ body: { padding: 0 } }}
-          >
-            {positionsLoading ? (
-              <Skeleton active paragraph={{ rows: 5 }} style={{ padding: 16 }} />
-            ) : positions && positions.length > 0 ? (
-              <Table
-                columns={positionColumns}
-                dataSource={positions}
-                rowKey="id"
-                pagination={false}
-                size="small"
-              />
-            ) : (
-              <div
-                style={{
-                  padding: 40,
-                  textAlign: 'center',
-                  color: 'var(--text-tertiary)',
-                }}
-              >
-                暂无持仓
-              </div>
-            )}
-          </Card>
+          <SectionHeading title="当前持仓" />
+          <Panel variant="default" className="phase5c-section">
+            <div className="phase5c-table-wrap">
+              {positionsLoading ? (
+                <Skeleton active paragraph={{ rows: 5 }} style={{ padding: 16 }} />
+              ) : positions && positions.length > 0 ? (
+                <Table
+                  columns={positionColumns}
+                  dataSource={positions}
+                  rowKey="id"
+                  pagination={false}
+                  size="small"
+                  scroll={{ x: 'max-content' }}
+                />
+              ) : (
+                <div className="phase5c-empty">
+                  <EmptyState title="暂无持仓" description="当前账户没有持仓记录" />
+                </div>
+              )}
+            </div>
+          </Panel>
 
-          {/* Orders */}
-          <Card
-            title="最近订单"
-            styles={{ body: { padding: 0 } }}
-          >
-            {ordersLoading ? (
-              <Skeleton active paragraph={{ rows: 5 }} style={{ padding: 16 }} />
-            ) : orders && orders.items.length > 0 ? (
-              <Table
-                columns={orderColumns}
-                dataSource={orders.items}
-                rowKey="id"
-                pagination={{ pageSize: 20, size: 'small' }}
-                size="small"
-              />
-            ) : (
-              <div
-                style={{
-                  padding: 40,
-                  textAlign: 'center',
-                  color: 'var(--text-tertiary)',
-                }}
-              >
-                暂无订单
-              </div>
-            )}
-          </Card>
+          <SectionHeading title="最近订单" />
+          <Panel variant="default">
+            <div className="phase5c-table-wrap">
+              {ordersLoading ? (
+                <Skeleton active paragraph={{ rows: 5 }} style={{ padding: 16 }} />
+              ) : orders && orders.items.length > 0 ? (
+                <Table
+                  columns={orderColumns}
+                  dataSource={orders.items}
+                  rowKey="id"
+                  pagination={{ pageSize: 20, size: 'small' }}
+                  size="small"
+                  scroll={{ x: 'max-content' }}
+                />
+              ) : (
+                <div className="phase5c-empty">
+                  <EmptyState title="暂无订单" description="当前账户没有订单记录" />
+                </div>
+              )}
+            </div>
+          </Panel>
         </>
       )}
 
-      {/* Create account modal */}
       <Modal
         title="创建模拟账户"
         open={createModalOpen}
@@ -607,7 +528,6 @@ export default function PaperTrading() {
         </Form>
       </Modal>
 
-      {/* Place order modal */}
       <Modal
         title="手动下单"
         open={orderModalOpen}
@@ -652,6 +572,6 @@ export default function PaperTrading() {
           </Form.Item>
         </Form>
       </Modal>
-    </div>
+    </PageShell>
   );
 }

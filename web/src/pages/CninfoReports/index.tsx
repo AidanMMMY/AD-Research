@@ -1,10 +1,13 @@
 import { useMemo, useState } from 'react';
 import {
-  Table, Input, Select, DatePicker, Button, Space, Tag, Skeleton, message, Empty,
+  Table, Input, Select, DatePicker, Button, Space, Tag, Skeleton, message,
 } from 'antd';
-import { SearchOutlined, ReloadOutlined, CalendarOutlined } from '@ant-design/icons';
+import { SearchOutlined, ReloadOutlined, CalendarOutlined, FileTextOutlined } from '@ant-design/icons';
 import { type Dayjs } from 'dayjs';
+import PageShell from '@/components/PageShell';
 import Panel from '@/components/Panel';
+import FilterToolbar from '@/components/FilterToolbar';
+import EmptyState from '@/components/EmptyState';
 import HelpTrigger from '@/components/HelpTrigger';
 import PageHeader from '@/components/PageHeader';
 import LastUpdated from '@/components/LastUpdated';
@@ -111,31 +114,20 @@ export default function CninfoReportsPage() {
       dataIndex: 'ts_code',
       width: 110,
       render: (v: string, record: CninfoReport) => (
-        <button
-          type="button"
-          onClick={() => handleOpenDetail(record.id)}
+        <Button
+          type="link"
+          size="small"
           className="tabular-nums"
-          style={{
-            background: 'none',
-            border: 'none',
-            padding: 0,
-            color: 'var(--accent)',
-            fontFamily: 'var(--font-mono)',
-            cursor: 'pointer',
-            fontSize: 'var(--text-small-size)',
-          }}
+          onClick={() => handleOpenDetail(record.id)}
         >
           {v}
-        </button>
+        </Button>
       ),
     },
     {
       title: '公告标题',
       dataIndex: 'announcement_title',
       ellipsis: true,
-      render: (v: string) => (
-        <span style={{ color: 'var(--text-primary)' }}>{v}</span>
-      ),
     },
     {
       title: '报告类型',
@@ -151,9 +143,7 @@ export default function CninfoReportsPage() {
       width: 80,
       render: (v: number | null) =>
         v !== null && v !== undefined ? (
-          <span className="tabular-nums" style={{ fontFamily: 'var(--font-mono)' }}>
-            {v}
-          </span>
+          <span className="tabular-nums">{v}</span>
         ) : (
           '-'
         ),
@@ -175,9 +165,7 @@ export default function CninfoReportsPage() {
           <Space size={4} direction="vertical">
             <Tag color={color}>{v}</Tag>
             {record.extracted_at ? (
-              <span style={{ fontSize: 'var(--text-small-size)', color: 'var(--text-tertiary)' }}>
-                {formatBytes(record.file_size)}
-              </span>
+              <span className="last-updated">{formatBytes(record.file_size)}</span>
             ) : null}
           </Space>
         );
@@ -192,7 +180,7 @@ export default function CninfoReportsPage() {
     : []);
 
   return (
-    <div>
+    <PageShell maxWidth="wide">
       <PageHeader
         eyebrow="研究"
         title="巨潮定期报告"
@@ -213,109 +201,114 @@ export default function CninfoReportsPage() {
       />
 
       {coverage ? (
-        <Panel variant="minimal" title="覆盖度">
-          <Space size="large" wrap>
-            <span>
-              报告总数 <strong>{coverage.total_reports}</strong>
-            </span>
-            <span>
-              覆盖股票 <strong>{coverage.stocks_covered}</strong>
-            </span>
-            <span>
-              已提取文本 <strong>{coverage.stocks_with_text}</strong>
-            </span>
-          </Space>
+        <Panel variant="default" title="覆盖度">
+          <div className="ad-metric-strip">
+            <div className="ad-metric-item">
+              <div className="ad-metric-item__label">报告总数</div>
+              <div className="ad-metric-item__value">{coverage.total_reports}</div>
+            </div>
+            <div className="ad-metric-item">
+              <div className="ad-metric-item__label">覆盖股票</div>
+              <div className="ad-metric-item__value">{coverage.stocks_covered}</div>
+            </div>
+            <div className="ad-metric-item">
+              <div className="ad-metric-item__label">已提取文本</div>
+              <div className="ad-metric-item__value">{coverage.stocks_with_text}</div>
+            </div>
+          </div>
         </Panel>
       ) : null}
 
-      <Panel variant="minimal" title="筛选条件" style={{ marginTop: 16 }}>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-3)', alignItems: 'center' }}>
-          <Input
-            placeholder="搜索 ts_code (如 600519.SH)"
-            allowClear
-            prefix={<SearchOutlined style={{ color: 'var(--text-tertiary)' }} />}
-            value={search}
-            onChange={(e) => {
-              setSearch(e.target.value);
-              setPage(1);
-            }}
-            style={{ width: 240 }}
-          />
-          <Select
-            placeholder="报告类型"
-            allowClear
-            style={{ width: 140 }}
-            value={adjunctType}
-            onChange={(v) => {
-              setAdjunctType(v);
-              setPage(1);
-            }}
-            options={ADJUNCT_OPTIONS}
-          />
-          <Select
-            placeholder="财年"
-            allowClear
-            style={{ width: 120 }}
-            value={fiscalYear}
-            onChange={(v) => {
-              setFiscalYear(v);
-              setPage(1);
-            }}
-            options={yearOptions.map((y) => ({ label: String(y), value: y }))}
-          />
-          <Select
-            placeholder="文本提取"
-            allowClear
-            style={{ width: 140 }}
-            value={hasText}
-            onChange={(v) => {
-              setHasText(v);
-              setPage(1);
-            }}
-            options={[
-              { label: '已提取', value: true },
-              { label: '未提取', value: false },
-            ]}
-          />
-          <DatePicker.RangePicker
-            value={dateRange as [Dayjs, Dayjs] | null}
-            onChange={(v) => {
-              setDateRange(v);
-              setPage(1);
-            }}
-            placeholder={['披露 起', '披露 止']}
-            suffixIcon={<CalendarOutlined />}
-          />
-          <Button onClick={handleReset}>重置</Button>
-        </div>
-      </Panel>
+      <FilterToolbar total={total}>
+        <Input
+          placeholder="搜索 ts_code (如 600519.SH)"
+          allowClear
+          prefix={<SearchOutlined />}
+          value={search}
+          onChange={(e) => {
+            setSearch(e.target.value);
+            setPage(1);
+          }}
+          style={{ width: 240 }}
+        />
+        <Select
+          placeholder="报告类型"
+          allowClear
+          style={{ width: 140 }}
+          value={adjunctType}
+          onChange={(v) => {
+            setAdjunctType(v);
+            setPage(1);
+          }}
+          options={ADJUNCT_OPTIONS}
+        />
+        <Select
+          placeholder="财年"
+          allowClear
+          style={{ width: 120 }}
+          value={fiscalYear}
+          onChange={(v) => {
+            setFiscalYear(v);
+            setPage(1);
+          }}
+          options={yearOptions.map((y) => ({ label: String(y), value: y }))}
+        />
+        <Select
+          placeholder="文本提取"
+          allowClear
+          style={{ width: 140 }}
+          value={hasText}
+          onChange={(v) => {
+            setHasText(v);
+            setPage(1);
+          }}
+          options={[
+            { label: '已提取', value: true },
+            { label: '未提取', value: false },
+          ]}
+        />
+        <DatePicker.RangePicker
+          value={dateRange as [Dayjs, Dayjs] | null}
+          onChange={(v) => {
+            setDateRange(v);
+            setPage(1);
+          }}
+          placeholder={['披露 起', '披露 止']}
+          suffixIcon={<CalendarOutlined />}
+        />
+        <Button onClick={handleReset}>重置</Button>
+      </FilterToolbar>
 
-      <div style={{ marginTop: 'var(--space-4)' }}>
+      <Panel variant="default" padding="none">
         {isLoading ? (
           <Skeleton active paragraph={{ rows: 10 }} />
         ) : items.length === 0 ? (
-          <Empty description="暂无符合条件的巨潮报告" />
-        ) : (
-          <Table
-            dataSource={items}
-            columns={columns}
-            rowKey="id"
-            scroll={{ x: 'max-content' }}
-            pagination={{
-              current: page,
-              pageSize,
-              total,
-              onChange: setPage,
-              showSizeChanger: false,
-              showTotal: (t) => `共 ${t} 条`,
-            }}
-            onRow={(record) => ({
-              onClick: () => handleOpenDetail(record.id),
-              style: { cursor: 'pointer' },
-            })}
+          <EmptyState
+            icon={<FileTextOutlined />}
+            title="暂无符合条件的巨潮报告"
+            description="尝试调整筛选条件或刷新数据"
           />
+        ) : (
+          <div className="ad-density-dense ad-table-scroll ad-table-sticky">
+            <Table
+              dataSource={items}
+              columns={columns}
+              rowKey="id"
+              pagination={{
+                current: page,
+                pageSize,
+                total,
+                onChange: setPage,
+                showSizeChanger: false,
+                showTotal: (t) => `共 ${t} 条`,
+              }}
+              onRow={(record) => ({
+                onClick: () => handleOpenDetail(record.id),
+              })}
+            />
+          </div>
         )}
-      </div>
+      </Panel>
 
       <CninfoReportDetailDrawer
         open={detailOpen}
@@ -323,7 +316,7 @@ export default function CninfoReportsPage() {
         report={detail ?? null}
         onClose={handleCloseDetail}
       />
-    </div>
+    </PageShell>
   );
 }
 
@@ -344,31 +337,18 @@ function CninfoReportDetailDrawer({
 
   return (
     <div
-      style={{
-        position: 'fixed',
-        inset: 0,
-        background: 'rgba(0,0,0,0.45)',
-        display: 'flex',
-        justifyContent: 'flex-end',
-        zIndex: 1000,
-      }}
+      className="ad-detail-drawer-overlay"
       onClick={onClose}
     >
       <div
-        style={{
-          width: 560,
-          maxWidth: '90vw',
-          background: 'var(--card-bg)',
-          padding: 24,
-          overflowY: 'auto',
-        }}
+        className="ad-detail-drawer"
         onClick={(e) => e.stopPropagation()}
       >
         {loading || !report ? (
           <Skeleton active paragraph={{ rows: 8 }} />
         ) : (
           <>
-            <h3 style={{ marginTop: 0 }}>{report.announcement_title}</h3>
+            <h3>{report.announcement_title}</h3>
             <Space size="small" wrap>
               <Tag color={ADJUNCT_COLOR[report.adjunct_type] ?? 'default'}>
                 {ADJUNCT_LABEL[report.adjunct_type] ?? report.adjunct_type}
@@ -378,7 +358,7 @@ function CninfoReportDetailDrawer({
             </Space>
 
             <Panel variant="minimal" title="元数据" style={{ marginTop: 16 }}>
-              <pre style={{ whiteSpace: 'pre-wrap', fontFamily: 'var(--font-mono)', fontSize: 12 }}>
+              <pre className="font-mono" style={{ whiteSpace: 'pre-wrap' }}>
 {JSON.stringify(
                   {
                     announcement_id: report.announcement_id,
@@ -399,7 +379,7 @@ function CninfoReportDetailDrawer({
 
             {report.extracted_text_preview ? (
               <Panel variant="minimal" title="文本预览 (前 500 字)" style={{ marginTop: 16 }}>
-                <div style={{ whiteSpace: 'pre-wrap', fontSize: 'var(--text-small-size)' }}>
+                <div style={{ whiteSpace: 'pre-wrap' }}>
                   {report.extracted_text_preview}
                 </div>
               </Panel>

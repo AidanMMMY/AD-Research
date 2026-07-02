@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { Row, Col, Table, Spin, Alert, Space } from 'antd';
+import { Table, Spin, Alert, Space } from 'antd';
 import ReactECharts from 'echarts-for-react';
 import type { EChartsOption } from 'echarts';
 import { useSectorRotation } from '@/hooks/useSectorRotation';
@@ -7,7 +7,10 @@ import { useSparkline } from '@/hooks/useSparkline';
 import ReturnTag from '@/components/ReturnTag';
 import ThemeTag from '@/components/ThemeTag';
 import Sparkline from '@/components/Sparkline';
-import GlassCard from '@/components/GlassCard';
+import PageShell from '@/components/PageShell';
+import PageHeader from '@/components/PageHeader';
+import Panel from '@/components/Panel';
+import ResponsiveGrid from '@/components/ResponsiveGrid';
 import { getReturnColor, getUpColor, getDownColor } from '@/utils/color';
 
 /**
@@ -125,106 +128,82 @@ export default function SectorRotation() {
   ];
 
   return (
-    <div>
-      <h1 style={{ fontSize: 'var(--text-h1-size)', fontWeight: 500, color: 'var(--text-primary)', margin: '0 0 8px', letterSpacing: '-0.03em' }}>板块轮动</h1>
-      <p style={{ margin: '0 0 32px', color: 'var(--text-tertiary)', fontSize: 'var(--text-body-size)' }}>分析各板块收益排名与相对强弱，跟踪轮动信号</p>
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(3, 1fr)',
-          borderTop: '1px solid var(--border-default)',
-          borderBottom: '1px solid var(--border-default)',
-          marginBottom: 24,
-        }}
-      >
-        {[
-          { title: '分析日期', value: data?.trade_date || '—' },
-          { title: '市场平均1月收益', value: marketAvg?.return_1m ?? 0, suffix: '%', precision: 2, colored: true },
-          { title: '板块数量', value: sectors.length },
-        ].map((m, i) => (
+    <PageShell maxWidth="wide">
+      <PageHeader
+        title="板块轮动"
+        description="分析各板块收益排名与相对强弱，跟踪轮动信号"
+      />
+      <div className="ad-metric-strip ad-mb-5">
+        <div className="ad-metric-item">
+          <div className="ad-metric-item__label">分析日期</div>
+          <div className="ad-metric-item__value">{data?.trade_date || '—'}</div>
+        </div>
+        <div className="ad-metric-item">
+          <div className="ad-metric-item__label">市场平均1月收益</div>
           <div
-            key={m.title}
-            style={{
-              padding: 'var(--space-5) var(--space-4)',
-              borderRight: i < 2 ? '1px solid var(--border-default)' : 'none',
-            }}
+            className="ad-metric-item__value ad-metric-item__value--colored"
+            style={{ color: getReturnColor(marketAvg?.return_1m ?? 0) }}
           >
-            <div
-              style={{
-                fontSize: 'var(--text-label-size)',
-                color: 'var(--text-tertiary)',
-                fontWeight: 500,
-                marginBottom: '12px',
-                letterSpacing: '0.12em',
-                textTransform: 'uppercase',
-              }}
-            >
-              {m.title}
-            </div>
-            <div
-              style={{
-                fontSize: 'var(--text-data-lg-size)',
-                fontWeight: 400,
-                color: m.colored ? getReturnColor(m.value as number) : 'var(--text-primary)',
-                fontFamily: 'var(--font-mono)',
-                lineHeight: 1.2,
-              }}
-            >
-              {typeof m.value === 'number' && m.precision !== undefined
-                ? (m.value as number).toFixed(m.precision)
-                : m.value}
-              {m.suffix && (
-                <span style={{ fontSize: 'var(--text-small-size)', color: 'var(--text-tertiary)', marginLeft: 4 }}>
-                  {m.suffix}
-                </span>
-              )}
-            </div>
+            {(marketAvg?.return_1m ?? 0).toFixed(2)}
+            <span className="ad-metric-item__suffix">%</span>
           </div>
-        ))}
+        </div>
+        <div className="ad-metric-item">
+          <div className="ad-metric-item__label">板块数量</div>
+          <div className="ad-metric-item__value">{sectors.length}</div>
+        </div>
       </div>
 
       {signals.length > 0 && (
-        <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
-          <Col span={24}>
-            <GlassCard title="轮动信号">
-              <Space direction="vertical" style={{ width: '100%' }}>
-                {signals.map((signal, idx) => (
-                  <Alert
-                    key={idx}
-                    message={signal.message}
-                    type={signal.type === 'up' ? 'success' : 'warning'}
-                    showIcon
-                  />
-                ))}
-              </Space>
-            </GlassCard>
-          </Col>
-        </Row>
+        <Panel title="轮动信号" variant="default" className="ad-mb-4">
+          <Space direction="vertical" style={{ width: '100%' }}>
+            {signals.map((signal, idx) => (
+              <Alert
+                key={idx}
+                message={signal.message}
+                type={signal.type === 'up' ? 'success' : 'warning'}
+                showIcon
+              />
+            ))}
+          </Space>
+        </Panel>
       )}
 
-      <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
-        <Col xs={24} lg={12}>
-          <GlassCard title="板块1月收益排名">
-            {isLoading ? <Spin /> : <ReactECharts option={barOption} style={{ height: 300 }} />}
-          </GlassCard>
-        </Col>
-        <Col xs={24} lg={12}>
-          <GlassCard title="板块相对强弱（vs 市场平均）">
-            {isLoading ? <Spin /> : <ReactECharts option={rsOption} style={{ height: 300 }} />}
-          </GlassCard>
-        </Col>
-      </Row>
+      <div className="ad-mb-4">
+        <ResponsiveGrid cols={2} gap="md">
+          <Panel title="板块1月收益排名" variant="default">
+            {isLoading ? (
+              <Spin />
+            ) : (
+              <div className="ad-chart-container">
+                <ReactECharts option={barOption} />
+              </div>
+            )}
+          </Panel>
+          <Panel title="板块相对强弱（vs 市场平均）" variant="default">
+            {isLoading ? (
+              <Spin />
+            ) : (
+              <div className="ad-chart-container">
+                <ReactECharts option={rsOption} />
+              </div>
+            )}
+          </Panel>
+        </ResponsiveGrid>
+      </div>
 
-      <GlassCard title="板块详细数据">
-        <Table
-          dataSource={sectors}
-          columns={columns}
-          rowKey="category"
-          size="small"
-          pagination={false}
-          loading={isLoading}
-        />
-      </GlassCard>
-    </div>
+      <Panel title="板块详细数据" variant="default">
+        <div className="ad-density-dense ad-table-scroll ad-table-sticky">
+          <Table
+            dataSource={sectors}
+            columns={columns}
+            rowKey="category"
+            size="small"
+            pagination={false}
+            loading={isLoading}
+          />
+        </div>
+      </Panel>
+    </PageShell>
   );
 }

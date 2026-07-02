@@ -10,11 +10,7 @@ import './styles/global.css';
 
 // Apply persisted theme synchronously to avoid flash of wrong theme
 const initialTheme = getInitialTheme();
-if (initialTheme === 'print') {
-  document.documentElement.setAttribute('data-theme', 'print');
-} else {
-  document.documentElement.removeAttribute('data-theme');
-}
+document.documentElement.setAttribute('data-theme', initialTheme);
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -28,64 +24,58 @@ const queryClient = new QueryClient({
 /**
  * Build the Ant Design theme object for the active visual mode.
  *
- * Two coexisting visual modes:
- *   - 'terminal' (default) — Swiss dark + Bento warmth, terminal green accent
- *   - 'print'             — FT/WSJ cream paper, brick-red accent, sharp corners
+ * Two visual modes:
+ *   - 'clean' (default) — light, clean surface with blue accent
+ *   - 'dark'            — existing terminal dark + green accent
  *
  * The CSS variable layer (theme.css) re-skins the entire app via
- * <html data-theme="print">, but Ant Design's component tokens
- * (colorPrimary, borderRadius, …) are JS-side and don't read CSS
- * variables. So we mirror the palette here in JS.
+ * <html data-theme="clean"> or <html data-theme="dark">, but Ant Design's
+ * component tokens (colorPrimary, borderRadius, …) are JS-side and don't read
+ * CSS variables. So we mirror the palette here in JS.
  *
  * Re-runs when `<html data-theme>` changes via the `themechange`
  * custom event dispatched from useTheme().
  */
 const useAntdTheme = () => {
   const [mode, setMode] = useState<Theme>(() =>
-    typeof document !== 'undefined' &&
-    document.documentElement.getAttribute('data-theme') === 'print'
-      ? 'print'
-      : 'terminal',
+    typeof document !== 'undefined'
+      ? (document.documentElement.getAttribute('data-theme') as Theme) || 'clean'
+      : 'clean',
   );
 
   useEffect(() => {
     const handler = (e: Event) => {
       const detail = (e as CustomEvent<Theme>).detail;
-      setMode(detail === 'print' ? 'print' : 'terminal');
+      setMode(detail === 'dark' ? 'dark' : 'clean');
     };
     document.addEventListener('themechange', handler);
     return () => document.removeEventListener('themechange', handler);
   }, []);
 
-  if (mode === 'print') {
+  if (mode === 'dark') {
+    // Dark terminal theme
     return {
-      algorithm: theme.defaultAlgorithm,
+      algorithm: theme.darkAlgorithm,
       token: {
-        colorPrimary: '#8b1a1a',
-        colorInfo: '#8b1a1a',
-        colorSuccess: '#166534',
-        colorWarning: '#b45309',
-        colorError: '#b91c1c',
-        colorBgBase: '#f5f1e8',
-        colorBgContainer: '#fbf7ec',
-        colorBgElevated: '#fbf7ec',
-        colorTextBase: '#1a1a1a',
-        colorTextSecondary: '#555555',
-        colorTextTertiary: '#7a7a7a',
-        colorBorder: '#d4cebd',
-        colorBorderSecondary: '#d4cebd',
-        // Explicit text-on-color overrides so primary/danger buttons and
-        // filled tags render WHITE text on the brick-red background.
-        // Without these Ant Design v5 derives dark text on dark accents
-        // and the contrast collapses.
-        colorTextLightSolid: '#ffffff',
-        colorTextDark: '#1a1a1a',
-        borderRadius: 0,
-        borderRadiusSM: 0,
-        borderRadiusLG: 0,
-        borderRadiusXS: 0,
-        fontFamily: "'Source Serif 4', Georgia, 'Times New Roman', serif",
-        fontFamilyCode: "'JetBrains Mono', 'SF Mono', Menlo, monospace",
+        colorPrimary: '#5fa87a',
+        colorInfo: '#5fa87a',
+        colorSuccess: '#5fa87a',
+        colorWarning: '#eab308',
+        colorError: '#c96b6b',
+        colorBgBase: '#0a0a0a',
+        colorBgContainer: '#111111',
+        colorBgElevated: '#111111',
+        colorTextBase: '#f5f5f0',
+        colorTextSecondary: '#888888',
+        colorTextTertiary: '#444444',
+        colorBorder: 'rgba(255,255,255,0.06)',
+        colorBorderSecondary: 'rgba(255,255,255,0.04)',
+        borderRadius: 8,
+        borderRadiusSM: 6,
+        borderRadiusLG: 12,
+        borderRadiusXS: 4,
+        fontFamily: "Inter, 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', 'Helvetica Neue', Arial, sans-serif",
+        fontFamilyCode: "'JetBrains Mono', 'SF Mono', 'Fira Code', 'Cascadia Code', monospace",
         controlHeight: 36,
         controlHeightSM: 30,
         controlHeightLG: 44,
@@ -93,103 +83,79 @@ const useAntdTheme = () => {
       components: {
         Table: {
           headerBg: 'transparent',
-          headerColor: '#1a1a1a',
+          headerColor: '#444444',
           headerSplitColor: 'transparent',
-          rowHoverBg: 'rgba(15, 15, 15, 0.04)',
-          borderColor: '#d4cebd',
+          rowHoverBg: 'rgba(255,255,255,0.03)',
+          borderColor: 'rgba(255,255,255,0.06)',
           cellPaddingInline: 16,
           cellPaddingBlock: 14,
           headerBorderRadius: 0,
         },
         Button: {
-          borderRadius: 0,
-          borderRadiusSM: 0,
+          borderRadius: 8,
+          borderRadiusSM: 6,
           primaryShadow: 'none',
-          // Primary button — brick red bg, white text + matching hover/active
-          colorPrimary: '#8b1a1a',
-          colorPrimaryHover: '#a52828',
-          colorPrimaryActive: '#6b1010',
-          // Danger / error button — slightly brighter red, white text
-          colorError: '#b91c1c',
-          colorErrorHover: '#dc2626',
-          colorErrorActive: '#991b1b',
-          // Force white text on any solid colored button bg
-          colorTextLightSolid: '#ffffff',
-          colorTextSecondary: '#555555',
         },
         Card: {
-          borderRadius: 0,
-          borderRadiusLG: 0,
-          colorBgContainer: '#fbf7ec',
+          borderRadius: 14,
+          borderRadiusLG: 16,
+          colorBgContainer: '#111111',
         },
         Modal: {
-          borderRadiusLG: 0,
-          colorBgElevated: '#fbf7ec',
+          borderRadiusLG: 16,
+          colorBgElevated: '#111111',
         },
         Drawer: {
-          colorBgElevated: '#fbf7ec',
+          colorBgElevated: '#111111',
         },
         Tag: {
-          borderRadiusSM: 0,
-          defaultBg: '#fffdf6',
-          defaultColor: '#555555',
-          // Filled tags rendered with primary/error colors get white text
-          colorTextLightSolid: '#ffffff',
+          borderRadiusSM: 5,
+          defaultBg: 'rgba(255,255,255,0.04)',
+          defaultColor: '#888888',
         },
         Input: {
-          borderRadius: 0,
-          colorBgContainer: '#fffdf6',
-          activeBorderColor: '#8b1a1a',
-          activeShadow: '0 0 0 2px rgba(139, 26, 26, 0.10)',
+          borderRadius: 8,
+          colorBgContainer: 'rgba(255,255,255,0.02)',
+          activeBorderColor: '#5fa87a',
+          activeShadow: '0 0 0 2px rgba(95,168,122,0.10)',
         },
         Select: {
-          borderRadius: 0,
-          colorBgContainer: '#fffdf6',
-          optionSelectedBg: 'rgba(139, 26, 26, 0.10)',
-          optionSelectedColor: '#8b1a1a',
+          borderRadius: 8,
+          colorBgContainer: 'rgba(255,255,255,0.02)',
+          optionSelectedBg: 'rgba(95,168,122,0.10)',
+          optionSelectedColor: '#5fa87a',
         },
         Tabs: {
-          inkBarColor: '#8b1a1a',
-          itemSelectedColor: '#1a1a1a',
-          itemHoverColor: '#1a1a1a',
-          itemColor: '#7a7a7a',
-        },
-        Alert: {
-          colorError: '#b91c1c',
-          colorErrorBg: '#fef2f2',
-          colorErrorBorder: '#fecaca',
-        },
-        Tooltip: {
-          colorTextLightSolid: '#ffffff',
-        },
-        Notification: {
-          colorTextLightSolid: '#ffffff',
+          inkBarColor: '#5fa87a',
+          itemSelectedColor: '#5fa87a',
+          itemHoverColor: '#f5f5f0',
+          itemColor: '#444444',
         },
       },
     };
   }
 
-  // Terminal (default) — Swiss skeleton + Bento warmth
+  // Clean (default) — light surface with blue accent
   return {
-    algorithm: theme.darkAlgorithm,
+    algorithm: theme.defaultAlgorithm,
     token: {
-      colorPrimary: '#5fa87a',
-      colorInfo: '#5fa87a',
-      colorSuccess: '#5fa87a',
-      colorWarning: '#eab308',
-      colorError: '#c96b6b',
-      colorBgBase: '#0a0a0a',
-      colorBgContainer: '#111111',
-      colorBgElevated: '#111111',
-      colorTextBase: '#f5f5f0',
-      colorTextSecondary: '#888888',
-      colorTextTertiary: '#444444',
-      colorBorder: 'rgba(255,255,255,0.06)',
-      colorBorderSecondary: 'rgba(255,255,255,0.04)',
+      colorPrimary: '#2e5bff',
+      colorInfo: '#2e5bff',
+      colorSuccess: '#10b981',
+      colorWarning: '#f59e0b',
+      colorError: '#ef4444',
+      colorBgBase: '#ffffff',
+      colorBgContainer: '#ffffff',
+      colorBgElevated: '#f7f7f8',
+      colorTextBase: '#111113',
+      colorTextSecondary: '#6b7280',
+      colorTextTertiary: '#9ca3af',
+      colorBorder: '#e5e7eb',
+      colorBorderSecondary: '#f4f4f5',
       borderRadius: 8,
-      borderRadiusSM: 6,
+      borderRadiusSM: 4,
       borderRadiusLG: 12,
-      borderRadiusXS: 4,
+      borderRadiusXS: 2,
       fontFamily: "Inter, 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', 'Helvetica Neue', Arial, sans-serif",
       fontFamilyCode: "'JetBrains Mono', 'SF Mono', 'Fira Code', 'Cascadia Code', monospace",
       controlHeight: 36,
@@ -199,53 +165,78 @@ const useAntdTheme = () => {
     components: {
       Table: {
         headerBg: 'transparent',
-        headerColor: '#444444',
+        headerColor: '#9ca3af',
         headerSplitColor: 'transparent',
-        rowHoverBg: 'rgba(255,255,255,0.03)',
-        borderColor: 'rgba(255,255,255,0.06)',
+        rowHoverBg: 'rgba(0,0,0,0.03)',
+        borderColor: '#e5e7eb',
         cellPaddingInline: 16,
         cellPaddingBlock: 14,
         headerBorderRadius: 0,
       },
       Button: {
         borderRadius: 8,
-        borderRadiusSM: 6,
+        borderRadiusSM: 4,
         primaryShadow: 'none',
+        colorPrimary: '#2e5bff',
+        colorPrimaryHover: '#1a4bff',
+        colorPrimaryActive: '#153de6',
+        colorTextLightSolid: '#ffffff',
       },
       Card: {
-        borderRadius: 14,
-        borderRadiusLG: 16,
-        colorBgContainer: '#111111',
+        borderRadius: 12,
+        borderRadiusLG: 12,
+        colorBgContainer: '#ffffff',
       },
       Modal: {
-        borderRadiusLG: 16,
-        colorBgElevated: '#111111',
+        borderRadiusLG: 12,
+        colorBgElevated: '#f7f7f8',
       },
       Drawer: {
-        colorBgElevated: '#111111',
+        colorBgElevated: '#f7f7f8',
       },
       Tag: {
-        borderRadiusSM: 5,
-        defaultBg: 'rgba(255,255,255,0.04)',
-        defaultColor: '#888888',
+        borderRadiusSM: 4,
+        defaultBg: '#f4f4f5',
+        defaultColor: '#6b7280',
+        colorTextLightSolid: '#ffffff',
       },
       Input: {
         borderRadius: 8,
-        colorBgContainer: 'rgba(255,255,255,0.02)',
-        activeBorderColor: '#5fa87a',
-        activeShadow: '0 0 0 2px rgba(95,168,122,0.10)',
+        colorBgContainer: '#ffffff',
+        activeBorderColor: '#2e5bff',
+        activeShadow: '0 0 0 2px rgba(46,91,255,0.08)',
       },
       Select: {
         borderRadius: 8,
-        colorBgContainer: 'rgba(255,255,255,0.02)',
-        optionSelectedBg: 'rgba(95,168,122,0.10)',
-        optionSelectedColor: '#5fa87a',
+        colorBgContainer: '#ffffff',
+        optionSelectedBg: 'rgba(46,91,255,0.08)',
+        optionSelectedColor: '#2e5bff',
       },
       Tabs: {
-        inkBarColor: '#5fa87a',
-        itemSelectedColor: '#5fa87a',
-        itemHoverColor: '#f5f5f0',
-        itemColor: '#444444',
+        inkBarColor: '#2e5bff',
+        itemSelectedColor: '#111113',
+        itemHoverColor: '#6b7280',
+        itemColor: '#9ca3af',
+      },
+      Alert: {
+        colorError: '#ef4444',
+        colorErrorBg: '#fef2f2',
+        colorErrorBorder: '#fecaca',
+        colorWarning: '#f59e0b',
+        colorWarningBg: '#fffbeb',
+        colorWarningBorder: '#fde68a',
+        colorSuccess: '#10b981',
+        colorSuccessBg: '#ecfdf5',
+        colorSuccessBorder: '#a7f3d0',
+        colorInfo: '#2e5bff',
+        colorInfoBg: '#eff4ff',
+        colorInfoBorder: '#c7d7ff',
+      },
+      Tooltip: {
+        colorTextLightSolid: '#ffffff',
+      },
+      Notification: {
+        colorTextLightSolid: '#ffffff',
       },
     },
   };

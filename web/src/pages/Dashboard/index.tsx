@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { Table, List, Spin, Empty, Skeleton, Tag, Badge, Tooltip } from 'antd';
+import { Table, List, Spin, Skeleton, Tag, Badge, Tooltip } from 'antd';
 import {
   ArrowUpOutlined,
   ArrowDownOutlined,
@@ -14,6 +14,11 @@ import { useFavorites } from '@/hooks/useFavorites';
 import { usePoolList } from '@/hooks/usePoolDetail';
 import { statsApi } from '@/api/stats';
 import { newsApi } from '@/api/news';
+import PageShell from '@/components/PageShell';
+import ResponsiveGrid from '@/components/ResponsiveGrid';
+import SectionHeading from '@/components/SectionHeading';
+import StatCard from '@/components/StatCard';
+import EmptyState from '@/components/EmptyState';
 import Panel from '@/components/Panel';
 import InstrumentCodeTag from '@/components/InstrumentCodeTag';
 import ReturnTag from '@/components/ReturnTag';
@@ -35,8 +40,6 @@ const SENTIMENT_LABELS: Record<SentimentLabel, string> = {
   neutral: '中性',
   negative: '看空',
 };
-
-const IMPORTANCE_COLOR = 'var(--color-warning-bright)';
 
 function formatRelative(iso: string): string {
   const t = dayjs(iso);
@@ -61,82 +64,43 @@ function NewsRow({
   const filled = article.importance ? Math.max(0, Math.min(5, article.importance)) : 0;
   return (
     <div
+      className="dashboard-news-row"
       onClick={() => onOpen(article.id)}
-      style={{
-        padding: 'var(--space-3) 0',
-        borderBottom: '1px solid var(--border-default)',
-        cursor: 'pointer',
-        transition: 'background var(--transition-fast)',
-      }}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.background = 'var(--bg-hover)';
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.background = 'transparent';
-      }}
     >
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 'var(--space-2)',
-          fontSize: 11,
-          color: 'var(--text-tertiary)',
-          marginBottom: 4,
-        }}
-      >
+      <div className="dashboard-news-row__meta">
         <span>{article.source}</span>
-        <span style={{ color: 'var(--text-muted)' }}>·</span>
+        <span className="dashboard-news-row__divider">·</span>
         <Tooltip title={dayjs(article.published_at).format('YYYY-MM-DD HH:mm')}>
           <span>{formatRelative(article.published_at)}</span>
         </Tooltip>
         {article.importance ? (
-          <span style={{ marginLeft: 'auto', letterSpacing: 1 }}>
+          <span className="dashboard-news-row__importance">
             {Array.from({ length: 5 }).map((_, i) => (
               <StarFilled
                 key={i}
-                style={{
-                  color: i < filled ? IMPORTANCE_COLOR : 'var(--text-muted)',
-                  opacity: i < filled ? 1 : 0.4,
-                  fontSize: 'var(--text-small-size)',
-                  marginRight: 1,
-                }}
+                className={`dashboard-news-row__star ${
+                  i < filled ? 'dashboard-news-row__star--filled' : 'dashboard-news-row__star--empty'
+                }`}
               />
             ))}
           </span>
         ) : null}
       </div>
-      <div
-        style={{
-          fontSize: 13,
-          color: 'var(--text-primary)',
-          lineHeight: 1.5,
-          display: '-webkit-box',
-          WebkitLineClamp: 2,
-          WebkitBoxOrient: 'vertical',
-          overflow: 'hidden',
-          marginBottom: 4,
-        }}
-      >
-        {article.title}
-      </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
+      <div className="dashboard-news-row__title">{article.title}</div>
+      <div className="dashboard-news-row__tags">
         {article.symbols.slice(0, 4).map((s) => (
-          <Tag key={`${s.symbol}-${s.match_type}`} style={{ margin: 0, fontSize: 10 }}>
+          <Tag key={`${s.symbol}-${s.match_type}`} className="dashboard-news-row__tag">
             {s.symbol}
           </Tag>
         ))}
-        <span style={{ flex: 1 }} />
+        <span className="dashboard-news-row__spacer" />
         {article.sentiment_label && (
           <Badge
             color={SENTIMENT_COLORS[article.sentiment_label]}
             text={
               <span
-                style={{
-                  fontSize: 11,
-                  color: SENTIMENT_COLORS[article.sentiment_label],
-                  fontWeight: 500,
-                }}
+                className="dashboard-news-row__sentiment"
+                style={{ color: SENTIMENT_COLORS[article.sentiment_label] }}
               >
                 {SENTIMENT_LABELS[article.sentiment_label]}
               </span>
@@ -217,6 +181,7 @@ export default function Dashboard() {
       width: 70,
       render: (v: number) => (
         <span
+          className="tabular-nums"
           style={{
             fontSize: 'var(--text-body-size)',
             fontWeight: v <= 3 ? 700 : 500,
@@ -259,7 +224,7 @@ export default function Dashboard() {
   ];
 
   return (
-    <div>
+    <PageShell maxWidth="full">
       <TickerTape limit={20} />
       <header className="masthead">
         <div className="masthead-dateline">
@@ -277,200 +242,75 @@ export default function Dashboard() {
         </p>
       </header>
 
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(4, 1fr)',
-          borderTop: '1px solid var(--border-default)',
-          borderBottom: '1px solid var(--border-default)',
-          marginBottom: 'var(--space-6)',
-        }}
-      >
+      <ResponsiveGrid cols={4} gap="md" className="dashboard-section">
         {[
           { title: '标的总数', value: stats?.etf_count ?? 0, suffix: undefined, onClick: () => navigate('/etfs') },
           { title: '评分覆盖', value: stats?.score_count ?? 0, suffix: `/ ${stats?.etf_count ?? 0}`, onClick: () => navigate('/scores') },
           { title: '分类数', value: stats?.category_count ?? 0, suffix: undefined },
           { title: '评分模板', value: stats?.template_count ?? 0, suffix: undefined, onClick: () => navigate('/scores') },
-        ].map((item, i) => (
-          <div
+        ].map((item) => (
+          <StatCard
             key={item.title}
+            title={item.title}
+            value={item.value}
+            suffix={item.suffix}
+            loading={statsLoading}
             onClick={item.onClick}
-            style={{
-              padding: 'var(--space-5) var(--space-5)',
-              cursor: item.onClick ? 'pointer' : 'default',
-              borderRight: i < 3 ? '1px solid var(--border-default)' : 'none',
-              transition: 'background var(--transition-fast)',
-            }}
-            onMouseEnter={(e) => {
-              if (item.onClick) e.currentTarget.style.background = 'var(--bg-hover)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = 'transparent';
-            }}
-          >
-            <div
-              style={{
-                fontSize: 'var(--text-label-size)',
-                color: 'var(--text-tertiary)',
-                fontWeight: 500,
-                marginBottom: 'var(--space-3)',
-                letterSpacing: '0.12em',
-                textTransform: 'uppercase',
-              }}
-            >
-              {item.title}
-            </div>
-            {statsLoading ? (
-              <div
-                style={{
-                  height: '36px',
-                  width: '80px',
-                  background: 'var(--bg-hover)',
-                  borderRadius: 'var(--radius-md)',
-                  animation: 'pulse 1.5s ease-in-out infinite',
-                }}
-              />
-            ) : (
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px' }}>
-                <span
-                  style={{
-                    fontSize: 'var(--text-data-xl-size)',
-                    fontWeight: 400,
-                    color: 'var(--text-primary)',
-                    lineHeight: 1.1,
-                    fontFamily: 'var(--font-mono)',
-                    letterSpacing: '-0.02em',
-                  }}
-                >
-                  {item.value}
-                </span>
-                {item.suffix && (
-                  <span
-                    style={{
-                      fontSize: 'var(--text-small-size)',
-                      color: 'var(--text-tertiary)',
-                      fontWeight: 500,
-                    }}
-                  >
-                    {item.suffix}
-                  </span>
-                )}
-              </div>
-            )}
-          </div>
+          />
         ))}
-      </div>
+      </ResponsiveGrid>
 
-      <div style={{ marginBottom: 'var(--space-6)' }}>
-        <h2 className="section-heading">实时行情</h2>
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(4, 1fr)',
-            borderTop: '1px solid var(--border-default)',
-            borderBottom: '1px solid var(--border-default)',
-          }}
-        >
+      <section className="dashboard-section">
+        <SectionHeading title="实时行情" />
+        <ResponsiveGrid cols={4} gap="md">
           {INDEX_CODES.map((code, i) => {
             const tick = marketLatest[code] ?? (prices[code]
               ? { ...prices[code], ts: 0, name: undefined, market: undefined }
               : undefined);
             return (
-              <div
-                key={code}
-                style={{
-                  padding: 'var(--space-5) var(--space-4)',
-                  borderRight: i < 3 ? '1px solid var(--border-default)' : 'none',
-                }}
-              >
-                <div
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    marginBottom: '12px',
-                  }}
-                >
-                  <span
-                    style={{
-                      fontSize: 'var(--text-label-size)',
-                      color: 'var(--text-tertiary)',
-                      fontWeight: 500,
-                      letterSpacing: '0.12em',
-                      textTransform: 'uppercase',
-                    }}
-                  >
-                    {code}
-                  </span>
+              <Panel key={code} variant="default" padding="md" className="dashboard-index-card">
+                <div className="dashboard-index-card__header">
+                  <span className="dashboard-index-card__code">{code}</span>
                   {i === 0 ? (
                     <Tooltip
                       title={marketConnected ? 'SSE 已连接，3 秒刷新' : 'SSE 未连接，正在重连'}
                     >
                       <span
                         aria-label={marketConnected ? '实时连接中' : '连接断开'}
-                        style={{
-                          display: 'inline-block',
-                          width: 6,
-                          height: 6,
-                          borderRadius: '50%',
-                          background: marketConnected ? 'var(--color-rise)' : 'var(--text-muted)',
-                        }}
+                        className={`dashboard-index-card__dot ${marketConnected ? 'dashboard-index-card__dot--connected' : ''}`}
                       />
                     </Tooltip>
                   ) : null}
                 </div>
-                <div
-                  style={{
-                    fontSize: 'var(--text-data-lg-size)',
-                    fontWeight: 400,
-                    color: 'var(--text-primary)',
-                    fontFamily: 'var(--font-mono)',
-                    lineHeight: 1.2,
-                  }}
-                >
+                <div className="dashboard-index-card__price">
                   {tick ? tick.price.toFixed(2) : '-'}
                 </div>
-                <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div className="dashboard-index-card__footer">
                   {tick ? (
                     <>
                       <ReturnTag value={tick.change_pct} />
                       {tick.ts ? (
                         <Tooltip title={dayjs(tick.ts).format('YYYY-MM-DD HH:mm:ss')}>
-                          <span
-                            style={{
-                              fontSize: 'var(--text-small-size)',
-                              color: 'var(--text-tertiary)',
-                              fontFamily: 'var(--font-mono)',
-                            }}
-                          >
+                          <span className="dashboard-index-card__timestamp">
                             {dayjs(tick.ts).format('MM-DD HH:mm')}
                           </span>
                         </Tooltip>
                       ) : null}
                     </>
                   ) : (
-                    <span style={{ fontSize: 'var(--text-small-size)', color: 'var(--text-tertiary)' }}>
-                      暂无数据
-                    </span>
+                    <span className="dashboard-index-card__empty">暂无数据</span>
                   )}
                 </div>
-              </div>
+              </Panel>
             );
           })}
-        </div>
-      </div>
+        </ResponsiveGrid>
+      </section>
 
       {/* News row: hot news + favorites news */}
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: '1fr 1fr',
-          gap: 'var(--space-6)',
-          marginBottom: 'var(--space-6)',
-        }}
-      >
+      <ResponsiveGrid cols={2} gap="lg" className="dashboard-section">
         <Panel
-          variant="minimal"
+          variant="default"
           title={
             <span>
               <FireOutlined style={{ marginRight: 'var(--space-1-5)', color: 'var(--accent)' }} />
@@ -478,10 +318,7 @@ export default function Dashboard() {
             </span>
           }
           extra={
-            <span
-              style={{ fontSize: 'var(--text-small-size)', color: 'var(--text-tertiary)', cursor: 'pointer' }}
-              onClick={() => navigate('/news')}
-            >
+            <span className="panel-extra-link" onClick={() => navigate('/news')}>
               查看全部 →
             </span>
           }
@@ -489,7 +326,7 @@ export default function Dashboard() {
           {hotNewsLoading ? (
             <Skeleton active paragraph={{ rows: 5 }} />
           ) : !hotNews || hotNews.length === 0 ? (
-            <Empty description="暂无重要资讯" image={Empty.PRESENTED_IMAGE_SIMPLE} style={{ padding: 'var(--space-5) 0' }} />
+            <EmptyState title="暂无重要资讯" />
           ) : (
             hotNews.map((a) => (
               <NewsRow key={a.id} article={a} onOpen={(id) => navigate(`/news/${id}`)} />
@@ -498,7 +335,7 @@ export default function Dashboard() {
         </Panel>
 
         <Panel
-          variant="minimal"
+          variant="default"
           title={
             <span>
               <ReadOutlined style={{ marginRight: 'var(--space-1-5)' }} />
@@ -507,10 +344,7 @@ export default function Dashboard() {
           }
           extra={
             favCount > 0 ? (
-              <span
-                style={{ fontSize: 'var(--text-small-size)', color: 'var(--text-tertiary)', cursor: 'pointer' }}
-                onClick={() => navigate('/news')}
-              >
+              <span className="panel-extra-link" onClick={() => navigate('/news')}>
                 查看全部 →
               </span>
             ) : undefined
@@ -519,26 +353,29 @@ export default function Dashboard() {
           {favNewsLoading ? (
             <Skeleton active paragraph={{ rows: 5 }} />
           ) : favCount === 0 ? (
-            <Empty
+            <EmptyState
+              title="暂无收藏的标的"
               description="收藏自选股后，这里会汇总相关新闻"
-              image={Empty.PRESENTED_IMAGE_SIMPLE}
-              style={{ padding: 'var(--space-5) 0' }}
             />
           ) : !favoritesNews || favoritesNews.length === 0 ? (
-            <Empty description="暂无自选股相关资讯" image={Empty.PRESENTED_IMAGE_SIMPLE} style={{ padding: 'var(--space-5) 0' }} />
+            <EmptyState title="暂无自选股相关资讯" />
           ) : (
             favoritesNews.map((a) => (
               <NewsRow key={a.id} article={a} onOpen={(id) => navigate(`/news/${id}`)} />
             ))
           )}
         </Panel>
-      </div>
+      </ResponsiveGrid>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1.55fr 1fr', gap: 'var(--space-6)' }}>
+      <ResponsiveGrid cols={2} gap="lg" className="dashboard-score-grid dashboard-section">
         <Panel
-          variant="minimal"
+          variant="default"
           title="综合评分 Top 10"
-          extra={<span style={{ fontSize: 'var(--text-small-size)', color: 'var(--text-tertiary)', cursor: 'pointer' }} onClick={() => navigate('/scores')}>查看全部 →</span>}
+          extra={
+            <span className="panel-extra-link" onClick={() => navigate('/scores')}>
+              查看全部 →
+            </span>
+          }
         >
           <Table
             dataSource={scoresData?.items || []}
@@ -552,31 +389,46 @@ export default function Dashboard() {
           />
         </Panel>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-5)' }}>
+        <div className="dashboard-side-stack">
           <Panel
-            variant="minimal"
+            variant="default"
             title="我的收藏"
-            extra={favCount > 0 ? <span style={{ fontSize: 'var(--text-small-size)', color: 'var(--text-tertiary)', cursor: 'pointer' }} onClick={() => navigate('/etfs')}>查看全部 →</span> : undefined}
+            extra={
+              favCount > 0 ? (
+                <span className="panel-extra-link" onClick={() => navigate('/etfs')}>
+                  查看全部 →
+                </span>
+              ) : undefined
+            }
           >
             {favLoading ? (
-              <div style={{ textAlign: 'center', padding: 'var(--space-7) 0' }}><Spin /></div>
-            ) : favCount === 0 ? (
-              <div style={{ textAlign: 'center', padding: 'var(--space-7) 0', color: 'var(--text-tertiary)' }}>
-                <div style={{ fontSize: 'var(--text-body-size)', marginBottom: 4 }}>暂无收藏的标的</div>
-                <div style={{ fontSize: 'var(--text-small-size)', color: 'var(--text-muted)' }}>在详情页点击收藏，这里会显示你关注的标的</div>
+              <div style={{ textAlign: 'center', padding: 'var(--space-7) 0' }}>
+                <Spin />
               </div>
+            ) : favCount === 0 ? (
+              <EmptyState
+                title="暂无收藏的标的"
+                description="在详情页点击收藏，这里会显示你关注的标的"
+              />
             ) : (
               <List
                 dataSource={favorites}
                 renderItem={(item: any) => (
-                  <List.Item onClick={() => navigate(`/etfs/${item.etf_code}`)} style={{ padding: '12px 0', cursor: 'pointer' }}>
+                  <List.Item
+                    onClick={() => navigate(`/etfs/${item.etf_code}`)}
+                    className="dashboard-favorite-item"
+                  >
                     <List.Item.Meta
-                      title={<div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}><InstrumentCodeTag code={item.etf_code} name={item.etf_name} /></div>}
+                      title={
+                        <div className="dashboard-favorite-item__title">
+                          <InstrumentCodeTag code={item.etf_code} name={item.etf_name} />
+                        </div>
+                      }
                       description={
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', marginTop: 'var(--space-1)' }}>
-                          <span style={{ fontSize: 'var(--text-small-size)', color: 'var(--text-tertiary)' }}>{item.category}</span>
-                          <span style={{ fontSize: 'var(--text-small-size)', color: 'var(--text-muted)' }}>|</span>
-                          <span style={{ fontSize: 'var(--text-small-size)', color: 'var(--text-tertiary)' }}>{item.market}</span>
+                        <div className="dashboard-favorite-item__desc">
+                          <span>{item.category}</span>
+                          <span style={{ color: 'var(--text-muted)' }}>|</span>
+                          <span>{item.market}</span>
                         </div>
                       }
                     />
@@ -587,36 +439,47 @@ export default function Dashboard() {
           </Panel>
 
           <Panel
-            variant="minimal"
+            variant="default"
             title="我的标的池"
-            extra={(pools?.length || 0) > 0 ? <span style={{ fontSize: 'var(--text-small-size)', color: 'var(--text-tertiary)', cursor: 'pointer' }} onClick={() => navigate('/pools')}>查看全部 →</span> : undefined}
+            extra={
+              (pools?.length || 0) > 0 ? (
+                <span className="panel-extra-link" onClick={() => navigate('/pools')}>
+                  查看全部 →
+                </span>
+              ) : undefined
+            }
           >
             {poolsLoading ? (
-              <div style={{ textAlign: 'center', padding: 'var(--space-7) 0' }}><Spin /></div>
-            ) : (pools?.length || 0) === 0 ? (
-              <div style={{ textAlign: 'center', padding: 'var(--space-7) 0', color: 'var(--text-tertiary)' }}>
-                <div style={{ fontSize: 'var(--text-body-size)', marginBottom: 4 }}>暂无标的池</div>
-                <div style={{ fontSize: 'var(--text-small-size)', color: 'var(--text-muted)' }}>在标的池管理中创建池并添加标的，这里会汇总展示</div>
+              <div style={{ textAlign: 'center', padding: 'var(--space-7) 0' }}>
+                <Spin />
               </div>
+            ) : (pools?.length || 0) === 0 ? (
+              <EmptyState
+                title="暂无标的池"
+                description="在标的池管理中创建池并添加标的，这里会汇总展示"
+              />
             ) : (
               <List
                 dataSource={pools?.slice(0, 6) || []}
                 renderItem={(pool: any) => (
-                  <List.Item onClick={() => navigate(`/pools/${pool.id}`)} style={{ padding: '12px 0', cursor: 'pointer' }}>
+                  <List.Item
+                    onClick={() => navigate(`/pools/${pool.id}`)}
+                    className="dashboard-pool-item"
+                  >
                     <List.Item.Meta
                       title={
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+                        <div className="dashboard-pool-item__title">
                           <FolderOpenOutlined style={{ color: 'var(--accent)', fontSize: 'var(--text-body-size)' }} />
-                          <span style={{ fontSize: 'var(--text-body-size)', color: 'var(--text-primary)', fontWeight: 500 }}>{pool.name}</span>
+                          <span className="dashboard-pool-item__name">{pool.name}</span>
                         </div>
                       }
                       description={
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', marginTop: 'var(--space-1)' }}>
-                          <span style={{ fontSize: 'var(--text-small-size)', color: 'var(--text-tertiary)' }}>{pool.members?.length || 0} 只标的</span>
+                        <div className="dashboard-pool-item__desc">
+                          <span>{pool.members?.length || 0} 只标的</span>
                           {pool.description && (
                             <>
-                              <span style={{ fontSize: 'var(--text-small-size)', color: 'var(--text-muted)' }}>|</span>
-                              <span style={{ fontSize: 'var(--text-small-size)', color: 'var(--text-tertiary)' }}>{pool.description}</span>
+                              <span style={{ color: 'var(--text-muted)' }}>|</span>
+                              <span>{pool.description}</span>
                             </>
                           )}
                         </div>
@@ -628,7 +491,7 @@ export default function Dashboard() {
             )}
           </Panel>
         </div>
-      </div>
-    </div>
+      </ResponsiveGrid>
+    </PageShell>
   );
 }
