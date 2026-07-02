@@ -69,7 +69,7 @@ WHERE code = '560000.SH';
 
 ```bash
 ssh ad-research
-docker exec -i -w /app etf-backend python3 - <<'PY'
+docker exec -i -w /app adresearch-backend python3 - <<'PY'
 import akshare as ak
 import pandas as pd
 from datetime import date

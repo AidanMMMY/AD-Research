@@ -12,11 +12,11 @@ if [ ! -f .env ]; then
   exit 1
 fi
 
-docker rm -f etf-backend 2>/dev/null || true
+docker rm -f adresearch-backend 2>/dev/null || true
 
 docker run -d \
-  --name etf-backend \
-  --network aliyun-ecs_etf-network \
+  --name adresearch-backend \
+  --network aliyun-ecs_adresearch-network \
   -p 8000:8000 \
   --restart unless-stopped \
   --env-file /opt/ad-research/.env \
@@ -27,11 +27,11 @@ docker run -d \
 
 echo "Waiting for backend to start..."
 for i in $(seq 1 15); do
-  if docker logs etf-backend 2>&1 | grep -q "Application startup complete"; then
+  if docker logs adresearch-backend 2>&1 | grep -q "Application startup complete"; then
     echo "Backend started successfully"
     break
   fi
   sleep 2
 done
 
-docker ps --filter name=etf
+docker ps --filter name=adresearch

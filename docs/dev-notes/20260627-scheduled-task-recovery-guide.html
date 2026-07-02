@@ -115,7 +115,7 @@ redis-cli ping
 docker compose ps
 </code></pre>
 
-<p>应看到 <code>etf-postgres</code>、<code>etf-redis</code> 状态为 <code>running</code>。如果不在：</p>
+<p>应看到 <code>adresearch-postgres</code>、<code>adresearch-redis</code> 状态为 <code>running</code>。如果不在：</p>
 <pre><code>docker compose up -d postgres redis
 </code></pre>
 
@@ -149,7 +149,7 @@ docker compose up -d --build backend
 
 <h3>3.3 使用 tmux/screen 后台运行</h3>
 <p>SSH 会话断开后服务会被杀掉，建议挂到 tmux：</p>
-<pre><code>tmux new -s etf-backend
+<pre><code>tmux new -s adresearch-backend
 cd /opt/ad-research
 source .venv/bin/activate
 uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 1
@@ -158,7 +158,7 @@ uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 1
 </code></pre>
 
 <p>重新进入：</p>
-<pre><code>tmux attach -t etf-backend
+<pre><code>tmux attach -t adresearch-backend
 </code></pre>
 
 <h2>四、补跑缺失数据</h2>
@@ -302,7 +302,7 @@ cd /opt/ad-research
 docker compose logs -f backend
 
 # 本地（如果启动时重定向了日志）
-tail -f /var/log/etf-backend.log
+tail -f /var/log/adresearch-backend.log
 </code></pre>
 
 <h2>七、防止服务再次掉线</h2>
@@ -323,7 +323,7 @@ tail -f /var/log/etf-backend.log
 </code></pre>
 
 <h3>7.2 systemd 服务（Linux 裸机部署）</h3>
-<p>创建 <code>/etc/systemd/system/etf-backend.service</code>：</p>
+<p>创建 <code>/etc/systemd/system/adresearch-backend.service</code>：</p>
 <pre><code>[Unit]
 Description=ETF Research Platform Backend
 After=network.target postgresql.service redis.service
@@ -343,9 +343,9 @@ WantedBy=multi-user.target
 
 <p>加载并启动：</p>
 <pre><code>sudo systemctl daemon-reload
-sudo systemctl enable etf-backend
-sudo systemctl start etf-backend
-sudo systemctl status etf-backend
+sudo systemctl enable adresearch-backend
+sudo systemctl start adresearch-backend
+sudo systemctl status adresearch-backend
 </code></pre>
 
 <h3>7.3 定时任务监控</h3>
@@ -393,7 +393,7 @@ sudo systemctl status etf-backend
     <tr><td>补数据（跳过回测）</td><td><code>python scripts/update_daily_data_nobacktest.py</code></td></tr>
     <tr><td>完整补数据</td><td><code>python scripts/update_daily_data.py</code></td></tr>
     <tr><td>数据健康检查</td><td><code>python scripts/data_completeness_check.py</code></td></tr>
-    <tr><td>进入 tmux 会话</td><td><code>tmux attach -t etf-backend</code></td></tr>
+    <tr><td>进入 tmux 会话</td><td><code>tmux attach -t adresearch-backend</code></td></tr>
     <tr><td>查看 ETL 日志 API</td><td><code>curl http://localhost:8000/api/v1/etl/status?limit=5</code></td></tr>
   </tbody>
 </table>

@@ -44,7 +44,7 @@ cd /opt/ad-research  # 或你的项目根目录
 docker compose ps
 ```
 
-应看到 `etf-postgres`、`etf-redis` 状态为 `running`。如果不在：
+应看到 `adresearch-postgres`、`adresearch-redis` 状态为 `running`。如果不在：
 
 ```bash
 docker compose up -d postgres redis
@@ -91,7 +91,7 @@ docker compose logs -f backend
 SSH 会话断开后服务会被杀掉，建议挂到 tmux：
 
 ```bash
-tmux new -s etf-backend
+tmux new -s adresearch-backend
 cd /opt/ad-research
 source .venv/bin/activate
 uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 1
@@ -102,7 +102,7 @@ uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 1
 重新进入：
 
 ```bash
-tmux attach -t etf-backend
+tmux attach -t adresearch-backend
 ```
 
 ---
@@ -275,7 +275,7 @@ cd /opt/ad-research
 docker compose logs -f backend
 
 # 本地（如果启动时重定向了日志）
-tail -f /var/log/etf-backend.log
+tail -f /var/log/adresearch-backend.log
 ```
 
 ---
@@ -304,7 +304,7 @@ docker compose up -d
 
 ### 7.2 systemd 服务（Linux 裸机部署）
 
-创建 `/etc/systemd/system/etf-backend.service`：
+创建 `/etc/systemd/system/adresearch-backend.service`：
 
 ```ini
 [Unit]
@@ -328,9 +328,9 @@ WantedBy=multi-user.target
 
 ```bash
 sudo systemctl daemon-reload
-sudo systemctl enable etf-backend
-sudo systemctl start etf-backend
-sudo systemctl status etf-backend
+sudo systemctl enable adresearch-backend
+sudo systemctl start adresearch-backend
+sudo systemctl status adresearch-backend
 ```
 
 ### 7.3 定时任务监控
@@ -371,7 +371,7 @@ curl http://localhost:8000/api/v1/etl/status?limit=5
 | 补数据（跳过回测） | `python scripts/update_daily_data_nobacktest.py` |
 | 完整补数据 | `python scripts/update_daily_data.py` |
 | 数据健康检查 | `python scripts/data_completeness_check.py` |
-| 进入 tmux 会话 | `tmux attach -t etf-backend` |
+| 进入 tmux 会话 | `tmux attach -t adresearch-backend` |
 | 查看 ETL 日志 API | `curl http://localhost:8000/api/v1/etl/status?limit=5` |
 
 ---

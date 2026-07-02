@@ -3,4 +3,4 @@ set -e
 cd /opt/ad-research/deploy/aliyun-ecs
 docker compose up -d --build --no-deps backend
 echo "Done. Checking container:"
-docker ps --filter name=etf-backend --format '{{.Names}} {{.Status}}'
+docker ps --filter name=adresearch-backend --format '{{.Names}} {{.Status}}'

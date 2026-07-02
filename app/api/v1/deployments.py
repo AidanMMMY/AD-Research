@@ -150,7 +150,7 @@ def api_container_logs(
 
 @router.get("/logs/stream")
 async def api_stream_logs(
-    container: str = Query("etf-backend"),
+    container: str = Query("adresearch-backend"),
     _admin: UserResponse = Depends(_require_admin_for_sse),
 ):
     """Stream container logs in real-time via Server-Sent Events (admin only).

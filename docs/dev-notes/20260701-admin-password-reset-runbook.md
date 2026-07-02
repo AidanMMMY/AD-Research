@@ -33,12 +33,12 @@
 ssh ad-research "cd /opt/ad-research && docker compose ps"
 ```
 
-应看到 `etf-postgres`（healthy）和 `etf-backend`（up）。
+应看到 `adresearch-postgres`（healthy）和 `adresearch-backend`（up）。
 
 ### 2.2 确认目标用户存在
 
 ```bash
-ssh ad-research "docker exec etf-postgres psql -U etf -d ad_research \
+ssh ad-research "docker exec adresearch-postgres psql -U etf -d ad_research \
   -c \"SELECT id, username, role, is_active, created_at FROM users ORDER BY id;\""
 ```
 
@@ -64,11 +64,11 @@ ssh ad-research "docker exec etf-postgres psql -U etf -d ad_research \
 
 ```bash
 # 单用户：把 admin 改成新密码
-ssh ad-research "docker exec etf-backend \
+ssh ad-research "docker exec adresearch-backend \
   python3 scripts/reset_user_password.py admin --password '<NEW_PASSWORD>'"
 
 # 多用户：必须分两次跑（脚本 --password 一刀切模式不支持每个用户独立密码）
-ssh ad-research "docker exec etf-backend \
+ssh ad-research "docker exec adresearch-backend \
   python3 scripts/reset_user_password.py Aidan --password '<NEW_PASSWORD>'"
 ```
 
@@ -101,7 +101,7 @@ print(''.join(secrets.choice(string.ascii_letters + string.digits + '!@#%^*_-') 
 
 ```bash
 # 方法 1：检查哈希是否被更新
-ssh ad-research "docker exec etf-postgres psql -U etf -d ad_research \
+ssh ad-research "docker exec adresearch-postgres psql -U etf -d ad_research \
   -c \"SELECT username, length(password_hash), left(password_hash, 7), updated_at FROM users WHERE username IN ('admin','Aidan');\""
 ```
 
@@ -122,9 +122,9 @@ curl -X POST https://your-domain/api/v1/auth/login \
 
 **症状**：admin 和 Aidan 无法登录，bcrypt 验证失败。
 
-**根因**：运维在排查 admin 原密码时，先用 `docker exec etf-postgres psql -c "UPDATE users SET password_hash = '...'"` 把占位字符串写进了数据库。该字符串不是合法 bcrypt 哈希，bcrypt 解码时报 `InvalidHash` 异常，登录直接 401。期间另两个用户（Haoyang / Owen / Larry / Zack）哈希未被影响。
+**根因**：运维在排查 admin 原密码时，先用 `docker exec adresearch-postgres psql -c "UPDATE users SET password_hash = '...'"` 把占位字符串写进了数据库。该字符串不是合法 bcrypt 哈希，bcrypt 解码时报 `InvalidHash` 异常，登录直接 401。期间另两个用户（Haoyang / Owen / Larry / Zack）哈希未被影响。
 
-**修复**：在 `etf-backend` 容器内跑 `reset_user_password.py admin Aidan --password '...'` 重新写入合法哈希。
+**修复**：在 `adresearch-backend` 容器内跑 `reset_user_password.py admin Aidan --password '...'` 重新写入合法哈希。
 
 **教训**：
 
@@ -148,7 +148,7 @@ curl -X POST https://your-domain/api/v1/auth/login \
 ### 症状
 
 按 § 3.1 重置 admin / Aidan 密码后，前端登录依然报"用户名密码不正确"。但
-`docker exec etf-postgres psql` 查询 `users.password_hash` 显示是合法的
+`docker exec adresearch-postgres psql` 查询 `users.password_hash` 显示是合法的
 `$2b$12$` 60 位 bcrypt，`updated_at` 是刚刚 reset 的时间。
 
 ### 真正的根因
@@ -178,7 +178,7 @@ bcrypt 校验**确实通过**了，但在响应序列化阶段抛 `ValidationErr
 
 ```bash
 # 在 backend 容器内直接 POST 一次，看 HTTP 状态码和 body
-ssh ad-research "docker exec etf-backend python3 -c \"
+ssh ad-research "docker exec adresearch-backend python3 -c \"
 import requests
 r = requests.post('http://127.0.0.1:8000/api/v1/auth/login',
                   json={'username':'admin','password':'<password>'})
@@ -189,7 +189,7 @@ print(r.status_code, r.text[:200])
 看到 `HTTP 500` 而不是 `HTTP 401`，就是后端逻辑错误，不是密码错。然后：
 
 ```bash
-ssh ad-research "docker logs --tail=200 etf-backend 2>&1 \
+ssh ad-research "docker logs --tail=200 adresearch-backend 2>&1 \
   | grep -A 20 'auth.py.*137\\|UserResponse'"
 ```
 
@@ -208,7 +208,7 @@ ssh ad-research "docker logs --tail=200 etf-backend 2>&1 \
 
 **仅 git pull 不够 —— 必须 rebuild image + recreate container**。
 
-服务器实际 mounts（`docker inspect etf-backend --format '{{json .Mounts}}'`）：
+服务器实际 mounts（`docker inspect adresearch-backend --format '{{json .Mounts}}'`）：
 
 ```json
 [
