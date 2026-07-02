@@ -75,6 +75,11 @@ services:
       AUTH_ACCESS_TOKEN_EXPIRE_MINUTES: ${AUTH_ACCESS_TOKEN_EXPIRE_MINUTES:-480}
       GITHUB_TOKEN: ${GITHUB_TOKEN:-}
       GITHUB_REPO: ${GITHUB_REPO:-}
+      ENABLE_SCHEDULER: ${ENABLE_SCHEDULER:-true}
+      FRED_API_KEY: ${FRED_API_KEY:-}
+      BEA_API_KEY: ${BEA_API_KEY:-}
+      BLS_API_KEY: ${BLS_API_KEY:-}
+      XUEQIU_COOKIE: ${XUEQIU_COOKIE:-}
     depends_on:
       postgres:
         condition: service_healthy
