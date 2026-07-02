@@ -374,6 +374,9 @@ body,
   --card-bg: #fbf7ec;
   --card-radius: 0;            /* sharp corners = newspaper feel */
 
+  /* Radius */
+  --radius-lg: 4px;
+
   /* Shadows softened — replaced by hairlines */
   --shadow-md: none;
   --shadow-lg: none;
