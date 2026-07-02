@@ -335,8 +335,9 @@ def source_stats(db: Session = Depends(get_db)) -> dict:
 
 # News source identifiers used in ``NewsArticle.source``. Kept in sync
 # with ``app/services/news/sources/*.py`` ``source_name`` declarations.
+# NOTE: xinhua_rss is temporarily omitted because its public RSS endpoints
+# return 404.
 _NEWS_SOURCES: list[str] = [
-    "xinhua_rss",
     "cninfo",
     "sina_finance",
     "yahoo_finance",
@@ -344,13 +345,14 @@ _NEWS_SOURCES: list[str] = [
     "sec_edgar",
     "reddit",
     "xueqiu",
+    "coindesk",
+    "cointelegraph",
 ]
 
 # Map each NewsArticle source to the scheduler job_id (defined in
 # ``app/core/scheduler.py``). Used to look up the latest ETL log row
 # for that job.
 _SOURCE_TO_JOB: dict[str, str] = {
-    "xinhua_rss": "news_xinhua_5m",
     "cninfo": "news_cninfo_10m",
     "sina_finance": "news_sina_5m",
     "yahoo_finance": "news_yahoo_5m",
@@ -358,6 +360,8 @@ _SOURCE_TO_JOB: dict[str, str] = {
     "sec_edgar": "news_sec_edgar_30m",
     "reddit": "news_reddit_5m",
     "xueqiu": "news_xueqiu_5m",
+    "coindesk": "news_coindesk_5m",
+    "cointelegraph": "news_cointelegraph_5m",
 }
 
 

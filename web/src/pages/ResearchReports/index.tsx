@@ -357,10 +357,21 @@ export default function ResearchReports() {
         onCancel={handleCloseDetail}
         width={720}
         footer={[
+          detail && !detail.summary ? (
+            <Button
+              key="summarize"
+              type="primary"
+              icon={<ThunderboltOutlined />}
+              loading={summarizeMutation.isPending && summarizeMutation.variables === detail.id}
+              onClick={() => handleSummarize(detail.id)}
+            >
+              生成摘要
+            </Button>
+          ) : null,
           <Button key="close" onClick={handleCloseDetail}>
             关闭
           </Button>,
-        ]}
+        ].filter(Boolean)}
       >
         {detailLoading || !detail ? (
           <Spin />
@@ -394,7 +405,9 @@ export default function ResearchReports() {
             {detail.summary ? (
               <Paragraph>{detail.summary}</Paragraph>
             ) : (
-              <Paragraph type="secondary">尚未生成摘要（点击上方"摘要"按钮可触发）</Paragraph>
+              <Paragraph type="secondary">
+                尚未生成摘要（点击下方“生成摘要”按钮可触发）
+              </Paragraph>
             )}
 
             {detail.key_points && detail.key_points.length > 0 ? (

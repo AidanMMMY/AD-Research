@@ -14,7 +14,14 @@ from datetime import date
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_db
+from app.api.deps import get_db, require_admin
+from app.core.database import SessionLocal
+from app.core.redis_client import redis_lock
+from app.data.pipelines.futures import (
+    FuturesContractDiscoveryPipeline,
+    FuturesDailyPipeline,
+)
+from app.schemas.auth import UserResponse
 from app.schemas.futures import (
     FuturesContractListResponse,
     FuturesContractOut,
@@ -169,3 +176,53 @@ def get_futures_leaderboard(
     return _get_service(db).build_leaderboard(
         exchange=exchange, direction=direction, top_n=top
     )
+
+
+# ---------------------------------------------------------------------------
+# Manual refresh
+# ---------------------------------------------------------------------------
+
+
+@router.post("/refresh", status_code=202)
+def refresh_futures(
+    _admin: UserResponse = Depends(require_admin),
+    include_discovery: bool = Query(True, description="Also refresh main contract list"),
+) -> dict[str, str]:
+    """Manually trigger a refresh of futures contracts and daily bars (admin only).
+
+    By default this runs contract discovery first, then daily bars. If the
+    contract list is already populated, set ``include_discovery=false`` to
+    fetch only the latest daily bars.
+    """
+    with redis_lock("futures_refresh", expire_seconds=1800) as acquired:
+        if not acquired:
+            from fastapi import HTTPException
+
+            raise HTTPException(status_code=409, detail="Futures refresh already in progress")
+
+        db = SessionLocal()
+        try:
+            if include_discovery:
+                discovery = FuturesContractDiscoveryPipeline(db)
+                discovery_result = discovery.run_with_retry(max_attempts=1)
+                if not discovery_result.success:
+                    raise HTTPException(
+                        status_code=500,
+                        detail=f"Futures contract discovery failed: {discovery_result.error}",
+                    )
+
+            daily = FuturesDailyPipeline(db)
+            daily_result = daily.run_with_retry(max_attempts=1)
+            if not daily_result.success:
+                raise HTTPException(
+                    status_code=500,
+                    detail=f"Futures daily refresh failed: {daily_result.error}",
+                )
+
+            return {
+                "status": "ok",
+                "contracts": str(discovery_result.records if include_discovery else 0),
+                "daily_bars": str(daily_result.records),
+            }
+        finally:
+            db.close()

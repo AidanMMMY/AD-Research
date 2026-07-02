@@ -20,12 +20,39 @@ from sqlalchemy.orm import Session
 
 from app.core.cache import cache_invalidate_pattern
 from app.data.pipelines.base import ETLPipeline
+from app.data.providers.base import DataProvider, ETFInfo, MarketHours
 from app.models.futures import FuturesContract, FuturesDailyBar
 from app.services.futures_service import FuturesService
 
 logger = logging.getLogger(__name__)
 
 warnings.filterwarnings("ignore")
+
+
+class _AkshareFuturesProvider(DataProvider):
+    """Minimal DataProvider stub so futures pipelines fit the ETL base class.
+
+    Futures data comes from akshare directly, not from a shared provider,
+    but the base class still wants a provider for logging.
+    """
+
+    @property
+    def name(self) -> str:
+        return "akshare"
+
+    def fetch_etf_list(self) -> list[ETFInfo]:
+        return []
+
+    def fetch_daily_bars(
+        self, codes: list[str], start_date: date, end_date: date
+    ) -> pd.DataFrame:
+        return pd.DataFrame()
+
+    def fetch_realtime_quotes(self, codes: list[str]) -> pd.DataFrame:
+        return pd.DataFrame()
+
+    def get_market_hours(self, code: str | None = None) -> MarketHours:
+        return MarketHours()
 
 
 # Number of concurrent workers when fetching daily bars for one contract per
@@ -198,11 +225,7 @@ class FuturesContractDiscoveryPipeline(ETLPipeline):
     job_name = "futures_contract_discovery"
 
     def __init__(self, db: Session) -> None:
-        super().__init__(provider=None, db=db)
-
-    @property
-    def provider(self):  # type: ignore[override]
-        return None
+        super().__init__(provider=_AkshareFuturesProvider(), db=db)
 
     def extract(self) -> pd.DataFrame:
         try:
@@ -272,13 +295,9 @@ class FuturesDailyPipeline(ETLPipeline):
         target_date: date | None = None,
         history_days: int = 30,
     ) -> None:
-        super().__init__(provider=None, db=db)
+        super().__init__(provider=_AkshareFuturesProvider(), db=db)
         self.target_date = target_date
         self.history_days = history_days
-
-    @property
-    def provider(self):  # type: ignore[override]
-        return None
 
     # ------------------------------------------------------------------
     # Helpers
@@ -362,12 +381,13 @@ class FuturesDailyPipeline(ETLPipeline):
             out["settle"] = pd.to_numeric(out["settle_dynamic"], errors="coerce")
             out = out.drop(columns=["settle_dynamic"])
 
-        # Keep only the requested history window
+        # Keep only the requested history window (strictly > cutoff so that
+        # ``history_days`` days are retained, not ``history_days + 1``).
         if self.target_date is None:
             cutoff = date.today() - timedelta(days=self.history_days)
         else:
             cutoff = self.target_date - timedelta(days=self.history_days)
-        out = out[out["trade_date"] >= cutoff]
+        out = out[out["trade_date"] > cutoff]
 
         # Compute pre_settle = previous row's settle within each contract.
         # sina's main contract data always returns rows sorted ascending.
