@@ -26,6 +26,32 @@ def _run_async(coro: Any) -> Any:
     return loop.run_until_complete(coro)
 
 
+# Small default universe for sources that need a ticker list.
+_DEFAULT_US_TICKERS = [
+    "AAPL", "TSLA", "MSFT", "AMZN", "GOOGL", "META", "NVDA", "AMD",
+    "INTC", "BABA", "NFLX", "JPM", "V", "WMT", "DIS", "KO", "PFE",
+]
+
+# Minimal CIK map for SEC EDGAR filings crawler.
+_SEC_EDGAR_TICKER_TO_CIK: dict[str, str | int] = {
+    "AAPL": "320193",
+    "MSFT": "789019",
+    "AMZN": "1018724",
+    "GOOGL": "1652044",
+    "META": "1326801",
+    "TSLA": "1318605",
+    "NVDA": "1013480",
+    "AMD": "2488",
+    "INTC": "50863",
+    "BABA": "1577552",
+    "NFLX": "1065280",
+    "JPM": "19617",
+    "V": "1403161",
+    "WMT": "104169",
+    "DIS": "1744489",
+}
+
+
 def _write_to_db(articles: list) -> int:
     """Persist RawArticles into NewsArticle via the normalizer."""
     if not articles:
@@ -113,7 +139,7 @@ def run_yahoo_crawl() -> dict[str, int]:
 
     async def _go():
         async with YahooFinanceCrawler() as c:
-            return await c.crawl()
+            return await c.fetch(_DEFAULT_US_TICKERS)
 
     try:
         articles = _run_async(_go())
@@ -129,7 +155,7 @@ def run_cnbc_crawl() -> dict[str, int]:
 
     async def _go():
         async with CNBCCrawler() as c:
-            return await c.crawl()
+            return await c.fetch()
 
     try:
         articles = _run_async(_go())
@@ -141,11 +167,13 @@ def run_cnbc_crawl() -> dict[str, int]:
 
 
 def run_sec_edgar_crawl() -> dict[str, int]:
+    from datetime import datetime, timedelta, timezone
     from app.services.news.sources.sec_edgar import SecEdgarCrawler
 
     async def _go():
         async with SecEdgarCrawler() as c:
-            return await c.crawl()
+            since = datetime.now(timezone.utc) - timedelta(days=7)
+            return await c.fetch(_SEC_EDGAR_TICKER_TO_CIK, since=since)
 
     try:
         articles = _run_async(_go())
@@ -161,7 +189,10 @@ def run_reddit_crawl() -> dict[str, int]:
 
     async def _go():
         async with RedditCrawler() as c:
-            return await c.crawl()
+            if not c.has_credentials:
+                logger.info("reddit credentials not configured; skipping")
+                return []
+            return await c.fetch_universe()
 
     try:
         articles = _run_async(_go())
@@ -179,7 +210,7 @@ def run_coindesk_crawl() -> dict[str, int]:
 
     async def _go():
         async with CoinDeskCrawler() as c:
-            return await c.crawl()
+            return await c.fetch()
 
     try:
         articles = _run_async(_go())
@@ -195,7 +226,7 @@ def run_cointelegraph_crawl() -> dict[str, int]:
 
     async def _go():
         async with CointelegraphCrawler() as c:
-            return await c.crawl()
+            return await c.fetch()
 
     try:
         articles = _run_async(_go())

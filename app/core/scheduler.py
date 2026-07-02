@@ -4,7 +4,9 @@ Provides scheduled execution of daily ETL, indicator calculation,
 scoring, report generation, market scan, and signal generation jobs.
 """
 
-from datetime import date
+import json
+import logging
+from datetime import date, datetime, timezone
 from typing import Any
 
 from apscheduler.schedulers.background import BackgroundScheduler
@@ -12,7 +14,7 @@ from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.interval import IntervalTrigger
 
 from app.core.database import SessionLocal
-from app.core.redis_client import redis_lock
+from app.core.redis_client import get_redis_client, redis_lock
 from app.data.indicators.calculator import batch_calculate_indicators
 from app.data.pipelines.a_share import AShareETLPipeline
 from app.data.pipelines.a_share_stock_daily import AStockDailyPipeline
@@ -1157,21 +1159,13 @@ def init_scheduler():
 
     # ── News / Sentiment Jobs ──
     # A-share RSS feeds (every 5 minutes)
+    # NOTE: xinhua RSS endpoints are currently 404; disabled to avoid log spam.
     try:
         from app.services.news.scheduler_jobs import (
-            run_xinhua_crawl, run_cninfo_crawl, run_sina_crawl,
+            run_cninfo_crawl, run_sina_crawl,
             run_yahoo_crawl, run_cnbc_crawl, run_sec_edgar_crawl,
             run_reddit_crawl,
             run_coindesk_crawl, run_cointelegraph_crawl,
-        )
-        scheduler.add_job(
-            run_xinhua_crawl,
-            trigger=IntervalTrigger(minutes=5),
-            id="news_xinhua_5m",
-            name="新华财经RSS",
-            replace_existing=True,
-            max_instances=1,
-            coalesce=True,
         )
         scheduler.add_job(
             run_cninfo_crawl,
@@ -1300,6 +1294,15 @@ def init_scheduler():
         max_instances=1,
     )
 
+    scheduler.add_job(
+        _scheduler_heartbeat,
+        trigger=IntervalTrigger(minutes=1),
+        id="scheduler_heartbeat",
+        name="调度器心跳",
+        replace_existing=True,
+        max_instances=1,
+    )
+    _scheduler_heartbeat()
     scheduler.start()
     print("[Scheduler] Started")
 
@@ -1311,21 +1314,77 @@ def shutdown_scheduler():
         print("[Scheduler] Shutdown")
 
 
-def is_scheduler_running() -> bool:
-    """Return True if the APScheduler background thread is alive."""
+_SCHEDULER_HEARTBEAT_KEY = "ad_research:scheduler:heartbeat"
+_SCHEDULER_JOBS_KEY = "ad_research:scheduler:jobs"
+_SCHEDULER_HEARTBEAT_TTL_SECONDS = 180
+
+
+def _scheduler_heartbeat():
+    """Emit a Redis heartbeat and persist the job list for cross-worker visibility.
+
+    APScheduler's BackgroundScheduler is per-process. In a multi-worker
+    deployment only the leader worker has jobs registered; this heartbeat
+    lets every worker report scheduler liveness and the current schedule.
+    """
     try:
-        return bool(scheduler.running)
+        client = get_redis_client()
+        now = datetime.now(timezone.utc).isoformat()
+        jobs: list[dict[str, Any]] = []
+        if scheduler.running:
+            for job in scheduler.get_jobs():
+                next_run = job.next_run_time
+                jobs.append(
+                    {
+                        "id": job.id,
+                        "name": getattr(job, "name", None) or job.id,
+                        "next_run_time": next_run.isoformat() if next_run else None,
+                    }
+                )
+        client.setex(
+            _SCHEDULER_HEARTBEAT_KEY,
+            _SCHEDULER_HEARTBEAT_TTL_SECONDS,
+            now,
+        )
+        if jobs:
+            client.setex(
+                _SCHEDULER_JOBS_KEY,
+                _SCHEDULER_HEARTBEAT_TTL_SECONDS,
+                json.dumps(jobs),
+            )
+    except Exception:
+        logging.getLogger(__name__).exception("Scheduler heartbeat failed")
+
+
+def is_scheduler_running() -> bool:
+    """Return True if the scheduler leader is alive.
+
+    Uses a Redis heartbeat so non-leader workers can report the same state
+    as the worker actually running the jobs.
+    """
+    if scheduler.running:
+        return True
+    try:
+        client = get_redis_client()
+        return client.exists(_SCHEDULER_HEARTBEAT_KEY) > 0
     except Exception:  # pragma: no cover - defensive
         return False
 
 
 def get_scheduler_jobs() -> list[dict[str, Any]]:
-    """Introspect the running APScheduler for the diagnostics UI.
+    """Introspect scheduled jobs, falling back to the leader's Redis snapshot.
 
-    Returns a JSON-safe list of job metadata. Safe to call even when
-    the scheduler has not been started (returns ``[]``).
+    Returns a JSON-safe list of job metadata. Safe to call even when the
+    local scheduler has not been started.
     """
-    if not is_scheduler_running():
+    try:
+        client = get_redis_client()
+        payload = client.get(_SCHEDULER_JOBS_KEY)
+        if payload:
+            return json.loads(payload)
+    except Exception:
+        logging.getLogger(__name__).exception("Failed to load scheduler jobs from Redis")
+
+    if not scheduler.running:
         return []
     out: list[dict[str, Any]] = []
     try:
