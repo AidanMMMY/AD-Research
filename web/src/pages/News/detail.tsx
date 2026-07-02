@@ -1,6 +1,6 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Spin,
   Alert,
@@ -22,16 +22,19 @@ import {
   ShareAltOutlined,
   EyeOutlined,
   BulbOutlined,
+  ReadOutlined,
   MessageOutlined as ChatOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { newsApi } from '@/api/news';
 import type {
   NewsArticle,
+  NewsFetchContentResponse,
   SentimentLabel,
   ImportanceLevel,
 } from '@/types/news';
 import Panel from '@/components/Panel';
+import Markdown from '@/components/Markdown';
 
 const SENTIMENT_COLORS: Record<SentimentLabel, string> = {
   positive: 'var(--color-rise)',
@@ -82,12 +85,24 @@ export default function NewsDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const articleId = Number(id);
+  const queryClient = useQueryClient();
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['news-detail', articleId],
     queryFn: () => newsApi.get(articleId).then((r) => r.data),
     enabled: Number.isFinite(articleId) && articleId > 0,
   });
+
+  // Local override: once the user clicks "load full text" we want the
+  // rendered body to switch from the cached intro to the Jina-fetched
+  // Markdown without forcing a full refetch of the article.
+  const [renderedFullContent, setRenderedFullContent] =
+    useState<string | null>(null);
+
+  // Reset the override when navigating between articles.
+  useEffect(() => {
+    setRenderedFullContent(null);
+  }, [articleId]);
 
   // Fetch related articles for each mentioned symbol.
   const symbols = data?.symbols ?? [];
@@ -102,6 +117,21 @@ export default function NewsDetail() {
             .then((r) => r.data.items.filter((a) => a.id !== articleId).slice(0, 5))
         : Promise.resolve([] as NewsArticle[]),
     enabled: !!primarySymbol,
+  });
+
+  // Lazy full-text fetch via Jina Reader. The button shows a spinner
+  // for 5-15s while we wait for r.jina.ai to return Markdown.
+  const fetchFullContent = useMutation({
+    mutationFn: (): Promise<NewsFetchContentResponse> =>
+      newsApi.fetchContent(articleId).then((r) => r.data),
+    onSuccess: (resp) => {
+      if (resp.success && resp.content) {
+        setRenderedFullContent(resp.content);
+        // Best-effort refresh of the article detail so a subsequent
+        // mount gets the cached version too.
+        queryClient.invalidateQueries({ queryKey: ['news-detail', articleId] });
+      }
+    },
   });
 
   // Update document title for nicer browser tab.
@@ -143,6 +173,12 @@ export default function NewsDetail() {
 
   const showSocial = SOCIAL_SOURCES.has(data.source);
   const sentiment = data.sentiment_label;
+  const fetchedAt = data.full_content_fetched_at;
+  const fullContentCached = data.full_content && !renderedFullContent;
+  const showFetchError =
+    fetchFullContent.isError ||
+    (fetchFullContent.data && !fetchFullContent.data.success);
+  const fullContentToRender = renderedFullContent ?? data.full_content;
 
   return (
     <div>
@@ -274,7 +310,11 @@ export default function NewsDetail() {
               padding: 'var(--space-5) var(--space-6)',
             }}
           >
-            {data.body ? (
+            {fullContentToRender ? (
+              // Cache hit (from a previous click) OR we just finished
+              // fetching — render the Markdown body inline.
+              <Markdown source={fullContentToRender} />
+            ) : data.body ? (
               <div
                 style={{
                   fontSize: 15,
@@ -288,6 +328,62 @@ export default function NewsDetail() {
               </div>
             ) : (
               <Empty description="暂无正文，请前往原文查看完整内容" />
+            )}
+
+            {/* Load-full-text control: only when we don't already have
+                a rendered full body. The summary that the crawler gave
+                us is usually just an excerpt, so users need an explicit
+                way to see the whole article. */}
+            {!fullContentToRender && (
+              <div style={{ marginTop: 20, textAlign: 'center' }}>
+                <Button
+                  type="default"
+                  size="large"
+                  icon={<ReadOutlined />}
+                  loading={fetchFullContent.isPending}
+                  onClick={() => fetchFullContent.mutate()}
+                >
+                  {fetchFullContent.isPending
+                    ? '正在抓取全文…'
+                    : '📖 加载完整正文'}
+                </Button>
+                <div
+                  style={{
+                    marginTop: 8,
+                    fontSize: 12,
+                    color: 'var(--text-tertiary)',
+                  }}
+                >
+                  通过 Jina Reader 在线抓取，通常 5-15 秒
+                </div>
+              </div>
+            )}
+
+            {fetchedAt && (
+              <div
+                style={{
+                  marginTop: 14,
+                  fontSize: 12,
+                  color: 'var(--text-muted)',
+                }}
+              >
+                全文缓存于 {dayjs(fetchedAt).format('YYYY-MM-DD HH:mm')}
+                {fullContentCached ? ' · 已缓存' : ''}
+              </div>
+            )}
+
+            {showFetchError && (
+              <Alert
+                style={{ marginTop: 16 }}
+                type="warning"
+                showIcon
+                message="全文抓取失败"
+                description={
+                  fetchFullContent.isError
+                    ? (fetchFullContent.error as Error | undefined)?.message
+                    : fetchFullContent.data?.error
+                }
+              />
             )}
           </article>
 

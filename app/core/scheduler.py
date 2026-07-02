@@ -5,6 +5,7 @@ scoring, report generation, market scan, and signal generation jobs.
 """
 
 from datetime import date
+from typing import Any
 
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
@@ -18,9 +19,15 @@ from app.data.pipelines.a_share_stock_daily import AStockDailyPipeline
 from app.data.pipelines.a_share_stock_discovery import AShareStockDiscoveryPipeline
 from app.data.pipelines.a_share_stock_financials import AStockFinancialsPipeline
 from app.data.pipelines.a_share_stock_fundamental import AStockFundamentalPipeline
+from app.data.pipelines.cninfo_reports import CninfoReportsPipeline
 from app.data.pipelines.crypto_daily import CryptoDailyPipeline
 from app.data.pipelines.etf_metadata_enrichment import ETFMetadataEnrichmentPipeline
+from app.data.pipelines.futures import FuturesContractDiscoveryPipeline, FuturesDailyPipeline
 from app.data.pipelines.listing_events import ListingEventsPipeline
+from app.data.pipelines.microstructure import MicrostructurePipeline
+from app.data.pipelines.research_reports import ResearchReportsPipeline
+from app.data.pipelines.search_trends import SearchTrendsPipeline
+from app.data.pipelines.sec_edgar import SecEdgarPipeline
 from app.data.pipelines.us_backfill import USHistoricalBackfillPipeline
 from app.data.pipelines.us_etf import USDailyPipeline
 from app.data.pipelines.us_etf_discovery import USEtfDiscoveryPipeline
@@ -515,6 +522,187 @@ def run_crypto_indicator_calculation(target_date: date | None = None):
             db.close()
 
 
+def run_futures_contract_refresh():
+    """Refresh the futures main contract list (monthly day-1 at 03:00)."""
+    with redis_lock("futures_contracts_refresh", expire_seconds=3600) as acquired:
+        if not acquired:
+            print("⚠️ [SCHEDULER_WARN] Futures contract refresh skipped: lock in use")
+            return
+        db = SessionLocal()
+        try:
+            pipeline = FuturesContractDiscoveryPipeline(db)
+            result = pipeline.run_with_retry(max_attempts=2)
+            print(
+                f"[Scheduler] Futures contract refresh: success={result.success}, "
+                f"records={result.records}"
+            )
+        finally:
+            db.close()
+
+
+def run_futures_daily(target_date: date | None = None):
+    """Run the futures daily bars ETL pipeline.
+
+    Scheduled at 16:30 Asia/Shanghai — 30 minutes after Chinese commodity
+    futures markets close.
+    """
+    with redis_lock("futures_daily", expire_seconds=3600) as acquired:
+        if not acquired:
+            print("⚠️ [SCHEDULER_WARN] Futures daily skipped: lock in use")
+            return
+        db = SessionLocal()
+        try:
+            pipeline = FuturesDailyPipeline(db, target_date=target_date)
+            result = pipeline.run_with_retry(max_attempts=2)
+            print(
+                f"[Scheduler] Futures daily (target={target_date}): "
+                f"success={result.success}, records={result.records}"
+            )
+        finally:
+            db.close()
+
+
+def run_sec_edgar_daily():
+    """Refresh SEC EDGAR filings (weekly Saturday 06:00 UTC).
+
+    Walks the cached SEC ticker directory in batches (default 50 tickers
+    per run) and upserts 10-K / 10-Q / 20-F filings into the
+    ``sec_filings`` table.  Best-effort — single ticker failures do not
+    abort the batch.
+    """
+    with redis_lock("sec_edgar_daily", expire_seconds=7200) as acquired:
+        if not acquired:
+            print("⚠️ [SCHEDULER_WARN] SEC EDGAR refresh skipped: lock in use")
+            return
+        db = SessionLocal()
+        try:
+            pipeline = SecEdgarPipeline(db, batch_size=50)
+            result = pipeline.run_with_retry(max_attempts=1)
+            print(
+                f"[Scheduler] SEC EDGAR refresh: "
+                f"success={result.success}, records={result.records}"
+            )
+        finally:
+            db.close()
+
+
+def run_microstructure_daily():
+    """Refresh A-share micro-structure tables (daily 18:30 Asia/Shanghai).
+
+    Runs the 4 sub-tasks (LHB / HSGT / margin / restricted) each in
+    its own try/except guard — one failure does not abort the others.
+    """
+    with redis_lock("microstructure_daily", expire_seconds=3600) as acquired:
+        if not acquired:
+            print("⚠️ [SCHEDULER_WARN] Microstructure refresh skipped: lock in use")
+            return
+        db = SessionLocal()
+        try:
+            pipeline = MicrostructurePipeline(db)
+            result = pipeline.run_with_retry(max_attempts=1)
+            print(
+                f"[Scheduler] Microstructure refresh: "
+                f"success={result.success}, records={result.records}"
+            )
+        finally:
+            db.close()
+
+
+def run_search_trends_daily():
+    """Refresh Baidu + Google search-trend observations (daily 03:00 Asia/Shanghai).
+
+    Pulls one observation per (rotated) keyword for each source and
+    upserts into the ``search_trends`` table.  Google keywords each
+    block ~60s due to pytrends rate limiting.
+    """
+    with redis_lock("search_trends_daily", expire_seconds=1800) as acquired:
+        if not acquired:
+            print("⚠️ [SCHEDULER_WARN] Search trends refresh skipped: lock in use")
+            return
+        db = SessionLocal()
+        try:
+            pipeline = SearchTrendsPipeline(db)
+            result = pipeline.run_with_retry(max_attempts=1)
+            print(
+                f"[Scheduler] Search trends refresh: "
+                f"success={result.success}, records={result.records}"
+            )
+        finally:
+            db.close()
+
+
+def run_china_macro_refresh():
+    """Refresh China macro indicators (akshare).
+
+    Pulls GDP / CPI / PPI / M2 / PMI / SHIBOR / RRR from akshare's
+    ``macro_china_*`` family and upserts into the macro_indicator table.
+    Best-effort: per-series failures are logged inside
+    ``run_china_macro_refresh`` and never crash the scheduler.
+    """
+    from app.services.macro.scheduler import run_china_macro_refresh as _run
+
+    with redis_lock("china_macro_daily", expire_seconds=3600) as acquired:
+        if not acquired:
+            print("⚠️ [SCHEDULER_WARN] China macro refresh skipped: lock in use")
+            return
+        try:
+            result = _run()
+            print(
+                f"[Scheduler] China macro refresh: written={result.get('written', 0)}, "
+                f"fetched={result.get('fetched', 0)}, "
+                f"failed={result.get('failed', [])}"
+            )
+        except Exception as exc:  # pragma: no cover - last-resort guard
+            print(f"[Scheduler] China macro refresh crashed: {exc}")
+
+
+def run_research_reports_daily():
+    """Refresh research_reports (daily 18:00 Asia/Shanghai).
+
+    Walks active A-share individual stocks, fetches recent analyst
+    reports from Eastmoney (via akshare), and upserts them into the
+    ``research_reports`` table. Safe to re-run thanks to the unique
+    constraint on ``(ts_code, title, publish_date)``.
+    """
+    from app.data.pipelines.research_reports import ResearchReportsPipeline
+
+    with redis_lock("research_reports_daily", expire_seconds=3600) as acquired:
+        if not acquired:
+            print("⚠️ [SCHEDULER_WARN] Research-reports refresh skipped: lock in use")
+            return
+        db = SessionLocal()
+        try:
+            pipeline = ResearchReportsPipeline(db)
+            result = pipeline.run_with_retry(max_attempts=2)
+            print(
+                f"[Scheduler] Research-reports daily: "
+                f"success={result.success}, records={result.records}"
+            )
+        finally:
+            db.close()
+
+
+def run_summarize_pending_reports():
+    """DeepSeek-summarize up to 20 unsummarized reports (every 2h).
+
+    Idempotent: only touches rows where ``summary IS NULL``. Rows that
+    fail (timeout / 429 / no API key) are left for the next run.
+    """
+    from app.services.research_report_service import ResearchReportService
+
+    with redis_lock("research_reports_summarize", expire_seconds=1800) as acquired:
+        if not acquired:
+            print("⚠️ [SCHEDULER_WARN] Research-reports summarize skipped: lock in use")
+            return
+        db = SessionLocal()
+        try:
+            service = ResearchReportService(db)
+            count = service.summarize_pending_reports(batch_size=20, max_per_run=20)
+            print(f"[Scheduler] Research-reports summarize: {count} summarized")
+        finally:
+            db.close()
+
+
 def run_paper_trade_market_update():
     """Update market values for all active paper-trade positions (hourly).
 
@@ -654,6 +842,29 @@ def run_signal_generation(target_date: date | None = None):
             db.close()
 
 
+def run_cninfo_reports_daily():
+    """Refresh cninfo periodic reports (daily 17:00 Asia/Shanghai).
+
+    Walks the HS300 + CS500 universe (B-tier) and pulls the four
+    periodic-report categories published in the last 7 days.  Safe to
+    re-run thanks to the unique constraint on ``announcement_id``.
+    """
+    with redis_lock("cninfo_reports_daily", expire_seconds=3600, wait_timeout=600) as acquired:
+        if not acquired:
+            print("⚠️ [SCHEDULER_WARN] Cninfo reports refresh skipped: lock in use")
+            return
+        db = SessionLocal()
+        try:
+            pipeline = CninfoReportsPipeline(db)
+            result = pipeline.run_with_retry(max_attempts=2)
+            print(
+                f"[Scheduler] Cninfo reports daily: "
+                f"success={result.success}, records={result.records}"
+            )
+        finally:
+            db.close()
+
+
 def init_scheduler():
     """Initialize and start the background scheduler.
 
@@ -676,6 +887,10 @@ def init_scheduler():
       - Paper trade auto at 09:30 daily (waits for signal generation)
       - Crypto ETL at 08:05 daily (00:05 UTC, post-UTC-midnight)
       - Crypto indicator calculation at 08:30 daily
+      - Futures daily ETL at 16:30 daily
+      - Futures contract refresh on day-1 at 03:00 monthly
+      - Research reports daily ETL at 18:00 daily
+      - Research report DeepSeek summarization every 2 hours
     """
     scheduler.add_job(
         run_us_etl,
@@ -806,6 +1021,45 @@ def init_scheduler():
         replace_existing=True,
         max_instances=1,
     )
+    # ── Cninfo Periodic Reports ──
+    scheduler.add_job(
+        run_cninfo_reports_daily,
+        trigger=CronTrigger(hour=17, minute=0, timezone="Asia/Shanghai"),
+        id="cninfo_reports_daily",
+        name="巨潮定期报告日刷",
+        replace_existing=True,
+        max_instances=1,
+    )
+    # ── Macro Jobs ──
+    scheduler.add_job(
+        run_china_macro_refresh,
+        trigger=CronTrigger(
+            hour=9, minute=30, day_of_week="mon-fri", timezone="Asia/Shanghai"
+        ),
+        id="china_macro_daily",
+        name="中国宏观日刷",
+        replace_existing=True,
+        max_instances=1,
+    )
+    # ── Futures Jobs ──
+    scheduler.add_job(
+        run_futures_daily,
+        trigger=CronTrigger(hour=16, minute=30, timezone="Asia/Shanghai"),
+        id="futures_daily_etl",
+        name="国内期货日终采集",
+        replace_existing=True,
+        max_instances=1,
+    )
+    scheduler.add_job(
+        run_futures_contract_refresh,
+        trigger=CronTrigger(
+            day=1, hour=3, minute=0, timezone="Asia/Shanghai"
+        ),
+        id="futures_contracts_refresh",
+        name="国内期货主力合约刷新",
+        replace_existing=True,
+        max_instances=1,
+    )
     # ── Paper Trading Jobs ──
     scheduler.add_job(
         run_paper_trade_market_update,
@@ -856,6 +1110,51 @@ def init_scheduler():
         replace_existing=True,
         max_instances=1,
     )
+    # ── Research Reports ──
+    scheduler.add_job(
+        run_research_reports_daily,
+        trigger=CronTrigger(hour=18, minute=0, timezone="Asia/Shanghai"),
+        id="research_reports_daily",
+        name="A股研报日抓取",
+        replace_existing=True,
+        max_instances=1,
+    )
+    scheduler.add_job(
+        run_summarize_pending_reports,
+        trigger=IntervalTrigger(hours=2),
+        id="research_summarize",
+        name="研报 DeepSeek 摘要补齐",
+        replace_existing=True,
+        max_instances=1,
+        coalesce=True,
+    )
+    # ── Macro (FRED) — daily after FRED publishes (~15:00 ET)
+    try:
+        from app.services.news.scheduler_jobs import run_fred_refresh
+        from app.core.redis_client import redis_lock
+
+        def _fred_wrapper():
+            with redis_lock("fred_macro_daily", expire_seconds=1800) as acquired:
+                if not acquired:
+                    print("⚠️ [SCHEDULER_WARN] FRED refresh skipped: lock in use")
+                    return
+                run_fred_refresh()
+
+        # 15:00 ET ≈ 03:00 Beijing time next day (EDT) / 04:00 (EST).
+        # day_of_week='mon-fri' — FRED doesn't publish on weekends.
+        scheduler.add_job(
+            _fred_wrapper,
+            trigger=CronTrigger(
+                hour=3, minute=0, day_of_week="mon-fri", timezone="Asia/Shanghai"
+            ),
+            id="fred_macro_daily",
+            name="FRED 美国宏观日刷",
+            replace_existing=True,
+            max_instances=1,
+        )
+    except ImportError:
+        pass
+
     # ── News / Sentiment Jobs ──
     # A-share RSS feeds (every 5 minutes)
     try:
@@ -863,6 +1162,7 @@ def init_scheduler():
             run_xinhua_crawl, run_cninfo_crawl, run_sina_crawl,
             run_yahoo_crawl, run_cnbc_crawl, run_sec_edgar_crawl,
             run_reddit_crawl,
+            run_coindesk_crawl, run_cointelegraph_crawl,
         )
         scheduler.add_job(
             run_xinhua_crawl,
@@ -927,6 +1227,24 @@ def init_scheduler():
             max_instances=1,
             coalesce=True,
         )
+        scheduler.add_job(
+            run_coindesk_crawl,
+            trigger=IntervalTrigger(minutes=5),
+            id="news_coindesk_5m",
+            name="CoinDesk RSS",
+            replace_existing=True,
+            max_instances=1,
+            coalesce=True,
+        )
+        scheduler.add_job(
+            run_cointelegraph_crawl,
+            trigger=IntervalTrigger(minutes=5),
+            id="news_cointelegraph_5m",
+            name="Cointelegraph RSS",
+            replace_existing=True,
+            max_instances=1,
+            coalesce=True,
+        )
     except ImportError:
         pass
 
@@ -952,6 +1270,36 @@ def init_scheduler():
     except ImportError:
         pass
 
+    # ── SEC EDGAR (Phase 6) ── weekly Saturday 06:00 UTC
+    scheduler.add_job(
+        run_sec_edgar_daily,
+        trigger=CronTrigger(
+            day_of_week="sat", hour=6, minute=0, timezone="UTC"
+        ),
+        id="sec_edgar_daily",
+        name="SEC EDGAR 周报采集",
+        replace_existing=True,
+        max_instances=1,
+    )
+    # ── Microstructure (Phase 7) ── daily 18:30 Asia/Shanghai
+    scheduler.add_job(
+        run_microstructure_daily,
+        trigger=CronTrigger(hour=18, minute=30, timezone="Asia/Shanghai"),
+        id="microstructure_daily",
+        name="A 股微结构数据日刷",
+        replace_existing=True,
+        max_instances=1,
+    )
+    # ── Search Trends (Phase 9) ── daily 03:00 Asia/Shanghai
+    scheduler.add_job(
+        run_search_trends_daily,
+        trigger=CronTrigger(hour=3, minute=0, timezone="Asia/Shanghai"),
+        id="search_trends_daily",
+        name="搜索热度日刷",
+        replace_existing=True,
+        max_instances=1,
+    )
+
     scheduler.start()
     print("[Scheduler] Started")
 
@@ -961,3 +1309,35 @@ def shutdown_scheduler():
     if scheduler.running:
         scheduler.shutdown()
         print("[Scheduler] Shutdown")
+
+
+def is_scheduler_running() -> bool:
+    """Return True if the APScheduler background thread is alive."""
+    try:
+        return bool(scheduler.running)
+    except Exception:  # pragma: no cover - defensive
+        return False
+
+
+def get_scheduler_jobs() -> list[dict[str, Any]]:
+    """Introspect the running APScheduler for the diagnostics UI.
+
+    Returns a JSON-safe list of job metadata. Safe to call even when
+    the scheduler has not been started (returns ``[]``).
+    """
+    if not is_scheduler_running():
+        return []
+    out: list[dict[str, Any]] = []
+    try:
+        for job in scheduler.get_jobs():
+            next_run = job.next_run_time
+            out.append(
+                {
+                    "id": job.id,
+                    "name": getattr(job, "name", None) or job.id,
+                    "next_run_time": next_run.isoformat() if next_run else None,
+                }
+            )
+    except Exception:  # pragma: no cover - defensive
+        return out
+    return out

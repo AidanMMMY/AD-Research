@@ -24,6 +24,9 @@ import {
   CloudServerOutlined,
   GoldOutlined,
   DollarOutlined,
+  BookOutlined,
+  CalendarOutlined,
+  ClockCircleOutlined,
   MenuFoldOutlined,
   MenuUnfoldOutlined,
   MenuOutlined,
@@ -61,6 +64,9 @@ const iconMap: Record<string, React.ComponentType> = {
   GoldOutlined,
   DollarOutlined,
   MonitorOutlined,
+  BookOutlined,
+  CalendarOutlined,
+  ClockCircleOutlined,
 };
 
 const SIDEBAR_WIDTH = 220;

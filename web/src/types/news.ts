@@ -56,6 +56,19 @@ export interface NewsArticle {
   event_category: string | null;
   importance: ImportanceLevel | null;
   symbols: NewsSymbol[];
+  /** Lazily-fetched full body (Jina Reader cache). ``null`` when never loaded. */
+  full_content: string | null;
+  /** ISO timestamp of the last successful Jina fetch (cache TTL anchor). */
+  full_content_fetched_at: string | null;
+}
+
+/** Response shape for ``POST /news/{id}/fetch-content``. */
+export interface NewsFetchContentResponse {
+  success: boolean;
+  /** Cached Markdown body, or a fallback to the intro on failure. */
+  content: string | null;
+  cached: boolean;
+  error: string | null;
 }
 
 /** Paginated list response. */
@@ -80,11 +93,75 @@ export interface NewsListParams {
   importance_min?: ImportanceLevel;
 }
 
+/** Watchlist-scoped metadata returned by /news/watchlist. */
+export interface NewsWatchlistMeta {
+  /** All favorite instrument codes the user has on file. */
+  symbols: string[];
+  /** How many of those symbols have at least one matching article. */
+  symbols_with_news: number;
+  /** Total matching articles across all pages. */
+  total_articles: number;
+}
+
+/** Response shape for /news/watchlist — same as ``NewsListResponse``
+ *  plus a ``watchlist`` metadata block. */
+export interface NewsWatchlistResponse extends NewsListResponse {
+  watchlist: NewsWatchlistMeta;
+}
+
+/** Query parameters for the watchlist-scoped list endpoint.
+ *  Note: ``symbol`` is intentionally absent — the symbol set comes from
+ *  the user's favorites on the server side. */
+export interface NewsWatchlistParams {
+  market?: NewsMarket | string;
+  source?: string;
+  from_date?: string;
+  to_date?: string;
+  page?: number;
+  page_size?: number;
+}
+
 /** Per-source count summary. */
 export interface NewsSourceStat {
   source: string;
   count: number;
   last_24h: number;
+}
+
+/** Last etl_log row for a single news source. */
+export interface NewsSourceLatestEtl {
+  status: string;
+  records: number | null;
+  error_msg: string | null;
+  finished_at: string | null;
+  started_at: string | null;
+}
+
+/** Per-source diagnostics row returned by /news/health. */
+export interface NewsSourceHealth {
+  source: string;
+  job_id: string | null;
+  total: number;
+  last_24h: number;
+  last_published_at: string | null;
+  last_fetched_at: string | null;
+  latest_etl: NewsSourceLatestEtl | null;
+}
+
+/** APScheduler job snapshot entry. */
+export interface NewsSchedulerJob {
+  id: string;
+  name: string;
+  next_run_time: string | null;
+}
+
+/** Full response shape of /news/health. */
+export interface NewsHealthResponse {
+  as_of: string;
+  scheduler_running: boolean;
+  scheduler_jobs: NewsSchedulerJob[];
+  scheduler_total_jobs: number;
+  sources: NewsSourceHealth[];
 }
 
 /** Theme weight in retail sentiment aggregation. */

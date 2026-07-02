@@ -31,6 +31,7 @@ import { newsApi } from '@/api/news';
 import type {
   NewsArticle,
   NewsMarket,
+  NewsWatchlistResponse,
   SentimentLabel,
   ImportanceLevel,
 } from '@/types/news';
@@ -409,6 +410,12 @@ export default function NewsFeed() {
   const [activeSymbol, setActiveSymbol] = useState<string | undefined>(
     searchParams.get('symbol') ?? undefined
   );
+  // ``watchlist=1`` scopes the feed to the current user's favorites.
+  // When on, the page routes through ``/news/watchlist`` instead of
+  // ``/news`` so cache stays separate.
+  const [watchlistMode, setWatchlistMode] = useState<boolean>(
+    searchParams.get('watchlist') === '1'
+  );
 
   // Sync URL params when filters change.
   useEffect(() => {
@@ -417,8 +424,9 @@ export default function NewsFeed() {
     if (source) next.source = source;
     if (activeSymbol) next.symbol = activeSymbol;
     if (searchInput) next.q = searchInput;
+    if (watchlistMode) next.watchlist = '1';
     setSearchParams(next, { replace: true });
-  }, [market, source, activeSymbol, searchInput, setSearchParams]);
+  }, [market, source, activeSymbol, searchInput, watchlistMode, setSearchParams]);
 
   // Source list for the dropdown.
   const { data: sourceStats, isLoading: sourceStatsLoading } = useQuery({
@@ -444,22 +452,51 @@ export default function NewsFeed() {
     isLoading,
     isError,
   } = useInfiniteQuery({
-    queryKey: ['news-list', market, source, dateRange, activeSymbol, searchInput],
+    // Distinct query keys so the watchlist and global feeds do not
+    // share a cache entry — the watchlist result set changes the
+    // moment the user adds/removes a favorite.
+    queryKey: watchlistMode
+      ? ['news-watchlist', market, source, dateRange]
+      : ['news-list', market, source, dateRange, activeSymbol, searchInput],
     initialPageParam: 1,
     queryFn: ({ pageParam }) =>
-      newsApi.list({
-        market: market === 'all' ? undefined : market,
-        symbol: activeSymbol,
-        source,
-        from_date: toIso(dateRange?.[0] ?? null, false),
-        to_date: toIso(dateRange?.[1] ?? null, true),
-        q: searchInput || undefined,
-        page: pageParam,
-        page_size: PAGE_SIZE,
-      }).then((r) => r.data),
+      watchlistMode
+        ? newsApi
+            .watchlist({
+              market: market === 'all' ? undefined : market,
+              source,
+              from_date: toIso(dateRange?.[0] ?? null, false),
+              to_date: toIso(dateRange?.[1] ?? null, true),
+              page: pageParam,
+              page_size: PAGE_SIZE,
+            })
+            .then((r) => r.data)
+        : newsApi
+            .list({
+              market: market === 'all' ? undefined : market,
+              symbol: activeSymbol,
+              source,
+              from_date: toIso(dateRange?.[0] ?? null, false),
+              to_date: toIso(dateRange?.[1] ?? null, true),
+              q: searchInput || undefined,
+              page: pageParam,
+              page_size: PAGE_SIZE,
+            })
+            .then((r) => r.data),
     getNextPageParam: (last) =>
       last.page * last.page_size < last.total ? last.page + 1 : undefined,
   });
+
+  // Watchlist metadata is only meaningful while watchlistMode is on.
+  // We pull it out of the most recent page; if no pages have loaded
+  // yet (initial load), the response falls back to undefined.
+  const watchlistMeta = useMemo(() => {
+    if (!watchlistMode) return null;
+    const last = data?.pages?.[data.pages.length - 1] as
+      | (NewsWatchlistResponse | undefined)
+      | undefined;
+    return last?.watchlist ?? null;
+  }, [data, watchlistMode]);
 
   // Infinite-scroll via IntersectionObserver.
   const sentinelRef = useCallback(
@@ -578,6 +615,33 @@ export default function NewsFeed() {
             alignItems: 'center',
           }}
         >
+          <Tag.CheckableTag
+            checked={watchlistMode}
+            onChange={(checked) => {
+              setWatchlistMode(checked);
+              if (checked) {
+                // Switching to the watchlist feed means the per-symbol
+                // tag and search no longer apply — clear them so the
+                // user does not see a chip pinned to a symbol that is
+                // no longer in scope.
+                setActiveSymbol(undefined);
+              }
+            }}
+            style={{
+              padding: '4px 12px',
+              borderRadius: 16,
+              border: '1px solid var(--card-border)',
+              background: watchlistMode ? 'var(--accent-soft, rgba(82,196,26,0.12))' : 'transparent',
+              color: watchlistMode ? 'var(--accent)' : 'var(--text-secondary)',
+              fontSize: 13,
+              fontWeight: watchlistMode ? 500 : 400,
+              cursor: 'pointer',
+              userSelect: 'none',
+            }}
+          >
+            <StarFilled style={{ marginRight: 4, fontSize: 11 }} />
+            我的自选
+          </Tag.CheckableTag>
           <Segmented
             value={market}
             onChange={(v) => setMarket(v as NewsMarket | 'all')}
@@ -616,9 +680,23 @@ export default function NewsFeed() {
             </Tag>
           )}
           <div style={{ flex: 1 }} />
-          <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>
-            共 {data?.pages?.[0]?.total ?? 0} 条
-          </span>
+          {watchlistMode && watchlistMeta ? (
+            <Tooltip title="关联到当前用户自选标的的资讯（按自选/池内 ETF 代码匹配）">
+              <span
+                style={{
+                  fontSize: 12,
+                  color: 'var(--text-tertiary)',
+                  fontFamily: 'var(--font-mono)',
+                }}
+              >
+                自选标的 {watchlistMeta.symbols.length} 个 · 相关资讯 {watchlistMeta.total_articles} 条
+              </span>
+            </Tooltip>
+          ) : (
+            <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>
+              共 {data?.pages?.[0]?.total ?? 0} 条
+            </span>
+          )}
         </div>
       </div>
 

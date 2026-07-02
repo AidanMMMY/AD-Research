@@ -137,7 +137,9 @@ export default function StrategyLibrary() {
           style={{
             display: 'grid',
             gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))',
+            gridAutoRows: '1fr', // all cards in the same grid row share the tallest card's height
             gap: 16,
+            alignItems: 'stretch',
           }}
         >
           {strategies.map((strategy) => (

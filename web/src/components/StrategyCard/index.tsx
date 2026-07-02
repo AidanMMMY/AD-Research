@@ -36,8 +36,17 @@ export default function StrategyCard({
         background: 'var(--surface-elevated)',
         border: '1px solid var(--border-default)',
         borderRadius: 'var(--radius-md)',
+        height: '100%', // fill the grid row (set via gridAutoRows: '1fr' on parent)
+        display: 'flex',
+        flexDirection: 'column',
       }}
-      bodyStyle={{ padding: 'var(--space-md)' }}
+      bodyStyle={{
+        padding: 'var(--space-md)',
+        display: 'flex',
+        flexDirection: 'column',
+        flex: 1,
+        gap: 12,
+      }}
       actions={[
         <Button
           key="create"
@@ -78,25 +87,27 @@ export default function StrategyCard({
         </h3>
         <ThemeTag variant="accent">{FAMILY_LABELS[strategy.family] || strategy.family}</ThemeTag>
       </div>
-      <p style={{ margin: '0 0 12px', color: 'var(--text-secondary)', fontSize: 'var(--text-body-size)' }}>
+      <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: 'var(--text-body-size)' }}>
         {strategy.description}
       </p>
-      {paramEntries.length > 0 && (
-        <Descriptions size="small" column={2} style={{ marginBottom: 0 }}>
-          {paramEntries.slice(0, 4).map(([key, spec]) => (
-            <Descriptions.Item key={key} label={spec.label}>
-              <Tag style={{ background: 'var(--surface-default)', borderColor: 'var(--border-default)' }}>
-                {String(spec.default)}
-              </Tag>
-            </Descriptions.Item>
-          ))}
-        </Descriptions>
-      )}
-      {paramEntries.length > 4 && (
-        <p style={{ margin: '8px 0 0', color: 'var(--text-tertiary)', fontSize: 12 }}>
-          等 {paramEntries.length} 个参数
-        </p>
-      )}
+      <div style={{ flex: 1, minHeight: 0 }}>
+        {paramEntries.length > 0 && (
+          <Descriptions size="small" column={2} style={{ marginBottom: 0 }}>
+            {paramEntries.slice(0, 4).map(([key, spec]) => (
+              <Descriptions.Item key={key} label={spec.label}>
+                <Tag style={{ background: 'var(--surface-default)', borderColor: 'var(--border-default)' }}>
+                  {String(spec.default)}
+                </Tag>
+              </Descriptions.Item>
+            ))}
+          </Descriptions>
+        )}
+        {paramEntries.length > 4 && (
+          <p style={{ margin: '8px 0 0', color: 'var(--text-tertiary)', fontSize: 12 }}>
+            等 {paramEntries.length} 个参数
+          </p>
+        )}
+      </div>
     </Card>
   );
 }

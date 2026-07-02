@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>投资人方法论 → 平台功能映射</title>
+  <style>
+:root {
+  --bg: #f8f9fa;
+  --text: #212529;
+  --code-bg: #f1f3f5;
+  --border: #dee2e6;
+  --accent: #0d6efd;
+  --warn: #dc3545;
+  --note: #0f5132;
+  --note-bg: #d1e7dd;
+  --table-stripe: #f8f9fa;
+  --max-w: 960px;
+}
+* { box-sizing: border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  line-height: 1.75;
+  color: var(--text);
+  background: var(--bg);
+  max-width: var(--max-w);
+  margin: 0 auto;
+  padding: 2rem 1.25rem 4rem;
+  font-size: 16px;
+}
+h1 {
+  font-size: 2rem;
+  border-bottom: 3px solid var(--accent);
+  padding-bottom: .5rem;
+  margin-top: 1.5rem;
+}
+h2 {
+  font-size: 1.5rem;
+  margin-top: 2.5rem;
+  border-left: 5px solid var(--accent);
+  padding-left: .8rem;
+  background: #f1f6ff;
+  padding-top: .35rem;
+  padding-bottom: .35rem;
+  border-radius: 4px;
+}
+h3 {
+  font-size: 1.2rem;
+  margin-top: 2rem;
+  color: var(--accent);
+}
+h4 { font-size: 1.05rem; margin-top: 1.5rem; }
+p { margin: 0.85em 0; }
+ul, ol { padding-left: 1.6em; margin: 0.6em 0; }
+li { margin: 0.25em 0; }
+code {
+  background: var(--code-bg);
+  padding: .15rem .4rem;
+  border-radius: 4px;
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  font-size: .9em;
+  color: #c7254e;
+}
+pre {
+  background: var(--code-bg);
+  padding: 1rem 1.1rem;
+  border-radius: 8px;
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  line-height: 1.55;
+}
+pre code {
+  background: transparent;
+  padding: 0;
+  color: inherit;
+  font-size: .88em;
+}
+blockquote {
+  border-left: 4px solid var(--accent);
+  background: #f1f6ff;
+  margin: 1em 0;
+  padding: .5em 1em;
+  color: #333;
+  border-radius: 0 4px 4px 0;
+}
+table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 1em 0;
+  font-size: .92em;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+thead { background: #f1f3f5; }
+th, td {
+  border: 1px solid var(--border);
+  padding: .55em .8em;
+  text-align: left;
+  vertical-align: top;
+}
+tbody tr:nth-child(even) { background: var(--table-stripe); }
+hr {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 2.5rem 0;
+}
+a {
+  color: var(--accent);
+  text-decoration: none;
+  border-bottom: 1px dashed var(--accent);
+}
+a:hover { border-bottom-style: solid; }
+.toc {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 1rem 1.25rem;
+  margin: 1rem 0 2rem;
+}
+.toc h2 { font-size: 1rem; margin: 0 0 .5rem; padding: 0; border: none; background: none; }
+.toc ul { margin: 0; padding-left: 1.2em; font-size: .9em; }
+.toc a { border-bottom: none; }
+.meta {
+  font-size: .85em;
+  color: #6c757d;
+  margin-bottom: 2rem;
+}
+@media print {
+  body { background: #fff; max-width: none; padding: 1rem; }
+  a { color: #000; border-bottom: none; }
+  pre, code { background: #f5f5f5; }
+}
+</style>
+</head>
+<body>
+  <p class="meta">生成日期: 2026-07-02 · 来源: AD-Research dev-notes</p>
+  <div class="toc"><h2>目录</h2><ul><li style="margin-left:0px"><a href="#顶尖投资者如何发现机会-蒸馏为-ad-research-平台功能">顶尖投资者如何发现机会 — 蒸馏为 AD-Research 平台功能</a></li><li style="margin-left:12px"><a href="#0-引言-为什么是这份文档">0. 引言：为什么是这份文档</a></li><li style="margin-left:12px"><a href="#1-投资者原型调研">1. 投资者原型调研</a></li><li style="margin-left:12px"><a href="#2-平台功能地图-section-a">2. 平台功能地图（Section A）</a></li><li style="margin-left:12px"><a href="#3-实施路线图-section-b">3. 实施路线图（Section B）</a></li><li style="margin-left:12px"><a href="#4-工作流模板-section-c">4. 工作流模板（Section C）</a></li><li style="margin-left:12px"><a href="#5-关键的非显而易见的洞见">5. 关键的非显而易见的洞见</a></li><li style="margin-left:12px"><a href="#6-后续动作建议">6. 后续动作建议</a></li><li style="margin-left:12px"><a href="#7-附录-被刻意略过的功能">7. 附录：被刻意略过的功能</a></li></ul></div>
+  <h1 id="顶尖投资者如何发现机会-蒸馏为-ad-research-平台功能">顶尖投资者如何发现机会 — 蒸馏为 AD-Research 平台功能</h1>
+<p><strong>日期：</strong> 2026-07-02
+<strong>作者：</strong> Claude（战略输入文档，非代码）
+<strong>目标读者：</strong> AD-Research 平台主理人
+<strong>核心问题：</strong> 优秀的投资者怎么找到 idea？我们能把他们的方法蒸馏成平台功能吗？</p>
+<hr>
+<h2 id="0-引言-为什么是这份文档">0. 引言：为什么是这份文档</h2>
+<p>AD-Research 已经从"手工 ETF 投研"演进为"多市场 + 评分 + 池 + 回测 + 信号 + AI 研报"的 Web 投研平台，能力栈接近 Wind / Portfolio123 的入门级。但用户（您）在 2026-07-01 平台审计后指出的方向很清楚：</p>
+<blockquote>平台要继续演化为 <strong>"投资工作流"</strong>，而不仅仅是 <strong>"数据显示"</strong>。</blockquote>
+<p>这就引出一个根本问题：<strong>伟大的投资者是如何发现机会的？</strong> 他们的方法学里有哪些"非显而易见"的步骤、哪些"反共识"的判断节点、哪些"二阶效应"的关注点？这些方法学中，<strong>哪些能编码成平台功能？哪些是平台永远无法替代的？</strong></p>
+<p>本报告分三段：</p>
+<ol><li><strong>第一章：5+1 个投资者原型调研</strong> — 跨价值、复合、宏观、事件驱动、量化、主题、特殊情境、A 股本土实务</li><li><strong>第二章：平台功能地图</strong> — 14 个具体功能点，附 UI 形态、数据依赖、复杂度、价值</li><li><strong>第三章：实施路线图 + 工作流模板</strong> — 按阶段落地的清单 + 每个原型的"如果我是 XX 投资者，今天我点哪里"</li></ol>
+<hr>
+<h2 id="1-投资者原型调研">1. 投资者原型调研</h2>
+<blockquote>方法论说明：每个原型不是"画像"，而是"工作流解剖"。重点是<strong>每天早上 8:30 这个人打开什么、为什么打开、看完之后做什么动作</strong>。浅层的"读 10-K 找护城河"不在本文档范围。</blockquote>
+<h3 id="1-1-复合型价值-quality-compounder-terry-smith-nick-sleep-tom-russo">1.1 复合型价值 / Quality Compounder — Terry Smith, Nick Sleep, Tom Russo</h3>
+<p><strong>原型画像</strong>
+"买入可以持有 10 年的高质量生意"。拒绝轮动、拒绝择时、拒绝 90% 的标的池。决策频率极低（Smith 公开组合年周转 &lt; 10%），研究深度极深。</p>
+<p><strong>早晨先看什么</strong></p>
+<ul><li><strong>既有持仓的官方公告 / 监管文件</strong>（FCA filings / 港交所披露 / SEC EDGAR alerts）。<strong>不</strong>看行情终端，不看新闻推送。</ul><li><strong>持仓公司一手经营数据</strong>（门店客流、APP DAU、信用卡刷卡量）— 他们用一手数据来"算"持仓的内在价值是否仍合理</ul><li><strong>"do nothing" list</strong> — 已研究的"贵但有道理"的公司（Smith 的 Nomad 清单），等估值杀下来再动手</ul></ul>
+<p><strong>筛选条件 / Anomalies</strong></p>
+<ul><li>高 ROIC（&gt; 20% 持续 10 年）+ 净资产自由现金流为正 + 负债低（Net Debt / EBITDA &lt; 1.5x）</ul><li>"Boring" — 业务十年没大变化、行业增速 3-5%、管理层稳定 5+ 年</ul><li><strong>"不可分配支出"</strong> 占比低（Nick Sleep 的关键概念：把维护性 capex / 折旧加回去后，看是否仍能产生大量 FCF）</ul><li>复利秘密：再投资回报率（ROIC）显著高于资本成本，且增量资本仍能保持该水平</ul><li>估值上接受"看似贵"：用 owner earnings yield 而非 PE，对长期复合给予溢价</ul></ul>
+<p><strong>深度工作流（拿到候选后的 2-5 步）</strong></p>
+<ol><li><strong>写"墓志铭"</strong>：用一句话写清 10 年后这家公司会变成什么样，反向检查现状</li><li><strong>算"反通胀"</strong> ：在通胀 5% 假设下，FCF 实际增长是否仍能支持买入价</li><li><strong>看管理层资本配置历史</strong>：回购？分红？并购？并购后的整合记录？</li><li><strong>找"理由 3 个"</strong>：列出 3 个<strong>会让你卖出的理由</strong>，看是否真实</li><li><strong>30 天冷静期</strong>：写完不进池，30 天后再回看，识别情绪因素</li></ol>
+<p><strong>买入触发（pull the trigger）</strong></p>
+<ul><li>估值出现"非系统性"下跌（市场情绪、行业冷风、汇率），但经营基本面没变</ul><li>出现"事件性套利"窗口：分拆、剥离、大股东减持引发的技术性折价</ul><li>多年跟踪后终于跌入"再投资回报率 - 资本成本"的合理折现区间</ul></ul>
+<p><strong>卖出信号</strong></p>
+<ul><li>增量 ROIC 跌到接近资本成本（"生意变平庸"）</ul><li>管理层资本配置明显变差（开始大额低回报并购 / 异常股权激励）</ul><li>估值进入"hot money zone"：出现散户、媒体集中推荐，机构持仓过度拥挤</ul><li>出现比它更便宜的同质替代品</ul></ul>
+<p><strong>对平台的 3-5 个可编码信号</strong></p>
+<ol><li><strong>"高质量 + 合理价"综合评分</strong> — 把 ROIC、再投资回报率、Net Debt/EBITDA、FCF Yield 打包为单值</li><li><strong>资本配置历史追踪</strong> — 历年 capex / 分红 / 回购 / 并购的"效率评分"</li><li><strong>管理层"墓志铭"录入与对照</strong> — 用户在研究时录一句话墓志铭，30 天后自动提醒对照</li><li><strong>"长期持有适宜度"标签</strong> — 对每只标的计算 turnover 容忍度、年化综合摩擦</li><li><strong>估值 vs 内在价值（DCF 简化版）</strong> — 用 owner earnings + 折现率 8-10% 倒推 fair value 区间</li></ol>
+<hr>
+<h3 id="1-2-宏观驱动-macro-driven-druckenmiller-dalio-soros-kyle-bass">1.2 宏观驱动 / Macro-driven — Druckenmiller, Dalio, Soros, Kyle Bass</h3>
+<p><strong>原型画像</strong>
+先判断"宏观剧本"（汇率/利率/地缘），再决定"做多/做空什么"。仓位集中、决策快、止损极严。他们对<strong>单一公司</strong>研究很浅，但对<strong>链条的传导路径</strong>研究很深。</p>
+<p><strong>早晨先看什么</strong></p>
+<ul><li>全球 10 年期国债收益率 / 关键期限利差</ul><li>美元指数 + 关键货币对（USD/JPY, EUR/USD, USD/CNY）</ul><li>大宗商品（铜油金）的"形态"</ul><li>中央银行讲话日历 + 即将公布的宏观数据（CPI, NFP, PMI）</ul><li><strong>"市场叙事"</strong>（financial press 头条、KOL 的共识）— 目的不是信，而是找"共识到了哪一步"</ul></ul>
+<p><strong>筛选条件 / Anomalies</strong></p>
+<ul><li><strong>政策套利</strong>：央行政策窗口期（加息末期、降息初期）的"夹层"机会</ul><li><strong>财政赤字 / 国际收支双赤字</strong>国家货币的"死亡率"曲线</ul><li><strong>大宗商品的"中国需求"替代信号</strong>（PMI, 房地产新开工, 铜油比）</ul><li><strong>尾部风险定价</strong>（VIX term structure, OIS spreads, CDS 5Y 跳变）</ul><li><strong>地缘事件后的"恐慌窗口"</strong> — 24-72 小时的流动性折价</ul></ul>
+<p><strong>深度工作流（拿到宏观剧本后的 2-5 步）</strong></p>
+<ol><li><strong>写"剧本"</strong>：用 3 段话写清"未来 6 个月我认为会发生什么" — 反向找 3 个反证</li><li><strong>找"完美对冲"</strong> ：如果剧本错，错的方向怎么对冲</li><li><strong>画"传导链"</strong>：央行政策 → 利率 → 汇率 → 出口/进口 → 行业利润 → 个股</li><li><strong>算"不对称"</strong>：每个候选仓位的"上行/下行"赔率；只下注赔率 &gt; 3:1</li><li><strong>设"硬止损"</strong> — 60-90 天，最迟 90 天，平仓不论输赢</li></ol>
+<p><strong>买入触发（pull the trigger）</strong></p>
+<ul><li>央行政策或财政事件让剧本"加速兑现"</ul><li>共识叙事的极端化（"这次不一样"）— 准备反向仓位</ul><li>流动性事件（基金赎回、ETF 流动性危机、carry trade unwind）</ul></ul>
+<p><strong>卖出信号</strong></p>
+<ul><li>剧本兑现 60% 以上</ul><li>硬止损触发</ul><li>出现"反向剧本"证据（央行转向、战争结束、技术性突破）</ul><li>出现"拥挤"信号（仓位调查、CFTC COT positioning）</ul></ul>
+<p><strong>对平台的 3-5 个可编码信号</strong></p>
+<ol><li><strong>宏观仪表板</strong> — 利率、汇率、大宗、VIX、COT 持仓一屏可视化</li><li><strong>政策日历</strong> — 央行讲话、CPI/PMI/NFP 公布时间表 + 用户预判</li><li><strong>剧本录入与对照</strong> — 用户写 3 段剧本，60/90 天后自动推送回看</li><li><strong>传导链可视化</strong> — 选择"中国降息 25bp" → 自动列出受影响板块排序</li><li><strong>赔率计算器</strong> — 录入上下行情景与概率，自动算期望值 / 凯利仓位</li></ol>
+<hr>
+<h3 id="1-3-事件驱动-catalyst-ackman-einhorn-icahn-bill-ackman-的-pershing-square">1.3 事件驱动 / Catalyst — Ackman, Einhorn, Icahn, Bill Ackman 的 Pershing Square</h3>
+<p><strong>原型画像</strong>
+"找到即将发生且市场尚未充分定价的事件 — 然后等兑现"。Catalyst 可能是诉讼、监管、和解、分拆、并购、回购、CEO 变更、FDA 决定、宏观政策。</p>
+<p><strong>早晨先看什么</strong></p>
+<ul><li><strong>SEC EDGAR 8-K</strong> 当日列表</ul><li><strong>法院文件 PACER</strong>（集体诉讼、判决、和解）</ul><li><strong>FDA Adcom 会议 / PDUFA 日期</strong></ul><li><strong>公司公告</strong>（中文语境：港交所披露易、深交所/上交所公告）</ul><li><strong>法庭追踪</strong>（fdlive.com、RECAP 法律播客）</ul><li><strong>管理层路演 / 投资者会议日程</strong></ul></ul>
+<p><strong>筛选条件 / Anomalies</strong></p>
+<ul><li><strong>"Stub" 价值 vs Market cap</strong> — 分拆后被低估的母公司/子公司</ul><li><strong>大量回购</strong> + <strong>管理层公开买入</strong> + <strong>SEC 1% holder file</strong> 同向 — 强信号</ul><li><strong>与现有持仓高度相关但折价 30%+ 的可转换债 / 优先股</strong></ul><li><strong>被做空</strong> + 现金流稳定 + 短期 catalyst（盈利、回购、诉讼和解）</ul><li><strong>LBO / 分拆</strong> 前 6 个月 — 顾问/律师进场信号</ul></ul>
+<p><strong>深度工作流（拿到 catalyst 后的 2-5 步）</strong></p>
+<ol><li><strong>画时间轴</strong> — catalyst 何时发生、概率多大、对应市值的隐含变动</li><li><strong>算 IRR</strong> — "6 个月上涨 30% 下跌 10%，概率 60/40" → 年化多少？</li><li><strong>找"同源催化"</strong> — 一个事件可能引发同行业 5 家公司重估</li><li><strong>做"辩护"</strong> — 假设你看空，写出 5 个看空理由，看你能否反驳</li><li><strong>设计 hedge</strong> — 如果是法律事件，用同业 / 行业 ETF 做 hedge；如果是 FDA 事件，用 basket trade 对冲</li></ol>
+<p><strong>买入触发</strong></p>
+<ul><li>Catalyst 时间确定 + 估值差距明显 + 下行有底</ul><li>多次 catalyst 叠加（盈利 + 诉讼和解 + 回购启动）</ul><li>卖空者集中度过高（&gt; 20% SI / Days to cover &gt; 10）</ul></ul>
+<p><strong>卖出信号</strong></p>
+<ul><li>Catalyst 兑现 50-70%（不要等全兑现）</ul><li>出现"二次 catalyst"（诉讼延期、政策反复）但盘面已 price in</ul><li>Better idea 出现（机会成本）</ul></ul>
+<p><strong>对平台的 3-5 个可编码信号</strong></p>
+<ol><li><strong>催化剂日历（Catalyst Calendar）</strong> — 8-K / 法院 / FDA / 股东大会 / 解禁日 全集</li><li><strong>"8-K 当日扫描"</strong> — 每天早上列出当日 8-K 公告，AI 摘要，标记相关持仓</li><li><strong>集体诉讼与和解追踪</strong> — 美股 PACER / A 股证监会处罚</li><li><strong>回购 + insider buy + 财务杠杆三因子合表</strong> — 一张表看资本信号集中度</li><li><strong>Stub 价值 / 分拆后低估检测</strong> — 母公司 vs 子公司市值 vs 净资产对比</li></ol>
+<hr>
+<h3 id="1-4-量化系统-systematic-quant-jim-simons-d-e-shaw-aqr-two-sigma">1.4 量化系统 / Systematic Quant — Jim Simons, D.E. Shaw, AQR, Two Sigma</h3>
+<p><strong>原型画像</strong>
+"没有任何人类判断，所有规则都被代码化"。他们不"找 idea"，他们<strong>找到 alpha 因子 → 验证统计显著性 → 上线 → 持续监测衰减</strong>。</p>
+<p><strong>早晨先看什么</strong></p>
+<ul><li><strong>策略 PnL 曲线 + Sharpe / 换手</strong> — 昨夜每个因子的贡献</ul><li><strong>IC（信息系数）历史衰减图</strong> — 哪些因子在衰减</ul><li><strong>回撤归因</strong> — 哪些品种 / 哪些因子贡献了昨日回撤</ul><li><strong>交易成本 / 滑点监测</strong> — 策略是否被 front-run</ul><li><strong>数据源健康度</strong> — 数据错误会立刻击穿 PnL</ul></ul>
+<p><strong>筛选条件 / Anomalies</strong></p>
+<ul><li><strong>横截面因子</strong>：动量、价值、质量、低波、分红、carry、size、growth</ul><li><strong>时间序列因子</strong>：趋势、波动率、均值回归</ul><li><strong>事件因子</strong>：盈利超预期、分析师上调、分红增长、回购</ul><li><strong>另类数据</strong>：信用卡刷卡量、卫星图像、夜间灯光、网页爬虫</ul><li><strong>市场微观结构</strong>：order flow imbalance、bid-ask 异常、ETF creation/redemption 流量</ul></ul>
+<p><strong>深度工作流（拿到 alpha 假设后的 2-5 步）</strong></p>
+<ol><li><strong>回测</strong> — 至少 10 年样本，避免 survivorship bias</li><li><strong>样本外测试</strong> — paper trade 6 个月</li><li><strong>因子检验</strong> — 因子收益对各宏观状态是否稳健</li><li><strong>decay 监控</strong> — 因子上线后第 1/3/6/12 个月的 IC 衰减</li><li><strong>组合再平衡</strong> — 风险预算 + 因子配权 + 行业/市场中性</li></ol>
+<p><strong>买入触发</strong></p>
+<ul><li>因子 trigger 触发（无人工判断）</ul></ul>
+<p><strong>卖出信号</strong></p>
+<ul><li>因子 trigger 反向</ul><li>风控阈值触发（单日 VaR 突破、相关性突变）</ul></ul>
+<p><strong>对平台的 3-5 个可编码信号</strong></p>
+<ol><li><strong>因子库</strong> — 价值/质量/动量/低波/分红/分析师上调 各打分</li><li><strong>回测引擎</strong> — 已有。需强化：survivorship-bias-free、多空、点-in-time</li><li><strong>策略衰减监控</strong> — 任何因子的 IC / IR 时序图，三个月下滑超阈值自动告警</li><li><strong>组合风险归因</strong> — 单日 PnL 按因子、品种、杠杆归因</li><li><strong>市场微观结构信号</strong> — 资金流、大单异动、北向资金、ETF 申赎</li></ol>
+<hr>
+<h3 id="1-5-主题-长期趋势-cathie-wood-chamath-palihapitiya-ark-团队">1.5 主题 / 长期趋势 — Cathie Wood, Chamath Palihapitiya, ARK 团队</h3>
+<p><strong>原型画像</strong>
+"在 5-10 年尺度上找颠覆性技术 / 商业范式迁移"。他们的研究对象是<strong>生态系统</strong>（"创新平台"），不是单只股票 — 平台上的所有公司都可能是持仓。</p>
+<p><strong>早晨先看什么</strong></p>
+<ul><li><strong>专利数据库</strong>（USPTO / WIPO）— 看技术趋势</ul><li><strong>学术论文 / arXiv / 顶会</strong> — 跟踪研究前沿</ul><li><strong>行业研究报告</strong>（Gartner, McKinsey, a16z）</ul><li><strong>早期融资数据库</strong>（Pitchbook, Crunchbase）— 看资金流向</ul><li><strong>政府合同 / NASA / DARPA / 中国十四五规划</strong> — 政策导向</ul></ul>
+<p><strong>筛选条件 / Anomalies</strong></p>
+<ul><li><strong>"S-curve" 早期</strong> — 渗透率 &lt; 5% 但加速度 &gt; 0</ul><li><strong>TAM/SAM 5 年 10x</strong> 的市场</ul><li><strong>"平台公司"</strong> — 拥有开发者 / 卖家 / 内容生态</ul><li><strong>关键瓶颈</strong> 被解除（如电池成本、芯片良率、监管放开）</ul><li><strong>管理层有技术背景 + 长期持股</strong></ul></ul>
+<p><strong>深度工作流（拿到主题后的 2-5 步）</strong></p>
+<ol><li><strong>画"价值链"</strong> — 上游材料 → 中游设备 → 下游应用</li><li><strong>找"瓶颈节点"</strong> — 整个链里最稀缺 / 最卡脖子的环节</li><li><strong>找"利益相关者"</strong> — 政策制定者、监管、行业协会</li><li><strong>跟踪关键 milestone</strong> — 技术路线图、产品发布、监管节点</li><li><strong>设 5 年时间窗口</strong> — 期间允许主题内个股频繁换手</li></ol>
+<p><strong>买入触发</strong></p>
+<ul><li>渗透率拐点 + 政策催化</ul><li>关键技术突破 / 量产信号</ul><li>大客户签约 / 国家政策落地</ul></ul>
+<p><strong>卖出信号</strong></p>
+<ul><li>渗透率到 30%+，拥挤交易出现</ul><li>出现更优替代技术</ul><li>公司失去生态位置</ul></ul>
+<p><strong>对平台的 3-5 个可编码信号</strong></p>
+<ol><li><strong>主题/产业链图谱</strong> — 节点关系图，每个节点挂相关公司</li><li><strong>政策追踪</strong> — 监管 / 补贴 / 五年规划关键词命中</li><li><strong>专利 / 论文热度趋势</strong> — 关键词在 arXiv / USPTO / 国家知识产权局 的频次</li><li><strong>渗透率估算</strong> — 主题相关指标（如电动车销量、机器人装机量）</li><li><strong>早期融资信号</strong> — Pitchbook / IT 桔子 / Crunchbase 抓取</li></ol>
+<hr>
+<h3 id="1-6-特殊情境-special-situations-greenblatt-einhorn-早期-joel-greenblatt-式的-魔法公式-spin-off-套利">1.6 特殊情境 / Special situations — Greenblatt, Einhorn 早期, Joel Greenblatt 式的"魔法公式", Spin-off 套利</h3>
+<p><strong>原型画像</strong>
+"找 3-18 个月内必然发生的事件，市场因'技术性折价'给的机会"。典型场景：</p>
+<ul><li><strong>分拆（Spin-off）</strong> — 母公司跌 5%，分拆公司上市 30 天内有 5-15% 折价</ul><li><strong>破产重组（Distressed）</strong> — 8 债转债 / 银行股 / 困境反转</ul><li><strong>并购套利（Merger Arb）</strong> — 公告后买入目标公司，扣减 spread</ul><li><strong>现金返还特别大</strong> — 大股东大额减持 / 一次性大额分红</ul></ul>
+<p><strong>早晨先看什么</strong></p>
+<ul><li><strong>Spin-off 公告（10-K, 新闻）</strong> — 每季度 &lt; 5 个，但每个都是机会</ul><li><strong>破产法院文件</strong> — 重组进度 / 债权人委员会</ul><li><strong>并购公告 + 监管审批节点</strong>（HSR, 欧盟, FTC）</ul><li><strong>公司债 / CDS 利差</strong></ul><li><strong>SPAC / 信托账户价值</strong></ul></ul>
+<p><strong>筛选条件 / Anomalies</strong></p>
+<ul><li>公告后的 spread &gt; 8% （merger arb）</ul><li>分拆后 30 天内 trading discount &gt; 8%</ul><li>公司债 yield &gt; 15% + 重组方案明确</ul><li>现金 / 市值 &gt; 50% 的"现金壳"</ul><li>大股东协议转让折价 &gt; 20%</ul></ul>
+<p><strong>深度工作流（拿到特殊情境后的 2-5 步）</strong></p>
+<ol><li><strong>看退出条款</strong> — deal break fee、融资确定性、监管</li><li><strong>算"时间价值"</strong> — 假设 6 个月完成，IRR 多少</li><li><strong>找"同源"</strong> — 同一 deal 的可转债 / 优先股 / 期权</li><li><strong>算"风险价值"</strong> — deal 失败的损失</li><li><strong>用 options 替代 stock</strong> — 锁定下行</li></ol>
+<p><strong>买入触发</strong></p>
+<ul><li>折价充分 + 退出明确</ul><li>监管节点前 1-2 个月</ul></ul>
+<p><strong>卖出信号</strong></p>
+<ul><li>退出完成</ul><li>deal 失败</ul></ul>
+<p><strong>对平台的 3-5 个可编码信号</strong></p>
+<ol><li><strong>分拆追踪表</strong> — 母公司代码、分拆日、分拆后 trading discount 时序</li><li><strong>并购套利计算器</strong> — 公告价、当前价、退出时间、deal break fee → IRR</li><li><strong>破产重组进度</strong> — 8 章 / 11 章 关键节点</li><li><strong>大额协议转让 / 大宗交易追踪</strong> — 折价率</li><li><strong>现金 / 市值比扫描</strong> — 整个 A 股 / 美股 一键筛"现金壳"</li></ol>
+<hr>
+<h3 id="1-7-a-股本土实务-民间股神-私募操盘手-产业链调研派">1.7 A 股本土实务 — 民间股神、私募操盘手、产业链调研派</h3>
+<p><strong>原型画像</strong>
+A 股是一个<strong>信息结构极度不对称、政策驱动、散户主导（&gt; 60% 交易量）</strong>的市场。优秀的本土投资者极少单纯看财报，而是"产业链 + 政策 + 资金 + 情绪"四因子同时建模。</p>
+<p><strong>早晨先看什么</strong></p>
+<ul><li><strong>政策信号</strong>：央行 / 财政部 / 行业部委 / 地方政府的<strong>"会议通稿"与"工作部署"</strong> — 关键看哪些词首次出现 / 消失</ul><li><strong>交易所互动易</strong> — 上市公司回答投资者问题（很多是官方套话，但部分提前透风）</ul><li><strong>券商研究所晨会纪要</strong> — 大型券商如中信、华泰、中金的"晨会"与"产业链调研纪要"</ul><li><strong>资金面</strong>：北向资金、融资融券余额变化、ETF 申赎、龙虎榜</ul><li><strong>草根调研</strong> — 上市公司公开的"投资者关系活动记录表"</ul></ul>
+<p><strong>筛选条件 / Anomalies</strong></p>
+<ul><li><strong>"政策预期"</strong> — 政治局会议 / 中央经济工作会议 / 行业大会前 1-2 周，对应板块的"提前定价"</ul><li><strong>"国家队"动向</strong> — 证金 / 汇金 / 国新投资 的 ETF 持仓变化、央企 / 国资委旗下公司的增减持</ul><li><strong>产业资本</strong> — 大股东回购、董监高增持、员工持股计划</ul><li><strong>"妖股记忆"</strong> — 历史上相似题材（O2O、5G、ChatGPT、低空经济、固态电池）的炒作时间表</ul><li><strong>"打板" 后的二板定龙头</strong> — 涨停后回撤 30%+ 的"龙头"经常有第二波</ul><li><strong>"高股息 + 国资" 套利</strong> — 红利低波 ETF 拥挤后的反向</ul></ul>
+<p><strong>深度工作流（拿到一个"题材"后的 2-5 步）</strong></p>
+<ol><li><strong>政策回测</strong>：过去 5 年类似政策的板块反应幅度</li><li><strong>资金面</strong> ：北向 + 融资 + 主力净流入 三者共振</li><li><strong>产业链</strong>：上游 / 中游 / 下游 的弹性排序</li><li><strong>"龙头/跟风"识别</strong>：先涨 30% 但回撤 &lt; 15% 的是龙头</li><li><strong>退出计划</strong> — 政策落地后 3-5 天无论盈亏清仓（"利好出尽"）</li></ol>
+<p><strong>买入触发</strong></p>
+<ul><li>政策首次提及 + 资金开始净流入 + 龙头股已涨停</ul><li>跌破定增价 / 大股东增持价 / 股权激励行权价</ul><li>大股东自愿延长锁定期</ul></ul>
+<p><strong>卖出信号</strong></p>
+<ul><li>政策落地 = 利好兑现</ul><li>龙头滞涨、跟风股补涨 = 板块见顶</ul><li>监管降温（特停、问询函、二级市场提示风险）</ul><li>出现"高位巨量阴线"</ul></ul>
+<p><strong>对平台的 3-5 个可编码信号</strong></p>
+<ol><li><strong>政策关键词命中 + 历史回测</strong> — 关键词首次出现 → 列出过去 5 年类似表述的板块反应</li><li><strong>资金面三因子合表</strong> — 北向 + 融资 + 主力 净流入共振</li><li><strong>"国家队" / 国资委 / 央企 持仓变化追踪</strong></li><li><strong>董监高 / 大股东增减持 + 解禁 + 回购</strong> 一张表</li><li><strong>定增 / 股权激励 / 员工持股 折价率扫描</strong></li></ol>
+<hr>
+<h3 id="1-8-加密-数字资产-这一块可作为-附加原型">1.8 加密 / 数字资产 — 这一块可作为"附加原型"</h3>
+<p><strong>原型画像</strong></p>
+<ul><li><strong>链上数据派</strong>：看交易所净流出、巨鲸地址、stablecoin 发行量</ul><li><strong>衍生品派</strong>：资金费率、基差、隐含波动率</ul><li><strong>VC / 周期派</strong>：每一轮周期（BTC 减半、ETH 升级）的"前后节奏"</ul></ul>
+<p><strong>对平台的 3-5 个可编码信号</strong></p>
+<ol><li><strong>交易所 BTC/ETH 净流出</strong> — 30 日累计</li><li><strong>巨鲸地址变动 + 稳定币市值</strong></li><li><strong>资金费率 / 持仓量</strong></li><li><strong>DApp 活跃地址 / TVL</strong></li><li><strong>周期指标</strong> — MVRV、AHR99、Puell Multiple</li></ol>
+<hr>
+<h2 id="2-平台功能地图-section-a">2. 平台功能地图（Section A）</h2>
+<blockquote>把上文的"方法论"翻译成"可点击的 UI"。每个功能给出：原型归属、UI 形态、数据依赖、复杂度（S/M/L）、用户价值（1-5 星）。</blockquote>
+<h3 id="f01-晨间一页-morning-brief">F01. 晨间一页（Morning Brief）</h3>
+<ul><li><strong>原型归属</strong>：所有</ul><li><strong>UI 形态</strong>：Dashboard 顶部固定卡片。每天 8:30 推送 / 生成：</ul><li><strong>数据依赖</strong>：宏观（FRED/yfinance）+ 公告（EDGAR/港交所）+ 平台 scheduler</ul><li><strong>复杂度</strong>：M</ul><li><strong>价值</strong>：★★★★★</ul></ul>
+<h3 id="f02-异常扫描器-anomaly-scanner">F02. 异常扫描器（Anomaly Scanner）</h3>
+<ul><li><strong>原型归属</strong>：复合价值、量化、本土实务</ul><li><strong>UI 形态</strong>：独立页面 + 每日推送。多 tag 过滤：</ul><li><strong>数据依赖</strong>：行情 + 资金面 + 公告（已有 akshare/yfinance，需补 EDGAR/港交所）</ul><li><strong>复杂度</strong>：L</ul><li><strong>价值</strong>：★★★★★</ul></ul>
+<h3 id="f03-催化剂日历-catalyst-calendar">F03. 催化剂日历（Catalyst Calendar）</h3>
+<ul><li><strong>原型归属</strong>：事件驱动、特殊情境</ul><li><strong>UI 形态</strong>：时间轴 + 列表 + Tag</ul><li><strong>数据依赖</strong>：SEC EDGAR 8-K（已部分有，需补）/ 港交所披露易 / 互动易 / FDA Adcom</ul><li><strong>复杂度</strong>：L</ul><li><strong>价值</strong>：★★★★★</ul></ul>
+<h3 id="f04-13f-diff-tracker-机构持仓变动">F04. 13F Diff Tracker（机构持仓变动）</h3>
+<ul><li><strong>原型归属</strong>：量化、事件驱动</ul><li><strong>UI 形态</strong>：季度 diff 视图</ul><li><strong>数据依赖</strong>：13F（whale wisdom / 13D / 13G）</ul><li><strong>复杂度</strong>：L（数据获取是最大瓶颈）</ul><li><strong>价值</strong>：★★★★★</ul></ul>
+<h3 id="f05-暗池-大宗交易监测">F05. 暗池 / 大宗交易监测</h3>
+<ul><li><strong>原型归属</strong>：量化、本土实务</ul><li><strong>UI 形态</strong>：单页</ul><li><strong>数据依赖</strong>：Unusual Whales / CBOE / akshare</ul><li><strong>复杂度</strong>：L</ul><li><strong>价值</strong>：★★★★</ul></ul>
+<h3 id="f06-内部人集中买入检测">F06. 内部人集中买入检测</h3>
+<ul><li><strong>原型归属</strong>：复合价值、事件驱动</ul><li><strong>UI 形态</strong>：filter chip</ul><li><strong>数据依赖</strong>：Form 4 / 港交所权益披露（已有 akshare 部分）</ul><li><strong>复杂度</strong>：M</ul><li><strong>价值</strong>：★★★★</ul></ul>
+<h3 id="f07-做空激增-si-spike">F07. 做空激增 / SI Spike</h3>
+<ul><li><strong>原型归属</strong>：事件驱动</ul><li><strong>UI 形态</strong>：filter chip</ul><li><strong>数据依赖</strong>：FINRA / Ortex</ul><li><strong>复杂度</strong>：M</ul><li><strong>价值</strong>：★★★★</ul></ul>
+<h3 id="f08-盈利超预期历史">F08. 盈利超预期历史</h3>
+<ul><li><strong>原型归属</strong>：事件驱动、复合价值</ul><li><strong>UI 形态</strong>：详情页新增</ul><li><strong>数据依赖</strong>：FactSet / Zacks / 历史股价</ul><li><strong>复杂度</strong>：M</ul><li><strong>价值</strong>：★★★★</ul></ul>
+<h3 id="f09-预期修订追踪-estimate-revision">F09. 预期修订追踪（Estimate Revision）</h3>
+<ul><li><strong>原型归属</strong>：量化、事件驱动</ul><li><strong>UI 形态</strong>：filter chip</ul><li><strong>数据依赖</strong>：FactSet / Zacks / IBES</ul><li><strong>复杂度</strong>：M</ul><li><strong>价值</strong>：★★★★</ul></ul>
+<h3 id="f10-杠杆-财务压力异常">F10. 杠杆 / 财务压力异常</h3>
+<ul><li><strong>原型归属</strong>：复合价值、特殊情境</ul><li><strong>UI 形态</strong>：filter chip</ul><li><strong>数据依赖</strong>：财报数据</ul><li><strong>复杂度</strong>：S（数据已在，逻辑写）</ul><li><strong>价值</strong>：★★★</ul></ul>
+<h3 id="f11-板块轮动热力图-sector-rotation-heatmap">F11. 板块轮动热力图（Sector Rotation Heatmap）</h3>
+<ul><li><strong>原型归属</strong>：宏观、本土实务</ul><li><strong>UI 形态</strong>：可视化</ul><li><strong>数据依赖</strong>：行情</ul><li><strong>复杂度</strong>：S</ul><li><strong>价值</strong>：★★★★★（已有部分）</ul></ul>
+<h3 id="f12-新闻情绪-vs-价格背离">F12. 新闻情绪 vs 价格背离</h3>
+<ul><li><strong>原型归属</strong>：量化、宏观</ul><li><strong>UI 形态</strong>：双轴图</ul><li><strong>数据依赖</strong>：新闻 + AI 摘要（已有 DeepSeek）</ul><li><strong>复杂度</strong>：M</ul><li><strong>价值</strong>：★★★★</ul></ul>
+<h3 id="f13-管理层质量看板-capital-allocation-scorecard">F13. 管理层质量看板（Capital Allocation Scorecard）</h3>
+<ul><li><strong>原型归属</strong>：复合价值</ul><li><strong>UI 形态</strong>：详情页新增</ul><li><strong>数据依赖</strong>：财报 + 高管履历 + 关联公告</ul><li><strong>复杂度</strong>：M</ul><li><strong>价值</strong>：★★★★</ul></ul>
+<h3 id="f14-客户-收入集中度">F14. 客户 / 收入集中度</h3>
+<ul><li><strong>原型归属</strong>：复合价值</ul><li><strong>UI 形态</strong>：详情页新增</ul><li><strong>数据依赖</strong>：财报附注</ul><li><strong>复杂度</strong>：S</ul><li><strong>价值</strong>：★★★</ul></ul>
+<h3 id="f15-主题-产业链图谱">F15. 主题 / 产业链图谱</h3>
+<ul><li><strong>原型归属</strong>：主题、宏观</ul><li><strong>UI 形态</strong>：图谱视图</ul><li><strong>数据依赖</strong>：自建 ontology + 公司基本信息</ul><li><strong>复杂度</strong>：L</ul><li><strong>价值</strong>：★★★★</ul></ul>
+<h3 id="f16-政策追踪与回测">F16. 政策追踪与回测</h3>
+<ul><li><strong>原型归属</strong>：本土实务、宏观</ul><li><strong>UI 形态</strong>：政策时间线 + 历史回测</ul><li><strong>数据依赖</strong>：政策文本（爬虫）+ 行业历史收益</ul><li><strong>复杂度</strong>：L</ul><li><strong>价值</strong>：★★★★★</ul></ul>
+<h3 id="f17-剧本录入与回看-thesis-time-bomb">F17. 剧本录入与回看（Thesis → Time Bomb）</h3>
+<ul><li><strong>原型归属</strong>：所有深度投资者</ul><li><strong>UI 形态</strong>：表单 + 定时回看</ul><li><strong>数据依赖</strong>：本地 DB</ul><li><strong>复杂度</strong>：S</ul><li><strong>价值</strong>：★★★★★（<strong>投入产出比最高</strong>）</ul></ul>
+<h3 id="f18-赔率计算器-凯利仓位工具">F18. 赔率计算器 / 凯利仓位工具</h3>
+<ul><li><strong>原型归属</strong>：宏观、事件驱动</ul><li><strong>UI 形态</strong>：表单 + 模拟</ul><li><strong>数据依赖</strong>：组合数据</ul><li><strong>复杂度</strong>：S</ul><li><strong>价值</strong>：★★★★</ul></ul>
+<h3 id="f19-宏观仪表板-macro-dashboard">F19. 宏观仪表板（Macro Dashboard）</h3>
+<ul><li><strong>原型归属</strong>：宏观</ul><li><strong>UI 形态</strong>：多面板</ul><li><strong>数据依赖</strong>：FRED（已部分部署）/ akshare</ul><li><strong>复杂度</strong>：M</ul><li><strong>价值</strong>：★★★★</ul></ul>
+<h3 id="f20-因子库与回测-factor-library">F20. 因子库与回测（Factor Library）</h3>
+<ul><li><strong>原型归属</strong>：量化</ul><li><strong>UI 形态</strong>：因子目录 + 回测</ul><li><strong>数据依赖</strong>：财务 + 行情</ul><li><strong>复杂度</strong>：L</ul><li><strong>价值</strong>：★★★★</ul></ul>
+<hr>
+<h2 id="3-实施路线图-section-b">3. 实施路线图（Section B）</h2>
+<blockquote>原则：<strong>用户价值 / 复杂度</strong> 比最高的优先。多数"信号"类功能数据已部分在库，<strong>真正的瓶颈是数据源的广度（不只是存量）</strong>，不是计算。</blockquote>
+<h3 id="phase-1-1-2-周-立刻能上的-数据已具备或近在咫尺">Phase 1 — 1-2 周，立刻能上的（数据已具备或近在咫尺）</h3>
+<table>
+<thead><tr>
+<th>序号</th>
+<th>功能</th>
+<th>复杂度</th>
+<th>价值</th>
+<th>数据</th>
+</tr></thead>
+<tbody>
+<tr>
+<th>F11</th>
+<td>板块轮动热力图（已有部分）</td>
+<td>S</td>
+<td>5</td>
+<td>行情</td>
+</tr>
+<tr>
+<th>F17</th>
+<td>剧本录入与回看</td>
+<td>S</td>
+<td>5</td>
+<td>本地</td>
+</tr>
+<tr>
+<th>F18</th>
+<td>赔率计算器 / Kelly 仓位</td>
+<td>S</td>
+<td>4</td>
+<td>本地</td>
+</tr>
+<tr>
+<th>F14</th>
+<td>客户 / 收入集中度</td>
+<td>S</td>
+<td>3</td>
+<td>财报</td>
+</tr>
+<tr>
+<th>F10</th>
+<td>杠杆 / 财务压力异常</td>
+<td>S</td>
+<td>3</td>
+<td>财报</td>
+</tr>
+<tr>
+<th>F12</th>
+<td>新闻情绪 vs 价格背离</td>
+<td>M</td>
+<td>4</td>
+<td>新闻 + AI（已有 DeepSeek）</td>
+</tr>
+</tbody></table>
+<p><strong>Phase 1 合计</strong>：6 个功能 / 1-2 周。<strong>所有"计算" 类功能都先上</strong>，把"框架"占住。</p>
+<h3 id="phase-2-1-3-个月-需要补数据源">Phase 2 — 1-3 个月，需要补数据源</h3>
+<table>
+<thead><tr>
+<th>序号</th>
+<th>功能</th>
+<th>复杂度</th>
+<th>价值</th>
+<th>数据缺口</th>
+</tr></thead>
+<tbody>
+<tr>
+<th>F01</th>
+<td>Morning Brief</td>
+<td>M</td>
+<td>5</td>
+<td>宏观（部分已有 FRED）+ 公告</td>
+</tr>
+<tr>
+<th>F02</th>
+<td>Anomaly Scanner</td>
+<td>L</td>
+<td>5</td>
+<td>量价已有；缺资金面全量</td>
+</tr>
+<tr>
+<th>F03</th>
+<td>Catalyst Calendar</td>
+<td>L</td>
+<td>5</td>
+<td>缺 8-K、FDA、互动易</td>
+</tr>
+<tr>
+<th>F06</th>
+<td>内部人集中买入</td>
+<td>M</td>
+<td>4</td>
+<td>Form 4 抓取 / 港交所披露</td>
+</tr>
+<tr>
+<th>F08</th>
+<td>盈利超预期历史</td>
+<td>M</td>
+<td>4</td>
+<td>财报 + 分析师预期</td>
+</tr>
+<tr>
+<th>F13</th>
+<td>管理层质量看板</td>
+<td>M</td>
+<td>4</td>
+<td>财务 + 高管履历</td>
+</tr>
+<tr>
+<th>F19</th>
+<td>宏观仪表板</td>
+<td>M</td>
+<td>4</td>
+<td>FRED 全量（已部分）</td>
+</tr>
+</tbody></table>
+<p><strong>Phase 2 合计</strong>：7 个功能 / 1-3 个月。<strong>重点是数据源补全</strong>，建议并行起 3-4 个 ETL worker。</p>
+<h3 id="phase-3-长期-平台级重写-外部数据合作">Phase 3 — 长期，平台级重写 / 外部数据合作</h3>
+<table>
+<thead><tr>
+<th>序号</th>
+<th>功能</th>
+<th>复杂度</th>
+<th>价值</th>
+<th>数据 / 合作</th>
+</tr></thead>
+<tbody>
+<tr>
+<th>F04</th>
+<td>13F Diff Tracker</td>
+<td>L</td>
+<td>5</td>
+<td>13F 完整库（可对接 Whale Wisdom API）</td>
+</tr>
+<tr>
+<th>F05</th>
+<td>暗池 / 大宗交易</td>
+<td>L</td>
+<td>4</td>
+<td>Unusual Whales / CBOE（付费）</td>
+</tr>
+<tr>
+<th>F07</th>
+<td>SI Spike</td>
+<td>M</td>
+<td>4</td>
+<td>FINRA / Ortex</td>
+</tr>
+<tr>
+<th>F09</th>
+<td>Estimate Revision</td>
+<td>M</td>
+<td>4</td>
+<td>FactSet / IBES（付费）</td>
+</tr>
+<tr>
+<th>F15</th>
+<td>主题 / 产业链图谱</td>
+<td>L</td>
+<td>4</td>
+<td>自建 ontology</td>
+</tr>
+<tr>
+<th>F16</th>
+<td>政策追踪与回测</td>
+<td>L</td>
+<td>5</td>
+<td>政府文件爬虫 + NLP</td>
+</tr>
+<tr>
+<th>F20</th>
+<td>因子库与回测</td>
+<td>L</td>
+<td>4</td>
+<td>已有数据；强化</td>
+</tr>
+</tbody></table>
+<p><strong>Phase 3 合计</strong>：7 个功能 / 3-6 个月。<strong>与外部数据源的合作</strong>是真正决定上限的因素。</p>
+<hr>
+<h2 id="4-工作流模板-section-c">4. 工作流模板（Section C）</h2>
+<blockquote>每个原型的"如果我是 XX 投资者，今天早上 8:30 我点哪里"。这些将作为<strong>应用内快速入门</strong>。</blockquote>
+<h3 id="4-1-复合价值-terry-smith-式投资者">4.1 复合价值 / Terry Smith 式投资者</h3>
+<pre><code class="language-">08:30  打开 Morning Brief → 关注 "持仓相关公告" + "政策日历"
+09:00  进入"持仓" → 每只标的开"墓志铭"标签
+09:30  Anomaly Scanner → 过滤 "高质量 + 合理价"（ROIC &gt; 20% + FCF Yield &gt; 5% + Net Debt/EBITDA &lt; 2x）
+10:00  对命中标的：录入"剧本"（30 / 60 / 90 天回看）
+10:30  Catalyst Calendar → 看未来 90 天是否有 "管理层增持 / 回购 / 分红" 类催化
+11:00  Capital Allocation Scorecard → 计算"再投资回报率"是否仍 &gt; WACC
+13:00  收盘后：检查已有剧本是否有 30 天到期 → 触发回看</code></pre>
+<h3 id="4-2-宏观驱动-druckenmiller-式投资者">4.2 宏观驱动 / Druckenmiller 式投资者</h3>
+<pre><code class="language-">08:00  Macro Dashboard → 看 US 10Y、DXY、CU/AU 比、VIX
+08:15  Catalyst Calendar → 标出"今日央行讲话 / 重要数据"
+08:30  Morning Brief → 读 AI 摘要
+09:30  Anomaly Scanner → 用"宏观标签"（如 DXY 突破、US 10Y 突破）筛 A 股 / 美股
+10:00  传导链图 → "中国降息 25bp" 模拟 → 列出受益板块
+10:30  录入"剧本"：3 段话 + 反证 + 关键节点
+11:00  Kelly 仓位工具：计算"政策兑现 vs 失败"赔率
+13:00  收盘后：检查剧本是否触发 / 反证是否出现</code></pre>
+<h3 id="4-3-事件驱动-ackman-式投资者">4.3 事件驱动 / Ackman 式投资者</h3>
+<pre><code class="language-">08:00  Catalyst Calendar → 按"日期"排序最近 90 天
+08:30  8-K 当日扫描 → 标记相关持仓
+09:00  Anomaly Scanner → "内部人 3+ 增持 + 大量回购 + SI &gt; 15%"
+09:30  分拆追踪表 → 查 "30 日内分拆" 的 trading discount
+10:00  并购套利计算器 → 列出 spread &gt; 8% 的 deal
+10:30  13F Diff Tracker（Phase 3）→ 看 3+ 头部基金同向加仓
+11:00  对命中候选：录入剧本 + 60 天回看
+13:00  收盘后：检查催化前 24h 候选清单</code></pre>
+<h3 id="4-4-量化-simons-式投资者">4.4 量化 / Simons 式投资者</h3>
+<pre><code class="language-">08:00  打开"策略 PnL 面板" → 看昨夜每个因子的 IC
+08:15  因子库 → 检查每个因子的 30/60/90 日 decay
+08:30  Anomaly Scanner → 资金面 + 微观结构类信号
+09:00  行业轮动 → 横截面因子相对强弱
+09:30  对新因子：单因子回测 → paper trade 6 个月
+10:00  组合归因 → 单日 PnL 按因子 / 品种归因
+10:30  Risk Dashboard → VaR / 杠杆 / 相关性矩阵
+13:00  收盘后：组合再平衡 / 风险预算</code></pre>
+<h3 id="4-5-主题-cathie-wood-式投资者">4.5 主题 / Cathie Wood 式投资者</h3>
+<pre><code class="language-">08:00  政策追踪 → 关注"首次出现的关键词"
+08:30  主题图谱 → 选择主题（如"低空经济"）→ 列出节点
+09:00  Anomaly Scanner → "渗透率 &lt; 5% + 政策催化"
+09:30  催化日历 → "FDA / 产品发布 / 大客户签约"
+10:00  主题深度报告（AI）→ DeepSeek 生成
+10:30  对命中候选：录入"5 年时间窗口"剧本
+11:00  Capital Allocation Scorecard → 看主题内公司的"再投资回报"
+13:00  收盘后：监控渗透率指标</code></pre>
+<h3 id="4-6-特殊情境-greenblatt-式投资者">4.6 特殊情境 / Greenblatt 式投资者</h3>
+<pre><code class="language-">08:00  分拆追踪表 → 列出"分拆后 30 日内 discount &gt; 8%"
+08:30  并购套利计算器 → 列出 spread &gt; 8% 的 deal
+09:00  Anomaly Scanner → "现金 / 市值 &gt; 50%" → 现金壳清单
+09:30  破产重组追踪 → 关注 8 章 / 11 章关键节点
+10:00  对命中候选：录入"退出时间表"剧本
+10:30  Capital Allocation Scorecard → 验证"重组后"再投资回报
+13:00  收盘后：监控 deal break risk</code></pre>
+<h3 id="4-7-a-股本土实务-民间股神式投资者">4.7 A 股本土实务 / 民间股神式投资者</h3>
+<pre><code class="language-">08:00  Morning Brief → 重点"政策日历" + "互动易"
+08:30  Anomaly Scanner → 过滤"政策首次提及 + 北向 + 融资 + 主力 三共振"
+09:00  龙虎榜 → 大宗交易折价榜
+09:30  板块轮动 → 找"启动初期 + 龙头股已涨停"
+10:00  政策关键词回测 → 历史上类似表述的板块反应
+10:30  董监高 + 大股东增减持 → 集中增持清单
+11:00  对命中候选：录入"政策兑现"剧本 + 5 天回看
+13:00  收盘后：检查"涨停 / 跌停 + 行业集中度"是否扩散</code></pre>
+<hr>
+<h2 id="5-关键的非显而易见的洞见">5. 关键的非显而易见的洞见</h2>
+<blockquote>写到这里已经把"信号 → 功能 → 工作流"都覆盖了。但还有几件事值得单独说。</blockquote>
+<h3 id="5-1-数据获取-是真正的瓶颈-不是-计算">5.1 "数据获取"是真正的瓶颈，不是"计算"</h3>
+<p>F01-F20 中，<strong>80% 的"难度"来自数据源</strong>，而非计算或 UI。F04（13F）、F05（暗池）、F07（SI）、F09（分析师预期）都需要<strong>付费 API 或专业爬虫</strong>。建议：</p>
+<ul><li><strong>Phase 1 集中做"已能计算"的功能</strong>（F11、F17、F18、F10、F14、F12）</ul><li><strong>Phase 2 / 3 把 30% 的工程投入放在"数据 ETL + 缓存"</strong>，而不是"功能 UI"</ul><li><strong>2026 下半年至少 1-2 个付费数据源合作</strong>（如 Whale Wisdom、Finnhub Premium、Unusual Whales）</ul></ul>
+<h3 id="5-2-剧本录入-比-ai-研报-更值得做">5.2 "剧本录入"比"AI 研报"更值得做</h3>
+<p>LLM 让"AI 研报"看似很美，但 90% 的研报对您来说<strong>是噪音</strong>。您已经能识文断字、能写分析，<strong>真正稀缺的是"把您自己的判断结构化"</strong>。F17（剧本录入 + 自动回看）是<strong>投入产出比最高的功能</strong> — 实施成本 S，价值 5 星，且<strong>训练您自己的判断纪律</strong>。</p>
+<h3 id="5-3-工作流模板-是留存关键">5.3 "工作流模板"是留存关键</h3>
+<blockquote>当一个用户能"按一个按钮、按 10 步完成我今天的研究" — 他很难离开这个平台。</blockquote>
+<p>把 Section 4 落到应用内是<strong>提升 DAU / 留存最便宜的方式</strong>。每个原型的"10 步"可以做成<strong>侧边栏固定入口</strong>，或<strong>多端同步的 PWA 入口</strong>。</p>
+<h3 id="5-4-组合-才是核心-标的-是次要的">5.4 "组合"才是核心，"标的"是次要的</h3>
+<p>Soros / Druckenmiller 反复强调：<strong>重要的不是你对了多少次，而是错的时候亏多少</strong>。所以：</p>
+<ul><li><strong>风险归因 / VaR / 凯利仓位</strong>类功能（F18）应该<strong>比"找新 idea"功能更靠前</strong></ul><li>Phase 1 必须有 <strong>"组合压力测试"</strong> — 利率 + 100bp、汇率 - 5%、GDP - 2% 的组合 PnL</ul><li>Phase 2 必须有 <strong>"最大回撤 vs 同质替代"</strong> — 您的组合在历史上的 5 个熊市回撤分别是多少</ul></ul>
+<h3 id="5-5-时间衰减-是您最该监控的元指标">5.5 "时间衰减"是您最该监控的元指标</h3>
+<p>每加一个功能，请记录：</p>
+<ul><li>该功能上线后第 1 / 3 / 6 个月的使用率</ul><li>"用户对 X 信号的采纳率"（看到 → 录入剧本 → 60 天后回看 vs 没回看）</ul></ul>
+<p>如果用户不看回看，F17 就失败了。<strong>永远不更新比"3 个月没新功能"更糟糕</strong>。</p>
+<h3 id="5-6-跨原型共有的-金发姑娘区">5.6 跨原型共有的"金发姑娘区"</h3>
+<p>观察 5 个原型的买入触发，您会发现它们都指向<strong>"赔率 + 催化 + 不对称"</strong>这个三元组：</p>
+<table>
+<thead><tr>
+<th>原型</th>
+<th>赔率</th>
+<th>催化</th>
+<th>不对称</th>
+</tr></thead>
+<tbody>
+<tr>
+<th>复合价值</th>
+<td>5-10 年复合</td>
+<td>估值杀 + 基本面不变</td>
+<td>下行有底</td>
+</tr>
+<tr>
+<th>宏观</th>
+<td>3-5 倍上行</td>
+<td>央行/政策</td>
+<td>60 天硬止损</td>
+</tr>
+<tr>
+<th>事件驱动</th>
+<td>30-50% 上行</td>
+<td>8-K / FDA</td>
+<td>deal break risk</td>
+</tr>
+<tr>
+<th>主题</th>
+<td>5-10x 长期</td>
+<td>渗透率拐点</td>
+<td>主题内换手</td>
+</tr>
+<tr>
+<th>本土实务</th>
+<td>1-3 倍短线</td>
+<td>政策首次提及</td>
+<td>政策兑现后清仓</td>
+</tr>
+</tbody></table>
+<p><strong>这意味着</strong>：F18（赔率计算器）<strong>几乎对所有原型都有价值</strong>。F03（催化剂日历）也几乎是<strong>全原型通用</strong>。这两个应该是 Phase 1 必上。</p>
+<h3 id="5-7-平台不该做-但用户必须自己做">5.7 平台不该做、但用户必须自己做</h3>
+<ul><li><strong>"判断" 本身</strong> — 平台能给您所有信号，但"信号 A 与信号 B 矛盾时该怎么办"只有您能决定</ul><li><strong>"耐心"</strong> — 平台不能帮您忍住不在 30 天冷静期买</ul><li><strong>"逆共识的勇气"</strong> — 平台能列"市场共识"与"反方观点"，但下单按钮永远在您手上</ul><li><strong>"退出"</strong> — 卖出的难度是买入的 5 倍，平台能提示，但执行靠您</ul></ul>
+<hr>
+<h2 id="6-后续动作建议">6. 后续动作建议</h2>
+<ol><li><strong>本周</strong>：基于 Section 4 的 7 个工作流，写 1 页 in-app quickstart guide</li><li><strong>本季度</strong>：上 F11、F17、F18、F14、F10、F12（Phase 1）</li><li><strong>本季度末</strong>：选 1-2 个付费数据源谈判（Whale Wisdom / Unusual Whales）</li><li><strong>下季度</strong>：上 F01、F02、F03、F06、F08、F13、F19（Phase 2）</li><li><strong>2026 H2</strong>：上 F04、F05、F07、F09、F15、F16、F20（Phase 3）</li><li><strong>持续</strong>：每季度对 7 个工作流做一次"用户压力测试" — 让您自己按它操作，标出断点</li></ol>
+<hr>
+<h2 id="7-附录-被刻意略过的功能">7. 附录：被刻意略过的功能</h2>
+<p>以下功能<strong>不在本文档</strong>：</p>
+<ul><li><strong>新闻 / 舆情监控</strong> — 已有 DeepSeek 集成，价值饱和</ul><li><strong>回测引擎</strong> — 已有，强化为主</ul><li><strong>AI 研报</strong> — 已有，价值饱和</ul><li><strong>账户 / 风控 / 真实交易</strong> — 已有，重点是 P0 修复（参考 2026-07-01 audit）</ul><li><strong>加密货币原生指标</strong> — 用户关注度低</ul></ul>
+<hr>
+<p><strong>文档结束。</strong> 后续如需深入某个原型的具体工作流 / 某功能的 UI 草图 / 某数据源的合作评估，请按需追加。</p>
+</body>
+</html>

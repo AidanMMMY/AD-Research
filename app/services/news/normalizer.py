@@ -115,13 +115,22 @@ class NewsNormalizer:
                 return None
 
             # 2) Build the article row.
+            full_body = raw.body or _strip_html_to_text(raw.body_html)
             article = NewsArticle(
                 source=raw.source,
                 source_id=source_id,
                 url=raw.url[:1000],  # column is String(1000) in current schema
                 url_hash=_hash_text(raw.url) or "",
                 title=raw.title[:1000],  # column is String(1000)
-                summary=raw.body or _strip_html_to_text(raw.body_html),
+                summary=full_body,
+                # The ``body`` column is the persisted intro/full body for
+                # crawlers that hand us the whole article up-front (RSS,
+                # cninfo disclosures, Reddit selftext, …). We seed
+                # ``full_content`` from the same source so a user who
+                # clicks "load full text" sees an instant render rather
+                # than waiting for the lazy Jina Reader fetch.
+                body=full_body,
+                full_content=full_body if _looks_full_article(full_body) else None,
                 author=raw.author,
                 language=raw.language or "zh",
                 market=raw.market or "cn_a",
@@ -204,6 +213,20 @@ def _strip_html_to_text(value: str | None) -> str | None:
     if not text:
         return None
     return text[:8000]
+
+
+# Threshold below which we assume a body is just an excerpt (RSS blurb)
+# rather than the full article. We never seed ``full_content`` from a
+# blurb — the lazy Jina fetch has to do that work. Above ~400 chars the
+# article is likely complete and we can short-circuit.
+_FULL_BODY_MIN_CHARS = 400
+
+
+def _looks_full_article(value: str | None) -> bool:
+    """Heuristic: is this body likely the full article (not just a teaser)?"""
+    if not value:
+        return False
+    return len(value) >= _FULL_BODY_MIN_CHARS
 
 
 def _format_a_code(value: str) -> str:

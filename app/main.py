@@ -17,6 +17,7 @@ from app.api.v1 import (
     attribution,
     auth,
     backtests,
+    cninfo_reports,
     crypto,
     deployments,
     etf_scanner,
@@ -24,18 +25,24 @@ from app.api.v1 import (
     etl,
     etl_status,
     favorites,
+    futures,
     indicators,
     live_trading,
     listing_events,
+    macro,
     market_data,
+    microstructure,
     news,
     notifications,
     paper_trading,
     pools,
     reports,
     research,
+    research_reports,
     scoring,
     screening,
+    search_trends,
+    sec_filings,
     sector_rotation,
     signals,
     stats,
@@ -108,7 +115,17 @@ app.include_router(
     reports.router, prefix=f"{settings.api_v1_prefix}/reports", tags=["Reports"]
 )
 app.include_router(
+    research_reports.router,
+    prefix=f"{settings.api_v1_prefix}/research-reports",
+    tags=["Research Reports"],
+)
+app.include_router(
     auth.router, prefix=f"{settings.api_v1_prefix}/auth", tags=["auth"]
+)
+app.include_router(
+    cninfo_reports.router,
+    prefix=f"{settings.api_v1_prefix}/cninfo-reports",
+    tags=["CNINFO Reports"],
 )
 app.include_router(
     admin_users.router,
@@ -184,6 +201,31 @@ app.include_router(
     listing_events.router,
     prefix=f"{settings.api_v1_prefix}",
     tags=["Listing Events"],
+)
+app.include_router(
+    microstructure.router,
+    prefix=f"{settings.api_v1_prefix}",
+    tags=["Microstructure"],
+)
+app.include_router(
+    search_trends.router,
+    prefix=f"{settings.api_v1_prefix}",
+    tags=["Search Trends"],
+)
+app.include_router(
+    sec_filings.router,
+    prefix=f"{settings.api_v1_prefix}",
+    tags=["SEC Filings"],
+)
+app.include_router(
+    futures.router,
+    prefix=f"{settings.api_v1_prefix}/futures",
+    tags=["Futures"],
+)
+app.include_router(
+    macro.router,
+    prefix=f"{settings.api_v1_prefix}",
+    tags=["Macro Indicators"],
 )
 app.include_router(
     stock_fundamentals.router,

@@ -32,6 +32,11 @@ class Settings(BaseSettings):
     tiingo_api_key: str = ""    # https://www.tiingo.com/account/token (1k/day free)
     fmp_api_key: str = ""       # https://site.financialmodelingprep.com (250/day free)
 
+    # Macro data (free with registration, takes ~2 minutes)
+    fred_api_key: str = ""     # https://fred.stlouisfed.org/docs/api/api_key.html (US macro: GDP/CPI/unemployment/yields)
+    bls_api_key: str = ""      # https://data.bls.gov/registrationEngine/ (optional — public API works w/o key but rate-limited)
+    bea_api_key: str = ""      # https://apps.bea.gov/API/signup/ (optional — same as BLS)
+
     # Binance / Crypto (public REST endpoints do not require API key)
     binance_api_key: str = ""        # https://www.binance.com/en/my/settings/api-management
     binance_api_secret: str = ""      # Needed only for account/trading endpoints (Phase 3)

@@ -61,6 +61,11 @@ class NewsArticle(Base):
     summary = Column(Text, comment="Body excerpt or RSS summary")
     body = Column(Text, comment="Full body if available")
     body_html = Column(Text, comment="Raw HTML body for re-parsing")
+    full_content = Column(Text, comment="Fetched full body via Jina Reader (cached)")
+    full_content_fetched_at = Column(
+        DateTime,
+        comment="When the Jina Reader fetch last ran (for cache TTL)",
+    )
     author = Column(String(200))
     author_followers = Column(Integer, comment="Followers/fans for retail sources (Xueqiu/Reddit)")
     language = Column(String(10), default="en")

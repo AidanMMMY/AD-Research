@@ -3,6 +3,7 @@
 Re-exports all model classes for convenient imports.
 """
 
+from app.models.cninfo_report import CninfoReport
 from app.models.etf import (
     InstrumentDailyBar,
     ETFIndicator,
@@ -14,6 +15,14 @@ from app.models.etf import (
 )
 from app.models.etl import BacktestResult, DataSourceConfig, ETLLog, Signal, StrategyConfig
 from app.models.listing import ListingEvent
+from app.models.macro import MacroIndicator
+from app.models.microstructure import (
+    HsgtFlow,
+    LhbRecord,
+    MarginBalance,
+    RestrictedRelease,
+)
+from app.models.research_report import ResearchReport
 from app.models.news import XueqiuFetchState, XueqiuUserCache
 from app.models.pool import ETFPools, PoolMember, PoolSnapshot, PoolWeight
 from app.models.scoring import ETFScore, ReportMetadata, ScoreTemplate
@@ -68,4 +77,15 @@ __all__ = [
     "XueqiuFetchState",
     # Listing / IPO events
     "ListingEvent",
+    # Macro indicators
+    "MacroIndicator",
+    # Micro-structure (LHB / HSGT / margin / restricted-release)
+    "LhbRecord",
+    "HsgtFlow",
+    "MarginBalance",
+    "RestrictedRelease",
+    # Research reports (Eastmoney)
+    "ResearchReport",
+    # Cninfo (巨潮资讯) periodic reports
+    "CninfoReport",
 ]
