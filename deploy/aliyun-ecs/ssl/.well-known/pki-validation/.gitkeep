@@ -3,5 +3,5 @@
 # 将证书申请页面下载的 fileauth.txt 放到此目录下：
 # deploy/aliyun-ecs/ssl/.well-known/pki-validation/fileauth.txt
 #
-# 部署后会通过 http://adreasearch.net/.well-known/pki-validation/fileauth.txt 访问
+# 部署后会通过 http://adresearch.net/.well-known/pki-validation/fileauth.txt 访问
 # 验证完成后可以删除该文件。
