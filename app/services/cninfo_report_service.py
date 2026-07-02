@@ -140,7 +140,7 @@ def get_hs300_cs500_universe(
     ``batch_size`` so the first run doesn't blow the rate budget.
     """
     ts = ts_token or get_settings().tushare_token
-    provider = TushareProvider(token=ts)
+    provider = TushareProvider()
     seen: set[str] = set()
 
     if ts:
