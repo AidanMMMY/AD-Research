@@ -22,13 +22,14 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
+import random
 import time
 from dataclasses import dataclass, field
 from typing import Iterable
 
 import httpx
 
-from app.services.news.crawler.base import DEFAULT_HEADERS, make_client
+from app.services.news.crawler.base import DEFAULT_HEADERS, DEFAULT_USER_AGENTS, make_client
 
 logger = logging.getLogger(__name__)
 
@@ -37,7 +38,7 @@ XUEQIU_BASE_URL = "https://xueqiu.com"
 
 # Default probe endpoint — a single-post public feed. Cheap and present
 # even when the search API rejects our cookie.
-_PROBE_URL = f"{XUEQIU_BASE_URL}/v4/statuses/public/timeline.json"
+_PROBE_URL = f"{XUEQIU_BASE_URL}/v4/statuses/public_timeline.json"
 _PROBE_PARAMS = {"count": 1, "max_id": -1, "symbol": "SH000300"}
 
 
@@ -96,7 +97,9 @@ class XueqiuAuth:
             return self._probe_ok
 
         try:
-            async with make_client() as client:
+            headers = dict(DEFAULT_HEADERS)
+            headers["User-Agent"] = random.choice(DEFAULT_USER_AGENTS)
+            async with make_client(headers=headers) as client:
                 resp = await client.get(
                     _PROBE_URL,
                     params=_PROBE_PARAMS,
