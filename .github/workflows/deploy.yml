@@ -1,8 +1,31 @@
 name: Deploy to Aliyun
 
+# 触发：
+#   - push to main：自动同步部署
+#   - workflow_dispatch：手动触发（支持传 ref / skip_migrations / dry_run）
 on:
   push:
     branches: [main]
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "要部署的 git ref（默认 origin/main）"
+        required: false
+        default: "origin/main"
+      skip_migrations:
+        description: "跳过 alembic 迁移校验（不推荐）"
+        required: false
+        default: "false"
+      dry_run:
+        description: "只拉代码 + 健康检查，不重建镜像"
+        required: false
+        default: "false"
+
+env:
+  PROJECT_ROOT: /opt/ad-research
+  BACKEND_CONTAINER: alloyresearch-backend
+  ROLLBACK_LOG_DIR: /var/log/ad-research
+  HEALTH_URL: http://localhost:8000/health
 
 jobs:
   deploy:
@@ -10,27 +33,189 @@ jobs:
     concurrency:
       group: aliyun-deploy
       cancel-in-progress: false
+    timeout-minutes: 30
+
     steps:
-      - name: Pull latest code
+      # ── 1. Checkout ──
+      - name: Checkout (self-hosted machine)
         run: |
-          cd /opt/ad-research
-          git fetch origin main
-          git reset --hard origin/main
+          echo "Self-hosted runner 直接使用 ${PROJECT_ROOT} 现有工作树"
+          cd "${PROJECT_ROOT}"
+          git --version
+          pwd
+          git rev-parse --is-inside-work-tree
+
+      # ── 2. 同步代码：备份 head → fetch → reset --hard ──
+      - name: Sync to origin/main (with head backup)
+        run: |
+          set -euo pipefail
+          cd "${PROJECT_ROOT}"
+
+          TARGET_REF="origin/main"
+          if [ -n "${{ inputs.ref }}" ] && [ "${{ inputs.ref }}" != "origin/main" ]; then
+            TARGET_REF="${{ inputs.ref }}"
+          fi
+
+          mkdir -p "${ROLLBACK_LOG_DIR}" 2>/dev/null || \
+            echo "[WARN] 无法创建 ${ROLLBACK_LOG_DIR}，previous_head 将写入 /tmp"
+
+          PREVIOUS_LOG="${ROLLBACK_LOG_DIR}/previous_head"
+          PREVIOUS_HEAD=$(git rev-parse HEAD)
+          echo "${PREVIOUS_HEAD}" | tee "${PREVIOUS_LOG}"
+          echo "[INFO] 备份当前 HEAD：${PREVIOUS_HEAD:0:7} → ${PREVIOUS_LOG}"
+
+          # 确保目标 ref 存在
+          git fetch --all --prune
+          if ! git rev-parse --verify "${TARGET_REF}" >/dev/null 2>&1; then
+            echo "[ERROR] 目标 ref 不存在：${TARGET_REF}"
+            exit 1
+          fi
+
+          # 安全 reset：先 dry-check 工作树状态
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "[WARN] 工作树有未提交变更，将被丢弃（已被 git stash 备份）"
+            git stash push -u -m "auto-stash-before-deploy-$(date +%s)" || true
+          fi
+
+          git reset --hard "${TARGET_REF}"
           git clean -fd
+          echo "[INFO] 已同步到：$(git rev-parse --short HEAD)"
 
-      - name: Ensure clean backend container state
+      # ── 3. 调用统一入口：deploy/aliyun-ecs/update.sh ──
+      - name: Run update.sh (unified entrypoint)
+        if: ${{ inputs.dry_run != 'true' }}
         run: |
-          cd /opt/ad-research/deploy/aliyun-ecs
-          docker compose stop backend || true
-          docker compose rm -f backend || true
-          sleep 3
+          set -euo pipefail
+          cd "${PROJECT_ROOT}/deploy/aliyun-ecs"
 
-      - name: Rebuild backend
-        run: |
-          cd /opt/ad-research/deploy/aliyun-ecs
-          docker compose up -d --build
+          EXTRA_ARGS=""
+          if [ "${{ inputs.skip_migrations }}" = "true" ]; then
+            EXTRA_ARGS="--no-db"
+          fi
 
-      - name: Verify deployment
+          bash update.sh ${EXTRA_ARGS}
+
+      - name: Dry-run skip rebuild, just sync code
+        if: ${{ inputs.dry_run == 'true' }}
         run: |
-          sleep 5
-          docker ps | grep alloyresearch-backend
+          echo "[INFO] dry_run=true：仅同步代码，不重建镜像"
+          echo "[INFO] 如需真正部署，请触发 workflow_dispatch 时将 dry_run 设为 false"
+
+      # ── 4. alembic 迁移完整性校验 ──
+      - name: Check alembic migrations (head must equal current)
+        id: check_migrations
+        run: |
+          set -euo pipefail
+          cd "${PROJECT_ROOT}"
+
+          # check_migrations.sh 退出码：
+          #   0 = OK
+          #   10 = 需要 migrate
+          #   20 = 异常
+          set +e
+          bash scripts/check_migrations.sh deploy/aliyun-ecs/docker-compose.yml
+          RC=$?
+          set -e
+
+          echo "check_migrations exit code: ${RC}"
+
+          case "${RC}" in
+            0)
+              echo "[OK] migrations are in sync"
+              ;;
+            10)
+              echo "::error title=需要数据库迁移::alembic head 与 current 不一致，触发自动升级"
+              cd "${PROJECT_ROOT}/deploy/aliyun-ecs"
+              docker compose exec -T backend alembic upgrade head
+              # 再校验一次
+              cd "${PROJECT_ROOT}"
+              set +e
+              bash scripts/check_migrations.sh deploy/aliyun-ecs/docker-compose.yml
+              RC2=$?
+              set -e
+              if [ "${RC2}" -ne 0 ]; then
+                echo "::error::升级后仍未通过，rollback..."
+                echo "rollback=true" >> $GITHUB_OUTPUT
+                exit 1
+              fi
+              ;;
+            *)
+              echo "::error title=migration 校验异常::check_migrations.sh 退出码 ${RC}"
+              echo "rollback=true" >> $GITHUB_OUTPUT
+              exit 1
+              ;;
+          esac
+
+      # ── 5. Health probe ──
+      - name: Health probe
+        id: health_probe
+        run: |
+          set -euo pipefail
+          echo "[INFO] 等待 backend 就绪..."
+
+          HEALTHY=false
+          for i in $(seq 1 30); do
+            if curl -sf "${HEALTH_URL}" >/dev/null 2>&1; then
+              echo "[OK] /health 通过（第 ${i} 次，${HEALTH_URL}）"
+              HEALTHY=true
+              break
+            fi
+            echo "[WAIT] 第 ${i}/30 次探测失败，2s 后重试..."
+            sleep 2
+          done
+
+          if [ "${HEALTHY}" != "true" ]; then
+            echo "::error title=健康检查失败::60s 内 /health 未通过"
+            docker ps | grep "${BACKEND_CONTAINER}" || true
+            docker compose -f "${PROJECT_ROOT}/deploy/aliyun-ecs/docker-compose.yml" logs backend --tail 100 || true
+            exit 1
+          fi
+
+      # ── 6. 失败兜底：dry-run 写日志（待 webhook 接入） ──
+      - name: Notify on failure (dry-run, log only)
+        if: failure()
+        run: |
+          set -euo pipefail
+          LOG_FILE="${ROLLBACK_LOG_DIR}/deploy-failures.log"
+          mkdir -p "${ROLLBACK_LOG_DIR}" 2>/dev/null || LOG_FILE="/tmp/deploy-failures.log"
+
+          PREVIOUS_HEAD=$(cat "${ROLLBACK_LOG_DIR}/previous_head" 2>/dev/null || echo "unknown")
+          ROLLBACK_CMD="bash ${PROJECT_ROOT}/scripts/rollback.sh ${PREVIOUS_HEAD}"
+
+          {
+            echo "============================================"
+            echo "timestamp: $(date -Iseconds 2>/dev/null || date)"
+            echo "workflow:  ${{ github.workflow }}"
+            echo "run_id:    ${{ github.run_id }}"
+            echo "run_attempt: ${{ github.run_attempt }}"
+            echo "actor:     ${{ github.actor }}"
+            echo "previous_head: ${PREVIOUS_HEAD}"
+            echo "current_head:  $(cd ${PROJECT_ROOT} && git rev-parse HEAD 2>/dev/null || echo unknown)"
+            echo "rollback_cmd:  ${ROLLBACK_CMD}"
+            echo "============================================"
+          } | tee -a "${LOG_FILE}"
+
+          echo "[DRY-RUN] 失败通知已写入：${LOG_FILE}"
+          echo "[DRY-RUN] webhook 通知待接入（当前仅写日志）"
+          echo "[DRY-RUN] 如需手动回滚：${ROLLBACK_CMD}"
+
+      # ── 7. 成功摘要 ──
+      - name: Deployment summary
+        if: success()
+        run: |
+          set -euo pipefail
+          cd "${PROJECT_ROOT}"
+          PREVIOUS_HEAD=$(cat "${ROLLBACK_LOG_DIR}/previous_head" 2>/dev/null || echo "")
+          CURRENT_HEAD=$(git rev-parse HEAD)
+
+          {
+            echo "## Deployment OK"
+            echo ""
+            echo "- previous: \`${PREVIOUS_HEAD:0:7}\`"
+            echo "- current:  \`${CURRENT_HEAD:0:7}\`"
+            if [ -n "${PREVIOUS_HEAD}" ] && [ "${PREVIOUS_HEAD}" != "${CURRENT_HEAD}" ]; then
+              echo ""
+              echo "### 变更摘要"
+              git log --oneline "${PREVIOUS_HEAD}..${CURRENT_HEAD}" | head -20
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"

@@ -3,11 +3,13 @@
 import fcntl
 import logging
 import os
+import subprocess
 import tempfile
 from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.types import Scope
 
@@ -59,9 +61,36 @@ import app.strategies  # noqa: F401
 
 settings = get_settings()
 
+# ── Version / build identity ──
+# Bump __version__ per release. The git short SHA is read once at startup
+# from the GIT_SHA env var (preferred — set by the build system / CI) and
+# falls back to a subprocess call to `git rev-parse --short HEAD`. When
+# neither is available we report "unknown" so the field is never empty.
+__version__ = "0.1.0"
+
+
+def _resolve_git_sha() -> str:
+    """Return the current git short SHA, or 'unknown' when unavailable."""
+    env_sha = os.environ.get("GIT_SHA", "").strip()
+    if env_sha:
+        return env_sha[:7]
+
+    try:
+        out = subprocess.check_output(
+            ["git", "rev-parse", "--short", "HEAD"],
+            stderr=subprocess.DEVNULL,
+            timeout=2,
+        )
+        return out.decode().strip() or "unknown"
+    except Exception:  # noqa: BLE001 — git not installed / not a repo / etc.
+        return "unknown"
+
+
+GIT_SHA = _resolve_git_sha()
+
 app = FastAPI(
     title=settings.project_name,
-    version="0.1.0",
+    version=__version__,
     docs_url="/docs",
     redoc_url="/redoc",
 )
@@ -85,9 +114,51 @@ app.add_middleware(
 )
 
 # Health check endpoint
+# ── Strict liveness probe ──
+# Returns 200 only when every dependency check passes; any single failure
+# flips the response to 503 so load balancers / Docker healthchecks can
+# route around the unhealthy instance. Used by:
+#   - scripts/post_deploy_check.sh
+#   - update.sh's polling loop
+#   - external monitors (UptimeRobot, Nagios, etc.)
 @app.get("/health")
 def health_check():
-    return {"status": "ok", "version": "0.1.0"}
+    checks: dict[str, str] = {}
+    healthy = True
+
+    # Database — SELECT 1 round-trip via the shared engine.
+    try:
+        from sqlalchemy import text
+
+        from app.core.database import engine
+
+        with engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+        checks["db"] = "ok"
+    except Exception as exc:  # noqa: BLE001 — surface any infra-level failure
+        healthy = False
+        checks["db"] = f"error: {exc.__class__.__name__}"
+
+    # Redis — PING the configured instance.
+    try:
+        from app.core.redis_client import get_redis_client
+
+        if get_redis_client().ping():
+            checks["redis"] = "ok"
+        else:
+            healthy = False
+            checks["redis"] = "error: ping returned falsy"
+    except Exception as exc:  # noqa: BLE001
+        healthy = False
+        checks["redis"] = f"error: {exc.__class__.__name__}"
+
+    payload = {
+        "status": "ok" if healthy else "degraded",
+        "version": __version__,
+        "git_sha": GIT_SHA,
+        **checks,
+    }
+    return JSONResponse(content=payload, status_code=200 if healthy else 503)
 
 # Include v1 routers
 app.include_router(etfs.router, prefix=f"{settings.api_v1_prefix}/etfs", tags=["ETFs"])
