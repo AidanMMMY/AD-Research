@@ -6,6 +6,7 @@ from pydantic import BaseModel, ConfigDict
 class ETFInfoBase(BaseModel):
     code: str
     name: str
+    name_zh: str | None = None
     exchange: str | None = None
     market: str | None = None
     category: str | None = None

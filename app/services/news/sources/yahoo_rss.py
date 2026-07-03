@@ -52,9 +52,13 @@ _FALLBACK_STATUS_CODES = frozenset({429, 403})
 _FALLBACK_LOOKBACK_DAYS = 7
 
 # Article ``source`` value used for items produced by the Finnhub
-# fallback. The primary Yahoo path still tags articles as
-# ``"yahoo_finance"`` so downstream consumers can distinguish them.
-_FALLBACK_SOURCE_NAME = "yahoo_finance_finnhub_fallback"
+# fallback. We intentionally tag these rows with the same value as
+# the primary Yahoo path (``"yahoo_finance"``) so the news-health
+# aggregator (which counts per ``source``) can sum both streams
+# together. The fallback provenance is preserved in
+# ``extra["fallback_from"]`` so consumers that care about the
+# distinction can still tell primary vs fallback apart.
+_FALLBACK_SOURCE_NAME = "yahoo_finance"
 
 
 def _to_internal(ticker: str) -> str:

@@ -3,32 +3,43 @@
 Exposes the ``news_article`` and ``news_article_symbol`` tables for
 frontend consumers:
 
-* ``GET  /news``                  — list + filter + paginate
-* ``GET  /news/watchlist``        — list scoped to the user's favorites
-* ``GET  /news/{article_id}``     — detail + linked symbols
-* ``GET  /news/stats/sources``    — per-source ingestion volume (last 7d)
-* ``GET  /news/health``           — per-source diagnostics + scheduler status
+* ``GET  /news``                          — list + filter + paginate
+* ``GET  /news/watchlist``                — list scoped to the user's favorites
+* ``GET  /news/{article_id}``             — detail + linked symbols
+* ``GET  /news/stats/sources``            — per-source ingestion volume (last 7d)
+* ``GET  /news/health``                   — per-source diagnostics + scheduler status
+* ``POST /news/{article_id}/fetch-content``  — Jina Reader full-text fetch
+* ``POST /news/{article_id}/translate``   — DeepSeek translate (en → zh), cached
 
 All routes require a valid JWT. Crawler / scheduler backends hit the
 DB directly via :mod:`app.services.news.normalizer` — these endpoints
-are read-only.
+are read-only (apart from the two POSTs above, which only fill derived
+cache columns).
 """
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+import logging
+from datetime import date, datetime, timedelta, timezone
 from typing import Any
 
+import redis
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import case, desc, func, select
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user, get_db
+from app.config import get_settings
+from app.core.redis_client import get_redis_client, redis_lock
 from app.core.scheduler import get_scheduler_jobs, is_scheduler_running
 from app.models.etl import ETLLog
 from app.models.favorite import UserFavorite
+from app.schemas.auth import UserResponse
 from app.services.news._model_loader import NewsArticle, NewsArticleSymbol
 from app.services.news.content_fetcher import ContentFetcher
+from app.services.news.translation_service import NewsTranslationService
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(
     tags=["news"],
@@ -39,6 +50,31 @@ router = APIRouter(
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
+def _iso_utc(value: datetime | None) -> str | None:
+    """Serialize a datetime as an explicit UTC ISO-8601 string.
+
+    The ``news_article.published_at`` / ``fetched_at`` columns are
+    stored as naive UTC values (the SQLAlchemy column type is plain
+    ``DateTime`` without tz, but every crawler normalises to UTC in
+    :class:`RawArticle` before insert). When those naive values flow
+    through ``datetime.isoformat()`` they come out without a timezone
+    suffix, which the frontend then interprets as local time and
+    displays 8 hours late for Asia/Shanghai users.
+
+    Always emit a ``+00:00`` suffix so the API contract is unambiguous:
+    every datetime field returned by this router is UTC.
+    """
+    if value is None:
+        return None
+    if value.tzinfo is None:
+        value = value.replace(tzinfo=timezone.utc)
+    else:
+        value = value.astimezone(timezone.utc)
+    # ``timespec='seconds'`` keeps the wire format compact while still
+    # giving the frontend a sub-minute resolution.
+    return value.isoformat(timespec="seconds")
+
 
 def _article_to_dict(article: NewsArticle, symbols: list[str] | None = None) -> dict:
     """Render a :class:`NewsArticle` row as a JSON-safe dict."""
@@ -53,8 +89,8 @@ def _article_to_dict(article: NewsArticle, symbols: list[str] | None = None) -> 
         "language": article.language,
         "market": article.market,
         "category": article.category,
-        "published_at": article.published_at.isoformat() if article.published_at else None,
-        "fetched_at": article.fetched_at.isoformat() if article.fetched_at else None,
+        "published_at": _iso_utc(article.published_at),
+        "fetched_at": _iso_utc(article.fetched_at),
         "engagement": article.engagement or {},
         "sentiment_score": article.sentiment_score,
         "sentiment_label": article.sentiment_label,
@@ -63,11 +99,11 @@ def _article_to_dict(article: NewsArticle, symbols: list[str] | None = None) -> 
         # ``summary`` fallback covers the case where the user never
         # clicked the load button.
         "full_content": article.full_content,
-        "full_content_fetched_at": (
-            article.full_content_fetched_at.isoformat()
-            if article.full_content_fetched_at
-            else None
-        ),
+        "full_content_fetched_at": _iso_utc(article.full_content_fetched_at),
+        # Chinese translation cache (only populated for English articles;
+        # the ``/translate`` endpoint enforces ``language == 'en'``).
+        "translated_zh": article.translated_zh,
+        "translation_generated_at": _iso_utc(article.translation_generated_at),
     }
 
 
@@ -340,6 +376,7 @@ def source_stats(db: Session = Depends(get_db)) -> dict:
 _NEWS_SOURCES: list[str] = [
     "cninfo",
     "sina_finance",
+    "wechat_zeping",
     "yahoo_finance",
     "cnbc",
     "sec_edgar",
@@ -355,6 +392,7 @@ _NEWS_SOURCES: list[str] = [
 _SOURCE_TO_JOB: dict[str, str] = {
     "cninfo": "news_cninfo_10m",
     "sina_finance": "news_sina_5m",
+    "wechat_zeping": "news_wechat_zeping_15m",
     "yahoo_finance": "news_yahoo_5m",
     "cnbc": "news_cnbc_5m",
     "sec_edgar": "news_sec_edgar_30m",
@@ -403,12 +441,8 @@ def _source_health_row(db: Session, source: str) -> dict[str, Any]:
                 "status": last_run.status,
                 "records": last_run.records_count,
                 "error_msg": last_run.error_msg,
-                "finished_at": (
-                    last_run.end_time.isoformat() if last_run.end_time else None
-                ),
-                "started_at": (
-                    last_run.start_time.isoformat() if last_run.start_time else None
-                ),
+                "finished_at": _iso_utc(last_run.end_time),
+                "started_at": _iso_utc(last_run.start_time),
             }
 
     return {
@@ -416,8 +450,8 @@ def _source_health_row(db: Session, source: str) -> dict[str, Any]:
         "job_id": job_id,
         "total": total,
         "last_24h": last_24h,
-        "last_published_at": last_published_at.isoformat() if last_published_at else None,
-        "last_fetched_at": last_fetched_at.isoformat() if last_fetched_at else None,
+        "last_published_at": _iso_utc(last_published_at),
+        "last_fetched_at": _iso_utc(last_fetched_at),
         "latest_etl": etl,
     }
 
@@ -501,5 +535,83 @@ def fetch_article_content(
         "content": result.content,
         "error": None,
     }
+
+
+# ---------------------------------------------------------------------------
+# Translation (en → zh, DeepSeek)
+# ---------------------------------------------------------------------------
+
+
+@router.post("/{article_id}/translate")
+def translate_article(
+    article_id: int,
+    target_language: str = Query(
+        "zh", description="Target language code (only 'zh' is supported in v1)"
+    ),
+    db: Session = Depends(get_db),
+    current_user: UserResponse = Depends(get_current_user),
+) -> dict:
+    """Translate an English news article to Chinese via DeepSeek.
+
+    Mirrors the ``/research-reports/{id}/summarize`` flow:
+
+    * Per-user daily counter in Redis (24h TTL, fail-open if Redis is
+      down) capped at ``news_translate_daily_limit``.
+    * 60s Redis lock to serialize concurrent translate calls so two
+      users clicking the button at the same time don't both hit the LLM.
+    * The translation is persisted on ``news_article.translated_zh`` so
+      a second call is a cache hit (no LLM cost, no rate-limit burn).
+
+    Returns ``{translation, cached, tokens_used, generated_at,
+    source_language, target_language}``. Errors:
+
+    * 404 — article not found
+    * 400 — non-English article, empty body, or unsupported target
+    * 429 — daily limit exceeded
+    * 409 — concurrent translate already in progress
+    * 502 — DeepSeek call failed (no key, timeout, 5xx…)
+    """
+    # Per-user daily counter. Keyed by user + ISO date so it rolls
+    # over at midnight UTC. Redis-down → fail-open (logged + skip).
+    daily_limit = get_settings().news_translate_daily_limit
+    today = date.today().isoformat()
+    counter_key = f"news_translate_user:{current_user.id}:{today}"
+    try:
+        redis_client = get_redis_client()
+        current = redis_client.incr(counter_key)
+        if current == 1:
+            redis_client.expire(counter_key, 86400)
+        if current > daily_limit:
+            raise HTTPException(
+                status_code=429,
+                detail=(
+                    f"今日翻译次数已达上限（{daily_limit} 次），"
+                    "明天 0 点重置"
+                ),
+            )
+    except redis.RedisError as exc:
+        logger.warning("news_translate rate-limit unavailable (Redis error): %s", exc)
+    except HTTPException:
+        raise
+
+    with redis_lock(f"news_translate:{article_id}", expire_seconds=60) as acquired:
+        if not acquired:
+            raise HTTPException(
+                status_code=409,
+                detail="该文章正在翻译中，请稍后再试",
+            )
+        service = NewsTranslationService(db)
+        try:
+            result = service.translate(article_id, target_language=target_language)
+        except ValueError as exc:
+            msg = str(exc)
+            if "not found" in msg:
+                raise HTTPException(status_code=404, detail=msg)
+            # Language / empty-body / unsupported target — all client errors.
+            raise HTTPException(status_code=400, detail=msg)
+        except RuntimeError as exc:
+            # Provider unavailable / LLM call failed.
+            raise HTTPException(status_code=502, detail=str(exc))
+        return result
 
 

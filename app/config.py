@@ -55,16 +55,46 @@ class Settings(BaseSettings):
     # AI / LLM
     deepseek_api_key: str = ""   # https://platform.deepseek.com/
 
+    # Per-user daily cap on the research-reports "生成摘要" on-demand
+    # endpoint. Counted in Redis with a 24h TTL keyed by user + date.
+    research_report_summarize_daily_limit: int = 100
+
+    # Per-user daily cap on the news "/translate" on-demand endpoint.
+    # Counted in Redis with a 24h TTL keyed by user + date. Same shape
+    # as research_report_summarize_daily_limit so the two endpoints
+    # can't surprise each other in the future.
+    news_translate_daily_limit: int = 50
+
     # Xueqiu (雪球) cookie — raw "Cookie:" header value from a logged-in
     # browser session. Must include xq_a_token=...; u=...; device_id=...
     # The crawler is read-only and never attempts to log in.
     xueqiu_cookie: str = ""
+
+    # SEC EDGAR — data.sec.gov requires a descriptive User-Agent per
+    # https://www.sec.gov/os/accessing-edgar-data. Set this to a real
+    # contact (name + email) so SEC can reach us if we misbehave;
+    # their firewall rejects generic placeholders like
+    # "admin@example.com". The default below is for local development
+    # only — please override ``SEC_USER_AGENT`` in production / staging.
+    sec_user_agent: str = "AD-Research research@ad-research.local"
 
     # News crawler tuning
     xueqiu_per_minute: int = 30           # Per-instance rate limit
     xueqiu_batch_size: int = 50           # Symbols per scheduler tick
     xueqiu_posts_per_symbol: int = 20     # Posts per timeline page
     xueqiu_user_cache_ttl_days: int = 7   # How long to keep user profiles
+
+    # WeChat RSS via wewe-rss (self-hosted). When ``wechat_rss_base_url``
+    # is unset / unreachable the WeChat crawler is a silent no-op so the
+    # rest of the news pipeline keeps running. ``wechat_rss_feed_id`` is
+    # the comma-separated list of feed ids to subscribe to (one per
+    # WeChat public account); see docs/dev-notes/20260704-wechat-rss-integration.md.
+    wechat_rss_base_url: str = "http://localhost:4000"
+    wechat_rss_feed_id: str = ""          # e.g. "MP_WXS_1234567890" (泽平宏观)
+    wechat_rss_timeout_seconds: float = 10.0
+    # AI marketing filter — set to False to disable the LLM re-classify
+    # pass (the heuristic blocklist is always applied).
+    wechat_marketing_filter_llm_enabled: bool = True
 
     # Application
     app_env: str = "development"

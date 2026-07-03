@@ -5,7 +5,8 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
-from app.models.etl import Signal
+from app.models.etf import ETFInfo
+from app.models.etl import Signal, StrategyConfig
 from app.services.strategy_engine import run_strategy_on_instrument, run_strategy_on_universe
 
 
@@ -137,7 +138,11 @@ class SignalService:
         limit: int = 100,
     ) -> list[dict[str, Any]]:
         """Get signals with optional filtering."""
-        query = self.db.query(Signal)
+        query = self.db.query(Signal, ETFInfo, StrategyConfig).outerjoin(
+            ETFInfo, Signal.etf_code == ETFInfo.code
+        ).outerjoin(
+            StrategyConfig, Signal.strategy_id == StrategyConfig.id
+        )
         if strategy_id:
             query = query.filter(Signal.strategy_id == strategy_id)
         if etf_code:
@@ -145,18 +150,22 @@ class SignalService:
         if trade_date:
             query = query.filter(Signal.trade_date == trade_date)
 
-        results = query.order_by(Signal.created_at.desc()).limit(limit).all()
+        rows = query.order_by(Signal.created_at.desc()).limit(limit).all()
         return [
             {
-                "id": r.id,
-                "strategy_id": r.strategy_id,
-                "etf_code": r.etf_code,
-                "trade_date": r.trade_date.isoformat() if r.trade_date else None,
-                "signal_type": r.signal_type,
-                "strength": r.strength,
-                "created_at": r.created_at.isoformat() if r.created_at else None,
+                "id": sig.id,
+                "strategy_id": sig.strategy_id,
+                "strategy_name": strat.name if strat else None,
+                "strategy_type": strat.strategy_type if strat else None,
+                "etf_code": sig.etf_code,
+                "etf_name": etf.name if etf else None,
+                "trade_date": sig.trade_date.isoformat() if sig.trade_date else None,
+                "signal_type": sig.signal_type,
+                "strength": sig.strength,
+                "extra_data": sig.extra_data,
+                "created_at": sig.created_at.isoformat() if sig.created_at else None,
             }
-            for r in results
+            for sig, etf, strat in rows
         ]
 
     def get_latest_signals(self, limit: int = 50) -> list[dict[str, Any]]:

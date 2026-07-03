@@ -1,8 +1,10 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Select, Button, Input, Skeleton, Modal, Empty } from 'antd';
-import { RobotOutlined, ThunderboltOutlined } from '@ant-design/icons';
+import { Select, Button, Skeleton, Modal, Empty } from 'antd';
+import { RobotOutlined, SearchOutlined } from '@ant-design/icons';
 import { researchApi, ResearchNote } from '@/api/research';
+import { useInstrumentList } from '@/hooks/useInstrumentList';
+import type { InstrumentInfo } from '@/types/instrument';
 import AISetupBanner from '@/components/AISetupBanner';
 import PageShell from '@/components/PageShell';
 import PageHeader from '@/components/PageHeader';
@@ -30,12 +32,25 @@ const NOTE_TYPE_OPTIONS = [
   { label: '财报前瞻', value: 'earnings_preview' },
 ];
 
+const SEARCH_DEBOUNCE_MS = 300;
+const SEARCH_PAGE_SIZE = 50;
+
 export default function ResearchNotes() {
   const [code, setCode] = useState('');
+  const [searchInput, setSearchInput] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [selectedCode, setSelectedCode] = useState<string | null>(null);
   const [noteType, setNoteType] = useState<string | undefined>();
   const [modalNote, setModalNote] = useState<ResearchNote | null>(null);
   const queryClient = useQueryClient();
+
+  // Debounce the search text so we don't hammer the backend on every keystroke.
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchInput.trim());
+    }, SEARCH_DEBOUNCE_MS);
+    return () => clearTimeout(timer);
+  }, [searchInput]);
 
   const { data: notes, isLoading } = useQuery({
     queryKey: ['research-notes', selectedCode, noteType],
@@ -46,6 +61,20 @@ export default function ResearchNotes() {
     enabled: !!selectedCode,
   });
 
+  const { data: instrumentSearch, isFetching: isSearchingInstruments } = useInstrumentList({
+    search: debouncedSearch || undefined,
+    page_size: SEARCH_PAGE_SIZE,
+  });
+
+  const instrumentOptions = useMemo(
+    () =>
+      (instrumentSearch?.items || []).map((item: InstrumentInfo) => ({
+        label: `${item.code} ${item.name}`,
+        value: item.code,
+      })),
+    [instrumentSearch],
+  );
+
   const generateMutation = useMutation({
     mutationFn: (code: string) => researchApi.generateNote(code),
     onSuccess: () => {
@@ -53,10 +82,22 @@ export default function ResearchNotes() {
     },
   });
 
+  const triggerGenerate = (targetCode: string) => {
+    const normalized = targetCode.trim().toUpperCase();
+    if (!normalized) return;
+    setCode(normalized);
+    setSelectedCode(normalized);
+    generateMutation.mutate(normalized);
+  };
+
   const handleGenerate = () => {
-    if (!code.trim()) return;
-    setSelectedCode(code.trim().toUpperCase());
-    generateMutation.mutate(code.trim().toUpperCase());
+    triggerGenerate(code);
+  };
+
+  const handleSelectInstrument = (value: string) => {
+    triggerGenerate(value);
+    // Clear the search field so the dropdown resets next time it opens.
+    setSearchInput('');
   };
 
   return (
@@ -70,13 +111,26 @@ export default function ResearchNotes() {
 
       <Panel variant="default" className="phase5c-section">
         <div className="phase5c-form-row">
-          <Input
-            placeholder="输入标的代码 (如 SPY.US, AAPL.US)"
-            value={code}
-            onChange={(e) => setCode(e.target.value)}
-            onPressEnter={handleGenerate}
+          <Select
+            showSearch
+            filterOption={false}
+            placeholder="搜索标的代码或名称 (如 SPY / AAPL / 沪深300)"
+            value={code || undefined}
+            searchValue={searchInput}
+            onSearch={setSearchInput}
+            onChange={handleSelectInstrument}
+            onInputKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                handleGenerate();
+              }
+            }}
+            notFoundContent={isSearchingInstruments ? '搜索中...' : '未找到匹配的标的'}
+            options={instrumentOptions}
             className="ad-form-row__grow"
-            prefix={<ThunderboltOutlined className="phase5c-icon-accent" />}
+            suffixIcon={<SearchOutlined className="phase5c-icon-accent" />}
+            optionFilterProp="label"
+            listHeight={320}
           />
           <Button
             type="primary"
@@ -103,7 +157,7 @@ export default function ResearchNotes() {
         ) : !selectedCode ? (
           <div className="phase5c-empty">
             <Empty
-              description="输入标的代码并点击「生成研报」开始 AI 分析"
+              description="输入或选择标的代码后点击「生成研报」开始 AI 分析"
             />
           </div>
         ) : !notes?.length ? (

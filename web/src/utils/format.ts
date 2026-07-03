@@ -1,4 +1,4 @@
-import dayjs from 'dayjs';
+import { formatDateTime as formatDateTimeTz } from './datetime';
 
 export function formatPercent(value?: number | null, digits = 2): string {
   if (value === undefined || value === null) return '-';
@@ -18,12 +18,13 @@ export function formatAmount(value?: number | null): string {
   return value.toFixed(0);
 }
 
+// Re-export the timezone-aware formatters so existing callers of
+// ``formatDate`` / ``formatDateTime`` automatically pick up the UTC
+// fix in ``utils/datetime.ts`` without touching the call sites.
 export function formatDate(date?: string | null, fmt = 'YYYY-MM-DD'): string {
-  if (!date) return '-';
-  return dayjs(date).format(fmt);
+  return formatDateTimeTz(date, fmt);
 }
 
 export function formatDateTime(date?: string | null): string {
-  if (!date) return '-';
-  return dayjs(date).format('YYYY-MM-DD HH:mm');
+  return formatDateTimeTz(date, 'YYYY-MM-DD HH:mm');
 }

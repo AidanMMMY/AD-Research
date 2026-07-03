@@ -281,6 +281,60 @@ export function buildListingPreviewContext(data: Record<string, any>): string {
   ].join('\n');
 }
 
+export function buildSignalDashboardContext(rows: any[], columns: any[]): string {
+  const items = Array.isArray(rows) ? rows : [];
+
+  const typeCount: Record<string, number> = {};
+  const strategyCount: Record<string, number> = {};
+  const etfSet = new Set<string>();
+
+  for (const it of items) {
+    const t = it.signal_type || 'UNKNOWN';
+    typeCount[t] = (typeCount[t] || 0) + 1;
+    const s = it.strategy_type || it.strategy_name || 'UNKNOWN';
+    strategyCount[s] = (strategyCount[s] || 0) + 1;
+    if (it.etf_code) etfSet.add(it.etf_code);
+  }
+
+  const topByStrength = items
+    .filter((it) => typeof it.strength === 'number')
+    .sort((a, b) => (b.strength ?? 0) - (a.strength ?? 0))
+    .slice(0, 5)
+    .map((it) => ({
+      etf_code: it.etf_code,
+      etf_name: it.etf_name,
+      strategy_name: it.strategy_name,
+      strategy_type: it.strategy_type,
+      signal_type: it.signal_type,
+      strength: it.strength,
+      trade_date: it.trade_date,
+    }));
+
+  const sampleExtraData = items
+    .map((it) => it.extra_data)
+    .filter((e) => e && typeof e === 'object' && Object.keys(e).length > 0)
+    .slice(0, 2);
+
+  const columnTitles = (columns || [])
+    .map((c: any) => c?.title ?? c?.dataIndex)
+    .filter(Boolean);
+
+  return [
+    '页面：信号看板',
+    `当前表格标的数量：${items.length}`,
+    `覆盖标的（etf_code）数量：${etfSet.size}`,
+    '信号类型分布：',
+    summarizeObject(typeCount),
+    '策略分布（按 strategy_type 聚合）：',
+    summarizeObject(strategyCount),
+    '按强度排序的 Top 5：',
+    summarizeList(topByStrength, 5),
+    'extra_data 样例（最多 2 条）：',
+    summarizeList(sampleExtraData as Record<string, unknown>[], 2),
+    `当前表格列：${columnTitles.join('、')}`,
+  ].join('\n');
+}
+
 export function buildContext(
   pageType: HelpPageType,
   data: Record<string, any>
@@ -313,6 +367,8 @@ export function buildContext(
       );
     case 'listing_preview':
       return buildListingPreviewContext(data);
+    case 'signal_dashboard':
+      return buildSignalDashboardContext(data.rows ?? [], data.columns ?? []);
     default:
       return summarizeObject(data);
   }

@@ -25,7 +25,7 @@ import {
   EyeOutlined,
   FireOutlined,
 } from '@ant-design/icons';
-import dayjs, { type Dayjs } from 'dayjs';
+import { type Dayjs } from 'dayjs';
 import { newsApi } from '@/api/news';
 import type {
   NewsArticle,
@@ -39,6 +39,10 @@ import PageHeader from '@/components/PageHeader';
 import FilterToolbar from '@/components/FilterToolbar';
 import Panel from '@/components/Panel';
 import EmptyState from '@/components/EmptyState';
+import {
+  formatDateTimeSeconds,
+  formatRelative as formatRelativeTz,
+} from '@/utils/datetime';
 
 const { RangePicker } = DatePicker;
 
@@ -90,18 +94,9 @@ function toIso(d: Dayjs | null | undefined, endOfDay = false): string | undefine
   return (endOfDay ? d.endOf('day') : d.startOf('day')).toISOString();
 }
 
-/** Approximate "x 分钟前" / "x 小时前" formatter. */
+/** Approximate "x 分钟前" / "x 小时前" formatter. UTC-safe — see ``utils/datetime``. */
 function formatRelative(iso: string): string {
-  const t = dayjs(iso);
-  if (!t.isValid()) return '';
-  const diff = dayjs().diff(t, 'minute');
-  if (diff < 1) return '刚刚';
-  if (diff < 60) return `${diff} 分钟前`;
-  const h = Math.floor(diff / 60);
-  if (h < 24) return `${h} 小时前`;
-  const d = Math.floor(h / 24);
-  if (d < 30) return `${d} 天前`;
-  return t.format('YYYY-MM-DD');
+  return formatRelativeTz(iso);
 }
 
 /** Render a 1..5 star row. */
@@ -159,7 +154,7 @@ function NewsCard({
           <span className="ad-text-small ad-text-tertiary">{article.event_category}</span>
         )}
         <span className="ad-flex-1" />
-        <Tooltip title={dayjs(article.published_at).format('YYYY-MM-DD HH:mm:ss')}>
+        <Tooltip title={formatDateTimeSeconds(article.published_at)}>
           <span>{formatRelative(article.published_at)}</span>
         </Tooltip>
         <ImportanceStars level={article.importance} />

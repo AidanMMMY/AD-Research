@@ -16,8 +16,8 @@ import ReactECharts from 'echarts-for-react';
 import type { EChartsOption } from 'echarts';
 import { buildBacktestDetailContext } from '@/utils/helpContext';
 import { getQuickQuestions } from '@/utils/helpPrompts';
+import { formatDateTime } from '@/utils/datetime';
 import type { AttributionEffect } from '@/types/backtest';
-import dayjs from 'dayjs';
 
 export default function BacktestDetail() {
   const { id } = useParams<{ id: string }>();
@@ -276,7 +276,7 @@ export default function BacktestDetail() {
           [
             data.strategy_id ? `策略 ID：${data.strategy_id}` : null,
             dateRange,
-            data.created_at ? `创建于 ${dayjs(data.created_at).format('YYYY-MM-DD HH:mm')}` : null,
+            data.created_at ? `创建于 ${formatDateTime(data.created_at)}` : null,
           ].filter(Boolean).join(' · ')
         }
         extra={<HelpTrigger tooltip="AI 解释回测指标" onClick={handleOpenHelp} />}

@@ -1163,6 +1163,7 @@ def init_scheduler():
     try:
         from app.services.news.scheduler_jobs import (
             run_cninfo_crawl, run_sina_crawl,
+            run_wechat_zeping_crawl,
             run_yahoo_crawl, run_cnbc_crawl, run_sec_edgar_crawl,
             run_reddit_crawl,
             run_coindesk_crawl, run_cointelegraph_crawl,
@@ -1181,6 +1182,15 @@ def init_scheduler():
             trigger=IntervalTrigger(minutes=5),
             id="news_sina_5m",
             name="新浪财经",
+            replace_existing=True,
+            max_instances=1,
+            coalesce=True,
+        )
+        scheduler.add_job(
+            run_wechat_zeping_crawl,
+            trigger=IntervalTrigger(minutes=15),
+            id="news_wechat_zeping_15m",
+            name="微信公众号 (wewe-rss)",
             replace_existing=True,
             max_instances=1,
             coalesce=True,

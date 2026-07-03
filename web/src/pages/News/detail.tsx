@@ -11,6 +11,7 @@ import {
   Skeleton,
   List,
   Tooltip,
+  Switch,
 } from 'antd';
 import {
   ArrowLeftOutlined,
@@ -22,13 +23,14 @@ import {
   EyeOutlined,
   BulbOutlined,
   ReadOutlined,
+  TranslationOutlined,
   MessageOutlined as ChatOutlined,
 } from '@ant-design/icons';
-import dayjs from 'dayjs';
 import { newsApi } from '@/api/news';
 import type {
   NewsArticle,
   NewsFetchContentResponse,
+  NewsTranslateResponse,
   SentimentLabel,
   ImportanceLevel,
 } from '@/types/news';
@@ -38,6 +40,7 @@ import Markdown from '@/components/Markdown';
 import EmptyState from '@/components/EmptyState';
 import ResponsiveGrid from '@/components/ResponsiveGrid';
 import StatCard from '@/components/StatCard';
+import { formatDateTime, formatDateTimeCompact } from '@/utils/datetime';
 
 const SENTIMENT_COLORS: Record<SentimentLabel, string> = {
   positive: 'var(--color-rise)',
@@ -137,6 +140,44 @@ export default function NewsDetail() {
     },
   });
 
+  // AI translation toggle. Only enabled for English articles; the
+  // server enforces ``language == 'en'`` and we mirror that here so
+  // non-English articles never show the toggle at all.
+  const [showTranslation, setShowTranslation] = useState(false);
+  const [translationOverride, setTranslationOverride] = useState<string | null>(
+    null,
+  );
+  const isEnglish = (data?.language || '').toLowerCase() === 'en';
+
+  // Reset the toggle + override when navigating between articles so a
+  // fresh article doesn't inherit the previous one's translation.
+  useEffect(() => {
+    setShowTranslation(false);
+    setTranslationOverride(null);
+  }, [articleId]);
+
+  const translateArticle = useMutation({
+    mutationFn: (): Promise<NewsTranslateResponse> =>
+      newsApi.translate(articleId).then((r) => r.data),
+    onSuccess: (resp) => {
+      setTranslationOverride(resp.translation);
+      // Refresh the article detail so a subsequent mount picks up the
+      // cached translation without an extra round-trip.
+      queryClient.invalidateQueries({ queryKey: ['news-detail', articleId] });
+    },
+  });
+
+  // When the toggle flips on, kick off the translation if we don't
+  // already have one cached on the article (or in local state).
+  const translationFromServer = data?.translated_zh ?? null;
+  const translationToShow = translationOverride ?? translationFromServer;
+  const handleTranslationToggle = (checked: boolean) => {
+    setShowTranslation(checked);
+    if (checked && !translationToShow && !translateArticle.isPending) {
+      translateArticle.mutate();
+    }
+  };
+
   // Update document title for nicer browser tab.
   useEffect(() => {
     if (data?.title) {
@@ -201,7 +242,7 @@ export default function NewsDetail() {
         <div className="ad-detail-meta">
           <span>{data.source}</span>
           <span className="ad-detail-meta__divider">·</span>
-          <span>{dayjs(data.published_at).format('YYYY-MM-DD HH:mm')}</span>
+          <span>{formatDateTime(data.published_at)}</span>
           <span className="ad-detail-meta__divider">·</span>
           <span>{data.language}</span>
           {data.author && (
@@ -267,7 +308,54 @@ export default function NewsDetail() {
         {/* Body */}
         <div>
           <article className="ad-detail-article">
-            {fullContentToRender ? (
+            {showTranslation ? (
+              // Side-by-side view: original (left) + Chinese (right).
+              // We render the original body using the same Markdown
+              // pipeline as the single-column view; on the right we
+              // render the LLM translation, falling back to a
+              // loading/empty state while the mutation is in flight.
+              <div className="news-translation-pair">
+                <div className="news-translation-pair__col">
+                  <div className="news-translation-pair__header">
+                    <span>原文</span>
+                    <span className="ad-text-small ad-text-tertiary">
+                      {data.language?.toUpperCase() || 'EN'}
+                    </span>
+                  </div>
+                  <div className="news-translation-pair__body">
+                    {fullContentToRender ? (
+                      <Markdown source={fullContentToRender} />
+                    ) : data.body ? (
+                      <div className="ad-detail-article__body">{data.body}</div>
+                    ) : (
+                      <EmptyState title="暂无原文" />
+                    )}
+                  </div>
+                </div>
+                <div className="news-translation-pair__col">
+                  <div className="news-translation-pair__header">
+                    <span>中文翻译</span>
+                    <span className="ad-text-small ad-text-tertiary">
+                      ZH · DeepSeek
+                    </span>
+                  </div>
+                  <div className="news-translation-pair__body">
+                    {translateArticle.isPending && !translationToShow ? (
+                      <div className="ad-flex ad-flex-col ad-items-center ad-justify-center ad-py-8">
+                        <Spin />
+                        <div className="ad-mt-3 ad-text-small ad-text-tertiary">
+                          AI 正在翻译…
+                        </div>
+                      </div>
+                    ) : translationToShow ? (
+                      <Markdown source={translationToShow} />
+                    ) : (
+                      <EmptyState title="翻译暂不可用" />
+                    )}
+                  </div>
+                </div>
+              </div>
+            ) : fullContentToRender ? (
               // Cache hit (from a previous click) OR we just finished
               // fetching — render the Markdown body inline.
               <Markdown source={fullContentToRender} />
@@ -283,7 +371,7 @@ export default function NewsDetail() {
                 a rendered full body. The summary that the crawler gave
                 us is usually just an excerpt, so users need an explicit
                 way to see the whole article. */}
-            {!fullContentToRender && (
+            {!fullContentToRender && !showTranslation && (
               <div className="ad-mt-5 ad-text-center">
                 <Button
                   type="default"
@@ -302,9 +390,9 @@ export default function NewsDetail() {
               </div>
             )}
 
-            {fetchedAt && (
+            {fetchedAt && !showTranslation && (
               <div className="ad-mt-3 ad-text-small ad-text-muted">
-                全文缓存于 {dayjs(fetchedAt).format('YYYY-MM-DD HH:mm')}
+                全文缓存于 {formatDateTime(fetchedAt)}
                 {fullContentCached ? ' · 已缓存' : ''}
               </div>
             )}
@@ -319,6 +407,46 @@ export default function NewsDetail() {
                   fetchFullContent.isError
                     ? (fetchFullContent.error as Error | undefined)?.message
                     : fetchFullContent.data?.error
+                }
+              />
+            )}
+
+            {/* Translation toggle — only for English articles where the
+                backend will accept the request. Non-English content
+                never shows this control. */}
+            {isEnglish && (
+              <div className="ad-mt-4 ad-flex ad-items-center ad-gap-3 ad-flex-wrap">
+                <Tooltip title="调用 DeepSeek 将正文翻译为中文（仅英文文章可用），首次调用约 5-15 秒，结果会缓存">
+                  <Switch
+                    checked={showTranslation}
+                    onChange={handleTranslationToggle}
+                    loading={translateArticle.isPending}
+                    checkedChildren="译本开启"
+                    unCheckedChildren="原文"
+                  />
+                </Tooltip>
+                <span className="ad-text-small ad-text-tertiary ad-flex ad-items-center ad-gap-1">
+                  <TranslationOutlined />
+                  AI 译本并排显示
+                </span>
+                {data.translation_generated_at && (
+                  <span className="ad-text-small ad-text-muted">
+                    已翻译于 {formatDateTimeCompact(data.translation_generated_at)}
+                    {translateArticle.data?.cached ? ' · 命中缓存' : ''}
+                  </span>
+                )}
+              </div>
+            )}
+
+            {translateArticle.isError && (
+              <Alert
+                className="ad-mt-3"
+                type="warning"
+                showIcon
+                message="翻译失败"
+                description={
+                  (translateArticle.error as Error | undefined)?.message ??
+                  '请稍后重试'
                 }
               />
             )}
@@ -472,7 +600,7 @@ export default function NewsDetail() {
                           </span>
                           <span className="ad-text-small ad-text-muted">·</span>
                           <span className="ad-text-small ad-text-tertiary">
-                            {dayjs(item.published_at).format('MM-DD HH:mm')}
+                            {formatDateTimeCompact(item.published_at)}
                           </span>
                           {item.sentiment_label && (
                             <span

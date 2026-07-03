@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import asyncio
 import fnmatch
+import time
 from typing import Any, Iterator
 
 import pytest
@@ -17,13 +18,20 @@ import pytest
 class FakeRedis:
     """Minimal in-memory Redis stand-in.
 
-    Supports: get, set, setex, delete, incr, incrby, incrbyfloat,
-    zadd, zrevrange, exists, scan_iter, eval (no-op for our use).
+    Supports: get, set, setex, delete, expire, incr, incrby,
+    incrbyfloat, zadd, zrevrange, exists, scan_iter, eval (a tiny
+    Lua-subset shim that understands ``GET``/``DEL`` for the lock
+    release pattern used by ``redis_lock``).
     """
 
     def __init__(self) -> None:
         self.store: dict[str, Any] = {}
         self.zsets: dict[str, dict[str, float]] = {}
+        # Per-key TTLs (absolute monotonic timestamp). ``None`` means
+        # the key never expires. The tests don't actually need to wait
+        # for expiry — we just need ``expire()`` to register a TTL so
+        # production semantics are mimicked.
+        self.expires_at: dict[str, float | None] = {}
 
     # Basic
     def get(self, key: str) -> Any | None:
@@ -36,10 +44,19 @@ class FakeRedis:
         if nx and key in self.store:
             return None
         self.store[key] = str(value)
+        if ex is not None:
+            self.expires_at[key] = time.monotonic() + ex
         return True
 
     def setex(self, key: str, ttl: int, value: Any) -> bool:
         self.store[key] = str(value)
+        self.expires_at[key] = time.monotonic() + ttl
+        return True
+
+    def expire(self, key: str, ttl: int) -> bool:
+        if key not in self.store:
+            return False
+        self.expires_at[key] = time.monotonic() + ttl
         return True
 
     def delete(self, *keys: str) -> int:
@@ -47,6 +64,7 @@ class FakeRedis:
         for k in keys:
             if k in self.store:
                 del self.store[k]
+                self.expires_at.pop(k, None)
                 n += 1
         return n
 
@@ -88,8 +106,23 @@ class FakeRedis:
             if fnmatch.fnmatchcase(k, match):
                 yield k
 
-    # Lock eval (no-op for our use)
-    def eval(self, *_args: Any, **_kwargs: Any) -> int:
+    # Tiny Lua-subset interpreter. The only script we actually need to
+    # support is the one ``redis_lock`` uses to release a lock::
+    #
+    #     if redis.call('get', KEYS[1]) == ARGV[1]
+    #     then return redis.call('del', KEYS[1])
+    #     else return 0 end
+    #
+    # Anything else is a no-op (returns 1 so release looks like it
+    # worked and the test moves on).
+    def eval(self, script: str, numkeys: int, *args: Any) -> int:
+        if "del" in script and numkeys >= 1:
+            key = args[0]
+            expected_token = args[1] if len(args) > 1 else None
+            if expected_token is not None and self.store.get(key) != str(expected_token):
+                return 0
+            self.delete(key)
+            return 1
         return 1
 
 

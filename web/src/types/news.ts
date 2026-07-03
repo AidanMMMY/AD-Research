@@ -60,6 +60,10 @@ export interface NewsArticle {
   full_content: string | null;
   /** ISO timestamp of the last successful Jina fetch (cache TTL anchor). */
   full_content_fetched_at: string | null;
+  /** Cached Chinese translation (DeepSeek). Populated only for English articles. */
+  translated_zh: string | null;
+  /** ISO timestamp of the last successful DeepSeek translation. */
+  translation_generated_at: string | null;
 }
 
 /** Response shape for ``POST /news/{id}/fetch-content``. */
@@ -69,6 +73,22 @@ export interface NewsFetchContentResponse {
   content: string | null;
   cached: boolean;
   error: string | null;
+}
+
+/** Response shape for ``POST /news/{id}/translate``. */
+export interface NewsTranslateResponse {
+  /** The Chinese translation (Markdown). May equal the cached value. */
+  translation: string;
+  /** True if we returned a previously-stored row (no LLM call). */
+  cached: boolean;
+  /** Tokens consumed by the LLM call; null on cache hit or no-usage response. */
+  tokens_used: number | null;
+  /** ISO timestamp of the translation (cache anchor). */
+  generated_at: string | null;
+  /** Source language code as stored on the article. */
+  source_language: string;
+  /** Target language code, e.g. ``zh``. */
+  target_language: string;
 }
 
 /** Paginated list response. */

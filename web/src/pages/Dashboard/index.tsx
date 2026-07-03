@@ -13,6 +13,11 @@ import { useScores } from '@/hooks/useScores';
 import { useFavorites } from '@/hooks/useFavorites';
 import { usePoolList } from '@/hooks/usePoolDetail';
 import { statsApi } from '@/api/stats';
+import {
+  formatDateTime,
+  formatDateTimeCompact,
+  formatRelative as formatRelativeTz,
+} from '@/utils/datetime';
 import { newsApi } from '@/api/news';
 import PageShell from '@/components/PageShell';
 import ResponsiveGrid from '@/components/ResponsiveGrid';
@@ -27,7 +32,6 @@ import TickerTape from '@/components/TickerTape';
 import { usePriceStream } from '@/hooks/usePriceStream';
 import { useMarketStream } from '@/hooks/useMarketStream';
 import type { NewsArticle, SentimentLabel } from '@/types/news';
-import dayjs from 'dayjs';
 
 const SENTIMENT_COLORS: Record<SentimentLabel, string> = {
   positive: 'var(--color-rise)',
@@ -42,15 +46,8 @@ const SENTIMENT_LABELS: Record<SentimentLabel, string> = {
 };
 
 function formatRelative(iso: string): string {
-  const t = dayjs(iso);
-  if (!t.isValid()) return '';
-  const diff = dayjs().diff(t, 'minute');
-  if (diff < 60) return diff < 1 ? '刚刚' : `${diff} 分钟前`;
-  const h = Math.floor(diff / 60);
-  if (h < 24) return `${h} 小时前`;
-  const d = Math.floor(h / 24);
-  if (d < 7) return `${d} 天前`;
-  return t.format('MM-DD');
+  // UTC-aware formatter — see ``utils/datetime``.
+  return formatRelativeTz(iso, { withTimeAfterDays: 7 });
 }
 
 /** Compact news row used in dashboard cards. */
@@ -70,7 +67,7 @@ function NewsRow({
       <div className="dashboard-news-row__meta">
         <span>{article.source}</span>
         <span className="dashboard-news-row__divider">·</span>
-        <Tooltip title={dayjs(article.published_at).format('YYYY-MM-DD HH:mm')}>
+        <Tooltip title={formatDateTime(article.published_at)}>
           <span>{formatRelative(article.published_at)}</span>
         </Tooltip>
         {article.importance ? (
@@ -284,9 +281,9 @@ export default function Dashboard() {
                     <>
                       <ReturnTag value={tick.change_pct} />
                       {tick.ts ? (
-                        <Tooltip title={dayjs(tick.ts).format('YYYY-MM-DD HH:mm:ss')}>
+                        <Tooltip title={formatDateTime(tick.ts, 'YYYY-MM-DD HH:mm:ss')}>
                           <span className="dashboard-index-card__timestamp">
-                            {dayjs(tick.ts).format('MM-DD HH:mm')}
+                            {formatDateTimeCompact(tick.ts)}
                           </span>
                         </Tooltip>
                       ) : null}

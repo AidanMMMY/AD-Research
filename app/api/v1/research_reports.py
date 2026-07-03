@@ -6,12 +6,14 @@ Endpoints (mounted under ``/api/v1/research-reports``):
   * ``GET    /facets``                 — distinct values for dropdowns
   * ``GET    /{id}``                   — single report detail
   * ``POST   /refresh``                — admin-only manual refresh
-  * ``POST   /{id}/summarize``         — admin-only on-demand summary
+  * ``POST   /{id}/summarize``         — authenticated on-demand summary,
+                                         rate-limited per user per day
 """
 
 import logging
 from datetime import date
 
+import redis
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.api.deps import (
@@ -19,8 +21,9 @@ from app.api.deps import (
     get_research_report_service,
     require_admin,
 )
+from app.config import get_settings
 from app.core.database import SessionLocal
-from app.core.redis_client import redis_lock
+from app.core.redis_client import get_redis_client, redis_lock
 from app.data.pipelines.research_reports import ResearchReportsPipeline
 from app.schemas.auth import UserResponse
 from app.schemas.research_report import (
@@ -123,9 +126,46 @@ def refresh_research_reports(
 @router.post("/{report_id}/summarize", status_code=202)
 def summarize_research_report(
     report_id: int,
-    _admin: UserResponse = Depends(require_admin),
+    current_user: UserResponse = Depends(get_current_user),
 ) -> dict[str, str]:
-    """Run DeepSeek summary for a single report (admin only)."""
+    """Run DeepSeek summary for a single report.
+
+    Open to any authenticated user, but rate-limited to
+    ``research_report_summarize_daily_limit`` calls per user per
+    calendar day (resets at 00:00 local).  The 120s Redis lock is kept
+    so concurrent jobs across users are still serialized.
+    """
+    # Per-user daily counter. Fail-open if Redis is unavailable so the
+    # feature stays usable during a Redis outage.
+    daily_limit = get_settings().research_report_summarize_daily_limit
+    today = date.today().isoformat()
+    counter_key = (
+        f"research_reports_summarize_user:{current_user.id}:{today}"
+    )
+    try:
+        redis_client = get_redis_client()
+        current = redis_client.incr(counter_key)
+        if current == 1:
+            # 86400s = 24h. Good enough for "until midnight" semantics
+            # without needing a per-day TTL calculation.
+            redis_client.expire(counter_key, 86400)
+        if current > daily_limit:
+            raise HTTPException(
+                status_code=429,
+                detail=(
+                    f"今日摘要生成次数已达上限（{daily_limit} 次），"
+                    "明天 0 点重置"
+                ),
+            )
+    except redis.RedisError as exc:
+        # Redis down — log and let the request through rather than
+        # blocking all summarize calls.
+        logger.warning(
+            "research_reports summarize rate-limit unavailable (Redis error): %s",
+            exc,
+        )
+    except HTTPException:
+        raise
     with redis_lock("research_reports_summarize", expire_seconds=120) as acquired:
         if not acquired:
             raise HTTPException(

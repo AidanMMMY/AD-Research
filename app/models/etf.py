@@ -35,6 +35,11 @@ class ETFInfo(Base):
 
     code = Column(String(20), primary_key=True, comment="Instrument code (e.g. 510050.SH, AAPL.US)")
     name = Column(String(200), nullable=False, comment="Instrument name")
+    name_zh = Column(
+        String(200),
+        nullable=True,
+        comment="Chinese name (primarily for US/HK/JP foreign listings)",
+    )
     exchange = Column(String(10), comment="Exchange code (SH, SZ, NYSE, NASDAQ, etc.)")
     market = Column(String(20), comment="Market (A股, US, HK, JP)")
     category = Column(String(50), comment="Category")

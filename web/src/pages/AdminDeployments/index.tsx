@@ -37,6 +37,7 @@ import { useDeployments, useLogStream } from '@/hooks/useDeployments';
 import type { DeploymentRun, ContainerStats, LogLine } from '@/types/deployment';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
+import { formatDateTime, toLocal } from '@/utils/datetime';
 dayjs.extend(relativeTime);
 
 const { Text } = Typography;
@@ -132,9 +133,9 @@ function DeploymentsTable({ data, loading }: { data: DeploymentRun[]; loading: b
       key: 'created',
       width: 140,
       render: (ts: string) => {
-        const d = dayjs(ts);
+        const d = toLocal(ts);
         return (
-          <Tooltip title={d.format('YYYY-MM-DD HH:mm:ss')}>
+          <Tooltip title={formatDateTime(ts, 'YYYY-MM-DD HH:mm:ss')}>
             <Text className="ad-text-small ad-text-secondary">{d.fromNow()}</Text>
           </Tooltip>
         );

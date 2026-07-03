@@ -3,10 +3,14 @@ export type SignalType = 'BUY' | 'SELL' | 'HOLD';
 export interface Signal {
   id: number;
   strategy_id: number;
+  strategy_name?: string;
+  strategy_type?: string;
   etf_code: string;
+  etf_name?: string;
   trade_date?: string;
   signal_type: SignalType;
   strength?: number;
+  extra_data?: Record<string, unknown>;
   created_at?: string;
 }
 

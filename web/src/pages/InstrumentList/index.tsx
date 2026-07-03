@@ -93,7 +93,9 @@ export default function InstrumentList() {
   const columns = [
     {
       title: '标的',
-      render: (_: unknown, record: any) => <InstrumentCodeTag code={record.code} name={record.name} />,
+      render: (_: unknown, record: any) => (
+        <InstrumentCodeTag code={record.code} name={record.name} name_zh={record.name_zh} />
+      ),
     },
     {
       title: '分类',
@@ -241,7 +243,7 @@ export default function InstrumentList() {
                 className="mobile-list-item"
               >
                 <div className="mobile-list-item__row">
-                  <InstrumentCodeTag code={item.code} name={item.name} />
+                  <InstrumentCodeTag code={item.code} name={item.name} name_zh={item.name_zh} />
                   <span className="tabular-nums mobile-list-item__value">
                     {item.fund_size ? `${(item.fund_size / 1e8).toFixed(1)}亿` : '-'}
                   </span>

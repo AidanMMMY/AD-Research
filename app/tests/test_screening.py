@@ -16,6 +16,38 @@ from app.models.scoring import ETFScore, ScoreTemplate
 from app.services.screening_service import ScreeningService
 
 
+def _clear_screening_cache():
+    """Wipe screening-related Redis keys to prevent stale cache pollution.
+
+    The screening cache key includes ``template_id`` but only the
+    caller-supplied value (not the auto-resolved default), so tests that
+    rely on auto-resolved templates can otherwise see stale entries
+    cached by tests that didn't seed a default template.
+
+    Note: screening_service.screen() calls cache_get/cache_set with the
+    raw key (no etf: prefix), so we must scan ``screen:*`` rather than
+    ``etf:screen:*`` to actually hit its entries.
+    """
+    try:
+        from app.core.redis_client import get_redis_client
+
+        client = get_redis_client()
+        for pattern in ("screen:*", "etf:categories*"):
+            for key in client.scan_iter(match=pattern):
+                client.delete(key)
+    except Exception:
+        # Redis unavailable in this test environment — silently skip.
+        pass
+
+
+@pytest.fixture(autouse=True)
+def _auto_clear_screening_cache():
+    """Auto-clear the screening cache before AND after each test."""
+    _clear_screening_cache()
+    yield
+    _clear_screening_cache()
+
+
 @pytest.fixture
 def db_session():
     """Create an in-memory SQLite database session for testing."""
@@ -571,3 +603,196 @@ def test_screen_result_structure(db_session, sample_etfs_and_indicators):
         "return_1m", "return_3m", "return_1y", "max_drawdown_1y",
     }
     assert expected_keys.issubset(set(item.keys()))
+
+
+# ---------------------------------------------------------------------------
+# B13: Auto-default-template score population tests
+# ---------------------------------------------------------------------------
+
+
+def _seed_default_template_with_scores(db_session, scores_by_code: dict[str, float]):
+    """Create a default ScoreTemplate plus ETFScore rows for the test ETFs."""
+    template = ScoreTemplate(
+        name="Default B13 Template",
+        weights={"return": 0.3, "risk": 0.3, "sharpe": 0.4},
+        is_default=True,
+    )
+    db_session.add(template)
+    db_session.commit()
+
+    latest_date = date(2024, 6, 1)
+    for code, score in scores_by_code.items():
+        db_session.add(
+            ETFScore(
+                etf_code=code,
+                trade_date=latest_date,
+                template_id=template.id,
+                composite_score=score,
+                rank_overall=1,
+            )
+        )
+    db_session.commit()
+    return template
+
+
+def test_screen_populates_composite_score_without_template_id(
+    db_session, sample_etfs_and_indicators
+):
+    """B13 fix: screen(market=None, sort_by="composite_score") with no
+    template_id supplied should auto-resolve the default template and
+    populate composite_score on every returned item."""
+    _seed_default_template_with_scores(
+        db_session,
+        {
+            "510300": 85.0,
+            "510500": 70.0,
+            "159915": 75.0,
+            "518880": 60.0,
+            "511010": 50.0,
+        },
+    )
+
+    service = ScreeningService(db_session)
+    result = service.screen(market=None, sort_by="composite_score")
+
+    assert result["count"] == 5
+    assert len(result["items"]) == 5
+    for item in result["items"]:
+        assert item["composite_score"] is not None, (
+            f"composite_score missing for {item['code']} — B13 regression"
+        )
+
+
+def test_screen_populates_composite_score_with_indicator_sort_by(
+    db_session, sample_etfs_and_indicators
+):
+    """B13 fix: screen() should populate composite_score even when sorting
+    by an indicator field (e.g. sharpe_1y, rsi14, return_1m). The old code
+    only triggered template resolution for score-based sort fields, so
+    Full Market Screener with default sort dropped all score columns."""
+    _seed_default_template_with_scores(
+        db_session,
+        {
+            "510300": 85.0,
+            "510500": 70.0,
+            "159915": 75.0,
+            "518880": 60.0,
+            "511010": 50.0,
+        },
+    )
+
+    service = ScreeningService(db_session)
+
+    # sharpe_1y was the originally-reported failing case
+    result = service.screen(sort_by="sharpe_1y")
+    assert result["count"] == 5
+    for item in result["items"]:
+        assert item["composite_score"] is not None
+
+    # Other indicator sort fields should also auto-populate scores
+    for sort_field in ("rsi14", "return_1m", "return_1y", "volatility_20d"):
+        result = service.screen(sort_by=sort_field)
+        assert result["count"] == 5
+        for item in result["items"]:
+            assert item["composite_score"] is not None, (
+                f"{sort_field}: composite_score missing for {item['code']}"
+            )
+
+
+def test_screen_by_preset_trend_strong_returns_composite_score(
+    db_session, sample_etfs_and_indicators
+):
+    """B13 fix: screen_by_preset("trend_strong") should populate
+    composite_score on returned rows via auto-default template resolution,
+    even though the preset itself only sets indicator filters."""
+    _seed_default_template_with_scores(
+        db_session,
+        {
+            "510300": 85.0,
+            "159915": 75.0,
+        },
+    )
+
+    service = ScreeningService(db_session)
+    result = service.screen_by_preset("trend_strong")
+
+    # rsi 50-80 AND return_1m >= 2.0:
+    # 510300: rsi=55, return_1m=3.0 -> matches
+    # 159915: rsi=72, return_1m=4.0 -> matches
+    assert result["count"] == 2
+    assert result["preset"]["key"] == "trend_strong"
+
+    for item in result["items"]:
+        assert item["composite_score"] is not None, (
+            f"composite_score missing for preset item {item['code']} — B13 regression"
+        )
+
+
+def test_screen_uses_db_default_template_not_hardcoded_id(
+    db_session, sample_etfs_and_indicators
+):
+    """B13 fix: the default template should be resolved via
+    ScoringService.get_default_template() (which filters on is_default=True),
+    not hardcoded to id=2. Marking a different template as default should
+    make screen() pull scores for that template."""
+    # Two templates; only the second one is the default
+    non_default = ScoreTemplate(
+        name="Old Template",
+        weights={"return": 0.5, "risk": 0.5},
+        is_default=False,
+    )
+    db_session.add(non_default)
+    db_session.commit()
+
+    default_tmpl = ScoreTemplate(
+        name="Brand-New Default",
+        weights={"return": 0.3, "risk": 0.3, "sharpe": 0.4},
+        is_default=True,
+    )
+    db_session.add(default_tmpl)
+    db_session.commit()
+
+    latest_date = date(2024, 6, 1)
+    # Score 510300 differently under each template
+    db_session.add(ETFScore(
+        etf_code="510300", trade_date=latest_date,
+        template_id=non_default.id, composite_score=10.0,
+    ))
+    db_session.add(ETFScore(
+        etf_code="510300", trade_date=latest_date,
+        template_id=default_tmpl.id, composite_score=99.0,
+    ))
+    db_session.commit()
+
+    service = ScreeningService(db_session)
+    result = service.screen(market=None, sort_by="composite_score")
+
+    item_510300 = next(i for i in result["items"] if i["code"] == "510300")
+    # Must pull 99.0 (the default template's score), not 10.0
+    assert item_510300["composite_score"] == 99.0
+
+
+def test_screen_cache_key_isolates_presets(
+    db_session, sample_etfs_and_indicators
+):
+    """Different presets must produce different cache keys so that preset A's
+    cached response never serves preset B's view (B13 follow-up)."""
+    _seed_default_template_with_scores(
+        db_session,
+        {"510300": 85.0, "159915": 75.0},
+    )
+
+    service = ScreeningService(db_session)
+
+    r_trend = service.screen_by_preset("trend_strong")
+    r_high_sharpe = service.screen_by_preset("high_sharpe_low_vol")
+
+    # Each preset returns the items it should — not a leaked view
+    assert r_trend["count"] == 2  # 510300 + 159915
+    assert r_high_sharpe["count"] == 1  # only 510300 (sharpe>=1, vol<=20%)
+    assert {i["code"] for i in r_trend["items"]} == {"510300", "159915"}
+    assert {i["code"] for i in r_high_sharpe["items"]} == {"510300"}
+
+    # And the preset metadata is still attached
+    assert r_trend["preset"]["key"] == "trend_strong"
+    assert r_high_sharpe["preset"]["key"] == "high_sharpe_low_vol"

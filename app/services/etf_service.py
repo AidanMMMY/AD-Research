@@ -88,6 +88,7 @@ class ETFService:
         return ETFInfoResponse(
             code=etf.code,
             name=etf.name,
+            name_zh=etf.name_zh,
             exchange=etf.exchange,
             market=etf.market,
             category=etf.category,

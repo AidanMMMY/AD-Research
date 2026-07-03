@@ -2,9 +2,12 @@ import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { List, Tag, Badge, Spin, Empty, Skeleton, Tooltip } from 'antd';
 import { LinkOutlined, StarFilled } from '@ant-design/icons';
-import dayjs from 'dayjs';
 import { newsApi } from '@/api/news';
 import type { NewsArticle, SentimentLabel } from '@/types/news';
+import {
+  formatDateTime,
+  formatRelative as formatRelativeTz,
+} from '@/utils/datetime';
 import Panel from './Panel';
 
 const SENTIMENT_COLORS: Record<SentimentLabel, string> = {
@@ -29,15 +32,8 @@ export interface NewsListPanelProps {
 }
 
 function formatRelative(iso: string): string {
-  const t = dayjs(iso);
-  if (!t.isValid()) return '';
-  const diff = dayjs().diff(t, 'minute');
-  if (diff < 60) return `${diff < 1 ? '刚刚' : `${diff} 分钟前`}`;
-  const h = Math.floor(diff / 60);
-  if (h < 24) return `${h} 小时前`;
-  const d = Math.floor(h / 24);
-  if (d < 30) return `${d} 天前`;
-  return t.format('MM-DD');
+  // UTC-aware formatter — see ``utils/datetime``.
+  return formatRelativeTz(iso, { withTimeAfterDays: 7 });
 }
 
 /**
@@ -99,7 +95,7 @@ export default function NewsListPanel({ symbol, limit = 10, bare = false }: News
                 <div className="news-list-panel__meta">
                   <span className="news-list-panel__meta-text">{a.source}</span>
                   <span className="news-list-panel__meta-dot">·</span>
-                  <Tooltip title={dayjs(a.published_at).format('YYYY-MM-DD HH:mm')}>
+                  <Tooltip title={formatDateTime(a.published_at)}>
                     <span className="news-list-panel__meta-text">
                       {formatRelative(a.published_at)}
                     </span>

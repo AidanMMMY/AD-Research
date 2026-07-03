@@ -18,8 +18,12 @@ discovery job).
 User-Agent
 ----------
 SEC requires a descriptive User-Agent with contact information.
-We default to ``"AD-Research admin@example.com"`` but allow override
-via the ``SEC_USER_AGENT`` env var.
+We prefer the ``sec_user_agent`` setting (configurable via the
+``SEC_USER_AGENT`` env var). The default in ``app.config.Settings``
+is ``"AD-Research research@ad-research.local"`` — please override it
+in production / staging with a real contact so SEC can reach us if
+we misbehave; their firewall rejects generic placeholders like
+``"admin@example.com"``.
 """
 
 from __future__ import annotations
@@ -31,6 +35,7 @@ from typing import Iterable
 
 import httpx
 
+from app.config import get_settings
 from app.services.news.crawler.rate_limiter import AsyncTokenBucket
 from app.services.news.crawler.symbol_extractor import extract_symbols
 from app.services.news.crawler.types import RawArticle
@@ -74,8 +79,7 @@ class SecEdgarCrawler:
         self._limiter = rate_limiter or AsyncTokenBucket(self.rate_limit_per_min)
         self._user_agent = user_agent or os.getenv(
             "SEC_USER_AGENT",
-            "AD-Research admin@example.com",
-        )
+        ) or get_settings().sec_user_agent
 
     async def __aenter__(self) -> "SecEdgarCrawler":
         if self._client is None:

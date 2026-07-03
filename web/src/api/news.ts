@@ -6,6 +6,7 @@ import type {
   NewsListParams,
   NewsListResponse,
   NewsSourceStat,
+  NewsTranslateResponse,
   NewsWatchlistParams,
   NewsWatchlistResponse,
   RetailSentiment,
@@ -21,6 +22,7 @@ export type {
   NewsMarket,
   NewsSourceStat,
   NewsSymbol,
+  NewsTranslateResponse,
   NewsWatchlistMeta,
   NewsWatchlistParams,
   NewsWatchlistResponse,
@@ -77,6 +79,22 @@ export const newsApi = {
    */
   fetchContent(id: number): Promise<{ data: NewsFetchContentResponse }> {
     return client.post<NewsFetchContentResponse>(`/news/${id}/fetch-content`);
+  },
+
+  /**
+   * Translate an English article's body to Chinese via DeepSeek.
+   *
+   * The server caches the result on the article row, so the second
+   * call for the same id returns ``cached=true`` with no LLM cost.
+   * Backend enforces ``language == 'en'`` (400 otherwise) and a
+   * per-user daily rate limit (429 otherwise).
+   */
+  translate(id: number, targetLanguage = 'zh'): Promise<{ data: NewsTranslateResponse }> {
+    return client.post<NewsTranslateResponse>(
+      `/news/${id}/translate`,
+      undefined,
+      { params: { target_language: targetLanguage } },
+    );
   },
 
   /**

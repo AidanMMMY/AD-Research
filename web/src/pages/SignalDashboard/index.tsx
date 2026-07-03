@@ -6,7 +6,11 @@ import Panel from '@/components/Panel';
 import FilterToolbar from '@/components/FilterToolbar';
 import EmptyState from '@/components/EmptyState';
 import ThemeTag, { ThemeTagVariant } from '@/components/ThemeTag';
+import HelpTrigger from '@/components/HelpTrigger';
 import { useSignals } from '@/hooks/useSignals';
+import { useAIHelp } from '@/hooks/useAIHelp';
+import { buildSignalDashboardContext } from '@/utils/helpContext';
+import { getQuickQuestions } from '@/utils/helpPrompts';
 import type { Signal } from '@/types/signal';
 
 const SIGNAL_VARIANTS: Record<string, ThemeTagVariant> = {
@@ -34,6 +38,7 @@ const FAMILY_LABELS: Record<string, string> = {
 
 export default function SignalDashboard() {
   const { data: signals, isLoading } = useSignals();
+  const { open } = useAIHelp();
   const [familyFilter] = useState<string>('all');
   const [typeFilter, setTypeFilter] = useState<string>('all');
 
@@ -58,6 +63,11 @@ export default function SignalDashboard() {
   const columns = [
     { title: '策略ID', dataIndex: 'strategy_id', width: 80, render: (v: any) => <span className="tabular-nums">{v}</span> },
     { title: '标的代码', dataIndex: 'etf_code' },
+    {
+      title: '名称',
+      dataIndex: 'etf_name',
+      render: (v: string | undefined | null) => v || '—',
+    },
     { title: '日期', dataIndex: 'trade_date' },
     {
       title: '信号',
@@ -67,6 +77,15 @@ export default function SignalDashboard() {
     },
     { title: '强度', dataIndex: 'strength', width: 80, render: (v: any) => <span className="tabular-nums">{v}</span> },
   ];
+
+  const handleOpenHelp = () => {
+    open({
+      pageType: 'signal_dashboard',
+      pageTitle: '交易信号',
+      contextData: buildSignalDashboardContext(filteredItems, columns),
+      quickQuestions: getQuickQuestions('signal_dashboard'),
+    });
+  };
 
   const familyOptions = [
     { label: '全部家族', value: 'all' },
@@ -111,7 +130,11 @@ export default function SignalDashboard() {
         ))}
       </div>
 
-      <Panel variant="default" title="最新交易信号">
+      <Panel
+        variant="default"
+        title="最新交易信号"
+        extra={<HelpTrigger tooltip="AI 解释信号含义" onClick={handleOpenHelp} />}
+      >
         <FilterToolbar total={filteredItems.length}>
           <Space>
             <Select

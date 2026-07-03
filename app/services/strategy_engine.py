@@ -61,7 +61,7 @@ def run_strategy_on_instrument(
     if strategy_class is None:
         return []
 
-    strategy = strategy_class(params)
+    strategy = strategy_class(params, db=db)
     min_needed = strategy.bars_needed()
 
     start = trade_date - pd.Timedelta(days=lookback_days + LOOKBACK_BUFFER)
@@ -125,7 +125,7 @@ def run_strategy_on_universe(
     if strategy_class is None:
         return []
 
-    strategy = strategy_class(params)
+    strategy = strategy_class(params, db=db)
 
     if strategy.family == "cross_sectional" and hasattr(strategy, "generate_universe"):
         start = trade_date - pd.Timedelta(days=lookback_days + LOOKBACK_BUFFER)

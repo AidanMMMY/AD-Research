@@ -1085,6 +1085,49 @@ a:focus-visible {
   word-break: break-word;
 }
 
+/* Side-by-side translation view (English original + Chinese LLM
+   translation). Used by the News detail page when the user toggles
+   "译本并排显示". Each column scrolls independently so a long
+   article doesn't push the right column off-screen. */
+.news-translation-pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-4);
+  align-items: stretch;
+}
+
+.news-translation-pair__col {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;            /* prevent grid blowout on long unbroken text */
+  border: 1px solid var(--card-border);
+  border-radius: var(--card-radius);
+  background: var(--bg-base, var(--card-bg));
+  overflow: hidden;
+}
+
+.news-translation-pair__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--card-border);
+  background: var(--bg-hover, rgba(0, 0, 0, 0.02));
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.news-translation-pair__body {
+  padding: var(--space-4) var(--space-5);
+  font-size: 15px;
+  line-height: 1.7;
+  color: var(--text-primary);
+  max-height: 70vh;
+  overflow-y: auto;
+  word-break: break-word;
+}
+
 .ad-detail-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 320px;
@@ -1502,6 +1545,13 @@ a:focus-visible {
 
   .ad-metric-item:nth-child(2n):not(:last-child) {
     border-right: 1px solid var(--border-default);
+  }
+
+  /* Stack the side-by-side translation view on tablet/mobile so each
+     column gets a comfortable line length. The 70vh cap stays — it
+     keeps long articles from forcing infinite scroll within the card. */
+  .news-translation-pair {
+    grid-template-columns: 1fr;
   }
 }
 
@@ -2077,6 +2127,16 @@ main {
 .instrument-code-tag__name {
   font-size: var(--text-body-size);
   color: var(--text-secondary);
+  font-weight: 400;
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.instrument-code-tag__name-zh {
+  font-size: var(--text-small-size);
+  color: var(--text-tertiary);
   font-weight: 400;
   max-width: 160px;
   overflow: hidden;

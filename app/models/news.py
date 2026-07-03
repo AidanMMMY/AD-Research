@@ -85,6 +85,15 @@ class NewsArticle(Base):
     event_category = Column(String(50), comment="earnings|m&a|product|macro|regulation|guidance|analyst|legal|rumor|other")
     importance = Column(SmallInteger, comment="1..5 LLM importance rating")
     sentiment_processed_at = Column(DateTime, comment="When LLM sentiment was filled")
+    # Chinese translation cache, filled on demand by the
+    # ``/news/{id}/translate`` endpoint. Populated only for English
+    # articles (the API enforces ``language == 'en'`` before writing).
+    translated_zh = Column(
+        Text, comment="DeepSeek-generated Chinese translation of body / full_content"
+    )
+    translation_generated_at = Column(
+        DateTime, comment="When the LLM translation was last produced"
+    )
 
     symbols = relationship(
         "NewsArticleSymbol",

@@ -1,6 +1,7 @@
 export interface InstrumentInfo {
   code: string;
   name: string;
+  name_zh?: string | null;
   market: string;
   exchange?: string;
   category?: string;

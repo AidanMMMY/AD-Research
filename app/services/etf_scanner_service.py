@@ -13,6 +13,15 @@ from app.models.etf import ETFInfo
 from app.models.etf_scan_log import ETFScanLog
 
 
+def _is_meaningful(value: Any) -> bool:
+    """Return True if a candidate attribute value is non-empty."""
+    if value is None:
+        return False
+    if isinstance(value, str):
+        return value.strip() != ""
+    return True
+
+
 class ETFScannerService:
     """Service for scanning the ETF market for changes."""
 
@@ -116,17 +125,24 @@ class ETFScannerService:
                 latest = latest_map.get(etf_data["code"])
                 if not db_etf or not latest:
                     continue
-                if latest.name != db_etf.name:
+                # Always sync identity / core fields.
+                if latest.name != db_etf.name and latest.name:
                     db_etf.name = latest.name
-                if latest.category != db_etf.category:
-                    db_etf.category = latest.category
-                if latest.market != db_etf.market:
+                if latest.market != db_etf.market and latest.market:
                     db_etf.market = latest.market
-                if latest.exchange != db_etf.exchange:
+                if latest.exchange != db_etf.exchange and latest.exchange:
                     db_etf.exchange = latest.exchange
-                if latest.manager != db_etf.manager:
+                # B12 fix (2026-07-04): the akshare provider returns NULL
+                # for category/manager/underlying_index.  Never overwrite a
+                # real value with NULL — Tushare enrichment is the source of
+                # truth for those columns and runs separately on Sunday.
+                if _is_meaningful(latest.category) and not _is_meaningful(db_etf.category):
+                    db_etf.category = latest.category
+                if _is_meaningful(latest.manager) and not _is_meaningful(db_etf.manager):
                     db_etf.manager = latest.manager
-                if latest.underlying_index != db_etf.underlying_index:
+                if _is_meaningful(latest.underlying_index) and not _is_meaningful(
+                    db_etf.underlying_index
+                ):
                     db_etf.underlying_index = latest.underlying_index
 
             self.db.commit()

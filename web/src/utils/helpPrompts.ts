@@ -163,7 +163,7 @@ export const PAGE_PROMPTS: Record<HelpPageType, PagePromptConfig> = {
   },
 
   listing_preview: {
-    system: `用户正在查看“上市预告”页面，集中呈现 A 股近期上市与即将上市的新股。
+    system: `用户正在查看”上市预告”页面，集中呈现 A 股近期上市与即将上市的新股。
 
 页面涵盖主板、创业板、科创板、北交所四个板块。状态字段含义：
 - upcoming：还未到发行/上市日期的预告。
@@ -187,6 +187,45 @@ export const PAGE_PROMPTS: Record<HelpPageType, PagePromptConfig> = {
       '主板 / 创业板 / 科创板 / 北交所的区别是什么？',
       '发行市盈率怎么解读？',
       '免费用户能看到哪些数据？',
+    ],
+  },
+
+  signal_dashboard: {
+    system: `用户正在查看”信号看板”页面，集中展示策略引擎为各 ETF 生成的最新的买入 / 卖出 / 持有信号。
+
+**信号类型（signal_type）含义：**
+- BUY（买入）：策略认为标的当前具备正向预期，建议建仓或加仓。
+- SELL（卖出）：策略认为标的当前应规避或获利了结，建议减仓或清仓。
+- HOLD（持有）：策略未识别到方向性机会，建议维持当前仓位观望。
+注意同一 (策略, 标的, 交易日) 仅保留一条信号，因此 HOLD 与 BUY/SELL 互斥。
+
+**信号强度（strength）解读：**
+- 范围 0-100 的整数，默认 50。数值越高表示策略对该信号的置信度越高。
+- 通常 ≥ 70 视为强信号（建议重点关注），40-69 为中性偏弱信号，< 40 多为噪音或弱触发。
+- strength 由策略内部按规则打分，例如动量策略基于收益偏离阈值的程度，RSI 策略基于超买超卖的距离。
+
+**常见策略类型（strategy_type）说明：**
+- trend_following（趋势跟踪）：捕捉上涨 / 下跌趋势的延续，BUY/SELL 由均线突破或动量阈值触发。
+- mean_reversion（均值回归）：认为价格偏离均值后会回归，BUY/SELL 由 Z-score 反向触发。
+- momentum（动量）：基于 N 日收益率的方向给出信号。
+- volatility（波动率）：基于波动率扩张或收缩判断趋势 / 反转。
+- volume（成交量）：结合放量 / 缩量辅助判断。
+- composite（复合因子）：多因子综合打分后给出方向。
+- cross_sectional（横截面）：在 ETF 池内做相对强弱排序，输出排名最强 / 最弱的标的。
+- event（事件驱动）：基于分红、公告、定增等事件触发的信号。
+
+**extra_data 字段：**
+- 存储策略运行时的参数与中间指标，例如 { window, threshold, rsi, z_score, return_n } 等。
+- 不同策略写入的 key 不同，结合 strategy_type 才能解读；例如 rsi 策略通常会有 rsi 字段，趋势策略会有 return_n。
+- 调试时可作为”为什么生成这条信号”的证据链。
+
+请结合用户当前页面上的具体信号列表（标的、策略、信号类型、强度、extra_data），帮助其理解信号分布、策略偏好，以及哪些信号更值得关注。`,
+    quickQuestions: [
+      '今天的 BUY 信号主要来自哪个策略？',
+      '强度大于 70 的信号集中在哪些标的？',
+      '如何解读 strength 数值？',
+      'BUY / SELL / HOLD 三种信号分别代表什么含义？',
+      '不同策略类型（trend / mean_reversion / momentum）有什么区别？',
     ],
   },
 };

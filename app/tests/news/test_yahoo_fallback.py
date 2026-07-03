@@ -146,7 +146,11 @@ async def test_yahoo_429_falls_back_to_finnhub(
     # Articles came from the Finnhub fallback path.
     assert len(arts) == 2
     for art in arts:
-        assert art.source == "yahoo_finance_finnhub_fallback"
+        # Yahoo's fallback now shares the primary ``yahoo_finance``
+        # source name so the news-health aggregator counts it under
+        # the same bucket as the RSS path. The fallback provenance is
+        # still preserved in ``extra["fallback_from"]``.
+        assert art.source == "yahoo_finance"
         assert art.extra.get("fallback_from") == "yahoo_finance"
         assert art.extra.get("ticker") == "AAPL"
         # published_at should be a UTC-aware datetime.
@@ -199,8 +203,9 @@ async def test_yahoo_403_falls_back_to_finnhub(no_rate_limit, monkeypatch):
     assert len(provider.calls) == 1
     assert provider.calls[0][0] == "TSLA"
     assert len(arts) == 1
-    assert arts[0].source == "yahoo_finance_finnhub_fallback"
+    assert arts[0].source == "yahoo_finance"
     assert arts[0].extra["ticker"] == "TSLA"
+    assert arts[0].extra["fallback_from"] == "yahoo_finance"
 
 
 # ---------------------------------------------------------------------------

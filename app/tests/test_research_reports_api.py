@@ -391,11 +391,15 @@ def test_refresh_returns_500_when_pipeline_fails(admin_client):
 
 
 # ---------------------------------------------------------------------------
-# Summarize endpoint (admin only)
+# Summarize endpoint (authenticated + per-user rate limit)
 # ---------------------------------------------------------------------------
 
 
-def test_summarize_requires_admin(client, db_session):
+def test_summarize_requires_auth(db_session):
+    """Without an auth override the real ``get_current_user`` runs and
+    rejects anonymous callers. FastAPI's HTTPBearer returns 403 when
+    no token is provided and 401 for an invalid/expired token — accept
+    either, mirroring ``test_list_requires_auth``."""
     _seed_reports(db_session, [_report_row(title="ToSummarize")])
     rid = (
         db_session.query(ResearchReport)
@@ -403,16 +407,32 @@ def test_summarize_requires_admin(client, db_session):
         .first()
         .id
     )
-    resp = client.post(f"/api/v1/research-reports/{rid}/summarize")
-    assert resp.status_code == 403
+
+    def _get_db_override():
+        try:
+            yield db_session
+        finally:
+            pass
+
+    def _get_service_override():
+        return ResearchReportService(db_session)
+
+    app.dependency_overrides[api_deps.get_db] = _get_db_override
+    app.dependency_overrides[research_reports_module.get_research_report_service] = _get_service_override
+
+    with patch("app.services.research_report_service.cache_get", return_value=None), \
+         patch("app.services.research_report_service.cache_set", return_value=None), \
+         TestClient(app) as c:
+        try:
+            resp = c.post(f"/api/v1/research-reports/{rid}/summarize")
+        finally:
+            app.dependency_overrides.clear()
+
+    assert resp.status_code in (401, 403)
 
 
-def test_summarize_returns_404_for_missing(admin_client):
-    resp = admin_client.post("/api/v1/research-reports/99999/summarize")
-    assert resp.status_code == 404
-
-
-def test_summarize_runs_service_as_admin(admin_client, db_session):
+def test_summarize_runs_service_as_user(client, db_session):
+    """Any authenticated user (not just admin) can trigger summarize."""
     _seed_reports(db_session, [_report_row(title="ToSummarize")])
     rid = (
         db_session.query(ResearchReport)
@@ -425,10 +445,47 @@ def test_summarize_runs_service_as_admin(admin_client, db_session):
         "summarize_with_deepseek",
         return_value="generated summary text",
     ) as mock_sum:
-        resp = admin_client.post(f"/api/v1/research-reports/{rid}/summarize")
+        resp = client.post(f"/api/v1/research-reports/{rid}/summarize")
     assert resp.status_code == 202
     body = resp.json()
     assert body["status"] == "ok"
     assert body["id"] == str(rid)
     assert body["summary"] == "generated summary text"
     mock_sum.assert_called_once_with(rid)
+
+
+def test_summarize_returns_404_for_missing(client):
+    resp = client.post("/api/v1/research-reports/99999/summarize")
+    assert resp.status_code == 404
+
+
+def test_summarize_rate_limit_enforced(client, db_session):
+    """The 101st call in a day for the same user should return 429."""
+    _seed_reports(db_session, [_report_row(title="ToSummarize")])
+    rid = (
+        db_session.query(ResearchReport)
+        .filter(ResearchReport.title == "ToSummarize")
+        .first()
+        .id
+    )
+
+    fake_redis = MagicMock()
+    # Simulate the counter already at the daily cap on the first hit so
+    # any call from this user is rejected.
+    fake_redis.incr.return_value = 101
+
+    with patch.object(
+        research_reports_module.ResearchReportService,
+        "summarize_with_deepseek",
+        return_value="generated summary text",
+    ), patch(
+        "app.api.v1.research_reports.get_redis_client", return_value=fake_redis
+    ):
+        resp = client.post(f"/api/v1/research-reports/{rid}/summarize")
+
+    assert resp.status_code == 429
+    body = resp.json()
+    # Detail should mention the daily cap so the frontend can show the
+    # user a clear message.
+    assert "100" in body["detail"]
+    assert "今日" in body["detail"]

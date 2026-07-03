@@ -428,11 +428,53 @@ class SentimentPipeline:
                 published_at=article.get("published_at") or datetime.utcnow(),
             )
             self.db.add(rec)
+        # Backfill the article-level sentiment onto ``news_article`` when the
+        # article dict carries its DB id (crawler path). This gives the
+        # event-driven strategy a single-source-of-truth score without a
+        # separate join. Best-effort: skipped for the legacy int-id path.
+        self._backfill_article_sentiment(article, result)
         try:
             self.db.commit()
         except Exception as exc:
             logger.warning("DB commit failed in pipeline persist: %s", exc)
             self.db.rollback()
+
+    def _backfill_article_sentiment(self, article: dict, result: PipelineResult) -> None:
+        """Write an aggregate LLM sentiment back onto ``news_article``.
+
+        Averages the per-symbol scores (range ``-1..1``) into a single
+        ``-100..100`` article score and stamps ``sentiment_processed_at``.
+        No-op when the article has no DB id or no usable scores.
+        """
+        article_id = article.get("id")
+        if not article_id:
+            return
+        scores: list[float] = []
+        for sym_payload in result.sentiment or []:
+            if not isinstance(sym_payload, dict):
+                continue
+            try:
+                scores.append(float(sym_payload.get("score", 0.0) or 0.0))
+            except (TypeError, ValueError):
+                continue
+        if not scores:
+            return
+        avg = sum(scores) / len(scores)
+        label = "bullish" if avg > 0.15 else "bearish" if avg < -0.15 else "neutral"
+        try:
+            from app.services.news._model_loader import NewsArticle
+
+            self.db.query(NewsArticle).filter(NewsArticle.id == article_id).update(
+                {
+                    "sentiment_score": int(round(max(-1.0, min(1.0, avg)) * 100)),
+                    "sentiment_label": label,
+                    "importance": result.importance or None,
+                    "sentiment_processed_at": datetime.utcnow(),
+                },
+                synchronize_session=False,
+            )
+        except Exception as exc:  # pragma: no cover - defensive
+            logger.debug("news_article sentiment backfill skipped: %s", exc)
 
     # ------------------------------------------------------------------
     # Scheduling-friendly entrypoint

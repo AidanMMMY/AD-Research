@@ -1,6 +1,7 @@
 """Signal Pydantic schemas."""
 
 from datetime import date
+from typing import Any
 
 from pydantic import BaseModel
 
@@ -10,10 +11,14 @@ class SignalItem(BaseModel):
 
     id: int
     strategy_id: int
+    strategy_name: str | None = None
+    strategy_type: str | None = None
     etf_code: str
+    etf_name: str | None = None
     trade_date: str | None = None
     signal_type: str
     strength: int | None = None
+    extra_data: dict[str, Any] | None = None
     created_at: str | None = None
 
 

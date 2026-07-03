@@ -66,8 +66,12 @@ class Strategy(ABC):
     param_specs: ClassVar[dict[str, ParamSpec]]
     min_bars: ClassVar[int] = 30
 
-    def __init__(self, params: dict[str, Any] | None = None):
+    def __init__(self, params: dict[str, Any] | None = None, db: Any = None):
         self.params = params or {}
+        # Optional DB session for strategies that query event/fundamental
+        # data (e.g. the event-driven strategy). Price-only strategies
+        # ignore it. Typed as ``Any`` to avoid importing SQLAlchemy here.
+        self.db = db
         self._validate_params()
 
     def _validate_params(self) -> None:

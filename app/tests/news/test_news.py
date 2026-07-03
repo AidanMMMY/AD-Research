@@ -428,17 +428,20 @@ class TestNewsApi:
         resp = api_client.get("/api/v1/news/health")
         assert resp.status_code == 200
         payload = resp.json()
-        # 8 source rows must always be returned, even when DB is empty.
+        # All registered news sources must be returned, even when DB is empty.
+        # Kept in sync with ``_NEWS_SOURCES`` in app/api/v1/news.py.
         source_ids = {s["source"] for s in payload["sources"]}
         assert source_ids == {
-            "xinhua_rss",
             "cninfo",
             "sina_finance",
+            "wechat_zeping",
             "yahoo_finance",
             "cnbc",
             "sec_edgar",
             "reddit",
             "xueqiu",
+            "coindesk",
+            "cointelegraph",
         }
         cninfo_row = next(s for s in payload["sources"] if s["source"] == "cninfo")
         assert cninfo_row["total"] == 1
@@ -450,6 +453,12 @@ class TestNewsApi:
         assert xueqiu_row["total"] == 0
         assert xueqiu_row["last_published_at"] is None
         assert xueqiu_row["job_id"] == "news_xueqiu_5m"
+        # WeChat source is wired up to its scheduler job id.
+        wechat_row = next(
+            s for s in payload["sources"] if s["source"] == "wechat_zeping"
+        )
+        assert wechat_row["job_id"] == "news_wechat_zeping_15m"
+        assert wechat_row["total"] == 0
         # Scheduler introspection is included.
         assert "scheduler_running" in payload
         assert isinstance(payload["scheduler_jobs"], list)

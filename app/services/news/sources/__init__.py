@@ -12,12 +12,14 @@ from app.services.news.sources.sec_edgar import (
     SUPPORTED_FORMS,
     SecEdgarCrawler,
 )
+from app.services.news.sources.wechat_zeping import WechatZepingCrawler
 from app.services.news.sources.yahoo_rss import YAHOO_RSS_URL, YahooFinanceCrawler
 
 __all__ = [
     "CNBCCrawler",
     "RedditCrawler",
     "SecEdgarCrawler",
+    "WechatZepingCrawler",
     "YahooFinanceCrawler",
     "YAHOO_RSS_URL",
     "SEC_SUBMISSIONS_URL",

@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 from app.core.cache import cache_get, cache_set
 from app.models.etf import ETFIndicator, ETFInfo
 from app.models.scoring import ETFScore
+from app.services.scoring_service import ScoringService
 
 
 class ScreeningService:
@@ -104,6 +105,7 @@ class ScreeningService:
         score_min: float | None = None,
         score_max: float | None = None,
         template_id: int | None = None,
+        preset: str | None = None,
         sort_by: str = "composite_score",
         sort_order: str = "desc",
         offset: int = 0,
@@ -126,6 +128,9 @@ class ScreeningService:
             max_drawdown_1y_min/max: 1-year max drawdown range filter.
             score_min/max: Composite score range filter.
             template_id: Filter by score template (for score-based sorting).
+            preset: Name of the preset that originated this call. Used to
+                keep cached results from leaking between different presets
+                (e.g. trend_strong vs high_sharpe_low_vol).
             sort_by: Field to sort by (see SORT_FIELD_MAP).
             sort_order: "asc" or "desc".
             offset: Pagination offset.
@@ -135,7 +140,8 @@ class ScreeningService:
             Dict with items (list of result dicts), count, offset, limit.
         """
         cache_key = (
-            f"screen:{market}:{category}:{rsi_min}:{rsi_max}:{sharpe_min}:{sharpe_max}:"
+            f"screen:{preset}:{market}:{category}:{rsi_min}:{rsi_max}:"
+            f"{sharpe_min}:{sharpe_max}:"
             f"{volatility_min}:{volatility_max}:{return_1m_min}:{return_1m_max}:"
             f"{return_3m_min}:{return_3m_max}:{return_1y_min}:{return_1y_max}:"
             f"{max_drawdown_1y_min}:{max_drawdown_1y_max}:"
@@ -167,13 +173,15 @@ class ScreeningService:
             & (ETFIndicator.trade_date == latest_ind_subq.c.latest_date),
         )
 
-        # Auto-use default template (id=2) when sorting by score fields
-        default_template_id = 2
-        if template_id is None and sort_by in self.SORT_FIELD_MAP and self.SORT_FIELD_MAP.get(sort_by) in {
-            "composite_score", "score_return", "score_risk", "score_sharpe",
-            "score_liquidity", "score_trend", "rank_overall", "rank_category",
-        }:
-            template_id = default_template_id
+        # Auto-resolve the default template when template_id is not supplied.
+        # Always run regardless of sort_by so the response items carry
+        # composite_score fields even when sorting by an indicator column
+        # (e.g. sharpe_1y, rsi14, return_1m). Without this, score_joined stays
+        # False and the score-fetch block at the bottom of the method is
+        # skipped — see B13.
+        if template_id is None:
+            default_template = ScoringService(self.db).get_default_template()
+            template_id = default_template.id if default_template else 1
 
         # Optional: join with ETFScore for score-based filtering/sorting
         score_joined = False
@@ -404,6 +412,7 @@ class ScreeningService:
         filters = preset.get("filters", {})
         result = self.screen(
             **filters,
+            preset=preset_key,
             sort_by=preset.get("sort_by", "composite_score"),
             sort_order=preset.get("sort_order", "desc"),
             offset=offset,

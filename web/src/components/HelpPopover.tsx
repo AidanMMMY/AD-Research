@@ -46,6 +46,7 @@ export default function HelpPopover({
       screen: '全市场筛选器',
       pool_detail: '标的池详情',
       listing_preview: '上市预告',
+      signal_dashboard: '交易信号',
     };
 
     const question = `请详细解释"${title}"这个概念。${shortDesc}`;
