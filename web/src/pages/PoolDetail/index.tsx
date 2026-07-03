@@ -63,7 +63,7 @@ export default function PoolDetail() {
   const { data: analytics } = usePoolAnalytics(poolId);
   const { data: correlation } = usePoolCorrelation(poolId);
   const { data: snapshots } = usePoolSnapshots(poolId, 20);
-  const { data: etfList } = useInstrumentList({ page_size: 500 });
+  const { data: etfList } = useInstrumentList({ page_size: 10000 });
   const updateWeight = useUpdateWeight();
   const createSnapshot = useCreateSnapshot();
   const suggestWeights = useSuggestWeights();
