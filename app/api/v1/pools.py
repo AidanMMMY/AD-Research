@@ -2,13 +2,23 @@
 
 Provides CRUD endpoints for ETF pools, member management,
 weight management, analytics, and snapshots.
+
+M21-3: pool routes are owner-scoped — list / get / create accept the
+authenticated user (injected via ``get_current_user``) and pass it to
+the service layer so regular users see only their own pools + legacy
+NULL-owner shared pools, while admins see every pool.
 """
 
 from datetime import date
 
 from fastapi import APIRouter, Depends, HTTPException
 
-from app.api.deps import get_current_user, get_pool_enhancement_service, get_pool_service
+from app.api.deps import (
+    get_current_user,
+    get_pool_enhancement_service,
+    get_pool_service,
+)
+from app.schemas.auth import UserResponse
 from app.schemas.pool import (
     PoolAnalyticsResponse,
     PoolCorrelationResponse,
@@ -33,21 +43,32 @@ router = APIRouter(dependencies=[Depends(get_current_user)])
 # ------------------------------------------------------------------
 
 @router.get("", response_model=list[PoolResponse])
-def list_pools(service: PoolService = Depends(get_pool_service)):
-    """List all ETF pools with their active members."""
-    return service.list_pools()
+def list_pools(
+    current_user: UserResponse = Depends(get_current_user),
+    service: PoolService = Depends(get_pool_service),
+):
+    """List ETF pools visible to the current user (M21-3 owner-scoped)."""
+    return service.list_pools(current_user=current_user)
 
 
 @router.post("", response_model=PoolResponse, status_code=201)
-def create_pool(data: PoolCreate, service: PoolService = Depends(get_pool_service)):
-    """Create a new ETF pool."""
-    return service.create_pool(data)
+def create_pool(
+    data: PoolCreate,
+    current_user: UserResponse = Depends(get_current_user),
+    service: PoolService = Depends(get_pool_service),
+):
+    """Create a new ETF pool (M21-3 owner-scoped; defaults to caller)."""
+    return service.create_pool(data, current_user=current_user)
 
 
 @router.get("/{pool_id}", response_model=PoolResponse)
-def get_pool(pool_id: int, service: PoolService = Depends(get_pool_service)):
-    """Get a single pool by ID."""
-    pool = service.get_pool(pool_id)
+def get_pool(
+    pool_id: int,
+    current_user: UserResponse = Depends(get_current_user),
+    service: PoolService = Depends(get_pool_service),
+):
+    """Get a single pool by ID (M21-3 owner-scoped; 404 if not visible)."""
+    pool = service.get_pool(pool_id, current_user=current_user)
     if not pool:
         raise HTTPException(status_code=404, detail=f"Pool {pool_id} not found")
     return pool

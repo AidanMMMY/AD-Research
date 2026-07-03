@@ -19,7 +19,9 @@ class PoolBase(BaseModel):
 
 
 class PoolCreate(PoolBase):
-    pass
+    # M21-3: owner-scoped pool. Optional for backward compatibility; the API
+    # layer will default it to the caller's id when not provided.
+    user_id: int | None = None
 
 
 class PoolUpdate(BaseModel):
@@ -30,6 +32,7 @@ class PoolUpdate(BaseModel):
 class PoolResponse(PoolBase):
     model_config = ConfigDict(from_attributes=True)
     id: int
+    user_id: int | None = None
     members: list[PoolMemberResponse] = []
     created_at: datetime | None = None
     updated_at: datetime | None = None

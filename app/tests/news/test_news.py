@@ -374,6 +374,49 @@ class TestNewsApi:
         assert payload["total"] == 1
         assert payload["items"][0]["title"] == "US Article"
 
+    def test_list_filter_by_market_global_unions_all_markets(
+        self, api_client, news_db
+    ):
+        """M22-2 (2026-07-04): the frontend sentinel ``market=global``
+        must return the union of every concrete market bucket the
+        crawler has ever written (``cn_a`` / ``us`` / ``crypto``)."""
+        # Two cn_a rows from the default seed.
+        _seed_articles(news_db, n=2)
+        # One us row.
+        news_db.add(
+            NewsArticle(
+                source="yahoo_finance",
+                source_id="global-us",
+                url="https://example.com/global-us",
+                url_hash="hash-global-us",
+                title="Global US",
+                language="en",
+                market="us",
+                published_at=datetime.now(tz=timezone.utc),
+            )
+        )
+        # One crypto row.
+        news_db.add(
+            NewsArticle(
+                source="coindesk",
+                source_id="global-crypto",
+                url="https://example.com/global-crypto",
+                url_hash="hash-global-crypto",
+                title="Global Crypto",
+                language="en",
+                market="crypto",
+                published_at=datetime.now(tz=timezone.utc),
+            )
+        )
+        news_db.commit()
+        resp = api_client.get("/api/v1/news", params={"market": "global"})
+        assert resp.status_code == 200
+        payload = resp.json()
+        # 2 cn_a + 1 us + 1 crypto = 4 rows total.
+        assert payload["total"] == 4
+        titles = {it["title"] for it in payload["items"]}
+        assert {"Global US", "Global Crypto"}.issubset(titles)
+
     def test_list_filter_by_source(self, api_client, news_db):
         _seed_articles(news_db, n=3)
         resp = api_client.get("/api/v1/news", params={"source": "sina_finance"})

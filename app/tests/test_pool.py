@@ -2,6 +2,9 @@
 
 Covers creation, validation, soft-delete, weight constraints, and suggestion
 algorithms for pools.
+
+M21-3: adds owner-scoped filtering tests at the bottom of this module
+(list/get for regular users vs. admins).
 """
 
 from datetime import date, datetime
@@ -13,6 +16,8 @@ from sqlalchemy.orm import sessionmaker
 from app.core.database import Base
 from app.models.etf import ETFInfo
 from app.models.pool import ETFPools, PoolMember, PoolSnapshot, PoolWeight
+from app.models.user import User
+from app.schemas.auth import UserResponse
 from app.schemas.pool import PoolMemberCreate
 from app.services.pool_enhancement_service import PoolEnhancementService
 from app.services.pool_service import PoolService
@@ -367,3 +372,82 @@ def test_suggest_weights_stores_values(pool_with_etfs, db_session):
         assert weight is not None
         assert weight.weight_source == "equal"
         assert weight.suggested_weight is not None
+
+
+# ---------------------------------------------------------------------------
+# M21-3: Owner-scoped filtering
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def owner_scoped_db(db_session):
+    """Seed two users + three pools (Alice-owned, Bob-owned, shared/NULL)."""
+    alice = User(
+        username="alice",
+        password_hash="x",
+        role="user",
+        is_active=True,
+    )
+    bob = User(
+        username="bob",
+        password_hash="x",
+        role="user",
+        is_active=True,
+    )
+    admin = User(
+        username="admin",
+        password_hash="x",
+        role="admin",
+        is_active=True,
+    )
+    db_session.add_all([alice, bob, admin])
+    db_session.commit()
+
+    p_alice = ETFPools(name="Alice Pool", user_id=alice.id)
+    p_bob = ETFPools(name="Bob Pool", user_id=bob.id)
+    p_shared = ETFPools(name="Shared Pool", user_id=None)
+    db_session.add_all([p_alice, p_bob, p_shared])
+    db_session.commit()
+
+    return {
+        "alice": alice,
+        "bob": bob,
+        "admin": admin,
+        "p_alice": p_alice,
+        "p_bob": p_bob,
+        "p_shared": p_shared,
+    }
+
+
+def _user_resp(u: User) -> UserResponse:
+    """Build a UserResponse from an ORM User (the shape the service expects)."""
+    return UserResponse(id=u.id, username=u.username, role=u.role)
+
+
+def test_list_pools_regular_user_sees_own_and_shared(owner_scoped_db, db_session):
+    """Regular user list should return own pools + NULL-owner pools only."""
+    seeded = owner_scoped_db
+    service = PoolService(db_session)
+
+    alice_resp = _user_resp(seeded["alice"])
+    visible = service.list_pools(current_user=alice_resp)
+    visible_ids = {p.id for p in visible}
+
+    # Alice's pool + the shared pool, but NOT Bob's pool.
+    assert seeded["p_alice"].id in visible_ids
+    assert seeded["p_shared"].id in visible_ids
+    assert seeded["p_bob"].id not in visible_ids
+
+
+def test_list_pools_admin_sees_everything(owner_scoped_db, db_session):
+    """Admin list should return all pools regardless of owner."""
+    seeded = owner_scoped_db
+    service = PoolService(db_session)
+
+    admin_resp = _user_resp(seeded["admin"])
+    visible = service.list_pools(current_user=admin_resp)
+    visible_ids = {p.id for p in visible}
+
+    assert seeded["p_alice"].id in visible_ids
+    assert seeded["p_bob"].id in visible_ids
+    assert seeded["p_shared"].id in visible_ids

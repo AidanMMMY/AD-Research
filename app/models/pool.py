@@ -36,6 +36,17 @@ class ETFPools(Base):
     id = Column(Integer, primary_key=True, autoincrement=True, comment="ID")
     name = Column(String(100), nullable=False, comment="Pool name")
     description = Column(Text, comment="Pool description")
+    # M21-3: Owner-scoping. NULL means a legacy / shared pool visible to all
+    # users (read-only from the API filter perspective). The migration leaves
+    # existing rows at NULL on purpose — see alembic version
+    # 2026_07_04_add_pool_user_id.
+    user_id = Column(
+        Integer,
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+        comment="Owner user id (NULL = shared legacy pool)",
+    )
     deleted_at = Column(
         DateTime(timezone=True),
         nullable=True,

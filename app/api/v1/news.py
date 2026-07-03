@@ -52,6 +52,51 @@ router = APIRouter(
 # Helpers
 # ---------------------------------------------------------------------------
 
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+# All concrete market buckets the news collectors have ever written
+# into ``news_article.market``. ``global`` is a frontend-only sentinel
+# (added in M22-2, 2026-07-04) — see ``_expand_market_filter`` below.
+_GLOBAL_MARKETS: tuple[str, ...] = ("cn_a", "us", "crypto")
+
+
+def _expand_market_filter(market: str | None) -> tuple[str | None, tuple[str, ...] | None]:
+    """Translate the ``market`` query value into SQLAlchemy filter
+    inputs.
+
+    Returns ``(literal, tuple)``:
+    - ``literal`` is set when the filter is an exact match (``"us"``).
+    - ``tuple`` is set when the filter is a membership test (``"global"``).
+    - Both are ``None`` when no filter is requested.
+
+    The frontend sentinel ``"global"`` is mapped to the union of every
+    concrete bucket the crawler has ever written so it surfaces every
+    article regardless of market.
+    """
+    if not market:
+        return None, None
+    if market == "global":
+        return None, _GLOBAL_MARKETS
+    return market, None
+
+
+def _apply_market_filter(stmt, count_stmt, market: str | None):
+    """Apply the expanded market filter to both the data and count
+    statements in one place so ``list_news`` and ``list_watchlist_news``
+    stay aligned.
+    """
+    literal, in_list = _expand_market_filter(market)
+    if literal is not None:
+        stmt = stmt.where(NewsArticle.market == literal)
+        count_stmt = count_stmt.where(NewsArticle.market == literal)
+    elif in_list is not None:
+        stmt = stmt.where(NewsArticle.market.in_(in_list))
+        count_stmt = count_stmt.where(NewsArticle.market.in_(in_list))
+    return stmt, count_stmt
+
+
 def _iso_utc(value: datetime | None) -> str | None:
     """Serialize a datetime as an explicit UTC ISO-8601 string.
 
@@ -148,7 +193,14 @@ def _parse_iso(value: str | None) -> datetime | None:
 
 @router.get("")
 def list_news(
-    market: str | None = Query(None, description="Filter by market (cn_a | us | crypto)"),
+    market: str | None = Query(
+        None,
+        description=(
+            "Filter by market. Allowed values: cn_a | us | crypto, "
+            "or the frontend sentinel ``global`` which is mapped to "
+            "the union of all concrete markets."
+        ),
+    ),
     symbol: str | None = Query(None, description="Filter by linked instrument code"),
     source: str | None = Query(None, description="Filter by source id (e.g. xinhua_rss)"),
     from_date: str | None = Query(None, description="ISO-8601 lower bound on published_at"),
@@ -177,9 +229,7 @@ def list_news(
     stmt = select(NewsArticle)
     count_stmt = select(func.count(NewsArticle.id))
 
-    if market:
-        stmt = stmt.where(NewsArticle.market == market)
-        count_stmt = count_stmt.where(NewsArticle.market == market)
+    stmt, count_stmt = _apply_market_filter(stmt, count_stmt, market)
     if source:
         stmt = stmt.where(NewsArticle.source == source)
         count_stmt = count_stmt.where(NewsArticle.source == source)
@@ -300,8 +350,13 @@ def list_watchlist_news(
     )
 
     if market:
-        stmt = stmt.where(NewsArticle.market == market)
-        count_stmt = count_stmt.where(NewsArticle.market == market)
+        literal, in_list = _expand_market_filter(market)
+        if literal is not None:
+            stmt = stmt.where(NewsArticle.market == literal)
+            count_stmt = count_stmt.where(NewsArticle.market == literal)
+        elif in_list is not None:
+            stmt = stmt.where(NewsArticle.market.in_(in_list))
+            count_stmt = count_stmt.where(NewsArticle.market.in_(in_list))
     if source:
         stmt = stmt.where(NewsArticle.source == source)
         count_stmt = count_stmt.where(NewsArticle.source == source)
@@ -351,7 +406,11 @@ def list_watchlist_news(
         .where(NewsArticleSymbol.symbol.in_(favorite_codes))
     )
     if market:
-        covered_q = covered_q.where(NewsArticle.market == market)
+        literal, in_list = _expand_market_filter(market)
+        if literal is not None:
+            covered_q = covered_q.where(NewsArticle.market == literal)
+        elif in_list is not None:
+            covered_q = covered_q.where(NewsArticle.market.in_(in_list))
     if source:
         covered_q = covered_q.where(NewsArticle.source == source)
     if from_dt is not None:

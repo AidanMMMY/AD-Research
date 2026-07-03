@@ -2,6 +2,12 @@
 
 Provides CRUD operations for ETF pools and member management
 with soft-delete support.
+
+M21-3: Pools are now owner-scoped. ``list_pools`` accepts an optional
+``current_user`` (admin users see all pools; regular users see their own
+pools + legacy NULL-owner shared pools). ``get_pool`` enforces the same
+visibility rule. ``create_pool`` defaults ``user_id`` to the caller's id
+when not provided in the request body.
 """
 
 from datetime import UTC, datetime
@@ -9,6 +15,7 @@ from datetime import UTC, datetime
 from sqlalchemy.orm import Session, selectinload
 
 from app.models.pool import ETFPools, PoolMember, PoolWeight
+from app.schemas.auth import UserResponse
 from app.schemas.pool import (
     PoolCreate,
     PoolMemberCreate,
@@ -24,40 +31,75 @@ class PoolService:
     def __init__(self, db: Session):
         self.db = db
 
-    def list_pools(self) -> list[PoolResponse]:
-        """List all active pools with their active members.
+    def list_pools(
+        self, current_user: UserResponse | None = None
+    ) -> list[PoolResponse]:
+        """List active pools the current user is allowed to see.
+
+        Visibility rule (M21-3 owner-scoping):
+          - admin → every active pool
+          - regular user → pools owned by them + pools with ``user_id IS NULL``
+            (treated as shared/legacy pools, kept visible to every user)
 
         Uses ``selectinload`` so each pool's members + their joined
         ETFInfo rows are fetched in two batched SELECTs (instead of
-        one query per pool inside ``_to_response``). This eliminates
-        the N+1 query pattern of the previous implementation.
+        one query per pool inside ``_to_response``).
         """
-        pools = (
+        q = (
             self.db.query(ETFPools)
             .options(
                 selectinload(ETFPools.members).selectinload(PoolMember.etf_info)
             )
             .filter(ETFPools.deleted_at.is_(None))
-            .all()
         )
+        if current_user is not None and current_user.role != "admin":
+            q = q.filter(
+                (ETFPools.user_id == current_user.id)
+                | (ETFPools.user_id.is_(None))
+            )
+        pools = q.all()
         return [self._to_response(pool) for pool in pools]
 
-    def get_pool(self, pool_id: int) -> PoolResponse | None:
-        """Get a single active pool by ID."""
-        pool = (
+    def get_pool(
+        self,
+        pool_id: int,
+        current_user: UserResponse | None = None,
+    ) -> PoolResponse | None:
+        """Get a single active pool by ID, respecting owner-scoping."""
+        q = (
             self.db.query(ETFPools)
             .options(
                 selectinload(ETFPools.members).selectinload(PoolMember.etf_info)
             )
             .filter(ETFPools.id == pool_id)
             .filter(ETFPools.deleted_at.is_(None))
-            .first()
         )
+        if current_user is not None and current_user.role != "admin":
+            q = q.filter(
+                (ETFPools.user_id == current_user.id)
+                | (ETFPools.user_id.is_(None))
+            )
+        pool = q.first()
         return self._to_response(pool) if pool else None
 
-    def create_pool(self, data: PoolCreate) -> PoolResponse:
-        """Create a new pool."""
-        pool = ETFPools(name=data.name, description=data.description)
+    def create_pool(
+        self,
+        data: PoolCreate,
+        current_user: UserResponse | None = None,
+    ) -> PoolResponse:
+        """Create a new pool.
+
+        ``user_id`` defaults to the caller's id (when authenticated). If the
+        client sent ``user_id`` explicitly we honour it for admin tools.
+        """
+        owner_id = data.user_id
+        if owner_id is None and current_user is not None:
+            owner_id = current_user.id
+        pool = ETFPools(
+            name=data.name,
+            description=data.description,
+            user_id=owner_id,
+        )
         self.db.add(pool)
         self.db.commit()
         self.db.refresh(pool)
@@ -218,6 +260,7 @@ class PoolService:
             id=pool.id,
             name=pool.name,
             description=pool.description,
+            user_id=pool.user_id,
             members=member_responses,
             created_at=pool.created_at,
             updated_at=pool.updated_at,
