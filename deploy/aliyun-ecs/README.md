@@ -1,6 +1,6 @@
 # 阿里云 ECS 部署手册（小白版）
 
-本手册面向没有服务器运维经验的同学，一步一步教你把 **AD-Research** 平台部署到阿里云 ECS 云服务器上。
+本手册面向没有服务器运维经验的同学，一步一步教你把 **Alloy-Research** 平台部署到阿里云 ECS 云服务器上。
 
 只要照着做，一般 15～30 分钟就能完成。
 
@@ -97,7 +97,7 @@
 
 | 类型 | 端口范围 | 授权对象 | 描述 |
 |------|----------|----------|------|
-| 自定义 TCP | 8000 | 0.0.0.0/0 | AD-Research 平台访问端口 |
+| 自定义 TCP | 8000 | 0.0.0.0/0 | Alloy-Research 平台访问端口 |
 | 自定义 TCP | 22 | 你的本地 IP/32 | SSH 远程连接（更安全） |
 
 > `0.0.0.0/0` 表示允许任何 IP 访问。如果你有自己的固定 IP，建议把授权对象改成你的 IP，更安全。
@@ -180,20 +180,20 @@ apt-get install -y git
 
 ```bash
 cd /opt
-git clone 你的代码仓库地址 ad-research
+git clone 你的代码仓库地址 alloy-research
 ```
 
 例如：
 
 ```bash
 cd /opt
-git clone https://github.com/yourname/ad-research.git ad-research
+git clone https://github.com/yourname/alloy-research.git alloy-research
 ```
 
 #### 5.1.3 进入项目目录
 
 ```bash
-cd ad-research
+cd alloy-research
 ```
 
 ### 方式二：用 zip 上传（不会 Git 就用这个）
@@ -205,7 +205,7 @@ cd ad-research
 3. 执行：
 
 ```bash
-zip -r ad-research.zip . -x "*.git*" -x "node_modules/*" -x ".venv/*" -x "web/node_modules/*"
+zip -r alloy-research.zip . -x "*.git*" -x "node_modules/*" -x ".venv/*" -x "web/node_modules/*"
 ```
 
 #### 5.2.2 上传到服务器
@@ -213,7 +213,7 @@ zip -r ad-research.zip . -x "*.git*" -x "node_modules/*" -x ".venv/*" -x "web/no
 **Mac/Linux：**
 
 ```bash
-scp ad-research.zip root@你的服务器公网IP:/opt/
+scp alloy-research.zip root@你的服务器公网IP:/opt/
 ```
 
 **Windows：**
@@ -224,8 +224,8 @@ scp ad-research.zip root@你的服务器公网IP:/opt/
 
 ```bash
 cd /opt
-unzip ad-research.zip -d ad-research
-cd ad-research
+unzip alloy-research.zip -d alloy-research
+cd alloy-research
 ```
 
 ---
@@ -235,7 +235,7 @@ cd ad-research
 ### 6.1 进入部署目录
 
 ```bash
-cd /opt/ad-research/deploy/aliyun-ecs
+cd /opt/alloy-research/deploy/aliyun-ecs
 ```
 
 ### 6.2 给脚本执行权限
@@ -320,7 +320,7 @@ http://47.239.13.111:8000
 ### 8.1 编辑 .env 文件
 
 ```bash
-vim /opt/ad-research/deploy/aliyun-ecs/.env
+vim /opt/alloy-research/deploy/aliyun-ecs/.env
 ```
 
 ### 8.2 找到 TUSHARE_TOKEN 并修改
@@ -343,7 +343,7 @@ TUSHARE_TOKEN=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 ### 8.4 重启服务让配置生效
 
 ```bash
-cd /opt/ad-research/deploy/aliyun-ecs
+cd /opt/alloy-research/deploy/aliyun-ecs
 docker compose restart backend
 ```
 
@@ -354,7 +354,7 @@ docker compose restart backend
 以下命令都需要先进入部署目录：
 
 ```bash
-cd /opt/ad-research/deploy/aliyun-ecs
+cd /opt/alloy-research/deploy/aliyun-ecs
 ```
 
 ### 9.1 查看服务状态
@@ -398,7 +398,7 @@ docker compose down -v
 ### 9.7 更新代码后重新部署
 
 ```bash
-cd /opt/ad-research
+cd /opt/alloy-research
 git pull  # 如果用 Git
 cd deploy/aliyun-ecs
 docker compose down
@@ -426,7 +426,7 @@ docker compose up -d
    ```bash
    docker compose ps
    ```
-   应该看到 `adresearch-backend`、`adresearch-postgres`、`adresearch-redis` 都是 `running`。
+   应该看到 `alloyresearch-backend`、`alloyresearch-postgres`、`alloyresearch-redis` 都是 `running`。
 
 2. 安全组是否放行了 8000 端口？
    - 回到阿里云控制台 → ECS → 安全组 → 确认有 8000 端口的规则
@@ -445,7 +445,7 @@ docker compose up -d
 
 ### Q2：部署脚本提示 "源数据库 etf_research 不存在"
 
-这是正常的。说明你是全新部署，没有旧数据需要迁移。脚本会自动创建 `ad_research` 数据库。
+这是正常的。说明你是全新部署，没有旧数据需要迁移。脚本会自动创建 `alloy_research` 数据库。
 
 ### Q3：部署脚本提示 "未检测到 docker compose 插件"
 
@@ -464,7 +464,7 @@ chmod +x ~/.docker/cli-plugins/docker-compose
 查看 `.env` 文件：
 
 ```bash
-cat /opt/ad-research/deploy/aliyun-ecs/.env | grep AUTH_ADMIN_PASSWORD
+cat /opt/alloy-research/deploy/aliyun-ecs/.env | grep AUTH_ADMIN_PASSWORD
 ```
 
 如果要修改，编辑 `.env` 文件后重启 backend：
@@ -476,7 +476,7 @@ docker compose restart backend
 ### Q5：如何查看平台日志找错误
 
 ```bash
-cd /opt/ad-research/deploy/aliyun-ecs
+cd /opt/alloy-research/deploy/aliyun-ecs
 docker compose logs -f backend
 ```
 
@@ -487,7 +487,7 @@ docker compose logs -f backend
 正常情况下容器设置了 `restart: unless-stopped`，重启服务器后会自动启动。如果没有，手动执行：
 
 ```bash
-cd /opt/ad-research/deploy/aliyun-ecs
+cd /opt/alloy-research/deploy/aliyun-ecs
 docker compose up -d
 ```
 
@@ -521,8 +521,8 @@ docker compose up -d
 ### 12.1 定期备份数据库
 
 ```bash
-cd /opt/ad-research/deploy/aliyun-ecs
-docker compose exec postgres pg_dump -U etf -d ad_research > /opt/ad-research-backup-$(date +%Y%m%d).sql
+cd /opt/alloy-research/deploy/aliyun-ecs
+docker compose exec postgres pg_dump -U etf -d alloy_research > /opt/alloy-research-backup-$(date +%Y%m%d).sql
 ```
 
 ### 12.2 下载备份到本地
@@ -530,7 +530,7 @@ docker compose exec postgres pg_dump -U etf -d ad_research > /opt/ad-research-ba
 **Mac/Linux：**
 
 ```bash
-scp root@你的服务器公网IP:/opt/ad-research-backup-20260623.sql ./
+scp root@你的服务器公网IP:/opt/alloy-research-backup-20260623.sql ./
 ```
 
 **Windows：** 用 WinSCP 下载。
@@ -547,7 +547,7 @@ scp root@你的服务器公网IP:/opt/ad-research-backup-20260623.sql ./
 
 ### 13.1 购买域名
 
-1. 在阿里云（或其他注册商）购买域名，例如 `adresearch.net`
+1. 在阿里云（或其他注册商）购买域名，例如 `alloyresearch.net`
 2. 记录你的 ECS **公网 IP**（例如 `47.xxx.xxx.xxx`）
 
 ### 13.2 配置 DNS 解析
@@ -556,18 +556,18 @@ scp root@你的服务器公网IP:/opt/ad-research-backup-20260623.sql ./
 
 | 主机记录 | 记录类型 | 记录值 | 说明 |
 |---|---|---|---|
-| `@` | A | 你的 ECS 公网 IP | 裸域 `adresearch.net` |
-| `www` | A | 你的 ECS 公网 IP | 子域名 `www.adresearch.net` |
+| `@` | A | 你的 ECS 公网 IP | 裸域 `alloyresearch.net` |
+| `www` | A | 你的 ECS 公网 IP | 子域名 `www.alloyresearch.net` |
 
-> DNS 生效通常需要 **几分钟到几小时**，可用 `dig adresearch.net` 或 `dig www.adresearch.net` 查看是否解析到服务器 IP。
+> DNS 生效通常需要 **几分钟到几小时**，可用 `dig alloyresearch.net` 或 `dig www.alloyresearch.net` 查看是否解析到服务器 IP。
 
 ### 13.3 申请 SSL 证书
 
 1. 在阿里云 **SSL 证书** 控制台申请免费证书
 2. 证书域名必须同时包含：
-   - `adresearch.net`
-   - `www.adresearch.net`
-   > 建议直接申请通配符证书 `*.adresearch.net`，或在申请时同时填写两个域名。
+   - `alloyresearch.net`
+   - `www.alloyresearch.net`
+   > 建议直接申请通配符证书 `*.alloyresearch.net`，或在申请时同时填写两个域名。
 3. 完成域名验证（文件验证或 DNS 验证）后下载 **Nginx 版** 证书
 4. 解压后得到 `.pem`（或 `.crt`）和 `.key` 文件
 
@@ -576,39 +576,39 @@ scp root@你的服务器公网IP:/opt/ad-research-backup-20260623.sql ./
 将证书文件重命名为：
 
 ```text
-adresearch.net.pem
-adresearch.net.key
+alloyresearch.net.pem
+alloyresearch.net.key
 ```
 
 上传到服务器的证书目录：
 
 ```bash
-scp adresearch.net.pem root@你的服务器公网IP:/opt/ad-research/deploy/aliyun-ecs/ssl/
-scp adresearch.net.key root@你的服务器公网IP:/opt/ad-research/deploy/aliyun-ecs/ssl/
+scp alloyresearch.net.pem root@你的服务器公网IP:/opt/alloy-research/deploy/aliyun-ecs/ssl/
+scp alloyresearch.net.key root@你的服务器公网IP:/opt/alloy-research/deploy/aliyun-ecs/ssl/
 ```
 
-> 注意：旧版 `nginx.conf` 和文档里把域名错写成 `adreasearch.net`（多了一个 `e`），现在已经修正为 `adresearch.net`。如果服务器上已有的证书文件名是 `adreasearch.net.pem/.key`，请重命名：
+> 注意：旧版 `nginx.conf` 和文档里把域名错写成 `adreasearch.net`（多了一个 `e`），现在已经修正为 `alloyresearch.net`。如果服务器上已有的证书文件名是 `adreasearch.net.pem/.key`，请重命名：
 > ```bash
-> cd /opt/ad-research/deploy/aliyun-ecs/ssl
-> mv adreasearch.net.pem adresearch.net.pem
-> mv adreasearch.net.key adresearch.net.key
+> cd /opt/alloy-research/deploy/aliyun-ecs/ssl
+> mv adreasearch.net.pem alloyresearch.net.pem
+> mv adreasearch.net.key alloyresearch.net.key
 > ```
 
 ### 13.5 重定向规则说明
 
 当前 `nginx.conf` 已经配置好以下规则：
 
-- `http://adresearch.net` → `https://www.adresearch.net`
-- `http://www.adresearch.net` → `https://www.adresearch.net`
-- `https://adresearch.net` → `https://www.adresearch.net`
-- `https://www.adresearch.net` → 正常显示平台
+- `http://alloyresearch.net` → `https://www.alloyresearch.net`
+- `http://www.alloyresearch.net` → `https://www.alloyresearch.net`
+- `https://alloyresearch.net` → `https://www.alloyresearch.net`
+- `https://www.alloyresearch.net` → 正常显示平台
 
 ### 13.6 重载 Nginx 使配置生效
 
 代码更新后，`nginx.conf` 会通过 volume 挂载到容器内，但 Nginx 进程不会自动重载。执行：
 
 ```bash
-cd /opt/ad-research/deploy/aliyun-ecs
+cd /opt/alloy-research/deploy/aliyun-ecs
 docker compose exec nginx nginx -t       # 先测试配置是否正确
 docker compose exec nginx nginx -s reload # 再热重载
 ```
@@ -619,15 +619,15 @@ docker compose exec nginx nginx -s reload # 再热重载
 
 ```bash
 # 测试 HTTP 重定向
-curl -I -L http://adresearch.net
-curl -I -L http://www.adresearch.net
+curl -I -L http://alloyresearch.net
+curl -I -L http://www.alloyresearch.net
 
 # 测试 HTTPS 重定向（证书正确时）
-curl -I -L https://adresearch.net
-curl -I -L https://www.adresearch.net
+curl -I -L https://alloyresearch.net
+curl -I -L https://www.alloyresearch.net
 ```
 
-预期 `https://adresearch.net` 最终返回 `https://www.adresearch.net` 的内容，且状态链中包含 `301`。
+预期 `https://alloyresearch.net` 最终返回 `https://www.alloyresearch.net` 的内容，且状态链中包含 `301`。
 
 ---
 

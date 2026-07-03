@@ -6,8 +6,8 @@ for US individual stocks from the public S&P 500 CSV.  Safe to run repeatedly:
 stocks that already have category are skipped.
 
 Usage:
-    docker exec adresearch-backend python3 app/scripts/backfill_us_stock_categories.py
-    docker exec adresearch-backend python3 app/scripts/backfill_us_stock_categories.py --batch-size 500
+    docker exec alloyresearch-backend python3 app/scripts/backfill_us_stock_categories.py
+    docker exec alloyresearch-backend python3 app/scripts/backfill_us_stock_categories.py --batch-size 500
 """
 
 import argparse

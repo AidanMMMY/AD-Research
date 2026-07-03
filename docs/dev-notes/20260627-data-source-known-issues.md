@@ -68,8 +68,8 @@ WHERE code = '560000.SH';
 ### 检查某只 ETF 的数据源状态
 
 ```bash
-ssh ad-research
-docker exec -i -w /app adresearch-backend python3 - <<'PY'
+ssh alloy-research
+docker exec -i -w /app alloyresearch-backend python3 - <<'PY'
 import akshare as ak
 import pandas as pd
 from datetime import date

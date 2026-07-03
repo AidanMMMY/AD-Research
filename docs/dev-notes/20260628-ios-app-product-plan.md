@@ -708,8 +708,8 @@ class StoreManager: ObservableObject {
     
     func loadProducts() async {
         products = try? await Product.products(for: [
-            "com.adresearch.pro.monthly",
-            "com.adresearch.pro.yearly"
+            "com.alloyresearch.pro.monthly",
+            "com.alloyresearch.pro.yearly"
         ])
     }
     

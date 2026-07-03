@@ -111,18 +111,18 @@ redis-cli ping
 </code></pre>
 
 <h4>方式 B：Docker Compose 部署</h4>
-<pre><code>cd /opt/ad-research  # 或你的项目根目录
+<pre><code>cd /opt/alloy-research  # 或你的项目根目录
 docker compose ps
 </code></pre>
 
-<p>应看到 <code>adresearch-postgres</code>、<code>adresearch-redis</code> 状态为 <code>running</code>。如果不在：</p>
+<p>应看到 <code>alloyresearch-postgres</code>、<code>alloyresearch-redis</code> 状态为 <code>running</code>。如果不在：</p>
 <pre><code>docker compose up -d postgres redis
 </code></pre>
 
 <h2>三、启动后端服务</h2>
 
 <h3>3.1 本地 Python 启动</h3>
-<pre><code>cd /opt/ad-research
+<pre><code>cd /opt/alloy-research
 source .venv/bin/activate
 uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 1
 </code></pre>
@@ -139,7 +139,7 @@ INFO:     Application startup complete.
 </blockquote>
 
 <h3>3.2 Docker Compose 启动</h3>
-<pre><code>cd /opt/ad-research
+<pre><code>cd /opt/alloy-research
 docker compose up -d --build backend
 </code></pre>
 
@@ -149,8 +149,8 @@ docker compose up -d --build backend
 
 <h3>3.3 使用 tmux/screen 后台运行</h3>
 <p>SSH 会话断开后服务会被杀掉，建议挂到 tmux：</p>
-<pre><code>tmux new -s adresearch-backend
-cd /opt/ad-research
+<pre><code>tmux new -s alloyresearch-backend
+cd /opt/alloy-research
 source .venv/bin/activate
 uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 1
 
@@ -158,7 +158,7 @@ uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 1
 </code></pre>
 
 <p>重新进入：</p>
-<pre><code>tmux attach -t adresearch-backend
+<pre><code>tmux attach -t alloyresearch-backend
 </code></pre>
 
 <h2>四、补跑缺失数据</h2>
@@ -166,7 +166,7 @@ uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 1
 <h3>4.1 创建不回测版本（推荐首次恢复使用）</h3>
 <p><code>scripts/update_daily_data.py</code> 第 5 步会执行全量回测，数量级为 <code>3 策略 × 1511 ETF ≈ 4533</code> 个任务，耗时数小时。首次恢复数据时建议跳过回测，只补齐日线、指标、评分、信号。</p>
 
-<pre><code>cd /opt/ad-research
+<pre><code>cd /opt/alloy-research
 cp scripts/update_daily_data.py scripts/update_daily_data_nobacktest.py
 </code></pre>
 
@@ -221,7 +221,7 @@ python scripts/update_daily_data_nobacktest.py
 <p>数据补齐且服务稳定后，再执行完整回测：</p>
 <pre><code># 挂到 tmux，因为可能跑数小时
 tmux new -s etf-backtest
-cd /opt/ad-research
+cd /opt/alloy-research
 source .venv/bin/activate
 python scripts/update_daily_data.py
 </code></pre>
@@ -245,7 +245,7 @@ PY
 <p>应返回最近一个交易日（如 <code>2026-06-26</code> 或 <code>2026-06-25</code>，取决于当天是否开市）。</p>
 
 <h3>5.2 完整数据健康检查</h3>
-<pre><code>cd /opt/ad-research
+<pre><code>cd /opt/alloy-research
 source .venv/bin/activate
 python scripts/data_completeness_check.py
 </code></pre>
@@ -298,11 +298,11 @@ PY
 
 <h3>6.3 查看服务日志</h3>
 <pre><code># Docker
-cd /opt/ad-research
+cd /opt/alloy-research
 docker compose logs -f backend
 
 # 本地（如果启动时重定向了日志）
-tail -f /var/log/adresearch-backend.log
+tail -f /var/log/alloyresearch-backend.log
 </code></pre>
 
 <h2>七、防止服务再次掉线</h2>
@@ -323,7 +323,7 @@ tail -f /var/log/adresearch-backend.log
 </code></pre>
 
 <h3>7.2 systemd 服务（Linux 裸机部署）</h3>
-<p>创建 <code>/etc/systemd/system/adresearch-backend.service</code>：</p>
+<p>创建 <code>/etc/systemd/system/alloyresearch-backend.service</code>：</p>
 <pre><code>[Unit]
 Description=ETF Research Platform Backend
 After=network.target postgresql.service redis.service
@@ -331,9 +331,9 @@ After=network.target postgresql.service redis.service
 [Service]
 Type=simple
 User=aidanliu
-WorkingDirectory=/opt/ad-research
-Environment=PATH=/opt/ad-research/.venv/bin
-ExecStart=/opt/ad-research/.venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 1
+WorkingDirectory=/opt/alloy-research
+Environment=PATH=/opt/alloy-research/.venv/bin
+ExecStart=/opt/alloy-research/.venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 1
 Restart=always
 RestartSec=10
 
@@ -343,9 +343,9 @@ WantedBy=multi-user.target
 
 <p>加载并启动：</p>
 <pre><code>sudo systemctl daemon-reload
-sudo systemctl enable adresearch-backend
-sudo systemctl start adresearch-backend
-sudo systemctl status adresearch-backend
+sudo systemctl enable alloyresearch-backend
+sudo systemctl start alloyresearch-backend
+sudo systemctl status alloyresearch-backend
 </code></pre>
 
 <h3>7.3 定时任务监控</h3>
@@ -393,7 +393,7 @@ sudo systemctl status adresearch-backend
     <tr><td>补数据（跳过回测）</td><td><code>python scripts/update_daily_data_nobacktest.py</code></td></tr>
     <tr><td>完整补数据</td><td><code>python scripts/update_daily_data.py</code></td></tr>
     <tr><td>数据健康检查</td><td><code>python scripts/data_completeness_check.py</code></td></tr>
-    <tr><td>进入 tmux 会话</td><td><code>tmux attach -t adresearch-backend</code></td></tr>
+    <tr><td>进入 tmux 会话</td><td><code>tmux attach -t alloyresearch-backend</code></td></tr>
     <tr><td>查看 ETL 日志 API</td><td><code>curl http://localhost:8000/api/v1/etl/status?limit=5</code></td></tr>
   </tbody>
 </table>

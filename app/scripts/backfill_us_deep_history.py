@@ -11,23 +11,23 @@ a small batch to stay within yfinance rate limits. Resumable via Redis offset.
 
 Usage:
     # Dry-run to see what would happen
-    docker exec adresearch-backend python3 app/scripts/backfill_us_deep_history.py \\
+    docker exec alloyresearch-backend python3 app/scripts/backfill_us_deep_history.py \\
         --tier core --dry-run
 
     # Core 33: Tiingo, 2020-01-01 → today
-    docker exec adresearch-backend python3 app/scripts/backfill_us_deep_history.py \\
+    docker exec alloyresearch-backend python3 app/scripts/backfill_us_deep_history.py \\
         --tier core --provider tiingo
 
     # Non-core: yfinance primary, Tiingo fallback, batch of 5 symbols
-    docker exec adresearch-backend python3 app/scripts/backfill_us_deep_history.py \\
+    docker exec alloyresearch-backend python3 app/scripts/backfill_us_deep_history.py \\
         --tier non-core --batch-size 5
 
     # Continue from where we left off (reads Redis offset)
-    docker exec adresearch-backend python3 app/scripts/backfill_us_deep_history.py \\
+    docker exec alloyresearch-backend python3 app/scripts/backfill_us_deep_history.py \\
         --tier non-core --batch-size 5
 
     # Custom date range
-    docker exec adresearch-backend python3 app/scripts/backfill_us_deep_history.py \\
+    docker exec alloyresearch-backend python3 app/scripts/backfill_us_deep_history.py \\
         --tier non-core --start 2018-01-01 --end 2024-12-31 --batch-size 5
 """
 

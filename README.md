@@ -1,4 +1,4 @@
-# AD-Research
+# AlloyResearch
 
 > 多市场（A 股 / 美股 / 港股 / 日股 / 加密货币）的 Web 投研平台，集成数据采集、技术指标、综合评分、标的池管理、策略回测、交易信号、模拟/真实交易、AI 研报。
 
@@ -188,10 +188,10 @@ cd web && npm run build && npx tsc --noEmit
 
 ## 🚢 部署拓扑（重要！）
 
-服务器上 `adresearch-backend` 容器的代码来源：
+服务器上 `alloyresearch-backend` 容器的代码来源：
 
-- **`/app/app/...`** 来自镜像 `ad-research:latest` 的 `COPY app/ ./app/` 层，**不是 host 的 bind mount**
-- host 上的 `/opt/ad-research/app/` 修改 → 容器内**不会**自动更新
+- **`/app/app/...`** 来自镜像 `alloy-research:latest` 的 `COPY app/ ./app/` 层，**不是 host 的 bind mount**
+- host 上的 `/opt/alloy-research/app/` 修改 → 容器内**不会**自动更新
 - 必须 rebuild image + recreate container 才生效
 
 ```bash
@@ -199,7 +199,7 @@ cd web && npm run build && npx tsc --noEmit
 git add -A && git commit -m "..." && git push origin main
 
 # 服务器：
-cd /opt/ad-research
+cd /opt/alloy-research
 git pull --ff-only origin main   # 或 fetch + reset --hard origin/main
 bash redeploy.sh                  # 触发 docker build + recreate
 ```
@@ -207,7 +207,7 @@ bash redeploy.sh                  # 触发 docker build + recreate
 `redeploy.sh` 做的事：
 
 ```bash
-cd /opt/ad-research/deploy/aliyun-ecs
+cd /opt/alloy-research/deploy/aliyun-ecs
 docker compose up -d --build --no-deps backend
 ```
 
@@ -218,8 +218,8 @@ docker compose up -d --build --no-deps backend
 **必须重建后验证**，否则容易出现"代码改了但 500 还在"的诡异现象：
 
 ```bash
-ssh ad-research "docker exec adresearch-backend sed -n '137p' /app/app/api/v1/auth.py"
-ssh ad-research "curl -s -X POST http://127.0.0.1:8000/api/v1/auth/login \
+ssh alloy-research "docker exec alloyresearch-backend sed -n '137p' /app/app/api/v1/auth.py"
+ssh alloy-research "curl -s -X POST http://127.0.0.1:8000/api/v1/auth/login \
   -H 'Content-Type: application/json' \
   -d '{\"username\":\"<user>\",\"password\":\"<pw>\"}' -w '\nHTTP %{http_code}\n'"
 ```

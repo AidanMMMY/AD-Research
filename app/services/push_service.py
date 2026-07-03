@@ -9,7 +9,7 @@ Configuration (environment variables):
   APNS_KEY_PATH      - Path to .p8 private key file
   APNS_KEY_ID        - Key ID from Apple Developer
   APNS_TEAM_ID       - Apple Developer Team ID
-  APNS_TOPIC         - App Bundle ID (e.g. com.adresearch.ios)
+  APNS_TOPIC         - App Bundle ID (e.g. com.alloyresearch.ios)
   APNS_USE_SANDBOX   - "true" for development, "false" for production
 """
 

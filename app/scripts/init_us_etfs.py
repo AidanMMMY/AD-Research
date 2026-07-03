@@ -8,7 +8,7 @@ useful for:
   - Manual synchronization outside of the weekly scheduled discovery job.
 
 Usage:
-    docker exec adresearch-backend python3 app/scripts/init_us_etfs.py
+    docker exec alloyresearch-backend python3 app/scripts/init_us_etfs.py
 """
 
 from app.core.database import SessionLocal
