@@ -344,7 +344,7 @@ export default function PoolDetail() {
               </span>
             )}
           </div>
-          <Table dataSource={weights || []} columns={weightColumns} rowKey="etf_code" scroll={{ x: 'max-content' }} pagination={false} />
+          <Table dataSource={weights || []} columns={weightColumns} rowKey="etf_code" scroll={{ x: 'max-content' }} pagination={false} loading={!weights} />
         </Panel>
       ),
     },
