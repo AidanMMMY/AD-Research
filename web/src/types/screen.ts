@@ -26,6 +26,7 @@ export interface ScreenFilters {
 export interface ScreenResultItem {
   code: string;
   name: string;
+  name_zh?: string | null;
   market: string;
   category?: string;
   rsi14?: number;
@@ -40,7 +41,13 @@ export interface ScreenResultItem {
 export interface ScreenResult {
   items: ScreenResultItem[];
   count: number;
-  filters_applied: Record<string, unknown>;
+  offset: number;
+  limit: number;
+  preset?: {
+    key: string;
+    name: string;
+    description: string;
+  } | null;
 }
 
 export interface ScreenPreset {

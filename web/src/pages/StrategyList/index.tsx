@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import {
-  Table, Button, Modal, Form, Input, Select, Switch, Space, message,
+  Table, Button, Modal, Form, Input, Select, Switch, Space, message, Popconfirm,
 } from 'antd';
 import PageShell from '@/components/PageShell';
 import PageHeader from '@/components/PageHeader';
@@ -160,9 +160,17 @@ export default function StrategyList() {
           <Button size="small" icon={<PlayCircleOutlined />} onClick={() => navigate(`/backtests?strategy_id=${record.id}`)}>
             回测
           </Button>
-          <Button size="small" danger icon={<DeleteOutlined />} onClick={() => handleDelete(record.id)}>
-            删除
-          </Button>
+          <Popconfirm
+            title="删除策略将丢失全部历史回测与信号，确认删除？"
+            okText="删除"
+            cancelText="取消"
+            okButtonProps={{ danger: true }}
+            onConfirm={() => handleDelete(record.id)}
+          >
+            <Button size="small" danger icon={<DeleteOutlined />}>
+              删除
+            </Button>
+          </Popconfirm>
         </Space>
       ),
       width: 180,

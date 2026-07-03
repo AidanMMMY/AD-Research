@@ -9,6 +9,7 @@ import FilterToolbar from '@/components/FilterToolbar';
 import EmptyState from '@/components/EmptyState';
 import InstrumentSelector from '@/components/InstrumentSelector';
 import CorrelationHeatmap from '@/components/CorrelationHeatmap';
+import HelpPopover from '@/components/HelpPopover';
 
 const WINDOW_OPTIONS = [
   { label: '30日', value: 30 },
@@ -52,7 +53,9 @@ export default function CorrelationAnalysis() {
               />
             </Col>
             <Col xs={24} md={6}>
-              <div className="ad-filter-label">窗口期：</div>
+              <div className="ad-filter-label">
+                <HelpPopover termKey="time_range">窗口期</HelpPopover>：
+              </div>
               <Select
                 value={window}
                 onChange={setWindow}
@@ -61,11 +64,20 @@ export default function CorrelationAnalysis() {
               />
             </Col>
             <Col xs={24} md={6}>
-              <div className="ad-filter-label">计算方法：</div>
+              <div className="ad-filter-label">
+                <HelpPopover termKey="correlation_method">计算方法</HelpPopover>：
+              </div>
               <Select
                 value={method}
                 onChange={setMethod}
-                options={METHOD_OPTIONS}
+                options={METHOD_OPTIONS.map((opt) => ({
+                  ...opt,
+                  label: (
+                    <HelpPopover termKey={opt.value === 'pearson' ? 'pearson' : 'spearman'}>
+                      {opt.label}
+                    </HelpPopover>
+                  ),
+                }))}
                 style={{ width: '100%' }}
               />
             </Col>

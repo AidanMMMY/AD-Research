@@ -18,9 +18,13 @@ export type ImportanceLevel = 1 | 2 | 3 | 4 | 5;
 /** A symbol mentioned by a news article. */
 export interface NewsSymbol {
   symbol: string;
-  market: string;
+  market?: string | null;
   /** How the symbol was matched (e.g. ``ticker``, ``name``, ``alias``). */
-  match_type: string;
+  match_type?: string | null;
+  /** Instrument display name (cached from ``etf_info``). */
+  name?: string | null;
+  /** Chinese display name (cached from ``etf_info``). */
+  name_zh?: string | null;
 }
 
 /** Per-article engagement metrics (likes / shares / …). */
@@ -97,6 +101,7 @@ export interface NewsListResponse {
   total: number;
   page: number;
   page_size: number;
+  total_pages: number;
 }
 
 /** List query parameters. */
@@ -111,6 +116,17 @@ export interface NewsListParams {
   page?: number;
   page_size?: number;
   importance_min?: ImportanceLevel;
+  /**
+   * Filter by one or more ``event_category`` values. The backend
+   * accepts a list (``?event_category=geopolitics&event_category=central_bank``)
+   * — repeat the query parameter to OR multiple categories together.
+   *
+   * Allowed values mirror the LLM prompt in
+   * ``app/services/news/sentiment/prompts.py``:
+   * earnings|m&a|product|macro|regulation|guidance|analyst|legal|rumor
+   * |geopolitics|central_bank|election|trade_war|sanction|other
+   */
+  event_category?: string[];
 }
 
 /** Watchlist-scoped metadata returned by /news/watchlist. */
@@ -139,12 +155,14 @@ export interface NewsWatchlistParams {
   to_date?: string;
   page?: number;
   page_size?: number;
+  event_category?: string[];
 }
 
-/** Per-source count summary. */
+/** Per-source count summary returned by `/news/stats/sources`. */
 export interface NewsSourceStat {
   source: string;
-  count: number;
+  total: number;
+  last_7d: number;
   last_24h: number;
 }
 

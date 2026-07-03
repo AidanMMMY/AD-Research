@@ -75,7 +75,9 @@ export default function Sparkline({
       <span
         className={`sparkline__empty ${className || ''}`}
         style={{
-          width,
+          width: '100%',
+          minWidth: 40,
+          maxWidth: width,
           height,
           lineHeight: `${height}px`,
           ...style,
@@ -121,9 +123,9 @@ export default function Sparkline({
       width={width}
       height={height}
       viewBox={`0 0 ${width} ${height}`}
-      preserveAspectRatio="none"
+      preserveAspectRatio="xMidYMid meet"
       className={`sparkline ${className || ''}`}
-      style={style}
+      style={{ maxWidth: '100%', height: 'auto', ...style }}
       aria-label={ariaLabel}
       role={data && data.length >= 2 ? 'img' : undefined}
     >

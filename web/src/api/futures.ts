@@ -41,6 +41,7 @@ export interface FuturesDashboardResponse {
 
 export interface FuturesDailyBarOut {
   code: string;
+  name: string | null;
   trade_date: string;
   open: string | null;
   high: string | null;

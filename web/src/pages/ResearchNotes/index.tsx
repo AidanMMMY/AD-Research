@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Select, Button, Skeleton, Modal, Empty } from 'antd';
+import { Select, Button, Skeleton, Modal, Empty, message } from 'antd';
 import { RobotOutlined, SearchOutlined } from '@ant-design/icons';
 import { researchApi, ResearchNote } from '@/api/research';
 import { useInstrumentList } from '@/hooks/useInstrumentList';
@@ -10,6 +10,8 @@ import PageShell from '@/components/PageShell';
 import PageHeader from '@/components/PageHeader';
 import Panel from '@/components/Panel';
 import ThemeTag, { ThemeTagVariant } from '@/components/ThemeTag';
+import InstrumentCodeTag from '@/components/InstrumentCodeTag';
+import HelpPopover from '@/components/HelpPopover';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
@@ -79,6 +81,9 @@ export default function ResearchNotes() {
     mutationFn: (code: string) => researchApi.generateNote(code),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['research-notes', selectedCode] });
+    },
+    onError: (err: any) => {
+      message.error(err?.response?.data?.detail || '生成研报失败');
     },
   });
 
@@ -175,10 +180,14 @@ export default function ResearchNotes() {
               <div onClick={() => setModalNote(note)}>
                 <div className="phase5c-research-card__header">
                   <div className="phase5c-research-card__meta">
-                    <span className="phase5c-research-card__code">
-                      {note.instrument_code}
-                    </span>
-                    <ThemeTag variant="default">{note.note_type}</ThemeTag>
+                    <InstrumentCodeTag
+                      code={note.instrument_code}
+                      name={note.name}
+                      name_zh={note.name_zh}
+                    />
+                    <ThemeTag variant="default">
+                      <HelpPopover termKey="note_type">{note.note_type}</HelpPopover>
+                    </ThemeTag>
                     {note.sentiment && (
                       <ThemeTag variant={SENTIMENT_VARIANTS[note.sentiment] || 'default'}>
                         {SENTIMENT_LABELS[note.sentiment] || note.sentiment}
@@ -186,7 +195,7 @@ export default function ResearchNotes() {
                     )}
                     {note.confidence && (
                       <span className="phase5c-detail-line">
-                        置信度 {note.confidence}/10
+                        <HelpPopover termKey="sentiment_confidence">置信度</HelpPopover> {note.confidence}/10
                       </span>
                     )}
                   </div>

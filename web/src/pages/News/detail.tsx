@@ -40,7 +40,9 @@ import Markdown from '@/components/Markdown';
 import EmptyState from '@/components/EmptyState';
 import ResponsiveGrid from '@/components/ResponsiveGrid';
 import StatCard from '@/components/StatCard';
+import InstrumentCodeTag from '@/components/InstrumentCodeTag';
 import { formatDateTime, formatDateTimeCompact } from '@/utils/datetime';
+import HelpPopover from '@/components/HelpPopover';
 
 const SENTIMENT_COLORS: Record<SentimentLabel, string> = {
   positive: 'var(--color-rise)',
@@ -112,7 +114,8 @@ export default function NewsDetail() {
 
   // Fetch related articles for each mentioned symbol.
   const symbols = data?.symbols ?? [];
-  const [primarySymbol, ...otherSymbols] = symbols.map((s) => s.symbol);
+  const [primarySymbolObj, ...otherSymbols] = symbols;
+  const primarySymbol = primarySymbolObj?.symbol;
 
   const { data: related, isLoading: relatedLoading } = useQuery({
     queryKey: ['news-related', primarySymbol, articleId],
@@ -232,10 +235,9 @@ export default function NewsDetail() {
       <header className="ad-detail-header">
         <Button
           type="text"
-          size="small"
           icon={<ArrowLeftOutlined />}
           onClick={() => navigate('/news')}
-          className="ad-mb-3 ad-p-0"
+          className="ad-mb-3"
         >
           返回资讯
         </Button>
@@ -251,7 +253,6 @@ export default function NewsDetail() {
               <span>{data.author}</span>
             </>
           )}
-          <span className="ad-flex-1" />
           <ImportanceStars level={data.importance} />
         </div>
 
@@ -263,18 +264,38 @@ export default function NewsDetail() {
           {symbols.length > 0 && (
             <Space size={4} wrap>
               {symbols.map((s) => (
-                <Tag
-                  key={`${s.symbol}-${s.match_type}`}
-                  color="default"
-                  className="ad-detail-tag"
+                <Link
+                  key={`${s.symbol}-${s.match_type ?? 'symbol'}`}
+                  to={`/instruments/${encodeURIComponent(s.symbol)}`}
                 >
-                  {s.symbol}
-                </Tag>
+                  <InstrumentCodeTag
+                    code={s.symbol}
+                    name={s.name ?? undefined}
+                    name_zh={s.name_zh ?? undefined}
+                  />
+                </Link>
               ))}
             </Space>
           )}
           {data.event_category && (
-            <Tag color="geekblue" className="ad-detail-tag">
+            <Tag
+              color={
+                data.event_category === 'geopolitics' ||
+                data.event_category === 'central_bank' ||
+                data.event_category === 'election' ||
+                data.event_category === 'trade_war' ||
+                data.event_category === 'sanction'
+                  ? ({
+                      geopolitics: 'volcano',
+                      central_bank: 'geekblue',
+                      election: 'purple',
+                      trade_war: 'red',
+                      sanction: 'magenta',
+                    } as const)[data.event_category]
+                  : 'geekblue'
+              }
+              className="ad-detail-tag"
+            >
               {data.event_category}
             </Tag>
           )}
@@ -468,9 +489,9 @@ export default function NewsDetail() {
               {data.sentiment_confidence != null && (
                 <div className="ad-flex ad-items-center ad-gap-3 ad-mb-3">
                   <span className="ad-text-small ad-text-tertiary">
-                    LLM 置信度
+                    <HelpPopover termKey="sentiment_confidence">LLM 置信度</HelpPopover>
                   </span>
-                  <div className="ad-sentiment-bar ad-flex-1" style={{ maxWidth: 240 }}>
+                  <div className="ad-sentiment-bar ad-flex-1">
                     <div
                       className="ad-sentiment-bar__fill"
                       style={{
@@ -490,7 +511,7 @@ export default function NewsDetail() {
               {data.sentiment_drivers && data.sentiment_drivers.length > 0 && (
                 <div>
                   <div className="ad-text-small ad-text-tertiary ad-mb-2">
-                    关键驱动
+                    <HelpPopover termKey="sentiment_drivers">关键驱动</HelpPopover>
                   </div>
                   <Space wrap>
                     {data.sentiment_drivers.map((d) => (
@@ -558,9 +579,16 @@ export default function NewsDetail() {
           {otherSymbols.length > 0 && (
             <Panel variant="default" title="其他提及标的" padding="md">
               <Space wrap>
-                {otherSymbols.map((sym) => (
-                  <Link key={sym} to={`/news?symbol=${encodeURIComponent(sym)}`}>
-                    <Tag className="ad-detail-tag ad-chip-tag">{sym}</Tag>
+                {otherSymbols.map((s) => (
+                  <Link
+                    key={`${s.symbol}-${s.match_type ?? 'symbol'}`}
+                    to={`/instruments/${encodeURIComponent(s.symbol)}`}
+                  >
+                    <InstrumentCodeTag
+                      code={s.symbol}
+                      name={s.name ?? undefined}
+                      name_zh={s.name_zh ?? undefined}
+                    />
                   </Link>
                 ))}
               </Space>

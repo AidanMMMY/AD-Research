@@ -11,6 +11,7 @@ import EmptyState from '@/components/EmptyState';
 import HelpTrigger from '@/components/HelpTrigger';
 import PageHeader from '@/components/PageHeader';
 import LastUpdated from '@/components/LastUpdated';
+import InstrumentCodeTag from '@/components/InstrumentCodeTag';
 import {
   useCninfoReportList,
   useCninfoReportCoverage,
@@ -112,7 +113,7 @@ export default function CninfoReportsPage() {
     {
       title: '证券代码',
       dataIndex: 'ts_code',
-      width: 110,
+      width: 140,
       render: (v: string, record: CninfoReport) => (
         <Button
           type="link"
@@ -120,7 +121,7 @@ export default function CninfoReportsPage() {
           className="tabular-nums"
           onClick={() => handleOpenDetail(record.id)}
         >
-          {v}
+          <InstrumentCodeTag code={v} name={record.stock_name} />
         </Button>
       ),
     },
@@ -353,7 +354,7 @@ function CninfoReportDetailDrawer({
               <Tag color={ADJUNCT_COLOR[report.adjunct_type] ?? 'default'}>
                 {ADJUNCT_LABEL[report.adjunct_type] ?? report.adjunct_type}
               </Tag>
-              <span className="tabular-nums">{report.ts_code}</span>
+              <InstrumentCodeTag code={report.ts_code} name={report.stock_name} />
               <span>{formatDate(report.announcement_time)}</span>
             </Space>
 

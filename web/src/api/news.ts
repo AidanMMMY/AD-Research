@@ -42,6 +42,9 @@ export type {
 export const newsApi = {
   /** Paginated article list with filtering. */
   list(params: NewsListParams = {}): Promise<{ data: NewsListResponse }> {
+    // Axios serializes arrays as ``?event_category=a&event_category=b``
+    // by default, which is exactly what the FastAPI backend expects for
+    // a repeatable query parameter. No transform needed.
     return client.get<NewsListResponse>('/news', { params });
   },
 
@@ -62,8 +65,8 @@ export const newsApi = {
   },
 
   /** Per-source aggregate counts (for the source filter chip strip). */
-  sourceStats(): Promise<{ data: NewsSourceStat[] }> {
-    return client.get<NewsSourceStat[]>('/news/sources/stats');
+  sourceStats(): Promise<{ data: { sources: NewsSourceStat[] } }> {
+    return client.get<{ sources: NewsSourceStat[] }>('/news/stats/sources');
   },
 
   /** Per-source diagnostics + APScheduler status. */

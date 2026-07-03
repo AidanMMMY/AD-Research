@@ -40,13 +40,16 @@ import {
   BlockOutlined,
   SunOutlined,
   MoonOutlined,
+  BulbOutlined,
 } from '@ant-design/icons';
+import { Switch } from 'antd';
 import { useAuthStore } from '@/stores/auth';
 import { useSettingsStore } from '@/stores/settings';
 import { menuRoutes } from '@/routes';
 import { useIsMobile } from '@/hooks/useBreakpoint';
 import { useTheme, type Theme } from '@/hooks/useTheme';
 import DensityToggle from '@/components/DensityToggle';
+import OnboardingTour from '@/components/OnboardingTour';
 
 const iconMap: Record<string, React.ComponentType> = {
   DashboardOutlined,
@@ -137,7 +140,14 @@ function SidebarContent({ collapsed, onItemClick }: SidebarContentProps) {
 
 export default function AppLayout() {
   const { user, logout } = useAuthStore();
-  const { colorConvention, setColorConvention } = useSettingsStore();
+  const {
+    colorConvention,
+    setColorConvention,
+    mode,
+    setMode,
+    learningMode,
+    setLearningMode,
+  } = useSettingsStore();
   const [theme, setTheme] = useTheme();
   const [collapsed, setCollapsed] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -295,49 +305,181 @@ export default function AppLayout() {
           </div>
 
           <div className="app-layout__header-controls">
-            {/* Color convention toggle */}
-            <Segmented
-              value={colorConvention}
-              onChange={(v) => setColorConvention(v as 'china' | 'us')}
-              aria-label="切换涨跌色约定"
-              options={[
-                { label: '红涨绿跌', value: 'china' },
-                { label: '绿涨红跌', value: 'us' },
-              ]}
-            />
+            {!isMobile ? (
+              <>
+                {/* Color convention toggle */}
+                <Segmented
+                  value={colorConvention}
+                  onChange={(v) => setColorConvention(v as 'china' | 'us')}
+                  aria-label="切换涨跌色约定"
+                  options={[
+                    { label: '红涨绿跌', value: 'china' },
+                    { label: '绿涨红跌', value: 'us' },
+                  ]}
+                />
 
-            {/* Theme toggle (clean / dark) */}
-            <Segmented
-              value={theme}
-              onChange={(v) => setTheme(v as Theme)}
-              aria-label="切换主题"
-              options={[
-                {
-                  label: (
-                    <Tooltip title="浅色主题">
-                      <SunOutlined aria-label="浅色主题" />
-                    </Tooltip>
-                  ),
-                  value: 'clean',
-                },
-                {
-                  label: (
-                    <Tooltip title="深色主题">
-                      <MoonOutlined aria-label="深色主题" />
-                    </Tooltip>
-                  ),
-                  value: 'dark',
-                },
-              ]}
-              size="small"
-            />
+                {/* Theme toggle (clean / dark) */}
+                <Segmented
+                  value={theme}
+                  onChange={(v) => setTheme(v as Theme)}
+                  aria-label="切换主题"
+                  options={[
+                    {
+                      label: (
+                        <Tooltip title="浅色主题">
+                          <SunOutlined aria-label="浅色主题" />
+                        </Tooltip>
+                      ),
+                      value: 'clean',
+                    },
+                    {
+                      label: (
+                        <Tooltip title="深色主题">
+                          <MoonOutlined aria-label="深色主题" />
+                        </Tooltip>
+                      ),
+                      value: 'dark',
+                    },
+                  ]}
+                  size="small"
+                />
 
-            {/* Density toggle (S1) */}
-            <DensityToggle />
+                {/* Density toggle (S1) */}
+                <DensityToggle />
+              </>
+            ) : (
+              <Dropdown
+                placement="bottomRight"
+                trigger={['click']}
+                menu={{
+                  items: [
+                    {
+                      key: 'color-convention',
+                      label: (
+                        <div onClick={(e) => e.stopPropagation()}>
+                          <Segmented
+                            value={colorConvention}
+                            onChange={(v) => setColorConvention(v as 'china' | 'us')}
+                            aria-label="切换涨跌色约定"
+                            options={[
+                              { label: '红涨绿跌', value: 'china' },
+                              { label: '绿涨红跌', value: 'us' },
+                            ]}
+                            size="small"
+                          />
+                        </div>
+                      ),
+                    },
+                    {
+                      key: 'theme',
+                      label: (
+                        <div onClick={(e) => e.stopPropagation()}>
+                          <Segmented
+                            value={theme}
+                            onChange={(v) => setTheme(v as Theme)}
+                            aria-label="切换主题"
+                            options={[
+                              { label: <SunOutlined />, value: 'clean' },
+                              { label: <MoonOutlined />, value: 'dark' },
+                            ]}
+                            size="small"
+                          />
+                        </div>
+                      ),
+                    },
+                    {
+                      key: 'density',
+                      label: (
+                        <div onClick={(e) => e.stopPropagation()}>
+                          <DensityToggle />
+                        </div>
+                      ),
+                    },
+                  ],
+                }}
+              >
+                <div
+                  role="button"
+                  tabIndex={0}
+                  aria-label="显示设置"
+                  className="app-layout__icon-btn"
+                  onClick={(e) => e.stopPropagation()}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                    }
+                  }}
+                >
+                  <SettingOutlined />
+                </div>
+              </Dropdown>
+            )}
 
             <Dropdown
               menu={{
                 items: [
+                  {
+                    key: 'mode',
+                    label: (
+                      <div
+                        onClick={(e) => e.stopPropagation()}
+                        className="app-layout__user-menu-mode"
+                      >
+                        <div className="app-layout__user-menu-label">
+                          教学模式
+                        </div>
+                        <Segmented
+                          value={mode}
+                          onChange={(v) => setMode(v as 'novice' | 'pro')}
+                          size="small"
+                          options={[
+                            { label: '新手', value: 'novice' },
+                            { label: '专业', value: 'pro' },
+                          ]}
+                        />
+                      </div>
+                    ),
+                  },
+                  {
+                    key: 'learning-mode',
+                    label: (
+                      <div
+                        onClick={(e) => e.stopPropagation()}
+                        className="app-layout__user-menu-mode"
+                      >
+                        <div className="app-layout__user-menu-label">
+                          <BulbOutlined /> 学习模式
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <Switch
+                            size="small"
+                            checked={learningMode}
+                            onChange={(v) => setLearningMode(v)}
+                          />
+                          <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>
+                            开启后每个数字旁解释含义
+                          </span>
+                        </div>
+                      </div>
+                    ),
+                  },
+                  {
+                    key: 'reopen-onboarding',
+                    icon: <BookOutlined />,
+                    label: '重新触发新手引导',
+                    onClick: () => {
+                      window.dispatchEvent(
+                        new CustomEvent('ad-research:reopen-onboarding')
+                      );
+                    },
+                  },
+                  {
+                    key: 'learning',
+                    icon: <ReadOutlined />,
+                    label: '新手教程',
+                    onClick: () => navigate('/learning'),
+                  },
+                  { type: 'divider' },
                   {
                     key: 'logout',
                     icon: <LogoutOutlined />,
@@ -362,6 +504,9 @@ export default function AppLayout() {
           <Outlet />
         </div>
       </main>
+
+      {/* K14: global onboarding tour, mounts only when not completed. */}
+      <OnboardingTour />
     </div>
   );
 }

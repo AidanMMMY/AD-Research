@@ -11,6 +11,7 @@ export interface PoolMember {
   pool_id: number;
   etf_code: string;
   etf_name?: string;
+  name_zh?: string | null;
   added_at?: string;
   is_active?: boolean;
 }
@@ -19,6 +20,7 @@ export interface PoolWeight {
   pool_id: number;
   etf_code: string;
   etf_name?: string;
+  name_zh?: string | null;
   target_weight: number;
   suggested_weight?: number;
   weight_source: 'manual' | 'equal' | 'score' | 'risk_parity';

@@ -5,7 +5,7 @@ import { authApi } from '@/api';
 interface User {
   id: number;
   username: string;
-  role: string;
+  role: 'admin' | 'user';
 }
 
 interface AuthState {
@@ -15,7 +15,8 @@ interface AuthState {
   isAuthenticated: boolean;
   login: (username: string, password: string) => Promise<void>;
   logout: () => void;
-  setTokens: (access: string, refresh: string) => void;
+  setTokens: (access: string, refresh: string) => Promise<void>;
+  setUser: (user: User | null) => void;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -52,11 +53,19 @@ export const useAuthStore = create<AuthState>()(
         set({ token: null, refreshToken: null, user: null, isAuthenticated: false });
       },
 
-      setTokens: (access, refresh) => {
+      setTokens: async (access, refresh) => {
         localStorage.setItem('token', access);
         if (refresh) localStorage.setItem('refresh_token', refresh);
-        set({ token: access, refreshToken: refresh || undefined, isAuthenticated: true });
+        set({ token: access, refreshToken: refresh || null, isAuthenticated: true });
+        try {
+          const { data: user } = await authApi.me();
+          set({ user });
+        } catch {
+          // 如果 me 失败，保持现有 user；useMe 的错误边界会处理 logout
+        }
       },
+
+      setUser: (user) => set({ user }),
     }),
     {
       name: 'auth-storage',

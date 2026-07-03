@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
-import { Tabs, Table, Button, Slider, message, Row, Col, Statistic, Dropdown, Space, Input, Popconfirm, Select } from 'antd';
+import { Tabs, Table, Button, Slider, message, Row, Col, Statistic, Dropdown, Space, Input, Popconfirm, Select, Alert } from 'antd';
 import { useQueryClient } from '@tanstack/react-query';
 import { EditOutlined, DeleteOutlined, PlusOutlined } from '@ant-design/icons';
 import type { MenuProps } from 'antd';
@@ -50,6 +50,7 @@ const round2 = (v: number) => Math.round(v * 100) / 100;
 export default function PoolDetail() {
   const { id } = useParams<{ id: string }>();
   const poolId = Number(id);
+  const isValidPoolId = Number.isFinite(poolId) && poolId > 0;
   const { open } = useAIHelp();
   const [editing, setEditing] = useState(false);
   const [localWeights, setLocalWeights] = useState<Record<string, number>>({});
@@ -129,6 +130,7 @@ export default function PoolDetail() {
   };
 
   const handleSuggest = async (algorithm: string) => {
+    if (suggestWeights.isPending) return;
     try {
       await suggestWeights.mutateAsync({ poolId, algorithm });
       setActiveAlgorithm(algorithm);
@@ -148,6 +150,10 @@ export default function PoolDetail() {
   };
 
   const handleUpdatePool = async () => {
+    if (!editName.trim()) {
+      message.warning('请输入标的池名称');
+      return;
+    }
     try {
       await updatePool.mutateAsync({
         poolId,
@@ -218,7 +224,7 @@ export default function PoolDetail() {
   const weightColumns = [
     {
       title: '标的',
-      render: (_: unknown, record: any) => <InstrumentCodeTag code={record.etf_code} name={record.etf_name} />,
+      render: (_: unknown, record: any) => <InstrumentCodeTag code={record.etf_code} name={record.etf_name} name_zh={record.name_zh} />,
     },
     {
       title: <HelpPopover termKey="target_weight">目标权重</HelpPopover>,
@@ -233,11 +239,12 @@ export default function PoolDetail() {
         ) : `${record.target_weight ?? 0}%`
       ),
     },
-    { title: <HelpPopover termKey="suggested_weight">建议权重</HelpPopover>, dataIndex: 'suggested_weight', render: (v: number) => v ? `${v.toFixed(1)}%` : '-' },
-    { title: <HelpPopover termKey="weight_source">来源</HelpPopover>, dataIndex: 'weight_source' },
+    { title: <HelpPopover termKey="suggested_weight">建议权重</HelpPopover>, dataIndex: 'suggested_weight', render: (v: number) => v ? `${v.toFixed(1)}%` : '-', responsive: ['md'] as Array<'md' | 'lg' | 'xl' | 'sm' | 'xs' | 'xxl'> },
+    { title: <HelpPopover termKey="weight_source">来源</HelpPopover>, dataIndex: 'weight_source', responsive: ['md'] as Array<'md' | 'lg' | 'xl' | 'sm' | 'xs' | 'xxl'> },
     {
       title: '操作',
       key: 'action',
+      width: 80,
       render: (_: unknown, record: any) => (
         !editing ? (
           <Popconfirm
@@ -246,7 +253,7 @@ export default function PoolDetail() {
             okText="确认"
             cancelText="取消"
           >
-            <Button type="text" danger icon={<DeleteOutlined />} size="small" />
+            <Button type="text" danger icon={<DeleteOutlined />} />
           </Popconfirm>
         ) : null
       ),
@@ -300,15 +307,15 @@ export default function PoolDetail() {
             <div className="pool-toolbar__actions">
               {editing ? (
                 <>
-                  <Button type="primary" onClick={handleSaveWeights}>保存</Button>
-                  <Button onClick={() => { setEditing(false); setLocalWeights({}); }}>取消</Button>
-                  <Button onClick={handleEqualWeights}>重置为等权</Button>
+                  <Button type="primary" onClick={handleSaveWeights} loading={updateWeight.isPending} disabled={updateWeight.isPending}>保存</Button>
+                  <Button onClick={() => { setEditing(false); setLocalWeights({}); }} disabled={updateWeight.isPending}>取消</Button>
+                  <Button onClick={handleEqualWeights} disabled={updateWeight.isPending}>重置为等权</Button>
                 </>
               ) : (
                 <Button onClick={() => setEditing(true)}>编辑权重</Button>
               )}
-              <Dropdown menu={{ items: suggestMenuItems }} placement="bottomLeft">
-                <Button>生成建议权重</Button>
+              <Dropdown menu={{ items: suggestMenuItems }} placement="bottomLeft" disabled={suggestWeights.isPending}>
+                <Button loading={suggestWeights.isPending}>生成建议权重</Button>
               </Dropdown>
               {!editing && (
                 <>
@@ -427,7 +434,7 @@ export default function PoolDetail() {
       label: <HelpPopover termKey="snapshot">快照记录</HelpPopover>,
       children: (
         <Panel title="快照记录" padding="md">
-          <Button type="primary" onClick={handleCreateSnapshot} className="detail-section">
+          <Button type="primary" onClick={handleCreateSnapshot} loading={createSnapshot.isPending} disabled={createSnapshot.isPending} className="detail-section">
             创建快照
           </Button>
           <Table
@@ -442,6 +449,19 @@ export default function PoolDetail() {
       ),
     },
   ];
+
+  if (!isValidPoolId) {
+    return (
+      <PageShell maxWidth="wide">
+        <PageHeader
+          eyebrow="标的池"
+          title="标的池详情"
+          description="查看和管理标的池成员、权重配置、持仓分布与历史快照"
+        />
+        <Alert message="非法的标的池 ID" description="URL 中的标的池 ID 必须是正整数。" type="error" showIcon />
+      </PageShell>
+    );
+  }
 
   return (
     <PageShell maxWidth="wide">
@@ -474,7 +494,7 @@ export default function PoolDetail() {
               className="pool-meta-editor__desc"
             />
             <Space>
-              <Button type="primary" onClick={handleUpdatePool} loading={updatePool.isPending}>
+              <Button type="primary" onClick={handleUpdatePool} loading={updatePool.isPending} disabled={!editName.trim() || updatePool.isPending}>
                 保存
               </Button>
               <Button onClick={() => setEditingMeta(false)}>取消</Button>

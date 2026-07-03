@@ -6,6 +6,8 @@ import { researchApi, SentimentAggregate } from '@/api/research';
 import AISetupBanner from "@/components/AISetupBanner";
 import GlassCard from '@/components/GlassCard';
 import ThemeTag from '@/components/ThemeTag';
+import InstrumentCodeTag from '@/components/InstrumentCodeTag';
+import HelpPopover from '@/components/HelpPopover';
 
 const SENTIMENT_ICONS: Record<string, React.ReactNode> = {
   positive: <SmileOutlined className="sentiment-icon--positive" />,
@@ -101,7 +103,11 @@ function SentimentCard({ sentiment }: { sentiment: SentimentAggregate }) {
     <GlassCard>
       <div className="ad-text-center">
         <div className="ad-text-small ad-text-tertiary ad-mb-1">
-          {sentiment.instrument_code}
+          <InstrumentCodeTag
+            code={sentiment.instrument_code}
+            name={sentiment.name}
+            name_zh={sentiment.name_zh}
+          />
         </div>
         <div className="sentiment-icon-wrapper">
           {SENTIMENT_ICONS[sentiment.label] || SENTIMENT_ICONS.neutral}
@@ -109,7 +115,9 @@ function SentimentCard({ sentiment }: { sentiment: SentimentAggregate }) {
         <div
           className={`sentiment-score-value ${sentiment.label ? `sentiment-score-value--${sentiment.label}` : 'sentiment-score-value--neutral'}`}
         >
-          {sentiment.avg_score.toFixed(2)}
+          <HelpPopover termKey="sentiment_score">
+            {sentiment.avg_score.toFixed(2)}
+          </HelpPopover>
         </div>
         <div className="ad-mt-2">
           <ThemeTag variant={tagVariant}>

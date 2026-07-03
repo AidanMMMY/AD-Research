@@ -7,7 +7,7 @@ import { useInstrumentScore } from '@/hooks/useScores';
 import { useFavoriteStatus } from '@/hooks/useFavorites';
 import { useAIHelp } from '@/hooks/useAIHelp';
 import { marketApi, researchApi, stockFundamentalApi } from '@/api';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import KLineChart, { DEFAULT_OVERLAYS } from '@/components/KLineChart';
 import ScoreRadar from '@/components/ScoreRadar';
 import Panel from '@/components/Panel';
@@ -81,6 +81,7 @@ export default function StockDetail() {
   const { code } = useParams<{ code: string }>();
   const navigate = useNavigate();
   const { open } = useAIHelp();
+  const queryClient = useQueryClient();
   const colorConvention = useSettingsStore((s) => s.colorConvention);
   const { data: stock, isLoading: stockLoading, error: stockError } = useStockDetail(code || '');
   const { data: score } = useInstrumentScore(code || '');
@@ -143,6 +144,17 @@ export default function StockDetail() {
     queryKey: ['stock-fundamental', code],
     queryFn: () => stockFundamentalApi.get(code || '').then((r) => r.data),
     enabled: !!code,
+  });
+
+  const generateMutation = useMutation({
+    mutationFn: () => researchApi.generateNote(code || ''),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['research-notes', code] });
+      message.success('研报生成中，请稍后刷新');
+    },
+    onError: (err: any) => {
+      message.error(err?.response?.data?.detail || '生成失败');
+    },
   });
 
   if (stockLoading) {
@@ -356,11 +368,9 @@ export default function StockDetail() {
                       size="small"
                       type="primary"
                       icon={<RobotOutlined />}
-                      onClick={() => {
-                        researchApi.generateNote(code || '').then(() => {
-                          message.success('研报生成中，请稍后刷新');
-                        }).catch(() => message.error('生成失败'));
-                      }}
+                      loading={generateMutation.isPending}
+                      disabled={generateMutation.isPending}
+                      onClick={() => generateMutation.mutate()}
                     >
                       生成研报
                     </Button>
@@ -429,7 +439,7 @@ export default function StockDetail() {
                         className="sentiment-score"
                         style={{ color: SENTIMENT_COLORS[sentiment.label] || 'var(--text-secondary)' }}
                       >
-                        {sentiment.avg_score.toFixed(2)}
+                        {sentiment.avg_score?.toFixed(2) ?? '—'}
                       </div>
                       <ThemeTag
                         variant={
@@ -510,19 +520,23 @@ export default function StockDetail() {
             <div>
               <div className="valuation-grid">
                 {[
-                  { title: 'PE (TTM)', value: stockFund.pe_ttm, suffix: '倍', precision: 2 },
-                  { title: 'PB', value: stockFund.pb, suffix: '倍', precision: 2 },
-                  { title: '总市值', value: stockFund.total_mv ? (stockFund.total_mv / 10000).toFixed(2) : undefined, suffix: '亿 CNY' },
-                  { title: '流通市值', value: stockFund.circ_mv ? (stockFund.circ_mv / 10000).toFixed(2) : undefined, suffix: '亿 CNY' },
-                  { title: '换手率（自由流通）', value: stockFund.turnover_rate_f, suffix: '%', precision: 2 },
-                  { title: '量比', value: stockFund.volume_ratio, precision: 2 },
-                  stockFund.eps != null ? { title: 'EPS（最新财报）', value: stockFund.eps, suffix: '元', precision: 2 } : null,
-                  stockFund.roe != null ? { title: 'ROE（最新财报）', value: stockFund.roe, suffix: '%', precision: 2 } : null,
-                  stockFund.revenue_yoy != null ? { title: '营收 YoY', value: stockFund.revenue_yoy, suffix: '%', precision: 2 } : null,
-                  stockFund.grossprofit_margin != null ? { title: '毛利率', value: stockFund.grossprofit_margin, suffix: '%', precision: 2 } : null,
+                  { title: 'PE (TTM)', termKey: 'pe_ttm', value: stockFund.pe_ttm, suffix: '倍', precision: 2 },
+                  { title: 'PB', termKey: 'pb', value: stockFund.pb, suffix: '倍', precision: 2 },
+                  { title: '总市值', termKey: 'total_mv', value: stockFund.total_mv ? (stockFund.total_mv / 10000).toFixed(2) : undefined, suffix: '亿 CNY' },
+                  { title: '流通市值', termKey: 'circ_mv', value: stockFund.circ_mv ? (stockFund.circ_mv / 10000).toFixed(2) : undefined, suffix: '亿 CNY' },
+                  { title: '换手率（自由流通）', termKey: 'turnover_rate_f', value: stockFund.turnover_rate_f, suffix: '%', precision: 2 },
+                  { title: '量比', termKey: 'volume_ratio', value: stockFund.volume_ratio, precision: 2 },
+                  stockFund.eps != null ? { title: 'EPS（最新财报）', termKey: 'eps', value: stockFund.eps, suffix: '元', precision: 2 } : null,
+                  stockFund.roe != null ? { title: 'ROE（最新财报）', termKey: 'roe', value: stockFund.roe, suffix: '%', precision: 2 } : null,
+                  stockFund.revenue_yoy != null ? { title: '营收 YoY', termKey: 'revenue_yoy', value: stockFund.revenue_yoy, suffix: '%', precision: 2 } : null,
+                  stockFund.grossprofit_margin != null ? { title: '毛利率', termKey: 'grossprofit_margin', value: stockFund.grossprofit_margin, suffix: '%', precision: 2 } : null,
                 ].filter(Boolean).map((m: any) => (
                   <div key={m.title} className="valuation-cell">
-                    <div className="valuation-cell__label">{m.title}</div>
+                    <div className="valuation-cell__label">
+                      {m.termKey ? (
+                        <HelpPopover termKey={m.termKey}>{m.title}</HelpPopover>
+                      ) : m.title}
+                    </div>
                     <div className="valuation-cell__value tabular-nums">
                       {m.value !== undefined && m.value !== null ? (
                         <>
@@ -541,7 +555,7 @@ export default function StockDetail() {
               <Alert
                 type="info"
                 message="数据来源：Tushare Pro"
-                description={`估值日期：${stockFund.trade_date}。基本面数据（EPS/ROE/毛利率等）需运行财报采集管道后获取。`}
+                description={`估值日期：${stockFund.trade_date || '未知'}。基本面数据（EPS/ROE/毛利率等）需运行财报采集管道后获取。`}
                 className="valuation-alert"
               />
             </div>
@@ -558,7 +572,7 @@ export default function StockDetail() {
           <div>
             <div className="detail-hero__title">
               <StockOutlined className="detail-hero__icon" />
-              <InstrumentCodeTag code={stock.code} />
+              <InstrumentCodeTag code={stock.code} name={stock.name} name_zh={stock.name_zh} />
               <h1 className="detail-hero__title-text">{stock.name}</h1>
               <ThemeTag variant="accent">个股</ThemeTag>
               {stock.market && <ThemeTag>{stock.market}</ThemeTag>}

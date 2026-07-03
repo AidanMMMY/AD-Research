@@ -12,6 +12,7 @@ import EmptyState from '@/components/EmptyState';
 import ResponsiveGrid from '@/components/ResponsiveGrid';
 import StatCard from '@/components/StatCard';
 import LastUpdated from '@/components/LastUpdated';
+import InstrumentCodeTag from '@/components/InstrumentCodeTag';
 import {
   useSecFilingList,
   useSecFilingCoverage,
@@ -80,8 +81,12 @@ export default function SECFilingsPage() {
       title: 'Ticker',
       dataIndex: 'ticker',
       key: 'ticker',
-      width: 100,
-      render: (v: string) => <Tag color="blue">{v}</Tag>,
+      width: 160,
+      render: (v: string, row: SecFiling) => (
+        <Tag color="blue">
+          <InstrumentCodeTag code={v} name={row.company_name ?? undefined} />
+        </Tag>
+      ),
     },
     {
       title: '公司',

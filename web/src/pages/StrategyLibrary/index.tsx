@@ -117,6 +117,13 @@ export default function StrategyLibrary() {
         eyebrow="策略"
         title="策略库"
         description="浏览系统内置策略，按家族快速筛选，一键创建配置或运行回测"
+        tutorial={
+          <span>
+            顶部选择"策略家族"快速定位相似策略；展开卡片可看到默认参数与适用市场环境。
+            选好模板后用"创建配置"跳到策略管理页面。
+          </span>
+        }
+        tutorialForce
         extra={
           <Button icon={<BookOutlined />} onClick={() => navigate('/strategies')}>
             策略管理

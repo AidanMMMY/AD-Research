@@ -1,12 +1,15 @@
 import { useMemo, useState } from 'react';
-import { Table, Select, Space } from 'antd';
+import { useNavigate } from 'react-router-dom';
+import { Table, Select, Row, Col } from 'antd';
 import PageShell from '@/components/PageShell';
 import PageHeader from '@/components/PageHeader';
 import Panel from '@/components/Panel';
 import FilterToolbar from '@/components/FilterToolbar';
 import EmptyState from '@/components/EmptyState';
 import ThemeTag, { ThemeTagVariant } from '@/components/ThemeTag';
+import InstrumentCodeTag from '@/components/InstrumentCodeTag';
 import HelpTrigger from '@/components/HelpTrigger';
+import ContextHint from '@/components/ContextHint';
 import { useSignals } from '@/hooks/useSignals';
 import { useAIHelp } from '@/hooks/useAIHelp';
 import { buildSignalDashboardContext } from '@/utils/helpContext';
@@ -37,6 +40,7 @@ const FAMILY_LABELS: Record<string, string> = {
 };
 
 export default function SignalDashboard() {
+  const navigate = useNavigate();
   const { data: signals, isLoading } = useSignals();
   const { open } = useAIHelp();
   const [familyFilter, setFamilyFilter] = useState<string>('all');
@@ -64,14 +68,15 @@ export default function SignalDashboard() {
   const holdCount = filteredItems.filter((s) => s.signal_type === 'HOLD').length;
 
   const columns = [
-    { title: '策略ID', dataIndex: 'strategy_id', width: 80, render: (v: any) => <span className="tabular-nums">{v}</span> },
-    { title: '标的代码', dataIndex: 'etf_code' },
+    { title: '策略ID', dataIndex: 'strategy_id', width: 80, responsive: ['md'] as Array<'md' | 'lg' | 'xl' | 'sm' | 'xs' | 'xxl'>, render: (v: any) => <span className="tabular-nums">{v}</span> },
     {
-      title: '名称',
-      dataIndex: 'etf_name',
-      render: (v: string | undefined | null) => v || '—',
+      title: '标的',
+      dataIndex: 'etf_code',
+      render: (_: string, record: Signal) => (
+        <InstrumentCodeTag code={record.etf_code} name={record.etf_name} name_zh={record.name_zh} />
+      ),
     },
-    { title: '日期', dataIndex: 'trade_date' },
+    { title: '日期', dataIndex: 'trade_date', responsive: ['sm'] as Array<'sm' | 'md' | 'lg' | 'xl' | 'xs' | 'xxl'> },
     {
       title: '信号',
       dataIndex: 'signal_type',
@@ -138,23 +143,38 @@ export default function SignalDashboard() {
         title="最新交易信号"
         extra={<HelpTrigger tooltip="AI 解释信号含义" onClick={handleOpenHelp} />}
       >
+        <ContextHint
+          hintId="signal-dashboard-table"
+          title="信号怎么读"
+          placement="top"
+          content={
+            <>
+              每一行是一次「策略 → 标的」的判断。点击行可跳到策略说明，看为什么生成这条信号；强度 ≥ 70 通常视为强信号。
+            </>
+          }
+        >
         <FilterToolbar total={filteredItems.length}>
-          <Space>
-            <Select
-              value={typeFilter}
-              onChange={setTypeFilter}
-              options={typeOptions}
-              className="phase5c-select--xs"
-            />
-            <Select
-              value={familyFilter}
-              onChange={setFamilyFilter}
-              options={familyOptions}
-              className="phase5c-select--sm"
-              placeholder="按策略家族筛选"
-            />
-          </Space>
+          <Row gutter={[12, 12]}>
+            <Col xs={12} sm={8} md={6}>
+              <Select
+                value={typeFilter}
+                onChange={setTypeFilter}
+                options={typeOptions}
+                style={{ width: '100%' }}
+              />
+            </Col>
+            <Col xs={12} sm={8} md={6}>
+              <Select
+                value={familyFilter}
+                onChange={setFamilyFilter}
+                options={familyOptions}
+                placeholder="按策略家族筛选"
+                style={{ width: '100%' }}
+              />
+            </Col>
+          </Row>
         </FilterToolbar>
+        </ContextHint>
 
         <div className="phase5c-table-wrap">
           <Table
@@ -168,6 +188,9 @@ export default function SignalDashboard() {
             locale={{
               emptyText: <EmptyState title="暂无信号" description="当前没有符合条件的交易信号" />,
             }}
+            onRow={(record) => ({
+              onClick: () => navigate(`/instruments/${record.etf_code}`),
+            })}
           />
         </div>
       </Panel>

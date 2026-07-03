@@ -5,6 +5,7 @@ import { useScreenResults, useScreenPresets, useScreenCategories } from '@/hooks
 import { useInstrumentMarkets } from '@/hooks/useInstrumentList';
 import { useScreenStore } from '@/stores/screen';
 import { useAIHelp } from '@/hooks/useAIHelp';
+import { useIsMobile } from '@/hooks/useBreakpoint';
 import PageShell from '@/components/PageShell';
 import Panel from '@/components/Panel';
 import PageHeader from '@/components/PageHeader';
@@ -12,6 +13,7 @@ import FilterToolbar from '@/components/FilterToolbar';
 import EmptyState from '@/components/EmptyState';
 import HelpTrigger from '@/components/HelpTrigger';
 import HelpPopover from '@/components/HelpPopover';
+import ContextHint from '@/components/ContextHint';
 import InstrumentCodeTag from '@/components/InstrumentCodeTag';
 import ReturnTag from '@/components/ReturnTag';
 import LastUpdated from '@/components/LastUpdated';
@@ -30,9 +32,10 @@ const MARKET_LABELS: Record<string, string> = {
 export default function Screen() {
   const navigate = useNavigate();
   const { open } = useAIHelp();
+  const isMobile = useIsMobile();
   const { filters, preset, setFilter, resetFilters, applyPreset } = useScreenStore();
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(50);
+  const [pageSize, setPageSize] = useState(isMobile ? 20 : 50);
 
   // Include pagination and active preset in API request
   const queryFilters = useMemo(
@@ -69,7 +72,7 @@ export default function Screen() {
   };
 
   const columns = [
-    { title: '代码', dataIndex: 'code', width: 100, render: (v: string, r: any) => <InstrumentCodeTag code={v} name={r.name} /> },
+    { title: '代码', dataIndex: 'code', width: 100, render: (v: string, r: any) => <InstrumentCodeTag code={v} name={r.name} name_zh={r.name_zh} /> },
     { title: '分类', dataIndex: 'category', width: 100, render: (v: string) => v ? <span className="ad-table-text-secondary">{v}</span> : '-' },
     { title: <HelpPopover termKey="composite_score_filter">评分</HelpPopover>, dataIndex: 'composite_score', width: 80, render: (v: number) => <span className="font-mono ad-table-accent">{v?.toFixed(1)}</span> },
     { title: <HelpPopover termKey="rsi14">RSI</HelpPopover>, dataIndex: 'rsi14', width: 70, render: (v: number) => <span className="font-mono ad-table-mono">{v?.toFixed(1)}</span> },
@@ -94,6 +97,16 @@ export default function Screen() {
         }
       />
       <Panel title="筛选条件" variant="default">
+        <ContextHint
+          hintId="screen-filter"
+          title="先选条件再查询"
+          placement="bottom"
+          content={
+            <>
+              选好市场 / 分类 / 评分阈值等条件后再点查询，比空着全部条件直接查能显著减少响应时间。结果表会用选股条件快速收敛到关注的几只标的。
+            </>
+          }
+        >
         <div className="ad-filter-label">
           <HelpPopover termKey="screen_presets">快速筛选</HelpPopover>:
         </div>
@@ -178,6 +191,7 @@ export default function Screen() {
             </Col>
           </Row>
         </FilterToolbar>
+        </ContextHint>
       </Panel>
 
       <div className="ad-mt-5">
@@ -215,7 +229,7 @@ export default function Screen() {
               }}
               scroll={{ x: 'max-content' }}
               onRow={(record) => ({
-                onClick: () => navigate(`/etfs/${record.code}`),
+                onClick: () => navigate(`/instruments/${record.code}`),
               })}
             />
           </div>

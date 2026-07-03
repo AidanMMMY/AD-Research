@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Badge,
   Button,
@@ -23,6 +23,7 @@ import SectionHeading from '@/components/SectionHeading';
 import EmptyState from '@/components/EmptyState';
 import ResponsiveGrid from '@/components/ResponsiveGrid';
 import ThemeTag from '@/components/ThemeTag';
+import InstrumentCodeTag from '@/components/InstrumentCodeTag';
 import {
   PlusOutlined,
   DeleteOutlined,
@@ -41,7 +42,7 @@ import {
   useRiskStatus,
   useResetCircuitBreaker,
 } from '@/hooks/useLiveTrading';
-import type { LiveConfig, LiveOrder, RiskStatus } from '@/types/trading';
+import type { LiveConfig, LiveOrder, LivePosition, RiskStatus } from '@/types/trading';
 
 /** Format a number as USDT with appropriate precision. */
 function fmtUSDT(v: number | null | undefined): string {
@@ -50,6 +51,23 @@ function fmtUSDT(v: number | null | undefined): string {
   if (Math.abs(v) >= 1) return `$${v.toFixed(2)}`;
   if (v === 0) return '$0.00';
   return `$${v.toFixed(6)}`;
+}
+
+function fmtNumberString(v: string | null | undefined, digits = 6): string {
+  if (v == null || v === undefined) return '-';
+  const n = Number(v);
+  if (!Number.isFinite(n)) return '-';
+  if (n === 0) return '0';
+  if (Math.abs(n) >= 1000) return n.toLocaleString('en-US', { maximumFractionDigits: 2 });
+  if (Math.abs(n) >= 1) return n.toFixed(2);
+  return n.toFixed(digits);
+}
+
+function formatDateTime(v: string | null | undefined): string {
+  if (!v) return '-';
+  const d = new Date(v);
+  if (Number.isNaN(d.getTime())) return '-';
+  return d.toLocaleString('zh-CN');
 }
 
 function fmtPnL(v: number | null | undefined): { text: string; color: string } {
@@ -79,6 +97,12 @@ export default function TradingPanel() {
   const [selectedConfigId, setSelectedConfigId] = useState<number | undefined>(
     configs.length > 0 ? configs[0].id : undefined,
   );
+
+  useEffect(() => {
+    if (!selectedConfigId && configs.length > 0) {
+      setSelectedConfigId(configs[0].id);
+    }
+  }, [configs, selectedConfigId]);
 
   const { data: account, isLoading: accountLoading } = useLiveAccount(selectedConfigId);
   const { data: positions, isLoading: positionsLoading } = useLivePositions(selectedConfigId);
@@ -168,8 +192,8 @@ export default function TradingPanel() {
       title: '币种',
       dataIndex: 'instrument_code',
       key: 'code',
-      render: (v: string) => (
-        <span className="font-mono ad-font-semibold">{v}</span>
+      render: (_: string, r: LivePosition) => (
+        <InstrumentCodeTag code={r.instrument_code} name={r.instrument_name} />
       ),
     },
     {
@@ -219,7 +243,7 @@ export default function TradingPanel() {
       title: '时间',
       dataIndex: 'created_at',
       key: 'time',
-      render: (v: string | null) => (v ? new Date(v).toLocaleString('zh-CN') : '-'),
+      render: (v: string | null) => formatDateTime(v),
     },
     {
       title: '方向',
@@ -235,7 +259,9 @@ export default function TradingPanel() {
       title: '币种',
       dataIndex: 'instrument_code',
       key: 'code',
-      render: (v: string) => <span className="font-mono">{v}</span>,
+      render: (_: string, r: LiveOrder) => (
+        <InstrumentCodeTag code={r.instrument_code} name={r.instrument_name} />
+      ),
     },
     {
       title: '数量',
@@ -292,6 +318,13 @@ export default function TradingPanel() {
         eyebrow="交易"
         title="真实交易"
         description="连接交易所 API，执行实盘交易与风险管理"
+        tutorial={
+          <span>
+            先看顶部<b>账户与风险</b>面板确认余额和熔断状态，再去下方"下单"区域执行委托。
+            实盘页面里每一个市价单都意味着立即成交，因此请先观察行情再下单。
+          </span>
+        }
+        tutorialForce
         extra={
           <Space>
             {selectedConfig && risk && (
@@ -385,10 +418,10 @@ export default function TradingPanel() {
               />
             </Card>
             <Card size="small" className="phase5c-trading-card">
-              <div className={risk && parseFloat(risk.realized_pnl_today) > 0 ? 'phase5c-pnl-stat--rise' : risk && parseFloat(risk.realized_pnl_today) < 0 ? 'phase5c-pnl-stat--fall' : 'phase5c-pnl-stat--neutral'}>
+              <div className={risk && Number(risk.realized_pnl_today) > 0 ? 'phase5c-pnl-stat--rise' : risk && Number(risk.realized_pnl_today) < 0 ? 'phase5c-pnl-stat--fall' : 'phase5c-pnl-stat--neutral'}>
                 <Statistic
                   title="今日已实现"
-                  value={risk?.realized_pnl_today ? parseFloat(risk.realized_pnl_today) : 0}
+                  value={Number.isFinite(Number(risk?.realized_pnl_today)) ? Number(risk?.realized_pnl_today) : 0}
                   precision={2}
                   prefix="$"
                   loading={riskLoading}
@@ -404,14 +437,21 @@ export default function TradingPanel() {
                   <RiskBadge risk={risk} />
                 </div>
                 {risk?.circuit_breaker_active && (
-                  <Button
-                    size="small"
-                    icon={<ReloadOutlined />}
-                    onClick={handleResetBreaker}
-                    loading={resetBreaker.isPending}
+                  <Popconfirm
+                    title="确认重置熔断？"
+                    description="重置后将恢复下单能力，请确认风险已解除。"
+                    onConfirm={handleResetBreaker}
+                    okText="确认重置"
+                    cancelText="取消"
                   >
-                    重置
-                  </Button>
+                    <Button
+                      size="small"
+                      icon={<ReloadOutlined />}
+                      loading={resetBreaker.isPending}
+                    >
+                      重置
+                    </Button>
+                  </Popconfirm>
                 )}
               </div>
             </Card>
@@ -429,10 +469,10 @@ export default function TradingPanel() {
                       {b.asset}
                     </div>
                     <div className="phase5c-balance-card__row">
-                      可用: {parseFloat(b.free).toFixed(6)}
+                      可用: {fmtNumberString(b.free)}
                     </div>
                     <div className="phase5c-balance-card__row">
-                      冻结: {parseFloat(b.locked).toFixed(6)}
+                      冻结: {fmtNumberString(b.locked)}
                     </div>
                   </Card>
                 ))}

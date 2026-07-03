@@ -24,6 +24,7 @@ import StatCard from '@/components/StatCard';
 import EmptyState from '@/components/EmptyState';
 import FilterToolbar from '@/components/FilterToolbar';
 import LastUpdated from '@/components/LastUpdated';
+import HelpPopover from '@/components/HelpPopover';
 import { useMacroIndicators, useMacroSeries } from '@/hooks/useMacro';
 import {
   useMacroLatest,
@@ -38,6 +39,20 @@ const REGION_OPTIONS = [
   { value: 'cn', label: '中国 (akshare)' },
   { value: 'global', label: '全球' },
 ];
+
+const MACRO_TERM_KEY_MAP: Record<string, string> = {
+  us_cpi: 'cpi',
+  cpi_yoy: 'cpi',
+  us_unrate: 'unemployment_rate',
+  us_fed_funds: 'fed_funds',
+  us_dgs10: 'treasury_yield',
+  us_vix: 'vix',
+  gdp_yoy: 'gdp',
+  ppi_yoy: 'ppi',
+  m2_yoy: 'm2',
+  pmi_manufacturing: 'pmi',
+  shibor_3m: 'shibor',
+};
 
 /**
  * Format a numeric value for display.  Rates stay as-is, big numbers
@@ -280,7 +295,11 @@ export default function Macro() {
             {headline.map((item) => (
               <Col xs={12} md={8} lg={Math.max(4, 24 / headline.length)} key={item.code}>
                 <StatCard
-                  title={item.name_zh}
+                  title={
+                    MACRO_TERM_KEY_MAP[item.code] ? (
+                      <HelpPopover termKey={MACRO_TERM_KEY_MAP[item.code]}>{item.name_zh}</HelpPopover>
+                    ) : item.name_zh
+                  }
                   value={formatValue(item.value, item.unit)}
                   suffix={item.period ? `${item.period}` : undefined}
                 />

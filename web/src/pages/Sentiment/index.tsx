@@ -34,6 +34,8 @@ import Panel from '@/components/Panel';
 import ResponsiveGrid from '@/components/ResponsiveGrid';
 import EmptyState from '@/components/EmptyState';
 import Sparkline from '@/components/Sparkline';
+import InstrumentCodeTag from '@/components/InstrumentCodeTag';
+import HelpPopover from '@/components/HelpPopover';
 
 const MARKET_OPTIONS: { label: string; value: NewsMarket | 'all' }[] = [
   { label: '全部', value: 'all' },
@@ -56,7 +58,7 @@ const SENTIMENT_LABELS: Record<SentimentLabel, string> = {
 
 interface SymbolAggregate {
   symbol: string;
-  market: string;
+  market: string | null | undefined;
   count: number;
   /** Average sentiment score, weighted by importance. */
   score: number | null;
@@ -67,6 +69,10 @@ interface SymbolAggregate {
   neutral: number;
   /** Recent daily scores for sparkline (oldest -> newest). */
   sparkline: number[];
+  /** Instrument display name (cached from ``etf_info``). */
+  name?: string | null;
+  /** Chinese display name (cached from ``etf_info``). */
+  name_zh?: string | null;
 }
 
 const PAGE_SIZE = 100;
@@ -78,13 +84,15 @@ const PAGE_SIZE = 100;
 function aggregateBySymbol(articles: NewsArticle[]): SymbolAggregate[] {
   type Bucket = {
     symbol: string;
-    market: string;
+    market: string | null | undefined;
     articles: NewsArticle[];
     scoreSum: number;
     weightSum: number;
     bull: number;
     bear: number;
     neutral: number;
+    name: string | null;
+    name_zh: string | null;
   };
 
   const buckets = new Map<string, Bucket>();
@@ -93,12 +101,14 @@ function aggregateBySymbol(articles: NewsArticle[]): SymbolAggregate[] {
       const cur = buckets.get(s.symbol) ?? {
         symbol: s.symbol,
         market: s.market,
-        articles: [],
+        articles: [] as NewsArticle[],
         scoreSum: 0,
         weightSum: 0,
         bull: 0,
         bear: 0,
         neutral: 0,
+        name: s.name ?? null,
+        name_zh: s.name_zh ?? null,
       };
       cur.articles.push(a);
       const w = a.importance ?? 3;
@@ -140,6 +150,8 @@ function aggregateBySymbol(articles: NewsArticle[]): SymbolAggregate[] {
     return {
       symbol: b.symbol,
       market: b.market,
+      name: b.name,
+      name_zh: b.name_zh,
       count: b.articles.length,
       score,
       label,
@@ -401,7 +413,12 @@ export default function SentimentOverview() {
                     title={
                       <div className="ad-tooltip-list">
                         <div>
-                          <strong>{row.symbol}</strong> · {row.market}
+                          <InstrumentCodeTag
+                            code={row.symbol}
+                            name={row.name ?? undefined}
+                            name_zh={row.name_zh}
+                          />
+                          {row.market ? <span> · {row.market}</span> : null}
                         </div>
                         <div>情绪分数: {row.score != null ? row.score.toFixed(2) : '—'}</div>
                         <div>资讯数: {row.count}</div>
@@ -410,15 +427,29 @@ export default function SentimentOverview() {
                     }
                   >
                     <div
+                      role="button"
+                      tabIndex={0}
+                      aria-label={`选中 ${row.symbol}（资讯 ${row.count} 篇）`}
                       onClick={() => {
                         setSelectedSymbol(row.symbol);
                         message.info(`已选中: ${row.symbol}`);
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          setSelectedSymbol(row.symbol);
+                          message.info(`已选中: ${row.symbol}`);
+                        }
                       }}
                       className={`ad-heatmap-cell ${selectedSymbol === row.symbol ? 'ad-heatmap-cell--active' : ''}`}
                       style={{ background: heatmapColor(row.score, avgImportance) }}
                     >
                       <div className="ad-heatmap-cell__symbol">
-                        {row.symbol}
+                        <InstrumentCodeTag
+                          code={row.symbol}
+                          name={row.name ?? undefined}
+                          name_zh={row.name_zh}
+                        />
                       </div>
                       <div className="ad-heatmap-cell__row">
                         <span
@@ -491,7 +522,7 @@ export default function SentimentOverview() {
                   </div>
                   <div>
                     <div className="ad-text-small ad-text-tertiary">
-                      多空比
+                      <HelpPopover termKey="bull_bear_ratio">多空比</HelpPopover>
                     </div>
                     <div className="ad-text-primary ad-font-medium ad-mb-2">
                       {selected.bear > 0
@@ -539,7 +570,16 @@ export default function SentimentOverview() {
                 {topMovers.map((row) => (
                   <div
                     key={row.symbol}
+                    role="button"
+                    tabIndex={0}
+                    aria-label={`选中 ${row.symbol} (情绪分数 ${row.score?.toFixed(2) ?? '—'})`}
                     onClick={() => setSelectedSymbol(row.symbol)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        setSelectedSymbol(row.symbol);
+                      }
+                    }}
                     className="ad-mover-row"
                   >
                     {(row.score ?? 0) >= 0 ? (
@@ -548,7 +588,11 @@ export default function SentimentOverview() {
                       <ArrowDownOutlined className="ad-mover-arrow--down" />
                     )}
                     <span className="ad-mover-name">
-                      {row.symbol}
+                      <InstrumentCodeTag
+                        code={row.symbol}
+                        name={row.name ?? undefined}
+                        name_zh={row.name_zh}
+                      />
                     </span>
                     <span
                       className={`ad-mover-score ${row.label ? `ad-mover-score--${row.label}` : 'ad-mover-score--neutral'}`}

@@ -8,8 +8,10 @@ import Panel from '@/components/Panel';
 import PageHeader from '@/components/PageHeader';
 import StatCard from '@/components/StatCard';
 import EmptyState from '@/components/EmptyState';
+import InstrumentCodeTag from '@/components/InstrumentCodeTag';
 import ResponsiveGrid from '@/components/ResponsiveGrid';
 import LastUpdated from '@/components/LastUpdated';
+import HelpPopover from '@/components/HelpPopover';
 import {
   useFuturesDashboard,
   useFuturesLeaderboard,
@@ -76,9 +78,9 @@ function BarTable({ bars, showHeader = false, maxRows = 10 }: BarTableProps) {
     {
       title: '代码',
       dataIndex: 'code',
-      width: 80,
-      render: (v: string) => (
-        <span className="tabular-nums font-mono">{v}</span>
+      width: 120,
+      render: (v: string, record: FuturesDailyBarOut) => (
+        <InstrumentCodeTag code={v} name={record.name} />
       ),
     },
     {
@@ -92,7 +94,7 @@ function BarTable({ bars, showHeader = false, maxRows = 10 }: BarTableProps) {
       ),
     },
     {
-      title: '结算',
+      title: <HelpPopover termKey="settle">结算</HelpPopover>,
       dataIndex: 'settle',
       width: 90,
       render: (v: string | null) => (
@@ -140,13 +142,13 @@ function ProductSummary({ section }: ProductSummaryProps) {
   if (!section) {
     return (
       <Row gutter={16}>
-        <Col span={8}>
-          <Statistic title="主力合约数" value={0} />
+        <Col xs={24} sm={8}>
+          <Statistic title={<HelpPopover termKey="dominant_contract">主力合约数</HelpPopover>} value={0} />
         </Col>
-        <Col span={8}>
+        <Col xs={24} sm={8}>
           <Statistic title="涨幅最大" value="-" />
         </Col>
-        <Col span={8}>
+        <Col xs={24} sm={8}>
           <Statistic title="跌幅最大" value="-" />
         </Col>
       </Row>
@@ -157,10 +159,10 @@ function ProductSummary({ section }: ProductSummaryProps) {
 
   return (
     <Row gutter={16}>
-      <Col span={8}>
-        <Statistic title="主力合约数" value={count} />
+      <Col xs={24} sm={8}>
+        <Statistic title={<HelpPopover termKey="dominant_contract">主力合约数</HelpPopover>} value={count} />
       </Col>
-      <Col span={8}>
+      <Col xs={24} sm={8}>
         <Statistic
           title={
             <Tooltip title="当日涨幅最大合约">
@@ -168,6 +170,13 @@ function ProductSummary({ section }: ProductSummaryProps) {
             </Tooltip>
           }
           value={best_performer?.code ?? '-'}
+          valueRender={() =>
+            best_performer ? (
+              <InstrumentCodeTag code={best_performer.code} name={best_performer.name} />
+            ) : (
+              '-'
+            )
+          }
           suffix={
             best_performer ? (
               <span className="ad-statistic-suffix" style={{ color: changeColor(best_performer.settle_change_pct) }}>
@@ -179,7 +188,7 @@ function ProductSummary({ section }: ProductSummaryProps) {
           }
         />
       </Col>
-      <Col span={8}>
+      <Col xs={24} sm={8}>
         <Statistic
           title={
             <Tooltip title="当日跌幅最大合约">
@@ -187,6 +196,13 @@ function ProductSummary({ section }: ProductSummaryProps) {
             </Tooltip>
           }
           value={worst_performer?.code ?? '-'}
+          valueRender={() =>
+            worst_performer ? (
+              <InstrumentCodeTag code={worst_performer.code} name={worst_performer.name} />
+            ) : (
+              '-'
+            )
+          }
           suffix={
             worst_performer ? (
               <span className="ad-statistic-suffix" style={{ color: changeColor(worst_performer.settle_change_pct) }}>
@@ -226,7 +242,7 @@ function ProductTab({ product, section }: TabContentProps) {
 
       <div className="phase5c-section">
         <Row gutter={16}>
-          <Col span={12}>
+          <Col xs={24} md={12}>
             <Card
               size="small"
               className="ad-table-card"
@@ -240,7 +256,7 @@ function ProductTab({ product, section }: TabContentProps) {
               {gainers.length === 0 ? <EmptyState title="暂无数据" /> : <BarTable bars={gainers} />}
             </Card>
           </Col>
-          <Col span={12}>
+          <Col xs={24} md={12}>
             <Card
               size="small"
               className="ad-table-card"
@@ -302,8 +318,8 @@ export default function Futures() {
     ),
   }));
 
-  const totalUp = (gainers?.items ?? []).slice(0, 1)[0]?.code;
-  const totalDown = (losers?.items ?? []).slice(0, 1)[0]?.code;
+  const topGainer = (gainers?.items ?? [])[0];
+  const topLoser = (losers?.items ?? [])[0];
   const latestDate = dashboard?.trade_date ?? stats?.latest_trade_date ?? null;
 
   return (
@@ -334,7 +350,21 @@ export default function Futures() {
             />
             <StatCard
               title="领头羊 / 领跌"
-              value={totalUp && totalDown ? `${totalUp} / ${totalDown}` : (totalUp ?? totalDown ?? '-')}
+              value={
+                topGainer && topLoser ? (
+                  <span className="ad-flex ad-gap-2 ad-items-center">
+                    <InstrumentCodeTag code={topGainer.code} name={topGainer.name} />
+                    <span>/</span>
+                    <InstrumentCodeTag code={topLoser.code} name={topLoser.name} />
+                  </span>
+                ) : topGainer ? (
+                  <InstrumentCodeTag code={topGainer.code} name={topGainer.name} />
+                ) : topLoser ? (
+                  <InstrumentCodeTag code={topLoser.code} name={topLoser.name} />
+                ) : (
+                  '-'
+                )
+              }
             />
           </ResponsiveGrid>
         </Panel>

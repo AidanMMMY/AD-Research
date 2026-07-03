@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useParams } from 'react-router-dom';
 
 const Login = lazy(() => import('./pages/Login'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
@@ -45,6 +45,8 @@ const SearchTrends = lazy(() => import('./pages/SearchTrends'));
 const ResearchReports = lazy(() => import('./pages/ResearchReports'));
 const Futures = lazy(() => import('./pages/Futures'));
 const CninfoReports = lazy(() => import('./pages/CninfoReports'));
+const GlobalMarkets = lazy(() => import('./pages/GlobalMarkets'));
+const Learning = lazy(() => import('./pages/Learning'));
 
 export interface RouteConfig {
   path: string;
@@ -64,6 +66,11 @@ const wrap = (Component: React.ComponentType) => (
   </Suspense>
 );
 
+const LegacyEtfRedirect = () => {
+  const { code } = useParams<{ code: string }>();
+  return <Navigate to={`/instruments/${code}`} replace />;
+};
+
 export const routes: RouteConfig[] = [
   { path: '/login', element: wrap(Login), auth: false },
   // === 首页与数据 ===
@@ -72,7 +79,7 @@ export const routes: RouteConfig[] = [
   { path: '/instruments/:code', element: wrap(InstrumentDetail), auth: true },
   // Backward-compatible redirects
   { path: '/etfs', element: <Navigate to="/instruments" replace />, auth: true },
-  { path: '/etfs/:code', element: <Navigate to="/instruments/:code" replace />, auth: true },
+  { path: '/etfs/:code', element: <LegacyEtfRedirect />, auth: true },
   // ---- 个股（合并到标的列表，通过 instrument_type=STOCK 筛选） ----
   { path: '/stocks', element: wrap(StocksList), auth: true },
   { path: '/stocks/:code', element: wrap(StockDetail), auth: true },
@@ -91,11 +98,14 @@ export const routes: RouteConfig[] = [
   { path: '/reports', element: wrap(ReportBrowser), auth: true, menu: { name: '报告浏览', icon: 'FileTextOutlined', dividerBefore: true } },
   { path: '/research-reports', element: wrap(ResearchReports), auth: true, menu: { name: '研报库', icon: 'FilePdfOutlined' } },
   { path: '/cninfo-reports', element: wrap(CninfoReports), auth: true, menu: { name: '巨潮报告', icon: 'FilePdfOutlined' } },
+  // === K14 新手教学（不在左侧菜单，由 dashboard chip / 用户菜单进入） ===
+  { path: '/learning', element: wrap(Learning), auth: true },
   { path: '/sec-filings', element: wrap(SECFilings), auth: true, menu: { name: 'SEC 公告', icon: 'BankOutlined' } },
   { path: '/microstructure', element: wrap(Microstructure), auth: true, menu: { name: '微结构数据', icon: 'FundOutlined' } },
   { path: '/search-trends', element: wrap(SearchTrends), auth: true, menu: { name: '搜索热度', icon: 'FireOutlined' } },
   { path: '/listing-preview', element: wrap(ListingPreview), auth: true, menu: { name: '上市预告', icon: 'CalendarOutlined' } },
   { path: '/futures', element: wrap(Futures), auth: true, menu: { name: '商品期货', icon: 'BlockOutlined' } },
+  { path: '/global', element: wrap(GlobalMarkets), auth: true, menu: { name: '全球市场', icon: 'GlobalOutlined' } },
   // === 资讯与 AI ===
   { path: '/news', element: wrap(NewsFeed), auth: true, menu: { name: '资讯', icon: 'ReadOutlined', dividerBefore: true } },
   { path: '/news/:id', element: wrap(NewsDetail), auth: true },

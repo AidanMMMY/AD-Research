@@ -7,6 +7,7 @@ import React from 'react';
  *     eyebrow="ETF投研"
  *     title="评分排名"
  *     description="查看全市场标的综合评分排名..."
+ *     tutorial={<span>...</span>}     // K15: 新手教学"怎么读这个页"
  *     extra={<Button>导出</Button>}
  *   />
  *
@@ -26,7 +27,16 @@ export interface PageHeaderProps {
   breadcrumb?: React.ReactNode;
   /** Compact variant — used on tabs / detail sub-pages where vertical space is tight. */
   compact?: boolean;
+  /**
+   * K15: 新手教学槽。1-3 句话说明"怎么读这个页面"。
+   * 当 useSettingsStore().mode === 'novice' 时显示，或当页面显式传入时常驻。
+   */
+  tutorial?: React.ReactNode;
+  /** 强制教学槽显隐，覆盖 settings.mode 默认行为。 */
+  tutorialForce?: boolean;
 }
+
+import { useSettingsStore } from '@/stores/settings';
 
 export default function PageHeader({
   eyebrow,
@@ -35,7 +45,13 @@ export default function PageHeader({
   extra,
   breadcrumb,
   compact = false,
+  tutorial,
+  tutorialForce,
 }: PageHeaderProps) {
+  // K15: 默认依据 settings.mode：novice 时显示；显式传 tutorialForce 可覆盖。
+  const settingsMode = useSettingsStore((s) => s.mode);
+  const showTutorial = tutorialForce ?? (settingsMode === 'novice' && !!tutorial);
+
   return (
     <header className="page-header" data-compact={compact || undefined}>
       {breadcrumb ? (
@@ -46,6 +62,9 @@ export default function PageHeader({
           {eyebrow ? <div className="page-header-eyebrow">{eyebrow}</div> : null}
           <h1 className="page-header-title">{title}</h1>
           {description ? <p className="page-header-description">{description}</p> : null}
+          {showTutorial && tutorial ? (
+            <div className="page-header-tutorial">{tutorial}</div>
+          ) : null}
         </div>
         {extra ? <div className="page-header-extra">{extra}</div> : null}
       </div>

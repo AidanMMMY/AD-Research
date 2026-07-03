@@ -2,7 +2,7 @@ import { Tooltip } from 'antd';
 
 interface InstrumentCodeTagProps {
   code: string;
-  name?: string;
+  name?: string | null;
   /** Optional Chinese display name (shown as a smaller grey line under the English name). */
   name_zh?: string | null;
 }
@@ -14,7 +14,7 @@ export default function InstrumentCodeTag({ code, name, name_zh }: InstrumentCod
 
   return (
     <Tooltip title={tooltipBody}>
-      <div className="instrument-code-tag">
+      <span className="instrument-code-tag">
         <span className="instrument-code-tag__code">
           {code}
         </span>
@@ -28,7 +28,7 @@ export default function InstrumentCodeTag({ code, name, name_zh }: InstrumentCod
             {name_zh}
           </span>
         )}
-      </div>
+      </span>
     </Tooltip>
   );
 }

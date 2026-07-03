@@ -110,10 +110,10 @@ export default function BacktestDetail() {
   };
 
   const kpiItems = [
-    { label: '总收益', value: metrics.total_return, suffix: '%', color: metrics.total_return >= 0 ? 'detail-kpi-rise' : 'detail-kpi-fall' },
-    { label: '夏普比率', value: metrics.sharpe_ratio, suffix: undefined, color: 'detail-kpi-accent' },
-    { label: '最大回撤', value: metrics.max_drawdown, suffix: '%', color: 'detail-kpi-fall' },
-    { label: '胜率', value: metrics.win_rate, suffix: '%', color: 'detail-kpi-accent' },
+    { label: '总收益', value: metrics.total_return, suffix: '%', color: metrics.total_return >= 0 ? 'detail-kpi-rise' : 'detail-kpi-fall', term: 'total_return' },
+    { label: '夏普比率', value: metrics.sharpe_ratio, suffix: undefined, color: 'detail-kpi-accent', term: 'sharpe_ratio' },
+    { label: '最大回撤', value: metrics.max_drawdown, suffix: '%', color: 'detail-kpi-fall', term: 'max_drawdown_1y' },
+    { label: '胜率', value: metrics.win_rate, suffix: '%', color: 'detail-kpi-accent', term: 'win_rate' },
   ];
 
   const tradeColumns = [
@@ -279,6 +279,13 @@ export default function BacktestDetail() {
             data.created_at ? `创建于 ${formatDateTime(data.created_at)}` : null,
           ].filter(Boolean).join(' · ')
         }
+        tutorial={
+          <span>
+            先看顶部 4 个核心指标（总收益 / 夏普 / 最大回撤 / 胜率），再切到"净值曲线"看策略随时间的平稳度。
+            关注是否有连续回撤期，这往往比最终收益更能预测未来表现。
+          </span>
+        }
+        tutorialForce
         extra={<HelpTrigger tooltip="AI 解释回测指标" onClick={handleOpenHelp} />}
       />
 
@@ -290,6 +297,7 @@ export default function BacktestDetail() {
               title={kpi.label}
               value={kpi.value != null ? formatSigned(kpi.value) : '—'}
               suffix={kpi.suffix}
+              term={kpi.term}
             />
           </div>
         ))}

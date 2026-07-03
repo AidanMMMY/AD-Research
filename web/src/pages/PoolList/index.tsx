@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Table, Button, Modal, Form, Input, message } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
-import { useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { usePoolList } from '@/hooks/usePoolDetail';
 import { useDensity } from '@/hooks/useDensity';
 import { poolApi } from '@/api';
@@ -10,25 +10,31 @@ import PageShell from '@/components/PageShell';
 import PageHeader from '@/components/PageHeader';
 import FilterToolbar from '@/components/FilterToolbar';
 import Panel from '@/components/Panel';
+import EmptyState from '@/components/EmptyState';
 
 export default function PoolList() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { density } = useDensity();
-  const { data: pools } = usePoolList();
+  const { data: pools, isLoading: poolsLoading } = usePoolList();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [form] = Form.useForm();
 
-  const handleCreate = async (values: { name: string; description?: string }) => {
-    try {
-      await poolApi.create(values);
+  const createMutation = useMutation({
+    mutationFn: (values: { name: string; description?: string }) => poolApi.create(values),
+    onSuccess: () => {
       message.success('创建成功');
       setIsModalOpen(false);
       form.resetFields();
       queryClient.invalidateQueries({ queryKey: ['pools'], exact: false });
-    } catch {
+    },
+    onError: () => {
       message.error('创建失败');
-    }
+    },
+  });
+
+  const handleCreate = async (values: { name: string; description?: string }) => {
+    createMutation.mutate(values);
   };
 
   const rowSize = density === 'dense' ? 'small' : density === 'spacious' ? 'large' : 'middle';
@@ -50,7 +56,7 @@ export default function PoolList() {
     <PageShell maxWidth="wide">
       <PageHeader
         title="标的池管理"
-        description="创建和管理自定义标的池，组织您关注的标的组合"
+        description="管理中长期目标组合：设定成员、目标权重、算法建议（等权/评分加权/风险平价）、快照与再平衡提醒。注：标的池是目标配置，不是实际持仓——实际持仓请到「模拟交易」或「真实交易」页面查看。"
       />
 
       <FilterToolbar
@@ -71,10 +77,24 @@ export default function PoolList() {
           rowKey="id"
           size={rowSize as any}
           scroll={{ x: 'max-content' }}
+          loading={poolsLoading}
           onRow={(record) => ({
             onClick: () => navigate(`/pools/${record.id}`),
           })}
           pagination={false}
+          locale={{
+            emptyText: poolsLoading ? '加载中...' : (
+              <EmptyState
+                title="暂无标的池"
+                description="点击右上角「新建池」创建第一个标的池"
+                action={
+                  <Button type="primary" icon={<PlusOutlined />} onClick={() => setIsModalOpen(true)}>
+                    新建池
+                  </Button>
+                }
+              />
+            ),
+          }}
         />
       </Panel>
 
@@ -83,6 +103,7 @@ export default function PoolList() {
         open={isModalOpen}
         onCancel={() => setIsModalOpen(false)}
         onOk={() => form.submit()}
+        confirmLoading={createMutation.isPending}
       >
         <Form form={form} onFinish={handleCreate} layout="vertical">
           <Form.Item name="name" label="名称" rules={[{ required: true }]}>

@@ -20,6 +20,7 @@ export type ScoreTemplateUpdate = Partial<ScoreTemplateCreate>;
 export interface InstrumentScore {
   etf_code: string;
   etf_name?: string;
+  name_zh?: string | null;
   market?: string;
   category?: string;
   trade_date: string;

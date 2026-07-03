@@ -28,6 +28,7 @@ export interface PaperOrder {
   id: number;
   account_id: number;
   instrument_code: string;
+  instrument_name?: string | null;
   order_type: 'BUY' | 'SELL';
   price: number | null;
   quantity: number;
@@ -130,6 +131,7 @@ export interface LiveOrder {
   config_id: number;
   order_id_from_exchange: string | null;
   instrument_code: string;
+  instrument_name?: string | null;
   side: 'BUY' | 'SELL';
   order_type: 'LIMIT' | 'MARKET';
   price: number | null;
@@ -147,6 +149,7 @@ export interface LivePosition {
   id: number;
   config_id: number;
   instrument_code: string;
+  instrument_name?: string | null;
   quantity: number;
   avg_cost: number;
   current_price: number | null;

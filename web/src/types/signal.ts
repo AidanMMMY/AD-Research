@@ -7,6 +7,7 @@ export interface Signal {
   strategy_type?: string;
   etf_code: string;
   etf_name?: string;
+  name_zh?: string | null;
   trade_date?: string;
   signal_type: SignalType;
   strength?: number;

@@ -3,6 +3,8 @@ import { Popover, Button } from 'antd';
 import { InfoCircleOutlined, RobotOutlined, BookOutlined } from '@ant-design/icons';
 import { getTerm } from '@/utils/termDictionary';
 import { useAIHelp } from '@/hooks/useAIHelp';
+import { useIsMobile } from '@/hooks/useBreakpoint';
+import { useSettingsStore } from '@/stores/settings';
 import type { HelpContext } from '@/types/help';
 
 interface HelpPopoverProps {
@@ -18,18 +20,29 @@ interface HelpPopoverProps {
   style?: React.CSSProperties;
   /** 是否启用，默认 true */
   enabled?: boolean;
+  /**
+   * K14: 教学模式覆盖。默认从 useSettingsStore 读取。
+   *   - novice: 显示更长 fullDesc + example + interpretation
+   *   - pro:    仅显示 fullDesc
+   */
+  mode?: 'novice' | 'pro';
 }
 
 export default function HelpPopover({
   termKey,
   children,
   contextData = '',
-  trigger = 'hover',
+  trigger,
   style,
   enabled = true,
+  mode: modeOverride,
 }: HelpPopoverProps) {
   const { open } = useAIHelp();
+  const isMobile = useIsMobile();
+  const settingsMode = useSettingsStore((s) => s.mode);
+  const mode = modeOverride ?? settingsMode;
   const term = getTerm(termKey);
+  const effectiveTrigger = trigger ?? (isMobile ? 'click' : 'hover');
 
   const handleAskAI = (
     title: string,
@@ -49,7 +62,12 @@ export default function HelpPopover({
       signal_dashboard: '交易信号',
     };
 
-    const question = `请详细解释"${title}"这个概念。${shortDesc}`;
+    // K14: novice 模式下给 AI 教学助手额外的「为什么需要看」上下文
+    const novicePrefix =
+      mode === 'novice'
+        ? '我是一个新手，请先简单解释这个概念的现实意义，再给一个具体例子。'
+        : '';
+    const question = `${novicePrefix}请详细解释"${title}"这个概念。${shortDesc}`.trim();
     const fullContext = ctx
       ? `当前页面上下文：\n${ctx}\n\n用户想了解的术语：${title}`
       : `用户想了解的术语：${title}`;
@@ -70,6 +88,9 @@ export default function HelpPopover({
   const content = useMemo(() => {
     if (!term) return null;
 
+    // K14: novice 模式展示三段（why / what / how），pro 模式只展示一段。
+    const showNovice = mode === 'novice';
+
     return (
       <div className="help-popover">
         {/* Header */}
@@ -78,6 +99,9 @@ export default function HelpPopover({
             <BookOutlined className="help-popover__icon" />
           </div>
           <span className="help-popover__title">{term.title}</span>
+          {showNovice && (
+            <span className="help-popover__mode-badge">新手模式</span>
+          )}
         </div>
 
         {/* Short description / full description */}
@@ -99,10 +123,10 @@ export default function HelpPopover({
           </div>
         )}
 
-        {/* Example */}
+        {/* Example — novice 模式下突出 */}
         {term.example && (
           <div className="help-popover__section help-popover__section--spaced">
-            <span className="help-popover__caption">案例：</span>
+            <span className="help-popover__caption">{showNovice ? '举个例子：' : '案例：'}</span>
             <span className="help-popover__text">{term.example}</span>
           </div>
         )}
@@ -121,12 +145,12 @@ export default function HelpPopover({
             }
             className="help-popover__ask-btn"
           >
-            问 AI
+            {showNovice ? '让 AI 再讲明白一点' : '问 AI'}
           </Button>
         </div>
       </div>
     );
-  }, [term, contextData]);
+  }, [term, contextData, mode]);
 
   if (!enabled || !term) {
     return <span style={style}>{children}</span>;
@@ -135,9 +159,9 @@ export default function HelpPopover({
   return (
     <Popover
       content={content}
-      trigger={trigger}
+      trigger={effectiveTrigger}
       placement="top"
-      overlayStyle={{ width: 'auto', maxWidth: 380 }}
+      overlayStyle={{ width: 'auto', maxWidth: 'min(380px, 85vw)' }}
     >
       <span
         className="help-popover__trigger"

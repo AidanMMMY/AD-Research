@@ -10,6 +10,7 @@ import FilterToolbar from '@/components/FilterToolbar';
 import EmptyState from '@/components/EmptyState';
 import InstrumentSelector from '@/components/InstrumentSelector';
 import ReturnCurve from '@/components/ReturnCurve';
+import HelpPopover from '@/components/HelpPopover';
 
 const TIME_RANGE_OPTIONS = [
   { label: '1月', value: 30 },
@@ -118,8 +119,12 @@ export default function ReturnComparison() {
                 optionType="button"
                 buttonStyle="solid"
               >
-                <Radio.Button value="normalized">归一化</Radio.Button>
-                <Radio.Button value="percentage">日收益</Radio.Button>
+                <Radio.Button value="normalized">
+                  <HelpPopover termKey="normalized_return">归一化</HelpPopover>
+                </Radio.Button>
+                <Radio.Button value="percentage">
+                  <HelpPopover termKey="daily_return">日收益</HelpPopover>
+                </Radio.Button>
               </Radio.Group>
             </Col>
           </Row>

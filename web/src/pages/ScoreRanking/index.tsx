@@ -74,7 +74,7 @@ export default function ScoreRanking() {
     },
     {
       title: '标的',
-      render: (_: unknown, record: any) => <InstrumentCodeTag code={record.etf_code} name={record.etf_name} />,
+      render: (_: unknown, record: any) => <InstrumentCodeTag code={record.etf_code} name={record.etf_name} name_zh={record.name_zh} />,
     },
     {
       title: <HelpPopover termKey="composite_score">综合评分</HelpPopover>,
@@ -126,7 +126,7 @@ export default function ScoreRanking() {
             <ResponsiveGrid cols={4} gap="md" className="dashboard-section">
               <Panel variant="default" className="score-summary-card">
                 <div className="score-summary-card__label">榜首标的</div>
-                <InstrumentCodeTag code={scoresData.items[0].etf_code} name={scoresData.items[0].etf_name} />
+                <InstrumentCodeTag code={scoresData.items[0].etf_code} name={scoresData.items[0].etf_name} name_zh={scoresData.items[0].name_zh} />
                 <div className="tabular-nums score-summary-card__value score-summary-card__value--spaced">
                   {scoresData.items[0].composite_score?.toFixed(1) ?? '—'}
                 </div>
@@ -191,7 +191,7 @@ export default function ScoreRanking() {
               scroll={{ x: 'max-content' }}
               pagination={false}
               onRow={(record) => ({
-                onClick: () => navigate(`/etfs/${record.etf_code}`),
+                onClick: () => navigate(`/instruments/${record.etf_code}`),
               })}
             />
           </Panel>

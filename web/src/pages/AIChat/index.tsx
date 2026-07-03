@@ -287,7 +287,7 @@ export default function AIChat() {
               icon={<SendOutlined />}
               onClick={handleSend}
               loading={sending}
-              disabled={!input.trim()}
+              disabled={sending || !input.trim()}
             />
           </div>
         </div>

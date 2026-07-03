@@ -41,6 +41,7 @@ export interface ResearchReportListParams {
   ts_code?: string;
   industry?: string;
   org_name?: string;
+  rating?: string;
   start_date?: string;
   end_date?: string;
   has_summary?: boolean;
@@ -67,6 +68,7 @@ function buildQueryString(params: ResearchReportListParams | undefined): string 
   append('ts_code', params.ts_code);
   append('industry', params.industry);
   append('org_name', params.org_name);
+  append('rating', params.rating);
   append('start_date', params.start_date);
   append('end_date', params.end_date);
   if (params.has_summary !== undefined) append('has_summary', params.has_summary);

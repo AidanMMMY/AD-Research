@@ -109,11 +109,11 @@ export default function TickerTape({
               className={`ticker-cell tabular-nums ${dirClass}`}
               role="button"
               tabIndex={0}
-              onClick={() => navigate(`/etfs/${item.code}`)}
+              onClick={() => navigate(`/instruments/${item.code}`)}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' || e.key === ' ') {
                   e.preventDefault();
-                  navigate(`/etfs/${item.code}`);
+                  navigate(`/instruments/${item.code}`);
                 }
               }}
             >

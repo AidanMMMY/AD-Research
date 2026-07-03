@@ -11,6 +11,7 @@ import PageShell from '@/components/PageShell';
 import PageHeader from '@/components/PageHeader';
 import Panel from '@/components/Panel';
 import ResponsiveGrid from '@/components/ResponsiveGrid';
+import HelpPopover from '@/components/HelpPopover';
 import { getReturnColor, getUpColor, getDownColor } from '@/utils/color';
 
 /**
@@ -90,26 +91,26 @@ export default function SectorRotation() {
   }, [sectors]);
 
   const columns = [
-    { title: '排名', dataIndex: 'momentum_rank', width: 60 },
+    { title: <HelpPopover termKey="momentum_rank">排名</HelpPopover>, dataIndex: 'momentum_rank', width: 60 },
     { title: '板块', dataIndex: 'category' },
     { title: '标的数量', dataIndex: 'count', width: 80 },
     {
-      title: '1月收益',
+      title: <HelpPopover termKey="return_1m">1月收益</HelpPopover>,
       dataIndex: 'return_1m',
       render: (v: number) => <ReturnTag value={v} />,
       width: 100,
     },
     {
-      title: '3月收益',
+      title: <HelpPopover termKey="return_3m">3月收益</HelpPopover>,
       dataIndex: 'return_3m',
       render: (v: number) => <ReturnTag value={v} />,
       width: 100,
     },
-    { title: '夏普', dataIndex: 'sharpe_1y', width: 80 },
-    { title: '波动率', dataIndex: 'volatility_20d', render: (v: number) => `${(v * 100).toFixed(1)}%`, width: 90 },
-    { title: 'RSI', dataIndex: 'rsi14', width: 70 },
+    { title: <HelpPopover termKey="sharpe_1y">夏普</HelpPopover>, dataIndex: 'sharpe_1y', width: 80 },
+    { title: <HelpPopover termKey="volatility_20d">波动率</HelpPopover>, dataIndex: 'volatility_20d', render: (v: number) => `${(v * 100).toFixed(1)}%`, width: 90 },
+    { title: <HelpPopover termKey="rsi14">RSI</HelpPopover>, dataIndex: 'rsi14', width: 70 },
     {
-      title: '相对强弱',
+      title: <HelpPopover termKey="relative_strength">相对强弱</HelpPopover>,
       dataIndex: 'relative_strength_1m',
       render: (v: number) => {
         let variant: 'rise' | 'fall' | 'neutral' = 'neutral';
@@ -155,7 +156,7 @@ export default function SectorRotation() {
       </div>
 
       {signals.length > 0 && (
-        <Panel title="轮动信号" variant="default" className="ad-mb-4">
+        <Panel title={<HelpPopover termKey="rotation_signal">轮动信号</HelpPopover>} variant="default" className="ad-mb-4">
           <Space direction="vertical" className="ad-stack-full">
             {signals.map((signal, idx) => (
               <Alert

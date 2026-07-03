@@ -5,15 +5,17 @@ export interface LoginRequest {
   password: string;
 }
 
+export interface UserProfile {
+  id: number;
+  username: string;
+  role: 'admin' | 'user';
+}
+
 export interface LoginResponse {
   access_token: string;
   refresh_token: string;
   token_type: string;
-  user: {
-    id: number;
-    username: string;
-    role: string;
-  };
+  user: UserProfile;
 }
 
 export interface RefreshResponse {
@@ -30,7 +32,7 @@ export interface DeviceInfo {
 
 export const authApi = {
   login: (data: LoginRequest) => client.post<LoginResponse>('/auth/login', data),
-  me: () => client.get<{ id: number; username: string; role: string }>('/auth/me'),
+  me: () => client.get<UserProfile>('/auth/me'),
   refresh: (refreshToken: string) =>
     client.post<RefreshResponse>('/auth/refresh', { refresh_token: refreshToken }),
   logout: () => client.post('/auth/logout'),

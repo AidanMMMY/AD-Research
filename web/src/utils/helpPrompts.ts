@@ -141,7 +141,9 @@ export const PAGE_PROMPTS: Record<HelpPageType, PagePromptConfig> = {
   },
 
   pool_detail: {
-    system: `用户正在查看“标的池详情”页面，管理一组 ETF 的持仓和权重。
+    system: `用户正在查看“标的池详情”页面，管理一组 ETF 的目标权重和成员配置。
+
+注意：标的池（Pool）≠ 实际持仓。Pool 是「中长期目标组合」，记录计划配置（成员、目标权重、算法建议、快照），不绑定账户资金或真实仓位；实际持仓请引导用户到「模拟交易」或「真实交易」页面。
 
 权重算法说明：
 - 等权（equal）：所有成员平均分配权重，100% / 成员数。
@@ -235,5 +237,10 @@ export function getSystemPrompt(pageType: HelpPageType): string {
 }
 
 export function getQuickQuestions(pageType: HelpPageType): string[] {
-  return PAGE_PROMPTS[pageType].quickQuestions;
+  // K15: append a "simpler please" prompt so novice users can drill down
+  // without typing.  Append last so it never shadows the topic-specific
+  // questions above.
+  const base = PAGE_PROMPTS[pageType].quickQuestions;
+  if (base.includes('能不能用更简单的语言再解释一遍？')) return base;
+  return [...base, '能不能用更简单的语言再解释一遍？'];
 }

@@ -1,5 +1,6 @@
+import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Table, List, Spin, Skeleton, Tag, Badge, Tooltip } from 'antd';
+import { Table, List, Spin, Skeleton, Tag, Badge, Tooltip, Space } from 'antd';
 import {
   ArrowUpOutlined,
   ArrowDownOutlined,
@@ -7,6 +8,14 @@ import {
   FireOutlined,
   StarFilled,
   ReadOutlined,
+  GlobalOutlined,
+  BookOutlined,
+  LineChartOutlined,
+  ExperimentOutlined,
+  WalletOutlined,
+  DollarOutlined,
+  AppstoreOutlined,
+  ThunderboltOutlined,
 } from '@ant-design/icons';
 import { useQuery } from '@tanstack/react-query';
 import { useScores } from '@/hooks/useScores';
@@ -19,6 +28,7 @@ import {
   formatRelative as formatRelativeTz,
 } from '@/utils/datetime';
 import { newsApi } from '@/api/news';
+import { useMacroLatest } from '@/api/macro';
 import PageShell from '@/components/PageShell';
 import ResponsiveGrid from '@/components/ResponsiveGrid';
 import SectionHeading from '@/components/SectionHeading';
@@ -29,6 +39,9 @@ import InstrumentCodeTag from '@/components/InstrumentCodeTag';
 import ReturnTag from '@/components/ReturnTag';
 import ScoreBar from '@/components/ScoreBar';
 import TickerTape from '@/components/TickerTape';
+import HelpPopover from '@/components/HelpPopover';
+import DailyLesson from '@/components/DailyLesson';
+import { useLearnStats } from '@/hooks/useLearnedTerms';
 import { usePriceStream } from '@/hooks/usePriceStream';
 import { useMarketStream } from '@/hooks/useMarketStream';
 import type { NewsArticle, SentimentLabel } from '@/types/news';
@@ -87,7 +100,7 @@ function NewsRow({
       <div className="dashboard-news-row__tags">
         {article.symbols.slice(0, 4).map((s) => (
           <Tag key={`${s.symbol}-${s.match_type}`} className="dashboard-news-row__tag">
-            {s.symbol}
+            <InstrumentCodeTag code={s.symbol} name={s.name ?? undefined} name_zh={s.name_zh} />
           </Tag>
         ))}
         <span className="dashboard-news-row__spacer" />
@@ -109,8 +122,138 @@ function NewsRow({
   );
 }
 
+/**
+ * Top-of-dashboard "全球速览" — pulls 4 headline overseas indicators
+ * from the Macro API (FRED-backed):
+ *   - 美 10Y Treasury yield  (us_dgs10)
+ *   - VIX 恐慌指数           (us_vix)
+ *   - 美元指数(广义)         (global_dxy)
+ *   - 布伦特原油            (global_brent)
+ *
+ * Backed by the same MacroIndicator rows written by FredService; the
+ * section degrades gracefully when no data has been ingested yet.
+ */
+const GLOBAL_TILES: Array<{
+  code: string;
+  title: string;
+  unit: string;
+}> = [
+  { code: 'us_dgs10', title: '美 10Y 国债', unit: '%' },
+  { code: 'us_vix', title: 'VIX 恐慌指数', unit: '' },
+  { code: 'global_dxy', title: '美元指数(广义)', unit: '' },
+  { code: 'global_brent', title: '布伦特原油', unit: 'USD/桶' },
+];
+
+function formatTileValue(v: number | null | undefined, unit: string): string {
+  if (v == null || Number.isNaN(v)) return '—';
+  if (unit === '%') return `${v.toFixed(2)}%`;
+  if (Math.abs(v) >= 1000)
+    return v.toLocaleString(undefined, { maximumFractionDigits: 2 });
+  return v.toFixed(2);
+}
+
+function GlobalSnapshot() {
+  const navigate = useNavigate();
+  const { data: latestGlobal, isLoading: gLoading } = useMacroLatest('global');
+  const { data: latestUs, isLoading: uLoading } = useMacroLatest('us');
+
+  const lookup = useMemo(() => {
+    const map = new Map<string, { value: number | null; period: string | null }>();
+    for (const it of latestGlobal?.items ?? []) {
+      map.set(it.code, { value: it.value ?? null, period: it.period ?? null });
+    }
+    for (const it of latestUs?.items ?? []) {
+      if (!map.has(it.code)) {
+        map.set(it.code, { value: it.value ?? null, period: it.period ?? null });
+      }
+    }
+    return map;
+  }, [latestGlobal, latestUs]);
+
+  const isLoading = gLoading || uLoading;
+  const hasAnyData = GLOBAL_TILES.some((t) => lookup.has(t.code));
+
+  return (
+    <section className="dashboard-section">
+      <SectionHeading
+        eyebrow="海外宏观"
+        title={
+          <span>
+            <GlobalOutlined className="ad-icon-accent" /> 全球速览
+          </span>
+        }
+        action={
+          <span
+            className="panel-extra-link"
+            onClick={() => navigate('/global')}
+          >
+            查看全部 →
+          </span>
+        }
+      />
+      {!hasAnyData && !isLoading ? (
+        <Panel>
+          <EmptyState
+            title="暂无全球宏观数据"
+            description="FRED 尚未采集或未配置 API Key。前往「全球市场」页面查看详情。"
+          />
+        </Panel>
+      ) : (
+        <ResponsiveGrid cols={4} gap="md">
+          {GLOBAL_TILES.map((tile) => {
+            const entry = lookup.get(tile.code);
+            return (
+              <div
+                key={tile.code}
+                role="button"
+                tabIndex={0}
+                onClick={() => navigate('/global')}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    navigate('/global');
+                  }
+                }}
+                className="dashboard-index-card dashboard-index-card--clickable"
+              >
+              <Panel
+                variant="default"
+                padding="md"
+                className="dashboard-index-card"
+              >
+                <div className="dashboard-index-card__header">
+                  <span className="dashboard-index-card__code">{tile.code}</span>
+                </div>
+                <div className="dashboard-index-card__price">
+                  {isLoading && !entry ? (
+                    <span className="dashboard-index-card__empty">加载中...</span>
+                  ) : (
+                    formatTileValue(entry?.value ?? null, tile.unit)
+                  )}
+                </div>
+                <div className="dashboard-index-card__footer">
+                  <span className="dashboard-index-card__empty">
+                    {tile.title}
+                  </span>
+                  {entry?.period ? (
+                    <span className="dashboard-index-card__timestamp">
+                      {entry.period}
+                    </span>
+                  ) : null}
+                </div>
+              </Panel>
+              </div>
+            );
+          })}
+        </ResponsiveGrid>
+      )}
+    </section>
+  );
+}
+
 export default function Dashboard() {
   const navigate = useNavigate();
+  const learnStats = useLearnStats();
   const { data: scoresData } = useScores({ limit: 10 });
   const { favorites, count: favCount, isLoading: favLoading } = useFavorites(10);
   const { data: pools, isLoading: poolsLoading } = usePoolList();
@@ -173,7 +316,7 @@ export default function Dashboard() {
 
   const scoreColumns = [
     {
-      title: '排名',
+      title: <HelpPopover termKey="rank_overall">排名</HelpPopover>,
       dataIndex: 'rank_overall',
       width: 70,
       render: (v: number) => (
@@ -191,14 +334,14 @@ export default function Dashboard() {
       ),
     },
     {
-      title: '评分',
+      title: <HelpPopover termKey="composite_score">评分</HelpPopover>,
       render: (_: unknown, record: any) => (
         <ScoreBar score={record.composite_score} size="small" />
       ),
       width: 160,
     },
     {
-      title: '1月收益',
+      title: <HelpPopover termKey="return_1m">1月收益</HelpPopover>,
       render: (_: unknown, record: any) => <ReturnTag value={record.return_1m} />,
       width: 110,
     },
@@ -233,12 +376,97 @@ export default function Dashboard() {
         </p>
       </header>
 
+      {/* K14: 新手教学 chip 行（不影响原有布局） */}
+      <div className="dashboard-learning-chips">
+        <Space size={[8, 8]} wrap>
+          <span className="dashboard-learning-chips__label">新手教程：</span>
+          <Tag
+            icon={<BookOutlined />}
+            color="blue"
+            className="dashboard-learning-chip"
+            onClick={() => navigate('/learning')}
+          >
+            新手教程总览
+          </Tag>
+          <Tag
+            icon={<LineChartOutlined />}
+            color="cyan"
+            className="dashboard-learning-chip"
+            onClick={() => navigate('/learning')}
+          >
+            如何看估值
+          </Tag>
+          <Tag
+            icon={<ExperimentOutlined />}
+            color="purple"
+            className="dashboard-learning-chip"
+            onClick={() => navigate('/learning')}
+          >
+            如何做回测
+          </Tag>
+          {learnStats.total > 0 && (
+            <Tag color="success" className="dashboard-learning-chip">
+              本周学习了 {learnStats.total} 个术语
+            </Tag>
+          )}
+        </Space>
+      </div>
+
+      {/* K16 P0: 组合中心 chip 行（与 K14 chip 行视觉分组，单独 label）。
+          目标：把"实际持仓（模拟/真实）"这一统一心智模型从 /paper-trading / /live-trading
+          两条独立路径汇总到 Dashboard 入口。后续 P1 阶段会引入独立的 /portfolio 中心页。
+          当前 chip 跳转目标为 /paper-trading（多账户聚合体验最接近"组合中心"）。 */}
+      <div className="dashboard-learning-chips">
+        <Space size={[8, 8]} wrap>
+          <span className="dashboard-learning-chips__label">组合中心：</span>
+          <Tag
+            icon={<WalletOutlined />}
+            color="gold"
+            className="dashboard-learning-chip"
+            onClick={() => navigate('/paper-trading')}
+            title="查看模拟交易账户与持仓聚合（Portfolio Center 临时入口，P1 将升级为独立页面）"
+          >
+            我的组合 / 持仓
+          </Tag>
+          <Tag
+            icon={<DollarOutlined />}
+            color="geekblue"
+            className="dashboard-learning-chip"
+            onClick={() => navigate('/paper-trading')}
+            title="新建或切换模拟账户"
+          >
+            模拟账户
+          </Tag>
+          <Tag
+            icon={<ThunderboltOutlined />}
+            color="magenta"
+            className="dashboard-learning-chip"
+            onClick={() => navigate('/live-trading')}
+            title="查看真实交易配置与持仓（Binance testnet/mainnet）"
+          >
+            真实账户
+          </Tag>
+          <Tag
+            icon={<AppstoreOutlined />}
+            color="default"
+            className="dashboard-learning-chip"
+            onClick={() => navigate('/pools')}
+            title="管理中长期目标组合（与组合中心不同：这里是目标权重，不是实际持仓）"
+          >
+            标的池（目标组合）
+          </Tag>
+        </Space>
+      </div>
+
+      {/* K15 P0: 今日学习 3 分钟 */}
+      <DailyLesson />
+
       <ResponsiveGrid cols={4} gap="md" className="dashboard-section">
         {[
-          { title: '标的总数', value: stats?.etf_count ?? 0, suffix: undefined, onClick: () => navigate('/etfs') },
-          { title: '评分覆盖', value: stats?.score_count ?? 0, suffix: `/ ${stats?.etf_count ?? 0}`, onClick: () => navigate('/scores') },
-          { title: '分类数', value: stats?.category_count ?? 0, suffix: undefined },
-          { title: '评分模板', value: stats?.template_count ?? 0, suffix: undefined, onClick: () => navigate('/scores') },
+          { title: '标的总数', value: stats?.etf_count ?? 0, suffix: undefined, onClick: () => navigate('/instruments'), term: 'etf' },
+          { title: '评分覆盖', value: stats?.score_count ?? 0, suffix: `/ ${stats?.etf_count ?? 0}`, onClick: () => navigate('/scores'), term: 'composite_score' },
+          { title: '分类数', value: stats?.category_count ?? 0, suffix: undefined, onClick: undefined, term: 'rank_category' },
+          { title: '评分模板', value: stats?.template_count ?? 0, suffix: undefined, onClick: () => navigate('/scores'), term: 'strategy_template' },
         ].map((item) => (
           <StatCard
             key={item.title}
@@ -247,9 +475,13 @@ export default function Dashboard() {
             suffix={item.suffix}
             loading={statsLoading}
             onClick={item.onClick}
+            term={item.term}
           />
         ))}
       </ResponsiveGrid>
+
+      {/* ── Global markets snapshot (P0: 2026-07-04) ─────────────────── */}
+      <GlobalSnapshot />
 
       <section className="dashboard-section">
         <SectionHeading title="实时行情" />
@@ -376,7 +608,7 @@ export default function Dashboard() {
             scroll={{ x: 'max-content' }}
             pagination={false}
             showHeader={false}
-            onRow={(record) => ({ onClick: () => navigate(`/etfs/${record.etf_code}`) })}
+            onRow={(record) => ({ onClick: () => navigate(`/instruments/${record.etf_code}`) })}
           />
         </Panel>
 
@@ -386,7 +618,7 @@ export default function Dashboard() {
             title="我的收藏"
             extra={
               favCount > 0 ? (
-                <span className="panel-extra-link" onClick={() => navigate('/etfs')}>
+                <span className="panel-extra-link" onClick={() => navigate('/instruments')}>
                   查看全部 →
                 </span>
               ) : undefined
@@ -406,7 +638,7 @@ export default function Dashboard() {
                 dataSource={favorites}
                 renderItem={(item: any) => (
                   <List.Item
-                    onClick={() => navigate(`/etfs/${item.etf_code}`)}
+                    onClick={() => navigate(`/instruments/${item.etf_code}`)}
                     className="dashboard-favorite-item"
                   >
                     <List.Item.Meta

@@ -14,7 +14,7 @@ export function usePoolDetail(id: number) {
   return useQuery({
     queryKey: ['pool', id],
     queryFn: () => poolApi.get(id).then((r) => r.data),
-    enabled: !!id,
+    enabled: Number.isFinite(id) && id > 0,
   });
 }
 
@@ -22,7 +22,7 @@ export function usePoolWeights(id: number) {
   return useQuery({
     queryKey: ['pool-weights', id],
     queryFn: () => poolApi.weights(id).then((r) => r.data),
-    enabled: !!id,
+    enabled: Number.isFinite(id) && id > 0,
   });
 }
 
@@ -30,7 +30,7 @@ export function usePoolAnalytics(id: number) {
   return useQuery({
     queryKey: ['pool-analytics', id],
     queryFn: () => poolApi.analytics(id).then((r) => r.data),
-    enabled: !!id,
+    enabled: Number.isFinite(id) && id > 0,
   });
 }
 
@@ -38,7 +38,7 @@ export function usePoolCorrelation(id: number) {
   return useQuery({
     queryKey: ['pool-correlation', id],
     queryFn: () => poolApi.correlation(id).then((r) => r.data),
-    enabled: !!id,
+    enabled: Number.isFinite(id) && id > 0,
   });
 }
 
@@ -46,7 +46,7 @@ export function usePoolSnapshots(id: number, limit?: number) {
   return useQuery({
     queryKey: ['pool-snapshots', id, limit],
     queryFn: () => poolApi.snapshots(id, limit).then((r) => r.data),
-    enabled: !!id,
+    enabled: Number.isFinite(id) && id > 0,
   });
 }
 

@@ -11,6 +11,8 @@ export interface AIStatus {
 export interface ResearchNote {
   id: number;
   instrument_code: string;
+  name?: string | null;
+  name_zh?: string | null;
   note_type: string;
   content: string;
   summary?: string;
@@ -22,6 +24,8 @@ export interface ResearchNote {
 
 export interface SentimentAggregate {
   instrument_code: string;
+  name?: string | null;
+  name_zh?: string | null;
   avg_score: number;
   label: string;
   positive_count: number;

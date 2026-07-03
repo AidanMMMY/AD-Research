@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Button,
   Card,
@@ -7,6 +7,7 @@ import {
   InputNumber,
   message,
   Modal,
+  Popconfirm,
   Select,
   Skeleton,
   Statistic,
@@ -23,7 +24,10 @@ import PageHeader from '@/components/PageHeader';
 import Panel from '@/components/Panel';
 import SectionHeading from '@/components/SectionHeading';
 import EmptyState from '@/components/EmptyState';
+import InstrumentCodeTag from '@/components/InstrumentCodeTag';
 import ResponsiveGrid from '@/components/ResponsiveGrid';
+import HelpPopover from '@/components/HelpPopover';
+import ContextHint from '@/components/ContextHint';
 import {
   usePaperAccounts,
   usePaperAccount,
@@ -36,7 +40,7 @@ import {
   useSyncMarketValues,
   useAutoTrade,
 } from '@/hooks/usePaperTrading';
-import type { PaperPosition } from '@/types/trading';
+import type { PaperOrder, PaperPosition } from '@/types/trading';
 
 /** Format a number as USDT with appropriate precision. */
 function fmtUSDT(v: number | null | undefined): string {
@@ -65,6 +69,13 @@ function fmtPercent(v: number | null | undefined): { text: string; color: string
   };
 }
 
+function formatDateTime(v: string | null | undefined): string {
+  if (!v) return '-';
+  const d = new Date(v);
+  if (Number.isNaN(d.getTime())) return '-';
+  return d.toLocaleString('zh-CN');
+}
+
 export default function PaperTrading() {
   const { data: accountsData, isLoading: accountsLoading } = usePaperAccounts();
   const accounts = accountsData?.items || [];
@@ -72,6 +83,12 @@ export default function PaperTrading() {
   const [selectedAccountId, setSelectedAccountId] = useState<number | undefined>(
     accounts.length > 0 ? accounts[0].id : undefined,
   );
+
+  useEffect(() => {
+    if (!selectedAccountId && accounts.length > 0) {
+      setSelectedAccountId(accounts[0].id);
+    }
+  }, [accounts, selectedAccountId]);
 
   const {
     data: account,
@@ -184,7 +201,7 @@ export default function PaperTrading() {
       render: (v: number) => <span className="font-mono">{v}</span>,
     },
     {
-      title: '均价',
+      title: <HelpPopover termKey="avg_cost">均价</HelpPopover>,
       dataIndex: 'avg_cost',
       key: 'avg',
       render: (v: number) => <span className="font-mono">{fmtUSDT(v)}</span>,
@@ -196,7 +213,7 @@ export default function PaperTrading() {
       render: (v: number | null) => <span className="font-mono">{fmtUSDT(v)}</span>,
     },
     {
-      title: '市值',
+      title: <HelpPopover termKey="market_value">市值</HelpPopover>,
       dataIndex: 'market_value',
       key: 'mv',
       render: (v: number | null) => (
@@ -204,7 +221,7 @@ export default function PaperTrading() {
       ),
     },
     {
-      title: '未实现盈亏',
+      title: <HelpPopover termKey="unrealized_pnl">未实现盈亏</HelpPopover>,
       dataIndex: 'unrealized_pnl',
       key: 'upnl',
       render: (v: number | null, r: PaperPosition) => {
@@ -218,7 +235,7 @@ export default function PaperTrading() {
       },
     },
     {
-      title: '已实现盈亏',
+      title: <HelpPopover termKey="realized_pnl">已实现盈亏</HelpPopover>,
       dataIndex: 'realized_pnl',
       key: 'rpnl',
       render: (v: number | null) => {
@@ -236,8 +253,7 @@ export default function PaperTrading() {
       title: '时间',
       dataIndex: 'created_at',
       key: 'time',
-      render: (v: string | null) =>
-        v ? new Date(v).toLocaleString('zh-CN') : '-',
+      render: (v: string | null) => formatDateTime(v),
     },
     {
       title: '方向',
@@ -253,7 +269,9 @@ export default function PaperTrading() {
       title: '币种',
       dataIndex: 'instrument_code',
       key: 'code',
-      render: (v: string) => <span className="font-mono">{v}</span>,
+      render: (_: string, r: PaperOrder) => (
+        <InstrumentCodeTag code={r.instrument_code} name={r.instrument_name} />
+      ),
     },
     {
       title: '数量',
@@ -297,38 +315,49 @@ export default function PaperTrading() {
         }
       />
 
-      <div className="phase5c-account-selector">
-        {accountsLoading ? (
-          <Skeleton active paragraph={{ rows: 1 }} />
-        ) : accounts.length === 0 ? (
-          <EmptyState
-            title="还没有模拟账户"
-            description="创建第一个模拟账户，开始零风险交易验证"
-            action={
-              <Button type="primary" icon={<PlusOutlined />} onClick={() => setCreateModalOpen(true)}>
-                创建第一个账户
-              </Button>
-            }
-          />
-        ) : (
-          <Select
-            value={selectedAccountId}
-            onChange={setSelectedAccountId}
-            className="phase5c-select--lg"
-            options={accounts.map((a) => ({
-              value: a.id,
-              label: (
-                <span>
-                  {a.name}
-                  <span className="font-mono ad-ml-2 ad-text-tertiary">
-                    {fmtUSDT(a.total_value || a.cash)}
+      <ContextHint
+        hintId="paper-trading-intro"
+        title="先开一个模拟账户"
+        placement="bottom"
+        content={
+          <>
+            平台不会动用真实资金。先创建账户，下一笔小单练手；熟练后再到「策略管理」开启自动交易，让平台按信号自动下单。
+          </>
+        }
+      >
+        <div className="phase5c-account-selector">
+          {accountsLoading ? (
+            <Skeleton active paragraph={{ rows: 1 }} />
+          ) : accounts.length === 0 ? (
+            <EmptyState
+              title="还没有模拟账户"
+              description="创建第一个模拟账户，开始零风险交易验证"
+              action={
+                <Button type="primary" icon={<PlusOutlined />} onClick={() => setCreateModalOpen(true)}>
+                  创建第一个账户
+                </Button>
+              }
+            />
+          ) : (
+            <Select
+              value={selectedAccountId}
+              onChange={setSelectedAccountId}
+              className="phase5c-select--lg"
+              options={accounts.map((a) => ({
+                value: a.id,
+                label: (
+                  <span>
+                    {a.name}
+                    <span className="font-mono ad-ml-2 ad-text-tertiary">
+                      {fmtUSDT(a.total_value || a.cash)}
+                    </span>
                   </span>
-                </span>
-              ),
-            }))}
-          />
-        )}
-      </div>
+                ),
+              }))}
+            />
+          )}
+        </div>
+      </ContextHint>
 
       {selectedAccountId && (
         <>
@@ -415,14 +444,21 @@ export default function PaperTrading() {
             >
               信号自动交易
             </Button>
-            <Button
-              icon={<DeleteOutlined />}
-              danger
-              onClick={() => handleDeleteAccount(selectedAccountId)}
-              loading={deleteAccount.isPending}
+            <Popconfirm
+              title="确认归档该账户？"
+              description="归档后账户将不可见，相关持仓与订单记录仍保留。"
+              onConfirm={() => handleDeleteAccount(selectedAccountId)}
+              okText="确认归档"
+              cancelText="取消"
             >
-              归档账户
-            </Button>
+              <Button
+                icon={<DeleteOutlined />}
+                danger
+                loading={deleteAccount.isPending}
+              >
+                归档账户
+              </Button>
+            </Popconfirm>
           </div>
 
           <SectionHeading title="当前持仓" />

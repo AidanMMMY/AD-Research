@@ -8,6 +8,7 @@ export type CninfoAdjunctType = 'annual' | 'semi' | 'q1' | 'q3' | 'other';
 export interface CninfoReport {
   id: number;
   ts_code: string;
+  stock_name: string | null;
   stock_code: string;
   org_id: string | null;
   sec_code: string | null;

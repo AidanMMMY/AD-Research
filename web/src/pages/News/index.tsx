@@ -39,6 +39,7 @@ import PageHeader from '@/components/PageHeader';
 import FilterToolbar from '@/components/FilterToolbar';
 import Panel from '@/components/Panel';
 import EmptyState from '@/components/EmptyState';
+import InstrumentCodeTag from '@/components/InstrumentCodeTag';
 import {
   formatDateTimeSeconds,
   formatRelative as formatRelativeTz,
@@ -60,6 +61,70 @@ const MARKET_BADGE: Record<NewsMarket, { color: string; label: string }> = {
   us: { color: 'blue', label: '美股' },
   crypto: { color: 'gold', label: '加密' },
 };
+
+/**
+ * Political / macro event categories added in the 2026-07-04 K12
+ * expansion. These are the values the LLM prompt in
+ * ``app/services/news/sentiment/prompts.py`` now documents; the
+ * backend filters by them on the ``event_category`` query parameter.
+ *
+ * The chip strip surfaces them in a single row so the user can pivot
+ * from "all news" to "geopolitics + central_bank" without typing.
+ */
+const POLITICAL_CATEGORIES: { value: string; label: string; color: string }[] = [
+  { value: 'geopolitics', label: '地缘', color: 'volcano' },
+  { value: 'central_bank', label: '央行', color: 'geekblue' },
+  { value: 'election', label: '选举', color: 'purple' },
+  { value: 'trade_war', label: '贸易战', color: 'red' },
+  { value: 'sanction', label: '制裁', color: 'magenta' },
+];
+
+/**
+ * Map an ``event_category`` value to a visual tag colour. Political /
+ * macro categories get a coloured Tag so the eye lands on them
+ * immediately in a feed dominated by earnings headlines; the legacy
+ * categories stay neutral grey.
+ */
+const EVENT_CATEGORY_COLOR: Record<string, string> = {
+  geopolitics: 'volcano',
+  central_bank: 'geekblue',
+  election: 'purple',
+  trade_war: 'red',
+  sanction: 'magenta',
+  earnings: 'default',
+  regulation: 'default',
+  macro: 'default',
+};
+
+const EVENT_CATEGORY_LABELS: Record<string, string> = {
+  geopolitics: '地缘',
+  central_bank: '央行',
+  election: '选举',
+  trade_war: '贸易战',
+  sanction: '制裁',
+  earnings: '财报',
+  'm&a': '并购',
+  product: '产品',
+  macro: '宏观',
+  regulation: '监管',
+  guidance: '指引',
+  analyst: '分析师',
+  legal: '法律',
+  rumor: '传闻',
+  other: '其他',
+};
+
+/** Render an event_category as a coloured Tag (with Chinese label). */
+function EventCategoryTag({ value }: { value: string | null }) {
+  if (!value) return null;
+  const color = EVENT_CATEGORY_COLOR[value] ?? 'default';
+  const label = EVENT_CATEGORY_LABELS[value] ?? value;
+  return (
+    <Tag color={color} className="ad-event-tag">
+      {label}
+    </Tag>
+  );
+}
 
 const SOURCE_LABELS: Record<string, { emoji: string; label: string }> = {
   xinhua: { emoji: '📰', label: '新华' },
@@ -141,18 +206,25 @@ function NewsCard({
   const sentiment = article.sentiment_label;
 
   return (
-    <div
+    <article
       className="ad-news-card"
+      role="button"
+      tabIndex={0}
+      aria-label={article.title}
       onClick={() => onOpen(article)}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onOpen(article);
+        }
+      }}
     >
       {/* Row 1: source · market · time · importance */}
       <div className="ad-news-card__meta">
         <span>{source.emoji} {source.label}</span>
         <span className="ad-text-muted">·</span>
         {market && <Tag color={market.color} className="ad-detail-tag">{market.label}</Tag>}
-        {article.event_category && (
-          <span className="ad-text-small ad-text-tertiary">{article.event_category}</span>
-        )}
+        <EventCategoryTag value={article.event_category} />
         <span className="ad-flex-1" />
         <Tooltip title={formatDateTimeSeconds(article.published_at)}>
           <span>{formatRelative(article.published_at)}</span>
@@ -180,12 +252,26 @@ function NewsCard({
               key={`${s.symbol}-${s.match_type}`}
               color="default"
               className="ad-mr-1 ad-chip-tag"
+              role="button"
+              tabIndex={0}
+              aria-label={`筛选 ${s.symbol}`}
               onClick={(e) => {
                 e.stopPropagation();
                 onPickSymbol(s.symbol);
               }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onPickSymbol(s.symbol);
+                }
+              }}
             >
-              {s.symbol}
+              <InstrumentCodeTag
+                code={s.symbol}
+                name={s.name ?? undefined}
+                name_zh={s.name_zh}
+              />
             </Tag>
           ))}
         </Space>
@@ -237,7 +323,7 @@ function NewsCard({
           </span>
         )}
       </div>
-    </div>
+    </article>
   );
 }
 
@@ -253,7 +339,14 @@ function HotSymbolSidebar({
   loading,
   onPickSymbol,
 }: {
-  data: { symbol: string; label: SentimentLabel | null; score: number | null; count: number }[];
+  data: {
+    symbol: string;
+    name?: string | null;
+    name_zh?: string | null;
+    label: SentimentLabel | null;
+    score: number | null;
+    count: number;
+  }[];
   loading: boolean;
   onPickSymbol: (sym: string) => void;
 }) {
@@ -281,12 +374,25 @@ function HotSymbolSidebar({
             return (
               <div
                 key={row.symbol}
+                role="button"
+                tabIndex={0}
+                aria-label={`筛选 ${row.symbol} 的资讯`}
                 onClick={() => onPickSymbol(row.symbol)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    onPickSymbol(row.symbol);
+                  }
+                }}
                 className="ad-mover-row"
               >
                 <div className="ad-flex-1 ad-min-w-0">
                   <div className="ad-font-medium ad-text-primary ad-truncate">
-                    {row.symbol}
+                    <InstrumentCodeTag
+                      code={row.symbol}
+                      name={row.name ?? undefined}
+                      name_zh={row.name_zh}
+                    />
                   </div>
                   <div className="ad-text-small ad-text-tertiary ad-mt-2">
                     {row.count} 篇资讯
@@ -330,6 +436,12 @@ export default function NewsFeed() {
   const [watchlistMode, setWatchlistMode] = useState<boolean>(
     searchParams.get('watchlist') === '1'
   );
+  // Selected political / macro event categories (multi-select).
+  // Empty array = no filter (show all categories).
+  const [eventCategories, setEventCategories] = useState<string[]>(() => {
+    const raw = searchParams.get('event_category');
+    return raw ? raw.split(',').filter(Boolean) : [];
+  });
 
   // Sync URL params when filters change.
   useEffect(() => {
@@ -339,8 +451,9 @@ export default function NewsFeed() {
     if (activeSymbol) next.symbol = activeSymbol;
     if (searchInput) next.q = searchInput;
     if (watchlistMode) next.watchlist = '1';
+    if (eventCategories.length > 0) next.event_category = eventCategories.join(',');
     setSearchParams(next, { replace: true });
-  }, [market, source, activeSymbol, searchInput, watchlistMode, setSearchParams]);
+  }, [market, source, activeSymbol, searchInput, watchlistMode, eventCategories, setSearchParams]);
 
   // Source list for the dropdown.
   const { data: sourceStats, isLoading: sourceStatsLoading } = useQuery({
@@ -350,10 +463,10 @@ export default function NewsFeed() {
   });
 
   const sourceOptions = useMemo(() => {
-    const stats = sourceStats ?? [];
-    return stats.map((s: { source: string; count: number; last_24h: number }) => ({
+    const stats = sourceStats?.sources ?? [];
+    return stats.map((s) => ({
       value: s.source,
-      label: `${SOURCE_LABELS[s.source]?.label ?? s.source} (${s.count})`,
+      label: `${SOURCE_LABELS[s.source]?.label ?? s.source} (${s.total})`,
     }));
   }, [sourceStats]);
 
@@ -370,8 +483,8 @@ export default function NewsFeed() {
     // share a cache entry — the watchlist result set changes the
     // moment the user adds/removes a favorite.
     queryKey: watchlistMode
-      ? ['news-watchlist', market, source, dateRange]
-      : ['news-list', market, source, dateRange, activeSymbol, searchInput],
+      ? ['news-watchlist', market, source, dateRange, eventCategories]
+      : ['news-list', market, source, dateRange, activeSymbol, searchInput, eventCategories],
     initialPageParam: 1,
     queryFn: ({ pageParam }) =>
       watchlistMode
@@ -381,6 +494,7 @@ export default function NewsFeed() {
               source,
               from_date: toIso(dateRange?.[0] ?? null, false),
               to_date: toIso(dateRange?.[1] ?? null, true),
+              event_category: eventCategories.length > 0 ? eventCategories : undefined,
               page: pageParam,
               page_size: PAGE_SIZE,
             })
@@ -393,6 +507,7 @@ export default function NewsFeed() {
               from_date: toIso(dateRange?.[0] ?? null, false),
               to_date: toIso(dateRange?.[1] ?? null, true),
               q: searchInput || undefined,
+              event_category: eventCategories.length > 0 ? eventCategories : undefined,
               page: pageParam,
               page_size: PAGE_SIZE,
             })
@@ -438,7 +553,16 @@ export default function NewsFeed() {
   const hotSymbols = useMemo(() => {
     const bucket = new Map<
       string,
-      { count: number; weighted: number; scoreSum: number; positive: number; negative: number; neutral: number }
+      {
+        count: number;
+        weighted: number;
+        scoreSum: number;
+        positive: number;
+        negative: number;
+        neutral: number;
+        name: string | null;
+        name_zh: string | null;
+      }
     >();
     for (const a of articles) {
       for (const s of a.symbols) {
@@ -449,6 +573,8 @@ export default function NewsFeed() {
           positive: 0,
           negative: 0,
           neutral: 0,
+          name: s.name ?? null,
+          name_zh: s.name_zh ?? null,
         };
         cur.count += 1;
         const w = a.importance ?? 3;
@@ -469,7 +595,7 @@ export default function NewsFeed() {
           else if (score < -0.2) label = 'negative';
           else label = 'neutral';
         }
-        return { symbol, count: v.count, score, label };
+        return { symbol, name: v.name, name_zh: v.name_zh, count: v.count, score, label };
       })
       .filter((r) => r.count > 0)
       .sort((a, b) => b.count - a.count)
@@ -518,6 +644,7 @@ export default function NewsFeed() {
           value={market}
           onChange={(v) => setMarket(v as NewsMarket | 'all')}
           options={MARKET_OPTIONS}
+          className="news-market-segmented"
         />
         <Input
           allowClear
@@ -525,7 +652,6 @@ export default function NewsFeed() {
           placeholder="搜索标题/正文…"
           value={searchInput}
           onChange={(e) => setSearchInput(e.target.value)}
-          style={{ width: 240 }}
         />
         <Select
           allowClear
@@ -534,7 +660,6 @@ export default function NewsFeed() {
           value={source}
           onChange={(v) => setSource(v)}
           options={sourceOptions}
-          style={{ minWidth: 180 }}
         />
         <RangePicker
           value={dateRange}
@@ -551,6 +676,44 @@ export default function NewsFeed() {
           </Tag>
         )}
       </FilterToolbar>
+
+      {/* Political / macro event category chips (K12 addition).
+          Multi-select: clicking toggles a category in/out of the
+          filter set. The active set is persisted into the URL so
+          the view is shareable. */}
+      <div className="news-political-chips ad-flex ad-flex-wrap ad-gap-2 ad-mb-3">
+        <span className="ad-text-small ad-text-tertiary ad-self-center ad-mr-1">
+          事件类型:
+        </span>
+        {POLITICAL_CATEGORIES.map((c) => {
+          const checked = eventCategories.includes(c.value);
+          return (
+            <Tag.CheckableTag
+              key={c.value}
+              checked={checked}
+              onChange={(next) => {
+                setEventCategories((prev) =>
+                  next
+                    ? Array.from(new Set([...prev, c.value]))
+                    : prev.filter((v) => v !== c.value),
+                );
+              }}
+              className={`news-political-chip news-political-chip--${c.value} ${checked ? 'news-political-chip--active' : ''}`}
+            >
+              {c.label}
+            </Tag.CheckableTag>
+          );
+        })}
+        {eventCategories.length > 0 && (
+          <Tag.CheckableTag
+            checked={false}
+            onChange={() => setEventCategories([])}
+            className="news-political-chip news-political-chip--clear"
+          >
+            清除
+          </Tag.CheckableTag>
+        )}
+      </div>
 
       <div className="ad-news-layout">
         {/* Feed */}

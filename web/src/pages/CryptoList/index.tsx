@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Table, Input, Select, List, Skeleton } from 'antd';
 import { SearchOutlined } from '@ant-design/icons';
@@ -25,12 +25,21 @@ const SORT_OPTIONS = [
   { label: '24h 涨跌', value: 'change_24h' },
 ];
 
+function formatUtc(iso: string): string {
+  try {
+    return new Date(iso).toISOString().replace('T', ' ').slice(0, 19) + ' UTC';
+  } catch {
+    return iso;
+  }
+}
+
 export default function CryptoList() {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const { density } = useDensity();
   const filters = useCryptoStore();
   const [page, setPage] = useState(1);
+  const pageLoadedAt = useMemo(() => new Date().toISOString(), []);
 
   const { data, isLoading } = useCryptoList({
     search: filters.search || undefined,
@@ -43,11 +52,16 @@ export default function CryptoList() {
 
   const rowSize = density === 'dense' ? 'small' : density === 'spacious' ? 'large' : 'middle';
 
+  // The API enriches every row with the same last_updated timestamp.
+  const backendTimestamp = data?.items?.[0]?.last_updated;
+  const priceUpdatedAt = backendTimestamp ?? pageLoadedAt;
+  const timestampLabel = backendTimestamp ? '价格更新于' : '页面加载于';
+
   const columns = [
     {
       title: '代币',
       render: (_: unknown, record: any) => (
-        <InstrumentCodeTag code={record.code} name={record.name} />
+        <InstrumentCodeTag code={record.code} name={record.name} name_zh={record.name_zh} />
       ),
     },
     {
@@ -160,6 +174,14 @@ export default function CryptoList() {
         />
       </FilterToolbar>
 
+      <div className="ad-text-tertiary ad-text-xs ad-mb-3">
+        <div>
+          {timestampLabel} {formatUtc(priceUpdatedAt)}
+          {!backendTimestamp && '（数据来自 Binance）'}
+        </div>
+        <div>24h 涨跌 = (当前价 - 24小时前价格) / 24小时前价格</div>
+      </div>
+
       {isMobile ? (
         isLoading ? (
           <Skeleton active paragraph={{ rows: 6 }} />
@@ -177,7 +199,7 @@ export default function CryptoList() {
                 className="ad-cursor-pointer"
               >
                 <List.Item.Meta
-                  title={<InstrumentCodeTag code={item.code} name={item.name} />}
+                  title={<InstrumentCodeTag code={item.code} name={item.name} name_zh={item.name_zh} />}
                   description={
                     <span className="mobile-list-item__meta">
                       {item.category} · {item.exchange}

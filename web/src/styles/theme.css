@@ -347,7 +347,7 @@ body,
 
   /* Statistic: reduce oversized numbers */
   .ant-statistic-content {
-    font-size: 22px !important;
+    font-size: var(--text-data-md-size);
   }
 
   /* Pagination: compact */
@@ -417,6 +417,6 @@ body,
   }
 
   .ant-statistic-content {
-    font-size: 26px !important;
+    font-size: var(--text-data-lg-size);
   }
 }

@@ -19,6 +19,7 @@ import InstrumentCodeTag from '@/components/InstrumentCodeTag';
 import ThemeTag from '@/components/ThemeTag';
 import ReturnTag from '@/components/ReturnTag';
 import NewsListPanel from '@/components/NewsListPanel';
+import HelpPopover from '@/components/HelpPopover';
 import type { DailyBar, ResearchNote } from '@/types/crypto';
 import type { OHLCV } from '@/types/instrument';
 
@@ -38,6 +39,16 @@ const INDICATOR_OPTIONS = [
   { label: 'RSI14', value: 'rsi' },
   { label: 'MACD', value: 'macd' },
 ];
+
+const INDICATOR_OPTION_TERMS: Record<string, string> = {
+  ma5: 'ma5',
+  ma10: 'ma10',
+  ma20: 'ma20',
+  ma60: 'ma60',
+  bb: 'bollinger_bands',
+  rsi: 'rsi14',
+  macd: 'macd',
+};
 
 const SENTIMENT_LABELS: Record<string, string> = {
   bullish: '看多',
@@ -69,13 +80,13 @@ function formatPrice(price?: number | null) {
 
 export default function CryptoDetail() {
   const { code } = useParams<{ code: string }>();
+  const [timeRange, setTimeRange] = useState(120);
   const { data: crypto, isLoading: detailLoading, error: detailError } = useCryptoDetail(code || '');
-  const { data: historyData, isLoading: historyLoading } = useCryptoHistory(code || '', { limit: 120 });
+  const { data: historyData, isLoading: historyLoading } = useCryptoHistory(code || '', { limit: timeRange });
   const { data: indicator } = useCryptoIndicators(code || '');
   const { data: signals } = useCryptoSignals(code || '', 20);
   const { data: researchNotes } = useCryptoResearch(code || '', 5);
 
-  const [timeRange, setTimeRange] = useState(120);
   const [overlays, setOverlays] = useState(() => {
     try {
       const saved = localStorage.getItem('crypto-detail-overlays');
@@ -129,10 +140,10 @@ export default function CryptoDetail() {
   const latestNote: ResearchNote | null = researchNotes?.[0] || null;
 
   const heroStats = [
-    { title: '24h最高', value: crypto.high_24h, suffix: '$', precision: crypto.high_24h != null && crypto.high_24h < 1 ? 4 : 2 },
-    { title: '24h最低', value: crypto.low_24h, suffix: '$', precision: crypto.low_24h != null && crypto.low_24h < 1 ? 4 : 2 },
-    { title: '24h成交量', value: crypto.volume_24h, suffix: undefined, precision: 2 },
-    { title: 'RSI14', value: indicator?.rsi14, suffix: undefined, precision: 1 },
+    { title: '24h最高', termKey: 'high_24h', value: crypto.high_24h, suffix: '$', precision: crypto.high_24h != null && crypto.high_24h < 1 ? 4 : 2 },
+    { title: '24h最低', termKey: 'low_24h', value: crypto.low_24h, suffix: '$', precision: crypto.low_24h != null && crypto.low_24h < 1 ? 4 : 2 },
+    { title: '24h成交量', termKey: 'volume_24h', value: crypto.volume_24h, suffix: undefined, precision: 2 },
+    { title: 'RSI14', termKey: 'rsi14', value: indicator?.rsi14, suffix: undefined, precision: 1 },
   ];
 
   const formatStatValue = (v?: number | null, precision?: number) => {
@@ -149,7 +160,7 @@ export default function CryptoDetail() {
           <div className="detail-toolbar">
             <Space size="large" wrap>
               <Space>
-                <span>时间范围：</span>
+                <HelpPopover termKey="time_range">时间范围</HelpPopover>：
                 <Radio.Group
                   value={timeRange}
                   onChange={(e) => setTimeRange(e.target.value)}
@@ -180,7 +191,7 @@ export default function CryptoDetail() {
                 >
                   {INDICATOR_OPTIONS.map((opt) => (
                     <Checkbox key={opt.value} value={opt.value}>
-                      {opt.label}
+                      <HelpPopover termKey={INDICATOR_OPTION_TERMS[opt.value]}>{opt.label}</HelpPopover>
                     </Checkbox>
                   ))}
                 </Checkbox.Group>
@@ -210,8 +221,8 @@ export default function CryptoDetail() {
             scroll={{ x: 'max-content' }}
             columns={[
               { title: '日期', dataIndex: 'trade_date' },
-              { title: '信号', dataIndex: 'signal_type' },
-              { title: '强度', dataIndex: 'strength', render: (v: any) => <span className="tabular-nums">{v}</span> },
+              { title: <HelpPopover termKey="signal_type">信号</HelpPopover>, dataIndex: 'signal_type' },
+              { title: <HelpPopover termKey="strength">强度</HelpPopover>, dataIndex: 'strength', render: (v: any) => <span className="tabular-nums">{v}</span> },
             ]}
           />
         </Panel>
@@ -253,6 +264,11 @@ export default function CryptoDetail() {
           {latestNote ? (
             <div>
               <div className="ai-note-meta">
+                {latestNote.note_type && (
+                  <span className="ai-note-type">
+                    <HelpPopover termKey="note_type">{latestNote.note_type}</HelpPopover>
+                  </span>
+                )}
                 {latestNote.sentiment && (
                   <ThemeTag
                     variant={
@@ -267,7 +283,9 @@ export default function CryptoDetail() {
                   </ThemeTag>
                 )}
                 {latestNote.confidence && (
-                  <span className="ai-note-confidence">置信度 {latestNote.confidence}/10</span>
+                  <span className="ai-note-confidence">
+                    <HelpPopover termKey="sentiment_confidence">置信度</HelpPopover> {latestNote.confidence}/10
+                  </span>
                 )}
                 <span className="ai-note-time">{latestNote.generated_at?.slice(0, 16)}</span>
               </div>
@@ -326,7 +344,7 @@ export default function CryptoDetail() {
         <div className="detail-hero__row">
           <div>
             <div className="detail-hero__title">
-              <InstrumentCodeTag code={crypto.code} />
+              <InstrumentCodeTag code={crypto.code} name={crypto.name} />
               <h1 className="detail-hero__title-text">{crypto.name}</h1>
               {crypto.category && <ThemeTag>{crypto.category}</ThemeTag>}
               {crypto.market && <ThemeTag variant="accent">{crypto.market}</ThemeTag>}
@@ -354,7 +372,11 @@ export default function CryptoDetail() {
         {heroStats.map((stat) => (
           <StatCard
             key={stat.title}
-            title={stat.title}
+            title={
+              stat.termKey ? (
+                <HelpPopover termKey={stat.termKey}>{stat.title}</HelpPopover>
+              ) : stat.title
+            }
             value={formatStatValue(stat.value, stat.precision)}
             suffix={stat.suffix}
           />

@@ -57,11 +57,12 @@ export default function ResearchReports() {
       ts_code: search || undefined,
       industry,
       org_name: orgName,
+      rating,
       sort_by: 'publish_date' as const,
       sort_dir: 'desc' as const,
       has_summary: hasSummary === 'all' ? undefined : hasSummary === 'yes',
     }),
-    [page, pageSize, search, industry, orgName, hasSummary],
+    [page, pageSize, search, industry, orgName, rating, hasSummary],
   );
 
   const { data, isLoading, refetch, dataUpdatedAt, isFetching } = useResearchReportList(listParams);

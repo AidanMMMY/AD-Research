@@ -2,6 +2,7 @@
 export interface CryptoInfo {
   code: string;
   name: string;
+  name_zh?: string | null;
   exchange?: string;
   market?: string;
   category?: string;
@@ -22,6 +23,8 @@ export interface CryptoInfo {
   change_24h?: number;
   /** 24h base-asset volume */
   volume_24h?: number;
+  /** UTC timestamp when the live price was fetched from the provider. */
+  last_updated?: string;
 }
 
 /** Paginated list response. */
@@ -36,6 +39,7 @@ export interface CryptoListResponse {
 export interface CryptoDetail {
   code: string;
   name: string;
+  name_zh?: string | null;
   exchange?: string;
   market?: string;
   category?: string;
