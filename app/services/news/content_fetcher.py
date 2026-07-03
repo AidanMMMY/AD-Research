@@ -242,7 +242,7 @@ class ContentFetcher:
 
 请直接返回清理后的正文内容，不要添加任何解释、评论或markdown代码块标记。"""
 
-            prompt = f"""请从以下网页抓取内容中提取真正的正文，去除广告、导航、侧边栏等无关内容：\n\n{content[:8000]}"""
+            prompt = f"""请从以下网页抓取内容中提取真正的正文，去除广告、导航、侧边栏等无关内容。只返回正文内容，不要添加任何解释。：\n\n{content[:5000]}"""
 
             cleaned = provider.complete(
                 prompt=prompt,
