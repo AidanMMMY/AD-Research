@@ -20,7 +20,9 @@ per ``XueqiuCrawler`` instance) and backs off after every failure.
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
+import random
 import re
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
@@ -28,7 +30,7 @@ from typing import Any, Iterable
 
 import httpx
 
-from app.services.news.crawler.base import RateLimiter, make_client
+from app.services.news.crawler.base import DEFAULT_HEADERS, DEFAULT_USER_AGENTS, RateLimiter, make_client
 from app.services.news.crawler.rate_limiter import AsyncTokenBucket
 from app.services.news.crawler.symbol_extractor import extract_symbols as _shared_extract_symbols
 from app.services.news.crawler.types import RawArticle
@@ -259,7 +261,7 @@ class XueqiuCrawler:
         if not symbol:
             return []
         xq_symbol = to_xueqiu_symbol(symbol)
-        url = f"{XUEQIU_BASE_URL}/v4/statuses/public/timeline.json"
+        url = f"{XUEQIU_BASE_URL}/v4/statuses/public_timeline.json"
         params = {
             "symbol": xq_symbol,
             "count": self.posts_per_symbol,
@@ -318,10 +320,12 @@ class XueqiuCrawler:
         (the caller decides what to do with empty data).
         """
         last_exc: Exception | None = None
+        headers = dict(DEFAULT_HEADERS)
+        headers["User-Agent"] = random.choice(DEFAULT_USER_AGENTS)
         for attempt in range(1, max_attempts + 1):
             await self.rate_limiter.acquire()
             try:
-                async with make_client() as client:
+                async with make_client(headers=headers) as client:
                     resp = await client.get(
                         url,
                         params=params,
@@ -390,13 +394,40 @@ class XueqiuCrawler:
     ) -> list[RawXueqiuPost]:
         if not isinstance(payload, dict):
             return []
-        items = payload.get("list") or []
-        if not isinstance(items, list):
-            return []
+
+        # The public_timeline endpoint returns a nested structure where the
+        # outer list contains category buckets, each with an inner list of
+        # post wrappers. Each wrapper has the real post object serialized as
+        # a JSON string under the "data" key. We flatten both layers and
+        # merge the wrapper with the parsed inner object.
+        raw_items: list[Any] = []
+        outer_list = payload.get("list") or []
+        if isinstance(outer_list, list):
+            for category in outer_list:
+                if isinstance(category, dict):
+                    inner_list = category.get("list") or []
+                    if isinstance(inner_list, list):
+                        raw_items.extend(inner_list)
+
+        # Fall back to a flat list for backwards compatibility / tests.
+        if not raw_items and isinstance(outer_list, list):
+            raw_items = outer_list
+
         out: list[RawXueqiuPost] = []
-        for item in items:
+        for item in raw_items:
             if not isinstance(item, dict):
                 continue
+
+            # Unwrap the serialized post object if present.
+            data = item.get("data")
+            if isinstance(data, str):
+                try:
+                    parsed_data = json.loads(data)
+                except ValueError:
+                    parsed_data = None
+                if isinstance(parsed_data, dict):
+                    item = {**item, **parsed_data}
+
             try:
                 post = self._normalise_post(item, primary_symbol=primary_symbol)
             except Exception as exc:  # noqa: BLE001
