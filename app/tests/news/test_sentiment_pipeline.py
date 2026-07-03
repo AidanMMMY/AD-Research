@@ -358,7 +358,7 @@ def test_monitor_flush_to_db_creates_table(db_session, fake_redis, monkeypatch):
 
     today = date(2026, 7, 1)
     mon.record_call("deepseek-v4-pro", 200, 100, day=today)
-    snap = mon.flush_to_db()
+    snap = mon.flush_to_db(day=today)
     assert snap["total_calls"] == 1
     # table should exist now (portable DDL was applied)
     rows = db_session.execute(

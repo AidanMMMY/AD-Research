@@ -93,7 +93,7 @@ class LLMPipelineMonitor:
     # ------------------------------------------------------------------
     # Maintenance
     # ------------------------------------------------------------------
-    def flush_to_db(self) -> dict:
+    def flush_to_db(self, day: date | None = None) -> dict:
         """Hook for nightly flush from Redis counters to Postgres.
 
         The destination table ``llm_usage_daily`` is *not* part of the
@@ -102,8 +102,11 @@ class LLMPipelineMonitor:
         snapshot we would have written.  This keeps the scheduler
         green during dev iterations and avoids a hard dependency on
         a table that may not exist yet.
+
+        ``day`` defaults to today; pass an explicit date to flush a
+        historical bucket (used by the nightly job and by tests).
         """
-        day = date.today()
+        day = day or date.today()
         snapshot = self.daily_summary(day)
         try:
             from sqlalchemy import text

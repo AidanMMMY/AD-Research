@@ -19,11 +19,6 @@ from app.services.screening_service import ScreeningService
 def _clear_screening_cache():
     """Wipe screening-related Redis keys to prevent stale cache pollution.
 
-    The screening cache key includes ``template_id`` but only the
-    caller-supplied value (not the auto-resolved default), so tests that
-    rely on auto-resolved templates can otherwise see stale entries
-    cached by tests that didn't seed a default template.
-
     Note: screening_service.screen() calls cache_get/cache_set with the
     raw key (no etf: prefix), so we must scan ``screen:*`` rather than
     ``etf:screen:*`` to actually hit its entries.
@@ -796,3 +791,104 @@ def test_screen_cache_key_isolates_presets(
     # And the preset metadata is still attached
     assert r_trend["preset"]["key"] == "trend_strong"
     assert r_high_sharpe["preset"]["key"] == "high_sharpe_low_vol"
+
+
+# ---------------------------------------------------------------------------
+# Cache key: must use the RESOLVED default template id
+# ---------------------------------------------------------------------------
+
+
+def test_screen_cache_key_uses_resolved_default_template_id(
+    db_session, sample_etfs_and_indicators
+):
+    """B13 follow-up: the cache key must incorporate the *resolved*
+    default template id, not the caller-supplied ``template_id``.
+
+    Concretely:
+
+    * ``screen(template_id=None)`` and ``screen(template_id=<default_id>)``
+      must produce the same cache key (same effective template).
+    * ``screen(template_id=<other_id>)`` must produce a different cache key.
+
+    The old code built the cache key from the raw ``template_id`` argument
+    BEFORE the auto-resolution branch ran, which meant swapping the DB
+    default mid-TTL would not invalidate cached responses, AND it allowed
+    ``template_id=None`` and an explicit non-default id to collide or
+    diverge inconsistently across callers.
+    """
+    default_tmpl = _seed_default_template_with_scores(
+        db_session, {"510300": 85.0}
+    )
+    # A second, non-default template so we can confirm explicit-vs-default
+    # separation.
+    other_tmpl = ScoreTemplate(
+        name="Other Template",
+        weights={"return": 1.0},
+        is_default=False,
+    )
+    db_session.add(other_tmpl)
+    db_session.commit()
+
+    service = ScreeningService(db_session)
+    from app.core.redis_client import get_redis_client
+
+    def _list_screen_keys() -> list[str]:
+        """Return sorted decoded ``screen:*`` keys, or ``[]`` if Redis down."""
+        try:
+            redis_client = get_redis_client()
+            return sorted(
+                k.decode() if isinstance(k, bytes) else k
+                for k in redis_client.scan_iter(match="screen:*")
+            )
+        except Exception:
+            return []
+
+    # 1) Call with template_id=None — resolves to default_tmpl.id.
+    _clear_screening_cache()
+    service.screen(template_id=None)
+    keys_after_none = _list_screen_keys()
+    assert len(keys_after_none) == 1, (
+        f"expected 1 cached key after screen(template_id=None), "
+        f"got {len(keys_after_none)}: {keys_after_none}"
+    )
+    key_none = keys_after_none[0]
+
+    # 2) Call with the explicit default id — should hit the SAME cache key.
+    _clear_screening_cache()
+    service.screen(template_id=default_tmpl.id)
+    keys_after_default = _list_screen_keys()
+    assert len(keys_after_default) == 1
+    key_default = keys_after_default[0]
+
+    # The two cache keys must match — both effectively use the default id.
+    assert key_none == key_default, (
+        f"template_id=None should resolve to the same key as "
+        f"template_id={default_tmpl.id}; got {key_none!r} vs {key_default!r}"
+    )
+
+    # 3) Call with the OTHER (non-default) template id — must produce a
+    #    DIFFERENT cache key.
+    _clear_screening_cache()
+    service.screen(template_id=other_tmpl.id)
+    keys_after_other = _list_screen_keys()
+    assert len(keys_after_other) == 1
+    key_other = keys_after_other[0]
+
+    assert key_other != key_default, (
+        f"template_id={other_tmpl.id} must produce a different cache key "
+        f"from the default; both produced {key_other!r}"
+    )
+
+    # 4) Both keys must contain the resolved id at the template_id position
+    #    (the segment just before ``:composite_score:desc:0:50``). We
+    #    can't use a blanket ":None:" ban because many filter params are
+    #    legitimately None when the caller passes nothing.
+    suffix = ":composite_score:desc:0:50"
+    assert key_default.endswith(f":{default_tmpl.id}{suffix}"), (
+        f"expected cache key to end with ':{default_tmpl.id}{suffix}', "
+        f"got {key_default!r}"
+    )
+    assert key_other.endswith(f":{other_tmpl.id}{suffix}"), (
+        f"expected cache key to end with ':{other_tmpl.id}{suffix}', "
+        f"got {key_other!r}"
+    )

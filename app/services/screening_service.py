@@ -139,6 +139,23 @@ class ScreeningService:
         Returns:
             Dict with items (list of result dicts), count, offset, limit.
         """
+        # Auto-resolve the default template when template_id is not supplied.
+        # Always run regardless of sort_by so the response items carry
+        # composite_score fields even when sorting by an indicator column
+        # (e.g. sharpe_1y, rsi14, return_1m). Without this, score_joined stays
+        # False and the score-fetch block at the bottom of the method is
+        # skipped — see B13.
+        if template_id is None:
+            default_template = ScoringService(self.db).get_default_template()
+            template_id = default_template.id if default_template else 1
+
+        # IMPORTANT: cache key MUST be built AFTER template_id resolution.
+        # Previously the key was built from the caller-supplied template_id
+        # (often ``None``) which meant a caller passing ``None`` could collide
+        # with another caller passing an explicit non-default id, AND the DB
+        # default could be swapped mid-TTL without invalidating the cached
+        # response. Build the key from the *resolved* id so all paths that
+        # converge on the same effective template share one cache entry.
         cache_key = (
             f"screen:{preset}:{market}:{category}:{rsi_min}:{rsi_max}:"
             f"{sharpe_min}:{sharpe_max}:"
@@ -172,16 +189,6 @@ class ScreeningService:
             (ETFInfo.code == ETFIndicator.etf_code)
             & (ETFIndicator.trade_date == latest_ind_subq.c.latest_date),
         )
-
-        # Auto-resolve the default template when template_id is not supplied.
-        # Always run regardless of sort_by so the response items carry
-        # composite_score fields even when sorting by an indicator column
-        # (e.g. sharpe_1y, rsi14, return_1m). Without this, score_joined stays
-        # False and the score-fetch block at the bottom of the method is
-        # skipped — see B13.
-        if template_id is None:
-            default_template = ScoringService(self.db).get_default_template()
-            template_id = default_template.id if default_template else 1
 
         # Optional: join with ETFScore for score-based filtering/sorting
         score_joined = False
