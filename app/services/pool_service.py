@@ -139,6 +139,16 @@ class PoolService:
             pool_id=pool_id, etf_code=data.etf_code, notes=data.notes
         )
         self.db.add(member)
+
+        # Also create a default weight record for this member
+        weight = PoolWeight(
+            pool_id=pool_id,
+            etf_code=data.etf_code,
+            target_weight=0.0,
+            weight_source="manual"
+        )
+        self.db.add(weight)
+
         self.db.commit()
         self.db.refresh(pool)
         return self._to_response(pool)
