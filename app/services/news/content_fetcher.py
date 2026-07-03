@@ -39,8 +39,8 @@ logger = logging.getLogger(__name__)
 # Public Jina Reader endpoint. Free for personal use, no API key.
 JINA_READER_URL: Final[str] = "https://r.jina.ai"
 
-# 15-second timeout per request — Jina can be slow on large pages.
-REQUEST_TIMEOUT: Final[float] = 15.0
+# 30-second timeout per request — Jina can be slow on large pages.
+REQUEST_TIMEOUT: Final[float] = 30.0
 
 # Hard cap on stored content to keep the DB row reasonable.
 MAX_CONTENT_CHARS: Final[int] = 10_000
