@@ -33,28 +33,35 @@ class PoolEnhancementService:
 
         Returns a list of weight dicts with ETF metadata, including
         both target_weight and suggested_weight. Removed members are excluded.
+
+        Uses an outer join from PoolMember so active members that do not yet
+        have a PoolWeight row (e.g. members added before the auto-weight
+        creation fix) still appear in the table with default zero weights.
         """
-        weights = (
-            self.db.query(PoolWeight, ETFInfo.name)
-            .join(ETFInfo, PoolWeight.etf_code == ETFInfo.code)
-            .join(PoolMember, (PoolWeight.etf_code == PoolMember.etf_code)
-                  & (PoolMember.pool_id == pool_id))
-            .filter(PoolWeight.pool_id == pool_id)
+        rows = (
+            self.db.query(PoolMember, PoolWeight, ETFInfo.name)
+            .outerjoin(
+                PoolWeight,
+                (PoolMember.etf_code == PoolWeight.etf_code)
+                & (PoolMember.pool_id == PoolWeight.pool_id)
+                & (PoolWeight.removed_at.is_(None)),
+            )
+            .join(ETFInfo, PoolMember.etf_code == ETFInfo.code)
+            .filter(PoolMember.pool_id == pool_id)
             .filter(PoolMember.removed_at.is_(None))
-            .filter(PoolWeight.removed_at.is_(None))
             .all()
         )
 
         return [
             {
-                "etf_code": w.PoolWeight.etf_code,
-                "etf_name": w.name,
-                "target_weight": float(w.PoolWeight.target_weight) if w.PoolWeight.target_weight is not None else 0.0,
-                "suggested_weight": float(w.PoolWeight.suggested_weight) if w.PoolWeight.suggested_weight is not None else None,
-                "weight_source": w.PoolWeight.weight_source,
-                "updated_at": w.PoolWeight.updated_at,
+                "etf_code": member.etf_code,
+                "etf_name": name,
+                "target_weight": float(weight.target_weight) if weight is not None and weight.target_weight is not None else 0.0,
+                "suggested_weight": float(weight.suggested_weight) if weight is not None and weight.suggested_weight is not None else None,
+                "weight_source": weight.weight_source if weight is not None else "manual",
+                "updated_at": weight.updated_at if weight is not None else None,
             }
-            for w in weights
+            for member, weight, name in rows
         ]
 
     def update_weight(
