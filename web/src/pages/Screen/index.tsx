@@ -13,6 +13,7 @@ import FilterToolbar from '@/components/FilterToolbar';
 import EmptyState from '@/components/EmptyState';
 import HelpTrigger from '@/components/HelpTrigger';
 import HelpPopover from '@/components/HelpPopover';
+import { useSettingsStore } from '@/stores/settings';
 import ContextHint from '@/components/ContextHint';
 import InstrumentCodeTag from '@/components/InstrumentCodeTag';
 import ReturnTag from '@/components/ReturnTag';
@@ -33,6 +34,7 @@ export default function Screen() {
   const navigate = useNavigate();
   const { open } = useAIHelp();
   const isMobile = useIsMobile();
+  const mode = useSettingsStore((s) => s.mode);
   const { filters, preset, setFilter, resetFilters, applyPreset } = useScreenStore();
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(isMobile ? 20 : 50);
@@ -74,13 +76,13 @@ export default function Screen() {
   const columns = [
     { title: '代码', dataIndex: 'code', width: 100, render: (v: string, r: any) => <InstrumentCodeTag code={v} name={r.name} name_zh={r.name_zh} /> },
     { title: '分类', dataIndex: 'category', width: 100, render: (v: string) => v ? <span className="ad-table-text-secondary">{v}</span> : '-' },
-    { title: <HelpPopover termKey="composite_score_filter">评分</HelpPopover>, dataIndex: 'composite_score', width: 80, render: (v: number) => <span className="font-mono ad-table-accent">{v?.toFixed(1)}</span> },
-    { title: <HelpPopover termKey="rsi14">RSI</HelpPopover>, dataIndex: 'rsi14', width: 70, render: (v: number) => <span className="font-mono ad-table-mono">{v?.toFixed(1)}</span> },
-    { title: <HelpPopover termKey="sharpe_1y">夏普</HelpPopover>, dataIndex: 'sharpe_1y', width: 80, render: (v: number) => <span className="font-mono ad-table-mono">{v?.toFixed(2)}</span> },
-    { title: <HelpPopover termKey="return_1m">1月</HelpPopover>, dataIndex: 'return_1m', width: 100, render: (v: number) => <ReturnTag value={v} /> },
-    { title: <HelpPopover termKey="return_3m">3月</HelpPopover>, dataIndex: 'return_3m', width: 100, render: (v: number) => <ReturnTag value={v} /> },
-    { title: <HelpPopover termKey="return_1y">1年</HelpPopover>, dataIndex: 'return_1y', width: 100, render: (v: number) => <ReturnTag value={v} /> },
-    { title: <HelpPopover termKey="volatility_20d">波动率</HelpPopover>, dataIndex: 'volatility_20d', width: 90, render: (v: number) => v ? <span className="font-mono ad-table-mono">{v.toFixed(1)}%</span> : '-' },
+    { title: <HelpPopover termKey="composite_score_filter" mode={mode}>评分</HelpPopover>, dataIndex: 'composite_score', width: 80, render: (v: number) => <span className="font-mono ad-table-accent">{v?.toFixed(1)}</span> },
+    { title: <HelpPopover termKey="rsi14" mode={mode}>RSI</HelpPopover>, dataIndex: 'rsi14', width: 70, render: (v: number) => <span className="font-mono ad-table-mono">{v?.toFixed(1)}</span> },
+    { title: <HelpPopover termKey="sharpe_1y" mode={mode}>夏普</HelpPopover>, dataIndex: 'sharpe_1y', width: 80, render: (v: number) => <span className="font-mono ad-table-mono">{v?.toFixed(2)}</span> },
+    { title: <HelpPopover termKey="return_1m" mode={mode}>1月</HelpPopover>, dataIndex: 'return_1m', width: 100, render: (v: number) => <ReturnTag value={v} /> },
+    { title: <HelpPopover termKey="return_3m" mode={mode}>3月</HelpPopover>, dataIndex: 'return_3m', width: 100, render: (v: number) => <ReturnTag value={v} /> },
+    { title: <HelpPopover termKey="return_1y" mode={mode}>1年</HelpPopover>, dataIndex: 'return_1y', width: 100, render: (v: number) => <ReturnTag value={v} /> },
+    { title: <HelpPopover termKey="volatility_20d" mode={mode}>波动率</HelpPopover>, dataIndex: 'volatility_20d', width: 90, render: (v: number) => v ? <span className="font-mono ad-table-mono">{v.toFixed(1)}%</span> : '-' },
   ];
 
   return (
@@ -108,7 +110,7 @@ export default function Screen() {
           }
         >
         <div className="ad-filter-label">
-          <HelpPopover termKey="screen_presets">快速筛选</HelpPopover>:
+          <HelpPopover termKey="screen_presets" mode={mode}>快速筛选</HelpPopover>:
         </div>
         <div className="ad-flex ad-flex-wrap ad-gap-2 ad-mb-4">
           {presets?.map((p) => (
@@ -124,6 +126,7 @@ export default function Screen() {
         </div>
 
         <FilterToolbar
+          data-onboard="filter-toolbar"
           total={`共 ${results?.count || 0} 只`}
           extra={
             <Button onClick={() => { resetFilters(); setPage(1); }}>

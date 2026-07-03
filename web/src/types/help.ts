@@ -8,7 +8,8 @@ export type HelpPageType =
   | 'screen'
   | 'pool_detail'
   | 'listing_preview'
-  | 'signal_dashboard';
+  | 'signal_dashboard'
+  | 'global_markets';
 
 export interface HelpMessage {
   id: string;

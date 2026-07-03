@@ -12,6 +12,7 @@ import InstrumentCodeTag from '@/components/InstrumentCodeTag';
 import ResponsiveGrid from '@/components/ResponsiveGrid';
 import LastUpdated from '@/components/LastUpdated';
 import HelpPopover from '@/components/HelpPopover';
+import { useSettingsStore } from '@/stores/settings';
 import {
   useFuturesDashboard,
   useFuturesLeaderboard,
@@ -74,6 +75,7 @@ interface BarTableProps {
 }
 
 function BarTable({ bars, showHeader = false, maxRows = 10 }: BarTableProps) {
+  const mode = useSettingsStore((s) => s.mode);
   const columns = [
     {
       title: '代码',
@@ -94,7 +96,7 @@ function BarTable({ bars, showHeader = false, maxRows = 10 }: BarTableProps) {
       ),
     },
     {
-      title: <HelpPopover termKey="settle">结算</HelpPopover>,
+      title: <HelpPopover termKey="settle" mode={mode}>结算</HelpPopover>,
       dataIndex: 'settle',
       width: 90,
       render: (v: string | null) => (
@@ -139,11 +141,12 @@ interface ProductSummaryProps {
 }
 
 function ProductSummary({ section }: ProductSummaryProps) {
+  const mode = useSettingsStore((s) => s.mode);
   if (!section) {
     return (
       <Row gutter={16}>
         <Col xs={24} sm={8}>
-          <Statistic title={<HelpPopover termKey="dominant_contract">主力合约数</HelpPopover>} value={0} />
+          <Statistic title={<HelpPopover termKey="dominant_contract" mode={mode}>主力合约数</HelpPopover>} value={0} />
         </Col>
         <Col xs={24} sm={8}>
           <Statistic title="涨幅最大" value="-" />
@@ -160,7 +163,7 @@ function ProductSummary({ section }: ProductSummaryProps) {
   return (
     <Row gutter={16}>
       <Col xs={24} sm={8}>
-        <Statistic title={<HelpPopover termKey="dominant_contract">主力合约数</HelpPopover>} value={count} />
+        <Statistic title={<HelpPopover termKey="dominant_contract" mode={mode}>主力合约数</HelpPopover>} value={count} />
       </Col>
       <Col xs={24} sm={8}>
         <Statistic

@@ -131,6 +131,7 @@ export default function ContextHint({
         }
       }}
       overlayClassName="context-hint-popover"
+      overlayStyle={{ maxWidth: 'min(320px, 88vw)' }}
     >
       <span className="context-hint__anchor">{children}</span>
     </Popover>

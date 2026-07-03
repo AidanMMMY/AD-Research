@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { Popover, Button } from 'antd';
-import { InfoCircleOutlined, RobotOutlined, BookOutlined } from '@ant-design/icons';
+import { InfoCircleOutlined, RobotOutlined, BookOutlined, PartitionOutlined } from '@ant-design/icons';
 import { getTerm } from '@/utils/termDictionary';
 import { useAIHelp } from '@/hooks/useAIHelp';
 import { useIsMobile } from '@/hooks/useBreakpoint';
@@ -60,6 +60,13 @@ export default function HelpPopover({
       pool_detail: '标的池详情',
       listing_preview: '上市预告',
       signal_dashboard: '交易信号',
+      // M22-1 (2026-07-04): added for type completeness after the
+      // Global Markets page started sending ``pageType='global_markets'``
+      // to the AI Help drawer. The popover never renders this label
+      // because no term has ``relatedPageType='global_markets'``; the
+      // entry only exists so the ``Record<HelpPageType, string>``
+      // exhaustiveness check passes.
+      global_markets: '全球市场速览',
     };
 
     // K14: novice 模式下给 AI 教学助手额外的「为什么需要看」上下文
@@ -134,6 +141,43 @@ export default function HelpPopover({
         {/* Divider */}
         <div className="help-popover__divider" />
 
+        {/* M20: 相关术语 chip 链接 — 只展示，点击仅 console.log；P2 再接跳词条详情 */}
+        {term.relatedTerms && term.relatedTerms.length > 0 && (
+          <div className="help-popover__related">
+            <span className="help-popover__related-label">
+              <PartitionOutlined /> 相关术语
+            </span>
+            <div className="help-popover__related-chips">
+              {term.relatedTerms.map((rk) => {
+                const rt = getTerm(rk);
+                if (!rt) return null;
+                return (
+                  <span
+                    key={rk}
+                    role="button"
+                    tabIndex={0}
+                    className="help-popover__related-chip"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      // TODO(M20-P2): 接入词条详情页跳转。当前仅 console 占位。
+                      console.log('[M20] related-term clicked', { from: termKey, to: rk });
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        console.log('[M20] related-term activated', { from: termKey, to: rk });
+                      }
+                    }}
+                    title={`${rt.title} — ${rt.shortDesc}`}
+                  >
+                    {rt.title}
+                  </span>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         {/* Footer action */}
         <div className="help-popover__footer">
           <Button
@@ -161,7 +205,7 @@ export default function HelpPopover({
       content={content}
       trigger={effectiveTrigger}
       placement="top"
-      overlayStyle={{ width: 'auto', maxWidth: 'min(380px, 85vw)' }}
+      overlayStyle={{ width: 'auto', maxWidth: 'min(380px, 90vw)' }}
     >
       <span
         className="help-popover__trigger"

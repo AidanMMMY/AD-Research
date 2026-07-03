@@ -16,6 +16,7 @@ import {
   DollarOutlined,
   AppstoreOutlined,
   ThunderboltOutlined,
+  PartitionOutlined,
 } from '@ant-design/icons';
 import { useQuery } from '@tanstack/react-query';
 import { useScores } from '@/hooks/useScores';
@@ -42,6 +43,7 @@ import TickerTape from '@/components/TickerTape';
 import HelpPopover from '@/components/HelpPopover';
 import DailyLesson from '@/components/DailyLesson';
 import { useLearnStats } from '@/hooks/useLearnedTerms';
+import { useSettingsStore } from '@/stores/settings';
 import { usePriceStream } from '@/hooks/usePriceStream';
 import { useMarketStream } from '@/hooks/useMarketStream';
 import type { NewsArticle, SentimentLabel } from '@/types/news';
@@ -253,6 +255,7 @@ function GlobalSnapshot() {
 
 export default function Dashboard() {
   const navigate = useNavigate();
+  const mode = useSettingsStore((s) => s.mode);
   const learnStats = useLearnStats();
   const { data: scoresData } = useScores({ limit: 10 });
   const { favorites, count: favCount, isLoading: favLoading } = useFavorites(10);
@@ -316,7 +319,7 @@ export default function Dashboard() {
 
   const scoreColumns = [
     {
-      title: <HelpPopover termKey="rank_overall">排名</HelpPopover>,
+      title: <HelpPopover termKey="rank_overall" mode={mode}>排名</HelpPopover>,
       dataIndex: 'rank_overall',
       width: 70,
       render: (v: number) => (
@@ -334,14 +337,14 @@ export default function Dashboard() {
       ),
     },
     {
-      title: <HelpPopover termKey="composite_score">评分</HelpPopover>,
+      title: <HelpPopover termKey="composite_score" mode={mode}>评分</HelpPopover>,
       render: (_: unknown, record: any) => (
         <ScoreBar score={record.composite_score} size="small" />
       ),
       width: 160,
     },
     {
-      title: <HelpPopover termKey="return_1m">1月收益</HelpPopover>,
+      title: <HelpPopover termKey="return_1m" mode={mode}>1月收益</HelpPopover>,
       render: (_: unknown, record: any) => <ReturnTag value={record.return_1m} />,
       width: 110,
     },
@@ -358,9 +361,9 @@ export default function Dashboard() {
   ];
 
   return (
-    <PageShell maxWidth="full">
+    <PageShell maxWidth="full" className="dashboard-shell">
       <TickerTape limit={20} />
-      <header className="masthead">
+      <header className="masthead" data-onboard="welcome-dashboard">
         <div className="masthead-dateline">
           AD-RESEARCH ·{' '}
           {new Date().toLocaleDateString('zh-CN', {
@@ -376,109 +379,142 @@ export default function Dashboard() {
         </p>
       </header>
 
-      {/* K14: 新手教学 chip 行（不影响原有布局） */}
-      <div className="dashboard-learning-chips">
-        <Space size={[8, 8]} wrap>
-          <span className="dashboard-learning-chips__label">新手教程：</span>
-          <Tag
-            icon={<BookOutlined />}
-            color="blue"
-            className="dashboard-learning-chip"
-            onClick={() => navigate('/learning')}
-          >
-            新手教程总览
-          </Tag>
-          <Tag
-            icon={<LineChartOutlined />}
-            color="cyan"
-            className="dashboard-learning-chip"
-            onClick={() => navigate('/learning')}
-          >
-            如何看估值
-          </Tag>
-          <Tag
-            icon={<ExperimentOutlined />}
-            color="purple"
-            className="dashboard-learning-chip"
-            onClick={() => navigate('/learning')}
-          >
-            如何做回测
-          </Tag>
-          {learnStats.total > 0 && (
-            <Tag color="success" className="dashboard-learning-chip">
-              本周学习了 {learnStats.total} 个术语
+      {/* M26: consolidated quick-actions bar. K14 (learning) + K16
+          (portfolio) + M20 (knowledge graph) chips are merged into one
+          bar with inline dividers, replacing the previous "3 stacked
+          chip rows" layout that dominated the page top. */}
+      <section className="dashboard-quick-actions" aria-label="快捷入口">
+        <Space size={[8, 8]} wrap className="dashboard-quick-actions__row">
+          <span className="dashboard-quick-actions__group">
+            <span className="dashboard-quick-actions__label">新手教程</span>
+            <Tag
+              icon={<BookOutlined />}
+              color="blue"
+              className="dashboard-learning-chip"
+              onClick={() => navigate('/learning')}
+            >
+              总览
             </Tag>
+            <Tag
+              icon={<LineChartOutlined />}
+              color="cyan"
+              className="dashboard-learning-chip"
+              onClick={() => navigate('/learning')}
+            >
+              如何看估值
+            </Tag>
+            <Tag
+              icon={<ExperimentOutlined />}
+              color="purple"
+              className="dashboard-learning-chip"
+              onClick={() => navigate('/learning')}
+            >
+              如何做回测
+            </Tag>
+          </span>
+
+          <span className="dashboard-quick-actions__divider" aria-hidden="true" />
+
+          <span className="dashboard-quick-actions__group">
+            <span className="dashboard-quick-actions__label">组合中心</span>
+            <Tag
+              icon={<WalletOutlined />}
+              color="gold"
+              className="dashboard-learning-chip"
+              onClick={() => navigate('/portfolio')}
+              title="查看投资组合中心（模拟账户 / 真实账户 / 目标 Pool diff 聚合）"
+            >
+              我的组合
+            </Tag>
+            <Tag
+              icon={<DollarOutlined />}
+              color="geekblue"
+              className="dashboard-learning-chip"
+              onClick={() => navigate('/paper-trading')}
+              title="新建或切换模拟账户"
+            >
+              模拟账户
+            </Tag>
+            <Tag
+              icon={<ThunderboltOutlined />}
+              color="magenta"
+              className="dashboard-learning-chip"
+              onClick={() => navigate('/live-trading')}
+              title="查看真实交易配置与持仓（Binance testnet/mainnet）"
+            >
+              真实账户
+            </Tag>
+            <Tag
+              icon={<AppstoreOutlined />}
+              color="default"
+              className="dashboard-learning-chip"
+              onClick={() => navigate('/pools')}
+              title="管理中长期目标组合（与组合中心不同：这里是目标权重，不是实际持仓）"
+            >
+              标的池
+            </Tag>
+          </span>
+
+          <span className="dashboard-quick-actions__divider" aria-hidden="true" />
+
+          <span className="dashboard-quick-actions__group">
+            <span className="dashboard-quick-actions__label">知识图谱</span>
+            <Tag
+              icon={<PartitionOutlined />}
+              color="volcano"
+              className="dashboard-learning-chip"
+              onClick={() => navigate('/learning?panel=terms')}
+              title="查看全部术语词条（M20 速查面板入口；P2 升级为图谱视图）"
+            >
+              查看知识图谱
+            </Tag>
+          </span>
+
+          {learnStats.total > 0 && (
+            <span className="dashboard-quick-actions__meta">
+              本周已学 {learnStats.total} 个术语
+            </span>
           )}
         </Space>
-      </div>
+      </section>
 
-      {/* K16 P0: 组合中心 chip 行（与 K14 chip 行视觉分组，单独 label）。
-          目标：把"实际持仓（模拟/真实）"这一统一心智模型从 /paper-trading / /live-trading
-          两条独立路径汇总到 Dashboard 入口。后续 P1 阶段会引入独立的 /portfolio 中心页。
-          当前 chip 跳转目标为 /paper-trading（多账户聚合体验最接近"组合中心"）。 */}
-      <div className="dashboard-learning-chips">
-        <Space size={[8, 8]} wrap>
-          <span className="dashboard-learning-chips__label">组合中心：</span>
-          <Tag
-            icon={<WalletOutlined />}
-            color="gold"
-            className="dashboard-learning-chip"
-            onClick={() => navigate('/paper-trading')}
-            title="查看模拟交易账户与持仓聚合（Portfolio Center 临时入口，P1 将升级为独立页面）"
-          >
-            我的组合 / 持仓
-          </Tag>
-          <Tag
-            icon={<DollarOutlined />}
-            color="geekblue"
-            className="dashboard-learning-chip"
-            onClick={() => navigate('/paper-trading')}
-            title="新建或切换模拟账户"
-          >
-            模拟账户
-          </Tag>
-          <Tag
-            icon={<ThunderboltOutlined />}
-            color="magenta"
-            className="dashboard-learning-chip"
-            onClick={() => navigate('/live-trading')}
-            title="查看真实交易配置与持仓（Binance testnet/mainnet）"
-          >
-            真实账户
-          </Tag>
-          <Tag
-            icon={<AppstoreOutlined />}
-            color="default"
-            className="dashboard-learning-chip"
-            onClick={() => navigate('/pools')}
-            title="管理中长期目标组合（与组合中心不同：这里是目标权重，不是实际持仓）"
-          >
-            标的池（目标组合）
-          </Tag>
-        </Space>
-      </div>
-
-      {/* K15 P0: 今日学习 3 分钟 */}
-      <DailyLesson />
-
-      <ResponsiveGrid cols={4} gap="md" className="dashboard-section">
-        {[
-          { title: '标的总数', value: stats?.etf_count ?? 0, suffix: undefined, onClick: () => navigate('/instruments'), term: 'etf' },
-          { title: '评分覆盖', value: stats?.score_count ?? 0, suffix: `/ ${stats?.etf_count ?? 0}`, onClick: () => navigate('/scores'), term: 'composite_score' },
-          { title: '分类数', value: stats?.category_count ?? 0, suffix: undefined, onClick: undefined, term: 'rank_category' },
-          { title: '评分模板', value: stats?.template_count ?? 0, suffix: undefined, onClick: () => navigate('/scores'), term: 'strategy_template' },
-        ].map((item) => (
-          <StatCard
-            key={item.title}
-            title={item.title}
-            value={item.value}
-            suffix={item.suffix}
-            loading={statsLoading}
-            onClick={item.onClick}
-            term={item.term}
-          />
-        ))}
-      </ResponsiveGrid>
+      {/* M26: KPI strip + DailyLesson side-by-side. On desktop the four
+          StatCards occupy the left 4-col strip while DailyLesson fills
+          the right column; on tablet/mobile they stack. This replaces
+          the previous full-width-lesson + below-row KPI flow that left
+          DailyLesson stranded above the metrics. */}
+      <section className="dashboard-section dashboard-kpi-row">
+        <ResponsiveGrid cols={4} gap="md" className="dashboard-kpi-row__stats">
+          {[
+            { title: '标的总数', value: stats?.etf_count ?? 0, suffix: undefined, onClick: () => navigate('/instruments'), term: 'etf' },
+            { title: '评分覆盖', value: stats?.score_count ?? 0, suffix: `/ ${stats?.etf_count ?? 0}`, onClick: () => navigate('/scores'), term: 'composite_score' },
+            { title: '分类数', value: stats?.category_count ?? 0, suffix: undefined, onClick: undefined, term: 'rank_category' },
+            { title: '评分模板', value: stats?.template_count ?? 0, suffix: undefined, onClick: () => navigate('/scores'), term: 'strategy_template' },
+          ].map((item) => (
+            <StatCard
+              key={item.title}
+              title={item.title}
+              value={item.value}
+              suffix={item.suffix}
+              loading={statsLoading}
+              onClick={item.onClick}
+              term={item.term}
+            />
+          ))}
+        </ResponsiveGrid>
+        <div className="dashboard-kpi-row__lesson">
+          {learnStats.total > 0 && (
+            <span
+              className="daily-lesson-week-badge"
+              data-testid="dashboard-week-learned-badge"
+              aria-label={`本周已学 ${learnStats.thisWeekApprox} 个术语`}
+            >
+              本周已学 {learnStats.thisWeekApprox} 个术语
+            </span>
+          )}
+          <DailyLesson />
+        </div>
+      </section>
 
       {/* ── Global markets snapshot (P0: 2026-07-04) ─────────────────── */}
       <GlobalSnapshot />

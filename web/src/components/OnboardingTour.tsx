@@ -1,73 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Button, Space, Tour, type TourProps } from 'antd';
-import {
-  RocketOutlined,
-  FilterOutlined,
-  ThunderboltOutlined,
-  ReadOutlined,
-  DollarOutlined,
-} from '@ant-design/icons';
 import { useOnboardingStore } from '@/stores/onboarding';
 import { useSettingsStore } from '@/stores/settings';
-
-interface Step {
-  key: string;
-  title: string;
-  description: string;
-  /** Rendered as the "go to" button to send the user to the right page. */
-  path?: string;
-  icon: React.ReactNode;
-}
-
-const STEPS: Step[] = [
-  {
-    key: 'welcome',
-    title: '欢迎来到 AD-RESEARCH',
-    description:
-      '这是一个面向 A 股、美股、港股、加密货币等市场的量化研究平台。我们会用 5 步带你了解核心功能。',
-    icon: <RocketOutlined />,
-  },
-  {
-    key: 'dashboard',
-    title: '首页看板',
-    description:
-      '首页汇总你的综合评分、收藏标的、实时行情与重要新闻。建议每天先看这一页，把握市场全貌。',
-    icon: <RocketOutlined />,
-  },
-  {
-    key: 'screen',
-    title: '全市场筛选器',
-    description:
-      '在这里按评分、RSI、夏普、波动率等条件筛选标的。先选条件再点查询，比漫无目的浏览高效得多。',
-    path: '/screen',
-    icon: <FilterOutlined />,
-  },
-  {
-    key: 'signals',
-    title: '交易信号',
-    description:
-      '信号看板汇总所有策略今日的买入 / 卖出 / 持有建议。点击行可跳到策略说明，回顾触发原因。',
-    path: '/signals',
-    icon: <ThunderboltOutlined />,
-  },
-  {
-    key: 'research',
-    title: 'AI 研究笔记',
-    description:
-      '把市场观察、宏观数据、技术面结合 LLM 生成可读性强的研报。点击「生成研报」按钮即可触发。',
-    path: '/research',
-    icon: <ReadOutlined />,
-  },
-  {
-    key: 'paper',
-    title: '试着做一笔模拟交易',
-    description:
-      '模拟交易不涉及真实资金。先创建账户，下一笔小单练手，再开启自动交易看策略表现。',
-    path: '/paper-trading',
-    icon: <DollarOutlined />,
-  },
-];
+import { useOnboardingSteps } from '@/hooks/useOnboardingSteps';
 
 /**
  * OnboardingTour is the global 5-step first-time tour. It mounts in AppLayout
@@ -85,6 +21,7 @@ export default function OnboardingTour() {
   const { mode, setMode } = useSettingsStore();
   const [open, setOpen] = useState(false);
   const [current, setCurrent] = useState(0);
+  const STEPS = useOnboardingSteps();
 
   // Trigger logic — open when not completed and we're on /dashboard, or when
   // the user explicitly clicks "reopen".
@@ -132,13 +69,13 @@ export default function OnboardingTour() {
             )}
           </div>
         ),
-        // We do not bind to a DOM element because each step lives on a
-        // different route. The modal-style centered tour handles that well
-        // for a 5-step first-time experience.
-        target: null,
+        // Anchor to a real DOM element when available (M19 P1). Falls back to
+        // a centered modal when the target selector returns null (e.g. user
+        // is on the wrong page for the current step).
+        target: s.target?.() ?? null,
       })),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    []
+    [STEPS]
   );
 
   const handleFinish = () => {

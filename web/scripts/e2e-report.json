@@ -1,0 +1,415 @@
+{
+  "started_at": "2026-07-03T22:01:56.806Z",
+  "base_url": "http://127.0.0.1:51140",
+  "routes": [
+    {
+      "path": "/login",
+      "note": "Login page (no auth required)",
+      "console_errors": [],
+      "console_warnings": [],
+      "page_errors": [],
+      "request_failures": [],
+      "reached": true,
+      "sentinels_found": {
+        "AD-Research": true,
+        "登 录": true
+      },
+      "final_url": "http://127.0.0.1:51140/login",
+      "note_extra": null,
+      "request_log": [
+        "http://127.0.0.1:51140/api/v1/research/ai/status",
+        "http://127.0.0.1:51140/api/v1/research/ai/status"
+      ],
+      "dom_summary": {
+        "root_html_length": 13301,
+        "visible_text_length": 30,
+        "has_global_error": false,
+        "has_route_suspense": false,
+        "h1": "AD-Research",
+        "title": "投研平台 | Investment Research"
+      }
+    },
+    {
+      "path": "/dashboard",
+      "note": "K15 DailyLesson + K16 portfolio chip row",
+      "console_errors": [],
+      "console_warnings": [],
+      "page_errors": [],
+      "request_failures": [],
+      "reached": true,
+      "sentinels_found": {
+        "今日学习": true,
+        "组合中心": true,
+        "dashboard": false
+      },
+      "final_url": "http://127.0.0.1:51140/dashboard",
+      "note_extra": null,
+      "request_log": [
+        "http://127.0.0.1:51140/api/v1/research/ai/status",
+        "http://127.0.0.1:51140/api/v1/auth/me",
+        "http://127.0.0.1:51140/api/v1/research/ai/status",
+        "http://127.0.0.1:51140/api/v1/analysis/ranking?sort_by=return_1m&order=desc&limit=20",
+        "http://127.0.0.1:51140/api/v1/macro/latest?region=global",
+        "http://127.0.0.1:51140/api/v1/macro/latest?region=us",
+        "http://127.0.0.1:51140/api/v1/scores?limit=10",
+        "http://127.0.0.1:51140/api/v1/favorites?limit=10",
+        "http://127.0.0.1:51140/api/v1/pools",
+        "http://127.0.0.1:51140/api/v1/stats/overview",
+        "http://127.0.0.1:51140/api/v1/news?importance_min=4&page=1&page_size=6",
+        "http://127.0.0.1:51140/api/v1/stream/prices?codes=510300.SH&codes=159915.SZ&codes=SPY.US&codes=BTC.US",
+        "http://127.0.0.1:51140/api/v1/stream/prices?codes=510300.SH%2C159915.SZ%2CSPY.US%2CBTC.US"
+      ],
+      "dom_summary": {
+        "root_html_length": 87133,
+        "visible_text_length": 906,
+        "has_global_error": false,
+        "has_route_suspense": false,
+        "h1": "首页看板",
+        "title": "投研平台 | Investment Research"
+      }
+    },
+    {
+      "path": "/learning",
+      "note": "K14 — 3 scenario cards (valuation / macro / backtest)",
+      "console_errors": [],
+      "console_warnings": [],
+      "page_errors": [],
+      "request_failures": [],
+      "reached": true,
+      "sentinels_found": {
+        "估值": true,
+        "央行": true,
+        "回测": true
+      },
+      "final_url": "http://127.0.0.1:51140/learning",
+      "note_extra": null,
+      "request_log": [
+        "http://127.0.0.1:51140/api/v1/research/ai/status",
+        "http://127.0.0.1:51140/api/v1/auth/me",
+        "http://127.0.0.1:51140/api/v1/research/ai/status"
+      ],
+      "dom_summary": {
+        "root_html_length": 74345,
+        "visible_text_length": 1181,
+        "has_global_error": false,
+        "has_route_suspense": false,
+        "h1": "新手教程",
+        "title": "投研平台 | Investment Research"
+      }
+    },
+    {
+      "path": "/global",
+      "note": "K11 FRED empty-state copy when API key missing",
+      "console_errors": [],
+      "console_warnings": [],
+      "page_errors": [],
+      "request_failures": [],
+      "reached": true,
+      "sentinels_found": {
+        "FRED": true,
+        "全球": true
+      },
+      "final_url": "http://127.0.0.1:51140/global",
+      "note_extra": null,
+      "request_log": [
+        "http://127.0.0.1:51140/api/v1/research/ai/status",
+        "http://127.0.0.1:51140/api/v1/auth/me",
+        "http://127.0.0.1:51140/api/v1/research/ai/status",
+        "http://127.0.0.1:51140/api/v1/news?event_category%5B%5D=geopolitics&event_category%5B%5D=central_bank&event_category%5B%5D=election&event_category%5B%5D=trade_war&event_category%5B%5D=sanction&importance_min=4&from_date=2026-07-02T22:02:00.236Z&page=1&page_size=8",
+        "http://127.0.0.1:51140/api/v1/news?event_category%5B%5D=geopolitics&event_category%5B%5D=central_bank&event_category%5B%5D=election&event_category%5B%5D=trade_war&event_category%5B%5D=sanction&importance_min=4&from_date=2026-07-02T22:02:00.233Z&page=1&page_size=8",
+        "http://127.0.0.1:51140/api/v1/macro/latest?region=global",
+        "http://127.0.0.1:51140/api/v1/macro/latest?region=us",
+        "http://127.0.0.1:51140/api/v1/macro/indicators/us_dgs30?limit=30",
+        "http://127.0.0.1:51140/api/v1/macro/indicators/us_dgs10?limit=30",
+        "http://127.0.0.1:51140/api/v1/macro/indicators/us_dgs2?limit=30",
+        "http://127.0.0.1:51140/api/v1/macro/indicators/us_t10y2y?limit=30",
+        "http://127.0.0.1:51140/api/v1/macro/indicators/global_dxy?limit=30",
+        "http://127.0.0.1:51140/api/v1/macro/indicators/global_usdjpy?limit=30",
+        "http://127.0.0.1:51140/api/v1/macro/indicators/global_brent?limit=30",
+        "http://127.0.0.1:51140/api/v1/macro/indicators/global_wti?limit=30",
+        "http://127.0.0.1:51140/api/v1/macro/indicators/global_gold?limit=30",
+        "http://127.0.0.1:51140/api/v1/macro/indicators/global_sp500?limit=30",
+        "http://127.0.0.1:51140/api/v1/macro/indicators/us_vix?limit=30"
+      ],
+      "dom_summary": {
+        "root_html_length": 65130,
+        "visible_text_length": 614,
+        "has_global_error": false,
+        "has_route_suspense": false,
+        "h1": "全球市场速览",
+        "title": "投研平台 | Investment Research"
+      }
+    },
+    {
+      "path": "/news",
+      "note": "K12 event_category chip (geopolitics = 地缘)",
+      "console_errors": [],
+      "console_warnings": [],
+      "page_errors": [],
+      "request_failures": [],
+      "reached": true,
+      "sentinels_found": {
+        "地缘": true,
+        "资讯": true
+      },
+      "final_url": "http://127.0.0.1:51140/news",
+      "note_extra": null,
+      "request_log": [
+        "http://127.0.0.1:51140/api/v1/research/ai/status",
+        "http://127.0.0.1:51140/api/v1/auth/me",
+        "http://127.0.0.1:51140/api/v1/research/ai/status",
+        "http://127.0.0.1:51140/api/v1/news/stats/sources",
+        "http://127.0.0.1:51140/api/v1/news?page=1&page_size=20"
+      ],
+      "dom_summary": {
+        "root_html_length": 74738,
+        "visible_text_length": 451,
+        "has_global_error": false,
+        "has_route_suspense": false,
+        "h1": "资讯",
+        "title": "投研平台 | Investment Research"
+      }
+    },
+    {
+      "path": "/instruments",
+      "note": "Instrument list reachable",
+      "console_errors": [],
+      "console_warnings": [],
+      "page_errors": [],
+      "request_failures": [],
+      "reached": true,
+      "sentinels_found": {
+        "标的": true,
+        "instruments": false
+      },
+      "final_url": "http://127.0.0.1:51140/instruments",
+      "note_extra": null,
+      "request_log": [
+        "http://127.0.0.1:51140/api/v1/research/ai/status",
+        "http://127.0.0.1:51140/api/v1/auth/me",
+        "http://127.0.0.1:51140/api/v1/research/ai/status",
+        "http://127.0.0.1:51140/api/v1/etfs?page=1&page_size=50",
+        "http://127.0.0.1:51140/api/v1/etfs/categories/list",
+        "http://127.0.0.1:51140/api/v1/etfs/markets/list"
+      ],
+      "dom_summary": {
+        "root_html_length": 68397,
+        "visible_text_length": 393,
+        "has_global_error": false,
+        "has_route_suspense": false,
+        "h1": "标的列表",
+        "title": "投研平台 | Investment Research"
+      }
+    },
+    {
+      "path": "/pools",
+      "note": "Pool list reachable",
+      "console_errors": [],
+      "console_warnings": [],
+      "page_errors": [],
+      "request_failures": [],
+      "reached": true,
+      "sentinels_found": {
+        "标的池": true,
+        "pools": false
+      },
+      "final_url": "http://127.0.0.1:51140/pools",
+      "note_extra": null,
+      "request_log": [
+        "http://127.0.0.1:51140/api/v1/research/ai/status",
+        "http://127.0.0.1:51140/api/v1/auth/me",
+        "http://127.0.0.1:51140/api/v1/research/ai/status",
+        "http://127.0.0.1:51140/api/v1/pools"
+      ],
+      "dom_summary": {
+        "root_html_length": 65292,
+        "visible_text_length": 477,
+        "has_global_error": false,
+        "has_route_suspense": false,
+        "h1": "标的池管理",
+        "title": "投研平台 | Investment Research"
+      }
+    },
+    {
+      "path": "/scores",
+      "note": "Score ranking reachable",
+      "console_errors": [],
+      "console_warnings": [],
+      "page_errors": [],
+      "request_failures": [],
+      "reached": true,
+      "sentinels_found": {
+        "评分": true,
+        "scores": false
+      },
+      "final_url": "http://127.0.0.1:51140/scores",
+      "note_extra": null,
+      "request_log": [
+        "http://127.0.0.1:51140/api/v1/research/ai/status",
+        "http://127.0.0.1:51140/api/v1/auth/me",
+        "http://127.0.0.1:51140/api/v1/research/ai/status",
+        "http://127.0.0.1:51140/api/v1/scores?limit=50",
+        "http://127.0.0.1:51140/api/v1/scores/templates"
+      ],
+      "dom_summary": {
+        "root_html_length": 81225,
+        "visible_text_length": 481,
+        "has_global_error": false,
+        "has_route_suspense": false,
+        "h1": "评分排名",
+        "title": "投研平台 | Investment Research"
+      }
+    },
+    {
+      "path": "/signals",
+      "note": "Signal dashboard reachable",
+      "console_errors": [],
+      "console_warnings": [],
+      "page_errors": [],
+      "request_failures": [],
+      "reached": true,
+      "sentinels_found": {
+        "信号": true,
+        "signals": false
+      },
+      "final_url": "http://127.0.0.1:51140/signals",
+      "note_extra": null,
+      "request_log": [
+        "http://127.0.0.1:51140/api/v1/research/ai/status",
+        "http://127.0.0.1:51140/api/v1/auth/me",
+        "http://127.0.0.1:51140/api/v1/research/ai/status",
+        "http://127.0.0.1:51140/api/v1/signals/latest?limit=50"
+      ],
+      "dom_summary": {
+        "root_html_length": 69720,
+        "visible_text_length": 510,
+        "has_global_error": false,
+        "has_route_suspense": false,
+        "h1": "信号看板",
+        "title": "投研平台 | Investment Research"
+      }
+    },
+    {
+      "path": "/macro",
+      "note": "Macro page reachable",
+      "console_errors": [],
+      "console_warnings": [],
+      "page_errors": [],
+      "request_failures": [],
+      "reached": true,
+      "sentinels_found": {
+        "宏观": true,
+        "macro": false
+      },
+      "final_url": "http://127.0.0.1:51140/macro",
+      "note_extra": null,
+      "request_log": [
+        "http://127.0.0.1:51140/api/v1/research/ai/status",
+        "http://127.0.0.1:51140/api/v1/auth/me",
+        "http://127.0.0.1:51140/api/v1/research/ai/status",
+        "http://127.0.0.1:51140/api/v1/macro/indicators?region=us",
+        "http://127.0.0.1:51140/api/v1/macro/latest"
+      ],
+      "dom_summary": {
+        "root_html_length": 65729,
+        "visible_text_length": 479,
+        "has_global_error": false,
+        "has_route_suspense": false,
+        "h1": "美国宏观看板",
+        "title": "投研平台 | Investment Research"
+      }
+    },
+    {
+      "path": "/dashboard?helpMode=novice",
+      "note": "HelpPopover probe (mode=novice)",
+      "console_errors": [
+        "State loaded from storage couldn't be migrated since no migrate function was provided"
+      ],
+      "console_warnings": [],
+      "page_errors": [],
+      "request_failures": [
+        "net::ERR_ABORTED http://127.0.0.1:51140/assets/EmptyState-qwahI2A9.js",
+        "net::ERR_ABORTED http://127.0.0.1:51140/assets/PageShell-CuezHBSZ.js",
+        "net::ERR_ABORTED http://127.0.0.1:51140/assets/ResponsiveGrid-CA9H0Cs0.js",
+        "net::ERR_ABORTED http://127.0.0.1:51140/assets/StatCard-BaUWdOH4.js",
+        "net::ERR_ABORTED http://127.0.0.1:51140/assets/InstrumentCodeTag-C8yJpfGA.js",
+        "net::ERR_ABORTED http://127.0.0.1:51140/assets/news-CFTePo5T.js",
+        "net::ERR_ABORTED http://127.0.0.1:51140/assets/SectionHeading-D_MfEFfl.js",
+        "net::ERR_ABORTED http://127.0.0.1:51140/assets/useMarketStream-LT-RTd-y.js",
+        "net::ERR_ABORTED http://127.0.0.1:51140/assets/ReturnTag-Dy73OEN_.js",
+        "net::ERR_ABORTED http://127.0.0.1:51140/assets/usePoolDetail-BS4jIKAR.js",
+        "net::ERR_ABORTED http://127.0.0.1:51140/assets/color-CeTr_XRf.js",
+        "net::ERR_ABORTED http://127.0.0.1:51140/assets/datetime-D6nnmWRD.js",
+        "net::ERR_ABORTED http://127.0.0.1:51140/assets/index-BfBCkfxu.js",
+        "net::ERR_ABORTED http://127.0.0.1:51140/assets/macro-Ctke9gKe.js",
+        "net::ERR_ABORTED http://127.0.0.1:51140/assets/ScoreBar-BZQAK8p5.js",
+        "net::ERR_ABORTED http://127.0.0.1:51140/assets/HelpPopover-Doze8IWC.js",
+        "net::ERR_ABORTED http://127.0.0.1:51140/assets/format-CQzcpWm6.js",
+        "net::ERR_ABORTED http://127.0.0.1:51140/assets/pool-zDbZqalx.js",
+        "net::ERR_ABORTED http://127.0.0.1:51140/assets/useScores-DryTpGPA.js",
+        "net::ERR_ABORTED http://127.0.0.1:51140/assets/termDictionary-DaRtMD8Y.js",
+        "net::ERR_ABORTED http://127.0.0.1:51140/assets/Panel-DHocMROw.js",
+        "net::ERR_ABORTED http://127.0.0.1:51140/assets/useFavorites-CR-sJr61.js",
+        "net::ERR_ABORTED http://127.0.0.1:51140/assets/analysis-RgyZGbQ9.js"
+      ],
+      "reached": true,
+      "sentinels_found": {},
+      "final_url": "http://127.0.0.1:51140/dashboard",
+      "note_extra": null,
+      "dom_summary": {
+        "root_html_length": 87078,
+        "visible_text_length": 906
+      }
+    },
+    {
+      "path": "/dashboard?helpMode=pro",
+      "note": "HelpPopover probe (mode=pro)",
+      "console_errors": [
+        "State loaded from storage couldn't be migrated since no migrate function was provided",
+        "State loaded from storage couldn't be migrated since no migrate function was provided"
+      ],
+      "console_warnings": [],
+      "page_errors": [],
+      "request_failures": [
+        "net::ERR_ABORTED http://127.0.0.1:51140/assets/SectionHeading-D_MfEFfl.js",
+        "net::ERR_ABORTED http://127.0.0.1:51140/assets/useScores-DryTpGPA.js",
+        "net::ERR_ABORTED http://127.0.0.1:51140/assets/ResponsiveGrid-CA9H0Cs0.js",
+        "net::ERR_ABORTED http://127.0.0.1:51140/assets/macro-Ctke9gKe.js",
+        "net::ERR_ABORTED http://127.0.0.1:51140/assets/pool-zDbZqalx.js",
+        "net::ERR_ABORTED http://127.0.0.1:51140/assets/Panel-DHocMROw.js",
+        "net::ERR_ABORTED http://127.0.0.1:51140/assets/news-CFTePo5T.js",
+        "net::ERR_ABORTED http://127.0.0.1:51140/assets/index-BfBCkfxu.js",
+        "net::ERR_ABORTED http://127.0.0.1:51140/assets/ReturnTag-Dy73OEN_.js",
+        "net::ERR_ABORTED http://127.0.0.1:51140/assets/StatCard-BaUWdOH4.js",
+        "net::ERR_ABORTED http://127.0.0.1:51140/assets/termDictionary-DaRtMD8Y.js",
+        "net::ERR_ABORTED http://127.0.0.1:51140/assets/color-CeTr_XRf.js",
+        "net::ERR_ABORTED http://127.0.0.1:51140/assets/ScoreBar-BZQAK8p5.js",
+        "net::ERR_ABORTED http://127.0.0.1:51140/assets/useMarketStream-LT-RTd-y.js",
+        "net::ERR_ABORTED http://127.0.0.1:51140/assets/InstrumentCodeTag-C8yJpfGA.js",
+        "net::ERR_ABORTED http://127.0.0.1:51140/assets/useFavorites-CR-sJr61.js",
+        "net::ERR_ABORTED http://127.0.0.1:51140/assets/PageShell-CuezHBSZ.js",
+        "net::ERR_ABORTED http://127.0.0.1:51140/assets/usePoolDetail-BS4jIKAR.js",
+        "net::ERR_ABORTED http://127.0.0.1:51140/assets/analysis-RgyZGbQ9.js",
+        "net::ERR_ABORTED http://127.0.0.1:51140/assets/EmptyState-qwahI2A9.js",
+        "net::ERR_ABORTED http://127.0.0.1:51140/assets/format-CQzcpWm6.js",
+        "net::ERR_ABORTED http://127.0.0.1:51140/assets/datetime-D6nnmWRD.js",
+        "net::ERR_ABORTED http://127.0.0.1:51140/assets/HelpPopover-Doze8IWC.js"
+      ],
+      "reached": true,
+      "sentinels_found": {},
+      "final_url": "http://127.0.0.1:51140/dashboard",
+      "note_extra": null,
+      "dom_summary": {
+        "root_html_length": 87078,
+        "visible_text_length": 906
+      }
+    }
+  ],
+  "summary": {
+    "total": 12,
+    "reached": 12,
+    "noPageError": 12,
+    "allSentinels": 6
+  },
+  "finished_at": "2026-07-03T22:02:07.160Z"
+}

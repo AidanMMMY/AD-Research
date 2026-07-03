@@ -19,6 +19,7 @@ import {
   useRefreshCninfoReports,
 } from '@/api/cninfoReportApi';
 import type { CninfoReport, CninfoAdjunctType, CninfoReportDetail } from '@/types/cninfoReport';
+import { useDebounce } from '@/hooks/useDebounce';
 
 const ADJUNCT_LABEL: Record<string, string> = {
   annual: '年报',
@@ -59,10 +60,11 @@ export default function CninfoReportsPage() {
   const [pageSize] = useState(20);
   const [detailId, setDetailId] = useState<number | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
+  const debouncedSearch = useDebounce(search, 300);
 
   const listParams = useMemo(
     () => ({
-      ts_code: search || undefined,
+      ts_code: debouncedSearch || undefined,
       fiscal_year: fiscalYear,
       adjunct_type: adjunctType,
       has_text: hasText,
@@ -71,7 +73,7 @@ export default function CninfoReportsPage() {
       page,
       page_size: pageSize,
     }),
-    [search, fiscalYear, adjunctType, hasText, dateRange, page, pageSize],
+    [debouncedSearch, fiscalYear, adjunctType, hasText, dateRange, page, pageSize],
   );
 
   const { data, isLoading, refetch, dataUpdatedAt, isFetching } = useCninfoReportList(listParams);

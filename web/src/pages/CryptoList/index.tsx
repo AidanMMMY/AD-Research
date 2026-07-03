@@ -6,6 +6,7 @@ import { useCryptoList } from '@/hooks/useCrypto';
 import { useCryptoStore } from '@/stores/crypto';
 import { useIsMobile } from '@/hooks/useBreakpoint';
 import { useDensity } from '@/hooks/useDensity';
+import { useDebounce } from '@/hooks/useDebounce';
 import PageShell from '@/components/PageShell';
 import PageHeader from '@/components/PageHeader';
 import FilterToolbar from '@/components/FilterToolbar';
@@ -40,9 +41,10 @@ export default function CryptoList() {
   const filters = useCryptoStore();
   const [page, setPage] = useState(1);
   const pageLoadedAt = useMemo(() => new Date().toISOString(), []);
+  const debouncedSearch = useDebounce(filters.search, 300);
 
   const { data, isLoading } = useCryptoList({
-    search: filters.search || undefined,
+    search: debouncedSearch || undefined,
     category: filters.category,
     sort_by: filters.sortBy,
     sort_order: filters.sortOrder,
@@ -174,7 +176,7 @@ export default function CryptoList() {
         />
       </FilterToolbar>
 
-      <div className="ad-text-tertiary ad-text-xs ad-mb-3">
+      <div className="ad-text-tertiary ad-text-xs ad-mb-3 ad-text-center">
         <div>
           {timestampLabel} {formatUtc(priceUpdatedAt)}
           {!backendTimestamp && '（数据来自 Binance）'}
@@ -188,7 +190,7 @@ export default function CryptoList() {
         ) : (data?.items?.length ?? 0) === 0 ? (
           <EmptyState
             title="没有符合条件的币种"
-            description="尝试调整上方筛选条件"
+            description="尝试调整上方筛选条件，或清空搜索关键词查看全部"
           />
         ) : (
           <List
@@ -241,6 +243,14 @@ export default function CryptoList() {
             total: data?.total ?? 0,
             onChange: setPage,
             showSizeChanger: false,
+          }}
+          locale={{
+            emptyText: (
+              <EmptyState
+                title="没有符合条件的币种"
+                description="尝试调整上方筛选条件，或清空搜索关键词查看全部"
+              />
+            ),
           }}
         />
       )}

@@ -12,6 +12,7 @@ import HelpPopover from '@/components/HelpPopover';
 import { useBacktestDetail } from '@/hooks/useBacktests';
 import { useAttribution } from '@/hooks/useAttribution';
 import { useAIHelp } from '@/hooks/useAIHelp';
+import { useSettingsStore } from '@/stores/settings';
 import ReactECharts from 'echarts-for-react';
 import type { EChartsOption } from 'echarts';
 import { buildBacktestDetailContext } from '@/utils/helpContext';
@@ -25,6 +26,7 @@ export default function BacktestDetail() {
   const { data, isLoading, error } = useBacktestDetail(id || '');
   const { data: attribution, isLoading: attributionLoading } = useAttribution(id || '');
   const { open } = useAIHelp();
+  const mode = useSettingsStore((s) => s.mode);
 
   if (isLoading) {
     return (
@@ -164,12 +166,12 @@ export default function BacktestDetail() {
   ];
 
   const overviewMetrics = [
-    { title: <HelpPopover termKey="total_return">总收益</HelpPopover>, value: metrics.total_return, suffix: '%' },
-    { title: <HelpPopover termKey="annualized_return">年化收益</HelpPopover>, value: metrics.annualized_return, suffix: '%' },
-    { title: <HelpPopover termKey="max_drawdown_1y">最大回撤</HelpPopover>, value: metrics.max_drawdown, suffix: '%' },
-    { title: <HelpPopover termKey="sharpe_ratio">夏普比率</HelpPopover>, value: metrics.sharpe_ratio },
-    { title: <HelpPopover termKey="win_rate">胜率</HelpPopover>, value: metrics.win_rate, suffix: '%' },
-    { title: <HelpPopover termKey="trade_count">交易次数</HelpPopover>, value: metrics.trade_count, precision: undefined },
+    { title: <HelpPopover termKey="total_return" mode={mode}>总收益</HelpPopover>, value: metrics.total_return, suffix: '%' },
+    { title: <HelpPopover termKey="annualized_return" mode={mode}>年化收益</HelpPopover>, value: metrics.annualized_return, suffix: '%' },
+    { title: <HelpPopover termKey="max_drawdown_1y" mode={mode}>最大回撤</HelpPopover>, value: metrics.max_drawdown, suffix: '%' },
+    { title: <HelpPopover termKey="sharpe_ratio" mode={mode}>夏普比率</HelpPopover>, value: metrics.sharpe_ratio },
+    { title: <HelpPopover termKey="win_rate" mode={mode}>胜率</HelpPopover>, value: metrics.win_rate, suffix: '%' },
+    { title: <HelpPopover termKey="trade_count" mode={mode}>交易次数</HelpPopover>, value: metrics.trade_count, precision: undefined },
   ];
 
   const overviewTab = (
@@ -188,7 +190,7 @@ export default function BacktestDetail() {
         </ResponsiveGrid>
       </Panel>
 
-      <Panel title={<HelpPopover termKey="nav_curve">净值曲线</HelpPopover>} padding="md">
+      <Panel title={<HelpPopover termKey="nav_curve" mode={mode}>净值曲线</HelpPopover>} padding="md">
         <ReactECharts option={navOption} className="detail-chart" />
       </Panel>
     </div>
@@ -244,7 +246,7 @@ export default function BacktestDetail() {
 
   const tradesTab = (
     <div className="detail-tab-panel">
-      <Panel title={<HelpPopover termKey="trade_record">交易记录</HelpPopover>} padding="md">
+      <Panel title={<HelpPopover termKey="trade_record" mode={mode}>交易记录</HelpPopover>} padding="md">
         <Table
           dataSource={data.trades || []}
           columns={tradeColumns}

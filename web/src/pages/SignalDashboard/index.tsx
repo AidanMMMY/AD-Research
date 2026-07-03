@@ -117,83 +117,77 @@ export default function SignalDashboard() {
 
       <div className="phase5c-kpi-strip phase5c-kpi-strip--cols-3 phase5c-section">
         {[
-          { title: '买入信号', value: buyCount, color: 'var(--color-rise)' },
-          { title: '卖出信号', value: sellCount, color: 'var(--color-fall)' },
-          { title: '持有信号', value: holdCount, color: 'var(--text-primary)' },
+          { title: '买入信号', value: buyCount, color: 'rise' },
+          { title: '卖出信号', value: sellCount, color: 'fall' },
+          { title: '持有信号', value: holdCount, color: 'primary' },
         ].map((m) => (
           <div key={m.title} className="phase5c-kpi-cell">
             <div className="phase5c-kpi-cell__label">{m.title}</div>
-            <div
-              className={`phase5c-kpi-cell__value tabular-nums ${
-                m.color === 'var(--color-rise)'
-                  ? 'phase5c-kpi-cell__value--rise'
-                  : m.color === 'var(--color-fall)'
-                    ? 'phase5c-kpi-cell__value--fall'
-                    : 'phase5c-kpi-cell__value--primary'
-              }`}
-            >
+            <div className={`phase5c-kpi-cell__value tabular-nums phase5c-kpi-cell__value--${m.color}`}>
               {m.value}
             </div>
           </div>
         ))}
       </div>
 
-      <Panel
-        variant="default"
-        title="最新交易信号"
-        extra={<HelpTrigger tooltip="AI 解释信号含义" onClick={handleOpenHelp} />}
-      >
-        <ContextHint
-          hintId="signal-dashboard-table"
-          title="信号怎么读"
-          placement="top"
-          content={
-            <>
-              每一行是一次「策略 → 标的」的判断。点击行可跳到策略说明，看为什么生成这条信号；强度 ≥ 70 通常视为强信号。
-            </>
-          }
+      <div data-onboard="signals-panel">
+        <Panel
+          variant="default"
+          title="最新交易信号"
+          extra={<HelpTrigger tooltip="AI 解释信号含义" onClick={handleOpenHelp} />}
         >
-        <FilterToolbar total={filteredItems.length}>
-          <Row gutter={[12, 12]}>
-            <Col xs={12} sm={8} md={6}>
-              <Select
-                value={typeFilter}
-                onChange={setTypeFilter}
-                options={typeOptions}
-                style={{ width: '100%' }}
-              />
-            </Col>
-            <Col xs={12} sm={8} md={6}>
-              <Select
-                value={familyFilter}
-                onChange={setFamilyFilter}
-                options={familyOptions}
-                placeholder="按策略家族筛选"
-                style={{ width: '100%' }}
-              />
-            </Col>
-          </Row>
-        </FilterToolbar>
-        </ContextHint>
+          <ContextHint
+            hintId="signal-dashboard-table"
+            title="信号怎么读"
+            placement="top"
+            content={
+              <>
+                每一行是一次「策略 → 标的」的判断。点击行可跳到策略说明，看为什么生成这条信号；强度 ≥ 70 通常视为强信号。
+              </>
+            }
+          >
+            <FilterToolbar total={filteredItems.length}>
+              <Row gutter={[12, 12]}>
+                <Col xs={12} sm={8} md={6}>
+                  <Select
+                    value={typeFilter}
+                    onChange={setTypeFilter}
+                    options={typeOptions}
+                    style={{ width: '100%' }}
+                  />
+                </Col>
+                <Col xs={12} sm={8} md={6}>
+                  <Select
+                    value={familyFilter}
+                    onChange={setFamilyFilter}
+                    options={familyOptions}
+                    placeholder="按策略家族筛选"
+                    style={{ width: '100%' }}
+                  />
+                </Col>
+              </Row>
+            </FilterToolbar>
+          </ContextHint>
 
-        <div className="phase5c-table-wrap">
-          <Table
-            dataSource={filteredItems}
-            columns={columns}
-            rowKey="id"
-            size="small"
-            loading={isLoading}
-            scroll={{ x: 'max-content' }}
-            pagination={{ pageSize: 20 }}
-            locale={{
-              emptyText: <EmptyState title="暂无信号" description="当前没有符合条件的交易信号" />,
-            }}
-            onRow={(record) => ({
-              onClick: () => navigate(`/instruments/${record.etf_code}`),
-            })}
-          />
-        </div>
-      </Panel>
+          <div className="phase5c-table-wrap">
+            <Table
+              dataSource={filteredItems}
+              columns={columns}
+              rowKey="id"
+              size="small"
+              loading={isLoading}
+              scroll={{ x: 'max-content' }}
+              pagination={{ pageSize: 20 }}
+              locale={{
+                emptyText: <EmptyState title="暂无信号" description="当前没有符合条件的交易信号" />,
+              }}
+              onRow={(record) => ({
+                onClick: () => navigate(`/instruments/${record.etf_code}`),
+              })}
+            />
+          </div>
+        </Panel>
+      </div>
     </PageShell>
   );
 }

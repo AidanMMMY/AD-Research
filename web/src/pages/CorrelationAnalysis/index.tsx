@@ -10,6 +10,7 @@ import EmptyState from '@/components/EmptyState';
 import InstrumentSelector from '@/components/InstrumentSelector';
 import CorrelationHeatmap from '@/components/CorrelationHeatmap';
 import HelpPopover from '@/components/HelpPopover';
+import { useSettingsStore } from '@/stores/settings';
 
 const WINDOW_OPTIONS = [
   { label: '30日', value: 30 },
@@ -24,6 +25,7 @@ const METHOD_OPTIONS = [
 ];
 
 export default function CorrelationAnalysis() {
+  const mode = useSettingsStore((s) => s.mode);
   const [selectedCodes, setSelectedCodes] = useState<string[]>(['510300.SH', '510050.SH', '510500.SH', '159915.SZ']);
   const [window, setWindow] = useState<number>(60);
   const [method, setMethod] = useState<'pearson' | 'spearman'>('pearson');
@@ -54,7 +56,7 @@ export default function CorrelationAnalysis() {
             </Col>
             <Col xs={24} md={6}>
               <div className="ad-filter-label">
-                <HelpPopover termKey="time_range">窗口期</HelpPopover>：
+                <HelpPopover termKey="time_range" mode={mode}>窗口期</HelpPopover>：
               </div>
               <Select
                 value={window}
@@ -65,7 +67,7 @@ export default function CorrelationAnalysis() {
             </Col>
             <Col xs={24} md={6}>
               <div className="ad-filter-label">
-                <HelpPopover termKey="correlation_method">计算方法</HelpPopover>：
+                <HelpPopover termKey="correlation_method" mode={mode}>计算方法</HelpPopover>：
               </div>
               <Select
                 value={method}
@@ -73,7 +75,7 @@ export default function CorrelationAnalysis() {
                 options={METHOD_OPTIONS.map((opt) => ({
                   ...opt,
                   label: (
-                    <HelpPopover termKey={opt.value === 'pearson' ? 'pearson' : 'spearman'}>
+                    <HelpPopover termKey={opt.value === 'pearson' ? 'pearson' : 'spearman'} mode={mode}>
                       {opt.label}
                     </HelpPopover>
                   ),

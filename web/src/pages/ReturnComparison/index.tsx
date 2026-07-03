@@ -11,6 +11,7 @@ import EmptyState from '@/components/EmptyState';
 import InstrumentSelector from '@/components/InstrumentSelector';
 import ReturnCurve from '@/components/ReturnCurve';
 import HelpPopover from '@/components/HelpPopover';
+import { useSettingsStore } from '@/stores/settings';
 
 const TIME_RANGE_OPTIONS = [
   { label: '1月', value: 30 },
@@ -27,6 +28,7 @@ interface SeriesData {
 }
 
 export default function ReturnComparison() {
+  const settingsMode = useSettingsStore((s) => s.mode);
   const [selectedCodes, setSelectedCodes] = useState<string[]>(['510300.SH', '510050.SH', '510500.SH']);
   const [timeRange, setTimeRange] = useState<number>(252);
   const [mode, setMode] = useState<'normalized' | 'percentage'>('normalized');
@@ -120,10 +122,10 @@ export default function ReturnComparison() {
                 buttonStyle="solid"
               >
                 <Radio.Button value="normalized">
-                  <HelpPopover termKey="normalized_return">归一化</HelpPopover>
+                  <HelpPopover termKey="normalized_return" mode={settingsMode}>归一化</HelpPopover>
                 </Radio.Button>
                 <Radio.Button value="percentage">
-                  <HelpPopover termKey="daily_return">日收益</HelpPopover>
+                  <HelpPopover termKey="daily_return" mode={settingsMode}>日收益</HelpPopover>
                 </Radio.Button>
               </Radio.Group>
             </Col>

@@ -6,6 +6,7 @@ import { useStockList } from '@/hooks/useStocks';
 import { useInstrumentMarkets, useInstrumentCategories } from '@/hooks/useInstrumentList';
 import { useSparkline } from '@/hooks/useSparkline';
 import { useDensity } from '@/hooks/useDensity';
+import { useDebounce } from '@/hooks/useDebounce';
 import PageShell from '@/components/PageShell';
 import PageHeader from '@/components/PageHeader';
 import FilterToolbar from '@/components/FilterToolbar';
@@ -33,9 +34,10 @@ export default function StocksList() {
   const [market, setMarket] = useState<string | undefined>('A股');
   const [category, setCategory] = useState<string | undefined>();
   const [page, setPage] = useState(1);
+  const debouncedSearch = useDebounce(search, 300);
 
   const { data, isLoading } = useStockList({
-    search: search || undefined,
+    search: debouncedSearch || undefined,
     market,
     category,
     page,

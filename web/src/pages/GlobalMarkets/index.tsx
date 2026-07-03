@@ -18,8 +18,15 @@ import EmptyState from '@/components/EmptyState';
 import Sparkline from '@/components/Sparkline';
 import ReturnTag from '@/components/ReturnTag';
 import LastUpdated from '@/components/LastUpdated';
+import HelpTrigger from '@/components/HelpTrigger';
 import { newsApi } from '@/api/news';
 import type { NewsArticle } from '@/types/news';
+import { useAIHelp } from '@/hooks/useAIHelp';
+import {
+  buildGlobalMarketsContext,
+  type NewsArticleSummary,
+} from '@/utils/helpContext';
+import { getQuickQuestions } from '@/utils/helpPrompts';
 import {
   useMacroLatest,
   macroApi,
@@ -178,6 +185,7 @@ function CategoryBlock({ title, rows }: { title: string; rows: RowVm[] }): JSX.E
             columns={columns}
             pagination={false}
             showHeader
+            scroll={{ x: 'max-content' }}
           />
         </div>
       </Panel>
@@ -220,17 +228,18 @@ const POLITICAL_CATEGORY_COLOR: Record<string, string> = {
 };
 
 /**
- * Compact "recent 24h political events" panel. Renders nothing while
- * loading (so the rest of the page is not blocked), then either a
- * 5-row clickable list or an empty-state message.
+ * Shared hook: load the most recent political / macro news items
+ * (geopolitics / central_bank / election / trade_war / sanction) in
+ * the last 24 h with importance >= 4.  Lives at module scope so both
+ * the on-page widget and the AI Help button consume the same cache
+ * entry (and we only hit /news once per minute).
  */
-function Recent24hEvents(): JSX.Element | null {
-  const navigate = useNavigate();
+function useRecentPoliticalEvents() {
   const since = useMemo(
     () => new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
     [],
   );
-  const { data, isLoading, isError } = useQuery({
+  return useQuery({
     queryKey: ['global-markets-recent-political', since],
     queryFn: () =>
       newsApi
@@ -245,6 +254,18 @@ function Recent24hEvents(): JSX.Element | null {
     staleTime: 60_000,
     refetchOnWindowFocus: false,
   });
+}
+
+/**
+ * Compact "recent 24h political events" panel. Renders nothing while
+ * loading (so the rest of the page is not blocked), then either a
+ * 5-row clickable list or an empty-state message.  The query lives in
+ * ``useRecentPoliticalEvents`` so the AI Help button can reuse the
+ * same cache entry.
+ */
+function Recent24hEvents(): JSX.Element | null {
+  const navigate = useNavigate();
+  const { data, isLoading, isError } = useRecentPoliticalEvents();
 
   if (isLoading) {
     return (
@@ -289,7 +310,7 @@ function Recent24hEvents(): JSX.Element | null {
                 {POLITICAL_CATEGORY_LABEL[a.event_category ?? ''] ?? a.event_category}
               </Tag>
               <Tooltip title={a.published_at}>
-                <span className="ad-text-small ad-text-tertiary">
+                <span className="ad-text-small ad-text-tertiary ad-news-events-list__time">
                   {new Date(a.published_at).toLocaleString('zh-CN', {
                     hour: '2-digit',
                     minute: '2-digit',
@@ -308,6 +329,12 @@ function Recent24hEvents(): JSX.Element | null {
 }
 
 export default function GlobalMarkets() {
+  // AI Help wiring (M22-1): pass the current indicator rows plus the
+  // most recent 5 political / macro news items into the help drawer
+  // so the LLM has both market context and event context.
+  const { open: openAIHelp } = useAIHelp();
+  const { data: recentPoliticalData } = useRecentPoliticalEvents();
+
   // Fetch latest for both 'global' and 'us' so we can cover DXY,
   // USDJPY, Brent, WTI, Gold, SP500 *and* the legacy US series
   // (VIX, UST yields, Treasury spreads).
@@ -403,6 +430,36 @@ export default function GlobalMarkets() {
     (r) => r.latest != null || (r.sparkline && r.sparkline.length > 0),
   );
 
+  const handleOpenHelp = () => {
+    // Build the indicator rows summary for the LLM context. Flatten
+    // the grouped table into one row per code with its category so
+    // the prompt can mention e.g. "VIX 32.1 (+18%)" without having to
+    // re-walk the Table structure.
+    const flatRows = rows.map((r) => ({
+      ...r,
+      category: inferCategoryKey(r.code),
+    }));
+    const recentEvents: NewsArticleSummary[] = (recentPoliticalData?.items ?? [])
+      .slice(0, 5)
+      .map((a: NewsArticle) => ({
+        title: a.title,
+        published_at: a.published_at,
+        event_category: a.event_category ?? null,
+        importance: a.importance ?? null,
+        market: a.market,
+        source: a.source,
+        body: a.body ?? null,
+      }));
+    openAIHelp({
+      pageType: 'global_markets',
+      pageTitle: '全球市场速览',
+      contextData: buildGlobalMarketsContext(flatRows, recentEvents),
+      quickQuestions: getQuickQuestions('global_markets'),
+      initialQuestion:
+        '请基于当前页面指标和最近 24h 政治 / 地缘事件，帮我快速解读全球资本市场当前的状态，以及可能的传导路径。',
+    });
+  };
+
   return (
     <PageShell maxWidth="wide">
       <PageHeader
@@ -411,7 +468,12 @@ export default function GlobalMarkets() {
         description={
           '汇总美债收益率曲线、美元指数、商品、外汇、主要指数与波动率（VIX）。数据来自 FRED (Federal Reserve Economic Data)，每个工作日 03:00 北京时间自动刷新；FRED API key 缺失时显示为空状态。'
         }
-        extra={<LastUpdated at={undefined} loading={isLoading} />}
+        extra={
+          <>
+            <HelpTrigger tooltip="AI 解读全球市场 + 最近地缘事件" onClick={handleOpenHelp} />
+            <LastUpdated at={undefined} loading={isLoading} />
+          </>
+        }
       />
 
       <section className="phase5c-section">

@@ -5,6 +5,7 @@ import { useScores, useScoreTemplates } from '@/hooks/useScores';
 import { useSparkline } from '@/hooks/useSparkline';
 import { useDensity } from '@/hooks/useDensity';
 import { useAIHelp } from '@/hooks/useAIHelp';
+import { useSettingsStore } from '@/stores/settings';
 import PageShell from '@/components/PageShell';
 import ResponsiveGrid from '@/components/ResponsiveGrid';
 import Panel from '@/components/Panel';
@@ -35,6 +36,7 @@ export default function ScoreRanking() {
   const navigate = useNavigate();
   const { open } = useAIHelp();
   const { density } = useDensity();
+  const mode = useSettingsStore((s) => s.mode);
   const [topTab, setTopTab] = useState<TopTab>('ranking');
   const [templateId, setTemplateId] = useState<number | undefined>();
   const { data: scoresData, dataUpdatedAt: scoresUpdatedAt, isFetching } = useScores({ template_id: templateId, limit: 50 });
@@ -57,7 +59,7 @@ export default function ScoreRanking() {
 
   const columns = [
     {
-      title: <HelpPopover termKey="rank_overall">全市场排名</HelpPopover>,
+      title: <HelpPopover termKey="rank_overall" mode={mode}>全市场排名</HelpPopover>,
       dataIndex: 'rank_overall',
       width: 90,
       render: (v: number) => (
@@ -67,7 +69,7 @@ export default function ScoreRanking() {
       ),
     },
     {
-      title: <HelpPopover termKey="rank_category">分类排名</HelpPopover>,
+      title: <HelpPopover termKey="rank_category" mode={mode}>分类排名</HelpPopover>,
       dataIndex: 'rank_category',
       width: 90,
       render: (v: number) => <span className="tabular-nums font-mono ad-text-tertiary">{v}</span>,
@@ -77,15 +79,15 @@ export default function ScoreRanking() {
       render: (_: unknown, record: any) => <InstrumentCodeTag code={record.etf_code} name={record.etf_name} name_zh={record.name_zh} />,
     },
     {
-      title: <HelpPopover termKey="composite_score">综合评分</HelpPopover>,
+      title: <HelpPopover termKey="composite_score" mode={mode}>综合评分</HelpPopover>,
       render: (_: unknown, record: any) => <ScoreBar score={record.composite_score} />,
       width: 180,
     },
-    { title: <HelpPopover termKey="score_return">收益</HelpPopover>, dataIndex: 'score_return', width: 80, render: (v: number) => <span className="tabular-nums font-mono ad-text-secondary">{v?.toFixed(1)}</span> },
-    { title: <HelpPopover termKey="score_risk">风险</HelpPopover>, dataIndex: 'score_risk', width: 80, render: (v: number) => <span className="tabular-nums font-mono ad-text-secondary">{v?.toFixed(1)}</span> },
-    { title: <HelpPopover termKey="score_sharpe">夏普</HelpPopover>, dataIndex: 'score_sharpe', width: 80, render: (v: number) => <span className="tabular-nums font-mono ad-text-secondary">{v?.toFixed(1)}</span> },
-    { title: <HelpPopover termKey="score_liquidity">流动性</HelpPopover>, dataIndex: 'score_liquidity', width: 90, render: (v: number) => <span className="tabular-nums font-mono ad-text-secondary">{v?.toFixed(1)}</span> },
-    { title: <HelpPopover termKey="score_trend">趋势</HelpPopover>, dataIndex: 'score_trend', width: 80, render: (v: number) => <span className="tabular-nums font-mono ad-text-secondary">{v?.toFixed(1)}</span> },
+    { title: <HelpPopover termKey="score_return" mode={mode}>收益</HelpPopover>, dataIndex: 'score_return', width: 80, render: (v: number) => <span className="tabular-nums font-mono ad-text-secondary">{v?.toFixed(1)}</span> },
+    { title: <HelpPopover termKey="score_risk" mode={mode}>风险</HelpPopover>, dataIndex: 'score_risk', width: 80, render: (v: number) => <span className="tabular-nums font-mono ad-text-secondary">{v?.toFixed(1)}</span> },
+    { title: <HelpPopover termKey="score_sharpe" mode={mode}>夏普</HelpPopover>, dataIndex: 'score_sharpe', width: 80, render: (v: number) => <span className="tabular-nums font-mono ad-text-secondary">{v?.toFixed(1)}</span> },
+    { title: <HelpPopover termKey="score_liquidity" mode={mode}>流动性</HelpPopover>, dataIndex: 'score_liquidity', width: 90, render: (v: number) => <span className="tabular-nums font-mono ad-text-secondary">{v?.toFixed(1)}</span> },
+    { title: <HelpPopover termKey="score_trend" mode={mode}>趋势</HelpPopover>, dataIndex: 'score_trend', width: 80, render: (v: number) => <span className="tabular-nums font-mono ad-text-secondary">{v?.toFixed(1)}</span> },
     {
       title: '近 7 日',
       key: 'sparkline_7d',

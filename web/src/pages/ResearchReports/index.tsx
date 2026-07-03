@@ -18,6 +18,7 @@ import {
   useSummarizeResearchReport,
 } from '@/api/researchReports';
 import type { ResearchReportOut } from '@/api/researchReports';
+import { useDebounce } from '@/hooks/useDebounce';
 
 const { Title, Paragraph } = Typography;
 
@@ -49,12 +50,13 @@ export default function ResearchReports() {
   const [pageSize] = useState(20);
   const [detailId, setDetailId] = useState<number | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
+  const debouncedSearch = useDebounce(search, 300);
 
   const listParams = useMemo(
     () => ({
       page,
       page_size: pageSize,
-      ts_code: search || undefined,
+      ts_code: debouncedSearch || undefined,
       industry,
       org_name: orgName,
       rating,
@@ -62,7 +64,7 @@ export default function ResearchReports() {
       sort_dir: 'desc' as const,
       has_summary: hasSummary === 'all' ? undefined : hasSummary === 'yes',
     }),
-    [page, pageSize, search, industry, orgName, rating, hasSummary],
+    [page, pageSize, debouncedSearch, industry, orgName, rating, hasSummary],
   );
 
   const { data, isLoading, refetch, dataUpdatedAt, isFetching } = useResearchReportList(listParams);

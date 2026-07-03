@@ -16,6 +16,7 @@ import ResponsiveGrid from '@/components/ResponsiveGrid';
 import StatCard from '@/components/StatCard';
 import SectionHeading from '@/components/SectionHeading';
 import InstrumentCodeTag from '@/components/InstrumentCodeTag';
+import EmptyState from '@/components/EmptyState';
 import NewsListPanel from '@/components/NewsListPanel';
 import HelpTrigger from '@/components/HelpTrigger';
 import HelpPopover from '@/components/HelpPopover';
@@ -98,6 +99,7 @@ export default function InstrumentDetail() {
   const { open } = useAIHelp();
   const queryClient = useQueryClient();
   const colorConvention = useSettingsStore((s) => s.colorConvention);
+  const mode = useSettingsStore((s) => s.mode);
   const { data: instrument, isLoading: instrumentLoading, error: instrumentError } = useInstrumentDetail(code || '');
   const { data: score } = useInstrumentScore(code || '');
   const { isFavorite, isLoading: favLoading, toggle, isToggling } = useFavoriteStatus(code || '');
@@ -254,7 +256,7 @@ export default function InstrumentDetail() {
           <div className="detail-toolbar">
             <Space size="large" wrap>
               <Space>
-                <HelpPopover termKey="time_range">时间范围</HelpPopover>：
+                <HelpPopover termKey="time_range" mode={mode}>时间范围</HelpPopover>：
                 <Radio.Group
                   value={timeRange}
                   onChange={(e) => setTimeRange(e.target.value)}
@@ -285,7 +287,7 @@ export default function InstrumentDetail() {
                 >
                   {INDICATOR_OPTIONS.map((opt) => (
                     <Checkbox key={opt.value} value={opt.value}>
-                      <HelpPopover termKey={INDICATOR_OPTION_TERMS[opt.value]}>{opt.label}</HelpPopover>
+                      <HelpPopover termKey={INDICATOR_OPTION_TERMS[opt.value]} mode={mode}>{opt.label}</HelpPopover>
                     </Checkbox>
                   ))}
                 </Checkbox.Group>
@@ -313,14 +315,14 @@ export default function InstrumentDetail() {
         >
           <div className="detail-indicator-grid">
             {[
-              { title: <HelpPopover termKey="rsi14">RSI14</HelpPopover>, value: indicator?.rsi14, precision: 1 },
-              { title: <HelpPopover termKey="sharpe_1y">夏普1年</HelpPopover>, value: indicator?.sharpe_1y, precision: 2 },
-              { title: <HelpPopover termKey="volatility_20d">波动率20日</HelpPopover>, value: indicator?.volatility_20d, precision: 2, suffix: '%' },
-              { title: <HelpPopover termKey="max_drawdown_1y">最大回撤</HelpPopover>, value: indicator?.max_drawdown_1y, precision: 2, suffix: '%' },
-              { title: <HelpPopover termKey="return_1m">1月收益</HelpPopover>, value: indicator?.return_1m, precision: 2, suffix: '%' },
-              { title: <HelpPopover termKey="return_3m">3月收益</HelpPopover>, value: indicator?.return_3m, precision: 2, suffix: '%' },
-              { title: <HelpPopover termKey="return_1y">1年收益</HelpPopover>, value: indicator?.return_1y, precision: 2, suffix: '%' },
-              { title: <HelpPopover termKey="ma5">MA5</HelpPopover>, value: indicator?.ma5, precision: 2 },
+              { title: <HelpPopover termKey="rsi14" mode={mode}>RSI14</HelpPopover>, value: indicator?.rsi14, precision: 1 },
+              { title: <HelpPopover termKey="sharpe_1y" mode={mode}>夏普1年</HelpPopover>, value: indicator?.sharpe_1y, precision: 2 },
+              { title: <HelpPopover termKey="volatility_20d" mode={mode}>波动率20日</HelpPopover>, value: indicator?.volatility_20d, precision: 2, suffix: '%' },
+              { title: <HelpPopover termKey="max_drawdown_1y" mode={mode}>最大回撤</HelpPopover>, value: indicator?.max_drawdown_1y, precision: 2, suffix: '%' },
+              { title: <HelpPopover termKey="return_1m" mode={mode}>1月收益</HelpPopover>, value: indicator?.return_1m, precision: 2, suffix: '%' },
+              { title: <HelpPopover termKey="return_3m" mode={mode}>3月收益</HelpPopover>, value: indicator?.return_3m, precision: 2, suffix: '%' },
+              { title: <HelpPopover termKey="return_1y" mode={mode}>1年收益</HelpPopover>, value: indicator?.return_1y, precision: 2, suffix: '%' },
+              { title: <HelpPopover termKey="ma5" mode={mode}>MA5</HelpPopover>, value: indicator?.ma5, precision: 2 },
             ].map((m, i) => (
               <div key={i} className="detail-indicator-item">
                 <Statistic title={m.title} value={m.value} precision={m.precision} suffix={m.suffix} />
@@ -342,14 +344,14 @@ export default function InstrumentDetail() {
             <Col xs={24} md={12}>
               <Panel variant="minimal" title="评分详情" padding="md">
                 <Descriptions column={1}>
-                  <Descriptions.Item label={<HelpPopover termKey="composite_score">综合评分</HelpPopover>}>{score.composite_score}</Descriptions.Item>
-                  <Descriptions.Item label={<HelpPopover termKey="rank_overall">全市场排名</HelpPopover>}>{score.rank_overall}</Descriptions.Item>
-                  <Descriptions.Item label={<HelpPopover termKey="rank_category">分类排名</HelpPopover>}>{score.rank_category}</Descriptions.Item>
-                  <Descriptions.Item label={<HelpPopover termKey="score_return">收益得分</HelpPopover>}>{score.score_return}</Descriptions.Item>
-                  <Descriptions.Item label={<HelpPopover termKey="score_risk">风险得分</HelpPopover>}>{score.score_risk}</Descriptions.Item>
-                  <Descriptions.Item label={<HelpPopover termKey="score_sharpe">夏普得分</HelpPopover>}>{score.score_sharpe}</Descriptions.Item>
-                  <Descriptions.Item label={<HelpPopover termKey="score_liquidity">流动性得分</HelpPopover>}>{score.score_liquidity}</Descriptions.Item>
-                  <Descriptions.Item label={<HelpPopover termKey="score_trend">趋势得分</HelpPopover>}>{score.score_trend}</Descriptions.Item>
+                  <Descriptions.Item label={<HelpPopover termKey="composite_score" mode={mode}>综合评分</HelpPopover>}>{score.composite_score}</Descriptions.Item>
+                  <Descriptions.Item label={<HelpPopover termKey="rank_overall" mode={mode}>全市场排名</HelpPopover>}>{score.rank_overall}</Descriptions.Item>
+                  <Descriptions.Item label={<HelpPopover termKey="rank_category" mode={mode}>分类排名</HelpPopover>}>{score.rank_category}</Descriptions.Item>
+                  <Descriptions.Item label={<HelpPopover termKey="score_return" mode={mode}>收益得分</HelpPopover>}>{score.score_return}</Descriptions.Item>
+                  <Descriptions.Item label={<HelpPopover termKey="score_risk" mode={mode}>风险得分</HelpPopover>}>{score.score_risk}</Descriptions.Item>
+                  <Descriptions.Item label={<HelpPopover termKey="score_sharpe" mode={mode}>夏普得分</HelpPopover>}>{score.score_sharpe}</Descriptions.Item>
+                  <Descriptions.Item label={<HelpPopover termKey="score_liquidity" mode={mode}>流动性得分</HelpPopover>}>{score.score_liquidity}</Descriptions.Item>
+                  <Descriptions.Item label={<HelpPopover termKey="score_trend" mode={mode}>趋势得分</HelpPopover>}>{score.score_trend}</Descriptions.Item>
                 </Descriptions>
               </Panel>
             </Col>
@@ -357,7 +359,10 @@ export default function InstrumentDetail() {
         </Panel>
       ) : (
         <Panel title="综合评分" padding="md">
-          <div>暂无评分数据</div>
+          <EmptyState
+            title="暂无评分数据"
+            description="该标的尚未生成综合评分，可稍后再来查看"
+          />
         </Panel>
       ),
     },
@@ -383,7 +388,7 @@ export default function InstrumentDetail() {
                   title={
                     <span>
                       <ReadOutlined className="detail-tab-icon detail-tab-icon--lg" />
-                      <HelpPopover termKey="ai_research_note">AI 研究笔记</HelpPopover>
+                      <HelpPopover termKey="ai_research_note" mode={mode}>AI 研究笔记</HelpPopover>
                     </span>
                   }
                   extra={
@@ -451,7 +456,7 @@ export default function InstrumentDetail() {
                   title={
                     <span>
                       <SmileOutlined className="detail-tab-icon detail-tab-icon--lg" />
-                      <HelpPopover termKey="market_sentiment">市场情绪</HelpPopover>
+                      <HelpPopover termKey="market_sentiment" mode={mode}>市场情绪</HelpPopover>
                     </span>
                   }
                   padding="md"
@@ -559,7 +564,7 @@ export default function InstrumentDetail() {
                         <div key={m.title} className="valuation-cell">
                           <div className="valuation-cell__label">
                             {m.termKey ? (
-                              <HelpPopover termKey={m.termKey}>{m.title}</HelpPopover>
+                              <HelpPopover termKey={m.termKey} mode={mode}>{m.title}</HelpPopover>
                             ) : m.title}
                           </div>
                           <div className="valuation-cell__value tabular-nums">

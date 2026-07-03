@@ -20,6 +20,7 @@ import {
   useSyncSecTicker,
 } from '@/api/secFilings';
 import type { SecFiling } from '@/api/secFilings';
+import { useDebounce } from '@/hooks/useDebounce';
 
 const FORM_TYPES = ['10-K', '10-Q', '20-F', '20-F/A', '10-K/A', '10-Q/A'];
 const STATUS_COLORS: Record<string, string> = {
@@ -34,16 +35,18 @@ export default function SECFilingsPage() {
   const [searchText, setSearchText] = useState<string>('');
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
+  const debouncedTicker = useDebounce(ticker, 300);
+  const debouncedSearchText = useDebounce(searchText, 300);
 
   const params = useMemo(
     () => ({
       page,
       page_size: pageSize,
-      ticker,
+      ticker: debouncedTicker,
       form_type: formType,
-      q: searchText || undefined,
+      q: debouncedSearchText || undefined,
     }),
-    [page, pageSize, ticker, formType, searchText],
+    [page, pageSize, debouncedTicker, formType, debouncedSearchText],
   );
 
   const { data, isLoading, refetch, dataUpdatedAt } = useSecFilingList(params);

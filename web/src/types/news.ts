@@ -6,8 +6,14 @@
  * backend Pydantic schemas in `app/schemas/news*.py`.
  */
 
-/** Market segment identifier. */
-export type NewsMarket = 'cn_a' | 'us' | 'crypto';
+/** Market segment identifier.
+ *
+ *  ``global`` is a frontend-only sentinel introduced in M22-2 (2026-07-04)
+ *  to represent "all markets combined" — it is mapped on the backend
+ *  to a union of the concrete markets (``cn_a``, ``us``, ``crypto`` and
+ *  any legacy bucket the collector has ever written).
+ */
+export type NewsMarket = 'cn_a' | 'us' | 'crypto' | 'global';
 
 /** Sentiment label output by the LLM processor. */
 export type SentimentLabel = 'negative' | 'neutral' | 'positive';

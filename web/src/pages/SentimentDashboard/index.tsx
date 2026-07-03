@@ -8,6 +8,7 @@ import GlassCard from '@/components/GlassCard';
 import ThemeTag from '@/components/ThemeTag';
 import InstrumentCodeTag from '@/components/InstrumentCodeTag';
 import HelpPopover from '@/components/HelpPopover';
+import { useSettingsStore } from '@/stores/settings';
 
 const SENTIMENT_ICONS: Record<string, React.ReactNode> = {
   positive: <SmileOutlined className="sentiment-icon--positive" />,
@@ -93,6 +94,7 @@ export default function SentimentDashboard() {
 }
 
 function SentimentCard({ sentiment }: { sentiment: SentimentAggregate }) {
+  const mode = useSettingsStore((s) => s.mode);
   const scorePct = ((sentiment.avg_score + 1) / 2) * 100; // map -1..1 to 0..100
 
   const tagVariant =
@@ -115,7 +117,7 @@ function SentimentCard({ sentiment }: { sentiment: SentimentAggregate }) {
         <div
           className={`sentiment-score-value ${sentiment.label ? `sentiment-score-value--${sentiment.label}` : 'sentiment-score-value--neutral'}`}
         >
-          <HelpPopover termKey="sentiment_score">
+          <HelpPopover termKey="sentiment_score" mode={mode}>
             {sentiment.avg_score.toFixed(2)}
           </HelpPopover>
         </div>

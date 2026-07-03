@@ -19,6 +19,7 @@ import {
 } from '@/hooks/usePoolDetail';
 import { useInstrumentList } from '@/hooks/useInstrumentList';
 import { useAIHelp } from '@/hooks/useAIHelp';
+import { useSettingsStore } from '@/stores/settings';
 import CategoryPie from '@/components/CategoryPie';
 import CorrelationHeatmap from '@/components/CorrelationHeatmap';
 import InstrumentCodeTag from '@/components/InstrumentCodeTag';
@@ -52,6 +53,7 @@ export default function PoolDetail() {
   const poolId = Number(id);
   const isValidPoolId = Number.isFinite(poolId) && poolId > 0;
   const { open } = useAIHelp();
+  const mode = useSettingsStore((s) => s.mode);
   const [editing, setEditing] = useState(false);
   const [localWeights, setLocalWeights] = useState<Record<string, number>>({});
   const [activeAlgorithm, setActiveAlgorithm] = useState<string | undefined>();
@@ -214,7 +216,7 @@ export default function PoolDetail() {
   const suggestMenuItems: MenuProps['items'] = SUGGEST_ALGORITHMS.map((algo) => ({
     key: algo.key,
     label: (
-      <HelpPopover termKey={ALGORITHM_TERM_KEYS[algo.key]}>
+      <HelpPopover termKey={ALGORITHM_TERM_KEYS[algo.key]} mode={mode}>
         {algo.label}
       </HelpPopover>
     ),
@@ -227,7 +229,7 @@ export default function PoolDetail() {
       render: (_: unknown, record: any) => <InstrumentCodeTag code={record.etf_code} name={record.etf_name} name_zh={record.name_zh} />,
     },
     {
-      title: <HelpPopover termKey="target_weight">目标权重</HelpPopover>,
+      title: <HelpPopover termKey="target_weight" mode={mode}>目标权重</HelpPopover>,
       render: (_: unknown, record: any) => (
         editing ? (
           <Slider
@@ -239,8 +241,8 @@ export default function PoolDetail() {
         ) : `${record.target_weight ?? 0}%`
       ),
     },
-    { title: <HelpPopover termKey="suggested_weight">建议权重</HelpPopover>, dataIndex: 'suggested_weight', render: (v: number) => v ? `${v.toFixed(1)}%` : '-', responsive: ['md'] as Array<'md' | 'lg' | 'xl' | 'sm' | 'xs' | 'xxl'> },
-    { title: <HelpPopover termKey="weight_source">来源</HelpPopover>, dataIndex: 'weight_source', responsive: ['md'] as Array<'md' | 'lg' | 'xl' | 'sm' | 'xs' | 'xxl'> },
+    { title: <HelpPopover termKey="suggested_weight" mode={mode}>建议权重</HelpPopover>, dataIndex: 'suggested_weight', render: (v: number) => v ? `${v.toFixed(1)}%` : '-', responsive: ['md'] as Array<'md' | 'lg' | 'xl' | 'sm' | 'xs' | 'xxl'> },
+    { title: <HelpPopover termKey="weight_source" mode={mode}>来源</HelpPopover>, dataIndex: 'weight_source', responsive: ['md'] as Array<'md' | 'lg' | 'xl' | 'sm' | 'xs' | 'xxl'> },
     {
       title: '操作',
       key: 'action',
@@ -382,10 +384,10 @@ export default function PoolDetail() {
             <Col xs={24}>
               <Panel title="收益表现" padding="md">
                 <ResponsiveGrid cols={4} gap="md">
-                  <Statistic title={<HelpPopover termKey="return_1m">1月收益</HelpPopover>} value={perf?.return_1m} suffix="%" precision={2} />
-                  <Statistic title={<HelpPopover termKey="return_3m">3月收益</HelpPopover>} value={perf?.return_3m} suffix="%" precision={2} />
-                  <Statistic title={<HelpPopover termKey="sharpe_1y">夏普</HelpPopover>} value={perf?.sharpe_1y} precision={2} />
-                  <Statistic title={<HelpPopover termKey="max_drawdown_1y">最大回撤</HelpPopover>} value={perf?.max_drawdown} suffix="%" precision={2} />
+                  <Statistic title={<HelpPopover termKey="return_1m" mode={mode}>1月收益</HelpPopover>} value={perf?.return_1m} suffix="%" precision={2} />
+                  <Statistic title={<HelpPopover termKey="return_3m" mode={mode}>3月收益</HelpPopover>} value={perf?.return_3m} suffix="%" precision={2} />
+                  <Statistic title={<HelpPopover termKey="sharpe_1y" mode={mode}>夏普</HelpPopover>} value={perf?.sharpe_1y} precision={2} />
+                  <Statistic title={<HelpPopover termKey="max_drawdown_1y" mode={mode}>最大回撤</HelpPopover>} value={perf?.max_drawdown} suffix="%" precision={2} />
                 </ResponsiveGrid>
               </Panel>
             </Col>
@@ -400,7 +402,7 @@ export default function PoolDetail() {
     {
       key: 'correlation',
       label: (
-        <HelpPopover termKey="correlation_heatmap">
+        <HelpPopover termKey="correlation_heatmap" mode={mode}>
           相关性热力图
         </HelpPopover>
       ),
@@ -431,7 +433,7 @@ export default function PoolDetail() {
     },
     {
       key: 'snapshots',
-      label: <HelpPopover termKey="snapshot">快照记录</HelpPopover>,
+      label: <HelpPopover termKey="snapshot" mode={mode}>快照记录</HelpPopover>,
       children: (
         <Panel title="快照记录" padding="md">
           <Button type="primary" onClick={handleCreateSnapshot} loading={createSnapshot.isPending} disabled={createSnapshot.isPending} className="detail-section">

@@ -12,6 +12,7 @@ import Panel from '@/components/Panel';
 import ThemeTag, { ThemeTagVariant } from '@/components/ThemeTag';
 import InstrumentCodeTag from '@/components/InstrumentCodeTag';
 import HelpPopover from '@/components/HelpPopover';
+import { useSettingsStore } from '@/stores/settings';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
@@ -38,6 +39,7 @@ const SEARCH_DEBOUNCE_MS = 300;
 const SEARCH_PAGE_SIZE = 50;
 
 export default function ResearchNotes() {
+  const mode = useSettingsStore((s) => s.mode);
   const [code, setCode] = useState('');
   const [searchInput, setSearchInput] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
@@ -111,6 +113,7 @@ export default function ResearchNotes() {
         eyebrow="研究"
         title="研究笔记"
         description="AI 驱动的投研报告生成，支持日报、周报、财报分析等多种类型"
+        data-onboard="research-notes"
       />
       <AISetupBanner />
 
@@ -186,7 +189,7 @@ export default function ResearchNotes() {
                       name_zh={note.name_zh}
                     />
                     <ThemeTag variant="default">
-                      <HelpPopover termKey="note_type">{note.note_type}</HelpPopover>
+                      <HelpPopover termKey="note_type" mode={mode}>{note.note_type}</HelpPopover>
                     </ThemeTag>
                     {note.sentiment && (
                       <ThemeTag variant={SENTIMENT_VARIANTS[note.sentiment] || 'default'}>
@@ -195,7 +198,7 @@ export default function ResearchNotes() {
                     )}
                     {note.confidence && (
                       <span className="phase5c-detail-line">
-                        <HelpPopover termKey="sentiment_confidence">置信度</HelpPopover> {note.confidence}/10
+                        <HelpPopover termKey="sentiment_confidence" mode={mode}>置信度</HelpPopover> {note.confidence}/10
                       </span>
                     )}
                   </div>

@@ -55,20 +55,17 @@ export default function PoolList() {
   return (
     <PageShell maxWidth="wide">
       <PageHeader
+        eyebrow="组合"
         title="标的池管理"
         description="管理中长期目标组合：设定成员、目标权重、算法建议（等权/评分加权/风险平价）、快照与再平衡提醒。注：标的池是目标配置，不是实际持仓——实际持仓请到「模拟交易」或「真实交易」页面查看。"
-      />
-
-      <FilterToolbar
-        total={`共 ${pools?.length || 0} 个`}
         extra={
           <Button type="primary" icon={<PlusOutlined />} onClick={() => setIsModalOpen(true)}>
             新建池
           </Button>
         }
-      >
-        {null}
-      </FilterToolbar>
+      />
+
+      <FilterToolbar total={`共 ${pools?.length || 0} 个`} />
 
       <Panel variant="default">
         <Table

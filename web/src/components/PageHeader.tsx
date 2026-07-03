@@ -34,6 +34,8 @@ export interface PageHeaderProps {
   tutorial?: React.ReactNode;
   /** 强制教学槽显隐，覆盖 settings.mode 默认行为。 */
   tutorialForce?: boolean;
+  /** Forwarded to the wrapping header for onboarding tour anchoring (M19 P1). */
+  'data-onboard'?: string;
 }
 
 import { useSettingsStore } from '@/stores/settings';
@@ -47,13 +49,14 @@ export default function PageHeader({
   compact = false,
   tutorial,
   tutorialForce,
+  ...rest
 }: PageHeaderProps) {
   // K15: 默认依据 settings.mode：novice 时显示；显式传 tutorialForce 可覆盖。
   const settingsMode = useSettingsStore((s) => s.mode);
   const showTutorial = tutorialForce ?? (settingsMode === 'novice' && !!tutorial);
 
   return (
-    <header className="page-header" data-compact={compact || undefined}>
+    <header className="page-header" data-compact={compact || undefined} {...rest}>
       {breadcrumb ? (
         <div className="page-header-breadcrumb">{breadcrumb}</div>
       ) : null}

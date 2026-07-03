@@ -8,6 +8,8 @@ import Panel from '@/components/Panel';
 import ThemeTag from '@/components/ThemeTag';
 import HelpTrigger from '@/components/HelpTrigger';
 import HelpPopover from '@/components/HelpPopover';
+import EmptyState from '@/components/EmptyState';
+import { useSettingsStore } from '@/stores/settings';
 import { useStrategies } from '@/hooks/useStrategies';
 import { useStrategyCatalog } from '@/hooks/useStrategyCatalog';
 import { useAIHelp } from '@/hooks/useAIHelp';
@@ -40,6 +42,7 @@ const FAMILY_LABELS: Record<string, string> = {
 export default function StrategyList() {
   const navigate = useNavigate();
   const { open } = useAIHelp();
+  const mode = useSettingsStore((s) => s.mode);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState<StrategyCatalogItem | null>(null);
   const [form] = Form.useForm();
@@ -126,7 +129,7 @@ export default function StrategyList() {
     { title: 'ID', dataIndex: 'id', width: 60 },
     { title: '名称', dataIndex: 'name' },
     {
-      title: <HelpPopover termKey="strategy_type">类型</HelpPopover>,
+      title: <HelpPopover termKey="strategy_type" mode={mode}>类型</HelpPopover>,
       key: 'strategy_type',
       render: (_: any, record: any) => {
         const catalogEntry = catalogByType[record.strategy_type];
@@ -142,7 +145,7 @@ export default function StrategyList() {
           </Space>
         );
         if (termKey) {
-          return <HelpPopover termKey={termKey}>{tag}</HelpPopover>;
+          return <HelpPopover termKey={termKey} mode={mode}>{tag}</HelpPopover>;
         }
         return tag;
       },
@@ -206,6 +209,14 @@ export default function StrategyList() {
           loading={isLoading}
           scroll={{ x: 'max-content' }}
           pagination={false}
+          locale={{
+            emptyText: (
+              <EmptyState
+                title="暂无自定义策略"
+                description="可点击右上角「新建策略」从模板创建第一个策略"
+              />
+            ),
+          }}
         />
       </Panel>
 
@@ -217,7 +228,7 @@ export default function StrategyList() {
         width={600}
       >
         <Form form={form} layout="vertical" onFinish={handleCreate}>
-          <Form.Item name="template" label={<HelpPopover termKey="strategy_template">选择模板</HelpPopover>} rules={[{ required: true }]}>
+          <Form.Item name="template" label={<HelpPopover termKey="strategy_template" mode={mode}>选择模板</HelpPopover>} rules={[{ required: true }]}>
             <Select
               placeholder="选择策略模板"
               onChange={handleTemplateSelect}

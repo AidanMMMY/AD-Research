@@ -20,6 +20,7 @@ import ThemeTag from '@/components/ThemeTag';
 import ReturnTag from '@/components/ReturnTag';
 import NewsListPanel from '@/components/NewsListPanel';
 import HelpPopover from '@/components/HelpPopover';
+import { useSettingsStore } from '@/stores/settings';
 import type { DailyBar, ResearchNote } from '@/types/crypto';
 import type { OHLCV } from '@/types/instrument';
 
@@ -80,6 +81,7 @@ function formatPrice(price?: number | null) {
 
 export default function CryptoDetail() {
   const { code } = useParams<{ code: string }>();
+  const mode = useSettingsStore((s) => s.mode);
   const [timeRange, setTimeRange] = useState(120);
   const { data: crypto, isLoading: detailLoading, error: detailError } = useCryptoDetail(code || '');
   const { data: historyData, isLoading: historyLoading } = useCryptoHistory(code || '', { limit: timeRange });
@@ -160,7 +162,7 @@ export default function CryptoDetail() {
           <div className="detail-toolbar">
             <Space size="large" wrap>
               <Space>
-                <HelpPopover termKey="time_range">时间范围</HelpPopover>：
+                <HelpPopover termKey="time_range" mode={mode}>时间范围</HelpPopover>：
                 <Radio.Group
                   value={timeRange}
                   onChange={(e) => setTimeRange(e.target.value)}
@@ -191,7 +193,7 @@ export default function CryptoDetail() {
                 >
                   {INDICATOR_OPTIONS.map((opt) => (
                     <Checkbox key={opt.value} value={opt.value}>
-                      <HelpPopover termKey={INDICATOR_OPTION_TERMS[opt.value]}>{opt.label}</HelpPopover>
+                      <HelpPopover termKey={INDICATOR_OPTION_TERMS[opt.value]} mode={mode}>{opt.label}</HelpPopover>
                     </Checkbox>
                   ))}
                 </Checkbox.Group>
@@ -221,8 +223,8 @@ export default function CryptoDetail() {
             scroll={{ x: 'max-content' }}
             columns={[
               { title: '日期', dataIndex: 'trade_date' },
-              { title: <HelpPopover termKey="signal_type">信号</HelpPopover>, dataIndex: 'signal_type' },
-              { title: <HelpPopover termKey="strength">强度</HelpPopover>, dataIndex: 'strength', render: (v: any) => <span className="tabular-nums">{v}</span> },
+              { title: <HelpPopover termKey="signal_type" mode={mode}>信号</HelpPopover>, dataIndex: 'signal_type' },
+              { title: <HelpPopover termKey="strength" mode={mode}>强度</HelpPopover>, dataIndex: 'strength', render: (v: any) => <span className="tabular-nums">{v}</span> },
             ]}
           />
         </Panel>
@@ -266,7 +268,7 @@ export default function CryptoDetail() {
               <div className="ai-note-meta">
                 {latestNote.note_type && (
                   <span className="ai-note-type">
-                    <HelpPopover termKey="note_type">{latestNote.note_type}</HelpPopover>
+                    <HelpPopover termKey="note_type" mode={mode}>{latestNote.note_type}</HelpPopover>
                   </span>
                 )}
                 {latestNote.sentiment && (
@@ -284,7 +286,7 @@ export default function CryptoDetail() {
                 )}
                 {latestNote.confidence && (
                   <span className="ai-note-confidence">
-                    <HelpPopover termKey="sentiment_confidence">置信度</HelpPopover> {latestNote.confidence}/10
+                    <HelpPopover termKey="sentiment_confidence" mode={mode}>置信度</HelpPopover> {latestNote.confidence}/10
                   </span>
                 )}
                 <span className="ai-note-time">{latestNote.generated_at?.slice(0, 16)}</span>
@@ -374,7 +376,7 @@ export default function CryptoDetail() {
             key={stat.title}
             title={
               stat.termKey ? (
-                <HelpPopover termKey={stat.termKey}>{stat.title}</HelpPopover>
+                <HelpPopover termKey={stat.termKey} mode={mode}>{stat.title}</HelpPopover>
               ) : stat.title
             }
             value={formatStatValue(stat.value, stat.precision)}

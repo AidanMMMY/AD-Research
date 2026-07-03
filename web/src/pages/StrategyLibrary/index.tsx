@@ -7,6 +7,7 @@ import PageShell from '@/components/PageShell';
 import PageHeader from '@/components/PageHeader';
 import Panel from '@/components/Panel';
 import ResponsiveGrid from '@/components/ResponsiveGrid';
+import EmptyState from '@/components/EmptyState';
 import StrategyCard from '@/components/StrategyCard';
 import StrategyParamForm from '@/components/StrategyParamForm';
 import InstrumentSelector from '@/components/InstrumentSelector';
@@ -142,17 +143,24 @@ export default function StrategyLibrary() {
       />
 
       <Panel variant="default" title={`共 ${strategies.length} 个策略`}>
-        <ResponsiveGrid cols={3} gap="md">
-          {strategies.map((strategy) => (
-            <StrategyCard
-              key={strategy.strategy_type}
-              strategy={strategy}
-              onCreateConfig={handleCreateConfig}
-              onRunStrategy={handleRunStrategy}
-              onBacktest={handleBacktest}
-            />
-          ))}
-        </ResponsiveGrid>
+        {strategies.length === 0 ? (
+          <EmptyState
+            title="暂无策略模板"
+            description="策略模板由后端初始化，请稍后刷新页面或检查网络连接"
+          />
+        ) : (
+          <ResponsiveGrid cols={3} gap="md">
+            {strategies.map((strategy) => (
+              <StrategyCard
+                key={strategy.strategy_type}
+                strategy={strategy}
+                onCreateConfig={handleCreateConfig}
+                onRunStrategy={handleRunStrategy}
+                onBacktest={handleBacktest}
+              />
+            ))}
+          </ResponsiveGrid>
+        )}
       </Panel>
 
       <Modal

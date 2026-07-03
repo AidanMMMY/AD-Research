@@ -36,6 +36,7 @@ import EmptyState from '@/components/EmptyState';
 import Sparkline from '@/components/Sparkline';
 import InstrumentCodeTag from '@/components/InstrumentCodeTag';
 import HelpPopover from '@/components/HelpPopover';
+import { useSettingsStore } from '@/stores/settings';
 
 const MARKET_OPTIONS: { label: string; value: NewsMarket | 'all' }[] = [
   { label: '全部', value: 'all' },
@@ -278,6 +279,7 @@ function DistributionRadar({ row }: { row: SymbolAggregate }) {
 
 export default function SentimentOverview() {
   const navigate = useNavigate();
+  const mode = useSettingsStore((s) => s.mode);
   const [market, setMarket] = useState<NewsMarket | 'all'>('all');
   const [importanceMin, setImportanceMin] = useState<number>(3);
   const [search, setSearch] = useState('');
@@ -522,7 +524,7 @@ export default function SentimentOverview() {
                   </div>
                   <div>
                     <div className="ad-text-small ad-text-tertiary">
-                      <HelpPopover termKey="bull_bear_ratio">多空比</HelpPopover>
+                      <HelpPopover termKey="bull_bear_ratio" mode={mode}>多空比</HelpPopover>
                     </div>
                     <div className="ad-text-primary ad-font-medium ad-mb-2">
                       {selected.bear > 0

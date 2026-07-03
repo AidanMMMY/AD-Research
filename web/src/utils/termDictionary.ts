@@ -25,6 +25,11 @@ export interface TermEntry {
   example?: string;
   /** 关联的 AI 帮助页面类型，用于“问 AI”时带上下文 */
   relatedPageType?: HelpPageType;
+  /**
+   * M20: 相关术语 key 列表，用于在 HelpPopover 底部以 chip 形式推荐相邻概念。
+   * 落地仅展示（点击打 log），P2 可接跳词条详情页。
+   */
+  relatedTerms?: string[];
 }
 
 const entries: TermEntry[] = [
@@ -38,6 +43,7 @@ const entries: TermEntry[] = [
     interpretation: '80 分以上通常视为优秀；60 分以下说明至少有一个维度明显偏弱。',
     example: '某 ETF 收益维度 90 分、风险维度 70 分、夏普维度 85 分，按均衡模板（30%/25%/25%/10%/10%）计算，综合得分约为 83.5 分。',
     relatedPageType: 'score_ranking',
+    relatedTerms: ['score_return', 'score_risk', 'score_sharpe', 'score_liquidity', 'score_trend'],
   },
   {
     key: 'score_return',
@@ -48,6 +54,7 @@ const entries: TermEntry[] = [
     interpretation: '得分越高说明近期收益表现越好，但高得分不代表未来一定上涨。',
     example: 'A ETF 近 1 月涨 5%、近 3 月涨 12%、近 1 年涨 30%，在所有 ETF 中收益排名靠前，收益能力得分可能达到 90 分以上。',
     relatedPageType: 'score_ranking',
+    relatedTerms: ['composite_score', 'return_1m', 'return_3m', 'return_1y'],
   },
   {
     key: 'score_risk',
@@ -58,6 +65,7 @@ const entries: TermEntry[] = [
     interpretation: '高分代表走势相对稳健，适合风险厌恶型投资者；低分代表波动剧烈。',
     example: '某债券 ETF 20 日波动率仅 2%、最大回撤 1.5%，风险控制得分通常高于高波动股票 ETF。',
     relatedPageType: 'score_ranking',
+    relatedTerms: ['composite_score', 'volatility_20d', 'max_drawdown_1y'],
   },
   {
     key: 'score_sharpe',
@@ -68,6 +76,7 @@ const entries: TermEntry[] = [
     interpretation: '通常夏普 > 1 算不错，> 2 算优秀；< 0 说明收益还跑不赢无风险利率。',
     example: 'ETF A 年化收益 15%、波动 10%，夏普约 1.1；ETF B 年化收益 20%、波动 25%，夏普约 0.7。A 的夏普更高。',
     relatedPageType: 'score_ranking',
+    relatedTerms: ['composite_score', 'sharpe_1y', 'volatility_20d', 'max_drawdown_1y'],
   },
   {
     key: 'score_liquidity',
@@ -88,6 +97,7 @@ const entries: TermEntry[] = [
     interpretation: '高分不一定代表“值得买”，也可能是短期过热；要结合其他维度一起看。',
     example: '某 ETF 价格站上年线且 RSI 在 60 附近，趋势强度得分较高；若 RSI 已接近 80，则可能超买。',
     relatedPageType: 'score_ranking',
+    relatedTerms: ['composite_score', 'rsi14', 'ma5', 'ma20', 'macd'],
   },
   {
     key: 'rank_overall',
@@ -116,6 +126,7 @@ const entries: TermEntry[] = [
     interpretation: 'RSI > 70 通常视为超买，可能回调；RSI < 30 通常视为超卖，可能反弹。但强势趋势中可能长期超买或超卖。',
     example: '某 ETF 的 RSI14 = 75，说明近期上涨动能较强，短期存在过热风险；RSI14 = 25 则可能处于短期低点。',
     relatedPageType: 'instrument_detail',
+    relatedTerms: ['macd', 'bollinger_bands', 'kline', 'score_trend'],
   },
   {
     key: 'sharpe_1y',
@@ -125,6 +136,7 @@ const entries: TermEntry[] = [
     formula: 'Sharpe = (年化收益 - 无风险利率) / 年化波动率',
     interpretation: '数值越高越好。>1 通常认为风险补偿较充分。',
     relatedPageType: 'instrument_detail',
+    relatedTerms: ['volatility_20d', 'max_drawdown_1y', 'score_sharpe'],
   },
   {
     key: 'volatility_20d',
@@ -135,6 +147,7 @@ const entries: TermEntry[] = [
     interpretation: '数值越高，价格波动越大，风险也越高。适合用于仓位控制和止损设置。早期数据样本不足时需谨慎参考。',
     example: '波动率 10% 的 ETF 日内波动通常远小于波动率 40% 的行业主题 ETF。',
     relatedPageType: 'instrument_detail',
+    relatedTerms: ['sharpe_1y', 'max_drawdown_1y', 'bollinger_bands'],
   },
   {
     key: 'max_drawdown_1y',
@@ -145,6 +158,7 @@ const entries: TermEntry[] = [
     interpretation: '回撤越小，持有体验越好。回撤大的品种需要更强的风险承受能力。',
     example: '某 ETF 去年最高净值 1.5，随后最低跌到 1.2，最大回撤为 20%。',
     relatedPageType: 'instrument_detail',
+    relatedTerms: ['volatility_20d', 'sharpe_1y', 'score_risk'],
   },
   {
     key: 'return_1m',
@@ -195,6 +209,7 @@ const entries: TermEntry[] = [
     formula: '中轨 = MA20；上轨 = MA20 + 2 × std20；下轨 = MA20 - 2 × std20',
     interpretation: '通道收窄预示波动即将放大；价格突破上轨或下轨可能意味着趋势延续或反转。早期数据样本不足时需谨慎使用。',
     relatedPageType: 'instrument_detail',
+    relatedTerms: ['ma20', 'volatility_20d', 'rsi14'],
   },
   {
     key: 'macd',
@@ -204,6 +219,7 @@ const entries: TermEntry[] = [
     formula: 'DIF = EMA12 - EMA26；DEA = EMA9(DIF)；Histogram = DIF - DEA',
     interpretation: 'DIF 上穿 DEA 为金叉，偏多；DIF 下穿 DEA 为死叉，偏空。柱状图放大代表动能增强。',
     relatedPageType: 'instrument_detail',
+    relatedTerms: ['rsi14', 'ma5', 'ma20', 'kline'],
   },
   {
     key: 'ma10',
@@ -274,6 +290,7 @@ const entries: TermEntry[] = [
     interpretation: '适合趋势明显的市场；在震荡市中容易反复打脸。',
     example: '窗口 20 天、阈值 5%：某 ETF 近 20 日涨 7%，触发 BUY；近 20 日跌 6%，触发 SELL。',
     relatedPageType: 'strategy_list',
+    relatedTerms: ['mean_reversion', 'rsi_strategy', 'trend_following'],
   },
   {
     key: 'mean_reversion',
@@ -302,6 +319,7 @@ const entries: TermEntry[] = [
     interpretation: '适合震荡市；在单边趋势中可能过早出场。',
     example: '某 ETF 的 RSI14 跌到 28，触发 BUY；随后 RSI 涨到 72，触发 SELL。',
     relatedPageType: 'strategy_list',
+    relatedTerms: ['rsi14', 'mean_reversion', 'momentum'],
   },
 
   // ===== 回测 =====

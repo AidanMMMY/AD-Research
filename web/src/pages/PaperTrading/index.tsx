@@ -27,6 +27,7 @@ import EmptyState from '@/components/EmptyState';
 import InstrumentCodeTag from '@/components/InstrumentCodeTag';
 import ResponsiveGrid from '@/components/ResponsiveGrid';
 import HelpPopover from '@/components/HelpPopover';
+import { useSettingsStore } from '@/stores/settings';
 import ContextHint from '@/components/ContextHint';
 import {
   usePaperAccounts,
@@ -77,6 +78,7 @@ function formatDateTime(v: string | null | undefined): string {
 }
 
 export default function PaperTrading() {
+  const mode = useSettingsStore((s) => s.mode);
   const { data: accountsData, isLoading: accountsLoading } = usePaperAccounts();
   const accounts = accountsData?.items || [];
 
@@ -201,7 +203,7 @@ export default function PaperTrading() {
       render: (v: number) => <span className="font-mono">{v}</span>,
     },
     {
-      title: <HelpPopover termKey="avg_cost">均价</HelpPopover>,
+      title: <HelpPopover termKey="avg_cost" mode={mode}>均价</HelpPopover>,
       dataIndex: 'avg_cost',
       key: 'avg',
       render: (v: number) => <span className="font-mono">{fmtUSDT(v)}</span>,
@@ -213,7 +215,7 @@ export default function PaperTrading() {
       render: (v: number | null) => <span className="font-mono">{fmtUSDT(v)}</span>,
     },
     {
-      title: <HelpPopover termKey="market_value">市值</HelpPopover>,
+      title: <HelpPopover termKey="market_value" mode={mode}>市值</HelpPopover>,
       dataIndex: 'market_value',
       key: 'mv',
       render: (v: number | null) => (
@@ -221,7 +223,7 @@ export default function PaperTrading() {
       ),
     },
     {
-      title: <HelpPopover termKey="unrealized_pnl">未实现盈亏</HelpPopover>,
+      title: <HelpPopover termKey="unrealized_pnl" mode={mode}>未实现盈亏</HelpPopover>,
       dataIndex: 'unrealized_pnl',
       key: 'upnl',
       render: (v: number | null, r: PaperPosition) => {
@@ -235,7 +237,7 @@ export default function PaperTrading() {
       },
     },
     {
-      title: <HelpPopover termKey="realized_pnl">已实现盈亏</HelpPopover>,
+      title: <HelpPopover termKey="realized_pnl" mode={mode}>已实现盈亏</HelpPopover>,
       dataIndex: 'realized_pnl',
       key: 'rpnl',
       render: (v: number | null) => {
@@ -325,7 +327,7 @@ export default function PaperTrading() {
           </>
         }
       >
-        <div className="phase5c-account-selector">
+        <div className="phase5c-account-selector" data-onboard="paper-account">
           {accountsLoading ? (
             <Skeleton active paragraph={{ rows: 1 }} />
           ) : accounts.length === 0 ? (

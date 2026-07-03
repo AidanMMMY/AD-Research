@@ -59,7 +59,7 @@ export default function StatExplainer({
       content={<div className="stat-explainer__popover">{detail}</div>}
       trigger={trigger}
       placement="top"
-      overlayStyle={{ maxWidth: 320 }}
+      overlayStyle={{ maxWidth: 'min(320px, 88vw)' }}
     >
       <div
         className={`stat-explainer stat-explainer--clickable ${className || ''}`}

@@ -44,6 +44,7 @@ import {
   formatDateTimeSeconds,
   formatRelative as formatRelativeTz,
 } from '@/utils/datetime';
+import { useDebounce } from '@/hooks/useDebounce';
 
 const { RangePicker } = DatePicker;
 
@@ -54,13 +55,33 @@ const MARKET_OPTIONS: { label: string; value: NewsMarket | 'all' }[] = [
   { label: 'A 股', value: 'cn_a' },
   { label: '美股', value: 'us' },
   { label: '加密', value: 'crypto' },
+  // M22-2 (2026-07-04): "全球" is a frontend sentinel that the
+  // backend maps to the union of concrete markets (``cn_a`` / ``us``
+  // / ``crypto`` plus any legacy bucket the collector has written).
+  // When picked we also pre-light the political-category chips via
+  // ``GLOBAL_DEFAULT_CATEGORIES``.
+  { label: '全球', value: 'global' },
 ];
 
 const MARKET_BADGE: Record<NewsMarket, { color: string; label: string }> = {
   cn_a: { color: 'magenta', label: 'A 股' },
   us: { color: 'blue', label: '美股' },
   crypto: { color: 'gold', label: '加密' },
+  global: { color: 'cyan', label: '全球' },
 };
+
+/**
+ * Categories the ``global`` market sentinel defaults the chip strip
+ * to. Mirrors the political / macro buckets added in K12 so the user
+ * lands on the most useful filter set without typing.
+ */
+const GLOBAL_DEFAULT_CATEGORIES: string[] = [
+  'geopolitics',
+  'central_bank',
+  'election',
+  'trade_war',
+  'sanction',
+];
 
 /**
  * Political / macro event categories added in the 2026-07-04 K12
@@ -364,7 +385,7 @@ function HotSymbolSidebar({
       {loading ? (
         <Skeleton active paragraph={{ rows: 6 }} />
       ) : data.length === 0 ? (
-        <EmptyState title="暂无情绪数据" />
+        <EmptyState title="暂无情绪数据" description="当前没有可用的市场情绪聚合" />
       ) : (
         <div>
           {data.map((row) => {
@@ -440,8 +461,27 @@ export default function NewsFeed() {
   // Empty array = no filter (show all categories).
   const [eventCategories, setEventCategories] = useState<string[]>(() => {
     const raw = searchParams.get('event_category');
-    return raw ? raw.split(',').filter(Boolean) : [];
+    if (raw) return raw.split(',').filter(Boolean);
+    // M22-2 (2026-07-04): when the URL already pins the page to
+    // ``market=global``, pre-light the political / macro chip strip
+    // so the user lands on the most useful filter set.
+    const initialMarket = searchParams.get('market');
+    if (initialMarket === 'global') return [...GLOBAL_DEFAULT_CATEGORIES];
+    return [];
   });
+
+  /**
+   * Wrap ``setMarket`` so switching to ``global`` automatically
+   * lights the political-category chips (unless the user has already
+   * pinned specific categories via the URL).
+   */
+  const handleSetMarket = (next: NewsMarket | 'all') => {
+    setMarket(next);
+    if (next === 'global' && eventCategories.length === 0) {
+      setEventCategories([...GLOBAL_DEFAULT_CATEGORIES]);
+    }
+  };
+  const debouncedSearchInput = useDebounce(searchInput, 300);
 
   // Sync URL params when filters change.
   useEffect(() => {
@@ -484,7 +524,7 @@ export default function NewsFeed() {
     // moment the user adds/removes a favorite.
     queryKey: watchlistMode
       ? ['news-watchlist', market, source, dateRange, eventCategories]
-      : ['news-list', market, source, dateRange, activeSymbol, searchInput, eventCategories],
+      : ['news-list', market, source, dateRange, activeSymbol, debouncedSearchInput, eventCategories],
     initialPageParam: 1,
     queryFn: ({ pageParam }) =>
       watchlistMode
@@ -506,7 +546,7 @@ export default function NewsFeed() {
               source,
               from_date: toIso(dateRange?.[0] ?? null, false),
               to_date: toIso(dateRange?.[1] ?? null, true),
-              q: searchInput || undefined,
+              q: debouncedSearchInput || undefined,
               event_category: eventCategories.length > 0 ? eventCategories : undefined,
               page: pageParam,
               page_size: PAGE_SIZE,
@@ -642,7 +682,7 @@ export default function NewsFeed() {
         </Tag.CheckableTag>
         <Segmented
           value={market}
-          onChange={(v) => setMarket(v as NewsMarket | 'all')}
+          onChange={(v) => handleSetMarket(v as NewsMarket | 'all')}
           options={MARKET_OPTIONS}
           className="news-market-segmented"
         />
@@ -682,7 +722,7 @@ export default function NewsFeed() {
           filter set. The active set is persisted into the URL so
           the view is shareable. */}
       <div className="news-political-chips ad-flex ad-flex-wrap ad-gap-2 ad-mb-3">
-        <span className="ad-text-small ad-text-tertiary ad-self-center ad-mr-1">
+        <span className="ad-text-small ad-text-tertiary ad-self-center ad-mr-1 news-political-chips__label">
           事件类型:
         </span>
         {POLITICAL_CATEGORIES.map((c) => {
@@ -719,13 +759,19 @@ export default function NewsFeed() {
         {/* Feed */}
         <div className="ad-news-feed">
           {isError ? (
-            <EmptyState title="加载失败，请稍后重试" />
+            <EmptyState
+              title="加载失败，请稍后重试"
+              description="网络异常或服务暂不可用，请稍后再试"
+            />
           ) : isLoading ? (
             <div className="ad-p-5">
               <Skeleton active paragraph={{ rows: 6 }} />
             </div>
           ) : articles.length === 0 ? (
-            <EmptyState title="暂无符合筛选条件的资讯" />
+            <EmptyState
+              title="暂无符合筛选条件的资讯"
+              description="尝试调整上方筛选条件、清空关键词或切换市场"
+            />
           ) : (
             <>
               {articles.map((a) => (

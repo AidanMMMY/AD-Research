@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 import { Dropdown, Drawer, Segmented, Tooltip } from 'antd';
 import {
@@ -33,6 +33,7 @@ import {
   MenuOutlined,
   HomeOutlined,
   RightOutlined,
+  DownOutlined,
   BankOutlined,
   FundOutlined,
   FireOutlined,
@@ -41,11 +42,17 @@ import {
   SunOutlined,
   MoonOutlined,
   BulbOutlined,
+  CompassOutlined,
+  FundProjectionScreenOutlined,
+  BellOutlined,
+  ToolOutlined,
+  SafetyCertificateOutlined,
+  GlobalOutlined,
 } from '@ant-design/icons';
 import { Switch } from 'antd';
 import { useAuthStore } from '@/stores/auth';
 import { useSettingsStore } from '@/stores/settings';
-import { menuRoutes } from '@/routes';
+import { menuRoutes, sidebarGroups, type SidebarGroupKey } from '@/routes';
 import { useIsMobile } from '@/hooks/useBreakpoint';
 import { useTheme, type Theme } from '@/hooks/useTheme';
 import DensityToggle from '@/components/DensityToggle';
@@ -82,7 +89,35 @@ const iconMap: Record<string, React.ComponentType> = {
   FireOutlined,
   FilePdfOutlined,
   BlockOutlined,
+  HomeOutlined,
+  CompassOutlined,
+  FundProjectionScreenOutlined,
+  BellOutlined,
+  ToolOutlined,
+  SafetyCertificateOutlined,
+  GlobalOutlined,
 };
+
+const SIDEBAR_EXPANDED_KEY = 'ad-research:sidebar:expanded';
+
+function loadExpandedGroups(): Record<string, boolean> {
+  try {
+    const raw = localStorage.getItem(SIDEBAR_EXPANDED_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === 'object' ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function persistExpandedGroups(state: Record<string, boolean>) {
+  try {
+    localStorage.setItem(SIDEBAR_EXPANDED_KEY, JSON.stringify(state));
+  } catch {
+    /* swallow storage errors (e.g. SSR / quota) */
+  }
+}
 
 interface SidebarContentProps {
   collapsed: boolean;
@@ -93,6 +128,70 @@ function SidebarContent({ collapsed, onItemClick }: SidebarContentProps) {
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuthStore();
+  const isAdmin = user?.role === 'admin';
+
+  // Group menu items by their `group` field, preserving sidebarGroups ordering.
+  const groupedItems = useMemo(() => {
+    const map = new Map<SidebarGroupKey, typeof menuRoutes>();
+    for (const route of menuRoutes) {
+      const group = route.menu?.group;
+      if (!group) continue;
+      // Admin group is only visible to admins.
+      if (group === 'admin' && !isAdmin) continue;
+      if (!map.has(group)) map.set(group, []);
+      map.get(group)!.push(route);
+    }
+    return sidebarGroups
+      .filter((g) => map.has(g.key))
+      .map((g) => ({ group: g, items: map.get(g.key)! }));
+  }, [isAdmin]);
+
+  // Expanded/collapsed state per group. Persist in localStorage.
+  const [expanded, setExpanded] = useState<Record<string, boolean>>(() => {
+    const stored = loadExpandedGroups();
+    // Default: only the group containing the active pathname is open.
+    const initial: Record<string, boolean> = {};
+    for (const { group, items } of groupedItems) {
+      const hasActive = items.some(
+        (r) => location.pathname === r.path || location.pathname.startsWith(r.path + '/')
+      );
+      if (hasActive) {
+        initial[group.key] = true;
+      } else if (stored[group.key] !== undefined) {
+        initial[group.key] = stored[group.key];
+      } else {
+        initial[group.key] = false;
+      }
+    }
+    return initial;
+  });
+
+  // Keep expanded state in sync with persisted storage.
+  useEffect(() => {
+    persistExpandedGroups(expanded);
+  }, [expanded]);
+
+  // Auto-expand the group containing the active path on route changes.
+  useEffect(() => {
+    setExpanded((prev) => {
+      let changed = false;
+      const next = { ...prev };
+      for (const { group, items } of groupedItems) {
+        const hasActive = items.some(
+          (r) => location.pathname === r.path || location.pathname.startsWith(r.path + '/')
+        );
+        if (hasActive && !next[group.key]) {
+          next[group.key] = true;
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+  }, [location.pathname, groupedItems]);
+
+  const toggleGroup = useCallback((key: string) => {
+    setExpanded((prev) => ({ ...prev, [key]: !prev[key] }));
+  }, []);
 
   return (
     <>
@@ -102,35 +201,130 @@ function SidebarContent({ collapsed, onItemClick }: SidebarContentProps) {
         {!collapsed && <span className="app-layout__logo-text">投研平台</span>}
       </div>
 
-      {/* Menu Items */}
-      <nav className="app-layout__nav">
-        {menuRoutes.map((route) => {
-          if (route.path.startsWith('/admin/') && user?.role !== 'admin') {
-            return null;
-          }
-
-          const isActive = location.pathname === route.path;
-          const Icon = route.menu?.icon ? iconMap[route.menu.icon] : null;
-          const showDivider = route.menu?.dividerBefore;
+      {/* Menu Items — grouped 1-level + 2-level collapsible */}
+      <nav className="app-layout__nav" aria-label="主导航">
+        {groupedItems.map(({ group, items }) => {
+          const GroupIcon = iconMap[group.icon];
+          const isOpen = !!expanded[group.key];
+          const groupHasActive = items.some(
+            (r) => location.pathname === r.path || location.pathname.startsWith(r.path + '/')
+          );
+          const groupHeaderId = `sidebar-group-${group.key}`;
 
           return (
-            <React.Fragment key={route.path}>
-              {showDivider && <div className="app-layout__nav-divider" />}
-              <div
-                onClick={() => {
-                  navigate(route.path);
-                  onItemClick?.();
-                }}
-                className={`app-layout__nav-item ${isActive ? 'app-layout__nav-item--active' : ''}`}
-              >
-                {Icon && (
-                  <span className="app-layout__nav-icon">
-                    <Icon />
+            <div
+              key={group.key}
+              className={`app-layout__nav-group ${isOpen ? 'is-open' : 'is-collapsed'} ${
+                groupHasActive ? 'has-active' : ''
+              }`}
+            >
+              {!collapsed && (
+                <div
+                  role="button"
+                  tabIndex={0}
+                  aria-expanded={isOpen}
+                  aria-controls={groupHeaderId}
+                  className="app-layout__nav-group-header"
+                  onClick={() => toggleGroup(group.key)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      toggleGroup(group.key);
+                    }
+                  }}
+                >
+                  {GroupIcon && (
+                    <span className="app-layout__nav-group-icon" aria-hidden="true">
+                      <GroupIcon />
+                    </span>
+                  )}
+                  <span className="app-layout__nav-group-label">{group.label}</span>
+                  <span
+                    className={`app-layout__nav-group-chevron ${isOpen ? 'is-open' : ''}`}
+                    aria-hidden="true"
+                  >
+                    <DownOutlined />
                   </span>
-                )}
-                {!collapsed && <span className="app-layout__nav-label">{route.menu?.name}</span>}
-              </div>
-            </React.Fragment>
+                </div>
+              )}
+              {/* Collapsed sidebar: header acts as a single icon entry to the
+                  first item in the group, mirroring AntD's compact menu. */}
+              {collapsed ? (
+                <div
+                  className="app-layout__nav-item"
+                  role="button"
+                  tabIndex={0}
+                  aria-label={`${group.label}（展开侧边栏查看子菜单）`}
+                  onClick={() => {
+                    // In collapsed mode just navigate to the first item.
+                    const first = items[0];
+                    if (first) {
+                      navigate(first.path);
+                      onItemClick?.();
+                    }
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      const first = items[0];
+                      if (first) {
+                        navigate(first.path);
+                        onItemClick?.();
+                      }
+                    }
+                  }}
+                >
+                  {GroupIcon && (
+                    <span className="app-layout__nav-icon">
+                      <GroupIcon />
+                    </span>
+                  )}
+                </div>
+              ) : (
+                <div
+                  id={groupHeaderId}
+                  className="app-layout__nav-group-items"
+                  role="region"
+                  aria-label={`${group.label} 子菜单`}
+                  hidden={!isOpen}
+                >
+                  {items.map((route) => {
+                    const isActive =
+                      location.pathname === route.path ||
+                      location.pathname.startsWith(route.path + '/');
+                    const Icon = route.menu?.icon ? iconMap[route.menu.icon] : null;
+                    const label = route.menu?.label || route.menu?.name || '';
+                    return (
+                      <div
+                        key={route.path}
+                        role="button"
+                        tabIndex={0}
+                        aria-current={isActive ? 'page' : undefined}
+                        className={`app-layout__nav-item ${isActive ? 'app-layout__nav-item--active' : ''}`}
+                        onClick={() => {
+                          navigate(route.path);
+                          onItemClick?.();
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            navigate(route.path);
+                            onItemClick?.();
+                          }
+                        }}
+                      >
+                        {Icon && (
+                          <span className="app-layout__nav-icon">
+                            <Icon />
+                          </span>
+                        )}
+                        <span className="app-layout__nav-label">{label}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           );
         })}
       </nav>
@@ -472,12 +666,6 @@ export default function AppLayout() {
                         new CustomEvent('ad-research:reopen-onboarding')
                       );
                     },
-                  },
-                  {
-                    key: 'learning',
-                    icon: <ReadOutlined />,
-                    label: '新手教程',
-                    onClick: () => navigate('/learning'),
                   },
                   { type: 'divider' },
                   {

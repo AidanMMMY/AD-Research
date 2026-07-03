@@ -335,6 +335,82 @@ export function buildSignalDashboardContext(rows: any[], columns: any[]): string
   ].join('\n');
 }
 
+/**
+ * Build the AI-help context for the Global Markets page.
+ *
+ * ``recentEvents`` is the same slice the on-page "最近 24h 重大政治 /
+ * 地缘事件" widget renders — capped at 5 so the prompt stays small
+ * even if the upstream widget fetches more rows. Categories are
+ * restricted to the political / macro buckets introduced in K12
+ * (geopolitics, central_bank, election, trade_war, sanction).
+ */
+export function buildGlobalMarketsContext(
+  rows: Array<{
+    code: string;
+    name: string;
+    latest: number | null;
+    changePct: number | null;
+    unit: string;
+    asOf: string | null;
+    region: string;
+    category: string;
+  }>,
+  recentEvents: NewsArticleSummary[] | undefined,
+  recentEventsWindowHours = 24,
+  recentEventsImportanceMin = 3
+): string {
+  const grouped: Record<string, Array<(typeof rows)[number]>> = {};
+  for (const r of rows) {
+    if (!grouped[r.category]) grouped[r.category] = [];
+    grouped[r.category].push(r);
+  }
+
+  const categoryLines = Object.entries(grouped).map(([cat, items]) => {
+    const itemSummary = items.map((it) => ({
+      code: it.code,
+      name: it.name,
+      latest: it.latest,
+      change_pct: it.changePct == null ? null : Number(it.changePct.toFixed(2)),
+      unit: it.unit,
+      as_of: it.asOf,
+      region: it.region,
+    }));
+    return `- ${cat}: ${summarizeList(itemSummary as unknown as Record<string, unknown>[], 20)}`;
+  });
+
+  const events = (recentEvents ?? []).slice(0, 5).map((e) => ({
+    title: e.title,
+    published_at: e.published_at,
+    event_category: e.event_category,
+    importance: e.importance,
+    market: e.market,
+    source: e.source,
+    summary: e.body ? e.body.slice(0, 240) : null,
+  }));
+
+  return [
+    '页面：全球市场速览',
+    `指标数量：${rows.length}`,
+    `最近事件窗口：${recentEventsWindowHours}h · 重要性≥${recentEventsImportanceMin}`,
+    '当前指标分桶：',
+    categoryLines.join('\n') || '无',
+    `最近 ${events.length} 条地缘 / 央行 / 选举 / 贸易战 / 制裁事件：`,
+    summarizeList(events as unknown as Record<string, unknown>[], 5),
+  ].join('\n');
+}
+
+/** Minimal news-article shape accepted by ``buildGlobalMarketsContext``.
+ *  Avoids a circular import with ``@/types/news``. */
+export interface NewsArticleSummary {
+  title: string;
+  published_at: string;
+  event_category?: string | null;
+  importance?: number | null;
+  market?: string;
+  source?: string;
+  body?: string | null;
+}
+
 export function buildContext(
   pageType: HelpPageType,
   data: Record<string, any>
@@ -369,6 +445,13 @@ export function buildContext(
       return buildListingPreviewContext(data);
     case 'signal_dashboard':
       return buildSignalDashboardContext(data.rows ?? [], data.columns ?? []);
+    case 'global_markets':
+      return buildGlobalMarketsContext(
+        data.rows ?? [],
+        data.recentEvents,
+        data.recentEventsWindowHours ?? 24,
+        data.recentEventsImportanceMin ?? 3,
+      );
     default:
       return summarizeObject(data);
   }

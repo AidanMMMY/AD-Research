@@ -43,6 +43,7 @@ import StatCard from '@/components/StatCard';
 import InstrumentCodeTag from '@/components/InstrumentCodeTag';
 import { formatDateTime, formatDateTimeCompact } from '@/utils/datetime';
 import HelpPopover from '@/components/HelpPopover';
+import { useSettingsStore } from '@/stores/settings';
 
 const SENTIMENT_COLORS: Record<SentimentLabel, string> = {
   positive: 'var(--color-rise)',
@@ -94,6 +95,7 @@ export default function NewsDetail() {
   const navigate = useNavigate();
   const articleId = Number(id);
   const queryClient = useQueryClient();
+  const mode = useSettingsStore((s) => s.mode);
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['news-detail', articleId],
@@ -262,7 +264,7 @@ export default function NewsDetail() {
 
         <div className="ad-detail-actions">
           {symbols.length > 0 && (
-            <Space size={4} wrap>
+            <Space size={4} wrap className="ad-detail-actions__symbols">
               {symbols.map((s) => (
                 <Link
                   key={`${s.symbol}-${s.match_type ?? 'symbol'}`}
@@ -294,7 +296,7 @@ export default function NewsDetail() {
                     } as const)[data.event_category]
                   : 'geekblue'
               }
-              className="ad-detail-tag"
+              className="ad-detail-tag ad-detail-tag--category"
             >
               {data.event_category}
             </Tag>
@@ -319,6 +321,7 @@ export default function NewsDetail() {
             type="primary"
             icon={<LinkOutlined />}
             onClick={() => window.open(data.url, '_blank', 'noopener,noreferrer')}
+            className="ad-detail-actions__cta"
           >
             查看原文
           </Button>
@@ -349,7 +352,7 @@ export default function NewsDetail() {
                     ) : data.body ? (
                       <div className="ad-detail-article__body">{data.body}</div>
                     ) : (
-                      <EmptyState title="暂无原文" />
+                      <EmptyState title="暂无原文" description="尚未抓到原文，可点击下方「加载完整正文」或前往原文链接" />
                     )}
                   </div>
                 </div>
@@ -371,7 +374,7 @@ export default function NewsDetail() {
                     ) : translationToShow ? (
                       <Markdown source={translationToShow} />
                     ) : (
-                      <EmptyState title="翻译暂不可用" />
+                      <EmptyState title="翻译暂不可用" description="翻译服务暂未启用或该文章类型不支持翻译" />
                     )}
                   </div>
                 </div>
@@ -385,7 +388,7 @@ export default function NewsDetail() {
                 {data.body}
               </div>
             ) : (
-              <EmptyState title="暂无正文，请前往原文查看完整内容" />
+              <EmptyState title="暂无正文，请前往原文查看完整内容" description="可点击「加载完整正文」尝试抓取，或前往原文链接阅读" />
             )}
 
             {/* Load-full-text control: only when we don't already have
@@ -489,7 +492,7 @@ export default function NewsDetail() {
               {data.sentiment_confidence != null && (
                 <div className="ad-flex ad-items-center ad-gap-3 ad-mb-3">
                   <span className="ad-text-small ad-text-tertiary">
-                    <HelpPopover termKey="sentiment_confidence">LLM 置信度</HelpPopover>
+                    <HelpPopover termKey="sentiment_confidence" mode={mode}>LLM 置信度</HelpPopover>
                   </span>
                   <div className="ad-sentiment-bar ad-flex-1">
                     <div
@@ -511,7 +514,7 @@ export default function NewsDetail() {
               {data.sentiment_drivers && data.sentiment_drivers.length > 0 && (
                 <div>
                   <div className="ad-text-small ad-text-tertiary ad-mb-2">
-                    <HelpPopover termKey="sentiment_drivers">关键驱动</HelpPopover>
+                    <HelpPopover termKey="sentiment_drivers" mode={mode}>关键驱动</HelpPopover>
                   </div>
                   <Space wrap>
                     {data.sentiment_drivers.map((d) => (
@@ -538,7 +541,7 @@ export default function NewsDetail() {
               className="ad-mt-5"
               padding="md"
             >
-              <EmptyState title="散户讨论内容由 Agent E 后续接入" />
+              <EmptyState title="散户讨论内容由 Agent E 后续接入" description="将汇总雪球、东方财富股吧、Reddit 等社区讨论" />
             </Panel>
           )}
         </div>
@@ -606,7 +609,7 @@ export default function NewsDetail() {
             {relatedLoading ? (
               <Skeleton active paragraph={{ rows: 4 }} />
             ) : !related || related.length === 0 ? (
-              <EmptyState title="暂无相关资讯" />
+              <EmptyState title="暂无相关资讯" description="未找到与本文主题、标的或行业相关的其他资讯" />
             ) : (
               <List
                 dataSource={related}

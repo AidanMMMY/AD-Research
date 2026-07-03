@@ -6,6 +6,7 @@ import { useInstrumentList, useInstrumentCategories, useInstrumentMarkets } from
 import { useSparkline } from '@/hooks/useSparkline';
 import { useMarketStream } from '@/hooks/useMarketStream';
 import { useDensity } from '@/hooks/useDensity';
+import { useDebounce } from '@/hooks/useDebounce';
 import PageShell from '@/components/PageShell';
 import PageHeader from '@/components/PageHeader';
 import FilterToolbar from '@/components/FilterToolbar';
@@ -56,9 +57,10 @@ export default function InstrumentList() {
   const [category, setCategory] = useState<string | undefined>();
   const [instrumentType, setInstrumentType] = useState<string | undefined>();
   const [page, setPage] = useState(1);
+  const debouncedSearch = useDebounce(search, 300);
 
   const { data, isLoading, dataUpdatedAt, isFetching } = useInstrumentList({
-    search: search || undefined,
+    search: debouncedSearch || undefined,
     market,
     category,
     instrument_type: instrumentType,

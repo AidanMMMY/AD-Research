@@ -1,14 +1,20 @@
-import { useNavigate } from 'react-router-dom';
-import { Tag, Space, Button } from 'antd';
+import { useEffect, useMemo, useState } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { Tag, Space, Button, Collapse, Input, Empty } from 'antd';
 import {
   ReadOutlined,
   ExperimentOutlined,
   LineChartOutlined,
   ArrowRightOutlined,
+  PartitionOutlined,
+  SearchOutlined,
 } from '@ant-design/icons';
 import PageShell from '@/components/PageShell';
 import PageHeader from '@/components/PageHeader';
 import Panel from '@/components/Panel';
+import HelpPopover from '@/components/HelpPopover';
+import { useSettingsStore } from '@/stores/settings';
+import { getAllTerms, type TermEntry } from '@/utils/termDictionary';
 
 interface Scenario {
   id: string;
@@ -80,6 +86,17 @@ const SCENARIOS: Scenario[] = [
 
 export default function Learning() {
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // M20: 当从 Dashboard 「查看知识图谱」chip 跳过来时，自动展开「术语速查」面板。
+  const wantsTermsPanel = useMemo(
+    () => new URLSearchParams(location.search).get('panel') === 'terms',
+    [location.search]
+  );
+  const [panelOpen, setPanelOpen] = useState(wantsTermsPanel);
+  useEffect(() => {
+    if (wantsTermsPanel) setPanelOpen(true);
+  }, [wantsTermsPanel]);
 
   return (
     <PageShell maxWidth="wide">
@@ -94,7 +111,156 @@ export default function Learning() {
           <ScenarioCard key={s.id} scenario={s} onJump={navigate} />
         ))}
       </div>
+
+      {/* M20: 知识图谱入口 — 折叠面板形式的术语速查。
+          P2 将升级为真正的图谱视图。 */}
+      <div className="learning-terms-wrap" style={{ marginTop: 24 }}>
+        <Space style={{ marginBottom: 8 }}>
+          <Button
+            type={panelOpen ? 'primary' : 'default'}
+            icon={<PartitionOutlined />}
+            onClick={() => setPanelOpen((v) => !v)}
+          >
+            {panelOpen ? '收起术语速查' : '展开术语速查'}
+          </Button>
+          <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>
+            知识图谱入口（M20）
+          </span>
+        </Space>
+
+        {panelOpen && <TermQuickReference initialOpen={wantsTermsPanel} />}
+      </div>
     </PageShell>
+  );
+}
+
+/**
+ * M20: 把每条 TermEntry 的 `relatedPageType` 翻译成顶层分类标签，
+ * 方便把 entry 按"所属知识域"分组展示。
+ * 不相关时落到 "其他" 一组，避免信息丢失。
+ */
+function bucketOf(entry: TermEntry): string {
+  switch (entry.relatedPageType) {
+    case 'score_ranking':
+      return '评分体系';
+    case 'instrument_detail':
+      return '标的 / 行情';
+    case 'strategy_list':
+      return '策略';
+    case 'backtest_detail':
+      return '回测';
+    case 'screen':
+      return '筛选';
+    case 'pool_detail':
+      return '标的池';
+    case 'signal_dashboard':
+      return '交易信号';
+    case 'listing_preview':
+      return '上市预告';
+    default:
+      return '其他';
+  }
+}
+
+/**
+ * M20: 术语速查面板 — 当前期是把 termDictionary 的全部 entry
+ * 按一级分组渲染成可搜索列表，标题 hover 触发 HelpPopover。
+ * P2 将升级为真正的知识图谱视图。
+ */
+function TermQuickReference({
+  initialOpen,
+}: {
+  initialOpen: boolean;
+}) {
+  const mode = useSettingsStore((s) => s.mode);
+  const [keyword, setKeyword] = useState('');
+  const all = useMemo(() => getAllTerms(), []);
+
+  const grouped = useMemo(() => {
+    const map = new Map<string, TermEntry[]>();
+    const lower = keyword.trim().toLowerCase();
+    for (const e of all) {
+      if (lower) {
+        const hay = `${e.title} ${e.shortDesc} ${e.key}`.toLowerCase();
+        if (!hay.includes(lower)) continue;
+      }
+      const b = bucketOf(e);
+      const list = map.get(b) ?? [];
+      list.push(e);
+      map.set(b, list);
+    }
+    // 组内按 title 排序
+    for (const [b, list] of map.entries()) {
+      list.sort((a, b2) => a.title.localeCompare(b2.title, 'zh-Hans-CN'));
+      map.set(b, list);
+    }
+    return map;
+  }, [all, keyword]);
+
+  const totalShown = Array.from(grouped.values()).reduce(
+    (acc, list) => acc + list.length,
+    0
+  );
+
+  const collapseItems = Array.from(grouped.entries()).map(([bucket, list]) => ({
+    key: bucket,
+    label: (
+      <Space>
+        <span>{bucket}</span>
+        <Tag>{list.length}</Tag>
+      </Space>
+    ),
+    children: (
+      <ul className="learning-terms__list">
+        {list.map((t) => (
+          <li key={t.key} className="learning-terms__item">
+            <HelpPopover termKey={t.key} mode={mode}>
+              <span className="learning-terms__title">{t.title}</span>
+            </HelpPopover>
+            <span className="learning-terms__desc">{t.shortDesc}</span>
+          </li>
+        ))}
+      </ul>
+    ),
+  }));
+
+  return (
+    <Panel
+      variant="default"
+      padding="md"
+      className="learning-terms"
+      title={
+        <Space>
+          <PartitionOutlined style={{ color: 'var(--accent)' }} />
+          <span>术语速查</span>
+          <Tag color="volcano">M20 P1</Tag>
+        </Space>
+      }
+      extra={
+        <Input
+          allowClear
+          size="small"
+          prefix={<SearchOutlined />}
+          placeholder="按名称 / 描述 / key 过滤"
+          value={keyword}
+          onChange={(e) => setKeyword(e.target.value)}
+          style={{ width: 220 }}
+        />
+      }
+    >
+      <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 0 }}>
+        共 {all.length} 个术语，当前显示 {totalShown} 个。鼠标悬停或点击标题可看「问 AI」浮层。
+        P2 将升级为真正的图谱视图。
+      </p>
+      {totalShown === 0 ? (
+        <Empty description="没有匹配的术语" />
+      ) : (
+        <Collapse
+          defaultActiveKey={initialOpen ? [Array.from(grouped.keys())[0]] : []}
+          items={collapseItems}
+        />
+      )}
+    </Panel>
   );
 }
 
@@ -131,7 +297,7 @@ function ScenarioCard({
       </ol>
 
       <div className="learning-scenario-card__cta">
-        <Space>
+        <Space wrap className="learning-scenario-card__cta-buttons">
           {scenario.jumpTo && (
             <Button
               type="primary"

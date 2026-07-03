@@ -25,6 +25,7 @@ import EmptyState from '@/components/EmptyState';
 import FilterToolbar from '@/components/FilterToolbar';
 import LastUpdated from '@/components/LastUpdated';
 import HelpPopover from '@/components/HelpPopover';
+import { useSettingsStore } from '@/stores/settings';
 import { useMacroIndicators, useMacroSeries } from '@/hooks/useMacro';
 import {
   useMacroLatest,
@@ -96,6 +97,7 @@ function buildCnHeadlineFromLatest(items: MacroLatestItem[]): MacroIndicatorItem
 }
 
 export default function Macro() {
+  const mode = useSettingsStore((s) => s.mode);
   const [region, setRegion] = useState<string>('us');
   const [selectedCode, setSelectedCode] = useState<string | null>(null);
 
@@ -297,7 +299,7 @@ export default function Macro() {
                 <StatCard
                   title={
                     MACRO_TERM_KEY_MAP[item.code] ? (
-                      <HelpPopover termKey={MACRO_TERM_KEY_MAP[item.code]}>{item.name_zh}</HelpPopover>
+                      <HelpPopover termKey={MACRO_TERM_KEY_MAP[item.code]} mode={mode}>{item.name_zh}</HelpPopover>
                     ) : item.name_zh
                   }
                   value={formatValue(item.value, item.unit)}
