@@ -9,6 +9,7 @@ Binance free tier (public REST endpoints):
 Rate limit: 0.1 s sleep per request (~10 req/s) leaves comfortable headroom.
 """
 
+import json
 import time
 from datetime import date, datetime
 
@@ -303,7 +304,7 @@ class BinanceProvider(DataProvider):
 
         symbols = [self.to_binance_symbol(c) for c in codes]
         url = f"{self.BASE_URL}/api/v3/ticker/24hr"
-        params = {"symbols": str(symbols).replace("'", '"')}
+        params = {"symbols": json.dumps(symbols, separators=(",", ":"))}
 
         try:
             resp = requests.get(url, params=params, timeout=30)
