@@ -27,7 +27,7 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
-from typing import Final
+from typing import Final, Optional
 
 import httpx
 from sqlalchemy.orm import Session
@@ -120,8 +120,11 @@ class ContentFetcher:
             return FetchResult(success=False, content=None, cached=False,
                                error="empty response from Jina Reader")
 
-        # 3) Safety truncate.
-        content = md.strip()
+        # 3) Use AI to clean up the content (remove ads, navigation, etc.)
+        content = self._clean_with_ai(md.strip())
+
+        # 4) Safety truncate.
+        content = content.strip()
         truncated = False
         if len(content) > MAX_CONTENT_CHARS:
             content = content[:MAX_CONTENT_CHARS]
@@ -131,7 +134,7 @@ class ContentFetcher:
                 article_id, MAX_CONTENT_CHARS,
             )
 
-        # 4) Store back to DB.
+        # 5) Store back to DB.
         article.full_content = content
         article.full_content_fetched_at = datetime.now(tz=timezone.utc)
         try:
@@ -218,6 +221,47 @@ class ContentFetcher:
         if not body:
             return ""
         return body
+
+    def _clean_with_ai(self, content: str) -> str:
+        """Use AI to clean up fetched content, removing ads and irrelevant elements."""
+        try:
+            from app.services.llm.deepseek_provider import DeepSeekProvider
+
+            provider = DeepSeekProvider()
+            if not provider.is_available:
+                logger.info("ContentFetcher: AI not available, skipping cleanup")
+                return content
+
+            system_prompt = """你是一个文章内容提取助手。你的任务是从网页抓取的原始内容中提取出**真正的正文部分**，去除以下无关内容：
+1. 广告（包括图片广告、文字广告、推广链接）
+2. 导航菜单、侧边栏、页脚
+3. 社交分享按钮、评论区
+4. 相关文章推荐
+5. 网站版权声明、备案信息
+6. 任何与文章正文无关的内容
+
+请直接返回清理后的正文内容，不要添加任何解释、评论或markdown代码块标记。"""
+
+            prompt = f"""请从以下网页抓取内容中提取真正的正文，去除广告、导航、侧边栏等无关内容：\n\n{content[:8000]}"""
+
+            cleaned = provider.complete(
+                prompt=prompt,
+                system=system_prompt,
+                max_tokens=4000,
+                temperature=0.3,
+            )
+
+            if cleaned and len(cleaned) > 100:
+                logger.info("ContentFetcher: AI cleanup successful, original length: %d, cleaned: %d",
+                           len(content), len(cleaned))
+                return cleaned
+            else:
+                logger.warning("ContentFetcher: AI cleanup returned empty or too short, keeping original")
+                return content
+
+        except Exception as e:
+            logger.warning("ContentFetcher: AI cleanup failed: %s, keeping original", e)
+            return content
 
 
 # ---------------------------------------------------------------------------
