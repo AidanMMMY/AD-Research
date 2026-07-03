@@ -4466,6 +4466,18 @@ main {
   word-break: break-word;
 }
 
+/* Markdown images should not overflow container */
+.ad-markdown img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+
+/* Increase article width for reading */
+.ad-detail-article {
+  max-width: 100%;
+}
+
 /* ---- NewsListPanel ---- */
 .news-list-panel__item {
   padding: 12px 0;
