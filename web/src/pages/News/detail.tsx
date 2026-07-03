@@ -190,7 +190,7 @@ export default function NewsDetail() {
 
   if (isLoading) {
     return (
-      <PageShell maxWidth="reading">
+      <PageShell maxWidth="full">
         <div className="ad-p-15 ad-text-center">
           <Spin size="large" />
         </div>
@@ -199,7 +199,7 @@ export default function NewsDetail() {
   }
   if (error || !data) {
     return (
-      <PageShell maxWidth="reading">
+      <PageShell maxWidth="full">
         <Alert
           type="error"
           message="加载资讯失败"
@@ -227,7 +227,7 @@ export default function NewsDetail() {
   const fullContentToRender = renderedFullContent ?? data.full_content;
 
   return (
-    <PageShell maxWidth="reading">
+    <PageShell maxWidth="full">
       {/* Header */}
       <header className="ad-detail-header">
         <Button
