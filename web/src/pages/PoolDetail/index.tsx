@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import { Tabs, Table, Button, Slider, message, Row, Col, Statistic, Dropdown, Space, Input, Popconfirm, Select } from 'antd';
+import { useQueryClient } from '@tanstack/react-query';
 import { EditOutlined, DeleteOutlined, PlusOutlined } from '@ant-design/icons';
 import type { MenuProps } from 'antd';
 import {
@@ -57,6 +58,8 @@ export default function PoolDetail() {
   const [editName, setEditName] = useState('');
   const [editDescription, setEditDescription] = useState('');
   const [selectedCodeForAdd, setSelectedCodeForAdd] = useState<string | undefined>();
+
+  const queryClient = useQueryClient();
 
   const { data: pool } = usePoolDetail(poolId);
   const { data: weights } = usePoolWeights(poolId);
@@ -169,6 +172,8 @@ export default function PoolDetail() {
       await addMember.mutateAsync({ poolId, etf_code: code });
       message.success('标的已添加');
       setSelectedCodeForAdd(undefined);
+      // Force refetch weights to ensure the list updates
+      queryClient.invalidateQueries({ queryKey: ['pool-weights', poolId] });
     } catch {
       message.error('添加失败');
     }
