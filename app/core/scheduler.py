@@ -1257,6 +1257,21 @@ def init_scheduler():
     except ImportError:
         pass
 
+    # News full content fetcher (runs after xueqiu crawler, every 10 minutes)
+    try:
+        from app.services.news.scheduler_fetch_full_content import run_fetch_full_content
+        scheduler.add_job(
+            run_fetch_full_content,
+            trigger=IntervalTrigger(minutes=10),
+            id="news_full_content_10m",
+            name="资讯全文抓取",
+            replace_existing=True,
+            max_instances=1,
+            coalesce=True,
+        )
+    except ImportError:
+        pass
+
     # LLM sentiment pipeline (Agent E)
     try:
         from app.services.news.sentiment.scheduler_sentiment import init_sentiment_jobs
