@@ -40,11 +40,11 @@ apt update && apt install -y postgresql-client-common postgresql-client
 #### 方式 B：Docker Compose 部署
 
 ```bash
-cd /opt/ad-research  # 或你的项目根目录
+cd /opt/alloy-research  # 或你的项目根目录
 docker compose ps
 ```
 
-应看到 `adresearch-postgres`、`adresearch-redis` 状态为 `running`。如果不在：
+应看到 `alloyresearch-postgres`、`alloyresearch-redis` 状态为 `running`。如果不在：
 
 ```bash
 docker compose up -d postgres redis
@@ -57,7 +57,7 @@ docker compose up -d postgres redis
 ### 3.1 本地 Python 启动
 
 ```bash
-cd /opt/ad-research
+cd /opt/alloy-research
 source .venv/bin/activate
 uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 1
 ```
@@ -76,7 +76,7 @@ INFO:     Application startup complete.
 ### 3.2 Docker Compose 启动
 
 ```bash
-cd /opt/ad-research
+cd /opt/alloy-research
 docker compose up -d --build backend
 ```
 
@@ -91,8 +91,8 @@ docker compose logs -f backend
 SSH 会话断开后服务会被杀掉，建议挂到 tmux：
 
 ```bash
-tmux new -s adresearch-backend
-cd /opt/ad-research
+tmux new -s alloyresearch-backend
+cd /opt/alloy-research
 source .venv/bin/activate
 uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 1
 
@@ -102,7 +102,7 @@ uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 1
 重新进入：
 
 ```bash
-tmux attach -t adresearch-backend
+tmux attach -t alloyresearch-backend
 ```
 
 ---
@@ -114,7 +114,7 @@ tmux attach -t adresearch-backend
 `scripts/update_daily_data.py` 第 5 步会执行全量回测，数量级为 `3 策略 × 1511 ETF ≈ 4533` 个任务，耗时数小时。首次恢复数据时建议跳过回测，只补齐日线、指标、评分、信号。
 
 ```bash
-cd /opt/ad-research
+cd /opt/alloy-research
 cp scripts/update_daily_data.py scripts/update_daily_data_nobacktest.py
 ```
 
@@ -178,7 +178,7 @@ python scripts/update_daily_data_nobacktest.py
 ```bash
 # 挂到 tmux，因为可能跑数小时
 tmux new -s etf-backtest
-cd /opt/ad-research
+cd /opt/alloy-research
 source .venv/bin/activate
 python scripts/update_daily_data.py
 ```
@@ -208,7 +208,7 @@ PY
 ### 5.2 完整数据健康检查
 
 ```bash
-cd /opt/ad-research
+cd /opt/alloy-research
 source .venv/bin/activate
 python scripts/data_completeness_check.py
 ```
@@ -271,11 +271,11 @@ PY
 
 ```bash
 # Docker
-cd /opt/ad-research
+cd /opt/alloy-research
 docker compose logs -f backend
 
 # 本地（如果启动时重定向了日志）
-tail -f /var/log/adresearch-backend.log
+tail -f /var/log/alloyresearch-backend.log
 ```
 
 ---
@@ -304,7 +304,7 @@ docker compose up -d
 
 ### 7.2 systemd 服务（Linux 裸机部署）
 
-创建 `/etc/systemd/system/adresearch-backend.service`：
+创建 `/etc/systemd/system/alloyresearch-backend.service`：
 
 ```ini
 [Unit]
@@ -314,9 +314,9 @@ After=network.target postgresql.service redis.service
 [Service]
 Type=simple
 User=aidanliu
-WorkingDirectory=/opt/ad-research
-Environment=PATH=/opt/ad-research/.venv/bin
-ExecStart=/opt/ad-research/.venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 1
+WorkingDirectory=/opt/alloy-research
+Environment=PATH=/opt/alloy-research/.venv/bin
+ExecStart=/opt/alloy-research/.venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 1
 Restart=always
 RestartSec=10
 
@@ -328,9 +328,9 @@ WantedBy=multi-user.target
 
 ```bash
 sudo systemctl daemon-reload
-sudo systemctl enable adresearch-backend
-sudo systemctl start adresearch-backend
-sudo systemctl status adresearch-backend
+sudo systemctl enable alloyresearch-backend
+sudo systemctl start alloyresearch-backend
+sudo systemctl status alloyresearch-backend
 ```
 
 ### 7.3 定时任务监控
@@ -371,7 +371,7 @@ curl http://localhost:8000/api/v1/etl/status?limit=5
 | 补数据（跳过回测） | `python scripts/update_daily_data_nobacktest.py` |
 | 完整补数据 | `python scripts/update_daily_data.py` |
 | 数据健康检查 | `python scripts/data_completeness_check.py` |
-| 进入 tmux 会话 | `tmux attach -t adresearch-backend` |
+| 进入 tmux 会话 | `tmux attach -t alloyresearch-backend` |
 | 查看 ETL 日志 API | `curl http://localhost:8000/api/v1/etl/status?limit=5` |
 
 ---

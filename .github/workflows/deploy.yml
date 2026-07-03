@@ -33,4 +33,4 @@ jobs:
       - name: Verify deployment
         run: |
           sleep 5
-          docker ps | grep adresearch-backend
+          docker ps | grep alloyresearch-backend

@@ -4,7 +4,7 @@
 services:
   postgres:
     image: postgres:16-alpine
-    container_name: adresearch-postgres
+    container_name: alloyresearch-postgres
     restart: unless-stopped
     environment:
       TZ: Asia/Shanghai
@@ -20,7 +20,7 @@ services:
       retries: 5
       start_period: 10s
     networks:
-      - adresearch-network
+      - alloyresearch-network
     logging:
       driver: "json-file"
       options:
@@ -29,7 +29,7 @@ services:
 
   redis:
     image: redis:7-alpine
-    container_name: adresearch-redis
+    container_name: alloyresearch-redis
     restart: unless-stopped
     command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
     volumes:
@@ -41,7 +41,7 @@ services:
       retries: 5
       start_period: 5s
     networks:
-      - adresearch-network
+      - alloyresearch-network
     logging:
       driver: "json-file"
       options:
@@ -54,7 +54,7 @@ services:
       dockerfile: Dockerfile
     image: ad-research:latest
     pull_policy: never
-    container_name: adresearch-backend
+    container_name: alloyresearch-backend
     restart: unless-stopped
     expose:
       - "8000"
@@ -93,7 +93,7 @@ services:
              alembic upgrade head &&
              uvicorn app.main:app --host 0.0.0.0 --port 8000"
     networks:
-      - adresearch-network
+      - alloyresearch-network
     logging:
       driver: "json-file"
       options:
@@ -102,7 +102,7 @@ services:
 
   nginx:
     image: nginx:alpine
-    container_name: adresearch-nginx
+    container_name: alloyresearch-nginx
     restart: unless-stopped
     ports:
       - "8000:8000"
@@ -115,7 +115,7 @@ services:
     depends_on:
       - backend
     networks:
-      - adresearch-network
+      - alloyresearch-network
     logging:
       driver: "json-file"
       options:
@@ -128,5 +128,5 @@ volumes:
   web_dist:
 
 networks:
-  adresearch-network:
+  alloyresearch-network:
     driver: bridge

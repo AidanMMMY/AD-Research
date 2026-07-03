@@ -179,20 +179,20 @@ apt-get install -y git
 
 ```bash
 cd /opt
-git clone 你的代码仓库地址 ad-research
+git clone 你的代码仓库地址 alloy-research
 ```
 
 例如：
 
 ```bash
 cd /opt
-git clone https://github.com/yourname/ad-research.git ad-research
+git clone https://github.com/yourname/alloy-research.git alloy-research
 ```
 
 #### 5.1.3 进入项目目录
 
 ```bash
-cd ad-research
+cd alloy-research
 ```
 
 ### 方式二：用 zip 上传（不会 Git 就用这个）
@@ -204,7 +204,7 @@ cd ad-research
 3. 执行：
 
 ```bash
-zip -r ad-research.zip . -x "*.git*" -x "node_modules/*" -x ".venv/*" -x "web/node_modules/*"
+zip -r alloy-research.zip . -x "*.git*" -x "node_modules/*" -x ".venv/*" -x "web/node_modules/*"
 ```
 
 #### 5.2.2 上传到服务器
@@ -212,7 +212,7 @@ zip -r ad-research.zip . -x "*.git*" -x "node_modules/*" -x ".venv/*" -x "web/no
 **Mac/Linux：**
 
 ```bash
-scp ad-research.zip root@你的服务器公网IP:/opt/
+scp alloy-research.zip root@你的服务器公网IP:/opt/
 ```
 
 **Windows：**
@@ -223,8 +223,8 @@ scp ad-research.zip root@你的服务器公网IP:/opt/
 
 ```bash
 cd /opt
-unzip ad-research.zip -d ad-research
-cd ad-research
+unzip alloy-research.zip -d alloy-research
+cd alloy-research
 ```
 
 ---
@@ -234,7 +234,7 @@ cd ad-research
 ### 6.1 进入部署目录
 
 ```bash
-cd /opt/ad-research/deploy/aliyun-ecs
+cd /opt/alloy-research/deploy/aliyun-ecs
 ```
 
 ### 6.2 给脚本执行权限
@@ -319,7 +319,7 @@ http://47.239.13.111:8000
 ### 8.1 编辑 .env 文件
 
 ```bash
-vim /opt/ad-research/deploy/aliyun-ecs/.env
+vim /opt/alloy-research/deploy/aliyun-ecs/.env
 ```
 
 ### 8.2 找到 TUSHARE_TOKEN 并修改
@@ -342,7 +342,7 @@ TUSHARE_TOKEN=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 ### 8.4 重启服务让配置生效
 
 ```bash
-cd /opt/ad-research/deploy/aliyun-ecs
+cd /opt/alloy-research/deploy/aliyun-ecs
 docker compose restart backend
 ```
 
@@ -353,7 +353,7 @@ docker compose restart backend
 以下命令都需要先进入部署目录：
 
 ```bash
-cd /opt/ad-research/deploy/aliyun-ecs
+cd /opt/alloy-research/deploy/aliyun-ecs
 ```
 
 ### 9.1 查看服务状态
@@ -397,7 +397,7 @@ docker compose down -v
 ### 9.7 更新代码后重新部署
 
 ```bash
-cd /opt/ad-research
+cd /opt/alloy-research
 git pull  # 如果用 Git
 cd deploy/aliyun-ecs
 docker compose down
@@ -425,7 +425,7 @@ docker compose up -d
    ```bash
    docker compose ps
    ```
-   应该看到 `adresearch-backend`、`adresearch-postgres`、`adresearch-redis` 都是 `running`。
+   应该看到 `alloyresearch-backend`、`alloyresearch-postgres`、`alloyresearch-redis` 都是 `running`。
 
 2. 安全组是否放行了 8000 端口？
    - 回到阿里云控制台 → ECS → 安全组 → 确认有 8000 端口的规则
@@ -444,7 +444,7 @@ docker compose up -d
 
 ### Q2：部署脚本提示 "源数据库 etf_research 不存在"
 
-这是正常的。说明你是全新部署，没有旧数据需要迁移。脚本会自动创建 `ad_research` 数据库。
+这是正常的。说明你是全新部署，没有旧数据需要迁移。脚本会自动创建 `alloy_research` 数据库。
 
 ### Q3：部署脚本提示 "未检测到 docker compose 插件"
 
@@ -463,7 +463,7 @@ chmod +x ~/.docker/cli-plugins/docker-compose
 查看 `.env` 文件：
 
 ```bash
-cat /opt/ad-research/deploy/aliyun-ecs/.env | grep AUTH_ADMIN_PASSWORD
+cat /opt/alloy-research/deploy/aliyun-ecs/.env | grep AUTH_ADMIN_PASSWORD
 ```
 
 如果要修改，编辑 `.env` 文件后重启 backend：
@@ -475,7 +475,7 @@ docker compose restart backend
 ### Q5：如何查看平台日志找错误
 
 ```bash
-cd /opt/ad-research/deploy/aliyun-ecs
+cd /opt/alloy-research/deploy/aliyun-ecs
 docker compose logs -f backend
 ```
 
@@ -486,7 +486,7 @@ docker compose logs -f backend
 正常情况下容器设置了 `restart: unless-stopped`，重启服务器后会自动启动。如果没有，手动执行：
 
 ```bash
-cd /opt/ad-research/deploy/aliyun-ecs
+cd /opt/alloy-research/deploy/aliyun-ecs
 docker compose up -d
 ```
 
@@ -522,8 +522,8 @@ docker compose up -d
 ### 12.1 定期备份数据库
 
 ```bash
-cd /opt/ad-research/deploy/aliyun-ecs
-docker compose exec postgres pg_dump -U etf -d ad_research > /opt/ad-research-backup-$(date +%Y%m%d).sql
+cd /opt/alloy-research/deploy/aliyun-ecs
+docker compose exec postgres pg_dump -U etf -d alloy_research > /opt/alloy-research-backup-$(date +%Y%m%d).sql
 ```
 
 ### 12.2 下载备份到本地
@@ -531,7 +531,7 @@ docker compose exec postgres pg_dump -U etf -d ad_research > /opt/ad-research-ba
 **Mac/Linux：**
 
 ```bash
-scp root@你的服务器公网IP:/opt/ad-research-backup-20260623.sql ./
+scp root@你的服务器公网IP:/opt/alloy-research-backup-20260623.sql ./
 ```
 
 **Windows：** 用 WinSCP 下载。

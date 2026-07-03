@@ -161,10 +161,10 @@ function DeploymentsTable({ data, loading }: { data: DeploymentRun[]; loading: b
 // ---------------------------------------------------------------------------
 
 const CONTAINER_COLORS: Record<string, string> = {
-  'adresearch-backend': 'var(--accent)',
-  'adresearch-postgres': 'var(--text-secondary)',
-  'adresearch-redis': 'var(--color-warning)',
-  'adresearch-nginx': 'var(--color-success)',
+  'alloyresearch-backend': 'var(--accent)',
+  'alloyresearch-postgres': 'var(--text-secondary)',
+  'alloyresearch-redis': 'var(--color-warning)',
+  'alloyresearch-nginx': 'var(--color-success)',
 };
 
 function ServerHealthCard({ container }: { container: ContainerStats }) {
@@ -179,7 +179,7 @@ function ServerHealthCard({ container }: { container: ContainerStats }) {
       <div className="admin-server-card__header">
         <Badge status={isRunning ? 'success' : 'error'} />
         <Text strong className="admin-server-card__name">
-          {container.name.replace('adresearch-', '')}
+          {container.name.replace('alloyresearch-', '')}
         </Text>
       </div>
 
@@ -271,10 +271,10 @@ function LogViewer({
             size="small"
             className="admin-log-container-select"
           >
-            <Option value="adresearch-backend">backend</Option>
-            <Option value="adresearch-postgres">postgres</Option>
-            <Option value="adresearch-redis">redis</Option>
-            <Option value="adresearch-nginx">nginx</Option>
+            <Option value="alloyresearch-backend">backend</Option>
+            <Option value="alloyresearch-postgres">postgres</Option>
+            <Option value="alloyresearch-redis">redis</Option>
+            <Option value="alloyresearch-nginx">nginx</Option>
           </Select>
           <Button
             size="small"
@@ -327,7 +327,7 @@ export default function AdminDeployments() {
     isTriggering,
   } = useDeployments();
 
-  const [logContainer, setLogContainer] = useState('adresearch-backend');
+  const [logContainer, setLogContainer] = useState('alloyresearch-backend');
   const { lines, connected, connect, disconnect } = useLogStream(logContainer);
 
   const handleLogContainerChange = useCallback(

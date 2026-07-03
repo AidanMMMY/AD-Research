@@ -76,7 +76,7 @@ AVGO.US TMO.US  COST.US WMT.US  MRK.US  ABT.US  MCD.US
 
 ## 环境配置
 
-服务器 `/opt/ad-research/.env` 已配置（git 不追踪）：
+服务器 `/opt/alloy-research/.env` 已配置（git 不追踪）：
 
 ```env
 DEEPSEEK_API_KEY=...
@@ -147,7 +147,7 @@ curl -s http://localhost:8000/api/v1/etl/status?job_name=us_daily_etl | jq
 curl -s http://localhost:8000/api/v1/etl/status?job_name=us_historical_backfill | jq
 
 # 查看美股数据覆盖情况（在容器内执行）
-docker exec -it adresearch-backend python -c "
+docker exec -it alloyresearch-backend python -c "
 from app.core.database import SessionLocal
 from sqlalchemy import func
 from app.models.etf import ETFInfo, ETFDailyBar
