@@ -316,6 +316,7 @@ class ScreeningService:
             item = {
                 "code": info.code,
                 "name": info.name,
+                "name_zh": info.name_zh,
                 "market": info.market,
                 "category": info.category,
                 "trade_date": indicator.trade_date.isoformat() if indicator.trade_date else None,

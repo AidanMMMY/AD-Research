@@ -184,6 +184,24 @@ class TestNewsNormalizer:
         sym_codes = [s.symbol for s in article.symbols]
         assert "600519.SH" in sym_codes
 
+    def test_normalize_caches_symbol_names_from_etf_info(self, news_db):
+        _make_etf(news_db, code="510300.SH", name="沪深300ETF", market="A股")
+        # Set English display name separately because _make_etf doesn't expose it.
+        from app.models.etf import ETFInfo
+        etf = news_db.get(ETFInfo, "510300.SH")
+        etf.name_zh = "CSI 300 ETF"
+        news_db.commit()
+
+        normalizer = NewsNormalizer(news_db)
+        raw = _raw(title="沪深300ETF 持续上涨")
+        article = normalizer.normalize(raw)
+        assert article is not None
+        news_db.commit()
+
+        sym = next(s for s in article.symbols if s.symbol == "510300.SH")
+        assert sym.name == "沪深300ETF"
+        assert sym.name_zh == "CSI 300 ETF"
+
     def test_normalize_dedup_skips_duplicate(self, news_db):
         normalizer = NewsNormalizer(news_db)
         raw = _raw(source_id="dup-1")
@@ -365,6 +383,59 @@ class TestNewsApi:
         assert payload["total"] == 1
         assert payload["items"][0]["source"] == "sina_finance"
 
+    def test_list_filter_by_importance_min(self, api_client, news_db):
+        _seed_articles(news_db, n=2)
+        # Update one article to importance=4.
+        articles = news_db.query(NewsArticle).all()
+        articles[0].importance = 4
+        articles[1].importance = 2
+        news_db.commit()
+        resp = api_client.get("/api/v1/news", params={"importance_min": 4})
+        assert resp.status_code == 200
+        payload = resp.json()
+        assert payload["total"] == 1
+        assert payload["items"][0]["title"] == articles[0].title
+        assert payload["total_pages"] == 1
+
+    def test_retail_sentiment_returns_aggregate(self, api_client, news_db):
+        from app.models.etf import ETFInfo
+        news_db.add(ETFInfo(code="510300.SH", name="沪深300ETF", market="A股", instrument_type="ETF", status="active"))
+        now = datetime.now(tz=timezone.utc)
+        article = NewsArticle(
+            source="reddit",
+            source_id="r-1",
+            url="https://example.com/r1",
+            url_hash="hash-r1",
+            title="Bullish on 510300",
+            language="en",
+            market="cn_a",
+            published_at=now,
+            sentiment_score=75,
+            sentiment_label="positive",
+            importance=4,
+            event_category="earnings",
+        )
+        news_db.add(article)
+        news_db.commit()
+        news_db.refresh(article)
+        news_db.add(NewsArticleSymbol(article_id=article.id, symbol="510300.SH", match_type="code"))
+        news_db.commit()
+
+        resp = api_client.get("/api/v1/news/retail-sentiment/510300.SH")
+        assert resp.status_code == 200
+        payload = resp.json()
+        assert payload["symbol"] == "510300.SH"
+        assert payload["overall"] > 0
+        assert payload["bull_bear_ratio"]["bull"] > 0
+        assert payload["controversy"] >= 0
+        assert payload["controversy"] <= 1
+        assert isinstance(payload["main_themes"], list)
+        assert payload["article_count"] == 1
+
+    def test_retail_sentiment_404_when_no_data(self, api_client, news_db):
+        resp = api_client.get("/api/v1/news/retail-sentiment/UNKNOWN.CODE")
+        assert resp.status_code == 404
+
     def test_list_filter_by_symbol(self, api_client, news_db):
         seeded = _seed_articles(news_db, n=2)
         news_db.add(
@@ -393,7 +464,12 @@ class TestNewsApi:
         assert resp.status_code == 200
         payload = resp.json()
         assert payload["title"] == "Article 0"
-        assert "510300.SH" in payload["symbols"]
+        symbol_codes = {s["symbol"] for s in payload["symbols"]}
+        assert "510300.SH" in symbol_codes
+        symbol = next(s for s in payload["symbols"] if s["symbol"] == "510300.SH")
+        assert symbol["match_type"] == "title"
+        assert "name" in symbol
+        assert "name_zh" in symbol
 
     def test_get_article_404(self, api_client, news_db):
         resp = api_client.get("/api/v1/news/99999")
@@ -502,7 +578,8 @@ class TestNewsApi:
         payload = resp.json()
         assert payload["total"] == 1
         assert payload["items"][0]["id"] == seeded[0].id
-        assert "510300.SH" in payload["items"][0]["symbols"]
+        symbol_codes = {s["symbol"] for s in payload["items"][0]["symbols"]}
+        assert "510300.SH" in symbol_codes
         assert payload["watchlist"]["symbols"] == ["510300.SH"]
         assert payload["watchlist"]["symbols_with_news"] == 1
         assert payload["watchlist"]["total_articles"] == 1

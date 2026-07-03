@@ -173,6 +173,7 @@ class PaperTradingService:
             signal_id=signal_id,
             filled_at=datetime.now(timezone.utc),
         )
+        order.instrument_name = instrument.name
         self.db.add(order)
 
         # 7. Update account cash
@@ -278,13 +279,29 @@ class PaperTradingService:
         self, account_id: int, limit: int = 50
     ) -> list[PaperTradeOrder]:
         """Return recent orders for an account, newest first."""
-        return (
+        orders = (
             self.db.query(PaperTradeOrder)
             .filter(PaperTradeOrder.account_id == account_id)
             .order_by(PaperTradeOrder.created_at.desc())
             .limit(limit)
             .all()
         )
+
+        # Enrich with instrument names
+        codes = [o.instrument_code for o in orders]
+        instruments = {}
+        if codes:
+            rows = (
+                self.db.query(ETFInfo.code, ETFInfo.name)
+                .filter(ETFInfo.code.in_(codes))
+                .all()
+            )
+            instruments = {r.code: r.name for r in rows}
+
+        for order in orders:
+            order.instrument_name = instruments.get(order.instrument_code)
+
+        return orders
 
     # ------------------------------------------------------------------
     # PnL

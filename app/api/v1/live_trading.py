@@ -39,6 +39,7 @@ from app.models.trading import (
     LiveTradePosition,
     RiskRule,
 )
+from app.models.etf import ETFInfo
 from app.schemas.auth import UserResponse
 from app.schemas.trading import (
     LiveAccountOut,
@@ -260,6 +261,7 @@ def list_positions(
         )
         .all()
     )
+    _enrich_instrument_names(db, positions)
     return [LivePositionOut.model_validate(p) for p in positions]
 
 
@@ -282,6 +284,7 @@ def list_orders(
         .limit(limit)
         .all()
     )
+    _enrich_instrument_names(db, orders)
     return [LiveOrderOut.model_validate(o) for o in orders]
 
 
@@ -407,6 +410,7 @@ def place_order(
     db.add(order)
     db.commit()
     db.refresh(order)
+    _enrich_instrument_names(db, [order])
     return LiveOrderOut.model_validate(order)
 
 
@@ -546,3 +550,22 @@ def _sync_positions_from_binance(db: Session, config: LiveTradeConfig) -> None:
             position.unrealized_pnl = qty * (price - position.avg_cost)
 
     db.commit()
+
+
+def _enrich_instrument_names(db: Session, items: list[Any]) -> None:
+    """Set ``instrument_name`` on order/position objects from ETFInfo."""
+    if not items:
+        return
+    codes = {getattr(item, "instrument_code", None) for item in items}
+    codes.discard(None)
+    if not codes:
+        return
+    rows = (
+        db.query(ETFInfo.code, ETFInfo.name)
+        .filter(ETFInfo.code.in_(list(codes)))
+        .all()
+    )
+    names = {r.code: r.name for r in rows}
+    for item in items:
+        code = getattr(item, "instrument_code", None)
+        item.instrument_name = names.get(code)

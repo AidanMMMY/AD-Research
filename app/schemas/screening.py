@@ -46,6 +46,7 @@ class ScreenResultItem(BaseModel):
 
     code: str
     name: str | None = None
+    name_zh: str | None = None
     market: str | None = None
     category: str | None = None
     trade_date: str | None = None

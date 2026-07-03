@@ -17,6 +17,7 @@ from sqlalchemy.orm import Session
 import os
 
 from app.api.deps import get_current_user, get_db
+from app.models.etf import ETFInfo
 from app.models.user import User
 from app.services.chat_service import ChatService
 from app.services.research_service import ResearchService
@@ -70,6 +71,8 @@ class GenerateNoteRequest(BaseModel):
 class NoteResponse(BaseModel):
     id: int
     instrument_code: str
+    name: str | None = None
+    name_zh: str | None = None
     note_type: str
     content: str
     summary: str | None = None
@@ -84,6 +87,8 @@ class NoteResponse(BaseModel):
 
 class SentimentResponse(BaseModel):
     instrument_code: str
+    name: str | None = None
+    name_zh: str | None = None
     avg_score: float
     label: str
     positive_count: int
@@ -164,7 +169,12 @@ def generate_research_note(
                 "error_message": result.error_message,
             },
         )
-    return _note_to_response(result.note)
+    instrument = db.query(ETFInfo).filter(ETFInfo.code == result.note.instrument_code).first()
+    return _note_to_response(
+        result.note,
+        name=instrument.name if instrument else None,
+        name_zh=instrument.name_zh if instrument else None,
+    )
 
 
 @router.get("/notes/{instrument_code}", response_model=list[NoteResponse])
@@ -179,7 +189,10 @@ def get_research_notes(
     _require_ai()
     service = ResearchService(db)
     notes = service.get_notes(instrument_code=instrument_code, note_type=note_type, limit=limit)
-    return [_note_to_response(n) for n in notes]
+    instrument = db.query(ETFInfo).filter(ETFInfo.code == instrument_code).first()
+    name = instrument.name if instrument else None
+    name_zh = instrument.name_zh if instrument else None
+    return [_note_to_response(n, name=name, name_zh=name_zh) for n in notes]
 
 
 # ------------------------------------------------------------------
@@ -423,10 +436,12 @@ async def stream_chat_message(
 # Helpers
 # ------------------------------------------------------------------
 
-def _note_to_response(note) -> NoteResponse:
+def _note_to_response(note, name: str | None = None, name_zh: str | None = None) -> NoteResponse:
     return NoteResponse(
         id=note.id,
         instrument_code=note.instrument_code,
+        name=name,
+        name_zh=name_zh,
         note_type=note.note_type,
         content=note.content,
         summary=note.summary,

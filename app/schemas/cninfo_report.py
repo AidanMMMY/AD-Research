@@ -23,6 +23,7 @@ class CninfoReportBase(BaseModel):
     """
 
     ts_code: str = Field(..., max_length=20, description="Tushare 证券代码 (e.g. 600519.SH)")
+    stock_name: str | None = Field(None, max_length=200, description="证券名称")
     stock_code: str = Field(..., max_length=20, description="Stock 6-digit code")
     org_id: str | None = Field(None, max_length=32, description="Cninfo orgId")
     sec_code: str | None = Field(None, max_length=32, description="Cninfo secCode")

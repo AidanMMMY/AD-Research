@@ -14,7 +14,12 @@ from sqlalchemy.orm import sessionmaker
 
 from app.core.database import Base
 from app.models.macro import MacroIndicator
-from app.services.macro.fred_service import FredService, SERIES_REGISTRY
+from app.services.macro.fred_service import (
+    FredService,
+    SERIES_REGISTRY,
+    _GLOBAL_SERIES,
+    _SERIES_ALL,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -84,16 +89,30 @@ def test_refresh_iterates_registry_and_calls_upsert(db_session, stub_provider):
     service = FredService(db=db_session, provider=stub_provider)
     result = service.refresh(lookback_days=10)
 
-    assert result["written"] == 3 * len(SERIES_REGISTRY)  # 3 valid obs per series
-    assert result["series_count"] == len(SERIES_REGISTRY)
+    # 2026-07: registry grew to include the global series; refresh now
+    # iterates US + global. Each stub series yields 3 valid obs.
+    total_series = len(SERIES_REGISTRY) + len(_GLOBAL_SERIES)
+    assert result["written"] == 3 * total_series
+    assert result["series_count"] == total_series
     assert result["failed"] == []
 
     rows = db_session.query(MacroIndicator).all()
     # Only the non-"." rows survive per series → 3 per series.
-    assert len(rows) == 3 * len(SERIES_REGISTRY)
-    # Spot-check: every persisted row tagged source=fred and region=us.
+    assert len(rows) == 3 * total_series
+    # Spot-check: every persisted row tagged source=fred; region is
+    # either 'us' (legacy) or 'global' (cross-border series added in
+    # the Global Markets rollout).
     assert all(r.source == "fred" for r in rows)
-    assert all(r.region == "us" for r in rows)
+    assert {r.region for r in rows} <= {"us", "global"}
+    # And specifically: every US-only code keeps region='us'; every
+    # global_* code is tagged region='global'.
+    us_codes = {m.code for m in SERIES_REGISTRY}
+    global_codes = {m.code for m in _GLOBAL_SERIES}
+    for r in rows:
+        if r.code in us_codes:
+            assert r.region == "us"
+        elif r.code in global_codes:
+            assert r.region == "global"
 
 
 def test_refresh_is_idempotent(db_session, stub_provider):
@@ -142,7 +161,10 @@ def test_refresh_skips_when_api_key_missing(db_session):
 
     assert result["written"] == 0
     assert result["skipped_reason"] == "FRED_API_KEY not configured"
-    assert set(result["failed"]) == {m.series_id for m in SERIES_REGISTRY}
+    # Failed list now covers both US and global registries.
+    assert set(result["failed"]) == {
+        m.series_id for m in (list(SERIES_REGISTRY) + list(_GLOBAL_SERIES))
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -154,12 +176,14 @@ def test_list_indicators_returns_all_registered_with_latest(db_session, stub_pro
     service.refresh(lookback_days=10)
 
     items = service.list_indicators()
-    assert len(items) == len(SERIES_REGISTRY)
-    # Every entry has metadata fields populated.
+    total = len(SERIES_REGISTRY) + len(_GLOBAL_SERIES)
+    assert len(items) == total
+    # Every entry has metadata fields populated; region is one of the
+    # two tags the service knows how to write.
     for item in items:
         assert item["code"]
         assert item["name_zh"]
-        assert item["region"] == "us"
+        assert item["region"] in {"us", "global"}
         assert item["source"] == "fred"
     # And at least one item has a populated latest value.
     assert any(item["value"] is not None for item in items)
@@ -169,8 +193,10 @@ def test_list_indicators_region_filter(db_session, stub_provider):
     service = FredService(db=db_session, provider=stub_provider)
     service.refresh(lookback_days=10)
 
-    # ``us`` returns everything; ``cn`` returns empty (we only ship US data).
+    # ``us`` returns only the legacy US series; ``global`` returns only
+    # the cross-border series; ``cn`` returns empty (we ship US + global).
     assert len(service.list_indicators(region="us")) == len(SERIES_REGISTRY)
+    assert len(service.list_indicators(region="global")) == len(_GLOBAL_SERIES)
     assert service.list_indicators(region="cn") == []
 
 
@@ -187,6 +213,17 @@ def test_get_series_returns_ascending_points(db_session, stub_provider):
     # Ascending by period.
     periods = [p["period"] for p in points]
     assert periods == sorted(periods)
+
+
+def test_get_series_global_codes(db_session, stub_provider):
+    """get_series should also resolve global_* codes."""
+    service = FredService(db=db_session, provider=stub_provider)
+    service.refresh(lookback_days=10)
+
+    series = service.get_series("global_brent")
+    assert series is not None
+    assert series["region"] == "global"
+    assert series["code"] == "global_brent"
 
 
 def test_get_series_unknown_code_returns_none(db_session):

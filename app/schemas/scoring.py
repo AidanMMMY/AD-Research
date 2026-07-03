@@ -59,6 +59,7 @@ class ETFScoreResponse(BaseModel):
 
     etf_code: str
     etf_name: str | None = None
+    name_zh: str | None = None
     market: str | None = None
     category: str | None = None
     trade_date: date | None = None

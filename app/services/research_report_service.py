@@ -406,6 +406,7 @@ class ResearchReportService:
         ts_code: str | None = None,
         industry: str | None = None,
         org_name: str | None = None,
+        rating: str | None = None,
         start_date: date | None = None,
         end_date: date | None = None,
         has_summary: bool | None = None,
@@ -434,6 +435,9 @@ class ResearchReportService:
         if org_name:
             stmt = stmt.where(ResearchReport.org_name == org_name)
             count_stmt = count_stmt.where(ResearchReport.org_name == org_name)
+        if rating:
+            stmt = stmt.where(ResearchReport.rating == rating)
+            count_stmt = count_stmt.where(ResearchReport.rating == rating)
         if start_date:
             stmt = stmt.where(ResearchReport.publish_date >= start_date)
             count_stmt = count_stmt.where(ResearchReport.publish_date >= start_date)

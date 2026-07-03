@@ -52,17 +52,30 @@ def _get_service():
         db.close()
 
 
+def _macro_service() -> MacroDataService:
+    """Yield a ``MacroDataService`` bound to a short-lived session."""
+    db = SessionLocal()
+    try:
+        yield MacroDataService(db)
+    finally:
+        db.close()
+
+
 @router.get("/indicators", response_model=list[MacroIndicatorLatestItem])
 def list_indicators(
     region: str | None = Query(None, description="Filter by region code (e.g. 'us')"),
     service: FredService = Depends(_get_service),
+    macro_service: MacroDataService = Depends(_macro_service),
 ) -> list[MacroIndicatorLatestItem]:
     """List all registered macro indicators with their latest value.
 
-    Backed by the FredService — for region='cn' (Phase 2) prefer
-    ``/api/v1/macro/indicators-list`` which surfaces every observation,
-    not just the latest per code.
+    US data is backed by FredService; China data is backed by
+    MacroDataService so the China macro dashboard can surface the
+    akshare/NBS/PBOC indicators.
     """
+    if region == "cn":
+        snapshot = macro_service.latest_snapshot(region="cn")
+        return [MacroIndicatorLatestItem(**item) for item in snapshot["items"]]
     items = service.list_indicators(region=region)
     return [MacroIndicatorLatestItem(**item) for item in items]
 
@@ -114,15 +127,6 @@ def trigger_fred_refresh(
 # ---------------------------------------------------------------------------
 # Phase 2 — China macro surface backed by akshare
 # ---------------------------------------------------------------------------
-
-
-def _macro_service() -> MacroDataService:
-    """Yield a ``MacroDataService`` bound to a short-lived session."""
-    db = SessionLocal()
-    try:
-        yield MacroDataService(db)
-    finally:
-        db.close()
 
 
 @router.get("/indicators-list", response_model=MacroIndicatorListResponse)

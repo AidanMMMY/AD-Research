@@ -1,4 +1,25 @@
-"""Favorite/watchlist business logic service."""
+"""Favorite/watchlist business logic service.
+
+Scope & boundaries (K16, 2026-07-04)
+-----------------------------------
+``UserFavorite`` 是**轻量级关注清单**，定位明确区别于平台上的其他
+"标的聚合"概念，请勿在本服务中扩展任何与权重 / 仓位 / 资金相关的能力。
+
+| 概念                | 表 / 服务                          | 用途                          |
+|---------------------|-------------------------------------|-------------------------------|
+| Favorites（本服务） | user_favorite                       | 快速关注 + 触发 News 聚合     |
+| Pool                | etf_pools / pool_service            | 中长期目标组合（权重 / 算法）  |
+| Paper Trade         | paper_trade_account / positions     | 模拟账户实际持仓               |
+| Live Trade          | live_trade_config / positions       | 真实账户实际持仓               |
+
+设计意图：
+* Favorites 是「我感兴趣的标的」—— 用户随口说"加个关注"应该落到这里。
+* Pool 是「我想长期持有这些、且想给它们配权重」—— 用户说"建一个目标组合"。
+* 实际持仓属于"已经下过订单"的领域，跟 Favorites / Pool 都无强绑定。
+
+如果未来要让 Favorites 一键导入到 Pool / Paper Trade，请在 **PoolService**
+或 **PaperTradingService** 中新增专门的"导入"端点，不要在本服务里堆砌。
+"""
 
 
 from fastapi import HTTPException

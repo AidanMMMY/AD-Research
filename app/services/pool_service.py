@@ -206,6 +206,7 @@ class PoolService:
             PoolMemberResponse(
                 etf_code=m.etf_code,
                 etf_name=m.etf_info.name if m.etf_info is not None else None,
+                name_zh=m.etf_info.name_zh if m.etf_info is not None else None,
                 added_at=m.added_at,
                 notes=m.notes,
             )

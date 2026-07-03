@@ -1,6 +1,7 @@
 """FRED macro-indicator ingestion service.
 
-Pulls observations for ~25-30 US economic indicators from FRED and
+Pulls observations for ~30 US economic indicators plus ~6 cross-border
+series (S&P 500 / DXY / USDJPY / Brent / WTI / Gold) from FRED and
 upserts them into the ``macro_indicator`` table.  Idempotent — safe
 to re-run daily because the unique constraint on
 (code, region, period, source) prevents duplicates.
@@ -9,6 +10,12 @@ Designed to be invoked from:
   - APScheduler (daily, post-FRED-publish)
   - Admin manual refresh API
   - One-shot CLI / test fixtures
+
+Region tag:
+  - ``us`` — kept on every legacy US-only ``us_*`` code so the existing
+    Macro page query (region='us') continues to return the same set.
+  - ``global`` — added in 2026-07 for cross-border series surfaced via
+    the new ``/global`` dashboard / page.
 """
 
 import logging
@@ -72,6 +79,7 @@ SERIES_REGISTRY: list[FredSeriesMeta] = [
     FredSeriesMeta("DFF",      "us_dff",        "美国日度联邦基金利率", "Daily Federal Funds Rate",    "%",        "利率"),
     FredSeriesMeta("DGS10",    "us_dgs10",      "美国10年期国债收益率", "10-Year Treasury Rate",       "%",        "利率"),
     FredSeriesMeta("DGS2",     "us_dgs2",       "美国2年期国债收益率", "2-Year Treasury Rate",         "%",        "利率"),
+    FredSeriesMeta("DGS30",    "us_dgs30",      "美国30年期国债收益率", "30-Year Treasury Rate",         "%",        "利率"),
     FredSeriesMeta("T10Y2Y",   "us_t10y2y",     "10Y-2Y利差",     "10-Year minus 2-Year Treasury Spread", "%",     "利率"),
     FredSeriesMeta("T10Y3M",   "us_t10y3m",     "10Y-3M利差",     "10-Year minus 3-Month Treasury Spread", "%",   "利率"),
 
@@ -93,6 +101,38 @@ SERIES_REGISTRY: list[FredSeriesMeta] = [
 ]
 
 
+# ---------------------------------------------------------------------------
+# Global / cross-border series exposed under ``region='global'``.
+# They live in the same ``macro_indicator`` table — only ``region``
+# differs — so consumers can pull a unified view via
+# ``/macro/latest?region=global`` without any new table.
+#
+# All sources are FRED (free, 120 req/min).  Region is tagged 'global'
+# so downstream filters can isolate them.  For the 'us' US-only series
+# above (``us_*``) we keep ``region='us'`` unchanged to preserve
+# backward compatibility for the existing Macro page.
+# ---------------------------------------------------------------------------
+_GLOBAL_SERIES: list[FredSeriesMeta] = [
+    # ── Cross-border Index ──
+    FredSeriesMeta("SP500",            "global_sp500",  "标普500指数",    "S&P 500",                  "指数",   "指数"),
+    # ── FX (broad USD) ──
+    FredSeriesMeta("DTWEXBGS",         "global_dxy",    "美元指数(广义)",  "Broad U.S. Dollar Index",  "指数",   "外汇"),
+    FredSeriesMeta("DEXJPUS",          "global_usdjpy", "美元/日元",      "USD/JPY",                  "JPY/USD","外汇"),
+    # ── Commodities (USD) ──
+    FredSeriesMeta("DCOILBRENTEU",     "global_brent",  "布伦特原油",      "Brent Crude (Europe)",     "USD/桶","大宗"),
+    FredSeriesMeta("DCOILWTICO",       "global_wti",    "WTI原油",        "WTI Crude Oil (Cushing)",  "USD/桶","大宗"),
+    FredSeriesMeta("GOLDAMGBD228NLBM", "global_gold",   "COMEX黄金",      "Gold (London PM Fix)",     "USD/oz","大宗"),
+]
+
+
+# Single tuple so the refresh loop can iterate both registries without
+# branching on the region label.
+_SERIES_ALL: list[tuple[FredSeriesMeta, str]] = (
+    [(m, "us") for m in SERIES_REGISTRY]
+    + [(m, "global") for m in _GLOBAL_SERIES]
+)
+
+
 class FredService:
     """Orchestrates FRED → macro_indicator upserts."""
 
@@ -109,17 +149,27 @@ class FredService:
 
         Joins the registry with the latest stored observation (if any)
         so the frontend can render ``name + latest value + period`` in
-        a single request.  When ``region`` is given and does not match
-        ``us`` the result is empty (we only ship US data right now).
+        a single request.
+
+        Pass ``region='us'`` for US-only series, ``region='global'`` for
+        the cross-border series added in the Global Markets rollout, or
+        ``None`` for every series (the two registries merged).
         """
         from sqlalchemy import select
 
         if self.db is None:
             raise RuntimeError("list_indicators requires a DB session")
-        if region and region != "us":
+
+        if region == "us":
+            registry: list[tuple[FredSeriesMeta, str]] = [(m, "us") for m in SERIES_REGISTRY]
+        elif region == "global":
+            registry = [(m, "global") for m in _GLOBAL_SERIES]
+        elif region in (None, ""):
+            registry = list(_SERIES_ALL)
+        else:
             return []
 
-        codes = [m.code for m in SERIES_REGISTRY]
+        codes = [meta.code for meta, _ in registry]
         rows = self.db.execute(
             select(MacroIndicator)
             .where(MacroIndicator.source == "fred")
@@ -133,11 +183,11 @@ class FredService:
                 latest_by_code[r.code] = r
 
         out: list[dict[str, Any]] = []
-        for meta in SERIES_REGISTRY:
+        for meta, meta_region in registry:
             latest = latest_by_code.get(meta.code)
             out.append({
                 "code": meta.code,
-                "region": "us",
+                "region": meta_region,
                 "name_zh": meta.name_zh,
                 "name_en": meta.name_en,
                 "unit": meta.unit,
@@ -163,14 +213,19 @@ class FredService:
         if self.db is None:
             raise RuntimeError("get_series requires a DB session")
 
-        meta = next((m for m in SERIES_REGISTRY if m.code == code), None)
-        if meta is None:
+        meta_entry: tuple[FredSeriesMeta, str] | None = next(
+            ((m, r) for m, r in _SERIES_ALL if m.code == code),
+            None,
+        )
+        if meta_entry is None:
             return None
+        meta, region_tag = meta_entry
 
         stmt = (
             select(MacroIndicator)
             .where(MacroIndicator.source == "fred")
             .where(MacroIndicator.code == code)
+            .where(MacroIndicator.region == region_tag)
         )
         if start_date:
             stmt = stmt.where(MacroIndicator.period >= start_date)
@@ -181,7 +236,7 @@ class FredService:
         rows = self.db.execute(stmt).scalars().all()
         return {
             "code": meta.code,
-            "region": "us",
+            "region": region_tag,
             "name_zh": meta.name_zh,
             "name_en": meta.name_en,
             "unit": meta.unit,
@@ -218,7 +273,7 @@ class FredService:
             return {
                 "written": 0,
                 "series_count": 0,
-                "failed": [m.series_id for m in SERIES_REGISTRY],
+                "failed": [m.series_id for m, _ in _SERIES_ALL],
                 "started_at": datetime.now(timezone.utc),
                 "finished_at": datetime.now(timezone.utc),
                 "skipped_reason": "FRED_API_KEY not configured",
@@ -230,9 +285,10 @@ class FredService:
 
         written = 0
         failed: list[str] = []
+        total_series = len(_SERIES_ALL)
 
         try:
-            for meta in SERIES_REGISTRY:
+            for meta, region_tag in _SERIES_ALL:
                 try:
                     obs = self.provider.get_series(
                         meta.series_id,
@@ -258,7 +314,7 @@ class FredService:
                 rows = [
                     {
                         "code": meta.code,
-                        "region": "us",
+                        "region": region_tag,
                         "name_zh": meta.name_zh,
                         "name_en": meta.name_en,
                         "unit": meta.unit,
@@ -288,12 +344,12 @@ class FredService:
         finished = datetime.now(timezone.utc)
         logger.info(
             "FRED refresh done: written=%d series_count=%d failed=%d elapsed=%.1fs",
-            written, len(SERIES_REGISTRY), len(failed),
+            written, total_series, len(failed),
             (finished - started).total_seconds(),
         )
         return {
             "written": written,
-            "series_count": len(SERIES_REGISTRY),
+            "series_count": total_series,
             "failed": failed,
             "started_at": started,
             "finished_at": finished,

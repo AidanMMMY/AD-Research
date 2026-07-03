@@ -25,6 +25,7 @@ from app.config import get_settings
 from app.data.providers.cninfo_provider import CninfoProvider
 from app.data.providers.tushare_provider import TushareProvider
 from app.models.cninfo_report import CninfoReport
+from app.models.etf import ETFInfo
 
 logger = logging.getLogger(__name__)
 
@@ -433,23 +434,36 @@ class CninfoReportService:
         rows = self.db.execute(stmt).scalars().all()
         total = self.db.execute(count_stmt).scalar() or 0
 
+        ts_codes = [r.ts_code for r in rows]
+        name_map = self._stock_name_map(ts_codes)
+
         latest = self.db.execute(
             select(func.max(CninfoReport.updated_at))
         ).scalar()
 
         return {
-            "items": [_to_out(row) for row in rows],
+            "items": [_to_out(row, name_map=name_map) for row in rows],
             "total": int(total),
             "page": page,
             "page_size": page_size,
             "updated_at": latest.isoformat() if latest else None,
         }
 
+    def _stock_name_map(self, ts_codes: list[str]) -> dict[str, str | None]:
+        """Return a mapping of ts_code -> ETFInfo.name for the given codes."""
+        if not ts_codes:
+            return {}
+        rows = self.db.execute(
+            select(ETFInfo.code, ETFInfo.name).where(ETFInfo.code.in_(ts_codes))
+        ).all()
+        return {code: name for code, name in rows}
+
     def get_report(self, report_id: int) -> dict[str, Any] | None:
         report = self.db.get(CninfoReport, report_id)
         if report is None:
             return None
-        return _to_detail(report)
+        name_map = self._stock_name_map([report.ts_code])
+        return _to_detail(report, name_map=name_map)
 
     def get_coverage(self) -> dict[str, Any]:
         """Return aggregate counts for the dashboard."""
@@ -573,10 +587,11 @@ class CninfoReportService:
 # ---------------------------------------------------------------------------
 
 
-def _to_out(report: CninfoReport) -> dict[str, Any]:
+def _to_out(report: CninfoReport, name_map: dict[str, str | None] | None = None) -> dict[str, Any]:
     return {
         "id": report.id,
         "ts_code": report.ts_code,
+        "stock_name": (name_map or {}).get(report.ts_code),
         "stock_code": report.stock_code,
         "org_id": report.org_id,
         "sec_code": report.sec_code,
@@ -602,8 +617,8 @@ def _to_out(report: CninfoReport) -> dict[str, Any]:
     }
 
 
-def _to_detail(report: CninfoReport) -> dict[str, Any]:
-    out = _to_out(report)
+def _to_detail(report: CninfoReport, name_map: dict[str, str | None] | None = None) -> dict[str, Any]:
+    out = _to_out(report, name_map=name_map)
     # raw_payload is stored as TEXT (JSON string); parse for detail view.
     raw = None
     if report.raw_payload:

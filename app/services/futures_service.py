@@ -62,7 +62,7 @@ def _contract_to_out(contract: FuturesContract) -> FuturesContractOut:
     )
 
 
-def _bar_to_out(bar: FuturesDailyBar, code: str | None = None) -> FuturesDailyBarOut:
+def _bar_to_out(bar: FuturesDailyBar, code: str | None = None, name: str | None = None) -> FuturesDailyBarOut:
     settle_change: float | None = None
     if bar.settle is not None and bar.pre_settle not in (None, 0):
         try:
@@ -73,9 +73,15 @@ def _bar_to_out(bar: FuturesDailyBar, code: str | None = None) -> FuturesDailyBa
             settle_change = None
 
     close_change: float | None = None
-    # We don't store pre_close explicitly; daily change_pct is left None here.
+    # ``pre_close`` is not stored separately; for futures the canonical
+    # daily percentage move is settle vs pre-settle. Reuse that value so
+    # the frontend ``change_pct`` field is populated.
+    if settle_change is not None:
+        close_change = settle_change
+
     return FuturesDailyBarOut(
         code=code or bar.code,
+        name=name,
         trade_date=bar.trade_date,
         open=bar.open,
         high=bar.high,
@@ -351,7 +357,7 @@ class FuturesService:
                 contract = contract_by_code.get(code)
                 if not contract or contract.product != product_key:
                     continue
-                items.append(_bar_to_out(bar, code=code))
+                items.append(_bar_to_out(bar, code=code, name=contract.name))
 
             if not items:
                 continue

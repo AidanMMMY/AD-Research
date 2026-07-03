@@ -39,7 +39,7 @@ class PoolEnhancementService:
         creation fix) still appear in the table with default zero weights.
         """
         rows = (
-            self.db.query(PoolMember, PoolWeight, ETFInfo.name)
+            self.db.query(PoolMember, PoolWeight, ETFInfo.name, ETFInfo.name_zh)
             .outerjoin(
                 PoolWeight,
                 (PoolMember.etf_code == PoolWeight.etf_code)
@@ -56,12 +56,13 @@ class PoolEnhancementService:
             {
                 "etf_code": member.etf_code,
                 "etf_name": name,
+                "name_zh": name_zh,
                 "target_weight": float(weight.target_weight) if weight is not None and weight.target_weight is not None else 0.0,
                 "suggested_weight": float(weight.suggested_weight) if weight is not None and weight.suggested_weight is not None else None,
                 "weight_source": weight.weight_source if weight is not None else "manual",
                 "updated_at": weight.updated_at if weight is not None else None,
             }
-            for member, weight, name in rows
+            for member, weight, name, name_zh in rows
         ]
 
     def update_weight(
@@ -137,6 +138,7 @@ class PoolEnhancementService:
         return {
             "etf_code": weight.etf_code,
             "etf_name": etf.name if etf else None,
+            "name_zh": etf.name_zh if etf else None,
             "target_weight": float(weight.target_weight) if weight.target_weight is not None else 0.0,
             "suggested_weight": float(weight.suggested_weight) if weight.suggested_weight is not None else None,
             "weight_source": weight.weight_source,
@@ -212,11 +214,16 @@ class PoolEnhancementService:
             e.code: e.name
             for e in self.db.query(ETFInfo).filter(ETFInfo.code.in_(codes)).all()
         }
+        etf_name_zh_map = {
+            e.code: e.name_zh
+            for e in self.db.query(ETFInfo).filter(ETFInfo.code.in_(codes)).all()
+        }
 
         return [
             {
                 "etf_code": code,
                 "etf_name": etf_names.get(code),
+                "name_zh": etf_name_zh_map.get(code),
                 "suggested_weight": w,
                 "algorithm": "equal",
             }
@@ -267,11 +274,16 @@ class PoolEnhancementService:
             e.code: e.name
             for e in self.db.query(ETFInfo).filter(ETFInfo.code.in_(codes)).all()
         }
+        etf_name_zh_map = {
+            e.code: e.name_zh
+            for e in self.db.query(ETFInfo).filter(ETFInfo.code.in_(codes)).all()
+        }
 
         return [
             {
                 "etf_code": code,
                 "etf_name": etf_names.get(code),
+                "name_zh": etf_name_zh_map.get(code),
                 "suggested_weight": rounded[code],
                 "algorithm": "score",
             }
@@ -312,11 +324,16 @@ class PoolEnhancementService:
             e.code: e.name
             for e in self.db.query(ETFInfo).filter(ETFInfo.code.in_(codes)).all()
         }
+        etf_name_zh_map = {
+            e.code: e.name_zh
+            for e in self.db.query(ETFInfo).filter(ETFInfo.code.in_(codes)).all()
+        }
 
         return [
             {
                 "etf_code": code,
                 "etf_name": etf_names.get(code),
+                "name_zh": etf_name_zh_map.get(code),
                 "suggested_weight": rounded[code],
                 "algorithm": "risk_parity",
             }
@@ -381,6 +398,7 @@ class PoolEnhancementService:
             .all()
         )
         etf_name_map = {e.code: e.name for e in etf_info}
+        etf_name_zh_map = {e.code: e.name_zh for e in etf_info}
         etf_cat_map = {e.code: e.category for e in etf_info}
 
         # Get latest indicators
@@ -392,6 +410,7 @@ class PoolEnhancementService:
             member_list.append({
                 "etf_code": m.etf_code,
                 "etf_name": etf_name_map.get(m.etf_code),
+                "name_zh": etf_name_zh_map.get(m.etf_code),
                 "category": etf_cat_map.get(m.etf_code),
                 "target_weight": weight_map.get(m.etf_code, 0),
                 "added_at": m.added_at,
@@ -531,6 +550,7 @@ class PoolEnhancementService:
             .all()
         )
         etf_name_map = {e.code: e.name for e in etf_info}
+        etf_name_zh_map = {e.code: e.name_zh for e in etf_info}
         etf_cat_map = {e.code: e.category for e in etf_info}
 
         # Get latest indicators
@@ -553,6 +573,7 @@ class PoolEnhancementService:
             holdings.append({
                 "etf_code": code,
                 "etf_name": etf_name_map.get(code),
+                "name_zh": etf_name_zh_map.get(code),
                 "category": etf_cat_map.get(code),
                 "weight": weight_map.get(code, 0),
                 "sharpe_1y": float(ind.sharpe_1y) if ind and ind.sharpe_1y else None,
@@ -781,6 +802,7 @@ class PoolEnhancementService:
                 alerts.append({
                     "etf_code": code,
                     "etf_name": etf.name if etf else None,
+                    "name_zh": etf.name_zh if etf else None,
                     "target_weight": target,
                     "actual_weight": round(actual, 2),
                     "deviation": round(deviation * 100, 2),

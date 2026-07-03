@@ -51,6 +51,7 @@ class FuturesDailyBarOut(BaseModel):
     """A single daily OHLCV row for a futures contract."""
 
     code: str
+    name: str | None = None
     trade_date: date
     open: Decimal | None = None
     high: Decimal | None = None

@@ -10,7 +10,7 @@ dedicated crypto service is needed — all downstream systems are
 already instrument-agnostic.
 """
 
-from datetime import date
+from datetime import date, datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
@@ -67,6 +67,7 @@ def _enrich_with_realtime(
         quotes = {}
 
     enriched: list[CryptoInfoOut] = []
+    last_updated = datetime.now(timezone.utc)
     for item in items:
         q = quotes.get(item.code, {}) if quotes else {}
         change_pct = q.get("price_change_pct")
@@ -74,6 +75,7 @@ def _enrich_with_realtime(
             CryptoInfoOut(
                 code=item.code,
                 name=item.name,
+                name_zh=item.name_zh,
                 exchange=item.exchange,
                 market=item.market,
                 category=item.category,
@@ -84,6 +86,7 @@ def _enrich_with_realtime(
                 change_24h=change_pct,  # deprecated alias for change_pct
                 change_pct=change_pct,
                 volume_24h=q.get("volume"),
+                last_updated=last_updated,
             )
         )
     return enriched
@@ -173,6 +176,7 @@ def get_crypto(
     return CryptoDetailOut(
         code=etf.code,
         name=etf.name,
+        name_zh=etf.name_zh,
         exchange=etf.exchange,
         market=etf.market,
         category=etf.category,
@@ -208,9 +212,9 @@ def get_crypto_history(
 
     Falls back to Binance provider when no local data exists yet.
     """
-    bars = service.get_daily_bars(code, start=start_date, end=end_date, limit=limit)
-    if bars:
-        return [DailyBarOut.model_validate(b) for b in bars]
+    history = service.get_history(code, start=start_date, end=end_date, limit=limit)
+    if history and history.items:
+        return [DailyBarOut.model_validate(b) for b in history.items]
 
     # Fallback: fetch from Binance directly
     try:

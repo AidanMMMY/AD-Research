@@ -15,6 +15,7 @@ class SignalItem(BaseModel):
     strategy_type: str | None = None
     etf_code: str
     etf_name: str | None = None
+    name_zh: str | None = None
     trade_date: str | None = None
     signal_type: str
     strength: int | None = None

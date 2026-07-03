@@ -496,6 +496,26 @@ def test_api_codes_returns_distinct_codes(client, db_session):
     assert gdp["name_zh"] == "GDP"
 
 
+def test_api_indicators_for_cn_returns_latest_per_code(client, db_session):
+    """The legacy /macro/indicators endpoint must also surface China data."""
+    _seed(
+        db_session,
+        [
+            _macro_row("gdp_yoy", period=date(2024, 1, 17), value=5.2, name_zh="GDP"),
+            _macro_row("gdp_yoy", period=date(2025, 1, 17), value=5.0, name_zh="GDP"),
+            _macro_row("cpi_yoy", period=date(2025, 5, 9), value=0.1, name_zh="CPI"),
+        ],
+    )
+    resp = client.get("/api/v1/macro/indicators?region=cn")
+    assert resp.status_code == 200
+    body = resp.json()
+    by_code = {item["code"]: item for item in body}
+    assert set(by_code.keys()) == {"gdp_yoy", "cpi_yoy"}
+    assert by_code["gdp_yoy"]["value"] == 5.0
+    assert by_code["gdp_yoy"]["period"] == "2025-01-17"
+    assert by_code["cpi_yoy"]["value"] == 0.1
+
+
 def test_api_requires_auth(db_session):
     """Without auth override the endpoint must reject the request."""
 

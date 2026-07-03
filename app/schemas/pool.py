@@ -8,6 +8,7 @@ class PoolMemberResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     etf_code: str
     etf_name: str | None = None
+    name_zh: str | None = None
     added_at: datetime | None = None
     notes: str | None = None
 
@@ -49,6 +50,7 @@ class PoolWeightResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     etf_code: str
     etf_name: str | None = None
+    name_zh: str | None = None
     target_weight: float = 0.0
     suggested_weight: float | None = None
     weight_source: str = "manual"
@@ -73,6 +75,7 @@ class PoolWeightSuggestResponse(BaseModel):
 
     etf_code: str
     etf_name: str | None = None
+    name_zh: str | None = None
     suggested_weight: float
     algorithm: str
 
@@ -82,6 +85,7 @@ class PoolAnalyticsMember(BaseModel):
 
     etf_code: str
     etf_name: str | None = None
+    name_zh: str | None = None
     category: str | None = None
     target_weight: float = 0.0
     added_at: datetime | None = None

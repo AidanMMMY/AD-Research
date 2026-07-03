@@ -48,6 +48,7 @@ class CryptoInfoOut(BaseModel):
 
     code: str
     name: str
+    name_zh: str | None = None
     exchange: str | None = None
     market: str | None = None
     category: str | None = None
@@ -61,6 +62,8 @@ class CryptoInfoOut(BaseModel):
     # Prefer this in new code; change_24h is preserved for backward compat.
     change_pct: float | None = None
     volume_24h: float | None = None
+    # Timestamp when the live price was fetched from the upstream provider.
+    last_updated: datetime | None = None
 
     class Config:
         from_attributes = True
@@ -130,6 +133,7 @@ class CryptoDetailOut(BaseModel):
 
     code: str
     name: str
+    name_zh: str | None = None
     exchange: str | None = None
     market: str | None = None
     category: str | None = None

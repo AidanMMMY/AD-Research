@@ -82,7 +82,7 @@ class NewsArticle(Base):
     sentiment_label = Column(String(20), comment="bullish | bearish | neutral")
     sentiment_confidence = Column(Float, comment="0..1 LLM confidence")
     sentiment_drivers = Column(_JSON_TYPE, comment="List of driver keywords from LLM")
-    event_category = Column(String(50), comment="earnings|m&a|product|macro|regulation|guidance|analyst|legal|rumor|other")
+    event_category = Column(String(50), comment="earnings|m&a|product|macro|regulation|guidance|analyst|legal|rumor|geopolitics|central_bank|election|trade_war|sanction|other")
     importance = Column(SmallInteger, comment="1..5 LLM importance rating")
     sentiment_processed_at = Column(DateTime, comment="When LLM sentiment was filled")
     # Chinese translation cache, filled on demand by the
@@ -114,6 +114,8 @@ class NewsArticleSymbol(Base):
     ``symbol`` is the internal code (``AAPL.US``, ``TSLA.US``, ...).
     ``match_type`` records whether the ticker was found in the title,
     body, cashtag, subreddit name, etc. — useful for tuning extraction.
+    ``name`` / ``name_zh`` are cached from ``etf_info`` at ingestion time so
+    the frontend can render human-readable labels without an extra round-trip.
     """
 
     __tablename__ = "news_article_symbol"
@@ -126,6 +128,8 @@ class NewsArticleSymbol(Base):
     symbol = Column(String(20), primary_key=True, comment="Internal code, e.g. AAPL.US")
     match_type = Column(String(30), comment="title | body | cashtag | subreddit")
     confidence = Column(Integer, default=100, comment="0..100 extraction confidence")
+    name = Column(String(200), nullable=True, comment="Instrument display name")
+    name_zh = Column(String(200), nullable=True, comment="Chinese display name")
 
     article = relationship("NewsArticle", back_populates="symbols")
 

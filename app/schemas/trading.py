@@ -69,6 +69,7 @@ class PaperOrderOut(BaseModel):
     id: int
     account_id: int
     instrument_code: str
+    instrument_name: str | None = None
     order_type: str
     price: Decimal | None = None
     quantity: Decimal
@@ -185,6 +186,7 @@ class LiveOrderOut(BaseModel):
     config_id: int
     order_id_from_exchange: str | None = None
     instrument_code: str
+    instrument_name: str | None = None
     side: str
     order_type: str
     price: Decimal | None = None
@@ -205,6 +207,7 @@ class LivePositionOut(BaseModel):
     id: int
     config_id: int
     instrument_code: str
+    instrument_name: str | None = None
     quantity: Decimal
     avg_cost: Decimal
     current_price: Decimal | None = None

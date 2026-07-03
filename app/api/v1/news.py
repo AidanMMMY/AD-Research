@@ -32,6 +32,7 @@ from app.api.deps import get_current_user, get_db
 from app.config import get_settings
 from app.core.redis_client import get_redis_client, redis_lock
 from app.core.scheduler import get_scheduler_jobs, is_scheduler_running
+from app.models.etf import ETFInfo
 from app.models.etl import ETLLog
 from app.models.favorite import UserFavorite
 from app.schemas.auth import UserResponse
@@ -76,8 +77,26 @@ def _iso_utc(value: datetime | None) -> str | None:
     return value.isoformat(timespec="seconds")
 
 
-def _article_to_dict(article: NewsArticle, symbols: list[str] | None = None) -> dict:
-    """Render a :class:`NewsArticle` row as a JSON-safe dict."""
+def _article_to_dict(
+    article: NewsArticle,
+    symbols: list[str] | list[dict[str, Any]] | None = None,
+) -> dict:
+    """Render a :class:`NewsArticle` row as a JSON-safe dict.
+
+    ``symbols`` may be either a list of internal codes (legacy callers
+    such as ``list_news`` and ``list_watchlist_news``) or a list of dicts
+    with ``symbol`` / ``name`` / ``name_zh`` / ``match_type`` (used by
+    ``get_article``). Either form is normalised to the dict list shape
+    expected by the frontend.
+    """
+    normalized_symbols: list[dict[str, Any]] = []
+    if symbols:
+        for item in symbols:
+            if isinstance(item, str):
+                normalized_symbols.append({"symbol": item})
+            else:
+                normalized_symbols.append(item)
+
     return {
         "id": article.id,
         "source": article.source,
@@ -94,7 +113,7 @@ def _article_to_dict(article: NewsArticle, symbols: list[str] | None = None) -> 
         "engagement": article.engagement or {},
         "sentiment_score": article.sentiment_score,
         "sentiment_label": article.sentiment_label,
-        "symbols": symbols or [],
+        "symbols": normalized_symbols,
         # Cache slots for the Jina Reader lazy-load feature. The
         # ``summary`` fallback covers the case where the user never
         # clicked the load button.
@@ -134,6 +153,15 @@ def list_news(
     source: str | None = Query(None, description="Filter by source id (e.g. xinhua_rss)"),
     from_date: str | None = Query(None, description="ISO-8601 lower bound on published_at"),
     to_date: str | None = Query(None, description="ISO-8601 upper bound on published_at"),
+    importance_min: int | None = Query(None, ge=1, le=5, description="Minimum importance level (1-5)"),
+    event_category: list[str] | None = Query(
+        None,
+        description=(
+            "Filter by event_category. Repeatable. Allowed: "
+            "earnings|m&a|product|macro|regulation|guidance|analyst|legal|rumor"
+            "|geopolitics|central_bank|election|trade_war|sanction|other"
+        ),
+    ),
     page: int = Query(1, ge=1, description="1-indexed page number"),
     page_size: int = Query(20, ge=1, le=100, description="Page size (1-100)"),
     db: Session = Depends(get_db),
@@ -170,6 +198,18 @@ def list_news(
         )
         stmt = stmt.where(NewsArticle.id.in_(select(sub.c.article_id)))
         count_stmt = count_stmt.where(NewsArticle.id.in_(select(sub.c.article_id)))
+    if importance_min is not None:
+        stmt = stmt.where(NewsArticle.importance >= importance_min)
+        count_stmt = count_stmt.where(NewsArticle.importance >= importance_min)
+    if event_category:
+        # Allow free-form list to keep forward-compatible with new
+        # categories added by the LLM prompt later (geopolitics,
+        # central_bank, election, trade_war, sanction ...). Empty
+        # strings are dropped so a frontend bug does not kill results.
+        cats = [c for c in event_category if c]
+        if cats:
+            stmt = stmt.where(NewsArticle.event_category.in_(cats))
+            count_stmt = count_stmt.where(NewsArticle.event_category.in_(cats))
 
     total = db.execute(count_stmt).scalar() or 0
     rows = db.execute(
@@ -194,6 +234,14 @@ def list_watchlist_news(
     source: str | None = Query(None, description="Filter by source id (e.g. xinhua_rss)"),
     from_date: str | None = Query(None, description="ISO-8601 lower bound on published_at"),
     to_date: str | None = Query(None, description="ISO-8601 upper bound on published_at"),
+    event_category: list[str] | None = Query(
+        None,
+        description=(
+            "Filter by event_category. Repeatable. Allowed: "
+            "earnings|m&a|product|macro|regulation|guidance|analyst|legal|rumor"
+            "|geopolitics|central_bank|election|trade_war|sanction|other"
+        ),
+    ),
     page: int = Query(1, ge=1, description="1-indexed page number"),
     page_size: int = Query(20, ge=1, le=100, description="Page size (1-100)"),
     db: Session = Depends(get_db),
@@ -263,6 +311,11 @@ def list_watchlist_news(
     if to_dt is not None:
         stmt = stmt.where(NewsArticle.published_at <= to_dt)
         count_stmt = count_stmt.where(NewsArticle.published_at <= to_dt)
+    if event_category:
+        cats = [c for c in event_category if c]
+        if cats:
+            stmt = stmt.where(NewsArticle.event_category.in_(cats))
+            count_stmt = count_stmt.where(NewsArticle.event_category.in_(cats))
 
     total = db.execute(count_stmt).scalar() or 0
     rows = db.execute(
@@ -305,6 +358,10 @@ def list_watchlist_news(
         covered_q = covered_q.where(NewsArticle.published_at >= from_dt)
     if to_dt is not None:
         covered_q = covered_q.where(NewsArticle.published_at <= to_dt)
+    if event_category:
+        cats = [c for c in event_category if c]
+        if cats:
+            covered_q = covered_q.where(NewsArticle.event_category.in_(cats))
     covered_set = {sym for (sym,) in db.execute(covered_q.distinct()).all()}
 
     return {
@@ -483,16 +540,189 @@ def news_health(db: Session = Depends(get_db)) -> dict[str, Any]:
         "scheduler_total_jobs": len(scheduler_jobs),
         "sources": sources,
     }
+@router.get("/retail-sentiment/{symbol}")
+def get_retail_sentiment(
+    symbol: str,
+    window: str = Query("7d", description="Look-back window, e.g. 7d, 30d"),
+    db: Session = Depends(get_db),
+) -> dict:
+    """Aggregated retail-discussion sentiment for a single symbol.
+
+    Computes an importance-weighted sentiment summary from news / social
+    articles linked to ``symbol`` in the requested window. Falls back to
+    all linked articles when no retail-specific sources (reddit / xueqiu)
+    are available. The returned shape matches the frontend
+    ``RetailSentiment`` contract.
+    """
+    try:
+        days = int("".join(c for c in window if c.isdigit()) or "7")
+    except ValueError:
+        days = 7
+    days = max(1, min(days, 90))
+    since = datetime.now(tz=timezone.utc) - timedelta(days=days)
+
+    # Retail sources first; if nothing matches, fall back to any linked article.
+    retail_sources = {"reddit", "xueqiu"}
+
+    def _query(sources: set[str] | None) -> Any:
+        q = (
+            select(NewsArticle)
+            .join(NewsArticleSymbol, NewsArticle.id == NewsArticleSymbol.article_id)
+            .where(NewsArticleSymbol.symbol == symbol)
+            .where(NewsArticle.published_at >= since)
+        )
+        if sources:
+            q = q.where(NewsArticle.source.in_(sources))
+        return q
+
+    rows = db.execute(_query(retail_sources).order_by(NewsArticle.published_at.desc())).scalars().all()
+    if not rows:
+        rows = db.execute(_query(None).order_by(NewsArticle.published_at.desc())).scalars().all()
+
+    if not rows:
+        raise HTTPException(status_code=404, detail=f"No sentiment data for {symbol}")
+
+    scores: list[float] = []
+    weights: list[float] = []
+    bull = bear = neutral = 0
+    themes: dict[str, float] = {}
+    total_weight = 0.0
+
+    for article in rows:
+        weight = float(article.importance or 3)
+        score_raw = article.sentiment_score
+        if score_raw is not None:
+            score = float(score_raw)
+            # Normalise to [-1, 1] if stored as -100..100.
+            if abs(score) > 1:
+                score = score / 100.0
+            scores.append(score)
+            weights.append(weight)
+            total_weight += weight
+
+        label = article.sentiment_label
+        if label == "positive" or label == "bullish":
+            bull += weight
+        elif label == "negative" or label == "bearish":
+            bear += weight
+        else:
+            neutral += weight
+
+        # Aggregate driver keywords as themes.
+        drivers = article.sentiment_drivers
+        if drivers:
+            if isinstance(drivers, list):
+                for d in drivers:
+                    themes[str(d)] = themes.get(str(d), 0.0) + weight
+        elif article.event_category:
+            themes[article.event_category] = themes.get(article.event_category, 0.0) + weight
+
+    if total_weight > 0 and scores:
+        overall = sum(s * w for s, w in zip(scores, weights)) / total_weight
+    else:
+        overall = 0.0
+
+    sentiment_total = bull + bear + neutral or 1.0
+    bull_ratio = bull / sentiment_total
+    bear_ratio = bear / sentiment_total
+
+    # Controversy: high when bull and bear are close in size.
+    if bull + bear > 0:
+        controversy = 1.0 - abs(bull - bear) / (bull + bear)
+    else:
+        controversy = 0.0
+    controversy = max(0.0, min(1.0, controversy))
+
+    # Top themes by weighted share.
+    main_themes = []
+    if themes:
+        theme_total = sum(themes.values()) or 1.0
+        sorted_themes = sorted(themes.items(), key=lambda x: x[1], reverse=True)
+        main_themes = [
+            {"theme": t, "percentage": round(w / theme_total * 100, 1)}
+            for t, w in sorted_themes[:5]
+        ]
+
+    # Simple summary string; no LLM required for v1.
+    label_text = "看多" if overall > 0.15 else "看空" if overall < -0.15 else "中性"
+    summary = (
+        f"最近 {days} 天 {symbol} 散户情绪{label_text}。"
+        f"共 {len(rows)} 条讨论，多空比 {bull_ratio:.0%}:{bear_ratio:.0%}。"
+    )
+    if main_themes:
+        summary += f"主要话题: {', '.join(t['theme'] for t in main_themes[:3])}。"
+
+    return {
+        "symbol": symbol,
+        "overall": round(overall, 4),
+        "bull_bear_ratio": {
+            "bull": round(bull_ratio, 4),
+            "bear": round(bear_ratio, 4),
+        },
+        "main_themes": main_themes,
+        "controversy": round(controversy, 4),
+        "summary": summary,
+        "window": f"{days}d",
+        "article_count": len(rows),
+    }
+
+
 @router.get("/{article_id}")
 def get_article(article_id: int, db: Session = Depends(get_db)) -> dict:
-    """Return a single article plus its linked symbols."""
+    """Return a single article plus its linked symbols.
+
+    Each symbol is returned as a dict with ``symbol``, ``match_type``,
+    ``name`` and ``name_zh``. The name fields are read from the
+    ``news_article_symbol`` cache when present; otherwise we fall back to
+    a bulk lookup against ``etf_info`` so older rows still render useful
+    labels.
+    """
     article = db.get(NewsArticle, article_id)
     if article is None:
         raise HTTPException(status_code=404, detail=f"article {article_id} not found")
+
     symbol_rows = db.execute(
-        select(NewsArticleSymbol.symbol).where(NewsArticleSymbol.article_id == article_id)
+        select(
+            NewsArticleSymbol.symbol,
+            NewsArticleSymbol.match_type,
+            NewsArticleSymbol.name,
+            NewsArticleSymbol.name_zh,
+        ).where(NewsArticleSymbol.article_id == article_id)
     ).all()
-    symbols = [s[0] for s in symbol_rows]
+
+    # Backfill any missing names from etf_info in one query.
+    codes_missing_name = [
+        row.symbol
+        for row in symbol_rows
+        if row.name is None or row.name_zh is None
+    ]
+    etf_by_code: dict[str, Any] = {}
+    if codes_missing_name:
+        etf_rows = db.execute(
+            select(ETFInfo.code, ETFInfo.name, ETFInfo.name_zh).where(
+                ETFInfo.code.in_(codes_missing_name)
+            )
+        ).all()
+        etf_by_code = {row.code: row for row in etf_rows}
+
+    symbols: list[dict[str, Any]] = []
+    for row in symbol_rows:
+        name = row.name
+        name_zh = row.name_zh
+        if name is None or name_zh is None:
+            etf = etf_by_code.get(row.symbol)
+            if etf:
+                name = name or etf.name
+                name_zh = name_zh or etf.name_zh
+        symbols.append(
+            {
+                "symbol": row.symbol,
+                "match_type": row.match_type,
+                "name": name,
+                "name_zh": name_zh,
+            }
+        )
+
     return _article_to_dict(article, symbols=symbols)
 
 

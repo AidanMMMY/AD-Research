@@ -184,8 +184,16 @@ class SentimentService:
         else:
             label = "neutral"
 
+        instrument = (
+            self.db.query(ETFInfo)
+            .filter(ETFInfo.code == instrument_code)
+            .first()
+        )
+
         return {
             "instrument_code": instrument_code,
+            "name": instrument.name if instrument else None,
+            "name_zh": instrument.name_zh if instrument else None,
             "avg_score": round(avg_score, 4),
             "label": label,
             "positive_count": positive,

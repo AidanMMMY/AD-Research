@@ -27,6 +27,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
+from app.models.etf import ETFInfo
 from app.services.news._model_loader import NewsArticle, NewsArticleSymbol
 from app.services.news.crawler.types import RawArticle
 from app.services.news.symbol_extractor import SymbolExtractor
@@ -179,17 +180,34 @@ class NewsNormalizer:
         body_text = raw.body or _strip_html_to_text(raw.body_html) or ""
         extracted = self.symbol_extractor.extract(raw.title, body_text)
 
+        candidates = explicit_codes + extracted
+        if not candidates:
+            return
+
+        # Bulk-resolve display names from etf_info so each symbol row can
+        # cache its human-readable label at ingestion time.
+        candidate_codes = [sym for sym, _, _ in candidates]
+        etf_rows = self.db.execute(
+            select(ETFInfo.code, ETFInfo.name, ETFInfo.name_zh).where(
+                ETFInfo.code.in_(candidate_codes)
+            )
+        ).all()
+        etf_by_code = {row.code: row for row in etf_rows}
+
         seen: set[str] = set()
-        for sym, market, conf in explicit_codes + extracted:
+        for sym, market, conf in candidates:
             if not sym or sym in seen:
                 continue
             seen.add(sym)
             # Truncate to schema column size (String(20) in current schema).
             sym = sym[:20]
+            etf = etf_by_code.get(sym)
             self.db.add(
                 NewsArticleSymbol(
                     article_id=article.id,
                     symbol=sym,
+                    name=etf.name if etf else None,
+                    name_zh=etf.name_zh if etf else None,
                     match_type=_match_type_for(raw, conf),
                     confidence=int(round(_clamp(conf, 0.0, 1.0) * 100)),
                 )

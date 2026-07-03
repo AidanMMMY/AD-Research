@@ -19,7 +19,7 @@ import pandas as pd
 from sqlalchemy.orm import Session
 
 from app.core.cache import cache_invalidate_pattern
-from app.data.pipelines.base import ETLPipeline
+from app.data.pipelines.base import ETLPipeline, ETLResult
 from app.data.providers.base import DataProvider, ETFInfo, MarketHours
 from app.models.futures import FuturesContract, FuturesDailyBar
 from app.services.futures_service import FuturesService
@@ -227,6 +227,36 @@ class FuturesContractDiscoveryPipeline(ETLPipeline):
     def __init__(self, db: Session) -> None:
         super().__init__(provider=_AkshareFuturesProvider(), db=db)
 
+    def run(self) -> ETLResult:
+        """Override base run() to skip OHLCV-specific validation.
+
+        Discovery produces contract metadata, not price bars, so the
+        standard four-layer validator does not apply.
+        """
+        result = ETLResult()
+        self._create_log()
+
+        try:
+            data = self.extract()
+            if data.empty:
+                result.warnings.append("Extract returned empty DataFrame")
+
+            loaded = self.load(data)
+            result.records = loaded
+            result.success = True
+            self._update_log(status="success", records=loaded)
+            logger.info(
+                "FuturesContractDiscoveryPipeline: loaded %d contracts", loaded
+            )
+        except Exception as exc:
+            error_msg = str(exc)
+            result.success = False
+            result.error = error_msg
+            self._update_log(status="failed", error=error_msg)
+            logger.error("FuturesContractDiscoveryPipeline failed: %s", error_msg)
+
+        return result
+
     def extract(self) -> pd.DataFrame:
         try:
             df = ak.futures_display_main_sina()
@@ -298,6 +328,57 @@ class FuturesDailyPipeline(ETLPipeline):
         super().__init__(provider=_AkshareFuturesProvider(), db=db)
         self.target_date = target_date
         self.history_days = history_days
+
+    def run(self) -> ETLResult:
+        """Override base run() to skip the ETF-specific L2 validator.
+
+        Futures markets have limit moves, settlement-driven opens and
+        occasional historical data quirks that cause the shared
+        four-layer validator (built for A-share/US ETF daily bars) to
+        reject otherwise usable rows. We keep a light L1 check for the
+        columns we need and then load directly.
+        """
+        result = ETLResult()
+        self._create_log()
+
+        try:
+            data = self.extract()
+            if data.empty:
+                result.warnings.append("Extract returned empty DataFrame")
+
+            # Light format check: ensure required columns exist.
+            required = {"etf_code", "trade_date", "open", "high", "low", "close"}
+            missing = required - set(data.columns)
+            if missing:
+                raise ValueError(f"Missing required columns: {sorted(missing)}")
+
+            # Warn about rows with obvious bad prices but do not block the
+            # entire batch; downstream loaders skip None/NaN values.
+            bad_mask = (
+                data["high"].isna()
+                | data["low"].isna()
+                | (data["high"] < data["low"])
+            )
+            bad_count = int(bad_mask.sum())
+            if bad_count:
+                result.warnings.append(
+                    f"Dropping {bad_count} row(s) with invalid high/low"
+                )
+                data = data[~bad_mask]
+
+            loaded = self.load(data)
+            result.records = loaded
+            result.success = True
+            self._update_log(status="success", records=loaded)
+            logger.info("FuturesDailyPipeline: loaded %d daily bars", loaded)
+        except Exception as exc:
+            error_msg = str(exc)
+            result.success = False
+            result.error = error_msg
+            self._update_log(status="failed", error=error_msg)
+            logger.error("FuturesDailyPipeline failed: %s", error_msg)
+
+        return result
 
     # ------------------------------------------------------------------
     # Helpers
@@ -394,7 +475,9 @@ class FuturesDailyPipeline(ETLPipeline):
         out = out.sort_values(["__code", "trade_date"]).reset_index(drop=True)
         out["pre_settle"] = out.groupby("__code")["settle"].shift(1)
 
-        out = out.rename(columns={"__code": "code"})
+        # Use "etf_code" as the internal symbol column name so this pipeline
+        # can still share the same light format check as other bar pipelines.
+        out = out.rename(columns={"__code": "etf_code"})
         logger.info("FuturesDailyPipeline: extracted %d rows", len(out))
         return out
 
@@ -409,7 +492,7 @@ class FuturesDailyPipeline(ETLPipeline):
         records = []
         for _, row in data.iterrows():
             rec = {
-                "code": row.get("code"),
+                "code": row.get("etf_code"),
                 "trade_date": row.get("trade_date"),
                 "open": _coerce_float(row.get("open")),
                 "high": _coerce_float(row.get("high")),

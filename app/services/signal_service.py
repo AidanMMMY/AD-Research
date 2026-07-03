@@ -159,6 +159,7 @@ class SignalService:
                 "strategy_type": strat.strategy_type if strat else None,
                 "etf_code": sig.etf_code,
                 "etf_name": etf.name if etf else None,
+                "name_zh": etf.name_zh if etf else None,
                 "trade_date": sig.trade_date.isoformat() if sig.trade_date else None,
                 "signal_type": sig.signal_type,
                 "strength": sig.strength,
@@ -168,15 +169,14 @@ class SignalService:
             for sig, etf, strat in rows
         ]
 
-    def get_latest_signals(self, limit: int = 50) -> list[dict[str, Any]]:
-        """Get the latest signals."""
-        # Get the most recent trade date
-        latest = (
-            self.db.query(Signal)
-            .order_by(Signal.trade_date.desc())
-            .first()
-        )
-        if not latest or not latest.trade_date:
-            return []
+    def get_signals_for_etf(
+        self,
+        etf_code: str,
+        limit: int = 20,
+    ) -> list[dict[str, Any]]:
+        """Get recent trading signals for a single instrument.
 
-        return self.get_signals(trade_date=latest.trade_date, limit=limit)
+        Thin convenience wrapper around :meth:`get_signals` so the crypto
+        detail page has a stable, instrument-scoped entry point.
+        """
+        return self.get_signals(etf_code=etf_code, limit=limit)

@@ -285,6 +285,19 @@ def test_list_filter_by_date_range(client, db_session):
     assert titles == {"Mid", "Late"}
 
 
+def test_list_filter_by_rating(client, db_session):
+    _seed_reports(db_session, [
+        _report_row(title="Buy", rating="买入"),
+        _report_row(title="Hold", rating="中性"),
+        _report_row(title="Add", rating="增持"),
+    ])
+    resp = client.get("/api/v1/research-reports?rating=%E4%B9%B0%E5%85%A5")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["total"] == 1
+    assert body["items"][0]["title"] == "Buy"
+
+
 def test_list_filter_by_has_summary(client, db_session):
     _seed_reports(db_session, [
         _report_row(title="WithSum", summary="Short summary"),

@@ -204,6 +204,16 @@ def test_discovery_pipeline_handles_akshare_exception(db_session):
     assert n == 0
 
 
+def test_discovery_pipeline_run_succeeds_without_ohlcv_validation(db_session):
+    """run() must bypass the ETF OHLCV validator (which expects trade_date/open/...)."""
+    with _patch_futures_display_main_sina(SAMPLE_SINA_DF):
+        pipeline = FuturesContractDiscoveryPipeline(db_session)
+        result = pipeline.run()
+    assert result.success is True
+    assert result.records == 4
+    assert db_session.query(FuturesContract).count() == 4
+
+
 # ---------------------------------------------------------------------------
 # Daily bar pipeline
 # ---------------------------------------------------------------------------
@@ -382,3 +392,67 @@ def test_daily_pipeline_extract_handles_akshare_failure(db_session):
         pipeline = FuturesDailyPipeline(db_session)
         out = pipeline.extract()
     assert out.empty
+
+
+def test_daily_pipeline_run_succeeds_with_light_validation(db_session):
+    """run() must work end-to-end and write bars without the strict ETF L2 validator."""
+    db_session.add(
+        FuturesContract(
+            code="CU0",
+            name="沪铜主力",
+            exchange="SHFE",
+            product="金属",
+            is_main=True,
+        )
+    )
+    db_session.commit()
+
+    df = _make_daily_df(
+        [
+            ("2026-06-30", 100.0, 102.0, 99.0, 101.0, 1000, 2000, 100.5),
+            ("2026-07-01", 101.0, 103.0, 100.0, 102.0, 1500, 2500, 101.5),
+        ]
+    )
+
+    with patch(
+        "app.data.pipelines.futures.ak.futures_main_sina", return_value=df
+    ), patch("app.data.pipelines.futures.cache_invalidate_pattern", return_value=0):
+        pipeline = FuturesDailyPipeline(db_session)
+        result = pipeline.run()
+
+    assert result.success is True
+    assert result.records == 2
+    assert db_session.query(FuturesDailyBar).count() == 2
+
+
+def test_daily_pipeline_run_drops_rows_with_invalid_high_low(db_session):
+    """Rows where high < low should be dropped rather than aborting the batch."""
+    db_session.add(
+        FuturesContract(
+            code="CU0",
+            name="沪铜主力",
+            exchange="SHFE",
+            product="金属",
+            is_main=True,
+        )
+    )
+    db_session.commit()
+
+    df = _make_daily_df(
+        [
+            ("2026-06-30", 100.0, 102.0, 99.0, 101.0, 1000, 2000, 100.5),
+            ("2026-07-01", 101.0, 99.0, 103.0, 102.0, 1500, 2500, 101.5),  # high < low
+        ]
+    )
+
+    with patch(
+        "app.data.pipelines.futures.ak.futures_main_sina", return_value=df
+    ), patch("app.data.pipelines.futures.cache_invalidate_pattern", return_value=0):
+        pipeline = FuturesDailyPipeline(db_session)
+        result = pipeline.run()
+
+    assert result.success is True
+    assert result.records == 1
+    assert db_session.query(FuturesDailyBar).count() == 1
+    assert db_session.query(FuturesDailyBar).first().trade_date == date(2026, 6, 30)
+

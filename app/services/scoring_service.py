@@ -427,6 +427,7 @@ class ScoringService:
             output.append({
                 "etf_code": score.etf_code,
                 "etf_name": info.name,
+                "name_zh": info.name_zh,
                 "market": info.market,
                 "category": info.category,
                 "composite_score": float(score.composite_score) if score.composite_score is not None else None,
@@ -443,3 +444,46 @@ class ScoringService:
             })
 
         return output
+
+    def get_latest_score(
+        self,
+        etf_code: str,
+        market: str | None = None,
+    ) -> dict[str, Any] | None:
+        """Return the most recent composite score for a single instrument.
+
+        Looks up the latest ``ETFScore`` row for the instrument across all
+        templates, optionally filtering by ``ETFInfo.market``. The returned
+        dict mirrors the fields consumed by the crypto detail/score page.
+        """
+        query = (
+            self.db.query(ETFScore, ETFInfo)
+            .join(ETFInfo, ETFScore.etf_code == ETFInfo.code)
+            .filter(ETFScore.etf_code == etf_code)
+        )
+        if market:
+            query = query.filter(ETFInfo.market == market)
+
+        score = (
+            query.order_by(ETFScore.trade_date.desc(), ETFScore.composite_score.desc())
+            .first()
+        )
+        if score is None:
+            return None
+
+        score_obj, info = score
+        return {
+            "etf_code": score_obj.etf_code,
+            "name": info.name if info else None,
+            "name_zh": info.name_zh if info else None,
+            "market": info.market if info else None,
+            "trade_date": score_obj.trade_date.isoformat() if score_obj.trade_date else None,
+            "composite_score": float(score_obj.composite_score) if score_obj.composite_score is not None else None,
+            "score_return": float(score_obj.score_return) if score_obj.score_return is not None else None,
+            "score_risk": float(score_obj.score_risk) if score_obj.score_risk is not None else None,
+            "score_sharpe": float(score_obj.score_sharpe) if score_obj.score_sharpe is not None else None,
+            "score_liquidity": float(score_obj.score_liquidity) if score_obj.score_liquidity is not None else None,
+            "score_trend": float(score_obj.score_trend) if score_obj.score_trend is not None else None,
+            "rank_overall": score_obj.rank_overall,
+            "rank_category": score_obj.rank_category,
+        }
