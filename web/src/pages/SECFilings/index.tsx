@@ -134,7 +134,7 @@ export default function SECFilingsPage() {
   ];
 
   return (
-    <PageShell maxWidth="reading">
+    <PageShell maxWidth="full">
       <PageHeader
         title="SEC 公告"
         description="由 SEC EDGAR 公开数据自动采集 S&P 500 成分股的 10-K / 10-Q / 20-F 公告及 GAAP 财务指标。每周六 06:00 UTC 自动刷新。"

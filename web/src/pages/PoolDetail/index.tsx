@@ -281,7 +281,6 @@ export default function PoolDetail() {
       label: '成员与权重',
       children: (
         <Panel
-          title="成员与权重"
           padding="md"
           extra={
             <HelpTrigger

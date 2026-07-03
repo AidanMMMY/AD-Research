@@ -4,7 +4,7 @@ import { message } from 'antd';
 import { AxiosError } from 'axios';
 import { UserOutlined, LockOutlined, StockOutlined } from '@ant-design/icons';
 import { useAuthStore } from '@/stores/auth';
-import ParticleBackground from '@/components/ParticleBackground';
+import AuroraBackground from '@/components/AuroraBackground';
 
 export default function Login() {
   const navigate = useNavigate();
@@ -49,18 +49,17 @@ export default function Login() {
   };
 
   return (
-    <div className="login-page">
-      {/* Animated particle network */}
-      <ParticleBackground />
-
-      {/* Subtle tech grid */}
-      <div className="login-grid" />
-
-      {/* Radial vignette to keep the form readable */}
-      <div className="login-vignette" />
+    <div className="login-page login-page--sci-fi">
+      <AuroraBackground />
 
       <div className="login-card">
-        {/* Logo */}
+        <div className="login-card__corners" aria-hidden="true">
+          <span className="login-card__corner login-card__corner--tl" />
+          <span className="login-card__corner login-card__corner--tr" />
+          <span className="login-card__corner login-card__corner--bl" />
+          <span className="login-card__corner login-card__corner--br" />
+        </div>
+
         <div className="login-logo-wrap">
           <div className="login-logo">
             <StockOutlined className="login-logo-icon" />
@@ -72,10 +71,6 @@ export default function Login() {
             全市场数据分析与投研工具
           </p>
         </div>
-
-        <h2 className="login-title">
-          账户密码登录
-        </h2>
 
         <div className="login-form">
           <div className="login-input-wrapper"

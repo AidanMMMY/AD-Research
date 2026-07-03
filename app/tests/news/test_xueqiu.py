@@ -313,6 +313,47 @@ class TestXueqiuCrawlerParsing:
         assert article.engagement["likes"] == 5
         assert article.extra["author_id"] == 42
 
+    def test_parse_timeline_handles_nested_public_timeline(self):
+        """public_timeline.json wraps posts in category buckets with a 'data' string."""
+        payload = {
+            "list": [
+                {
+                    "category": 0,
+                    "column": "今日话题",
+                    "list": [
+                        {
+                            "id": 20396091,
+                            "category": 0,
+                            "data": json.dumps(
+                                {
+                                    "id": 398326989,
+                                    "title": "茅台新高",
+                                    "description": "看好 $SH600519$ 后续走势",
+                                    "created_at": 1_700_000_000_000,
+                                    "like_count": 5,
+                                    "reply_count": 2,
+                                    "retweet_count": 1,
+                                    "view_count": 1000,
+                                    "user": {
+                                        "id": 42,
+                                        "screen_name": "alpha_hunter",
+                                        "followers_count": 12345,
+                                    },
+                                }
+                            ),
+                        }
+                    ],
+                }
+            ]
+        }
+        crawler = XueqiuCrawler(auth=XueqiuAuth(cookie="xq_a_token=validtoken; u=1; device_id=d"))
+        posts = crawler._parse_timeline(payload, primary_symbol="600519.SH")
+        assert len(posts) == 1
+        assert posts[0].source_id == "398326989"
+        assert posts[0].title == "茅台新高"
+        assert posts[0].author == "alpha_hunter"
+        assert "600519.SH" in posts[0].symbols
+
 
 # ---------------------------------------------------------------------------
 # Incremental cursor (last_max_id)
@@ -363,7 +404,7 @@ class TestIncrementalCursor:
             assert oldest_b == 190
 
         # Both requests hit the timeline URL.
-        assert all("/v4/statuses/public/timeline.json" in u for u in seen_urls)
+        assert all("/v4/statuses/public_timeline.json" in u for u in seen_urls)
 
 
 # ---------------------------------------------------------------------------
