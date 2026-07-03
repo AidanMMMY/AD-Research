@@ -341,7 +341,7 @@ class EastMoneyZhProvider:
         bleed an English/short-code field into the cache.  When the
         symbol is unknown, the payload starts with ``pv_none_match``.
         """
-        url = f"https://qt.gtimg.cn/q=us{symbol.lower()}"
+        url = f"https://qt.gtimg.cn/q=us{symbol.upper()}"
         resp = self._session.get(url, timeout=self._timeout)
         resp.raise_for_status()
         # qt.gtimg.cn serves GBK; force-decode regardless of headers.
