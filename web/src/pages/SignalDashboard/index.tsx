@@ -39,7 +39,7 @@ const FAMILY_LABELS: Record<string, string> = {
 export default function SignalDashboard() {
   const { data: signals, isLoading } = useSignals();
   const { open } = useAIHelp();
-  const [familyFilter] = useState<string>('all');
+  const [familyFilter, setFamilyFilter] = useState<string>('all');
   const [typeFilter, setTypeFilter] = useState<string>('all');
 
   const items: Signal[] = signals?.items || [];
@@ -50,6 +50,9 @@ export default function SignalDashboard() {
     }
     return items.filter((item) => {
       if (typeFilter !== 'all' && item.signal_type !== typeFilter) {
+        return false;
+      }
+      if (familyFilter !== 'all' && item.strategy_type !== familyFilter) {
         return false;
       }
       return true;
@@ -145,11 +148,10 @@ export default function SignalDashboard() {
             />
             <Select
               value={familyFilter}
-              onChange={() => undefined}
+              onChange={setFamilyFilter}
               options={familyOptions}
               className="phase5c-select--sm"
-              disabled
-              placeholder="家族筛选（待后端支持）"
+              placeholder="按策略家族筛选"
             />
           </Space>
         </FilterToolbar>
