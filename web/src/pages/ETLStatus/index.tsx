@@ -74,27 +74,26 @@ export default function ETLStatus() {
         description="查看数据管道运行状态与近期日志"
       />
 
-      <SectionHeading title="近期 ETL 日志" />
-      <FilterToolbar>
-        <Input
-          placeholder="任务名称"
-          value={jobName}
-          onChange={(e) => setJobName(e.target.value)}
-          className="admin-filter-input"
-          allowClear
-        />
-        <Select
-          placeholder="状态"
-          value={status}
-          onChange={setStatus}
-          options={STATUS_OPTIONS}
-          className="admin-filter-select"
-          allowClear
-        />
-        <DensityToggle />
-      </FilterToolbar>
-
+      <SectionHeading title="近期 ETL 日志" action={<DensityToggle />} />
       <Panel variant="default" padding="md">
+        <FilterToolbar>
+          <Input
+            placeholder="任务名称"
+            value={jobName}
+            onChange={(e) => setJobName(e.target.value)}
+            className="admin-filter-input"
+            allowClear
+          />
+          <Select
+            placeholder="状态"
+            value={status}
+            onChange={setStatus}
+            options={STATUS_OPTIONS}
+            className="admin-filter-select"
+            allowClear
+          />
+        </FilterToolbar>
+
         <Table
           dataSource={data?.items || []}
           columns={columns}

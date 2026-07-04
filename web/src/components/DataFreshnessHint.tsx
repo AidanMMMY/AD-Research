@@ -43,7 +43,7 @@ export default function DataFreshnessHint({ at, prefix = '数据时间' }: Props
 
   return (
     <Tooltip title={`${full} · 仍在持续更新`}>
-      <span className="ad-text-xs ad-text-muted" style={{ cursor: 'help' }}>
+      <span className="ad-text-xs ad-text-muted data-freshness-hint">
         {prefix} {relative}
       </span>
     </Tooltip>

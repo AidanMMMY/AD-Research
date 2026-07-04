@@ -7,10 +7,10 @@ interface StepProgressProps {
 }
 
 const STATUS_ICONS: Record<Step['status'], React.ReactNode> = {
-  pending: <ClockCircleOutlined style={{ color: 'var(--text-tertiary)' }} />,
-  running: <LoadingOutlined style={{ color: 'var(--accent)' }} />,
-  done: <CheckOutlined style={{ color: 'var(--color-success-bright)' }} />,
-  error: <CloseCircleOutlined style={{ color: 'var(--color-error-bright)' }} />,
+  pending: <ClockCircleOutlined />,
+  running: <LoadingOutlined />,
+  done: <CheckOutlined />,
+  error: <CloseCircleOutlined />,
 };
 
 export default function StepProgress({ steps, compact = false }: StepProgressProps) {
@@ -25,7 +25,7 @@ export default function StepProgress({ steps, compact = false }: StepProgressPro
             key={s.id}
             className={`step-progress__row ${dim ? 'step-progress__row--dim' : ''}`}
           >
-            <span className={`step-progress__icon ${compact ? 'step-progress__icon--compact' : 'step-progress__icon--default'}`}>
+            <span className={`step-progress__icon step-progress__icon--${s.status} ${compact ? 'step-progress__icon--compact' : 'step-progress__icon--default'}`}>
               {STATUS_ICONS[s.status]}
             </span>
             <span className={`step-progress__label ${s.status === 'running' ? 'step-progress__label--running' : ''}`}>

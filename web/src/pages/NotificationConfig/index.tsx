@@ -5,6 +5,7 @@ import {
 import PageShell from '@/components/PageShell';
 import PageHeader from '@/components/PageHeader';
 import Panel from '@/components/Panel';
+import SectionHeading from '@/components/SectionHeading';
 import FilterToolbar from '@/components/FilterToolbar';
 import EmptyState from '@/components/EmptyState';
 import ThemeTag from '@/components/ThemeTag';
@@ -163,7 +164,8 @@ export default function NotificationConfigPage() {
         }
       />
 
-      <Panel variant="default">
+      <SectionHeading title="配置列表" />
+      <Panel variant="default" padding="md">
         <Alert
           message="推送说明"
           description={

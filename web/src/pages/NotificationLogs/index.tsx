@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import PageShell from '@/components/PageShell';
 import PageHeader from '@/components/PageHeader';
 import Panel from '@/components/Panel';
+import SectionHeading from '@/components/SectionHeading';
 import FilterToolbar from '@/components/FilterToolbar';
 import EmptyState from '@/components/EmptyState';
 import { notificationApi } from '@/api/notification';
@@ -71,7 +72,8 @@ export default function NotificationLogs() {
         description="查看通知发送历史与状态"
       />
 
-      <Panel variant="default" title="通知发送日志">
+      <SectionHeading title="通知发送日志" />
+      <Panel variant="default" padding="md">
         <FilterToolbar total={data?.total ?? 0}>
           <Space>
             <span className="ad-text-secondary">每页条数：</span>

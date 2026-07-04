@@ -593,29 +593,6 @@
 }
 
 /* ============================================================
-   Legacy component helpers (keep until components fully migrated)
-   ============================================================ */
-@media (max-width: 767px) {
-  .glass-card[data-glass-padding="sm"] .glass-card-header,
-  .glass-card[data-glass-padding="sm"] .glass-card-body {
-    padding-left: 14px !important;
-    padding-right: 14px !important;
-  }
-
-  .glass-card[data-glass-padding="md"] .glass-card-header,
-  .glass-card[data-glass-padding="md"] .glass-card-body {
-    padding-left: 16px !important;
-    padding-right: 16px !important;
-  }
-
-  .glass-card[data-glass-padding="lg"] .glass-card-header,
-  .glass-card[data-glass-padding="lg"] .glass-card-body {
-    padding-left: 18px !important;
-    padding-right: 18px !important;
-  }
-}
-
-/* ============================================================
    Page Header (S2) — standardized H1 + tagline block
    ============================================================ */
 .page-header {
@@ -4951,9 +4928,52 @@ main {
   height: 32px;
 }
 
+.help-trigger--small .help-trigger__icon-ai {
+  font-size: 14px;
+}
+
+.help-trigger--small .help-trigger__icon-help {
+  font-size: 12px;
+}
+
+.help-trigger--middle .help-trigger__icon-ai {
+  font-size: 16px;
+}
+
+.help-trigger--middle .help-trigger__icon-help {
+  font-size: 14px;
+}
+
 .help-trigger:hover {
   color: var(--text-primary);
   background: var(--bg-hover);
+}
+
+/* ---- DataFreshnessHint ---- */
+.data-freshness-hint {
+  cursor: help;
+}
+
+/* ---- FavoriteToggleButton ---- */
+.favorite-toggle-button {
+  background: transparent;
+  border: 0;
+  padding: 4px;
+  line-height: 1;
+  font-size: 16px;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.favorite-toggle-button--active {
+  color: var(--color-warning);
+}
+
+.favorite-toggle-button--toggling {
+  cursor: wait;
 }
 
 /* ---- InstrumentSelector ---- */
@@ -5161,9 +5181,21 @@ main {
   text-align: right;
 }
 
+.score-bar__track--small {
+  height: 4px;
+  border-radius: 2px;
+}
+
+.score-bar__track--default {
+  height: 6px;
+  border-radius: 3px;
+}
+
 /* ---- Sparkline ---- */
 .sparkline__empty {
   display: inline-block;
+  width: 100%;
+  min-width: 40px;
   color: var(--text-tertiary);
   font-size: 11px;
   text-align: center;
@@ -5183,6 +5215,36 @@ main {
   font-size: var(--text-small-size);
   font-weight: 500;
   padding: 2px 8px;
+}
+
+.status-tag--success {
+  color: var(--color-success);
+  background: var(--color-success-dim);
+  border-color: var(--color-success-border);
+}
+
+.status-tag--running {
+  color: var(--color-warning);
+  background: var(--color-warning-dim);
+  border-color: var(--color-warning-border);
+}
+
+.status-tag--failed {
+  color: var(--color-error);
+  background: var(--color-error-dim);
+  border-color: var(--color-error-border);
+}
+
+.status-tag--pending {
+  color: var(--text-tertiary);
+  background: var(--bg-hover);
+  border-color: var(--border-default);
+}
+
+.status-tag--unknown {
+  color: var(--text-secondary);
+  background: var(--bg-hover);
+  border-color: var(--border-default);
 }
 
 /* ---- StepProgress ---- */
@@ -5228,12 +5290,39 @@ main {
   font-size: 14px;
 }
 
+.step-progress__icon--pending {
+  color: var(--text-tertiary);
+}
+
+.step-progress__icon--running {
+  color: var(--accent);
+}
+
+.step-progress__icon--done {
+  color: var(--color-success-bright);
+}
+
+.step-progress__icon--error {
+  color: var(--color-error-bright);
+}
+
 .step-progress__label {
   color: var(--text-secondary);
 }
 
 .step-progress__label--running {
   color: var(--text-primary);
+}
+
+/* ---- SignalDetailDrawer ---- */
+.signal-detail-disclaimer {
+  color: var(--text-tertiary);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.signal-detail-warning {
+  color: var(--color-warning);
 }
 
 /* ---- StrategyCard ---- */

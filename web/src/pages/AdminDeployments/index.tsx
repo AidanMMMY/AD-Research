@@ -47,11 +47,11 @@ const { Option } = Select;
 // Deployment history table
 // ---------------------------------------------------------------------------
 
-const STATUS_CONFIG: Record<string, { color: string; icon: React.ReactNode }> = {
-  success: { color: 'var(--accent)', icon: <CheckCircleOutlined /> },
-  failure: { color: 'var(--color-error)', icon: <CloseCircleOutlined /> },
-  in_progress: { color: 'var(--color-warning)', icon: <SyncOutlined spin /> },
-  queued: { color: 'var(--text-secondary)', icon: <ClockCircleOutlined /> },
+const STATUS_CONFIG: Record<string, { icon: React.ReactNode }> = {
+  success: { icon: <CheckCircleOutlined /> },
+  failure: { icon: <CloseCircleOutlined /> },
+  in_progress: { icon: <SyncOutlined spin /> },
+  queued: { icon: <ClockCircleOutlined /> },
 };
 
 function formatDuration(seconds: number) {
@@ -77,7 +77,7 @@ function DeploymentsTable({ data, loading }: { data: DeploymentRun[]; loading: b
       width: 120,
       render: (conclusion: string | null, record: DeploymentRun) => {
         const key = record.status === 'in_progress' ? 'in_progress' : (conclusion || 'unknown');
-        const config = STATUS_CONFIG[key] || { color: 'var(--text-secondary)', icon: null };
+        const config = STATUS_CONFIG[key] || { icon: null };
         return (
           <Tag
             icon={config.icon}

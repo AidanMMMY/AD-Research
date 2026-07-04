@@ -9,7 +9,6 @@ export default function HelpTrigger({
   style,
   className,
 }: HelpTriggerProps) {
-  const iconSize = size === 'small' ? 14 : 16;
   const buttonSize: 'small' | 'middle' = size === 'small' ? 'small' : 'middle';
 
   return (
@@ -22,8 +21,8 @@ export default function HelpTrigger({
         style={style}
         icon={
           <span className="help-trigger__icons">
-            <RobotOutlined className="help-trigger__icon-ai" style={{ fontSize: iconSize }} />
-            <QuestionCircleOutlined className="help-trigger__icon-help" style={{ fontSize: iconSize - 2 }} />
+            <RobotOutlined className="help-trigger__icon-ai" />
+            <QuestionCircleOutlined className="help-trigger__icon-help" />
           </span>
         }
       />

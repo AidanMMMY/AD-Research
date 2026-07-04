@@ -60,7 +60,7 @@ export default function SignalDetailDrawer({ signal, onClose }: Props) {
           {signal.strength ?? '—'}
         </Descriptions.Item>
         <Descriptions.Item label="依据">
-          <span style={{ color: 'var(--text-tertiary)', fontSize: 12, lineHeight: 1.6 }}>
+          <span className="signal-detail-disclaimer">
             此信号由策略{' '}
             <code>
               {signal.strategy_name || signal.strategy_id}
@@ -70,7 +70,7 @@ export default function SignalDetailDrawer({ signal, onClose }: Props) {
             接口返回后接入展示（待接入）。
             <br />
             <br />
-            <strong style={{ color: 'var(--color-warning)' }}>仅供研究参考，不构成投资建议。</strong>
+            <strong className="signal-detail-warning">仅供研究参考，不构成投资建议。</strong>
           </span>
         </Descriptions.Item>
       </Descriptions>

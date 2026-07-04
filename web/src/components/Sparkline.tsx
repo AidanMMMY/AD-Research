@@ -75,8 +75,7 @@ export default function Sparkline({
       <span
         className={`sparkline__empty ${className || ''}`}
         style={{
-          width: '100%',
-          minWidth: 40,
+          // dynamic: empty placeholder dimensions come from props
           maxWidth: width,
           height,
           lineHeight: `${height}px`,
@@ -120,12 +119,18 @@ export default function Sparkline({
 
   return (
     <svg
+      // dynamic: SVG dimensions and viewBox are derived from props
       width={width}
       height={height}
       viewBox={`0 0 ${width} ${height}`}
       preserveAspectRatio="xMidYMid meet"
       className={`sparkline ${className || ''}`}
-      style={{ maxWidth: '100%', height: 'auto', ...style }}
+      style={{
+        // dynamic: caller-supplied style is merged with responsive defaults
+        maxWidth: '100%',
+        height: 'auto',
+        ...style,
+      }}
       aria-label={ariaLabel}
       role={data && data.length >= 2 ? 'img' : undefined}
     >

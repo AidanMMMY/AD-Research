@@ -35,15 +35,7 @@ export default function FavoriteToggleButton({ code, name }: Props) {
         onClick={handleClick}
         disabled={isToggling}
         aria-label={isFavorite ? `取消自选 ${name || code}` : `加入自选 ${name || code}`}
-        style={{
-          background: 'transparent',
-          border: 0,
-          cursor: isToggling ? 'wait' : 'pointer',
-          color: isFavorite ? 'var(--color-warning)' : 'var(--text-tertiary)',
-          fontSize: 16,
-          padding: 4,
-          lineHeight: 1,
-        }}
+        className={`favorite-toggle-button ${isFavorite ? 'favorite-toggle-button--active' : ''} ${isToggling ? 'favorite-toggle-button--toggling' : ''}`}
       >
         {isFavorite ? <StarFilled /> : <StarOutlined />}
       </button>
