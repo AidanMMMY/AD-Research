@@ -1,13 +1,16 @@
-import { Badge, Button, Spin, Table, Tag, Tooltip, Typography } from 'antd';
+import { Badge, Button, Spin, Table, Tag, Tooltip } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { useQuery } from '@tanstack/react-query';
 import { newsApi } from '@/api/news';
 import type { NewsSourceHealth } from '@/types/news';
-import Panel from '@/components/Panel';
-
-const { Title, Paragraph } = Typography;
+import PageShell from '@/components/PageShell';
+import PageHeader from '@/components/PageHeader';
+import FilterToolbar from '@/components/FilterToolbar';
+import ContentCard from '@/components/ContentCard';
 
 const REFRESH_MS = 30_000;
+
+type HealthTone = 'green' | 'yellow' | 'red';
 
 /**
  * Decide a colour for the source row.
@@ -16,7 +19,7 @@ const REFRESH_MS = 30_000;
  *  yellow: 1-4 articles OR scheduler unknown
  *  red   : 0 articles OR scheduler not running OR etl log last failed
  */
-function statusColor(row: NewsSourceHealth, schedulerRunning: boolean): 'green' | 'yellow' | 'red' {
+function statusColor(row: NewsSourceHealth, schedulerRunning: boolean): HealthTone {
   if (!schedulerRunning) return 'red';
   const etlStatus = row.latest_etl?.status?.toLowerCase();
   if (etlStatus === 'failed') return 'red';
@@ -25,7 +28,7 @@ function statusColor(row: NewsSourceHealth, schedulerRunning: boolean): 'green' 
   return 'red';
 }
 
-const STATUS_LABEL: Record<'green' | 'yellow' | 'red', string> = {
+const STATUS_LABEL: Record<HealthTone, string> = {
   green: '健康',
   yellow: '偏慢',
   red: '异常',
@@ -43,6 +46,13 @@ function ageMinutes(iso: string | null): number | null {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return null;
   return Math.max(0, Math.round((Date.now() - d.getTime()) / 60000));
+}
+
+function ageTone(minutes: number | null): string {
+  if (minutes === null) return 'var(--text-secondary)';
+  if (minutes <= 60) return 'var(--text-secondary)';
+  if (minutes <= 6 * 60) return 'var(--color-warning)';
+  return 'var(--color-error)';
 }
 
 export default function NewsHealth() {
@@ -102,11 +112,9 @@ export default function NewsHealth() {
         const minutes = ageMinutes(v);
         const base = fmtTime(v);
         if (minutes === null) return base;
-        const tone =
-          minutes <= 60 ? 'var(--text-secondary)' : minutes <= 6 * 60 ? '#d48806' : '#cf1322';
         return (
           <Tooltip title={base}>
-            <span style={{ color: tone }}>
+            <span className="news-health-age" style={{ color: ageTone(minutes) }}>
               {base} <span className="ad-text-xs">({minutes}m 前)</span>
             </span>
           </Tooltip>
@@ -139,10 +147,7 @@ export default function NewsHealth() {
               {etl.records != null ? `${etl.records} 条` : '-'}
             </span>
             {etl.error_msg && (
-              <div
-                className="ad-error-ellipsis"
-                title={etl.error_msg}
-              >
+              <div className="ad-error-ellipsis" title={etl.error_msg}>
                 {etl.error_msg}
               </div>
             )}
@@ -153,54 +158,59 @@ export default function NewsHealth() {
   ];
 
   return (
-    <div>
-      <div className="ad-page-header">
-        <Title level={2} className="ad-page-header__title">
-          资讯健康度
-        </Title>
-        <div className="ad-page-header__actions">
-          <span className="ad-timestamp">
-            {dataUpdatedAt
-              ? `更新于 ${new Date(dataUpdatedAt).toLocaleTimeString()}`
-              : '加载中…'}
-          </span>
-          <Button size="small" onClick={() => refetch()} loading={isRefetching}>
-            立即刷新
-          </Button>
-        </div>
-      </div>
-      <Paragraph type="secondary" className="ad-mb-5">
-        按数据源展示最近 24h 收录量与最新发布时间，并附 scheduler 任务运行状态。
-        自动每 30 秒刷新。
-      </Paragraph>
+    <PageShell maxWidth="wide">
+      <PageHeader
+        eyebrow="运维"
+        title="资讯健康度"
+        description="按数据源展示最近 24h 收录量与最新发布时间，并附 scheduler 任务运行状态。自动每 30 秒刷新。"
+        extra={
+          <div className="ad-flex ad-items-center ad-gap-3">
+            <span className="ad-timestamp">
+              {dataUpdatedAt
+                ? `更新于 ${new Date(dataUpdatedAt).toLocaleTimeString()}`
+                : '加载中…'}
+            </span>
+            <Button size="small" onClick={() => refetch()} loading={isRefetching}>
+              立即刷新
+            </Button>
+          </div>
+        }
+      />
 
-      <Panel title="Scheduler 状态" padding="md" className="ad-mb-4">
-        <div className="ad-flex ad-flex-wrap ad-gap-4 ad-items-center">
-          <Badge
-            status={schedulerRunning ? 'success' : 'error'}
-            text={
-              <span className="ad-font-medium">
-                {schedulerRunning ? 'APScheduler 运行中' : 'APScheduler 未运行'}
-              </span>
-            }
-          />
-          <span className="ad-timestamp">
-            当前进程共注册 {data?.scheduler_total_jobs ?? 0} 个任务，其中 news_* {jobs.length} 个
-          </span>
-        </div>
-        {jobs.length > 0 && (
-          <div className="ad-flex ad-flex-wrap ad-gap-2 ad-mt-3">
+      <FilterToolbar
+        extra={
+          <div className="ad-flex ad-items-center ad-gap-2">
+            <Badge
+              status={schedulerRunning ? 'success' : 'error'}
+              text={
+                <span className="ad-font-medium">
+                  {schedulerRunning ? 'APScheduler 运行中' : 'APScheduler 未运行'}
+                </span>
+              }
+            />
+            <span className="ad-timestamp">
+              共注册 {data?.scheduler_total_jobs ?? 0} 个任务，其中 news_* {jobs.length} 个
+            </span>
+          </div>
+        }
+      />
+
+      <ContentCard title="Scheduler 任务" className="ad-mb-4">
+        {jobs.length > 0 ? (
+          <div className="ad-flex ad-flex-wrap ad-gap-2">
             {jobs.map((j) => (
               <Tag key={j.id} color="blue">
                 {j.name} · 下次 {j.next_run_time ? new Date(j.next_run_time).toLocaleString() : '—'}
               </Tag>
             ))}
           </div>
+        ) : (
+          <span className="ad-text-tertiary">暂无 news_* 任务</span>
         )}
-      </Panel>
+      </ContentCard>
 
       <Spin spinning={isLoading}>
-        <Panel title="数据源健康度" padding="md">
+        <ContentCard title="数据源健康度">
           <Table
             dataSource={sources}
             columns={columns}
@@ -208,13 +218,12 @@ export default function NewsHealth() {
             pagination={false}
             size="middle"
             scroll={{ x: 'max-content' }}
-            rowClassName={(row) => {
-              const color = statusColor(row, schedulerRunning);
-              return color === 'red' ? 'news-health-row-red' : '';
-            }}
+            rowClassName={(row) =>
+              statusColor(row, schedulerRunning) === 'red' ? 'news-health-row-red' : ''
+            }
           />
-        </Panel>
+        </ContentCard>
       </Spin>
-    </div>
+    </PageShell>
   );
 }

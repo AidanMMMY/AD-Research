@@ -235,12 +235,12 @@ export default function Portfolio() {
         <SectionHeading
           title={
             <span>
-              <DollarOutlined style={{ marginRight: 8 }} />
+              <DollarOutlined className="ad-mr-2" />
               模拟账户
             </span>
           }
           action={
-            <a href="/paper-trading" style={{ fontSize: 13 }}>
+            <a href="/paper-trading" className="ad-text-small">
               管理模拟账户 →
             </a>
           }
@@ -253,7 +253,7 @@ export default function Portfolio() {
             description="前往模拟交易页面创建一个模拟账户即可在此查看权益与持仓。"
             action={
               <a href="/paper-trading">
-                <Tag color="gold" style={{ cursor: 'pointer' }}>
+                <Tag color="gold" className="ad-cursor-pointer">
                   新建模拟账户
                 </Tag>
               </a>
@@ -271,19 +271,19 @@ export default function Portfolio() {
         )}
       </Panel>
 
-      <div style={{ height: 16 }} />
+      <div className="ad-mb-4" />
 
       {/* 区块 2：真实账户列表 */}
       <Panel variant="default" padding="md">
         <SectionHeading
           title={
             <span>
-              <ThunderboltOutlined style={{ marginRight: 8 }} />
+              <ThunderboltOutlined className="ad-mr-2" />
               真实账户
             </span>
           }
           action={
-            <a href="/live-trading" style={{ fontSize: 13 }}>
+            <a href="/live-trading" className="ad-text-small">
               管理真实配置 →
             </a>
           }
@@ -296,7 +296,7 @@ export default function Portfolio() {
             description="前往真实交易页面创建 Binance 配置即可在此查看实际持仓与盈亏。"
             action={
               <a href="/live-trading">
-                <Tag color="magenta" style={{ cursor: 'pointer' }}>
+                <Tag color="magenta" className="ad-cursor-pointer">
                   新建真实配置
                 </Tag>
               </a>
@@ -314,24 +314,24 @@ export default function Portfolio() {
         )}
       </Panel>
 
-      <div style={{ height: 16 }} />
+      <div className="ad-mb-4" />
 
       {/* 区块 3：目标 Pool vs 实际持仓 diff */}
       <Panel variant="default" padding="md">
         <SectionHeading
           title={
             <span>
-              <AppstoreOutlined style={{ marginRight: 8 }} />
+              <AppstoreOutlined className="ad-mr-2" />
               目标 Pool vs 实际持仓
             </span>
           }
           action={
             targetPool ? (
-              <a href={`/pools/${targetPool.id}`} style={{ fontSize: 13 }}>
+              <a href={`/pools/${targetPool.id}`} className="ad-text-small">
                 管理目标池 ({targetPool.name}) →
               </a>
             ) : (
-              <a href="/pools" style={{ fontSize: 13 }}>
+              <a href="/pools" className="ad-text-small">
                 新建目标池 →
               </a>
             )
@@ -345,7 +345,7 @@ export default function Portfolio() {
             description="在「标的池管理」中创建一个目标池（例如：核心 ETF、卫星 ETF），组合中心会按目标权重与实际持仓做偏离度对比。"
             action={
               <a href="/pools">
-                <Tag color="default" style={{ cursor: 'pointer' }}>
+                <Tag color="default" className="ad-cursor-pointer">
                   创建目标池
                 </Tag>
               </a>
@@ -365,7 +365,7 @@ export default function Portfolio() {
                   size="small"
                   title={
                     <span>
-                      <WarningOutlined style={{ marginRight: 6 }} />
+                      <WarningOutlined className="ad-mr-1" />
                       {d.code}
                     </span>
                   }
@@ -376,14 +376,14 @@ export default function Portfolio() {
                     </Tag>
                   }
                 >
-                  <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+                  <div className="ad-text-small ad-text-secondary">
                     目标 {d.targetWeight.toFixed(2)}% · 实际 {d.actualWeight.toFixed(2)}%
                   </div>
-                  <div style={{ marginTop: 4, fontSize: 12 }}>{d.reason}</div>
+                  <div className="ad-text-small ad-mt-2">{d.reason}</div>
                 </Card>
               ))}
             </ResponsiveGrid>
-            <div style={{ height: 12 }} />
+            <div className="ad-mb-3" />
             <Table<DiffItem>
               rowKey="code"
               size="small"
@@ -392,7 +392,7 @@ export default function Portfolio() {
               pagination={false}
               scroll={{ x: 'max-content' }}
             />
-            <div style={{ marginTop: 8, fontSize: 12, color: 'var(--text-tertiary)' }}>
+            <div className="ad-mt-2 ad-text-small ad-text-tertiary">
               注：实际权重当前为前端 mock（用于演示 diff 视图），待真实账户持仓聚合接口稳定后将切换为后端实时计算。
             </div>
           </>

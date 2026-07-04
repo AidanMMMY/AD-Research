@@ -1349,11 +1349,13 @@ a:focus-visible {
 .ad-text-secondary { color: var(--text-secondary); }
 .ad-text-tertiary { color: var(--text-tertiary); }
 .ad-text-muted { color: var(--text-muted); }
+.ad-text-accent { color: var(--accent); }
 .ad-text-right { text-align: right; }
 .ad-flex-1 { flex: 1; }
 .ad-min-w-0 { min-width: 0; }
 .ad-ml-auto { margin-left: auto; }
 .ad-mr-1 { margin-right: var(--space-1); }
+.ad-mr-2 { margin-right: var(--space-2); }
 .ad-mt-2 { margin-top: var(--space-2); }
 .ad-mt-3 { margin-top: var(--space-3); }
 .ad-mb-2 { margin-bottom: var(--space-2); }

@@ -139,7 +139,7 @@ export default function Screen() {
               <Select
                 placeholder="市场"
                 allowClear
-                style={{ width: '100%' }}
+                className="ad-w-full"
                 value={filters.market}
                 options={(markets || []).map((m: string) => ({
                   label: MARKET_LABELS[m] || m,
@@ -152,7 +152,7 @@ export default function Screen() {
               <Select
                 placeholder="分类"
                 allowClear
-                style={{ width: '100%' }}
+                className="ad-w-full"
                 value={filters.category}
                 options={categories?.map((c: any) => ({ label: `${c.category} (${c.count})`, value: c.category }))}
                 onChange={(v) => setFilter('category', v)}
@@ -161,7 +161,7 @@ export default function Screen() {
             <Col xs={12} sm={8} md={6}>
               <InputNumber
                 placeholder="评分最小"
-                style={{ width: '100%' }}
+                className="ad-w-full"
                 min={0} max={100}
                 value={filters.score_min}
                 onChange={(v) => setFilter('score_min', v || undefined)}
@@ -170,7 +170,7 @@ export default function Screen() {
             <Col xs={12} sm={8} md={6}>
               <InputNumber
                 placeholder="RSI最小"
-                style={{ width: '100%' }}
+                className="ad-w-full"
                 min={0} max={100}
                 value={filters.rsi_min}
                 onChange={(v) => setFilter('rsi_min', v || undefined)}
@@ -179,7 +179,7 @@ export default function Screen() {
             <Col xs={12} sm={8} md={6}>
               <InputNumber
                 placeholder="夏普最小"
-                style={{ width: '100%' }}
+                className="ad-w-full"
                 value={filters.sharpe_min}
                 onChange={(v) => setFilter('sharpe_min', v || undefined)}
               />
@@ -187,7 +187,7 @@ export default function Screen() {
             <Col xs={12} sm={8} md={6}>
               <InputNumber
                 placeholder="波动率最大"
-                style={{ width: '100%' }}
+                className="ad-w-full"
                 value={filters.volatility_max}
                 onChange={(v) => setFilter('volatility_max', v || undefined)}
               />

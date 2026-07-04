@@ -114,8 +114,8 @@ export default function Learning() {
 
       {/* M20: 知识图谱入口 — 折叠面板形式的术语速查。
           P2 将升级为真正的图谱视图。 */}
-      <div className="learning-terms-wrap" style={{ marginTop: 24 }}>
-        <Space style={{ marginBottom: 8 }}>
+      <div className="learning-terms-wrap ad-mt-5">
+        <Space className="ad-mb-2">
           <Button
             type={panelOpen ? 'primary' : 'default'}
             icon={<PartitionOutlined />}
@@ -123,7 +123,7 @@ export default function Learning() {
           >
             {panelOpen ? '收起术语速查' : '展开术语速查'}
           </Button>
-          <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>
+          <span className="ad-text-small ad-text-tertiary">
             知识图谱入口（M20）
           </span>
         </Space>
@@ -231,7 +231,7 @@ function TermQuickReference({
       className="learning-terms"
       title={
         <Space>
-          <PartitionOutlined style={{ color: 'var(--accent)' }} />
+          <PartitionOutlined className="ad-text-accent" />
           <span>术语速查</span>
           <Tag color="volcano">M20 P1</Tag>
         </Space>
@@ -248,7 +248,7 @@ function TermQuickReference({
         />
       }
     >
-      <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 0 }}>
+      <p className="ad-text-small ad-text-tertiary ad-mt-0">
         共 {all.length} 个术语，当前显示 {totalShown} 个。鼠标悬停或点击标题可看「问 AI」浮层。
         P2 将升级为真正的图谱视图。
       </p>
