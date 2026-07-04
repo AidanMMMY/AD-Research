@@ -104,7 +104,11 @@ CURRENT_RAW=$(docker compose -f "$COMPOSE_FILE" exec -T "$BACKEND_SERVICE" alemb
     exit "$EXIT_ABNORMAL"
 }
 
-CURRENT=$(echo "$CURRENT_RAW" | grep -E "^[0-9a-f]{6,}" | head -1 | awk '{print $1}' || true)
+# Extract current revision: prefer line tagged with (head), else first non-INFO hex/string ID
+CURRENT=$(echo "$CURRENT_RAW" | grep -E "^[0-9a-f]{6,}.*\(head\)|^[A-Za-z0-9_]+.*\(head\)" | head -1 | awk '{print $1}' || true)
+if [ -z "$CURRENT" ]; then
+    CURRENT=$(echo "$CURRENT_RAW" | grep -E "^[0-9a-f]{6,}\b|^[A-Za-z0-9_]+\b" | grep -vE "^INFO" | head -1 | awk '{print $1}' || true)
+fi
 
 if [ -z "$CURRENT" ]; then
     # alembic 在空数据库上输出空内容 → 视为需要 migrate
@@ -114,21 +118,26 @@ fi
 
 log_info "alembic current: $CURRENT"
 
-# ── 2. alembic history 找 head ──
-log_step "2/3 读取 alembic history head"
+# ── 2. alembic heads 找 head ──
+# 用 `alembic heads` 而不是 `alembic history`：heads 命令输出的是所有
+# 当前 head revision（每行一个），不会被 history 的 "->" 行格式干扰。
+# 这能正确处理 2026_07_04 起的字符串 ID migration（hex 正则匹配不到）。
+log_step "2/3 读取 alembic heads"
 
-HEAD_RAW=$(docker compose -f "$COMPOSE_FILE" exec -T "$BACKEND_SERVICE" alembic history 2>&1) || {
-    log_error "alembic history 执行失败"
-    echo "$HEAD_RAW"
+HEADS_RAW=$(docker compose -f "$COMPOSE_FILE" exec -T "$BACKEND_SERVICE" alembic heads 2>&1) || {
+    log_error "alembic heads 执行失败"
+    echo "$HEADS_RAW"
     exit "$EXIT_ABNORMAL"
 }
 
-# head 通常是历史列表的最后一条，带 (head) 标记
-HEAD=$(echo "$HEAD_RAW" | grep -E "^[0-9a-f]{6,}.*\(head\)" | head -1 | awk '{print $1}' || true)
+# 取第一个 head revision（脚本只支持单一 head；多 head 由合并 migration 处理）
+HEAD=$(echo "$HEADS_RAW" | grep -E "^[0-9a-f]{6,}\b|^[A-Za-z0-9_]+\b" | head -1 | awk '{print $1}' || true)
 
 if [ -z "$HEAD" ]; then
-    # 退化：取最后一条 revision
-    HEAD=$(echo "$HEAD_RAW" | grep -E "^[0-9a-f]{6,}" | tail -1 | awk '{print $1}' || true)
+    # 退化：从 history 末行解析
+    # history 输出每行 "<a> -> <b> (head), msg"，head 行第三个 token 才是真正的 head
+    HEAD_RAW=$(docker compose -f "$COMPOSE_FILE" exec -T "$BACKEND_SERVICE" alembic history 2>&1) || true
+    HEAD=$(echo "$HEAD_RAW" | grep -E "^[0-9a-f]{6,}.*\(head\)|^[A-Za-z0-9_]+.*\(head\)" | head -1 | awk '{print $3}' || true)
 fi
 
 if [ -z "$HEAD" ]; then
@@ -154,7 +163,7 @@ log_info "模型导入 ✓"
 log_step "校验结论"
 
 if [ "$CURRENT" = "$HEAD" ] && [ "$CURRENT" != "(empty)" ]; then
-    log_info "✅ current == head（${CURRENT:0:7}），迁移完整"
+    log_info "✅ current == head（${CURRENT}），迁移完整"
     exit "$EXIT_OK"
 fi
 
