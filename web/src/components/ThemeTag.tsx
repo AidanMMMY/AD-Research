@@ -14,8 +14,10 @@ export type ThemeTagVariant =
 interface ThemeTagProps {
   variant?: ThemeTagVariant;
   children: React.ReactNode;
+  icon?: React.ReactNode;
   style?: React.CSSProperties;
   className?: string;
+  title?: string;
   onClick?: React.MouseEventHandler<HTMLSpanElement>;
 }
 
@@ -25,8 +27,10 @@ interface ThemeTagProps {
 export default function ThemeTag({
   variant = 'default',
   children,
+  icon,
   style,
   className,
+  title,
   onClick,
 }: ThemeTagProps) {
   const classes = className
@@ -34,7 +38,7 @@ export default function ThemeTag({
     : `theme-tag theme-tag--${variant}`;
 
   return (
-    <Tag className={classes} onClick={onClick} style={style}>
+    <Tag className={classes} icon={icon} title={title} onClick={onClick} style={style}>
       {children}
     </Tag>
   );

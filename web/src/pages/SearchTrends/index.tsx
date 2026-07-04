@@ -12,6 +12,7 @@ import ResponsiveGrid from '@/components/ResponsiveGrid';
 import EmptyState from '@/components/EmptyState';
 import StatCard from '@/components/StatCard';
 import LastUpdated from '@/components/LastUpdated';
+import ThemeTag from '@/components/ThemeTag';
 import {
   useSearchTrendList,
   useSearchTrendDashboard,
@@ -67,17 +68,17 @@ export default function SearchTrendsPage() {
 
   const listColumns: ColumnsType<SearchTrend> = [
     { title: '日期', dataIndex: 'trade_date', key: 'trade_date', width: 110 },
-    { title: '来源', dataIndex: 'source', key: 'source', width: 80, render: (v: string) => <Tag color={v === 'baidu' ? 'blue' : 'green'}>{v}</Tag> },
+    { title: '来源', dataIndex: 'source', key: 'source', width: 80, render: (v: string) => <ThemeTag variant={v === 'baidu' ? 'accent' : 'success'}>{v}</ThemeTag> },
     { title: '区域', dataIndex: 'region', key: 'region', width: 80 },
     { title: '关键词', dataIndex: 'keyword', key: 'keyword', render: (v: string) => <Tag>{v}</Tag> },
-    { title: '分类', dataIndex: 'category', key: 'category', width: 80, render: (v: string | null) => v ? <Tag color="purple">{v}</Tag> : '-' },
+    { title: '分类', dataIndex: 'category', key: 'category', width: 80, render: (v: string | null) => v ? <ThemeTag variant="neutral">{v}</ThemeTag> : '-' },
     { title: '指数值', dataIndex: 'value', key: 'value', render: (v: number) => v.toLocaleString() },
-    { title: '是否完整', dataIndex: 'is_partial', key: 'is_partial', width: 100, render: (v: boolean) => v ? <Tag color="gold">部分</Tag> : <Tag color="green">完整</Tag> },
+    { title: '是否完整', dataIndex: 'is_partial', key: 'is_partial', width: 100, render: (v: boolean) => v ? <ThemeTag variant="warning">部分</ThemeTag> : <ThemeTag variant="success">完整</ThemeTag> },
   ];
 
   const compareColumns: ColumnsType<SearchTrend> = [
     { title: '日期', dataIndex: 'trade_date', key: 'trade_date', width: 110 },
-    { title: '来源', dataIndex: 'source', key: 'source', width: 80, render: (v: string) => <Tag color={v === 'baidu' ? 'blue' : 'green'}>{v}</Tag> },
+    { title: '来源', dataIndex: 'source', key: 'source', width: 80, render: (v: string) => <ThemeTag variant={v === 'baidu' ? 'accent' : 'success'}>{v}</ThemeTag> },
     { title: '区域', dataIndex: 'region', key: 'region', width: 80 },
     { title: '指数值', dataIndex: 'value', key: 'value', render: (v: number) => v.toLocaleString() },
   ];
@@ -267,9 +268,9 @@ function TopKeywordList({ items }: { items: SearchTrend[] }) {
           className="ad-list-row"
         >
           <Space>
-            <Tag color={item.source === 'baidu' ? 'blue' : 'green'}>#{idx + 1}</Tag>
+            <ThemeTag variant={item.source === 'baidu' ? 'accent' : 'success'}>#{idx + 1}</ThemeTag>
             <span className="ad-font-medium">{item.keyword}</span>
-            {item.category && <Tag color="purple">{item.category}</Tag>}
+            {item.category && <ThemeTag variant="neutral">{item.category}</ThemeTag>}
           </Space>
           <span className="font-mono">
             {item.value.toLocaleString()}

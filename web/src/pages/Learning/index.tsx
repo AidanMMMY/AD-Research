@@ -13,6 +13,7 @@ import PageShell from '@/components/PageShell';
 import PageHeader from '@/components/PageHeader';
 import Panel from '@/components/Panel';
 import HelpPopover from '@/components/HelpPopover';
+import ThemeTag from '@/components/ThemeTag';
 import { useSettingsStore } from '@/stores/settings';
 import { getAllTerms, type TermEntry } from '@/utils/termDictionary';
 
@@ -233,7 +234,7 @@ function TermQuickReference({
         <Space>
           <PartitionOutlined className="ad-text-accent" />
           <span>术语速查</span>
-          <Tag color="volcano">M20 P1</Tag>
+          <ThemeTag variant="warning">M20 P1</ThemeTag>
         </Space>
       }
       extra={
@@ -280,7 +281,7 @@ function ScenarioCard({
           <div className="learning-scenario-card__tagline">{scenario.tagline}</div>
         </div>
         <div className="learning-scenario-card__meta">
-          <Tag color="blue">约 {scenario.estimatedMinutes} 分钟</Tag>
+          <ThemeTag variant="accent">约 {scenario.estimatedMinutes} 分钟</ThemeTag>
           {scenario.tags.map((t) => (
             <Tag key={t}>{t}</Tag>
           ))}

@@ -7,7 +7,7 @@
    so columns don't jiggle when values change width. */
 .tabular-nums {
   font-variant-numeric: tabular-nums;
-  font-feature-settings: "tnum";
+  font-feature-settings: "tnum" 1;
 }
 
 /* Utility: font families — prefer className over inline style={{ fontFamily }} */
@@ -2978,6 +2978,22 @@ main {
   flex: 1;
   padding: var(--space-5);
   overflow: auto;
+}
+
+.app-layout__content-wrap {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+}
+
+.app-layout__footer {
+  text-align: center;
+  padding: 24px 16px 32px;
+  font-size: 11px;
+  color: var(--text-muted);
+  border-top: 1px solid var(--border-default);
+  margin-top: var(--space-9);
+  margin-top: auto;
 }
 
 @media (max-width: 767px) {
@@ -6003,6 +6019,28 @@ main {
 .login-submit:not(:disabled):hover {
   opacity: 0.9;
   transform: translateY(-1px);
+}
+
+.login-footer-links {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 12px;
+  font-size: 12px;
+  color: var(--text-tertiary);
+}
+.login-footer-links a {
+  cursor: pointer;
+  color: var(--text-secondary);
+  text-decoration: none;
+}
+.login-footer-links a:hover {
+  color: var(--accent);
+}
+.login-disclaimer {
+  text-align: center;
+  padding: 16px;
+  font-size: 11px;
+  color: var(--text-muted);
 }
 
 /* ============================================================

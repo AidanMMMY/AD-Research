@@ -40,6 +40,8 @@ import FilterToolbar from '@/components/FilterToolbar';
 import Panel from '@/components/Panel';
 import EmptyState from '@/components/EmptyState';
 import InstrumentCodeTag from '@/components/InstrumentCodeTag';
+import ThemeTag from '@/components/ThemeTag';
+import type { ThemeTagVariant } from '@/components/ThemeTag';
 import {
   formatDateTimeSeconds,
   formatRelative as formatRelativeTz,
@@ -63,11 +65,11 @@ const MARKET_OPTIONS: { label: string; value: NewsMarket | 'all' }[] = [
   { label: '全球', value: 'global' },
 ];
 
-const MARKET_BADGE: Record<NewsMarket, { color: string; label: string }> = {
-  cn_a: { color: 'magenta', label: 'A 股' },
-  us: { color: 'blue', label: '美股' },
-  crypto: { color: 'gold', label: '加密' },
-  global: { color: 'cyan', label: '全球' },
+const MARKET_BADGE: Record<NewsMarket, { variant: ThemeTagVariant; label: string }> = {
+  cn_a: { variant: 'neutral', label: 'A 股' },
+  us: { variant: 'accent', label: '美股' },
+  crypto: { variant: 'warning', label: '加密' },
+  global: { variant: 'accent', label: '全球' },
 };
 
 /**
@@ -101,17 +103,17 @@ const POLITICAL_CATEGORIES: { value: string; label: string; color: string }[] = 
 ];
 
 /**
- * Map an ``event_category`` value to a visual tag colour. Political /
+ * Map an ``event_category`` value to a visual tag variant. Political /
  * macro categories get a coloured Tag so the eye lands on them
  * immediately in a feed dominated by earnings headlines; the legacy
  * categories stay neutral grey.
  */
-const EVENT_CATEGORY_COLOR: Record<string, string> = {
-  geopolitics: 'volcano',
-  central_bank: 'geekblue',
-  election: 'purple',
-  trade_war: 'red',
-  sanction: 'magenta',
+const EVENT_CATEGORY_VARIANT: Record<string, ThemeTagVariant> = {
+  geopolitics: 'warning',
+  central_bank: 'neutral',
+  election: 'neutral',
+  trade_war: 'error',
+  sanction: 'neutral',
   earnings: 'default',
   regulation: 'default',
   macro: 'default',
@@ -138,12 +140,12 @@ const EVENT_CATEGORY_LABELS: Record<string, string> = {
 /** Render an event_category as a coloured Tag (with Chinese label). */
 function EventCategoryTag({ value }: { value: string | null }) {
   if (!value) return null;
-  const color = EVENT_CATEGORY_COLOR[value] ?? 'default';
+  const variant = EVENT_CATEGORY_VARIANT[value] ?? 'default';
   const label = EVENT_CATEGORY_LABELS[value] ?? value;
   return (
-    <Tag color={color} className="ad-event-tag">
+    <ThemeTag variant={variant} className="ad-event-tag">
       {label}
-    </Tag>
+    </ThemeTag>
   );
 }
 
@@ -244,7 +246,7 @@ function NewsCard({
       <div className="ad-news-card__meta">
         <span>{source.emoji} {source.label}</span>
         <span className="ad-text-muted">·</span>
-        {market && <Tag color={market.color} className="ad-detail-tag">{market.label}</Tag>}
+        {market && <ThemeTag variant={market.variant} className="ad-detail-tag">{market.label}</ThemeTag>}
         <EventCategoryTag value={article.event_category} />
         <span className="ad-flex-1" />
         <Tooltip title={formatDateTimeSeconds(article.published_at)}>

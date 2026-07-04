@@ -11,6 +11,7 @@ import FilterToolbar from '@/components/FilterToolbar';
 import EmptyState from '@/components/EmptyState';
 import ResponsiveGrid from '@/components/ResponsiveGrid';
 import LastUpdated from '@/components/LastUpdated';
+import ThemeTag from '@/components/ThemeTag';
 import {
   useMicrostructureLhb,
   useMicrostructureHsgt,
@@ -94,7 +95,7 @@ export default function MicrostructurePage() {
 
   const lhbColumns: ColumnsType<LhbRecord> = [
     { title: '日期', dataIndex: 'trade_date', key: 'trade_date', width: 110 },
-    { title: '代码', dataIndex: 'ts_code', key: 'ts_code', width: 110, render: (v: string) => <Tag color="blue">{v}</Tag> },
+    { title: '代码', dataIndex: 'ts_code', key: 'ts_code', width: 110, render: (v: string) => <ThemeTag variant="accent">{v}</ThemeTag> },
     { title: '名称', dataIndex: 'name', key: 'name', width: 100 },
     { title: '涨跌幅', dataIndex: 'pct_change', key: 'pct_change', width: 80, render: formatPct },
     { title: '净买额', dataIndex: 'lhb_net_amount', key: 'lhb_net_amount', render: (v: number | null) => formatMoney(v) },
@@ -110,7 +111,7 @@ export default function MicrostructurePage() {
 
   const marginColumns: ColumnsType<MarginBalance> = [
     { title: '日期', dataIndex: 'trade_date', key: 'trade_date', width: 110 },
-    { title: '代码', dataIndex: 'ts_code', key: 'ts_code', width: 110, render: (v: string) => <Tag color="blue">{v}</Tag> },
+    { title: '代码', dataIndex: 'ts_code', key: 'ts_code', width: 110, render: (v: string) => <ThemeTag variant="accent">{v}</ThemeTag> },
     { title: '名称', dataIndex: 'name', key: 'name', width: 100 },
     { title: '交易所', dataIndex: 'exchange', key: 'exchange', width: 80, render: (v: string) => <Tag>{v}</Tag> },
     { title: '融资余额', dataIndex: 'financing_balance', key: 'financing_balance', render: (v: number | null) => formatMoney(v) },
@@ -119,7 +120,7 @@ export default function MicrostructurePage() {
 
   const releaseColumns: ColumnsType<RestrictedRelease> = [
     { title: '解禁日', dataIndex: 'restricted_date', key: 'restricted_date', width: 120 },
-    { title: '代码', dataIndex: 'ts_code', key: 'ts_code', width: 110, render: (v: string) => <Tag color="blue">{v}</Tag> },
+    { title: '代码', dataIndex: 'ts_code', key: 'ts_code', width: 110, render: (v: string) => <ThemeTag variant="accent">{v}</ThemeTag> },
     { title: '名称', dataIndex: 'name', key: 'name', width: 100 },
     { title: '类型', dataIndex: 'restricted_type', key: 'restricted_type' },
     { title: '解禁数量', dataIndex: 'restricted_number', key: 'restricted_number', render: (v: number | null) => v?.toLocaleString() ?? '-' },

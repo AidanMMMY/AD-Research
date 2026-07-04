@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Table, List, Spin, Skeleton, Tag, Badge, Tooltip, Space } from 'antd';
+import { Table, List, Skeleton, Tag, Badge, Tooltip, Space } from 'antd';
 import {
   ArrowUpOutlined,
   ArrowDownOutlined,
@@ -35,13 +35,16 @@ import ResponsiveGrid from '@/components/ResponsiveGrid';
 import SectionHeading from '@/components/SectionHeading';
 import StatCard from '@/components/StatCard';
 import EmptyState from '@/components/EmptyState';
+import LoadingBlock from '@/components/LoadingBlock';
 import Panel from '@/components/Panel';
 import InstrumentCodeTag from '@/components/InstrumentCodeTag';
 import ReturnTag from '@/components/ReturnTag';
+import ThemeTag from '@/components/ThemeTag';
 import ScoreBar from '@/components/ScoreBar';
 import TickerTape from '@/components/TickerTape';
 import HelpPopover from '@/components/HelpPopover';
 import DailyLesson from '@/components/DailyLesson';
+import DataFreshnessHint from '@/components/DataFreshnessHint';
 import { useLearnStats } from '@/hooks/useLearnedTerms';
 import { useSettingsStore } from '@/stores/settings';
 import { usePriceStream } from '@/hooks/usePriceStream';
@@ -260,7 +263,7 @@ export default function Dashboard() {
   const { data: scoresData } = useScores({ limit: 10 });
   const { favorites, count: favCount, isLoading: favLoading } = useFavorites(10);
   const { data: pools, isLoading: poolsLoading } = usePoolList();
-  const { data: stats, isLoading: statsLoading } = useQuery({
+  const { data: stats, isLoading: statsLoading, dataUpdatedAt: statsUpdatedAt } = useQuery({
     queryKey: ['stats-overview'],
     queryFn: () => statsApi.overview().then((r) => r.data),
     staleTime: 60_000,
@@ -376,6 +379,8 @@ export default function Dashboard() {
         <h1 className="display-heading masthead-title">首页看板</h1>
         <p className="masthead-kicker">
           综合评分 · 收藏 · 标的池概览 · {new Date().toISOString().slice(0, 10)}
+          {' · '}
+          <DataFreshnessHint at={statsUpdatedAt} />
         </p>
       </header>
 
@@ -387,87 +392,87 @@ export default function Dashboard() {
         <Space size={[8, 8]} wrap className="dashboard-quick-actions__row">
           <span className="dashboard-quick-actions__group">
             <span className="dashboard-quick-actions__label">新手教程</span>
-            <Tag
+            <ThemeTag
+              variant="accent"
               icon={<BookOutlined />}
-              color="blue"
               className="dashboard-learning-chip"
               onClick={() => navigate('/learning')}
             >
               总览
-            </Tag>
-            <Tag
+            </ThemeTag>
+            <ThemeTag
+              variant="accent"
               icon={<LineChartOutlined />}
-              color="cyan"
               className="dashboard-learning-chip"
               onClick={() => navigate('/learning')}
             >
               如何看估值
-            </Tag>
-            <Tag
+            </ThemeTag>
+            <ThemeTag
+              variant="neutral"
               icon={<ExperimentOutlined />}
-              color="purple"
               className="dashboard-learning-chip"
               onClick={() => navigate('/learning')}
             >
               如何做回测
-            </Tag>
+            </ThemeTag>
           </span>
 
           <span className="dashboard-quick-actions__divider" aria-hidden="true" />
 
           <span className="dashboard-quick-actions__group">
             <span className="dashboard-quick-actions__label">组合中心</span>
-            <Tag
+            <ThemeTag
+              variant="warning"
               icon={<WalletOutlined />}
-              color="gold"
               className="dashboard-learning-chip"
               onClick={() => navigate('/portfolio')}
               title="查看投资组合中心（模拟账户 / 真实账户 / 目标 Pool diff 聚合）"
             >
               我的组合
-            </Tag>
-            <Tag
+            </ThemeTag>
+            <ThemeTag
+              variant="neutral"
               icon={<DollarOutlined />}
-              color="geekblue"
               className="dashboard-learning-chip"
               onClick={() => navigate('/paper-trading')}
               title="新建或切换模拟账户"
             >
               模拟账户
-            </Tag>
-            <Tag
+            </ThemeTag>
+            <ThemeTag
+              variant="neutral"
               icon={<ThunderboltOutlined />}
-              color="magenta"
               className="dashboard-learning-chip"
               onClick={() => navigate('/live-trading')}
               title="查看真实交易配置与持仓（Binance testnet/mainnet）"
             >
               真实账户
-            </Tag>
-            <Tag
+            </ThemeTag>
+            <ThemeTag
+              variant="default"
               icon={<AppstoreOutlined />}
-              color="default"
               className="dashboard-learning-chip"
               onClick={() => navigate('/pools')}
               title="管理中长期目标组合（与组合中心不同：这里是目标权重，不是实际持仓）"
             >
               标的池
-            </Tag>
+            </ThemeTag>
           </span>
 
           <span className="dashboard-quick-actions__divider" aria-hidden="true" />
 
           <span className="dashboard-quick-actions__group">
             <span className="dashboard-quick-actions__label">知识图谱</span>
-            <Tag
+            <ThemeTag
+              variant="warning"
               icon={<PartitionOutlined />}
-              color="volcano"
               className="dashboard-learning-chip"
               onClick={() => navigate('/learning?panel=terms')}
               title="查看全部术语词条（M20 速查面板入口；P2 升级为图谱视图）"
             >
               查看知识图谱
-            </Tag>
+            </ThemeTag>
           </span>
 
           {learnStats.total > 0 && (
@@ -661,9 +666,7 @@ export default function Dashboard() {
             }
           >
             {favLoading ? (
-              <div className="ad-text-center ad-py-7">
-                <Spin />
-              </div>
+              <LoadingBlock size="md" label="加载中…" />
             ) : favCount === 0 ? (
               <EmptyState
                 title="暂无收藏的标的"
@@ -709,9 +712,7 @@ export default function Dashboard() {
             }
           >
             {poolsLoading ? (
-              <div className="ad-text-center ad-py-7">
-                <Spin />
-              </div>
+              <LoadingBlock size="md" label="加载中…" />
             ) : (pools?.length || 0) === 0 ? (
               <EmptyState
                 title="暂无标的池"

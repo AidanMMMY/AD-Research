@@ -19,6 +19,7 @@ import Sparkline from '@/components/Sparkline';
 import ReturnTag from '@/components/ReturnTag';
 import LastUpdated from '@/components/LastUpdated';
 import HelpTrigger from '@/components/HelpTrigger';
+import ThemeTag from '@/components/ThemeTag';
 import { newsApi } from '@/api/news';
 import type { NewsArticle } from '@/types/news';
 import { useAIHelp } from '@/hooks/useAIHelp';
@@ -170,7 +171,7 @@ function CategoryBlock({ title, rows }: { title: string; rows: RowVm[] }): JSX.E
       key: 'region',
       width: 90,
       render: (r: string) =>
-        r === 'global' ? <Tag color="geekblue">全球</Tag> : <Tag color="blue">美国</Tag>,
+        r === 'global' ? <ThemeTag variant="neutral">全球</ThemeTag> : <ThemeTag variant="accent">美国</ThemeTag>,
     },
   ];
   return (
