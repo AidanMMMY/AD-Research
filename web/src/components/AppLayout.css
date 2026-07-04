@@ -125,6 +125,22 @@
   background: var(--bg-elevated);
 }
 
+/* ---- User menu: learning-mode row ---- */
+.app-layout__user-menu-mode {
+  cursor: default;
+}
+
+.app-layout__user-menu-mode-hint {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.app-layout__user-menu-mode-note {
+  font-size: 12px;
+  color: var(--text-tertiary);
+}
+
 /* ============================================================
    Footer — keep it tight under the page content
    ============================================================ */

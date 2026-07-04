@@ -699,13 +699,13 @@ export default function AppLayout() {
                         <div className="app-layout__user-menu-label">
                           <BulbOutlined /> 学习模式
                         </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <div className="app-layout__user-menu-mode-hint">
                           <Switch
                             size="small"
                             checked={learningMode}
                             onChange={(v) => setLearningMode(v)}
                           />
-                          <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>
+                          <span className="app-layout__user-menu-mode-note">
                             开启后每个数字旁解释含义
                           </span>
                         </div>
