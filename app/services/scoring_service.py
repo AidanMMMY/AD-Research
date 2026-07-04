@@ -65,6 +65,9 @@ class ScoringService:
     def __init__(self, db: Session):
         self.db = db
         self.calculator = ScoreCalculator()
+        # Populated by ``calculate_daily_scores`` after each run.
+        # Maps template_id → {category_bucket: [codes]}.
+        self.last_buckets_used: dict[int, dict[str, list[str]]] = {}
 
     # ------------------------------------------------------------------
     # Template CRUD
@@ -140,11 +143,20 @@ class ScoringService:
             return {}
 
         results: dict[int, int] = {}
+        buckets_by_template: dict[int, dict[str, list[str]]] = {}
         for template in templates:
-            count = self._calculate_scores_for_template(
+            count, buckets_used = self._calculate_scores_for_template(
                 template, indicators, trade_date
             )
             results[template.id] = count
+            buckets_by_template[template.id] = buckets_used
+
+        # Stash the most recent buckets mapping on the instance for
+        # diagnostic / API consumers. This is a side channel that does
+        # NOT affect any persisted schema — callers can read
+        # ``service.last_buckets_used`` after running
+        # ``calculate_daily_scores``.
+        self.last_buckets_used = buckets_by_template
 
         return results
 
@@ -153,13 +165,29 @@ class ScoringService:
         template: ScoreTemplate,
         indicators: list[ETFIndicator],
         trade_date: date,
-    ) -> int:
-        """Calculate and persist scores for a single template."""
+    ) -> tuple[int, dict[str, list[str]]]:
+        """Calculate and persist scores for a single template.
+
+        Returns ``(count, buckets_used)`` where ``buckets_used`` maps
+        each category bucket to the list of ETF codes ranked inside it.
+        Codes with no category mapping fall under the ``__unknown__``
+        key. This is metadata for the frontend / diagnostics and does
+        not change any persisted schema.
+        """
         template_weights = self._build_template_weights(template)
 
         # Convert ORM objects to plain dicts for the calculator.
         # Derive trend metrics that combine multiple raw indicators.
         indicator_dicts: list[dict[str, Any]] = []
+        codes = [ind.etf_code for ind in indicators if ind.etf_code]
+        # Look up categories once and pass them to the calculator so
+        # percentile ranking happens inside category buckets. Codes
+        # missing from ETFInfo fall into a __unknown__ bucket in the
+        # calculator (preserving the legacy behavior of "still ranked").
+        category_map = {
+            e.code: e.category
+            for e in self.db.query(ETFInfo).filter(ETFInfo.code.in_(codes)).all()
+        } if codes else {}
         for ind in indicators:
             d = {c.name: getattr(ind, c.name) for c in ind.__table__.columns}
             d["etf_code"] = ind.etf_code
@@ -173,8 +201,15 @@ class ScoringService:
                 d["ma_position"] = None
             indicator_dicts.append(d)
 
-        # Run scoring
-        scores = self.calculator.calculate_scores(indicator_dicts, template_weights)
+        # Run scoring (bucket-aware ranking is the default; pass
+        # enable_bucket_aware=False in callers to fall back to the
+        # legacy global ranking path).
+        scores = self.calculator.calculate_scores(
+            indicator_dicts,
+            template_weights,
+            category_map=category_map,
+            enable_bucket_aware=True,
+        )
         if not scores:
             return 0
 
@@ -206,11 +241,17 @@ class ScoringService:
                 "rank_category": category_rankings.get(code),
             })
 
+        # Build the buckets_used map for this template run.
+        buckets_used: dict[str, list[str]] = {}
+        for code in scores:
+            cat = category_map.get(code, "__unknown__")
+            buckets_used.setdefault(cat, []).append(code)
+
         # Bulk insert with UPSERT (PostgreSQL on_conflict_do_update)
         if score_records:
             self._upsert_scores(score_records)
 
-        return len(score_records)
+        return len(score_records), buckets_used
 
     def _upsert_scores(self, score_records: list[dict[str, Any]]) -> None:
         """Bulk insert ETFScore rows, updating on conflict.

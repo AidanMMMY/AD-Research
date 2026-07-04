@@ -1,9 +1,26 @@
 """Backtest engine core.
 
 Simulates trading based on strategy signals and calculates performance metrics.
+
+Supports configurable execution price models and friction regimes so that
+the engine can be calibrated per market:
+  - ``execution_price_model="open"`` (default): fills at signal-day OPEN,
+    avoiding look-ahead bias from using adjusted close on the same bar.
+  - ``execution_price_model="close"``: legacy behaviour using adj_close
+    on the signal bar. BASELINE ONLY — known to introduce look-ahead
+    bias. Kept for rollback / baseline comparison.
+  - ``execution_price_model="next_open"``: event-driven style — fills at
+    the NEXT session's OPEN. Most conservative.
+
+Friction model:
+  - ``market="cn_a"`` (default): A-share standard rates — stamp duty on
+    sell side only, commission + transfer fee both sides, with a ¥5
+    minimum commission.
+  - any other market: legacy symmetric commission + slippage.
 """
 
-from datetime import date
+from datetime import date, datetime
+from decimal import Decimal
 from typing import Any
 
 import numpy as np
@@ -11,6 +28,18 @@ import pandas as pd
 
 from app.data.repositories import price_repository
 from app.strategies.base import StrategyRegistry
+
+
+# ---------------------------------------------------------------------------
+# China A-share friction constants (standard retail rates, mid-2024).
+# ---------------------------------------------------------------------------
+STAMP_TAX_SELL = 0.0005    # 印花税：单边卖出 0.05%
+COMMISSION_RATE = 0.001    # 佣金：双边 0.1%
+TRANSFER_FEE = 0.00001     # 过户费：双边 0.001%
+COMMISSION_MIN = 5.0       # 最低佣金 ¥5
+
+VALID_EXECUTION_MODELS = {"open", "close", "next_open"}
+VALID_MARKETS = {"cn_a", "other"}
 
 
 def _load_bars(etf_code: str, start_date: date, end_date: date, db: Any) -> pd.DataFrame:
@@ -91,105 +120,150 @@ def get_strategy_signals(
     return strategy.generate_series(data)
 
 
+# ---------------------------------------------------------------------------
+# Friction helpers
+# ---------------------------------------------------------------------------
+
+
+def apply_cn_friction(
+    notional: Decimal,
+    action: str,
+    commission_min: float = COMMISSION_MIN,
+) -> Decimal:
+    """Compute A-share friction cost for a given notional and side.
+
+    Buy:  commission + transfer fee
+    Sell: commission + transfer fee + stamp tax (sell-side only)
+
+    A ¥5 minimum commission is applied per fill.
+    """
+    if action == "buy":
+        rate = COMMISSION_RATE + TRANSFER_FEE
+    elif action == "sell":
+        rate = COMMISSION_RATE + TRANSFER_FEE + STAMP_TAX_SELL
+    else:
+        raise ValueError(f"Unknown action: {action!r}")
+
+    fee = notional * Decimal(str(rate))
+    minimum = Decimal(str(commission_min))
+    return max(fee, minimum)
+
+
 def _calculate_transaction_cost(
     notional: float,
     commission_rate: float,
     slippage_rate: float,
+    action: str = "buy",
+    market: str = "other",
+    commission_min: float = COMMISSION_MIN,
 ) -> float:
     """Return the absolute transaction cost charged on a notional trade.
 
-    Costs are charged symmetrically on both BUY and SELL: every filled
-    trade pays ``notional * (commission_rate + slippage_rate)``.
-
-    On BUY the cash is reduced by ``notional + cost``; on SELL the cash
-    is increased by ``notional - cost``. This correctly accounts for the
-    bid-ask spread and round-trip fees instead of treating a single
-    price-multiplier as if it were a symmetric adjustment.
+    For ``market="cn_a"`` the A-share friction model applies (stamp tax
+    only on sell, transfer fee both sides, ¥5 minimum commission).
+    Otherwise the legacy symmetric commission + slippage model is used.
     """
+    if market == "cn_a":
+        return float(apply_cn_friction(
+            Decimal(str(notional)), action, commission_min
+        ))
+
     total_cost_rate = commission_rate + slippage_rate
     return notional * total_cost_rate
 
 
-def run_backtest(
-    etf_code: str,
-    strategy_type: str,
-    params: dict[str, Any],
-    start_date: date,
-    end_date: date,
-    initial_capital: float = 100000.0,
-    commission_rate: float = 0.001,
-    slippage_rate: float = 0.001,
-    position_size: float = 1.0,
-    risk_free_rate: float = 0.02,
-    db: Any | None = None,
-) -> BacktestResult:
-    """Run a backtest for a single ETF with a strategy.
+# ---------------------------------------------------------------------------
+# Execution price selection
+# ---------------------------------------------------------------------------
+
+
+def _execution_price(
+    df: pd.DataFrame,
+    i: int,
+    model: str,
+) -> float:
+    """Return the fill price for a signal at index ``i`` under ``model``.
 
     Args:
-        etf_code: ETF code to backtest.
-        strategy_type: Type of strategy (momentum/mean_reversion/rsi).
-        params: Strategy parameters.
-        start_date: Backtest start date.
-        end_date: Backtest end date.
-        initial_capital: Starting capital.
-        commission_rate: Per-trade commission rate (single side).
-        slippage_rate: Per-trade slippage rate (single side).
-        position_size: Position size ratio (0.0 - 1.0).
-        risk_free_rate: Annual risk-free rate used in Sharpe calculation.
-        db: Optional SQLAlchemy session. If provided, reads adjusted bars
-            from instrument_daily_bar; otherwise falls back to AkshareProvider.
+        df: Bars DataFrame sorted by trade_date, with columns
+            ``open`` and ``adj_close``.
+        i: Index of the bar where the signal was generated.
+        model: One of ``"open"``, ``"close"``, ``"next_open"``.
 
-    Returns:
-        BacktestResult with NAV, trades, metrics, and signals.
+    Notes:
+        - ``"open"`` uses the signal bar's OPEN. This is the default
+          and the realistic choice — you can decide at the open based
+          on yesterday's close, but you cannot know today's close in
+          advance.
+        - ``"close"`` uses the signal bar's ADJ_CLOSE. BASELINE ONLY:
+          this is a look-ahead bias and is kept only for rollback.
+        - ``"next_open"`` uses the NEXT session's OPEN. The cleanest
+          for event-driven strategies.
+    """
+    if model not in VALID_EXECUTION_MODELS:
+        raise ValueError(
+            f"Unknown execution_price_model {model!r}; "
+            f"expected one of {sorted(VALID_EXECUTION_MODELS)}"
+        )
+
+    if model == "close":
+        return float(df.iloc[i]["adj_close"])
+
+    if model == "open":
+        return float(df.iloc[i]["open"])
+
+    # model == "next_open"
+    if i + 1 < len(df):
+        return float(df.iloc[i + 1]["open"])
+    # No next bar — fall back to last available price (end-of-data).
+    return float(df.iloc[i]["adj_close"])
+
+
+# ---------------------------------------------------------------------------
+# Simulation core
+# ---------------------------------------------------------------------------
+
+
+def _simulate(
+    df: pd.DataFrame,
+    signals: pd.Series,
+    *,
+    initial_capital: float,
+    commission_rate: float,
+    slippage_rate: float,
+    position_size: float,
+    holding_period: int,
+    execution_price_model: str,
+    market: str,
+    apply_friction: bool,
+) -> BacktestResult:
+    """Run the per-bar simulation loop. Pure function over ``df``.
+
+    Extracted so that tests can drive the engine with an in-memory
+    DataFrame without needing a database session.
     """
     result = BacktestResult()
 
-    # Clamp position size to a sensible range
-    position_size = max(0.0, min(1.0, position_size))
-
-    # Fetch historical data
-    try:
-        df = _load_bars(etf_code, start_date, end_date, db)
-    except Exception:
-        # Structured "no data" result — callers can distinguish this from
-        # a clean backtest that simply produced zero trades by checking
-        # for metrics["error"] == BacktestResult.NO_DATA_ERROR.
-        result.metrics = {"error": BacktestResult.NO_DATA_ERROR}
-        return result
-
-    if df.empty:
-        # Structured "no data" result — callers can distinguish this from
-        # a clean backtest that simply produced zero trades by checking
-        # for metrics["error"] == BacktestResult.NO_DATA_ERROR.
-        result.metrics = {"error": BacktestResult.NO_DATA_ERROR}
-        return result
-
-    df = df.sort_values("trade_date").reset_index(drop=True)
-    df["trade_date"] = pd.to_datetime(df["trade_date"]).dt.date
-
-    # Generate signals using split/dividend adjusted close
-    signal_df = df.copy()
-    signal_df["close"] = signal_df["adj_close"]
-    signals = get_strategy_signals(signal_df, strategy_type, params)
-
-    # Simulation
     capital = initial_capital
     position = 0.0  # number of shares held
-    holding_period = params.get("holding_period", 20)
     days_held = 0
     current_trade: Trade | None = None
 
     for i, row in df.iterrows():
         trade_date = row["trade_date"]
-        price = row["adj_close"]  # execution uses adjusted close to stay consistent with signals
+        # Use the configured execution-price model for signal fills.
+        # ``price`` is also used to mark daily NAV to market.
+        price = _execution_price(df, i, execution_price_model)
         signal = signals.iloc[i]
 
-        # Record daily NAV using current market price
-        nav = capital + position * price
+        # Record daily NAV using current market price (always adj_close
+        # for the mark-to-market, regardless of execution model).
+        mtm_price = float(row["adj_close"])
+        nav = capital + position * mtm_price
         result.daily_nav.append({
             "date": trade_date.isoformat(),
             "nav": nav,
-            "price": price,
+            "price": mtm_price,
             "signal": int(signal),
         })
 
@@ -197,14 +271,17 @@ def run_backtest(
         if current_trade is None:
             # No position - check for entry signal
             if signal == 1 and capital > 0:
-                # BUY: deploy only position_size of available cash.
-                # Apply commission + slippage on the notional trade size:
-                # cash decreases by notional + cost so the cost is paid
-                # out of the deployed cash, reducing shares acquired.
                 cash_to_deploy = capital * position_size
-                cost = _calculate_transaction_cost(
-                    cash_to_deploy, commission_rate, slippage_rate
-                )
+                if apply_friction:
+                    cost = _calculate_transaction_cost(
+                        cash_to_deploy,
+                        commission_rate,
+                        slippage_rate,
+                        action="buy",
+                        market=market,
+                    )
+                else:
+                    cost = 0.0
                 net_cash_to_invest = cash_to_deploy - cost
                 remaining_cash = capital - cash_to_deploy
                 position = net_cash_to_invest / price
@@ -234,13 +311,17 @@ def run_backtest(
                 should_exit = True  # Max holding period reached
 
             if should_exit:
-                # SELL: close position at current price, then subtract
-                # transaction cost from sale proceeds. Use position as
-                # notional since shares are sold at `price`.
                 notional = position * price
-                cost = _calculate_transaction_cost(
-                    notional, commission_rate, slippage_rate
-                )
+                if apply_friction:
+                    cost = _calculate_transaction_cost(
+                        notional,
+                        commission_rate,
+                        slippage_rate,
+                        action="sell",
+                        market=market,
+                    )
+                else:
+                    cost = 0.0
                 sale_proceeds = notional - cost
                 pnl_pct = (price - current_trade.entry_price) / current_trade.entry_price
                 trade_pnl = sale_proceeds - (current_trade.entry_price * position)
@@ -269,9 +350,16 @@ def run_backtest(
         last_price = df["adj_close"].iloc[-1]
         last_date = df["trade_date"].iloc[-1]
         notional = position * last_price
-        cost = _calculate_transaction_cost(
-            notional, commission_rate, slippage_rate
-        )
+        if apply_friction:
+            cost = _calculate_transaction_cost(
+                notional,
+                commission_rate,
+                slippage_rate,
+                action="sell",
+                market=market,
+            )
+        else:
+            cost = 0.0
         sale_proceeds = notional - cost
         pnl_pct = (last_price - current_trade.entry_price) / current_trade.entry_price
         trade_pnl = sale_proceeds - (current_trade.entry_price * position)
@@ -300,7 +388,7 @@ def run_backtest(
     if len(daily_returns) > 1 and daily_returns.std() > 0:
         annual_return = daily_returns.mean() * 252
         annual_vol = daily_returns.std() * np.sqrt(252)
-        sharpe = (annual_return - risk_free_rate) / annual_vol
+        sharpe = (annual_return - risk_free_rate_default()) / annual_vol
     else:
         sharpe = 0
 
@@ -335,7 +423,327 @@ def run_backtest(
         "commission_rate": commission_rate,
         "slippage_rate": slippage_rate,
         "position_size": position_size,
-        "risk_free_rate": risk_free_rate,
+        "risk_free_rate": risk_free_rate_default(),
+        "execution_price_model": execution_price_model,
+        "market": market,
+        "apply_friction": apply_friction,
     }
 
     return result
+
+
+def risk_free_rate_default() -> float:
+    """Default risk-free rate used when callers don't supply one."""
+    return 0.02
+
+
+# ---------------------------------------------------------------------------
+# Public API
+# ---------------------------------------------------------------------------
+
+
+def run_backtest(
+    etf_code: str,
+    strategy_type: str,
+    params: dict[str, Any],
+    start_date: date,
+    end_date: date,
+    initial_capital: float = 100000.0,
+    commission_rate: float = 0.001,
+    slippage_rate: float = 0.001,
+    position_size: float = 1.0,
+    risk_free_rate: float = 0.02,
+    db: Any | None = None,
+    execution_price_model: str = "open",
+    market: str = "cn_a",
+    apply_friction: bool = True,
+) -> BacktestResult:
+    """Run a backtest for a single ETF with a strategy.
+
+    Args:
+        etf_code: ETF code to backtest.
+        strategy_type: Type of strategy (momentum/mean_reversion/rsi).
+        params: Strategy parameters.
+        start_date: Backtest start date.
+        end_date: Backtest end date.
+        initial_capital: Starting capital.
+        commission_rate: Per-trade commission rate (single side).
+        slippage_rate: Per-trade slippage rate (single side).
+            Ignored when ``market="cn_a"`` and ``apply_friction=True``.
+        position_size: Position size ratio (0.0 - 1.0).
+        risk_free_rate: Annual risk-free rate used in Sharpe calculation.
+        db: Optional SQLAlchemy session. If provided, reads adjusted bars
+            from instrument_daily_bar; otherwise falls back to AkshareProvider.
+        execution_price_model: ``"open"`` (default, signal-day OPEN),
+            ``"close"`` (BASELINE — adj_close, has look-ahead bias), or
+            ``"next_open"`` (next session OPEN).
+        market: ``"cn_a"`` (default, A-share friction) or ``"other"``
+            (legacy symmetric commission + slippage).
+        apply_friction: When True (default), apply commission /
+            stamp tax / transfer fees per ``market`` rules.
+
+    Returns:
+        BacktestResult with NAV, trades, metrics, and signals.
+    """
+    if execution_price_model not in VALID_EXECUTION_MODELS:
+        raise ValueError(
+            f"Unknown execution_price_model {execution_price_model!r}; "
+            f"expected one of {sorted(VALID_EXECUTION_MODELS)}"
+        )
+    if market not in VALID_MARKETS:
+        raise ValueError(
+            f"Unknown market {market!r}; "
+            f"expected one of {sorted(VALID_MARKETS)}"
+        )
+
+    result = BacktestResult()
+
+    # Clamp position size to a sensible range
+    position_size = max(0.0, min(1.0, position_size))
+
+    # Fetch historical data
+    try:
+        df = _load_bars(etf_code, start_date, end_date, db)
+    except Exception:
+        # Structured "no data" result — callers can distinguish this from
+        # a clean backtest that simply produced zero trades by checking
+        # for metrics["error"] == BacktestResult.NO_DATA_ERROR.
+        result.metrics = {"error": BacktestResult.NO_DATA_ERROR}
+        return result
+
+    if df.empty:
+        # Structured "no data" result — callers can distinguish this from
+        # a clean backtest that simply produced zero trades by checking
+        # for metrics["error"] == BacktestResult.NO_DATA_ERROR.
+        result.metrics = {"error": BacktestResult.NO_DATA_ERROR}
+        return result
+
+    df = df.sort_values("trade_date").reset_index(drop=True)
+    df["trade_date"] = pd.to_datetime(df["trade_date"]).dt.date
+
+    # Generate signals using split/dividend adjusted close
+    signal_df = df.copy()
+    signal_df["close"] = signal_df["adj_close"]
+    signals = get_strategy_signals(signal_df, strategy_type, params)
+
+    result = _simulate(
+        df,
+        signals,
+        initial_capital=initial_capital,
+        commission_rate=commission_rate,
+        slippage_rate=slippage_rate,
+        position_size=position_size,
+        holding_period=params.get("holding_period", 20),
+        execution_price_model=execution_price_model,
+        market=market,
+        apply_friction=apply_friction,
+    )
+
+    return result
+
+
+# ---------------------------------------------------------------------------
+# Walk-forward (out-of-sample) evaluation
+# ---------------------------------------------------------------------------
+
+
+def run_walk_forward(
+    backtest_config: dict[str, Any],
+    *,
+    train_pct: float = 0.6,
+    n_folds: int = 3,
+    db: Any | None = None,
+) -> dict[str, Any]:
+    """Run a walk-forward evaluation across multiple out-of-sample folds.
+
+    Each fold partitions the full date range into a contiguous train
+    segment (used to pick parameters / fit the strategy) and a contiguous
+    test segment (used to score out-of-sample performance). The split is
+    *anchored on dates*, not on bar count, so train/test boundaries stay
+    stable across re-runs.
+
+    Args:
+        backtest_config: Dict of keyword arguments forwarded to
+            ``run_backtest`` (``etf_code``, ``strategy_type``, ``params``,
+            ``start_date``, ``end_date``, ...). ``start_date`` and
+            ``end_date`` may be ``date`` objects or ISO strings.
+        train_pct: Fraction of the date range used for training
+            (default 0.6 → 60% train / 40% test per fold).
+        n_folds: Number of rolling folds. Default 3.
+        db: Optional SQLAlchemy session passed through to the engine.
+
+    Returns:
+        Dict with:
+          - ``folds``: list of per-fold results, each containing
+            ``train_start``, ``train_end``, ``test_start``, ``test_end``,
+            ``train_metrics``, ``test_metrics``, ``ic``.
+          - ``test_metrics_overall``: aggregated test-set metrics.
+          - ``ic_per_fold``: list of per-fold information coefficients.
+
+    Notes:
+        This is a new entry point and does NOT modify ``run_backtest``.
+        Callers (e.g. an admin UI or offline research notebook) can use
+        it to get an honest out-of-sample estimate without changing
+        the existing backtest API surface.
+    """
+    if n_folds < 1:
+        raise ValueError("n_folds must be >= 1")
+    if not (0 < train_pct < 1):
+        raise ValueError("train_pct must be in (0, 1)")
+
+    start = _coerce_date(backtest_config.get("start_date"))
+    end = _coerce_date(backtest_config.get("end_date"))
+    if start is None or end is None or end <= start:
+        raise ValueError(
+            "run_walk_forward requires valid start_date and end_date "
+            "with end_date > start_date"
+        )
+
+    total_days = (end - start).days
+    train_days = int(total_days * train_pct)
+    if train_days < 1:
+        raise ValueError("train_pct too small for the given date range")
+
+    # We slide the test window forward across the date range so that
+    # each fold's TEST segment is contiguous and non-overlapping with
+    # the others (anchored partition).
+    test_pool = total_days - train_days
+    if test_pool < n_folds:
+        # Not enough data for the requested number of folds; cap it.
+        n_folds = max(1, test_pool)
+    if n_folds < 1:
+        # train_pct leaves no test room at all — return an empty result.
+        return {
+            "folds": [],
+            "test_metrics_overall": {},
+            "ic_per_fold": [],
+        }
+
+    fold_len = test_pool // n_folds
+
+    folds: list[dict[str, Any]] = []
+    ic_per_fold: list[float | None] = []
+
+    for k in range(n_folds):
+        train_start = start
+        train_end = start + pd.Timedelta(days=train_days).to_pytimedelta()
+        test_start = train_end + pd.Timedelta(days=1).to_pytimedelta()
+        # Last fold absorbs any leftover days.
+        test_end = (
+            test_start + pd.Timedelta(days=fold_len - 1).to_pytimedelta()
+            if k < n_folds - 1
+            else end
+        )
+
+        train_cfg = dict(backtest_config)
+        train_cfg["start_date"] = train_start
+        train_cfg["end_date"] = train_end
+        train_result = run_backtest(db=db, **train_cfg)
+
+        test_cfg = dict(backtest_config)
+        test_cfg["start_date"] = test_start
+        test_cfg["end_date"] = test_end
+        test_result = run_backtest(db=db, **test_cfg)
+
+        ic = _compute_ic(test_result, train_result)
+        ic_per_fold.append(ic)
+
+        folds.append({
+            "fold_index": k,
+            "train_start": train_start.isoformat(),
+            "train_end": train_end.isoformat(),
+            "test_start": test_start.isoformat(),
+            "test_end": test_end.isoformat(),
+            "train_metrics": train_result.metrics,
+            "test_metrics": test_result.metrics,
+            "ic": ic,
+        })
+
+    return {
+        "folds": folds,
+        "test_metrics_overall": _aggregate_test_metrics(folds),
+        "ic_per_fold": ic_per_fold,
+    }
+
+
+def _coerce_date(value: Any) -> date | None:
+    """Best-effort coerce ``value`` into a ``date`` for partitioning."""
+    if value is None:
+        return None
+    if isinstance(value, date) and not isinstance(value, datetime):
+        return value
+    if isinstance(value, datetime):
+        return value.date()
+    if isinstance(value, str):
+        try:
+            return date.fromisoformat(value)
+        except ValueError:
+            return None
+    return None
+
+
+def _compute_ic(test_result: BacktestResult, train_result: BacktestResult) -> float | None:
+    """Information coefficient proxy for a fold.
+
+    Defined as the Pearson correlation between the test-window daily
+    returns of the strategy and the (lagged) signal strength. Returns
+    ``None`` when the fold does not have enough observations to
+    compute a correlation meaningfully.
+    """
+    if test_result.signals is None or len(test_result.signals) < 3:
+        return None
+    if test_result.daily_nav is None or len(test_result.daily_nav) < 3:
+        return None
+
+    nav_series = pd.Series(
+        [d["nav"] for d in test_result.daily_nav],
+        dtype=float,
+    )
+    daily_returns = nav_series.pct_change().dropna()
+
+    signals_by_date = {
+        s["date"]: abs(float(s.get("signal_strength", 0)))
+        for s in test_result.signals
+    }
+    sig_strength = pd.Series(
+        [
+            signals_by_date.get(d["date"], 0.0)
+            for d in test_result.daily_nav[1:]  # align with returns
+        ],
+        dtype=float,
+    )
+
+    if len(sig_strength) != len(daily_returns):
+        # Misalignment — fail soft with None rather than crashing.
+        return None
+    if sig_strength.std() == 0 or daily_returns.std() == 0:
+        return None
+
+    corr = float(np.corrcoef(sig_strength.to_numpy(), daily_returns.to_numpy())[0, 1])
+    if np.isnan(corr):
+        return None
+    return round(corr, 4)
+
+
+def _aggregate_test_metrics(folds: list[dict[str, Any]]) -> dict[str, Any]:
+    """Average key metrics across folds' test segments."""
+    keys = [
+        "total_return",
+        "annualized_return",
+        "max_drawdown",
+        "sharpe_ratio",
+        "win_rate",
+        "trade_count",
+    ]
+    agg: dict[str, Any] = {}
+    for k in keys:
+        values = [
+            f["test_metrics"][k]
+            for f in folds
+            if "error" not in f["test_metrics"] and k in f["test_metrics"]
+        ]
+        if values:
+            agg[f"avg_{k}"] = round(float(np.mean(values)), 2)
+            agg[f"min_{k}"] = round(float(np.min(values)), 2)
+            agg[f"max_{k}"] = round(float(np.max(values)), 2)
+    return agg

@@ -6,7 +6,7 @@ from typing import Any
 from sqlalchemy.orm import Session
 
 from app.models.etl import BacktestResult
-from app.services.backtest_engine import run_backtest
+from app.services.backtest_engine import run_backtest, run_walk_forward
 
 
 class BacktestService:
@@ -142,3 +142,58 @@ class BacktestService:
             "config_snapshot": r.config_snapshot,
             "created_at": r.created_at.isoformat() if r.created_at else None,
         }
+
+    # ------------------------------------------------------------------
+    # Walk-forward evaluation
+    # ------------------------------------------------------------------
+
+    def run_walk_forward(
+        self,
+        strategy_id: int,
+        etf_code: str,
+        strategy_type: str,
+        params: dict[str, Any],
+        start_date: date,
+        end_date: date,
+        train_pct: float = 0.6,
+        n_folds: int = 3,
+        initial_capital: float = 100000.0,
+        commission_rate: float = 0.001,
+        slippage_rate: float = 0.001,
+        position_size: float = 1.0,
+        risk_free_rate: float = 0.02,
+        execution_price_model: str = "open",
+        market: str = "cn_a",
+        apply_friction: bool = True,
+    ) -> dict[str, Any]:
+        """Internal entry point for walk-forward evaluation.
+
+        Forwards into ``app.services.backtest_engine.run_walk_forward``.
+        No HTTP endpoint exists yet — this is wired up at the service
+        layer so a future frontend / admin agent can plug it in without
+        any engine-level changes.
+        """
+        cfg = {
+            "etf_code": etf_code,
+            "strategy_type": strategy_type,
+            "params": params,
+            "start_date": start_date,
+            "end_date": end_date,
+            "initial_capital": initial_capital,
+            "commission_rate": commission_rate,
+            "slippage_rate": slippage_rate,
+            "position_size": position_size,
+            "risk_free_rate": risk_free_rate,
+            "execution_price_model": execution_price_model,
+            "market": market,
+            "apply_friction": apply_friction,
+        }
+        result = run_walk_forward(
+            cfg,
+            train_pct=train_pct,
+            n_folds=n_folds,
+            db=self.db,
+        )
+        # Stamp with the requesting strategy id for traceability.
+        result["strategy_id"] = strategy_id
+        return result
