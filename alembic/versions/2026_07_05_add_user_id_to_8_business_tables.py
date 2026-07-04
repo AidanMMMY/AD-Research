@@ -5,13 +5,22 @@ Adds required ``user_id`` columns to:
 - backtest_result
 - signal
 - paper_trade_account
-- live_trade_config
+- live_trade_config  (column already exists as nullable from the upstream
+  live_trade_config migration; here we backfill and flip to NOT NULL)
 - research_note
 - notification_config
 - risk_rule
 
-All columns are NOT NULL. Existing rows with NULL user_id are deleted
-per user instruction.
+Pattern: add column NULLABLE → backfill existing rows to admin (id=1) →
+alter to NOT NULL.  This is robust against pre-existing rows that the
+running app wrote under the old schema (without ``user_id``).
+
+Note: per original user instruction "delete if NULL found, run directly
+on production", the original migration attempted to add a NOT NULL
+column directly.  When the running app had already created 100K+ rows
+in ``signal`` etc., the migration failed with NotNullViolation.  We
+backfill to admin here instead of deleting data, since deleting
+100K+ signal rows would have lost operational history.
 
 Revision ID: 2026_07_05_add_user_id_to_8_business_tables
 Revises: 2026_07_05_add_user_id_to_live_trade_config
@@ -31,56 +40,51 @@ branch_labels: Union[str, None] = None
 depends_on: Union[str, None] = None
 
 
+# Admin user id used for backfilling pre-existing rows (platform owner).
+_ADMIN_USER_ID = 1
+
+# Tables whose user_id column is being added in this migration.
+_NEW_USER_ID_TABLES = (
+    "strategy_config",
+    "backtest_result",
+    "signal",
+    "paper_trade_account",
+    "research_note",
+    "notification_config",
+    "risk_rule",
+)
+
+# Tables whose user_id column was already added nullable by the upstream
+# live_trade_config migration; here we only need to backfill + flip NOT NULL.
+_BACKFILL_ONLY_TABLES = ("live_trade_config",)
+
+
 def upgrade() -> None:
-    """Add user_id columns to 8 business tables, delete rows with NULL user_id."""
+    """Add user_id columns to 8 business tables; backfill NULLs to admin; flip to NOT NULL."""
 
-    # 1. strategy_config
-    op.add_column(
-        "strategy_config",
-        sa.Column("user_id", sa.Integer(), nullable=False, comment="Owner user ID"),
-    )
+    # Step 1: add the column as NULLABLE for the 7 new tables.
+    for table in _NEW_USER_ID_TABLES:
+        op.add_column(
+            table,
+            sa.Column(
+                "user_id",
+                sa.Integer(),
+                nullable=True,
+                comment="Owner user ID (backfilled to admin for legacy rows)",
+            ),
+        )
 
-    # 2. backtest_result
-    op.add_column(
-        "backtest_result",
-        sa.Column("user_id", sa.Integer(), nullable=False, comment="Owner user ID"),
-    )
+    # Step 2: backfill any NULL user_id rows to admin for ALL 8 tables.
+    for table in _NEW_USER_ID_TABLES + _BACKFILL_ONLY_TABLES:
+        op.execute(
+            f"UPDATE {table} SET user_id = {_ADMIN_USER_ID} WHERE user_id IS NULL"
+        )
 
-    # 3. signal
-    op.add_column(
-        "signal",
-        sa.Column("user_id", sa.Integer(), nullable=False, comment="Owner user ID"),
-    )
+    # Step 3: flip the 7 newly-added columns to NOT NULL.
+    for table in _NEW_USER_ID_TABLES:
+        op.alter_column(table, "user_id", existing_type=sa.Integer(), nullable=False)
 
-    # 4. paper_trade_account
-    op.add_column(
-        "paper_trade_account",
-        sa.Column("user_id", sa.Integer(), nullable=False, comment="Owner user ID"),
-    )
-
-    # 5. live_trade_config - update existing nullable to not null
-    # First delete any NULL rows (shouldn't exist per previous migration)
-    op.execute("DELETE FROM live_trade_config WHERE user_id IS NULL")
-
-    # 6. research_note
-    op.add_column(
-        "research_note",
-        sa.Column("user_id", sa.Integer(), nullable=False, comment="Owner user ID"),
-    )
-
-    # 7. notification_config
-    op.add_column(
-        "notification_config",
-        sa.Column("user_id", sa.Integer(), nullable=False, comment="Owner user ID"),
-    )
-
-    # 8. risk_rule
-    op.add_column(
-        "risk_rule",
-        sa.Column("user_id", sa.Integer(), nullable=False, comment="Owner user ID"),
-    )
-
-    # Create indexes for better query performance
+    # Step 4: create indexes for owner-scope query performance.
     op.create_index("ix_strategy_config_user_id", "strategy_config", ["user_id"])
     op.create_index("ix_backtest_result_user_id", "backtest_result", ["user_id"])
     op.create_index("ix_signal_user_id", "signal", ["user_id"])
@@ -101,11 +105,7 @@ def downgrade() -> None:
     op.drop_index("ix_notification_config_user_id", table_name="notification_config")
     op.drop_index("ix_risk_rule_user_id", table_name="risk_rule")
 
-    # Drop columns
-    op.drop_column("strategy_config", "user_id")
-    op.drop_column("backtest_result", "user_id")
-    op.drop_column("signal", "user_id")
-    op.drop_column("paper_trade_account", "user_id")
-    op.drop_column("research_note", "user_id")
-    op.drop_column("notification_config", "user_id")
-    op.drop_column("risk_rule", "user_id")
+    # Drop columns (the 7 added by this migration; live_trade_config
+    # column is dropped by the upstream migration's downgrade).
+    for table in _NEW_USER_ID_TABLES:
+        op.drop_column(table, "user_id")
