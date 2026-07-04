@@ -40,73 +40,68 @@ export default function MarketScanner() {
         description="自动发现新增、退市、变更的标的，保持数据库与市场同步"
       />
 
-      <div className="phase5c-section">
-        <Panel
-          title="全市场扫描"
-          extra={
-            <Button type="primary" icon={<ReloadOutlined />} onClick={handleScan} loading={isScanning}>
-              立即扫描
-            </Button>
-          }
-        >
-          <p>
-            对比 akshare 最新标的列表与数据库，自动发现新增、退市、变更的标的。
-            定时任务：每周日凌晨 03:00 自动执行。
-          </p>
-        </Panel>
-      </div>
+      <Panel
+        className="ad-mb-5"
+        title="全市场扫描"
+        extra={
+          <Button type="primary" icon={<ReloadOutlined />} onClick={handleScan} loading={isScanning}>
+            立即扫描
+          </Button>
+        }
+      >
+        <p>
+          对比 akshare 最新标的列表与数据库，自动发现新增、退市、变更的标的。
+          定时任务：每周日凌晨 03:00 自动执行。
+        </p>
+      </Panel>
 
       {result && (
-        <div className="phase5c-section">
-          <Panel title={`扫描结果 - ${result.scan_date}`}>
-            {result.error ? (
-              <Alert type="error" message={result.error} />
-            ) : (
-              <div className="ad-metric-strip">
-                {[
-                  { title: '新增标的', items: result.new, render: (e: any) => `${e.name} (${e.market})` },
-                  { title: '退市标的', items: result.delisted, render: (e: any) => `${e.name} (${e.market})` },
-                  { title: '变更标的', items: result.changed, render: (e: any) => Object.entries(e.changes).map(([k, v]: [string, any]) => `${k}: ${v.old} → ${v.new}`).join(', ') },
-                ].map((section) => (
-                  <div
-                    key={section.title}
-                    className="ad-metric-item"
-                  >
-                    <div className="ad-metric-item__label">
-                      {section.title}
-                    </div>
-                    <Descriptions column={1} size="small">
-                      {section.items.length > 0 ? section.items.map((e: any) => (
-                        <Descriptions.Item key={e.code} label={e.code}>
-                          {section.render(e)}
-                        </Descriptions.Item>
-                      )) : <Descriptions.Item>无</Descriptions.Item>}
-                    </Descriptions>
+        <Panel className="ad-mb-5" title={`扫描结果 - ${result.scan_date}`}>
+          {result.error ? (
+            <Alert type="error" message={result.error} />
+          ) : (
+            <div className="ad-metric-strip">
+              {[
+                { title: '新增标的', items: result.new, render: (e: any) => `${e.name} (${e.market})` },
+                { title: '退市标的', items: result.delisted, render: (e: any) => `${e.name} (${e.market})` },
+                { title: '变更标的', items: result.changed, render: (e: any) => Object.entries(e.changes).map(([k, v]: [string, any]) => `${k}: ${v.old} → ${v.new}`).join(', ') },
+              ].map((section) => (
+                <div
+                  key={section.title}
+                  className="ad-metric-item"
+                >
+                  <div className="ad-metric-item__label">
+                    {section.title}
                   </div>
-                ))}
-              </div>
-            )}
-          </Panel>
-        </div>
+                  <Descriptions column={1} size="small">
+                    {section.items.length > 0 ? section.items.map((e: any) => (
+                      <Descriptions.Item key={e.code} label={e.code}>
+                        {section.render(e)}
+                      </Descriptions.Item>
+                    )) : <Descriptions.Item>无</Descriptions.Item>}
+                  </Descriptions>
+                </div>
+              ))}
+            </div>
+          )}
+        </Panel>
       )}
 
-      <div className="phase5c-section">
-        <Panel title="扫描历史">
-          <FilterToolbar total={logs.length}>{null}</FilterToolbar>
-          <div className="ad-density-dense ad-table-scroll ad-table-sticky">
-            <Table
-              dataSource={logs}
-              columns={columns}
-              rowKey="id"
-              size="small"
-              scroll={{ x: 'max-content' }}
-              pagination={{ pageSize: 10 }}
-              loading={isLoading}
-              locale={{ emptyText: <EmptyState title="暂无扫描历史" /> }}
-            />
-          </div>
-        </Panel>
-      </div>
+      <Panel title="扫描历史">
+        <FilterToolbar total={logs.length}>{null}</FilterToolbar>
+        <div className="ad-density-dense ad-table-scroll ad-table-sticky">
+          <Table
+            dataSource={logs}
+            columns={columns}
+            rowKey="id"
+            size="small"
+            scroll={{ x: 'max-content' }}
+            pagination={{ pageSize: 10 }}
+            loading={isLoading}
+            locale={{ emptyText: <EmptyState title="暂无扫描历史" /> }}
+          />
+        </div>
+      </Panel>
     </PageShell>
   );
 }

@@ -9,6 +9,7 @@ import { useSettingsStore } from '@/stores/settings';
 import PageShell from '@/components/PageShell';
 import ResponsiveGrid from '@/components/ResponsiveGrid';
 import Panel from '@/components/Panel';
+import SectionHeading from '@/components/SectionHeading';
 import HelpTrigger from '@/components/HelpTrigger';
 import HelpPopover from '@/components/HelpPopover';
 import InstrumentCodeTag from '@/components/InstrumentCodeTag';
@@ -56,6 +57,10 @@ export default function ScoreRanking() {
   };
 
   const rowSize = density === 'dense' ? 'small' : density === 'spacious' ? 'large' : 'middle';
+  const tableWrapClass =
+    density === 'dense'
+      ? 'ad-density-dense ad-table-scroll ad-table-sticky'
+      : 'ad-table-scroll ad-table-sticky';
 
   const columns = [
     {
@@ -125,48 +130,51 @@ export default function ScoreRanking() {
           {/* Top-ranked instrument summary strip — gives the page a
               single visual anchor before the table. */}
           {scoresData?.items && scoresData.items.length > 0 && (
-            <ResponsiveGrid cols={4} gap="md" className="dashboard-section">
-              <Panel variant="default" className="score-summary-card">
-                <div className="score-summary-card__label">榜首标的</div>
-                <InstrumentCodeTag code={scoresData.items[0].etf_code} name={scoresData.items[0].etf_name} name_zh={scoresData.items[0].name_zh} />
-                <div className="tabular-nums score-summary-card__value score-summary-card__value--spaced">
-                  {scoresData.items[0].composite_score?.toFixed(1) ?? '—'}
-                </div>
-              </Panel>
+            <section className="dashboard-section">
+              <SectionHeading title="评分总览" />
+              <ResponsiveGrid cols={4} gap="md">
+                <Panel variant="default" className="score-summary-card">
+                  <div className="score-summary-card__label">榜首标的</div>
+                  <InstrumentCodeTag code={scoresData.items[0].etf_code} name={scoresData.items[0].etf_name} name_zh={scoresData.items[0].name_zh} />
+                  <div className="tabular-nums score-summary-card__value score-summary-card__value--spaced">
+                    {scoresData.items[0].composite_score?.toFixed(1) ?? '—'}
+                  </div>
+                </Panel>
 
-              <Panel variant="default" className="score-summary-card">
-                <div className="score-summary-card__label">使用模板</div>
-                <div className="score-summary-card__value score-summary-card__value--name">
-                  {activeTemplate?.name ?? '默认'}
-                </div>
-                <div className="score-summary-card__sub">
-                  {activeTemplate ? `${Object.keys(activeTemplate.weights ?? {}).length} 个维度` : '系统内置'}
-                </div>
-              </Panel>
+                <Panel variant="default" className="score-summary-card">
+                  <div className="score-summary-card__label">使用模板</div>
+                  <div className="score-summary-card__value score-summary-card__value--name">
+                    {activeTemplate?.name ?? '默认'}
+                  </div>
+                  <div className="score-summary-card__sub">
+                    {activeTemplate ? `${Object.keys(activeTemplate.weights ?? {}).length} 个维度` : '系统内置'}
+                  </div>
+                </Panel>
 
-              <Panel variant="default" className="score-summary-card">
-                <div className="score-summary-card__label">排名数量</div>
-                <div className="tabular-nums score-summary-card__value">
-                  {scoresData.items.length}
-                </div>
-                <div className="score-summary-card__sub">
-                  当前页 Top {scoresData.items.length}
-                </div>
-              </Panel>
+                <Panel variant="default" className="score-summary-card">
+                  <div className="score-summary-card__label">排名数量</div>
+                  <div className="tabular-nums score-summary-card__value">
+                    {scoresData.items.length}
+                  </div>
+                  <div className="score-summary-card__sub">
+                    当前页 Top {scoresData.items.length}
+                  </div>
+                </Panel>
 
-              <Panel variant="default" className="score-summary-card">
-                <div className="score-summary-card__label">榜首收益得分</div>
-                <div className="tabular-nums score-summary-card__value">
-                  {scoresData.items[0].score_return?.toFixed(1) ?? '—'}
-                </div>
-                <div className="score-summary-card__sub">
-                  满分 100
-                </div>
-              </Panel>
-            </ResponsiveGrid>
+                <Panel variant="default" className="score-summary-card">
+                  <div className="score-summary-card__label">榜首收益得分</div>
+                  <div className="tabular-nums score-summary-card__value">
+                    {scoresData.items[0].score_return?.toFixed(1) ?? '—'}
+                  </div>
+                  <div className="score-summary-card__sub">
+                    满分 100
+                  </div>
+                </Panel>
+              </ResponsiveGrid>
+            </section>
           )}
 
-          <Panel variant="default" className="ad-mb-5">
+          <Panel variant="default" padding="none" className="ad-mb-5">
             <Tabs
               activeKey={String(templateId || templates?.find((t) => t.is_default)?.id || '')}
               onChange={(key) => setTemplateId(Number(key))}
@@ -175,9 +183,11 @@ export default function ScoreRanking() {
             />
           </Panel>
 
+          <SectionHeading title={`综合评分 Top ${scoresData?.items.length || 0}`} />
+
           <Panel
             variant="default"
-            title={`综合评分 Top ${scoresData?.items.length || 0}`}
+            padding="none"
             extra={
               <HelpTrigger
                 tooltip="AI 解释评分逻辑"
@@ -185,17 +195,19 @@ export default function ScoreRanking() {
               />
             }
           >
-            <Table
-              dataSource={scoresData?.items || []}
-              columns={columns}
-              rowKey="etf_code"
-              size={rowSize as any}
-              scroll={{ x: 'max-content' }}
-              pagination={false}
-              onRow={(record) => ({
-                onClick: () => navigate(`/instruments/${record.etf_code}`),
-              })}
-            />
+            <div className={tableWrapClass}>
+              <Table
+                dataSource={scoresData?.items || []}
+                columns={columns}
+                rowKey="etf_code"
+                size={rowSize as any}
+                scroll={{ x: 'max-content' }}
+                pagination={false}
+                onRow={(record) => ({
+                  onClick: () => navigate(`/instruments/${record.etf_code}`),
+                })}
+              />
+            </div>
           </Panel>
         </>
       )}

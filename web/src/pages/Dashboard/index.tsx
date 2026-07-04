@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Table, List, Skeleton, Tag, Badge, Tooltip, Space } from 'antd';
+import { Table, List, Skeleton, Tooltip } from 'antd';
 import {
   ArrowUpOutlined,
   ArrowDownOutlined,
@@ -31,6 +31,7 @@ import {
 import { newsApi } from '@/api/news';
 import { useMacroLatest } from '@/api/macro';
 import PageShell from '@/components/PageShell';
+import PageHeader from '@/components/PageHeader';
 import ResponsiveGrid from '@/components/ResponsiveGrid';
 import SectionHeading from '@/components/SectionHeading';
 import StatCard from '@/components/StatCard';
@@ -96,23 +97,21 @@ function NewsRow({
       <div className="dashboard-news-row__title">{article.title}</div>
       <div className="dashboard-news-row__tags">
         {article.symbols.slice(0, 4).map((s) => (
-          <Tag key={`${s.symbol}-${s.match_type}`} className="dashboard-news-row__tag">
+          <ThemeTag key={`${s.symbol}-${s.match_type}`} className="dashboard-news-row__tag">
             <InstrumentCodeTag code={s.symbol} name={s.name ?? undefined} name_zh={s.name_zh} />
-          </Tag>
+          </ThemeTag>
         ))}
         <span className="dashboard-news-row__spacer" />
         {article.sentiment_label && (
-          <Badge
-            color={SENTIMENT_COLORS[article.sentiment_label]}
-            text={
-              <span
-                className="dashboard-news-row__sentiment"
-                style={{ color: SENTIMENT_COLORS[article.sentiment_label] }}
-              >
-                {SENTIMENT_LABELS[article.sentiment_label]}
-              </span>
-            }
-          />
+          <Tooltip title={SENTIMENT_LABELS[article.sentiment_label]}>
+            <span
+              aria-label={SENTIMENT_LABELS[article.sentiment_label]}
+              className="dashboard-news-row__sentiment ad-rise-fall-sentiment"
+              style={{ color: SENTIMENT_COLORS[article.sentiment_label] }}
+            >
+              {SENTIMENT_LABELS[article.sentiment_label]}
+            </span>
+          </Tooltip>
         )}
       </div>
     </div>
@@ -200,24 +199,25 @@ function GlobalSnapshot() {
           {GLOBAL_TILES.map((tile) => {
             const entry = lookup.get(tile.code);
             return (
-              <div
-                key={tile.code}
-                role="button"
-                tabIndex={0}
-                onClick={() => navigate('/global')}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    navigate('/global');
-                  }
-                }}
-                className="dashboard-index-card dashboard-index-card--clickable"
-              >
               <Panel
+                key={tile.code}
                 variant="default"
                 padding="md"
                 className="dashboard-index-card"
               >
+                <div
+                  className="dashboard-index-card__cover"
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => navigate('/global')}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      navigate('/global');
+                    }
+                  }}
+                  aria-label={`查看 ${tile.title}`}
+                />
                 <div className="dashboard-index-card__header">
                   <span className="dashboard-index-card__code">{tile.code}</span>
                 </div>
@@ -239,7 +239,6 @@ function GlobalSnapshot() {
                   ) : null}
                 </div>
               </Panel>
-              </div>
             );
           })}
         </ResponsiveGrid>
@@ -366,130 +365,40 @@ export default function Dashboard() {
   return (
     <PageShell maxWidth="full" className="dashboard-shell">
       <TickerTape limit={20} />
-      <header className="masthead" data-onboard="welcome-dashboard">
-        <div className="masthead-dateline">
-          AD-RESEARCH ·{' '}
-          {new Date().toLocaleDateString('zh-CN', {
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric',
-          })}{' '}
-          · A股全市场综述
-        </div>
-        <h1 className="display-heading masthead-title">首页看板</h1>
-        <p className="masthead-kicker">
-          综合评分 · 收藏 · 标的池概览 · {new Date().toISOString().slice(0, 10)}
-          {' · '}
-          <DataFreshnessHint at={statsUpdatedAt} />
-        </p>
-      </header>
 
-      {/* M26: consolidated quick-actions bar. K14 (learning) + K16
-          (portfolio) + M20 (knowledge graph) chips are merged into one
-          bar with inline dividers, replacing the previous "3 stacked
-          chip rows" layout that dominated the page top. */}
-      <section className="dashboard-quick-actions" aria-label="快捷入口">
-        <Space size={[8, 8]} wrap className="dashboard-quick-actions__row">
-          <span className="dashboard-quick-actions__group">
-            <span className="dashboard-quick-actions__label">新手教程</span>
-            <ThemeTag
-              variant="accent"
-              icon={<BookOutlined />}
-              className="dashboard-learning-chip"
-              onClick={() => navigate('/learning')}
-            >
-              总览
-            </ThemeTag>
-            <ThemeTag
-              variant="accent"
-              icon={<LineChartOutlined />}
-              className="dashboard-learning-chip"
-              onClick={() => navigate('/learning')}
-            >
-              如何看估值
-            </ThemeTag>
-            <ThemeTag
-              variant="neutral"
-              icon={<ExperimentOutlined />}
-              className="dashboard-learning-chip"
-              onClick={() => navigate('/learning')}
-            >
-              如何做回测
-            </ThemeTag>
+      <PageHeader
+        eyebrow={`AD-RESEARCH · ${new Date().toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric' })} · A股全市场综述`}
+        title="首页看板"
+        description={
+          <span>
+            综合评分 · 收藏 · 标的池概览 · {new Date().toISOString().slice(0, 10)}
+            {' · '}
+            <DataFreshnessHint at={statsUpdatedAt} />
           </span>
-
-          <span className="dashboard-quick-actions__divider" aria-hidden="true" />
-
-          <span className="dashboard-quick-actions__group">
-            <span className="dashboard-quick-actions__label">组合中心</span>
-            <ThemeTag
-              variant="warning"
-              icon={<WalletOutlined />}
-              className="dashboard-learning-chip"
-              onClick={() => navigate('/portfolio')}
-              title="查看投资组合中心（模拟账户 / 真实账户 / 目标 Pool diff 聚合）"
-            >
-              我的组合
-            </ThemeTag>
-            <ThemeTag
-              variant="neutral"
-              icon={<DollarOutlined />}
-              className="dashboard-learning-chip"
-              onClick={() => navigate('/paper-trading')}
-              title="新建或切换模拟账户"
-            >
-              模拟账户
-            </ThemeTag>
-            <ThemeTag
-              variant="neutral"
-              icon={<ThunderboltOutlined />}
-              className="dashboard-learning-chip"
-              onClick={() => navigate('/live-trading')}
-              title="查看真实交易配置与持仓（Binance testnet/mainnet）"
-            >
-              真实账户
-            </ThemeTag>
-            <ThemeTag
-              variant="default"
-              icon={<AppstoreOutlined />}
-              className="dashboard-learning-chip"
-              onClick={() => navigate('/pools')}
-              title="管理中长期目标组合（与组合中心不同：这里是目标权重，不是实际持仓）"
-            >
-              标的池
-            </ThemeTag>
+        }
+        extra={
+          <span className="dashboard-shell__quickbar">
+            <ThemeTag variant="accent" icon={<BookOutlined />} onClick={() => navigate('/learning')}>教程总览</ThemeTag>
+            <ThemeTag variant="accent" icon={<LineChartOutlined />} onClick={() => navigate('/learning')}>看估值</ThemeTag>
+            <ThemeTag variant="neutral" icon={<ExperimentOutlined />} onClick={() => navigate('/learning')}>做回测</ThemeTag>
+            <ThemeTag variant="warning" icon={<WalletOutlined />} onClick={() => navigate('/portfolio')}>组合中心</ThemeTag>
+            <ThemeTag variant="neutral" icon={<DollarOutlined />} onClick={() => navigate('/paper-trading')}>模拟账户</ThemeTag>
+            <ThemeTag variant="neutral" icon={<ThunderboltOutlined />} onClick={() => navigate('/live-trading')}>真实账户</ThemeTag>
+            <ThemeTag variant="default" icon={<AppstoreOutlined />} onClick={() => navigate('/pools')}>标的池</ThemeTag>
+            <ThemeTag variant="warning" icon={<PartitionOutlined />} onClick={() => navigate('/learning?panel=terms')}>知识图谱</ThemeTag>
+            {learnStats.total > 0 && (
+              <span className="dashboard-shell__learn-meta">
+                本周已学 {learnStats.total} 个术语
+              </span>
+            )}
           </span>
+        }
+      />
 
-          <span className="dashboard-quick-actions__divider" aria-hidden="true" />
-
-          <span className="dashboard-quick-actions__group">
-            <span className="dashboard-quick-actions__label">知识图谱</span>
-            <ThemeTag
-              variant="warning"
-              icon={<PartitionOutlined />}
-              className="dashboard-learning-chip"
-              onClick={() => navigate('/learning?panel=terms')}
-              title="查看全部术语词条（M20 速查面板入口；P2 升级为图谱视图）"
-            >
-              查看知识图谱
-            </ThemeTag>
-          </span>
-
-          {learnStats.total > 0 && (
-            <span className="dashboard-quick-actions__meta">
-              本周已学 {learnStats.total} 个术语
-            </span>
-          )}
-        </Space>
-      </section>
-
-      {/* M26: KPI strip + DailyLesson side-by-side. On desktop the four
-          StatCards occupy the left 4-col strip while DailyLesson fills
-          the right column; on tablet/mobile they stack. This replaces
-          the previous full-width-lesson + below-row KPI flow that left
-          DailyLesson stranded above the metrics. */}
-      <section className="dashboard-section dashboard-kpi-row">
-        <ResponsiveGrid cols={4} gap="md" className="dashboard-kpi-row__stats">
+      {/* KPI strip — 4 StatCards */}
+      <section className="dashboard-section">
+        <SectionHeading title="核心指标" />
+        <ResponsiveGrid cols={4} gap="md">
           {[
             { title: '标的总数', value: stats?.etf_count ?? 0, suffix: undefined, onClick: () => navigate('/instruments'), term: 'etf' },
             { title: '评分覆盖', value: stats?.score_count ?? 0, suffix: `/ ${stats?.etf_count ?? 0}`, onClick: () => navigate('/scores'), term: 'composite_score' },
@@ -507,18 +416,14 @@ export default function Dashboard() {
             />
           ))}
         </ResponsiveGrid>
-        <div className="dashboard-kpi-row__lesson">
-          {learnStats.total > 0 && (
-            <span
-              className="daily-lesson-week-badge"
-              data-testid="dashboard-week-learned-badge"
-              aria-label={`本周已学 ${learnStats.thisWeekApprox} 个术语`}
-            >
-              本周已学 {learnStats.thisWeekApprox} 个术语
-            </span>
-          )}
+      </section>
+
+      {/* Daily lesson — full width row, kept simple */}
+      <section className="dashboard-section">
+        <SectionHeading title="今日一课" />
+        <Panel variant="default" padding="md">
           <DailyLesson />
-        </div>
+        </Panel>
       </section>
 
       {/* ── Global markets snapshot (P0: 2026-07-04) ─────────────────── */}
@@ -571,187 +476,192 @@ export default function Dashboard() {
         </ResponsiveGrid>
       </section>
 
-      {/* News row: hot news + favorites news */}
-      <ResponsiveGrid cols={2} gap="lg" className="dashboard-section">
-        <Panel
-          variant="default"
-          title={
-            <span>
-              <FireOutlined className="ad-icon-accent" />
-              今日热点
-            </span>
-          }
-          extra={
-            <span className="panel-extra-link" onClick={() => navigate('/news')}>
-              查看全部 →
-            </span>
-          }
-        >
-          {hotNewsLoading ? (
-            <Skeleton active paragraph={{ rows: 5 }} />
-          ) : !hotNews || hotNews.length === 0 ? (
-            <EmptyState title="暂无重要资讯" />
-          ) : (
-            hotNews.map((a) => (
-              <NewsRow key={a.id} article={a} onOpen={(id) => navigate(`/news/${id}`)} />
-            ))
-          )}
-        </Panel>
-
-        <Panel
-          variant="default"
-          title={
-            <span>
-              <ReadOutlined className="ad-icon-leading" />
-              自选股动态
-            </span>
-          }
-          extra={
-            favCount > 0 ? (
+      {/* News row: hot news + favorites news — responsive 2 col, stacks < 1024px */}
+      <section className="dashboard-section dashboard-news-section">
+        <ResponsiveGrid cols={2} gap="lg">
+          <Panel
+            variant="default"
+            title={
+              <span>
+                <FireOutlined className="ad-icon-accent" />
+                今日热点
+              </span>
+            }
+            extra={
               <span className="panel-extra-link" onClick={() => navigate('/news')}>
                 查看全部 →
               </span>
-            ) : undefined
-          }
-        >
-          {favNewsLoading ? (
-            <Skeleton active paragraph={{ rows: 5 }} />
-          ) : favCount === 0 ? (
-            <EmptyState
-              title="暂无收藏的标的"
-              description="收藏自选股后，这里会汇总相关新闻"
-            />
-          ) : !favoritesNews || favoritesNews.length === 0 ? (
-            <EmptyState title="暂无自选股相关资讯" />
-          ) : (
-            favoritesNews.map((a) => (
-              <NewsRow key={a.id} article={a} onOpen={(id) => navigate(`/news/${id}`)} />
-            ))
-          )}
-        </Panel>
-      </ResponsiveGrid>
+            }
+          >
+            {hotNewsLoading ? (
+              <Skeleton active paragraph={{ rows: 5 }} />
+            ) : !hotNews || hotNews.length === 0 ? (
+              <EmptyState title="暂无重要资讯" />
+            ) : (
+              hotNews.map((a) => (
+                <NewsRow key={a.id} article={a} onOpen={(id) => navigate(`/news/${id}`)} />
+              ))
+            )}
+          </Panel>
 
-      <ResponsiveGrid cols={2} gap="lg" className="dashboard-score-grid dashboard-section">
-        <Panel
-          variant="default"
-          title="综合评分 Top 10"
-          extra={
-            <span className="panel-extra-link" onClick={() => navigate('/scores')}>
-              查看全部 →
-            </span>
-          }
-        >
-          <Table
-            dataSource={scoresData?.items || []}
-            columns={scoreColumns}
-            rowKey="etf_code"
-            size="small"
-            scroll={{ x: 'max-content' }}
-            pagination={false}
-            showHeader={false}
-            onRow={(record) => ({ onClick: () => navigate(`/instruments/${record.etf_code}`) })}
-          />
-        </Panel>
-
-        <div className="dashboard-side-stack">
           <Panel
             variant="default"
-            title="我的收藏"
+            title={
+              <span>
+                <ReadOutlined className="ad-icon-leading" />
+                自选股动态
+              </span>
+            }
             extra={
               favCount > 0 ? (
-                <span className="panel-extra-link" onClick={() => navigate('/instruments')}>
+                <span className="panel-extra-link" onClick={() => navigate('/news')}>
                   查看全部 →
                 </span>
               ) : undefined
             }
           >
-            {favLoading ? (
-              <LoadingBlock size="md" label="加载中…" />
+            {favNewsLoading ? (
+              <Skeleton active paragraph={{ rows: 5 }} />
             ) : favCount === 0 ? (
               <EmptyState
                 title="暂无收藏的标的"
-                description="在详情页点击收藏，这里会显示你关注的标的"
+                description="收藏自选股后，这里会汇总相关新闻"
               />
+            ) : !favoritesNews || favoritesNews.length === 0 ? (
+              <EmptyState title="暂无自选股相关资讯" />
             ) : (
-              <List
-                dataSource={favorites}
-                renderItem={(item: any) => (
-                  <List.Item
-                    onClick={() => navigate(`/instruments/${item.etf_code}`)}
-                    className="dashboard-favorite-item"
-                  >
-                    <List.Item.Meta
-                      title={
-                        <div className="dashboard-favorite-item__title">
-                          <InstrumentCodeTag code={item.etf_code} name={item.etf_name} />
-                        </div>
-                      }
-                      description={
-                        <div className="dashboard-favorite-item__desc">
-                          <span>{item.category}</span>
-                          <span className="ad-text-muted">|</span>
-                          <span>{item.market}</span>
-                        </div>
-                      }
-                    />
-                  </List.Item>
-                )}
-              />
+              favoritesNews.map((a) => (
+                <NewsRow key={a.id} article={a} onOpen={(id) => navigate(`/news/${id}`)} />
+              ))
             )}
           </Panel>
+        </ResponsiveGrid>
+      </section>
 
+      {/* Scores + side stack */}
+      <section className="dashboard-section dashboard-score-grid">
+        <ResponsiveGrid cols={2} gap="lg">
           <Panel
             variant="default"
-            title="我的标的池"
+            title="综合评分 Top 10"
             extra={
-              (pools?.length || 0) > 0 ? (
-                <span className="panel-extra-link" onClick={() => navigate('/pools')}>
-                  查看全部 →
-                </span>
-              ) : undefined
+              <span className="panel-extra-link" onClick={() => navigate('/scores')}>
+                查看全部 →
+              </span>
             }
           >
-            {poolsLoading ? (
-              <LoadingBlock size="md" label="加载中…" />
-            ) : (pools?.length || 0) === 0 ? (
-              <EmptyState
-                title="暂无标的池"
-                description="在标的池管理中创建池并添加标的，这里会汇总展示"
-              />
-            ) : (
-              <List
-                dataSource={pools?.slice(0, 6) || []}
-                renderItem={(pool: any) => (
-                  <List.Item
-                    onClick={() => navigate(`/pools/${pool.id}`)}
-                    className="dashboard-pool-item"
-                  >
-                    <List.Item.Meta
-                      title={
-                        <div className="dashboard-pool-item__title">
-                          <FolderOpenOutlined className="ad-icon-accent" />
-                          <span className="dashboard-pool-item__name">{pool.name}</span>
-                        </div>
-                      }
-                      description={
-                        <div className="dashboard-pool-item__desc">
-                          <span>{pool.members?.length || 0} 只标的</span>
-                          {pool.description && (
-                            <>
-                              <span className="ad-text-muted">|</span>
-                              <span>{pool.description}</span>
-                            </>
-                          )}
-                        </div>
-                      }
-                    />
-                  </List.Item>
-                )}
-              />
-            )}
+            <Table
+              dataSource={scoresData?.items || []}
+              columns={scoreColumns}
+              rowKey="etf_code"
+              size="small"
+              scroll={{ x: 'max-content' }}
+              pagination={false}
+              showHeader={false}
+              onRow={(record) => ({ onClick: () => navigate(`/instruments/${record.etf_code}`) })}
+            />
           </Panel>
-        </div>
-      </ResponsiveGrid>
+
+          <div className="dashboard-side-stack">
+            <Panel
+              variant="default"
+              title="我的收藏"
+              extra={
+                favCount > 0 ? (
+                  <span className="panel-extra-link" onClick={() => navigate('/instruments')}>
+                    查看全部 →
+                  </span>
+                ) : undefined
+              }
+            >
+              {favLoading ? (
+                <LoadingBlock size="md" label="加载中…" />
+              ) : favCount === 0 ? (
+                <EmptyState
+                  title="暂无收藏的标的"
+                  description="在详情页点击收藏，这里会显示你关注的标的"
+                />
+              ) : (
+                <List
+                  dataSource={favorites}
+                  renderItem={(item: any) => (
+                    <List.Item
+                      onClick={() => navigate(`/instruments/${item.etf_code}`)}
+                      className="dashboard-favorite-item"
+                    >
+                      <List.Item.Meta
+                        title={
+                          <div className="dashboard-favorite-item__title">
+                            <InstrumentCodeTag code={item.etf_code} name={item.etf_name} />
+                          </div>
+                        }
+                        description={
+                          <div className="dashboard-favorite-item__desc">
+                            <span>{item.category}</span>
+                            <span className="ad-text-muted">|</span>
+                            <span>{item.market}</span>
+                          </div>
+                        }
+                      />
+                    </List.Item>
+                  )}
+                />
+              )}
+            </Panel>
+
+            <Panel
+              variant="default"
+              title="我的标的池"
+              extra={
+                (pools?.length || 0) > 0 ? (
+                  <span className="panel-extra-link" onClick={() => navigate('/pools')}>
+                    查看全部 →
+                  </span>
+                ) : undefined
+              }
+            >
+              {poolsLoading ? (
+                <LoadingBlock size="md" label="加载中…" />
+              ) : (pools?.length || 0) === 0 ? (
+                <EmptyState
+                  title="暂无标的池"
+                  description="在标的池管理中创建池并添加标的，这里会汇总展示"
+                />
+              ) : (
+                <List
+                  dataSource={pools?.slice(0, 6) || []}
+                  renderItem={(pool: any) => (
+                    <List.Item
+                      onClick={() => navigate(`/pools/${pool.id}`)}
+                      className="dashboard-pool-item"
+                    >
+                      <List.Item.Meta
+                        title={
+                          <div className="dashboard-pool-item__title">
+                            <FolderOpenOutlined className="ad-icon-accent" />
+                            <span className="dashboard-pool-item__name">{pool.name}</span>
+                          </div>
+                        }
+                        description={
+                          <div className="dashboard-pool-item__desc">
+                            <span>{pool.members?.length || 0} 只标的</span>
+                            {pool.description && (
+                              <>
+                                <span className="ad-text-muted">|</span>
+                                <span>{pool.description}</span>
+                              </>
+                            )}
+                          </div>
+                        }
+                      />
+                    </List.Item>
+                  )}
+                />
+              )}
+            </Panel>
+          </div>
+        </ResponsiveGrid>
+      </section>
     </PageShell>
   );
 }

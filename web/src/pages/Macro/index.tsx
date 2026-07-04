@@ -19,6 +19,7 @@ import type { EChartsOption } from 'echarts';
 import PageShell from '@/components/PageShell';
 import PageHeader from '@/components/PageHeader';
 import Panel from '@/components/Panel';
+import SectionHeading from '@/components/SectionHeading';
 import StatCard from '@/components/StatCard';
 import EmptyState from '@/components/EmptyState';
 import FilterToolbar from '@/components/FilterToolbar';
@@ -270,45 +271,41 @@ export default function Macro() {
       />
 
       {error && (
-        <div className="phase5c-section">
-          <Alert
-            type="error"
-            showIcon
-            message="加载宏观指标失败"
-            description={(error as Error).message}
-          />
-        </div>
+        <Alert
+          type="error"
+          showIcon
+          message="加载宏观指标失败"
+          description={(error as Error).message}
+          className="ad-mb-5"
+        />
       )}
 
       {/* ── Headline KPI strip ── */}
+      <SectionHeading title="头条指标" />
       {headlineLoading ? (
-        <div className="phase5c-section">
-          <Row gutter={[16, 16]}>
-            {HEADLINE_CODES[region]?.map((code) => (
-              <Col xs={12} md={8} lg={4} key={code}>
-                <Skeleton active paragraph={{ rows: 2 }} />
-              </Col>
-            ))}
-          </Row>
-        </div>
+        <Row gutter={[16, 16]} className="ad-mb-5">
+          {HEADLINE_CODES[region]?.map((code) => (
+            <Col xs={12} md={8} lg={4} key={code}>
+              <Skeleton active paragraph={{ rows: 2 }} />
+            </Col>
+          ))}
+        </Row>
       ) : headline.length > 0 ? (
-        <div className="phase5c-section">
-          <Row gutter={[16, 16]}>
-            {headline.map((item) => (
-              <Col xs={12} md={8} lg={Math.max(4, 24 / headline.length)} key={item.code}>
-                <StatCard
-                  title={
-                    MACRO_TERM_KEY_MAP[item.code] ? (
-                      <HelpPopover termKey={MACRO_TERM_KEY_MAP[item.code]} mode={mode}>{item.name_zh}</HelpPopover>
-                    ) : item.name_zh
-                  }
-                  value={formatValue(item.value, item.unit)}
-                  suffix={item.period ? `${item.period}` : undefined}
-                />
-              </Col>
-            ))}
-          </Row>
-        </div>
+        <Row gutter={[16, 16]} className="ad-mb-5">
+          {headline.map((item) => (
+            <Col xs={12} md={8} lg={Math.max(4, 24 / headline.length)} key={item.code}>
+              <StatCard
+                title={
+                  MACRO_TERM_KEY_MAP[item.code] ? (
+                    <HelpPopover termKey={MACRO_TERM_KEY_MAP[item.code]} mode={mode}>{item.name_zh}</HelpPopover>
+                  ) : item.name_zh
+                }
+                value={formatValue(item.value, item.unit)}
+                suffix={item.period ? `${item.period}` : undefined}
+              />
+            </Col>
+          ))}
+        </Row>
       ) : null}
 
       <FilterToolbar total={indicators?.length}>
@@ -319,7 +316,7 @@ export default function Macro() {
             setSelectedCode(null);
           }}
           options={REGION_OPTIONS}
-          style={{ width: 180 }}
+          className="phase5c-select--xs"
         />
       </FilterToolbar>
 

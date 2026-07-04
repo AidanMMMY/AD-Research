@@ -95,7 +95,7 @@ export default function SignalDashboard() {
         <span
           role="link"
           tabIndex={0}
-          style={{ color: 'var(--color-primary)', cursor: 'pointer' }}
+          className="signal-dashboard__view-link"
           onClick={(e) => {
             e.stopPropagation();
             navigate(`/instruments/${record.etf_code}`);
@@ -182,7 +182,7 @@ export default function SignalDashboard() {
                     value={typeFilter}
                     onChange={setTypeFilter}
                     options={typeOptions}
-                    style={{ width: '100%' }}
+                    className="ad-w-full"
                   />
                 </Col>
                 <Col xs={12} sm={8} md={6}>
@@ -191,7 +191,7 @@ export default function SignalDashboard() {
                     onChange={setFamilyFilter}
                     options={familyOptions}
                     placeholder="按策略家族筛选"
-                    style={{ width: '100%' }}
+                    className="ad-w-full"
                   />
                 </Col>
               </Row>

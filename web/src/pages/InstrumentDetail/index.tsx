@@ -12,6 +12,7 @@ import KLineChart, { DEFAULT_OVERLAYS } from '@/components/KLineChart';
 import ScoreRadar from '@/components/ScoreRadar';
 import Panel from '@/components/Panel';
 import PageShell from '@/components/PageShell';
+import PageHeader from '@/components/PageHeader';
 import ResponsiveGrid from '@/components/ResponsiveGrid';
 import StatCard from '@/components/StatCard';
 import SectionHeading from '@/components/SectionHeading';
@@ -589,23 +590,11 @@ export default function InstrumentDetail() {
 
   return (
     <PageShell maxWidth="wide">
-      <div className="detail-hero">
-        <div className="detail-hero__row">
-          <div>
-            <div className="detail-hero__title">
-              <InstrumentCodeTag code={instrument.code} name={instrument.name} name_zh={instrument.name_zh} />
-              <h1 className="detail-hero__title-text">{instrument.name}</h1>
-              {instrument.instrument_type && (
-                <ThemeTag variant={instrument.instrument_type === 'ETF' ? 'default' : 'accent'}>
-                  {INSTRUMENT_TYPE_LABELS[instrument.instrument_type] || instrument.instrument_type}
-                </ThemeTag>
-              )}
-              {instrument.market && <ThemeTag>{instrument.market}</ThemeTag>}
-            </div>
-            <div className="detail-hero__meta">
-              {metaParts.join(' | ') || '—'}
-            </div>
-          </div>
+      <PageHeader
+        eyebrow="标的详情"
+        title={instrument.name}
+        description={metaParts.join(' · ') || '—'}
+        extra={
           <div className="detail-hero__actions">
             <Button
               type={isFavorite ? 'primary' : 'default'}
@@ -627,7 +616,17 @@ export default function InstrumentDetail() {
               </div>
             )}
           </div>
-        </div>
+        }
+      />
+
+      <div className="detail-hero">
+        <InstrumentCodeTag code={instrument.code} name={instrument.name} name_zh={instrument.name_zh} />
+        {instrument.instrument_type && (
+          <ThemeTag variant={instrument.instrument_type === 'ETF' ? 'default' : 'accent'}>
+            {INSTRUMENT_TYPE_LABELS[instrument.instrument_type] || instrument.instrument_type}
+          </ThemeTag>
+        )}
+        {instrument.market && <ThemeTag>{instrument.market}</ThemeTag>}
       </div>
 
       <SectionHeading title="核心指标" />

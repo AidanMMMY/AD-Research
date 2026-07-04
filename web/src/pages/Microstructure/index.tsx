@@ -148,70 +148,64 @@ export default function MicrostructurePage() {
         }
       />
 
-      <div className="phase5c-section">
-        <ResponsiveGrid cols={4} gap="md">
-          <Card>
-            <Statistic
-              title="最新龙虎榜条数"
-              value={summary?.lhb?.count ?? 0}
-              prefix={<FundOutlined />}
-              suffix={summary?.lhb?.trade_date ? ` (${summary.lhb.trade_date})` : ''}
-            />
-          </Card>
-          <Card>
-            <Statistic
-              title="北向净流入"
-              value={summary?.hsgt?.north_net ?? 0}
-              precision={0}
-              valueStyle={{
-                color: (summary?.hsgt?.north_net ?? 0) >= 0 ? '#cf1322' : '#3f8600',
-              }}
-              suffix="元"
-            />
-          </Card>
-          <Card>
-            <Statistic
-              title="融资余额合计"
-              value={summary?.margin?.total_financing_balance ?? 0}
-              precision={0}
-              suffix="元"
-            />
-          </Card>
-          <Card>
-            <Statistic
-              title="30 日内解禁"
-              value={summary?.release?.upcoming_30d_count ?? 0}
-              suffix="次"
-            />
-          </Card>
-        </ResponsiveGrid>
-      </div>
-
-      <div className="phase5c-section">
-        <FilterToolbar total={tabTotal}>
-          <Input
-            placeholder="证券代码 (000001.SZ)"
-            value={ticker ?? ''}
-            onChange={(e) => setTicker(e.target.value.toUpperCase() || undefined)}
-            style={{ width: 200 }}
-            prefix={<SearchOutlined />}
-            allowClear
+      <ResponsiveGrid cols={4} gap="md" className="ad-mb-5">
+        <Card>
+          <Statistic
+            title="最新龙虎榜条数"
+            value={summary?.lhb?.count ?? 0}
+            prefix={<FundOutlined />}
+            suffix={summary?.lhb?.trade_date ? ` (${summary.lhb.trade_date})` : ''}
           />
-          {tab === 'margin' && (
-            <Select
-              placeholder="交易所"
-              value={marginExchange}
-              onChange={(v) => setMarginExchange(v)}
-              allowClear
-              style={{ width: 120 }}
-              options={[
-                { value: 'SSE', label: 'SSE 上交所' },
-                { value: 'SZSE', label: 'SZSE 深交所' },
-              ]}
-            />
-          )}
-        </FilterToolbar>
-      </div>
+        </Card>
+        <Card>
+          <Statistic
+            title="北向净流入"
+            value={summary?.hsgt?.north_net ?? 0}
+            precision={0}
+            className={(summary?.hsgt?.north_net ?? 0) >= 0 ? 'detail-kpi-rise' : 'detail-kpi-fall'}
+            suffix="元"
+          />
+        </Card>
+        <Card>
+          <Statistic
+            title="融资余额合计"
+            value={summary?.margin?.total_financing_balance ?? 0}
+            precision={0}
+            suffix="元"
+          />
+        </Card>
+        <Card>
+          <Statistic
+            title="30 日内解禁"
+            value={summary?.release?.upcoming_30d_count ?? 0}
+            suffix="次"
+          />
+        </Card>
+      </ResponsiveGrid>
+
+      <FilterToolbar total={tabTotal} className="ad-mb-5">
+        <Input
+          placeholder="证券代码 (000001.SZ)"
+          value={ticker ?? ''}
+          onChange={(e) => setTicker(e.target.value.toUpperCase() || undefined)}
+          className="phase5c-input--md"
+          prefix={<SearchOutlined />}
+          allowClear
+        />
+        {tab === 'margin' && (
+          <Select
+            placeholder="交易所"
+            value={marginExchange}
+            onChange={(v) => setMarginExchange(v)}
+            allowClear
+            className="phase5c-select--xxs"
+            options={[
+              { value: 'SSE', label: 'SSE 上交所' },
+              { value: 'SZSE', label: 'SZSE 深交所' },
+            ]}
+          />
+        )}
+      </FilterToolbar>
 
       <Panel title="明细列表">
         <Tabs

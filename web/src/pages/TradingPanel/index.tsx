@@ -228,8 +228,13 @@ export default function TradingPanel() {
       key: 'upnl',
       render: (v: number | null) => {
         const p = fmtPnL(v);
+        const cls = p.color.includes('--color-rise')
+          ? 'paper-pnl--rise'
+          : p.color.includes('--color-fall')
+            ? 'paper-pnl--fall'
+            : 'paper-pnl--neutral';
         return (
-          <span className="font-mono ad-font-semibold" style={{ color: p.color }}>
+          <span className={`font-mono ad-font-semibold ${cls}`}>
             {p.text}
           </span>
         );

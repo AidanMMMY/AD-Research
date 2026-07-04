@@ -10,6 +10,8 @@ import { useDebounce } from '@/hooks/useDebounce';
 import PageShell from '@/components/PageShell';
 import PageHeader from '@/components/PageHeader';
 import FilterToolbar from '@/components/FilterToolbar';
+import Panel from '@/components/Panel';
+import SectionHeading from '@/components/SectionHeading';
 import EmptyState from '@/components/EmptyState';
 import InstrumentCodeTag from '@/components/InstrumentCodeTag';
 import ReturnTag from '@/components/ReturnTag';
@@ -53,6 +55,10 @@ export default function CryptoList() {
   });
 
   const rowSize = density === 'dense' ? 'small' : density === 'spacious' ? 'large' : 'middle';
+  const tableWrapClass =
+    density === 'dense'
+      ? 'ad-density-dense ad-table-scroll ad-table-sticky'
+      : 'ad-table-scroll ad-table-sticky';
 
   // The API enriches every row with the same last_updated timestamp.
   const backendTimestamp = data?.items?.[0]?.last_updated;
@@ -184,76 +190,84 @@ export default function CryptoList() {
         <div>24h 涨跌 = (当前价 - 24小时前价格) / 24小时前价格</div>
       </div>
 
-      {isMobile ? (
-        isLoading ? (
-          <Skeleton active paragraph={{ rows: 6 }} />
-        ) : (data?.items?.length ?? 0) === 0 ? (
-          <EmptyState
-            title="没有符合条件的币种"
-            description="尝试调整上方筛选条件，或清空搜索关键词查看全部"
-          />
-        ) : (
-          <List
-            dataSource={data?.items ?? []}
-            renderItem={(item: any) => (
-              <List.Item
-                onClick={() => navigate(`/crypto/${item.code}`)}
-                className="ad-cursor-pointer"
-              >
-                <List.Item.Meta
-                  title={<InstrumentCodeTag code={item.code} name={item.name} name_zh={item.name_zh} />}
-                  description={
-                    <span className="mobile-list-item__meta">
-                      {item.category} · {item.exchange}
-                    </span>
-                  }
-                />
-                <div className="crypto-list-item__right">
-                  <div className="tabular-nums crypto-list-item__price">
-                    {item.price != null ? `$${item.price < 0.01 ? item.price.toFixed(6) : item.price < 1 ? item.price.toFixed(4) : item.price.toFixed(2)}` : '-'}
-                  </div>
-                  <ReturnTag value={item.change_pct ?? item.change_24h} />
-                </div>
-              </List.Item>
-            )}
-            pagination={{
-              current: page,
-              pageSize: 50,
-              total: data?.total ?? 0,
-              onChange: setPage,
-              size: 'small',
-              className: 'mobile-list-pagination',
-            }}
-          />
-        )
-      ) : (
-        <Table
-          columns={columns}
-          dataSource={data?.items ?? []}
-          rowKey="code"
-          loading={isLoading}
-          size={rowSize as any}
-          scroll={{ x: 'max-content' }}
-          onRow={(record) => ({
-            onClick: () => navigate(`/crypto/${record.code}`),
-          })}
-          pagination={{
-            current: page,
-            pageSize: 50,
-            total: data?.total ?? 0,
-            onChange: setPage,
-            showSizeChanger: false,
-          }}
-          locale={{
-            emptyText: (
+      <SectionHeading title="加密货币列表" />
+
+      <Panel variant="default" padding="none">
+        {isMobile ? (
+          isLoading ? (
+            <Skeleton active paragraph={{ rows: 6 }} />
+          ) : (data?.items?.length ?? 0) === 0 ? (
+            <div className="ad-p-5">
               <EmptyState
                 title="没有符合条件的币种"
                 description="尝试调整上方筛选条件，或清空搜索关键词查看全部"
               />
-            ),
-          }}
-        />
-      )}
+            </div>
+          ) : (
+            <List
+              dataSource={data?.items ?? []}
+              renderItem={(item: any) => (
+                <List.Item
+                  onClick={() => navigate(`/crypto/${item.code}`)}
+                  className="ad-cursor-pointer"
+                >
+                  <List.Item.Meta
+                    title={<InstrumentCodeTag code={item.code} name={item.name} name_zh={item.name_zh} />}
+                    description={
+                      <span className="mobile-list-item__meta">
+                        {item.category} · {item.exchange}
+                      </span>
+                    }
+                  />
+                  <div className="crypto-list-item__right">
+                    <div className="tabular-nums crypto-list-item__price">
+                      {item.price != null ? `$${item.price < 0.01 ? item.price.toFixed(6) : item.price < 1 ? item.price.toFixed(4) : item.price.toFixed(2)}` : '-'}
+                    </div>
+                    <ReturnTag value={item.change_pct ?? item.change_24h} />
+                  </div>
+                </List.Item>
+              )}
+              pagination={{
+                current: page,
+                pageSize: 50,
+                total: data?.total ?? 0,
+                onChange: setPage,
+                size: 'small',
+                className: 'mobile-list-pagination',
+              }}
+            />
+          )
+        ) : (
+          <div className={tableWrapClass}>
+            <Table
+              columns={columns}
+              dataSource={data?.items ?? []}
+              rowKey="code"
+              loading={isLoading}
+              size={rowSize as any}
+              scroll={{ x: 'max-content' }}
+              onRow={(record) => ({
+                onClick: () => navigate(`/crypto/${record.code}`),
+              })}
+              pagination={{
+                current: page,
+                pageSize: 50,
+                total: data?.total ?? 0,
+                onChange: setPage,
+                showSizeChanger: false,
+              }}
+              locale={{
+                emptyText: (
+                  <EmptyState
+                    title="没有符合条件的币种"
+                    description="尝试调整上方筛选条件，或清空搜索关键词查看全部"
+                  />
+                ),
+              }}
+            />
+          </div>
+        )}
+      </Panel>
     </PageShell>
   );
 }

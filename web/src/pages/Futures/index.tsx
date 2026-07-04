@@ -46,22 +46,13 @@ function fmtVol(v: number | null | undefined): string {
   return n.toFixed(0);
 }
 
-function changeColor(pct: number | null | undefined): string {
-  if (pct === null || pct === undefined) return 'var(--text-tertiary)';
-  if (pct > 0) return 'var(--color-up, #ef232a)';
-  if (pct < 0) return 'var(--color-down, #14b143)';
-  return 'var(--text-secondary)';
-}
-
 function changeCell(pct: number | null | undefined) {
   if (pct === null || pct === undefined) return <span className="ad-text-tertiary">-</span>;
   const positive = pct >= 0;
   const Icon = positive ? CaretUpOutlined : CaretDownOutlined;
+  const cls = positive ? 'ad-change-cell ad-change-cell--rise' : 'ad-change-cell ad-change-cell--fall';
   return (
-    <span
-      className="tabular-nums font-mono ad-change-cell"
-      style={{ color: changeColor(pct) }}
-    >
+    <span className={`tabular-nums font-mono ${cls}`}>
       <Icon className="ad-icon-xs" />
       {Math.abs(pct).toFixed(2)}%
     </span>
@@ -182,7 +173,7 @@ function ProductSummary({ section }: ProductSummaryProps) {
           }
           suffix={
             best_performer ? (
-              <span className="ad-statistic-suffix" style={{ color: changeColor(best_performer.settle_change_pct) }}>
+              <span className={`ad-statistic-suffix ${(best_performer.settle_change_pct ?? 0) >= 0 ? 'detail-kpi-rise' : 'detail-kpi-fall'}`}>
                 {best_performer.settle_change_pct !== null && best_performer.settle_change_pct !== undefined
                   ? `${best_performer.settle_change_pct >= 0 ? '+' : ''}${best_performer.settle_change_pct.toFixed(2)}%`
                   : '-'}
@@ -208,7 +199,7 @@ function ProductSummary({ section }: ProductSummaryProps) {
           }
           suffix={
             worst_performer ? (
-              <span className="ad-statistic-suffix" style={{ color: changeColor(worst_performer.settle_change_pct) }}>
+              <span className={`ad-statistic-suffix ${(worst_performer.settle_change_pct ?? 0) >= 0 ? 'detail-kpi-rise' : 'detail-kpi-fall'}`}>
                 {worst_performer.settle_change_pct !== null && worst_performer.settle_change_pct !== undefined
                   ? `${worst_performer.settle_change_pct >= 0 ? '+' : ''}${worst_performer.settle_change_pct.toFixed(2)}%`
                   : '-'}
@@ -239,52 +230,48 @@ function ProductTab({ product, section }: TabContentProps) {
 
   return (
     <div>
-      <Panel title="板块概况">
+      <Panel title="板块概况" className="ad-mb-5">
         <ProductSummary section={section} />
       </Panel>
 
-      <div className="phase5c-section">
-        <Row gutter={16}>
-          <Col xs={24} md={12}>
-            <Card
-              size="small"
-              className="ad-table-card"
-              title={
-                <Space>
-                  <CaretUpOutlined className="ad-text-rise" />
-                  <span>涨幅榜 TOP 5</span>
-                </Space>
-              }
-            >
-              {gainers.length === 0 ? <EmptyState title="暂无数据" /> : <BarTable bars={gainers} />}
-            </Card>
-          </Col>
-          <Col xs={24} md={12}>
-            <Card
-              size="small"
-              className="ad-table-card"
-              title={
-                <Space>
-                  <CaretDownOutlined className="ad-text-fall" />
-                  <span>跌幅榜 TOP 5</span>
-                </Space>
-              }
-            >
-              {losers.length === 0 ? <EmptyState title="暂无数据" /> : <BarTable bars={losers} />}
-            </Card>
-          </Col>
-        </Row>
-      </div>
+      <Row gutter={16} className="ad-mb-5">
+        <Col xs={24} md={12}>
+          <Card
+            size="small"
+            className="ad-table-card"
+            title={
+              <Space>
+                <CaretUpOutlined className="ad-text-rise" />
+                <span>涨幅榜 TOP 5</span>
+              </Space>
+            }
+          >
+            {gainers.length === 0 ? <EmptyState title="暂无数据" /> : <BarTable bars={gainers} />}
+          </Card>
+        </Col>
+        <Col xs={24} md={12}>
+          <Card
+            size="small"
+            className="ad-table-card"
+            title={
+              <Space>
+                <CaretDownOutlined className="ad-text-fall" />
+                <span>跌幅榜 TOP 5</span>
+              </Space>
+            }
+          >
+            {losers.length === 0 ? <EmptyState title="暂无数据" /> : <BarTable bars={losers} />}
+          </Card>
+        </Col>
+      </Row>
 
-      <div className="phase5c-section">
-        <Panel title="全板块合约">
-          {bars.length === 0 ? (
-            <EmptyState title={`暂无${product}合约数据`} />
-          ) : (
-            <BarTable bars={bars} showHeader maxRows={20} />
-          )}
-        </Panel>
-      </div>
+      <Panel title="全板块合约" className="ad-mb-5">
+        {bars.length === 0 ? (
+          <EmptyState title={`暂无${product}合约数据`} />
+        ) : (
+          <BarTable bars={bars} showHeader maxRows={20} />
+        )}
+      </Panel>
     </div>
   );
 }
@@ -334,48 +321,44 @@ export default function Futures() {
         extra={<LastUpdated at={dataUpdatedAt} loading={dashLoading} />}
       />
 
-      <div className="phase5c-section">
-        <Panel title="市场概况">
-          <ResponsiveGrid cols={4} gap="md">
-            <StatCard
-              title="主力合约总数"
-              value={stats?.total_contracts ?? dashboard?.total_contracts ?? 0}
-              suffix="个"
-            />
-            <StatCard
-              title="K线记录总数"
-              value={stats?.total_bars ?? 0}
-              suffix="条"
-            />
-            <StatCard
-              title="数据日期"
-              value={latestDate ?? '-'}
-            />
-            <StatCard
-              title="领头羊 / 领跌"
-              value={
-                topGainer && topLoser ? (
-                  <span className="ad-flex ad-gap-2 ad-items-center">
-                    <InstrumentCodeTag code={topGainer.code} name={topGainer.name} />
-                    <span>/</span>
-                    <InstrumentCodeTag code={topLoser.code} name={topLoser.name} />
-                  </span>
-                ) : topGainer ? (
+      <Panel title="市场概况" className="ad-mb-5">
+        <ResponsiveGrid cols={4} gap="md">
+          <StatCard
+            title="主力合约总数"
+            value={stats?.total_contracts ?? dashboard?.total_contracts ?? 0}
+            suffix="个"
+          />
+          <StatCard
+            title="K线记录总数"
+            value={stats?.total_bars ?? 0}
+            suffix="条"
+          />
+          <StatCard
+            title="数据日期"
+            value={latestDate ?? '-'}
+          />
+          <StatCard
+            title="领头羊 / 领跌"
+            value={
+              topGainer && topLoser ? (
+                <span className="ad-flex ad-gap-2 ad-items-center">
                   <InstrumentCodeTag code={topGainer.code} name={topGainer.name} />
-                ) : topLoser ? (
+                  <span>/</span>
                   <InstrumentCodeTag code={topLoser.code} name={topLoser.name} />
-                ) : (
-                  '-'
-                )
-              }
-            />
-          </ResponsiveGrid>
-        </Panel>
-      </div>
+                </span>
+              ) : topGainer ? (
+                <InstrumentCodeTag code={topGainer.code} name={topGainer.name} />
+              ) : topLoser ? (
+                <InstrumentCodeTag code={topLoser.code} name={topLoser.name} />
+              ) : (
+                '-'
+              )
+            }
+          />
+        </ResponsiveGrid>
+      </Panel>
 
-      <div className="phase5c-section">
-        <Tabs items={tabItems} defaultActiveKey="金属" />
-      </div>
+      <Tabs items={tabItems} defaultActiveKey="金属" />
     </PageShell>
   );
 }

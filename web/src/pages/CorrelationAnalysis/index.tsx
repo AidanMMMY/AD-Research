@@ -62,7 +62,7 @@ export default function CorrelationAnalysis() {
                 value={window}
                 onChange={setWindow}
                 options={WINDOW_OPTIONS}
-                style={{ width: '100%' }}
+                className="ad-w-full"
               />
             </Col>
             <Col xs={24} md={6}>
@@ -80,7 +80,7 @@ export default function CorrelationAnalysis() {
                     </HelpPopover>
                   ),
                 }))}
-                style={{ width: '100%' }}
+                className="ad-w-full"
               />
             </Col>
           </Row>

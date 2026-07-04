@@ -10,6 +10,8 @@ import { useDebounce } from '@/hooks/useDebounce';
 import PageShell from '@/components/PageShell';
 import PageHeader from '@/components/PageHeader';
 import FilterToolbar from '@/components/FilterToolbar';
+import Panel from '@/components/Panel';
+import SectionHeading from '@/components/SectionHeading';
 import EmptyState from '@/components/EmptyState';
 import InstrumentCodeTag from '@/components/InstrumentCodeTag';
 import ThemeTag from '@/components/ThemeTag';
@@ -57,6 +59,10 @@ export default function StocksList() {
   }, [categories, category]);
 
   const rowSize = density === 'dense' ? 'small' : density === 'spacious' ? 'large' : 'middle';
+  const tableWrapClass =
+    density === 'dense'
+      ? 'ad-density-dense ad-table-scroll ad-table-sticky'
+      : 'ad-table-scroll ad-table-sticky';
 
   const columns = [
     {
@@ -139,14 +145,18 @@ export default function StocksList() {
         />
       </FilterToolbar>
 
-      <div>
+      <SectionHeading title="个股列表" />
+
+      <Panel variant="default" padding="none">
         {isLoading ? (
           <Skeleton active paragraph={{ rows: 10 }} />
         ) : (data?.items?.length || 0) === 0 ? (
-          <EmptyState
-            title="没有符合条件的个股"
-            description="尝试调整上方筛选条件，或清空搜索关键词查看全部个股"
-          />
+          <div className="ad-p-5">
+            <EmptyState
+              title="没有符合条件的个股"
+              description="尝试调整上方筛选条件，或清空搜索关键词查看全部个股"
+            />
+          </div>
         ) : isMobile ? (
           <List
             dataSource={data?.items || []}
@@ -180,26 +190,28 @@ export default function StocksList() {
             }}
           />
         ) : (
-          <Table
-            dataSource={data?.items || []}
-            columns={columns}
-            rowKey="code"
-            loading={isLoading}
-            size={rowSize as any}
-            scroll={{ x: 'max-content' }}
-            pagination={{
-              current: page,
-              pageSize: 50,
-              total: data?.total || 0,
-              onChange: setPage,
-              showSizeChanger: false,
-            }}
-            onRow={(record) => ({
-              onClick: () => navigate(`/stocks/${record.code}`),
-            })}
-          />
+          <div className={tableWrapClass}>
+            <Table
+              dataSource={data?.items || []}
+              columns={columns}
+              rowKey="code"
+              loading={isLoading}
+              size={rowSize as any}
+              scroll={{ x: 'max-content' }}
+              pagination={{
+                current: page,
+                pageSize: 50,
+                total: data?.total || 0,
+                onChange: setPage,
+                showSizeChanger: false,
+              }}
+              onRow={(record) => ({
+                onClick: () => navigate(`/stocks/${record.code}`),
+              })}
+            />
+          </div>
         )}
-      </div>
+      </Panel>
     </PageShell>
   );
 }

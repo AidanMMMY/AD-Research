@@ -12,6 +12,7 @@ import {
 import KLineChart, { DEFAULT_OVERLAYS } from '@/components/KLineChart';
 import Panel from '@/components/Panel';
 import PageShell from '@/components/PageShell';
+import PageHeader from '@/components/PageHeader';
 import ResponsiveGrid from '@/components/ResponsiveGrid';
 import StatCard from '@/components/StatCard';
 import SectionHeading from '@/components/SectionHeading';
@@ -335,22 +336,15 @@ export default function CryptoDetail() {
 
   return (
     <PageShell maxWidth="wide">
-      <div className="detail-hero">
-        <div className="detail-hero__row">
-          <div>
-            <div className="detail-hero__title">
-              <InstrumentCodeTag code={crypto.code} name={crypto.name} />
-              <h1 className="detail-hero__title-text">{crypto.name}</h1>
-              {crypto.category && <ThemeTag>{crypto.category}</ThemeTag>}
-              {crypto.market && <ThemeTag variant="accent">{crypto.market}</ThemeTag>}
-            </div>
-            <div className="detail-hero__meta">
-              {[
-                crypto.exchange && `交易所: ${crypto.exchange}`,
-                crypto.currency && `计价: ${crypto.currency}`,
-              ].filter(Boolean).join(' | ')}
-            </div>
-          </div>
+      <PageHeader
+        eyebrow="加密货币"
+        title={crypto.name}
+        description={[
+          crypto.exchange && `交易所: ${crypto.exchange}`,
+          crypto.currency && `计价: ${crypto.currency}`,
+          crypto.category,
+        ].filter(Boolean).join(' · ')}
+        extra={
           <div className="detail-hero__kpi">
             <div className="detail-hero__kpi-value tabular-nums">
               {crypto.price != null ? `$${formatPrice(crypto.price)}` : '-'}
@@ -359,7 +353,13 @@ export default function CryptoDetail() {
               <ReturnTag value={crypto.change_pct ?? crypto.change_24h} />
             </div>
           </div>
-        </div>
+        }
+      />
+
+      <div className="detail-hero">
+        <InstrumentCodeTag code={crypto.code} name={crypto.name} />
+        {crypto.category && <ThemeTag>{crypto.category}</ThemeTag>}
+        {crypto.market && <ThemeTag variant="accent">{crypto.market}</ThemeTag>}
       </div>
 
       <SectionHeading title="核心指标" />

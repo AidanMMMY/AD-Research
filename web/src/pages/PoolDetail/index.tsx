@@ -469,8 +469,8 @@ export default function PoolDetail() {
     <PageShell maxWidth="wide">
       <PageHeader
         eyebrow="标的池"
-        title="标的池详情"
-        description="查看和管理标的池成员、权重配置、持仓分布与历史快照"
+        title={pool?.name || '标的池详情'}
+        description={editingMeta ? undefined : `${pool?.description || '暂无描述'} · ${pool?.members?.length || 0} 只标的`}
         extra={
           editingMeta ? (
             <Button onClick={() => setEditingMeta(false)}>取消</Button>
@@ -480,8 +480,8 @@ export default function PoolDetail() {
         }
       />
 
-      <Panel className="detail-section">
-        {editingMeta ? (
+      {editingMeta && (
+        <Panel className="detail-section">
           <Space direction="vertical" className="pool-meta-editor" size="middle">
             <Input
               value={editName}
@@ -502,17 +502,8 @@ export default function PoolDetail() {
               <Button onClick={() => setEditingMeta(false)}>取消</Button>
             </Space>
           </Space>
-        ) : (
-          <div className="detail-hero__row">
-            <div>
-              <h2 className="detail-hero__title-text">{pool?.name}</h2>
-              <div className="detail-hero__meta">
-                {pool?.description || '暂无描述'} | {pool?.members?.length || 0} 只标的
-              </div>
-            </div>
-          </div>
-        )}
-      </Panel>
+        </Panel>
+      )}
 
       <SectionHeading title="核心指标" />
       <ResponsiveGrid cols={4} gap="md" className="detail-section">

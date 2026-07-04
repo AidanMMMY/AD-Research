@@ -229,8 +229,13 @@ export default function PaperTrading() {
       render: (v: number | null, r: PaperPosition) => {
         const p = fmtPnL(v);
         const pct = fmtPercent(r.pnl_pct);
+        const cls = p.color.includes('--color-rise')
+          ? 'paper-pnl--rise'
+          : p.color.includes('--color-fall')
+            ? 'paper-pnl--fall'
+            : 'paper-pnl--neutral';
         return (
-          <span className="font-mono ad-font-semibold" style={{ color: p.color }}>
+          <span className={`font-mono ad-font-semibold ${cls}`}>
             {p.text} ({pct.text})
           </span>
         );
@@ -242,8 +247,13 @@ export default function PaperTrading() {
       key: 'rpnl',
       render: (v: number | null) => {
         const p = fmtPnL(v);
+        const cls = p.color.includes('--color-rise')
+          ? 'paper-pnl--rise'
+          : p.color.includes('--color-fall')
+            ? 'paper-pnl--fall'
+            : 'paper-pnl--neutral';
         return (
-          <span className="font-mono" style={{ color: p.color }}>{p.text}</span>
+          <span className={`font-mono ${cls}`}>{p.text}</span>
         );
       },
     },

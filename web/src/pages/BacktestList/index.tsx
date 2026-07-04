@@ -4,11 +4,14 @@ import {
 } from 'antd';
 import PageShell from '@/components/PageShell';
 import PageHeader from '@/components/PageHeader';
+import FilterToolbar from '@/components/FilterToolbar';
 import Panel from '@/components/Panel';
+import SectionHeading from '@/components/SectionHeading';
 import EmptyState from '@/components/EmptyState';
 import { useBacktests } from '@/hooks/useBacktests';
 import { useStrategies } from '@/hooks/useStrategies';
 import { useInstrumentList } from '@/hooks/useInstrumentList';
+import { useDensity } from '@/hooks/useDensity';
 import { PlusOutlined, EyeOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import dayjs from 'dayjs';
@@ -17,6 +20,7 @@ import type { InstrumentInfo } from '@/types/instrument';
 
 export default function BacktestList() {
   const navigate = useNavigate();
+  const { density } = useDensity();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [form] = Form.useForm();
 
@@ -59,6 +63,12 @@ export default function BacktestList() {
       message.error('回测失败');
     }
   };
+
+  const rowSize = density === 'dense' ? 'small' : density === 'spacious' ? 'large' : 'middle';
+  const tableWrapClass =
+    density === 'dense'
+      ? 'ad-density-dense ad-table-scroll ad-table-sticky'
+      : 'ad-table-scroll ad-table-sticky';
 
   const columns = [
     { title: 'ID', dataIndex: 'id', width: 60, render: (v: number) => <span className="tabular-nums">{v}</span> },
@@ -110,21 +120,29 @@ export default function BacktestList() {
         }
       />
 
-      <Panel variant="default" title="回测管理">
-        <div className="phase5c-table-wrap">
+      <FilterToolbar total={`共 ${(backtests || []).length} 个`} />
+
+      <SectionHeading title="回测列表" />
+
+      <Panel variant="default" padding="none">
+        <div className={tableWrapClass}>
           <Table
             dataSource={backtests}
             columns={columns}
             rowKey="id"
-            size="small"
+            size={rowSize as any}
             loading={isLoading}
             scroll={{ x: 'max-content' }}
             pagination={{ pageSize: 20 }}
             locale={{
-              emptyText: <EmptyState
-                title="暂无回测"
-                description="点击右上角「新建回测」创建第一个回测任务"
-              />,
+              emptyText: (
+                <div className="ad-p-5">
+                  <EmptyState
+                    title="暂无回测"
+                    description="点击右上角「新建回测」创建第一个回测任务"
+                  />
+                </div>
+              ),
             }}
           />
         </div>

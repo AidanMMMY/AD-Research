@@ -12,6 +12,7 @@ import KLineChart, { DEFAULT_OVERLAYS } from '@/components/KLineChart';
 import ScoreRadar from '@/components/ScoreRadar';
 import Panel from '@/components/Panel';
 import PageShell from '@/components/PageShell';
+import PageHeader from '@/components/PageHeader';
 import ResponsiveGrid from '@/components/ResponsiveGrid';
 import StatCard from '@/components/StatCard';
 import SectionHeading from '@/components/SectionHeading';
@@ -557,21 +558,11 @@ export default function StockDetail() {
 
   return (
     <PageShell maxWidth="wide">
-      <div className="detail-hero">
-        <div className="detail-hero__row">
-          <div>
-            <div className="detail-hero__title">
-              <StockOutlined className="detail-hero__icon" />
-              <InstrumentCodeTag code={stock.code} name={stock.name} name_zh={stock.name_zh} />
-              <h1 className="detail-hero__title-text">{stock.name}</h1>
-              <ThemeTag variant="accent">个股</ThemeTag>
-              {stock.market && <ThemeTag>{stock.market}</ThemeTag>}
-              {stock.exchange && <ThemeTag>{stock.exchange}</ThemeTag>}
-            </div>
-            <div className="detail-hero__meta">
-              {metaParts.join(' | ') || '—'}
-            </div>
-          </div>
+      <PageHeader
+        eyebrow="个股"
+        title={stock.name}
+        description={metaParts.join(' · ') || '—'}
+        extra={
           <div className="detail-hero__actions">
             <Button
               type={isFavorite ? 'primary' : 'default'}
@@ -600,7 +591,15 @@ export default function StockDetail() {
               </div>
             )}
           </div>
-        </div>
+        }
+      />
+
+      <div className="detail-hero">
+        <StockOutlined className="detail-hero__icon" />
+        <InstrumentCodeTag code={stock.code} name={stock.name} name_zh={stock.name_zh} />
+        <ThemeTag variant="accent">个股</ThemeTag>
+        {stock.market && <ThemeTag>{stock.market}</ThemeTag>}
+        {stock.exchange && <ThemeTag>{stock.exchange}</ThemeTag>}
       </div>
 
       <SectionHeading title="核心指标" />

@@ -4,7 +4,9 @@ import {
 } from 'antd';
 import PageShell from '@/components/PageShell';
 import PageHeader from '@/components/PageHeader';
+import FilterToolbar from '@/components/FilterToolbar';
 import Panel from '@/components/Panel';
+import SectionHeading from '@/components/SectionHeading';
 import ThemeTag from '@/components/ThemeTag';
 import HelpTrigger from '@/components/HelpTrigger';
 import HelpPopover from '@/components/HelpPopover';
@@ -15,6 +17,7 @@ import { useStrategyCatalog } from '@/hooks/useStrategyCatalog';
 import { useAIHelp } from '@/hooks/useAIHelp';
 import { PlusOutlined, PlayCircleOutlined, DeleteOutlined, BookOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
+import { useDensity } from '@/hooks/useDensity';
 import { buildStrategyListContext } from '@/utils/helpContext';
 import { getQuickQuestions } from '@/utils/helpPrompts';
 import type { StrategyCatalogItem } from '@/types/strategy';
@@ -43,6 +46,7 @@ export default function StrategyList() {
   const navigate = useNavigate();
   const { open } = useAIHelp();
   const mode = useSettingsStore((s) => s.mode);
+  const { density } = useDensity();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState<StrategyCatalogItem | null>(null);
   const [form] = Form.useForm();
@@ -125,6 +129,12 @@ export default function StrategyList() {
     }
   };
 
+  const rowSize = density === 'dense' ? 'small' : density === 'spacious' ? 'large' : 'middle';
+  const tableWrapClass =
+    density === 'dense'
+      ? 'ad-density-dense ad-table-scroll ad-table-sticky'
+      : 'ad-table-scroll ad-table-sticky';
+
   const columns = [
     { title: 'ID', dataIndex: 'id', width: 60 },
     { title: '名称', dataIndex: 'name' },
@@ -187,37 +197,48 @@ export default function StrategyList() {
         title="策略管理"
         description="创建和管理交易策略，配置策略参数与启用状态"
         extra={
-          <Button icon={<BookOutlined />} onClick={() => navigate('/strategy-library')}>
-            浏览策略库
-          </Button>
+          <Space>
+            <Button icon={<BookOutlined />} onClick={() => navigate('/strategy-library')}>
+              浏览策略库
+            </Button>
+            <Button type="primary" icon={<PlusOutlined />} onClick={() => setIsModalOpen(true)}>
+              新建策略
+            </Button>
+          </Space>
         }
       />
 
-      <Panel variant="default" title="策略管理" extra={
-        <Space>
+      <FilterToolbar total={`共 ${(strategies || []).length} 个`} />
+
+      <SectionHeading
+        title="策略列表"
+        action={
           <HelpTrigger tooltip="AI 解释策略逻辑" onClick={handleOpenHelp} />
-          <Button type="primary" icon={<PlusOutlined />} onClick={() => setIsModalOpen(true)}>
-            新建策略
-          </Button>
-        </Space>
-      }>
-        <Table
-          dataSource={strategies}
-          columns={columns}
-          rowKey="id"
-          size="small"
-          loading={isLoading}
-          scroll={{ x: 'max-content' }}
-          pagination={false}
-          locale={{
-            emptyText: (
-              <EmptyState
-                title="暂无自定义策略"
-                description="可点击右上角「新建策略」从模板创建第一个策略"
-              />
-            ),
-          }}
-        />
+        }
+      />
+
+      <Panel variant="default" padding="none">
+        <div className={tableWrapClass}>
+          <Table
+            dataSource={strategies}
+            columns={columns}
+            rowKey="id"
+            size={rowSize as any}
+            loading={isLoading}
+            scroll={{ x: 'max-content' }}
+            pagination={false}
+            locale={{
+              emptyText: (
+                <div className="ad-p-5">
+                  <EmptyState
+                    title="暂无自定义策略"
+                    description="可点击右上角「新建策略」从模板创建第一个策略"
+                  />
+                </div>
+              ),
+            }}
+          />
+        </div>
       </Panel>
 
       <Modal

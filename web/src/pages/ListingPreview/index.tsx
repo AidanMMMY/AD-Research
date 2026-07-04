@@ -7,10 +7,11 @@ import { type Dayjs } from 'dayjs';
 import PageShell from '@/components/PageShell';
 import Panel from '@/components/Panel';
 import FilterToolbar from '@/components/FilterToolbar';
+import PageHeader from '@/components/PageHeader';
+import SectionHeading from '@/components/SectionHeading';
 import EmptyState from '@/components/EmptyState';
 import HelpTrigger from '@/components/HelpTrigger';
 import ThemeTag from '@/components/ThemeTag';
-import PageHeader from '@/components/PageHeader';
 import LastUpdated from '@/components/LastUpdated';
 import {
   useListingEventList,
@@ -19,6 +20,7 @@ import {
   useRefreshListingEvents,
 } from '@/api/listingEvents';
 import { useAIHelp } from '@/hooks/useAIHelp';
+import { useDensity } from '@/hooks/useDensity';
 import { buildListingPreviewContext } from '@/utils/helpContext';
 import { getQuickQuestions } from '@/utils/helpPrompts';
 import type { ListingEvent, ListingStatus } from '@/types/listingEvent';
@@ -75,6 +77,7 @@ function StatusChip({ status, count, active, onClick }: StatusChipProps) {
 
 export default function ListingPreview() {
   const { open } = useAIHelp();
+  const { density } = useDensity();
   const [search, setSearch] = useState('');
   const [statuses, setStatuses] = useState<ListingStatus[]>([]);
   const [boards, setBoards] = useState<string[]>([]);
@@ -169,6 +172,12 @@ export default function ListingPreview() {
       quickQuestions: getQuickQuestions('listing_preview'),
     });
   };
+
+  const rowSize = density === 'dense' ? 'small' : density === 'spacious' ? 'large' : 'middle';
+  const tableWrapClass =
+    density === 'dense'
+      ? 'ad-density-dense ad-table-scroll ad-table-sticky'
+      : 'ad-table-scroll ad-table-sticky';
 
   const columns = [
     {
@@ -366,21 +375,26 @@ export default function ListingPreview() {
         <Button onClick={handleReset}>重置</Button>
       </FilterToolbar>
 
+      <SectionHeading title="上市预告列表" />
+
       <Panel variant="default" padding="none">
         {isLoading ? (
           <Skeleton active paragraph={{ rows: 10 }} />
         ) : items.length === 0 ? (
-          <EmptyState
-            icon={<FileTextOutlined />}
-            title="暂无符合条件的上市预告数据"
-            description="尝试调整筛选条件或刷新数据"
-          />
+          <div className="ad-p-5">
+            <EmptyState
+              icon={<FileTextOutlined />}
+              title="暂无符合条件的上市预告数据"
+              description="尝试调整筛选条件或刷新数据"
+            />
+          </div>
         ) : (
-          <div className="ad-density-dense ad-table-scroll ad-table-sticky">
+          <div className={tableWrapClass}>
             <Table
               dataSource={items}
               columns={columns}
               rowKey="id"
+              size={rowSize as any}
               pagination={{
                 current: page,
                 pageSize,
