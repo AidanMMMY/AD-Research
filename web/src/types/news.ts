@@ -74,6 +74,19 @@ export interface NewsArticle {
   translated_zh: string | null;
   /** ISO timestamp of the last successful DeepSeek translation. */
   translation_generated_at: string | null;
+  /**
+   * AI-cleanup observability (M22-3, 2026-07-05).
+   *
+   * - ``"cleaned"``  — DeepSeek call succeeded; ``full_content`` is the cleaned body.
+   * - ``"skipped"``  — DeepSeek was unconfigured; ``full_content`` is raw Jina Markdown.
+   * - ``"failed"``   — DeepSeek raised; ``full_content`` is raw Jina Markdown.
+   * - ``"not_attempted"`` — reserved for a future batch path.
+   * - ``null``       — scheduler never reached this article. The detail page
+   *                    renders the yellow "尚未抓取正文" banner in this case.
+   */
+  ai_cleanup_status: 'cleaned' | 'skipped' | 'failed' | 'not_attempted' | null;
+  /** ISO timestamp of the last AI-cleanup attempt (``null`` if never tried). */
+  ai_cleaned_at: string | null;
 }
 
 /** Response shape for ``POST /news/{id}/fetch-content``. */
@@ -206,6 +219,27 @@ export interface NewsHealthResponse {
   scheduler_jobs: NewsSchedulerJob[];
   scheduler_total_jobs: number;
   sources: NewsSourceHealth[];
+  /**
+   * M22-3 (2026-07-05) AI-cleanup observability — breakdown of the
+   * last 24 hours of ``news_article`` rows whose
+   * ``ai_cleaned_at`` is within the window.
+   */
+  ai_cleanup_24h: {
+    /** Total rows the scheduler reached in the last 24h. */
+    total: number;
+    /** Rows whose AI cleanup actually ran (DeepSeek returned a body). */
+    cleaned: number;
+    /** Rows where DeepSeek was unconfigured (``skipped``). */
+    skipped: number;
+    /** Rows where DeepSeek raised or returned a too-short body. */
+    failed: number;
+    /** cleaned / (cleaned + failed) * 100, 1 decimal place. */
+    cleaned_pct: number;
+    /** Threshold below which the dashboard flips the alert card on. */
+    alert_threshold_pct: number;
+    /** Convenience flag — ``cleaned_pct < alert_threshold_pct``. */
+    alert: boolean;
+  };
 }
 
 /** Theme weight in retail sentiment aggregation. */

@@ -57,6 +57,13 @@ class FetchResult:
     content: str | None
     cached: bool
     error: str | None = None
+    # AI-cleanup observability (M22-3, 2026-07-05). One of
+    # ``"cleaned" | "skipped" | "failed" | "not_attempted" | None``.
+    # ``None`` here means the fetcher did not actually call the AI
+    # step (e.g. cache hit or Jina failed) — the row's
+    # ``ai_cleanup_status`` keeps whatever value it already had so we
+    # do not stomp a historical success.
+    ai_cleanup_status: str | None = None
 
 
 class ContentFetcher:
@@ -103,6 +110,7 @@ class ContentFetcher:
                 success=True,
                 content=article.full_content,
                 cached=True,
+                ai_cleanup_status=article.ai_cleanup_status,
             )
 
         # 2) Fetch from Jina Reader.
@@ -121,7 +129,10 @@ class ContentFetcher:
                                error="empty response from Jina Reader")
 
         # 3) Use AI to clean up the content (remove ads, navigation, etc.)
-        content = self._clean_with_ai(md.strip())
+        #    We no longer swallow the outcome — both the cleaned body and
+        #    the structured status (cleaned / skipped / failed) come back
+        #    so the row + the caller can surface "AI did nothing".
+        content, ai_status = self._clean_with_ai(md.strip())
 
         # 4) Safety truncate.
         content = content.strip()
@@ -134,9 +145,11 @@ class ContentFetcher:
                 article_id, MAX_CONTENT_CHARS,
             )
 
-        # 5) Store back to DB.
+        # 5) Store back to DB, including the AI-cleanup status.
         article.full_content = content
         article.full_content_fetched_at = datetime.now(tz=timezone.utc)
+        article.ai_cleaned_at = datetime.now(tz=timezone.utc)
+        article.ai_cleanup_status = ai_status
         try:
             self.db.commit()
         except Exception as exc:  # noqa: BLE001
@@ -151,7 +164,12 @@ class ContentFetcher:
             content = content + "\n\n*[内容已截断，仅展示前 " \
                 f"{MAX_CONTENT_CHARS} 字]*"
 
-        return FetchResult(success=True, content=content, cached=False)
+        return FetchResult(
+            success=True,
+            content=content,
+            cached=False,
+            ai_cleanup_status=ai_status,
+        )
 
     def invalidate(self, article_id: int) -> bool:
         """Clear cached ``full_content`` for ``article_id``.
@@ -222,17 +240,36 @@ class ContentFetcher:
             return ""
         return body
 
-    def _clean_with_ai(self, content: str) -> str:
-        """Use AI to clean up fetched content, removing ads and irrelevant elements."""
-        try:
-            from app.services.llm.deepseek_provider import DeepSeekProvider
+    def _clean_with_ai(self, content: str) -> tuple[str, str]:
+        """Run the AI cleanup step and report its outcome.
 
-            provider = DeepSeekProvider()
-            if not provider.is_available:
-                logger.info("ContentFetcher: AI not available, skipping cleanup")
-                return content
+        Returns
+        -------
+        ``(cleaned_text, status)`` where ``status`` is one of:
 
-            system_prompt = """你是一个文章内容提取助手。你的任务是从网页抓取的原始内容中提取出**真正的正文部分**，去除以下无关内容：
+        * ``"cleaned"``  — DeepSeek returned a non-trivial body. ``cleaned_text``
+          is the LLM output.
+        * ``"skipped"``  — DeepSeek was not configured (no API key). The
+          original Jina Markdown is returned so the reader still gets
+          *something*; this is the silent-degradation case the new
+          ``ai_cleanup_status`` column makes visible.
+        * ``"failed"``   — DeepSeek raised (HTTP 5xx, timeout, rate-limit,
+          empty / too-short response). Original Markdown is returned;
+          the failure is logged at ``WARNING`` with ``exc_info=True``
+          so the ops dashboard can pick it up.
+        """
+        from app.services.llm.deepseek_provider import DeepSeekProvider
+
+        provider = DeepSeekProvider()
+        if not provider.is_available:
+            # NOT an error — DeepSeek simply isn't configured in this
+            # environment. Still record the attempt so the ops dashboard
+            # can tell "AI was on but is rate-limited" from "AI was never
+            # on in the first place".
+            logger.info("ContentFetcher: AI not available, skipping cleanup")
+            return content, "skipped"
+
+        system_prompt = """你是一个文章内容提取助手。你的任务是从网页抓取的原始内容中提取出**真正的正文部分**，去除以下无关内容：
 1. 广告（包括图片广告、文字广告、推广链接）
 2. 导航菜单、侧边栏、页脚
 3. 社交分享按钮、评论区
@@ -242,26 +279,40 @@ class ContentFetcher:
 
 请直接返回清理后的正文内容，不要添加任何解释、评论或markdown代码块标记。"""
 
-            prompt = f"""请从以下网页抓取内容中提取真正的正文，去除广告、导航、侧边栏等无关内容。只返回正文内容，不要添加任何解释。：\n\n{content[:5000]}"""
+        prompt = f"""请从以下网页抓取内容中提取真正的正文，去除广告、导航、侧边栏等无关内容。只返回正文内容，不要添加任何解释。：\n\n{content[:5000]}"""
 
+        try:
             cleaned = provider.complete(
                 prompt=prompt,
                 system=system_prompt,
                 max_tokens=4000,
                 temperature=0.3,
             )
+        except Exception as exc:  # noqa: BLE001
+            # Surface the stack trace so the "AI failed" alert is
+            # actionable in ops — previous behaviour was
+            # ``logger.warning("... %s", e)`` which dropped the trace.
+            logger.warning(
+                "ContentFetcher: AI cleanup raised, keeping original: %s",
+                exc,
+                exc_info=True,
+            )
+            return content, "failed"
 
-            if cleaned and len(cleaned) > 100:
-                logger.info("ContentFetcher: AI cleanup successful, original length: %d, cleaned: %d",
-                           len(content), len(cleaned))
-                return cleaned
-            else:
-                logger.warning("ContentFetcher: AI cleanup returned empty or too short, keeping original")
-                return content
+        if cleaned and len(cleaned) > 100:
+            logger.info(
+                "ContentFetcher: AI cleanup successful, original length: %d, cleaned: %d",
+                len(content), len(cleaned),
+            )
+            return cleaned, "cleaned"
 
-        except Exception as e:
-            logger.warning("ContentFetcher: AI cleanup failed: %s, keeping original", e)
-            return content
+        # DeepSeek answered but the body is empty / suspiciously short.
+        # Treat as a failed cleanup so the yellow/red bar shows up.
+        logger.warning(
+            "ContentFetcher: AI cleanup returned empty or too short (len=%s), keeping original",
+            len(cleaned) if cleaned else 0,
+        )
+        return content, "failed"
 
 
 # ---------------------------------------------------------------------------

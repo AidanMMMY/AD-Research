@@ -95,6 +95,34 @@ class NewsArticle(Base):
         DateTime, comment="When the LLM translation was last produced"
     )
 
+    # AI-cleanup observability (M22-3, 2026-07-05). Until now the
+    # DeepSeek call in ``ContentFetcher._clean_with_ai`` was a silent
+    # best-effort: any failure returned the raw Jina Markdown and the
+    # scheduler reported ``success=True``. The two fields below make
+    # the outcome explicit per-row:
+    #
+    #   * ``ai_cleaned_at`` — wall-clock of the last attempt.
+    #   * ``ai_cleanup_status`` — ``cleaned`` / ``skipped`` /
+    #     ``failed`` / ``not_attempted``.
+    #
+    # Both stay ``NULL`` for rows the scheduler never reached, which
+    # is what lets ops dashboards render the "AI not working?"
+    # yellow bar instead of a misleading success badge.
+    ai_cleaned_at = Column(
+        DateTime(timezone=True),
+        comment=(
+            "When the AI cleanup pass last ran on this article. "
+            "NULL = scheduler never reached this row."
+        ),
+    )
+    ai_cleanup_status = Column(
+        String(16),
+        comment=(
+            "cleaned | skipped | failed | not_attempted. NULL = "
+            "scheduler never reached this row."
+        ),
+    )
+
     symbols = relationship(
         "NewsArticleSymbol",
         back_populates="article",
@@ -105,6 +133,7 @@ class NewsArticle(Base):
         UniqueConstraint("source", "source_id", name="uq_news_article_source_id"),
         Index("ix_news_article_source_published", "source", "published_at"),
         Index("ix_news_article_published_desc", published_at.desc()),
+        Index("ix_news_article_ai_cleanup_status", "ai_cleanup_status"),
     )
 
 

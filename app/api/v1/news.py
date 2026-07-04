@@ -168,6 +168,13 @@ def _article_to_dict(
         # the ``/translate`` endpoint enforces ``language == 'en'``).
         "translated_zh": article.translated_zh,
         "translation_generated_at": _iso_utc(article.translation_generated_at),
+        # AI-cleanup observability (M22-3, 2026-07-05). ``None`` when
+        # the scheduler has not yet fetched this article; one of
+        # ``cleaned | skipped | failed | not_attempted`` otherwise.
+        # The frontend uses ``ai_cleanup_status`` to render the
+        # "AI didn't work" alert bar on the detail page.
+        "ai_cleaned_at": _iso_utc(article.ai_cleaned_at),
+        "ai_cleanup_status": article.ai_cleanup_status,
     }
 
 
@@ -579,6 +586,12 @@ def news_health(db: Session = Depends(get_db)) -> dict[str, Any]:
     Used by the ``NewsHealth`` operations dashboard. Returns gracefully
     even when the scheduler is dead (the dashboard then renders
     ``scheduler_running=false`` and the source rows stay red).
+
+    M22-3 (2026-07-05) also returns ``ai_cleanup_24h`` — the AI
+    cleanup breakdown for the last 24 hours. The frontend uses
+    ``cleaned_pct`` to decide whether to render the "AI 清理失败率
+    过高" warning card. Threshold is configurable via
+    ``news_ai_cleanup_alert_pct`` (default ``70.0``).
     """
     now = datetime.now(tz=timezone.utc)
 
@@ -592,12 +605,57 @@ def news_health(db: Session = Depends(get_db)) -> dict[str, Any]:
         j for j in scheduler_jobs if j["id"].startswith("news_")
     ]
 
+    # AI-cleanup observability (M22-3). Counts only the rows the
+    # scheduler actually reached in the last 24 h
+    # (``ai_cleaned_at >= now - 24h``) so a backlog of stale rows
+    # does not inflate "cleaned" denominators.
+    cutoff_24h = now - timedelta(hours=24)
+    ai_counts = db.execute(
+        select(
+            func.count(NewsArticle.id).label("total"),
+            func.sum(
+                case((NewsArticle.ai_cleanup_status == "cleaned", 1), else_=0)
+            ).label("cleaned"),
+            func.sum(
+                case((NewsArticle.ai_cleanup_status == "skipped", 1), else_=0)
+            ).label("skipped"),
+            func.sum(
+                case((NewsArticle.ai_cleanup_status == "failed", 1), else_=0)
+            ).label("failed"),
+        ).where(NewsArticle.ai_cleaned_at >= cutoff_24h)
+    ).one()
+    ai_total = int(ai_counts.total or 0)
+    ai_cleaned = int(ai_counts.cleaned or 0)
+    ai_skipped = int(ai_counts.skipped or 0)
+    ai_failed = int(ai_counts.failed or 0)
+    # ``cleaned_pct`` is the share of *processed* rows (excludes
+    # skipped — if DeepSeek was never configured, the alert would
+    # fire even though nothing is actually broken).
+    processed = ai_cleaned + ai_failed
+    ai_cleaned_pct = round(ai_cleaned / processed * 100, 1) if processed else 0.0
+
+    alert_threshold_pct = float(
+        get_settings().news_ai_cleanup_alert_pct
+    )
+    ai_alert = (
+        processed > 0 and ai_cleaned_pct < alert_threshold_pct
+    )
+
     return {
         "as_of": now.isoformat(),
         "scheduler_running": scheduler_running,
         "scheduler_jobs": news_jobs,
         "scheduler_total_jobs": len(scheduler_jobs),
         "sources": sources,
+        "ai_cleanup_24h": {
+            "total": ai_total,
+            "cleaned": ai_cleaned,
+            "skipped": ai_skipped,
+            "failed": ai_failed,
+            "cleaned_pct": ai_cleaned_pct,
+            "alert_threshold_pct": alert_threshold_pct,
+            "alert": ai_alert,
+        },
     }
 @router.get("/retail-sentiment/{symbol}")
 def get_retail_sentiment(

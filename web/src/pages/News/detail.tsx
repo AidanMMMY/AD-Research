@@ -219,6 +219,42 @@ export default function NewsDetail() {
     (fetchFullContent.data && !fetchFullContent.data.success);
   const fullContentToRender = renderedFullContent ?? data.full_content;
 
+  // AI-cleanup observability banner (M22-3, 2026-07-05).
+  //
+  // Until now the DeepSeek call in ContentFetcher._clean_with_ai
+  // could silently fail and the row would happily show the raw Jina
+  // Markdown. The backend now records ``ai_cleanup_status`` so we can
+  // render one of three banners above the body:
+  //   * cleaned       → no banner (default).
+  //   * skipped       → grey "AI 暂不可用, 已保留原始抓取".
+  //   * failed        → red "AI 清理失败, 已保留原始抓取".
+  //   * null / not_attempted → yellow "该篇尚未抓取正文".
+  const aiStatus = data.ai_cleanup_status ?? null;
+  const aiBanner =
+    aiStatus === 'failed'
+      ? {
+          type: 'error' as const,
+          message: 'AI 清理失败',
+          description:
+            'DeepSeek 调用异常，已保留 Jina 原始抓取内容。可点击「加载完整正文」重新触发。',
+        }
+      : aiStatus === 'skipped'
+        ? {
+            type: 'info' as const,
+            message: '该篇未经 AI 清理',
+            description:
+              'DeepSeek 当前不可用（未配置 API Key 或账户余额不足），已保留 Jina 原始抓取内容。',
+          }
+        : aiStatus === 'cleaned'
+          ? null
+          : {
+              // null OR 'not_attempted'
+              type: 'warning' as const,
+              message: '该篇尚未抓取正文',
+              description:
+                '后台调度暂未抓取本篇的完整正文，可点击下方「加载完整正文」手动触发。',
+            };
+
   return (
     <PageShell maxWidth="full">
       {/* Header */}
@@ -320,6 +356,18 @@ export default function NewsDetail() {
         {/* Body */}
         <div>
           <article className="ad-detail-article">
+            {/* AI-cleanup observability banner (M22-3). Sits above the
+                body so the reader always knows whether the text they
+                are about to read has been cleaned by DeepSeek. */}
+            {aiBanner && (
+              <Alert
+                className="ad-mb-3"
+                type={aiBanner.type}
+                showIcon
+                message={aiBanner.message}
+                description={aiBanner.description}
+              />
+            )}
             {showTranslation ? (
               // Side-by-side view: original (left) + Chinese (right).
               // We render the original body using the same Markdown

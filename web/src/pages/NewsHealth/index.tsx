@@ -1,4 +1,4 @@
-import { Badge, Button, Spin, Table, Tag, Tooltip } from 'antd';
+import { Alert, Badge, Button, Spin, Statistic, Table, Tag, Tooltip } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { useQuery } from '@tanstack/react-query';
 import { newsApi } from '@/api/news';
@@ -208,6 +208,77 @@ export default function NewsHealth() {
           </div>
         ) : (
           <span className="ad-text-tertiary">暂无 news_* 任务</span>
+        )}
+      </ContentCard>
+
+      {/* AI cleanup observability (M22-3, 2026-07-05).
+          Surfaces the silent-degradation case in ContentFetcher:
+          rows that Jina fetched but DeepSeek refused to clean.
+          The four-statistics strip mirrors the
+          /api/v1/news/health `ai_cleanup_24h` block. */}
+      <ContentCard title="AI 清理 (近 24h)" className="ad-mb-4">
+        {data?.ai_cleanup_24h ? (
+          <>
+            {data.ai_cleanup_24h.alert && (
+              <Alert
+                className="ad-mb-3"
+                type="error"
+                showIcon
+                message="AI 清理失败率过高"
+                description={
+                  <>
+                    近 24h 共有{' '}
+                    <strong>
+                      {data.ai_cleanup_24h.cleaned_pct.toFixed(1)}%
+                    </strong>{' '}
+                    的抓取被 DeepSeek 成功清理（阈值{' '}
+                    {data.ai_cleanup_24h.alert_threshold_pct.toFixed(1)}%）。
+                    请检查 DeepSeek API Key 与配额。
+                  </>
+                }
+              />
+            )}
+            <div
+              className="ad-flex ad-flex-wrap ad-gap-4"
+              style={{ minWidth: 0 }}
+            >
+              <Statistic
+                title="已清理"
+                value={data.ai_cleanup_24h.cleaned}
+                suffix="条"
+                valueStyle={{ color: 'var(--color-success, #52c41a)' }}
+              />
+              <Statistic
+                title="跳过 (AI 未配置)"
+                value={data.ai_cleanup_24h.skipped}
+                suffix="条"
+                valueStyle={{ color: 'var(--text-secondary)' }}
+              />
+              <Statistic
+                title="失败"
+                value={data.ai_cleanup_24h.failed}
+                suffix="条"
+                valueStyle={{
+                  color: data.ai_cleanup_24h.failed > 0
+                    ? 'var(--color-error, #ff4d4f)'
+                    : 'var(--text-secondary)',
+                }}
+              />
+              <Statistic
+                title="清理成功率"
+                value={data.ai_cleanup_24h.cleaned_pct}
+                precision={1}
+                suffix="%"
+                valueStyle={{
+                  color: data.ai_cleanup_24h.alert
+                    ? 'var(--color-error, #ff4d4f)'
+                    : 'var(--color-success, #52c41a)',
+                }}
+              />
+            </div>
+          </>
+        ) : (
+          <span className="ad-text-tertiary">尚未抓取任何正文</span>
         )}
       </ContentCard>
 

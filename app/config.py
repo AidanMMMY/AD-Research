@@ -65,6 +65,15 @@ class Settings(BaseSettings):
     # can't surprise each other in the future.
     news_translate_daily_limit: int = 50
 
+    # M22-3 (2026-07-05) — ``/api/v1/news/health`` returns an
+    # ``ai_cleanup_24h`` block with the share of fetched articles
+    # whose DeepSeek cleanup actually ran (``ai_cleanup_status =
+    # 'cleaned'``). When ``cleaned_pct`` drops below this threshold
+    # the dashboard flips the alert card on. Skipped (DeepSeek
+    # unconfigured) rows are excluded from the denominator so an
+    # entirely-off environment does not page anyone.
+    news_ai_cleanup_alert_pct: float = 70.0
+
     # Xueqiu (雪球) cookie — raw "Cookie:" header value from a logged-in
     # browser session. Must include xq_a_token=...; u=...; device_id=...
     # The crawler is read-only and never attempts to log in.

@@ -280,3 +280,222 @@ def test_fetch_endpoint_success(fastapi_client, seeded_article) -> None:
 def test_fetch_endpoint_missing_article(fastapi_client) -> None:
     resp = fastapi_client.post("/news/424242/fetch-content")
     assert resp.status_code == 404
+
+
+# ---------------------------------------------------------------------------
+# AI-cleanup observability (M22-3, 2026-07-05)
+# ---------------------------------------------------------------------------
+#
+# ``_clean_with_ai`` has three outcomes that the fetcher must surface
+# on the row's ``ai_cleanup_status`` column:
+#
+#   * ``cleaned`` — DeepSeek returned a long-enough body.
+#   * ``skipped`` — DeepSeek was not configured (no API key).
+#   * ``failed``  — DeepSeek raised or returned a too-short body.
+#
+# The first two were already implicitly exercised by the existing
+# tests (Jina success → cleaned path; DeepSeek unconfigured
+# environment → skipped path) but did not assert the persisted
+# ``ai_cleanup_status`` column. The new tests below pin each branch
+# explicitly so a future refactor cannot silently regress them.
+
+
+def _seed_full_text_article(db_session, body: str = "x" * 200) -> NewsArticle:
+    """Create a row without ``full_content`` so the fetcher is forced
+    to call Jina + the AI cleanup path."""
+    normalizer = NewsNormalizer(db_session)
+    raw = RawArticle(
+        source="xinhua_rss",
+        url="https://example.com/articles/cleanup",
+        title="Cleanup test article",
+        published_at=datetime.now(tz=timezone.utc),
+        body=body,
+    )
+    article = normalizer.normalize(raw)
+    db_session.commit()
+    return article
+
+
+def test_fetch_marks_ai_cleanup_skipped_when_deepseek_unavailable(
+    db_session,
+) -> None:
+    """When ``DEEPSEEK_API_KEY`` is unset, ``_clean_with_ai`` returns
+    ``skipped`` and the row keeps the raw Jina Markdown verbatim."""
+    article = _seed_full_text_article(db_session)
+    fake_md = "x" * 200  # long enough that Jina would otherwise succeed
+
+    with patch.dict("os.environ", {}, clear=False):
+        # Force ``DEEPSEEK_API_KEY`` to empty so ``provider._available``
+        # is ``False`` for the duration of this test.
+        with patch.dict(
+            "os.environ", {"DEEPSEEK_API_KEY": ""}, clear=False
+        ):
+            with patch(
+                "app.services.news.content_fetcher.httpx.get",
+                return_value=_fake_response(fake_md),
+            ):
+                result = ContentFetcher(db_session).fetch(
+                    article.id, force=True
+                )
+
+    assert result.success is True
+    assert result.cached is False
+    assert result.ai_cleanup_status == "skipped"
+    # The raw Jina Markdown was kept because DeepSeek refused to clean.
+    assert result.content == fake_md
+
+    # The row picked up the status — this is what the ops dashboard
+    # scans to spot "AI is off".
+    db_session.refresh(article)
+    assert article.ai_cleanup_status == "skipped"
+    assert article.ai_cleaned_at is not None
+    assert article.full_content == fake_md
+
+
+def test_fetch_marks_ai_cleanup_cleaned_when_deepseek_returns_body(
+    db_session,
+) -> None:
+    """When DeepSeek returns a non-trivial body, ``ai_cleanup_status``
+    is ``cleaned`` and the row stores the LLM output (not the Jina
+    Markdown)."""
+    article = _seed_full_text_article(db_session)
+    fake_md = "x" * 200
+    cleaned_body = "y" * 300  # DeepSeek's actual cleanup output
+
+    class _FakeProvider:
+        is_available = True
+
+        def complete(self, *args, **kwargs):
+            return cleaned_body
+
+    # Patch both the module-level ``DeepSeekProvider`` *and* the
+    # ``is_available`` so we exercise the success path.
+    with patch(
+        "app.services.llm.deepseek_provider.DeepSeekProvider.is_available",
+        new=True,
+    ), patch(
+        "app.services.llm.deepseek_provider.DeepSeekProvider.complete",
+        return_value=cleaned_body,
+    ), patch(
+        "app.services.news.content_fetcher.httpx.get",
+        return_value=_fake_response(fake_md),
+    ):
+        result = ContentFetcher(db_session).fetch(
+            article.id, force=True
+        )
+
+    assert result.success is True
+    assert result.ai_cleanup_status == "cleaned"
+    assert result.content == cleaned_body  # NOT the raw Jina body
+
+    db_session.refresh(article)
+    assert article.ai_cleanup_status == "cleaned"
+    assert article.ai_cleaned_at is not None
+    assert article.full_content == cleaned_body
+
+
+def test_fetch_marks_ai_cleanup_failed_when_deepseek_raises(
+    db_session,
+) -> None:
+    """When DeepSeek raises, ``ai_cleanup_status`` is ``failed`` and
+    the row keeps the raw Jina Markdown so the reader still has
+    something to look at."""
+    article = _seed_full_text_article(db_session)
+    fake_md = "x" * 200
+
+    with patch(
+        "app.services.llm.deepseek_provider.DeepSeekProvider.is_available",
+        new=True,
+    ), patch(
+        "app.services.llm.deepseek_provider.DeepSeekProvider.complete",
+        side_effect=RuntimeError("deepseek down"),
+    ), patch(
+        "app.services.news.content_fetcher.httpx.get",
+        return_value=_fake_response(fake_md),
+    ):
+        result = ContentFetcher(db_session).fetch(
+            article.id, force=True
+        )
+
+    assert result.success is True  # Jina succeeded → still a success
+    assert result.ai_cleanup_status == "failed"
+    # Raw Jina body preserved as a fallback.
+    assert result.content == fake_md
+
+    db_session.refresh(article)
+    assert article.ai_cleanup_status == "failed"
+    assert article.ai_cleaned_at is not None
+    assert article.full_content == fake_md
+
+
+def test_fetch_marks_ai_cleanup_failed_when_deepseek_returns_short_body(
+    db_session,
+) -> None:
+    """DeepSeek answered but returned < 100 chars → treated as ``failed``
+    so the dashboard flag turns red rather than silently green-lighting
+    an empty cleanup."""
+    article = _seed_full_text_article(db_session)
+    fake_md = "x" * 200
+
+    with patch(
+        "app.services.llm.deepseek_provider.DeepSeekProvider.is_available",
+        new=True,
+    ), patch(
+        "app.services.llm.deepseek_provider.DeepSeekProvider.complete",
+        return_value="tiny",  # < 100 chars
+    ), patch(
+        "app.services.news.content_fetcher.httpx.get",
+        return_value=_fake_response(fake_md),
+    ):
+        result = ContentFetcher(db_session).fetch(
+            article.id, force=True
+        )
+
+    assert result.success is True
+    assert result.ai_cleanup_status == "failed"
+    assert result.content == fake_md
+
+    db_session.refresh(article)
+    assert article.ai_cleanup_status == "failed"
+
+
+def test_fetch_article_dict_exposes_ai_cleanup_fields(
+    fastapi_client, seeded_article
+) -> None:
+    """The article detail endpoint must serialise the two new fields
+    so the frontend banner can render."""
+    resp = fastapi_client.get(f"/news/{seeded_article.id}")
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    # Both fields are present, both may be ``null`` for an article
+    # the scheduler never reached.
+    assert "ai_cleaned_at" in body
+    assert "ai_cleanup_status" in body
+    assert body["ai_cleanup_status"] is None
+    assert body["ai_cleaned_at"] is None
+
+
+def test_health_endpoint_includes_ai_cleanup_24h(fastapi_client) -> None:
+    """``GET /news/health`` now carries the ``ai_cleanup_24h`` block."""
+    resp = fastapi_client.get("/news/health")
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert "ai_cleanup_24h" in body
+    block = body["ai_cleanup_24h"]
+    assert set(block.keys()) == {
+        "total",
+        "cleaned",
+        "skipped",
+        "failed",
+        "cleaned_pct",
+        "alert_threshold_pct",
+        "alert",
+    }
+    # Empty DB → all zeros, no alert.
+    assert block["total"] == 0
+    assert block["cleaned"] == 0
+    assert block["skipped"] == 0
+    assert block["failed"] == 0
+    assert block["cleaned_pct"] == 0.0
+    assert block["alert_threshold_pct"] == 70.0
+    assert block["alert"] is False

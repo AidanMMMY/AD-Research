@@ -2,6 +2,12 @@
 
 Runs after the Xueqiu crawler to fetch and clean article content
 using Jina Reader + AI.
+
+M22-3 (2026-07-05) observability: every fetch now records the
+AI-cleanup outcome (``ai_cleanup_status``) on the row. The scheduler
+also aggregates a per-run breakdown so the ops dashboard can answer
+"how many of yesterday's fetches were actually cleaned by DeepSeek?"
+without scanning the whole ``news_article`` table.
 """
 
 import logging
@@ -37,29 +43,67 @@ def run_fetch_full_content():
 
         if not articles:
             logger.info("No articles need full content fetch")
-            return {"processed": 0, "success": 0, "failed": 0}
+            return {
+                "processed": 0,
+                "success": 0,
+                "failed": 0,
+                # M22-3: AI-cleanup breakdown (all zero on a no-op run).
+                "ai_cleaned": 0,
+                "ai_skipped": 0,
+                "ai_failed": 0,
+            }
 
         from app.services.news.content_fetcher import ContentFetcher
 
         fetcher = ContentFetcher(db)
         success = 0
         failed = 0
+        # M22-3: AI-cleanup breakdown so we can spot silent
+        # degradation without scanning the whole table.
+        ai_cleaned = 0
+        ai_skipped = 0
+        ai_failed = 0
 
         for article in articles:
             try:
                 result = fetcher.fetch(article.id, force=True)
                 if result.success:
                     success += 1
-                    logger.info(f"Fetched full content for article {article.id}: {article.title[:30]}")
+                    logger.info(
+                        f"Fetched full content for article {article.id}: "
+                        f"{article.title[:30]}"
+                    )
                 else:
                     failed += 1
-                    logger.warning(f"Failed to fetch article {article.id}: {result.error}")
+                    logger.warning(
+                        f"Failed to fetch article {article.id}: {result.error}"
+                    )
+                # Tally the AI-cleanup outcome regardless of Jina
+                # success — a "skipped" fetch (DeepSeek off) is still
+                # a data point the dashboard wants to see.
+                status = result.ai_cleanup_status
+                if status == "cleaned":
+                    ai_cleaned += 1
+                elif status == "skipped":
+                    ai_skipped += 1
+                elif status == "failed":
+                    ai_failed += 1
             except Exception as e:
                 failed += 1
                 logger.warning(f"Error fetching article {article.id}: {e}")
 
-        logger.info(f"Full content fetch complete: {success} success, {failed} failed")
-        return {"processed": len(articles), "success": success, "failed": failed}
+        logger.info(
+            f"Full content fetch complete: {success} success, {failed} failed "
+            f"(ai_cleaned={ai_cleaned}, ai_skipped={ai_skipped}, ai_failed={ai_failed})"
+        )
+        return {
+            "processed": len(articles),
+            "success": success,
+            "failed": failed,
+            "ai_cleaned": ai_cleaned,
+            "ai_skipped": ai_skipped,
+            "ai_failed": ai_failed,
+        }
 
     finally:
         db.close()
