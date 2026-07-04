@@ -48,8 +48,9 @@ import {
   ToolOutlined,
   SafetyCertificateOutlined,
   GlobalOutlined,
+  WalletOutlined,
 } from '@ant-design/icons';
-import { Switch } from 'antd';
+import { Switch, message } from 'antd';
 import { useAuthStore } from '@/stores/auth';
 import { useSettingsStore } from '@/stores/settings';
 import { menuRoutes, sidebarGroups, type SidebarGroupKey } from '@/routes';
@@ -96,6 +97,7 @@ const iconMap: Record<string, React.ComponentType> = {
   ToolOutlined,
   SafetyCertificateOutlined,
   GlobalOutlined,
+  WalletOutlined,
 };
 
 const SIDEBAR_EXPANDED_KEY = 'ad-research:sidebar:expanded';
@@ -365,6 +367,23 @@ export default function AppLayout() {
       /* localStorage may be unavailable (SSR / quota) — skip silently */
     }
   }, [user?.id]);
+
+  // One-shot "已开启学习模式" hint so users notice the new default without
+  // having to dig into the avatar menu. Keyed per-user so multi-account
+  // devices each get the nudge once.
+  useEffect(() => {
+    const userId = user?.id;
+    if (!userId) return;
+    if (!learningMode) return;
+    try {
+      const key = `ad:learning-mode:intro-shown:${userId}`;
+      if (localStorage.getItem(key) === '1') return;
+      localStorage.setItem(key, '1');
+      message.info('已开启学习模式 — 关键术语旁会显示解释', 4);
+    } catch {
+      /* localStorage may be unavailable (SSR / quota) — skip silently */
+    }
+  }, [user?.id, learningMode]);
 
   // Build a 1- or 2-segment breadcrumb from the route config + current URL.
   // e.g. /instruments/510300.SH -> [首页, 标的列表, 510300.SH]

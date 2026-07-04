@@ -27,6 +27,7 @@ import type {
   SentimentLabel,
   ImportanceLevel,
 } from '@/types/news';
+import { SENTIMENT_LABELS } from '@/utils/sentiment';
 import PageShell from '@/components/PageShell';
 import PageHeader from '@/components/PageHeader';
 import FilterToolbar from '@/components/FilterToolbar';
@@ -45,16 +46,10 @@ const MARKET_OPTIONS: { label: string; value: NewsMarket | 'all' }[] = [
   { label: '加密', value: 'crypto' },
 ];
 
-const SENTIMENT_COLORS: Record<SentimentLabel, string> = {
+const POLL_SLICE_COLORS: Record<SentimentLabel, string> = {
   positive: 'var(--color-fall)',
   neutral: 'var(--text-tertiary)',
   negative: 'var(--color-rise)',
-};
-
-const SENTIMENT_LABELS: Record<SentimentLabel, string> = {
-  positive: '看多',
-  neutral: '中性',
-  negative: '看空',
 };
 
 interface SymbolAggregate {
@@ -182,9 +177,9 @@ function PieBreakdown({ row }: { row: SymbolAggregate }) {
     return <span className="ad-text-small ad-text-tertiary">—</span>;
   }
   const slices = [
-    { label: '多', value: row.bull, color: SENTIMENT_COLORS.positive },
-    { label: '空', value: row.bear, color: SENTIMENT_COLORS.negative },
-    { label: '中', value: row.neutral, color: SENTIMENT_COLORS.neutral },
+    { label: '多', value: row.bull, color: POLL_SLICE_COLORS.positive },
+    { label: '空', value: row.bear, color: POLL_SLICE_COLORS.negative },
+    { label: '中', value: row.neutral, color: POLL_SLICE_COLORS.neutral },
   ];
   const size = 56;
   const r = 22;

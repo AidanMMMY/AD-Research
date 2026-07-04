@@ -27,6 +27,7 @@ import { useSettingsStore } from '@/stores/settings';
 import { getReturnColor } from '@/utils/color';
 import { buildInstrumentDetailContext } from '@/utils/helpContext';
 import { getQuickQuestions } from '@/utils/helpPrompts';
+import { SENTIMENT_COLORS, SENTIMENT_LABELS } from '@/utils/sentiment';
 import type { ResearchNote } from '@/api/research';
 
 const TIME_RANGE_OPTIONS = [
@@ -54,22 +55,6 @@ const INDICATOR_OPTION_TERMS: Record<string, string> = {
   bb: 'bollinger_bands',
   rsi: 'rsi14',
   macd: 'macd',
-};
-
-const SENTIMENT_COLORS: Record<string, string> = {
-  bullish: 'var(--color-rise)',
-  positive: 'var(--color-rise)',
-  bearish: 'var(--color-fall)',
-  negative: 'var(--color-fall)',
-  neutral: 'var(--text-tertiary)',
-};
-
-const SENTIMENT_LABELS: Record<string, string> = {
-  bullish: '看多',
-  positive: '看多',
-  bearish: '看空',
-  negative: '看空',
-  neutral: '中性',
 };
 
 const INSTRUMENT_TYPE_LABELS: Record<string, string> = {
@@ -517,7 +502,11 @@ export default function InstrumentDetail() {
           <Panel variant="default" className="ai-assistant-cta" padding="md">
             <RobotOutlined className="ai-assistant-cta__icon" />
             <span className="ai-assistant-cta__text">想问AI关于 {code} 的分析？</span>
-            <Button type="primary" icon={<RobotOutlined />} onClick={() => navigate('/chat')}>
+            <Button
+              type="primary"
+              icon={<RobotOutlined />}
+              onClick={() => navigate(`/chat?symbol=${encodeURIComponent(code || '')}`)}
+            >
               打开AI助手
             </Button>
           </Panel>

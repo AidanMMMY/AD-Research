@@ -21,6 +21,7 @@ import ReturnTag from '@/components/ReturnTag';
 import NewsListPanel from '@/components/NewsListPanel';
 import HelpPopover from '@/components/HelpPopover';
 import { useSettingsStore } from '@/stores/settings';
+import { SENTIMENT_LABELS } from '@/utils/sentiment';
 import type { DailyBar, ResearchNote } from '@/types/crypto';
 import type { OHLCV } from '@/types/instrument';
 
@@ -49,14 +50,6 @@ const INDICATOR_OPTION_TERMS: Record<string, string> = {
   bb: 'bollinger_bands',
   rsi: 'rsi14',
   macd: 'macd',
-};
-
-const SENTIMENT_LABELS: Record<string, string> = {
-  bullish: '看多',
-  positive: '看多',
-  bearish: '看空',
-  negative: '看空',
-  neutral: '中性',
 };
 
 function toOHLCV(data: DailyBar[]): OHLCV[] {

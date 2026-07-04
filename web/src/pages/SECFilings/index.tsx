@@ -191,7 +191,7 @@ export default function SECFilingsPage() {
             placeholder="Ticker (如 AAPL)"
             value={ticker ?? ''}
             onChange={(e) => setTicker(e.target.value.toUpperCase() || undefined)}
-            style={{ width: 120 }}
+            className="ad-w-full"
             allowClear
           />
           <Select
@@ -199,14 +199,14 @@ export default function SECFilingsPage() {
             value={formType}
             onChange={(v) => setFormType(v)}
             allowClear
-            style={{ width: 130 }}
+            className="ad-w-full"
             options={FORM_TYPES.map((f) => ({ value: f, label: f }))}
           />
           <Input
             placeholder="搜索公司名 / Ticker"
             value={searchText}
             onChange={(e) => setSearchText(e.target.value)}
-            style={{ width: 200 }}
+            className="ad-w-full"
             prefix={<SearchOutlined />}
             allowClear
           />

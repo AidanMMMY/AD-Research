@@ -119,12 +119,12 @@ export default function StocksList() {
           allowClear
           prefix={<SearchOutlined className="ad-icon-tertiary" />}
           onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-          style={{ width: 240 }}
+          className="ad-w-full"
         />
         <Select
           placeholder="市场"
           allowClear
-          style={{ width: 140 }}
+          className="ad-w-full"
           options={markets?.map((m: string) => ({ label: m, value: m }))}
           value={market}
           onChange={(v) => { setMarket(v); setPage(1); }}
@@ -132,7 +132,7 @@ export default function StocksList() {
         <Select
           placeholder="行业"
           allowClear
-          style={{ width: 180 }}
+          className="ad-w-full"
           options={categories?.map((c: string) => ({ label: c, value: c }))}
           value={category}
           onChange={(v) => { setCategory(v); setPage(1); }}

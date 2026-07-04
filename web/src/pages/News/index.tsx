@@ -1,3 +1,4 @@
+import { SENTIMENT_COLORS, SENTIMENT_LABELS } from '@/utils/sentiment';
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
@@ -160,18 +161,6 @@ const SOURCE_LABELS: Record<string, { emoji: string; label: string }> = {
   cointelegraph: { emoji: '🪙', label: 'Cointelegraph' },
   bloomberg: { emoji: '🏛', label: 'Bloomberg' },
   reuters: { emoji: '🏛', label: '路透' },
-};
-
-const SENTIMENT_COLORS: Record<SentimentLabel, string> = {
-  positive: 'var(--color-rise)',
-  neutral: 'var(--text-tertiary)',
-  negative: 'var(--color-fall)',
-};
-
-const SENTIMENT_LABELS: Record<SentimentLabel, string> = {
-  positive: '看多',
-  neutral: '中性',
-  negative: '看空',
 };
 
 const IMPORTANCE_COLOR = 'var(--color-warning-bright)';

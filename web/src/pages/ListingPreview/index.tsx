@@ -302,13 +302,13 @@ export default function ListingPreview() {
             setSearch(e.target.value);
             setPage(1);
           }}
-          style={{ width: 240 }}
+          className="ad-w-full"
         />
         <Select
           mode="multiple"
           placeholder="状态"
           allowClear
-          style={{ width: 180 }}
+          className="ad-w-full"
           value={statuses}
           onChange={(v) => {
             setStatuses(v);
@@ -323,7 +323,7 @@ export default function ListingPreview() {
           mode="multiple"
           placeholder="板块"
           allowClear
-          style={{ width: 200 }}
+          className="ad-w-full"
           value={boards}
           onChange={(v) => {
             setBoards(v);
@@ -335,7 +335,7 @@ export default function ListingPreview() {
           mode="multiple"
           placeholder="交易所"
           allowClear
-          style={{ width: 160 }}
+          className="ad-w-full"
           value={markets}
           onChange={(v) => {
             setMarkets(v);
@@ -346,7 +346,7 @@ export default function ListingPreview() {
         <Select
           placeholder="行业"
           allowClear
-          style={{ width: 180 }}
+          className="ad-w-full"
           value={industry}
           onChange={(v) => {
             setIndustry(v);

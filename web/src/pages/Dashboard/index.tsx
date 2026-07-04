@@ -41,6 +41,7 @@ import InstrumentCodeTag from '@/components/InstrumentCodeTag';
 import ReturnTag from '@/components/ReturnTag';
 import ThemeTag from '@/components/ThemeTag';
 import ScoreBar from '@/components/ScoreBar';
+import FavoriteToggleButton from '@/components/FavoriteToggleButton';
 import TickerTape from '@/components/TickerTape';
 import HelpPopover from '@/components/HelpPopover';
 import DailyLesson from '@/components/DailyLesson';
@@ -49,19 +50,10 @@ import { useLearnStats } from '@/hooks/useLearnedTerms';
 import { useSettingsStore } from '@/stores/settings';
 import { usePriceStream } from '@/hooks/usePriceStream';
 import { useMarketStream } from '@/hooks/useMarketStream';
-import type { NewsArticle, SentimentLabel } from '@/types/news';
+import type { NewsArticle } from '@/types/news';
+import { SENTIMENT_COLORS, SENTIMENT_LABELS } from '@/utils/sentiment';
 
-const SENTIMENT_COLORS: Record<SentimentLabel, string> = {
-  positive: 'var(--color-rise)',
-  neutral: 'var(--text-tertiary)',
-  negative: 'var(--color-fall)',
-};
 
-const SENTIMENT_LABELS: Record<SentimentLabel, string> = {
-  positive: '看多',
-  neutral: '中性',
-  negative: '看空',
-};
 
 function formatRelative(iso: string): string {
   // UTC-aware formatter — see ``utils/datetime``.
@@ -360,6 +352,14 @@ export default function Dashboard() {
         ) : (
           <ArrowDownOutlined className="ad-icon-fall" />
         ),
+    },
+    {
+      title: '',
+      key: 'favorite',
+      width: 48,
+      render: (_: unknown, record: any) => (
+        <FavoriteToggleButton code={record.etf_code} name={record.etf_name} />
+      ),
     },
   ];
 

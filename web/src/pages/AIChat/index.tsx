@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Input, Button, List, Popconfirm, Empty, Skeleton, Tag } from 'antd';
 import {
@@ -28,9 +28,12 @@ const QUICK_PROMPTS = [
 export default function AIChat() {
   const isMobile = useIsMobile();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const symbolFromUrl = searchParams.get('symbol');
   const [activeSession, setActiveSession] = useState<number | null>(null);
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
+  const [firstMessageSent, setFirstMessageSent] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const queryClient = useQueryClient();
 
@@ -73,10 +76,12 @@ export default function AIChat() {
     },
   });
 
-  const handleSend = async () => {
-    if (!input.trim() || !activeSession || sending) return;
-    const content = input;
-    setInput('');
+  const handleSend = async (override?: string) => {
+    const content = override ?? input;
+    if (!content.trim() || !activeSession || sending) return;
+    if (override === undefined) {
+      setInput('');
+    }
     setSending(true);
     reset(STEP_DEFS);
     try {
@@ -120,6 +125,29 @@ export default function AIChat() {
     }
     setSending(false);
   };
+
+  // ── Auto-trigger first message when arriving via ?symbol=... ──────────
+  // Flow:
+  //   1. InstrumentDetail "打开AI助手" navigates to /chat?symbol=510300.SH
+  //   2. If we don't yet have a session, create one (and wait for its id).
+  //   3. Once a session is active, push `帮我看看 <symbol>` automatically.
+  // `firstMessageSent` is a per-mount latch so we only fire once per arrival.
+  useEffect(() => {
+    if (!symbolFromUrl) return;
+    if (firstMessageSent) return;
+    if (!activeSession) {
+      // Kick off session creation if we don't have one yet.
+      if (createMutation.isIdle) {
+        createMutation.mutate();
+      }
+      return;
+    }
+    setFirstMessageSent(true);
+    void handleSend(`帮我看看 ${symbolFromUrl}`);
+    // We intentionally exclude `handleSend` from deps to avoid re-firing;
+    // `activeSession` is the stable signal we care about.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeSession, symbolFromUrl]);
 
   // Auto-scroll to bottom on new messages
   useEffect(() => {
@@ -285,7 +313,7 @@ export default function AIChat() {
             <Button
               type="primary"
               icon={<SendOutlined />}
-              onClick={handleSend}
+              onClick={() => handleSend()}
               loading={sending}
               disabled={sending || !input.trim()}
             />

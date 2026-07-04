@@ -13,6 +13,7 @@ import ThemeTag, { ThemeTagVariant } from '@/components/ThemeTag';
 import InstrumentCodeTag from '@/components/InstrumentCodeTag';
 import HelpPopover from '@/components/HelpPopover';
 import { useSettingsStore } from '@/stores/settings';
+import { SENTIMENT_LABELS } from '@/utils/sentiment';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
@@ -20,12 +21,6 @@ const SENTIMENT_VARIANTS: Record<string, ThemeTagVariant> = {
   bullish: 'rise',
   bearish: 'fall',
   neutral: 'neutral',
-};
-
-const SENTIMENT_LABELS: Record<string, string> = {
-  bullish: '看多',
-  bearish: '看空',
-  neutral: '中性',
 };
 
 const NOTE_TYPE_OPTIONS = [

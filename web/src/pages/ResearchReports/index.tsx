@@ -248,12 +248,12 @@ export default function ResearchReports() {
             setSearch(e.target.value);
             setPage(1);
           }}
-          style={{ width: 200 }}
+          className="ad-w-full"
         />
         <Select
           placeholder="行业"
           allowClear
-          style={{ width: 160 }}
+          className="ad-w-full"
           value={industry}
           onChange={(v) => {
             setIndustry(v);
@@ -264,7 +264,7 @@ export default function ResearchReports() {
         <Select
           placeholder="机构"
           allowClear
-          style={{ width: 200 }}
+          className="ad-w-full"
           value={orgName}
           onChange={(v) => {
             setOrgName(v);
@@ -275,7 +275,7 @@ export default function ResearchReports() {
         <Select
           placeholder="评级"
           allowClear
-          style={{ width: 120 }}
+          className="ad-w-full"
           value={rating}
           onChange={(v) => {
             setRating(v);
@@ -285,7 +285,7 @@ export default function ResearchReports() {
         />
         <Select
           value={hasSummary}
-          style={{ width: 130 }}
+          className="ad-w-full"
           onChange={(v) => {
             setHasSummary(v);
             setPage(1);

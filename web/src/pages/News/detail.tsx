@@ -31,7 +31,6 @@ import type {
   NewsArticle,
   NewsFetchContentResponse,
   NewsTranslateResponse,
-  SentimentLabel,
   ImportanceLevel,
 } from '@/types/news';
 import PageShell from '@/components/PageShell';
@@ -42,20 +41,9 @@ import ResponsiveGrid from '@/components/ResponsiveGrid';
 import StatCard from '@/components/StatCard';
 import InstrumentCodeTag from '@/components/InstrumentCodeTag';
 import { formatDateTime, formatDateTimeCompact } from '@/utils/datetime';
+import { SENTIMENT_COLORS, SENTIMENT_LABELS } from '@/utils/sentiment';
 import HelpPopover from '@/components/HelpPopover';
 import { useSettingsStore } from '@/stores/settings';
-
-const SENTIMENT_COLORS: Record<SentimentLabel, string> = {
-  positive: 'var(--color-rise)',
-  neutral: 'var(--text-tertiary)',
-  negative: 'var(--color-fall)',
-};
-
-const SENTIMENT_LABELS: Record<SentimentLabel, string> = {
-  positive: '看多',
-  neutral: '中性',
-  negative: '看空',
-};
 
 const SOCIAL_SOURCES = new Set(['xueqiu', 'reddit', 'weibo']);
 

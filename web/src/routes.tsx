@@ -134,8 +134,8 @@ export const routes: RouteConfig[] = [
   { path: '/paper-trading', element: wrap(PaperTrading), auth: true, menu: { name: '模拟交易', icon: 'DollarOutlined', group: 'trade' } },
   { path: '/live-trading', element: wrap(TradingPanel), auth: true, menu: { name: '真实交易', icon: 'ThunderboltOutlined', group: 'trade' } },
   // Portfolio Center (P1) — aggregation page reachable from the Dashboard
-  // "组合中心" chip row. Not surfaced in the sidebar (menu: undefined).
-  { path: '/portfolio', element: wrap(Portfolio), auth: true },
+  // "组合中心" chip row AND from the sidebar (trade group).
+  { path: '/portfolio', element: wrap(Portfolio), auth: true, menu: { name: '我的组合', icon: 'WalletOutlined', group: 'trade' } },
   { path: '/crypto', element: wrap(CryptoList), auth: true, menu: { name: '加密货币', icon: 'GoldOutlined', group: 'trade' } },
   { path: '/crypto/:code', element: wrap(CryptoDetail), auth: true },
   // === 学习 & 另类数据 ===

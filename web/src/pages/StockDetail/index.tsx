@@ -26,6 +26,7 @@ import { useSettingsStore } from '@/stores/settings';
 import { getReturnColor } from '@/utils/color';
 import { buildInstrumentDetailContext } from '@/utils/helpContext';
 import { getQuickQuestions } from '@/utils/helpPrompts';
+import { SENTIMENT_COLORS, SENTIMENT_LABELS } from '@/utils/sentiment';
 import type { ResearchNote } from '@/api/research';
 
 const TIME_RANGE_OPTIONS = [
@@ -53,22 +54,6 @@ const INDICATOR_OPTION_TERMS: Record<string, string> = {
   bb: 'bollinger_bands',
   rsi: 'rsi14',
   macd: 'macd',
-};
-
-const SENTIMENT_COLORS: Record<string, string> = {
-  bullish: 'var(--color-rise)',
-  positive: 'var(--color-rise)',
-  bearish: 'var(--color-fall)',
-  negative: 'var(--color-fall)',
-  neutral: 'var(--text-tertiary)',
-};
-
-const SENTIMENT_LABELS: Record<string, string> = {
-  bullish: '看多',
-  positive: '看多',
-  bearish: '看空',
-  negative: '看空',
-  neutral: '中性',
 };
 
 function formatMarketCap(value: number, market?: string) {

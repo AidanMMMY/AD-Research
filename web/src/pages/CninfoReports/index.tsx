@@ -232,12 +232,12 @@ export default function CninfoReportsPage() {
             setSearch(e.target.value);
             setPage(1);
           }}
-          style={{ width: 240 }}
+          className="ad-w-full"
         />
         <Select
           placeholder="报告类型"
           allowClear
-          style={{ width: 140 }}
+          className="ad-w-full"
           value={adjunctType}
           onChange={(v) => {
             setAdjunctType(v);
@@ -248,7 +248,7 @@ export default function CninfoReportsPage() {
         <Select
           placeholder="财年"
           allowClear
-          style={{ width: 120 }}
+          className="ad-w-full"
           value={fiscalYear}
           onChange={(v) => {
             setFiscalYear(v);
@@ -259,7 +259,7 @@ export default function CninfoReportsPage() {
         <Select
           placeholder="文本提取"
           allowClear
-          style={{ width: 140 }}
+          className="ad-w-full"
           value={hasText}
           onChange={(v) => {
             setHasText(v);

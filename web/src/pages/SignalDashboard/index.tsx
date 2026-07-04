@@ -11,6 +11,7 @@ import InstrumentCodeTag from '@/components/InstrumentCodeTag';
 import HelpTrigger from '@/components/HelpTrigger';
 import ContextHint from '@/components/ContextHint';
 import DataFreshnessHint from '@/components/DataFreshnessHint';
+import SignalDetailDrawer from '@/components/SignalDetailDrawer';
 import { useSignals } from '@/hooks/useSignals';
 import { useAIHelp } from '@/hooks/useAIHelp';
 import { buildSignalDashboardContext } from '@/utils/helpContext';
@@ -46,6 +47,7 @@ export default function SignalDashboard() {
   const { open } = useAIHelp();
   const [familyFilter, setFamilyFilter] = useState<string>('all');
   const [typeFilter, setTypeFilter] = useState<string>('all');
+  const [selectedSignal, setSelectedSignal] = useState<Signal | null>(null);
 
   const items: Signal[] = signals?.items || [];
 
@@ -85,6 +87,31 @@ export default function SignalDashboard() {
       width: 80,
     },
     { title: '强度', dataIndex: 'strength', width: 80, render: (v: any) => <span className="tabular-nums">{v}</span> },
+    {
+      title: '',
+      key: 'view-instrument',
+      width: 80,
+      render: (_: unknown, record: Signal) => (
+        <span
+          role="link"
+          tabIndex={0}
+          style={{ color: 'var(--color-primary)', cursor: 'pointer' }}
+          onClick={(e) => {
+            e.stopPropagation();
+            navigate(`/instruments/${record.etf_code}`);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              e.stopPropagation();
+              navigate(`/instruments/${record.etf_code}`);
+            }
+          }}
+        >
+          查看标的
+        </span>
+      ),
+    },
   ];
 
   const handleOpenHelp = () => {
@@ -184,12 +211,20 @@ export default function SignalDashboard() {
                 emptyText: <EmptyState title="暂无信号" description="当前没有符合条件的交易信号" />,
               }}
               onRow={(record) => ({
-                onClick: () => navigate(`/instruments/${record.etf_code}`),
+                // Row click opens the signal detail drawer. To navigate to
+                // the underlying instrument detail page, use the explicit
+                // "查看标的" link in the right-most column.
+                onClick: () => setSelectedSignal(record),
               })}
             />
           </div>
         </Panel>
       </div>
+
+      <SignalDetailDrawer
+        signal={selectedSignal}
+        onClose={() => setSelectedSignal(null)}
+      />
     </PageShell>
   );
 }

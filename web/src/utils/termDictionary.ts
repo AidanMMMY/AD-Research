@@ -32,6 +32,45 @@ export interface TermEntry {
   relatedTerms?: string[];
 }
 
+/**
+ * 跨页术语统一（仅文档用途，不做运行时 rename，避免破坏 i18n / DB 列）。
+ *
+ * 平台历史上对「收藏 / 关注 / 自选股 / Watchlist / favorites / stars」
+ * 混用过，对「ETF / STOCK / CRYPTO」的中文标签也各自命名。下面是当前
+ * 推荐的规范映射：
+ *
+ *   TERMINOLOGY_ALIASES
+ *     '收藏'        → '自选股'
+ *     '关注'        → '自选股'
+ *     'Watchlist'   → '自选股'
+ *     'favorites'   → '自选股'
+ *     'stars'       → '自选股'
+ *
+ *   INSTRUMENT_TYPE_ALIASES
+ *     'ETF'         → '基金'
+ *     'STOCK'       → '个股'
+ *     'CRYPTO'      → '数字货币'
+ *
+ * 注意：
+ *   - 这只是给开发 / 客服 / 文档参考用的"事实表"，不要在代码里做全局替换。
+ *   - 历史 UI 文本（如 Dashboard "暂无收藏的标的"、InstrumentDetail "已收藏"）
+ *     保留原措辞，避免一次性改文案导致翻译 key 失配、test snapshot 红屏。
+ *   - 新页面/新文案请直接使用右侧的"规范名"以减少后续收敛成本。
+ */
+export const TERMINOLOGY_ALIASES: Record<string, string> = {
+  '收藏': '自选股',
+  '关注': '自选股',
+  'Watchlist': '自选股',
+  'favorites': '自选股',
+  'stars': '自选股',
+};
+
+export const INSTRUMENT_TYPE_ALIASES: Record<string, string> = {
+  ETF: '基金',
+  STOCK: '个股',
+  CRYPTO: '数字货币',
+};
+
 const entries: TermEntry[] = [
   // ===== 评分体系 =====
   {

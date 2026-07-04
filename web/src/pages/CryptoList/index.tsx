@@ -145,12 +145,12 @@ export default function CryptoList() {
             filters.setSearch(e.target.value);
             setPage(1);
           }}
-          style={{ width: 240 }}
+          className="ad-w-full"
         />
         <Select
           placeholder="分类"
           allowClear
-          style={{ width: 140 }}
+          className="ad-w-full"
           value={filters.category}
           onChange={(v) => {
             filters.setCategory(v);
@@ -160,13 +160,13 @@ export default function CryptoList() {
         />
         <Select
           placeholder="排序"
-          style={{ width: 120 }}
+          className="ad-w-full"
           value={filters.sortBy}
           onChange={(v) => filters.setSort(v, filters.sortOrder)}
           options={SORT_OPTIONS}
         />
         <Select
-          style={{ width: 80 }}
+          className="ad-w-full"
           value={filters.sortOrder}
           onChange={(v) => filters.setSort(filters.sortBy, v)}
           options={[

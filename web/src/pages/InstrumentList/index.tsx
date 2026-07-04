@@ -197,19 +197,19 @@ export default function InstrumentList() {
           allowClear
           prefix={<SearchOutlined className="ad-icon-tertiary" />}
           onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-          style={{ width: 240 }}
+          className="ad-w-full"
         />
         <Select
           placeholder="市场"
           allowClear
-          style={{ width: 140 }}
+          className="ad-w-full"
           options={markets?.map((m: string) => ({ label: m, value: m }))}
           onChange={(v) => { setMarket(v); setPage(1); }}
         />
         <Select
           placeholder="类型"
           allowClear
-          style={{ width: 120 }}
+          className="ad-w-full"
           options={[
             { label: 'ETF', value: 'ETF' },
             { label: '个股', value: 'STOCK' },
@@ -221,7 +221,7 @@ export default function InstrumentList() {
         <Select
           placeholder="分类"
           allowClear
-          style={{ width: 160 }}
+          className="ad-w-full"
           options={categories?.map((c: string) => ({ label: c, value: c }))}
           onChange={(v) => { setCategory(v); setPage(1); }}
         />
