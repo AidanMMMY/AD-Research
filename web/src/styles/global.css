@@ -2613,17 +2613,17 @@ main {
   display: flex;
   align-items: center;
   gap: var(--space-3);
-  min-height: 38px;
-  padding: 8px 12px 8px 14px;
-  margin-bottom: 2px;
+  min-height: 36px;
+  padding: 7px 12px 7px 14px;
+  margin-bottom: 1px;
   border-radius: var(--radius-lg);
   cursor: pointer;
   transition: background var(--transition-fast), color var(--transition-fast);
   justify-content: flex-start;
   color: var(--text-secondary);
   background: transparent;
-  line-height: 22px;
-  font-size: 14px;
+  line-height: 20px;
+  font-size: 13px;
   font-weight: 400;
 }
 
@@ -2670,11 +2670,11 @@ main {
 }
 
 .app-layout__nav-icon {
-  font-size: 16px;
-  width: 16px;
-  height: 16px;
+  font-size: 14px;
+  width: 14px;
+  height: 14px;
   flex-shrink: 0;
-  opacity: 0.75;
+  opacity: 0.85;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -2704,27 +2704,34 @@ main {
   margin-bottom: var(--space-1);
 }
 
+/*
+ * Sidebar nav — group header and item belong to the SAME visual language
+ * (same font size, same casing, same color family). They differ only by
+ * weight (group = 600, item = 400, active = 500). This avoids the
+ * "section-label vs nav-item" disconnect that made the sidebar look
+ * inconsistent.
+ * ============================================================ */
+
 .app-layout__nav-group-header {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  padding: 14px 12px 6px 12px;
-  margin-top: var(--space-3);
+  padding: 10px 12px 4px 14px;
+  margin-top: var(--space-2);
   border-radius: var(--radius-md);
   cursor: pointer;
   user-select: none;
-  color: var(--text-muted);
-  font-size: 11px;
-  line-height: 14px;
-  font-weight: 700;
-  letter-spacing: 0.10em;
-  text-transform: uppercase;
+  color: var(--text-tertiary);
+  font-size: 13px;
+  line-height: 20px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
   transition: background var(--transition-fast), color var(--transition-fast);
 }
 
 .app-layout__nav-group:first-child .app-layout__nav-group-header {
-  margin-top: 0;
-  padding-top: 8px;
+  margin-top: var(--space-1);
 }
 
 .app-layout__nav-group-header:hover,
@@ -2739,14 +2746,14 @@ main {
 }
 
 .app-layout__nav-group-icon {
-  font-size: 12px;
-  width: 12px;
-  height: 12px;
+  font-size: 14px;
+  width: 14px;
+  height: 14px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  opacity: 0.7;
+  opacity: 0.9;
 }
 
 .app-layout__nav-group-label {
@@ -7244,21 +7251,23 @@ main {
 
 /* ---- Group header (1-level) ---- */
 .app-layout__nav-group-header {
-  /* Visually: uppercase eyebrow, slightly inset padding, and on hover
-     the whole row lights up as a tappable target. */
+  /* Group header and item now share the SAME visual language (same 13px
+     size, same casing, same color family). They differ only by weight:
+     group = 600, item = 400, active = 500. This avoids the
+     "section-label vs nav-item" disconnect. */
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  padding: 10px var(--space-3) 10px var(--space-3);
+  padding: 10px var(--space-3) 4px var(--space-3);
   margin: 2px 0;
   border-radius: var(--radius-md);
   cursor: pointer;
   user-select: none;
   color: var(--text-tertiary);
-  font-size: var(--text-label-size);
+  font-size: 13px;
   font-weight: 600;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   background: transparent;
   border: 1px solid transparent;
   transition:
@@ -7291,10 +7300,10 @@ main {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 18px;
-  height: 18px;
+  width: 14px;
+  height: 14px;
   flex-shrink: 0;
-  opacity: 0.85;
+  opacity: 0.9;
   color: inherit;
 }
 
@@ -7427,10 +7436,10 @@ main {
 }
 
 .app-layout__nav-icon {
-  font-size: 16px;
+  font-size: 14px;
   flex-shrink: 0;
-  width: 18px;
-  height: 18px;
+  width: 14px;
+  height: 14px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -7449,7 +7458,7 @@ main {
 }
 
 .app-layout__nav-label {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 400;
   white-space: nowrap;
   overflow: hidden;
