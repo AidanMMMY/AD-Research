@@ -17,9 +17,18 @@ us_backfill.py`` 是「按 code 字典序 + Redis 偏移」轮询的：一旦某
 Tier 1: S&P 500 成分股。识别方法：
         ``etf_info.instrument_type = 'STOCK' AND etf_info.market = 'US'``
         （由 ``app/data/pipelines/us_stock_discovery.py`` 从 FMP S&P 500 列表写入）
-Tier 2: 核心宽基 ETF（SPY/QQQ/DIA/IWM/VOO/IVV/VTI — 流动性最高的指数 ETF）
-Tier 3: 行业 / 主题 / 杠杆 ETF（XL* 11 大行业 + ARKK/SOXL/TQQQ 等主题与杠杆）
-Tier 4: 其他 ETF + 其他 STOCK（港股 / 小盘 / 已退市等）
+Tier 2: 核心宽基 ETF（市场风向标级别 — 流动性最高的指数 ETF）：
+        SPY / VOO / IVV / QQQ / DIA / IWM / VTI
+        + VEA / VWO / AGG / BND（国际 / 新兴 / 债市风向标）
+        + VTV / VUG / SCHB（风格 / 总市场，保留自旧脚本）
+Tier 3: 行业 / 主题 / 杠杆 ETF：
+        - Select Sector SPDRs (XL*) — 标普 11 大行业（GICS 板块代表）
+        - 常见主题：ARKK / SOXL / SOXS / TLT / GLD / SLV
+        - 主要杠杆 / 反向（TQQQ / SQQQ / SPXL / UPRO 等）
+Tier 4: 其他 ETF + 其他 STOCK（含 underlying_index 含主要指数但不在 Tier 2 名单）
+
+Tier 4 内嵌次级 fallback：若 ``underlying_index`` 含 ``s&p / dow / nasdaq / russell /
+total market`` 关键词，标记为「次要宽基 ETF」；否则为「其他美股 ETF」。
 
 用法
 ----
@@ -52,8 +61,12 @@ from app.core.database import SessionLocal
 from app.models.etf import ETFInfo, InstrumentDailyBar
 
 
-# Tier 2: 核心宽基 ETF（流动性最高、跟踪 A 股 / 大盘主要指数的 ETF）
+# Tier 2: 核心宽基 ETF（流动性最高、跟踪市场主要指数的 ETF）
+# 涵盖：美股大盘 + 国际 / 新兴 + 债券 — 这些都是「市场风向标」级别的 ETF。
+# 来源：用户硬编码清单（11 只）+ 原有扩展因子 / 总市场（保留 4 只）。
+# TODO 后续季度复审：是否纳入 SCHD / JEPI 等超大股息 ETF？
 CORE_BROAD_ETFS = frozenset({
+    # 用户硬编码：美股大盘
     "SPY",   # SPDR S&P 500
     "VOO",   # Vanguard S&P 500
     "IVV",   # iShares Core S&P 500
@@ -61,6 +74,12 @@ CORE_BROAD_ETFS = frozenset({
     "DIA",   # SPDR Dow Jones Industrial Average
     "IWM",   # iShares Russell 2000
     "VTI",   # Vanguard Total Stock Market
+    # 用户硬编码：国际 / 新兴 / 债券
+    "VEA",   # Vanguard FTSE Developed Markets
+    "VWO",   # Vanguard FTSE Emerging Markets
+    "AGG",   # iShares Core US Aggregate Bond
+    "BND",   # Vanguard Total Bond Market
+    # 旧脚本保留：因子 / 风格 / 总市场
     "VTV",   # Vanguard Value
     "VUG",   # Vanguard Growth
     "SCHB",  # Schwab US Broad Market
@@ -68,25 +87,39 @@ CORE_BROAD_ETFS = frozenset({
 
 # Tier 3: 行业 / 主题 / 杠杆 ETF（11 大行业 + 杠杆 / 反向 + 主题 ETF）
 # - Select Sector SPDRs (XL*) — 标普 11 大行业
-# - Invesco 主要杠杆 / 反向 ETF（TQQQ/SQQQ/SPYU 等）
-# - 主题 ETF（ARKK/SOXL/JNUG 等）
+# - Invesco / ProShares 主要杠杆 / 反向 ETF（TQQQ/SQQQ/SPXL/UPRO 等）
+# - 主题 ETF（ARKK / SOXL / 黄金 / 农业等）
+# 来源：用户硬编码 GICS 11 板块 + 常见主题 + 旧脚本已有杠杆 / 反向清单（保留）。
+# TODO 后续季度复审：是否纳入新兴债券 / REITs / 商品细分主题？
 SECTOR_THEMED_ETFS = frozenset({
-    # 11 大 Select Sector SPDRs
+    # 11 大 Select Sector SPDRs（GICS 板块代表）
     "XLK", "XLF", "XLE", "XLV", "XLY", "XLP",
     "XLI", "XLU", "XLB", "XLRE", "XLC",
+    # 用户硬编码主题 ETF
+    "ARKK",   # ARK Innovation
+    "SOXL",   # Semi 3x Long
+    "SOXS",   # Semi 3x Inverse
+    "TLT",    # 20+ Year Treasury
+    "GLD",    # Gold
+    "SLV",    # Silver
     # 杠杆 / 反向（主要宽基）
     "TQQQ", "SQQQ", "SPXL", "SPXS", "UPRO", "SDS",
     "TNA", "TZA", "UDOW", "SDOW", "UMDD", "SMDD",
     # 行业杠杆 / 反向
-    "SOXL", "SOXS", "FAS", "FAZ", "XLE",
-    "TBT", "TMV", "TZA",
-    # 主题 ETF
-    "ARKK", "ARKW", "ARKG", "ARKF", "ARKQ",
-    "SOXL", "JNUG", "JDST", "NUGT", "DUST",
+    "FAS", "FAZ",
+    "TBT", "TMV",
+    # ARK 主题家族
+    "ARKW", "ARKG", "ARKF", "ARKQ",
+    # 黄金 / 矿业 / 农产品 杠杆
+    "JNUG", "JDST", "NUGT", "DUST",
+    "GDX", "GDXJ", "USO",
+    # 波动率 / VIX
     "UVXY", "SVXY", "VXX", "VIXY",
-    "KRE", "KWEB", "MCHI", "FXI", "EWH",
-    "GLD", "SLV", "GDX", "GDXJ", "USO",
+    # 中国 / 新兴市场 / 行业
+    "KWEB", "MCHI", "FXI", "EWH",
+    "KRE",   # Regional Banking
     "UNG", "BNO",
+    # 生物医药 / 国防 / 航空
     "IBB", "XBI", "LABU", "LABD",
     "ITA", "XAR", "JETS",
 })
