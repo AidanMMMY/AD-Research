@@ -28,6 +28,43 @@ import numpy as np
 import pandas as pd
 
 
+# Minimum number of observations required before the long-window risk
+# metrics (``sharpe_1y`` / ``max_drawdown_1y``) are considered trustworthy.
+# 60 ≈ one trading quarter — short enough to react to new listings, long
+# enough that the 252-day rolling window has enough valid samples to
+# produce a meaningful number instead of an over-fitted one.
+RISK_LONG_MIN_PERIODS = 60
+
+
+def ensure_min_sample(
+    series: pd.Series,
+    min_periods: int,
+    days_since_listing: int | None,
+) -> pd.Series:
+    """Mask a rolling risk series when the sample is too small.
+
+    Returns a series of the same length / index as ``series``. For rows
+    where (a) ``days_since_listing`` is known and less than ``min_periods``,
+    OR (b) fewer than ``min_periods`` of the most recent observations are
+    non-null, the value is replaced with ``NaN``.
+
+    When ``days_since_listing`` is ``None`` (i.e. the upstream inventory
+    has no ``list_date``), we only enforce rule (b) — we do not throw.
+    This keeps historical backfills intact.
+    """
+    full_window = min_periods
+    out = series.copy()
+    # Rule (b): rolling not-null count must clear the bar.
+    notnull_count = series.notna().rolling(full_window, min_periods=min_periods).sum()
+    out = out.where(notnull_count >= min_periods)
+
+    # Rule (a): listed for less than the window → blanket-mask the series.
+    if days_since_listing is not None and days_since_listing < full_window:
+        out = pd.Series([np.nan] * len(series), index=series.index)
+
+    return out
+
+
 def calc_volatility(returns: pd.Series, window: int = 20) -> float:
     """Calculate annualized volatility from a return series.
 
@@ -95,7 +132,10 @@ def calc_return(prices: pd.Series, window: int) -> float:
     return prices.iloc[-1] / prices.iloc[-window] - 1
 
 
-def calculate_risk_indicators(df: pd.DataFrame) -> pd.DataFrame:
+def calculate_risk_indicators(
+    df: pd.DataFrame,
+    days_since_listing: int | None = None,
+) -> pd.DataFrame:
     """Calculate all risk indicators for a DataFrame of OHLCV data.
 
     Computes rolling risk metrics for each row based on historical
@@ -111,6 +151,15 @@ def calculate_risk_indicators(df: pd.DataFrame) -> pd.DataFrame:
 
     Args:
         df: DataFrame with OHLCV bars, sorted by trade_date ascending.
+        days_since_listing: Optional integer — number of trading days
+            since the instrument was listed. When provided, the
+            long-window metrics (``sharpe_1y`` / ``max_drawdown_1y``)
+            are blanked out for instruments listed less than
+            ``RISK_LONG_MIN_PERIODS`` trading days ago (see
+            :func:`ensure_min_sample`). When ``None``, only the
+            rolling-not-null gate is applied — this preserves backwards
+            compatibility for callers that haven't migrated to passing
+            ``list_date``.
 
     Returns:
         DataFrame with risk indicator columns appended.
@@ -124,7 +173,9 @@ def calculate_risk_indicators(df: pd.DataFrame) -> pd.DataFrame:
     result["daily_return"] = result["close"].pct_change()
 
     # Rolling calculations using expanding windows where appropriate
-    # Volatility: rolling std over fixed windows, annualized
+    # Volatility: rolling std over fixed windows, annualized. Short
+    # windows (20d / 60d) keep their existing min_periods — they are
+    # by design short-window indicators.
     result["volatility_20d"] = (
         result["close"]
         .pct_change()
@@ -140,19 +191,30 @@ def calculate_risk_indicators(df: pd.DataFrame) -> pd.DataFrame:
         * np.sqrt(252)
     )
 
-    # Max drawdown: rolling 252-day max drawdown
-    result["max_drawdown_1y"] = (
+    # Max drawdown: rolling 252-day max drawdown. ``min_periods`` raised
+    # from 20 → 60 so newly-listed instruments don't emit unstable
+    # drawdown estimates. The result is then masked by
+    # ``ensure_min_sample`` when ``days_since_listing`` is known and
+    # shorter than the window.
+    raw_max_dd = (
         result["close"]
-        .rolling(window=252, min_periods=20)
+        .rolling(window=252, min_periods=RISK_LONG_MIN_PERIODS)
         .apply(lambda x: calc_max_drawdown(x), raw=False)
     )
+    result["max_drawdown_1y"] = ensure_min_sample(
+        raw_max_dd, RISK_LONG_MIN_PERIODS, days_since_listing
+    )
 
-    # Sharpe ratio: rolling 252-day Sharpe
-    result["sharpe_1y"] = (
+    # Sharpe ratio: rolling 252-day Sharpe. Same tightening rationale
+    # as max_drawdown_1y — ``min_periods`` raised from 20 → 60.
+    raw_sharpe = (
         result["close"]
         .pct_change()
-        .rolling(window=252, min_periods=20)
+        .rolling(window=252, min_periods=RISK_LONG_MIN_PERIODS)
         .apply(lambda x: calc_sharpe(x), raw=False)
+    )
+    result["sharpe_1y"] = ensure_min_sample(
+        raw_sharpe, RISK_LONG_MIN_PERIODS, days_since_listing
     )
 
     # Period returns: true N-period lookback returns (decimals).

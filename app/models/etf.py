@@ -163,6 +163,68 @@ class ETFCorporateAction(Base):
     )
 
 
+class ETFHolding(Base):
+    """ETF holding (constituent) — one row per (ETF, underlying security).
+
+    Tracks the underlying securities that an ETF holds. The
+    ``holdings_as_of_date`` column is the reporting-period date the
+    holding snapshot refers to (usually a quarter or semi-annual
+    disclosure). It is strictly nullable so historical rows written
+    before this column was added keep their pre-migration NULL.
+    Front-end renders surface a "holdings as of YYYY-MM-DD" hint
+    from this column.
+
+    NOTE: there was no pre-existing holdings table as of 2026-07-04.
+    This is the first concrete table for ETF holdings — the migration
+    only becomes meaningful once the upsert pipeline starts writing
+    ``holdings_as_of_date``. See alembic revision ``01aeaa464fc3``.
+    """
+
+    __tablename__ = "etf_holding"
+
+    id = Column(Integer, primary_key=True, autoincrement=True, comment="ID")
+    etf_code = Column(
+        String(20),
+        ForeignKey("etf_info.code", ondelete="CASCADE"),
+        nullable=False,
+        comment="ETF / fund code",
+    )
+    holding_code = Column(
+        String(20),
+        nullable=False,
+        comment="Underlying security code (e.g. 600519.SH, AAPL.US)",
+    )
+    holding_name = Column(String(200), comment="Underlying security display name")
+    weight = Column(
+        DECIMAL(10, 6),
+        comment="Holding weight as a decimal fraction (0.05 = 5%)",
+    )
+    shares = Column(DECIMAL(18, 4), comment="Shares held")
+    market_value = Column(DECIMAL(18, 4), comment="Market value in base currency")
+    holdings_as_of_date = Column(
+        Date,
+        nullable=True,
+        comment="Reporting-period date for this snapshot (e.g. quarterly disclosure)",
+    )
+    source = Column(String(50), comment="Data source (csindex, sse, manual)")
+    created_at = Column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        comment="Creation time",
+    )
+
+    __table_args__ = (
+        UniqueConstraint(
+            "etf_code",
+            "holding_code",
+            "holdings_as_of_date",
+            name="uq_etf_holding_code_date",
+        ),
+        Index("idx_etf_holding_etf", "etf_code"),
+        Index("idx_etf_holding_as_of", "holdings_as_of_date"),
+    )
+
+
 class ETFIndicator(Base):
     """ETF daily technical indicators."""
 
@@ -265,6 +327,22 @@ class StockFundamental(Base):
     total_share = Column(DECIMAL(18, 4), comment="Total shares (万股)")
     float_share = Column(DECIMAL(18, 4), comment="Free float shares (万股)")
     free_share = Column(DECIMAL(18, 4), comment="Unrestricted shares (万股)")
+
+    # Period metadata (added 2026-07-04 to disambiguate PE/PB across
+    # reporting periods). Strictly nullable — existing rows stay NULL.
+    # ``period_type`` ∈ {'Q1','Q2','Q3','Annual','TTM'} identifies the
+    # reporting window the valuation was sourced from; ``announce_date``
+    # is the public release date for that snapshot.
+    period_type = Column(
+        String(10),
+        nullable=True,
+        comment="Reporting period: Q1|Q2|Q3|Annual|TTM (TTM = trailing twelve months)",
+    )
+    announce_date = Column(
+        DateTime,
+        nullable=True,
+        comment="Public release date for this snapshot",
+    )
 
     created_at = Column(
         DateTime(timezone=True),

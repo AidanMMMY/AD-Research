@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.sql import func
 
 from app.core.cache import cache_get, cache_set
-from app.models.etf import ETFInfo, StockFundamental
+from app.models.etf import ETFHolding, ETFInfo, StockFundamental
 from app.schemas.etf import ETFFilterParams, ETFInfoResponse, ETFListResponse
 
 
@@ -207,3 +207,115 @@ class ETFService:
         markets = [r[0] for r in results if r[0]]
         cache_set(cache_key, markets, ttl=600)
         return markets
+
+    # ------------------------------------------------------------------
+    # Holdings (ETF 持仓穿透)
+    # ------------------------------------------------------------------
+
+    def get_holdings(self, code: str) -> dict:
+        """Return the latest holdings snapshot for an ETF.
+
+        Response shape::
+
+            {
+                "holdings": [
+                    {
+                        "etf_code": str,
+                        "holding_code": str,
+                        "holding_name": str | None,
+                        "weight": float | None,
+                        "shares": float | None,
+                        "market_value": float | None,
+                        "holdings_as_of_date": date | None,
+                    },
+                    ...
+                ],
+                "holdings_as_of_date": date | None,
+            }
+
+        The top-level ``holdings_as_of_date`` is the max of the per-row
+        ``holdings_as_of_date`` so callers can render a single "as of"
+        hint without having to scan the list. Returns ``None`` for the
+        field when no row carries a date (pre-migration snapshots).
+
+        Backwards-compat: the call is purely additive — callers that
+        ignore the new field keep working unchanged.
+        """
+        rows = (
+            self.db.query(ETFHolding)
+            .filter(ETFHolding.etf_code == code)
+            .order_by(ETFHolding.weight.desc().nullslast())
+            .all()
+        )
+        holdings = [
+            {
+                "etf_code": h.etf_code,
+                "holding_code": h.holding_code,
+                "holding_name": h.holding_name,
+                "weight": float(h.weight) if h.weight is not None else None,
+                "shares": float(h.shares) if h.shares is not None else None,
+                "market_value": float(h.market_value)
+                if h.market_value is not None
+                else None,
+                "holdings_as_of_date": h.holdings_as_of_date,
+            }
+            for h in rows
+        ]
+        as_of = max(
+            (h.holdings_as_of_date for h in rows if h.holdings_as_of_date),
+            default=None,
+        )
+        return {"holdings": holdings, "holdings_as_of_date": as_of}
+
+    def upsert_holdings(
+        self,
+        etf_code: str,
+        rows: list[dict],
+        as_of_date,
+    ) -> int:
+        """Upsert holdings for an ETF, stamped with ``as_of_date``.
+
+        Each item in ``rows`` is expected to carry: ``holding_code``,
+        ``holding_name`` (optional), ``weight`` (optional), ``shares``
+        (optional), ``market_value`` (optional). Existing rows matching
+        ``(etf_code, holding_code, holdings_as_of_date)`` are updated in
+        place; new rows are inserted. Returns the number of rows written.
+
+        Strictly additive — callers that don't supply ``as_of_date`` get
+        rows persisted with ``holdings_as_of_date = NULL`` (the historical
+        default before this field existed).
+        """
+        if not rows:
+            return 0
+        written = 0
+        for r in rows:
+            existing = (
+                self.db.query(ETFHolding)
+                .filter(
+                    ETFHolding.etf_code == etf_code,
+                    ETFHolding.holding_code == r.get("holding_code"),
+                    ETFHolding.holdings_as_of_date == as_of_date,
+                )
+                .first()
+            )
+            if existing is not None:
+                existing.holding_name = r.get("holding_name", existing.holding_name)
+                existing.weight = r.get("weight", existing.weight)
+                existing.shares = r.get("shares", existing.shares)
+                existing.market_value = r.get("market_value", existing.market_value)
+            else:
+                self.db.add(
+                    ETFHolding(
+                        etf_code=etf_code,
+                        holding_code=r["holding_code"],
+                        holding_name=r.get("holding_name"),
+                        weight=r.get("weight"),
+                        shares=r.get("shares"),
+                        market_value=r.get("market_value"),
+                        holdings_as_of_date=as_of_date,
+                    )
+                )
+            written += 1
+        if written:
+            self.db.commit()
+        return written
