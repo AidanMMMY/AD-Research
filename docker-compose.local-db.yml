@@ -1,0 +1,58 @@
+# Local database services only (for local backend development/visual regression).
+# The backend is expected to run directly from the host Poetry venv:
+#
+#   docker compose -f docker-compose.local-db.yml up -d
+#   poetry run alembic upgrade head
+#   poetry run python scripts/create_admin_local.py
+#   poetry run uvicorn app.main:app --host 0.0.0.0 --port 8000
+#
+# Frontend must be built first:
+#   cd web && npm run build
+#
+# Then run browser validation:
+#   cd web && node scripts/visual-regression.mjs
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: ad-research-postgres-local
+    restart: unless-stopped
+    environment:
+      TZ: Asia/Shanghai
+      POSTGRES_DB: ad_research
+      POSTGRES_USER: etf
+      POSTGRES_PASSWORD: etf_local
+    volumes:
+      - postgres_local_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U etf -d ad_research"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+    ports:
+      - "5432:5432"
+    networks:
+      - ad-research-local
+
+  redis:
+    image: redis:7-alpine
+    container_name: ad-research-redis-local
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 3s
+    networks:
+      - ad-research-local
+
+volumes:
+  postgres_local_data:
+
+networks:
+  ad-research-local:
+    driver: bridge
