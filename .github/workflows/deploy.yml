@@ -102,6 +102,22 @@ jobs:
           echo "[INFO] 如需真正部署，请触发 workflow_dispatch 时将 dry_run 设为 false"
 
       # ── 4. alembic 迁移完整性校验 ──
+      - name: Wait for backend to be running
+        run: |
+          set -euo pipefail
+          cd "${PROJECT_ROOT}/deploy/aliyun-ecs"
+          for i in $(seq 1 30); do
+            if docker compose ps --services --filter "status=running" | grep -q "^backend$"; then
+              echo "[OK] backend is running"
+              exit 0
+            fi
+            echo "[WAIT] backend not running yet ($i/30)"
+            sleep 2
+          done
+          echo "::error::backend container not running after 60s"
+          docker compose logs backend --tail 100 || true
+          exit 1
+
       - name: Check alembic migrations (head must equal current)
         id: check_migrations
         run: |

@@ -39,11 +39,39 @@ EXIT_OK=0
 EXIT_NEED_MIGRATE=10
 EXIT_ABNORMAL=20
 
+# ── 4.2 dump_backend_diagnostics ──
+# 在 exit 20 之前调用：打印容器状态 + 最近 50 行日志，
+# 避免线上 race condition 出现时只有 "RC=20" 一句话没法排查。
+dump_backend_diagnostics() {
+    local compose_file="${1:-}"
+    local backend_svc="${2:-backend}"
+    local health_url="${3:-http://localhost:8000/health}"
+
+    echo "=== backend container 状态 ===" >&2
+    docker ps -a --filter "name=${backend_svc}" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}" >&2 || true
+
+    echo "=== backend 最近 50 行日志 ===" >&2
+    if [ -n "$compose_file" ] && [ -f "$compose_file" ]; then
+        docker compose -f "$compose_file" logs --tail 50 "${backend_svc}" >&2 || true
+    else
+        docker logs --tail 50 "${backend_svc}" >&2 || true
+    fi
+
+    if [ -n "$health_url" ]; then
+        echo "=== ${health_url} 探活 ===" >&2
+        curl -sSv -o /dev/null --max-time 5 "${health_url}" >&2 || true
+    fi
+}
+
 # ── Help ──
 if [ "${1:-}" = "-h" ] || [ "${1:-}" = "--help" ]; then
     echo "用法: $0 [compose-file]"
     echo ""
     echo "  compose-file   docker-compose 文件路径（默认 ./docker-compose.yml）"
+    echo ""
+    echo "环境变量:"
+    echo "  HEALTH_URL     backend 健康检查地址（默认 http://localhost:8000/health）"
+    echo "  BACKEND_SERVICE backend 服务名（默认 backend；自动探测 alloyresearch-backend）"
     echo ""
     echo "退出码:"
     echo "  0   一切正常（current == head 且模型可导入）"
@@ -53,6 +81,7 @@ if [ "${1:-}" = "-h" ] || [ "${1:-}" = "--help" ]; then
     echo "示例:"
     echo "  $0                                           # 本地"
     echo "  $0 deploy/aliyun-ecs/docker-compose.yml      # 阿里云 ECS"
+    echo "  HEALTH_URL=http://10.0.0.5:8000/health $0   # 自定义健康检查地址"
     exit 0
 fi
 
@@ -86,13 +115,44 @@ fi
 log_info "backend service: $BACKEND_SERVICE"
 
 # 检查 backend 容器是否在运行
+# ── 注意：旧逻辑在容器处于 restarting/unhealthy 时只跑 `up -d`，docker compose
+#     不会重启已存在容器，立刻返回成功但容器实际没起来，引发 race condition。
+#     现改为：先用 --force-recreate 强制重建，再用循环等 running，最后做 /health 探活。
 if ! docker compose -f "$COMPOSE_FILE" ps --services --filter "status=running" 2>/dev/null | grep -q "^${BACKEND_SERVICE}$"; then
-    log_warn "backend 容器未运行，先启动..."
-    docker compose -f "$COMPOSE_FILE" up -d "$BACKEND_SERVICE" > /dev/null 2>&1 || {
+    log_warn "backend 容器未运行或处于异常状态，尝试强制重建..."
+    docker compose -f "$COMPOSE_FILE" up -d --force-recreate "$BACKEND_SERVICE" > /dev/null 2>&1 || {
         log_error "无法启动 backend 容器"
+        dump_backend_diagnostics "$COMPOSE_FILE" "$BACKEND_SERVICE" "$HEALTH_URL"
         exit "$EXIT_ABNORMAL"
     }
-    sleep 5
+fi
+
+# ── 4.1 等 backend 至少一次进入 running 状态（最多 30s） ──
+log_info "等待 backend 进入 running 状态（最多 30s）..."
+for i in $(seq 1 15); do
+    if docker compose -f "$COMPOSE_FILE" ps --services --filter "status=running" 2>/dev/null | grep -q "^${BACKEND_SERVICE:-backend}$"; then
+        log_info "backend 已进入 running 状态"
+        sleep 3  # 等 entrypoint 完全初始化
+        break
+    fi
+    sleep 2
+done
+
+# ── 4.1 再做 /health 探活（最多 60s） ──
+HEALTH_URL="${HEALTH_URL:-http://localhost:8000/health}"
+log_info "等待 backend /health 通过（最多 60s）..."
+HEALTH_OK=false
+for i in $(seq 1 30); do
+    if curl -sf "${HEALTH_URL}" >/dev/null 2>&1; then
+        log_info "backend /health 已就绪 ✓"
+        HEALTH_OK=true
+        break
+    fi
+    sleep 2
+done
+
+if [ "$HEALTH_OK" != "true" ]; then
+    log_warn "backend /health 60s 内未通过，但继续后续校验（alembic 可能在容器内仍可执行）"
 fi
 
 # ── 1. alembic current ──
@@ -101,6 +161,7 @@ log_step "1/3 读取 alembic current"
 CURRENT_RAW=$(docker compose -f "$COMPOSE_FILE" exec -T "$BACKEND_SERVICE" alembic current 2>&1) || {
     log_error "alembic current 执行失败"
     echo "$CURRENT_RAW"
+    dump_backend_diagnostics "$COMPOSE_FILE" "$BACKEND_SERVICE" "$HEALTH_URL"
     exit "$EXIT_ABNORMAL"
 }
 
@@ -127,6 +188,7 @@ log_step "2/3 读取 alembic heads"
 HEADS_RAW=$(docker compose -f "$COMPOSE_FILE" exec -T "$BACKEND_SERVICE" alembic heads 2>&1) || {
     log_error "alembic heads 执行失败"
     echo "$HEADS_RAW"
+    dump_backend_diagnostics "$COMPOSE_FILE" "$BACKEND_SERVICE" "$HEALTH_URL"
     exit "$EXIT_ABNORMAL"
 }
 
@@ -142,6 +204,7 @@ fi
 
 if [ -z "$HEAD" ]; then
     log_error "无法从 alembic history 中解析 head revision"
+    dump_backend_diagnostics "$COMPOSE_FILE" "$BACKEND_SERVICE" "$HEALTH_URL"
     exit "$EXIT_ABNORMAL"
 fi
 
@@ -154,6 +217,7 @@ IMPORT_RAW=$(docker compose -f "$COMPOSE_FILE" exec -T "$BACKEND_SERVICE" \
     python -c "from app.models import *  # noqa: F401,F403" 2>&1) || {
     log_error "模型导入失败（app.models 异常）"
     echo "$IMPORT_RAW"
+    dump_backend_diagnostics "$COMPOSE_FILE" "$BACKEND_SERVICE" "$HEALTH_URL"
     exit "$EXIT_ABNORMAL"
 }
 

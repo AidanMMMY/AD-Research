@@ -2,6 +2,51 @@
 set -euo pipefail
 
 # ============================================================
+# 4.5 Race-condition 防护：手动/自动 deploy 互斥
+# ============================================================
+# 背景：
+#   早期版本曾出现 "auto deploy 触发时刚好有人在跑 FORCE=1" 的
+#   race condition，导致 alembic upgrade / docker compose up -d
+#   互相覆盖，容器处于 restart loop。
+#
+# 机制：
+#   - MANUAL_LOCK（/var/run/ad-research-manual-deploy.lock）
+#       由 "FORCE=1 ./update.sh" 创建；auto deploy 检测到就退出，
+#       等于把升级通道让给人为操作。
+#   - AUTO_LOCK（/var/run/ad-research-auto-deploy.lock）
+#       仅用于诊断，方便排查 "有谁在跑 auto deploy"。
+#
+# 约束：
+#   - 锁文件仅是软互斥，不阻塞重新尝试（auto deploy 跑完即清理）。
+#   - 用 trap 确保异常退出也能 rm 锁。
+# ============================================================
+MANUAL_LOCK="${MANUAL_LOCK:-/var/run/ad-research-manual-deploy.lock}"
+AUTO_LOCK="${AUTO_LOCK:-/var/run/ad-research-auto-deploy.lock}"
+
+# 如果调用方明确 FORCE=1，先把"手动锁"建上，告诉后来的 auto deploy 退避
+if [ "${FORCE:-0}" = "1" ]; then
+    if [ -w "$(dirname "$MANUAL_LOCK")" ] || mkdir -p "$(dirname "$MANUAL_LOCK")" 2>/dev/null; then
+        echo "$$ $(date -Iseconds 2>/dev/null || date) FORCE=1" > "$MANUAL_LOCK" 2>/dev/null \
+            && log_info "已创建手动 deploy 锁: ${MANUAL_LOCK}" || \
+            log_warn "无法写入 ${MANUAL_LOCK}（可能缺权限），继续运行"
+        trap 'rm -f "$MANUAL_LOCK"' EXIT
+    fi
+fi
+
+# 检测手动锁：有则让路给人为操作
+if [ -f "$MANUAL_LOCK" ] && [ "${FORCE:-0}" != "1" ]; then
+    log_info "检测到手动 deploy 锁 (${MANUAL_LOCK})，auto deploy 让路退出"
+    log_info "（如需强制覆盖：FORCE=1 ./update.sh，或删除该锁文件）"
+    exit 0
+fi
+
+# 标记本次 auto deploy 开始
+if mkdir -p "$(dirname "$AUTO_LOCK")" 2>/dev/null; then
+    echo "$$ $(date -Iseconds 2>/dev/null || date) auto" > "$AUTO_LOCK" 2>/dev/null || true
+    trap 'rm -f "$AUTO_LOCK"' EXIT
+fi
+
+# ============================================================
 # 阿里云 ECS 更新脚本 — 拉取最新代码并热更新服务
 # 用法：./update.sh [--no-db] [--frontend-only]
 #   --no-db           跳过数据库迁移（由 backend 容器自动执行）
@@ -82,7 +127,18 @@ if [ "$FRONTEND_ONLY" = true ]; then
         --build-arg BUILDKIT_INLINE_CACHE=1
 else
     log_info "全量重新构建（含 Python 依赖）"
+    # ── 4.4 检测"异常短 build"：build < 30s 通常意味着 buildx cache 命中
+    # 或镜像根本没被重 build（用过时的 layer）。给操作者一个 WARN。
+    BUILD_START=$(date +%s)
     docker compose build backend --no-cache
+    BUILD_END=$(date +%s)
+    BUILD_ELAPSED=$((BUILD_END - BUILD_START))
+    if [ "$BUILD_ELAPSED" -lt 30 ]; then
+        log_warn "docker compose build 仅用 ${BUILD_ELAPSED}s，可能未真正重建"
+        log_warn "建议检查 docker buildx cache 状态或手动重 build"
+    else
+        log_info "构建耗时 ${BUILD_ELAPSED}s"
+    fi
 fi
 
 # ── 3. 停止旧容器 ──
@@ -113,9 +169,20 @@ docker compose up -d nginx
 # ── 5. 数据库迁移（可选） ──
 if [ "$NO_DB" = false ] && [ "$FRONTEND_ONLY" = false ]; then
     log_step "5/5 数据库迁移"
-    docker compose exec backend alembic upgrade head || {
-        log_warn "迁移未执行或已由启动脚本自动完成"
-    }
+    # ── 4.6 幂等：先比较 current vs head，避免无变更时仍跑 upgrade ──
+    CURRENT_REV=$(docker compose exec -T backend alembic current 2>/dev/null \
+        | awk 'NF && $1 !~ /^INFO/ { print $1; exit }' || true)
+    HEAD_REV=$(docker compose exec -T backend alembic heads 2>/dev/null \
+        | awk '/\(head\)/ { print $1; exit }' || true)
+
+    if [ -n "$CURRENT_REV" ] && [ -n "$HEAD_REV" ] && [ "$CURRENT_REV" = "$HEAD_REV" ]; then
+        log_info "alembic current 已等于 head（${HEAD_REV}），跳过 migration"
+    else
+        log_info "alembic current=${CURRENT_REV:-<empty>}  head=${HEAD_REV:-<unknown>}，执行 upgrade head"
+        docker compose exec backend alembic upgrade head || {
+            log_warn "迁移未执行或已由启动脚本自动完成"
+        }
+    fi
 else
     log_info "跳过数据库迁移"
 fi
