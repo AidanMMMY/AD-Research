@@ -22,7 +22,11 @@ interface ThemeTagProps {
 }
 
 /**
- * 主题化 Tag — 不使用 Ant Design 预设色，全部基于 design token。
+ * 主题化 Tag — 不使用 Ant Design 预设色，全部基于 design token
+ * (`--accent` / `--color-rise` / `--color-fall` / `--color-success` …)。
+ *
+ * Phase 2 (2026-07-05): 重写为 class-only（保留 `style` 透传以便覆盖动态值）。
+ * 颜色 / 间距 / 圆角 / 边框 全部 token 化，light/dark + China/US 自动跟随。
  */
 export default function ThemeTag({
   variant = 'default',
@@ -33,9 +37,13 @@ export default function ThemeTag({
   title,
   onClick,
 }: ThemeTagProps) {
-  const classes = className
-    ? `theme-tag theme-tag--${variant} ${className}`
-    : `theme-tag theme-tag--${variant}`;
+  const classes = [
+    'theme-tag',
+    `theme-tag--${variant}`,
+    className,
+  ]
+    .filter(Boolean)
+    .join(' ');
 
   return (
     <Tag className={classes} icon={icon} title={title} onClick={onClick} style={style}>

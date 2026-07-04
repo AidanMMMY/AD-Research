@@ -38,6 +38,12 @@ interface TickerTapeProps {
  * change_pct from the shared SSE `/stream/prices` connection. Renders the
  * track twice (concatenated) and uses a CSS translateX(-50%) keyframe so the
  * loop is seamless. Hover pauses; prefers-reduced-motion freezes the tape.
+ *
+ * Phase 2 (2026-07-05):
+ * - 高度降到 32px（移动端 44px touch-friendly）。
+ * - 去掉重边框，使用 `--bg-elevated` 背景 + `--radius-lg` 圆角。
+ * - 价格 / 涨跌颜色全部走 `--color-rise` / `--color-fall` token，
+ *   自动跟随 China/US 颜色约定切换与 light/dark 主题。
  */
 export default function TickerTape({
   limit = 20,

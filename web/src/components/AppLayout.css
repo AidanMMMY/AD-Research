@@ -1,0 +1,158 @@
+/* ============================================================
+   AppLayout — Phase 3 (2026-07-05) overrides
+   ------------------------------------------------------------
+   This file refines the global `.app-layout__*` rules from
+   `src/styles/global.css` to match the Phase 3 spec for the
+   app shell:
+
+     • Sidebar 240 / 72 (already correct in global.css)
+     • Header 60px sticky, var(--bg-base), bottom hairline,
+       NO backdrop blur / NO dark glass
+     • Page padding: 16px mobile, 32px desktop
+     • Collapse toggle lives in the header (right side) on desktop
+     • Theme + color-convention toggles live in the header
+
+   The class names intentionally mirror global.css so we can
+   override the few mismatching properties without renaming
+   anything.  Vite loads this file after global.css thanks to
+   the import order in AppLayout.tsx.
+   ============================================================ */
+
+/* ---- Header: drop the backdrop-blur glass effect ---- */
+.app-layout__header {
+  /* Override the global "header uses backdrop-filter: blur(12px)"
+     rule — Phase 3 spec says "no dark glass", so we keep the
+     surface fully opaque.  Background stays var(--bg-base). */
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  /* Keep the bottom hairline crisp in dark mode too. */
+  border-bottom: 1px solid var(--border-default);
+}
+
+/* ---- Page content: bump desktop padding from 20 → 32 ---- */
+.app-layout__content {
+  /* Phase 3 spec: 32px desktop, 16px mobile. */
+  padding: var(--space-6);
+}
+
+.app-layout__content-wrap {
+  /* Constrain to a comfortable max width on huge desktops so the
+     page doesn't sprawl to 4K. Phase 5 pages can override via
+     PageShell. */
+  width: 100%;
+  margin: 0 auto;
+}
+
+@media (max-width: 767px) {
+  .app-layout__content {
+    padding: var(--space-4);
+  }
+}
+
+/* ---- Header collapse toggle (Phase 3: right side, desktop only) ---- */
+.app-layout__header-collapse {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-md);
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast),
+    border-color var(--transition-fast);
+  flex-shrink: 0;
+}
+
+.app-layout__header-collapse:hover,
+.app-layout__header-collapse:focus-visible {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+  outline: none;
+}
+
+.app-layout__header-collapse-icon {
+  font-size: 16px;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Hide the collapse button on mobile (drawer takes over). */
+@media (max-width: 767px) {
+  .app-layout__header-collapse {
+    display: none;
+  }
+}
+
+/* ---- Theme + color-convention segmented controls ---- */
+.app-layout__header-segmented {
+  /* Tighter sizing than default Segmented to keep the header
+     from feeling cluttered. */
+}
+
+.app-layout__header-segmented .ant-segmented-item-label {
+  font-size: var(--text-small-size);
+}
+
+/* Mobile: stack the controls in the header so they don't overflow. */
+@media (max-width: 767px) {
+  .app-layout__header-controls {
+    gap: var(--space-2);
+  }
+
+  .app-layout__header-segmented .ant-segmented-item-label {
+    padding: 0 var(--space-2);
+    font-size: 11px;
+  }
+}
+
+/* ============================================================
+   Mobile drawer refinements
+   ============================================================ */
+
+.app-layout .ant-drawer-body {
+  /* The drawer should fill the panel with the same elevated
+     background as the desktop sidebar. */
+  background: var(--bg-elevated);
+  padding: 0;
+}
+
+.app-layout .ant-drawer-content {
+  background: var(--bg-elevated);
+}
+
+/* ============================================================
+   Footer — keep it tight under the page content
+   ============================================================ */
+
+.app-layout__footer {
+  /* Slightly more breathing room above the footer so it reads as
+     a footer, not part of the page content. */
+  padding-top: var(--space-6);
+}
+
+/* ============================================================
+   Tablet (768-991): sidebar can stay 240 but tighten inner padding
+   ============================================================ */
+
+@media (min-width: 768px) and (max-width: 991px) {
+  .app-layout__header {
+    padding-left: var(--space-5);
+    padding-right: var(--space-5);
+  }
+}
+
+/* ============================================================
+   Reduced motion — collapse transition off
+   ============================================================ */
+
+@media (prefers-reduced-motion: reduce) {
+  .app-layout__sidebar,
+  .app-layout__main {
+    transition: none !important;
+  }
+}

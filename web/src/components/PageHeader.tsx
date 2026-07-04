@@ -1,4 +1,5 @@
 import React from 'react';
+import { useSettingsStore } from '@/stores/settings';
 
 /**
  * Standardized page header used at the top of every primary page.
@@ -11,8 +12,8 @@ import React from 'react';
  *     extra={<Button>导出</Button>}
  *   />
  *
- * Replaces the ad-hoc `<h1 style={{...}}>` + `<p style={{...}}>` pairs that
- * were duplicated across pages with subtly different margins / sizes.
+ * Phase 2 (2026-07-05): 字号 / 间距全部走 token (`--text-h1-size` / `--space-5` /
+ * `--text-body-size`)，`data-compact` 控制详情页紧凑变体。
  */
 export interface PageHeaderProps {
   /** Optional eyebrow label above the title (small uppercase). */
@@ -37,8 +38,6 @@ export interface PageHeaderProps {
   /** Forwarded to the wrapping header for onboarding tour anchoring (M19 P1). */
   'data-onboard'?: string;
 }
-
-import { useSettingsStore } from '@/stores/settings';
 
 export default function PageHeader({
   eyebrow,

@@ -18,6 +18,11 @@ interface StatCardProps {
   explainer?: string;
 }
 
+/**
+ * KPI 数字卡 — Phase 2 (2026-07-05) 起 hover 改用 CSS (`.stat-card:hover`)，
+ * 不再走 inline `onMouseEnter/Leave` DOM 操作。颜色 / 间距 / 圆角 / 字号
+ * 全部走 token，dark 主题下边框 / 阴影自动切换。
+ */
 export default function StatCard({
   title,
   value,

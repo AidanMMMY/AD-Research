@@ -1,3 +1,19 @@
+/* Phase 3 (2026-07-05) rewrite of the app shell.
+ *
+ * Goals for this rewrite:
+ *   • Sidebar 240 / 72 (kept from Phase 2)
+ *   • Header 60px sticky, var(--bg-base), hairline bottom border,
+ *     NO dark-glass backdrop-filter (the M28 refresh added one — we
+ *     strip it here; see AppLayout.css override)
+ *   • Collapse toggle moves from the bottom of the sidebar to the
+ *     top-right of the header (Phase 3 spec)
+ *   • Theme (light/dark) and color-convention (China/US) toggles
+ *     live in the header right cluster
+ *   • Mobile <768px: sidebar is hidden, drawer takes over with a
+ *     hamburger trigger at the header left
+ *   • All existing routing, breadcrumb, onboarding, density
+ *     toggle, learning-mode hint, etc. preserved
+ */
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 import { Dropdown, Drawer, Segmented, Tooltip } from 'antd';
@@ -47,7 +63,6 @@ import {
   BellOutlined,
   ToolOutlined,
   SafetyCertificateOutlined,
-  GlobalOutlined,
   WalletOutlined,
 } from '@ant-design/icons';
 import { Switch, message } from 'antd';
@@ -58,6 +73,7 @@ import { useIsMobile } from '@/hooks/useBreakpoint';
 import { useTheme, type Theme } from '@/hooks/useTheme';
 import DensityToggle from '@/components/DensityToggle';
 import OnboardingTour from '@/components/OnboardingTour';
+import './AppLayout.css';
 
 const iconMap: Record<string, React.ComponentType> = {
   DashboardOutlined,
@@ -96,7 +112,6 @@ const iconMap: Record<string, React.ComponentType> = {
   BellOutlined,
   ToolOutlined,
   SafetyCertificateOutlined,
-  GlobalOutlined,
   WalletOutlined,
 };
 
@@ -126,6 +141,11 @@ interface SidebarContentProps {
   onItemClick?: () => void;
 }
 
+/* ------------------------------------------------------------
+ * SidebarContent — the 1-level group + 2-level collapsible nav.
+ * Logic preserved verbatim from the M28 refresh; only the
+ * surrounding shell changed in Phase 3.
+ * ------------------------------------------------------------ */
 function SidebarContent({ collapsed, onItemClick }: SidebarContentProps) {
   const navigate = useNavigate();
   const location = useLocation();
@@ -138,7 +158,6 @@ function SidebarContent({ collapsed, onItemClick }: SidebarContentProps) {
     for (const route of menuRoutes) {
       const group = route.menu?.group;
       if (!group) continue;
-      // Admin group is only visible to admins.
       if (group === 'admin' && !isAdmin) continue;
       if (!map.has(group)) map.set(group, []);
       map.get(group)!.push(route);
@@ -148,10 +167,8 @@ function SidebarContent({ collapsed, onItemClick }: SidebarContentProps) {
       .map((g) => ({ group: g, items: map.get(g.key)! }));
   }, [isAdmin]);
 
-  // Expanded/collapsed state per group. Persist in localStorage.
   const [expanded, setExpanded] = useState<Record<string, boolean>>(() => {
     const stored = loadExpandedGroups();
-    // Default: only the group containing the active pathname is open.
     const initial: Record<string, boolean> = {};
     for (const { group, items } of groupedItems) {
       const hasActive = items.some(
@@ -168,12 +185,10 @@ function SidebarContent({ collapsed, onItemClick }: SidebarContentProps) {
     return initial;
   });
 
-  // Keep expanded state in sync with persisted storage.
   useEffect(() => {
     persistExpandedGroups(expanded);
   }, [expanded]);
 
-  // Auto-expand the group containing the active path on route changes.
   useEffect(() => {
     setExpanded((prev) => {
       let changed = false;
@@ -199,7 +214,7 @@ function SidebarContent({ collapsed, onItemClick }: SidebarContentProps) {
     <>
       {/* Logo */}
       <div className="app-layout__logo">
-        <div className="app-layout__logo-mark">E</div>
+        <div className="app-layout__logo-mark" aria-hidden="true">E</div>
         {!collapsed && <span className="app-layout__logo-text">投研平台</span>}
       </div>
 
@@ -249,8 +264,6 @@ function SidebarContent({ collapsed, onItemClick }: SidebarContentProps) {
                   </span>
                 </div>
               )}
-              {/* Collapsed sidebar: header acts as a single icon entry to the
-                  first item in the group, mirroring AntD's compact menu. */}
               {collapsed ? (
                 <div
                   className="app-layout__nav-item"
@@ -258,7 +271,6 @@ function SidebarContent({ collapsed, onItemClick }: SidebarContentProps) {
                   tabIndex={0}
                   aria-label={`${group.label}（展开侧边栏查看子菜单）`}
                   onClick={() => {
-                    // In collapsed mode just navigate to the first item.
                     const first = items[0];
                     if (first) {
                       navigate(first.path);
@@ -334,11 +346,92 @@ function SidebarContent({ collapsed, onItemClick }: SidebarContentProps) {
   );
 }
 
+/* ------------------------------------------------------------
+ * ThemeToggle — header control for light/dark.  Phase 3 spec
+ * says no flash on switch, so the toggle writes to useTheme
+ * synchronously (the existing Phase 1 main.tsx subscriber
+ * applies the data-theme attribute on the same tick).
+ * ------------------------------------------------------------ */
+interface ThemeToggleProps {
+  theme: Theme;
+  onChange: (t: Theme) => void;
+}
+
+function ThemeToggle({ theme, onChange }: ThemeToggleProps) {
+  return (
+    <Tooltip title={theme === 'light' ? '当前：浅色 · 点击切换深色' : '当前：深色 · 点击切换浅色'}>
+      <button
+        type="button"
+        className="app-layout__header-collapse"
+        aria-label={theme === 'light' ? '切换到深色主题' : '切换到浅色主题'}
+        onClick={() => onChange(theme === 'light' ? 'dark' : 'light')}
+      >
+        <span className="app-layout__header-collapse-icon" aria-hidden="true">
+          {theme === 'light' ? <MoonOutlined /> : <SunOutlined />}
+        </span>
+      </button>
+    </Tooltip>
+  );
+}
+
+/* ------------------------------------------------------------
+ * CollapseToggle — header control (desktop only) to fold the
+ * sidebar to icon-only mode.  Moved here from the sidebar's
+ * bottom per Phase 3 spec.
+ * ------------------------------------------------------------ */
+interface CollapseToggleProps {
+  collapsed: boolean;
+  onChange: (next: boolean) => void;
+}
+
+function CollapseToggle({ collapsed, onChange }: CollapseToggleProps) {
+  return (
+    <Tooltip title={collapsed ? '展开侧边栏' : '折叠侧边栏'}>
+      <button
+        type="button"
+        className="app-layout__header-collapse"
+        aria-label={collapsed ? '展开侧边栏' : '折叠侧边栏'}
+        aria-pressed={collapsed}
+        onClick={() => onChange(!collapsed)}
+      >
+        <span className="app-layout__header-collapse-icon" aria-hidden="true">
+          {collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
+        </span>
+      </button>
+    </Tooltip>
+  );
+}
+
+/* ------------------------------------------------------------
+ * ColorConventionToggle — header control for China (red-up /
+ * green-down) vs US (green-up / red-down).  Phase 1 already
+ * wires `<html data-color-convention>` for CSS variable
+ * overrides; AppLayout writes the value to the DOM here.
+ * ------------------------------------------------------------ */
+function ColorConventionToggle() {
+  const { colorConvention, setColorConvention } = useSettingsStore();
+  return (
+    <Segmented
+      className="app-layout__header-segmented"
+      size="small"
+      value={colorConvention}
+      onChange={(v) => setColorConvention(v as 'china' | 'us')}
+      aria-label="切换涨跌色约定"
+      options={[
+        { label: '红涨绿跌', value: 'china' },
+        { label: '绿涨红跌', value: 'us' },
+      ]}
+    />
+  );
+}
+
+/* ============================================================
+ * AppLayout — the app shell.
+ * ============================================================ */
 export default function AppLayout() {
   const { user, logout } = useAuthStore();
   const {
     colorConvention,
-    setColorConvention,
     mode,
     setMode,
     learningMode,
@@ -352,9 +445,6 @@ export default function AppLayout() {
   const location = useLocation();
 
   // First-login auto-trigger: pop the onboarding tour once per user.
-  // Re-using the same `ad-research:reopen-onboarding` CustomEvent that the
-  // user-menu "重新触发新手引导" entry dispatches, so the OnboardingTour
-  // component can handle the actual show/hide logic in one place.
   useEffect(() => {
     const userId = user?.id;
     if (!userId) return;
@@ -364,20 +454,19 @@ export default function AppLayout() {
       localStorage.setItem(key, '1');
       window.dispatchEvent(new CustomEvent('ad-research:reopen-onboarding'));
     } catch {
-      /* localStorage may be unavailable (SSR / quota) — skip silently */
+      /* localStorage may be unavailable */
     }
   }, [user?.id]);
 
   // Phase 1: 同步 colorConvention 到 <html data-color-convention>,
-  // 这样 theme.css 里的 CSS 变量切换才能生效。
+  // 这样 theme.css 里的 CSS 变量切换才能生效。Phase 3 重写后保留。
   useEffect(() => {
     if (typeof document === 'undefined') return;
     document.documentElement.setAttribute('data-color-convention', colorConvention);
   }, [colorConvention]);
 
   // One-shot "已开启学习模式" hint so users notice the new default without
-  // having to dig into the avatar menu. Keyed per-user so multi-account
-  // devices each get the nudge once.
+  // having to dig into the avatar menu.
   useEffect(() => {
     const userId = user?.id;
     if (!userId) return;
@@ -388,18 +477,15 @@ export default function AppLayout() {
       localStorage.setItem(key, '1');
       message.info('已开启学习模式 — 关键术语旁会显示解释', 4);
     } catch {
-      /* localStorage may be unavailable (SSR / quota) — skip silently */
+      /* localStorage may be unavailable */
     }
   }, [user?.id, learningMode]);
 
   // Build a 1- or 2-segment breadcrumb from the route config + current URL.
-  // e.g. /instruments/510300.SH -> [首页, 标的列表, 510300.SH]
   const breadcrumb = useMemo(() => {
     const path = location.pathname;
     if (path === '/' || path === '/dashboard') return null;
 
-    // Find the deepest menu route whose path is a prefix of the current
-    // path and either an exact match or followed by a "/" + param segment.
     const segments = path.split('/').filter(Boolean);
     let matchedPath = '';
     let matchedRoute: typeof menuRoutes[number] | undefined;
@@ -421,8 +507,6 @@ export default function AppLayout() {
       items.push({ label: matchedRoute.menu.name, path: matchedPath });
     }
     if (tail) {
-      // Last segment is the detail id/code; show as-is (already user-readable
-      // in most pages, and short enough not to need ellipsizing).
       items.push({ label: tail });
     }
     return items;
@@ -430,7 +514,7 @@ export default function AppLayout() {
 
   return (
     <div className="app-layout">
-      {/* Mobile Drawer */}
+      {/* Mobile Drawer (left edge, same nav as desktop sidebar) */}
       {isMobile && (
         <Drawer
           placement="left"
@@ -445,37 +529,18 @@ export default function AppLayout() {
         </Drawer>
       )}
 
-      {/* Desktop Sidebar */}
+      {/* Desktop Sidebar (fixed, collapsible) */}
       {!isMobile && (
         <aside
           className={`app-layout__sidebar ${collapsed ? 'app-layout__sidebar--collapsed' : ''}`}
         >
           <SidebarContent collapsed={collapsed} />
-
-          {/* Collapse Toggle */}
-          <div className="app-layout__collapse-bar">
-            <div
-              role="button"
-              tabIndex={0}
-              aria-label={collapsed ? '展开侧边栏' : '折叠侧边栏'}
-              onClick={() => setCollapsed(!collapsed)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault();
-                  setCollapsed(!collapsed);
-                }
-              }}
-              className="app-layout__icon-btn"
-            >
-              {collapsed ? <MenuUnfoldOutlined aria-hidden="true" /> : <MenuFoldOutlined aria-hidden="true" />}
-            </div>
-          </div>
         </aside>
       )}
 
       {/* Main Content */}
       <main className={`app-layout__main ${isMobile ? 'app-layout__main--mobile' : ''}`}>
-        {/* Header */}
+        {/* Header — sticky, 60px, var(--bg-base), hairline border */}
         <header className="app-layout__header">
           <div className="app-layout__header-left">
             {isMobile && (
@@ -495,7 +560,6 @@ export default function AppLayout() {
                 <MenuOutlined className="app-layout__menu-icon" aria-hidden="true" />
               </div>
             )}
-            {/* Breadcrumb */}
             {breadcrumb && breadcrumb.length > 0 && (
               <nav aria-label="页面路径" className="app-layout__breadcrumb">
                 {breadcrumb.map((item, idx) => {
@@ -541,50 +605,18 @@ export default function AppLayout() {
             )}
           </div>
 
+          {/* Header right cluster — collapse (desktop only), theme, color, density, user */}
           <div className="app-layout__header-controls">
-            {!isMobile ? (
+            {!isMobile && (
               <>
-                {/* Color convention toggle */}
-                <Segmented
-                  value={colorConvention}
-                  onChange={(v) => setColorConvention(v as 'china' | 'us')}
-                  aria-label="切换涨跌色约定"
-                  options={[
-                    { label: '红涨绿跌', value: 'china' },
-                    { label: '绿涨红跌', value: 'us' },
-                  ]}
-                />
-
-                {/* Theme toggle (clean / dark) */}
-                <Segmented
-                  value={theme}
-                  onChange={(v) => setTheme(v as Theme)}
-                  aria-label="切换主题"
-                  options={[
-                    {
-                      label: (
-                        <Tooltip title="浅色主题">
-                          <SunOutlined aria-label="浅色主题" />
-                        </Tooltip>
-                      ),
-                      value: 'light',
-                    },
-                    {
-                      label: (
-                        <Tooltip title="深色主题">
-                          <MoonOutlined aria-label="深色主题" />
-                        </Tooltip>
-                      ),
-                      value: 'dark',
-                    },
-                  ]}
-                  size="small"
-                />
-
-                {/* Density toggle (S1) */}
+                <CollapseToggle collapsed={collapsed} onChange={setCollapsed} />
+                <ColorConventionToggle />
                 <DensityToggle />
+                <ThemeToggle theme={theme} onChange={setTheme} />
               </>
-            ) : (
+            )}
+
+            {isMobile && (
               <Dropdown
                 placement="bottomRight"
                 trigger={['click']}
@@ -594,16 +626,7 @@ export default function AppLayout() {
                       key: 'color-convention',
                       label: (
                         <div onClick={(e) => e.stopPropagation()}>
-                          <Segmented
-                            value={colorConvention}
-                            onChange={(v) => setColorConvention(v as 'china' | 'us')}
-                            aria-label="切换涨跌色约定"
-                            options={[
-                              { label: '红涨绿跌', value: 'china' },
-                              { label: '绿涨红跌', value: 'us' },
-                            ]}
-                            size="small"
-                          />
+                          <ColorConventionToggle />
                         </div>
                       ),
                     },
@@ -611,16 +634,7 @@ export default function AppLayout() {
                       key: 'theme',
                       label: (
                         <div onClick={(e) => e.stopPropagation()}>
-                          <Segmented
-                            value={theme}
-                            onChange={(v) => setTheme(v as Theme)}
-                            aria-label="切换主题"
-                            options={[
-                              { label: <SunOutlined />, value: 'light' },
-                              { label: <MoonOutlined />, value: 'dark' },
-                            ]}
-                            size="small"
-                          />
+                          <ThemeToggle theme={theme} onChange={setTheme} />
                         </div>
                       ),
                     },
@@ -662,9 +676,7 @@ export default function AppLayout() {
                         onClick={(e) => e.stopPropagation()}
                         className="app-layout__user-menu-mode"
                       >
-                        <div className="app-layout__user-menu-label">
-                          教学模式
-                        </div>
+                        <div className="app-layout__user-menu-label">教学模式</div>
                         <Segmented
                           value={mode}
                           onChange={(v) => setMode(v as 'novice' | 'pro')}
@@ -721,16 +733,18 @@ export default function AppLayout() {
               }}
             >
               <div className="app-layout__user">
-                <div className="app-layout__avatar">
+                <div className="app-layout__avatar" aria-hidden="true">
                   {(user?.username || 'U')[0].toUpperCase()}
                 </div>
-                {!isMobile && <span className="app-layout__username">{user?.username || '用户'}</span>}
+                {!isMobile && (
+                  <span className="app-layout__username">{user?.username || '用户'}</span>
+                )}
               </div>
             </Dropdown>
           </div>
         </header>
 
-        {/* Page Content */}
+        {/* Page Content — padding per Phase 3 spec (32px desktop, 16px mobile) */}
         <div className="app-layout__content">
           <div className="app-layout__content-wrap">
             <Outlet />
