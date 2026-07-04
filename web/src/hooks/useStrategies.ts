@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { strategyApi } from '@/api/strategy';
 import type { StrategyCreate } from '@/types/strategy';
+import { useApiErrorToast } from './useApiError';
 
 export function useStrategies() {
   const queryClient = useQueryClient();
@@ -22,6 +23,17 @@ export function useStrategies() {
     },
     staleTime: 300_000,
   });
+
+  useApiErrorToast(
+    'strategies',
+    strategiesQuery.error,
+    '加载策略列表失败',
+  );
+  useApiErrorToast(
+    'strategy-templates',
+    templatesQuery.error,
+    '加载策略模板失败',
+  );
 
   const createMutation = useMutation({
     mutationFn: (data: StrategyCreate) => strategyApi.create(data),

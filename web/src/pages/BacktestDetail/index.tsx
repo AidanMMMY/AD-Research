@@ -18,7 +18,7 @@ import type { EChartsOption } from 'echarts';
 import { buildBacktestDetailContext } from '@/utils/helpContext';
 import { getQuickQuestions } from '@/utils/helpPrompts';
 import { formatDateTime } from '@/utils/datetime';
-import type { AttributionEffect } from '@/types/backtest';
+import type { AttributionEffect, BacktestMetrics, BacktestNAV, BacktestTrade } from '@/types/backtest';
 
 export default function BacktestDetail() {
   const { id } = useParams<{ id: string }>();
@@ -79,7 +79,9 @@ export default function BacktestDetail() {
     );
   }
 
-  const metrics = data.metrics || {};
+  const metrics: BacktestMetrics = (data.metrics && Object.keys(data.metrics).length > 0
+    ? (data.metrics as BacktestMetrics)
+    : { initial_capital: 0, final_nav: 0, total_return: 0, annualized_return: 0, max_drawdown: 0, sharpe_ratio: 0, win_rate: 0, trade_count: 0, avg_win: 0, avg_loss: 0, trading_days: 0 });
 
   const handleOpenHelp = () => {
     open({
@@ -90,15 +92,15 @@ export default function BacktestDetail() {
     });
   };
 
-  const navData = data.daily_nav || [];
+  const navData: BacktestNAV[] = data.daily_nav || [];
   const navOption: EChartsOption = {
     tooltip: { trigger: 'axis' },
     grid: { left: 50, right: 20, top: 30, bottom: 30 },
-    xAxis: { type: 'category', data: navData.map((d: any) => d.date), axisLine: { lineStyle: { color: 'var(--text-tertiary)' } } },
+    xAxis: { type: 'category', data: navData.map((d: BacktestNAV) => d.date), axisLine: { lineStyle: { color: 'var(--text-tertiary)' } } },
     yAxis: { type: 'value', splitLine: { lineStyle: { color: 'var(--border-default)' } } },
     series: [{
       type: 'line',
-      data: navData.map((d: any) => d.nav),
+      data: navData.map((d: BacktestNAV) => d.nav),
       smooth: true,
       lineStyle: { color: 'var(--accent)', width: 2 },
       itemStyle: { color: 'var(--accent)' },
@@ -121,8 +123,8 @@ export default function BacktestDetail() {
   const tradeColumns = [
     { title: '入场日期', dataIndex: 'entry_date' },
     { title: '出场日期', dataIndex: 'exit_date' },
-    { title: '入场价', dataIndex: 'entry_price', render: (v: any) => <span className="tabular-nums">{v}</span> },
-    { title: '出场价', dataIndex: 'exit_price', render: (v: any) => <span className="tabular-nums">{v}</span> },
+    { title: '入场价', dataIndex: 'entry_price', render: (v: number) => <span className="tabular-nums">{v}</span> },
+    { title: '出场价', dataIndex: 'exit_price', render: (v: number) => <span className="tabular-nums">{v}</span> },
     {
       title: '收益',
       dataIndex: 'pnl_pct',
@@ -250,7 +252,7 @@ export default function BacktestDetail() {
         <Table
           dataSource={data.trades || []}
           columns={tradeColumns}
-          rowKey={(r: any) => `${r.entry_date}-${r.entry_price}`}
+          rowKey={(r: BacktestTrade) => `${r.entry_date}-${r.entry_price}`}
           size="small"
           scroll={{ x: 'max-content' }}
           pagination={{ pageSize: 10 }}

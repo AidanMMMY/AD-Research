@@ -12,6 +12,8 @@ import { useInstrumentList } from '@/hooks/useInstrumentList';
 import { PlusOutlined, EyeOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import dayjs from 'dayjs';
+import type { BacktestListItem, BacktestMetrics } from '@/types/backtest';
+import type { InstrumentInfo } from '@/types/instrument';
 
 export default function BacktestList() {
   const navigate = useNavigate();
@@ -22,12 +24,23 @@ export default function BacktestList() {
   const { strategies } = useStrategies();
   const { data: etfList, isLoading: etfLoading } = useInstrumentList({ page_size: 10000 });
 
-  const etfOptions = (etfList?.items || []).map((item: any) => ({
+  const etfOptions = (etfList?.items || []).map((item: InstrumentInfo) => ({
     label: `${item.code} ${item.name}`,
     value: item.code,
   }));
 
-  const handleCreate = async (values: any) => {
+  interface BacktestCreateFormValues {
+    strategy_id: number;
+    etf_code: string;
+    start_date: dayjs.Dayjs;
+    end_date: dayjs.Dayjs;
+    initial_capital?: number;
+    commission_rate?: number;
+    slippage_rate?: number;
+    position_size?: number;
+  }
+
+  const handleCreate = async (values: BacktestCreateFormValues) => {
     try {
       await create({
         strategy_id: values.strategy_id,
@@ -48,32 +61,32 @@ export default function BacktestList() {
   };
 
   const columns = [
-    { title: 'ID', dataIndex: 'id', width: 60, render: (v: any) => <span className="tabular-nums">{v}</span> },
-    { title: '策略ID', dataIndex: 'strategy_id', width: 80, render: (v: any) => <span className="tabular-nums">{v}</span> },
+    { title: 'ID', dataIndex: 'id', width: 60, render: (v: number) => <span className="tabular-nums">{v}</span> },
+    { title: '策略ID', dataIndex: 'strategy_id', width: 80, render: (v: number) => <span className="tabular-nums">{v}</span> },
     { title: '起始日期', dataIndex: 'start_date' },
     { title: '结束日期', dataIndex: 'end_date' },
     {
       title: '总收益',
       dataIndex: 'metrics',
-      render: (v: any) => <span className="tabular-nums">{`${v?.total_return?.toFixed?.(2) ?? v?.total_return ?? 0}%`}</span>,
+      render: (v: BacktestMetrics | undefined) => <span className="tabular-nums">{`${v?.total_return?.toFixed?.(2) ?? v?.total_return ?? 0}%`}</span>,
       width: 100,
     },
     {
       title: '最大回撤',
       dataIndex: 'metrics',
-      render: (v: any) => <span className="tabular-nums">{`${v?.max_drawdown?.toFixed?.(2) ?? v?.max_drawdown ?? 0}%`}</span>,
+      render: (v: BacktestMetrics | undefined) => <span className="tabular-nums">{`${v?.max_drawdown?.toFixed?.(2) ?? v?.max_drawdown ?? 0}%`}</span>,
       width: 100,
     },
     {
       title: '夏普比率',
       dataIndex: 'metrics',
-      render: (v: any) => <span className="tabular-nums">{v?.sharpe_ratio?.toFixed?.(2) ?? v?.sharpe_ratio ?? '-'}</span>,
+      render: (v: BacktestMetrics | undefined) => <span className="tabular-nums">{v?.sharpe_ratio?.toFixed?.(2) ?? v?.sharpe_ratio ?? '-'}</span>,
       width: 90,
     },
-    { title: '交易次数', dataIndex: 'trade_count', width: 90, render: (v: any) => <span className="tabular-nums">{v}</span> },
+    { title: '交易次数', dataIndex: 'trade_count', width: 90, render: (v: number) => <span className="tabular-nums">{v}</span> },
     {
       title: '操作',
-      render: (_: any, record: any) => (
+      render: (_: unknown, record: BacktestListItem) => (
         <Space>
           <Button size="small" icon={<EyeOutlined />} onClick={() => navigate(`/backtests/${record.id}`)}>
             详情

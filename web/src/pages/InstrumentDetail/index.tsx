@@ -21,6 +21,7 @@ import NewsListPanel from '@/components/NewsListPanel';
 import HelpTrigger from '@/components/HelpTrigger';
 import HelpPopover from '@/components/HelpPopover';
 import ThemeTag from '@/components/ThemeTag';
+import LoadingBlock from '@/components/LoadingBlock';
 import { formatPercent } from '@/utils/format';
 import { useSettingsStore } from '@/stores/settings';
 import { getReturnColor } from '@/utils/color';
@@ -178,7 +179,7 @@ export default function InstrumentDetail() {
   if (instrumentLoading) {
     return (
       <PageShell maxWidth="wide">
-        <Spin size="large" className="detail-loading" />
+        <LoadingBlock size="lg" label="加载中…" />
       </PageShell>
     );
   }
