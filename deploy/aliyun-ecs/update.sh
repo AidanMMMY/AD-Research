@@ -2,6 +2,27 @@
 set -euo pipefail
 
 # ============================================================
+# 阿里云 ECS 更新脚本 — 拉取最新代码并热更新服务
+# 用法：./update.sh [--no-db] [--frontend-only]
+#   --no-db           跳过数据库迁移（由 backend 容器自动执行）
+#   --frontend-only   仅更新前端（跳过后端镜像重编译，更快）
+# ============================================================
+
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m'
+
+log_info()  { echo -e "${GREEN}[INFO]${NC}  $1"; }
+log_warn()  { echo -e "${YELLOW}[WARN]${NC}  $1"; }
+log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
+log_step()  { echo -e "\n${GREEN}━━━ $1 ━━━${NC}"; }
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
+ENV_FILE="${SCRIPT_DIR}/.env"
+
+# ============================================================
 # 4.5 Race-condition 防护：手动/自动 deploy 互斥
 # ============================================================
 # 背景：
@@ -19,6 +40,8 @@ set -euo pipefail
 # 约束：
 #   - 锁文件仅是软互斥，不阻塞重新尝试（auto deploy 跑完即清理）。
 #   - 用 trap 确保异常退出也能 rm 锁。
+#   - 必须在 log_info/log_warn 定义之后执行，否则 FORCE=1 时会报
+#     "command not found"。
 # ============================================================
 MANUAL_LOCK="${MANUAL_LOCK:-/var/run/ad-research-manual-deploy.lock}"
 AUTO_LOCK="${AUTO_LOCK:-/var/run/ad-research-auto-deploy.lock}"
@@ -45,27 +68,6 @@ if mkdir -p "$(dirname "$AUTO_LOCK")" 2>/dev/null; then
     echo "$$ $(date -Iseconds 2>/dev/null || date) auto" > "$AUTO_LOCK" 2>/dev/null || true
     trap 'rm -f "$AUTO_LOCK"' EXIT
 fi
-
-# ============================================================
-# 阿里云 ECS 更新脚本 — 拉取最新代码并热更新服务
-# 用法：./update.sh [--no-db] [--frontend-only]
-#   --no-db           跳过数据库迁移（由 backend 容器自动执行）
-#   --frontend-only   仅更新前端（跳过后端镜像重编译，更快）
-# ============================================================
-
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
-ENV_FILE="${SCRIPT_DIR}/.env"
-
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-NC='\033[0m'
-
-log_info()  { echo -e "${GREEN}[INFO]${NC}  $1"; }
-log_warn()  { echo -e "${YELLOW}[WARN]${NC}  $1"; }
-log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
-log_step()  { echo -e "\n${GREEN}━━━ $1 ━━━${NC}"; }
 
 NO_DB=false
 FRONTEND_ONLY=false

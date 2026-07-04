@@ -84,6 +84,8 @@ jobs:
       # ── 3. 调用统一入口：deploy/aliyun-ecs/update.sh ──
       - name: Run update.sh (unified entrypoint)
         if: ${{ inputs.dry_run != 'true' }}
+        env:
+          FORCE: 1
         run: |
           set -euo pipefail
           cd "${PROJECT_ROOT}/deploy/aliyun-ecs"
