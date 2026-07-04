@@ -1,6 +1,12 @@
 /* ============================================================
    AD-Research 前端 — 设计系统基础
-   Light/Clean 默认主题 + Dark 终端备选主题
+   Phase 1 (2026-07-05): light/clean 默认 + dark 可选, 朱色 #E11D48
+   主题切换:
+     - <html data-theme="light">  ← 默认浅色 Notion/Linear 风
+     - <html data-theme="dark">   ← 原 terminal 深色保留为可选
+   涨颜色约定:
+     - <html data-color-convention="china">  ← 红涨绿跌 (默认)
+     - <html data-color-convention="us">     ← 绿涨红跌
    ============================================================ */
 
 :root {
@@ -14,12 +20,13 @@
   --bg-surface-hover: rgba(0, 0, 0, 0.04);
   --bg-surface-active: rgba(0, 0, 0, 0.06);
 
-  /* ---- Accent: Primary Blue ---- */
-  --accent: #2e5bff;
-  --accent-hover: #1a4bff;
-  --accent-dim: rgba(46, 91, 255, 0.08);
-  --accent-border: rgba(46, 91, 255, 0.20);
-  --accent-glow: rgba(46, 91, 255, 0.10);
+  /* ---- Accent: Vermilion (rose-600) — Phase 1 decision ---- */
+  --accent: #e11d48;
+  --accent-hover: #be123c;
+  --accent-active: #9f1239;
+  --accent-dim: rgba(225, 29, 72, 0.08);
+  --accent-border: rgba(225, 29, 72, 0.20);
+  --accent-glow: rgba(225, 29, 72, 0.10);
 
   /* ---- Legacy primary aliases (kept for compatibility) ---- */
   --primary-solid: var(--accent);
@@ -32,7 +39,7 @@
   --text-tertiary: #9ca3af;
   --text-muted: #d1d5db;
 
-  /* ---- Market Colors (China A-share convention) ---- */
+  /* ---- Market Colors (China A-share convention 默认: 红涨绿跌) ---- */
   --color-rise: #dc2626;
   --color-rise-dim: rgba(220, 38, 38, 0.08);
   --color-rise-border: rgba(220, 38, 38, 0.20);
@@ -55,7 +62,7 @@
   --color-warning-border: rgba(245, 158, 11, 0.20);
   --color-warning-bright: #fbbf24;
   --color-warning-bright-dim: rgba(251, 191, 36, 0.18);
-  --color-info: #2e5bff;
+  --color-info: #e11d48;
 
   /* ---- Score Colors ---- */
   --score-fill: var(--accent);
@@ -76,6 +83,7 @@
   --border-strong: #d1d5db;
   --border-hover: #d1d5db;
   --border-accent: var(--accent-border);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
   --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.06);
   --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.08);
   --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.02);
@@ -85,7 +93,7 @@
   --text-on-accent: #ffffff;
   --bg-on-accent: rgba(255, 255, 255, 0.85);
 
-  /* ---- Spacing (4px base) ---- */
+  /* ---- Spacing (4px base, space-5 = 20px on light) ---- */
   --space-1: 4px;
   --space-1-5: 6px;
   --space-2: 8px;
@@ -111,7 +119,7 @@
   --radius-xl: 12px;
   --radius-2xl: 16px;
 
-  /* ---- Typography ---- */
+  /* ---- Typography (system stack, 无外部字体) ---- */
   --font-sans: "Inter", "SF Pro Display", -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", "Helvetica Neue", Arial, sans-serif;
   --font-mono: "JetBrains Mono", "SF Mono", "Fira Code", "Cascadia Code", monospace;
   --font-display: "DM Sans", "Inter", -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif;
@@ -143,6 +151,11 @@
   --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
   --transition-base: 200ms cubic-bezier(0.4, 0, 0.2, 1);
   --transition-slow: 300ms cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* ---- Density row heights ---- */
+  --row-height-dense: 32px;
+  --row-height-comfortable: 40px;
+  --row-height-spacious: 52px;
 }
 
 /* ---- Global Reset Overrides ---- */
@@ -163,7 +176,33 @@ body,
 }
 
 /* ============================================================
-   Dark Theme — 现有终端风格
+   Color Convention — 红涨绿跌 (china) vs 绿涨红跌 (us)
+   通过 <html data-color-convention="..."> 切换 — 在 useTheme
+   / settings store 中维护。本 phase 默认 "china"。
+   ============================================================ */
+
+:root[data-color-convention="us"] {
+  /* 绿涨红跌 */
+  --color-rise: #16a34a;
+  --color-rise-dim: rgba(22, 163, 74, 0.08);
+  --color-rise-border: rgba(22, 163, 74, 0.20);
+  --color-fall: #dc2626;
+  --color-fall-dim: rgba(220, 38, 38, 0.08);
+  --color-fall-border: rgba(220, 38, 38, 0.20);
+}
+
+/* Dark 主题下保持现有 terminal 配色 */
+:root[data-theme="dark"][data-color-convention="us"] {
+  --color-rise: #5fa87a;
+  --color-rise-dim: rgba(95, 168, 122, 0.12);
+  --color-rise-border: rgba(95, 168, 122, 0.25);
+  --color-fall: #c96b6b;
+  --color-fall-dim: rgba(201, 107, 107, 0.12);
+  --color-fall-border: rgba(201, 107, 107, 0.25);
+}
+
+/* ============================================================
+   Dark Theme — 现有终端风格 (保留为可选)
    Activated when <html data-theme="dark">.
    ============================================================ */
 
@@ -184,6 +223,7 @@ body,
   --accent-border: rgba(95, 168, 122, 0.20);
   --accent-glow: rgba(95, 168, 122, 0.15);
   --accent-hover: #7fc997;
+  --accent-active: #4a8a63;
 
   /* ---- Text Colors ---- */
   --text-primary: #f5f5f0;
@@ -244,7 +284,7 @@ body,
   --text-on-accent: #0a0a0a;
   --bg-on-accent: rgba(255, 255, 255, 0.85);
 
-  /* ---- Spacing (4px base) ---- */
+  /* ---- Spacing (4px base, dark 用 24px space-5) ---- */
   --space-5: 24px;
 
   /* ---- Radius ---- */

@@ -11,6 +11,9 @@ import './styles/global.css';
 // Apply persisted theme synchronously to avoid flash of wrong theme
 const initialTheme = getInitialTheme();
 document.documentElement.setAttribute('data-theme', initialTheme);
+// Default color convention attribute is applied by AppLayout after mount
+// (settings store value is the source of truth; SSR/no-store fallback is
+// "china" via the :root CSS rules above).
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -22,38 +25,34 @@ const queryClient = new QueryClient({
 });
 
 /**
- * Build the Ant Design theme object for the active visual mode.
+ * Phase 1 (2026-07-05) palette:
+ *   - Light  → 朱色 #E11D48 (rose-600) 主强调色, Notion/Linear 风浅底
+ *   - Dark   → 原 terminal 深色 + 绿 #5fa87a 保留
  *
- * Two visual modes:
- *   - 'clean' (default) — light, clean surface with blue accent
- *   - 'dark'            — existing terminal dark + green accent
+ * CSS 变量层 (theme.css) 通过 `<html data-theme="...">` 重新皮肤整个应用,
+ * 但 antd 的 component token (colorPrimary 等) 是 JS 端, 不会读 CSS 变量。
+ * 所以这里在 JS 里镜像一份色板, 通过 ConfigProvider 注入。
  *
- * The CSS variable layer (theme.css) re-skins the entire app via
- * <html data-theme="clean"> or <html data-theme="dark">, but Ant Design's
- * component tokens (colorPrimary, borderRadius, …) are JS-side and don't read
- * CSS variables. So we mirror the palette here in JS.
- *
- * Re-runs when `<html data-theme>` changes via the `themechange`
- * custom event dispatched from useTheme().
+ * 通过 `themechange` 自定义事件重新计算 (useTheme 在切换主题时派发)。
  */
 const useAntdTheme = () => {
   const [mode, setMode] = useState<Theme>(() =>
     typeof document !== 'undefined'
-      ? (document.documentElement.getAttribute('data-theme') as Theme) || 'clean'
-      : 'clean',
+      ? (document.documentElement.getAttribute('data-theme') as Theme) || 'light'
+      : 'light',
   );
 
   useEffect(() => {
     const handler = (e: Event) => {
       const detail = (e as CustomEvent<Theme>).detail;
-      setMode(detail === 'dark' ? 'dark' : 'clean');
+      setMode(detail === 'dark' ? 'dark' : 'light');
     };
     document.addEventListener('themechange', handler);
     return () => document.removeEventListener('themechange', handler);
   }, []);
 
   if (mode === 'dark') {
-    // Dark terminal theme
+    // Dark terminal theme (preserved as-is from Phase 0)
     return {
       algorithm: theme.darkAlgorithm,
       token: {
@@ -135,12 +134,12 @@ const useAntdTheme = () => {
     };
   }
 
-  // Clean (default) — light surface with blue accent
+  // Light (default) — 朱色 #E11D48 强调, Notion/Linear 风浅底
   return {
     algorithm: theme.defaultAlgorithm,
     token: {
-      colorPrimary: '#2e5bff',
-      colorInfo: '#2e5bff',
+      colorPrimary: '#e11d48',
+      colorInfo: '#e11d48',
       colorSuccess: '#10b981',
       colorWarning: '#f59e0b',
       colorError: '#ef4444',
@@ -177,9 +176,9 @@ const useAntdTheme = () => {
         borderRadius: 8,
         borderRadiusSM: 4,
         primaryShadow: 'none',
-        colorPrimary: '#2e5bff',
-        colorPrimaryHover: '#1a4bff',
-        colorPrimaryActive: '#153de6',
+        colorPrimary: '#e11d48',
+        colorPrimaryHover: '#be123c',
+        colorPrimaryActive: '#9f1239',
         colorTextLightSolid: '#ffffff',
       },
       Card: {
@@ -203,17 +202,17 @@ const useAntdTheme = () => {
       Input: {
         borderRadius: 8,
         colorBgContainer: '#ffffff',
-        activeBorderColor: '#2e5bff',
-        activeShadow: '0 0 0 2px rgba(46,91,255,0.08)',
+        activeBorderColor: '#e11d48',
+        activeShadow: '0 0 0 2px rgba(225,29,72,0.10)',
       },
       Select: {
         borderRadius: 8,
         colorBgContainer: '#ffffff',
-        optionSelectedBg: 'rgba(46,91,255,0.08)',
-        optionSelectedColor: '#2e5bff',
+        optionSelectedBg: 'rgba(225,29,72,0.08)',
+        optionSelectedColor: '#e11d48',
       },
       Tabs: {
-        inkBarColor: '#2e5bff',
+        inkBarColor: '#e11d48',
         itemSelectedColor: '#111113',
         itemHoverColor: '#6b7280',
         itemColor: '#9ca3af',
@@ -228,9 +227,9 @@ const useAntdTheme = () => {
         colorSuccess: '#10b981',
         colorSuccessBg: '#ecfdf5',
         colorSuccessBorder: '#a7f3d0',
-        colorInfo: '#2e5bff',
-        colorInfoBg: '#eff4ff',
-        colorInfoBorder: '#c7d7ff',
+        colorInfo: '#e11d48',
+        colorInfoBg: '#fff1f2',
+        colorInfoBorder: '#fecdd3',
       },
       Tooltip: {
         colorTextLightSolid: '#ffffff',

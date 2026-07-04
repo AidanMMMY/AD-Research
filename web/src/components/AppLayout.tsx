@@ -368,6 +368,13 @@ export default function AppLayout() {
     }
   }, [user?.id]);
 
+  // Phase 1: 同步 colorConvention 到 <html data-color-convention>,
+  // 这样 theme.css 里的 CSS 变量切换才能生效。
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    document.documentElement.setAttribute('data-color-convention', colorConvention);
+  }, [colorConvention]);
+
   // One-shot "已开启学习模式" hint so users notice the new default without
   // having to dig into the avatar menu. Keyed per-user so multi-account
   // devices each get the nudge once.
@@ -560,7 +567,7 @@ export default function AppLayout() {
                           <SunOutlined aria-label="浅色主题" />
                         </Tooltip>
                       ),
-                      value: 'clean',
+                      value: 'light',
                     },
                     {
                       label: (
@@ -609,7 +616,7 @@ export default function AppLayout() {
                             onChange={(v) => setTheme(v as Theme)}
                             aria-label="切换主题"
                             options={[
-                              { label: <SunOutlined />, value: 'clean' },
+                              { label: <SunOutlined />, value: 'light' },
                               { label: <MoonOutlined />, value: 'dark' },
                             ]}
                             size="small"
