@@ -186,6 +186,14 @@ def get_list_date(db: Session, code: str) -> date | None:
     return info.list_date or info.inception_date
 
 
+def get_delist_date(db: Session, code: str) -> date | None:
+    """Return the delisting date for an instrument if known (None if still active)."""
+    info = db.get(ETFInfo, code)
+    if info is None:
+        return None
+    return info.delist_date
+
+
 def is_before_list_date(db: Session, code: str, query_date: date) -> bool:
     """Return True if ``query_date`` is before the instrument's listing date."""
     list_date = get_list_date(db, code)

@@ -26,6 +26,7 @@ class ResearchNote(Base):
     __tablename__ = "research_note"
 
     id = Column(Integer, primary_key=True, autoincrement=True, comment="ID")
+    user_id = Column(Integer, nullable=False, comment="Owner user ID")
     instrument_code = Column(
         String(20),
         ForeignKey("etf_info.code", ondelete="CASCADE"),

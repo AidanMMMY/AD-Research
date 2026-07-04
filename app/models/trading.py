@@ -42,6 +42,7 @@ class PaperTradeAccount(Base):
     __tablename__ = "paper_trade_account"
 
     id = Column(Integer, primary_key=True, autoincrement=True, comment="Auto-increment account ID")
+    user_id = Column(Integer, nullable=False, comment="Owner user ID")
     name = Column(String(100), nullable=False, comment="Human-readable account label")
     initial_balance = Column(DECIMAL(18, 4), nullable=False, default=10000, comment="Starting USDT balance")
     cash = Column(DECIMAL(18, 4), nullable=False, comment="Available USDT cash")
@@ -169,6 +170,7 @@ class LiveTradeConfig(Base):
     __tablename__ = "live_trade_config"
 
     id = Column(Integer, primary_key=True, autoincrement=True, comment="Auto-increment config ID")
+    user_id = Column(Integer, nullable=False, comment="Owner user ID")
     name = Column(String(100), nullable=False, comment="Human-readable label, e.g. 'Main Spot'")
     api_key_encrypted = Column(String(512), comment="Fernet-encrypted Binance API key")
     api_secret_encrypted = Column(String(512), comment="Fernet-encrypted Binance API secret")
@@ -282,6 +284,7 @@ class RiskRule(Base):
     __tablename__ = "risk_rule"
 
     id = Column(Integer, primary_key=True, autoincrement=True, comment="Auto-increment rule ID")
+    user_id = Column(Integer, nullable=False, comment="Owner user ID")
     name = Column(String(100), nullable=False, comment="Human-readable rule name")
     rule_type = Column(String(50), nullable=False, comment="per_order | daily | market | duplicate")
     param_key = Column(String(50), nullable=False, comment="e.g. max_order_value, max_daily_loss")

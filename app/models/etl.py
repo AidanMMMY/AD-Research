@@ -92,6 +92,7 @@ class StrategyConfig(Base):
     __tablename__ = "strategy_config"
 
     id = Column(Integer, primary_key=True, autoincrement=True, comment="ID")
+    user_id = Column(Integer, nullable=False, comment="Owner user ID")
     name = Column(String(100), nullable=False, comment="Strategy name")
     description = Column(Text, comment="Strategy description")
     strategy_type = Column(String(50), comment="Strategy type")
@@ -116,6 +117,7 @@ class BacktestResult(Base):
     __tablename__ = "backtest_result"
 
     id = Column(Integer, primary_key=True, autoincrement=True, comment="ID")
+    user_id = Column(Integer, nullable=False, comment="Owner user ID")
     strategy_id = Column(
         Integer,
         ForeignKey("strategy_config.id", ondelete="CASCADE"),
@@ -140,6 +142,7 @@ class Signal(Base):
     __tablename__ = "signal"
 
     id = Column(Integer, primary_key=True, autoincrement=True, comment="ID")
+    user_id = Column(Integer, nullable=False, comment="Owner user ID")
     strategy_id = Column(
         Integer,
         ForeignKey("strategy_config.id", ondelete="CASCADE"),

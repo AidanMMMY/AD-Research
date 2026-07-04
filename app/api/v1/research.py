@@ -150,7 +150,7 @@ def generate_research_note(
     """Generate an AI research note for an instrument."""
     _require_ai()
     service = ResearchService(db)
-    result = service.generate_daily_note(req.instrument_code)
+    result = service.generate_daily_note(req.instrument_code, user_id=current_user.id)
     if result.is_error:
         # LLM provider failure -> 503 so caller can retry
         if result.error_code == "LLM_UNAVAILABLE":
@@ -188,7 +188,7 @@ def get_research_notes(
     """Get AI research notes for an instrument."""
     _require_ai()
     service = ResearchService(db)
-    notes = service.get_notes(instrument_code=instrument_code, note_type=note_type, limit=limit)
+    notes = service.get_notes(instrument_code=instrument_code, note_type=note_type, limit=limit, user_id=current_user.id)
     instrument = db.query(ETFInfo).filter(ETFInfo.code == instrument_code).first()
     name = instrument.name if instrument else None
     name_zh = instrument.name_zh if instrument else None

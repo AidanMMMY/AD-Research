@@ -10,13 +10,19 @@ limit price is better than or equal to the market price.
 
 from datetime import date, datetime, timezone
 from decimal import Decimal
+from typing import TYPE_CHECKING
 
 from sqlalchemy import and_, func
 from sqlalchemy.orm import Session
 
+from app.data.providers.akshare_provider import AkshareProvider
 from app.data.providers.binance_provider import BinanceProvider
+from app.data.providers.yfinance_provider import YFinanceProvider
 from app.models.etf import ETFInfo
 from app.models.trading import PaperTradeAccount, PaperTradeOrder, PaperTradePosition
+
+if TYPE_CHECKING:
+    from app.data.providers.base import DataProvider
 
 
 class PaperTradingError(Exception):
@@ -24,7 +30,13 @@ class PaperTradingError(Exception):
 
 
 class PaperTradingService:
-    """Simulated trading on top of Binance market data.
+    """Simulated trading with market-aware provider selection.
+
+    Provider mapping by instrument code suffix:
+      - .SH / .SZ → A股 → AkshareProvider
+      - .HK      → 港股 → (暂时不支持，返回错误)
+      - .US      → 美股 → YFinanceProvider
+      - 无后缀 / BTC / ETH → 加密 → BinanceProvider
 
     Usage::
 
@@ -36,23 +48,77 @@ class PaperTradingService:
 
     def __init__(self, db: Session):
         self.db = db
-        self._provider: BinanceProvider | None = None
+        self._providers: dict[str, "DataProvider"] = {}
 
-    @property
-    def provider(self) -> BinanceProvider:
-        if self._provider is None:
-            self._provider = BinanceProvider()
-        return self._provider
+    def _get_provider_for_code(self, instrument_code: str) -> "DataProvider":
+        """Select the appropriate provider based on instrument code suffix.
+
+        Returns the provider instance for the given market. Raises
+        PaperTradingError if no provider is available for the market.
+        """
+        # Determine market from code suffix
+        if instrument_code.endswith(".SH") or instrument_code.endswith(".SZ"):
+            market = "cn"
+        elif instrument_code.endswith(".HK"):
+            market = "hk"
+        elif instrument_code.endswith(".US"):
+            market = "us"
+        else:
+            # No suffix: assume crypto (BTC, ETH, etc.)
+            market = "crypto"
+
+        # Return cached provider if available
+        if market in self._providers:
+            return self._providers[market]
+
+        # Create provider based on market
+        if market == "cn":
+            provider = AkshareProvider()
+            # Health check warns but doesn't block - actual fetch errors are more informative
+            if not provider.check_health():
+                import logging
+                logging.warning("AkshareProvider health check failed, but allowing use")
+            self._providers[market] = provider
+            return provider
+
+        elif market == "hk":
+            # 港股暂不支持，返回明确错误
+            raise PaperTradingError("该市场暂无可用行情源: 港股")
+
+        elif market == "us":
+            provider = YFinanceProvider()
+            if not provider.check_health():
+                import logging
+                logging.warning("YFinanceProvider health check failed, but allowing use")
+            self._providers[market] = provider
+            return provider
+
+        elif market == "crypto":
+            provider = BinanceProvider()
+            # Health check warns but doesn't block - network issues may be transient
+            if not provider.check_health():
+                import logging
+                logging.warning("BinanceProvider health check failed, but allowing use")
+            self._providers[market] = provider
+            return provider
+
+        # Fallback (should not reach here)
+        raise PaperTradingError(f"未知市场: {instrument_code}")
+
+    def _get_provider(self, instrument_code: str) -> "DataProvider":
+        """Get provider for a single instrument. Convenience method."""
+        return self._get_provider_for_code(instrument_code)
 
     # ------------------------------------------------------------------
     # Account CRUD
     # ------------------------------------------------------------------
 
     def create_account(
-        self, name: str, initial_balance: Decimal = Decimal("10000")
+        self, name: str, initial_balance: Decimal = Decimal("10000"), user_id: int | None = None
     ) -> PaperTradeAccount:
         """Create a new paper-trade account."""
         account = PaperTradeAccount(
+            user_id=user_id,
             name=name,
             initial_balance=initial_balance,
             cash=initial_balance,
@@ -62,22 +128,28 @@ class PaperTradingService:
         self.db.refresh(account)
         return account
 
-    def get_account(self, account_id: int) -> PaperTradeAccount | None:
+    def get_account(self, account_id: int, user_id: int | None = None) -> PaperTradeAccount | None:
         """Return a single account or None."""
-        return self.db.query(PaperTradeAccount).filter(
+        query = self.db.query(PaperTradeAccount).filter(
             PaperTradeAccount.id == account_id,
             PaperTradeAccount.status == "active",
-        ).first()
+        )
+        if user_id:
+            query = query.filter(PaperTradeAccount.user_id == user_id)
+        return query.first()
 
-    def get_accounts(self) -> list[PaperTradeAccount]:
+    def get_accounts(self, user_id: int | None = None) -> list[PaperTradeAccount]:
         """Return all active accounts."""
-        return self.db.query(PaperTradeAccount).filter(
+        query = self.db.query(PaperTradeAccount).filter(
             PaperTradeAccount.status == "active"
-        ).order_by(PaperTradeAccount.created_at.desc()).all()
+        )
+        if user_id:
+            query = query.filter(PaperTradeAccount.user_id == user_id)
+        return query.order_by(PaperTradeAccount.created_at.desc()).all()
 
-    def archive_account(self, account_id: int) -> bool:
+    def archive_account(self, account_id: int, user_id: int | None = None) -> bool:
         """Soft-delete by setting status='archived'."""
-        account = self.get_account(account_id)
+        account = self.get_account(account_id, user_id)
         if not account:
             return False
         account.status = "archived"
@@ -120,12 +192,15 @@ class PaperTradingService:
         if not instrument:
             raise PaperTradingError(f"Instrument {instrument_code} not found")
 
-        # 3. Get current market price
+        # 3. Get current market price (use market-specific provider)
         try:
-            quotes_df = self.provider.fetch_realtime_quotes([instrument_code])
+            provider = self._get_provider(instrument_code)
+            quotes_df = provider.fetch_realtime_quotes([instrument_code])
             if quotes_df.empty:
                 raise PaperTradingError(f"No price data for {instrument_code}")
             market_price = Decimal(str(quotes_df.iloc[0]["price"]))
+        except PaperTradingError:
+            raise
         except Exception as exc:
             raise PaperTradingError(f"Failed to fetch price for {instrument_code}: {exc}") from exc
 
@@ -252,15 +327,37 @@ class PaperTradingService:
             )
             instruments = {r.code: r.name for r in rows}
 
-        # Enrich with live prices
+        # Enrich with live prices (group by market for provider selection)
+        quotes: dict[str, Decimal] = {}
         try:
-            quotes_df = self.provider.fetch_realtime_quotes(codes)
-            quotes: dict[str, Decimal] = {}
-            if not quotes_df.empty:
-                for _, row in quotes_df.iterrows():
-                    quotes[row["etf_code"]] = Decimal(str(row["price"]))
+            # Group codes by market
+            market_codes: dict[str, list[str]] = {}
+            for code in codes:
+                if code.endswith(".SH") or code.endswith(".SZ"):
+                    market = "cn"
+                elif code.endswith(".HK"):
+                    market = "hk"
+                elif code.endswith(".US"):
+                    market = "us"
+                else:
+                    market = "crypto"
+                market_codes.setdefault(market, []).append(code)
+
+            # Fetch quotes from each market's provider
+            for market, market_code_list in market_codes.items():
+                try:
+                    provider = self._get_provider(market_code_list[0])
+                    quotes_df = provider.fetch_realtime_quotes(market_code_list)
+                    if not quotes_df.empty:
+                        for _, row in quotes_df.iterrows():
+                            quotes[row["etf_code"]] = Decimal(str(row["price"]))
+                except PaperTradingError:
+                    # Skip unavailable markets
+                    continue
+                except Exception:
+                    continue
         except Exception:
-            quotes = {}
+            pass
 
         for pos in positions:
             pos.instrument_name = instruments.get(pos.instrument_code)
@@ -325,18 +422,39 @@ class PaperTradingService:
             .all()
         )
 
-        # Refresh market values inline: one batched quote fetch, in-memory
-        # update, single commit.  Failures are swallowed (same behaviour
-        # as the previous implementation) so a transient Binance outage
-        # doesn't break the summary endpoint.
+        # Refresh market values inline: batched quote fetch per market, in-memory
+        # update, single commit.  Failures are swallowed so a transient
+        # provider outage doesn't break the summary endpoint.
+        quotes: dict[str, Decimal] = {}
         try:
             open_codes = list({p.instrument_code for p in positions if p.quantity > 0})
             if open_codes:
-                quotes_df = self.provider.fetch_realtime_quotes(open_codes)
-                quotes: dict[str, Decimal] = {}
-                if not quotes_df.empty:
-                    for _, row in quotes_df.iterrows():
-                        quotes[row["etf_code"]] = Decimal(str(row["price"]))
+                # Group codes by market
+                market_codes: dict[str, list[str]] = {}
+                for code in open_codes:
+                    if code.endswith(".SH") or code.endswith(".SZ"):
+                        market = "cn"
+                    elif code.endswith(".HK"):
+                        market = "hk"
+                    elif code.endswith(".US"):
+                        market = "us"
+                    else:
+                        market = "crypto"
+                    market_codes.setdefault(market, []).append(code)
+
+                # Fetch quotes from each market's provider
+                for market, market_code_list in market_codes.items():
+                    try:
+                        provider = self._get_provider(market_code_list[0])
+                        quotes_df = provider.fetch_realtime_quotes(market_code_list)
+                        if not quotes_df.empty:
+                            for _, row in quotes_df.iterrows():
+                                quotes[row["etf_code"]] = Decimal(str(row["price"]))
+                    except PaperTradingError:
+                        continue
+                    except Exception:
+                        continue
+
                 for pos in positions:
                     if pos.quantity <= 0:
                         continue
@@ -431,7 +549,7 @@ class PaperTradingService:
     # ------------------------------------------------------------------
 
     def update_market_values(self, account_id: int | None = None) -> int:
-        """Fetch latest prices from Binance and update position market values.
+        """Fetch latest prices from market-specific providers and update position market values.
 
         If *account_id* is None, all active accounts are updated.
         Returns the number of positions updated.
@@ -447,12 +565,34 @@ class PaperTradingService:
             return 0
 
         codes = list({p.instrument_code for p in positions})
+
+        # Group codes by market
+        market_codes: dict[str, list[str]] = {}
+        for code in codes:
+            if code.endswith(".SH") or code.endswith(".SZ"):
+                market = "cn"
+            elif code.endswith(".HK"):
+                market = "hk"
+            elif code.endswith(".US"):
+                market = "us"
+            else:
+                market = "crypto"
+            market_codes.setdefault(market, []).append(code)
+
+        quotes: dict[str, Decimal] = {}
         try:
-            quotes_df = self.provider.fetch_realtime_quotes(codes)
-            quotes: dict[str, Decimal] = {}
-            if not quotes_df.empty:
-                for _, row in quotes_df.iterrows():
-                    quotes[row["etf_code"]] = Decimal(str(row["price"]))
+            # Fetch quotes from each market's provider
+            for market, market_code_list in market_codes.items():
+                try:
+                    provider = self._get_provider(market_code_list[0])
+                    quotes_df = provider.fetch_realtime_quotes(market_code_list)
+                    if not quotes_df.empty:
+                        for _, row in quotes_df.iterrows():
+                            quotes[row["etf_code"]] = Decimal(str(row["price"]))
+                except PaperTradingError:
+                    continue
+                except Exception:
+                    continue
         except Exception:
             return 0
 
@@ -576,11 +716,14 @@ class PaperTradingService:
         return position
 
     def _get_current_price(self, instrument_code: str) -> Decimal | None:
-        """Fetch the latest price for a single instrument."""
+        """Fetch the latest price for a single instrument using market-specific provider."""
         try:
-            quotes_df = self.provider.fetch_realtime_quotes([instrument_code])
+            provider = self._get_provider(instrument_code)
+            quotes_df = provider.fetch_realtime_quotes([instrument_code])
             if quotes_df.empty:
                 return None
             return Decimal(str(quotes_df.iloc[0]["price"]))
+        except PaperTradingError:
+            return None
         except Exception:
             return None

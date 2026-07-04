@@ -11,6 +11,7 @@ class NotificationConfig(Base):
     __tablename__ = "notification_config"
 
     id = Column(Integer, primary_key=True, autoincrement=True, comment="ID")
+    user_id = Column(Integer, nullable=False, comment="Owner user ID")
     name = Column(String(100), nullable=False, comment="Config name")
     channel_type = Column(
         String(20),

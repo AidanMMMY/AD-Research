@@ -23,6 +23,7 @@ class SignalService:
         strategy_type: str,
         params: dict[str, Any],
         trade_date: date,
+        user_id: int | None = None,
     ) -> list[dict[str, Any]]:
         """Generate and persist signals for a single instrument."""
         signals = run_strategy_on_instrument(
@@ -43,7 +44,7 @@ class SignalService:
             seen_keys.add(key)
 
             persisted.extend(
-                self._persist_signal(strategy_id, etf_code, trade_date, sig, params)
+                self._persist_signal(strategy_id, etf_code, trade_date, sig, params, user_id=user_id)
             )
 
         if persisted:
@@ -57,6 +58,7 @@ class SignalService:
         strategy_type: str,
         params: dict[str, Any],
         trade_date: date,
+        user_id: int | None = None,
     ) -> list[dict[str, Any]]:
         """Generate and persist signals for a cross-sectional strategy."""
         signals = run_strategy_on_universe(
@@ -80,7 +82,7 @@ class SignalService:
             seen_keys.add(key)
 
             persisted.extend(
-                self._persist_signal(strategy_id, etf_code, trade_date, sig, params)
+                self._persist_signal(strategy_id, etf_code, trade_date, sig, params, user_id=user_id)
             )
 
         if persisted:
@@ -94,6 +96,7 @@ class SignalService:
         trade_date: date,
         sig: dict[str, Any],
         params: dict[str, Any],
+        user_id: int | None = None,
     ) -> list[dict[str, Any]]:
         """Persist a single signal if it does not already exist.
 
@@ -114,6 +117,7 @@ class SignalService:
             return []
 
         signal = Signal(
+            user_id=user_id,
             strategy_id=strategy_id,
             etf_code=etf_code,
             trade_date=trade_date,
@@ -136,6 +140,7 @@ class SignalService:
         etf_code: str | None = None,
         trade_date: date | None = None,
         limit: int = 100,
+        user_id: int | None = None,
     ) -> list[dict[str, Any]]:
         """Get signals with optional filtering."""
         query = self.db.query(Signal, ETFInfo, StrategyConfig).outerjoin(
@@ -143,6 +148,8 @@ class SignalService:
         ).outerjoin(
             StrategyConfig, Signal.strategy_id == StrategyConfig.id
         )
+        if user_id:
+            query = query.filter(Signal.user_id == user_id)
         if strategy_id:
             query = query.filter(Signal.strategy_id == strategy_id)
         if etf_code:
@@ -180,3 +187,7 @@ class SignalService:
         detail page has a stable, instrument-scoped entry point.
         """
         return self.get_signals(etf_code=etf_code, limit=limit)
+
+    def get_latest_signals(self, limit: int = 50, user_id: int | None = None) -> list[dict[str, Any]]:
+        """Get the latest signals, optionally filtered by user."""
+        return self.get_signals(limit=limit, user_id=user_id)

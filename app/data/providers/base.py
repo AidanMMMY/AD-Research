@@ -18,6 +18,7 @@ class ETFInfo:
     underlying_index: str = ""
     inception_date: date | None = None
     list_date: date | None = None
+    delist_date: date | None = None
     sector: str | None = None
     industry: str | None = None
     instrument_type: str = "ETF"

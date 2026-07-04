@@ -21,9 +21,9 @@ class StrategyService:
         """Get all preset strategy templates from the registry."""
         return StrategyRegistry.list_all()
 
-    def get_strategies(self) -> list[dict[str, Any]]:
+    def get_strategies(self, user_id: int) -> list[dict[str, Any]]:
         """Get all user-created strategies."""
-        strategies = self.db.query(StrategyConfig).all()
+        strategies = self.db.query(StrategyConfig).filter(StrategyConfig.user_id == user_id).all()
         return [
             {
                 "id": s.id,
@@ -37,9 +37,12 @@ class StrategyService:
             for s in strategies
         ]
 
-    def get_strategy(self, strategy_id: int) -> dict[str, Any] | None:
+    def get_strategy(self, strategy_id: int, user_id: int) -> dict[str, Any] | None:
         """Get a single strategy by ID."""
-        s = self.db.query(StrategyConfig).filter(StrategyConfig.id == strategy_id).first()
+        s = self.db.query(StrategyConfig).filter(
+            StrategyConfig.id == strategy_id,
+            StrategyConfig.user_id == user_id,
+        ).first()
         if not s:
             return None
         return {
@@ -59,9 +62,11 @@ class StrategyService:
         strategy_type: str,
         params: dict[str, Any],
         is_active: bool = True,
+        user_id: int | None = None,
     ) -> dict[str, Any]:
         """Create a new strategy configuration."""
         strategy = StrategyConfig(
+            user_id=user_id,
             name=name,
             description=description,
             strategy_type=strategy_type,
@@ -73,9 +78,12 @@ class StrategyService:
         self.db.refresh(strategy)
         return self.get_strategy(strategy.id)
 
-    def update_strategy(self, strategy_id: int, **kwargs) -> dict[str, Any] | None:
+    def update_strategy(self, strategy_id: int, user_id: int, **kwargs) -> dict[str, Any] | None:
         """Update a strategy configuration."""
-        strategy = self.db.query(StrategyConfig).filter(StrategyConfig.id == strategy_id).first()
+        strategy = self.db.query(StrategyConfig).filter(
+            StrategyConfig.id == strategy_id,
+            StrategyConfig.user_id == user_id,
+        ).first()
         if not strategy:
             return None
         for key, value in kwargs.items():
@@ -85,9 +93,12 @@ class StrategyService:
         self.db.refresh(strategy)
         return self.get_strategy(strategy.id)
 
-    def delete_strategy(self, strategy_id: int) -> bool:
+    def delete_strategy(self, strategy_id: int, user_id: int) -> bool:
         """Delete a strategy configuration."""
-        strategy = self.db.query(StrategyConfig).filter(StrategyConfig.id == strategy_id).first()
+        strategy = self.db.query(StrategyConfig).filter(
+            StrategyConfig.id == strategy_id,
+            StrategyConfig.user_id == user_id,
+        ).first()
         if not strategy:
             return False
         self.db.delete(strategy)

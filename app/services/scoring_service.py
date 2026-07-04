@@ -132,10 +132,15 @@ class ScoringService:
             self._init_default_templates()
             templates = self.get_templates()
 
-        # Fetch all indicators for the requested date
+        # Fetch all indicators for the requested date, excluding delisted ETFs
+        # (survivorship bias: ETFs with delist_date < trade_date are not scored)
         indicators = (
             self.db.query(ETFIndicator)
+            .join(ETFInfo, ETFIndicator.etf_code == ETFInfo.code)
             .filter(ETFIndicator.trade_date == trade_date)
+            .filter(
+                (ETFInfo.delist_date.is_(None)) | (ETFInfo.delist_date > trade_date)
+            )
             .all()
         )
 

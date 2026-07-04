@@ -51,6 +51,7 @@ class ETFInfo(Base):
     fund_size = Column(DECIMAL(18, 4), comment="Fund size / market cap in base currency")
     inception_date = Column(Date, comment="Inception date / IPO date")
     list_date = Column(Date, comment="Listing / first trading date")
+    delist_date = Column(Date, nullable=True, comment="Delisting date (null if still active)")
     status = Column(String(20), default="active", comment="Status (active, delisted, suspended)")
 
     # Extended columns for US stocks (Phase 1-2)

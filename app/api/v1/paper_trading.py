@@ -9,7 +9,7 @@ from decimal import Decimal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
-from app.api.deps import get_paper_trading_service
+from app.api.deps import get_current_user, get_paper_trading_service
 from app.schemas.trading import (
     PaperAccountCreate,
     PaperAccountListOut,
@@ -22,7 +22,7 @@ from app.schemas.trading import (
 )
 from app.services.paper_trading_service import PaperTradingError, PaperTradingService
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(get_current_user)])
 
 
 # ---------------------------------------------------------------------------
@@ -32,10 +32,11 @@ router = APIRouter()
 
 @router.get("/accounts", response_model=PaperAccountListOut)
 def list_accounts(
+    current_user=Depends(get_current_user),
     service: PaperTradingService = Depends(get_paper_trading_service),
 ):
     """List all active paper-trade accounts."""
-    accounts = service.get_accounts()
+    accounts = service.get_accounts(user_id=current_user.id)
     items = []
     for acct in accounts:
         try:
@@ -68,12 +69,14 @@ def list_accounts(
 @router.post("/accounts", response_model=PaperAccountOut, status_code=status.HTTP_201_CREATED)
 def create_account(
     data: PaperAccountCreate,
+    current_user=Depends(get_current_user),
     service: PaperTradingService = Depends(get_paper_trading_service),
 ):
     """Create a new paper-trade account with an initial USDT balance."""
     account = service.create_account(
         name=data.name,
         initial_balance=data.initial_balance,
+        user_id=current_user.id,
     )
     return PaperAccountOut(
         id=account.id,
@@ -92,10 +95,11 @@ def create_account(
 @router.get("/accounts/{account_id}", response_model=PaperAccountOut)
 def get_account(
     account_id: int,
+    current_user=Depends(get_current_user),
     service: PaperTradingService = Depends(get_paper_trading_service),
 ):
     """Get a single paper-trade account by ID."""
-    account = service.get_account(account_id)
+    account = service.get_account(account_id, user_id=current_user.id)
     if not account:
         raise HTTPException(status_code=404, detail="Account not found")
 
@@ -121,10 +125,11 @@ def get_account(
 @router.delete("/accounts/{account_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_account(
     account_id: int,
+    current_user=Depends(get_current_user),
     service: PaperTradingService = Depends(get_paper_trading_service),
 ):
     """Archive a paper-trade account (soft-delete)."""
-    if not service.archive_account(account_id):
+    if not service.archive_account(account_id, user_id=current_user.id):
         raise HTTPException(status_code=404, detail="Account not found")
     return None
 
@@ -138,11 +143,12 @@ def delete_account(
 def list_orders(
     account_id: int,
     limit: int = Query(50, ge=1, le=200),
+    current_user=Depends(get_current_user),
     service: PaperTradingService = Depends(get_paper_trading_service),
 ):
     """List recent orders for an account, newest first."""
-    # Verify account exists
-    if not service.get_account(account_id):
+    # Verify account exists and belongs to user
+    if not service.get_account(account_id, user_id=current_user.id):
         raise HTTPException(status_code=404, detail="Account not found")
     orders = service.get_orders(account_id, limit=limit)
     return PaperOrderListOut(
@@ -159,6 +165,7 @@ def list_orders(
 def place_order(
     account_id: int,
     data: PaperOrderCreate,
+    current_user=Depends(get_current_user),
     service: PaperTradingService = Depends(get_paper_trading_service),
 ):
     """Place a simulated order (executes immediately at market price).
@@ -166,6 +173,9 @@ def place_order(
     Raises 400 on insufficient funds, unknown instrument, or other
     business-rule violations.
     """
+    # Verify account exists and belongs to user
+    if not service.get_account(account_id, user_id=current_user.id):
+        raise HTTPException(status_code=404, detail="Account not found")
     try:
         order = service.place_order(
             account_id=account_id,
@@ -184,10 +194,11 @@ def place_order(
 def cancel_order(
     account_id: int,
     order_id: int,
+    current_user=Depends(get_current_user),
     service: PaperTradingService = Depends(get_paper_trading_service),
 ):
     """Cancel a pending order."""
-    if not service.get_account(account_id):
+    if not service.get_account(account_id, user_id=current_user.id):
         raise HTTPException(status_code=404, detail="Account not found")
     if not service.cancel_order(order_id):
         raise HTTPException(status_code=404, detail="Order not found or already filled")
@@ -202,10 +213,11 @@ def cancel_order(
 @router.get("/accounts/{account_id}/positions", response_model=list[PaperPositionOut])
 def list_positions(
     account_id: int,
+    current_user=Depends(get_current_user),
     service: PaperTradingService = Depends(get_paper_trading_service),
 ):
     """List current positions (quantity > 0) with live market values."""
-    if not service.get_account(account_id):
+    if not service.get_account(account_id, user_id=current_user.id):
         raise HTTPException(status_code=404, detail="Account not found")
     positions = service.get_positions(account_id)
     return [
@@ -235,9 +247,12 @@ def list_positions(
 @router.get("/accounts/{account_id}/pnl", response_model=PnLSummaryOut)
 def get_pnl(
     account_id: int,
+    current_user=Depends(get_current_user),
     service: PaperTradingService = Depends(get_paper_trading_service),
 ):
     """Get P&L summary for an account (refreshes market values first)."""
+    if not service.get_account(account_id, user_id=current_user.id):
+        raise HTTPException(status_code=404, detail="Account not found")
     try:
         result = service.get_pnl_summary(account_id)
         return PnLSummaryOut(
@@ -265,10 +280,11 @@ def get_pnl(
 @router.post("/accounts/{account_id}/sync")
 def sync_market_values(
     account_id: int,
+    current_user=Depends(get_current_user),
     service: PaperTradingService = Depends(get_paper_trading_service),
 ):
     """Update all position market values from Binance live prices."""
-    if not service.get_account(account_id):
+    if not service.get_account(account_id, user_id=current_user.id):
         raise HTTPException(status_code=404, detail="Account not found")
     updated = service.update_market_values(account_id)
     return {"updated": updated}
@@ -283,13 +299,14 @@ def sync_market_values(
 def auto_trade(
     account_id: int,
     trade_date: date = Query(None, description="Signal date (defaults to today)"),
+    current_user=Depends(get_current_user),
     service: PaperTradingService = Depends(get_paper_trading_service),
 ):
     """Execute trades automatically based on today's signals.
 
     BUY signals allocate ~10% of equity; SELL signals close the full position.
     """
-    if not service.get_account(account_id):
+    if not service.get_account(account_id, user_id=current_user.id):
         raise HTTPException(status_code=404, detail="Account not found")
     orders = service.auto_trade_from_signals(account_id, trade_date)
     return [PaperOrderOut.model_validate(o) for o in orders]

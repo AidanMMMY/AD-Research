@@ -47,12 +47,23 @@ def _load_bars(etf_code: str, start_date: date, end_date: date, db: Any) -> pd.D
     if db is None:
         raise ValueError("Backtest engine requires a database session")
 
-    # Guard against backtest ranges that pre-date the instrument's listing.
+    # Guard against backtest ranges that pre-date the instrument's listing
+    # or post-date its delisting.
     list_date = price_repository.get_list_date(db, etf_code)
+    delist_date = price_repository.get_delist_date(db, etf_code)
+
+    # If instrument was delisted before the backtest end date, exclude it.
+    if delist_date and end_date < delist_date:
+        return pd.DataFrame()
+
     if list_date and end_date < list_date:
         return pd.DataFrame()
+
+    # Clamp date range to [list_date, delist_date].
     if list_date and start_date < list_date:
         start_date = list_date
+    if delist_date and end_date > delist_date:
+        end_date = delist_date
 
     df = price_repository.get_bars(
         db, etf_code, start_date, end_date, adjusted=True

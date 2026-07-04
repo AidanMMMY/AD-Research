@@ -18,11 +18,12 @@ router = APIRouter(dependencies=[Depends(get_current_user)])
 @router.post("", response_model=BacktestResponse, status_code=201)
 def create_backtest(
     data: BacktestCreate,
+    current_user=Depends(get_current_user),
     backtest_service: BacktestService = Depends(get_backtest_service),
     strategy_service: StrategyService = Depends(get_strategy_service),
 ):
     """Run a new backtest."""
-    strategy = strategy_service.get_strategy(data.strategy_id)
+    strategy = strategy_service.get_strategy(data.strategy_id, user_id=current_user.id)
     if not strategy:
         raise HTTPException(status_code=404, detail="Strategy not found")
 
@@ -30,6 +31,7 @@ def create_backtest(
         **data.model_dump(),
         strategy_type=strategy["strategy_type"],
         params=strategy["params"],
+        user_id=current_user.id,
     )
     return result
 
@@ -38,20 +40,22 @@ def create_backtest(
 def list_backtests(
     strategy_id: int | None = None,
     limit: int = 50,
+    current_user=Depends(get_current_user),
     service: BacktestService = Depends(get_backtest_service),
 ):
     """Get backtest results."""
-    items = service.get_backtests(strategy_id=strategy_id, limit=limit)
+    items = service.get_backtests(strategy_id=strategy_id, limit=limit, user_id=current_user.id)
     return BacktestListResponse(items=items)
 
 
 @router.get("/{backtest_id}", response_model=BacktestResponse)
 def get_backtest(
     backtest_id: int,
+    current_user=Depends(get_current_user),
     service: BacktestService = Depends(get_backtest_service),
 ):
     """Get a backtest by ID."""
-    result = service.get_backtest(backtest_id)
+    result = service.get_backtest(backtest_id, user_id=current_user.id)
     if not result:
         raise HTTPException(status_code=404, detail="Backtest not found")
     return result

@@ -78,9 +78,12 @@ class NotificationService:
                 exposed[key] = self._decrypt_value(str(exposed[key]))
         return exposed
 
-    def get_configs(self) -> list[dict[str, Any]]:
+    def get_configs(self, user_id: int | None = None) -> list[dict[str, Any]]:
         """Get all notification configurations."""
-        configs = self.db.query(NotificationConfig).all()
+        query = self.db.query(NotificationConfig)
+        if user_id:
+            query = query.filter(NotificationConfig.user_id == user_id)
+        configs = query.all()
         return [
             {
                 "id": c.id,
@@ -93,9 +96,10 @@ class NotificationService:
             for c in configs
         ]
 
-    def create_config(self, name: str, channel_type: str, config_json: dict[str, Any]) -> dict[str, Any]:
+    def create_config(self, name: str, channel_type: str, config_json: dict[str, Any], user_id: int | None = None) -> dict[str, Any]:
         """Create a new notification configuration."""
         config = NotificationConfig(
+            user_id=user_id,
             name=name,
             channel_type=channel_type,
             config_json=self._protect_config_json(config_json),
@@ -114,9 +118,12 @@ class NotificationService:
             "updated_at": config.updated_at.isoformat() if config.updated_at else None,
         }
 
-    def update_config(self, config_id: int, **kwargs) -> dict[str, Any] | None:
+    def update_config(self, config_id: int, user_id: int | None = None, **kwargs) -> dict[str, Any] | None:
         """Update a notification configuration."""
-        config = self.db.query(NotificationConfig).filter(NotificationConfig.id == config_id).first()
+        query = self.db.query(NotificationConfig).filter(NotificationConfig.id == config_id)
+        if user_id:
+            query = query.filter(NotificationConfig.user_id == user_id)
+        config = query.first()
         if not config:
             return None
         for key, value in kwargs.items():
@@ -136,18 +143,24 @@ class NotificationService:
             "updated_at": config.updated_at.isoformat() if config.updated_at else None,
         }
 
-    def delete_config(self, config_id: int) -> bool:
+    def delete_config(self, config_id: int, user_id: int | None = None) -> bool:
         """Delete a notification configuration."""
-        config = self.db.query(NotificationConfig).filter(NotificationConfig.id == config_id).first()
+        query = self.db.query(NotificationConfig).filter(NotificationConfig.id == config_id)
+        if user_id:
+            query = query.filter(NotificationConfig.user_id == user_id)
+        config = query.first()
         if not config:
             return False
         self.db.delete(config)
         self.db.commit()
         return True
 
-    def send_notification(self, config_id: int, report_id: int | None = None, test: bool = False) -> dict[str, Any]:
+    def send_notification(self, config_id: int, report_id: int | None = None, test: bool = False, user_id: int | None = None) -> dict[str, Any]:
         """Send a notification using the specified configuration."""
-        config = self.db.query(NotificationConfig).filter(NotificationConfig.id == config_id).first()
+        query = self.db.query(NotificationConfig).filter(NotificationConfig.id == config_id)
+        if user_id:
+            query = query.filter(NotificationConfig.user_id == user_id)
+        config = query.first()
         if not config:
             return {"success": False, "error": "Config not found"}
 
@@ -331,6 +344,7 @@ class NotificationService:
         self,
         page: int = 1,
         page_size: int = 20,
+        user_id: int | None = None,
     ) -> dict[str, Any]:
         """Get notification send logs with pagination.
 
@@ -346,7 +360,10 @@ class NotificationService:
         query = self.db.query(NotificationLog, NotificationConfig).outerjoin(
             NotificationConfig,
             NotificationLog.config_id == NotificationConfig.id,
-        ).order_by(NotificationLog.created_at.desc())
+        )
+        if user_id:
+            query = query.filter(NotificationConfig.user_id == user_id)
+        query = query.order_by(NotificationLog.created_at.desc())
 
         total = query.count()
         rows = query.offset(offset).limit(page_size).all()

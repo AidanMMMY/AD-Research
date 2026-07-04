@@ -28,6 +28,7 @@ class BacktestService:
         slippage_rate: float = 0.001,
         position_size: float = 1.0,
         risk_free_rate: float = 0.02,
+        user_id: int | None = None,
     ) -> dict[str, Any]:
         """Run a backtest and persist results.
 
@@ -64,6 +65,7 @@ class BacktestService:
 
         # Persist to database
         backtest = BacktestResult(
+            user_id=user_id,
             strategy_id=strategy_id,
             start_date=start_date,
             end_date=end_date,
@@ -107,9 +109,11 @@ class BacktestService:
             "created_at": backtest.created_at.isoformat() if backtest.created_at else None,
         }
 
-    def get_backtests(self, strategy_id: int | None = None, limit: int = 50) -> list[dict[str, Any]]:
+    def get_backtests(self, strategy_id: int | None = None, limit: int = 50, user_id: int | None = None) -> list[dict[str, Any]]:
         """Get backtest results."""
         query = self.db.query(BacktestResult)
+        if user_id:
+            query = query.filter(BacktestResult.user_id == user_id)
         if strategy_id:
             query = query.filter(BacktestResult.strategy_id == strategy_id)
         results = query.order_by(BacktestResult.created_at.desc()).limit(limit).all()
@@ -126,9 +130,12 @@ class BacktestService:
             for r in results
         ]
 
-    def get_backtest(self, backtest_id: int) -> dict[str, Any] | None:
+    def get_backtest(self, backtest_id: int, user_id: int | None = None) -> dict[str, Any] | None:
         """Get a single backtest by ID."""
-        r = self.db.query(BacktestResult).filter(BacktestResult.id == backtest_id).first()
+        query = self.db.query(BacktestResult).filter(BacktestResult.id == backtest_id)
+        if user_id:
+            query = query.filter(BacktestResult.user_id == user_id)
+        r = query.first()
         if not r:
             return None
         return {

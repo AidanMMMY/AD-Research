@@ -101,7 +101,7 @@ class ResearchService:
     # Daily Note
     # ------------------------------------------------------------------
 
-    def generate_daily_note(self, instrument_code: str) -> ResearchNoteResult:
+    def generate_daily_note(self, instrument_code: str, user_id: int | None = None) -> ResearchNoteResult:
         """Generate a daily research note for a single instrument.
 
         Fetches the last 30 days of price data, latest indicators, and
@@ -214,6 +214,7 @@ class ResearchService:
 
         # 8. Store in DB
         note = ResearchNote(
+            user_id=user_id,
             instrument_code=instrument_code,
             note_type="daily_summary",
             content=parsed.get("content", result),
@@ -305,9 +306,12 @@ class ResearchService:
         instrument_code: str | None = None,
         note_type: str | None = None,
         limit: int = 20,
+        user_id: int | None = None,
     ) -> list[ResearchNote]:
         """Query research notes with optional filtering."""
         q = self.db.query(ResearchNote)
+        if user_id:
+            q = q.filter(ResearchNote.user_id == user_id)
         if instrument_code:
             q = q.filter(ResearchNote.instrument_code == instrument_code)
         if note_type:

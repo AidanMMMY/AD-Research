@@ -62,6 +62,30 @@ _ENCRYPTED_PREFIX = "enc:"
 
 
 # ---------------------------------------------------------------------------
+# Owner-scope helpers
+# ---------------------------------------------------------------------------
+
+def _get_config_for_user(
+    db: Session,
+    config_id: int,
+    current_user: UserResponse,
+) -> LiveTradeConfig | None:
+    """Get a config by ID, enforcing owner-scope.
+
+    - If config.user_id is NULL (legacy), allow any authenticated user.
+    - If config.user_id is set, require config.user_id == current_user.id.
+    Returns None if not found or access denied (caller should return 404).
+    """
+    config = db.query(LiveTradeConfig).filter(LiveTradeConfig.id == config_id).first()
+    if not config:
+        return None
+    # Legacy configs (user_id=NULL) are accessible to all authenticated users
+    if config.user_id is not None and config.user_id != current_user.id:
+        return None
+    return config
+
+
+# ---------------------------------------------------------------------------
 # Fernet helpers (same pattern as NotificationService)
 # ---------------------------------------------------------------------------
 
@@ -125,10 +149,22 @@ def _make_binance_client(config: LiveTradeConfig) -> BinanceClient:
 @router.get("/configs", response_model=list[LiveConfigOut])
 def list_configs(
     db: Session = Depends(get_db),
-    _current_user: UserResponse = Depends(get_current_user),
+    current_user: UserResponse = Depends(get_current_user),
 ):
-    """List all live-trade configurations (secrets are never returned)."""
-    configs = db.query(LiveTradeConfig).order_by(LiveTradeConfig.created_at.desc()).all()
+    """List live-trade configurations owned by or shared with the current user.
+
+    - Legacy configs (user_id=NULL) are visible to all users.
+    - User-owned configs are filtered by current_user.id.
+    """
+    # Show user's own configs + legacy configs (user_id=NULL)
+    configs = (
+        db.query(LiveTradeConfig)
+        .filter(
+            (LiveTradeConfig.user_id == current_user.id) | (LiveTradeConfig.user_id.is_(None))
+        )
+        .order_by(LiveTradeConfig.created_at.desc())
+        .all()
+    )
     return [LiveConfigOut.model_validate(c) for c in configs]
 
 
@@ -141,8 +177,10 @@ def create_config(
     """Create a new live-trade configuration (admin only).
 
     API key and secret are encrypted at rest with Fernet before storage.
+    The config is owned by the current admin user.
     """
     config = LiveTradeConfig(
+        user_id=current_user.id,
         name=payload.name,
         api_key_encrypted=_encrypt_secret(payload.api_key),
         api_secret_encrypted=_encrypt_secret(payload.api_secret),
@@ -166,11 +204,11 @@ def update_config(
     db: Session = Depends(get_db),
     current_user: UserResponse = Depends(require_admin),
 ):
-    """Update a live-trade configuration (admin only).
+    """Update a live-trade configuration (admin only, owner-scoped).
 
     Secrets are NOT updatable via this endpoint — recreate the config instead.
     """
-    config = db.query(LiveTradeConfig).filter(LiveTradeConfig.id == config_id).first()
+    config = _get_config_for_user(db, config_id, current_user)
     if not config:
         raise HTTPException(status_code=404, detail="Config not found")
 
@@ -189,8 +227,8 @@ def delete_config(
     db: Session = Depends(get_db),
     current_user: UserResponse = Depends(require_admin),
 ):
-    """Delete a live-trade configuration (admin only)."""
-    config = db.query(LiveTradeConfig).filter(LiveTradeConfig.id == config_id).first()
+    """Delete a live-trade configuration (admin only, owner-scoped)."""
+    config = _get_config_for_user(db, config_id, current_user)
     if not config:
         raise HTTPException(status_code=404, detail="Config not found")
     db.delete(config)
@@ -205,10 +243,10 @@ def delete_config(
 def get_account(
     config_id: int,
     db: Session = Depends(get_db),
-    _current_user: UserResponse = Depends(get_current_user),
+    current_user: UserResponse = Depends(get_current_user),
 ):
-    """Fetch live Binance account balances."""
-    config = db.query(LiveTradeConfig).filter(LiveTradeConfig.id == config_id).first()
+    """Fetch live Binance account balances (owner-scoped)."""
+    config = _get_config_for_user(db, config_id, current_user)
     if not config:
         raise HTTPException(status_code=404, detail="Config not found")
 
@@ -243,10 +281,10 @@ def get_account(
 def list_positions(
     config_id: int,
     db: Session = Depends(get_db),
-    _current_user: UserResponse = Depends(get_current_user),
+    current_user: UserResponse = Depends(get_current_user),
 ):
-    """Return synced live-trade positions for a config."""
-    config = db.query(LiveTradeConfig).filter(LiveTradeConfig.id == config_id).first()
+    """Return synced live-trade positions for a config (owner-scoped)."""
+    config = _get_config_for_user(db, config_id, current_user)
     if not config:
         raise HTTPException(status_code=404, detail="Config not found")
 
@@ -270,10 +308,10 @@ def list_orders(
     config_id: int,
     limit: int = Query(default=50, ge=1, le=200),
     db: Session = Depends(get_db),
-    _current_user: UserResponse = Depends(get_current_user),
+    current_user: UserResponse = Depends(get_current_user),
 ):
-    """Return recent live-trade orders for a config."""
-    config = db.query(LiveTradeConfig).filter(LiveTradeConfig.id == config_id).first()
+    """Return recent live-trade orders for a config (owner-scoped)."""
+    config = _get_config_for_user(db, config_id, current_user)
     if not config:
         raise HTTPException(status_code=404, detail="Config not found")
 
@@ -294,10 +332,10 @@ def list_trades(
     symbol: str | None = Query(default=None, description="Binance symbol, e.g. BTCUSDT"),
     limit: int = Query(default=50, ge=1, le=200),
     db: Session = Depends(get_db),
-    _current_user: UserResponse = Depends(get_current_user),
+    current_user: UserResponse = Depends(get_current_user),
 ):
-    """Fetch trade history directly from Binance."""
-    config = db.query(LiveTradeConfig).filter(LiveTradeConfig.id == config_id).first()
+    """Fetch trade history directly from Binance (owner-scoped)."""
+    config = _get_config_for_user(db, config_id, current_user)
     if not config:
         raise HTTPException(status_code=404, detail="Config not found")
 
@@ -319,11 +357,11 @@ def place_order(
     db: Session = Depends(get_db),
     current_user: UserResponse = Depends(require_admin),
 ):
-    """Place a live order on Binance (risk-checked).
+    """Place a live order on Binance (risk-checked, owner-scoped).
 
     The order passes through RiskControl before hitting the exchange.
     """
-    config = db.query(LiveTradeConfig).filter(LiveTradeConfig.id == config_id).first()
+    config = _get_config_for_user(db, config_id, current_user)
     if not config:
         raise HTTPException(status_code=404, detail="Config not found")
 
@@ -421,8 +459,8 @@ def cancel_order(
     db: Session = Depends(get_db),
     current_user: UserResponse = Depends(require_admin),
 ):
-    """Cancel an open order (first on Binance, then mark locally)."""
-    config = db.query(LiveTradeConfig).filter(LiveTradeConfig.id == config_id).first()
+    """Cancel an open order (owner-scoped, first on Binance, then mark locally)."""
+    config = _get_config_for_user(db, config_id, current_user)
     if not config:
         raise HTTPException(status_code=404, detail="Config not found")
 
@@ -458,10 +496,10 @@ def cancel_order(
 def get_risk_status(
     config_id: int,
     db: Session = Depends(get_db),
-    _current_user: UserResponse = Depends(get_current_user),
+    current_user: UserResponse = Depends(get_current_user),
 ):
-    """Return the current risk-control status for a config."""
-    config = db.query(LiveTradeConfig).filter(LiveTradeConfig.id == config_id).first()
+    """Return the current risk-control status for a config (owner-scoped)."""
+    config = _get_config_for_user(db, config_id, current_user)
     if not config:
         raise HTTPException(status_code=404, detail="Config not found")
 
@@ -475,8 +513,8 @@ def reset_circuit_breaker(
     db: Session = Depends(get_db),
     current_user: UserResponse = Depends(require_admin),
 ):
-    """Manually reset the circuit breaker (admin only)."""
-    config = db.query(LiveTradeConfig).filter(LiveTradeConfig.id == config_id).first()
+    """Manually reset the circuit breaker (admin only, owner-scoped)."""
+    config = _get_config_for_user(db, config_id, current_user)
     if not config:
         raise HTTPException(status_code=404, detail="Config not found")
 
@@ -487,10 +525,10 @@ def reset_circuit_breaker(
 @router.get("/risk-rules", response_model=list[RiskRuleOut])
 def list_risk_rules(
     db: Session = Depends(get_db),
-    _current_user: UserResponse = Depends(get_current_user),
+    current_user: UserResponse = Depends(get_current_user),
 ):
     """List all configured risk rules."""
-    rules = db.query(RiskRule).order_by(RiskRule.id).all()
+    rules = db.query(RiskRule).filter(RiskRule.user_id == current_user.id).order_by(RiskRule.id).all()
     return [RiskRuleOut.model_validate(r) for r in rules]
 
 

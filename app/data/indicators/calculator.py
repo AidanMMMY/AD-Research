@@ -138,10 +138,12 @@ def batch_calculate_indicators(
     errors = []
 
     # Query all active ETFs, optionally filtering by market
+    # Exclude delisted instruments (delist_date < target_date)
     stmt = select(
         ETFInfo.code,
         ETFInfo.list_date,
         ETFInfo.inception_date,
+        ETFInfo.delist_date,
     ).where(ETFInfo.status == "active")
     if market_filter is not None:
         stmt = stmt.where(ETFInfo.market == market_filter)
@@ -155,9 +157,14 @@ def batch_calculate_indicators(
     for row in active_rows:
         etf_code = row.code
         list_date = row.list_date or row.inception_date
+        delist_date = row.delist_date
 
         # Skip instruments that are not yet listed as of the target date.
         if target_date is not None and list_date is not None and target_date < list_date:
+            continue
+
+        # Skip instruments that were delisted before the target date.
+        if target_date is not None and delist_date is not None and target_date > delist_date:
             continue
 
         try:

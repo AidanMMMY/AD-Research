@@ -74,16 +74,18 @@ def list_templates(
 
 @router.get("", response_model=StrategyListResponse)
 def list_strategies(
+    current_user=Depends(get_current_user),
     service: StrategyService = Depends(get_strategy_service),
 ):
     """Get all user-created strategies."""
-    items = service.get_strategies()
+    items = service.get_strategies(user_id=current_user.id)
     return StrategyListResponse(items=items)
 
 
 @router.post("", response_model=StrategyResponse, status_code=201)
 def create_strategy(
     data: StrategyCreate,
+    current_user=Depends(get_current_user),
     service: StrategyService = Depends(get_strategy_service),
 ):
     """Create a new strategy."""
@@ -93,16 +95,18 @@ def create_strategy(
         strategy_type=data.strategy_type,
         params=data.params,
         is_active=data.is_active,
+        user_id=current_user.id,
     )
 
 
 @router.get("/{strategy_id}", response_model=StrategyResponse)
 def get_strategy(
     strategy_id: int,
+    current_user=Depends(get_current_user),
     service: StrategyService = Depends(get_strategy_service),
 ):
     """Get a strategy by ID."""
-    strategy = service.get_strategy(strategy_id)
+    strategy = service.get_strategy(strategy_id, user_id=current_user.id)
     if not strategy:
         raise HTTPException(status_code=404, detail="Strategy not found")
     return strategy
@@ -112,11 +116,12 @@ def get_strategy(
 def update_strategy(
     strategy_id: int,
     data: StrategyUpdate,
+    current_user=Depends(get_current_user),
     service: StrategyService = Depends(get_strategy_service),
 ):
     """Update a strategy."""
     update_data = data.model_dump(exclude_unset=True)
-    strategy = service.update_strategy(strategy_id, **update_data)
+    strategy = service.update_strategy(strategy_id, user_id=current_user.id, **update_data)
     if not strategy:
         raise HTTPException(status_code=404, detail="Strategy not found")
     return strategy
@@ -125,9 +130,10 @@ def update_strategy(
 @router.delete("/{strategy_id}", status_code=204)
 def delete_strategy(
     strategy_id: int,
+    current_user=Depends(get_current_user),
     service: StrategyService = Depends(get_strategy_service),
 ):
     """Delete a strategy."""
-    if not service.delete_strategy(strategy_id):
+    if not service.delete_strategy(strategy_id, user_id=current_user.id):
         raise HTTPException(status_code=404, detail="Strategy not found")
     return None
