@@ -332,8 +332,8 @@ def test_monitor_records_calls_and_cost(fake_redis):
 
     today = date(2026, 7, 1)
     usd = mon.record_call("deepseek-v4-flash", prompt_tokens=1000, completion_tokens=500, day=today)
-    # (1000/1000)*0.00007 + (500/1000)*0.00028 = 0.00007 + 0.00014 = 0.00021
-    assert round(usd, 6) == 0.00021
+    # (1000/1000)*0.00014 + (500/1000)*0.00028 = 0.00014 + 0.00014 = 0.00028
+    assert round(usd, 6) == 0.00028
 
     mon.record_cache_hit(today)
     mon.record_cache_miss(today)

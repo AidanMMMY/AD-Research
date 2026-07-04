@@ -5,12 +5,13 @@ Redis key conventions live in one place.  Pricing is hard-coded here —
 it is the only place the model → USD map exists, so updating DeepSeek
 pricing means editing one dict.
 
-Pricing (USD per 1K tokens, 2026-07 reference):
+Pricing (USD per 1K tokens, derived from DeepSeek 2026-07 docs;
+CNY per 1M tokens × 0.14 USD/CNY ÷ 1000):
 
-    deepseek-v4-flash  in 0.00007  out 0.00028   (platform default — most AI features)
-    deepseek-v4-pro    in 0.00027  out 0.0011    (opt-in for heavy reasoning tasks)
-    deepseek-v4-pro-reasoner  in 0.00055  out 0.0022
-    claude-3-5-sonnet  in 0.003  out 0.015   (fallback estimate)
+    deepseek-v4-flash       in 0.00014  out 0.00028   (platform default)
+    deepseek-v4-pro         in 0.00042  out 0.00084   (opt-in for heavy reasoning)
+    deepseek-v4-pro-reasoner  in 0.00077  out 0.00168   (placeholder, ~2x v4-pro; verify against official docs)
+    claude-3-5-sonnet       in 0.003   out 0.015     (fallback estimate)
 """
 
 from __future__ import annotations
@@ -27,12 +28,13 @@ logger = logging.getLogger(__name__)
 
 # USD per 1K tokens, {model: {"input": x, "output": y}}
 # Platform default is deepseek-v4-flash; v4-pro entries retained for opt-in callers.
+# Pricing derived from DeepSeek official docs (CNY per 1M tokens → USD per 1K tokens,
+# 1 CNY ≈ 0.14 USD). Old `deepseek-chat` / `deepseek-reasoner` aliases were
+# deprecated 2026-07-24 (both map to v4-flash thinking / non-thinking mode).
 DEFAULT_PRICING: dict[str, dict[str, float]] = {
-    "deepseek-v4-flash": {"input": 0.00007, "output": 0.00028},
-    "deepseek-v4-pro": {"input": 0.00027, "output": 0.0011},
-    "deepseek-v4-pro-reasoner": {"input": 0.00055, "output": 0.0022},
-    "deepseek-chat": {"input": 0.00027, "output": 0.0011},
-    "deepseek-reasoner": {"input": 0.00055, "output": 0.0022},
+    "deepseek-v4-flash": {"input": 0.00014, "output": 0.00028},
+    "deepseek-v4-pro": {"input": 0.00042, "output": 0.00084},
+    "deepseek-v4-pro-reasoner": {"input": 0.00077, "output": 0.00168},
     "claude-3-5-sonnet": {"input": 0.003, "output": 0.015},
     "claude-sonnet-4": {"input": 0.003, "output": 0.015},
 }
