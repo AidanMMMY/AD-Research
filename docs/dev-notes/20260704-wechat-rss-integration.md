@@ -141,7 +141,7 @@ classify(title, body) -> MarketingVerdict
    - 知识星球 / 私享会 / 闭门会 / 内部活动
    - 免费领取 / 限时免费 / 发布会 / 新品发布
 2. **DeepSeek 二次判定**：未命中关键词的边角案例 → 调用 DeepSeek
-   （`deepseek-v4-pro`）让 LLM 输出
+   （`deepseek-v4-flash`）让 LLM 输出
    `{"knowledge": true|false, "confidence": 0.0-1.0}`。
    - 解析失败 / 超时 / API 未配置 → **fail-open**
      (`is_knowledge=True`)，保留文章避免误杀。

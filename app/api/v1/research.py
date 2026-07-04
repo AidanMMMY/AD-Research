@@ -59,7 +59,7 @@ def _require_ai():
 class AIStatusResponse(BaseModel):
     available: bool
     provider: str = "deepseek"
-    model: str = "deepseek-v4-pro"
+    model: str = "deepseek-v4-flash"
     setup_url: str = "https://platform.deepseek.com/"
     monthly_cost_estimate: str = "极低 (¥2/百万token)"
 

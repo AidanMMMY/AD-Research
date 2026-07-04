@@ -95,7 +95,7 @@ class SentimentPipeline:
         cache: SentimentCache | None = None,
         monitor: LLMPipelineMonitor | None = None,
         max_concurrency: int = 20,
-        model: str = "deepseek-v4-pro",
+        model: str = "deepseek-v4-flash",
     ) -> None:
         self.db = db
         self.llm = llm or LLMService(DeepSeekProvider(model=model))

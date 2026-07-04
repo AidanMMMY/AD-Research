@@ -121,7 +121,7 @@ class StubProvider:
         return True
 
 
-def _make_pipeline(db_session, fake_redis, responses=None, model="deepseek-v4-pro"):
+def _make_pipeline(db_session, fake_redis, responses=None, model="deepseek-v4-flash"):
     """Build a pipeline wired to a stub provider."""
     from app.services.llm import LLMService
 
@@ -331,16 +331,16 @@ def test_monitor_records_calls_and_cost(fake_redis):
     from datetime import date
 
     today = date(2026, 7, 1)
-    usd = mon.record_call("deepseek-v4-pro", prompt_tokens=1000, completion_tokens=500, day=today)
-    # (1000/1000)*0.00027 + (500/1000)*0.0011 = 0.00027 + 0.00055 = 0.00082
-    assert round(usd, 6) == 0.00082
+    usd = mon.record_call("deepseek-v4-flash", prompt_tokens=1000, completion_tokens=500, day=today)
+    # (1000/1000)*0.00007 + (500/1000)*0.00028 = 0.00007 + 0.00014 = 0.00021
+    assert round(usd, 6) == 0.00021
 
     mon.record_cache_hit(today)
     mon.record_cache_miss(today)
     snap = mon.daily_summary(today)
     assert snap["total_calls"] == 1
-    assert snap["by_model"]["deepseek-v4-pro"]["prompt_tokens"] == 1000
-    assert snap["by_model"]["deepseek-v4-pro"]["completion_tokens"] == 500
+    assert snap["by_model"]["deepseek-v4-flash"]["prompt_tokens"] == 1000
+    assert snap["by_model"]["deepseek-v4-flash"]["completion_tokens"] == 500
     assert snap["cache_hits"] == 1
     assert snap["cache_misses"] == 1
     assert snap["cache_hit_rate"] == 0.5
@@ -357,7 +357,7 @@ def test_monitor_flush_to_db_creates_table(db_session, fake_redis, monkeypatch):
     from datetime import date
 
     today = date(2026, 7, 1)
-    mon.record_call("deepseek-v4-pro", 200, 100, day=today)
+    mon.record_call("deepseek-v4-flash", 200, 100, day=today)
     snap = mon.flush_to_db(day=today)
     assert snap["total_calls"] == 1
     # table should exist now (portable DDL was applied)

@@ -3,8 +3,13 @@
 Uses the openai Python SDK with custom base_url pointing to DeepSeek.
 Requires DEEPSEEK_API_KEY env var.
 
-Default model: deepseek-v4-pro
-API docs: https://platform.deepseek.com/api-docs
+Default model: deepseek-v4-flash
+API docs: https://api-docs.deepseek.com/zh-cn/
+
+Model selection rationale: v4-flash is the platform default because most
+AI features (news cleanup, sentiment classification, brief summarization)
+don't need pro-tier reasoning. v4-pro / v4-pro-reasoner can still be
+requested explicitly by callers that need them.
 """
 
 import os
@@ -13,13 +18,13 @@ from openai import OpenAI
 
 from app.services.llm.base import LLMProvider
 
-_DEFAULT_MODEL = "deepseek-v4-pro"
+_DEFAULT_MODEL = "deepseek-v4-flash"
 _BASE_URL = "https://api.deepseek.com"
 
 _NO_KEY_MSG = (
     "AI 功能未配置。请在 .env 中设置 DEEPSEEK_API_KEY。\n"
     "获取 Key: https://platform.deepseek.com/\n"
-    "模型: deepseek-v4-pro"
+    "模型: deepseek-v4-flash"
 )
 
 

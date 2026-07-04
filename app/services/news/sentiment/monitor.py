@@ -7,7 +7,8 @@ pricing means editing one dict.
 
 Pricing (USD per 1K tokens, 2026-07 reference):
 
-    deepseek-v4-pro    in 0.00027  out 0.0011
+    deepseek-v4-flash  in 0.00007  out 0.00028   (platform default — most AI features)
+    deepseek-v4-pro    in 0.00027  out 0.0011    (opt-in for heavy reasoning tasks)
     deepseek-v4-pro-reasoner  in 0.00055  out 0.0022
     claude-3-5-sonnet  in 0.003  out 0.015   (fallback estimate)
 """
@@ -25,7 +26,9 @@ logger = logging.getLogger(__name__)
 
 
 # USD per 1K tokens, {model: {"input": x, "output": y}}
+# Platform default is deepseek-v4-flash; v4-pro entries retained for opt-in callers.
 DEFAULT_PRICING: dict[str, dict[str, float]] = {
+    "deepseek-v4-flash": {"input": 0.00007, "output": 0.00028},
     "deepseek-v4-pro": {"input": 0.00027, "output": 0.0011},
     "deepseek-v4-pro-reasoner": {"input": 0.00055, "output": 0.0022},
     "deepseek-chat": {"input": 0.00027, "output": 0.0011},
@@ -54,8 +57,8 @@ class LLMPipelineMonitor:
     ) -> float:
         rate = self.pricing.get(model)
         if rate is None:
-            logger.debug("No pricing for model %s, defaulting to deepseek-v4-pro", model)
-            rate = self.pricing["deepseek-v4-pro"]
+            logger.debug("No pricing for model %s, defaulting to deepseek-v4-flash", model)
+            rate = self.pricing["deepseek-v4-flash"]
         usd_in = (prompt_tokens / 1000.0) * rate["input"]
         usd_out = (completion_tokens / 1000.0) * rate["output"]
         return round(usd_in + usd_out, 6)
