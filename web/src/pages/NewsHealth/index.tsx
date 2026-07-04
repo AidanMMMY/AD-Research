@@ -7,6 +7,7 @@ import PageShell from '@/components/PageShell';
 import PageHeader from '@/components/PageHeader';
 import FilterToolbar from '@/components/FilterToolbar';
 import ContentCard from '@/components/ContentCard';
+import DataFreshnessHint from '@/components/DataFreshnessHint';
 
 const REFRESH_MS = 30_000;
 
@@ -170,6 +171,7 @@ export default function NewsHealth() {
                 ? `更新于 ${new Date(dataUpdatedAt).toLocaleTimeString()}`
                 : '加载中…'}
             </span>
+            <DataFreshnessHint at={dataUpdatedAt} prefix="上次更新" />
             <Button size="small" onClick={() => refetch()} loading={isRefetching}>
               立即刷新
             </Button>

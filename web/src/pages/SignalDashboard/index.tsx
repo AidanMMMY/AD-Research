@@ -10,6 +10,7 @@ import ThemeTag, { ThemeTagVariant } from '@/components/ThemeTag';
 import InstrumentCodeTag from '@/components/InstrumentCodeTag';
 import HelpTrigger from '@/components/HelpTrigger';
 import ContextHint from '@/components/ContextHint';
+import DataFreshnessHint from '@/components/DataFreshnessHint';
 import { useSignals } from '@/hooks/useSignals';
 import { useAIHelp } from '@/hooks/useAIHelp';
 import { buildSignalDashboardContext } from '@/utils/helpContext';
@@ -41,7 +42,7 @@ const FAMILY_LABELS: Record<string, string> = {
 
 export default function SignalDashboard() {
   const navigate = useNavigate();
-  const { data: signals, isLoading } = useSignals();
+  const { data: signals, isLoading, dataUpdatedAt } = useSignals();
   const { open } = useAIHelp();
   const [familyFilter, setFamilyFilter] = useState<string>('all');
   const [typeFilter, setTypeFilter] = useState<string>('all');
@@ -113,6 +114,7 @@ export default function SignalDashboard() {
         eyebrow="交易"
         title="信号看板"
         description="查看最新交易信号汇总，监控买入、卖出、持有信号分布"
+        extra={<DataFreshnessHint at={dataUpdatedAt} />}
       />
 
       <div className="phase5c-kpi-strip phase5c-kpi-strip--cols-3 phase5c-section">

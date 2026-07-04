@@ -349,6 +349,23 @@ export default function AppLayout() {
   const navigate = useNavigate();
   const location = useLocation();
 
+  // First-login auto-trigger: pop the onboarding tour once per user.
+  // Re-using the same `ad-research:reopen-onboarding` CustomEvent that the
+  // user-menu "重新触发新手引导" entry dispatches, so the OnboardingTour
+  // component can handle the actual show/hide logic in one place.
+  useEffect(() => {
+    const userId = user?.id;
+    if (!userId) return;
+    try {
+      const key = `ad:onboarding:${userId}:shown`;
+      if (localStorage.getItem(key) === '1') return;
+      localStorage.setItem(key, '1');
+      window.dispatchEvent(new CustomEvent('ad-research:reopen-onboarding'));
+    } catch {
+      /* localStorage may be unavailable (SSR / quota) — skip silently */
+    }
+  }, [user?.id]);
+
   // Build a 1- or 2-segment breadcrumb from the route config + current URL.
   // e.g. /instruments/510300.SH -> [首页, 标的列表, 510300.SH]
   const breadcrumb = useMemo(() => {
@@ -689,7 +706,12 @@ export default function AppLayout() {
 
         {/* Page Content */}
         <div className="app-layout__content">
-          <Outlet />
+          <div className="app-layout__content-wrap">
+            <Outlet />
+            <footer className="app-layout__footer">
+              数据来源：Tushare / FRED / 新浪财经 · 数据每日凌晨更新 · 本平台所有内容仅供参考，不构成投资建议 · © 2026 AD-Research
+            </footer>
+          </div>
         </div>
       </main>
 

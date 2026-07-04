@@ -106,8 +106,21 @@ export default function Login() {
           >
             {loading ? '登录中...' : '登 录'}
           </button>
+
+          <div className="login-footer-links">
+            <a onClick={() => message.info('请发送邮件至 admin@example.com 联系开通')}>
+              没有账号？联系管理员开通
+            </a>
+            <a onClick={() => message.info('请联系管理员重置密码')}>
+              忘记密码？
+            </a>
+          </div>
         </div>
       </div>
+
+      <footer className="login-disclaimer">
+        本平台所有数据、信号、AI 输出仅供参考，不构成投资建议。使用即表示同意。
+      </footer>
     </div>
   );
 }
