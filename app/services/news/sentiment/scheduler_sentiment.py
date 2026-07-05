@@ -147,6 +147,60 @@ def run_sentiment_low_latency(window_minutes: int = 5) -> int:
             db.close()
 
 
+def run_news_article_categorization(limit: int = 30) -> int:
+    """Categorize recent ``news_article`` rows that lack ``event_category``.
+
+    This job wires the LLM sentiment pipeline directly to the crawler-
+    generated ``news_article`` table so that geopolitics / central_bank /
+    election / trade_war / sanction categories are populated for the
+    Global Markets page and downstream event-driven strategies.
+    """
+    with redis_lock(f"{_LOCK_BATCH}_news", expire_seconds=600) as acquired:
+        if not acquired:
+            logger.info("[NewsArticleCategorization] Skipped: lock in use")
+            return 0
+        db = SessionLocal()
+        try:
+            from app.services.news._model_loader import NewsArticle
+
+            recent = (
+                db.query(NewsArticle)
+                .filter(NewsArticle.event_category.is_(None))
+                .order_by(desc(NewsArticle.published_at))
+                .limit(limit)
+                .all()
+            )
+            articles = [
+                {
+                    "id": r.id,
+                    "url": r.url or f"news:{r.id}",
+                    "title": r.title or "",
+                    "body": r.body or r.summary or "",
+                    "published_at": r.published_at,
+                }
+                for r in recent
+            ]
+            if not articles:
+                return 0
+
+            pipe = SentimentPipeline(db)
+
+            async def _go():
+                return await pipe.process_batch(articles, concurrency=5)
+
+            results = _run_async(_go())
+            ok = sum(1 for r in results if r.success)
+            logger.info(
+                "[NewsArticleCategorization] processed=%d success=%d cache_hits=%d",
+                len(results),
+                ok,
+                sum(1 for r in results if r.cache_hit),
+            )
+            return ok
+        finally:
+            db.close()
+
+
 def run_retail_aggregation(top_n: int = 50) -> int:
     """Aggregate retail chatter for the top hot symbols.
 
@@ -228,6 +282,15 @@ def init_sentiment_jobs(scheduler: BackgroundScheduler) -> None:
         trigger=IntervalTrigger(minutes=5),
         id="sentiment_low_latency_5m",
         name="情绪低延迟处理-5分钟",
+        replace_existing=True,
+        max_instances=1,
+        coalesce=True,
+    )
+    scheduler.add_job(
+        run_news_article_categorization,
+        trigger=IntervalTrigger(minutes=1),
+        id="news_article_categorization_1m",
+        name="新闻事件分类-1分钟",
         replace_existing=True,
         max_instances=1,
         coalesce=True,

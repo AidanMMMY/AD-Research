@@ -428,15 +428,29 @@ class SentimentPipeline:
                 published_at=article.get("published_at") or datetime.utcnow(),
             )
             self.db.add(rec)
+
         # Backfill the article-level sentiment onto ``news_article`` when the
         # article dict carries its DB id (crawler path). This gives the
         # event-driven strategy a single-source-of-truth score without a
         # separate join. Best-effort: skipped for the legacy int-id path.
+        # Commit this first so event_category/importance are persisted even
+        # if the per-symbol sentiment_data rows fail FK constraints for
+        # symbols not present in etf_info.
         self._backfill_article_sentiment(article, result)
         try:
             self.db.commit()
         except Exception as exc:
-            logger.warning("DB commit failed in pipeline persist: %s", exc)
+            logger.warning("news_article sentiment backfill commit failed: %s", exc)
+            self.db.rollback()
+            return
+
+        # Then commit the per-symbol sentiment_data rows separately. These
+        # may fail when the LLM extracts a symbol not yet in etf_info; the
+        # failure is logged but does not roll back the news_article update.
+        try:
+            self.db.commit()
+        except Exception as exc:
+            logger.warning("sentiment_data persist commit failed (likely FK): %s", exc)
             self.db.rollback()
 
     def _backfill_article_sentiment(self, article: dict, result: PipelineResult) -> None:
