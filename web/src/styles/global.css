@@ -2214,6 +2214,15 @@ main {
   }
 }
 
+.instrument-code-tag--clickable {
+  cursor: pointer;
+}
+
+.instrument-code-tag--clickable:hover .instrument-code-tag__code {
+  background: var(--accent-hover);
+  border-color: var(--accent);
+}
+
 /* ---- LastUpdated ---- */
 .last-updated {
   font-family: var(--font-mono);
@@ -3277,6 +3286,25 @@ main {
   white-space: nowrap;
 }
 
+.phase5c-research-card__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.phase5c-research-card__delete {
+  color: var(--text-tertiary);
+  font-size: 14px;
+  padding: 4px;
+  border-radius: 4px;
+  transition: color 0.2s ease, background-color 0.2s ease;
+}
+
+.phase5c-research-card__delete:hover {
+  color: var(--color-fall);
+  background-color: var(--bg-elevated);
+}
+
 .phase5c-research-card__summary {
   margin: 0;
   font-size: 13px;
@@ -3928,6 +3956,15 @@ main {
 
 .detail-tab-panel .ad-panel + .ad-panel {
   margin-top: var(--space-5);
+}
+
+/* AI Analysis tab: keep the two side-by-side panel headers the same
+   height even though only one has an action button in the extra slot. */
+@media (min-width: 768px) {
+  .ai-analysis-panel .ad-panel__header {
+    min-height: var(--row-height-spacious);
+    box-sizing: border-box;
+  }
 }
 
 /* Toolbar inside tab panels (time range / indicators) */

@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { Tabs, Table, Button, Slider, message, Row, Col, Statistic, Dropdown, Space, Input, Popconfirm, Select, Alert } from 'antd';
 import { useQueryClient } from '@tanstack/react-query';
 import { EditOutlined, DeleteOutlined, PlusOutlined } from '@ant-design/icons';
@@ -54,6 +54,7 @@ export default function PoolDetail() {
   const isValidPoolId = Number.isFinite(poolId) && poolId > 0;
   const { open } = useAIHelp();
   const mode = useSettingsStore((s) => s.mode);
+  const navigate = useNavigate();
   const [editing, setEditing] = useState(false);
   const [localWeights, setLocalWeights] = useState<Record<string, number>>({});
   const [activeAlgorithm, setActiveAlgorithm] = useState<string | undefined>();
@@ -226,7 +227,14 @@ export default function PoolDetail() {
   const weightColumns = [
     {
       title: '标的',
-      render: (_: unknown, record: any) => <InstrumentCodeTag code={record.etf_code} name={record.etf_name} name_zh={record.name_zh} />,
+      render: (_: unknown, record: any) => (
+        <span
+          className="instrument-code-tag--clickable"
+          onClick={() => navigate(`/instruments/${record.etf_code}`)}
+        >
+          <InstrumentCodeTag code={record.etf_code} name={record.etf_name} name_zh={record.name_zh} />
+        </span>
+      ),
     },
     {
       title: <HelpPopover termKey="target_weight" mode={mode}>目标权重</HelpPopover>,

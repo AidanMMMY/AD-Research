@@ -42,10 +42,18 @@ export const researchApi = {
   generateNote: (instrument_code: string) =>
     client.post<ResearchNote>('/research/notes/generate', { instrument_code }),
 
+  getMyNotes: (note_type?: string, limit = 50) =>
+    client.get<ResearchNote[]>('/research/notes', {
+      params: { note_type, limit },
+    }),
+
   getNotes: (instrument_code: string, note_type?: string, limit = 20) =>
     client.get<ResearchNote[]>(`/research/notes/${instrument_code}`, {
       params: { note_type, limit },
     }),
+
+  deleteNote: (id: number) =>
+    client.delete(`/research/notes/${id}`),
 
   getSentiment: (instrument_code: string, days = 7) =>
     client.get<SentimentAggregate | null>(`/research/sentiment/${instrument_code}`, {

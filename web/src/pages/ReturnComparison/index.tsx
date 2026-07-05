@@ -29,7 +29,7 @@ interface SeriesData {
 
 export default function ReturnComparison() {
   const settingsMode = useSettingsStore((s) => s.mode);
-  const [selectedCodes, setSelectedCodes] = useState<string[]>(['510300.SH', '510050.SH', '510500.SH']);
+  const [selectedCodes, setSelectedCodes] = useState<string[]>([]);
   const [timeRange, setTimeRange] = useState<number>(252);
   const [mode, setMode] = useState<'normalized' | 'percentage'>('normalized');
 

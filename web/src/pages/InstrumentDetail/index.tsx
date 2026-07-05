@@ -372,6 +372,7 @@ export default function InstrumentDetail() {
               <Col xs={24} md={12}>
                 <Panel
                   variant="default"
+                  className="ai-analysis-panel"
                   title={
                     <span>
                       <ReadOutlined className="detail-tab-icon detail-tab-icon--lg" />
@@ -440,6 +441,7 @@ export default function InstrumentDetail() {
               <Col xs={24} md={12}>
                 <Panel
                   variant="default"
+                  className="ai-analysis-panel"
                   title={
                     <span>
                       <SmileOutlined className="detail-tab-icon detail-tab-icon--lg" />

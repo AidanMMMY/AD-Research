@@ -318,6 +318,20 @@ class ResearchService:
             q = q.filter(ResearchNote.note_type == note_type)
         return q.order_by(ResearchNote.created_at.desc()).limit(limit).all()
 
+    def delete_note(self, note_id: int, user_id: int) -> bool:
+        """Delete a research note if it belongs to the given user."""
+        note = (
+            self.db.query(ResearchNote)
+            .filter(ResearchNote.id == note_id)
+            .filter(ResearchNote.user_id == user_id)
+            .first()
+        )
+        if not note:
+            return False
+        self.db.delete(note)
+        self.db.commit()
+        return True
+
     # ------------------------------------------------------------------
     # Helpers
     # ------------------------------------------------------------------

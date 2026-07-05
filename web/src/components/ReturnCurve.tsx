@@ -26,7 +26,7 @@ export default function ReturnCurve({ series }: ReturnCurveProps) {
   const isMobile = useIsMobile();
   // Bump when the active theme changes so memoized CSS-var lookups
   // re-run and the echarts instance repaints in the new palette.
-  const [, setThemeTick] = useState(0);
+  const [themeTick, setThemeTick] = useState(0);
 
   useEffect(() => {
     const handler = () => setThemeTick((t) => t + 1);
@@ -38,21 +38,19 @@ export default function ReturnCurve({ series }: ReturnCurveProps) {
   // Keep x-axis labels readable: target ~8 labels across the chart
   const labelInterval = Math.max(0, Math.floor(allDates.length / 8));
 
-  // Resolve every CSS-variable color reference once per render. Fallbacks
-  // are the terminal-theme defaults so SSR / no-DOM still renders.
+  // Resolve the categorical series palette once per render. We provide 10
+  // distinct hues so up to 10 compared instruments do not share a color.
+  // `themeTick` is bumped on theme changes so the resolved values repaint.
   const palette = useMemo(
     () =>
       resolveChartColors(
+        Array.from({ length: 10 }, (_, i) => `var(--chart-series-${i + 1})`),
         [
-          'var(--accent)',
-          'var(--color-rise)',
-          'var(--color-fall)',
-          'var(--text-secondary)',
-          'var(--text-tertiary)',
+          '#2563eb', '#16a34a', '#ea580c', '#9333ea', '#dc2626',
+          '#0891b2', '#ca8a04', '#db2777', '#4f46e5', '#65a30d',
         ],
-        ['#5fa87a', '#c96b6b', '#5fa87a', '#888888', '#444444'],
       ),
-    [],
+    [themeTick],
   );
   const bgElevated = useMemo(
     () => resolveChartColors(['var(--bg-elevated)'], ['#111111']),

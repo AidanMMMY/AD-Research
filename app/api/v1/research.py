@@ -177,6 +177,30 @@ def generate_research_note(
     )
 
 
+@router.get("/notes", response_model=list[NoteResponse])
+def list_my_research_notes(
+    note_type: str | None = Query(None),
+    limit: int = Query(20, le=50),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """List AI research notes for the current user."""
+    _require_ai()
+    service = ResearchService(db)
+    notes = service.get_notes(note_type=note_type, limit=limit, user_id=current_user.id)
+    # Attach instrument names from the related ETFInfo rows.
+    codes = {n.instrument_code for n in notes}
+    instruments = {i.code: i for i in db.query(ETFInfo).filter(ETFInfo.code.in_(codes)).all()}
+    return [
+        _note_to_response(
+            n,
+            name=instrument.name if (instrument := instruments.get(n.instrument_code)) else None,
+            name_zh=instrument.name_zh if instrument else None,
+        )
+        for n in notes
+    ]
+
+
 @router.get("/notes/{instrument_code}", response_model=list[NoteResponse])
 def get_research_notes(
     instrument_code: str,
@@ -193,6 +217,21 @@ def get_research_notes(
     name = instrument.name if instrument else None
     name_zh = instrument.name_zh if instrument else None
     return [_note_to_response(n, name=name, name_zh=name_zh) for n in notes]
+
+
+@router.delete("/notes/{note_id}")
+def delete_research_note(
+    note_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Delete a research note owned by the current user."""
+    _require_ai()
+    service = ResearchService(db)
+    ok = service.delete_note(note_id, user_id=current_user.id)
+    if not ok:
+        raise HTTPException(status_code=404, detail="Note not found")
+    return {"deleted": True}
 
 
 # ------------------------------------------------------------------

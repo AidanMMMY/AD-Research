@@ -72,6 +72,18 @@
   --score-poor: #f97316;
   --score-bad: #ef4444;
 
+  /* ---- Categorical Chart Palette ---- */
+  --chart-series-1: #2563eb;
+  --chart-series-2: #16a34a;
+  --chart-series-3: #ea580c;
+  --chart-series-4: #9333ea;
+  --chart-series-5: #dc2626;
+  --chart-series-6: #0891b2;
+  --chart-series-7: #ca8a04;
+  --chart-series-8: #db2777;
+  --chart-series-9: #4f46e5;
+  --chart-series-10: #65a30d;
+
   /* ---- Card Surface ---- */
   --card-bg: #ffffff;
   --card-border: #e5e7eb;
@@ -263,6 +275,18 @@ body,
   --score-average: #eab308;
   --score-poor: #f97316;
   --score-bad: #c96b6b;
+
+  /* ---- Categorical Chart Palette ---- */
+  --chart-series-1: #60a5fa;
+  --chart-series-2: #4ade80;
+  --chart-series-3: #fb923c;
+  --chart-series-4: #c084fc;
+  --chart-series-5: #f87171;
+  --chart-series-6: #22d3ee;
+  --chart-series-7: #facc15;
+  --chart-series-8: #f472b6;
+  --chart-series-9: #818cf8;
+  --chart-series-10: #a3e635;
 
   /* ---- Card Surface ---- */
   --card-bg: #111111;

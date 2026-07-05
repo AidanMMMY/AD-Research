@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Select, Button, Skeleton, Modal, Empty, message } from 'antd';
-import { RobotOutlined, SearchOutlined } from '@ant-design/icons';
+import { Select, Button, Skeleton, Modal, Empty, message, Popconfirm } from 'antd';
+import { RobotOutlined, SearchOutlined, DeleteOutlined } from '@ant-design/icons';
 import { researchApi, ResearchNote } from '@/api/research';
 import { useInstrumentList } from '@/hooks/useInstrumentList';
 import type { InstrumentInfo } from '@/types/instrument';
@@ -38,7 +38,6 @@ export default function ResearchNotes() {
   const [code, setCode] = useState('');
   const [searchInput, setSearchInput] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
-  const [selectedCode, setSelectedCode] = useState<string | null>(null);
   const [noteType, setNoteType] = useState<string | undefined>();
   const [modalNote, setModalNote] = useState<ResearchNote | null>(null);
   const queryClient = useQueryClient();
@@ -52,12 +51,8 @@ export default function ResearchNotes() {
   }, [searchInput]);
 
   const { data: notes, isLoading } = useQuery({
-    queryKey: ['research-notes', selectedCode, noteType],
-    queryFn: () =>
-      selectedCode
-        ? researchApi.getNotes(selectedCode, noteType).then((r) => r.data)
-        : Promise.resolve([]),
-    enabled: !!selectedCode,
+    queryKey: ['research-notes', 'history', noteType],
+    queryFn: () => researchApi.getMyNotes(noteType).then((r) => r.data),
   });
 
   const { data: instrumentSearch, isFetching: isSearchingInstruments } = useInstrumentList({
@@ -77,10 +72,24 @@ export default function ResearchNotes() {
   const generateMutation = useMutation({
     mutationFn: (code: string) => researchApi.generateNote(code),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['research-notes', selectedCode] });
+      queryClient.invalidateQueries({ queryKey: ['research-notes', 'history'] });
     },
     onError: (err: any) => {
       message.error(err?.response?.data?.detail || '生成研报失败');
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: number) => researchApi.deleteNote(id),
+    onSuccess: (_data, id) => {
+      if (modalNote?.id === id) {
+        setModalNote(null);
+      }
+      queryClient.invalidateQueries({ queryKey: ['research-notes', 'history'] });
+      message.success('已删除');
+    },
+    onError: () => {
+      message.error('删除失败');
     },
   });
 
@@ -88,7 +97,6 @@ export default function ResearchNotes() {
     const normalized = targetCode.trim().toUpperCase();
     if (!normalized) return;
     setCode(normalized);
-    setSelectedCode(normalized);
     generateMutation.mutate(normalized);
   };
 
@@ -157,15 +165,11 @@ export default function ResearchNotes() {
       <div className="phase5c-section">
         {isLoading ? (
           <Skeleton active paragraph={{ rows: 8 }} />
-        ) : !selectedCode ? (
-          <div className="phase5c-empty">
-            <Empty
-              description="输入或选择标的代码后点击「生成研报」开始 AI 分析"
-            />
-          </div>
         ) : !notes?.length ? (
           <div className="phase5c-empty">
-            <Empty description={`暂无 ${selectedCode} 的研报`} />
+            <Empty
+              description="暂无研报历史，输入或选择标的代码后点击「生成研报」开始 AI 分析"
+            />
           </div>
         ) : (
           notes.map((note) => (
@@ -197,9 +201,24 @@ export default function ResearchNotes() {
                       </span>
                     )}
                   </div>
-                  <span className="phase5c-research-card__date">
-                    {note.generated_at?.slice(0, 16) || note.created_at?.slice(0, 16)}
-                  </span>
+                  <div className="phase5c-research-card__actions">
+                    <span className="phase5c-research-card__date">
+                      {note.generated_at?.slice(0, 16) || note.created_at?.slice(0, 16)}
+                    </span>
+                    <Popconfirm
+                      title="删除此研报？"
+                      onConfirm={(e) => {
+                        e?.stopPropagation();
+                        deleteMutation.mutate(note.id);
+                      }}
+                      onCancel={(e) => e?.stopPropagation()}
+                    >
+                      <DeleteOutlined
+                        className="phase5c-research-card__delete"
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                    </Popconfirm>
+                  </div>
                 </div>
                 {note.summary && (
                   <p className="phase5c-research-card__summary">
