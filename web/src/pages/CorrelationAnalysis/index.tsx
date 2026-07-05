@@ -30,7 +30,7 @@ export default function CorrelationAnalysis() {
   const [window, setWindow] = useState<number>(60);
   const [method, setMethod] = useState<'pearson' | 'spearman'>('pearson');
 
-  const { data: correlationData, isLoading } = useQuery({
+  const { data: correlationData, isLoading, error } = useQuery({
     queryKey: ['correlation', selectedCodes, window, method],
     queryFn: () =>
       analysisApi.correlation(selectedCodes, window, method).then((r) => r.data),
@@ -95,6 +95,11 @@ export default function CorrelationAnalysis() {
           />
         ) : isLoading ? (
           <Spin size="large" className="ad-spin-center" />
+        ) : error ? (
+          <EmptyState
+            title="加载失败"
+            description="相关性数据加载失败，请稍后重试"
+          />
         ) : correlationData ? (
           <div className="ad-chart-container">
             <CorrelationHeatmap codes={correlationData.codes} matrix={correlationData.matrix} />

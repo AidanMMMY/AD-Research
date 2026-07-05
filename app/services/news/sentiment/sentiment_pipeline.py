@@ -468,6 +468,7 @@ class SentimentPipeline:
                 {
                     "sentiment_score": int(round(max(-1.0, min(1.0, avg)) * 100)),
                     "sentiment_label": label,
+                    "event_category": (result.entity or {}).get("event_category"),
                     "importance": result.importance or None,
                     "sentiment_processed_at": datetime.utcnow(),
                 },

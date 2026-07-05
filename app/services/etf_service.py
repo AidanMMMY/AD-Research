@@ -110,25 +110,57 @@ class ETFService:
             country=etf.country,
         )
 
+    def _apply_filters(
+        self,
+        query,
+        params: ETFFilterParams,
+        exclude: str | None = None,
+    ):
+        """Apply common ETF filters to a query, optionally excluding one field."""
+        if params.market and exclude != "market":
+            query = query.filter(ETFInfo.market == params.market)
+        if params.category and exclude != "category":
+            query = query.filter(ETFInfo.category == params.category)
+        if params.sub_category and exclude != "sub_category":
+            query = query.filter(ETFInfo.sub_category == params.sub_category)
+        if params.sector and exclude != "sector":
+            query = query.filter(ETFInfo.sector == params.sector)
+        if params.industry and exclude != "industry":
+            query = query.filter(ETFInfo.industry == params.industry)
+        if params.country and exclude != "country":
+            query = query.filter(ETFInfo.country == params.country)
+        if params.manager and exclude != "manager":
+            query = query.filter(ETFInfo.manager == params.manager)
+        if params.underlying_index and exclude != "underlying_index":
+            query = query.filter(ETFInfo.underlying_index == params.underlying_index)
+        if params.currency and exclude != "currency":
+            query = query.filter(ETFInfo.currency == params.currency)
+        if params.is_qdii is not None and exclude != "is_qdii":
+            query = query.filter(ETFInfo.is_qdii == params.is_qdii)
+        if params.status and exclude != "status":
+            query = query.filter(ETFInfo.status == params.status)
+        if params.instrument_type and exclude != "instrument_type":
+            query = query.filter(ETFInfo.instrument_type == params.instrument_type)
+        if params.min_fund_size is not None and exclude != "min_fund_size":
+            query = query.filter(ETFInfo.fund_size >= params.min_fund_size)
+        if params.max_fund_size is not None and exclude != "max_fund_size":
+            query = query.filter(ETFInfo.fund_size <= params.max_fund_size)
+        return query
+
     def list_etfs(self, params: ETFFilterParams) -> ETFListResponse:
         """List ETFs with filtering and pagination.
 
         A-share individual stocks are enriched with latest valuation data
         (market cap, PE, PB) from the stock_fundamental table.
         """
-        cache_key = f"etf:list:{params.market}:{params.category}:{params.instrument_type}:{params.search}:{params.page}:{params.page_size}"
+        cache_key = f"etf:list:{params.model_dump_json()}"
         cached = cache_get(cache_key)
         if cached is not None:
             return ETFListResponse(**cached)
 
         query = self.db.query(ETFInfo)
+        query = self._apply_filters(query, params)
 
-        if params.market:
-            query = query.filter(ETFInfo.market == params.market)
-        if params.category:
-            query = query.filter(ETFInfo.category == params.category)
-        if params.instrument_type:
-            query = query.filter(ETFInfo.instrument_type == params.instrument_type)
         if params.search:
             search = f"%{params.search}%"
             query = query.filter(
@@ -172,29 +204,125 @@ class ETFService:
         cache_set(cache_key, response.model_dump() if response else None, ttl=600)
         return response
 
-    def get_categories(
-        self, market: str | None = None, instrument_type: str | None = None
+    def _facet_values(
+        self,
+        column,
+        params: ETFFilterParams | None,
+        facet_name: str,
+        exclude_field: str,
     ) -> list[str]:
-        """Get distinct ETF categories, optionally filtered by market and type."""
-        segments = ["etf:categories"]
-        if market is not None:
-            segments.append(f"market={market}")
-        if instrument_type is not None:
-            segments.append(f"instrument_type={instrument_type}")
-        cache_key = ":".join(segments)
+        """Get distinct values for a facet column, applying all other filters."""
+        if params is None:
+            params = ETFFilterParams()
+        cache_key = (
+            f"etf:{facet_name}:"
+            f"{params.model_dump_json(exclude={exclude_field, 'page', 'page_size'})}"
+        )
         cached = cache_get(cache_key)
         if cached is not None:
             return cached
 
-        query = self.db.query(ETFInfo.category).distinct()
-        if market is not None:
-            query = query.filter(ETFInfo.market == market)
-        if instrument_type is not None:
-            query = query.filter(ETFInfo.instrument_type == instrument_type)
+        query = self.db.query(column).distinct()
+        query = self._apply_filters(query, params, exclude=exclude_field)
         results = query.all()
-        categories = [r[0] for r in results if r[0]]
-        cache_set(cache_key, categories, ttl=600)
-        return categories
+        values = [r[0] for r in results if r[0] is not None]
+        cache_set(cache_key, values, ttl=600)
+        return values
+
+    def get_categories(
+        self,
+        params: ETFFilterParams | None = None,
+        market: str | None = None,
+        instrument_type: str | None = None,
+    ) -> list[str]:
+        """Get distinct ETF categories, optionally filtered by market and type."""
+        if params is None:
+            params = ETFFilterParams(market=market, instrument_type=instrument_type)
+        return self._facet_values(ETFInfo.category, params, "categories", "category")
+
+    def get_sectors(
+        self,
+        params: ETFFilterParams | None = None,
+        market: str | None = None,
+        instrument_type: str | None = None,
+    ) -> list[str]:
+        """Get distinct ETF sectors, optionally filtered by market and type."""
+        if params is None:
+            params = ETFFilterParams(market=market, instrument_type=instrument_type)
+        return self._facet_values(ETFInfo.sector, params, "sectors", "sector")
+
+    def get_industries(
+        self,
+        params: ETFFilterParams | None = None,
+        market: str | None = None,
+        instrument_type: str | None = None,
+    ) -> list[str]:
+        """Get distinct ETF industries, optionally filtered by market and type."""
+        if params is None:
+            params = ETFFilterParams(market=market, instrument_type=instrument_type)
+        return self._facet_values(ETFInfo.industry, params, "industries", "industry")
+
+    def get_sub_categories(
+        self,
+        params: ETFFilterParams | None = None,
+        market: str | None = None,
+        instrument_type: str | None = None,
+    ) -> list[str]:
+        """Get distinct ETF sub-categories, optionally filtered by market and type."""
+        if params is None:
+            params = ETFFilterParams(market=market, instrument_type=instrument_type)
+        return self._facet_values(
+            ETFInfo.sub_category, params, "sub_categories", "sub_category"
+        )
+
+    def get_managers(
+        self,
+        params: ETFFilterParams | None = None,
+        market: str | None = None,
+        instrument_type: str | None = None,
+    ) -> list[str]:
+        """Get distinct ETF managers, optionally filtered by market and type."""
+        if params is None:
+            params = ETFFilterParams(market=market, instrument_type=instrument_type)
+        return self._facet_values(ETFInfo.manager, params, "managers", "manager")
+
+    def get_currencies(
+        self,
+        params: ETFFilterParams | None = None,
+        market: str | None = None,
+        instrument_type: str | None = None,
+    ) -> list[str]:
+        """Get distinct ETF currencies, optionally filtered by market and type."""
+        if params is None:
+            params = ETFFilterParams(market=market, instrument_type=instrument_type)
+        return self._facet_values(ETFInfo.currency, params, "currencies", "currency")
+
+    def get_countries(
+        self,
+        params: ETFFilterParams | None = None,
+        market: str | None = None,
+        instrument_type: str | None = None,
+    ) -> list[str]:
+        """Get distinct ETF countries, optionally filtered by market and type."""
+        if params is None:
+            params = ETFFilterParams(market=market, instrument_type=instrument_type)
+        return self._facet_values(ETFInfo.country, params, "countries", "country")
+
+    def get_underlying_indices(
+        self,
+        params: ETFFilterParams | None = None,
+        market: str | None = None,
+        instrument_type: str | None = None,
+    ) -> list[str]:
+        """Get distinct underlying indices, optionally filtered by market and type."""
+        if params is None:
+            params = ETFFilterParams(market=market, instrument_type=instrument_type)
+        return self._facet_values(
+            ETFInfo.underlying_index,
+            params,
+            "underlying_indices",
+            "underlying_index",
+        )
 
     def get_markets(self) -> list[str]:
         """Get all distinct ETF markets."""

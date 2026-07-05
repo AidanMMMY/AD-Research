@@ -115,13 +115,16 @@ SERIES_REGISTRY: list[FredSeriesMeta] = [
 _GLOBAL_SERIES: list[FredSeriesMeta] = [
     # ── Cross-border Index ──
     FredSeriesMeta("SP500",            "global_sp500",  "标普500指数",    "S&P 500",                  "指数",   "指数"),
+    FredSeriesMeta("NASDAQCOM",        "global_nasdaq", "纳斯达克综合指数", "NASDAQ Composite",         "指数",   "指数"),
+    FredSeriesMeta("DJIA",             "global_dow",    "道琼斯工业指数",  "Dow Jones Industrial Average", "指数", "指数"),
     # ── FX (broad USD) ──
     FredSeriesMeta("DTWEXBGS",         "global_dxy",    "美元指数(广义)",  "Broad U.S. Dollar Index",  "指数",   "外汇"),
     FredSeriesMeta("DEXJPUS",          "global_usdjpy", "美元/日元",      "USD/JPY",                  "JPY/USD","外汇"),
     # ── Commodities (USD) ──
     FredSeriesMeta("DCOILBRENTEU",     "global_brent",  "布伦特原油",      "Brent Crude (Europe)",     "USD/桶","大宗"),
     FredSeriesMeta("DCOILWTICO",       "global_wti",    "WTI原油",        "WTI Crude Oil (Cushing)",  "USD/桶","大宗"),
-    FredSeriesMeta("GOLDAMGBD228NLBM", "global_gold",   "COMEX黄金",      "Gold (London PM Fix)",     "USD/oz","大宗"),
+    # NOTE: FRED discontinued GOLDAMGBD228NLBM (London AM gold fix) with no
+    # direct replacement. Gold is omitted until a replacement source is added.
 ]
 
 

@@ -72,7 +72,8 @@ def calculate_single_etf(etf_code: str, bars_df: pd.DataFrame) -> pd.DataFrame:
     Args:
         etf_code: ETF code (used for logging / context only).
         bars_df: DataFrame with columns trade_date, open, high, low,
-            close, volume. Must be sorted by trade_date ascending.
+            close (raw market price), adj_close (split/dividend adjusted),
+            volume, amount. Must be sorted by trade_date ascending.
 
     Returns:
         DataFrame with all indicator columns appended. Returns an empty
@@ -87,13 +88,26 @@ def calculate_single_etf(etf_code: str, bars_df: pd.DataFrame) -> pd.DataFrame:
     if "trade_date" in df.columns:
         df = df.sort_values("trade_date").reset_index(drop=True)
 
-    # Calculate technical indicators first
-    df = calculate_technical_indicators(df)
+    # Technical indicators (MA/RSI/MACD/Bollinger/ATR) are computed on raw
+    # close so they align with the market price users see in the UI.
+    raw_df = df[["trade_date", "open", "high", "low", "close", "volume", "amount"]].copy()
+    raw_df = calculate_technical_indicators(raw_df)
 
-    # Then calculate risk indicators
-    df = calculate_risk_indicators(df)
+    # Risk/return metrics (volatility/drawdown/returns/Sharpe) are computed
+    # on adjusted close so long-term performance is comparable after
+    # corporate actions.
+    adj_df = df[["trade_date", "open", "high", "low", "adj_close", "volume", "amount"]].copy()
+    adj_df = adj_df.rename(columns={"adj_close": "close"})
+    adj_df = calculate_risk_indicators(adj_df)
 
-    return df
+    # Merge: keep OHLCV from raw price space; append technical columns from
+    # raw_df and risk columns from adj_df.
+    result = raw_df.copy()
+    risk_cols = [c for c in adj_df.columns if c not in result.columns and c != "daily_return"]
+    for col in risk_cols:
+        result[col] = adj_df[col].values
+
+    return result
 
 
 def _build_indicator_record(etf_code: str, row: pd.Series) -> dict:
@@ -184,7 +198,10 @@ def batch_calculate_indicators(
             if not bars or len(bars) < _MIN_BARS:
                 continue
 
-            # Convert to DataFrame
+            # Convert to DataFrame.  Keep both raw close (for technical
+            # indicators that users compare to market price) and adjusted
+            # close (for risk/return metrics that must be comparable over
+            # time after splits/dividends).
             df = pd.DataFrame(
                 [
                     {
@@ -192,8 +209,8 @@ def batch_calculate_indicators(
                         "open": b.open,
                         "high": b.high,
                         "low": b.low,
-                        # Use split/dividend adjusted close for indicator calculation
-                        "close": float(b.close) * float(b.adj_factor or 1.0),
+                        "close": float(b.close),
+                        "adj_close": float(b.close) * float(b.adj_factor or 1.0),
                         "volume": b.volume,
                         "amount": b.amount,
                     }

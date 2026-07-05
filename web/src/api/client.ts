@@ -6,6 +6,9 @@ const client = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+  paramsSerializer: {
+    indexes: null,
+  },
 });
 
 // Track in-flight refresh to avoid concurrent refresh attempts

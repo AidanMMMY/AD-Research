@@ -2,13 +2,15 @@
 
 import sys
 import warnings
+from pathlib import Path
 
 warnings.filterwarnings("ignore")
 
 import akshare as ak
 from sqlalchemy.orm import Session
 
-sys.path.insert(0, "/Users/aidanliu/Documents/vibe-trading/etf-research-platform")
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(PROJECT_ROOT))
 
 from app.core.database import SessionLocal
 from app.models.etf import ETFInfo

@@ -60,9 +60,13 @@ const PRIMARY_CODES: string[] = [
   // ── Commodities ──
   'global_brent',
   'global_wti',
-  'global_gold',
+  // NOTE: FRED discontinued the free gold series (GOLDAMGBD228NLBM). Gold
+  // is hidden until a replacement commodity source is wired.
+  // 'global_gold',
   // ── Cross-border Index ──
   'global_sp500',
+  'global_nasdaq',
+  'global_dow',
   // ── Volatility (CBOE) ──
   'us_vix',
 ];
@@ -95,13 +99,13 @@ function inferCategoryKey(code: string): string {
   if (code.startsWith('us_dgs') || code.startsWith('us_t10y')) return 'rate';
   if (code === 'us_vix') return 'vol';
   if (code.startsWith('global_dxy') || code.startsWith('global_usdjpy')) return 'fx';
+  if (code.startsWith('global_brent') || code.startsWith('global_wti')) return 'commodity';
   if (
-    code.startsWith('global_brent') ||
-    code.startsWith('global_wti') ||
-    code.startsWith('global_gold')
+    code.startsWith('global_sp500') ||
+    code.startsWith('global_nasdaq') ||
+    code.startsWith('global_dow')
   )
-    return 'commodity';
-  if (code.startsWith('global_sp500')) return 'index';
+    return 'index';
   return 'index';
 }
 

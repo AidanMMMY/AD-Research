@@ -42,7 +42,18 @@ class ETFListResponse(BaseModel):
 class ETFFilterParams(BaseModel):
     market: str | None = None
     category: str | None = None
+    sub_category: str | None = None
+    sector: str | None = None
+    industry: str | None = None
+    country: str | None = None
+    manager: str | None = None
+    underlying_index: str | None = None
+    currency: str | None = None
+    is_qdii: bool | None = None
+    status: str | None = None
     instrument_type: str | None = None
+    min_fund_size: float | None = None
+    max_fund_size: float | None = None
     search: str | None = None
     page: int = 1
     page_size: int = 50

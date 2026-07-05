@@ -38,6 +38,17 @@ export interface InstrumentFilterParams {
   search?: string;
   page?: number;
   page_size?: number;
+  sub_category?: string;
+  sector?: string;
+  industry?: string;
+  country?: string;
+  manager?: string;
+  underlying_index?: string;
+  currency?: string;
+  is_qdii?: boolean;
+  status?: string;
+  min_fund_size?: number;
+  max_fund_size?: number;
 }
 
 export interface MarketSnapshot {

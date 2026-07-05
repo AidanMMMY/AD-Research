@@ -1,8 +1,30 @@
 import { useState, useEffect, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Table, Input, Select, List, Skeleton } from 'antd';
-import { SearchOutlined } from '@ant-design/icons';
-import { useInstrumentList, useInstrumentCategories, useInstrumentMarkets } from '@/hooks/useInstrumentList';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import {
+  Table,
+  Input,
+  Select,
+  InputNumber,
+  List,
+  Skeleton,
+  Row,
+  Col,
+  Button,
+  Tooltip,
+} from 'antd';
+import { SearchOutlined, ReloadOutlined } from '@ant-design/icons';
+import {
+  useInstrumentList,
+  useInstrumentCategories,
+  useInstrumentMarkets,
+  useInstrumentSectors,
+  useInstrumentIndustries,
+  useInstrumentSubCategories,
+  useInstrumentManagers,
+  useInstrumentCurrencies,
+  useInstrumentCountries,
+  useInstrumentUnderlyingIndices,
+} from '@/hooks/useInstrumentList';
 import { useSparkline } from '@/hooks/useSparkline';
 import { useMarketStream } from '@/hooks/useMarketStream';
 import { useDensity } from '@/hooks/useDensity';
@@ -50,38 +72,162 @@ function LivePriceCell({ tick }: { code: string; tick: ReturnType<typeof useMark
   );
 }
 
+const PAGE_SIZE = 50;
+
+const STATUS_OPTIONS = [
+  { label: '上市', value: 'listed' },
+  { label: '退市', value: 'delisted' },
+  { label: '暂停', value: 'halted' },
+];
+
+const QDII_OPTIONS = [
+  { label: '是', value: true },
+  { label: '否', value: false },
+];
+
 export default function InstrumentList() {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const { density } = useDensity();
-  const [search, setSearch] = useState('');
-  const [market, setMarket] = useState<string | undefined>();
-  const [category, setCategory] = useState<string | undefined>();
-  const [instrumentType, setInstrumentType] = useState<string | undefined>();
-  const [page, setPage] = useState(1);
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  const [search, setSearch] = useState(searchParams.get('q') ?? '');
+  const [market, setMarket] = useState<string | undefined>(searchParams.get('market') ?? undefined);
+  const [category, setCategory] = useState<string | undefined>(searchParams.get('category') ?? undefined);
+  const [instrumentType, setInstrumentType] = useState<string | undefined>(searchParams.get('type') ?? undefined);
+  const [subCategory, setSubCategory] = useState<string | undefined>(searchParams.get('sub_category') ?? undefined);
+  const [sector, setSector] = useState<string | undefined>(searchParams.get('sector') ?? undefined);
+  const [industry, setIndustry] = useState<string | undefined>(searchParams.get('industry') ?? undefined);
+  const [country, setCountry] = useState<string | undefined>(searchParams.get('country') ?? undefined);
+  const [manager, setManager] = useState<string | undefined>(searchParams.get('manager') ?? undefined);
+  const [underlyingIndex, setUnderlyingIndex] = useState<string | undefined>(searchParams.get('underlying_index') ?? undefined);
+  const [currency, setCurrency] = useState<string | undefined>(searchParams.get('currency') ?? undefined);
+  const [isQdii, setIsQdii] = useState<boolean | undefined>(() => {
+    const raw = searchParams.get('is_qdii');
+    if (raw === 'true') return true;
+    if (raw === 'false') return false;
+    return undefined;
+  });
+  const [status, setStatus] = useState<string | undefined>(searchParams.get('status') ?? undefined);
+  const [minFundSize, setMinFundSize] = useState<number | undefined>(() => {
+    const raw = searchParams.get('min_fund_size');
+    return raw ? Number(raw) : undefined;
+  });
+  const [maxFundSize, setMaxFundSize] = useState<number | undefined>(() => {
+    const raw = searchParams.get('max_fund_size');
+    return raw ? Number(raw) : undefined;
+  });
+  const [page, setPage] = useState(() => {
+    const raw = searchParams.get('page');
+    return raw ? Number(raw) : 1;
+  });
+
   const debouncedSearch = useDebounce(search, 300);
 
-  const { data, isLoading, dataUpdatedAt, isFetching } = useInstrumentList({
+  // Sync URL params when filters change.
+  useEffect(() => {
+    const next: Record<string, string> = {};
+    if (search) next.q = search;
+    if (market) next.market = market;
+    if (category) next.category = category;
+    if (instrumentType) next.type = instrumentType;
+    if (subCategory) next.sub_category = subCategory;
+    if (sector) next.sector = sector;
+    if (industry) next.industry = industry;
+    if (country) next.country = country;
+    if (manager) next.manager = manager;
+    if (underlyingIndex) next.underlying_index = underlyingIndex;
+    if (currency) next.currency = currency;
+    if (isQdii != null) next.is_qdii = String(isQdii);
+    if (status) next.status = status;
+    if (minFundSize != null) next.min_fund_size = String(minFundSize);
+    if (maxFundSize != null) next.max_fund_size = String(maxFundSize);
+    if (page !== 1) next.page = String(page);
+    setSearchParams(next, { replace: true });
+  }, [
+    search, market, category, instrumentType, subCategory, sector, industry,
+    country, manager, underlyingIndex, currency, isQdii, status, minFundSize,
+    maxFundSize, page, setSearchParams,
+  ]);
+
+  const listParams = {
     search: debouncedSearch || undefined,
     market,
     category,
     instrument_type: instrumentType,
+    sub_category: subCategory,
+    sector,
+    industry,
+    country,
+    manager,
+    underlying_index: underlyingIndex,
+    currency,
+    is_qdii: isQdii,
+    status,
+    min_fund_size: minFundSize,
+    max_fund_size: maxFundSize,
     page,
-    page_size: 50,
-  });
-  const { data: categories } = useInstrumentCategories({
-    market,
-    instrument_type: instrumentType,
-  });
+    page_size: PAGE_SIZE,
+  };
+
+  const { data, isLoading, dataUpdatedAt, isFetching } = useInstrumentList(listParams);
+
+  const cascadeFilters = { market, instrument_type: instrumentType };
+  const { data: categories } = useInstrumentCategories(cascadeFilters);
+  const { data: sectors } = useInstrumentSectors(cascadeFilters);
+  const { data: industries } = useInstrumentIndustries(cascadeFilters);
+  const { data: subCategories } = useInstrumentSubCategories(cascadeFilters);
+  const { data: managers } = useInstrumentManagers(cascadeFilters);
+  const { data: currencies } = useInstrumentCurrencies(cascadeFilters);
+  const { data: countries } = useInstrumentCountries(cascadeFilters);
+  const { data: underlyingIndices } = useInstrumentUnderlyingIndices(cascadeFilters);
   const { data: markets } = useInstrumentMarkets();
 
-  // Clear the selected category if it no longer exists under the current
+  // Clear selected facet values if they no longer exist under the current
   // market / instrument type filters.
   useEffect(() => {
-    if (category && categories && !categories.includes(category)) {
-      setCategory(undefined);
-    }
+    if (category && categories && !categories.includes(category)) setCategory(undefined);
   }, [categories, category]);
+  useEffect(() => {
+    if (subCategory && subCategories && !subCategories.includes(subCategory)) setSubCategory(undefined);
+  }, [subCategories, subCategory]);
+  useEffect(() => {
+    if (sector && sectors && !sectors.includes(sector)) setSector(undefined);
+  }, [sectors, sector]);
+  useEffect(() => {
+    if (industry && industries && !industries.includes(industry)) setIndustry(undefined);
+  }, [industries, industry]);
+  useEffect(() => {
+    if (country && countries && !countries.includes(country)) setCountry(undefined);
+  }, [countries, country]);
+  useEffect(() => {
+    if (manager && managers && !managers.includes(manager)) setManager(undefined);
+  }, [managers, manager]);
+  useEffect(() => {
+    if (currency && currencies && !currencies.includes(currency)) setCurrency(undefined);
+  }, [currencies, currency]);
+  useEffect(() => {
+    if (underlyingIndex && underlyingIndices && !underlyingIndices.includes(underlyingIndex)) setUnderlyingIndex(undefined);
+  }, [underlyingIndices, underlyingIndex]);
+
+  const handleReset = () => {
+    setSearch('');
+    setMarket(undefined);
+    setCategory(undefined);
+    setInstrumentType(undefined);
+    setSubCategory(undefined);
+    setSector(undefined);
+    setIndustry(undefined);
+    setCountry(undefined);
+    setManager(undefined);
+    setUnderlyingIndex(undefined);
+    setCurrency(undefined);
+    setIsQdii(undefined);
+    setStatus(undefined);
+    setMinFundSize(undefined);
+    setMaxFundSize(undefined);
+    setPage(1);
+  };
 
   // Stream live prices for the current page only. The backend page_size is
   // already capped at 50, so this keeps the SSE query param list small and
@@ -181,7 +327,11 @@ export default function InstrumentList() {
       render: (_: unknown, record: any) => <SparklineCell code={record.code} />,
     },
     {
-      title: '实时价',
+      title: (
+        <Tooltip title="最新日收盘价，非 tick 级实时行情">
+          <span>最新价</span>
+        </Tooltip>
+      ),
       key: 'live_price',
       width: 110,
       render: (_: unknown, record: any) => (
@@ -200,39 +350,150 @@ export default function InstrumentList() {
       />
 
       <FilterToolbar total={`共 ${data?.total || 0} 只`}>
-        <Input
-          placeholder="搜索标的代码或名称"
-          allowClear
-          prefix={<SearchOutlined className="ad-icon-tertiary" />}
-          onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-          className="ad-w-full"
-        />
-        <Select
-          placeholder="市场"
-          allowClear
-          className="ad-w-full"
-          options={markets?.map((m: string) => ({ label: m, value: m }))}
-          onChange={(v) => { setMarket(v); setPage(1); }}
-        />
-        <Select
-          placeholder="类型"
-          allowClear
-          className="ad-w-full"
-          options={[
-            { label: 'ETF', value: 'ETF' },
-            { label: '个股', value: 'STOCK' },
-            { label: '数字货币', value: 'CRYPTO' },
-          ]}
-          value={instrumentType}
-          onChange={(v) => { setInstrumentType(v); setPage(1); }}
-        />
-        <Select
-          placeholder="分类"
-          allowClear
-          className="ad-w-full"
-          options={categories?.map((c: string) => ({ label: c, value: c }))}
-          onChange={(v) => { setCategory(v); setPage(1); }}
-        />
+        <Row gutter={[16, 12]} className="ad-flex-1">
+          <Col xs={24} sm={12} md={8} lg={6} xl={4}>
+            <Input
+              placeholder="搜索标的代码或名称"
+              allowClear
+              prefix={<SearchOutlined className="ad-icon-tertiary" />}
+              value={search}
+              onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+            />
+          </Col>
+          <Col xs={24} sm={12} md={8} lg={6} xl={4}>
+            <Select
+              placeholder="市场"
+              allowClear
+              options={markets?.map((m: string) => ({ label: m, value: m }))}
+              value={market}
+              onChange={(v) => { setMarket(v); setPage(1); }}
+            />
+          </Col>
+          <Col xs={24} sm={12} md={8} lg={6} xl={4}>
+            <Select
+              placeholder="类型"
+              allowClear
+              options={[
+                { label: 'ETF', value: 'ETF' },
+                { label: '个股', value: 'STOCK' },
+                { label: '数字货币', value: 'CRYPTO' },
+              ]}
+              value={instrumentType}
+              onChange={(v) => { setInstrumentType(v); setPage(1); }}
+            />
+          </Col>
+          <Col xs={24} sm={12} md={8} lg={6} xl={4}>
+            <Select
+              placeholder="分类"
+              allowClear
+              options={categories?.map((c: string) => ({ label: c, value: c }))}
+              value={category}
+              onChange={(v) => { setCategory(v); setPage(1); }}
+            />
+          </Col>
+          <Col xs={24} sm={12} md={8} lg={6} xl={4}>
+            <Select
+              placeholder="子分类"
+              allowClear
+              options={subCategories?.map((c: string) => ({ label: c, value: c }))}
+              value={subCategory}
+              onChange={(v) => { setSubCategory(v); setPage(1); }}
+            />
+          </Col>
+          <Col xs={24} sm={12} md={8} lg={6} xl={4}>
+            <Select
+              placeholder="板块"
+              allowClear
+              options={sectors?.map((c: string) => ({ label: c, value: c }))}
+              value={sector}
+              onChange={(v) => { setSector(v); setPage(1); }}
+            />
+          </Col>
+          <Col xs={24} sm={12} md={8} lg={6} xl={4}>
+            <Select
+              placeholder="行业"
+              allowClear
+              options={industries?.map((c: string) => ({ label: c, value: c }))}
+              value={industry}
+              onChange={(v) => { setIndustry(v); setPage(1); }}
+            />
+          </Col>
+          <Col xs={24} sm={12} md={8} lg={6} xl={4}>
+            <Select
+              placeholder="国家"
+              allowClear
+              options={countries?.map((c: string) => ({ label: c, value: c }))}
+              value={country}
+              onChange={(v) => { setCountry(v); setPage(1); }}
+            />
+          </Col>
+          <Col xs={24} sm={12} md={8} lg={6} xl={4}>
+            <Select
+              placeholder="管理公司"
+              allowClear
+              options={managers?.map((c: string) => ({ label: c, value: c }))}
+              value={manager}
+              onChange={(v) => { setManager(v); setPage(1); }}
+            />
+          </Col>
+          <Col xs={24} sm={12} md={8} lg={6} xl={4}>
+            <Select
+              placeholder="跟踪指数"
+              allowClear
+              options={underlyingIndices?.map((c: string) => ({ label: c, value: c }))}
+              value={underlyingIndex}
+              onChange={(v) => { setUnderlyingIndex(v); setPage(1); }}
+            />
+          </Col>
+          <Col xs={24} sm={12} md={8} lg={6} xl={4}>
+            <Select
+              placeholder="币种"
+              allowClear
+              options={currencies?.map((c: string) => ({ label: c, value: c }))}
+              value={currency}
+              onChange={(v) => { setCurrency(v); setPage(1); }}
+            />
+          </Col>
+          <Col xs={24} sm={12} md={8} lg={6} xl={4}>
+            <Select
+              placeholder="QDII"
+              allowClear
+              options={QDII_OPTIONS}
+              value={isQdii}
+              onChange={(v) => { setIsQdii(v); setPage(1); }}
+            />
+          </Col>
+          <Col xs={24} sm={12} md={8} lg={6} xl={4}>
+            <Select
+              placeholder="状态"
+              allowClear
+              options={STATUS_OPTIONS}
+              value={status}
+              onChange={(v) => { setStatus(v); setPage(1); }}
+            />
+          </Col>
+          <Col xs={24} sm={12} md={8} lg={6} xl={4}>
+            <InputNumber
+              placeholder="最小规模"
+              style={{ width: '100%' }}
+              value={minFundSize}
+              onChange={(v) => { setMinFundSize(v ?? undefined); setPage(1); }}
+            />
+          </Col>
+          <Col xs={24} sm={12} md={8} lg={6} xl={4}>
+            <InputNumber
+              placeholder="最大规模"
+              style={{ width: '100%' }}
+              value={maxFundSize}
+              onChange={(v) => { setMaxFundSize(v ?? undefined); setPage(1); }}
+            />
+          </Col>
+          <Col xs={24} sm={12} md={8} lg={6} xl={4}>
+            <Button icon={<ReloadOutlined />} onClick={handleReset}>
+              重置条件
+            </Button>
+          </Col>
+        </Row>
       </FilterToolbar>
 
       <SectionHeading title="标的列表" />

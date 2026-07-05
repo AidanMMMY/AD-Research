@@ -12,6 +12,7 @@ import PageHeader from '@/components/PageHeader';
 import Panel from '@/components/Panel';
 import ResponsiveGrid from '@/components/ResponsiveGrid';
 import HelpPopover from '@/components/HelpPopover';
+import EmptyState from '@/components/EmptyState';
 import { useSettingsStore } from '@/stores/settings';
 import { getReturnColor, getUpColor, getDownColor } from '@/utils/color';
 
@@ -177,6 +178,11 @@ export default function SectorRotation() {
           <Panel title="板块1月收益排名" variant="default">
             {isLoading ? (
               <Spin />
+            ) : sectors.length === 0 ? (
+              <EmptyState
+                title="暂无板块数据"
+                description="当前没有符合条件的板块轮动数据，请稍后重试"
+              />
             ) : (
               <div className="ad-chart-container">
                 <ReactECharts option={barOption} />
@@ -186,6 +192,11 @@ export default function SectorRotation() {
           <Panel title="板块相对强弱（vs 市场平均）" variant="default">
             {isLoading ? (
               <Spin />
+            ) : sectors.length === 0 ? (
+              <EmptyState
+                title="暂无板块数据"
+                description="当前没有符合条件的板块轮动数据，请稍后重试"
+              />
             ) : (
               <div className="ad-chart-container">
                 <ReactECharts option={rsOption} />

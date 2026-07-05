@@ -161,10 +161,19 @@ class SectorRotationService:
         prev_date = trade_date - timedelta(days=7)
 
         # Get previous period indicators
+        prev_available = (
+            self.db.query(func.max(ETFIndicator.trade_date))
+            .filter(ETFIndicator.trade_date <= prev_date)
+            .scalar()
+        )
+
+        if prev_available is None:
+            return []
+
         prev_indicators = (
             self.db.query(ETFIndicator, ETFInfo)
             .join(ETFInfo, ETFIndicator.etf_code == ETFInfo.code)
-            .filter(ETFIndicator.trade_date <= prev_date)
+            .filter(ETFIndicator.trade_date == prev_available)
             .all()
         )
 

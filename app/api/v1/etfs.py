@@ -19,25 +19,53 @@ from app.services.etf_service import ETFService
 router = APIRouter(dependencies=[Depends(get_current_user)])
 
 
-@router.get("", response_model=ETFListResponse)
-def list_etfs(
+def parse_etf_filter_params(
     market: str = Query(None),
     category: str = Query(None),
+    sub_category: str = Query(None),
+    sector: str = Query(None),
+    industry: str = Query(None),
+    country: str = Query(None),
+    manager: str = Query(None),
+    underlying_index: str = Query(None),
+    currency: str = Query(None),
+    is_qdii: bool = Query(None),
+    status: str = Query(None),
     instrument_type: str = Query(None),
+    min_fund_size: float = Query(None),
+    max_fund_size: float = Query(None),
     search: str = Query(None),
     page: int = Query(1, ge=1),
     page_size: int = Query(50, ge=1, le=10000),
-    service: ETFService = Depends(get_etf_service),
-):
-    """List ETFs with optional filtering and pagination."""
-    params = ETFFilterParams(
+) -> ETFFilterParams:
+    """Build ETFFilterParams from query string arguments."""
+    return ETFFilterParams(
         market=market,
         category=category,
+        sub_category=sub_category,
+        sector=sector,
+        industry=industry,
+        country=country,
+        manager=manager,
+        underlying_index=underlying_index,
+        currency=currency,
+        is_qdii=is_qdii,
+        status=status,
         instrument_type=instrument_type,
+        min_fund_size=min_fund_size,
+        max_fund_size=max_fund_size,
         search=search,
         page=page,
         page_size=page_size,
     )
+
+
+@router.get("", response_model=ETFListResponse)
+def list_etfs(
+    params: ETFFilterParams = Depends(parse_etf_filter_params),
+    service: ETFService = Depends(get_etf_service),
+):
+    """List ETFs with optional filtering and pagination."""
     return service.list_etfs(params)
 
 
@@ -87,12 +115,74 @@ def get_sparkline(
 
 @router.get("/categories/list")
 def list_categories(
-    market: str = Query(None),
-    instrument_type: str = Query(None),
+    params: ETFFilterParams = Depends(parse_etf_filter_params),
     service: ETFService = Depends(get_etf_service),
 ):
     """List distinct ETF categories, optionally filtered by market and type."""
-    return {"categories": service.get_categories(market=market, instrument_type=instrument_type)}
+    return {"categories": service.get_categories(params)}
+
+
+@router.get("/sectors/list")
+def list_sectors(
+    params: ETFFilterParams = Depends(parse_etf_filter_params),
+    service: ETFService = Depends(get_etf_service),
+):
+    """List distinct ETF sectors."""
+    return {"sectors": service.get_sectors(params)}
+
+
+@router.get("/industries/list")
+def list_industries(
+    params: ETFFilterParams = Depends(parse_etf_filter_params),
+    service: ETFService = Depends(get_etf_service),
+):
+    """List distinct ETF industries."""
+    return {"industries": service.get_industries(params)}
+
+
+@router.get("/sub-categories/list")
+def list_sub_categories(
+    params: ETFFilterParams = Depends(parse_etf_filter_params),
+    service: ETFService = Depends(get_etf_service),
+):
+    """List distinct ETF sub-categories."""
+    return {"sub_categories": service.get_sub_categories(params)}
+
+
+@router.get("/managers/list")
+def list_managers(
+    params: ETFFilterParams = Depends(parse_etf_filter_params),
+    service: ETFService = Depends(get_etf_service),
+):
+    """List distinct ETF managers."""
+    return {"managers": service.get_managers(params)}
+
+
+@router.get("/currencies/list")
+def list_currencies(
+    params: ETFFilterParams = Depends(parse_etf_filter_params),
+    service: ETFService = Depends(get_etf_service),
+):
+    """List distinct ETF currencies."""
+    return {"currencies": service.get_currencies(params)}
+
+
+@router.get("/countries/list")
+def list_countries(
+    params: ETFFilterParams = Depends(parse_etf_filter_params),
+    service: ETFService = Depends(get_etf_service),
+):
+    """List distinct ETF countries."""
+    return {"countries": service.get_countries(params)}
+
+
+@router.get("/underlying-indices/list")
+def list_underlying_indices(
+    params: ETFFilterParams = Depends(parse_etf_filter_params),
+    service: ETFService = Depends(get_etf_service),
+):
+    """List distinct underlying indices."""
+    return {"underlying_indices": service.get_underlying_indices(params)}
 
 
 @router.get("/markets/list")
