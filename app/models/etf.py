@@ -49,6 +49,10 @@ class ETFInfo(Base):
     is_qdii = Column(Boolean, default=False, comment="Is QDII")
     underlying_index = Column(String(200), comment="Underlying index name")
     fund_size = Column(DECIMAL(18, 4), comment="Fund size / market cap in base currency")
+    fund_size_source = Column(
+        String(100),
+        comment="Source/reason for fund_size value (e.g. akshare, tushare, unrecoverable: ...)",
+    )
     inception_date = Column(Date, comment="Inception date / IPO date")
     list_date = Column(Date, comment="Listing / first trading date")
     delist_date = Column(Date, nullable=True, comment="Delisting date (null if still active)")
