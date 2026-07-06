@@ -26,7 +26,7 @@ const METHOD_OPTIONS = [
 
 export default function CorrelationAnalysis() {
   const mode = useSettingsStore((s) => s.mode);
-  const [selectedCodes, setSelectedCodes] = useState<string[]>(['510300.SH', '510050.SH', '510500.SH', '159915.SZ']);
+  const [selectedCodes, setSelectedCodes] = useState<string[]>([]);
   const [window, setWindow] = useState<number>(60);
   const [method, setMethod] = useState<'pearson' | 'spearman'>('pearson');
 
