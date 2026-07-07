@@ -176,6 +176,64 @@ class MacroDataService:
             "region": region,
         }
 
+    def get_series(
+        self,
+        code: str,
+        start_date: date | None = None,
+        end_date: date | None = None,
+        limit: int = 500,
+    ) -> dict[str, Any] | None:
+        """Return the time-series for any upserted (code, region) — pure DB lookup.
+
+        Used by the API as the fallback path when a code is not in the
+        static FRED registry (e.g. ``global_hsi`` upserted by the
+        yfinance/akshare global-indices job).  Returns None if no
+        observations exist for the code at all.
+
+        Picks one row per ``period`` (preferring the highest ``source``
+        alphabetically as a stable tie-breaker) so multiple sources
+        for the same code do not duplicate points on the chart.
+        """
+        from sqlalchemy import select
+
+        # Identify the (region, source) pairs that have data for this
+        # code so we can pick the right one to display.
+        first_row = (
+            self.db.query(MacroIndicator)
+            .filter(MacroIndicator.code == code)
+            .order_by(MacroIndicator.period.desc())
+            .first()
+        )
+        if first_row is None:
+            return None
+
+        stmt = (
+            select(MacroIndicator)
+            .where(MacroIndicator.code == code)
+            .where(MacroIndicator.region == first_row.region)
+            .where(MacroIndicator.source == first_row.source)
+        )
+        if start_date:
+            stmt = stmt.where(MacroIndicator.period >= start_date)
+        if end_date:
+            stmt = stmt.where(MacroIndicator.period <= end_date)
+        stmt = stmt.order_by(MacroIndicator.period.asc()).limit(limit)
+
+        rows = self.db.execute(stmt).scalars().all()
+        return {
+            "code": first_row.code,
+            "region": first_row.region,
+            "name_zh": first_row.name_zh,
+            "name_en": first_row.name_en,
+            "unit": first_row.unit or "",
+            "source": first_row.source,
+            "points": [
+                {"period": r.period, "value": float(r.value)}
+                for r in rows
+                if r.period is not None and r.value is not None
+            ],
+        }
+
     # ── write-side ───────────────────────────────────────────────
 
     def upsert_observations(

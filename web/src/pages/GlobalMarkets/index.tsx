@@ -1,8 +1,19 @@
 /**
  * Global Markets page — covers overseas indices, US Treasury yields,
- * USD index, COMEX commodities and VIX.  Backed by FRED via the existing
- * `/macro/latest` and `/macro/indicators/{code}` endpoints.  See
- * docs/dev-notes/20260704-global-markets-roadmap.md.
+ * USD index, COMEX commodities and VIX.
+ *
+ * Data sources (Phase 5d, 2026-07-07):
+ *  - FRED (region=us | global): US yields, DXY, USDJPY, Brent, WTI, SP500, Nasdaq, Dow.
+ *  - yfinance (region=global, source=yfinance): Hang Seng, Nikkei 225,
+ *    DAX, FTSE 100, CAC 40, ASX 200, KOSPI, TWSE, NIFTY 50, SENSEX.
+ *  - akshare (region=global, source=akshare): 上证综指, 深证成指, 沪深300.
+ *
+ * Backed by `/macro/latest?region=global` and
+ * `/macro/indicators/{code}`; both transparently serve any code
+ * stored in the macro_indicator table, so the same React Query
+ * pipeline powers FRED + yfinance + akshare rows.
+ *
+ * See docs/dev-notes/20260704-global-markets-roadmap.md.
  */
 
 import { useEffect, useMemo, useState } from 'react';
@@ -47,26 +58,70 @@ const CATEGORY_LABELS: Record<string, string> = {
 };
 const CATEGORY_ORDER = ['rate', 'fx', 'commodity', 'index', 'vol'];
 
-/** Codes we want to surface on the Global Markets page (in display order). */
+/** Codes we want to surface on the Global Markets page (in display order).
+ *
+ *  Coverage by source:
+ *  - FRED (`source=fred`): us_dgs*, us_t10y*, global_dxy, global_usdjpy,
+ *    global_brent, global_wti, global_sp500, global_nasdaq, global_dow,
+ *    us_vix, usd_eur, usd_cny.
+ *  - yfinance (`source=yfinance`): global_hsi, global_nikkei,
+ *    global_dax, global_ftse, global_cac, global_asx, global_kospi,
+ *    global_twse, global_nifty, global_sensex.
+ *  - akshare (`source=akshare`): global_shcomp, global_szse,
+ *    global_csi300.
+ *
+ *  Codes are pulled from both regions (``us`` + ``global``) — see
+ *  ``useMacroLatest('us' | 'global')`` calls below.
+ *
+ *  FRED coverage note (2026-07-07):
+ *  - ✅ Have free series: DXY, USDJPY, USDEUR, USDCNY, UST yields,
+ *    WTI/Brent, SP500/Nasdaq/Dow, VIX.
+ *  - ❌ No free FRED series for: DAX, FTSE, CAC, NIFTY, SENSEX, KOSPI,
+ *    TWSE, SHCOMP, SZE, ASX, Nikkei, Hang Seng. Gold (GOLDAMGBD228NLBM)
+ *    was discontinued with no direct replacement.
+ *    As of 2026-07-07, the yfinance + akshare pipeline now covers
+ *    the international index gap (see
+ *    ``app/services/macro/global_indices_fetcher.py``).
+ */
 const PRIMARY_CODES: string[] = [
-  // ── Rates (UST curve) ──
+  // ── Rates (UST curve + policy) ──
   'us_dgs30',
   'us_dgs10',
   'us_dgs2',
   'us_t10y2y',
-  // ── FX ──
+  'us_t10y3m',
+  // ── FX (broad USD + major crosses) ──
   'global_dxy',
   'global_usdjpy',
+  'usd_eur',
+  'usd_cny',
   // ── Commodities ──
   'global_brent',
   'global_wti',
   // NOTE: FRED discontinued the free gold series (GOLDAMGBD228NLBM). Gold
   // is hidden until a replacement commodity source is wired.
   // 'global_gold',
-  // ── Cross-border Index ──
+  // ── Cross-border Index (US — FRED) ──
   'global_sp500',
   'global_nasdaq',
   'global_dow',
+  // ── A-share (akshare) ──
+  'global_shcomp',
+  'global_szse',
+  'global_csi300',
+  // ── International (yfinance) — Asia Pacific ──
+  'global_hsi',
+  'global_nikkei',
+  'global_kospi',
+  'global_twse',
+  'global_asx',
+  // ── International (yfinance) — Europe ──
+  'global_dax',
+  'global_ftse',
+  'global_cac',
+  // ── International (yfinance) — India ──
+  'global_nifty',
+  'global_sensex',
   // ── Volatility (CBOE) ──
   'us_vix',
 ];
@@ -94,18 +149,30 @@ function formatValue(value: number | null, unit: string): string {
 /**
  * Map a code to its logical category bucket.  Adding a new series
  * only needs an entry here.
+ *
+ * ``usd_*`` codes live in the ``us`` region (see FredService.SERIES_REGISTRY
+ * FX block) but are conceptually FX, so we route them to the ``fx``
+ * bucket regardless of the prefix.
+ *
+ * As of Phase 5d (2026-07-07) every ``global_*`` index code
+ * (FRED + yfinance + akshare) collapses into the ``index`` bucket
+ * via the fallback return — adding a new international index only
+ * requires adding the code to PRIMARY_CODES; no further mapping
+ * change is needed.
  */
 function inferCategoryKey(code: string): string {
   if (code.startsWith('us_dgs') || code.startsWith('us_t10y')) return 'rate';
   if (code === 'us_vix') return 'vol';
-  if (code.startsWith('global_dxy') || code.startsWith('global_usdjpy')) return 'fx';
-  if (code.startsWith('global_brent') || code.startsWith('global_wti')) return 'commodity';
   if (
-    code.startsWith('global_sp500') ||
-    code.startsWith('global_nasdaq') ||
-    code.startsWith('global_dow')
+    code.startsWith('global_dxy') ||
+    code.startsWith('global_usdjpy') ||
+    code.startsWith('usd_')
   )
-    return 'index';
+    return 'fx';
+  if (code.startsWith('global_brent') || code.startsWith('global_wti')) return 'commodity';
+  // Everything else global_* falls into the index bucket — covers
+  // FRED SP500/Nasdaq/Dow, yfinance HSI/N225/DAX/FTSE/CAC/ASX/KOSPI/
+  // TWSE/NIFTY/SENSEX, and akshare SHCOMP/SZSE/CSI300.
   return 'index';
 }
 

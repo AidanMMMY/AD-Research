@@ -676,6 +676,90 @@ class AkshareProvider(DataProvider):
                 })
         return out
 
+    # ------------------------------------------------------------------
+    # A-share / HK index spot quotes — used by the Global Markets page
+    # for 上证综指 / 深证成指 / 沪深300 / 恒生.  Returns ``list[dict]`` of
+    # the most recent N trading days shaped as:
+    #     [{"code", "period": YYYY-MM-DD, "value", "name_zh", "unit"}, ...]
+    # ``value`` is the close.  ``name_en`` is not populated — the
+    # registry owns display labels.  Source tag in the macro_indicator
+    # table is "akshare".
+    # ------------------------------------------------------------------
+
+    def fetch_a_share_index_daily(
+        self, symbol: str, code: str, name_zh: str, lookback_days: int = 30
+    ) -> list[dict]:
+        """Daily bars for an A-share index (e.g. sh000001 = 上证综指).
+
+        Uses ``ak.stock_zh_index_daily`` which returns a clean OHLCV
+        frame with no Chinese column names.  Returns the most recent
+        ``lookback_days`` observations (oldest → newest) so the upsert
+        is idempotent under (code, region, period, source).
+        """
+        try:
+            df = ak.stock_zh_index_daily(symbol=symbol)
+        except Exception as exc:
+            print(f"[AkshareProvider] fetch_a_share_index_daily({symbol}) failed: {exc}")
+            return []
+
+        if df is None or df.empty:
+            return []
+
+        if len(df) > lookback_days:
+            df = df.tail(lookback_days)
+
+        out: list[dict] = []
+        for _, row in df.iterrows():
+            date_raw = row.get("date")
+            value = _coerce_float(row.get("close"))
+            period = _coerce_date(date_raw)
+            if period is None or value is None:
+                continue
+            out.append({
+                "code": code,
+                "period": period,
+                "value": value,
+                "name_zh": name_zh,
+                "unit": "指数",
+            })
+        return out
+
+    def fetch_hk_index_daily_sina(
+        self, symbol: str, code: str, name_zh: str, lookback_days: int = 30
+    ) -> list[dict]:
+        """Daily bars for an HK index via Sina (e.g. HSI = 恒生指数).
+
+        Sina endpoint works reliably from China-hosted runners; the EM
+        variant (``stock_hk_index_daily_em``) frequently returns empty
+        data, so we prefer Sina.
+        """
+        try:
+            df = ak.stock_hk_index_daily_sina(symbol=symbol)
+        except Exception as exc:
+            print(f"[AkshareProvider] fetch_hk_index_daily_sina({symbol}) failed: {exc}")
+            return []
+
+        if df is None or df.empty:
+            return []
+
+        if len(df) > lookback_days:
+            df = df.tail(lookback_days)
+
+        out: list[dict] = []
+        for _, row in df.iterrows():
+            value = _coerce_float(row.get("close"))
+            period = _coerce_date(row.get("date"))
+            if period is None or value is None:
+                continue
+            out.append({
+                "code": code,
+                "period": period,
+                "value": value,
+                "name_zh": name_zh,
+                "unit": "指数",
+            })
+        return out
+
     def fetch_china_macro_rrr(self) -> list[dict]:
         """存款准备金率 - 大型/中小金融机构 (%). akshare: macro_china_reserve_requirement_ratio."""
         try:

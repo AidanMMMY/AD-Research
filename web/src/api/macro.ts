@@ -85,6 +85,16 @@ export const macroApi = {
   refreshChina(): Promise<{ data: MacroRefreshResult }> {
     return client.post('/macro/refresh-china');
   },
+
+  /** Realtime snapshot of global indices (yfinance + akshare). */
+  getGlobalIndicesRealtime(): Promise<{ data: { items: any[]; count: number } }> {
+    return client.get('/macro/indices/global');
+  },
+
+  /** Manually trigger the global indices refresh job. */
+  refreshGlobalIndices(): Promise<{ data: MacroRefreshResult }> {
+    return client.post('/macro/refresh-global-indices');
+  },
 };
 
 export function useMacroList(params?: MacroListParams) {

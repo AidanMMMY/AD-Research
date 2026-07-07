@@ -87,11 +87,23 @@ def get_indicator_series(
     end_date: date | None = Query(None, description="ISO date inclusive"),
     limit: int = Query(500, ge=1, le=5000),
     service: FredService = Depends(_get_service),
+    macro_service: MacroDataService = Depends(_macro_service),
 ) -> MacroIndicatorSeries:
-    """Return the time-series for a single indicator (oldest → newest)."""
+    """Return the time-series for a single indicator (oldest → newest).
+
+    Falls back to ``MacroDataService.get_series`` (pure DB lookup) if
+    the code is not in the static FRED registry.  This is how the
+    ``global_*`` codes upserted by the yfinance/akshare
+    global-indices job get a chart endpoint without being added to
+    the FRED registry.
+    """
     series = service.get_series(
         code=code, start_date=start_date, end_date=end_date, limit=limit
     )
+    if series is None:
+        series = macro_service.get_series(
+            code=code, start_date=start_date, end_date=end_date, limit=limit
+        )
     if series is None:
         raise HTTPException(status_code=404, detail=f"Unknown indicator code: {code}")
     return MacroIndicatorSeries(**series)
@@ -194,3 +206,87 @@ def refresh_china_macro(
         from app.services.macro.scheduler import run_china_macro_refresh
 
         return run_china_macro_refresh()
+
+
+# ---------------------------------------------------------------------------
+# Phase 5d — Global market indices (yfinance + akshare)
+# ---------------------------------------------------------------------------
+
+
+@router.get("/indices/global")
+def get_global_indices_realtime() -> dict[str, Any]:
+    """Return the latest global index snapshot without going through the DB.
+
+    Hits yfinance + akshare live so the Global Markets page can
+    surface a near-realtime value before the 16:00 Asia/Shanghai
+    scheduled upsert lands.  Each item is
+    ``{code, name_zh, name_en, value, prev_close, change, change_pct, as_of, source}``.
+
+    Best-effort: per-ticker failures are logged and skipped; the
+    response always returns 200 even when some tickers fail.
+    """
+    try:
+        from app.services.macro.global_indices_fetcher import (
+            fetch_all_global_indices,
+        )
+
+        items = fetch_all_global_indices()
+    except Exception as exc:  # noqa: BLE001 - defensive
+        logger.exception("global indices realtime fetch crashed: %s", exc)
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+    # Reduce to the latest observation per code (sorted by period desc).
+    latest_by_code: dict[str, dict] = {}
+    for obs in items:
+        code = obs.get("code")
+        period = obs.get("period")
+        if not code or not period:
+            continue
+        existing = latest_by_code.get(code)
+        if existing is None or period > existing.get("period", ""):
+            latest_by_code[code] = obs
+
+    out: list[dict[str, Any]] = []
+    for obs in latest_by_code.values():
+        value = obs.get("value")
+        prev_close = obs.get("prev_close")
+        change = None
+        change_pct = None
+        if value is not None and prev_close not in (None, 0):
+            change = round(float(value) - float(prev_close), 4)
+            change_pct = round((float(value) - float(prev_close)) / float(prev_close) * 100.0, 4)
+        out.append({
+            "code": obs.get("code"),
+            "name_zh": obs.get("name_zh"),
+            "name_en": obs.get("name_en"),
+            "unit": obs.get("unit", "指数"),
+            "value": value,
+            "prev_close": prev_close,
+            "change": change,
+            "change_pct": change_pct,
+            "as_of": obs.get("period"),
+            "source": obs.get("source", "yfinance"),
+        })
+    out.sort(key=lambda x: x.get("code") or "")
+    return {"items": out, "count": len(out)}
+
+
+@router.post("/refresh-global-indices", status_code=202)
+def refresh_global_indices(
+    _user: UserResponse = Depends(get_current_user),
+) -> dict[str, Any]:
+    """Manually trigger the global indices refresh (yfinance + akshare).
+
+    Concurrent runs are blocked by a Redis lock.
+    """
+    with redis_lock("global_indices_daily", expire_seconds=3600) as acquired:
+        if not acquired:
+            raise HTTPException(
+                status_code=409,
+                detail="Global indices refresh already in progress",
+            )
+        from app.services.macro.global_indices_fetcher import (
+            run_global_indices_refresh,
+        )
+
+        return run_global_indices_refresh()

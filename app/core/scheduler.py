@@ -682,6 +682,41 @@ def run_china_macro_refresh():
             print(f"[Scheduler] China macro refresh crashed: {exc}")
 
 
+def run_global_indices_refresh():
+    """Refresh global market indices (Phase 5d).
+
+    Pulls Hang Seng / Nikkei / DAX / FTSE / CAC / ASX / KOSPI / TWSE
+    / NIFTY / SENSEX via yfinance and 上证综指 / 深证成指 / 沪深300 via
+    akshare, then upserts every observation into the ``macro_indicator``
+    table tagged with ``region='global'``.  Best-effort: per-ticker
+    failures are logged inside ``run_global_indices_refresh`` and
+    never crash the scheduler.
+
+    Runs daily at 16:00 Asia/Shanghai — 1 hour after Asia close so
+    that the most recent Hong Kong / Japan / Australia / A-share
+    closes are settled.
+    """
+    from app.services.macro.global_indices_fetcher import (
+        run_global_indices_refresh as _run,
+    )
+
+    with redis_lock("global_indices_daily", expire_seconds=3600) as acquired:
+        if not acquired:
+            print("⚠️ [SCHEDULER_WARN] Global indices refresh skipped: lock in use")
+            return
+        try:
+            result = _run()
+            print(
+                f"[Scheduler] Global indices refresh: "
+                f"written={result.get('written', 0)}, "
+                f"fetched={result.get('fetched', 0)}, "
+                f"failed={result.get('failed', [])}, "
+                f"per_source={result.get('per_source', {})}"
+            )
+        except Exception as exc:  # pragma: no cover - last-resort guard
+            print(f"[Scheduler] Global indices refresh crashed: {exc}")
+
+
 def run_research_reports_daily():
     """Refresh research_reports (daily 18:00 Asia/Shanghai).
 
@@ -1073,6 +1108,21 @@ def init_scheduler():
         ),
         id="china_macro_daily",
         name="中国宏观日刷",
+        replace_existing=True,
+        max_instances=1,
+    )
+    # ── Global Market Indices (yfinance + akshare) ──
+    # 16:00 Asia/Shanghai = 1 hour after Asia close so HK / JP / AU /
+    # A-share closes are settled.  Mon-Fri only — equities are closed
+    # on weekends; Saturday / Sunday snapshots from upstream would be
+    # Friday's close repeated.
+    scheduler.add_job(
+        run_global_indices_refresh,
+        trigger=CronTrigger(
+            hour=16, minute=0, day_of_week="mon-fri", timezone="Asia/Shanghai"
+        ),
+        id="global_indices_daily",
+        name="全球主要指数日刷",
         replace_existing=True,
         max_instances=1,
     )
