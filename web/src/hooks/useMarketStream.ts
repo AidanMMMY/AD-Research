@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
+import { marketApi } from '@/api/market';
 
 export interface MarketTick {
   price: number;
@@ -50,6 +51,14 @@ export function useMarketStream(codes: string[]): UseMarketStreamResult {
   // the freshest set without re-running the entire effect.
   const codesRef = useRef<string[]>(codes);
   codesRef.current = codes;
+  // Mirror connection state into a ref so the fallback poll can read the
+  // freshest value without being re-created on every connect/disconnect.
+  const isConnectedRef = useRef(false);
+  isConnectedRef.current = isConnected;
+  // Track the latest ticks in a ref so the fallback poll can decide whether
+  // the UI already has data without re-subscribing to state.
+  const latestRef = useRef<MarketLatest>(latest);
+  latestRef.current = latest;
 
   const close = useCallback(() => {
     if (reconnectTimeoutRef.current !== null) {
@@ -205,6 +214,73 @@ export function useMarketStream(codes: string[]): UseMarketStreamResult {
     backoffRef.current = DEFAULT_BACKOFF_MS;
     setReconnectNonce((n) => n + 1);
   }, []);
+
+  // ── REST snapshot fallback ────────────────────────────────────────────
+  // EventSource reports `isConnected` as soon as the HTTP stream opens, even
+  // when the backend produces zero rows (e.g. an instrument-code format the
+  // stream can't resolve). And a real network drop can wedge the stream for
+  // up to MAX_BACKOFF_MS between retries. As a safety net we poll the REST
+  // snapshot endpoint every 30s and merge any rows into `latest`, so the UI
+  // still shows the last daily close even when the live stream is silent.
+  useEffect(() => {
+    const validCodes = (codes || []).filter(Boolean);
+    if (validCodes.length === 0) return;
+
+    let cancelled = false;
+
+    const poll = async () => {
+      if (cancelled) return;
+      try {
+        const res = await marketApi.snapshot(validCodes);
+        // Backend shape: { items: [{ etf_code, close, change_pct, ... }], count }.
+        const payload = res.data as unknown as {
+          items?: Array<{
+            etf_code?: string;
+            etf_name?: string;
+            close?: number;
+            change_pct?: number;
+          }>;
+        };
+        const rows = payload?.items ?? [];
+        if (cancelled || rows.length === 0) return;
+        setLatest((prev) => {
+          const next: MarketLatest = { ...prev };
+          for (const r of rows) {
+            if (!r || typeof r.etf_code !== 'string') continue;
+            const code = r.etf_code;
+            const previous = prev[code];
+            next[code] = {
+              price: typeof r.close === 'number' ? r.close : previous?.price ?? 0,
+              change_pct:
+                typeof r.change_pct === 'number' ? r.change_pct : previous?.change_pct ?? 0,
+              ts: previous?.ts ?? 0,
+              name: r.etf_name ?? previous?.name,
+              market: previous?.market,
+            };
+          }
+          return next;
+        });
+      } catch {
+        // best-effort fallback — ignore failures
+      }
+    };
+
+    // Prime the UI shortly after mount if the stream hasn't delivered data
+    // yet, then keep a slow background poll running as a safety net.
+    const initial = window.setTimeout(() => {
+      if (!isConnectedRef.current || Object.keys(latestRef.current).length === 0) {
+        void poll();
+      }
+    }, 2_000);
+    const interval = window.setInterval(() => void poll(), 30_000);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(initial);
+      window.clearInterval(interval);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [codes.join(',')]);
 
   return useMemo(
     () => ({ latest, isConnected, error, reconnect }),

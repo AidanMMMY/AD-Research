@@ -1,163 +1,183 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Button, Tag, Space } from 'antd';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Button, Tag } from 'antd';
 import {
-  BookOutlined,
   BulbOutlined,
-  RocketOutlined,
   CheckOutlined,
   ArrowRightOutlined,
+  SyncOutlined,
+  BookOutlined,
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
-import { getAllTerms } from '@/utils/termDictionary';
 import {
-  pickDailyTermKey,
-  useLearnedTerms,
-} from '@/hooks/useLearnedTerms';
+  LESSON_BANK,
+  pickLesson,
+  type LessonEntry,
+} from '@/utils/lessonBank';
+import { useLearnedTerms } from '@/hooks/useLearnedTerms';
 import { useAIHelp } from '@/hooks/useAIHelp';
 
 interface DailyLessonProps {
-  /**
-   * Allow injection for tests; by default uses `new Date()` so the lesson
-   * rotates daily with no extra state.
-   */
+  /** Backwards-compat test hook — ignored by the live UI. */
   today?: Date;
 }
 
-function todayKey(d: Date): string {
-  // Local-time YYYY-MM-DD key.  Used both as a daily rotation seed and as a
-  // localStorage namespace so the chosen term persists across reloads.
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
-}
-
 /**
- * K15 P0: Dashboard "今日学习 3 分钟" 卡片。
- * - 每天（按本地日期做 hash）从 termDictionary 抽 1 个词条，保证稳定；
- * - 提供"展开/收起"、"问 AI"、"我学会了"三个动作；
- * - 通过 useLearnedTerms 与 dashboard 的周统计复用。
+ * K15 P0 + Phase 2 (2026-07-07): Dashboard "今日学习" lesson card.
  *
- * 设计取舍：用纯前端组件，不写新 store / 不引入新接口。
+ * Phase 2 changes:
+ *   - Drops the inner panel surface (was a deep blue gradient with a
+ *     hard border). New visual uses ``--bg-elevated`` background,
+ *     ``--border-default`` 1px line, ``--radius-lg`` corners — light,
+ *     neutral, and consistent with the rest of the dashboard.
+ *   - Replaced the termDictionary pick (heavy 200+ entry weight) with
+ *     a hand-curated ``lessonBank`` (12 conversational lessons). The
+ *     termDictionary still powers HelpPopover elsewhere.
+ *   - Layout is now 2 columns on desktop (lesson body on the left,
+ *     actions + meta on the right) so we don't waste horizontal space
+ *     on a thin right rail.
+ *   - "No-repeat this session" tracked via useRef Set of lesson IDs.
+ *
+ * The component never renders its own border — the Dashboard still
+ * hosts it inside a Panel, so the visual nesting stays single-level.
  */
 export default function DailyLesson({ today = new Date() }: DailyLessonProps) {
   const navigate = useNavigate();
   const { open: openAIHelp } = useAIHelp();
   const learned = useLearnedTerms();
 
-  const allTerms = useMemo(() => getAllTerms(), []);
-  const dateKey = useMemo(() => todayKey(today), [today]);
+  const dateKey = useMemo(() => {
+    const d = today;
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  }, [today]);
 
-  const term = useMemo(() => {
-    if (allTerms.length === 0) return null;
-    const remembered = learned.lessonShownFor(dateKey);
-    if (remembered) {
-      return allTerms.find((t) => t.key === remembered) ?? null;
-    }
-    const keys = allTerms.map((t) => t.key);
-    const picked = pickDailyTermKey(dateKey, keys);
-    if (picked) learned.rememberLessonFor(dateKey, picked);
-    return allTerms.find((t) => t.key === picked) ?? null;
-  }, [allTerms, dateKey, learned]);
+  // Session-scoped dedup set: lesson IDs already shown this page mount.
+  // Reset only when the component unmounts (no per-day lock — user
+  // expects to keep getting fresh lessons on every shuffle / revisit).
+  const shownRef = useRef<Set<string>>(new Set());
 
-  const [expanded, setExpanded] = useState(false);
+  const pickFresh = useCallback((): LessonEntry | null => {
+    const lesson = pickLesson(LESSON_BANK, shownRef.current);
+    if (lesson) shownRef.current.add(lesson.id);
+    return lesson;
+  }, []);
 
+  const [lesson, setLesson] = useState<LessonEntry | null>(() => pickFresh());
+
+  // Defensive: if the bank ever changes shape and we mounted with null,
+  // retry once on the next tick.
   useEffect(() => {
-    // Reset expanded state when day changes.
-    setExpanded(false);
-  }, [dateKey]);
+    if (!lesson) {
+      const l = pickFresh();
+      if (l) setLesson(l);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  if (!term) return null;
+  const shuffle = useCallback(() => {
+    setLesson((prev) => {
+      // Avoid showing the same lesson twice in a row on explicit shuffle.
+      let next: LessonEntry | null = null;
+      for (let i = 0; i < 6; i++) {
+        const candidate = pickFresh();
+        if (!candidate) break;
+        if (!prev || candidate.id !== prev.id) {
+          next = candidate;
+          break;
+        }
+      }
+      if (!next) next = pickFresh();
+      return next;
+    });
+  }, [pickFresh]);
 
-  const isLearned = learned.has(term.key);
+  if (!lesson) return null;
+
+  const isLearned = learned.has(lesson.id);
 
   const openAsk = () => {
     openAIHelp({
-      pageType: term.relatedPageType ?? 'instrument_detail',
-      pageTitle: `每日学习 - ${term.title}`,
-      contextData: `用户正在学习术语「${term.title}」。\n${term.fullDesc}`,
-      initialQuestion: `我是一个新手，请先用一个生活中的类比解释「${term.title}」，再讲它在投资中的实际意义。`,
+      pageType: 'instrument_detail',
+      pageTitle: `每日学习 - ${lesson.title}`,
+      contextData: `用户正在阅读 Dashboard「今日一课」卡片。\n主题：${lesson.title}\n分类：${lesson.tag}\n正文：${lesson.body}\n${lesson.tip ? `\n要点：${lesson.tip}` : ''}`,
+      initialQuestion: `请先用一个生活中的类比解释「${lesson.title}」，再讲它在投资中的实际意义。`,
       quickQuestions: [
-        `「${term.title}」的数值高低代表什么？`,
-        `如何在投资中用「${term.title}」做判断？`,
-        `这个概念有什么常见误区？`,
-        '能不能用更简单的语言再解释一遍？',
+        `「${lesson.title}」在投资里最常见的应用场景是什么？`,
+        `有没有什么常见误区？`,
+        `能不能用更简单的语言再解释一遍？`,
       ],
     });
   };
 
   return (
-    <section className="daily-lesson panel--elevated">
+    <section className="daily-lesson">
       <div className="daily-lesson__header">
         <div className="daily-lesson__title-row">
           <BookOutlined className="daily-lesson__icon" />
-          <div className="daily-lesson__title">今日学习 3 分钟</div>
-          <Tag color="blue">每天 1 个概念</Tag>
+          <span className="daily-lesson__title">今日一课</span>
+          <Tag className="daily-lesson__tag">{lesson.tag}</Tag>
           {isLearned && (
-            <Tag icon={<CheckOutlined />} color="success">
+            <Tag icon={<CheckOutlined />} color="success" className="daily-lesson__tag">
               已学会
             </Tag>
           )}
         </div>
-        <div className="daily-lesson__date">{dateKey}</div>
+        <span className="daily-lesson__date">{dateKey}</span>
       </div>
 
       <div className="daily-lesson__body">
-        <div className="daily-lesson__heading">
-          <RocketOutlined className="daily-lesson__heading-icon" />
-          <span className="daily-lesson__heading-title">{term.title}</span>
+        <div className="daily-lesson__col daily-lesson__col--main">
+          <div className="daily-lesson__heading">
+            <span className="daily-lesson__heading-title">{lesson.title}</span>
+          </div>
+          <p className="daily-lesson__short">{lesson.body}</p>
+          {lesson.tip && (
+            <div className="daily-lesson__tip">
+              <BulbOutlined className="daily-lesson__tip-icon" />
+              <span>{lesson.tip}</span>
+            </div>
+          )}
         </div>
-        <p className="daily-lesson__short">{term.shortDesc}</p>
-        {expanded && (
-          <div className="daily-lesson__full">
-            <p>{term.fullDesc}</p>
-            {term.formula && (
-              <div className="daily-lesson__formula">
-                <span className="daily-lesson__caption">公式</span>
-                <code>{term.formula}</code>
-              </div>
-            )}
-            {term.example && (
-              <div className="daily-lesson__example">
-                <span className="daily-lesson__caption">
-                  <BulbOutlined /> 举个例子
-                </span>
-                <span>{term.example}</span>
-              </div>
+
+        <div className="daily-lesson__col daily-lesson__col--side">
+          <div className="daily-lesson__actions">
+            <Button
+              size="small"
+              type="primary"
+              icon={<SyncOutlined />}
+              onClick={shuffle}
+              aria-label="换一个概念"
+            >
+              换一题
+            </Button>
+            <Button size="small" onClick={openAsk}>
+              问 AI
+            </Button>
+            {!isLearned ? (
+              <Button
+                size="small"
+                icon={<CheckOutlined />}
+                onClick={() => learned.mark(lesson.id)}
+              >
+                已学会
+              </Button>
+            ) : (
+              <Button
+                size="small"
+                icon={<ArrowRightOutlined />}
+                onClick={() => navigate('/learning')}
+              >
+                去教程
+              </Button>
             )}
           </div>
-        )}
-      </div>
-
-      <div className="daily-lesson__actions">
-        <Space wrap>
-          <Button size="small" onClick={() => setExpanded((v) => !v)}>
-            {expanded ? '收起' : '展开看完整说明'}
-          </Button>
-          <Button size="small" type="primary" onClick={openAsk}>
-            问 AI
-          </Button>
-          {!isLearned && (
-            <Button
-              size="small"
-              icon={<CheckOutlined />}
-              onClick={() => learned.mark(term.key)}
-            >
-              我学会了
-            </Button>
-          )}
-          {isLearned && (
-            <Button
-              size="small"
-              icon={<ArrowRightOutlined />}
-              onClick={() => navigate('/learning')}
-            >
-              去新手教程
-            </Button>
-          )}
-        </Space>
-        <div className="daily-lesson__hint">
-          本周已学习 <b>{learned.thisWeek}</b> 个术语
+          <div className="daily-lesson__hint">
+            <span>本周已学习 <b>{learned.thisWeek}</b> 个概念</span>
+            <span className="daily-lesson__divider">·</span>
+            <span className="daily-lesson__hint-sub">每次进入页面随机抽取</span>
+          </div>
         </div>
       </div>
     </section>

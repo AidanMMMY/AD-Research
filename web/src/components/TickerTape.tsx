@@ -1,7 +1,13 @@
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { ArrowUpOutlined, ArrowDownOutlined } from '@ant-design/icons';
+import {
+  ArrowUpOutlined,
+  ArrowDownOutlined,
+  DisconnectOutlined,
+  LoadingOutlined,
+} from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
+import { Tooltip } from 'antd';
 import { analysisApi } from '@/api/analysis';
 import { useMarketStream } from '@/hooks/useMarketStream';
 
@@ -68,8 +74,11 @@ export default function TickerTape({
 
   // Subscribe to live ticks for the same set so prices/change_pct update
   // every ~3 seconds. useMarketStream is shared with the rest of the page
-  // via a single SSE connection.
-  const { latest } = useMarketStream(codes);
+  // via a single SSE connection. We pull `isConnected` + `error` so the
+  // tape can show a "live / reconnecting / offline" pill in the corner
+  // — without it, an empty tape looks indistinguishable from "feature
+  // works, no data yet".
+  const { latest, isConnected, error } = useMarketStream(codes);
 
   const items: TickerTapeItem[] = useMemo(() => {
     return (ranking || []).map((r) => {
@@ -83,7 +92,37 @@ export default function TickerTape({
     });
   }, [ranking, latest]);
 
-  if (items.length === 0) return null;
+  const hasLive = Object.keys(latest).length > 0;
+
+  // Ranking hasn't loaded yet, or the stream is down with no cached ticks:
+  // show a clear placeholder instead of a bare/empty tape so users know the
+  // feed is unavailable rather than silently rendering nothing.
+  if (items.length === 0 || (!isConnected && !hasLive)) {
+    const reason = error
+      ? `连接异常：${error}`
+      : !isConnected
+        ? '实时行情未连接，正在重连'
+        : '暂无行情数据';
+    const statusLabel = error
+      ? '已断线 · 重试中'
+      : isConnected
+        ? '已连接'
+        : '正在连接 SSE';
+    return (
+      <div className="ticker-tape ticker-tape--empty" aria-label="实时行情滚动条">
+        <Tooltip title={reason}>
+          <span className="ticker-empty">
+            {isConnected ? (
+              <LoadingOutlined className="ticker-empty__icon" />
+            ) : (
+              <DisconnectOutlined className="ticker-empty__icon" />
+            )}
+            暂无实时行情 · {statusLabel}
+          </span>
+        </Tooltip>
+      </div>
+    );
+  }
 
   // Doubled array — animation translates by -50%, so once the first half has
   // scrolled off the second identical half appears seamlessly.
@@ -91,6 +130,13 @@ export default function TickerTape({
 
   return (
     <div className="ticker-tape" aria-label="实时行情滚动条">
+      <span
+        className={`ticker-status ${isConnected ? 'ticker-status--live' : 'ticker-status--offline'}`}
+        aria-label={isConnected ? 'SSE 已连接' : 'SSE 未连接'}
+      >
+        <span className="ticker-status__dot" />
+        {isConnected ? 'LIVE' : '离线'}
+      </span>
       <div
         className="ticker-track"
         style={{ animationDuration: `${durationSeconds}s` }}

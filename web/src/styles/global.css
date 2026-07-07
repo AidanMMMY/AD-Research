@@ -3639,6 +3639,120 @@ main {
   color: var(--text-tertiary);
 }
 
+/* ---- Live market connection status (实时行情 header) ---- */
+.market-conn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.market-conn__pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 var(--space-2);
+  height: 20px;
+  border-radius: var(--radius-sm);
+  font-size: var(--text-small-size);
+  color: var(--color-fall);
+  background: color-mix(in srgb, var(--color-fall) 12%, transparent);
+}
+
+.market-conn__retry {
+  appearance: none;
+  border: 1px solid var(--border-default);
+  background: var(--bg-elevated);
+  color: var(--text-secondary);
+  font-size: var(--text-small-size);
+  padding: 0 var(--space-2);
+  height: 22px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.market-conn__retry:hover {
+  color: var(--color-accent);
+  border-color: var(--color-accent);
+}
+
+/* ---- Ticker tape empty / disconnected placeholder ---- */
+.ticker-tape--empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ticker-empty {
+  font-size: var(--text-small-size);
+  color: var(--text-tertiary);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ticker-empty__icon {
+  font-size: 12px;
+  opacity: 0.7;
+}
+
+/* Live status pill anchored to the left edge of the tape so users can
+   tell at a glance whether SSE is connected. The pill sits on top of
+   the mask so the gradient fade doesn't swallow it. */
+.ticker-status {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 8px;
+  margin-left: 8px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  font-family: var(--font-mono);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-default);
+  color: var(--text-tertiary);
+  flex-shrink: 0;
+  user-select: none;
+}
+
+.ticker-status__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--text-tertiary);
+}
+
+.ticker-status--live {
+  color: var(--color-success);
+  background: var(--color-success-dim);
+  border-color: var(--color-success-border);
+}
+
+.ticker-status--live .ticker-status__dot {
+  background: var(--color-success);
+  box-shadow: 0 0 0 0 var(--color-success);
+  animation: ticker-pulse 1.6s ease-out infinite;
+}
+
+.ticker-status--offline {
+  color: var(--text-tertiary);
+}
+
+@keyframes ticker-pulse {
+  0% {
+    box-shadow: 0 0 0 0 var(--color-success-dim);
+  }
+  70% {
+    box-shadow: 0 0 0 6px transparent;
+  }
+  100% {
+    box-shadow: 0 0 0 0 transparent;
+  }
+}
+
 /* ---- Dashboard news row ---- */
 .dashboard-news-row {
   padding: var(--space-3) 0;
@@ -6569,6 +6683,84 @@ main {
   }
 }
 
+/* ============================================================
+   Password manager / Chrome autofill background override
+   --------------------------------------------------------
+   Browsers (Chrome, Edge, Safari) and password managers (1Password,
+   KeePass, Bitwarden, Dashlane, LastPass) apply a yellow
+   `:-webkit-autofill` background that ignores author stylesheets by
+   default. The standard fix is to paint a giant inset box-shadow of
+   the desired background color over the autofill highlight. This
+   block:
+     1. Suppresses the yellow on every <input>/<textarea>/<select>.
+     2. Honours design tokens (--bg-input / --text-primary) so dark
+        and light themes stay consistent.
+     3. Adds specific overrides for the sci-fi login card where the
+        input itself is transparent and the wrapper paints the
+        background.
+     4. Hides the browser's "small key/lock" icon overlay on password
+        fields so Chrome's strong-password UI doesn't occlude our
+        custom styling.
+   Refs:
+     - https://css-tricks.com/snippets/css/change-autocomplete-styles-webkit-browsers/
+     - https://developer.mozilla.org/en-US/docs/Web/CSS/:-webkit-autofill
+   ============================================================ */
+
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active,
+.ant-input:-webkit-autofill,
+.ant-input-affix-wrapper:-webkit-autofill,
+textarea:-webkit-autofill,
+select:-webkit-autofill {
+  -webkit-box-shadow: 0 0 0 1000px var(--bg-input, #ffffff) inset !important;
+  -webkit-text-fill-color: var(--text-primary, #111113) !important;
+  caret-color: var(--text-primary, #111113) !important;
+  transition: background-color 5000s ease-in-out 0s !important;
+}
+
+/* Dark theme — keep the autofill background consistent with the dark surface.
+   We override --bg-input value directly instead of swapping the whole
+   shadow because some browsers cache the autofill highlight and re-applying
+   the same --bg-input value in both themes keeps behaviour predictable. */
+:root[data-theme="dark"] input:-webkit-autofill,
+:root[data-theme="dark"] .ant-input:-webkit-autofill,
+:root[data-theme="dark"] textarea:-webkit-autofill,
+:root[data-theme="dark"] select:-webkit-autofill {
+  -webkit-box-shadow: 0 0 0 1000px var(--bg-base, #0a0a0a) inset !important;
+  -webkit-text-fill-color: var(--text-primary, #f5f5f0) !important;
+}
+
+/* Hide Chrome / Edge's built-in credential autofill icons (small key/lock)
+   on password fields so they don't sit on top of our custom UI. */
+input[type="password"]::-webkit-credentials-auto-fill-button,
+input[type="password"]::-webkit-strong-password-auto-fill-button {
+  display: none !important;
+  -webkit-appearance: none;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+/* Sci-fi login card overrides.
+   The login page is a fixed dark theme regardless of the global theme
+   toggle — the wrapper paints the background and the input itself is
+   transparent. Forcing the autofill shadow to `transparent` lets the
+   wrapper's rgba(...) background show through cleanly. */
+.login-page--sci-fi .login-input:-webkit-autofill,
+.login-page--sci-fi .login-input:-webkit-autofill:hover,
+.login-page--sci-fi .login-input:-webkit-autofill:focus,
+.login-page--sci-fi .login-input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 1000px rgba(255, 255, 255, 0.04) inset !important;
+  -webkit-text-fill-color: rgba(255, 255, 255, 0.95) !important;
+  caret-color: rgba(0, 229, 255, 0.9) !important;
+  transition: background-color 5000s ease-in-out 0s !important;
+}
+
+.login-page--sci-fi .login-input-wrapper:focus-within .login-input:-webkit-autofill {
+  -webkit-box-shadow: 0 0 0 1000px rgba(255, 255, 255, 0.06) inset !important;
+}
+
 /* Inline-style cleanup extras */
 .phase5c-tag-xs {
   font-size: 10px !important;
@@ -6672,136 +6864,236 @@ main {
   margin-top: 4px;
 }
 
-/* DailyLesson — Dashboard "今日学习 3 分钟" */
+/* DailyLesson — Dashboard "今日一课".
+   Phase 2 (2026-07-05): lighter glass + 2-col responsive body.
+   Carries its own surface now (Dashboard no longer wraps it in Panel). */
 .daily-lesson {
-  margin: var(--space-4, 16px) 0;
-  padding: var(--space-4, 16px) var(--space-5, 20px);
-  background: linear-gradient(135deg,
-    rgba(64, 169, 255, 0.05),
-    rgba(120, 109, 245, 0.04));
-  border: 1px solid rgba(64, 169, 255, 0.18);
-  border-radius: 12px;
+  margin: 0;
+  padding: var(--space-4) var(--space-5);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
   position: relative;
-  overflow: hidden;
-}
-
-.daily-lesson::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: radial-gradient(circle at 90% 0%,
-    rgba(64, 169, 255, 0.10),
-    transparent 60%);
-  pointer-events: none;
 }
 
 .daily-lesson__header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 12px;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+  flex-wrap: wrap;
 }
 
 .daily-lesson__title-row {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
   flex-wrap: wrap;
 }
 
 .daily-lesson__icon {
-  font-size: 18px;
-  color: var(--color-primary, #4096ff);
+  font-size: 16px;
+  color: var(--accent);
 }
 
 .daily-lesson__title {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
-  color: var(--text-primary, #222);
+  color: var(--text-primary);
+  letter-spacing: 0.02em;
+}
+
+.daily-lesson__meta {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.daily-lesson__hint {
+  font-size: 12px;
+  color: var(--text-tertiary);
 }
 
 .daily-lesson__date {
-  font-size: 12px;
-  color: var(--text-tertiary, #888);
+  font-size: 11px;
+  color: var(--text-tertiary);
   font-variant-numeric: tabular-nums;
+  letter-spacing: 0.04em;
 }
 
+/* Body: 2-col responsive grid.
+   Desktop (>= 720px): left content | right actions.
+   Mobile (< 720px): single column, actions become a horizontal wrap. */
 .daily-lesson__body {
-  margin-bottom: 12px;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-3);
+}
+
+@media (min-width: 720px) {
+  .daily-lesson__body {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: var(--space-5);
+    align-items: start;
+  }
+}
+
+.daily-lesson__content {
+  min-width: 0;
+}
+
+/* Phase 2 (2026-07-07) — explicit 2-column wrappers used by the new
+   lesson bank layout: main column holds the body + tip, side column
+   holds the action stack + meta. The grid layout on .daily-lesson__body
+   is unchanged so existing rules continue to apply. */
+.daily-lesson__col {
+  min-width: 0;
+}
+
+.daily-lesson__col--main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.daily-lesson__col--side {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  align-items: flex-start;
+}
+
+.daily-lesson__tag.ant-tag {
+  margin: 0;
+  padding: 0 8px;
+  font-size: 11px;
+  line-height: 18px;
+  border-radius: 999px;
+  color: var(--accent);
+  background: var(--accent-dim);
+  border: 1px solid var(--accent-border);
+}
+
+.daily-lesson__tag.ant-tag.ant-tag-success {
+  color: var(--color-success);
+  background: var(--color-success-dim);
+  border-color: var(--color-success-border);
+}
+
+.daily-lesson__tip {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 6px 10px;
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--text-secondary);
+  background: var(--bg-surface);
+  border-radius: var(--radius-sm);
+}
+
+.daily-lesson__tip-icon {
+  color: var(--color-warning);
+  margin-top: 2px;
+}
+
+.daily-lesson__divider {
+  color: var(--text-muted);
+  opacity: 0.6;
+}
+
+.daily-lesson__hint-sub {
+  color: var(--text-tertiary);
 }
 
 .daily-lesson__heading {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 8px;
+  gap: var(--space-2);
+  margin-bottom: var(--space-1);
 }
 
 .daily-lesson__heading-icon {
-  color: var(--color-primary, #4096ff);
+  color: var(--accent);
 }
 
 .daily-lesson__heading-title {
-  font-size: 18px;
+  font-size: 17px;
   font-weight: 600;
-  color: var(--text-primary, #222);
+  color: var(--text-primary);
+  line-height: 1.3;
 }
 
 .daily-lesson__short {
-  margin: 0 0 8px;
+  margin: 0;
   font-size: 13px;
-  line-height: 1.6;
-  color: var(--text-secondary, #555);
+  line-height: 1.55;
+  color: var(--text-secondary);
 }
 
 .daily-lesson__full {
-  margin-top: 8px;
-  padding-top: 8px;
-  border-top: 1px dashed rgba(64, 169, 255, 0.25);
+  margin-top: var(--space-2);
+  padding-top: var(--space-2);
+  border-top: 1px dashed var(--border-default);
 }
 
 .daily-lesson__full p {
-  margin: 0 0 8px;
+  margin: 0 0 var(--space-2);
   font-size: 13px;
-  line-height: 1.6;
-  color: var(--text-secondary, #555);
+  line-height: 1.55;
+  color: var(--text-secondary);
 }
 
 .daily-lesson__formula,
 .daily-lesson__example {
   font-size: 12px;
   line-height: 1.5;
-  color: var(--text-secondary, #555);
-  margin-top: 8px;
+  color: var(--text-secondary);
+  margin-top: var(--space-2);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: baseline;
 }
 
 .daily-lesson__caption {
-  display: inline-block;
-  margin-right: 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   font-weight: 600;
-  color: var(--color-primary, #4096ff);
+  color: var(--accent);
 }
 
 .daily-lesson__formula code {
-  background: rgba(0, 0, 0, 0.05);
+  background: var(--bg-surface);
   padding: 2px 6px;
-  border-radius: 3px;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
   font-size: 12px;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  color: var(--text-primary);
 }
 
+/* Right column: vertical button stack, capped to ~180px so it doesn't
+   dominate the row on wide viewports. */
 .daily-lesson__actions {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 8px;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 160px;
 }
 
-.daily-lesson__hint {
-  font-size: 12px;
-  color: var(--text-tertiary, #888);
+@media (max-width: 719px) {
+  .daily-lesson__actions {
+    min-width: 0;
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+  .daily-lesson__actions .ant-btn {
+    flex: 1 1 auto;
+  }
 }
 
 /* M19 P1: Dashboard "本周已学 N 个术语" badge inside the daily-lesson
@@ -7093,34 +7385,26 @@ main {
   }
 }
 
-/* DailyLesson (K15) — keep title row flexible on narrow screens. */
+/* DailyLesson (K15 + Phase 2) — narrow-screen tuning. The 2-col body
+   collapses to a single column under 720px via the .daily-lesson__body
+   media query in the main block above; this section tightens padding
+   and trims title font sizes for very small viewports. */
 .daily-lesson {
-  /* ensure value-row above stays inside card */
   min-width: 0;
 }
 
 @media (max-width: 575px) {
   .daily-lesson {
-    padding: var(--space-3, 12px);
+    padding: var(--space-3);
   }
   .daily-lesson__title {
-    font-size: 13px;
+    font-size: 12px;
   }
   .daily-lesson__heading-title {
-    font-size: 16px;
-  }
-  .daily-lesson__actions {
-    flex-direction: column;
-    align-items: stretch;
-  }
-  .daily-lesson__actions .ant-space {
-    width: 100%;
-  }
-  .daily-lesson__actions .ant-btn {
-    flex: 1 1 auto;
+    font-size: 15px;
   }
   .daily-lesson__hint {
-    text-align: right;
+    font-size: 11px;
   }
 }
 

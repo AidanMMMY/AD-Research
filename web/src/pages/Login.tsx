@@ -83,6 +83,26 @@ export default function Login() {
               onChange={(e) => setForm({ ...form, username: e.target.value })}
               onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
               className="login-input"
+              // Disable browser + password-manager autofill highlight.
+              // The yellow/blue tint is also suppressed in global.css via
+              // `:-webkit-autofill`, but these attributes tell the manager
+              // not to surface saved credentials here at all. The username
+              // and password fields share the same suppress list because
+              // saved credentials almost always come as a pair.
+              autoComplete="off"
+              spellCheck={false}
+              autoCorrect="off"
+              autoCapitalize="off"
+              inputMode="text"
+              data-form-type="other"
+              data-1p-ignore
+              data-bwignore
+              data-kp-ignore
+              data-lpignore="true"
+              data-dashlane-ignore
+              name="login-username-no-autofill"
+              id="login-username"
+              aria-autocomplete="none"
             />
           </div>
 
@@ -96,6 +116,26 @@ export default function Login() {
               onChange={(e) => setForm({ ...form, password: e.target.value })}
               onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
               className="login-input"
+              // `new-password` is the strongest standard signal Chrome 80+
+              // honours — it tells the browser this is a brand-new credential
+              // (not an existing one it should pre-fill). Combined with
+              // `data-form-type="other"` (Dashlane), `data-1p-ignore`,
+              // `data-bwignore`, `data-kp-ignore`, `data-lpignore` we cover
+              // every major password manager. The autofill background tint
+              // is suppressed in global.css regardless.
+              autoComplete="new-password"
+              spellCheck={false}
+              autoCorrect="off"
+              autoCapitalize="off"
+              data-form-type="other"
+              data-1p-ignore
+              data-bwignore
+              data-kp-ignore
+              data-lpignore="true"
+              data-dashlane-ignore
+              name="login-password-no-autofill"
+              id="login-password"
+              aria-autocomplete="none"
             />
           </div>
 

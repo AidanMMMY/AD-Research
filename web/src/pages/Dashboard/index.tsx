@@ -18,7 +18,7 @@ import {
   ThunderboltOutlined,
   PartitionOutlined,
 } from '@ant-design/icons';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { useScores } from '@/hooks/useScores';
 import { useFavorites } from '@/hooks/useFavorites';
 import { usePoolList } from '@/hooks/usePoolDetail';
@@ -119,25 +119,43 @@ function NewsRow({
 }
 
 /**
- * Top-of-dashboard "全球速览" — pulls 4 headline overseas indicators
- * from the Macro API (FRED-backed):
- *   - 美 10Y Treasury yield  (us_dgs10)
- *   - VIX 恐慌指数           (us_vix)
- *   - 美元指数(广义)         (global_dxy)
- *   - 布伦特原油            (global_brent)
+ * Top-of-dashboard "全球速览" — pulls headline overseas indicators
+ * from the Macro API (FRED + yfinance + akshare).
  *
- * Backed by the same MacroIndicator rows written by FredService; the
- * section degrades gracefully when no data has been ingested yet.
+ * Coverage (Phase 2, 2026-07-07): FRED for US rates / VIX / DXY /
+ * Brent / WTI / SP500; yfinance for Hang Seng, Nikkei, DAX, FTSE,
+ * CAC, ASX, KOSPI, NIFTY; akshare for SHCOMP / SZC. All codes are
+ * resolved via ``useMacroLatest('us' | 'global')`` so the same
+ * ingestion rows power the Global Markets page.
+ *
+ * The ResponsiveGrid is 8-tile wide on lg / 4 on md — the row is split
+ * across two lines so it stays readable on tablet portrait. Tiles
+ * gracefully render `--` when a particular code has no fresh data
+ * (e.g. yfinance fetch failed overnight).
  */
 const GLOBAL_TILES: Array<{
   code: string;
   title: string;
   unit: string;
 }> = [
+  // ── US rates / vol (FRED) ──
   { code: 'us_dgs10', title: '美 10Y 国债', unit: '%' },
-  { code: 'us_vix', title: 'VIX 恐慌指数', unit: '' },
-  { code: 'global_dxy', title: '美元指数(广义)', unit: '' },
+  { code: 'us_vix', title: 'VIX 恐慌', unit: '' },
+  // ── FX (FRED) ──
+  { code: 'global_dxy', title: '美元指数', unit: '' },
+  { code: 'usd_cny', title: '美元/人民币', unit: 'CNY/USD' },
+  // ── Commodities (FRED) ──
   { code: 'global_brent', title: '布伦特原油', unit: 'USD/桶' },
+  { code: 'global_wti', title: 'WTI 原油', unit: 'USD/桶' },
+  // ── US indices (FRED) ──
+  { code: 'global_sp500', title: '标普 500', unit: '' },
+  { code: 'global_ndx', title: '纳斯达克 100', unit: '' },
+  // ── Asia (yfinance + akshare) ──
+  { code: 'global_hsi', title: '恒生指数', unit: '' },
+  { code: 'global_n225', title: '日经 225', unit: '' },
+  { code: 'global_shcomp', title: '上证综指', unit: '' },
+  // ── Europe (yfinance) ──
+  { code: 'global_dax', title: 'DAX (德国)', unit: '' },
 ];
 
 function formatTileValue(v: number | null | undefined, unit: string): string {
@@ -247,6 +265,73 @@ function GlobalSnapshot() {
   );
 }
 
+/**
+ * Hook: bundle the 4 dashboard KPI counters into per-metric queries.
+ *
+ * Each call hits ``/stats/overview/{metric}`` (a single COUNT / MAX
+ * aggregate scoped to that field) so the 4 cards render in parallel and
+ * don't block on each other. ``placeholderData: keepPreviousData``
+ * keeps stale values visible across route changes, and ``isPending``
+ * (i.e. no value yet, no cached placeholder) drives ``isLoading`` so
+ * the StatCard skeleton still appears on a cold first paint.
+ *
+ * Returns one cell per metric plus the most-recent dataUpdatedAt (used
+ * by the DataFreshnessHint). When the user navigates away and back,
+ * ``updatedAt`` reflects whichever query most recently refetched —
+ * close enough for "data is fresh as of N seconds ago".
+ */
+function useDashboardStatsKpis() {
+  const sharedOptions = {
+    staleTime: 30_000,
+    placeholderData: keepPreviousData,
+    refetchOnWindowFocus: false,
+  } as const;
+
+  const etf = useQuery({
+    queryKey: ['stats-overview', 'etf-count'],
+    queryFn: () => statsApi.metric('etf-count'),
+    ...sharedOptions,
+  });
+  const score = useQuery({
+    queryKey: ['stats-overview', 'score-count'],
+    queryFn: () => statsApi.metric('score-count'),
+    ...sharedOptions,
+  });
+  const category = useQuery({
+    queryKey: ['stats-overview', 'category-count'],
+    queryFn: () => statsApi.metric('category-count'),
+    ...sharedOptions,
+  });
+  const template = useQuery({
+    queryKey: ['stats-overview', 'template-count'],
+    queryFn: () => statsApi.metric('template-count'),
+    ...sharedOptions,
+  });
+
+  const cell = (q: { data: number | undefined; isPending: boolean }) => ({
+    value: q.data ?? 0,
+    isLoading: q.isPending && q.data == null,
+  });
+
+  return {
+    'etf-count': cell(etf),
+    'score-count': cell(score),
+    'category-count': cell(category),
+    'template-count': cell(template),
+    etf: etf.data ?? 0,
+    score: score.data ?? 0,
+    category: category.data ?? 0,
+    template: template.data ?? 0,
+    updatedAt:
+      Math.max(
+        etf.dataUpdatedAt ?? 0,
+        score.dataUpdatedAt ?? 0,
+        category.dataUpdatedAt ?? 0,
+        template.dataUpdatedAt ?? 0,
+      ) || undefined,
+  };
+}
+
 export default function Dashboard() {
   const navigate = useNavigate();
   const mode = useSettingsStore((s) => s.mode);
@@ -254,11 +339,19 @@ export default function Dashboard() {
   const { data: scoresData } = useScores({ limit: 10 });
   const { favorites, count: favCount, isLoading: favLoading } = useFavorites(10);
   const { data: pools, isLoading: poolsLoading } = usePoolList();
-  const { data: stats, isLoading: statsLoading, dataUpdatedAt: statsUpdatedAt } = useQuery({
-    queryKey: ['stats-overview'],
-    queryFn: () => statsApi.overview().then((r) => r.data),
-    staleTime: 60_000,
-  });
+  // Dashboard 4 KPI tiles — each card fires its own per-metric query so
+  // the four numbers render in parallel as soon as each one lands, instead
+  // of waiting for a single bundled round-trip to finish. Each query
+  // keeps its previous value via ``placeholderData: keepPreviousData``
+  // so navigating away and back never shows a blank skeleton when the
+  // cache is warm. Cold first paint shows 4 individual skeletons for
+  // ~100-300 ms before numbers stream in.
+  //   - staleTime: 30s — counts are slow-movers but for a daily-use
+  //     dashboard we want to pick up an overnight ingest within ~30s
+  //     without hammering the API on every focus change.
+  //   - refetchOnWindowFocus: false — KPI counts don't change that fast;
+  //     keeps the focus handler cheap.
+  const statsKpis = useDashboardStatsKpis();
 
   // Hot news: importance >= 4, latest 6.
   const { data: hotNews, isLoading: hotNewsLoading } = useQuery({
@@ -309,7 +402,8 @@ export default function Dashboard() {
   // MarketStream supersedes the price stream for the live tickers: it
   // surfaces timestamps and the upstream connection state, so the four
   // dashboard cards can show "updated 3s ago" hints.
-  const { latest: marketLatest, isConnected: marketConnected } = useMarketStream(INDEX_CODES);
+  const { latest: marketLatest, isConnected: marketConnected, reconnect: marketReconnect } =
+    useMarketStream(INDEX_CODES);
 
   const scoreColumns = [
     {
@@ -373,7 +467,7 @@ export default function Dashboard() {
           <span>
             综合评分 · 收藏 · 标的池概览 · {new Date().toISOString().slice(0, 10)}
             {' · '}
-            <DataFreshnessHint at={statsUpdatedAt} />
+            <DataFreshnessHint at={statsKpis.updatedAt} />
           </span>
         }
         extra={
@@ -395,42 +489,88 @@ export default function Dashboard() {
         }
       />
 
-      {/* KPI strip — 4 StatCards */}
+      {/* KPI strip — 4 StatCards. Each card binds to its own per-metric
+         query so numbers stream in independently (Phase 2, 2026-07-07). */}
       <section className="dashboard-section">
         <SectionHeading title="核心指标" />
         <ResponsiveGrid cols={4} gap="md">
           {[
-            { title: '标的总数', value: stats?.etf_count ?? 0, suffix: undefined, onClick: () => navigate('/instruments'), term: 'etf' },
-            { title: '评分覆盖', value: stats?.score_count ?? 0, suffix: `/ ${stats?.etf_count ?? 0}`, onClick: () => navigate('/scores'), term: 'composite_score' },
-            { title: '分类数', value: stats?.category_count ?? 0, suffix: undefined, onClick: undefined, term: 'rank_category' },
-            { title: '评分模板', value: stats?.template_count ?? 0, suffix: undefined, onClick: () => navigate('/scores'), term: 'strategy_template' },
-          ].map((item) => (
-            <StatCard
-              key={item.title}
-              title={item.title}
-              value={item.value}
-              suffix={item.suffix}
-              loading={statsLoading}
-              onClick={item.onClick}
-              term={item.term}
-            />
-          ))}
+            {
+              title: '标的总数',
+              metric: 'etf-count' as const,
+              suffix: undefined,
+              onClick: () => navigate('/instruments'),
+              term: 'etf',
+            },
+            {
+              title: '评分覆盖',
+              metric: 'score-count' as const,
+              suffix: statsKpis.etf > 0 ? `/ ${statsKpis.etf}` : undefined,
+              onClick: () => navigate('/scores'),
+              term: 'composite_score',
+            },
+            {
+              title: '分类数',
+              metric: 'category-count' as const,
+              suffix: undefined,
+              onClick: undefined,
+              term: 'rank_category',
+            },
+            {
+              title: '评分模板',
+              metric: 'template-count' as const,
+              suffix: undefined,
+              onClick: () => navigate('/scores'),
+              term: 'strategy_template',
+            },
+          ].map((item) => {
+            const cell = statsKpis[item.metric];
+            return (
+              <StatCard
+                key={item.title}
+                title={item.title}
+                value={cell.value}
+                suffix={item.suffix}
+                loading={cell.isLoading}
+                onClick={item.onClick}
+                term={item.term}
+              />
+            );
+          })}
         </ResponsiveGrid>
       </section>
 
       {/* Daily lesson — full width row, kept simple */}
+      {/* Daily lesson — full width row.
+         Phase 2 (2026-07-05): DailyLesson carries its own card surface
+         (lighter glass + --radius-lg) so we no longer nest it inside a
+         Panel — eliminates the previous double-box visual. */}
       <section className="dashboard-section">
         <SectionHeading title="今日一课" />
-        <Panel variant="default" padding="md">
-          <DailyLesson />
-        </Panel>
+        <DailyLesson />
       </section>
 
       {/* ── Global markets snapshot (P0: 2026-07-04) ─────────────────── */}
       <GlobalSnapshot />
 
       <section className="dashboard-section">
-        <SectionHeading title="实时行情" />
+        <SectionHeading
+          title="实时行情"
+          action={
+            !marketConnected ? (
+              <span className="market-conn">
+                <span className="market-conn__pill">连接中断</span>
+                <button
+                  type="button"
+                  className="market-conn__retry"
+                  onClick={marketReconnect}
+                >
+                  重新连接
+                </button>
+              </span>
+            ) : undefined
+          }
+        />
         <ResponsiveGrid cols={4} gap="md">
           {INDEX_CODES.map((code, i) => {
             const tick = marketLatest[code] ?? (prices[code]

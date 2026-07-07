@@ -57,14 +57,20 @@ export default function Screen() {
   const { data: scoreTemplates } = useScoreTemplates();
 
   // Clear the selected category if it is not available in the current market.
+  // Depend on filters.market so the effect re-evaluates when market changes,
+  // even before the new categories query resolves.
   useEffect(() => {
-    if (filters.category && categories) {
-      const available = categories.some((c: any) => c.category === filters.category);
-      if (!available) {
-        setFilter('category', undefined);
-      }
+    if (!filters.category || !categories) return;
+    const available = categories.some((c: any) => c.category === filters.category);
+    if (!available) {
+      setFilter('category', undefined);
     }
-  }, [categories, filters.category, setFilter]);
+  }, [categories, filters.category, filters.market, setFilter]);
+
+  // Compute whether the category dropdown should be disabled.
+  // A market may legitimately have zero ETFs in any category — disable the select
+  // and show an explanatory hint instead of presenting an empty list.
+  const categoryDisabled = !!(filters.market && categories && categories.length === 0);
 
   const handleOpenHelp = () => {
     open({
@@ -164,10 +170,16 @@ export default function Screen() {
                   </Col>
                   <Col xs={12} sm={8} md={6}>
                     <Select
-                      placeholder="分类"
+                      placeholder={categoryDisabled ? '该市场暂无分类' : '分类'}
                       allowClear
                       className="ad-w-full"
                       value={filters.category}
+                      disabled={categoryDisabled}
+                      notFoundContent={
+                        filters.market
+                          ? `当前市场（${MARKET_LABELS[filters.market] || filters.market}）下无分类数据`
+                          : '暂无可用分类'
+                      }
                       options={categories?.map((c: any) => ({ label: `${c.category} (${c.count})`, value: c.category }))}
                       onChange={(v) => setFilter('category', v)}
                     />
