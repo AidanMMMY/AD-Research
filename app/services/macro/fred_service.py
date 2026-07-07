@@ -113,10 +113,26 @@ SERIES_REGISTRY: list[FredSeriesMeta] = [
 # backward compatibility for the existing Macro page.
 # ---------------------------------------------------------------------------
 _GLOBAL_SERIES: list[FredSeriesMeta] = [
-    # ── Cross-border Index ──
+    # ── US Index ──
     FredSeriesMeta("SP500",            "global_sp500",  "标普500指数",    "S&P 500",                  "指数",   "指数"),
     FredSeriesMeta("NASDAQCOM",        "global_nasdaq", "纳斯达克综合指数", "NASDAQ Composite",         "指数",   "指数"),
+    FredSeriesMeta("NDX",              "global_ndx",    "纳斯达克100指数", "NASDAQ-100 (NDX)",         "指数",   "指数"),
     FredSeriesMeta("DJIA",             "global_dow",    "道琼斯工业指数",  "Dow Jones Industrial Average", "指数", "指数"),
+    FredSeriesMeta("DJTA",             "global_djt",    "道琼斯运输指数",  "Dow Jones Transportation Average", "指数", "指数"),
+    FredSeriesMeta("RU2000PR",         "global_rut",    "罗素2000指数",   "Russell 2000",             "指数",   "指数"),
+    # ── Europe Index (Phase 2, 2026-07-07: Global Markets expansion) ──
+    FredSeriesMeta("FTSE",             "global_ftse",   "富时100指数",    "FTSE 100 (UK)",            "指数",   "指数"),
+    FredSeriesMeta("DAX",              "global_dax",    "DAX指数 (德国)", "DAX (Germany)",            "指数",   "指数"),
+    FredSeriesMeta("FCHI",             "global_cac",    "CAC 40 (法国)",  "CAC 40 (France)",          "指数",   "指数"),
+    # ── Asia-Pacific Index ──
+    FredSeriesMeta("NIKKEI225",        "global_n225",   "日经225指数",    "Nikkei 225 (Japan)",       "指数",   "指数"),
+    FredSeriesMeta("HKEINGS",          "global_hsi",    "恒生指数",       "Hang Seng Index (HK)",     "指数",   "指数"),
+    FredSeriesMeta("KS11",             "global_kospi",  "KOSPI 综指 (韩国)", "KOSPI Composite",       "指数",   "指数"),
+    FredSeriesMeta("SHCOMP",           "global_shcomp", "上证综指",       "Shanghai Composite",        "指数",   "指数"),
+    FredSeriesMeta("SZ399001",         "global_szcomp", "深证成指",       "Shenzhen Component",        "指数",   "指数"),
+    FredSeriesMeta("AS51",             "global_asx",    "ASX 200 (澳洲)", "S&P/ASX 200 (Australia)",   "指数",   "指数"),
+    # ── Emerging Market Index ──
+    FredSeriesMeta("NIFTY",            "global_nifty",  "印度 NIFTY 50",   "NIFTY 50 (India)",         "指数",   "指数"),
     # ── FX (broad USD) ──
     FredSeriesMeta("DTWEXBGS",         "global_dxy",    "美元指数(广义)",  "Broad U.S. Dollar Index",  "指数",   "外汇"),
     FredSeriesMeta("DEXJPUS",          "global_usdjpy", "美元/日元",      "USD/JPY",                  "JPY/USD","外汇"),

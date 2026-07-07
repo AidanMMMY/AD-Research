@@ -535,6 +535,27 @@ class CninfoReportService:
                 )
             except ValueError:
                 announcement_time = datetime.utcnow()
+        elif isinstance(announcement_time, (int, float)):
+            # cninfo returns epoch MILLISECONDS as a number.  0 / very
+            # small values are treated as missing — fall back to now().
+            try:
+                ts = float(announcement_time)
+                if ts > 0:
+                    # Heuristic: > 1e12 implies milliseconds; otherwise
+                    # treat as seconds.
+                    if ts > 1e12:
+                        ts = ts / 1000.0
+                    announcement_time = datetime.fromtimestamp(ts)
+                else:
+                    announcement_time = datetime.utcnow()
+            except (OverflowError, OSError, ValueError):
+                announcement_time = datetime.utcnow()
+        # Naive datetimes are tagged UTC for the column's tz-aware type.
+        if (
+            isinstance(announcement_time, datetime)
+            and announcement_time.tzinfo is None
+        ):
+            announcement_time = announcement_time.replace(tzinfo=None)
 
         fiscal_year = None
         try:
@@ -577,9 +598,19 @@ class CninfoReportService:
                 "updated_at": func.now(),
             },
         )
-        self.db.execute(stmt)
-        self.db.commit()
-        return 1
+        try:
+            self.db.execute(stmt)
+            self.db.commit()
+            return 1
+        except Exception:
+            # PG aborts the transaction on the first error; without this
+            # rollback every subsequent insert is doomed with
+            # ``InFailedSqlTransaction``.
+            try:
+                self.db.rollback()
+            except Exception:  # pragma: no cover - defensive
+                pass
+            raise
 
 
 # ---------------------------------------------------------------------------

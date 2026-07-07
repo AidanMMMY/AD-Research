@@ -11,6 +11,14 @@ on the upstream version) — each item carries the upstream
 ``announcementId``, ``announcementTitle``, ``adjunctUrl`` and a few other
 metadata fields.
 
+As of 2026 the upstream filter behaviour changed: passing
+``stock=<orgId>`` together with a ``category_*_szsh`` filter now returns
+an empty array, but ``stock=""`` + ``secid=<orgId>`` still works for
+every exchange (SH / SZ / BSE).  We use the latter form here.  The
+``column`` parameter (``sse``/``szse``/``bse``) is now effectively
+ignored when ``secid`` is supplied, so we still cycle through all three
+for safety against future cninfo changes.
+
 CNINFO rate-limiting is undocumented; in practice the site tolerates a
 small burst but will start returning HTTP 503 once you cross ~30 req/min.
 We sleep ~2s between calls and retry once on 429/503.
@@ -138,8 +146,11 @@ class CninfoProvider:
         for column in ("sse", "szse", "bse"):
             page_num = 1
             while page_num <= max_pages:
+                # cninfo's ``stock=<orgId>`` + category_*_szsh combo now
+                # returns 0 results; using ``secid=<orgId>`` with empty
+                # ``stock`` still works and is exchange-agnostic.
                 payload = {
-                    "stock": org_id,
+                    "stock": "",
                     "tabName": "fulltext",
                     "pageSize": str(page_size),
                     "pageNum": str(page_num),
@@ -148,7 +159,7 @@ class CninfoProvider:
                     "plate": "",
                     "seDate": se_date,
                     "searchkey": "",
-                    "secid": "",
+                    "secid": org_id,
                     "sortName": "",
                     "sortType": "",
                     "isHLtitle": "true",
