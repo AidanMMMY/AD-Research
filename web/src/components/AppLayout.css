@@ -172,3 +172,146 @@
     transition: none !important;
   }
 }
+
+/* ============================================================
+   Screen page — filter panel layout (2026-07-06)
+   ------------------------------------------------------------
+   Quick presets sit in their own section above the detailed
+   filters. Detailed filters are grouped semantically inside
+   FilterToolbar. All spacing / colors / radii use tokens.
+   ============================================================ */
+
+.screen-filter-section {
+  margin-bottom: var(--space-4);
+}
+
+.screen-filter-section__header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  margin-bottom: var(--space-3);
+}
+
+.screen-filter-section__title {
+  font-size: var(--text-small-size);
+  font-weight: 500;
+  color: var(--text-tertiary);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.screen-filter-section__hint {
+  font-size: var(--text-small-size);
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.screen-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.screen-presets .ad-status-chip {
+  flex-shrink: 0;
+}
+
+.screen-filter-groups {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.screen-filter-group + .screen-filter-group {
+  border-top: 1px solid var(--border-default);
+  padding-top: var(--space-4);
+}
+
+.screen-filter-group__title {
+  font-size: var(--text-small-size);
+  font-weight: 500;
+  color: var(--text-tertiary);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  margin-bottom: var(--space-3);
+  white-space: nowrap;
+}
+
+@media (max-width: 767px) {
+  .screen-filter-section__header {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: var(--space-1);
+  }
+
+  .screen-filter-section__hint,
+  .screen-filter-section__title,
+  .screen-filter-group__title {
+    white-space: normal;
+  }
+
+  .screen-presets {
+    gap: var(--space-2);
+  }
+
+  .screen-filter-groups {
+    gap: var(--space-3);
+  }
+
+  .screen-filter-group + .screen-filter-group {
+    padding-top: var(--space-3);
+  }
+}
+
+/* ============================================================
+   InstrumentList — filter toolbar groups (2026-07-07)
+   ------------------------------------------------------------
+   Mirrors the .screen-filter-group pattern but is local to
+   the instrument list page. Three semantic groups:
+
+     1. 搜索 / 平台覆盖 — search + market coverage
+     2. 类型与分类        — asset class + classification
+     3. 状态与规模        — lifecycle + size
+
+   All spacing / colors / radii use tokens; the dividers reuse
+   the same hairline style as .screen-filter-group.
+   ============================================================ */
+
+.instrument-filter-groups {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  width: 100%;
+}
+
+.instrument-filter-group + .instrument-filter-group {
+  border-top: 1px solid var(--border-default);
+  padding-top: var(--space-4);
+}
+
+.instrument-filter-group__title {
+  font-size: var(--text-small-size);
+  font-weight: 500;
+  color: var(--text-tertiary);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  margin-bottom: var(--space-3);
+  white-space: nowrap;
+}
+
+@media (max-width: 767px) {
+  .instrument-filter-group__title {
+    white-space: normal;
+  }
+
+  .instrument-filter-groups {
+    gap: var(--space-3);
+  }
+
+  .instrument-filter-group + .instrument-filter-group {
+    padding-top: var(--space-3);
+  }
+}

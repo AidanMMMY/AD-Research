@@ -1,4 +1,5 @@
 import contextlib
+import re
 import threading
 import time
 import warnings
@@ -6,6 +7,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import date
 
 import akshare as ak
+import numpy as np
 import pandas as pd
 
 from app.core.exceptions import DataProviderError
@@ -161,19 +163,26 @@ class AkshareProvider(DataProvider):
     def _fetch_daily_bars_em(
         self, code: str, pure_code: str, start_date: date, end_date: date
     ) -> pd.DataFrame:
-        """使用东方财富接口获取日线数据."""
+        """使用东方财富接口获取 ETF 日线数据（原始价 + 前复权价）.
+
+        同时拉取未复权行情（adjust=""）与前复权行情（adjust="qfq"），
+        计算 ``adj_factor = adj_close / raw_close``。返回的 DataFrame
+        使用原始 OHLCV（真实交易价）并附加 ``adj_factor`` 列，以兼容
+        下游指标计算与现有 API 契约。
+        """
         start_str = start_date.strftime("%Y%m%d")
         end_str = end_date.strftime("%Y%m%d")
-        df = ak.fund_etf_hist_em(
+
+        # 1) 未复权行情：真实交易价
+        df_raw = ak.fund_etf_hist_em(
             symbol=pure_code,
             period="daily",
             start_date=start_str,
             end_date=end_str,
-            adjust="qfq",
-            timeout=8,
+            adjust="",
         )
-        if df.empty:
-            return df
+        if df_raw.empty:
+            return df_raw
 
         # 中文列名 -> 英文列名
         rename_map = {
@@ -189,14 +198,50 @@ class AkshareProvider(DataProvider):
             "涨跌额": "change_amount",
             "换手率": "turnover_rate",
         }
-        df = df.rename(columns=rename_map)
-        df["etf_code"] = code
-        if "trade_date" in df.columns:
-            df["trade_date"] = pd.to_datetime(df["trade_date"]).dt.date
-        numeric_cols = ["open", "high", "low", "close", "volume", "amount", "change_pct", "turnover_rate"]
+        df_raw = df_raw.rename(columns=rename_map)
+        df_raw["etf_code"] = code
+        if "trade_date" in df_raw.columns:
+            df_raw["trade_date"] = pd.to_datetime(df_raw["trade_date"]).dt.date
+
+        numeric_cols = [
+            "open", "high", "low", "close", "volume", "amount",
+            "change_pct", "turnover_rate",
+        ]
         for col in numeric_cols:
-            if col in df.columns:
-                df[col] = pd.to_numeric(df[col], errors="coerce")
+            if col in df_raw.columns:
+                df_raw[col] = pd.to_numeric(df_raw[col], errors="coerce")
+
+        # 2) 前复权行情：用于推导复权因子
+        time.sleep(_API_DELAY)
+        df_adj = ak.fund_etf_hist_em(
+            symbol=pure_code,
+            period="daily",
+            start_date=start_str,
+            end_date=end_str,
+            adjust="qfq",
+        )
+        if df_adj.empty or "收盘" not in df_adj.columns:
+            # 前复权缺失时保持原始行情，adj_factor 保持为空，由调用方决定缺省值
+            df_raw["adj_factor"] = pd.NA
+            return df_raw
+
+        df_adj = df_adj.rename(columns={"日期": "trade_date", "收盘": "adj_close"})
+        if "trade_date" in df_adj.columns:
+            df_adj["trade_date"] = pd.to_datetime(df_adj["trade_date"]).dt.date
+        df_adj["adj_close"] = pd.to_numeric(df_adj["adj_close"], errors="coerce")
+        df_adj = df_adj[["trade_date", "adj_close"]]
+
+        df = df_raw.merge(df_adj, on="trade_date", how="left")
+        raw_close = pd.to_numeric(df["close"], errors="coerce")
+        adj_close = pd.to_numeric(df["adj_close"], errors="coerce")
+        with np.errstate(invalid="ignore", divide="ignore"):
+            df["adj_factor"] = np.where(
+                (raw_close.notna()) & (raw_close != 0) & (adj_close.notna()),
+                adj_close / raw_close,
+                pd.NA,
+            )
+        df = df.drop(columns=["adj_close"])
+
         return df
 
     def _fetch_daily_bars_sina(
@@ -222,6 +267,7 @@ class AkshareProvider(DataProvider):
         else:
             df["change_pct"] = pd.NA
         df["turnover_rate"] = pd.NA
+        df["adj_factor"] = 1.0
 
         # 过滤日期范围
         df = df[(df["trade_date"] >= start_date) & (df["trade_date"] <= end_date)].copy()
@@ -292,7 +338,7 @@ class AkshareProvider(DataProvider):
         在提升性能的同时避免触发平台限流.
 
         返回 DataFrame 列：etf_code, trade_date, open, high, low, close,
-                          volume, amount, change_pct, turnover_rate
+                          volume, amount, change_pct, turnover_rate, adj_factor
         """
         all_frames: list[pd.DataFrame] = []
 
@@ -323,7 +369,7 @@ class AkshareProvider(DataProvider):
         # 统一列顺序
         ordered_cols = [
             "etf_code", "trade_date", "open", "high", "low", "close",
-            "volume", "amount", "change_pct", "turnover_rate",
+            "volume", "amount", "change_pct", "turnover_rate", "adj_factor",
         ]
         existing_cols = [c for c in ordered_cols if c in result.columns]
         result = result[existing_cols]
@@ -345,6 +391,102 @@ class AkshareProvider(DataProvider):
         )
         mask = df["完整代码"].isin(codes)
         return df[mask].copy()
+
+    def fetch_etf_holdings(self, code: str) -> pd.DataFrame:
+        """Fetch top-10 ETF holdings for the latest quarter from Akshare.
+
+        Uses ``ak.fund_portfolio_hold_em(symbol, date="YYYY")`` for the
+        current and previous year, selects the most recent report quarter,
+        and returns the top 10 holdings by market value.
+
+        Returns DataFrame columns:
+          etf_code, holding_code, holding_name, weight, shares,
+          market_value, holdings_as_of_date
+        """
+        pure_symbol = code.split(".")[0]
+        current_year = date.today().year
+        all_frames: list[pd.DataFrame] = []
+
+        for year in (current_year, current_year - 1):
+            try:
+                self._limiter.acquire()
+                df = ak.fund_portfolio_hold_em(symbol=pure_symbol, date=str(year))
+            except Exception as exc:
+                print(f"[AkshareProvider] fetch_etf_holdings({code}, {year}) failed: {exc}")
+                continue
+
+            if df is None or df.empty:
+                continue
+
+            all_frames.append(df)
+
+        if not all_frames:
+            return pd.DataFrame()
+
+        combined = pd.concat(all_frames, ignore_index=True)
+
+        quarter_re = re.compile(r"(\d{4})年(\d)季度")
+        quarter_end_map = {1: "03-31", 2: "06-30", 3: "09-30", 4: "12-31"}
+
+        def _parse_report_date(value) -> date | None:
+            if value is None:
+                return None
+            match = quarter_re.search(str(value))
+            if not match:
+                return None
+            year_str, quarter_str = match.groups()
+            quarter = int(quarter_str)
+            end_str = quarter_end_map.get(quarter)
+            if end_str is None:
+                return None
+            try:
+                return date.fromisoformat(f"{year_str}-{end_str}")
+            except ValueError:
+                return None
+
+        if "季度" not in combined.columns:
+            return pd.DataFrame()
+
+        combined["_report_date"] = combined["季度"].apply(_parse_report_date)
+        combined = combined.dropna(subset=["_report_date"])
+        if combined.empty:
+            return pd.DataFrame()
+
+        max_report_date = combined["_report_date"].max()
+        latest = combined[combined["_report_date"] == max_report_date].copy()
+
+        rename_map = {
+            "股票代码": "holding_code",
+            "股票名称": "holding_name",
+            "占净值比例": "weight_pct",
+            "持股数": "shares",
+            "持仓市值": "market_value",
+        }
+        latest = latest.rename(columns=rename_map)
+
+        for col in ("weight_pct", "shares", "market_value"):
+            if col in latest.columns:
+                latest[col] = pd.to_numeric(latest[col], errors="coerce")
+
+        if "weight_pct" in latest.columns:
+            latest["weight"] = latest["weight_pct"] / 100.0
+
+        latest = latest.dropna(subset=["market_value"])
+        latest = latest.sort_values("market_value", ascending=False).head(10)
+
+        latest["etf_code"] = code
+        latest["holdings_as_of_date"] = max_report_date
+
+        out_cols = [
+            "etf_code",
+            "holding_code",
+            "holding_name",
+            "weight",
+            "shares",
+            "market_value",
+            "holdings_as_of_date",
+        ]
+        return latest[[c for c in out_cols if c in latest.columns]].copy()
 
     def get_market_hours(self, code: str | None = None) -> MarketHours:
         return MarketHours(

@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import {
-  Table, Input, Select, Button, Space, Tag, Skeleton, message,
+  Table, Input, Select, Button, Space, Tag, Skeleton, Row, Col, message,
 } from 'antd';
 import { ReloadOutlined, SearchOutlined, FileTextOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
@@ -33,6 +33,7 @@ export default function SECFilingsPage() {
   const [ticker, setTicker] = useState<string | undefined>();
   const [formType, setFormType] = useState<string | undefined>();
   const [searchText, setSearchText] = useState<string>('');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'success' | 'failed'>('all');
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
   const debouncedTicker = useDebounce(ticker, 300);
@@ -78,6 +79,41 @@ export default function SECFilingsPage() {
       message.error(`同步失败: ${detail ?? '未知错误'}`);
     }
   };
+
+  const handleReset = () => {
+    setTicker(undefined);
+    setFormType(undefined);
+    setSearchText('');
+    setStatusFilter('all');
+    setPage(1);
+  };
+
+  // Counts per extraction status across the *currently filtered* page payload.
+  // Used by the status chip row so the user can see at a glance how many rows
+  // of each kind exist in the current result set.
+  const statusCounts = useMemo(() => {
+    const counts: Record<'all' | 'pending' | 'success' | 'failed', number> = {
+      all: 0,
+      pending: 0,
+      success: 0,
+      failed: 0,
+    };
+    const items = data?.items ?? [];
+    counts.all = items.length;
+    for (const item of items) {
+      const key = (item.extraction_status ?? '') as 'pending' | 'success' | 'failed';
+      if (key in counts) counts[key] += 1;
+    }
+    return counts;
+  }, [data?.items]);
+
+  // Client-side apply of the status filter; the server doesn't expose a
+  // status filter param for /sec-filings, so we narrow the result list here.
+  const visibleItems = useMemo(() => {
+    const items = data?.items ?? [];
+    if (statusFilter === 'all') return items;
+    return items.filter((it) => it.extraction_status === statusFilter);
+  }, [data?.items, statusFilter]);
 
   const columns: ColumnsType<SecFiling> = [
     {
@@ -186,33 +222,75 @@ export default function SECFilingsPage() {
       </ResponsiveGrid>
 
       <Panel variant="default" title="公告列表" className="ad-mt-5">
-        <FilterToolbar total={data?.total}>
-          <Input
-            placeholder="Ticker (如 AAPL)"
-            value={ticker ?? ''}
-            onChange={(e) => setTicker(e.target.value.toUpperCase() || undefined)}
-            className="ad-w-full"
-            allowClear
-          />
-          <Select
-            placeholder="Form 类型"
-            value={formType}
-            onChange={(v) => setFormType(v)}
-            allowClear
-            className="ad-w-full"
-            options={FORM_TYPES.map((f) => ({ value: f, label: f }))}
-          />
-          <Input
-            placeholder="搜索公司名 / Ticker"
-            value={searchText}
-            onChange={(e) => setSearchText(e.target.value)}
-            className="ad-w-full"
-            prefix={<SearchOutlined />}
-            allowClear
-          />
-          <Button onClick={handleSync} loading={syncMutation.isPending}>
-            同步当前 Ticker
-          </Button>
+        <div className="ad-mb-3 ad-flex ad-flex-wrap ad-gap-2">
+          {(['all', 'pending', 'success', 'failed'] as const).map((key) => {
+            const label =
+              key === 'all' ? '全部' : key === 'pending' ? '待提取' : key === 'success' ? '已提取' : '失败';
+            const active = statusFilter === key;
+            return (
+              <button
+                key={key}
+                type="button"
+                onClick={() => setStatusFilter(key)}
+                className={`ad-status-chip ${active ? 'ad-status-chip--active' : ''}`}
+                aria-pressed={active}
+              >
+                <Tag color={STATUS_COLORS[key] ?? 'default'} className="ad-detail-tag">
+                  {label}
+                </Tag>
+                <span className="tabular-nums">{statusCounts[key]}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        <FilterToolbar
+          total={data?.total}
+          extra={
+            <Space>
+              <Button onClick={handleReset}>重置</Button>
+              <Button
+                type="primary"
+                icon={<ReloadOutlined />}
+                onClick={handleSync}
+                loading={syncMutation.isPending}
+              >
+                同步当前 Ticker
+              </Button>
+            </Space>
+          }
+        >
+          <Row gutter={[12, 8]} style={{ width: '100%' }}>
+            <Col xs={24} sm={12} md={8} lg={6}>
+              <Input
+                placeholder="Ticker (如 AAPL)"
+                value={ticker ?? ''}
+                onChange={(e) => setTicker(e.target.value.toUpperCase() || undefined)}
+                className="ad-w-full"
+                allowClear
+              />
+            </Col>
+            <Col xs={24} sm={12} md={8} lg={6}>
+              <Select
+                placeholder="Form 类型"
+                value={formType}
+                onChange={(v) => setFormType(v)}
+                allowClear
+                className="ad-w-full"
+                options={FORM_TYPES.map((f) => ({ value: f, label: f }))}
+              />
+            </Col>
+            <Col xs={24} sm={12} md={8} lg={6}>
+              <Input
+                placeholder="搜索公司名 / Ticker"
+                value={searchText}
+                onChange={(e) => setSearchText(e.target.value)}
+                className="ad-w-full"
+                prefix={<SearchOutlined />}
+                allowClear
+              />
+            </Col>
+          </Row>
         </FilterToolbar>
 
         {isLoading ? (
@@ -227,7 +305,7 @@ export default function SECFilingsPage() {
           <div className="ad-density-dense ad-table-scroll ad-table-sticky">
             <Table
               rowKey="id"
-              dataSource={data.items}
+              dataSource={visibleItems}
               columns={columns}
               size="small"
               pagination={{

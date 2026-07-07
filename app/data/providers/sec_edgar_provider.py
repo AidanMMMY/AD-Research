@@ -46,8 +46,8 @@ logger = logging.getLogger(__name__)
 # ─── SEC policy constants ──────────────────────────────────────────────
 # SEC requires every request to carry a UA that identifies the requester.
 # Override via SEC_USER_AGENT in the environment when you have a real
-# production contact (e.g. "AD-Research ops@ad-research.example.com").
-DEFAULT_USER_AGENT = "AD-Research research@example.com"
+# production contact (e.g. "AlloyResearch ops@alloy-research.example.com").
+DEFAULT_USER_AGENT = "AlloyResearch research@example.com"
 
 # Submissions / facts endpoints live under data.sec.gov which has a
 # documented 10 req/sec limit.  0.11s pacing keeps us safely below that.

@@ -285,6 +285,30 @@ export default function InstrumentList() {
       },
     },
     {
+      title: '状态',
+      dataIndex: 'status',
+      width: 80,
+      render: (v: string) => {
+        const variantMap: Record<string, 'success' | 'warning' | 'error' | 'default'> = {
+          active: 'success',
+          listed: 'success',
+          suspended: 'warning',
+          delisted: 'error',
+        };
+        const labelMap: Record<string, string> = {
+          active: '上市',
+          listed: '上市',
+          suspended: '停牌',
+          delisted: '退市',
+        };
+        return (
+          <ThemeTag variant={variantMap[v] || 'default'}>
+            {labelMap[v] || v || '-'}
+          </ThemeTag>
+        );
+      },
+    },
+    {
       title: '管理公司',
       dataIndex: 'fund_manager',
       render: (v: string) => v ? (
@@ -350,150 +374,170 @@ export default function InstrumentList() {
       />
 
       <FilterToolbar total={`共 ${data?.total || 0} 只`}>
-        <Row gutter={[16, 12]} className="ad-flex-1">
-          <Col xs={24} sm={12} md={8} lg={6} xl={4}>
-            <Input
-              placeholder="搜索标的代码或名称"
-              allowClear
-              prefix={<SearchOutlined className="ad-icon-tertiary" />}
-              value={search}
-              onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-            />
-          </Col>
-          <Col xs={24} sm={12} md={8} lg={6} xl={4}>
-            <Select
-              placeholder="市场"
-              allowClear
-              options={markets?.map((m: string) => ({ label: m, value: m }))}
-              value={market}
-              onChange={(v) => { setMarket(v); setPage(1); }}
-            />
-          </Col>
-          <Col xs={24} sm={12} md={8} lg={6} xl={4}>
-            <Select
-              placeholder="类型"
-              allowClear
-              options={[
-                { label: 'ETF', value: 'ETF' },
-                { label: '个股', value: 'STOCK' },
-                { label: '数字货币', value: 'CRYPTO' },
-              ]}
-              value={instrumentType}
-              onChange={(v) => { setInstrumentType(v); setPage(1); }}
-            />
-          </Col>
-          <Col xs={24} sm={12} md={8} lg={6} xl={4}>
-            <Select
-              placeholder="分类"
-              allowClear
-              options={categories?.map((c: string) => ({ label: c, value: c }))}
-              value={category}
-              onChange={(v) => { setCategory(v); setPage(1); }}
-            />
-          </Col>
-          <Col xs={24} sm={12} md={8} lg={6} xl={4}>
-            <Select
-              placeholder="子分类"
-              allowClear
-              options={subCategories?.map((c: string) => ({ label: c, value: c }))}
-              value={subCategory}
-              onChange={(v) => { setSubCategory(v); setPage(1); }}
-            />
-          </Col>
-          <Col xs={24} sm={12} md={8} lg={6} xl={4}>
-            <Select
-              placeholder="板块"
-              allowClear
-              options={sectors?.map((c: string) => ({ label: c, value: c }))}
-              value={sector}
-              onChange={(v) => { setSector(v); setPage(1); }}
-            />
-          </Col>
-          <Col xs={24} sm={12} md={8} lg={6} xl={4}>
-            <Select
-              placeholder="行业"
-              allowClear
-              options={industries?.map((c: string) => ({ label: c, value: c }))}
-              value={industry}
-              onChange={(v) => { setIndustry(v); setPage(1); }}
-            />
-          </Col>
-          <Col xs={24} sm={12} md={8} lg={6} xl={4}>
-            <Select
-              placeholder="国家"
-              allowClear
-              options={countries?.map((c: string) => ({ label: c, value: c }))}
-              value={country}
-              onChange={(v) => { setCountry(v); setPage(1); }}
-            />
-          </Col>
-          <Col xs={24} sm={12} md={8} lg={6} xl={4}>
-            <Select
-              placeholder="管理公司"
-              allowClear
-              options={managers?.map((c: string) => ({ label: c, value: c }))}
-              value={manager}
-              onChange={(v) => { setManager(v); setPage(1); }}
-            />
-          </Col>
-          <Col xs={24} sm={12} md={8} lg={6} xl={4}>
-            <Select
-              placeholder="跟踪指数"
-              allowClear
-              options={underlyingIndices?.map((c: string) => ({ label: c, value: c }))}
-              value={underlyingIndex}
-              onChange={(v) => { setUnderlyingIndex(v); setPage(1); }}
-            />
-          </Col>
-          <Col xs={24} sm={12} md={8} lg={6} xl={4}>
-            <Select
-              placeholder="币种"
-              allowClear
-              options={currencies?.map((c: string) => ({ label: c, value: c }))}
-              value={currency}
-              onChange={(v) => { setCurrency(v); setPage(1); }}
-            />
-          </Col>
-          <Col xs={24} sm={12} md={8} lg={6} xl={4}>
-            <Select
-              placeholder="QDII"
-              allowClear
-              options={QDII_OPTIONS}
-              value={isQdii}
-              onChange={(v) => { setIsQdii(v); setPage(1); }}
-            />
-          </Col>
-          <Col xs={24} sm={12} md={8} lg={6} xl={4}>
-            <Select
-              placeholder="状态"
-              allowClear
-              options={STATUS_OPTIONS}
-              value={status}
-              onChange={(v) => { setStatus(v); setPage(1); }}
-            />
-          </Col>
-          <Col xs={24} sm={12} md={8} lg={6} xl={4}>
-            <InputNumber
-              placeholder="最小规模"
-              style={{ width: '100%' }}
-              value={minFundSize}
-              onChange={(v) => { setMinFundSize(v ?? undefined); setPage(1); }}
-            />
-          </Col>
-          <Col xs={24} sm={12} md={8} lg={6} xl={4}>
-            <InputNumber
-              placeholder="最大规模"
-              style={{ width: '100%' }}
-              value={maxFundSize}
-              onChange={(v) => { setMaxFundSize(v ?? undefined); setPage(1); }}
-            />
-          </Col>
-          <Col xs={24} sm={12} md={8} lg={6} xl={4}>
-            <Button icon={<ReloadOutlined />} onClick={handleReset}>
-              重置条件
-            </Button>
-          </Col>
-        </Row>
+        <div className="instrument-filter-groups">
+          {/* Section 1 — 搜索 / 平台覆盖 (cross-market identification) */}
+          <div className="instrument-filter-group">
+            <div className="instrument-filter-group__title">搜索 / 平台覆盖</div>
+            <Row gutter={[16, 12]} className="ad-flex-1">
+              <Col xs={24} sm={12} md={8} lg={6}>
+                <Input
+                  placeholder="搜索标的代码或名称"
+                  allowClear
+                  prefix={<SearchOutlined className="ad-icon-tertiary" />}
+                  value={search}
+                  onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+                />
+              </Col>
+              <Col xs={24} sm={12} md={8} lg={6}>
+                <Select
+                  placeholder="市场"
+                  allowClear
+                  options={markets?.map((m: string) => ({ label: m, value: m }))}
+                  value={market}
+                  onChange={(v) => { setMarket(v); setPage(1); }}
+                />
+              </Col>
+              <Col xs={24} sm={12} md={8} lg={6}>
+                <Select
+                  placeholder="国家"
+                  allowClear
+                  options={countries?.map((c: string) => ({ label: c, value: c }))}
+                  value={country}
+                  onChange={(v) => { setCountry(v); setPage(1); }}
+                />
+              </Col>
+              <Col xs={24} sm={12} md={8} lg={6}>
+                <Select
+                  placeholder="币种"
+                  allowClear
+                  options={currencies?.map((c: string) => ({ label: c, value: c }))}
+                  value={currency}
+                  onChange={(v) => { setCurrency(v); setPage(1); }}
+                />
+              </Col>
+            </Row>
+          </div>
+
+          {/* Section 2 — 类型与分类 (asset class + classification) */}
+          <div className="instrument-filter-group">
+            <div className="instrument-filter-group__title">类型与分类</div>
+            <Row gutter={[16, 12]} className="ad-flex-1">
+              <Col xs={24} sm={12} md={8} lg={6}>
+                <Select
+                  placeholder="类型"
+                  allowClear
+                  options={[
+                    { label: 'ETF', value: 'ETF' },
+                    { label: '个股', value: 'STOCK' },
+                    { label: '数字货币', value: 'CRYPTO' },
+                  ]}
+                  value={instrumentType}
+                  onChange={(v) => { setInstrumentType(v); setPage(1); }}
+                />
+              </Col>
+              <Col xs={24} sm={12} md={8} lg={6}>
+                <Select
+                  placeholder="分类"
+                  allowClear
+                  options={categories?.map((c: string) => ({ label: c, value: c }))}
+                  value={category}
+                  onChange={(v) => { setCategory(v); setPage(1); }}
+                />
+              </Col>
+              <Col xs={24} sm={12} md={8} lg={6}>
+                <Select
+                  placeholder="子分类"
+                  allowClear
+                  options={subCategories?.map((c: string) => ({ label: c, value: c }))}
+                  value={subCategory}
+                  onChange={(v) => { setSubCategory(v); setPage(1); }}
+                />
+              </Col>
+              <Col xs={24} sm={12} md={8} lg={6}>
+                <Select
+                  placeholder="板块"
+                  allowClear
+                  options={sectors?.map((c: string) => ({ label: c, value: c }))}
+                  value={sector}
+                  onChange={(v) => { setSector(v); setPage(1); }}
+                />
+              </Col>
+              <Col xs={24} sm={12} md={8} lg={6}>
+                <Select
+                  placeholder="行业"
+                  allowClear
+                  options={industries?.map((c: string) => ({ label: c, value: c }))}
+                  value={industry}
+                  onChange={(v) => { setIndustry(v); setPage(1); }}
+                />
+              </Col>
+              <Col xs={24} sm={12} md={8} lg={6}>
+                <Select
+                  placeholder="管理公司"
+                  allowClear
+                  options={managers?.map((c: string) => ({ label: c, value: c }))}
+                  value={manager}
+                  onChange={(v) => { setManager(v); setPage(1); }}
+                />
+              </Col>
+              <Col xs={24} sm={12} md={8} lg={6}>
+                <Select
+                  placeholder="跟踪指数"
+                  allowClear
+                  options={underlyingIndices?.map((c: string) => ({ label: c, value: c }))}
+                  value={underlyingIndex}
+                  onChange={(v) => { setUnderlyingIndex(v); setPage(1); }}
+                />
+              </Col>
+            </Row>
+          </div>
+
+          {/* Section 3 — 状态与规模 (lifecycle + size) */}
+          <div className="instrument-filter-group">
+            <div className="instrument-filter-group__title">状态与规模</div>
+            <Row gutter={[16, 12]} className="ad-flex-1">
+              <Col xs={24} sm={12} md={12} lg={6}>
+                <Select
+                  placeholder="QDII"
+                  allowClear
+                  options={QDII_OPTIONS}
+                  value={isQdii}
+                  onChange={(v) => { setIsQdii(v); setPage(1); }}
+                />
+              </Col>
+              <Col xs={24} sm={12} md={12} lg={6}>
+                <Select
+                  placeholder="状态"
+                  allowClear
+                  options={STATUS_OPTIONS}
+                  value={status}
+                  onChange={(v) => { setStatus(v); setPage(1); }}
+                />
+              </Col>
+              <Col xs={24} sm={12} md={12} lg={6}>
+                <InputNumber
+                  placeholder="最小规模"
+                  style={{ width: '100%' }}
+                  value={minFundSize}
+                  onChange={(v) => { setMinFundSize(v ?? undefined); setPage(1); }}
+                />
+              </Col>
+              <Col xs={24} sm={12} md={12} lg={6}>
+                <InputNumber
+                  placeholder="最大规模"
+                  style={{ width: '100%' }}
+                  value={maxFundSize}
+                  onChange={(v) => { setMaxFundSize(v ?? undefined); setPage(1); }}
+                />
+              </Col>
+              <Col xs={24} sm={12} md={12} lg={6}>
+                <Button icon={<ReloadOutlined />} onClick={handleReset}>
+                  重置条件
+                </Button>
+              </Col>
+            </Row>
+          </div>
+        </div>
       </FilterToolbar>
 
       <SectionHeading title="标的列表" />

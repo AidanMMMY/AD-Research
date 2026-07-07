@@ -14,6 +14,7 @@ export interface PoolMember {
   name_zh?: string | null;
   added_at?: string;
   is_active?: boolean;
+  note?: string;
 }
 
 export interface PoolWeight {

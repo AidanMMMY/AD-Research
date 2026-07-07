@@ -1,5 +1,5 @@
 import client from './client';
-import type { InstrumentListResponse, InstrumentInfo, InstrumentFilterParams } from '@/types/instrument';
+import type { InstrumentListResponse, InstrumentInfo, InstrumentFilterParams, ETFHoldingResponse } from '@/types/instrument';
 
 export interface SparklineResponse {
   code: string;
@@ -31,4 +31,6 @@ export const instrumentApi = {
     client.get<{ countries: string[] }>('/etfs/countries/list', { params }),
   underlyingIndices: (params?: { market?: string; instrument_type?: string }) =>
     client.get<{ underlying_indices: string[] }>('/etfs/underlying-indices/list', { params }),
+  holdings: (code: string) =>
+    client.get<ETFHoldingResponse>(`/etfs/${code}/holdings`),
 };

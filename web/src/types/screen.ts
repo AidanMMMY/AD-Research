@@ -13,6 +13,8 @@ export interface ScreenFilters {
   return_3m_max?: number;
   return_1y_min?: number;
   return_1y_max?: number;
+  max_drawdown_1y_min?: number;
+  max_drawdown_1y_max?: number;
   score_min?: number;
   score_max?: number;
   template_id?: number;

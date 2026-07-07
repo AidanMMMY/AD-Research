@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Table, Space, Select, InputNumber, Button, Row, Col } from 'antd';
 import { useScreenResults, useScreenPresets, useScreenCategories } from '@/hooks/useScreenResults';
+import { useScoreTemplates } from '@/hooks/useScores';
 import { useInstrumentMarkets } from '@/hooks/useInstrumentList';
 import { useScreenStore } from '@/stores/screen';
 import { useAIHelp } from '@/hooks/useAIHelp';
@@ -53,6 +54,7 @@ export default function Screen() {
   const { data: presets } = useScreenPresets();
   const { data: categories } = useScreenCategories({ market: filters.market });
   const { data: markets } = useInstrumentMarkets();
+  const { data: scoreTemplates } = useScoreTemplates();
 
   // Clear the selected category if it is not available in the current market.
   useEffect(() => {
@@ -99,6 +101,30 @@ export default function Screen() {
         }
       />
       <Panel title="筛选条件" variant="default">
+        {/* 第一层：快速筛选 */}
+        <section className="screen-filter-section" aria-label="快速筛选">
+          <div className="screen-filter-section__header">
+            <span className="screen-filter-section__title">
+              <HelpPopover termKey="screen_presets" mode={mode}>快速筛选</HelpPopover>
+            </span>
+            <span className="screen-filter-section__hint">点击常用预设一键应用条件</span>
+          </div>
+          <div className="screen-presets">
+            {presets?.map((p) => (
+              <button
+                key={p.key}
+                className={`ad-status-chip ${preset === p.key ? 'ad-status-chip--active' : ''}`}
+                onClick={() => applyPreset(preset === p.key ? null : p.key)}
+                type="button"
+                aria-pressed={preset === p.key}
+              >
+                {p.name}
+              </button>
+            ))}
+          </div>
+        </section>
+
+        {/* 第二层：详细筛选条件 */}
         <ContextHint
           hintId="screen-filter"
           title="先选条件再查询"
@@ -109,91 +135,222 @@ export default function Screen() {
             </>
           }
         >
-        <div className="ad-filter-label">
-          <HelpPopover termKey="screen_presets" mode={mode}>快速筛选</HelpPopover>:
-        </div>
-        <div className="ad-flex ad-flex-wrap ad-gap-2 ad-mb-4">
-          {presets?.map((p) => (
-            <button
-              key={p.key}
-              className={`ad-status-chip ${preset === p.key ? 'ad-status-chip--active' : ''}`}
-              onClick={() => applyPreset(preset === p.key ? null : p.key)}
-              type="button"
-            >
-              {p.name}
-            </button>
-          ))}
-        </div>
+          <FilterToolbar
+            data-onboard="filter-toolbar"
+            total={`共 ${results?.count || 0} 只`}
+            extra={
+              <Button onClick={() => { resetFilters(); setPage(1); }}>
+                重置条件
+              </Button>
+            }
+          >
+            <div className="screen-filter-groups">
+              {/* Group 1 — 基础：基础识别 (3 fields) */}
+              <div className="screen-filter-group">
+                <div className="screen-filter-group__title">基础</div>
+                <Row gutter={[16, 12]}>
+                  <Col xs={12} sm={8} md={6}>
+                    <Select
+                      placeholder="市场"
+                      allowClear
+                      className="ad-w-full"
+                      value={filters.market}
+                      options={(markets || []).map((m: string) => ({
+                        label: MARKET_LABELS[m] || m,
+                        value: m,
+                      }))}
+                      onChange={(v) => setFilter('market', v)}
+                    />
+                  </Col>
+                  <Col xs={12} sm={8} md={6}>
+                    <Select
+                      placeholder="分类"
+                      allowClear
+                      className="ad-w-full"
+                      value={filters.category}
+                      options={categories?.map((c: any) => ({ label: `${c.category} (${c.count})`, value: c.category }))}
+                      onChange={(v) => setFilter('category', v)}
+                    />
+                  </Col>
+                  {scoreTemplates && scoreTemplates.length > 0 && (
+                    <Col xs={12} sm={8} md={6}>
+                      <Select
+                        placeholder="评分模板"
+                        allowClear
+                        className="ad-w-full"
+                        value={filters.template_id}
+                        options={scoreTemplates.map((t) => ({
+                          label: t.is_default ? `${t.name} (默认)` : t.name,
+                          value: t.id,
+                        }))}
+                        onChange={(v) => setFilter('template_id', v)}
+                      />
+                    </Col>
+                  )}
+                </Row>
+              </div>
 
-        <FilterToolbar
-          data-onboard="filter-toolbar"
-          total={`共 ${results?.count || 0} 只`}
-          extra={
-            <Button onClick={() => { resetFilters(); setPage(1); }}>
-              重置条件
-            </Button>
-          }
-        >
-          <Row gutter={[16, 12]}>
-            <Col xs={12} sm={8} md={6}>
-              <Select
-                placeholder="市场"
-                allowClear
-                className="ad-w-full"
-                value={filters.market}
-                options={(markets || []).map((m: string) => ({
-                  label: MARKET_LABELS[m] || m,
-                  value: m,
-                }))}
-                onChange={(v) => setFilter('market', v)}
-              />
-            </Col>
-            <Col xs={12} sm={8} md={6}>
-              <Select
-                placeholder="分类"
-                allowClear
-                className="ad-w-full"
-                value={filters.category}
-                options={categories?.map((c: any) => ({ label: `${c.category} (${c.count})`, value: c.category }))}
-                onChange={(v) => setFilter('category', v)}
-              />
-            </Col>
-            <Col xs={12} sm={8} md={6}>
-              <InputNumber
-                placeholder="评分最小"
-                className="ad-w-full"
-                min={0} max={100}
-                value={filters.score_min}
-                onChange={(v) => setFilter('score_min', v || undefined)}
-              />
-            </Col>
-            <Col xs={12} sm={8} md={6}>
-              <InputNumber
-                placeholder="RSI最小"
-                className="ad-w-full"
-                min={0} max={100}
-                value={filters.rsi_min}
-                onChange={(v) => setFilter('rsi_min', v || undefined)}
-              />
-            </Col>
-            <Col xs={12} sm={8} md={6}>
-              <InputNumber
-                placeholder="夏普最小"
-                className="ad-w-full"
-                value={filters.sharpe_min}
-                onChange={(v) => setFilter('sharpe_min', v || undefined)}
-              />
-            </Col>
-            <Col xs={12} sm={8} md={6}>
-              <InputNumber
-                placeholder="波动率最大"
-                className="ad-w-full"
-                value={filters.volatility_max}
-                onChange={(v) => setFilter('volatility_max', v || undefined)}
-              />
-            </Col>
-          </Row>
-        </FilterToolbar>
+              {/* Group 2 — 收益：1m / 3m / 1y 收益区间 (6 fields) */}
+              <div className="screen-filter-group">
+                <div className="screen-filter-group__title">收益</div>
+                <Row gutter={[16, 12]}>
+                  <Col xs={12} sm={8} md={6}>
+                    <InputNumber
+                      placeholder="1月 最小 (%)"
+                      className="ad-w-full"
+                      step={1}
+                      value={filters.return_1m_min}
+                      onChange={(v) => setFilter('return_1m_min', v ?? undefined)}
+                    />
+                  </Col>
+                  <Col xs={12} sm={8} md={6}>
+                    <InputNumber
+                      placeholder="1月 最大 (%)"
+                      className="ad-w-full"
+                      step={1}
+                      value={filters.return_1m_max}
+                      onChange={(v) => setFilter('return_1m_max', v ?? undefined)}
+                    />
+                  </Col>
+                  <Col xs={12} sm={8} md={6}>
+                    <InputNumber
+                      placeholder="3月 最小 (%)"
+                      className="ad-w-full"
+                      step={1}
+                      value={filters.return_3m_min}
+                      onChange={(v) => setFilter('return_3m_min', v ?? undefined)}
+                    />
+                  </Col>
+                  <Col xs={12} sm={8} md={6}>
+                    <InputNumber
+                      placeholder="3月 最大 (%)"
+                      className="ad-w-full"
+                      step={1}
+                      value={filters.return_3m_max}
+                      onChange={(v) => setFilter('return_3m_max', v ?? undefined)}
+                    />
+                  </Col>
+                  <Col xs={12} sm={8} md={6}>
+                    <InputNumber
+                      placeholder="1年 最小 (%)"
+                      className="ad-w-full"
+                      step={1}
+                      value={filters.return_1y_min}
+                      onChange={(v) => setFilter('return_1y_min', v ?? undefined)}
+                    />
+                  </Col>
+                  <Col xs={12} sm={8} md={6}>
+                    <InputNumber
+                      placeholder="1年 最大 (%)"
+                      className="ad-w-full"
+                      step={1}
+                      value={filters.return_1y_max}
+                      onChange={(v) => setFilter('return_1y_max', v ?? undefined)}
+                    />
+                  </Col>
+                </Row>
+              </div>
+
+              {/* Group 3 — 评分与风险：5 对 min/max 阈值 (10 fields) */}
+              <div className="screen-filter-group">
+                <div className="screen-filter-group__title">评分与风险</div>
+                <Row gutter={[16, 12]}>
+                  <Col xs={12} sm={8} md={6}>
+                    <InputNumber
+                      placeholder="评分 最小"
+                      className="ad-w-full"
+                      min={0} max={100}
+                      value={filters.score_min}
+                      onChange={(v) => setFilter('score_min', v ?? undefined)}
+                    />
+                  </Col>
+                  <Col xs={12} sm={8} md={6}>
+                    <InputNumber
+                      placeholder="评分 最大"
+                      className="ad-w-full"
+                      min={0} max={100}
+                      value={filters.score_max}
+                      onChange={(v) => setFilter('score_max', v ?? undefined)}
+                    />
+                  </Col>
+                  <Col xs={12} sm={8} md={6}>
+                    <InputNumber
+                      placeholder="RSI 最小"
+                      className="ad-w-full"
+                      min={0} max={100}
+                      value={filters.rsi_min}
+                      onChange={(v) => setFilter('rsi_min', v ?? undefined)}
+                    />
+                  </Col>
+                  <Col xs={12} sm={8} md={6}>
+                    <InputNumber
+                      placeholder="RSI 最大"
+                      className="ad-w-full"
+                      min={0} max={100}
+                      value={filters.rsi_max}
+                      onChange={(v) => setFilter('rsi_max', v ?? undefined)}
+                    />
+                  </Col>
+                  <Col xs={12} sm={8} md={6}>
+                    <InputNumber
+                      placeholder="夏普 最小"
+                      className="ad-w-full"
+                      step={0.1}
+                      value={filters.sharpe_min}
+                      onChange={(v) => setFilter('sharpe_min', v ?? undefined)}
+                    />
+                  </Col>
+                  <Col xs={12} sm={8} md={6}>
+                    <InputNumber
+                      placeholder="夏普 最大"
+                      className="ad-w-full"
+                      step={0.1}
+                      value={filters.sharpe_max}
+                      onChange={(v) => setFilter('sharpe_max', v ?? undefined)}
+                    />
+                  </Col>
+                  <Col xs={12} sm={8} md={6}>
+                    <InputNumber
+                      placeholder="波动率 最小 (%)"
+                      className="ad-w-full"
+                      min={0}
+                      step={0.1}
+                      value={filters.volatility_min}
+                      onChange={(v) => setFilter('volatility_min', v ?? undefined)}
+                    />
+                  </Col>
+                  <Col xs={12} sm={8} md={6}>
+                    <InputNumber
+                      placeholder="波动率 最大 (%)"
+                      className="ad-w-full"
+                      min={0}
+                      step={0.1}
+                      value={filters.volatility_max}
+                      onChange={(v) => setFilter('volatility_max', v ?? undefined)}
+                    />
+                  </Col>
+                  <Col xs={12} sm={8} md={6}>
+                    <InputNumber
+                      placeholder="回撤1y 最小 (%)"
+                      className="ad-w-full"
+                      step={1}
+                      value={filters.max_drawdown_1y_min}
+                      onChange={(v) => setFilter('max_drawdown_1y_min', v ?? undefined)}
+                    />
+                  </Col>
+                  <Col xs={12} sm={8} md={6}>
+                    <InputNumber
+                      placeholder="回撤1y 最大 (%)"
+                      className="ad-w-full"
+                      step={1}
+                      value={filters.max_drawdown_1y_max}
+                      onChange={(v) => setFilter('max_drawdown_1y_max', v ?? undefined)}
+                    />
+                  </Col>
+                </Row>
+              </div>
+            </div>
+          </FilterToolbar>
         </ContextHint>
       </Panel>
 

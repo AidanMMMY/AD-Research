@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import {
-  Table, Input, Select, DatePicker, Button, Space, Tag, Skeleton, message,
+  Table, Input, Select, DatePicker, Button, Space, Tag, Skeleton, message, Row, Col,
 } from 'antd';
 import { SearchOutlined, ReloadOutlined, CalendarOutlined, FileTextOutlined } from '@ant-design/icons';
 import { type Dayjs } from 'dayjs';
@@ -287,92 +287,111 @@ export default function ListingPreview() {
       />
 
       <FilterToolbar total={total}>
-        {(['upcoming', 'subscribing', 'listed'] as ListingStatus[]).map((s) => (
-          <StatusChip
-            key={s}
-            status={s}
-            count={statusCounts[s]}
-            active={statuses.includes(s)}
-            onClick={() => {
-              setPage(1);
-              setStatuses((prev) => (prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s]));
-            }}
-          />
-        ))}
-      </FilterToolbar>
+        {/* Section 1: Status quick chips - all on one line */}
+        <div className="ad-flex ad-flex-wrap ad-gap-2 ad-mb-3 ad-w-full">
+          {(['upcoming', 'subscribing', 'listed'] as ListingStatus[]).map((s) => (
+            <StatusChip
+              key={s}
+              status={s}
+              count={statusCounts[s]}
+              active={statuses.includes(s)}
+              onClick={() => {
+                setPage(1);
+                setStatuses((prev) => (prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s]));
+              }}
+            />
+          ))}
+        </div>
 
-      <FilterToolbar>
-        <Input
-          placeholder="搜索代码或简称"
-          allowClear
-          prefix={<SearchOutlined />}
-          value={search}
-          onChange={(e) => {
-            setSearch(e.target.value);
-            setPage(1);
-          }}
-          className="ad-w-full"
-        />
-        <Select
-          mode="multiple"
-          placeholder="状态"
-          allowClear
-          className="ad-w-full"
-          value={statuses}
-          onChange={(v) => {
-            setStatuses(v);
-            setPage(1);
-          }}
-          options={(['upcoming', 'subscribing', 'listed', 'unknown'] as ListingStatus[]).map((s) => ({
-            label: STATUS_LABEL[s],
-            value: s,
-          }))}
-        />
-        <Select
-          mode="multiple"
-          placeholder="板块"
-          allowClear
-          className="ad-w-full"
-          value={boards}
-          onChange={(v) => {
-            setBoards(v);
-            setPage(1);
-          }}
-          options={(facets?.boards ?? []).map((b) => ({ label: b, value: b }))}
-        />
-        <Select
-          mode="multiple"
-          placeholder="交易所"
-          allowClear
-          className="ad-w-full"
-          value={markets}
-          onChange={(v) => {
-            setMarkets(v);
-            setPage(1);
-          }}
-          options={(facets?.markets ?? []).map((m) => ({ label: m, value: m }))}
-        />
-        <Select
-          placeholder="行业"
-          allowClear
-          className="ad-w-full"
-          value={industry}
-          onChange={(v) => {
-            setIndustry(v);
-            setPage(1);
-          }}
-          options={(facets?.industries ?? []).map((i) => ({ label: i, value: i }))}
-        />
-        <DatePicker.RangePicker
-          value={dateRange as [Dayjs, Dayjs] | null}
-          onChange={(v) => {
-            setDateRange(v);
-            setPage(1);
-          }}
-          placeholder={['上市日期 起', '上市日期 止']}
-          suffixIcon={<CalendarOutlined />}
-        />
-        <Button onClick={handleReset}>重置</Button>
+        {/* Section 2: Filter inputs in a Row/Col grid */}
+        <Row gutter={[12, 8]} className="ad-w-full">
+          <Col xs={24} sm={12} md={8} lg={5}>
+            <Input
+              placeholder="搜索代码或简称"
+              allowClear
+              prefix={<SearchOutlined />}
+              value={search}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setPage(1);
+              }}
+              className="ad-w-full"
+            />
+          </Col>
+          <Col xs={24} sm={12} md={8} lg={5}>
+            <Select
+              mode="multiple"
+              placeholder="状态"
+              allowClear
+              className="ad-w-full"
+              value={statuses}
+              onChange={(v) => {
+                setStatuses(v);
+                setPage(1);
+              }}
+              options={(['upcoming', 'subscribing', 'listed', 'unknown'] as ListingStatus[]).map((s) => ({
+                label: STATUS_LABEL[s],
+                value: s,
+              }))}
+            />
+          </Col>
+          <Col xs={24} sm={12} md={8} lg={5}>
+            <Select
+              mode="multiple"
+              placeholder="板块"
+              allowClear
+              className="ad-w-full"
+              value={boards}
+              onChange={(v) => {
+                setBoards(v);
+                setPage(1);
+              }}
+              options={(facets?.boards ?? []).map((b) => ({ label: b, value: b }))}
+            />
+          </Col>
+          <Col xs={24} sm={12} md={8} lg={5}>
+            <Select
+              mode="multiple"
+              placeholder="交易所"
+              allowClear
+              className="ad-w-full"
+              value={markets}
+              onChange={(v) => {
+                setMarkets(v);
+                setPage(1);
+              }}
+              options={(facets?.markets ?? []).map((m) => ({ label: m, value: m }))}
+            />
+          </Col>
+          <Col xs={24} sm={12} md={8} lg={4}>
+            <Select
+              placeholder="行业"
+              allowClear
+              className="ad-w-full"
+              value={industry}
+              onChange={(v) => {
+                setIndustry(v);
+                setPage(1);
+              }}
+              options={(facets?.industries ?? []).map((i) => ({ label: i, value: i }))}
+            />
+          </Col>
+          <Col xs={24} sm={12} md={12} lg={18}>
+            <DatePicker.RangePicker
+              value={dateRange as [Dayjs, Dayjs] | null}
+              onChange={(v) => {
+                setDateRange(v);
+                setPage(1);
+              }}
+              placeholder={['上市日期 起', '上市日期 止']}
+              suffixIcon={<CalendarOutlined />}
+              className="ad-w-full"
+            />
+          </Col>
+          <Col xs={24} sm={12} md={4} lg={6}>
+            <Button onClick={handleReset} className="ad-w-full">重置</Button>
+          </Col>
+        </Row>
       </FilterToolbar>
 
       <SectionHeading title="上市预告列表" />

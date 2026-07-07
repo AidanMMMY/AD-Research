@@ -10,6 +10,7 @@ from app.api.deps import get_current_user, get_db, get_etf_service
 from app.models.etf import ETFInfo, InstrumentDailyBar
 from app.schemas.etf import (
     ETFFilterParams,
+    ETFHoldingResponse,
     ETFInfoResponse,
     ETFListResponse,
     SparklineOut,
@@ -76,6 +77,14 @@ def get_etf(code: str, service: ETFService = Depends(get_etf_service)):
     if not etf:
         raise HTTPException(status_code=404, detail=f"ETF {code} not found")
     return etf
+
+
+@router.get("/{code}/holdings", response_model=ETFHoldingResponse)
+def get_etf_holdings(code: str, service: ETFService = Depends(get_etf_service)):
+    """Return the latest top-10 holdings for an ETF."""
+    if not service.get_etf(code):
+        raise HTTPException(status_code=404, detail=f"ETF {code} not found")
+    return service.get_holdings(code)
 
 
 @router.get("/{code}/sparkline", response_model=SparklineOut)

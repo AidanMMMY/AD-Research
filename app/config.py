@@ -85,7 +85,7 @@ class Settings(BaseSettings):
     # their firewall rejects generic placeholders like
     # "admin@example.com". The default below is for local development
     # only — please override ``SEC_USER_AGENT`` in production / staging.
-    sec_user_agent: str = "AD-Research research@ad-research.local"
+    sec_user_agent: str = "AlloyResearch research@alloy-research.local"
 
     # News crawler tuning
     xueqiu_per_minute: int = 30           # Per-instance rate limit
@@ -135,7 +135,7 @@ class Settings(BaseSettings):
 
     # Constants
     api_v1_prefix: str = "/api/v1"
-    project_name: str = "AD-Research"
+    project_name: str = "AlloyResearch"
 
     @property
     def cors_origins_list(self) -> list[str]:

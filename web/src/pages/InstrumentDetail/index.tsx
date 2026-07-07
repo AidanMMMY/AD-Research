@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Tabs, Row, Col, Statistic, Spin, Descriptions, Radio, Checkbox, Space, Alert, Button, message, Skeleton } from 'antd';
+import { Tabs, Row, Col, Statistic, Spin, Descriptions, Radio, Checkbox, Space, Alert, Button, message, Skeleton, Table } from 'antd';
 import { StarOutlined, StarFilled, RobotOutlined, ReadOutlined, SmileOutlined } from '@ant-design/icons';
 import { useInstrumentDetail } from '@/hooks/useInstrumentList';
 import { useInstrumentScore } from '@/hooks/useScores';
 import { useFavoriteStatus } from '@/hooks/useFavorites';
 import { useAIHelp } from '@/hooks/useAIHelp';
-import { marketApi, researchApi, stockFundamentalApi } from '@/api';
+import { marketApi, researchApi, stockFundamentalApi, instrumentApi } from '@/api';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import KLineChart, { DEFAULT_OVERLAYS } from '@/components/KLineChart';
 import ScoreRadar from '@/components/ScoreRadar';
@@ -149,6 +149,12 @@ export default function InstrumentDetail() {
     queryKey: ['stock-fundamental', code],
     queryFn: () => stockFundamentalApi.get(code || '').then((r) => r.data),
     enabled: !!code && isStock,
+  });
+
+  const { data: holdingsData, isLoading: holdingsLoading, error: holdingsError } = useQuery({
+    queryKey: ['instrument-holdings', code],
+    queryFn: () => instrumentApi.holdings(code || '').then((r) => r.data),
+    enabled: !!code,
   });
 
   const generateMutation = useMutation({
@@ -316,6 +322,45 @@ export default function InstrumentDetail() {
               </div>
             ))}
           </div>
+        </Panel>
+      ),
+    },
+    {
+      key: 'holdings',
+      label: '前十大持仓',
+      children: (
+        <Panel title="前十大持仓" padding="md">
+          {holdingsLoading ? (
+            <Skeleton active paragraph={{ rows: 6 }} />
+          ) : holdingsError ? (
+            <Alert type="error" message="加载持仓数据失败" />
+          ) : !holdingsData?.holdings?.length ? (
+            <EmptyState
+              title="暂无持仓数据"
+              description="该标的暂无持仓数据"
+            />
+          ) : (
+            <div>
+              <Table
+                dataSource={holdingsData.holdings.map((h, idx) => ({ ...h, key: idx }))}
+                pagination={false}
+                size="small"
+                columns={[
+                  { title: '股票代码', dataIndex: 'holding_code', key: 'holding_code' },
+                  { title: '股票名称', dataIndex: 'holding_name', key: 'holding_name', render: (v: string | null) => v ?? '—' },
+                  { title: '持仓权重', dataIndex: 'weight', key: 'weight', align: 'right', render: (v: number | null) => v != null ? `${(v * 100).toFixed(2)}%` : '—' },
+                  { title: '持股数', dataIndex: 'shares', key: 'shares', align: 'right', render: (v: number | null) => v != null ? v.toLocaleString() : '—' },
+                  { title: '持仓市值', dataIndex: 'market_value', key: 'market_value', align: 'right', render: (v: number | null) => v != null ? v.toLocaleString() : '—' },
+                  { title: '报告期', dataIndex: 'holdings_as_of_date', key: 'holdings_as_of_date', render: (v: string | null) => v ?? '—' },
+                ]}
+              />
+              {holdingsData.holdings_as_of_date && (
+                <div style={{ marginTop: 12, color: 'var(--text-secondary)', fontSize: 12 }}>
+                  数据截至：{holdingsData.holdings_as_of_date}
+                </div>
+              )}
+            </div>
+          )}
         </Panel>
       ),
     },
@@ -629,6 +674,26 @@ export default function InstrumentDetail() {
           </ThemeTag>
         )}
         {instrument.market && <ThemeTag>{instrument.market}</ThemeTag>}
+        {instrument.status && (
+          <ThemeTag
+            variant={
+              instrument.status === 'active' || instrument.status === 'listed'
+                ? 'success'
+                : instrument.status === 'suspended'
+                  ? 'warning'
+                  : 'error'
+            }
+            title={`状态: ${instrument.status}`}
+          >
+            {instrument.status === 'active' || instrument.status === 'listed'
+              ? '上市'
+              : instrument.status === 'suspended'
+                ? '停牌'
+                : instrument.status === 'delisted'
+                  ? '退市'
+                  : instrument.status}
+          </ThemeTag>
+        )}
       </div>
 
       <SectionHeading title="核心指标" />

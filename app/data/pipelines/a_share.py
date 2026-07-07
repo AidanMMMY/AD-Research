@@ -91,6 +91,7 @@ class AShareETLPipeline(ETLPipeline):
                 "pre_close": row.get("pre_close"),
                 "change_pct": row.get("change_pct"),
                 "turnover_rate": row.get("turnover_rate"),
+                "adj_factor": row.get("adj_factor"),
             }
             # Drop None/NaN values so they don't overwrite existing data on conflict,
             # but keep legitimate zeros (e.g. volume=0, change_pct=0).
@@ -117,6 +118,7 @@ class AShareETLPipeline(ETLPipeline):
                     "close": insert(InstrumentDailyBar).excluded.close,
                     "volume": insert(InstrumentDailyBar).excluded.volume,
                     "amount": insert(InstrumentDailyBar).excluded.amount,
+                    "adj_factor": insert(InstrumentDailyBar).excluded.adj_factor,
                     "pre_close": insert(InstrumentDailyBar).excluded.pre_close,
                     "change_pct": insert(InstrumentDailyBar).excluded.change_pct,
                     "turnover_rate": insert(InstrumentDailyBar).excluded.turnover_rate,

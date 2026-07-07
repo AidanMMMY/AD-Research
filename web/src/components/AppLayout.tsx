@@ -113,6 +113,7 @@ const iconMap: Record<string, React.ComponentType> = {
   ToolOutlined,
   SafetyCertificateOutlined,
   WalletOutlined,
+  BulbOutlined,
 };
 
 const SIDEBAR_EXPANDED_KEY = 'ad-research:sidebar:expanded';

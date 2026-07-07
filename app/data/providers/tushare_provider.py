@@ -722,6 +722,85 @@ class TushareProvider(DataProvider):
         return df
 
     # ------------------------------------------------------------------
+    # ETF holdings (fund_portfolio)
+    # ------------------------------------------------------------------
+
+    def fetch_etf_holdings(self, ts_code: str, limit: int = 10) -> pd.DataFrame:
+        """Fetch top-``limit`` ETF holdings from Tushare ``fund_portfolio``.
+
+        Returns DataFrame columns:
+          etf_code, holding_code, holding_name, weight, shares,
+          market_value, holdings_as_of_date
+        """
+        df: pd.DataFrame | None = None
+        for attempt in range(_RETRIES + 1):
+            try:
+                self._limiter.acquire()
+                df = self._pro.fund_portfolio(ts_code=ts_code)
+                break
+            except Exception as exc:
+                if attempt < _RETRIES:
+                    logger.warning(
+                        "Tushare fund_portfolio(%s) retry %d/%d: %s",
+                        ts_code, attempt + 1, _RETRIES, exc,
+                    )
+                    time.sleep(1.0 * (attempt + 1))
+                else:
+                    logger.error(
+                        "Tushare fund_portfolio(%s) failed after %d retries: %s",
+                        ts_code, _RETRIES, exc,
+                    )
+
+        if df is None or df.empty:
+            return pd.DataFrame()
+
+        if "end_date" not in df.columns:
+            return pd.DataFrame()
+
+        df["end_date"] = pd.to_datetime(df["end_date"], format="%Y%m%d", errors="coerce").dt.date
+        df = df.dropna(subset=["end_date"])
+        if df.empty:
+            return pd.DataFrame()
+
+        max_end_date = df["end_date"].max()
+        df = df[df["end_date"] == max_end_date].copy()
+
+        rename_map = {
+            "symbol": "holding_code",
+            "amount": "shares",
+            "mkv": "market_value",
+            "stk_mkv_ratio": "weight",
+        }
+        df = df.rename(columns=rename_map)
+
+        for col in ("shares", "market_value", "weight"):
+            if col in df.columns:
+                df[col] = pd.to_numeric(df[col], errors="coerce")
+
+        if "weight" in df.columns and not df["weight"].empty:
+            max_weight = df["weight"].max()
+            if pd.notna(max_weight) and max_weight > 1:
+                df["weight"] = df["weight"] / 100.0
+
+        df["holding_name"] = None
+        df = df.dropna(subset=["market_value"])
+        df = df.sort_values("market_value", ascending=False).head(limit)
+
+        df["etf_code"] = ts_code
+        df["holdings_as_of_date"] = max_end_date
+
+        out_cols = [
+            "etf_code",
+            "holding_code",
+            "holding_name",
+            "weight",
+            "shares",
+            "market_value",
+            "holdings_as_of_date",
+        ]
+        return df[[c for c in out_cols if c in df.columns]].copy()
+
+    # ------------------------------------------------------------------
     # Valuation / Market Data (daily_basic)
     # ------------------------------------------------------------------
 

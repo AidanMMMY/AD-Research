@@ -71,3 +71,18 @@ class SparklineOut(BaseModel):
     days: int
     points: list[float]
     dates: list[str]  # ISO date strings (YYYY-MM-DD), same length as points
+
+
+class ETFHoldingItem(BaseModel):
+    etf_code: str
+    holding_code: str
+    holding_name: str | None = None
+    weight: float | None = None
+    shares: float | None = None
+    market_value: float | None = None
+    holdings_as_of_date: date | None = None
+
+
+class ETFHoldingResponse(BaseModel):
+    holdings: list[ETFHoldingItem]
+    holdings_as_of_date: date | None = None

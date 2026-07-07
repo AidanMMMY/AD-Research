@@ -201,37 +201,24 @@ export function buildScreenContext(
 
 export function buildPoolDetailContext(
   pool: any,
-  weights: any[] | undefined,
-  analytics: any,
-  correlation: any,
-  activeAlgorithm: string | undefined
+  members: any[] | undefined,
+  correlation: any
 ): string {
   const poolSummary = pool
     ? {
         id: pool.id,
         name: pool.name,
         description: pool.description,
-        member_count: pool.members?.length,
+        member_count: members?.length,
       }
     : '无池数据';
 
-  const weightSummary = (weights || []).map((w) => ({
-    etf_code: w.etf_code,
-    target_weight: w.target_weight,
-    suggested_weight: w.suggested_weight,
-    weight_source: w.weight_source,
+  const memberSummary = (members || []).map((m) => ({
+    etf_code: m.etf_code,
+    etf_name: m.etf_name,
+    added_at: m.added_at,
+    note: m.note,
   }));
-
-  const analyticsSummary = analytics
-    ? {
-        category_distribution: analytics.category_distribution,
-        return_1m: analytics.return_1m,
-        return_3m: analytics.return_3m,
-        sharpe: analytics.sharpe,
-        max_drawdown: analytics.max_drawdown,
-        rebalance_alerts: analytics.rebalance_alerts?.length,
-      }
-    : '无分析数据';
 
   const correlationSummary = correlation
     ? {
@@ -243,11 +230,8 @@ export function buildPoolDetailContext(
   return [
     '页面：标的池详情',
     typeof poolSummary === 'string' ? poolSummary : summarizeObject(poolSummary as Record<string, unknown>),
-    `当前建议权重算法：${activeAlgorithm || '未选择'}`,
-    '权重配置：',
-    summarizeList(weightSummary, 20),
-    '池分析：',
-    typeof analyticsSummary === 'string' ? analyticsSummary : summarizeObject(analyticsSummary as Record<string, unknown>),
+    '成员列表：',
+    summarizeList(memberSummary, 20),
     '相关性矩阵：',
     typeof correlationSummary === 'string' ? correlationSummary : summarizeObject(correlationSummary as Record<string, unknown>),
   ].join('\n');
@@ -436,10 +420,8 @@ export function buildContext(
     case 'pool_detail':
       return buildPoolDetailContext(
         data.pool,
-        data.weights,
-        data.analytics,
-        data.correlation,
-        data.activeAlgorithm
+        data.members,
+        data.correlation
       );
     case 'listing_preview':
       return buildListingPreviewContext(data);

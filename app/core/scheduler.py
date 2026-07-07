@@ -23,6 +23,7 @@ from app.data.pipelines.a_share_stock_financials import AStockFinancialsPipeline
 from app.data.pipelines.a_share_stock_fundamental import AStockFundamentalPipeline
 from app.data.pipelines.cninfo_reports import CninfoReportsPipeline
 from app.data.pipelines.crypto_daily import CryptoDailyPipeline
+from app.data.pipelines.etf_holdings import ETFHoldingsPipeline
 from app.data.pipelines.etf_metadata_enrichment import ETFMetadataEnrichmentPipeline
 from app.data.pipelines.futures import FuturesContractDiscoveryPipeline, FuturesDailyPipeline
 from app.data.pipelines.listing_events import ListingEventsPipeline
@@ -439,6 +440,29 @@ def run_etf_metadata_enrichment():
             result = pipeline.run_with_retry(max_attempts=2)
             print(
                 f"[Scheduler] ETF metadata enrichment: "
+                f"success={result.success}, records={result.records}"
+            )
+        finally:
+            db.close()
+
+
+def run_etf_holdings():
+    """Run the A-share ETF top-10 holdings pipeline (daily 07:00 Asia/Shanghai).
+
+    Fetches the latest quarterly holdings for every active A-share ETF from
+    Akshare (primary) and falls back to Tushare. Existing snapshots are
+    replaced per (etf_code, holdings_as_of_date) for idempotency.
+    """
+    with redis_lock("etf_holdings", expire_seconds=7200) as acquired:
+        if not acquired:
+            print("⚠️ [SCHEDULER_WARN] ETF holdings skipped: lock in use")
+            return
+        db = SessionLocal()
+        try:
+            pipeline = ETFHoldingsPipeline(db)
+            result = pipeline.run_with_retry(max_attempts=2)
+            print(
+                f"[Scheduler] ETF holdings: "
                 f"success={result.success}, records={result.records}"
             )
         finally:
@@ -877,6 +901,7 @@ def init_scheduler():
       - US historical backfill every hour
       - US indicator calculation at 05:30 daily (US market only)
       - A-share ETF ETL at 15:30 daily
+      - A-share ETF holdings at 07:00 daily
       - A-share stock ETL at 16:00 daily
       - A-share stock fundamental at 16:30 daily
       - A-share stock discovery weekly Monday 01:00
@@ -1012,6 +1037,14 @@ def init_scheduler():
         trigger=CronTrigger(day_of_week="sun", hour=4, minute=0, timezone="Asia/Shanghai"),
         id="etf_metadata_enrichment",
         name="ETF元数据补全",
+        replace_existing=True,
+        max_instances=1,
+    )
+    scheduler.add_job(
+        run_etf_holdings,
+        trigger=CronTrigger(hour=7, minute=0, timezone="Asia/Shanghai"),
+        id="etf_holdings",
+        name="A股ETF前十大持仓采集",
         replace_existing=True,
         max_instances=1,
     )

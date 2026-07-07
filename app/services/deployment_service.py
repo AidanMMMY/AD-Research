@@ -56,7 +56,7 @@ def _gh_api(path: str, params: dict | None = None) -> dict | list | None:
     req.add_header("Authorization", f"Bearer {settings.github_token}")
     req.add_header("Accept", "application/vnd.github+json")
     req.add_header("X-GitHub-Api-Version", "2022-11-28")
-    req.add_header("User-Agent", "ad-research-deploy-dashboard")
+    req.add_header("User-Agent", "alloy-research-deploy-dashboard")
 
     try:
         with urllib.request.urlopen(req, timeout=15) as resp:
@@ -121,7 +121,7 @@ def get_run_logs(run_id: int) -> str:
     req = urllib.request.Request(url)
     req.add_header("Authorization", f"Bearer {settings.github_token}")
     req.add_header("Accept", "application/vnd.github+json")
-    req.add_header("User-Agent", "ad-research-deploy-dashboard")
+    req.add_header("User-Agent", "alloy-research-deploy-dashboard")
 
     try:
         with urllib.request.urlopen(req, timeout=30) as resp:
@@ -148,7 +148,7 @@ def trigger_workflow_dispatch() -> dict:
     req = urllib.request.Request(url, data=body, method="POST")
     req.add_header("Authorization", f"Bearer {settings.github_token}")
     req.add_header("Accept", "application/vnd.github+json")
-    req.add_header("User-Agent", "ad-research-deploy-dashboard")
+    req.add_header("User-Agent", "alloy-research-deploy-dashboard")
 
     try:
         with urllib.request.urlopen(req, timeout=15) as resp:

@@ -20,7 +20,7 @@ User-Agent
 SEC requires a descriptive User-Agent with contact information.
 We prefer the ``sec_user_agent`` setting (configurable via the
 ``SEC_USER_AGENT`` env var). The default in ``app.config.Settings``
-is ``"AD-Research research@ad-research.local"`` — please override it
+is ``"AlloyResearch research@alloy-research.local"`` — please override it
 in production / staging with a real contact so SEC can reach us if
 we misbehave; their firewall rejects generic placeholders like
 ``"admin@example.com"``.

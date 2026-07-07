@@ -174,3 +174,20 @@ tmp/
 
 # Git credentials store (server-only secret)
 .git-credentials
+
+# Agent worker data outputs (sibling of app/ and web/, not source code)
+cls/
+eastmoney_news/
+xueqiu/
+reddit/
+stocktwits/
+gov_china/
+fed_intl/
+data/ad-research/cls/
+data/ad-research/eastmoney_news/
+data/ad-research/xueqiu/
+data/ad-research/reddit/
+data/ad-research/stocktwits/
+data/ad-research/gov_china/
+data/ad-research/fed_intl/
+/data/ad-research/aggregate.json

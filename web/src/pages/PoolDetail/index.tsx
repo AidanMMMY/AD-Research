@@ -1,18 +1,12 @@
 import { useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Tabs, Table, Button, Slider, message, Row, Col, Statistic, Dropdown, Space, Input, Popconfirm, Select, Alert } from 'antd';
-import { useQueryClient } from '@tanstack/react-query';
+import { Tabs, Table, Button, message, Space, Input, Popconfirm, Select, Alert } from 'antd';
 import { EditOutlined, DeleteOutlined, PlusOutlined } from '@ant-design/icons';
-import type { MenuProps } from 'antd';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   usePoolDetail,
-  usePoolWeights,
   usePoolAnalytics,
   usePoolCorrelation,
-  useUpdateWeight,
-  usePoolSnapshots,
-  useCreateSnapshot,
-  useSuggestWeights,
   useUpdatePool,
   useAddPoolMember,
   useRemovePoolMember,
@@ -20,7 +14,6 @@ import {
 import { useInstrumentList } from '@/hooks/useInstrumentList';
 import { useAIHelp } from '@/hooks/useAIHelp';
 import { useSettingsStore } from '@/stores/settings';
-import CategoryPie from '@/components/CategoryPie';
 import CorrelationHeatmap from '@/components/CorrelationHeatmap';
 import InstrumentCodeTag from '@/components/InstrumentCodeTag';
 import Panel from '@/components/Panel';
@@ -34,19 +27,10 @@ import HelpPopover from '@/components/HelpPopover';
 import { buildPoolDetailContext } from '@/utils/helpContext';
 import { getQuickQuestions } from '@/utils/helpPrompts';
 
-const SUGGEST_ALGORITHMS: { key: string; label: string }[] = [
-  { key: 'equal', label: '等权' },
-  { key: 'score', label: '评分加权' },
-  { key: 'risk_parity', label: '风险平价（逆波动率）' },
-];
-
-const ALGORITHM_TERM_KEYS: Record<string, string> = {
-  equal: 'equal_weight',
-  score: 'score_weighted',
-  risk_parity: 'risk_parity',
+const formatSigned = (v?: number | null) => {
+  if (v == null) return '—';
+  return `${v >= 0 ? '+' : ''}${v.toFixed(2)}`;
 };
-
-const round2 = (v: number) => Math.round(v * 100) / 100;
 
 export default function PoolDetail() {
   const { id } = useParams<{ id: string }>();
@@ -55,102 +39,19 @@ export default function PoolDetail() {
   const { open } = useAIHelp();
   const mode = useSettingsStore((s) => s.mode);
   const navigate = useNavigate();
-  const [editing, setEditing] = useState(false);
-  const [localWeights, setLocalWeights] = useState<Record<string, number>>({});
-  const [activeAlgorithm, setActiveAlgorithm] = useState<string | undefined>();
   const [editingMeta, setEditingMeta] = useState(false);
   const [editName, setEditName] = useState('');
   const [editDescription, setEditDescription] = useState('');
   const [selectedCodeForAdd, setSelectedCodeForAdd] = useState<string | undefined>();
-
   const queryClient = useQueryClient();
 
   const { data: pool } = usePoolDetail(poolId);
-  const { data: weights } = usePoolWeights(poolId);
   const { data: analytics } = usePoolAnalytics(poolId);
   const { data: correlation } = usePoolCorrelation(poolId);
-  const { data: snapshots } = usePoolSnapshots(poolId, 20);
   const { data: etfList } = useInstrumentList({ page_size: 10000 });
-  const updateWeight = useUpdateWeight();
-  const createSnapshot = useCreateSnapshot();
-  const suggestWeights = useSuggestWeights();
   const updatePool = useUpdatePool();
   const addMember = useAddPoolMember();
   const removeMember = useRemovePoolMember();
-
-  const currentWeights = useMemo(() => {
-    const base: Record<string, number> = {};
-    weights?.forEach((w: any) => {
-      base[w.etf_code] = localWeights[w.etf_code] ?? w.target_weight ?? 0;
-    });
-    return base;
-  }, [weights, localWeights]);
-
-  const weightSum = useMemo(
-    () => Object.values(currentWeights).reduce((a, b) => a + b, 0),
-    [currentWeights]
-  );
-
-  const handleWeightChange = (code: string, value: number) => {
-    setLocalWeights((prev) => ({ ...prev, [code]: value }));
-  };
-
-  const normalizeWeights = (weightsMap: Record<string, number>): Record<string, number> => {
-    const entries = Object.entries(weightsMap);
-    const sum = entries.reduce((acc, [, v]) => acc + v, 0);
-    if (sum === 0) return weightsMap;
-    const scaled: Record<string, number> = {};
-    entries.forEach(([code, v]) => {
-      scaled[code] = round2((v / sum) * 100);
-    });
-    const drift = round2(100 - Object.values(scaled).reduce((a, b) => a + b, 0));
-    if (drift !== 0) {
-      const largestCode = Object.entries(scaled).sort((a, b) => b[1] - a[1])[0][0];
-      scaled[largestCode] = round2(scaled[largestCode] + drift);
-    }
-    return scaled;
-  };
-
-  const handleSaveWeights = async () => {
-    const normalized = normalizeWeights(currentWeights);
-    for (const [code, weight] of Object.entries(normalized)) {
-      await updateWeight.mutateAsync({ poolId, code, weight });
-    }
-    message.success('权重已更新并自动归一化至 100%');
-    setEditing(false);
-    setLocalWeights({});
-  };
-
-  const handleEqualWeights = () => {
-    const codes = weights?.map((w: any) => w.etf_code) || [];
-    if (codes.length === 0) return;
-    const equal = round2(100 / codes.length);
-    const newWeights: Record<string, number> = {};
-    codes.forEach((code: string, idx: number) => {
-      newWeights[code] = idx === codes.length - 1 ? round2(100 - equal * (codes.length - 1)) : equal;
-    });
-    setLocalWeights(newWeights);
-  };
-
-  const handleSuggest = async (algorithm: string) => {
-    if (suggestWeights.isPending) return;
-    try {
-      await suggestWeights.mutateAsync({ poolId, algorithm });
-      setActiveAlgorithm(algorithm);
-      message.success(`已生成${SUGGEST_ALGORITHMS.find((a) => a.key === algorithm)?.label}建议`);
-    } catch {
-      message.error('建议权重生成失败');
-    }
-  };
-
-  const handleCreateSnapshot = async () => {
-    try {
-      await createSnapshot.mutateAsync(poolId);
-      message.success('快照已创建');
-    } catch {
-      message.error('快照创建失败');
-    }
-  };
 
   const handleUpdatePool = async () => {
     if (!editName.trim()) {
@@ -172,7 +73,7 @@ export default function PoolDetail() {
   const handleAddMember = async () => {
     if (!selectedCodeForAdd) return;
     const code = selectedCodeForAdd;
-    const existing = weights?.some((w: any) => w.etf_code === code);
+    const existing = pool?.members?.some((m: any) => m.etf_code === code);
     if (existing) {
       message.warning('该标的已在池中');
       return;
@@ -181,8 +82,9 @@ export default function PoolDetail() {
       await addMember.mutateAsync({ poolId, etf_code: code });
       message.success('标的已添加');
       setSelectedCodeForAdd(undefined);
-      // Force refetch weights to ensure the list updates
-      queryClient.invalidateQueries({ queryKey: ['pool-weights', poolId] });
+      queryClient.invalidateQueries({ queryKey: ['pool', poolId] });
+      queryClient.invalidateQueries({ queryKey: ['pool-analytics', poolId] });
+      queryClient.invalidateQueries({ queryKey: ['pool-correlation', poolId] });
     } catch {
       message.error('添加失败');
     }
@@ -203,7 +105,7 @@ export default function PoolDetail() {
     setEditingMeta(true);
   };
 
-  const existingCodes = useMemo(() => new Set(weights?.map((w: any) => w.etf_code) || []), [weights]);
+  const existingCodes = useMemo(() => new Set(pool?.members?.map((m: any) => m.etf_code) || []), [pool]);
 
   const etfOptions = useMemo(() => {
     return (etfList?.items || [])
@@ -214,17 +116,7 @@ export default function PoolDetail() {
       }));
   }, [etfList, existingCodes]);
 
-  const suggestMenuItems: MenuProps['items'] = SUGGEST_ALGORITHMS.map((algo) => ({
-    key: algo.key,
-    label: (
-      <HelpPopover termKey={ALGORITHM_TERM_KEYS[algo.key]} mode={mode}>
-        {algo.label}
-      </HelpPopover>
-    ),
-    onClick: () => handleSuggest(algo.key),
-  }));
-
-  const weightColumns = [
+  const memberColumns = [
     {
       title: '标的',
       render: (_: unknown, record: any) => (
@@ -236,46 +128,23 @@ export default function PoolDetail() {
         </span>
       ),
     },
-    {
-      title: <HelpPopover termKey="target_weight" mode={mode}>目标权重</HelpPopover>,
-      render: (_: unknown, record: any) => (
-        editing ? (
-          <Slider
-            min={0} max={100} step={1}
-            value={currentWeights[record.etf_code]}
-            onChange={(v) => handleWeightChange(record.etf_code, v)}
-            className="pool-weight-slider"
-          />
-        ) : `${record.target_weight ?? 0}%`
-      ),
-    },
-    { title: <HelpPopover termKey="suggested_weight" mode={mode}>建议权重</HelpPopover>, dataIndex: 'suggested_weight', render: (v: number) => v ? `${v.toFixed(1)}%` : '-', responsive: ['md'] as Array<'md' | 'lg' | 'xl' | 'sm' | 'xs' | 'xxl'> },
-    { title: <HelpPopover termKey="weight_source" mode={mode}>来源</HelpPopover>, dataIndex: 'weight_source', responsive: ['md'] as Array<'md' | 'lg' | 'xl' | 'sm' | 'xs' | 'xxl'> },
+    { title: '名称', dataIndex: 'etf_name', render: (v: string, record: any) => v || record.name_zh || '-' },
+    { title: '加入时间', dataIndex: 'added_at', render: (v: string) => v ? v.slice(0, 10) : '-' },
+    { title: '备注', dataIndex: 'note', render: (v?: string) => v || '-' },
     {
       title: '操作',
       key: 'action',
       width: 80,
       render: (_: unknown, record: any) => (
-        !editing ? (
-          <Popconfirm
-            title="确认移除该标的？"
-            onConfirm={() => handleRemoveMember(record.etf_code)}
-            okText="确认"
-            cancelText="取消"
-          >
-            <Button type="text" danger icon={<DeleteOutlined />} />
-          </Popconfirm>
-        ) : null
+        <Popconfirm
+          title="确认移除该标的？"
+          onConfirm={() => handleRemoveMember(record.etf_code)}
+          okText="确认"
+          cancelText="取消"
+        >
+          <Button type="text" danger icon={<DeleteOutlined />} />
+        </Popconfirm>
       ),
-    },
-  ];
-
-  const snapshotColumns = [
-    { title: '快照日期', dataIndex: 'snapshot_date' },
-    { title: '创建时间', dataIndex: 'created_at' },
-    {
-      title: '成员数',
-      render: (_: unknown, record: any) => record.data?.members?.length ?? '-',
     },
   ];
 
@@ -287,26 +156,21 @@ export default function PoolDetail() {
     { title: '最大回撤', value: perf?.max_drawdown, suffix: '%', color: 'detail-kpi-fall' },
   ];
 
-  const formatSigned = (v?: number | null) => {
-    if (v == null) return '—';
-    return `${v >= 0 ? '+' : ''}${v.toFixed(2)}`;
-  };
-
   const tabItems = [
     {
-      key: 'weights',
-      label: '成员与权重',
+      key: 'members',
+      label: '成员',
       children: (
         <Panel
           padding="md"
           extra={
             <HelpTrigger
-              tooltip="AI 解释权重算法"
+              tooltip="AI 解释关注池"
               onClick={() =>
                 open({
                   pageType: 'pool_detail',
-                  pageTitle: '标的池 - 成员与权重',
-                  contextData: buildPoolDetailContext(pool, weights, analytics, correlation, activeAlgorithm),
+                  pageTitle: '标的池 - 成员',
+                  contextData: buildPoolDetailContext(pool, pool?.members, correlation),
                   quickQuestions: getQuickQuestions('pool_detail'),
                 })
               }
@@ -315,95 +179,29 @@ export default function PoolDetail() {
         >
           <div className="pool-toolbar">
             <div className="pool-toolbar__actions">
-              {editing ? (
-                <>
-                  <Button type="primary" onClick={handleSaveWeights} loading={updateWeight.isPending} disabled={updateWeight.isPending}>保存</Button>
-                  <Button onClick={() => { setEditing(false); setLocalWeights({}); }} disabled={updateWeight.isPending}>取消</Button>
-                  <Button onClick={handleEqualWeights} disabled={updateWeight.isPending}>重置为等权</Button>
-                </>
-              ) : (
-                <Button onClick={() => setEditing(true)}>编辑权重</Button>
-              )}
-              <Dropdown menu={{ items: suggestMenuItems }} placement="bottomLeft" disabled={suggestWeights.isPending}>
-                <Button loading={suggestWeights.isPending}>生成建议权重</Button>
-              </Dropdown>
-              {!editing && (
-                <>
-                  <Select
-                    showSearch
-                    placeholder="选择要添加的标的"
-                    value={selectedCodeForAdd}
-                    onChange={setSelectedCodeForAdd}
-                    options={etfOptions}
-                    className="pool-add-select"
-                    filterOption={(input, option) =>
-                      (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
-                    }
-                  />
-                  <Button
-                    type="primary"
-                    icon={<PlusOutlined />}
-                    onClick={handleAddMember}
-                    disabled={!selectedCodeForAdd || addMember.isPending}
-                    loading={addMember.isPending}
-                  >
-                    添加标的
-                  </Button>
-                </>
-              )}
-            </div>
-            {editing && (
-              <span
-                className={`pool-weight-sum ${Math.abs(weightSum - 100) < 0.01 ? 'pool-weight-sum--ok' : 'pool-weight-sum--error'}`}
+              <Select
+                showSearch
+                placeholder="选择要添加的标的"
+                value={selectedCodeForAdd}
+                onChange={setSelectedCodeForAdd}
+                options={etfOptions}
+                className="pool-add-select"
+                filterOption={(input, option) =>
+                  (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+                }
+              />
+              <Button
+                type="primary"
+                icon={<PlusOutlined />}
+                onClick={handleAddMember}
+                disabled={!selectedCodeForAdd || addMember.isPending}
+                loading={addMember.isPending}
               >
-                当前合计：{weightSum.toFixed(2)}%（保存时自动归一化）
-              </span>
-            )}
+                添加标的
+              </Button>
+            </div>
           </div>
-          <Table dataSource={weights || []} columns={weightColumns} rowKey="etf_code" scroll={{ x: 'max-content' }} pagination={false} loading={!weights} />
-        </Panel>
-      ),
-    },
-    {
-      key: 'distribution',
-      label: '持仓分布',
-      children: analytics?.category_distribution ? (
-        <div className="detail-tab-panel">
-          <div className="detail-panel-extra">
-            <HelpTrigger
-              tooltip="AI 解释持仓分析"
-              onClick={() =>
-                open({
-                  pageType: 'pool_detail',
-                  pageTitle: '标的池 - 持仓分布',
-                  contextData: buildPoolDetailContext(pool, weights, analytics, correlation, activeAlgorithm),
-                  quickQuestions: getQuickQuestions('pool_detail'),
-                })
-              }
-            />
-          </div>
-          <Row gutter={[16, 16]}>
-            <Col xs={24} md={12}>
-              <Panel title="分类分布"><CategoryPie data={analytics.category_distribution} mode="count" /></Panel>
-            </Col>
-            <Col xs={24} md={12}>
-              <Panel title="权重分布"><CategoryPie data={analytics.category_distribution} mode="weight" /></Panel>
-            </Col>
-            <Col xs={24}>
-              <Panel title="收益表现" padding="md">
-                <ResponsiveGrid cols={4} gap="md">
-                  <Statistic title={<HelpPopover termKey="return_1m" mode={mode}>1月收益</HelpPopover>} value={perf?.return_1m} suffix="%" precision={2} />
-                  <Statistic title={<HelpPopover termKey="return_3m" mode={mode}>3月收益</HelpPopover>} value={perf?.return_3m} suffix="%" precision={2} />
-                  <Statistic title={<HelpPopover termKey="sharpe_1y" mode={mode}>夏普</HelpPopover>} value={perf?.sharpe_1y} precision={2} />
-                  <Statistic title={<HelpPopover termKey="max_drawdown_1y" mode={mode}>最大回撤</HelpPopover>} value={perf?.max_drawdown} suffix="%" precision={2} />
-                </ResponsiveGrid>
-              </Panel>
-            </Col>
-          </Row>
-        </div>
-      ) : (
-        <Panel title="持仓分布" padding="md">
-          <div>暂无分析数据</div>
+          <Table dataSource={pool?.members || []} columns={memberColumns} rowKey="etf_code" scroll={{ x: 'max-content' }} pagination={false} loading={!pool} />
         </Panel>
       ),
     },
@@ -423,7 +221,7 @@ export default function PoolDetail() {
                 open({
                   pageType: 'pool_detail',
                   pageTitle: '标的池 - 相关性热力图',
-                  contextData: buildPoolDetailContext(pool, weights, analytics, correlation, activeAlgorithm),
+                  contextData: buildPoolDetailContext(pool, pool?.members, correlation),
                   quickQuestions: getQuickQuestions('pool_detail'),
                 })
               }
@@ -439,25 +237,6 @@ export default function PoolDetail() {
         </Panel>
       ),
     },
-    {
-      key: 'snapshots',
-      label: <HelpPopover termKey="snapshot" mode={mode}>快照记录</HelpPopover>,
-      children: (
-        <Panel title="快照记录" padding="md">
-          <Button type="primary" onClick={handleCreateSnapshot} loading={createSnapshot.isPending} disabled={createSnapshot.isPending} className="detail-section">
-            创建快照
-          </Button>
-          <Table
-            dataSource={snapshots || []}
-            columns={snapshotColumns}
-            rowKey="id"
-            scroll={{ x: 'max-content' }}
-            pagination={false}
-            locale={{ emptyText: '暂无快照' }}
-          />
-        </Panel>
-      ),
-    },
   ];
 
   if (!isValidPoolId) {
@@ -466,7 +245,7 @@ export default function PoolDetail() {
         <PageHeader
           eyebrow="标的池"
           title="标的池详情"
-          description="查看和管理标的池成员、权重配置、持仓分布与历史快照"
+          description="查看和管理关注池与研究篮子成员"
         />
         <Alert message="非法的标的池 ID" description="URL 中的标的池 ID 必须是正整数。" type="error" showIcon />
       </PageShell>

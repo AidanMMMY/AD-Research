@@ -30,10 +30,10 @@ from app.models.etf import ETFInfo
 logger = logging.getLogger(__name__)
 
 
-# Local PDF storage directory.  Defaults to ``/data/ad-research/cninfo_pdfs``
+# Local PDF storage directory.  Defaults to ``/data/alloy-research/cninfo_pdfs``
 # (matches the deploy volume mount) but can be overridden via env.
 _DEFAULT_PDF_DIR = Path(
-    os.environ.get("CNINFO_PDF_DIR") or "/data/ad-research/cninfo_pdfs"
+    os.environ.get("CNINFO_PDF_DIR") or "/data/alloy-research/cninfo_pdfs"
 )
 
 # Cap on text length stored in ``extracted_text``.  We don't need the full

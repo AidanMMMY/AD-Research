@@ -93,3 +93,18 @@ export interface IndicatorData {
   return_6m?: number;
   return_1y?: number;
 }
+
+export interface ETFHoldingItem {
+  etf_code: string;
+  holding_code: string;
+  holding_name: string | null;
+  weight: number | null;
+  shares: number | null;
+  market_value: number | null;
+  holdings_as_of_date: string | null;
+}
+
+export interface ETFHoldingResponse {
+  holdings: ETFHoldingItem[];
+  holdings_as_of_date: string | null;
+}
