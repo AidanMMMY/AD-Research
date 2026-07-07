@@ -1,0 +1,1454 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AD-Research 系统平台功能逻辑说明手册</title>
+<meta name="author" content="AD-Research 开发组">
+<meta name="last-updated" content="2026-07-07">
+<style>
+:root {
+  --bg: #ffffff;
+  --fg: #111113;
+  --accent: #E11D48;
+  --accent-soft: #ffe4e6;
+  --muted: #6b7280;
+  --border: #e5e7eb;
+  --code-bg: #f6f8fa;
+  --table-stripe: #fafafa;
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+* { box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei",
+               "Hiragino Sans GB", "Helvetica Neue", "Segoe UI", Roboto, sans-serif;
+  line-height: 1.7;
+  color: var(--fg);
+  background: var(--bg);
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 40px 60px;
+}
+
+/* Title block */
+.doc-title {
+  font-size: 36px;
+  font-weight: 700;
+  line-height: 1.25;
+  margin: 0 0 12px;
+  color: var(--fg);
+}
+.doc-title-rule {
+  height: 3px;
+  background: linear-gradient(to right, var(--accent) 0%, transparent 100%);
+  margin-bottom: 16px;
+}
+
+/* Meta */
+.meta {
+  color: var(--muted);
+  font-size: 14px;
+  margin-bottom: 32px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 24px;
+}
+.meta span { white-space: nowrap; }
+.meta strong { color: var(--fg); font-weight: 600; margin-right: 4px; }
+
+/* Headings */
+h1 {
+  font-size: 36px;
+  font-weight: 700;
+  margin: 0 0 16px;
+  border-bottom: 3px solid var(--accent);
+  padding-bottom: 16px;
+}
+h2 {
+  font-size: 28px;
+  font-weight: 600;
+  margin: 48px 0 16px;
+  border-left: 4px solid var(--accent);
+  padding-left: 16px;
+  line-height: 1.3;
+}
+h3 {
+  font-size: 22px;
+  font-weight: 600;
+  margin: 32px 0 12px;
+  color: #1f2937;
+}
+h4 {
+  font-size: 18px;
+  font-weight: 600;
+  margin: 24px 0 10px;
+  color: #374151;
+}
+h5, h6 {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 16px 0 8px;
+}
+
+p { margin: 0 0 16px; }
+ul, ol { margin: 0 0 16px; padding-left: 24px; }
+li { margin: 4px 0; }
+
+strong { color: var(--fg); font-weight: 600; }
+
+/* Code */
+code {
+  background: var(--code-bg);
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-family: "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  font-size: 0.9em;
+  color: #be185d;
+}
+pre {
+  background: var(--code-bg);
+  border-radius: 6px;
+  padding: 16px;
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  margin: 16px 0;
+  line-height: 1.55;
+}
+pre code {
+  background: none;
+  padding: 0;
+  color: var(--fg);
+  font-size: 0.88em;
+}
+
+/* Tables */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 16px 0;
+  font-size: 14px;
+  box-shadow: var(--shadow);
+}
+th, td {
+  border: 1px solid var(--border);
+  padding: 12px 16px;
+  text-align: left;
+  vertical-align: top;
+}
+th {
+  background: #1a1a1a;
+  color: white;
+  font-weight: 600;
+}
+tr:nth-child(even) { background: var(--table-stripe); }
+
+/* Links */
+a {
+  color: var(--accent);
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  transition: border-color 0.15s, opacity 0.15s;
+}
+a:hover {
+  border-bottom-color: var(--accent);
+  opacity: 0.85;
+}
+
+/* TOC */
+.toc {
+  background: var(--code-bg);
+  border-radius: 6px;
+  padding: 20px 28px;
+  margin: 24px 0 40px;
+  border: 1px solid var(--border);
+}
+.toc-title {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0 0 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+.toc-list {
+  margin: 0;
+  padding-left: 20px;
+  columns: 2;
+  column-gap: 32px;
+}
+.toc-list li {
+  break-inside: avoid;
+  margin: 4px 0;
+}
+.toc-list a {
+  color: var(--fg);
+  border-bottom: none;
+}
+.toc-list a:hover {
+  color: var(--accent);
+  border-bottom: none;
+}
+
+/* Print button */
+.print-btn {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  background: var(--accent);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 16px;
+  cursor: pointer;
+  font-size: 13px;
+  font-family: inherit;
+  box-shadow: 0 2px 8px rgba(225, 29, 72, 0.3);
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+.print-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(225, 29, 72, 0.4);
+}
+.print-btn:active { transform: translateY(0); }
+
+/* Blockquote */
+blockquote {
+  margin: 16px 0;
+  padding: 12px 20px;
+  border-left: 4px solid var(--accent);
+  background: var(--accent-soft);
+  border-radius: 4px;
+  color: #4b5563;
+}
+blockquote p { margin: 0 0 8px; }
+blockquote p:last-child { margin-bottom: 0; }
+
+/* HR */
+hr {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 32px 0;
+}
+
+/* Print styles */
+@media print {
+  body {
+    max-width: none;
+    padding: 20px;
+    font-size: 12pt;
+  }
+  .print-btn, .toc { display: none !important; }
+  h1, h2, h3 { page-break-after: avoid; }
+  table { page-break-inside: avoid; }
+  pre, code { page-break-inside: avoid; }
+  a { color: #555; border-bottom: none; }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  body { padding: 20px; }
+  h1 { font-size: 28px; }
+  h2 { font-size: 22px; }
+  h3 { font-size: 18px; }
+  .doc-title { font-size: 28px; }
+  .toc-list { columns: 1; }
+  pre { font-size: 12px; padding: 12px; }
+  table { font-size: 13px; }
+  th, td { padding: 8px 10px; }
+  .print-btn { top: 10px; right: 10px; padding: 6px 12px; }
+}
+</style>
+</head>
+<body>
+<button class="print-btn no-print" onclick="window.print()">打印 / 导出 PDF</button>
+<h1 id="ad-research">AD-Research 系统平台功能逻辑说明手册</h1>
+<blockquote>
+<p>本手册是 AD-Research 投研平台的<strong>功能与业务逻辑总纲</strong>，覆盖数据流、模块清单、关键决策、部署架构与维护流程。</p>
+<p><strong>最后更新：2026-07-07</strong></p>
+<p>适用版本：基于 2026-07-02 阶段性 sprint（Phase 2 宏观接入 + Phase 4-9 数据源扩展）之后的当前 main。</p>
+</blockquote>
+<hr>
+<nav class="toc"><div class="toc-title">目录</div><ul class="toc-list"><li><a href="#1">1. 平台概览</a></li>
+<li><a href="#2">2. 功能模块清单</a></li>
+<li><a href="#3">3. 业务逻辑图</a></li>
+<li><a href="#4">4. 数据源全景</a></li>
+<li><a href="#5">5. 定时任务清单</a></li>
+<li><a href="#6">6. 关键技术决策</a></li>
+<li><a href="#7">7. 部署与运维</a></li>
+<li><a href="#8">8. 已知限制与风险</a></li>
+<li><a href="#9">9. 维护与更新指南</a></li>
+<li><a href="#10">10. 变更历史摘要</a></li>
+<li><a href="#a">附录 A：关键路径速查</a></li>
+<li><a href="#b">附录 B：角色 / 权限矩阵</a></li>
+<li><a href="#c">附录 C：术语表</a></li></ul></nav>
+<h2 id="1">1. 平台概览</h2>
+<h3 id="11">1.1 一句话定位</h3>
+<p>AD-Research 是一个<strong>自部署、多市场、智能体驱动的投研与回测一体化平台</strong>：把 A 股 / 港股 / 美股 / 加密货币 / 期货的行情、微结构、宏观、新闻、社交舆情聚合到一个 Web 控制台，配合本地策略引擎和 AI 研报生成，让用户能够完成"选股 → 验证 → 监控 → 自动化执行"的完整闭环。</p>
+<h3 id="12">1.2 核心价值</h3>
+<table>
+<thead>
+<tr>
+<th>维度</th>
+<th>价值主张</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>多市场覆盖</strong></td>
+<td>A 股、ETF、美股、加密、商品期货、宏观指标一站式拉通（不依赖单一数据商）</td>
+</tr>
+<tr>
+<td><strong>复权/行情一致</strong></td>
+<td>统一 raw close + adj_factor 双轨存储，前端按需展示复权</td>
+</tr>
+<tr>
+<td><strong>可观测 ETL</strong></td>
+<td>每个 pipeline 写入 <code>etl_logs</code> 表、<code>result.success/records</code>、Redis 锁保护互斥</td>
+</tr>
+<tr>
+<td><strong>AI 增强</strong></td>
+<td>DeepSeek 用于研报摘要、雪球内容深度抓取、聊天助手；Anthropic Claude 备用</td>
+</tr>
+<tr>
+<td><strong>回测 / 实盘</strong></td>
+<td>支持基于历史数据的回测与基于信号的模拟仓（paper trading）</td>
+</tr>
+<tr>
+<td><strong>单点登录 + 多设备</strong></td>
+<td>JWT access token + refresh token + user_device 多端管理</td>
+</tr>
+</tbody>
+</table>
+<h3 id="13">1.3 用户群</h3>
+<ul>
+<li><strong>主要</strong>：个人投资者 / 量化研究员，需要全市场扫描 + 自定义策略</li>
+<li><strong>次要</strong>：私募 / 投顾团队的桌面看板（数据本地掌控，便于合规）</li>
+<li><strong>内部</strong>：用于 debug 数据源问题、规划新数据源的"运维视角"</li>
+</ul>
+<h3 id="14">1.4 技术栈速览</h3>
+<table>
+<thead>
+<tr>
+<th>层</th>
+<th>技术</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>后端</td>
+<td>Python 3.11 + FastAPI + SQLAlchemy 2.x + APScheduler 3.x</td>
+</tr>
+<tr>
+<td>数据库</td>
+<td>PostgreSQL 16（数据）+ Redis 7（缓存 + 分布式锁 + Celery 替代）</td>
+</tr>
+<tr>
+<td>前端</td>
+<td>React 18 + TypeScript + Vite + Ant Design v5</td>
+</tr>
+<tr>
+<td>状态/数据</td>
+<td>TanStack Query（React Query）+ Zustand + Ant Design 主题</td>
+</tr>
+<tr>
+<td>部署</td>
+<td>Docker Compose + GitHub Actions self-hosted runner + Nginx</td>
+</tr>
+<tr>
+<td>LLM</td>
+<td>DeepSeek（主）+ Anthropic（备），统一 <code>app/services/llm/</code></td>
+</tr>
+<tr>
+<td>抓取</td>
+<td>requests + BeautifulSoup + Playwright（雪球 Cookie 路由） + RSS</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="2">2. 功能模块清单</h2>
+<blockquote>
+<p>按业务域分组。每行格式：<strong>模块 — 关键页面 — 服务/路由</strong>。</p>
+</blockquote>
+<h3 id="21-instrument">2.1 标的管理（Instrument）</h3>
+<table>
+<thead>
+<tr>
+<th>模块</th>
+<th>说明</th>
+<th>关键页面 / API</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>ETF 列表</td>
+<td>A 股 + 美股 ETF 主数据 + 行情</td>
+<td><code>/etfs</code> → <code>GET /api/v1/etfs</code></td>
+</tr>
+<tr>
+<td>个股列表</td>
+<td>A 股 / 美股个股，含估值 / 财务</td>
+<td><code>/stocks</code> <code>/us-stocks</code> → <code>GET /api/v1/stocks</code></td>
+</tr>
+<tr>
+<td>加密货币</td>
+<td>Binance 24/7 K 线 + 现货价格</td>
+<td><code>/crypto</code> <code>/crypto/:code</code></td>
+</tr>
+<tr>
+<td>商品期货</td>
+<td>SHFE/DCE/CZCE/CFFEX/INE 主力合约</td>
+<td><code>/futures</code></td>
+</tr>
+<tr>
+<td>标的详情</td>
+<td>K 线 + 财务 + 研报 + 信号 + 新闻聚合</td>
+<td><code>/instruments/:code</code> <code>/stocks/:code</code> <code>/crypto/:code</code></td>
+</tr>
+</tbody>
+</table>
+<p>实现位置：</p>
+<pre><code>app/services/etf_service.py
+app/services/market_data_service.py
+app/services/futures_service.py
+app/services/crypto.py (API)
+</code></pre>
+<h3 id="22-market-data-indicators">2.2 行情与指标（Market Data / Indicators）</h3>
+<ul>
+<li><strong>K 线 / 复权</strong>：所有市场统一 <code>daily_bars</code> 存 <code>raw close</code>，<code>adj_factor</code> 单独列；行情接口 <code>market-data</code> 支持 <code>adj=qfq/hfq/none</code>。</li>
+<li><strong>技术指标</strong>：MA / EMA / MACD / RSI / BOLL / KDJ / ATR 由 <code>app/data/indicators/calculator.py</code> 批算，按 <code>market_filter</code> 切片。</li>
+</ul>
+<p>页面：<code>/dashboard</code>（综合行情）、<code>/return-comparison</code>（收益对比）、<code>/microstructure</code>（微结构）。</p>
+<h3 id="23-screen-score">2.3 筛选器 / 评分（Screen / Score）</h3>
+<ul>
+<li>预置筛选器：<code>/screen</code> <code>/etf-scanner</code>，底层 <code>screening_service.py</code></li>
+<li>评分排行：<code>/score-ranking</code>，基于多因子（动量 / 估值 / 质量 / 资金流），<code>scoring_service.py</code></li>
+<li>板块轮动：<code>/sector-rotation</code></li>
+</ul>
+<h3 id="24-pool-portfolio-paper-trading">2.4 组合管理（Pool / Portfolio / Paper Trading）</h3>
+<table>
+<thead>
+<tr>
+<th>模块</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>/pools</code></td>
+<td>自定义池（手动 / 规则），支持快照 (<code>pool_snapshots</code>)</td>
+</tr>
+<tr>
+<td><code>/pools/:id</code></td>
+<td>池详情 + 收益归因 + 调仓记录</td>
+</tr>
+<tr>
+<td><code>/paper-trading</code></td>
+<td>模拟仓，跟随信号自动成交</td>
+</tr>
+<tr>
+<td><code>/portfolio</code></td>
+<td>真实持仓视角（用户自填）</td>
+</tr>
+<tr>
+<td><code>/trading-panel</code></td>
+<td>下单面板（监控信号 → 触发 paper 交易）</td>
+</tr>
+</tbody>
+</table>
+<p>实现：<code>pool_service.py</code> / <code>paper_trading_service.py</code> / <code>risk_control.py</code></p>
+<h3 id="25-backtest-strategy">2.5 回测 / 策略（Backtest / Strategy）</h3>
+<ul>
+<li>策略库：<code>/strategy-library</code>（预置 12+ 策略：双均线 / 海龟 / 海龟变种 / 横截面动量等）</li>
+<li>回测列表：<code>/backtests</code> <code>/backtests/:id</code></li>
+<li>回测引擎：<code>backtest_engine.py</code> + <code>SignalGenerator</code></li>
+</ul>
+<h3 id="26-research">2.6 研报 / 研究（Research）</h3>
+<table>
+<thead>
+<tr>
+<th>页面</th>
+<th>端点</th>
+<th>后端</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>/research-reports</code></td>
+<td><code>/api/v1/research-reports</code></td>
+<td>东方财富 + DeepSeek 摘要</td>
+</tr>
+<tr>
+<td><code>/cninfo-reports</code></td>
+<td><code>/api/v1/cninfo-reports</code></td>
+<td>巨潮 PDF + pdfplumber 文本</td>
+</tr>
+<tr>
+<td><code>/sec-filings</code></td>
+<td><code>/api/v1/sec-filings</code></td>
+<td>SEC EDGAR 10-K/10-Q</td>
+</tr>
+<tr>
+<td><code>/report-browser</code></td>
+<td>内置研报浏览器</td>
+<td></td>
+</tr>
+<tr>
+<td><code>/ai-chat</code></td>
+<td>DeepSeek 对话式研究助手</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<h3 id="27-news-sentiment">2.7 新闻 / 舆情（News / Sentiment）</h3>
+<table>
+<thead>
+<tr>
+<th>路由</th>
+<th>数据源</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>/news</code></td>
+<td>聚合 8 路（新浪 / Yahoo / CNBC / Reddit / CoinDesk 等）</td>
+</tr>
+<tr>
+<td><code>/news-health</code></td>
+<td>数据源健康监控</td>
+</tr>
+<tr>
+<td><code>/sentiment</code> <code>/sentiment-dashboard</code></td>
+<td>DeepSeek / 关键词情绪打分</td>
+</tr>
+<tr>
+<td><code>/search-trends</code></td>
+<td>百度 + Google Trends（pytrends）</td>
+</tr>
+</tbody>
+</table>
+<p>实现：<code>app/services/news/</code>（含 <code>crawler/</code> 6 类抓取器）</p>
+<h3 id="28-macro-global">2.8 宏观 / 全球市场（Macro / Global）</h3>
+<ul>
+<li><code>/macro</code> — FRED + BEA + China macro（akshare <code>macro_china_*</code>）</li>
+<li><code>/global-markets</code> — 全球主要指数（yfinance + akshare）</li>
+<li><code>/signal-dashboard</code> — 集成宏观因子的事件驱动信号</li>
+</ul>
+<h3 id="29-auth-admin">2.9 用户 / 权限（Auth / Admin）</h3>
+<table>
+<thead>
+<tr>
+<th>路由</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>/login</code></td>
+<td>JWT 登录</td>
+</tr>
+<tr>
+<td><code>/admin/users</code></td>
+<td>用户管理（仅 superuser）</td>
+</tr>
+<tr>
+<td><code>/admin/deployments</code></td>
+<td>部署追踪（GitHub Actions 状态回读）</td>
+</tr>
+<tr>
+<td><code>/notification-config</code> <code>/notification-logs</code></td>
+<td>推送渠道配置</td>
+</tr>
+</tbody>
+</table>
+<p>实现：<code>auth.py</code> <code>/</code>user.py<code>模型，</code>notification_service.py`</p>
+<h3 id="210-ai">2.10 AI 助手 / 学习</h3>
+<table>
+<thead>
+<tr>
+<th>路由</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>/ai-chat</code></td>
+<td>DeepSeek 对话，支持流式 (SSE <code>stream.py</code>)</td>
+</tr>
+<tr>
+<td><code>/learning</code></td>
+<td>投教资料库</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="3">3. 业务逻辑图</h2>
+<h3 id="31">3.1 数据流（横向）</h3>
+<pre><code>┌──────────────────┐
+│   External APIs  │
+│ Tushare/Finnhub/ │
+│ Tiingo/FMP/      │
+│ Sina/Yahoo/Binance│
+│ FRED/BEA/akshare │
+│ 雪球/巨潮/SEC    │
+└────────┬─────────┘
+         │ rate-limited
+         ▼
+┌──────────────────┐
+│  Provider Layer  │  app/data/providers/*
+│  + Cookie Playwright│  (xueqiu_worker)
+└────────┬─────────┘
+         │
+         ▼
+┌──────────────────┐
+│  ETL Pipelines   │  app/data/pipelines/*
+│  (19+ pipelines) │  (a_share / us_etf / futures / crypto / ...)
+└────────┬─────────┘
+         │ upsert, unique constraint
+         ▼
+┌──────────────────┐
+│   PostgreSQL     │  daily_bars / etf_info / news / ...
+│   + Redis Locks  │  分布式锁防重跑
+└────────┬─────────┘
+         │ FastAPI routers
+         ▼
+┌──────────────────┐
+│  REST API Layer  │  app/api/v1/*
+│  + JWT auth      │  33 endpoints
+└────────┬─────────┘
+         │ fetch / react-query
+         ▼
+┌──────────────────┐
+│  React Frontend  │  60+ pages, 25+ components
+│  (SPA + AntD v5) │
+└──────────────────┘
+</code></pre>
+<h3 id="32">3.2 用户流（纵向）</h3>
+<pre><code>登录 (JWT) ──→ Dashboard ──→ 选股 (Screen/ETF Scanner)
+                            ├─→ 标的详情 (技术+财务+新闻)
+                            │      ├─→ 信号订阅
+                            │      ├─→ 加入池 (Pools)
+                            │      └─→ 模拟仓下单 (Paper Trade)
+                            ├─→ 研报 (Research Reports / Cninfo / SEC)
+                            │      └─→ AI 摘要 (DeepSeek)
+                            ├─→ 宏观 (FRED/BEA/China macro)
+                            └─→ 回测 (Strategy → Backtest → 信号验证)
+</code></pre>
+<h3 id="33">3.3 实时事件流</h3>
+<pre><code>backend (FastAPI) ──SSE─→ stream.py ──React useEventSource
+  ├─ AIChat 流式 token
+  ├─ 模拟仓成交回报
+  └─ ETL job 状态
+</code></pre>
+<hr>
+<h2 id="4">4. 数据源全景</h2>
+<blockquote>
+<p>摘自 <code>docs/20260702-data-source-map.md</code>，仅摘要。</p>
+</blockquote>
+<table>
+<thead>
+<tr>
+<th>域</th>
+<th>数据源</th>
+<th>频率</th>
+<th>限速 / 备注</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>A 股 K 线/财务</td>
+<td>Tushare Pro</td>
+<td>日/周</td>
+<td>200/min 积分制</td>
+</tr>
+<tr>
+<td>全市场聚合</td>
+<td>akshare</td>
+<td>日</td>
+<td>免费</td>
+</tr>
+<tr>
+<td>美股 ETF / 个股</td>
+<td>Tiingo + Finnhub + FMP</td>
+<td>日</td>
+<td>50/h Tiingo 关键瓶颈</td>
+</tr>
+<tr>
+<td>加密</td>
+<td>Binance Public</td>
+<td>日</td>
+<td>1200/min</td>
+</tr>
+<tr>
+<td>宏观</td>
+<td>FRED / BEA / akshare</td>
+<td>日/周</td>
+<td>FRED 24 series</td>
+</tr>
+<tr>
+<td>研报</td>
+<td>东方财富 (akshare)</td>
+<td>18:00 日抓</td>
+<td>DeepSeek 摘要</td>
+</tr>
+<tr>
+<td>公告 PDF</td>
+<td>巨潮 cninfo</td>
+<td>17:00 日抓</td>
+<td>HS300+CS500，2026 起不回填</td>
+</tr>
+<tr>
+<td>美股 Filing</td>
+<td>SEC EDGAR</td>
+<td>周六 06:00 UTC</td>
+<td>10 req/sec，强制 UA</td>
+</tr>
+<tr>
+<td>微结构</td>
+<td>akshare 龙虎榜/沪港通/融资融券/限售解禁</td>
+<td>18:30 日 / 周一</td>
+<td></td>
+</tr>
+<tr>
+<td>期货</td>
+<td>akshare × 5 交易所</td>
+<td>16:30 日</td>
+<td>70 主力合约</td>
+</tr>
+<tr>
+<td>搜索指数</td>
+<td>pytrends + baidu</td>
+<td>03:00 日</td>
+<td>60s/req</td>
+</tr>
+<tr>
+<td>新闻</td>
+<td>雪球 / 新浪 / Yahoo / CNBC / Reddit / wewe-rss</td>
+<td>5–15 min</td>
+<td>雪球需 Cookie</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Token 存储</strong>：<code>.env</code> (部署机 <code>/opt/ad-research/deploy/aliyun-ecs/.env</code>)，<strong>禁止入库</strong>。<br>
+<strong>真 secret rotate</strong> 见 <code>docs/dev-notes/20260705-secret-rotate-3-providers.md</code>（DeepSeek / 雪球 / Tushare）。</p>
+<hr>
+<h2 id="5">5. 定时任务清单</h2>
+<blockquote>
+<p>来源：<code>app/core/scheduler.py</code> + 各域 <code>scheduler*.py</code>。时间默认 <code>Asia/Shanghai</code>。</p>
+</blockquote>
+<h3 id="51">5.1 行情/数据采集（每日）</h3>
+<table>
+<thead>
+<tr>
+<th>Cron</th>
+<th>Job</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>03:00 周一-周五</td>
+<td><code>fred_macro_daily</code></td>
+<td>FRED 24 series</td>
+</tr>
+<tr>
+<td>03:00</td>
+<td><code>search_trends_daily</code></td>
+<td>Baidu + Google Trends</td>
+</tr>
+<tr>
+<td>05:00</td>
+<td><code>us_daily_etl</code></td>
+<td>美股日终</td>
+</tr>
+<tr>
+<td>05:30</td>
+<td><code>us_indicator_calculation</code></td>
+<td>美股指标</td>
+</tr>
+<tr>
+<td>07:00</td>
+<td><code>etf_holdings</code></td>
+<td>ETF 前十大持仓</td>
+</tr>
+<tr>
+<td>08:00</td>
+<td><code>indicator_calculation</code></td>
+<td>全市场指标批算</td>
+</tr>
+<tr>
+<td>08:05</td>
+<td><code>crypto_daily_etl</code></td>
+<td>加密（00:05 UTC）</td>
+</tr>
+<tr>
+<td>08:30</td>
+<td><code>crypto_indicator_calculation</code></td>
+<td>加密指标</td>
+</tr>
+<tr>
+<td>08:30</td>
+<td><code>score_calculation</code></td>
+<td>多因子评分</td>
+</tr>
+<tr>
+<td>09:00</td>
+<td><code>signal_generation</code></td>
+<td>全策略信号生成</td>
+</tr>
+<tr>
+<td>09:30</td>
+<td><code>paper_trade_auto</code></td>
+<td>模拟仓自动下单</td>
+</tr>
+<tr>
+<td>09:30</td>
+<td><code>china_macro_daily</code> 周一-周五</td>
+<td>akshare macro_china_*</td>
+</tr>
+<tr>
+<td>09:30</td>
+<td><code>listing_events_daily</code></td>
+<td>上市预告</td>
+</tr>
+<tr>
+<td>每小时 :15</td>
+<td><code>paper_trade_market_update</code></td>
+<td>模拟仓市值</td>
+</tr>
+<tr>
+<td>每小时 :00</td>
+<td><code>us_historical_backfill</code></td>
+<td>美股历史回填</td>
+</tr>
+<tr>
+<td>15:30</td>
+<td><code>a_share_daily_etl</code></td>
+<td>A 股 ETF K 线</td>
+</tr>
+<tr>
+<td>16:00</td>
+<td><code>a_stock_daily_etl</code></td>
+<td>A 股个股 K 线</td>
+</tr>
+<tr>
+<td>16:00 周一-周五</td>
+<td><code>global_indices_daily</code></td>
+<td>全球指数</td>
+</tr>
+<tr>
+<td>16:30</td>
+<td><code>a_stock_fundamental_etl</code></td>
+<td>A 股个股估值</td>
+</tr>
+<tr>
+<td>16:30</td>
+<td><code>futures_daily_etl</code></td>
+<td>期货日 K</td>
+</tr>
+<tr>
+<td>17:00</td>
+<td><code>cninfo_reports_daily</code></td>
+<td>巨潮 PDF</td>
+</tr>
+<tr>
+<td>18:00</td>
+<td><code>research_reports_daily</code></td>
+<td>研报抓取</td>
+</tr>
+<tr>
+<td>18:30</td>
+<td><code>microstructure_daily</code></td>
+<td>龙虎榜/沪港通/融资融券</td>
+</tr>
+<tr>
+<td>每 2 小时</td>
+<td><code>research_summarize</code></td>
+<td>DeepSeek 摘要补齐</td>
+</tr>
+</tbody>
+</table>
+<h3 id="52">5.2 周 / 月任务</h3>
+<table>
+<thead>
+<tr>
+<th>Cron</th>
+<th>Job</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>周日 01:00</td>
+<td><code>us_etf_discovery</code> 美股 ETF 列表发现</td>
+</tr>
+<tr>
+<td>周日 02:00</td>
+<td><code>us_stock_discovery</code> 美股个股发现</td>
+</tr>
+<tr>
+<td>周日 03:00</td>
+<td><code>etf_market_scan</code> 全市场 ETF 扫描</td>
+</tr>
+<tr>
+<td>周日 04:00</td>
+<td><code>etf_metadata_enrichment</code> ETF 元数据补全</td>
+</tr>
+<tr>
+<td>周一 01:00</td>
+<td><code>a_stock_discovery</code> A 股个股发现</td>
+</tr>
+<tr>
+<td>周一 02:00</td>
+<td><code>a_stock_financials</code> A 股个股财报</td>
+</tr>
+<tr>
+<td>周六 06:00 UTC</td>
+<td><code>sec_edgar_daily</code> SEC 10-K/10-Q</td>
+</tr>
+<tr>
+<td>周日 22:00</td>
+<td><code>weekly_pool_reports</code> 池周报</td>
+</tr>
+<tr>
+<td>每月 1 号 03:00</td>
+<td><code>futures_contracts_refresh</code> 期货主力合约列表</td>
+</tr>
+</tbody>
+</table>
+<h3 id="53">5.3 新闻 / 社交事件</h3>
+<table>
+<thead>
+<tr>
+<th>间隔</th>
+<th>Job</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>5 min</td>
+<td><code>news_sina_5m</code> / <code>news_yahoo_5m</code> / <code>news_cnbc_5m</code></td>
+</tr>
+<tr>
+<td>5 min</td>
+<td><code>news_xueqiu_5m</code>（需 XUEQIU_COOKIE）</td>
+</tr>
+<tr>
+<td>10 min</td>
+<td><code>news_cninfo_10m</code>（巨潮公告流）</td>
+</tr>
+<tr>
+<td>15 min</td>
+<td><code>news_wechat_zeping_15m</code></td>
+</tr>
+<tr>
+<td>30 min</td>
+<td><code>coindesk</code> / <code>cointelegraph</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="54-os-cron">5.4 OS cron（部署层）</h3>
+<p>不在 APScheduler 内、由主机 cron 执行：</p>
+<pre><code class="language-cron">47 * * * *  /opt/ad-research/deploy/aliyun-ecs/orchestrate_v2.sh
+</code></pre>
+<p><code>orchestrate_v2.sh</code> 用于跨容器编排的自愈式任务（如 Redis 锁死检测、磁盘清淤）。</p>
+<hr>
+<h2 id="6">6. 关键技术决策</h2>
+<h3 id="61-raw-close-adj_factor">6.1 复权：raw close + adj_factor 双轨</h3>
+<ul>
+<li><code>daily_bars.close</code> <strong>永远存原始收盘价</strong>，不复权。</li>
+<li>单独列 <code>adj_factor</code> 由 Tushare/akshare 提供。</li>
+<li>前端查行情时，后端按 <code>adj=qfq/hfq/none</code> 即时计算。</li>
+<li><strong>好处</strong>：避免历史回测数据被改写、所有指标可重算、跨数据源一致性。</li>
+</ul>
+<h3 id="62-pipeline-provider-pipelineresult">6.2 Pipeline × Provider × PipelineResult 三层架构</h3>
+<pre><code>Provider（外部数据获取）
+   ↓  (raw dict / df)
+Pipeline（清洗 + 去重 + upsert）
+   ↓  PipelineResult(success, records, errors)
+Scheduler 调度 + redis_lock 互斥 + etl_logs 入库
+</code></pre>
+<p>每个 pipeline 继承 <code>BasePipeline.run_with_retry</code>，带 1-3 次自动重试 + 异常吞咽（部分域）。</p>
+<h3 id="63-agent-worker">6.3 Agent worker 架构（雪球）</h3>
+<p><code>scripts/xueqiu_playwright_worker.py</code> 是一个<strong>独立进程的 Playwright worker</strong>，监听 Redis 队列，模拟浏览器登录态抓取需要 Cookie 的雪球内容。<br>
+- 主进程 API 端点 <code>POST /api/v1/news/xueqiu/refresh</code> 把任务投递 Redis<br>
+- worker 进程消费、爬取、把结果写 DB<br>
+- <strong>为什么独立</strong>：<br>
+  1. Cookie 失效可单独重启 worker，不影响 web<br>
+  2. 浏览器有内存泄漏风险，独立进程便于 <code>kill -9</code><br>
+  3. 多节点部署可水平扩展</p>
+<h3 id="64-llm">6.4 LLM 抽象层</h3>
+<p><code>app/services/llm/</code>，所有 LLM 调用通过统一接口：</p>
+<pre><code class="language-python">class LLMService:
+    chat(messages, stream=False) → str | AsyncIterator
+    summarize(text, max_tokens=200) → str
+</code></pre>
+<p>实现 <code>anthropic_provider.py</code> 与 <code>deepseek_provider.py</code>，由 <code>LLM_PROVIDER</code> 配置切换。<br>
+<strong>禁止凭印象判断模型真假</strong>——模型目录详见 <code>memory/deepseek-model-catalog.md</code>。</p>
+<h3 id="65">6.5 数据库迁移</h3>
+<ul>
+<li><strong>Alembic</strong> 作主迁移工具，迁移文件 <code>migrations/versions/</code></li>
+<li>每个 phase 自带 migration，回滚顺序记录在 <code>docs/dev-notes/</code></li>
+<li>部署时容器启动自动 <code>alembic upgrade head</code></li>
+</ul>
+<h3 id="66">6.6 行锁 + 唯一约束去重</h3>
+<ul>
+<li>ETL 写入用 <code>(code, trade_date)</code>、<code>(announcement_id)</code> 等 unique 约束确保幂等</li>
+<li>长任务用 <code>app/core/redis_client.py:redis_lock(name, expire)</code> 互斥</li>
+</ul>
+<h3 id="67">6.7 时区统一</h3>
+<ul>
+<li><strong>DB 全部 Asia/Shanghai</strong>（<code>TIMESTAMP WITH TIME ZONE</code> 不允许；用 <code>DATETIME</code> 存裸北京时间）</li>
+<li>序列化时统一 ISO-8601 + <code>+08:00</code></li>
+<li>前端用 dayjs，所有 <code>dayjs.tz('Asia/Shanghai')</code></li>
+</ul>
+<hr>
+<h2 id="7">7. 部署与运维</h2>
+<h3 id="71-5">7.1 容器架构（5 个服务）</h3>
+<pre><code>┌──────────────────────────────────────────────┐
+│ Nginx (80/443 → 8000 反代, 静态资源)         │
+│   ├─ /api  → backend:8000                     │
+│   └─ /     → /usr/share/nginx/html (web dist)│
+└──────────────────────────────────────────────┘
+                │
+┌──────────────────────────────────────────────┐
+│ backend (FastAPI + APScheduler + Workers)    │
+│   ├─ uvicorn :8000                           │
+│   ├─ alembic auto-upgrade head               │
+│   ├─ ENABLE_SCHEDULER=true 启动 APScheduler  │
+│   └─ 19+ pipeline jobs 自动跑                 │
+└──────────────────────────────────────────────┘
+       │                            │
+┌──────────────┐         ┌─────────────────────┐
+│ PostgreSQL16 │         │ Redis 7             │
+│ 数据持久化   │         │ 缓存 + 分布式锁     │
+└──────────────┘         └─────────────────────┘
+</code></pre>
+<blockquote>
+<p>共 5 个容器：postgres / redis / backend / nginx + （可选 worker）。</p>
+</blockquote>
+<h3 id="72">7.2 关键路径</h3>
+<table>
+<thead>
+<tr>
+<th>用途</th>
+<th>路径</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>PostgreSQL 数据</td>
+<td><code>/data/docker/volumes/aliyun-ecs_postgres_data/_data</code></td>
+</tr>
+<tr>
+<td>Redis 数据</td>
+<td><code>/data/docker/volumes/aliyun-ecs_redis_data/_data</code></td>
+</tr>
+<tr>
+<td>Web 静态</td>
+<td><code>/data/docker/volumes/aliyun-ecs_web_dist</code></td>
+</tr>
+<tr>
+<td>巨潮 PDF</td>
+<td><code>/data/ad-research/cninfo_pdfs/{ts_code}/{announcement_id}.pdf</code></td>
+</tr>
+<tr>
+<td>配置 / Token</td>
+<td><code>/opt/ad-research/deploy/aliyun-ecs/.env</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="73-github-actions">7.3 GitHub Actions 部署流</h3>
+<pre><code>push to main
+  └─ build backend image (multi-stage)
+  └─ build web (vite build)
+  └─ self-hosted runner 拉取 → rsync web/dist
+  └─ bash redeploy.sh
+       ├─ alembic upgrade head
+       ├─ docker compose pull / up -d
+       └─ post_deploy_check.sh 验证
+</code></pre>
+<h3 id="74">7.4 观测 / 告警</h3>
+<ul>
+<li><code>GET /api/v1/etl/status</code> — 最近 100 条 ETL 日志</li>
+<li><code>GET /api/v1/scheduler/jobs</code> — 列出注册的 cron job 及 next_run_time</li>
+<li><code>GET /api/v1/news/health</code> — 新闻源连接健康</li>
+<li>前端 <code>/etl-ops-dashboard</code> 图形化</li>
+</ul>
+<h3 id="75">7.5 常用运维命令</h3>
+<pre><code class="language-bash"># 重启后端（不重建）
+ssh aliyun-ecs 'cd /opt/ad-research/deploy/aliyun-ecs &amp;&amp; docker compose restart backend'
+
+# 手动跑一次 A 股 ETL
+docker exec alloyresearch-backend python -c \
+  &quot;from app.core.scheduler import run_a_share_etl; run_a_share_etl()&quot;
+
+# 查看 APScheduler 当前注册的 job
+docker exec alloyresearch-backend curl -s http://localhost:8000/api/v1/scheduler/jobs | jq
+
+# 漂移检查（哪几个 job 已超时）
+bash scripts/check_scheduler_drift.sh
+
+# 重新构建并部署
+bash redeploy.sh
+</code></pre>
+<hr>
+<h2 id="8">8. 已知限制与风险</h2>
+<table>
+<thead>
+<tr>
+<th>项</th>
+<th>描述</th>
+<th>影响</th>
+<th>应对</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Reddit IP 封禁</strong></td>
+<td>阿里云 ECS 出口 IP 已进 Reddit 限速名单</td>
+<td><code>/news</code> 中 Reddit 列常年空</td>
+<td>可改 RSSHub / 第三方代理；暂时禁用</td>
+</tr>
+<tr>
+<td><strong>cls.cn (财联社) IP 封禁</strong></td>
+<td>同上</td>
+<td>部分快讯源缺失</td>
+<td>已切换到 wewe-rss 微信公众号源</td>
+</tr>
+<tr>
+<td><strong>A 股 ETF 复权历史问题</strong></td>
+<td>早期入库的 ETF 历史 K 线缺失 <code>adj_factor</code>，导致 QFQ/HFQ 历史数据有跳点</td>
+<td>长期回测失真</td>
+<td><code>backfill_etf_adj_factor.py</code> 已修；新数据 OK</td>
+</tr>
+<tr>
+<td><strong>BLS API key 缺</strong></td>
+<td>BLS 拉取上限 25/day 不可用</td>
+<td>美国劳工统计缺失</td>
+<td>待用户申请</td>
+</tr>
+<tr>
+<td><strong>Tiingo 限速 50/h</strong></td>
+<td>美股回填易触限</td>
+<td>回填偶尔重启</td>
+<td>分批 + 重试退避；月配额 500 已紧张</td>
+</tr>
+<tr>
+<td><strong>雪球 Cookie 过期</strong></td>
+<td>Cookie 失效后 <code>/news xueqiu/</code> 全空</td>
+<td>散户舆情缺失</td>
+<td>已写明 rotate runbook；worker 自动检测 401</td>
+</tr>
+<tr>
+<td><strong>playwright worker 内存泄漏</strong></td>
+<td>长时间运行后 worker 占 1-2 GB</td>
+<td>单 worker 周期崩溃</td>
+<td>部署时配 24h 重启；或水平扩展多 worker</td>
+</tr>
+<tr>
+<td><strong>DeepSeek 限速</strong></td>
+<td>部分时段 QPS 高时 429</td>
+<td>研报摘要积压</td>
+<td><code>coalesce=True</code> + 自动重试</td>
+</tr>
+<tr>
+<td><strong>历史回填压力</strong></td>
+<td>全市场 5000+ 标的 × 5 年</td>
+<td>单次 backfill 数小时</td>
+<td>强制分批（500 标的/批），避免内存爆炸</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>详细已知问题：<code>docs/dev-notes/20260627-data-source-known-issues.md</code></p>
+</blockquote>
+<hr>
+<h2 id="9">9. 维护与更新指南</h2>
+<h3 id="91">9.1 新增数据源</h3>
+<ol>
+<li><code>app/data/providers/&lt;name&gt;.py</code> 写 provider 类（限速 + 重试 + UA）</li>
+<li><code>app/data/pipelines/&lt;name&gt;.py</code> 写 ETL pipeline（继承 BasePipeline）</li>
+<li><code>app/core/scheduler.py:init_scheduler</code> 加 cron</li>
+<li>配 Token 到 <code>.env</code> + <code>docker-compose.yml</code> env 注入</li>
+<li>alembic migration 建表（唯一约束必加）</li>
+<li>写 service 层 <code>app/services/&lt;name&gt;_service.py</code></li>
+<li>写 API router <code>app/api/v1/&lt;name&gt;.py</code></li>
+<li>前端新增 page + service fetch</li>
+<li>更新本文档 §4 + <code>docs/20260702-data-source-map.md</code></li>
+</ol>
+<h3 id="92">9.2 新增前端页面</h3>
+<pre><code>web/src/pages/&lt;Name&gt;/index.tsx
+web/src/pages/&lt;Name&gt;/&lt;Name&gt;.css   (可选)
+web/src/services/&lt;name&gt;.ts         (API 调用)
+web/src/router.tsx                 (注册路由)
+</code></pre>
+<h3 id="93-api">9.3 新增 API 端点</h3>
+<pre><code>app/api/v1/&lt;name&gt;.py    路由定义
+app/schemas/&lt;name&gt;.py   Pydantic schema
+</code></pre>
+<p>注册到 <code>app/main.py</code> 即可（router 模块化）。</p>
+<h3 id="94">9.4 新增定时任务</h3>
+<ol>
+<li>写 <code>run_&lt;job&gt;()</code> 函数 + redis_lock 包裹</li>
+<li><code>init_scheduler()</code> 加 <code>scheduler.add_job(...)</code></li>
+<li>重启 backend；<code>/api/v1/scheduler/jobs</code> 应出现</li>
+</ol>
+<h3 id="95">9.5 数据库迁移 / 回填</h3>
+<pre><code class="language-bash"># 生成迁移
+docker exec alloyresearch-backend alembic revision --autogenerate -m &quot;add foo&quot;
+
+# 应用
+docker exec alloyresearch-backend alembic upgrade head
+
+# 历史回填（注意分批）
+docker exec alloyresearch-backend python scripts/backfill_xxx.py --batch 500
+</code></pre>
+<h3 id="96">9.6 故障排查清单</h3>
+<table>
+<thead>
+<tr>
+<th>现象</th>
+<th>排查顺序</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>/api/v1/scheduler/jobs</code> 返回空</td>
+<td><code>ENABLE_SCHEDULER=true</code> 是否注入？</td>
+</tr>
+<tr>
+<td>单个 cron 不跑</td>
+<td>日志：<code>docker logs alloyresearch-backend \| grep SCHEDULER</code></td>
+</tr>
+<tr>
+<td>ETL 全 0 records</td>
+<td>上游限速 / Token 失效 / 数据库 lock</td>
+</tr>
+<tr>
+<td>前端 401 风暴</td>
+<td>JWT secret 改了？access token 过期？看 <code>/api/v1/auth/refresh</code></td>
+</tr>
+<tr>
+<td>DB 慢</td>
+<td><code>pg_stat_activity</code> 看长查询；<code>scripts/db_consistency_check.py</code></td>
+</tr>
+<tr>
+<td>内存涨</td>
+<td>playwright worker 嫌疑；先 <code>docker restart</code> 顶住</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="10">10. 变更历史摘要</h2>
+<blockquote>
+<p>来源：<code>docs/20260702-changelog.md</code> + git log 摘要。</p>
+</blockquote>
+<h3 id="101-phase-2-2026-07-02">10.1 Phase 2（宏观数据）— 2026-07-02</h3>
+<ul>
+<li>FRED 24 series 上线（GDP / CPI / 失业率 / 收益率曲线 / M2）</li>
+<li>BEA 美国 NIPA 表（PID / 固定资本）</li>
+<li>China macro（akshare <code>macro_china_*</code>）：GDP / CPI / PPI / M2 / PMI / SHIBOR / RRR</li>
+<li>新表：<code>macro_indicator</code>（unique <code>(code, region, period, source)</code>）</li>
+<li>API：<code>/api/v1/macro/indicators-list</code> <code>/latest</code> <code>/codes</code> <code>/refresh-china</code></li>
+</ul>
+<h3 id="102-phase-4">10.2 Phase 4（东方财富研报）</h3>
+<ul>
+<li>通过 akshare <code>stock_research_report_em</code> 抓券商研报</li>
+<li>DeepSeek 摘要（200 字）+ key_points + target_price</li>
+<li>新表：<code>research_reports</code>（unique <code>(ts_code, title, publish_date)</code>）</li>
+<li>调度：每日 18:00 + 每 2 小时补摘要</li>
+</ul>
+<h3 id="103-phase-5cninfo">10.3 Phase 5（cninfo 巨潮定期报告）</h3>
+<ul>
+<li>范围：<strong>沪深 300 + 中证 500（800 家），2026 起不回填（B 档）</strong></li>
+<li>数据：metadata + pdfplumber 文本</li>
+<li>新表：<code>cninfo_reports</code>（unique <code>announcement_id</code>）</li>
+<li>PDF 落盘 <code>/data/ad-research/cninfo_pdfs/{ts_code}/</code>，磁盘 ~30GB/年</li>
+</ul>
+<h3 id="104-phase-6sec-edgar">10.4 Phase 6（SEC EDGAR）</h3>
+<ul>
+<li>S&amp;P 500 成分股（约 500 家）</li>
+<li>10-K / 10-Q / 20-F + XBRL</li>
+<li>强制 UA <code>AD-Research research@example.com</code></li>
+<li>限速 10/sec，调度周六 06:00 UTC</li>
+</ul>
+<h3 id="105-phase-7akshare">10.5 Phase 7（akshare 微结构）</h3>
+<ul>
+<li>龙虎榜 / 沪港通资金流 / 融资融券 / 限售解禁</li>
+<li>4 个新表 + <code>/api/v1/microstructure/*</code> 端点</li>
+<li>调度：每日 18:30（限售解禁周一 09:00）</li>
+</ul>
+<h3 id="106-phase-8">10.6 Phase 8（商品期货）</h3>
+<ul>
+<li>SHFE / DCE / CZCE / CFFEX / INE 共 70 主力合约</li>
+<li>日 K + 持仓量 + 结算价 + 仓单</li>
+<li>调度：日 K 16:30；主力合约列表每月 1 号 03:00</li>
+</ul>
+<h3 id="107-phase-9">10.7 Phase 9（搜索指数）</h3>
+<ul>
+<li>Google Trends (pytrends) — 强制 60s/req</li>
+<li>百度指数 akshare + 备用 HTML scrape 代理</li>
+<li>关键词库：<code>app/data/static/search_keywords.json</code></li>
+<li>调度：每日 03:00，限前 5-10 词轮转</li>
+</ul>
+<h3 id="108-b-8">10.8 部署硬化（B-8 调度器激活）</h3>
+<ul>
+<li>修复 <code>ENABLE_SCHEDULER</code> 环境变量</li>
+<li>同步补 <code>FRED/BEA/BLS/XUEQIU</code> env 注入</li>
+<li>验证：重启后 <code>GET /api/v1/scheduler/jobs</code> 返回 18+ job</li>
+</ul>
+<h3 id="109">10.9 后端测试</h3>
+<table>
+<thead>
+<tr>
+<th>Phase</th>
+<th>passed</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Phase 4 (research_reports)</td>
+<td>15</td>
+</tr>
+<tr>
+<td>Phase 5 (cninfo_reports)</td>
+<td>19</td>
+</tr>
+<tr>
+<td>Phase 6 (sec_filings)</td>
+<td>16</td>
+</tr>
+<tr>
+<td>Phase 7 (microstructure)</td>
+<td>14</td>
+</tr>
+<tr>
+<td>Phase 9 (search_trends)</td>
+<td>12</td>
+</tr>
+<tr>
+<td><strong>总计</strong></td>
+<td><strong>76</strong></td>
+</tr>
+</tbody>
+</table>
+<h3 id="1010-commit">10.10 近期主要 commit（按时间倒序）</h3>
+<pre><code>94e5f86 feat(news): add AI cleanup observability
+22034b9 feat(ui): phase 1 - design tokens + light clean default
+31f07b8 feat(deploy): race condition fix + observability (6 hardening items)
+c9c456c docs(security): add 3-provider secret rotate runbook
+8453c07 fix(migration): backfill NULL user_id rows before adding NOT NULL
+</code></pre>
+<hr>
+<h2 id="a">附录 A：关键路径速查</h2>
+<pre><code>后端代码根     /app/app/
+  - API       /app/app/api/v1/
+  - Models    /app/app/models/
+  - Services  /app/app/services/
+  - Pipelines /app/app/data/pipelines/
+  - Providers /app/app/data/providers/
+  - Scheduler /app/app/core/scheduler.py
+  - LLM       /app/app/services/llm/
+  - News      /app/app/services/news/
+
+前端代码根     /app/web/src/
+  - 页面      /app/web/src/pages/&lt;Name&gt;/index.tsx
+  - 组件      /app/web/src/components/
+  - API 封装  /app/web/src/services/
+
+部署           /app/deploy/aliyun-ecs/
+运维脚本       /app/scripts/
+
+文档
+  - 本手册     /app/docs/系统平台功能逻辑说明手册.md
+  - 数据源     /app/docs/20260702-data-source-map.md
+  - Changelog  /app/docs/20260702-changelog.md
+  - ROADMAP    /app/docs/ROADMAP.md
+  - dev-notes  /app/docs/dev-notes/
+  - 运行手册   /app/docs/dev-notes/20260627-scheduled-task-recovery-guide.md
+  - secret     /app/docs/dev-notes/20260705-secret-rotate-3-providers.md
+</code></pre>
+<h2 id="b">附录 B：角色 / 权限矩阵</h2>
+<table>
+<thead>
+<tr>
+<th>角色</th>
+<th>权限</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>guest</td>
+<td>仅 Dashboard / 公开 Market 数据</td>
+</tr>
+<tr>
+<td>user</td>
+<td>全功能（除 admin）</td>
+</tr>
+<tr>
+<td>admin</td>
+<td>+ <code>/admin/users</code> + <code>/admin/deployments</code></td>
+</tr>
+<tr>
+<td>superuser</td>
+<td>+ 数据库直查、调度器手动触发、Token 管理</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>JWT 过期默认 480 分钟（8h），refresh token 30 天。</p>
+</blockquote>
+<h2 id="c">附录 C：术语表</h2>
+<table>
+<thead>
+<tr>
+<th>术语</th>
+<th>含义</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>raw close</strong></td>
+<td>未经复权处理的当日实际收盘价</td>
+</tr>
+<tr>
+<td><strong>adj_factor</strong></td>
+<td>复权因子；qfq = 前复权 / hfq = 后复权</td>
+</tr>
+<tr>
+<td><strong>pipeline</strong></td>
+<td>数据 ETL 任务单元，自带 retry + lock</td>
+</tr>
+<tr>
+<td><strong>provider</strong></td>
+<td>单一数据源的客户端封装</td>
+</tr>
+<tr>
+<td><strong>pool</strong></td>
+<td>用户自定义标的集合（规则或手动）</td>
+</tr>
+<tr>
+<td><strong>strategy</strong></td>
+<td>预定义的信号生成算法</td>
+</tr>
+<tr>
+<td><strong>signal</strong></td>
+<td>由 strategy 在某个 (策略,标的,日期) 触发的买卖提示</td>
+</tr>
+<tr>
+<td><strong>paper trade</strong></td>
+<td>不下单到真实券商、仅在本地模拟成交</td>
+</tr>
+<tr>
+<td><strong>agent worker</strong></td>
+<td>独立进程的特殊数据采集器（雪球/Playwright）</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<p><strong>文档结束</strong> | 维护者：开发组 | 反馈：在工单中 @platform</p>
+</body>
+</html>
