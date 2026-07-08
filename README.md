@@ -172,11 +172,11 @@ cd web && npm run build && npx tsc --noEmit
 
 ## 📚 文档
 
-- [系统平台功能逻辑说明手册](docs/user-manual/20260622-系统平台功能逻辑说明手册.md)
+- [系统平台功能逻辑说明手册](docs/dev-notes/20260707-系统平台功能逻辑说明手册.md)
 - [2026-07-01 平台审查报告](docs/dev-notes/20260701-platform-logic-audit.md)
 - [定时任务恢复操作指南](docs/dev-notes/20260627-scheduled-task-recovery-guide.md)
 - [数据源已知问题备忘](docs/dev-notes/20260627-data-source-known-issues.md)
-- [功能路线图](docs/ROADMAP.md)
+- [功能路线图](docs/dev-notes/20260628-ROADMAP.md)
 
 ## 🔒 安全
 
@@ -234,5 +234,5 @@ TBD（内部项目）
 
 - 主分支：`main`
 - 提 PR 前必须跑 `pytest` + `tsc` + `build`
-- 参考 `docs/ROADMAP.md` 了解子项目进度
+- 参考 `docs/dev-notes/20260628-ROADMAP.md` 了解子项目进度
 - 参考 `docs/dev-notes/20260701-platform-logic-audit.md` 了解已知问题与修复 Sprint

@@ -1,0 +1,2935 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>8-Worker 爬虫数据日报 - 2026-07-08</title>
+  <style>
+
+    :root {
+      --bg: #f8f9fa;
+      --card-bg: #ffffff;
+      --text: #1a1a1a;
+      --muted: #6b7280;
+      --border: #e5e7eb;
+      --accent: #2563eb;
+      --accent-light: #eff6ff;
+      --error: #dc2626;
+      --error-bg: #fef2f2;
+      --empty: #9ca3af;
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      margin: 0;
+      padding: 0 1rem 3rem;
+    }
+    .container { max-width: 960px; margin: 0 auto; }
+    .page-header { padding: 2rem 0 1rem; border-bottom: 1px solid var(--border); margin-bottom: 1.5rem; }
+    .page-header h1 { margin: 0 0 0.25rem; font-size: 1.75rem; font-weight: 700; }
+    .meta { color: var(--muted); font-size: 0.9rem; margin: 0; }
+    .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-top: 1.25rem; }
+    .summary-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 0.75rem; padding: 1rem; box-shadow: 0 1px 2px rgba(0,0,0,0.04); }
+    .summary-card.ok { border-left: 4px solid #16a34a; }
+    .summary-card.empty { border-left: 4px solid var(--empty); }
+    .summary-card.error { border-left: 4px solid var(--error); background: var(--error-bg); }
+    .source-name { font-weight: 600; font-size: 0.95rem; margin-bottom: 0.25rem; }
+    .source-count { font-size: 1.25rem; font-weight: 700; color: var(--text); }
+    .source-error { color: var(--error); font-size: 0.8rem; margin-top: 0.25rem; }
+    .source-time { color: var(--muted); font-size: 0.75rem; margin-top: 0.25rem; }
+    .source-section { margin-bottom: 2.5rem; }
+    .source-section h2 { font-size: 1.25rem; font-weight: 700; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; margin: 0 0 1rem; display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+    .badge { font-size: 0.75rem; font-weight: 600; color: var(--accent); background: var(--accent-light); padding: 0.15rem 0.5rem; border-radius: 9999px; }
+    .badge.error { color: #fff; background: var(--error); }
+    .meta-fetched { font-size: 0.75rem; color: var(--muted); font-weight: 400; margin-left: auto; }
+    .item-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 0.5rem; padding: 1rem; margin-bottom: 0.75rem; box-shadow: 0 1px 2px rgba(0,0,0,0.03); transition: box-shadow 0.15s ease; }
+    .item-card:hover { box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+    .item-title { font-size: 1rem; font-weight: 600; margin: 0 0 0.5rem; color: var(--text); }
+    .item-title a { color: var(--accent); text-decoration: none; }
+    .item-title a:hover { text-decoration: underline; }
+    .body { color: var(--text); font-size: 0.92rem; margin: 0 0 0.75rem; }
+    .meta-line { color: var(--muted); font-size: 0.82rem; margin: 0; }
+    .empty { color: var(--muted); font-style: italic; }
+    @media (max-width: 640px) {
+      .page-header h1 { font-size: 1.4rem; }
+      .summary-grid { grid-template-columns: 1fr; }
+    }
+
+  </style>
+</head>
+<body>
+  <div class="container">
+
+    <header class="page-header">
+      <h1>8-Worker 爬虫数据日报</h1>
+      <p class="meta">生成时间：2026-07-08 07:14:33 UTC &nbsp;|&nbsp; 总条目：385</p>
+      <div class="summary-grid">
+
+        <div class="summary-card ok">
+          <div class="source-name">财联社</div>
+          <div class="source-count">20 条</div>
+          
+          <div class='source-time'>更新：2026-07-08T06:47:48Z</div>
+        </div>
+
+        <div class="summary-card ok">
+          <div class="source-name">东方财富公告</div>
+          <div class="source-count">90 条</div>
+          
+          
+        </div>
+
+        <div class="summary-card ok">
+          <div class="source-name">中国政府网</div>
+          <div class="source-count">194 条</div>
+          
+          <div class='source-time'>更新：2026-07-08T06:47:14.164347Z</div>
+        </div>
+
+        <div class="summary-card ok">
+          <div class="source-name">Fed/ECB/BIS</div>
+          <div class="source-count">2 条</div>
+          
+          <div class='source-time'>更新：2026-07-08T06:47:27.839851Z</div>
+        </div>
+
+        <div class="summary-card ok">
+          <div class="source-name">美股散户 (StockTwits)</div>
+          <div class="source-count">36 条</div>
+          
+          <div class='source-time'>更新：2026-07-08T06:47:38.956495Z</div>
+        </div>
+
+        <div class="summary-card ok">
+          <div class="source-name">雪球</div>
+          <div class="source-count">39 条</div>
+          
+          <div class='source-time'>更新：2026-07-08T06:48:39.700980Z</div>
+        </div>
+
+        <div class="summary-card ok">
+          <div class="source-name">X/Twitter</div>
+          <div class="source-count">4 条</div>
+          
+          <div class='source-time'>更新：2026-07-08T06:49:40.465452Z</div>
+        </div>
+
+        <div class="summary-card empty">
+          <div class="source-name">Reddit</div>
+          <div class="source-count">无数据</div>
+          
+          
+        </div>
+      </div>
+    </header>
+
+
+    <section class="source-section" id="cls">
+      <h2>财联社 <span class="badge">20 条</span> <span class='meta-fetched'>更新: 2026-07-08T06:47:48Z</span></h2>
+      
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://www.cls.cn/detail/2420239" target="_blank" rel="noopener">水利部对四川宜宾高县启动水利抗震救灾调度指挥机制</a></h3>
+          <p class="body">【水利部对四川宜宾高县启动水利抗震救灾调度指挥机制】财联社7月8日电，2026年7月8日6时12分和10时8分，四川省宜宾市高县连续发生2次5.0级地震，震源深度分别为8千米和6千米。水利部迅即启动水利抗震救灾调度指挥机制，及时组织专题会商，分析地震对水利工程和农村供水影响，研判震区雨水情形势，安排部署水利抗震救灾工作。水利部根据全国“水利一张图”分析，第一时间排查震区河流水情及水库、堤防、农村供水工程、水电站、水文测站、水闸、调水工程等分布情况，并及时通报四川省水利厅，督促地方水利部门立即摸排水利工程震损情况。经初步排查，暂未收到水利工程震损情况报告，震区江河水情平稳。预报震区未来三天有小到中雨。水利部将密切关注震区雨情、水情及水利工程运行情况，指导地方水利部门继续做好震区水利工程震损排查和群众饮水安全保障工作，严防发生次生灾害。 (央视新闻)</p>
+          <div class="meta-line">来源: 财联社 &nbsp;|&nbsp; 时间: 2026-07-08 06:44:23 UTC</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://www.cls.cn/detail/2420238" target="_blank" rel="noopener">Piper Sandler：甲骨文云业务2027财年有望超预期</a></h3>
+          <p class="body">【Piper Sandler：甲骨文云业务2027财年有望超预期】投行Piper Sandler发布报告称，甲骨文云基础设施(OCI)业务在2027财年的收入有望超越当前市场预期，主要得益于资本开支加速转化为实际营收。分析师认为，该公司大规模资本性支出(CapEx)正逐步转化为实际产能与收入，这一转化效率可能被投资者低估。Piper Sandler维持对甲骨文的“超配”评级，目标价定为225美元。</p>
+          <div class="meta-line">来源: 财联社 &nbsp;|&nbsp; 时间: 2026-07-08 06:43:39 UTC</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://www.cls.cn/detail/2420235" target="_blank" rel="noopener">【盘中宝】AI需求带动该行业景气回升，细分领域价值量有望提升超5倍，多家公司发布涨价函，这家企业受益于产品价格提升</a></h3>
+          <p class="body">【盘中宝】AI需求带动该行业景气回升，细分领域价值量有望提升超5倍，多家公司发布涨价函，这家企业受益于产品价格提升</p>
+          <div class="meta-line">来源: 财联社 &nbsp;|&nbsp; 时间: 2026-07-08 06:40:44 UTC</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://www.cls.cn/detail/2420232" target="_blank" rel="noopener">巴林一日内第三次拉响防空警报</a></h3>
+          <p class="body">【巴林一日内第三次拉响防空警报】财联社7月8日电，总台记者获悉，当地时间8日上午，巴林境内再次拉响防空警报。这是巴林当天拉响的第三轮防空警报。巴林内政部门提醒民众保持冷静并前往最近的安全地点。目前暂无人员伤亡消息。 (央视新闻)</p>
+          <div class="meta-line">来源: 财联社 &nbsp;|&nbsp; 时间: 2026-07-08 06:34:10 UTC</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://www.cls.cn/detail/2420230" target="_blank" rel="noopener">韩国综指收盘较6月历史高点下跌逾20%</a></h3>
+          <p class="body">【韩国综指收盘较6月历史高点下跌逾20%】财联社7月8日电，日经225指数收盘下跌2.11%，报66819.05点。韩国KOSPI指数收跌5.35%报7246.79点，较6月历史高点下跌逾20%。三星电子跌超6%，SK海力士跌近6%。</p>
+          <div class="meta-line">来源: 财联社 &nbsp;|&nbsp; 时间: 2026-07-08 06:32:05 UTC</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://www.cls.cn/detail/2420229" target="_blank" rel="noopener">财联社7月8日电，韩元对美元升值超1%。</a></h3>
+          <p class="body">财联社7月8日电，韩元对美元升值超1%。</p>
+          <div class="meta-line">来源: 财联社 &nbsp;|&nbsp; 时间: 2026-07-08 06:31:51 UTC</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://www.cls.cn/detail/2420226" target="_blank" rel="noopener">马斯克：Grok 4.5是一款Opus级别的模型</a></h3>
+          <p class="body">【马斯克：Grok 4.5是一款Opus级别的模型】财联社7月8日电，马斯克表示，SpaceXAI将于明天向公众开放Grok 4.5。他称，Grok 4.5是一款Opus级别的模型，但速度更快、Token效率更高，且成本更低。</p>
+          <div class="meta-line">来源: 财联社 &nbsp;|&nbsp; 时间: 2026-07-08 06:28:53 UTC</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://www.cls.cn/detail/2420224" target="_blank" rel="noopener">大模型港股涨幅扩大 MINIMAX和智谱涨超16%</a></h3>
+          <p class="body">【大模型港股涨幅扩大 MINIMAX和智谱涨超16%】财联社7月8日电，截至发稿，MINIMAX-W(00100.HK)涨17%，智谱(02513.HK)涨16%。消息面上，今日港股大模型标杆企业智谱迎来上市后的首次限售股解禁，多家核心机构投资者已明确选择继续结伴同行。</p>
+          <div class="meta-line">来源: 财联社 &nbsp;|&nbsp; 时间: 2026-07-08 06:28:35 UTC</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://www.cls.cn/detail/2420225" target="_blank" rel="noopener">财联社7月8日电，消息人士称，美元/韩元远期市场出现与SK海力士美国存托凭证（ADR）上市相关的美元卖盘活动。</a></h3>
+          <p class="body">财联社7月8日电，消息人士称，美元/韩元远期市场出现与SK海力士美国存托凭证（ADR）上市相关的美元卖盘活动。</p>
+          <div class="meta-line">来源: 财联社 &nbsp;|&nbsp; 时间: 2026-07-08 06:28:26 UTC</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://www.cls.cn/detail/2420221" target="_blank" rel="noopener">Perplexity宣布将使用英伟达新款CPU</a></h3>
+          <p class="body">【Perplexity宣布将使用英伟达新款CPU】财联社7月8日电，AI初创公司Perplexity周二宣布，计划使用英伟达的新型CPU芯片。英伟达曾表示，预计到本财年末，其通用型Vera CPU的销售额将达到200亿美元。Perplexity拒绝透露计划购买多少颗英伟达CPU。但英伟达此前曾透露，OpenAI、Anthropic和Oracle也计划使用其CPU。</p>
+          <div class="meta-line">来源: 财联社 &nbsp;|&nbsp; 时间: 2026-07-08 06:26:05 UTC</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://www.cls.cn/detail/2420220" target="_blank" rel="noopener">市场监管总局组织修订《产品质量监督抽查管理办法（征求意见稿）》</a></h3>
+          <p class="body">【市场监管总局组织修订《产品质量监督抽查管理办法（征求意见稿）》】财联社7月8日电，为进一步加强产品质量安全监管，健全完善产品质量监督抽查制度，市场监管总局组织修订了《产品质量监督抽查管理办法（征求意见稿）》。现向社会公开征求意见。</p>
+          <div class="meta-line">来源: 财联社 &nbsp;|&nbsp; 时间: 2026-07-08 06:25:29 UTC</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://www.cls.cn/detail/2420216" target="_blank" rel="noopener">财联社7月8日电，马斯克表示，SpaceXAI将于明日向公众开放Grok4.5。</a></h3>
+          <p class="body">财联社7月8日电，马斯克表示，SpaceXAI将于明日向公众开放Grok4.5。</p>
+          <div class="meta-line">来源: 财联社 &nbsp;|&nbsp; 时间: 2026-07-08 06:23:28 UTC</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://www.cls.cn/detail/2420209" target="_blank" rel="noopener">【电报解读】工信部发布AI编程工具Claude Code安全风险提示，报告称我国AI编程市场年均复合增长率达38%，这家公司AI编程平台真正实现应用的快速开发落地</a></h3>
+          <p class="body">【电报解读】工信部发布AI编程工具Claude Code安全风险提示，报告称我国AI编程市场年均复合增长率达38%，这家公司AI编程平台真正实现应用的快速开发落地</p>
+          <div class="meta-line">来源: 财联社 &nbsp;|&nbsp; 时间: 2026-07-08 06:23:13 UTC</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://www.cls.cn/detail/2420214" target="_blank" rel="noopener">财联社7月8日电，小米集团涨超10%，成交额超60亿港元。</a></h3>
+          <p class="body">财联社7月8日电，小米集团涨超10%，成交额超60亿港元。</p>
+          <div class="meta-line">来源: 财联社 &nbsp;|&nbsp; 时间: 2026-07-08 06:23:08 UTC</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://www.cls.cn/detail/2420213" target="_blank" rel="noopener">伊朗布什尔省传出数声爆炸声</a></h3>
+          <p class="body">【伊朗布什尔省传出数声爆炸声】财联社7月8日电，据伊朗迈赫尔通讯社7月8日报道，伊朗布什尔省传出数声爆炸声。 (CCTV国际时讯)</p>
+          <div class="meta-line">来源: 财联社 &nbsp;|&nbsp; 时间: 2026-07-08 06:22:25 UTC</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://www.cls.cn/detail/2420212" target="_blank" rel="noopener">财联社7月8日电，韩元兑美元进一步上涨，至5月下旬以来高点。</a></h3>
+          <p class="body">财联社7月8日电，韩元兑美元进一步上涨，至5月下旬以来高点。</p>
+          <div class="meta-line">来源: 财联社 &nbsp;|&nbsp; 时间: 2026-07-08 06:22:17 UTC</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://www.cls.cn/detail/2420211" target="_blank" rel="noopener">主力资金监控：电子板块净流出超117亿</a></h3>
+          <p class="body">【主力资金监控：电子板块净流出超117亿】财联社7月8日电，财联社星矿数据显示，今日主力资金净流入计算机、IT服务、通信等板块，净流出电子、电新行业、有色金属等板块，其中电子板块净流出117.21亿元。个股方面，紫光股份资金净买入20.50亿元位居首位，浪潮信息、网宿科技、工业富联主力资金净流入居前；长电科技遭净卖出22.49亿元位居首位，北京君正、华天科技、佰维存储主力资金净流出额居前。</p>
+          <div class="meta-line">来源: 财联社 &nbsp;|&nbsp; 时间: 2026-07-08 06:19:31 UTC</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://www.cls.cn/detail/2420210" target="_blank" rel="noopener">伊朗军方称美在中东军事基地是“合法打击目标”</a></h3>
+          <p class="body">【伊朗军方称美在中东军事基地是“合法打击目标”】财联社7月8日电，据伊朗方面消息，伊朗军方8日发表声明称，美国在中东地区的所有军事基地都将成为伊朗军队无人机的“合法打击目标”。声明说，鉴于美国袭击伊朗南部军事和民用区域，并违反《伊斯兰堡谅解备忘录》条款，伊朗军方动用无人机对美军在巴林的谢赫伊萨空军基地实施打击。此次行动是针对美国公然、反复违反停火的回应。 (央视新闻)</p>
+          <div class="meta-line">来源: 财联社 &nbsp;|&nbsp; 时间: 2026-07-08 06:17:02 UTC</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://www.cls.cn/detail/2420207" target="_blank" rel="noopener">集运欧线期货主力合约日内涨幅扩大至5%</a></h3>
+          <p class="body">【集运欧线期货主力合约日内涨幅扩大至5%】财联社7月8日电，集运欧线期货主力合约日内涨幅扩大至5%，报2585点。</p>
+          <div class="meta-line">来源: 财联社 &nbsp;|&nbsp; 时间: 2026-07-08 06:14:10 UTC</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://www.cls.cn/detail/2420206" target="_blank" rel="noopener">财联社7月8日电，德国10年期国债收益率上涨3个基点，至3.0179%，为6月11日以来的最高水平。</a></h3>
+          <p class="body">财联社7月8日电，德国10年期国债收益率上涨3个基点，至3.0179%，为6月11日以来的最高水平。</p>
+          <div class="meta-line">来源: 财联社 &nbsp;|&nbsp; 时间: 2026-07-08 06:13:12 UTC</div>
+        </article>
+
+    </section>
+
+    <section class="source-section" id="eastmoney_news">
+      <h2>东方财富公告 <span class="badge">90 条</span> </h2>
+      
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://data.eastmoney.com/notices/detail/AN202607081826804597.html" target="_blank" rel="noopener">[视源股份] 视源股份:关于申请发行境外上市股份(H股)并上市的进展公告</a></h3>
+          <p class="body">A股公告 | 其他 | stock=002841</p>
+          <div class="meta-line">来源: 东方财富(A股公告) &nbsp;|&nbsp; 时间: 2026-07-08 00:00:00 UTC</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://data.eastmoney.com/notices/detail/AN202607081826804290.html" target="_blank" rel="noopener">[华亚智能] 华亚智能:关于华亚转债赎回前最后半个交易日可以转股的重要提示性公告</a></h3>
+          <p class="body">A股公告 | 其他 | stock=003043</p>
+          <div class="meta-line">来源: 东方财富(A股公告) &nbsp;|&nbsp; 时间: 2026-07-08 00:00:00 UTC</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://data.eastmoney.com/notices/detail/AN202607081826792263.html" target="_blank" rel="noopener">[英洛华] 英洛华:000795英洛华投资者关系管理信息20260708</a></h3>
+          <p class="body">A股公告 | 调研活动 | stock=000795</p>
+          <div class="meta-line">来源: 东方财富(A股公告) &nbsp;|&nbsp; 时间: 2026-07-08 00:00:00 UTC</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://data.eastmoney.com/notices/detail/AN202607081826792028.html" target="_blank" rel="noopener">[锦浪科技] 锦浪科技:投资者关系活动记录表20260707</a></h3>
+          <p class="body">A股公告 | 调研活动 | stock=300763</p>
+          <div class="meta-line">来源: 东方财富(A股公告) &nbsp;|&nbsp; 时间: 2026-07-08 00:00:00 UTC</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://data.eastmoney.com/notices/detail/AN202607081826789815.html" target="_blank" rel="noopener">[科伦药业] 科伦药业:关于控股子公司科伦博泰根据一般性授权配售股份的公告</a></h3>
+          <p class="body">A股公告 | 其他 | stock=002422</p>
+          <div class="meta-line">来源: 东方财富(A股公告) &nbsp;|&nbsp; 时间: 2026-07-08 00:00:00 UTC</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://data.eastmoney.com/notices/detail/AN202607081826789424.html" target="_blank" rel="noopener">[金石资源] 金石资源:金石资源集团股份有限公司关于控股子公司重要事项的公告</a></h3>
+          <p class="body">A股公告 | 其他 | stock=603505</p>
+          <div class="meta-line">来源: 东方财富(A股公告) &nbsp;|&nbsp; 时间: 2026-07-08 00:00:00 UTC</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://data.eastmoney.com/notices/detail/AN202607081826789420.html" target="_blank" rel="noopener">[富临精工] 富临精工:关于向特定对象发行A股股票申请获得深圳证券交易所受理的公告</a></h3>
+          <p class="body">A股公告 | 其他增发事项公告 | stock=300432</p>
+          <div class="meta-line">来源: 东方财富(A股公告) &nbsp;|&nbsp; 时间: 2026-07-08 00:00:00 UTC</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://data.eastmoney.com/notices/detail/AN202607081826782102.html" target="_blank" rel="noopener">[胜宏科技] 胜宏科技:300476胜宏科技投资者关系管理信息20260708</a></h3>
+          <p class="body">A股公告 | 调研活动 | stock=300476</p>
+          <div class="meta-line">来源: 东方财富(A股公告) &nbsp;|&nbsp; 时间: 2026-07-08 00:00:00 UTC</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://data.eastmoney.com/notices/detail/AN202607071826780288.html" target="_blank" rel="noopener">[祥生医疗] 祥生医疗:容诚会计师事务所(特殊普通合伙)关于无锡祥生医疗科技股份有限公司2025年年度报告的信息披露监管问询函的专项核查意见</a></h3>
+          <p class="body">A股公告 | 保荐/核查意见 | stock=688358</p>
+          <div class="meta-line">来源: 东方财富(A股公告) &nbsp;|&nbsp; 时间: 2026-07-08 00:00:00 UTC</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://data.eastmoney.com/notices/detail/AN202607071826780290.html" target="_blank" rel="noopener">[祥生医疗] 祥生医疗:祥生医疗关于2025年年度报告的信息披露监管问询函的回复公告</a></h3>
+          <p class="body">A股公告 | 回复问询函公告 | stock=688358</p>
+          <div class="meta-line">来源: 东方财富(A股公告) &nbsp;|&nbsp; 时间: 2026-07-08 00:00:00 UTC</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://data.eastmoney.com/notices/detail/AN202607071826780289.html" target="_blank" rel="noopener">[祥生医疗] 祥生医疗:国金证券股份有限公司关于无锡祥生医疗科技股份有限公司2025年年度报告的信息披露监管问询函之回复的核查意见</a></h3>
+          <p class="body">A股公告 | 保荐/核查意见 | stock=688358</p>
+          <div class="meta-line">来源: 东方财富(A股公告) &nbsp;|&nbsp; 时间: 2026-07-08 00:00:00 UTC</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://data.eastmoney.com/notices/detail/AN202607071826780191.html" target="_blank" rel="noopener">[华发股份] 华发股份:华发股份关于对子公司增资的公告</a></h3>
+          <p class="body">A股公告 | 增资扩股 | stock=600325</p>
+          <div class="meta-line">来源: 东方财富(A股公告) &nbsp;|&nbsp; 时间: 2026-07-08 00:00:00 UTC</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://data.eastmoney.com/notices/detail/AN202607071826780190.html" target="_blank" rel="noopener">[华发股份] 华发股份:珠海华发实业股份有限公司2026年度向特定对象发行A股股票预案(修订稿)</a></h3>
+          <p class="body">A股公告 | 增发方案修订 | stock=600325</p>
+          <div class="meta-line">来源: 东方财富(A股公告) &nbsp;|&nbsp; 时间: 2026-07-08 00:00:00 UTC</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://data.eastmoney.com/notices/detail/AN202607071826780189.html" target="_blank" rel="noopener">[华发股份] 华发股份:华发股份关于公司向特定对象发行A股股票预案及相关文件修订情况的说明</a></h3>
+          <p class="body">A股公告 | 增发方案修订 | stock=600325</p>
+          <div class="meta-line">来源: 东方财富(A股公告) &nbsp;|&nbsp; 时间: 2026-07-08 00:00:00 UTC</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://data.eastmoney.com/notices/detail/AN202607071826780192.html" target="_blank" rel="noopener">[华发股份] 华发股份:珠海华发实业股份有限公司2026年度向特定对象发行A股股票方案的论证分析报告(修订稿)</a></h3>
+          <p class="body">A股公告 | 其他 | stock=600325</p>
+          <div class="meta-line">来源: 东方财富(A股公告) &nbsp;|&nbsp; 时间: 2026-07-08 00:00:00 UTC</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://data.eastmoney.com/notices/detail/AN202607071826780184.html" target="_blank" rel="noopener">[华发股份] 华发股份:珠海华发实业股份有限公司2026年度向特定对象发行A股股票募集资金使用可行性分析报告(修订稿)</a></h3>
+          <p class="body">A股公告 | 其他 | stock=600325</p>
+          <div class="meta-line">来源: 东方财富(A股公告) &nbsp;|&nbsp; 时间: 2026-07-08 00:00:00 UTC</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://data.eastmoney.com/notices/detail/AN202607071826780180.html" target="_blank" rel="noopener">[华发股份] 华发股份:华发股份2026年第七次临时股东会通知</a></h3>
+          <p class="body">A股公告 | 召开股东大会通知 | stock=600325</p>
+          <div class="meta-line">来源: 东方财富(A股公告) &nbsp;|&nbsp; 时间: 2026-07-08 00:00:00 UTC</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://data.eastmoney.com/notices/detail/AN202607071826780187.html" target="_blank" rel="noopener">[华发股份] 华发股份:华发股份关于调整向特定对象发行A股股票方案的公告</a></h3>
+          <p class="body">A股公告 | 增发方案修订 | stock=600325</p>
+          <div class="meta-line">来源: 东方财富(A股公告) &nbsp;|&nbsp; 时间: 2026-07-08 00:00:00 UTC</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://data.eastmoney.com/notices/detail/AN202607071826780179.html" target="_blank" rel="noopener">[华发股份] 华发股份:国泰海通证券股份有限公司关于珠海华发实业股份有限公司与珠海华发集团有限公司签订附条件生效的股份认购协议之补充协议暨关联交易的核查意见</a></h3>
+          <p class="body">A股公告 | 保荐/核查意见 | stock=600325</p>
+          <div class="meta-line">来源: 东方财富(A股公告) &nbsp;|&nbsp; 时间: 2026-07-08 00:00:00 UTC</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://data.eastmoney.com/notices/detail/AN202607071826780188.html" target="_blank" rel="noopener">[华发股份] 华发股份:华发股份关于与珠海华发集团有限公司签订附条件生效的股份认购协议之补充协议暨关联交易的公告</a></h3>
+          <p class="body">A股公告 | 签订协议 | stock=600325</p>
+          <div class="meta-line">来源: 东方财富(A股公告) &nbsp;|&nbsp; 时间: 2026-07-08 00:00:00 UTC</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://data.eastmoney.com/notices/detail/AN202607071826780185.html" target="_blank" rel="noopener">[华发股份] 华发股份:华发股份关于公司向特定对象发行A股股票预案(修订稿)披露的提示性公告</a></h3>
+          <p class="body">A股公告 | 增发提示性公告 | stock=600325</p>
+          <div class="meta-line">来源: 东方财富(A股公告) &nbsp;|&nbsp; 时间: 2026-07-08 00:00:00 UTC</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://data.eastmoney.com/notices/detail/AN202607071826780181.html" target="_blank" rel="noopener">[华发股份] 华发股份:华发股份关于提请股东会同意控股股东免于发出要约(修订版)的公告</a></h3>
+          <p class="body">A股公告 | 其他 | stock=600325</p>
+          <div class="meta-line">来源: 东方财富(A股公告) &nbsp;|&nbsp; 时间: 2026-07-08 00:00:00 UTC</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://data.eastmoney.com/notices/detail/AN202607071826780186.html" target="_blank" rel="noopener">[华发股份] 华发股份:华发股份关于向特定对象发行A股股票摊薄即期回报、采取填补措施及相关主体承诺(修订稿)的公告</a></h3>
+          <p class="body">A股公告 | 其他 | stock=600325</p>
+          <div class="meta-line">来源: 东方财富(A股公告) &nbsp;|&nbsp; 时间: 2026-07-08 00:00:00 UTC</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://data.eastmoney.com/notices/detail/AN202607071826780183.html" target="_blank" rel="noopener">[华发股份] 华发股份:北京炜衡(郑州)律师事务所关于珠海华发集团有限公司免于以要约方式收购珠海华发实业股份有限公司的法律意见书</a></h3>
+          <p class="body">A股公告 | 法律意见书 | stock=600325</p>
+          <div class="meta-line">来源: 东方财富(A股公告) &nbsp;|&nbsp; 时间: 2026-07-08 00:00:00 UTC</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://data.eastmoney.com/notices/detail/AN202607071826780182.html" target="_blank" rel="noopener">[华发股份] 华发股份:华发股份第十一届董事会第十一次会议决议公告</a></h3>
+          <p class="body">A股公告 | 增发预案 | stock=600325</p>
+          <div class="meta-line">来源: 东方财富(A股公告) &nbsp;|&nbsp; 时间: 2026-07-08 00:00:00 UTC</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://data.eastmoney.com/notices/detail/AN202607071826780175.html" target="_blank" rel="noopener">[ST龙韵] ST龙韵:上海龙韵文创科技集团股份有限公司关于上海证券交易所对公司2025年年度报告的信息披露监管问询函的回复公告</a></h3>
+          <p class="body">A股公告 | 回复问询函公告 | stock=603729</p>
+          <div class="meta-line">来源: 东方财富(A股公告) &nbsp;|&nbsp; 时间: 2026-07-08 00:00:00 UTC</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://data.eastmoney.com/notices/detail/AN202607071826780176.html" target="_blank" rel="noopener">[ST龙韵] ST龙韵:众华会计师事务所(特殊普通合伙)关于对上海龙韵文创科技集团股份有限公司2025年年度报告的信息披露监管问询函之回复</a></h3>
+          <p class="body">A股公告 | 会计师事务所问询函回复公告 | stock=603729</p>
+          <div class="meta-line">来源: 东方财富(A股公告) &nbsp;|&nbsp; 时间: 2026-07-08 00:00:00 UTC</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://data.eastmoney.com/notices/detail/AN202607071826779541.html" target="_blank" rel="noopener">[*ST亚士] *ST亚士:亚士创能关于公司拟先行实施庭外重组事项的补充公告</a></h3>
+          <p class="body">A股公告 | 其他 | stock=603378</p>
+          <div class="meta-line">来源: 东方财富(A股公告) &nbsp;|&nbsp; 时间: 2026-07-08 00:00:00 UTC</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://data.eastmoney.com/notices/detail/AN202607071826779487.html" target="_blank" rel="noopener">[一心堂] 一心堂:第七届董事会2026年第三次独立董事专门会议审核意见</a></h3>
+          <p class="body">A股公告 | 专项说明/独立意见 | stock=002727</p>
+          <div class="meta-line">来源: 东方财富(A股公告) &nbsp;|&nbsp; 时间: 2026-07-08 00:00:00 UTC</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://data.eastmoney.com/notices/detail/AN202607071826779486.html" target="_blank" rel="noopener">[一心堂] 一心堂:第七届董事会第二次临时会议决议公告</a></h3>
+          <p class="body">A股公告 | 董事会决议公告 | stock=002727</p>
+          <div class="meta-line">来源: 东方财富(A股公告) &nbsp;|&nbsp; 时间: 2026-07-08 00:00:00 UTC</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://data.eastmoney.com/notices/detail/AN202607071826779437.html" target="_blank" rel="noopener">[*ST岭南] *ST岭南:广发证券股份有限公司关于岭南转债2026年第二季度违约处置进展临时受托管理事务报告</a></h3>
+          <p class="body">A股公告 | 其他 | stock=002717</p>
+          <div class="meta-line">来源: 东方财富(A股公告) &nbsp;|&nbsp; 时间: 2026-07-08 00:00:00 UTC</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://data.eastmoney.com/notices/detail/AN202607071826779439.html" target="_blank" rel="noopener">[摩恩电气] 摩恩电气:2026年第二次临时股东会决议公告</a></h3>
+          <p class="body">A股公告 | 股东大会决议公告 | stock=002451</p>
+          <div class="meta-line">来源: 东方财富(A股公告) &nbsp;|&nbsp; 时间: 2026-07-08 00:00:00 UTC</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://data.eastmoney.com/notices/detail/AN202607071826779436.html" target="_blank" rel="noopener">[摩恩电气] 摩恩电气:关于董事会换届选举完成暨聘任高级管理人员的公告(2)</a></h3>
+          <p class="body">A股公告 | 高管人员任职变动 | stock=002451</p>
+          <div class="meta-line">来源: 东方财富(A股公告) &nbsp;|&nbsp; 时间: 2026-07-08 00:00:00 UTC</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://data.eastmoney.com/notices/detail/AN202607071826779438.html" target="_blank" rel="noopener">[摩恩电气] 摩恩电气:北京市天元律师事务所上海分所关于上海摩恩电气股份有限公司2026年第二次临时股东会的法律意见</a></h3>
+          <p class="body">A股公告 | 法律意见书 | stock=002451</p>
+          <div class="meta-line">来源: 东方财富(A股公告) &nbsp;|&nbsp; 时间: 2026-07-08 00:00:00 UTC</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://data.eastmoney.com/notices/detail/AN202607071826779425.html" target="_blank" rel="noopener">[*ST岭南] *ST岭南:岭南生态文旅股份有限公司向不特定对象发行可转换公司债券2026年度第十七次临时受托管理事务报告</a></h3>
+          <p class="body">A股公告 | 其他 | stock=002717</p>
+          <div class="meta-line">来源: 东方财富(A股公告) &nbsp;|&nbsp; 时间: 2026-07-08 00:00:00 UTC</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://data.eastmoney.com/notices/detail/AN202607071826779426.html" target="_blank" rel="noopener">[摩恩电气] 摩恩电气:第七届董事会第一次会议决议公告</a></h3>
+          <p class="body">A股公告 | 高管人员任职变动 | stock=002451</p>
+          <div class="meta-line">来源: 东方财富(A股公告) &nbsp;|&nbsp; 时间: 2026-07-08 00:00:00 UTC</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://data.eastmoney.com/notices/detail/AN202607071826779286.html" target="_blank" rel="noopener">[皇氏集团] 皇氏集团:股票交易异常波动公告</a></h3>
+          <p class="body">A股公告 | 股票交易异常波动 | stock=002329</p>
+          <div class="meta-line">来源: 东方财富(A股公告) &nbsp;|&nbsp; 时间: 2026-07-08 00:00:00 UTC</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://data.eastmoney.com/notices/detail/AN202607071826779159.html" target="_blank" rel="noopener">[兰石重装] 兰石重装:兰石重装2026年第三次临时股东会资料</a></h3>
+          <p class="body">A股公告 | 股东大会资料 | stock=603169</p>
+          <div class="meta-line">来源: 东方财富(A股公告) &nbsp;|&nbsp; 时间: 2026-07-08 00:00:00 UTC</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://data.eastmoney.com/notices/detail/AN202607071826779101.html" target="_blank" rel="noopener">[*ST美芝] *ST美芝:关于召开2026年第二次临时股东会的通知</a></h3>
+          <p class="body">A股公告 | 召开股东大会通知 | stock=002856</p>
+          <div class="meta-line">来源: 东方财富(A股公告) &nbsp;|&nbsp; 时间: 2026-07-08 00:00:00 UTC</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://data.eastmoney.com/notices/detail/AN202607071826779096.html" target="_blank" rel="noopener">[青龙管业] 青龙管业:关于股票交易异常波动公告</a></h3>
+          <p class="body">A股公告 | 股票交易异常波动 | stock=002457</p>
+          <div class="meta-line">来源: 东方财富(A股公告) &nbsp;|&nbsp; 时间: 2026-07-08 00:00:00 UTC</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://data.eastmoney.com/notices/detail/AN202607071826779095.html" target="_blank" rel="noopener">[*ST美芝] *ST美芝:股票交易异常波动暨风险提示性公告</a></h3>
+          <p class="body">A股公告 | 股票交易异常波动 | stock=002856</p>
+          <div class="meta-line">来源: 东方财富(A股公告) &nbsp;|&nbsp; 时间: 2026-07-08 00:00:00 UTC</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://data.eastmoney.com/notices/detail/AN202607071826779097.html" target="_blank" rel="noopener">[*ST美芝] *ST美芝:关于选举董事长及补选董事的公告</a></h3>
+          <p class="body">A股公告 | 高管人员任职变动 | stock=002856</p>
+          <div class="meta-line">来源: 东方财富(A股公告) &nbsp;|&nbsp; 时间: 2026-07-08 00:00:00 UTC</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://data.eastmoney.com/notices/detail/AN202607071826779089.html" target="_blank" rel="noopener">[*ST美芝] *ST美芝:关于关联方借款额度展期暨关联交易的公告</a></h3>
+          <p class="body">A股公告 | 借贷 | stock=002856</p>
+          <div class="meta-line">来源: 东方财富(A股公告) &nbsp;|&nbsp; 时间: 2026-07-08 00:00:00 UTC</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://data.eastmoney.com/notices/detail/AN202607071826779088.html" target="_blank" rel="noopener">[*ST美芝] *ST美芝:第五届董事会第二十七次会议决议公告</a></h3>
+          <p class="body">A股公告 | 高管人员任职变动 | stock=002856</p>
+          <div class="meta-line">来源: 东方财富(A股公告) &nbsp;|&nbsp; 时间: 2026-07-08 00:00:00 UTC</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://data.eastmoney.com/notices/detail/AN202607071826779055.html" target="_blank" rel="noopener">[行云科技] 行云科技:2026年半年度业绩预告</a></h3>
+          <p class="body">A股公告 | 业绩预告 | stock=300209</p>
+          <div class="meta-line">来源: 东方财富(A股公告) &nbsp;|&nbsp; 时间: 2026-07-08 00:00:00 UTC</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://data.eastmoney.com/notices/detail/AN202607071826779054.html" target="_blank" rel="noopener">[科陆电子] 科陆电子:北京市嘉源律师事务所关于深圳市科陆电子科技股份有限公司2026年第三次临时股东会的法律意见书</a></h3>
+          <p class="body">A股公告 | 法律意见书 | stock=002121</p>
+          <div class="meta-line">来源: 东方财富(A股公告) &nbsp;|&nbsp; 时间: 2026-07-08 00:00:00 UTC</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://data.eastmoney.com/notices/detail/AN202607071826779053.html" target="_blank" rel="noopener">[科陆电子] 科陆电子:第十届董事会第一次(临时)会议决议的公告</a></h3>
+          <p class="body">A股公告 | 高管人员任职变动 | stock=002121</p>
+          <div class="meta-line">来源: 东方财富(A股公告) &nbsp;|&nbsp; 时间: 2026-07-08 00:00:00 UTC</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://data.eastmoney.com/notices/detail/AN202607071826779051.html" target="_blank" rel="noopener">[科陆电子] 科陆电子:关于选举第十届董事会职工代表董事的公告</a></h3>
+          <p class="body">A股公告 | 高管人员任职变动 | stock=002121</p>
+          <div class="meta-line">来源: 东方财富(A股公告) &nbsp;|&nbsp; 时间: 2026-07-08 00:00:00 UTC</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://data.eastmoney.com/notices/detail/AN202607071826779050.html" target="_blank" rel="noopener">[科陆电子] 科陆电子:2026年第三次临时股东会决议公告</a></h3>
+          <p class="body">A股公告 | 股东大会决议公告 | stock=002121</p>
+          <div class="meta-line">来源: 东方财富(A股公告) &nbsp;|&nbsp; 时间: 2026-07-08 00:00:00 UTC</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://data.eastmoney.com/notices/detail/AN202607071826779052.html" target="_blank" rel="noopener">[科陆电子] 科陆电子:关于董事会完成换届选举及聘任高级管理人员、证券事务代表的公告</a></h3>
+          <p class="body">A股公告 | 高管人员任职变动 | stock=002121</p>
+          <div class="meta-line">来源: 东方财富(A股公告) &nbsp;|&nbsp; 时间: 2026-07-08 00:00:00 UTC</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://data.eastmoney.com/notices/detail/AN202607071826778944.html" target="_blank" rel="noopener">[*ST湘邮] *ST湘邮:湖南湘邮科技股份有限公司关于公开挂牌转让公司所持福信富通100万股股份进展暨交易结果的公告</a></h3>
+          <p class="body">A股公告 | 股权转让 | stock=600476</p>
+          <div class="meta-line">来源: 东方财富(A股公告) &nbsp;|&nbsp; 时间: 2026-07-08 00:00:00 UTC</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://data.eastmoney.com/notices/detail/AN202607071826778924.html" target="_blank" rel="noopener">[浪潮信息] 浪潮信息:2026年半年度业绩预告</a></h3>
+          <p class="body">A股公告 | 业绩预告 | stock=000977</p>
+          <div class="meta-line">来源: 东方财富(A股公告) &nbsp;|&nbsp; 时间: 2026-07-08 00:00:00 UTC</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://data.eastmoney.com/notices/detail/AN202607071826778826.html" target="_blank" rel="noopener">[东阳光] 东阳光:中信证券股份有限公司关于广东东阳光科技控股股份有限公司本次交易相关内幕信息知情人买卖股票情况自查报告的核查意见</a></h3>
+          <p class="body">A股公告 | 保荐/核查意见 | stock=600673</p>
+          <div class="meta-line">来源: 东方财富(A股公告) &nbsp;|&nbsp; 时间: 2026-07-08 00:00:00 UTC</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://data.eastmoney.com/notices/detail/AN202607071826778827.html" target="_blank" rel="noopener">[东阳光] 东阳光:东阳光关于发行股份购买资产并募集配套资金暨关联交易相关内幕信息知情人买卖股票情况自查报告的公告</a></h3>
+          <p class="body">A股公告 | 自查报告 | stock=600673</p>
+          <div class="meta-line">来源: 东方财富(A股公告) &nbsp;|&nbsp; 时间: 2026-07-08 00:00:00 UTC</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://data.eastmoney.com/notices/detail/AN202607071826778828.html" target="_blank" rel="noopener">[东阳光] 东阳光:北京市嘉源律师事务所关于广东东阳光科技控股股份有限公司发行股份购买资产并募集配套资金暨关联交易相关主体买卖股票情况自查报告的专项核查意见</a></h3>
+          <p class="body">A股公告 | 保荐/核查意见 | stock=600673</p>
+          <div class="meta-line">来源: 东方财富(A股公告) &nbsp;|&nbsp; 时间: 2026-07-08 00:00:00 UTC</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://data.eastmoney.com/notices/detail/AN202607071826778825.html" target="_blank" rel="noopener">[东阳光] 东阳光:华泰联合证券有限责任公司关于广东东阳光科技控股股份有限公司本次交易相关内幕信息知情人买卖股票情况自查报告的核查意见</a></h3>
+          <p class="body">A股公告 | 保荐/核查意见 | stock=600673</p>
+          <div class="meta-line">来源: 东方财富(A股公告) &nbsp;|&nbsp; 时间: 2026-07-08 00:00:00 UTC</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://data.eastmoney.com/notices/detail/AN202607071826778780.html" target="_blank" rel="noopener">[粤电力A] 粤电力Ａ:广东电力发展股份有限公司关于提供财务资助的公告</a></h3>
+          <p class="body">A股公告 | 获得补贴（资助） | stock=000539</p>
+          <div class="meta-line">来源: 东方财富(A股公告) &nbsp;|&nbsp; 时间: 2026-07-08 00:00:00 UTC</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://data.eastmoney.com/notices/detail/AN202607071826778778.html" target="_blank" rel="noopener">[粤电力A] 粤电力Ａ:广东电力发展股份有限公司关于以珠海金湾海上风电项目作为首发资产申报发行公募REITs有关事项暨关联交易公告</a></h3>
+          <p class="body">A股公告 | 关联交易 | stock=000539</p>
+          <div class="meta-line">来源: 东方财富(A股公告) &nbsp;|&nbsp; 时间: 2026-07-08 00:00:00 UTC</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://data.eastmoney.com/notices/detail/AN202607071826778779.html" target="_blank" rel="noopener">[ST龙大] ST龙大:第六届董事会第二十三次会议决议公告</a></h3>
+          <p class="body">A股公告 | 董事会决议公告 | stock=002726</p>
+          <div class="meta-line">来源: 东方财富(A股公告) &nbsp;|&nbsp; 时间: 2026-07-08 00:00:00 UTC</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://data.eastmoney.com/notices/detail/AN202607071826778777.html" target="_blank" rel="noopener">[ST龙大] ST龙大:关于召开“龙大转债”2026年第一次债券持有人会议的通知</a></h3>
+          <p class="body">A股公告 | 其他 | stock=002726</p>
+          <div class="meta-line">来源: 东方财富(A股公告) &nbsp;|&nbsp; 时间: 2026-07-08 00:00:00 UTC</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://data.eastmoney.com/notices/detail/AN202607071826778781.html" target="_blank" rel="noopener">[ST龙大] ST龙大:关于“龙大转债”预计无法兑付本息的公告</a></h3>
+          <p class="body">A股公告 | 其他 | stock=002726</p>
+          <div class="meta-line">来源: 东方财富(A股公告) &nbsp;|&nbsp; 时间: 2026-07-08 00:00:00 UTC</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://data.eastmoney.com/notices/detail/AN202607071826778767.html" target="_blank" rel="noopener">[隆基机械] 隆基机械:关于使用闲置自有资金购买理财产品的进展公告</a></h3>
+          <p class="body">A股公告 | 投资理财 | stock=002363</p>
+          <div class="meta-line">来源: 东方财富(A股公告) &nbsp;|&nbsp; 时间: 2026-07-08 00:00:00 UTC</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://data.eastmoney.com/notices/detail/AN202607071826778758.html" target="_blank" rel="noopener">[三七互娱] 三七互娱:关于全资子公司拟向海南聚鸿合晟投资合伙企业(有限合伙)投资的公告</a></h3>
+          <p class="body">A股公告 | 其他 | stock=002555</p>
+          <div class="meta-line">来源: 东方财富(A股公告) &nbsp;|&nbsp; 时间: 2026-07-08 00:00:00 UTC</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://data.eastmoney.com/notices/detail/AN202607071826778770.html" target="_blank" rel="noopener">[宏景科技] 宏景科技:第四届董事会第十八次会议决议公告</a></h3>
+          <p class="body">A股公告 | 董事会决议公告 | stock=301396</p>
+          <div class="meta-line">来源: 东方财富(A股公告) &nbsp;|&nbsp; 时间: 2026-07-08 00:00:00 UTC</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://data.eastmoney.com/notices/detail/AN202607071826778759.html" target="_blank" rel="noopener">[宏景科技] 宏景科技:关于召开2026年第四次临时股东会的通知</a></h3>
+          <p class="body">A股公告 | 召开股东大会通知 | stock=301396</p>
+          <div class="meta-line">来源: 东方财富(A股公告) &nbsp;|&nbsp; 时间: 2026-07-08 00:00:00 UTC</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://data.eastmoney.com/notices/detail/AN202607071826778768.html" target="_blank" rel="noopener">[欧菲光] 欧菲光:2026年半年度业绩预告</a></h3>
+          <p class="body">A股公告 | 业绩预告 | stock=002456</p>
+          <div class="meta-line">来源: 东方财富(A股公告) &nbsp;|&nbsp; 时间: 2026-07-08 00:00:00 UTC</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://data.eastmoney.com/notices/detail/AN202607071826778764.html" target="_blank" rel="noopener">[渤海租赁] 渤海租赁:2026年半年度业绩预告</a></h3>
+          <p class="body">A股公告 | 业绩预告 | stock=000415</p>
+          <div class="meta-line">来源: 东方财富(A股公告) &nbsp;|&nbsp; 时间: 2026-07-08 00:00:00 UTC</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://data.eastmoney.com/notices/detail/AN202607071826778762.html" target="_blank" rel="noopener">[宏景科技] 宏景科技:关于使用部分超募资金永久补充流动资金的公告</a></h3>
+          <p class="body">A股公告 | 募集资金补充流动资金 | stock=301396</p>
+          <div class="meta-line">来源: 东方财富(A股公告) &nbsp;|&nbsp; 时间: 2026-07-08 00:00:00 UTC</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://data.eastmoney.com/notices/detail/AN202607071826778765.html" target="_blank" rel="noopener">[宏景科技] 宏景科技:国金证券股份有限公司关于宏景科技股份有限公司使用部分超募资金永久补充流动资金的核查意见</a></h3>
+          <p class="body">A股公告 | 保荐/核查意见 | stock=301396</p>
+          <div class="meta-line">来源: 东方财富(A股公告) &nbsp;|&nbsp; 时间: 2026-07-08 00:00:00 UTC</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://data.eastmoney.com/notices/detail/AN202607071826778752.html" target="_blank" rel="noopener">[东微半导] 东微半导:苏州东微半导体股份有限公司关于股东权益变动触及1%刻度暨减持股份结果公告</a></h3>
+          <p class="body">A股公告 | 权益变动报告书 | stock=688261</p>
+          <div class="meta-line">来源: 东方财富(A股公告) &nbsp;|&nbsp; 时间: 2026-07-08 00:00:00 UTC</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://data.eastmoney.com/notices/detail/AN202607071826778751.html" target="_blank" rel="noopener">[*ST棒杰] *ST棒杰:关于公司被债权人申请重整的提示性公告</a></h3>
+          <p class="body">A股公告 | 其他 | stock=002634</p>
+          <div class="meta-line">来源: 东方财富(A股公告) &nbsp;|&nbsp; 时间: 2026-07-08 00:00:00 UTC</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://data.eastmoney.com/notices/detail/AN202607071826778750.html" target="_blank" rel="noopener">[华兰股份] 华兰股份:2025年年度权益分派实施公告</a></h3>
+          <p class="body">A股公告 | 分配方案实施 | stock=301093</p>
+          <div class="meta-line">来源: 东方财富(A股公告) &nbsp;|&nbsp; 时间: 2026-07-08 00:00:00 UTC</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://data.eastmoney.com/notices/detail/AN202607071826778716.html" target="_blank" rel="noopener">[*ST棒杰] *ST棒杰:关于公司被债权人申请重整的专项自查报告</a></h3>
+          <p class="body">A股公告 | 自查报告 | stock=002634</p>
+          <div class="meta-line">来源: 东方财富(A股公告) &nbsp;|&nbsp; 时间: 2026-07-08 00:00:00 UTC</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://data.eastmoney.com/notices/detail/AN202607071826778637.html" target="_blank" rel="noopener">[永新光学] 永新光学:宁波永新光学股份有限公司关于2023年限制性股票激励计划部分限制性股票回购注销实施的公告</a></h3>
+          <p class="body">A股公告 | 回购实施公告 | stock=603297</p>
+          <div class="meta-line">来源: 东方财富(A股公告) &nbsp;|&nbsp; 时间: 2026-07-08 00:00:00 UTC</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://data.eastmoney.com/notices/detail/AN202607071826778636.html" target="_blank" rel="noopener">[永新光学] 永新光学:上海君澜律师事务所关于宁波永新光学股份有限公司2023年限制性股票激励计划回购注销实施相关事项之法律意见书</a></h3>
+          <p class="body">A股公告 | 法律意见书 | stock=603297</p>
+          <div class="meta-line">来源: 东方财富(A股公告) &nbsp;|&nbsp; 时间: 2026-07-08 00:00:00 UTC</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://data.eastmoney.com/notices/detail/AN202607071826778608.html" target="_blank" rel="noopener">[神工股份] 神工股份:锦州神工半导体股份有限公司关于筹备收购控股子公司少数股东权益的提示性公告</a></h3>
+          <p class="body">A股公告 | 收购出售资产/股权 | stock=688233</p>
+          <div class="meta-line">来源: 东方财富(A股公告) &nbsp;|&nbsp; 时间: 2026-07-08 00:00:00 UTC</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://data.eastmoney.com/notices/detail/AN202607071826778596.html" target="_blank" rel="noopener">[神工股份] 神工股份:锦州神工半导体股份有限公司股东询价转让计划书</a></h3>
+          <p class="body">A股公告 | 询价转让计划书 | stock=688233</p>
+          <div class="meta-line">来源: 东方财富(A股公告) &nbsp;|&nbsp; 时间: 2026-07-08 00:00:00 UTC</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://data.eastmoney.com/notices/detail/AN202607071826778597.html" target="_blank" rel="noopener">[神工股份] 神工股份:锦州神工半导体股份有限公司关于拟投资建设新项目的公告</a></h3>
+          <p class="body">A股公告 | 对外项目投资 | stock=688233</p>
+          <div class="meta-line">来源: 东方财富(A股公告) &nbsp;|&nbsp; 时间: 2026-07-08 00:00:00 UTC</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://data.eastmoney.com/notices/detail/AN202607071826778598.html" target="_blank" rel="noopener">[神工股份] 神工股份:国泰海通证券股份有限公司关于锦州神工半导体股份有限公司股东向特定机构投资者询价转让股份相关资格的核查意见</a></h3>
+          <p class="body">A股公告 | 保荐/核查意见 | stock=688233</p>
+          <div class="meta-line">来源: 东方财富(A股公告) &nbsp;|&nbsp; 时间: 2026-07-08 00:00:00 UTC</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://data.eastmoney.com/notices/detail/AN202607071826778595.html" target="_blank" rel="noopener">[神工股份] 神工股份:锦州神工半导体股份有限公司第三届董事会第十六次会议决议公告</a></h3>
+          <p class="body">A股公告 | 董事会决议公告 | stock=688233</p>
+          <div class="meta-line">来源: 东方财富(A股公告) &nbsp;|&nbsp; 时间: 2026-07-08 00:00:00 UTC</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://data.eastmoney.com/notices/detail/AN202607071826778582.html" target="_blank" rel="noopener">[好利科技] 好利科技:关于持股5%以上股东减持股份预披露公告</a></h3>
+          <p class="body">A股公告 | 股东/实际控制人股份减持 | stock=002729</p>
+          <div class="meta-line">来源: 东方财富(A股公告) &nbsp;|&nbsp; 时间: 2026-07-08 00:00:00 UTC</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://data.eastmoney.com/notices/detail/AN202607071826778573.html" target="_blank" rel="noopener">[一心堂] 一心堂:内部控制制度</a></h3>
+          <p class="body">A股公告 | 内部控制报告 | stock=002727</p>
+          <div class="meta-line">来源: 东方财富(A股公告) &nbsp;|&nbsp; 时间: 2026-07-08 00:00:00 UTC</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://data.eastmoney.com/notices/detail/AN202607071826778580.html" target="_blank" rel="noopener">[一心堂] 一心堂:风险投资管理制度</a></h3>
+          <p class="body">A股公告 | 管理办法/制度 | stock=002727</p>
+          <div class="meta-line">来源: 东方财富(A股公告) &nbsp;|&nbsp; 时间: 2026-07-08 00:00:00 UTC</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://data.eastmoney.com/notices/detail/AN202607071826778577.html" target="_blank" rel="noopener">[一心堂] 一心堂:信息披露管理制度</a></h3>
+          <p class="body">A股公告 | 管理办法/制度 | stock=002727</p>
+          <div class="meta-line">来源: 东方财富(A股公告) &nbsp;|&nbsp; 时间: 2026-07-08 00:00:00 UTC</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://data.eastmoney.com/notices/detail/AN202607071826778570.html" target="_blank" rel="noopener">[一心堂] 一心堂:董事、高级管理人员离职管理制度</a></h3>
+          <p class="body">A股公告 | 管理办法/制度 | stock=002727</p>
+          <div class="meta-line">来源: 东方财富(A股公告) &nbsp;|&nbsp; 时间: 2026-07-08 00:00:00 UTC</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://data.eastmoney.com/notices/detail/AN202607071826778584.html" target="_blank" rel="noopener">[一心堂] 一心堂:机构投资者接待管理制度</a></h3>
+          <p class="body">A股公告 | 管理办法/制度 | stock=002727</p>
+          <div class="meta-line">来源: 东方财富(A股公告) &nbsp;|&nbsp; 时间: 2026-07-08 00:00:00 UTC</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://data.eastmoney.com/notices/detail/AN202607071826778572.html" target="_blank" rel="noopener">[一心堂] 一心堂:内幕信息知情人登记管理制度</a></h3>
+          <p class="body">A股公告 | 管理办法/制度 | stock=002727</p>
+          <div class="meta-line">来源: 东方财富(A股公告) &nbsp;|&nbsp; 时间: 2026-07-08 00:00:00 UTC</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://data.eastmoney.com/notices/detail/AN202607071826778575.html" target="_blank" rel="noopener">[一心堂] 一心堂:对外担保管理制度</a></h3>
+          <p class="body">A股公告 | 管理办法/制度 | stock=002727</p>
+          <div class="meta-line">来源: 东方财富(A股公告) &nbsp;|&nbsp; 时间: 2026-07-08 00:00:00 UTC</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://data.eastmoney.com/notices/detail/AN202607071826778576.html" target="_blank" rel="noopener">[一心堂] 一心堂:独立董事工作制度</a></h3>
+          <p class="body">A股公告 | 管理办法/制度 | stock=002727</p>
+          <div class="meta-line">来源: 东方财富(A股公告) &nbsp;|&nbsp; 时间: 2026-07-08 00:00:00 UTC</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://data.eastmoney.com/notices/detail/AN202607071826778579.html" target="_blank" rel="noopener">[一心堂] 一心堂:股东会议事规则</a></h3>
+          <p class="body">A股公告 | 议事规则/实施细则 | stock=002727</p>
+          <div class="meta-line">来源: 东方财富(A股公告) &nbsp;|&nbsp; 时间: 2026-07-08 00:00:00 UTC</div>
+        </article>
+
+    </section>
+
+    <section class="source-section" id="gov_china">
+      <h2>中国政府网 <span class="badge">194 条</span> <span class='meta-fetched'>更新: 2026-07-08T06:47:14.164347Z</span></h2>
+      
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://www.gov.cn/yaowen/liebiao/202607/content_7074630.htm" target="_blank" rel="noopener">习近平为国家最高科学技术奖获得者等颁奖并发表重要讲话</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://www.gov.cn/toutiao/" target="_blank" rel="noopener">更多 &gt;&gt;</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://www.gov.cn/yaowen/liebiao/202607/content_7074235.htm" target="_blank" rel="noopener">中央军委举行晋升上将军衔仪式</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://www.gov.cn/yaowen/liebiao/202607/content_7073947.htm" target="_blank" rel="noopener">庆祝中国共产党成立105周年大会在京隆重举行</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://www.gov.cn/zhengce/jiedu/tujie/202607/content_7074573.htm" target="_blank" rel="noopener">2026年6月份中国物流业景气指数为50.6%</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://www.gov.cn/yaowen/liebiao/202607/content_7074490.htm" target="_blank" rel="noopener">习近平对防汛救灾工作作出重要指示</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://www.gov.cn/yaowen/liebiao/202607/content_7074246.htm" target="_blank" rel="noopener">李强主持召开国务院党组会议</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://www.gov.cn/yaowen/liebiao/202607/content_7074376.htm" target="_blank" rel="noopener">张国清在新疆调研</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://www.gov.cn/yaowen/liebiao/202607/content_7074433.htm" target="_blank" rel="noopener">刘国中在山东调研</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://www.gov.cn/yaowen/liebiao/202607/content_7074321.htm" target="_blank" rel="noopener">吴政隆在湖北湖南调研</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://www.gov.cn/yaowen/liebiao/202607/content_7074329.htm" target="_blank" rel="noopener">谌贻琴在陕西调研</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://www.gov.cn/zhengce/index.htm" target="_blank" rel="noopener">最新政策</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://www.gov.cn/zhengce/content/202607/content_7074516.htm" target="_blank" rel="noopener">国务院关于《旅游强国建设“十五五”规划》的批复</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://www.gov.cn/zhengce/content/202607/content_7074199.htm" target="_blank" rel="noopener">国务院关于印发《美丽中国建设“十五五”规划》的通知</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://www.gov.cn/zhengce/content/202607/content_7074095.htm" target="_blank" rel="noopener">国务院关于《残疾人保障和发展“十五五”规划》的批复</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://www.gov.cn/zhengce/content/202607/content_7074092.htm" target="_blank" rel="noopener">国务院关于《体育强国建设“十五五”规划》的批复</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://www.gov.cn/zhengce/content/202607/content_7074090.htm" target="_blank" rel="noopener">国务院关于同意在上海市设立上海辰山国家植物园的批复</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://sousuo.www.gov.cn/zcwjk/policyDocumentLibrary?q=&amp;t=zhengcelibrary&amp;orpro=" target="_blank" rel="noopener">国务院政策文件库</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://www.gov.cn/zhengce/xxgk/" target="_blank" rel="noopener">政府信息公开</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://www.gov.cn/zhengce/qiye/" target="_blank" rel="noopener">惠企助企政策集纳查询</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://www.gov.cn/zhengce/jiedu/" target="_blank" rel="noopener">政策解读</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://www.gov.cn/zhengce/202607/content_7074279.htm" target="_blank" rel="noopener">生态环境部负责同志就《美丽中国建设 “十五五”规划》答问</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://www.gov.cn/zhengce/202607/content_7074216.htm" target="_blank" rel="noopener">国家发展改革委有关负责同志就《循环经济发展“十五五”规划》答问</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://www.gov.cn/zhengce/202607/content_7074157.htm" target="_blank" rel="noopener">解读：支持企业稳岗扩岗 政策“两延续一优化”</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://www.gov.cn/gwyzzjg/" target="_blank" rel="noopener">国务院组织机构</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://www.gov.cn/gongbao/currentissue.htm" target="_blank" rel="noopener">国务院公报</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://www.gov.cn/zhengce/xzfgk/" target="_blank" rel="noopener">国家行政法规库</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://www.gov.cn/zhengce/xxgk/gjgzk/index.htm" target="_blank" rel="noopener">国家规章库</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://www.gov.cn/lianbo/202607/content_7074430.htm" target="_blank" rel="noopener">1.6亿元中央自然灾害救灾资金支持6省区开展洪涝、地质灾害抢险救灾</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://www.gov.cn/yaowen/liebiao/202607/content_7074439.htm" target="_blank" rel="noopener">今年&quot;两重&quot;建设项目清单全部下达 共安排8000亿元支持1417个重大项目</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://www.gov.cn/lianbo/202607/content_7074481.htm" target="_blank" rel="noopener">海船开航12项政务服务事项集成办理</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://www.gov.cn/lianbo/" target="_blank" rel="noopener">政务联播</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://www.gov.cn/lianbo/202607/content_7074577.htm" target="_blank" rel="noopener">文化和旅游部印发《旅游强国建设“十五五”规划》</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://www.gov.cn/lianbo/202607/content_7074072.htm" target="_blank" rel="noopener">教育部部署做好2026年中小学、幼儿园暑期安全工作</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://www.gov.cn/yaowen/liebiao/202607/content_7074552.htm" target="_blank" rel="noopener">极端天气影响多地 各方全力抢险救援</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://www.gov.cn/hudong/wsdy/" target="_blank" rel="noopener">建言征集</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://www.gov.cn/hudong/hygq/lyhf/" target="_blank" rel="noopener">回应关切</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://www.gov.cn/hudong/202604/content_7065245.htm" target="_blank" rel="noopener">网民希望支持更多中小企业参加广交会，商务部对外贸易司回应了</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://www.gov.cn/hudong/202604/content_7064519.htm" target="_blank" rel="noopener">网民希望方便老人订火车票、老人儿童优先检票，国铁集团客运部回应了</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://tousu.www.gov.cn/dc/index.htm" target="_blank" rel="noopener">我要留言</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://liuyan.www.gov.cn/hudong/atwls/rmqz.htm" target="_blank" rel="noopener">人民群众留言入口</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://www.gov.cn/fuwu/gongmin/" target="_blank" rel="noopener">为民服务</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://liuyan.www.gov.cn/hudong/atwls/qygth.htm" target="_blank" rel="noopener">企业、个体户留言入口</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://www.gov.cn/fuwu/qiye/" target="_blank" rel="noopener">为企服务</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://tousu.www.gov.cn/zwfw/index.htm" target="_blank" rel="noopener">政务服务投诉与建议入口</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://www.gov.cn/fuwu/qiye/kbqy/#0" target="_blank" rel="noopener">开办企业</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://www.gov.cn/fuwu/qiye/jyfz/#1" target="_blank" rel="noopener">经营发展</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://www.gov.cn/fuwu/qiye/qyyg/#2" target="_blank" rel="noopener">企业用工</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://www.gov.cn/fuwu/qiye/nsjf/#3" target="_blank" rel="noopener">纳税缴费</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://www.gov.cn/fuwu/qiye/zxtc/#4" target="_blank" rel="noopener">注销退出</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="http://www.npc.gov.cn/" target="_blank" rel="noopener">全国人大</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="http://www.cppcc.gov.cn/" target="_blank" rel="noopener">全国政协</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="http://www.ccdi.gov.cn/" target="_blank" rel="noopener">国家监察委员会</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="http://www.court.gov.cn/" target="_blank" rel="noopener">最高人民法院</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="http://www.spp.gov.cn/" target="_blank" rel="noopener">最高人民检察院</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://www.gov.cn/home/2023-03/29/content_5748953.htm" target="_blank" rel="noopener">国务院部门网站</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://www.gov.cn/home/2023-03/29/content_5748954.htm" target="_blank" rel="noopener">地方政府网站</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://www.gov.cn/home/2023-03/29/content_5748955.htm" target="_blank" rel="noopener">驻港澳机构网站</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://www.gov.cn/home/2023-03/29/content_5748956.htm" target="_blank" rel="noopener">驻外机构</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://www.gov.cn/index.htm" target="_blank" rel="noopener">中国政府网</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="http://www.pbc.gov.cn/publish/main/926/index.html" target="_blank" rel="noopener">常见问题</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="http://www.pbc.gov.cn/rmyh/109342/index.html" target="_blank" rel="noopener">网站地图</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="http://www.pbc.gov.cn/publish/main/933/index.html" target="_blank" rel="noopener">更新日志</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://www.pbc.gov.cn/goutongjiaoliu/113456/2986536/index.html" target="_blank" rel="noopener">RSS订阅</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="http://www.pbc.gov.cn/" target="_blank" rel="noopener">手机用户</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="http://www.pbc.gov.cn/AiWza/index.html" target="_blank" rel="noopener">无障碍浏览</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="http://www.pbc.gov.cn/en/3688006/index.html" target="_blank" rel="noopener">English Version</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="http://www.pbc.gov.cn/goutongjiaoliu/113456/113469/index.html" target="_blank" rel="noopener">新闻发布</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="http://www.pbc.gov.cn/tiaofasi/144941/index.html" target="_blank" rel="noopener">法律法规</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="http://www.pbc.gov.cn/rmyh/105145/index.html" target="_blank" rel="noopener">货币政策</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="http://www.pbc.gov.cn/huobizhengceersi/214481/index.html" target="_blank" rel="noopener">宏观审慎</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="http://www.pbc.gov.cn/xindaishichangsi/5443861/index.html" target="_blank" rel="noopener">信贷政策</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="http://www.pbc.gov.cn/jinrongshichangsi/147160/index.html" target="_blank" rel="noopener">金融市场</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="http://www.pbc.gov.cn/jinrongwendingju/146766/index.html" target="_blank" rel="noopener">金融稳定</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="http://www.pbc.gov.cn/diaochatongjisi/116219/index.html" target="_blank" rel="noopener">调查统计</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="http://www.pbc.gov.cn/kuaijicaiwusi/145920/index.html" target="_blank" rel="noopener">银行会计</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="http://www.pbc.gov.cn/zhifujiesuansi/128525/index.html" target="_blank" rel="noopener">支付体系</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="http://www.pbc.gov.cn/kejisi/146812/index.html" target="_blank" rel="noopener">金融科技</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="http://www.pbc.gov.cn/guokuju/136142/index.html" target="_blank" rel="noopener">经理国库</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="http://www.pbc.gov.cn/guojisi/144449/index.html" target="_blank" rel="noopener">国际交往</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="http://www.pbc.gov.cn/renshisi/144501/144513/index.html" target="_blank" rel="noopener">人员招录</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="http://www.pbc.gov.cn/yanjiuju/3911332/index.html" target="_blank" rel="noopener">学术交流</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="http://www.pbc.gov.cn/zhengxinguanliju/128332/index.html" target="_blank" rel="noopener">征信管理</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="http://www.pbc.gov.cn/dangweixuanchuanbu/110698/index.html" target="_blank" rel="noopener">党建工作</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="http://www.pbc.gov.cn/zhengwugongkai/4081330/4081338/index.html" target="_blank" rel="noopener">政务公开</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="http://www.pbc.gov.cn/rmyh/3963412/index.html" target="_blank" rel="noopener">政策解读</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="http://www.pbc.gov.cn/rmyh/105208/index.html" target="_blank" rel="noopener">公告信息</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://wzdt.pbc.gov.cn/eportal/ui?pageId=bde29aa120e34c788e51f3f83400b91d" target="_blank" rel="noopener">图文直播</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="http://www.pbc.gov.cn/redianzhuanti/118742/4122386/index.html" target="_blank" rel="noopener">央行研究</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="http://www.pbc.gov.cn/rmyh/105232/index.html" target="_blank" rel="noopener">音频视频</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="http://www.pbc.gov.cn/rmyh/105205/index.html" target="_blank" rel="noopener">市场动态</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="http://www.pbc.gov.cn/rmyh/105247/index.html" target="_blank" rel="noopener">网上展厅</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="http://www.pbc.gov.cn/rmyh/106866/index.html" target="_blank" rel="noopener">报告下载</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="http://www.pbc.gov.cn/rmyh/105223/index.html" target="_blank" rel="noopener">报刊年鉴</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="http://www.pbc.gov.cn/chubanwu/114566/index.html" target="_blank" rel="noopener">网送文告</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="http://www.pbc.gov.cn/rmyh/107046/index.html" target="_blank" rel="noopener">办事大厅</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="http://www.pbc.gov.cn/rmyh/107046/107162/index.html" target="_blank" rel="noopener">在线申报</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="http://www.pbc.gov.cn/rmyh/107046/107165/index.html" target="_blank" rel="noopener">下载中心</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://wzdt.pbc.gov.cn/eportal/ui?pageId=fb1f1bed342546daac452890e16b5059" target="_blank" rel="noopener">网上调查</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="http://www.pbc.gov.cn/tiaofasi/144941/144979/index.html" target="_blank" rel="noopener">意见征集</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="http://www.pbc.gov.cn/goutongjiaoliu/113456/113466/index.html" target="_blank" rel="noopener">金融知识</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="http://www.pbc.gov.cn/rmyh/105226/index.html" target="_blank" rel="noopener">关于我们</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="http://www.pbc.gov.cn/goutongjiaoliu/113456/113469/2026070717111423148/index.html" target="_blank" rel="noopener">中国人民银行、香港金融管理局、香港证券及期货事务监察委员会关于在港建设交易平台的联合公告</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="http://www.pbc.gov.cn/goutongjiaoliu/113456/113469/2026070716444295922/index.html" target="_blank" rel="noopener">中国人民银行行长潘功胜在香港货币与固定收益峰会上的致辞</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="http://www.pbc.gov.cn/goutongjiaoliu/113456/113469/2026070718303026756/index.html" target="_blank" rel="noopener">中国人民银行行长潘功胜出席香港货币与固定收益峰会并致辞</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="http://www.pbc.gov.cn/goutongjiaoliu/113456/113469/2026063020002759897/index.html" target="_blank" rel="noopener">中国人民银行优秀共产党员、优秀党务工作者、先进基层党组织表彰名单</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="http://www.pbc.gov.cn/goutongjiaoliu/113456/113469/2026063018452585084/index.html" target="_blank" rel="noopener">中国人民银行召开“两优一先”表彰大会暨“光荣在党50年”纪念章颁发仪式</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="http://www.pbc.gov.cn/goutongjiaoliu/113456/113469/2026063018125282716/index.html" target="_blank" rel="noopener">中国人民银行行长潘功胜会见德意志银行集团首席执行官克里斯蒂安·泽温</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="http://www.pbc.gov.cn/goutongjiaoliu/113456/113469/2026062818174547754/index.html" target="_blank" rel="noopener">中国人民银行行长潘功胜出席国际清算银行行长例会及年度股东大会</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="http://www.pbc.gov.cn/goutongjiaoliu/113456/113469/2026062609244316027/index.html" target="_blank" rel="noopener">中蒙两国央行续签双边本币互换协议</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="http://www.pbc.gov.cn/goutongjiaoliu/113456/113469/2026062518103296005/index.html" target="_blank" rel="noopener">中国人民银行公告〔2026〕第17号</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="http://www.pbc.gov.cn/goutongjiaoliu/113456/113469/2026062518090838566/index.html" target="_blank" rel="noopener">中国人民银行公告〔2026〕第16号</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="http://www.pbc.gov.cn/hanglingdao/128697/128734/128871/2026070719033015258/index.html" target="_blank" rel="noopener">中国人民银行行长潘功胜在香港...</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="http://www.pbc.gov.cn/hanglingdao/128697/128734/128874/2026070719040594522/index.html" target="_blank" rel="noopener">中国人民银行行长潘功胜出席香...</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="http://www.pbc.gov.cn/zhengcehuobisi/125207/3870933/3870936/2026033117132065727/index.html" target="_blank" rel="noopener">中国人民银行货币政策委员会...</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="http://www.pbc.gov.cn/zhengcehuobisi/125207/3870933/3870939/5546206/index.html" target="_blank" rel="noopener">中国人民银行货币政策委员会...</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="http://www.pbc.gov.cn/bangongting/135485/index.html" target="_blank" rel="noopener">办公厅(党委办公室)</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="http://www.pbc.gov.cn/zhengcehuobisi/125207/index.html" target="_blank" rel="noopener">货币政策司</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="http://www.pbc.gov.cn/huobijinyinju/147948/index.html" target="_blank" rel="noopener">货币金银局(保卫局)</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="http://www.pbc.gov.cn/fanxiqianju/135153/index.html" target="_blank" rel="noopener">反洗钱局</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="http://www.csrc.gov.cn/csrc_en/index.shtml" target="_blank" rel="noopener">English</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="http://www.csrc.gov.cn/csrc/jggk/index.shtml" target="_blank" rel="noopener">机构概况</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="http://www.csrc.gov.cn/csrc/xwfb/index.shtml" target="_blank" rel="noopener">新闻发布</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="http://www.csrc.gov.cn/csrc/zwxx/index.shtml" target="_blank" rel="noopener">政务信息</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="http://www.csrc.gov.cn/csrc/bsfw/index.shtml" target="_blank" rel="noopener">办事服务</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="http://www.csrc.gov.cn/csrc/hdjl/index.shtml" target="_blank" rel="noopener">互动交流</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="http://www.csrc.gov.cn/csrc/tjsj/index.shtml" target="_blank" rel="noopener">统计信息</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="http://www.csrc.gov.cn/csrc/ztzl/index.shtml" target="_blank" rel="noopener">专题专栏</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="http://www.investor.org.cn/" target="_blank" rel="noopener">中国投资者网</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="http://www.csisc.cn/" target="_blank" rel="noopener">中国资本市场标准网</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://beian.miit.gov.cn" target="_blank" rel="noopener">京ICP备 05035542号</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="http://www.csrc.gov.cn/csrc/c100025/c1003151/content.shtml" target="_blank" rel="noopener">联系我们</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="http://www.csrc.gov.cn/csrc/c100227/c1362477/content.shtml" target="_blank" rel="noopener">法律声明</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="http://www.csrc.gov.cn/csrc/c105974/common_list.shtml" target="_blank" rel="noopener">归档数据</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="http://www.mofcom.gov.cn/szyw/index.html" target="_blank" rel="noopener">时政要闻</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="http://www.mofcom.gov.cn/xwfb/index.html" target="_blank" rel="noopener">新闻发布</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://www.gov.cn/yaowen/liebiao/202607/content_7074551.htm" target="_blank" rel="noopener">为民族复兴积聚磅礴伟力——习近平总书记引领科技强国建设纪实</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://www.gov.cn/yaowen/liebiao/202607/content_7074490.htm" target="_blank" rel="noopener">习近平对防汛救灾工作作出重要指示强调 要全力组织抢险救援、伤员救治、群众安置 扎实做好防灾救灾各项工作 确保人民群众生命财产安全</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://www.gov.cn/yaowen/liebiao/202607/content_7074424.htm" target="_blank" rel="noopener">习近平致电祝贺藤森庆子当选秘鲁总统</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://www.gov.cn/yaowen/liebiao/202607/content_7074419.htm" target="_blank" rel="noopener">习近平同黑山总统米拉托维奇就中国同黑山建交20周年互致贺电</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://www.gov.cn/yaowen/liebiao/202607/content_7074246.htm" target="_blank" rel="noopener">李强主持召开国务院党组会议 学习贯彻习近平总书记在庆祝中国共产党成立105周年大会上的重要讲话精神和习近平党建思想 丁薛祥出席</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://www.gov.cn/yaowen/liebiao/202606/content_7073794.htm" target="_blank" rel="noopener">李强签署国务院令 公布《退役军人就业创业促进条例》</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://www.gov.cn/yaowen/liebiao/202606/content_7073449.htm" target="_blank" rel="noopener">李强会见柬埔寨人民党主席、参议院主席洪森</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://www.gov.cn/lianbo/202607/content_7073996.htm" target="_blank" rel="noopener">前5个月我国服务进出口总额同比增长6%</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://www.gov.cn/yaowen/liebiao/202606/content_7072788.htm" target="_blank" rel="noopener">外资机构：越来越开放的中国市场 越来越有吸引力</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="http://www.gov.cn/pushinfo/v150203/index.htm" target="_blank" rel="noopener">国务院信息</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="http://www.gov.cn/zhengce/zuixin.htm" target="_blank" rel="noopener">国务院文件</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="http://www.mofcom.gov.cn/syxwfb/art/2026/art_cfaab3f4853943b29f30a0219d46465d.html" target="_blank" rel="noopener">习近平对防汛救灾工作作出重要指示</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="http://www.mofcom.gov.cn/syxwfb/art/2026/art_1fda21d230e04a4d9fd3ce3d69e9016f.html" target="_blank" rel="noopener">庆祝中国共产党成立105周年大会在京隆重举行</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="http://www.mofcom.gov.cn/syxwfb/art/2026/art_586d1760cb664b98ae47288a1a40038b.html" target="_blank" rel="noopener">商务部党组专题传达学习习近平总书记在庆祝中国共产党成立105周年大会上的重要讲话精神</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="http://www.mofcom.gov.cn/syxwfb/art/2026/art_ad62ef1b108c41fb881b870820ef4b40.html" target="_blank" rel="noopener">中荷经贸混委会第18次会议在京举行</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="http://www.mofcom.gov.cn/syxwfb/art/2026/art_4c8e04731a8f4789bb1c07cdf5b48e86.html" target="_blank" rel="noopener">中国—尼泊尔经贸联委会第12次会议在尼泊尔加德满都召开</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="http://www.mofcom.gov.cn/rdzt/index.html" target="_blank" rel="noopener">热点专题</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://www.ciie.org/zbh/index.html" target="_blank" rel="noopener">中国国际进口博览会</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://scyxltfz.mofcom.gov.cn/" target="_blank" rel="noopener">市场运行与流通发展服务平台</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://dzswgf.mofcom.gov.cn/" target="_blank" rel="noopener">电子商务公共服务</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="http://www.mofcom.gov.cn/xwfb/rcxwfb/art/2026/art_b7a670a0d9b34983898b573eb4591555.html" target="_blank" rel="noopener">中英服务贸易协定联合可行性研究技术磋商在伦敦举行</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="http://www.mofcom.gov.cn/xwfb/rcxwfb/art/2026/art_03c4ae3954f047bba1e4ac9b10ac58fd.html" target="_blank" rel="noopener">市场监管总局、商务部就《中华人民共和国电子商务法（修正草案征求意见稿）》面向社会公开征求意见</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="http://www.mofcom.gov.cn/xwfb/rcxwfb/art/2026/art_3debe978bb064194a35e1979417204ae.html" target="_blank" rel="noopener">中韩自贸协定第二阶段第15轮谈判在北京举行</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="http://www.mofcom.gov.cn/xwfb/rcxwfb/art/2026/art_9e910de61fd547f0b68002fdb9c4ff71.html" target="_blank" rel="noopener">商务部等7部门联合开展报废机动车非法回收拆解专项整治行动</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="http://www.mofcom.gov.cn/xwfb/xwfyrth/art/2026/art_fc337b6e01f94e7c96ecdc3ea5bba28b.html" target="_blank" rel="noopener">商务部新闻发言人就对日相关出口管制措施答记者问</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="http://www.mofcom.gov.cn/xwfb/xwfyrth/art/2026/art_792bcbaca51649c4beca9055d81969e4.html" target="_blank" rel="noopener">商务部新闻发言人就进一步完善战略矿产两用物项出口管制违法违规行为举报处理工作答记者问</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="http://www.mofcom.gov.cn/xwfb/xwfyrth/art/2026/art_239eb37f45434cb09769ade0f7a78092.html" target="_blank" rel="noopener">商务部新闻发言人就将10家美国实体列入出口管制管控名单答记者问</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="http://www.mofcom.gov.cn/xwfb/xwfyrth/art/2026/art_cb812121a7584d5088c2eec9568df737.html" target="_blank" rel="noopener">商务部新闻发言人就美国防部将部分中国企业列入“中国军事企业清单”事答记者问</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="http://www.mofcom.gov.cn/xwfb/sjfzrfb/art/2026/art_400f96fe2fad4a3a9faf9b237831c655.html" target="_blank" rel="noopener">市场监管总局网监司、商务部电子商务司负责人就《中华人民共和国电子商务法（修正草案征求意见稿）》答记者问</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="http://www.mofcom.gov.cn/xwfb/sjfzrfb/art/2026/art_a12637a9c3e7485cb85dc7fb89d210c0.html" target="_blank" rel="noopener">商务部服贸司负责人介绍2026年1-5月服务贸易发展情况</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="http://www.mofcom.gov.cn/xwfb/sjfzrfb/art/2026/art_86173250c1e84b29bc878a1517cdb93c.html" target="_blank" rel="noopener">商务部电子商务司负责人介绍2026年1-5月我国电子商务发展情况</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="http://www.mofcom.gov.cn/xwfb/sjfzrfb/art/2026/art_0be457f701724a74932422166150ee1c.html" target="_blank" rel="noopener">商务部消费促进司负责人谈2026年5月我国消费市场情况</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="http://www.mofcom.gov.cn/xwfbzt/2026/swbzklxxwfbh2026n7y2r/index.html" target="_blank" rel="noopener">商务部召开例行新闻发布会（2026年7月2日）</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="http://www.mofcom.gov.cn/xwfbzt/2026/swbzklxxwfbh2026n6y25r/index.html" target="_blank" rel="noopener">商务部召开例行新闻发布会（2026年6月25日）</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="http://www.scio.gov.cn/live/2026/38852/index.html" target="_blank" rel="noopener">盛秋平副部长出席国新办发布会介绍全链条扩大汽车消费有关情况</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="http://www.scio.gov.cn/live/2026/38863/tw/" target="_blank" rel="noopener">凌激副部长兼国际贸易谈判副代表出席国新办发布会介绍利用外资固稳促优有关政策措施</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="http://yzs.mofcom.gov.cn/zrjjgcdh/index.html" target="_blank" rel="noopener">中日经济高层对话</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="http://wms.mofcom.gov.cn/ztxx/ncpmyzt/index.html" target="_blank" rel="noopener">农产品贸易专题</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="http://www.mofcom.gov.cn/cms_files/filemanager/ckzn/index.shtml" target="_blank" rel="noopener">出口商品技术指南</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="http://www.mofcom.gov.cn/zwgk/index.html" target="_blank" rel="noopener">政务公开</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="http://www.mofcom.gov.cn/zwgk/gztz/art/2026/art_67fb20766a954d09b26cb25b3b5533f4.html" target="_blank" rel="noopener">市场监管总局、商务部关于公开征求《中华人民共和国电子商务法（修正草案征求意见稿）》意见的通知</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="http://www.mofcom.gov.cn/zwgk/gztz/index.html" target="_blank" rel="noopener">工作通知</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="http://www.mofcom.gov.cn/zwgk/zcfb/art/2026/art_6a7b4fc5dde141a7a55b6159cd80e7a4.html" target="_blank" rel="noopener">商务部办公厅 海关总署办公厅关于开展综合保税区外保税检测试点工作的通知</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="http://www.mofcom.gov.cn/zwgk/zcfb/index.html" target="_blank" rel="noopener">政策发布</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="http://www.mofcom.gov.cn/zwgk/zcfb/art/2026/art_82ebe94b8d1a425e9d2b8d67571e7d90.html" target="_blank" rel="noopener">商务部公告2026年第25号 公布对原产于加拿大的豌豆淀粉反倾销调查的初步裁定</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="http://www.mofcom.gov.cn/zwgk/zcfb/art/2026/art_c2ab731429dc4bc3ba8696cd0e6ad857.html" target="_blank" rel="noopener">商务部公告2026年第28号 公布将20家日本实体列入关注名单</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="http://www.mofcom.gov.cn/zwgk/zcfb/art/2026/art_df87be1437044874a35f85cf6e076f3d.html" target="_blank" rel="noopener">商务部公告2026年第27号 公布将20家日本实体列入出口管制管控名单</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="http://www.mofcom.gov.cn/zwgk/zcfb/art/2026/art_b753863c11624769832481772f59cade.html" target="_blank" rel="noopener">关于2026年燃料油非国营贸易进口申请企业有关情况的公示</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="http://www.mofcom.gov.cn/zwgk/zcfb/art/2026/art_58f3c70ea4bd4ca3a450ba2ca4049efa.html" target="_blank" rel="noopener">商务部等7部门办公厅关于开展报废机动车非法回收拆解专项整治行动的通知</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="http://www.mofcom.gov.cn/zwgk/zcfb/art/2026/art_d6998a818b2e4329b6980093d751cd52.html" target="_blank" rel="noopener">商务部公告2026年第26号 公布关于进一步完善战略矿产两用物项出口管制违法违规行为举报处理工作有关事项</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="http://www.mofcom.gov.cn/zctj/index.html" target="_blank" rel="noopener">政策图解</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="http://www.mofcom.gov.cn/tj/sjtj/art/2026/art_46d573b4b0d54f37ab4b5a6e96bef2fb.html" target="_blank" rel="noopener">2026年1—5月 我国服务进出口总额同比增长6%</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="http://www.mofcom.gov.cn/tj/sjtj/art/2026/art_afdefb2b675f43a9ba42a8e5998d423a.html" target="_blank" rel="noopener">2026年前5月 我国离岸服务外包合同额同比增长9.3%</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="http://www.mofcom.gov.cn/tj/sjtj/art/2026/art_c71779145d02498799a862dae268dd70.html" target="_blank" rel="noopener">2026年1—5月 全国网上商品零售额增长5.0%</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="http://www.mofcom.gov.cn/tj/sjtj/art/2026/art_a7b0b89b75b6463f987162185e4887a6.html" target="_blank" rel="noopener">2026年1—5月 全国吸收外资3272.9亿元</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="http://www.mofcom.gov.cn/hdjl/index.html" target="_blank" rel="noopener">互动交流</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="http://interview.mofcom.gov.cn/detail/202606/ff8080819ef2aa1c019ef3342c240007.html" target="_blank" rel="noopener">凌激副部长兼国际贸易谈判副代表出席国新办发布会介绍利用外资固稳促优有关政策措施</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="http://interview.mofcom.gov.cn/detail/202606/ff8080819f119041019f125f21470009.html" target="_blank" rel="noopener">盛秋平副部长出席国新办发布会介绍全链条扩大汽车消费有关情况</a></h3>
+          
+          <div class="meta-line">来源: gov_china &nbsp;|&nbsp; 时间: —</div>
+        </article>
+
+    </section>
+
+    <section class="source-section" id="fed_intl">
+      <h2>Fed/ECB/BIS <span class="badge">2 条</span> <span class='meta-fetched'>更新: 2026-07-08T06:47:27.839851Z</span></h2>
+      
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://www.federalreserve.gov/newsevents/pressreleases/bcreg20260707a.htm" target="_blank" rel="noopener">Federal Reserve Board requests comment on a proposal to amend its requirements for banks to maintain anti-money laundering programs</a></h3>
+          <p class="body">Federal Reserve Board requests comment on a proposal to amend its requirements for banks to maintain anti-money laundering programs</p>
+          <div class="meta-line">来源: fed_intl &nbsp;|&nbsp; 时间: 2026-07-07 19:00:00 UTC &nbsp;|&nbsp; Banking and Consumer Regulatory Policy</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://www.federalreserve.gov/newsevents/speech/bowman20260707a.htm" target="_blank" rel="noopener">Bowman, Opening Remarks on Sound Practices for Artificial Intelligence</a></h3>
+          <p class="body">Speech At the Financial Stability Board Virtual Outreach Event</p>
+          <div class="meta-line">来源: fed_intl &nbsp;|&nbsp; 时间: 2026-07-07 11:00:00 UTC &nbsp;|&nbsp; Speech</div>
+        </article>
+
+    </section>
+
+    <section class="source-section" id="stocktwits">
+      <h2>美股散户 (StockTwits) <span class="badge">36 条</span> <span class='meta-fetched'>更新: 2026-07-08T06:47:38.956495Z</span></h2>
+      
+        <article class="item-card">
+          <h3 class="item-title">Micron Technology Inc</h3>
+          <p class="body">$MU thank for buying opportunity missed yesterday dip</p>
+          <div class="meta-line">来源: curl_cffi &nbsp;|&nbsp; 时间: 2026-07-08 06:47:32 UTC &nbsp;|&nbsp; 用户: kind22 &nbsp;|&nbsp; 标的: MU &nbsp;|&nbsp; 情绪: Bullish</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title">Sandisk Corp</h3>
+          <p class="body">$SNDK Time to BUY!</p>
+          <div class="meta-line">来源: curl_cffi &nbsp;|&nbsp; 时间: 2026-07-08 06:47:18 UTC &nbsp;|&nbsp; 用户: Skies88 &nbsp;|&nbsp; 标的: SNDK &nbsp;|&nbsp; 情绪: Bullish</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title">Micron Technology Inc</h3>
+          <p class="body">$MU this was performing better before earnings</p>
+          <div class="meta-line">来源: curl_cffi &nbsp;|&nbsp; 时间: 2026-07-08 06:47:12 UTC &nbsp;|&nbsp; 用户: randy212 &nbsp;|&nbsp; 标的: MU</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title">Micron Technology Inc</h3>
+          <p class="body">$MU below 900 is crazy!!! earnings did nothing because them damn korean fucks</p>
+          <div class="meta-line">来源: curl_cffi &nbsp;|&nbsp; 时间: 2026-07-08 06:46:34 UTC &nbsp;|&nbsp; 用户: Ankr_officialfanpage &nbsp;|&nbsp; 标的: MU</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title">Direxion Daily Semiconductor Bull 3X Shares</h3>
+          <p class="body">$SOXL yaaaeeee another  day of  DCA</p>
+          <div class="meta-line">来源: curl_cffi &nbsp;|&nbsp; 时间: 2026-07-08 06:44:57 UTC &nbsp;|&nbsp; 用户: Marcush_214 &nbsp;|&nbsp; 标的: SOXL</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title">Micron Technology Inc</h3>
+          <p class="body">$MU 
+I&amp;#39;d buy that for a dollar!</p>
+          <div class="meta-line">来源: curl_cffi &nbsp;|&nbsp; 时间: 2026-07-08 06:44:50 UTC &nbsp;|&nbsp; 用户: Dillweed8 &nbsp;|&nbsp; 标的: MU &nbsp;|&nbsp; 情绪: Bearish</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title">Direxion Daily South Korea Bull 3X Shares</h3>
+          <p class="body">$KORU  
+$INTC  
+$SPY  
+ 
+you guys officially scared? good! 
+ 
+now when others are fearful, you should be too! 
+ 
+Market is hardest it’s ever been! goodluck</p>
+          <div class="meta-line">来源: curl_cffi &nbsp;|&nbsp; 时间: 2026-07-08 06:44:34 UTC &nbsp;|&nbsp; 用户: Marktraderly &nbsp;|&nbsp; 标的: KORU</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title">Intel Corp</h3>
+          <p class="body">$KORU  
+$INTC  
+$SPY  
+ 
+you guys officially scared? good! 
+ 
+now when others are fearful, you should be too! 
+ 
+Market is hardest it’s ever been! goodluck</p>
+          <div class="meta-line">来源: curl_cffi &nbsp;|&nbsp; 时间: 2026-07-08 06:44:34 UTC &nbsp;|&nbsp; 用户: Marktraderly &nbsp;|&nbsp; 标的: INTC</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title">SPDR S&amp;P 500 ETF Trust</h3>
+          <p class="body">$KORU  
+$INTC  
+$SPY  
+ 
+you guys officially scared? good! 
+ 
+now when others are fearful, you should be too! 
+ 
+Market is hardest it’s ever been! goodluck</p>
+          <div class="meta-line">来源: curl_cffi &nbsp;|&nbsp; 时间: 2026-07-08 06:44:34 UTC &nbsp;|&nbsp; 用户: Marktraderly &nbsp;|&nbsp; 标的: SPY</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title">Sandisk Corp</h3>
+          <p class="body">$SNDK can fall to $1100 very quick</p>
+          <div class="meta-line">来源: curl_cffi &nbsp;|&nbsp; 时间: 2026-07-08 06:43:52 UTC &nbsp;|&nbsp; 用户: kirby77 &nbsp;|&nbsp; 标的: SNDK &nbsp;|&nbsp; 情绪: Bearish</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title">Micron Technology Inc</h3>
+          <p class="body">$MU still humping the bottom like a catfish. Ill tag bullish until zero. Pics zoomed and not.</p>
+          <div class="meta-line">来源: curl_cffi &nbsp;|&nbsp; 时间: 2026-07-08 06:42:43 UTC &nbsp;|&nbsp; 用户: 1111Bro &nbsp;|&nbsp; 标的: MU &nbsp;|&nbsp; 情绪: Bullish</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title">Alibaba Group Holding Ltd</h3>
+          <p class="body">$BABA a night from the heavens</p>
+          <div class="meta-line">来源: curl_cffi &nbsp;|&nbsp; 时间: 2026-07-08 06:42:41 UTC &nbsp;|&nbsp; 用户: m4t0ker &nbsp;|&nbsp; 标的: BABA &nbsp;|&nbsp; 情绪: Bullish</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title">Alibaba Group Holding Ltd</h3>
+          <p class="body">$BABA should fade by eod</p>
+          <div class="meta-line">来源: curl_cffi &nbsp;|&nbsp; 时间: 2026-07-08 06:42:37 UTC &nbsp;|&nbsp; 用户: kirby77 &nbsp;|&nbsp; 标的: BABA &nbsp;|&nbsp; 情绪: Bearish</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title">Micron Technology Inc</h3>
+          <p class="body">$MU if diarrhoea were a stock</p>
+          <div class="meta-line">来源: curl_cffi &nbsp;|&nbsp; 时间: 2026-07-08 06:42:23 UTC &nbsp;|&nbsp; 用户: IrenGlazer69 &nbsp;|&nbsp; 标的: MU &nbsp;|&nbsp; 情绪: Bearish</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title">Direxion Daily Semiconductor Bull 3X Shares</h3>
+          <p class="body">$SOXL $159.93 -5.22 -3.2% still trending down,  in overnight,  set up a bear flag at $161 then broke lower, measured move would take us down to 156,  memory stocks MU -3.8% SNDK -3.2% DRAM ETF 3.1%  dragging chips lower.  Everyone is slamming the memory stocks, but he price of memory isn&amp;#39;t dropping by the same amount.   People selling da news because the news is too good or as good as it gets.  I&amp;#39;m looking for a bounce setup in next 24 hours, would be great if there was some catalyst to spark a shortcrusher rally.</p>
+          <div class="meta-line">来源: curl_cffi &nbsp;|&nbsp; 时间: 2026-07-08 06:41:33 UTC &nbsp;|&nbsp; 用户: phijammaslamma &nbsp;|&nbsp; 标的: SOXL</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title">Direxion Daily Semiconductor Bull 3X Shares</h3>
+          <p class="body">$SOXL $NVDA Affordable Chinese chips and free AI models could become a major competitive force worldwide. Tesla has already faced intense pressure from lower-cost Chinese EVs across Europe, and Canada has begun importing them as well. While the U.S. may try to limit Chinese technology through tariffs and restrictions, slowing adoption isn&amp;#39;t the same as stopping it.
+
+The same dynamic could play out in semiconductors. If Chinese manufacturers dramatically expand production and drive down chip prices, U.S. companies could face significant pricing pressure. China may leverage its growing technology ecosystem as a strategic advantage in its broader competition with the United States.</p>
+          <div class="meta-line">来源: curl_cffi &nbsp;|&nbsp; 时间: 2026-07-08 06:41:01 UTC &nbsp;|&nbsp; 用户: BearBoB &nbsp;|&nbsp; 标的: SOXL &nbsp;|&nbsp; 情绪: Bearish</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title">NVIDIA Corp</h3>
+          <p class="body">$SOXL $NVDA Affordable Chinese chips and free AI models could become a major competitive force worldwide. Tesla has already faced intense pressure from lower-cost Chinese EVs across Europe, and Canada has begun importing them as well. While the U.S. may try to limit Chinese technology through tariffs and restrictions, slowing adoption isn&amp;#39;t the same as stopping it.
+
+The same dynamic could play out in semiconductors. If Chinese manufacturers dramatically expand production and drive down chip prices, U.S. companies could face significant pricing pressure. China may leverage its growing technology ecosystem as a strategic advantage in its broader competition with the United States.</p>
+          <div class="meta-line">来源: curl_cffi &nbsp;|&nbsp; 时间: 2026-07-08 06:41:01 UTC &nbsp;|&nbsp; 用户: BearBoB &nbsp;|&nbsp; 标的: NVDA &nbsp;|&nbsp; 情绪: Bearish</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title">Unity Software Inc</h3>
+          <p class="body">$U $100 EOY if Unity AI is not a flop.</p>
+          <div class="meta-line">来源: curl_cffi &nbsp;|&nbsp; 时间: 2026-07-08 06:40:51 UTC &nbsp;|&nbsp; 用户: bulld0zer40k &nbsp;|&nbsp; 标的: U &nbsp;|&nbsp; 情绪: Bullish</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title">Sandisk Corp</h3>
+          <p class="body">$SNDK yep yesterday</p>
+          <div class="meta-line">来源: curl_cffi &nbsp;|&nbsp; 时间: 2026-07-08 06:40:10 UTC &nbsp;|&nbsp; 用户: Producerion &nbsp;|&nbsp; 标的: SNDK</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title">Micron Technology Inc</h3>
+          <p class="body">$MU just need Warsh to say something dovish and we head to 1200 or something hawkish and we head to 300 😂</p>
+          <div class="meta-line">来源: curl_cffi &nbsp;|&nbsp; 时间: 2026-07-08 06:39:28 UTC &nbsp;|&nbsp; 用户: Hzbt &nbsp;|&nbsp; 标的: MU</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title">Sandisk Corp</h3>
+          <p class="body">$SNDK you all think should I sell all my shares I’m down 15k?</p>
+          <div class="meta-line">来源: curl_cffi &nbsp;|&nbsp; 时间: 2026-07-08 06:39:28 UTC &nbsp;|&nbsp; 用户: Avais &nbsp;|&nbsp; 标的: SNDK</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title">Sandisk Corp</h3>
+          <p class="body">$SNDK if btc can go under the 200 so can this meme stock</p>
+          <div class="meta-line">来源: curl_cffi &nbsp;|&nbsp; 时间: 2026-07-08 06:38:41 UTC &nbsp;|&nbsp; 用户: Producerion &nbsp;|&nbsp; 标的: SNDK</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title">Micron Technology Inc</h3>
+          <p class="body">$MU This drop is normal, tonight was good.  Compared to the other nights, that was brutal.  Premarket is going bring this right back up</p>
+          <div class="meta-line">来源: curl_cffi &nbsp;|&nbsp; 时间: 2026-07-08 06:37:03 UTC &nbsp;|&nbsp; 用户: Robbob79 &nbsp;|&nbsp; 标的: MU</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title">Micron Technology Inc</h3>
+          <p class="body">$MU this is genuinely getting to the point in unbelievable its not bouncing and just collapsing every night with the kopsi. this is a trillion dollar company…..</p>
+          <div class="meta-line">来源: curl_cffi &nbsp;|&nbsp; 时间: 2026-07-08 06:36:19 UTC &nbsp;|&nbsp; 用户: Jaymay91 &nbsp;|&nbsp; 标的: MU</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title">Credo Technology Group Holding Ltd</h3>
+          <p class="body">$CRDO I have credo.in 4: accounts.
+
+It ranges from $125 to,$225.</p>
+          <div class="meta-line">来源: curl_cffi &nbsp;|&nbsp; 时间: 2026-07-08 06:35:58 UTC &nbsp;|&nbsp; 用户: pgyletsgo &nbsp;|&nbsp; 标的: CRDO</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title">Sandisk Corp</h3>
+          <p class="body">$SNDK $MU obviously, the fact that the war with iran has restarted doesnt help</p>
+          <div class="meta-line">来源: curl_cffi &nbsp;|&nbsp; 时间: 2026-07-08 06:35:34 UTC &nbsp;|&nbsp; 用户: ycdctx &nbsp;|&nbsp; 标的: SNDK</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title">Micron Technology Inc</h3>
+          <p class="body">$SNDK $MU obviously, the fact that the war with iran has restarted doesnt help</p>
+          <div class="meta-line">来源: curl_cffi &nbsp;|&nbsp; 时间: 2026-07-08 06:35:34 UTC &nbsp;|&nbsp; 用户: ycdctx &nbsp;|&nbsp; 标的: MU</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title">Micron Technology Inc</h3>
+          <p class="body">$MU Here we go again. It has been going down consistently for almost  2 weeks now. What a POS</p>
+          <div class="meta-line">来源: curl_cffi &nbsp;|&nbsp; 时间: 2026-07-08 06:35:27 UTC &nbsp;|&nbsp; 用户: Adexlee &nbsp;|&nbsp; 标的: MU</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title">Penguin Solutions Inc.</h3>
+          <p class="body">$PENG</p>
+          <div class="meta-line">来源: curl_cffi &nbsp;|&nbsp; 时间: 2026-07-08 06:34:52 UTC &nbsp;|&nbsp; 用户: Stauter &nbsp;|&nbsp; 标的: PENG &nbsp;|&nbsp; 情绪: Bullish</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title">Micron Technology Inc</h3>
+          <p class="body">$MU  😎</p>
+          <div class="meta-line">来源: curl_cffi &nbsp;|&nbsp; 时间: 2026-07-08 06:34:44 UTC &nbsp;|&nbsp; 用户: MSCFcpas &nbsp;|&nbsp; 标的: MU</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title">Sandisk Corp</h3>
+          <p class="body">$SNDK You are the opposite of those who said this is going to 5,000 when it hit 2,300 lol.  Pigs get slaughtered both ways</p>
+          <div class="meta-line">来源: curl_cffi &nbsp;|&nbsp; 时间: 2026-07-08 06:34:24 UTC &nbsp;|&nbsp; 用户: dlvegawolf7 &nbsp;|&nbsp; 标的: SNDK</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title">Micron Technology Inc</h3>
+          <p class="body">$MU Trash down 9 days in a row now 🤡</p>
+          <div class="meta-line">来源: curl_cffi &nbsp;|&nbsp; 时间: 2026-07-08 06:34:00 UTC &nbsp;|&nbsp; 用户: IrenGlazer69 &nbsp;|&nbsp; 标的: MU &nbsp;|&nbsp; 情绪: Bearish</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title">SpaceX</h3>
+          <p class="body">$SPCX new grok is token efficient. OMG!  that will save AI actually $MU   
+
+tokens are getting so expensive that companies were rehiring laid off employees
+
+Token Efficiency is GAME CHANGER  $SPY</p>
+          <div class="meta-line">来源: curl_cffi &nbsp;|&nbsp; 时间: 2026-07-08 06:33:56 UTC &nbsp;|&nbsp; 用户: MomentumWins &nbsp;|&nbsp; 标的: SPCX &nbsp;|&nbsp; 情绪: Bullish</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title">Micron Technology Inc</h3>
+          <p class="body">$SPCX new grok is token efficient. OMG!  that will save AI actually $MU   
+
+tokens are getting so expensive that companies were rehiring laid off employees
+
+Token Efficiency is GAME CHANGER  $SPY</p>
+          <div class="meta-line">来源: curl_cffi &nbsp;|&nbsp; 时间: 2026-07-08 06:33:56 UTC &nbsp;|&nbsp; 用户: MomentumWins &nbsp;|&nbsp; 标的: MU &nbsp;|&nbsp; 情绪: Bullish</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title">SPDR S&amp;P 500 ETF Trust</h3>
+          <p class="body">$SPCX new grok is token efficient. OMG!  that will save AI actually $MU   
+
+tokens are getting so expensive that companies were rehiring laid off employees
+
+Token Efficiency is GAME CHANGER  $SPY</p>
+          <div class="meta-line">来源: curl_cffi &nbsp;|&nbsp; 时间: 2026-07-08 06:33:56 UTC &nbsp;|&nbsp; 用户: MomentumWins &nbsp;|&nbsp; 标的: SPY &nbsp;|&nbsp; 情绪: Bullish</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title">Micron Technology Inc</h3>
+          <p class="body">$MU so much selling damn</p>
+          <div class="meta-line">来源: curl_cffi &nbsp;|&nbsp; 时间: 2026-07-08 06:33:45 UTC &nbsp;|&nbsp; 用户: ZZZZniiiiight &nbsp;|&nbsp; 标的: MU</div>
+        </article>
+
+    </section>
+
+    <section class="source-section" id="xueqiu_playwright">
+      <h2>雪球 <span class="badge">39 条</span> <span class='meta-fetched'>更新: 2026-07-08T06:48:39.700980Z</span></h2>
+      
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://xueqiu.com/ask/square" target="_blank" rel="noopener">发表你的观点...</a></h3>
+          <p class="body">发表你的观点...</p>
+          <div class="meta-line">来源: xueqiu(动态) &nbsp;|&nbsp; 时间: 2026-07-08 06:48:32 UTC</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://xueqiu.com/9960126782" target="_blank" rel="noopener">鹅总投资笔记修改于4小时前· 来自雪球</a></h3>
+          <p class="body">鹅总投资笔记修改于4小时前· 来自雪球 这两天听到一个比较冷门的卖方聊市场，前面后面不记得了，就记得一个核心的意思很吸引我 他的核心就是现在不管是什么半导体涨价还是别的，核心一点就是肯定有人囤货 涨价的东西从各种行业的经验总结来看，不可能100%供应到需求的 让我想起很多年前我某个平台老号还在的时候曾经聊过地...展开  转发  10  32  收藏</p>
+          <div class="meta-line">来源: xueqiu(动态) &nbsp;|&nbsp; 时间: 2026-07-08 06:48:32 UTC</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://xueqiu.com/1451558862" target="_blank" rel="noopener">小林聊股道3小时前· 来自雪球</a></h3>
+          <p class="body">小林聊股道3小时前· 来自雪球 专栏中证消费指数将出现历史大底 在六月底，我们左侧切入了医药、消费和中概。 走到现在，医药和中概都已经突破了短期趋势，尤其是医药，已经来到了长期趋势附近。相比之下，消费依旧偏弱，走得慢，磨得久，也更考验人。 但市场很多时候就是这样。 先走出来的，是给你信心； 还没走出来的，才是真正考验信念。  转发  7  51  收藏</p>
+          <div class="meta-line">来源: xueqiu(动态) &nbsp;|&nbsp; 时间: 2026-07-08 06:48:32 UTC</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://xueqiu.com/5530960819" target="_blank" rel="noopener">韩信点钱11小时前· 来自Android</a></h3>
+          <p class="body">韩信点钱11小时前· 来自Android 专栏也说康方生物股东大会 康方生物2026年6月末的这场股东会，我这一二周集中阅读了市面上所有的分析，基本上把能挖的亮点都分析差不多了，涌现出不少有益思考。 唯一遗憾的是，总感觉东一块，西一块，串不起来。 本人不才，结合股东大会原文内容，把核心事件给大家串起来。 —————— 不清楚你们记不记...  转发  24  49  收藏</p>
+          <div class="meta-line">来源: xueqiu(动态) &nbsp;|&nbsp; 时间: 2026-07-08 06:48:32 UTC</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://xueqiu.com/7254497243" target="_blank" rel="noopener">中年电竞选手修改于14小时前· 来自雪球</a></h3>
+          <p class="body">中年电竞选手修改于14小时前· 来自雪球 斗胆评论一下 AI 硬件和存储，希望不要反指。 我觉得市场可能低估了 xAI 和 Meta 转向这件事的影响。 AI 硬件这轮最强的逻辑，本质是所有玩家都在无脑抢资源：GPU、HBM、存储、数据中心。谁不买，谁就怕出局。 但现在问题是，真正能通过正常商业循环维持持续投入的 AI 公司，好像只剩 ...展开  10  117  252  收藏</p>
+          <div class="meta-line">来源: xueqiu(动态) &nbsp;|&nbsp; 时间: 2026-07-08 06:48:32 UTC</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://xueqiu.com/cozone" target="_blank" rel="noopener">柯中修改于昨天 23:27· 来自雪球</a></h3>
+          <p class="body">柯中修改于昨天 23:27· 来自雪球 专栏2026年全球锂电池出货量将冲击3300GWh 2026年全球锂电池出货量将冲击3300GWh 实际上早在今年年初1月初的时候就给了今年出货量将冲击3200GWh，那会一堆人觉得我疯了，现在回头看，还是保守了。目前半年基本过去，虽然国内还有汽车产业联盟的6月份数据没有公布，但是实际上一些第三方已经基本公布了国内的大概出货数据。 每家的数...  11  583  663  收藏</p>
+          <div class="meta-line">来源: xueqiu(动态) &nbsp;|&nbsp; 时间: 2026-07-08 06:48:32 UTC</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://xueqiu.com/6244752229" target="_blank" rel="noopener">老鱼聊价投4小时前· 来自雪球</a></h3>
+          <p class="body">老鱼聊价投4小时前· 来自雪球 昨晚临睡前，琢磨了一下腾讯出售快手股份的事。最开始心中也有疑问，腾讯是不是有点太着急了，等股价涨上去再出手不是更好？ 后来慢慢琢磨出了味儿，我觉得腾讯投资部坚决减持的理由有三： 一是对快手的生态需求在下滑。 腾讯自家视频号的规模和增速都起来了，必须引入快手作为短视频...展开  1  23  21  收藏</p>
+          <div class="meta-line">来源: xueqiu(动态) &nbsp;|&nbsp; 时间: 2026-07-08 06:48:32 UTC</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://xueqiu.com/haoyangmao" target="_blank" rel="noopener">球友福利修改于5小时前· 来自雪球推广</a></h3>
+          <p class="body">球友福利修改于5小时前· 来自雪球推广 当算力遇上电力，靠什么为AI输电？ AI这半年涨得凶，但真正让科技巨头们焦虑的，可能不是芯片够不够快，而是电够不够用。 据国际能源署（IEA）的预测，到2030年全球数据中心用电量将较2025年接近翻番。反映到国内，2026年1—4月互联网数据服务业用电增速已经冲到44.4%，充换电服务业增速更是高达55.9%，AI算力正在成为拉动电力消...  1  1  11  收藏</p>
+          <div class="meta-line">来源: xueqiu(动态) &nbsp;|&nbsp; 时间: 2026-07-08 06:48:32 UTC</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://xueqiu.com/1333903283" target="_blank" rel="noopener">阿企笔记3小时前· 来自iPhone</a></h3>
+          <p class="body">阿企笔记3小时前· 来自iPhone 还黑阿里吗。。 而且我认为，真正的王炸依然是Qwe3.8-max能不能达到世界一流水平。如果比肩opus4.8和GPT5.5，我认为阿里翻倍都是便宜的。 ——— 今天早上阿里偷偷跟外资行开了2026年6月季度的业绩前瞻。 电商 Q2 CMR收入增速-7%到-8%，这是调整口径之后的（商家补贴冲抵收入...展开  3  14  31  收藏</p>
+          <div class="meta-line">来源: xueqiu(动态) &nbsp;|&nbsp; 时间: 2026-07-08 06:48:32 UTC</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://xueqiu.com/7895717506" target="_blank" rel="noopener">山高林茂修改于4小时前· 来自雪球</a></h3>
+          <p class="body">山高林茂修改于4小时前· 来自雪球 $藏格矿业(SZ000408)$ 为什么说半年报业绩预告不及预期？ 按公司26--28年规划，26年主要产品产量指引目标分别 是钾肥100万吨、锂1.65万吨、铜9.5万吨。 上半年只有钾肥实现的产量符合全年产量指引，半年时间内锂产量仅5400吨，距离全年生产目标相差1.11万吨。上半年铜矿投资收益28亿，按一...展开  转发  18  65  收藏</p>
+          <div class="meta-line">来源: xueqiu(动态) &nbsp;|&nbsp; 时间: 2026-07-08 06:48:32 UTC</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://xueqiu.com/1587696893" target="_blank" rel="noopener">可回收火箭修改于4小时前· 来自雪球</a></h3>
+          <p class="body">可回收火箭修改于4小时前· 来自雪球 关于#长征十号乙# 我再啰嗦两句： 别人今天怎么操作的我不知道，我坚信火箭回收成功就是产业质变点。 10B发射前资金谨慎点很正常，毕竟前面几次被回收失败和鸽子吓怕了。 而朱雀三遥1、十二甲遥1在发射的t-2日都有大幅回调，资金避险完全可以理解。 这次埋伏十乙的行情不如前几次...展开  转发  35  41  收藏</p>
+          <div class="meta-line">来源: xueqiu(动态) &nbsp;|&nbsp; 时间: 2026-07-08 06:48:32 UTC</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://xueqiu.com/5920207325" target="_blank" rel="noopener">白桦林19683小时前· 来自Android</a></h3>
+          <p class="body">白桦林19683小时前· 来自Android 2026年二季度白酒外资增减仓情况 昨晚公布了二季度北向资金对白酒的增减仓情况，具体: 茅台:减仓502.14万股 五粮液:减仓1372万股，但高盛和大摩加仓，高盛加了3亿，大摩加了1609万。 老窖:增仓529.3万股，也主要是高盛和大摩。 汾酒:增仓413.68万股，主要是高盛和大摩，还有一...展开  2  38  14  收藏</p>
+          <div class="meta-line">来源: xueqiu(动态) &nbsp;|&nbsp; 时间: 2026-07-08 06:48:32 UTC</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://xueqiu.com/1833845374" target="_blank" rel="noopener">牛股侦探修改于4小时前· 来自雪球</a></h3>
+          <p class="body">牛股侦探修改于4小时前· 来自雪球 专栏混元HY3进第一梯队？我拿WorkBuddy实测了一把 $腾讯控股(00700)$ 这两天关于腾讯上线的混元 Hy3 正式版，全网测评我刷到了很多。从目前风评看，HY3 是超预期的，我关注的好几位大 V如@巍巍昆仑侠 都把它划进了国内大模型第一梯队。 作为腾讯的小股东，我自然也盯着 HY3。4 月 preview 版刚出，我就实测过一把（感兴趣的可重温（网页链接  3  15  16  收藏</p>
+          <div class="meta-line">来源: xueqiu(动态) &nbsp;|&nbsp; 时间: 2026-07-08 06:48:32 UTC</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://xueqiu.com/wdx_1984" target="_blank" rel="noopener">王代新修改于5小时前· 来自雪球</a></h3>
+          <p class="body">王代新修改于5小时前· 来自雪球 虽然白酒的经营惨淡，今年很多做线下烟酒生意的下滑20%以上都比较普遍，不少做白酒生意的都活不下去了；但是对于做股票投资的人来说，只要看好中国未来十年的宏观经济，未来一段时间的高端白酒会是非常好的买入时机，绝望的基本面才能创造有吸引力的股价，过一段有可能出现破净的白酒股……但这个...展开  2  38  37  收藏</p>
+          <div class="meta-line">来源: xueqiu(动态) &nbsp;|&nbsp; 时间: 2026-07-08 06:48:32 UTC</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://xueqiu.com/2480339123" target="_blank" rel="noopener">ETF和LOF圈5小时前· 来自雪球推广</a></h3>
+          <p class="body">ETF和LOF圈5小时前· 来自雪球推广 安监全面升级，煤炭供给迎刚性约束，煤炭ETF国泰（515220）大涨2% 应急管理部修订《煤矿重大事故隐患判定标准》，重大隐患认定由15类扩展至17类，超能力、超强度生产直接入刑。7月1日新规正式施行，叠加6月“安全生产月”高压延续，主产地煤矿从“被动接受检查”全面转向“主动合规避险”，供给弹性被制度性削弱的长期拐点正式确立。 $煤炭ETF国泰(SH515220)$ ...  转发  讨论  6  收藏</p>
+          <div class="meta-line">来源: xueqiu(动态) &nbsp;|&nbsp; 时间: 2026-07-08 06:48:32 UTC</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://xueqiu.com/2604731369" target="_blank" rel="noopener">财迷886小时前· 来自HarmonyOS</a></h3>
+          <p class="body">财迷886小时前· 来自HarmonyOS 从摩尔定律极限看先进封装 随着晶体管尺寸逼近硅原子物理尺度，摩尔定律依靠缩小芯片制程实现迭代的传统路径逐步遇到瓶颈。3nm及以下节点，量子隧穿效应加剧，芯片漏电问题突出。同时高端制程建厂与流片成本大幅攀升，性能提升幅度放缓，单纯依靠单片芯片微缩的性价比不断下降，叠加大尺寸芯片...展开  转发  31  47  收藏</p>
+          <div class="meta-line">来源: xueqiu(动态) &nbsp;|&nbsp; 时间: 2026-07-08 06:48:32 UTC</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://xueqiu.com/5928403639" target="_blank" rel="noopener">屋顶上的猫大人修改于3小时前· 来自雪球</a></h3>
+          <p class="body">屋顶上的猫大人修改于3小时前· 来自雪球 924以来，市场发生了一些可怕的变化，2024年9月30日，电子行业在沪深300中权重是9.35%，而目前是23.6%，在上证50中之前是4.58%，现在权重是24.86%。这意味什么？如果韩日美半导体等全球科技股崩塌，我们需要稳定市场，那么每投入100块钱，有25块钱要给科技板块，而这个板块的PE是可怕的116倍。为什...展开  转发  22  34  收藏</p>
+          <div class="meta-line">来源: xueqiu(动态) &nbsp;|&nbsp; 时间: 2026-07-08 06:48:32 UTC</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://xueqiu.com/9693886933" target="_blank" rel="noopener">赵燕翎3小时前· 来自雪球</a></h3>
+          <p class="body">赵燕翎3小时前· 来自雪球 专栏网宿科技：战略合作建设Token工厂，开始向全栈算力基础设施运营商升级 近日，网宿科技宣布，与正泰集团子公司、山铁数科、深度动力战略合作，共建绿电直连MW级“Token 工厂”，打造长三角地区算电协同示范标杆。 一、合作内容：四方的分工与闭环 合作模式的核心闭环：正泰提供绿电 → 山铁数科提供GPU算力集群 → 深度动力提供能源大模型与Token工厂技术 → 网...  转发  10  20  收藏</p>
+          <div class="meta-line">来源: xueqiu(动态) &nbsp;|&nbsp; 时间: 2026-07-08 06:48:32 UTC</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://xueqiu.com/3343519854" target="_blank" rel="noopener">可可麻子5小时前· 来自雪球</a></h3>
+          <p class="body">可可麻子5小时前· 来自雪球 先想清楚&quot;我要什么样的生活&quot;，然后让投资去服务生活，而不是反过来。 -------------------------- 散户乙和段永平给出了两种不同的答案，但结构完全相同： 散户乙先想清楚了——我要悠闲的晚年，不盯盘，不焦虑，不靠判断涨跌过日子。所以他的投资方式只可能是：买分红稳定的...展开  3  36  24  收藏</p>
+          <div class="meta-line">来源: xueqiu(动态) &nbsp;|&nbsp; 时间: 2026-07-08 06:48:32 UTC</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://xueqiu.com/1431043224" target="_blank" rel="noopener">三好学生的奖状3小时前· 来自iPhone</a></h3>
+          <p class="body">三好学生的奖状3小时前· 来自iPhone 今天科技股早盘的恐慌，我自己的理解是，已经三冰了所以是一次情绪博弈。 但市场每天都会有下跌，但并不是每一次下跌都代表风险，也并不是每一次上涨都意味着机会。 首先当前科技内部已经开始分化。 国产算力持续推进，本质上是在提升中国AI产业链的景气度和资本回报预期，因此...展开  转发  19  45  收藏</p>
+          <div class="meta-line">来源: xueqiu(动态) &nbsp;|&nbsp; 时间: 2026-07-08 06:48:32 UTC</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://xueqiu.com/liwenbi" target="_blank" rel="noopener">懒人养基4小时前· 来自雪球</a></h3>
+          <p class="body">懒人养基4小时前· 来自雪球 专栏红利与现金流大跌：别只怪科技 “吸血”，数据背后藏着更本质的真相 最近和一些基民聊天，大家都在吐槽手里的“老登资产”。 有人拿着红利低波，有人配了自由现金流，原本以为是防守端的“压舱石”，结果这几个月跌得比谁都狠。大家茶余饭后聊起来，口径出奇一致：还不是被科技成长吸血了？钱都跑去炒AI、追半导体，谁还看得上几个点股息的老古董。 这话听着...  1  19  33  收藏</p>
+          <div class="meta-line">来源: xueqiu(动态) &nbsp;|&nbsp; 时间: 2026-07-08 06:48:32 UTC</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://xueqiu.com/2681290304" target="_blank" rel="noopener">学知利行6小时前· 来自雪球</a></h3>
+          <p class="body">学知利行6小时前· 来自雪球 回复@马可不渴: 腾讯在股价跌破200时病也挺多的，一堆蒙古大夫在做诊断、下结论。实际上那个公司都存在一定问题，关键是公司主流业务的市场前景和经营壁垒、成长潜力、未来的现金流预期、股东回报的态度、以及市场定价和公司合理估值之间的空间。阿里巴巴有很多问题，但它的电商业务在中期还是有一...展开 @学知利行 ： $阿里巴巴-W(09988)$ $藏格矿业(SZ000408)$ 本来想借着这几天阿里巴巴的负面新闻满天飞能出现好价格多补点仓，但好像是预期了我的预期一样，股价掉头向上了，阿里巴巴尽管有这样那样的问题，但它的增长潜力足够大，而目前估值又足够低，负面的东西释放足够充分，这就够了。藏格矿业昨晚发了半年报...展开 昨天 10:10 · 转发 10 · 讨论 90 · 赞 167  4  31  97  收藏</p>
+          <div class="meta-line">来源: xueqiu(动态) &nbsp;|&nbsp; 时间: 2026-07-08 06:48:32 UTC</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://xueqiu.com/6510746328" target="_blank" rel="noopener">三好金融民工修改于2小时前· 来自雪球推广</a></h3>
+          <p class="body">三好金融民工修改于2小时前· 来自雪球推广 美日韩存储重挫，A股设备为何能独立主升？注意半导体周期重心转向！ 一、都是史诗级财报，为何美光、三星的市场反应完全不同？ 二、存储盈利、供需比接近峰值，市场转向订单、利润更滞后的半导体设备、材料。 ———————————— 美光科技和三星电子都是全球龙头存储大厂，但是业绩发布后市场给出的反应截然不同：前者全球存储大涨，后者韩股向下...  转发  3  3  收藏</p>
+          <div class="meta-line">来源: xueqiu(动态) &nbsp;|&nbsp; 时间: 2026-07-08 06:48:32 UTC</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://xueqiu.com/gelei" target="_blank" rel="noopener">格雷费舍5小时前· 来自雪球</a></h3>
+          <p class="body">格雷费舍5小时前· 来自雪球 专栏米莱芯程子公司芯颐和：光刻光学赛道被低估的“系统级”变量 2026年6月30日，米莱芯程对外发布消息称其全资子公司芯颐和完成了首套i线照明系统与投影物镜的同步交付。光源365nm，数值孔径0.45~0.6，最大视场22mm×22mm，全套自主正向设计，交付于国内头部光刻厂商。 这条消息在二级市场引起的反响，远不及它应有的分量。市场似乎习惯用“光刻机光学板块”...  4  25  53  收藏</p>
+          <div class="meta-line">来源: xueqiu(动态) &nbsp;|&nbsp; 时间: 2026-07-08 06:48:32 UTC</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://xueqiu.com/2884313460" target="_blank" rel="noopener">鴨先知7小时前· 来自iPhone</a></h3>
+          <p class="body">鴨先知7小时前· 来自iPhone 专栏七月下旬长电分红在即：手握巨款却心塞，未来十年的底仓还能换成谁？ 眼看着日历翻到了七月，距离七月下旬长江电力年度分红的日子越来越近了。对于把长电当做核心底仓、压了数百万重金的长期投资者来说，这本该是每年最期待的“收租”时刻。毕竟，一笔极其丰厚的现金弹药马上就要真金白银地打进账户了。 但今年的气氛确实有些微妙。拿着这笔即将到账的巨款，很多...  1  27  57  收藏</p>
+          <div class="meta-line">来源: xueqiu(动态) &nbsp;|&nbsp; 时间: 2026-07-08 06:48:32 UTC</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://xueqiu.com/1438190065" target="_blank" rel="noopener">三石而立orz修改于3小时前· 来自雪球</a></h3>
+          <p class="body">三石而立orz修改于3小时前· 来自雪球 今天芯片etf又是半天V了7个点，行情真是难做，尤其是对于交易型选手，做出的判断很可能会被快速打脸；但对于“抱紧型”选手、似乎又不累，只要媒体说得少听、行情少看，也就这么过来了，无他，唯震荡尔。 内部也是轮动极快，同样属于AI硬件，昨天港股已经有了一只10个交易日“腰斩”的了，但另...展开 @三石而立orz ： 专栏随想308 《经济运行的逻辑》 就在昨天，高善文博士因病去世了。 抛开他一连串诸如“中国金融40人论坛学术委员会委员”的头衔不谈，他是一个非常优秀的二级市场研究员、经济学家，他的系列文章《透视繁荣》、《经济运行的逻辑》、《在周期的拐点上》、《2008年中国A股投资策略》等等，是每个券商分析师的必读物。 尽管... 6小时前 · 转发 2 · 讨论 78 · 赞 73  转发  38  34  收藏</p>
+          <div class="meta-line">来源: xueqiu(动态) &nbsp;|&nbsp; 时间: 2026-07-08 06:48:32 UTC</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://xueqiu.com/7845696728" target="_blank" rel="noopener">直到一万点13小时前· 来自雪球</a></h3>
+          <p class="body">直到一万点13小时前· 来自雪球 翻了一会儿票，随便聊一下。 这么一跌呢，大家应该也有一个认识，就是上半年这个特别舒服的时期算是一个阶段结束了。 但是是不是转入熊市呢，我并不这样认为，只是后面可能没有这么多舒服的时间，更多要讲一些交易的技巧了。 其实在顶部的时候我也有一定的克制，像在创业板指数新高的...展开  1  31  260  收藏</p>
+          <div class="meta-line">来源: xueqiu(动态) &nbsp;|&nbsp; 时间: 2026-07-08 06:48:32 UTC</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://xueqiu.com/7143769715" target="_blank" rel="noopener">冰冰小美4小时前· 来自Android</a></h3>
+          <p class="body">冰冰小美4小时前· 来自Android 我粉丝增长的几个节点， 基本都是提风险后。 市场不好的时候，亏钱寻求庇护所， 于是，粉丝数量飞速上涨。 但是这类关注者，很大程度是寄生状态， 希望得到代码解套。 因此不关心风险，结果可想而知， 下次风险来临时，又亏钱了又被套了。 这是从9/24以来，第五次...展开  转发  12  215  收藏</p>
+          <div class="meta-line">来源: xueqiu(动态) &nbsp;|&nbsp; 时间: 2026-07-08 06:48:32 UTC</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://xueqiu.com/2386334596" target="_blank" rel="noopener">大地任我行5小时前· 来自HarmonyOS</a></h3>
+          <p class="body">大地任我行5小时前· 来自HarmonyOS 专栏股林真英雄 大部分的行业，要想赚钱，必须付出许多体力和脑力的劳动，还要有相应的知识和经验的积累。但股市不一样，在短期内，运气占比成分很大，要想赚点钱，并不需要实力，就算让一个猴子以扔飞镖的方式去选股，也有可能获得良好的收益。 许多人并没有意识到这一点，总喜欢拿着短期的收益当自己的能力...  5  21  109  收藏</p>
+          <div class="meta-line">来源: xueqiu(动态) &nbsp;|&nbsp; 时间: 2026-07-08 06:48:32 UTC</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://xueqiu.com/1692150659" target="_blank" rel="noopener">开南巴菲特3小时前· 来自iPhone</a></h3>
+          <p class="body">开南巴菲特3小时前· 来自iPhone $泡泡玛特(09992)$ 最近几个月能明显感受到，泡泡玛特的雪球社区跟之前完全不一样了。 以前大家聊的是产品发布节奏、各IP的受欢迎程度、近期的跟踪数据、乐园运营情况、新产品设计及市场接受度、社交媒体的传播效果、公司在海外的动态、各种潮玩展会、设计师动态、签约了哪些设计师、直播间情...展开  1  43  31  收藏</p>
+          <div class="meta-line">来源: xueqiu(动态) &nbsp;|&nbsp; 时间: 2026-07-08 06:48:32 UTC</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://xueqiu.com/6888930039" target="_blank" rel="noopener">市界见闻修改于32分钟前· 来自雪球推广</a></h3>
+          <p class="body">市界见闻修改于32分钟前· 来自雪球推广 解码山西汾酒：从“品质生活大赏”看白酒龙头的年轻化战略与长期投资价值 7月5日，山西汾酒联合新浪财经在武汉举办了主题为“激情汾享，悦己而活”的“汾酒品质生活大赏”。透过这场汇聚了财经、科技、文化等跨界嘉宾的盛会，资本市场可以清晰地看到这家老牌上市酒企在推动白酒年轻化、拓展新消费场景方面的战略布局。这不仅是一场品牌IP的区域落地，更是山西汾酒向投资者...  转发  讨论  1  收藏</p>
+          <div class="meta-line">来源: xueqiu(动态) &nbsp;|&nbsp; 时间: 2026-07-08 06:48:32 UTC</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://xueqiu.com/7516820417" target="_blank" rel="noopener">评研阁4小时前· 来自iPhone</a></h3>
+          <p class="body">评研阁4小时前· 来自iPhone 券商两份超预期的业绩预告出来后，板块不但没涨，反而下跌，事出反常必有妖。 第一，可以排除的是券商基本面问题，国泰海通和招商证券业绩绝对超出机构预期，而且超出的还不少，这是券商最大的底气。 第二，券商并不存在涨幅大出货的问题，这个是很多人的担忧，觉得券商板块是趁着利好出货...展开  1  77  41  收藏</p>
+          <div class="meta-line">来源: xueqiu(动态) &nbsp;|&nbsp; 时间: 2026-07-08 06:48:32 UTC</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://xueqiu.com/7259399500" target="_blank" rel="noopener">三十观市修改于4小时前· 来自雪球</a></h3>
+          <p class="body">三十观市修改于4小时前· 来自雪球 专栏赛力斯：一份承压的答卷与一个长线的布局 市场对赛力斯的关注，往往落在两种截然不同的叙事上：一种是盯着月度交付量的短期波动，另一种则着眼于其跨越汽车行业的长期布局。6月的产销快报与开源证券的同期研报，恰好提供了一个将这两种视角并置观察的窗口。 汽车主业：在激烈竞争中稳住阵脚 根据赛力斯官方数据，问界系列6月交付新...  2  45  47  收藏</p>
+          <div class="meta-line">来源: xueqiu(动态) &nbsp;|&nbsp; 时间: 2026-07-08 06:48:32 UTC</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://xueqiu.com/2807872168" target="_blank" rel="noopener">凯文直言5小时前· 来自Android</a></h3>
+          <p class="body">凯文直言5小时前· 来自Android 我个人的控仓计划。 近日市场都在等待反弹，可反弹偏偏未来。 在目前的局势下，控仓未免也是一种策略，控仓行为，可能让我在以后的上涨中少赢利，但也能让我在以后可能的下跌中少亏损。 目前轿子中散户太多，轿子太重，主力想做反弹，可有点力不从心。 依我个人经验，此时控制一下...展开  转发  54  317  收藏</p>
+          <div class="meta-line">来源: xueqiu(动态) &nbsp;|&nbsp; 时间: 2026-07-08 06:48:32 UTC</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://xueqiu.com/7103876041" target="_blank" rel="noopener">爱投资的小人书修改于6小时前· 来自iPhone</a></h3>
+          <p class="body">爱投资的小人书修改于6小时前· 来自iPhone 专栏老登行业-水泥以及印尼煤电力 昨天有两个人多问了两遍水泥 而这里 大家对内卷、老登行业，产能过剩等等 实际都有类似的问题。 供需关系和中国剪不掉的产能，到底怎么回事 顺便扯扯电力 水泥行业供大于求 最核心问题是什么？ 是供需关系么？ 而中国有全世界最低价格得水泥，持续过剩，产能...  1  58  78  收藏</p>
+          <div class="meta-line">来源: xueqiu(动态) &nbsp;|&nbsp; 时间: 2026-07-08 06:48:32 UTC</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://xueqiu.com/jftplj" target="_blank" rel="noopener">韭菲特漂流记7小时前· 来自Android</a></h3>
+          <p class="body">韭菲特漂流记7小时前· 来自Android 今年唯一参与过的AI是光纤和存储。当初买入的时候应该是市场卡脖子比较严重的两个环节，估值也低。 相比光纤和存储，我最不理解的是国产设备。 设备是国内芯片行业capex的二阶导。也就是说，每年的资本开支要比原来增长50%，才能支撑得起国产设备每年增速50%。 打个比方，就是今年新增...展开  2  61  183  收藏</p>
+          <div class="meta-line">来源: xueqiu(动态) &nbsp;|&nbsp; 时间: 2026-07-08 06:48:32 UTC</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://xueqiu.com/3038703149" target="_blank" rel="noopener">景气和成长修改于4小时前· 来自雪球</a></h3>
+          <p class="body">景气和成长修改于4小时前· 来自雪球 很多人在问，我来说几句。 市场到底发生了什么？ 触发点其实就一个，那就是美光最新的财报，以及跟苹果吵架。 美光最新的财报显示，上季毛利率高达84.9%。 随后爆出新闻，苹果受不了存储的高价，开始涨价，然后两个公司开始吵架。 84.9%的毛利率是什么概念？ 2013-2023年...展开  1  25  104  收藏</p>
+          <div class="meta-line">来源: xueqiu(动态) &nbsp;|&nbsp; 时间: 2026-07-08 06:48:32 UTC</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://xueqiu.com/7271353740" target="_blank" rel="noopener">KAIZEN投资之道2小时前· 来自iPhone</a></h3>
+          <p class="body">KAIZEN投资之道2小时前· 来自iPhone 专栏牛市的终点，不是暴跌，是“沉默” 深耕市场多年，我最深的投资感悟： 一轮大牛市真正的终点，从来不是轰轰烈烈的暴跌，而是行情顶点悄然而至的无声沉默。 这种沉默，是全市场弥漫的疲惫。场内投资者大都持股待涨，等待新资金进场接力，可场外增量资金，早已不再入场。 多数人判断牛市顶部，只会依靠估值过高、量价背离、市...  1  133  44  收藏</p>
+          <div class="meta-line">来源: xueqiu(动态) &nbsp;|&nbsp; 时间: 2026-07-08 06:48:32 UTC</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://xueqiu.com/JustintheDay" target="_blank" rel="noopener">陆家嘴幽灵6小时前· 来自雪球</a></h3>
+          <p class="body">陆家嘴幽灵6小时前· 来自雪球 昨天韩股上演“买预期，卖事实”博弈。三星亮眼财报落地后，股价单日重挫7%，带动韩股触发熔断。受此影响，隔夜美股半导体和存储再次承压，美光、闪迪分别跌近5%和7%，刚纳入指数的SpaceX跌近7%创上市来新低。简单谈谈看法： 首先，三星业绩基本面与股价走势的背离表明，在市场将利好提前且极...展开  11  127  76  收藏</p>
+          <div class="meta-line">来源: xueqiu(动态) &nbsp;|&nbsp; 时间: 2026-07-08 06:48:32 UTC</div>
+        </article>
+
+    </section>
+
+    <section class="source-section" id="x">
+      <h2>X/Twitter <span class="badge">4 条</span> <span class='meta-fetched'>更新: 2026-07-08T06:49:40.465452Z</span></h2>
+      
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://x.com/SuperLuckeee/status/2074658233634214206" target="_blank" rel="noopener">Esther &amp; Michael</a></h3>
+          <p class="body">These 8 stocks will run with $NVDA for the next 5-10 years:
+
+$MU — HBM and DRAM are the AI bottleneck; every accelerator needs more memory, and supply stays tight through 2028.
+
+$AMD — The only credible GPU alternative to Nvidia; even a small data-center share shift is worth hundreds of billions.
+
+$SPCX — Owns launch and satellite internet outright; Starlink alone could rival telecoms as the space economy compounds for decades.
+
+$AVGO — Designs the custom AI chips hyperscalers use to reduce Nvidia dependence, plus the networking that ties data centers together.
+
+$BE — Power is the next AI bottleneck; on-site fuel cells let data centers skip a strained, slow-moving grid.
+
+$NBIS — A small, fast-growing neocloud renting scarce GPUs; if AI compute demand keeps compounding, its revenue runway is enormous.
+
+$ARM — Its architecture sits inside nearly every chip a royalty on the whole AI buildout, from phones to data centers.
+
+$NOW — Enterprise AI agents run on its workflow platform; as companies automate labor, seat-and-usage revenue could expand meaningfully.
+
+$SNDK — AI generates and stores exploding data; NAND flash and enterprise SSDs ride the same shortage powering the memory cycle.</p>
+          <div class="meta-line">来源: Twitter Web App &nbsp;|&nbsp; 时间: 2026-07-08 00:54:02 UTC &nbsp;|&nbsp; @SuperLuckeee &nbsp;|&nbsp; likes: 102 | retweets: 13 | replies: 5 | quotes: 1 | views: 19883</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://x.com/joedab12/status/2074589410063180147" target="_blank" rel="noopener">Joe</a></h3>
+          <p class="body">$NVDA $TSM $VICR $MU $DRAM $RMBS $VPG $OUST $LITE $COHR $AAOI $AVGO $SKHY $SMTC $FORM $VIAV $FPS 
+
+SMH was down 15.6% from the peak intraday. The feb-march war crash was 15.9%. Oct-Nov 2025 was 15.4%.
+
+to give you an idea how drastic this SMH 15% correction was....the peak of SMH was June 22nd. The top 2 holdings in SMH are NVDA+TSM....nvda is down 7.5% and TSM is down 9%. SMH down 15.6%, that means the lower weight components in SMH are down 20-40%.
+
+I'm not saying its already over, it may not be. But I ended up deploying a decent chunk of cash today. VICR was the biggest recipient of my funds under 250.</p>
+          <div class="meta-line">来源: Twitter Web App &nbsp;|&nbsp; 时间: 2026-07-07 20:20:34 UTC &nbsp;|&nbsp; @joedab12 &nbsp;|&nbsp; likes: 52 | retweets: 6 | replies: 10 | quotes: 1 | views: 10391</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://x.com/EricBalchunas/status/2074510947289358577" target="_blank" rel="noopener">Eric Balchunas</a></h3>
+          <p class="body">I published a note today that I've been thinking about for months.. About how the US stock market has arguably become too big and too imp to fail.. It's basically America's retirement fund now and poss even the savior of social security which is expected to run out of money in less than 10yrs
+-Curr 55% of ppl own stocks, by far most in world. And w/ Trump Accounts bringing in 28 million add'l americans into stock ownership the vast majority of ppl (incl Top 1% (who own HALF of stock mkt), middle class and lower income) will have financial interest in the health of stock mkt and they're all voters = the political pressure to keep stocks out of a prolonged bear market is going to be very powerful. 
+-As such I think there's good chance the Fed will buy equity ETFs in the next major downturn to support market and it will be common practice going fwd. China and Japan already do this. They may even target certain sectors or Capex cos with the purchases. 
+-This is a massive variable that I feel like is a blind spot among the experts out there and why the bears get run over time and time again altho I think investors are onto it as evidenced by the persistent flows into ETFs during pullbacks as well as a survey of 1000 ppl showing 3/4 of them are confident the Fed will bail out markets in next crisis. 
+-This is just one byproduct of the 'Nothing Stops This Train' monetary supply explosion and debt extravaganza sweeping the world but esp in US which at this point feels irreversable..  Thoughts? lol</p>
+          <div class="meta-line">来源: Twitter Web App &nbsp;|&nbsp; 时间: 2026-07-07 15:08:47 UTC &nbsp;|&nbsp; @EricBalchunas &nbsp;|&nbsp; likes: 1229 | retweets: 174 | replies: 175 | quotes: 68 | views: 371460</div>
+        </article>
+
+
+        <article class="item-card">
+          <h3 class="item-title"><a href="https://x.com/StockSavvyShay/status/2074464194985148814" target="_blank" rel="noopener">Shay Boloor</a></h3>
+          <p class="body">$NVDA is lower premarket after reports that DeepSeek is hiring chip engineers and developing its own inference chips.
+
+Worth noting Nvidia is already restricted from selling its top chips into China so its unclear how much this actually hurts Nvidia directly.
+
+If anyone loses share here its arguably Huawei while DeepSeek still faces years of chip design work plus U.S. restrictions on advanced foundries and HBM access before this becomes real.</p>
+          <div class="meta-line">来源: Twitter Web App &nbsp;|&nbsp; 时间: 2026-07-07 12:03:00 UTC &nbsp;|&nbsp; @StockSavvyShay &nbsp;|&nbsp; likes: 750 | retweets: 81 | replies: 136 | quotes: 17 | views: 145182</div>
+        </article>
+
+    </section>
+
+    <section class="source-section" id="reddit_curl_cffi">
+      <h2>Reddit <span class="badge">0 条</span> </h2>
+      <p class="empty">该数据源暂无今日数据。</p>
+    </section>
+
+  </div>
+</body>
+</html>

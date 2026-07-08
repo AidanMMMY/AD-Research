@@ -7,6 +7,12 @@ payloads from datacenter IPs (likely CloudWAF silent-block), so we use the
 ``np-anotice-stock`` announcements endpoint which is public, paginated, and
 returns rich structured data (announcement title, company, time, type).
 
+For each announcement we construct the real detail page URL and then call the
+same content API used by the Eastmoney detail page (``np-cnotice-stock``) to
+fetch the full body text, including all paginated content.  The resulting text
+is stripped of Eastmoney UI button text (展开/转发/收藏 icons etc.) before
+being written to the output JSON.
+
 We also probe the news feed as a secondary strategy; if it returns data we
 merge it in.
 
@@ -16,7 +22,10 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import html
+import re
 import sys
+import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -32,6 +41,7 @@ SOURCE = "东方财富"
 ANNOUNCEMENT_ENDPOINT = (
     "https://np-anotice-stock.eastmoney.com/api/security/ann"
 )
+CONTENT_ENDPOINT = "https://np-cnotice-stock.eastmoney.com/api/content/ann"
 HEADERS = {
     "User-Agent": (
         "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
@@ -56,6 +66,33 @@ def parse_args() -> argparse.Namespace:
     return p.parse_args()
 
 
+def _clean_content(text: str) -> str:
+    """Strip trailing whitespace, HTML tags, and Eastmoney UI button text."""
+    if not text:
+        return ""
+    # Normalize line endings.
+    text = text.replace("\r\n", "\n").replace("\r", "\n")
+    # Rich/expanded content sometimes comes with inline HTML tags; strip them.
+    if "<" in text and ">" in text:
+        text = html.unescape(re.sub(r"<[^>]+>", "", text))
+    # Remove the Eastmoney action bar that appears after the article body:
+    #   展开  转发  19  45  收藏
+    # We only remove it when it is at the very end of the text and requires the
+    # expand icon () so that legitimate body text such as "展开合作" is kept.
+    text = re.sub(
+        r"\n\s*展开\s*\s*(?:\s*转发)?(?:\s*\s*\d+)?"
+        r"(?:\s*\s*\d+)?(?:\s*\s*收藏)?\s*$",
+        "",
+        text,
+        flags=re.UNICODE,
+    )
+    # Remove any leftover private-use-area icons (e.g. , , , , ).
+    text = re.sub(r"[--]", "", text)
+    # Collapse runs of blank lines.
+    text = re.sub(r"\n{3,}", "\n\n", text)
+    return text.rstrip()
+
+
 def _normalize_announcement(raw: dict, label: str) -> dict | None:
     title = (raw.get("title") or raw.get("title_ch") or "").strip()
     if not title:
@@ -70,10 +107,13 @@ def _normalize_announcement(raw: dict, label: str) -> dict | None:
     columns = raw.get("columns") or []
     col_name = columns[0].get("column_name", "") if columns else ""
     art_code = raw.get("art_code", "")
-    url = (
-        f"https://data.eastmoney.com/notices/detail/{art_code}.html"
-        if art_code else "https://data.eastmoney.com/notices/"
-    )
+    # Real detail URLs include the stock code: /notices/detail/{stock}/{art_code}.html
+    if stock_code and art_code:
+        url = f"https://data.eastmoney.com/notices/detail/{stock_code}/{art_code}.html"
+    elif art_code:
+        url = f"https://data.eastmoney.com/notices/detail/{art_code}.html"
+    else:
+        url = "https://data.eastmoney.com/notices/"
     return {
         "title": (f"[{short_name}] {title}" if short_name else title).strip(),
         "url": url,
@@ -84,7 +124,80 @@ def _normalize_announcement(raw: dict, label: str) -> dict | None:
             f"{label} | {col_name} | stock={stock_code}", 500
         ),
         "source": f"{SOURCE}({label})",
+        "_art_code": art_code,
     }
+
+
+def _fetch_content(
+    sess: requests.Session,
+    art_code: str,
+    timeout: int,
+    max_retries: int,
+    rate: float,
+) -> str:
+    """Fetch the full announcement body from the Eastmoney content API.
+
+    The API paginates long announcements; we fetch every page and concatenate.
+    """
+    pieces: list[str] = []
+    seen: set[str] = set()
+    total_pages = 1
+    page = 1
+    while page <= total_pages:
+        params = {
+            "art_code": art_code,
+            "client_source": "web",
+            "page_index": str(page),
+            "cb": "",
+        }
+        data = fetch_with_retry(
+            lambda p=params: sess.get(CONTENT_ENDPOINT, params=p,
+                                      timeout=timeout),
+            max_retry=max_retries, rate=rate,
+        )
+        if not data or not data.get("data"):
+            LOG.warning("content %s page %d: no data", art_code, page)
+            break
+        d = data["data"]
+        content = (d.get("notice_content") or "").strip()
+        if not content or content in seen:
+            break
+        seen.add(content)
+        pieces.append(content)
+        # page_size returned by the API is the total number of pages for this
+        # language; cap it at 500 to avoid runaway loops while still fetching
+        # full annual-report style announcements.
+        if page == 1:
+            total_pages = d.get("page_size") or 1
+            if total_pages < 1:
+                total_pages = 1
+            total_pages = min(total_pages, 500)
+        # Small polite delay between content pages to avoid tripping the
+        # Eastmoney server / CDN connection limits.
+        if page < total_pages:
+            time.sleep(max(rate * 0.2, 0.05))
+        page += 1
+    return "\n".join(pieces)
+
+
+def _enrich_content(
+    item: dict,
+    sess: requests.Session,
+    timeout: int,
+    max_retries: int,
+    rate: float,
+) -> None:
+    """Fetch the full body text for a single announcement item."""
+    art_code = item.pop("_art_code", "")
+    if not art_code:
+        item["content"] = ""
+        return
+    try:
+        content = _fetch_content(sess, art_code, timeout, max_retries, rate)
+    except Exception as exc:  # noqa: BLE001
+        LOG.warning("content fetch failed for %s: %s", art_code, exc)
+        content = ""
+    item["content"] = _clean_content(content)
 
 
 def _fetch_announcements(sess: requests.Session, ann_type: str, label: str,
@@ -159,6 +272,14 @@ def collect(hours: int, max_pages: int, rate: float, timeout: int,
         )
         if len(out) >= max_items:
             break
+    # Fetch the full announcement body for every collected item.  We use a
+    # dedicated session for the content API and run sequentially to avoid
+    # triggering Eastmoney's connection/rate limits.
+    if out:
+        content_sess = requests.Session()
+        content_sess.headers.update(HEADERS)
+        for item in out:
+            _enrich_content(item, content_sess, timeout, max_retries, rate)
     return out
 
 

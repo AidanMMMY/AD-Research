@@ -47,6 +47,12 @@ AD_AGENT_CPUS="${AD_AGENT_CPUS:-1.5}"
 AD_AGENT_TIMEOUT="${AD_AGENT_TIMEOUT:-600}"
 AD_AGENT_ENV_FILE="${AD_AGENT_ENV_FILE:-}"
 
+# Default to the platform deployment env file if no custom env file is supplied.
+# This lets workers (e.g. gov_china) pick up secrets like DEEPSEEK_API_KEY.
+if [[ -z "$AD_AGENT_ENV_FILE" && -f "/opt/ad-research/deploy/aliyun-ecs/.env" ]]; then
+  AD_AGENT_ENV_FILE="/opt/ad-research/deploy/aliyun-ecs/.env"
+fi
+
 # ---- pre-flight checks ----
 if [[ ! -d "$AD_AGENT_PROFILE" ]]; then
   echo "[run_worker] WARN: profile dir $AD_AGENT_PROFILE missing, creating" >&2

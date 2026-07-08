@@ -10,21 +10,27 @@ Optimization history:
     ``x.com/<user>`` profile HTML and harvest tweet IDs that the API
     mirrors (vxtwitter > fxtwitter) then resolve. vxtwitter returns
     ``date_epoch`` so we can honour the ``--hours`` window.
+  - 2026-07-08: aggressive fixes for ECS environment:
+      * derive ``created_epoch`` from any tweet snowflake ID so items are not
+        silently dropped by ``filter_by_hours``;
+      * parse inline timestamps/text from DuckDuckGo+jina markdown as a
+        primary, fast, zero-extra-call source of recent tweets;
+      * resolve mirror details in parallel with a 5 s timeout;
+      * expand tweet-ID regex to match relative ``/user/status/id`` links
+        embedded in x.com HTML.
 
 Current strategy (zero-cost, public):
-  1. PRIMARY: curl_cffi + chrome124 to fetch the public HTML of
-       x.com/{user} for a curated list of finance / market accounts
-       (DeItaone, FirstSquawk, Bloomberg, MarketWatch, realDonaldTrump,
-       WhiteHouse, ...). Extract /status/<id> URLs from the rendered
-       HTML; resolve each ID with vxtwitter (preferred - has date_epoch)
-       and fall back to fxtwitter (engagement only).
-  2. FALLBACK A: DuckDuckGo search via jina.ai reader (``site:x.com <q>``)
-       - returns real X result pages with tweet URLs.
-  3. FALLBACK B: jina.ai directly on ``x.com/search?q=...&f=live``
-       (often 403 but resilient when DDG goes down).
+  1. PRIMARY: DuckDuckGo search via jina.ai reader (``site:x.com <q>``).
+     The markdown includes tweet URLs, inline text, and a date/time. We
+     extract those and derive ``created_epoch`` from the snowflake ID, so
+     even when mirror detail APIs are unavailable the worker still produces
+     recent items with text and timestamps.
+  2. SECONDARY: x.com/{user} profile scrape via curl_cffi. We harvest
+     ``/user/status/id`` links and resolve a small number of the most
+     recent IDs through fxtwitter/vxtwitter in parallel.
+  3. FALLBACK: jina.ai directly on ``x.com/search?q=...&f=live``.
   4. SIDE-CHANNEL: Yahoo Finance news (cheap, always-on) - appended as
-     ``type=yfinance_news`` items so the orchestrator always sees some
-     context even when all X paths fail.
+     ``type=yfinance_news`` items.
 
 Each fetched tweet is normalized into the existing canonical shape:
     { id, url, user, author_name, author_handle, text, created_at,
@@ -42,6 +48,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import concurrent.futures
 import json
 import logging
 import re
@@ -74,7 +81,28 @@ from common import (  # noqa: E402
 
 SOURCE = "x"
 
-# ----- public endpoints -----
+# Twitter snowflake epoch (2010-11-04 01:42:54.657 UTC)
+TWITTER_EPOCH_MS = 1288834974657
+
+# ----- session used for fast, no-retry mirror calls -----
+_FAST_HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/124.0.0.0 Safari/537.36"
+    ),
+    "Accept": "application/json, text/html, */*",
+    "Accept-Language": "en-US,en;q=0.9",
+}
+
+def _http_get_fast(url: str, timeout: int = 5) -> requests.Response | None:
+    """Single-shot GET with no retries. Used for mirror APIs so a slow/429
+    host does not compound the per-request timeout across adapter retries.
+    """
+    try:
+        return requests.get(url, headers=_FAST_HEADERS, timeout=timeout)
+    except requests.RequestException:
+        return None
 JINA_READER = "https://r.jina.ai/"
 JINA_HEADERS = {"X-Return-Format": "text", "Accept": "text/plain"}
 
@@ -83,8 +111,8 @@ JINA_HEADERS = {"X-Return-Format": "text", "Accept": "text/plain"}
 VXTWITTER = "https://api.vxtwitter.com/{user}/status/{tid}"
 FXTWITTER = "https://api.fxtwitter.com/{user}/status/{tid}"
 
-DDG = "https://duckduckgo.com/?q={q}"
-DDG_HTML = "https://html.duckduckgo.com/html/?q={q}"
+DDG = "https://duckduckgo.com/?q={q}&df=d"
+DDG_HTML = "https://html.duckduckgo.com/html/?q={q}&df=d"
 
 # Direct X HTML (used via curl_cffi to harvest tweet IDs from a public
 # profile page; works without an auth_token when ``impersonate`` gives
@@ -94,28 +122,35 @@ X_PROFILE_URL = "https://x.com/{user}"
 # Side-channel: Yahoo Finance news search (always 200).
 YFINANCE_NEWS = "https://finance.yahoo.com/news/"
 
-# Match either `x.com/user/status/<id>` or `twitter.com/user/status/<id>`
-# in any rendered HTML / Markdown.
+# Match either absolute `x.com/user/status/<id>` / `twitter.com/...` or
+# relative `/user/status/<id>` links found in x.com profile HTML.
 TWEET_RE = re.compile(
-    r"(?:x\.com|twitter\.com)/([A-Za-z0-9_]{1,30})/status/(\d{6,25})"
+    r"(?:^|[^/])"                       # not immediately preceded by another slash
+    r"(?:x\.com|twitter\.com)?"        # optional absolute domain
+    r"/([A-Za-z0-9_]{1,30})/status/(\d{6,25})"
+)
+
+# DDG markdown often places a timestamp right after the URL line:
+#   x.com/itsmichaelluu/status/2061405433223344192      2026-06-01T00:00:00.0000000
+DDG_TIME_RE = re.compile(
+    r"(?:x\.com|twitter\.com)/([A-Za-z0-9_]{1,30})/status/(\d{6,25})\s+(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z?)"
 )
 
 # Curated list of finance / market accounts. These are the public X
 # profiles whose HTML is reachable via curl_cffi impersonate and which
-# reliably publish finance / macro / market-moving content. Add/remove
-# freely; the worker de-dupes IDs across accounts so overlap is cheap.
-# Kept short on purpose: each profile fetch is ~5-10s from a typical
-# datacenter IP and we want the layer to complete inside ~60s.
+# reliably publish finance / macro / market-moving content. We keep the
+# list short because profile HTML is heavy and the primary signal now
+# comes from DDG+jina.
 FINANCE_ACCOUNTS = [
-    "DeItaone",          # Walter Bloomberg - fast headline news (most prolific)
-    "FirstSquawk",       # breaking financial news (fast)
+    "DeItaone",          # Walter Bloomberg - fast headline news
+    "FirstSquawk",       # breaking financial news
     "Bloomberg",         # Bloomberg main
     "Reuters",           # Reuters main
     "MarketWatch",       # MarketWatch
     "business",          # Bloomberg Business
     "realDonaldTrump",   # market mover on macro days
     "elonmusk",          # TSLA / DOGE / market mover
-    "federalreserve",    # Fed official (low frequency but important)
+    "federalreserve",    # Fed official
     "GoldmanSachs",      # Goldman Sachs official
 ]
 
@@ -132,6 +167,29 @@ DEFAULT_QUERIES = [
 # ====================================================================
 # low-level helpers
 # ====================================================================
+def _snowflake_to_epoch_ms(tid: str | int) -> int | None:
+    """Convert a Twitter/X snowflake ID to a millisecond timestamp.
+
+    Returns None if the ID is not a valid snowflake.
+    """
+    try:
+        snow = int(tid)
+    except (TypeError, ValueError):
+        return None
+    if snow <= 0:
+        return None
+    # Top 41 bits are ms since Twitter epoch
+    return (snow >> 22) + TWITTER_EPOCH_MS
+
+
+def _snowflake_to_epoch(tid: str | int) -> int | None:
+    """Convert a Twitter/X snowflake ID to a Unix epoch (seconds)."""
+    ms = _snowflake_to_epoch_ms(tid)
+    if ms is None:
+        return None
+    return ms // 1000
+
+
 def _jina_fetch(session: requests.Session, target_url: str, logger, timeout: int = 30) -> str | None:
     """Call jina.ai reader; returns rendered markdown or None."""
     url = JINA_READER + target_url
@@ -192,35 +250,138 @@ def _extract_tweet_ids(md: str, limit: int = 30) -> list[tuple[str, str]]:
     return out
 
 
+def _extract_inline_tweets(md: str, limit: int = 30) -> list[dict]:
+    """Best-effort extraction of inline tweet text + timestamps from DDG markdown.
+
+    When mirror detail APIs are slow or blocked, the jina+DDG markdown already
+    contains the tweet text and a timestamp. We extract that, derive a
+    ``created_epoch`` from the tweet snowflake ID, and return canonical
+    ``type="tweet"`` items with ``source_api="ddg_inline"``.
+    """
+    items: list[dict] = []
+    seen: set[str] = set()
+    # First pass: capture timestamps that appear right after the URL line.
+    for m in DDG_TIME_RE.finditer(md):
+        user, tid, ts_str = m.groups()
+        if tid in seen:
+            continue
+        seen.add(tid)
+        dt = parse_dt(ts_str)
+        created_epoch = _snowflake_to_epoch(tid)
+        # Snippet is the text after the timestamp line until the next blank line
+        start = m.end()
+        snippet = md[start : start + 600]
+        snippet = re.split(r"\n\s*\n", snippet, maxsplit=1)[0]
+        snippet = snippet.strip().lstrip(":›-").strip()
+        items.append({
+            "id": tid,
+            "url": f"https://x.com/{user}/status/{tid}",
+            "user": user,
+            "author_name": user,
+            "author_handle": user,
+            "text": snippet[:500] if snippet else "",
+            "created_at": ts_str if dt else None,
+            "created_epoch": created_epoch,
+            "lang": None,
+            "source": None,
+            "engagement": {},
+            "type": "tweet",
+            "source_api": "ddg_inline",
+        })
+        if len(items) >= limit:
+            break
+
+    # Second pass: any remaining tweet URLs with no timestamp, just grab nearby text
+    # and derive the epoch from the snowflake ID.
+    for m in TWEET_RE.finditer(md):
+        user = m.group(1)
+        tid = m.group(2)
+        if tid in seen:
+            continue
+        seen.add(tid)
+        start = m.end()
+        snippet = md[start : start + 600]
+        snippet = re.split(r"\n\s*\n|x\.com\n|twitter\.com\n", snippet, maxsplit=1)[0]
+        snippet = snippet.strip().lstrip(":›-").strip()
+        items.append({
+            "id": tid,
+            "url": f"https://x.com/{user}/status/{tid}",
+            "user": user,
+            "author_name": user,
+            "author_handle": user,
+            "text": snippet[:500] if snippet else "",
+            "created_at": None,
+            "created_epoch": _snowflake_to_epoch(tid),
+            "lang": None,
+            "source": None,
+            "engagement": {},
+            "type": "tweet",
+            "source_api": "ddg_inline",
+        })
+        if len(items) >= limit:
+            break
+    return items
+
+
+def _fetch_tweet_detail_single(
+    url: str,
+    label: str,
+    logger,
+    timeout: int = 5,
+) -> tuple[dict | None, str]:
+    """Fetch one mirror endpoint and return (raw, label) if it looks valid."""
+    resp = _http_get_fast(url, timeout=timeout)
+    if resp is None or resp.status_code != 200:
+        return None, ""
+    try:
+        data = resp.json()
+    except ValueError:
+        return None, ""
+    if label == "vxtwitter" and "tweetID" in data and "text" in data:
+        return data, "vxtwitter"
+    if label == "fxtwitter" and "tweet" in data and data["tweet"]:
+        return data["tweet"], "fxtwitter"
+    return None, ""
+
+
 def _fetch_tweet_detail(
     session: requests.Session,
     user: str,
     tid: str,
     logger,
-    prefer_curl_cffi: bool = False,
 ) -> tuple[dict | None, str]:
-    """Fetch full tweet JSON via vxtwitter first (has date), fxtwitter fallback."""
-    # Try vxtwitter first - it returns date_epoch so we can honour --hours.
-    for tmpl in (VXTWITTER, FXTWITTER):
-        url = tmpl.format(user=user, tid=tid)
-        resp = None
-        # curl_cffi first if requested (vxtwitter/fxtwitter usually 200 plain)
-        if prefer_curl_cffi:
-            resp = _curl_cffi_get(url, logger, timeout=15)
-        if resp is None:
-            resp = http_get(session, url, timeout=15)
-        if resp is None or resp.status_code != 200:
-            continue
-        try:
-            data = resp.json()
-        except ValueError:
-            continue
-        # vxtwitter flat shape
-        if "tweetID" in data and "text" in data:
-            return data, "vxtwitter"
-        # fxtwitter wrapped shape
-        if "tweet" in data and data["tweet"]:
-            return data["tweet"], "fxtwitter"
+    """Fetch full tweet JSON via vxtwitter and fxtwitter in parallel.
+
+    Both endpoints are queried concurrently with a short timeout so that one
+    slow/429 mirror does not dominate the call. The first successful mirror
+    wins. The executor is shut down without waiting for stragglers to avoid
+    hanging on an unresponsive mirror.
+    """
+    urls = [
+        (VXTWITTER.format(user=user, tid=tid), "vxtwitter"),
+        (FXTWITTER.format(user=user, tid=tid), "fxtwitter"),
+    ]
+    pool = concurrent.futures.ThreadPoolExecutor(max_workers=2)
+    try:
+        futures = [
+            pool.submit(_fetch_tweet_detail_single, url, label, logger, 5)
+            for url, label in urls
+        ]
+        done, _ = concurrent.futures.wait(
+            futures, timeout=6, return_when=concurrent.futures.FIRST_COMPLETED
+        )
+        for fut in done:
+            raw, src = fut.result()
+            if raw is not None:
+                return raw, src
+        # No winner in the first-completed window; collect whatever is already done
+        for fut in futures:
+            if fut.done():
+                raw, src = fut.result()
+                if raw is not None:
+                    return raw, src
+    finally:
+        pool.shutdown(wait=False)
     logger.debug("tweet %s/%s lookup failed (vxtwitter + fxtwitter)", user, tid)
     return None, ""
 
@@ -269,6 +430,15 @@ def _normalize_tweet(user: str, tid: str, raw: dict, source_api: str) -> dict:
         url = raw.get("url") or f"https://x.com/{user}/status/{tid}"
         lang = raw.get("lang")
         source = raw.get("source")
+
+    # Fallback: derive timestamp from the snowflake ID if the mirror did not
+    # provide a usable date. This is the safety net that keeps ``filter_by_hours``
+    # from dropping real, recent tweets.
+    if created_epoch is None:
+        created_epoch = _snowflake_to_epoch(tid)
+    if created_at is None and created_epoch is not None:
+        created_at = datetime.fromtimestamp(created_epoch, tz=timezone.utc).isoformat()
+
     return {
         "id": tid,
         "url": url,
@@ -292,55 +462,88 @@ def _normalize_tweet(user: str, tid: str, raw: dict, source_api: str) -> dict:
     }
 
 
-def _parse_ddg_inline_tweets(md: str) -> list[dict]:
-    """Best-effort backstop: when tweet IDs found but fxtwitter/vxtwitter
-    lookup later fails, extract inline text snippets from DDG markdown."""
-    items: list[dict] = []
-    for m in TWEET_RE.finditer(md):
-        user = m.group(1)
-        tid = m.group(2)
-        start = m.end()
-        snippet = md[start : start + 600]
-        snippet = re.split(r"\n\s*\n|x\.com\n|twitter\.com\n", snippet, maxsplit=1)[0]
-        snippet = snippet.strip().lstrip(":›-").strip()
-        if not snippet:
-            continue
-        items.append(
-            {
-                "id": tid,
-                "url": f"https://x.com/{user}/status/{tid}",
-                "user": user,
-                "text": snippet[:500],
-                "created_at": None,
-                "engagement": {},
-                "type": "tweet_inline",
-                "source_api": "ddg_inline",
-            }
+# ====================================================================
+# Layer 1 - PRIMARY: jina.ai + DDG (fast, recent, no extra mirror calls)
+# ====================================================================
+def fetch_via_ddg_jina(session, query: str, logger, per_query_limit: int = 8) -> list[dict]:
+    """End-to-end: jina+DDG -> inline tweet text + snowflake timestamps.
+
+    We always extract the inline tweet data from the DDG markdown first (this is
+    free once the search result is in hand). Then we try to enrich the first few
+    items with mirror detail APIs in parallel, but if mirrors fail or time out
+    the inline items still have text and a derived timestamp.
+    """
+    logger.info("X fetch: query=%r via jina+DDG", query)
+    md = _ddg_search_jina(session, query, logger)
+    if not md:
+        logger.warning("X fetch: jina+DDG returned empty for query=%r", query)
+        return []
+
+    inline_items = _extract_inline_tweets(md, limit=per_query_limit)
+    logger.info("X fetch: extracted %d inline tweets from DDG markdown", len(inline_items))
+    if not inline_items:
+        return []
+
+    # Try to enrich the first N inline items with mirror details in parallel.
+    # N is kept small so the whole layer stays within the 120 s budget even if
+    # mirrors are slow. The executor is shut down without waiting so stragglers
+    # cannot hold up the worker.
+    enrich_limit = min(4, len(inline_items))
+    enriched: dict[str, dict] = {}
+    pool = concurrent.futures.ThreadPoolExecutor(max_workers=4)
+    try:
+        futures = {
+            pool.submit(_fetch_tweet_detail, session, it["user"], it["id"], logger): it
+            for it in inline_items[:enrich_limit]
+        }
+        done, _ = concurrent.futures.wait(
+            list(futures), timeout=10, return_when=concurrent.futures.ALL_COMPLETED
         )
+        for fut in done:
+            it = futures[fut]
+            try:
+                raw, src = fut.result()
+            except Exception as exc:  # noqa: BLE001
+                logger.debug("mirror detail failed for %s/%s: %s", it["user"], it["id"], exc)
+                continue
+            if raw is not None:
+                enriched[it["id"]] = _normalize_tweet(it["user"], it["id"], raw, src)
+    finally:
+        pool.shutdown(wait=False)
+
+    items: list[dict] = []
+    for it in inline_items:
+        if it["id"] in enriched:
+            items.append(enriched[it["id"]])
+        else:
+            # Use the inline item. Ensure it has a created_at string for the
+            # orchestrator, even if it was only a text snippet.
+            if it.get("created_at") is None and it.get("created_epoch") is not None:
+                it["created_at"] = datetime.fromtimestamp(
+                    it["created_epoch"], tz=timezone.utc
+                ).isoformat()
+            items.append(it)
     return items
 
 
 # ====================================================================
-# Layer 1 - PRIMARY: curl_cffi + x.com/{user}
+# Layer 2 - SECONDARY: curl_cffi + x.com/{user} profile
 # ====================================================================
 def fetch_via_x_profiles(
     session: requests.Session,
     logger,
     accounts: list[str] | None = None,
-    per_account_limit: int = 16,
-    profile_timeout: int = 10,
+    per_account_limit: int = 8,
+    profile_timeout: int = 8,
 ) -> list[dict]:
     """Scrape ``x.com/<user>`` via curl_cffi for a curated list of finance
-    accounts. Returns normalized tweets (via vxtwitter).
+    accounts. Returns normalized tweets (via vxtwitter/fxtwitter).
 
-    The x.com HTML pages embed /status/<id> URLs even for non-logged-in
-    visitors (Twitter publishes them for SEO). We harvest the unique IDs
-    and resolve each one via vxtwitter (preferred - has date_epoch).
-
-    Time-boxing: we give each profile fetch only ``profile_timeout``
-    seconds (default 10s) because x.com occasionally hangs from
-    Cloudflare edge nodes. The whole layer is also capped by the number
-    of accounts in ``accounts``.
+    The x.com HTML for non-logged-in visitors contains relative
+    ``/user/status/id`` links. We harvest those IDs and resolve only the most
+    recent ones via the mirror APIs in parallel. Because the public profile page
+    often surfaces older/curated tweets, this layer is treated as a secondary
+    source; the DDG+jina layer is the primary source for recent content.
     """
     accounts = accounts or FINANCE_ACCOUNTS
     if not _HAS_CURL_CFFI:
@@ -367,71 +570,68 @@ def fetch_via_x_profiles(
             all_ids.append((user, tid))
             new_count += 1
         logger.info("x.com/%s -> %d new tweet IDs (total so far %d)", acct, new_count, len(all_ids))
+        # Stop early once we have enough candidates; profile HTML is heavy and
+        # the DDG layer already supplies the bulk of recent items.
+        if len(all_ids) >= 20:
+            break
 
     if failed_accounts:
         logger.info(
-            "X primary path: %d accounts unreachable (%s)",
+            "X secondary path: %d accounts unreachable (%s)",
             len(failed_accounts), ",".join(failed_accounts[:5]),
         )
-    logger.info("X primary path: harvested %d unique tweet IDs from %d accounts",
+    logger.info("X secondary path: harvested %d unique tweet IDs from %d accounts",
                 len(all_ids), len(accounts))
     if not all_ids:
         return []
 
+    # Resolve the most recent IDs in parallel. Use the snowflake-derived
+    # ordering to prioritize recent tweets. We only try mirror details for
+    # the very newest ID because the public profile page tends to surface
+    # older/curated tweets; the rest are emitted as snowflake-timestamped
+    # inline items so they can still pass the --hours window if recent.
+    all_ids.sort(key=lambda pair: int(pair[1]), reverse=True)
+    candidates = all_ids[:10]
     items: list[dict] = []
-    for user, tid in all_ids:
-        raw, src = _fetch_tweet_detail(session, user, tid, logger, prefer_curl_cffi=False)
-        if raw is None:
-            continue
-        items.append(_normalize_tweet(user, tid, raw, src))
-    logger.info("X primary path: resolved %d tweets via vxtwitter/fxtwitter", len(items))
-    return items
-
-
-# ====================================================================
-# Layer 2 - FALLBACK A: jina.ai + DDG (existing, kept for resilience)
-# ====================================================================
-def fetch_via_ddg_jina(session, query: str, logger, per_query_limit: int = 20) -> list[dict]:
-    """End-to-end: jina+DDG -> tweet IDs -> vxtwitter/fxtwitter detail."""
-    logger.info("X fetch: query=%r via jina+DDG", query)
-    md = _ddg_search_jina(session, query, logger)
-    if not md:
-        logger.warning("X fetch: jina+DDG returned empty for query=%r", query)
-        return []
-    tweet_ids = _extract_tweet_ids(md, limit=per_query_limit)
-    logger.info("X fetch: extracted %d tweet ids from DDG markdown", len(tweet_ids))
-    if not tweet_ids:
-        return _parse_ddg_inline_tweets(md)[:per_query_limit]
-    items: list[dict] = []
-    for user, tid in tweet_ids:
-        time.sleep(0.25)
+    # Try mirror detail for the single most recent candidate only.
+    if candidates:
+        user, tid = candidates[0]
         raw, src = _fetch_tweet_detail(session, user, tid, logger)
-        if raw is None:
-            continue
-        items.append(_normalize_tweet(user, tid, raw, src))
-    if len(items) < len(tweet_ids) // 2:
-        inline = _parse_ddg_inline_tweets(md)
-        seen_ids = {i["id"] for i in items}
-        for it in inline:
-            if it["id"] not in seen_ids:
-                items.append(it)
+        if raw is not None:
+            items.append(_normalize_tweet(user, tid, raw, src))
+    # Emit the rest as inline items with snowflake-derived timestamps.
+    for user, tid in candidates[1:]:
+        epoch = _snowflake_to_epoch(tid)
+        items.append({
+            "id": tid,
+            "url": f"https://x.com/{user}/status/{tid}",
+            "user": user,
+            "author_name": user,
+            "author_handle": user,
+            "text": "",
+            "created_at": datetime.fromtimestamp(epoch, tz=timezone.utc).isoformat() if epoch else None,
+            "created_epoch": epoch,
+            "lang": None,
+            "source": None,
+            "engagement": {},
+            "type": "tweet",
+            "source_api": "x_profile_snowflake",
+        })
+    logger.info("X secondary path: emitted %d tweets", len(items))
     return items
 
 
+# ====================================================================
+# Layer 3 - FALLBACK: jina.ai directly on x.com/search
+# ====================================================================
 def fetch_via_jina_direct(session, query: str, logger) -> list[dict]:
     """Fallback: ask jina.ai directly for x.com search page."""
     logger.info("X fetch: trying jina direct x.com fallback for query=%r", query)
     target = f"https://x.com/search?q={quote_plus(query)}&f=live"
-    md = _jina_fetch(session, target, logger)
+    md = _jina_fetch(session, target, logger, timeout=15)
     if not md:
         return []
-    tweet_ids = _extract_tweet_ids(md, limit=20)
-    items: list[dict] = []
-    for user, tid in tweet_ids:
-        raw, src = _fetch_tweet_detail(session, user, tid, logger)
-        if raw:
-            items.append(_normalize_tweet(user, tid, raw, src))
-    return items
+    return _extract_inline_tweets(md, limit=10)
 
 
 # ====================================================================
@@ -488,25 +688,10 @@ def collect(
     seen_ids: set[str] = set()
     methods_tried: list[str] = []
 
-    # Layer 1: curl_cffi + x.com profiles (PRIMARY - no query dependence)
-    try:
-        primary = fetch_via_x_profiles(session, logger, accounts=accounts)
-    except Exception as exc:  # noqa: BLE001
-        logger.warning("x.com profile path raised: %s", exc)
-        primary = []
-    if "x_profiles" not in methods_tried and (_HAS_CURL_CFFI or primary):
-        methods_tried.append("x_profiles")
-    for it in primary:
-        tid = it.get("id")
-        if not tid or tid in seen_ids:
-            continue
-        seen_ids.add(tid)
-        all_items.append(it)
-
-    # Layer 2 + 3: jina.ai + DDG / direct x.com (existing, per query)
+    # Layer 1: jina.ai + DDG (PRIMARY - fast, recent, inline text + snowflake epoch)
     for q in queries:
         try:
-            items = fetch_via_ddg_jina(session, q, logger, per_query_limit=limit_per_query)
+            items = fetch_via_ddg_jina(session, q, logger, per_query_limit=min(limit_per_query, 8))
         except Exception as exc:
             logger.warning("DDG+jina path raised for %r: %s", q, exc)
             items = []
@@ -528,10 +713,25 @@ def collect(
             seen_ids.add(tid)
             all_items.append(it)
 
+    # Layer 2: curl_cffi + x.com profiles (SECONDARY - no query dependence)
+    try:
+        secondary = fetch_via_x_profiles(session, logger, accounts=accounts)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("x.com profile path raised: %s", exc)
+        secondary = []
+    if "x_profiles" not in methods_tried and (_HAS_CURL_CFFI or secondary):
+        methods_tried.append("x_profiles")
+    for it in secondary:
+        tid = it.get("id")
+        if not tid or tid in seen_ids:
+            continue
+        seen_ids.add(tid)
+        all_items.append(it)
+
     # Layer 4: yfinance side-channel (cheap, no de-dupe needed)
     for q in queries[:3]:
         try:
-            yf = fetch_yfinance_news(session, q, logger, limit=4)
+            yf = fetch_yfinance_news(session, q, logger, limit=2)
         except Exception as exc:
             logger.debug("yfinance side-channel raised for %r: %s", q, exc)
             yf = []
@@ -567,7 +767,7 @@ def filter_by_hours(items: list[dict], hours: int) -> list[dict]:
         # Items without any timestamp: keep them only when type suggests
         # they were just resolved (otherwise they could be ancient).
         if dt is None:
-            if it.get("type") in ("tweet", "yfinance_news"):
+            if it.get("type") in ("tweet", "tweet_inline", "yfinance_news"):
                 out.append(it)  # unknown age -> keep; orchestrator can drop
             continue
         if within_hours(dt, hours):
@@ -576,7 +776,7 @@ def filter_by_hours(items: list[dict], hours: int) -> list[dict]:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = base_parser("X / Twitter worker (curl_cffi primary + jina fallback + yfinance side-channel)")
+    parser = base_parser("X / Twitter worker (DDG+jina primary + curl_cffi secondary + yfinance side-channel)")
     # NOTE: base_parser (common.py) now declares --output; do not redeclare.
     # The output path is read from args.output.
     parser.add_argument(
@@ -600,7 +800,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--no-x-profiles",
         action="store_true",
-        help="Disable the curl_cffi + x.com profile primary path (e.g. on machines without curl_cffi).",
+        help="Disable the curl_cffi + x.com profile secondary path.",
     )
     parser.add_argument(
         "--no-yfinance",
@@ -633,7 +833,7 @@ def main(argv: list[str] | None = None) -> int:
 
     # Honour the disable flags by passing empty accounts / clearing the side-channel
     if args.no_x_profiles or not _HAS_CURL_CFFI:
-        accounts = []  # empty -> primary layer returns []
+        accounts = []  # empty -> secondary layer returns []
 
     items = collect(
         session,
@@ -651,13 +851,14 @@ def main(argv: list[str] | None = None) -> int:
     if args.limit > 0:
         items = items[: args.limit]
 
+    has_real_items = any(it.get("type") not in (None, "empty") for it in items)
     if not items:
         items = [{
             "type": "empty",
             "reason": (
-                "no X items returned (curl_cffi + x.com profile harvest "
-                "returned 0; jina.ai + DuckDuckGo search returned 0 tweet "
-                "URLs; vxtwitter / fxtwitter detail lookups all failed; "
+                "no X items returned (DDG+jina search returned 0; "
+                "curl_cffi + x.com profile harvest returned 0; "
+                "vxtwitter / fxtwitter detail lookups all failed; "
                 "yfinance side-channel also empty)"
             ),
             "queries_attempted": queries,
@@ -671,7 +872,6 @@ def main(argv: list[str] | None = None) -> int:
         limit=args.limit,
         logger=logger,
     )
-    has_real_items = any(it.get("type") not in (None, "empty") for it in items)
     return 0 if has_real_items else 2
 
 
