@@ -70,6 +70,16 @@ export default function Sparkline({
     return up ? upColor : downColor;
   }, [color, data, chinaConvention, upColor, downColor]);
 
+  const areaPath = useMemo(() => {
+    if (!path) return '';
+    return `${path} L ${width} ${height} L 0 ${height} Z`;
+  }, [path, width, height]);
+
+  const gradientId = useMemo(
+    () => `spark-grad-${Math.random().toString(36).slice(2, 9)}`,
+    [stroke]
+  );
+
   if (!data || data.length === 0) {
     return (
       <span
@@ -134,6 +144,13 @@ export default function Sparkline({
       aria-label={ariaLabel}
       role={data && data.length >= 2 ? 'img' : undefined}
     >
+      <defs>
+        <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={stroke} stopOpacity="0.28" />
+          <stop offset="100%" stopColor={stroke} stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      {areaPath && <path d={areaPath} fill={`url(#${gradientId})`} stroke="none" />}
       <path d={path} fill="none" stroke={stroke} strokeWidth={strokeWidth} strokeLinejoin="round" strokeLinecap="round" />
       {directionMarker && <path d={directionMarker} fill={stroke} />}
     </svg>

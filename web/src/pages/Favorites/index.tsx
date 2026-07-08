@@ -19,7 +19,7 @@ import {
 } from '@ant-design/icons';
 import { useQueryClient } from '@tanstack/react-query';
 import { useFavorites } from '@/hooks/useFavorites';
-import { useMarketStream } from '@/hooks/useMarketStream';
+import { useMarketStream, type MarketTick } from '@/hooks/useMarketStream';
 import { favoriteApi } from '@/api/favorite';
 import PageShell from '@/components/PageShell';
 import PageHeader from '@/components/PageHeader';
@@ -63,6 +63,25 @@ export default function Favorites() {
     [favorites]
   );
   const { latest: liveLatest, isConnected } = useMarketStream(codes);
+
+  // SSE 返回的 code 会被后端归一化（如 510300.SH），而收藏记录里存的是
+  // 用户原始 code（如 510300）。这里把两种 key 都映射到 base code，保证
+  // 任意一种格式都能命中实时 tick。
+  const liveTickByBaseCode = useMemo(() => {
+    const map: Record<string, MarketTick> = {};
+    for (const [key, tick] of Object.entries(liveLatest)) {
+      if (!tick) continue;
+      map[key] = tick;
+      const base = key.replace(/\.(SH|SZ|BJ|SS)$/i, '');
+      if (base !== key) {
+        map[base] = tick;
+      }
+    }
+    return map;
+  }, [liveLatest]);
+
+  const getLiveTick = (code: string): MarketTick | undefined =>
+    liveTickByBaseCode[code] ?? liveTickByBaseCode[code.replace(/\.(SH|SZ|BJ|SS)$/i, '')];
 
   /**
    * 移除单条：调 DELETE /api/v1/favorites/{code}，然后让 React Query
@@ -151,7 +170,7 @@ export default function Favorites() {
       width: 110,
       align: 'right' as const,
       render: (_: unknown, record: any) => {
-        const tick = liveLatest[record.etf_code];
+        const tick = getLiveTick(record.etf_code);
         if (!tick) {
           return <span className="tabular-nums ad-text-muted">—</span>;
         }
@@ -168,7 +187,7 @@ export default function Favorites() {
       width: 100,
       align: 'right' as const,
       render: (_: unknown, record: any) => {
-        const tick = liveLatest[record.etf_code];
+        const tick = getLiveTick(record.etf_code);
         if (!tick || tick.change_pct == null) {
           return <span className="ad-text-muted">—</span>;
         }
