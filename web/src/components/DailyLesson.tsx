@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Button, Tag } from 'antd';
 import {
   BulbOutlined,
@@ -32,26 +32,18 @@ interface DailyLessonProps {
  *   - Replaced the termDictionary pick (heavy 200+ entry weight) with
  *     a hand-curated ``lessonBank`` (12 conversational lessons). The
  *     termDictionary still powers HelpPopover elsewhere.
- *   - Layout is now 2 columns on desktop (lesson body on the left,
- *     actions + meta on the right) so we don't waste horizontal space
- *     on a thin right rail.
+ *   - Layout is a single column: header (title + learned tag), body
+ *     (category tag + lesson title + content + tip), and footer
+ *     (weekly progress hint + action buttons).
  *   - "No-repeat this session" tracked via useRef Set of lesson IDs.
  *
  * The component never renders its own border — the Dashboard still
  * hosts it inside a Panel, so the visual nesting stays single-level.
  */
-export default function DailyLesson({ today = new Date() }: DailyLessonProps) {
+export default function DailyLesson({ today: _today = new Date() }: DailyLessonProps) {
   const navigate = useNavigate();
   const { open: openAIHelp } = useAIHelp();
   const learned = useLearnedTerms();
-
-  const dateKey = useMemo(() => {
-    const d = today;
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    return `${y}-${m}-${day}`;
-  }, [today]);
 
   // Session-scoped dedup set: lesson IDs already shown this page mount.
   // Reset only when the component unmounts (no per-day lock — user
@@ -117,19 +109,18 @@ export default function DailyLesson({ today = new Date() }: DailyLessonProps) {
         <div className="daily-lesson__title-row">
           <BookOutlined className="daily-lesson__icon" />
           <span className="daily-lesson__title">今日一课</span>
-          <Tag className="daily-lesson__tag">{lesson.tag}</Tag>
-          {isLearned && (
-            <Tag icon={<CheckOutlined />} color="success" className="daily-lesson__tag">
-              已学会
-            </Tag>
-          )}
         </div>
-        <span className="daily-lesson__date">{dateKey}</span>
+        {isLearned && (
+          <Tag icon={<CheckOutlined />} color="success" className="daily-lesson__tag">
+            已学会
+          </Tag>
+        )}
       </div>
 
       <div className="daily-lesson__body">
         <div className="daily-lesson__col daily-lesson__col--main">
           <div className="daily-lesson__heading">
+            <Tag className="daily-lesson__tag">{lesson.tag}</Tag>
             <span className="daily-lesson__heading-title">{lesson.title}</span>
           </div>
           <p className="daily-lesson__short">{lesson.body}</p>
@@ -140,44 +131,44 @@ export default function DailyLesson({ today = new Date() }: DailyLessonProps) {
             </div>
           )}
         </div>
+      </div>
 
-        <div className="daily-lesson__col daily-lesson__col--side">
-          <div className="daily-lesson__actions">
+      <div className="daily-lesson__footer">
+        <div className="daily-lesson__hint">
+          <span>本周已学习 <b>{learned.thisWeek}</b> 个概念</span>
+          <span className="daily-lesson__divider">·</span>
+          <span className="daily-lesson__hint-sub">每次进入页面随机抽取</span>
+        </div>
+        <div className="daily-lesson__actions">
+          <Button
+            size="small"
+            type="primary"
+            icon={<SyncOutlined />}
+            onClick={shuffle}
+            aria-label="换一个概念"
+          >
+            换一题
+          </Button>
+          <Button size="small" onClick={openAsk}>
+            问 AI
+          </Button>
+          {!isLearned ? (
             <Button
               size="small"
-              type="primary"
-              icon={<SyncOutlined />}
-              onClick={shuffle}
-              aria-label="换一个概念"
+              icon={<CheckOutlined />}
+              onClick={() => learned.mark(lesson.id)}
             >
-              换一题
+              已学会
             </Button>
-            <Button size="small" onClick={openAsk}>
-              问 AI
+          ) : (
+            <Button
+              size="small"
+              icon={<ArrowRightOutlined />}
+              onClick={() => navigate('/learning')}
+            >
+              去教程
             </Button>
-            {!isLearned ? (
-              <Button
-                size="small"
-                icon={<CheckOutlined />}
-                onClick={() => learned.mark(lesson.id)}
-              >
-                已学会
-              </Button>
-            ) : (
-              <Button
-                size="small"
-                icon={<ArrowRightOutlined />}
-                onClick={() => navigate('/learning')}
-              >
-                去教程
-              </Button>
-            )}
-          </div>
-          <div className="daily-lesson__hint">
-            <span>本周已学习 <b>{learned.thisWeek}</b> 个概念</span>
-            <span className="daily-lesson__divider">·</span>
-            <span className="daily-lesson__hint-sub">每次进入页面随机抽取</span>
-          </div>
+          )}
         </div>
       </div>
     </section>

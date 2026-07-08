@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Tabs, Row, Col, Statistic, Spin, Descriptions, Radio, Checkbox, Space, Alert, Button, message, Skeleton, Table } from 'antd';
-import { StarOutlined, StarFilled, RobotOutlined, ReadOutlined, SmileOutlined } from '@ant-design/icons';
+import { StarOutlined, StarFilled, RobotOutlined, ReadOutlined, SmileOutlined, ArrowLeftOutlined } from '@ant-design/icons';
 import { useInstrumentDetail } from '@/hooks/useInstrumentList';
 import { useInstrumentScore } from '@/hooks/useScores';
 import { useFavoriteStatus } from '@/hooks/useFavorites';
@@ -178,6 +178,14 @@ export default function InstrumentDetail() {
   if (instrumentError) {
     return (
       <PageShell maxWidth="wide">
+        <Button
+          type="text"
+          icon={<ArrowLeftOutlined />}
+          onClick={() => navigate('/instruments')}
+          className="ad-mb-3"
+        >
+          返回标的列表
+        </Button>
         <Alert
           className="detail-error"
           message="加载标的详情失败"
@@ -190,6 +198,14 @@ export default function InstrumentDetail() {
   if (!instrument) {
     return (
       <PageShell maxWidth="wide">
+        <Button
+          type="text"
+          icon={<ArrowLeftOutlined />}
+          onClick={() => navigate('/instruments')}
+          className="ad-mb-3"
+        >
+          返回标的列表
+        </Button>
         <Alert
           className="detail-error"
           message="标的不存在"
@@ -637,6 +653,14 @@ export default function InstrumentDetail() {
 
   return (
     <PageShell maxWidth="wide">
+      <Button
+        type="text"
+        icon={<ArrowLeftOutlined />}
+        onClick={() => navigate('/instruments')}
+        className="ad-mb-3"
+      >
+        返回标的列表
+      </Button>
       <PageHeader
         eyebrow="标的详情"
         title={instrument.name}

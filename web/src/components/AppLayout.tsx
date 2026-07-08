@@ -64,6 +64,7 @@ import {
   ToolOutlined,
   SafetyCertificateOutlined,
   WalletOutlined,
+  StarOutlined,
 } from '@ant-design/icons';
 import { Switch, message } from 'antd';
 import { useAuthStore } from '@/stores/auth';
@@ -114,6 +115,7 @@ const iconMap: Record<string, React.ComponentType> = {
   SafetyCertificateOutlined,
   WalletOutlined,
   BulbOutlined,
+  StarOutlined,
 };
 
 const SIDEBAR_EXPANDED_KEY = 'ad-research:sidebar:expanded';

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
-import { Tabs, Spin, Alert, Table, List, Radio, Checkbox, Space } from 'antd';
-import { RobotOutlined, ReadOutlined } from '@ant-design/icons';
+import { useParams, useNavigate } from 'react-router-dom';
+import { Tabs, Spin, Alert, Table, List, Radio, Checkbox, Space, Button } from 'antd';
+import { RobotOutlined, ReadOutlined, ArrowLeftOutlined } from '@ant-design/icons';
 import {
   useCryptoDetail,
   useCryptoHistory,
@@ -75,6 +75,7 @@ function formatPrice(price?: number | null) {
 
 export default function CryptoDetail() {
   const { code } = useParams<{ code: string }>();
+  const navigate = useNavigate();
   const mode = useSettingsStore((s) => s.mode);
   const [timeRange, setTimeRange] = useState(120);
   const { data: crypto, isLoading: detailLoading, error: detailError } = useCryptoDetail(code || '');
@@ -110,6 +111,14 @@ export default function CryptoDetail() {
   if (detailError) {
     return (
       <PageShell maxWidth="wide">
+        <Button
+          type="text"
+          icon={<ArrowLeftOutlined />}
+          onClick={() => navigate('/crypto')}
+          className="ad-mb-3"
+        >
+          返回加密货币列表
+        </Button>
         <Alert
           className="detail-error"
           message="加载加密货币详情失败"
@@ -122,6 +131,14 @@ export default function CryptoDetail() {
   if (!crypto) {
     return (
       <PageShell maxWidth="wide">
+        <Button
+          type="text"
+          icon={<ArrowLeftOutlined />}
+          onClick={() => navigate('/crypto')}
+          className="ad-mb-3"
+        >
+          返回加密货币列表
+        </Button>
         <Alert
           className="detail-error"
           message="币种不存在"
@@ -336,6 +353,14 @@ export default function CryptoDetail() {
 
   return (
     <PageShell maxWidth="wide">
+      <Button
+        type="text"
+        icon={<ArrowLeftOutlined />}
+        onClick={() => navigate('/crypto')}
+        className="ad-mb-3"
+      >
+        返回加密货币列表
+      </Button>
       <PageHeader
         eyebrow="加密货币"
         title={crypto.name}

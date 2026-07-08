@@ -48,6 +48,7 @@ const Futures = lazy(() => import('./pages/Futures'));
 const CninfoReports = lazy(() => import('./pages/CninfoReports'));
 const GlobalMarkets = lazy(() => import('./pages/GlobalMarkets'));
 const Learning = lazy(() => import('./pages/Learning'));
+const Favorites = lazy(() => import('./pages/Favorites'));
 
 export type SidebarGroupKey =
   | 'home'
@@ -92,6 +93,8 @@ export const routes: RouteConfig[] = [
   // === 首页 ===
   { path: '/dashboard', element: wrap(Dashboard), auth: true, menu: { name: '首页看板', icon: 'HomeOutlined', group: 'home' } },
   { path: '/global', element: wrap(GlobalMarkets), auth: true, menu: { name: '全球速览', label: '全球速览', icon: 'CompassOutlined', group: 'home' } },
+  // 自选股（K-watchlist, 2026-07-08）：轻量级关注清单，集中管理入口
+  { path: '/favorites', element: wrap(Favorites), auth: true, menu: { name: '我的自选股', label: '我的自选股', icon: 'StarOutlined', group: 'home' } },
   { path: '/instruments', element: wrap(InstrumentList), auth: true, menu: { name: '标的列表', icon: 'OrderedListOutlined', group: 'market' } },
   { path: '/instruments/:code', element: wrap(InstrumentDetail), auth: true },
   // Backward-compatible redirects

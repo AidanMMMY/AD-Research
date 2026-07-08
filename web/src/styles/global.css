@@ -1470,6 +1470,56 @@ a:focus-visible {
   width: 100%;
 }
 
+/* Tight 4px vertical stack for two-line cells (title + subline). */
+.ad-stack-xs {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  line-height: 1.25;
+}
+
+/* Inline scope / disclaimer banner — kept calm (no Ant Alert chrome). */
+.ad-info-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+}
+
+.ad-info-banner__icon {
+  color: var(--accent);
+  margin-top: 2px;
+  font-size: 14px;
+}
+
+.ad-info-banner__body {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px 8px;
+  flex: 1;
+  min-width: 0;
+}
+
+.ad-info-banner__title {
+  font-weight: 600;
+  color: var(--text-primary);
+  letter-spacing: 0.04em;
+}
+
+.ad-info-banner__text {
+  color: var(--text-secondary);
+  font-size: var(--text-small-size);
+  line-height: 1.5;
+}
+
+.ad-info-banner code {
+  background: var(--bg-input);
+  padding: 1px 4px;
+  border-radius: 3px;
+  font-size: var(--text-small-size);
+}
+
 /* Icon decorators. */
 .ad-icon-accent {
   color: var(--accent);
@@ -1520,6 +1570,11 @@ a:focus-visible {
 .ad-table-accent {
   font-weight: 700;
   color: var(--accent);
+}
+
+.ad-table-text-primary {
+  font-weight: 500;
+  color: var(--text-primary);
 }
 
 .ad-table-text-secondary {
@@ -6865,7 +6920,8 @@ input[type="password"]::-webkit-strong-password-auto-fill-button {
 }
 
 /* DailyLesson — Dashboard "今日一课".
-   Phase 2 (2026-07-05): lighter glass + 2-col responsive body.
+   Phase 2 (2026-07-05): lighter glass surface.
+   Layout: header, single-column body, footer with hint + actions.
    Carries its own surface now (Dashboard no longer wraps it in Panel). */
 .daily-lesson {
   margin: 0;
@@ -6917,38 +6973,12 @@ input[type="password"]::-webkit-strong-password-auto-fill-button {
   color: var(--text-tertiary);
 }
 
-.daily-lesson__date {
-  font-size: 11px;
-  color: var(--text-tertiary);
-  font-variant-numeric: tabular-nums;
-  letter-spacing: 0.04em;
-}
-
-/* Body: 2-col responsive grid.
-   Desktop (>= 720px): left content | right actions.
-   Mobile (< 720px): single column, actions become a horizontal wrap. */
+/* Body: single column content area. */
 .daily-lesson__body {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: var(--space-3);
+  display: block;
 }
 
-@media (min-width: 720px) {
-  .daily-lesson__body {
-    grid-template-columns: minmax(0, 1fr) auto;
-    gap: var(--space-5);
-    align-items: start;
-  }
-}
-
-.daily-lesson__content {
-  min-width: 0;
-}
-
-/* Phase 2 (2026-07-07) — explicit 2-column wrappers used by the new
-   lesson bank layout: main column holds the body + tip, side column
-   holds the action stack + meta. The grid layout on .daily-lesson__body
-   is unchanged so existing rules continue to apply. */
+/* Phase 2 (2026-07-07) — main column holds the body + tip. */
 .daily-lesson__col {
   min-width: 0;
 }
@@ -6957,13 +6987,6 @@ input[type="password"]::-webkit-strong-password-auto-fill-button {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
-}
-
-.daily-lesson__col--side {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  align-items: flex-start;
 }
 
 .daily-lesson__tag.ant-tag {
@@ -7014,10 +7037,6 @@ input[type="password"]::-webkit-strong-password-auto-fill-button {
   align-items: center;
   gap: var(--space-2);
   margin-bottom: var(--space-1);
-}
-
-.daily-lesson__heading-icon {
-  color: var(--accent);
 }
 
 .daily-lesson__heading-title {
@@ -7076,21 +7095,42 @@ input[type="password"]::-webkit-strong-password-auto-fill-button {
   color: var(--text-primary);
 }
 
-/* Right column: vertical button stack, capped to ~180px so it doesn't
-   dominate the row on wide viewports. */
+/* Footer: hint on the left, actions on the right. */
+.daily-lesson__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--border-default);
+  flex-wrap: wrap;
+}
+
 .daily-lesson__actions {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
+  align-items: center;
   gap: var(--space-2);
-  min-width: 160px;
+  flex-wrap: wrap;
+}
+
+.daily-lesson__hint {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
 }
 
 @media (max-width: 719px) {
-  .daily-lesson__actions {
-    min-width: 0;
-    flex-direction: row;
-    flex-wrap: wrap;
+  .daily-lesson__footer {
+    align-items: flex-start;
   }
+
+  .daily-lesson__actions {
+    width: 100%;
+  }
+
   .daily-lesson__actions .ant-btn {
     flex: 1 1 auto;
   }
@@ -7385,10 +7425,9 @@ input[type="password"]::-webkit-strong-password-auto-fill-button {
   }
 }
 
-/* DailyLesson (K15 + Phase 2) — narrow-screen tuning. The 2-col body
-   collapses to a single column under 720px via the .daily-lesson__body
-   media query in the main block above; this section tightens padding
-   and trims title font sizes for very small viewports. */
+/* DailyLesson (K15 + Phase 2) — narrow-screen tuning. The body is now
+   always a single column; this section tightens padding and trims title
+   font sizes for very small viewports. */
 .daily-lesson {
   min-width: 0;
 }

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Tabs, Row, Col, Statistic, Spin, Descriptions, Radio, Checkbox, Space, Alert, Button, message, Skeleton } from 'antd';
-import { StarOutlined, StarFilled, RobotOutlined, ReadOutlined, SmileOutlined, StockOutlined, ArrowUpOutlined, ArrowDownOutlined, MinusOutlined } from '@ant-design/icons';
+import { StarOutlined, StarFilled, RobotOutlined, ReadOutlined, SmileOutlined, StockOutlined, ArrowUpOutlined, ArrowDownOutlined, MinusOutlined, ArrowLeftOutlined } from '@ant-design/icons';
 import { useStockDetail } from '@/hooks/useStocks';
 import { useInstrumentScore } from '@/hooks/useScores';
 import { useFavoriteStatus } from '@/hooks/useFavorites';
@@ -155,6 +155,14 @@ export default function StockDetail() {
   if (stockError) {
     return (
       <PageShell maxWidth="wide">
+        <Button
+          type="text"
+          icon={<ArrowLeftOutlined />}
+          onClick={() => navigate('/stocks')}
+          className="ad-mb-3"
+        >
+          返回个股列表
+        </Button>
         <Alert
           className="detail-error"
           message="加载个股详情失败"
@@ -167,6 +175,14 @@ export default function StockDetail() {
   if (!stock) {
     return (
       <PageShell maxWidth="wide">
+        <Button
+          type="text"
+          icon={<ArrowLeftOutlined />}
+          onClick={() => navigate('/stocks')}
+          className="ad-mb-3"
+        >
+          返回个股列表
+        </Button>
         <Alert
           className="detail-error"
           message="个股不存在"
@@ -558,6 +574,14 @@ export default function StockDetail() {
 
   return (
     <PageShell maxWidth="wide">
+      <Button
+        type="text"
+        icon={<ArrowLeftOutlined />}
+        onClick={() => navigate('/stocks')}
+        className="ad-mb-3"
+      >
+        返回个股列表
+      </Button>
       <PageHeader
         eyebrow="个股"
         title={stock.name}

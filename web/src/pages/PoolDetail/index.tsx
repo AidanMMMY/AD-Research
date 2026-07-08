@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Tabs, Table, Button, message, Space, Input, Popconfirm, Select, Alert } from 'antd';
-import { EditOutlined, DeleteOutlined, PlusOutlined } from '@ant-design/icons';
+import { ArrowLeftOutlined, EditOutlined, DeleteOutlined, PlusOutlined } from '@ant-design/icons';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   usePoolDetail,
@@ -242,6 +242,14 @@ export default function PoolDetail() {
   if (!isValidPoolId) {
     return (
       <PageShell maxWidth="wide">
+        <Button
+          type="text"
+          icon={<ArrowLeftOutlined />}
+          onClick={() => navigate('/pools')}
+          className="ad-mb-3"
+        >
+          返回标的池列表
+        </Button>
         <PageHeader
           eyebrow="标的池"
           title="标的池详情"
@@ -254,6 +262,14 @@ export default function PoolDetail() {
 
   return (
     <PageShell maxWidth="wide">
+      <Button
+        type="text"
+        icon={<ArrowLeftOutlined />}
+        onClick={() => navigate('/pools')}
+        className="ad-mb-3"
+      >
+        返回标的池列表
+      </Button>
       <PageHeader
         eyebrow="标的池"
         title={pool?.name || '标的池详情'}
