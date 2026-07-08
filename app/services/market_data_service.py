@@ -43,10 +43,17 @@ class MarketDataService:
         start: date | None = None,
         end: date | None = None,
         limit: int | None = None,
+        adjusted: bool = False,
     ) -> MarketDataHistoryResponse:
-        """Get historical OHLCV bars for an ETF."""
+        """Get historical OHLCV bars for an instrument.
+
+        When ``adjusted=True`` the repository returns an ``adj_close`` column
+        computed as ``close * adj_factor``. We forward that into the response
+        along with the raw ``adj_factor`` so the frontend can re-derive
+        open/high/low/close for the K-line view.
+        """
         df = price_repository.get_bars(
-            self.db, code, start, end, adjusted=False, limit=limit
+            self.db, code, start, end, adjusted=adjusted, limit=limit
         )
 
         etf = (
@@ -66,6 +73,8 @@ class MarketDataService:
                 amount=_safe_float(row.get("amount")),
                 change_pct=_safe_float(row.get("change_pct")),
                 turnover_rate=_safe_float(row.get("turnover_rate")),
+                adj_factor=_safe_float(row.get("adj_factor")),
+                adj_close=_safe_float(row.get("adj_close")) if adjusted else None,
             )
             for _, row in df.iterrows()
         ]

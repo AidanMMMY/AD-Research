@@ -19,6 +19,7 @@ interface IndicatorOverlay {
 interface KLineChartProps {
   data: OHLCV[];
   overlays?: IndicatorOverlay;
+  adjusted?: boolean;
 }
 
 function calcSMA(data: { close: number }[], period: number): (number | null)[] {
@@ -113,6 +114,18 @@ function calcMACD(data: { close: number }[], fast: number = 12, slow: number = 2
   return { dif, dea, hist };
 }
 
+function adjustOHLC(item: OHLCV): OHLCV {
+  const factor = item.adj_factor;
+  if (factor == null || factor === 0) return item;
+  return {
+    ...item,
+    open: item.open * factor,
+    high: item.high * factor,
+    low: item.low * factor,
+    close: item.close * factor,
+  };
+}
+
 export const DEFAULT_OVERLAYS: IndicatorOverlay = {
   ma5: true,
   ma10: false,
@@ -132,7 +145,7 @@ function getCssColor(name: string, fallback: string): string {
   return readCssVar(name, fallback);
 }
 
-export default function KLineChart({ data, overlays = DEFAULT_OVERLAYS }: KLineChartProps) {
+export default function KLineChart({ data, overlays = DEFAULT_OVERLAYS, adjusted = false }: KLineChartProps) {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const candlestickRef = useRef<ISeriesApi<'Candlestick'> | null>(null);
@@ -273,10 +286,12 @@ export default function KLineChart({ data, overlays = DEFAULT_OVERLAYS }: KLineC
       );
       if (!validData.length) return;
 
-      const toTime = (d: { trade_date: string }) => d.trade_date as Time;
-      const times = validData.map(toTime);
+      const adjustedData = adjusted ? validData.map(adjustOHLC) : validData;
 
-      const candleData: CandlestickData[] = validData.map((d) => ({
+      const toTime = (d: { trade_date: string }) => d.trade_date as Time;
+      const times = adjustedData.map(toTime);
+
+      const candleData: CandlestickData[] = adjustedData.map((d) => ({
         time: toTime(d),
         open: d.open,
         high: d.high,
@@ -284,7 +299,7 @@ export default function KLineChart({ data, overlays = DEFAULT_OVERLAYS }: KLineC
         close: d.close,
       }));
 
-      const volumeData: HistogramData[] = validData.map((d) => ({
+      const volumeData: HistogramData[] = adjustedData.map((d) => ({
         time: toTime(d),
         value: d.volume ?? 0,
         color: d.close >= d.open ? resolvedUpColor : resolvedDownColor,
@@ -293,10 +308,10 @@ export default function KLineChart({ data, overlays = DEFAULT_OVERLAYS }: KLineC
       candlestickRef.current.setData(candleData);
       volumeRef.current.setData(volumeData);
 
-      const ma5Data = calcSMA(validData, 5);
-      const ma10Data = calcSMA(validData, 10);
-      const ma20Data = calcSMA(validData, 20);
-      const ma60Data = calcSMA(validData, 60);
+      const ma5Data = calcSMA(adjustedData, 5);
+      const ma10Data = calcSMA(adjustedData, 10);
+      const ma20Data = calcSMA(adjustedData, 20);
+      const ma60Data = calcSMA(adjustedData, 60);
 
       const toLineData = (values: (number | null)[]): LineData[] =>
         values
@@ -316,7 +331,7 @@ export default function KLineChart({ data, overlays = DEFAULT_OVERLAYS }: KLineC
       else ma60Ref.current?.setData([]);
 
       if (overlays.bb) {
-        const bb = calcBB(validData, 20, 2);
+        const bb = calcBB(adjustedData, 20, 2);
         bbUpperRef.current?.setData(toLineData(bb.upper));
         bbLowerRef.current?.setData(toLineData(bb.lower));
       } else {
@@ -325,7 +340,7 @@ export default function KLineChart({ data, overlays = DEFAULT_OVERLAYS }: KLineC
       }
 
       if (overlays.rsi) {
-        const rsiData = calcRSI(validData, 14);
+        const rsiData = calcRSI(adjustedData, 14);
         rsiRef.current?.setData(toLineData(rsiData));
         chartRef.current?.priceScale('rsi').applyOptions({ visible: true });
       } else {
@@ -334,7 +349,7 @@ export default function KLineChart({ data, overlays = DEFAULT_OVERLAYS }: KLineC
       }
 
       if (overlays.macd) {
-        const macd = calcMACD(validData, 12, 26, 9);
+        const macd = calcMACD(adjustedData, 12, 26, 9);
         const histData: HistogramData[] = macd.hist.map((v, i) => ({
           time: times[i],
           value: v,
@@ -355,7 +370,7 @@ export default function KLineChart({ data, overlays = DEFAULT_OVERLAYS }: KLineC
     } catch (e: any) {
       setDataError(e?.message || String(e));
     }
-  }, [data, overlays, resolvedUpColor, resolvedDownColor]);
+  }, [data, overlays, resolvedUpColor, resolvedDownColor, adjusted]);
 
   // Update candlestick colors when convention changes
   useEffect(() => {

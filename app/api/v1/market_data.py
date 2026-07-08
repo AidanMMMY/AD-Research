@@ -20,10 +20,19 @@ def get_history(
     start: date = Query(None, alias="start_date"),
     end: date = Query(None, alias="end_date"),
     limit: int = Query(None),
+    adjusted: bool = Query(False, description="前复权（针对 ETF / 现金分红型标的）"),
     service: MarketDataService = Depends(get_market_data_service),
 ):
-    """Get historical OHLCV bars for an ETF."""
-    return service.get_history(code, start=start, end=end, limit=limit)
+    """Get historical OHLCV bars for an instrument.
+
+    When ``adjusted=true`` the response includes ``adj_factor`` and
+    ``adj_close`` fields. ``adj_close = close * adj_factor`` represents
+    the forward-adjusted close suitable for plotting continuous K-lines
+    across dividend events.
+    """
+    return service.get_history(
+        code, start=start, end=end, limit=limit, adjusted=adjusted
+    )
 
 
 @router.get("/snapshot", response_model=MarketSnapshotResponse)

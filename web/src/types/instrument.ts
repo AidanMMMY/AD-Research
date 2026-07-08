@@ -67,6 +67,7 @@ export interface OHLCV {
   low: number;
   close: number;
   volume: number;
+  adj_factor?: number | null;
 }
 
 export interface IndicatorData {

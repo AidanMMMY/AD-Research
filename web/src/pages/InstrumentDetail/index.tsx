@@ -177,6 +177,7 @@ export default function InstrumentDetail() {
   const { data: score } = useInstrumentScore(code || '');
   const { isFavorite, isLoading: favLoading, toggle, isToggling } = useFavoriteStatus(code || '');
   const [timeRange, setTimeRange] = useState(120);
+  const [adjusted, setAdjusted] = useState(false);
 
   const [overlays, setOverlays] = useState(() => {
     try {
@@ -205,8 +206,8 @@ export default function InstrumentDetail() {
   };
 
   const { data: historyData, isLoading: historyLoading } = useQuery({
-    queryKey: ['instrument-history', code, timeRange],
-    queryFn: () => marketApi.history(code || '', { limit: timeRange }).then((r) => r.data),
+    queryKey: ['instrument-history', code, timeRange, adjusted],
+    queryFn: () => marketApi.history(code || '', { limit: timeRange, adjusted }).then((r) => r.data),
     enabled: !!code,
     retry: 1,
   });
@@ -402,11 +403,24 @@ export default function InstrumentDetail() {
                   ))}
                 </Checkbox.Group>
               </Space>
+              <Space>
+                <span>复权：</span>
+                <Radio.Group
+                  value={adjusted}
+                  onChange={(e) => setAdjusted(e.target.value)}
+                  optionType="button"
+                  buttonStyle="solid"
+                  size="small"
+                >
+                  <Radio.Button value={false}>不复权</Radio.Button>
+                  <Radio.Button value={true}>前复权</Radio.Button>
+                </Radio.Group>
+              </Space>
             </Space>
           </div>
           {historyLoading ? <Spin /> : (
             safeHistoryItems.length ? (
-              <KLineChart data={safeHistoryItems} overlays={overlays} />
+              <KLineChart data={safeHistoryItems} overlays={overlays} adjusted={adjusted} />
             ) : (
               <Alert className="detail-chart__empty" message="暂无历史行情数据" type="info" showIcon />
             )
