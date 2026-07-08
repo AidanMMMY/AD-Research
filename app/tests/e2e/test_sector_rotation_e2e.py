@@ -3,6 +3,11 @@
 Verifies that the router responds at BOTH the historical /analysis/sector-rotation
 prefix and the documented /sector-rotation prefix. Both routes must return
 HTTP 200 with a payload that matches the SectorRotationResponse schema.
+
+The sector rotation endpoint was redesigned 2026-07-08 to expose GICS
+industry sectors rather than ETF fund categories, and to include both
+individual stocks and ETFs in the aggregation. This test seeds both
+types and asserts the new contract.
 """
 
 from __future__ import annotations
@@ -29,12 +34,7 @@ from app.models.etf import ETFIndicator, ETFInfo
 
 @pytest.fixture
 def sr_engine():
-    """In-memory SQLite with StaticPool so all connections share one DB.
-
-    StaticPool is required because :memory: SQLite is per-connection —
-    without it, the TestClient's request handler opens a different
-    connection and sees an empty database.
-    """
+    """In-memory SQLite with StaticPool so all connections share one DB."""
     engine = create_engine(
         "sqlite://",
         connect_args={"check_same_thread": False},
@@ -59,13 +59,7 @@ def sr_session(sr_engine):
 
 @pytest.fixture
 def sector_rotation_client(sr_session):
-    """Build a TestClient with the sector-rotation router mounted twice.
-
-    Mounts the router under:
-      - /api/v1/analysis   (legacy /analysis/sector-rotation)
-      - /api/v1            (documented /sector-rotation)
-    so a single test can exercise both surfaces.
-    """
+    """Build a TestClient with the sector-rotation router mounted twice."""
     test_app = FastAPI()
     test_app.include_router(
         sector_rotation_module.router, prefix="/api/v1/analysis"
@@ -94,26 +88,53 @@ def sector_rotation_client(sr_session):
 
 @pytest.fixture
 def seeded_sector_universe(sr_session):
-    """Insert 3 categories x 2 ETFs with 2 trade-dates of indicators.
+    """Insert 3 GICS sectors x (1 STOCK + 1 ETF) with 2 trade-dates of indicators.
+
+    Stocks have their GICS ``sector`` populated (the production pipeline
+    writes this). ETFs do not — they're resolved via the
+    ``ETF_SECTOR_HINTS`` heuristic from ``sub_category``.
 
     Two dates are required so the rotation-signal detector has a previous
     period to compare against.
     """
-    profiles = [
-        # (code, name, category, return_1m, return_3m, sharpe_1y, vol20, rsi)
-        ("510300.SH", "CSI 300 ETF",   "股票型",  8.0,  18.0, 2.0, 15.0, 70.0),
-        ("510500.SH", "CSI 500 ETF",   "股票型",  5.0,  12.0, 1.4, 18.0, 60.0),
-        ("511010.SH", "Treasury Bond", "债券型",  0.5,   2.0, 0.9,  5.0, 45.0),
-        ("511260.SH", "Corp Bond",     "债券型",  0.8,   2.5, 1.0,  6.0, 48.0),
-        ("512760.SH", "Tech ETF",      "科技型", 10.0,  25.0, 1.8, 25.0, 75.0),
-        ("513500.SH", "S&P 500 ETF",   "科技型",  3.0,   8.0, 1.6, 12.0, 55.0),
-    ]
     import datetime as dt
+
+    # Tuple: (code, name, market, instrument_type, sector, sub_category, category, r1m, r3m, shp, vol, rsi)
+    profiles = [
+        # Information Technology — should bucket together (1 stock + 1 ETF)
+        ("600000.SH", "Stock IT",   "A股", "STOCK", "Information Technology", None, None,
+         10.0, 25.0, 2.0, 25.0, 75.0),
+        ("512760.SH", "Tech ETF",   "A股", "ETF",   None, "科技ETF", "股票型",
+         8.0, 20.0, 1.8, 22.0, 70.0),
+        # Health Care
+        ("600519.SH", "Stock HC",   "A股", "STOCK", "Health Care", None, None,
+         6.0, 14.0, 1.4, 18.0, 60.0),
+        ("510300.SH", "Med ETF",    "A股", "ETF",   None, "医药ETF", "股票型",         4.0, 10.0, 1.2, 16.0, 55.0),
+        # Financials
+        ("601318.SH", "Stock FIN",  "A股", "STOCK", "Financials", None, None,
+         1.0, 3.0, 0.8, 10.0, 45.0),
+        ("510500.SH", "Bank ETF",   "A股", "ETF",   None, "银行ETF", "股票型",
+         0.5, 2.0, 0.7, 8.0, 42.0),
+        # Bond ETF — out of scope (category=债券型), must NOT show up in sectors
+        ("511260.SH", "Bond ETF",   "A股", "ETF",   None, None, "债券型",
+         0.3, 0.5, 0.6, 2.0, 50.0),
+    ]
+
     dates = [dt.date(2024, 6, 23), dt.date(2024, 6, 30)]
-    for code, name, category, r1m, r3m, shp, vol, rsi in profiles:
+    for (
+        code, name, market, itype, sector, sub_cat, category,
+        r1m, r3m, shp, vol, rsi,
+    ) in profiles:
         sr_session.add(
             ETFInfo(
-                code=code, name=name, market="E2E_SR", category=category, status="active",
+                code=code,
+                name=name,
+                market=market,
+                instrument_type=itype,
+                category=category,
+                sub_category=sub_cat,
+                sector=sector,
+                status="active",
             )
         )
         for td in dates:
@@ -121,9 +142,9 @@ def seeded_sector_universe(sr_session):
                 ETFIndicator(
                     etf_code=code,
                     trade_date=td,
+                    return_1w=Decimal("1.0"),
                     return_1m=Decimal(str(r1m)),
-                    return_3m=Decimal(str(r3m)),
-                    return_1y=Decimal("20.0"),
+                    return_3m=Decimal(str(r3m)),                    return_1y=Decimal("20.0"),
                     sharpe_1y=Decimal(str(shp)),
                     volatility_20d=Decimal(str(vol)),
                     max_drawdown_1y=Decimal("-10.0"),
@@ -155,27 +176,42 @@ def test_sector_rotation_analyze_returns_200_on_both_paths(
     assert resp.status_code == 200, resp.text
     payload = resp.json()
 
-    assert "trade_date" in payload
     assert payload["trade_date"] == "2024-06-30"
-    assert "sectors" in payload and isinstance(payload["sectors"], list)
+    assert isinstance(payload["sectors"], list)
     assert "market_avg" in payload
-    assert "rotation_signals" in payload and isinstance(payload["rotation_signals"], list)
+    assert isinstance(payload["rotation_signals"], list)
 
-    # 3 distinct categories seeded -> 3 sector rows
-    assert len(payload["sectors"]) == 3
+    # Scope block must explicitly state A股 + GICS
+    scope = payload["scope"]
+    assert scope["market"] == "A股"
+    assert scope["classification"] == "GICS"
+    assert set(scope["instrument_types"]) == {"ETF", "STOCK"}
 
-    # Every sector row has the documented fields
+    # 3 GICS sectors seeded (Information Technology, Health Care, Financials).
+    # The bond ETF is correctly excluded (no sector resolved).
+    sector_names = {row["sector"] for row in payload["sectors"]}
+    assert sector_names == {"Information Technology", "Health Care", "Financials"}
+
+    # Each sector row has the documented fields (post-redesign 2026-07-08)
     expected_fields = {
-        "category", "count", "return_1m", "return_3m", "sharpe_1y",
-        "volatility_20d", "rsi14", "relative_strength_1m",
-        "relative_strength_3m", "momentum_rank",
+        "sector", "count", "stock_count", "etf_count",
+        "return_1w", "return_1m", "return_3m", "return_6m", "return_1y",
+        "sharpe_1y", "volatility_20d", "rsi14", "amount_total",        "relative_strength_1w", "relative_strength_1m", "relative_strength_3m",
+        "momentum_rank",
     }
     for row in payload["sectors"]:
         assert expected_fields.issubset(row.keys()), row
+        # Stock + ETF counts must add up to total
+        assert row["stock_count"] + row["etf_count"] == row["count"]
 
     # Momentum ranks are a contiguous 1..N sequence
     ranks = sorted(s["momentum_rank"] for s in payload["sectors"])
-    assert ranks == [1, 2, 3]
+    assert ranks == list(range(1, len(payload["sectors"]) + 1))
+
+    # Top sector by 1m return should be Information Technology
+    top = payload["sectors"][0]
+    assert top["sector"] == "Information Technology"
+    assert top["momentum_rank"] == 1
 
 
 @pytest.mark.parametrize(
@@ -183,18 +219,33 @@ def test_sector_rotation_analyze_returns_200_on_both_paths(
     ["/api/v1/analysis/sector-rotation", "/api/v1/sector-rotation"],
     ids=["legacy-analysis-prefix", "documented-root-prefix"],
 )
-def test_sector_rotation_sectors_returns_categories(
+def test_sector_rotation_sectors_returns_industry_sectors(
     sector_rotation_client, seeded_sector_universe, prefix
 ):
-    """The /sectors sub-endpoint must list each unique ETF category with a count."""
+    """The /sectors sub-endpoint must list each unique GICS sector with counts."""
     resp = sector_rotation_client.get(f"{prefix}/sectors")
     assert resp.status_code == 200, resp.text
     payload = resp.json()
     assert "items" in payload
-    categories = {item["category"] for item in payload["items"]}
-    assert categories == {"股票型", "债券型", "科技型"}
+    sectors = {item["sector"] for item in payload["items"]}
+    # Same as /analyze — bond ETF must be excluded
+    assert sectors == {"Information Technology", "Health Care", "Financials"}
     for item in payload["items"]:
         assert item["count"] >= 1
+        assert item["stock_count"] + item["etf_count"] == item["count"]
+
+
+def test_sector_rotation_excludes_bond_etf(sector_rotation_client, seeded_sector_universe):
+    """Bond ETFs (no equity sector) must not appear in either endpoint."""
+    analyze = sector_rotation_client.get("/api/v1/sector-rotation").json()
+    sectors = {row["sector"] for row in analyze["sectors"]}
+    # Bond ETF would resolve to "Broad Market" — but its category is 债券型
+    # and we exclude non-equity ETFs entirely. Confirm no Broad Market row.
+    assert "Broad Market" not in sectors
+
+    list_resp = sector_rotation_client.get("/api/v1/sector-rotation/sectors").json()
+    list_sectors = {item["sector"] for item in list_resp["items"]}
+    assert "Broad Market" not in list_sectors
 
 
 def test_sector_rotation_query_param_validation(sector_rotation_client):
