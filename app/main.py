@@ -22,6 +22,7 @@ from app.api.v1 import (
     cninfo_reports,
     crypto,
     deployments,
+    etf_holdings,
     etf_scanner,
     etfs,
     etl,
@@ -162,6 +163,9 @@ def health_check():
 
 # Include v1 routers
 app.include_router(etfs.router, prefix=f"{settings.api_v1_prefix}/etfs", tags=["ETFs"])
+app.include_router(
+    etf_holdings.router, prefix=f"{settings.api_v1_prefix}", tags=["ETF Holdings"]
+)
 app.include_router(pools.router, prefix=f"{settings.api_v1_prefix}/pools", tags=["Pools"])
 app.include_router(
     market_data.router, prefix=f"{settings.api_v1_prefix}/market-data", tags=["Market Data"]

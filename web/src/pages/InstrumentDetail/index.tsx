@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Tabs, Row, Col, Statistic, Spin, Descriptions, Radio, Checkbox, Space, Alert, Button, message, Skeleton, Table } from 'antd';
+import { Tabs, Row, Col, Statistic, Spin, Descriptions, Radio, Checkbox, Space, Alert, Button, message, Skeleton, Table, Select, Tag } from 'antd';
 import { StarOutlined, StarFilled, RobotOutlined, ReadOutlined, SmileOutlined, ArrowLeftOutlined } from '@ant-design/icons';
 import { useInstrumentDetail } from '@/hooks/useInstrumentList';
 import { useInstrumentScore } from '@/hooks/useScores';
@@ -24,12 +24,14 @@ import HelpPopover from '@/components/HelpPopover';
 import ThemeTag from '@/components/ThemeTag';
 import LoadingBlock from '@/components/LoadingBlock';
 import { formatPercent } from '@/utils/format';
+import { formatRelative } from '@/utils/datetime';
 import { useSettingsStore } from '@/stores/settings';
 import { getReturnColor } from '@/utils/color';
 import { buildInstrumentDetailContext } from '@/utils/helpContext';
 import { getQuickQuestions } from '@/utils/helpPrompts';
 import { SENTIMENT_COLORS, SENTIMENT_LABELS } from '@/utils/sentiment';
 import type { ResearchNote } from '@/api/research';
+import type { ETFHoldingSnapshot } from '@/types/instrument';
 
 const TIME_RANGE_OPTIONS = [
   { label: '30日', value: 30 },
@@ -63,6 +65,90 @@ const INSTRUMENT_TYPE_LABELS: Record<string, string> = {
   CRYPTO: '数字货币',
   ETF: 'ETF',
 };
+
+/**
+ * Compact snapshot-date picker for the Holdings tab.
+ *
+ * Renders a lightweight ``<Select>`` in the panel header that lets the
+ * user jump between historical quarterly disclosures. The list comes
+ * from ``GET /etfs/{code}/holdings/snapshots`` (sorted newest-first by
+ * the backend). The placeholder ``最新 (auto)`` means "no override →
+ * let the backend return its default (most recent) snapshot, no
+ * ``?date=`` query is sent".
+ *
+ * Why a separate component
+ * ------------------------
+ * Keeping this small component inline above the page avoids polluting
+ * the 700+ line main module with snapshot-formatting helpers, and
+ * keeps the option-list memoisation logic close to the only place
+ * that needs it.
+ */
+function HoldingsSnapshotPicker({
+  snapshots,
+  snapshotsLoading,
+  value,
+  onChange,
+}: {
+  snapshots: ETFHoldingSnapshot[] | undefined;
+  snapshotsLoading: boolean;
+  /** ``null`` = latest (no ``date=``); string = explicit snapshot date. */
+  value: string | null;
+  onChange: (next: string | null) => void;
+}) {
+  // Memoised so list-of-options re-renders only when snapshots data
+  // changes. ``value=null`` is encoded as the sentinel ``'__latest__'``
+  // because antd ``Select`` only accepts string/number.
+  const options = React.useMemo(() => {
+    const list: { label: React.ReactNode; value: string }[] = [
+      {
+        label: '最新 (auto)',
+        value: '__latest__',
+      },
+    ];
+    if (snapshots && snapshots.length) {
+      for (const s of snapshots) {
+        const date = s.holdings_as_of_date;
+        const relative = formatRelative(`${date}T00:00:00`);
+        list.push({
+          value: date,
+          label: (
+            <span style={{ display: 'inline-flex', gap: 8, alignItems: 'center' }}>
+              <span className="tabular-nums">{date}</span>
+              <span style={{ color: 'var(--text-tertiary, var(--text-secondary))', fontSize: 12 }}>
+                {relative || '刚刚'}
+              </span>
+              <span style={{ color: 'var(--text-tertiary, var(--text-secondary))', fontSize: 12 }}>
+                · {s.holding_count}只
+              </span>
+            </span>
+          ),
+        });
+      }
+    }
+    return list;
+  }, [snapshots]);
+
+  // Sort guard — backend already orders newest-first, but if a future
+  // page-side sort ever changes we keep the dropdown stable.
+  const sortedOptions = React.useMemo(() => {
+    const [latest, ...rest] = options;
+    const sortedRest = [...rest].sort((a, b) => (b.value > a.value ? 1 : -1));
+    return [latest, ...sortedRest];
+  }, [options]);
+
+  return (
+    <Select
+      size="small"
+      style={{ minWidth: 220 }}
+      value={value ?? '__latest__'}
+      loading={snapshotsLoading}
+      disabled={snapshotsLoading && !snapshots}
+      onChange={(next) => onChange(next === '__latest__' ? null : next)}
+      options={sortedOptions}
+      placeholder="选择报告期"
+    />
+  );
+}
 
 function formatFundSize(value: number, market?: string) {
   if (market === 'US') {
@@ -151,10 +237,25 @@ export default function InstrumentDetail() {
     enabled: !!code && isStock,
   });
 
+  const [selectedSnapshotDate, setSelectedSnapshotDate] = useState<string | null>(null);
+
   const { data: holdingsData, isLoading: holdingsLoading, error: holdingsError } = useQuery({
-    queryKey: ['instrument-holdings', code],
-    queryFn: () => instrumentApi.holdings(code || '').then((r) => r.data),
+    queryKey: ['instrument-holdings', code, selectedSnapshotDate],
+    queryFn: () =>
+      instrumentApi
+        .holdings(code || '', selectedSnapshotDate ? { date: selectedSnapshotDate } : undefined)
+        .then((r) => r.data),
     enabled: !!code,
+  });
+
+  const { data: holdingsSnapshotsData, isLoading: snapshotsLoading } = useQuery({
+    queryKey: ['instrument-holdings-snapshots', code],
+    queryFn: () => instrumentApi.holdingsSnapshots(code || '').then((r) => r.data),
+    enabled: !!code,
+    // Snapshots are slow-changing; cache aggressively so the toggle feels instant
+    // when the user opens the same instrument again within a session.
+    staleTime: 5 * 60 * 1000,
+    retry: 1,
   });
 
   const generateMutation = useMutation({
@@ -345,7 +446,18 @@ export default function InstrumentDetail() {
       key: 'holdings',
       label: '前十大持仓',
       children: (
-        <Panel title="前十大持仓" padding="md">
+        <Panel
+          title="前十大持仓"
+          padding="md"
+          extra={
+            <HoldingsSnapshotPicker
+              snapshots={holdingsSnapshotsData?.items}
+              snapshotsLoading={snapshotsLoading}
+              value={selectedSnapshotDate}
+              onChange={setSelectedSnapshotDate}
+            />
+          }
+        >
           {holdingsLoading ? (
             <Skeleton active paragraph={{ rows: 6 }} />
           ) : holdingsError ? (
@@ -353,7 +465,11 @@ export default function InstrumentDetail() {
           ) : !holdingsData?.holdings?.length ? (
             <EmptyState
               title="暂无持仓数据"
-              description="该标的暂无持仓数据"
+              description={
+                selectedSnapshotDate
+                  ? `该报告期 (${selectedSnapshotDate}) 暂无持仓数据`
+                  : '该标的暂无持仓数据'
+              }
             />
           ) : (
             <div>
@@ -371,8 +487,26 @@ export default function InstrumentDetail() {
                 ]}
               />
               {holdingsData.holdings_as_of_date && (
-                <div style={{ marginTop: 12, color: 'var(--text-secondary)', fontSize: 12 }}>
-                  数据截至：{holdingsData.holdings_as_of_date}
+                <div
+                  style={{
+                    marginTop: 12,
+                    color: 'var(--text-secondary)',
+                    fontSize: 12,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8,
+                    flexWrap: 'wrap',
+                  }}
+                >
+                  <span>报告期：{holdingsData.holdings_as_of_date}</span>
+                  {selectedSnapshotDate && holdingsData.holdings_as_of_date !== selectedSnapshotDate && (
+                    <Tag color="processing">非默认快照</Tag>
+                  )}
+                  {holdingsData.holdings_as_of_date && (
+                    <span style={{ color: 'var(--text-tertiary, var(--text-secondary))' }}>
+                      ({formatRelative(`${holdingsData.holdings_as_of_date}T00:00:00`) || '刚刚'})
+                    </span>
+                  )}
                 </div>
               )}
             </div>

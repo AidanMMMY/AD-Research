@@ -49,6 +49,7 @@ const CninfoReports = lazy(() => import('./pages/CninfoReports'));
 const GlobalMarkets = lazy(() => import('./pages/GlobalMarkets'));
 const Learning = lazy(() => import('./pages/Learning'));
 const Favorites = lazy(() => import('./pages/Favorites'));
+const EtfHoldingsHistory = lazy(() => import('./pages/EtfHoldingsHistory'));
 
 export type SidebarGroupKey =
   | 'home'
@@ -100,6 +101,9 @@ export const routes: RouteConfig[] = [
   // Backward-compatible redirects
   { path: '/etfs', element: <Navigate to="/instruments" replace />, auth: true },
   { path: '/etfs/:code', element: <LegacyEtfRedirect />, auth: true },
+  // ETF 持仓历史（AD-Research, 2026-07-08）：季度披露的 top-10 持仓 + diff
+  { path: '/etfs/holdings-history', element: wrap(EtfHoldingsHistory), auth: true, menu: { name: 'ETF 持仓', icon: 'FundOutlined', group: 'research' } },
+  { path: '/etfs/:code/holdings-history', element: wrap(EtfHoldingsHistory), auth: true },
   // ---- 个股（合并到标的列表，通过 instrument_type=STOCK 筛选） ----
   { path: '/stocks', element: wrap(StocksList), auth: true },
   { path: '/stocks/:code', element: wrap(StockDetail), auth: true },

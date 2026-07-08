@@ -3,6 +3,8 @@
 Provides endpoints for listing, filtering, and retrieving ETF basic information.
 """
 
+from datetime import date as _date
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
@@ -10,7 +12,9 @@ from app.api.deps import get_current_user, get_db, get_etf_service
 from app.models.etf import ETFInfo, InstrumentDailyBar
 from app.schemas.etf import (
     ETFFilterParams,
+    ETFHoldingDiffResponse,
     ETFHoldingResponse,
+    ETFHoldingSnapshotListResponse,
     ETFInfoResponse,
     ETFListResponse,
     SparklineOut,
@@ -80,11 +84,82 @@ def get_etf(code: str, service: ETFService = Depends(get_etf_service)):
 
 
 @router.get("/{code}/holdings", response_model=ETFHoldingResponse)
-def get_etf_holdings(code: str, service: ETFService = Depends(get_etf_service)):
-    """Return the latest top-10 holdings for an ETF."""
+def get_etf_holdings(
+    code: str,
+    date: _date | None = Query(
+        None,
+        description=(
+            "Reporting-period date (YYYY-MM-DD). When omitted, returns the "
+            "latest snapshot across all available dates."
+        ),
+    ),
+    service: ETFService = Depends(get_etf_service),
+):
+    """Return holdings for an ETF, optionally scoped to a single reporting period.
+
+    With no ``date`` param: returns the latest top-N holdings (existing
+    behaviour, backwards-compatible).
+
+    With ``date=YYYY-MM-DD``: returns the holdings snapshot whose
+    ``holdings_as_of_date`` equals the requested date. The endpoint
+    returns 404 when the ETF has no holdings on that date so the
+    frontend can fall back to the snapshot-list endpoint.
+    """
     if not service.get_etf(code):
         raise HTTPException(status_code=404, detail=f"ETF {code} not found")
-    return service.get_holdings(code)
+    if date is None:
+        return service.get_holdings(code)
+    result = service.get_holdings_by_date(code, date)
+    if not result["holdings"]:
+        raise HTTPException(
+            status_code=404,
+            detail=f"ETF {code} has no holdings snapshot for {date.isoformat()}",
+        )
+    return result
+
+
+@router.get(
+    "/{code}/holdings/snapshots",
+    response_model=ETFHoldingSnapshotListResponse,
+)
+def list_etf_holdings_snapshots(
+    code: str,
+    service: ETFService = Depends(get_etf_service),
+):
+    """List the available quarterly reporting-period snapshots for an ETF.
+
+    Returns one entry per distinct ``holdings_as_of_date`` with the
+    holding count and total weight for that period. Newest first so
+    the frontend can render a reverse-chronological timeline without
+    re-sorting client-side.
+    """
+    if not service.get_etf(code):
+        raise HTTPException(status_code=404, detail=f"ETF {code} not found")
+    return {"items": service.list_holdings_snapshots(code)}
+
+
+@router.get(
+    "/{code}/holdings/diff",
+    response_model=ETFHoldingDiffResponse,
+)
+def diff_etf_holdings(
+    code: str,
+    from_: _date = Query(..., alias="from", description="Earlier reporting date (YYYY-MM-DD)"),
+    to: _date = Query(..., description="Later reporting date (YYYY-MM-DD)"),
+    service: ETFService = Depends(get_etf_service),
+):
+    """Diff two reporting-period snapshots for an ETF.
+
+    Returns per-holding weight + share deltas, status (added /
+    removed / increased / decreased / unchanged), and aggregate
+    counters. ``from`` is the earlier date and ``to`` is the later
+    date; the result is meaningless if the dates are swapped, but
+    the endpoint does not enforce ordering so the caller stays in
+    control.
+    """
+    if not service.get_etf(code):
+        raise HTTPException(status_code=404, detail=f"ETF {code} not found")
+    return service.diff_holdings(code, from_, to)
 
 
 @router.get("/{code}/sparkline", response_model=SparklineOut)

@@ -6,9 +6,11 @@ PE, PB) from the stock_fundamental table.
 """
 
 
-from sqlalchemy import and_
+from datetime import date as _date
+from typing import Iterable
+
+from sqlalchemy import and_, func
 from sqlalchemy.orm import Session
-from sqlalchemy.sql import func
 
 from app.core.cache import cache_get, cache_set
 from app.models.etf import ETFHolding, ETFInfo, StockFundamental
@@ -394,6 +396,213 @@ class ETFService:
             default=None,
         )
         return {"holdings": holdings, "holdings_as_of_date": as_of}
+
+    def get_holdings_by_date(self, code: str, as_of_date) -> dict:
+        """Return the holdings for an ETF on a specific reporting date.
+
+        Mirrors :py:meth:`get_holdings` but filters to a single
+        ``holdings_as_of_date`` snapshot. Rows with NULL
+        ``holdings_as_of_date`` are intentionally excluded — they
+        represent pre-migration data that cannot be attributed to any
+        specific quarter.
+
+        The top-level ``holdings_as_of_date`` echoes the requested
+        date so the frontend can render a stable "as of" hint even
+        when the underlying data has gaps. The new ``snapshot_date``
+        field is populated with the same value for callers that have
+        migrated to the upsert identity column.
+        """
+        rows = (
+            self.db.query(ETFHolding)
+            .filter(
+                ETFHolding.etf_code == code,
+                ETFHolding.holdings_as_of_date == as_of_date,
+            )
+            .order_by(ETFHolding.weight.desc().nullslast())
+            .all()
+        )
+        holdings = [
+            {
+                "etf_code": h.etf_code,
+                "holding_code": h.holding_code,
+                "holding_name": h.holding_name,
+                "weight": float(h.weight) if h.weight is not None else None,
+                "shares": float(h.shares) if h.shares is not None else None,
+                "market_value": float(h.market_value)
+                if h.market_value is not None
+                else None,
+                "holdings_as_of_date": h.holdings_as_of_date,
+                "snapshot_date": h.holdings_as_of_date,
+            }
+            for h in rows
+        ]
+        return {
+            "holdings": holdings,
+            "holdings_as_of_date": as_of_date,
+            "snapshot_date": as_of_date,
+        }
+
+    def list_holdings_snapshots(self, code: str) -> list[dict]:
+        """Return the list of distinct reporting-period snapshots.
+
+        For each ``holdings_as_of_date`` we return the row count and
+        the sum of weights (when available) so the frontend can render
+        a timeline without re-fetching every snapshot. Sorted newest
+        first.
+        """
+        rows = (
+            self.db.query(
+                ETFHolding.holdings_as_of_date.label("as_of"),
+                func.count(ETFHolding.id).label("cnt"),
+                func.coalesce(func.sum(ETFHolding.weight), 0).label("sum_w"),
+                func.max(ETFHolding.source).label("src"),
+            )
+            .filter(
+                ETFHolding.etf_code == code,
+                ETFHolding.holdings_as_of_date.isnot(None),
+            )
+            .group_by(ETFHolding.holdings_as_of_date)
+            .order_by(ETFHolding.holdings_as_of_date.desc())
+            .all()
+        )
+        return [
+            {
+                "holdings_as_of_date": r.as_of,
+                "holding_count": int(r.cnt),
+                "total_weight": float(r.sum_w) if r.sum_w is not None else None,
+                "source": r.src,
+            }
+            for r in rows
+        ]
+
+    def diff_holdings(
+        self,
+        code: str,
+        from_date: _date,
+        to_date: _date,
+    ) -> dict:
+        """Compute the diff between two reporting periods.
+
+        Returns per-holding deltas (weight + shares), aggregate
+        counters (added / removed / increased / decreased /
+        unchanged), and the change in total weight. The two periods
+        are treated as unordered sets for "added" / "removed"
+        detection; an existing holding whose weight changed is
+        ``increased`` / ``decreased`` / ``unchanged`` based on the
+        signed delta of ``to_weight - from_weight`` (with a 1bp
+        tolerance to absorb floating-point noise).
+        """
+        from_rows = (
+            self.db.query(ETFHolding)
+            .filter(
+                ETFHolding.etf_code == code,
+                ETFHolding.holdings_as_of_date == from_date,
+            )
+            .all()
+        )
+        to_rows = (
+            self.db.query(ETFHolding)
+            .filter(
+                ETFHolding.etf_code == code,
+                ETFHolding.holdings_as_of_date == to_date,
+            )
+            .all()
+        )
+
+        def _index(rows: Iterable[ETFHolding]) -> dict[str, ETFHolding]:
+            return {r.holding_code: r for r in rows}
+
+        from_idx = _index(from_rows)
+        to_idx = _index(to_rows)
+        codes = set(from_idx) | set(to_idx)
+
+        entries: list[dict] = []
+        added = removed = increased = decreased = unchanged = 0
+        from_total = 0.0
+        to_total = 0.0
+        for hcode in codes:
+            f = from_idx.get(hcode)
+            t = to_idx.get(hcode)
+            f_w = float(f.weight) if (f is not None and f.weight is not None) else None
+            t_w = float(t.weight) if (t is not None and t.weight is not None) else None
+            f_s = float(f.shares) if (f is not None and f.shares is not None) else None
+            t_s = float(t.shares) if (t is not None and t.shares is not None) else None
+
+            if f_w is not None:
+                from_total += f_w
+            if t_w is not None:
+                to_total += t_w
+
+            if f is None:
+                status = "added"
+                added += 1
+            elif t is None:
+                status = "removed"
+                removed += 1
+            else:
+                if f_w is None and t_w is None:
+                    delta = 0.0
+                else:
+                    delta = (t_w or 0.0) - (f_w or 0.0)
+                # 1bp (0.0001) tolerance for floating-point noise
+                if delta > 0.0001:
+                    status = "increased"
+                    increased += 1
+                elif delta < -0.0001:
+                    status = "decreased"
+                    decreased += 1
+                else:
+                    status = "unchanged"
+                    unchanged += 1
+
+            entries.append(
+                {
+                    "holding_code": hcode,
+                    "holding_name": (t or f).holding_name,
+                    "from_weight": f_w,
+                    "to_weight": t_w,
+                    "weight_change": (
+                        (t_w - f_w) if (t_w is not None and f_w is not None) else None
+                    ),
+                    "from_shares": f_s,
+                    "to_shares": t_s,
+                    "shares_change": (
+                        (t_s - f_s) if (t_s is not None and f_s is not None) else None
+                    ),
+                    "status": status,
+                }
+            )
+
+        # Sort: added/removed first (most actionable), then by absolute
+        # weight-change descending, then by holding_code for stability.
+        status_order = {
+            "added": 0,
+            "removed": 1,
+            "increased": 2,
+            "decreased": 3,
+            "unchanged": 4,
+        }
+        entries.sort(
+            key=lambda e: (
+                status_order.get(e["status"], 99),
+                -abs(e["weight_change"] or 0.0),
+                e["holding_code"],
+            )
+        )
+
+        return {
+            "from_date": from_date,
+            "to_date": to_date,
+            "entries": entries,
+            "added_count": added,
+            "removed_count": removed,
+            "increased_count": increased,
+            "decreased_count": decreased,
+            "unchanged_count": unchanged,
+            "total_weight_change": (to_total - from_total) or None,
+            "from_total_weight": from_total or None,
+            "to_total_weight": to_total or None,
+        }
 
     def upsert_holdings(
         self,

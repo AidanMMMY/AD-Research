@@ -108,3 +108,62 @@ export interface ETFHoldingResponse {
   holdings: ETFHoldingItem[];
   holdings_as_of_date: string | null;
 }
+
+/**
+ * One row in the per-ETF holdings-snapshot index returned by
+ * ``GET /etfs/{code}/holdings/snapshots``. The list is ordered newest
+ * first so the frontend can default to the latest period without
+ * sorting. ``holding_count`` lets the UI render a quick weight hint
+ * ("10 holdings") next to the date in the selector. ``total_weight``
+ * is the sum of holding weights for the period (typically close to
+ * 1.0 for the top-10 disclosed window, less for sparse snapshots).
+ */
+export interface ETFHoldingSnapshot {
+  /** ISO date string of the period the holdings are reported as of. */
+  holdings_as_of_date: string;
+  /** Number of holdings rows in that snapshot. */
+  holding_count: number;
+  /** Sum of `weight` across the period, in decimal fraction (0.42 = 42%). */
+  total_weight?: number | null;
+  /** Optional data source tag (csindex, sse, manual, …). */
+  source?: string | null;
+}
+
+export interface ETFHoldingSnapshotsResponse {
+  items: ETFHoldingSnapshot[];
+}
+
+/**
+ * Single per-holding diff row returned by
+ * ``GET /etfs/{code}/holdings/diff?from=…&to=…``.
+ *
+ * ``status`` is one of:
+ *   - ``added`` — holding only exists in the ``to`` period
+ *   - ``removed`` — holding only exists in the ``from`` period
+ *   - ``increased`` / ``decreased`` / ``unchanged`` — exists in both
+ */
+export interface ETFHoldingDiffEntry {
+  holding_code: string;
+  holding_name: string | null;
+  from_weight: number | null;
+  to_weight: number | null;
+  weight_change: number | null;
+  from_shares: number | null;
+  to_shares: number | null;
+  shares_change: number | null;
+  status: 'added' | 'removed' | 'increased' | 'decreased' | 'unchanged' | string;
+}
+
+export interface ETFHoldingDiffResponse {
+  from_date: string | null;
+  to_date: string | null;
+  entries: ETFHoldingDiffEntry[];
+  added_count: number;
+  removed_count: number;
+  increased_count: number;
+  decreased_count: number;
+  unchanged_count: number;
+  total_weight_change: number | null;
+  from_total_weight: number | null;
+  to_total_weight: number | null;
+}

@@ -1171,6 +1171,21 @@ def init_scheduler():
         replace_existing=True,
         max_instances=1,
     )
+
+    # ── ETF Holdings Quarterly (Phase 9b) ──
+    # Three cron jobs in the seasonal disclosure windows (Q1 / mid-year /
+    # Q3) that fire a deterministic catch-up refresh of the top-10
+    # holdings table.  Complements the daily 07:00 opportunistic
+    # ``etf_holdings`` job above.  See
+    # ``app.scheduler_jobs.etf_holdings_quarterly`` for details.
+    try:
+        from app.scheduler_jobs.etf_holdings_quarterly import (
+            register as register_etf_holdings_quarterly,
+        )
+
+        register_etf_holdings_quarterly(scheduler)
+    except ImportError:
+        pass
     scheduler.add_job(
         run_a_share_stock_fundamental,
         trigger=CronTrigger(hour=16, minute=30, timezone="Asia/Shanghai"),

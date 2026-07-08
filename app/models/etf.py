@@ -169,20 +169,23 @@ class ETFCorporateAction(Base):
 
 
 class ETFHolding(Base):
-    """ETF holding (constituent) — one row per (ETF, underlying security).
+    """ETF holding (constituent) — one row per (ETF, underlying security, snapshot).
 
-    Tracks the underlying securities that an ETF holds. The
-    ``holdings_as_of_date`` column is the reporting-period date the
-    holding snapshot refers to (usually a quarter or semi-annual
-    disclosure). It is strictly nullable so historical rows written
-    before this column was added keep their pre-migration NULL.
-    Front-end renders surface a "holdings as of YYYY-MM-DD" hint
-    from this column.
+    Tracks the underlying securities that an ETF holds. Holdings are
+    published on a quarterly (or semi-annual) cadence; the
+    ``snapshot_date`` column is the reporting-period date the snapshot
+    refers to and is the upsert identity used by the ETL pipeline.
+    The legacy ``holdings_as_of_date`` column is preserved for
+    backwards compatibility (API responses still surface it) and is
+    kept in sync with ``snapshot_date`` by the ETL. Strictly nullable
+    so historical rows written before the column was added keep their
+    pre-migration NULL.
 
     NOTE: there was no pre-existing holdings table as of 2026-07-04.
-    This is the first concrete table for ETF holdings — the migration
-    only becomes meaningful once the upsert pipeline starts writing
-    ``holdings_as_of_date``. See alembic revision ``01aeaa464fc3``.
+    The first concrete table for ETF holdings shipped via alembic
+    revision ``01aeaa464fc3``; the ``snapshot_date`` upsert identity
+    was added via revision ``a3f8e1b2c4d5`` so each (ETF, holding,
+    snapshot) tuple can be upserted without deleting prior quarters.
     """
 
     __tablename__ = "etf_holding"
@@ -209,7 +212,13 @@ class ETFHolding(Base):
     holdings_as_of_date = Column(
         Date,
         nullable=True,
-        comment="Reporting-period date for this snapshot (e.g. quarterly disclosure)",
+        comment="Reporting-period date for this snapshot (legacy column, kept in sync with snapshot_date)",
+    )
+    snapshot_date = Column(
+        Date,
+        nullable=True,
+        index=True,
+        comment="Reporting-period date used as upsert identity (quarterly disclosure date)",
     )
     source = Column(String(50), comment="Data source (csindex, sse, manual)")
     created_at = Column(
@@ -221,11 +230,12 @@ class ETFHolding(Base):
     __table_args__ = (
         UniqueConstraint(
             "etf_code",
+            "snapshot_date",
             "holding_code",
-            "holdings_as_of_date",
-            name="uq_etf_holding_code_date",
+            name="uq_etf_holding_snapshot_code",
         ),
         Index("idx_etf_holding_etf", "etf_code"),
+        Index("idx_etf_holding_etf_snapshot", "etf_code", "snapshot_date"),
         Index("idx_etf_holding_as_of", "holdings_as_of_date"),
     )
 
