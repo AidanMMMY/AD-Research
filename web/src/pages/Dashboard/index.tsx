@@ -138,24 +138,25 @@ const GLOBAL_TILES: Array<{
   title: string;
   unit: string;
 }> = [
-  // ── US rates / vol (FRED) ──
-  { code: 'us_dgs10', title: '美 10Y 国债', unit: '%' },
-  { code: 'us_vix', title: 'VIX 恐慌', unit: '' },
-  // ── FX (FRED) ──
-  { code: 'global_dxy', title: '美元指数', unit: '' },
-  { code: 'usd_cny', title: '美元/人民币', unit: 'CNY/USD' },
-  // ── Commodities (FRED) ──
-  { code: 'global_brent', title: '布伦特原油', unit: 'USD/桶' },
-  { code: 'global_wti', title: 'WTI 原油', unit: 'USD/桶' },
-  // ── US indices (FRED) ──
+  // ── 美股大盘 ──
   { code: 'global_sp500', title: '标普 500', unit: '' },
   { code: 'global_ndx', title: '纳斯达克 100', unit: '' },
-  // ── Asia (yfinance + akshare) ──
+  { code: 'global_dow', title: '道琼斯', unit: '' },
+  // ── 美债 / 汇率 ──
+  { code: 'us_dgs10', title: 'US 10Y', unit: '%' },
+  { code: 'usd_cny', title: 'USD/CNY', unit: '' },
+  { code: 'usd_eur', title: 'USD/EUR', unit: '' },
+  { code: 'us_t10y3m', title: 'US T10Y3M', unit: '%' },
+  // ── 亚太 ──
+  { code: 'global_shcomp', title: '上证综指', unit: '' },
   { code: 'global_hsi', title: '恒生指数', unit: '' },
   { code: 'global_n225', title: '日经 225', unit: '' },
-  { code: 'global_shcomp', title: '上证综指', unit: '' },
-  // ── Europe (yfinance) ──
-  { code: 'global_dax', title: 'DAX (德国)', unit: '' },
+  { code: 'global_szse', title: '深证成指', unit: '' },
+  { code: 'global_kospi', title: 'KOSPI', unit: '' },
+  // ── 欧洲 ──
+  { code: 'global_ftse', title: '富时 100', unit: '' },
+  { code: 'global_dax', title: 'DAX', unit: '' },
+  { code: 'global_cac', title: 'CAC 40', unit: '' },
 ];
 
 function formatTileValue(v: number | null | undefined, unit: string): string {
@@ -172,13 +173,13 @@ function GlobalSnapshot() {
   const { data: latestUs, isLoading: uLoading } = useMacroLatest('us');
 
   const lookup = useMemo(() => {
-    const map = new Map<string, { value: number | null; period: string | null }>();
+    const map = new Map<string, { value: number | null; period: string | null; change_pct: number | null }>();
     for (const it of latestGlobal?.items ?? []) {
-      map.set(it.code, { value: it.value ?? null, period: it.period ?? null });
+      map.set(it.code, { value: it.value ?? null, period: it.period ?? null, change_pct: it.change_pct ?? null });
     }
     for (const it of latestUs?.items ?? []) {
       if (!map.has(it.code)) {
-        map.set(it.code, { value: it.value ?? null, period: it.period ?? null });
+        map.set(it.code, { value: it.value ?? null, period: it.period ?? null, change_pct: it.change_pct ?? null });
       }
     }
     return map;
@@ -250,6 +251,11 @@ function GlobalSnapshot() {
                   <span className="dashboard-index-card__empty">
                     {tile.title}
                   </span>
+                  {entry?.change_pct != null ? (
+                    <ReturnTag value={entry.change_pct} />
+                  ) : (
+                    <span className="dashboard-index-card__empty">—</span>
+                  )}
                   {entry?.period ? (
                     <span className="dashboard-index-card__timestamp">
                       {entry.period}
@@ -705,13 +711,21 @@ export default function Dashboard() {
           <div className="dashboard-side-stack">
             <Panel
               variant="default"
-              title="我的收藏"
+              title={
+                <span>
+                  <StarFilled className="ad-icon-accent" /> 我的收藏
+                </span>
+              }
               extra={
                 favCount > 0 ? (
-                  <span className="panel-extra-link" onClick={() => navigate('/instruments')}>
+                  <span className="panel-extra-link" onClick={() => navigate('/favorites')}>
                     查看全部 →
                   </span>
-                ) : undefined
+                ) : (
+                  <span className="panel-extra-link" onClick={() => navigate('/favorites')}>
+                    前往自选 →
+                  </span>
+                )
               }
             >
               {favLoading ? (
@@ -719,7 +733,23 @@ export default function Dashboard() {
               ) : favCount === 0 ? (
                 <EmptyState
                   title="暂无收藏的标的"
-                  description="在详情页点击收藏，这里会显示你关注的标的"
+                  description="在详情页点击 ★ 即可加入自选。这里会汇总你关注的标的、实时行情和相关新闻。"
+                  action={
+                    <span
+                      className="panel-extra-link"
+                      role="link"
+                      tabIndex={0}
+                      onClick={() => navigate('/favorites')}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          navigate('/favorites');
+                        }
+                      }}
+                    >
+                      前往「我的自选股」 →
+                    </span>
+                  }
                 />
               ) : (
                 <List

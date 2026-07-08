@@ -64,7 +64,7 @@ const CATEGORY_ORDER = ['rate', 'fx', 'commodity', 'index', 'vol'];
  *  - FRED (`source=fred`): us_dgs*, us_t10y*, global_dxy, global_usdjpy,
  *    global_brent, global_wti, global_sp500, global_nasdaq, global_dow,
  *    us_vix, usd_eur, usd_cny.
- *  - yfinance (`source=yfinance`): global_hsi, global_nikkei,
+ *  - yfinance (`source=yfinance`): global_hsi, global_n225,
  *    global_dax, global_ftse, global_cac, global_asx, global_kospi,
  *    global_twse, global_nifty, global_sensex.
  *  - akshare (`source=akshare`): global_shcomp, global_szse,
@@ -111,7 +111,7 @@ const PRIMARY_CODES: string[] = [
   'global_csi300',
   // ── International (yfinance) — Asia Pacific ──
   'global_hsi',
-  'global_nikkei',
+  'global_n225',
   'global_kospi',
   'global_twse',
   'global_asx',

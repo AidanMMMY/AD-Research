@@ -41,16 +41,19 @@ class IndexMeta:
 # change needed to extend coverage.  Tickers chosen to match Yahoo
 # Finance's canonical symbols (caret-prefixed for indices).
 GLOBAL_INDEX_REGISTRY: list[IndexMeta] = [
-    IndexMeta("^HSI",    "global_hsi",     "恒生指数",        "Hang Seng Index"),
-    IndexMeta("^N225",   "global_nikkei",  "日经225",          "Nikkei 225"),
-    IndexMeta("^GDAXI",  "global_dax",     "德国DAX指数",      "DAX"),
-    IndexMeta("^FTSE",   "global_ftse",    "英国FTSE 100",     "FTSE 100"),
-    IndexMeta("^FCHI",   "global_cac",     "法国CAC 40",       "CAC 40"),
-    IndexMeta("^AXJO",   "global_asx",     "澳洲ASX 200",      "ASX 200"),
-    IndexMeta("^KS11",   "global_kospi",   "韩国综合指数",      "KOSPI"),
-    IndexMeta("^TWII",   "global_twse",    "台湾加权指数",      "TWSE Weighted Index"),
-    IndexMeta("^NSEI",   "global_nifty",   "印度NIFTY 50",     "NIFTY 50"),
-    IndexMeta("^BSESN",  "global_sensex",  "印度SENSEX",        "BSE SENSEX"),
+    IndexMeta("^GSPC",  "global_sp500",  "标普500",         "S&P 500"),
+    IndexMeta("^NDX",   "global_ndx",    "纳斯达克100",      "NASDAQ-100"),
+    IndexMeta("^DJI",   "global_dow",    "道琼斯工业指数",   "Dow Jones Industrial Average"),
+    IndexMeta("^HSI",   "global_hsi",    "恒生指数",        "Hang Seng Index"),
+    IndexMeta("^N225",  "global_n225",   "日经225",         "Nikkei 225"),
+    IndexMeta("^GDAXI", "global_dax",    "德国DAX指数",      "DAX"),
+    IndexMeta("^FTSE",  "global_ftse",   "英国FTSE 100",     "FTSE 100"),
+    IndexMeta("^FCHI",  "global_cac",    "法国CAC 40",       "CAC 40"),
+    IndexMeta("^AXJO",  "global_asx",    "澳洲ASX 200",      "ASX 200"),
+    IndexMeta("^KS11",  "global_kospi",  "韩国综合指数",      "KOSPI"),
+    IndexMeta("^TWII",  "global_twse",   "台湾加权指数",      "TWSE Weighted Index"),
+    IndexMeta("^NSEI",  "global_nifty",  "印度NIFTY 50",     "NIFTY 50"),
+    IndexMeta("^BSESN", "global_sensex", "印度SENSEX",        "BSE SENSEX"),
 ]
 
 

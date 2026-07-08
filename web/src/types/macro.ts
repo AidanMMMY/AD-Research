@@ -52,6 +52,8 @@ export interface MacroLatestItem {
   /** ISO date (YYYY-MM-DD). */
   period: string;
   value: number;
+  prev_value: number | null;
+  change_pct: number | null;
   fetched_at: string | null;
 }
 

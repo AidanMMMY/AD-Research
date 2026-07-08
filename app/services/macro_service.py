@@ -16,7 +16,7 @@ from __future__ import annotations
 from datetime import date, datetime
 from typing import Any
 
-from sqlalchemy import distinct, func, select
+from sqlalchemy import desc, distinct, func, select
 from sqlalchemy.dialects.mysql import insert as mysql_insert
 from sqlalchemy.orm import Session
 
@@ -146,35 +146,72 @@ class MacroDataService:
         return result
 
     def latest_snapshot(self, region: str | None = None) -> dict[str, Any]:
-        """Return one row per (code, region) — the most recent observation."""
-        latest_period_subq = (
-            select(
-                MacroIndicator.code.label("code"),
-                MacroIndicator.region.label("region"),
-                func.max(MacroIndicator.period).label("latest_period"),
+        """Return one row per (code, region) — the most recent observation.
+
+        Also surfaces ``prev_value`` (the second-most-recent observation
+        for the same code) and ``change_pct`` so dashboard tiles can show
+        day-over-day moves without a separate per-code series call.
+
+        When multiple sources have data for the same code on the same day,
+        the tie-breaker prefers ``yfinance``/``akshare`` over ``fred``
+        alphabetically so the real-time pipeline wins over the slower
+        FRED publication.
+        """
+        ranked = select(
+            MacroIndicator,
+            func.dense_rank()
+            .over(
+                partition_by=[MacroIndicator.code, MacroIndicator.region],
+                order_by=desc(MacroIndicator.period),
             )
-            .group_by(MacroIndicator.code, MacroIndicator.region)
+            .label("period_rank"),
+            func.row_number()
+            .over(
+                partition_by=[
+                    MacroIndicator.code,
+                    MacroIndicator.region,
+                    MacroIndicator.period,
+                ],
+                order_by=desc(MacroIndicator.source),
+            )
+            .label("source_rank"),
         )
         if region:
-            latest_period_subq = latest_period_subq.where(MacroIndicator.region == region)
-        latest_period_subq = latest_period_subq.subquery()
+            ranked = ranked.where(MacroIndicator.region == region)
+        ranked = ranked.cte("ranked")
 
         stmt = (
-            select(MacroIndicator)
-            .join(
-                latest_period_subq,
-                (MacroIndicator.code == latest_period_subq.c.code)
-                & (MacroIndicator.region == latest_period_subq.c.region)
-                & (MacroIndicator.period == latest_period_subq.c.latest_period),
-            )
-            .order_by(MacroIndicator.code.asc())
+            select(ranked)
+            .where(ranked.c.period_rank <= 2)
+            .where(ranked.c.source_rank == 1)
+            .order_by(ranked.c.code, ranked.c.period.desc())
         )
-        rows = self.db.execute(stmt).scalars().all()
+        rows = self.db.execute(stmt).mappings().all()
 
-        return {
-            "items": [_to_latest(row) for row in rows],
-            "region": region,
-        }
+        # Group the top-2 periods per code and compute the previous value.
+        by_code: dict[tuple[str, str], list[dict[str, Any]]] = {}
+        for row in rows:
+            key = (row["code"], row["region"])
+            by_code.setdefault(key, []).append(row)
+
+        items: list[dict[str, Any]] = []
+        for key in sorted(by_code):
+            group = sorted(by_code[key], key=lambda r: r["period"], reverse=True)
+            latest = group[0]
+            prev = group[1] if len(group) > 1 else None
+            prev_value = prev["value"] if prev else None
+            change_pct = None
+            if (
+                latest["value"] is not None
+                and prev_value is not None
+                and prev_value != 0
+            ):
+                change_pct = round(
+                    (latest["value"] - prev_value) / prev_value * 100.0, 6
+                )
+            items.append(_to_latest(latest, prev_value=prev_value, change_pct=change_pct))
+
+        return {"items": items, "region": region}
 
     def get_series(
         self,
@@ -331,15 +368,21 @@ def _to_out(row: MacroIndicator) -> dict[str, Any]:
     }
 
 
-def _to_latest(row: MacroIndicator) -> dict[str, Any]:
+def _to_latest(
+    row: Any,
+    prev_value: float | None = None,
+    change_pct: float | None = None,
+) -> dict[str, Any]:
     return {
-        "code": row.code,
-        "region": row.region,
-        "name_zh": row.name_zh,
-        "name_en": row.name_en,
-        "unit": row.unit,
-        "source": row.source,
-        "period": row.period.isoformat() if row.period else None,
-        "value": row.value,
-        "fetched_at": row.fetched_at.isoformat() if row.fetched_at else None,
+        "code": row["code"],
+        "region": row["region"],
+        "name_zh": row["name_zh"],
+        "name_en": row["name_en"],
+        "unit": row["unit"],
+        "source": row["source"],
+        "period": row["period"].isoformat() if row["period"] else None,
+        "value": row["value"],
+        "prev_value": prev_value,
+        "change_pct": change_pct,
+        "fetched_at": row["fetched_at"].isoformat() if row["fetched_at"] else None,
     }

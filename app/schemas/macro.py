@@ -114,6 +114,8 @@ class MacroLatestItem(BaseModel):
     source: str
     period: date
     value: float
+    prev_value: float | None = None
+    change_pct: float | None = None
     fetched_at: datetime | None = None
 
 
