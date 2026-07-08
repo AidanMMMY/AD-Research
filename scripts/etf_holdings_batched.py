@@ -247,10 +247,23 @@ def _save_progress(path: str, done: set[str]) -> None:
 
 # ---- Main ETL -------------------------------------------------------------
 def _run_with_backoff(p, etf, tushare_provider, retries: int) -> tuple[Any, str | None]:
-    """Try Tushare then Akshare for one ETF with exponential backoff.
+    """Try Eastmoney F10 then Tushare then Akshare for one ETF with backoff.
 
-    Returns (df, source). df is None if both providers failed.
+    Returns (df, source). df is None if every provider failed.
     """
+    # ---- Eastmoney fund F10 (primary) ----
+    try:
+        from app.data.providers import eastmoney_f10_provider
+
+        df = eastmoney_f10_provider.fetch_etf_holdings(etf.code)
+        if df is not None and not df.empty:
+            return df, eastmoney_f10_provider.SOURCE
+    except Exception as exc:
+        log.warning(
+            "eastmoney_attempt_failed",
+            extra={"code": etf.code, "err": str(exc)[:200]},
+        )
+
     df = None
     source = None
 

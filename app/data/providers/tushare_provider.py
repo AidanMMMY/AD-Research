@@ -725,6 +725,154 @@ class TushareProvider(DataProvider):
     # ETF holdings (fund_portfolio)
     # ------------------------------------------------------------------
 
+    def _fetch_fund_portfolio_period(
+        self, period: str, page_size: int = 8000, max_pages: int = 20,
+    ) -> pd.DataFrame:
+        """Fetch ALL funds' top-10 holdings for a given quarter-end ``period``.
+
+        Tushare's ``fund_portfolio`` is "per quarter" with a single
+        ``period=YYYYMMDD`` (quarter-end) parameter, and returns at
+        most ~8 000 rows per call. We page via ``offset``/``limit`` to
+        collect the full market (~32 000 rows for Q1 2026 across 3
+        190 unique funds) in 3-4 API calls.
+
+        This is the bulk-ETL counterpart to per-ETF ``fund_portfolio``
+        calls — a single call here replaces 1 500+ single-ETF calls
+        (~30 minutes → ~1.5 seconds), at the cost of also returning
+        the open-end funds (``.OF``) which the caller can filter out
+        client-side.
+        """
+        frames: list[pd.DataFrame] = []
+        for page in range(max_pages):
+            offset = page * page_size
+            df_page: pd.DataFrame | None = None
+            for attempt in range(_RETRIES + 1):
+                try:
+                    self._limiter.acquire()
+                    df_page = self._pro.fund_portfolio(
+                        period=period, offset=offset, limit=page_size,
+                    )
+                    break
+                except Exception as exc:
+                    if attempt < _RETRIES:
+                        logger.warning(
+                            "Tushare fund_portfolio(period=%s, offset=%d) "
+                            "retry %d/%d: %s",
+                            period, offset, attempt + 1, _RETRIES, exc,
+                        )
+                        time.sleep(1.0 * (attempt + 1))
+                    else:
+                        logger.error(
+                            "Tushare fund_portfolio(period=%s, offset=%d) "
+                            "failed after %d retries: %s",
+                            period, offset, _RETRIES, exc,
+                        )
+                        return pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()
+
+            if df_page is None or df_page.empty:
+                break
+
+            frames.append(df_page)
+
+            # Short page → no more rows; also short-circuit on rows
+            # == page_size because the next call would otherwise hit
+            # a 0-row page anyway.
+            if len(df_page) < page_size:
+                break
+
+        if not frames:
+            return pd.DataFrame()
+
+        df = pd.concat(frames, ignore_index=True)
+        # Drop exact duplicates (Tushare occasionally returns the
+        # boundary row twice at page boundaries).
+        df = df.drop_duplicates(subset=["ts_code", "end_date", "symbol"])
+        return df
+
+    def _normalize_fund_portfolio(
+        self, df: pd.DataFrame, ts_code: str | None = None, limit: int = 10,
+    ) -> pd.DataFrame:
+        """Apply the same column-cleaning that ``fetch_etf_holdings`` does.
+
+        Optional ``ts_code`` keeps just that fund's rows; when omitted,
+        the full input DataFrame is normalized (one block of holdings
+        for many ETFs) and the output keeps the ``ts_code`` column
+        so the caller can split by ETF.
+        """
+        if df is None or df.empty:
+            return pd.DataFrame()
+
+        if "end_date" not in df.columns:
+            return pd.DataFrame()
+
+        df = df.copy()
+        df["end_date"] = pd.to_datetime(
+            df["end_date"], format="%Y%m%d", errors="coerce",
+        ).dt.date
+        df = df.dropna(subset=["end_date"])
+        if df.empty:
+            return pd.DataFrame()
+
+        if ts_code is not None:
+            df = df[df["ts_code"] == ts_code]
+            if df.empty:
+                return pd.DataFrame()
+            max_end_date = df["end_date"].max()
+            df = df[df["end_date"] == max_end_date].copy()
+        else:
+            # Keep only the latest end_date per ETF so we don't carry
+            # stale snapshots forward.
+            idx = df.groupby("ts_code")["end_date"].transform("max") == df["end_date"]
+            df = df[idx].copy()
+
+        rename_map = {
+            "symbol": "holding_code",
+            "amount": "shares",
+            "mkv": "market_value",
+            "stk_mkv_ratio": "weight",
+        }
+        df = df.rename(columns=rename_map)
+
+        for col in ("shares", "market_value", "weight"):
+            if col in df.columns:
+                df[col] = pd.to_numeric(df[col], errors="coerce")
+
+        if "weight" in df.columns and not df["weight"].empty:
+            # Use the max across the whole frame so ETFs reporting
+            # in % units and ETFs reporting in fraction units are
+            # normalised consistently in a single pass.
+            max_weight = df["weight"].max()
+            if pd.notna(max_weight) and max_weight > 1:
+                df["weight"] = df["weight"] / 100.0
+
+        df["holding_name"] = None
+        df = df.dropna(subset=["market_value"])
+
+        if ts_code is not None:
+            df["etf_code"] = ts_code
+            df = df.sort_values("market_value", ascending=False).head(limit)
+            df["holdings_as_of_date"] = df["end_date"]
+        else:
+            # Bulk path — preserve ts_code, derive etf_code mirror,
+            # sort & head(limit) inside each ETF.
+            df = df.sort_values(
+                ["ts_code", "market_value"], ascending=[True, False],
+            )
+            df["etf_code"] = df["ts_code"]
+            df["holdings_as_of_date"] = df["end_date"]
+            df = df.groupby("ts_code", group_keys=False).head(limit).reset_index(drop=True)
+
+        out_cols = [
+            "etf_code",
+            "holding_code",
+            "holding_name",
+            "weight",
+            "shares",
+            "market_value",
+            "holdings_as_of_date",
+        ]
+        return df[[c for c in out_cols if c in df.columns]].copy()
+
     def fetch_etf_holdings(self, ts_code: str, limit: int = 10) -> pd.DataFrame:
         """Fetch top-``limit`` ETF holdings from Tushare ``fund_portfolio``.
 
@@ -754,51 +902,91 @@ class TushareProvider(DataProvider):
         if df is None or df.empty:
             return pd.DataFrame()
 
-        if "end_date" not in df.columns:
-            return pd.DataFrame()
+        return self._normalize_fund_portfolio(df, ts_code=ts_code, limit=limit)
 
-        df["end_date"] = pd.to_datetime(df["end_date"], format="%Y%m%d", errors="coerce").dt.date
-        df = df.dropna(subset=["end_date"])
-        if df.empty:
-            return pd.DataFrame()
+    def fetch_etf_holdings_batch(
+        self, ts_codes: list[str] | None = None, period: str | None = None,
+        page_size: int = 8000, max_pages: int = 20, limit: int = 10,
+    ) -> tuple[dict[str, pd.DataFrame], list[str]]:
+        """Bulk-fetch ETF top-``limit`` holdings for the whole market in one period.
 
-        max_end_date = df["end_date"].max()
-        df = df[df["end_date"] == max_end_date].copy()
+        Strategy: Tushare's ``fund_portfolio`` does NOT support multiple
+        ``ts_code`` values comma-separated — it silently returns 0 rows
+        when given a comma list. The right bulk pattern is to pass
+        ``period=YYYYMMDD`` (quarter-end date) and paginate via
+        ``offset``/``limit`` so a single period's ~30 000 rows come
+        back in 3-4 API calls instead of one call per ETF (~1 500
+        calls × 0.5 s ≈ 12+ minutes).
 
-        rename_map = {
-            "symbol": "holding_code",
-            "amount": "shares",
-            "mkv": "market_value",
-            "stk_mkv_ratio": "weight",
+        Args:
+            ts_codes: Optional whitelist. When provided, only ETFs in
+                this set are returned (and missing ones are surfaced
+                in the second return value so the pipeline can log
+                them). When ``None``, every fund in the response is
+                returned keyed by ``ts_code``.
+            period: Quarter-end date in ``YYYYMMDD`` format. Defaults
+                to the most recent quarter-end at runtime. Note that
+                callers in mid-quarter will see partial disclosure
+                — Tushare returns rows only for funds that have
+                already disclosed.
+            page_size: ``fund_portfolio`` returns at most ~8 000 rows
+                per call. Keep at the Tushare limit.
+            max_pages: Safety cap so a degenerate response can't loop
+                forever. 20 pages × 8 000 = 160 000 rows, well above
+                the all-funds universe.
+
+        Returns:
+            ``(mapping, missing)`` where ``mapping[ts_code]`` is the
+            cleaned top-``limit`` DataFrame for that ETF and
+            ``missing`` is the list of requested ``ts_codes`` (when
+            provided) that did not appear in the response.
+        """
+        if period is None:
+            period = self._latest_disclosed_period()
+
+        raw = self._fetch_fund_portfolio_period(
+            period=period, page_size=page_size, max_pages=max_pages,
+        )
+        if raw.empty:
+            return ({}, list(ts_codes) if ts_codes else [])
+
+        normalized = self._normalize_fund_portfolio(raw, ts_code=None, limit=limit)
+        if normalized.empty:
+            return ({}, list(ts_codes) if ts_codes else [])
+
+        # Group by etf_code (= ts_code) for the per-ETF mapping.
+        mapping: dict[str, pd.DataFrame] = {
+            etf: group.reset_index(drop=True)
+            for etf, group in normalized.groupby("etf_code", sort=False)
         }
-        df = df.rename(columns=rename_map)
 
-        for col in ("shares", "market_value", "weight"):
-            if col in df.columns:
-                df[col] = pd.to_numeric(df[col], errors="coerce")
+        missing: list[str] = []
+        if ts_codes is not None:
+            missing = [c for c in ts_codes if c not in mapping]
+        return mapping, missing
 
-        if "weight" in df.columns and not df["weight"].empty:
-            max_weight = df["weight"].max()
-            if pd.notna(max_weight) and max_weight > 1:
-                df["weight"] = df["weight"] / 100.0
+    @staticmethod
+    def _latest_disclosed_period() -> str:
+        """Return the most recent quarter-end ``YYYYMMDD`` worth trying.
 
-        df["holding_name"] = None
-        df = df.dropna(subset=["market_value"])
-        df = df.sort_values("market_value", ascending=False).head(limit)
+        ETFs disclose quarterly, with the bulk arriving on 4/22,
+        8/30 and 10/25. We try the most recent quarter-end; if no
+        data is published yet, callers fall back to single-ETF calls
+        which return 0 rows too — but at least the bulk query is
+        cheap and the failure is observable.
 
-        df["etf_code"] = ts_code
-        df["holdings_as_of_date"] = max_end_date
-
-        out_cols = [
-            "etf_code",
-            "holding_code",
-            "holding_name",
-            "weight",
-            "shares",
-            "market_value",
-            "holdings_as_of_date",
-        ]
-        return df[[c for c in out_cols if c in df.columns]].copy()
+        We do NOT probe multiple periods here — the pipeline already
+        runs on a quarterly cadence and the operator can rerun
+        manually after the disclosure window.
+        """
+        today = date.today()
+        quarter_ends = [(3, 31), (6, 30), (9, 30), (12, 31)]
+        for month, day in reversed(quarter_ends):
+            period_date = date(today.year, month, day)
+            if period_date <= today:
+                return f"{today.year}{month:02d}{day:02d}"
+        # Year hasn't started — fall back to previous year's Q4.
+        return f"{today.year - 1}1231"
 
     # ------------------------------------------------------------------
     # Valuation / Market Data (daily_basic)
