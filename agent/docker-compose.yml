@@ -1,0 +1,39 @@
+# AD-Research agent workers - independent compose file
+#
+# IMPORTANT: This is a SEPARATE compose project from the platform (alloyresearch-*).
+# It uses an isolated bridge network so worker containers cannot reach the
+# platform backend / postgres / redis containers directly. To hit the backend
+# API, workers use the host IP http://47.239.13.111:8000.
+#
+# Naming convention:
+#   image:     alloyresearch-agent:latest
+#   network:   alloyresearch-agent-network (top-level, no project prefix)
+#   containers: alloyresearch-agent-worker-<task>
+#
+# In normal operation we launch workers via run_worker.sh (direct docker run).
+# This compose file documents the topology / provides fan-out target.
+
+name: aliyun-ecs-alloyresearch-agent
+
+services:
+  worker:
+    image: alloyresearch-agent:latest
+    container_name: alloyresearch-agent-worker
+    networks:
+      - alloyresearch-agent-network
+    volumes:
+      - /root/.playwright-profile:/profile:rw
+      - /root/ad-research/agent/workers:/workspace/workers:ro
+      - /data/ad-research:/data:rw
+    working_dir: /workspace
+    environment:
+      - PYTHONUNBUFFERED=1
+      - TZ=Asia/Shanghai
+      - PLAYWRIGHT_USER_DATA_DIR=/profile
+      - PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+    command: ["bash", "-lc", "echo agent worker idle - use run_worker.sh"]
+
+networks:
+  alloyresearch-agent-network:
+    name: alloyresearch-agent-network
+    driver: bridge
