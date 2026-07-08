@@ -23,6 +23,7 @@ from app.api.v1 import (
     crypto,
     deployments,
     etf_holdings,
+    etf_holdings_stats,
     etf_scanner,
     etfs,
     etl,
@@ -165,6 +166,15 @@ def health_check():
 app.include_router(etfs.router, prefix=f"{settings.api_v1_prefix}/etfs", tags=["ETFs"])
 app.include_router(
     etf_holdings.router, prefix=f"{settings.api_v1_prefix}", tags=["ETF Holdings"]
+)
+# Coverage / stats / blacklist router — powers the dashboard card and
+# the post-ETL alert log in ``etf_holdings_quarterly``.  Same prefix
+# as the operational etf_holdings router so the four endpoints land
+# under ``/api/v1/etf-holdings/{stats,coverage,unavailable}``.
+app.include_router(
+    etf_holdings_stats.router,
+    prefix=f"{settings.api_v1_prefix}",
+    tags=["ETF Holdings"],
 )
 app.include_router(pools.router, prefix=f"{settings.api_v1_prefix}/pools", tags=["Pools"])
 app.include_router(

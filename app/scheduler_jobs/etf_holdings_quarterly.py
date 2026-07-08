@@ -16,6 +16,14 @@ an opportunistic "try to refresh whatever is new" while this quarterly
 job is the deterministic catch-up that fires whether the daily job
 succeeded or not.
 
+After every run we also evaluate the coverage SLO (see
+``app.services.etf_holdings_coverage``) and log an alert when the
+most recent snapshot is below the 7/14/30 day coverage thresholds.
+The alert severity (WARN/ERROR) is driven by the threshold table.
+This is the same path the dashboard hits via
+``GET /api/v1/etf-holdings/coverage/latest`` so the alert log and
+the UI stay in lockstep.
+
 Manual trigger (force=True bypasses the in-flight lock):
     POST /api/v1/etf-holdings/refresh
     POST /api/v1/etf-holdings/refresh?force=true
@@ -32,6 +40,10 @@ from apscheduler.triggers.cron import CronTrigger
 from app.core.database import SessionLocal
 from app.core.redis_client import redis_lock
 from app.data.pipelines.etf_holdings import ETFHoldingsPipeline
+from app.services.etf_holdings_coverage import (
+    COVERAGE_THRESHOLDS,
+    get_latest_coverage,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -49,6 +61,62 @@ QUARTERLY_TRIGGERS: list[tuple[str, int, int]] = [
     ("Mid-year reports", 8, 30),
     ("Q3 reports", 10, 25),
 ]
+
+
+def _log_coverage_summary() -> dict[str, Any] | None:
+    """Evaluate the coverage SLO and emit a single INFO + per-threshold alert.
+
+    Each alert uses the severity configured in
+    ``app.services.etf_holdings_coverage.COVERAGE_THRESHOLDS`` (WARN or
+    ERROR).  Returns the coverage dict (or ``None`` when no snapshot
+    exists yet) so callers / tests can introspect what was logged.
+    """
+    db = SessionLocal()
+    try:
+        coverage = get_latest_coverage(db)
+        if coverage is None:
+            logger.info(
+                "[SCHEDULER] ETF holdings coverage: no snapshot landed yet"
+            )
+            return None
+
+        summary = coverage.to_dict()
+        logger.info(
+            "[SCHEDULER] ETF holdings coverage: "
+            "snapshot=%s etf_count=%s/%s (%.2f%%) days_ago=%d sources=%s",
+            summary["snapshot_date"],
+            summary["etf_count"],
+            summary["eligible_etf_count"],
+            summary["coverage_pct"],
+            summary["days_ago"],
+            summary["sources"],
+        )
+
+        for alert in coverage.coverage_alerts:
+            threshold = alert["threshold_days"]
+            min_pct = alert["min_coverage_pct"]
+            actual = alert["actual_coverage_pct"]
+            severity = alert.get("severity", "WARN")
+            log_fn = logger.error if severity == "ERROR" else logger.warning
+            log_fn(
+                "[SCHEDULER] ETF holdings coverage SLO breach: "
+                "%d-day threshold not met — actual=%.2f%% < expected=%.2f%% "
+                "(snapshot=%s, days_ago=%d, severity=%s)",
+                threshold,
+                actual,
+                min_pct,
+                summary["snapshot_date"],
+                summary["days_ago"],
+                severity,
+            )
+        return summary
+    except Exception as exc:  # noqa: BLE001 — coverage is best-effort
+        logger.warning(
+            "[SCHEDULER] ETF holdings coverage summary failed: %s", exc
+        )
+        return None
+    finally:
+        db.close()
 
 
 def refresh_etf_holdings(force: bool = False) -> dict[str, Any]:
@@ -87,7 +155,7 @@ def _run_pipeline(acquired: bool, forced: bool) -> dict[str, Any]:
     try:
         pipeline = ETFHoldingsPipeline(db)
         result = pipeline.run_with_retry(max_attempts=2)
-        payload = {
+        payload: dict[str, Any] = {
             "status": "ok" if result.success else "failed",
             "records": result.records,
             "forced": forced,
@@ -97,6 +165,13 @@ def _run_pipeline(acquired: bool, forced: bool) -> dict[str, Any]:
             payload["error"] = result.error
         if result.warnings:
             payload["warnings"] = result.warnings
+
+        # Coverage SLO evaluation — only run on successful ETL passes.
+        if result.success:
+            coverage = _log_coverage_summary()
+            if coverage is not None:
+                payload["coverage"] = coverage
+
         logger.info(
             "[SCHEDULER] ETF holdings quarterly refresh: "
             "status=%s records=%s forced=%s",
@@ -145,8 +220,10 @@ def register(scheduler: BackgroundScheduler) -> None:
         )
         logger.info(
             "[SCHEDULER] Registered quarterly ETF holdings refresh: "
-            "%02d-%02d 02:00 Asia/Shanghai (id=%s)",
+            "%02d-%02d 02:00 Asia/Shanghai (id=%s, "
+            "coverage_thresholds=%s)",
             month,
             day,
             job_id,
+            [(d, p) for d, p, _ in COVERAGE_THRESHOLDS],
         )

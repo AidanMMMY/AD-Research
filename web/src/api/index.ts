@@ -26,4 +26,5 @@ export { stockFundamentalApi } from './stockFundamental';
 export { stocksApi } from './stocks';
 export { newsApi } from './news';
 export { macroApi } from './macro';
+export { etfHoldingsCoverageApi } from './etfHoldingsCoverage';
 export { default as client } from './client';

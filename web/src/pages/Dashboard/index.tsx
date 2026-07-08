@@ -47,7 +47,7 @@ import TickerTape from '@/components/TickerTape';
 import HelpPopover from '@/components/HelpPopover';
 import DailyLesson from '@/components/DailyLesson';
 import DataFreshnessHint from '@/components/DataFreshnessHint';
-import { useLearnStats } from '@/hooks/useLearnedTerms';
+import EtfHoldingsCoverageCard from '@/components/EtfHoldingsCoverageCard';
 import { useSettingsStore } from '@/stores/settings';
 import { usePriceStream } from '@/hooks/usePriceStream';
 import { useMarketStream } from '@/hooks/useMarketStream';
@@ -341,7 +341,6 @@ function useDashboardStatsKpis() {
 export default function Dashboard() {
   const navigate = useNavigate();
   const mode = useSettingsStore((s) => s.mode);
-  const learnStats = useLearnStats();
   const { data: scoresData } = useScores({ limit: 10 });
   const { favorites, count: favCount, isLoading: favLoading } = useFavorites(10);
   const { data: pools, isLoading: poolsLoading } = usePoolList();
@@ -486,11 +485,6 @@ export default function Dashboard() {
             <ThemeTag variant="neutral" icon={<ThunderboltOutlined />} onClick={() => navigate('/live-trading')}>真实账户</ThemeTag>
             <ThemeTag variant="default" icon={<AppstoreOutlined />} onClick={() => navigate('/pools')}>标的池</ThemeTag>
             <ThemeTag variant="warning" icon={<PartitionOutlined />} onClick={() => navigate('/learning?panel=terms')}>知识图谱</ThemeTag>
-            {learnStats.total > 0 && (
-              <span className="dashboard-shell__learn-meta">
-                本周已学 {learnStats.total} 个术语
-              </span>
-            )}
           </span>
         }
       />
@@ -554,6 +548,19 @@ export default function Dashboard() {
       <section className="dashboard-section">
         <SectionHeading title="今日一课" />
         <DailyLesson />
+      </section>
+
+      {/* ── ETF holdings coverage (Phase 2, 2026-07-08) ────────────────
+         Single full-width card that surfaces the latest snapshot's
+         coverage, the 7/14/30-day SLO state, the per-snapshot trend,
+         and the structural blacklist size.  Mirrors the post-ETL
+         alert log in ``etf_holdings_quarterly`` so the badge and
+         the WARN log stay in lockstep. */}
+      <section className="dashboard-section">
+        <SectionHeading title="数据健康度" />
+        <ResponsiveGrid cols={1} gap="md">
+          <EtfHoldingsCoverageCard />
+        </ResponsiveGrid>
       </section>
 
       {/* ── Global markets snapshot (P0: 2026-07-04) ─────────────────── */}

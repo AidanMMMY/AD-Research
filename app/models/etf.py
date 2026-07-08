@@ -16,6 +16,7 @@ from sqlalchemy import (
     Index,
     Integer,
     String,
+    Text,
     UniqueConstraint,
     func,
 )
@@ -237,6 +238,100 @@ class ETFHolding(Base):
         Index("idx_etf_holding_etf", "etf_code"),
         Index("idx_etf_holding_etf_snapshot", "etf_code", "snapshot_date"),
         Index("idx_etf_holding_as_of", "holdings_as_of_date"),
+    )
+
+
+class ETFHoldingFailed(Base):
+    """ETFs whose top-10 holdings could not be refreshed in the latest run.
+
+    Populated by ``ETFHoldingsPipeline`` whenever an ETF is missing
+    from the bulk Tushare response AND the Akshare fallback also
+    returns nothing. ``retry_count`` is bumped on each quarterly
+    failure so operators can spot persistently-broken ETFs that
+    may need manual intervention (e.g. delisted, renumbered, or
+    removed from Tushare's universe).
+    """
+
+    __tablename__ = "etf_holding_failed"
+
+    id = Column(Integer, primary_key=True, autoincrement=True, comment="ID")
+    etf_code = Column(
+        String(20),
+        ForeignKey("etf_info.code", ondelete="CASCADE"),
+        nullable=False,
+        unique=True,
+        comment="ETF / fund code that could not be refreshed",
+    )
+    last_error = Column(
+        Text,
+        comment="Last error / note from the pipeline (truncated message)",
+    )
+    retry_count = Column(
+        Integer,
+        nullable=False,
+        server_default="1",
+        comment="How many consecutive runs have failed for this ETF",
+    )
+    last_attempt_at = Column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        comment="UTC timestamp of the last failed attempt",
+    )
+    created_at = Column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        comment="Creation time",
+    )
+
+    __table_args__ = (
+        Index("idx_etf_holding_failed_last_attempt", "last_attempt_at"),
+    )
+
+
+class ETFHoldingUnavailable(Base):
+    """ETFs whose top-10 holdings are structurally unavailable.
+
+    The ETF top-10 holdings ETL (``ETFHoldingsPipeline``) skips ETFs
+    that appear in this table.  The list is curated (currently 33
+    A-share currency and physical-gold / SGE-gold ETFs) and is used by
+    the coverage KPI as the excluded set so the denominator is
+    "etfs we expected to land" rather than "etfs we attempted".
+
+    The schema mirrors the alembic migration
+    ``b5e2c8f4a1d3_add_etf_holding_unavailable_and_stats_view``.
+    """
+
+    __tablename__ = "etf_holding_unavailable"
+
+    etf_code = Column(
+        String(20),
+        primary_key=True,
+        comment="Instrument code marked as structurally-unavailable",
+    )
+    category = Column(
+        String(50),
+        nullable=False,
+        comment="Unavailable category: 货币型 | 商品型 | 债券型 | 其他",
+    )
+    reason = Column(
+        String(500),
+        nullable=False,
+        comment="Why this ETF was marked unavailable (Chinese explanation)",
+    )
+    marked_at = Column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+        comment="When the row was inserted into the blacklist",
+    )
+    marked_by = Column(
+        String(50),
+        nullable=True,
+        comment="Who/what marked it (manual, etf_holdings_quarterly, etc.)",
+    )
+
+    __table_args__ = (
+        Index("idx_etf_holding_unavailable_category", "category"),
     )
 
 

@@ -5,7 +5,6 @@ import {
   CheckOutlined,
   ArrowRightOutlined,
   SyncOutlined,
-  BookOutlined,
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -22,7 +21,7 @@ interface DailyLessonProps {
 }
 
 /**
- * K15 P0 + Phase 2 (2026-07-07): Dashboard "今日学习" lesson card.
+ * K15 P0 + Phase 2 (2026-07-07): Dashboard "今日一课" lesson card.
  *
  * Phase 2 changes:
  *   - Drops the inner panel surface (was a deep blue gradient with a
@@ -32,9 +31,11 @@ interface DailyLessonProps {
  *   - Replaced the termDictionary pick (heavy 200+ entry weight) with
  *     a hand-curated ``lessonBank`` (12 conversational lessons). The
  *     termDictionary still powers HelpPopover elsewhere.
- *   - Layout is a single column: header (title + learned tag), body
- *     (category tag + lesson title + content + tip), and footer
- *     (weekly progress hint + action buttons).
+ *   - Layout is a single column: body (category tag + lesson title +
+ *     optional "已学会" badge + content + tip) and footer (weekly
+ *     progress hint + action buttons). The "今日一课" title lives on
+ *     the outer SectionHeading, so the card itself does not duplicate
+ *     it. (Phase 3, 2026-07-08.)
  *   - "No-repeat this session" tracked via useRef Set of lesson IDs.
  *
  * The component never renders its own border — the Dashboard still
@@ -105,23 +106,16 @@ export default function DailyLesson({ today: _today = new Date() }: DailyLessonP
 
   return (
     <section className="daily-lesson">
-      <div className="daily-lesson__header">
-        <div className="daily-lesson__title-row">
-          <BookOutlined className="daily-lesson__icon" />
-          <span className="daily-lesson__title">今日一课</span>
-        </div>
-        {isLearned && (
-          <Tag icon={<CheckOutlined />} color="success" className="daily-lesson__tag">
-            已学会
-          </Tag>
-        )}
-      </div>
-
       <div className="daily-lesson__body">
         <div className="daily-lesson__col daily-lesson__col--main">
           <div className="daily-lesson__heading">
             <Tag className="daily-lesson__tag">{lesson.tag}</Tag>
             <span className="daily-lesson__heading-title">{lesson.title}</span>
+            {isLearned && (
+              <Tag icon={<CheckOutlined />} color="success" className="daily-lesson__tag daily-lesson__tag--learned">
+                已学会
+              </Tag>
+            )}
           </div>
           <p className="daily-lesson__short">{lesson.body}</p>
           {lesson.tip && (
