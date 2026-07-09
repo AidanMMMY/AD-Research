@@ -61,6 +61,10 @@ class ETFFilterParams(BaseModel):
     search: str | None = None
     listing_market: str | None = None
     board: str | None = None
+    # Exchange code (NYSE / NASDAQ) — US equity filter. Added 2026-07-09
+    # for the InstrumentList two-stage filter UI; the cascade context is
+    # already wired through the existing facet endpoints.
+    exchange: str | None = None
     page: int = 1
     page_size: int = 50
 

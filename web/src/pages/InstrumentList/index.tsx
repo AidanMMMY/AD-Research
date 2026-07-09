@@ -11,6 +11,7 @@ import {
   Col,
   Button,
   Tooltip,
+  Collapse,
 } from 'antd';
 import { SearchOutlined, ReloadOutlined } from '@ant-design/icons';
 import {
@@ -123,6 +124,9 @@ export default function InstrumentList() {
   const [board, setBoard] = useState<string | undefined>(
     searchParams.get('board') ?? undefined,
   );
+  const [exchange, setExchange] = useState<string | undefined>(
+    searchParams.get('exchange') ?? undefined,
+  );
   const [page, setPage] = useState(() => {
     const raw = searchParams.get('page');
     return raw ? Number(raw) : 1;
@@ -150,12 +154,13 @@ export default function InstrumentList() {
     if (maxFundSize != null) next.max_fund_size = String(maxFundSize);
     if (listingMarket) next.listing_market = listingMarket;
     if (board) next.board = board;
+    if (exchange) next.exchange = exchange;
     if (page !== 1) next.page = String(page);
     setSearchParams(next, { replace: true });
   }, [
     search, market, category, instrumentType, subCategory, sector, industry,
     country, manager, underlyingIndex, currency, isQdii, status, minFundSize,
-    maxFundSize, listingMarket, board, page, setSearchParams,
+    maxFundSize, listingMarket, board, exchange, page, setSearchParams,
   ]);
 
   const listParams = {
@@ -176,11 +181,36 @@ export default function InstrumentList() {
     max_fund_size: maxFundSize,
     listing_market: listingMarket,
     board,
+    exchange,
     page,
     page_size: PAGE_SIZE,
   };
 
   const { data, isLoading, dataUpdatedAt, isFetching } = useInstrumentList(listParams);
+
+  // Stage-2 visibility. Coarse filters (市场 / 类型) decide which advanced
+  // groups are exposed. When only one of (market, type) is set we show every
+  // type for that market (or every market for that type) — i.e. an
+  // unset coarse filter is a wildcard, not a hard block.
+  const isA = market === 'A股';
+  const isUS = market === 'US';
+  const isHK = market === 'HK';
+  const isCryptoType = instrumentType === 'CRYPTO';
+  const showA_shareEtfFilters =
+    isA && (!instrumentType || instrumentType === 'ETF');
+  const showA_shareStockFilters =
+    isA && (!instrumentType || instrumentType === 'STOCK');
+  const showUsFilters =
+    isUS && (!instrumentType || instrumentType === 'ETF' || instrumentType === 'STOCK');
+  const showHkFilters = isHK && (!instrumentType || instrumentType === 'STOCK' || instrumentType === 'ETF');
+  const showCryptoFilters =
+    isCryptoType || (!market && !instrumentType);
+  const stage2Summary = useMemo(() => {
+    const parts: string[] = [];
+    if (market) parts.push(market);
+    if (instrumentType) parts.push(instrumentType);
+    return parts.join(' · ');
+  }, [market, instrumentType]);
 
   // Cascade filters for facet options: all current selections except the facet
   // itself are sent so each dropdown only shows values that still yield results.
@@ -197,6 +227,7 @@ export default function InstrumentList() {
     currency,
     is_qdii: isQdii,
     status,
+    exchange,
   };
   const { data: categories } = useInstrumentCategories(cascadeFilters);
   const { data: sectors } = useInstrumentSectors(cascadeFilters);
@@ -251,6 +282,17 @@ export default function InstrumentList() {
     // QDII only applies to ETFs; clear it when the type is set to something else.
     if (instrumentType && instrumentType !== 'ETF' && isQdii != null) setIsQdii(undefined);
   }, [instrumentType, isQdii]);
+  useEffect(() => {
+    // Exchange filter only applies to US equities.
+    if (market && market !== 'US' && exchange != null) setExchange(undefined);
+  }, [market, exchange]);
+  useEffect(() => {
+    // A-share listing market / board only make sense for A股.
+    if (market && market !== 'A股') {
+      if (listingMarket != null) setListingMarket(undefined);
+      if (board != null) setBoard(undefined);
+    }
+  }, [market, listingMarket, board]);
 
   const handleReset = () => {
     setSearch('');
@@ -270,6 +312,7 @@ export default function InstrumentList() {
     setMaxFundSize(undefined);
     setListingMarket(undefined);
     setBoard(undefined);
+    setExchange(undefined);
     setPage(1);
   };
 
@@ -450,9 +493,11 @@ export default function InstrumentList() {
         }
       >
         <div className="instrument-filter-groups">
-          {/* Section 1 — 搜索 / 平台覆盖 (cross-market identification) */}
+          {/* Stage 1 — coarse filters (always visible).
+              Picking 市场 + 类型 narrows the universe and decides which
+              stage-2 (advanced) filters get exposed below. */}
           <div className="instrument-filter-group">
-            <div className="instrument-filter-group__title">搜索 / 平台覆盖</div>
+            <div className="instrument-filter-group__title">基础筛选</div>
             <Row gutter={[16, 12]}>
               <Col xs={12} sm={8} md={6}>
                 <Input
@@ -472,6 +517,20 @@ export default function InstrumentList() {
                   options={toOptions(markets)}
                   value={market}
                   onChange={(v) => { setMarket(v); setPage(1); }}
+                />
+              </Col>
+              <Col xs={12} sm={8} md={6}>
+                <Select
+                  placeholder="类型"
+                  allowClear
+                  className="ad-w-full"
+                  options={[
+                    { label: 'ETF', value: 'ETF' },
+                    { label: '个股', value: 'STOCK' },
+                    { label: '数字货币', value: 'CRYPTO' },
+                  ]}
+                  value={instrumentType}
+                  onChange={(v) => { setInstrumentType(v); setPage(1); }}
                 />
               </Col>
               {hasOptions(countries) && (
@@ -501,167 +560,301 @@ export default function InstrumentList() {
             </Row>
           </div>
 
-          {/* Section 2 — 类型与分类 (asset class + classification) */}
-          <div className="instrument-filter-group">
-            <div className="instrument-filter-group__title">类型与分类</div>
-            <Row gutter={[16, 12]}>
-              <Col xs={12} sm={8} md={6}>
-                <Select
-                  placeholder="类型"
-                  allowClear
-                  className="ad-w-full"
-                  options={[
-                    { label: 'ETF', value: 'ETF' },
-                    { label: '个股', value: 'STOCK' },
-                    { label: '数字货币', value: 'CRYPTO' },
-                  ]}
-                  value={instrumentType}
-                  onChange={(v) => { setInstrumentType(v); setPage(1); }}
-                />
-              </Col>
-              {hasOptions(categories) && (
-                <Col xs={12} sm={8} md={6}>
-                  <Select
-                    placeholder="分类"
-                    allowClear
-                    className="ad-w-full"
-                    options={toOptions(categories)}
-                    value={category}
-                    onChange={(v) => { setCategory(v); setPage(1); }}
-                  />
-                </Col>
-              )}
-              {hasOptions(subCategories) && (
-                <Col xs={12} sm={8} md={6}>
-                  <Select
-                    placeholder="子分类"
-                    allowClear
-                    className="ad-w-full"
-                    options={toOptions(subCategories)}
-                    value={subCategory}
-                    onChange={(v) => { setSubCategory(v); setPage(1); }}
-                  />
-                </Col>
-              )}
-              {hasOptions(sectors) && (
-                <Col xs={12} sm={8} md={6}>
-                  <Select
-                    placeholder="板块"
-                    allowClear
-                    className="ad-w-full"
-                    options={toOptions(sectors)}
-                    value={sector}
-                    onChange={(v) => { setSector(v); setPage(1); }}
-                  />
-                </Col>
-              )}
-              {hasOptions(industries) && (
-                <Col xs={12} sm={8} md={6}>
-                  <Select
-                    placeholder="行业"
-                    allowClear
-                    className="ad-w-full"
-                    options={toOptions(industries)}
-                    value={industry}
-                    onChange={(v) => { setIndustry(v); setPage(1); }}
-                  />
-                </Col>
-              )}
-              {hasOptions(listingMarkets) && (
-                <Col xs={12} sm={8} md={6}>
-                  <Select
-                    placeholder="上市地"
-                    allowClear
-                    className="ad-w-full"
-                    options={toOptions(listingMarkets)}
-                    value={listingMarket}
-                    onChange={(v) => { setListingMarket(v); setPage(1); }}
-                  />
-                </Col>
-              )}
-              {hasOptions(boards) && (
-                <Col xs={12} sm={8} md={6}>
-                  <Select
-                    placeholder="板块"
-                    allowClear
-                    className="ad-w-full"
-                    options={toOptions(boards)}
-                    value={board}
-                    onChange={(v) => { setBoard(v); setPage(1); }}
-                  />
-                </Col>
-              )}
-              {hasOptions(managers) && (
-                <Col xs={12} sm={8} md={6}>
-                  <Select
-                    placeholder="管理公司"
-                    allowClear
-                    className="ad-w-full"
-                    options={toOptions(managers)}
-                    value={manager}
-                    onChange={(v) => { setManager(v); setPage(1); }}
-                  />
-                </Col>
-              )}
-              {hasOptions(underlyingIndices) && (
-                <Col xs={12} sm={8} md={6}>
-                  <Select
-                    placeholder="跟踪指数"
-                    allowClear
-                    className="ad-w-full"
-                    options={toOptions(underlyingIndices)}
-                    value={underlyingIndex}
-                    onChange={(v) => { setUnderlyingIndex(v); setPage(1); }}
-                  />
-                </Col>
-              )}
-            </Row>
-          </div>
+          {/* Stage 2 — fine / cascade filters. Only shown when at least one
+              of (市场, 类型) is selected, so users do not see a flat grid of
+              mostly-irrelevant dropdowns. Each filter is gated by a prerequisite
+              and only renders values that still yield rows given the
+              parent's other selections (cascade context is sent on every
+              facet call). */}
+          {(market || instrumentType) && (
+            <Collapse
+              ghost
+              defaultActiveKey={['advanced']}
+              items={[
+                {
+                  key: 'advanced',
+                  label: (
+                    <span className="ad-text-secondary">
+                      高级筛选
+                      {stage2Summary ? (
+                        <span className="ad-text-tertiary ad-ml-2">{stage2Summary}</span>
+                      ) : null}
+                    </span>
+                  ),
+                  children: (
+                    <div className="instrument-filter-groups">
+                      {/* A股 ETF — 分类 / 跟踪指数 / 管理公司 / 板块 */}
+                      {showA_shareEtfFilters && (
+                        <div className="instrument-filter-group">
+                          <div className="instrument-filter-group__title">A 股 ETF</div>
+                          <Row gutter={[16, 12]}>
+                            {hasOptions(categories) && (
+                              <Col xs={12} sm={8} md={6}>
+                                <Select
+                                  placeholder="分类"
+                                  allowClear
+                                  className="ad-w-full"
+                                  options={toOptions(categories)}
+                                  value={category}
+                                  onChange={(v) => { setCategory(v); setPage(1); }}
+                                />
+                              </Col>
+                            )}
+                            {hasOptions(underlyingIndices) && (
+                              <Col xs={12} sm={8} md={6}>
+                                <Select
+                                  placeholder="跟踪指数"
+                                  allowClear
+                                  className="ad-w-full"
+                                  options={toOptions(underlyingIndices)}
+                                  value={underlyingIndex}
+                                  onChange={(v) => { setUnderlyingIndex(v); setPage(1); }}
+                                />
+                              </Col>
+                            )}
+                            {hasOptions(managers) && (
+                              <Col xs={12} sm={8} md={6}>
+                                <Select
+                                  placeholder="管理公司"
+                                  allowClear
+                                  className="ad-w-full"
+                                  options={toOptions(managers)}
+                                  value={manager}
+                                  onChange={(v) => { setManager(v); setPage(1); }}
+                                />
+                              </Col>
+                            )}
+                            {hasOptions(listingMarkets) && (
+                              <Col xs={12} sm={8} md={6}>
+                                <Select
+                                  placeholder="上市地"
+                                  allowClear
+                                  className="ad-w-full"
+                                  options={toOptions(listingMarkets)}
+                                  value={listingMarket}
+                                  onChange={(v) => { setListingMarket(v); setPage(1); }}
+                                />
+                              </Col>
+                            )}
+                            {hasOptions(boards) && (
+                              <Col xs={12} sm={8} md={6}>
+                                <Select
+                                  placeholder="板块"
+                                  allowClear
+                                  className="ad-w-full"
+                                  options={toOptions(boards)}
+                                  value={board}
+                                  onChange={(v) => { setBoard(v); setPage(1); }}
+                                />
+                              </Col>
+                            )}
+                          </Row>
+                        </div>
+                      )}
 
-          {/* Section 3 — 状态与规模 (lifecycle + size) */}
-          <div className="instrument-filter-group">
-            <div className="instrument-filter-group__title">状态与规模</div>
-            <Row gutter={[16, 12]}>
-              {showQdiiFilter && (
-                <Col xs={12} sm={8} md={6}>
-                  <Select
-                    placeholder="QDII"
-                    allowClear
-                    className="ad-w-full"
-                    options={QDII_OPTIONS}
-                    value={isQdii}
-                    onChange={(v) => { setIsQdii(v); setPage(1); }}
-                  />
-                </Col>
-              )}
-              <Col xs={12} sm={8} md={6}>
-                <Select
-                  placeholder="状态"
-                  allowClear
-                  className="ad-w-full"
-                  options={STATUS_OPTIONS}
-                  value={status}
-                  onChange={(v) => { setStatus(v); setPage(1); }}
-                />
-              </Col>
-              <Col xs={12} sm={8} md={6}>
-                <InputNumber
-                  placeholder="最小规模"
-                  className="ad-w-full"
-                  value={minFundSize}
-                  onChange={(v) => { setMinFundSize(v ?? undefined); setPage(1); }}
-                />
-              </Col>
-              <Col xs={12} sm={8} md={6}>
-                <InputNumber
-                  placeholder="最大规模"
-                  className="ad-w-full"
-                  value={maxFundSize}
-                  onChange={(v) => { setMaxFundSize(v ?? undefined); setPage(1); }}
-                />
-              </Col>
-            </Row>
-          </div>
+                      {/* A股 STOCK — 行业 / 板块 / 状态 */}
+                      {showA_shareStockFilters && (
+                        <div className="instrument-filter-group">
+                          <div className="instrument-filter-group__title">A 股个股</div>
+                          <Row gutter={[16, 12]}>
+                            {hasOptions(industries) && (
+                              <Col xs={12} sm={8} md={6}>
+                                <Select
+                                  placeholder="行业 (申万一级)"
+                                  allowClear
+                                  className="ad-w-full"
+                                  options={toOptions(industries)}
+                                  value={industry}
+                                  onChange={(v) => { setIndustry(v); setPage(1); }}
+                                />
+                              </Col>
+                            )}
+                            {hasOptions(listingMarkets) && (
+                              <Col xs={12} sm={8} md={6}>
+                                <Select
+                                  placeholder="上市地"
+                                  allowClear
+                                  className="ad-w-full"
+                                  options={toOptions(listingMarkets)}
+                                  value={listingMarket}
+                                  onChange={(v) => { setListingMarket(v); setPage(1); }}
+                                />
+                              </Col>
+                            )}
+                            {hasOptions(boards) && (
+                              <Col xs={12} sm={8} md={6}>
+                                <Select
+                                  placeholder="板块"
+                                  allowClear
+                                  className="ad-w-full"
+                                  options={toOptions(boards)}
+                                  value={board}
+                                  onChange={(v) => { setBoard(v); setPage(1); }}
+                                />
+                              </Col>
+                            )}
+                            <Col xs={12} sm={8} md={6}>
+                              <Select
+                                placeholder="状态"
+                                allowClear
+                                className="ad-w-full"
+                                options={STATUS_OPTIONS}
+                                value={status}
+                                onChange={(v) => { setStatus(v); setPage(1); }}
+                              />
+                            </Col>
+                          </Row>
+                        </div>
+                      )}
+
+                      {/* 美股 — 行业 / 交易所 / 状态 */}
+                      {showUsFilters && (
+                        <div className="instrument-filter-group">
+                          <div className="instrument-filter-group__title">美股</div>
+                          <Row gutter={[16, 12]}>
+                            {hasOptions(industries) && (
+                              <Col xs={12} sm={8} md={6}>
+                                <Select
+                                  placeholder="行业 (GICS)"
+                                  allowClear
+                                  className="ad-w-full"
+                                  options={toOptions(industries)}
+                                  value={industry}
+                                  onChange={(v) => { setIndustry(v); setPage(1); }}
+                                />
+                              </Col>
+                            )}
+                            <Col xs={12} sm={8} md={6}>
+                              <Select
+                                placeholder="交易所 (NYSE / NASDAQ)"
+                                allowClear
+                                className="ad-w-full"
+                                options={[
+                                  { label: 'NYSE', value: 'NYSE' },
+                                  { label: 'NASDAQ', value: 'NASDAQ' },
+                                ]}
+                                value={exchange}
+                                onChange={(v) => { setExchange(v); setPage(1); }}
+                              />
+                            </Col>
+                            <Col xs={12} sm={8} md={6}>
+                              <Select
+                                placeholder="状态"
+                                allowClear
+                                className="ad-w-full"
+                                options={STATUS_OPTIONS}
+                                value={status}
+                                onChange={(v) => { setStatus(v); setPage(1); }}
+                              />
+                            </Col>
+                          </Row>
+                        </div>
+                      )}
+
+                      {/* 港股 — 行业 / 状态 */}
+                      {showHkFilters && (
+                        <div className="instrument-filter-group">
+                          <div className="instrument-filter-group__title">港股</div>
+                          <Row gutter={[16, 12]}>
+                            {hasOptions(industries) && (
+                              <Col xs={12} sm={8} md={6}>
+                                <Select
+                                  placeholder="行业"
+                                  allowClear
+                                  className="ad-w-full"
+                                  options={toOptions(industries)}
+                                  value={industry}
+                                  onChange={(v) => { setIndustry(v); setPage(1); }}
+                                />
+                              </Col>
+                            )}
+                            <Col xs={12} sm={8} md={6}>
+                              <Select
+                                placeholder="状态"
+                                allowClear
+                                className="ad-w-full"
+                                options={STATUS_OPTIONS}
+                                value={status}
+                                onChange={(v) => { setStatus(v); setPage(1); }}
+                              />
+                            </Col>
+                          </Row>
+                        </div>
+                      )}
+
+                      {/* CRYPTO — 赛道 (分类) / 链 (子分类) */}
+                      {showCryptoFilters && (
+                        <div className="instrument-filter-group">
+                          <div className="instrument-filter-group__title">数字货币</div>
+                          <Row gutter={[16, 12]}>
+                            {hasOptions(categories) && (
+                              <Col xs={12} sm={8} md={6}>
+                                <Select
+                                  placeholder="赛道 (Layer1 / DeFi / Meme / ...)"
+                                  allowClear
+                                  className="ad-w-full"
+                                  options={toOptions(categories)}
+                                  value={category}
+                                  onChange={(v) => { setCategory(v); setPage(1); }}
+                                />
+                              </Col>
+                            )}
+                            {hasOptions(subCategories) && (
+                              <Col xs={12} sm={8} md={6}>
+                                <Select
+                                  placeholder="链 (Ethereum / Solana / BSC / ...)"
+                                  allowClear
+                                  className="ad-w-full"
+                                  options={toOptions(subCategories)}
+                                  value={subCategory}
+                                  onChange={(v) => { setSubCategory(v); setPage(1); }}
+                                />
+                              </Col>
+                            )}
+                          </Row>
+                        </div>
+                      )}
+
+                      {/* Size — applies to ETFs only */}
+                      {showQdiiFilter && (
+                        <div className="instrument-filter-group">
+                          <div className="instrument-filter-group__title">规模 / QDII</div>
+                          <Row gutter={[16, 12]}>
+                            <Col xs={12} sm={8} md={6}>
+                              <Select
+                                placeholder="QDII"
+                                allowClear
+                                className="ad-w-full"
+                                options={QDII_OPTIONS}
+                                value={isQdii}
+                                onChange={(v) => { setIsQdii(v); setPage(1); }}
+                              />
+                            </Col>
+                            <Col xs={12} sm={8} md={6}>
+                              <InputNumber
+                                placeholder="最小规模 (元)"
+                                className="ad-w-full"
+                                value={minFundSize}
+                                onChange={(v) => { setMinFundSize(v ?? undefined); setPage(1); }}
+                              />
+                            </Col>
+                            <Col xs={12} sm={8} md={6}>
+                              <InputNumber
+                                placeholder="最大规模 (元)"
+                                className="ad-w-full"
+                                value={maxFundSize}
+                                onChange={(v) => { setMaxFundSize(v ?? undefined); setPage(1); }}
+                              />
+                            </Col>
+                          </Row>
+                        </div>
+                      )}
+                    </div>
+                  ),
+                },
+              ]}
+            />
+          )}
         </div>
       </FilterToolbar>
 

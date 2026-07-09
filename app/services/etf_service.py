@@ -149,6 +149,8 @@ class ETFService:
             query = query.filter(ETFInfo.listing_market == params.listing_market)
         if params.board and exclude != "board":
             query = query.filter(ETFInfo.board == params.board)
+        if params.exchange and exclude != "exchange":
+            query = query.filter(ETFInfo.exchange == params.exchange)
         if params.min_fund_size is not None and exclude != "min_fund_size":
             query = query.filter(ETFInfo.fund_size >= params.min_fund_size)
         if params.max_fund_size is not None and exclude != "max_fund_size":
@@ -233,7 +235,11 @@ class ETFService:
         query = self.db.query(column).distinct()
         query = self._apply_filters(query, params, exclude=exclude_field)
         results = query.all()
-        values = [r[0] for r in results if r[0] is not None]
+        # Filter out both NULL and empty-string values so the frontend
+        # dropdown never shows a blank "无" option. (Empty strings leak
+        # into PostgreSQL TEXT columns when ETL backfills without
+        # normalising — see ETF list 分类 bug 2026-07-08.)
+        values = [r[0] for r in results if r[0] is not None and r[0] != ""]
         cache_set(cache_key, values, ttl=600)
         return values
 
