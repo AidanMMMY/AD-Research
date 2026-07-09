@@ -131,8 +131,18 @@ else
     log_info "全量重新构建（含 Python 依赖）"
     # ── 4.4 检测"异常短 build"：build < 30s 通常意味着 buildx cache 命中
     # 或镜像根本没被重 build（用过时的 layer）。给操作者一个 WARN。
+    # ── 4.7 阿里云 HTTP/2 registry 偶发 RESET_STREAM：首次 build 失败时
+    # sleep 5s 重试一次（最多 2 次）。非网络错误（语法/依赖缺失）也会
+    # 在第二次失败时立刻冒出来，不会被无谓吞掉 —— `set -e` 会把第二次
+    # 的非零退出码直接传给调用方。
+    # 同时启用 BuildKit inline cache（--build-arg BUILDKIT_INLINE_CACHE=1），
+    # 让后续若切到 cache-from 模式时无需再改脚本即可复用 layer 元数据。
     BUILD_START=$(date +%s)
-    docker compose build backend --no-cache
+    if ! docker compose build backend --no-cache --build-arg BUILDKIT_INLINE_CACHE=1; then
+        log_warn "首次 docker compose build 失败（多为阿里云 registry 抖动），5s 后重试一次"
+        sleep 5
+        docker compose build backend --no-cache --build-arg BUILDKIT_INLINE_CACHE=1
+    fi
     BUILD_END=$(date +%s)
     BUILD_ELAPSED=$((BUILD_END - BUILD_START))
     if [ "$BUILD_ELAPSED" -lt 30 ]; then

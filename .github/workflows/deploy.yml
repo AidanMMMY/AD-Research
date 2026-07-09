@@ -82,16 +82,40 @@ jobs:
           echo "[INFO] 已同步到：$(git rev-parse --short HEAD)"
 
       # ── 3. 调用统一入口：deploy/aliyun-ecs/update.sh ──
-      - name: Run update.sh (unified entrypoint)
+      # 近期 4/10 失败多为阿里云 HTTP/2 registry 抖动；外层包一次 retry step
+      # （最多 2 次，间隔 30s），第二次失败则硬退出。
+      - name: Run update.sh (unified entrypoint) [attempt 1/2]
+        id: update_sh
         if: ${{ inputs.dry_run != 'true' }}
         env:
           FORCE: 1
+        # 第一次失败不立刻终止 workflow，让 retry step 有机会触发
+        continue-on-error: true
         run: |
           set -euo pipefail
           cd "${PROJECT_ROOT}/deploy/aliyun-ecs"
 
           EXTRA_ARGS=""
-          if [ "${{ inputs.skip_migrations }}" = "true" ]; then
+          if [ "${{ inputs.skip_migrations }}" = "true" ]]; then
+            EXTRA_ARGS="--no-db"
+          fi
+
+          bash update.sh ${EXTRA_ARGS}
+
+      - name: Retry Run update.sh (unified entrypoint) [attempt 2/2]
+        if: ${{ inputs.dry_run != 'true' && steps.update_sh.conclusion == 'failure' }}
+        env:
+          FORCE: 1
+        # 最终重试：失败硬退出，不再继续后续 step（健康检查、迁移、通知）
+        continue-on-error: false
+        run: |
+          echo "[RETRY] update.sh 上一次失败（多为阿里云 HTTP/2 registry 抖动），30s 后重试"
+          sleep 30
+          set -euo pipefail
+          cd "${PROJECT_ROOT}/deploy/aliyun-ecs"
+
+          EXTRA_ARGS=""
+          if [ "${{ inputs.skip_migrations }}" = "true" ]]; then
             EXTRA_ARGS="--no-db"
           fi
 

@@ -635,11 +635,13 @@ def run_microstructure_daily():
 
 
 def run_search_trends_daily():
-    """Refresh Baidu + Google search-trend observations (daily 03:00 Asia/Shanghai).
+    """Refresh Xueqiu-derived search-trend observations (daily 03:00 Asia/Shanghai).
 
-    Pulls one observation per (rotated) keyword for each source and
-    upserts into the ``search_trends`` table.  Google keywords each
-    block ~60s due to pytrends rate limiting.
+    Pulls one observation per (rotated) keyword for each of the two
+    slots — ``baidu`` → Xueqiu 关注排行榜, ``google`` → Xueqiu
+    分享交易排行榜 — and upserts into the ``search_trends`` table.
+    Xueqiu is fast (~1-2s per slot) so the daily refresh covers the
+    full keyword registry in a single run.
     """
     with redis_lock("search_trends_daily", expire_seconds=1800) as acquired:
         if not acquired:

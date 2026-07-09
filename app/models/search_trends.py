@@ -1,9 +1,14 @@
 """Search-trend ORM model.
 
 Stores daily search-index observations from public data sources
-(akshare 百度热搜 / 雪球热搜 + optional pytrends Google Trends) for a
-curated list of A-share-related keywords (indices, stocks, macro
-topics).
+(akshare Xueqiu 雪球关注 + 雪球分享交易 rankings) for a curated list
+of A-share-related keywords (indices, stocks, macro topics).
+
+Both the ``baidu`` and ``google`` slots are populated from Xueqiu's
+public hot-rank endpoints because the original Baidu 指数 / Google
+Trends upstreams are unreachable from the ECS IP.  Each row's rank is
+mapped to ``value = max(0, 10000 - rank)`` so higher rank = higher
+value.
 
 Idempotency is enforced via the composite unique constraint
 ``(keyword, region, source, trade_date)`` so the daily ETL pipeline

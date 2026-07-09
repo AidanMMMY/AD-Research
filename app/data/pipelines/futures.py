@@ -1,20 +1,29 @@
 """Futures daily ETL pipeline.
 
-Fetches Chinese-domestic futures main contract metadata and daily bars
-from akshare (Sina main contracts list + Sina/EM daily data) and
-upserts them into the ``futures_contracts`` and ``futures_daily_bars``
-tables.
+Discovers Chinese-domestic futures main contracts and pulls daily bars
+using akshare's **per-exchange** daily endpoints
+(``ak.get_futures_daily(market=...)`` for SHFE / CZCE / CFFEX / INE /
+GFEX, and ``ak.get_dce_daily(date)`` for DCE).
 
-The sina ``futures_main_sina(symbol="CU0")`` endpoint returns daily
-OHLCV including settlement and open interest, which is what we need.
+The previous implementation used ``ak.futures_display_main_sina()`` and
+``ak.futures_main_sina(symbol=...)``, both of which are blocked from
+the ECS IP (HTTP 456). The per-exchange endpoints use different
+upstream sources and work fine from the same IP.
+
+For each variety on each trade date we pick the contract with the
+highest ``open_interest`` and treat that as the "main" contract. The
+internal continuous code stays ``{variety}0`` (e.g. ``CU0``) so the
+existing scheduler / dashboard / API code paths are unchanged.
 """
 
 import logging
 import warnings
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
+from typing import Iterable
 
 import akshare as ak
+import numpy as np
 import pandas as pd
 from sqlalchemy.orm import Session
 
@@ -55,20 +64,16 @@ class _AkshareFuturesProvider(DataProvider):
         return MarketHours()
 
 
-# Number of concurrent workers when fetching daily bars for one contract per
-# request. Sina throttles around 1 call/0.3s; with 3 workers we stay well
-# inside that limit for 70+ contracts.
-_MAX_WORKERS = 3
+# Number of concurrent workers when fetching per-exchange data.
+# Each exchange needs at most one round-trip per (start, end) window,
+# so 5 workers comfortably covers SHFE/CZCE/CFFEX/INE/GFEX in parallel.
+_MAX_WORKERS = 5
 
-# Map sina exchange code -> our enum exchange code.
-_SINA_EXCHANGE_MAP = {
-    "shfe": "SHFE",
-    "dce": "DCE",
-    "czce": "CZCE",
-    "cffex": "CFFEX",
-    "ine": "INE",
-    "gfex": "GFEX",
-}
+# Exchanges reachable via ak.get_futures_daily(market=...).
+# CFFEX (中金所) uses the literal arg name 'CFFEX' (akshare does NOT accept
+# 'CCFX' — the function returns an empty DataFrame for unknown markets).
+_FUTURES_DAILY_EXCHANGES: tuple[str, ...] = ("SHFE", "CZCE", "CFFEX", "INE", "GFEX")
+
 
 # Static product category per (exchange, symbol root). Built from a manual
 # mapping of common Chinese commodity futures to keep the dashboard grouping
@@ -182,7 +187,7 @@ def _symbol_root(symbol: str) -> str:
 def _coerce_date(value) -> date | None:
     if value is None:
         return None
-    if isinstance(value, date):
+    if isinstance(value, date) and not isinstance(value, datetime):
         return value
     try:
         return pd.to_datetime(value).date()
@@ -194,10 +199,11 @@ def _coerce_int(value) -> int | None:
     if value is None:
         return None
     try:
-        f = float(value)
-        if pd.isna(f):
+        # numpy/pandas NaN check before int conversion (which would raise)
+        if isinstance(value, (float, np.floating)) and np.isnan(value):
             return None
-        return int(f)
+        result = int(float(value))
+        return result
     except (TypeError, ValueError):
         return None
 
@@ -214,15 +220,204 @@ def _coerce_float(value) -> float | None:
         return None
 
 
-class FuturesContractDiscoveryPipeline(ETLPipeline):
-    """Discovers main continuous contracts from sina via akshare.
+# ---------------------------------------------------------------------------
+# Per-exchange data fetchers
+# ---------------------------------------------------------------------------
 
-    Calls ``ak.futures_display_main_sina()`` which returns a DataFrame
-    of shape (82, 3) with columns [symbol, exchange, name]. Each row
-    becomes a row in ``futures_contracts``.
+
+def _format_yyyymmdd(value: date | datetime | str) -> str:
+    """Normalise a date into the YYYYMMDD string akshare's daily endpoints expect."""
+    if isinstance(value, str):
+        # Accept either YYYYMMDD or YYYY-MM-DD; strip dashes.
+        return value.replace("-", "")
+    return value.strftime("%Y%m%d")
+
+
+def _fetch_dce_day(d: date) -> pd.DataFrame:
+    """Fetch one day's worth of DCE futures data via ``ak.get_dce_daily``.
+
+    Returns an empty DataFrame on any error. DCE's endpoint takes a single
+    ``date`` arg (not a range), so we loop one day at a time.
+    """
+    try:
+        return ak.get_dce_daily(date=_format_yyyymmdd(d))
+    except Exception as exc:
+        logger.warning("get_dce_daily(%s) failed: %s", d, exc)
+        return pd.DataFrame()
+
+
+def _fetch_market_range(exchange: str, start_day: date, end_day: date) -> pd.DataFrame:
+    """Fetch a date range from one of the ak.get_futures_daily(market=...) endpoints."""
+    try:
+        df = ak.get_futures_daily(
+            start_date=_format_yyyymmdd(start_day),
+            end_date=_format_yyyymmdd(end_day),
+            market=exchange,
+        )
+    except Exception as exc:
+        logger.warning("get_futures_daily(%s, %s..%s) failed: %s", exchange, start_day, end_day, exc)
+        return pd.DataFrame()
+    return df if df is not None else pd.DataFrame()
+
+
+def fetch_all_markets(
+    start_day: date, end_day: date
+) -> dict[str, pd.DataFrame]:
+    """Fetch the per-exchange daily futures data for every supported exchange.
+
+    Returns a dict keyed by exchange code (SHFE/CZCE/CFFEX/INE/GFEX/DCE).
+    Each value is the raw per-contract DataFrame; an empty DataFrame means
+    the fetch failed or the source returned no data.
+
+    DCE is fetched one-day-at-a-time because its endpoint only takes a single
+    date; the other 5 exchanges are pulled in parallel.
+    """
+    results: dict[str, pd.DataFrame] = {}
+
+    # Parallel fetch for the 5 exchanges reachable via get_futures_daily.
+    with ThreadPoolExecutor(max_workers=_MAX_WORKERS) as executor:
+        future_to_market = {
+            executor.submit(_fetch_market_range, ex, start_day, end_day): ex
+            for ex in _FUTURES_DAILY_EXCHANGES
+        }
+        for fut in as_completed(future_to_market):
+            ex = future_to_market[fut]
+            try:
+                df = fut.result()
+                results[ex] = df if df is not None else pd.DataFrame()
+            except Exception as exc:
+                logger.warning("market fetch worker crashed for %s: %s", ex, exc)
+                results[ex] = pd.DataFrame()
+
+    # DCE: per-day fetch.
+    dce_frames: list[pd.DataFrame] = []
+    cur = start_day
+    while cur <= end_day:
+        df = _fetch_dce_day(cur)
+        if df is not None and not df.empty:
+            dce_frames.append(df)
+        cur += timedelta(days=1)
+    if dce_frames:
+        results["DCE"] = pd.concat(dce_frames, ignore_index=True)
+    else:
+        results["DCE"] = pd.DataFrame()
+
+    for ex, df in results.items():
+        logger.info(
+            "fetch_all_markets: %s returned %d rows (%s..%s)",
+            ex,
+            len(df),
+            start_day,
+            end_day,
+        )
+    return results
+
+
+def _normalise_market_df(exchange: str, df: pd.DataFrame) -> pd.DataFrame:
+    """Coerce a raw per-exchange frame into the canonical column set.
+
+    Adds/renames ``exchange`` and ``variety`` columns so downstream code can
+    treat every exchange uniformly. Returns the input unchanged if it's
+    empty or missing the contract identifier.
+    """
+    if df is None or df.empty:
+        return pd.DataFrame()
+
+    df = df.copy()
+
+    # The newer akshare per-exchange endpoint already returns ``variety`` for
+    # SHFE/CZCE/CFFEX/INE/GFEX. Older DCE responses may not, so we fall back
+    # to deriving it from ``symbol``.
+    if "variety" not in df.columns and "symbol" in df.columns:
+        df["variety"] = df["symbol"].apply(
+            lambda s: _symbol_root(str(s)) if pd.notna(s) else None
+        )
+
+    if "symbol" not in df.columns or "date" not in df.columns:
+        logger.warning(
+            "normalise_market_df(%s): missing symbol/date columns; got %s",
+            exchange,
+            list(df.columns),
+        )
+        return pd.DataFrame()
+
+    df["exchange"] = exchange
+    return df
+
+
+def _pick_main_per_day(df: pd.DataFrame) -> pd.DataFrame:
+    """Pick the highest-open_interest contract per (date, variety).
+
+    Returns a frame with the same per-contract fields but at most one
+    row per (date, variety). Ties (very rare) go to whichever contract
+    appears first in the source.
+    """
+    if df is None or df.empty:
+        return pd.DataFrame()
+
+    needed = {"date", "variety", "symbol", "open_interest"}
+    missing = needed - set(df.columns)
+    if missing:
+        logger.warning(
+            "_pick_main_per_day: missing columns %s; skipping frame",
+            sorted(missing),
+        )
+        return pd.DataFrame()
+
+    # Sort so the highest OI per group ends up at the top, then take the
+    # first row per (date, variety). ``dropna`` ensures we never pick a
+    # group whose top row has no OI.
+    work = df.dropna(subset=["open_interest"]).copy()
+    if work.empty:
+        return pd.DataFrame()
+    work = work.sort_values(
+        ["date", "variety", "open_interest"], ascending=[True, True, False]
+    )
+    return work.drop_duplicates(subset=["date", "variety"], keep="first")
+
+
+def _to_native(value) -> int | float | None:
+    """Best-effort numpy/pandas scalar -> native Python int/float coercion.
+
+    Used inside the record builders so we never hand ``numpy.int64`` /
+    ``pandas.Timestamp`` etc. to psycopg2 via SQLAlchemy.
+    """
+    if value is None:
+        return None
+    if isinstance(value, (np.integer,)):
+        return int(value)
+    if isinstance(value, (np.floating,)):
+        f = float(value)
+        if np.isnan(f):
+            return None
+        return f
+    if isinstance(value, (np.bool_,)):
+        return bool(value)
+    return value
+
+
+# ---------------------------------------------------------------------------
+# Pipelines
+# ---------------------------------------------------------------------------
+
+
+class FuturesContractDiscoveryPipeline(ETLPipeline):
+    """Discovers main continuous contracts from akshare's per-exchange endpoints.
+
+    Strategy:
+      1. Pull per-exchange daily bars for the last few days.
+      2. For each (date, variety) pick the highest-open_interest contract.
+      3. Use the latest available trade date's picks as the current
+         ``underlying_instrument`` for each variety.
+      4. Upsert a row per (exchange, variety) into ``futures_contracts``,
+         using ``code = variety + "0"`` (e.g. ``CU0``) so the rest of the
+         app can keep treating these as continuous main contracts.
     """
 
     job_name = "futures_contract_discovery"
+
+    # How many trailing calendar days to scan for the "current main" pick.
+    _LOOKBACK_DAYS = 5
 
     def __init__(self, db: Session) -> None:
         super().__init__(provider=_AkshareFuturesProvider(), db=db)
@@ -258,45 +453,67 @@ class FuturesContractDiscoveryPipeline(ETLPipeline):
         return result
 
     def extract(self) -> pd.DataFrame:
+        end_day = date.today()
+        start_day = end_day - timedelta(days=self._LOOKBACK_DAYS - 1)
+
         try:
-            df = ak.futures_display_main_sina()
+            per_market = fetch_all_markets(start_day, end_day)
         except Exception as exc:
-            logger.exception("futures_display_main_sina failed: %s", exc)
+            logger.exception("FuturesContractDiscovery: fetch_all_markets crashed: %s", exc)
+            return pd.DataFrame()
+        normalised: list[pd.DataFrame] = []
+        for ex, df in per_market.items():
+            ndf = _normalise_market_df(ex, df)
+            if not ndf.empty:
+                normalised.append(ndf)
+
+        if not normalised:
+            logger.warning("FuturesContractDiscovery: no per-exchange data fetched")
             return pd.DataFrame()
 
-        if df is None or df.empty:
+        all_contracts = pd.concat(normalised, ignore_index=True)
+        picks = _pick_main_per_day(all_contracts)
+        if picks.empty:
+            logger.warning(
+                "FuturesContractDiscovery: no main-contract picks after OI ranking"
+            )
+            return pd.DataFrame()
+
+        # Use the latest available trade date across all picks.
+        picks["date"] = pd.to_datetime(picks["date"], errors="coerce")
+        latest_date = picks["date"].max()
+        latest = picks[picks["date"] == latest_date].copy()
+        if latest.empty:
             return pd.DataFrame()
 
         rows: list[dict] = []
-        for _, row in df.iterrows():
+        for _, row in latest.iterrows():
+            exchange = str(row.get("exchange") or "").strip().upper()
+            variety = str(row.get("variety") or "").strip()
             symbol = str(row.get("symbol") or "").strip()
-            exchange_raw = str(row.get("exchange") or "").strip().lower()
-            name = str(row.get("name") or "").strip()
-            if not symbol or not exchange_raw or not name:
+            if not exchange or not variety or not symbol:
                 continue
-            exchange = _SINA_EXCHANGE_MAP.get(exchange_raw)
-            if not exchange:
-                # Skip unknown exchanges
-                continue
-
-            symbol_root = _symbol_root(symbol)
+            symbol_root = _symbol_root(variety)
             product = _classify_product(exchange, symbol_root)
-
+            code = f"{symbol_root}0"
             rows.append(
                 {
-                    "code": symbol,
-                    "name": name,
+                    "code": code,
+                    "name": f"{symbol_root}主力",
                     "exchange": exchange,
                     "product": product,
                     "is_main": True,
+                    "underlying_instrument": symbol,
                     "source": "akshare",
                 }
             )
 
         logger.info(
-            "FuturesContractDiscovery: extracted %d main contracts", len(rows)
+            "FuturesContractDiscovery: extracted %d main contracts (latest=%s)",
+            len(rows),
+            latest_date,
         )
-        return pd.DataFrame(rows)
+        return pd.DataFrame(rows).drop_duplicates(subset=["code"], keep="last")
 
     def load(self, data: pd.DataFrame) -> int:
         if data.empty:
@@ -309,9 +526,10 @@ class FuturesContractDiscoveryPipeline(ETLPipeline):
 class FuturesDailyPipeline(ETLPipeline):
     """ETL pipeline for futures main contract daily bars.
 
-    For each active main contract in ``futures_contracts`` we pull
-    ``ak.futures_main_sina(symbol="CU0")`` which returns columns:
-        日期, 开盘价, 最高价, 最低价, 收盘价, 成交量, 持仓量, 动态结算价
+    For each market we call ``ak.get_futures_daily(market=...)`` once for
+    the requested window, then for every (date, variety) we pick the
+    contract with the highest ``open_interest`` and write that row under
+    the canonical continuous code (``variety0``).
 
     We persist the last ``history_days`` days (default 30) so the
     pipeline stays cheap and is meant to run daily as a snapshot.
@@ -381,104 +599,136 @@ class FuturesDailyPipeline(ETLPipeline):
         return result
 
     # ------------------------------------------------------------------
-    # Helpers
-    # ------------------------------------------------------------------
-
-    @staticmethod
-    def _fetch_one(symbol: str) -> tuple[str, pd.DataFrame]:
-        """Fetch one contract's daily history. Returns (symbol, df)."""
-        try:
-            df = ak.futures_main_sina(symbol=symbol)
-        except Exception as exc:
-            logger.warning("futures_main_sina(%s) failed: %s", symbol, exc)
-            return symbol, pd.DataFrame()
-        return symbol, df if df is not None else pd.DataFrame()
-
-    # ------------------------------------------------------------------
     # Extract
     # ------------------------------------------------------------------
 
-    def extract(self) -> pd.DataFrame:
-        contracts = (
+    def _window(self) -> tuple[date, date]:
+        end_day = self.target_date or date.today()
+        # Pull a few extra days so the cutoff filter still leaves the
+        # requested window after dropping non-trading days / weekends.
+        start_day = end_day - timedelta(days=self.history_days + 7)
+        return start_day, end_day
+
+    def _active_main_codes(self) -> set[str]:
+        codes: set[str] = set()
+        for c in (
             self.db.query(FuturesContract)
             .filter(FuturesContract.is_main == True)  # noqa: E712
             .all()
-        )
-        if not contracts:
-            logger.info("FuturesDailyPipeline: no contracts in futures_contracts; run discovery first")
+        ):
+            codes.add(c.code)
+        return codes
+
+    def extract(self) -> pd.DataFrame:
+        start_day, end_day = self._window()
+
+        try:
+            per_market = fetch_all_markets(start_day, end_day)
+        except Exception as exc:
+            logger.exception("FuturesDailyPipeline: fetch_all_markets crashed: %s", exc)
+            return pd.DataFrame()
+        normalised: list[pd.DataFrame] = []
+        for ex, df in per_market.items():
+            ndf = _normalise_market_df(ex, df)
+            if not ndf.empty:
+                normalised.append(ndf)
+        if not normalised:
+            logger.info(
+                "FuturesDailyPipeline: no per-exchange data fetched (%s..%s)",
+                start_day,
+                end_day,
+            )
             return pd.DataFrame()
 
-        codes = [c.code for c in contracts]
-        self._expected_codes = codes
-
-        logger.info("FuturesDailyPipeline: fetching %d contracts", len(codes))
-
-        frames: list[pd.DataFrame] = []
-        with ThreadPoolExecutor(max_workers=_MAX_WORKERS) as executor:
-            futures = {
-                executor.submit(self._fetch_one, code): code for code in codes
-            }
-            for fut in as_completed(futures):
-                try:
-                    symbol, df = fut.result(timeout=60)
-                except Exception as exc:
-                    logger.warning("worker failed for %s: %s", futures[fut], exc)
-                    continue
-                if df.empty:
-                    continue
-                df = df.copy()
-                df["__code"] = symbol
-                frames.append(df)
-
-        if not frames:
+        all_contracts = pd.concat(normalised, ignore_index=True)
+        picks = _pick_main_per_day(all_contracts)
+        if picks.empty:
+            logger.info("FuturesDailyPipeline: no main-contract picks after OI ranking")
             return pd.DataFrame()
 
-        out = pd.concat(frames, ignore_index=True)
-
-        # Normalize columns from sina's chinese headers to our internal names
-        out = out.rename(
-            columns={
-                "日期": "trade_date",
-                "开盘价": "open",
-                "最高价": "high",
-                "最低价": "low",
-                "收盘价": "close",
-                "成交量": "volume",
-                "持仓量": "open_interest",
-                "动态结算价": "settle_dynamic",
-            }
+        # Map each pick to its canonical continuous code (variety + "0").
+        picks["__code"] = picks["variety"].astype(str).apply(
+            lambda v: f"{_symbol_root(v)}0"
         )
-        # The sina endpoint sometimes includes a dynamic settlement column
-        # that may not have a previous-settle column. We retain only the
-        # fields we actually persist.
+
+        # Restrict to varieties that have an active main-contract row in the
+        # DB. We still keep all rows in the frame so discovery can run in
+        # any order, but the daily upsert only writes the contracts we
+        # actually track.
+        active = self._active_main_codes()
+        if not active:
+            logger.info(
+                "FuturesDailyPipeline: no active main contracts in DB; run discovery first"
+            )
+            return pd.DataFrame()
+        picks = picks[picks["__code"].isin(active)]
+
+        # Normalise column names to match the historical sina-based schema
+        # so load() and any downstream code keep working unchanged.
+        rename = {
+            "date": "trade_date",
+            "open": "open",
+            "high": "high",
+            "low": "low",
+            "close": "close",
+            "volume": "volume",
+            "open_interest": "open_interest",
+            "turnover": "turnover",
+            "settle": "settle",
+            "pre_settle": "pre_settle",
+        }
+        out = picks.rename(columns=rename).copy()
+
         out["trade_date"] = pd.to_datetime(out["trade_date"], errors="coerce").dt.date
-        for col in ["open", "high", "low", "close"]:
+        for col in ["open", "high", "low", "close", "settle", "pre_settle", "turnover"]:
             if col in out.columns:
                 out[col] = pd.to_numeric(out[col], errors="coerce")
         for col in ["volume", "open_interest"]:
             if col in out.columns:
                 out[col] = pd.to_numeric(out[col], errors="coerce").astype("Int64")
-        if "settle_dynamic" in out.columns:
-            out["settle"] = pd.to_numeric(out["settle_dynamic"], errors="coerce")
-            out = out.drop(columns=["settle_dynamic"])
 
         # Keep only the requested history window (strictly > cutoff so that
         # ``history_days`` days are retained, not ``history_days + 1``).
-        if self.target_date is None:
-            cutoff = date.today() - timedelta(days=self.history_days)
-        else:
-            cutoff = self.target_date - timedelta(days=self.history_days)
+        cutoff = end_day - timedelta(days=self.history_days)
         out = out[out["trade_date"] > cutoff]
 
         # Compute pre_settle = previous row's settle within each contract.
-        # sina's main contract data always returns rows sorted ascending.
+        # Per-exchange daily data may not arrive strictly sorted, so sort.
         out = out.sort_values(["__code", "trade_date"]).reset_index(drop=True)
         out["pre_settle"] = out.groupby("__code")["settle"].shift(1)
+
+        # ``pre_settle`` was already supplied by upstream; our shift fills
+        # the first row of each contract. Prefer the upstream value when
+        # both are present.
+        if "pre_settle" in picks.columns:
+            upstream_pre = pd.to_numeric(
+                picks["pre_settle"], errors="coerce"
+            ).reset_index(drop=True)
+            out["pre_settle"] = out["pre_settle"].where(
+                out["pre_settle"].notna(), upstream_pre
+            )
 
         # Use "etf_code" as the internal symbol column name so this pipeline
         # can still share the same light format check as other bar pipelines.
         out = out.rename(columns={"__code": "etf_code"})
-        logger.info("FuturesDailyPipeline: extracted %d rows", len(out))
+
+        # Also track the latest underlying instrument per code so we can
+        # update ``futures_contracts.underlying_instrument`` in load().
+        latest_picks = (
+            picks.sort_values(["__code", "date"])
+            .dropna(subset=["date"])
+            .groupby("__code")
+            .tail(1)[["__code", "symbol"]]
+            .rename(columns={"__code": "etf_code", "symbol": "underlying_instrument"})
+        )
+        self._latest_underlying = latest_picks
+        logger.info(
+            "FuturesDailyPipeline: extracted %d rows (window=%s..%s, cutoff>%s)",
+            len(out),
+            start_day,
+            end_day,
+            cutoff,
+        )
         return out
 
     # ------------------------------------------------------------------
@@ -489,11 +739,11 @@ class FuturesDailyPipeline(ETLPipeline):
         if data.empty:
             return 0
 
-        records = []
+        records: list[dict] = []
         for _, row in data.iterrows():
-            rec = {
-                "code": row.get("etf_code"),
-                "trade_date": row.get("trade_date"),
+            rec: dict = {
+                "code": _to_native(row.get("etf_code")),
+                "trade_date": _coerce_date(row.get("trade_date")),
                 "open": _coerce_float(row.get("open")),
                 "high": _coerce_float(row.get("high")),
                 "low": _coerce_float(row.get("low")),
@@ -502,7 +752,7 @@ class FuturesDailyPipeline(ETLPipeline):
                 "pre_settle": _coerce_float(row.get("pre_settle")),
                 "volume": _coerce_int(row.get("volume")),
                 "open_interest": _coerce_int(row.get("open_interest")),
-                "turnover": None,
+                "turnover": _coerce_float(row.get("turnover")),
                 "warehouse_receipts": None,
                 "source": "akshare",
             }
@@ -521,6 +771,24 @@ class FuturesDailyPipeline(ETLPipeline):
 
         service = FuturesService(self.db)
         written = service.upsert_daily_bars(records)
+
+        # Update ``underlying_instrument`` on each main contract so the
+        # dashboard can surface which specific delivery-month contract is
+        # currently the leader. Latest picks live in ``self._latest_underlying``.
+        try:
+            latest_df = getattr(self, "_latest_underlying", None)
+            if latest_df is not None and not latest_df.empty:
+                for _, r in latest_df.iterrows():
+                    code = _to_native(r.get("etf_code"))
+                    under = _to_native(r.get("underlying_instrument"))
+                    if not code or not under:
+                        continue
+                    self.db.query(FuturesContract).filter(
+                        FuturesContract.code == code
+                    ).update({FuturesContract.underlying_instrument: str(under)})
+                self.db.commit()
+        except Exception:
+            logger.exception("Failed to update underlying_instrument")
 
         # Invalidate downstream caches that depend on bar data
         try:
