@@ -373,6 +373,13 @@ def _to_latest(
     prev_value: float | None = None,
     change_pct: float | None = None,
 ) -> dict[str, Any]:
+    period_date: date | None = row["period"]
+    fetched_at_dt: datetime | None = row["fetched_at"]
+    freshness_hint = _compute_freshness_hint(
+        source=row["source"],
+        period=period_date,
+        fetched_at=fetched_at_dt,
+    )
     return {
         "code": row["code"],
         "region": row["region"],
@@ -380,9 +387,39 @@ def _to_latest(
         "name_en": row["name_en"],
         "unit": row["unit"],
         "source": row["source"],
-        "period": row["period"].isoformat() if row["period"] else None,
+        "period": period_date.isoformat() if period_date else None,
         "value": row["value"],
         "prev_value": prev_value,
         "change_pct": change_pct,
-        "fetched_at": row["fetched_at"].isoformat() if row["fetched_at"] else None,
+        "fetched_at": fetched_at_dt.isoformat() if fetched_at_dt else None,
+        "freshness_hint": freshness_hint,
     }
+
+
+def _compute_freshness_hint(
+    source: str | None,
+    period: date | None,
+    fetched_at: datetime | None,
+) -> str | None:
+    """Return a localized "why is this stale" hint for FRED-sourced rows.
+
+    The dashboard and /macro tiles use this string to badge tiles whose
+    period is older than ``today - 1 day`` so readers understand why a
+    FRED weekly FX rate hasn't updated since last Friday.
+    """
+    if not source or period is None:
+        return None
+    if source.lower() != "fred":
+        return None
+    today = date.today()
+    lag_days = (today - period).days
+    if lag_days <= 1:
+        return None
+    if lag_days >= 7:
+        days = "7+"
+    else:
+        days = str(lag_days)
+    return (
+        f"FRED 数据为 H.10 周度发布，约延迟 1 天；当前最新期 {period.isoformat()}"
+        f"（滞后 {days} 天）。"
+    )

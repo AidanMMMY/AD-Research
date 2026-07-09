@@ -21,6 +21,8 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useFavorites } from '@/hooks/useFavorites';
 import { useMarketStream, type MarketTick } from '@/hooks/useMarketStream';
 import { favoriteApi } from '@/api/favorite';
+import { useSettingsStore } from '@/stores/settings';
+import { getReturnColor } from '@/utils/color';
 import PageShell from '@/components/PageShell';
 import PageHeader from '@/components/PageHeader';
 import Panel from '@/components/Panel';
@@ -50,6 +52,7 @@ import { formatDateTime, formatDateTimeCompact } from '@/utils/datetime';
 export default function Favorites() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const colorConvention = useSettingsStore((s) => s.colorConvention);
   const [removing, setRemoving] = useState<string | null>(null);
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
   const [bulkRemoving, setBulkRemoving] = useState(false);
@@ -175,7 +178,10 @@ export default function Favorites() {
           return <span className="tabular-nums ad-text-muted">—</span>;
         }
         return (
-          <span className="tabular-nums live-price-cell__price">
+          <span
+            className="tabular-nums live-price-cell__price"
+            style={{ color: getReturnColor(tick.change_pct, colorConvention) }}
+          >
             {tick.price.toFixed(2)}
           </span>
         );

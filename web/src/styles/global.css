@@ -3808,6 +3808,54 @@ main {
   color: var(--text-tertiary);
 }
 
+/* FRED freshness badge — surfaced on Dashboard / Macro tiles whose
+   data is FRED-sourced and whose period lags today by more than the
+   source's expected cadence. Always top-right of the tile surface;
+   the visible label is the lag summary, the tooltip explains why. */
+.macro-freshness-badge {
+  position: absolute;
+  top: var(--space-2);
+  right: var(--space-2);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px;
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--text-tertiary);
+  background: transparent;
+  border-radius: var(--radius-sm);
+  cursor: help;
+  z-index: 1;
+}
+
+.macro-freshness-badge__icon {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  opacity: 0.85;
+}
+
+.macro-freshness-badge__label {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  white-space: nowrap;
+}
+
+.dashboard-index-card {
+  position: relative;
+}
+
+/* Allow the freshness badge to escape any overflow:hidden on the panel body. */
+.dashboard-index-card .ad-panel__body {
+  overflow: visible;
+}
+
+/* Wrapping the Macro page StatCard so its freshness badge can be
+   absolutely positioned in the top-right corner of the cell. */
+.ad-relative {
+  position: relative;
+}
+
 /* ---- ETF holdings coverage card (data-health section) ---- */
 .dashboard-coverage-card .ad-panel__body {
   padding: var(--space-5) var(--space-4);

@@ -55,6 +55,13 @@ export interface MacroLatestItem {
   prev_value: number | null;
   change_pct: number | null;
   fetched_at: string | null;
+  /**
+   * Localized "why is this stale" hint surfaced by the backend when the
+   * row's period lags today by more than the data source's expected
+   * cadence (e.g. FRED H.10 weekly FX lag). Frontend reads this to render
+   * the small warning badge on Dashboard / Macro tiles.
+   */
+  freshness_hint?: string | null;
 }
 
 export interface MacroLatestResponse {

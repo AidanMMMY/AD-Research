@@ -117,6 +117,13 @@ class MacroLatestItem(BaseModel):
     prev_value: float | None = None
     change_pct: float | None = None
     fetched_at: datetime | None = None
+    freshness_hint: str | None = Field(
+        None,
+        description=(
+            "Localized hint about why this row may be older than today "
+            "(e.g. FRED weekly FX lag). None if the row is current."
+        ),
+    )
 
 
 class MacroLatestResponse(BaseModel):

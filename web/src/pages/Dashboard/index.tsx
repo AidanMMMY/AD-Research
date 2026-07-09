@@ -17,6 +17,7 @@ import {
   AppstoreOutlined,
   ThunderboltOutlined,
   PartitionOutlined,
+  ExclamationCircleOutlined,
 } from '@ant-design/icons';
 import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { useScores } from '@/hooks/useScores';
@@ -132,6 +133,12 @@ function NewsRow({
  * across two lines so it stays readable on tablet portrait. Tiles
  * gracefully render `--` when a particular code has no fresh data
  * (e.g. yfinance fetch failed overnight).
+ *
+ * Phase 5d (2026-07-09): each tile surfaces a "FRED 数据为 H.10 周度发布，
+ * 约延迟 1 天" badge whenever the underlying row is FRED-sourced and
+ * its period lags today by more than one day. The badge text + tooltip
+ * come from the backend's ``freshness_hint`` field so the same logic
+ * powers both the dashboard and the /macro page.
  */
 const GLOBAL_TILES: Array<{
   code: string;
@@ -181,19 +188,40 @@ function GlobalSnapshot() {
   });
 
   const lookup = useMemo(() => {
-    const map = new Map<string, { value: number | null; period: string | null; change_pct: number | null }>();
+    type LookupEntry = {
+      value: number | null;
+      period: string | null;
+      change_pct: number | null;
+      source: string | null;
+      freshness_hint: string | null;
+    };
+    const map = new Map<string, LookupEntry>();
     // DB snapshot covers FRED (US rates/FX) and any persisted global index rows.
     for (const it of latestGlobal?.items ?? []) {
-      map.set(it.code, { value: it.value ?? null, period: it.period ?? null, change_pct: it.change_pct ?? null });
+      map.set(it.code, {
+        value: it.value ?? null,
+        period: it.period ?? null,
+        change_pct: it.change_pct ?? null,
+        source: it.source ?? null,
+        freshness_hint: it.freshness_hint ?? null,
+      });
     }
     for (const it of latestUs?.items ?? []) {
       if (!map.has(it.code)) {
-        map.set(it.code, { value: it.value ?? null, period: it.period ?? null, change_pct: it.change_pct ?? null });
+        map.set(it.code, {
+          value: it.value ?? null,
+          period: it.period ?? null,
+          change_pct: it.change_pct ?? null,
+          source: it.source ?? null,
+          freshness_hint: it.freshness_hint ?? null,
+        });
       }
     }
     // Overlay the live yfinance + akshare snapshot so tiles do not lag behind
     // the scheduled DB refresh. Real-time items are keyed by the same codes as
-    // GLOBAL_TILES; skip any code whose live point is not newer than DB.
+    // GLOBAL_TILES; skip any code whose live point is not newer than DB. A
+    // real-time override also clears the FRED freshness hint because the
+    // fresh source is now yfinance/akshare.
     for (const it of rtGlobal?.items ?? []) {
       const code = it.code as string;
       const existing = map.get(code);
@@ -203,6 +231,8 @@ function GlobalSnapshot() {
           value: (it.value as number) ?? null,
           period: livePeriod,
           change_pct: (it.change_pct as number) ?? null,
+          source: 'yfinance',
+          freshness_hint: null,
         });
       }
     }
@@ -241,6 +271,11 @@ function GlobalSnapshot() {
         <ResponsiveGrid cols={4} gap="md">
           {GLOBAL_TILES.map((tile) => {
             const entry = lookup.get(tile.code);
+            // FRED freshness badge — only show when the backend flagged
+            // a staleness hint (source === 'fred' AND period > today - 1).
+            // The tooltip uses the localized hint string so the wording
+            // is owned by the backend and stays in sync with /macro.
+            const fresnessHint = entry?.freshness_hint ?? null;
             return (
               <Panel
                 key={tile.code}
@@ -261,6 +296,17 @@ function GlobalSnapshot() {
                   }}
                   aria-label={`查看 ${tile.title}`}
                 />
+                {fresnessHint ? (
+                  <Tooltip title={fresnessHint}>
+                    <span
+                      className="macro-freshness-badge"
+                      aria-label={fresnessHint}
+                    >
+                      <ExclamationCircleOutlined className="macro-freshness-badge__icon" />
+                      <span className="macro-freshness-badge__label">数据延迟</span>
+                    </span>
+                  </Tooltip>
+                ) : null}
                 <div className="dashboard-index-card__header">
                   <span className="dashboard-index-card__code">{tile.code}</span>
                 </div>

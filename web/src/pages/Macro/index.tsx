@@ -11,8 +11,12 @@ import {
   Button,
   Skeleton,
   message,
+  Tooltip,
 } from 'antd';
-import { ReloadOutlined } from '@ant-design/icons';
+import {
+  ReloadOutlined,
+  ExclamationCircleOutlined,
+} from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import ReactECharts from 'echarts-for-react';
 import type { EChartsOption } from 'echarts';
@@ -125,6 +129,18 @@ export default function Macro() {
       .map((code) => all.find((i) => i.code === code))
       .filter((x): x is MacroIndicatorItem => !!x);
   }, [region, indicators, latestData, headlineCodesForRegion]);
+
+  // FRED freshness hints — keyed by code so each headline KPI tile can
+  // surface the small "数据延迟" badge when its underlying row is FRED
+  // and lags today by more than one day. The hint copy is owned by the
+  // backend so Dashboard and Macro show the same wording.
+  const freshnessHints = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const it of latestData?.items ?? []) {
+      if (it.freshness_hint) map.set(it.code, it.freshness_hint);
+    }
+    return map;
+  }, [latestData]);
 
   const description = useMemo(() => {
     switch (region) {
@@ -308,19 +324,35 @@ export default function Macro() {
         </Row>
       ) : headline.length > 0 ? (
         <Row gutter={[16, 16]} className="ad-mb-5">
-          {headline.map((item) => (
-            <Col xs={12} md={8} lg={Math.max(4, 24 / headline.length)} key={item.code}>
-              <StatCard
-                title={
-                  MACRO_TERM_KEY_MAP[item.code] ? (
-                    <HelpPopover termKey={MACRO_TERM_KEY_MAP[item.code]} mode={mode}>{item.name_zh}</HelpPopover>
-                  ) : item.name_zh
-                }
-                value={formatValue(item.value, item.unit)}
-                suffix={item.period ? `${item.period}` : undefined}
-              />
-            </Col>
-          ))}
+          {headline.map((item) => {
+            const hint = freshnessHints.get(item.code) ?? null;
+            return (
+              <Col xs={12} md={8} lg={Math.max(4, 24 / headline.length)} key={item.code}>
+                <div className="ad-relative">
+                  {hint ? (
+                    <Tooltip title={hint}>
+                      <span
+                        className="macro-freshness-badge"
+                        aria-label={hint}
+                      >
+                        <ExclamationCircleOutlined className="macro-freshness-badge__icon" />
+                        <span className="macro-freshness-badge__label">数据延迟</span>
+                      </span>
+                    </Tooltip>
+                  ) : null}
+                  <StatCard
+                    title={
+                      MACRO_TERM_KEY_MAP[item.code] ? (
+                        <HelpPopover termKey={MACRO_TERM_KEY_MAP[item.code]} mode={mode}>{item.name_zh}</HelpPopover>
+                      ) : item.name_zh
+                    }
+                    value={formatValue(item.value, item.unit)}
+                    suffix={item.period ? `${item.period}` : undefined}
+                  />
+                </div>
+              </Col>
+            );
+          })}
         </Row>
       ) : null}
 
