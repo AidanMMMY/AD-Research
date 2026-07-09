@@ -215,31 +215,87 @@ def refresh_china_macro(
 
 @router.get("/indices/global")
 def get_global_indices_realtime() -> dict[str, Any]:
-    """Return the latest global index snapshot without going through the DB.
+    """Return the latest global macro snapshot (live) without going through the DB.
 
-    Hits yfinance + akshare live so the Global Markets page can
-    surface a near-realtime value before the 16:00 Asia/Shanghai
-    scheduled upsert lands.  Each item is
-    ``{code, name_zh, name_en, value, prev_close, change, change_pct, as_of, source}``.
+    Hits yfinance + akshare live so the Global Markets page and the
+    Dashboard realtime overlay can surface a near-realtime value
+    before the 16:00 Asia/Shanghai scheduled upsert lands.
+
+    Coverage:
+        * Stock indices   — ^GSPC / ^NDX / ^DJI / ^HSI / ^N225 / ^GDAXI /
+                            ^FTSE / ^FCHI / ^AXJO / ^KS11 / ^TWII / ^NSEI /
+                            ^BSESN (yfinance) + sh000001 / sz399001 /
+                            sh000300 (akshare)
+        * FX              — CNY=X / EUR=X / JPY=X / DX-Y.NYB (yfinance)
+        * Interest rates  — ^TNX / ^TYX (yfinance)
+        * Commodities     — CL=F / BZ=F (yfinance)
+
+    Each item is
+    ``{code, name_zh, name_en, unit, value, prev_close, change,
+    change_pct, as_of, source, region, asset_class}``.
+
+    Response envelope:
+        ``{items, region='global', as_of, count, stale_count}``
+        where ``stale_count`` is the number of items whose ``as_of``
+        is older than 24 hours relative to the server's wall clock —
+        a single source-of-truth indicator the Dashboard can show as
+        "1 of 21 stale".
+
+    Performance:
+        The yfinance fan-out is parallelised per-registry via a
+        ThreadPoolExecutor (the underlying ``yf.Ticker.history``
+        releases the GIL during the HTTP wait), so a 21-ticker run
+        completes in ~5–6s rather than the 32s of the previous
+        serial implementation.  The ``period`` window is capped at
+        ``"2d"`` for the realtime overlay — enough history for the
+        previous close but no need for a full backfill.
 
     Best-effort: per-ticker failures are logged and skipped; the
     response always returns 200 even when some tickers fail.
     """
+    from datetime import datetime, timedelta, timezone
+
+    started = datetime.now(timezone.utc)
+
     try:
+        # Phase 6b: yfinance now covers indices + FX + rates + commodity
+        # in one call via the parallel aggregator.
+        from app.data.providers.yfinance_indices_provider import (
+            fetch_all_macro_realtime,
+        )
+        # A-share indices are still pulled via akshare (separate path,
+        # no parallelisation needed — three calls).
         from app.services.macro.global_indices_fetcher import (
-            fetch_all_global_indices,
+            fetch_a_share_indices,
         )
 
-        # Use a short window for the realtime preview: enough history for
-        # prev_close / change_pct, but far faster than the 3-month ETL window.
-        items = fetch_all_global_indices(period="5d")
+        yfinance_items = fetch_all_macro_realtime(period="2d")
+        a_share_items = fetch_a_share_indices(lookback_days=3)
     except Exception as exc:  # noqa: BLE001 - defensive
         logger.exception("global indices realtime fetch crashed: %s", exc)
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 
+    # ``a_share_items`` are produced by akshare and do not carry
+    # ``prev_close`` / ``source`` — synthesise so the response shape
+    # is uniform across all items.
+    normalised_a_share: list[dict[str, Any]] = []
+    for obs in a_share_items:
+        normalised_a_share.append({
+            "code": obs.get("code"),
+            "period": obs.get("period"),
+            "value": obs.get("value"),
+            "prev_close": obs.get("prev_close"),
+            "name_zh": obs.get("name_zh"),
+            "name_en": obs.get("name_en"),
+            "unit": obs.get("unit", "指数"),
+            "source": "akshare",
+        })
+
+    combined = yfinance_items + normalised_a_share
+
     # Reduce to the latest observation per code (sorted by period desc).
     latest_by_code: dict[str, dict] = {}
-    for obs in items:
+    for obs in combined:
         code = obs.get("code")
         period = obs.get("period")
         if not code or not period:
@@ -256,7 +312,19 @@ def get_global_indices_realtime() -> dict[str, Any]:
         change_pct = None
         if value is not None and prev_close not in (None, 0):
             change = round(float(value) - float(prev_close), 4)
-            change_pct = round((float(value) - float(prev_close)) / float(prev_close) * 100.0, 4)
+            change_pct = round(
+                (float(value) - float(prev_close)) / float(prev_close) * 100.0,
+                4,
+            )
+        # ``region`` matches the FRED / yfinance row the Dashboard
+        # overlays onto (see yfinance_indices_provider.IndexMeta.region).
+        # Default to 'global' for unknown codes (e.g. akshare A-share).
+        region = obs.get("region") or (
+            "us" if str(obs.get("code") or "").startswith("us_") else "global"
+        )
+        asset_class = obs.get("asset_class") or _infer_asset_class(
+            str(obs.get("code") or "")
+        )
         out.append({
             "code": obs.get("code"),
             "name_zh": obs.get("name_zh"),
@@ -268,9 +336,57 @@ def get_global_indices_realtime() -> dict[str, Any]:
             "change_pct": change_pct,
             "as_of": obs.get("period"),
             "source": obs.get("source", "yfinance"),
+            "region": region,
+            "asset_class": asset_class,
         })
     out.sort(key=lambda x: x.get("code") or "")
-    return {"items": out, "count": len(out)}
+
+    # ``stale_count`` — number of items whose ``as_of`` is older than
+    # 24h relative to the request wall clock.  Helps the Dashboard
+    # surface a single "1 of 21 stale" indicator without re-computing
+    # staleness on every render.
+    stale_cutoff = started - timedelta(hours=24)
+    stale_count = 0
+    for item in out:
+        as_of = item.get("as_of")
+        if not as_of:
+            stale_count += 1
+            continue
+        try:
+            as_of_dt = datetime.fromisoformat(str(as_of)).replace(
+                tzinfo=timezone.utc,
+            )
+        except (TypeError, ValueError):
+            stale_count += 1
+            continue
+        if as_of_dt < stale_cutoff:
+            stale_count += 1
+
+    return {
+        "items": out,
+        "region": "global",
+        "as_of": started.isoformat(),
+        "count": len(out),
+        "stale_count": stale_count,
+    }
+
+
+def _infer_asset_class(code: str) -> str:
+    """Best-effort asset_class tag from the internal code prefix.
+
+    Used by the realtime overlay to bucket rows on the Dashboard
+    without forcing every registry entry to carry the field.  Falls
+    back to ``"index"`` for unknown codes (e.g. A-share rows from
+    akshare).
+    """
+    code_l = (code or "").lower()
+    if code_l.startswith(("usd_", "global_dxy", "global_usdjpy")):
+        return "fx"
+    if code_l.startswith(("us_dgs", "us_dff", "us_t10y2y", "us_t10y3m")):
+        return "rate"
+    if code_l.startswith(("global_wti", "global_brent")):
+        return "commodity"
+    return "index"
 
 
 @router.post("/refresh-global-indices", status_code=202)
