@@ -13,7 +13,7 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
 from app.core.cache import cache_invalidate_pattern
-from app.data.indicators.risk import calculate_risk_indicators
+from app.data.indicators.risk import calculate_return_indicators, calculate_risk_indicators
 from app.data.indicators.technical import calculate_technical_indicators
 from app.models.etf import InstrumentDailyBar, ETFIndicator, ETFInfo
 from app.models.etl import ETLLog
@@ -93,15 +93,30 @@ def calculate_single_etf(etf_code: str, bars_df: pd.DataFrame) -> pd.DataFrame:
     raw_df = df[["trade_date", "open", "high", "low", "close", "volume", "amount"]].copy()
     raw_df = calculate_technical_indicators(raw_df)
 
-    # Risk/return metrics (volatility/drawdown/returns/Sharpe) are computed
-    # on adjusted close so long-term performance is comparable after
-    # corporate actions.
+    # Volatility / drawdown / Sharpe are computed on the dividend-adjusted
+    # close so long-window metrics stay comparable across corporate actions.
     adj_df = df[["trade_date", "open", "high", "low", "adj_close", "volume", "amount"]].copy()
     adj_df = adj_df.rename(columns={"adj_close": "close"})
     adj_df = calculate_risk_indicators(adj_df)
 
-    # Merge: keep OHLCV from raw price space; append technical columns from
-    # raw_df and risk columns from adj_df.
+    # Period returns are computed on the **raw** close, NOT adj_close.
+    # Rationale: the recent adj_factor normalisation makes historical
+    # adj_factor values < 1.0 for every older date, so adj_close for an
+    # older bar equals ``close * factor < close``. Computing the return as
+    # ``adj_close[latest] / adj_close[old] - 1`` then bakes future dividend
+    # yields into the divisor — that is "total-return" semantics, which
+    # flattens (or even flips the sign of) the displayed 1m / 3m / 1y
+    # numbers whenever a dividend lands inside the lookback window. For
+    # ETF 512760.SH this dropped the 1m return from a few-percent move
+    # down to 0.71 %, which is exactly the regression the bug report
+    # flags. Use raw close so the UI shows the price-return view users
+    # expect from a market chart.
+    raw_df = calculate_return_indicators(raw_df)
+
+    # Merge: keep OHLCV from raw price space; append technical columns
+    # from raw_df, vol/drawdown/Sharpe from adj_df, and period returns
+    # from raw_df (overwriting whatever adj_df produced — those were the
+    # wrong, adj_close-based values).
     result = raw_df.copy()
     risk_cols = [c for c in adj_df.columns if c not in result.columns and c != "daily_return"]
     for col in risk_cols:

@@ -132,6 +132,46 @@ def calc_return(prices: pd.Series, window: int) -> float:
     return prices.iloc[-1] / prices.iloc[-window] - 1
 
 
+# Mapping from period label to trading-day lookback window. Centralised so
+# the same windows are used by both ``calculate_risk_indicators`` and the
+# raw-close ``calculate_return_indicators`` (see :func:`calculate_return_indicators`).
+RETURN_PERIODS: dict[str, int] = {
+    "return_1w": 5,
+    "return_1m": 21,
+    "return_3m": 63,
+    "return_6m": 126,
+    "return_1y": 252,
+}
+
+
+def calculate_return_indicators(df: pd.DataFrame) -> pd.DataFrame:
+    """Calculate period returns (1w/1m/3m/6m/1y) on the ``close`` column.
+
+    This is intentionally a separate function from
+    :func:`calculate_risk_indicators` so callers can choose which
+    price column to feed in. In particular the platform calls this on
+    the **raw** market close (giving the "price-return" view that the
+    UI exposes for ETFs), while volatility / drawdown / Sharpe are
+    still computed on the dividend-adjusted close for cross-time
+    comparability.
+
+    Input DataFrame must contain a ``close`` column sorted ascending.
+    Output DataFrame adds ``return_1w``, ``return_1m``, ``return_3m``,
+    ``return_6m``, ``return_1y`` (all decimals, e.g. 0.05 = 5%).
+
+    Args:
+        df: DataFrame with at least a ``close`` column.
+
+    Returns:
+        DataFrame with the period return columns appended.
+    """
+    result = df.copy()
+    close = pd.to_numeric(result["close"], errors="coerce")
+    for col, periods in RETURN_PERIODS.items():
+        result[col] = close.pct_change(periods=periods)
+    return result
+
+
 def calculate_risk_indicators(
     df: pd.DataFrame,
     days_since_listing: int | None = None,
@@ -221,10 +261,14 @@ def calculate_risk_indicators(
     # pct_change(periods=N) computes close_t / close_{t-N} - 1, which is the
     # conventional N-day return.  Using this directly removes the previous
     # window/calc_return mismatch that produced one-period-too-short returns.
-    result["return_1w"] = result["close"].pct_change(periods=5)
-    result["return_1m"] = result["close"].pct_change(periods=21)
-    result["return_3m"] = result["close"].pct_change(periods=63)
-    result["return_6m"] = result["close"].pct_change(periods=126)
-    result["return_1y"] = result["close"].pct_change(periods=252)
+    # NOTE: the platform's main entrypoint (``calculate_single_etf`` in
+    # calculator.py) overrides these with raw-close returns via
+    # :func:`calculate_return_indicators`, because adjusted-close returns
+    # bake future dividends into the divisor and report "total return"
+    # semantics — which makes the 1m/3m/1y numbers shown on the ETF
+    # detail page look unrealistically small whenever a dividend lands
+    # inside the lookback window. See calculator.py for the override.
+    for col, periods in RETURN_PERIODS.items():
+        result[col] = result["close"].pct_change(periods=periods)
 
     return result
