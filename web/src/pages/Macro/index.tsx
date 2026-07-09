@@ -3,7 +3,7 @@ import {
   Row,
   Col,
   Table,
-  Select,
+  Segmented,
   Spin,
   Alert,
   Space,
@@ -37,19 +37,23 @@ import type { MacroIndicatorItem, MacroLatestItem } from '@/api/macro';
 const { Text } = Typography;
 
 const REGION_OPTIONS = [
-  { value: 'us', label: '美国 (FRED)' },
-  { value: 'cn', label: '中国 (akshare)' },
+  { value: 'us', label: '美国' },
+  { value: 'eu', label: '欧元区' },
+  { value: 'cn', label: '中国' },
   { value: 'global', label: '全球' },
 ];
 
 const MACRO_TERM_KEY_MAP: Record<string, string> = {
   us_cpi: 'cpi',
   cpi_yoy: 'cpi',
+  eu_cpi: 'cpi',
   us_unrate: 'unemployment_rate',
+  eu_unrate: 'unemployment_rate',
   us_fed_funds: 'fed_funds',
   us_dgs10: 'treasury_yield',
   us_vix: 'vix',
   gdp_yoy: 'gdp',
+  eu_gdp: 'gdp',
   ppi_yoy: 'ppi',
   m2_yoy: 'm2',
   pmi_manufacturing: 'pmi',
@@ -72,8 +76,9 @@ function formatValue(v: number | null | undefined, unit: string): string {
 // Headline KPIs per region. Order = display order in the strip.
 const HEADLINE_CODES: Record<string, string[]> = {
   us: ['us_cpi', 'us_unrate', 'us_fed_funds', 'us_dgs10', 'us_vix'],
+  eu: ['eu_cpi', 'eu_unrate', 'eu_ecb_deposit_rate', 'eu_gdp'],
   cn: ['gdp_yoy', 'cpi_yoy', 'ppi_yoy', 'm2_yoy', 'pmi_manufacturing', 'shibor_3m'],
-  global: [],
+  global: ['global_sp500', 'global_dxy', 'global_brent', 'global_wti'],
 };
 
 // Headline cards for CN cannot be derived from the FRED-backed list
@@ -106,9 +111,7 @@ export default function Macro() {
   const { data: series, isLoading: seriesLoading } = useMacroSeries(selectedCode, {
     limit: 365,
   });
-  const { data: latestData, dataUpdatedAt, isFetching: latestFetching } = useMacroLatest(
-    region === 'us' ? undefined : region,
-  );
+  const { data: latestData, dataUpdatedAt, isFetching: latestFetching } = useMacroLatest(region);
   const refreshMutation = useRefreshChinaMacro();
 
   // ── KPIs: pick a few headline indicators per region ──
@@ -124,10 +127,16 @@ export default function Macro() {
   }, [region, indicators, latestData, headlineCodesForRegion]);
 
   const description = useMemo(() => {
-    if (region === 'cn') {
-      return '由 akshare 抓取 NBS / PBOC / SHIBOR 等公开数据，覆盖 GDP / CPI / PPI / M2 / PMI / SHIBOR / 存款准备金率 等关键指标。每个工作日 09:30 北京时间自动刷新。';
+    switch (region) {
+      case 'cn':
+        return '由 akshare 抓取 NBS / PBOC / SHIBOR 等公开数据，覆盖 GDP / CPI / PPI / M2 / PMI / SHIBOR / 存款准备金率 等关键指标。每个工作日 09:30 北京时间自动刷新。';
+      case 'eu':
+        return '由 FRED 提供欧元区宏观指标，覆盖 GDP / CPI / 失业率 / 欧央行政策利率 等关键指标。随美国宏观刷新任务每个工作日 03:00 北京时间自动刷新。';
+      case 'global':
+        return '由 FRED 提供跨境市场指标，覆盖全球主要股指、美元指数、美元兑日元、原油等。随美国宏观刷新任务每个工作日 03:00 北京时间自动刷新。';
+      default:
+        return '由 FRED (Federal Reserve Economic Data) 提供，覆盖 GDP / CPI / 失业率 / 国债收益率 / VIX 等 20+ 关键指标。每个工作日 03:00 北京时间自动刷新。';
     }
-    return '由 FRED (Federal Reserve Economic Data) 提供，覆盖 GDP / CPI / 失业率 / 国债收益率 / VIX 等 20+ 关键指标。每个工作日 03:00 北京时间自动刷新。';
   }, [region]);
 
   const handleRefresh = async () => {
@@ -252,7 +261,14 @@ export default function Macro() {
     <PageShell maxWidth="wide">
       <PageHeader
         eyebrow="宏观指标"
-        title={region === 'cn' ? '中国宏观看板' : '美国宏观看板'}
+        title={
+          {
+            cn: '中国宏观看板',
+            eu: '欧元区宏观看板',
+            global: '全球跨市场指标',
+            us: '美国宏观看板',
+          }[region] ?? '美国宏观看板'
+        }
         description={description}
         extra={
           <Space size="middle">
@@ -309,14 +325,13 @@ export default function Macro() {
       ) : null}
 
       <FilterToolbar total={indicators?.length}>
-        <Select
+        <Segmented
           value={region}
           onChange={(v) => {
             setRegion(v);
             setSelectedCode(null);
           }}
           options={REGION_OPTIONS}
-          className="phase5c-select--xs"
         />
       </FilterToolbar>
 
@@ -325,7 +340,7 @@ export default function Macro() {
         <Col xs={24} lg={selectedCode ? 12 : 24}>
           <Panel title="全部指标">
             <Spin spinning={isLoading}>
-              <div className="ad-density-dense ad-table-scroll ad-table-sticky">
+              <div className="ad-table-scroll ad-table-sticky">
                 <Table<MacroIndicatorItem>
                   rowKey="code"
                   size="small"

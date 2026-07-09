@@ -130,10 +130,28 @@ _GLOBAL_SERIES: list[FredSeriesMeta] = [
 ]
 
 
+# ---------------------------------------------------------------------------
+# Eurozone macro indicators — sourced from FRED (ECB / OECD / Eurostat series).
+# FRED publishes these under its international database; they refresh in the
+# same daily FRED job that handles the US registry above.
+# ---------------------------------------------------------------------------
+_EU_SERIES: list[FredSeriesMeta] = [
+    # ── Output ──
+    FredSeriesMeta("NAEXKP01EZQ661S", "eu_gdp", "欧元区实际GDP", "Euro Area Real GDP", "百万欧元", "产出"),
+    # ── Prices ──
+    FredSeriesMeta("CPALTT01EZM657N", "eu_cpi", "欧元区CPI", "Euro Area Consumer Price Index", "指数", "价格"),
+    # ── Labour ──
+    FredSeriesMeta("LRHUTTTTEZQ156S", "eu_unrate", "欧元区失业率", "Euro Area Unemployment Rate", "%", "就业"),
+    # ── Money / Rates ──
+    FredSeriesMeta("ECBDFR", "eu_ecb_deposit_rate", "欧央行存款便利利率", "ECB Deposit Facility Rate", "%", "利率"),
+]
+
+
 # Single tuple so the refresh loop can iterate both registries without
 # branching on the region label.
 _SERIES_ALL: list[tuple[FredSeriesMeta, str]] = (
     [(m, "us") for m in SERIES_REGISTRY]
+    + [(m, "eu") for m in _EU_SERIES]
     + [(m, "global") for m in _GLOBAL_SERIES]
 )
 
@@ -167,6 +185,8 @@ class FredService:
 
         if region == "us":
             registry: list[tuple[FredSeriesMeta, str]] = [(m, "us") for m in SERIES_REGISTRY]
+        elif region == "eu":
+            registry = [(m, "eu") for m in _EU_SERIES]
         elif region == "global":
             registry = [(m, "global") for m in _GLOBAL_SERIES]
         elif region in (None, ""):

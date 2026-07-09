@@ -5,7 +5,6 @@ import { SearchOutlined } from '@ant-design/icons';
 import { useCryptoList } from '@/hooks/useCrypto';
 import { useCryptoStore } from '@/stores/crypto';
 import { useIsMobile } from '@/hooks/useBreakpoint';
-import { useDensity } from '@/hooks/useDensity';
 import { useDebounce } from '@/hooks/useDebounce';
 import PageShell from '@/components/PageShell';
 import PageHeader from '@/components/PageHeader';
@@ -39,7 +38,6 @@ function formatUtc(iso: string): string {
 export default function CryptoList() {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
-  const { density } = useDensity();
   const filters = useCryptoStore();
   const [page, setPage] = useState(1);
   const pageLoadedAt = useMemo(() => new Date().toISOString(), []);
@@ -54,11 +52,8 @@ export default function CryptoList() {
     page_size: 50,
   });
 
-  const rowSize = density === 'dense' ? 'small' : density === 'spacious' ? 'large' : 'middle';
-  const tableWrapClass =
-    density === 'dense'
-      ? 'ad-density-dense ad-table-scroll ad-table-sticky'
-      : 'ad-table-scroll ad-table-sticky';
+  const rowSize = 'large';
+  const tableWrapClass = 'ad-table-scroll ad-table-sticky';
 
   // The API enriches every row with the same last_updated timestamp.
   const backendTimestamp = data?.items?.[0]?.last_updated;

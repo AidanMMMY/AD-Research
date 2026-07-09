@@ -5,7 +5,6 @@ import { SearchOutlined } from '@ant-design/icons';
 import { useStockList } from '@/hooks/useStocks';
 import { useInstrumentMarkets, useInstrumentCategories } from '@/hooks/useInstrumentList';
 import { useSparkline } from '@/hooks/useSparkline';
-import { useDensity } from '@/hooks/useDensity';
 import { useDebounce } from '@/hooks/useDebounce';
 import PageShell from '@/components/PageShell';
 import PageHeader from '@/components/PageHeader';
@@ -31,7 +30,6 @@ function SparklineCell({ code }: { code: string }) {
 export default function StocksList() {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
-  const { density } = useDensity();
   const [search, setSearch] = useState('');
   const [market, setMarket] = useState<string | undefined>('A股');
   const [category, setCategory] = useState<string | undefined>();
@@ -58,11 +56,8 @@ export default function StocksList() {
     }
   }, [categories, category]);
 
-  const rowSize = density === 'dense' ? 'small' : density === 'spacious' ? 'large' : 'middle';
-  const tableWrapClass =
-    density === 'dense'
-      ? 'ad-density-dense ad-table-scroll ad-table-sticky'
-      : 'ad-table-scroll ad-table-sticky';
+  const rowSize = 'large';
+  const tableWrapClass = 'ad-table-scroll ad-table-sticky';
 
   const columns = [
     {

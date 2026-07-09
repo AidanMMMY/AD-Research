@@ -1,10 +1,9 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Table, Button, Modal, Form, Input, message } from 'antd';
-import { PlusOutlined } from '@ant-design/icons';
+import { Table, Button, Modal, Form, Input, message, Popconfirm, Space } from 'antd';
+import { PlusOutlined, DeleteOutlined } from '@ant-design/icons';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { usePoolList } from '@/hooks/usePoolDetail';
-import { useDensity } from '@/hooks/useDensity';
 import { poolApi } from '@/api';
 import PageShell from '@/components/PageShell';
 import PageHeader from '@/components/PageHeader';
@@ -16,7 +15,6 @@ import EmptyState from '@/components/EmptyState';
 export default function PoolList() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { density } = useDensity();
   const { data: pools, isLoading: poolsLoading } = usePoolList();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [form] = Form.useForm();
@@ -34,15 +32,23 @@ export default function PoolList() {
     },
   });
 
+  const deleteMutation = useMutation({
+    mutationFn: (id: number) => poolApi.delete(id),
+    onSuccess: () => {
+      message.success('删除成功');
+      queryClient.invalidateQueries({ queryKey: ['pools'], exact: false });
+    },
+    onError: (error: any) => {
+      message.error(error?.response?.data?.detail || '删除失败');
+    },
+  });
+
   const handleCreate = async (values: { name: string; description?: string }) => {
     createMutation.mutate(values);
   };
 
-  const rowSize = density === 'dense' ? 'small' : density === 'spacious' ? 'large' : 'middle';
-  const tableWrapClass =
-    density === 'dense'
-      ? 'ad-density-dense ad-table-scroll ad-table-sticky'
-      : 'ad-table-scroll ad-table-sticky';
+  const rowSize = 'large';
+  const tableWrapClass = 'ad-table-scroll ad-table-sticky';
 
   const columns = [
     { title: '名称', dataIndex: 'name' },
@@ -50,9 +56,23 @@ export default function PoolList() {
     { title: '成员数', dataIndex: 'members', render: (m: any[]) => m?.length || 0, width: 90 },
     {
       title: '操作',
-      width: 120,
+      width: 160,
       render: (_: unknown, record: any) => (
-        <Button type="link" onClick={() => navigate(`/pools/${record.id}`)}>管理</Button>
+        <Space onClick={(e) => e.stopPropagation()}>
+          <Button type="link" onClick={() => navigate(`/pools/${record.id}`)}>管理</Button>
+          <Popconfirm
+            title="删除标的池"
+            description={`确定要删除「${record.name}」吗？此操作不可恢复。`}
+            onConfirm={() => deleteMutation.mutate(record.id)}
+            okText="删除"
+            cancelText="取消"
+            okButtonProps={{ danger: true, loading: deleteMutation.isPending && deleteMutation.variables === record.id }}
+          >
+            <Button type="link" danger icon={<DeleteOutlined />} loading={deleteMutation.isPending && deleteMutation.variables === record.id}>
+              删除
+            </Button>
+          </Popconfirm>
+        </Space>
       ),
     },
   ];

@@ -99,30 +99,31 @@ def seeded_sector_universe(sr_session):
     """
     import datetime as dt
 
-    # Tuple: (code, name, market, instrument_type, sector, sub_category, category, r1m, r3m, shp, vol, rsi)
+    # Tuple: (code, name, market, instrument_type, sector, sw_l1, sub_category, category, r1m, r3m, shp, vol, rsi)
     profiles = [
-        # Information Technology — should bucket together (1 stock + 1 ETF)
-        ("600000.SH", "Stock IT",   "A股", "STOCK", "Information Technology", None, None,
+        # Information Technology (GICS) / 电子 (SW) — 1 stock + 1 ETF
+        ("600000.SH", "Stock IT",   "A股", "STOCK", "Information Technology", "电子", None, None,
          10.0, 25.0, 2.0, 25.0, 75.0),
-        ("512760.SH", "Tech ETF",   "A股", "ETF",   None, "科技ETF", "股票型",
+        ("512760.SH", "Tech ETF",   "A股", "ETF",   None, None, "科技ETF", "股票型",
          8.0, 20.0, 1.8, 22.0, 70.0),
-        # Health Care
-        ("600519.SH", "Stock HC",   "A股", "STOCK", "Health Care", None, None,
+        # Health Care (GICS) / 医药生物 (SW)
+        ("600519.SH", "Stock HC",   "A股", "STOCK", "Health Care", "医药生物", None, None,
          6.0, 14.0, 1.4, 18.0, 60.0),
-        ("510300.SH", "Med ETF",    "A股", "ETF",   None, "医药ETF", "股票型",         4.0, 10.0, 1.2, 16.0, 55.0),
-        # Financials
-        ("601318.SH", "Stock FIN",  "A股", "STOCK", "Financials", None, None,
+        ("510300.SH", "Med ETF",    "A股", "ETF",   None, None, "医药ETF", "股票型",
+         4.0, 10.0, 1.2, 16.0, 55.0),
+        # Financials (GICS) / 银行 (SW)
+        ("601318.SH", "Stock FIN",  "A股", "STOCK", "Financials", "银行", None, None,
          1.0, 3.0, 0.8, 10.0, 45.0),
-        ("510500.SH", "Bank ETF",   "A股", "ETF",   None, "银行ETF", "股票型",
+        ("510500.SH", "Bank ETF",   "A股", "ETF",   None, None, "银行ETF", "股票型",
          0.5, 2.0, 0.7, 8.0, 42.0),
         # Bond ETF — out of scope (category=债券型), must NOT show up in sectors
-        ("511260.SH", "Bond ETF",   "A股", "ETF",   None, None, "债券型",
+        ("511260.SH", "Bond ETF",   "A股", "ETF",   None, None, None, "债券型",
          0.3, 0.5, 0.6, 2.0, 50.0),
     ]
 
     dates = [dt.date(2024, 6, 23), dt.date(2024, 6, 30)]
     for (
-        code, name, market, itype, sector, sub_cat, category,
+        code, name, market, itype, sector, sw_l1, sub_cat, category,
         r1m, r3m, shp, vol, rsi,
     ) in profiles:
         sr_session.add(
@@ -134,6 +135,7 @@ def seeded_sector_universe(sr_session):
                 category=category,
                 sub_category=sub_cat,
                 sector=sector,
+                sw_l1=sw_l1,
                 status="active",
             )
         )
@@ -254,3 +256,54 @@ def test_sector_rotation_query_param_validation(sector_rotation_client):
         "/api/v1/sector-rotation", params={"window_weeks": 999}
     )
     assert resp.status_code == 422
+
+
+def test_sector_rotation_sw_classification_returns_sw_industries(
+    sector_rotation_client, seeded_sector_universe
+):
+    """classification=SW must bucket by 申万一级行业, not GICS."""
+    resp = sector_rotation_client.get(
+        "/api/v1/sector-rotation", params={"classification": "SW"}
+    )
+    assert resp.status_code == 200, resp.text
+    payload = resp.json()
+
+    # Scope now reports SW.
+    assert payload["scope"]["classification"] == "SW"
+
+    # STOCKs bucket by etf_info.sw_l1; ETFs by 申万 keyword hints. The seed
+    # pairs each SW industry with one stock + one themed ETF.
+    sector_names = {row["sector"] for row in payload["sectors"]}
+    assert sector_names == {"电子", "医药生物", "银行"}
+
+    # No GICS names should leak into the SW view.
+    assert "Information Technology" not in sector_names
+    assert "Broad Market" not in sector_names
+
+    for row in payload["sectors"]:
+        assert row["stock_count"] + row["etf_count"] == row["count"]
+        # Each SW bucket has exactly its stock + themed ETF.
+        assert row["stock_count"] == 1
+        assert row["etf_count"] == 1
+
+
+def test_sector_rotation_default_classification_is_gics(
+    sector_rotation_client, seeded_sector_universe
+):
+    """Omitting ``classification`` must keep the GICS default."""
+    resp = sector_rotation_client.get("/api/v1/sector-rotation")
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["scope"]["classification"] == "GICS"
+
+
+def test_sector_list_sw_classification(
+    sector_rotation_client, seeded_sector_universe
+):
+    """The /sectors sub-endpoint must honour classification=SW."""
+    resp = sector_rotation_client.get(
+        "/api/v1/sector-rotation/sectors", params={"classification": "SW"}
+    )
+    assert resp.status_code == 200, resp.text
+    sectors = {item["sector"] for item in resp.json()["items"]}
+    assert sectors == {"电子", "医药生物", "银行"}
+

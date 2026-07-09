@@ -22,6 +22,10 @@ class ETFInfo:
     sector: str | None = None
     industry: str | None = None
     instrument_type: str = "ETF"
+    # A-share listing market (上海/深圳/北京) and board (主板/创业板/科创板/北交所).
+    # Both are nullable; only populated for A-share instruments.
+    listing_market: str | None = None
+    board: str | None = None
 
 
 @dataclass

@@ -196,7 +196,7 @@ export default function SearchTrendsPage() {
                   ) : !listData || listData.items.length === 0 ? (
                     <EmptyState title="暂无搜索热度数据" />
                   ) : (
-                    <div className="ad-table-scroll ad-table-sticky ad-density-dense">
+                    <div className="ad-table-scroll ad-table-sticky">
                       <Table
                         rowKey="id"
                         dataSource={listData.items}
@@ -236,7 +236,7 @@ export default function SearchTrendsPage() {
                   ) : !compareData || compareData.series.length === 0 ? (
                     <EmptyState title="暂无该关键词数据" />
                   ) : (
-                    <div className="ad-table-scroll ad-table-sticky ad-density-dense">
+                    <div className="ad-table-scroll ad-table-sticky">
                       <Table
                         rowKey="id"
                         dataSource={compareData.series}

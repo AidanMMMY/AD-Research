@@ -110,6 +110,8 @@ class ETFService:
             industry=etf.industry,
             market_cap=market_cap,
             country=etf.country,
+            listing_market=etf.listing_market,
+            board=etf.board,
         )
 
     def _apply_filters(
@@ -143,6 +145,10 @@ class ETFService:
             query = query.filter(ETFInfo.status == params.status)
         if params.instrument_type and exclude != "instrument_type":
             query = query.filter(ETFInfo.instrument_type == params.instrument_type)
+        if params.listing_market and exclude != "listing_market":
+            query = query.filter(ETFInfo.listing_market == params.listing_market)
+        if params.board and exclude != "board":
+            query = query.filter(ETFInfo.board == params.board)
         if params.min_fund_size is not None and exclude != "min_fund_size":
             query = query.filter(ETFInfo.fund_size >= params.min_fund_size)
         if params.max_fund_size is not None and exclude != "max_fund_size":
@@ -338,6 +344,52 @@ class ETFService:
         cache_set(cache_key, markets, ttl=600)
         return markets
 
+    def get_listing_markets(
+        self,
+        params: ETFFilterParams | None = None,
+        market: str | None = None,
+        instrument_type: str | None = None,
+    ) -> list[str]:
+        """Get distinct A-share listing markets (上海/深圳/北京), optionally filtered."""
+        if params is None:
+            params = ETFFilterParams(market=market, instrument_type=instrument_type)
+        return self._facet_values(
+            ETFInfo.listing_market, params, "listing_markets", "listing_market"
+        )
+
+    def get_boards(
+        self,
+        params: ETFFilterParams | None = None,
+        market: str | None = None,
+        instrument_type: str | None = None,
+    ) -> list[str]:
+        """Get distinct A-share boards (主板/创业板/科创板/北交所), optionally filtered."""
+        if params is None:
+            params = ETFFilterParams(market=market, instrument_type=instrument_type)
+        return self._facet_values(ETFInfo.board, params, "boards", "board")
+
+    # ------------------------------------------------------------------
+    # Holdings name backfill
+    # ------------------------------------------------------------------
+    def _holding_name_map(self, holding_codes: Iterable[str]) -> dict[str, str]:
+        """Return a code -> display-name map for the given holding codes.
+
+        Some data providers (e.g. certain ETF disclosure filings) only supply
+        the underlying security code without a human-readable name. When the
+        code exists in our ``ETFInfo`` table we can backfill the display name
+        from the canonical instrument record, so the front-end tables never
+        show a bare code column with an empty name column.
+        """
+        codes = [c for c in holding_codes if c]
+        if not codes:
+            return {}
+        rows = (
+            self.db.query(ETFInfo.code, ETFInfo.name, ETFInfo.name_zh)
+            .filter(ETFInfo.code.in_(codes))
+            .all()
+        )
+        return {r.code: (r.name or r.name_zh) for r in rows if r.name or r.name_zh}
+
     # ------------------------------------------------------------------
     # Holdings (ETF 持仓穿透)
     # ------------------------------------------------------------------
@@ -377,11 +429,12 @@ class ETFService:
             .order_by(ETFHolding.weight.desc().nullslast())
             .all()
         )
+        name_map = self._holding_name_map([h.holding_code for h in rows])
         holdings = [
             {
                 "etf_code": h.etf_code,
                 "holding_code": h.holding_code,
-                "holding_name": h.holding_name,
+                "holding_name": name_map.get(h.holding_code, h.holding_name),
                 "weight": float(h.weight) if h.weight is not None else None,
                 "shares": float(h.shares) if h.shares is not None else None,
                 "market_value": float(h.market_value)
@@ -421,11 +474,12 @@ class ETFService:
             .order_by(ETFHolding.weight.desc().nullslast())
             .all()
         )
+        name_map = self._holding_name_map([h.holding_code for h in rows])
         holdings = [
             {
                 "etf_code": h.etf_code,
                 "holding_code": h.holding_code,
-                "holding_name": h.holding_name,
+                "holding_name": name_map.get(h.holding_code, h.holding_name),
                 "weight": float(h.weight) if h.weight is not None else None,
                 "shares": float(h.shares) if h.shares is not None else None,
                 "market_value": float(h.market_value)
@@ -515,6 +569,7 @@ class ETFService:
         from_idx = _index(from_rows)
         to_idx = _index(to_rows)
         codes = set(from_idx) | set(to_idx)
+        name_map = self._holding_name_map(codes)
 
         entries: list[dict] = []
         added = removed = increased = decreased = unchanged = 0
@@ -555,10 +610,11 @@ class ETFService:
                     status = "unchanged"
                     unchanged += 1
 
+            base_name = (t or f).holding_name
             entries.append(
                 {
                     "holding_code": hcode,
-                    "holding_name": (t or f).holding_name,
+                    "holding_name": name_map.get(hcode, base_name),
                     "from_weight": f_w,
                     "to_weight": t_w,
                     "weight_change": (

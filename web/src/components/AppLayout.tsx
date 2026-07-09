@@ -72,7 +72,6 @@ import { useSettingsStore } from '@/stores/settings';
 import { menuRoutes, sidebarGroups, type SidebarGroupKey } from '@/routes';
 import { useIsMobile } from '@/hooks/useBreakpoint';
 import { useTheme, type Theme } from '@/hooks/useTheme';
-import DensityToggle from '@/components/DensityToggle';
 import OnboardingTour from '@/components/OnboardingTour';
 import './AppLayout.css';
 
@@ -608,13 +607,12 @@ export default function AppLayout() {
             )}
           </div>
 
-          {/* Header right cluster — collapse (desktop only), theme, color, density, user */}
+          {/* Header right cluster — collapse (desktop only), theme, color, user */}
           <div className="app-layout__header-controls">
             {!isMobile && (
               <>
                 <CollapseToggle collapsed={collapsed} onChange={setCollapsed} />
                 <ColorConventionToggle />
-                <DensityToggle />
                 <ThemeToggle theme={theme} onChange={setTheme} />
               </>
             )}
@@ -638,14 +636,6 @@ export default function AppLayout() {
                       label: (
                         <div onClick={(e) => e.stopPropagation()}>
                           <ThemeToggle theme={theme} onChange={setTheme} />
-                        </div>
-                      ),
-                    },
-                    {
-                      key: 'density',
-                      label: (
-                        <div onClick={(e) => e.stopPropagation()}>
-                          <DensityToggle />
                         </div>
                       ),
                     },

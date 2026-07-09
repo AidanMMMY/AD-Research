@@ -302,7 +302,7 @@ export default function SECFilingsPage() {
             description="尝试调整筛选条件或同步 Ticker"
           />
         ) : (
-          <div className="ad-density-dense ad-table-scroll ad-table-sticky">
+          <div className="ad-table-scroll ad-table-sticky">
             <Table
               rowKey="id"
               dataSource={visibleItems}

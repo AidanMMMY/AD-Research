@@ -18,7 +18,11 @@ from sqlalchemy.orm import Session
 
 from app.data.indicators.a_share_industry_mapping import map_industry
 from app.data.pipelines.base import ETLPipeline, ETLResult
-from app.data.providers.tushare_provider import TushareProvider
+from app.data.providers.tushare_provider import (
+    TushareProvider,
+    derive_board,
+    _derive_listing_market,
+)
 from app.models.etf import ETFInfo
 
 logger = logging.getLogger(__name__)
@@ -90,6 +94,12 @@ class AShareStockDiscoveryPipeline(ETLPipeline):
         rows = []
         for stock in stocks:
             sector, gics_industry = map_industry(stock.category)
+            # ``listing_market`` and ``board`` are derived from the
+            # ts_code prefix by the provider.  We re-derive here as a
+            # safety net so a missing field on the dataclass (e.g.
+            # legacy fixtures) still lands the correct value.
+            listing_market = stock.listing_market or _derive_listing_market(stock.code)
+            board = stock.board or derive_board(stock.code)
             rows.append(
                 {
                     "code": stock.code,
@@ -103,6 +113,8 @@ class AShareStockDiscoveryPipeline(ETLPipeline):
                     "industry": gics_industry,    # GICS industry (mapped)
                     "inception_date": stock.inception_date,
                     "status": "active",
+                    "listing_market": listing_market,
+                    "board": board,
                 }
             )
 
@@ -136,6 +148,10 @@ class AShareStockDiscoveryPipeline(ETLPipeline):
                 "industry": str(row["industry"]) if row.get("industry") else None,
                 "inception_date": inception_date_val,
                 "status": str(row.get("status", "active")),
+                "listing_market": (
+                    str(row["listing_market"]) if row.get("listing_market") else None
+                ),
+                "board": str(row["board"]) if row.get("board") else None,
             }
             records.append(record)
 
@@ -156,6 +172,8 @@ class AShareStockDiscoveryPipeline(ETLPipeline):
                     "status": insert(ETFInfo).excluded.status,
                     "instrument_type": insert(ETFInfo).excluded.instrument_type,
                     "inception_date": insert(ETFInfo).excluded.inception_date,
+                    "listing_market": insert(ETFInfo).excluded.listing_market,
+                    "board": insert(ETFInfo).excluded.board,
                     "updated_at": insert(ETFInfo).excluded.updated_at,
                 },
             )

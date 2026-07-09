@@ -18,25 +18,29 @@ export const instrumentApi = {
   list: (params?: InstrumentFilterParams) =>
     client.get<InstrumentListResponse>('/etfs', { params }),
   get: (code: string) => client.get<InstrumentInfo>(`/etfs/${code}`),
-  categories: (params?: { market?: string; instrument_type?: string }) =>
+  categories: (params?: InstrumentFilterParams) =>
     client.get<{ categories: string[] }>('/etfs/categories/list', { params }),
   markets: () => client.get<{ markets: string[] }>('/etfs/markets/list'),
   sparkline: (code: string, days = 30) =>
     client.get<SparklineResponse>(`/etfs/${code}/sparkline`, { params: { days } }),
-  sectors: (params?: { market?: string; instrument_type?: string }) =>
+  sectors: (params?: InstrumentFilterParams) =>
     client.get<{ sectors: string[] }>('/etfs/sectors/list', { params }),
-  industries: (params?: { market?: string; instrument_type?: string }) =>
+  industries: (params?: InstrumentFilterParams) =>
     client.get<{ industries: string[] }>('/etfs/industries/list', { params }),
-  subCategories: (params?: { market?: string; instrument_type?: string }) =>
+  subCategories: (params?: InstrumentFilterParams) =>
     client.get<{ sub_categories: string[] }>('/etfs/sub-categories/list', { params }),
-  managers: (params?: { market?: string; instrument_type?: string }) =>
+  managers: (params?: InstrumentFilterParams) =>
     client.get<{ managers: string[] }>('/etfs/managers/list', { params }),
-  currencies: (params?: { market?: string; instrument_type?: string }) =>
+  currencies: (params?: InstrumentFilterParams) =>
     client.get<{ currencies: string[] }>('/etfs/currencies/list', { params }),
-  countries: (params?: { market?: string; instrument_type?: string }) =>
+  countries: (params?: InstrumentFilterParams) =>
     client.get<{ countries: string[] }>('/etfs/countries/list', { params }),
-  underlyingIndices: (params?: { market?: string; instrument_type?: string }) =>
+  underlyingIndices: (params?: InstrumentFilterParams) =>
     client.get<{ underlying_indices: string[] }>('/etfs/underlying-indices/list', { params }),
+  listingMarkets: (params?: InstrumentFilterParams) =>
+    client.get<{ listing_markets: string[] }>('/etfs/listing-markets/list', { params }),
+  boards: (params?: InstrumentFilterParams) =>
+    client.get<{ boards: string[] }>('/etfs/boards/list', { params }),
   holdings: (code: string, params?: { date?: string }) =>
     client.get<ETFHoldingResponse>(`/etfs/${code}/holdings`, { params }),
   holdingsSnapshots: (code: string) =>

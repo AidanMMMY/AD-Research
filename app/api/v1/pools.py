@@ -88,9 +88,13 @@ def update_pool(
 
 
 @router.delete("/{pool_id}", status_code=204)
-def delete_pool(pool_id: int, service: PoolService = Depends(get_pool_service)):
-    """Delete a pool by ID."""
-    deleted = service.delete_pool(pool_id)
+def delete_pool(
+    pool_id: int,
+    current_user: UserResponse = Depends(get_current_user),
+    service: PoolService = Depends(get_pool_service),
+):
+    """Delete a pool by ID (M21-3 owner-scoped)."""
+    deleted = service.delete_pool(pool_id, current_user=current_user)
     if not deleted:
         raise HTTPException(status_code=404, detail=f"Pool {pool_id} not found")
     return None

@@ -17,6 +17,7 @@ from app.models.macro import MacroIndicator
 from app.services.macro.fred_service import (
     FredService,
     SERIES_REGISTRY,
+    _EU_SERIES,
     _GLOBAL_SERIES,
     _SERIES_ALL,
 )
@@ -89,9 +90,9 @@ def test_refresh_iterates_registry_and_calls_upsert(db_session, stub_provider):
     service = FredService(db=db_session, provider=stub_provider)
     result = service.refresh(lookback_days=10)
 
-    # 2026-07: registry grew to include the global series; refresh now
-    # iterates US + global. Each stub series yields 3 valid obs.
-    total_series = len(SERIES_REGISTRY) + len(_GLOBAL_SERIES)
+    # 2026-07: registry grew to include EU and global series; refresh now
+    # iterates US + EU + global. Each stub series yields 3 valid obs.
+    total_series = len(SERIES_REGISTRY) + len(_EU_SERIES) + len(_GLOBAL_SERIES)
     assert result["written"] == 3 * total_series
     assert result["series_count"] == total_series
     assert result["failed"] == []
@@ -100,17 +101,19 @@ def test_refresh_iterates_registry_and_calls_upsert(db_session, stub_provider):
     # Only the non-"." rows survive per series → 3 per series.
     assert len(rows) == 3 * total_series
     # Spot-check: every persisted row tagged source=fred; region is
-    # either 'us' (legacy) or 'global' (cross-border series added in
-    # the Global Markets rollout).
+    # 'us' (legacy), 'eu' (Eurozone), or 'global' (cross-border series).
     assert all(r.source == "fred" for r in rows)
-    assert {r.region for r in rows} <= {"us", "global"}
+    assert {r.region for r in rows} <= {"us", "eu", "global"}
     # And specifically: every US-only code keeps region='us'; every
-    # global_* code is tagged region='global'.
+    # eu_* code is region='eu'; every global_* code is tagged region='global'.
     us_codes = {m.code for m in SERIES_REGISTRY}
+    eu_codes = {m.code for m in _EU_SERIES}
     global_codes = {m.code for m in _GLOBAL_SERIES}
     for r in rows:
         if r.code in us_codes:
             assert r.region == "us"
+        elif r.code in eu_codes:
+            assert r.region == "eu"
         elif r.code in global_codes:
             assert r.region == "global"
 
@@ -161,9 +164,9 @@ def test_refresh_skips_when_api_key_missing(db_session):
 
     assert result["written"] == 0
     assert result["skipped_reason"] == "FRED_API_KEY not configured"
-    # Failed list now covers both US and global registries.
+    # Failed list now covers US, EU, and global registries.
     assert set(result["failed"]) == {
-        m.series_id for m in (list(SERIES_REGISTRY) + list(_GLOBAL_SERIES))
+        m.series_id for m in (list(SERIES_REGISTRY) + list(_EU_SERIES) + list(_GLOBAL_SERIES))
     }
 
 
@@ -176,14 +179,14 @@ def test_list_indicators_returns_all_registered_with_latest(db_session, stub_pro
     service.refresh(lookback_days=10)
 
     items = service.list_indicators()
-    total = len(SERIES_REGISTRY) + len(_GLOBAL_SERIES)
+    total = len(SERIES_REGISTRY) + len(_EU_SERIES) + len(_GLOBAL_SERIES)
     assert len(items) == total
     # Every entry has metadata fields populated; region is one of the
-    # two tags the service knows how to write.
+    # three tags the service knows how to write.
     for item in items:
         assert item["code"]
         assert item["name_zh"]
-        assert item["region"] in {"us", "global"}
+        assert item["region"] in {"us", "eu", "global"}
         assert item["source"] == "fred"
     # And at least one item has a populated latest value.
     assert any(item["value"] is not None for item in items)
@@ -193,9 +196,11 @@ def test_list_indicators_region_filter(db_session, stub_provider):
     service = FredService(db=db_session, provider=stub_provider)
     service.refresh(lookback_days=10)
 
-    # ``us`` returns only the legacy US series; ``global`` returns only
-    # the cross-border series; ``cn`` returns empty (we ship US + global).
+    # ``us`` returns only the legacy US series; ``eu`` returns only the
+    # Eurozone series; ``global`` returns only the cross-border series;
+    # ``cn`` returns empty (we ship US + EU + global).
     assert len(service.list_indicators(region="us")) == len(SERIES_REGISTRY)
+    assert len(service.list_indicators(region="eu")) == len(_EU_SERIES)
     assert len(service.list_indicators(region="global")) == len(_GLOBAL_SERIES)
     assert service.list_indicators(region="cn") == []
 

@@ -129,8 +129,6 @@ export default function DailyLesson({ today: _today = new Date() }: DailyLessonP
 
       <div className="daily-lesson__footer">
         <div className="daily-lesson__hint">
-          <span>本周已学习 <b>{learned.thisWeek}</b> 个概念</span>
-          <span className="daily-lesson__divider">·</span>
           <span className="daily-lesson__hint-sub">每次进入页面随机抽取</span>
         </div>
         <div className="daily-lesson__actions">

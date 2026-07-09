@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { Table, Tabs } from 'antd';
 import { useScores, useScoreTemplates } from '@/hooks/useScores';
 import { useSparkline } from '@/hooks/useSparkline';
-import { useDensity } from '@/hooks/useDensity';
 import { useAIHelp } from '@/hooks/useAIHelp';
 import { useSettingsStore } from '@/stores/settings';
 import PageShell from '@/components/PageShell';
@@ -36,7 +35,6 @@ type TopTab = 'ranking' | 'templates';
 export default function ScoreRanking() {
   const navigate = useNavigate();
   const { open } = useAIHelp();
-  const { density } = useDensity();
   const mode = useSettingsStore((s) => s.mode);
   const [topTab, setTopTab] = useState<TopTab>('ranking');
   const [templateId, setTemplateId] = useState<number | undefined>();
@@ -56,11 +54,8 @@ export default function ScoreRanking() {
     });
   };
 
-  const rowSize = density === 'dense' ? 'small' : density === 'spacious' ? 'large' : 'middle';
-  const tableWrapClass =
-    density === 'dense'
-      ? 'ad-density-dense ad-table-scroll ad-table-sticky'
-      : 'ad-table-scroll ad-table-sticky';
+  const rowSize = 'large';
+  const tableWrapClass = 'ad-table-scroll ad-table-sticky';
 
   const columns = [
     {

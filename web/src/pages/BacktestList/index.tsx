@@ -11,7 +11,6 @@ import EmptyState from '@/components/EmptyState';
 import { useBacktests } from '@/hooks/useBacktests';
 import { useStrategies } from '@/hooks/useStrategies';
 import { useInstrumentList } from '@/hooks/useInstrumentList';
-import { useDensity } from '@/hooks/useDensity';
 import { PlusOutlined, EyeOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import dayjs from 'dayjs';
@@ -20,7 +19,6 @@ import type { InstrumentInfo } from '@/types/instrument';
 
 export default function BacktestList() {
   const navigate = useNavigate();
-  const { density } = useDensity();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [form] = Form.useForm();
 
@@ -64,11 +62,8 @@ export default function BacktestList() {
     }
   };
 
-  const rowSize = density === 'dense' ? 'small' : density === 'spacious' ? 'large' : 'middle';
-  const tableWrapClass =
-    density === 'dense'
-      ? 'ad-density-dense ad-table-scroll ad-table-sticky'
-      : 'ad-table-scroll ad-table-sticky';
+  const rowSize = 'large';
+  const tableWrapClass = 'ad-table-scroll ad-table-sticky';
 
   const columns = [
     { title: 'ID', dataIndex: 'id', width: 60, render: (v: number) => <span className="tabular-nums">{v}</span> },

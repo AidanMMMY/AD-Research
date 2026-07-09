@@ -29,7 +29,7 @@ import {
   formatRelative as formatRelativeTz,
 } from '@/utils/datetime';
 import { newsApi } from '@/api/news';
-import { useMacroLatest } from '@/api/macro';
+import { useMacroLatest, macroApi } from '@/api/macro';
 import PageShell from '@/components/PageShell';
 import PageHeader from '@/components/PageHeader';
 import ResponsiveGrid from '@/components/ResponsiveGrid';
@@ -140,7 +140,7 @@ const GLOBAL_TILES: Array<{
 }> = [
   // ── 美股大盘 ──
   { code: 'global_sp500', title: '标普 500', unit: '' },
-  { code: 'global_ndx', title: '纳斯达克 100', unit: '' },
+  { code: 'global_nasdaq', title: '纳斯达克 100', unit: '' },
   { code: 'global_dow', title: '道琼斯', unit: '' },
   // ── 美债 / 汇率 ──
   { code: 'us_dgs10', title: 'US 10Y', unit: '%' },
@@ -171,9 +171,18 @@ function GlobalSnapshot() {
   const navigate = useNavigate();
   const { data: latestGlobal, isLoading: gLoading } = useMacroLatest('global');
   const { data: latestUs, isLoading: uLoading } = useMacroLatest('us');
+  const { data: rtGlobal, isLoading: rtLoading } = useQuery({
+    queryKey: ['macro', 'indices', 'global', 'realtime'],
+    queryFn: async () => {
+      const res = await macroApi.getGlobalIndicesRealtime();
+      return res.data;
+    },
+    staleTime: 60_000,
+  });
 
   const lookup = useMemo(() => {
     const map = new Map<string, { value: number | null; period: string | null; change_pct: number | null }>();
+    // DB snapshot covers FRED (US rates/FX) and any persisted global index rows.
     for (const it of latestGlobal?.items ?? []) {
       map.set(it.code, { value: it.value ?? null, period: it.period ?? null, change_pct: it.change_pct ?? null });
     }
@@ -182,10 +191,25 @@ function GlobalSnapshot() {
         map.set(it.code, { value: it.value ?? null, period: it.period ?? null, change_pct: it.change_pct ?? null });
       }
     }
+    // Overlay the live yfinance + akshare snapshot so tiles do not lag behind
+    // the scheduled DB refresh. Real-time items are keyed by the same codes as
+    // GLOBAL_TILES; skip any code whose live point is not newer than DB.
+    for (const it of rtGlobal?.items ?? []) {
+      const code = it.code as string;
+      const existing = map.get(code);
+      const livePeriod = (it.as_of as string) ?? null;
+      if (livePeriod != null && (existing == null || livePeriod > (existing.period ?? ''))) {
+        map.set(code, {
+          value: (it.value as number) ?? null,
+          period: livePeriod,
+          change_pct: (it.change_pct as number) ?? null,
+        });
+      }
+    }
     return map;
-  }, [latestGlobal, latestUs]);
+  }, [latestGlobal, latestUs, rtGlobal]);
 
-  const isLoading = gLoading || uLoading;
+  const isLoading = gLoading || uLoading || rtLoading;
   const hasAnyData = GLOBAL_TILES.some((t) => lookup.has(t.code));
 
   return (
@@ -410,6 +434,14 @@ export default function Dashboard() {
   const { latest: marketLatest, isConnected: marketConnected, reconnect: marketReconnect } =
     useMarketStream(INDEX_CODES);
 
+  const latestTickDate = useMemo(() => {
+    const maxTs = INDEX_CODES.reduce<number>((max, code) => {
+      const marketTs = marketLatest[code]?.ts;
+      return marketTs && marketTs > max ? marketTs : max;
+    }, 0);
+    return maxTs > 0 ? new Date(maxTs).toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10);
+  }, [marketLatest]);
+
   const scoreColumns = [
     {
       title: <HelpPopover termKey="rank_overall" mode={mode}>排名</HelpPopover>,
@@ -568,7 +600,12 @@ export default function Dashboard() {
 
       <section className="dashboard-section">
         <SectionHeading
-          title="实时行情"
+          title={
+            <span>
+              最新行情
+              <span className="section-heading-meta"> · {latestTickDate}</span>
+            </span>
+          }
           action={
             !marketConnected ? (
               <span className="market-conn">

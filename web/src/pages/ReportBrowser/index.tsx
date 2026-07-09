@@ -227,7 +227,7 @@ export default function ReportBrowser() {
           }
         />
       ) : (
-        <div className="ad-density-dense ad-table-scroll ad-table-sticky">
+        <div className="ad-table-scroll ad-table-sticky">
           <Table
             dataSource={filteredReports}
             columns={columns}

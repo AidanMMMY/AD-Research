@@ -87,25 +87,17 @@ def _coerce_float(value) -> float | None:
         return None
 
 
-def fetch_yfinance_index(meta: IndexMeta) -> list[dict]:
-    """Fetch up to 3 months of daily closes for one index ticker.
+def fetch_yfinance_index(meta: IndexMeta, period: str = _HISTORY_PERIOD) -> list[dict]:
+    """Fetch up to ``period`` of daily closes for one index ticker.
 
-    Returns ``list[dict]`` shaped like::
-
-        {
-            "code": meta.code,
-            "period": "YYYY-MM-DD",
-            "value": float,        # daily close
-            "prev_close": float,   # previous trading day close (None for first row)
-            "name_zh": meta.name_zh,
-            "name_en": meta.name_en,
-            "unit": meta.unit,
-        }
-
-    Returns an empty list on failure (the caller logs and skips).
+    ``period`` is passed straight to ``yfinance.Ticker.history`` (e.g.
+    ``"5d"``, ``"1mo"``, ``"3mo"``).  The scheduled ETL uses the
+    default ``_HISTORY_PERIOD`` (3 months) for backfill coverage; the
+    real-time dashboard overlay can pass a shorter window to keep the
+    request fast.
     """
     try:
-        h = yf.Ticker(meta.ticker).history(period=_HISTORY_PERIOD)
+        h = yf.Ticker(meta.ticker).history(period=period)
     except Exception as exc:
         logger.warning(
             "yfinance index fetch failed for %s (%s): %s",
@@ -152,20 +144,21 @@ def fetch_yfinance_index(meta: IndexMeta) -> list[dict]:
     return out
 
 
-def fetch_all_global_indices() -> list[dict]:
+def fetch_all_global_indices(period: str = _HISTORY_PERIOD) -> list[dict]:
     """Fetch every registered international index via yfinance.
 
     Returns a flat list of observations (one per (index, trading day))
-    tagged with code/period/value.  Per-ticker failures are logged
-    and skipped — the batch never raises.
+    tagged with code/period/value.  Per-ticker failures are logged and
+    skipped — the batch never raises.
 
-    Note: rate-limit guards inside this function are deliberately
-    conservative (1.5s between tickers) — adjust ``_PER_TICKER_SLEEP``
-    if Yahoo changes its throttle policy.
+    ``period`` controls the history window and is forwarded to each
+    ``fetch_yfinance_index`` call.  The daily ETL uses the default 3
+    month window; the realtime API can pass a short window (e.g. ``"5d"``)
+    to keep response times low.
     """
     out: list[dict] = []
     for meta in GLOBAL_INDEX_REGISTRY:
-        rows = fetch_yfinance_index(meta)
+        rows = fetch_yfinance_index(meta, period=period)
         out.extend(rows)
         time.sleep(_PER_TICKER_SLEEP)
     logger.info(

@@ -103,6 +103,22 @@ def derive_board(ts_code: str | None) -> str:
     return "主板"
 
 
+def _derive_listing_market(ts_code: str | None) -> str | None:
+    """Derive the display listing market label (上海/深圳/北京) from a ts_code.
+
+    Returns ``None`` for non-A-share codes so the front-end can omit the
+    badge entirely (the field is ``nullable`` on ``etf_info``).
+    """
+    market = derive_market(ts_code)
+    if market == "SH":
+        return "上海"
+    if market == "SZ":
+        return "深圳"
+    if market == "BJ":
+        return "北京"
+    return None
+
+
 def compute_listing_status(
     issue_date: date | None,
     list_date: date | None,
@@ -266,6 +282,11 @@ class TushareProvider(DataProvider):
                     except (ValueError, TypeError):
                         pass
 
+                # Derive listing market (上海/深圳/北京) and board
+                # (主板/创业板/科创板/北交所) from the Tushare ts_code prefix.
+                listing_market_value = _derive_listing_market(internal_code)
+                board_value = derive_board(internal_code)
+
                 all_stocks.append(
                     ETFInfo(
                         code=internal_code,
@@ -277,6 +298,8 @@ class TushareProvider(DataProvider):
                         inception_date=inception_date,
                         list_date=inception_date,
                         instrument_type="STOCK",
+                        listing_market=listing_market_value,
+                        board=board_value,
                     )
                 )
 
@@ -288,6 +311,75 @@ class TushareProvider(DataProvider):
             len(all_stocks),
         )
         return all_stocks
+
+    # ------------------------------------------------------------------
+    # 申万 (SW 2021) L1 industry membership
+    # ------------------------------------------------------------------
+
+    def fetch_sw_l1_membership(self) -> dict[str, tuple[str, str]]:
+        """Authoritative per-stock 申万一级行业 membership from Tushare.
+
+        Uses ``index_classify(level='L1', src='SW2021')`` to enumerate the
+        31 primary SW industries, then ``index_member`` (current members
+        only) per industry to map each constituent stock to its SW L1.
+
+        Returns a dict ``{internal_code: (sw_l1_name, sw_l1_code)}`` where
+        ``internal_code`` matches ``etf_info.code`` (Tushare ts_code passes
+        through unchanged, e.g. ``600519.SH``).
+
+        Requires elevated Tushare 积分 (index_member). Raises
+        ``DataProviderError`` if ``index_classify`` is not accessible; the
+        caller (``backfill_a_share_sw``) is expected to fall back to the
+        offline CSRC→SW map on failure.
+        """
+        try:
+            self._limiter.acquire()
+            classify = self._pro.index_classify(
+                level="L1", src="SW2021",
+                fields="index_code,industry_name",
+            )
+        except Exception as exc:  # pragma: no cover - network/permission
+            raise DataProviderError(
+                f"Tushare index_classify(SW2021, L1) failed: {exc}"
+            ) from exc
+
+        if classify is None or classify.empty:
+            raise DataProviderError("Tushare index_classify returned no SW L1 rows")
+
+        membership: dict[str, tuple[str, str]] = {}
+        for _, row in classify.iterrows():
+            index_code = str(row.get("index_code", ""))
+            industry_name = str(row.get("industry_name", ""))
+            if not index_code or not industry_name:
+                continue
+            # SW L1 code is the numeric prefix of the index_code (801080.SI).
+            sw_code = index_code.split(".")[0]
+            try:
+                self._limiter.acquire()
+                members = self._pro.index_member(
+                    index_code=index_code,
+                    is_new="Y",
+                    fields="con_code",
+                )
+            except Exception as exc:  # pragma: no cover - network/permission
+                logger.warning(
+                    "[TushareProvider] index_member(%s) failed: %s",
+                    index_code, exc,
+                )
+                continue
+            if members is None or members.empty:
+                continue
+            for _, m in members.iterrows():
+                con_code = str(m.get("con_code", ""))
+                if not con_code:
+                    continue
+                membership[_to_internal_code(con_code)] = (industry_name, sw_code)
+
+        logger.info(
+            "[TushareProvider] Fetched SW L1 membership for %d stocks",
+            len(membership),
+        )
+        return membership
 
     # ------------------------------------------------------------------
     # Listing / IPO — fetch upcoming and recently-listed A-share IPO events

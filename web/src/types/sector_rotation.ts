@@ -8,10 +8,13 @@
  * Field-level docs live in `app/schemas/sector_rotation.py`.
  */
 
+/** Industry classification system: GICS (global default) or 申万 (A-share). */
+export type SectorClassification = 'GICS' | 'SW';
+
 export interface SectorScope {
   market: 'A股';
   instrument_types: Array<'ETF' | 'STOCK'>;
-  classification: 'GICS';
+  classification: SectorClassification;
 }
 
 export interface SectorPerformance {
@@ -69,6 +72,41 @@ export interface SectorListItem {
 
 export interface SectorListData {
   items: SectorListItem[];
+}
+
+// ---------------------------------------------------------------------------
+// Constituents view (added 2026-07-09)
+// ---------------------------------------------------------------------------
+
+export type SectorConstituentType = 'ETF' | 'STOCK';
+
+export interface SectorConstituent {
+  code: string;
+  name: string;
+  instrument_type: SectorConstituentType;
+  /** Resolved GICS sector (echoed from the server). */
+  resolved_sector: string;
+  /** Weight in CNY 元. null when the upstream data is missing. */
+  weight: number | null;
+  weight_unit: '元';
+  /** '市值' for STOCK, '规模' for ETF — drives the column header. */
+  weight_label: '市值' | '规模';
+  return_1w: number | null;
+  return_1m: number | null;
+  return_3m: number | null;
+  return_6m: number | null;
+  return_1y: number | null;
+  sharpe_1y: number | null;
+  rsi14: number | null;
+  amount_total: number | null;
+}
+
+export interface SectorConstituentsData {
+  sector: string;
+  trade_date: string | null;
+  count: number;
+  total_in_sector: number;
+  items: SectorConstituent[];
 }
 
 /** Display columns used by the heatmap & detail table. */

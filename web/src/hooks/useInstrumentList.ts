@@ -19,89 +19,65 @@ export function useInstrumentDetail(code: string) {
 }
 
 export function useInstrumentCategories(filters?: InstrumentFilterParams) {
-  const params = filters
-    ? { market: filters.market, instrument_type: filters.instrument_type }
-    : undefined;
   return useQuery({
-    queryKey: ['instrument-categories', params],
-    queryFn: () => instrumentApi.categories(params).then((r) => r.data.categories),
+    queryKey: ['instrument-categories', filters],
+    queryFn: () => instrumentApi.categories(filters).then((r) => r.data.categories),
     staleTime: 300_000,
   });
 }
 
 export function useInstrumentSectors(filters?: InstrumentFilterParams) {
-  const params = filters
-    ? { market: filters.market, instrument_type: filters.instrument_type }
-    : undefined;
   return useQuery({
-    queryKey: ['instrument-sectors', params],
-    queryFn: () => instrumentApi.sectors(params).then((r) => r.data.sectors),
+    queryKey: ['instrument-sectors', filters],
+    queryFn: () => instrumentApi.sectors(filters).then((r) => r.data.sectors),
     staleTime: 300_000,
   });
 }
 
 export function useInstrumentIndustries(filters?: InstrumentFilterParams) {
-  const params = filters
-    ? { market: filters.market, instrument_type: filters.instrument_type }
-    : undefined;
   return useQuery({
-    queryKey: ['instrument-industries', params],
-    queryFn: () => instrumentApi.industries(params).then((r) => r.data.industries),
+    queryKey: ['instrument-industries', filters],
+    queryFn: () => instrumentApi.industries(filters).then((r) => r.data.industries),
     staleTime: 300_000,
   });
 }
 
 export function useInstrumentSubCategories(filters?: InstrumentFilterParams) {
-  const params = filters
-    ? { market: filters.market, instrument_type: filters.instrument_type }
-    : undefined;
   return useQuery({
-    queryKey: ['instrument-sub-categories', params],
-    queryFn: () => instrumentApi.subCategories(params).then((r) => r.data.sub_categories),
+    queryKey: ['instrument-sub-categories', filters],
+    queryFn: () => instrumentApi.subCategories(filters).then((r) => r.data.sub_categories),
     staleTime: 300_000,
   });
 }
 
 export function useInstrumentManagers(filters?: InstrumentFilterParams) {
-  const params = filters
-    ? { market: filters.market, instrument_type: filters.instrument_type }
-    : undefined;
   return useQuery({
-    queryKey: ['instrument-managers', params],
-    queryFn: () => instrumentApi.managers(params).then((r) => r.data.managers),
+    queryKey: ['instrument-managers', filters],
+    queryFn: () => instrumentApi.managers(filters).then((r) => r.data.managers),
     staleTime: 300_000,
   });
 }
 
 export function useInstrumentCurrencies(filters?: InstrumentFilterParams) {
-  const params = filters
-    ? { market: filters.market, instrument_type: filters.instrument_type }
-    : undefined;
   return useQuery({
-    queryKey: ['instrument-currencies', params],
-    queryFn: () => instrumentApi.currencies(params).then((r) => r.data.currencies),
+    queryKey: ['instrument-currencies', filters],
+    queryFn: () => instrumentApi.currencies(filters).then((r) => r.data.currencies),
     staleTime: 300_000,
   });
 }
 
 export function useInstrumentCountries(filters?: InstrumentFilterParams) {
-  const params = filters
-    ? { market: filters.market, instrument_type: filters.instrument_type }
-    : undefined;
   return useQuery({
-    queryKey: ['instrument-countries', params],
-    queryFn: () => instrumentApi.countries(params).then((r) => r.data.countries),
+    queryKey: ['instrument-countries', filters],
+    queryFn: () => instrumentApi.countries(filters).then((r) => r.data.countries),
     staleTime: 300_000,
   });
 }
 
 export function useInstrumentUnderlyingIndices(filters?: InstrumentFilterParams) {
-  const params = filters
-    ? { market: filters.market, instrument_type: filters.instrument_type }
-    : undefined;
   return useQuery({
-    queryKey: ['instrument-underlying-indices', params],
-    queryFn: () => instrumentApi.underlyingIndices(params).then((r) => r.data.underlying_indices),
+    queryKey: ['instrument-underlying-indices', filters],
+    queryFn: () => instrumentApi.underlyingIndices(filters).then((r) => r.data.underlying_indices),
     staleTime: 300_000,
   });
 }
@@ -110,6 +86,23 @@ export function useInstrumentMarkets() {
   return useQuery({
     queryKey: ['instrument-markets'],
     queryFn: () => instrumentApi.markets().then((r) => r.data.markets),
+    staleTime: 300_000,
+  });
+}
+
+export function useInstrumentListingMarkets(filters?: InstrumentFilterParams) {
+  return useQuery({
+    queryKey: ['instrument-listing-markets', filters],
+    queryFn: () =>
+      instrumentApi.listingMarkets(filters).then((r) => r.data.listing_markets),
+    staleTime: 300_000,
+  });
+}
+
+export function useInstrumentBoards(filters?: InstrumentFilterParams) {
+  return useQuery({
+    queryKey: ['instrument-boards', filters],
+    queryFn: () => instrumentApi.boards(filters).then((r) => r.data.boards),
     staleTime: 300_000,
   });
 }

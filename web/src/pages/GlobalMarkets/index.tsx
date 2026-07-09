@@ -249,7 +249,7 @@ function CategoryBlock({ title, rows }: { title: string; rows: RowVm[] }): JSX.E
     <section className="phase5c-section">
       <SectionHeading title={title} />
       <Panel>
-        <div className="ad-density-dense ad-table-scroll">
+        <div className="ad-table-scroll">
           <Table<RowVm>
             rowKey="code"
             size="small"

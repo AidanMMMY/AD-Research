@@ -74,6 +74,46 @@ def flatten_keywords(
 # ---------------------------------------------------------------------------
 
 
+# Module-level cache for the Baidu hot-search ranking so the API is hit
+# once per pipeline run, not once per keyword.
+_baidu_hot_search_cache: Any = None
+
+
+def _fetch_baidu_hot_search_df() -> Any:
+    """Fetch the Baidu hot-search ranking once and cache it in-process.
+
+    Retries a few times because the upstream endpoint is occasionally
+    flaky (e.g. ``list indices must be integers or slices, not str``).
+    """
+    global _baidu_hot_search_cache
+    if _baidu_hot_search_cache is not None:
+        return _baidu_hot_search_cache
+
+    try:
+        import akshare as ak  # type: ignore
+    except ImportError:
+        logger.warning("akshare not installed; _fetch_baidu_hot_search_df returns empty")
+        return None
+
+    df = None
+    for attempt in range(1, 4):
+        try:
+            df = ak.stock_hot_search_baidu()  # type: ignore[attr-defined]
+            break
+        except Exception as exc:
+            logger.warning(
+                "ak.stock_hot_search_baidu attempt %d failed: %s", attempt, exc
+            )
+            if attempt < 3:
+                time.sleep(1)
+
+    if df is None or getattr(df, "empty", True):
+        return None
+
+    _baidu_hot_search_cache = df
+    return df
+
+
 def fetch_baidu_index(
     keyword: str,
     days: int = 30,
@@ -93,21 +133,11 @@ def fetch_baidu_index(
     """
     if days < 1 or days > 365:
         days = 30
-    try:
-        import akshare as ak  # type: ignore
-    except ImportError:
-        logger.warning("akshare not installed; fetch_baidu_index returns empty")
-        return []
 
     # Best-effort: pull the live ranking.  We cannot map a single
     # keyword to a date window here, so the trade_date is "today" and
     # is_partial=True unless ``days`` resolves to a single observation.
-    try:
-        df = ak.stock_hot_search_baidu()  # type: ignore[attr-defined]
-    except Exception as exc:
-        logger.warning("ak.stock_hot_search_baidu failed for %s: %s", keyword, exc)
-        return []
-
+    df = _fetch_baidu_hot_search_df()
     if df is None or getattr(df, "empty", True):
         return []
 
@@ -125,29 +155,38 @@ def fetch_baidu_index(
 
     # Build a normalised text-search column once.
     def _matches(row: dict[str, Any]) -> bool:
-        for col in ("名称", "name", "keyword", "word", "热搜词"):
+        for col in ("名称/代码", "名称", "name", "keyword", "word", "热搜词"):
             v = row.get(col)
             if isinstance(v, str) and keyword in v:
                 return True
         return False
 
-    for row in records:
+    for idx, row in enumerate(records, start=1):
         if not _matches(row):
             continue
+        # Use explicit heat score if available, otherwise derive from rank
+        heat = row.get("综合热度")
+        try:
+            heat_int = int(float(heat)) if heat is not None else None
+        except (TypeError, ValueError):
+            heat_int = None
         rank = row.get("排名") or row.get("rank") or row.get("排序")
         try:
             rank_int = int(rank) if rank is not None else None
         except (TypeError, ValueError):
             rank_int = None
-        if rank_int is None:
-            continue
-        value = max(0, 10000 - rank_int)
+        if heat_int is not None:
+            value = max(0, heat_int)
+        elif rank_int is not None:
+            value = max(0, 10000 - rank_int)
+        else:
+            value = max(0, 10000 - idx)
         out.append(
             {
                 "trade_date": today,
                 "value": int(value),
                 "is_partial": is_partial,
-                "rank": rank_int,
+                "rank": rank_int or idx,
                 "region": region,
             }
         )

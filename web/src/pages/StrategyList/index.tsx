@@ -17,7 +17,6 @@ import { useStrategyCatalog } from '@/hooks/useStrategyCatalog';
 import { useAIHelp } from '@/hooks/useAIHelp';
 import { PlusOutlined, PlayCircleOutlined, DeleteOutlined, BookOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
-import { useDensity } from '@/hooks/useDensity';
 import { buildStrategyListContext } from '@/utils/helpContext';
 import { getQuickQuestions } from '@/utils/helpPrompts';
 import type { StrategyCatalogItem } from '@/types/strategy';
@@ -46,7 +45,6 @@ export default function StrategyList() {
   const navigate = useNavigate();
   const { open } = useAIHelp();
   const mode = useSettingsStore((s) => s.mode);
-  const { density } = useDensity();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState<StrategyCatalogItem | null>(null);
   const [form] = Form.useForm();
@@ -129,11 +127,8 @@ export default function StrategyList() {
     }
   };
 
-  const rowSize = density === 'dense' ? 'small' : density === 'spacious' ? 'large' : 'middle';
-  const tableWrapClass =
-    density === 'dense'
-      ? 'ad-density-dense ad-table-scroll ad-table-sticky'
-      : 'ad-table-scroll ad-table-sticky';
+  const rowSize = 'large';
+  const tableWrapClass = 'ad-table-scroll ad-table-sticky';
 
   const columns = [
     { title: 'ID', dataIndex: 'id', width: 60 },

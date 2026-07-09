@@ -31,7 +31,6 @@ import PageHeader from '@/components/PageHeader';
 import Panel from '@/components/Panel';
 import SectionHeading from '@/components/SectionHeading';
 import ResponsiveGrid from '@/components/ResponsiveGrid';
-import DensityToggle from '@/components/DensityToggle';
 import EmptyState from '@/components/EmptyState';
 import { useDeployments, useLogStream } from '@/hooks/useDeployments';
 import type { DeploymentRun, ContainerStats, LogLine } from '@/types/deployment';
@@ -386,7 +385,6 @@ export default function AdminDeployments() {
               <span>部署历史</span>
             </Space>
           }
-          action={<DensityToggle />}
         />
         <Panel variant="default" padding="md">
           <DeploymentsTable data={deployments} loading={isLoadingDeployments} />

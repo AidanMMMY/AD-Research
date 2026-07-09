@@ -141,38 +141,3 @@ export function useLearnedTerms(): LearnedTermsAPI {
 
   return { terms, thisWeek, has, mark, unmark, lessonShownFor, rememberLessonFor };
 }
-
-/**
- * Lightweight read-only hook for the dashboard's "本周学习了 N 个术语" badge.
- * Avoids re-rendering callers when terms change.
- */
-export function useLearnStats(): { total: number; thisWeekApprox: number } {
-  const [total, setTotal] = useState<number>(() => {
-    if (typeof window === 'undefined') return 0;
-    try {
-      const raw = window.localStorage.getItem(STORAGE_KEY);
-      if (!raw) return 0;
-      const parsed = JSON.parse(raw);
-      return Array.isArray(parsed) ? parsed.length : 0;
-    } catch {
-      return 0;
-    }
-  });
-
-  useEffect(() => {
-    const onStorage = (e: StorageEvent) => {
-      if (e.key === STORAGE_KEY) setTotal(readTerms().length);
-    };
-    window.addEventListener('storage', onStorage);
-    // Periodic cross-component sync: identical components using
-    // `useLearnedTerms` will dispatch a custom event when they mutate.
-    const onLocal = () => setTotal(readTerms().length);
-    window.addEventListener('ad-research:learned-changed', onLocal);
-    return () => {
-      window.removeEventListener('storage', onStorage);
-      window.removeEventListener('ad-research:learned-changed', onLocal);
-    };
-  }, []);
-
-  return { total, thisWeekApprox: total };
-}

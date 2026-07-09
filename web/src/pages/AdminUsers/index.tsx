@@ -21,7 +21,6 @@ import PageShell from '@/components/PageShell';
 import PageHeader from '@/components/PageHeader';
 import Panel from '@/components/Panel';
 import SectionHeading from '@/components/SectionHeading';
-import DensityToggle from '@/components/DensityToggle';
 import ThemeTag from '@/components/ThemeTag';
 import { useAdminUsers } from '@/hooks/useAdminUsers';
 import { useAuthStore } from '@/stores/auth';
@@ -214,7 +213,7 @@ export default function AdminUsers() {
         }
       />
 
-      <SectionHeading title="用户列表" action={<DensityToggle />} />
+      <SectionHeading title="用户列表" />
       <Panel variant="default" padding="md">
         <Table
           dataSource={users}

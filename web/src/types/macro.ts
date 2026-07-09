@@ -4,7 +4,7 @@
  * source of truth — keep this file in sync manually.
  */
 
-export type MacroRegion = 'cn' | 'us' | 'global';
+export type MacroRegion = 'cn' | 'eu' | 'us' | 'global';
 
 export interface MacroObservation {
   id: number;

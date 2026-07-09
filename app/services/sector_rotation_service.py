@@ -58,12 +58,18 @@ so the user can see composition without splitting the aggregation.
 """
 
 from datetime import date, timedelta
-from typing import Any
+from typing import Any, Literal
 
-from sqlalchemy import case, func
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from app.models.etf import ETFIndicator, ETFInfo
+from app.data.indicators.a_share_sw_mapping import ETF_SW_HINTS
+from app.models.etf import ETFIndicator, ETFInfo, StockFundamental
+
+#: Industry classification systems supported by this service. ``GICS`` is the
+#: cross-market default (also used for US/HK if ever added); ``SW`` is the
+#: 申万2021一级行业 view exposed for A-share-only analysis.
+Classification = Literal["GICS", "SW"]
 
 # ---------------------------------------------------------------------------
 # ETF sub_category / underlying_index → GICS sector heuristic mapping.
@@ -140,18 +146,29 @@ BROAD_MARKET_SECTOR = "Broad Market"
 BROAD_MARKET_LABEL_ZH = "宽基指数"
 
 
-def _resolve_etf_sector(info: ETFInfo) -> str | None:
-    """Resolve an ETF's GICS sector from its metadata.
+def _resolve_etf_sector(
+    info: ETFInfo, classification: Classification = "GICS"
+) -> str | None:
+    """Resolve an ETF's industry bucket from its metadata.
 
-    Order:
-      1. Pre-populated ``etf_info.sector`` (e.g. manually enriched ETFs)
-      2. Keyword match against ``sub_category`` / ``underlying_index``
-      3. ``BROAD_MARKET_SECTOR`` for generic stock-type ETFs (宽基)
-      4. None for non-equity ETFs (bond/gold/money-market) — they are
-         filtered out of sector rotation entirely.
+    ``classification`` selects the taxonomy:
+
+      - ``GICS`` (default): pre-populated ``etf_info.sector`` → GICS keyword
+        hints → broad-market → None.
+      - ``SW``: pre-populated ``etf_info.sw_l1`` → 申万 keyword hints →
+        broad-market → None.
+
+    In both modes non-equity ETFs (bond/gold/money-market) resolve to None
+    and are filtered out of sector rotation entirely.
     """
-    if info.sector:
-        return info.sector
+    if classification == "SW":
+        if info.sw_l1:
+            return info.sw_l1
+        hints = ETF_SW_HINTS
+    else:
+        if info.sector:
+            return info.sector
+        hints = ETF_SECTOR_HINTS
 
     haystack_parts = [
         info.sub_category or "",
@@ -160,9 +177,9 @@ def _resolve_etf_sector(info: ETFInfo) -> str | None:
     ]
     haystack = " ".join(haystack_parts).lower()
 
-    for keyword, sector in ETF_SECTOR_HINTS:
+    for keyword, bucket in hints:
         if keyword.lower() in haystack:
-            return sector
+            return bucket
 
     # Generic equity ETF without a thematic tag → broad market bucket.
     if (info.category or "").startswith("股票"):
@@ -172,12 +189,20 @@ def _resolve_etf_sector(info: ETFInfo) -> str | None:
     return None
 
 
-def _resolve_sector(info: ETFInfo) -> str | None:
-    """Resolve the GICS sector for any instrument (ETF or STOCK)."""
+def _resolve_sector(
+    info: ETFInfo, classification: Classification = "GICS"
+) -> str | None:
+    """Resolve the industry bucket for any instrument (ETF or STOCK).
+
+    STOCKs use ``etf_info.sw_l1`` under SW and ``etf_info.sector`` under
+    GICS; ETFs are resolved via ``_resolve_etf_sector``.
+    """
     if info.instrument_type == "STOCK":
+        if classification == "SW":
+            return info.sw_l1 or None
         return info.sector or None
     if info.instrument_type == "ETF":
-        return _resolve_etf_sector(info)
+        return _resolve_etf_sector(info, classification)
     # CRYPTO / others — out of scope.
     return None
 
@@ -195,22 +220,19 @@ class SectorRotationService:
     def __init__(self, db: Session):
         self.db = db
 
-    def get_sector_list(self) -> list[dict[str, Any]]:
-        """List distinct GICS sectors with A-share ETF+stock counts."""
-        # Resolve sector for every instrument via a per-row CASE expression
-        # so we can group by the resolved value in SQL.
-        # For STOCKs we use ``sector`` directly; for ETFs we apply the
-        # keyword-heuristic mapping inline.
-        resolved = case(
-            (ETFInfo.instrument_type == "STOCK", ETFInfo.sector),
-            else_=None,
-        ).label("sector")
+    def get_sector_list(
+        self, classification: Classification = "GICS"
+    ) -> list[dict[str, Any]]:
+        """List distinct industry buckets with A-share ETF+stock counts.
 
+        ``classification`` selects GICS (default) or 申万一级 (SW).
+        """
         rows = (
             self.db.query(
                 ETFInfo.code,
                 ETFInfo.instrument_type,
                 ETFInfo.sector,
+                ETFInfo.sw_l1,
                 ETFInfo.sub_category,
                 ETFInfo.underlying_index,
                 ETFInfo.category,
@@ -230,11 +252,12 @@ class SectorRotationService:
                 code=r.code,
                 instrument_type=r.instrument_type,
                 sector=r.sector,
+                sw_l1=r.sw_l1,
                 sub_category=r.sub_category,
                 underlying_index=r.underlying_index,
                 category=r.category,
             )
-            sector = _resolve_sector(info)
+            sector = _resolve_sector(info, classification)
             if not sector:
                 continue
             bucket = counts.setdefault(
@@ -254,10 +277,220 @@ class SectorRotationService:
             )
         ]
 
+    def get_sector_constituents(
+        self,
+        sector: str,
+        top_n: int = 20,
+        trade_date: date | None = None,
+        classification: Classification = "GICS",
+    ) -> dict[str, Any]:
+        """Top-N instruments inside a single GICS sector.
+
+        Used by the SectorRotation UI's "成份股构成" tab — replaces the
+        previous ETF-only summary with a mixed STOCK + ETF view, weighted
+        by:
+
+          - STOCK → most recent ``stock_fundamental.total_mv`` (万元 CNY,
+            converted to 元). Falls back to ``etf_info.market_cap`` when
+            no fundamental row is present.
+          - ETF  → ``etf_info.fund_size`` (base currency, surfaced as 元
+            since this service is scoped to A-share).
+
+        Args:
+            sector: GICS sector name (level-1). Must already exist in the
+                universe — callers usually come from the
+                ``/sector-rotation/sectors`` list.
+            top_n: How many rows to return. Default 20. Hard-capped at
+                200 to bound payload size.
+            trade_date: Indicator snapshot date. Defaults to the latest
+                indicator date across the universe (consistent with
+                ``analyze_sectors``).
+
+        Returns:
+            Dict with ``sector``, ``trade_date``, ``count``,
+            ``total_in_sector`` and ``items`` (list of constituent dicts).
+            Each item carries the documented ``SectorConstituent`` fields.
+
+        Design notes (2026-07-09):
+            - We do NOT compute a weighted-aggregate return here. The UI
+              shows the sector-level aggregate on the summary tab; the
+              constituents tab is a *decomposition* view, not a
+              re-aggregation.
+            - When no ``stock_fundamental`` row exists for an A-share
+              stock, we still include it (weight=None) so the user sees
+              every sector member rather than a filtered subset. The
+              list is then sorted with ``NULL`` weights last.
+            - Broad-market ETFs (no specific sub_category) and bond /
+              commodity ETFs are filtered out by ``_resolve_sector``
+              which returns None — same logic as the main aggregation.
+        """
+        if top_n <= 0:
+            top_n = 20
+        top_n = min(top_n, 200)
+
+        # Resolve trade_date (default = latest indicator date).
+        if trade_date is None:
+            latest = (
+                self.db.query(func.max(ETFIndicator.trade_date))
+                .join(ETFInfo, ETFIndicator.etf_code == ETFInfo.code)
+                .filter(
+                    ETFInfo.market == self._SCOPE_MARKET,
+                    ETFInfo.instrument_type.in_(self._SCOPE_INSTRUMENT_TYPES),
+                )
+                .scalar()
+            )
+            trade_date = latest
+
+        # Step 1: enumerate every ETF/STOCK in the A-share universe and
+        # filter down to those that resolve to ``sector``. We materialise
+        # the rows here so we can apply the same heuristic the aggregation
+        # uses — keeping the two views consistent.
+        info_rows = (
+            self.db.query(ETFInfo)
+            .filter(
+                ETFInfo.market == self._SCOPE_MARKET,
+                ETFInfo.instrument_type.in_(self._SCOPE_INSTRUMENT_TYPES),
+                ETFInfo.status == "active",
+            )
+            .all()
+        )
+
+        members: list[ETFInfo] = []
+        for info in info_rows:
+            if _resolve_sector(info, classification) != sector:
+                continue
+            members.append(info)
+
+        total_in_sector = len(members)
+        if total_in_sector == 0:
+            return {
+                "sector": sector,
+                "trade_date": trade_date.isoformat() if trade_date else None,
+                "count": 0,
+                "total_in_sector": 0,
+                "items": [],
+            }
+
+        member_codes = [m.code for m in members]
+        code_to_info = {m.code: m for m in members}
+
+        # Step 2: pull the most-recent ``stock_fundamental`` per member
+        # code (for STOCKs only). One sub-query per code is fine — the
+        # total universe here is bounded by the sector size.
+        latest_mv: dict[str, float] = {}
+        if trade_date is not None:
+            # Window the lookup to ±7 days of the trade date so a stock
+            # that briefly disappeared from the daily_basic feed (e.g.
+            # suspension, new listing) still gets a weight.
+            window_lo = trade_date - timedelta(days=7)
+            window_hi = trade_date
+            for code in member_codes:
+                row = (
+                    self.db.query(StockFundamental.total_mv)
+                    .filter(
+                        StockFundamental.stock_code == code,
+                        StockFundamental.trade_date <= window_hi,
+                        StockFundamental.trade_date >= window_lo,
+                        StockFundamental.total_mv.isnot(None),
+                    )
+                    .order_by(StockFundamental.trade_date.desc())
+                    .first()
+                )
+                if row and row[0] is not None:
+                    # total_mv is in 万元 (10,000 CNY) → convert to 元.
+                    latest_mv[code] = float(row[0]) * 10_000.0
+
+        # Step 3: pull the indicator snapshot for the trade_date — covers
+        # BOTH STOCK and ETF (ETFIndicator is the unified table).
+        indicator_by_code: dict[str, ETFIndicator] = {}
+        if trade_date is not None:
+            ind_rows = (
+                self.db.query(ETFIndicator)
+                .filter(
+                    ETFIndicator.trade_date == trade_date,
+                    ETFIndicator.etf_code.in_(member_codes),
+                )
+                .all()
+            )
+            indicator_by_code = {r.etf_code: r for r in ind_rows}
+
+        # Step 4: build the constituents list, sorting by weight desc
+        # (None / 0 last).
+        items: list[dict[str, Any]] = []
+        for info in members:
+            if info.instrument_type == "STOCK":
+                weight_value = latest_mv.get(info.code)
+                weight_label = "市值"
+                if weight_value is None and info.market_cap is not None:
+                    # ETFInfo.market_cap is in USD for US stocks; for
+                    # A-share this column isn't populated by the A-share
+                    # pipeline but we surface it anyway as a best-effort
+                    # fallback. We *do not* FX-convert here — the unit
+                    # label stays "元" only when we know the source is
+                    # CNY. For foreign listings we leave weight=None so
+                    # the UI doesn't display a misleading number.
+                    if info.market == "A股":
+                        weight_value = float(info.market_cap)
+                weight_unit = "元"
+            elif info.instrument_type == "ETF":
+                weight_value = (
+                    float(info.fund_size) if info.fund_size is not None else None
+                )
+                weight_label = "规模"
+                weight_unit = "元"
+            else:
+                # Should never reach here (filtered above) but keep the
+                # type-narrowing honest.
+                continue
+
+            ind = indicator_by_code.get(info.code)
+            items.append({
+                "code": info.code,
+                "name": info.name,
+                "instrument_type": info.instrument_type,
+                "resolved_sector": sector,
+                "weight": weight_value,
+                "weight_unit": weight_unit,
+                "weight_label": weight_label,
+                "return_1w": float(ind.return_1w) if ind and ind.return_1w is not None else None,
+                "return_1m": float(ind.return_1m) if ind and ind.return_1m is not None else None,
+                "return_3m": float(ind.return_3m) if ind and ind.return_3m is not None else None,
+                "return_6m": float(ind.return_6m) if ind and ind.return_6m is not None else None,
+                "return_1y": float(ind.return_1y) if ind and ind.return_1y is not None else None,
+                "sharpe_1y": float(ind.sharpe_1y) if ind and ind.sharpe_1y is not None else None,
+                "rsi14": float(ind.rsi14) if ind and ind.rsi14 is not None else None,
+                "amount_total": float(ind.amount) if ind and ind.amount is not None else None,
+            })
+
+        # Sort: non-null weight desc → null weight last. Ties broken by
+        # 1m return desc (best performers first), then by code.
+        def _sort_key(row: dict[str, Any]) -> tuple[int, float, float, str]:
+            w = row.get("weight")
+            r1m = row.get("return_1m") or 0.0
+            # (has_weight_flag, -weight, -return_1m, code) → weight desc
+            return (
+                0 if w is not None else 1,
+                -float(w) if w is not None else 0.0,
+                -float(r1m),
+                row["code"],
+            )
+
+        items.sort(key=_sort_key)
+        top_items = items[:top_n]
+
+        return {
+            "sector": sector,
+            "trade_date": trade_date.isoformat() if trade_date else None,
+            "count": len(top_items),
+            "total_in_sector": total_in_sector,
+            "items": top_items,
+        }
+
     def analyze_sectors(
         self,
         trade_date: date | None = None,
         window_weeks: int = 4,
+        classification: Classification = "GICS",
     ) -> dict[str, Any]:
         """Analyze sector performance and rotation signals.
 
@@ -266,6 +499,9 @@ class SectorRotationService:
                 indicator date in the A-share ETF/STOCK universe.
             window_weeks: Unused kept for API compatibility — momentum
                 windows are now driven by indicator periods (1w/1m/3m/6m/1y).
+            classification: Industry taxonomy — ``GICS`` (default, global)
+                or ``SW`` (申万2021一级, A-share only). Under ``SW`` STOCKs
+                bucket by ``etf_info.sw_l1`` and ETFs by 申万 keyword hints.
 
         Returns:
             Dict with sector performance, relative strength, momentum
@@ -282,7 +518,7 @@ class SectorRotationService:
                 .scalar()
             )
             if latest is None:
-                return self._empty_result()
+                return self._empty_result(classification=classification)
             trade_date = latest
 
         # Pull indicators + joined instrument metadata for the trade date.
@@ -298,7 +534,9 @@ class SectorRotationService:
         )
 
         if not rows:
-            return self._empty_result(trade_date=trade_date)
+            return self._empty_result(
+                trade_date=trade_date, classification=classification
+            )
 
         # ------------------------------------------------------------------
         # Per-sector aggregation
@@ -321,7 +559,7 @@ class SectorRotationService:
         market_sharpe: list[float] = []
 
         for ind, info in rows:
-            sector = _resolve_sector(info)
+            sector = _resolve_sector(info, classification)
             if not sector:
                 continue
 
@@ -366,7 +604,9 @@ class SectorRotationService:
                 bucket["amount"].append(float(ind.amount))
 
         if not sectors:
-            return self._empty_result(trade_date=trade_date)
+            return self._empty_result(
+                trade_date=trade_date, classification=classification
+            )
 
         market_avg: dict[str, float] = {}
         for period, vals in market_returns.items():
@@ -421,14 +661,16 @@ class SectorRotationService:
         for rank, row in enumerate(sector_rows, 1):
             row["momentum_rank"] = rank
 
-        rotation_signals = self._detect_rotation_signals(sector_rows, trade_date)
+        rotation_signals = self._detect_rotation_signals(
+            sector_rows, trade_date, classification
+        )
 
         return {
             "trade_date": trade_date.isoformat(),
             "scope": {
                 "market": self._SCOPE_MARKET,
                 "instrument_types": list(self._SCOPE_INSTRUMENT_TYPES),
-                "classification": "GICS",
+                "classification": classification,
             },
             "sectors": sector_rows,
             "market_avg": {k: round(v, 4) for k, v in market_avg.items()},
@@ -440,14 +682,16 @@ class SectorRotationService:
     # ------------------------------------------------------------------
 
     def _empty_result(
-        self, trade_date: date | None = None
+        self,
+        trade_date: date | None = None,
+        classification: Classification = "GICS",
     ) -> dict[str, Any]:
         return {
             "trade_date": trade_date.isoformat() if trade_date else None,
             "scope": {
                 "market": self._SCOPE_MARKET,
                 "instrument_types": list(self._SCOPE_INSTRUMENT_TYPES),
-                "classification": "GICS",
+                "classification": classification,
             },
             "sectors": [],
             "market_avg": None,
@@ -458,6 +702,7 @@ class SectorRotationService:
         self,
         current_sectors: list[dict[str, Any]],
         trade_date: date,
+        classification: Classification = "GICS",
     ) -> list[dict[str, Any]]:
         """Detect sector rotation by comparing with previous period.
 
@@ -493,7 +738,7 @@ class SectorRotationService:
 
         prev_returns: dict[str, list[float]] = {}
         for ind, info in prev_rows:
-            sector = _resolve_sector(info)
+            sector = _resolve_sector(info, classification)
             if not sector or ind.return_1m is None:
                 continue
             prev_returns.setdefault(sector, []).append(float(ind.return_1m))
@@ -544,18 +789,13 @@ class SectorRotationService:
 
 
 # ---------------------------------------------------------------------------
-# TODO(phase-6+): 申万行业分类 support
+# 申万一级行业 (SW 2021) support — shipped 2026-07-09
 #
-# 申万 / 中信 are the dominant Chinese sector taxonomies and are what
-# buy-side desks actually quote ("今天 SW801010 农林牧渔 涨多少"). To
-# support them we will:
-#
-#   1. Add a ``industry_sw`` table: (code, name, level) e.g. SW801010.
-#   2. Add a ``instrument_industry`` table linking instrument_code → sw_code.
-#   3. Backfill from akshare's ``stock_industry_sw`` for A-share stocks.
-#   4. Extend ``SectorRotationService.analyze_sectors`` with a
-#      ``classification="SW2021"`` toggle and a parallel return path.
-#   5. Add a tab on the SectorRotation UI for SW vs GICS.
-#
-# Until that ships, GICS is the canonical view.
+# ``analyze_sectors`` / ``get_sector_list`` accept ``classification="SW"`` to
+# bucket A-share instruments by the 31 申万2021一级行业 instead of GICS. The
+# per-stock SW label lives in ``etf_info.sw_l1`` / ``etf_info.sw_l1_code``,
+# populated by ``app.scripts.backfill_a_share_sw`` (CSRC→SW static map by
+# default, or authoritative Tushare ``index_classify`` + ``index_member`` via
+# ``--from-tushare``). ETFs are mapped by the ``ETF_SW_HINTS`` keyword table.
+# GICS remains the cross-market default.
 # ---------------------------------------------------------------------------

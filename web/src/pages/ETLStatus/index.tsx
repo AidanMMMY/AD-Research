@@ -7,7 +7,6 @@ import PageHeader from '@/components/PageHeader';
 import Panel from '@/components/Panel';
 import SectionHeading from '@/components/SectionHeading';
 import FilterToolbar from '@/components/FilterToolbar';
-import DensityToggle from '@/components/DensityToggle';
 import StatusTag from '@/components/StatusTag';
 
 const STATUS_OPTIONS = [
@@ -74,7 +73,7 @@ export default function ETLStatus() {
         description="查看数据管道运行状态与近期日志"
       />
 
-      <SectionHeading title="近期 ETL 日志" action={<DensityToggle />} />
+      <SectionHeading title="近期 ETL 日志" />
       <Panel variant="default" padding="md">
         <FilterToolbar>
           <Input

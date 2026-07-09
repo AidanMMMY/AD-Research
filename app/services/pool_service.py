@@ -130,14 +130,18 @@ class PoolService:
         self.db.refresh(pool)
         return self._to_response(pool)
 
-    def delete_pool(self, pool_id: int) -> bool:
-        """Soft-delete a pool."""
-        pool = (
+    def delete_pool(
+        self, pool_id: int, current_user: UserResponse | None = None
+    ) -> bool:
+        """Soft-delete a pool, respecting owner-scoping (M21-3)."""
+        q = (
             self.db.query(ETFPools)
             .filter(ETFPools.id == pool_id)
             .filter(ETFPools.deleted_at.is_(None))
-            .first()
         )
+        if current_user is not None and current_user.role != "admin":
+            q = q.filter(ETFPools.user_id == current_user.id)
+        pool = q.first()
         if not pool:
             return False
 

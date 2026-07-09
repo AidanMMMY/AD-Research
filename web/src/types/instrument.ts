@@ -22,6 +22,10 @@ export interface InstrumentInfo {
   industry?: string;
   market_cap?: number;
   country?: string;
+  /** A-share listing market (上海/深圳/北京) — null for non-A-share instruments. */
+  listing_market?: string | null;
+  /** A-share board (主板/创业板/科创板/北交所) — null for non-A-share instruments. */
+  board?: string | null;
 }
 
 export interface InstrumentListResponse {
@@ -49,6 +53,8 @@ export interface InstrumentFilterParams {
   status?: string;
   min_fund_size?: number;
   max_fund_size?: number;
+  listing_market?: string;
+  board?: string;
 }
 
 export interface MarketSnapshot {

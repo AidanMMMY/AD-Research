@@ -114,7 +114,7 @@ function BarTable({ bars, showHeader = false, maxRows = 10 }: BarTableProps) {
     },
   ];
   return (
-    <div className="ad-density-dense ad-table-scroll ad-table-sticky">
+    <div className="ad-table-scroll ad-table-sticky">
       <Table
         dataSource={bars.slice(0, maxRows)}
         columns={columns}

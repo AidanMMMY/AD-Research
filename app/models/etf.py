@@ -65,8 +65,35 @@ class ETFInfo(Base):
     )
     sector = Column(String(100), comment="GICS sector")
     industry = Column(String(100), comment="GICS industry")
+    # 申万一级行业 (SW 2021 level-1) — A-share individual stocks only. GICS
+    # stays the cross-market default; SW is exposed for A-share-only sector
+    # rotation where buy-side desks quote SW industries. Nullable because
+    # non-A-share instruments and unmapped rows have no SW classification.
+    sw_l1 = Column(
+        String(100),
+        comment="申万一级行业名称 (SW 2021 level-1, A-share only)",
+    )
+    sw_l1_code = Column(
+        String(20),
+        comment="申万一级行业代码 (e.g. 801080), pairs with sw_l1",
+    )
     market_cap = Column(DECIMAL(18, 4), comment="Market capitalization (USD for US stocks)")
     country = Column(String(50), comment="Country of listing")
+
+    # A-share listing market + board (added 2026-07-09).
+    # ``listing_market`` = 上海/深圳/北京 (derived from exchange code SH/SZ/BJ);
+    # ``board`` = 主板/创业板/科创板/北交所 (derived from the numeric code prefix).
+    # Both are nullable because non-A-share instruments do not have a board.
+    listing_market = Column(
+        String(20),
+        nullable=True,
+        comment="Listing market (上海/深圳/北京) for A-share instruments",
+    )
+    board = Column(
+        String(20),
+        nullable=True,
+        comment="A-share board (主板/创业板/科创板/北交所)",
+    )
 
     created_at = Column(
         DateTime(timezone=True),
@@ -85,6 +112,8 @@ class ETFInfo(Base):
         Index("idx_etf_info_category", "category"),
         Index("idx_etf_info_status", "status"),
         Index("idx_etf_info_instrument_type", "instrument_type"),
+        Index("idx_etf_info_listing_market", "listing_market"),
+        Index("idx_etf_info_board", "board"),
     )
 
 

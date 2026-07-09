@@ -89,7 +89,7 @@ export default function MarketScanner() {
 
       <Panel title="扫描历史">
         <FilterToolbar total={logs.length}>{null}</FilterToolbar>
-        <div className="ad-density-dense ad-table-scroll ad-table-sticky">
+        <div className="ad-table-scroll ad-table-sticky">
           <Table
             dataSource={logs}
             columns={columns}

@@ -67,6 +67,17 @@ const INSTRUMENT_TYPE_LABELS: Record<string, string> = {
 };
 
 /**
+ * Map A-share board names to a ThemeTag variant so the badge colour
+ * reflects the board's risk profile (科创板/创业板/北交所 are highlighted).
+ */
+const BOARD_VARIANT: Record<string, 'default' | 'accent' | 'success' | 'warning' | 'error'> = {
+  主板: 'default',
+  创业板: 'accent',
+  科创板: 'accent',
+  北交所: 'warning',
+};
+
+/**
  * Compact snapshot-date picker for the Holdings tab.
  *
  * Renders a lightweight ``<Select>`` in the panel header that lets the
@@ -491,6 +502,10 @@ export default function InstrumentDetail() {
                 dataSource={holdingsData.holdings.map((h, idx) => ({ ...h, key: idx }))}
                 pagination={false}
                 size="small"
+                onRow={(row) => ({
+                  onClick: () => navigate(`/instruments/${row.holding_code}`),
+                  style: { cursor: 'pointer' },
+                })}
                 columns={[
                   { title: '股票代码', dataIndex: 'holding_code', key: 'holding_code' },
                   { title: '股票名称', dataIndex: 'holding_name', key: 'holding_name', render: (v: string | null) => v ?? '—' },
@@ -846,6 +861,19 @@ export default function InstrumentDetail() {
           </ThemeTag>
         )}
         {instrument.market && <ThemeTag>{instrument.market}</ThemeTag>}
+        {instrument.listing_market && (
+          <ThemeTag title={`上市市场: ${instrument.listing_market}`}>
+            {instrument.listing_market}
+          </ThemeTag>
+        )}
+        {instrument.board && (
+          <ThemeTag
+            variant={BOARD_VARIANT[instrument.board] || 'default'}
+            title={`所属板块: ${instrument.board}`}
+          >
+            {instrument.board}
+          </ThemeTag>
+        )}
         {instrument.status && (
           <ThemeTag
             variant={

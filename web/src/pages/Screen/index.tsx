@@ -378,7 +378,7 @@ export default function Screen() {
             }
           />
         ) : (
-          <div className="ad-density-dense ad-table-scroll ad-table-sticky">
+          <div className="ad-table-scroll ad-table-sticky">
             <Table
               dataSource={results?.items || []}
               columns={columns}

@@ -143,7 +143,7 @@ def trigger_fred_refresh(
 
 @router.get("/indicators-list", response_model=MacroIndicatorListResponse)
 def list_indicators_paginated(
-    region: str | None = Query(None, description="Filter by region (cn/us/global)"),
+    region: str | None = Query(None, description="Filter by region (cn/eu/us/global)"),
     code: str | None = Query(None, description="Filter by indicator code"),
     start_period: date | None = Query(
         None, description="Inclusive period start (YYYY-MM-DD)"
@@ -172,7 +172,7 @@ def list_indicators_paginated(
 
 @router.get("/latest", response_model=MacroLatestResponse)
 def get_macro_latest(
-    region: str | None = Query(None, description="Filter by region (cn/us/global)"),
+    region: str | None = Query(None, description="Filter by region (cn/eu/us/global)"),
     service: MacroDataService = Depends(_macro_service),
 ) -> Any:
     """Return the latest observation for every (code, region) pair."""
@@ -181,7 +181,7 @@ def get_macro_latest(
 
 @router.get("/codes", response_model=MacroCodeListResponse)
 def get_macro_codes(
-    region: str | None = Query(None, description="Filter by region (cn/us/global)"),
+    region: str | None = Query(None, description="Filter by region (cn/eu/us/global)"),
     service: MacroDataService = Depends(_macro_service),
 ) -> Any:
     """Return the distinct set of indicator codes for the filter UI."""
@@ -230,7 +230,9 @@ def get_global_indices_realtime() -> dict[str, Any]:
             fetch_all_global_indices,
         )
 
-        items = fetch_all_global_indices()
+        # Use a short window for the realtime preview: enough history for
+        # prev_close / change_pct, but far faster than the 3-month ETL window.
+        items = fetch_all_global_indices(period="5d")
     except Exception as exc:  # noqa: BLE001 - defensive
         logger.exception("global indices realtime fetch crashed: %s", exc)
         raise HTTPException(status_code=500, detail=str(exc)) from exc

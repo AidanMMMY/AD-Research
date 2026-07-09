@@ -30,6 +30,10 @@ class ETFInfoResponse(ETFInfoBase):
     industry: str | None = None
     market_cap: float | None = None
     country: str | None = None
+    # A-share listing market (上海/深圳/北京) and board (主板/创业板/科创板/北交所).
+    # Both fields are nullable; only populated for A-share instruments.
+    listing_market: str | None = None
+    board: str | None = None
 
 
 class ETFListResponse(BaseModel):
@@ -55,6 +59,8 @@ class ETFFilterParams(BaseModel):
     min_fund_size: float | None = None
     max_fund_size: float | None = None
     search: str | None = None
+    listing_market: str | None = None
+    board: str | None = None
     page: int = 1
     page_size: int = 50
 

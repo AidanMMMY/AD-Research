@@ -614,6 +614,10 @@ export default function EtfHoldingsHistoryPage() {
             ) : (
               <Table
                 size="small"
+                onRow={(row) => ({
+                  onClick: () => navigate(`/instruments/${row.holding_code}`),
+                  style: { cursor: 'pointer' },
+                })}
                 rowKey={(r) => `${r.holding_code}-${r.holdings_as_of_date ?? ''}`}
                 columns={snapshotColumns}
                 dataSource={holdingsQ.data.holdings}
@@ -714,6 +718,10 @@ export default function EtfHoldingsHistoryPage() {
             ) : (
               <Table
                 size="small"
+                onRow={(row) => ({
+                  onClick: () => navigate(`/instruments/${row.holding_code}`),
+                  style: { cursor: 'pointer' },
+                })}
                 rowKey={(r) => r.holding_code}
                 columns={diffColumns}
                 dataSource={diffQ.data.entries}

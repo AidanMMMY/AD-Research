@@ -309,7 +309,7 @@ export default function ResearchReports() {
             description="尝试调整筛选条件或刷新数据"
           />
         ) : (
-          <div className="ad-density-dense ad-table-scroll ad-table-sticky">
+          <div className="ad-table-scroll ad-table-sticky">
             <Table
               dataSource={filteredByRating}
               columns={columns}

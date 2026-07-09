@@ -764,17 +764,10 @@ a:focus-visible {
 }
 
 /* ============================================================
-   Density Modes (S1)
+   Density (S1) — fixed 'spacious' table padding.
+   Density toggle was removed in 2026-07-09, so all tables use
+   this layout regardless of user preference.
    ============================================================ */
-:root {
-  --row-height-dense: 32px;
-  --row-height-comfortable: 40px;
-  --row-height-spacious: 52px;
-}
-.ad-density-dense .ant-table-tbody > tr > td,
-.ad-density-dense .ant-table-thead > tr > th { padding: 4px 8px !important; }
-.ad-density-comfortable .ant-table-tbody > tr > td,
-.ad-density-comfortable .ant-table-thead > tr > th { padding: 8px 12px !important; }
 .ad-density-spacious .ant-table-tbody > tr > td,
 .ad-density-spacious .ant-table-thead > tr > th { padding: 12px 16px !important; }
 
@@ -2313,11 +2306,13 @@ main {
   color: var(--text-tertiary);
 }
 
-/* ---- DensityToggle ---- */
-.density-toggle {
+/* ---- DensityToggle (removed 2026-07-09) ---- */
+/* The density toggle component has been retired; styling kept as
+   a placeholder in case the segment control needs reuse later. */
+/* .density-toggle {
   background: var(--bg-hover);
   border-radius: var(--radius-lg);
-}
+} */
 
 /* ---- AISetupBanner ---- */
 .ai-setup-banner {
@@ -2435,11 +2430,27 @@ main {
   border-bottom: 1px solid var(--border-default);
 }
 
-.filter-toolbar__filters {
+.filter-toolbar--headed {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+  gap: var(--space-4);
+}
+
+.filter-toolbar__header {
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
+  justify-content: space-between;
   gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.filter-toolbar__title {
+  font-size: var(--text-base-size);
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-right: auto;
 }
 
 .filter-toolbar__meta {
@@ -2447,6 +2458,7 @@ main {
   align-items: center;
   gap: var(--space-3);
   margin-left: auto;
+  flex-shrink: 0;
 }
 
 .filter-toolbar__total {
@@ -2455,9 +2467,39 @@ main {
   font-variant-numeric: tabular-nums;
 }
 
+.filter-toolbar__filters {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.filter-toolbar--headed .filter-toolbar__filters {
+  align-items: flex-start;
+  width: 100%;
+}
+
 @media (max-width: 767px) {
   .filter-toolbar {
     gap: var(--space-3);
+  }
+
+  .filter-toolbar--headed {
+    gap: var(--space-3);
+  }
+
+  .filter-toolbar__header {
+    width: 100%;
+  }
+
+  .filter-toolbar__title {
+    margin-right: 0;
+  }
+
+  .filter-toolbar__meta {
+    width: 100%;
+    margin-left: 0;
+    justify-content: flex-start;
   }
 
   .filter-toolbar__filters {
@@ -2476,12 +2518,27 @@ main {
     width: 100% !important;
     min-width: 0;
   }
+}
 
-  .filter-toolbar__meta {
-    width: 100%;
-    margin-left: 0;
-    justify-content: flex-start;
-  }
+/* ---- InstrumentList filter groups ---- */
+.instrument-filter-groups {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  width: 100%;
+}
+
+.instrument-filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.instrument-filter-group__title {
+  font-size: var(--text-small-size);
+  font-weight: 500;
+  color: var(--text-secondary);
+  margin-bottom: var(--space-1);
 }
 
 /* ---- ResponsiveGrid ---- */
@@ -7137,20 +7194,24 @@ input[type="password"]::-webkit-strong-password-auto-fill-button {
 .daily-lesson__tip {
   display: inline-flex;
   align-items: flex-start;
-  gap: 6px;
-  padding: 8px 12px;
-  font-size: 12px;
-  line-height: 1.55;
+  gap: 8px;
+  padding: 10px 14px;
+  font-size: 13px;
+  line-height: 1.6;
+  font-weight: 500;
   color: var(--text-primary);
   background: var(--accent-dim);
   border: 1px solid var(--accent-border);
-  border-left: 4px solid var(--accent);
+  border-left: 5px solid var(--accent);
   border-radius: var(--radius-sm);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
 }
 
 .daily-lesson__tip-icon {
   color: var(--accent);
   margin-top: 2px;
+  font-size: 14px;
+  flex-shrink: 0;
 }
 
 .daily-lesson__divider {

@@ -40,6 +40,8 @@ def parse_etf_filter_params(
     min_fund_size: float = Query(None),
     max_fund_size: float = Query(None),
     search: str = Query(None),
+    listing_market: str = Query(None, description="Filter by listing market (上海/深圳/北京)"),
+    board: str = Query(None, description="Filter by A-share board (主板/创业板/科创板/北交所)"),
     page: int = Query(1, ge=1),
     page_size: int = Query(50, ge=1, le=10000),
 ) -> ETFFilterParams:
@@ -60,6 +62,8 @@ def parse_etf_filter_params(
         min_fund_size=min_fund_size,
         max_fund_size=max_fund_size,
         search=search,
+        listing_market=listing_market,
+        board=board,
         page=page,
         page_size=page_size,
     )
@@ -273,3 +277,21 @@ def list_underlying_indices(
 def list_markets(service: ETFService = Depends(get_etf_service)):
     """List all distinct ETF markets."""
     return {"markets": service.get_markets()}
+
+
+@router.get("/listing-markets/list")
+def list_listing_markets(
+    params: ETFFilterParams = Depends(parse_etf_filter_params),
+    service: ETFService = Depends(get_etf_service),
+):
+    """List distinct A-share listing markets (上海/深圳/北京)."""
+    return {"listing_markets": service.get_listing_markets(params)}
+
+
+@router.get("/boards/list")
+def list_boards(
+    params: ETFFilterParams = Depends(parse_etf_filter_params),
+    service: ETFService = Depends(get_etf_service),
+):
+    """List distinct A-share boards (主板/创业板/科创板/北交所)."""
+    return {"boards": service.get_boards(params)}

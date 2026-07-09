@@ -220,7 +220,7 @@ export default function MicrostructurePage() {
               ) : !lhbData || lhbData.items.length === 0 ? (
                 <EmptyState title="暂无龙虎榜数据" />
               ) : (
-                <div className="ad-density-dense ad-table-scroll ad-table-sticky">
+                <div className="ad-table-scroll ad-table-sticky">
                   <Table
                     rowKey="id"
                     dataSource={lhbData.items}
@@ -244,7 +244,7 @@ export default function MicrostructurePage() {
               ) : !hsgtData || hsgtData.items.length === 0 ? (
                 <EmptyState title="暂无沪深港通数据" />
               ) : (
-                <div className="ad-density-dense ad-table-scroll ad-table-sticky">
+                <div className="ad-table-scroll ad-table-sticky">
                   <Table
                     rowKey="id"
                     dataSource={hsgtData.items}
@@ -263,7 +263,7 @@ export default function MicrostructurePage() {
               ) : !marginData || marginData.items.length === 0 ? (
                 <EmptyState title="暂无融资融券数据" />
               ) : (
-                <div className="ad-density-dense ad-table-scroll ad-table-sticky">
+                <div className="ad-table-scroll ad-table-sticky">
                   <Table
                     rowKey="id"
                     dataSource={marginData.items}
@@ -282,7 +282,7 @@ export default function MicrostructurePage() {
               ) : !releaseData || releaseData.items.length === 0 ? (
                 <EmptyState title="暂无限售解禁数据" />
               ) : (
-                <div className="ad-density-dense ad-table-scroll ad-table-sticky">
+                <div className="ad-table-scroll ad-table-sticky">
                   <Table
                     rowKey="id"
                     dataSource={releaseData.items}

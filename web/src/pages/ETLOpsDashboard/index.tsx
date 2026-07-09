@@ -6,7 +6,6 @@ import PageShell from '@/components/PageShell';
 import PageHeader from '@/components/PageHeader';
 import Panel from '@/components/Panel';
 import SectionHeading from '@/components/SectionHeading';
-import DensityToggle from '@/components/DensityToggle';
 import ThemeTag from '@/components/ThemeTag';
 import EmptyState from '@/components/EmptyState';
 
@@ -182,7 +181,7 @@ export default function ETLOpsDashboard() {
         </div>
 
         <div className="admin-section">
-          <SectionHeading title="任务状态" action={<DensityToggle />} />
+          <SectionHeading title="任务状态" />
           <Panel variant="default" padding="md">
             <Table
               rowKey="name"

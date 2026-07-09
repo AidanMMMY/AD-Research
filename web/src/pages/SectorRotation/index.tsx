@@ -1,9 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Alert, Spin, Table, Tag } from 'antd';
+import { Alert, Segmented, Select, Spin, Table, Tabs, Tag } from 'antd';
 import { InfoCircleOutlined } from '@ant-design/icons';
 import ReactECharts from 'echarts-for-react';
 import type { EChartsOption } from 'echarts';
-import { useSectorRotation } from '@/hooks/useSectorRotation';
+import {
+  useSectorConstituents,
+  useSectorList,
+  useSectorRotation,
+} from '@/hooks/useSectorRotation';
 import PageShell from '@/components/PageShell';
 import PageHeader from '@/components/PageHeader';
 import Panel from '@/components/Panel';
@@ -17,6 +21,8 @@ import { useSettingsStore } from '@/stores/settings';
 import { getReturnColor } from '@/utils/color';
 import { resolveChartColors } from '@/utils/cssVar';
 import type {
+  SectorClassification,
+  SectorConstituent,
   SectorPerformance,
   SectorReturnPeriod,
 } from '@/types/sector_rotation';
@@ -40,9 +46,23 @@ function toEChartsColor(cssVarRef: string, fallback: string): string {
   return resolved;
 }
 
+// Detail-panel tab keys (板块汇总 / 成份股构成).
+type DetailTab = 'summary' | 'constituents';
+
 export default function SectorRotation() {
   const mode = useSettingsStore((s) => s.mode);
-  const { data, isLoading, isFetching, dataUpdatedAt } = useSectorRotation();
+  // Industry taxonomy toggle: GICS (global default) vs 申万一级 (A-share).
+  const [classification, setClassification] = useState<SectorClassification>('GICS');
+  const clsLabel = classification === 'SW' ? '申万一级' : 'GICS';
+  const { data, isLoading, isFetching, dataUpdatedAt } = useSectorRotation(
+    undefined,
+    undefined,
+    classification,
+  );
+  // Sector list (for the constituents tab's dropdown).
+  const { data: sectorsData } = useSectorList(classification);
+  // Detail-panel tab (板块汇总 / 成份股构成).
+  const [detailTab, setDetailTab] = useState<DetailTab>('summary');
   // Re-render when the theme toggles so chart colours pick up new vars.
   const [, setThemeTick] = useState(0);
   useEffect(() => {
@@ -255,7 +275,7 @@ export default function SectorRotation() {
       ),
     },
     {
-      title: '行业板块 (GICS)',
+      title: `行业板块 (${clsLabel})`,
       dataIndex: 'sector',
       width: 200,
       render: (v: string, r: SectorPerformance) => (
@@ -338,17 +358,28 @@ export default function SectorRotation() {
       <PageHeader
         eyebrow="行业研究"
         title="行业板块轮动"
-        description="基于 GICS 行业分类的 A 股板块表现跟踪，相对强弱与轮动信号"
+        description={`基于${clsLabel}行业分类的 A 股板块表现跟踪，相对强弱与轮动信号`}
         tutorial={
           <span>
-            按行业板块（GICS 一级）查看 A 股个股 + ETF 的整体表现：左侧是动量排名，中间是各周期收益热力图，右下角是相对强弱。出现「轮动信号」说明该板块排名一周内上升或下降 ≥3 位。
+            按行业板块（{clsLabel}）查看 A 股个股 + ETF 的整体表现：左侧是动量排名，中间是各周期收益热力图，右下角是相对强弱。出现「轮动信号」说明该板块排名一周内上升或下降 ≥3 位。
           </span>
         }
         extra={
-          <LastUpdated
-            at={dataUpdatedAt}
-            loading={isFetching && !data}
-          />
+          <div className="ad-cluster" style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+            <Segmented<SectorClassification>
+              size="small"
+              value={classification}
+              onChange={(v) => setClassification(v)}
+              options={[
+                { label: 'GICS', value: 'GICS' },
+                { label: '申万一级', value: 'SW' },
+              ]}
+            />
+            <LastUpdated
+              at={dataUpdatedAt}
+              loading={isFetching && !data}
+            />
+          </div>
         }
       />
 
@@ -360,13 +391,22 @@ export default function SectorRotation() {
             <span className="ad-info-banner__title">当前范围</span>
             <span className="ad-info-banner__text">
               仅纳入 A 股（沪深北）<b>个股 + ETF</b>，分类体系为
-              <Tag color="default" style={{ marginLeft: 6, marginRight: 6 }}>GICS 行业</Tag>
+              <Tag color={classification === 'SW' ? 'gold' : 'default'} style={{ marginLeft: 6, marginRight: 6 }}>
+                {classification === 'SW' ? '申万一级行业' : 'GICS 行业'}
+              </Tag>
               数字币 / 美股 / 港股 不参与本轮动分析。
-              {scope?.classification && (
+              {scope?.classification === 'SW' ? (
                 <span style={{ marginLeft: 8 }}>
-                  分类来源：<code className="font-mono">etf_info.sector</code>
-                  （个股由 CSRC→GICS 映射，ETF 由 sub_category/underlying_index 启发式匹配）。
+                  分类来源：<code className="font-mono">etf_info.sw_l1</code>
+                  （个股由 Tushare 申万成分 / CSRC→申万 映射，ETF 由 sub_category/underlying_index 启发式匹配）。
                 </span>
+              ) : (
+                scope?.classification && (
+                  <span style={{ marginLeft: 8 }}>
+                    分类来源：<code className="font-mono">etf_info.sector</code>
+                    （个股由 CSRC→GICS 映射，ETF 由 sub_category/underlying_index 启发式匹配）。
+                  </span>
+                )
               )}
             </span>
           </div>
@@ -448,7 +488,7 @@ export default function SectorRotation() {
             ) : sectors.length === 0 ? (
               <EmptyState
                 title="暂无板块数据"
-                description="当前 A 股范围内无 GICS 板块数据，请稍后重试或检查 ETL。"
+                description={`当前 A 股范围内无${clsLabel}板块数据，请稍后重试或检查 ETL。`}
               />
             ) : (
               <div className="ad-chart-container">
@@ -470,7 +510,7 @@ export default function SectorRotation() {
             ) : sectors.length === 0 ? (
               <EmptyState
                 title="暂无板块数据"
-                description="当前 A 股范围内无 GICS 板块数据。"
+                description={`当前 A 股范围内无${clsLabel}板块数据。`}
               />
             ) : (
               <div className="ad-chart-container">
@@ -487,7 +527,7 @@ export default function SectorRotation() {
           title="多周期收益热力图"
           extra={
             <span className="ad-table-text-secondary" style={{ fontSize: 12 }}>
-              行：GICS 板块 · 列：收益周期 · 色：涨跌强度
+              行：{clsLabel}板块 · 列：收益周期 · 色：涨跌强度
             </span>
           }
           variant="default"
@@ -497,7 +537,7 @@ export default function SectorRotation() {
           ) : sectors.length === 0 ? (
             <EmptyState
               title="暂无板块数据"
-              description="当前 A 股范围内无 GICS 板块数据。"
+              description={`当前 A 股范围内无${clsLabel}板块数据。`}
             />
           ) : (
             <div className="ad-chart-container" style={{ minHeight: 420 }}>
@@ -507,19 +547,283 @@ export default function SectorRotation() {
         </Panel>
       </div>
 
-      {/* Detail table */}
-      <Panel title="行业板块详细数据" variant="default">
-        <div className="ad-density-dense ad-table-scroll ad-table-sticky">
-          <Table
-            dataSource={sectors}
-            columns={columns}
-            rowKey="sector"
-            size="small"
-            pagination={false}
-            loading={isLoading}
+      {/* Detail panel — split into 板块汇总 + 成份股构成 tabs */}
+      <Panel
+        title="行业板块详细数据"
+        variant="default"
+        padding="none"
+      >
+        <Tabs
+          className="ad-px-4"
+          activeKey={detailTab}
+          onChange={(k) => setDetailTab(k as DetailTab)}
+          items={[
+            { key: 'summary', label: '板块汇总' },
+            { key: 'constituents', label: '成份股构成' },
+          ]}
+        />
+        {detailTab === 'summary' ? (
+          <div className="ad-table-scroll ad-table-sticky ad-px-4 ad-pb-4">
+            <Table
+              dataSource={sectors}
+              columns={columns}
+              rowKey="sector"
+              size="small"
+              pagination={false}
+              loading={isLoading}
+            />
+          </div>
+        ) : (
+          <ConstituentsTab
+            defaultSector={
+              sectors[0]?.sector ?? sectorsData?.items?.[0]?.sector ?? null
+            }
+            sectors={sectorsData?.items ?? []}
+            classification={classification}
           />
-        </div>
+        )}
       </Panel>
     </PageShell>
   );
+}
+
+// ---------------------------------------------------------------------------
+// Constituents tab — top-N instruments inside a selected sector (STOCK + ETF).
+// ---------------------------------------------------------------------------
+
+function ConstituentsTab({
+  defaultSector,
+  sectors,
+  classification,
+}: {
+  defaultSector: string | null;
+  sectors: { sector: string; stock_count: number; etf_count: number }[];
+  classification: SectorClassification;
+}) {
+  const [selectedSector, setSelectedSector] = useState<string | null>(
+    defaultSector,
+  );
+  const [topN, setTopN] = useState<number>(20);
+
+  // Re-sync when the upstream defaultSector changes (e.g. data reload) or
+  // when the taxonomy switches and the selected sector no longer exists in
+  // the new list (GICS names differ from 申万 names).
+  useEffect(() => {
+    if (
+      sectors.length > 0 &&
+      selectedSector &&
+      !sectors.some((s) => s.sector === selectedSector)
+    ) {
+      setSelectedSector(defaultSector);
+    } else if (defaultSector && !selectedSector) {
+      setSelectedSector(defaultSector);
+    }
+  }, [defaultSector, selectedSector, sectors]);
+
+  const { data, isLoading, isFetching } = useSectorConstituents(
+    selectedSector,
+    topN,
+    undefined,
+    classification,
+  );
+
+  const items = data?.items ?? [];
+  const sectorMeta = sectors.find((s) => s.sector === selectedSector);
+
+  const constituentsColumns = useMemo(
+    () => [
+      {
+        title: '代码',
+        dataIndex: 'code',
+        width: 110,
+        render: (v: string) => <span className="font-mono ad-table-accent">{v}</span>,
+      },
+      {
+        title: '名称',
+        dataIndex: 'name',
+        width: 180,
+        render: (v: string) => (
+          <div className="ad-stack-xs">
+            <span className="ad-table-text-primary">{v}</span>
+            {sectorMeta && (
+              <span className="ad-table-text-secondary">
+                {sectorMeta.stock_count}股 / {sectorMeta.etf_count}基
+              </span>
+            )}
+          </div>
+        ),
+      },
+      {
+        title: '类型',
+        dataIndex: 'instrument_type',
+        width: 80,
+        render: (v: SectorConstituent['instrument_type']) =>
+          v === 'STOCK' ? (
+            <Tag color="blue">个股</Tag>
+          ) : (
+            <Tag color="purple">ETF</Tag>
+          ),
+      },
+      {
+        title: (
+          <span>
+            权重 (元)
+            <span className="ad-table-text-secondary" style={{ marginLeft: 4, fontWeight: 400 }}>
+              {items[0]?.weight_label === '规模' ? '· 规模' : '· 市值'}
+            </span>
+          </span>
+        ),
+        dataIndex: 'weight',
+        width: 150,
+        align: 'right' as const,
+        sorter: (a: SectorConstituent, b: SectorConstituent) =>
+          (a.weight ?? -Infinity) - (b.weight ?? -Infinity),
+        render: (v: number | null) =>
+          v == null ? (
+            <span className="ad-table-text-secondary">—</span>
+          ) : (
+            <span className="font-mono ad-table-mono">{formatWeight(v)}</span>
+          ),
+      },
+      {
+        title: '1周',
+        dataIndex: 'return_1w',
+        width: 80,
+        render: (v: number | null) =>
+          v == null ? <span className="ad-table-text-secondary">—</span> : <ReturnTag value={v} />,
+      },
+      {
+        title: '1月',
+        dataIndex: 'return_1m',
+        width: 80,
+        render: (v: number | null) =>
+          v == null ? <span className="ad-table-text-secondary">—</span> : <ReturnTag value={v} />,
+      },
+      {
+        title: '3月',
+        dataIndex: 'return_3m',
+        width: 80,
+        render: (v: number | null) =>
+          v == null ? <span className="ad-table-text-secondary">—</span> : <ReturnTag value={v} />,
+      },
+      {
+        title: '6月',
+        dataIndex: 'return_6m',
+        width: 80,
+        render: (v: number | null) =>
+          v == null ? <span className="ad-table-text-secondary">—</span> : <ReturnTag value={v} />,
+      },
+      {
+        title: '1年',
+        dataIndex: 'return_1y',
+        width: 80,
+        render: (v: number | null) =>
+          v == null ? <span className="ad-table-text-secondary">—</span> : <ReturnTag value={v} />,
+      },
+      {
+        title: '夏普',
+        dataIndex: 'sharpe_1y',
+        width: 70,
+        render: (v: number | null) =>
+          v == null ? (
+            <span className="ad-table-text-secondary">—</span>
+          ) : (
+            <span className="font-mono ad-table-mono">{v.toFixed(2)}</span>
+          ),
+      },
+      {
+        title: 'RSI',
+        dataIndex: 'rsi14',
+        width: 60,
+        render: (v: number | null) =>
+          v == null ? (
+            <span className="ad-table-text-secondary">—</span>
+          ) : (
+            <span className="font-mono ad-table-mono">{v.toFixed(0)}</span>
+          ),
+      },
+    ],
+    [items, sectorMeta],
+  );
+
+  return (
+    <div className="ad-px-4 ad-pb-4 ad-pt-2">
+      {/* Filter strip */}
+      <div className="ad-stack-row ad-mb-3" style={{ gap: 12, flexWrap: 'wrap' }}>
+        <div className="ad-stack-row" style={{ gap: 6, alignItems: 'center' }}>
+          <span className="ad-table-text-secondary" style={{ fontSize: 12 }}>板块</span>
+          <Select
+            value={selectedSector ?? undefined}
+            onChange={(v) => setSelectedSector(v)}
+            style={{ minWidth: 220 }}
+            placeholder={`选择${classification === 'SW' ? '申万一级' : 'GICS'}板块`}
+            options={sectors.map((s) => ({
+              label: `${s.sector} (${s.stock_count}股 / ${s.etf_count}基)`,
+              value: s.sector,
+            }))}
+            showSearch
+            optionFilterProp="label"
+          />
+        </div>
+        <div className="ad-stack-row" style={{ gap: 6, alignItems: 'center' }}>
+          <span className="ad-table-text-secondary" style={{ fontSize: 12 }}>TOP</span>
+          <Select
+            value={topN}
+            onChange={(v) => setTopN(v)}
+            style={{ width: 90 }}
+            options={[
+              { label: '10', value: 10 },
+              { label: '20', value: 20 },
+              { label: '50', value: 50 },
+              { label: '100', value: 100 },
+              { label: '200', value: 200 },
+            ]}
+          />
+        </div>
+        {data && (
+          <span className="ad-table-text-secondary" style={{ fontSize: 12 }}>
+            展示 {data.count} / {data.total_in_sector} （按 {items[0]?.weight_label ?? '权重'} 降序）
+            {data.trade_date ? ` · 快照 ${data.trade_date}` : ''}
+          </span>
+        )}
+      </div>
+
+      {isLoading && !data ? (
+        <Spin />
+      ) : !selectedSector ? (
+        <EmptyState
+          title="请选择板块"
+          description={`从上方下拉框选择要查看的${classification === 'SW' ? '申万一级' : 'GICS'}板块。`}
+        />
+      ) : items.length === 0 ? (
+        <EmptyState
+          title="暂无成份股"
+          description={
+            data?.total_in_sector === 0
+              ? `板块 ${selectedSector} 当前没有任何 ETF/个股。`
+              : `板块 ${selectedSector} 没有可显示的成份股（可能尚未刷新指标）。`
+          }
+        />
+      ) : (
+        <div className="ad-table-scroll ad-table-sticky">
+          <Table
+            dataSource={items.map((i) => ({ ...i, key: i.code }))}
+            columns={constituentsColumns}
+            rowKey="code"
+            size="small"
+            pagination={false}
+            loading={isFetching && !!data}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Format a CNY 元 weight (e.g. 2_500_000_000 → "25.00亿"). */
+function formatWeight(value: number): string {
+  const abs = Math.abs(value);
+  if (abs >= 1e8) return `${(value / 1e8).toFixed(2)}亿`;
+  if (abs >= 1e4) return `${(value / 1e4).toFixed(2)}万`;
+  return value.toFixed(0);
 }

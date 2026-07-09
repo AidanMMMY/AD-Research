@@ -24,10 +24,11 @@ import {
   useInstrumentCurrencies,
   useInstrumentCountries,
   useInstrumentUnderlyingIndices,
+  useInstrumentListingMarkets,
+  useInstrumentBoards,
 } from '@/hooks/useInstrumentList';
 import { useSparkline } from '@/hooks/useSparkline';
 import { useMarketStream } from '@/hooks/useMarketStream';
-import { useDensity } from '@/hooks/useDensity';
 import { useDebounce } from '@/hooks/useDebounce';
 import PageShell from '@/components/PageShell';
 import PageHeader from '@/components/PageHeader';
@@ -88,7 +89,6 @@ const QDII_OPTIONS = [
 export default function InstrumentList() {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
-  const { density } = useDensity();
   const [searchParams, setSearchParams] = useSearchParams();
 
   const [search, setSearch] = useState(searchParams.get('q') ?? '');
@@ -117,6 +117,12 @@ export default function InstrumentList() {
     const raw = searchParams.get('max_fund_size');
     return raw ? Number(raw) : undefined;
   });
+  const [listingMarket, setListingMarket] = useState<string | undefined>(
+    searchParams.get('listing_market') ?? undefined,
+  );
+  const [board, setBoard] = useState<string | undefined>(
+    searchParams.get('board') ?? undefined,
+  );
   const [page, setPage] = useState(() => {
     const raw = searchParams.get('page');
     return raw ? Number(raw) : 1;
@@ -142,12 +148,14 @@ export default function InstrumentList() {
     if (status) next.status = status;
     if (minFundSize != null) next.min_fund_size = String(minFundSize);
     if (maxFundSize != null) next.max_fund_size = String(maxFundSize);
+    if (listingMarket) next.listing_market = listingMarket;
+    if (board) next.board = board;
     if (page !== 1) next.page = String(page);
     setSearchParams(next, { replace: true });
   }, [
     search, market, category, instrumentType, subCategory, sector, industry,
     country, manager, underlyingIndex, currency, isQdii, status, minFundSize,
-    maxFundSize, page, setSearchParams,
+    maxFundSize, listingMarket, board, page, setSearchParams,
   ]);
 
   const listParams = {
@@ -166,13 +174,30 @@ export default function InstrumentList() {
     status,
     min_fund_size: minFundSize,
     max_fund_size: maxFundSize,
+    listing_market: listingMarket,
+    board,
     page,
     page_size: PAGE_SIZE,
   };
 
   const { data, isLoading, dataUpdatedAt, isFetching } = useInstrumentList(listParams);
 
-  const cascadeFilters = { market, instrument_type: instrumentType };
+  // Cascade filters for facet options: all current selections except the facet
+  // itself are sent so each dropdown only shows values that still yield results.
+  const cascadeFilters = {
+    market,
+    category,
+    instrument_type: instrumentType,
+    sub_category: subCategory,
+    sector,
+    industry,
+    country,
+    manager,
+    underlying_index: underlyingIndex,
+    currency,
+    is_qdii: isQdii,
+    status,
+  };
   const { data: categories } = useInstrumentCategories(cascadeFilters);
   const { data: sectors } = useInstrumentSectors(cascadeFilters);
   const { data: industries } = useInstrumentIndustries(cascadeFilters);
@@ -182,6 +207,19 @@ export default function InstrumentList() {
   const { data: countries } = useInstrumentCountries(cascadeFilters);
   const { data: underlyingIndices } = useInstrumentUnderlyingIndices(cascadeFilters);
   const { data: markets } = useInstrumentMarkets();
+  // Board / listing-market facets only matter for A-share stocks; querying
+  // them for every type is cheap because the backend filters by market.
+  const { data: listingMarkets } = useInstrumentListingMarkets(cascadeFilters);
+  const { data: boards } = useInstrumentBoards(cascadeFilters);
+
+  // Helpers for building dropdown options and deciding visibility.
+  const toOptions = (values?: string[] | null) =>
+    (values || [])
+      .filter((v): v is string => v != null && v !== '')
+      .map((v) => ({ label: v, value: v }));
+  const hasOptions = (values?: string[] | null) => toOptions(values).length > 0;
+  // QDII only makes sense for ETFs; hide it for other instrument types.
+  const showQdiiFilter = !instrumentType || instrumentType === 'ETF';
 
   // Clear selected facet values if they no longer exist under the current
   // market / instrument type filters.
@@ -209,6 +247,10 @@ export default function InstrumentList() {
   useEffect(() => {
     if (underlyingIndex && underlyingIndices && !underlyingIndices.includes(underlyingIndex)) setUnderlyingIndex(undefined);
   }, [underlyingIndices, underlyingIndex]);
+  useEffect(() => {
+    // QDII only applies to ETFs; clear it when the type is set to something else.
+    if (instrumentType && instrumentType !== 'ETF' && isQdii != null) setIsQdii(undefined);
+  }, [instrumentType, isQdii]);
 
   const handleReset = () => {
     setSearch('');
@@ -226,6 +268,8 @@ export default function InstrumentList() {
     setStatus(undefined);
     setMinFundSize(undefined);
     setMaxFundSize(undefined);
+    setListingMarket(undefined);
+    setBoard(undefined);
     setPage(1);
   };
 
@@ -238,13 +282,8 @@ export default function InstrumentList() {
   );
   const { latest: liveLatest } = useMarketStream(pageCodes);
 
-  const rowSize = density === 'dense' ? 'small' : density === 'spacious' ? 'large' : 'middle';
-  const tableWrapClass =
-    density === 'dense'
-      ? 'ad-density-dense ad-table-scroll ad-table-sticky'
-      : density === 'spacious'
-        ? 'ad-table-scroll ad-table-sticky'
-        : 'ad-table-scroll ad-table-sticky';
+  const rowSize = 'large';
+  const tableWrapClass = 'ad-table-scroll ad-table-sticky';
 
   const columns = [
     {
@@ -265,6 +304,34 @@ export default function InstrumentList() {
       render: (v: string) => (
         <span className="tabular-nums mobile-list-item__meta font-mono">{v}</span>
       ),
+    },
+    {
+      title: '上市地',
+      dataIndex: 'listing_market',
+      width: 80,
+      render: (v: string | null | undefined) => {
+        if (!v) return <span className="mobile-list-item__meta">-</span>;
+        return <ThemeTag title={`上市市场: ${v}`}>{v}</ThemeTag>;
+      },
+    },
+    {
+      title: '板块',
+      dataIndex: 'board',
+      width: 90,
+      render: (v: string | null | undefined) => {
+        if (!v) return <span className="mobile-list-item__meta">-</span>;
+        const variantMap: Record<string, 'default' | 'accent' | 'warning'> = {
+          主板: 'default',
+          创业板: 'accent',
+          科创板: 'accent',
+          北交所: 'warning',
+        };
+        return (
+          <ThemeTag variant={variantMap[v] || 'default'} title={`所属板块: ${v}`}>
+            {v}
+          </ThemeTag>
+        );
+      },
     },
     {
       title: '类型',
@@ -374,6 +441,7 @@ export default function InstrumentList() {
       />
 
       <FilterToolbar
+        title="筛选条件"
         total={`共 ${data?.total || 0} 只`}
         extra={
           <Button icon={<ReloadOutlined />} onClick={handleReset}>
@@ -401,31 +469,35 @@ export default function InstrumentList() {
                   placeholder="市场"
                   allowClear
                   className="ad-w-full"
-                  options={markets?.map((m: string) => ({ label: m, value: m }))}
+                  options={toOptions(markets)}
                   value={market}
                   onChange={(v) => { setMarket(v); setPage(1); }}
                 />
               </Col>
-              <Col xs={12} sm={8} md={6}>
-                <Select
-                  placeholder="国家"
-                  allowClear
-                  className="ad-w-full"
-                  options={countries?.map((c: string) => ({ label: c, value: c }))}
-                  value={country}
-                  onChange={(v) => { setCountry(v); setPage(1); }}
-                />
-              </Col>
-              <Col xs={12} sm={8} md={6}>
-                <Select
-                  placeholder="币种"
-                  allowClear
-                  className="ad-w-full"
-                  options={currencies?.map((c: string) => ({ label: c, value: c }))}
-                  value={currency}
-                  onChange={(v) => { setCurrency(v); setPage(1); }}
-                />
-              </Col>
+              {hasOptions(countries) && (
+                <Col xs={12} sm={8} md={6}>
+                  <Select
+                    placeholder="国家"
+                    allowClear
+                    className="ad-w-full"
+                    options={toOptions(countries)}
+                    value={country}
+                    onChange={(v) => { setCountry(v); setPage(1); }}
+                  />
+                </Col>
+              )}
+              {hasOptions(currencies) && (
+                <Col xs={12} sm={8} md={6}>
+                  <Select
+                    placeholder="币种"
+                    allowClear
+                    className="ad-w-full"
+                    options={toOptions(currencies)}
+                    value={currency}
+                    onChange={(v) => { setCurrency(v); setPage(1); }}
+                  />
+                </Col>
+              )}
             </Row>
           </div>
 
@@ -447,66 +519,102 @@ export default function InstrumentList() {
                   onChange={(v) => { setInstrumentType(v); setPage(1); }}
                 />
               </Col>
-              <Col xs={12} sm={8} md={6}>
-                <Select
-                  placeholder="分类"
-                  allowClear
-                  className="ad-w-full"
-                  options={categories?.map((c: string) => ({ label: c, value: c }))}
-                  value={category}
-                  onChange={(v) => { setCategory(v); setPage(1); }}
-                />
-              </Col>
-              <Col xs={12} sm={8} md={6}>
-                <Select
-                  placeholder="子分类"
-                  allowClear
-                  className="ad-w-full"
-                  options={subCategories?.map((c: string) => ({ label: c, value: c }))}
-                  value={subCategory}
-                  onChange={(v) => { setSubCategory(v); setPage(1); }}
-                />
-              </Col>
-              <Col xs={12} sm={8} md={6}>
-                <Select
-                  placeholder="板块"
-                  allowClear
-                  className="ad-w-full"
-                  options={sectors?.map((c: string) => ({ label: c, value: c }))}
-                  value={sector}
-                  onChange={(v) => { setSector(v); setPage(1); }}
-                />
-              </Col>
-              <Col xs={12} sm={8} md={6}>
-                <Select
-                  placeholder="行业"
-                  allowClear
-                  className="ad-w-full"
-                  options={industries?.map((c: string) => ({ label: c, value: c }))}
-                  value={industry}
-                  onChange={(v) => { setIndustry(v); setPage(1); }}
-                />
-              </Col>
-              <Col xs={12} sm={8} md={6}>
-                <Select
-                  placeholder="管理公司"
-                  allowClear
-                  className="ad-w-full"
-                  options={managers?.map((c: string) => ({ label: c, value: c }))}
-                  value={manager}
-                  onChange={(v) => { setManager(v); setPage(1); }}
-                />
-              </Col>
-              <Col xs={12} sm={8} md={6}>
-                <Select
-                  placeholder="跟踪指数"
-                  allowClear
-                  className="ad-w-full"
-                  options={underlyingIndices?.map((c: string) => ({ label: c, value: c }))}
-                  value={underlyingIndex}
-                  onChange={(v) => { setUnderlyingIndex(v); setPage(1); }}
-                />
-              </Col>
+              {hasOptions(categories) && (
+                <Col xs={12} sm={8} md={6}>
+                  <Select
+                    placeholder="分类"
+                    allowClear
+                    className="ad-w-full"
+                    options={toOptions(categories)}
+                    value={category}
+                    onChange={(v) => { setCategory(v); setPage(1); }}
+                  />
+                </Col>
+              )}
+              {hasOptions(subCategories) && (
+                <Col xs={12} sm={8} md={6}>
+                  <Select
+                    placeholder="子分类"
+                    allowClear
+                    className="ad-w-full"
+                    options={toOptions(subCategories)}
+                    value={subCategory}
+                    onChange={(v) => { setSubCategory(v); setPage(1); }}
+                  />
+                </Col>
+              )}
+              {hasOptions(sectors) && (
+                <Col xs={12} sm={8} md={6}>
+                  <Select
+                    placeholder="板块"
+                    allowClear
+                    className="ad-w-full"
+                    options={toOptions(sectors)}
+                    value={sector}
+                    onChange={(v) => { setSector(v); setPage(1); }}
+                  />
+                </Col>
+              )}
+              {hasOptions(industries) && (
+                <Col xs={12} sm={8} md={6}>
+                  <Select
+                    placeholder="行业"
+                    allowClear
+                    className="ad-w-full"
+                    options={toOptions(industries)}
+                    value={industry}
+                    onChange={(v) => { setIndustry(v); setPage(1); }}
+                  />
+                </Col>
+              )}
+              {hasOptions(listingMarkets) && (
+                <Col xs={12} sm={8} md={6}>
+                  <Select
+                    placeholder="上市地"
+                    allowClear
+                    className="ad-w-full"
+                    options={toOptions(listingMarkets)}
+                    value={listingMarket}
+                    onChange={(v) => { setListingMarket(v); setPage(1); }}
+                  />
+                </Col>
+              )}
+              {hasOptions(boards) && (
+                <Col xs={12} sm={8} md={6}>
+                  <Select
+                    placeholder="板块"
+                    allowClear
+                    className="ad-w-full"
+                    options={toOptions(boards)}
+                    value={board}
+                    onChange={(v) => { setBoard(v); setPage(1); }}
+                  />
+                </Col>
+              )}
+              {hasOptions(managers) && (
+                <Col xs={12} sm={8} md={6}>
+                  <Select
+                    placeholder="管理公司"
+                    allowClear
+                    className="ad-w-full"
+                    options={toOptions(managers)}
+                    value={manager}
+                    onChange={(v) => { setManager(v); setPage(1); }}
+                  />
+                </Col>
+              )}
+              {hasOptions(underlyingIndices) && (
+                <Col xs={12} sm={8} md={6}>
+                  <Select
+                    placeholder="跟踪指数"
+                    allowClear
+                    className="ad-w-full"
+                    options={toOptions(underlyingIndices)}
+                    value={underlyingIndex}
+                    onChange={(v) => { setUnderlyingIndex(v); setPage(1); }}
+                  />
+                </Col>
+              )}
             </Row>
           </div>
 
@@ -514,16 +622,18 @@ export default function InstrumentList() {
           <div className="instrument-filter-group">
             <div className="instrument-filter-group__title">状态与规模</div>
             <Row gutter={[16, 12]}>
-              <Col xs={12} sm={8} md={6}>
-                <Select
-                  placeholder="QDII"
-                  allowClear
-                  className="ad-w-full"
-                  options={QDII_OPTIONS}
-                  value={isQdii}
-                  onChange={(v) => { setIsQdii(v); setPage(1); }}
-                />
-              </Col>
+              {showQdiiFilter && (
+                <Col xs={12} sm={8} md={6}>
+                  <Select
+                    placeholder="QDII"
+                    allowClear
+                    className="ad-w-full"
+                    options={QDII_OPTIONS}
+                    value={isQdii}
+                    onChange={(v) => { setIsQdii(v); setPage(1); }}
+                  />
+                </Col>
+              )}
               <Col xs={12} sm={8} md={6}>
                 <Select
                   placeholder="状态"
@@ -591,6 +701,25 @@ export default function InstrumentList() {
                   )}
                   {item.market && (
                     <ThemeTag>{item.market}</ThemeTag>
+                  )}
+                  {item.listing_market && (
+                    <ThemeTag title={`上市市场: ${item.listing_market}`}>
+                      {item.listing_market}
+                    </ThemeTag>
+                  )}
+                  {item.board && (
+                    <ThemeTag
+                      variant={
+                        item.board === '创业板' || item.board === '科创板'
+                          ? 'accent'
+                          : item.board === '北交所'
+                            ? 'warning'
+                            : 'default'
+                      }
+                      title={`所属板块: ${item.board}`}
+                    >
+                      {item.board}
+                    </ThemeTag>
                   )}
                   {item.fund_manager && (
                     <span className="mobile-list-item__meta">{item.fund_manager}</span>
