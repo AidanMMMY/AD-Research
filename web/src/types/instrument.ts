@@ -55,6 +55,8 @@ export interface InstrumentFilterParams {
   max_fund_size?: number;
   listing_market?: string;
   board?: string;
+  /** Exchange code (NYSE / NASDAQ) — used by the US-equity filter UI. */
+  exchange?: string;
 }
 
 export interface MarketSnapshot {

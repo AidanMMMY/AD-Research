@@ -61,6 +61,8 @@ export interface CryptoDetail {
   low_24h?: number;
   volume_24h?: number;
   amount_24h?: number;
+  /** UTC timestamp when the live market snapshot was fetched. */
+  last_updated?: string;
   latest_indicator?: IndicatorSummary;
 }
 

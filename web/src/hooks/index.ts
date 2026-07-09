@@ -1,6 +1,7 @@
 export * from './useAuth';
 export * from './useAdminUsers';
 export * from './useInstrumentList';
+export * from './useInstrumentModules';
 export * from './usePoolDetail';
 export { usePoolList } from './usePoolDetail';
 export * from './useScreenResults';
