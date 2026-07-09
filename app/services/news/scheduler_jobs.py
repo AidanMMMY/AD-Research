@@ -21,6 +21,7 @@ from datetime import datetime, timezone
 from functools import wraps
 from typing import Any, Callable
 
+from app.core.etl_log_helper import record_etl
 from app.models.etl import ETLLog
 
 logger = logging.getLogger(__name__)
@@ -442,6 +443,7 @@ def run_cointelegraph_crawl() -> dict[str, int]:
 
 # ── Macro (FRED) ──
 
+@record_etl("fred_macro_daily", source="fred")
 def run_fred_refresh(lookback_days: int = 180) -> dict[str, Any]:
     """Pull the latest ~N days for every registered FRED series.
 

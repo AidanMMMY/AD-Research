@@ -15,6 +15,8 @@ from __future__ import annotations
 import logging
 from typing import Any
 
+from app.core.etl_log_helper import record_etl
+
 logger = logging.getLogger(__name__)
 
 
@@ -34,6 +36,7 @@ def _provider_methods(provider):
     ]
 
 
+@record_etl("china_macro_daily", source="akshare")
 def run_china_macro_refresh() -> dict[str, Any]:
     """Fetch latest China macro indicators and upsert into macro_indicator.
 

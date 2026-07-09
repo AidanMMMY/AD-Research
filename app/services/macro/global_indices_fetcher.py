@@ -1,18 +1,28 @@
-"""Global market indices orchestrator (Phase 5d).
+"""Global market indices orchestrator (Phase 5d + 6a).
 
-Pulls daily closes for the major international indices from two
-sources and upserts them into the same ``macro_indicator`` table
-that FRED and akshare already use:
+Pulls daily closes for the major international indices, FX, US
+interest rates, and commodities from three sources and upserts them
+into the same ``macro_indicator`` table that FRED and akshare already
+use:
 
   * ``yfinance``        — Hang Seng, Nikkei, DAX, FTSE, CAC, ASX,
-                          KOSPI, TWSE, NIFTY 50, SENSEX
+                          KOSPI, TWSE, NIFTY 50, SENSEX  (Phase 5d)
+                        — USD/CNY, USD/EUR, DXY, USD/JPY  (Phase 6a)
+                        — ^TNX (10Y), ^TYX (30Y)          (Phase 6a)
+                        — CL=F (WTI), BZ=F (Brent)        (Phase 6a)
   * ``akshare``         — 上证综指 (sh000001), 深证成指 (sz399001),
                           沪深300 (sh000300)
 
-Both write rows tagged ``region='global'`` so the existing
-``/macro/latest?region=global`` endpoint surfaces them with no
-schema changes.  Source tag distinguishes them downstream:
-``source='yfinance'`` and ``source='akshare'`` respectively.
+Region tagging:
+  * Stock indices + DXY / USDJPY / Brent / WTI are tagged
+    ``region='global'`` (cross-border).
+  * USD/CNY, USD/EUR, 10Y, 30Y are tagged ``region='us'`` to match
+    the FRED ``us_*`` series already in the table — this is what
+    lets ``MacroDataService.latest_snapshot`` pick the newer source
+    on the (code, region) tie-break.
+
+Source tag distinguishes them downstream: ``source='yfinance'`` and
+``source='akshare'`` respectively.
 
 Designed to be invoked from:
   - APScheduler daily at 16:00 Asia/Shanghai (after Asia close)
@@ -31,6 +41,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from app.core.database import SessionLocal
+from app.core.etl_log_helper import record_etl
 from app.services.macro_service import MacroDataService
 
 logger = logging.getLogger(__name__)
@@ -91,6 +102,29 @@ def fetch_international_indices() -> list[dict]:
         return []
 
 
+def fetch_macro_fx_rates_commodities() -> dict[str, list[dict]]:
+    """Fetch FX / rates / commodities via yfinance (Phase 6a).
+
+    Returns ``{region: [observations]}`` so each region can be
+    upserted separately — the FX / rates codes that share a ``us_*``
+    FRED row need ``region='us'`` so the snapshot can pick the newer
+    source on the (code, region) tie-break.
+
+    Per-ticker failures are logged inside ``fetch_yfinance_macro_latest``
+    and skipped; an exception that escapes the inner fetcher is
+    caught here as a last-resort guard so the batch never crashes.
+    """
+    from app.data.providers.yfinance_indices_provider import (
+        fetch_yfinance_macro_latest,
+    )
+
+    try:
+        return fetch_yfinance_macro_latest()
+    except Exception as exc:  # noqa: BLE001 - last-resort guard
+        logger.exception("[global_indices] yfinance macro batch crashed: %s", exc)
+        return {}
+
+
 def fetch_all_global_indices() -> list[dict]:
     """Combined orchestrator: A-share (akshare) + international (yfinance).
 
@@ -99,6 +133,14 @@ def fetch_all_global_indices() -> list[dict]:
     (the orchestrator does not mutate the dict shape so the same
     rows can be reused by both the realtime endpoint and the
     persistent upsert path).
+
+    Phase 6a note: this call site is used by the realtime endpoint
+    (``/api/v1/macro/indices/global``) which already supports
+    per-region lookups.  It intentionally does NOT include the
+    FX / rates / commodities batch — those go through
+    ``fetch_macro_fx_rates_commodities`` and are persisted by
+    ``run_global_indices_refresh`` with their per-row ``region``
+    intact so they share the (code, region) key with the FRED rows.
     """
     a_share = fetch_a_share_indices()
     international = fetch_international_indices()
@@ -114,6 +156,7 @@ def fetch_all_global_indices() -> list[dict]:
 # ---------------------------------------------------------------------------
 
 
+@record_etl("global_indices_daily", source="yfinance+akshare")
 def run_global_indices_refresh() -> dict[str, Any]:
     """Fetch + upsert global indices into ``macro_indicator``.
 
@@ -132,6 +175,7 @@ def run_global_indices_refresh() -> dict[str, Any]:
     started = datetime.now(timezone.utc)
     a_share = fetch_a_share_indices()
     international = fetch_international_indices()
+    macro_by_region = fetch_macro_fx_rates_commodities()
 
     db = SessionLocal()
     try:
@@ -160,7 +204,7 @@ def run_global_indices_refresh() -> dict[str, Any]:
         else:
             per_source["akshare"] = {"fetched": 0, "written": 0}
 
-        # ── yfinance / international ──
+        # ── yfinance / international stock indices ──
         if international:
             try:
                 written_yf = service.upsert_observations(
@@ -184,8 +228,35 @@ def run_global_indices_refresh() -> dict[str, Any]:
         else:
             per_source["yfinance"] = {"fetched": 0, "written": 0}
 
+        # ── yfinance / macro FX + rates + commodities (Phase 6a) ──
+        # Upsert per-region so yfinance rows share the (code, region) key
+        # with the FRED rows for the same code.  ``latest_snapshot`` can
+        # then pick the newer source on the (code, region) tie-break.
+        for region, obs in macro_by_region.items():
+            key = f"yfinance_macro_{region}"
+            if not obs:
+                per_source[key] = {"fetched": 0, "written": 0}
+                continue
+            try:
+                written = service.upsert_observations(
+                    region=region,
+                    source="yfinance",
+                    observations=obs,
+                )
+                per_source[key] = {
+                    "fetched": len(obs),
+                    "written": written,
+                }
+            except Exception as exc:  # noqa: BLE001 - defensive
+                logger.exception(
+                    "[global_indices] %s upsert failed: %s", key, exc,
+                )
+                failed.extend({o["code"] for o in obs})
+                per_source[key] = {"fetched": len(obs), "written": 0}
+
         finished = datetime.now(timezone.utc)
-        total_fetched = len(a_share) + len(international)
+        macro_fetched = sum(len(v) for v in macro_by_region.values())
+        total_fetched = len(a_share) + len(international) + macro_fetched
         total_written = sum(s.get("written", 0) for s in per_source.values())
 
         logger.info(
