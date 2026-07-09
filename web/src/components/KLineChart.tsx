@@ -115,14 +115,22 @@ function calcMACD(data: { close: number }[], fast: number = 12, slow: number = 2
 }
 
 function adjustOHLC(item: OHLCV): OHLCV {
+  // Forward adjustment (前复权): keep the latest bar untouched and rescale
+  // every historical bar so its price is consistent with the current
+  // close. Tushare's ``fund_adj`` ships a *backward* adjustment factor
+  // (latest day = 1.0, history grows as splits accumulate), so the
+  // forward adjustment is the *reciprocal*: pre-factor prices are
+  // divided by the factor.  E.g. 512760.SH 2026-06-16 close=1.187
+  // factor=4.19 → forward-adjusted close = 1.187 / 4.19 ≈ 0.2833,
+  // matching the current ~1.40 price level.
   const factor = item.adj_factor;
-  if (factor == null || factor === 0) return item;
+  if (factor == null || factor === 0 || factor === 1) return item;
   return {
     ...item,
-    open: item.open * factor,
-    high: item.high * factor,
-    low: item.low * factor,
-    close: item.close * factor,
+    open: item.open / factor,
+    high: item.high / factor,
+    low: item.low / factor,
+    close: item.close / factor,
   };
 }
 
