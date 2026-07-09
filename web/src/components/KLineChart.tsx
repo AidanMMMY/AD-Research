@@ -115,22 +115,27 @@ function calcMACD(data: { close: number }[], fast: number = 12, slow: number = 2
 }
 
 function adjustOHLC(item: OHLCV): OHLCV {
-  // Forward adjustment (前复权): keep the latest bar untouched and rescale
-  // every historical bar so its price is consistent with the current
-  // close. Tushare's ``fund_adj`` ships a *backward* adjustment factor
-  // (latest day = 1.0, history grows as splits accumulate), so the
-  // forward adjustment is the *reciprocal*: pre-factor prices are
-  // divided by the factor.  E.g. 512760.SH 2026-06-16 close=1.187
-  // factor=4.19 → forward-adjusted close = 1.187 / 4.19 ≈ 0.2833,
-  // matching the current ~1.40 price level.
+  // Backward adjustment (后复权): multiply by the stored
+  // ``adj_factor`` (latest day = 1.0; historical days scaled by the
+  // cumulative split ratio).  The user-facing "前复权 / 后复权"
+  // toggle in the UI labels this view as "前复权" because the result
+  // is the same continuous series the user expects from a 前复权
+  // chart on any mainstream Chinese broker app: the latest bar is
+  // unchanged, splits are absorbed, and the historical line chains
+  // smoothly into the current price.
+  //
+  // Verified against 512760.SH 2026-03-26 / 03-27 1:2 reverse split:
+  //   factor=0.50  close=1.588 -> adj=0.794
+  //   factor=1.00  close=0.798 -> adj=0.798
+  //   continuous across the split event.
   const factor = item.adj_factor;
   if (factor == null || factor === 0 || factor === 1) return item;
   return {
     ...item,
-    open: item.open / factor,
-    high: item.high / factor,
-    low: item.low / factor,
-    close: item.close / factor,
+    open: item.open * factor,
+    high: item.high * factor,
+    low: item.low * factor,
+    close: item.close * factor,
   };
 }
 
