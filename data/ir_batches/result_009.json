@@ -72,30 +72,30 @@
   {
     "code": "002536",
     "name": "飞龙股份",
-    "ir_url": null,
-    "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "ir_url": "https://www.flacc.com/news/21.html",
+    "method": "official_ir",
+    "notes": ""
   },
   {
     "code": "002537",
     "name": "海联金汇",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "未找到公司IR官网"
   },
   {
     "code": "002655",
     "name": "共达电声",
-    "ir_url": null,
-    "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "ir_url": "https://www.gettopacoustic.com/investor?tp=3",
+    "method": "official_ir",
+    "notes": ""
   },
   {
     "code": "002660",
     "name": "茂硕电源",
-    "ir_url": null,
-    "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "ir_url": "https://www.mosopower.com/%E6%8A%95%E8%B5%84%E8%80%85%E5%85%B3%E7%B3%BB/",
+    "method": "official_ir",
+    "notes": ""
   },
   {
     "code": "603596",

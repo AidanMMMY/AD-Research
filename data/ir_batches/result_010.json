@@ -46,21 +46,21 @@
     "name": "科安达",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "未找到公司IR官网"
   },
   {
     "code": "002973",
     "name": "侨银股份",
-    "ir_url": null,
-    "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "ir_url": "https://www.gzqiaoyin.com/col147/index",
+    "method": "official_ir",
+    "notes": ""
   },
   {
     "code": "002975",
     "name": "博杰股份",
-    "ir_url": null,
-    "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "ir_url": "https://www.zhbojay.com/touzizheguanxi/touzizheguanxi2/",
+    "method": "official_ir",
+    "notes": ""
   },
   {
     "code": "002976",

@@ -1,0 +1,142 @@
+[
+  {
+    "code": "603660",
+    "name": "苏州科达",
+    "ir_url": "https://www.kedacom.com/cn/tzzgx",
+    "method": "web_search",
+    "notes": "官网投资者关系栏目，含公司公告、投资者热线、公司治理等子页面"
+  },
+  {
+    "code": "603663",
+    "name": "三祥新材",
+    "ir_url": "http://fjsx.com/investor-317.html",
+    "method": "web_search",
+    "notes": "官网投资者关系页面，含公司概况、股本结构、联系方式"
+  },
+  {
+    "code": "002513",
+    "name": "蓝丰生化",
+    "ir_url": "http://www.jslanfeng.com/news_19.html",
+    "method": "web_search",
+    "notes": "官网投资者关系栏目（/news_19.html），含定期报告子页（/news_23.html）"
+  },
+  {
+    "code": "603665",
+    "name": "康隆达",
+    "ir_url": "https://www.kanglongda.com.cn/invest/message.html",
+    "method": "web_search",
+    "notes": "官网/invest/目录，含临时公告、定期报告、投资者留言子页面"
+  },
+  {
+    "code": "603667",
+    "name": "五洲新春",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "官网www.xcc-zxz.com仅含联系方式页(contact.aspx)，无独立投资者关系内容页，IR信息主页嵌入且外链至上交所"
+  },
+  {
+    "code": "603668",
+    "name": "天马科技",
+    "ir_url": "http://www.jolma.cn/index.php?c=content&a=list&catid=32",
+    "method": "web_search",
+    "notes": "官网投资者关系栏目，含公司治理、定期报告、临时公告、分红政策、投资者热线等"
+  },
+  {
+    "code": "603669",
+    "name": "灵康药业",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "官网www.lingkang.com.cn无法连接(连接被拒)，未找到可访问的官方IR页面"
+  },
+  {
+    "code": "603676",
+    "name": "卫信康",
+    "ir_url": "https://www.wxkpharma.com/investor/",
+    "method": "web_search",
+    "notes": "官网/investor/目录，含公司治理、定期报告、投资者热线子栏目"
+  },
+  {
+    "code": "600928",
+    "name": "西安银行",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "官网www.xacbank.com采用JS渲染无法抓取具体IR页面URL，网站结构含投资者关系栏目但未获取到可访问的具体路径"
+  },
+  {
+    "code": "603677",
+    "name": "奇精机械",
+    "ir_url": "https://qijing-m.com/en/relationship.html",
+    "method": "web_search",
+    "notes": "官网投资者关系英文版页面，网站当前返回500错误但URL经搜索确认有效"
+  },
+  {
+    "code": "603679",
+    "name": "华体科技",
+    "ir_url": "http://huaticn.com/contact.aspx?t=38",
+    "method": "web_search",
+    "notes": "官网投资者关系栏目（/contact.aspx?t=38），提供调研预约和咨询服务"
+  },
+  {
+    "code": "603680",
+    "name": "今创集团",
+    "ir_url": "https://www.ktk.com.cn/tzzgx.html",
+    "method": "web_search",
+    "notes": "官网投资者关系页面（/tzzgx.html），含公司资讯和公告"
+  },
+  {
+    "code": "603682",
+    "name": "锦和商管",
+    "ir_url": "http://www.iyuejie.com/lists/26.html",
+    "method": "web_search",
+    "notes": "官网投资者关系列表页面"
+  },
+  {
+    "code": "603260",
+    "name": "合盛硅业",
+    "ir_url": "https://www.hoshinesilicon.com/cn/gpxx/index_21.aspx.html",
+    "method": "web_search",
+    "notes": "官网投资者关系-股票信息页面，含公司治理、财务信息、投资保护、联系方式子栏目"
+  },
+  {
+    "code": "603276",
+    "name": "恒兴新材",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "官网www.zhgchem.com为企业展示站，无投资者关系栏目"
+  },
+  {
+    "code": "603281",
+    "name": "江瀚新材",
+    "ir_url": "http://www.jhsi.biz/tzzgx/1663120107366326272.html",
+    "method": "web_search",
+    "notes": "官网投资者关系页面（/tzzgx/），含股票信息、e互动、调研申请子栏目"
+  },
+  {
+    "code": "603285",
+    "name": "键邦股份",
+    "ir_url": "http://www.jianbangchem.com/touzizhe_jj.html",
+    "method": "web_search",
+    "notes": "官网投资者关系页面（/touzizhe_jj.html），含定期报告、投资者联系子页面"
+  },
+  {
+    "code": "603310",
+    "name": "巍华新材",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "官网www.weihua-newmaterial.com无法连接(连接被拒)，未找到可访问的官方IR页面"
+  },
+  {
+    "code": "001217",
+    "name": "华尔泰",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "官网www.ahhet.com无法连接(连接被拒)，且搜索结果显示官网无独立投资者关系专题页面"
+  },
+  {
+    "code": "603685",
+    "name": "晨丰科技",
+    "ir_url": "https://www.cnlampholder.com/investor-relations",
+    "method": "web_search",
+    "notes": "官网投资者关系页面（/investor-relations），IR子栏目主要外链至上交所"
+  }
+]

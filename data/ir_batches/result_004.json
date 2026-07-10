@@ -492,9 +492,9 @@
   {
     "code": "002182",
     "name": "宝武镁业",
-    "ir_url": null,
-    "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "ir_url": "https://www.baowumg.com",
+    "method": "web_search",
+    "notes": "官网baowumg.com，曾用名云海金属，IR电话025-57234888，IR邮箱Fly@rsm.com.cn"
   },
   {
     "code": "002189",
@@ -884,9 +884,9 @@
   {
     "code": "002266",
     "name": "浙富控股",
-    "ir_url": null,
-    "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "ir_url": "https://www.zhefu.cn",
+    "method": "web_search",
+    "notes": "官网zhefu.cn设投资者关系专栏，IR邮箱stock-dept@zhefu.cn"
   },
   {
     "code": "002267",
@@ -947,9 +947,9 @@
   {
     "code": "002244",
     "name": "滨江集团",
-    "ir_url": null,
-    "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "ir_url": "http://www.binjiang.com.cn",
+    "method": "web_search",
+    "notes": "官网binjiang.com.cn，IR电话0571-86987771，全景网ir.p5w.net"
   },
   {
     "code": "002245",
@@ -1024,9 +1024,9 @@
   {
     "code": "002276",
     "name": "万马股份",
-    "ir_url": null,
-    "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "ir_url": "http://www.wanmaco.com",
+    "method": "web_search",
+    "notes": "官网wanmaco.com，IR邮箱investor@wanmaco.com"
   },
   {
     "code": "002216",
