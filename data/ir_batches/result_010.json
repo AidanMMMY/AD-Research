@@ -51,23 +51,23 @@
   {
     "code": "002973",
     "name": "侨银股份",
-    "ir_url": null,
-    "method": "exchange_only",
-    "notes": "仅通过交易所/巨潮资讯网(cninfo.com.cn)披露，未找到独立IR页面或官网"
+    "ir_url": "https://www.gzqiaoyin.com/col147/index",
+    "method": "official_ir",
+    "notes": ""
   },
   {
     "code": "002975",
     "name": "博杰股份",
-    "ir_url": null,
-    "method": "exchange_only",
-    "notes": "仅通过交易所/巨潮资讯网(cninfo.com.cn)披露，未找到独立IR页面或官网"
+    "ir_url": "https://www.zhbojay.com/touzizheguanxi/touzizheguanxi2/",
+    "method": "official_ir",
+    "notes": ""
   },
   {
     "code": "002976",
     "name": "瑞玛精密",
-    "ir_url": null,
-    "method": "exchange_only",
-    "notes": "仅通过交易所/巨潮资讯网(cninfo.com.cn)披露，未找到独立IR页面或官网"
+    "ir_url": "https://www.cheersson.com/article_category.php?id=26#pro",
+    "method": "official_ir",
+    "notes": ""
   },
   {
     "code": "002977",
@@ -79,16 +79,16 @@
   {
     "code": "002978",
     "name": "安宁股份",
-    "ir_url": null,
-    "method": "exchange_only",
-    "notes": "仅通过交易所/巨潮资讯网(cninfo.com.cn)披露，未找到独立IR页面或官网"
+    "ir_url": "http://www.scantt.com/col.jsp?id=116",
+    "method": "official_ir",
+    "notes": ""
   },
   {
     "code": "002979",
     "name": "雷赛智能",
-    "ir_url": null,
-    "method": "exchange_only",
-    "notes": "仅通过交易所/巨潮资讯网(cninfo.com.cn)披露，未找到独立IR页面或官网"
+    "ir_url": "https://www.leisai.com/investorRelations.html",
+    "method": "official_ir",
+    "notes": ""
   },
   {
     "code": "002980",
@@ -100,9 +100,9 @@
   {
     "code": "002981",
     "name": "朝阳科技",
-    "ir_url": null,
-    "method": "exchange_only",
-    "notes": "仅通过交易所/巨潮资讯网(cninfo.com.cn)披露，未找到独立IR页面或官网"
+    "ir_url": "http://www.risuntek.com/About.aspx?ClassID=51",
+    "method": "official_ir",
+    "notes": ""
   },
   {
     "code": "002982",
@@ -121,9 +121,9 @@
   {
     "code": "603004",
     "name": "鼎龙科技",
-    "ir_url": null,
-    "method": "exchange_only",
-    "notes": "仅通过交易所/巨潮资讯网(cninfo.com.cn)披露，未找到独立IR页面或官网"
+    "ir_url": "http://www.dragon-chem.com/investor.html",
+    "method": "official_ir",
+    "notes": ""
   },
   {
     "code": "000063",
@@ -247,9 +247,9 @@
   {
     "code": "003003",
     "name": "天元股份",
-    "ir_url": null,
-    "method": "exchange_only",
-    "notes": "仅通过交易所/巨潮资讯网(cninfo.com.cn)披露，未找到独立IR页面或官网"
+    "ir_url": "https://www.gdtengen.com/?page_id=197",
+    "method": "official_ir",
+    "notes": ""
   },
   {
     "code": "003004",
@@ -261,9 +261,9 @@
   {
     "code": "003007",
     "name": "直真科技",
-    "ir_url": null,
-    "method": "exchange_only",
-    "notes": "仅通过交易所/巨潮资讯网(cninfo.com.cn)披露，未找到独立IR页面或官网"
+    "ir_url": "https://www.zznode.com/investor/",
+    "method": "official_ir",
+    "notes": ""
   },
   {
     "code": "000423",
