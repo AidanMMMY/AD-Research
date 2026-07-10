@@ -25,7 +25,7 @@ export default function CategoryPie({ data, mode = 'count' }: CategoryPieProps) 
   }));
 
   // Resolve all CSS-variable colors once per render. Fallbacks are the
-  // terminal-theme defaults so SSR / no-DOM still renders correctly.
+  // dark-theme defaults so SSR / no-DOM still renders correctly.
   const palette = useMemo(
     () =>
       resolveChartColors(

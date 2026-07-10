@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AD-Research 会话进度汇报 — 2026-07-11</title>
+<style>
+:root { color-scheme: light dark; --bg: light-dark(#ffffff, #0d1117); --fg: light-dark(#1f2328, #e6edf3); --border: light-dark(#d0d7de, #30363d); --accent: #e11d48; --table-stripe: light-dark(#f6f8fa, #161b22); --code-bg: light-dark(#f6f8fa, #161b22); --h2-color: light-dark(#0969da, #58a6ff); }
+* { box-sizing: border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif; font-size: 15px; line-height: 1.7; max-width: 860px; margin: 0 auto; padding: 2rem 1.5rem; background: var(--bg); color: var(--fg); }
+h1 { font-size: 1.8rem; border-bottom: 2px solid var(--border); padding-bottom: 0.5rem; }
+h2 { font-size: 1.35rem; color: var(--h2-color); margin-top: 2rem; border-bottom: 1px solid var(--border); padding-bottom: 0.25rem; }
+h3 { font-size: 1.1rem; margin-top: 1.5rem; }
+table { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: 0.9rem; }
+th, td { padding: 0.5rem 0.75rem; text-align: left; border: 1px solid var(--border); }
+th { background: var(--code-bg); font-weight: 600; }
+tr:nth-child(even) { background: var(--table-stripe); }
+code { background: var(--code-bg); padding: 0.15em 0.4em; border-radius: 3px; font-size: 0.9em; }
+pre { background: var(--code-bg); padding: 1rem; border-radius: 8px; overflow-x: auto; }
+ul, ol { padding-left: 1.5rem; }
+hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
+</style>
+</head>
+<body>
+<h1>AD-Research 会话进度汇报（2026-07-11）</h1>
+<h2>1. 任务总览</h2>
+<p>本次会话继续推进核心任务：</p>
+<ol>
+<li><strong>前端视觉重构（Phase 4-7）</strong> — 完成全部 7 个 Phase，inline style 从 89 处降至 45 处，剩余均为真正的动态值。</li>
+<li><strong>全市场技术指标批跑</strong> — SQL 后端稳定性优化（上一阶段），当前 pandas 默认后端稳定运行。</li>
+</ol>
+<hr />
+<h2>2. 前端视觉重构成果</h2>
+<h3>2.1 量化指标</h3>
+<table>
+<thead>
+<tr>
+<th>指标</th>
+<th>重构前</th>
+<th>重构后</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Inline style 总数</td>
+<td>89</td>
+<td>41（-54%）</td>
+</tr>
+<tr>
+<td>页面级 CSS 文件</td>
+<td>0</td>
+<td>36</td>
+</tr>
+<tr>
+<td>tsc 错误</td>
+<td>0</td>
+<td>0</td>
+</tr>
+<tr>
+<td>Build 时间</td>
+<td>~5.5s</td>
+<td>5.65s</td>
+</tr>
+</tbody>
+</table>
+<h3>2.2 Phase 完成情况</h3>
+<table>
+<thead>
+<tr>
+<th>Phase</th>
+<th>内容</th>
+<th>状态</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>设计 token + 主题切换 + CSS 全局覆盖</td>
+<td>✅ 已完成（前置）</td>
+</tr>
+<tr>
+<td>2</td>
+<td>共享组件改造 + 新增组件</td>
+<td>✅ 已完成（前置）</td>
+</tr>
+<tr>
+<td>3</td>
+<td>AppLayout 重写</td>
+<td>✅ 已完成（前置）</td>
+</tr>
+<tr>
+<td>4</td>
+<td>Dashboard + 高频列表页</td>
+<td>✅ 已完成</td>
+</tr>
+<tr>
+<td>5</td>
+<td>详情页 + 工具/报告/AI/策略/交易页</td>
+<td>✅ 已完成</td>
+</tr>
+<tr>
+<td>6</td>
+<td>管理页 + 组件 inline style 清理</td>
+<td>✅ 已完成</td>
+</tr>
+<tr>
+<td>7</td>
+<td>验证（tsc + build）</td>
+<td>✅ 已完成</td>
+</tr>
+</tbody>
+</table>
+<h3>2.3 新增的 36 个页面级 CSS 文件</h3>
+<p>覆盖页面：
+- <strong>列表页</strong>: Dashboard, InstrumentList, StocksList, CryptoList, PoolList, ScoreRanking
+- <strong>详情页</strong>: InstrumentDetail, StockDetail, CryptoDetail, PoolDetail
+- <strong>工具页</strong>: Screen, MarketScanner, SectorRotation, Futures
+- <strong>分析页</strong>: Macro, CorrelationAnalysis, GlobalMarkets, Microstructure, SearchTrends
+- <strong>情感/报告页</strong>: Sentiment, SentimentDashboard, ReportBrowser, ResearchReports, CninfoReports, SECFilings
+- <strong>AI/策略页</strong>: AIChat, ResearchNotes, StrategyLibrary, StrategyList, BacktestList, BacktestDetail, SignalDashboard, PaperTrading, TradingPanel
+- <strong>其他</strong>: Portfolio, News, NewsHealth, Favorites, Learning, Login, ListingPreview, ReturnComparison, ETLStatus, EtfHoldingsHistory</p>
+<h3>2.4 剩余 41 处 inline style 分析</h3>
+<table>
+<thead>
+<tr>
+<th>文件</th>
+<th>数量</th>
+<th>性质</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>AuroraBackground</td>
+<td>7</td>
+<td>动画位置/大小/延迟（全部动态计算）</td>
+</tr>
+<tr>
+<td>News/index.tsx</td>
+<td>4</td>
+<td>数据驱动颜色（sentiment/importance）</td>
+</tr>
+<tr>
+<td>News/detail.tsx</td>
+<td>4</td>
+<td>数据驱动颜色（sentiment/importance）</td>
+</tr>
+<tr>
+<td>StockDetail</td>
+<td>3</td>
+<td><code>getReturnColor()</code> 动态颜色</td>
+</tr>
+<tr>
+<td>InstrumentDetail</td>
+<td>3</td>
+<td><code>getReturnColor()</code> / <code>SENTIMENT_COLORS</code> 动态</td>
+</tr>
+<tr>
+<td>Portfolio</td>
+<td>2</td>
+<td>盈亏/漂移动态颜色</td>
+</tr>
+<tr>
+<td>Sparkline</td>
+<td>2</td>
+<td>图表计算维度</td>
+</tr>
+<tr>
+<td>ScoreBar</td>
+<td>2</td>
+<td>评分条计算宽度/颜色</td>
+</tr>
+<tr>
+<td>其余 14 文件</td>
+<td>14</td>
+<td>各 1 处，均为动态值（颜色/宽度/Ant Design render prop）</td>
+</tr>
+</tbody>
+</table>
+<p><strong>结论</strong>：剩余 41 处 inline style 全部为数据驱动或计算产生的动态值，符合保留规则。EtfHoldingsHistory（原 14 处）、SectorRotation（原 18 处）、TypeAwareModules（原 9 处）等重灾区已全部清零。</p>
+<hr />
+<h2>3. 构建验证</h2>
+<pre><code class="language-text">cd web &amp;&amp; npx tsc --noEmit → 0 errors
+cd web &amp;&amp; npm run build → ✓ built in 5.65s
+</code></pre>
+<hr />
+<h2>4. 代码变更摘要</h2>
+<pre><code class="language-text">Modified TSX files:   ~40 pages (添加 import './styles.css')
+New CSS files:        36 page-level styles.css + 2 component CSS
+                       (LoadingBlock.css, TypeAwareModules.css)
+</code></pre>
+<hr />
+<h2>5. 待决策 / 后续事项</h2>
+<ol>
+<li><strong>SQL 后端是否继续攻坚？</strong></li>
+<li>
+<p>当前 pandas 默认后端稳定（全市场 ~57s），SQL 后端保留为实验开关。</p>
+</li>
+<li>
+<p><strong>竞品报告 / 重构代码是否提交到 git？</strong></p>
+</li>
+<li>
+<p>按 memory「无明确指令不 push」，当前所有改动为工作区未提交状态。</p>
+</li>
+<li>
+<p><strong>git 历史清理 + admin 密码修改</strong></p>
+</li>
+<li>
+<p>待用户明确指令后执行。</p>
+</li>
+<li>
+<p><strong>DeepSeek API key 安全</strong></p>
+</li>
+<li>未写入任何项目文件，仅存在于本地 <code>~/.hermes/.env</code>。</li>
+</ol>
+<hr />
+<p><em>汇报生成时间：2026-07-11 03:40 (Asia/Shanghai)</em></p>
+</body>
+</html>

@@ -1,0 +1,58 @@
+/* ==========================================================================
+   SectorRotation — Page-specific styles
+   ========================================================================== */
+
+/* ---- Page header ---- */
+.sector-rotation__header-extra {
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
+}
+
+/* ---- Scope banner ---- */
+.sector-rotation__scope-tag {
+  margin-left: 6px;
+  margin-right: 6px;
+}
+
+.sector-rotation__scope-source {
+  margin-left: var(--space-2);
+}
+
+/* ---- Chart panels: hint text next to chart titles ---- */
+.sector-rotation__chart-hint {
+  font-size: var(--text-small-size);
+}
+
+.sector-rotation__heatmap-container {
+  min-height: 420px;
+}
+
+/* ---- Detail table: weight column label ---- */
+.sector-rotation__weight-label {
+  margin-left: var(--space-1);
+  font-weight: 400;
+}
+
+/* ---- Constituents tab: filter bar ---- */
+.sector-rotation__filter-bar {
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.sector-rotation__filter-group {
+  gap: 6px;
+  align-items: center;
+}
+
+.sector-rotation__filter-label {
+  font-size: var(--text-small-size);
+}
+
+.sector-rotation__sector-select {
+  min-width: 220px;
+}
+
+.sector-rotation__topn-select {
+  width: 90px;
+}

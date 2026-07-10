@@ -128,6 +128,18 @@ def _bars_cte(codes_bind: str, target_filter_sql: str) -> str:
     ``codes_bind`` is a SQLAlchemy bind parameter name (e.g. ``:codes``)
     for an array of strings. ``target_filter_sql`` is an extra
     ``AND`` clause (e.g. ``AND b.trade_date <= :target_date``).
+
+    Pre-filters to codes that have at least one row in
+    ``instrument_daily_bar`` on or before the effective target date
+    (CURRENT_DATE when ``:target_date`` is NULL). This avoids paying
+    for ``WITH RECURSIVE`` planning/walking for codes the daily-bar
+    scheduler hasn't written yet (e.g. NEAR.US, PEPE.US, WIF.US,
+    BONK.US, and other recently-listed crypto ETFs that have rows
+    in ``etf_info`` but not yet in ``instrument_daily_bar``). For a
+    chunk of 20 codes containing 5 empty codes the planner only has
+    to set up 15 partitions instead of 20, which materially reduces
+    recursive-CTE work and the ``pgsql_tmp`` spill pressure that
+    caused the 810 s DiskFull failure on ad-research.
     """
     return f"""
         bars AS (
@@ -154,6 +166,18 @@ def _bars_cte(codes_bind: str, target_filter_sql: str) -> str:
                                                                         AS daily_return_adj
             FROM instrument_daily_bar b
             WHERE b.etf_code = ANY({codes_bind})
+              -- Pre-filter: only walk codes with at least 1 bar
+              -- row on or before the effective target date. The
+              -- ``:target_date`` bind is always provided by
+              -- ``_execute_indicator_query`` (defaults to
+              -- ``date.today()`` when the caller passes ``None``),
+              -- so we can safely reference it inside the EXISTS
+              -- subquery without worrying about NULL propagation.
+              AND EXISTS (
+                  SELECT 1 FROM instrument_daily_bar ec
+                  WHERE ec.etf_code = b.etf_code
+                    AND ec.trade_date <= COALESCE(:target_date, CURRENT_DATE)
+              )
               {target_filter_sql}
             WINDOW w_etf AS (PARTITION BY b.etf_code ORDER BY b.trade_date)
         )
@@ -442,29 +466,36 @@ def build_indicator_query_sql(
     SELECT
         etf_code,
         trade_date,
-        ma5, ma10, ma20, ma60,
-        bb_ma + {BB_NUM_STD} * bb_std        AS bb_upper,
-        bb_ma - {BB_NUM_STD} * bb_std        AS bb_lower,
-        atr14,
+        ma5::double precision,
+        ma10::double precision,
+        ma20::double precision,
+        ma60::double precision,
+        (bb_ma + {BB_NUM_STD} * bb_std)::double precision        AS bb_upper,
+        (bb_ma - {BB_NUM_STD} * bb_std)::double precision        AS bb_lower,
+        atr14::double precision,
         -- COALESCE handles the warmup rows where wilder_gain / loss
         -- chains haven't started yet (rn=1 lacks prev_close_raw). At
         -- those rows emit 0.0 to match pandas' NaN-replacement behaviour.
-        COALESCE(rsi14, CASE WHEN rn < {RSI_WINDOW} THEN 0.0 ELSE NULL END) AS rsi14,
-        macd_dif,
-        macd_dea,
-        (macd_dif - macd_dea)                AS macd_hist,
-        volatility_20d,
-        volatility_60d,
+        COALESCE(rsi14, CASE WHEN rn < {RSI_WINDOW} THEN 0.0 ELSE NULL END)::double precision AS rsi14,
+        macd_dif::double precision,
+        macd_dea::double precision,
+        (macd_dif - macd_dea)::double precision                  AS macd_hist,
+        volatility_20d::double precision,
+        volatility_60d::double precision,
         CASE
             WHEN rn < {long_window_min_rn} THEN NULL
             ELSE max_drawdown_1y_pre
-        END AS max_drawdown_1y,
+        END::double precision AS max_drawdown_1y,
         CASE
             WHEN rn < {long_window_min_rn} THEN NULL
             ELSE sharpe_1y_raw
-        END AS sharpe_1y,
-        return_1w, return_1m, return_3m, return_6m, return_1y,
-        amount
+        END::double precision AS sharpe_1y,
+        return_1w::double precision,
+        return_1m::double precision,
+        return_3m::double precision,
+        return_6m::double precision,
+        return_1y::double precision,
+        amount::double precision
     FROM enriched
     {history_filter}
     ORDER BY etf_code, trade_date
@@ -490,11 +521,15 @@ def _execute_indicator_query(
     if not codes_list:
         return []
 
-    target_filter_sql = ""
-    params: dict = {"codes": codes_list}
-    if target_date is not None:
-        target_filter_sql = "AND b.trade_date <= :target_date"
-        params["target_date"] = target_date
+    # Always bind :target_date so the EXISTS pre-filter and the
+    # outer ``b.trade_date <= :target_date`` predicate both have a
+    # concrete value. When the caller passes ``None`` we default to
+    # today's date — that mirrors the pandas path's "no future-dated
+    # bars expected" semantics and matches the EXISTS subquery's
+    # COALESCE fallback.
+    effective_target = target_date if target_date is not None else date.today()
+    target_filter_sql = "AND b.trade_date <= :target_date"
+    params: dict = {"codes": codes_list, "target_date": effective_target}
 
     sql = build_indicator_query_sql(
         full_history=full_history,
@@ -502,18 +537,30 @@ def _execute_indicator_query(
     )
 
     stmt = text(sql).bindparams(bindparam("codes", type_=ARRAY(TEXT)))
-    if target_date is not None:
-        stmt = stmt.bindparams(target_date=target_date)
+    stmt = stmt.bindparams(target_date=effective_target)
 
     logger.info(
         "sql_calculator: running indicator query codes=%d full_history=%s target=%s",
         len(codes_list),
         full_history,
-        target_date,
+        effective_target,
     )
-    result = db.execute(stmt, params)
-    columns = result.keys()
-    return [dict(zip(columns, row)) for row in result.fetchall()]
+    # Use a detached AUTOCOMMIT Core connection for each indicator query.
+    # Detaching forces SQLAlchemy to close the underlying DBAPI connection
+    # when done instead of returning it to the pool.  This avoids the
+    # stalls observed on some Mac + Docker Postgres setups where repeated
+    # pool checkouts after hundreds of chunks eventually hang with no
+    # server-side activity.
+    conn = db.bind.connect().execution_options(isolation_level="AUTOCOMMIT")
+    try:
+        conn.execute(text("SET statement_timeout = '60000'"))
+        with conn.execute(stmt, params) as result:
+            columns = result.keys()
+            rows = [dict(zip(columns, row)) for row in result.fetchall()]
+    finally:
+        conn.detach()
+        conn.close()
+    return rows
 
 
 def sql_calculate_latest(

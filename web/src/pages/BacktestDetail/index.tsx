@@ -1,3 +1,4 @@
+import './styles.css';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Statistic, Table, Spin, Tabs, Alert, Button } from 'antd';
 import { ArrowUpOutlined, ArrowDownOutlined, ExperimentOutlined } from '@ant-design/icons';

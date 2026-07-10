@@ -1,0 +1,18 @@
+/* ============================================================
+   SignalDashboard — page-specific style overrides
+   Inherits CSS variables from theme.css.
+   Core component classes (PageShell, PageHeader, Panel,
+   FilterToolbar, EmptyState, ThemeTag, etc.) are defined
+   in global.css and shared across the app.
+   ============================================================ */
+
+/* ── KPI strip (buy / sell / hold counts) ── */
+/* These use the shared phase5c-kpi-* classes from global.css. */
+
+/* ── View link cell (table action column) ── */
+.signal-dashboard__view-link {
+  /* Clickable link to the instrument detail page. */
+}
+
+/* ── Table wrapper ── */
+/* Uses the shared phase5c-table-wrap class from global.css. */

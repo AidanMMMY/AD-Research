@@ -1,0 +1,11 @@
+/* ============================================================
+   StrategyList Page Styles
+   Co-located CSS for the Strategy Management list page.
+
+   Note: This page primarily uses shared utility classes
+   (ad-table-scroll, ad-table-sticky, ad-p-5) from global.css
+   and Ant Design components wrapped by design-system primitives
+   (Panel, FilterToolbar, SectionHeading, EmptyState).
+   No page-specific CSS classes were needed; all styling is
+   handled by the design system and global utilities.
+   ============================================================ */

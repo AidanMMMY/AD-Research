@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import './styles.css';
 import {
   Table, Input, Select, Button, Space, Tag, Skeleton, message, Tabs, Alert,
 } from 'antd';

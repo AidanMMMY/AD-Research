@@ -1,0 +1,8 @@
+/* SECFilings — page-level styles
+ * All values reference the design-system tokens defined in theme.css.
+ */
+
+/* Filter toolbar row — fill available width so Col children distribute evenly */
+.sec-filings__filter-row {
+  width: 100%;
+}

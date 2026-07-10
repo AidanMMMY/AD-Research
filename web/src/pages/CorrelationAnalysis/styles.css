@@ -1,0 +1,9 @@
+/* ============================================================
+   CorrelationAnalysis — page-specific style overrides
+   Inherits CSS variables from theme.css.
+   Shared component classes (PageShell, PageHeader, Panel,
+   FilterToolbar, EmptyState, CorrelationHeatmap) are defined
+   in global.css and shared across the app.
+   ============================================================ */
+
+/* ── Future page-specific overrides go here ── */

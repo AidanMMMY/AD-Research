@@ -21,6 +21,7 @@ import {
 } from '@/api/secFilings';
 import type { SecFiling } from '@/api/secFilings';
 import { useDebounce } from '@/hooks/useDebounce';
+import './styles.css';
 
 const FORM_TYPES = ['10-K', '10-Q', '20-F', '20-F/A', '10-K/A', '10-Q/A'];
 const STATUS_COLORS: Record<string, string> = {
@@ -260,7 +261,7 @@ export default function SECFilingsPage() {
             </Space>
           }
         >
-          <Row gutter={[12, 8]} style={{ width: '100%' }}>
+          <Row gutter={[12, 8]} className="sec-filings__filter-row">
             <Col xs={24} sm={12} md={8} lg={6}>
               <Input
                 placeholder="Ticker (如 AAPL)"

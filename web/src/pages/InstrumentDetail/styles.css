@@ -1,0 +1,23 @@
+/* ==========================================================================
+   InstrumentDetail — page-level styles
+   ==========================================================================
+   Most shared detail styles live in src/styles/global.css (detail-hero,
+   detail-toolbar, detail-indicator-grid, ai-note-*, sentiment-*, etc.).
+   This file contains only InstrumentDetail-specific overrides and
+   organizational notes.
+
+   Dynamic inline styles preserved in the TSX:
+   - Hero KPI value color: computed via getReturnColor()
+   - Sentiment score color:  computed via SENTIMENT_COLORS[label]
+   - Sentiment bar width/background: computed from avg_score
+   ========================================================================== */
+
+/* ---- Type-Aware Modules wrapper ---- */
+.instrument-detail__type-aware {
+  margin-bottom: var(--space-5);
+}
+
+/* ---- Sentiment conditional label ---- */
+.instrument-detail__sentiment-tag {
+  margin-top: var(--space-3);
+}

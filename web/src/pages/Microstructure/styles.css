@@ -1,0 +1,27 @@
+/* ============================================================
+   Microstructure — page-specific style overrides
+   Inherits CSS variables from theme.css.
+   Core component classes (PageShell, PageHeader, Panel,
+   FilterToolbar, EmptyState, ResponsiveGrid, etc.) are
+   defined in global.css and shared across the app.
+   ============================================================ */
+
+/* ── KPI summary card color overrides (rise / fall) ── */
+
+.microstructure__kpi-rise .ant-statistic-content-value {
+  color: var(--color-rise) !important;
+}
+
+.microstructure__kpi-fall .ant-statistic-content-value {
+  color: var(--color-fall) !important;
+}
+
+/* ── Filter input widths (shared with global phase5c conventions) ── */
+
+.microstructure__filter-input {
+  width: 220px;
+}
+
+.microstructure__filter-select {
+  width: 90px;
+}

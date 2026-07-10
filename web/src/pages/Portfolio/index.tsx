@@ -1,3 +1,4 @@
+import './styles.css';
 import { useMemo } from 'react';
 import { Card, Skeleton, Table, Tag } from 'antd';
 import type { ColumnsType } from 'antd/es/table';

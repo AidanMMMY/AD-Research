@@ -40,13 +40,14 @@ logger = logging.getLogger(__name__)
 # Minimum number of bars required for meaningful indicator calculation
 _MIN_BARS = 5
 
-# Backend selection. Default is now ``sql`` — the single-query SQL
-# calculator in :mod:`app.data.indicators.sql_calculator` is ~50x
-# faster on the full ~1.5 k ETF universe (~25 s vs. 20+ min for the
-# legacy pandas path) and uses the same upsert contract.  Set
-# ``INDICATOR_BACKEND=pandas`` to fall back to the original per-ETF
-# pandas loop (kept for A/B comparison and emergencies).
-INDICATOR_BACKEND: str = os.environ.get("INDICATOR_BACKEND", "sql").lower()
+# Backend selection. Default is ``pandas`` — the per-ETF loop is robust
+# across environments and gracefully handles ETFs with no daily-bar
+# history (US/crypto listings the scheduler hasn't caught up to).  Set
+# ``INDICATOR_BACKEND=sql`` to use the single-query SQL calculator in
+# :mod:`app.data.indicators.sql_calculator`; it is ~50x faster on ECS
+# when stable, but still being hardened against stalls on some local
+# Docker Postgres setups.
+INDICATOR_BACKEND: str = os.environ.get("INDICATOR_BACKEND", "pandas").lower()
 
 # Maximum codes per SQL batch. The recursive CTEs walk per etf_code,
 # and Postgres' plan time grows superlinearly past ~30 codes per
@@ -171,6 +172,37 @@ def _build_indicator_record(etf_code: str, row: pd.Series) -> dict:
     return record
 
 
+def _drop_empty_indicator_rows(
+    records: list[dict], *, origin: str = "indicator_calc[sql]"
+) -> list[dict]:
+    """Drop indicator rows where every indicator column is ``None``.
+
+    Defensive upsert: ensures we never write a meaningless all-NULL
+    row for a code that, despite passing through the SQL chunk, ends
+    up with no bar data on the target date (e.g. recently listed
+    crypto ETFs the daily-bar scheduler hasn't caught up to yet —
+    NEAR.US, PEPE.US, WIF.US, BONK.US).
+
+    Returns the filtered list. Each dropped record is logged at
+    INFO so the operator can audit which codes were filtered out.
+    """
+    kept: list[dict] = []
+    for record in records:
+        all_null = all(record.get(col) is None for col in _INDICATOR_COLUMNS)
+        if all_null:
+            logger.info(
+                "%s: skipped empty result for code=%s date=%s "
+                "(all %d indicators NULL)",
+                origin,
+                record.get("etf_code"),
+                record.get("trade_date"),
+                len(_INDICATOR_COLUMNS),
+            )
+            continue
+        kept.append(record)
+    return kept
+
+
 def batch_calculate_indicators(
     db: Session,
     target_date: date | None = None,
@@ -223,21 +255,30 @@ def batch_calculate_indicators(
     # one go. Pandas path keeps the listing-date / delisted-date
     # guards because it needs to fetch bars per-ETF.
     if INDICATOR_BACKEND == "sql":
-        codes = [r.code for r in active_rows]
-        # The SQL backend reads bars from the table directly, so we
-        # rely on the SQL query's ``target_date`` filter for the
-        # cutoff. listing_date / delist_date are not enforced at SQL
-        # level because:
-        #   - bars before list_date are usually absent anyway
-        #     (ETL backfill starts at list_date)
-        #   - delisted instruments keep their history in
-        #     instrument_daily_bar for audit
-        # If a future requirement needs strict list_date enforcement
-        # at SQL level, add ``AND trade_date >= list_date`` to the
-        # bars CTE.
+        code_meta = {
+            r.code: (r.list_date or r.inception_date, r.delist_date)
+            for r in active_rows
+        }
+        # Pre-filter to codes that actually have daily bars on or before
+        # the target date.  This avoids setting up recursive CTE partitions
+        # for thousands of recently-listed US/crypto ETFs that the daily-bar
+        # scheduler hasn't caught up to yet, which is the dominant cause of
+        # the local-Docker stalls seen during full-market runs.
+        effective_target = target_date if target_date is not None else date.today()
+        codes_with_bars = {
+            row[0]
+            for row in db.execute(
+                select(InstrumentDailyBar.etf_code).distinct().where(
+                    InstrumentDailyBar.etf_code.in_(code_meta.keys()),
+                    InstrumentDailyBar.trade_date <= effective_target,
+                )
+            )
+        }
+        codes = [c for c in code_meta if c in codes_with_bars]
         logger.info(
-            "indicator_calc[sql] backend=%s codes=%d target=%s full_history=%s",
+            "indicator_calc[sql] backend=%s active=%d with_bars=%d target=%s full_history=%s",
             INDICATOR_BACKEND,
+            len(code_meta),
             len(codes),
             target_date,
             full_history,
@@ -246,6 +287,7 @@ def batch_calculate_indicators(
             updated_count = _batch_calculate_indicators_sql(
                 db,
                 codes,
+                code_meta,
                 target_date=target_date,
                 full_history=full_history,
             )
@@ -265,77 +307,89 @@ def batch_calculate_indicators(
         _log_etl(db, "indicator_calc", status, updated_count, start_time, error_msg)
         return updated_count
 
+def _calculate_single_code_pandas(
+    db: Session,
+    etf_code: str,
+    list_date: date | None,
+    delist_date: date | None,
+    target_date: date | None,
+    full_history: bool,
+) -> list[dict]:
+    """Calculate indicators for a single ETF using the pandas path.
+
+    Returns a list of upsert-ready records (possibly empty).  Does not
+    commit or write to the DB — the caller owns the transaction.
+    """
+    # Skip instruments that are not yet listed as of the target date.
+    if target_date is not None and list_date is not None and target_date < list_date:
+        return []
+
+    # Skip instruments that were delisted before the target date.
+    if target_date is not None and delist_date is not None and target_date > delist_date:
+        return []
+
+    try:
+        stmt = (
+            select(InstrumentDailyBar)
+            .where(InstrumentDailyBar.etf_code == etf_code)
+            .order_by(InstrumentDailyBar.trade_date.asc())
+        )
+        if list_date is not None:
+            stmt = stmt.where(InstrumentDailyBar.trade_date >= list_date)
+        if target_date is not None:
+            stmt = stmt.where(InstrumentDailyBar.trade_date <= target_date)
+
+        bars = db.execute(stmt).scalars().all()
+
+        if not bars or len(bars) < _MIN_BARS:
+            return []
+
+        df = pd.DataFrame(
+            [
+                {
+                    "trade_date": b.trade_date,
+                    "open": b.open,
+                    "high": b.high,
+                    "low": b.low,
+                    "close": float(b.close),
+                    "adj_close": float(b.close) * float(b.adj_factor or 1.0),
+                    "volume": b.volume,
+                    "amount": b.amount,
+                }
+                for b in bars
+            ]
+        )
+
+        result_df = calculate_single_etf(etf_code, df)
+        if result_df.empty:
+            return []
+
+        if full_history:
+            records = [
+                _build_indicator_record(etf_code, row)
+                for _, row in result_df.iterrows()
+            ]
+        else:
+            latest_row = result_df.iloc[-1]
+            records = [_build_indicator_record(etf_code, latest_row)]
+
+        return _drop_empty_indicator_rows(records, origin="indicator_calc[pandas-fallback]")
+    except Exception:
+        logger.exception("indicator_calc[pandas-fallback]: failed for %s", etf_code)
+        return []
+
     for row in active_rows:
         etf_code = row.code
         list_date = row.list_date or row.inception_date
         delist_date = row.delist_date
 
-        # Skip instruments that are not yet listed as of the target date.
-        if target_date is not None and list_date is not None and target_date < list_date:
-            continue
-
-        # Skip instruments that were delisted before the target date.
-        if target_date is not None and delist_date is not None and target_date > delist_date:
+        records = _calculate_single_code_pandas(
+            db, etf_code, list_date, delist_date, target_date, full_history
+        )
+        if not records:
             continue
 
         try:
-            # Fetch all historical bars for this ETF, starting from listing date
-            stmt = (
-                select(InstrumentDailyBar)
-                .where(InstrumentDailyBar.etf_code == etf_code)
-                .order_by(InstrumentDailyBar.trade_date.asc())
-            )
-            if list_date is not None:
-                stmt = stmt.where(InstrumentDailyBar.trade_date >= list_date)
-            if target_date is not None:
-                stmt = stmt.where(InstrumentDailyBar.trade_date <= target_date)
-
-            bars = db.execute(stmt).scalars().all()
-
-            if not bars or len(bars) < _MIN_BARS:
-                continue
-
-            # Convert to DataFrame.  Keep both raw close (for technical
-            # indicators that users compare to market price) and adjusted
-            # close (for risk/return metrics that must be comparable over
-            # time after splits/dividends).
-            df = pd.DataFrame(
-                [
-                    {
-                        "trade_date": b.trade_date,
-                        "open": b.open,
-                        "high": b.high,
-                        "low": b.low,
-                        "close": float(b.close),
-                        "adj_close": float(b.close) * float(b.adj_factor or 1.0),
-                        "volume": b.volume,
-                        "amount": b.amount,
-                    }
-                    for b in bars
-                ]
-            )
-
-            # Calculate indicators
-            result_df = calculate_single_etf(etf_code, df)
-
-            if result_df.empty:
-                continue
-
-            if full_history:
-                # Upsert indicators for every historical row that has data
-                records = [
-                    _build_indicator_record(etf_code, row)
-                    for _, row in result_df.iterrows()
-                ]
-            else:
-                # Keep only the latest day's record
-                latest_row = result_df.iloc[-1]
-                records = [_build_indicator_record(etf_code, latest_row)]
-
-            if not records:
-                continue
-
-            # Bulk UPSERT into etf_indicator table
             insert_stmt = insert(ETFIndicator).values(records)
             upsert_stmt = insert_stmt.on_conflict_do_update(
                 index_elements=["etf_code", "trade_date"],
@@ -344,11 +398,9 @@ def batch_calculate_indicators(
             db.execute(upsert_stmt)
             db.commit()
             updated_count += len(records)
-
         except Exception as exc:
             db.rollback()
             errors.append(f"{etf_code}: {exc}")
-            # Continue with next ETF
             continue
 
     # Final cache invalidation (outside the per-ETF loop)
@@ -369,6 +421,7 @@ def batch_calculate_indicators(
 def _batch_calculate_indicators_sql(
     db: Session,
     codes: list[str],
+    code_meta: dict[str, tuple[date | None, date | None]],
     *,
     target_date: date | None,
     full_history: bool,
@@ -378,6 +431,10 @@ def _batch_calculate_indicators_sql(
     Iterates the codes in ``_SQL_BATCH_CHUNK_SIZE`` chunks, runs
     ``sql_calculate_latest`` / ``sql_calculate_full_history`` for
     each chunk, and UPSERTs the rows into ``etf_indicator``.
+
+    If a chunk times out or otherwise fails, it is automatically
+    retried one code at a time through the pandas path so the batch
+    as a whole still makes progress.
 
     Returns the number of records written.
     """
@@ -394,6 +451,7 @@ def _batch_calculate_indicators_sql(
         return 0
 
     updated_count = 0
+    fallback_count = 0
     runner = sql_calculate_full_history if full_history else sql_calculate_latest
 
     for chunk_start in range(0, len(codes), _SQL_BATCH_CHUNK_SIZE):
@@ -407,6 +465,12 @@ def _batch_calculate_indicators_sql(
         try:
             rows = runner(db, chunk, target_date=target_date)
             records = [build_indicator_payload(r) for r in rows]
+            # Defensive upsert: drop any record that came back all-NULL
+            # (e.g. a code whose bars CTE partition ended up empty
+            # because the daily-bar scheduler hasn't written rows yet).
+            # ``_drop_empty_indicator_rows`` logs each skip so we have
+            # a paper trail for what got filtered.
+            records = _drop_empty_indicator_rows(records)
             if not records:
                 continue
             insert_stmt = insert(ETFIndicator).values(records)
@@ -419,14 +483,44 @@ def _batch_calculate_indicators_sql(
             updated_count += len(records)
         except Exception as exc:
             db.rollback()
-            logger.exception(
-                "indicator_calc[sql]: chunk %d-%d failed: %s",
+            logger.warning(
+                "indicator_calc[sql]: chunk %d-%d failed (%s), "
+                "falling back to pandas for %d codes",
                 chunk_start,
                 chunk_start + len(chunk),
                 exc,
+                len(chunk),
             )
-            raise
+            for etf_code in chunk:
+                list_date, delist_date = code_meta.get(etf_code, (None, None))
+                records = _calculate_single_code_pandas(
+                    db, etf_code, list_date, delist_date, target_date, full_history
+                )
+                if not records:
+                    continue
+                try:
+                    insert_stmt = insert(ETFIndicator).values(records)
+                    upsert_stmt = insert_stmt.on_conflict_do_update(
+                        index_elements=["etf_code", "trade_date"],
+                        set_={col: insert_stmt.excluded[col] for col in _INDICATOR_COLUMNS},
+                    )
+                    db.execute(upsert_stmt)
+                    db.commit()
+                    updated_count += len(records)
+                    fallback_count += len(records)
+                except Exception as exc2:
+                    db.rollback()
+                    logger.exception(
+                        "indicator_calc[sql]: pandas fallback also failed for %s: %s",
+                        etf_code,
+                        exc2,
+                    )
 
+    logger.info(
+        "indicator_calc[sql]: finished; updated=%d fallback_records=%d",
+        updated_count,
+        fallback_count,
+    )
     return updated_count
 
 

@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import {
   Table, Button, Modal, Form, Input, Select, Switch, Space, message, Popconfirm,
 } from 'antd';
+import './styles.css';
 import PageShell from '@/components/PageShell';
 import PageHeader from '@/components/PageHeader';
 import FilterToolbar from '@/components/FilterToolbar';

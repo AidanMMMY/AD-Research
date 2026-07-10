@@ -1,3 +1,5 @@
+import './styles.css';
+
 import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Table, List, Skeleton, Tooltip } from 'antd';

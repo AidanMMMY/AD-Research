@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import './styles.css';
 import { Tabs, Row, Col, Statistic, Spin, Descriptions, Radio, Checkbox, Space, Alert, Button, message, Skeleton } from 'antd';
 import { StarOutlined, StarFilled, RobotOutlined, ReadOutlined, SmileOutlined, StockOutlined, ArrowUpOutlined, ArrowDownOutlined, MinusOutlined, ArrowLeftOutlined } from '@ant-design/icons';
 import { useStockDetail } from '@/hooks/useStocks';

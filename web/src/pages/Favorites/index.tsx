@@ -21,6 +21,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useFavorites } from '@/hooks/useFavorites';
 import { useMarketStream, type MarketTick } from '@/hooks/useMarketStream';
 import { favoriteApi } from '@/api/favorite';
+import './styles.css';
 import { useSettingsStore } from '@/stores/settings';
 import { getReturnColor } from '@/utils/color';
 import PageShell from '@/components/PageShell';
@@ -301,7 +302,7 @@ export default function Favorites() {
         />
         <Panel variant="default" padding="lg">
           <EmptyState
-            icon={<StarFilled className="ad-icon-accent" style={{ fontSize: 48 }} />}
+            icon={<StarFilled className="ad-icon-accent fav-empty-icon" />}
             title="还没有自选股"
             description="在标的详情页或评分榜单中点击 ★ 即可加入自选。这里会汇总你的关注列表，并自动跟踪实时行情与相关新闻。"
             action={
@@ -383,7 +384,7 @@ export default function Favorites() {
       <SectionHeading
         title="全部自选"
         action={
-          <span className="ad-text-muted" style={{ fontSize: 12 }}>
+          <span className="ad-text-muted favorites__hint-text">
             点击行进入详情；勾选后可批量移除
           </span>
         }
@@ -425,7 +426,7 @@ export default function Favorites() {
           <SectionHeading
             title="按分类浏览"
             action={
-              <span className="ad-text-muted" style={{ fontSize: 12 }}>
+              <span className="ad-text-muted favorites__hint-text">
                 展开分类查看分组内标的
               </span>
             }
@@ -462,7 +463,7 @@ export default function Favorites() {
       </Panel>
 
       {/* 收藏开关的隐藏语义元素：在每个分类面板标题栏内嵌一颗星，便于将来扩展 */}
-      <div style={{ display: 'none' }} aria-hidden>
+      <div className="favorites__hidden-util" aria-hidden>
         <FavoriteToggleButton code="" />
       </div>
     </PageShell>

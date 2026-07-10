@@ -616,3 +616,165 @@ def test_sql_indicator_backend_dispatch(parity_db) -> None:
     assert result[1] is not None, "rsi14 should not be null for a 120-bar series"
     assert result[2] is not None, "atr14 should not be null for a 120-bar series"
     assert result[3] is not None, "macd_dif should not be null for a 120-bar series"
+
+
+# ---------------------------------------------------------------------------
+# Empty-bars / defensive-upsert tests
+# ---------------------------------------------------------------------------
+#
+# These tests guard the "no rows in instrument_daily_bar" failure mode
+# that broke the full-market batch on ad-research on 2026-07-11 (810 s
+# wall time, ``psycopg2.errors.DiskFull`` on ``pgsql_tmp``). Two
+# contracts are exercised:
+#
+# 1. ``_drop_empty_indicator_rows`` skips records where every indicator
+#    is ``None`` so the upsert never tries to store an all-NULL row.
+# 2. ``_batch_calculate_indicators_sql`` swallows the
+#    ``sql_calculate_latest`` empty-result case (the SQL path leaves
+#    out codes whose bars CTE partition is empty by construction, so
+#    this is the default behaviour — locked in here).
+
+
+def test_drop_empty_indicator_rows_filters_all_null() -> None:
+    """A record where every indicator is ``None`` must be filtered out
+    by the defensive upsert helper. Logs the skipped code/date at
+    INFO so the operator can audit what was filtered.
+    """
+    from app.data.indicators.calculator import (
+        _INDICATOR_COLUMNS,
+        _drop_empty_indicator_rows,
+    )
+
+    rec_null = {
+        "etf_code": "EMPTY.US",
+        "trade_date": date(2026, 7, 11),
+        **{col: None for col in _INDICATOR_COLUMNS},
+    }
+    rec_ok = {
+        "etf_code": "OK.US",
+        "trade_date": date(2026, 7, 11),
+        "ma5": 1.0,
+        "ma10": 1.1,
+        "ma20": 1.2,
+        "ma60": 1.3,
+        "rsi14": 50.0,
+        "macd_dif": 0.01,
+        "macd_dea": 0.02,
+        "macd_hist": 0.0,
+        "atr14": 0.05,
+        "bb_upper": 1.5,
+        "bb_lower": 0.95,
+        "volatility_20d": 0.1,
+        "volatility_60d": 0.15,
+        "max_drawdown_1y": -0.05,
+        "sharpe_1y": 1.5,
+        "return_1w": 0.01,
+        "return_1m": 0.02,
+        "return_3m": 0.05,
+        "return_6m": 0.10,
+        "return_1y": 0.20,
+        "amount": 1000.0,
+    }
+
+    kept = _drop_empty_indicator_rows([rec_null, rec_ok])
+
+    assert len(kept) == 1, "expected the all-NULL row to be filtered"
+    assert kept[0]["etf_code"] == "OK.US"
+
+    # And on its own, an all-NULL list yields an empty result
+    assert _drop_empty_indicator_rows([rec_null]) == []
+
+    # An all-NULL record where only one of the 21 columns has a value
+    # is NOT considered empty (defensive — partial data should still be
+    # written so downstream screens can use what's available).
+    rec_partial = dict(rec_null)
+    rec_partial["ma20"] = 1.234
+    assert _drop_empty_indicator_rows([rec_partial])[0]["etf_code"] == "EMPTY.US"
+
+
+def test_build_indicator_query_sql_uses_exists_prefilter() -> None:
+    """The generated SQL must use an EXISTS subquery that filters to
+    codes with at least 1 bar row at or before the effective target
+    date. Catches accidental removal of the pre-filter.
+    """
+    sql = build_indicator_query_sql(full_history=False)
+    assert "EXISTS" in sql, (
+        "expected EXISTS pre-filter in the bars CTE for empty-code skipping"
+    )
+    assert "instrument_daily_bar" in sql, "expected bars CTE to read instrument_daily_bar"
+    # The default EXISTS subquery references the bind parameter
+    # ``:target_date`` (always bound by ``_execute_indicator_query``).
+    assert ":target_date" in sql, (
+        "EXISTS pre-filter must reference :target_date so it can compare "
+        "against the effective cutoff (today when caller passes None)"
+    )
+
+
+def test_batch_calculate_indicators_sql_skips_empty_bars_result(monkeypatch) -> None:
+    """``_batch_calculate_indicators_sql`` must swallow the case where
+    ``sql_calculate_latest`` returns no rows (codes with no
+    ``instrument_daily_bar`` data) without raising. The upsert path
+    is skipped, ``written`` stays 0, and the session is not asked to
+    commit an empty payload. This is the unit-level guarantee that
+    the all-NULL / no-row failure mode doesn't propagate as a
+    ``NOT NULL`` constraint violation.
+    """
+    from unittest.mock import MagicMock
+
+    from app.data.indicators import calculator as calc_mod
+    from app.data.indicators import sql_calculator as sql_mod
+
+    db = MagicMock()
+
+    # Simulate the empty-bars case: sql_calculate_latest returns []
+    monkeypatch.setattr(sql_mod, "sql_calculate_latest",
+                        lambda *_a, **_kw: [])
+
+    written = calc_mod._batch_calculate_indicators_sql(
+        db,
+        ["NEAR.US", "PEPE.US"],
+        {"NEAR.US": (None, None), "PEPE.US": (None, None)},
+        target_date=None,
+        full_history=False,
+    )
+
+    # Empty rows -> no records -> no upsert issued, no commit issued.
+    assert written == 0
+    db.execute.assert_not_called()
+    db.commit.assert_not_called()
+
+
+def test_batch_calculate_indicators_sql_skips_all_null_record(monkeypatch) -> None:
+    """``_batch_calculate_indicators_sql`` must drop a returned record
+    whose indicators are all NULL (defensive upsert), so that an
+    ``INSERT ... VALUES (..., NULL, NULL, ... , NULL, ...)`` never
+    reaches the database.
+    """
+    from unittest.mock import MagicMock
+
+    from app.data.indicators import calculator as calc_mod
+    from app.data.indicators import sql_calculator as sql_mod
+
+    db = MagicMock()
+
+    all_null_row = {
+        "etf_code": "EMPTY.US",
+        "trade_date": date(2026, 7, 11),
+        **{col: None for col in INDICATOR_OUTPUT_COLUMNS},
+    }
+    monkeypatch.setattr(sql_mod, "sql_calculate_latest",
+                        lambda *_a, **_kw: [all_null_row])
+
+    written = calc_mod._batch_calculate_indicators_sql(
+        db,
+        ["EMPTY.US"],
+        {"EMPTY.US": (None, None)},
+        target_date=None,
+        full_history=False,
+    )
+
+    # Defensive filter should have skipped the all-NULL row, so the
+    # SQLAlchemy upsert was never issued.
+    assert written == 0
+    db.execute.assert_not_called()
+    db.commit.assert_not_called()

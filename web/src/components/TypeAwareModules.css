@@ -1,0 +1,23 @@
+.type-aware-option {
+  display: inline-flex;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+.type-aware-picker {
+  min-width: 220px;
+}
+
+.type-aware-footer {
+  margin-top: var(--space-3);
+  color: var(--text-secondary);
+  font-size: var(--text-small-size);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.type-aware-footer-sub {
+  color: var(--text-tertiary);
+}

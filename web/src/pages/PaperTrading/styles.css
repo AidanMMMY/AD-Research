@@ -1,0 +1,22 @@
+/* ============================================================
+   PaperTrading — page-specific style overrides
+   Inherits CSS variables from theme.css.
+   Core component classes (PageShell, PageHeader, Panel,
+   EmptyState, ResponsiveGrid, etc.) are defined in global.css
+   and shared across the app.
+   ============================================================ */
+
+/* ── PnL colour helpers (applied via className in JSX) ── */
+.paper-pnl--rise {
+  /* Positive PnL — colour set in global.css. */
+}
+
+.paper-pnl--fall {
+  /* Negative PnL — colour set in global.css. */
+}
+
+.paper-pnl--neutral {
+  /* Zero / neutral PnL — colour set in global.css. */
+}
+
+/* ── Page-specific overrides use phase5c-* classes from global.css ── */

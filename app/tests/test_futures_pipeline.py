@@ -12,6 +12,9 @@ Focuses on:
 - ``FuturesDailyPipeline`` extracts, transforms and loads daily bars from
   per-exchange akshare endpoints into the DB (mocked), with cache
   invalidation.
+- ``scheduler.run_futures_daily`` (the cron-driven entry at 16:30 Asia/Shanghai)
+  delegates to ``FuturesDailyPipeline`` and ultimately exercises the DCE branch
+  inside ``fetch_all_markets``.
 """
 
 from datetime import date
@@ -21,6 +24,7 @@ from unittest.mock import patch
 import pandas as pd
 import pytest
 
+from app.core import scheduler as core_scheduler
 from app.data.pipelines.futures import (
     FuturesContractDiscoveryPipeline,
     FuturesDailyPipeline,
@@ -32,6 +36,7 @@ from app.data.pipelines.futures import (
     _fetch_dce_via_main_sina,
     _pick_main_per_day,
     _symbol_root,
+    fetch_all_markets,
 )
 from app.models.futures import FuturesContract, FuturesDailyBar
 
@@ -671,3 +676,75 @@ def test_daily_pipeline_run_drops_rows_with_invalid_high_low(db_session):
     # is added to the result.
     assert result.records == 3
     assert any("invalid high/low" in w for w in result.warnings)
+
+
+# ---------------------------------------------------------------------------
+# Scheduler-level wiring: the 16:30 cron entry must reach the DCE branch.
+# ---------------------------------------------------------------------------
+
+
+class TestSchedulerFuturesDaily:
+    """The 16:30 Asia/Shanghai cron entry is ``app.core.scheduler.run_futures_daily``.
+
+    It must (a) invoke ``FuturesDailyPipeline.run_with_retry`` and (b) trigger
+    ``fetch_all_markets`` which itself must call ``_fetch_dce_via_main_sina``
+    — the only DCE source that works from the ECS IP.
+    """
+
+    def test_fetch_all_markets_invokes_dce_main_sina_branch(self):
+        """``fetch_all_markets`` must call ``_fetch_dce_via_main_sina`` for DCE."""
+        with patch(
+            "app.data.pipelines.futures._fetch_dce_via_main_sina",
+            wraps=_fetch_dce_via_main_sina,
+        ) as spy_dce, patch(
+            "app.data.pipelines.futures._fetch_market_range",
+            return_value=pd.DataFrame(),
+        ):
+            out = fetch_all_markets(date(2026, 7, 8), date(2026, 7, 8))
+        # The DCE branch is wired in: it produces an entry in the result
+        # (possibly empty if mocked) and the spy observed exactly one call.
+        assert "DCE" in out
+        spy_dce.assert_called_once()
+
+    def test_run_futures_daily_scheduler_entry_runs_pipeline(self, db_session):
+        """``run_futures_daily`` must call ``FuturesDailyPipeline.run_with_retry``.
+
+        We patch ``FuturesDailyPipeline`` so the test stays offline, but the
+        assertion that ``run_with_retry`` was awaited proves the scheduler
+        wiring is intact.
+        """
+        captured: dict = {}
+
+        class _StubPipeline:
+            def __init__(self, db, target_date=None, **kwargs):
+                captured["db"] = db
+                captured["target_date"] = target_date
+
+            def run_with_retry(self, max_attempts=2):
+                captured["max_attempts"] = max_attempts
+                from app.data.pipelines.base import ETLResult
+                captured["result"] = ETLResult(success=True, records=7)
+                return captured["result"]
+
+        with patch.object(core_scheduler, "FuturesDailyPipeline", _StubPipeline), \
+             patch.object(core_scheduler, "SessionLocal", return_value=db_session), \
+             patch.object(core_scheduler, "redis_lock") as mock_lock:
+            mock_lock.return_value.__enter__.return_value = True
+            core_scheduler.run_futures_daily()
+
+        # The cron entry constructed the pipeline through SessionLocal() —
+        # i.e. it did NOT call the pipeline with target_date=session (a
+        # regression we already saw via signature mismatches).
+        assert captured.get("db") is db_session
+        assert captured.get("target_date") is None
+        assert captured.get("max_attempts") == 2
+        assert captured.get("result").records == 7
+
+    def test_run_futures_daily_skips_when_lock_busy(self, db_session):
+        """If another worker already holds the ``futures_daily`` lock, exit cleanly."""
+        with patch.object(core_scheduler, "redis_lock") as mock_lock, \
+             patch.object(core_scheduler, "FuturesDailyPipeline") as mock_pipe:
+            mock_lock.return_value.__enter__.return_value = False
+            core_scheduler.run_futures_daily()
+        # Pipeline must NOT have been constructed when the lock failed.
+        mock_pipe.assert_not_called()

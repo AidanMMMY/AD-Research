@@ -1,0 +1,72 @@
+/* ============================================================
+   BacktestDetail — page-specific style overrides
+   Inherits CSS variables from theme.css.
+   Core component classes (PageShell, PageHeader, StatCard,
+   Panel, SectionHeading, ResponsiveGrid, HelpPopover, etc.)
+   are defined in global.css and shared across the app.
+   ============================================================ */
+
+/* ── KPI row colour helpers (applied via className in JSX) ── */
+
+.detail-kpi-rise {
+  /* Wrapper for StatCard when the KPI value is positive;
+     the inner StatCard uses standard card styling. */
+}
+
+.detail-kpi-fall {
+  /* Wrapper for StatCard when the KPI value is negative. */
+}
+
+.detail-kpi-accent {
+  /* Wrapper for StatCard with neutral / accent colouring. */
+}
+
+/* ── Return cell (trade table) ── */
+.detail-return-cell {
+  /* Base style for the return column — flex row with icon. */
+}
+
+.detail-return-cell--rise {
+  /* Positive return — colour set in global.css. */
+}
+
+.detail-return-cell--fall {
+  /* Negative return — colour set in global.css. */
+}
+
+.detail-arrow-icon {
+  /* Small arrow icon next to return value. */
+}
+
+/* ── Section spacing ── */
+.detail-section {
+  /* Extra bottom margin for KPI / chart sections. */
+}
+
+/* ── Chart wrapper ── */
+.detail-chart {
+  /* ECharts container sizing. */
+}
+
+/* ── Tab panel padding ── */
+.detail-tab-panel {
+  /* Vertical rhythm between tab content blocks. */
+}
+
+/* ── Eyebrow icon ── */
+.detail-eyebrow-icon {
+  /* Icon inside the PageHeader eyebrow. */
+}
+
+/* ── Error / loading states ── */
+.detail-error {
+  /* Error Alert wrapper. */
+}
+
+.detail-loading-wrapper {
+  /* Centered loading spinner. */
+}
+
+.detail-loading-message {
+  /* Text below the loading spinner. */
+}

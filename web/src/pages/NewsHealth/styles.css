@@ -1,0 +1,18 @@
+/* ============================================================
+   NewsHealth — page-specific style overrides
+   Inherits CSS variables from theme.css.
+   Core component classes (PageShell, PageHeader, FilterToolbar,
+   ContentCard, etc.) are defined in global.css and shared
+   across the app.
+   ============================================================ */
+
+/* ── AI cleanup statistics row ── */
+.news-health__ai-stats {
+  min-width: 0;
+}
+
+/* ── Last published age indicator ── */
+.news-health-age {
+  /* Wrapper for the last_published_at cell with dynamic colour
+     (inline style driven by ageTone() function). */
+}

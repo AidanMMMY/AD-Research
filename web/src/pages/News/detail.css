@@ -1,0 +1,8 @@
+/* ==========================================================================
+   News Detail — Page-specific styles
+   ========================================================================== */
+
+/* Importance stars — static margin (color and opacity are dynamic) */
+.news-importance-star {
+  margin-right: 1px;
+}

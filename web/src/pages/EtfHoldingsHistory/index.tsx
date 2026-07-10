@@ -66,6 +66,7 @@ import InstrumentCodeTag from '@/components/InstrumentCodeTag';
 import { useInstrumentDetail, useInstrumentList } from '@/hooks/useInstrumentList';
 import { etfHoldingsHistoryApi } from '@/api/etfHoldingsHistory';
 import { useSettingsStore } from '@/stores/settings';
+import './styles.css';
 import type {
   ETFHoldingDiffEntry,
   ETFHoldingItem,
@@ -422,14 +423,7 @@ export default function EtfHoldingsHistoryPage() {
       />
 
       {/* KPI Row */}
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
-          gap: 'var(--space-3)',
-          marginBottom: 'var(--space-5)',
-        }}
-      >
+      <div className="ehh-kpi-row">
         <StatCard
           title="最新期"
           value={latestDate ?? '-'}
@@ -465,16 +459,18 @@ export default function EtfHoldingsHistoryPage() {
             {sparklineData.length} 个披露期
           </span>
         }
-        style={{ marginBottom: 'var(--space-5)' }}
+        className="ad-mb-5"
       >
         {snapshotsQ.isLoading ? (
-          <Skeleton.Input active style={{ width: '100%', height: 40 }} />
+          <div className="ehh-skeleton-full">
+            <Skeleton.Input active />
+          </div>
         ) : sparklineData.length === 0 ? (
           <EmptyState title="暂无权重走势数据" description="该 ETF 尚未披露任何季度的持仓。" />
         ) : (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
+          <div className="ehh-sparkline-row">
             <Sparkline data={sparklineData} width={520} height={48} />
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <div className="ehh-sparkline-stats">
               <span className="ad-text-small ad-text-tertiary">最近一期</span>
               <span className="tabular-nums ad-text-primary">
                 {fmtWeight(sparklineData[sparklineData.length - 1])}
@@ -488,14 +484,7 @@ export default function EtfHoldingsHistoryPage() {
       </Panel>
 
       {/* Mode switch */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          marginBottom: 'var(--space-3)',
-        }}
-      >
+      <div className="ehh-mode-switch">
         <SectionHeading
           title={view === 'snapshot' ? '单期持仓' : '两期对比 (diff)'}
           eyebrow={view === 'snapshot' ? 'Snapshot' : 'Diff'}
@@ -512,13 +501,7 @@ export default function EtfHoldingsHistoryPage() {
 
       {/* Body: timeline (left) + content (right) */}
       {view === 'snapshot' ? (
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'minmax(180px, 220px) 1fr',
-            gap: 'var(--space-4)',
-          }}
-        >
+        <div className="ehh-snapshot-layout">
           {/* Timeline */}
           <Panel title="披露期">
             {snapshotsQ.isLoading ? (
@@ -529,16 +512,7 @@ export default function EtfHoldingsHistoryPage() {
                 description="该 ETF 暂无季度披露数据"
               />
             ) : (
-              <ul
-                style={{
-                  listStyle: 'none',
-                  margin: 0,
-                  padding: 0,
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: 4,
-                }}
-              >
+              <ul className="ehh-timeline">
                 {snapshots.map((s) => {
                   const isActive = s.holdings_as_of_date === selectedDate;
                   return (
@@ -546,33 +520,14 @@ export default function EtfHoldingsHistoryPage() {
                       <button
                         type="button"
                         onClick={() => setSelectedDate(s.holdings_as_of_date)}
-                        style={{
-                          width: '100%',
-                          textAlign: 'left',
-                          padding: '8px 10px',
-                          borderRadius: 6,
-                          border: '1px solid var(--border-subtle)',
-                          background: isActive ? 'var(--accent-soft)' : 'transparent',
-                          color: isActive ? 'var(--accent)' : 'var(--text-primary)',
-                          cursor: 'pointer',
-                          transition: 'background 0.15s',
-                        }}
+                        className={`ehh-timeline-btn${isActive ? ' ehh-timeline-btn--active' : ''}`}
                       >
-                        <div
-                          style={{
-                            display: 'flex',
-                            justifyContent: 'space-between',
-                            alignItems: 'center',
-                          }}
-                        >
+                        <div className="ehh-timeline-btn__row">
                           <span className="tabular-nums">{s.holdings_as_of_date}</span>
-                          <Tag style={{ margin: 0 }}>{s.holding_count}</Tag>
+                          <Tag>{s.holding_count}</Tag>
                         </div>
                         {s.total_weight !== null && s.total_weight !== undefined && (
-                          <div
-                            className="ad-text-small ad-text-tertiary"
-                            style={{ marginTop: 2 }}
-                          >
+                          <div className="ad-text-small ad-text-tertiary ehh-timeline-btn__weight">
                             合计 {fmtWeight(s.total_weight)}
                           </div>
                         )}
@@ -629,7 +584,7 @@ export default function EtfHoldingsHistoryPage() {
         </div>
       ) : (
         // Diff view
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
+        <div className="ehh-diff-layout">
           <Panel
             title={
               <Space>
@@ -816,7 +771,7 @@ function EtfPickerView({ onPick }: { onPick: (code: string) => void }) {
             placeholder="按代码 / 名称搜索"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            style={{ width: 240 }}
+            className="ehh-picker-search"
           />
         }
       >

@@ -1,0 +1,11 @@
+/* ============================================================
+   TradingPanel — page-specific style overrides
+   Inherits CSS variables from theme.css.
+   Core component classes (PageShell, PageHeader, Panel,
+   EmptyState, ResponsiveGrid, etc.) are defined in global.css
+   and shared across the app.
+   ============================================================ */
+
+/* ── Page-specific overrides use phase5c-* classes from global.css ── */
+/* (paper-pnl--rise / paper-pnl--fall / paper-pnl--neutral are
+    shared with PaperTrading and defined there.) */

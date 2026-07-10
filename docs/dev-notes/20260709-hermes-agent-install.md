@@ -423,3 +423,271 @@ What was NOT done (per user instruction):
 - Nothing in this repo (`/Users/aidanliu/Documents/Coding-Project/Investment-Research-Platform/`)
   was committed or pushed; this markdown report is an untracked working-tree
   artifact in `docs/dev-notes/`.
+
+---
+
+## 10. First-time setup (run as the user, one-time)
+
+The container is up, hardened, and pinned to `hermes-agent==0.18.2`, but
+no provider key has been bound and `hermes setup` has never run. Walk
+through these three steps from your laptop terminal. Nothing here binds a
+key automatically — paste your own.
+
+### Step 1 — bind an LLM key into `/home/hermes/.hermes/.env`
+
+**Get the key from your password manager first.** Do NOT paste it into
+chat, commit it, or save it in any file that synchronises. The snippet
+below reads the key from your terminal into a shell variable without
+echoing it, then writes it to `/home/hermes/.hermes/.env` inside the
+container with mode `600`.
+
+```bash
+# Paste the key at the prompt (input is hidden). The key never lands in
+# your shell history or in this snippet's file.
+read -rs KEY && [ -n "$KEY" ] || { echo "empty key, abort"; exit 1; }
+
+ssh ad-research "docker exec -u 10001:10001 -i alloyresearch-hermes \
+    bash -c \"printf 'OPENAI_API_KEY=%s\n' \\\"\$KEY\\\" \
+        > /home/hermes/.hermes/.env \
+        && chmod 600 /home/hermes/.hermes/.env \
+        && stat -c 'mode=%a owner=%U bytes=%s name=%n' \
+            /home/hermes/.hermes/.env\""
+unset KEY
+```
+
+If your provider is not OpenAI, swap `OPENAI_API_KEY` for the right env
+var; see §6 for the matching keys (`ANTHROPIC_API_KEY`, `HONCHO_API_KEY`,
+`SUPERMEMORY_API_KEY`, `MEM0_API_KEY`). Append additional lines with a
+second `printf '%s=%s\n' NAME VALUE >> /home/hermes/.hermes/.env` step.
+
+Sanity check (no key bytes leak; just metadata + a count):
+
+```bash
+ssh ad-research "docker exec -u 10001:10001 alloyresearch-hermes \
+    bash -c 'stat -c \"mode=%a owner=%U bytes=%s name=%n\" \
+        /home/hermes/.hermes/.env \
+        && echo -n \"key lines: \" \
+        && grep -cE \"^(OPENAI|ANTHROPIC|HONCHO|SUPERMEMORY|MEM0)_API_KEY=\" \
+            /home/hermes/.hermes/.env'"
+```
+
+Expected:
+
+```
+mode=600 owner=hermes bytes=49..71 name=/home/hermes/.hermes/.env
+key lines: 1
+```
+
+Then restart so the provider client re-initialises against the new env:
+
+```bash
+ssh ad-research "docker restart alloyresearch-hermes"
+```
+
+### Step 2 — first-time `hermes setup`
+
+`hermes setup --help` confirmed the correct flag for 0.18.2:
+
+```
+--non-interactive     Non-interactive mode (use defaults/env vars)
+```
+
+Run from your laptop:
+
+```bash
+ssh -t ad-research "docker exec -it -u 10001:10001 alloyresearch-hermes \
+    bash -c 'cd ~ && hermes setup --non-interactive'"
+```
+
+With `--non-interactive`, hermes uses the values you already set (env
+vars and any pre-existing `~/.hermes/config/`). It will NOT prompt.
+
+Verify what it wrote:
+
+```bash
+ssh ad-research "docker exec -u 10001:10001 alloyresearch-hermes \
+    bash -c 'ls -la ~/.hermes/ ~/.hermes/config/ 2>/dev/null \
+        && echo --- && find ~/.hermes -maxdepth 3 -type f -printf \"%p %s bytes\\n\"'"
+```
+
+You should see `~/.hermes/config/config.yaml` (or `.json`) plus any
+provider-specific files.
+
+If a single wizard section later needs an interactive run, the help shows
+the valid sub-sections:
+
+```
+hermes setup {model,tts,terminal,gateway,tools,agent}
+```
+
+For example, to re-pick the model only:
+
+```bash
+ssh -t ad-research "docker exec -it -u 10001:10001 alloyresearch-hermes \
+    bash -c 'cd ~ && hermes setup model'"
+```
+
+### Step 3 — smoke-test with `hermes chat`
+
+One-shot non-interactive:
+
+```bash
+ssh -t ad-research "docker exec -it -u 10001:10001 alloyresearch-hermes \
+    bash -c 'cd ~ && hermes chat -q \"用一句话介绍你自己\"'"
+```
+
+Expected: exit 0, a one-line Chinese reply from the configured model,
+and a session ID printed at the end. If you see `NoCredentialsError`,
+`AuthenticationError`, or HTTP 401/403, the env var in
+`/home/hermes/.hermes/.env` was not picked up — re-do Step 1 + `docker
+restart alloyresearch-hermes`.
+
+Interactive TUI (no `-q`):
+
+```bash
+ssh -t ad-research "docker exec -it -u 10001:10001 alloyresearch-hermes \
+    bash -c 'cd ~ && hermes chat'"
+```
+
+### Optional extras — NOT recommended
+
+- **Skip `hermes tools`** (cua-driver, browser extras). Those go through
+  `tools/lazy_deps.py` and try to write into the read-only root FS; the
+  hardening profile (`--read-only`) will reject the writes and you'll have
+  to rebuild the image.
+- **Skip cron / daemon / "always on" modes.** Keep hermes on-demand via
+  `docker exec`. The container's `CMD ["sleep infinity"]` is intentional —
+  no auto-start, no background loop.
+- **Skip HTTP exposure.** The container has `--expose` for inter-container
+  reachability only; there is no `PortBindings` to the host. If a future
+  hermes feature wants a webhook port, add it to the `docker create` line
+  in §2 and re-create, do not modify the running container.
+
+### Re-running / undo
+
+- `hermes setup` (bare) — re-runs the full wizard showing current defaults
+  (the help text explicitly notes that bare `hermes setup` now defaults to
+  reconfigure in 0.18.x).
+- `hermes setup --quick` — only prompts for missing/unset values.
+- `hermes setup --reset` — wipes `~/.hermes/config/` to defaults.
+- `hermes setup model` — re-pick only the model.
+- To rotate a leaked key: edit `.env`, then `docker restart
+  alloyresearch-hermes`. The old key is overwritten in place; nothing
+  else is invalidated.
+
+---
+
+## 11. Reusable research-task template (中文)
+
+When the user wants hermes to do an ad-hoc research task, paste the
+prompt below into a `hermes chat` session. The template assumes hermes
+runs inside the hardened container with read access to this repo's
+`docs/dev-notes/` tree.
+
+### How to invoke
+
+```bash
+ssh -t ad-research "docker exec -it -u 10001:10001 alloyresearch-hermes \
+    bash -c 'cd ~ && hermes chat'"
+```
+
+Paste the template, fill the `<TOPIC>` and `<OUTPUT_FILE>` placeholders,
+hit enter. To continue a session, swap `hermes chat` for
+`hermes chat --resume <session-id>` (the ID is printed on exit).
+
+### The template
+
+```text
+你是 ad-hoc 研究助手 hermes-agent，正在容器 alloyresearch-hermes 中以
+非 root 用户（uid 10001）运行。你的任务：完成下面的研究请求，并把结果
+写到指定路径。
+
+【研究任务】
+<TOPIC>
+
+【输出路径】
+/Users/aidanliu/Documents/Coding-Project/Investment-Research-Platform/docs/dev-notes/<OUTPUT_FILE>.md
+
+【硬性约束 — 必须遵守】
+1. 先读项目上下文：动笔前先 ls docs/dev-notes/，并按相关性顺序阅读
+   已有 .md，特别是：
+   - 20260627-数据源已知问题备忘.md
+   - 20260627-定时任务恢复操作指南.md
+   - 20260622-系统平台功能逻辑说明手册.md
+   以及任何与本主题直接相关的 dev-notes。如果现有文档已经回答了任务，
+   直接引用 + 标注，不要重复造轮子。
+2. 用 WebFetch 取一手资料，不要只靠 WebSearch 摘要。每条核心结论至少
+   要从原始页面（券商研报、交易所公告、公司 IR）抓一次正文：
+   - 雪球：xueqiu.com/.../...html，不要靠 Google 缓存。
+   - 巨潮资讯（cninfo / static.cninfo.com.cn）：公告 PDF 用 WebFetch；
+     必要时把 Accept 头设成 text/html 再抓一次。
+   - 美股：SEC EDGAR 8-K/10-Q/10-K 全文；公司投资者关系页面原文。
+3. 引用规范：每条事实声明后附 (来源: <URL>)。禁止出现“据说”“普遍
+   认为”“市场观点”等无来源措辞。如果一条声明找不到一手来源，明确
+   写“未找到一手来源，依据来自 X 的二手转述，置信度低”。
+4. 不修改代码：/Users/aidanliu/Documents/Coding-Project/
+   Investment-Research-Platform/ 下的 .py / .ts / .tsx / .sql / .yml /
+   Dockerfile / docker-compose.yml 禁止改动。读可以，写不行。
+5. 不提交：不 git commit、不 git push。报告写完即结束。
+6. 输出体积：单文件 Markdown ≤ 16 KB（约 4000 中文字 / 1500 行英文），
+   超出请拆章节到多个文件，每个文件一个聚焦主题。
+7. 自我审计：报告末尾留一段 ## 自我审计，列出
+   - 用到的一手来源 URL 列表
+   - 哪些结论置信度低、依据二手转述
+   - 哪些事项需要用户进一步提供资料
+
+【工作流】
+1. 续上次会话用 hermes chat --resume <session-id>；新任务用裸
+   hermes chat。
+2. 先 ls docs/dev-notes/ 和 cat 关键上下文文件，列出你认为需要读的
+   清单，等用户确认后再深读（避免一次性读完浪费上下文）。
+3. 用 WebFetch + WebSearch 做交叉验证；同一事实至少 2 个独立来源才标
+   “高置信度”。
+4. 写到目标路径后，最后一步 wc -c <目标路径> 核对体积。
+5. 把报告的 1-2 行摘要贴回对话，让用户决定要不要看全文。
+
+【用户偏好】
+- 默认中文输出；专有名词、API 名、命令保持英文（如 OPENAI_API_KEY、
+  Python、ETF）。
+- 时间统一 Asia/Shanghai；ISO 格式（2026-07-11T10:30+08:00）。
+- 数据口径：金额默认人民币（特别标注 USD/HKD 时除外）。
+- 不要 emoji；markdown 表格不要出现 | 转义后跑出来 || 的乱码。
+- 不要客套结尾（“希望对您有帮助”“如有需要……”一律去掉）。
+
+开始前先复述任务 + 输出路径，等待我的确认（首次只需 yes / no 或
+修改意见）。
+```
+
+### Fill-in cheatsheet
+
+| 研究类型 | `<TOPIC>` 示例 | `<OUTPUT_FILE>` 建议 |
+|---------|---------------|---------------------|
+| A 股单股催化 | 浦发银行（600000）2026Q2 解禁 | `20260711-600000-解禁影响.md` |
+| 美股单股财报 | NVDA FY27Q1 业绩 vs 预期 | `20260711-NVDA-fy27q1.md` |
+| 行业主题 | 国内 ETF 资金面 2026H2 展望 | `20260711-ETF资金面-2026H2.md` |
+| 数据源/平台运维 | cninfo 公告增量恢复后的 orgId 覆盖率 | `20260711-cninfo-orgId覆盖率.md` |
+| 政策/事件 | 证监会 2026 减持新规影响测算 | `20260711-减持新规-影响测算.md` |
+
+### Variations (paste-after-the-block add-ons)
+
+- **A 股单只股票 + 催化事件**：在【研究任务】尾部追加一句 "同时核对
+  docs/dev-notes/20260627-数据源已知问题备忘.md 里列出的 ETF / cninfo
+  数据源状态，确认数据可用"。
+- **美股财报 + 估值更新**：模板末尾追加 "估值部分只用当前 A 股同业 /
+  美股同业的 trading multiples 框架，不建 DCF；数字保留 2 位小数；不要
+  给出目标价"。
+- **行业 / 主题研究**：输出文件名形如
+  `<YYYYMMDD>-<主题>-行业-/<主题>-研究.md`，报告结构固定为：行业概
+  述 → 产业链 → 主要玩家 → 最近一次催化 → 风险点 → 自我审计。
+- **代码/数据源 debug**：在【硬性约束】之外临时允许修改一个明确列出
+  的文件路径；其余约束照旧。报告末尾追加 "## 提议的代码改动"，只写
+  diff，不直接落盘。
+```
+
+### Post-task checklist
+
+1. `wc -c docs/dev-notes/<OUTPUT_FILE>.md` ≤ 16384 bytes.
+2. Open the file in this repo, sanity-check the audit section.
+3. Decide whether to commit — **NOT auto-committed per project policy
+   (`docs/dev-notes/` are working-tree artifacts, not pushed without
+   explicit approval; see project memory: 无明确指令不 push)**.

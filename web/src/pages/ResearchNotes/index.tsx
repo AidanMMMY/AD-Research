@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Select, Button, Skeleton, Modal, Empty, message, Popconfirm } from 'antd';
 import { RobotOutlined, SearchOutlined, DeleteOutlined } from '@ant-design/icons';
+import './styles.css';
 import { researchApi, ResearchNote } from '@/api/research';
 import { useInstrumentList } from '@/hooks/useInstrumentList';
 import type { InstrumentInfo } from '@/types/instrument';

@@ -28,7 +28,7 @@ export default function CorrelationHeatmap({ codes, matrix }: CorrelationHeatmap
   const labelFontSize = isMobile ? 8 : 10;
 
   // Resolve all CSS-variable colors at render time. Fallbacks are the
-  // terminal-theme defaults so SSR / no-DOM still renders correctly.
+  // dark-theme defaults so SSR / no-DOM still renders correctly.
   const bgElevated = useMemo(
     () => resolveChartColors(['var(--bg-elevated)'], ['#111111'])[0],
     [],
@@ -62,10 +62,8 @@ export default function CorrelationHeatmap({ codes, matrix }: CorrelationHeatmap
     [],
   );
 
-  // The splitArea checkerboard uses the elevated background tone; in
-  // terminal it's a faint white overlay, in print a faint dark overlay on
-  // cream. We derive it from --bg-elevated via alpha so it follows the
-  // active palette automatically.
+  // The splitArea checkerboard uses the elevated background tone; we derive
+  // it from --bg-elevated so it follows the active palette automatically.
   const splitAreaColors = useMemo(() => {
     const base = bgElevated;
     return [base, base];

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import './styles.css';
 import { Row, Col, Select, Spin } from 'antd';
 import { useQuery } from '@tanstack/react-query';
 import { analysisApi } from '@/api/analysis';

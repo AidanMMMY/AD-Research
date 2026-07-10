@@ -33,6 +33,7 @@ import type {
   NewsTranslateResponse,
   ImportanceLevel,
 } from '@/types/news';
+import './detail.css';
 import PageShell from '@/components/PageShell';
 import Panel from '@/components/Panel';
 import Markdown from '@/components/Markdown';
@@ -58,11 +59,10 @@ function ImportanceStars({ level }: { level: ImportanceLevel | null }) {
         {Array.from({ length: 5 }).map((_, i) => (
           <StarFilled
             key={i}
-            className="ad-text-sm"
+            className="ad-text-sm news-importance-star"
             style={{
               color: i < filled ? IMPORTANCE_COLOR : 'var(--text-muted)',
               opacity: i < filled ? 1 : 0.4,
-              marginRight: 1,
             }}
           />
         ))}

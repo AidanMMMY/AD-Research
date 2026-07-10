@@ -1,0 +1,9 @@
+/* ============================================================
+   Dashboard — page-specific style overrides
+   Inherits CSS variables from theme.css.
+   Core classes (dashboard-section, dashboard-index-card,
+   dashboard-news-row, panel-extra-link, etc.) are defined in
+   global.css and shared across the app.
+   ============================================================ */
+
+/* ── Future page-specific overrides go here ── */

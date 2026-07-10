@@ -15,6 +15,7 @@ import Panel from '@/components/Panel';
 import HelpPopover from '@/components/HelpPopover';
 import ThemeTag from '@/components/ThemeTag';
 import { useSettingsStore } from '@/stores/settings';
+import './styles.css';
 import { getAllTerms, type TermEntry } from '@/utils/termDictionary';
 
 interface Scenario {
@@ -245,7 +246,7 @@ function TermQuickReference({
           placeholder="按名称 / 描述 / key 过滤"
           value={keyword}
           onChange={(e) => setKeyword(e.target.value)}
-          style={{ width: 220 }}
+          className="learning__filter-input"
         />
       }
     >

@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Input, Button, List, Popconfirm, Empty, Skeleton, Tag } from 'antd';
+import './styles.css';
 import {
   PlusOutlined,
   DeleteOutlined,

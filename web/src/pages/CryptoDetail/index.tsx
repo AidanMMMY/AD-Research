@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import './styles.css';
 import { Tabs, Spin, Alert, Table, List, Radio, Checkbox, Space, Button } from 'antd';
 import { RobotOutlined, ReadOutlined, ArrowLeftOutlined } from '@ant-design/icons';
 import {

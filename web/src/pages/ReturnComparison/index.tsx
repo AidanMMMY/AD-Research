@@ -11,6 +11,7 @@ import EmptyState from '@/components/EmptyState';
 import InstrumentSelector from '@/components/InstrumentSelector';
 import ReturnCurve from '@/components/ReturnCurve';
 import HelpPopover from '@/components/HelpPopover';
+import './styles.css';
 import { useSettingsStore } from '@/stores/settings';
 
 const TIME_RANGE_OPTIONS = [

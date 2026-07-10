@@ -24,6 +24,7 @@ import { buildListingPreviewContext } from '@/utils/helpContext';
 import { getQuickQuestions } from '@/utils/helpPrompts';
 import type { ListingEvent, ListingStatus } from '@/types/listingEvent';
 import { STATUS_LABEL } from '@/types/listingEvent';
+import './styles.css';
 import ListingEventDetailModal from './DetailModal';
 
 const STATUS_COLOR: Record<ListingStatus, string> = {

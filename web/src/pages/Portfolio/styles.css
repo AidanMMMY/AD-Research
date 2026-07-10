@@ -1,0 +1,16 @@
+/* ============================================================
+   Portfolio — page-specific style overrides
+   Inherits CSS variables from theme.css.
+   Core component classes (PageShell, PageHeader, Panel,
+   EmptyState, ResponsiveGrid, SectionHeading, etc.) are
+   defined in global.css and shared across the app.
+   ============================================================ */
+
+/* ── Diff summary grid (target vs actual drift cards) ── */
+.portfolio-diff-summary {
+  /* ResponsiveGrid wrapper for diff cards — tight spacing
+     between the Card components showing per-symbol drift. */
+}
+
+/* ── Drift-colour helpers are applied inline via style
+     because the colours are computed from data (dynamic). ── */

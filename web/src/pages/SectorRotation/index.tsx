@@ -27,6 +27,7 @@ import type {
   SectorReturnPeriod,
 } from '@/types/sector_rotation';
 import { SECTOR_RETURN_LABELS, SECTOR_RETURN_PERIODS } from '@/types/sector_rotation';
+import './styles.css';
 
 const PERIOD_RETURN_KEY: Record<SectorReturnPeriod, keyof SectorPerformance> = {
   '1w': 'return_1w',
@@ -365,7 +366,7 @@ export default function SectorRotation() {
           </span>
         }
         extra={
-          <div className="ad-cluster" style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+          <div className="ad-cluster sector-rotation__header-extra">
             <Segmented<SectorClassification>
               size="small"
               value={classification}
@@ -391,18 +392,18 @@ export default function SectorRotation() {
             <span className="ad-info-banner__title">当前范围</span>
             <span className="ad-info-banner__text">
               仅纳入 A 股（沪深北）<b>个股 + ETF</b>，分类体系为
-              <Tag color={classification === 'SW' ? 'gold' : 'default'} style={{ marginLeft: 6, marginRight: 6 }}>
+              <Tag color={classification === 'SW' ? 'gold' : 'default'} className="sector-rotation__scope-tag">
                 {classification === 'SW' ? '申万一级行业' : 'GICS 行业'}
               </Tag>
               数字币 / 美股 / 港股 不参与本轮动分析。
               {scope?.classification === 'SW' ? (
-                <span style={{ marginLeft: 8 }}>
+                <span className="sector-rotation__scope-source">
                   分类来源：<code className="font-mono">etf_info.sw_l1</code>
                   （个股由 Tushare 申万成分 / CSRC→申万 映射，ETF 由 sub_category/underlying_index 启发式匹配）。
                 </span>
               ) : (
                 scope?.classification && (
-                  <span style={{ marginLeft: 8 }}>
+                  <span className="sector-rotation__scope-source">
                     分类来源：<code className="font-mono">etf_info.sector</code>
                     （个股由 CSRC→GICS 映射，ETF 由 sub_category/underlying_index 启发式匹配）。
                   </span>
@@ -477,7 +478,7 @@ export default function SectorRotation() {
           <Panel
             title="行业板块 1月收益排名"
             extra={
-              <span className="ad-table-text-secondary" style={{ fontSize: 12 }}>
+              <span className="ad-table-text-secondary sector-rotation__chart-hint">
                 按 1月平均收益降序
               </span>
             }
@@ -499,7 +500,7 @@ export default function SectorRotation() {
           <Panel
             title="行业相对强弱 (vs 市场平均)"
             extra={
-              <span className="ad-table-text-secondary" style={{ fontSize: 12 }}>
+              <span className="ad-table-text-secondary sector-rotation__chart-hint">
                 1月相对强弱 = 板块收益 / 市场平均
               </span>
             }
@@ -526,7 +527,7 @@ export default function SectorRotation() {
         <Panel
           title="多周期收益热力图"
           extra={
-            <span className="ad-table-text-secondary" style={{ fontSize: 12 }}>
+            <span className="ad-table-text-secondary sector-rotation__chart-hint">
               行：{clsLabel}板块 · 列：收益周期 · 色：涨跌强度
             </span>
           }
@@ -540,7 +541,7 @@ export default function SectorRotation() {
               description={`当前 A 股范围内无${clsLabel}板块数据。`}
             />
           ) : (
-            <div className="ad-chart-container" style={{ minHeight: 420 }}>
+            <div className="ad-chart-container sector-rotation__heatmap-container">
               <ReactECharts option={heatmapOption} />
             </div>
           )}
@@ -668,7 +669,7 @@ function ConstituentsTab({
         title: (
           <span>
             权重 (元)
-            <span className="ad-table-text-secondary" style={{ marginLeft: 4, fontWeight: 400 }}>
+            <span className="ad-table-text-secondary sector-rotation__weight-label">
               {items[0]?.weight_label === '规模' ? '· 规模' : '· 市值'}
             </span>
           </span>
@@ -749,13 +750,13 @@ function ConstituentsTab({
   return (
     <div className="ad-px-4 ad-pb-4 ad-pt-2">
       {/* Filter strip */}
-      <div className="ad-stack-row ad-mb-3" style={{ gap: 12, flexWrap: 'wrap' }}>
-        <div className="ad-stack-row" style={{ gap: 6, alignItems: 'center' }}>
-          <span className="ad-table-text-secondary" style={{ fontSize: 12 }}>板块</span>
+      <div className="ad-stack-row ad-mb-3 sector-rotation__filter-bar">
+        <div className="ad-stack-row sector-rotation__filter-group">
+          <span className="ad-table-text-secondary sector-rotation__filter-label">板块</span>
           <Select
             value={selectedSector ?? undefined}
             onChange={(v) => setSelectedSector(v)}
-            style={{ minWidth: 220 }}
+            className="sector-rotation__sector-select"
             placeholder={`选择${classification === 'SW' ? '申万一级' : 'GICS'}板块`}
             options={sectors.map((s) => ({
               label: `${s.sector} (${s.stock_count}股 / ${s.etf_count}基)`,
@@ -765,12 +766,12 @@ function ConstituentsTab({
             optionFilterProp="label"
           />
         </div>
-        <div className="ad-stack-row" style={{ gap: 6, alignItems: 'center' }}>
-          <span className="ad-table-text-secondary" style={{ fontSize: 12 }}>TOP</span>
+        <div className="ad-stack-row sector-rotation__filter-group">
+          <span className="ad-table-text-secondary sector-rotation__filter-label">TOP</span>
           <Select
             value={topN}
             onChange={(v) => setTopN(v)}
-            style={{ width: 90 }}
+            className="sector-rotation__topn-select"
             options={[
               { label: '10', value: 10 },
               { label: '20', value: 20 },
@@ -781,7 +782,7 @@ function ConstituentsTab({
           />
         </div>
         {data && (
-          <span className="ad-table-text-secondary" style={{ fontSize: 12 }}>
+          <span className="ad-table-text-secondary sector-rotation__filter-label">
             展示 {data.count} / {data.total_in_sector} （按 {items[0]?.weight_label ?? '权重'} 降序）
             {data.trade_date ? ` · 快照 ${data.trade_date}` : ''}
           </span>

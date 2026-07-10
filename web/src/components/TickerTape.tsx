@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import React, { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
   ArrowUpOutlined,
@@ -139,7 +139,7 @@ export default function TickerTape({
       </span>
       <div
         className="ticker-track"
-        style={{ animationDuration: `${durationSeconds}s` }}
+        style={{ '--ticker-duration': `${durationSeconds}s` } as React.CSSProperties}
       >
         {track.map((item, idx) => {
           const cp = item.change_pct;

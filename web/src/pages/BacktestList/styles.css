@@ -1,0 +1,9 @@
+/* ============================================================
+   BacktestList Page Styles
+   Co-located CSS for the Backtest Management list page.
+   ============================================================ */
+
+/* ---- Full-width Form Input ---- */
+.phase5c-form-input--full {
+  width: 100%;
+}

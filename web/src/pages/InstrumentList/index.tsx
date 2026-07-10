@@ -1,3 +1,5 @@
+import './styles.css';
+
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {

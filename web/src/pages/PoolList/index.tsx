@@ -1,3 +1,5 @@
+import './styles.css';
+
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Table, Button, Modal, Form, Input, message, Popconfirm, Space } from 'antd';

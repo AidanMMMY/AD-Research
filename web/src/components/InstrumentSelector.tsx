@@ -120,7 +120,7 @@ export default function InstrumentSelector({
         value={value}
         onChange={handleSelectChange}
         options={instrumentOptions}
-        style={{ width: '100%' }}
+        className="ad-w-full"
         maxTagCount={0}
         tagRender={() => <span />}
         filterOption={(input, option) =>

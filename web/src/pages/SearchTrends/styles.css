@@ -1,0 +1,40 @@
+/* ============================================================
+   SearchTrends — page-specific style overrides
+   Inherits CSS variables from theme.css.
+   Core component classes (PageShell, PageHeader, Panel,
+   FilterToolbar, EmptyState, ResponsiveGrid, StatCard,
+   etc.) are defined in global.css and shared across the app.
+   ============================================================ */
+
+/* ── Filter control widths (shared with global phase5c conventions) ── */
+
+.search-trends__filter-select {
+  width: 90px;
+}
+
+.search-trends__filter-input {
+  width: 220px;
+}
+
+.search-trends__filter-input--wide {
+  min-width: 260px;
+}
+
+/* ── Top keyword list row ── */
+
+.search-trends__keyword-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--border-default);
+}
+
+.search-trends__keyword-row:last-child {
+  border-bottom: none;
+}
+
+.search-trends__keyword-value {
+  font-family: var(--font-mono);
+  color: var(--text-secondary);
+}

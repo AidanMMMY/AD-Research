@@ -1,0 +1,19 @@
+/* ==========================================================================
+   自选股页面样式
+   Favorites Page Styles
+   ========================================================================== */
+
+/* Hint / helper text */
+.favorites__hint-text {
+  font-size: var(--text-small-size);
+}
+
+/* Hidden utility (semantic element for future extension) */
+.favorites__hidden-util {
+  display: none;
+}
+
+/* Empty state star icon */
+.fav-empty-icon {
+  font-size: 48px;
+}

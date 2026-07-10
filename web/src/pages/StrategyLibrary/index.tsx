@@ -3,6 +3,7 @@ import {
   Button, Form, Input, Modal, Tabs, message, Space,
 } from 'antd';
 import { BookOutlined, ExperimentOutlined, ThunderboltOutlined } from '@ant-design/icons';
+import './styles.css';
 import PageShell from '@/components/PageShell';
 import PageHeader from '@/components/PageHeader';
 import Panel from '@/components/Panel';

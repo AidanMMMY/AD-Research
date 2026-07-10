@@ -1,3 +1,4 @@
+import './styles.css';
 import { Alert, Badge, Button, Spin, Statistic, Table, Tag, Tooltip } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { useQuery } from '@tanstack/react-query';
@@ -239,8 +240,7 @@ export default function NewsHealth() {
               />
             )}
             <div
-              className="ad-flex ad-flex-wrap ad-gap-4"
-              style={{ minWidth: 0 }}
+              className="ad-flex ad-flex-wrap ad-gap-4 news-health__ai-stats"
             >
               <Statistic
                 title="已清理"

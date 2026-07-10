@@ -2,6 +2,7 @@ import { useState } from 'react';
 import {
   Table, Button, Modal, Form, Select, DatePicker, InputNumber, Space, message,
 } from 'antd';
+import './styles.css';
 import PageShell from '@/components/PageShell';
 import PageHeader from '@/components/PageHeader';
 import FilterToolbar from '@/components/FilterToolbar';

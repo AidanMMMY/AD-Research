@@ -16,7 +16,7 @@
  */
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
-import { Dropdown, Drawer, Segmented, Tooltip } from 'antd';
+import { Dropdown, Drawer, Segmented, Switch, Tooltip, message } from 'antd';
 import {
   LogoutOutlined,
   DashboardOutlined,
@@ -66,7 +66,6 @@ import {
   WalletOutlined,
   StarOutlined,
 } from '@ant-design/icons';
-import { Switch, message } from 'antd';
 import { useAuthStore } from '@/stores/auth';
 import { useSettingsStore } from '@/stores/settings';
 import { menuRoutes, sidebarGroups, type SidebarGroupKey } from '@/routes';
@@ -522,7 +521,7 @@ export default function AppLayout() {
           placement="left"
           open={drawerOpen}
           onClose={() => setDrawerOpen(false)}
-          width={260}
+          width={240}
           closable={false}
         >
           <div className="app-layout__mobile-drawer">

@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AD-Research 前端重构设计综合报告</title>
+<style>
+:root {
+  color-scheme: light dark;
+  --bg: light-dark(#ffffff, #0d1117);
+  --fg: light-dark(#1f2328, #e6edf3);
+  --fg-muted: light-dark(#656d76, #8b949e);
+  --border: light-dark(#d0d7de, #30363d);
+  --accent: #1a73e8;
+  --accent-fg: #ffffff;
+  --table-stripe: light-dark(#f6f8fa, #161b22);
+  --code-bg: light-dark(#f6f8fa, #161b22);
+  --h2-color: light-dark(#0969da, #58a6ff);
+}
+* { box-sizing: border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif;
+  font-size: 15px; line-height: 1.7;
+  max-width: 860px; margin: 0 auto; padding: 2rem 1.5rem;
+  background: var(--bg); color: var(--fg);
+}
+h1 { font-size: 1.8rem; border-bottom: 2px solid var(--border); padding-bottom: 0.5rem; margin-top: 0; }
+h2 { font-size: 1.35rem; color: var(--h2-color); margin-top: 2rem; border-bottom: 1px solid var(--border); padding-bottom: 0.25rem; }
+h3 { font-size: 1.1rem; margin-top: 1.5rem; }
+p { margin: 0.75rem 0; }
+table { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: 0.9rem; }
+th, td { padding: 0.5rem 0.75rem; text-align: left; border: 1px solid var(--border); }
+th { background: var(--code-bg); font-weight: 600; }
+tr:nth-child(even) { background: var(--table-stripe); }
+code { background: var(--code-bg); padding: 0.15em 0.4em; border-radius: 3px; font-size: 0.9em; }
+ul, ol { padding-left: 1.5rem; }
+li { margin: 0.25rem 0; }
+a { color: var(--accent); }
+hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
+strong { font-weight: 600; }
+.muted { color: var(--fg-muted); font-size: 0.85rem; }
+</style>
+</head>
+<body>
+<h1>AD-Research 前端重构设计综合报告</h1>
+
+<p>> 编制日期：2026-07-11
+> 来源：竞品平台设计调研 + 无障碍/色彩/动效/暗色模式标准文档的综合整理
+> 范围：AD-Research 投研平台前端重构的全局设计方向与可落地建议</p>
+
+<p>---</p>
+
+<h2>目录</h2>
+
+<ul>
+<li>1. [执行摘要](#1-执行摘要)</li>
+<li>2. [设计原则与全局标准](#2-设计原则与全局标准)</li>
+<li>3. [竞品平台详细分析](#3-竞品平台详细分析)</li>
+<li>4. [AD-Research 可落地建议清单](#4-ad-research-可落地建议清单)</li>
+<li>5. [两份来源的比对与冲突分析](#5-两份来源的比对与冲突分析)</li>
+<li>6. [自我审计](#6-自我审计)</li>
+</ul>
+
+<p>---</p>
+
+<h2>1. 执行摘要</h2>
+
+<p>本报告综合了 9 个竞品平台的 UI/UX 调研与 WCAG 2.2 / Apple HIG / Material Design 3 相关的设计标准，形成 AD-Research 前端重构的完整设计输入。</p>
+
+<strong>核心结论：</strong>
+
+<ul>
+<li>默认方向应为 <strong>浅色清爽主调 + 深色模式可选</strong>，避免纯深色 "terminal" 作为唯一主题。</li>
+<li>涨跌颜色必须 <strong>四重冗余</strong>：颜色 + ▲▼ 箭头 + +/− 符号 + 文字标签，并默认提供色盲安全模式。</li>
+<li>K 线涨跌主色建议采用 Okabe-Ito 蓝 <code>#0072B2</code> + 橙 <code>#E69F00</code>，替代传统红绿。</li>
+<li>提供 <strong>三档信息密度</strong>（Compact / Comfortable / Spacious），满足不同专业度用户。</li>
+<li>必须尊重 <code>prefers-reduced-motion</code> 和 <code>prefers-color-scheme</code>。</li>
+<li>移动端采用底部 Tab Bar，桌面端采用模块化 Dashboard + 可拖拽面板。</li>
+</ul>
+
+<strong>关键产出：</strong>
+
+<table>
+<tr><th>文档</th><th>作用</th></tr>
+<tr><td>本综合报告</td><td>统一设计方向与落地清单</td></tr>
+<tr><td><code>20260711-competitor-design-survey.md</code></td><td>9 个竞品平台原始分析</td></tr>
+<tr><td><code>20260711-design-standards-a11y-color-motion.md</code></td><td>无障碍/色彩/动效/暗色模式技术细节与代码示例</td></tr>
+</table>
+
+<p>---</p>
+
+<h2>2. 设计原则与全局标准</h2>
+
+<h3>2.1 无障碍（Accessibility）</h3>
+
+<p>#### 2.1.1 减少动效（Reduced Motion）</p>
+
+<p><ul>
+<li><strong>标准</strong>：WCAG 2.2 Success Criterion 2.3.3（Animation from Interactions）。</li>
+<li><strong>实现</strong>：通过 <code>@media (prefers-reduced-motion: reduce)</code> 全局重置。</li>
+<li><strong>投研平台实战</strong>：</li>
+</ul>
+  - 价格颜色闪烁：瞬间切换，无渐变。
+  - Sparkline：直接重绘，无 tween。
+  - 数字 ticker：直接跳变，无 count-up。
+  - <strong>保留</strong>：加载 spinner、实时数据到来、滚动位置更新。</p>
+
+<p>#### 2.1.2 色盲安全</p>
+
+<ul>
+<li><strong>推荐调色板</strong>：Okabe-Ito 8 色。</li>
+</ul>
+
+<table>
+<tr><th>Hex</th><th>通用名</th></tr>
+<tr><td><code>#000000</code></td><td>黑色</td></tr>
+<tr><td><code>#E69F00</code></td><td>橙色</td></tr>
+<tr><td><code>#56B4E9</code></td><td>天蓝</td></tr>
+<tr><td><code>#009E73</code></td><td>蓝绿</td></tr>
+<tr><td><code>#F0E442</code></td><td>黄色</td></tr>
+<tr><td><code>#0072B2</code></td><td>蓝色</td></tr>
+<tr><td><code>#D55E00</code></td><td>朱红</td></tr>
+<tr><td><code>#CC79A7</code></td><td>紫红</td></tr>
+</table>
+
+<ul>
+<li><strong>涨跌颜色</strong>：蓝 <code>#0072B2</code> + 橙 <code>#E69F00</code> 作主色，辅以 ▲▼ 箭头、+/− 符号、文字标签四重冗余。</li>
+<li><strong>热力图/多序列</strong>：Viridis / Cividis / ColorBrewer。</li>
+<li><strong>工具</strong>：Coblis、Colorblindly、Stark、Sim Daltonism、Color Oracle、Who Can Use。</li>
+</ul>
+
+<p>#### 2.1.3 暗色模式</p>
+
+<ul>
+<li><strong>实现</strong>：<code>prefers-color-scheme</code> + <code>color-scheme: light dark</code> + <code>light-dark()</code> 函数。</li>
+<li><strong>模式</strong>：系统默认 → 用户覆盖（Light / Dark / System）→ localStorage 持久化。</li>
+<li><strong>防 FOWT</strong>：内联阻塞 <code><script></code> 在 <code><head></code> 早期设 <code>document.documentElement.dataset.theme</code>。</li>
+<li><strong>案例</strong>：Bloomberg Terminal 仅 dark；Robinhood iOS/Android 默认 dark 但可切 light；Stripe Dashboard 三档 toggle。</li>
+</ul>
+
+<h3>2.2 信息架构</h3>
+
+<ul>
+<li><strong>首屏</strong>：一屏一事，Hero 只放品牌价值主张和单一 CTA。</li>
+<li><strong>导航</strong>：</li>
+</ul>
+  - 移动端：底部 Tab Bar（≤5 项）。
+  - 桌面端：顶部导航 + 模块化 Dashboard。
+<ul>
+<li><strong>数据密度</strong>：提供 Compact / Comfortable / Spacious 三档。</li>
+<li><strong>响应式</strong>：mobile-first，断点 375 / 768 / 1024 / 1440。</li>
+</ul>
+
+<h3>2.3 色彩与字体</h3>
+
+<ul>
+<li><strong>强调色</strong>：项目已确认朱色 <code>#E11D48</code>（rose-600），用于主按钮、链接、激活态。</li>
+<li><strong>涨跌约定</strong>：</li>
+</ul>
+  - A 股：红涨绿跌（<code>#dc2626</code> / <code>#16a34a</code>）。
+  - 美股/国际：绿涨红跌。
+  - 色盲模式：蓝 <code>#0072B2</code> + 橙 <code>#E69F00</code>。
+<ul>
+<li><strong>字体栈</strong>：<code>Inter, "SF Pro Display", -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif</code>。</li>
+<li><strong>数据字体</strong>：等宽 <code>JetBrains Mono</code>，用于价格、涨跌幅、代码。</li>
+</ul>
+
+<p>---</p>
+
+<h2>3. 竞品平台详细分析</h2>
+
+<h3>3.1 Robinhood — 美国家庭零售券商</h3>
+
+<ul>
+<li><strong>首屏</strong>：全屏 Hero 视频/动画 + 单一 CTA。</li>
+<li><strong>色彩</strong>：默认深色 <code>#110E08</code>，霓虹绿 <code>#CCFF00</code> 强调色。</li>
+<li><strong>字体</strong>：自研 <code>Capsule Sans Text</code> + 衬线 <code>Nib Pro Display</code>。</li>
+<li><strong>移动端</strong>：底部 Tab Bar（Home / Moves / Investing / Messages / Account）。</li>
+<li><strong>可借鉴</strong>：极简 CTA、自研字体品牌感、数据卡片大字号关键数字。</li>
+</ul>
+
+<h3>3.2 Webull 微牛 — 中美跨境零售</h3>
+
+<ul>
+<li><strong>首屏</strong>：市场数据概览 + 指数 ticker + 下载 App CTA。</li>
+<li><strong>色彩</strong>：白色底、深灰蓝文本 <code>#2B3240</code>、绿涨红跌（中国版红涨绿跌）。</li>
+<li><strong>字体</strong>：OpenSansV2 + NotoSans + HarmonyOSSans。</li>
+<li><strong>图表</strong>：60+ 技术指标、Canvas/WebGL、自选列表实时高亮闪烁。</li>
+<li><strong>可借鉴</strong>：多语言字体栈、三层阴影层级、社区 Feed 集成、多层筛选器。</li>
+</ul>
+
+<h3>3.3 Interactive Brokers — 专业机构</h3>
+
+<ul>
+<li><strong>产品</strong>：TWS（桌面多窗口）、Client Portal（Web 简化）、IBKR Mobile。</li>
+<li><strong>布局</strong>：Mosaic 可拼贴窗口系统，数据密度极高。</li>
+<li><strong>色彩</strong>：白/灰底为主，蓝色系强调。</li>
+<li><strong>可借鉴</strong>：三档信息密度、模块化 Dashboard、快捷键驱动。</li>
+</ul>
+
+<h3>3.4 TradingView — 图表与社区</h3>
+
+<ul>
+<li><strong>核心</strong>：交互式图表引擎占首屏 70%+。</li>
+<li><strong>色彩</strong>：亮色 <code>#FFFFFF</code> / 暗色 <code>#131722</code>，K 线涨 <code>#26A69A</code> / 跌 <code>#EF5350</code>。</li>
+<li><strong>特色</strong>：提供 <strong>Color Blind</strong> 预设；Pine Script 指标生态；多时间周期联动。</li>
+<li><strong>可借鉴</strong>：图表嵌入 Widget、色盲模式、深色/亮色双主题。</li>
+</ul>
+
+<h3>3.5 富途牛牛 Futu — 港股/美股/A 股</h3>
+
+<ul>
+<li><strong>产品</strong>：桌面 Qt 版 + iOS/Android/HarmonyOS App。</li>
+<li><strong>首屏</strong>：自选行情 + 市场概览 + 资讯 Feed + 牛牛圈社区。</li>
+<li><strong>特色</strong>：毫秒级行情、AI 走势预测、六端全覆盖。</li>
+<li><strong>色彩</strong>：中国版红涨绿跌，香港版绿涨红跌。</li>
+<li><strong>可借鉴</strong>：多市场颜色自适应、社区 + 交易一体化、全平台策略。</li>
+</ul>
+
+<h3>3.6 Tiger Brokers 老虎证券 — 跨境零售</h3>
+
+<ul>
+<li><strong>定位</strong>：全球华人投资者，移动优先。</li>
+<li><strong>特色</strong>：深色主题、老虎社区、模拟交易教学。</li>
+<li><strong>可借鉴</strong>：社区 UGC + 交易、新手引导内置。</li>
+</ul>
+
+<h3>3.7 Public.com — 社交化投资</h3>
+
+<ul>
+<li><strong>核心</strong>：社交 Feed 替代传统行情作为首屏。</li>
+<li><strong>设计</strong>：卡片式内容、柔和品牌蓝、教育性 UI。</li>
+<li><strong>可借鉴</strong>：社交优先 IA、教育嵌入模块、碎片投资降低门槛。</li>
+</ul>
+
+<h3>3.8 Seeking Alpha — 投研内容社区</h3>
+
+<ul>
+<li><strong>架构</strong>：Latest / Top Stocks / ETFs / Dividends / Podcast / Marketplace。</li>
+<li><strong>特色</strong>：Quant Ratings（Strong Buy → Strong Sell 五档）、阶梯式付费墙、作者生态。</li>
+<li><strong>色彩</strong>：品牌橙 <code>#ff7200</code>。</li>
+<li><strong>可借鉴</strong>：量化评级可视化、付费墙设计、分析师 Marketplace。</li>
+</ul>
+
+<h3>3.9 FinChat — AI 投研对话</h3>
+
+<ul>
+<li><strong>技术栈</strong>：Astro 框架。</li>
+<li><strong>核心</strong>：ChatGPT 式对话 UI，自然语言 → 结构化数据 + 图表。</li>
+<li><strong>商业模式</strong>：Free / Plus $29/mo / Pro $79/mo。</li>
+<li><strong>可借鉴</strong>：AI 对话式投研、自然语言查询、SaaS 定价卡片。</li>
+</ul>
+
+<p>---</p>
+
+<h2>4. AD-Research 可落地建议清单</h2>
+
+<h3>P0 — 必须实现（重构 MVP 阻塞项）</h3>
+
+<table>
+<tr><th>ID</th><th>建议</th><th>参考来源</th></tr>
+<tr><td>P0-1</td><td>浅色模式默认 + 深色模式可选；用 <code>light-dark()</code> 统一 token</td><td>Robinhood、TradingView、标准文档 §3</td></tr>
+<tr><td>P0-2</td><td>涨跌颜色四重冗余：颜色 + ▲▼ + +/− + 文字标签</td><td>TradingView 色盲模式、标准文档 §2.7</td></tr>
+<tr><td>P0-3</td><td>K 线涨跌主色采用 Okabe-Ito 蓝 <code>#0072B2</code> + 橙 <code>#E69F00</code>（色盲模式）</td><td>标准文档 §2.5、竞品报告 P0-3</td></tr>
+<tr><td>P0-4</td><td>提供三档信息密度：Compact / Comfortable / Spacious</td><td>IBKR TWS §3.3</td></tr>
+<tr><td>P0-5</td><td><code>prefers-reduced-motion</code> 适配：价格闪烁/Sparkline 在 reduce 时 0ms</td><td>WCAG 2.2、Robinhood、标准文档 §1</td></tr>
+<tr><td>P0-6</td><td>自选列表实时价格更新 + 颜色闪烁（<code>motion-safe:</code> 限定）</td><td>Webull、富途</td></tr>
+<tr><td>P0-7</td><td>多市场颜色自适应：A 股红涨绿跌 vs 美股绿涨红跌</td><td>富途牛牛 §5.2</td></tr>
+<tr><td>P0-8</td><td>键盘焦点环可见、tab 导航顺序符合视觉顺序</td><td>WCAG 2.1 / 标准文档</td></tr>
+</table>
+
+<h3>P1 — 应该实现（v1.0 质量目标）</h3>
+
+<table>
+<tr><th>ID</th><th>建议</th><th>参考来源</th></tr>
+<tr><td>P1-1</td><td>模块化 Dashboard：用户可拖拽/调整面板布局</td><td>IBKR TWS Mosaic</td></tr>
+<tr><td>P1-2</td><td>图表嵌入 Widget（复用 TradingView charting_library）</td><td>TradingView</td></tr>
+<tr><td>P1-3</td><td>移动端底部 Tab Bar 导航（自选/行情/研究/AI/设置）</td><td>Robinhood、富途</td></tr>
+<tr><td>P1-4</td><td>数据卡片大字号关键数字 + Sparkline 迷你趋势图</td><td>Robinhood、Webull</td></tr>
+<tr><td>P1-5</td><td>筛选器面板（市值/行业/指标多条件筛选）</td><td>Webull、TradingView</td></tr>
+<tr><td>P1-6</td><td>色盲模式 Toggle（一键切换 Okabe-Ito 调色板）</td><td>TradingView Color Blind</td></tr>
+<tr><td>P1-7</td><td>响应式断点：mobile-first，375 / 768 / 1024 / 1440</td><td>Robinhood Next.js</td></tr>
+<tr><td>P1-8</td><td>社区/讨论集成（UGC 投资观点与行情同屏）</td><td>Public.com、富途牛牛圈</td></tr>
+<tr><td>P1-9</td><td>暗色模式三档 toggle：Light / Dark / System</td><td>Stripe Dashboard</td></tr>
+</table>
+
+<h3>P2 — 建议实现（v1.5+ 差异化）</h3>
+
+<table>
+<tr><th>ID</th><th>建议</th><th>参考来源</th></tr>
+<tr><td>P2-1</td><td>AI 对话式投研界面（自然语言 → 结构化数据 + 图表）</td><td>FinChat</td></tr>
+<tr><td>P2-2</td><td>量化评级系统（五档可视化评分）</td><td>Seeking Alpha Quant Ratings</td></tr>
+<tr><td>P2-3</td><td>分析师/策略 Marketplace（UGC 订阅制）</td><td>Seeking Alpha Marketplace</td></tr>
+<tr><td>P2-4</td><td>教育嵌入模块（每个资产页 Why/How 解释投资逻辑）</td><td>Public.com</td></tr>
+<tr><td>P2-5</td><td>自定义字体品牌感（Inter 或自研几何无衬线）</td><td>Robinhood Capsule Sans</td></tr>
+<tr><td>P2-6</td><td>Pine Script 式自定义指标/策略脚本</td><td>TradingView</td></tr>
+<tr><td>P2-7</td><td>六端全覆盖（iOS / Android / HarmonyOS / macOS / Windows / Web）</td><td>富途牛牛</td></tr>
+</table>
+
+<p>---</p>
+
+<h2>5. 两份来源的比对与冲突分析</h2>
+
+<h3>5.1 相同点</h3>
+
+<table>
+<tr><th>主题</th><th>竞品报告</th><th>标准文档</th></tr>
+<tr><td>默认深色 vs 浅色</td><td>Robinhood 默认 dark，建议 AD-Research dark 可选</td><td>详述 dark/light 实现，案例含 Robinhood</td></tr>
+<tr><td>涨跌颜色冗余</td><td>四重冗余（颜色+箭头+符号+标签）</td><td>四重冗余 + Okabe-Ito 具体 hex</td></tr>
+<tr><td>色盲模式</td><td>TradingView Color Blind 预设</td><td>Okabe-Ito 调色板、工具链</td></tr>
+<tr><td>减少动效</td><td>Robinhood 尊重 Reduce Motion</td><td>WCAG 2.3.3 完整实现指南</td></tr>
+<tr><td>多市场颜色</td><td>富途牛牛红涨/绿涨自适应</td><td>未直接提及，但与标准不冲突</td></tr>
+</table>
+
+<h3>5.2 不同点</h3>
+
+<table>
+<tr><th>维度</th><th>竞品报告</th><th>标准文档</th></tr>
+<tr><td>侧重点</td><td>具体平台分析、信息架构、设计建议</td><td>技术实现、CSS 代码、无障碍标准</td></tr>
+<tr><td>平台覆盖</td><td>9 个竞品</td><td>主要引用 Bloomberg / Robinhood / Stripe / TradingView</td></tr>
+<tr><td>深度</td><td>平台级设计模式</td><td>代码级实现标准</td></tr>
+<tr><td>输出形式</td><td>P0/P1/P2 建议清单</td><td>推荐清单 + 代码示例</td></tr>
+</table>
+
+<h3>5.3 冲突点</h3>
+
+<strong>经比对，两份报告在核心设计决策上无冲突。</strong>
+
+<p>唯一需要补充说明的是：</p>
+
+<ul>
+<li><strong>竞品报告</strong>建议 K 线用蓝 <code>#0072B2</code> + 橙 <code>#E69F00</code> 替代红绿。</li>
+<li><strong>标准文档</strong>同样建议蓝 <code>#0072B2</code> + 橙 <code>#E69F00</code>，并强调四重冗余。</li>
+<li><strong>结论</strong>：两者完全一致，本综合报告直接采用该方案。</li>
+</ul>
+
+<strong>待用户确认的非冲突项：</strong>
+
+<ul>
+<li>1. AD-Research 是否仍保留「红涨绿跌/绿涨红跌」作为默认模式，仅把 Okabe-Ito 作为「色盲模式」toggle？</li>
+<li>2. 朱色 <code>#E11D48</code> 强调色与 Okabe-Ito 蓝橙如何搭配使用（主按钮仍用朱色，K 线用蓝橙）？</li>
+</ul>
+
+<p>---</p>
+
+<h2>6. 自我审计</h2>
+
+<h3>6.1 一手来源 URL 列表</h3>
+
+<table>
+<tr><th>#</th><th>URL</th><th>来源文档</th></tr>
+<tr><td>1</td><td>https://robinhood.com/us/en/</td><td>竞品报告</td></tr>
+<tr><td>2</td><td>https://www.webull.com</td><td>竞品报告</td></tr>
+<tr><td>3</td><td>https://www.futunn.com</td><td>竞品报告</td></tr>
+<tr><td>4</td><td>https://seekingalpha.com</td><td>竞品报告</td></tr>
+<tr><td>5</td><td>https://finchat.io</td><td>竞品报告</td></tr>
+<tr><td>6</td><td>https://www.interactivebrokers.com/en/trading/tws.php</td><td>竞品报告</td></tr>
+<tr><td>7</td><td>https://www.tradingview.com/chart/</td><td>竞品报告</td></tr>
+<tr><td>8</td><td>https://public.com</td><td>竞品报告</td></tr>
+<tr><td>9</td><td>https://www.itiger.com</td><td>竞品报告</td></tr>
+<tr><td>10</td><td>https://www.w3.org/WAI/WCAG22/Understanding/animation-from-interactions.html</td><td>标准文档</td></tr>
+<tr><td>11</td><td>https://jfly.uni-koeln.de/color/</td><td>标准文档</td></tr>
+<tr><td>12</td><td>https://developer.mozilla.org/en-US/docs/Web/CSS/color_value/light-dark</td><td>标准文档</td></tr>
+</table>
+
+<h3>6.2 低置信度结论</h3>
+
+<ul>
+<li>1. IBKR TWS 具体色彩 token：未获取到 CSS，基于行业知识推断。<strong>置信度：中</strong></li>
+<li>2. Tiger Brokers 具体 UI 布局：未能获取页面源码。<strong>置信度：中低</strong></li>
+<li>3. Public.com 当前 UI 设计：SPA 需 JS 渲染。<strong>置信度：中</strong></li>
+<li>4. FinChat 定价/功能细节：Vercel 安全拦截。<strong>置信度：中</strong></li>
+</ul>
+
+<h3>6.3 需要用户补充资料的事项</h3>
+
+<ul>
+<li>1. 富途牛牛 App 实际截图。</li>
+<li>2. Tiger Brokers App 截图。</li>
+<li>3. IBKR Client Portal 当前版本截图。</li>
+<li>4. AD-Research 当前前端技术栈确认（React/Next.js 是否准确）。</li>
+<li>5. 目标用户画像：零售投资者 / 专业分析师 / 机构交易员比例。</li>
+<li>6. 涨跌颜色默认策略：红绿默认 + 色盲模式 toggle，还是默认 Okabe-Ito？</li>
+</ul>
+
+<p>---</p>
+
+<p>*综合报告生成时间：2026-07-11 (Asia/Shanghai)*</p>
+</body>
+</html>

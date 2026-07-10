@@ -7,6 +7,7 @@ import PageHeader from '@/components/PageHeader';
 import Panel from '@/components/Panel';
 import SectionHeading from '@/components/SectionHeading';
 import FilterToolbar from '@/components/FilterToolbar';
+import './styles.css';
 import StatusTag from '@/components/StatusTag';
 
 const STATUS_OPTIONS = [

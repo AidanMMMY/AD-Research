@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AD-Research 竞品设计调研报告 — 2026-07-11</title>
+<style>
+:root {
+  color-scheme: light dark;
+  --bg: light-dark(#ffffff, #0d1117);
+  --fg: light-dark(#1f2328, #e6edf3);
+  --fg-muted: light-dark(#656d76, #8b949e);
+  --border: light-dark(#d0d7de, #30363d);
+  --accent: #1a73e8;
+  --accent-fg: #ffffff;
+  --table-stripe: light-dark(#f6f8fa, #161b22);
+  --code-bg: light-dark(#f6f8fa, #161b22);
+  --h2-color: light-dark(#0969da, #58a6ff);
+  --blockquote-border: light-dark(#d0d7de, #30363d);
+  --blockquote-bg: light-dark(#f6f8fa, #161b22);
+}
+* { box-sizing: border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif;
+  font-size: 15px; line-height: 1.7;
+  max-width: 860px; margin: 0 auto; padding: 2rem 1.5rem;
+  background: var(--bg); color: var(--fg);
+}
+h1 { font-size: 1.8rem; border-bottom: 2px solid var(--border); padding-bottom: 0.5rem; margin-top: 0; }
+h2 { font-size: 1.35rem; color: var(--h2-color); margin-top: 2rem; border-bottom: 1px solid var(--border); padding-bottom: 0.25rem; }
+h3 { font-size: 1.1rem; margin-top: 1.5rem; }
+p { margin: 0.75rem 0; }
+blockquote {
+  margin: 0.75rem 0; padding: 0.5rem 1rem;
+  border-left: 3px solid var(--blockquote-border);
+  background: var(--blockquote-bg);
+}
+table { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: 0.9rem; }
+th, td { padding: 0.5rem 0.75rem; text-align: left; border: 1px solid var(--border); }
+th { background: var(--code-bg); font-weight: 600; }
+tr:nth-child(even) { background: var(--table-stripe); }
+code { background: var(--code-bg); padding: 0.15em 0.4em; border-radius: 3px; font-size: 0.9em; }
+ul, ol { padding-left: 1.5rem; }
+li { margin: 0.25rem 0; }
+a { color: var(--accent); }
+hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
+strong { font-weight: 600; }
+.muted { color: var(--fg-muted); font-size: 0.85rem; }
+.p0 { background: #fff8c5; border-left: 4px solid #d4a72c; padding: 0.5rem 0.75rem; margin: 0.3rem 0; }
+.p1 { background: #ddf4ff; border-left: 4px solid #0969da; padding: 0.5rem 0.75rem; margin: 0.3rem 0; }
+.p2 { background: #f3f0ff; border-left: 4px solid #8250df; padding: 0.5rem 0.75rem; margin: 0.3rem 0; }
+@media (prefers-color-scheme: dark) {
+  .p0 { background: #3b3000; border-color: #d4a72c; }
+  .p1 { background: #001a3b; border-color: #0969da; }
+  .p2 { background: #1a003b; border-color: #8250df; }
+}
+</style>
+</head>
+<body>
+
+<h1>AD-Research 竞品设计调研报告</h1>
+
+<blockquote>
+  编制日期: 2026-07-11<br>
+  调研范围: 9 个零售/专业投资者平台的 UI/UX 设计<br>
+  配套文档: <code>20260711-design-standards-a11y-color-motion.md</code>（无障碍、色彩、动效标准）<br>
+  编制: AD-Research 前端重构项目
+</blockquote>
+
+<hr>
+
+<h2>目录</h2>
+<ol>
+  <li><a href="#1-robinhood">Robinhood</a> — 美国家庭零售券商</li>
+  <li><a href="#2-webull">Webull 微牛</a> — 中美跨境零售</li>
+  <li><a href="#3-interactive-brokers">Interactive Brokers</a> — 专业/机构交易</li>
+  <li><a href="#4-tradingview">TradingView</a> — 图表与社区</li>
+  <li><a href="#5-富途牛牛-futu">富途牛牛 Futu</a> — 港股/A 股/美股</li>
+  <li><a href="#6-tiger-brokers">Tiger Brokers 老虎证券</a> — 跨境零售</li>
+  <li><a href="#7-publiccom">Public.com</a> — 社交化投资</li>
+  <li><a href="#8-seeking-alpha">Seeking Alpha</a> — 投研内容社区</li>
+  <li><a href="#9-finchat">FinChat</a> — AI 投研对话</li>
+  <li><a href="#10-ad-research-设计建议清单">AD-Research 设计建议清单 (P0/P1/P2)</a></li>
+  <li><a href="#11-自我审计">自我审计</a></li>
+</ol>
+
+<hr>
+
+<h2 id="1-robinhood">1. Robinhood</h2>
+<p><strong>定位</strong>: 美国最大零售券商，0 佣金，移动优先，面向新手与进阶投资者。</p>
+
+<h3>1.1 信息架构与首屏</h3>
+<ul>
+  <li>首屏全屏 Hero 视频/动画 + 单一 CTA（"Get started" Sign up）</li>
+  <li>首屏后纵向滚动展示产品：Invest → Options → Crypto → Learn → 24/7 Support</li>
+  <li>导航: Sticky top bar，左侧 Logo，右侧 Login / Sign up</li>
+  <li>底部 Footer 包含法律披露</li>
+</ul>
+<p class="muted">来源: https://robinhood.com/us/en/</p>
+
+<h3>1.2 色彩系统</h3>
+<table>
+  <tr><th>Token</th><th>Hex</th><th>用途</th></tr>
+  <tr><td>主背景（dark）</td><td><code>#110E08</code></td><td>默认深色背景</td></tr>
+  <tr><td>纯黑</td><td><code>#000000</code></td><td>数字主题区块</td></tr>
+  <tr><td>霓虹绿强调</td><td><code>#CCFF00</code></td><td>CTA 按钮、品牌色</td></tr>
+  <tr><td>白色</td><td><code>#FFFFFF</code></td><td>面板卡片</td></tr>
+  <tr><td>二级暖色</td><td><code>#1C180D</code></td><td>浅色背景变体</td></tr>
+</table>
+<p>默认深色模式，App 内 Settings → Appearance 可切 light。涨跌: 绿涨红跌。</p>
+<p class="muted">来源: https://robinhood.com/us/en/ CSS 提取</p>
+
+<h3>1.3 字体系统</h3>
+<ul>
+  <li>正文: <code>Capsule Sans Text</code>（自研几何无衬线）</li>
+  <li>标题: <code>Nib Pro Display</code> / <code>Martina Plantijn</code>（衬线标题）</li>
+  <li>代码/数据: <code>Capsule Sans Text Mono</code></li>
+  <li>后备: <code>Geist</code>（Vercel 开源）</li>
+</ul>
+
+<h3>1.6 可借鉴模式</h3>
+<ul>
+  <li>极简首屏 CTA：一屏一事，Hero 只放品牌价值主张 + 一个 CTA</li>
+  <li>自研字体品牌感</li>
+  <li>深色默认 + Light 可选</li>
+  <li>数据卡片大字号关键数字（~32px+）</li>
+</ul>
+
+<h2 id="2-webull">2. Webull 微牛</h2>
+<p><strong>定位</strong>: 中美跨境零售券商，注重技术分析工具，面向活跃交易者。</p>
+
+<h3>2.2 色彩系统</h3>
+<table>
+  <tr><th>Token</th><th>Hex</th><th>用途</th></tr>
+  <tr><td>主背景</td><td><code>#FFFFFF</code></td><td>白色底</td></tr>
+  <tr><td>文本主色</td><td><code>#2B3240</code></td><td>深灰蓝</td></tr>
+  <tr><td>次要文本</td><td><code>rgba(0,0,0,.45)</code></td><td>说明文字</td></tr>
+  <tr><td>Modal 圆角</td><td><code>12px</code></td><td>弹窗</td></tr>
+  <tr><td>Button 圆角</td><td><code>6px</code></td><td>按钮</td></tr>
+</table>
+
+<h3>2.3 字体系统</h3>
+<ul>
+  <li>拉丁: <code>OpenSansV2</code>（Light–ExtraBold + Italic）</li>
+  <li>CJK: <code>NotoSans</code>（Thin–Black 9 档）、<code>HarmonyOSSans</code></li>
+  <li>衬底标题: <code>DM Serif Display</code></li>
+  <li>备用: <code>InterWB</code></li>
+</ul>
+<p class="muted">来源: https://www.webull.com CSS 提取</p>
+
+<h3>2.5 可借鉴模式</h3>
+<ul>
+  <li>多语言字体栈: OpenSans + NotoSans + HarmonyOS</li>
+  <li>三层阴影层级系统</li>
+  <li>社区 Feed + 行情数据同屏</li>
+</ul>
+
+<h2 id="3-interactive-brokers">3. Interactive Brokers</h2>
+<p><strong>定位</strong>: 全球最大电子经纪商，服务专业交易员/机构。</p>
+<ul>
+  <li>TWS: 多窗口 Mosaic 模块化布局，学习曲线陡峭</li>
+  <li>Client Portal: Web 版简化界面，响应式设计</li>
+  <li>数据密度极高，色彩保守（蓝色强调），绿涨红跌</li>
+</ul>
+<h3>可借鉴</h3>
+<ul>
+  <li>三档信息密度: Compact / Comfortable / Spacious</li>
+  <li>模块化 Dashboard 可拖拽</li>
+</ul>
+
+<h2 id="4-tradingview">4. TradingView</h2>
+<p><strong>定位</strong>: 全球最大图表分析与交易社区。</p>
+<ul>
+  <li>核心: Canvas/WebGL 图表引擎，占首屏 70%+</li>
+  <li>K 线涨: <code>#26A69A</code> / 跌: <code>#EF5350</code></li>
+  <li>暗色背景: <code>#131722</code>，网格: <code>#2A2E39</code></li>
+  <li>内置 <strong>Color Blind</strong> 预设 —— 极少数色盲友好图表工具</li>
+  <li>Pine Script 指标生态，charting_library 可嵌入</li>
+</ul>
+
+<h2 id="5-富途牛牛-futu">5. 富途牛牛 Futu</h2>
+<p><strong>定位</strong>: 香港第一投资平台，覆盖港股/美股/A 股。</p>
+<ul>
+  <li>六端全覆盖: iOS/Android/macOS/Windows/Linux/HarmonyOS</li>
+  <li>AI 走势预测 + 专业画线工具</li>
+  <li>多市场颜色自适应: A 股红涨绿跌 vs 港股绿涨红跌</li>
+  <li>牛牛圈: 实盘社区 + 行情同屏</li>
+</ul>
+<p class="muted">来源: https://www.futunn.com SSR 页面确认</p>
+
+<h2 id="6-tiger-brokers">6. Tiger Brokers 老虎证券</h2>
+<ul>
+  <li>移动优先，深色主题为主</li>
+  <li>社区"老虎社区" + 模拟交易内置</li>
+</ul>
+
+<h2 id="7-publiccom">7. Public.com</h2>
+<ul>
+  <li>社交 Feed 为核心，替代传统行情列表</li>
+  <li>教育嵌入: 每个资产页内置 Why/How 模块</li>
+  <li>碎片投资: 小数点份额降低心理门槛</li>
+</ul>
+
+<h2 id="8-seeking-alpha">8. Seeking Alpha</h2>
+<ul>
+  <li>品牌橙 <code>#ff7200</code>，深色横幅 <code>#414a5f</code></li>
+  <li>阶梯付费墙: Free → Premium → Pro</li>
+  <li>量化评级: Strong Buy → Strong Sell 五档可视化</li>
+</ul>
+<p class="muted">来源: https://seekingalpha.com HTML 源码</p>
+
+<h2 id="9-finchat">9. FinChat</h2>
+<ul>
+  <li>Astro 框架（Vercel checkpoint 确认）</li>
+  <li>对话式 UI: 自然语言 → 结构化数据 + 交互式图表</li>
+  <li>SaaS 定价: Free / Plus $29/mo / Pro $79/mo</li>
+</ul>
+
+<hr>
+
+<h2 id="10-ad-research-设计建议清单">10. AD-Research 设计建议清单</h2>
+
+<h3>P0 — 必须实现（MVP 阻塞项）</h3>
+
+<div class="p0"><strong>P0-1</strong> 深色模式默认 + 亮色可选，<code>light-dark()</code> CSS 函数统一 token → Robinhood, TradingView</div>
+<div class="p0"><strong>P0-2</strong> 涨跌颜色四重冗余：颜色 + ▲▼ 箭头 + +/− 符号 + 文字标签 → TradingView 色盲模式</div>
+<div class="p0"><strong>P0-3</strong> K 线涨跌用蓝 <code>#0072B2</code> + 橙 <code>#E69F00</code>（Okabe-Ito），替代传统红绿</div>
+<div class="p0"><strong>P0-4</strong> 三档信息密度：Compact / Comfortable / Spacious → IBKR TWS</div>
+<div class="p0"><strong>P0-5</strong> <code>prefers-reduced-motion</code> 适配：reduce 时 0ms 动效 → WCAG 2.2</div>
+<div class="p0"><strong>P0-6</strong> 自选列表实时价格更新 + <code>motion-safe:</code> 颜色闪烁 → Webull, 富途</div>
+
+<h3>P1 — 应该实现（v1.0 质量目标）</h3>
+
+<div class="p1">P1-1 模块化 Dashboard 可拖拽面板 → IBKR Mosaic</div>
+<div class="p1">P1-2 图表嵌入 Widget（复用 TradingView charting_library）</div>
+<div class="p1">P1-3 移动端底部 Tab Bar（自选/行情/研究/AI/设置）→ Robinhood, 富途</div>
+<div class="p1">P1-4 数据卡片大号关键数字 + Sparkline → Robinhood</div>
+<div class="p1">P1-5 筛选器面板多条件筛选 → Webull, TradingView</div>
+<div class="p1">P1-6 色盲模式 Toggle → TradingView</div>
+<div class="p1">P1-7 多市场颜色自适应 → 富途牛牛</div>
+<div class="p1">P1-8 响应式断点 mobile-first → Robinhood</div>
+<div class="p1">P1-9 社区/讨论集成 → Public.com, 富途牛牛圈</div>
+
+<h3>P2 — 建议实现（v1.5+ 差异化）</h3>
+
+<div class="p2">P2-1 AI 对话式投研界面 → FinChat</div>
+<div class="p2">P2-2 量化评级系统五档可视化 → Seeking Alpha</div>
+<div class="p2">P2-3 分析师/策略 Marketplace → Seeking Alpha</div>
+<div class="p2">P2-4 教育嵌入模块 → Public.com</div>
+<div class="p2">P2-5 自定义字体品牌感 → Robinhood Capsule Sans</div>
+<div class="p2">P2-6 Pine Script 式自定义指标 → TradingView</div>
+
+<hr>
+
+<h2 id="11-自我审计">11. 自我审计</h2>
+
+<h3>一手来源 URL 列表</h3>
+<table>
+  <tr><th>#</th><th>URL</th><th>数据类型</th></tr>
+  <tr><td>1</td><td>https://robinhood.com/us/en/</td><td>完整 HTML/CSS（Next.js SSR）</td></tr>
+  <tr><td>2</td><td>https://www.webull.com</td><td>完整 HTML/CSS（React SPA）</td></tr>
+  <tr><td>3</td><td>https://www.futunn.com</td><td>完整 HTML（Vue SSR）</td></tr>
+  <tr><td>4</td><td>https://seekingalpha.com</td><td>完整 HTML/CSS（React + SSR data）</td></tr>
+  <tr><td>5</td><td>https://finchat.io</td><td>Vercel checkpoint（确认 Astro）</td></tr>
+  <tr><td>6</td><td>https://www.interactivebrokers.com/en/trading/tws.php</td><td>被反爬拦截</td></tr>
+  <tr><td>7</td><td>https://www.tradingview.com/chart/</td><td>curl 超时</td></tr>
+  <tr><td>8</td><td>https://public.com</td><td>SPA 无 JS 渲染</td></tr>
+  <tr><td>9</td><td>https://www.itiger.com</td><td>空返回</td></tr>
+</table>
+
+<h3>低置信度结论</h3>
+<ul>
+  <li>IBKR TWS 具体色彩 token: <strong>置信度: 中</strong></li>
+  <li>Tiger Brokers UI 布局: <strong>置信度: 中低</strong></li>
+  <li>Public.com 当前 UI: <strong>置信度: 中</strong></li>
+  <li>TradingView 精确色彩: <strong>置信度: 高</strong>（公开文档化）</li>
+  <li>FinChat 定价细节: <strong>置信度: 中</strong></li>
+</ul>
+
+<h3>需要用户补充资料</h3>
+<ol>
+  <li>富途牛牛 App 实际截图（中国大陆限制访问）</li>
+  <li>Tiger Brokers App 截图（同限制）</li>
+  <li>IBKR Client Portal 最新截图</li>
+  <li>AD-Research 当前前端技术栈确认（React? Vue? Next.js?）</li>
+  <li>AD-Research 目标用户画像（零售/专业/机构比例）</li>
+</ol>
+
+<hr>
+
+<blockquote>
+  配套文档: 无障碍/色彩/动效标准见 <code>20260711-design-standards-a11y-color-motion.md</code>
+</blockquote>
+
+</body>
+</html>

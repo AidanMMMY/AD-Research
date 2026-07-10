@@ -1,3 +1,4 @@
+import './styles.css';
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Table, Select, Row, Col } from 'antd';

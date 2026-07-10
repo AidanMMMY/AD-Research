@@ -1,0 +1,60 @@
+/* ============================================================
+   News — page-specific style overrides
+   Inherits CSS variables from theme.css.
+   Core component classes (PageShell, PageHeader, FilterToolbar,
+   Panel, EmptyState, etc.) are defined in global.css and
+   shared across the app.
+   ============================================================ */
+
+/* ── Market segmented control ── */
+.news-market-segmented {
+  /* Ant Design Segmented for market filter (cn_a / us / crypto / global). */
+}
+
+/* ── Political / macro event category chips ── */
+.news-political-chips {
+  /* Horizontal strip of Tag.CheckableTag chips for event categories. */
+}
+
+.news-political-chips__label {
+  /* "事件类型:" label next to the chip strip. */
+}
+
+.news-political-chip {
+  /* Individual chip for a political / macro category. */
+}
+
+.news-political-chip--active {
+  /* Active (selected) chip state. */
+}
+
+.news-political-chip--clear {
+  /* "清除" chip to reset the category filter. */
+}
+
+.news-political-chip--geopolitics {
+  /* Per-category colour overrides applied via className. */
+}
+
+.news-political-chip--central_bank {
+  /* Central bank category chip. */
+}
+
+.news-political-chip--election {
+  /* Election category chip. */
+}
+
+.news-political-chip--trade_war {
+  /* Trade war category chip. */
+}
+
+.news-political-chip--sanction {
+  /* Sanction category chip. */
+}
+
+/* ── Hot symbol sidebar ── */
+/* Uses shared ad-mover-row class from global.css. */
+
+/* ── Importance stars are rendered inline (dynamic colour). ── */
+
+/* ── Sentiment labels are rendered inline (dynamic colour). ── */

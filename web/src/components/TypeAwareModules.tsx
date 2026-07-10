@@ -17,6 +17,7 @@ import {
 import Panel from '@/components/Panel';
 import EmptyState from '@/components/EmptyState';
 import { formatRelative } from '@/utils/datetime';
+import './TypeAwareModules.css';
 import type { ETFHoldingSnapshot } from '@/types/instrument';
 import type { InstrumentInfo } from '@/types/instrument';
 
@@ -79,24 +80,12 @@ function HoldingsSnapshotPicker({
         list.push({
           value: date,
           label: (
-            <span
-              style={{ display: 'inline-flex', gap: 8, alignItems: 'center' }}
-            >
+            <span className="type-aware-option">
               <span className="tabular-nums">{date}</span>
-              <span
-                style={{
-                  color: 'var(--text-tertiary, var(--text-secondary))',
-                  fontSize: 12,
-                }}
-              >
+              <span className="ad-text-small ad-text-tertiary">
                 {relative || '刚刚'}
               </span>
-              <span
-                style={{
-                  color: 'var(--text-tertiary, var(--text-secondary))',
-                  fontSize: 12,
-                }}
-              >
+              <span className="ad-text-small ad-text-tertiary">
                 · {s.holding_count}只
               </span>
             </span>
@@ -116,7 +105,7 @@ function HoldingsSnapshotPicker({
   return (
     <Select
       size="small"
-      style={{ minWidth: 220 }}
+      className="type-aware-picker"
       value={value ?? '__latest__'}
       loading={snapshotsLoading}
       disabled={snapshotsLoading && !snapshots}
@@ -226,23 +215,13 @@ function EtfHoldingsModule({ instrument }: { instrument: InstrumentInfo }) {
             ]}
           />
           {holdingsData.holdings_as_of_date && (
-            <div
-              style={{
-                marginTop: 12,
-                color: 'var(--text-secondary)',
-                fontSize: 12,
-                display: 'flex',
-                alignItems: 'center',
-                gap: 8,
-                flexWrap: 'wrap',
-              }}
-            >
+            <div className="type-aware-footer">
               <span>报告期：{holdingsData.holdings_as_of_date}</span>
               {selectedSnapshotDate && holdingsData.holdings_as_of_date !== selectedSnapshotDate && (
                 <Tag color="processing">非默认快照</Tag>
               )}
               {holdingsData.holdings_as_of_date && (
-                <span style={{ color: 'var(--text-tertiary, var(--text-secondary))' }}>
+                <span className="type-aware-footer-sub">
                   ({formatRelative(`${holdingsData.holdings_as_of_date}T00:00:00`) || '刚刚'})
                 </span>
               )}
@@ -380,8 +359,7 @@ function StockFundamentalsModule({ instrument }: { instrument: InstrumentInfo })
             type="info"
             message="数据来源：Tushare Pro"
             description={`估值日期：${stockFund?.trade_date || '未知'}。`}
-            className="valuation-alert"
-            style={{ marginTop: 12 }}
+            className="valuation-alert ad-mt-3"
           />
         </div>
       )}
@@ -473,12 +451,7 @@ function CryptoMarketDataModule({ instrument }: { instrument: InstrumentInfo }) 
       padding="md"
       extra={
         cryptoDetail.last_updated ? (
-          <span
-            style={{
-              color: 'var(--text-tertiary)',
-              fontSize: 12,
-            }}
-          >
+          <span className="ad-text-small ad-text-tertiary">
             数据更新于 {cryptoDetail.last_updated}
           </span>
         ) : null
@@ -507,7 +480,7 @@ function CryptoMarketDataModule({ instrument }: { instrument: InstrumentInfo }) 
         type="info"
         message="数据来源：交易所公开行情"
         description="流通市值 / 总市值 / 流通供应量等字段待公共行情聚合层接入后展示。"
-        style={{ marginTop: 12 }}
+        className="ad-mt-3"
       />
     </Panel>
   );

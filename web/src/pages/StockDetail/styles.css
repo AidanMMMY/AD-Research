@@ -1,0 +1,18 @@
+/* ==========================================================================
+   StockDetail — page-level styles
+   ==========================================================================
+   Most shared detail styles live in src/styles/global.css (detail-hero,
+   detail-toolbar, detail-indicator-grid, valuation-grid, ai-note-*,
+   sentiment-*, etc.).  This file contains only StockDetail-specific
+   overrides and organizational notes.
+
+   Dynamic inline styles preserved in the TSX:
+   - Hero KPI value color: computed via getReturnColor()
+   - Sentiment score color:  computed via SENTIMENT_COLORS[label]
+   - Sentiment bar width/background: computed from avg_score
+   ========================================================================== */
+
+/* ---- Valuation alert spacing ---- */
+.stock-detail__valuation {
+  position: relative;
+}

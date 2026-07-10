@@ -1,0 +1,9 @@
+/* ==========================================================================
+   CryptoDetail — page-level styles
+   ==========================================================================
+   All shared detail styles live in src/styles/global.css (detail-hero,
+   detail-toolbar, detail-indicator-grid, ai-note-*, etc.).  This page
+   has zero inline styles — every visual rule uses CSS classes.
+
+   If future iterations add page-specific overrides they belong here.
+   ========================================================================== */

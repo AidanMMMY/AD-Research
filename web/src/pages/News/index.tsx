@@ -1,3 +1,4 @@
+import './styles.css';
 import { SENTIMENT_COLORS, SENTIMENT_LABELS } from '@/utils/sentiment';
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';

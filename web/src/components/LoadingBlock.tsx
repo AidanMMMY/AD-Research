@@ -1,5 +1,6 @@
 import { Spin } from 'antd';
 import type { CSSProperties } from 'react';
+import './LoadingBlock.css';
 
 export type LoadingBlockSize = 'sm' | 'md' | 'lg';
 
@@ -21,17 +22,7 @@ export default function LoadingBlock({
   style,
 }: LoadingBlockProps) {
   return (
-    <div
-      style={{
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 12,
-        padding: 'var(--space-9) 0',
-        ...style,
-      }}
-    >
+    <div className="loading-block" style={style}>
       <Spin size={sizeMap[size]} />
       {label && <span className="ad-text-small ad-text-tertiary">{label}</span>}
     </div>

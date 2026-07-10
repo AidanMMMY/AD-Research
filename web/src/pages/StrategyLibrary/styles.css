@@ -1,0 +1,16 @@
+/* ============================================================
+   StrategyLibrary Page Styles
+   Co-located CSS for the Strategy Library catalog page.
+   ============================================================ */
+
+/* ---- Error Hint ---- */
+.phase5c-error-hint {
+  color: var(--color-fall);
+  font-size: var(--text-small-size);
+  margin-top: var(--space-1);
+}
+
+/* ---- Tabs Spacing ---- */
+.phase5c-tabs--padded {
+  margin-bottom: var(--space-6);
+}
