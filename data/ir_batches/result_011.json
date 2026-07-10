@@ -72,9 +72,9 @@
   {
     "code": "300457",
     "name": "赢合科技",
-    "ir_url": null,
-    "method": "exchange_only",
-    "notes": "仅通过交易所/巨潮资讯网(cninfo.com.cn)披露，未找到独立IR页面或官网"
+    "ir_url": "https://www.yhwins.com",
+    "method": "web_search_inferred",
+    "notes": "IR邮箱: yinghekeji@yhwins.com"
   },
   {
     "code": "300462",
@@ -86,9 +86,9 @@
   {
     "code": "300463",
     "name": "迈克生物",
-    "ir_url": null,
-    "method": "exchange_only",
-    "notes": "仅通过交易所/巨潮资讯网(cninfo.com.cn)披露，未找到独立IR页面或官网"
+    "ir_url": "https://www.maccura.com",
+    "method": "web_search_inferred",
+    "notes": "IR邮箱: zqb@maccura.com, 地址已变更为双流区"
   },
   {
     "code": "300464",
@@ -611,9 +611,9 @@
   {
     "code": "300598",
     "name": "诚迈科技",
-    "ir_url": null,
-    "method": "exchange_only",
-    "notes": "仅通过交易所/巨潮资讯网(cninfo.com.cn)披露，未找到独立IR页面或官网"
+    "ir_url": "https://www.archermind.com",
+    "method": "web_search_inferred",
+    "notes": "IR邮箱: chengmai@archermind.com"
   },
   {
     "code": "300599",
@@ -667,9 +667,9 @@
   {
     "code": "300607",
     "name": "拓斯达",
-    "ir_url": null,
-    "method": "exchange_only",
-    "notes": "仅通过交易所/巨潮资讯网(cninfo.com.cn)披露，未找到独立IR页面或官网"
+    "ir_url": "https://www.topstarltd.com/lang-cn/investorlist/005001.html",
+    "method": "official_ir",
+    "notes": "IR邮箱: topstar@topstarltd.com"
   },
   {
     "code": "300608",
@@ -702,9 +702,9 @@
   {
     "code": "300613",
     "name": "富瀚微",
-    "ir_url": null,
-    "method": "exchange_only",
-    "notes": "仅通过交易所/巨潮资讯网(cninfo.com.cn)披露，未找到独立IR页面或官网"
+    "ir_url": "https://www.fullhan.com",
+    "method": "web_search_inferred",
+    "notes": "IR邮箱: stock@fullhan.com, 官网有投资者服务栏目"
   },
   {
     "code": "300614",
@@ -765,9 +765,9 @@
   {
     "code": "300627",
     "name": "华测导航",
-    "ir_url": null,
-    "method": "exchange_only",
-    "notes": "仅通过交易所/巨潮资讯网(cninfo.com.cn)披露，未找到独立IR页面或官网"
+    "ir_url": "https://www.huace.cn",
+    "method": "web_search_inferred",
+    "notes": "IR邮箱: huace@huace.cn"
   },
   {
     "code": "688119",

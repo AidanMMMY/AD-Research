@@ -121,9 +121,9 @@
   {
     "code": "603004",
     "name": "鼎龙科技",
-    "ir_url": "http://www.dragon-chem.com/investor.html",
-    "method": "official_ir",
-    "notes": ""
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "仅通过交易所/巨潮资讯网(cninfo.com.cn)披露，未找到独立IR页面或官网"
   },
   {
     "code": "000063",
@@ -142,9 +142,9 @@
   {
     "code": "002516",
     "name": "旷达科技",
-    "ir_url": null,
-    "method": "exchange_only",
-    "notes": "仅通过交易所/巨潮资讯网(cninfo.com.cn)披露，未找到独立IR页面或官网"
+    "ir_url": "http://www.kuangdacn.com/index.php?m=home&c=Lists&a=index&tid=72",
+    "method": "official_ir",
+    "notes": ""
   },
   {
     "code": "002517",
@@ -352,9 +352,9 @@
   {
     "code": "003021",
     "name": "兆威机电",
-    "ir_url": null,
-    "method": "exchange_only",
-    "notes": "仅通过交易所/巨潮资讯网(cninfo.com.cn)披露，未找到独立IR页面或官网"
+    "ir_url": "https://www.szzhaowei.net/tzzgx/",
+    "method": "official_ir",
+    "notes": "IR邮箱: zqb@szzhaowei.net"
   },
   {
     "code": "003023",
@@ -597,9 +597,9 @@
   {
     "code": "002550",
     "name": "千红制药",
-    "ir_url": null,
-    "method": "exchange_only",
-    "notes": "仅通过交易所/巨潮资讯网(cninfo.com.cn)披露，未找到独立IR页面或官网"
+    "ir_url": "https://www.qhsh.com.cn",
+    "method": "web_search_inferred",
+    "notes": "IR邮箱: stock@qhsh.com.cn"
   },
   {
     "code": "002551",
@@ -667,9 +667,9 @@
   {
     "code": "000623",
     "name": "吉林敖东",
-    "ir_url": null,
-    "method": "exchange_only",
-    "notes": "仅通过交易所/巨潮资讯网(cninfo.com.cn)披露，未找到独立IR页面或官网"
+    "ir_url": "https://www.jlaod.com",
+    "method": "web_search_inferred",
+    "notes": "IR邮箱: 000623@jlaod.com"
   },
   {
     "code": "000635",
@@ -1374,16 +1374,16 @@
   {
     "code": "000937",
     "name": "冀中能源",
-    "ir_url": "https://www.jznyjt.com",
+    "ir_url": "https://www.jznygf.com",
     "method": "web_search_inferred",
-    "notes": "冀中能源集团官网, IR信息通过巨潮资讯网披露"
+    "notes": "IR邮箱: 000937@jzny.com.cn"
   },
   {
     "code": "000978",
     "name": "桂林旅游",
-    "ir_url": null,
-    "method": "exchange_only",
-    "notes": "仅通过交易所/巨潮资讯网(cninfo.com.cn)披露，未找到独立IR页面或官网"
+    "ir_url": "https://www.guilintravel.com",
+    "method": "web_search_inferred",
+    "notes": "IR邮箱: gtcl000978@163.com, 官网有投资者关系栏目"
   },
   {
     "code": "000983",

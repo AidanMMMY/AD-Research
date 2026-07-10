@@ -163,16 +163,16 @@
   {
     "code": "002676",
     "name": "顺威股份",
-    "ir_url": null,
-    "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "ir_url": "http://en.sunwill.com.cn/basicinfo/p-6",
+    "method": "official_ir",
+    "notes": ""
   },
   {
     "code": "002677",
     "name": "浙江美大",
-    "ir_url": null,
-    "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "ir_url": "https://www.meida.com/tzzgx/dingqibaogao/",
+    "method": "official_ir",
+    "notes": ""
   },
   {
     "code": "002678",

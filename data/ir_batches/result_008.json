@@ -221,21 +221,21 @@
     "name": "永冠新材",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "未找到公司IR官网"
   },
   {
     "code": "688351",
     "name": "微电生理",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "未找到公司IR官网"
   },
   {
     "code": "688352",
     "name": "颀中科技",
-    "ir_url": null,
-    "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "ir_url": "https://www.chipmore.com.cn/investor_gg.html",
+    "method": "official_ir",
+    "notes": ""
   },
   {
     "code": "688356",
