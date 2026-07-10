@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { message } from 'antd';
 import { AxiosError } from 'axios';
@@ -6,17 +6,32 @@ import { UserOutlined, LockOutlined, StockOutlined } from '@ant-design/icons';
 import { useAuthStore } from '@/stores/auth';
 import AuroraBackground from '@/components/AuroraBackground';
 
+const DATA_SOURCES = [
+  { name: 'tushare', label: 'Tushare' },
+  { name: 'fred', label: 'FRED' },
+  { name: 'xueqiu', label: '雪球' },
+];
+
 export default function Login() {
   const navigate = useNavigate();
   const { login, isAuthenticated } = useAuthStore();
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({ username: '', password: '' });
+  const [sourceIndex, setSourceIndex] = useState(0);
 
   const token = localStorage.getItem('token');
   if (isAuthenticated && token) {
     navigate('/dashboard', { replace: true });
     return null;
   }
+
+  // Cycle through data source status indicators every 3 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setSourceIndex((prev) => (prev + 1) % DATA_SOURCES.length);
+    }, 3000);
+    return () => clearInterval(interval);
+  }, []);
 
   const handleSubmit = async () => {
     if (!form.username || !form.password) {
@@ -31,8 +46,8 @@ export default function Login() {
     } catch (err) {
       // Distinguish 401 (bad credentials) from 5xx (server fault).
       // Collapsing both into "用户名密码不正确" hid real bugs in the past
-      // (e.g. 2026-07-01 UserResponse missing 'id' → 500 → user thought
-      // password was wrong). See runbook 20260701 § 4-B.
+      // (e.g. 2026-07-01 UserResponse missing 'id' -> 500 -> user thought
+      // password was wrong). See runbook 20260701 section 4-B.
       const status = (err as AxiosError)?.response?.status;
       if (status === 401) {
         message.error('用户名或密码错误');
@@ -52,29 +67,44 @@ export default function Login() {
     <div className="login-page login-page--sci-fi">
       <AuroraBackground />
 
-      <div className="login-card">
-        <div className="login-card__corners" aria-hidden="true">
-          <span className="login-card__corner login-card__corner--tl" />
-          <span className="login-card__corner login-card__corner--tr" />
-          <span className="login-card__corner login-card__corner--bl" />
-          <span className="login-card__corner login-card__corner--br" />
+      {/* ---- Brand Panel ---- */}
+      <div className="login-glass login-brand-panel">
+        <div className="login-brand-header">
+          <div className="login-brand-logo">
+            <div className="login-brand-icon-box">
+              <StockOutlined />
+            </div>
+            <span className="login-brand-name">AD-Research</span>
+          </div>
+          <p className="login-brand-tagline">
+            让每一次投资决策，都有数据可依
+          </p>
+
+          {/* Cycling data source status */}
+          <div className="login-source-status">
+            <span className="login-source-dot" />
+            <span className="login-source-label">数据源状态：</span>
+            <span className="login-source-name">
+              {DATA_SOURCES[sourceIndex].label}
+            </span>
+            <span className="login-source-check">{'✅'}</span>
+          </div>
         </div>
 
-        <div className="login-logo-wrap">
-          <div className="login-logo">
-            <StockOutlined className="login-logo-icon" />
-          </div>
-          <h1 className="login-brand">
-            AD-Research
-          </h1>
-          <p className="login-subtitle">
-            全市场数据分析与投研工具
-          </p>
+        <div className="login-brand-footer">
+          专业投资研究平台 &middot; 2026
+        </div>
+      </div>
+
+      {/* ---- Form Panel ---- */}
+      <div className="login-glass login-form-panel">
+        <div className="login-form-header">
+          <h2 className="login-form-title">登录</h2>
+          <p className="login-form-subtitle">欢迎回来</p>
         </div>
 
         <div className="login-form">
-          <div className="login-input-wrapper"
-          >
+          <div className="login-input-wrapper">
             <UserOutlined className="login-input-icon" />
             <input
               type="text"
@@ -106,8 +136,7 @@ export default function Login() {
             />
           </div>
 
-          <div className="login-input-wrapper"
-          >
+          <div className="login-input-wrapper">
             <LockOutlined className="login-input-icon" />
             <input
               type="password"
@@ -142,19 +171,14 @@ export default function Login() {
           <button
             onClick={handleSubmit}
             disabled={loading}
-            className="login-submit"
+            className={`login-submit${loading ? ' login-submit--loading' : ''}`}
           >
             {loading ? '登录中...' : '登 录'}
           </button>
+        </div>
 
-          <div className="login-footer-links">
-            <a onClick={() => message.info('请发送邮件至 admin@example.com 联系开通')}>
-              没有账号？联系管理员开通
-            </a>
-            <a onClick={() => message.info('请联系管理员重置密码')}>
-              忘记密码？
-            </a>
-          </div>
+        <div className="login-form-hint">
+          按 Enter 登录 &middot; 忘记密码请联系管理员
         </div>
       </div>
 

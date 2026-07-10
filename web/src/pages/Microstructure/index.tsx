@@ -13,6 +13,7 @@ import EmptyState from '@/components/EmptyState';
 import ResponsiveGrid from '@/components/ResponsiveGrid';
 import LastUpdated from '@/components/LastUpdated';
 import ThemeTag from '@/components/ThemeTag';
+import { NULL_PLACEHOLDER } from '@/utils/format';
 import {
   useMicrostructureLhb,
   useMicrostructureHsgt,
@@ -29,14 +30,14 @@ import type {
 } from '@/api/microstructure';
 
 function formatMoney(v: number | null | undefined, digits = 2): string {
-  if (v === null || v === undefined) return '-';
+  if (v === null || v === undefined) return NULL_PLACEHOLDER;
   if (Math.abs(v) >= 1e8) return `${(v / 1e8).toFixed(digits)} 亿`;
   if (Math.abs(v) >= 1e4) return `${(v / 1e4).toFixed(digits)} 万`;
   return v.toFixed(digits);
 }
 
 function formatPct(v: number | null | undefined): string {
-  if (v === null || v === undefined) return '-';
+  if (v === null || v === undefined) return NULL_PLACEHOLDER;
   return `${v.toFixed(2)}%`;
 }
 
@@ -124,7 +125,7 @@ export default function MicrostructurePage() {
     { title: '代码', dataIndex: 'ts_code', key: 'ts_code', width: 110, render: (v: string) => <ThemeTag variant="accent">{v}</ThemeTag> },
     { title: '名称', dataIndex: 'name', key: 'name', width: 100 },
     { title: '类型', dataIndex: 'restricted_type', key: 'restricted_type' },
-    { title: '解禁数量', dataIndex: 'restricted_number', key: 'restricted_number', render: (v: number | null) => v?.toLocaleString() ?? '-' },
+    { title: '解禁数量', dataIndex: 'restricted_number', key: 'restricted_number', render: (v: number | null) => v?.toLocaleString() ?? NULL_PLACEHOLDER },
     { title: '解禁市值', dataIndex: 'restricted_amount', key: 'restricted_amount', render: (v: number | null) => formatMoney(v) },
     { title: '占比 %', dataIndex: 'lift_ratio', key: 'lift_ratio', render: formatPct },
   ];

@@ -19,6 +19,7 @@ import type { EChartsOption } from 'echarts';
 import { buildBacktestDetailContext } from '@/utils/helpContext';
 import { getQuickQuestions } from '@/utils/helpPrompts';
 import { formatDateTime } from '@/utils/datetime';
+import { NULL_PLACEHOLDER } from '@/utils/format';
 import type { AttributionEffect, BacktestMetrics, BacktestNAV, BacktestTrade } from '@/types/backtest';
 
 export default function BacktestDetail() {
@@ -145,26 +146,26 @@ export default function BacktestDetail() {
   ];
 
   const attributionColumns = [
-    { title: '板块/资产', dataIndex: 'sector', render: (v?: string) => v || '-' },
+    { title: '板块/资产', dataIndex: 'sector', render: (v?: string) => v || NULL_PLACEHOLDER },
     {
       title: '配置效应',
       dataIndex: 'allocation',
-      render: (v?: number) => (v != null ? <span className="tabular-nums">{`${v >= 0 ? '+' : ''}${v.toFixed(2)}%`}</span> : '-'),
+      render: (v?: number) => (v != null ? <span className="tabular-nums">{`${v >= 0 ? '+' : ''}${v.toFixed(2)}%`}</span> : NULL_PLACEHOLDER),
     },
     {
       title: '选股效应',
       dataIndex: 'selection',
-      render: (v?: number) => (v != null ? <span className="tabular-nums">{`${v >= 0 ? '+' : ''}${v.toFixed(2)}%`}</span> : '-'),
+      render: (v?: number) => (v != null ? <span className="tabular-nums">{`${v >= 0 ? '+' : ''}${v.toFixed(2)}%`}</span> : NULL_PLACEHOLDER),
     },
     {
       title: '交互效应',
       dataIndex: 'interaction',
-      render: (v?: number) => (v != null ? <span className="tabular-nums">{`${v >= 0 ? '+' : ''}${v.toFixed(2)}%`}</span> : '-'),
+      render: (v?: number) => (v != null ? <span className="tabular-nums">{`${v >= 0 ? '+' : ''}${v.toFixed(2)}%`}</span> : NULL_PLACEHOLDER),
     },
     {
       title: '合计',
       dataIndex: 'total',
-      render: (v?: number) => (v != null ? <span className="tabular-nums">{`${v >= 0 ? '+' : ''}${v.toFixed(2)}%`}</span> : '-'),
+      render: (v?: number) => (v != null ? <span className="tabular-nums">{`${v >= 0 ? '+' : ''}${v.toFixed(2)}%`}</span> : NULL_PLACEHOLDER),
     },
   ];
 

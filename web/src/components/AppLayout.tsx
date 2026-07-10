@@ -518,7 +518,17 @@ export default function AppLayout() {
     }
   }, [user?.id, learningMode]);
 
-  // Build a 1- or 2-segment breadcrumb from the route config + current URL.
+  // ── Breadcrumb: match menu routes, then fall back to a static map
+  //     for dynamic path segments (e.g. /instruments/510300 → 标的详情).
+  const DYNAMIC_SEGMENTS: Record<string, string> = {
+    instruments: '标的详情',
+    stocks: '个股详情',
+    crypto: '数字币详情',
+    pools: '组合详情',
+    etfs: 'ETF持仓',
+    backtests: '回测详情',
+  };
+
   const breadcrumb = useMemo(() => {
     const path = location.pathname;
     if (path === '/' || path === '/dashboard') return null;
@@ -537,11 +547,18 @@ export default function AppLayout() {
     if (!matchedRoute || !matchedRoute.menu) return null;
 
     const tail = path.slice(matchedPath.length).replace(/^\/+/, '');
+
+    // When the URL has a trailing dynamic segment (e.g. /instruments/510300),
+    // use DYNAMIC_SEGMENTS to show a friendlier label like "标的详情" instead
+    // of the list route's name.
+    const lastSegment = matchedPath.split('/').filter(Boolean).pop() || '';
+    const dynamicLabel = tail ? DYNAMIC_SEGMENTS[lastSegment] : undefined;
+
     const items: { label: string; path?: string }[] = [
       { label: '首页', path: '/dashboard' },
     ];
     if (matchedPath !== '/dashboard') {
-      items.push({ label: matchedRoute.menu.name, path: matchedPath });
+      items.push({ label: dynamicLabel || matchedRoute.menu.name, path: matchedPath });
     }
     if (tail) {
       items.push({ label: tail });
@@ -771,6 +788,18 @@ export default function AppLayout() {
                         </div>
                       </div>
                     ),
+                  },
+                  {
+                    key: 'notifications',
+                    icon: <NotificationOutlined />,
+                    label: '推送配置',
+                    onClick: () => navigate('/notifications'),
+                  },
+                  {
+                    key: 'notification-logs',
+                    icon: <FileTextOutlined />,
+                    label: '通知日志',
+                    onClick: () => navigate('/notification-logs'),
                   },
                   {
                     key: 'reopen-onboarding',

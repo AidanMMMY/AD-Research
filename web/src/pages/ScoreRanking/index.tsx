@@ -4,33 +4,23 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Table, Tabs } from 'antd';
 import { useScores, useScoreTemplates } from '@/hooks/useScores';
-import { useSparkline } from '@/hooks/useSparkline';
 import { useAIHelp } from '@/hooks/useAIHelp';
 import { useSettingsStore } from '@/stores/settings';
+import SparklineCell from '@/components/SparklineCell';
 import PageShell from '@/components/PageShell';
 import ResponsiveGrid from '@/components/ResponsiveGrid';
 import Panel from '@/components/Panel';
 import SectionHeading from '@/components/SectionHeading';
+import EmptyState from '@/components/EmptyState';
 import HelpTrigger from '@/components/HelpTrigger';
 import HelpPopover from '@/components/HelpPopover';
 import InstrumentCodeTag from '@/components/InstrumentCodeTag';
 import ScoreBar from '@/components/ScoreBar';
-import Sparkline from '@/components/Sparkline';
 import TemplateManagement from '@/components/TemplateManagement';
 import PageHeader from '@/components/PageHeader';
 import LastUpdated from '@/components/LastUpdated';
 import { buildScoreRankingContext } from '@/utils/helpContext';
 import { getQuickQuestions } from '@/utils/helpPrompts';
-
-/** Row-level sparkline cell for scoring table.
- *  Uses the same backend sparkline endpoint as ETFList. */
-function SparklineCell({ code }: { code: string }) {
-  const { data } = useSparkline({ code, days: 7 });
-  if (!data || !data.points || data.points.length === 0) {
-    return <span className="mobile-list-item__meta">-</span>;
-  }
-  return <Sparkline data={data.points} width={80} height={20} />;
-}
 
 type TopTab = 'ranking' | 'templates';
 
@@ -56,7 +46,6 @@ export default function ScoreRanking() {
     });
   };
 
-  const rowSize = 'large';
   const tableWrapClass = 'ad-table-scroll ad-table-sticky';
 
   const columns = [
@@ -64,6 +53,7 @@ export default function ScoreRanking() {
       title: <HelpPopover termKey="rank_overall" mode={mode}>全市场排名</HelpPopover>,
       dataIndex: 'rank_overall',
       width: 90,
+      sorter: (a: any, b: any) => (a.rank_overall ?? Infinity) - (b.rank_overall ?? Infinity),
       render: (v: number) => (
         <span className={`tabular-nums score-rank-cell ${v <= 3 ? 'score-rank-cell--top3' : 'score-rank-cell--normal'}`}>
           {v}
@@ -74,6 +64,7 @@ export default function ScoreRanking() {
       title: <HelpPopover termKey="rank_category" mode={mode}>分类排名</HelpPopover>,
       dataIndex: 'rank_category',
       width: 90,
+      sorter: (a: any, b: any) => (a.rank_category ?? Infinity) - (b.rank_category ?? Infinity),
       render: (v: number) => <span className="tabular-nums font-mono ad-text-tertiary">{v}</span>,
     },
     {
@@ -82,19 +73,20 @@ export default function ScoreRanking() {
     },
     {
       title: <HelpPopover termKey="composite_score" mode={mode}>综合评分</HelpPopover>,
+      sorter: (a: any, b: any) => (a.composite_score ?? -Infinity) - (b.composite_score ?? -Infinity),
       render: (_: unknown, record: any) => <ScoreBar score={record.composite_score} />,
       width: 180,
     },
-    { title: <HelpPopover termKey="score_return" mode={mode}>收益</HelpPopover>, dataIndex: 'score_return', width: 80, render: (v: number) => <span className="tabular-nums font-mono ad-text-secondary">{v?.toFixed(1)}</span> },
-    { title: <HelpPopover termKey="score_risk" mode={mode}>风险</HelpPopover>, dataIndex: 'score_risk', width: 80, render: (v: number) => <span className="tabular-nums font-mono ad-text-secondary">{v?.toFixed(1)}</span> },
-    { title: <HelpPopover termKey="score_sharpe" mode={mode}>夏普</HelpPopover>, dataIndex: 'score_sharpe', width: 80, render: (v: number) => <span className="tabular-nums font-mono ad-text-secondary">{v?.toFixed(1)}</span> },
-    { title: <HelpPopover termKey="score_liquidity" mode={mode}>流动性</HelpPopover>, dataIndex: 'score_liquidity', width: 90, render: (v: number) => <span className="tabular-nums font-mono ad-text-secondary">{v?.toFixed(1)}</span> },
-    { title: <HelpPopover termKey="score_trend" mode={mode}>趋势</HelpPopover>, dataIndex: 'score_trend', width: 80, render: (v: number) => <span className="tabular-nums font-mono ad-text-secondary">{v?.toFixed(1)}</span> },
+    { title: <HelpPopover termKey="score_return" mode={mode}>收益</HelpPopover>, dataIndex: 'score_return', width: 80, sorter: (a: any, b: any) => (a.score_return ?? -Infinity) - (b.score_return ?? -Infinity), render: (v: number) => <span className="tabular-nums font-mono ad-text-secondary">{v?.toFixed(1)}</span> },
+    { title: <HelpPopover termKey="score_risk" mode={mode}>风险</HelpPopover>, dataIndex: 'score_risk', width: 80, sorter: (a: any, b: any) => (a.score_risk ?? -Infinity) - (b.score_risk ?? -Infinity), render: (v: number) => <span className="tabular-nums font-mono ad-text-secondary">{v?.toFixed(1)}</span> },
+    { title: <HelpPopover termKey="score_sharpe" mode={mode}>夏普</HelpPopover>, dataIndex: 'score_sharpe', width: 80, sorter: (a: any, b: any) => (a.score_sharpe ?? -Infinity) - (b.score_sharpe ?? -Infinity), render: (v: number) => <span className="tabular-nums font-mono ad-text-secondary">{v?.toFixed(1)}</span> },
+    { title: <HelpPopover termKey="score_liquidity" mode={mode}>流动性</HelpPopover>, dataIndex: 'score_liquidity', width: 90, sorter: (a: any, b: any) => (a.score_liquidity ?? -Infinity) - (b.score_liquidity ?? -Infinity), render: (v: number) => <span className="tabular-nums font-mono ad-text-secondary">{v?.toFixed(1)}</span> },
+    { title: <HelpPopover termKey="score_trend" mode={mode}>趋势</HelpPopover>, dataIndex: 'score_trend', width: 80, sorter: (a: any, b: any) => (a.score_trend ?? -Infinity) - (b.score_trend ?? -Infinity), render: (v: number) => <span className="tabular-nums font-mono ad-text-secondary">{v?.toFixed(1)}</span> },
     {
       title: '近 7 日',
       key: 'sparkline_7d',
       width: 100,
-      render: (_: unknown, record: any) => <SparklineCell code={record.etf_code} />,
+      render: (_: unknown, record: any) => <SparklineCell code={record.etf_code} days={7} />,
     },
   ];
 
@@ -124,8 +116,6 @@ export default function ScoreRanking() {
 
       {topTab === 'ranking' && (
         <>
-          {/* Top-ranked instrument summary strip — gives the page a
-              single visual anchor before the table. */}
           {scoresData?.items && scoresData.items.length > 0 && (
             <section className="dashboard-section">
               <SectionHeading title="评分总览" />
@@ -184,7 +174,7 @@ export default function ScoreRanking() {
 
           <Panel
             variant="default"
-            padding="none"
+            padding="md"
             extra={
               <HelpTrigger
                 tooltip="AI 解释评分逻辑"
@@ -197,9 +187,12 @@ export default function ScoreRanking() {
                 dataSource={scoresData?.items || []}
                 columns={columns}
                 rowKey="etf_code"
-                size={rowSize as any}
+                size="small"
                 scroll={{ x: 'max-content' }}
                 pagination={false}
+                locale={{
+                  emptyText: <EmptyState title="暂无数据" />,
+                }}
                 onRow={(record) => ({
                   onClick: () => navigate(`/instruments/${record.etf_code}`),
                 })}

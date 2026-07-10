@@ -5,6 +5,8 @@ export interface EmptyStateProps {
   title: string;
   description?: string;
   action?: React.ReactNode;
+  className?: string;
+  style?: React.CSSProperties;
 }
 
 export default function EmptyState({
@@ -12,10 +14,19 @@ export default function EmptyState({
   title,
   description,
   action,
+  className,
+  style,
 }: EmptyStateProps) {
   return (
-    <div className="empty-state">
-      {icon ? <div className="empty-state__icon">{icon}</div> : null}
+    <div className={`empty-state ${className ?? ''}`} style={style}>
+      {icon ? (
+        <div className="empty-state__icon-area">
+          <span className="empty-state__icon-bg" aria-hidden="true">
+            {icon}
+          </span>
+          <span className="empty-state__icon">{icon}</span>
+        </div>
+      ) : null}
       <h3 className="empty-state__title">{title}</h3>
       {description ? (
         <p className="empty-state__description">{description}</p>

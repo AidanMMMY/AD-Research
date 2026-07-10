@@ -1,0 +1,787 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AD-Research 全面前端UI重构方案 — 2026-07-11</title>
+<style>
+:root { color-scheme: light dark; --bg: light-dark(#ffffff, #0d1117); --fg: light-dark(#1f2328, #e6edf3); --border: light-dark(#d0d7de, #30363d); --accent: light-dark(#2563eb, #60a5fa); --table-stripe: light-dark(#f6f8fa, #161b22); --code-bg: light-dark(#f6f8fa, #161b22); --h2-color: light-dark(#1d4ed8, #60a5fa); --blockquote-bg: light-dark(#f6f8fa, #161b22); }
+* { box-sizing: border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif; font-size: 15px; line-height: 1.75; max-width: 960px; margin: 0 auto; padding: 2rem 1.5rem; background: var(--bg); color: var(--fg); }
+h1 { font-size: 2rem; border-bottom: 2px solid var(--border); padding-bottom: 0.6rem; letter-spacing: -0.02em; }
+h2 { font-size: 1.4rem; color: var(--h2-color); margin-top: 2.5rem; border-bottom: 1px solid var(--border); padding-bottom: 0.3rem; }
+h3 { font-size: 1.15rem; margin-top: 1.8rem; }
+table { width: 100%; border-collapse: collapse; margin: 1.2rem 0; font-size: 0.88rem; }
+th, td { padding: 0.5rem 0.7rem; text-align: left; border: 1px solid var(--border); }
+th { background: var(--code-bg); font-weight: 600; font-size: 0.82rem; letter-spacing: 0.04em; }
+tr:nth-child(even) { background: var(--table-stripe); }
+code { background: var(--code-bg); padding: 0.15em 0.4em; border-radius: 3px; font-size: 0.88em; }
+pre { background: var(--code-bg); padding: 1.2rem; border-radius: 8px; overflow-x: auto; border: 1px solid var(--border); }
+pre code { background: none; padding: 0; }
+blockquote { margin: 1rem 0; padding: 0.6rem 1.2rem; border-left: 3px solid var(--accent); background: var(--blockquote-bg); }
+hr { border: none; border-top: 1px solid var(--border); margin: 2.5rem 0; }
+@media (max-width: 768px) { body { font-size: 14px; padding: 1rem; } h1 { font-size: 1.6rem; } table { font-size: 0.78rem; } }
+</style>
+</head>
+<body>
+<h1>AD-Research 全面前端 UI 重构方案</h1>
+<h2>基于 6 维度深度审计的诊断与改造计划</h2>
+<blockquote>
+<p>编制日期：2026-07-11 | 方法论：6 个独立审计 agent，并行审查 40+ 文件，覆盖间距/组件/交互/AntD/字体/一致性全维度</p>
+</blockquote>
+<hr />
+<h2>执行摘要：为什么当前 UI 让你觉得不对劲</h2>
+<p>三个核心问题的根因诊断：</p>
+<h3>问题 1：为什么总觉得不好用、不精致，既粗糙又低级？</h3>
+<p><strong>根因：存在"双轨制主题系统"</strong>。</p>
+<p>项目中有三套并行的视觉控制系统：
+1. <code>main.tsx</code> 的 ConfigProvider（JS token，仍用旧朱红 <code>#e11d48</code> 和终端绿 <code>#5fa87a</code>）
+2. <code>theme.css</code> 的 CSS 变量（v2 已升级为蓝靛 <code>#2563EB</code>）
+3. <code>global.css</code> 的 175 处 <code>!important</code> 暴力覆盖</p>
+<p>三者互相打架，导致 Ant Design 原生组件显示一套颜色、自定义组件显示另一套颜色。这不是"设计选择"，而是<strong>主题系统的技术债务</strong>——上一次升级（蓝色 v2）没有同步到 ConfigProvider。</p>
+<p><strong>此外</strong>：45% 的共享组件缺少 <code>className</code> 透传，30% 缺少 <code>style</code> 透传。父组件无法追加自定义样式，导致开发者在页面中重复造轮子。</p>
+<h3>问题 2：为什么视觉上不专业、太俗套？</h3>
+<p><strong>根因：四个"双轨制"在并行运行。</strong></p>
+<table>
+<thead>
+<tr>
+<th>双轨制</th>
+<th>轨道 A</th>
+<th>轨道 B</th>
+<th>后果</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>主题颜色</td>
+<td>ConfigProvider 朱红 <code>#e11d48</code></td>
+<td>CSS 变量蓝靛 <code>#2563EB</code></td>
+<td>同一页面两种强调色</td>
+</tr>
+<tr>
+<td>暗色底色</td>
+<td>ConfigProvider 终端黑 <code>#0a0a0a</code></td>
+<td>theme.css GitHub Dark <code>#0D1117</code></td>
+<td>组件表面颜色不一致</td>
+</tr>
+<tr>
+<td>字体族</td>
+<td>亮色 KPI 用 Inter sans-serif</td>
+<td>暗色 KPI 用 JetBrains Mono monospace</td>
+<td>切换主题时数据数字字体突变</td>
+</tr>
+<tr>
+<td>布局方式</td>
+<td>antd Row/Col/Space</td>
+<td>自定义 ad-flex/ad-gap CSS 工具类</td>
+<td>三种布局方式并存</td>
+</tr>
+</tbody>
+</table>
+<p><strong>此外</strong>：
+- ContextHint 组件的 CSS 类定义了但从未实现（6 个 CSS class 只有 1 个有样式）——这是典型的"半成品感"。
+- 侧栏 11 个分组、41 个菜单项——信息过载，用户找不到想用的功能。
+- Inter 字体之前未加载（本次会话已修复），长期依赖系统回退字体，macOS 和 Windows 用户看到的是完全不同的字体。</p>
+<h3>问题 3：为什么有很多低级错误？（控件间距不统一、边距没对齐）</h3>
+<p><strong>根因：没有严格执行设计系统的"纪律"。</strong></p>
+<p>具体数据：
+- <code>global.css</code> 中有 <strong>40+ 处硬编码 px 值</strong> 未使用 <code>--space-*</code> token（如 <code>14px</code>、<code>7px</code>、<code>10px</code>、<code>24px</code>、<code>32px</code>）
+- <code>global.css</code> 中有 <strong>175 处 <code>!important</code></strong>，覆盖了 85+ 个不同的 Ant Design class
+- <code>theme.css</code> 和 <code>global.css</code> 在 768-991px 断点下对 <code>.ant-card-body</code> 的 padding 存在<strong>互相矛盾的规则</strong>
+- 移动端 <code>@media (max-width: 767px)</code> 规则分散在 <code>theme.css</code>（360-503 行）和 <code>global.css</code>（466-600 行）两个文件中，未做合并设计
+- 页面 section 间距不统一：Dashboard 是 32px，InstrumentDetail 是 20px
+- RSI 数值精度不统一：Screen 用 <code>.toFixed(1)</code>，SectorRotation 用 <code>.toFixed(0)</code>
+- 空值符号不统一：<code>-</code> vs <code>—</code> vs <code>暂无数据</code> vs <code>N/A</code> 混用
+- 日期格式化方式分裂：AdminUsers 用原生 <code>toLocaleString('zh-CN')</code>，其他页面用共享 <code>utils/datetime.ts</code>（含时区校正）</p>
+<hr />
+<h2>一、六维度审计核心发现</h2>
+<h3>1.1 间距与布局一致性</h3>
+<p><strong>审计范围</strong>：theme.css（541行）、global.css（8211行）、AppLayout.css、5 个关键页面</p>
+<p><strong>主要发现</strong>：</p>
+<table>
+<thead>
+<tr>
+<th>问题</th>
+<th>位置</th>
+<th>严重度</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>40+ 处硬编码 px 值未使用 <code>--space-*</code> token</td>
+<td><code>global.css</code> 全文件</td>
+<td>🔴</td>
+</tr>
+<tr>
+<td>响应式规则分散在两个文件中，存在互相矛盾的覆盖</td>
+<td><code>theme.css</code> 360-503 行 vs <code>global.css</code> 466-600 行</td>
+<td>🔴</td>
+</tr>
+<tr>
+<td>Dashboard section 间距 32px，InstrumentDetail 仅 20px</td>
+<td><code>Dashboard/styles.css</code> vs <code>InstrumentDetail/styles.css</code></td>
+<td>🟡</td>
+</tr>
+<tr>
+<td>PageHeader 的 <code>margin: 0 0 32px</code> 硬编码</td>
+<td><code>global.css:607</code></td>
+<td>🟡</td>
+</tr>
+<tr>
+<td>移动端 <code>.ant-space { gap: var(--space-2) !important }</code> 覆盖所有 Space 的 size prop</td>
+<td><code>global.css:578</code></td>
+<td>🟡</td>
+</tr>
+<tr>
+<td>768-991px 断点下 card-body padding 有 <code>18px 20px</code> vs <code>12px 0</code> 两个矛盾规则</td>
+<td><code>theme.css:493-494</code> vs <code>global.css:594-595</code></td>
+<td>🟡</td>
+</tr>
+<tr>
+<td>侧栏导航项 <code>padding: 7px 12px 7px 14px</code> 使用非标准网格值</td>
+<td><code>global.css:2757</code></td>
+<td>🟢</td>
+</tr>
+</tbody>
+</table>
+<h3>1.2 组件质量与精致度</h3>
+<p><strong>审计范围</strong>：<code>components/</code> 目录下全部 .tsx 文件，重点关注 15 个核心组件</p>
+<p><strong>综合评分</strong>：</p>
+<table>
+<thead>
+<tr>
+<th>组件</th>
+<th>问题数</th>
+<th>最严重问题</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>ContextHint</strong></td>
+<td>🔴 1</td>
+<td>CSS 类定义了但未实现（仅 1/7 有样式）——典型半成品</td>
+</tr>
+<tr>
+<td><strong>AppLayout</strong></td>
+<td>🔴 2</td>
+<td>键盘焦点环被 <code>outline: none</code> 覆盖；Hover 对比度不可见</td>
+</tr>
+<tr>
+<td><strong>TickerTape</strong></td>
+<td>🔴 1</td>
+<td>自动滚动 + <code>role="button"</code> 导致键盘用户无法聚焦</td>
+</tr>
+<tr>
+<td><strong>StatCard</strong></td>
+<td>🟡 3</td>
+<td>长数字溢出无截断；缺 <code>className</code> 透传；gap 硬编码 6px</td>
+</tr>
+<tr>
+<td><strong>PageHeader</strong></td>
+<td>🟡 2</td>
+<td>margin 硬编码 32px；缺 <code>className</code> 透传</td>
+</tr>
+<tr>
+<td><strong>FilterToolbar</strong></td>
+<td>🟡 1</td>
+<td>长标题无截断</td>
+</tr>
+<tr>
+<td><strong>ReturnTag</strong></td>
+<td>🟡 2</td>
+<td>缺 <code>className</code> 透传；gap 硬编码 2px</td>
+</tr>
+<tr>
+<td><strong>EmptyState</strong></td>
+<td>🟡 1</td>
+<td>缺 <code>className</code> 透传</td>
+</tr>
+<tr>
+<td><strong>Panel</strong></td>
+<td>🟢 1</td>
+<td>良好</td>
+</tr>
+</tbody>
+</table>
+<p><strong>全局问题</strong>：
+- ~45% 组件缺少 <code>className</code> 透传（8/18 个主要组件）
+- ~30% 组件缺少 <code>style</code> 透传
+- 交互组件普遍缺少 <code>:active</code> 按压态（只有 hover + focus-visible）
+- 动画缓动函数 3 种并存：<code>ease</code> / <code>ease-in-out</code> / <code>cubic-bezier(0.4,0,0.2,1)</code></p>
+<h3>1.3 交互逻辑与操作体验</h3>
+<p><strong>审计范围</strong>：7 个核心页面 + 侧栏路由配置（41 个菜单项）</p>
+<p><strong>核心问题</strong>：</p>
+<table>
+<thead>
+<tr>
+<th>问题</th>
+<th>严重度</th>
+<th>影响</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>侧栏 11 组 41 项 → 认知过载</strong></td>
+<td>🔴</td>
+<td>用户找不到功能，研究类分组 8 项堆积</td>
+</tr>
+<tr>
+<td><strong>详情页 → Screen 筛选器无入口</strong></td>
+<td>🔴</td>
+<td>用户看到标的后无法"找类似标的"</td>
+</tr>
+<tr>
+<td><strong>面包屑在 <code>/instruments/:code</code> 下断裂</strong></td>
+<td>🔴</td>
+<td>因为动态路由不在 <code>menuRoutes</code> 中</td>
+</tr>
+<tr>
+<td><strong>表格普遍无排序能力</strong></td>
+<td>🟡</td>
+<td>列头点击无排序指示器，无法按涨跌幅/评分排序</td>
+</tr>
+<tr>
+<td><strong>筛选模式不统一</strong></td>
+<td>🟡</td>
+<td>Screen 用 Zustand store，InstrumentList 用 URL params+本地状态，Macro 裸用 Segmented</td>
+</tr>
+<tr>
+<td><strong>加载态碎片化</strong></td>
+<td>🟡</td>
+<td>Screen 用 Table loading prop，Macro 用 Spin+Skeleton，Correlation 用 Spin center</td>
+</tr>
+<tr>
+<td><strong>详情页缺少"收藏"按钮的即时反馈</strong></td>
+<td>🟡</td>
+<td>Star 切换有 API 调用但无 optimistic update</td>
+</tr>
+<tr>
+<td><strong>移动端表格无横滑提示</strong></td>
+<td>🟢</td>
+<td>表格设置了 <code>scroll={{ x }}</code> 但无视觉提示</td>
+</tr>
+</tbody>
+</table>
+<p><strong>典型用户路径摩擦分析</strong>（"开盘前查看自选股→筛选潜力标的→查看详情→AI分析"）：</p>
+<ol>
+<li>Dashboard → 点击自选股项 → 进入 InstrumentDetail ✅</li>
+<li>在详情页想"找类似标的"→ <strong>无入口</strong> → 被迫回到侧栏找 Screen 筛选器 ❌</li>
+<li>在 Screen 筛选结果中 → 想按涨跌幅排序 → <strong>列头不可排序</strong> ❌</li>
+<li>点击某个标的进入详情 → 面包屑显示"首页 &gt; 510300"而非"首页 &gt; 标的详情 &gt; 510300" ❌</li>
+<li>在详情页用 AI Help → 点击后跳到 <code>/chat</code> 独立页面，离开当前研究上下文 ❌</li>
+</ol>
+<h3>1.4 Ant Design 集成质量</h3>
+<p><strong>审计范围</strong>：main.tsx ConfigProvider 配置 + global.css 中全部 <code>.ant-*</code> 覆盖</p>
+<p><strong>核心发现：双重主题系统冲突（最严重的技术债务）</strong></p>
+<p>这是本报告中最关键的发现。<code>main.tsx</code> 第 45-248 行的 ConfigProvider 定义了完整的 JS token 主题（亮色+暗色两套），但 <strong>JS 端的颜色从未跟随 v2 设计升级更新</strong>：</p>
+<table>
+<thead>
+<tr>
+<th>属性</th>
+<th>ConfigProvider (JS)</th>
+<th>theme.css (CSS 变量)</th>
+<th>后果</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>亮色主色</td>
+<td><code>#e11d48</code>（朱红）</td>
+<td><code>#2563EB</code>（蓝靛）</td>
+<td>AntD 组件 vs 自定义区域显示不同强调色</td>
+</tr>
+<tr>
+<td>暗色主色</td>
+<td><code>#5fa87a</code>（终端绿）</td>
+<td><code>#60A5FA</code>（去饱和蓝）</td>
+<td>同上</td>
+</tr>
+<tr>
+<td>暗色 Card 背景</td>
+<td><code>#111111</code>（组件 token）</td>
+<td><code>#1C2128</code>（CSS <code>--card-bg</code>）</td>
+<td>卡片颜色分裂</td>
+</tr>
+</tbody>
+</table>
+<p><strong>数据统计</strong>：
+- <code>global.css</code> 约 500 行是 <code>.ant-*</code> 覆盖代码
+- 175 处 <code>!important</code> 覆盖了 85+ 个 Ant Design CSS 类
+- 其中约 40% 是必要的设计定制，35% 可通过补充 ConfigProvider component token 消除，25% 是纯粹冗余
+- <strong>零使用 antd v5 Flex 组件</strong>，取而代之的是自定义 40+ 行 CSS 工具类</p>
+<h3>1.5 字体排印与视觉层级</h3>
+<p><strong>审计范围</strong>：theme.css typography token + 4 个关键页面</p>
+<p><strong>22 个问题，按严重度</strong>：</p>
+<p><strong>🔴 P0（2个）</strong>：
+1. 亮/暗模式下 KPI 数字字体族不同（亮=Inter sans-serif，暗=JetBrains Mono monospace），切换主题时字体突变
+2. 暗色模式下 H2/H3 字号收缩（H2 24→20px，H3 18→16px），且字重降级（H2 600→500）——好消息是本次会话已修复</p>
+<p><strong>🟡 P1（6个）</strong>：
+3. 13px/14px 区分度不足，且字重逻辑颠倒（<code>--text-small</code> 500 &gt; <code>--text-body</code> 400）
+4. 30+ 处硬编码 9/10/11px 违反了"最小 12px"规则
+5. PingFang SC vs 微软雅黑的 x-height 差异，导致跨平台中英文混排不一致
+6. KPI 大数字 36px weight-400 略显轻薄，金融数据应更稳重
+7. 正负号表达在 ReturnTag 组件 / <code>formatSigned</code> 函数 / 裸 <code>toFixed()</code> 三者间分裂
+8. JetBrains Mono 与中文后缀（如"亿"、"万"）混排时存在垂直对齐偏移</p>
+<p><strong>🟢 P2（14个）</strong>：
+- 空值符号 <code>-</code> vs <code>—</code> vs <code>暂无数据</code> vs <code>N/A</code> 混用
+- 千分位分隔符：<code>formatAmount</code> 渲染 <code>12345678</code> 而非 <code>12,345,678</code>
+- 日期格式化存在 3 种方式（<code>toLocaleString</code>/<code>toLocaleDateString</code>/<code>.slice(0,16)</code>）
+- TickerTape 和侧边栏标签缺少 Tooltip 显示完整文本
+- 百分比小数位数无规范（0 位/1 位/2 位随意使用）</p>
+<h3>1.6 跨页面一致性</h3>
+<p><strong>审计范围</strong>：4 组共 15 个页面</p>
+<table>
+<thead>
+<tr>
+<th>页面组</th>
+<th>一致性评分</th>
+<th>最突出问题</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>列表页</strong>（5个）</td>
+<td>2.5/5</td>
+<td>SparklineCell 在 3 个文件中逐文件复制粘贴；空状态实现有 4 种不同写法</td>
+</tr>
+<tr>
+<td><strong>详情页</strong>（4个）</td>
+<td>2.5/5</td>
+<td>布局模式分裂（InstrumentDetail 线性平铺 vs 其余 Tabs 布局）；KPI 涨跌展示 3 种不同方式；AI 分析区 ~150 行代码重复</td>
+</tr>
+<tr>
+<td><strong>分析/工具页</strong>（4个）</td>
+<td>3.0/5</td>
+<td>缺少统一的"参数选择→展示结果"页面骨架；FilterToolbar 有的被 Panel 包裹、有的裸用、有的根本不用</td>
+</tr>
+<tr>
+<td><strong>管理/配置页</strong>（2个）</td>
+<td>3.0/5</td>
+<td>AdminUsers 日期格式化未使用共享 utils（时区错误）；EmptyState 未使用</td>
+</tr>
+</tbody>
+</table>
+<p><strong>共享组件使用率</strong>：</p>
+<table>
+<thead>
+<tr>
+<th>组件</th>
+<th>应使用页面数</th>
+<th>实际使用页面数</th>
+<th>使用率</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>PageShell</td>
+<td>15</td>
+<td>15</td>
+<td>100%</td>
+</tr>
+<tr>
+<td>PageHeader</td>
+<td>15</td>
+<td>14</td>
+<td>93%</td>
+</tr>
+<tr>
+<td>Panel</td>
+<td>15</td>
+<td>13</td>
+<td>87%</td>
+</tr>
+<tr>
+<td>FilterToolbar</td>
+<td>10</td>
+<td>3</td>
+<td>30%</td>
+</tr>
+<tr>
+<td>EmptyState</td>
+<td>15</td>
+<td>8</td>
+<td>53%</td>
+</tr>
+<tr>
+<td>ResponsiveGrid</td>
+<td>10</td>
+<td>6</td>
+<td>60%</td>
+</tr>
+<tr>
+<td>ContentCard</td>
+<td>5</td>
+<td>0</td>
+<td>0%</td>
+</tr>
+<tr>
+<td>StatCard</td>
+<td>8</td>
+<td>6</td>
+<td>75%</td>
+</tr>
+</tbody>
+</table>
+<p><strong>关键发现</strong>：<code>FilterToolbar</code>、<code>EmptyState</code>、<code>ContentCard</code> 三个共享组件的使用率严重偏低。每个页面都在重复造轮子。</p>
+<hr />
+<h2>二、问题根本原因总结</h2>
+<p>三个"为什么"的统一答案：</p>
+<h3>"粗糙感"的根源：三套并行系统互相打架</h3>
+<pre><code>                 ┌─────────────────┐
+                 │ main.tsx (JS)   │  ConfigProvider tokens
+                 │ 强调色 #e11d48  │  ← 从未更新
+                 └────────┬────────┘
+                          │ 冲突
+    ┌─────────────────────┼─────────────────────┐
+    │                     ▼                     │
+    │  ┌─────────────────────────────┐          │
+    │  │ theme.css (CSS 变量)         │          │
+    │  │ 强调色 #2563EB              │          │
+    │  │ ─────────────────           │          │
+    │  │ global.css (!important ×175)│ 覆盖层    │
+    │  └─────────────────────────────┘          │
+    │                                            │
+    │  Ant Design 组件 ←→ 自定义组件             │
+    │  显示不同颜色        显示不同颜色           │
+    └────────────────────────────────────────────┘
+</code></pre>
+<h3>"低级的间距/对齐错误"的根源：设计系统缺乏执行纪律</h3>
+<ul>
+<li>4px 基准网格已定义（<code>theme.css</code> 中 <code>--space-1</code> 到 <code>--space-9</code>），但 40+ 处硬编码 px 值绕过了它</li>
+<li>有些是历史残留（如 7px padding 来自 Phase 2 之前的旧代码）</li>
+<li>有些是"快速修补"（如 inline <code>style={{ marginTop: 12 }}</code> 来快速对齐）</li>
+<li>有些是两套响应式规则放在两个文件中，从未做合并审计</li>
+</ul>
+<h3>"不像一个团队做的"的根源：复制粘贴 + 缺乏共享骨架</h3>
+<ul>
+<li>4 个详情页像 4 个不同产品（不同时间、不同模式构建）</li>
+<li>SparklineCell 在 3 个列表页中逐字复制</li>
+<li>AI 分析区域 ~150 行代码在 2 个详情页中完全相同</li>
+<li>没有"列表页模板"、"详情页模板"、或"分析工具页模板"来强制收敛页面结构</li>
+</ul>
+<hr />
+<h2>三、全面重构方案</h2>
+<h3>方案结构</h3>
+<table>
+<thead>
+<tr>
+<th>阶段</th>
+<th>内容</th>
+<th>预计工时</th>
+<th>解决的核心问题</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>A</strong></td>
+<td>消除双轨制（ConfigProvider 同步 + 删除冗余 <code>!important</code>）</td>
+<td>2天</td>
+<td>#1 粗糙感、#2 不专业</td>
+</tr>
+<tr>
+<td><strong>B</strong></td>
+<td>组件补齐（className/style 透传 + 状态完整性 + 缺失 CSS）</td>
+<td>2天</td>
+<td>#1 粗糙感、#3 低级错误</td>
+</tr>
+<tr>
+<td><strong>C</strong></td>
+<td>页面骨架标准化（列表页/详情页/分析页统一模板）</td>
+<td>3天</td>
+<td>#2 不专业、#3 低级错误</td>
+</tr>
+<tr>
+<td><strong>D</strong></td>
+<td>间距系统收敛（消除硬编码 px + 统一响应式规则）</td>
+<td>1天</td>
+<td>#3 低级错误</td>
+</tr>
+<tr>
+<td><strong>E</strong></td>
+<td>交互优化（导航重构 + 表格排序 + 筛选统一）</td>
+<td>2天</td>
+<td>#1 不好用</td>
+</tr>
+<tr>
+<td><strong>F</strong></td>
+<td>字体与格式化（统一数字格式 + 空值 + 日期 + 百分比）</td>
+<td>1天</td>
+<td>#2 不专业</td>
+</tr>
+</tbody>
+</table>
+<p><strong>总计：约 11 个工作日</strong></p>
+<hr />
+<h3>A 阶段：消除双轨制（最重要，立即执行）</h3>
+<p><strong>目标</strong>：让 ConfigProvider JS token 和 theme.css CSS 变量使用相同的颜色。</p>
+<p><strong>具体任务</strong>：</p>
+<h4>A1：ConfigProvider 同步到 v2 蓝靛方案</h4>
+<pre><code class="language-tsx">// main.tsx — 亮色主题 lightAlgorithm
+colorPrimary: '#2563EB',           // 从 #e11d48 改为蓝靛
+colorPrimaryBg: 'rgba(37,99,235,0.08)',
+colorPrimaryBorder: 'rgba(37,99,235,0.20)',
+
+// main.tsx — 暗色主题 darkAlgorithm
+colorPrimary: '#60A5FA',           // 从 #5fa87a（终端绿）改为去饱和蓝
+colorPrimaryBg: 'rgba(96,165,250,0.12)',
+colorPrimaryBorder: 'rgba(96,165,250,0.25)',
+
+// Card 暗色背景
+Card: { colorBgContainer: '#1C2128' },  // 从 #111111 同步到 GitHub Dark
+</code></pre>
+<h4>A2：从 global.css 中删除已被 ConfigProvider token 覆盖的冗余规则</h4>
+<ul>
+<li>删除 Table header 的三重覆盖（保留 CSS 中的 uppercase 定制，删除 background/color 重复）</li>
+<li>删除 Card background 的 <code>!important</code>（ConfigProvider 的 <code>colorBgContainer</code> 已处理）</li>
+<li>删除 Select option 的重复颜色定义（已有 <code>optionSelectedBg</code> token）</li>
+</ul>
+<p><strong>预计效果</strong>：从 global.css 删除约 150 行冗余代码，Ant Design 组件和自定义区域颜色完全一致。</p>
+<h4>A3：建立单一来源原则</h4>
+<p>新增 <code>useAntdTheme</code> hook 或修改现有逻辑，从 <code>document.documentElement.dataset.theme</code> 和 <code>dataset.accent</code> 读取当前主题，动态生成 ConfigProvider theme——确保未来修改主题只需改 <code>theme.css</code> 一处。</p>
+<hr />
+<h3>B 阶段：组件补齐</h3>
+<p><strong>目标</strong>：让每个共享组件"写完"——包括全部交互状态、className/style 透传、内容溢出处理。</p>
+<p><strong>具体任务</strong>：</p>
+<h4>B1：批量添加 className 和 style 透传（8 个组件）</h4>
+<pre><code>StatCard, PageHeader, EmptyState, InstrumentCodeTag, ReturnTag,
+ScoreBar, FilterToolbar, SectionHeading
+</code></pre>
+<p>统一模式：</p>
+<pre><code class="language-tsx">interface Props {
+  className?: string;
+  style?: React.CSSProperties;
+  // ... existing props
+}
+// 在最外层 div 上合并：
+&lt;div className={`base-class ${className ?? ''}`} style={style} /&gt;
+</code></pre>
+<h4>B2：修复 ContextHint 的缺失 CSS（6 个未实现 class）</h4>
+<pre><code>.context-hint { padding: var(--space-3); max-width: 320px; }
+.context-hint__title { font-size: var(--text-body-size); font-weight: 600; }
+.context-hint__body { font-size: var(--text-small-size); color: var(--text-secondary); }
+/* ... 等 */
+</code></pre>
+<h4>B3：统一交互状态补全（全部交互组件）</h4>
+<p>为以下组件添加 <code>:active</code> 按压态：
+- <code>StatCard</code>（<code>transform: scale(0.98)</code> + <code>transition: transform 100ms</code>）
+- <code>Panel</code> 内的可点击元素
+- 侧栏导航项（<code>translateX(1px)</code> 微反馈）</p>
+<h4>B4：补全内容溢出处理</h4>
+<ul>
+<li><code>StatCard</code> value：<code>overflow: hidden; text-overflow: ellipsis; white-space: nowrap</code></li>
+<li><code>FilterToolbar</code> title：同上</li>
+<li><code>ReturnTag</code>：长百分比添加 Tooltip</li>
+<li><code>InstrumentCodeTag</code> name：已有截断 ✅</li>
+</ul>
+<hr />
+<h3>C 阶段：页面骨架标准化</h3>
+<p><strong>目标</strong>：建立 3 种标准页面骨架，将所有同类页面收敛到统一模板。</p>
+<p><strong>具体任务</strong>：</p>
+<h4>C1：列表页标准骨架</h4>
+<pre><code class="language-tsx">// Template: &lt;ListPageShell&gt;
+&lt;PageShell maxWidth=&quot;wide&quot;&gt;
+  &lt;PageHeader eyebrow=&quot;...&quot; title=&quot;...&quot; description=&quot;...&quot; extra={&lt;LastUpdated /&gt;} /&gt;
+  &lt;Panel variant=&quot;default&quot; padding=&quot;md&quot;&gt;
+    &lt;FilterToolbar total={total} extra={&lt;Button&gt;导出&lt;/Button&gt;}&gt;
+      {/* 统一的筛选控件 */}
+    &lt;/FilterToolbar&gt;
+    &lt;Table size=&quot;small&quot; columns={sharedColumns} dataSource={items}
+           pagination={{ pageSize: 50 }} loading={isLoading}
+           locale={{ emptyText: &lt;EmptyState title=&quot;暂无数据&quot; /&gt; }} /&gt;
+  &lt;/Panel&gt;
+&lt;/PageShell&gt;
+</code></pre>
+<p>需要重构的页面：InstrumentList、StocksList、CryptoList、PoolList、ScoreRanking
+统一内容：页面结构、Table size、EmptyState、SparklineCell（抽取为共享组件，消除 3 处复制粘贴）</p>
+<h4>C2：详情页标准骨架</h4>
+<pre><code class="language-tsx">// Template: &lt;DetailPageShell&gt;
+&lt;PageShell maxWidth=&quot;wide&quot;&gt;
+  &lt;PageHeader eyebrow=&quot;...&quot; title=&quot;...&quot; description=&quot;...&quot; extra={&lt;FavoriteButton /&gt;} compact /&gt;
+  {/* 统一标签行：InstrumentCodeTag + 市场 Tag + 分类 Tag + 板块 Tag */}
+  &lt;SectionHeading title=&quot;核心指标&quot; /&gt;
+  &lt;ResponsiveGrid cols={4}&gt;&lt;StatCard ... /&gt;&lt;/ResponsiveGrid&gt;
+  &lt;Tabs items={[
+    { key: 'chart', label: 'K线行情', children: &lt;KLineChartSection /&gt; },
+    { key: 'indicators', label: '指标数据', children: &lt;IndicatorSection /&gt; },
+    { key: 'score', label: '综合评分', children: &lt;ScoreSection /&gt; },
+    { key: 'ai', label: 'AI 分析', children: &lt;DetailAIAnalysis code={code} /&gt; },
+    { key: 'news', label: '相关新闻', children: &lt;NewsListPanel code={code} /&gt; },
+  ]} /&gt;
+&lt;/PageShell&gt;
+</code></pre>
+<p>需要重构的页面：InstrumentDetail（从线性布局→Tabs）、StockDetail、CryptoDetail、PoolDetail
+抽取共享组件：
+- <code>&lt;DetailAIAnalysis&gt;</code> —— 消除 InstrumentDetail 和 StockDetail 中 ~150 行的重复代码
+- <code>&lt;IndicatorSection&gt;</code> —— 统一的技术指标面板
+- <code>&lt;KPIHeroStats&gt;</code> —— 统一的顶部 KPI 行（解决 4 种不同 heroStats 结构）
+- <code>&lt;RelatedActions&gt;</code> —— "找类似标的" + "AI 分析" + "加入自选" 的统一操作区</p>
+<h4>C3：分析/工具页标准骨架</h4>
+<pre><code class="language-tsx">// Template: &lt;AnalysisPageShell&gt;
+&lt;PageShell maxWidth=&quot;wide&quot;&gt;
+  &lt;PageHeader eyebrow=&quot;...&quot; title=&quot;...&quot; description=&quot;...&quot; extra={controls} /&gt;
+  &lt;Panel variant=&quot;default&quot; padding=&quot;md&quot;&gt;
+    &lt;FilterToolbar&gt;{/* 统一的参数选择区 */}&lt;/FilterToolbar&gt;
+  &lt;/Panel&gt;
+  {/* 结果区：图表 / 表格 / 热力图 */}
+&lt;/PageShell&gt;
+</code></pre>
+<p>需要重构的页面：Screen、Macro、CorrelationAnalysis、SectorRotation
+统一内容：FilterToolbar 的使用模式（当前 4 个页面 4 种不同做法）、加载态模式、SectionHeading 命名</p>
+<hr />
+<h3>D 阶段：间距系统收敛</h3>
+<p><strong>目标</strong>：消除所有非标准网格值，统一响应式规则。</p>
+<p><strong>具体任务</strong>：</p>
+<h4>D1：替换 40+ 处硬编码 px 值</h4>
+<p>搜索并替换所有不使用 <code>--space-*</code> token 的 margin/padding/gap：</p>
+<pre><code>14px → var(--space-4) 或新增 --space-3-5: 14px（如果确实需要非标值）
+10px → var(--space-3)（12px 相近）或保持（极少数场景可接受）
+7px  → 标准化为 var(--space-2)（8px）
+</code></pre>
+<p>使用 <code>grep -rn ":\s*\d+px" global.css</code> 逐条审计。</p>
+<h4>D2：合并分散的响应式规则</h4>
+<p>将 <code>theme.css</code>（360-503 行）和 <code>global.css</code>（466-600 行）中的移动端规则合并到一个文件中，消除互相矛盾的覆盖（如 <code>.ant-card-body</code> 的 padding）。</p>
+<h4>D3：统一页面 section 间距</h4>
+<pre><code class="language-css">:root {
+  --section-gap: var(--space-6);  /* 统一 32px */
+}
+/* 所有 SectionHeading 下方统一 */
+.section-heading, .ad-section-heading { margin-bottom: var(--section-gap); }
+</code></pre>
+<hr />
+<h3>E 阶段：交互优化</h3>
+<p><strong>目标</strong>：让平台"好用"——导航清晰、操作流畅、反馈及时。</p>
+<p><strong>具体任务</strong>：</p>
+<h4>E1：侧栏重构——从 11 组 41 项 到 6 组 25 项</h4>
+<p>合并方案：
+- <code>report</code> + <code>research-reports</code> + <code>cninfo-reports</code> → 合并为"投研报告"（含子 Tab）
+- <code>notify</code>（仅 2 项）→ 合并到顶部 Header 通知 bell 图标
+- <code>admin</code>（仅 2 项）→ 保留但默认折叠
+- 移除低频入口到"更多"折叠组</p>
+<h4>E2：补齐关键导航路径</h4>
+<ul>
+<li>InstrumentDetail 的 PageHeader extra 添加"筛选类似标的"按钮（<code>→ /screen?market=...&amp;category=...</code>）</li>
+<li>Dashboard 全球速览卡添加"更多 → /macro"链接</li>
+<li>Sidebar 高亮逻辑修复：确保动态路由（<code>:code</code>）匹配到正确的侧栏项</li>
+</ul>
+<h4>E3：表格排序能力</h4>
+<p>在所有数据表格中添加 Ant Design 的 <code>sorter</code> 属性：
+- 涨跌幅列：<code>sorter: (a, b) =&gt; a.change_pct - b.change_pct</code>
+- 评分列：<code>sorter: (a, b) =&gt; a.score - b.score</code>
+- 日期列：<code>sorter: (a, b) =&gt; dayjs(a.date).unix() - dayjs(b.date).unix()</code></p>
+<h4>E4：面包屑修复</h4>
+<p>在 <code>AppLayout.tsx</code> 的面包屑逻辑中，为动态路由 <code>/instruments/:code</code> 添加硬编码映射：</p>
+<pre><code class="language-tsx">const DYNAMIC_SEGMENTS: Record&lt;string, string&gt; = {
+  instruments: '标的详情',
+  stocks: '个股详情',
+  // ...
+};
+</code></pre>
+<hr />
+<h3>F 阶段：字体与格式化统一</h3>
+<p><strong>目标</strong>：让数字、日期、单位在全平台有一致的呈现。</p>
+<p><strong>具体任务</strong>：</p>
+<h4>F1：建立统一的数据格式化工具集</h4>
+<pre><code class="language-typescript">// utils/format.ts 扩展
+export function formatNumber(v: number | null, decimals = 2): string {
+  if (v == null) return '—';
+  return v.toLocaleString('en-US', {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+  });
+}
+
+export function formatPercent(v: number | null, decimals = 2, signed = true): string {
+  if (v == null) return '—';
+  const sign = signed &amp;&amp; v &gt; 0 ? '+' : '';
+  return `${sign}${v.toFixed(decimals)}%`;
+}
+
+export function formatDate(iso: string): string {
+  return dayjs(iso).tz('Asia/Shanghai').format('YYYY-MM-DD HH:mm:ss');
+}
+
+export function formatEmpty(v: any, fallback = '—'): string {
+  return v == null || v === '' ? fallback : String(v);
+}
+</code></pre>
+<h4>F2：全平台搜索替换</h4>
+<ul>
+<li><code>new Date(v).toLocaleString('zh-CN')</code> → <code>formatDate(v)</code>（AdminUsers）</li>
+<li><code>v?.toFixed(1)</code> → <code>formatPercent(v, 1)</code>（统一小数位）</li>
+<li><code>'-'</code> → <code>'—'</code>（统一空值符号，em-dash）</li>
+</ul>
+<hr />
+<h2>四、实施路线图</h2>
+<pre><code>第1周                     第2周                     第3周
+├──── A阶段 ────┤├──── B阶段 ────┤├──── C阶段 ────────────┤
+│ ConfigProvider ││ 组件 className ││ 列表页骨架标准化      │
+│ 同步 + 删冗余  ││ 补齐+状态补全  ││ 详情页骨架标准化      │
+│                ││               ││                       │
+│ D阶段（穿插）  ││ E阶段（穿插）  ││ F阶段（穿插）         │
+│ 间距硬编码替换 ││ 侧栏重构       ││ 格式化工具统一        │
+└────────────────┴────────────────┴────────────────────────┘
+
+总计约 11 个工作日，可按优先级分批执行
+</code></pre>
+<hr />
+<h2>五、预期效果</h2>
+<table>
+<thead>
+<tr>
+<th>维度</th>
+<th>当前</th>
+<th>改造后</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>主题一致性</td>
+<td>三套系统互相打架</td>
+<td>单源（theme.css），ConfigProvider 动态同步</td>
+</tr>
+<tr>
+<td>组件 API 完整度</td>
+<td>55% 缺少 className 透传</td>
+<td>100% 支持 className + style</td>
+</tr>
+<tr>
+<td>页面骨架一致性</td>
+<td>4 种模式（无模板）</td>
+<td>3 种标准骨架（列表/详情/分析）</td>
+</tr>
+<tr>
+<td>间距系统合规率</td>
+<td>~85% 使用 token</td>
+<td>~98% 使用 token</td>
+</tr>
+<tr>
+<td>数据格式化一致性</td>
+<td>3 种日期格式 + 3 种空值 + 混合精度</td>
+<td>统一工具集</td>
+</tr>
+<tr>
+<td>导航可用性</td>
+<td>11 组 41 项</td>
+<td>6 组 ~25 项</td>
+</tr>
+<tr>
+<td><code>!important</code> 数量</td>
+<td>175</td>
+<td>~60（仅保留必要的设计定制）</td>
+</tr>
+<tr>
+<td>tsc 错误</td>
+<td>0</td>
+<td>0</td>
+</tr>
+<tr>
+<td>Build</td>
+<td>~5.5s</td>
+<td>≤6s</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<p><em>报告编制：AD-Research 全面 UI 审计 | 2026-07-11 | 基于 6 个独立审计 agent × 40+ 文件深度审查</em></p>
+</body>
+</html>

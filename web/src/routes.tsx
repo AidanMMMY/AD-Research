@@ -60,7 +60,6 @@ export type SidebarGroupKey =
   | 'quant'
   | 'trade'
   | 'learn'
-  | 'notify'
   | 'ops'
   | 'admin';
 
@@ -122,9 +121,9 @@ export const routes: RouteConfig[] = [
   { path: '/news', element: wrap(NewsFeed), auth: true, menu: { name: '资讯', icon: 'ReadOutlined', group: 'research' } },
   { path: '/news/:id', element: wrap(NewsDetail), auth: true },
   { path: '/research', element: wrap(ResearchNotes), auth: true, menu: { name: 'AI 研究笔记', label: 'AI 研究笔记', icon: 'BulbOutlined', group: 'research' } },
-  { path: '/reports', element: wrap(ReportBrowser), auth: true, menu: { name: '报告浏览', icon: 'FileTextOutlined', group: 'research' } },
-  { path: '/research-reports', element: wrap(ResearchReports), auth: true, menu: { name: '研报库', icon: 'FilePdfOutlined', group: 'research' } },
-  { path: '/cninfo-reports', element: wrap(CninfoReports), auth: true, menu: { name: '巨潮报告', icon: 'FilePdfOutlined', group: 'research' } },
+  { path: '/reports', element: wrap(ReportBrowser), auth: true, menu: { name: '投研报告', icon: 'FileTextOutlined', group: 'research' } },
+  { path: '/research-reports', element: wrap(ResearchReports), auth: true },
+  { path: '/cninfo-reports', element: wrap(CninfoReports), auth: true },
   { path: '/sec-filings', element: wrap(SECFilings), auth: true, menu: { name: 'SEC 公告', icon: 'BankOutlined', group: 'research' } },
   { path: '/listing-preview', element: wrap(ListingPreview), auth: true, menu: { name: '上市预告', icon: 'CalendarOutlined', group: 'research' } },
   // === 宏观与情绪 ===
@@ -150,8 +149,8 @@ export const routes: RouteConfig[] = [
   { path: '/learning', element: wrap(Learning), auth: true, menu: { name: '教程中心', label: '教程中心', icon: 'BookOutlined', group: 'learn' } },
   { path: '/chat', element: wrap(AIChat), auth: true, menu: { name: 'AI 助手', label: 'AI 助手', icon: 'RobotOutlined', group: 'learn' } },
   // === 通知 ===
-  { path: '/notifications', element: wrap(NotificationConfig), auth: true, menu: { name: '推送配置', icon: 'NotificationOutlined', group: 'notify' } },
-  { path: '/notification-logs', element: wrap(NotificationLogs), auth: true, menu: { name: '通知日志', icon: 'FileTextOutlined', group: 'notify' } },
+  { path: '/notifications', element: wrap(NotificationConfig), auth: true },
+  { path: '/notification-logs', element: wrap(NotificationLogs), auth: true },
   // === 运维 ===
   { path: '/etl-status', element: wrap(ETLStatus), auth: true, menu: { name: 'ETL 状态', label: 'ETL 状态', icon: 'ClockCircleOutlined', group: 'ops' } },
   { path: '/admin/etl-status', element: wrap(ETLOpsDashboard), auth: true, menu: { name: 'ETL 运维看板', icon: 'MonitorOutlined', group: 'ops' } },
@@ -184,7 +183,6 @@ export const sidebarGroups: SidebarGroup[] = [
   { key: 'quant',    label: '量化与回测',       icon: 'ExperimentOutlined' },
   { key: 'trade',    label: '交易',             icon: 'DollarOutlined' },
   { key: 'learn',    label: '学习 & 另类数据',  icon: 'BookOutlined' },
-  { key: 'notify',   label: '通知',             icon: 'BellOutlined' },
   { key: 'ops',      label: '运维',             icon: 'ToolOutlined' },
   { key: 'admin',    label: '管理',             icon: 'SafetyCertificateOutlined' },
 ];

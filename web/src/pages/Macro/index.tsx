@@ -200,6 +200,7 @@ export default function Macro() {
       key: 'value',
       width: 120,
       align: 'right',
+      sorter: (a, b) => (a.value ?? -Infinity) - (b.value ?? -Infinity),
       render: (v: number | null, row) => (
         <Text strong>{formatValue(v, row.unit)}</Text>
       ),

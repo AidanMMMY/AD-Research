@@ -11,7 +11,6 @@ import PageShell from '@/components/PageShell';
 import PageHeader from '@/components/PageHeader';
 import FilterToolbar from '@/components/FilterToolbar';
 import Panel from '@/components/Panel';
-import SectionHeading from '@/components/SectionHeading';
 import EmptyState from '@/components/EmptyState';
 
 export default function PoolList() {
@@ -49,7 +48,6 @@ export default function PoolList() {
     createMutation.mutate(values);
   };
 
-  const rowSize = 'large';
   const tableWrapClass = 'ad-table-scroll ad-table-sticky';
 
   const columns = [
@@ -92,17 +90,15 @@ export default function PoolList() {
         }
       />
 
-      <FilterToolbar total={`共 ${pools?.length || 0} 个`} />
+      <Panel variant="default" padding="md">
+        <FilterToolbar total={`共 ${pools?.length || 0} 个`} />
 
-      <SectionHeading title="标的池列表" />
-
-      <Panel variant="default" padding="none">
         <div className={tableWrapClass}>
           <Table
             dataSource={pools || []}
             columns={columns}
             rowKey="id"
-            size={rowSize as any}
+            size="small"
             scroll={{ x: 'max-content' }}
             loading={poolsLoading}
             onRow={(record) => ({
@@ -111,17 +107,15 @@ export default function PoolList() {
             pagination={false}
             locale={{
               emptyText: poolsLoading ? '加载中...' : (
-                <div className="ad-p-5">
-                  <EmptyState
-                    title="暂无标的池"
-                    description="点击右上角「新建池」创建第一个标的池"
-                    action={
-                      <Button type="primary" icon={<PlusOutlined />} onClick={() => setIsModalOpen(true)}>
-                        新建池
-                      </Button>
-                    }
-                  />
-                </div>
+                <EmptyState
+                  title="暂无标的池"
+                  description="点击右上角「新建池」创建第一个标的池"
+                  action={
+                    <Button type="primary" icon={<PlusOutlined />} onClick={() => setIsModalOpen(true)}>
+                      新建池
+                    </Button>
+                  }
+                />
               ),
             }}
           />

@@ -28,7 +28,6 @@ import { usePoolList } from '@/hooks/usePoolDetail';
 import { statsApi } from '@/api/stats';
 import {
   formatDateTime,
-  formatDateTimeCompact,
   formatRelative as formatRelativeTz,
 } from '@/utils/datetime';
 import { newsApi } from '@/api/news';
@@ -60,7 +59,6 @@ import { SENTIMENT_COLORS, SENTIMENT_LABELS } from '@/utils/sentiment';
 
 
 function formatRelative(iso: string): string {
-  // UTC-aware formatter — see ``utils/datetime``.
   return formatRelativeTz(iso, { withTimeAfterDays: 7 });
 }
 
@@ -122,25 +120,8 @@ function NewsRow({
 }
 
 /**
- * Top-of-dashboard "全球速览" — pulls headline overseas indicators
- * from the Macro API (FRED + yfinance + akshare).
- *
- * Coverage (Phase 2, 2026-07-07): FRED for US rates / VIX / DXY /
- * Brent / WTI / SP500; yfinance for Hang Seng, Nikkei, DAX, FTSE,
- * CAC, ASX, KOSPI, NIFTY; akshare for SHCOMP / SZC. All codes are
- * resolved via ``useMacroLatest('us' | 'global')`` so the same
- * ingestion rows power the Global Markets page.
- *
- * The ResponsiveGrid is 8-tile wide on lg / 4 on md — the row is split
- * across two lines so it stays readable on tablet portrait. Tiles
- * gracefully render `--` when a particular code has no fresh data
- * (e.g. yfinance fetch failed overnight).
- *
- * Phase 5d (2026-07-09): each tile surfaces a "FRED 数据为 H.10 周度发布，
- * 约延迟 1 天" badge whenever the underlying row is FRED-sourced and
- * its period lags today by more than one day. The badge text + tooltip
- * come from the backend's ``freshness_hint`` field so the same logic
- * powers both the dashboard and the /macro page.
+ * Global index tile definitions for the compact Pulse strip.
+ * Each tile maps to a macro code resolved via useMacroLatest.
  */
 const GLOBAL_TILES: Array<{
   code: string;
@@ -176,7 +157,14 @@ function formatTileValue(v: number | null | undefined, unit: string): string {
   return v.toFixed(2);
 }
 
-function GlobalSnapshot() {
+/* ================================================================
+   PulseGlobalStrip — compact, borderless global index tiles.
+   Replaces the old ResponsiveGrid + Panel GlobalSnapshot approach
+   with an 8-column grid of transparent, minimal tiles.  Each tile
+   shows the index name, value, and a change arrow; hover lifts 1px
+   and the whole tile is a click target to /macro.
+   ================================================================ */
+function PulseGlobalStrip() {
   const navigate = useNavigate();
   const { data: latestGlobal, isLoading: gLoading } = useMacroLatest('global');
   const { data: latestUs, isLoading: uLoading } = useMacroLatest('us');
@@ -198,7 +186,6 @@ function GlobalSnapshot() {
       freshness_hint: string | null;
     };
     const map = new Map<string, LookupEntry>();
-    // DB snapshot covers FRED (US rates/FX) and any persisted global index rows.
     for (const it of latestGlobal?.items ?? []) {
       map.set(it.code, {
         value: it.value ?? null,
@@ -219,11 +206,6 @@ function GlobalSnapshot() {
         });
       }
     }
-    // Overlay the live yfinance + akshare snapshot so tiles do not lag behind
-    // the scheduled DB refresh. Real-time items are keyed by the same codes as
-    // GLOBAL_TILES; skip any code whose live point is not newer than DB. A
-    // real-time override also clears the FRED freshness hint because the
-    // fresh source is now yfinance/akshare.
     for (const it of rtGlobal?.items ?? []) {
       const code = it.code as string;
       const existing = map.get(code);
@@ -242,121 +224,52 @@ function GlobalSnapshot() {
   }, [latestGlobal, latestUs, rtGlobal]);
 
   const isLoading = gLoading || uLoading || rtLoading;
-  const hasAnyData = GLOBAL_TILES.some((t) => lookup.has(t.code));
 
   return (
-    <section className="dashboard-section">
-      <SectionHeading
-        eyebrow="海外宏观"
-        title={
-          <span>
-            <GlobalOutlined className="ad-icon-accent" /> 全球速览
-          </span>
-        }
-        action={
-          <span
-            className="panel-extra-link"
-            onClick={() => navigate('/global')}
+    <div className="dashboard-pulse-strip">
+      {GLOBAL_TILES.map((tile) => {
+        const entry = lookup.get(tile.code);
+        const fresnessHint = entry?.freshness_hint ?? null;
+        return (
+          <div
+            key={tile.code}
+            className="dashboard-pulse-tile"
+            role="button"
+            tabIndex={0}
+            onClick={() => navigate('/macro')}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                navigate('/macro');
+              }
+            }}
+            aria-label={`${tile.title}: ${formatTileValue(entry?.value ?? null, tile.unit)}`}
           >
-            查看全部 →
-          </span>
-        }
-      />
-      {!hasAnyData && !isLoading ? (
-        <Panel>
-          <EmptyState
-            title="暂无全球宏观数据"
-            description="FRED 尚未采集或未配置 API Key。前往「全球市场」页面查看详情。"
-          />
-        </Panel>
-      ) : (
-        <ResponsiveGrid cols={4} gap="md">
-          {GLOBAL_TILES.map((tile) => {
-            const entry = lookup.get(tile.code);
-            // FRED freshness badge — only show when the backend flagged
-            // a staleness hint (source === 'fred' AND period > today - 1).
-            // The tooltip uses the localized hint string so the wording
-            // is owned by the backend and stays in sync with /macro.
-            const fresnessHint = entry?.freshness_hint ?? null;
-            return (
-              <Panel
-                key={tile.code}
-                variant="default"
-                padding="md"
-                className="dashboard-index-card"
-              >
-                <div
-                  className="dashboard-index-card__cover"
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => navigate('/global')}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      e.preventDefault();
-                      navigate('/global');
-                    }
-                  }}
-                  aria-label={`查看 ${tile.title}`}
-                />
-                {fresnessHint ? (
-                  <Tooltip title={fresnessHint}>
-                    <span
-                      className="macro-freshness-badge"
-                      aria-label={fresnessHint}
-                    >
-                      <ExclamationCircleOutlined className="macro-freshness-badge__icon" />
-                      <span className="macro-freshness-badge__label">数据延迟</span>
-                    </span>
-                  </Tooltip>
-                ) : null}
-                <div className="dashboard-index-card__header">
-                  <span className="dashboard-index-card__code">{tile.code}</span>
-                </div>
-                <div className="dashboard-index-card__price">
-                  {isLoading && !entry ? (
-                    <span className="dashboard-index-card__empty">加载中...</span>
-                  ) : (
-                    formatTileValue(entry?.value ?? null, tile.unit)
-                  )}
-                </div>
-                <div className="dashboard-index-card__footer">
-                  <span className="dashboard-index-card__empty">
-                    {tile.title}
-                  </span>
-                  {entry?.change_pct != null ? (
-                    <ReturnTag value={entry.change_pct} />
-                  ) : (
-                    <span className="dashboard-index-card__empty">—</span>
-                  )}
-                  {entry?.period ? (
-                    <span className="dashboard-index-card__timestamp">
-                      {entry.period}
-                    </span>
-                  ) : null}
-                </div>
-              </Panel>
-            );
-          })}
-        </ResponsiveGrid>
-      )}
-    </section>
+            {fresnessHint ? (
+              <Tooltip title={fresnessHint}>
+                <span className="dashboard-pulse-tile__freshness" aria-label={fresnessHint}>
+                  <ExclamationCircleOutlined />
+                </span>
+              </Tooltip>
+            ) : null}
+            <span className="dashboard-pulse-tile__code">{tile.title}</span>
+            <span className="dashboard-pulse-tile__value">
+              {isLoading && !entry ? '—' : formatTileValue(entry?.value ?? null, tile.unit)}
+            </span>
+            {entry?.change_pct != null ? (
+              <ReturnTag value={entry.change_pct} />
+            ) : (
+              <span className="dashboard-pulse-tile__flat">—</span>
+            )}
+          </div>
+        );
+      })}
+    </div>
   );
 }
 
 /**
  * Hook: bundle the 4 dashboard KPI counters into per-metric queries.
- *
- * Each call hits ``/stats/overview/{metric}`` (a single COUNT / MAX
- * aggregate scoped to that field) so the 4 cards render in parallel and
- * don't block on each other. ``placeholderData: keepPreviousData``
- * keeps stale values visible across route changes, and ``isPending``
- * (i.e. no value yet, no cached placeholder) drives ``isLoading`` so
- * the StatCard skeleton still appears on a cold first paint.
- *
- * Returns one cell per metric plus the most-recent dataUpdatedAt (used
- * by the DataFreshnessHint). When the user navigates away and back,
- * ``updatedAt`` reflects whichever query most recently refetched —
- * close enough for "data is fresh as of N seconds ago".
  */
 function useDashboardStatsKpis() {
   const sharedOptions = {
@@ -416,18 +329,6 @@ export default function Dashboard() {
   const { data: scoresData } = useScores({ limit: 10 });
   const { favorites, count: favCount, isLoading: favLoading } = useFavorites(10);
   const { data: pools, isLoading: poolsLoading } = usePoolList();
-  // Dashboard 4 KPI tiles — each card fires its own per-metric query so
-  // the four numbers render in parallel as soon as each one lands, instead
-  // of waiting for a single bundled round-trip to finish. Each query
-  // keeps its previous value via ``placeholderData: keepPreviousData``
-  // so navigating away and back never shows a blank skeleton when the
-  // cache is warm. Cold first paint shows 4 individual skeletons for
-  // ~100-300 ms before numbers stream in.
-  //   - staleTime: 30s — counts are slow-movers but for a daily-use
-  //     dashboard we want to pick up an overnight ingest within ~30s
-  //     without hammering the API on every focus change.
-  //   - refetchOnWindowFocus: false — KPI counts don't change that fast;
-  //     keeps the focus handler cheap.
   const statsKpis = useDashboardStatsKpis();
 
   // Hot news: importance >= 4, latest 6.
@@ -460,7 +361,6 @@ export default function Dashboard() {
           (a, b) =>
             new Date(b.published_at).getTime() - new Date(a.published_at).getTime()
         );
-      // Dedup by id.
       const seen = new Set<number>();
       const dedup: NewsArticle[] = [];
       for (const n of merged) {
@@ -476,9 +376,6 @@ export default function Dashboard() {
 
   const INDEX_CODES = ['510300.SH', '159915.SZ', 'SPY.US', 'BTC.US'];
   const { prices } = usePriceStream(INDEX_CODES);
-  // MarketStream supersedes the price stream for the live tickers: it
-  // surfaces timestamps and the upstream connection state, so the four
-  // dashboard cards can show "updated 3s ago" hints.
   const { latest: marketLatest, isConnected: marketConnected, reconnect: marketReconnect } =
     useMarketStream(INDEX_CODES);
 
@@ -543,6 +440,7 @@ export default function Dashboard() {
 
   return (
     <PageShell maxWidth="full" className="dashboard-shell">
+      {/* ── TickerTape: always the first thing the eye catches ── */}
       <TickerTape limit={20} />
 
       <PageHeader
@@ -569,93 +467,89 @@ export default function Dashboard() {
         }
       />
 
-      {/* KPI strip — 4 StatCards. Each card binds to its own per-metric
-         query so numbers stream in independently (Phase 2, 2026-07-07). */}
-      <section className="dashboard-section">
-        <SectionHeading title="核心指标" />
-        <ResponsiveGrid cols={4} gap="md">
-          {[
-            {
-              title: '标的总数',
-              metric: 'etf-count' as const,
-              suffix: undefined,
-              onClick: () => navigate('/instruments'),
-              term: 'etf',
-            },
-            {
-              title: '评分覆盖',
-              metric: 'score-count' as const,
-              suffix: statsKpis.etf > 0 ? `/ ${statsKpis.etf}` : undefined,
-              onClick: () => navigate('/scores'),
-              term: 'composite_score',
-            },
-            {
-              title: '分类数',
-              metric: 'category-count' as const,
-              suffix: undefined,
-              onClick: undefined,
-              term: 'rank_category',
-            },
-            {
-              title: '评分模板',
-              metric: 'template-count' as const,
-              suffix: undefined,
-              onClick: () => navigate('/scores'),
-              term: 'strategy_template',
-            },
-          ].map((item) => {
-            const cell = statsKpis[item.metric];
-            return (
-              <StatCard
-                key={item.title}
-                title={item.title}
-                value={cell.value}
-                suffix={item.suffix}
-                loading={cell.isLoading}
-                onClick={item.onClick}
-                term={item.term}
-              />
-            );
-          })}
-        </ResponsiveGrid>
-      </section>
-
-      {/* Daily lesson — full width row, kept simple */}
-      {/* Daily lesson — full width row.
-         Phase 2 (2026-07-05): DailyLesson carries its own card surface
-         (lighter glass + --radius-lg) so we no longer nest it inside a
-         Panel — eliminates the previous double-box visual. */}
-      <section className="dashboard-section">
-        <SectionHeading title="今日一课" />
-        <DailyLesson />
-      </section>
-
-      {/* ── ETF holdings coverage (Phase 2, 2026-07-08) ────────────────
-         Single full-width card that surfaces the latest snapshot's
-         coverage, the 7/14/30-day SLO state, the per-snapshot trend,
-         and the structural blacklist size.  Mirrors the post-ETL
-         alert log in ``etf_holdings_quarterly`` so the badge and
-         the WARN log stay in lockstep. */}
-      <section className="dashboard-section">
-        <SectionHeading title="数据健康度" />
-        <ResponsiveGrid cols={1} gap="md">
-          <EtfHoldingsCoverageCard />
-        </ResponsiveGrid>
-      </section>
-
-      {/* ── Global markets snapshot (P0: 2026-07-04) ─────────────────── */}
-      <GlobalSnapshot />
-
-      <section className="dashboard-section">
+      {/* ═══════════════════════════════════════════════════════════
+          ZONE 1: 市场脉搏 (PULSE)
+          Compact, borderless, high information density.
+          Answers: "Should I panic?"
+          ═══════════════════════════════════════════════════════════ */}
+      <section className="dashboard-section dashboard-zone dashboard-zone--pulse">
         <SectionHeading
+          eyebrow="PULSE"
           title={
             <span>
-              最新行情
-              <span className="section-heading-meta"> · {latestTickDate}</span>
+              <GlobalOutlined className="ad-icon-accent" /> 市场脉搏
             </span>
           }
           action={
-            !marketConnected ? (
+            <span
+              className="panel-extra-link"
+              onClick={() => navigate('/global')}
+            >
+              全球市场 →
+            </span>
+          }
+        />
+
+        {/* Global index strip: 8-col compact grid, transparent tiles */}
+        <PulseGlobalStrip />
+
+        {/* Real-time ticker cards: 4-col compact variant */}
+        <div style={{ marginTop: 'var(--space-4)' }}>
+          <div className="dashboard-pulse-strip dashboard-pulse-strip--4col" style={{ marginTop: 'var(--space-4)' }}>
+            {INDEX_CODES.map((code, i) => {
+              const tick = marketLatest[code] ?? (prices[code]
+                ? { ...prices[code], ts: 0, name: undefined, market: undefined }
+                : undefined);
+              return (
+                <div
+                  key={code}
+                  className="dashboard-pulse-tile"
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => navigate(`/instruments/${code}`)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      navigate(`/instruments/${code}`);
+                    }
+                  }}
+                  aria-label={`${code}: ${tick ? tick.price.toFixed(2) : '暂无数据'}`}
+                >
+                  <span className="dashboard-pulse-tile__code">
+                    {code}
+                    {i === 0 && (
+                      <Tooltip
+                        title={marketConnected ? 'SSE 已连接，3 秒刷新' : 'SSE 未连接，正在重连'}
+                      >
+                        <span
+                          aria-label={marketConnected ? '实时连接中' : '连接断开'}
+                          style={{
+                            display: 'inline-block',
+                            width: 6,
+                            height: 6,
+                            borderRadius: '50%',
+                            background: marketConnected ? 'var(--color-rise)' : 'var(--color-fall)',
+                            marginLeft: 4,
+                            verticalAlign: 'middle',
+                          }}
+                        />
+                      </Tooltip>
+                    )}
+                  </span>
+                  <span className="dashboard-pulse-tile__value">
+                    {tick ? tick.price.toFixed(2) : '—'}
+                  </span>
+                  {tick ? (
+                    <ReturnTag value={tick.change_pct} />
+                  ) : (
+                    <span className="dashboard-pulse-tile__flat">暂无数据</span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+          {!marketConnected && (
+            <div style={{ marginTop: 8, textAlign: 'right' }}>
               <span className="market-conn">
                 <span className="market-conn__pill">连接中断</span>
                 <button
@@ -666,141 +560,35 @@ export default function Dashboard() {
                   重新连接
                 </button>
               </span>
-            ) : undefined
+            </div>
+          )}
+          <div style={{ marginTop: 4, fontSize: 'var(--text-small-size)', color: 'var(--text-muted)', textAlign: 'right' }}>
+            {latestTickDate}
+          </div>
+        </div>
+      </section>
+
+      {/* ═══════════════════════════════════════════════════════════
+          ZONE 2: 我的关注 (MY WATCH)
+          Standard card density — the user's personal dashboard.
+          Answers: "How am I doing today?"
+          ═══════════════════════════════════════════════════════════ */}
+      <section className="dashboard-section dashboard-zone dashboard-zone--watch">
+        <SectionHeading
+          eyebrow="MY WATCH"
+          title={
+            <span>
+              <StarFilled className="ad-icon-accent" /> 我的关注
+            </span>
           }
         />
-        <ResponsiveGrid cols={4} gap="md">
-          {INDEX_CODES.map((code, i) => {
-            const tick = marketLatest[code] ?? (prices[code]
-              ? { ...prices[code], ts: 0, name: undefined, market: undefined }
-              : undefined);
-            return (
-              <Panel key={code} variant="default" padding="md" className="dashboard-index-card">
-                <div className="dashboard-index-card__header">
-                  <span className="dashboard-index-card__code">{code}</span>
-                  {i === 0 ? (
-                    <Tooltip
-                      title={marketConnected ? 'SSE 已连接，3 秒刷新' : 'SSE 未连接，正在重连'}
-                    >
-                      <span
-                        aria-label={marketConnected ? '实时连接中' : '连接断开'}
-                        className={`dashboard-index-card__dot ${marketConnected ? 'dashboard-index-card__dot--connected' : ''}`}
-                      />
-                    </Tooltip>
-                  ) : null}
-                </div>
-                <div className="dashboard-index-card__price">
-                  {tick ? tick.price.toFixed(2) : '-'}
-                </div>
-                <div className="dashboard-index-card__footer">
-                  {tick ? (
-                    <>
-                      <ReturnTag value={tick.change_pct} />
-                      {tick.ts ? (
-                        <Tooltip title={formatDateTime(tick.ts, 'YYYY-MM-DD HH:mm:ss')}>
-                          <span className="dashboard-index-card__timestamp">
-                            {formatDateTimeCompact(tick.ts)}
-                          </span>
-                        </Tooltip>
-                      ) : null}
-                    </>
-                  ) : (
-                    <span className="dashboard-index-card__empty">暂无数据</span>
-                  )}
-                </div>
-              </Panel>
-            );
-          })}
-        </ResponsiveGrid>
-      </section>
 
-      {/* News row: hot news + favorites news — responsive 2 col, stacks < 1024px */}
-      <section className="dashboard-section dashboard-news-section">
-        <ResponsiveGrid cols={2} gap="lg">
-          <Panel
-            variant="default"
-            title={
-              <span>
-                <FireOutlined className="ad-icon-accent" />
-                今日热点
-              </span>
-            }
-            extra={
-              <span className="panel-extra-link" onClick={() => navigate('/news')}>
-                查看全部 →
-              </span>
-            }
-          >
-            {hotNewsLoading ? (
-              <Skeleton active paragraph={{ rows: 5 }} />
-            ) : !hotNews || hotNews.length === 0 ? (
-              <EmptyState title="暂无重要资讯" />
-            ) : (
-              hotNews.map((a) => (
-                <NewsRow key={a.id} article={a} onOpen={(id) => navigate(`/news/${id}`)} />
-              ))
-            )}
-          </Panel>
+        {/* Daily lesson — front and center, above favorites */}
+        <DailyLesson />
 
-          <Panel
-            variant="default"
-            title={
-              <span>
-                <ReadOutlined className="ad-icon-leading" />
-                自选股动态
-              </span>
-            }
-            extra={
-              favCount > 0 ? (
-                <span className="panel-extra-link" onClick={() => navigate('/news')}>
-                  查看全部 →
-                </span>
-              ) : undefined
-            }
-          >
-            {favNewsLoading ? (
-              <Skeleton active paragraph={{ rows: 5 }} />
-            ) : favCount === 0 ? (
-              <EmptyState
-                title="暂无收藏的标的"
-                description="收藏自选股后，这里会汇总相关新闻"
-              />
-            ) : !favoritesNews || favoritesNews.length === 0 ? (
-              <EmptyState title="暂无自选股相关资讯" />
-            ) : (
-              favoritesNews.map((a) => (
-                <NewsRow key={a.id} article={a} onOpen={(id) => navigate(`/news/${id}`)} />
-              ))
-            )}
-          </Panel>
-        </ResponsiveGrid>
-      </section>
-
-      {/* Scores + side stack */}
-      <section className="dashboard-section dashboard-score-grid">
-        <ResponsiveGrid cols={2} gap="lg">
-          <Panel
-            variant="default"
-            title="综合评分 Top 10"
-            extra={
-              <span className="panel-extra-link" onClick={() => navigate('/scores')}>
-                查看全部 →
-              </span>
-            }
-          >
-            <Table
-              dataSource={scoresData?.items || []}
-              columns={scoreColumns}
-              rowKey="etf_code"
-              size="small"
-              scroll={{ x: 'max-content' }}
-              pagination={false}
-              showHeader={false}
-              onRow={(record) => ({ onClick: () => navigate(`/instruments/${record.etf_code}`) })}
-            />
-          </Panel>
-
-          <div className="dashboard-side-stack">
+        <div style={{ marginTop: 'var(--space-5)' }}>
+          <ResponsiveGrid cols={2} gap="lg">
+            {/* Favorites panel */}
             <Panel
               variant="default"
               title={
@@ -871,57 +659,216 @@ export default function Dashboard() {
               )}
             </Panel>
 
-            <Panel
-              variant="default"
-              title="我的标的池"
-              extra={
-                (pools?.length || 0) > 0 ? (
-                  <span className="panel-extra-link" onClick={() => navigate('/pools')}>
-                    查看全部 →
+            {/* Pools + favorites news stacked */}
+            <div className="dashboard-side-stack">
+              {/* Favorites news — directly relevant to My Watch */}
+              <Panel
+                variant="default"
+                title={
+                  <span>
+                    <ReadOutlined className="ad-icon-leading" />
+                    自选股动态
                   </span>
-                ) : undefined
-              }
-            >
-              {poolsLoading ? (
-                <LoadingBlock size="md" label="加载中…" />
-              ) : (pools?.length || 0) === 0 ? (
-                <EmptyState
-                  title="暂无标的池"
-                  description="在标的池管理中创建池并添加标的，这里会汇总展示"
-                />
-              ) : (
-                <List
-                  dataSource={pools?.slice(0, 6) || []}
-                  renderItem={(pool: any) => (
-                    <List.Item
-                      onClick={() => navigate(`/pools/${pool.id}`)}
-                      className="dashboard-pool-item"
-                    >
-                      <List.Item.Meta
-                        title={
-                          <div className="dashboard-pool-item__title">
-                            <FolderOpenOutlined className="ad-icon-accent" />
-                            <span className="dashboard-pool-item__name">{pool.name}</span>
-                          </div>
-                        }
-                        description={
-                          <div className="dashboard-pool-item__desc">
-                            <span>{pool.members?.length || 0} 只标的</span>
-                            {pool.description && (
-                              <>
-                                <span className="ad-text-muted">|</span>
-                                <span>{pool.description}</span>
-                              </>
-                            )}
-                          </div>
-                        }
-                      />
-                    </List.Item>
-                  )}
-                />
-              )}
-            </Panel>
-          </div>
+                }
+                extra={
+                  favCount > 0 ? (
+                    <span className="panel-extra-link" onClick={() => navigate('/news')}>
+                      查看全部 →
+                    </span>
+                  ) : undefined
+                }
+              >
+                {favNewsLoading ? (
+                  <Skeleton active paragraph={{ rows: 5 }} />
+                ) : favCount === 0 ? (
+                  <EmptyState
+                    title="暂无收藏的标的"
+                    description="收藏自选股后，这里会汇总相关新闻"
+                  />
+                ) : !favoritesNews || favoritesNews.length === 0 ? (
+                  <EmptyState title="暂无自选股相关资讯" />
+                ) : (
+                  favoritesNews.map((a) => (
+                    <NewsRow key={a.id} article={a} onOpen={(id) => navigate(`/news/${id}`)} />
+                  ))
+                )}
+              </Panel>
+
+              {/* Pools quick access */}
+              <Panel
+                variant="default"
+                title="我的标的池"
+                extra={
+                  (pools?.length || 0) > 0 ? (
+                    <span className="panel-extra-link" onClick={() => navigate('/pools')}>
+                      查看全部 →
+                    </span>
+                  ) : undefined
+                }
+              >
+                {poolsLoading ? (
+                  <LoadingBlock size="md" label="加载中…" />
+                ) : (pools?.length || 0) === 0 ? (
+                  <EmptyState
+                    title="暂无标的池"
+                    description="在标的池管理中创建池并添加标的，这里会汇总展示"
+                  />
+                ) : (
+                  <List
+                    dataSource={pools?.slice(0, 6) || []}
+                    renderItem={(pool: any) => (
+                      <List.Item
+                        onClick={() => navigate(`/pools/${pool.id}`)}
+                        className="dashboard-pool-item"
+                      >
+                        <List.Item.Meta
+                          title={
+                            <div className="dashboard-pool-item__title">
+                              <FolderOpenOutlined className="ad-icon-accent" />
+                              <span className="dashboard-pool-item__name">{pool.name}</span>
+                            </div>
+                          }
+                          description={
+                            <div className="dashboard-pool-item__desc">
+                              <span>{pool.members?.length || 0} 只标的</span>
+                              {pool.description && (
+                                <>
+                                  <span className="ad-text-muted">|</span>
+                                  <span>{pool.description}</span>
+                                </>
+                              )}
+                            </div>
+                          }
+                        />
+                      </List.Item>
+                    )}
+                  />
+                )}
+              </Panel>
+            </div>
+          </ResponsiveGrid>
+        </div>
+      </section>
+
+      {/* ═══════════════════════════════════════════════════════════
+          ZONE 3: 发现机会 (DISCOVER)
+          Relaxed spacing — designed for reading and exploration.
+          Answers: "What should I pay attention to?"
+          ═══════════════════════════════════════════════════════════ */}
+      <section className="dashboard-section dashboard-zone dashboard-zone--discover">
+        <SectionHeading
+          eyebrow="DISCOVER"
+          title={
+            <span>
+              <FireOutlined className="ad-icon-accent" /> 发现机会
+            </span>
+          }
+        />
+
+        {/* Scores + Hot News side by side */}
+        <ResponsiveGrid cols={2} gap="lg">
+          {/* Score rankings — Top 10 */}
+          <Panel
+            variant="default"
+            title="综合评分 Top 10"
+            extra={
+              <span className="panel-extra-link" onClick={() => navigate('/scores')}>
+                查看全部 →
+              </span>
+            }
+          >
+            <Table
+              dataSource={scoresData?.items || []}
+              columns={scoreColumns}
+              rowKey="etf_code"
+              size="small"
+              scroll={{ x: 'max-content' }}
+              pagination={false}
+              showHeader={false}
+              onRow={(record) => ({ onClick: () => navigate(`/instruments/${record.etf_code}`) })}
+            />
+          </Panel>
+
+          {/* Hot news */}
+          <Panel
+            variant="default"
+            title={
+              <span>
+                <FireOutlined className="ad-icon-accent" />
+                今日热点
+              </span>
+            }
+            extra={
+              <span className="panel-extra-link" onClick={() => navigate('/news')}>
+                查看全部 →
+              </span>
+            }
+          >
+            {hotNewsLoading ? (
+              <Skeleton active paragraph={{ rows: 5 }} />
+            ) : !hotNews || hotNews.length === 0 ? (
+              <EmptyState title="暂无重要资讯" />
+            ) : (
+              hotNews.map((a) => (
+                <NewsRow key={a.id} article={a} onOpen={(id) => navigate(`/news/${id}`)} />
+              ))
+            )}
+          </Panel>
+        </ResponsiveGrid>
+
+        {/* Data health card — placed below the main content in Discover */}
+        <div style={{ marginTop: 'var(--space-5)' }}>
+          <EtfHoldingsCoverageCard />
+        </div>
+      </section>
+
+      {/* ── Platform KPI footer: subtle meta-stats row ── */}
+      <section className="dashboard-section" style={{ marginTop: 'var(--space-7)' }}>
+        <SectionHeading title="平台概览" />
+        <ResponsiveGrid cols={4} gap="md">
+          {[
+            {
+              title: '标的总数',
+              metric: 'etf-count' as const,
+              suffix: undefined,
+              onClick: () => navigate('/instruments'),
+              term: 'etf',
+            },
+            {
+              title: '评分覆盖',
+              metric: 'score-count' as const,
+              suffix: statsKpis.etf > 0 ? `/ ${statsKpis.etf}` : undefined,
+              onClick: () => navigate('/scores'),
+              term: 'composite_score',
+            },
+            {
+              title: '分类数',
+              metric: 'category-count' as const,
+              suffix: undefined,
+              onClick: undefined,
+              term: 'rank_category',
+            },
+            {
+              title: '评分模板',
+              metric: 'template-count' as const,
+              suffix: undefined,
+              onClick: () => navigate('/scores'),
+              term: 'strategy_template',
+            },
+          ].map((item) => {
+            const cell = statsKpis[item.metric];
+            return (
+              <StatCard
+                key={item.title}
+                title={item.title}
+                value={cell.value}
+                suffix={item.suffix}
+                loading={cell.isLoading}
+                onClick={item.onClick}
+                term={item.term}
+              />
+            );
+          })}
         </ResponsiveGrid>
       </section>
     </PageShell>

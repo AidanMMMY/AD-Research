@@ -19,6 +19,7 @@ import {
 } from '@/api/researchReports';
 import type { ResearchReportOut } from '@/api/researchReports';
 import { useDebounce } from '@/hooks/useDebounce';
+import { NULL_PLACEHOLDER } from '@/utils/format';
 
 const { Title, Paragraph } = Typography;
 
@@ -36,7 +37,7 @@ function ratingColor(r: string | null | undefined): string {
 }
 
 function formatPrice(v: number | null | undefined): string {
-  if (v === null || v === undefined) return '-';
+  if (v === null || v === undefined) return NULL_PLACEHOLDER;
   return v.toFixed(2);
 }
 
@@ -148,21 +149,21 @@ export default function ResearchReports() {
       title: '行业',
       dataIndex: 'industry',
       width: 110,
-      render: (v: string | null) => v ?? '-',
+      render: (v: string | null) => v ?? NULL_PLACEHOLDER,
     },
     {
       title: '发布日期',
       dataIndex: 'publish_date',
       width: 110,
       render: (v: string) => (
-        <span className="tabular-nums">{v ?? '-'}</span>
+        <span className="tabular-nums">{v ?? NULL_PLACEHOLDER}</span>
       ),
     },
     {
       title: '评级',
       dataIndex: 'rating',
       width: 80,
-      render: (v: string | null) => (v ? <Tag color={ratingColor(v)}>{v}</Tag> : '-'),
+      render: (v: string | null) => (v ? <Tag color={ratingColor(v)}>{v}</Tag> : NULL_PLACEHOLDER),
     },
     {
       title: '目标价',
@@ -360,10 +361,10 @@ export default function ResearchReports() {
               <Descriptions.Item label="证券代码">{detail.ts_code}</Descriptions.Item>
               <Descriptions.Item label="简称">{detail.name}</Descriptions.Item>
               <Descriptions.Item label="机构">{detail.org_name}</Descriptions.Item>
-              <Descriptions.Item label="行业">{detail.industry ?? '-'}</Descriptions.Item>
+              <Descriptions.Item label="行业">{detail.industry ?? NULL_PLACEHOLDER}</Descriptions.Item>
               <Descriptions.Item label="发布日期">{detail.publish_date}</Descriptions.Item>
               <Descriptions.Item label="评级">
-                {detail.rating ? <Tag color={ratingColor(detail.rating)}>{detail.rating}</Tag> : '-'}
+                {detail.rating ? <Tag color={ratingColor(detail.rating)}>{detail.rating}</Tag> : NULL_PLACEHOLDER}
               </Descriptions.Item>
               <Descriptions.Item label="目标价">{formatPrice(detail.target_price)}</Descriptions.Item>
               <Descriptions.Item label="发布时价格">
@@ -375,7 +376,7 @@ export default function ResearchReports() {
                     {detail.pdf_url}
                   </a>
                 ) : (
-                  '-'
+                  NULL_PLACEHOLDER
                 )}
               </Descriptions.Item>
             </Descriptions>

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import './styles.css';
 import { Row, Col, Statistic, Spin, Descriptions, Radio, Checkbox, Space, Alert, Button, message, Skeleton } from 'antd';
-import { StarOutlined, StarFilled, RobotOutlined, ReadOutlined, SmileOutlined, ArrowLeftOutlined } from '@ant-design/icons';
+import { StarOutlined, StarFilled, RobotOutlined, ReadOutlined, SmileOutlined, ArrowLeftOutlined, SearchOutlined } from '@ant-design/icons';
 import { useInstrumentDetail } from '@/hooks/useInstrumentList';
 import { useInstrumentScore } from '@/hooks/useScores';
 import { useFavoriteStatus } from '@/hooks/useFavorites';
@@ -280,6 +280,12 @@ export default function InstrumentDetail() {
               onClick={handleToggleFavorite}
             >
               {isFavorite ? '已收藏' : '收藏'}
+            </Button>
+            <Button
+              icon={<SearchOutlined />}
+              onClick={() => navigate(`/screen?market=${encodeURIComponent(instrument.market || '')}&category=${encodeURIComponent(instrument.category || '')}`)}
+            >
+              查找类似标的
             </Button>
             {indicator?.return_1m !== undefined && (
               <div className="detail-hero__kpi">

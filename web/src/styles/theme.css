@@ -24,9 +24,9 @@
    ============================================================ */
 :root {
   /* ---- Background Layers ---- */
-  --bg-base: #ffffff;
-  --bg-elevated: #f7f7f8;
-  --bg-surface: #f4f4f5;
+  --bg-base: #FAFBFC;
+  --bg-elevated: #F3F5F7;
+  --bg-surface: #EDF0F3;
   --bg-hover: rgba(0, 0, 0, 0.03);
   --bg-active: rgba(0, 0, 0, 0.05);
   --bg-input: #ffffff;
@@ -48,10 +48,10 @@
   --primary-gradient: linear-gradient(135deg, var(--accent) 0%, #7C3AED 100%);
 
   /* ---- Text Colors ---- */
-  --text-primary: #111113;
-  --text-secondary: #6b7280;
-  --text-tertiary: #9ca3af;
-  --text-muted: #d1d5db;
+  --text-primary: #0F1115;
+  --text-secondary: #5B6778;
+  --text-tertiary: #8894A4;
+  --text-muted: #C8CFD8;
 
   /* ---- Market Colors (China A-share convention 默认: 红涨绿跌) ---- */
   --color-rise: #dc2626;
@@ -63,18 +63,18 @@
   --color-neutral: #9ca3af;
 
   /* ---- Semantic Colors ---- */
-  --color-success: #10b981;
-  --color-success-dim: rgba(16, 185, 129, 0.08);
-  --color-success-border: rgba(16, 185, 129, 0.20);
-  --color-success-bright: #22c55e;
-  --color-error: #ef4444;
-  --color-error-dim: rgba(239, 68, 68, 0.08);
-  --color-error-border: rgba(239, 68, 68, 0.20);
-  --color-error-bright: #f87171;
-  --color-warning: #f59e0b;
-  --color-warning-dim: rgba(245, 158, 11, 0.08);
-  --color-warning-border: rgba(245, 158, 11, 0.20);
-  --color-warning-bright: #fbbf24;
+  --color-success: #30A46C;
+  --color-success-dim: rgba(48, 164, 108, 0.08);
+  --color-success-border: rgba(48, 164, 108, 0.20);
+  --color-success-bright: #3CB97A;
+  --color-error: #E5484D;
+  --color-error-dim: rgba(229, 72, 77, 0.08);
+  --color-error-border: rgba(229, 72, 77, 0.20);
+  --color-error-bright: #F16A6F;
+  --color-warning: #F0B100;
+  --color-warning-dim: rgba(240, 177, 0, 0.08);
+  --color-warning-border: rgba(240, 177, 0, 0.20);
+  --color-warning-bright: #F5C842;
   --color-warning-bright-dim: rgba(251, 191, 36, 0.18);
   --color-info: var(--accent);
 
@@ -112,8 +112,8 @@
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
   --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.06);
   --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.08);
-  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.03);
-  --shadow-card-hover: 0 4px 16px rgba(0, 0, 0, 0.08);
+  --shadow-card: 0 0 0 1px rgba(0,0,0,0.03), 0 1px 2px rgba(0,0,0,0.04), 0 2px 8px rgba(0,0,0,0.04);
+  --shadow-card-hover: 0 0 0 1px rgba(0,0,0,0.04), 0 2px 4px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.08);
 
   /* ---- Foreground on accent ---- */
   --text-on-accent: #ffffff;

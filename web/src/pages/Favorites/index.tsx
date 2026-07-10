@@ -35,6 +35,7 @@ import ThemeTag from '@/components/ThemeTag';
 import ReturnTag from '@/components/ReturnTag';
 import FavoriteToggleButton from '@/components/FavoriteToggleButton';
 import { formatDateTime, formatDateTimeCompact } from '@/utils/datetime';
+import { NULL_PLACEHOLDER } from '@/utils/format';
 
 /**
  * 我的自选股页面
@@ -158,14 +159,14 @@ export default function Favorites() {
       title: '分类',
       dataIndex: 'category',
       width: 120,
-      render: (v?: string) => (v ? <ThemeTag>{v}</ThemeTag> : <span className="ad-text-muted">—</span>),
+      render: (v?: string) => (v ? <ThemeTag>{v}</ThemeTag> : <span className="ad-text-muted">{NULL_PLACEHOLDER}</span>),
     },
     {
       title: '市场',
       dataIndex: 'market',
       width: 90,
       render: (v?: string) => (
-        <span className="tabular-nums font-mono ad-text-muted">{v || '—'}</span>
+        <span className="tabular-nums font-mono ad-text-muted">{v || NULL_PLACEHOLDER}</span>
       ),
     },
     {
@@ -176,7 +177,7 @@ export default function Favorites() {
       render: (_: unknown, record: any) => {
         const tick = getLiveTick(record.etf_code);
         if (!tick) {
-          return <span className="tabular-nums ad-text-muted">—</span>;
+          return <span className="tabular-nums ad-text-muted">{NULL_PLACEHOLDER}</span>;
         }
         return (
           <span
@@ -196,7 +197,7 @@ export default function Favorites() {
       render: (_: unknown, record: any) => {
         const tick = getLiveTick(record.etf_code);
         if (!tick || tick.change_pct == null) {
-          return <span className="ad-text-muted">—</span>;
+          return <span className="ad-text-muted">{NULL_PLACEHOLDER}</span>;
         }
         return <ReturnTag value={tick.change_pct} />;
       },
@@ -213,7 +214,7 @@ export default function Favorites() {
             </span>
           </Tooltip>
         ) : (
-          <span className="ad-text-muted">—</span>
+          <span className="ad-text-muted">{NULL_PLACEHOLDER}</span>
         ),
     },
     {

@@ -6,4 +6,129 @@
    global.css and shared across the app.
    ============================================================ */
 
-/* ── Future page-specific overrides go here ── */
+/* ── Narrative Zones: three-act breathing separators ── */
+.dashboard-zone {
+  margin-top: var(--space-7);
+}
+
+.dashboard-zone:first-of-type {
+  margin-top: 0;
+}
+
+/* Zone 1: Pulse — compact, borderless, high information density */
+.dashboard-zone--pulse .ad-section-heading {
+  margin-bottom: var(--space-4);
+}
+
+/* Zone 3: Discover — relaxed spacing for readability */
+.dashboard-zone--discover .ad-panel__body {
+  padding: var(--space-5);
+}
+
+.dashboard-zone--discover .ad-panel__header {
+  padding: var(--space-4) var(--space-5) var(--space-3);
+}
+
+/* ── Pulse global index strip ── */
+.dashboard-pulse-strip {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: var(--space-1);
+}
+
+.dashboard-pulse-strip--4col {
+  grid-template-columns: repeat(4, 1fr);
+}
+
+/* Tablet: 4 columns for the index strip so tiles don't cramp */
+@media (max-width: 1023px) {
+  .dashboard-pulse-strip {
+    grid-template-columns: repeat(4, 1fr);
+  }
+  .dashboard-pulse-strip--4col {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* Mobile: 2 columns for any pulse strip */
+@media (max-width: 767px) {
+  .dashboard-pulse-strip,
+  .dashboard-pulse-strip--4col {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* ── Individual pulse tile: transparent, borderless, tiny ── */
+.dashboard-pulse-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--space-2) var(--space-3);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: transform var(--transition-fast), background var(--transition-fast);
+  user-select: none;
+  position: relative;
+}
+
+.dashboard-pulse-tile:hover,
+.dashboard-pulse-tile:focus-visible {
+  transform: translateY(-1px);
+  background: var(--bg-hover);
+  outline: none;
+}
+
+.dashboard-pulse-tile__code {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-tertiary);
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dashboard-pulse-tile__value {
+  font-size: var(--text-data-md-size);
+  font-weight: 400;
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+.dashboard-pulse-tile__flat {
+  font-size: var(--text-small-size);
+  color: var(--text-muted);
+}
+
+/* Pulse tile freshness badge — tiny corner indicator */
+.dashboard-pulse-tile__freshness {
+  position: absolute;
+  top: 2px;
+  right: 4px;
+  font-size: 9px;
+  color: var(--text-muted);
+  line-height: 1;
+}
+
+/* Pulse tile — compact ReturnTag override */
+.dashboard-pulse-tile .return-tag {
+  font-size: 11px;
+  padding: 1px 4px;
+  line-height: 1.3;
+}
+
+/* ── Zone discover panel: relaxed inner spacing ── */
+.dashboard-zone--discover .dashboard-news-row {
+  padding: var(--space-3) 0;
+}
+
+/* ── Zone transition: subtle visual gap on mobile ── */
+@media (max-width: 767px) {
+  .dashboard-zone {
+    margin-top: var(--space-6);
+  }
+}

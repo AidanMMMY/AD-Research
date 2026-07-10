@@ -13,6 +13,7 @@ import ResponsiveGrid from '@/components/ResponsiveGrid';
 import LastUpdated from '@/components/LastUpdated';
 import HelpPopover from '@/components/HelpPopover';
 import { useSettingsStore } from '@/stores/settings';
+import { NULL_PLACEHOLDER } from '@/utils/format';
 import {
   useFuturesDashboard,
   useFuturesLeaderboard,
@@ -31,23 +32,23 @@ const PRODUCT_ICON: Record<Product, string> = {
 };
 
 function fmtNum(v: string | number | null | undefined, digits = 2): string {
-  if (v === null || v === undefined) return '-';
+  if (v === null || v === undefined) return NULL_PLACEHOLDER;
   const n = typeof v === 'string' ? Number(v) : v;
-  if (Number.isNaN(n)) return '-';
+  if (Number.isNaN(n)) return NULL_PLACEHOLDER;
   return n.toFixed(digits);
 }
 
 function fmtVol(v: number | null | undefined): string {
-  if (v === null || v === undefined) return '-';
+  if (v === null || v === undefined) return NULL_PLACEHOLDER;
   const n = Number(v);
-  if (Number.isNaN(n)) return '-';
+  if (Number.isNaN(n)) return NULL_PLACEHOLDER;
   if (n >= 1e8) return `${(n / 1e8).toFixed(2)} 亿`;
   if (n >= 1e4) return `${(n / 1e4).toFixed(2)} 万`;
   return n.toFixed(0);
 }
 
 function changeCell(pct: number | null | undefined) {
-  if (pct === null || pct === undefined) return <span className="ad-text-tertiary">-</span>;
+  if (pct === null || pct === undefined) return <span className="ad-text-tertiary">{NULL_PLACEHOLDER}</span>;
   const positive = pct >= 0;
   const Icon = positive ? CaretUpOutlined : CaretDownOutlined;
   const cls = positive ? 'ad-change-cell ad-change-cell--rise' : 'ad-change-cell ad-change-cell--fall';
@@ -140,10 +141,10 @@ function ProductSummary({ section }: ProductSummaryProps) {
           <Statistic title={<HelpPopover termKey="dominant_contract" mode={mode}>主力合约数</HelpPopover>} value={0} />
         </Col>
         <Col xs={24} sm={8}>
-          <Statistic title="涨幅最大" value="-" />
+          <Statistic title="涨幅最大" value={NULL_PLACEHOLDER} />
         </Col>
         <Col xs={24} sm={8}>
-          <Statistic title="跌幅最大" value="-" />
+          <Statistic title="跌幅最大" value={NULL_PLACEHOLDER} />
         </Col>
       </Row>
     );
@@ -163,12 +164,12 @@ function ProductSummary({ section }: ProductSummaryProps) {
               <span className="ad-text-rise">涨幅最大</span>
             </Tooltip>
           }
-          value={best_performer?.code ?? '-'}
+          value={best_performer?.code ?? NULL_PLACEHOLDER}
           valueRender={() =>
             best_performer ? (
               <InstrumentCodeTag code={best_performer.code} name={best_performer.name} />
             ) : (
-              '-'
+              NULL_PLACEHOLDER
             )
           }
           suffix={
@@ -176,7 +177,7 @@ function ProductSummary({ section }: ProductSummaryProps) {
               <span className={`ad-statistic-suffix ${(best_performer.settle_change_pct ?? 0) >= 0 ? 'detail-kpi-rise' : 'detail-kpi-fall'}`}>
                 {best_performer.settle_change_pct !== null && best_performer.settle_change_pct !== undefined
                   ? `${best_performer.settle_change_pct >= 0 ? '+' : ''}${best_performer.settle_change_pct.toFixed(2)}%`
-                  : '-'}
+                  : NULL_PLACEHOLDER}
               </span>
             ) : null
           }
@@ -189,12 +190,12 @@ function ProductSummary({ section }: ProductSummaryProps) {
               <span className="ad-text-fall">跌幅最大</span>
             </Tooltip>
           }
-          value={worst_performer?.code ?? '-'}
+          value={worst_performer?.code ?? NULL_PLACEHOLDER}
           valueRender={() =>
             worst_performer ? (
               <InstrumentCodeTag code={worst_performer.code} name={worst_performer.name} />
             ) : (
-              '-'
+              NULL_PLACEHOLDER
             )
           }
           suffix={
@@ -202,7 +203,7 @@ function ProductSummary({ section }: ProductSummaryProps) {
               <span className={`ad-statistic-suffix ${(worst_performer.settle_change_pct ?? 0) >= 0 ? 'detail-kpi-rise' : 'detail-kpi-fall'}`}>
                 {worst_performer.settle_change_pct !== null && worst_performer.settle_change_pct !== undefined
                   ? `${worst_performer.settle_change_pct >= 0 ? '+' : ''}${worst_performer.settle_change_pct.toFixed(2)}%`
-                  : '-'}
+                  : NULL_PLACEHOLDER}
               </span>
             ) : null
           }
@@ -335,7 +336,7 @@ export default function Futures() {
           />
           <StatCard
             title="数据日期"
-            value={latestDate ?? '-'}
+            value={latestDate ?? NULL_PLACEHOLDER}
           />
           <StatCard
             title="领头羊 / 领跌"
@@ -351,7 +352,7 @@ export default function Futures() {
               ) : topLoser ? (
                 <InstrumentCodeTag code={topLoser.code} name={topLoser.name} />
               ) : (
-                '-'
+                NULL_PLACEHOLDER
               )
             }
           />

@@ -6,28 +6,16 @@ import { Table, Input, Select, List, Skeleton } from 'antd';
 import { SearchOutlined } from '@ant-design/icons';
 import { useStockList } from '@/hooks/useStocks';
 import { useInstrumentMarkets, useInstrumentCategories } from '@/hooks/useInstrumentList';
-import { useSparkline } from '@/hooks/useSparkline';
 import { useDebounce } from '@/hooks/useDebounce';
+import SparklineCell from '@/components/SparklineCell';
 import PageShell from '@/components/PageShell';
 import PageHeader from '@/components/PageHeader';
 import FilterToolbar from '@/components/FilterToolbar';
 import Panel from '@/components/Panel';
-import SectionHeading from '@/components/SectionHeading';
 import EmptyState from '@/components/EmptyState';
 import InstrumentCodeTag from '@/components/InstrumentCodeTag';
 import ThemeTag from '@/components/ThemeTag';
-import Sparkline from '@/components/Sparkline';
 import { useIsMobile } from '@/hooks/useBreakpoint';
-
-/** Row-level sparkline cell. Uses the shared ETF sparkline endpoint
- *  which works for any instrument via instrument_daily_bar. */
-function SparklineCell({ code }: { code: string }) {
-  const { data } = useSparkline({ code, days: 30 });
-  if (!data || !data.points || data.points.length === 0) {
-    return <span className="mobile-list-item__meta">-</span>;
-  }
-  return <Sparkline data={data.points} width={80} height={20} />;
-}
 
 export default function StocksList() {
   const navigate = useNavigate();
@@ -58,7 +46,6 @@ export default function StocksList() {
     }
   }, [categories, category]);
 
-  const rowSize = 'large';
   const tableWrapClass = 'ad-table-scroll ad-table-sticky';
 
   const columns = [
@@ -116,45 +103,42 @@ export default function StocksList() {
         description="浏览和搜索全市场 A 股个股，按市场、行业筛选"
       />
 
-      <FilterToolbar total={`共 ${data?.total || 0} 只`}>
-        <Input
-          placeholder="搜索代码或名称"
-          allowClear
-          prefix={<SearchOutlined className="ad-icon-tertiary" />}
-          onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-          className="ad-w-full"
-        />
-        <Select
-          placeholder="市场"
-          allowClear
-          className="ad-w-full"
-          options={markets?.map((m: string) => ({ label: m, value: m }))}
-          value={market}
-          onChange={(v) => { setMarket(v); setPage(1); }}
-        />
-        <Select
-          placeholder="行业"
-          allowClear
-          className="ad-w-full"
-          options={categories?.map((c: string) => ({ label: c, value: c }))}
-          value={category}
-          onChange={(v) => { setCategory(v); setPage(1); }}
-        />
-      </FilterToolbar>
+      <Panel variant="default" padding="md">
+        <FilterToolbar total={`共 ${data?.total || 0} 只`}>
+          <Input
+            placeholder="搜索代码或名称"
+            allowClear
+            prefix={<SearchOutlined className="ad-icon-tertiary" />}
+            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+            className="ad-w-full"
+          />
+          <Select
+            placeholder="市场"
+            allowClear
+            className="ad-w-full"
+            options={markets?.map((m: string) => ({ label: m, value: m }))}
+            value={market}
+            onChange={(v) => { setMarket(v); setPage(1); }}
+          />
+          <Select
+            placeholder="行业"
+            allowClear
+            className="ad-w-full"
+            options={categories?.map((c: string) => ({ label: c, value: c }))}
+            value={category}
+            onChange={(v) => { setCategory(v); setPage(1); }}
+          />
+        </FilterToolbar>
 
-      <SectionHeading title="个股列表" />
-
-      <Panel variant="default" padding="none">
-        {isLoading ? (
-          <Skeleton active paragraph={{ rows: 10 }} />
-        ) : (data?.items?.length || 0) === 0 ? (
-          <div className="ad-p-5">
+        {isMobile ? (
+          isLoading ? (
+            <Skeleton active paragraph={{ rows: 10 }} />
+          ) : (data?.items?.length || 0) === 0 ? (
             <EmptyState
               title="没有符合条件的个股"
               description="尝试调整上方筛选条件，或清空搜索关键词查看全部个股"
             />
-          </div>
-        ) : isMobile ? (
+          ) : (
           <List
             dataSource={data?.items || []}
             renderItem={(item: any) => (
@@ -186,6 +170,7 @@ export default function StocksList() {
               className: 'mobile-list-pagination',
             }}
           />
+          )
         ) : (
           <div className={tableWrapClass}>
             <Table
@@ -193,14 +178,17 @@ export default function StocksList() {
               columns={columns}
               rowKey="code"
               loading={isLoading}
-              size={rowSize as any}
+              size="small"
               scroll={{ x: 'max-content' }}
               pagination={{
                 current: page,
                 pageSize: 50,
                 total: data?.total || 0,
                 onChange: setPage,
-                showSizeChanger: false,
+                showSizeChanger: true,
+              }}
+              locale={{
+                emptyText: <EmptyState title="暂无数据" />,
               }}
               onRow={(record) => ({
                 onClick: () => navigate(`/stocks/${record.code}`),

@@ -12,7 +12,6 @@ import PageShell from '@/components/PageShell';
 import PageHeader from '@/components/PageHeader';
 import FilterToolbar from '@/components/FilterToolbar';
 import Panel from '@/components/Panel';
-import SectionHeading from '@/components/SectionHeading';
 import EmptyState from '@/components/EmptyState';
 import InstrumentCodeTag from '@/components/InstrumentCodeTag';
 import ReturnTag from '@/components/ReturnTag';
@@ -54,7 +53,6 @@ export default function CryptoList() {
     page_size: 50,
   });
 
-  const rowSize = 'large';
   const tableWrapClass = 'ad-table-scroll ad-table-sticky';
 
   // The API enriches every row with the same last_updated timestamp.
@@ -91,8 +89,6 @@ export default function CryptoList() {
       title: '24h 涨跌',
       dataIndex: 'change_pct',
       width: 120,
-      // Prefer canonical change_pct; fall back to deprecated change_24h
-      // so older API responses (or cache) keep rendering.
       render: (_: unknown, record: any) => (
         <ReturnTag
           value={record.change_pct ?? record.change_24h}
@@ -138,68 +134,64 @@ export default function CryptoList() {
         description="浏览和分析主流数字货币，数据来源于 Binance"
       />
 
-      <FilterToolbar total={`共 ${data?.total ?? 0} 只`}>
-        <Input
-          placeholder="搜索币种代码或名称"
-          allowClear
-          prefix={<SearchOutlined className="ad-icon-tertiary" />}
-          value={filters.search}
-          onChange={(e) => {
-            filters.setSearch(e.target.value);
-            setPage(1);
-          }}
-          className="ad-w-full"
-        />
-        <Select
-          placeholder="分类"
-          allowClear
-          className="ad-w-full"
-          value={filters.category}
-          onChange={(v) => {
-            filters.setCategory(v);
-            setPage(1);
-          }}
-          options={CATEGORIES.map((c) => ({ label: c, value: c }))}
-        />
-        <Select
-          placeholder="排序"
-          className="ad-w-full"
-          value={filters.sortBy}
-          onChange={(v) => filters.setSort(v, filters.sortOrder)}
-          options={SORT_OPTIONS}
-        />
-        <Select
-          className="ad-w-full"
-          value={filters.sortOrder}
-          onChange={(v) => filters.setSort(filters.sortBy, v)}
-          options={[
-            { label: '升序', value: 'asc' },
-            { label: '降序', value: 'desc' },
-          ]}
-        />
-      </FilterToolbar>
+      <Panel variant="default" padding="md">
+        <FilterToolbar total={`共 ${data?.total ?? 0} 只`}>
+          <Input
+            placeholder="搜索币种代码或名称"
+            allowClear
+            prefix={<SearchOutlined className="ad-icon-tertiary" />}
+            value={filters.search}
+            onChange={(e) => {
+              filters.setSearch(e.target.value);
+              setPage(1);
+            }}
+            className="ad-w-full"
+          />
+          <Select
+            placeholder="分类"
+            allowClear
+            className="ad-w-full"
+            value={filters.category}
+            onChange={(v) => {
+              filters.setCategory(v);
+              setPage(1);
+            }}
+            options={CATEGORIES.map((c) => ({ label: c, value: c }))}
+          />
+          <Select
+            placeholder="排序"
+            className="ad-w-full"
+            value={filters.sortBy}
+            onChange={(v) => filters.setSort(v, filters.sortOrder)}
+            options={SORT_OPTIONS}
+          />
+          <Select
+            className="ad-w-full"
+            value={filters.sortOrder}
+            onChange={(v) => filters.setSort(filters.sortBy, v)}
+            options={[
+              { label: '升序', value: 'asc' },
+              { label: '降序', value: 'desc' },
+            ]}
+          />
+        </FilterToolbar>
 
-      <div className="ad-text-tertiary ad-text-xs ad-mb-3 ad-text-center">
-        <div>
-          {timestampLabel} {formatUtc(priceUpdatedAt)}
-          {!backendTimestamp && '（数据来自 Binance）'}
+        <div className="ad-text-tertiary ad-text-xs ad-mb-3 ad-text-center">
+          <div>
+            {timestampLabel} {formatUtc(priceUpdatedAt)}
+            {!backendTimestamp && '（数据来自 Binance）'}
+          </div>
+          <div>24h 涨跌 = (当前价 - 24小时前价格) / 24小时前价格</div>
         </div>
-        <div>24h 涨跌 = (当前价 - 24小时前价格) / 24小时前价格</div>
-      </div>
 
-      <SectionHeading title="加密货币列表" />
-
-      <Panel variant="default" padding="none">
         {isMobile ? (
           isLoading ? (
             <Skeleton active paragraph={{ rows: 6 }} />
           ) : (data?.items?.length ?? 0) === 0 ? (
-            <div className="ad-p-5">
-              <EmptyState
-                title="没有符合条件的币种"
-                description="尝试调整上方筛选条件，或清空搜索关键词查看全部"
-              />
-            </div>
+            <EmptyState
+              title="没有符合条件的币种"
+              description="尝试调整上方筛选条件，或清空搜索关键词查看全部"
+            />
           ) : (
             <List
               dataSource={data?.items ?? []}
@@ -241,7 +233,7 @@ export default function CryptoList() {
               dataSource={data?.items ?? []}
               rowKey="code"
               loading={isLoading}
-              size={rowSize as any}
+              size="small"
               scroll={{ x: 'max-content' }}
               onRow={(record) => ({
                 onClick: () => navigate(`/crypto/${record.code}`),
@@ -251,15 +243,10 @@ export default function CryptoList() {
                 pageSize: 50,
                 total: data?.total ?? 0,
                 onChange: setPage,
-                showSizeChanger: false,
+                showSizeChanger: true,
               }}
               locale={{
-                emptyText: (
-                  <EmptyState
-                    title="没有符合条件的币种"
-                    description="尝试调整上方筛选条件，或清空搜索关键词查看全部"
-                  />
-                ),
+                emptyText: <EmptyState title="暂无数据" />,
               }}
             />
           </div>

@@ -30,31 +30,20 @@ import {
   useInstrumentListingMarkets,
   useInstrumentBoards,
 } from '@/hooks/useInstrumentList';
-import { useSparkline } from '@/hooks/useSparkline';
 import { useMarketStream } from '@/hooks/useMarketStream';
 import { useDebounce } from '@/hooks/useDebounce';
 import PageShell from '@/components/PageShell';
 import PageHeader from '@/components/PageHeader';
 import FilterToolbar from '@/components/FilterToolbar';
 import Panel from '@/components/Panel';
-import SectionHeading from '@/components/SectionHeading';
 import EmptyState from '@/components/EmptyState';
 import InstrumentCodeTag from '@/components/InstrumentCodeTag';
 import ThemeTag from '@/components/ThemeTag';
-import Sparkline from '@/components/Sparkline';
+import SparklineCell from '@/components/SparklineCell';
 import ReturnTag from '@/components/ReturnTag';
 import LastUpdated from '@/components/LastUpdated';
 import { useIsMobile } from '@/hooks/useBreakpoint';
-
-/** Row-level sparkline cell. Owns its own query so per-row caching
- *  works without re-fetching the whole list. */
-function SparklineCell({ code }: { code: string }) {
-  const { data } = useSparkline({ code, days: 30 });
-  if (!data || !data.points || data.points.length === 0) {
-    return <span className="mobile-list-item__meta">-</span>;
-  }
-  return <Sparkline data={data.points} width={80} height={20} />;
-}
+import { NULL_PLACEHOLDER } from '@/utils/format';
 
 /** Row-level live price cell. Reads from the shared MarketStream map so we
  *  do not open one SSE connection per row. */
@@ -62,7 +51,7 @@ function LivePriceCell({ tick }: { code: string; tick: ReturnType<typeof useMark
   if (!tick) {
     return (
       <span className="tabular-nums mobile-list-item__meta font-mono">
-        -
+        {NULL_PLACEHOLDER}
       </span>
     );
   }
@@ -327,7 +316,6 @@ export default function InstrumentList() {
   );
   const { latest: liveLatest } = useMarketStream(pageCodes);
 
-  const rowSize = 'large';
   const tableWrapClass = 'ad-table-scroll ad-table-sticky';
 
   const columns = [
@@ -340,7 +328,7 @@ export default function InstrumentList() {
     {
       title: '分类',
       dataIndex: 'category',
-      render: (v: string) => v ? <ThemeTag>{v}</ThemeTag> : '-',
+      render: (v: string) => v ? <ThemeTag>{v}</ThemeTag> : NULL_PLACEHOLDER,
     },
     {
       title: '市场',
@@ -355,7 +343,7 @@ export default function InstrumentList() {
       dataIndex: 'listing_market',
       width: 80,
       render: (v: string | null | undefined) => {
-        if (!v) return <span className="mobile-list-item__meta">-</span>;
+        if (!v) return <span className="mobile-list-item__meta">{NULL_PLACEHOLDER}</span>;
         return <ThemeTag title={`上市市场: ${v}`}>{v}</ThemeTag>;
       },
     },
@@ -364,7 +352,7 @@ export default function InstrumentList() {
       dataIndex: 'board',
       width: 90,
       render: (v: string | null | undefined) => {
-        if (!v) return <span className="mobile-list-item__meta">-</span>;
+        if (!v) return <span className="mobile-list-item__meta">{NULL_PLACEHOLDER}</span>;
         const variantMap: Record<string, 'default' | 'accent' | 'warning'> = {
           主板: 'default',
           创业板: 'accent',
@@ -415,7 +403,7 @@ export default function InstrumentList() {
         };
         return (
           <ThemeTag variant={variantMap[v] || 'default'}>
-            {labelMap[v] || v || '-'}
+            {labelMap[v] || v || NULL_PLACEHOLDER}
           </ThemeTag>
         );
       },
@@ -425,7 +413,7 @@ export default function InstrumentList() {
       dataIndex: 'fund_manager',
       render: (v: string) => v ? (
         <span className="ad-text-secondary">{v}</span>
-      ) : '-',
+      ) : NULL_PLACEHOLDER,
     },
     {
       title: '跟踪指数',
@@ -434,11 +422,12 @@ export default function InstrumentList() {
         <span className="mobile-list-item__meta instrument-index-cell">
           {v}
         </span>
-      ) : '-',
+      ) : NULL_PLACEHOLDER,
     },
     {
       title: '规模',
       dataIndex: 'fund_size',
+      sorter: (a: any, b: any) => (a.fund_size ?? -Infinity) - (b.fund_size ?? -Infinity),
       render: (v: number, record: any) => {
         // For US stocks, show market cap in USD; for ETFs show fund size
         if (record.market_cap) {
@@ -452,7 +441,7 @@ export default function InstrumentList() {
             {(v / 1e8).toFixed(1)}亿
           </span>
         );
-        return '-';
+        return NULL_PLACEHOLDER;
       },
       width: 110,
     },
@@ -470,6 +459,11 @@ export default function InstrumentList() {
       ),
       key: 'live_price',
       width: 110,
+      sorter: (a: any, b: any) => {
+        const priceA = liveLatest[a.code]?.price ?? -Infinity;
+        const priceB = liveLatest[b.code]?.price ?? -Infinity;
+        return priceA - priceB;
+      },
       render: (_: unknown, record: any) => (
         <LivePriceCell code={record.code} tick={liveLatest[record.code]} />
       ),
@@ -485,10 +479,11 @@ export default function InstrumentList() {
         extra={<LastUpdated at={dataUpdatedAt} loading={isFetching && !data} />}
       />
 
-      <FilterToolbar
-        title="筛选条件"
-        total={`共 ${data?.total || 0} 只`}
-        extra={
+      <Panel variant="default" padding="md">
+        <FilterToolbar
+          title="筛选条件"
+          total={`共 ${data?.total || 0} 只`}
+          extra={
           <Button icon={<ReloadOutlined />} onClick={handleReset}>
             重置条件
           </Button>
@@ -858,21 +853,17 @@ export default function InstrumentList() {
             />
           )}
         </div>
-      </FilterToolbar>
+        </FilterToolbar>
 
-      <SectionHeading title="标的列表" />
-
-      <Panel variant="default" padding="none">
-        {isLoading ? (
-          <Skeleton active paragraph={{ rows: 10 }} />
-        ) : (data?.items?.length || 0) === 0 ? (
-          <div className="ad-p-5">
+        {isMobile ? (
+          isLoading ? (
+            <Skeleton active paragraph={{ rows: 10 }} />
+          ) : (data?.items?.length || 0) === 0 ? (
             <EmptyState
               title="没有符合条件的标的"
               description="尝试调整上方筛选条件，或清空搜索关键词查看全部标的"
             />
-          </div>
-        ) : isMobile ? (
+          ) : (
           /* Mobile: card-style list */
           <List
             dataSource={data?.items || []}
@@ -884,7 +875,7 @@ export default function InstrumentList() {
                 <div className="mobile-list-item__row">
                   <InstrumentCodeTag code={item.code} name={item.name} name_zh={item.name_zh} />
                   <span className="tabular-nums mobile-list-item__value">
-                    {item.fund_size ? `${(item.fund_size / 1e8).toFixed(1)}亿` : '-'}
+                    {item.fund_size ? `${(item.fund_size / 1e8).toFixed(1)}亿` : NULL_PLACEHOLDER}
                   </span>
                 </div>
                 <div className="mobile-list-item__row">
@@ -931,6 +922,7 @@ export default function InstrumentList() {
               className: 'mobile-list-pagination',
             }}
           />
+          )
         ) : (
           /* Desktop: table view */
           <div className={tableWrapClass}>
@@ -939,14 +931,17 @@ export default function InstrumentList() {
               columns={columns}
               rowKey="code"
               loading={isLoading}
-              size={rowSize as any}
+              size="small"
               scroll={{ x: 'max-content' }}
               pagination={{
                 current: page,
                 pageSize: 50,
                 total: data?.total || 0,
                 onChange: setPage,
-                showSizeChanger: false,
+                showSizeChanger: true,
+              }}
+              locale={{
+                emptyText: <EmptyState title="暂无数据" />,
               }}
               onRow={(record) => ({
                 onClick: () => navigate(`/instruments/${record.code}`),

@@ -66,6 +66,7 @@ import InstrumentCodeTag from '@/components/InstrumentCodeTag';
 import { useInstrumentDetail, useInstrumentList } from '@/hooks/useInstrumentList';
 import { etfHoldingsHistoryApi } from '@/api/etfHoldingsHistory';
 import { useSettingsStore } from '@/stores/settings';
+import { NULL_PLACEHOLDER } from '@/utils/format';
 import './styles.css';
 import type {
   ETFHoldingDiffEntry,
@@ -79,13 +80,13 @@ import type {
 
 /** Format a weight as a percent string (decimal → %). */
 function fmtWeight(v: number | null | undefined, digits = 2): string {
-  if (v === null || v === undefined) return '-';
+  if (v === null || v === undefined) return NULL_PLACEHOLDER;
   return `${(v * 100).toFixed(digits)}%`;
 }
 
 /** Compact human-readable number (e.g. 12_345_678 → 1234.57万). */
 function fmtShares(v: number | null | undefined): string {
-  if (v === null || v === undefined) return '-';
+  if (v === null || v === undefined) return NULL_PLACEHOLDER;
   if (Math.abs(v) >= 1e8) return `${(v / 1e8).toFixed(2)} 亿`;
   if (Math.abs(v) >= 1e4) return `${(v / 1e4).toFixed(2)} 万`;
   return v.toFixed(0);
@@ -239,7 +240,7 @@ export default function EtfHoldingsHistoryPage() {
         dataIndex: 'holding_name',
         key: 'holding_name',
         ellipsis: true,
-        render: (v: string | null) => v ?? <span className="ad-text-tertiary">-</span>,
+        render: (v: string | null) => v ?? <span className="ad-text-tertiary">{NULL_PLACEHOLDER}</span>,
       },
       {
         title: '权重',
@@ -267,7 +268,7 @@ export default function EtfHoldingsHistoryPage() {
         align: 'right',
         render: (v: number | null) => (
           <span className="tabular-nums ad-text-tertiary">
-            {v === null ? '-' : `${(v / 1e8).toFixed(2)} 亿`}
+            {v === null ? NULL_PLACEHOLDER : `${(v / 1e8).toFixed(2)} 亿`}
           </span>
         ),
       },
@@ -302,7 +303,7 @@ export default function EtfHoldingsHistoryPage() {
         dataIndex: 'holding_name',
         key: 'holding_name',
         ellipsis: true,
-        render: (v: string | null) => v ?? <span className="ad-text-tertiary">-</span>,
+        render: (v: string | null) => v ?? <span className="ad-text-tertiary">{NULL_PLACEHOLDER}</span>,
       },
       {
         title: '上期权重',
@@ -331,7 +332,7 @@ export default function EtfHoldingsHistoryPage() {
         width: 120,
         align: 'right',
         render: (v: number | null) => {
-          if (v === null) return <span className="ad-text-tertiary">-</span>;
+          if (v === null) return <span className="ad-text-tertiary">{NULL_PLACEHOLDER}</span>;
           const riseClass =
             v > 0.00005
               ? colorConvention === 'us'
@@ -359,7 +360,7 @@ export default function EtfHoldingsHistoryPage() {
         align: 'right',
         render: (v: number | null) => (
           <span className="tabular-nums">
-            {v === null ? '-' : `${v > 0 ? '+' : ''}${fmtShares(v)}`}
+            {v === null ? NULL_PLACEHOLDER : `${v > 0 ? '+' : ''}${fmtShares(v)}`}
           </span>
         ),
       },
@@ -426,20 +427,20 @@ export default function EtfHoldingsHistoryPage() {
       <div className="ehh-kpi-row">
         <StatCard
           title="最新期"
-          value={latestDate ?? '-'}
+          value={latestDate ?? NULL_PLACEHOLDER}
           icon={<StockOutlined />}
           loading={snapshotsQ.isLoading}
         />
         <StatCard
           title="上期"
-          value={previousDate ?? '-'}
+          value={previousDate ?? NULL_PLACEHOLDER}
           loading={snapshotsQ.isLoading}
         />
         <StatCard
           title="累计前10权重变化 (本期 vs 上期)"
           value={
             totalWeightDelta === null
-              ? '-'
+              ? NULL_PLACEHOLDER
               : `${totalWeightDelta > 0 ? '+' : ''}${(totalWeightDelta * 100).toFixed(2)}%`
           }
           loading={holdingsQ.isLoading || snapshotsQ.isLoading}
@@ -653,7 +654,7 @@ export default function EtfHoldingsHistoryPage() {
                     <ThemeTag variant="accent">
                       权重{' '}
                       {diffQ.data.total_weight_change === null
-                        ? '-'
+                        ? NULL_PLACEHOLDER
                         : `${diffQ.data.total_weight_change > 0 ? '+' : ''}${(
                             diffQ.data.total_weight_change * 100
                           ).toFixed(2)}%`}
@@ -720,14 +721,14 @@ function EtfPickerView({ onPick }: { onPick: (code: string) => void }) {
       dataIndex: 'market',
       key: 'market',
       width: 90,
-      render: (v: string | undefined) => v ?? <span className="ad-text-tertiary">-</span>,
+      render: (v: string | undefined) => v ?? <span className="ad-text-tertiary">{NULL_PLACEHOLDER}</span>,
     },
     {
       title: '分类',
       dataIndex: 'category',
       key: 'category',
       width: 140,
-      render: (v: string | undefined) => v ?? <span className="ad-text-tertiary">-</span>,
+      render: (v: string | undefined) => v ?? <span className="ad-text-tertiary">{NULL_PLACEHOLDER}</span>,
     },
     {
       title: '操作',
