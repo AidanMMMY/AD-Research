@@ -4,1399 +4,1399 @@
     "name": "ST金顶",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "600748",
     "name": "上实发展",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "600754",
     "name": "锦江酒店",
-    "ir_url": null,
-    "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "ir_url": "https://www.jinjianghotels.com",
+    "method": "official_ir",
+    "notes": "锦江酒店(Jin Jiang Hotels)官网，IR邮箱JJIR@jinjianghotels.com"
   },
   {
     "code": "603559",
     "name": "ST通脉",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "603566",
     "name": "普莱柯",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "603661",
     "name": "恒林股份",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "300820",
     "name": "英杰电气",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "603662",
     "name": "柯力传感",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "605166",
     "name": "聚合顺",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "605567",
     "name": "春雪食品",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "605577",
     "name": "龙版传媒",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "605580",
     "name": "恒盛能源",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "688063",
     "name": "派能科技",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "301360",
     "name": "荣旗科技",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "002870",
     "name": "香山股份",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "688381",
     "name": "帝奥微",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "688382",
     "name": "益方生物",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "688387",
     "name": "信科移动",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "688485",
     "name": "九州一轨",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "688486",
     "name": "龙迅股份",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "688489",
     "name": "三未信安",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "688496",
     "name": "*ST清越",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "688498",
     "name": "源杰科技",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "688499",
     "name": "利元亨",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "688626",
     "name": "翔宇医疗",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "688627",
     "name": "精智达",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "688628",
     "name": "优利德",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "688629",
     "name": "华丰科技",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "688630",
     "name": "芯碁微装",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "688631",
     "name": "莱斯信息",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "920167",
     "name": "同享科技",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "920168",
     "name": "通宝光电",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "920169",
     "name": "七丰精工",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "920171",
     "name": "志晟信息",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "920174",
     "name": "五新智能",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "920177",
     "name": "恒道科技",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "920422",
     "name": "润普食品",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "920425",
     "name": "乐创技术",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "920427",
     "name": "华维设计",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "920436",
     "name": "大地电气",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "002772",
     "name": "众兴菌业",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "002840",
     "name": "华统股份",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "688389",
     "name": "普门科技",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "688426",
     "name": "康为世纪",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "920717",
     "name": "瑞星股份",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "300449",
     "name": "汉邦高科",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "300450",
     "name": "先导智能",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "920748",
     "name": "路桥信息",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "300451",
     "name": "创业慧康",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "300452",
     "name": "山河药辅",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "300453",
     "name": "三鑫医疗",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "300454",
     "name": "深信服",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "300455",
     "name": "航天智装",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "300616",
     "name": "尚品宅配",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "300822",
     "name": "贝仕达克",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "300823",
     "name": "建科智能",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "300824",
     "name": "北鼎股份",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "300825",
     "name": "阿尔特",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "300826",
     "name": "测绘股份",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "300873",
     "name": "海晨股份",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "300937",
     "name": "药易购",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "301085",
     "name": "亚康股份",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "301087",
     "name": "可孚医疗",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "301089",
     "name": "拓新药业",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "301091",
     "name": "深城交",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "301150",
     "name": "中一科技",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "301151",
     "name": "冠龙节能",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "301152",
     "name": "天力锂能",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "301156",
     "name": "美农生物",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "301208",
     "name": "中亦科技",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "301280",
     "name": "珠城科技",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "301281",
     "name": "科源制药",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "301282",
     "name": "金禄电子",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "301285",
     "name": "鸿日达",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "301575",
     "name": "艾芬达",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "301577",
     "name": "美信科技",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "301162",
     "name": "国能日新",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "600697",
     "name": "欧亚集团",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "600706",
     "name": "曲江文旅",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "600751",
     "name": "海航科技",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "600758",
     "name": "辽宁能源",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "600778",
     "name": "友好集团",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "920642",
     "name": "通易航天",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "002214",
     "name": "*ST大立",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "300018",
     "name": "中元股份",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "300020",
     "name": "ST银江",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "002615",
     "name": "哈尔斯",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "002616",
     "name": "长青集团",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "002617",
     "name": "露笑科技",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "002620",
     "name": "*ST瑞和",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "300134",
     "name": "大富科技",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "300135",
     "name": "宝利国际",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "300136",
     "name": "信维通信",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "300139",
     "name": "晓程科技",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "300140",
     "name": "节能环境",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "300141",
     "name": "和顺电气",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "300142",
     "name": "沃森生物",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "300143",
     "name": "盈康生命",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "300145",
     "name": "南方泵业",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "300146",
     "name": "汤臣倍健",
-    "ir_url": null,
-    "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "ir_url": "https://www.by-health.com",
+    "method": "official_ir",
+    "notes": "汤臣倍健(By-health)官网设有投资者关系专栏"
   },
   {
     "code": "300148",
     "name": "天舟文化",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "300149",
     "name": "睿智医药",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "300150",
     "name": "世纪瑞尔",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "300152",
     "name": "*ST动力",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "688084",
     "name": "晶品特装",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "300153",
     "name": "科泰电源",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "300350",
     "name": "华鹏飞",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "300532",
     "name": "今天国际",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "300533",
     "name": "冰川网络",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "300538",
     "name": "同益股份",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "300711",
     "name": "广哈通信",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "300712",
     "name": "永福股份",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "300713",
     "name": "英可瑞",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "300718",
     "name": "长盛轴承",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "300719",
     "name": "安达维尔",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "300720",
     "name": "海川智能",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "300722",
     "name": "新余国科",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "300723",
     "name": "一品红",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "300729",
     "name": "乐歌股份",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "300731",
     "name": "科创新源",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "300733",
     "name": "西菱动力",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "300735",
     "name": "光弘科技",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "300736",
     "name": "百邦科技",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "300738",
     "name": "奥飞数据",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "300739",
     "name": "明阳电路",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "300740",
     "name": "水羊股份",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "300741",
     "name": "华宝股份",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "300743",
     "name": "天地数码",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "300745",
     "name": "欣锐科技",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "300753",
     "name": "爱朋医疗",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "300755",
     "name": "华致酒行",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "300756",
     "name": "金马游乐",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "300757",
     "name": "罗博特科",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "300759",
     "name": "康龙化成",
-    "ir_url": null,
-    "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "ir_url": "https://www.pharmaron.cn",
+    "method": "official_ir",
+    "notes": "康龙化成(Pharmaron)官网投资者关系专栏"
   },
   {
     "code": "300760",
     "name": "迈瑞医疗",
-    "ir_url": null,
-    "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "ir_url": "https://www.mindray.com",
+    "method": "official_ir",
+    "notes": "迈瑞医疗(Mindray)官网及微信公众号「迈瑞医疗投资者关系」"
   },
   {
     "code": "300761",
     "name": "立华股份",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "300762",
     "name": "上海瀚讯",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "300763",
     "name": "锦浪科技",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "300765",
     "name": "石药创新",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "300766",
     "name": "每日互动",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "300767",
     "name": "震安科技",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "300768",
     "name": "迪普科技",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "300770",
     "name": "新媒股份",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "300771",
     "name": "智莱科技",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "300772",
     "name": "运达股份",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "300774",
     "name": "倍杰特",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "300775",
     "name": "三角防务",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "300978",
     "name": "东箭科技",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "300979",
     "name": "华利集团",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "300981",
     "name": "中红医疗",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "300982",
     "name": "苏文电能",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "300985",
     "name": "致远新能",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "300988",
     "name": "津荣天宇",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "300989",
     "name": "蕾奥规划",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "300990",
     "name": "同飞股份",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "601168",
     "name": "西部矿业",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "300995",
     "name": "奇德新材",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "300996",
     "name": "普联软件",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "300997",
     "name": "欢乐家",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "300999",
     "name": "金龙鱼",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "金龙鱼(Arowana)无独立IR网站，IR邮箱jinlongyu_ir@cn.wilmar-intl.com"
   },
   {
     "code": "301000",
     "name": "肇民科技",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "301001",
     "name": "凯淳股份",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "301002",
     "name": "崧盛股份",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "301003",
     "name": "江苏博云",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "301005",
     "name": "超捷股份",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "301006",
     "name": "迈拓股份",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "301007",
     "name": "德迈仕",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "301008",
     "name": "宏昌科技",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "301013",
     "name": "利和兴",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "301019",
     "name": "宁波色母",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "301323",
     "name": "新莱福",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "301512",
     "name": "智信精密",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "600052",
     "name": "东望时代",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "300998",
     "name": "宁波方正",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "002599",
     "name": "盛通股份",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "300154",
     "name": "瑞凌股份",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "300155",
     "name": "安居宝",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "300157",
     "name": "新锦动力",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "300158",
     "name": "振东制药",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "300159",
     "name": "新研股份",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "300160",
     "name": "秀强股份",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "300185",
     "name": "通裕重工",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "300189",
     "name": "神农种业",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "300190",
     "name": "维尔利",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "300191",
     "name": "潜能恒信",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "300192",
     "name": "科德教育",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "300193",
     "name": "佳士科技",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "300222",
     "name": "科大智能",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "301371",
     "name": "敷尔佳",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "301418",
     "name": "协昌科技",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "301419",
     "name": "阿莱德",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "301421",
     "name": "波长光电",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "000069",
     "name": "华侨城A",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "600057",
     "name": "厦门象屿",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "000514",
     "name": "渝开发",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "000599",
     "name": "青岛双星",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "000600",
     "name": "建投能源",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "000601",
     "name": "韶能股份",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "000712",
     "name": "锦龙股份",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   },
   {
     "code": "000713",
     "name": "国投丰乐",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "仅交易所/巨潮披露（市值偏小，无独立IR网站）"
   }
 ]

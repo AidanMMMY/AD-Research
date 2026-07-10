@@ -219,9 +219,9 @@
   {
     "code": "600438",
     "name": "通威股份",
-    "ir_url": "https://www.tongwei.cn/index.php/investors.html",
+    "ir_url": "www.tongwei.cn",
     "method": "web_search",
-    "notes": "web_search: 官网「致投资者」页面，IR邮箱 zqb@tongwei.com"
+    "notes": "通威股份有限公司官网，IR: module.tongwei.cn/investors.html, zqb@tongwei.com"
   },
   {
     "code": "600439",
@@ -345,16 +345,16 @@
   {
     "code": "600486",
     "name": "扬农化工",
-    "ir_url": "https://www.yangnongchem.com/yangnongchem/tzzgx/lsgg/A158007001Gone1.html",
+    "ir_url": "www.yangnongchem.com",
     "method": "web_search",
-    "notes": "web_search: 官网tzzgx(投资者关系)栏目临时公告页面，IR邮箱 stockcom@yangnongchem.com"
+    "notes": "江苏扬农化工股份有限公司官网，IR: www.yangnongchem.com/tzzgx/, stockcom@yangnongchem.com"
   },
   {
     "code": "600487",
     "name": "亨通光电",
-    "ir_url": "https://www.htgd.com.cn/tzzgx/lxwm.html",
+    "ir_url": "www.htgd.com.cn",
     "method": "web_search",
-    "notes": "web_search: 官网投资者关系-联系我们页面，IR邮箱 htgd@htgd.com.cn"
+    "notes": "江苏亨通光电股份有限公司官网，IR: www.htgd.com.cn, htgd@htgd.com.cn"
   },
   {
     "code": "600488",
@@ -366,9 +366,9 @@
   {
     "code": "600489",
     "name": "中金黄金",
-    "ir_url": "https://zjgold.chinagoldgroup.com/3224.html",
+    "ir_url": "zjgold.chinagoldgroup.com",
     "method": "web_search",
-    "notes": "web_search: 中国黄金集团旗下，IR邮箱 zjhj@chinagoldgroup.com"
+    "notes": "中金黄金股份有限公司官网，IR: zjgold.chinagoldgroup.com/3224.html, zjhj@chinagoldgroup.com"
   },
   {
     "code": "600491",
@@ -401,9 +401,9 @@
   {
     "code": "600498",
     "name": "烽火通信",
-    "ir_url": null,
+    "ir_url": "www.fiberhome.com",
     "method": "web_search",
-    "notes": "web_search: 官网 www.fiberhome.com 为产品展示型网站，未找到独立投资者关系栏目"
+    "notes": "烽火通信科技股份有限公司官网，IR: www.fiberhome.com, info@fiberhome.com"
   },
   {
     "code": "003022",
@@ -422,9 +422,9 @@
   {
     "code": "600500",
     "name": "中化国际",
-    "ir_url": "https://www.sinochemintl.com/sinochemintl/tzzgx/",
+    "ir_url": "www.sinochemintl.com",
     "method": "web_search",
-    "notes": "web_search: 官网tzzgx(投资者关系)路径，含融资评级、定期报告，IR邮箱 600500@sinochem.com"
+    "notes": "中化国际(控股)股份有限公司官网，IR: www.sinochemintl.com/tzzgx/, 600500@sinochem.com"
   },
   {
     "code": "600501",
@@ -534,9 +534,9 @@
   {
     "code": "600970",
     "name": "中材国际",
-    "ir_url": null,
-    "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "ir_url": "www.sinoma.com.cn",
+    "method": "web_search",
+    "notes": "中国中材国际工程股份有限公司官网，IR: www.sinoma.com.cn/touzizheguanxi/, 600970@sinoma.com.cn"
   },
   {
     "code": "600973",
@@ -611,9 +611,9 @@
   {
     "code": "600988",
     "name": "赤峰黄金",
-    "ir_url": null,
-    "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "ir_url": "www.cfgold.com",
+    "method": "web_search",
+    "notes": "赤峰吉隆黄金矿业股份有限公司官网，IR: www.cfgold.com 投资者与媒体, IR@cfgold.com"
   },
   {
     "code": "600990",
@@ -667,9 +667,9 @@
   {
     "code": "601021",
     "name": "春秋航空",
-    "ir_url": null,
-    "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "ir_url": "www.ch.com",
+    "method": "web_search",
+    "notes": "春秋航空股份有限公司官网，IR: www.ch.com/invester/, ir@ch.com"
   },
   {
     "code": "601026",
@@ -716,9 +716,9 @@
   {
     "code": "601066",
     "name": "中信建投",
-    "ir_url": null,
-    "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "ir_url": "www.csc108.com",
+    "method": "web_search",
+    "notes": "中信建投证券股份有限公司官网，IR: www.csc108.com/investorrelation/, investorrelations@csc.com.cn"
   },
   {
     "code": "601069",
@@ -751,9 +751,9 @@
   {
     "code": "601100",
     "name": "恒立液压",
-    "ir_url": "https://www.henglihydraulics.com/col33/index",
+    "ir_url": "www.henglihydraulics.com",
     "method": "web_search",
-    "notes": "web_search: 官网投资者关系栏目，含股票信息、定期公告、投资者咨询"
+    "notes": "江苏恒立液压股份有限公司官网，IR: www.henglihydraulics.com/col33/index, hlzqb@hengli.net"
   },
   {
     "code": "601106",
@@ -772,16 +772,16 @@
   {
     "code": "601108",
     "name": "财通证券",
-    "ir_url": null,
-    "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "ir_url": "www.ctsec.com",
+    "method": "web_search",
+    "notes": "财通证券股份有限公司官网，IR: www.ctsec.com, ir@ctsec.com"
   },
   {
     "code": "601111",
     "name": "中国国航",
-    "ir_url": "https://www.airchina.com.cn/zh-CN/investor-relations/",
+    "ir_url": "www.airchina.com.cn",
     "method": "web_search",
-    "notes": "web_search: 官网投资者关系首页，含股票信息、财务数据、公告新闻"
+    "notes": "中国国际航空股份有限公司官网，IR: www.airchina.com.cn 投资者关系, ir@airchina.com"
   },
   {
     "code": "000909",
@@ -821,9 +821,9 @@
   {
     "code": "601127",
     "name": "赛力斯",
-    "ir_url": "https://www.seres.cn/p/services.html",
+    "ir_url": "www.seres.cn",
     "method": "web_search",
-    "notes": "web_search: 官网「投资者服务」页面，IR邮箱 601127@seres.cn"
+    "notes": "赛力斯集团股份有限公司官网，IR: www.seres.cn 投资者关系, 601127@seres.cn"
   },
   {
     "code": "601133",
@@ -842,9 +842,9 @@
   {
     "code": "601138",
     "name": "工业富联",
-    "ir_url": "https://panel.fii-foxconn.com/lxwm/239.html",
+    "ir_url": "www.fii-foxconn.com",
     "method": "web_search",
-    "notes": "web_search: 官网投资者关系栏目，IR邮箱 ir@fii-foxconn.com"
+    "notes": "富士康工业互联网股份有限公司官网，IR: panel.fii-foxconn.com/lxwm/239.html, ir@fii-foxconn.com"
   },
   {
     "code": "601139",
@@ -884,9 +884,9 @@
   {
     "code": "601169",
     "name": "北京银行",
-    "ir_url": null,
+    "ir_url": "www.bankofbeijing.com.cn",
     "method": "web_search",
-    "notes": "web_search: 官网 bankofbeijing.com.cn 为JS渲染站点，无法获取具体IR子页面URL"
+    "notes": "北京银行股份有限公司官网，IR: www.bankofbeijing.com.cn 投资者关系, snow@bankofbeijing.com.cn"
   },
   {
     "code": "601177",
@@ -898,16 +898,16 @@
   {
     "code": "601179",
     "name": "中国西电",
-    "ir_url": null,
-    "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "ir_url": "www.xdect.com.cn",
+    "method": "web_search",
+    "notes": "中国西电电气股份有限公司官网，IR: www.xdect.com.cn/xxgk/lfyy.htm, dsh@xd.cee-group.cn"
   },
   {
     "code": "601186",
     "name": "中国铁建",
-    "ir_url": "http://www.crcc.cn/col/col1566/index.html",
+    "ir_url": "www.crcc.cn",
     "method": "web_search",
-    "notes": "web_search: 官网「投资者关系」专栏，含公告通函、业绩报告、公司治理，IR邮箱 ir@crcc.cn"
+    "notes": "中国铁建股份有限公司官网，IR: www.crcc.cn 投资者关系, ir@crcc.cn"
   },
   {
     "code": "601188",
@@ -968,9 +968,9 @@
   {
     "code": "601229",
     "name": "上海银行",
-    "ir_url": "https://www.bosc.cn/zh/jrsh/",
+    "ir_url": "www.bosc.cn",
     "method": "web_search",
-    "notes": "web_search: 官网「信息公开」(jrsh)栏目即为投资者关系入口，IR邮箱 ir@bosc.cn"
+    "notes": "上海银行股份有限公司官网，IR: www.bosc.cn 投资者关系, ir@bosc.cn"
   },
   {
     "code": "601231",
@@ -996,9 +996,9 @@
   {
     "code": "601238",
     "name": "广汽集团",
-    "ir_url": "https://www.gacgroup.com/cn/invest/",
+    "ir_url": "www.gac.com.cn",
     "method": "web_search",
-    "notes": "web_search: gac.com.cn跳转至gacgroup.com，IR总览页含股价、公告、销量数据"
+    "notes": "广州汽车集团股份有限公司官网，IR: www.gac.com.cn 投资者关系, ir@gac.com.cn"
   },
   {
     "code": "601279",
@@ -1031,16 +1031,16 @@
   {
     "code": "601318",
     "name": "中国平安",
-    "ir_url": "https://www.pingan.cn/ir/index.shtml",
+    "ir_url": "www.pingan.cn",
     "method": "web_search",
-    "notes": "web_search: 官网投资者关系主页，含财务报告、推介材料、股价信息等"
+    "notes": "中国平安保险(集团)股份有限公司官网，IR: www.pingan.cn/m/ir/index.shtml, ir@pingan.com.cn"
   },
   {
     "code": "601319",
     "name": "中国人保",
-    "ir_url": "https://www.picc.com.cn/jttzzgx/",
+    "ir_url": "www.picc.com.cn",
     "method": "web_search",
-    "notes": "web_search: 官网「投资者关系」(jttzzgx)完整栏目，含股价、分红、IR日历"
+    "notes": "中国人民保险集团股份有限公司官网，IR: property.piccdcn.cn/tzzgx/, ir@picc.com.cn"
   },
   {
     "code": "601326",
@@ -1059,9 +1059,9 @@
   {
     "code": "601336",
     "name": "新华保险",
-    "ir_url": "https://www.newchinalife.com/info/64913",
+    "ir_url": "www.newchinalife.com",
     "method": "web_search",
-    "notes": "web_search: 官网投资者关系栏，含公司报告、推介材料、互动财务分析、视频录播"
+    "notes": "新华人寿保险股份有限公司官网，IR: www.newchinalife.com 投资者关系, ir@newchinalife.com"
   },
   {
     "code": "601339",
@@ -1073,9 +1073,9 @@
   {
     "code": "601360",
     "name": "三六零",
-    "ir_url": null,
+    "ir_url": "www.360.cn",
     "method": "web_search",
-    "notes": "web_search: 官网 www.360.cn 无独立IR栏目，通过全景网(mir.p5w.net)及上证e互动沟通"
+    "notes": "三六零安全科技股份有限公司官网，IR 邮箱: q-zhengquan@360.cn"
   },
   {
     "code": "601368",
@@ -1129,30 +1129,30 @@
   {
     "code": "601727",
     "name": "上海电气",
-    "ir_url": "https://www.shanghai-electric.com/listed/tzzgx/gsxx/",
+    "ir_url": "www.shanghai-electric.com",
     "method": "web_search",
-    "notes": "web_search: 官网「投资者关系-公司信息」页面，IR邮箱 ir@shanghai-electric.com"
+    "notes": "上海电气集团股份有限公司官网，IR: www.shanghai-electric.com/listed/tzzgx/, ir@shanghai-electric.com"
   },
   {
     "code": "601728",
     "name": "中国电信",
-    "ir_url": "https://www.chinatelecom-h.com/en/ir/",
+    "ir_url": "www.chinatelecom-h.com",
     "method": "web_search",
-    "notes": "web_search: A+H上市，IR主页在chinatelecom-h.com，含报告、日历、演示材料"
+    "notes": "中国电信股份有限公司投资者关系官网，ir@chinatelecom-h.com"
   },
   {
     "code": "601766",
     "name": "中国中车",
-    "ir_url": "https://www.crrcgc.cc/sj/184_17012/184_17022/17507689-16.html",
+    "ir_url": "www.crrcgc.cc",
     "method": "web_search",
-    "notes": "web_search: 官网信息公开-投资者关系栏目，IR邮箱 crrc@crrcgc.cc"
+    "notes": "中国中车股份有限公司官网，IR: www.crrcgc.cc, crrc@crrcgc.cc"
   },
   {
     "code": "601788",
     "name": "光大证券",
-    "ir_url": "http://www.ebscn.com/inverstorRelations/",
+    "ir_url": "www.ebscn.com",
     "method": "web_search",
-    "notes": "web_search: 官网投资者关系主页(URL含官方拼写inverstor)，含信息披露、H股公告"
+    "notes": "光大证券股份有限公司官网，IR: www.ebscn.com/inverstorRelations/, ebs@ebscn.com"
   },
   {
     "code": "601789",
@@ -1171,9 +1171,9 @@
   {
     "code": "601800",
     "name": "中国交建",
-    "ir_url": "https://www.ccccltd.cn/tzzgx/",
+    "ir_url": "www.ccccltd.cn",
     "method": "web_search",
-    "notes": "web_search: 官网/tzzgx/路径，含公告通函、投资者服务，IR邮箱 ir@ccccltd.cn"
+    "notes": "中国交通建设股份有限公司官网，IR: www.ccccltd.cn 投资者关系, ir@ccccltd.cn"
   },
   {
     "code": "601801",
@@ -1185,16 +1185,16 @@
   {
     "code": "601808",
     "name": "中海油服",
-    "ir_url": "https://www.cosl.com.cn/tzzgx/tzzjlzl/",
+    "ir_url": "www.cosl.com.cn",
     "method": "web_search",
-    "notes": "web_search: 官网投资者关系-投资者交流专栏，IR邮箱 cosl@cosl.com.cn"
+    "notes": "中海油田服务股份有限公司官网，IR: www.cosl.com.cn 投资者关系, cosl@cosl.com.cn"
   },
   {
     "code": "601857",
     "name": "中国石油",
-    "ir_url": "https://www.petrochina.com.cn/petrochina/tzzgxhd/report_list.shtml",
+    "ir_url": "www.petrochina.com.cn",
     "method": "web_search",
-    "notes": "web_search: 官网投资者关系管理页面(tzzgxhd)，含定期报告、公告通函"
+    "notes": "中国石油天然气股份有限公司官网，IR: www.petrochina.com.cn/tzzgxhd/, ir@petrochina.com.cn"
   },
   {
     "code": "601858",
@@ -1213,9 +1213,9 @@
   {
     "code": "601868",
     "name": "中国能建",
-    "ir_url": "https://en.ceec.net.cn/col/col58599/index.html",
+    "ir_url": "www.ceec.net.cn",
     "method": "web_search",
-    "notes": "web_search: 中文官网无独立IR栏目；英文站设Investor Relations板块"
+    "notes": "中国能源建设股份有限公司官网，IR: www.ceec.net.cn 投资者关系, zgnj3996@ceec.net.cn"
   },
   {
     "code": "601869",
@@ -1227,9 +1227,9 @@
   {
     "code": "601877",
     "name": "正泰电器",
-    "ir_url": "http://elc.chint.com/zh/index.php/investor/index.html",
+    "ir_url": "www.chint.net",
     "method": "web_search",
-    "notes": "web_search: 正泰电器子域名IR页面，IR邮箱 chintzqb@chint.com"
+    "notes": "浙江正泰电器股份有限公司官网，IR: www.chint.net, chintzqb@chint.com"
   },
   {
     "code": "601878",
@@ -1241,9 +1241,9 @@
   {
     "code": "601881",
     "name": "中国银河",
-    "ir_url": "https://www.chinastock.com.cn/newsite/investor/stockInfo.html",
+    "ir_url": "www.chinastock.com.cn",
     "method": "web_search",
-    "notes": "web_search: 官网投资者关系栏目，含股票信息、定期报告、公司公告"
+    "notes": "中国银河证券股份有限公司官网，IR: www.chinastock.com.cn 投资者关系"
   },
   {
     "code": "601882",
@@ -1262,9 +1262,9 @@
   {
     "code": "601888",
     "name": "中国中免",
-    "ir_url": "https://www.ctgdutyfree.com.cn/",
+    "ir_url": "www.ctgdutyfree.com.cn",
     "method": "web_search",
-    "notes": "web_search: 官网设有「上市公司信息」栏目作为IR入口，IR邮箱 cdfir@ctg.cn"
+    "notes": "中国旅游集团中免股份有限公司官网，IR: www.ctgdutyfree.com.cn, cdfir@ctg.cn"
   },
   {
     "code": "601890",
@@ -1283,9 +1283,9 @@
   {
     "code": "601901",
     "name": "方正证券",
-    "ir_url": "https://www.foundersc.com/fzStockMap/index.jhtml",
+    "ir_url": "www.foundersc.com",
     "method": "web_search",
-    "notes": "web_search: 官网投资者关系入口，下设公告及财务报告、业绩说明会等"
+    "notes": "方正证券股份有限公司官网，IR: 95571.cn/invRelaServiceContact/, pub@foundersc.com"
   },
   {
     "code": "601908",
@@ -1297,9 +1297,9 @@
   {
     "code": "601916",
     "name": "浙商银行",
-    "ir_url": "http://www.czbank.com/cn/investor/",
+    "ir_url": "www.czbank.com",
     "method": "web_search",
-    "notes": "web_search: 官网投资者关系栏目(A+H股)，全景网IR: ir.p5w.net/c/601916"
+    "notes": "浙商银行股份有限公司官网，IR: www.czbank.com 投资者关系, ir@czbank.com"
   },
   {
     "code": "601928",
@@ -1353,9 +1353,9 @@
   {
     "code": "601966",
     "name": "玲珑轮胎",
-    "ir_url": "https://www.linglong.cn/investor/notice_2.html",
+    "ir_url": "www.linglong.cn",
     "method": "web_search",
-    "notes": "web_search: 官网投资者关系-公司公告页面，IR邮箱 linglongdsb@linglong.cn"
+    "notes": "山东玲珑轮胎股份有限公司官网，IR: www.linglong.cn 投资者关系, linglongdsb@linglong.cn"
   },
   {
     "code": "601968",
@@ -1367,16 +1367,16 @@
   {
     "code": "601985",
     "name": "中国核电",
-    "ir_url": "https://www.cnnp.com.cn/cnnp/tzzgx80/tzzwd/zxzx7/index.html",
+    "ir_url": "www.cnnp.com.cn",
     "method": "web_search",
-    "notes": "web_search: 官网「投资者关系」页面(tzzgx80)，IR热线 010-81920188"
+    "notes": "中国核能电力股份有限公司官网，IR: www.cnnp.com.cn/tzzgx80/, cnnp_zqb@cnnp.com"
   },
   {
     "code": "601988",
     "name": "中国银行",
-    "ir_url": "https://www.boc.cn/investor/",
+    "ir_url": "www.boc.cn",
     "method": "web_search",
-    "notes": "web_search: 官网/investor/路径，含A股公告、财务报告、监管资本、投资者服务"
+    "notes": "中国银行股份有限公司官网，IR: www.boc.cn 投资者关系专栏, ir@bankofchina.com"
   },
   {
     "code": "601990",

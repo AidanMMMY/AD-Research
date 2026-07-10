@@ -109,28 +109,28 @@
     "name": "华斯股份",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "未找到公司IR官网"
   },
   {
     "code": "002495",
     "name": "佳隆股份",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "未找到公司IR官网"
   },
   {
     "code": "002496",
     "name": "辉丰股份",
-    "ir_url": null,
-    "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "ir_url": "http://www.hfagro.com/index.php?a=news&pid=3",
+    "method": "official_ir",
+    "notes": ""
   },
   {
     "code": "002497",
     "name": "雅化集团",
-    "ir_url": null,
-    "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "ir_url": "https://www.scyahua.com/investor.aspx?t=54",
+    "method": "official_ir",
+    "notes": ""
   },
   {
     "code": "002498",

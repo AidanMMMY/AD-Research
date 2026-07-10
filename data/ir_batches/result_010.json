@@ -65,23 +65,23 @@
   {
     "code": "002976",
     "name": "瑞玛精密",
-    "ir_url": null,
-    "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "ir_url": "https://www.cheersson.com/article_category.php?id=26#pro",
+    "method": "official_ir",
+    "notes": ""
   },
   {
     "code": "002977",
     "name": "*ST天箭",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "未找到公司IR官网"
   },
   {
     "code": "002978",
     "name": "安宁股份",
-    "ir_url": null,
-    "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "ir_url": "http://www.scantt.com/col.jsp?id=116",
+    "method": "official_ir",
+    "notes": ""
   },
   {
     "code": "002979",
