@@ -240,23 +240,23 @@
   {
     "code": "688356",
     "name": "键凯科技",
-    "ir_url": null,
-    "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "ir_url": "https://www.jenkem.com/service/11.html",
+    "method": "official_ir",
+    "notes": ""
   },
   {
     "code": "688358",
     "name": "祥生医疗",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "未找到公司IR官网"
   },
   {
     "code": "688360",
     "name": "德马科技",
-    "ir_url": null,
-    "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "ir_url": "https://www.damon-group.cn/investors",
+    "method": "official_ir",
+    "notes": ""
   },
   {
     "code": "688362",

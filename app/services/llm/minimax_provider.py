@@ -3,7 +3,7 @@
 Uses the openai Python SDK with custom base_url pointing to MiniMax.
 Requires MINIMAX_API_KEY env var (or MINIMAX_CN_API_KEY for China endpoint).
 
-Default model: minimax-m2.5
+Default model: minimax-m3 (可通过 MINIMAX_MODEL env 覆盖)
 API docs: https://platform.minimax.io/docs
 """
 
@@ -13,7 +13,7 @@ from openai import OpenAI
 
 from app.services.llm.base import LLMProvider
 
-_DEFAULT_MODEL = "minimax-m2.5"
+_DEFAULT_MODEL = "minimax-m3"
 # Global endpoint (for users outside China)
 _BASE_URL = "https://api.minimax.io/v1"
 # China endpoint
@@ -22,7 +22,7 @@ _CN_BASE_URL = "https://api.minimaxi.com/v1"
 _NO_KEY_MSG = (
     "AI 功能未配置。请在 .env 中设置 MINIMAX_API_KEY。\n"
     "获取 Key: https://platform.minimax.io/\n"
-    "模型: minimax-m2.5"
+    "模型: minimax-m3"
 )
 
 
@@ -48,7 +48,7 @@ class MiniMaxProvider(LLMProvider):
                 api_key=api_key,
                 base_url=base_url,
             )
-        self.model = model or _DEFAULT_MODEL
+        self.model = model or os.getenv("MINIMAX_MODEL", "") or _DEFAULT_MODEL
 
     @property
     def is_available(self) -> bool:

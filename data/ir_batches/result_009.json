@@ -177,37 +177,37 @@
   {
     "code": "002678",
     "name": "珠江钢琴",
-    "ir_url": null,
-    "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "ir_url": "https://www.pearlriverpiano.com/cn/touzizheguanxi/29_3.html",
+    "method": "official_ir",
+    "notes": ""
   },
   {
     "code": "002681",
     "name": "奋达科技",
-    "ir_url": null,
-    "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "ir_url": "https://www.fenda.com/ziliao.html",
+    "method": "official_ir",
+    "notes": ""
   },
   {
     "code": "002682",
     "name": "龙洲股份",
-    "ir_url": null,
-    "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "ir_url": "https://www.lzgf.cn/Investor/Ipae",
+    "method": "official_ir",
+    "notes": ""
   },
   {
     "code": "002685",
     "name": "华东重机",
-    "ir_url": null,
-    "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "ir_url": "http://www.hdhm.com/page6.html",
+    "method": "official_ir",
+    "notes": ""
   },
   {
     "code": "002688",
     "name": "金河生物",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "未找到公司IR官网"
   },
   {
     "code": "002689",
