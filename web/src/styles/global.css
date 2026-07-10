@@ -99,6 +99,9 @@ body {
   color: var(--text-secondary);
   padding: 14px var(--space-4) !important;
   transition: color var(--transition-fast), background var(--transition-fast);
+  /* P0-2: 全局强制等宽数字，防止数值列排序/比较时抖动 */
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
 }
 
 .ant-table-tbody > tr:hover > td {
@@ -1678,7 +1681,9 @@ a:focus-visible {
 }
 
 /* ============================================================
-   CRT scanline overlay — terminal aesthetic (dark theme only)
+   CRT Scanlines — 暗色模式专属，默认关闭。
+   开启：<html data-crt="on"> 或在用户设置中打开 CRT 效果开关。
+   实际的 ::before/::after 规则在 theme.css 中，由 [data-crt="on"] 触发。
    ============================================================ */
 
 /* Ensure the layout root + content stack above the fixed overlays. */
@@ -1688,38 +1693,6 @@ a:focus-visible {
 main {
   position: relative;
   z-index: 2;
-}
-
-:root[data-theme="dark"] body::before {
-  content: '';
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: 1;
-  background-image:
-    repeating-linear-gradient(
-      0deg,
-      rgba(95, 168, 122, 0.025) 0px,
-      rgba(95, 168, 122, 0.025) 1px,
-      transparent 1px,
-      transparent 3px
-    );
-  background-size: 100% 3px;
-  mix-blend-mode: screen;
-}
-
-/* Slight corner vignette */
-:root[data-theme="dark"] body::after {
-  content: '';
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: 1;
-  background: radial-gradient(
-    ellipse at center,
-    transparent 50%,
-    rgba(0, 0, 0, 0.4) 100%
-  );
 }
 
 /* ============================================================

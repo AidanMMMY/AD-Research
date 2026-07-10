@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AD-Research 视觉美化方案 — 2026-07-11</title>
+<style>
+:root { color-scheme: light dark; --bg: light-dark(#ffffff, #0d1117); --fg: light-dark(#1f2328, #e6edf3); --fg-muted: light-dark(#656d76, #8b949e); --border: light-dark(#d0d7de, #30363d); --accent: light-dark(#2563eb, #60a5fa); --table-stripe: light-dark(#f6f8fa, #161b22); --code-bg: light-dark(#f6f8fa, #161b22); --h2-color: light-dark(#1d4ed8, #60a5fa); --p0-bg: light-dark(#fff8c5, #3b3000); --p1-bg: light-dark(#ddf4ff, #001a3b); --p2-bg: light-dark(#f3f0ff, #1a003b); --blockquote-bg: light-dark(#f6f8fa, #161b22); --blockquote-border: light-dark(#d0d7de, #30363d); }
+* { box-sizing: border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif; font-size: 15px; line-height: 1.75; max-width: 900px; margin: 0 auto; padding: 2rem 1.5rem; background: var(--bg); color: var(--fg); }
+h1 { font-size: 2rem; border-bottom: 2px solid var(--border); padding-bottom: 0.6rem; margin-top: 0; letter-spacing: -0.02em; }
+h2 { font-size: 1.4rem; color: var(--h2-color); margin-top: 2.5rem; border-bottom: 1px solid var(--border); padding-bottom: 0.3rem; }
+h3 { font-size: 1.15rem; margin-top: 1.8rem; color: var(--fg); }
+h4 { font-size: 1rem; margin-top: 1.5rem; }
+table { width: 100%; border-collapse: collapse; margin: 1.2rem 0; font-size: 0.9rem; }
+th, td { padding: 0.6rem 0.8rem; text-align: left; border: 1px solid var(--border); }
+th { background: var(--code-bg); font-weight: 600; font-size: 0.85rem; letter-spacing: 0.04em; }
+tr:nth-child(even) { background: var(--table-stripe); }
+code { background: var(--code-bg); padding: 0.15em 0.4em; border-radius: 3px; font-size: 0.88em; }
+pre { background: var(--code-bg); padding: 1.2rem; border-radius: 8px; overflow-x: auto; border: 1px solid var(--border); }
+pre code { background: none; padding: 0; }
+ul, ol { padding-left: 1.5rem; }
+li { margin: 0.35rem 0; }
+blockquote { margin: 1rem 0; padding: 0.6rem 1.2rem; border-left: 3px solid var(--accent); background: var(--blockquote-bg); }
+strong { font-weight: 600; }
+hr { border: none; border-top: 1px solid var(--border); margin: 2.5rem 0; }
+.priority-high { background: var(--p0-bg); border-left: 4px solid #d4a72c; padding: 0.5rem 1rem; margin: 0.5rem 0; }
+.priority-mid { background: var(--p1-bg); border-left: 4px solid var(--accent); padding: 0.5rem 1rem; margin: 0.5rem 0; }
+@media (max-width: 768px) { body { font-size: 14px; padding: 1rem; } h1 { font-size: 1.6rem; } }
+</style>
+</head>
+<body>
+<h1>AD-Research 视觉美化方案</h1>
+<h2>设计审计与前瞻性改造建议</h2>
+<blockquote>
+<p>编制日期：2026-07-11 | 基于 4 维度深度研究（前沿趋势 × Fintech 对标 × 视觉审计 × 信息密度）<br />
+方法论：3 个独立研究 agent 并行调研 50+ 来源，视觉审计 agent 逐文件标记 27 个具体问题</p>
+</blockquote>
+<hr />
+<h2>一、执行摘要</h2>
+<p>AD-Research 前端在经历了 7 个 Phase 的设计系统重构后，已建立起完整的 CSS token 体系和 38 个页面级样式表。但从专业设计师和投资研究平台的双重标准审视，当前设计存在 <strong>5 个结构性缺陷</strong> 和 <strong>3 个可迅速拉开差距的战略机遇</strong>。</p>
+<h3>核心诊断</h3>
+<p><strong>缺陷</strong>：
+1. <strong>信息密度偏稀</strong> — 列表页 52px 行高 vs 行业标准 32-40px，专业用户会感觉"数据不够"
+2. <strong>Light/Dark 是两套视觉人格，而非同一系统的两面</strong> — Light 是 Notion 极简白，Dark 是黑客 CRT 终端绿
+3. <strong>朱红色（#E11D48）作为金融平台主强调色存在语义冲突</strong> — 红色在投资语境天然关联"亏损/风险"
+4. <strong>字体系统名存实亡</strong> — Inter 字体未加载（无 @font-face 声明），所有用户看到的都是系统回退字体
+5. <strong>暗色模式存在 WCAG AA 合规风险</strong> — 部分文本对比度不足 4.5:1</p>
+<p><strong>机遇</strong>：
+1. <strong>信息密度分级</strong> — 从"一刀切"到"用户可调 + 场景自适应"，这是专业平台 vs 消费级产品的分水岭
+2. <strong>AI 融合型布局</strong> — 对话式 AI 面板 + 传统数据面板的混合界面，当前竞品正在这一维度上拉开差距
+3. <strong>克制而有情感的动效</strong> — 当前动效几乎为零，而 2025-2026 年的设计共识是"语义性微动效传递信息"</p>
+<hr />
+<h2>二、当前设计深度诊断</h2>
+<h3>2.1 色彩与对比度</h3>
+<table>
+<thead>
+<tr>
+<th>问题</th>
+<th>位置</th>
+<th>严重程度</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>朱红 accent 与金融亏损语义冲突</td>
+<td><code>theme.css:24</code> — <code>--accent: #e11d48</code></td>
+<td>🔴 高</td>
+</tr>
+<tr>
+<td>Dark 模式文字对比度：<code>--text-secondary: #888888</code> 在 <code>#0a0a0a</code> 背景上的对比度仅约 4.3:1，不满足 WCAG AA（正文需 4.5:1）</td>
+<td><code>theme.css:258</code></td>
+<td>🔴 高</td>
+</tr>
+<tr>
+<td>light 主题 surface/elevated/base 三层的视觉区分度极弱（<code>#ffffff</code> / <code>#f7f7f8</code> / <code>#f4f4f5</code>）</td>
+<td><code>theme.css:14-16</code></td>
+<td>🟡 中</td>
+</tr>
+<tr>
+<td>Dark 主题 CRT 扫描线覆盖整个视口，对专业续航投研人员造成持续的视觉噪音</td>
+<td><code>global.css:1693-1723</code></td>
+<td>🟡 中</td>
+</tr>
+</tbody>
+</table>
+<p><strong>改建议</strong>：
+- 将主 accent 从朱红迁移到<strong>蓝-靛色系</strong>（如 <code>#2563EB</code> 或更沉稳的深蓝 <code>#1D4ED8</code>），与国际主流金融终端对齐
+- 提亮 dark 模式文字色：<code>--text-secondary</code> 从 <code>#888888</code> → <code>#A0A0A0</code>
+- 将 CRT 扫描线改为"用户可选开关"，默认关闭</p>
+<h3>2.2 字体排印</h3>
+<table>
+<thead>
+<tr>
+<th>问题</th>
+<th>位置</th>
+<th>严重程度</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Inter 字体声明存在但无 <code>@font-face</code>，所有用户实际看到的是系统回退（macOS: SF Pro, Windows: Segoe UI, 中文: PingFang SC / Microsoft YaHei）</td>
+<td><code>theme.css:136</code></td>
+<td>🔴 高</td>
+</tr>
+<tr>
+<td>标签字号 11px / 暗色 10px 过小，中文笔画在 11px 以下几乎不可读</td>
+<td><code>theme.css:148, 342</code></td>
+<td>🔴 高</td>
+</tr>
+<tr>
+<td>数据数字使用了 <code>tabular-nums</code> class 但未全局强制，仍有表格列使用比例数字</td>
+<td>多处列表页</td>
+<td>🟡 中</td>
+</tr>
+<tr>
+<td>Dark 主题数据数字使用 monospace 字体 (<code>--font-mono</code>)，而 light 主题使用 sans-serif</td>
+<td><code>theme.css:144, 337</code> — dark 下 <code>--text-data-xl: 400 40px/1.1 var(--font-mono)</code></td>
+<td>🟡 中</td>
+</tr>
+</tbody>
+</table>
+<p><strong>改建议</strong>：
+- 通过 <code>@import</code> 或 <code>@font-face</code> 真正加载 Inter（Google Fonts CDN 或自托管）
+- 最小正文字号提升至 12px（中文场景）/ 13px（英文场景）
+- 全局强制所有表格数值列使用 <code>tabular-nums</code>
+- 统一 light/dark 数据数字字体策略</p>
+<h3>2.3 信息密度（用户特别关注）</h3>
+<p>这是 AD-Research 当前最核心的结构性问题。</p>
+<p><strong>现状</strong>：
+- 列表页表格默认 <code>size="large"</code>，行高约 52px
+- Dashboard 卡片间距慷慨，一屏约 6-8 个信息块
+- 详情页 KPI 数据卡占据大量垂直空间</p>
+<p><strong>行业基准</strong>：
+| 平台 | 列表行高 | 一屏可见行数（1440px 视口） |
+|------|----------|---------------------------|
+| Bloomberg Terminal | ~28px | 40+ |
+| TradingView Watchlist | ~32px | 25-30 |
+| Koyfin | ~36px | 20-25 |
+| 万得 Wind | ~30px | 35+ |
+| <strong>AD-Research 当前</strong> | <strong>~52px</strong> | <strong>~12-14</strong> |</p>
+<p><strong>诊断</strong>：AD-Research 的信息密度比专业竞品低约 <strong>50-70%</strong>。同样的屏幕空间，Bloomberg 用户能看到 3 倍的数据行。</p>
+<h3>2.4 视觉层次与分组</h3>
+<p><strong>优点</strong>：<code>ad-panel</code> 系统提供了统一的卡片化容器，<code>ad-metric-strip</code> 和 <code>ResponsiveGrid</code> 提供了结构化的布局模式。</p>
+<p><strong>问题</strong>：
+- Panel 的 header 区域与 body 区域的视觉分隔仅靠一条 1px 的 hairline，在数据密集场景下层次感不足
+- 阴影系统过于保守（<code>shadow-card: 0 1px 3px rgba(0,0,0,0.04)</code>），在白色卡片+白色背景场景下几乎看不见
+- 缺少"焦点区域"的视觉设计语言——所有卡片视觉权重相同，用户视线没有明确的锚点</p>
+<h3>2.5 交互与反馈</h3>
+<p><strong>优点</strong>：hover 状态统一使用 <code>var(--bg-hover)</code>，过渡动画统一使用 <code>var(--transition-fast)</code>。</p>
+<p><strong>问题</strong>：
+- 动效几乎为零：没有页面过渡、没有数据刷新反馈、没有 KPI 变化的视觉提示
+- 按钮的 active 状态视觉反馈不足（仅背景色变化 2-3%）
+- 表格行点击前往详情，但可点击性 affordance 不够直观（仅 <code>cursor: pointer</code>）</p>
+<h3>2.6 情感与个性</h3>
+<p><strong>核心问题</strong>：当前设计缺乏独特的视觉记忆点。</p>
+<p>Light 主题 = 任何一个 SaaS 产品的模板化外观。<br />
+Dark 主题 = 一个有 CRT 美学偏好的开发者的个人终端。</p>
+<p>两者都没有传达"<strong>专业投资研究平台</strong>"的品牌气质。用户关闭浏览器后无法在记忆中唤起 AD-Research 的任何独特视觉元素。</p>
+<hr />
+<h2>三、2025-2026 设计趋势与竞品对标精华</h2>
+<h3>3.1 五大趋势（简要）</h3>
+<table>
+<thead>
+<tr>
+<th>趋势</th>
+<th>描述</th>
+<th>对 AD-Research 的适用性</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Dark-First 设计</strong></td>
+<td>60-70% 专业用户偏好暗色，不再是"可选主题"而是设计起点</td>
+<td>⭐⭐⭐⭐⭐ 必须采纳</td>
+</tr>
+<tr>
+<td><strong>Bento Grid 布局</strong></td>
+<td>便当盒式非对称网格，组织信息密度同时保持呼吸感</td>
+<td>⭐⭐⭐⭐⭐ 适合 Dashboard</td>
+</tr>
+<tr>
+<td><strong>AI-Native 混合界面</strong></td>
+<td>对话式 AI + 传统面板并存，AI 不是另一标签页而是常驻助手</td>
+<td>⭐⭐⭐⭐ 差异机会</td>
+</tr>
+<tr>
+<td><strong>Liquid Glass UI</strong></td>
+<td>运动响应式毛玻璃，替代静态 Glassmorphism</td>
+<td>⭐⭐⭐ 点缀使用</td>
+</tr>
+<tr>
+<td><strong>语义性微动效</strong></td>
+<td>动效不再是装饰，而是信息传递载体（变化提示、焦点引导）</td>
+<td>⭐⭐⭐⭐ 气质提升</td>
+</tr>
+</tbody>
+</table>
+<h3>3.2 竞品设计矩阵</h3>
+<table>
+<thead>
+<tr>
+<th>维度</th>
+<th>Bloomberg</th>
+<th>TradingView</th>
+<th>Koyfin</th>
+<th>Robinhood</th>
+<th>Ramp</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>信息密度</td>
+<td>极高</td>
+<td>中高</td>
+<td>中高</td>
+<td>极低</td>
+<td>中</td>
+</tr>
+<tr>
+<td>色彩风格</td>
+<td>琥珀+黑 复古</td>
+<td>蓝+绿 Token 化</td>
+<td>深蓝+灰 专业</td>
+<td>霓虹绿+黑 潮流</td>
+<td>霓虹黄+白 极简</td>
+</tr>
+<tr>
+<td>字体系统</td>
+<td>Monospace 全局</td>
+<td>Trebuchet MS</td>
+<td>Sans-serif 混用</td>
+<td>定制 Phonic</td>
+<td>Inter 独占</td>
+</tr>
+<tr>
+<td>动效丰富度</td>
+<td>零</td>
+<td>低</td>
+<td>低</td>
+<td>极高</td>
+<td>极低</td>
+</tr>
+<tr>
+<td><strong>AD-Research 应朝向</strong></td>
+<td>信息密度</td>
+<td>Token 化</td>
+<td>模块化</td>
+<td>情感设计</td>
+<td>纪律约束</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2>四、美化方案（按优先级排列）</h2>
+<h3>P0 — 基础设施修复（立即执行，低风险）</h3>
+<h4>P0-1：真正加载字体</h4>
+<pre><code class="language-css">/* 在 index.html 或 main.tsx 中添加 */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap');
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&amp;display=swap');
+
+/* 或自托管，性能更好 */
+</code></pre>
+<p><strong>效果</strong>：跨平台字体统一，macOS 和 Windows 用户看到相同的视觉体验。</p>
+<h4>P0-2：强制 tabular-nums</h4>
+<pre><code class="language-css">/* 全局覆盖 Ant Design 表格数值列 */
+.ant-table-tbody &gt; tr &gt; td {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: &quot;tnum&quot; 1;
+}
+</code></pre>
+<p><strong>效果</strong>：零成本、零视觉变化，但数字列对齐精度提升一个量级。</p>
+<h4>P0-3：提升 dark 模式的文字对比度</h4>
+<pre><code class="language-css">:root[data-theme=&quot;dark&quot;] {
+  --text-secondary: #a0a0a0;  /* 从 #888888 提亮 */
+  --text-tertiary: #787878;   /* 从 #808080 调整 */
+  --text-muted: #606060;      /* 从 #7a7a7a 调整 */
+}
+</code></pre>
+<h4>P0-4：最小字号提升</h4>
+<pre><code class="language-css">:root {
+  --text-label: 600 12px/1.2 var(--font-sans);   /* 从 11px 提升 */
+  --text-small: 500 13px/1.4 var(--font-sans);   /* 从 12px 提升 */
+}
+:root[data-theme=&quot;dark&quot;] {
+  --text-label: 500 12px/1.2 var(--font-sans);   /* 从 10px 提升 */
+  --text-small: 500 13px/1.4 var(--font-sans);   /* 从 11px 提升 */
+}
+</code></pre>
+<hr />
+<h3>P1 — 设计系统升级（中期，需逐步迁移）</h3>
+<h4>P1-1：色彩系统重构 — 从朱红到蓝靛</h4>
+<p>这是本次美化方案中<strong>最重要的单次变更</strong>，需要审慎推进。</p>
+<p><strong>为什么改</strong>：
+- 全球主流金融终端（Bloomberg、TradingView、万得、FactSet）无一使用红色系作为主 accent
+- 红色在投资语境中已被"亏损/风险/警告"占据语义空间
+- 蓝色传达"信任、精确、冷静"——正是量化研究和专业投资的需求
+- 蓝-橙色组合是 Okabe-Ito 色盲安全色板的基础，提升无障碍性</p>
+<p><strong>新配色方案</strong>：</p>
+<pre><code>亮色主题（Light）：
+  --accent:           #2563EB  (Blue-600, 沉稳专业蓝)
+  --accent-hover:     #1D4ED8  (Blue-700)
+  --accent-dim:       rgba(37, 99, 235, 0.08)
+  --accent-border:    rgba(37, 99, 235, 0.20)
+
+暗色主题（Dark）：
+  --accent:           #60A5FA  (Blue-400, 暗色下提亮防刺眼)
+  --accent-hover:     #93BBFD  (Blue-300)
+  --accent-dim:       rgba(96, 165, 250, 0.12)
+  --accent-border:    rgba(96, 165, 250, 0.25)
+</code></pre>
+<p><strong>迁移策略</strong>：通过增加一个新的 <code>data-accent</code> 属性控制，默认使用蓝色，保留 <code>data-accent="vermilion"</code> 兼容旧用户。</p>
+<pre><code class="language-css">:root, :root[data-accent=&quot;blue&quot;] {
+  --accent: #2563EB;
+  --accent-hover: #1D4ED8;
+  /* ... */
+}
+:root[data-accent=&quot;vermilion&quot;] {
+  --accent: #E11D48;  /* 保留旧朱红色 */
+  /* ... */
+}
+</code></pre>
+<h4>P1-2：暗色模式重塑 — 从 CRT 终端到专业暗色</h4>
+<p><strong>目标</strong>：将 dark 模式从"黑客终端美学"转变为"专业投研工作站暗色设计"。</p>
+<p><strong>具体措施</strong>：</p>
+<ol>
+<li>
+<p><strong>CRT 扫描线默认关闭</strong>：改为用户设置中的开关项（<code>ui_crt_scanlines: false</code>）</p>
+</li>
+<li>
+<p><strong>暗色表面层级重新设计</strong>：</p>
+</li>
+</ol>
+<pre><code class="language-css">:root[data-theme=&quot;dark&quot;] {
+  --bg-base:     #0D1117;  /* GitHub 暗色基准（比纯黑 #000 更舒适） */
+  --bg-elevated: #161B22;  /* 侧栏、header */
+  --bg-surface:  #1C2128;  /* 卡片、面板 */
+  --card-bg:     #1C2128;
+  --card-border: #30363D;
+  --border-default: #30363D;
+  --border-strong: #484F58;
+}
+</code></pre>
+<p>这个方案参考了 GitHub Dark、TradingView Dark、和 Bloomberg 新一代 UX 的共识——<strong>暗色不是"反转亮色"，而是独立的色彩体系</strong>。</p>
+<ol>
+<li><strong>暗色模式强调色改为去饱和蓝</strong>（见 P1-1）</li>
+</ol>
+<h4>P1-3：信息密度系统 — 用户可调的三档密度</h4>
+<p>这是回应用户"信息密度怎么设计最合理"的核心方案。</p>
+<p><strong>设计原则</strong>：不是所有页面都适合同一密度。提供 <strong>Compact / Comfortable / Spacious</strong> 三档，不同页面类型有不同默认值。</p>
+<table>
+<thead>
+<tr>
+<th>页面类型</th>
+<th>默认密度</th>
+<th>Compact（32px行高）</th>
+<th>Comfortable（42px行高）</th>
+<th>Spacious（56px行高）</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>列表页</strong></td>
+<td>Compact</td>
+<td>最大数据可见</td>
+<td>适中</td>
+<td>宽松</td>
+</tr>
+<tr>
+<td><strong>Dashboard</strong></td>
+<td>Comfortable</td>
+<td>更紧凑网格</td>
+<td>标准呼吸感</td>
+<td>大卡片模式</td>
+</tr>
+<tr>
+<td><strong>详情页</strong></td>
+<td>Comfortable</td>
+<td>紧凑信息呈现</td>
+<td>标准间距</td>
+<td>阅读友好</td>
+</tr>
+<tr>
+<td><strong>AI 对话</strong></td>
+<td>Spacious</td>
+<td>-</td>
+<td>标准</td>
+<td>对话舒适</td>
+</tr>
+<tr>
+<td><strong>筛选器</strong></td>
+<td>Compact</td>
+<td>更多筛选可见</td>
+<td>标准</td>
+<td>-</td>
+</tr>
+</tbody>
+</table>
+<p><strong>技术实现</strong>：</p>
+<pre><code class="language-css">/* 通过 &lt;html data-density=&quot;compact|comfortable|spacious&quot;&gt; 控制 */
+
+/* Compact 模式 */
+:root[data-density=&quot;compact&quot;] {
+  --table-row-height: 32px;
+  --table-cell-py: 6px;
+  --table-cell-px: 10px;
+  --card-padding: var(--space-3);
+  --stat-card-value-size: var(--text-data-md-size);
+  --section-gap: var(--space-3);
+}
+
+/* Comfortable 模式（默认） */
+:root[data-density=&quot;comfortable&quot;] {
+  --table-row-height: 42px;
+  --table-cell-py: 10px;
+  --table-cell-px: var(--space-4);
+  --card-padding: var(--space-4);
+  --stat-card-value-size: var(--text-data-lg-size);
+  --section-gap: var(--space-5);
+}
+
+/* Spacious 模式 */
+:root[data-density=&quot;spacious&quot;] {
+  --table-row-height: 56px;
+  --table-cell-py: 14px;
+  --table-cell-px: var(--space-5);
+  --card-padding: var(--space-5);
+  --stat-card-value-size: var(--text-data-xl-size);
+  --section-gap: var(--space-6);
+}
+</code></pre>
+<p><strong>切换控件</strong>：在 Header 右侧添加密度切换（和当前的涨跌色彩切换并列），或放入设置菜单。</p>
+<h4>P1-4：Bento Grid Dashboard 布局</h4>
+<p><strong>当前</strong>：Dashboard 使用 4 列 <code>ResponsiveGrid</code>，所有卡片均等权重。</p>
+<p><strong>方案</strong>：采用便当盒（Bento Box）式非对称网格，让最重要的信息占据更大的视觉面积。</p>
+<pre><code>┌─────────────────────┬──────────┬──────────┐
+│                     │ 市场概览  │ 今日评分  │
+│   KPI 关键指标      │ 标普500   │ 最高/最低 │
+│   4 个大数字卡      │ 纳指100   │ 热门自选  │
+│                     │           │           │
+├──────────┬──────────┼──────────┴──────────┤
+│ 持仓盈亏  │ 行业轮动  │                    │
+│ 今日+%   │ 热力图    │  最新研究报告/AI摘要 │
+│          │          │                    │
+├──────────┴──────────┼──────────┬──────────┤
+│                     │ 新闻热点  │ 宏观经济  │
+│  自选股迷你行情表    │ 最新5条  │ 指标速览  │
+│                     │          │          │
+└─────────────────────┴──────────┴──────────┘
+</code></pre>
+<p><strong>技术实现</strong>：使用 CSS Grid 的 <code>grid-template-areas</code> + <code>span</code> 实现不等宽布局，每个卡片用 <code>ResponsiveGrid</code> variant 控制跨列数。</p>
+<hr />
+<h3>P2 — 体验升级（长期，需设计验证）</h3>
+<h4>P2-1：AI 对话式面板融合</h4>
+<p>当前 AIChat 是独立页面。建议将 AI 助手作为<strong>常驻右侧抽屉/侧面板</strong>，在浏览数据的同时可以随时提问。</p>
+<p>参考：FinChat Copilot（顶部常驻）、AlphaSense Generative Search（@文档选择 + 三种推理深度）、Yahoo AlphaSpace（自然语言 → 自动构建视图）。</p>
+<h4>P2-2：语义性微动效系统</h4>
+<pre><code class="language-css">/* 数据刷新过渡 */
+@keyframes value-update {
+  0%   { background: var(--accent-dim); }
+  100% { background: transparent; }
+}
+.value-flash {
+  animation: value-update 600ms ease-out;
+}
+
+/* KPI 阈值告警 */
+@keyframes threshold-alert {
+  0%, 100% { box-shadow: 0 0 0 0 var(--accent-dim); }
+  50%      { box-shadow: 0 0 0 4px var(--accent-dim); }
+}
+.threshold-alert {
+  animation: threshold-alert 2s ease-in-out 3;
+}
+
+/* 数值变化方向指示 */
+.value-up   { color: var(--color-rise); transition: color 600ms; }
+.value-down { color: var(--color-fall); transition: color 600ms; }
+</code></pre>
+<p><strong>原则</strong>（参考 Ramp 的动效纪律）：
+- 所有动效 ≤ 200ms
+- 仅操作 <code>transform</code> 和 <code>opacity</code>
+- 尊重 <code>prefers-reduced-motion</code></p>
+<h4>P2-3：暗色模式下的 Liquid Glass 点缀</h4>
+<p>仅在 Header 和关键悬浮面板上应用，不作为全局风格。</p>
+<pre><code class="language-css">.app-layout__header {
+  background: rgba(13, 17, 23, 0.80);  /* GitHub Dark base + 透明度 */
+  backdrop-filter: blur(12px) saturate(120%);
+  border-bottom: 1px solid rgba(48, 54, 61, 0.6);
+}
+</code></pre>
+<h4>P2-4：独特的品牌视觉记忆点</h4>
+<p>建议创建一个独特的品牌元素——<strong>"数据之光"（Data Glow）</strong>：</p>
+<p>设计一个顶部全局数据更新指示器，以小脉冲光点表示数据源连接状态和最后更新时间。它微小但不被忽视，成为 AD-Research 的标志性视觉特征。</p>
+<pre><code>左上角 Logo 旁：
+🟢 数据更新于 09:32:15  ·  tushare ✅  fred ✅  xueqiu ✅
+</code></pre>
+<hr />
+<h2>五、设计 Token 升级总览</h2>
+<h3>5.1 新增 Token</h3>
+<pre><code class="language-css">:root {
+  /* ---- 新增：暗色表面层级（Dark-first 设计）---- */
+  --surface-0: #ffffff;        /* light: 根背景 */
+  --surface-1: #f7f7f8;       /* light: 卡片/侧栏 */
+  --surface-2: #f4f4f5;       /* light: 悬浮面板 */
+  --surface-3: #ebebec;       /* light: 模态框 */
+
+  /* ---- 新增：信息密度变量 ---- */
+  --density-row-height: 42px;
+  --density-cell-py: 10px;
+  --density-cell-px: 16px;
+  --density-card-padding: 16px;
+  --density-section-gap: 20px;
+
+  /* ---- 新增：Liquid Glass ---- */
+  --glass-bg: rgba(255, 255, 255, 0.06);
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --glass-blur: blur(12px);
+}
+
+:root[data-theme=&quot;dark&quot;] {
+  --surface-0: #0D1117;
+  --surface-1: #161B22;
+  --surface-2: #1C2128;
+  --surface-3: #30363D;
+}
+</code></pre>
+<h3>5.2 调整 Token</h3>
+<p>参见 P0-4 和 P0-3 中的具体数值。</p>
+<h3>5.3 移除</h3>
+<ul>
+<li><code>theme.css:173-185</code> 中的部分 legacy 兼容别名（<code>--color-accent</code>、<code>--color-primary</code> 等），改用直接引用 <code>var(--accent)</code></li>
+<li>CRT 扫描线效果改为用户可选开关（<code>data-crt="on"</code>）</li>
+</ul>
+<hr />
+<h2>六、实施路线图</h2>
+<table>
+<thead>
+<tr>
+<th>阶段</th>
+<th>内容</th>
+<th>预计工时</th>
+<th>风险</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>第1周</strong></td>
+<td>P0-1~P0-4 基础设施修复</td>
+<td>1-2天</td>
+<td>极低</td>
+</tr>
+<tr>
+<td><strong>第2周</strong></td>
+<td>P1-1 色彩迁移（蓝靛方案 + 保留朱红兼容）</td>
+<td>2-3天</td>
+<td>中（需全局回归测试）</td>
+</tr>
+<tr>
+<td><strong>第3周</strong></td>
+<td>P1-2 暗色模式重塑</td>
+<td>1-2天</td>
+<td>低</td>
+</tr>
+<tr>
+<td><strong>第4周</strong></td>
+<td>P1-3 信息密度系统</td>
+<td>2-3天</td>
+<td>中（需测试各页面）</td>
+</tr>
+<tr>
+<td><strong>第5-6周</strong></td>
+<td>P1-4 Bento Grid Dashboard</td>
+<td>3-4天</td>
+<td>中（需设计验证）</td>
+</tr>
+<tr>
+<td><strong>第7周+</strong></td>
+<td>P2 动效/Glass/AI融合</td>
+<td>持续迭代</td>
+<td>低</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2>七、关键决策点（需用户确认）</h2>
+<ol>
+<li>
+<p><strong>主强调色迁移</strong>：是否同意从朱红（#E11D48）切换到蓝色系（#2563EB light / #60A5FA dark）？如果不完全放弃，是否接受通过 <code>data-accent</code> 双轨兼容？</p>
+</li>
+<li>
+<p><strong>暗色模式重塑</strong>：是否接受将 CRT 扫描线和暗角效果改为可选开关（默认关闭），并将暗色配色从 <code>#0a0a0a</code> 终端黑迁移到 GitHub Dark 式的 <code>#0D1117</code>？</p>
+</li>
+<li>
+<p><strong>信息密度默认值</strong>：列表页默认从 <code>size="large"</code>（52px）下调到 Compact（32px）还是 Comfortable（42px）？</p>
+</li>
+<li>
+<p><strong>字体加载</strong>：通过 Google Fonts CDN 还是自托管 Inter + JetBrains Mono？</p>
+</li>
+<li>
+<p><strong>品牌记忆点</strong>：对"数据之光"（左上角数据源状态指示器）的设计方向是否感兴趣？</p>
+</li>
+</ol>
+<hr />
+<h2>八、不做的事情</h2>
+<p>以下是被研究证实<strong>不适合</strong>投资研究平台的流行趋势：</p>
+<ul>
+<li>❌ <strong>Neubrutalism</strong>：粗黑边框+硬阴影在数据密集场景下过于喧闹</li>
+<li>❌ <strong>纯黑背景</strong>：#000 在 OLED 上对比度过高，长时间使用加速视觉疲劳</li>
+<li>❌ <strong>极简主义过度</strong>：不能因为"好看"牺牲信息密度——专业用户需要数据，不需要留白</li>
+<li>❌ <strong>装饰性动效</strong>：不服务于信息传递的动效一律不要</li>
+<li>❌ <strong>AI 生成的紫色渐变+Inter 字体组合</strong>：已被行业过度使用，"AI Slop" 审美疲劳</li>
+</ul>
+<hr />
+<p><em>报告编制：AD-Research 设计审计 | 2026-07-11 | 基于 4 个并行研究 agent 的调研成果</em></p>
+</body>
+</html>

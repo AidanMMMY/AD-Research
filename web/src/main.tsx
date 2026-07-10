@@ -5,6 +5,13 @@ import { ConfigProvider, theme } from 'antd';
 import zhCN from 'antd/locale/zh_CN';
 import App from './App';
 import { getInitialTheme, type Theme } from '@/hooks/useTheme';
+// 自托管字体（Inter + JetBrains Mono），统一跨平台字体体验
+import '@fontsource/inter/400.css';
+import '@fontsource/inter/500.css';
+import '@fontsource/inter/600.css';
+import '@fontsource/inter/700.css';
+import '@fontsource/jetbrains-mono/400.css';
+import '@fontsource/jetbrains-mono/500.css';
 import './styles/theme.css';
 import './styles/global.css';
 

@@ -426,6 +426,28 @@ function ColorConventionToggle() {
   );
 }
 
+/* ------------------------------------------------------------
+ * DensityToggle — header control for data density (P1-3).
+ * Compact 32px / Comfortable 42px / Spacious 56px
+ * ------------------------------------------------------------ */
+function DensityToggle() {
+  const { density, setDensity } = useSettingsStore();
+  return (
+    <Segmented
+      className="app-layout__header-segmented"
+      size="small"
+      value={density}
+      onChange={(v) => setDensity(v as 'compact' | 'comfortable' | 'spacious')}
+      aria-label="切换信息密度"
+      options={[
+        { label: '紧凑', value: 'compact' },
+        { label: '标准', value: 'comfortable' },
+        { label: '宽松', value: 'spacious' },
+      ]}
+    />
+  );
+}
+
 /* ============================================================
  * AppLayout — the app shell.
  * ============================================================ */
@@ -437,6 +459,9 @@ export default function AppLayout() {
     setMode,
     learningMode,
     setLearningMode,
+    density,
+    crtEffect,
+    setCrtEffect,
   } = useSettingsStore();
   const [theme, setTheme] = useTheme();
   const [collapsed, setCollapsed] = useState(false);
@@ -459,12 +484,23 @@ export default function AppLayout() {
     }
   }, [user?.id]);
 
-  // Phase 1: 同步 colorConvention 到 <html data-color-convention>,
-  // 这样 theme.css 里的 CSS 变量切换才能生效。Phase 3 重写后保留。
+  // Phase 1: 同步 colorConvention 到 <html data-color-convention>
   useEffect(() => {
     if (typeof document === 'undefined') return;
     document.documentElement.setAttribute('data-color-convention', colorConvention);
   }, [colorConvention]);
+
+  // Phase 7b (2026-07-11): 同步 density 到 <html data-density>
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    document.documentElement.setAttribute('data-density', density);
+  }, [density]);
+
+  // Phase 7b (2026-07-11): 同步 crtEffect 到 <html data-crt>
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    document.documentElement.setAttribute('data-crt', crtEffect ? 'on' : 'off');
+  }, [crtEffect]);
 
   // One-shot "已开启学习模式" hint so users notice the new default without
   // having to dig into the avatar menu.
@@ -611,6 +647,7 @@ export default function AppLayout() {
             {!isMobile && (
               <>
                 <CollapseToggle collapsed={collapsed} onChange={setCollapsed} />
+                <DensityToggle />
                 <ColorConventionToggle />
                 <ThemeToggle theme={theme} onChange={setTheme} />
               </>
@@ -622,6 +659,14 @@ export default function AppLayout() {
                 trigger={['click']}
                 menu={{
                   items: [
+                    {
+                      key: 'density',
+                      label: (
+                        <div onClick={(e) => e.stopPropagation()}>
+                          <DensityToggle />
+                        </div>
+                      ),
+                    },
                     {
                       key: 'color-convention',
                       label: (
@@ -699,6 +744,29 @@ export default function AppLayout() {
                           />
                           <span className="app-layout__user-menu-mode-note">
                             开启后每个数字旁解释含义
+                          </span>
+                        </div>
+                      </div>
+                    ),
+                  },
+                  {
+                    key: 'crt-effect',
+                    label: (
+                      <div
+                        onClick={(e) => e.stopPropagation()}
+                        className="app-layout__user-menu-mode"
+                      >
+                        <div className="app-layout__user-menu-label">
+                          <MonitorOutlined /> CRT 扫描线
+                        </div>
+                        <div className="app-layout__user-menu-mode-hint">
+                          <Switch
+                            size="small"
+                            checked={crtEffect}
+                            onChange={(v) => setCrtEffect(v)}
+                          />
+                          <span className="app-layout__user-menu-mode-note">
+                            暗色模式下启用复古终端效果
                           </span>
                         </div>
                       </div>

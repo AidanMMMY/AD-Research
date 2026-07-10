@@ -3,6 +3,8 @@ import { persist } from 'zustand/middleware';
 
 export type ColorConvention = 'china' | 'us';
 export type HelpMode = 'novice' | 'pro';
+/** 信息密度：Compact(32px行高) | Comfortable(42px) | Spacious(56px) */
+export type Density = 'compact' | 'comfortable' | 'spacious';
 
 interface SettingsState {
   /** Color convention: china=red up green down, us=green up red down */
@@ -22,6 +24,17 @@ interface SettingsState {
    */
   learningMode: boolean;
   setLearningMode: (v: boolean) => void;
+  /**
+   * P1-3 信息密度（2026-07-11）：三档可调 — compact / comfortable / spacious。
+   * 默认 comfortable（42px 行高）。
+   */
+  density: Density;
+  setDensity: (d: Density) => void;
+  /**
+   * CRT 扫描线效果（暗色模式专属）。默认关闭，怀旧用户可手动开启。
+   */
+  crtEffect: boolean;
+  setCrtEffect: (v: boolean) => void;
 }
 
 export const useSettingsStore = create<SettingsState>()(
@@ -33,9 +46,13 @@ export const useSettingsStore = create<SettingsState>()(
       // 若 localStorage 已存值（即使旧版本是 false）会保留旧值；新
       // 用户首次进入会拿到 true。
       learningMode: true,
+      density: 'comfortable',
+      crtEffect: false,
       setColorConvention: (colorConvention) => set({ colorConvention }),
       setMode: (mode) => set({ mode }),
       setLearningMode: (learningMode) => set({ learningMode }),
+      setDensity: (density) => set({ density }),
+      setCrtEffect: (crtEffect) => set({ crtEffect }),
     }),
     {
       name: 'settings-storage',
@@ -46,9 +63,10 @@ export const useSettingsStore = create<SettingsState>()(
         colorConvention: state.colorConvention,
         mode: state.mode,
         learningMode: state.learningMode,
+        density: state.density,
+        crtEffect: state.crtEffect,
       }),
-      // Bump version so existing users get the new field cleanly migrated.
-      version: 2,
+      version: 3,
     }
   )
 );
