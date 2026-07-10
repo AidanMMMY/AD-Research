@@ -178,9 +178,9 @@ class NewsTranslationService:
 
         # Call DeepSeek (imported lazily so unit tests can patch the
         # provider without paying the OpenAI SDK import cost).
-        from app.services.llm.deepseek_provider import DeepSeekProvider
+        from app.services.llm import get_llm_provider
 
-        provider = DeepSeekProvider()
+        provider = get_llm_provider()
         if not provider.is_available:
             raise RuntimeError("DEEPSEEK_API_KEY is not configured on the server")
 

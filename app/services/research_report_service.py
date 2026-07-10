@@ -287,14 +287,14 @@ class ResearchReportService:
         Returns the generated ``summary`` text.  The function is
         idempotent: re-running will overwrite a previous summary.
         """
-        from app.services.llm.deepseek_provider import DeepSeekProvider
+        from app.services.llm import get_llm_provider
 
         report = self.db.get(ResearchReport, report_id)
         if report is None:
             raise ValueError(f"ResearchReport {report_id} not found")
 
         system, user = _build_prompt(report)
-        provider = DeepSeekProvider()
+        provider = get_llm_provider()
 
         content = self._call_llm_with_retry(provider, system, user)
         if not content:
@@ -363,9 +363,9 @@ class ResearchReportService:
         Returns the number of rows successfully summarized.  Rows that
         fail (timeout / 429 / no key) are left for the next run.
         """
-        from app.services.llm.deepseek_provider import DeepSeekProvider
+        from app.services.llm import get_llm_provider
 
-        provider = DeepSeekProvider()
+        provider = get_llm_provider()
         if not provider.is_available:
             logger.info("summarize_pending_reports: DeepSeek API key not set, skipping")
             return 0

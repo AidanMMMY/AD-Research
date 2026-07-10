@@ -258,9 +258,9 @@ class ContentFetcher:
           the failure is logged at ``WARNING`` with ``exc_info=True``
           so the ops dashboard can pick it up.
         """
-        from app.services.llm.deepseek_provider import DeepSeekProvider
+        from app.services.llm import get_llm_provider
 
-        provider = DeepSeekProvider()
+        provider = get_llm_provider()
         if not provider.is_available:
             # NOT an error — DeepSeek simply isn't configured in this
             # environment. Still record the attempt so the ops dashboard

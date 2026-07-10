@@ -137,84 +137,84 @@
     "name": "汉缆股份",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "未找到公司IR官网"
   },
   {
     "code": "002500",
     "name": "山西证券",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "未找到公司IR官网"
   },
   {
     "code": "002506",
     "name": "协鑫集成",
-    "ir_url": null,
-    "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "ir_url": "http://www.gclsi.com/investor.html?cid=63",
+    "method": "official_ir",
+    "notes": ""
   },
   {
     "code": "002507",
     "name": "涪陵榨菜",
-    "ir_url": null,
-    "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "ir_url": "https://www.flzc.com/html/page/1e92c176ed59d737b75348f29b65da54.html",
+    "method": "official_ir",
+    "notes": ""
   },
   {
     "code": "002508",
     "name": "老板电器",
-    "ir_url": null,
-    "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "ir_url": "https://www.robam.com/about/investment/9.html",
+    "method": "official_ir",
+    "notes": ""
   },
   {
     "code": "002510",
     "name": "天汽模",
-    "ir_url": null,
-    "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "ir_url": "http://www.tqm.cn/notice_4/",
+    "method": "official_ir",
+    "notes": ""
   },
   {
     "code": "002511",
     "name": "中顺洁柔",
-    "ir_url": null,
-    "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "ir_url": "https://www.zsjr.com/investor/",
+    "method": "official_ir",
+    "notes": ""
   },
   {
     "code": "002512",
     "name": "ST达华",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "未找到公司IR官网"
   },
   {
     "code": "688347",
     "name": "华虹宏力",
-    "ir_url": null,
-    "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "ir_url": "https://www.huahonggrace.com/c/ir_calendar.php",
+    "method": "official_ir",
+    "notes": ""
   },
   {
     "code": "688348",
     "name": "昱能科技",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "未找到公司IR官网"
   },
   {
     "code": "688349",
     "name": "三一重能",
-    "ir_url": null,
-    "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "ir_url": "https://www.sanyre.com.cn/investment/",
+    "method": "official_ir",
+    "notes": ""
   },
   {
     "code": "603659",
     "name": "璞泰来",
-    "ir_url": null,
-    "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "ir_url": "https://www.putailai.com/investor_2",
+    "method": "official_ir",
+    "notes": ""
   },
   {
     "code": "603681",

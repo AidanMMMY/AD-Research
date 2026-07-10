@@ -274,9 +274,9 @@ class WechatMarketingFilter:
         if self._llm_provider_override is not None:
             return self._llm_provider_override
         try:
-            from app.services.llm.deepseek_provider import DeepSeekProvider
+            from app.services.llm import get_llm_provider
 
-            return DeepSeekProvider()
+            return get_llm_provider()
         except Exception:  # pragma: no cover - defensive
             return None
 

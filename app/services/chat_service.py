@@ -17,7 +17,7 @@ from sqlalchemy.orm import Session
 from app.models.etf import ETFIndicator, ETFInfo
 from app.models.research import AIChatMessage, AIChatSession
 from app.models.scoring import ETFScore
-from app.services.llm import DeepSeekProvider, LLMService
+from app.services.llm import get_llm_provider, LLMService
 
 logger = logging.getLogger(__name__)
 
@@ -39,7 +39,7 @@ class ChatService:
 
     def __init__(self, db: Session) -> None:
         self.db = db
-        provider = DeepSeekProvider()
+        provider = get_llm_provider()
         self.llm = LLMService(provider)
 
     # ------------------------------------------------------------------

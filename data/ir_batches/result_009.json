@@ -130,35 +130,35 @@
     "name": "金迪克",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "未找到公司IR官网"
   },
   {
     "code": "002661",
     "name": "克明食品",
-    "ir_url": null,
-    "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "ir_url": "https://www.kemen.cn/investor/49.html",
+    "method": "official_ir",
+    "notes": ""
   },
   {
     "code": "002662",
     "name": "峰璟股份",
-    "ir_url": null,
-    "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "ir_url": "http://www.bj-fengjing.com/portal/list/index/id/23.html",
+    "method": "official_ir",
+    "notes": ""
   },
   {
     "code": "002664",
     "name": "信质集团",
-    "ir_url": null,
-    "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "ir_url": "https://www.chinaxinzhi.com/invest.html",
+    "method": "official_ir",
+    "notes": ""
   },
   {
     "code": "002667",
     "name": "*ST威领",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "未找到公司IR官网"
   },
   {
     "code": "002676",
