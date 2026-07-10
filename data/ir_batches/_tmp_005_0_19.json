@@ -1,0 +1,142 @@
+[
+  {
+    "code": "002401",
+    "name": "中远海科",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "官网 tech.coscoshipping.com，未找到独立的投资者关系页面"
+  },
+  {
+    "code": "002402",
+    "name": "和而泰",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "官网 www.szhittech.com，投资者关系通过全景网 p5w.net 进行，官网无独立 IR 页面"
+  },
+  {
+    "code": "920970",
+    "name": "大禹生物",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "官网 www.sxdysw.cn，北交所上市，投资者关系通过全景网 p5w.net 进行"
+  },
+  {
+    "code": "002649",
+    "name": "博彦科技",
+    "ir_url": "https://beyondsoft.com/invest/index.html",
+    "method": "web_search",
+    "notes": "官网 beyondsoft.com，/invest/ 路径下为投资者关系页面"
+  },
+  {
+    "code": "002650",
+    "name": "ST加加",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "官网 www.jiajiagroup.com，IR 活动记录散见于官网新闻页，无独立 IR 栏目页面"
+  },
+  {
+    "code": "002651",
+    "name": "利君股份",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "官网 www.cdleejun.com，投资者关系通过全景网 p5w.net 进行，官网无 IR 页面"
+  },
+  {
+    "code": "002653",
+    "name": "海思科",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "官网 www.haisco.com，投资者关系通过全景网 p5w.net 进行，官网无独立 IR 页面"
+  },
+  {
+    "code": "600071",
+    "name": "凤凰光学",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "官网 www.phenixoptics.com.cn，业绩说明会通过上证路演中心进行，官网无 IR 页面"
+  },
+  {
+    "code": "600072",
+    "name": "中船科技",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "官网 www.cssckj.com，投资者关系通过上证路演中心 roadshow.sseinfo.com 进行"
+  },
+  {
+    "code": "600073",
+    "name": "光明肉业",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "官网 www.brightmeat.com，投资者关系通过上证路演中心进行，官网无独立 IR 页面"
+  },
+  {
+    "code": "600076",
+    "name": "康欣新材",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "官网 www.hbkangxin.com.cn，投资者关系通过全景网 p5w.net 及上证路演中心进行"
+  },
+  {
+    "code": "603858",
+    "name": "步长制药",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "官网 www.buchang.com，投资者关系通过上证路演中心及上证 e 互动进行，官网无独立 IR 页面"
+  },
+  {
+    "code": "600081",
+    "name": "东风科技",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "官网 www.detc.com.cn，投资者关系通过上证路演中心进行，官网无独立 IR 页面"
+  },
+  {
+    "code": "600082",
+    "name": "ST海泰",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "官网 www.hitech-develop.com，投资者关系通过全景网及上证路演中心进行，官网无独立 IR 页面"
+  },
+  {
+    "code": "002378",
+    "name": "章源钨业",
+    "ir_url": "http://www.zy-tungsten.com.cn/cn/NewsPage.aspx?class1=6&class2=70",
+    "method": "web_search",
+    "notes": "官网 www.zy-tungsten.com.cn，新闻中心栏目下设投资者关系分类页面"
+  },
+  {
+    "code": "002380",
+    "name": "科远智慧",
+    "ir_url": "https://www.sciyon.com/investor.html",
+    "method": "web_search",
+    "notes": "官网 www.sciyon.com，/investor.html 为投资者关系独立页面"
+  },
+  {
+    "code": "002382",
+    "name": "蓝帆医疗",
+    "ir_url": "https://www.bluesail.cn/tzzgx/index_7.htm",
+    "method": "web_search",
+    "notes": "官网 www.bluesail.cn，/tzzgx/（投资者关系）路径下为 IR 独立页面"
+  },
+  {
+    "code": "002383",
+    "name": "合众思壮",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "官网 www.UniStrong.com，搜索提及官网有投资者关系栏目但未找到直接 URL"
+  },
+  {
+    "code": "002384",
+    "name": "东山精密",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "官网 www.dsbj.com，投资者关系通过中国证券网 roadshow.cnstock.com 进行，官网无独立 IR 页面"
+  },
+  {
+    "code": "002394",
+    "name": "联发股份",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "官网 www.lianfa.cn，投资者关系通过微信小程序及深交所互动易进行，官网无独立 IR 页面"
+  }
+]

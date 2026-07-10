@@ -1,0 +1,1402 @@
+[
+  {
+    "code": "301356",
+    "name": "天振股份",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "中小市值公司，无独立官网IR页面或未搜索到"
+  },
+  {
+    "code": "301357",
+    "name": "北方长龙",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "中小市值公司，无独立官网IR页面或未搜索到"
+  },
+  {
+    "code": "301358",
+    "name": "湖南裕能",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "中小市值公司，无独立官网IR页面或未搜索到"
+  },
+  {
+    "code": "301359",
+    "name": "东南电子",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "中小市值公司，无独立官网IR页面或未搜索到"
+  },
+  {
+    "code": "301365",
+    "name": "矩阵股份",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "中小市值公司，无独立官网IR页面或未搜索到"
+  },
+  {
+    "code": "301367",
+    "name": "瑞迈特",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "中小市值公司，无独立官网IR页面或未搜索到"
+  },
+  {
+    "code": "301370",
+    "name": "国科恒泰",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "中小市值公司，无独立官网IR页面或未搜索到"
+  },
+  {
+    "code": "301428",
+    "name": "世纪恒通",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "中小市值公司，无独立官网IR页面或未搜索到"
+  },
+  {
+    "code": "301446",
+    "name": "福事特",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "中小市值公司，无独立官网IR页面或未搜索到"
+  },
+  {
+    "code": "301448",
+    "name": "开创电气",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "中小市值公司，无独立官网IR页面或未搜索到"
+  },
+  {
+    "code": "301449",
+    "name": "天溯计量",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "中小市值公司，无独立官网IR页面或未搜索到"
+  },
+  {
+    "code": "301456",
+    "name": "盘古智能",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "中小市值公司，无独立官网IR页面或未搜索到"
+  },
+  {
+    "code": "301458",
+    "name": "钧崴电子",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "中小市值公司，无独立官网IR页面或未搜索到"
+  },
+  {
+    "code": "603077",
+    "name": "和邦生物",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "中小市值公司，无独立官网IR页面或未搜索到"
+  },
+  {
+    "code": "920367",
+    "name": "新赣江",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "中小市值公司，无独立官网IR页面或未搜索到"
+  },
+  {
+    "code": "920368",
+    "name": "连城数控",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "中小市值公司，无独立官网IR页面或未搜索到"
+  },
+  {
+    "code": "920370",
+    "name": "新安洁",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "中小市值公司，无独立官网IR页面或未搜索到"
+  },
+  {
+    "code": "920371",
+    "name": "欧福蛋业",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "中小市值公司，无独立官网IR页面或未搜索到"
+  },
+  {
+    "code": "920392",
+    "name": "佳合科技",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "中小市值公司，无独立官网IR页面或未搜索到"
+  },
+  {
+    "code": "920395",
+    "name": "朗鸿科技",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "中小市值公司，无独立官网IR页面或未搜索到"
+  },
+  {
+    "code": "920396",
+    "name": "常辅股份",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "中小市值公司，无独立官网IR页面或未搜索到"
+  },
+  {
+    "code": "002743",
+    "name": "富煌钢构",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "中小市值公司，无独立官网IR页面或未搜索到"
+  },
+  {
+    "code": "000546",
+    "name": "金圆股份",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "中小市值公司，无独立官网IR页面或未搜索到"
+  },
+  {
+    "code": "301328",
+    "name": "维峰电子",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "中小市值公司，无独立官网IR页面或未搜索到"
+  },
+  {
+    "code": "600422",
+    "name": "昆药集团",
+    "ir_url": "https://www.kpc.com.cn",
+    "method": "web_search",
+    "notes": "昆药集团官网"
+  },
+  {
+    "code": "301459",
+    "name": "丰茂股份",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "中小市值公司，无独立官网IR页面或未搜索到"
+  },
+  {
+    "code": "002110",
+    "name": "三钢闽光",
+    "ir_url": "https://www.sgmg.com.cn",
+    "method": "web_search",
+    "notes": "三钢闽光官网"
+  },
+  {
+    "code": "301469",
+    "name": "恒达新材",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "中小市值公司，无独立官网IR页面或未搜索到"
+  },
+  {
+    "code": "000708",
+    "name": "中信特钢",
+    "ir_url": "https://www.citicsteel.com",
+    "method": "web_search",
+    "notes": "中信特钢官网"
+  },
+  {
+    "code": "301479",
+    "name": "弘景光电",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "中小市值公司，无独立官网IR页面或未搜索到"
+  },
+  {
+    "code": "301488",
+    "name": "豪恩汽电",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "中小市值公司，无独立官网IR页面或未搜索到"
+  },
+  {
+    "code": "002533",
+    "name": "金杯电工",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "中小市值公司，无独立官网IR页面或未搜索到"
+  },
+  {
+    "code": "301500",
+    "name": "飞南资源",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "中小市值公司，无独立官网IR页面或未搜索到"
+  },
+  {
+    "code": "301502",
+    "name": "华阳智能",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "中小市值公司，无独立官网IR页面或未搜索到"
+  },
+  {
+    "code": "301503",
+    "name": "智迪科技",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "中小市值公司，无独立官网IR页面或未搜索到"
+  },
+  {
+    "code": "301505",
+    "name": "苏州规划",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "中小市值公司，无独立官网IR页面或未搜索到"
+  },
+  {
+    "code": "301507",
+    "name": "民生健康",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "中小市值公司，无独立官网IR页面或未搜索到"
+  },
+  {
+    "code": "301509",
+    "name": "金凯生科",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "中小市值公司，无独立官网IR页面或未搜索到"
+  },
+  {
+    "code": "301510",
+    "name": "固高科技",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "中小市值公司，无独立官网IR页面或未搜索到"
+  },
+  {
+    "code": "301511",
+    "name": "德福科技",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "中小市值公司，无独立官网IR页面或未搜索到"
+  },
+  {
+    "code": "301513",
+    "name": "尚水智能",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "中小市值公司，无独立官网IR页面或未搜索到"
+  },
+  {
+    "code": "301515",
+    "name": "港通医疗",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "中小市值公司，无独立官网IR页面或未搜索到"
+  },
+  {
+    "code": "301516",
+    "name": "中远通",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "中小市值公司，无独立官网IR页面或未搜索到"
+  },
+  {
+    "code": "301517",
+    "name": "陕西华达",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "中小市值公司，无独立官网IR页面或未搜索到"
+  },
+  {
+    "code": "301520",
+    "name": "万邦医药",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "中小市值公司，无独立官网IR页面或未搜索到"
+  },
+  {
+    "code": "301522",
+    "name": "上大股份",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "中小市值公司，无独立官网IR页面或未搜索到"
+  },
+  {
+    "code": "002440",
+    "name": "闰土股份",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "中小市值公司，无独立官网IR页面或未搜索到"
+  },
+  {
+    "code": "002442",
+    "name": "龙星科技",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "中小市值公司，无独立官网IR页面或未搜索到"
+  },
+  {
+    "code": "000045",
+    "name": "深纺织A",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "中小市值公司，无独立官网IR页面或未搜索到"
+  },
+  {
+    "code": "300130",
+    "name": "新国都",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "中小市值公司，无独立官网IR页面或未搜索到"
+  },
+  {
+    "code": "300131",
+    "name": "英唐智控",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "中小市值公司，无独立官网IR页面或未搜索到"
+  },
+  {
+    "code": "603928",
+    "name": "兴业股份",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "中小市值公司，无独立官网IR页面或未搜索到"
+  },
+  {
+    "code": "688802",
+    "name": "沐曦股份",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "中小市值公司，无独立官网IR页面或未搜索到"
+  },
+  {
+    "code": "688816",
+    "name": "易思维",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "中小市值公司，无独立官网IR页面或未搜索到"
+  },
+  {
+    "code": "301314",
+    "name": "科瑞思",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "中小市值公司，无独立官网IR页面或未搜索到"
+  },
+  {
+    "code": "600033",
+    "name": "福建高速",
+    "ir_url": "https://www.fjgs.com.cn",
+    "method": "web_search",
+    "notes": "福建高速官网"
+  },
+  {
+    "code": "920833",
+    "name": "美心翼申",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "中小市值公司，无独立官网IR页面或未搜索到"
+  },
+  {
+    "code": "920837",
+    "name": "华原股份",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "中小市值公司，无独立官网IR页面或未搜索到"
+  },
+  {
+    "code": "920839",
+    "name": "万通液压",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "中小市值公司，无独立官网IR页面或未搜索到"
+  },
+  {
+    "code": "920855",
+    "name": "浙江大农",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "中小市值公司，无独立官网IR页面或未搜索到"
+  },
+  {
+    "code": "920856",
+    "name": "浩淼科技",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "中小市值公司，无独立官网IR页面或未搜索到"
+  },
+  {
+    "code": "000796",
+    "name": "凯撒旅业",
+    "ir_url": null,
+    "method": "agent_web_search",
+    "notes": "agent WebSearch 未找到独立 IR 页面，默认仅交易所/巨潮披露"
+  },
+  {
+    "code": "000797",
+    "name": "中国武夷",
+    "ir_url": "https://www.chinawuyi.com.cn/tzzgx3.php",
+    "method": "agent_web_search",
+    "notes": "agent WebSearch 发现 IR 页面"
+  },
+  {
+    "code": "000799",
+    "name": "酒鬼酒",
+    "ir_url": "https://www.cofco.com/cn/Investors/JiuguiLiquor/",
+    "method": "agent_web_search",
+    "notes": "agent WebSearch 发现 IR 页面"
+  },
+  {
+    "code": "600785",
+    "name": "新华百货",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "中小市值公司，无独立官网IR页面或未搜索到"
+  },
+  {
+    "code": "000659",
+    "name": "珠海中富",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "中小市值公司，无独立官网IR页面或未搜索到"
+  },
+  {
+    "code": "000800",
+    "name": "一汽解放",
+    "ir_url": null,
+    "method": "agent_web_search",
+    "notes": "agent WebSearch 未找到独立 IR 页面，默认仅交易所/巨潮披露"
+  },
+  {
+    "code": "000801",
+    "name": "四川九洲",
+    "ir_url": null,
+    "method": "agent_web_search",
+    "notes": "agent WebSearch 未找到独立 IR 页面，默认仅交易所/巨潮披露"
+  },
+  {
+    "code": "000802",
+    "name": "北京文化",
+    "ir_url": null,
+    "method": "agent_web_search",
+    "notes": "agent WebSearch 未找到独立 IR 页面，默认仅交易所/巨潮披露"
+  },
+  {
+    "code": "000803",
+    "name": "山高环能",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "中小市值公司，无独立官网IR页面或未搜索到"
+  },
+  {
+    "code": "000850",
+    "name": "华茂股份",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "中小市值公司，无独立官网IR页面或未搜索到"
+  },
+  {
+    "code": "000856",
+    "name": "冀东装备",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "中小市值公司，无独立官网IR页面或未搜索到"
+  },
+  {
+    "code": "000858",
+    "name": "五粮液",
+    "ir_url": null,
+    "method": "agent_web_search",
+    "notes": "agent WebSearch 未找到独立 IR 页面，默认仅交易所/巨潮披露"
+  },
+  {
+    "code": "000860",
+    "name": "顺鑫农业",
+    "ir_url": "https://www.shunxinholdings.com/sxkg/second/index.aspx?nodeid=184",
+    "method": "agent_web_search",
+    "notes": "agent WebSearch 发现 IR 页面"
+  },
+  {
+    "code": "920857",
+    "name": "泓禧科技",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "中小市值公司，无独立官网IR页面或未搜索到"
+  },
+  {
+    "code": "920866",
+    "name": "绿亨科技",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "中小市值公司，无独立官网IR页面或未搜索到"
+  },
+  {
+    "code": "920870",
+    "name": "恒进感应",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "中小市值公司，无独立官网IR页面或未搜索到"
+  },
+  {
+    "code": "920873",
+    "name": "中设咨询",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "中小市值公司，无独立官网IR页面或未搜索到"
+  },
+  {
+    "code": "002059",
+    "name": "云南旅游",
+    "ir_url": null,
+    "method": "agent_web_search",
+    "notes": "agent WebSearch 未找到独立 IR 页面，默认仅交易所/巨潮披露"
+  },
+  {
+    "code": "002066",
+    "name": "瑞泰科技",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "中小市值公司，无独立官网IR页面或未搜索到"
+  },
+  {
+    "code": "002623",
+    "name": "亚玛顿",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "中小市值公司，无独立官网IR页面或未搜索到"
+  },
+  {
+    "code": "002068",
+    "name": "黑猫股份",
+    "ir_url": "https://mir.p5w.net/company/002068.html",
+    "method": "agent_web_search",
+    "notes": "agent WebSearch 发现 IR 页面"
+  },
+  {
+    "code": "002092",
+    "name": "中泰化学",
+    "ir_url": null,
+    "method": "agent_web_search",
+    "notes": "agent WebSearch 未找到独立 IR 页面，默认仅交易所/巨潮披露"
+  },
+  {
+    "code": "002096",
+    "name": "易普力",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "中小市值公司，无独立官网IR页面或未搜索到"
+  },
+  {
+    "code": "920871",
+    "name": "派特尔",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "中小市值公司，无独立官网IR页面或未搜索到"
+  },
+  {
+    "code": "300396",
+    "name": "ST迪瑞",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "中小市值公司，无独立官网IR页面或未搜索到"
+  },
+  {
+    "code": "301519",
+    "name": "舜禹股份",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "中小市值公司，无独立官网IR页面或未搜索到"
+  },
+  {
+    "code": "000505",
+    "name": "京粮控股",
+    "ir_url": null,
+    "method": "agent_web_search",
+    "notes": "agent WebSearch 未找到独立 IR 页面，默认仅交易所/巨潮披露"
+  },
+  {
+    "code": "000506",
+    "name": "招金黄金",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "中小市值公司，无独立官网IR页面或未搜索到"
+  },
+  {
+    "code": "000516",
+    "name": "国际医学",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "中小市值公司，无独立官网IR页面或未搜索到"
+  },
+  {
+    "code": "000519",
+    "name": "中兵红箭",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "中小市值公司，无独立官网IR页面或未搜索到"
+  },
+  {
+    "code": "000521",
+    "name": "长虹美菱",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "中小市值公司，无独立官网IR页面或未搜索到"
+  },
+  {
+    "code": "000523",
+    "name": "红棉股份",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "中小市值公司，无独立官网IR页面或未搜索到"
+  },
+  {
+    "code": "000524",
+    "name": "岭南控股",
+    "ir_url": null,
+    "method": "agent_web_search",
+    "notes": "agent WebSearch 未找到独立 IR 页面，默认仅交易所/巨潮披露"
+  },
+  {
+    "code": "000525",
+    "name": "红太阳",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "中小市值公司，无独立官网IR页面或未搜索到"
+  },
+  {
+    "code": "000526",
+    "name": "学大教育",
+    "ir_url": null,
+    "method": "agent_web_search",
+    "notes": "agent WebSearch 未找到独立 IR 页面，默认仅交易所/巨潮披露"
+  },
+  {
+    "code": "000528",
+    "name": "柳工",
+    "ir_url": null,
+    "method": "agent_web_search",
+    "notes": "agent WebSearch 未找到独立 IR 页面，默认仅交易所/巨潮披露"
+  },
+  {
+    "code": "000529",
+    "name": "广弘控股",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "中小市值公司，无独立官网IR页面或未搜索到"
+  },
+  {
+    "code": "000530",
+    "name": "冰山冷热",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "中小市值公司，无独立官网IR页面或未搜索到"
+  },
+  {
+    "code": "300211",
+    "name": "*ST亿通",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "中小市值公司，无独立官网IR页面或未搜索到"
+  },
+  {
+    "code": "000531",
+    "name": "穗恒运A",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "中小市值公司，无独立官网IR页面或未搜索到"
+  },
+  {
+    "code": "000532",
+    "name": "华金资本",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "中小市值公司，无独立官网IR页面或未搜索到"
+  },
+  {
+    "code": "000533",
+    "name": "顺钠股份",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "中小市值公司，无独立官网IR页面或未搜索到"
+  },
+  {
+    "code": "000537",
+    "name": "绿发电力",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "中小市值公司，无独立官网IR页面或未搜索到"
+  },
+  {
+    "code": "000539",
+    "name": "粤电力A",
+    "ir_url": null,
+    "method": "agent_web_search",
+    "notes": "agent WebSearch 未找到独立 IR 页面，默认仅交易所/巨潮披露"
+  },
+  {
+    "code": "000544",
+    "name": "中原环保",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "中小市值公司，无独立官网IR页面或未搜索到"
+  },
+  {
+    "code": "603379",
+    "name": "三美股份",
+    "ir_url": "https://mir.p5w.net/company/603379.html",
+    "method": "agent_web_search",
+    "notes": "agent WebSearch 发现 IR 页面"
+  },
+  {
+    "code": "920906",
+    "name": "舜宇精工",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "中小市值公司，无独立官网IR页面或未搜索到"
+  },
+  {
+    "code": "000547",
+    "name": "航天发展",
+    "ir_url": null,
+    "method": "agent_web_search",
+    "notes": "agent WebSearch 未找到独立 IR 页面，默认仅交易所/巨潮披露"
+  },
+  {
+    "code": "000550",
+    "name": "江铃汽车",
+    "ir_url": "https://irm.cninfo.com.cn/ircs/company/companyDetail?stockcode=000550&orgId=gssz0000550",
+    "method": "agent_web_search",
+    "notes": "agent WebSearch 发现 IR 页面"
+  },
+  {
+    "code": "000551",
+    "name": "创元科技",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "中小市值公司，无独立官网IR页面或未搜索到"
+  },
+  {
+    "code": "002606",
+    "name": "大连电瓷",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "中小市值公司，无独立官网IR页面或未搜索到"
+  },
+  {
+    "code": "002607",
+    "name": "中公教育",
+    "ir_url": "https://www.offcn.com/investors/",
+    "method": "agent_web_search",
+    "notes": "agent WebSearch 发现 IR 页面"
+  },
+  {
+    "code": "002608",
+    "name": "江苏国信",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "中小市值公司，无独立官网IR页面或未搜索到"
+  },
+  {
+    "code": "000566",
+    "name": "海南海药",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "中小市值公司，无独立官网IR页面或未搜索到"
+  },
+  {
+    "code": "000567",
+    "name": "海德股份",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "中小市值公司，无独立官网IR页面或未搜索到"
+  },
+  {
+    "code": "000568",
+    "name": "泸州老窖",
+    "ir_url": "https://www.lzlj.com/investor/",
+    "method": "agent_web_search",
+    "notes": "agent WebSearch 发现 IR 页面"
+  },
+  {
+    "code": "000576",
+    "name": "甘化科工",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "中小市值公司，无独立官网IR页面或未搜索到"
+  },
+  {
+    "code": "000581",
+    "name": "威孚高科",
+    "ir_url": "http://www.weifu.com.cn/invest/",
+    "method": "agent_web_search",
+    "notes": "agent WebSearch 发现 IR 页面"
+  },
+  {
+    "code": "000582",
+    "name": "北部湾港",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "中小市值公司，无独立官网IR页面或未搜索到"
+  },
+  {
+    "code": "000586",
+    "name": "汇源通信",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "中小市值公司，无独立官网IR页面或未搜索到"
+  },
+  {
+    "code": "000589",
+    "name": "贵州轮胎",
+    "ir_url": "https://www.gztyre.com/tz/download.jsp",
+    "method": "agent_web_search",
+    "notes": "agent WebSearch 发现 IR 页面"
+  },
+  {
+    "code": "000591",
+    "name": "太阳能",
+    "ir_url": "https://mir.p5w.net/company/000591.html",
+    "method": "agent_web_search",
+    "notes": "agent WebSearch 发现 IR 页面"
+  },
+  {
+    "code": "000593",
+    "name": "德龙汇能",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "中小市值公司，无独立官网IR页面或未搜索到"
+  },
+  {
+    "code": "000595",
+    "name": "*ST宝实",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "中小市值公司，无独立官网IR页面或未搜索到"
+  },
+  {
+    "code": "000596",
+    "name": "古井贡酒",
+    "ir_url": "https://gujing.com/invest/index.html",
+    "method": "agent_web_search",
+    "notes": "agent WebSearch 发现 IR 页面"
+  },
+  {
+    "code": "000603",
+    "name": "盛达资源",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "中小市值公司，无独立官网IR页面或未搜索到"
+  },
+  {
+    "code": "000607",
+    "name": "华媒控股",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "中小市值公司，无独立官网IR页面或未搜索到"
+  },
+  {
+    "code": "000609",
+    "name": "*ST中迪",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "中小市值公司，无独立官网IR页面或未搜索到"
+  },
+  {
+    "code": "000610",
+    "name": "*ST西旅",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "中小市值公司，无独立官网IR页面或未搜索到"
+  },
+  {
+    "code": "002810",
+    "name": "山东赫达",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "中小市值公司，无独立官网IR页面或未搜索到"
+  },
+  {
+    "code": "000615",
+    "name": "*ST美谷",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "中小市值公司，无独立官网IR页面或未搜索到"
+  },
+  {
+    "code": "000617",
+    "name": "中油资本",
+    "ir_url": null,
+    "method": "agent_web_search",
+    "notes": "agent WebSearch 未找到独立 IR 页面，默认仅交易所/巨潮披露"
+  },
+  {
+    "code": "000620",
+    "name": "盈新发展",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "中小市值公司，无独立官网IR页面或未搜索到"
+  },
+  {
+    "code": "000625",
+    "name": "长安汽车",
+    "ir_url": null,
+    "method": "agent_web_search",
+    "notes": "agent WebSearch 未找到独立 IR 页面，默认仅交易所/巨潮披露"
+  },
+  {
+    "code": "000626",
+    "name": "远大控股",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "中小市值公司，无独立官网IR页面或未搜索到"
+  },
+  {
+    "code": "000628",
+    "name": "高新发展",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "中小市值公司，无独立官网IR页面或未搜索到"
+  },
+  {
+    "code": "000629",
+    "name": "钒钛股份",
+    "ir_url": "https://www.pgvt.cn/news?id=5&parentId=4",
+    "method": "agent_web_search",
+    "notes": "agent WebSearch 发现 IR 页面"
+  },
+  {
+    "code": "000631",
+    "name": "顺发恒能",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "中小市值公司，无独立官网IR页面或未搜索到"
+  },
+  {
+    "code": "000632",
+    "name": "ST三木",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "中小市值公司，无独立官网IR页面或未搜索到"
+  },
+  {
+    "code": "000636",
+    "name": "风华高科",
+    "ir_url": "https://china-fenghua.com/zh-cn/ir/",
+    "method": "agent_web_search",
+    "notes": "agent WebSearch 发现 IR 页面"
+  },
+  {
+    "code": "000637",
+    "name": "茂化实华",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "中小市值公司，无独立官网IR页面或未搜索到"
+  },
+  {
+    "code": "000639",
+    "name": "ST西王",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "中小市值公司，无独立官网IR页面或未搜索到"
+  },
+  {
+    "code": "000651",
+    "name": "格力电器",
+    "ir_url": "https://www.gree.com/about/investor",
+    "method": "agent_web_search",
+    "notes": "agent WebSearch 发现 IR 页面"
+  },
+  {
+    "code": "000656",
+    "name": "*ST金科",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "中小市值公司，无独立官网IR页面或未搜索到"
+  },
+  {
+    "code": "000657",
+    "name": "中钨高新",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "中小市值公司，无独立官网IR页面或未搜索到"
+  },
+  {
+    "code": "000661",
+    "name": "长春高新",
+    "ir_url": null,
+    "method": "agent_web_search",
+    "notes": "agent WebSearch 未找到独立 IR 页面，默认仅交易所/巨潮披露"
+  },
+  {
+    "code": "000668",
+    "name": "荣丰控股",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "中小市值公司，无独立官网IR页面或未搜索到"
+  },
+  {
+    "code": "000681",
+    "name": "视觉中国",
+    "ir_url": null,
+    "method": "agent_web_search",
+    "notes": "agent WebSearch 未找到独立 IR 页面，默认仅交易所/巨潮披露"
+  },
+  {
+    "code": "000682",
+    "name": "东方电子",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "中小市值公司，无独立官网IR页面或未搜索到"
+  },
+  {
+    "code": "000686",
+    "name": "东北证券",
+    "ir_url": "https://www.nesc.cn/main/investorrelation/companyinfo/ownership/index.shtml",
+    "method": "agent_web_search",
+    "notes": "agent WebSearch 发现 IR 页面"
+  },
+  {
+    "code": "000690",
+    "name": "宝新能源",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "中小市值公司，无独立官网IR页面或未搜索到"
+  },
+  {
+    "code": "000692",
+    "name": "惠天热电",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "中小市值公司，无独立官网IR页面或未搜索到"
+  },
+  {
+    "code": "000698",
+    "name": "ST沈化",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "中小市值公司，无独立官网IR页面或未搜索到"
+  },
+  {
+    "code": "000700",
+    "name": "模塑科技",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "中小市值公司，无独立官网IR页面或未搜索到"
+  },
+  {
+    "code": "000701",
+    "name": "厦门信达",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "中小市值公司，无独立官网IR页面或未搜索到"
+  },
+  {
+    "code": "000702",
+    "name": "正虹科技",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "中小市值公司，无独立官网IR页面或未搜索到"
+  },
+  {
+    "code": "000703",
+    "name": "恒逸石化",
+    "ir_url": null,
+    "method": "agent_web_search",
+    "notes": "agent WebSearch 未找到独立 IR 页面，默认仅交易所/巨潮披露"
+  },
+  {
+    "code": "000705",
+    "name": "浙江震元",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "中小市值公司，无独立官网IR页面或未搜索到"
+  },
+  {
+    "code": "920519",
+    "name": "万德股份",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "中小市值公司，无独立官网IR页面或未搜索到"
+  },
+  {
+    "code": "000710",
+    "name": "贝瑞基因",
+    "ir_url": "https://www.berrygenomics.com/column/94/MU/",
+    "method": "agent_web_search",
+    "notes": "agent WebSearch 发现 IR 页面"
+  },
+  {
+    "code": "000711",
+    "name": "ST京蓝",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "中小市值公司，无独立官网IR页面或未搜索到"
+  },
+  {
+    "code": "000716",
+    "name": "黑芝麻",
+    "ir_url": "https://mir.p5w.net/company/000716.html",
+    "method": "agent_web_search",
+    "notes": "agent WebSearch 发现 IR 页面"
+  },
+  {
+    "code": "000718",
+    "name": "苏宁环球",
+    "ir_url": null,
+    "method": "agent_web_search",
+    "notes": "agent WebSearch 未找到独立 IR 页面，默认仅交易所/巨潮披露"
+  },
+  {
+    "code": "000719",
+    "name": "中原传媒",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "中小市值公司，无独立官网IR页面或未搜索到"
+  },
+  {
+    "code": "000720",
+    "name": "新能泰山",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "中小市值公司，无独立官网IR页面或未搜索到"
+  },
+  {
+    "code": "000721",
+    "name": "西安饮食",
+    "ir_url": "https://mir.p5w.net/company/000721.html",
+    "method": "agent_web_search",
+    "notes": "agent WebSearch 发现 IR 页面"
+  },
+  {
+    "code": "000722",
+    "name": "湖南发展",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "中小市值公司，无独立官网IR页面或未搜索到"
+  },
+  {
+    "code": "000725",
+    "name": "京东方A",
+    "ir_url": "https://www.boe.com/investorRelations/index",
+    "method": "agent_web_search",
+    "notes": "agent WebSearch 发现 IR 页面"
+  },
+  {
+    "code": "000727",
+    "name": "冠捷科技",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "中小市值公司，无独立官网IR页面或未搜索到"
+  },
+  {
+    "code": "000731",
+    "name": "四川美丰",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "中小市值公司，无独立官网IR页面或未搜索到"
+  },
+  {
+    "code": "000733",
+    "name": "振华科技",
+    "ir_url": null,
+    "method": "agent_web_search",
+    "notes": "agent WebSearch 未找到独立 IR 页面，默认仅交易所/巨潮披露"
+  },
+  {
+    "code": "000735",
+    "name": "罗牛山",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "中小市值公司，无独立官网IR页面或未搜索到"
+  },
+  {
+    "code": "000736",
+    "name": "中交发展",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "中小市值公司，无独立官网IR页面或未搜索到"
+  },
+  {
+    "code": "000697",
+    "name": "炼石航空",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "中小市值公司，无独立官网IR页面或未搜索到"
+  },
+  {
+    "code": "000751",
+    "name": "锌业股份",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "中小市值公司，无独立官网IR页面或未搜索到"
+  },
+  {
+    "code": "000753",
+    "name": "漳州发展",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "中小市值公司，无独立官网IR页面或未搜索到"
+  },
+  {
+    "code": "000756",
+    "name": "新华制药",
+    "ir_url": "https://mir.p5w.net/company/000756.html",
+    "method": "agent_web_search",
+    "notes": "agent WebSearch 发现 IR 页面"
+  },
+  {
+    "code": "000757",
+    "name": "浩物股份",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "中小市值公司，无独立官网IR页面或未搜索到"
+  },
+  {
+    "code": "000758",
+    "name": "中色股份",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "中小市值公司，无独立官网IR页面或未搜索到"
+  },
+  {
+    "code": "000761",
+    "name": "本钢板材",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "中小市值公司，无独立官网IR页面或未搜索到"
+  },
+  {
+    "code": "002303",
+    "name": "美盈森",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "中小市值公司，无独立官网IR页面或未搜索到"
+  },
+  {
+    "code": "000762",
+    "name": "西藏矿业",
+    "ir_url": "https://mir.p5w.net/company/000762.html",
+    "method": "agent_web_search",
+    "notes": "agent WebSearch 发现 IR 页面"
+  },
+  {
+    "code": "000788",
+    "name": "北大医药",
+    "ir_url": "http://pku-hc.com/investor.html",
+    "method": "agent_web_search",
+    "notes": "agent WebSearch 发现 IR 页面"
+  },
+  {
+    "code": "000789",
+    "name": "万年青",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "中小市值公司，无独立官网IR页面或未搜索到"
+  },
+  {
+    "code": "000791",
+    "name": "甘肃能源",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "中小市值公司，无独立官网IR页面或未搜索到"
+  },
+  {
+    "code": "000792",
+    "name": "盐湖股份",
+    "ir_url": null,
+    "method": "agent_web_search",
+    "notes": "agent WebSearch 未找到独立 IR 页面，默认仅交易所/巨潮披露"
+  },
+  {
+    "code": "000793",
+    "name": "*ST华闻",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "中小市值公司，无独立官网IR页面或未搜索到"
+  },
+  {
+    "code": "000795",
+    "name": "英洛华",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "中小市值公司，无独立官网IR页面或未搜索到"
+  },
+  {
+    "code": "000862",
+    "name": "银星能源",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "中小市值公司，无独立官网IR页面或未搜索到"
+  },
+  {
+    "code": "000863",
+    "name": "三湘印象",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "中小市值公司，无独立官网IR页面或未搜索到"
+  },
+  {
+    "code": "000868",
+    "name": "安凯客车",
+    "ir_url": "http://www.ankai.com/index.php?m=home&c=Lists&a=index&tid=98",
+    "method": "agent_web_search",
+    "notes": "agent WebSearch 发现 IR 页面"
+  },
+  {
+    "code": "920792",
+    "name": "东和新材",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "中小市值公司，无独立官网IR页面或未搜索到"
+  },
+  {
+    "code": "000876",
+    "name": "新希望",
+    "ir_url": "https://www.newhopeagri.com/lh/investor.html",
+    "method": "agent_web_search",
+    "notes": "agent WebSearch 发现 IR 页面"
+  },
+  {
+    "code": "000877",
+    "name": "天山股份",
+    "ir_url": null,
+    "method": "agent_web_search",
+    "notes": "agent WebSearch 未找到独立 IR 页面，默认仅交易所/巨潮披露"
+  },
+  {
+    "code": "000880",
+    "name": "潍柴重机",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "中小市值公司，无独立官网IR页面或未搜索到"
+  },
+  {
+    "code": "000882",
+    "name": "华联股份",
+    "ir_url": null,
+    "method": "agent_web_search",
+    "notes": "agent WebSearch 未找到独立 IR 页面，默认仅交易所/巨潮披露"
+  },
+  {
+    "code": "000883",
+    "name": "湖北能源",
+    "ir_url": "https://www.hbny.com.cn/hbny/tzzgx63/jrgj/index.html",
+    "method": "agent_web_search",
+    "notes": "agent WebSearch 发现 IR 页面"
+  },
+  {
+    "code": "000717",
+    "name": "中南股份",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "中小市值公司，无独立官网IR页面或未搜索到"
+  },
+  {
+    "code": "000885",
+    "name": "城发环境",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "中小市值公司，无独立官网IR页面或未搜索到"
+  }
+]

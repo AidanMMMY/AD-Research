@@ -1,0 +1,142 @@
+[
+  {
+    "code": "600745",
+    "name": "*ST闻泰",
+    "ir_url": "https://www.wingtech.com/cn/contact/367/1",
+    "method": "web_search",
+    "notes": "闻泰科技官网投资者关系栏目，导航路径: 投资者关系 > 投资者交流联络"
+  },
+  {
+    "code": "600763",
+    "name": "通策医疗",
+    "ir_url": "http://www.tcmedical.com.cn/invest/1/2.html",
+    "method": "web_search",
+    "notes": "通策医疗官网投资者关系页面"
+  },
+  {
+    "code": "600764",
+    "name": "中国海防",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "官网 www.cmie.csic.com.cn 未找到独立的投资者关系页面"
+  },
+  {
+    "code": "600663",
+    "name": "陆家嘴",
+    "ir_url": "https://ljz.com.cn/group/notice",
+    "method": "web_search",
+    "notes": "陆家嘴官网公告页面，作为投资者关系入口"
+  },
+  {
+    "code": "600765",
+    "name": "中航重机",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "官网 www.hm.avic.com 未找到独立的投资者关系页面"
+  },
+  {
+    "code": "601116",
+    "name": "三江购物",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "官网 www.home.sanjiang.com 未找到独立的投资者关系页面"
+  },
+  {
+    "code": "600770",
+    "name": "综艺股份",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "官网 www.600770.com 未找到独立的投资者关系页面"
+  },
+  {
+    "code": "600773",
+    "name": "西藏城投",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "官网 www.600773sh.com 未找到独立的投资者关系页面"
+  },
+  {
+    "code": "600774",
+    "name": "汉商集团",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "官网 www.whhsg.com / www.hanshanggroup.com 未找到独立的投资者关系页面"
+  },
+  {
+    "code": "600775",
+    "name": "南京熊猫",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "官网 www.panda.cn 未找到独立的投资者关系页面"
+  },
+  {
+    "code": "600776",
+    "name": "东方通信",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "官网 www.eastcom.com 有投资者关系导航栏目，但无法确认具体URL路径"
+  },
+  {
+    "code": "600777",
+    "name": "新潮能源",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "官网 www.xinchaoenergy.com 未找到独立的投资者关系页面"
+  },
+  {
+    "code": "600779",
+    "name": "水井坊",
+    "ir_url": "https://www.swellfun.com/investor/145.html",
+    "method": "web_search",
+    "notes": "水井坊官网投资者关系页面（股票概况/股东信息）"
+  },
+  {
+    "code": "600780",
+    "name": "通宝能源",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "官网 www.600780.com.cn 有投资者关系栏目提及，但无法确认具体URL"
+  },
+  {
+    "code": "600783",
+    "name": "鲁信创投",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "官网 www.600783.cn 无法连接，未找到投资者关系页面"
+  },
+  {
+    "code": "600784",
+    "name": "鲁银投资",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "官网 www.luyin.cn 未找到独立的投资者关系页面"
+  },
+  {
+    "code": "600787",
+    "name": "中储股份",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "官网 www.cmstd.com.cn 未找到独立的投资者关系页面"
+  },
+  {
+    "code": "600789",
+    "name": "鲁抗医药",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "官网 www.lkpc.com 仅有跳转页面，未找到投资者关系页面"
+  },
+  {
+    "code": "600795",
+    "name": "国电电力",
+    "ir_url": "http://www.600795.com.cn/gddlwwNew/gsgg/newxwlist.shtml",
+    "method": "web_search",
+    "notes": "国电电力官网投资者关系 > 公司公告页面"
+  },
+  {
+    "code": "600796",
+    "name": "钱江生化",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "官网 www.600796.com 未找到独立的投资者关系页面"
+  }
+]

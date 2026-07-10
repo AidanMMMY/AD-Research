@@ -1,0 +1,142 @@
+[
+  {
+    "code": "001203",
+    "name": "大中矿业",
+    "ir_url": "http://dzky.cn/touzizheguanxi/index.html",
+    "method": "web_search",
+    "notes": "Official IR page on company website dzky.cn, under /touzizheguanxi/ path"
+  },
+  {
+    "code": "600088",
+    "name": "中视传媒",
+    "ir_url": "https://www.ctv-media.com.cn/relation.html",
+    "method": "web_search",
+    "notes": "Official IR page on company website ctv-media.com.cn"
+  },
+  {
+    "code": "600089",
+    "name": "特变电工",
+    "ir_url": "https://www.tbea.com/investor.html",
+    "method": "web_search",
+    "notes": "Official IR page on company website tbea.com"
+  },
+  {
+    "code": "600094",
+    "name": "大名城",
+    "ir_url": "http://greattown.cn/investor.html",
+    "method": "web_search",
+    "notes": "Official IR page on company website greattown.cn"
+  },
+  {
+    "code": "600176",
+    "name": "中国巨石",
+    "ir_url": "https://www.jushi.com/cn/notice",
+    "method": "web_search",
+    "notes": "Official IR/announcements page on company website jushi.com"
+  },
+  {
+    "code": "600178",
+    "name": "东安动力",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "Company website www.daae.com.cn exists but no dedicated IR page found; relies on SSE platforms"
+  },
+  {
+    "code": "301268",
+    "name": "铭利达",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "Company website www.minglidagroup.cn exists but no dedicated IR page found; relies on SZSE platforms"
+  },
+  {
+    "code": "600180",
+    "name": "*ST瑞茂",
+    "ir_url": "https://www.ccsoln.com/investor",
+    "method": "web_search",
+    "notes": "Official IR page on company website ccsoln.com, with sub-pages for periodic reports"
+  },
+  {
+    "code": "600182",
+    "name": "S佳通",
+    "ir_url": "https://www.giti-corp.com/investorRelations/",
+    "method": "web_search",
+    "notes": "Official IR section on company website giti-corp.com (domain changed from gititirecorp.com in Dec 2025)"
+  },
+  {
+    "code": "002455",
+    "name": "百川股份",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "Company website www.bcchem.com exists but no dedicated IR page found; relies on SZSE platforms"
+  },
+  {
+    "code": "600197",
+    "name": "伊力特",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "Company website www.xjyilite.com exists but no dedicated IR page found; relies on SSE platforms"
+  },
+  {
+    "code": "600198",
+    "name": "大唐电信",
+    "ir_url": "http://www.datang.com/tzzgx.html",
+    "method": "web_search",
+    "notes": "Official IR page on company website datang.com under /tzzgx.html (投资者关系)"
+  },
+  {
+    "code": "600199",
+    "name": "金种子酒",
+    "ir_url": "https://jzz.cn/col74/index.html",
+    "method": "web_search",
+    "notes": "Official IR page on company website jzz.cn under /col74/ path"
+  },
+  {
+    "code": "600202",
+    "name": "哈空调",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "Company website www.hac.com.cn exists but no dedicated IR page found; relies on SSE platforms"
+  },
+  {
+    "code": "600203",
+    "name": "福日电子",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "Company website www.furielec.com exists but no dedicated IR page found; relies on SSE platforms"
+  },
+  {
+    "code": "600207",
+    "name": "安彩高科",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "Company website www.acht.com.cn exists but no dedicated IR page found; relies on SSE platforms"
+  },
+  {
+    "code": "600208",
+    "name": "衢州发展",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "Company website www.600208.net has IR section but no clean/stable IR landing page URL found; relies on SSE platforms"
+  },
+  {
+    "code": "600210",
+    "name": "紫江企业",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "Company website www.zijiangqy.com exists but no dedicated IR page found; relies on SSE platforms"
+  },
+  {
+    "code": "600211",
+    "name": "西藏药业",
+    "ir_url": "https://www.xzyy.cn/basic_information.html",
+    "method": "web_search",
+    "notes": "Official IR page on company website xzyy.cn; '投资者关系' nav links to basic_information.html"
+  },
+  {
+    "code": "600212",
+    "name": "绿能慧充",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "Company website www.gresgying.com exists but no dedicated IR page found; relies on SSE platforms"
+  }
+]

@@ -1,0 +1,142 @@
+[
+  {
+    "code": "601010",
+    "name": "ST文峰",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "官网 www.wfdsj.com.cn，搜索结果未找到明确的投资者关系子页面URL"
+  },
+  {
+    "code": "601011",
+    "name": "宝泰隆",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "官网 www.btlgf.com，网站设有投资者关系栏目但搜索结果未捕获具体URL"
+  },
+  {
+    "code": "601015",
+    "name": "陕西黑猫",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "官网 www.heimaocoking.com，搜索结果未找到明确的投资者关系子页面URL"
+  },
+  {
+    "code": "600718",
+    "name": "东软集团",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "官网 www.neusoft.com，投资者邮箱 investor@neusoft.com，但搜索结果未捕获IR子页面URL"
+  },
+  {
+    "code": "600719",
+    "name": "大连热电",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "官网 www.dlrd.com，搜索结果未找到明确的投资者关系子页面URL"
+  },
+  {
+    "code": "600720",
+    "name": "中交设计",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "官网 www.ccccdc.com，搜索结果未找到明确的投资者关系子页面URL"
+  },
+  {
+    "code": "600721",
+    "name": "百花医药",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "官网 www.xjbhc.net，搜索结果未找到明确的投资者关系子页面URL"
+  },
+  {
+    "code": "600726",
+    "name": "华电能源",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "官网 www.hdenergy.com，搜索结果未找到明确的投资者关系子页面URL"
+  },
+  {
+    "code": "600728",
+    "name": "佳都科技",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "官网 www.pcitech.com，投资者邮箱 ir@pcitech.com，但搜索结果未捕获IR子页面URL"
+  },
+  {
+    "code": "600730",
+    "name": "*ST高科",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "官网 www.chinahitech.com.cn，搜索结果未找到明确的投资者关系子页面URL"
+  },
+  {
+    "code": "600731",
+    "name": "湖南海利",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "官网 www.hnhlc.com，搜索结果未找到明确的投资者关系子页面URL"
+  },
+  {
+    "code": "600732",
+    "name": "爱旭股份",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "官网 www.aikosolar.com，投资者邮箱 IR@aikosolar.com，但搜索结果未捕获IR子页面URL"
+  },
+  {
+    "code": "600733",
+    "name": "北汽蓝谷",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "官网 www.bjev.com.cn，搜索结果未找到明确的投资者关系子页面URL"
+  },
+  {
+    "code": "600734",
+    "name": "*ST实达",
+    "ir_url": "http://start.com.cn/investor/index.html",
+    "method": "web_search",
+    "notes": "实达集团官网投资者关系页面，路径 /investor/index.html"
+  },
+  {
+    "code": "600735",
+    "name": "ST新华锦",
+    "ir_url": "http://www.hikinginternational.com/investor/information",
+    "method": "web_search",
+    "notes": "山东新华锦国际股份有限公司官网投资者关系-信息披露页面，路径 /investor/information"
+  },
+  {
+    "code": "600736",
+    "name": "苏州高新",
+    "ir_url": "https://www.sndnt.com/investor/downloadlist/1/",
+    "method": "web_search",
+    "notes": "苏州新区高新技术产业股份有限公司官网投资者关系页面，路径 /investor/downloadlist/1/"
+  },
+  {
+    "code": "600737",
+    "name": "中粮糖业",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "官网 www.cofcotunhe.com，中粮集团层面有IR页面 cofco.com/cn/Investors/COFCOTunhe/ 但非公司自身官网，不记录"
+  },
+  {
+    "code": "600739",
+    "name": "辽宁成大",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "官网 www.chengda.com.cn，搜索结果未找到明确的投资者关系子页面URL"
+  },
+  {
+    "code": "600741",
+    "name": "华域汽车",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "官网 www.hasco-group.com，搜索结果未找到明确的投资者关系子页面URL"
+  },
+  {
+    "code": "600744",
+    "name": "华银电力",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "官网 www.hypower.com.cn，搜索结果未找到明确的投资者关系子页面URL"
+  }
+]

@@ -1,0 +1,1402 @@
+[
+  {
+    "code": "601995",
+    "name": "中金公司",
+    "ir_url": "https://www.cicc.com",
+    "method": "web_search",
+    "notes": "官网IR页面: https://www.cicc.com，设有投资者关系栏目，IR邮箱: investorrelations@cicc.com.cn"
+  },
+  {
+    "code": "601996",
+    "name": "丰林集团",
+    "ir_url": "https://www.fenglingroup.com/investor/index.html",
+    "method": "web_search",
+    "notes": "官网IR页面: https://www.fenglingroup.com/investor/index.html，IR邮箱: ir@fenglingroup.com"
+  },
+  {
+    "code": "300844",
+    "name": "山水比德",
+    "ir_url": "https://www.gz-spi.com",
+    "method": "web_search",
+    "notes": "官网: https://www.gz-spi.com，设有投资者关系栏目（临时公告等），IR邮箱: spi@gz-spi.com"
+  },
+  {
+    "code": "601999",
+    "name": "出版传媒",
+    "ir_url": "http://www.nupmg.com",
+    "method": "web_search",
+    "notes": "官网: http://www.nupmg.com（北方联合出版传媒集团），IR邮箱: cbcm601999@163.com"
+  },
+  {
+    "code": "603000",
+    "name": "人民网",
+    "ir_url": "http://www.people.com.cn",
+    "method": "web_search",
+    "notes": "官网IR页面: http://www.people.com.cn/BIG5/50142/420117/420139/index1.html，IR邮箱: ir@people.cn"
+  },
+  {
+    "code": "603001",
+    "name": "奥康国际",
+    "ir_url": "https://www.aokang.com/jtzx/tzzgx/index.html",
+    "method": "web_search",
+    "notes": "官网IR页面: https://www.aokang.com/jtzx/tzzgx/index.html，IR邮箱: aks@aokang.com"
+  },
+  {
+    "code": "603005",
+    "name": "晶方科技",
+    "ir_url": "http://www.wlcsp.com",
+    "method": "web_search",
+    "notes": "官网: http://www.wlcsp.com，设有投资者关系专栏，IR邮箱: frend@wlcsp.com"
+  },
+  {
+    "code": "603006",
+    "name": "联明股份",
+    "ir_url": "http://www.shanghailmjx.com",
+    "method": "web_search",
+    "notes": "官网: http://www.shanghailmjx.com，IR邮箱: ir@shanghailm.com"
+  },
+  {
+    "code": "603007",
+    "name": "顺景科技",
+    "ir_url": "http://www.syngen-tech.com",
+    "method": "web_search",
+    "notes": "官网: http://www.syngen-tech.com（原花王股份更名），IR邮箱: securities@syngen-tech.com"
+  },
+  {
+    "code": "603008",
+    "name": "ST喜临门",
+    "ir_url": "https://www.sleemon.cn",
+    "method": "web_search",
+    "notes": "官网: https://www.sleemon.cn，无独立IR子站，IR邮箱: xilinmen@sleemon.cn，注意：已被ST，涉嫌信披违规被立案"
+  },
+  {
+    "code": "603009",
+    "name": "北特科技",
+    "ir_url": "http://www.beite.net.cn",
+    "method": "web_search",
+    "notes": "官网: http://www.beite.net.cn，IR邮箱: touzizhe@beite.net.cn"
+  },
+  {
+    "code": "603011",
+    "name": "合锻智能",
+    "ir_url": "http://www.hfpress.com",
+    "method": "web_search",
+    "notes": "官网: http://www.hfpress.com，设有投资者关系专栏（公司公告、投资者问答、实时走势图）"
+  },
+  {
+    "code": "603012",
+    "name": "创力集团",
+    "ir_url": "https://www.shclkj.com",
+    "method": "web_search",
+    "notes": "官网: https://www.shclkj.com，IR邮箱: shcl@shclkj.com"
+  },
+  {
+    "code": "603013",
+    "name": "亚普股份",
+    "ir_url": "https://www.yapp.com",
+    "method": "web_search",
+    "notes": "官网: https://www.yapp.com，IR邮箱: stock@yapp.com"
+  },
+  {
+    "code": "603014",
+    "name": "威高血净",
+    "ir_url": "http://www.wego-healthcare.com",
+    "method": "web_search",
+    "notes": "官网: http://www.wego-healthcare.com，IR邮箱: ir@wego-healthcare.com"
+  },
+  {
+    "code": "603015",
+    "name": "弘讯科技",
+    "ir_url": "https://www.techmation.com.cn/investor/",
+    "method": "web_search",
+    "notes": "官网IR页面: https://www.techmation.com.cn/investor/，IR邮箱: info@techmation.com.cn"
+  },
+  {
+    "code": "603017",
+    "name": "中衡设计",
+    "ir_url": "http://www.artsgroup.cn",
+    "method": "web_search",
+    "notes": "官网: http://www.artsgroup.cn，IR邮箱: security@artsgroup.cn"
+  },
+  {
+    "code": "603018",
+    "name": "华设集团",
+    "ir_url": "http://www.cdg.com.cn/catelog/detail/32",
+    "method": "web_search",
+    "notes": "官网IR页面: http://www.cdg.com.cn/catelog/detail/32，IR邮箱: ir@cdg.com.cn"
+  },
+  {
+    "code": "603019",
+    "name": "中科曙光",
+    "ir_url": "https://www.sugon.com",
+    "method": "web_search",
+    "notes": "官网: https://www.sugon.com，顶部导航设有投资者关系专栏，IR邮箱: investor@sugon.com"
+  },
+  {
+    "code": "603020",
+    "name": "爱普股份",
+    "ir_url": "http://www.cnaff.com",
+    "method": "web_search",
+    "notes": "官网: http://www.cnaff.com，设有投资者关系专栏（实时股价、定期报告、公司公告等）"
+  },
+  {
+    "code": "603021",
+    "name": "*ST华鹏",
+    "ir_url": "http://www.huapengglass.com",
+    "method": "web_search",
+    "notes": "官网: http://www.huapengglass.com，IR邮箱: hp577@huapengglass.com，注意：处于*ST退市风险警示状态"
+  },
+  {
+    "code": "603022",
+    "name": "新通联",
+    "ir_url": "http://www.xtlpacking.com",
+    "method": "web_search",
+    "notes": "官网: http://www.xtlpacking.com，无独立IR子站，IR邮箱: zqb@xtl.sh.cn"
+  },
+  {
+    "code": "603023",
+    "name": "威帝股份",
+    "ir_url": "http://www.viti.net.cn",
+    "method": "web_search",
+    "notes": "官网: http://www.viti.net.cn，IR邮箱: zqbm@viti.net.cn"
+  },
+  {
+    "code": "603025",
+    "name": "大豪科技",
+    "ir_url": "http://www.dahaobj.com",
+    "method": "web_search",
+    "notes": "官网: http://www.dahaobj.com，设有投资者关系专栏，IR邮箱: zqb@dahaobj.com"
+  },
+  {
+    "code": "603027",
+    "name": "千禾味业",
+    "ir_url": "http://www.qianhefood.com",
+    "method": "web_search",
+    "notes": "官网: http://www.qianhefood.com，IR邮箱: irm@qianhefood.com"
+  },
+  {
+    "code": "603029",
+    "name": "天鹅股份",
+    "ir_url": "http://www.sdmj.com.cn",
+    "method": "web_search",
+    "notes": "官网: http://www.sdmj.com.cn，设有投资者关系板块（信息披露等），IR邮箱: swan@sdmj.com.cn"
+  },
+  {
+    "code": "603030",
+    "name": "全筑股份",
+    "ir_url": "http://www.trendzone.com.cn",
+    "method": "web_search",
+    "notes": "官网: http://www.trendzone.com.cn，IR邮箱: ir@trendzone.com.cn"
+  },
+  {
+    "code": "603031",
+    "name": "安孚科技",
+    "ir_url": "http://www.anfucorp.com",
+    "method": "web_search",
+    "notes": "官网: http://www.anfucorp.com（原安德利更名），IR邮箱: ir@anfucorp.com"
+  },
+  {
+    "code": "603032",
+    "name": "德新科技",
+    "ir_url": "http://www.dxtl.com.cn",
+    "method": "web_search",
+    "notes": "官网: http://www.dxtl.com.cn，设有投资者关系专栏，IR邮箱: dxjy603032@163.com"
+  },
+  {
+    "code": "603033",
+    "name": "三维股份",
+    "ir_url": "http://www.three-v.com",
+    "method": "web_search",
+    "notes": "官网: http://www.three-v.com（三维控股集团），IR邮箱: sanweixiangjiao@yeah.net"
+  },
+  {
+    "code": "603035",
+    "name": "常熟汽饰",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "603036",
+    "name": "如通股份",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "603037",
+    "name": "凯众股份",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "603038",
+    "name": "华立股份",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "603039",
+    "name": "泛微网络",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "603040",
+    "name": "新坐标",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "603042",
+    "name": "华脉科技",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "603043",
+    "name": "广州酒家",
+    "ir_url": "https://www.gzr.com.cn/index.php?ac=article&at=list&tid=32",
+    "method": "web_search",
+    "notes": "广州酒家官网投资者留言板"
+  },
+  {
+    "code": "603045",
+    "name": "福达合金",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "603048",
+    "name": "浙江黎明",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "603049",
+    "name": "中策橡胶",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "603050",
+    "name": "科林电气",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "300898",
+    "name": "熊猫乳品",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "603051",
+    "name": "鹿山新材",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "603052",
+    "name": "可川科技",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "603053",
+    "name": "成都燃气",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "603055",
+    "name": "台华新材",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "603057",
+    "name": "紫燕食品",
+    "ir_url": "https://www.ziyanfoods.com/",
+    "method": "web_search_inferred",
+    "notes": "紫燕食品官网，未设独立IR专栏；IR邮箱ziyan@ziyanfoods.com，电话021-52969658"
+  },
+  {
+    "code": "603058",
+    "name": "永吉股份",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "603059",
+    "name": "倍加洁",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "603060",
+    "name": "国检集团",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "603063",
+    "name": "禾望电气",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "603068",
+    "name": "博通集成",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "603069",
+    "name": "海汽集团",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "603070",
+    "name": "万控智造",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "603072",
+    "name": "天和磁材",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "603073",
+    "name": "彩蝶实业",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "603075",
+    "name": "热威股份",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "600801",
+    "name": "华新建材",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "603076",
+    "name": "乐惠国际",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "603078",
+    "name": "江化微",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "603079",
+    "name": "圣达生物",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "603080",
+    "name": "新疆火炬",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "603081",
+    "name": "大丰实业",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "603082",
+    "name": "北自科技",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "603083",
+    "name": "剑桥科技",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "603085",
+    "name": "天成自控",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "603086",
+    "name": "先达股份",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "603088",
+    "name": "宁波精达",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "603089",
+    "name": "正裕工业",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "603090",
+    "name": "宏盛股份",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "300883",
+    "name": "龙利得",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "603091",
+    "name": "众鑫股份",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "603092",
+    "name": "德力佳",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "603093",
+    "name": "南华期货",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "603095",
+    "name": "越剑智能",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "603096",
+    "name": "新经典",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "603097",
+    "name": "江苏华辰",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "603098",
+    "name": "森特股份",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "603100",
+    "name": "川仪股份",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "603102",
+    "name": "百合股份",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "603103",
+    "name": "横店影视",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "603105",
+    "name": "芯能科技",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "603106",
+    "name": "恒银科技",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "603107",
+    "name": "上海汽配",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "603108",
+    "name": "润达医疗",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "603109",
+    "name": "神驰机电",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "603111",
+    "name": "康尼机电",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "603112",
+    "name": "华翔股份",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "603115",
+    "name": "海星股份",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "603116",
+    "name": "红蜻蜓",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "603117",
+    "name": "万林物流",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "603118",
+    "name": "共进股份",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "603119",
+    "name": "浙江荣泰",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "603121",
+    "name": "华培动力",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "603122",
+    "name": "合富中国",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "603123",
+    "name": "翠微股份",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "603124",
+    "name": "江南新材",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "603126",
+    "name": "中材节能",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "603127",
+    "name": "昭衍新药",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "603128",
+    "name": "华贸物流",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "603129",
+    "name": "春风动力",
+    "ir_url": "https://www.cfmoto.com",
+    "method": "web_search_inferred",
+    "notes": "春风动力官网，网站设投资者关系栏目；IR邮箱board@cfmoto.com，电话0571-89195143"
+  },
+  {
+    "code": "603130",
+    "name": "云中马",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "600782",
+    "name": "新钢股份",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "000157",
+    "name": "中联重科",
+    "ir_url": "https://en.zoomlion.com/investor/Investor.htm",
+    "method": "web_search",
+    "notes": "中联重科英文IR页，含实时股价、财务报告；中文IR在www.zoomlion.com导航栏"
+  },
+  {
+    "code": "603131",
+    "name": "上海沪工",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "603132",
+    "name": "金徽股份",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "603135",
+    "name": "中重科技",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "603137",
+    "name": "恒尚节能",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "603138",
+    "name": "海量数据",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "603150",
+    "name": "万朗磁塑",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "603151",
+    "name": "邦基科技",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "603153",
+    "name": "上海建科",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "603156",
+    "name": "养元饮品",
+    "ir_url": "http://www.hbyangyuan.com/",
+    "method": "web_search_inferred",
+    "notes": "养元饮品（六个核桃）官网，未设独立IR专栏；IR邮箱yangyuanzhengquanbu@hbyangyuan.com，电话0318-2088006"
+  },
+  {
+    "code": "603158",
+    "name": "腾龙股份",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "603159",
+    "name": "上海亚虹",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "603160",
+    "name": "汇顶科技",
+    "ir_url": "https://www.goodix.com/zh/about_goodix/investor/services",
+    "method": "web_search",
+    "notes": "汇顶科技官网投资者服务页，含联系信息（ir@goodix.com）"
+  },
+  {
+    "code": "603161",
+    "name": "科华控股",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "603163",
+    "name": "圣晖集成",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "603165",
+    "name": "荣晟环保",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "603166",
+    "name": "福达股份",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "603169",
+    "name": "兰石重装",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "603170",
+    "name": "宝立食品",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "603171",
+    "name": "税友股份",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "603173",
+    "name": "福斯达",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "603183",
+    "name": "建研院",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "603185",
+    "name": "弘元绿能",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "603186",
+    "name": "华正新材",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "603187",
+    "name": "海容冷链",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "603189",
+    "name": "*ST网达",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "603190",
+    "name": "亚通精工",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "603191",
+    "name": "望变电气",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "603193",
+    "name": "润本股份",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "603194",
+    "name": "中力股份",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "603195",
+    "name": "公牛集团",
+    "ir_url": "https://www.gongniu.cn/investor/index.html",
+    "method": "web_search",
+    "notes": "公牛集团官网投资者关系专栏，含定期报告、公司治理"
+  },
+  {
+    "code": "603196",
+    "name": "璞源材料",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "603197",
+    "name": "保隆科技",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "603198",
+    "name": "迎驾贡酒",
+    "ir_url": "http://www.yingjia.cn/investor/list/47.html",
+    "method": "web_search",
+    "notes": "迎驾贡酒官网投资者关系专栏，含公告、董监高、证券信息"
+  },
+  {
+    "code": "603200",
+    "name": "上海洗霸",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "603201",
+    "name": "常润股份",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "603202",
+    "name": "天有为",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "603205",
+    "name": "健尔康",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "603206",
+    "name": "嘉环科技",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "603207",
+    "name": "小方制药",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "603208",
+    "name": "江山欧派",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "001376",
+    "name": "百通能源",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "603210",
+    "name": "泰鸿万立",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "603211",
+    "name": "晋拓股份",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "603212",
+    "name": "赛伍技术",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "603215",
+    "name": "比依股份",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "603216",
+    "name": "梦天家居",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "603218",
+    "name": "日月股份",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "603219",
+    "name": "富佳股份",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "603220",
+    "name": "中贝通信",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "603221",
+    "name": "爱丽家居",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "603222",
+    "name": "济民健康",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "603226",
+    "name": "菲林格尔",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "603228",
+    "name": "景旺电子",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "603229",
+    "name": "奥翔药业",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "603230",
+    "name": "内蒙新华",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "603231",
+    "name": "索宝蛋白",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "603232",
+    "name": "格尔软件",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "603233",
+    "name": "大参林",
+    "ir_url": "https://www.dslyy.com/",
+    "method": "web_search_inferred",
+    "notes": "大参林官网，未设独立IR专栏；IR邮箱DSL1999@dslyy.com，电话020-81689688"
+  },
+  {
+    "code": "603235",
+    "name": "天新药业",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "603236",
+    "name": "移远通信",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "603237",
+    "name": "五芳斋",
+    "ir_url": "http://www.wufangzhai.com/",
+    "method": "web_search_inferred",
+    "notes": "五芳斋官网，未设独立IR专栏；IR邮箱wfz1921@wufangzhai.com，电话0573-82083117"
+  },
+  {
+    "code": "603238",
+    "name": "诺邦股份",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "603616",
+    "name": "韩建河山",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "603239",
+    "name": "浙江仙通",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "603248",
+    "name": "锡华科技",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "603256",
+    "name": "宏和科技",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "603257",
+    "name": "中国瑞林",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "603258",
+    "name": "电魂网络",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "603259",
+    "name": "药明康德",
+    "ir_url": "https://www.wuxiapptec.cn/investors",
+    "method": "web_search",
+    "notes": "药明康德官网投资者关系专栏，含A股/H股信息、公告、财务报告"
+  },
+  {
+    "code": "603261",
+    "name": "立航科技",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "603262",
+    "name": "技源集团",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "603266",
+    "name": "天龙股份",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "603267",
+    "name": "鸿远电子",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "603268",
+    "name": "松发股份",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "603269",
+    "name": "海鸥股份",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "603270",
+    "name": "金帝股份",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "603272",
+    "name": "*ST联翔",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "603273",
+    "name": "天元智能",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "603275",
+    "name": "众辰科技",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "603277",
+    "name": "银都股份",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "603279",
+    "name": "景津装备",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "301141",
+    "name": "中科磁业",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "603280",
+    "name": "南方路机",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "603282",
+    "name": "亚光股份",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "603283",
+    "name": "赛腾股份",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "603286",
+    "name": "日盈电子",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "603288",
+    "name": "海天味业",
+    "ir_url": "http://www.haitian-food.com/investor-contact/",
+    "method": "web_search",
+    "notes": "海天味业官网投资者联络页，含调研预约、联系方式"
+  },
+  {
+    "code": "603289",
+    "name": "泰瑞机器",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "603290",
+    "name": "斯达半导",
+    "ir_url": "https://www.powersemi.cc/investor.html",
+    "method": "web_search",
+    "notes": "斯达半导官网投资者关系页"
+  },
+  {
+    "code": "603293",
+    "name": "埃泰克",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "603296",
+    "name": "华勤技术",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "603297",
+    "name": "永新光学",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "603298",
+    "name": "杭叉集团",
+    "ir_url": "https://www.zjhc.cn/news.aspx?id=1001",
+    "method": "web_search",
+    "notes": "杭叉集团官网投资者关系/资讯中心页"
+  },
+  {
+    "code": "603299",
+    "name": "苏盐井神",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  },
+  {
+    "code": "603300",
+    "name": "海南华铁",
+    "ir_url": null,
+    "method": "exchange_only",
+    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+  }
+]
