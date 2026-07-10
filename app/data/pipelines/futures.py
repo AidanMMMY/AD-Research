@@ -519,6 +519,148 @@ def _pick_main_per_day(df: pd.DataFrame) -> pd.DataFrame:
     return work.drop_duplicates(subset=["date", "variety"], keep="first")
 
 
+# ---------------------------------------------------------------------------
+# DCE specific-contract resolution
+#
+# DCE is special: the only working endpoint from this ECS IP
+# (``ak.futures_main_sina(symbol=<continuous>)``) returns the rolled
+# continuous series (``M0``/``Y0``/``P0``/...) and never a specific
+# delivery-month contract. Most platforms — and the rest of this app —
+# expect ``futures_contracts.underlying_instrument`` to hold the *current
+# leader* (e.g. ``M2609``). To bridge that gap we probe a small window of
+# candidate specific contracts via the same ``futures_main_sina`` endpoint
+# (which works for specific codes too) and pick the one with the highest
+# open interest on the latest trade date.
+# ---------------------------------------------------------------------------
+
+_DCE_SPECIFIC_PROBE_MONTHS_BACK = 2
+_DCE_SPECIFIC_PROBE_MONTHS_FORWARD = 6
+_DCE_SPECIFIC_LIVE_DAYS = 7
+_DCE_SPECIFIC_PROBE_WORKERS = 6
+
+
+def _dce_specific_candidates(root: str, today: date | None = None) -> list[str]:
+    """Return the ``<ROOT>YYMM`` candidates to probe for a DCE root."""
+    today = today or date.today()
+    out: list[str] = []
+    year = today.year
+    month = today.month
+    for offset in range(
+        -_DCE_SPECIFIC_PROBE_MONTHS_BACK,
+        _DCE_SPECIFIC_PROBE_MONTHS_FORWARD + 1,
+    ):
+        m = month + offset
+        y = year
+        while m <= 0:
+            m += 12
+            y -= 1
+        while m > 12:
+            m -= 12
+            y += 1
+        out.append(f"{root}{y % 100:02d}{m:02d}")
+    return out
+
+
+def _dce_probe_one(symbol: str) -> tuple[str, date | None, float]:
+    """Fetch one DCE specific contract; return (symbol, last_date, last_OI)."""
+    try:
+        df = ak.futures_main_sina(symbol=symbol)
+    except Exception as exc:
+        logger.debug("futures_main_sina(%s) failed: %s", symbol, exc)
+        return symbol, None, 0.0
+    if df is None or df.empty:
+        return symbol, None, 0.0
+    try:
+        last = df.iloc[-1]
+        last_date = pd.to_datetime(last.iloc[0]).date()
+        raw_oi = last.iloc[6]
+        oi = float(raw_oi) if pd.notna(raw_oi) else 0.0
+        return symbol, last_date, oi
+    except Exception as exc:
+        logger.debug("parse failed for %s: %s", symbol, exc)
+        return symbol, None, 0.0
+
+
+def _dce_specific_for_root(root: str, today: date | None = None) -> str | None:
+    """Return the active main specific contract (e.g. ``M2609``) for a DCE root.
+
+    Probes a window of candidate specific contracts and picks the one with
+    the highest open interest on the most recent trade date (within the
+    last ``_DCE_SPECIFIC_LIVE_DAYS`` days so an expired/delisted contract
+    doesn't accidentally win on stale OI).
+
+    Falls back to the nearest non-expired ``YYMM`` when no live OI data
+    is available. Returns ``None`` only if every probe fails.
+    """
+    today = today or date.today()
+    candidates = _dce_specific_candidates(root, today)
+
+    rows: list[tuple[str, date | None, float]] = []
+    with ThreadPoolExecutor(max_workers=_DCE_SPECIFIC_PROBE_WORKERS) as ex:
+        for fut in as_completed(
+            {ex.submit(_dce_probe_one, sym): sym for sym in candidates}
+        ):
+            rows.append(fut.result())
+
+    cutoff = today - timedelta(days=_DCE_SPECIFIC_LIVE_DAYS)
+    live = [
+        (sym, d, oi)
+        for sym, d, oi in rows
+        if d is not None and d >= cutoff and oi > 0
+    ]
+    if live:
+        live.sort(key=lambda r: (-r[2], r[0]))  # highest OI first, then code asc
+        winner = live[0][0]
+        logger.info("DCE %s -> %s (OI probe)", root, winner)
+        return winner
+
+    # Fallback: nearest non-expired future month.
+    today_yyyymm = today.year * 100 + today.month
+    future_codes: list[str] = []
+    for sym, _, _ in rows:
+        try:
+            yy = int(sym[-4:-2])
+            mm = int(sym[-2:])
+            yyyymm = (2000 + yy if yy < 80 else 1900 + yy) * 100 + mm
+        except ValueError:
+            continue
+        if yyyymm >= today_yyyymm:
+            future_codes.append(sym)
+    if future_codes:
+        fallback = sorted(future_codes)[0]
+        logger.warning(
+            "DCE %s: no live OI; falling back to %s", root, fallback
+        )
+        return fallback
+    return None
+
+
+def _dce_specific_lookup(roots: Iterable[str]) -> dict[str, str]:
+    """Resolve the current main specific contract for each DCE root.
+
+    Returns a ``{root: specific_contract}`` dict; missing roots are omitted.
+    All DCE probes run in parallel so the whole lookup takes ~3-5s.
+    """
+    roots = list(roots)
+    if not roots:
+        return {}
+    out: dict[str, str] = {}
+    with ThreadPoolExecutor(max_workers=_DCE_SPECIFIC_PROBE_WORKERS) as ex:
+        future_to_root = {
+            ex.submit(_dce_specific_for_root, root): root for root in roots
+        }
+        for fut in as_completed(future_to_root):
+            root = future_to_root[fut]
+            try:
+                result = fut.result()
+            except Exception as exc:
+                logger.warning("DCE probe for %s crashed: %s", root, exc)
+                continue
+            if result:
+                out[root] = result
+    return out
+
+
 def _to_native(value) -> int | float | None:
     """Best-effort numpy/pandas scalar -> native Python int/float coercion.
 
@@ -629,6 +771,17 @@ class FuturesContractDiscoveryPipeline(ETLPipeline):
         if latest.empty:
             return pd.DataFrame()
 
+        # For DCE the per-exchange endpoint returns the rolled continuous
+        # symbol (``M0``); translate that to the active specific contract
+        # (e.g. ``M2609``) so ``underlying_instrument`` matches what most
+        # platforms surface. SHFE/CZCE/CFFEX/INE/GFEX already return
+        # concrete contracts so we leave them alone.
+        dce_roots = [
+            str(r).strip()
+            for r in latest.loc[latest["exchange"].str.upper() == "DCE", "variety"].unique()
+        ]
+        dce_specific: dict[str, str] = _dce_specific_lookup(dce_roots) if dce_roots else {}
+
         rows: list[dict] = []
         for _, row in latest.iterrows():
             exchange = str(row.get("exchange") or "").strip().upper()
@@ -639,6 +792,14 @@ class FuturesContractDiscoveryPipeline(ETLPipeline):
             symbol_root = _symbol_root(variety)
             product = _classify_product(exchange, symbol_root)
             code = f"{symbol_root}0"
+            # Default: use the symbol the source gave us (works for non-DCE).
+            underlying = symbol
+            if exchange == "DCE":
+                # DCE only returns continuous codes from this ECS IP; use
+                # the separately-probed specific contract instead.
+                specific = dce_specific.get(symbol_root)
+                if specific:
+                    underlying = specific
             rows.append(
                 {
                     "code": code,
@@ -646,7 +807,7 @@ class FuturesContractDiscoveryPipeline(ETLPipeline):
                     "exchange": exchange,
                     "product": product,
                     "is_main": True,
-                    "underlying_instrument": symbol,
+                    "underlying_instrument": underlying,
                     "source": "akshare",
                 }
             )
@@ -884,9 +1045,28 @@ class FuturesDailyPipeline(ETLPipeline):
             picks.sort_values(["__code", "date"])
             .dropna(subset=["date"])
             .groupby("__code")
-            .tail(1)[["__code", "symbol"]]
+            .tail(1)[["__code", "symbol", "exchange", "variety"]]
             .rename(columns={"__code": "etf_code", "symbol": "underlying_instrument"})
         )
+
+        # DCE source only returns the rolled continuous code (e.g. ``M0``),
+        # so the per-day pick's ``symbol`` column is never a specific
+        # contract. Probe for the active main specific contract per DCE
+        # root and substitute it before we write ``underlying_instrument``.
+        if not latest_picks.empty:
+            dce_mask = latest_picks["exchange"].astype(str).str.upper() == "DCE"
+            if dce_mask.any():
+                dce_roots = [
+                    r.strip()
+                    for r in latest_picks.loc[dce_mask, "variety"].unique()
+                ]
+                dce_specific = _dce_specific_lookup(dce_roots)
+                if dce_specific:
+                    latest_picks.loc[dce_mask, "underlying_instrument"] = (
+                        latest_picks.loc[dce_mask, "variety"]
+                        .map(lambda v: dce_specific.get(v.strip(), v.strip()))
+                    )
+
         self._latest_underlying = latest_picks
         logger.info(
             "FuturesDailyPipeline: extracted %d rows (window=%s..%s, cutoff>%s)",
