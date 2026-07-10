@@ -4,6 +4,9 @@ Focuses on:
 - ``_symbol_root`` extracts alphabetic root from continuous contract codes.
 - ``_classify_product`` maps (exchange, symbol_root) to product category.
 - ``_coerce_date`` / ``_coerce_int`` / ``_coerce_float`` helpers.
+- DCE fetcher (``_fetch_dce_via_main_sina`` / ``_dce_main_contracts``) maps
+  sina's Chinese-column response into the canonical English schema and trims
+  to the requested window, with the rest of the pipeline downstream.
 - ``FuturesContractDiscoveryPipeline`` upserts main contracts derived from
   per-exchange akshare data, including product classification.
 - ``FuturesDailyPipeline`` extracts, transforms and loads daily bars from
@@ -25,6 +28,8 @@ from app.data.pipelines.futures import (
     _coerce_date,
     _coerce_float,
     _coerce_int,
+    _dce_main_contracts,
+    _fetch_dce_via_main_sina,
     _pick_main_per_day,
     _symbol_root,
 )
@@ -140,6 +145,155 @@ class TestPickMainPerDay:
 
     def test_returns_empty_for_empty_frame(self):
         assert _pick_main_per_day(pd.DataFrame()).empty
+
+
+# ---------------------------------------------------------------------------
+# DCE fetcher (uses ak.futures_main_sina under the hood)
+# ---------------------------------------------------------------------------
+
+
+def _fake_main_sina(symbol: str) -> pd.DataFrame:
+    """Build a small fake sina response with Chinese column names."""
+
+    dates = ["2026-07-06", "2026-07-07", "2026-07-08"]
+    if symbol == "M0":
+        opens = [3030.0, 3039.0, 3045.0]
+        highs = [3055.0, 3046.0, 3059.0]
+        lows = [3025.0, 3030.0, 3027.0]
+        closes = [3040.0, 3045.0, 3051.0]
+        volumes = [1000000, 1017070, 993980]
+        oi = [1900000, 1893351, 1915914]
+        settle = [3038.0, 3038.0, 3045.0]
+    else:
+        opens = [100.0, 101.0, 102.0]
+        highs = [101.0, 102.0, 103.0]
+        lows = [99.0, 100.0, 101.0]
+        closes = [100.5, 101.5, 102.5]
+        volumes = [1000, 2000, 3000]
+        oi = [5000, 5500, 6000]
+        settle = [100.4, 101.4, 102.4]
+    return pd.DataFrame(
+        {
+            "日期": dates,
+            "开盘价": opens,
+            "最高价": highs,
+            "最低价": lows,
+            "收盘价": closes,
+            "成交量": volumes,
+            "持仓量": oi,
+            "动态结算价": settle,
+        }
+    )
+
+
+_FAKE_DISPLAY_DCE = pd.DataFrame(
+    {
+        "symbol": ["M0", "JD0", "I0", "V0", "BB0"],
+        "exchange": ["dce", "dce", "dce", "dce", "dce"],
+        "name": ["豆粕连续", "鸡蛋连续", "铁矿石连续", "PVC连续", "胶合板连续"],
+    }
+)
+
+
+class TestDCEFetcher:
+    """Mocks akshare endpoints to verify the DCE path produces rows.
+
+    Real ``ak.futures_main_sina`` is exercised in production; here we just
+    confirm the column-mapping and window-trim logic.
+    """
+
+    def test_dce_main_contracts_filters_to_tracked_varieties(self):
+        with patch(
+            "app.data.pipelines.futures.ak.futures_display_main_sina",
+            return_value=_FAKE_DISPLAY_DCE,
+        ):
+            syms = _dce_main_contracts()
+        # M/JD/I/V/BB are all in _PRODUCT_MAP for DCE; the helper only
+        # trims to map presence (suspended varieties like BB0 will simply
+        # return zero bars when we fetch history).
+        assert set(syms) == {"M0", "JD0", "I0", "V0", "BB0"}
+
+    def test_dce_main_contracts_empty_on_display_error(self):
+        with patch(
+            "app.data.pipelines.futures.ak.futures_display_main_sina",
+            side_effect=Exception("network"),
+        ):
+            assert _dce_main_contracts() == []
+
+    def test_fetch_dce_via_main_sina_renames_columns_and_trims_window(self):
+        def _display():
+            return _FAKE_DISPLAY_DCE
+
+        def _main(symbol):
+            return _fake_main_sina(symbol)
+
+        with patch(
+            "app.data.pipelines.futures.ak.futures_display_main_sina",
+            side_effect=_display,
+        ), patch(
+            "app.data.pipelines.futures.ak.futures_main_sina",
+            side_effect=_main,
+        ):
+            df = _fetch_dce_via_main_sina(
+                date(2026, 7, 7), date(2026, 7, 8)
+            )
+
+        # 5 tracked DCE contracts (M/JD/I/V/BB) × 2 days inside window
+        # (the 2026-07-06 day is dropped by the window trim).
+        assert len(df) == 10
+        # Columns the rest of the pipeline expects are present and have
+        # correct English names.
+        for col in (
+            "date", "open", "high", "low", "close",
+            "volume", "open_interest", "settle",
+            "symbol", "variety", "exchange",
+        ):
+            assert col in df.columns, f"missing column {col!r}"
+        # Chinese column names should be gone.
+        assert "日期" not in df.columns
+        # Exchange tag is DCE for every row.
+        assert (df["exchange"] == "DCE").all()
+        # All 5 varieties are represented.
+        assert set(df["variety"].unique()) == {"M", "JD", "I", "V", "BB"}
+        # Dates are date objects inside the window.
+        assert df["date"].between(
+            date(2026, 7, 7), date(2026, 7, 8)
+        ).all()
+
+    def test_fetch_dce_via_main_sina_skips_varieties_with_errors(self):
+        def _display():
+            return _FAKE_DISPLAY_DCE
+
+        def _main(symbol):
+            if symbol == "JD0":
+                raise Exception("upstream 500")
+            return _fake_main_sina(symbol)
+
+        with patch(
+            "app.data.pipelines.futures.ak.futures_display_main_sina",
+            side_effect=_display,
+        ), patch(
+            "app.data.pipelines.futures.ak.futures_main_sina",
+            side_effect=_main,
+        ):
+            df = _fetch_dce_via_main_sina(
+                date(2026, 7, 7), date(2026, 7, 8)
+            )
+
+        # Only JD0 failed; the other 4 tracked varieties came back.
+        # 4 varieties × 2 days inside window = 8 rows.
+        assert set(df["variety"].unique()) == {"M", "I", "V", "BB"}
+        assert len(df) == 8
+
+    def test_fetch_dce_via_main_sina_empty_when_no_contracts(self):
+        with patch(
+            "app.data.pipelines.futures.ak.futures_display_main_sina",
+            return_value=pd.DataFrame(columns=["symbol", "exchange", "name"]),
+        ):
+            df = _fetch_dce_via_main_sina(
+                date(2026, 7, 7), date(2026, 7, 8)
+            )
+        assert df.empty
 
 
 # ---------------------------------------------------------------------------

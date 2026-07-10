@@ -74,6 +74,19 @@ _MAX_WORKERS = 5
 # 'CCFX' — the function returns an empty DataFrame for unknown markets).
 _FUTURES_DAILY_EXCHANGES: tuple[str, ...] = ("SHFE", "CZCE", "CFFEX", "INE", "GFEX")
 
+# Chinese -> English column mapping used by ak.futures_main_sina(symbol=...).
+# Used by the DCE fetcher since DCE has no working per-exchange endpoint.
+_DCE_RENAME: dict[str, str] = {
+    "日期": "date",
+    "开盘价": "open",
+    "最高价": "high",
+    "最低价": "low",
+    "收盘价": "close",
+    "成交量": "volume",
+    "持仓量": "open_interest",
+    "动态结算价": "settle",
+}
+
 
 # Static product category per (exchange, symbol root). Built from a manual
 # mapping of common Chinese commodity futures to keep the dashboard grouping
@@ -238,12 +251,129 @@ def _fetch_dce_day(d: date) -> pd.DataFrame:
 
     Returns an empty DataFrame on any error. DCE's endpoint takes a single
     ``date`` arg (not a range), so we loop one day at a time.
+
+    NOTE: from the ECS IP this endpoint returns ``JSONDecodeError`` and is
+    therefore broken. The pipeline now uses :func:`_fetch_dce_via_main_sina`
+    instead, but this helper is kept around for completeness (it still works
+    from other akshare routes / via a proxy) and is exercised by tests.
     """
     try:
         return ak.get_dce_daily(date=_format_yyyymmdd(d))
     except Exception as exc:
         logger.warning("get_dce_daily(%s) failed: %s", d, exc)
         return pd.DataFrame()
+
+
+def _dce_main_contracts() -> list[str]:
+    """Return DCE continuous main-contract symbols (``M0``, ``Y0``, ...).
+
+    Uses ``ak.futures_display_main_sina`` which is the only working DCE
+    discovery route from this ECS IP. The list is filtered to varieties
+    that we actually classify in :data:`_PRODUCT_MAP` so we don't waste
+    HTTP calls on symbols (e.g. ``BZ0``, ``LG0``) that aren't in the
+    dashboard's product grouping.
+    """
+    try:
+        contracts = ak.futures_display_main_sina()
+    except Exception as exc:
+        logger.warning("DCE futures_display_main_sina failed: %s", exc)
+        return []
+    if contracts is None or contracts.empty:
+        return []
+
+    dce = contracts[
+        contracts["exchange"].astype(str).str.lower() == "dce"
+    ]
+    if dce.empty:
+        return []
+
+    tracked_roots = {root for ex, root in _PRODUCT_MAP if ex == "DCE"}
+    out: list[str] = []
+    for sym in dce["symbol"].tolist():
+        s = str(sym).strip()
+        if not s:
+            continue
+        root = _symbol_root(s)
+        if not root or root not in tracked_roots:
+            continue
+        out.append(s)
+    return out
+
+
+def _fetch_one_dce_main(symbol: str) -> pd.DataFrame | None:
+    """Fetch one DCE continuous contract's full rolled daily history.
+
+    Wraps a single ``ak.futures_main_sina(symbol=...)`` call so the
+    parallel scheduler in :func:`_fetch_dce_via_main_sina` can fan
+    out per-variety.
+    """
+    try:
+        df = ak.futures_main_sina(symbol=symbol)
+    except Exception as exc:
+        logger.warning("DCE futures_main_sina(%s) failed: %s", symbol, exc)
+        return None
+    if df is None or df.empty:
+        return None
+    df = df.copy()
+    df = df.rename(columns=_DCE_RENAME)
+    df["symbol"] = symbol
+    df["variety"] = _symbol_root(symbol)
+    df["exchange"] = "DCE"
+    if "date" in df.columns:
+        df["date"] = pd.to_datetime(df["date"], errors="coerce").dt.date
+    # ``pre_settle`` is not exposed by futures_main_sina; the daily pipeline
+    # back-fills it from the previous row's settle in extract().
+    if "pre_settle" not in df.columns:
+        df["pre_settle"] = pd.NA
+    return df
+
+
+def _fetch_dce_via_main_sina(start_day: date, end_day: date) -> pd.DataFrame:
+    """Fetch DCE daily bars via ``ak.futures_main_sina``.
+
+    DCE's per-day endpoint (``ak.get_dce_daily``) and per-exchange
+    ``ak.get_futures_daily(market='DCE')`` both return
+    ``JSONDecodeError`` from this ECS IP — DCE blocks POST endpoints
+    on this network and doesn't expose a JSON GET. The only working
+    DCE source we have is the older sina-backed continuous-contract
+    endpoint, which upstream still serves here (unlike SHFE/CZCE
+    where the same endpoint is blocked).
+
+    For each DCE variety we track (``M``, ``Y``, ``P``, ``C``,
+    ``A``, ``I``, ``JD``, ``L``, ``PP``, ``V``, ``BB``, ``FB``,
+    ``CS``, ``J``, ``JM``, ``EG``, ``EB``, ``RR``, ``PG``, ``LH``,
+    ``B``) we fetch the rolled continuous-contract history and
+    trim it to ``[start_day, end_day]``. Each variety's data is
+    fetched in parallel so the 22 round-trips finish in ~1s.
+    """
+    symbols = _dce_main_contracts()
+    if not symbols:
+        return pd.DataFrame()
+
+    frames: list[pd.DataFrame] = []
+    with ThreadPoolExecutor(max_workers=_MAX_WORKERS) as executor:
+        future_to_symbol = {
+            executor.submit(_fetch_one_dce_main, sym): sym for sym in symbols
+        }
+        for fut in as_completed(future_to_symbol):
+            sym = future_to_symbol[fut]
+            try:
+                df = fut.result()
+            except Exception as exc:
+                logger.warning(
+                    "DCE futures_main_sina worker crashed for %s: %s", sym, exc
+                )
+                continue
+            if df is None or df.empty:
+                continue
+            if "date" in df.columns:
+                df = df[df["date"].between(start_day, end_day)]
+            if not df.empty:
+                frames.append(df)
+
+    if not frames:
+        return pd.DataFrame()
+    return pd.concat(frames, ignore_index=True)
 
 
 def _fetch_market_range(exchange: str, start_day: date, end_day: date) -> pd.DataFrame:
@@ -269,8 +399,14 @@ def fetch_all_markets(
     Each value is the raw per-contract DataFrame; an empty DataFrame means
     the fetch failed or the source returned no data.
 
-    DCE is fetched one-day-at-a-time because its endpoint only takes a single
-    date; the other 5 exchanges are pulled in parallel.
+    SHFE / CZCE / CFFEX / INE / GFEX are pulled in parallel via
+    ``ak.get_futures_daily(market=...)``.
+
+    DCE requires a different path because its per-day and per-exchange
+    endpoints both fail (DCE blocks POST + some JSON GET routes from
+    this network). We use ``ak.futures_main_sina(symbol=<continuous>)``
+    per variety to fetch DCE daily bars; see
+    :func:`_fetch_dce_via_main_sina`.
     """
     results: dict[str, pd.DataFrame] = {}
 
@@ -289,17 +425,12 @@ def fetch_all_markets(
                 logger.warning("market fetch worker crashed for %s: %s", ex, exc)
                 results[ex] = pd.DataFrame()
 
-    # DCE: per-day fetch.
-    dce_frames: list[pd.DataFrame] = []
-    cur = start_day
-    while cur <= end_day:
-        df = _fetch_dce_day(cur)
-        if df is not None and not df.empty:
-            dce_frames.append(df)
-        cur += timedelta(days=1)
-    if dce_frames:
-        results["DCE"] = pd.concat(dce_frames, ignore_index=True)
-    else:
+    # DCE: per-variety fetch via futures_main_sina (the only working DCE
+    # source from this ECS IP; see _fetch_dce_via_main_sina).
+    try:
+        results["DCE"] = _fetch_dce_via_main_sina(start_day, end_day)
+    except Exception as exc:
+        logger.warning("DCE fetch failed: %s", exc)
         results["DCE"] = pd.DataFrame()
 
     for ex, df in results.items():
@@ -319,6 +450,14 @@ def _normalise_market_df(exchange: str, df: pd.DataFrame) -> pd.DataFrame:
     Adds/renames ``exchange`` and ``variety`` columns so downstream code can
     treat every exchange uniformly. Returns the input unchanged if it's
     empty or missing the contract identifier.
+
+    Also normalises the ``date`` column to a uniform
+    ``datetime.date`` type. Each per-exchange endpoint returns dates in a
+    different dtype (``int64`` epoch ms for CZCE, ``object`` of
+    ``pd.Timestamp`` / ``datetime`` for SHFE/CFFEX/INE/GFEX, Python
+    ``date`` for our DCE fetcher); concatenating them without coercion
+    yields a heterogeneous ``object`` column that crashes ``sort_values``
+    later in the pipeline.
     """
     if df is None or df.empty:
         return pd.DataFrame()
@@ -340,6 +479,10 @@ def _normalise_market_df(exchange: str, df: pd.DataFrame) -> pd.DataFrame:
             list(df.columns),
         )
         return pd.DataFrame()
+
+    # Normalise date to plain datetime.date (object dtype, but every cell
+    # is comparable because all values are date objects).
+    df["date"] = pd.to_datetime(df["date"], errors="coerce").dt.date
 
     df["exchange"] = exchange
     return df
@@ -711,6 +854,29 @@ class FuturesDailyPipeline(ETLPipeline):
         # Use "etf_code" as the internal symbol column name so this pipeline
         # can still share the same light format check as other bar pipelines.
         out = out.rename(columns={"__code": "etf_code"})
+
+        # Some exchanges (notably SHFE) return placeholder rows such as
+        # ``<ROOT>_TAS<MMYY>`` alongside the real contract — both map to the
+        # same ``etf_code`` via ``_symbol_root``. The placeholder rows have
+        # zero OI / zero volume / NaN settle, so we drop them by preferring
+        # the highest-open_interest row per ``(etf_code, trade_date)`` and
+        # keeping the row with the most populated price set as tie-breaker.
+        if not out.empty:
+            oi_for_rank = pd.to_numeric(
+                out.get("open_interest"), errors="coerce"
+            ).fillna(0)
+            non_null_prices = (
+                pd.to_numeric(out["close"], errors="coerce").notna().astype(int)
+                + pd.to_numeric(out["settle"], errors="coerce").notna().astype(int)
+            )
+            rank_score = oi_for_rank * 10 + non_null_prices
+            out["__rank"] = rank_score
+            out = (
+                out.sort_values(["etf_code", "trade_date", "__rank"], ascending=[True, True, False])
+                .drop_duplicates(subset=["etf_code", "trade_date"], keep="first")
+                .drop(columns="__rank")
+                .reset_index(drop=True)
+            )
 
         # Also track the latest underlying instrument per code so we can
         # update ``futures_contracts.underlying_instrument`` in load().
