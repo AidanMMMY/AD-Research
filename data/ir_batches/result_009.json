@@ -212,72 +212,72 @@
   {
     "code": "002689",
     "name": "ST远智",
-    "ir_url": null,
-    "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "ir_url": "https://www.bltelevator.com.cn/zh/blt-investor/2021-07-24-11-45-25.html",
+    "method": "official_ir",
+    "notes": ""
   },
   {
     "code": "002695",
     "name": "煌上煌",
-    "ir_url": null,
-    "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "ir_url": "http://hsh.com.cn/touzizhejiaoyu",
+    "method": "official_ir",
+    "notes": ""
   },
   {
     "code": "002696",
     "name": "百洋股份",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "未找到公司IR官网"
   },
   {
     "code": "002700",
     "name": "万憬能源",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "未找到公司IR官网"
   },
   {
     "code": "002701",
     "name": "奥瑞金",
-    "ir_url": null,
-    "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "ir_url": "https://www.orgtech.cn/index.php?m=content&c=index&a=lists&catid=104",
+    "method": "official_ir",
+    "notes": ""
   },
   {
     "code": "002702",
     "name": "海欣食品",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "未找到公司IR官网"
   },
   {
     "code": "002703",
     "name": "浙江世宝",
-    "ir_url": null,
-    "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "ir_url": "http://www.zjshibao.com/invest.html",
+    "method": "official_ir",
+    "notes": ""
   },
   {
     "code": "002708",
     "name": "光洋股份",
     "ir_url": null,
     "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "notes": "未找到公司IR官网"
   },
   {
     "code": "002712",
     "name": "思美传媒",
-    "ir_url": null,
-    "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "ir_url": "http://www.simei.cc/Investor",
+    "method": "official_ir",
+    "notes": ""
   },
   {
     "code": "002713",
     "name": "*ST东易",
-    "ir_url": null,
-    "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "ir_url": "https://dyrs.cn/list_Investor_Relations.html",
+    "method": "official_ir",
+    "notes": ""
   },
   {
     "code": "002714",

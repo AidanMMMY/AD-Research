@@ -212,9 +212,9 @@
   {
     "code": "002993",
     "name": "奥海科技",
-    "ir_url": null,
-    "method": "exchange_only",
-    "notes": "仅通过交易所/巨潮资讯网(cninfo.com.cn)披露，未找到独立IR页面或官网"
+    "ir_url": "https://www.aohaichina.com/Investor/p-445-5.html",
+    "method": "official_ir",
+    "notes": ""
   },
   {
     "code": "002995",
@@ -226,23 +226,23 @@
   {
     "code": "002997",
     "name": "瑞鹄模具",
-    "ir_url": null,
-    "method": "exchange_only",
-    "notes": "仅通过交易所/巨潮资讯网(cninfo.com.cn)披露，未找到独立IR页面或官网"
+    "ir_url": "http://www.rayhoo.net/invest.html",
+    "method": "official_ir",
+    "notes": ""
   },
   {
     "code": "003000",
     "name": "劲仔食品",
-    "ir_url": null,
-    "method": "exchange_only",
-    "notes": "仅通过交易所/巨潮资讯网(cninfo.com.cn)披露，未找到独立IR页面或官网"
+    "ir_url": "http://www.jinzaifood.com.cn/investor/index.html",
+    "method": "official_ir",
+    "notes": ""
   },
   {
     "code": "003001",
     "name": "中岩大地",
-    "ir_url": null,
-    "method": "exchange_only",
-    "notes": "仅通过交易所/巨潮资讯网(cninfo.com.cn)披露，未找到独立IR页面或官网"
+    "ir_url": "https://www.zydd.com/category/shares.html",
+    "method": "official_ir",
+    "notes": ""
   },
   {
     "code": "003003",

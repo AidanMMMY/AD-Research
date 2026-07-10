@@ -261,23 +261,23 @@
   {
     "code": "688362",
     "name": "甬矽电子",
-    "ir_url": null,
-    "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "ir_url": "https://www.forehope-elec.com/lists/7.html",
+    "method": "official_ir",
+    "notes": ""
   },
   {
     "code": "688363",
     "name": "华熙生物",
-    "ir_url": null,
-    "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "ir_url": "https://www.bloomagebiotech.com/investor.html",
+    "method": "official_ir",
+    "notes": ""
   },
   {
     "code": "688365",
     "name": "光云科技",
-    "ir_url": null,
-    "method": "exchange_only",
-    "notes": "默认：仅交易所/巨潮披露（待 agent 验证）"
+    "ir_url": "http://www.raycloud.com/guanxi/",
+    "method": "official_ir",
+    "notes": ""
   },
   {
     "code": "688366",
