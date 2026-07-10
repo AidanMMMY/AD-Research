@@ -49,13 +49,14 @@ _MIN_BARS = 5
 INDICATOR_BACKEND: str = os.environ.get("INDICATOR_BACKEND", "sql").lower()
 
 # Maximum codes per SQL batch. The recursive CTEs walk per etf_code,
-# and Postgres' plan time grows superlinearly past ~500 codes per
-# query.  We default to 100 to keep each individual query under ~5 s
-# and to stay well under the work_mem / temp_buffers budget on the
-# 7.1 GB ECS instance (a chunk of 500 once OOM'd the client when
-# it materialised the full per-code indicators CTE in one shot).
-# Override via env var if you need finer control.
-_SQL_BATCH_CHUNK_SIZE: int = int(os.environ.get("INDICATOR_SQL_CHUNK_SIZE", "100"))
+# and Postgres' plan time grows superlinearly past ~30 codes per
+# query (the six recursive chains in app/data/indicators/sql_calculator
+# are O(N²) on chunk size, so a chunk of 100 once took 5+ min and
+# never returned).  We default to 20 to keep each individual query
+# well under 30 s on the 7.1 GB ECS instance.  Override via env var
+# if you need finer control (e.g. INDICATOR_SQL_CHUNK_SIZE=10 on
+# a smaller box, or =50 on a beefier one).
+_SQL_BATCH_CHUNK_SIZE: int = int(os.environ.get("INDICATOR_SQL_CHUNK_SIZE", "20"))
 
 # Mapping of DataFrame column names to ETFIndicator model attribute names
 _INDICATOR_COLUMNS = [
