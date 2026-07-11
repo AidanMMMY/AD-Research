@@ -127,12 +127,16 @@ class CninfoReportsPipeline(ETLPipeline):
         """
         today = date.today()
         start = today - timedelta(days=self.window_days)
-        # Fetch synchronously via the service — the universe is ~800
-        # stocks and cninfo paginates internally, so this is fine for a
-        # nightly job.
+        # Fetch synchronously via the service — the full A-share universe
+        # (~3,200 stocks).  cninfo paginates internally at ~2s/stock so the
+        # nightly window (7 days × ~1 new report/stock) completes in ~2h.
+        from app.services.cninfo_report_service import get_all_org_id_universe
+
+        full_universe = get_all_org_id_universe()
         written = self.service.fetch_hs300_cs500_reports(
             start_date=start,
             end_date=today,
+            universe=full_universe,
         )
         # ``written`` is the upsert count; for ETL bookkeeping we still
         # return a list of the *raw records* that were processed.  We

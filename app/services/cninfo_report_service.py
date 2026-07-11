@@ -175,6 +175,32 @@ def get_hs300_cs500_universe(
     return sorted(seen)[:batch_size]
 
 
+def get_all_org_id_universe() -> list[str]:
+    """Return the full A-share universe from the cninfo org-id lookup table.
+
+    Reads ``app/data/static/cninfo_org_ids.json`` and returns every
+    ts_code that maps to a valid cninfo orgId.  This is the universe
+    used by the daily pipeline (post-backfill) — ~3,200 stocks.
+    """
+    import json
+    from pathlib import Path
+
+    path = Path(__file__).parent.parent / "data" / "static" / "cninfo_org_ids.json"
+    if not path.exists():
+        logger.warning("cninfo org-id table not found at %s — falling back to HS300+CS500", path)
+        return get_hs300_cs500_universe()
+
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        logger.warning("Failed to read cninfo org-id table: %s", exc)
+        return get_hs300_cs500_universe()
+
+    codes = sorted(k for k in data if not k.startswith("_"))
+    logger.info("cninfo full universe: %d stocks from org-id lookup", len(codes))
+    return codes
+
+
 # ---------------------------------------------------------------------------
 # Service
 # ---------------------------------------------------------------------------
