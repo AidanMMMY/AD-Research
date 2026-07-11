@@ -37,12 +37,12 @@ from app.data.pipelines.us_etf_discovery import USEtfDiscoveryPipeline
 from app.data.pipelines.us_stock_discovery import USStockDiscoveryPipeline
 from app.data.pipelines.us_stock_enrichment import USStockEnrichmentPipeline
 from app.models.etf import ETFInfo
+from app.models.etl import StrategyConfig
 from app.models.pool import ETFPools
 from app.services.etf_scanner_service import ETFScannerService
 from app.services.report_service import ReportService
 from app.services.scoring_service import ScoringService
 from app.services.signal_service import SignalService
-from app.services.strategy_service import StrategyService
 from app.strategies.base import StrategyRegistry
 
 scheduler = BackgroundScheduler()
@@ -841,10 +841,23 @@ def run_signal_generation(target_date: date | None = None):
     """
     db = SessionLocal()
     try:
-        strategy_service = StrategyService(db)
         signal_service = SignalService(db)
-        strategies = strategy_service.get_strategies()
-        active_strategies = [s for s in strategies if s.get("is_active")]
+
+        # Query active strategy configs directly (bypass StrategyService which
+        # requires user_id scoping — the scheduler operates system-wide).
+        active_configs = (
+            db.query(StrategyConfig)
+            .filter(StrategyConfig.is_active.is_(True))
+            .all()
+        )
+        active_strategies = [
+            {
+                "id": s.id,
+                "strategy_type": s.strategy_type,
+                "params": s.params,
+            }
+            for s in active_configs
+        ]
 
         # Get all active instruments (ETFs, stocks, crypto).
         etfs = db.query(ETFInfo).filter(ETFInfo.status == "active").all()
