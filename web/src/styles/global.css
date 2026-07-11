@@ -866,6 +866,14 @@ a:focus-visible {
   grid-template-columns: repeat(4, 1fr);
 }
 
+.ad-metric-strip--cols-5 {
+  grid-template-columns: repeat(5, 1fr);
+}
+
+.ad-metric-strip--cols-6 {
+  grid-template-columns: repeat(6, 1fr);
+}
+
 .ad-metric-item {
   padding: var(--space-5) var(--space-4);
   border-right: 1px solid var(--border-default);
@@ -1457,6 +1465,12 @@ a:focus-visible {
   word-break: break-word;
 }
 
+/* Detail drawer title — long Chinese announcement titles must wrap. */
+.ad-detail-title-break {
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
 /* Detail tags (symbol / category chips). */
 .ad-detail-tag {
   margin: 0;
@@ -1693,7 +1707,9 @@ a:focus-visible {
   }
 
   .ad-metric-strip,
-  .ad-metric-strip--cols-4 {
+  .ad-metric-strip--cols-4,
+  .ad-metric-strip--cols-5,
+  .ad-metric-strip--cols-6 {
     grid-template-columns: repeat(2, 1fr);
   }
 
@@ -2583,6 +2599,11 @@ main {
 .responsive-grid--gap-md { gap: var(--space-4); }
 .responsive-grid--gap-lg { gap: var(--space-5); }
 
+/* Stretch: each direct child fills the tallest row item. */
+.responsive-grid--stretch > * {
+  height: 100%;
+}
+
 @media (min-width: 576px) {
   .responsive-grid--cols-2,
   .responsive-grid--cols-3,
@@ -2647,45 +2668,27 @@ main {
   background: var(--bg-elevated);
 }
 
-/* Icon area: double-layer — large faded background icon + normal foreground icon */
-.empty-state__icon-area {
-  position: relative;
+/* Single-layer icon: forced 32px so antd icons (default 14px) render
+   consistently across all EmptyState call sites. */
+.empty-state__icon {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 80px;
-  height: 80px;
+  width: 32px;
+  height: 32px;
   margin-bottom: var(--space-3);
-}
-
-.empty-state__icon-bg {
-  position: absolute;
-  font-size: 64px;
-  opacity: 0.08;
-  color: var(--text-primary);
-  line-height: 1;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  pointer-events: none;
-}
-
-.empty-state__icon-bg svg,
-.empty-state__icon-bg .anticon {
-  font-size: 64px;
-}
-
-.empty-state__icon {
-  position: relative;
-  z-index: 1;
   font-size: 32px;
   color: var(--text-tertiary);
   line-height: 1;
 }
 
 .empty-state__icon svg,
-.empty-state__icon .anticon {
-  font-size: 32px;
+.empty-state__icon .anticon,
+.empty-state__icon > * {
+  font-size: 32px !important;
+  width: 32px !important;
+  height: 32px !important;
+  line-height: 1 !important;
 }
 
 .empty-state__title {
@@ -3802,6 +3805,17 @@ main {
   align-items: center;
 }
 
+@media (max-width: 767px) {
+  /* Mobile: account-selector / live-trading header stacks vertically. */
+  .phase5c-flex-wrap {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .phase5c-flex-wrap > * {
+    width: 100%;
+  }
+}
+
 /* ============================================================
    Phase 4 — Dashboard & List pages
    ============================================================ */
@@ -3964,6 +3978,25 @@ main {
   font-family: var(--font-mono);
   line-height: 1.1;
   color: var(--text-primary);
+  cursor: help;
+  border-bottom: 1px dashed transparent;
+  display: inline-block;
+  width: fit-content;
+}
+
+/* Coverage severity coloring — helps the eye land on a low coverage
+   number without having to interpret it. Hover still surfaces the
+   formula tooltip in the component. */
+.dashboard-coverage-card__pct--low {
+  color: var(--color-error-bright);
+}
+
+.dashboard-coverage-card__pct--mid {
+  color: var(--color-warning, #f59e0b);
+}
+
+.dashboard-coverage-card__pct--high {
+  color: var(--color-success-bright);
 }
 
 .dashboard-coverage-card__meta {
@@ -6453,10 +6486,10 @@ main {
 }
 
 .ad-heatmap-cell__score--positive {
-  color: var(--color-fall);
+  color: var(--color-rise);
 }
 .ad-heatmap-cell__score--negative {
-  color: var(--color-rise);
+  color: var(--color-fall);
 }
 .ad-heatmap-cell__score--neutral {
   color: var(--text-tertiary);
@@ -6475,10 +6508,10 @@ main {
   font-family: var(--font-mono);
 }
 .ad-detail-score-value--positive {
-  color: var(--color-fall);
+  color: var(--color-rise);
 }
 .ad-detail-score-value--negative {
-  color: var(--color-rise);
+  color: var(--color-fall);
 }
 .ad-detail-score-value--neutral {
   color: var(--text-primary);
@@ -6486,11 +6519,11 @@ main {
 
 .ad-mover-arrow--up {
   font-size: 12px;
-  color: var(--color-fall);
+  color: var(--color-rise);
 }
 .ad-mover-arrow--down {
   font-size: 12px;
-  color: var(--color-rise);
+  color: var(--color-fall);
 }
 
 .ad-mover-name {
@@ -6505,10 +6538,10 @@ main {
   font-family: var(--font-mono);
 }
 .ad-mover-score--positive {
-  color: var(--color-fall);
+  color: var(--color-rise);
 }
 .ad-mover-score--negative {
-  color: var(--color-rise);
+  color: var(--color-fall);
 }
 .ad-mover-score--neutral {
   color: var(--text-tertiary);
@@ -8011,6 +8044,19 @@ input[type="password"]::-webkit-strong-password-auto-fill-button {
   gap: 4px;
 }
 
+/* When a ContextHint wraps a FilterToolbar (e.g. Screen 详细筛选), the anchor
+   spans full width and the toolbar's default margin-bottom is redundant since
+   it sits at the end of the Panel body. */
+.context-hint__anchor:has(> .filter-toolbar) {
+  display: flex;
+  width: 100%;
+}
+
+.context-hint__anchor > .filter-toolbar {
+  margin-bottom: 0;
+  width: 100%;
+}
+
 /* OnboardingTour (K14) — let the AntD Tour modal handle most of the
    responsive work, but ensure that on tiny viewports the indicator
    row is still legible. */
@@ -8725,4 +8771,14 @@ input[type="password"]::-webkit-strong-password-auto-fill-button {
     height: 36px !important;
     line-height: 36px !important;
   }
+}
+
+/* Rating/Target-price adjacent columns on ResearchReports need visual gutter
+   so the tag/number don't visually collide. 2026-07-12 P0 fix. */
+.ant-table-thead .ad-col-rating + .ad-col-target-price,
+.ant-table-tbody .ad-col-rating + .ad-col-target-price {
+  padding-left: 16px !important;
+}
+.ad-col-rating {
+  padding-right: 16px !important;
 }

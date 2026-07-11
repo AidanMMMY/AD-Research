@@ -578,7 +578,7 @@ export default function EtfHoldingsHistoryPage() {
                 columns={snapshotColumns}
                 dataSource={holdingsQ.data.holdings}
                 pagination={false}
-                scroll={{ x: 700 }}
+                scroll={{ x: 'max-content' }}
               />
             )}
           </Panel>
@@ -682,7 +682,7 @@ export default function EtfHoldingsHistoryPage() {
                 columns={diffColumns}
                 dataSource={diffQ.data.entries}
                 pagination={false}
-                scroll={{ x: 800 }}
+                scroll={{ x: 'max-content' }}
               />
             )}
           </Panel>
@@ -789,6 +789,7 @@ function EtfPickerView({ onPick }: { onPick: (code: string) => void }) {
             rowKey="code"
             columns={columns}
             dataSource={items}
+            scroll={{ x: 'max-content' }}
             pagination={{ pageSize: 50, showSizeChanger: false }}
           />
         )}

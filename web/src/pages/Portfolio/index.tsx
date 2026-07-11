@@ -1,6 +1,6 @@
 import './styles.css';
 import { useMemo } from 'react';
-import { Card, Skeleton, Table, Tag } from 'antd';
+import { Card, Skeleton, Table, Tag, Tooltip } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import {
   DollarOutlined,
@@ -221,7 +221,17 @@ export default function Portfolio() {
         );
       },
     },
-    { title: '原因', dataIndex: 'reason', ellipsis: true },
+    {
+      title: '原因',
+      dataIndex: 'reason',
+      width: 220,
+      ellipsis: true,
+      render: (v: string) => (
+        <Tooltip title={v} placement="topLeft">
+          <span>{v}</span>
+        </Tooltip>
+      ),
+    },
   ];
 
   return (
@@ -263,14 +273,16 @@ export default function Portfolio() {
             }
           />
         ) : (
-          <Table<PaperAccountRow>
-            rowKey="key"
-            size="middle"
-            columns={accountColumns}
-            dataSource={accounts}
-            pagination={false}
-            scroll={{ x: 'max-content' }}
-          />
+          <div className="ad-table-scroll">
+            <Table<PaperAccountRow>
+              rowKey="key"
+              size="middle"
+              columns={accountColumns}
+              dataSource={accounts}
+              pagination={false}
+              scroll={{ x: 'max-content' }}
+            />
+          </div>
         )}
       </Panel>
 
@@ -306,14 +318,16 @@ export default function Portfolio() {
             }
           />
         ) : (
-          <Table<LiveAccountRow>
-            rowKey="key"
-            size="middle"
-            columns={liveColumns}
-            dataSource={liveRows}
-            pagination={false}
-            scroll={{ x: 'max-content' }}
-          />
+          <div className="ad-table-scroll">
+            <Table<LiveAccountRow>
+              rowKey="key"
+              size="middle"
+              columns={liveColumns}
+              dataSource={liveRows}
+              pagination={false}
+              scroll={{ x: 'max-content' }}
+            />
+          </div>
         )}
       </Panel>
 
@@ -361,7 +375,7 @@ export default function Portfolio() {
           />
         ) : (
           <>
-            <ResponsiveGrid cols={2} gap="sm" className="portfolio-diff-summary">
+            <ResponsiveGrid cols={2} gap="sm" className="portfolio-diff-summary" stretch>
               {diffItems.map((d) => (
                 <Card
                   key={d.code}
@@ -387,14 +401,16 @@ export default function Portfolio() {
               ))}
             </ResponsiveGrid>
             <div className="ad-mb-3" />
-            <Table<DiffItem>
-              rowKey="code"
-              size="small"
-              columns={diffColumns}
-              dataSource={diffItems}
-              pagination={false}
-              scroll={{ x: 'max-content' }}
-            />
+            <div className="ad-table-scroll">
+              <Table<DiffItem>
+                rowKey="code"
+                size="small"
+                columns={diffColumns}
+                dataSource={diffItems}
+                pagination={false}
+                scroll={{ x: 'max-content' }}
+              />
+            </div>
             <div className="ad-mt-2 ad-text-small ad-text-tertiary">
               注：实际权重当前为前端 mock（用于演示 diff 视图），待真实账户持仓聚合接口稳定后将切换为后端实时计算。
             </div>

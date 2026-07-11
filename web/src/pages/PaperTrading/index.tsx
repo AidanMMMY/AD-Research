@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import {
   Button,
   Card,
+  Dropdown,
   Form,
   Input,
   InputNumber,
@@ -19,6 +20,7 @@ import {
   SyncOutlined,
   ThunderboltOutlined,
   DeleteOutlined,
+  MoreOutlined,
 } from '@ant-design/icons';
 import PageShell from '@/components/PageShell';
 import PageHeader from '@/components/PageHeader';
@@ -29,6 +31,7 @@ import InstrumentCodeTag from '@/components/InstrumentCodeTag';
 import ResponsiveGrid from '@/components/ResponsiveGrid';
 import HelpPopover from '@/components/HelpPopover';
 import { useSettingsStore } from '@/stores/settings';
+import { useIsMobile } from '@/hooks/useBreakpoint';
 import ContextHint from '@/components/ContextHint';
 import {
   usePaperAccounts,
@@ -80,6 +83,7 @@ function formatDateTime(v: string | null | undefined): string {
 
 export default function PaperTrading() {
   const mode = useSettingsStore((s) => s.mode);
+  const isMobile = useIsMobile();
   const { data: accountsData, isLoading: accountsLoading } = usePaperAccounts();
   const accounts = accountsData?.items || [];
 
@@ -360,6 +364,7 @@ export default function PaperTrading() {
               value={selectedAccountId}
               onChange={setSelectedAccountId}
               className="phase5c-select--lg"
+              style={isMobile ? { width: '100%' } : undefined}
               options={accounts.map((a) => ({
                 value: a.id,
                 label: (
@@ -440,42 +445,95 @@ export default function PaperTrading() {
 
           <SectionHeading title="操作" />
           <div className="phase5c-action-bar phase5c-section">
-            <Button
-              icon={<PlusOutlined />}
-              onClick={() => setOrderModalOpen(true)}
-              type="primary"
-            >
-              手动下单
-            </Button>
-            <Button
-              icon={<SyncOutlined />}
-              onClick={handleSync}
-              loading={syncMarket.isPending}
-            >
-              刷新市值
-            </Button>
-            <Button
-              icon={<ThunderboltOutlined />}
-              onClick={handleAutoTrade}
-              loading={autoTrade.isPending}
-            >
-              信号自动交易
-            </Button>
-            <Popconfirm
-              title="确认归档该账户？"
-              description="归档后账户将不可见，相关持仓与订单记录仍保留。"
-              onConfirm={() => handleDeleteAccount(selectedAccountId)}
-              okText="确认归档"
-              cancelText="取消"
-            >
-              <Button
-                icon={<DeleteOutlined />}
-                danger
-                loading={deleteAccount.isPending}
-              >
-                归档账户
-              </Button>
-            </Popconfirm>
+            {isMobile ? (
+              <>
+                <Button
+                  icon={<PlusOutlined />}
+                  onClick={() => setOrderModalOpen(true)}
+                  type="primary"
+                >
+                  下单
+                </Button>
+                <Button
+                  icon={<SyncOutlined />}
+                  onClick={handleSync}
+                  loading={syncMarket.isPending}
+                  aria-label="刷新市值"
+                />
+                <Button
+                  icon={<ThunderboltOutlined />}
+                  onClick={handleAutoTrade}
+                  loading={autoTrade.isPending}
+                  aria-label="信号自动交易"
+                />
+                <Dropdown
+                  trigger={['click']}
+                  menu={{
+                    items: [
+                      {
+                        key: 'archive',
+                        icon: <DeleteOutlined />,
+                        label: '归档账户',
+                        danger: true,
+                        disabled: deleteAccount.isPending,
+                        onClick: () => {
+                          Modal.confirm({
+                            title: '确认归档该账户？',
+                            content:
+                              '归档后账户将不可见，相关持仓与订单记录仍保留。',
+                            okText: '确认归档',
+                            cancelText: '取消',
+                            okButtonProps: { danger: true },
+                            onOk: () => handleDeleteAccount(selectedAccountId),
+                          });
+                        },
+                      },
+                    ],
+                  }}
+                >
+                  <Button icon={<MoreOutlined />} aria-label="更多操作" />
+                </Dropdown>
+              </>
+            ) : (
+              <>
+                <Button
+                  icon={<PlusOutlined />}
+                  onClick={() => setOrderModalOpen(true)}
+                  type="primary"
+                >
+                  手动下单
+                </Button>
+                <Button
+                  icon={<SyncOutlined />}
+                  onClick={handleSync}
+                  loading={syncMarket.isPending}
+                >
+                  刷新市值
+                </Button>
+                <Button
+                  icon={<ThunderboltOutlined />}
+                  onClick={handleAutoTrade}
+                  loading={autoTrade.isPending}
+                >
+                  信号自动交易
+                </Button>
+                <Popconfirm
+                  title="确认归档该账户？"
+                  description="归档后账户将不可见，相关持仓与订单记录仍保留。"
+                  onConfirm={() => handleDeleteAccount(selectedAccountId)}
+                  okText="确认归档"
+                  cancelText="取消"
+                >
+                  <Button
+                    icon={<DeleteOutlined />}
+                    danger
+                    loading={deleteAccount.isPending}
+                  >
+                    归档账户
+                  </Button>
+                </Popconfirm>
+              </>
+            )}
           </div>
 
           <SectionHeading title="当前持仓" />
@@ -530,6 +588,8 @@ export default function PaperTrading() {
         onCancel={() => setCreateModalOpen(false)}
         onOk={() => createForm.submit()}
         confirmLoading={createAccount.isPending}
+        width={isMobile ? '100%' : 520}
+        destroyOnClose
       >
         <Form
           form={createForm}
@@ -560,6 +620,8 @@ export default function PaperTrading() {
         onCancel={() => setOrderModalOpen(false)}
         onOk={() => orderForm.submit()}
         confirmLoading={placeOrder.isPending}
+        width={isMobile ? '100%' : 520}
+        destroyOnClose
       >
         <Form
           form={orderForm}

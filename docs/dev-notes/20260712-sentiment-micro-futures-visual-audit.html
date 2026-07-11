@@ -1,0 +1,496 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<title>AD-Research 前端 5 页视觉层级与布局审计报告 — 2026-07-12</title>
+<style>
+  :root{
+    --bg:#0d1117; --card:#161b22; --card2:#1c2230; --border:#30363d;
+    --text:#e6edf3; --muted:#8b949e; --accent:#58a6ff; --warn:#d29922; --fall:#f85149; --rise:#3fb950;
+    --code-bg:#0b1119;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",Helvetica,Arial,sans-serif;font-size:14px;line-height:1.6}
+  .wrap{max-width:980px;margin:0 auto;padding:32px 24px 80px}
+  h1{font-size:26px;line-height:1.3;border-bottom:1px solid var(--border);padding-bottom:12px;margin:0 0 24px}
+  h2{font-size:20px;margin:48px 0 16px;color:var(--accent);border-left:4px solid var(--accent);padding-left:10px}
+  h3{font-size:16px;margin:28px 0 10px;color:#d0d7de}
+  h4{font-size:14px;margin:20px 0 8px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+  p{margin:8px 0}
+  ul,ol{margin:8px 0 8px 22px;padding:0}
+  li{margin:4px 0}
+  code{background:var(--code-bg);border:1px solid var(--border);border-radius:4px;padding:1px 6px;font-size:12.5px;font-family:"SF Mono",Menlo,Consolas,monospace;color:#e6edf3}
+  pre{background:var(--code-bg);border:1px solid var(--border);border-radius:6px;padding:12px 14px;overflow:auto;font-size:12.5px;line-height:1.55}
+  pre code{background:transparent;border:none;padding:0}
+  table{width:100%;border-collapse:collapse;margin:14px 0;font-size:13px}
+  th,td{border:1px solid var(--border);padding:7px 10px;text-align:left;vertical-align:top}
+  th{background:var(--card);color:var(--muted);font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.04em}
+  tr:nth-child(even) td{background:var(--card)}
+  .meta{color:var(--muted);font-size:12.5px;margin-bottom:8px}
+  .meta b{color:var(--text)}
+  .tag{display:inline-block;padding:1px 7px;border-radius:10px;font-size:11px;font-weight:600;margin-right:4px}
+  .tag-high{background:rgba(248,81,73,.15);color:var(--fall);border:1px solid rgba(248,81,73,.4)}
+  .tag-mid{background:rgba(210,153,34,.15);color:var(--warn);border:1px solid rgba(210,153,34,.4)}
+  .tag-low{background:rgba(139,148,158,.15);color:var(--muted);border:1px solid rgba(139,148,158,.4)}
+  .badge{display:inline-block;background:var(--accent);color:#0d1117;font-size:11px;font-weight:700;border-radius:8px;padding:1px 7px;margin-left:6px}
+  .callout{background:var(--card);border:1px solid var(--border);border-left:3px solid var(--accent);border-radius:6px;padding:10px 14px;margin:12px 0;color:var(--text)}
+  .callout.warn{border-left-color:var(--warn)}
+  .callout.bad{border-left-color:var(--fall)}
+  .toc{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:12px 16px;margin:18px 0 24px}
+  .toc ol{margin:6px 0 0 22px;padding:0}
+  .toc a{color:var(--accent);text-decoration:none}
+  .toc a:hover{text-decoration:underline}
+  a{color:var(--accent)}
+  .footer{margin-top:60px;border-top:1px solid var(--border);padding-top:14px;color:var(--muted);font-size:12px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>AD-Research 前端 5 页视觉层级与布局审计报告</h1>
+<div class="meta">
+  <b>审计范围</b>：<code>Sentiment</code> / <code>SentimentDashboard</code> / <code>CorrelationAnalysis</code> / <code>Microstructure</code> / <code>Futures</code> 五页 + 共享组件 + <code>global.css</code><br/>
+  <b>审计维度</b>：分组/分类、图标位置、卡片对齐、图表对齐、表格对齐、雷达图/分布图可读性、响应式 + 跨页面一致性<br/>
+  <b>审计日期</b>：2026-07-12 &nbsp;|&nbsp; <b>本报告仅记录问题，不修改代码</b>
+</div>
+
+<div class="toc">
+<b>目录</b>
+<ol>
+  <li><a href="#sec0">跨页面共性问题（C1–C11）</a></li>
+  <li><a href="#sec1">Sentiment 散户情绪看板</a></li>
+  <li><a href="#sec2">SentimentDashboard 单标的情绪</a></li>
+  <li><a href="#sec3">CorrelationAnalysis 相关性分析</a></li>
+  <li><a href="#sec4">Microstructure 微结构数据</a></li>
+  <li><a href="#sec5">Futures 商品期货</a></li>
+  <li><a href="#sec6">雷达图 / 分布图可读性专项</a></li>
+  <li><a href="#sec7">响应式专项</a></li>
+  <li><a href="#sec8">跨页面一致性总览</a></li>
+  <li><a href="#sec9">建议修复优先级</a></li>
+  <li><a href="#sec10">附录：关键文件清单</a></li>
+</ol>
+</div>
+
+<h2 id="sec0">0. 跨页面共性问题</h2>
+<table>
+<thead><tr><th>#</th><th>问题</th><th>涉及页面</th><th>严重度</th></tr></thead>
+<tbody>
+<tr><td>C1</td><td><code>SentimentDashboard</code> 完全没有用 <code>PageShell / PageHeader</code>，与项目其它页面风格不一致</td><td>SentimentDashboard</td><td><span class="tag tag-high">高</span></td></tr>
+<tr><td>C2</td><td><code>SentimentDashboard</code> 用 Antd <code>&lt;Empty&gt;</code>，其余 4 页都用项目 <code>EmptyState</code> 组件</td><td>SentimentDashboard</td><td><span class="tag tag-mid">中</span></td></tr>
+<tr><td>C3</td><td><code>Microstructure</code> 顶部 4 张 KPI 用 <code>Card+Statistic</code>，与 Futures 的 <code>StatCard</code> 自定义组件样式不一致</td><td>Microstructure / Futures</td><td><span class="tag tag-mid">中</span></td></tr>
+<tr><td>C4</td><td><code>Microstructure</code> 引用了别的页面的样式类 <code>detail-kpi-rise/fall</code>（不存在于 Microstructure/styles.css），本地 <code>microstructure__kpi-*</code> 反而是死代码</td><td>Microstructure</td><td><span class="tag tag-mid">中</span></td></tr>
+<tr><td>C5</td><td><code>Sentiment</code> 热力图 <code>heatmapColor</code> 函数未读 <code>useSettingsStore.colorConvention</code>，切换美股/A 股配色后，热力图方向反了</td><td>Sentiment</td><td><span class="tag tag-high">高</span></td></tr>
+<tr><td>C6</td><td><code>phase5c-</code> 前缀（早期）与 <code>ad-</code> 前缀（当前）的工具类混用，命名约定不一致</td><td>全部 5 页</td><td><span class="tag tag-mid">中</span></td></tr>
+<tr><td>C7</td><td><code>FilterToolbar.total</code> 在 <code>Microstructure</code> 显示的是"当前 tab 的数据量"，位置错位——应该挂在 Tab 标签的 badge 上</td><td>Microstructure</td><td><span class="tag tag-mid">中</span></td></tr>
+<tr><td>C8</td><td><code>PageHeader.eyebrow</code> 只有 <code>Futures</code> 一页在用，5 页视觉层级基准不一致</td><td>全部 5 页</td><td><span class="tag tag-low">低</span></td></tr>
+<tr><td>C9</td><td><code>Microstructure/styles.css</code> 定义了 <code>microstructure__kpi-rise/fall</code> / <code>microstructure__filter-input</code> 但代码从未引用，本地样式文件基本是死代码</td><td>Microstructure</td><td><span class="tag tag-low">低</span></td></tr>
+<tr><td>C10</td><td><code>CorrelationAnalysis/styles.css</code> 完全为空（只剩注释），本应是该页样式归口</td><td>CorrelationAnalysis</td><td><span class="tag tag-low">低</span></td></tr>
+<tr><td>C11</td><td>5 页中有 3 页用 legacy <code>phase5c-input--md / phase5c-select--xxs</code> / <code>phase5c-icon-title</code>，utility 命名空间混乱</td><td>Sentiment / Microstructure / SentimentDashboard</td><td><span class="tag tag-mid">中</span></td></tr>
+</tbody>
+</table>
+
+<h2 id="sec1">1. Sentiment（散户情绪看板）</h2>
+<div class="meta">文件：<code>web/src/pages/Sentiment/index.tsx</code>（607 行，无独立 <code>styles.css</code>，全部样式在 <code>global.css</code>）</div>
+
+<h4>1.1 分组/分类</h4>
+<ul>
+  <li>市场分类 Segmented（全部 / A 股 / 美股 / 加密）：OK，但持久化键 <code>sentiment-market</code> 写在 <code>localStorage</code>，没考虑登录用户偏好（设置里）。</li>
+  <li>情绪类型：<code>positive / neutral / negative</code> 通过 <code>POLL_SLICE_COLORS</code> 映射到 <code>color-rise / text-tertiary / color-fall</code>，<b>映射方向与中国习惯相反</b>（红=涨=positive，绿=跌=negative）。详情面板里的 <code>ad-detail-score-value--positive</code> 又映射到 <code>color-fall</code>（绿），<b>热力图与详情面板同一页内颜色方向不一致</b>（见 1.5）。</li>
+</ul>
+
+<h4>1.2 图标位置</h4>
+<ul>
+  <li>Panel title 图标仅 <code>Sentiment</code> 一页用到（<code>&lt;HeartOutlined&gt;</code> + <code>&lt;FireOutlined&gt;</code>），与其它页 Panel title 纯文字不一致。</li>
+  <li>"情绪最强烈" Panel 的 <code>FireOutlined</code> 与 Panel 内 mover row 的 <code>ArrowUpOutlined / ArrowDownOutlined</code> 出现图标重复。</li>
+</ul>
+
+<h4>1.3 卡片对齐</h4>
+<ul>
+  <li>热力图单元格 <code>min-width: 120px / min-height: 64px</code>（global.css <code>.ad-heatmap-cell</code>），1280px 容器下大约 8 列；50+ 标的时很密集。</li>
+  <li>单标详情面板里 <code>&lt;ResponsiveGrid cols={2}&gt;</code>：左 PieBreakdown（56×56）+ 右"多空比"文本 + Button。两列高度差大，左列垂直居中（<code>ad-items-center</code>），但右列含文字 + Button 跨度更大 → 视觉上两列不对齐。</li>
+  <li>DistributionRadar 在 Panel 底部独占一行，与上方 <code>Sparkline + PieBreakdown</code> 之间靠 <code>ad-mt-4</code> 隔开，<b>没有视觉分组</b>（缺 divider 或 section heading）。</li>
+</ul>
+
+<h4>1.4 图表对齐</h4>
+<ul>
+  <li>热力图 <code>auto-fill, minmax(120px, 1fr)</code> + <code>gap: var(--space-2)</code>：OK，但在 mobile (<code>&lt;576px</code>) 没有特别处理，会退化为 1-2 列。</li>
+  <li><code>Sparkline</code> 写死 <code>width={240}, height={48}</code>，放进 <code>ResponsiveGrid cols={2}</code> 时容器宽度 &lt;240 会被压缩或溢出 → <b>硬编码尺寸破坏响应式</b>。</li>
+  <li><code>PieBreakdown</code>：硬编码 56×56，<b>缺刻度/百分比标签</b>，只能 hover Tooltip 看。</li>
+  <li><code>DistributionRadar</code>：硬编码 80×80，<b>字号 8px 偏小</b>，5 轴标签容易重叠。</li>
+</ul>
+
+<h4>1.5 颜色一致性（重要 Bug）</h4>
+<pre><code>const POLL_SLICE_COLORS: Record&lt;SentimentLabel, string&gt; = {
+  positive: 'var(--color-rise)',     // 红
+  neutral:  'var(--text-tertiary)',  // 灰
+  negative: 'var(--color-fall)',     // 绿
+};</code></pre>
+<p>而 <code>ad-detail-score-value--positive</code> 映射到 <code>color-fall</code>（绿）。两个方向不一致，且都不响应 <code>useSettingsStore.colorConvention</code>。</p>
+<p>热力图 <code>heatmapColor(score, importance)</code> 直接硬编码 RGB：</p>
+<pre><code>const r = score &gt; 0 ? 82 : score &lt; 0 ? 245 : 140;
+const g = score &gt; 0 ? 196 : score &lt; 0 ? 34 : 140;</code></pre>
+<p><b>没有经过 <code>resolveChartColors</code> 或 <code>colorConvention</code></b>，切配色后方向仍固定为中国习惯（红=positive）。</p>
+
+<h4>1.6 Top Movers 列表</h4>
+<ul>
+  <li><code>ad-mover-row</code> 用 <code>flex + gap</code>，但行内 <code>ad-mover-name</code> 用 <code>flex: 1</code>，<b>InstrumentCodeTag 内部可能塞 1-2 行（name + name_zh）</b>，行高不一致。</li>
+  <li>颜色：<code>ad-mover-arrow--up</code> 映射 <code>color-fall</code>（绿），<code>ad-mover-arrow--down</code> 映射 <code>color-rise</code>（红）—— <b>箭头方向与字面颜色相反</b>，用户首次看到容易迷惑（向上箭头却是绿色 = 跌？还是涨？）。</li>
+</ul>
+
+<h4>1.7 响应式</h4>
+<ul>
+  <li><code>.ad-news-layout</code> 在 ≤991px 自动 <code>grid-template-columns: 1fr</code>（OK）。</li>
+  <li>但右栏 <code>dashboard-side-stack</code> 的 2 个 Panel 在 mobile 上垂直堆叠，<b>单标详情 Panel 在未选中时显示 EmptyState 占高度</b> → 浪费屏效。</li>
+  <li>热力图 <code>min-width: 120px</code> 在 360px 屏上会裁掉，仅 2-3 列。</li>
+</ul>
+
+<h4>1.8 小结（Sentiment）</h4>
+<div class="callout bad">最该修的是 <b>C5（颜色约定不响应切换）+ 1.5 的 POLL_SLICE_COLORS / detail-score-value 方向不一致</b>，以及 <b>1.6 mover 箭头颜色与方向反向</b>。</div>
+
+
+<h2 id="sec2">2. SentimentDashboard（单标的情绪）</h2>
+<div class="meta">文件：<code>web/src/pages/SentimentDashboard/index.tsx</code>（164 行，无 <code>styles.css</code>）</div>
+
+<h4>2.1 整体架构偏离项目约定</h4>
+<ul>
+  <li><b>没有 <code>&lt;PageShell maxWidth="wide"&gt;</code> 包裹</b>：在宽屏下内容会铺满整个 <code>Layout.Content</code>（1600px+），显得空旷。</li>
+  <li><b>没有 <code>&lt;PageHeader&gt;</code></b>：用 <code>&lt;h1 className="page-header-title"&gt;</code> + <code>&lt;p className="page-header-description ad-mb-8"&gt;</code>。但 PageHeader 的 <code>data-onboard</code>、<code>tutorial</code>（新手模式教学）、<code>extra</code> 槽都没有 → <b>与项目其它页面 header 行为不一致</b>。</li>
+  <li><code>&lt;GlassCard&gt;</code> 直接包工具栏，但工具栏用 <code>phase5c-flex-wrap</code>，<b>没有用项目 <code>&lt;FilterToolbar&gt;</code></b>，导致无 meta / total / data-onboard / 移动端统一子项行为。</li>
+</ul>
+
+<h4>2.2 工具栏布局</h4>
+<ul>
+  <li>横向：<code>Input</code> + 文字"回溯 X 天" + <code>Slider</code> + <code>Button</code>。</li>
+  <li><code>Slider</code> 的 <code>min={1} max={30}</code> 长度无限制，<b>在中宽屏下会把 Button 挤到第二行</b>。</li>
+  <li>文字"回溯 N 天" 与 Slider 中间的视觉关联弱。</li>
+  <li><b>"重要性 ≥" 这类一致 label 在本页面不存在</b>，对照 Sentiment 页使用 <code>&lt;span className="ad-filter-label"&gt;重要性 ≥&lt;/span&gt;</code> 风格 → 跨页 label 写法不统一。</li>
+</ul>
+
+<h4>2.3 结果卡片（SentimentCard）</h4>
+<ul>
+  <li>单卡布局：图标 → 分数 40px → 主题标签 → bar → 计数 → 共 N 篇 · 近 N 天</li>
+  <li><code>ad-sentiment-bar</code> <code>max-width: 320px</code> + <code>margin: var(--space-lg) auto 0</code>：在窄屏 360px 下因 max-width 不会撑满。</li>
+  <li>"正/中/负" 计数 <code>ad-flex ad-justify-center ad-gap-5</code>：与上方 bar 之间无明确分隔（仅靠 5px gap）。</li>
+  <li>卡片下方"共 N 篇 · 近 N 天"信息密度低，与 <code>Period_days</code> 重复。</li>
+</ul>
+
+<h4>2.4 空状态</h4>
+<ul>
+  <li>用 Antd <code>&lt;Empty&gt;</code>，<b>没有项目 <code>&lt;EmptyState&gt;</code> 的圆形 icon 背景</b>，视觉权重低于其它页面。</li>
+</ul>
+
+<h4>2.5 响应式</h4>
+<ul>
+  <li>没有 PageShell → 在 ≤576px mobile 下，Slider 仍然是大宽度元素，可能顶出容器。</li>
+</ul>
+
+<h4>2.6 小结（SentimentDashboard）</h4>
+<div class="callout bad">最该修的是 <b>C1（缺 PageShell/PageHeader）+ C2（空状态不一致）+ 2.2 工具栏应改用 FilterToolbar</b>。</div>
+
+
+<h2 id="sec3">3. CorrelationAnalysis（相关性分析）</h2>
+<div class="meta">文件：<code>web/src/pages/CorrelationAnalysis/index.tsx</code>（113 行）+ 空 <code>styles.css</code>（只注释）</div>
+
+<h4>3.1 配置面板布局</h4>
+<ul>
+  <li>顶部 <code>&lt;Panel title="相关性分析配置"&gt;</code> 内嵌 <code>&lt;FilterToolbar&gt;</code>：两层包装，外 Panel + 内 FilterToolbar，padding 重复。</li>
+  <li><code>&lt;Row gutter={[16, 16]}&gt;</code> + 三 <code>&lt;Col xs={24} md={12/6/6}&gt;</code>：mobile 下三列垂直堆叠，但 InstrumentSelector 单独占满 1 行宽度 100%。</li>
+  <li><b>filter-label 与 Select 之间靠堆叠</b>：<pre><code>&lt;div className="ad-filter-label"&gt;窗口期：&lt;/div&gt;
+&lt;Select ... className="ad-w-full" /&gt;</code></pre>没有"label + control 一行"布局，<b>mobile 下每个控件都先 label 后控件垂直堆叠，浪费屏效</b>。</li>
+</ul>
+
+<h4>3.2 Select 文本</h4>
+<ul>
+  <li><code>METHOD_OPTIONS</code> 的 label 用 <code>&lt;HelpPopover&gt;</code> 包裹 Pearson/Spearman，<b>hover 才有 tooltip</b>。</li>
+  <li>"窗口期" 和 "计算方法" 标题都用 <code>:</code> 结尾 + 单独 div，<b>与项目其它页面 label 写法不一致</b>。</li>
+</ul>
+
+<h4>3.3 热力图布局</h4>
+<ul>
+  <li>直接用 <code>&lt;CorrelationHeatmap&gt;</code>，外层包 <code>&lt;div className="ad-chart-container"&gt;</code>。<code>ad-chart-container</code> 高度固定 <code>300px</code>，但 <code>&lt;CorrelationHeatmap&gt;</code> 内部 <code>style={{ height: isMobile ? 300 : 400 }}</code> → <b>外层 300px 与内层 400px 冲突</b>。</li>
+  <li>visualMap 横向放底部 <code>bottom: 0</code>，x 轴 label <code>rotate: 45</code> → 20 行 label 时底部空间 60px 偏紧。</li>
+</ul>
+
+<h4>3.4 颜色方向</h4>
+<ul>
+  <li><code>inRange.color = [colorFall, bgBase, colorRise]</code>，min=-1 max=1。</li>
+  <li>默认 dark 主题 <code>colorFall=#5fa87a</code>（绿）→ -1 显示绿色，+1 显示红色。</li>
+  <li><b>正负相关方向与"涨/跌"颜色方向相反</b>：colorRise=正相关，但"rise" 字面是涨 → 用户容易混淆。</li>
+  <li>没有读 <code>colorConvention</code>，<b>切换 A 股/美股配色后颜色方向不会变</b>。</li>
+</ul>
+
+<h4>3.5 响应式</h4>
+<ul>
+  <li>配置行 <code>xs={24} md={12} md={6} md={6}</code> 在 ≤991px → InstrumentSelector 全宽、两个 Select 全宽堆叠（OK）。</li>
+  <li>热力图在 mobile height=300，但 mobile 标签 fontsize=8，视觉权重太弱。</li>
+</ul>
+
+<h4>3.6 标题与配置冗余</h4>
+<ul>
+  <li>顶部 PageHeader "相关性分析" + description；紧接着又有一个 Panel "相关性分析配置"，<b>"相关性" 在 1 屏内出现 3 次</b>。</li>
+</ul>
+
+<h4>3.7 小结（CorrelationAnalysis）</h4>
+<div class="callout warn">最该修的是 <b>3.1（label+control 一行布局）+ 3.3（ad-chart-container 高度冲突）+ 3.4（颜色方向）</b>。</div>
+
+
+<h2 id="sec4">4. Microstructure（微结构数据）</h2>
+<div class="meta">文件：<code>web/src/pages/Microstructure/index.tsx</code>（313 行）+ <code>styles.css</code>（28 行）</div>
+
+<h4>4.1 顶部 KPI 卡</h4>
+<ul>
+  <li>4 张 <code>&lt;Card&gt;&lt;Statistic ... /&gt;&lt;/Card&gt;</code>：
+    <ul>
+      <li>"最新龙虎榜条数" 带 <code>prefix={&lt;FundOutlined /&gt;}</code> + <code>suffix="(2026-07-11)"</code>，其它 3 张没 prefix。</li>
+      <li>"北向净流入" 用 <code>detail-kpi-rise / detail-kpi-fall</code> 控制颜色，但<b>这两个 className 是在别的页面（detail 页）的 styles.css 定义的</b>，Microstructure 本地 styles.css 里的 <code>.microstructure__kpi-rise/fall</code> 反而是死代码（从未被引用）。</li>
+      <li><b>跨页面样式耦合 + 本地 styles.css 失效</b>。</li>
+    </ul>
+  </li>
+  <li>4 张卡视觉高度不一致（prefix 的那张因 padding 多 ~4px）。</li>
+  <li>与 Futures 页 <code>&lt;StatCard&gt;</code> 组件相比，Card+Statistic 没有统一的 token 化样式。</li>
+</ul>
+
+<h4>4.2 工具栏</h4>
+<ul>
+  <li><code>&lt;FilterToolbar total={tabTotal}&gt;</code>：<code>total</code> 是当前 tab 的数据量，<b>位置错位</b>（应当在 Tab 标签上以 badge 显示，而不是 toolbar meta）。</li>
+  <li><code>&lt;Input&gt;</code> 用 <code>phase5c-input--md</code> (220px) + <code>&lt;Select&gt;</code> <code>phase5c-select--xxs</code> (90px)：<b><code>marginExchange</code> 仅在 <code>tab === 'margin'</code> 时出现</b>，切换 tab 时 DOM 中 Select 消失，<b>工具栏间距跳变</b>。</li>
+  <li>没有 Segment / Segmented，市场/分类筛选缺失。</li>
+</ul>
+
+<h4>4.3 Tabs（数据分类）</h4>
+<ul>
+  <li>4 个 tab：<b>龙虎榜 / 沪深港通 / 融资融券 / 限售解禁</b>，全是文字。</li>
+  <li>缺图标 + 缺 badge 总数（如 <code>龙虎榜 (123)</code>）。</li>
+  <li>mobile 4 个 tab 一行可能超出容器，需要横向滚动但没有视觉提示。</li>
+</ul>
+
+<h4>4.4 表格对齐</h4>
+<ul>
+  <li>4 个 tab 各自 <code>columns</code> 写死 <code>width</code>（110/100/90/120/80）。</li>
+  <li><b>"原因"列 <code>ellipsis: true</code> 但没有 <code>Tooltip</code> 全文字</b>，hover 看不到完整原因。</li>
+  <li>数字列用 <code>tabular-nums</code> + <code>formatMoney / formatPct</code>：OK，但 <code>formatMoney</code> 转换 <code>亿 / 万 / 原值</code> 时<b>单位字号与数字一致</b>。</li>
+  <li>表格在 1280px 容器下，4 张卡宽度加 columns 总和大概够；但 mobile 下 <code>scroll={{ x: 'max-content' }}</code> 横向滚动没有指示。</li>
+</ul>
+
+<h4>4.5 全量刷新按钮</h4>
+<ul>
+  <li><code>extra={&lt;Space&gt;&lt;LastUpdated/&gt;&lt;Button&gt;全量刷新&lt;/Button&gt;&lt;/Space&gt;}</code>：OK，但按钮 + LastUpdated 紧贴，没分隔。</li>
+</ul>
+
+<h4>4.6 响应式</h4>
+<ul>
+  <li>KPI 4 张 <code>ResponsiveGrid cols={4}</code>：≤991px → 2 列；≤767px → 1 列。OK。</li>
+  <li>Tab 在 mobile 横向溢出。</li>
+  <li>表格 mobile 横向滚动无指示。</li>
+</ul>
+
+<h4>4.7 小结（Microstructure）</h4>
+<div class="callout warn">最该修的是 <b>C4（跨页面样式耦合）+ 4.2（total 错位 + Select 跳变）+ 4.4（原因列缺 Tooltip）+ 4.3（Tab 缺 badge）</b>。</div>
+
+
+<h2 id="sec5">5. Futures（商品期货）</h2>
+<div class="meta">文件：<code>web/src/pages/Futures/index.tsx</code>（367 行，无 <code>styles.css</code>）</div>
+
+<h4>5.1 顶部 PageHeader</h4>
+<ul>
+  <li>唯一用 <code>eyebrow="期货"</code> 的页面 → 与其它 4 页不一致。</li>
+  <li>description 文字信息密度高，含"金属 / 能源化工 / 农产品 / 金融期货"分类 → <b>description 实际上成了"分类列表"，与下方 Tabs 重复</b>。</li>
+</ul>
+
+<h4>5.2 市场概况 Panel</h4>
+<ul>
+  <li>4 张 StatCard（自定义 <code>StatCard</code>）：<code>主力合约总数 / K线记录总数 / 数据日期 / 领头羊 / 领跌</code>。</li>
+  <li>第 4 张"领头羊 / 领跌"：<code>value</code> 是两个 InstrumentCodeTag + 斜杠放在 flex row。</li>
+  <li>mobile <code>cols={4}</code> 退化为 1-2 列时，"领头羊 / 领跌" 这张卡可能因为两个 code 标签 + 斜杠导致<b>内部换行</b>。</li>
+  <li>StatCard 的 title 走 <code>text-transform: uppercase, letter-spacing: 0.12em</code>，中文"主力合约总数"会被强制 uppercase → <b>中文渲染不受影响，但字间距 0.12em 偏大</b>。</li>
+</ul>
+
+<h4>5.3 分类 Tabs</h4>
+<ul>
+  <li>4 个 tab 用 emoji 作为图标：
+<pre><code>const PRODUCT_ICON: Record&lt;Product, string&gt; = {
+  金属: '🟡',
+  能源化工: '🛢️',
+  农产品: '🌾',
+  金融期货: '📊',
+};</code></pre>
+  </li>
+  <li><b>emoji 渲染依赖 OS</b>，跨平台不一致。</li>
+  <li>emoji 与中文字符基线不对齐 → 标签视觉跳动。</li>
+  <li>Tab 内嵌 <code>&lt;Tag&gt;</code> 显示数量：
+<pre><code>&lt;Tag color={sectionsByProduct[p] ? 'blue' : 'default'} className="ad-ml-2"&gt;
+  {sectionsByProduct[p]?.count ?? 0}
+&lt;/Tag&gt;</code></pre>
+  </li>
+  <li><b>Tab 标签内嵌 Tag 会让 4 个 tab 高度不一致</b>（含 Tag 的更高），且 Tag 的 border 让文字视觉重量变重。</li>
+</ul>
+
+<h4>5.4 ProductTab 内部布局（每个板块）</h4>
+<ul>
+  <li>顶部：<code>&lt;Panel title="板块概况"&gt;</code> + <code>&lt;ProductSummary&gt;</code> → 3 个 Statistic。</li>
+  <li>中部：两个 Card（xs=24 md=12）：涨幅榜 TOP5、跌幅榜 TOP5。</li>
+  <li>底部：<code>&lt;Panel title="全板块合约"&gt;</code> + BarTable。</li>
+  <li><b>信息冗余</b>：板块概况的"涨幅最大" = 涨幅榜 TOP5 第 1 名；"跌幅最大" = 跌幅榜 TOP5 第 1 名 → 同一数据出现 2 次。</li>
+  <li>3 个 Panel 之间间距靠 <code>ad-mb-5</code>，<b>没有视觉分组</b>（缺 section heading 或 divider）。</li>
+</ul>
+
+<h4>5.5 BarTable（涨跌榜 / 全板块合约）</h4>
+<ul>
+  <li>5 列：代码 / 收盘 / 结算 / 涨跌 / 成交量，<b>每张表独立定义 columns</b>（重复代码 3 次）。</li>
+  <li><code>width: 120 / 90 / 90 / 90 / 100</code> 固定，mobile 横向滚动无指示。</li>
+  <li>"涨跌"列 <code>changeCell(pct)</code>：用 <code>CaretUp/DownOutlined</code> + <code>Math.abs(pct).toFixed(2) + '%'</code>，<b>总是正值</b>，所以 caret 与文字方向不严格一致。<b>建议显示 <code>+1.23%</code> / <code>-0.45%</code> 带符号</b>（当前 best/worst performer 已带符号，但 BarTable 没带）。</li>
+</ul>
+
+<h4>5.6 颜色一致性</h4>
+<ul>
+  <li><code>best_performer.suffix</code> 用 <code>detail-kpi-rise/fall</code> 类 → 与 Microstructure 同问题（C4）。</li>
+  <li>Tab 内嵌 Tag 的 <code>color="blue"</code> 是 Antd 蓝，<b>与项目 <code>--accent</code> / rise/fall 三色体系不一致</b>。</li>
+</ul>
+
+<h4>5.7 响应式</h4>
+<ul>
+  <li>顶部 4 张 StatCard：≤991px → 2 列；≤767px → 1 列。但"领头羊 / 领跌"卡 mobile 下两个 InstrumentCodeTag + 斜杠可能挤到换行。</li>
+  <li>ProductTab 中部两张 Card：≤991px → 1 列堆叠（OK）。</li>
+  <li>全板块合约表格 mobile 横向滚动无指示。</li>
+  <li>Tabs 4 个 + emoji + Tag → mobile 大概率溢出横滑。</li>
+</ul>
+
+<h4>5.8 小结（Futures）</h4>
+<div class="callout warn">最该修的是 <b>5.3（Tab emoji + Tag 内嵌导致高度不齐）+ 5.4（板块概况与涨幅榜数据冗余）+ 5.5（涨跌 cell 缺正负号）+ 5.6（跨页面样式耦合）</b>。</div>
+
+
+<h2 id="sec6">6. 雷达图 / 分布图可读性专项</h2>
+
+<h4>6.1 Sentiment DistributionRadar</h4>
+<ul>
+  <li>80×80 SVG，5 轴（热度 / 看多 / 看空 / 中性 / 强度）。</li>
+  <li><b>问题</b>：
+    <ul>
+      <li>字号 8px → 偏小。</li>
+      <li><b>没有内网格圈</b>（只有外圆 + 数据 path + 轴标签）→ 看不出值梯度。</li>
+      <li>5 个标签拥挤在半径 + 9 处，可能与外圆重叠。</li>
+      <li>"看多 / 看空 / 中性" 三个轴标签互相竞争（视觉上 3/5 都在讲"情绪比例"，信息冗余）。</li>
+      <li>数据 shape 单色（warning-bright + dim 半透明），<b>对比度低</b>。</li>
+    </ul>
+  </li>
+</ul>
+
+<h4>6.2 Sentiment PieBreakdown</h4>
+<ul>
+  <li>56×56 SVG（多/空/中）。</li>
+  <li><b>问题</b>：
+    <ul>
+      <li>无中心文字百分比。</li>
+      <li>hover 才有 Tooltip，<b>静态视觉信息仅靠颜色区分</b>，中性灰与背景对比度低。</li>
+      <li>三色比例若有 80/15/5，多空对比强烈但视觉上小圆被中央白圆吃掉。</li>
+    </ul>
+  </li>
+</ul>
+
+<h4>6.3 Sentiment Sparkline</h4>
+<ul>
+  <li>240×48 固定 → 详情面板 <code>ResponsiveGrid cols={2}</code> 中可能溢出。</li>
+  <li>14 日均值曲线，<b>没有 y 轴基线 / 平均线 / 当前值标记</b>。</li>
+  <li>颜色走 accent / rise/fall（取决于 score 正负），<b>没有图例或 hover tooltip</b>。</li>
+</ul>
+
+<h4>6.4 建议</h4>
+<ul>
+  <li>雷达图：补 2-3 个内网格圈 + 加大字号 + 重命名"看多/看空/中性"为更精简的"多/空/中"。</li>
+  <li>Pie：补中心百分比 + 加大字号 + hover 显示中心。</li>
+  <li>Sparkline：响应宽度 + 加 hover tooltip + 当前日标记。</li>
+</ul>
+
+
+<h2 id="sec7">7. 响应式专项</h2>
+<table>
+<thead><tr><th>页面</th><th>≤991px (tablet)</th><th>≤767px (mobile)</th><th>≤576px (xs)</th></tr></thead>
+<tbody>
+<tr><td>Sentiment</td><td>OK（ad-news-layout → 1 列）</td><td>OK（dashboard-side-stack 堆叠）</td><td>热力图 1-3 列（拥挤）</td></tr>
+<tr><td>SentimentDashboard</td><td>无 PageShell，Slider 可能很宽</td><td>同</td><td>同</td></tr>
+<tr><td>CorrelationAnalysis</td><td>配置 3 列变 3 行</td><td>OK</td><td>OK</td></tr>
+<tr><td>Microstructure</td><td>KPI 4→2 列</td><td>KPI 4→1 列</td><td>Tab 横向溢出，表格横向溢出</td></tr>
+<tr><td>Futures</td><td>KPI 4→2 列，ProductTab 涨/跌→1 列</td><td>KPI 4→1 列</td><td>Tab + emoji + Tag 极易溢出</td></tr>
+</tbody>
+</table>
+
+<h4>7.1 移动端共性问题</h4>
+<ul>
+  <li><b>表格横向滚动无指示</b>：5 页中 Microstructure 4 张表 + Futures BarTable 都用 <code>ad-table-scroll</code>，但用户不知道可以滑。</li>
+  <li><b>Tab 横向溢出无指示</b>：Microstructure 4 tab / Futures 4 tab + emoji + Tag。</li>
+  <li><b>emoji / 图标在小屏偏大</b>：Futures 的 emoji 🛢️ 在 mobile 上字号不变，相对 Tab label 占比变大。</li>
+</ul>
+
+
+<h2 id="sec8">8. 跨页面一致性总览</h2>
+<table>
+<thead><tr><th>元素</th><th>Sentiment</th><th>SentimentDashboard</th><th>CorrelationAnalysis</th><th>Microstructure</th><th>Futures</th></tr></thead>
+<tbody>
+<tr><td>PageShell</td><td>✓ wide</td><td>✗ 缺失</td><td>✓ wide</td><td>✓ wide</td><td>✓ wide</td></tr>
+<tr><td>PageHeader</td><td>✓ + 图标</td><td>✗ 自写 h1</td><td>✓</td><td>✓ + extra</td><td>✓ + eyebrow</td></tr>
+<tr><td>PageHeader.eyebrow</td><td>✗</td><td>✗</td><td>✗</td><td>✗</td><td>✓ "期货"</td></tr>
+<tr><td>FilterToolbar</td><td>✓</td><td>✗ 用 phase5c-flex-wrap</td><td>✓</td><td>✓</td><td>✗ (Tabs 内)</td></tr>
+<tr><td>EmptyState</td><td>✓ 项目</td><td>✗ Antd Empty</td><td>✓</td><td>✓</td><td>✓</td></tr>
+<tr><td>KPI 样式</td><td>n/a</td><td>n/a</td><td>n/a</td><td>Card+Statistic</td><td>StatCard</td></tr>
+<tr><td>涨跌颜色</td><td>自定义（红=正）</td><td>n/a</td><td>自定义（红=正）</td><td>detail-kpi-*</td><td>detail-kpi-*</td></tr>
+<tr><td>colorConvention 支持</td><td>✗</td><td>✗</td><td>✗</td><td>✗</td><td>✗</td></tr>
+<tr><td>phase5c-* 使用</td><td>icon-title / input--md / select--xxs</td><td>flex-wrap / form-row__grow</td><td>✗</td><td>icon-title / input--md / select--xxs</td><td>✗</td></tr>
+<tr><td>styles.css</td><td>无</td><td>无</td><td>空</td><td>死代码</td><td>无</td></tr>
+</tbody>
+</table>
+
+
+<h2 id="sec9">9. 建议修复优先级（不实现，只排序）</h2>
+
+<h4>P0（视觉功能 / 一致性缺陷）</h4>
+<ol>
+  <li><b>Sentiment</b>：heatmap 与 detail-score-value 颜色方向不一致 + 不响应 <code>colorConvention</code> → 切换美股配色后方向反。</li>
+  <li><b>Sentiment</b>：mover row 箭头方向与颜色反向（ArrowUp 绿色 / ArrowDown 红色） → 用户理解成本。</li>
+  <li><b>SentimentDashboard</b>：缺 <code>PageShell</code> + <code>PageHeader</code> + <code>FilterToolbar</code> → 与项目其它页不一致。</li>
+  <li><b>Microstructure</b>：顶部 4 张 KPI 引用别的页面的样式类 (<code>detail-kpi-rise/fall</code>) → 本地 styles.css 是死代码。</li>
+</ol>
+
+<h4>P1（空间利用 / 视觉层级）</h4>
+<ol start="5">
+  <li><b>Sentiment</b>：Sparkline / Pie / Radar 硬编码尺寸 + Radar 字号偏小 + 无网格。</li>
+  <li><b>CorrelationAnalysis</b>：ad-chart-container 与 CorrelationHeatmap 高度冲突（300 vs 400）。</li>
+  <li><b>CorrelationAnalysis</b>：label + control 垂直堆叠（应一行）。</li>
+  <li><b>Microstructure</b>：Tab 缺 badge 总数 + FilterToolbar.total 错位。</li>
+  <li><b>Futures</b>：Tab 内嵌 Tag 导致高度不齐 + emoji 渲染不一致。</li>
+  <li><b>Futures</b>：板块概况"涨幅最大"与涨幅榜 TOP5 数据冗余。</li>
+</ol>
+
+<h4>P2（响应式 / 跨页面）</h4>
+<ol start="11">
+  <li><b>所有页</b>：表格 mobile 横向滚动无指示。</li>
+  <li><b>所有页</b>：Tab mobile 横向溢出无指示。</li>
+  <li><b>所有页</b>：<code>phase5c-*</code> 与 <code>ad-*</code> utility 共存，逐步收敛到 <code>ad-*</code>。</li>
+  <li><b>Microstructure / Futures</b>：跨页面样式类 (<code>detail-kpi-rise/fall</code>) 应搬回各自本地 styles.css。</li>
+  <li><b>CorrelationAnalysis</b>：空白 styles.css 删掉或加注释说明。</li>
+</ol>
+
+
+<h2 id="sec10">10. 附录：关键文件清单</h2>
+<table>
+<thead><tr><th>文件</th><th>行数</th><th>说明</th></tr></thead>
+<tbody>
+<tr><td><code>web/src/pages/Sentiment/index.tsx</code></td><td>607</td><td>主页面，含 2 个手写 SVG (Pie/Radar)</td></tr>
+<tr><td><code>web/src/pages/SentimentDashboard/index.tsx</code></td><td>164</td><td>缺 PageShell / PageHeader</td></tr>
+<tr><td><code>web/src/pages/CorrelationAnalysis/index.tsx</code></td><td>113</td><td></td></tr>
+<tr><td><code>web/src/pages/CorrelationAnalysis/styles.css</code></td><td>14</td><td>仅注释</td></tr>
+<tr><td><code>web/src/pages/Microstructure/index.tsx</code></td><td>313</td><td>4 tab + 4 table + 4 KPI</td></tr>
+<tr><td><code>web/src/pages/Microstructure/styles.css</code></td><td>28</td><td>死代码</td></tr>
+<tr><td><code>web/src/pages/Futures/index.tsx</code></td><td>367</td><td>emoji + Tag 内嵌</td></tr>
+<tr><td><code>web/src/styles/global.css</code></td><td>7000+</td><td>共享 utility + 散落的页级样式</td></tr>
+</tbody>
+</table>
+
+<div class="callout">报告结束。建议下一轮 sprint 先做 P0（4 项），再视 UI 重排 sprint 排 P1（6 项），P2 渐进收敛。</div>
+
+<div class="footer">
+AD-Research 前端视觉层级与布局审计报告 · 2026-07-12 · 仅记录问题，未修改代码。
+</div>
+
+</div>
+</body>
+</html>

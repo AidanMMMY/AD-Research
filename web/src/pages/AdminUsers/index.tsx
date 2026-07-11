@@ -8,6 +8,7 @@ import {
   Select,
   Switch,
   Space,
+  Tooltip,
   message,
   Popconfirm,
 } from 'antd';
@@ -146,7 +147,7 @@ export default function AdminUsers() {
       dataIndex: 'is_active',
       width: 90,
       render: (v: boolean) =>
-        v ? <ThemeTag variant="success">启用</ThemeTag> : <ThemeTag variant="error">禁用</ThemeTag>,
+        v ? <ThemeTag variant="success">启用</ThemeTag> : <ThemeTag variant="default">禁用</ThemeTag>,
     },
     {
       title: '创建时间',
@@ -155,45 +156,55 @@ export default function AdminUsers() {
     },
     {
       title: '操作',
-      width: 240,
-      render: (_: any, record: UserAdminItem) => (
-        <Space>
-          <Button
-            size="small"
-            icon={<EditOutlined />}
-            onClick={() => openEdit(record)}
-            disabled={isSelf(record)}
-          >
-            编辑
-          </Button>
-          <Button
-            size="small"
-            icon={<KeyOutlined />}
-            onClick={() => openReset(record)}
-            disabled={isSelf(record)}
-          >
-            重置密码
-          </Button>
-          <Popconfirm
-            title="确认删除"
-            description={`确定要删除用户 ${record.username} 吗？`}
-            onConfirm={() => handleDelete(record)}
-            okText="删除"
-            cancelText="取消"
-            okButtonProps={{ danger: true }}
-            disabled={isSelf(record)}
-          >
-            <Button
-              size="small"
-              danger
-              icon={<DeleteOutlined />}
-              disabled={isSelf(record)}
+      width: 180,
+      render: (_: any, record: UserAdminItem) => {
+        const self = isSelf(record);
+        const tooltipTitle = self ? '不能修改自己的账号' : '';
+        return (
+          <Space>
+            <Tooltip title={self ? tooltipTitle : ''}>
+              <Button
+                size="small"
+                icon={<EditOutlined />}
+                onClick={() => openEdit(record)}
+                disabled={self}
+              >
+                编辑
+              </Button>
+            </Tooltip>
+            <Tooltip title={self ? tooltipTitle : '重置该用户密码'}>
+              <Button
+                size="small"
+                type="text"
+                icon={<KeyOutlined />}
+                onClick={() => openReset(record)}
+                disabled={self}
+                aria-label="重置密码"
+              />
+            </Tooltip>
+            <Popconfirm
+              title="确认删除"
+              description={`确定要删除用户 ${record.username} 吗？`}
+              onConfirm={() => handleDelete(record)}
+              okText="删除"
+              cancelText="取消"
+              okButtonProps={{ danger: true }}
+              disabled={self}
             >
-              删除
-            </Button>
-          </Popconfirm>
-        </Space>
-      ),
+              <Tooltip title={self ? tooltipTitle : ''}>
+                <Button
+                  size="small"
+                  danger
+                  icon={<DeleteOutlined />}
+                  disabled={self}
+                >
+                  删除
+                </Button>
+              </Tooltip>
+            </Popconfirm>
+          </Space>
+        );
+      },
     },
   ];
 
@@ -236,6 +247,7 @@ export default function AdminUsers() {
         }}
         onOk={() => createForm.submit()}
         width={480}
+        destroyOnClose
       >
         <Form
           form={createForm}
@@ -284,7 +296,8 @@ export default function AdminUsers() {
           editForm.resetFields();
         }}
         onOk={() => editForm.submit()}
-        width={480}
+        width={400}
+        destroyOnClose
       >
         <Form form={editForm} layout="vertical" onFinish={handleEdit}>
           <Form.Item
@@ -314,7 +327,8 @@ export default function AdminUsers() {
           resetForm.resetFields();
         }}
         onOk={() => resetForm.submit()}
-        width={480}
+        width={400}
+        destroyOnClose
       >
         <Form form={resetForm} layout="vertical" onFinish={handleResetPassword}>
           <Form.Item

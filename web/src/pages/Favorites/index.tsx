@@ -5,7 +5,6 @@ import {
   Button,
   Popconfirm,
   Tooltip,
-  Empty,
   Collapse,
   Space,
   Tag,
@@ -450,12 +449,13 @@ export default function Favorites() {
 
       {/* 已移除标的提示横幅（占位：保持与 Dashboard 风格一致） */}
       <Panel variant="default" padding="md" className="ad-mt-5">
-        <Empty
-          image={Empty.PRESENTED_IMAGE_SIMPLE}
+        <EmptyState
+          title="自选股跟踪说明"
           description={
-            <span className="ad-text-muted">
+            <span>
               自选股是 <b>轻量级跟踪清单</b>，区别于「标的池」（中长期目标组合）和「模拟 / 真实交易」中的实际持仓。
-              如需给自选股配置权重 / 算法跟踪，请到 <a onClick={() => navigate('/pools')}>标的池管理</a>。
+              如需给自选股配置权重 / 算法跟踪，请到{' '}
+              <a onClick={() => navigate('/pools')}>标的池管理</a>。
             </span>
           }
         />

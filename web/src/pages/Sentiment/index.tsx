@@ -37,7 +37,7 @@ import Sparkline from '@/components/Sparkline';
 import InstrumentCodeTag from '@/components/InstrumentCodeTag';
 import HelpPopover from '@/components/HelpPopover';
 import ThemeTag from '@/components/ThemeTag';
-import { useSettingsStore } from '@/stores/settings';
+import { useSettingsStore, type ColorConvention } from '@/stores/settings';
 
 const MARKET_OPTIONS: { label: string; value: NewsMarket | 'all' }[] = [
   { label: '全部', value: 'all' },
@@ -159,14 +159,32 @@ function aggregateBySymbol(articles: NewsArticle[]): SymbolAggregate[] {
   });
 }
 
-/** Color hue for a heatmap cell, blending sentiment + importance. */
-function heatmapColor(score: number | null, importance: ImportanceLevel | null): string {
+/** Color hue for a heatmap cell, blending sentiment + importance.
+ *  Honors the user's `colorConvention` setting (china = red up/green down,
+ *  us = green up/red down) so the heatmap direction flips together with
+ *  the rest of the app when the user toggles the convention. */
+function heatmapColor(
+  score: number | null,
+  importance: ImportanceLevel | null,
+  convention: ColorConvention = 'china',
+): string {
   if (score == null) return 'var(--bg-elevated)';
   const intensity = Math.min(1, Math.abs(score) * 1.4);
   const alpha = 0.15 + 0.55 * intensity * (importance != null ? importance / 5 : 0.5);
-  const r = score > 0 ? 82 : score < 0 ? 245 : 140;
-  const g = score > 0 ? 196 : score < 0 ? 34 : 140;
-  const b = score > 0 ? 26 : score < 0 ? 45 : 140;
+  const isPositive = score > 0;
+  const isNegative = score < 0;
+  // china convention: rise=red(245,34,45), fall=green(82,196,26)
+  // us convention:    rise=green(82,196,26), fall=red(245,34,45)
+  let r: number, g: number, b: number;
+  if (convention === 'us') {
+    r = isPositive ? 82 : isNegative ? 245 : 140;
+    g = isPositive ? 196 : isNegative ? 34 : 140;
+    b = isPositive ? 26 : isNegative ? 45 : 140;
+  } else {
+    r = isPositive ? 245 : isNegative ? 82 : 140;
+    g = isPositive ? 34 : isNegative ? 196 : 140;
+    b = isPositive ? 45 : isNegative ? 26 : 140;
+  }
   return `rgba(${r}, ${g}, ${b}, ${alpha.toFixed(2)})`;
 }
 
@@ -262,7 +280,7 @@ function DistributionRadar({ row }: { row: SymbolAggregate }) {
           y={p.ly}
           textAnchor="middle"
           dominantBaseline="middle"
-          fontSize={8}
+          fontSize={10}
           fill="var(--text-tertiary)"
         >
           {p.label}
@@ -275,6 +293,7 @@ function DistributionRadar({ row }: { row: SymbolAggregate }) {
 export default function SentimentOverview() {
   const navigate = useNavigate();
   const mode = useSettingsStore((s) => s.mode);
+  const colorConvention = useSettingsStore((s) => s.colorConvention);
   const [market, setMarket] = useState<NewsMarket | 'all'>('all');
   const [importanceMin, setImportanceMin] = useState<number>(3);
   const [search, setSearch] = useState('');
@@ -439,7 +458,7 @@ export default function SentimentOverview() {
                         }
                       }}
                       className={`ad-heatmap-cell ${selectedSymbol === row.symbol ? 'ad-heatmap-cell--active' : ''}`}
-                      style={{ background: heatmapColor(row.score, avgImportance) }}
+                      style={{ background: heatmapColor(row.score, avgImportance, colorConvention) }}
                     >
                       <div className="ad-heatmap-cell__symbol">
                         <InstrumentCodeTag
@@ -491,9 +510,9 @@ export default function SentimentOverview() {
                   <ThemeTag
                     variant={
                       selected.label === 'positive'
-                        ? 'fall'
+                        ? 'rise'
                         : selected.label === 'negative'
-                          ? 'rise'
+                          ? 'fall'
                           : 'neutral'
                     }
                   >
@@ -504,11 +523,12 @@ export default function SentimentOverview() {
                 <div className="ad-text-small ad-text-tertiary ad-mb-2">
                   14 日情绪曲线
                 </div>
-                <div className="ad-mb-4">
+                <div className="ad-mb-4 ad-w-full" style={{ width: '100%' }}>
                   <Sparkline
                     data={selected.sparkline}
                     width={240}
                     height={48}
+                    style={{ width: '100%' }}
                   />
                 </div>
 

@@ -2,8 +2,8 @@ import React from 'react';
 
 export interface EmptyStateProps {
   icon?: React.ReactNode;
-  title: string;
-  description?: string;
+  title: React.ReactNode;
+  description?: React.ReactNode;
   action?: React.ReactNode;
   className?: string;
   style?: React.CSSProperties;

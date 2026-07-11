@@ -122,6 +122,7 @@ export default function SECFilingsPage() {
       dataIndex: 'ticker',
       key: 'ticker',
       width: 160,
+      fixed: 'left',
       render: (v: string, row: SecFiling) => (
         <Tag color="blue">
           <InstrumentCodeTag code={v} name={row.company_name ?? undefined} />
@@ -309,6 +310,7 @@ export default function SECFilingsPage() {
               dataSource={visibleItems}
               columns={columns}
               size="small"
+              scroll={{ x: 'max-content' }}
               pagination={{
                 current: page,
                 pageSize,

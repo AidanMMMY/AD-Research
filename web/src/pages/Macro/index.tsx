@@ -24,8 +24,8 @@ import type { EChartsOption } from 'echarts';
 import PageShell from '@/components/PageShell';
 import PageHeader from '@/components/PageHeader';
 import Panel from '@/components/Panel';
-import SectionHeading from '@/components/SectionHeading';
 import StatCard from '@/components/StatCard';
+import SectionHeading from '@/components/SectionHeading';
 import EmptyState from '@/components/EmptyState';
 import FilterToolbar from '@/components/FilterToolbar';
 import LastUpdated from '@/components/LastUpdated';
@@ -198,19 +198,12 @@ export default function Macro() {
       title: '最新值',
       dataIndex: 'value',
       key: 'value',
-      width: 120,
+      width: 140,
       align: 'right',
       sorter: (a, b) => (a.value ?? -Infinity) - (b.value ?? -Infinity),
       render: (v: number | null, row) => (
         <Text strong>{formatValue(v, row.unit)}</Text>
       ),
-    },
-    {
-      title: '单位',
-      dataIndex: 'unit',
-      key: 'unit',
-      width: 110,
-      render: (u: string) => <Text type="secondary">{u || '—'}</Text>,
     },
     {
       title: '最新期',

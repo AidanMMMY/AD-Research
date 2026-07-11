@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { List, Tag, Badge, Spin, Empty, Skeleton, Tooltip } from 'antd';
+import { List, Tag, Badge, Spin, Skeleton, Tooltip } from 'antd';
 import { LinkOutlined, StarFilled } from '@ant-design/icons';
 import { newsApi } from '@/api/news';
 import type { NewsArticle, SentimentLabel } from '@/types/news';
@@ -9,6 +9,7 @@ import {
   formatRelative as formatRelativeTz,
 } from '@/utils/datetime';
 import Panel from './Panel';
+import EmptyState from './EmptyState';
 
 const SENTIMENT_COLORS: Record<SentimentLabel, string> = {
   positive: 'var(--color-rise)',
@@ -55,11 +56,11 @@ export default function NewsListPanel({ symbol, limit = 10, bare = false }: News
   });
 
   const body = isError ? (
-    <Empty description="加载失败" image={Empty.PRESENTED_IMAGE_SIMPLE} />
+    <EmptyState title="加载失败" description="请稍后重试或检查网络" />
   ) : isLoading ? (
     <Skeleton active paragraph={{ rows: 4 }} />
   ) : !data || data.length === 0 ? (
-    <Empty description={`暂无 ${symbol} 的相关资讯`} image={Empty.PRESENTED_IMAGE_SIMPLE} />
+    <EmptyState title={`暂无 ${symbol} 的相关资讯`} description="该标的暂时没有收录到有效资讯" />
   ) : (
     <List
       className="ad-list-compact"

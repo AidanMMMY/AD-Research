@@ -82,7 +82,7 @@ export default function Screen() {
   };
 
   const columns = [
-    { title: '代码', dataIndex: 'code', width: 100, render: (v: string, r: any) => <InstrumentCodeTag code={v} name={r.name} name_zh={r.name_zh} /> },
+    { title: '代码', dataIndex: 'code', width: 100, fixed: 'left' as const, render: (v: string, r: any) => <InstrumentCodeTag code={v} name={r.name} name_zh={r.name_zh} /> },
     { title: '分类', dataIndex: 'category', width: 100, render: (v: string) => v ? <span className="ad-table-text-secondary">{v}</span> : '-' },
     { title: <HelpPopover termKey="composite_score_filter" mode={mode}>评分</HelpPopover>, dataIndex: 'composite_score', width: 80, sorter: (a: any, b: any) => (a.composite_score ?? -Infinity) - (b.composite_score ?? -Infinity), render: (v: number) => <span className="font-mono ad-table-accent">{v?.toFixed(1)}</span> },
     { title: <HelpPopover termKey="rsi14" mode={mode}>RSI</HelpPopover>, dataIndex: 'rsi14', width: 70, sorter: (a: any, b: any) => (a.rsi14 ?? -Infinity) - (b.rsi14 ?? -Infinity), render: (v: number) => <span className="font-mono ad-table-mono">{v?.toFixed(1)}</span> },
@@ -106,7 +106,15 @@ export default function Screen() {
           </Space>
         }
       />
-      <Panel title="筛选条件" variant="default">
+      <Panel
+        title="筛选条件"
+        variant="default"
+        extra={
+          <Button onClick={() => { resetFilters(); setPage(1); }}>
+            重置条件
+          </Button>
+        }
+      >
         {/* 第一层：快速筛选 */}
         <section className="screen-filter-section" aria-label="快速筛选">
           <div className="screen-filter-section__header">
@@ -144,11 +152,6 @@ export default function Screen() {
           <FilterToolbar
             data-onboard="filter-toolbar"
             total={`共 ${results?.count || 0} 只`}
-            extra={
-              <Button onClick={() => { resetFilters(); setPage(1); }}>
-                重置条件
-              </Button>
-            }
           >
             <div className="screen-filter-groups">
               {/* Group 1 — 基础：基础识别 (3 fields) */}
@@ -263,9 +266,9 @@ export default function Screen() {
                 </Row>
               </div>
 
-              {/* Group 3 — 评分与风险：5 对 min/max 阈值 (10 fields) */}
+              {/* Group 3 — 评分：评分 / RSI / 夏普 (6 fields) */}
               <div className="screen-filter-group">
-                <div className="screen-filter-group__title">评分与风险</div>
+                <div className="screen-filter-group__title">评分</div>
                 <Row gutter={[16, 12]}>
                   <Col xs={12} sm={8} md={6}>
                     <InputNumber
@@ -321,6 +324,13 @@ export default function Screen() {
                       onChange={(v) => setFilter('sharpe_max', v ?? undefined)}
                     />
                   </Col>
+                </Row>
+              </div>
+
+              {/* Group 4 — 风险：波动率 / 回撤 (4 fields) */}
+              <div className="screen-filter-group">
+                <div className="screen-filter-group__title">风险</div>
+                <Row gutter={[16, 12]}>
                   <Col xs={12} sm={8} md={6}>
                     <InputNumber
                       placeholder="波动率 最小 (%)"

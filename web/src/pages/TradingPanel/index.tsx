@@ -562,6 +562,7 @@ export default function TradingPanel() {
         onOk={() => createForm.submit()}
         confirmLoading={createConfig.isPending}
         width={isMobile ? '100%' : 520}
+        destroyOnClose
       >
         <Form
           form={createForm}
@@ -604,6 +605,8 @@ export default function TradingPanel() {
         onCancel={() => setOrderModalOpen(false)}
         onOk={() => orderForm.submit()}
         confirmLoading={placeOrder.isPending}
+        width={isMobile ? '100%' : 520}
+        destroyOnClose
       >
         <Form
           form={orderForm}

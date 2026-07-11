@@ -14,6 +14,7 @@ import {
   Badge,
   Progress,
 } from 'antd';
+import type { ColumnsType } from 'antd/es/table';
 import {
   ReloadOutlined,
   RocketOutlined,
@@ -61,12 +62,13 @@ function formatDuration(seconds: number) {
 }
 
 function DeploymentsTable({ data, loading }: { data: DeploymentRun[]; loading: boolean }) {
-  const columns = [
+  const columns: ColumnsType<DeploymentRun> = [
     {
       title: '#',
       dataIndex: 'run_number',
       key: 'run_number',
       width: 70,
+      fixed: 'left',
       render: (n: number) => <Text className="tabular-nums ad-font-medium">#{n}</Text>,
     },
     {

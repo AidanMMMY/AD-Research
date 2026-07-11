@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<title>AD-Research 前端颜色 Token 一致性审计报告 (2026-07-12)</title>
+<style>
+  :root {
+    --bg-base: #FAFBFC;
+    --bg-elevated: #F3F5F7;
+    --bg-surface: #EDF0F3;
+    --text-primary: #0F1115;
+    --text-secondary: #5B6778;
+    --text-tertiary: #8894A4;
+    --border-default: #e5e7eb;
+    --accent: #2563EB;
+    --accent-dim: rgba(37, 99, 235, 0.08);
+    --accent-border: rgba(37, 99, 235, 0.20);
+    --color-rise: #dc2626;
+    --color-fall: #16a34a;
+    --color-warning: #f59e0b;
+    --color-success: #30A46C;
+    --radius-md: 8px;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC",
+      "Microsoft YaHei", "Helvetica Neue", Arial, sans-serif;
+    background: var(--bg-base);
+    color: var(--text-primary);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 48px 32px 96px;
+  }
+  header {
+    border-bottom: 1px solid var(--border-default);
+    padding-bottom: 24px;
+    margin-bottom: 32px;
+  }
+  h1 {
+    font-size: 32px;
+    font-weight: 600;
+    line-height: 1.2;
+    margin: 0 0 12px;
+    letter-spacing: -0.02em;
+  }
+  .subtitle {
+    color: var(--text-secondary);
+    font-size: 14px;
+    margin: 0;
+  }
+  h2 {
+    font-size: 22px;
+    font-weight: 600;
+    margin: 40px 0 16px;
+    letter-spacing: -0.01em;
+    border-left: 4px solid var(--accent);
+    padding-left: 12px;
+  }
+  h3 {
+    font-size: 17px;
+    font-weight: 600;
+    margin: 24px 0 10px;
+    color: var(--text-primary);
+  }
+  p, li { font-size: 14px; color: var(--text-primary); }
+  ul, ol { padding-left: 22px; }
+  li { margin-bottom: 4px; }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 16px 0 24px;
+    font-size: 13.5px;
+    background: var(--bg-elevated);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+  }
+  th, td {
+    padding: 10px 12px;
+    text-align: left;
+    border-bottom: 1px solid var(--border-default);
+    vertical-align: top;
+  }
+  th {
+    background: var(--bg-surface);
+    color: var(--text-secondary);
+    font-weight: 600;
+    font-size: 12.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  td code, code {
+    background: var(--bg-surface);
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-family: "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace;
+    font-size: 12.5px;
+    color: var(--text-primary);
+  }
+
+  .badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 11.5px;
+    font-weight: 600;
+    margin-right: 6px;
+  }
+  .badge.p0 { background: rgba(220,38,38,0.10); color: var(--color-rise); }
+  .badge.p1 { background: rgba(240,177,0,0.12); color: #8a6500; }
+  .badge.p2 { background: var(--accent-dim); color: var(--accent); }
+  .badge.p3 { background: var(--bg-surface); color: var(--text-secondary); }
+  .badge.ok { background: rgba(48,164,108,0.10); color: var(--color-success); }
+  .badge.warn { background: rgba(240,177,0,0.12); color: #8a6500; }
+
+  .summary-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+    margin: 16px 0 24px;
+  }
+  .summary-card {
+    padding: 14px 16px;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-md);
+  }
+  .summary-card .num {
+    font-size: 22px;
+    font-weight: 600;
+    color: var(--accent);
+    line-height: 1.2;
+  }
+  .summary-card .lbl {
+    font-size: 12.5px;
+    color: var(--text-secondary);
+    margin-top: 4px;
+  }
+  .summary-card.negative .num { color: var(--color-rise); }
+  .summary-card.positive .num { color: var(--color-success); }
+
+  pre {
+    background: #0D1117;
+    color: #E6EDF3;
+    padding: 14px 16px;
+    border-radius: var(--radius-md);
+    overflow-x: auto;
+    font-size: 12.5px;
+    line-height: 1.55;
+    font-family: "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace;
+  }
+  pre .comment { color: #6e7681; }
+  pre .key { color: #79c0ff; }
+
+  blockquote {
+    margin: 16px 0;
+    padding: 10px 16px;
+    background: var(--accent-dim);
+    border-left: 3px solid var(--accent);
+    border-radius: 4px;
+    color: var(--text-primary);
+    font-size: 14px;
+  }
+  blockquote strong { color: var(--accent); }
+
+  .footer {
+    margin-top: 48px;
+    padding-top: 24px;
+    border-top: 1px solid var(--border-default);
+    color: var(--text-tertiary);
+    font-size: 12px;
+    text-align: center;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+<h1>AD-Research 前端颜色 Token 一致性审计报告</h1>
+<p class="subtitle">2026-07-12 · 范围 <code>web/src/**</code> · 仅静态扫描未改码</p>
+</header>
+
+<blockquote>
+<strong>结论先导</strong>：整体 token 化率极高（页面层 100%），但 <strong><code>main.tsx</code>（antd 镜像主题）严重偏离 theme.css v2</strong>，若干全局组件/旧版区域仍残留硬编码与错误的 fallback 色值。
+</blockquote>
+
+<h2>1. 审计总览</h2>
+
+<div class="summary-grid">
+  <div class="summary-card"><div class="num">160</div><div class="lbl">总 CSS 自定义属性 token</div></div>
+  <div class="summary-card positive"><div class="num">67 / 75</div><div class="lbl">色彩 token 暗色 override 覆盖率</div></div>
+  <div class="summary-card positive"><div class="num">0</div><div class="lbl">页面 styles.css 硬编码 hex</div></div>
+  <div class="summary-card"><div class="num">3</div><div class="lbl">页面 styles.css rgba（仅 Dashboard fallback）</div></div>
+  <div class="summary-card negative"><div class="num">35</div><div class="lbl">global.css 硬编码 hex</div></div>
+  <div class="summary-card negative"><div class="num">51</div><div class="lbl">global.css 硬编码 rgba</div></div>
+  <div class="summary-card negative"><div class="num">113 行</div><div class="lbl">TSX/TS 硬编码颜色（11 文件）</div></div>
+  <div class="summary-card negative"><div class="num">72 行</div><div class="lbl">其中 main.tsx antd 镜像主题</div></div>
+  <div class="summary-card positive"><div class="num">0</div><div class="lbl">命名大小写不一致</div></div>
+  <div class="summary-card positive"><div class="num">0</div><div class="lbl">后缀不一致（-dim/-border/-bright）</div></div>
+</div>
+
+<h2>2. 设计 token 体系（theme.css）</h2>
+
+<h3>2.1 Token 总览</h3>
+<ul>
+  <li>160 个 token，分 12 类（Background / Accent / Text / Market / Semantic / Score / Chart / Card / Border / Shadow / Radius / Spacing / Typography / Animation / Glass / Density）</li>
+  <li>Background Layers（<code>--bg-*</code> 8 个）</li>
+  <li>Accent（<code>--accent*</code> 7 个，含 <code>-hover/-active/-dim/-soft/-border/-glow</code>）</li>
+  <li>Primary Legacy Aliases（3 个 alias 到 <code>--accent*</code>）</li>
+  <li>Text（4 色阶：<code>primary/secondary/tertiary/muted</code>）</li>
+  <li>Market Colors（13 个 <code>--color-rise/-fall*</code> + <code>--color-up/-down</code> alias）</li>
+  <li>Semantic Colors（success/error/warning 各 4 阶 + <code>--color-info</code>）</li>
+  <li>Score Colors（5 个）</li>
+  <li>Categorical Chart Palette（10 色 Okabe-Ito 色盲安全）</li>
+</ul>
+
+<h3>2.2 暗色覆盖完整性</h3>
+<p>75 个色彩类 token 中 <strong>67 个</strong>在 <code>:root[data-theme="dark"]</code> 下有 override。仅 8 个未覆盖（皆为 legacy alias 或静态基础色），全部由 light 通过 CSS 级联自动应用到 dark：</p>
+<ul>
+  <li><code>--color-accent</code>、<code>--color-down</code>、<code>--color-loss</code>、<code>--color-primary</code>、<code>--color-up</code>（全部 alias 到规范 token）</li>
+  <li><code>--border-subtle</code>（→ <code>--border-default</code>）</li>
+  <li><code>--surface-default</code>、<code>--surface-elevated</code>（→ <code>--bg-surface</code> / <code>--bg-elevated</code>）</li>
+  <li><code>--primary-dim</code>、<code>--primary-solid</code>（→ <code>--accent-dim</code> / <code>--accent</code>）</li>
+</ul>
+<p><strong>结论：暗色 / 浅色 配色完全一致，无"漏颜色"问题。</strong></p>
+
+<h3>2.3 主色切换兼容</h3>
+<ul>
+  <li>v2 设计系统支持 <code>&lt;html data-accent="blue|vermilion"&gt;</code> 双主题</li>
+  <li>暗色 + 朱红色兼容：<code>[data-theme="dark"][data-accent="vermilion"]</code> 块（theme.css 401-409 行）</li>
+  <li>暗色 + US 涨跌约定（绿涨红跌）：412-419 行</li>
+</ul>
+
+<h2>3. 硬编码颜色清单</h2>
+
+<h3>3.1 页面 styles.css（41 个文件全部干净）</h3>
+<p><code>grep -rE '#[0-9a-fA-F]{3,6}\b' web/src/pages --include='*.css'</code> → <strong>0 行</strong>匹配。<br>
+<code>grep -rE 'rgba?\(' web/src/pages --include='*.css'</code> → <strong>仅 3 行</strong>，全部在 <code>Dashboard/styles.css</code>。</p>
+
+<table>
+<thead><tr><th>文件</th><th>行号</th><th>现状</th><th>建议</th></tr></thead>
+<tbody>
+<tr><td>Dashboard/styles.css</td><td>258</td><td><code>box-shadow: 0 0 0 1px var(--accent-glow, rgba(37, 99, 235, 0.12));</code></td><td>fallback 是 light theme 的 <code>--accent-glow</code> 值。建议改为 <code>var(--accent-glow)</code></td></tr>
+<tr><td>Dashboard/styles.css</td><td>370</td><td><code>background-color: var(--accent-glow, rgba(37, 99, 235, 0.12));</code></td><td>同上</td></tr>
+<tr><td>Dashboard/styles.css</td><td>407</td><td><code>box-shadow: 0 0 0 1px var(--accent-glow, rgba(37, 99, 235, 0.12));</code></td><td>同上</td></tr>
+</tbody>
+</table>
+<p><strong>小结：页面层 token 化率 100%，可作为团队模板。</strong></p>
+
+<h3>3.2 全局 global.css（8728 行，35 hex + 51 rgba）</h3>
+
+<h4>3.2.1 硬编码 hex（35 行）</h4>
+<table>
+<thead><tr><th>行号</th><th>上下文</th><th>硬编码值</th><th>建议替换</th></tr></thead>
+<tbody>
+<tr><td>444</td><td><code>.ant-checkbox-checked .ant-checkbox-inner::after</code></td><td><code>border-color: #fff</code></td><td><code>var(--text-on-accent)</code></td></tr>
+<tr><td>1598</td><td><code>.ad-text-rise</code></td><td><code>var(--color-up, #ef232a)</code></td><td>fallback 与 token <code>--color-rise: #dc2626</code> hue 偏差 7%。改 token 引用为 <code>var(--color-rise)</code></td></tr>
+<tr><td>1602</td><td><code>.ad-text-fall</code></td><td><code>var(--color-down, #14b143)</code></td><td>同上，与 <code>--color-fall: #16a34a</code> 偏差 7%</td></tr>
+<tr><td>1775-1783</td><td><code>.login-grid mask</code> 渐变线性刻度</td><td><code>#000 24px</code> / <code>#000 calc(100% - 24px)</code></td><td>保留硬黑（mask 场景）或建 <code>--shadow-mask</code> token</td></tr>
+<tr><td>6658</td><td><code>.login-logo-icon</code></td><td><code>color: #fff</code></td><td><code>var(--text-on-accent)</code></td></tr>
+<tr><td>6722</td><td><code>.login-submit</code></td><td><code>color: #fff</code></td><td><code>var(--text-on-accent)</code></td></tr>
+<tr><td>6767</td><td><code>.login-page--sci-fi</code></td><td><code>background: #05060a</code></td><td>建议建 <code>--bg-aurora-base</code> token</td></tr>
+<tr><td>6781</td><td><code>.aurora-base</code></td><td><code>background: #05060a</code></td><td>同上</td></tr>
+<tr><td>7187</td><td><code>.login-page--sci-fi .login-submit</code></td><td><code>color: #fff</code></td><td><code>var(--text-on-accent)</code></td></tr>
+<tr><td>7362</td><td>autofill shadow</td><td><code>var(--bg-input, #ffffff)</code></td><td>已带 fallback 且与 light token 一致；可去 fallback</td></tr>
+<tr><td>7363-7364</td><td>autofill text</td><td><code>var(--text-primary, #111113)</code></td><td>fallback <code>#111113</code> 与 light token <code>#0F1115</code> 不一致（色深 1~2%）</td></tr>
+<tr><td>7376</td><td>dark autofill</td><td><code>var(--bg-base, #0a0a0a)</code></td><td>fallback 与 dark token <code>#0D1117</code> 不一致（5% 偏亮）</td></tr>
+<tr><td>7377</td><td>dark autofill text</td><td><code>var(--text-primary, #f5f5f0)</code></td><td>fallback 与 dark token <code>#E6EDF3</code> 不一致（明显偏黄）</td></tr>
+<tr><td>7459</td><td><code>.page-header-tutorial</code></td><td><code>border-left: 3px solid var(--color-primary, #4096ff)</code></td><td><strong>#4096ff 是 antd 旧版"拂晓蓝"</strong>，v2 主色已切换至 <code>#2563EB</code>。改 <code>var(--accent-border)</code></td></tr>
+<tr><td>7463, 7742, 7800, 7856, 8043</td><td>多处</td><td><code>var(--text-secondary, #555)</code></td><td>fallback <code>#555</code> 与 light token <code>#5B6778</code> 偏红不一致</td></tr>
+<tr><td>7468, 7493, 7827, 8025</td><td>多处</td><td><code>var(--color-primary, #4096ff)</code></td><td>同上，<strong>主色应改为 <code>var(--accent)</code></strong></td></tr>
+<tr><td>7477, 7851, 7717, 8030</td><td>多处</td><td><code>var(--text-tertiary, #888)</code></td><td>fallback <code>#888</code> 与 light token <code>#8894A4</code> 不同</td></tr>
+<tr><td>7717, 7794, 7818, 8037, 8094</td><td>多处</td><td><code>var(--text-primary, #222)</code></td><td>fallback <code>#222</code> 与 light <code>#0F1115</code> 差距大</td></tr>
+</tbody>
+</table>
+<p><strong><code>--color-primary</code> 与 <code>#4096ff</code> 重复共 6 处</strong>（lines 7459 / 7468 / 7493 / 7827 / 7856 / 8025）— 这是 antd 旧版的"拂晓蓝"，v2 改蓝靛后遗留，<strong>强烈建议一次性改为 <code>var(--accent)</code> / <code>var(--accent-border)</code></strong>。</p>
+
+<h4>3.2.2 硬编码 rgba（51 行）</h4>
+
+<h5>A. Skeleton / Shadow / 通用遮罩（11 处）</h5>
+<table>
+<thead><tr><th>行号</th><th>值</th><th>上下文</th></tr></thead>
+<tbody>
+<tr><td>489</td><td>linear-gradient skeleton light</td><td><code>rgba(0,0,0,0.03-0.08)</code></td></tr>
+<tr><td>494</td><td>linear-gradient skeleton dark</td><td><code>rgba(255,255,255,0.03-0.08)</code></td></tr>
+<tr><td>1329</td><td>通用遮罩</td><td><code>rgba(0,0,0,0.45)</code></td></tr>
+<tr><td>3303 / 5151</td><td>全屏 modal overlay</td><td><code>rgba(0,0,0,0.6)</code></td></tr>
+<tr><td>4026</td><td>旧 success 背景</td><td><code>rgba(40,199,111,0.08)</code></td></tr>
+<tr><td>4030</td><td>旧 error 背景</td><td><code>rgba(255,90,95,0.08)</code></td></tr>
+<tr><td>5953</td><td>shadow-md 老样式</td><td><code>box-shadow: 0 2px 8px rgba(0,0,0,0.08)</code></td></tr>
+<tr><td>7578, 7752</td><td>tip 阴影</td><td><code>rgba(0,0,0,0.04/0.08)</code></td></tr>
+<tr><td>7994</td><td>浅色虚线分隔线</td><td><code>rgba(0,0,0,0.04)</code></td></tr>
+</tbody>
+</table>
+<p><strong>建议</strong>：对应 token 已存在（<code>--shadow-sm/md/lg</code>、<code>--bg-active/hover</code>、<code>--color-success-dim</code>、<code>--color-error-dim</code>、<code>--border-default</code>）。1329、3303、5151 行应建 <code>--mask-overlay</code> token。</p>
+
+<h5>B. Login Sci-Fi 沉浸效果（约 25 行，6600-7100）</h5>
+<table>
+<thead><tr><th>行号</th><th>上下文</th><th>颜色</th></tr></thead>
+<tbody>
+<tr><td>6612-6613</td><td><code>.login-grid</code> 双方向网格</td><td><code>rgba(255,255,255,0.03)</code></td></tr>
+<tr><td>6630</td><td><code>.login-card</code> 玻璃卡</td><td><code>rgba(17,17,17,0.72)</code></td></tr>
+<tr><td>6803-6829</td><td><code>.aurora-layer *</code> 光晕</td><td>蓝青紫多色（<code>0,229,255</code> / <code>0,180,255</code> / <code>120,80,255</code> / <code>64,220,220</code> / <code>180,120,255</code>）</td></tr>
+<tr><td>6871-6895</td><td><code>.login-source-dot</code> 发光圆点</td><td><code>rgba(255,255,255,0.6)</code> + 蓝青系列</td></tr>
+<tr><td>6910-6951</td><td><code>.aurora-meteor</code> 流星轨迹</td><td><code>rgba(255,255,255,0)</code> / <code>rgba(180,240,255,0.6)</code> / <code>rgba(255,255,255,0.95)</code></td></tr>
+<tr><td>6960</td><td><code>.aurora-base</code> vignette</td><td><code>rgba(5,6,10,0.6)</code></td></tr>
+<tr><td>7033-7038</td><td><code>.terminal-frame</code> 终端框</td><td><code>rgba(96,165,250,0.18/0.25/0.1)</code></td></tr>
+<tr><td>7069-7070</td><td>顶部/底部 divider</td><td><code>rgba(255,255,255,0.04)</code></td></tr>
+<tr><td>7084-7085</td><td><code>@keyframes login-source-pulse</code></td><td><strong><code>rgba(34,197,94,0.25/0.65)</code></strong> (success 但硬编码 <code>#22c55e</code>)</td></tr>
+<tr><td>7140, 7141, 7149</td><td><code>.login-input-wrapper</code> sci-fi 玻璃</td><td><code>rgba(255,255,255,0.03/0.08/0.05)</code></td></tr>
+<tr><td>7398, 7405</td><td>autofill shadow</td><td><code>rgba(255,255,255,0.03/0.05)</code></td></tr>
+</tbody>
+</table>
+<p><strong>评价</strong>：Sci-Fi Login 是"刻意设计"的沉浸视觉，与 v2 主色（蓝靛）部分一致（aurora 用 <code>#60A5FA</code> 同系色），但所有颜色都未走 token。<br>
+<strong>建议</strong>：aurora 与 <code>#60A5FA</code> / <code>#A78BFA</code> 关联到 <code>--accent-glow</code> / <code>--accent-soft</code> 或新增 <code>--aurora-blue</code> / <code>--aurora-violet</code> token；<code>rgba(255,255,255,0.03-0.08)</code> 关联到 <code>--glass-*</code> token（已有 <code>--glass-bg/border/blur</code>，扩展 alpha 梯度）；<code>#22c55e</code>（success 关键帧）改为 <code>var(--color-success)</code>。</p>
+
+<h5>C. Learning / K15 区（约 16 行，7400-8050）</h5>
+<table>
+<thead><tr><th>行号</th><th>颜色</th></tr></thead>
+<tbody>
+<tr><td>7457-7458</td><td><code>rgba(64,169,255,0.08)</code> + <code>rgba(120,109,245,0.06)</code></td></tr>
+<tr><td>7734</td><td><code>rgba(64,169,255,0.04)</code></td></tr>
+<tr><td>7826, 8024</td><td><code>rgba(64,169,255,0.12)</code></td></tr>
+</tbody>
+</table>
+<p><strong>评价</strong>：K15 学习模式<strong>全部用 <code>#4096ff</code>（antd 拂晓蓝）硬编码</strong>，明显遗留 v2 切换前的代码。<br>
+<strong>建议</strong>：批量替换为 <code>var(--accent)</code> 系列（<code>--accent-dim</code> / <code>--accent-border</code> / <code>--accent-soft</code>），不要保留硬编码。</p>
+
+<h3>3.3 TSX/TS 硬编码颜色（113 行次 / 11 文件）</h3>
+<table>
+<thead><tr><th>文件</th><th>行次</th><th>形式</th><th>性质</th><th>建议</th></tr></thead>
+<tbody>
+<tr><td><strong>main.tsx</strong></td><td><strong>72</strong></td><td>antd <code>ConfigProvider</code> 颜色镜像</td><td><span class="badge p0">P0</span> 严重</td><td>详见 §4</td></tr>
+<tr><td>components/CategoryPie.tsx</td><td>4</td><td>调色板 + chart fallback</td><td><span class="badge p1">P1</span> 主</td><td>用 <code>var(--color-rise/-fall)</code> 系列</td></tr>
+<tr><td>components/CorrelationHeatmap.tsx</td><td>7</td><td>chart fallback</td><td><span class="badge p1">P1</span> 主</td><td>用 <code>var(--*)</code></td></tr>
+<tr><td>components/ScoreRadar.tsx</td><td>5</td><td>chart fallback</td><td><span class="badge p1">P1</span> 主</td><td>用 <code>var(--*)</code></td></tr>
+<tr><td>components/KLineChart.tsx</td><td>6</td><td>chart fallback</td><td><span class="badge p1">P1</span> 主</td><td>用 <code>var(--*)</code></td></tr>
+<tr><td>components/ParticleBackground.tsx</td><td>2</td><td>chart fallback</td><td><span class="badge p1">P1</span> 主</td><td>用 <code>var(--*)</code></td></tr>
+<tr><td>components/ReturnCurve.tsx</td><td>10</td><td>系列调色板 + fallback</td><td><span class="badge p1">P1</span> 主</td><td>用 <code>var(--chart-series-1..10)</code></td></tr>
+<tr><td>pages/SectorRotation/index.tsx</td><td>6</td><td>echarts fallback</td><td><span class="badge p2">P2</span> 中</td><td>同上</td></tr>
+<tr><td>pages/NewsHealth/index.tsx</td><td>4</td><td><code>var(--color-success, #52c41a)</code> 等</td><td><span class="badge p3">P3</span> 低</td><td>移除 fallback</td></tr>
+<tr><td>utils/cssVar.ts</td><td>1</td><td><code>?? '#000'</code> 兜底</td><td><span class="badge p3">P3</span> 低</td><td>改为 <code>--text-primary</code></td></tr>
+</tbody>
+</table>
+
+<h4>main.tsx 详细清单（72 行）</h4>
+<p><strong>Dark 主题 token</strong>（行 63-141）用了旧值：</p>
+<ul>
+  <li><code>colorPrimary: '#5fa87a'</code>（terminal 绿，<strong>与 theme.css v2 dark 的 <code>#60A5FA</code> 不一致</strong>）</li>
+  <li><code>colorBgBase/Container/Elevated: '#0a0a0a' / '#111111' / '#111111'</code></li>
+  <li><code>colorTextBase: '#f5f5f0'</code>（黄白偏暖，与 <code>#E6EDF3</code> 不一致）</li>
+  <li><code>colorTextSecondary: '#888888'</code> vs theme.css dark <code>--text-secondary: #A0A0A0</code></li>
+  <li><code>colorTextTertiary: '#444444'</code> vs theme.css dark <code>--text-tertiary: #787878</code></li>
+</ul>
+<p><strong>Light 主题 token</strong>（行 145-248）沿用了 v1 的朱红：</p>
+<ul>
+  <li><code>colorPrimary: '#e11d48'</code>（rose-600，<strong>theme.css v2 light 已改 <code>#2563EB</code> 蓝靛</strong>）</li>
+  <li><code>colorPrimaryHover/Active: '#be123c'/'#9f1239'</code>（rose-700/800）</li>
+  <li><code>colorBgBase/Container: '#ffffff'/'#ffffff'</code> vs theme.css <code>#FAFBFC/#ffffff</code></li>
+  <li><code>colorBgElevated: '#f7f7f8'</code> vs theme.css <code>--bg-elevated: #F3F5F7</code></li>
+  <li><code>colorTextBase: '#111113'</code> vs theme.css <code>--text-primary: #0F1115</code></li>
+  <li><code>borderRadius*: 8/4/12/2</code> vs theme.css <code>--radius-md/sm/lg/none</code>（命名口径不同）</li>
+</ul>
+<p>Dark 与 Light 的 <code>Alert/Input/Select/Tabs</code> 颜色全套硬编码，<strong>完全镜像了 antd v5 默认调色板</strong>，未与 theme.css 对齐。</p>
+
+<p><strong>结论</strong>：<code>main.tsx</code> 是 antd v5 的 JS 镜像主题，必须改成"读 <code>--accent</code>、<code>--bg-*</code>、<code>--text-*</code> 后注入"的 SSR 安全模式（或在 <code>useTheme</code> hook 的 <code>themechange</code> 监听器里同步重算），否则：</p>
+<ol>
+  <li>用户切到 dark theme，antd 组件仍显示 light 主色（视觉割裂）</li>
+  <li>v2 把 light 主色从朱红改成蓝靛后，antd Button / Input focus ring / Tag 颜色保持旧朱红</li>
+  <li>同色相偏 5-15%，违反 P0-3 对比度提升原则</li>
+</ol>
+
+<p><strong>附 cssVar.ts 上下文</strong>：helpers 已支持 <code>var(--*)</code> 解析，但 8 个 chart 组件仍把 fallback 写成旧 dark 调色板值（<code>#5fa87a</code> / <code>#c96b6b</code>）。这些 fallback 仅在 SSR / 无 DOM 时触发，与 theme.css 不一致（<strong>dark token 是 <code>#5FA87A</code>/<code>#C96B6B</code> 小写</strong>，hex 大小写本身就不一致）。</p>
+
+<h2>4. 暗色 / 浅色主题覆盖矩阵</h2>
+<table>
+<thead><tr><th>颜色族</th><th>light 定义</th><th>dark override</th><th>状态</th></tr></thead>
+<tbody>
+<tr><td><code>--bg-*</code> 8 个</td><td>✅</td><td>✅</td><td><span class="badge ok">完美</span></td></tr>
+<tr><td><code>--accent*</code> 7 个</td><td>✅</td><td>✅</td><td><span class="badge ok">完美</span></td></tr>
+<tr><td><code>--text-*</code> 4 色阶</td><td>✅</td><td>✅</td><td><span class="badge ok">完美</span></td></tr>
+<tr><td><code>--color-rise/fall/neutral</code></td><td>✅</td><td>✅</td><td><span class="badge ok">完美</span></td></tr>
+<tr><td><code>--color-success/error/warning/info</code> + dim/border/bright</td><td>✅</td><td>✅</td><td><span class="badge ok">完美</span></td></tr>
+<tr><td><code>--score-*</code> 6 个</td><td>✅</td><td>✅</td><td><span class="badge ok">完美</span></td></tr>
+<tr><td><code>--chart-series-*</code> 10 色</td><td>✅</td><td>✅</td><td><span class="badge ok">完美</span>（dark 重新调色）</td></tr>
+<tr><td><code>--card-*</code> <code>--border-*</code> <code>--shadow-*</code> <code>--glass-*</code></td><td>✅</td><td>✅</td><td><span class="badge ok">完美</span></td></tr>
+<tr><td>legacy alias</td><td>light only</td><td>不必要</td><td><span class="badge ok">可接受</span></td></tr>
+</tbody>
+</table>
+<p><strong>唯一一条</strong> parity 纰漏：theme.css 没有专门给 <code>data-accent="vermilion"</code> + 暗色模式下的 <code>--color-warning/--color-success/--color-error</code> 配套定义。当前的 vermilion override 只动 <code>--accent*</code>，所以 vermilion dark 下 success/warning/error 仍是 blue-indigo 同款色（会与朱红主色不和）。见 theme.css 第 401-409 行。建议追加 <code>[data-accent="vermilion"][data-theme="dark"]</code> 块，置红系语义色。</p>
+
+<h2>5. 命名规范审计</h2>
+
+<h3>5.1 大小写</h3>
+<p>全部 CSS 变量名 <strong>小写 + 中划线</strong>（kebab-case），<strong>0 例外</strong>。✅</p>
+
+<h3>5.2 后缀规范</h3>
+<ul>
+  <li><code>-dim</code>：用在"背景稀释"色（10% 透明），覆盖 <code>accent/color-*</code> 11 个。✅</li>
+  <li><code>-border</code>：用在"边框色"（20% 透明），覆盖 8 个。✅</li>
+  <li><code>-bright</code>：用在"提亮 / 高亮"色，覆盖 <code>success/error/warning</code> 3 个。✅
+    <ul>
+      <li>⚠️ <code>warning-bright</code> 还衍生 <code>--color-warning-bright-dim</code>（18% 透明），是唯一带 <code>bright-dim</code> 后缀的 token，alpha 与其他 dim 不统一（其他 dim 永远 8%）。<strong>建议</strong>改成 <code>--color-warning-hover-dim</code>，与 <code>--accent-hover</code> 命名口径一致。</li>
+    </ul>
+  </li>
+  <li><code>-hover / -active / -glow / -soft</code>：只在 <code>--accent*</code> 体系下，命名清晰。✅</li>
+  <li>legacy alias <code>--primary-*</code>：本应清退，可统一改名为 <code>--brand-*</code>，避免与 <code>color-primary</code>（alias to <code>--accent</code>）混淆。</li>
+</ul>
+
+<h3>5.3 色名 vs 涨跌术语</h3>
+<p><code>--color-rise/-fall</code>（中文：涨/跌）vs <code>--color-up/-down</code>（alias）vs <code>--color-success/-error/-loss</code>（业务语义）。命名冗余：</p>
+<ul>
+  <li><code>--color-up = var(--color-rise)</code></li>
+  <li><code>--color-down = var(--color-fall)</code></li>
+  <li><code>--color-loss = var(--color-error)</code></li>
+</ul>
+<p>建议保留 <code>--color-rise/-fall</code>（与"涨跌色约定"语义强），清退 <code>--color-up/-down/-loss</code> 三 alias，避免 shadow 类 API（旧终端代码）继续蔓延。</p>
+
+<h2>6. Alpha 透明度一致性</h2>
+
+<h3>6.1 <code>xxx-dim</code> 模式</h3>
+<p>light theme 统一 <code>0.08</code>（10%），dark theme 统一 <code>0.12</code>（12%），alpha 略提升体现"暗色视觉补偿"。✅ 规范统一。<br>
+<strong>例外</strong>：<code>--color-warning-bright-dim: 0.18</code>（18%），单独高出 1.5–2 倍 alpha，无设计理由注释。⚠️</p>
+
+<h3>6.2 <code>xxx-border</code> 模式</h3>
+<p>light <code>0.20</code>，dark <code>0.25</code>。同样 5% 提升，逻辑统一。✅</p>
+
+<h3>6.3 第三方 / 自定义 rgba</h3>
+<p>很多地方直接写 <code>rgba(0,0,0,0.05)</code> 或 <code>rgba(255,255,255,0.05)</code> 表示"hover/active/divider"，与 token 不挂钩（如 1329、3303、5151、7994 行）。建议建：</p>
+<ul>
+  <li><code>--hover-overlay-light</code> = <code>rgba(0,0,0,0.05)</code></li>
+  <li><code>--hover-overlay-dark</code> = <code>rgba(255,255,255,0.05)</code></li>
+  <li><code>--scrim</code> = <code>rgba(0,0,0,0.45)</code>（modal mask）</li>
+  <li><code>--scrim-strong</code> = <code>rgba(0,0,0,0.6)</code></li>
+</ul>
+<p>这样所有 <code>rgba(0,0,0,*)</code> 与 <code>rgba(255,255,255,*)</code> 的"遮罩类"使用都可以收敛。</p>
+
+<h2>7. 重点风险 / 必须修复项</h2>
+
+<h3><span class="badge p0">P0</span> 影响生产（视觉割裂 / 与 v2 设计意图冲突）</h3>
+<ol>
+  <li><strong><code>main.tsx</code> antd 主题与 theme.css v2 完全错位</strong>（light 应是蓝靛 <code>#2563EB</code>，main.tsx 仍是朱红 <code>#e11d48</code>；dark 蓝靛 <code>#60A5FA</code>，main.tsx 仍是绿 <code>#5fa87a</code>）。切主题时 antd 组件（Button/Tabs/Input/Alert）会保持旧色，与 CSS 自绘元素出现明显视觉割裂。</li>
+  <li><strong>K15 学习模式整套样式用 antd 旧色 <code>#4096ff</code></strong>（global.css 7459/7468/7493/7477/7717/7742/7794/7800/7818/7827/7851/7856/8024/8025/8030/8037/8043/8094 共 18 行），v2 切蓝靛后这部分教学辅助仍为拂晓蓝。</li>
+</ol>
+
+<h3><span class="badge p1">P1</span> 设计一致性受损</h3>
+<ol start="3">
+  <li><strong>所有 chart fallback（8 个 chart 组件 + cssVar.ts）写了 <code>#5fa87a</code> / <code>#c96b6b</code> / <code>#888888</code> 等旧 dark 调色板值</strong>。SSR/无 DOM 时 fallback 不与 v2 dark token（<code>#5FA87A</code>/<code>#C96B6B</code>）对齐（实际数值一致，但小写），属于侥幸命中，<strong>必须显式声明"是 fallback"并写入 ADR</strong>。</li>
+  <li><strong>Sci-Fi Login 的 aurora/grid/source-dot 系列 25+ 处 rgba</strong>（蓝青色），与 v2 主色 <code>#60A5FA</code> 巧合一致但未走 token。<strong>建议</strong>收敛到 <code>--accent-glow</code> / 新增 <code>--aurora-*</code> token。</li>
+  <li><strong><code>var(--color-up, #ef232a)</code> / <code>var(--color-down, #14b143)</code></strong> 这两条 fallback 与 <code>--color-rise: #dc2626</code> / <code>--color-fall: #16a34a</code> 偏差 7% hue（global.css 1598/1602），是历史遗留的"过早 fallback"，SSR 兜底时会显示不对的色。<strong>建议</strong>直接去掉 fallback 或建 <code>--color-rise-fallback</code> / <code>--color-fall-fallback</code>（不推荐，删除最干净）。</li>
+</ol>
+
+<h3><span class="badge p2">P2</span> 命名 / 工程治理</h3>
+<ol start="6">
+  <li><strong><code>--color-warning-bright-dim: 0.18</code></strong> 与其他 <code>-dim</code> 体系 alpha 不一致（其他 dim 都是 0.08/0.12）。建议改名 <code>--color-warning-hover-dim</code> 并调 alpha 到 0.12。</li>
+  <li><strong>legacy alias (--color-up/-down/-loss/-primary/-accent / --primary-*)</strong> 与规范 token 并存，建议在三年内清退。</li>
+  <li><strong><code>rgba(0,0,0,0.04-0.6)</code> / <code>rgba(255,255,255,0.03-0.08)</code> 共 14+ 处</strong>用作 hover/scrim/divider，未走 token。建议建 <code>--hover-overlay-light/-dark</code> 与 <code>--scrim/-scrim-strong</code>。</li>
+</ol>
+
+<h3><span class="badge p3">P3</span> 已知 / 可接受</h3>
+<ol start="9">
+  <li>page <code>styles.css</code> 100% token 化，仅 Dashboard 3 行 <code>var(--accent-glow, rgba(37,99,235,0.12))</code> 的 fallback，建议去掉。</li>
+  <li><code>--color-primary</code> 在 antd 内部仍保留使用（global.css 多处），但这是 alias 到 <code>--accent</code>，可保留以兼容。</li>
+  <li><code>data-accent="vermilion"</code> 暗色下 semantic 色（success/error/warning）未联动，建议 v2.1 补 override。</li>
+</ol>
+
+<h2>8. 推荐改造路线图</h2>
+
+<h3>8.1 立即修复（1-2 个 sprint）</h3>
+<ol>
+  <li>改 <code>main.tsx</code>：在 <code>useAntdTheme()</code> 中所有颜色改读 <code>readCssVar('--xxx')</code>，监听 <code>themechange</code> 自定义事件重算；</li>
+  <li>global.css K15 区（~18 行）：把 <code>var(--color-primary, #4096ff)</code> / <code>var(--text-*, #xxx)</code> 全部改为无 fallback 的规范 token；</li>
+  <li>全局 <code>var(--color-up, #ef232a)</code> / <code>var(--color-down, #14b143)</code>：去掉 fallback 或更新为 <code>--color-rise/-fall</code> 实际值；</li>
+  <li>Dashboard/styles.css 三处 <code>var(--accent-glow, rgba(...))</code>：去掉 fallback。</li>
+</ol>
+
+<h3>8.2 设计 token 扩充（v2.1）</h3>
+<ul>
+  <li>新增 <code>--hover-overlay-light</code>、<code>--hover-overlay-dark</code>、<code>--scrim</code>、<code>--scrim-strong</code>；</li>
+  <li>新增 <code>--aurora-blue</code>、<code>--aurora-violet</code>、<code>--aurora-cyan</code>（或合并为 <code>--accent-glow-x</code>、<code>--accent-glow-y</code> alpha 档位）；</li>
+  <li>新增 <code>vermilion + dark</code> 的 semantic 色 override；</li>
+  <li>把 <code>--color-warning-bright-dim</code> 改名 <code>--color-warning-hover-dim</code> 并调 alpha 到 0.12。</li>
+</ul>
+
+<h3>8.3 长期治理</h3>
+<ul>
+  <li>增设 Stylelint 规则：
+    <ul>
+      <li><code>color-no-hex: true</code>（针对 <code>*.module.css</code>，允许 theme.css / global.css 例外）</li>
+      <li><code>declaration-property-value-disallowed-list</code>：<code>rgba?</code> 仅允许在 <code>theme.css</code> / <code>global.css</code> 中使用</li>
+      <li><code>custom-property-no-missing</code>：CI 跑一遍 light vs dark 配对，自动生成 token parity 报告</li>
+    </ul>
+  </li>
+  <li>改 <code>cssVar.ts</code>：所有 chart fallback 改为 <code>readCssVar</code> 二级 fallback（先尝试 root <code>--xxx</code>，再尝试旧的 hex），并<strong>删除 <code>#000</code> 兜底</strong>改为 <code>readCssVar('--text-primary', 'inherit')</code>。</li>
+</ul>
+
+<h2>9. 快速复现 / 校验命令</h2>
+
+<pre><span class="comment"># 1. 页面层硬编码扫描（应返回 0）</span>
+cd web/src/pages
+grep -rEn <span class="key">'#[0-9a-fA-F]{3,6}\b'</span> . --include=<span class="key">'*.css'</span> | wc -l
+
+<span class="comment"># 2. 全局硬编码 hex 清单</span>
+grep -nE <span class="key">'#[0-9a-fA-F]{3,6}\b'</span> web/src/styles/global.css
+
+<span class="comment"># 3. TSX 颜色清单（按文件汇总）</span>
+grep -rEn <span class="key">'#[0-9a-fA-F]{3,6}\b'</span> web/src --include=<span class="key">'*.tsx'</span> --include=<span class="key">'*.ts'</span> \
+  | cut -d: -f1 | sort | uniq -c | sort -rn
+
+<span class="comment"># 4. token 配对校验</span>
+awk <span class="key">'/^:root \{/{f="L";next} f=="L" && /^\}/{f="";next} f=="L" && /--/{print}'</span> \
+  web/src/styles/theme.css | grep -oE <span class="key">'--[a-zA-Z0-9_-]+'</span> | sort -u &gt; /tmp/light.txt
+
+awk <span class="key">'/:root\[data-theme="dark"\]/{f="D";next} f=="D" && /^\}/{f="";next} f=="D" && /--/{print}'</span> \
+  web/src/styles/theme.css | grep -oE <span class="key">'--[a-zA-Z0-9_-]+'</span> | sort -u &gt; /tmp/dark.txt
+
+comm -23 /tmp/light.txt /tmp/dark.txt   <span class="comment"># light only (含 alias，正常)</span>
+comm -13 /tmp/light.txt /tmp/dark.txt   <span class="comment"># dark only (应为空)</span></pre>
+
+<h2>10. 总结</h2>
+
+<p>AD-Research 前端 token 化推进成果<strong>显著</strong>：</p>
+<ul>
+  <li><strong>160 个 token</strong> 覆盖 4×4 设计栅格；</li>
+  <li><strong>暗色主题覆盖完整</strong>，75 个色彩 token 中 67 个有暗色 override，8 个 legacy alias 通过级联复用；</li>
+  <li><strong>页面 styles.css 100% token 化</strong>；</li>
+  <li><strong>命名严格小写 kebab-case</strong>，后缀（<code>-dim/-border/-bright</code>）一致；</li>
+</ul>
+
+<p>但仍有<strong>两处系统性偏差</strong>必须立即处理：</p>
+<ol>
+  <li><strong>antd 镜像主题（main.tsx）停在 v1 朱红/绿色，与 theme.css v2 蓝靛错位</strong> — 切换主题时 antd 组件颜色不变，与 CSS 自绘元素割裂；</li>
+  <li><strong>K15 学习模式区 + Sci-Fi Login 的 rgba/anth-design legacy fallback</strong> — 整体视觉停留在 antd 拂晓蓝，与 P0-3 设计目标冲突。</li>
+</ol>
+<p>后续按 §8 三阶段路线图改造，预计 1-2 个 sprint 把硬编码收敛到 < 10 处残余（仅限 animation 关键帧与 mediatype 边界场景）。</p>
+
+<div class="footer">Audit generated 2026-07-12 by Claude Code · Sources: web/src/styles/{theme,global}.css, web/src/pages/**/styles.css, web/src/components/**/*.tsx, web/src/main.tsx</div>
+
+</div>
+</body>
+</html>

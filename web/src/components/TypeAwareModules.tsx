@@ -2,7 +2,6 @@ import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Alert,
-  Empty,
   Skeleton,
   Select,
   Table,
@@ -393,13 +392,9 @@ function CryptoMarketDataModule({ instrument }: { instrument: InstrumentInfo }) 
   if (error || !cryptoDetail) {
     return (
       <Panel title="市场数据" padding="md">
-        <Empty
-          description={
-            <EmptyState
-              title="市场数据获取失败"
-              description="无法加载数字货币实时行情，请稍后重试"
-            />
-          }
+        <EmptyState
+          title="市场数据获取失败"
+          description="无法加载数字货币实时行情，请稍后重试"
         />
       </Panel>
     );

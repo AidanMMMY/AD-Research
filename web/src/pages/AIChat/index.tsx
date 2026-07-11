@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Input, Button, List, Popconfirm, Empty, Skeleton, Tag } from 'antd';
+import { Input, Button, List, Popconfirm, Skeleton, Tag } from 'antd';
 import './styles.css';
 import {
   PlusOutlined,
@@ -13,6 +13,7 @@ import {
 import { chatApi, ChatSession, ChatMessage } from '@/api/chat';
 import AISetupBanner from '@/components/AISetupBanner';
 import PageShell from '@/components/PageShell';
+import EmptyState from '@/components/EmptyState';
 import PageHeader from '@/components/PageHeader';
 import StepProgress from '@/components/StepProgress';
 import { useStepStream } from '@/hooks/useStepStream';
@@ -180,7 +181,7 @@ export default function AIChat() {
         {sessionsLoading ? (
           <Skeleton active paragraph={{ rows: 4 }} />
         ) : !sessions?.length ? (
-          <Empty description="暂无对话" image={Empty.PRESENTED_IMAGE_SIMPLE} />
+          <EmptyState title="暂无对话" description="点击「新建对话」开始你的第一次 AI 投研对话" />
         ) : (
           <List
             className="ad-list-compact"
@@ -228,10 +229,10 @@ export default function AIChat() {
       {/* Messages */}
       <div className="phase5c-chat-messages">
         {!activeSession ? (
-          <Empty
-            description="选择一个对话或创建新对话"
-            className="phase5c-empty-robot"
-            image={<RobotOutlined className="phase5c-empty-icon" />}
+          <EmptyState
+            icon={<RobotOutlined className="phase5c-empty-icon" />}
+            title="选择一个对话或创建新对话"
+            description="左侧选择已有对话，或点击「新建对话」开始 AI 投研"
           />
         ) : messagesLoading ? (
           <Skeleton active paragraph={{ rows: 6 }} />
