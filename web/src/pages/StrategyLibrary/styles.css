@@ -14,3 +14,17 @@
 .phase5c-tabs--padded {
   margin-bottom: var(--space-6);
 }
+
+/* ---- Grid Section ---- */
+.strategy-library__section {
+  /* no card wrapper — strategies are already self-contained cards */
+}
+
+.strategy-library__count {
+  font-size: var(--text-small-size);
+  font-weight: 500;
+  color: var(--text-tertiary);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: var(--space-4);
+}

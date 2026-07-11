@@ -5802,9 +5802,16 @@ main {
   height: 100%;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
 }
 
-.strategy-card .ant-card-body {
+.strategy-card:hover {
+  border-color: var(--color-primary);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.strategy-card__body {
   padding: var(--space-md);
   display: flex;
   flex-direction: column;
@@ -5816,7 +5823,6 @@ main {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  margin-bottom: 8px;
 }
 
 .strategy-card__title {
@@ -5850,6 +5856,15 @@ main {
   margin: 8px 0 0;
   color: var(--text-tertiary);
   font-size: 12px;
+}
+
+.strategy-card__actions {
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  padding: var(--space-2) var(--space-md);
+  border-top: 1px solid var(--border-default);
+  background: var(--surface-default);
 }
 
 /* ---- TemplateManagement ---- */

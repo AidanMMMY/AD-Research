@@ -6,7 +6,6 @@ import { BookOutlined, ExperimentOutlined, ThunderboltOutlined } from '@ant-desi
 import './styles.css';
 import PageShell from '@/components/PageShell';
 import PageHeader from '@/components/PageHeader';
-import Panel from '@/components/Panel';
 import ResponsiveGrid from '@/components/ResponsiveGrid';
 import EmptyState from '@/components/EmptyState';
 import StrategyCard from '@/components/StrategyCard';
@@ -143,7 +142,10 @@ export default function StrategyLibrary() {
         className="phase5c-tabs--padded"
       />
 
-      <Panel variant="default" title={`共 ${strategies.length} 个策略`}>
+      <div className="strategy-library__section">
+        <div className="strategy-library__count">
+          共 {strategies.length} 个策略
+        </div>
         {strategies.length === 0 ? (
           <EmptyState
             title="暂无策略模板"
@@ -162,7 +164,7 @@ export default function StrategyLibrary() {
             ))}
           </ResponsiveGrid>
         )}
-      </Panel>
+      </div>
 
       <Modal
         title={<Space>

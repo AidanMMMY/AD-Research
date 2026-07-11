@@ -98,36 +98,36 @@ export default function MicrostructurePage() {
   const lhbColumns: ColumnsType<LhbRecord> = [
     { title: '日期', dataIndex: 'trade_date', key: 'trade_date', width: 110 },
     { title: '代码', dataIndex: 'ts_code', key: 'ts_code', width: 110, render: (v: string) => <ThemeTag variant="accent">{v}</ThemeTag> },
-    { title: '名称', dataIndex: 'name', key: 'name', width: 100 },
-    { title: '涨跌幅', dataIndex: 'pct_change', key: 'pct_change', width: 80, render: formatPct },
-    { title: '净买额', dataIndex: 'lhb_net_amount', key: 'lhb_net_amount', render: (v: number | null) => formatMoney(v) },
+    { title: '名称', dataIndex: 'name', key: 'name', width: 100, ellipsis: true },
+    { title: '涨跌幅', dataIndex: 'pct_change', key: 'pct_change', width: 90, className: 'tabular-nums', render: formatPct },
+    { title: '净买额', dataIndex: 'lhb_net_amount', key: 'lhb_net_amount', width: 120, className: 'tabular-nums', render: (v: number | null) => formatMoney(v) },
     { title: '原因', dataIndex: 'reason', key: 'reason', ellipsis: true },
   ];
 
   const hsgtColumns: ColumnsType<HsgtFlow> = [
     { title: '日期', dataIndex: 'trade_date', key: 'trade_date', width: 110 },
     { title: '类型', dataIndex: 'type', key: 'type', width: 90, render: (v: string) => <Tag>{v}</Tag> },
-    { title: '净流入', dataIndex: 'net_amount', key: 'net_amount', render: (v: number | null) => formatMoney(v) },
-    { title: '当日余额', dataIndex: 'balance', key: 'balance', render: (v: number | null) => formatMoney(v) },
+    { title: '净流入', dataIndex: 'net_amount', key: 'net_amount', width: 120, className: 'tabular-nums', render: (v: number | null) => formatMoney(v) },
+    { title: '当日余额', dataIndex: 'balance', key: 'balance', width: 120, className: 'tabular-nums', render: (v: number | null) => formatMoney(v) },
   ];
 
   const marginColumns: ColumnsType<MarginBalance> = [
     { title: '日期', dataIndex: 'trade_date', key: 'trade_date', width: 110 },
     { title: '代码', dataIndex: 'ts_code', key: 'ts_code', width: 110, render: (v: string) => <ThemeTag variant="accent">{v}</ThemeTag> },
-    { title: '名称', dataIndex: 'name', key: 'name', width: 100 },
+    { title: '名称', dataIndex: 'name', key: 'name', width: 100, ellipsis: true },
     { title: '交易所', dataIndex: 'exchange', key: 'exchange', width: 80, render: (v: string) => <Tag>{v}</Tag> },
-    { title: '融资余额', dataIndex: 'financing_balance', key: 'financing_balance', render: (v: number | null) => formatMoney(v) },
-    { title: '融券余额', dataIndex: 'securities_balance', key: 'securities_balance', render: (v: number | null) => formatMoney(v) },
+    { title: '融资余额', dataIndex: 'financing_balance', key: 'financing_balance', width: 120, className: 'tabular-nums', render: (v: number | null) => formatMoney(v) },
+    { title: '融券余额', dataIndex: 'securities_balance', key: 'securities_balance', width: 120, className: 'tabular-nums', render: (v: number | null) => formatMoney(v) },
   ];
 
   const releaseColumns: ColumnsType<RestrictedRelease> = [
     { title: '解禁日', dataIndex: 'restricted_date', key: 'restricted_date', width: 120 },
     { title: '代码', dataIndex: 'ts_code', key: 'ts_code', width: 110, render: (v: string) => <ThemeTag variant="accent">{v}</ThemeTag> },
-    { title: '名称', dataIndex: 'name', key: 'name', width: 100 },
-    { title: '类型', dataIndex: 'restricted_type', key: 'restricted_type' },
-    { title: '解禁数量', dataIndex: 'restricted_number', key: 'restricted_number', render: (v: number | null) => v?.toLocaleString() ?? NULL_PLACEHOLDER },
-    { title: '解禁市值', dataIndex: 'restricted_amount', key: 'restricted_amount', render: (v: number | null) => formatMoney(v) },
-    { title: '占比 %', dataIndex: 'lift_ratio', key: 'lift_ratio', render: formatPct },
+    { title: '名称', dataIndex: 'name', key: 'name', width: 100, ellipsis: true },
+    { title: '类型', dataIndex: 'restricted_type', key: 'restricted_type', width: 90 },
+    { title: '解禁数量', dataIndex: 'restricted_number', key: 'restricted_number', width: 120, className: 'tabular-nums', render: (v: number | null) => v?.toLocaleString() ?? NULL_PLACEHOLDER },
+    { title: '解禁市值', dataIndex: 'restricted_amount', key: 'restricted_amount', width: 120, className: 'tabular-nums', render: (v: number | null) => formatMoney(v) },
+    { title: '占比 %', dataIndex: 'lift_ratio', key: 'lift_ratio', width: 90, className: 'tabular-nums', render: formatPct },
   ];
 
   return (
@@ -228,6 +228,7 @@ export default function MicrostructurePage() {
                     dataSource={lhbData.items}
                     columns={lhbColumns}
                     size="small"
+                    scroll={{ x: 'max-content' }}
                     pagination={{
                       current: lhbPage,
                       pageSize: 20,
@@ -252,6 +253,7 @@ export default function MicrostructurePage() {
                     dataSource={hsgtData.items}
                     columns={hsgtColumns}
                     size="small"
+                    scroll={{ x: 'max-content' }}
                     pagination={false}
                   />
                 </div>
@@ -271,6 +273,7 @@ export default function MicrostructurePage() {
                     dataSource={marginData.items}
                     columns={marginColumns}
                     size="small"
+                    scroll={{ x: 'max-content' }}
                     pagination={false}
                   />
                 </div>
@@ -290,6 +293,7 @@ export default function MicrostructurePage() {
                     dataSource={releaseData.items}
                     columns={releaseColumns}
                     size="small"
+                    scroll={{ x: 'max-content' }}
                     pagination={{
                       current: releasePage,
                       pageSize: 20,

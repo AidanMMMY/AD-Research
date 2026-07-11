@@ -1,0 +1,984 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AD-Research 数据平台运行报告 2026-07-11</title>
+<style>
+  :root {
+    --bg: #f8f9fa;
+    --card-bg: #ffffff;
+    --text: #1a1a2e;
+    --text-secondary: #555;
+    --border: #e2e8f0;
+    --accent: #2563eb;
+    --danger: #dc2626;
+    --warning: #d97706;
+    --success: #059669;
+    --info: #7c3aed;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.7;
+    padding: 2rem 1rem;
+  }
+  .container {
+    max-width: 1100px;
+    margin: 0 auto;
+    background: var(--card-bg);
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08), 0 4px 16px rgba(0,0,0,0.04);
+    padding: 3rem 2.5rem;
+  }
+  h1 {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: var(--text);
+    border-bottom: 3px solid var(--accent);
+    padding-bottom: 0.75rem;
+    margin-bottom: 1.5rem;
+  }
+  h2 {
+    font-size: 1.35rem;
+    font-weight: 600;
+    color: var(--text);
+    margin: 2.5rem 0 1rem 0;
+    padding-left: 0.75rem;
+    border-left: 4px solid var(--accent);
+  }
+  h3 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin: 1.5rem 0 0.75rem 0;
+    color: var(--text-secondary);
+  }
+  p {
+    margin: 0.5rem 0;
+    color: var(--text-secondary);
+  }
+  p:has(strong) {
+    color: var(--text);
+    font-weight: 500;
+  }
+  strong { color: var(--text); }
+  hr {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 2rem 0;
+  }
+  blockquote {
+    background: #fffbeb;
+    border-left: 4px solid var(--warning);
+    padding: 0.75rem 1rem;
+    margin: 0.75rem 0;
+    border-radius: 0 6px 6px 0;
+    color: #92400e;
+    font-size: 0.95rem;
+  }
+  /* Tables */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1rem 0 1.5rem 0;
+    font-size: 0.92rem;
+    overflow-x: auto;
+    display: block;
+  }
+  thead {
+    background: #f1f5f9;
+  }
+  th {
+    text-align: left;
+    padding: 0.6rem 0.85rem;
+    font-weight: 600;
+    color: var(--text);
+    border-bottom: 2px solid var(--border);
+    white-space: nowrap;
+  }
+  td {
+    padding: 0.55rem 0.85rem;
+    border-bottom: 1px solid var(--border);
+    color: var(--text-secondary);
+    white-space: nowrap;
+  }
+  tr:hover td {
+    background: #f8fafc;
+  }
+  /* Code */
+  pre {
+    background: #1e293b;
+    color: #e2e8f0;
+    padding: 1rem;
+    border-radius: 6px;
+    overflow-x: auto;
+    font-size: 0.85rem;
+    line-height: 1.5;
+    margin: 1rem 0;
+  }
+  code {
+    font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+  }
+  /* Utility */
+  .meta {
+    color: var(--text-secondary);
+    font-size: 0.88rem;
+    line-height: 2;
+  }
+  .meta strong {
+    color: var(--text);
+  }
+  @media (max-width: 768px) {
+    .container { padding: 1.5rem 1rem; }
+    table { font-size: 0.8rem; }
+    th, td { padding: 0.4rem 0.5rem; }
+  }
+  @media print {
+    body { background: white; }
+    .container { box-shadow: none; border-radius: 0; max-width: 100%; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+<h1>AD-Research 数据平台运行报告</h1>
+
+<p><strong>报告日期</strong>: 2026-07-11  </p>
+<p><strong>数据采集时间</strong>: 2026-07-11 19:34 CST  </p>
+<p><strong>覆盖范围</strong>: ETL 任务状态 / 数据库统计 / 7 天趋势 / ECS 资源  </p>
+
+<hr>
+
+<h2>一、调度器/爬虫任务总览</h2>
+
+<h3>1.1 所有任务最后一次运行状态</h3>
+
+<table>
+<thead>
+<tr>
+<th>任务名称</th>
+<th>最近运行</th>
+<th>总运行次数</th>
+<th>成功</th>
+<th>失败</th>
+<th>最后状态</th>
+<th>处理记录</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>`indicator_calc`</td>
+<td>2026-07-11 03:28</td>
+<td>54</td>
+<td>54</td>
+<td>0</td>
+<td>success</td>
+<td>1</td>
+</tr>
+<tr>
+<td>`futures_daily_etl`</td>
+<td>2026-07-10 09:26</td>
+<td>15</td>
+<td>6</td>
+<td>7</td>
+<td>success</td>
+<td>13,288</td>
+</tr>
+<tr>
+<td>`futures_contract_discovery`</td>
+<td>2026-07-10 09:26</td>
+<td>10</td>
+<td>6</td>
+<td>4</td>
+<td>success</td>
+<td>25</td>
+</tr>
+<tr>
+<td>`global_indices_daily`</td>
+<td>2026-07-09 23:51</td>
+<td>6</td>
+<td>6</td>
+<td>0</td>
+<td>success</td>
+<td>0</td>
+</tr>
+<tr>
+<td>`search_trends_daily`</td>
+<td>2026-07-09 14:33</td>
+<td>3</td>
+<td>2</td>
+<td>0</td>
+<td>success</td>
+<td>26</td>
+</tr>
+<tr>
+<td>`etf_metadata_enrichment`</td>
+<td>2026-07-04 02:42</td>
+<td>1</td>
+<td>1</td>
+<td>0</td>
+<td>success</td>
+<td>2,132</td>
+</tr>
+<tr>
+<td>`a_stock_fundamental`</td>
+<td>2026-06-28 04:36</td>
+<td>7</td>
+<td>1</td>
+<td>4</td>
+<td>success</td>
+<td>5,513</td>
+</tr>
+<tr>
+<td>`a_stock_daily_etl`</td>
+<td>**2026-06-28 04:28**</td>
+<td>1</td>
+<td>0</td>
+<td>0</td>
+<td>**running** ⚠️</td>
+<td>null</td>
+</tr>
+<tr>
+<td>`a_share_stock_discovery`</td>
+<td>2026-06-28 04:28</td>
+<td>1</td>
+<td>1</td>
+<td>0</td>
+<td>success</td>
+<td>5,530</td>
+</tr>
+<tr>
+<td>`us_daily_etl`</td>
+<td>2026-06-27 18:37</td>
+<td>2</td>
+<td>2</td>
+<td>0</td>
+<td>success</td>
+<td>0</td>
+</tr>
+<tr>
+<td>`us_stock_discovery`</td>
+<td>2026-06-27 18:29</td>
+<td>4</td>
+<td>1</td>
+<td>3</td>
+<td>success</td>
+<td>500</td>
+</tr>
+<tr>
+<td>`a_share_daily_etl`</td>
+<td>**2026-06-27 01:26**</td>
+<td>12</td>
+<td>7</td>
+<td>3</td>
+<td>**running** ⚠️</td>
+<td>null</td>
+</tr>
+</tbody>
+</table>
+
+
+<h3>1.2 需要关注的问题</h3>
+
+<table>
+<thead>
+<tr>
+<th>严重程度</th>
+<th>问题</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>🔴 高</td>
+<td>`a_stock_daily_etl` 僵尸任务</td>
+<td>最后运行 6 月 28 日，状态仍为 `running`，已卡住 13 天。A 股日线数据自此之后未更新</td>
+</tr>
+<tr>
+<td>🔴 高</td>
+<td>`a_share_daily_etl` 僵尸任务</td>
+<td>最后运行 6 月 27 日，状态仍为 `running`，已卡住 14 天</td>
+</tr>
+<tr>
+<td>🟡 中</td>
+<td>`a_stock_fundamental` 失败率 57%</td>
+<td>7 次运行中 4 次失败，仅 1 次成功，基本面数据不可靠</td>
+</tr>
+<tr>
+<td>🟡 中</td>
+<td>`futures_daily_etl` 失败率 47%</td>
+<td>7 次失败，期货日线数据不稳定</td>
+</tr>
+<tr>
+<td>🟡 中</td>
+<td>`us_stock_discovery` 失败率 75%</td>
+<td>4 次运行中 3 次失败，美股发现任务不稳定</td>
+</tr>
+<tr>
+<td>🟢 低</td>
+<td>`global_indices_daily` records_count=0</td>
+<td>每次运行 records_count 为 0，可能需要检查数据是否实际写入成功</td>
+</tr>
+<tr>
+<td>🟢 低</td>
+<td>新闻/研报/公告管线无数据</td>
+<td>`news_article`、`research_reports`、`cninfo_reports` 三张表均为空，可能任务未调度或调度失败</td>
+</tr>
+</tbody>
+</table>
+
+
+<hr>
+
+<h2>二、数据统计</h2>
+
+<h3>2.1 标的总览</h3>
+
+<table>
+<thead>
+<tr>
+<th>维度</th>
+<th>数量</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>**活跃标的总数**</td>
+<td>**8,233**</td>
+</tr>
+<tr>
+<td>按类型: 个股 (STOCK)</td>
+<td>6,030</td>
+</tr>
+<tr>
+<td>按类型: ETF</td>
+<td>2,203</td>
+</tr>
+<tr>
+<td>按市场: A 股</td>
+<td>7,664</td>
+</tr>
+<tr>
+<td>按市场: 美股</td>
+<td>569</td>
+</tr>
+</tbody>
+</table>
+
+
+<h3>2.2 日线数据覆盖</h3>
+
+<table>
+<thead>
+<tr>
+<th>指标</th>
+<th>数值</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>最早日期</td>
+<td>2024-01-02</td>
+</tr>
+<tr>
+<td>最新日期</td>
+<td>**2026-06-26**（落后 15 天）⚠️</td>
+</tr>
+<tr>
+<td>有数据的标的数</td>
+<td>1,529 / 8,233（覆盖率 18.6%）</td>
+</tr>
+<tr>
+<td>总数据行数</td>
+<td>440,348</td>
+</tr>
+</tbody>
+</table>
+
+
+<blockquote>⚠️ 日线数据最新日期为 6 月 26 日，与 `a_stock_daily_etl` 卡在 6 月 28 日一致。A 股日线管线中断是根因。</blockquote>
+
+<h3>2.3 技术指标</h3>
+
+<table>
+<thead>
+<tr>
+<th>指标</th>
+<th>数值</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>最新日期</td>
+<td>2026-06-26（同步于日线）</td>
+</tr>
+<tr>
+<td>覆盖标的数</td>
+<td>1,529</td>
+</tr>
+<tr>
+<td>总数据行数</td>
+<td>439,747</td>
+</tr>
+</tbody>
+</table>
+
+
+<h3>2.4 评分数据覆盖</h3>
+
+<table>
+<thead>
+<tr>
+<th>指标</th>
+<th>数值</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>最新日期</td>
+<td>2026-06-22（落后 19 天）</td>
+</tr>
+<tr>
+<td>覆盖标的数</td>
+<td>1,510</td>
+</tr>
+<tr>
+<td>总数据行数</td>
+<td>49,023</td>
+</tr>
+</tbody>
+</table>
+
+
+<h3>2.5 新闻 / 研报 / 公告</h3>
+
+<table>
+<thead>
+<tr>
+<th>数据表</th>
+<th>总记录数</th>
+<th>状态</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>`news_article`（新闻）</td>
+<td>**0**</td>
+<td>🔴 无数据，管线未运行</td>
+</tr>
+<tr>
+<td>`research_reports`（研报）</td>
+<td>**0**</td>
+<td>🔴 无数据，管线未运行</td>
+</tr>
+<tr>
+<td>`cninfo_reports`（公告）</td>
+<td>**0**</td>
+<td>🔴 无数据，管线未运行</td>
+</tr>
+</tbody>
+</table>
+
+
+<h3>2.6 宏观指标</h3>
+
+<table>
+<thead>
+<tr>
+<th>指标</th>
+<th>数值</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>总记录数</td>
+<td>90</td>
+</tr>
+<tr>
+<td>独立指标代码</td>
+<td>3</td>
+</tr>
+<tr>
+<td>按地区: global</td>
+<td>90</td>
+</tr>
+<tr>
+<td>最新周期</td>
+<td>2026-07-07</td>
+</tr>
+</tbody>
+</table>
+
+
+<h3>2.7 IR 路由知识库</h3>
+
+<table>
+<thead>
+<tr>
+<th>指标</th>
+<th>数值</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>总路由数</td>
+<td>5,530</td>
+</tr>
+<tr>
+<td>已验证</td>
+<td>961（17.4%）</td>
+</tr>
+<tr>
+<td>待验证</td>
+<td>4,569（82.6%）</td>
+</tr>
+<tr>
+<td>覆盖率（占 A 股标的）</td>
+<td>72.2%（5,530 / 7,664）</td>
+</tr>
+</tbody>
+</table>
+
+
+<h3>2.8 搜索趋势</h3>
+
+<table>
+<thead>
+<tr>
+<th>指标</th>
+<th>数值</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>总记录数</td>
+<td>26</td>
+</tr>
+<tr>
+<td>独立关键词</td>
+<td>21</td>
+</tr>
+<tr>
+<td>最新日期</td>
+<td>2026-07-09</td>
+</tr>
+</tbody>
+</table>
+
+
+<hr>
+
+<h2>三、最近 7 天数据变化趋势</h2>
+
+<h3>3.1 ETL 任务每日处理记录数</h3>
+
+<table>
+<thead>
+<tr>
+<th>日期</th>
+<th>indicator_calc</th>
+<th>futures_daily_etl</th>
+<th>futures_contract</th>
+<th>global_indices</th>
+<th>search_trends</th>
+<th>etf_metadata</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>2026-07-04</td>
+<td>-</td>
+<td>210,228</td>
+<td>328</td>
+<td>-</td>
+<td>-</td>
+<td>2,132</td>
+</tr>
+<tr>
+<td>2026-07-05</td>
+<td>-</td>
+<td>-</td>
+<td>-</td>
+<td>-</td>
+<td>-</td>
+<td>-</td>
+</tr>
+<tr>
+<td>2026-07-06</td>
+<td>-</td>
+<td>-</td>
+<td>-</td>
+<td>-</td>
+<td>-</td>
+<td>-</td>
+</tr>
+<tr>
+<td>2026-07-07</td>
+<td>-</td>
+<td>-</td>
+<td>-</td>
+<td>-</td>
+<td>-</td>
+<td>-</td>
+</tr>
+<tr>
+<td>2026-07-08</td>
+<td>-</td>
+<td>-</td>
+<td>-</td>
+<td>-</td>
+<td>-</td>
+<td>-</td>
+</tr>
+<tr>
+<td>2026-07-09</td>
+<td>-</td>
+<td>288</td>
+<td>-</td>
+<td>6</td>
+<td>52</td>
+<td>-</td>
+</tr>
+<tr>
+<td>2026-07-10</td>
+<td>9</td>
+<td>13,288</td>
+<td>50</td>
+<td>-</td>
+<td>-</td>
+<td>-</td>
+</tr>
+<tr>
+<td>2026-07-11</td>
+<td>6,087</td>
+<td>-</td>
+<td>-</td>
+<td>-</td>
+<td>-</td>
+<td>-</td>
+</tr>
+</tbody>
+</table>
+
+
+<blockquote>注: 仅列出有数据的任务。`a_stock_fundamental`、`a_stock_daily_etl`、`a_share_stock_discovery`、`us_daily_etl`、`us_stock_discovery`、`a_share_daily_etl` 在过去 7 天内均无运行记录。</blockquote>
+
+<h3>3.2 趋势分析</h3>
+
+<p>- <strong>indicator_calc</strong>: 唯一持续运行的任务，7 月 11 日突然产生 6,087 条记录（可能触发了大量历史重算）</p>
+<p>- <strong>futures_daily_etl</strong>: 7 月 4 日出现 210,228 条记录的大批量写入（疑似历史数据回填），之后恢复正常</p>
+<p>- <strong>A 股日线 & 基本面</strong>: 过去 7 天完全无数据更新，管线中断确认</p>
+<p>- <strong>美股管线</strong>: 过去 7 天完全无数据更新</p>
+<p>- <strong>新闻 / 研报 / 公告</strong>: 过去 7 天无任何增量</p>
+
+<hr>
+
+<h2>四、ECS 资源使用</h2>
+
+<h3>4.1 Docker 容器状态</h3>
+
+<table>
+<thead>
+<tr>
+<th>容器名</th>
+<th>CPU %</th>
+<th>内存用量</th>
+<th>内存 %</th>
+<th>PIDs</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>alloyresearch-nginx</td>
+<td>0.07%</td>
+<td>11.36 MiB / 7.095 GiB</td>
+<td>0.16%</td>
+<td>5</td>
+</tr>
+<tr>
+<td>alloyresearch-backend</td>
+<td>15.08%</td>
+<td>427.2 MiB / 7.095 GiB</td>
+<td>5.88%</td>
+<td>39</td>
+</tr>
+<tr>
+<td>alloyresearch-hermes</td>
+<td>0.00%</td>
+<td>34.52 MiB / 7.095 GiB</td>
+<td>0.48%</td>
+<td>1</td>
+</tr>
+<tr>
+<td>alloyresearch-postgres</td>
+<td>**166.26%**</td>
+<td>397.5 MiB / 7.095 GiB</td>
+<td>5.47%</td>
+<td>21</td>
+</tr>
+<tr>
+<td>alloyresearch-redis</td>
+<td>0.93%</td>
+<td>24.48 MiB / 7.095 GiB</td>
+<td>0.34%</td>
+<td>7</td>
+</tr>
+</tbody>
+</table>
+
+
+<h3>4.2 磁盘使用</h3>
+
+<table>
+<thead>
+<tr>
+<th>文件系统</th>
+<th>总大小</th>
+<th>已用</th>
+<th>可用</th>
+<th>使用率</th>
+<th>挂载点</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>/dev/vda3 (系统盘)</td>
+<td>20G</td>
+<td>6.1G</td>
+<td>13G</td>
+<td>34%</td>
+<td>/</td>
+</tr>
+<tr>
+<td>/dev/vdb (数据盘)</td>
+<td>**40G**</td>
+<td>**38G**</td>
+<td>**13M**</td>
+<td>**100%** 🔴</td>
+<td>/data</td>
+</tr>
+</tbody>
+</table>
+
+
+<h3>4.3 内存</h3>
+
+<table>
+<thead>
+<tr>
+<th></th>
+<th>total</th>
+<th>used</th>
+<th>free</th>
+<th>available</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Mem</td>
+<td>7.1Gi</td>
+<td>2.7Gi</td>
+<td>247Mi</td>
+<td>4.4Gi</td>
+</tr>
+<tr>
+<td>Swap</td>
+<td>0B</td>
+<td>0B</td>
+<td>0B</td>
+<td>-</td>
+</tr>
+</tbody>
+</table>
+
+
+<h3>4.4 系统负载</h3>
+
+<pre><code>
+uptime: 15 days 20:53
+load average: 10.31 (1min), 5.84 (5min), 3.55 (15min)
+</code></pre>
+
+<h3>4.5 资源告警</h3>
+
+<table>
+<thead>
+<tr>
+<th>严重程度</th>
+<th>问题</th>
+<th>影响</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>🔴 紧急</td>
+<td>**`/data` 磁盘 100% 满**</td>
+<td>PostgreSQL 数据目录在 `/data`，磁盘满将导致所有数据写入失败。这可能是多个 ETL 任务卡住的根因</td>
+</tr>
+<tr>
+<td>🔴 高</td>
+<td>**PostgreSQL CPU 166%**</td>
+<td>多核满载，可能与磁盘满导致的 IO 阻塞或大量重试有关</td>
+</tr>
+<tr>
+<td>🟡 中</td>
+<td>系统负载 10.31</td>
+<td>1 分钟负载显著高于 5/15 分钟均值，当前系统压力大</td>
+</tr>
+<tr>
+<td>🟡 中</td>
+<td>无 Swap 配置</td>
+<td>内存压力下没有缓冲空间</td>
+</tr>
+</tbody>
+</table>
+
+
+<hr>
+
+<h2>五、IR 知识库状态</h2>
+
+<h3>5.1 信息披露路由覆盖</h3>
+
+<table>
+<thead>
+<tr>
+<th>状态</th>
+<th>数量</th>
+<th>占比</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>`verified` (已验证)</td>
+<td>961</td>
+<td>17.4%</td>
+</tr>
+<tr>
+<td>`pending` (待验证)</td>
+<td>4,569</td>
+<td>82.6%</td>
+</tr>
+<tr>
+<td>**总计**</td>
+<td>**5,530**</td>
+<td>100%</td>
+</tr>
+</tbody>
+</table>
+
+
+<h3>5.2 覆盖率分析</h3>
+
+<p>- A 股活跃标的共 7,664 只，IR 路由覆盖 5,530 只，<strong>覆盖率 72.2%</strong></p>
+<p>- 已通过验证的路由仅 961 条，<strong>验证率 17.4%</strong></p>
+<p>- 剩余 4,569 条路由处于 `pending` 状态，需要批量验证</p>
+
+<hr>
+
+<h2>六、综合评估与行动建议</h2>
+
+<h3>6.1 健康度评分</h3>
+
+<table>
+<thead>
+<tr>
+<th>维度</th>
+<th>评分</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>任务调度</td>
+<td>🟡 中等</td>
+<td>2 个任务僵尸卡住，A 股管线中断 14 天</td>
+</tr>
+<tr>
+<td>数据新鲜度</td>
+<td>🔴 较差</td>
+<td>日线/指标落后 15 天，评分落后 19 天</td>
+</tr>
+<tr>
+<td>数据覆盖</td>
+<td>🟡 中等</td>
+<td>日线仅覆盖 18.6% 标的，但标的总量 8,233 尚可</td>
+</tr>
+<tr>
+<td>新闻/研报</td>
+<td>🔴 缺失</td>
+<td>三张表完全为空，需确认任务配置</td>
+</tr>
+<tr>
+<td>基础设施</td>
+<td>🔴 告警</td>
+<td>磁盘满 100%，PostgreSQL 高负载</td>
+</tr>
+<tr>
+<td>IR 知识库</td>
+<td>🟡 中等</td>
+<td>72% 覆盖但仅 17% 验证通过</td>
+</tr>
+</tbody>
+</table>
+
+
+<h3>6.2 优先行动项</h3>
+
+<table>
+<thead>
+<tr>
+<th>优先级</th>
+<th>行动</th>
+<th>详细说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>P0</td>
+<td>**扩容 /data 磁盘**</td>
+<td>40G 已 100% 满，PostgreSQL 无法写入。建议立即清理日志或扩容至 100G+</td>
+</tr>
+<tr>
+<td>P0</td>
+<td>**恢复 A 股日线管线**</td>
+<td>清理 `a_stock_daily_etl` 和 `a_share_daily_etl` 的僵尸 running 状态，重启管线</td>
+</tr>
+<tr>
+<td>P1</td>
+<td>**检查新闻/研报/公告任务**</td>
+<td>确认对应的 scheduler job 是否已注册并启用；`news_article` 等三张表为空</td>
+</tr>
+<tr>
+<td>P1</td>
+<td>**修复 a_stock_fundamental**</td>
+<td>失败率 57%，排查 Tushare API 限流或数据源问题</td>
+</tr>
+<tr>
+<td>P2</td>
+<td>**批量验证 IR 路由**</td>
+<td>82.6% 的路由 pending，建议跑一轮批量验证</td>
+</tr>
+<tr>
+<td>P2</td>
+<td>**配置 Swap**</td>
+<td>建议配置 2-4G swap 作为内存缓冲</td>
+</tr>
+<tr>
+<td>P3</td>
+<td>**检查 global_indices_daily**</td>
+<td>records_count 始终为 0，确认数据实际是否入库</td>
+</tr>
+</tbody>
+</table>
+
+
+<hr>
+
+<p>*报告由 AD-Research 平台自动生成，数据来源: PostgreSQL (alloyresearch-postgres) + ECS (47.239.13.111)*</p>
+
+</div>
+</body>
+</html>
