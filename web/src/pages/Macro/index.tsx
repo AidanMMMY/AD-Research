@@ -289,7 +289,15 @@ export default function Macro() {
         }
         description={description}
         extra={
-          <Space size="middle">
+          <Space size="middle" wrap>
+            <Segmented
+              value={region}
+              onChange={(v) => {
+                setRegion(v);
+                setSelectedCode(null);
+              }}
+              options={REGION_OPTIONS}
+            />
             <LastUpdated at={dataUpdatedAt} loading={latestFetching && !latestData} />
             {region === 'cn' && (
               <Button
@@ -358,16 +366,7 @@ export default function Macro() {
         </Row>
       ) : null}
 
-      <FilterToolbar total={indicators?.length}>
-        <Segmented
-          value={region}
-          onChange={(v) => {
-            setRegion(v);
-            setSelectedCode(null);
-          }}
-          options={REGION_OPTIONS}
-        />
-      </FilterToolbar>
+      <FilterToolbar total={indicators?.length} />
 
       <Row gutter={[16, 16]}>
         {/* ── Indicator list ── */}
