@@ -1,6 +1,5 @@
 import { ArrowUpOutlined, ArrowDownOutlined, MinusOutlined } from '@ant-design/icons';
 import { formatPercent } from '@/utils/format';
-import { useSettingsStore } from '@/stores/settings';
 
 interface ReturnTagProps {
   value?: number | null;
@@ -15,16 +14,14 @@ function getArrow(value: number | null | undefined) {
     : <ArrowDownOutlined className="return-tag__arrow" aria-label="down" />;
 }
 
-function getVariantClass(value: number, colorConvention: 'china' | 'us'): string {
+function getVariantClass(value: number): string {
   if (value === 0) {
     return 'return-tag--flat';
   }
-  // China convention: 红涨绿跌 → positive uses rise, negative uses fall.
-  // US convention: 绿涨红跌 → flipped.
-  if (value > 0) {
-    return colorConvention === 'us' ? 'return-tag--fall' : 'return-tag--rise';
-  }
-  return colorConvention === 'us' ? 'return-tag--rise' : 'return-tag--fall';
+  // CSS variables --color-rise / --color-fall already swap via
+  // [data-color-convention] on <html>, so positive always maps to rise
+  // and negative always maps to fall.
+  return value > 0 ? 'return-tag--rise' : 'return-tag--fall';
 }
 
 /**
@@ -32,8 +29,6 @@ function getVariantClass(value: number, colorConvention: 'china' | 'us'): string
  * China/US 颜色约定切换 (settings.colorConvention) 与 light/dark 主题。
  */
 export default function ReturnTag({ value }: ReturnTagProps) {
-  const colorConvention = useSettingsStore((s) => s.colorConvention);
-
   if (value === undefined || value === null) {
     return (
       <span className="return-tag return-tag--empty tabular-nums">
@@ -43,7 +38,7 @@ export default function ReturnTag({ value }: ReturnTagProps) {
   }
 
   return (
-    <span className={`return-tag tabular-nums ${getVariantClass(value, colorConvention)}`}>
+    <span className={`return-tag tabular-nums ${getVariantClass(value)}`}>
       {getArrow(value)}
       {formatPercent(value)}
     </span>

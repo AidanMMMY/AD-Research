@@ -21,3 +21,15 @@
 .type-aware-footer-sub {
   color: var(--text-tertiary);
 }
+
+/* detail-kpi-rise/fall 在 global.css 中只匹配 .stat-card__value；
+   TypeAwareModules 的 CryptoMarketDataModule 把它们加在 .valuation-cell 上，
+   因此需要补充对 .valuation-cell__value 的匹配，使 24h 涨跌颜色生效
+   并跟随 color convention 切换。 */
+.detail-kpi-rise .valuation-cell__value {
+  color: var(--color-rise);
+}
+
+.detail-kpi-fall .valuation-cell__value {
+  color: var(--color-fall);
+}

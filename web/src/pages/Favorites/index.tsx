@@ -22,8 +22,6 @@ import { useFavorites } from '@/hooks/useFavorites';
 import { useMarketStream, type MarketTick } from '@/hooks/useMarketStream';
 import { favoriteApi } from '@/api/favorite';
 import './styles.css';
-import { useSettingsStore } from '@/stores/settings';
-import { getReturnColor } from '@/utils/color';
 import PageShell from '@/components/PageShell';
 import PageHeader from '@/components/PageHeader';
 import Panel from '@/components/Panel';
@@ -36,6 +34,7 @@ import ReturnTag from '@/components/ReturnTag';
 import FavoriteToggleButton from '@/components/FavoriteToggleButton';
 import { formatDateTime, formatDateTimeCompact } from '@/utils/datetime';
 import { NULL_PLACEHOLDER } from '@/utils/format';
+import { getReturnColor } from '@/utils/color';
 
 /**
  * 我的自选股页面
@@ -54,7 +53,6 @@ import { NULL_PLACEHOLDER } from '@/utils/format';
 export default function Favorites() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const colorConvention = useSettingsStore((s) => s.colorConvention);
   const [removing, setRemoving] = useState<string | null>(null);
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
   const [bulkRemoving, setBulkRemoving] = useState(false);
@@ -182,7 +180,7 @@ export default function Favorites() {
         return (
           <span
             className="tabular-nums live-price-cell__price"
-            style={{ color: getReturnColor(tick.change_pct, colorConvention) }}
+            style={{ color: getReturnColor(tick.change_pct) }}
           >
             {tick.price.toFixed(2)}
           </span>

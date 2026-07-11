@@ -3,6 +3,7 @@ import ReactECharts from 'echarts-for-react';
 import type { EChartsOption } from 'echarts';
 import { useIsMobile } from '@/hooks/useBreakpoint';
 import { resolveChartColors } from '@/utils/cssVar';
+import { useSettingsStore } from '@/stores/settings';
 
 interface CorrelationHeatmapProps {
   codes: string[];
@@ -11,7 +12,8 @@ interface CorrelationHeatmapProps {
 
 export default function CorrelationHeatmap({ codes, matrix }: CorrelationHeatmapProps) {
   const isMobile = useIsMobile();
-  const [, setThemeTick] = useState(0);
+  const colorConvention = useSettingsStore((s) => s.colorConvention);
+  const [themeTick, setThemeTick] = useState(0);
   useEffect(() => {
     const handler = () => setThemeTick((t) => t + 1);
     document.addEventListener('themechange', handler);
@@ -31,35 +33,35 @@ export default function CorrelationHeatmap({ codes, matrix }: CorrelationHeatmap
   // dark-theme defaults so SSR / no-DOM still renders correctly.
   const bgElevated = useMemo(
     () => resolveChartColors(['var(--bg-elevated)'], ['#111111'])[0],
-    [],
+    [themeTick, colorConvention],
   );
   const bgBase = useMemo(
     () => resolveChartColors(['var(--bg-base)'], ['#0a0a0a'])[0],
-    [],
+    [themeTick, colorConvention],
   );
   const colorFall = useMemo(
     () => resolveChartColors(['var(--color-fall)'], ['#5fa87a'])[0],
-    [],
+    [themeTick, colorConvention],
   );
   const colorRise = useMemo(
     () => resolveChartColors(['var(--color-rise)'], ['#c96b6b'])[0],
-    [],
+    [themeTick, colorConvention],
   );
   const textPrimary = useMemo(
     () => resolveChartColors(['var(--text-primary)'], ['#f5f5f0'])[0],
-    [],
+    [themeTick, colorConvention],
   );
   const textSecondary = useMemo(
     () => resolveChartColors(['var(--text-secondary)'], ['#888888'])[0],
-    [],
+    [themeTick, colorConvention],
   );
   const textTertiary = useMemo(
     () => resolveChartColors(['var(--text-tertiary)'], ['#444444'])[0],
-    [],
+    [themeTick, colorConvention],
   );
   const borderDefault = useMemo(
     () => resolveChartColors(['var(--border-default)'], ['rgba(255,255,255,0.06)'])[0],
-    [],
+    [themeTick, colorConvention],
   );
 
   // The splitArea checkerboard uses the elevated background tone; we derive

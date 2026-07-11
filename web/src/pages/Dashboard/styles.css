@@ -344,6 +344,26 @@
   color: var(--text-muted);
 }
 
+/* Favorite-card price / change colors follow global color convention */
+.dashboard-favorite-card__price-value--rise,
+.dashboard-favorite-card__price-change--rise {
+  color: var(--color-rise);
+}
+
+.dashboard-favorite-card__price-value--fall,
+.dashboard-favorite-card__price-change--fall {
+  color: var(--color-fall);
+}
+
+.dashboard-favorite-card__price-value--flat,
+.dashboard-favorite-card__price-change--flat {
+  color: var(--text-muted);
+}
+
+.dashboard-favorite-card__price-value--flat {
+  color: var(--text-primary);
+}
+
 /* Price update flash animation */
 @keyframes dashboard-price-flash {
   0% {
@@ -405,6 +425,21 @@
 .dashboard-pool-card__meta {
   font-size: var(--text-label-size);
   color: var(--text-tertiary);
+}
+
+/* News sentiment tags — follow the global rise/fall convention */
+.dashboard-news-row__sentiment {
+  color: var(--text-secondary);
+}
+
+.dashboard-news-row__sentiment--positive,
+.dashboard-news-row__sentiment--bullish {
+  color: var(--color-rise);
+}
+
+.dashboard-news-row__sentiment--negative,
+.dashboard-news-row__sentiment--bearish {
+  color: var(--color-fall);
 }
 
 /* News sidebar — narrower column in the watch layout */

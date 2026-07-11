@@ -5,7 +5,6 @@ import {
   Input,
   Segmented,
   Skeleton,
-  Tag,
   Tooltip,
   Select,
   message,
@@ -37,6 +36,7 @@ import EmptyState from '@/components/EmptyState';
 import Sparkline from '@/components/Sparkline';
 import InstrumentCodeTag from '@/components/InstrumentCodeTag';
 import HelpPopover from '@/components/HelpPopover';
+import ThemeTag from '@/components/ThemeTag';
 import { useSettingsStore } from '@/stores/settings';
 
 const MARKET_OPTIONS: { label: string; value: NewsMarket | 'all' }[] = [
@@ -47,9 +47,9 @@ const MARKET_OPTIONS: { label: string; value: NewsMarket | 'all' }[] = [
 ];
 
 const POLL_SLICE_COLORS: Record<SentimentLabel, string> = {
-  positive: 'var(--color-fall)',
+  positive: 'var(--color-rise)',
   neutral: 'var(--text-tertiary)',
-  negative: 'var(--color-rise)',
+  negative: 'var(--color-fall)',
 };
 
 interface SymbolAggregate {
@@ -488,17 +488,17 @@ export default function SentimentOverview() {
                   >
                     {selected.score != null ? selected.score.toFixed(2) : '—'}
                   </span>
-                  <Tag
-                    color={
+                  <ThemeTag
+                    variant={
                       selected.label === 'positive'
-                        ? 'green'
+                        ? 'fall'
                         : selected.label === 'negative'
-                          ? 'red'
-                          : 'default'
+                          ? 'rise'
+                          : 'neutral'
                     }
                   >
                     {selected.label ? SENTIMENT_LABELS[selected.label] : '无数据'}
-                  </Tag>
+                  </ThemeTag>
                 </div>
 
                 <div className="ad-text-small ad-text-tertiary ad-mb-2">
@@ -509,7 +509,6 @@ export default function SentimentOverview() {
                     data={selected.sparkline}
                     width={240}
                     height={48}
-                    chinaConvention={false}
                   />
                 </div>
 

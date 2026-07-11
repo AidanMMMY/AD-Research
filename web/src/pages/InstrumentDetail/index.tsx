@@ -27,7 +27,7 @@ import LoadingBlock from '@/components/LoadingBlock';
 import TypeAwareModules from '@/components/TypeAwareModules';
 import { formatPercent } from '@/utils/format';
 import { useSettingsStore } from '@/stores/settings';
-import { getReturnColor } from '@/utils/color';
+import { getReturnColor, getDownColor } from '@/utils/color';
 import { buildInstrumentDetailContext } from '@/utils/helpContext';
 import { getQuickQuestions } from '@/utils/helpPrompts';
 import { SENTIMENT_COLORS, SENTIMENT_LABELS } from '@/utils/sentiment';
@@ -443,14 +443,14 @@ export default function InstrumentDetail() {
             { title: <HelpPopover termKey="rsi14" mode={mode}>RSI14</HelpPopover>, value: indicator?.rsi14, precision: 1 },
             { title: <HelpPopover termKey="sharpe_1y" mode={mode}>夏普1年</HelpPopover>, value: indicator?.sharpe_1y, precision: 2 },
             { title: <HelpPopover termKey="volatility_20d" mode={mode}>波动率20日</HelpPopover>, value: indicator?.volatility_20d, precision: 2, suffix: '%' },
-            { title: <HelpPopover termKey="max_drawdown_1y" mode={mode}>最大回撤</HelpPopover>, value: indicator?.max_drawdown_1y, precision: 2, suffix: '%' },
-            { title: <HelpPopover termKey="return_1m" mode={mode}>1月收益</HelpPopover>, value: indicator?.return_1m, precision: 2, suffix: '%' },
-            { title: <HelpPopover termKey="return_3m" mode={mode}>3月收益</HelpPopover>, value: indicator?.return_3m, precision: 2, suffix: '%' },
-            { title: <HelpPopover termKey="return_1y" mode={mode}>1年收益</HelpPopover>, value: indicator?.return_1y, precision: 2, suffix: '%' },
+            { title: <HelpPopover termKey="max_drawdown_1y" mode={mode}>最大回撤</HelpPopover>, value: indicator?.max_drawdown_1y, precision: 2, suffix: '%', color: getDownColor() },
+            { title: <HelpPopover termKey="return_1m" mode={mode}>1月收益</HelpPopover>, value: indicator?.return_1m, precision: 2, suffix: '%', color: getReturnColor(indicator?.return_1m, colorConvention) },
+            { title: <HelpPopover termKey="return_3m" mode={mode}>3月收益</HelpPopover>, value: indicator?.return_3m, precision: 2, suffix: '%', color: getReturnColor(indicator?.return_3m, colorConvention) },
+            { title: <HelpPopover termKey="return_1y" mode={mode}>1年收益</HelpPopover>, value: indicator?.return_1y, precision: 2, suffix: '%', color: getReturnColor(indicator?.return_1y, colorConvention) },
             { title: <HelpPopover termKey="ma5" mode={mode}>MA5</HelpPopover>, value: indicator?.ma5, precision: 2 },
           ].map((m, i) => (
             <div key={i} className="detail-indicator-item">
-              <Statistic title={m.title} value={m.value} precision={m.precision} suffix={m.suffix} />
+              <Statistic title={m.title} value={m.value} precision={m.precision} suffix={m.suffix} valueStyle={{ color: m.color }} />
             </div>
           ))}
         </div>

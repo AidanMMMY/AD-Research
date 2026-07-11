@@ -6,17 +6,19 @@
    and shared across the app.
    ============================================================ */
 
-/* ── PnL colour helpers (applied via className in JSX) ── */
+/* ── PnL colour helpers (applied via className in JSX) ──
+   Use CSS variables so they automatically follow the active
+   color convention (China/US) and light/dark theme. */
 .paper-pnl--rise {
-  /* Positive PnL — colour set in global.css. */
+  color: var(--color-rise);
 }
 
 .paper-pnl--fall {
-  /* Negative PnL — colour set in global.css. */
+  color: var(--color-fall);
 }
 
 .paper-pnl--neutral {
-  /* Zero / neutral PnL — colour set in global.css. */
+  color: var(--text-tertiary);
 }
 
 /* ── Page-specific overrides use phase5c-* classes from global.css ── */

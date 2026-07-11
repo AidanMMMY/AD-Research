@@ -18,6 +18,7 @@ import LastUpdated from '@/components/LastUpdated';
 import ReturnTag from '@/components/ReturnTag';
 import ThemeTag from '@/components/ThemeTag';
 import { useSettingsStore } from '@/stores/settings';
+import { useIsMobile } from '@/hooks/useBreakpoint';
 import { getReturnColor } from '@/utils/color';
 import { resolveChartColors } from '@/utils/cssVar';
 import type {
@@ -73,6 +74,12 @@ export default function SectorRotation() {
   }, []);
 
   const sectors = data?.sectors || [];
+  const isMobile = useIsMobile();
+  // Responsive heatmap height: give each sector row enough breathing room.
+  // Margins ~82px (grid top+bottom) + labels; mobile allows vertical scroll.
+  const heatmapHeight = isMobile
+    ? Math.max(480, 82 + sectors.length * 16)
+    : Math.max(720, 82 + sectors.length * 22);
   const signals = data?.rotation_signals || [];
   const marketAvg = data?.market_avg;
   const scope = data?.scope;
@@ -459,12 +466,29 @@ export default function SectorRotation() {
             {signals.map((signal, idx) => (
               <Alert
                 key={`${signal.sector}-${idx}`}
-                message={signal.message}
-                description={
-                  <span className="ad-table-text-secondary">
-                    上周排名 #{signal.previous_rank} → 本周 #{signal.current_rank}
-                    （变动 {signal.rank_change > 0 ? '+' : ''}{signal.rank_change} 位）
-                  </span>
+                message={
+                  <div className="sector-rotation__signal-row">
+                    <span
+                      className="sector-rotation__signal-sector"
+                      title={signal.sector}
+                    >
+                      {signal.sector}
+                    </span>
+                    <span className="sector-rotation__signal-meta">
+                      <span
+                        className={`sector-rotation__signal-indicator ${
+                          signal.type === 'up'
+                            ? 'sector-rotation__signal-up'
+                            : 'sector-rotation__signal-down'
+                        }`}
+                      >
+                        {signal.type === 'up' ? '↑' : '↓'} {Math.abs(signal.rank_change)} 位
+                      </span>
+                      <span className="sector-rotation__signal-ranks">
+                        #{signal.previous_rank} → #{signal.current_rank}
+                      </span>
+                    </span>
+                  </div>
                 }
                 type={signal.type === 'up' ? 'success' : 'warning'}
                 showIcon
@@ -476,7 +500,7 @@ export default function SectorRotation() {
 
       {/* Charts row 1 — ranking + relative strength */}
       <div className="ad-mb-4">
-        <ResponsiveGrid cols={2} gap="md">
+        <ResponsiveGrid cols={2} gap="md" className="sector-rotation__charts-row">
           <Panel
             title="行业板块 1月收益排名"
             extra={
@@ -485,19 +509,22 @@ export default function SectorRotation() {
               </span>
             }
             variant="default"
+            className="sector-rotation__chart-panel"
           >
-            {showSkeleton ? (
-              <Spin />
-            ) : sectors.length === 0 ? (
-              <EmptyState
-                title="暂无板块数据"
-                description={`当前 A 股范围内无${clsLabel}板块数据，请稍后重试或检查 ETL。`}
-              />
-            ) : (
-              <div className="ad-chart-container">
+            <div className="ad-chart-container sector-rotation__chart-container">
+              {showSkeleton ? (
+                <div className="sector-rotation__chart-loader">
+                  <Spin />
+                </div>
+              ) : sectors.length === 0 ? (
+                <EmptyState
+                  title="暂无板块数据"
+                  description={`当前 A 股范围内无${clsLabel}板块数据，请稍后重试或检查 ETL。`}
+                />
+              ) : (
                 <ReactECharts option={rankOption} />
-              </div>
-            )}
+              )}
+            </div>
           </Panel>
           <Panel
             title="行业相对强弱 (vs 市场平均)"
@@ -507,19 +534,22 @@ export default function SectorRotation() {
               </span>
             }
             variant="default"
+            className="sector-rotation__chart-panel"
           >
-            {showSkeleton ? (
-              <Spin />
-            ) : sectors.length === 0 ? (
-              <EmptyState
-                title="暂无板块数据"
-                description={`当前 A 股范围内无${clsLabel}板块数据。`}
-              />
-            ) : (
-              <div className="ad-chart-container">
+            <div className="ad-chart-container sector-rotation__chart-container">
+              {showSkeleton ? (
+                <div className="sector-rotation__chart-loader">
+                  <Spin />
+                </div>
+              ) : sectors.length === 0 ? (
+                <EmptyState
+                  title="暂无板块数据"
+                  description={`当前 A 股范围内无${clsLabel}板块数据。`}
+                />
+              ) : (
                 <ReactECharts option={rsOption} />
-              </div>
-            )}
+              )}
+            </div>
           </Panel>
         </ResponsiveGrid>
       </div>
@@ -543,7 +573,10 @@ export default function SectorRotation() {
               description={`当前 A 股范围内无${clsLabel}板块数据。`}
             />
           ) : (
-            <div className="ad-chart-container sector-rotation__heatmap-container">
+            <div
+              className="ad-chart-container sector-rotation__heatmap-container"
+              style={{ height: heatmapHeight, minHeight: heatmapHeight }}
+            >
               <ReactECharts option={heatmapOption} />
             </div>
           )}

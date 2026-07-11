@@ -3,30 +3,26 @@ import { useMemo } from 'react';
 export interface SparklineProps {
   /** 数据序列（已排序，最旧在前，最新在后） */
   data: number[];
-  /** 主色；如不传则按首末值自动判断涨绿/跌红 */
+  /** 主色；如不传则按首末值自动判断涨跌并使用当前颜色约定 */
   color?: string;
   width?: number;
   height?: number;
-  /** 涨色（默认绿） */
+  /** 涨色；默认使用当前颜色约定下的 --color-rise */
   upColor?: string;
-  /** 跌色（默认红） */
+  /** 跌色；默认使用当前颜色约定下的 --color-fall */
   downColor?: string;
-  /** 是否用色彩约定（A 股=红涨绿跌） */
-  chinaConvention?: boolean;
   strokeWidth?: number;
   className?: string;
   style?: React.CSSProperties;
 }
 
-const DEFAULT_UP = 'var(--color-success-bright)';
-const DEFAULT_DOWN = 'var(--color-error-bright)';
-const DEFAULT_UP_CN = 'var(--color-error-bright)';
-const DEFAULT_DOWN_CN = 'var(--color-success-bright)';
+const DEFAULT_UP = 'var(--color-rise)';
+const DEFAULT_DOWN = 'var(--color-fall)';
 
 /**
  * 80x20 迷你折线图。
  * - 数据归一化到 [0, height]
- * - 涨绿跌红根据首末值判断（A 股惯例下颜色翻转）
+ * - 颜色自动跟随当前颜色约定（红涨绿跌 / 绿涨红跌）
  */
 export default function Sparkline({
   data,
@@ -35,7 +31,6 @@ export default function Sparkline({
   height = 20,
   upColor = DEFAULT_UP,
   downColor = DEFAULT_DOWN,
-  chinaConvention = false,
   strokeWidth = 1.25,
   className,
   style,
@@ -61,14 +56,12 @@ export default function Sparkline({
 
   const stroke = useMemo(() => {
     if (color) return color;
-    if (!data || data.length < 2) return chinaConvention ? DEFAULT_UP_CN : DEFAULT_UP;
+    if (!data || data.length < 2) return upColor;
     const first = data[0];
     const last = data[data.length - 1];
-    if (last === first) return chinaConvention ? DEFAULT_UP_CN : DEFAULT_UP;
-    const up = last > first;
-    if (chinaConvention) return up ? DEFAULT_UP_CN : DEFAULT_DOWN_CN;
-    return up ? upColor : downColor;
-  }, [color, data, chinaConvention, upColor, downColor]);
+    if (last === first) return upColor;
+    return last > first ? upColor : downColor;
+  }, [color, data, upColor, downColor]);
 
   const areaPath = useMemo(() => {
     if (!path) return '';

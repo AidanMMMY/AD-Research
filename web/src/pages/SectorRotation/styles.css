@@ -2,6 +2,68 @@
    SectorRotation — Page-specific styles
    ========================================================================== */
 
+/* ---- Rotation signals: single-line row layout ---- */
+.sector-rotation__signal-row {
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  width: 100%;
+}
+
+.sector-rotation__signal-sector {
+  font-weight: 500;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.sector-rotation__signal-meta {
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
+  margin-left: auto;
+  flex-wrap: wrap;
+}
+
+.sector-rotation__signal-indicator {
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.sector-rotation__signal-up {
+  color: var(--color-rise);
+}
+
+.sector-rotation__signal-down {
+  color: var(--color-fall);
+}
+
+.sector-rotation__signal-ranks {
+  font-size: var(--text-small-size);
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+@media (max-width: 480px) {
+  .sector-rotation__signal-row,
+  .sector-rotation__signal-meta {
+    gap: var(--space-2);
+  }
+
+  .sector-rotation__signal-row {
+    font-size: 13px;
+  }
+
+  .sector-rotation__signal-ranks {
+    font-size: 12px;
+  }
+}
+
 /* ---- Page header ---- */
 .sector-rotation__header-extra {
   display: flex;
@@ -25,7 +87,61 @@
 }
 
 .sector-rotation__heatmap-container {
-  min-height: 420px;
+  /* Height is set inline from the component so it scales with sector count.
+     Allow horizontal scroll on very narrow viewports to prevent layout breakage. */
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+/* ---- Charts row: explicit equal-height alignment for the two side-by-side panels ---- */
+.sector-rotation__charts-row {
+  align-items: stretch;
+}
+
+/* ---- Chart panels: make the panel body a flex column so the chart container can stretch ---- */
+.sector-rotation__chart-panel {
+  display: flex;
+  flex-direction: column;
+}
+
+.sector-rotation__chart-panel .ad-panel__body {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+/* ---- Chart container: taller so bars are not crowded (min-height 520px on desktop) ---- */
+.ad-chart-container.sector-rotation__chart-container {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 520px;
+  height: auto;
+  width: 100%;
+}
+
+/* Ensure ECharts fills the resizable container */
+.ad-chart-container.sector-rotation__chart-container .echarts-for-react,
+.ad-chart-container.sector-rotation__chart-container > div,
+.ad-chart-container.sector-rotation__chart-container canvas {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+/* Loading spinner centered inside the chart container */
+.sector-rotation__chart-loader {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1 1 auto;
+}
+
+/* Responsive: smaller min-height on narrow screens so the stacked panels still fit */
+@media (max-width: 575px) {
+  .ad-chart-container.sector-rotation__chart-container {
+    min-height: 420px;
+  }
 }
 
 /* ---- Detail table: weight column label ---- */

@@ -180,11 +180,11 @@ export default function KLineChart({ data, overlays = DEFAULT_OVERLAYS, adjusted
   const downColor = getDownColor(colorConvention);
   const resolvedUpColor = useMemo(
     () => resolveChartColor(upColor, '#c96b6b'),
-    [upColor]
+    [upColor, colorConvention]
   );
   const resolvedDownColor = useMemo(
     () => resolveChartColor(downColor, '#5fa87a'),
-    [downColor]
+    [downColor, colorConvention]
   );
   const containerHeight = isMobile ? 350 : 500;
   const [initError, setInitError] = useState<string | null>(null);

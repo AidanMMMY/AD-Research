@@ -49,7 +49,7 @@ import { useSettingsStore } from '@/stores/settings';
 import { usePriceStream } from '@/hooks/usePriceStream';
 import { useMarketStream } from '@/hooks/useMarketStream';
 import type { NewsArticle } from '@/types/news';
-import { SENTIMENT_COLORS, SENTIMENT_LABELS } from '@/utils/sentiment';
+import { SENTIMENT_LABELS } from '@/utils/sentiment';
 
 
 
@@ -102,8 +102,7 @@ function NewsRow({
           <Tooltip title={SENTIMENT_LABELS[article.sentiment_label]}>
             <span
               aria-label={SENTIMENT_LABELS[article.sentiment_label]}
-              className="dashboard-news-row__sentiment ad-rise-fall-sentiment"
-              style={{ color: SENTIMENT_COLORS[article.sentiment_label] }}
+              className={`dashboard-news-row__sentiment dashboard-news-row__sentiment--${article.sentiment_label}`}
             >
               {SENTIMENT_LABELS[article.sentiment_label]}
             </span>
@@ -145,6 +144,20 @@ function FavoriteCard({
     prevPriceRef.current = tick?.price;
   }, [tick?.price]);
 
+  const direction = tick?.change_pct == null
+    ? 'flat'
+    : tick.change_pct > 0
+    ? 'rise'
+    : tick.change_pct < 0
+    ? 'fall'
+    : 'flat';
+  const changeText =
+    tick?.change_pct == null
+      ? ''
+      : tick.change_pct === 0
+      ? '0.00%'
+      : `${tick.change_pct > 0 ? '+' : ''}${tick.change_pct.toFixed(2)}%`;
+
   return (
     <div
       className="dashboard-favorite-card"
@@ -173,17 +186,13 @@ function FavoriteCard({
         )}
       </div>
       <div className={`dashboard-favorite-card__price ${flash ? 'dashboard-favorite-card__price--flash' : ''}`}>
-        {tick?.price != null ? (
+        {tick?.price != null && tick?.change_pct != null ? (
           <>
-            <span className="dashboard-favorite-card__price-value">
+            <span className={`dashboard-favorite-card__price-value dashboard-favorite-card__price-value--${direction}`}>
               {tick.price.toFixed(tick.price >= 100 ? 2 : 3)}
             </span>
-            <span
-              className={`dashboard-favorite-card__price-change ${
-                tick.change_pct >= 0 ? 'ad-rise' : 'ad-fall'
-              }`}
-            >
-              {tick.change_pct >= 0 ? '+' : ''}{tick.change_pct.toFixed(2)}%
+            <span className={`dashboard-favorite-card__price-change dashboard-favorite-card__price-change--${direction}`}>
+              {changeText}
             </span>
           </>
         ) : (

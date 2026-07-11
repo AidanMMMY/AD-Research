@@ -14,6 +14,7 @@ import Panel from '@/components/Panel';
 import EmptyState from '@/components/EmptyState';
 import ResponsiveGrid from '@/components/ResponsiveGrid';
 import SectionHeading from '@/components/SectionHeading';
+import ThemeTag from '@/components/ThemeTag';
 import { usePaperAccounts } from '@/hooks/usePaperTrading';
 import { useLiveConfigs } from '@/hooks/useLiveTrading';
 import { usePoolList } from '@/hooks/usePoolDetail';
@@ -371,10 +372,10 @@ export default function Portfolio() {
                     </span>
                   }
                   extra={
-                    <Tag color={d.drift > 0 ? 'red' : d.drift < 0 ? 'orange' : 'green'}>
+                    <ThemeTag variant={d.drift > 0 ? 'rise' : d.drift < 0 ? 'fall' : 'neutral'}>
                       漂移 {d.drift >= 0 ? '+' : ''}
                       {d.drift.toFixed(2)}%
-                    </Tag>
+                    </ThemeTag>
                   }
                 >
                   <div className="ad-text-small ad-text-secondary">
