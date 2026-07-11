@@ -931,7 +931,7 @@ def run_cninfo_reports_daily():
     periodic-report categories published in the last 7 days.  Safe to
     re-run thanks to the unique constraint on ``announcement_id``.
     """
-    with redis_lock("cninfo_reports_daily", expire_seconds=3600, wait_timeout=600) as acquired:
+    with redis_lock("cninfo_reports_daily", expire_seconds=7200, wait_timeout=600) as acquired:
         if not acquired:
             print("⚠️ [SCHEDULER_WARN] Cninfo reports refresh skipped: lock in use")
             return

@@ -31,7 +31,7 @@ rather than raise.
 import json
 import logging
 import time
-from datetime import date
+from datetime import date, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -57,6 +57,28 @@ _REQUEST_TIMEOUT = 15
 
 # Best-effort polite pacing — keep CNINFO within ~30 req/min.
 _MIN_INTERVAL = 2.0
+
+# Upstream ``seDate`` silently returns empty when the span exceeds roughly
+# two years.  We split wide ranges into 2-year slices and merge the results.
+_MAX_DATE_SLICE_YEARS = 2
+
+
+def _date_slices(start_date: date, end_date: date, max_years: int = _MAX_DATE_SLICE_YEARS):
+    """Yield (slice_start, slice_end) date pairs covering [start_date, end_date]."""
+    slice_start = start_date
+    while slice_start <= end_date:
+        slice_end = min(
+            end_date,
+            slice_start.replace(year=slice_start.year + max_years),
+        )
+        # ``replace(year=...)`` can overflow for leap-day; clamp to month-end.
+        if slice_end.year != slice_start.year + max_years:
+            # Reached the upper bound already, no need to adjust.
+            pass
+        elif slice_end.month == 2 and slice_end.day == 29:
+            slice_end = date(slice_end.year, 2, 28)
+        yield slice_start, slice_end
+        slice_start = slice_end + timedelta(days=1)
 
 
 # Mapping from ``period_type`` (our internal code) to the cninfo
@@ -140,21 +162,24 @@ class CninfoProvider:
             logger.warning("Unknown period_type %s for cninfo", period_type)
             return []
 
-        se_date = f"{start_date.isoformat()}~{end_date.isoformat()}"
         out: list[dict[str, Any]] = []
+        seen_ids: set[str] = set()
 
-        for column in ("sse", "szse", "bse"):
+        for slice_start, slice_end in _date_slices(start_date, end_date):
+            se_date = f"{slice_start.isoformat()}~{slice_end.isoformat()}"
             page_num = 1
             while page_num <= max_pages:
                 # cninfo's ``stock=<orgId>`` + category_*_szsh combo now
                 # returns 0 results; using ``secid=<orgId>`` with empty
-                # ``stock`` still works and is exchange-agnostic.
+                # ``stock`` still works and is exchange-agnostic.  The
+                # ``column`` parameter is ignored when ``secid`` is supplied,
+                # so a single request per page is sufficient.
                 payload = {
                     "stock": "",
                     "tabName": "fulltext",
                     "pageSize": str(page_size),
                     "pageNum": str(page_num),
-                    "column": column,
+                    "column": "szse",
                     "category": category,
                     "plate": "",
                     "seDate": se_date,
@@ -177,6 +202,11 @@ class CninfoProvider:
                 for ann in announcements:
                     normalised = _normalise_announcement(ann, org_id, period_type)
                     if normalised:
+                        ann_id = str(normalised.get("announcement_id") or "")
+                        if ann_id and ann_id in seen_ids:
+                            continue
+                        if ann_id:
+                            seen_ids.add(ann_id)
                         out.append(normalised)
 
                 # Stop when we got fewer than a full page — no more data.
