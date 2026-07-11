@@ -10,24 +10,26 @@ Flow
 ----
 1. Check ``news_article.full_content`` + ``full_content_fetched_at``.
    If the cache is fresh (< 24h) return it as-is.
-2. Otherwise call ``https://r.jina.ai/{article.url}`` with a 15 s
-   timeout. On success, store the (truncated) body back to the DB
-   and return it.
+2. Otherwise call ``https://r.jina.ai/{article.url}`` with a 30 s
+   timeout. On success, extract the Markdown body from the structured
+   Jina response, strip repeated titles / metadata / navigation noise,
+   and store the cleaned body back to the DB.
 3. On any HTTP error / timeout / unexpected exception, log it and
    return ``None`` — the caller then falls back to the original
    ``body`` (the RSS summary already available).
 
 The 24-hour TTL is enforced by the caller; the fetcher itself just
 re-fetches whenever invoked. That keeps the service unit-testable and
-avoid time-of-day decisions inside the module.
+avoids time-of-day decisions inside the module.
 """
 
 from __future__ import annotations
 
 import logging
+import re
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
-from typing import Final, Optional
+from datetime import UTC, datetime, timedelta
+from typing import Final
 
 import httpx
 from sqlalchemy.orm import Session
@@ -42,12 +44,212 @@ JINA_READER_URL: Final[str] = "https://r.jina.ai"
 # 30-second timeout per request — Jina can be slow on large pages.
 REQUEST_TIMEOUT: Final[float] = 30.0
 
+# Minimum meaningful body length after deterministic cleanup. If the
+# cleaned body is shorter than this, we fall back to the raw Jina
+# Markdown so the user still has something to read.
+MIN_BODY_LENGTH: Final[int] = 20
+
 # Hard cap on stored content to keep the DB row reasonable.
 MAX_CONTENT_CHARS: Final[int] = 10_000
 
 # Cache TTL applied by callers when deciding whether to re-fetch.
 CACHE_TTL: Final[timedelta] = timedelta(hours=24)
 
+# ---------------------------------------------------------------------------
+# Deterministic Jina-body cleaners
+# ---------------------------------------------------------------------------
+
+# Structured plain-text response from Jina separates headers from the
+# actual Markdown body. Example:
+#   Title: ...
+#   URL Source: ...
+#   Published Time: ...
+#   Markdown Content:
+#   # ...
+_MARKDOWN_SECTION_RE: Final[re.Pattern[str]] = re.compile(
+    r"^Markdown Content:\s*\n(.*)",
+    re.DOTALL | re.MULTILINE,
+)
+
+# Date / source / author metadata that Jina often leaves at the top of
+# the Markdown body after the title.
+_METADATA_RE: Final[re.Pattern[str]] = re.compile(
+    r"^(\s*"
+    r"(\d{4}[\-/年]\d{1,2}[\-/月]\d{1,2}[日]?\s*(\d{1,2}:\d{2})?)"
+    r"|(.*\d{4}[\-/年]\d{1,2}[\-/月]\d{1,2}[日]?.*)"
+    r"|(发表于.*)"
+    r"|(来源[：:].*)"
+    r"|(作者[：:].*)"
+    r"|(编辑[：:].*)"
+    r"|(阅读[：:]\s*\d+)"
+    r"|(.*\d+次浏览)"
+    r"|(.*记者.*)"
+    r"|(.*日报.*)"
+    r"\s*)$",
+    re.IGNORECASE,
+)
+
+# Navigation / footer / boilerplate lines that are not article body.
+_BOILERPLATE_RE: Final[re.Pattern[str]] = re.compile(
+    r"^("
+    r"更多阅读|相关阅读|推荐阅读|延伸阅读|相关文章|热门文章"
+    r"|返回首页|返回列表|返回顶部|上一篇|下一篇|文章分类"
+    r"|分享到[:：]?.*|收藏|打印|字号|相关稿件|我要纠错|扫一扫"
+    r"|免责声明|版权所有|备案|京ICP备|京公网安备|网站标识码"
+    r"|原文链接|查看原文|点击阅读|阅读全文|展开全文"
+    r"|https?://\S+"
+    r")$",
+    re.IGNORECASE,
+)
+
+# Some DeepSeek-style models leak reasoning blocks wrapped in <think>.
+_THINK_TAG_RE: Final[re.Pattern[str]] = re.compile(r"<think>.*?</think>", re.DOTALL)
+
+
+def _strip_think_tags(text: str) -> str:
+    """Remove any ``<think>...</think>`` reasoning blocks from LLM output."""
+    return _THINK_TAG_RE.sub("", text)
+
+
+def _extract_markdown_section(raw: str) -> str:
+    """Return the ``Markdown Content:`` section from Jina's plain-text response.
+
+    If the response is already plain Markdown (no headers), return it as-is.
+    """
+    raw = raw.replace("\r\n", "\n")
+    m = _MARKDOWN_SECTION_RE.search(raw)
+    if m:
+        return m.group(1).strip()
+    return raw.strip()
+
+
+def _strip_leading_title_and_metadata(text: str, title: str) -> str:
+    """Remove the repeated title, date, source and author lines at the top.
+
+    Stops as soon as it encounters a non-metadata line so that real short
+    headings inside the body are preserved.
+    """
+    if not text:
+        return text
+
+    lines = text.splitlines()
+    title_norm = _normalize_text(title)
+    start = 0
+
+    for i, raw in enumerate(lines):
+        stripped = raw.strip()
+        if not stripped:
+            start = i + 1
+            continue
+
+        # Heading that matches the article title.
+        heading = re.sub(r"^#+\s*", "", stripped).strip()
+        if _normalize_text(heading) == title_norm:
+            start = i + 1
+            continue
+
+        # Any date / source / author metadata line.
+        if _METADATA_RE.match(stripped):
+            start = i + 1
+            continue
+
+        # Standalone URL right under the title is also header noise.
+        if stripped.startswith(("http://", "https://")):
+            start = i + 1
+            continue
+
+        # Looks like a real paragraph / heading — stop stripping.
+        break
+
+    return "\n".join(lines[start:])
+
+
+def _remove_duplicate_title(text: str, title: str) -> str:
+    """Remove any later standalone occurrence of the article title."""
+    if not title or not text:
+        return text
+
+    escaped = re.escape(title)
+    # Match title as a plain line or as a markdown heading.
+    pattern = re.compile(r"^\s*#?\s*" + escaped + r"\s*$", re.MULTILINE | re.IGNORECASE)
+    text = pattern.sub("", text)
+    # Collapse the blank lines left behind.
+    return re.sub(r"\n{3,}", "\n\n", text)
+
+
+def _strip_boilerplate_lines(text: str) -> str:
+    """Drop navigation/footer lines and standalone image/link cruft."""
+    if not text:
+        return text
+
+    lines_out: list[str] = []
+    for line in text.splitlines():
+        stripped = line.strip()
+        if not stripped:
+            lines_out.append("")
+            continue
+
+        if _BOILERPLATE_RE.match(stripped):
+            continue
+
+        # Standalone markdown link (likely a nav button).
+        if re.match(r"^!?\[[^\]]+\]\([^)]+\)$", stripped):
+            continue
+
+        # Breadcrumb lines made of links separated by > / | / -.
+        if re.match(
+            r"^(\[[^\]]+\]\([^)]+\)\s*[>|\-/]\s*)+\[[^\]]+\]\([^)]+\)$",
+            stripped,
+        ):
+            continue
+
+        # Empty bullet separators: "*", "-", "* |", "- -"
+        if re.match(r"^[\*\-•]\s*[|\-—\s]*$", stripped):
+            continue
+
+        lines_out.append(line)
+
+    return "\n".join(lines_out).strip()
+
+
+def _normalize_text(text: str) -> str:
+    """Normalize text for comparison: lower-case, collapse whitespace."""
+    return re.sub(r"\s+", "", text.strip().lower())
+
+
+def _clean_jina_body(raw: str, title: str) -> str:
+    """Deterministic cleanup of the Jina Reader Markdown body.
+
+    Extracts the Markdown section, strips repeated titles and metadata,
+    removes navigation/footer lines, and de-duplicates paragraphs. The
+    result is the real article body without calling an LLM.
+    """
+    text = _strip_think_tags(raw)
+    text = _extract_markdown_section(text)
+    text = _strip_leading_title_and_metadata(text, title)
+    text = _remove_duplicate_title(text, title)
+    text = _strip_boilerplate_lines(text)
+
+    # De-duplicate exact paragraphs that sometimes appear twice (e.g.
+    # gov.cn / 21st Century Business Herald renders).
+    seen: set[str] = set()
+    paragraphs: list[str] = []
+    for para in text.split("\n\n"):
+        para = para.strip()
+        if not para:
+            continue
+        norm = _normalize_text(para)
+        if norm and norm in seen:
+            continue
+        seen.add(norm)
+        paragraphs.append(para)
+
+    return "\n\n".join(paragraphs).strip()
+
+
+# ---------------------------------------------------------------------------
+# Public types
+# ---------------------------------------------------------------------------
 
 @dataclass
 class FetchResult:
@@ -61,8 +263,8 @@ class FetchResult:
     # ``"cleaned" | "skipped" | "failed" | "not_attempted" | None``.
     # ``None`` here means the fetcher did not actually call the AI
     # step (e.g. cache hit or Jina failed) — the row's
-    # ``ai_cleanup_status`` keeps whatever value it already had so we
-    # do not stomp a historical success.
+    # ``ai_cleanup_status`` keeps whatever value it already had so we do
+    # not stomp a historical success.
     ai_cleanup_status: str | None = None
 
 
@@ -128,14 +330,47 @@ class ContentFetcher:
             return FetchResult(success=False, content=None, cached=False,
                                error="empty response from Jina Reader")
 
-        # 3) Use AI to clean up the content (remove ads, navigation, etc.)
-        #    We no longer swallow the outcome — both the cleaned body and
-        #    the structured status (cleaned / skipped / failed) come back
-        #    so the row + the caller can surface "AI did nothing".
-        content, ai_status = self._clean_with_ai(md.strip())
+        # 3) Clean the Jina Markdown deterministically (no LLM). This
+        # avoids the <think> / duplicate-title / no-body problems we saw
+        # with the DeepSeek extraction prompt.
+        cleaned = _clean_jina_body(md, article.title)
 
-        # 4) Safety truncate.
-        content = content.strip()
+        # 4) Validate the cleaned body. If it is too short, treat the
+        # fetch as a soft failure: report it back, record the status for
+        # the ops dashboard, and DO NOT cache the useless raw Jina
+        # Markdown (it would just show the title + date and no body).
+        # The API layer will fall back to ``article.summary`` / ``body``.
+        if len(cleaned) < MIN_BODY_LENGTH:
+            logger.warning(
+                "ContentFetcher: cleaned body too short for article %s (len=%d), "
+                "treating as extraction failure",
+                article_id, len(cleaned),
+            )
+            article.ai_cleaned_at = datetime.now(tz=UTC)
+            article.ai_cleanup_status = "failed"
+            try:
+                self.db.commit()
+            except Exception as exc:  # noqa: BLE001
+                logger.warning(
+                    "ContentFetcher: db commit failed for article %s: %s",
+                    article_id, exc,
+                )
+                self.db.rollback()
+            return FetchResult(
+                success=False,
+                content=article.summary or article.body,
+                cached=False,
+                error=(
+                    "Jina returned a near-empty body (likely missing the main "
+                    "article text); kept the summary as fallback"
+                ),
+                ai_cleanup_status="failed",
+            )
+
+        content = cleaned
+        ai_status = "cleaned"
+
+        # 5) Safety truncate.
         truncated = False
         if len(content) > MAX_CONTENT_CHARS:
             content = content[:MAX_CONTENT_CHARS]
@@ -145,10 +380,10 @@ class ContentFetcher:
                 article_id, MAX_CONTENT_CHARS,
             )
 
-        # 5) Store back to DB, including the AI-cleanup status.
+        # 6) Store back to DB, including the cleanup status.
         article.full_content = content
-        article.full_content_fetched_at = datetime.now(tz=timezone.utc)
-        article.ai_cleaned_at = datetime.now(tz=timezone.utc)
+        article.full_content_fetched_at = datetime.now(tz=UTC)
+        article.ai_cleaned_at = datetime.now(tz=UTC)
         article.ai_cleanup_status = ai_status
         try:
             self.db.commit()
@@ -200,19 +435,24 @@ class ContentFetcher:
             return False
         fetched_at = article.full_content_fetched_at
         if fetched_at.tzinfo is None:
-            fetched_at = fetched_at.replace(tzinfo=timezone.utc)
-        return datetime.now(tz=timezone.utc) - fetched_at < CACHE_TTL
+            fetched_at = fetched_at.replace(tzinfo=UTC)
+        return datetime.now(tz=UTC) - fetched_at < CACHE_TTL
 
     def _call_jina(self, url: str) -> str:
         """Call Jina Reader and return the Markdown body.
+
+        We ask for ``text/plain`` so Jina returns the structured header
+        block (Title, URL Source, Published Time, Markdown Content) which
+        makes it easy to separate the real article body from page
+        metadata.
 
         Raises :class:`_JinaError` on any non-success outcome.
         """
         endpoint = f"{JINA_READER_URL}/{url}"
         headers = {
-            # Ask Jina for plain Markdown — the default is fine, but be
-            # explicit in case the upstream default changes.
-            "Accept": "text/markdown",
+            # Ask Jina for plain text with the structured header block.
+            # The Markdown body lives under ``Markdown Content:``.
+            "Accept": "text/plain",
             "User-Agent": "AD-Research/1.0 (+https://r.jina.ai)",
         }
         try:
@@ -232,87 +472,7 @@ class ContentFetcher:
                 f"jina returned http {response.status_code}"
             )
 
-        # Jina prepends the original title and a markdown divider on
-        # every response. The downstream renderer is fine with that
-        # but it costs cache space — strip the divider if present.
-        body = response.text
-        if not body:
-            return ""
-        return body
-
-    def _clean_with_ai(self, content: str) -> tuple[str, str]:
-        """Run the AI cleanup step and report its outcome.
-
-        Returns
-        -------
-        ``(cleaned_text, status)`` where ``status`` is one of:
-
-        * ``"cleaned"``  — DeepSeek returned a non-trivial body. ``cleaned_text``
-          is the LLM output.
-        * ``"skipped"``  — DeepSeek was not configured (no API key). The
-          original Jina Markdown is returned so the reader still gets
-          *something*; this is the silent-degradation case the new
-          ``ai_cleanup_status`` column makes visible.
-        * ``"failed"``   — DeepSeek raised (HTTP 5xx, timeout, rate-limit,
-          empty / too-short response). Original Markdown is returned;
-          the failure is logged at ``WARNING`` with ``exc_info=True``
-          so the ops dashboard can pick it up.
-        """
-        from app.services.llm import get_llm_provider
-
-        provider = get_llm_provider()
-        if not provider.is_available:
-            # NOT an error — DeepSeek simply isn't configured in this
-            # environment. Still record the attempt so the ops dashboard
-            # can tell "AI was on but is rate-limited" from "AI was never
-            # on in the first place".
-            logger.info("ContentFetcher: AI not available, skipping cleanup")
-            return content, "skipped"
-
-        system_prompt = """你是一个文章内容提取助手。你的任务是从网页抓取的原始内容中提取出**真正的正文部分**，去除以下无关内容：
-1. 广告（包括图片广告、文字广告、推广链接）
-2. 导航菜单、侧边栏、页脚
-3. 社交分享按钮、评论区
-4. 相关文章推荐
-5. 网站版权声明、备案信息
-6. 任何与文章正文无关的内容
-
-请直接返回清理后的正文内容，不要添加任何解释、评论或markdown代码块标记。"""
-
-        prompt = f"""请从以下网页抓取内容中提取真正的正文，去除广告、导航、侧边栏等无关内容。只返回正文内容，不要添加任何解释。：\n\n{content[:5000]}"""
-
-        try:
-            cleaned = provider.complete(
-                prompt=prompt,
-                system=system_prompt,
-                max_tokens=4000,
-                temperature=0.3,
-            )
-        except Exception as exc:  # noqa: BLE001
-            # Surface the stack trace so the "AI failed" alert is
-            # actionable in ops — previous behaviour was
-            # ``logger.warning("... %s", e)`` which dropped the trace.
-            logger.warning(
-                "ContentFetcher: AI cleanup raised, keeping original: %s",
-                exc,
-                exc_info=True,
-            )
-            return content, "failed"
-
-        if cleaned and len(cleaned) > 100:
-            logger.info(
-                "ContentFetcher: AI cleanup successful, original length: %d, cleaned: %d",
-                len(content), len(cleaned),
-            )
-            return cleaned, "cleaned"
-
-        # DeepSeek answered but the body is empty / suspiciously short.
-        # Treat as a failed cleanup so the yellow/red bar shows up.
-        logger.warning(
-            "ContentFetcher: AI cleanup returned empty or too short (len=%s), keeping original",
-            len(cleaned) if cleaned else 0,
-        )
-        return content, "failed"
+        return response.text or ""
 
 
 # ---------------------------------------------------------------------------

@@ -410,6 +410,7 @@ export default function ListingPreview() {
               columns={columns}
               rowKey="id"
               size={rowSize as any}
+              scroll={{ x: 'max-content' }}
               pagination={{
                 current: page,
                 pageSize,

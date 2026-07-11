@@ -3,6 +3,7 @@ import { FileTextOutlined, InboxOutlined } from '@ant-design/icons';
 import EmptyState from '@/components/EmptyState';
 import type { ListingEventDetail, ListingStatus } from '@/types/listingEvent';
 import { STATUS_LABEL } from '@/types/listingEvent';
+import { useIsMobile } from '@/hooks/useBreakpoint';
 
 interface DetailModalProps {
   open: boolean;
@@ -32,12 +33,13 @@ const formatYuan = (v: number | null | undefined): string => {
 const formatDate = (v: string | null | undefined): string => v ?? '-';
 
 export default function ListingEventDetailModal({ open, loading, event, onClose }: DetailModalProps) {
+  const isMobile = useIsMobile();
   return (
     <Modal
       open={open}
       onCancel={onClose}
       footer={null}
-      width={720}
+      width={isMobile ? '100%' : 720}
       destroyOnClose
       title={
         event ? (

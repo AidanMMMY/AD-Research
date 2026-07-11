@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AD-Research 前端移动端适配问题审计报告</title>
+  <style>
+    :root {
+      --bg: #fafafa;
+      --text: #1f2937;
+      --text-secondary: #4b5563;
+      --border: #e5e7eb;
+      --p0: #dc2626;
+      --p0-bg: #fef2f2;
+      --p1: #ea580c;
+      --p1-bg: #fff7ed;
+      --p2: #ca8a04;
+      --p2-bg: #fefce8;
+      --accent: #2563eb;
+      --code-bg: #f3f4f6;
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      line-height: 1.7;
+      color: var(--text);
+      background: var(--bg);
+      margin: 0;
+      padding: 0;
+    }
+    .container {
+      max-width: 920px;
+      margin: 0 auto;
+      padding: 40px 24px;
+      background: #fff;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+    h1 { font-size: 2rem; margin-bottom: 0.5rem; line-height: 1.3; }
+    h2 { font-size: 1.5rem; margin-top: 2.5rem; margin-bottom: 1rem; border-bottom: 2px solid var(--border); padding-bottom: 0.5rem; }
+    h3 { font-size: 1.15rem; margin-top: 1.8rem; margin-bottom: 0.6rem; color: #111827; }
+    h4 { font-size: 1rem; margin-top: 1.2rem; margin-bottom: 0.5rem; color: #374151; }
+    p { margin: 0.6rem 0; }
+    ul, ol { margin: 0.6rem 0; padding-left: 1.4rem; }
+    li { margin: 0.35rem 0; }
+    code {
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+      background: var(--code-bg);
+      padding: 0.15rem 0.4rem;
+      border-radius: 4px;
+      font-size: 0.9em;
+    }
+    pre {
+      background: var(--code-bg);
+      padding: 1rem;
+      border-radius: 8px;
+      overflow-x: auto;
+      font-size: 0.85em;
+      line-height: 1.5;
+    }
+    pre code { background: none; padding: 0; }
+    .meta { color: var(--text-secondary); font-size: 0.95rem; margin-bottom: 2rem; }
+    .summary-box {
+      background: #eff6ff;
+      border-left: 4px solid var(--accent);
+      padding: 1rem 1.2rem;
+      border-radius: 0 8px 8px 0;
+      margin: 1.5rem 0;
+    }
+    .issue { margin: 1.2rem 0; padding: 1rem 1.2rem; border-radius: 8px; }
+    .issue.p0 { background: var(--p0-bg); border-left: 4px solid var(--p0); }
+    .issue.p1 { background: var(--p1-bg); border-left: 4px solid var(--p1); }
+    .issue.p2 { background: var(--p2-bg); border-left: 4px solid var(--p2); }
+    .issue .badge {
+      display: inline-block;
+      font-size: 0.75rem;
+      font-weight: 700;
+      padding: 0.15rem 0.5rem;
+      border-radius: 4px;
+      margin-bottom: 0.5rem;
+      color: #fff;
+    }
+    .issue.p0 .badge { background: var(--p0); }
+    .issue.p1 .badge { background: var(--p1); }
+    .issue.p2 .badge { background: var(--p2); }
+    .issue .label { font-weight: 600; color: #374151; }
+    .issue p { margin: 0.4rem 0; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1rem 0;
+      font-size: 0.95rem;
+    }
+    th, td {
+      border: 1px solid var(--border);
+      padding: 0.6rem 0.8rem;
+      text-align: left;
+    }
+    th { background: #f9fafb; font-weight: 600; }
+    tr:nth-child(even) { background: #f9fafb; }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .footer { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid var(--border); color: var(--text-secondary); font-size: 0.9rem; }
+    @media (max-width: 640px) {
+      .container { padding: 24px 16px; }
+      h1 { font-size: 1.6rem; }
+      h2 { font-size: 1.25rem; }
+      table { font-size: 0.85rem; }
+      th, td { padding: 0.4rem 0.5rem; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>AD-Research 前端移动端适配问题审计报告</h1>
+    <div class="meta">
+      <strong>审计日期</strong>：2026-07-11<br>
+      <strong>审计断点</strong>：375px（小屏手机）、768px（平板/小桌面）<br>
+      <strong>严重度说明</strong>：P0 = 阻塞级，P1 = 重要，P2 = 优化
+    </div>
+
+    <div class="summary-box">
+      <strong>关键摘要</strong>
+      <ul>
+        <li>共发现 <strong>2 个 P0</strong>、<strong>16 个 P1</strong>、<strong>16 个 P2</strong> 问题。</li>
+        <li>最严重：AppLayout 主内容区在移动端未重置 <code>margin-left: 240px</code>，375px 下可用宽度仅约 103px。</li>
+        <li>Login 登录面板在 375px 下因 content-box 内边距溢出视口 64px，输入框被截断。</li>
+        <li>高频问题：大量 <code>size="small"</code> 按钮仅 32px 高、管理表格列宽过宽、768px 断点未充分覆盖。</li>
+      </ul>
+    </div>
+
+    <h2>审计范围</h2>
+    <ul>
+      <li><code>web/src/components/AppLayout.tsx</code></li>
+      <li><code>web/src/pages/Login.tsx</code></li>
+      <li><code>web/src/pages/AdminUsers/index.tsx</code></li>
+      <li><code>web/src/pages/AdminDeployments/index.tsx</code></li>
+      <li><code>web/src/pages/ETLOpsDashboard/index.tsx</code></li>
+      <li><code>web/src/pages/NotificationConfig/index.tsx</code></li>
+      <li>相关样式：<code>web/src/styles/global.css</code>、<code>web/src/components/AppLayout.css</code> 等</li>
+    </ul>
+
+    <h2>P0 阻塞级问题</h2>
+
+    <div class="issue p0">
+      <span class="badge">P0</span>
+      <h3>1. AppLayout — 移动端主内容区未重置 margin-left: 240px</h3>
+      <p><span class="label">文件</span>：<code>AppLayout.tsx</code> 第 596 行；<code>styles/global.css</code> 第 3088-3095 行</p>
+      <p><span class="label">问题</span>：在 &lt;768px 时桌面侧边栏被移除，但 <code>.app-layout__main</code> 仍保持 <code>margin-left: 240px</code>，且 <code>app-layout__main--mobile</code> 无 CSS 重置。375px 视口下主内容区可用宽度仅剩约 103px，页面无法阅读。</p>
+      <p><span class="label">修复</span>：在移动端媒体查询中重置：</p>
+      <pre><code>@media (max-width: 767px) {
+  .app-layout__main { margin-left: 0; }
+}</code></pre>
+    </div>
+
+    <div class="issue p0">
+      <span class="badge">P0</span>
+      <h3>2. Login — 375px 下登录面板因 content-box 内边距溢出截断</h3>
+      <p><span class="label">文件</span>：<code>styles/global.css</code> 第 6953-6962 行、第 7254-7268 行</p>
+      <p><span class="label">问题</span>：<code>.login-glass</code> 使用 <code>padding: 32px</code>，面板使用 <code>width: 100%</code>，但未设置 <code>box-sizing: border-box</code>。渲染总宽 399px，超出 375px 视口 64px，导致输入框被截断。</p>
+      <p><span class="label">修复</span>：为面板添加 <code>box-sizing: border-box</code>，或改用 <code>max-width: calc(100vw - 40px)</code>。</p>
+    </div>
+
+    <h2>P1 重要问题</h2>
+
+    <div class="issue p1">
+      <span class="badge">P1</span>
+      <h3>3. AppLayout — 主题切换按钮在移动端设置菜单中被隐藏</h3>
+      <p><span class="label">文件</span>：<code>AppLayout.css</code> 第 84-89 行；<code>AppLayout.tsx</code> 第 361-376、699 行</p>
+      <p><span class="label">问题</span>：<code>ThemeToggle</code> 复用了 <code>.app-layout__header-collapse</code> 类，该类在移动端被 <code>display: none</code> 隐藏，导致移动端无法切换主题。</p>
+      <p><span class="label">修复</span>：为 <code>ThemeToggle</code> 单独定义类名，或移除该媒体查询。</p>
+    </div>
+
+    <div class="issue p1">
+      <span class="badge">P1</span>
+      <h3>4. AppLayout — 移动端抽屉导航项触控目标不足</h3>
+      <p><span class="label">文件</span>：<code>styles/global.css</code> 第 8519-8521 行、第 8523-8528 行</p>
+      <p><span class="label">问题</span>：抽屉分组标题实际高度约 32-36px，二级导航项 <code>min-height: 40px</code>，均低于 44px 推荐触控目标。</p>
+      <p><span class="label">修复</span>：统一设为 <code>min-height: 44px</code>，上下 padding 10-12px。</p>
+    </div>
+
+    <div class="issue p1">
+      <span class="badge">P1</span>
+      <h3>5. AppLayout — 768px 平板侧边栏触控目标仍偏小</h3>
+      <p><span class="label">文件</span>：<code>styles/global.css</code> 第 2834-2852 行、第 2926-2954 行、第 8171-8461 行</p>
+      <p><span class="label">问题</span>：768px 断点显示桌面侧边栏，但导航项默认仅 36px，分组标题约 36px，collapsed 图标项 40px，均未达 44px。</p>
+      <p><span class="label">修复</span>：在 <code>max-width: 991px</code> 下统一设置 <code>min-height: 44px</code>。</p>
+    </div>
+
+    <div class="issue p1">
+      <span class="badge">P1</span>
+      <h3>6. AppLayout — 使用 100vh 而非 100dvh</h3>
+      <p><span class="label">文件</span>：<code>styles/global.css</code> 第 6-10 行、第 2764 行</p>
+      <p><span class="label">问题</span>：<code>min-height: 100vh</code> 在 iOS Safari 等移动浏览器中会因动态工具栏导致 footer 被遮挡或出现不可点击区域。</p>
+      <p><span class="label">修复</span>：</p>
+      <pre><code>min-height: 100vh;
+min-height: 100dvh;</code></pre>
+    </div>
+
+    <div class="issue p1">
+      <span class="badge">P1</span>
+      <h3>7. AppLayout — 固定元素未处理安全区</h3>
+      <p><span class="label">文件</span>：<code>styles/global.css</code> 第 3102-3115 行（header）、第 3214-3222 行（footer）、第 8510 行（drawer logo）</p>
+      <p><span class="label">问题</span>：header、footer、抽屉 logo 未使用 <code>env(safe-area-inset-top/bottom)</code>，在刘海屏/灵动岛上可能被系统 UI 遮挡。</p>
+      <p><span class="label">修复</span>：viewport meta 添加 <code>viewport-fit=cover</code>；header 加 <code>padding-top: env(safe-area-inset-top, 0)</code>；footer 加 <code>padding-bottom: env(safe-area-inset-bottom, 0)</code>。</p>
+    </div>
+
+    <div class="issue p1">
+      <span class="badge">P1</span>
+      <h3>8. AppLayout — 768px 平板 header 右侧控件拥挤</h3>
+      <p><span class="label">文件</span>：<code>AppLayout.tsx</code> 第 663-669 行</p>
+      <p><span class="label">问题</span>：768px 且侧边栏展开时，header 右侧同时渲染 CollapseToggle、DensityToggle、ColorConventionToggle、ThemeToggle，长面包屑被挤压。</p>
+      <p><span class="label">修复</span>：在 768px-991px 将 DensityToggle/ColorConventionToggle 移入 settings dropdown，或给 header-controls 添加 <code>flex-wrap</code>。</p>
+    </div>
+
+    <div class="issue p1">
+      <span class="badge">P1</span>
+      <h3>9. Login — 输入框 14px 字体会触发 iOS 缩放</h3>
+      <p><span class="label">文件</span>：<code>styles/global.css</code> 第 7139-7148 行</p>
+      <p><span class="label">问题</span>：<code>.login-input</code> 字号 14px，iOS 聚焦时自动缩放。</p>
+      <p><span class="label">修复</span>：移动端改为 <code>font-size: 16px</code>。</p>
+    </div>
+
+    <div class="issue p1">
+      <span class="badge">P1</span>
+      <h3>10. Login — 100vh + overflow:hidden 导致小屏/横屏内容截断</h3>
+      <p><span class="label">文件</span>：<code>styles/global.css</code> 第 6574-6582 行</p>
+      <p><span class="label">问题</span>：<code>.login-page</code> 同时设置 <code>height: 100vh</code> 与 <code>overflow: hidden</code>。在 iPhone SE 横屏等场景下内容超出 100vh 且无法滚动。</p>
+      <p><span class="label">修复</span>：</p>
+      <pre><code>.login-page { height: auto; min-height: 100vh; overflow-y: auto; }</code></pre>
+    </div>
+
+    <div class="issue p1">
+      <span class="badge">P1</span>
+      <h3>11. Login — 768px 断点未覆盖，双列布局品牌名溢出</h3>
+      <p><span class="label">文件</span>：<code>styles/global.css</code> 第 6943-6950 行、第 6999-7028 行、第 7247 行</p>
+      <p><span class="label">问题</span>：断点为 <code>max-width: 767px</code>，在 768px 仍走双列布局，品牌名被压缩溢出。</p>
+      <p><span class="label">修复</span>：将媒体查询改为 <code>max-width: 768px</code> 或 <code>991px</code>。</p>
+    </div>
+
+    <div class="issue p1">
+      <span class="badge">P1</span>
+      <h3>12. AdminUsers — 操作列 240px 过宽且按钮未堆叠</h3>
+      <p><span class="label">文件</span>：<code>pages/AdminUsers/index.tsx</code> 第 157-196 行</p>
+      <p><span class="label">问题</span>：操作列固定 240px，三个按钮并排，375px 下占约 2/3 屏幕宽度。</p>
+      <p><span class="label">修复</span>：移动端将操作改为下拉菜单或垂直堆叠按钮；降低操作列固定宽度。</p>
+    </div>
+
+    <div class="issue p1">
+      <span class="badge">P1</span>
+      <h3>13. AdminUsers — 操作按钮高度仅 32px</h3>
+      <p><span class="label">文件</span>：<code>pages/AdminUsers/index.tsx</code> 第 161-195 行</p>
+      <p><span class="label">问题</span>：按钮使用 <code>size="small"</code>，高度 32px，低于 44px 触控目标。</p>
+      <p><span class="label">修复</span>：移动端改用 <code>size="middle"</code> 或媒体查询强制 <code>min-height: 44px</code>。</p>
+    </div>
+
+    <div class="issue p1">
+      <span class="badge">P1</span>
+      <h3>14. AdminDeployments — 部署历史表格 7 列合计过宽</h3>
+      <p><span class="label">文件</span>：<code>pages/AdminDeployments/index.tsx</code> 第 63-156 行</p>
+      <p><span class="label">问题</span>：7 列固定宽度合计约 740px，在 375px/768px 下都远超视口。</p>
+      <p><span class="label">修复</span>：小屏隐藏次要列（分支、耗时、触发人），或改用卡片列表。</p>
+    </div>
+
+    <div class="issue p1">
+      <span class="badge">P1</span>
+      <h3>15. AdminDeployments — Commit SHA 未截断撑开列宽</h3>
+      <p><span class="label">文件</span>：<code>pages/AdminDeployments/index.tsx</code> 第 97-113 行</p>
+      <p><span class="label">问题</span>：显示完整 40 位 SHA，未做截断。</p>
+      <p><span class="label">修复</span>：截断为 7-8 位并加 Tooltip。</p>
+    </div>
+
+    <div class="issue p1">
+      <span class="badge">P1</span>
+      <h3>16. ETLOpsDashboard — Descriptions 组件强制两列布局</h3>
+      <p><span class="label">文件</span>：<code>pages/ETLOpsDashboard/index.tsx</code> 第 147 行</p>
+      <p><span class="label">问题</span>：<code>Descriptions</code> 使用 <code>column={2}</code>，375px 下每列仅约 150px，标签与内容拥挤。</p>
+      <p><span class="label">修复</span>：改为响应式列数 <code>column={{ xs: 1, sm: 1, md: 2, lg: 2 }}</code>。</p>
+    </div>
+
+    <div class="issue p1">
+      <span class="badge">P1</span>
+      <h3>17. ETLOpsDashboard — freshnessBadge 长文本溢出</h3>
+      <p><span class="label">文件</span>：<code>pages/ETLOpsDashboard/index.tsx</code> 第 156-175 行</p>
+      <p><span class="label">问题</span>：日期 + “(&lt;N&gt;d 前)” 字符串过长，在两列布局中极易撑满单元格。</p>
+      <p><span class="label">修复</span>：移动端精简显示，或给 Badge 文本设置 <code>max-width</code> + 省略号。</p>
+    </div>
+
+    <div class="issue p1">
+      <span class="badge">P1</span>
+      <h3>18. NotificationConfig — 通知配置表格固定列宽过宽</h3>
+      <p><span class="label">文件</span>：<code>pages/NotificationConfig/index.tsx</code> 第 92-152 行</p>
+      <p><span class="label">问题</span>：列宽合计已达 550px，加上“详情”列，375px 下必须大幅横向滚动。</p>
+      <p><span class="label">修复</span>：小屏降低列宽或隐藏“详情”列，改为点击行展开。</p>
+    </div>
+
+    <h2>P2 优化问题</h2>
+
+    <h3>AppLayout</h3>
+    <div class="issue p2">
+      <span class="badge">P2</span>
+      <p><span class="label">Header 焦点环被裁剪</span> — <code>styles/global.css</code> 第 3177 行：header 设置 <code>overflow: hidden</code> 可能裁剪 focus-visible outline。建议改用 <code>min-width: 0</code> 子容器或增加 padding。</p>
+    </div>
+    <div class="issue p2">
+      <span class="badge">P2</span>
+      <p><span class="label">桌面 header 折叠/主题按钮 36px</span> — <code>AppLayout.css</code> 第 53-67 行：低于 44px 触控建议。建议改为 44px 或扩展 invisible hit-area。</p>
+    </div>
+    <div class="issue p2">
+      <span class="badge">P2</span>
+      <p><span class="label">移动端设置项嵌套在 Dropdown 中</span> — <code>AppLayout.tsx</code> 第 673-721 行：Segmented/Switch 控件塞进 Dropdown 菜单项，点击区域不足。建议改为独立的 Modal/Sheet。</p>
+    </div>
+    <div class="issue p2">
+      <span class="badge">P2</span>
+      <p><span class="label">Drawer 缺少显式关闭按钮</span> — <code>AppLayout.tsx</code> 第 573-579 行：<code>closable={false}</code>，建议启用关闭按钮或添加自定义 header。</p>
+    </div>
+    <div class="issue p2">
+      <span class="badge">P2</span>
+      <p><span class="label">面包屑未设置 min-width: 0</span> — <code>styles/global.css</code> 第 3131-3161 行：长路径可能撑开 header-left。建议添加 <code>min-width: 0</code> + 省略号。</p>
+    </div>
+    <div class="issue p2">
+      <span class="badge">P2</span>
+      <p><span class="label">首屏 SSR/客户端切换闪烁</span> — <code>hooks/useBreakpoint.ts</code> 第 15-20 行：<code>useIsMobile</code> 首次返回 false，随后切换。建议 CSS 默认隐藏 mobile 下的侧边栏。</p>
+    </div>
+
+    <h3>Login</h3>
+    <div class="issue p2">
+      <span class="badge">P2</span>
+      <p><span class="label">免责声明 10px 字号过小</span> — <code>styles/global.css</code> 第 7288-7291 行：建议移动端改为 12px 并增加 padding。</p>
+    </div>
+    <div class="issue p2">
+      <span class="badge">P2</span>
+      <p><span class="label">768px 断点未覆盖常用平板宽度</span> — <code>styles/global.css</code> 第 7247 行：建议断点统一为 <code>max-width: 768px</code> 或 <code>991px</code>。</p>
+    </div>
+
+    <h3>AdminUsers</h3>
+    <div class="issue p2">
+      <span class="badge">P2</span>
+      <p><span class="label">用户名、创建时间未截断</span> — <code>pages/AdminUsers/index.tsx</code> 第 132 行、第 151-155 行：建议添加 <code>ellipsis: true</code> 或固定宽度。</p>
+    </div>
+    <div class="issue p2">
+      <span class="badge">P2</span>
+      <p><span class="label">Modal 使用固定宽度 480px</span> — <code>pages/AdminUsers/index.tsx</code> 第 230-239、278-287、308-318 行：建议改为响应式宽度 <code>width={{ xs: '90%', sm: 480 }}</code>。</p>
+    </div>
+
+    <h3>AdminDeployments</h3>
+    <div class="issue p2">
+      <span class="badge">P2</span>
+      <p><span class="label">服务器健康卡片镜像标签未限制宽度</span> — <code>pages/AdminDeployments/index.tsx</code> 第 216-220 行；<code>styles/global.css</code> 第 6108-6113 行：建议添加 <code>max-width</code> + 省略号。</p>
+    </div>
+    <div class="issue p2">
+      <span class="badge">P2</span>
+      <p><span class="label">卡片内边距在移动端过大</span> — <code>pages/AdminDeployments/index.tsx</code> 第 175-224 行；<code>styles/global.css</code> 第 6073-6078 行：建议移动端收紧内边距。</p>
+    </div>
+    <div class="issue p2">
+      <span class="badge">P2</span>
+      <p><span class="label">日志容器选择器固定宽度 130px</span> — <code>pages/AdminDeployments/index.tsx</code> 第 268-278 行；<code>styles/global.css</code> 第 6125-6127 行：建议改为响应式宽度。</p>
+    </div>
+
+    <h3>ETLOpsDashboard</h3>
+    <div class="issue p2">
+      <span class="badge">P2</span>
+      <p><span class="label">刷新按钮点击热区仅文字大小</span> — <code>pages/ETLOpsDashboard/index.tsx</code> 第 137 行：建议替换为 <code>Button type="link"</code> 或增加 padding。</p>
+    </div>
+    <div class="issue p2">
+      <span class="badge">P2</span>
+      <p><span class="label">错误列未截断</span> — <code>pages/ETLOpsDashboard/index.tsx</code> 第 121-127 行：建议设置 <code>max-width</code> + 省略号。</p>
+    </div>
+    <div class="issue p2">
+      <span class="badge">P2</span>
+      <p><span class="label">任务 ID 无宽度限制</span> — <code>pages/ETLOpsDashboard/index.tsx</code> 第 71-75 行：建议添加 <code>max-width: 160px</code> + 省略号。</p>
+    </div>
+
+    <h3>NotificationConfig</h3>
+    <div class="issue p2">
+      <span class="badge">P2</span>
+      <p><span class="label">Tabs 在 FilterToolbar 中可能被拉宽</span> — <code>pages/NotificationConfig/index.tsx</code> 第 182-192 行：建议外层加独立 wrapper 控制宽度。</p>
+    </div>
+    <div class="issue p2">
+      <span class="badge">P2</span>
+      <p><span class="label">详情列 URL/邮箱未截断</span> — <code>pages/NotificationConfig/index.tsx</code> 第 113-131 行：建议设置 <code>max-width</code> + 省略号。</p>
+    </div>
+    <div class="issue p2">
+      <span class="badge">P2</span>
+      <p><span class="label">Modal 在 375px 下局促</span> — <code>pages/NotificationConfig/index.tsx</code> 第 210-215 行：建议移动端改为 Drawer 或响应式宽度。</p>
+    </div>
+
+    <h2>跨页面观察与建议</h2>
+    <ul>
+      <li><strong>表格横向滚动均限制在容器内</strong>：所有表格都通过 <code>scroll={{ x: 'max-content' }}</code> 或 <code>overflow-x: auto</code> 将横向滚动限制在表格内部，未产生页面级横向滚动，符合响应式基本要求。但表格内部滚动距离过长，仍显著影响移动端可用性。</li>
+      <li><strong>size="small" 按钮触控目标不足</strong>：AdminUsers、AdminDeployments、NotificationConfig 等页面大量使用 32px 高的小按钮，建议建立移动端按钮规范：768px 以下统一使用 <code>size="middle"</code> 或媒体查询强制 <code>min-height: 44px</code>。</li>
+      <li><strong>768px 断点覆盖不足</strong>：Login、AppLayout 等页面使用 <code>max-width: 767px</code>，导致 768px 平板仍走桌面布局。建议统一使用 <code>max-width: 768px</code> 或 <code>991px</code>。</li>
+      <li><strong>Modal 宽度固定</strong>：AdminUsers 和 NotificationConfig 的 Modal 使用固定宽度，建议改为响应式宽度对象或 Drawer。</li>
+      <li><strong>文本截断策略缺失</strong>：长用户名、SHA、URL、邮箱、错误信息、任务 ID 等均未做截断，是表格横向滚动过长的主要原因之一。建议统一建立 <code>ellipsis</code> + Tooltip 策略。</li>
+    </ul>
+
+    <h2>修复优先级建议</h2>
+    <table>
+      <thead>
+        <tr><th>优先级</th><th>问题类型</th><th>建议处理项</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><strong>立即</strong></td><td>P0 阻塞</td><td>AppLayout 主内容区 margin-left 重置；Login 面板 content-box 溢出</td></tr>
+        <tr><td><strong>高优</strong></td><td>P1 可用性</td><td>AppLayout 触控目标/安全区/主题切换；Login 输入框缩放/滚动/断点；管理表格列宽/按钮堆叠/SHA 截断；ETLOps Descriptions 单列；NotificationConfig 表格列宽</td></tr>
+        <tr><td><strong>后续</strong></td><td>P2 打磨</td><td>文本截断、Modal 响应式宽度、卡片内边距、focus 环、Dropdown 设置入口、免责声明字号等</td></tr>
+      </tbody>
+    </table>
+
+    <div class="footer">
+      本次审计仅检查代码，未修改任何源文件。<br>
+      报告文件：<a href="./20260711-mobile-responsive-audit.md">Markdown 版本</a> | HTML 版本（当前页）
+    </div>
+  </div>
+</body>
+</html>

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
@@ -43,6 +43,7 @@ import StatCard from '@/components/StatCard';
 import InstrumentCodeTag from '@/components/InstrumentCodeTag';
 import { formatDateTime, formatDateTimeCompact } from '@/utils/datetime';
 import { SENTIMENT_COLORS, SENTIMENT_LABELS } from '@/utils/sentiment';
+import { cleanNewsFullContent } from '@/utils/text';
 import HelpPopover from '@/components/HelpPopover';
 import { useSettingsStore } from '@/stores/settings';
 
@@ -219,6 +220,13 @@ export default function NewsDetail() {
     (fetchFullContent.data && !fetchFullContent.data.success);
   const fullContentToRender = renderedFullContent ?? data.full_content;
 
+  // Defence-layer cleanup: strip DeepSeek-style <think> blocks and
+  // repeated title lines before we render the Markdown body.
+  const cleanedFullContent = useMemo(
+    () => (fullContentToRender ? cleanNewsFullContent(fullContentToRender, data.title) : null),
+    [fullContentToRender, data.title],
+  );
+
   // AI-cleanup observability banner (M22-3, 2026-07-05).
   //
   // Until now the DeepSeek call in ContentFetcher._clean_with_ai
@@ -234,9 +242,9 @@ export default function NewsDetail() {
     aiStatus === 'failed'
       ? {
           type: 'error' as const,
-          message: 'AI 清理失败',
+          message: '原文提取失败',
           description:
-            'DeepSeek 调用异常，已保留 Jina 原始抓取内容。可点击「加载完整正文」重新触发。',
+            'Jina Reader 未能从该页提取出可用的正文（通常因网站正文为空或被反爬拦截），已保留文章摘要。可点击「加载完整正文」重新触发。',
         }
       : aiStatus === 'skipped'
         ? {
@@ -383,8 +391,8 @@ export default function NewsDetail() {
                     </span>
                   </div>
                   <div className="news-translation-pair__body">
-                    {fullContentToRender ? (
-                      <Markdown source={fullContentToRender} />
+                    {cleanedFullContent ? (
+                      <Markdown source={cleanedFullContent} />
                     ) : data.body ? (
                       <div className="ad-detail-article__body">{data.body}</div>
                     ) : (
@@ -415,10 +423,10 @@ export default function NewsDetail() {
                   </div>
                 </div>
               </div>
-            ) : fullContentToRender ? (
+            ) : cleanedFullContent ? (
               // Cache hit (from a previous click) OR we just finished
-              // fetching — render the Markdown body inline.
-              <Markdown source={fullContentToRender} />
+              // fetching — render the cleaned Markdown body inline.
+              <Markdown source={cleanedFullContent} />
             ) : data.body ? (
               <div className="ad-detail-article__body">
                 {data.body}

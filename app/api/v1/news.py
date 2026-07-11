@@ -159,11 +159,19 @@ def _article_to_dict(
         "sentiment_score": article.sentiment_score,
         "sentiment_label": article.sentiment_label,
         "symbols": normalized_symbols,
-        # Cache slots for the Jina Reader lazy-load feature. The
-        # ``summary`` fallback covers the case where the user never
-        # clicked the load button.
-        "full_content": article.full_content,
-        "full_content_fetched_at": _iso_utc(article.full_content_fetched_at),
+        # Cache slots for the Jina Reader lazy-load feature. Rows where
+        # ``ai_cleanup_status == "failed"`` only contain the title +
+        # date in ``full_content`` (Jina could not extract the body) —
+        # hide that noise so the detail page keeps showing the summary
+        # and the "load full text" button stays available for a retry.
+        "full_content": (
+            article.full_content if article.ai_cleanup_status != "failed" else None
+        ),
+        "full_content_fetched_at": (
+            _iso_utc(article.full_content_fetched_at)
+            if article.ai_cleanup_status != "failed"
+            else None
+        ),
         # Chinese translation cache (only populated for English articles;
         # the ``/translate`` endpoint enforces ``language == 'en'``).
         "translated_zh": article.translated_zh,

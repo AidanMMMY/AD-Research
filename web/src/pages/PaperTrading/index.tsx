@@ -207,12 +207,14 @@ export default function PaperTrading() {
       title: <HelpPopover termKey="avg_cost" mode={mode}>均价</HelpPopover>,
       dataIndex: 'avg_cost',
       key: 'avg',
+      responsive: ['md'] as ('md' | 'lg' | 'xl' | 'xxl')[],
       render: (v: number) => <span className="font-mono">{fmtUSDT(v)}</span>,
     },
     {
       title: '现价',
       dataIndex: 'current_price',
       key: 'price',
+      responsive: ['md'] as ('md' | 'lg' | 'xl' | 'xxl')[],
       render: (v: number | null) => <span className="font-mono">{fmtUSDT(v)}</span>,
     },
     {
@@ -246,6 +248,7 @@ export default function PaperTrading() {
       title: <HelpPopover termKey="realized_pnl" mode={mode}>已实现盈亏</HelpPopover>,
       dataIndex: 'realized_pnl',
       key: 'rpnl',
+      responsive: ['md'] as ('md' | 'lg' | 'xl' | 'xxl')[],
       render: (v: number | null) => {
         const p = fmtPnL(v);
         const cls = p.color.includes('--color-rise')
@@ -266,6 +269,7 @@ export default function PaperTrading() {
       title: '时间',
       dataIndex: 'created_at',
       key: 'time',
+      responsive: ['md'] as ('md' | 'lg' | 'xl' | 'xxl')[],
       render: (v: string | null) => formatDateTime(v),
     },
     {

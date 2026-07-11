@@ -297,6 +297,7 @@ export default function CninfoReportsPage() {
               dataSource={items}
               columns={columns}
               rowKey="id"
+              scroll={{ x: 'max-content' }}
               pagination={{
                 current: page,
                 pageSize,

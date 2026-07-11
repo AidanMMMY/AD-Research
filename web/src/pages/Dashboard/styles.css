@@ -550,4 +550,9 @@
   .dashboard-shell__quickbar .theme-tag {
     padding: 2px 5px !important;
   }
+
+  /* Mobile has no hover, so always surface the star toggle for tap access */
+  .dashboard-favorite-card__toggle {
+    opacity: 1;
+  }
 }

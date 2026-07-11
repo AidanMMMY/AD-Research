@@ -121,6 +121,7 @@ function BarTable({ bars, showHeader = false, maxRows = 10 }: BarTableProps) {
         columns={columns}
         rowKey="code"
         size="small"
+        scroll={{ x: 'max-content' }}
         pagination={false}
         showHeader={showHeader}
       />

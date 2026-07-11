@@ -379,6 +379,7 @@ export default function Macro() {
                   size="small"
                   dataSource={indicators ?? []}
                   columns={columns}
+                  scroll={{ x: 'max-content' }}
                   pagination={{ pageSize: 15, showSizeChanger: false }}
                   onRow={(record) => ({
                     onClick: () => setSelectedCode(record.code),

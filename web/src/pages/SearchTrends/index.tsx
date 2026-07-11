@@ -203,6 +203,7 @@ export default function SearchTrendsPage() {
                         dataSource={listData.items}
                         columns={listColumns}
                         size="small"
+                        scroll={{ x: 'max-content' }}
                         pagination={{
                           current: page,
                           pageSize: 20,
@@ -243,6 +244,7 @@ export default function SearchTrendsPage() {
                         dataSource={compareData.series}
                         columns={compareColumns}
                         size="small"
+                        scroll={{ x: 'max-content' }}
                         pagination={false}
                       />
                     </div>

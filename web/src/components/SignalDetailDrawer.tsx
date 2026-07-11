@@ -1,5 +1,6 @@
 import { Drawer, Descriptions, Tag } from 'antd';
 import type { Signal } from '@/types/signal';
+import { useIsMobile } from '@/hooks/useBreakpoint';
 
 interface Props {
   signal: Signal | null;
@@ -23,6 +24,7 @@ const SIGNAL_TYPE_COLOR: Record<string, string> = {
  * numbers rather than the placeholder copy.
  */
 export default function SignalDetailDrawer({ signal, onClose }: Props) {
+  const isMobile = useIsMobile();
   if (!signal) return null;
 
   const signalType = signal.signal_type;
@@ -31,7 +33,7 @@ export default function SignalDetailDrawer({ signal, onClose }: Props) {
       title={`信号详情 · ${signal.etf_code || ''}`}
       open={!!signal}
       onClose={onClose}
-      width={520}
+      width={isMobile ? '100%' : 520}
       destroyOnClose
     >
       <Descriptions column={1} bordered size="small">

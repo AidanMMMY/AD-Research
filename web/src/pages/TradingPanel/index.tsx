@@ -25,6 +25,7 @@ import EmptyState from '@/components/EmptyState';
 import ResponsiveGrid from '@/components/ResponsiveGrid';
 import ThemeTag from '@/components/ThemeTag';
 import InstrumentCodeTag from '@/components/InstrumentCodeTag';
+import { useIsMobile } from '@/hooks/useBreakpoint';
 import {
   PlusOutlined,
   DeleteOutlined,
@@ -93,6 +94,7 @@ function RiskBadge({ risk }: { risk: RiskStatus | undefined }) {
 }
 
 export default function TradingPanel() {
+  const isMobile = useIsMobile();
   const { data: configs = [], isLoading: configsLoading } = useLiveConfigs();
 
   const [selectedConfigId, setSelectedConfigId] = useState<number | undefined>(
@@ -207,12 +209,14 @@ export default function TradingPanel() {
       title: '均价',
       dataIndex: 'avg_cost',
       key: 'avg',
+      responsive: ['md'] as ('md' | 'lg' | 'xl' | 'xxl')[],
       render: (v: number) => <span className="font-mono">{fmtUSDT(v)}</span>,
     },
     {
       title: '现价',
       dataIndex: 'current_price',
       key: 'price',
+      responsive: ['md'] as ('md' | 'lg' | 'xl' | 'xxl')[],
       render: (v: number | null) => <span className="font-mono">{fmtUSDT(v)}</span>,
     },
     {
@@ -249,6 +253,7 @@ export default function TradingPanel() {
       title: '时间',
       dataIndex: 'created_at',
       key: 'time',
+      responsive: ['md'] as ('md' | 'lg' | 'xl' | 'xxl')[],
       render: (v: string | null) => formatDateTime(v),
     },
     {
@@ -279,6 +284,7 @@ export default function TradingPanel() {
       title: '类型',
       dataIndex: 'order_type',
       key: 'type',
+      responsive: ['md'] as ('md' | 'lg' | 'xl' | 'xxl')[],
       render: (v: string) => <ThemeTag variant="default">{v}</ThemeTag>,
     },
     {
@@ -309,7 +315,7 @@ export default function TradingPanel() {
               cancelOrder.mutate({ configId: selectedConfigId!, orderId: r.id })
             }
           >
-            <Button size="small" danger>
+            <Button size="middle" danger>
               撤单
             </Button>
           </Popconfirm>
@@ -555,7 +561,7 @@ export default function TradingPanel() {
         onCancel={() => setCreateModalOpen(false)}
         onOk={() => createForm.submit()}
         confirmLoading={createConfig.isPending}
-        width={520}
+        width={isMobile ? '100%' : 520}
       >
         <Form
           form={createForm}

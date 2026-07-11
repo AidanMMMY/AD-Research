@@ -14,6 +14,7 @@ import InstrumentSelector from '@/components/InstrumentSelector';
 import { useStrategyCatalog } from '@/hooks/useStrategyCatalog';
 import { useRunStrategy } from '@/hooks/useRunStrategy';
 import { useStrategies } from '@/hooks/useStrategies';
+import { useIsMobile } from '@/hooks/useBreakpoint';
 import type { StrategyCatalogItem, ParamSpec } from '@/types/strategy';
 import { useNavigate } from 'react-router-dom';
 
@@ -31,6 +32,7 @@ const FAMILY_TABS = [
 
 export default function StrategyLibrary() {
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
   const [activeFamily, setActiveFamily] = useState('all');
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [runModalOpen, setRunModalOpen] = useState(false);
@@ -174,7 +176,7 @@ export default function StrategyLibrary() {
         open={createModalOpen}
         onCancel={() => { setCreateModalOpen(false); createForm.resetFields(); }}
         onOk={() => createForm.submit()}
-        width={600}
+        width={isMobile ? '100%' : 600}
         destroyOnClose
       >
         <Form form={createForm} layout="vertical" onFinish={handleCreateSubmit}>
@@ -201,7 +203,7 @@ export default function StrategyLibrary() {
         open={runModalOpen}
         onCancel={() => { setRunModalOpen(false); runForm.resetFields(); setRunCodes([]); }}
         onOk={() => runForm.submit()}
-        width={720}
+        width={isMobile ? '100%' : 720}
         destroyOnClose
         confirmLoading={runStrategy.isPending}
       >

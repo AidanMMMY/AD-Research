@@ -10,6 +10,7 @@ import FilterToolbar from '@/components/FilterToolbar';
 import EmptyState from '@/components/EmptyState';
 import ThemeTag from '@/components/ThemeTag';
 import { useNotifications } from '@/hooks/useNotifications';
+import { useIsMobile } from '@/hooks/useBreakpoint';
 import { PlusOutlined, DeleteOutlined, SendOutlined, MailOutlined, LinkOutlined } from '@ant-design/icons';
 
 const CHANNEL_OPTIONS = [
@@ -24,6 +25,7 @@ const PLATFORM_OPTIONS = [
 ];
 
 export default function NotificationConfigPage() {
+  const isMobile = useIsMobile();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [form] = Form.useForm();
   const [channelType, setChannelType] = useState('webhook');
@@ -212,7 +214,7 @@ export default function NotificationConfigPage() {
         open={isModalOpen}
         onCancel={() => { setIsModalOpen(false); form.resetFields(); setChannelType('webhook'); }}
         onOk={() => form.submit()}
-        width={560}
+        width={isMobile ? '100%' : 560}
       >
         <Form
           form={form}

@@ -232,6 +232,7 @@ export default function ReportBrowser() {
             dataSource={filteredReports}
             columns={columns}
             rowKey="id"
+            scroll={{ x: 'max-content' }}
             pagination={false}
           />
         </div>

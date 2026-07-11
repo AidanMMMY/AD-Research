@@ -375,7 +375,7 @@ export default function SectorRotation() {
           </span>
         }
         extra={
-          <div className="ad-cluster sector-rotation__header-extra">
+          <div className="ad-flex ad-flex-wrap ad-items-center ad-gap-3 sector-rotation__header-extra">
             <Segmented<SectorClassification>
               size="small"
               value={classification}
@@ -605,6 +605,7 @@ export default function SectorRotation() {
               columns={columns}
               rowKey="sector"
               size="small"
+              scroll={{ x: 'max-content' }}
               pagination={false}
               loading={isLoading}
             />
@@ -785,8 +786,8 @@ function ConstituentsTab({
   return (
     <div className="ad-px-4 ad-pb-4 ad-pt-2">
       {/* Filter strip */}
-      <div className="ad-stack-row ad-mb-3 sector-rotation__filter-bar">
-        <div className="ad-stack-row sector-rotation__filter-group">
+      <div className="ad-flex ad-flex-wrap ad-items-center ad-gap-3 ad-mb-3 sector-rotation__filter-bar">
+        <div className="ad-flex ad-flex-wrap ad-items-center ad-gap-2 sector-rotation__filter-group">
           <span className="ad-table-text-secondary sector-rotation__filter-label">板块</span>
           <Select
             value={selectedSector ?? undefined}
@@ -801,7 +802,7 @@ function ConstituentsTab({
             optionFilterProp="label"
           />
         </div>
-        <div className="ad-stack-row sector-rotation__filter-group">
+        <div className="ad-flex ad-flex-wrap ad-items-center ad-gap-2 sector-rotation__filter-group">
           <span className="ad-table-text-secondary sector-rotation__filter-label">TOP</span>
           <Select
             value={topN}
@@ -847,6 +848,7 @@ function ConstituentsTab({
             columns={constituentsColumns}
             rowKey="code"
             size="small"
+            scroll={{ x: 'max-content' }}
             pagination={false}
             loading={isFetching && !!data}
           />

@@ -173,6 +173,7 @@ function EtfHoldingsModule({ instrument }: { instrument: InstrumentInfo }) {
             dataSource={holdingsData.holdings.map((h, idx) => ({ ...h, key: idx }))}
             pagination={false}
             size="small"
+            scroll={{ x: 'max-content' }}
             onRow={(row) => ({
               onClick: () => navigate(`/instruments/${row.holding_code}`),
               style: { cursor: 'pointer' },

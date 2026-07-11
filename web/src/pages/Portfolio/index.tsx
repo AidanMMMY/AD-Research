@@ -134,12 +134,13 @@ export default function Portfolio() {
   const diffItems = buildMockDiff(targetPool);
 
   const accountColumns: ColumnsType<PaperAccountRow> = [
-    { title: '账户 ID', dataIndex: 'id', width: 90 },
+    { title: '账户 ID', dataIndex: 'id', width: 90, responsive: ['md'] },
     { title: '账户名', dataIndex: 'name' },
     {
       title: '状态',
       dataIndex: 'status',
       width: 100,
+      responsive: ['md'],
       render: (s: string) => <Tag color={s === 'active' ? 'green' : 'default'}>{s}</Tag>,
     },
     {
@@ -169,7 +170,7 @@ export default function Portfolio() {
   ];
 
   const liveColumns: ColumnsType<LiveAccountRow> = [
-    { title: '配置 ID', dataIndex: 'id', width: 90 },
+    { title: '配置 ID', dataIndex: 'id', width: 90, responsive: ['md'] },
     { title: '名称', dataIndex: 'name' },
     {
       title: '环境',
@@ -220,7 +221,7 @@ export default function Portfolio() {
         );
       },
     },
-    { title: '原因', dataIndex: 'reason' },
+    { title: '原因', dataIndex: 'reason', ellipsis: true },
   ];
 
   return (

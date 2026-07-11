@@ -17,7 +17,7 @@ We stub :func:`httpx.get` rather than running a real server.
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
 from unittest.mock import patch
 
@@ -30,7 +30,6 @@ from sqlalchemy.pool import StaticPool
 from app.core.database import Base
 from app.services.news._model_loader import (
     NewsArticle,
-    NewsArticleSymbol,
     load_news_models,
 )
 from app.services.news.content_fetcher import (
@@ -38,9 +37,8 @@ from app.services.news.content_fetcher import (
     JINA_READER_URL,
     ContentFetcher,
 )
-from app.services.news.normalizer import NewsNormalizer
 from app.services.news.crawler.types import RawArticle
-
+from app.services.news.normalizer import NewsNormalizer
 
 # Force the model loader to materialise now so we can use ``NewsArticle``
 # against an in-memory SQLite schema.
@@ -75,7 +73,7 @@ def seeded_article(db_session):
         source="xinhua_rss",
         url="https://example.com/articles/abc",
         title="Headline",
-        published_at=datetime.now(tz=timezone.utc),
+        published_at=datetime.now(tz=UTC),
         body="A short blurb.",
     )
     article = normalizer.normalize(raw)
@@ -110,7 +108,7 @@ def test_fetch_empty_url(db_session, seeded_article) -> None:
 def test_fetch_uses_fresh_cache(db_session, seeded_article) -> None:
     body = "Fully cached body that should not trigger a network call."
     seeded_article.full_content = body
-    seeded_article.full_content_fetched_at = datetime.now(tz=timezone.utc)
+    seeded_article.full_content_fetched_at = datetime.now(tz=UTC)
     db_session.commit()
 
     with patch(
@@ -127,7 +125,7 @@ def test_fetch_uses_fresh_cache(db_session, seeded_article) -> None:
 def test_fetch_stale_cache_triggers_request(db_session, seeded_article) -> None:
     seeded_article.full_content = "old content"
     seeded_article.full_content_fetched_at = (
-        datetime.now(tz=timezone.utc) - CACHE_TTL - timedelta(minutes=5)
+        datetime.now(tz=UTC) - CACHE_TTL - timedelta(minutes=5)
     )
     db_session.commit()
 
@@ -198,23 +196,24 @@ def test_fetch_handles_network_timeout(db_session, seeded_article) -> None:
 
 def test_force_flag_bypasses_cache(db_session, seeded_article) -> None:
     seeded_article.full_content = "fresh enough"
-    seeded_article.full_content_fetched_at = datetime.now(tz=timezone.utc)
+    seeded_article.full_content_fetched_at = datetime.now(tz=UTC)
     db_session.commit()
 
+    fake_md = "# re-fetched markdown body\n\nMore body content here."
     with patch(
         "app.services.news.content_fetcher.httpx.get",
-        return_value=_fake_response("# re-fetched"),
+        return_value=_fake_response(fake_md),
     ):
         result = ContentFetcher(db_session).fetch(seeded_article.id, force=True)
 
     assert result.success is True
     assert result.cached is False
-    assert result.content == "# re-fetched"
+    assert result.content == fake_md
 
 
 def test_invalidate_clears_cache(db_session, seeded_article) -> None:
     seeded_article.full_content = "old"
-    seeded_article.full_content_fetched_at = datetime.now(tz=timezone.utc)
+    seeded_article.full_content_fetched_at = datetime.now(tz=UTC)
     db_session.commit()
 
     ok = ContentFetcher(db_session).invalidate(seeded_article.id)
@@ -234,8 +233,9 @@ def fastapi_client(db_session, seeded_article):
     ``POST /news/{id}/fetch-content`` without spinning up Postgres.
     """
     from fastapi import FastAPI
-    from app.api.v1 import news as news_module
+
     from app.api import deps
+    from app.api.v1 import news as news_module
 
     # Auth override → return a dummy user.
     def _fake_user():
@@ -283,32 +283,26 @@ def test_fetch_endpoint_missing_article(fastapi_client) -> None:
 
 
 # ---------------------------------------------------------------------------
-# AI-cleanup observability (M22-3, 2026-07-05)
+# Deterministic Jina extraction (M22-3 follow-up, 2026-07-11)
 # ---------------------------------------------------------------------------
 #
-# ``_clean_with_ai`` has three outcomes that the fetcher must surface
-# on the row's ``ai_cleanup_status`` column:
-#
-#   * ``cleaned`` — DeepSeek returned a long-enough body.
-#   * ``skipped`` — DeepSeek was not configured (no API key).
-#   * ``failed``  — DeepSeek raised or returned a too-short body.
-#
-# The first two were already implicitly exercised by the existing
-# tests (Jina success → cleaned path; DeepSeek unconfigured
-# environment → skipped path) but did not assert the persisted
-# ``ai_cleanup_status`` column. The new tests below pin each branch
-# explicitly so a future refactor cannot silently regress them.
+# ``ContentFetcher`` no longer asks DeepSeek to extract the article body.
+# Instead it parses the structured Jina response, strips the repeated title
+# and metadata, and de-duplicates paragraphs. The tests below pin the new
+# behaviour so the old ``<think>`` / duplicate-title / no-body regressions
+# cannot come back.
 
 
 def _seed_full_text_article(db_session, body: str = "x" * 200) -> NewsArticle:
     """Create a row without ``full_content`` so the fetcher is forced
-    to call Jina + the AI cleanup path."""
+    to call Jina and run the deterministic cleanup.
+    """
     normalizer = NewsNormalizer(db_session)
     raw = RawArticle(
         source="xinhua_rss",
         url="https://example.com/articles/cleanup",
         title="Cleanup test article",
-        published_at=datetime.now(tz=timezone.utc),
+        published_at=datetime.now(tz=UTC),
         body=body,
     )
     article = normalizer.normalize(raw)
@@ -316,147 +310,146 @@ def _seed_full_text_article(db_session, body: str = "x" * 200) -> NewsArticle:
     return article
 
 
-def test_fetch_marks_ai_cleanup_skipped_when_deepseek_unavailable(
-    db_session,
-) -> None:
-    """When ``DEEPSEEK_API_KEY`` is unset, ``_clean_with_ai`` returns
-    ``skipped`` and the row keeps the raw Jina Markdown verbatim."""
-    article = _seed_full_text_article(db_session)
-    fake_md = "x" * 200  # long enough that Jina would otherwise succeed
+def _jina_structured(title: str, published: str, markdown: str) -> str:
+    return (
+        f"Title: {title}\n"
+        f"URL Source: https://example.com/articles/abc\n"
+        f"Published Time: {published}\n"
+        f"Markdown Content:\n"
+        f"{markdown}"
+    )
 
-    with patch.dict("os.environ", {}, clear=False):
-        # Force ``DEEPSEEK_API_KEY`` to empty so ``provider._available``
-        # is ``False`` for the duration of this test.
-        with patch.dict(
-            "os.environ", {"DEEPSEEK_API_KEY": ""}, clear=False
-        ):
-            with patch(
-                "app.services.news.content_fetcher.httpx.get",
-                return_value=_fake_response(fake_md),
-            ):
-                result = ContentFetcher(db_session).fetch(
-                    article.id, force=True
-                )
+
+def test_fetch_extracts_markdown_content_section(db_session) -> None:
+    """Jina's plain-text response contains a ``Markdown Content:`` section."""
+    article = _seed_full_text_article(db_session)
+    markdown = "\n".join([
+        "# Real body",
+        "",
+        "Paragraph one contains enough text to pass the minimum body-length "
+        "threshold after the title and metadata have been stripped.",
+        "",
+        "Paragraph two is also reasonably long so the cleaned result is "
+        "recognised as a real article body.",
+    ])
+    raw = _jina_structured(article.title, "2026-07-11 15:59", markdown)
+
+    with patch(
+        "app.services.news.content_fetcher.httpx.get",
+        return_value=_fake_response(raw),
+    ):
+        result = ContentFetcher(db_session).fetch(article.id, force=True)
 
     assert result.success is True
     assert result.cached is False
-    assert result.ai_cleanup_status == "skipped"
-    # The raw Jina Markdown was kept because DeepSeek refused to clean.
-    assert result.content == fake_md
-
-    # The row picked up the status — this is what the ops dashboard
-    # scans to spot "AI is off".
-    db_session.refresh(article)
-    assert article.ai_cleanup_status == "skipped"
-    assert article.ai_cleaned_at is not None
-    assert article.full_content == fake_md
+    assert result.ai_cleanup_status == "cleaned"
+    assert "Paragraph one" in result.content
+    assert "Markdown Content:" not in (result.content or "")
+    assert "Title:" not in (result.content or "")
 
 
-def test_fetch_marks_ai_cleanup_cleaned_when_deepseek_returns_body(
-    db_session,
-) -> None:
-    """When DeepSeek returns a non-trivial body, ``ai_cleanup_status``
-    is ``cleaned`` and the row stores the LLM output (not the Jina
-    Markdown)."""
+def test_fetch_strips_repeated_title_and_metadata(db_session) -> None:
+    """The body should not contain the article title or the date/source line."""
     article = _seed_full_text_article(db_session)
-    fake_md = "x" * 200
-    cleaned_body = "y" * 300  # DeepSeek's actual cleanup output
+    title = article.title
+    markdown = (
+        f"\n# {title}\n\n"
+        "2026年07月11日 15:59 21世纪经济报道\n\n"
+        "真正正文开始。这是一段足够长的正文内容，用来确保清理后的长度可以通过最小阈值检查，"
+        "并且仍然包含清晰的中文语义，让测试能够验证正文已经被正确提取。"
+    )
+    raw = _jina_structured(title, "2026-07-11 15:59", markdown)
 
-    class _FakeProvider:
-        is_available = True
-
-        def complete(self, *args, **kwargs):
-            return cleaned_body
-
-    # Patch both the module-level ``DeepSeekProvider`` *and* the
-    # ``is_available`` so we exercise the success path.
     with patch(
-        "app.services.llm.deepseek_provider.DeepSeekProvider.is_available",
-        new=True,
-    ), patch(
-        "app.services.llm.deepseek_provider.DeepSeekProvider.complete",
-        return_value=cleaned_body,
-    ), patch(
         "app.services.news.content_fetcher.httpx.get",
-        return_value=_fake_response(fake_md),
+        return_value=_fake_response(raw),
     ):
-        result = ContentFetcher(db_session).fetch(
-            article.id, force=True
-        )
+        result = ContentFetcher(db_session).fetch(article.id, force=True)
 
     assert result.success is True
     assert result.ai_cleanup_status == "cleaned"
-    assert result.content == cleaned_body  # NOT the raw Jina body
+    assert result.content is not None
+    assert title not in result.content
+    assert "2026年07月11日" not in result.content
+    assert "21世纪经济报道" not in result.content
+    assert "真正正文开始" in result.content
 
-    db_session.refresh(article)
-    assert article.ai_cleanup_status == "cleaned"
-    assert article.ai_cleaned_at is not None
-    assert article.full_content == cleaned_body
 
-
-def test_fetch_marks_ai_cleanup_failed_when_deepseek_raises(
-    db_session,
-) -> None:
-    """When DeepSeek raises, ``ai_cleanup_status`` is ``failed`` and
-    the row keeps the raw Jina Markdown so the reader still has
-    something to look at."""
+def test_fetch_removes_think_tags_from_raw(db_session) -> None:
+    """Any residual ``<think>`` block (from an LLM or upstream source) is removed."""
     article = _seed_full_text_article(db_session)
-    fake_md = "x" * 200
+    markdown = (
+        "<think> The model is thinking... </think>\n\n"
+        "正文内容。"
+        "这一段正文故意写得长一点，确保清理后的长度可以通过最小正文长度阈值，"
+        "从而完整测出 think 标签过滤之后还能拿到正文。"
+    )
+    raw = _jina_structured(article.title, "2026-07-11", markdown)
 
     with patch(
-        "app.services.llm.deepseek_provider.DeepSeekProvider.is_available",
-        new=True,
-    ), patch(
-        "app.services.llm.deepseek_provider.DeepSeekProvider.complete",
-        side_effect=RuntimeError("deepseek down"),
-    ), patch(
         "app.services.news.content_fetcher.httpx.get",
-        return_value=_fake_response(fake_md),
+        return_value=_fake_response(raw),
     ):
-        result = ContentFetcher(db_session).fetch(
-            article.id, force=True
-        )
-
-    assert result.success is True  # Jina succeeded → still a success
-    assert result.ai_cleanup_status == "failed"
-    # Raw Jina body preserved as a fallback.
-    assert result.content == fake_md
-
-    db_session.refresh(article)
-    assert article.ai_cleanup_status == "failed"
-    assert article.ai_cleaned_at is not None
-    assert article.full_content == fake_md
-
-
-def test_fetch_marks_ai_cleanup_failed_when_deepseek_returns_short_body(
-    db_session,
-) -> None:
-    """DeepSeek answered but returned < 100 chars → treated as ``failed``
-    so the dashboard flag turns red rather than silently green-lighting
-    an empty cleanup."""
-    article = _seed_full_text_article(db_session)
-    fake_md = "x" * 200
-
-    with patch(
-        "app.services.llm.deepseek_provider.DeepSeekProvider.is_available",
-        new=True,
-    ), patch(
-        "app.services.llm.deepseek_provider.DeepSeekProvider.complete",
-        return_value="tiny",  # < 100 chars
-    ), patch(
-        "app.services.news.content_fetcher.httpx.get",
-        return_value=_fake_response(fake_md),
-    ):
-        result = ContentFetcher(db_session).fetch(
-            article.id, force=True
-        )
+        result = ContentFetcher(db_session).fetch(article.id, force=True)
 
     assert result.success is True
-    assert result.ai_cleanup_status == "failed"
-    assert result.content == fake_md
+    assert result.ai_cleanup_status == "cleaned"
+    assert result.content is not None
+    assert "<think>" not in result.content
+    assert "</think>" not in result.content
+    assert "The model is thinking" not in result.content
+    assert "正文内容" in result.content
 
+
+def test_fetch_marks_failed_when_cleaned_body_too_short(db_session) -> None:
+    """If Jina only returns the title and date, the cleanup marks failure and the raw title+date is NOT cached."""
+    article = _seed_full_text_article(db_session)
+    title = article.title
+    # This reproduces the user-reported bug: title + date but no real body.
+    markdown = f"# {title}\n\n2026年07月11日 15:59 21世纪经济报道\n"
+    raw = _jina_structured(title, "2026-07-11 15:59", markdown)
+
+    with patch(
+        "app.services.news.content_fetcher.httpx.get",
+        return_value=_fake_response(raw),
+    ):
+        result = ContentFetcher(db_session).fetch(article.id, force=True)
+
+    # The extraction is reported as a failure so the UI does not render
+    # the useless title+date as the full content.
+    assert result.success is False
+    assert result.ai_cleanup_status == "failed"
+    assert result.error and "Jina" in result.error
+    # The fallback content is the article summary/body, not raw Jina.
+    assert result.content is not None
+    assert result.content != title  # not just the title repeated
+
+    # The raw title+date is NOT persisted on the row.
     db_session.refresh(article)
+    assert article.full_content is None
     assert article.ai_cleanup_status == "failed"
+    assert article.ai_cleaned_at is not None
+
+
+def test_fetch_de_duplicates_repeated_paragraphs(db_session) -> None:
+    """Some sites render the same paragraph twice; keep only one copy."""
+    article = _seed_full_text_article(db_session)
+    para = "这是一段重要的正文内容，不应该重复出现。我们特意把它写长一点，保证清理后的整体长度可以通过最小正文长度阈值。"
+    markdown = f"\n{para}\n\n{para}\n\n第二段不同的内容，也需要足够长以避免被误判为无正文。"
+    raw = _jina_structured(article.title, "2026-07-11", markdown)
+
+    with patch(
+        "app.services.news.content_fetcher.httpx.get",
+        return_value=_fake_response(raw),
+    ):
+        result = ContentFetcher(db_session).fetch(article.id, force=True)
+
+    assert result.success is True
+    assert result.ai_cleanup_status == "cleaned"
+    assert result.content is not None
+    # Should appear only once.
+    assert result.content.count("这是一段重要的正文内容") == 1
+    assert "第二段不同的内容" in result.content
 
 
 def test_fetch_article_dict_exposes_ai_cleanup_fields(

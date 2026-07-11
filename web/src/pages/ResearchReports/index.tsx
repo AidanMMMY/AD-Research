@@ -19,6 +19,7 @@ import {
 } from '@/api/researchReports';
 import type { ResearchReportOut } from '@/api/researchReports';
 import { useDebounce } from '@/hooks/useDebounce';
+import { useIsMobile } from '@/hooks/useBreakpoint';
 import { NULL_PLACEHOLDER } from '@/utils/format';
 
 const { Title, Paragraph } = Typography;
@@ -42,6 +43,7 @@ function formatPrice(v: number | null | undefined): string {
 }
 
 export default function ResearchReports() {
+  const isMobile = useIsMobile();
   const [search, setSearch] = useState('');
   const [industry, setIndustry] = useState<string | undefined>();
   const [orgName, setOrgName] = useState<string | undefined>();
@@ -335,7 +337,7 @@ export default function ResearchReports() {
         open={detailOpen}
         title={detail?.title ?? '研报详情'}
         onCancel={handleCloseDetail}
-        width={720}
+        width={isMobile ? '100%' : 720}
         footer={[
           detail && !detail.summary ? (
             <Button
