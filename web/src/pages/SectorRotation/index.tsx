@@ -84,7 +84,9 @@ export default function SectorRotation() {
     const textPrimary = toEChartsColor('var(--text-primary)', '#1f1f1f');
     const textSecondary = toEChartsColor('var(--text-secondary)', '#666666');
     const border = toEChartsColor('var(--border-default)', 'rgba(0,0,0,0.08)');
-    return { upHex, downHex, textPrimary, textSecondary, border };
+    const bgBase = toEChartsColor('var(--bg-elevated)', '#ffffff');
+    const midHex = toEChartsColor('var(--bg-elevated)', '#f4f4f0');
+    return { upHex, downHex, textPrimary, textSecondary, border, bgBase, midHex };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -97,8 +99,8 @@ export default function SectorRotation() {
       tooltip: {
         trigger: 'axis',
         axisPointer: { type: 'shadow' },
-        backgroundColor: '#fff',
-        textStyle: { color: '#222' },
+        backgroundColor: palette.bgBase,
+        textStyle: { color: palette.textPrimary },
       },
       grid: { left: 130, right: 32, top: 20, bottom: 28 },
       xAxis: {
@@ -179,7 +181,7 @@ export default function SectorRotation() {
         bottom: 6,
         text: ['+6%', '-6%'],
         textStyle: { color: palette.textSecondary, fontSize: 11 },
-        inRange: { color: [palette.downHex, '#f4f4f0', palette.upHex] },
+        inRange: { color: [palette.downHex, palette.midHex, palette.upHex] },
         itemWidth: 12,
         itemHeight: 80,
       },
