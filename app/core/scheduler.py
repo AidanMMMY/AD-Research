@@ -39,6 +39,7 @@ from app.data.pipelines.us_stock_enrichment import USStockEnrichmentPipeline
 from app.models.etf import ETFInfo
 from app.models.etl import StrategyConfig
 from app.models.pool import ETFPools
+from app.models.user import User
 from app.services.etf_scanner_service import ETFScannerService
 from app.services.report_service import ReportService
 from app.services.scoring_service import ScoringService
@@ -843,6 +844,9 @@ def run_signal_generation(target_date: date | None = None):
     try:
         signal_service = SignalService(db)
 
+        # Scheduler-generated signals are owned by the system admin (id=1).
+        default_user_id = db.query(User.id).filter(User.id == 1).scalar() or 1
+
         # Query active strategy configs directly (bypass StrategyService which
         # requires user_id scoping — the scheduler operates system-wide).
         active_configs = (
@@ -895,6 +899,7 @@ def run_signal_generation(target_date: date | None = None):
                             strategy_type=strategy_type,
                             params=params,
                             trade_date=trade_date,
+                            user_id=default_user_id,
                         )
                         total_signals += len(signals)
                     else:
@@ -906,6 +911,7 @@ def run_signal_generation(target_date: date | None = None):
                                     strategy_type=strategy_type,
                                     params=params,
                                     trade_date=trade_date,
+                                    user_id=default_user_id,
                                 )
                                 total_signals += len(signals)
                             except Exception as e:

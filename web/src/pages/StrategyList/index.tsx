@@ -128,7 +128,7 @@ export default function StrategyList() {
     }
   };
 
-  const rowSize = 'large';
+  const rowSize = 'small';
   const tableWrapClass = 'ad-table-scroll ad-table-sticky';
 
   const columns = [

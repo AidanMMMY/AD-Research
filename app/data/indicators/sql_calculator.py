@@ -553,7 +553,9 @@ def _execute_indicator_query(
     # server-side activity.
     conn = db.bind.connect().execution_options(isolation_level="AUTOCOMMIT")
     try:
-        conn.execute(text("SET statement_timeout = '60000'"))
+        # 600000 ms = 10 min: the full ~8k A-share universe can exceed the
+        # old 60 s budget during cold-cache / first-run execution.
+        conn.execute(text("SET statement_timeout = '600000'"))
         with conn.execute(stmt, params) as result:
             columns = result.keys()
             rows = [dict(zip(columns, row)) for row in result.fetchall()]

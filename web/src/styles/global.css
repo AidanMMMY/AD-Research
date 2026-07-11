@@ -144,7 +144,7 @@ body {
 
 /* Tabs */
 .ant-tabs-nav {
-  margin-bottom: var(--space-4);
+  margin-bottom: var(--space-block);
 }
 
 .ant-tabs-tab {
@@ -245,6 +245,37 @@ body {
   box-shadow: 0 0 16px var(--accent-glow);
 }
 
+/* Form */
+.ant-form-item {
+  margin-bottom: var(--space-form-field);
+}
+
+.ant-form-item-label {
+  padding-bottom: var(--space-form-label);
+}
+
+.ant-form-horizontal .ant-form-item-label {
+  padding-bottom: 0;
+}
+
+.ant-form-item-label > label {
+  font-size: var(--text-small-size);
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.ant-form-item-explain,
+.ant-form-item-extra {
+  font-size: var(--text-small-size);
+  color: var(--text-tertiary);
+  margin-top: var(--space-1);
+  min-height: auto;
+}
+
+.ant-form-item-explain-error {
+  color: var(--color-error);
+}
+
 /* Tag */
 .ant-tag {
   border-radius: var(--radius-sm);
@@ -262,7 +293,7 @@ body {
   font-weight: 500;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  margin-bottom: var(--space-2) !important;
+  margin-bottom: var(--space-inline-sm) !important;
 }
 
 .ant-statistic-content {
@@ -536,7 +567,7 @@ body {
 
   /* Tabs */
   .ant-tabs-nav {
-    margin-bottom: var(--space-3) !important;
+    margin-bottom: var(--space-block-sm) !important;
   }
 
   .ant-tabs-tab {
@@ -607,10 +638,10 @@ body {
    Page Header (S2) — standardized H1 + tagline block
    ============================================================ */
 .page-header {
-  margin: 0 0 32px;
+  margin: 0 0 var(--space-section);
 }
 .page-header[data-compact] {
-  margin: 0 0 20px;
+  margin: 0 0 var(--space-block);
 }
 
 .page-header-breadcrumb {
@@ -673,7 +704,7 @@ body {
 
 /* Section heading — uppercase eyebrow used within a page. */
 .section-heading {
-  margin: 0 0 var(--space-4);
+  margin: 0 0 var(--space-block);
   font-size: var(--text-small-size);
   font-weight: 500;
   color: var(--text-tertiary);
@@ -682,7 +713,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--space-3);
+  gap: var(--space-inline);
 }
 
 .section-heading-meta {
@@ -704,24 +735,24 @@ main,
    Page padding utilities
    ============================================================ */
 .page-padding {
-  padding: var(--space-5);
+  padding: var(--space-page);
 }
 
 .page-padding-sm {
-  padding: var(--space-4);
+  padding: var(--space-block-sm);
 }
 
 .page-padding-lg {
-  padding: var(--space-6);
+  padding: var(--space-section);
 }
 
 @media (max-width: 767px) {
   .page-padding {
-    padding: var(--space-4);
+    padding: var(--space-page);
   }
 
   .page-padding-lg {
-    padding: var(--space-5);
+    padding: var(--space-block);
   }
 }
 
@@ -951,7 +982,7 @@ a:focus-visible {
 }
 
 .ad-news-card {
-  padding: var(--space-4) var(--space-5);
+  padding: var(--space-3) var(--space-4);
   border-bottom: 1px solid var(--border-default);
   cursor: pointer;
   transition: background var(--transition-fast);
@@ -1201,7 +1232,7 @@ a:focus-visible {
 .ad-filter-label {
   font-size: var(--text-body-size);
   color: var(--text-secondary);
-  margin-bottom: var(--space-2);
+  margin-bottom: var(--space-form-label);
 }
 
 /* Form/iframe preview containers. */
@@ -1215,7 +1246,7 @@ a:focus-visible {
 /* Inline form row with controls and a trailing action. */
 .ad-form-row {
   display: flex;
-  gap: var(--space-sm);
+  gap: var(--space-inline-sm);
   flex-wrap: wrap;
   align-items: center;
 }
@@ -1352,6 +1383,22 @@ a:focus-visible {
   overflow: hidden;
 }
 .ad-cursor-pointer { cursor: pointer; }
+
+.ad-button-group {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-button-group);
+  flex-wrap: wrap;
+}
+
+.ad-button-group--block {
+  display: flex;
+  width: 100%;
+}
+
+.ad-button-group .ant-btn + .ant-btn {
+  margin-inline-start: 0;
+}
 
 /* ============================================================
    Inline-style cleanup — tool/report pages
@@ -1713,7 +1760,7 @@ main {
   border-radius: var(--radius-lg);
   display: flex;
   align-items: center;
-  margin-bottom: var(--space-5);
+  margin-bottom: var(--space-block);
   mask-image: linear-gradient(
     to right,
     transparent 0,
@@ -1836,7 +1883,7 @@ main {
    Masthead
    ============================================================ */
 .masthead {
-  margin-bottom: 32px;
+  margin-bottom: var(--space-section);
 }
 
 .masthead-title {
@@ -1988,6 +2035,28 @@ main {
     padding-top: var(--space-4);
     padding-bottom: var(--space-4);
   }
+}
+
+/* ---- Panel stacking — space between adjacent panels and common followers ---- */
+.ad-panel + .ad-panel {
+  margin-top: var(--space-panel-gap);
+}
+
+.ad-panel + .ad-section-heading,
+.ad-panel + .filter-toolbar {
+  margin-top: var(--space-panel-gap);
+}
+
+.ad-section-heading + .ad-panel {
+  margin-top: var(--space-block);
+}
+
+/* Minimal/transparent panels used as visual dividers should not add extra gap */
+.ad-panel--minimal + .ad-panel,
+.ad-panel--transparent + .ad-panel,
+.ad-panel + .ad-panel--minimal,
+.ad-panel + .ad-panel--transparent {
+  margin-top: var(--space-block);
 }
 
 /* ---- StatCard ---- */
@@ -2346,7 +2415,7 @@ main {
   width: 100%;
   margin-left: auto;
   margin-right: auto;
-  padding: var(--space-5);
+  padding: var(--space-page);
 }
 
 .page-shell--reading {
@@ -2363,7 +2432,7 @@ main {
 
 @media (max-width: 767px) {
   .page-shell {
-    padding: var(--space-4);
+    padding: var(--space-page);
   }
 }
 
@@ -2373,9 +2442,9 @@ main {
   align-items: center;
   justify-content: space-between;
   flex-wrap: wrap;
-  gap: var(--space-3);
-  padding-bottom: var(--space-4);
-  margin-bottom: var(--space-4);
+  gap: var(--space-filter-gap);
+  padding-bottom: var(--space-block);
+  margin-bottom: var(--space-block);
   border-bottom: 1px solid var(--border-default);
 }
 
@@ -2384,14 +2453,14 @@ main {
   flex-direction: column;
   align-items: stretch;
   justify-content: flex-start;
-  gap: var(--space-4);
+  gap: var(--space-block);
 }
 
 .filter-toolbar__header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--space-3);
+  gap: var(--space-filter-gap);
   flex-wrap: wrap;
 }
 
@@ -2405,7 +2474,7 @@ main {
 .filter-toolbar__meta {
   display: flex;
   align-items: center;
-  gap: var(--space-3);
+  gap: var(--space-inline);
   margin-left: auto;
   flex-shrink: 0;
 }
@@ -2420,7 +2489,7 @@ main {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: var(--space-3);
+  gap: var(--space-filter-gap);
 }
 
 .filter-toolbar--headed .filter-toolbar__filters {
@@ -2430,11 +2499,11 @@ main {
 
 @media (max-width: 767px) {
   .filter-toolbar {
-    gap: var(--space-3);
+    gap: var(--space-filter-gap);
   }
 
   .filter-toolbar--headed {
-    gap: var(--space-3);
+    gap: var(--space-filter-gap);
   }
 
   .filter-toolbar__header {
@@ -2545,6 +2614,10 @@ main {
   padding: var(--space-4) var(--space-5) !important;
 }
 
+.content-card + .content-card {
+  margin-top: var(--space-card-gap);
+}
+
 @media (max-width: 767px) {
   .content-card .ant-card-head,
   .content-card .ant-card-body {
@@ -2627,11 +2700,11 @@ main {
 
 /* ---- SectionHeading ---- */
 .ad-section-heading {
-  margin: 0 0 var(--space-4);
+  margin: 0 0 var(--space-block);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--space-3);
+  gap: var(--space-inline);
   flex-wrap: wrap;
   position: relative;
 }
@@ -3034,11 +3107,11 @@ main {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 var(--space-5);
+  padding: 0 var(--space-page);
   position: sticky;
   top: 0;
   z-index: 50;
-  gap: var(--space-3);
+  gap: var(--space-inline);
 }
 
 @media (max-width: 767px) {
@@ -3128,7 +3201,7 @@ main {
 
 .app-layout__content {
   flex: 1;
-  padding: var(--space-5);
+  padding: var(--space-page);
   overflow: auto;
 }
 
@@ -3150,7 +3223,11 @@ main {
 
 @media (max-width: 767px) {
   .app-layout__content {
-    padding: var(--space-4);
+    padding: var(--space-page);
+  }
+
+  .app-layout__header {
+    padding: 0 var(--space-page);
   }
 }
 
@@ -3211,7 +3288,7 @@ main {
 
 /* Common section spacing for Phase 5c pages */
 .phase5c-section {
-  margin-bottom: var(--space-6);
+  margin-bottom: var(--space-section);
 }
 
 /* AI Chat page */
@@ -3242,7 +3319,7 @@ main {
 }
 
 .phase5c-chat-sidebar__item {
-  padding: var(--space-3);
+  padding: var(--space-2);
   border-radius: var(--radius-lg);
   cursor: pointer;
   margin-bottom: 4px;
@@ -3708,13 +3785,13 @@ main {
    ============================================================ */
 
 .dashboard-section {
-  margin-bottom: var(--space-6);
+  margin-bottom: var(--space-section);
 }
 
 .dashboard-side-stack {
   display: flex;
   flex-direction: column;
-  gap: var(--space-5);
+  gap: var(--space-block);
 }
 
 .panel-extra-link {
@@ -4176,7 +4253,7 @@ main {
   cursor: pointer;
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
+  gap: var(--space-1);
 }
 
 .mobile-list-item__row {
@@ -4184,6 +4261,21 @@ main {
   align-items: center;
   justify-content: space-between;
   gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.mobile-list-item__main {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.mobile-list-item__metrics {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  flex-shrink: 0;
 }
 
 .mobile-list-item__row--wrap {
@@ -4206,7 +4298,7 @@ main {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--space-2);
+  gap: var(--space-1);
 }
 
 .mobile-list-pagination {
@@ -4214,6 +4306,7 @@ main {
   margin-top: var(--space-4);
 }
 
+/* Crypto-list legacy helpers: kept for safety, new code should use mobile-list-item */
 .crypto-list-item__right {
   text-align: right;
 }
@@ -4222,6 +4315,23 @@ main {
   font-family: var(--font-mono);
   font-weight: 600;
   color: var(--text-secondary);
+}
+
+/* Compact Ant Design List.Item overrides for list/card pages */
+.ad-list-compact .ant-list-item {
+  padding: var(--space-2) 0;
+}
+
+.ad-list-compact .ant-list-item-meta {
+  margin-bottom: 0;
+}
+
+.ad-list-compact .ant-list-item-meta-title {
+  margin-bottom: var(--space-1);
+}
+
+.ad-list-compact .ai-note-meta {
+  margin-bottom: 0;
 }
 
 /* ---- Score ranking summary strip ---- */
@@ -4373,7 +4483,7 @@ main {
 }
 
 .detail-tab-panel .ad-panel + .ad-panel {
-  margin-top: var(--space-5);
+  margin-top: var(--space-panel-gap);
 }
 
 /* AI Analysis tab: keep the two side-by-side panel headers the same
@@ -4437,7 +4547,7 @@ main {
 
 /* Section spacing inside tabs */
 .detail-section {
-  margin-bottom: var(--space-5);
+  margin-bottom: var(--space-block);
 }
 
 .detail-section:last-child {
@@ -5526,8 +5636,16 @@ main {
 
 /* ---- NewsListPanel ---- */
 .news-list-panel__item {
-  padding: 12px 0;
+  padding: var(--space-2) 0;
   cursor: pointer;
+}
+
+.news-list-panel__item .ant-list-item-meta {
+  margin-bottom: 0;
+}
+
+.news-list-panel__item .ant-list-item-meta-title {
+  margin-bottom: 2px;
 }
 
 .news-list-panel__title-row {
@@ -5812,11 +5930,11 @@ main {
 }
 
 .strategy-card__body {
-  padding: var(--space-md);
+  padding: var(--space-3);
   display: flex;
   flex-direction: column;
   flex: 1;
-  gap: 12px;
+  gap: var(--space-2);
 }
 
 .strategy-card__header {
@@ -5935,7 +6053,7 @@ main {
    ============================================================ */
 
 .admin-section {
-  margin-bottom: var(--space-6);
+  margin-bottom: var(--space-section);
 }
 
 .admin-section:last-child {
@@ -6124,9 +6242,10 @@ main {
 
 /* Live price cell in instrument lists */
 .live-price-cell {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
   line-height: 1.2;
 }
 

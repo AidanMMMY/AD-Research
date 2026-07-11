@@ -307,6 +307,45 @@ def batch_calculate_indicators(
         _log_etl(db, "indicator_calc", status, updated_count, start_time, error_msg)
         return updated_count
 
+    for row in active_rows:
+        etf_code = row.code
+        list_date = row.list_date or row.inception_date
+        delist_date = row.delist_date
+
+        records = _calculate_single_code_pandas(
+            db, etf_code, list_date, delist_date, target_date, full_history
+        )
+        if not records:
+            continue
+
+        try:
+            insert_stmt = insert(ETFIndicator).values(records)
+            upsert_stmt = insert_stmt.on_conflict_do_update(
+                index_elements=["etf_code", "trade_date"],
+                set_={col: insert_stmt.excluded[col] for col in _INDICATOR_COLUMNS},
+            )
+            db.execute(upsert_stmt)
+            db.commit()
+            updated_count += len(records)
+        except Exception as exc:
+            db.rollback()
+            errors.append(f"{etf_code}: {exc}")
+            continue
+
+    # Final cache invalidation (outside the per-ETF loop)
+    try:
+        cache_invalidate_pattern("indicator:*")
+        cache_invalidate_pattern("screen:*")
+    except Exception:
+        logger.exception("Failed to invalidate indicator/screen caches")
+
+    # Record ETL log
+    status = "success" if not errors else "partial"
+    error_msg = "\n".join(errors) if errors else None
+    _log_etl(db, "indicator_calc", status, updated_count, start_time, error_msg)
+
+    return updated_count
+
 def _calculate_single_code_pandas(
     db: Session,
     etf_code: str,
@@ -377,45 +416,6 @@ def _calculate_single_code_pandas(
     except Exception:
         logger.exception("indicator_calc[pandas-fallback]: failed for %s", etf_code)
         return []
-
-    for row in active_rows:
-        etf_code = row.code
-        list_date = row.list_date or row.inception_date
-        delist_date = row.delist_date
-
-        records = _calculate_single_code_pandas(
-            db, etf_code, list_date, delist_date, target_date, full_history
-        )
-        if not records:
-            continue
-
-        try:
-            insert_stmt = insert(ETFIndicator).values(records)
-            upsert_stmt = insert_stmt.on_conflict_do_update(
-                index_elements=["etf_code", "trade_date"],
-                set_={col: insert_stmt.excluded[col] for col in _INDICATOR_COLUMNS},
-            )
-            db.execute(upsert_stmt)
-            db.commit()
-            updated_count += len(records)
-        except Exception as exc:
-            db.rollback()
-            errors.append(f"{etf_code}: {exc}")
-            continue
-
-    # Final cache invalidation (outside the per-ETF loop)
-    try:
-        cache_invalidate_pattern("indicator:*")
-        cache_invalidate_pattern("screen:*")
-    except Exception:
-        logger.exception("Failed to invalidate indicator/screen caches")
-
-    # Record ETL log
-    status = "success" if not errors else "partial"
-    error_msg = "\n".join(errors) if errors else None
-    _log_etl(db, "indicator_calc", status, updated_count, start_time, error_msg)
-
-    return updated_count
 
 
 def _batch_calculate_indicators_sql(

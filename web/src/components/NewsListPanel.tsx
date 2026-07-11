@@ -62,6 +62,7 @@ export default function NewsListPanel({ symbol, limit = 10, bare = false }: News
     <Empty description={`暂无 ${symbol} 的相关资讯`} image={Empty.PRESENTED_IMAGE_SIMPLE} />
   ) : (
     <List
+      className="ad-list-compact"
       dataSource={data}
       renderItem={(a: NewsArticle) => {
         const filled = a.importance ? Math.max(0, Math.min(5, a.importance)) : 0;

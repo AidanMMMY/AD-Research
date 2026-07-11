@@ -140,6 +140,7 @@ export default function StocksList() {
             />
           ) : (
           <List
+            className="ad-list-compact"
             dataSource={data?.items || []}
             renderItem={(item: any) => (
               <div
@@ -147,12 +148,18 @@ export default function StocksList() {
                 className="mobile-list-item"
               >
                 <div className="mobile-list-item__row">
-                  <InstrumentCodeTag code={item.code} name={item.name} />
-                  {item.market_cap ? (
-                    <span className="tabular-nums mobile-list-item__value">
-                      {item.market_cap >= 1e8 ? `${(item.market_cap / 1e8).toFixed(1)}亿` : `${(item.market_cap / 1e4).toFixed(0)}万`}
-                    </span>
-                  ) : null}
+                  <div className="mobile-list-item__main">
+                    <InstrumentCodeTag code={item.code} name={item.name} />
+                  </div>
+                  <div className="mobile-list-item__metrics">
+                    {item.market_cap ? (
+                      <span className="tabular-nums mobile-list-item__value">
+                        {item.market_cap >= 1e8 ? `${(item.market_cap / 1e8).toFixed(1)}亿` : `${(item.market_cap / 1e4).toFixed(0)}万`}
+                      </span>
+                    ) : (
+                      <span className="mobile-list-item__meta">-</span>
+                    )}
+                  </div>
                 </div>
                 <div className="mobile-list-item__tags">
                   {item.industry && <ThemeTag>{item.industry}</ThemeTag>}

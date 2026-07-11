@@ -183,6 +183,7 @@ export default function AIChat() {
           <Empty description="暂无对话" image={Empty.PRESENTED_IMAGE_SIMPLE} />
         ) : (
           <List
+            className="ad-list-compact"
             dataSource={sessions}
             renderItem={(s: ChatSession) => (
               <div

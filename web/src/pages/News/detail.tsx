@@ -648,6 +648,7 @@ export default function NewsDetail() {
               <EmptyState title="暂无相关资讯" description="未找到与本文主题、标的或行业相关的其他资讯" />
             ) : (
               <List
+                className="ad-list-compact"
                 dataSource={related}
                 renderItem={(item) => (
                   <List.Item

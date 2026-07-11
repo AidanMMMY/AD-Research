@@ -315,7 +315,7 @@ export default function CryptoDetail() {
 
           {researchNotes && researchNotes.length > 1 && (
             <List
-              className="detail-list"
+              className="detail-list ad-list-compact"
               dataSource={researchNotes.slice(1)}
               renderItem={(note: ResearchNote) => (
                 <List.Item>

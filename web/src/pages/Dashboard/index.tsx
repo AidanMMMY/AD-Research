@@ -13,12 +13,8 @@ import {
   GlobalOutlined,
   BookOutlined,
   LineChartOutlined,
-  ExperimentOutlined,
   WalletOutlined,
-  DollarOutlined,
   AppstoreOutlined,
-  ThunderboltOutlined,
-  PartitionOutlined,
 } from '@ant-design/icons';
 import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { useScores } from '@/hooks/useScores';
@@ -322,12 +318,6 @@ function formatTileValue(v: number | null | undefined, unit: string): string {
   return v.toFixed(2);
 }
 
-function formatChangePct(v: number | null | undefined): string {
-  if (v == null || Number.isNaN(v)) return '—';
-  const sign = v > 0 ? '+' : '';
-  return `${sign}${v.toFixed(2)}%`;
-}
-
 function isMarketOpen(tz: string, openHour: number, openMin: number, closeHour: number, closeMin: number): boolean {
   if (closeHour === 24 && closeMin === 0) return true;
   const now = new Date();
@@ -343,12 +333,9 @@ function isMarketOpen(tz: string, openHour: number, openMin: number, closeHour: 
 }
 
 /* ================================================================
-   PulseGlobalStrip — grouped horizontal tiles with compact design.
-   Each group (美股 / 美债汇率 / 亚太 / 欧洲 / 加密) is a labeled
-   row of 32px-tall tiles in title|value|change% format, replacing
-   the old 8-column grid. Real-time tickers (INDEX_CODES) are
-   integrated into their respective groups. ReturnTag is replaced
-   with an inline colored span — no background tag box.
+   PulseGlobalStrip — unified 4-column matrix of global market tiles.
+   Each tile shows its group badge (market region) so the layout is
+   balanced and no row is left with a single isolated indicator.
    ================================================================ */
 function PulseGlobalStrip() {
   const navigate = useNavigate();
@@ -436,63 +423,65 @@ function PulseGlobalStrip() {
     return tick ? { value: tick.price, change_pct: tick.change_pct ?? null } : null;
   };
 
+  /* ── Flatten groups into a balanced matrix (each group label shown once) ── */
+  const matrixTiles = useMemo(() => {
+    return PULSE_GROUPS.flatMap((group) =>
+      group.tiles.map((tile, idx) => ({ ...tile, group, showGroupLabel: idx === 0 }))
+    );
+  }, []);
+
   return (
-    <div className="dashboard-pulse-groups">
-      {PULSE_GROUPS.map((group) => {
-        const openNow = isMarketOpen(group.tz, group.openHour, group.openMin, group.closeHour, group.closeMin);
-        return (
-          <div key={group.key} className="dashboard-pulse-group">
-            <div className="dashboard-pulse-group__sidebar">
-              <span className="dashboard-pulse-group__label">{group.label}</span>
-              <span
-                className={`dashboard-pulse-group__indicator ${
-                  openNow
-                    ? 'dashboard-pulse-group__indicator--open'
-                    : 'dashboard-pulse-group__indicator--closed'
-                }`}
-                aria-label={openNow ? '交易中' : '已收盘'}
-              />
+    <>
+      <div className="dashboard-pulse-matrix">
+        {matrixTiles.map((tile) => {
+          const data = resolveTile(tile);
+          const change = data?.change_pct;
+          const valueStr = data?.value != null ? formatTileValue(data.value, tile.unit) : '—';
+          const navPath = tile.type === 'realtime' ? `/instruments/${tile.code}` : '/macro';
+          const openNow = isMarketOpen(
+            tile.group.tz,
+            tile.group.openHour,
+            tile.group.openMin,
+            tile.group.closeHour,
+            tile.group.closeMin,
+          );
+          return (
+            <div
+              key={tile.code}
+              className="dashboard-pulse-tile"
+              role="button"
+              tabIndex={0}
+              onClick={() => navigate(navPath)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  navigate(navPath);
+                }
+              }}
+              aria-label={`${tile.title}: ${valueStr}`}
+            >
+              {tile.showGroupLabel && (
+                <span className="dashboard-pulse-tile__group">
+                  <span
+                    className={`dashboard-pulse-tile__group-dot ${
+                      openNow
+                        ? 'dashboard-pulse-tile__group-dot--open'
+                        : 'dashboard-pulse-tile__group-dot--closed'
+                    }`}
+                    aria-label={openNow ? '交易中' : '已收盘'}
+                  />
+                  {tile.group.label}
+                </span>
+              )}
+              <span className="dashboard-pulse-tile__code">{tile.title}</span>
+              <span className="dashboard-pulse-tile__value">
+                {isLoading && tile.type === 'macro' && !data ? '—' : valueStr}
+              </span>
+              <ReturnTag value={change} />
             </div>
-            <div className="dashboard-pulse-group__tiles">
-              {group.tiles.map((tile) => {
-                const data = resolveTile(tile);
-                const change = data?.change_pct;
-                const changeStr = change != null ? formatChangePct(change) : '—';
-                const valueStr = data?.value != null ? formatTileValue(data.value, tile.unit) : '—';
-                const changeClass =
-                  change == null
-                    ? 'dashboard-pulse-tile--h__change--flat'
-                    : change > 0
-                      ? 'dashboard-pulse-tile--h__change--rise'
-                      : 'dashboard-pulse-tile--h__change--fall';
-                const navPath = tile.type === 'realtime' ? `/instruments/${tile.code}` : '/macro';
-                return (
-                  <div
-                    key={tile.code}
-                    className="dashboard-pulse-tile--h"
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => navigate(navPath)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault();
-                        navigate(navPath);
-                      }
-                    }}
-                    aria-label={`${tile.title}: ${valueStr}`}
-                  >
-                    <span className="dashboard-pulse-tile--h__code">{tile.title}</span>
-                    <span className="dashboard-pulse-tile--h__value">
-                      {isLoading && tile.type === 'macro' && !data ? '—' : valueStr}
-                    </span>
-                    <span className={`dashboard-pulse-tile--h__change ${changeClass}`}>{changeStr}</span>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        );
-      })}
+          );
+        })}
+      </div>
       {/* ── Pulse footer: connection indicator + date ── */}
       <div className="dashboard-pulse-footer">
         {marketConnected ? (
@@ -515,7 +504,7 @@ function PulseGlobalStrip() {
         )}
         <span>{latestTickDate}</span>
       </div>
-    </div>
+    </>
   );
 }
 
@@ -690,25 +679,21 @@ export default function Dashboard() {
       <TickerTape limit={20} />
 
       <PageHeader
-        eyebrow={`AD-RESEARCH · ${new Date().toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric' })} · A股全市场综述`}
+        eyebrow="AD-RESEARCH · A股全市场综述"
         title="首页看板"
         description={
           <span>
-            综合评分 · 自选股 · 标的池概览 · {new Date().toISOString().slice(0, 10)}
+            {new Date().toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric' })}
             {' · '}
             <DataFreshnessHint at={statsKpis.updatedAt} />
           </span>
         }
         extra={
           <span className="dashboard-shell__quickbar">
-            <ThemeTag variant="accent" icon={<BookOutlined />} onClick={() => navigate('/learning')}>教程总览</ThemeTag>
             <ThemeTag variant="accent" icon={<LineChartOutlined />} onClick={() => navigate('/learning')}>看估值</ThemeTag>
-            <ThemeTag variant="neutral" icon={<ExperimentOutlined />} onClick={() => navigate('/learning')}>做回测</ThemeTag>
-            <ThemeTag variant="warning" icon={<WalletOutlined />} onClick={() => navigate('/portfolio')}>组合中心</ThemeTag>
-            <ThemeTag variant="neutral" icon={<DollarOutlined />} onClick={() => navigate('/paper-trading')}>模拟账户</ThemeTag>
-            <ThemeTag variant="neutral" icon={<ThunderboltOutlined />} onClick={() => navigate('/live-trading')}>真实账户</ThemeTag>
+            <ThemeTag variant="warning" icon={<WalletOutlined />} onClick={() => navigate('/portfolio')}>组合</ThemeTag>
             <ThemeTag variant="default" icon={<AppstoreOutlined />} onClick={() => navigate('/pools')}>标的池</ThemeTag>
-            <ThemeTag variant="warning" icon={<PartitionOutlined />} onClick={() => navigate('/learning?panel=terms')}>知识图谱</ThemeTag>
+            <ThemeTag variant="neutral" icon={<BookOutlined />} onClick={() => navigate('/learning?panel=terms')}>知识图谱</ThemeTag>
           </span>
         }
       />

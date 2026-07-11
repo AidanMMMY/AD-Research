@@ -172,7 +172,7 @@ export default function ListingPreview() {
     });
   };
 
-  const rowSize = 'large';
+  const rowSize = 'small';
   const tableWrapClass = 'ad-table-scroll ad-table-sticky';
 
   const columns = [

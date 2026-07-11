@@ -866,6 +866,7 @@ export default function InstrumentList() {
           ) : (
           /* Mobile: card-style list */
           <List
+            className="ad-list-compact"
             dataSource={data?.items || []}
             renderItem={(item: any) => (
               <div
@@ -873,13 +874,15 @@ export default function InstrumentList() {
                 className="mobile-list-item"
               >
                 <div className="mobile-list-item__row">
-                  <InstrumentCodeTag code={item.code} name={item.name} name_zh={item.name_zh} />
-                  <span className="tabular-nums mobile-list-item__value">
-                    {item.fund_size ? `${(item.fund_size / 1e8).toFixed(1)}亿` : NULL_PLACEHOLDER}
-                  </span>
-                </div>
-                <div className="mobile-list-item__row">
-                  <LivePriceCell code={item.code} tick={liveLatest[item.code]} />
+                  <div className="mobile-list-item__main">
+                    <InstrumentCodeTag code={item.code} name={item.name} name_zh={item.name_zh} />
+                  </div>
+                  <div className="mobile-list-item__metrics">
+                    <LivePriceCell code={item.code} tick={liveLatest[item.code]} />
+                    <span className="tabular-nums mobile-list-item__value">
+                      {item.fund_size ? `${(item.fund_size / 1e8).toFixed(1)}亿` : NULL_PLACEHOLDER}
+                    </span>
+                  </div>
                 </div>
                 <div className="mobile-list-item__tags">
                   {item.category && (

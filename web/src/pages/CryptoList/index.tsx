@@ -194,27 +194,29 @@ export default function CryptoList() {
             />
           ) : (
             <List
+              className="ad-list-compact"
               dataSource={data?.items ?? []}
               renderItem={(item: any) => (
-                <List.Item
+                <div
                   onClick={() => navigate(`/crypto/${item.code}`)}
-                  className="ad-cursor-pointer"
+                  className="mobile-list-item"
                 >
-                  <List.Item.Meta
-                    title={<InstrumentCodeTag code={item.code} name={item.name} name_zh={item.name_zh} />}
-                    description={
-                      <span className="mobile-list-item__meta">
-                        {item.category} · {item.exchange}
-                      </span>
-                    }
-                  />
-                  <div className="crypto-list-item__right">
-                    <div className="tabular-nums crypto-list-item__price">
-                      {item.price != null ? `$${item.price < 0.01 ? item.price.toFixed(6) : item.price < 1 ? item.price.toFixed(4) : item.price.toFixed(2)}` : '-'}
+                  <div className="mobile-list-item__row">
+                    <div className="mobile-list-item__main">
+                      <InstrumentCodeTag code={item.code} name={item.name} name_zh={item.name_zh} />
                     </div>
-                    <ReturnTag value={item.change_pct ?? item.change_24h} />
+                    <div className="mobile-list-item__metrics">
+                      <span className="tabular-nums mobile-list-item__value">
+                        {item.price != null ? `$${item.price < 0.01 ? item.price.toFixed(6) : item.price < 1 ? item.price.toFixed(4) : item.price.toFixed(2)}` : '-'}
+                      </span>
+                      <ReturnTag value={item.change_pct ?? item.change_24h} />
+                    </div>
                   </div>
-                </List.Item>
+                  <div className="mobile-list-item__tags">
+                    {item.category && <ThemeTag>{item.category}</ThemeTag>}
+                    {item.exchange && <ThemeTag>{item.exchange}</ThemeTag>}
+                  </div>
+                </div>
               )}
               pagination={{
                 current: page,

@@ -136,6 +136,37 @@
   --space-lg: var(--space-5);
   --space-xl: var(--space-6);
 
+  /* ---- Semantic Spacing (页面 / 区块 / 行内通用 rhythm) ----
+     使用场景：
+     - --space-page:     页面最外层内边距（PageShell / AppLayout content）
+     - --space-section:  页面级 section / PageHeader 下边距
+     - --space-block:    组件之间、SectionHeading 与内容、FilterToolbar 与表格
+     - --space-block-sm: 紧凑组件间距
+     - --space-inline:   同一行内控件/按钮/标签之间
+     - --space-inline-sm: 紧凑行内间距
+     - --space-form-field: 表单字段之间
+     - --space-button-group: 按钮组之间
+     - --space-card-gap: 卡片/网格单元之间
+     - --space-panel-gap: 相邻 Panel 之间
+     - --space-filter-gap: FilterToolbar 内部控件之间
+     - --space-list-row: 列表行之间
+     - --space-table-cell: 表格单元格内间距
+  */
+  --space-page: var(--space-5);
+  --space-section: var(--space-6);
+  --space-block: var(--space-5);
+  --space-block-sm: var(--space-4);
+  --space-inline: var(--space-3);
+  --space-inline-sm: var(--space-2);
+  --space-form-field: var(--space-4);
+  --space-form-label: var(--space-3);
+  --space-button-group: var(--space-3);
+  --space-card-gap: var(--space-4);
+  --space-panel-gap: var(--space-5);
+  --space-filter-gap: var(--space-3);
+  --space-list-row: var(--space-3);
+  --space-table-cell: var(--space-3);
+
   /* ---- Radius ---- */
   --radius-none: 0px;
   --radius-sm: 4px;
@@ -538,4 +569,18 @@ html, body, #root {
   .ant-card-head { padding: 14px 20px !important; }
   .ant-card-body { padding: 18px 20px !important; }
   .ant-statistic-content { font-size: var(--text-data-lg-size); }
+}
+
+/* ============================================================
+   Semantic Spacing — Responsive overrides
+   小屏收紧 page/section/block 阶梯，保持 rhythm 不破碎
+   ============================================================ */
+@media (max-width: 767px) {
+  :root {
+    --space-page: var(--space-4);
+    --space-section: var(--space-5);
+    --space-block: var(--space-4);
+    --space-block-sm: var(--space-3);
+    --space-panel-gap: var(--space-4);
+  }
 }
