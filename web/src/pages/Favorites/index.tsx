@@ -21,6 +21,7 @@ import { useFavorites } from '@/hooks/useFavorites';
 import { useMarketStream, type MarketTick } from '@/hooks/useMarketStream';
 import { favoriteApi } from '@/api/favorite';
 import './styles.css';
+import { type ColumnsType } from 'antd/es/table';
 import PageShell from '@/components/PageShell';
 import PageHeader from '@/components/PageHeader';
 import Panel from '@/components/Panel';
@@ -140,7 +141,7 @@ export default function Favorites() {
   }, [favorites]);
 
   /** 表格列定义（每行一个自选股） */
-  const columns = [
+  const columns: ColumnsType<any> = [
     {
       title: '标的',
       key: 'code',
@@ -162,6 +163,7 @@ export default function Favorites() {
       title: '市场',
       dataIndex: 'market',
       width: 90,
+      responsive: ['md'] as ('md' | 'lg' | 'xl' | 'xxl')[],
       render: (v?: string) => (
         <span className="tabular-nums font-mono ad-text-muted">{v || NULL_PLACEHOLDER}</span>
       ),
@@ -203,6 +205,7 @@ export default function Favorites() {
       title: '添加时间',
       key: 'added',
       width: 170,
+      responsive: ['md'] as ('md' | 'lg' | 'xl' | 'xxl')[],
       render: (_: unknown, record: any) =>
         record.created_at ? (
           <Tooltip title={formatDateTime(record.created_at, 'YYYY-MM-DD HH:mm:ss')}>
@@ -261,7 +264,7 @@ export default function Favorites() {
       rowKey="etf_code"
       size="middle"
       pagination={false}
-      scroll={{ x: 720 }}
+      scroll={{ x: 'max-content' }}
       onRow={(record: any) => ({
         onClick: () => navigate(`/instruments/${record.etf_code}`),
         style: { cursor: 'pointer' },
@@ -343,7 +346,7 @@ export default function Favorites() {
         }
         description={`共 ${count} 只标的，按加入时间倒序排列。${isConnected ? '实时行情已连接' : '实时行情连接中…'}`}
         extra={
-          <Space>
+          <Space wrap className="favorites__header-extra">
             {selectedRowKeys.length > 0 && (
               <Popconfirm
                 title={`确认移除选中的 ${selectedRowKeys.length} 只标的？`}
@@ -394,7 +397,7 @@ export default function Favorites() {
           rowKey="etf_code"
           size="middle"
           pagination={{ pageSize: 20, showSizeChanger: false }}
-          scroll={{ x: 720 }}
+          scroll={{ x: 'max-content' }}
           rowSelection={{
             selectedRowKeys,
             onChange: (keys) => setSelectedRowKeys(keys),

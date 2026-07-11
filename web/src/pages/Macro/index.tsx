@@ -175,6 +175,7 @@ export default function Macro() {
       dataIndex: 'name_zh',
       key: 'name_zh',
       width: 200,
+      fixed: 'left',
       render: (name: string, row) => (
         <Space direction="vertical" size={0}>
           <Text strong>{name}</Text>
@@ -231,6 +232,7 @@ export default function Macro() {
       title: '操作',
       key: 'actions',
       width: 100,
+      fixed: 'right',
       render: (_, row) => (
         <a onClick={() => setSelectedCode(row.code)}>查看走势</a>
       ),
@@ -335,11 +337,11 @@ export default function Macro() {
                   {hint ? (
                     <Tooltip title={hint}>
                       <span
-                        className="macro-freshness-badge"
+                        className="macro__freshness-badge"
                         aria-label={hint}
                       >
-                        <ExclamationCircleOutlined className="macro-freshness-badge__icon" />
-                        <span className="macro-freshness-badge__label">数据延迟</span>
+                        <ExclamationCircleOutlined className="macro__freshness-badge__icon" />
+                        <span className="macro__freshness-badge__label">数据延迟</span>
                       </span>
                     </Tooltip>
                   ) : null}

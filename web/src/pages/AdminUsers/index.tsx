@@ -12,6 +12,7 @@ import {
   message,
   Popconfirm,
 } from 'antd';
+import type { ColumnsType } from 'antd/es/table';
 import {
   PlusOutlined,
   EditOutlined,
@@ -128,7 +129,7 @@ export default function AdminUsers() {
     setIsResetOpen(true);
   };
 
-  const columns = [
+  const columns: ColumnsType<UserAdminItem> = [
     { title: 'ID', dataIndex: 'id', width: 60 },
     { title: '用户名', dataIndex: 'username' },
     {
@@ -156,7 +157,9 @@ export default function AdminUsers() {
     },
     {
       title: '操作',
+      key: 'action',
       width: 180,
+      fixed: 'right',
       render: (_: any, record: UserAdminItem) => {
         const self = isSelf(record);
         const tooltipTitle = self ? '不能修改自己的账号' : '';

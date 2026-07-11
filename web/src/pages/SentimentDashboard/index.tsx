@@ -1,9 +1,13 @@
 import { useState } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
-import { Input, Button, Slider, Tooltip, Skeleton, Empty } from 'antd';
+import { Input, Button, Slider, Tooltip, Skeleton } from 'antd';
 import { SmileOutlined, FrownOutlined, MehOutlined, SyncOutlined } from '@ant-design/icons';
 import { researchApi, SentimentAggregate } from '@/api/research';
 import AISetupBanner from "@/components/AISetupBanner";
+import PageShell from '@/components/PageShell';
+import PageHeader from '@/components/PageHeader';
+import FilterToolbar from '@/components/FilterToolbar';
+import EmptyState from '@/components/EmptyState';
 import GlassCard from '@/components/GlassCard';
 import ThemeTag from '@/components/ThemeTag';
 import InstrumentCodeTag from '@/components/InstrumentCodeTag';
@@ -43,53 +47,63 @@ export default function SentimentDashboard() {
   };
 
   return (
-    <div>
-      <h1 className="page-header-title">情绪看板</h1>
-      <p className="page-header-description ad-mb-8">基于新闻情绪分析，评估市场对特定标的的情绪倾向</p>
+    <PageShell maxWidth="wide">
+      <PageHeader
+        eyebrow="市场情绪"
+        title="情绪看板"
+        description="基于新闻情绪分析，评估市场对特定标的的情绪倾向"
+      />
       <AISetupBanner />
-      <GlassCard>
-        <div className="phase5c-flex-wrap">
-          <Input
-            placeholder="标的代码 (如 AAPL.US)"
-            value={code}
-            onChange={(e) => setCode(e.target.value)}
-            onPressEnter={handleLookup}
-            className="ad-form-row__grow"
-          />
-          <span className="ad-text-small ad-text-tertiary ad-whitespace-nowrap">
-            回溯 {days} 天
-          </span>
+      <FilterToolbar>
+        <Input
+          placeholder="标的代码 (如 AAPL.US)"
+          value={code}
+          onChange={(e) => setCode(e.target.value)}
+          onPressEnter={handleLookup}
+          className="ad-form-row__grow"
+        />
+        <span className="ad-text-small ad-text-tertiary ad-whitespace-nowrap">
+          回溯 {days} 天
+        </span>
+        <div style={{ flex: 1, minWidth: 120 }}>
           <Slider
             min={1}
             max={30}
             value={days}
             onChange={setDays}
-            className="ad-slider--sm"
             tooltip={{ formatter: (v) => `${v}天` }}
           />
-          <Button
-            type="primary"
-            icon={<SyncOutlined spin={ingestMutation.isPending} />}
-            loading={ingestMutation.isPending}
-            onClick={handleLookup}
-          >
-            分析情绪
-          </Button>
         </div>
-      </GlassCard>
+        <Button
+          type="primary"
+          icon={<SyncOutlined spin={ingestMutation.isPending} />}
+          loading={ingestMutation.isPending}
+          onClick={handleLookup}
+        >
+          分析情绪
+        </Button>
+      </FilterToolbar>
 
       <div className="ad-mt-5">
         {isLoading ? (
           <Skeleton active paragraph={{ rows: 8 }} />
         ) : !selectedCode ? (
-          <Empty description="输入标的代码开始情绪分析" className="ad-mt-9" />
+          <EmptyState
+            className="ad-mt-9"
+            title="开始情绪分析"
+            description="输入标的代码，选择回溯天数，点击分析按钮"
+          />
         ) : !sentiment ? (
-          <Empty description={`暂无 ${selectedCode} 的情绪数据。请等待新闻抓取完成后重试`} className="ad-mt-9" />
+          <EmptyState
+            className="ad-mt-9"
+            title="暂无情绪数据"
+            description={`暂无 ${selectedCode} 的情绪数据。请等待新闻抓取完成后重试。`}
+          />
         ) : (
           <SentimentCard sentiment={sentiment} />
         )}
       </div>
-    </div>
+    </PageShell>
   );
 }
 

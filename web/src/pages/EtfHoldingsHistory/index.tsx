@@ -66,6 +66,7 @@ import InstrumentCodeTag from '@/components/InstrumentCodeTag';
 import { useInstrumentDetail, useInstrumentList } from '@/hooks/useInstrumentList';
 import { etfHoldingsHistoryApi } from '@/api/etfHoldingsHistory';
 import { useSettingsStore } from '@/stores/settings';
+import { useIsMobile } from '@/hooks/useBreakpoint';
 import { NULL_PLACEHOLDER } from '@/utils/format';
 import './styles.css';
 import type {
@@ -118,6 +119,7 @@ export default function EtfHoldingsHistoryPage() {
   const colorConvention = useSettingsStore((s) => s.colorConvention);
 
   const instrumentQ = useInstrumentDetail(code);
+  const isMobile = useIsMobile();
 
   // -- Snapshot list -------------------------------------------------------
   const snapshotsQ = useQuery({
@@ -230,7 +232,7 @@ export default function EtfHoldingsHistoryPage() {
         title: '代码',
         dataIndex: 'holding_code',
         key: 'holding_code',
-        width: 130,
+        width: 220,
         render: (v: string, row) => (
           <InstrumentCodeTag code={v} name={row.holding_name ?? ''} />
         ),
@@ -293,7 +295,7 @@ export default function EtfHoldingsHistoryPage() {
         title: '代码',
         dataIndex: 'holding_code',
         key: 'holding_code',
-        width: 130,
+        width: 220,
         render: (v: string, row) => (
           <InstrumentCodeTag code={v} name={row.holding_name ?? ''} />
         ),
@@ -470,7 +472,9 @@ export default function EtfHoldingsHistoryPage() {
           <EmptyState title="暂无权重走势数据" description="该 ETF 尚未披露任何季度的持仓。" />
         ) : (
           <div className="ehh-sparkline-row">
-            <Sparkline data={sparklineData} width={520} height={48} />
+            <div className="ehh-sparkline-chart">
+              <Sparkline data={sparklineData} width="100%" height={isMobile ? 32 : 48} />
+            </div>
             <div className="ehh-sparkline-stats">
               <span className="ad-text-small ad-text-tertiary">最近一期</span>
               <span className="tabular-nums ad-text-primary">
@@ -568,18 +572,20 @@ export default function EtfHoldingsHistoryPage() {
                 description="可能是新披露期或数据未拉取"
               />
             ) : (
-              <Table
-                size="small"
-                onRow={(row) => ({
-                  onClick: () => navigate(`/instruments/${row.holding_code}`),
-                  style: { cursor: 'pointer' },
-                })}
-                rowKey={(r) => `${r.holding_code}-${r.holdings_as_of_date ?? ''}`}
-                columns={snapshotColumns}
-                dataSource={holdingsQ.data.holdings}
-                pagination={false}
-                scroll={{ x: 'max-content' }}
-              />
+              <div className="ad-table-scroll">
+                <Table
+                  size="small"
+                  onRow={(row) => ({
+                    onClick: () => navigate(`/instruments/${row.holding_code}`),
+                    style: { cursor: 'pointer' },
+                  })}
+                  rowKey={(r) => `${r.holding_code}-${r.holdings_as_of_date ?? ''}`}
+                  columns={snapshotColumns}
+                  dataSource={holdingsQ.data.holdings}
+                  pagination={false}
+                  scroll={{ x: 800 }}
+                />
+              </div>
             )}
           </Panel>
         </div>
@@ -672,18 +678,20 @@ export default function EtfHoldingsHistoryPage() {
                 description="请选择两个不同的披露期进行对比"
               />
             ) : (
-              <Table
-                size="small"
-                onRow={(row) => ({
-                  onClick: () => navigate(`/instruments/${row.holding_code}`),
-                  style: { cursor: 'pointer' },
-                })}
-                rowKey={(r) => r.holding_code}
-                columns={diffColumns}
-                dataSource={diffQ.data.entries}
-                pagination={false}
-                scroll={{ x: 'max-content' }}
-              />
+              <div className="ad-table-scroll">
+                <Table
+                  size="small"
+                  onRow={(row) => ({
+                    onClick: () => navigate(`/instruments/${row.holding_code}`),
+                    style: { cursor: 'pointer' },
+                  })}
+                  rowKey={(r) => r.holding_code}
+                  columns={diffColumns}
+                  dataSource={diffQ.data.entries}
+                  pagination={false}
+                  scroll={{ x: 900 }}
+                />
+              </div>
             )}
           </Panel>
         </div>

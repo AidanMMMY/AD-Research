@@ -1,0 +1,71 @@
+/* Sentiment page overrides — scoped under .sentiment-page for specificity. */
+
+/* Heatmap background now uses theme-aware color variables with dynamic alpha
+   via color-mix. The inline JS supplies --heatmap-color and --heatmap-intensity. */
+.sentiment-page .ad-heatmap-cell {
+  background: color-mix(
+    in srgb,
+    var(--heatmap-color, var(--bg-elevated)) calc(var(--heatmap-intensity, 0) * 100%),
+    transparent
+  );
+}
+
+/* Sentiment label colors — all aligned to the active colorConvention:
+   positive => --color-rise, negative => --color-fall. */
+.sentiment-page .ad-heatmap-cell__score--positive,
+.sentiment-page .ad-detail-score-value--positive,
+.sentiment-page .ad-mover-score--positive {
+  color: var(--color-rise);
+}
+
+.sentiment-page .ad-heatmap-cell__score--negative,
+.sentiment-page .ad-detail-score-value--negative,
+.sentiment-page .ad-mover-score--negative {
+  color: var(--color-fall);
+}
+
+.sentiment-page .ad-heatmap-cell__score--neutral,
+.sentiment-page .ad-detail-score-value--neutral,
+.sentiment-page .ad-mover-score--neutral {
+  color: var(--text-tertiary);
+}
+
+/* Top-mover arrows: up => rise color, down => fall color. */
+.sentiment-page .ad-mover-arrow--up {
+  color: var(--color-rise);
+}
+
+.sentiment-page .ad-mover-arrow--down {
+  color: var(--color-fall);
+}
+
+/* Detail panel two-column alignment: stretch both children to the same height
+   and center their contents vertically. */
+.sentiment-page .responsive-grid--cols-2.responsive-grid--stretch > * {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  height: 100%;
+}
+
+/* Ensure the pie-breakdown SVG fills its grid cell so it remains responsive. */
+.sentiment-page .ad-sentiment-pie-breakdown,
+.sentiment-page .ad-sentiment-pie-breakdown svg {
+  width: 100%;
+  height: 100%;
+  min-height: 56px;
+}
+
+/* Radar chart fills its container as well. */
+.sentiment-page .ad-sentiment-radar,
+.sentiment-page .ad-sentiment-radar svg {
+  width: 100%;
+  height: 100%;
+  min-height: 80px;
+}
+
+/* Sparkline wrapper: fill the available width. */
+.sentiment-page .ad-sentiment-sparkline svg {
+  width: 100%;
+  height: auto;
+}

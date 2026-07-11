@@ -1,11 +1,11 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 export interface SparklineProps {
   /** 数据序列（已排序，最旧在前，最新在后） */
   data: number[];
   /** 主色；如不传则按首末值自动判断涨跌并使用当前颜色约定 */
   color?: string;
-  width?: number;
+  width?: number | string;
   height?: number;
   /** 涨色；默认使用当前颜色约定下的 --color-rise */
   upColor?: string;
@@ -35,16 +35,33 @@ export default function Sparkline({
   className,
   style,
 }: SparklineProps) {
+  const svgRef = useRef<SVGSVGElement>(null);
+  const [measuredWidth, setMeasuredWidth] = useState<number>(
+    typeof width === 'number' ? width : 0,
+  );
+
+  useEffect(() => {
+    if (typeof width === 'number') return;
+    const svg = svgRef.current;
+    if (!svg) return;
+    const update = () => setMeasuredWidth(svg.getBoundingClientRect().width);
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(svg);
+    return () => ro.disconnect();
+  }, [width]);
+
+  const effectiveWidth = typeof width === 'number' ? width : measuredWidth;
   const path = useMemo(() => {
     if (!data || data.length === 0) return '';
     if (data.length === 1) {
       const y = height / 2;
-      return `M0 ${y} L ${width} ${y}`;
+      return `M0 ${y} L ${effectiveWidth} ${y}`;
     }
     const min = Math.min(...data);
     const max = Math.max(...data);
     const range = max - min || 1;
-    const stepX = width / (data.length - 1);
+    const stepX = effectiveWidth / (data.length - 1);
     return data
       .map((v, i) => {
         const x = i * stepX;
@@ -52,7 +69,7 @@ export default function Sparkline({
         return `${i === 0 ? 'M' : 'L'} ${x.toFixed(2)} ${y.toFixed(2)}`;
       })
       .join(' ');
-  }, [data, width, height]);
+  }, [data, effectiveWidth, height]);
 
   const stroke = useMemo(() => {
     if (color) return color;
@@ -65,8 +82,8 @@ export default function Sparkline({
 
   const areaPath = useMemo(() => {
     if (!path) return '';
-    return `${path} L ${width} ${height} L 0 ${height} Z`;
-  }, [path, width, height]);
+    return `${path} L ${effectiveWidth} ${height} L 0 ${height} Z`;
+  }, [path, effectiveWidth, height]);
 
   const gradientId = useMemo(
     () => `spark-grad-${Math.random().toString(36).slice(2, 9)}`,
@@ -100,7 +117,7 @@ export default function Sparkline({
     if (last === first) return null;
     const up = last > first;
     // triangle pointing up or down, sized within the height
-    const cx = width - 3;
+    const cx = effectiveWidth - 3;
     const cy = height / 2;
     const half = Math.min(2.2, height / 4 - 0.5);
     if (up) {
@@ -109,7 +126,7 @@ export default function Sparkline({
     }
     // apex down: (cx, cy+half)
     return `M ${cx} ${cy + half} L ${cx - half} ${cy - half / 2} L ${cx + half} ${cy - half / 2} Z`;
-  }, [data, width, height]);
+  }, [data, effectiveWidth, height]);
 
   // aria-label that includes direction so screen-reader users also get the cue.
   const ariaLabel = (() => {
@@ -122,14 +139,13 @@ export default function Sparkline({
 
   return (
     <svg
-      // dynamic: SVG dimensions and viewBox are derived from props
+      ref={svgRef}
       width={width}
       height={height}
-      viewBox={`0 0 ${width} ${height}`}
+      viewBox={`0 0 ${Math.max(effectiveWidth, 1)} ${height}`}
       preserveAspectRatio="xMidYMid meet"
       className={`sparkline ${className || ''}`}
       style={{
-        // dynamic: caller-supplied style is merged with responsive defaults
         maxWidth: '100%',
         height: 'auto',
         ...style,

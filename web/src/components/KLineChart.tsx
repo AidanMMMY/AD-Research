@@ -179,11 +179,11 @@ export default function KLineChart({ data, overlays = DEFAULT_OVERLAYS, adjusted
   const upColor = getUpColor(colorConvention);
   const downColor = getDownColor(colorConvention);
   const resolvedUpColor = useMemo(
-    () => resolveChartColor(upColor, '#c96b6b'),
+    () => resolveChartColor(upColor, '#dc2626'),
     [upColor, colorConvention]
   );
   const resolvedDownColor = useMemo(
-    () => resolveChartColor(downColor, '#5fa87a'),
+    () => resolveChartColor(downColor, '#16a34a'),
     [downColor, colorConvention]
   );
   const containerHeight = isMobile ? 350 : 500;
@@ -196,12 +196,12 @@ export default function KLineChart({ data, overlays = DEFAULT_OVERLAYS, adjusted
 
     try {
       const c = {
-        bgBase: getCssColor('--bg-base', '#0a0a0a'),
-        textSecondary: getCssColor('--text-secondary', '#888888'),
-        textTertiary: getCssColor('--text-tertiary', '#444444'),
-        borderDefault: getCssColor('--border-default', 'rgba(255, 255, 255, 0.06)'),
-        accent: getCssColor('--accent', '#5fa87a'),
-        accentDim: getCssColor('--accent-dim', 'rgba(95, 168, 122, 0.10)'),
+        bgBase: getCssColor('--bg-base', '#FAFBFC'),
+        textSecondary: getCssColor('--text-secondary', '#5B6778'),
+        textTertiary: getCssColor('--text-tertiary', '#8894A4'),
+        borderDefault: getCssColor('--border-default', '#e5e7eb'),
+        accent: getCssColor('--accent', '#2563EB'),
+        accentDim: getCssColor('--accent-dim', 'rgba(37, 99, 235, 0.08)'),
       };
 
       const chart = createChart(chartContainerRef.current, {

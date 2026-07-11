@@ -46,30 +46,30 @@ export default function ReturnCurve({ series }: ReturnCurveProps) {
       resolveChartColors(
         Array.from({ length: 10 }, (_, i) => `var(--chart-series-${i + 1})`),
         [
-          '#2563eb', '#16a34a', '#ea580c', '#9333ea', '#dc2626',
-          '#0891b2', '#ca8a04', '#db2777', '#4f46e5', '#65a30d',
+          '#0072B2', '#E69F00', '#009E73', '#CC79A7', '#56B4E9',
+          '#F0E442', '#D55E00', '#000000', '#4f46e5', '#65a30d',
         ],
       ),
     [themeTick],
   );
   const bgElevated = useMemo(
-    () => resolveChartColors(['var(--bg-elevated)'], ['#111111']),
+    () => resolveChartColors(['var(--bg-elevated)'], ['#F3F5F7']),
     [],
   );
   const borderDefault = useMemo(
-    () => resolveChartColors(['var(--border-default)'], ['rgba(255,255,255,0.06)']),
+    () => resolveChartColors(['var(--border-default)'], ['#e5e7eb']),
     [],
   );
   const textPrimary = useMemo(
-    () => resolveChartColors(['var(--text-primary)'], ['#f5f5f0']),
+    () => resolveChartColors(['var(--text-primary)'], ['#0F1115']),
     [],
   );
   const textSecondary = useMemo(
-    () => resolveChartColors(['var(--text-secondary)'], ['#888888']),
+    () => resolveChartColors(['var(--text-secondary)'], ['#5B6778']),
     [],
   );
   const textTertiary = useMemo(
-    () => resolveChartColors(['var(--text-tertiary)'], ['#444444']),
+    () => resolveChartColors(['var(--text-tertiary)'], ['#8894A4']),
     [],
   );
 

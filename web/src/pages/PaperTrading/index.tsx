@@ -15,6 +15,7 @@ import {
   Statistic,
   Table,
 } from 'antd';
+import type { ColumnsType } from 'antd/es/table';
 import {
   PlusOutlined,
   SyncOutlined,
@@ -187,11 +188,13 @@ export default function PaperTrading() {
   };
 
   // --- Position table columns ---
-  const positionColumns = [
+  const positionColumns: ColumnsType<PaperPosition> = [
     {
       title: '币种',
       dataIndex: 'instrument_code',
       key: 'code',
+      fixed: 'left',
+      width: 140,
       render: (_: unknown, r: PaperPosition) => (
         <span>
           <span className="phase5c-inline-code--bold">{r.instrument_code}</span>
@@ -268,11 +271,13 @@ export default function PaperTrading() {
   ];
 
   // --- Order table columns ---
-  const orderColumns = [
+  const orderColumns: ColumnsType<PaperOrder> = [
     {
       title: '时间',
       dataIndex: 'created_at',
       key: 'time',
+      fixed: 'left',
+      width: 150,
       responsive: ['md'] as ('md' | 'lg' | 'xl' | 'xxl')[],
       render: (v: string | null) => formatDateTime(v),
     },
@@ -364,7 +369,6 @@ export default function PaperTrading() {
               value={selectedAccountId}
               onChange={setSelectedAccountId}
               className="phase5c-select--lg"
-              style={isMobile ? { width: '100%' } : undefined}
               options={accounts.map((a) => ({
                 value: a.id,
                 label: (

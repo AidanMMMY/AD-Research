@@ -17,6 +17,7 @@ import {
   Switch,
   Table,
 } from 'antd';
+import type { ColumnsType } from 'antd/es/table';
 import PageShell from '@/components/PageShell';
 import PageHeader from '@/components/PageHeader';
 import Panel from '@/components/Panel';
@@ -190,11 +191,13 @@ export default function TradingPanel() {
   };
 
   // --- Position table columns ---
-  const positionColumns = [
+  const positionColumns: ColumnsType<LivePosition> = [
     {
       title: '币种',
       dataIndex: 'instrument_code',
       key: 'code',
+      fixed: 'left',
+      width: 140,
       render: (_: string, r: LivePosition) => (
         <InstrumentCodeTag code={r.instrument_code} name={r.instrument_name} />
       ),
@@ -248,11 +251,13 @@ export default function TradingPanel() {
   ];
 
   // --- Order table columns ---
-  const orderColumns = [
+  const orderColumns: ColumnsType<LiveOrder> = [
     {
       title: '时间',
       dataIndex: 'created_at',
       key: 'time',
+      fixed: 'left',
+      width: 150,
       responsive: ['md'] as ('md' | 'lg' | 'xl' | 'xxl')[],
       render: (v: string | null) => formatDateTime(v),
     },
@@ -307,6 +312,8 @@ export default function TradingPanel() {
     {
       title: '操作',
       key: 'actions',
+      fixed: 'right',
+      width: 100,
       render: (_: unknown, r: LiveOrder) =>
         r.status === 'pending' || r.status === 'new' ? (
           <Popconfirm

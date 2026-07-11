@@ -160,7 +160,7 @@ export default function AIChat() {
     messagesEndRef.current?.scrollIntoView({
       behavior: reducedMotion ? 'auto' : 'smooth',
     });
-  }, [messages]);
+  }, [messages, streamedText]);
 
   // Show session sidebar on desktop; toggle on mobile
   const showSidebar = !isMobile || !activeSession;
@@ -236,6 +236,12 @@ export default function AIChat() {
           />
         ) : messagesLoading ? (
           <Skeleton active paragraph={{ rows: 6 }} />
+        ) : messages?.length === 0 ? (
+          <EmptyState
+            icon={<RobotOutlined className="phase5c-empty-icon" />}
+            title="暂无消息"
+            description="输入问题，开始 AI 投研对话"
+          />
         ) : (
           messages?.map((msg: ChatMessage) => (
             <div

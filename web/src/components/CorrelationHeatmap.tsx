@@ -29,38 +29,38 @@ export default function CorrelationHeatmap({ codes, matrix }: CorrelationHeatmap
 
   const labelFontSize = isMobile ? 8 : 10;
 
-  // Resolve all CSS-variable colors at render time. Fallbacks are the
-  // dark-theme defaults so SSR / no-DOM still renders correctly.
+  // Resolve all CSS-variable colors at render time. Fallbacks mirror the
+  // light-theme defaults in theme.css so SSR / no-DOM still renders correctly.
   const bgElevated = useMemo(
-    () => resolveChartColors(['var(--bg-elevated)'], ['#111111'])[0],
+    () => resolveChartColors(['var(--bg-elevated)'], ['#F3F5F7'])[0],
     [themeTick, colorConvention],
   );
   const bgBase = useMemo(
-    () => resolveChartColors(['var(--bg-base)'], ['#0a0a0a'])[0],
+    () => resolveChartColors(['var(--bg-base)'], ['#FAFBFC'])[0],
     [themeTick, colorConvention],
   );
   const colorFall = useMemo(
-    () => resolveChartColors(['var(--color-fall)'], ['#5fa87a'])[0],
+    () => resolveChartColors(['var(--color-fall)'], ['#16a34a'])[0],
     [themeTick, colorConvention],
   );
   const colorRise = useMemo(
-    () => resolveChartColors(['var(--color-rise)'], ['#c96b6b'])[0],
+    () => resolveChartColors(['var(--color-rise)'], ['#dc2626'])[0],
     [themeTick, colorConvention],
   );
   const textPrimary = useMemo(
-    () => resolveChartColors(['var(--text-primary)'], ['#f5f5f0'])[0],
+    () => resolveChartColors(['var(--text-primary)'], ['#0F1115'])[0],
     [themeTick, colorConvention],
   );
   const textSecondary = useMemo(
-    () => resolveChartColors(['var(--text-secondary)'], ['#888888'])[0],
+    () => resolveChartColors(['var(--text-secondary)'], ['#5B6778'])[0],
     [themeTick, colorConvention],
   );
   const textTertiary = useMemo(
-    () => resolveChartColors(['var(--text-tertiary)'], ['#444444'])[0],
+    () => resolveChartColors(['var(--text-tertiary)'], ['#8894A4'])[0],
     [themeTick, colorConvention],
   );
   const borderDefault = useMemo(
-    () => resolveChartColors(['var(--border-default)'], ['rgba(255,255,255,0.06)'])[0],
+    () => resolveChartColors(['var(--border-default)'], ['#e5e7eb'])[0],
     [themeTick, colorConvention],
   );
 

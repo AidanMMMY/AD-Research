@@ -8,7 +8,7 @@
   gap: var(--space-3);
   align-items: center;
   justify-content: space-between;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   width: 100%;
 }
 
@@ -27,7 +27,7 @@
   gap: var(--space-3);
   align-items: center;
   margin-left: auto;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
 }
 
 .sector-rotation__signal-indicator {

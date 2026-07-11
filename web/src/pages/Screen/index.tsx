@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Table, Space, Select, InputNumber, Button, Row, Col } from 'antd';
+import type { ColumnsType } from 'antd/es/table';
 import { useScreenResults, useScreenPresets, useScreenCategories } from '@/hooks/useScreenResults';
 import { useScoreTemplates } from '@/hooks/useScores';
 import { useInstrumentMarkets } from '@/hooks/useInstrumentList';
@@ -81,16 +82,16 @@ export default function Screen() {
     });
   };
 
-  const columns = [
-    { title: '代码', dataIndex: 'code', width: 100, fixed: 'left' as const, render: (v: string, r: any) => <InstrumentCodeTag code={v} name={r.name} name_zh={r.name_zh} /> },
-    { title: '分类', dataIndex: 'category', width: 100, render: (v: string) => v ? <span className="ad-table-text-secondary">{v}</span> : '-' },
+  const columns: ColumnsType<any> = [
+    { title: '代码', dataIndex: 'code', width: 100, fixed: 'left', render: (v: string, r: any) => <InstrumentCodeTag code={v} name={r.name} name_zh={r.name_zh} /> },
+    { title: '分类', dataIndex: 'category', width: 100, responsive: ['md'], render: (v: string) => v ? <span className="ad-table-text-secondary">{v}</span> : '-' },
     { title: <HelpPopover termKey="composite_score_filter" mode={mode}>评分</HelpPopover>, dataIndex: 'composite_score', width: 80, sorter: (a: any, b: any) => (a.composite_score ?? -Infinity) - (b.composite_score ?? -Infinity), render: (v: number) => <span className="font-mono ad-table-accent">{v?.toFixed(1)}</span> },
-    { title: <HelpPopover termKey="rsi14" mode={mode}>RSI</HelpPopover>, dataIndex: 'rsi14', width: 70, sorter: (a: any, b: any) => (a.rsi14 ?? -Infinity) - (b.rsi14 ?? -Infinity), render: (v: number) => <span className="font-mono ad-table-mono">{v?.toFixed(1)}</span> },
-    { title: <HelpPopover termKey="sharpe_1y" mode={mode}>夏普</HelpPopover>, dataIndex: 'sharpe_1y', width: 80, render: (v: number) => <span className="font-mono ad-table-mono">{v?.toFixed(2)}</span> },
+    { title: <HelpPopover termKey="rsi14" mode={mode}>RSI</HelpPopover>, dataIndex: 'rsi14', width: 70, responsive: ['md'], sorter: (a: any, b: any) => (a.rsi14 ?? -Infinity) - (b.rsi14 ?? -Infinity), render: (v: number) => <span className="font-mono ad-table-mono">{v?.toFixed(1)}</span> },
+    { title: <HelpPopover termKey="sharpe_1y" mode={mode}>夏普</HelpPopover>, dataIndex: 'sharpe_1y', width: 80, responsive: ['md'], render: (v: number) => <span className="font-mono ad-table-mono">{v?.toFixed(2)}</span> },
     { title: <HelpPopover termKey="return_1m" mode={mode}>1月</HelpPopover>, dataIndex: 'return_1m', width: 100, sorter: (a: any, b: any) => (a.return_1m ?? -Infinity) - (b.return_1m ?? -Infinity), render: (v: number) => <ReturnTag value={v} /> },
-    { title: <HelpPopover termKey="return_3m" mode={mode}>3月</HelpPopover>, dataIndex: 'return_3m', width: 100, sorter: (a: any, b: any) => (a.return_3m ?? -Infinity) - (b.return_3m ?? -Infinity), render: (v: number) => <ReturnTag value={v} /> },
-    { title: <HelpPopover termKey="return_1y" mode={mode}>1年</HelpPopover>, dataIndex: 'return_1y', width: 100, sorter: (a: any, b: any) => (a.return_1y ?? -Infinity) - (b.return_1y ?? -Infinity), render: (v: number) => <ReturnTag value={v} /> },
-    { title: <HelpPopover termKey="volatility_20d" mode={mode}>波动率</HelpPopover>, dataIndex: 'volatility_20d', width: 90, render: (v: number) => v ? <span className="font-mono ad-table-mono">{v.toFixed(1)}%</span> : '-' },
+    { title: <HelpPopover termKey="return_3m" mode={mode}>3月</HelpPopover>, dataIndex: 'return_3m', width: 100, responsive: ['md'], sorter: (a: any, b: any) => (a.return_3m ?? -Infinity) - (b.return_3m ?? -Infinity), render: (v: number) => <ReturnTag value={v} /> },
+    { title: <HelpPopover termKey="return_1y" mode={mode}>1年</HelpPopover>, dataIndex: 'return_1y', width: 100, responsive: ['md'], sorter: (a: any, b: any) => (a.return_1y ?? -Infinity) - (b.return_1y ?? -Infinity), render: (v: number) => <ReturnTag value={v} /> },
+    { title: <HelpPopover termKey="volatility_20d" mode={mode}>波动率</HelpPopover>, dataIndex: 'volatility_20d', width: 90, responsive: ['md'], render: (v: number) => v ? <span className="font-mono ad-table-mono">{v.toFixed(1)}%</span> : '-' },
   ];
 
   return (

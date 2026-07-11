@@ -17,6 +17,12 @@
   gap: var(--space-3);
 }
 
+/* Sparkline chart flexes to fill remaining width */
+.ehh-sparkline-chart {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
 /* Sparkline stats column */
 .ehh-sparkline-stats {
   display: flex;

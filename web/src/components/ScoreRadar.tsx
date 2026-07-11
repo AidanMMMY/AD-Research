@@ -24,31 +24,31 @@ export default function ScoreRadar({ data }: ScoreRadarProps) {
   }, []);
 
   const accent = useMemo(
-    () => resolveChartColors(['var(--accent)'], ['#5fa87a'])[0],
+    () => resolveChartColors(['var(--accent)'], ['#2563EB'])[0],
     [],
   );
   const accentDim = useMemo(
-    () => resolveChartColors(['var(--accent-dim)'], ['rgba(95,168,122,0.10)'])[0],
+    () => resolveChartColors(['var(--accent-dim)'], ['rgba(37, 99, 235, 0.08)'])[0],
     [],
   );
   const textTertiary = useMemo(
-    () => resolveChartColors(['var(--text-tertiary)'], ['#444444'])[0],
+    () => resolveChartColors(['var(--text-tertiary)'], ['#8894A4'])[0],
     [],
   );
   const textSecondary = useMemo(
-    () => resolveChartColors(['var(--text-secondary)'], ['#888888'])[0],
+    () => resolveChartColors(['var(--text-secondary)'], ['#5B6778'])[0],
     [],
   );
   const borderDefault = useMemo(
-    () => resolveChartColors(['var(--border-default)'], ['rgba(255,255,255,0.06)'])[0],
+    () => resolveChartColors(['var(--border-default)'], ['#e5e7eb'])[0],
     [],
   );
   const bgElevated = useMemo(
-    () => resolveChartColors(['var(--bg-elevated)'], ['#111111'])[0],
+    () => resolveChartColors(['var(--bg-elevated)'], ['#F3F5F7'])[0],
     [],
   );
   const textPrimary = useMemo(
-    () => resolveChartColors(['var(--text-primary)'], ['#f5f5f0'])[0],
+    () => resolveChartColors(['var(--text-primary)'], ['#0F1115'])[0],
     [],
   );
 
