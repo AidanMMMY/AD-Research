@@ -38,8 +38,12 @@ class MiniMaxProvider(LLMProvider):
         api_key = os.getenv("MINIMAX_CN_API_KEY", "") or os.getenv("MINIMAX_API_KEY", "")
         self._available = bool(api_key)
 
-        # Use China endpoint if CN key is set, otherwise global
+        # Use China endpoint if:
+        #   1. MINIMAX_CN_API_KEY is explicitly set, OR
+        #   2. The key prefix suggests a China-issued key (sk-cp-*)
         use_cn = bool(os.getenv("MINIMAX_CN_API_KEY", ""))
+        if not use_cn and api_key and api_key.startswith("sk-cp-"):
+            use_cn = True
         base_url = _CN_BASE_URL if use_cn else _BASE_URL
 
         self._client: OpenAI | None = None
