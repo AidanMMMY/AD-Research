@@ -1,8 +1,8 @@
 import './styles.css';
 
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Table, List, Skeleton, Tooltip } from 'antd';
+import { Table, Skeleton, Tooltip } from 'antd';
 import {
   ArrowUpOutlined,
   ArrowDownOutlined,
@@ -19,7 +19,6 @@ import {
   AppstoreOutlined,
   ThunderboltOutlined,
   PartitionOutlined,
-  ExclamationCircleOutlined,
 } from '@ant-design/icons';
 import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { useScores } from '@/hooks/useScores';
@@ -119,34 +118,200 @@ function NewsRow({
   );
 }
 
+/* ── My Watchlist — compact cards ── */
+
+interface WatchFavoriteItem {
+  etf_code: string;
+  etf_name?: string;
+  category?: string;
+  market?: string;
+}
+
+function FavoriteCard({
+  item,
+  tick,
+  onNavigate,
+}: {
+  item: WatchFavoriteItem;
+  tick?: { price: number; change_pct: number };
+  onNavigate: (code: string) => void;
+}) {
+  const prevPriceRef = useRef<number | undefined>(undefined);
+  const [flash, setFlash] = useState(false);
+
+  useEffect(() => {
+    if (prevPriceRef.current !== undefined && tick?.price !== undefined && tick.price !== prevPriceRef.current) {
+      setFlash(true);
+      const timer = setTimeout(() => setFlash(false), 600);
+      prevPriceRef.current = tick.price;
+      return () => clearTimeout(timer);
+    }
+    prevPriceRef.current = tick?.price;
+  }, [tick?.price]);
+
+  return (
+    <div
+      className="dashboard-favorite-card"
+      onClick={() => onNavigate(item.etf_code)}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onNavigate(item.etf_code);
+        }
+      }}
+    >
+      <div className="dashboard-favorite-card__toggle">
+        <FavoriteToggleButton code={item.etf_code} name={item.etf_name} />
+      </div>
+      <div className="dashboard-favorite-card__header">
+        <span className="dashboard-favorite-card__code">{item.etf_code}</span>
+        {item.etf_name && (
+          <span className="dashboard-favorite-card__name">{item.etf_name}</span>
+        )}
+      </div>
+      <div className="dashboard-favorite-card__meta">
+        {item.category && (
+          <span className="dashboard-favorite-card__badge">{item.category}</span>
+        )}
+      </div>
+      <div className={`dashboard-favorite-card__price ${flash ? 'dashboard-favorite-card__price--flash' : ''}`}>
+        {tick?.price != null ? (
+          <>
+            <span className="dashboard-favorite-card__price-value">
+              {tick.price.toFixed(tick.price >= 100 ? 2 : 3)}
+            </span>
+            <span
+              className={`dashboard-favorite-card__price-change ${
+                tick.change_pct >= 0 ? 'ad-rise' : 'ad-fall'
+              }`}
+            >
+              {tick.change_pct >= 0 ? '+' : ''}{tick.change_pct.toFixed(2)}%
+            </span>
+          </>
+        ) : (
+          <span className="dashboard-favorite-card__price-na">—</span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function PoolCard({
+  pool,
+  onNavigate,
+}: {
+  pool: { id: number; name: string; members?: { etf_code: string }[] };
+  onNavigate: (id: number) => void;
+}) {
+  return (
+    <div
+      className="dashboard-pool-card"
+      onClick={() => onNavigate(pool.id)}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onNavigate(pool.id);
+        }
+      }}
+    >
+      <div className="dashboard-pool-card__icon">
+        <FolderOpenOutlined />
+      </div>
+      <div className="dashboard-pool-card__name">{pool.name}</div>
+      <div className="dashboard-pool-card__meta">
+        {pool.members?.length || 0} 只标的
+      </div>
+    </div>
+  );
+}
+
 /**
  * Global index tile definitions for the compact Pulse strip.
  * Each tile maps to a macro code resolved via useMacroLatest.
  */
-const GLOBAL_TILES: Array<{
+/* ── Group definitions for the Pulse section ── */
+interface GroupTileDef {
   code: string;
   title: string;
   unit: string;
-}> = [
-  // ── 美股大盘 ──
-  { code: 'global_sp500', title: '标普 500', unit: '' },
-  { code: 'global_nasdaq', title: '纳斯达克 100', unit: '' },
-  { code: 'global_dow', title: '道琼斯', unit: '' },
-  // ── 美债 / 汇率 ──
-  { code: 'us_dgs10', title: 'US 10Y', unit: '%' },
-  { code: 'usd_cny', title: 'USD/CNY', unit: '' },
-  { code: 'usd_eur', title: 'USD/EUR', unit: '' },
-  { code: 'us_t10y3m', title: 'US T10Y3M', unit: '%' },
-  // ── 亚太 ──
-  { code: 'global_shcomp', title: '上证综指', unit: '' },
-  { code: 'global_hsi', title: '恒生指数', unit: '' },
-  { code: 'global_n225', title: '日经 225', unit: '' },
-  { code: 'global_szse', title: '深证成指', unit: '' },
-  { code: 'global_kospi', title: 'KOSPI', unit: '' },
-  // ── 欧洲 ──
-  { code: 'global_ftse', title: '富时 100', unit: '' },
-  { code: 'global_dax', title: 'DAX', unit: '' },
-  { code: 'global_cac', title: 'CAC 40', unit: '' },
+  type: 'macro' | 'realtime';
+}
+
+interface GroupDef {
+  key: string;
+  label: string;
+  tiles: GroupTileDef[];
+  tz: string;
+  openHour: number;
+  openMin: number;
+  closeHour: number;
+  closeMin: number;
+}
+
+const PULSE_GROUPS: GroupDef[] = [
+  {
+    key: 'us_equity',
+    label: '美股',
+    tz: 'America/New_York',
+    openHour: 9, openMin: 30, closeHour: 16, closeMin: 0,
+    tiles: [
+      { code: 'global_sp500', title: '标普 500', unit: '', type: 'macro' },
+      { code: 'global_nasdaq', title: '纳斯达克', unit: '', type: 'macro' },
+      { code: 'global_dow', title: '道琼斯', unit: '', type: 'macro' },
+      { code: 'SPY.US', title: 'SPY', unit: '', type: 'realtime' },
+    ],
+  },
+  {
+    key: 'us_bonds_fx',
+    label: '美债/汇率',
+    tz: 'America/New_York',
+    openHour: 8, openMin: 0, closeHour: 17, closeMin: 0,
+    tiles: [
+      { code: 'us_dgs10', title: 'US 10Y', unit: '%', type: 'macro' },
+      { code: 'usd_cny', title: 'USD/CNY', unit: '', type: 'macro' },
+      { code: 'usd_eur', title: 'USD/EUR', unit: '', type: 'macro' },
+      { code: 'us_t10y3m', title: 'T10Y3M', unit: '%', type: 'macro' },
+    ],
+  },
+  {
+    key: 'asia_pacific',
+    label: '亚太',
+    tz: 'Asia/Shanghai',
+    openHour: 9, openMin: 30, closeHour: 15, closeMin: 0,
+    tiles: [
+      { code: 'global_shcomp', title: '上证', unit: '', type: 'macro' },
+      { code: 'global_hsi', title: '恒生', unit: '', type: 'macro' },
+      { code: 'global_n225', title: '日经', unit: '', type: 'macro' },
+      { code: 'global_szse', title: '深证', unit: '', type: 'macro' },
+      { code: 'global_kospi', title: 'KOSPI', unit: '', type: 'macro' },
+      { code: '510300.SH', title: '沪深300ETF', unit: '', type: 'realtime' },
+      { code: '159915.SZ', title: '创业板ETF', unit: '', type: 'realtime' },
+    ],
+  },
+  {
+    key: 'europe',
+    label: '欧洲',
+    tz: 'Europe/London',
+    openHour: 8, openMin: 0, closeHour: 16, closeMin: 30,
+    tiles: [
+      { code: 'global_ftse', title: 'FTSE 100', unit: '', type: 'macro' },
+      { code: 'global_dax', title: 'DAX', unit: '', type: 'macro' },
+      { code: 'global_cac', title: 'CAC 40', unit: '', type: 'macro' },
+    ],
+  },
+  {
+    key: 'crypto',
+    label: '加密',
+    tz: 'UTC',
+    openHour: 0, openMin: 0, closeHour: 24, closeMin: 0,
+    tiles: [
+      { code: 'BTC.US', title: 'BTC', unit: '', type: 'realtime' },
+    ],
+  },
 ];
 
 function formatTileValue(v: number | null | undefined, unit: string): string {
@@ -157,12 +322,33 @@ function formatTileValue(v: number | null | undefined, unit: string): string {
   return v.toFixed(2);
 }
 
+function formatChangePct(v: number | null | undefined): string {
+  if (v == null || Number.isNaN(v)) return '—';
+  const sign = v > 0 ? '+' : '';
+  return `${sign}${v.toFixed(2)}%`;
+}
+
+function isMarketOpen(tz: string, openHour: number, openMin: number, closeHour: number, closeMin: number): boolean {
+  if (closeHour === 24 && closeMin === 0) return true;
+  const now = new Date();
+  const day = now.toLocaleDateString('en-US', { weekday: 'short', timeZone: tz });
+  if (day === 'Sat' || day === 'Sun') return false;
+  const timeStr = now.toLocaleTimeString('en-US', { hour12: false, timeZone: tz });
+  const h = parseInt(timeStr.slice(0, 2), 10);
+  const m = parseInt(timeStr.slice(3, 5), 10);
+  const total = h * 60 + m;
+  const open = openHour * 60 + openMin;
+  const close = closeHour * 60 + closeMin;
+  return total >= open && total < close;
+}
+
 /* ================================================================
-   PulseGlobalStrip — compact, borderless global index tiles.
-   Replaces the old ResponsiveGrid + Panel GlobalSnapshot approach
-   with an 8-column grid of transparent, minimal tiles.  Each tile
-   shows the index name, value, and a change arrow; hover lifts 1px
-   and the whole tile is a click target to /macro.
+   PulseGlobalStrip — grouped horizontal tiles with compact design.
+   Each group (美股 / 美债汇率 / 亚太 / 欧洲 / 加密) is a labeled
+   row of 32px-tall tiles in title|value|change% format, replacing
+   the old 8-column grid. Real-time tickers (INDEX_CODES) are
+   integrated into their respective groups. ReturnTag is replaced
+   with an inline colored span — no background tag box.
    ================================================================ */
 function PulseGlobalStrip() {
   const navigate = useNavigate();
@@ -177,6 +363,12 @@ function PulseGlobalStrip() {
     staleTime: 60_000,
   });
 
+  const INDEX_CODES = ['510300.SH', '159915.SZ', 'SPY.US', 'BTC.US'];
+  const { prices } = usePriceStream(INDEX_CODES);
+  const { latest: marketLatest, isConnected: marketConnected, reconnect: marketReconnect } =
+    useMarketStream(INDEX_CODES);
+
+  /* ── Build lookup for macro tiles ── */
   const lookup = useMemo(() => {
     type LookupEntry = {
       value: number | null;
@@ -225,45 +417,104 @@ function PulseGlobalStrip() {
 
   const isLoading = gLoading || uLoading || rtLoading;
 
+  /* ── Latest tick date across all real-time symbols ── */
+  const latestTickDate = useMemo(() => {
+    const maxTs = INDEX_CODES.reduce<number>((max, code) => {
+      const marketTs = marketLatest[code]?.ts;
+      return marketTs && marketTs > max ? marketTs : max;
+    }, 0);
+    return maxTs > 0 ? new Date(maxTs).toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10);
+  }, [marketLatest]);
+
+  /* ── Resolve display data for a tile (macro or realtime) ── */
+  const resolveTile = (tile: GroupTileDef): { value: number | null; change_pct: number | null } | null => {
+    if (tile.type === 'macro') {
+      const entry = lookup.get(tile.code);
+      return entry ? { value: entry.value, change_pct: entry.change_pct } : null;
+    }
+    const tick = marketLatest[tile.code] ?? (prices[tile.code] ? { ...prices[tile.code], ts: 0 } : undefined);
+    return tick ? { value: tick.price, change_pct: tick.change_pct ?? null } : null;
+  };
+
   return (
-    <div className="dashboard-pulse-strip">
-      {GLOBAL_TILES.map((tile) => {
-        const entry = lookup.get(tile.code);
-        const fresnessHint = entry?.freshness_hint ?? null;
+    <div className="dashboard-pulse-groups">
+      {PULSE_GROUPS.map((group) => {
+        const openNow = isMarketOpen(group.tz, group.openHour, group.openMin, group.closeHour, group.closeMin);
         return (
-          <div
-            key={tile.code}
-            className="dashboard-pulse-tile"
-            role="button"
-            tabIndex={0}
-            onClick={() => navigate('/macro')}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault();
-                navigate('/macro');
-              }
-            }}
-            aria-label={`${tile.title}: ${formatTileValue(entry?.value ?? null, tile.unit)}`}
-          >
-            {fresnessHint ? (
-              <Tooltip title={fresnessHint}>
-                <span className="dashboard-pulse-tile__freshness" aria-label={fresnessHint}>
-                  <ExclamationCircleOutlined />
-                </span>
-              </Tooltip>
-            ) : null}
-            <span className="dashboard-pulse-tile__code">{tile.title}</span>
-            <span className="dashboard-pulse-tile__value">
-              {isLoading && !entry ? '—' : formatTileValue(entry?.value ?? null, tile.unit)}
-            </span>
-            {entry?.change_pct != null ? (
-              <ReturnTag value={entry.change_pct} />
-            ) : (
-              <span className="dashboard-pulse-tile__flat">—</span>
-            )}
+          <div key={group.key} className="dashboard-pulse-group">
+            <div className="dashboard-pulse-group__sidebar">
+              <span className="dashboard-pulse-group__label">{group.label}</span>
+              <span
+                className={`dashboard-pulse-group__indicator ${
+                  openNow
+                    ? 'dashboard-pulse-group__indicator--open'
+                    : 'dashboard-pulse-group__indicator--closed'
+                }`}
+                aria-label={openNow ? '交易中' : '已收盘'}
+              />
+            </div>
+            <div className="dashboard-pulse-group__tiles">
+              {group.tiles.map((tile) => {
+                const data = resolveTile(tile);
+                const change = data?.change_pct;
+                const changeStr = change != null ? formatChangePct(change) : '—';
+                const valueStr = data?.value != null ? formatTileValue(data.value, tile.unit) : '—';
+                const changeClass =
+                  change == null
+                    ? 'dashboard-pulse-tile--h__change--flat'
+                    : change > 0
+                      ? 'dashboard-pulse-tile--h__change--rise'
+                      : 'dashboard-pulse-tile--h__change--fall';
+                const navPath = tile.type === 'realtime' ? `/instruments/${tile.code}` : '/macro';
+                return (
+                  <div
+                    key={tile.code}
+                    className="dashboard-pulse-tile--h"
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => navigate(navPath)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        navigate(navPath);
+                      }
+                    }}
+                    aria-label={`${tile.title}: ${valueStr}`}
+                  >
+                    <span className="dashboard-pulse-tile--h__code">{tile.title}</span>
+                    <span className="dashboard-pulse-tile--h__value">
+                      {isLoading && tile.type === 'macro' && !data ? '—' : valueStr}
+                    </span>
+                    <span className={`dashboard-pulse-tile--h__change ${changeClass}`}>{changeStr}</span>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         );
       })}
+      {/* ── Pulse footer: connection indicator + date ── */}
+      <div className="dashboard-pulse-footer">
+        {marketConnected ? (
+          <>
+            <span className="dashboard-pulse-footer__dot dashboard-pulse-footer__dot--connected" />
+            <span>实时</span>
+          </>
+        ) : (
+          <>
+            <span className="dashboard-pulse-footer__dot dashboard-pulse-footer__dot--disconnected" />
+            <span>流中断</span>
+            <button
+              type="button"
+              className="dashboard-pulse-footer__retry"
+              onClick={marketReconnect}
+            >
+              重连
+            </button>
+          </>
+        )}
+        <span>{latestTickDate}</span>
+      </div>
     </div>
   );
 }
@@ -374,18 +625,13 @@ export default function Dashboard() {
     staleTime: 60_000,
   });
 
-  const INDEX_CODES = ['510300.SH', '159915.SZ', 'SPY.US', 'BTC.US'];
-  const { prices } = usePriceStream(INDEX_CODES);
-  const { latest: marketLatest, isConnected: marketConnected, reconnect: marketReconnect } =
-    useMarketStream(INDEX_CODES);
-
-  const latestTickDate = useMemo(() => {
-    const maxTs = INDEX_CODES.reduce<number>((max, code) => {
-      const marketTs = marketLatest[code]?.ts;
-      return marketTs && marketTs > max ? marketTs : max;
-    }, 0);
-    return maxTs > 0 ? new Date(maxTs).toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10);
-  }, [marketLatest]);
+  // Price / market stream for favorite items
+  const favCodes = useMemo(
+    () => (favorites || []).map((f: any) => f.etf_code),
+    [favorites]
+  );
+  const { prices: favPrices } = usePriceStream(favCodes);
+  const { latest: favMarketLatest } = useMarketStream(favCodes);
 
   const scoreColumns = [
     {
@@ -490,88 +736,12 @@ export default function Dashboard() {
           }
         />
 
-        {/* Global index strip: 8-col compact grid, transparent tiles */}
         <PulseGlobalStrip />
-
-        {/* Real-time ticker cards: 4-col compact variant */}
-        <div style={{ marginTop: 'var(--space-4)' }}>
-          <div className="dashboard-pulse-strip dashboard-pulse-strip--4col" style={{ marginTop: 'var(--space-4)' }}>
-            {INDEX_CODES.map((code, i) => {
-              const tick = marketLatest[code] ?? (prices[code]
-                ? { ...prices[code], ts: 0, name: undefined, market: undefined }
-                : undefined);
-              return (
-                <div
-                  key={code}
-                  className="dashboard-pulse-tile"
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => navigate(`/instruments/${code}`)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      e.preventDefault();
-                      navigate(`/instruments/${code}`);
-                    }
-                  }}
-                  aria-label={`${code}: ${tick ? tick.price.toFixed(2) : '暂无数据'}`}
-                >
-                  <span className="dashboard-pulse-tile__code">
-                    {code}
-                    {i === 0 && (
-                      <Tooltip
-                        title={marketConnected ? 'SSE 已连接，3 秒刷新' : 'SSE 未连接，正在重连'}
-                      >
-                        <span
-                          aria-label={marketConnected ? '实时连接中' : '连接断开'}
-                          style={{
-                            display: 'inline-block',
-                            width: 6,
-                            height: 6,
-                            borderRadius: '50%',
-                            background: marketConnected ? 'var(--color-rise)' : 'var(--color-fall)',
-                            marginLeft: 4,
-                            verticalAlign: 'middle',
-                          }}
-                        />
-                      </Tooltip>
-                    )}
-                  </span>
-                  <span className="dashboard-pulse-tile__value">
-                    {tick ? tick.price.toFixed(2) : '—'}
-                  </span>
-                  {tick ? (
-                    <ReturnTag value={tick.change_pct} />
-                  ) : (
-                    <span className="dashboard-pulse-tile__flat">暂无数据</span>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-          {!marketConnected && (
-            <div style={{ marginTop: 8, textAlign: 'right' }}>
-              <span className="market-conn">
-                <span className="market-conn__pill">连接中断</span>
-                <button
-                  type="button"
-                  className="market-conn__retry"
-                  onClick={marketReconnect}
-                >
-                  重新连接
-                </button>
-              </span>
-            </div>
-          )}
-          <div style={{ marginTop: 4, fontSize: 'var(--text-small-size)', color: 'var(--text-muted)', textAlign: 'right' }}>
-            {latestTickDate}
-          </div>
-        </div>
       </section>
 
       {/* ═══════════════════════════════════════════════════════════
           ZONE 2: 我的自选股 (MY WATCH)
-          Standard card density — the user's personal dashboard.
-          Answers: "How am I doing today?"
+          Compact card grid for favorites + pools with news sidebar.
           ═══════════════════════════════════════════════════════════ */}
       <section className="dashboard-section dashboard-zone dashboard-zone--watch">
         <SectionHeading
@@ -583,29 +753,27 @@ export default function Dashboard() {
           }
         />
 
-        {/* Daily lesson — front and center, above favorites */}
+        {/* Daily lesson — front and center, above cards */}
         <DailyLesson />
 
-        <div style={{ marginTop: 'var(--space-5)' }}>
-          <ResponsiveGrid cols={2} gap="lg">
+        <div className="dashboard-watch-layout" style={{ marginTop: 'var(--space-5)' }}>
+          {/* Left column: favorites grid + pools grid */}
+          <div className="dashboard-watch-main">
             {/* Favorites panel */}
             <Panel
               variant="default"
               title={
                 <span>
-                  <StarFilled className="ad-icon-accent" /> 我的自选股
+                  <StarFilled className="ad-icon-accent" /> 自选股
+                  {favCount > 0 && (
+                    <span className="dashboard-watch-section__count"> ({favCount})</span>
+                  )}
                 </span>
               }
               extra={
-                favCount > 0 ? (
-                  <span className="panel-extra-link" onClick={() => navigate('/favorites')}>
-                    查看全部 →
-                  </span>
-                ) : (
-                  <span className="panel-extra-link" onClick={() => navigate('/favorites')}>
-                    前往自选股 →
-                  </span>
-                )
+                <span className="panel-extra-link" onClick={() => navigate('/favorites')}>
+                  {favCount > 0 ? '查看全部 →' : '前往自选股 →'}
+                </span>
               }
             >
               {favLoading ? (
@@ -632,121 +800,93 @@ export default function Dashboard() {
                   }
                 />
               ) : (
-                <List
-                  dataSource={favorites}
-                  renderItem={(item: any) => (
-                    <List.Item
-                      onClick={() => navigate(`/instruments/${item.etf_code}`)}
-                      className="dashboard-favorite-item"
-                    >
-                      <List.Item.Meta
-                        title={
-                          <div className="dashboard-favorite-item__title">
-                            <InstrumentCodeTag code={item.etf_code} name={item.etf_name} />
-                          </div>
-                        }
-                        description={
-                          <div className="dashboard-favorite-item__desc">
-                            <span>{item.category}</span>
-                            <span className="ad-text-muted">|</span>
-                            <span>{item.market}</span>
-                          </div>
-                        }
-                      />
-                    </List.Item>
-                  )}
-                />
+                <div className="dashboard-favorites-grid">
+                  {favorites.map((item: any) => (
+                    <FavoriteCard
+                      key={item.etf_code}
+                      item={item}
+                      tick={favMarketLatest[item.etf_code] ?? favPrices[item.etf_code]}
+                      onNavigate={(code: string) => navigate(`/instruments/${code}`)}
+                    />
+                  ))}
+                </div>
               )}
             </Panel>
 
-            {/* Pools + favorites news stacked */}
-            <div className="dashboard-side-stack">
-              {/* Favorites news — directly relevant to My Watch */}
-              <Panel
-                variant="default"
-                title={
-                  <span>
-                    <ReadOutlined className="ad-icon-leading" />
-                    自选股动态
+            {/* Pools panel */}
+            <Panel
+              variant="default"
+              title={
+                <span>
+                  <FolderOpenOutlined className="ad-icon-accent" /> 我的标的池
+                  {(pools?.length || 0) > 0 && (
+                    <span className="dashboard-watch-section__count"> ({pools?.length})</span>
+                  )}
+                </span>
+              }
+              extra={
+                (pools?.length || 0) > 0 ? (
+                  <span className="panel-extra-link" onClick={() => navigate('/pools')}>
+                    管理标的池 →
                   </span>
-                }
-                extra={
-                  favCount > 0 ? (
-                    <span className="panel-extra-link" onClick={() => navigate('/news')}>
-                      查看全部 →
-                    </span>
-                  ) : undefined
-                }
-              >
-                {favNewsLoading ? (
-                  <Skeleton active paragraph={{ rows: 5 }} />
-                ) : favCount === 0 ? (
-                  <EmptyState
-                    title="暂无自选股"
-                    description="加入自选股后，这里会汇总相关新闻"
-                  />
-                ) : !favoritesNews || favoritesNews.length === 0 ? (
-                  <EmptyState title="暂无自选股相关资讯" />
-                ) : (
-                  favoritesNews.map((a) => (
-                    <NewsRow key={a.id} article={a} onOpen={(id) => navigate(`/news/${id}`)} />
-                  ))
-                )}
-              </Panel>
+                ) : undefined
+              }
+            >
+              {poolsLoading ? (
+                <LoadingBlock size="md" label="加载中…" />
+              ) : (pools?.length || 0) === 0 ? (
+                <EmptyState
+                  title="暂无标的池"
+                  description="在标的池管理中创建池并添加标的，这里会汇总展示"
+                />
+              ) : (
+                <div className="dashboard-pools-grid">
+                  {(pools ?? []).slice(0, 6).map((pool: any) => (
+                    <PoolCard
+                      key={pool.id}
+                      pool={pool}
+                      onNavigate={(id: number) => navigate(`/pools/${id}`)}
+                    />
+                  ))}
+                </div>
+              )}
+            </Panel>
+          </div>
 
-              {/* Pools quick access */}
-              <Panel
-                variant="default"
-                title="我的标的池"
-                extra={
-                  (pools?.length || 0) > 0 ? (
-                    <span className="panel-extra-link" onClick={() => navigate('/pools')}>
-                      查看全部 →
-                    </span>
-                  ) : undefined
-                }
-              >
-                {poolsLoading ? (
-                  <LoadingBlock size="md" label="加载中…" />
-                ) : (pools?.length || 0) === 0 ? (
-                  <EmptyState
-                    title="暂无标的池"
-                    description="在标的池管理中创建池并添加标的，这里会汇总展示"
-                  />
-                ) : (
-                  <List
-                    dataSource={pools?.slice(0, 6) || []}
-                    renderItem={(pool: any) => (
-                      <List.Item
-                        onClick={() => navigate(`/pools/${pool.id}`)}
-                        className="dashboard-pool-item"
-                      >
-                        <List.Item.Meta
-                          title={
-                            <div className="dashboard-pool-item__title">
-                              <FolderOpenOutlined className="ad-icon-accent" />
-                              <span className="dashboard-pool-item__name">{pool.name}</span>
-                            </div>
-                          }
-                          description={
-                            <div className="dashboard-pool-item__desc">
-                              <span>{pool.members?.length || 0} 只标的</span>
-                              {pool.description && (
-                                <>
-                                  <span className="ad-text-muted">|</span>
-                                  <span>{pool.description}</span>
-                                </>
-                              )}
-                            </div>
-                          }
-                        />
-                      </List.Item>
-                    )}
-                  />
-                )}
-              </Panel>
-            </div>
-          </ResponsiveGrid>
+          {/* Right sidebar: favorites news */}
+          <div className="dashboard-watch-sidebar">
+            <Panel
+              variant="default"
+              title={
+                <span>
+                  <ReadOutlined className="ad-icon-leading" />
+                  自选股动态
+                </span>
+              }
+              extra={
+                favCount > 0 ? (
+                  <span className="panel-extra-link" onClick={() => navigate('/news')}>
+                    查看全部 →
+                  </span>
+                ) : undefined
+              }
+            >
+              {favNewsLoading ? (
+                <Skeleton active paragraph={{ rows: 5 }} />
+              ) : favCount === 0 ? (
+                <EmptyState
+                  title="暂无自选股"
+                  description="加入自选股后，这里会汇总相关新闻"
+                />
+              ) : !favoritesNews || favoritesNews.length === 0 ? (
+                <EmptyState title="暂无自选股相关资讯" />
+              ) : (
+                favoritesNews.map((a: any) => (
+                  <NewsRow key={a.id} article={a} onOpen={(id: number) => navigate(`/news/${id}`)} />
+                ))
+              )}
+            </Panel>
+          </div>
         </div>
       </section>
 

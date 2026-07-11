@@ -52,8 +52,8 @@ type DetailTab = 'summary' | 'constituents';
 
 export default function SectorRotation() {
   const mode = useSettingsStore((s) => s.mode);
-  // Industry taxonomy toggle: GICS (global default) vs 申万一级 (A-share).
-  const [classification, setClassification] = useState<SectorClassification>('GICS');
+  // Industry taxonomy toggle: 申万一级 (default, A-share) vs GICS (global).
+  const [classification, setClassification] = useState<SectorClassification>('SW');
   const clsLabel = classification === 'SW' ? '申万一级' : 'GICS';
   const { data, isLoading, isFetching, dataUpdatedAt } = useSectorRotation(
     undefined,
