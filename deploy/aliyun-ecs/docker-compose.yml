@@ -84,6 +84,7 @@ services:
       BEA_API_KEY: ${BEA_API_KEY:-}
       BLS_API_KEY: ${BLS_API_KEY:-}
       XUEQIU_COOKIE: ${XUEQIU_COOKIE:-}
+      CORS_ORIGINS: ${CORS_ORIGINS:-}
     depends_on:
       postgres:
         condition: service_healthy
