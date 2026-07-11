@@ -595,7 +595,7 @@ export default function StockDetail() {
               loading={isToggling || favLoading}
               onClick={handleToggleFavorite}
             >
-              {isFavorite ? '已收藏' : '收藏'}
+              {isFavorite ? '已自选' : '加入自选'}
             </Button>
             <Button
               icon={<SearchOutlined />}

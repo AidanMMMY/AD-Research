@@ -5,41 +5,42 @@
    - china: red=up/gain, green=down/loss (A-share convention)
    - us:    green=up/gain, red=down/loss (Western convention)
 
-   All functions return CSS variables for runtime theme compatibility.
+   CRITICAL: CSS layer (theme.css) already handles convention switching
+   via [data-color-convention] on <html>.  JS functions below MUST NOT
+   flip colors — they always return var(--color-rise) for positive and
+   var(--color-fall) for negative.  The CSS layer owns the swap.
    ============================================================ */
 
 export type ColorConvention = 'china' | 'us';
 
-/** Get the "positive" color (up/gain) for the given convention */
-export function getUpColor(convention: ColorConvention = 'china'): string {
-  return convention === 'us' ? 'var(--color-fall)' : 'var(--color-rise)';
+/** Get the "positive" color (up/gain).
+ *  CSS layer handles convention swap — always returns rise. */
+export function getUpColor(_convention: ColorConvention = 'china'): string {
+  return 'var(--color-rise)';
 }
 
-/** Get the "negative" color (down/loss) for the given convention */
-export function getDownColor(convention: ColorConvention = 'china'): string {
-  return convention === 'us' ? 'var(--color-rise)' : 'var(--color-fall)';
+/** Get the "negative" color (down/loss).
+ *  CSS layer handles convention swap — always returns fall. */
+export function getDownColor(_convention: ColorConvention = 'china'): string {
+  return 'var(--color-fall)';
 }
 
 /** Get text color for return value */
-export function getReturnColor(value?: number | null, convention: ColorConvention = 'china'): string {
+export function getReturnColor(value?: number | null, _convention: ColorConvention = 'china'): string {
   if (value === undefined || value === null) return 'var(--text-tertiary)';
-  return value >= 0 ? getUpColor(convention) : getDownColor(convention);
+  return value >= 0 ? getUpColor() : getDownColor();
 }
 
 /** Get background color for return tag */
-export function getReturnBgColor(value?: number | null, convention: ColorConvention = 'china'): string {
+export function getReturnBgColor(value?: number | null, _convention: ColorConvention = 'china'): string {
   if (value === undefined || value === null) return 'var(--bg-input)';
-  return value >= 0
-    ? (convention === 'us' ? 'var(--color-fall-dim)' : 'var(--color-rise-dim)')
-    : (convention === 'us' ? 'var(--color-rise-dim)' : 'var(--color-fall-dim)');
+  return value >= 0 ? 'var(--color-rise-dim)' : 'var(--color-fall-dim)';
 }
 
 /** Get border color for return tag */
-export function getReturnBorderColor(value?: number | null, convention: ColorConvention = 'china'): string {
+export function getReturnBorderColor(value?: number | null, _convention: ColorConvention = 'china'): string {
   if (value === undefined || value === null) return 'var(--border-default)';
-  return value >= 0
-    ? (convention === 'us' ? 'var(--color-fall-border)' : 'var(--color-rise-border)')
-    : (convention === 'us' ? 'var(--color-rise-border)' : 'var(--color-fall-border)');
+  return value >= 0 ? 'var(--color-rise-border)' : 'var(--color-fall-border)';
 }
 
 /** Get color for score progress bar */

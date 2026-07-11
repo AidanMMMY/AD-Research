@@ -448,7 +448,7 @@ export default function Dashboard() {
         title="首页看板"
         description={
           <span>
-            综合评分 · 收藏 · 标的池概览 · {new Date().toISOString().slice(0, 10)}
+            综合评分 · 自选股 · 标的池概览 · {new Date().toISOString().slice(0, 10)}
             {' · '}
             <DataFreshnessHint at={statsKpis.updatedAt} />
           </span>
@@ -569,7 +569,7 @@ export default function Dashboard() {
       </section>
 
       {/* ═══════════════════════════════════════════════════════════
-          ZONE 2: 我的关注 (MY WATCH)
+          ZONE 2: 我的自选股 (MY WATCH)
           Standard card density — the user's personal dashboard.
           Answers: "How am I doing today?"
           ═══════════════════════════════════════════════════════════ */}
@@ -578,7 +578,7 @@ export default function Dashboard() {
           eyebrow="MY WATCH"
           title={
             <span>
-              <StarFilled className="ad-icon-accent" /> 我的关注
+              <StarFilled className="ad-icon-accent" /> 我的自选股
             </span>
           }
         />
@@ -593,7 +593,7 @@ export default function Dashboard() {
               variant="default"
               title={
                 <span>
-                  <StarFilled className="ad-icon-accent" /> 我的收藏
+                  <StarFilled className="ad-icon-accent" /> 我的自选股
                 </span>
               }
               extra={
@@ -603,7 +603,7 @@ export default function Dashboard() {
                   </span>
                 ) : (
                   <span className="panel-extra-link" onClick={() => navigate('/favorites')}>
-                    前往自选 →
+                    前往自选股 →
                   </span>
                 )
               }
@@ -612,8 +612,8 @@ export default function Dashboard() {
                 <LoadingBlock size="md" label="加载中…" />
               ) : favCount === 0 ? (
                 <EmptyState
-                  title="暂无收藏的标的"
-                  description="在详情页点击 ★ 即可加入自选。这里会汇总你关注的标的、实时行情和相关新闻。"
+                  title="暂无自选股"
+                  description="在详情页点击 ★ 即可加入自选。这里会汇总你的自选标的、实时行情和相关新闻。"
                   action={
                     <span
                       className="panel-extra-link"
@@ -682,8 +682,8 @@ export default function Dashboard() {
                   <Skeleton active paragraph={{ rows: 5 }} />
                 ) : favCount === 0 ? (
                   <EmptyState
-                    title="暂无收藏的标的"
-                    description="收藏自选股后，这里会汇总相关新闻"
+                    title="暂无自选股"
+                    description="加入自选股后，这里会汇总相关新闻"
                   />
                 ) : !favoritesNews || favoritesNews.length === 0 ? (
                   <EmptyState title="暂无自选股相关资讯" />

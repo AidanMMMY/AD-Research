@@ -57,7 +57,7 @@ export function useOnboardingSteps(): OnboardingStep[] {
         key: 'dashboard',
         title: '首页看板',
         description:
-          '首页汇总你的综合评分、收藏标的、实时行情与重要新闻。建议每天先看这一页，把握市场全貌。',
+          '首页汇总你的综合评分、自选标的、实时行情与重要新闻。建议每天先看这一页，把握市场全貌。',
         icon: createElement(RocketOutlined),
         target: querySelector('[data-onboard="welcome-dashboard"]'),
       },

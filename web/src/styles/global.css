@@ -1426,6 +1426,9 @@ a:focus-visible {
   font-weight: 600;
 }
 
+.ad-change-cell--rise { color: var(--color-rise); }
+.ad-change-cell--fall { color: var(--color-fall); }
+
 /* Clickable chip tags. */
 .ad-chip-tag {
   cursor: pointer;
@@ -8488,3 +8491,20 @@ input[type="password"]::-webkit-strong-password-auto-fill-button {
 .ad-panel--default:hover {
   border-top-color: var(--border-accent);
 }
+
+/* ============================================================
+   Paper Trading / Trading Panel — PnL color classes
+   ============================================================ */
+.paper-pnl--rise { color: var(--color-rise); }
+.paper-pnl--fall { color: var(--color-fall); }
+.paper-pnl--neutral { color: var(--text-tertiary); }
+
+/* ============================================================
+   Detail KPI color classes (backed by CSS convention swap)
+   ============================================================ */
+.detail-kpi-rise .stat-card__value { color: var(--color-rise); }
+.detail-kpi-fall .stat-card__value { color: var(--color-fall); }
+
+/* Alias for EtfHoldingsHistory compatibility */
+.ad-color-rise { color: var(--color-rise); }
+.ad-color-fall { color: var(--color-fall); }

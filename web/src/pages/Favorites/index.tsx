@@ -59,7 +59,7 @@ export default function Favorites() {
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
   const [bulkRemoving, setBulkRemoving] = useState(false);
 
-  // 拉全量自选股（按收藏时间倒序），上限 200 条
+  // 拉全量自选股（按加入时间倒序），上限 200 条
   const { favorites, count, isLoading } = useFavorites(200);
 
   // 实时价：复用全应用唯一的 SSE 连接
@@ -344,7 +344,7 @@ export default function Favorites() {
             <StarFilled className="ad-icon-accent" /> 我的自选股
           </span>
         }
-        description={`共 ${count} 只标的，按收藏时间倒序排列。${isConnected ? '实时行情已连接' : '实时行情连接中…'}`}
+        description={`共 ${count} 只标的，按加入时间倒序排列。${isConnected ? '实时行情已连接' : '实时行情连接中…'}`}
         extra={
           <Space>
             {selectedRowKeys.length > 0 && (
@@ -383,7 +383,7 @@ export default function Favorites() {
 
       {/* 全部标的表（支持批量选择 / 单条移除） */}
       <SectionHeading
-        title="全部自选"
+        title="全部自选股"
         action={
           <span className="ad-text-muted favorites__hint-text">
             点击行进入详情；勾选后可批量移除
@@ -456,7 +456,7 @@ export default function Favorites() {
           image={Empty.PRESENTED_IMAGE_SIMPLE}
           description={
             <span className="ad-text-muted">
-              自选股是 <b>轻量级关注清单</b>，区别于「标的池」（中长期目标组合）和「模拟 / 真实交易」中的实际持仓。
+              自选股是 <b>轻量级跟踪清单</b>，区别于「标的池」（中长期目标组合）和「模拟 / 真实交易」中的实际持仓。
               如需给自选股配置权重 / 算法跟踪，请到 <a onClick={() => navigate('/pools')}>标的池管理</a>。
             </span>
           }
