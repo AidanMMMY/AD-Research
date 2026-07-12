@@ -319,6 +319,29 @@ const PULSE_GROUPS: GroupDef[] = [
   },
 ];
 
+/** 全球市场速览指标与术语词典 key 的映射，便于后续扩展或复用。 */
+const GLOBAL_OVERVIEW_TERM_MAP: Record<string, string> = {
+  global_sp500: 'global_sp500',
+  global_nasdaq: 'global_nasdaq',
+  global_dow: 'global_dow',
+  'SPY.US': 'SPY.US',
+  us_dgs10: 'us_dgs10',
+  usd_cny: 'usd_cny',
+  usd_eur: 'usd_eur',
+  us_t10y3m: 'us_t10y3m',
+  global_shcomp: 'global_shcomp',
+  global_hsi: 'global_hsi',
+  global_n225: 'global_n225',
+  global_szse: 'global_szse',
+  global_kospi: 'global_kospi',
+  '510300.SH': '510300.SH',
+  '159915.SZ': '159915.SZ',
+  global_ftse: 'global_ftse',
+  global_dax: 'global_dax',
+  global_cac: 'global_cac',
+  'BTC.US': 'BTC.US',
+};
+
 function formatTileValue(v: number | null | undefined, unit: string): string {
   if (v == null || Number.isNaN(v)) return '—';
   if (unit === '%') return `${v.toFixed(2)}%`;
@@ -342,12 +365,14 @@ function isMarketOpen(tz: string, openHour: number, openMin: number, closeHour: 
 }
 
 /* ================================================================
-   PulseGlobalStrip — unified 4-column matrix of global market tiles.
-   Each tile shows its group badge (market region) so the layout is
-   balanced and no row is left with a single isolated indicator.
+   PulseGlobalStrip — grouped 4-column matrix of global market tiles.
+   Each market region is rendered as a Panel with a group header and
+   its own compact tile matrix, so the group label clearly owns the
+   tiles below it.
    ================================================================ */
 function PulseGlobalStrip() {
   const navigate = useNavigate();
+  const mode = useSettingsStore((s) => s.mode);
   const { data: latestGlobal, isLoading: gLoading } = useMacroLatest('global');
   const { data: latestUs, isLoading: uLoading } = useMacroLatest('us');
   const { data: rtGlobal, isLoading: rtLoading } = useQuery({
@@ -432,65 +457,100 @@ function PulseGlobalStrip() {
     return tick ? { value: tick.price, change_pct: tick.change_pct ?? null } : null;
   };
 
-  /* ── Flatten groups into a balanced matrix (each group label shown once) ── */
-  const matrixTiles = useMemo(() => {
-    return PULSE_GROUPS.flatMap((group) =>
-      group.tiles.map((tile, idx) => ({ ...tile, group, showGroupLabel: idx === 0 }))
-    );
-  }, []);
-
   return (
     <>
-      <div className="dashboard-pulse-matrix">
-        {matrixTiles.map((tile) => {
-          const data = resolveTile(tile);
-          const change = data?.change_pct;
-          const valueStr = data?.value != null ? formatTileValue(data.value, tile.unit) : '—';
-          const navPath = tile.type === 'realtime' ? `/instruments/${tile.code}` : '/macro';
+      <ResponsiveGrid cols={1} gap="sm" className="dashboard-pulse-groups">
+        {PULSE_GROUPS.map((group) => {
           const openNow = isMarketOpen(
-            tile.group.tz,
-            tile.group.openHour,
-            tile.group.openMin,
-            tile.group.closeHour,
-            tile.group.closeMin,
+            group.tz,
+            group.openHour,
+            group.openMin,
+            group.closeHour,
+            group.closeMin,
           );
           return (
-            <div
-              key={tile.code}
-              className="dashboard-pulse-tile"
-              role="button"
-              tabIndex={0}
-              onClick={() => navigate(navPath)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault();
-                  navigate(navPath);
-                }
-              }}
-              aria-label={`${tile.title}: ${valueStr}`}
-            >
-              {tile.showGroupLabel && (
-                <span className="dashboard-pulse-tile__group">
+            <Panel
+              key={group.key}
+              variant="transparent"
+              padding="none"
+              className="dashboard-pulse-group"
+              title={
+                <span className="dashboard-pulse-group__title">
                   <span
-                    className={`dashboard-pulse-tile__group-dot ${
+                    className={`dashboard-pulse-group__dot ${
                       openNow
-                        ? 'dashboard-pulse-tile__group-dot--open'
-                        : 'dashboard-pulse-tile__group-dot--closed'
+                        ? 'dashboard-pulse-group__dot--open'
+                        : 'dashboard-pulse-group__dot--closed'
                     }`}
                     aria-label={openNow ? '交易中' : '已收盘'}
                   />
-                  {tile.group.label}
+                  {group.label}
                 </span>
-              )}
-              <span className="dashboard-pulse-tile__code">{tile.title}</span>
-              <span className="dashboard-pulse-tile__value">
-                {isLoading && tile.type === 'macro' && !data ? '—' : valueStr}
-              </span>
-              <ReturnTag value={change} />
-            </div>
+              }
+            >
+              <div className="dashboard-pulse-matrix">
+                {group.tiles.map((tile) => {
+                  const data = resolveTile(tile);
+                  const change = data?.change_pct;
+                  const valueStr =
+                    data?.value != null ? formatTileValue(data.value, tile.unit) : '—';
+                  const termKey = GLOBAL_OVERVIEW_TERM_MAP[tile.code];
+                  const navPath =
+                    tile.type === 'realtime' ? `/instruments/${tile.code}` : '/macro';
+                  return (
+                    <div
+                      key={tile.code}
+                      className="dashboard-pulse-tile"
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => navigate(navPath)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          navigate(navPath);
+                        }
+                      }}
+                      aria-label={`${tile.title}: ${valueStr}`}
+                    >
+                      <span className="dashboard-pulse-tile__code">
+                        {termKey ? (
+                          <span
+                            className="dashboard-pulse-tile__help"
+                            onClick={(e) => e.stopPropagation()}
+                            role="presentation"
+                          >
+                            <HelpPopover
+                              termKey={termKey}
+                              mode={mode}
+                              contextData={[
+                                `当前指标：${tile.title}`,
+                                `最新数值：${valueStr}`,
+                                `涨跌幅：${
+                                  change == null
+                                    ? '—'
+                                    : `${change > 0 ? '+' : ''}${change.toFixed(2)}%`
+                                }`,
+                              ].join('\n')}
+                            >
+                              {tile.title}
+                            </HelpPopover>
+                          </span>
+                        ) : (
+                          tile.title
+                        )}
+                      </span>
+                      <span className="dashboard-pulse-tile__value">
+                        {isLoading && tile.type === 'macro' && !data ? '—' : valueStr}
+                      </span>
+                      <ReturnTag value={change} />
+                    </div>
+                  );
+                })}
+              </div>
+            </Panel>
           );
         })}
-      </div>
+      </ResponsiveGrid>
       {/* ── Pulse footer: connection indicator + date ── */}
       <div className="dashboard-pulse-footer">
         {marketConnected ? (

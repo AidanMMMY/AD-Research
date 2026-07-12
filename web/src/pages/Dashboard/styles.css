@@ -130,6 +130,14 @@
   color: var(--text-muted);
 }
 
+/* Pulse tile title + info icon wrapper — keep inline and prevent wrapping */
+.dashboard-pulse-tile__help {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  white-space: nowrap;
+}
+
 /* Pulse tile freshness badge — tiny corner indicator */
 .dashboard-pulse-tile__freshness {
   position: absolute;
