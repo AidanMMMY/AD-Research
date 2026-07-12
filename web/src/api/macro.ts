@@ -18,7 +18,6 @@ export interface MacroIndicatorItem {
   name_en?: string | null;
   unit: string;
   source: string;
-  category?: string;
   period?: string | null;
   value?: number | null;
   fetched_at?: string | null;

@@ -267,11 +267,11 @@ function CategoryBlock({ title, rows }: { title: string; rows: RowVm[] }): JSX.E
 }
 
 // ---------------------------------------------------------------------------
-// Recent-24h political / macro event stream (K12, 2026-07-04).
+// Recent-week political / macro event stream (K12, 2026-07-04).
 //
 // Reuses the new ``event_category`` filter from the News API to surface
 // geopolitics / central_bank / election / trade_war / sanction items in
-// the last 24 hours at importance >= 4. Each row links into the News
+// the last 7 days at importance >= 4. Each row links into the News
 // detail page. Stays self-contained so K11 can drop the rest of the
 // page without losing the widget.
 // ---------------------------------------------------------------------------
@@ -303,13 +303,13 @@ const POLITICAL_CATEGORY_COLOR: Record<string, string> = {
 /**
  * Shared hook: load the most recent political / macro news items
  * (geopolitics / central_bank / election / trade_war / sanction) in
- * the last 24 h with importance >= 4.  Lives at module scope so both
+ * the last 7 days with importance >= 4.  Lives at module scope so both
  * the on-page widget and the AI Help button consume the same cache
  * entry (and we only hit /news once per minute).
  */
 function useRecentPoliticalEvents() {
   const since = useMemo(
-    () => new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
+    () => new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
     [],
   );
   return useQuery({
@@ -330,26 +330,26 @@ function useRecentPoliticalEvents() {
 }
 
 /**
- * Compact "recent 24h political events" panel. Renders nothing while
+ * Compact "recent week political events" panel. Renders nothing while
  * loading (so the rest of the page is not blocked), then either a
  * 5-row clickable list or an empty-state message.  The query lives in
  * ``useRecentPoliticalEvents`` so the AI Help button can reuse the
  * same cache entry.
  */
-function Recent24hEvents(): JSX.Element | null {
+function RecentWeekEvents(): JSX.Element | null {
   const navigate = useNavigate();
   const { data, isLoading, isError } = useRecentPoliticalEvents();
 
   if (isLoading) {
     return (
-      <Panel title="最近 24h 重大政治 / 地缘事件" padding="md">
+      <Panel title="最近一周重大政治 / 地缘事件" padding="md">
         <Skeleton active paragraph={{ rows: 3 }} />
       </Panel>
     );
   }
   if (isError) {
     return (
-      <Panel title="最近 24h 重大政治 / 地缘事件" padding="md">
+      <Panel title="最近一周重大政治 / 地缘事件" padding="md">
         <EmptyState title="事件流加载失败" />
       </Panel>
     );
@@ -357,9 +357,9 @@ function Recent24hEvents(): JSX.Element | null {
   const items: NewsArticle[] = data?.items ?? [];
   if (items.length === 0) {
     return (
-      <Panel title="最近 24h 重大政治 / 地缘事件" padding="md">
+      <Panel title="最近一周重大政治 / 地缘事件" padding="md">
         <EmptyState
-          title="暂无 24h 内重大政治事件"
+          title="暂无近一周内重大政治事件"
           description="一旦 LLM 抽取到 importance>=4 的地缘 / 央行 / 选举 / 贸易战 / 制裁事件，会在这里显示。"
         />
       </Panel>
@@ -367,7 +367,7 @@ function Recent24hEvents(): JSX.Element | null {
   }
 
   return (
-    <Panel title="最近 24h 重大政治 / 地缘事件" padding="md">
+    <Panel title="最近一周重大政治 / 地缘事件" padding="md">
       <ul className="ad-news-events-list">
         {items.map((a) => (
           <li
@@ -529,7 +529,7 @@ export default function GlobalMarkets() {
       contextData: buildGlobalMarketsContext(flatRows, recentEvents),
       quickQuestions: getQuickQuestions('global_markets'),
       initialQuestion:
-        '请基于当前页面指标和最近 24h 政治 / 地缘事件，帮我快速解读全球资本市场当前的状态，以及可能的传导路径。',
+        '请基于当前页面指标和最近一周政治 / 地缘事件，帮我快速解读全球资本市场当前的状态，以及可能的传导路径。',
     });
   };
 
@@ -550,7 +550,7 @@ export default function GlobalMarkets() {
       />
 
       <section className="phase5c-section">
-        <Recent24hEvents />
+        <RecentWeekEvents />
       </section>
 
       {!hasAnyData && !isLoading && (

@@ -322,7 +322,7 @@ export function buildSignalDashboardContext(rows: any[], columns: any[]): string
 /**
  * Build the AI-help context for the Global Markets page.
  *
- * ``recentEvents`` is the same slice the on-page "最近 24h 重大政治 /
+ * ``recentEvents`` is the same slice the on-page "最近一周重大政治 /
  * 地缘事件" widget renders — capped at 5 so the prompt stays small
  * even if the upstream widget fetches more rows. Categories are
  * restricted to the political / macro buckets introduced in K12

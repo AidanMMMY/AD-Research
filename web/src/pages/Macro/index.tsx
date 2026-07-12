@@ -30,7 +30,6 @@ import EmptyState from '@/components/EmptyState';
 import FilterToolbar from '@/components/FilterToolbar';
 import LastUpdated from '@/components/LastUpdated';
 import HelpPopover from '@/components/HelpPopover';
-import ThemeTag from '@/components/ThemeTag';
 import { useSettingsStore } from '@/stores/settings';
 import { useMacroIndicators, useMacroSeries } from '@/hooks/useMacro';
 import {
@@ -186,14 +185,6 @@ export default function Macro() {
           )}
         </Space>
       ),
-    },
-    {
-      title: '分类',
-      dataIndex: 'category',
-      key: 'category',
-      width: 90,
-      render: (cat?: string) =>
-        cat ? <ThemeTag variant="accent">{cat}</ThemeTag> : <Text type="secondary">—</Text>,
     },
     {
       title: '最新值',
