@@ -965,7 +965,12 @@ export default function Dashboard() {
           <Panel
             variant="default"
             className="discover-panel"
-            title="综合评分 Top 10"
+            title={
+              <span>
+                <FireOutlined className="ad-icon-accent" />
+                综合评分 Top 10
+              </span>
+            }
             extra={
               <span className="panel-extra-link" onClick={() => navigate('/scores')}>
                 查看全部 →
