@@ -166,7 +166,7 @@ export default function AIChat() {
   const showSidebar = !isMobile || !activeSession;
 
   const sidebar = (
-    <div className="phase5c-chat-sidebar">
+    <div className="ad-chat-sidebar">
       <Button
         type="primary"
         icon={<PlusOutlined />}
@@ -177,7 +177,7 @@ export default function AIChat() {
         新对话
       </Button>
 
-      <div className="phase5c-chat-sidebar__list">
+      <div className="ad-chat-sidebar__list">
         {sessionsLoading ? (
           <Skeleton active paragraph={{ rows: 4 }} />
         ) : !sessions?.length ? (
@@ -189,9 +189,9 @@ export default function AIChat() {
             renderItem={(s: ChatSession) => (
               <div
                 onClick={() => setActiveSession(s.id)}
-                className={`phase5c-chat-sidebar__item ${activeSession === s.id ? 'phase5c-chat-sidebar__item--active' : ''}`}
+                className={`ad-chat-sidebar__item ${activeSession === s.id ? 'ad-chat-sidebar__item--active' : ''}`}
               >
-                <span className="phase5c-chat-sidebar__title">
+                <span className="ad-chat-sidebar__title">
                   {s.title || '新对话'}
                 </span>
                 <Popconfirm
@@ -203,7 +203,7 @@ export default function AIChat() {
                   onCancel={(e) => e?.stopPropagation()}
                 >
                   <DeleteOutlined
-                    className="phase5c-chat-sidebar__delete"
+                    className="ad-chat-sidebar__delete"
                     onClick={(e) => e.stopPropagation()}
                   />
                 </Popconfirm>
@@ -216,10 +216,10 @@ export default function AIChat() {
   );
 
   const chatArea = (
-    <div className="phase5c-chat-area">
+    <div className="ad-chat-area">
       {/* Mobile back button */}
       {isMobile && activeSession && (
-        <div className="phase5c-mobile-back">
+        <div className="ad-mobile-back">
           <Button type="text" onClick={() => setActiveSession(null)}>
             ← 返回列表
           </Button>
@@ -227,10 +227,10 @@ export default function AIChat() {
       )}
 
       {/* Messages */}
-      <div className="phase5c-chat-messages">
+      <div className="ad-chat-messages">
         {!activeSession ? (
           <EmptyState
-            icon={<RobotOutlined className="phase5c-empty-icon" />}
+            icon={<RobotOutlined className="ad-empty-icon" />}
             title="选择一个对话或创建新对话"
             description="左侧选择已有对话，或点击「新建对话」开始 AI 投研"
           />
@@ -238,7 +238,7 @@ export default function AIChat() {
           <Skeleton active paragraph={{ rows: 6 }} />
         ) : messages?.length === 0 ? (
           <EmptyState
-            icon={<RobotOutlined className="phase5c-empty-icon" />}
+            icon={<RobotOutlined className="ad-empty-icon" />}
             title="暂无消息"
             description="输入问题，开始 AI 投研对话"
           />
@@ -246,9 +246,9 @@ export default function AIChat() {
           messages?.map((msg: ChatMessage) => (
             <div
               key={msg.id}
-              className={`phase5c-message-row ${msg.role === 'user' ? 'phase5c-message-row--user' : 'phase5c-message-row--assistant'}`}
+              className={`ad-message-row ${msg.role === 'user' ? 'ad-message-row--user' : 'ad-message-row--assistant'}`}
             >
-              <div className={`phase5c-message-bubble ${msg.role === 'user' ? 'phase5c-message-bubble--user' : 'phase5c-message-bubble--assistant'}`}>
+              <div className={`ad-message-bubble ${msg.role === 'user' ? 'ad-message-bubble--user' : 'ad-message-bubble--assistant'}`}>
                 {msg.role === 'assistant' ? (
                   <ReactMarkdown remarkPlugins={[remarkGfm]}>
                     {msg.content}
@@ -261,11 +261,11 @@ export default function AIChat() {
           ))
         )}
         {sending && (
-          <div className="phase5c-message-row phase5c-message-row--assistant">
-            <div className="phase5c-message-bubble phase5c-message-bubble--streaming">
+          <div className="ad-message-row ad-message-row--assistant">
+            <div className="ad-message-bubble ad-message-bubble--streaming">
               <StepProgress steps={steps} compact />
               {streamedText && (
-                <div className="phase5c-streaming-divider">
+                <div className="ad-streaming-divider">
                   <ReactMarkdown remarkPlugins={[remarkGfm]}>
                     {streamedText}
                   </ReactMarkdown>
@@ -279,33 +279,33 @@ export default function AIChat() {
 
       {/* Input */}
       {activeSession && (
-        <div className="phase5c-input-bar">
+        <div className="ad-input-bar">
           {/* Sentiment quick-prompt hint. Tells the user the assistant has
               access to news/sentiment data and surfaces a clickable tag to
               jump to the sentiment dashboard. */}
-          <div className="phase5c-quick-prompts">
-            <HeartOutlined className="phase5c-icon-rise" />
+          <div className="ad-quick-prompts">
+            <HeartOutlined className="ad-icon-rise" />
             <span>AI 可访问资讯与情绪数据：</span>
             {QUICK_PROMPTS.map((s) => (
               <Tag
                 key={s.label}
-                className="phase5c-quick-tag"
+                className="ad-quick-tag"
                 onClick={() => setInput(s.prompt)}
               >
                 {s.label}
               </Tag>
             ))}
-            <span className="phase5c-quick-prompts__spacer" />
+            <span className="ad-quick-prompts__spacer" />
             <Tag
               icon={<HeartOutlined />}
               color="default"
-              className="phase5c-quick-tag"
+              className="ad-quick-tag"
               onClick={() => navigate('/sentiment')}
             >
               打开情绪看板
             </Tag>
           </div>
-          <div className="phase5c-input-row">
+          <div className="ad-input-row">
             <Input.TextArea
               value={input}
               onChange={(e) => setInput(e.target.value)}
@@ -340,7 +340,7 @@ export default function AIChat() {
         title="AI 助手"
         description="多会话 AI 对话，支持 Markdown 与代码高亮"
       />
-      <div className="phase5c-chat-layout">
+      <div className="ad-chat-layout">
         {(showSidebar || !isMobile) && sidebar}
         {(!showSidebar || !isMobile) && chatArea}
       </div>

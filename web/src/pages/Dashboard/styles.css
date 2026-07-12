@@ -312,7 +312,7 @@
 .dashboard-favorite-card:hover {
   transform: translateY(-1px);
   border-color: var(--accent);
-  box-shadow: 0 0 0 1px var(--accent-glow, rgba(37, 99, 235, 0.12));
+  box-shadow: 0 0 0 1px var(--accent-glow);
 }
 
 /* Star toggle — hidden until hover */
@@ -424,7 +424,7 @@
 /* Price update flash animation */
 @keyframes dashboard-price-flash {
   0% {
-    background-color: var(--accent-glow, rgba(37, 99, 235, 0.12));
+    background-color: var(--accent-glow);
   }
   100% {
     background-color: transparent;
@@ -461,7 +461,7 @@
 .dashboard-pool-card:hover {
   transform: translateY(-1px);
   border-color: var(--accent);
-  box-shadow: 0 0 0 1px var(--accent-glow, rgba(37, 99, 235, 0.12));
+  box-shadow: 0 0 0 1px var(--accent-glow);
 }
 
 .dashboard-pool-card__icon {

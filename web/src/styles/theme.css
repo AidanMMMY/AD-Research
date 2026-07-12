@@ -42,11 +42,6 @@
   --accent-border: rgba(37, 99, 235, 0.20);
   --accent-glow: rgba(37, 99, 235, 0.12);
 
-  /* ---- Legacy primary aliases ---- */
-  --primary-solid: var(--accent);
-  --primary-dim: var(--accent-dim);
-  --primary-gradient: linear-gradient(135deg, var(--accent) 0%, #7C3AED 100%);
-
   /* ---- Text Colors ---- */
   --text-primary: #0F1115;
   --text-secondary: #5B6778;
@@ -75,7 +70,7 @@
   --color-warning-dim: rgba(240, 177, 0, 0.08);
   --color-warning-border: rgba(240, 177, 0, 0.20);
   --color-warning-bright: #F5C842;
-  --color-warning-bright-dim: rgba(251, 191, 36, 0.18);
+  --color-warning-hover-dim: rgba(251, 191, 36, 0.18);
   --color-info: var(--accent);
 
   /* ---- Score Colors ---- */
@@ -115,6 +110,12 @@
   --shadow-card: 0 0 0 1px rgba(0,0,0,0.03), 0 1px 2px rgba(0,0,0,0.04), 0 2px 8px rgba(0,0,0,0.04);
   --shadow-card-hover: 0 0 0 1px rgba(0,0,0,0.04), 0 2px 4px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.08);
   --overlay: rgba(0, 0, 0, 0.45);
+  --hover-overlay: rgba(0, 0, 0, 0.04);
+  --hover-overlay-light: rgba(255, 255, 255, 0.06);
+  --hover-overlay-dark: rgba(0, 0, 0, 0.08);
+  --scrim: rgba(0, 0, 0, 0.45);
+  --scrim-light: rgba(255, 255, 255, 0.40);
+  --scrim-dark: rgba(0, 0, 0, 0.65);
 
   /* ---- Foreground on accent ---- */
   --text-on-accent: #ffffff;
@@ -214,6 +215,31 @@
   --glass-border: rgba(255, 255, 255, 0.10);
   --glass-blur: blur(12px);
 
+  /* ---- Sci-Fi Login (Aurora) ---- */
+  --login-bg: #05060a;
+  --login-card-bg: rgba(17, 17, 17, 0.72);
+  --aurora-cyan: rgba(0, 229, 255, 0.26);
+  --aurora-blue: rgba(0, 180, 255, 0.20);
+  --aurora-violet: rgba(120, 80, 255, 0.16);
+  --aurora-teal: rgba(64, 220, 220, 0.18);
+  --aurora-lavender: rgba(180, 120, 255, 0.16);
+  --star-white: rgba(255, 255, 255, 0.6);
+  --star-glow-white: rgba(255, 255, 255, 0.35);
+  --star-cyan: rgba(0, 229, 255, 0.8);
+  --star-glow-cyan: rgba(0, 229, 255, 0.5);
+  --star-accent: rgba(120, 220, 255, 0.85);
+  --star-glow-accent: rgba(0, 229, 255, 0.55);
+  --meteor-fade: rgba(255, 255, 255, 0);
+  --meteor-cyan: rgba(180, 240, 255, 0.6);
+  --meteor-white: rgba(255, 255, 255, 0.95);
+  --meteor-glow: rgba(0, 229, 255, 0.35);
+  --scanline-cyan: rgba(0, 229, 255, 0.02);
+  --vignette-dark: rgba(5, 6, 10, 0.6);
+  --login-divider: rgba(255, 255, 255, 0.04);
+  --login-input-bg: rgba(255, 255, 255, 0.03);
+  --login-input-border: rgba(255, 255, 255, 0.08);
+  --login-input-focus-bg: rgba(255, 255, 255, 0.05);
+
   /* ---- Legacy / compatibility aliases ---- */
   --text-base-size: var(--text-body-size);
   --text-tiny-size: 12px;
@@ -221,10 +247,6 @@
   --font-weight-semibold: 600;
   --border-subtle: var(--border-default);
   --color-accent: var(--accent);
-  --color-primary: var(--accent);
-  --color-up: var(--color-rise);
-  --color-down: var(--color-fall);
-  --color-loss: var(--color-error);
   --surface-default: var(--bg-surface);
   --surface-elevated: var(--bg-elevated);
 }
@@ -253,7 +275,6 @@ html, body, #root {
   --accent-soft: var(--accent-dim);
   --accent-border: rgba(225, 29, 72, 0.20);
   --accent-glow: rgba(225, 29, 72, 0.10);
-  --primary-gradient: linear-gradient(135deg, var(--accent) 0%, var(--accent-hover) 100%);
   --color-info: var(--accent);
 }
 
@@ -292,7 +313,6 @@ html, body, #root {
   --accent-soft: var(--accent-dim);
   --accent-border: rgba(96, 165, 250, 0.25);
   --accent-glow: rgba(96, 165, 250, 0.15);
-  --primary-gradient: linear-gradient(135deg, var(--accent) 0%, #A78BFA 100%);
 
   /* ---- Text Colors (P0-3: 提升对比度) ---- */
   --text-primary: #E6EDF3;
@@ -322,7 +342,7 @@ html, body, #root {
   --color-warning-dim: rgba(234, 179, 8, 0.12);
   --color-warning-border: rgba(234, 179, 8, 0.25);
   --color-warning-bright: #facc15;
-  --color-warning-bright-dim: rgba(250, 204, 21, 0.18);
+  --color-warning-hover-dim: rgba(250, 204, 21, 0.18);
   --color-info: var(--accent);
 
   /* ---- Score Colors ---- */
@@ -362,6 +382,12 @@ html, body, #root {
   --shadow-card: 0 4px 16px rgba(0, 0, 0, 0.25);
   --shadow-card-hover: 0 8px 28px rgba(0, 0, 0, 0.35);
   --overlay: rgba(0, 0, 0, 0.65);
+  --hover-overlay: rgba(255, 255, 255, 0.05);
+  --hover-overlay-light: rgba(255, 255, 255, 0.03);
+  --hover-overlay-dark: rgba(0, 0, 0, 0.15);
+  --scrim: rgba(0, 0, 0, 0.65);
+  --scrim-light: rgba(255, 255, 255, 0.20);
+  --scrim-dark: rgba(0, 0, 0, 0.80);
 
   /* ---- Foreground on accent ---- */
   --text-on-accent: #0D1117;
@@ -371,6 +397,31 @@ html, body, #root {
   --glass-bg: rgba(13, 17, 23, 0.80);
   --glass-border: rgba(48, 54, 61, 0.60);
   --glass-blur: blur(12px) saturate(120%);
+
+  /* ---- Sci-Fi Login (Aurora) ---- */
+  --login-bg: #05060a;
+  --login-card-bg: rgba(17, 17, 17, 0.72);
+  --aurora-cyan: rgba(0, 229, 255, 0.26);
+  --aurora-blue: rgba(0, 180, 255, 0.20);
+  --aurora-violet: rgba(120, 80, 255, 0.16);
+  --aurora-teal: rgba(64, 220, 220, 0.18);
+  --aurora-lavender: rgba(180, 120, 255, 0.16);
+  --star-white: rgba(255, 255, 255, 0.6);
+  --star-glow-white: rgba(255, 255, 255, 0.35);
+  --star-cyan: rgba(0, 229, 255, 0.8);
+  --star-glow-cyan: rgba(0, 229, 255, 0.5);
+  --star-accent: rgba(120, 220, 255, 0.85);
+  --star-glow-accent: rgba(0, 229, 255, 0.55);
+  --meteor-fade: rgba(255, 255, 255, 0);
+  --meteor-cyan: rgba(180, 240, 255, 0.6);
+  --meteor-white: rgba(255, 255, 255, 0.95);
+  --meteor-glow: rgba(0, 229, 255, 0.35);
+  --scanline-cyan: rgba(0, 229, 255, 0.02);
+  --vignette-dark: rgba(5, 6, 10, 0.6);
+  --login-divider: rgba(255, 255, 255, 0.04);
+  --login-input-bg: rgba(255, 255, 255, 0.03);
+  --login-input-border: rgba(255, 255, 255, 0.08);
+  --login-input-focus-bg: rgba(255, 255, 255, 0.05);
 
   /* ---- Radius ---- */
   --radius-xl: 14px;
@@ -408,6 +459,22 @@ html, body, #root {
   --accent-soft: var(--accent-dim);
   --accent-border: rgba(248, 113, 113, 0.25);
   --accent-glow: rgba(248, 113, 113, 0.15);
+
+  /* ---- Semantic Colors (vermilion accent overrides) ---- */
+  --color-success: #5FA87A;
+  --color-success-dim: rgba(95, 168, 122, 0.12);
+  --color-success-border: rgba(95, 168, 122, 0.25);
+  --color-success-bright: #22c55e;
+  --color-error: #C96B6B;
+  --color-error-dim: rgba(201, 107, 107, 0.12);
+  --color-error-border: rgba(201, 107, 107, 0.25);
+  --color-error-bright: #ef4444;
+  --color-warning: #EAB308;
+  --color-warning-dim: rgba(234, 179, 8, 0.12);
+  --color-warning-border: rgba(234, 179, 8, 0.25);
+  --color-warning-bright: #facc15;
+  --color-warning-hover-dim: rgba(250, 204, 21, 0.18);
+  --color-info: var(--accent);
 }
 
 /* 暗色下 US 涨跌约定 */

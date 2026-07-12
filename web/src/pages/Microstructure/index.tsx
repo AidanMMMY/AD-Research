@@ -80,21 +80,6 @@ export default function MicrostructurePage() {
     }
   };
 
-  const tabTotal = useMemo(() => {
-    switch (tab) {
-      case 'lhb':
-        return lhbData?.total ?? 0;
-      case 'hsgt':
-        return hsgtData?.items.length ?? 0;
-      case 'margin':
-        return marginData?.items.length ?? 0;
-      case 'releases':
-        return releaseData?.total ?? 0;
-      default:
-        return 0;
-    }
-  }, [tab, lhbData, hsgtData, marginData, releaseData]);
-
   const lhbColumns: ColumnsType<LhbRecord> = [
     { title: '日期', dataIndex: 'trade_date', key: 'trade_date', width: 110 },
     { title: '代码', dataIndex: 'ts_code', key: 'ts_code', width: 110, render: (v: string) => <ThemeTag variant="accent">{v}</ThemeTag> },
@@ -130,6 +115,15 @@ export default function MicrostructurePage() {
     { title: '占比 %', dataIndex: 'lift_ratio', key: 'lift_ratio', width: 90, className: 'tabular-nums', render: formatPct },
   ];
 
+  const totalCount = useMemo(
+    () =>
+      (lhbData?.total ?? 0) +
+      (hsgtData?.items.length ?? 0) +
+      (marginData?.items.length ?? 0) +
+      (releaseData?.total ?? 0),
+    [lhbData, hsgtData, marginData, releaseData],
+  );
+
   return (
     <PageShell maxWidth="wide">
       <PageHeader
@@ -164,7 +158,7 @@ export default function MicrostructurePage() {
             title="北向净流入"
             value={summary?.hsgt?.north_net ?? 0}
             precision={0}
-            className={(summary?.hsgt?.north_net ?? 0) >= 0 ? 'detail-kpi-rise' : 'detail-kpi-fall'}
+            className={(summary?.hsgt?.north_net ?? 0) >= 0 ? 'micro-kpi-rise' : 'micro-kpi-fall'}
             suffix="元"
           />
         </Card>
@@ -185,28 +179,27 @@ export default function MicrostructurePage() {
         </Card>
       </ResponsiveGrid>
 
-      <FilterToolbar total={tabTotal} className="ad-mb-5">
+      <FilterToolbar total={`共 ${totalCount} 条`} className="ad-mb-5">
         <Input
           placeholder="证券代码 (000001.SZ)"
           value={ticker ?? ''}
           onChange={(e) => setTicker(e.target.value.toUpperCase() || undefined)}
-          className="phase5c-input--md"
+          className="ad-input--md"
           prefix={<SearchOutlined />}
           allowClear
         />
-        {tab === 'margin' && (
-          <Select
-            placeholder="交易所"
-            value={marginExchange}
-            onChange={(v) => setMarginExchange(v)}
-            allowClear
-            className="phase5c-select--xxs"
-            options={[
-              { value: 'SSE', label: 'SSE 上交所' },
-              { value: 'SZSE', label: 'SZSE 深交所' },
-            ]}
-          />
-        )}
+        <Select
+          placeholder="交易所"
+          value={marginExchange}
+          onChange={(v) => setMarginExchange(v)}
+          allowClear
+          disabled={tab !== 'margin'}
+          className="ad-select--xxs"
+          options={[
+            { value: 'SSE', label: 'SSE 上交所' },
+            { value: 'SZSE', label: 'SZSE 深交所' },
+          ]}
+        />
       </FilterToolbar>
 
       <Panel title="明细列表">
@@ -216,13 +209,18 @@ export default function MicrostructurePage() {
           items={[
             {
               key: 'lhb',
-              label: '龙虎榜',
+              label: (
+                <span className="microstructure__tab-label">
+                  龙虎榜
+                  <span className="microstructure__tab-badge">{lhbData?.total ?? 0}</span>
+                </span>
+              ),
               children: lhbLoading ? (
                 <Skeleton active />
               ) : !lhbData || lhbData.items.length === 0 ? (
                 <EmptyState title="暂无龙虎榜数据" />
               ) : (
-                <div className="ad-table-scroll ad-table-sticky">
+                <div className="ad-table-scroll ad-table-sticky ad-scroll-hint">
                   <Table
                     rowKey="id"
                     dataSource={lhbData.items}
@@ -241,13 +239,18 @@ export default function MicrostructurePage() {
             },
             {
               key: 'hsgt',
-              label: '沪深港通',
+              label: (
+                <span className="microstructure__tab-label">
+                  沪深港通
+                  <span className="microstructure__tab-badge">{hsgtData?.items.length ?? 0}</span>
+                </span>
+              ),
               children: hsgtLoading ? (
                 <Skeleton active />
               ) : !hsgtData || hsgtData.items.length === 0 ? (
                 <EmptyState title="暂无沪深港通数据" />
               ) : (
-                <div className="ad-table-scroll ad-table-sticky">
+                <div className="ad-table-scroll ad-table-sticky ad-scroll-hint">
                   <Table
                     rowKey="id"
                     dataSource={hsgtData.items}
@@ -261,13 +264,18 @@ export default function MicrostructurePage() {
             },
             {
               key: 'margin',
-              label: '融资融券',
+              label: (
+                <span className="microstructure__tab-label">
+                  融资融券
+                  <span className="microstructure__tab-badge">{marginData?.items.length ?? 0}</span>
+                </span>
+              ),
               children: marginLoading ? (
                 <Skeleton active />
               ) : !marginData || marginData.items.length === 0 ? (
                 <EmptyState title="暂无融资融券数据" />
               ) : (
-                <div className="ad-table-scroll ad-table-sticky">
+                <div className="ad-table-scroll ad-table-sticky ad-scroll-hint">
                   <Table
                     rowKey="id"
                     dataSource={marginData.items}
@@ -281,13 +289,18 @@ export default function MicrostructurePage() {
             },
             {
               key: 'releases',
-              label: '限售解禁',
+              label: (
+                <span className="microstructure__tab-label">
+                  限售解禁
+                  <span className="microstructure__tab-badge">{releaseData?.total ?? 0}</span>
+                </span>
+              ),
               children: releaseLoading ? (
                 <Skeleton active />
               ) : !releaseData || releaseData.items.length === 0 ? (
                 <EmptyState title="暂无限售解禁数据" />
               ) : (
-                <div className="ad-table-scroll ad-table-sticky">
+                <div className="ad-table-scroll ad-table-sticky ad-scroll-hint">
                   <Table
                     rowKey="id"
                     dataSource={releaseData.items}

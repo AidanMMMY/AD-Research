@@ -38,5 +38,5 @@ export function resolveChartColor(color: string, fallback: string): string {
  * palettes and split-area color arrays passed to echarts.
  */
 export function resolveChartColors(colors: string[], fallback: string[]): string[] {
-  return colors.map((c, i) => resolveChartColor(c, fallback[i] ?? fallback[0] ?? '#000'));
+  return colors.map((c, i) => resolveChartColor(c, fallback[i] ?? fallback[0] ?? readCssVar('--text-primary', '#000')));
 }

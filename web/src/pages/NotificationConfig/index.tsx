@@ -193,7 +193,7 @@ export default function NotificationConfigPage() {
           />
         </FilterToolbar>
 
-        <div className="phase5c-table-wrap">
+        <div className="ad-table-scroll">
           <Table
             dataSource={filteredConfigs}
             columns={columns}

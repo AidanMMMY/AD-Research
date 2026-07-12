@@ -7,7 +7,7 @@
    ============================================================ */
 
 /* ── KPI strip (buy / sell / hold counts) ── */
-/* These use the shared phase5c-kpi-* classes from global.css. */
+/* These use the shared ad-kpi-* classes from global.css. */
 
 /* ── View link cell (table action column) ── */
 .signal-dashboard__view-link {
@@ -15,4 +15,4 @@
 }
 
 /* ── Table wrapper ── */
-/* Uses the shared phase5c-table-wrap class from global.css. */
+/* Uses the shared ad-table-scroll class from global.css. */

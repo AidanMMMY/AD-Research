@@ -246,7 +246,7 @@ export default function NewsHealth() {
                 title="已清理"
                 value={data.ai_cleanup_24h.cleaned}
                 suffix="条"
-                valueStyle={{ color: 'var(--color-success, #52c41a)' }}
+                valueStyle={{ color: 'var(--color-success)' }}
               />
               <Statistic
                 title="跳过 (AI 未配置)"
@@ -260,7 +260,7 @@ export default function NewsHealth() {
                 suffix="条"
                 valueStyle={{
                   color: data.ai_cleanup_24h.failed > 0
-                    ? 'var(--color-error, #ff4d4f)'
+                    ? 'var(--color-error)'
                     : 'var(--text-secondary)',
                 }}
               />
@@ -271,8 +271,8 @@ export default function NewsHealth() {
                 suffix="%"
                 valueStyle={{
                   color: data.ai_cleanup_24h.alert
-                    ? 'var(--color-error, #ff4d4f)'
-                    : 'var(--color-success, #52c41a)',
+                    ? 'var(--color-error)'
+                    : 'var(--color-success)',
                 }}
               />
             </div>

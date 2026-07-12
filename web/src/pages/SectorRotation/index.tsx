@@ -20,7 +20,7 @@ import ThemeTag from '@/components/ThemeTag';
 import { useSettingsStore } from '@/stores/settings';
 import { useIsMobile } from '@/hooks/useBreakpoint';
 import { getReturnColor } from '@/utils/color';
-import { resolveChartColors } from '@/utils/cssVar';
+import { readCssVar, resolveChartColors } from '@/utils/cssVar';
 import type {
   SectorClassification,
   SectorConstituent,
@@ -66,7 +66,7 @@ export default function SectorRotation() {
   // Detail-panel tab (板块汇总 / 成份股构成).
   const [detailTab, setDetailTab] = useState<DetailTab>('summary');
   // Re-render when the theme toggles so chart colours pick up new vars.
-  const [, setThemeTick] = useState(0);
+  const [themeTick, setThemeTick] = useState(0);
   useEffect(() => {
     const handler = () => setThemeTick((t) => t + 1);
     document.addEventListener('themechange', handler);
@@ -86,16 +86,15 @@ export default function SectorRotation() {
 
   // Pre-resolve palette for heatmap once per render.
   const palette = useMemo(() => {
-    const upHex = toEChartsColor('var(--color-rise)', '#c96b6b');
-    const downHex = toEChartsColor('var(--color-fall)', '#5fa87a');
+    const upHex = readCssVar('--color-rise', '#c96b6b');
+    const downHex = readCssVar('--color-fall', '#5fa87a');
     const textPrimary = toEChartsColor('var(--text-primary)', '#1f1f1f');
     const textSecondary = toEChartsColor('var(--text-secondary)', '#666666');
     const border = toEChartsColor('var(--border-default)', 'rgba(0,0,0,0.08)');
     const bgBase = toEChartsColor('var(--bg-elevated)', '#ffffff');
     const midHex = toEChartsColor('var(--bg-elevated)', '#f4f4f0');
     return { upHex, downHex, textPrimary, textSecondary, border, bgBase, midHex };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [themeTick]);
 
   // ------------------ Charts ------------------
 

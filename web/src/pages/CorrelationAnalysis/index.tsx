@@ -56,33 +56,37 @@ export default function CorrelationAnalysis() {
               />
             </Col>
             <Col xs={24} md={6}>
-              <div className="ad-filter-label">
-                <HelpPopover termKey="time_range" mode={mode}>窗口期</HelpPopover>：
+              <div className="correlation-analysis__filter-group">
+                <div className="correlation-analysis__filter-label">
+                  <HelpPopover termKey="time_range" mode={mode}>窗口期</HelpPopover>：
+                </div>
+                <Select
+                  value={window}
+                  onChange={setWindow}
+                  options={WINDOW_OPTIONS}
+                  className="correlation-analysis__filter-select ad-w-full"
+                />
               </div>
-              <Select
-                value={window}
-                onChange={setWindow}
-                options={WINDOW_OPTIONS}
-                className="ad-w-full"
-              />
             </Col>
             <Col xs={24} md={6}>
-              <div className="ad-filter-label">
-                <HelpPopover termKey="correlation_method" mode={mode}>计算方法</HelpPopover>：
+              <div className="correlation-analysis__filter-group">
+                <div className="correlation-analysis__filter-label">
+                  <HelpPopover termKey="correlation_method" mode={mode}>计算方法</HelpPopover>：
+                </div>
+                <Select
+                  value={method}
+                  onChange={setMethod}
+                  options={METHOD_OPTIONS.map((opt) => ({
+                    ...opt,
+                    label: (
+                      <HelpPopover termKey={opt.value === 'pearson' ? 'pearson' : 'spearman'} mode={mode}>
+                        {opt.label}
+                      </HelpPopover>
+                    ),
+                  }))}
+                  className="correlation-analysis__filter-select ad-w-full"
+                />
               </div>
-              <Select
-                value={method}
-                onChange={setMethod}
-                options={METHOD_OPTIONS.map((opt) => ({
-                  ...opt,
-                  label: (
-                    <HelpPopover termKey={opt.value === 'pearson' ? 'pearson' : 'spearman'} mode={mode}>
-                      {opt.label}
-                    </HelpPopover>
-                  ),
-                }))}
-                className="ad-w-full"
-              />
             </Col>
           </Row>
         </FilterToolbar>
@@ -102,7 +106,7 @@ export default function CorrelationAnalysis() {
             description="相关性数据加载失败，请稍后重试"
           />
         ) : correlationData ? (
-          <div className="ad-chart-container">
+          <div className="correlation-analysis__heatmap-container">
             <CorrelationHeatmap codes={correlationData.codes} matrix={correlationData.matrix} />
           </div>
         ) : null}

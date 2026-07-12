@@ -1,8 +1,11 @@
-import { useMemo } from 'react';
+import { useMemo, type ReactNode } from 'react';
+import './styles.css';
 import {
-  Tabs, Table, Tag, Skeleton, Space, Statistic, Row, Col, Tooltip, Card,
+  Tabs, Table, Skeleton, Space, Statistic, Row, Col, Card,
 } from 'antd';
-import { CaretUpOutlined, CaretDownOutlined } from '@ant-design/icons';
+import {
+  CaretUpOutlined, CaretDownOutlined, GoldOutlined, FireOutlined, SunOutlined, BarChartOutlined,
+} from '@ant-design/icons';
 import PageShell from '@/components/PageShell';
 import Panel from '@/components/Panel';
 import PageHeader from '@/components/PageHeader';
@@ -24,11 +27,11 @@ import type { FuturesDailyBarOut, FuturesDashboardSection } from '@/api/futures'
 const PRODUCTS = ['金属', '能源化工', '农产品', '金融期货'] as const;
 type Product = (typeof PRODUCTS)[number];
 
-const PRODUCT_ICON: Record<Product, string> = {
-  金属: '🟡',
-  能源化工: '🛢️',
-  农产品: '🌾',
-  金融期货: '📊',
+const PRODUCT_ICON: Record<Product, ReactNode> = {
+  金属: <GoldOutlined />,
+  能源化工: <FireOutlined />,
+  农产品: <SunOutlined />,
+  金融期货: <BarChartOutlined />,
 };
 
 function fmtNum(v: string | number | null | undefined, digits = 2): string {
@@ -55,7 +58,7 @@ function changeCell(pct: number | null | undefined) {
   return (
     <span className={`tabular-nums font-mono ${cls}`}>
       <Icon className="ad-icon-xs" />
-      {Math.abs(pct).toFixed(2)}%
+      {`${positive ? '+' : ''}${pct.toFixed(2)}%`}
     </span>
   );
 }
@@ -115,7 +118,7 @@ function BarTable({ bars, showHeader = false, maxRows = 10 }: BarTableProps) {
     },
   ];
   return (
-    <div className="ad-table-scroll ad-table-sticky">
+    <div className="ad-table-scroll ad-table-sticky ad-scroll-hint">
       <Table
         dataSource={bars.slice(0, maxRows)}
         columns={columns}
@@ -135,79 +138,14 @@ interface ProductSummaryProps {
 
 function ProductSummary({ section }: ProductSummaryProps) {
   const mode = useSettingsStore((s) => s.mode);
-  if (!section) {
-    return (
-      <Row gutter={16}>
-        <Col xs={24} sm={8}>
-          <Statistic title={<HelpPopover termKey="dominant_contract" mode={mode}>主力合约数</HelpPopover>} value={0} />
-        </Col>
-        <Col xs={24} sm={8}>
-          <Statistic title="涨幅最大" value={NULL_PLACEHOLDER} />
-        </Col>
-        <Col xs={24} sm={8}>
-          <Statistic title="跌幅最大" value={NULL_PLACEHOLDER} />
-        </Col>
-      </Row>
-    );
-  }
-
-  const { best_performer, worst_performer, count } = section;
-
+  const count = section?.count ?? 0;
   return (
     <Row gutter={16}>
       <Col xs={24} sm={8}>
-        <Statistic title={<HelpPopover termKey="dominant_contract" mode={mode}>主力合约数</HelpPopover>} value={count} />
-      </Col>
-      <Col xs={24} sm={8}>
         <Statistic
-          title={
-            <Tooltip title="当日涨幅最大合约">
-              <span className="ad-text-rise">涨幅最大</span>
-            </Tooltip>
-          }
-          value={best_performer?.code ?? NULL_PLACEHOLDER}
-          valueRender={() =>
-            best_performer ? (
-              <InstrumentCodeTag code={best_performer.code} name={best_performer.name} />
-            ) : (
-              NULL_PLACEHOLDER
-            )
-          }
-          suffix={
-            best_performer ? (
-              <span className={`ad-statistic-suffix ${(best_performer.settle_change_pct ?? 0) >= 0 ? 'detail-kpi-rise' : 'detail-kpi-fall'}`}>
-                {best_performer.settle_change_pct !== null && best_performer.settle_change_pct !== undefined
-                  ? `${best_performer.settle_change_pct >= 0 ? '+' : ''}${best_performer.settle_change_pct.toFixed(2)}%`
-                  : NULL_PLACEHOLDER}
-              </span>
-            ) : null
-          }
-        />
-      </Col>
-      <Col xs={24} sm={8}>
-        <Statistic
-          title={
-            <Tooltip title="当日跌幅最大合约">
-              <span className="ad-text-fall">跌幅最大</span>
-            </Tooltip>
-          }
-          value={worst_performer?.code ?? NULL_PLACEHOLDER}
-          valueRender={() =>
-            worst_performer ? (
-              <InstrumentCodeTag code={worst_performer.code} name={worst_performer.name} />
-            ) : (
-              NULL_PLACEHOLDER
-            )
-          }
-          suffix={
-            worst_performer ? (
-              <span className={`ad-statistic-suffix ${(worst_performer.settle_change_pct ?? 0) >= 0 ? 'detail-kpi-rise' : 'detail-kpi-fall'}`}>
-                {worst_performer.settle_change_pct !== null && worst_performer.settle_change_pct !== undefined
-                  ? `${worst_performer.settle_change_pct >= 0 ? '+' : ''}${worst_performer.settle_change_pct.toFixed(2)}%`
-                  : NULL_PLACEHOLDER}
-              </span>
-            ) : null
-          }
+          title={<HelpPopover termKey="dominant_contract" mode={mode}>主力合约数</HelpPopover>}
+          value={count}
+          suffix="个"
         />
       </Col>
     </Row>
@@ -243,7 +181,7 @@ function ProductTab({ product, section }: TabContentProps) {
             className="ad-table-card"
             title={
               <Space>
-                <CaretUpOutlined className="ad-text-rise" />
+                <CaretUpOutlined className="futures-kpi-rise" />
                 <span>涨幅榜 TOP 5</span>
               </Space>
             }
@@ -257,7 +195,7 @@ function ProductTab({ product, section }: TabContentProps) {
             className="ad-table-card"
             title={
               <Space>
-                <CaretDownOutlined className="ad-text-fall" />
+                <CaretDownOutlined className="futures-kpi-fall" />
                 <span>跌幅榜 TOP 5</span>
               </Space>
             }
@@ -296,11 +234,8 @@ export default function Futures() {
     key: p,
     label: (
       <Space size={6}>
-        <span>{PRODUCT_ICON[p]}</span>
+        {PRODUCT_ICON[p]}
         <span>{p}</span>
-        <Tag color={sectionsByProduct[p] ? 'blue' : 'default'} className="ad-ml-2">
-          {sectionsByProduct[p]?.count ?? 0}
-        </Tag>
       </Space>
     ),
     children: dashLoading ? (

@@ -923,6 +923,52 @@ a:focus-visible {
   background: var(--card-bg) !important;
 }
 
+/* Subtle horizontal-scroll hint — a right-edge gradient mask that tells
+   users a table/tab strip is scrollable. Combine with .ad-table-scroll
+   or any overflow-x container. */
+.ad-scroll-hint {
+  position: relative;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.ad-scroll-hint::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 24px;
+  background: linear-gradient(to left, var(--bg-elevated), transparent);
+  pointer-events: none;
+  z-index: 2;
+  opacity: 0.7;
+}
+
+@media (max-width: 767px) {
+  .ad-scroll-hint::after {
+    width: 16px;
+  }
+}
+
+/* Optional: thin scrollbar styling for webkit browsers. */
+.ad-scroll-hint::-webkit-scrollbar {
+  height: 6px;
+}
+
+.ad-scroll-hint::-webkit-scrollbar-thumb {
+  background: var(--border-hover);
+  border-radius: 3px;
+}
+
+.ad-scroll-hint::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.ad-scroll-hint::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
+
 /* Sentiment heatmap grid. */
 .ad-heatmap-grid {
   display: grid;
@@ -3312,12 +3358,12 @@ main {
    ============================================================ */
 
 /* Common section spacing for Phase 5c pages */
-.phase5c-section {
+.ad-section {
   margin-bottom: var(--space-section);
 }
 
 /* AI Chat page */
-.phase5c-chat-layout {
+.ad-chat-layout {
   display: flex;
   gap: var(--space-4);
   height: calc(100dvh - 280px);
@@ -3325,12 +3371,12 @@ main {
 }
 
 @supports not (height: 100dvh) {
-  .phase5c-chat-layout {
+  .ad-chat-layout {
     height: calc(100vh - 280px);
   }
 }
 
-.phase5c-chat-sidebar {
+.ad-chat-sidebar {
   width: 240px;
   flex-shrink: 0;
   display: flex;
@@ -3338,12 +3384,12 @@ main {
   gap: var(--space-3);
 }
 
-.phase5c-chat-sidebar__list {
+.ad-chat-sidebar__list {
   flex: 1;
   overflow: auto;
 }
 
-.phase5c-chat-sidebar__item {
+.ad-chat-sidebar__item {
   padding: var(--space-2);
   border-radius: var(--radius-lg);
   cursor: pointer;
@@ -3356,17 +3402,17 @@ main {
   transition: background var(--transition-fast), border-color var(--transition-fast);
 }
 
-.phase5c-chat-sidebar__item:hover,
-.phase5c-chat-sidebar__item:focus-visible {
+.ad-chat-sidebar__item:hover,
+.ad-chat-sidebar__item:focus-visible {
   background: var(--bg-hover);
 }
 
-.phase5c-chat-sidebar__item--active {
+.ad-chat-sidebar__item--active {
   background: var(--accent-dim);
   border-color: var(--card-border);
 }
 
-.phase5c-chat-sidebar__title {
+.ad-chat-sidebar__title {
   font-size: 13px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -3375,12 +3421,12 @@ main {
   color: var(--text-secondary);
 }
 
-.phase5c-chat-sidebar__item--active .phase5c-chat-sidebar__title {
+.ad-chat-sidebar__item--active .ad-chat-sidebar__title {
   color: var(--accent);
   font-weight: 600;
 }
 
-.phase5c-chat-area {
+.ad-chat-area {
   flex: 1;
   display: flex;
   flex-direction: column;
@@ -3391,26 +3437,26 @@ main {
   overflow: hidden;
 }
 
-.phase5c-chat-messages {
+.ad-chat-messages {
   flex: 1;
   overflow: auto;
   padding: var(--space-4) var(--space-5);
 }
 
-.phase5c-message-row {
+.ad-message-row {
   display: flex;
   margin-bottom: var(--space-4);
 }
 
-.phase5c-message-row--user {
+.ad-message-row--user {
   justify-content: flex-end;
 }
 
-.phase5c-message-row--assistant {
+.ad-message-row--assistant {
   justify-content: flex-start;
 }
 
-.phase5c-message-bubble {
+.ad-message-bubble {
   max-width: 80%;
   padding: 12px 16px;
   border-radius: var(--radius-lg);
@@ -3418,31 +3464,31 @@ main {
   line-height: 1.7;
 }
 
-.phase5c-message-bubble--user {
+.ad-message-bubble--user {
   background: var(--accent-dim);
   color: var(--accent);
   border-top-right-radius: 4px;
 }
 
-.phase5c-message-bubble--assistant {
+.ad-message-bubble--assistant {
   background: var(--bg-elevated);
   color: var(--text-primary);
   border-top-left-radius: 4px;
 }
 
-.phase5c-message-bubble--streaming {
+.ad-message-bubble--streaming {
   background: var(--bg-elevated);
   border: 1px solid var(--border-default);
   border-top-left-radius: 4px;
 }
 
-.phase5c-input-bar {
+.ad-input-bar {
   padding: var(--space-3) var(--space-5);
   border-top: 1px solid var(--border-default);
   background: var(--card-bg);
 }
 
-.phase5c-quick-prompts {
+.ad-quick-prompts {
   display: flex;
   align-items: center;
   gap: var(--space-2);
@@ -3452,67 +3498,67 @@ main {
   color: var(--text-tertiary);
 }
 
-.phase5c-quick-prompts__spacer {
+.ad-quick-prompts__spacer {
   flex: 1;
 }
 
-.phase5c-input-row {
+.ad-input-row {
   display: flex;
   gap: 10px;
 }
 
-.phase5c-input-row .ant-input {
+.ad-input-row .ant-input {
   flex: 1;
 }
 
-.phase5c-input-row .ant-btn {
+.ad-input-row .ant-btn {
   align-self: flex-end;
 }
 
 @media (max-width: 767px) {
-  .phase5c-chat-layout {
+  .ad-chat-layout {
     flex-direction: column;
     height: calc(100dvh - 220px);
     min-height: 280px;
   }
 
   @supports not (height: 100dvh) {
-    .phase5c-chat-layout {
+    .ad-chat-layout {
       height: calc(100vh - 220px);
     }
   }
 
-  .phase5c-chat-sidebar {
+  .ad-chat-sidebar {
     width: 100%;
   }
 
-  .phase5c-chat-messages {
+  .ad-chat-messages {
     padding: var(--space-3) var(--space-4);
   }
 
-  .phase5c-message-bubble {
+  .ad-message-bubble {
     max-width: 90%;
   }
 
-  .phase5c-input-bar {
+  .ad-input-bar {
     padding: var(--space-3) var(--space-4);
     position: sticky;
     bottom: 0;
     z-index: 10;
   }
 
-  .phase5c-quick-prompts {
+  .ad-quick-prompts {
     font-size: var(--text-small-size);
   }
 }
 
 /* Research notes */
-.phase5c-research-card {
+.ad-research-card {
   cursor: pointer;
   margin-bottom: var(--space-4);
 }
 
-.phase5c-research-card__header {
+.ad-research-card__header {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
@@ -3520,33 +3566,33 @@ main {
   gap: var(--space-3);
 }
 
-.phase5c-research-card__meta {
+.ad-research-card__meta {
   display: flex;
   gap: var(--space-2);
   align-items: center;
   flex-wrap: wrap;
 }
 
-.phase5c-research-card__code {
+.ad-research-card__code {
   font-size: 14px;
   font-weight: 600;
   color: var(--accent);
   font-family: var(--font-mono);
 }
 
-.phase5c-research-card__date {
+.ad-research-card__date {
   font-size: var(--text-small-size);
   color: var(--text-tertiary);
   white-space: nowrap;
 }
 
-.phase5c-research-card__actions {
+.ad-research-card__actions {
   display: flex;
   align-items: center;
   gap: var(--space-2);
 }
 
-.phase5c-research-card__delete {
+.ad-research-card__delete {
   color: var(--text-tertiary);
   font-size: 14px;
   padding: 4px;
@@ -3554,19 +3600,19 @@ main {
   transition: color 0.2s ease, background-color 0.2s ease;
 }
 
-.phase5c-research-card__delete:hover {
+.ad-research-card__delete:hover {
   color: var(--color-fall);
   background-color: var(--bg-elevated);
 }
 
-.phase5c-research-card__summary {
+.ad-research-card__summary {
   margin: 0;
   font-size: 13px;
   color: var(--text-primary);
   line-height: 1.6;
 }
 
-.phase5c-research-card__more {
+.ad-research-card__more {
   margin-top: var(--space-2);
   font-size: var(--text-small-size);
   color: var(--text-tertiary);
@@ -3576,35 +3622,35 @@ main {
 }
 
 /* KPI / metric strips */
-.phase5c-kpi-strip {
+.ad-kpi-strip {
   display: grid;
   border-top: 1px solid var(--border-default);
   border-bottom: 1px solid var(--border-default);
   margin-bottom: var(--space-5);
 }
 
-.phase5c-kpi-strip--cols-2 {
+.ad-kpi-strip--cols-2 {
   grid-template-columns: repeat(2, 1fr);
 }
 
-.phase5c-kpi-strip--cols-3 {
+.ad-kpi-strip--cols-3 {
   grid-template-columns: repeat(3, 1fr);
 }
 
-.phase5c-kpi-strip--cols-4 {
+.ad-kpi-strip--cols-4 {
   grid-template-columns: repeat(4, 1fr);
 }
 
-.phase5c-kpi-cell {
+.ad-kpi-cell {
   padding: var(--space-5) var(--space-4);
   border-right: 1px solid var(--border-default);
 }
 
-.phase5c-kpi-cell:last-child {
+.ad-kpi-cell:last-child {
   border-right: none;
 }
 
-.phase5c-kpi-cell__label {
+.ad-kpi-cell__label {
   font-size: var(--text-label-size);
   color: var(--text-tertiary);
   font-weight: 500;
@@ -3613,7 +3659,7 @@ main {
   text-transform: uppercase;
 }
 
-.phase5c-kpi-cell__value {
+.ad-kpi-cell__value {
   font-size: var(--text-data-xl-size);
   font-weight: 400;
   font-family: var(--font-mono);
@@ -3621,7 +3667,7 @@ main {
   letter-spacing: -0.02em;
 }
 
-.phase5c-kpi-cell__suffix {
+.ad-kpi-cell__suffix {
   font-size: var(--text-body-size);
   color: var(--text-tertiary);
   margin-left: 4px;
@@ -3629,84 +3675,79 @@ main {
 }
 
 @media (max-width: 767px) {
-  .phase5c-kpi-strip--cols-2,
-  .phase5c-kpi-strip--cols-3,
-  .phase5c-kpi-strip--cols-4 {
+  .ad-kpi-strip--cols-2,
+  .ad-kpi-strip--cols-3,
+  .ad-kpi-strip--cols-4 {
     grid-template-columns: repeat(2, 1fr);
   }
 
-  .phase5c-kpi-cell:nth-child(2n) {
+  .ad-kpi-cell:nth-child(2n) {
     border-right: none;
   }
 
-  .phase5c-kpi-cell {
+  .ad-kpi-cell {
     padding: var(--space-4) var(--space-3);
   }
 
-  .phase5c-kpi-cell__value {
+  .ad-kpi-cell__value {
     font-size: var(--text-data-lg-size);
   }
 }
 
 /* Trading / paper / live cards */
-.phase5c-trading-grid {
+.ad-trading-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
   gap: var(--space-4);
   margin-bottom: var(--space-6);
 }
 
-.phase5c-trading-card .ant-statistic-content {
+.ad-trading-card .ant-statistic-content {
   font-family: var(--font-mono);
 }
 
-.phase5c-trading-card__extra {
+.ad-trading-card__extra {
   font-size: var(--text-small-size);
 }
 
-.phase5c-action-bar {
+.ad-action-bar {
   display: flex;
   gap: var(--space-3);
   margin-bottom: var(--space-6);
   flex-wrap: wrap;
 }
 
-.phase5c-account-selector {
+.ad-account-selector {
   margin-bottom: var(--space-6);
 }
 
-.phase5c-balance-grid {
+.ad-balance-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
   gap: var(--space-3);
 }
 
-.phase5c-balance-card {
+.ad-balance-card {
   background: var(--bg-elevated);
 }
 
-.phase5c-balance-card__asset {
+.ad-balance-card__asset {
   font-family: var(--font-mono);
   font-weight: 600;
 }
 
-.phase5c-balance-card__row {
+.ad-balance-card__row {
   font-size: var(--text-small-size);
   color: var(--text-tertiary);
 }
 
 /* Empty states */
-.phase5c-empty {
+.ad-empty {
   padding: var(--space-9) 0;
 }
 
-/* Table wrappers */
-.phase5c-table-wrap {
-  overflow-x: auto;
-}
-
 /* Density toggle spacing */
-.phase5c-density-row {
+.ad-density-row {
   display: flex;
   align-items: center;
   justify-content: flex-end;
@@ -3714,106 +3755,81 @@ main {
 }
 
 /* Mobile back button in chat */
-.phase5c-mobile-back {
+.ad-mobile-back {
   padding: var(--space-2) var(--space-3);
   border-bottom: 1px solid var(--border-default);
 }
 
-.phase5c-chat-sidebar__delete {
+.ad-chat-sidebar__delete {
   color: var(--text-tertiary);
   font-size: 12px;
   flex-shrink: 0;
 }
 
 /* Form helpers */
-.phase5c-form-row {
-  display: flex;
-  gap: var(--space-3);
-  flex-wrap: wrap;
-  align-items: center;
-}
-
-.phase5c-form-input--full {
+.ad-form-input--full {
   width: 100%;
 }
 
-.phase5c-error-hint {
+.ad-error-hint {
   color: var(--color-fall);
   font-size: 12px;
   margin-top: 4px;
 }
 
-.phase5c-detail-line {
+.ad-detail-line {
   font-size: var(--text-small-size);
   color: var(--text-secondary);
   margin-left: 8px;
 }
 
-.phase5c-tabs--padded {
+.ad-tabs--padded {
   margin-bottom: 24px;
 }
 
 /* Markdown modal body */
-.phase5c-markdown-body {
+.ad-markdown-body {
   color: var(--text-primary);
   font-size: 14px;
   line-height: 1.8;
 }
 
 /* Empty state offset */
-.phase5c-empty-robot {
+.ad-empty-robot {
   margin-top: 80px;
 }
 
 /* Streaming message divider */
-.phase5c-streaming-divider {
+.ad-streaming-divider {
   margin-top: 8px;
   padding-top: 8px;
   border-top: 1px solid var(--border-default);
 }
 
 /* Trading pages */
-.phase5c-inline-code {
+.ad-inline-code {
   font-family: var(--font-mono);
 }
 
-.phase5c-inline-code--bold {
+.ad-inline-code--bold {
   font-family: var(--font-mono);
   font-weight: 600;
 }
 
-.phase5c-meta-label {
+.ad-meta-label {
   color: var(--text-tertiary);
   font-size: 12px;
   margin-bottom: 4px;
 }
 
-.phase5c-select-min {
+.ad-select-min {
   min-width: 200px;
 }
 
-.phase5c-flex-center {
+.ad-flex-center {
   display: flex;
   align-items: center;
   gap: 8px;
-}
-
-.phase5c-flex-wrap {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 16px;
-  align-items: center;
-}
-
-@media (max-width: 767px) {
-  /* Mobile: account-selector / live-trading header stacks vertically. */
-  .phase5c-flex-wrap {
-    flex-direction: column;
-    align-items: stretch;
-  }
-  .phase5c-flex-wrap > * {
-    width: 100%;
-  }
 }
 
 /* ============================================================
@@ -6227,7 +6243,7 @@ main {
 }
 
 .admin-text-error {
-  color: var(--color-loss);
+  color: var(--color-error);
 }
 
 .admin-text-muted {
@@ -6371,32 +6387,24 @@ main {
 .ad-whitespace-nowrap { white-space: nowrap; }
 
 /* ---- AI Chat ---- */
-.phase5c-empty-icon {
+.ad-empty-icon {
   font-size: 48px;
   color: var(--text-tertiary);
 }
 
-.phase5c-icon-rise {
-  color: var(--color-rise);
-}
-
-.phase5c-icon-accent {
-  color: var(--accent);
-}
-
-.phase5c-icon-title {
+.ad-icon-title {
   color: var(--accent);
   margin-right: 6px;
 }
 
-.phase5c-quick-tag {
+.ad-quick-tag {
   cursor: pointer;
   font-size: 11px;
   margin: 0 !important;
 }
 
 /* ---- Research notes ---- */
-.phase5c-markdown-modal .ant-modal-body {
+.ad-markdown-modal .ant-modal-body {
   max-height: 70vh;
   overflow: auto;
 }
@@ -6409,77 +6417,77 @@ main {
   color: var(--color-fall);
 }
 
-.phase5c-order-side--buy {
+.ad-order-side--buy {
   font-weight: 600;
   color: var(--color-rise);
 }
-.phase5c-order-side--sell {
+.ad-order-side--sell {
   font-weight: 600;
   color: var(--color-fall);
 }
 
-.phase5c-status--filled {
+.ad-status--filled {
   color: var(--color-rise);
 }
-.phase5c-status--pending {
+.ad-status--pending {
   color: var(--accent);
 }
-.phase5c-status--cancelled {
+.ad-status--cancelled {
   color: var(--text-tertiary);
 }
-.phase5c-status--rejected {
+.ad-status--rejected {
   color: var(--color-fall);
 }
 
-.phase5c-select--xs { width: 120px; }
-.phase5c-select--sm { width: 140px; }
-.phase5c-select--md { width: 160px; }
-.phase5c-select--lg { min-width: 260px; }
+.ad-select--xs { width: 120px; }
+.ad-select--sm { width: 140px; }
+.ad-select--md { width: 160px; }
+.ad-select--lg { min-width: 260px; }
 
-.phase5c-input--sm { width: 100px; }
+.ad-input--sm { width: 100px; }
 
 @media (max-width: 767px) {
-  .phase5c-select--xs,
-  .phase5c-select--sm,
-  .phase5c-select--md,
-  .phase5c-select--lg,
-  .phase5c-input--sm,
-  .phase5c-input--md {
+  .ad-select--xs,
+  .ad-select--sm,
+  .ad-select--md,
+  .ad-select--lg,
+  .ad-input--sm,
+  .ad-input--md {
     width: 100% !important;
     min-width: 0;
   }
 }
 
-.phase5c-skeleton-pad {
+.ad-skeleton-pad {
   padding: var(--space-4);
 }
 
-.phase5c-pnl-stat--rise .ant-statistic-content,
-.phase5c-pnl-pct--rise {
+.ad-pnl-stat--rise .ant-statistic-content,
+.ad-pnl-pct--rise {
   font-weight: 600;
   color: var(--color-rise);
 }
-.phase5c-pnl-stat--fall .ant-statistic-content,
-.phase5c-pnl-pct--fall {
+.ad-pnl-stat--fall .ant-statistic-content,
+.ad-pnl-pct--fall {
   font-weight: 600;
   color: var(--color-fall);
 }
-.phase5c-pnl-stat--neutral .ant-statistic-content {
+.ad-pnl-stat--neutral .ant-statistic-content {
   font-weight: 600;
 }
-.phase5c-pnl-pct--neutral {
+.ad-pnl-pct--neutral {
   font-weight: 600;
   color: var(--text-tertiary);
 }
 
 /* ---- Signal dashboard ---- */
-.phase5c-kpi-cell__value--rise {
+.ad-kpi-cell__value--rise {
   color: var(--color-rise);
 }
-.phase5c-kpi-cell__value--fall {
+.ad-kpi-cell__value--fall {
   color: var(--color-fall);
 }
-.phase5c-kpi-cell__value--primary {
+.ad-kpi-cell__value--primary {
   color: var(--text-primary);
 }
 
@@ -6645,8 +6653,8 @@ main {
   position: absolute;
   inset: 0;
   background-image:
-    linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+    linear-gradient(var(--login-input-bg) 1px, transparent 1px),
+    linear-gradient(90deg, var(--login-input-bg) 1px, transparent 1px);
   background-size: 60px 60px;
   pointer-events: none;
   z-index: 0;
@@ -6663,7 +6671,7 @@ main {
 .login-card {
   width: 420px;
   padding: var(--space-8) var(--space-7);
-  background: rgba(17, 17, 17, 0.72);
+  background: var(--login-card-bg);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border: 1px solid var(--card-border);
@@ -6800,7 +6808,7 @@ main {
    ============================================================ */
 
 .login-page--sci-fi {
-  background: #05060a;
+  background: var(--login-bg);
 }
 
 /* ---- Aurora background ---- */
@@ -6814,7 +6822,7 @@ main {
 .aurora-base {
   position: absolute;
   inset: 0;
-  background: #05060a;
+  background: var(--login-bg);
 }
 
 .aurora-layer {
@@ -6836,19 +6844,19 @@ main {
 }
 
 .aurora-layer-1 {
-  background: radial-gradient(ellipse at 30% 20%, rgba(0, 229, 255, 0.26) 0%, transparent 55%);
+  background: radial-gradient(ellipse at 30% 20%, var(--aurora-cyan) 0%, transparent 55%);
   animation-delay: 0s, 0s;
   animation-duration: 16s, 22s;
 }
 
 .aurora-layer-2 {
-  background: radial-gradient(ellipse at 70% 60%, rgba(0, 180, 255, 0.20) 0%, transparent 50%);
+  background: radial-gradient(ellipse at 70% 60%, var(--aurora-blue) 0%, transparent 50%);
   animation-delay: -4s, -6s;
   animation-duration: 20s, 26s;
 }
 
 .aurora-layer-3 {
-  background: radial-gradient(ellipse at 50% 80%, rgba(120, 80, 255, 0.16) 0%, transparent 45%);
+  background: radial-gradient(ellipse at 50% 80%, var(--aurora-violet) 0%, transparent 45%);
   animation-delay: -8s, -12s;
   animation-duration: 24s, 28s;
 }
@@ -6856,13 +6864,13 @@ main {
 /* .aurora-layer-4 / .aurora-layer-5 add a soft teal-violet band that drifts
    along a different path; both share the .aurora-layer base class. */
 .aurora-layer-4 {
-  background: radial-gradient(ellipse at 20% 70%, rgba(64, 220, 220, 0.18) 0%, transparent 50%);
+  background: radial-gradient(ellipse at 20% 70%, var(--aurora-teal) 0%, transparent 50%);
   animation-delay: -10s, -3s;
   animation-duration: 22s, 30s;
 }
 
 .aurora-layer-5 {
-  background: radial-gradient(ellipse at 80% 30%, rgba(180, 120, 255, 0.16) 0%, transparent 50%);
+  background: radial-gradient(ellipse at 80% 30%, var(--aurora-lavender) 0%, transparent 50%);
   animation-delay: -14s, -18s;
   animation-duration: 28s, 34s;
 }
@@ -6904,22 +6912,22 @@ main {
   width: 2px;
   height: 2px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.6);
-  box-shadow: 0 0 6px rgba(255, 255, 255, 0.35);
+  background: var(--star-white);
+  box-shadow: 0 0 6px var(--star-glow-white);
   animation: star-pulse 4s ease-in-out infinite;
 }
 
 .aurora-star:nth-child(3n) {
-  background: rgba(0, 229, 255, 0.8);
-  box-shadow: 0 0 8px rgba(0, 229, 255, 0.5);
+  background: var(--star-cyan);
+  box-shadow: 0 0 8px var(--star-glow-cyan);
 }
 
 /* Accent (cyan/violet) star variant — set by component for a brighter, hue-
    shifted twinkle. Falls back to the default white pulse if the variant
    isn't used. */
 .aurora-star--accent {
-  background: rgba(120, 220, 255, 0.85);
-  box-shadow: 0 0 10px rgba(0, 229, 255, 0.55);
+  background: var(--star-accent);
+  box-shadow: 0 0 10px var(--star-glow-accent);
 }
 
 @keyframes star-pulse {
@@ -6943,11 +6951,11 @@ main {
   border-radius: 999px;
   background: linear-gradient(
     90deg,
-    rgba(255, 255, 255, 0) 0%,
-    rgba(180, 240, 255, 0.6) 35%,
-    rgba(255, 255, 255, 0.95) 100%
+    var(--meteor-fade) 0%,
+    var(--meteor-cyan) 35%,
+    var(--meteor-white) 100%
   );
-  box-shadow: 0 0 6px rgba(0, 229, 255, 0.35);
+  box-shadow: 0 0 6px var(--meteor-glow);
   opacity: 0;
   transform: rotate(20deg);
   animation: meteor-fall 7s linear infinite;
@@ -6984,7 +6992,7 @@ main {
     0deg,
     transparent,
     transparent 3px,
-    rgba(0, 229, 255, 0.02) 4px
+    var(--scanline-cyan) 4px
   );
   pointer-events: none;
 }
@@ -6993,7 +7001,7 @@ main {
 .aurora-vignette {
   position: absolute;
   inset: 0;
-  background: radial-gradient(circle at center, transparent 30%, rgba(5, 6, 10, 0.6) 100%);
+  background: radial-gradient(circle at center, transparent 30%, var(--vignette-dark) 100%);
   pointer-events: none;
 }
 
@@ -7102,8 +7110,8 @@ main {
   margin-top: var(--space-3);
   font-size: 12px;
   padding: var(--space-3) 0;
-  border-top: 1px solid rgba(255, 255, 255, 0.04);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  border-top: 1px solid var(--login-divider);
+  border-bottom: 1px solid var(--login-divider);
 }
 
 .login-source-dot {
@@ -7173,8 +7181,8 @@ main {
   gap: 12px;
   padding: 0 16px;
   height: 44px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: var(--login-input-bg);
+  border: 1px solid var(--login-input-border);
   border-radius: 10px;
   transition: border-color 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
 }
@@ -7182,7 +7190,7 @@ main {
 .login-page--sci-fi .login-input-wrapper:focus-within {
   border-color: var(--accent-border);
   box-shadow: 0 0 0 3px var(--accent-soft);
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--login-input-focus-bg);
 }
 
 .login-page--sci-fi .login-input-icon {
@@ -7219,7 +7227,7 @@ main {
   margin-top: 8px;
   border-radius: 10px;
   border: none;
-  background: var(--primary-gradient);
+  background: linear-gradient(135deg, var(--accent) 0%, var(--accent-hover) 100%);
   color: var(--text-on-accent);
   font-size: 15px;
   font-weight: 600;
@@ -7442,7 +7450,7 @@ input[type="password"]::-webkit-strong-password-auto-fill-button {
 }
 
 /* Inline-style cleanup extras */
-.phase5c-tag-xs {
+.ad-tag-xs {
   font-size: 10px !important;
 }
 
@@ -7453,8 +7461,8 @@ input[type="password"]::-webkit-strong-password-auto-fill-button {
 .ad-justify-center { justify-content: center; }
 .ad-slider--sm { width: 120px; }
 
-.phase5c-select--xxs { width: 90px; }
-.phase5c-input--md { width: 220px; }
+.ad-select--xxs { width: 90px; }
+.ad-input--md { width: 220px; }
 
 /* ============================================================
    Auth loading + global error boundary

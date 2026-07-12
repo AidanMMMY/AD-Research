@@ -8,15 +8,39 @@
 
 /* ── KPI summary card color overrides (rise / fall) ── */
 
-.microstructure__kpi-rise .ant-statistic-content-value {
+.microstructure__kpi-rise .ant-statistic-content-value,
+.micro-kpi-rise .ant-statistic-content-value {
   color: var(--color-rise) !important;
 }
 
-.microstructure__kpi-fall .ant-statistic-content-value {
+.microstructure__kpi-fall .ant-statistic-content-value,
+.micro-kpi-fall .ant-statistic-content-value {
   color: var(--color-fall) !important;
 }
 
-/* ── Filter input widths (shared with global phase5c conventions) ── */
+/* ── Tab badge for category counts ── */
+
+.microstructure__tab-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.microstructure__tab-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 18px;
+  padding: 0 5px;
+  font-size: 11px;
+  line-height: 1;
+  color: var(--text-secondary);
+  background: var(--bg-surface);
+  border-radius: 9px;
+}
+
+/* ── Filter input widths (shared with global ad-* conventions) ── */
 
 .microstructure__filter-input {
   width: 220px;

@@ -1,0 +1,20 @@
+{
+  "plugins": ["./stylelint-plugins/no-bare-color-values.js"],
+  "rules": {
+    "ad-research/no-bare-color-values": true
+  },
+  "overrides": [
+    {
+      "files": ["src/styles/**/*.css", "src/pages/**/*.css"],
+      "rules": {
+        "ad-research/no-bare-color-values": true
+      }
+    },
+    {
+      "files": ["src/styles/theme.css"],
+      "rules": {
+        "ad-research/no-bare-color-values": null
+      }
+    }
+  ]
+}

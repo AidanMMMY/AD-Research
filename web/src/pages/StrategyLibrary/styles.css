@@ -4,14 +4,14 @@
    ============================================================ */
 
 /* ---- Error Hint ---- */
-.phase5c-error-hint {
+.ad-error-hint {
   color: var(--color-fall);
   font-size: var(--text-small-size);
   margin-top: var(--space-1);
 }
 
 /* ---- Tabs Spacing ---- */
-.phase5c-tabs--padded {
+.ad-tabs--padded {
   margin-bottom: var(--space-6);
 }
 

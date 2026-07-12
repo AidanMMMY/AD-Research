@@ -121,8 +121,8 @@ export default function ResearchNotes() {
       />
       <AISetupBanner />
 
-      <Panel variant="default" className="phase5c-section">
-        <div className="phase5c-form-row">
+      <Panel variant="default" className="ad-section">
+        <div className="ad-form-row">
           <Select
             showSearch
             filterOption={false}
@@ -140,7 +140,7 @@ export default function ResearchNotes() {
             notFoundContent={isSearchingInstruments ? '搜索中...' : '未找到匹配的标的'}
             options={instrumentOptions}
             className="ad-form-row__grow"
-            suffixIcon={<SearchOutlined className="phase5c-icon-accent" />}
+            suffixIcon={<SearchOutlined className="ad-icon-accent" />}
             optionFilterProp="label"
             listHeight={320}
           />
@@ -155,7 +155,7 @@ export default function ResearchNotes() {
           <Select
             placeholder="类型筛选"
             allowClear
-            className="phase5c-select--sm"
+            className="ad-select--sm"
             value={noteType}
             options={NOTE_TYPE_OPTIONS}
             onChange={setNoteType}
@@ -163,11 +163,11 @@ export default function ResearchNotes() {
         </div>
       </Panel>
 
-      <div className="phase5c-section">
+      <div className="ad-section">
         {isLoading ? (
           <Skeleton active paragraph={{ rows: 8 }} />
         ) : !notes?.length ? (
-          <div className="phase5c-empty">
+          <div className="ad-empty">
             <Empty
               description="暂无研报历史，输入或选择标的代码后点击「生成研报」开始 AI 分析"
             />
@@ -177,12 +177,12 @@ export default function ResearchNotes() {
             <Panel
               key={note.id}
               variant="default"
-              className="phase5c-research-card"
+              className="ad-research-card"
               padding="md"
             >
               <div onClick={() => setModalNote(note)}>
-                <div className="phase5c-research-card__header">
-                  <div className="phase5c-research-card__meta">
+                <div className="ad-research-card__header">
+                  <div className="ad-research-card__meta">
                     <InstrumentCodeTag
                       code={note.instrument_code}
                       name={note.name}
@@ -197,13 +197,13 @@ export default function ResearchNotes() {
                       </ThemeTag>
                     )}
                     {note.confidence && (
-                      <span className="phase5c-detail-line">
+                      <span className="ad-detail-line">
                         <HelpPopover termKey="sentiment_confidence" mode={mode}>置信度</HelpPopover> {note.confidence}/10
                       </span>
                     )}
                   </div>
-                  <div className="phase5c-research-card__actions">
-                    <span className="phase5c-research-card__date">
+                  <div className="ad-research-card__actions">
+                    <span className="ad-research-card__date">
                       {note.generated_at?.slice(0, 16) || note.created_at?.slice(0, 16)}
                     </span>
                     <Popconfirm
@@ -215,18 +215,18 @@ export default function ResearchNotes() {
                       onCancel={(e) => e?.stopPropagation()}
                     >
                       <DeleteOutlined
-                        className="phase5c-research-card__delete"
+                        className="ad-research-card__delete"
                         onClick={(e) => e.stopPropagation()}
                       />
                     </Popconfirm>
                   </div>
                 </div>
                 {note.summary && (
-                  <p className="phase5c-research-card__summary">
+                  <p className="ad-research-card__summary">
                     {note.summary}
                   </p>
                 )}
-                <div className="phase5c-research-card__more">
+                <div className="ad-research-card__more">
                   点击查看全文 →
                 </div>
               </div>
@@ -240,10 +240,10 @@ export default function ResearchNotes() {
         onCancel={() => setModalNote(null)}
         footer={null}
         width={720}
-        className="phase5c-markdown-modal"
+        className="ad-markdown-modal"
       >
         {modalNote && (
-          <div className="markdown-body phase5c-markdown-body">
+          <div className="markdown-body ad-markdown-body">
             <ReactMarkdown remarkPlugins={[remarkGfm]}>
               {modalNote.content}
             </ReactMarkdown>

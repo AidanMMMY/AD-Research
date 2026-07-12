@@ -193,6 +193,8 @@ function heatmapVars(
 
 /** Compute pie-slice percentage paths for bull/bear/neutral breakdown. */
 function PieBreakdown({ row }: { row: SymbolAggregate }) {
+  const { ref, width } = useMeasuredWidth<HTMLDivElement>();
+  const size = Math.max(48, Math.min(72, width || 56));
   const total = row.bull + row.bear + row.neutral;
   if (total === 0) {
     return <span className="ad-text-small ad-text-tertiary">—</span>;
@@ -202,8 +204,7 @@ function PieBreakdown({ row }: { row: SymbolAggregate }) {
     { label: '空', value: row.bear, color: POLL_SLICE_COLORS.negative },
     { label: '中', value: row.neutral, color: POLL_SLICE_COLORS.neutral },
   ];
-  const size = 56;
-  const r = 22;
+  const r = size * 0.39;
   const cx = size / 2;
   const cy = size / 2;
   let acc = 0;
@@ -217,7 +218,7 @@ function PieBreakdown({ row }: { row: SymbolAggregate }) {
         </div>
       }
     >
-      <div className="ad-sentiment-pie-breakdown">
+      <div ref={ref} className="ad-sentiment-pie-breakdown">
         <svg width="100%" height="100%" viewBox={`0 0 ${size} ${size}`}>
           {slices.map((s) => {
             if (s.value === 0) return null;
@@ -246,10 +247,12 @@ function PieBreakdown({ row }: { row: SymbolAggregate }) {
 
 /** 5-axis radar: importance, count, bull ratio, score abs, freshness. */
 function DistributionRadar({ row }: { row: SymbolAggregate }) {
-  const size = 80;
+  const { ref, width } = useMeasuredWidth<HTMLDivElement>();
+  const size = Math.max(64, Math.min(120, width || 80));
+  const pad = size * 0.15;
   const cx = size / 2;
   const cy = size / 2;
-  const r = 30;
+  const r = size * 0.375;
   const total = row.bull + row.bear + row.neutral || 1;
   const axes = [
     { label: '热度', value: Math.min(1, row.count / 20) },
@@ -266,8 +269,8 @@ function DistributionRadar({ row }: { row: SymbolAggregate }) {
       return {
         x: cx + rr * Math.cos(angle),
         y: cy + rr * Math.sin(angle),
-        lx: cx + (r + 9) * Math.cos(angle),
-        ly: cy + (r + 9) * Math.sin(angle),
+        lx: cx + (r + size * 0.12) * Math.cos(angle),
+        ly: cy + (r + size * 0.12) * Math.sin(angle),
         label: a.label,
       };
     });
@@ -275,10 +278,12 @@ function DistributionRadar({ row }: { row: SymbolAggregate }) {
     .map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x.toFixed(2)} ${p.y.toFixed(2)}`)
     .join(' ') + ' Z';
   return (
-    <div className="ad-sentiment-radar">
-      <svg width="100%" height="100%" viewBox={`0 0 ${size} ${size}`}>
+    <div ref={ref} className="ad-sentiment-radar">
+      <svg width="100%" height="100%" viewBox={`-${pad} -${pad} ${size + pad * 2} ${size + pad * 2}`}>
+        <circle cx={cx} cy={cy} r={r * 0.33} fill="none" stroke="var(--border-default)" strokeWidth={0.5} strokeOpacity={0.5} strokeDasharray="2 2" />
+        <circle cx={cx} cy={cy} r={r * 0.66} fill="none" stroke="var(--border-default)" strokeWidth={0.5} strokeOpacity={0.5} strokeDasharray="2 2" />
         <circle cx={cx} cy={cy} r={r} fill="none" stroke="var(--border-default)" strokeWidth={0.5} />
-        <path d={path} fill="var(--color-warning-bright-dim)" stroke="var(--color-warning-bright)" strokeWidth={1.25} />
+        <path d={path} fill="var(--color-warning-hover-dim)" stroke="var(--color-warning-bright)" strokeWidth={1.25} />
         {points.map((p, i) => (
           <text
             key={i}
@@ -286,7 +291,7 @@ function DistributionRadar({ row }: { row: SymbolAggregate }) {
             y={p.ly}
             textAnchor="middle"
             dominantBaseline="middle"
-            fontSize={10}
+            fontSize={Math.max(15, size * 0.1875)}
             fill="var(--text-tertiary)"
           >
             {p.label}
@@ -394,17 +399,19 @@ export default function SentimentOverview() {
         />
 
         <FilterToolbar total={`${filtered.length} 个标的 · ${data?.length ?? 0} 条资讯`}>
-          <Segmented
-            value={market}
-            onChange={(v) => setMarket(v as NewsMarket | 'all')}
-            options={MARKET_OPTIONS}
-          />
+          <div className="ad-scroll-hint">
+            <Segmented
+              value={market}
+              onChange={(v) => setMarket(v as NewsMarket | 'all')}
+              options={MARKET_OPTIONS}
+            />
+          </div>
           <span className="ad-filter-label">重要性 ≥</span>
           <Select
             value={importanceMin}
             onChange={setImportanceMin}
             options={[1, 2, 3, 4, 5].map((n) => ({ value: n, label: `${n} ★` }))}
-            className="phase5c-select--xxs"
+            className="ad-select--xxs"
           />
           <Input
             allowClear
@@ -412,7 +419,7 @@ export default function SentimentOverview() {
             placeholder="搜索标的代码…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="phase5c-input--md"
+            className="ad-input--md"
           />
         </FilterToolbar>
 
@@ -431,7 +438,7 @@ export default function SentimentOverview() {
             variant="default"
             title={
               <span>
-                <HeartOutlined className="phase5c-icon-title" />
+                <HeartOutlined className="ad-icon-title" />
                 全市场情绪热力图
               </span>
             }
@@ -600,7 +607,7 @@ export default function SentimentOverview() {
               variant="default"
               title={
                 <span>
-                  <FireOutlined className="phase5c-icon-title" />
+                  <FireOutlined className="ad-icon-title" />
                   情绪最强烈
                 </span>
               }

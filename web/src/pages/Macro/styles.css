@@ -18,7 +18,7 @@
   gap: var(--space-1);
   padding: 1px 6px;
   border-radius: 9999px;
-  background: var(--color-warning-bright-dim);
+  background: var(--color-warning-hover-dim);
   border: 1px solid var(--color-warning-border);
   font-size: 10px;
   color: var(--color-warning-bright);

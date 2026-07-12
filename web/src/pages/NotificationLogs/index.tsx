@@ -85,12 +85,12 @@ export default function NotificationLogs() {
                 setPage(1);
                 setPageSize(v || 20);
               }}
-              className="phase5c-input--sm"
+              className="ad-input--sm"
             />
           </Space>
         </FilterToolbar>
 
-        <div className="phase5c-table-wrap">
+        <div className="ad-table-scroll">
           <Table
             dataSource={data?.items || []}
             columns={columns}

@@ -247,7 +247,7 @@ function CategoryBlock({ title, rows }: { title: string; rows: RowVm[] }): JSX.E
     },
   ];
   return (
-    <section className="phase5c-section">
+    <section className="ad-section">
       <SectionHeading title={title} />
       <Panel>
         <div className="ad-table-scroll">
@@ -549,12 +549,12 @@ export default function GlobalMarkets() {
         }
       />
 
-      <section className="phase5c-section">
+      <section className="ad-section">
         <RecentWeekEvents />
       </section>
 
       {!hasAnyData && !isLoading && (
-        <section className="phase5c-section">
+        <section className="ad-section">
           <Panel>
             <EmptyState
               title="暂无全球市场数据"
@@ -567,7 +567,7 @@ export default function GlobalMarkets() {
       )}
 
       {isLoading && !hasAnyData && (
-        <section className="phase5c-section">
+        <section className="ad-section">
           <Panel>
             <Skeleton active paragraph={{ rows: 8 }} />
           </Panel>

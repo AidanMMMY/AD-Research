@@ -197,9 +197,9 @@ export default function PaperTrading() {
       width: 140,
       render: (_: unknown, r: PaperPosition) => (
         <span>
-          <span className="phase5c-inline-code--bold">{r.instrument_code}</span>
+          <span className="ad-inline-code--bold">{r.instrument_code}</span>
           {r.instrument_name && (
-            <span className="phase5c-detail-line">{r.instrument_name}</span>
+            <span className="ad-detail-line">{r.instrument_name}</span>
           )}
         </span>
       ),
@@ -286,7 +286,7 @@ export default function PaperTrading() {
       dataIndex: 'order_type',
       key: 'type',
       render: (v: string) => (
-        <span className={v === 'BUY' ? 'phase5c-order-side--buy' : 'phase5c-order-side--sell'}>
+        <span className={v === 'BUY' ? 'ad-order-side--buy' : 'ad-order-side--sell'}>
           {v === 'BUY' ? '买入' : '卖出'}
         </span>
       ),
@@ -317,10 +317,10 @@ export default function PaperTrading() {
       key: 'status',
       render: (v: string) => {
         const classMap: Record<string, string> = {
-          filled: 'phase5c-status--filled',
-          pending: 'phase5c-status--pending',
-          cancelled: 'phase5c-status--cancelled',
-          rejected: 'phase5c-status--rejected',
+          filled: 'ad-status--filled',
+          pending: 'ad-status--pending',
+          cancelled: 'ad-status--cancelled',
+          rejected: 'ad-status--rejected',
         };
         return <span className={classMap[v] || 'ad-text-secondary'}>{v}</span>;
       },
@@ -351,7 +351,7 @@ export default function PaperTrading() {
           </>
         }
       >
-        <div className="phase5c-account-selector" data-onboard="paper-account">
+        <div className="ad-account-selector" data-onboard="paper-account">
           {accountsLoading ? (
             <Skeleton active paragraph={{ rows: 1 }} />
           ) : accounts.length === 0 ? (
@@ -368,7 +368,7 @@ export default function PaperTrading() {
             <Select
               value={selectedAccountId}
               onChange={setSelectedAccountId}
-              className="phase5c-select--lg"
+              className="ad-select--lg"
               options={accounts.map((a) => ({
                 value: a.id,
                 label: (
@@ -388,8 +388,8 @@ export default function PaperTrading() {
       {selectedAccountId && (
         <>
           <SectionHeading title="账户概览" />
-          <ResponsiveGrid cols={4} gap="md" className="phase5c-section">
-            <Card size="small" className="phase5c-trading-card">
+          <ResponsiveGrid cols={4} gap="md" className="ad-section">
+            <Card size="small" className="ad-trading-card">
               <Statistic
                 title="总权益"
                 value={pnl?.total_equity ?? account?.total_value ?? account?.cash}
@@ -398,7 +398,7 @@ export default function PaperTrading() {
                 loading={pnlLoading && accountLoading}
               />
             </Card>
-            <Card size="small" className="phase5c-trading-card">
+            <Card size="small" className="ad-trading-card">
               <Statistic
                 title="可用现金"
                 value={account?.cash}
@@ -407,7 +407,7 @@ export default function PaperTrading() {
                 loading={accountLoading}
               />
             </Card>
-            <Card size="small" className="phase5c-trading-card">
+            <Card size="small" className="ad-trading-card">
               <Statistic
                 title="持仓市值"
                 value={pnl?.market_value}
@@ -416,8 +416,8 @@ export default function PaperTrading() {
                 loading={pnlLoading}
               />
             </Card>
-            <Card size="small" className="phase5c-trading-card">
-              <div className={pnl && pnl.total_pnl > 0 ? 'phase5c-pnl-stat--rise' : pnl && pnl.total_pnl < 0 ? 'phase5c-pnl-stat--fall' : 'phase5c-pnl-stat--neutral'}>
+            <Card size="small" className="ad-trading-card">
+              <div className={pnl && pnl.total_pnl > 0 ? 'ad-pnl-stat--rise' : pnl && pnl.total_pnl < 0 ? 'ad-pnl-stat--fall' : 'ad-pnl-stat--neutral'}>
                 <Statistic
                   title="总盈亏"
                   value={pnl?.total_pnl ?? 0}
@@ -427,13 +427,13 @@ export default function PaperTrading() {
                 />
               </div>
               {pnl?.pnl_pct != null && (
-                <div className={pnl.pnl_pct > 0 ? 'phase5c-pnl-pct--rise' : pnl.pnl_pct < 0 ? 'phase5c-pnl-pct--fall' : 'phase5c-pnl-pct--neutral'}>
+                <div className={pnl.pnl_pct > 0 ? 'ad-pnl-pct--rise' : pnl.pnl_pct < 0 ? 'ad-pnl-pct--fall' : 'ad-pnl-pct--neutral'}>
                   {pnl.pnl_pct >= 0 ? '+' : ''}
                   {pnl.pnl_pct.toFixed(2)}%
                 </div>
               )}
             </Card>
-            <Card size="small" className="phase5c-trading-card">
+            <Card size="small" className="ad-trading-card">
               <Statistic
                 title="交易次数"
                 value={pnl?.trade_count ?? 0}
@@ -448,7 +448,7 @@ export default function PaperTrading() {
           </ResponsiveGrid>
 
           <SectionHeading title="操作" />
-          <div className="phase5c-action-bar phase5c-section">
+          <div className="ad-action-bar ad-section">
             {isMobile ? (
               <>
                 <Button
@@ -541,10 +541,10 @@ export default function PaperTrading() {
           </div>
 
           <SectionHeading title="当前持仓" />
-          <Panel variant="default" className="phase5c-section">
-            <div className="phase5c-table-wrap">
+          <Panel variant="default" className="ad-section">
+            <div className="ad-table-scroll">
               {positionsLoading ? (
-                <Skeleton active paragraph={{ rows: 5 }} className="phase5c-skeleton-pad" />
+                <Skeleton active paragraph={{ rows: 5 }} className="ad-skeleton-pad" />
               ) : positions && positions.length > 0 ? (
                 <Table
                   columns={positionColumns}
@@ -555,7 +555,7 @@ export default function PaperTrading() {
                   scroll={{ x: 'max-content' }}
                 />
               ) : (
-                <div className="phase5c-empty">
+                <div className="ad-empty">
                   <EmptyState title="暂无持仓" description="当前账户没有持仓记录" />
                 </div>
               )}
@@ -564,9 +564,9 @@ export default function PaperTrading() {
 
           <SectionHeading title="最近订单" />
           <Panel variant="default">
-            <div className="phase5c-table-wrap">
+            <div className="ad-table-scroll">
               {ordersLoading ? (
-                <Skeleton active paragraph={{ rows: 5 }} className="phase5c-skeleton-pad" />
+                <Skeleton active paragraph={{ rows: 5 }} className="ad-skeleton-pad" />
               ) : orders && orders.items.length > 0 ? (
                 <Table
                   columns={orderColumns}
@@ -577,7 +577,7 @@ export default function PaperTrading() {
                   scroll={{ x: 'max-content' }}
                 />
               ) : (
-                <div className="phase5c-empty">
+                <div className="ad-empty">
                   <EmptyState title="暂无订单" description="当前账户没有订单记录" />
                 </div>
               )}
@@ -613,7 +613,7 @@ export default function PaperTrading() {
             label="初始资金 (USDT)"
             rules={[{ required: true, message: '请输入初始资金' }]}
           >
-            <InputNumber min={100} max={10000000} className="phase5c-form-input--full" />
+            <InputNumber min={100} max={10000000} className="ad-form-input--full" />
           </Form.Item>
         </Form>
       </Modal>
@@ -657,10 +657,10 @@ export default function PaperTrading() {
             label="数量"
             rules={[{ required: true, message: '请输入数量' }]}
           >
-            <InputNumber min={0.00000001} step={0.001} className="phase5c-form-input--full" />
+            <InputNumber min={0.00000001} step={0.001} className="ad-form-input--full" />
           </Form.Item>
           <Form.Item name="price" label="限价 (留空则市价成交)">
-            <InputNumber min={0} className="phase5c-form-input--full" placeholder="市价" />
+            <InputNumber min={0} className="ad-form-input--full" placeholder="市价" />
           </Form.Item>
         </Form>
       </Modal>

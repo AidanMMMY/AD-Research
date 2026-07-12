@@ -172,7 +172,7 @@ export default function SearchTrendsPage() {
                       value={source}
                       onChange={setSource}
                       allowClear
-                      className="phase5c-select--xxs"
+                      className="ad-select--xxs"
                       options={SOURCES}
                     />
                     <Select
@@ -180,14 +180,14 @@ export default function SearchTrendsPage() {
                       value={category}
                       onChange={setCategory}
                       allowClear
-                      className="phase5c-select--xxs"
+                      className="ad-select--xxs"
                       options={CATEGORIES}
                     />
                     <Input
                       placeholder="搜索关键词"
                       value={searchText}
                       onChange={(e) => setSearchText(e.target.value)}
-                      className="phase5c-input--md"
+                      className="ad-input--md"
                       prefix={<SearchOutlined />}
                       allowClear
                     />
@@ -226,7 +226,7 @@ export default function SearchTrendsPage() {
                       placeholder="输入关键词 (如 上证指数)"
                       value={compareKeyword ?? ''}
                       onChange={(e) => setCompareKeyword(e.target.value || null)}
-                      className="phase5c-input--lg"
+                      className="ad-input--lg"
                       prefix={<SearchOutlined />}
                       allowClear
                     />

@@ -4,12 +4,12 @@
    ============================================================ */
 
 /* ---- Section Spacing ---- */
-.phase5c-section {
+.ad-section {
   margin-bottom: var(--space-6);
 }
 
 /* ---- Form Row ---- */
-.phase5c-form-row {
+.ad-form-row {
   display: flex;
   gap: var(--space-3);
   flex-wrap: wrap;
@@ -17,12 +17,12 @@
 }
 
 /* ---- Research Card ---- */
-.phase5c-research-card {
+.ad-research-card {
   cursor: pointer;
   margin-bottom: var(--space-4);
 }
 
-.phase5c-research-card__header {
+.ad-research-card__header {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
@@ -30,33 +30,33 @@
   gap: var(--space-3);
 }
 
-.phase5c-research-card__meta {
+.ad-research-card__meta {
   display: flex;
   gap: var(--space-2);
   align-items: center;
   flex-wrap: wrap;
 }
 
-.phase5c-research-card__code {
+.ad-research-card__code {
   font-size: var(--text-body-size);
   font-weight: 600;
   color: var(--accent);
   font-family: var(--font-mono);
 }
 
-.phase5c-research-card__date {
+.ad-research-card__date {
   font-size: var(--text-small-size);
   color: var(--text-tertiary);
   white-space: nowrap;
 }
 
-.phase5c-research-card__actions {
+.ad-research-card__actions {
   display: flex;
   align-items: center;
   gap: var(--space-2);
 }
 
-.phase5c-research-card__delete {
+.ad-research-card__delete {
   color: var(--text-tertiary);
   font-size: var(--text-body-size);
   padding: var(--space-1);
@@ -64,19 +64,19 @@
   transition: color var(--transition-base) ease, background-color var(--transition-base) ease;
 }
 
-.phase5c-research-card__delete:hover {
+.ad-research-card__delete:hover {
   color: var(--color-fall);
   background-color: var(--bg-elevated);
 }
 
-.phase5c-research-card__summary {
+.ad-research-card__summary {
   margin: 0;
   font-size: var(--text-code-size);
   color: var(--text-primary);
   line-height: 1.6;
 }
 
-.phase5c-research-card__more {
+.ad-research-card__more {
   margin-top: var(--space-2);
   font-size: var(--text-small-size);
   color: var(--text-tertiary);
@@ -86,36 +86,36 @@
 }
 
 /* ---- Empty State ---- */
-.phase5c-empty {
+.ad-empty {
   padding: var(--space-9) 0;
 }
 
 /* ---- Detail Line ---- */
-.phase5c-detail-line {
+.ad-detail-line {
   font-size: var(--text-small-size);
   color: var(--text-secondary);
   margin-left: var(--space-2);
 }
 
 /* ---- Markdown Modal ---- */
-.phase5c-markdown-body {
+.ad-markdown-body {
   color: var(--text-primary);
   font-size: var(--text-body-size);
   line-height: 1.8;
 }
 
-.phase5c-markdown-modal .ant-modal-body {
+.ad-markdown-modal .ant-modal-body {
   max-height: 70vh;
   overflow: auto;
 }
 
 /* ---- Select Widths ---- */
-.phase5c-select--sm {
+.ad-select--sm {
   width: 140px;
 }
 
 @media (max-width: 767px) {
-  .phase5c-select--sm {
+  .ad-select--sm {
     width: 100% !important;
     min-width: 0;
   }

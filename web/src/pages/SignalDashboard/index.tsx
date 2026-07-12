@@ -145,15 +145,15 @@ export default function SignalDashboard() {
         extra={<DataFreshnessHint at={dataUpdatedAt} />}
       />
 
-      <div className="phase5c-kpi-strip phase5c-kpi-strip--cols-3 phase5c-section">
+      <div className="ad-kpi-strip ad-kpi-strip--cols-3 ad-section">
         {[
           { title: '买入信号', value: buyCount, color: 'rise' },
           { title: '卖出信号', value: sellCount, color: 'fall' },
           { title: '持有信号', value: holdCount, color: 'primary' },
         ].map((m) => (
-          <div key={m.title} className="phase5c-kpi-cell">
-            <div className="phase5c-kpi-cell__label">{m.title}</div>
-            <div className={`phase5c-kpi-cell__value tabular-nums phase5c-kpi-cell__value--${m.color}`}>
+          <div key={m.title} className="ad-kpi-cell">
+            <div className="ad-kpi-cell__label">{m.title}</div>
+            <div className={`ad-kpi-cell__value tabular-nums ad-kpi-cell__value--${m.color}`}>
               {m.value}
             </div>
           </div>
@@ -199,7 +199,7 @@ export default function SignalDashboard() {
             </FilterToolbar>
           </ContextHint>
 
-          <div className="phase5c-table-wrap">
+          <div className="ad-table-scroll">
             <Table
               dataSource={filteredItems}
               columns={columns}

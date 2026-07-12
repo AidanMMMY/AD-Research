@@ -1,10 +1,10 @@
 /* ============================================================
    AIChat Page Styles
-   Co-located CSS for the AI Chat page (phase5c-chat-* classes).
+   Co-located CSS for the AI Chat page (ad-chat-* classes).
    ============================================================ */
 
 /* ---- Layout ---- */
-.phase5c-chat-layout {
+.ad-chat-layout {
   display: flex;
   gap: var(--space-4);
   height: calc(100dvh - 280px);
@@ -12,13 +12,13 @@
 }
 
 @supports not (height: 100dvh) {
-  .phase5c-chat-layout {
+  .ad-chat-layout {
     height: calc(100vh - 280px);
   }
 }
 
 /* ---- Sidebar ---- */
-.phase5c-chat-sidebar {
+.ad-chat-sidebar {
   width: 240px;
   flex-shrink: 0;
   display: flex;
@@ -26,12 +26,12 @@
   gap: var(--space-3);
 }
 
-.phase5c-chat-sidebar__list {
+.ad-chat-sidebar__list {
   flex: 1;
   overflow: auto;
 }
 
-.phase5c-chat-sidebar__item {
+.ad-chat-sidebar__item {
   padding: var(--space-3);
   border-radius: var(--radius-lg);
   cursor: pointer;
@@ -44,17 +44,17 @@
   transition: background var(--transition-fast), border-color var(--transition-fast);
 }
 
-.phase5c-chat-sidebar__item:hover,
-.phase5c-chat-sidebar__item:focus-visible {
+.ad-chat-sidebar__item:hover,
+.ad-chat-sidebar__item:focus-visible {
   background: var(--bg-hover);
 }
 
-.phase5c-chat-sidebar__item--active {
+.ad-chat-sidebar__item--active {
   background: var(--accent-dim);
   border-color: var(--card-border);
 }
 
-.phase5c-chat-sidebar__title {
+.ad-chat-sidebar__title {
   font-size: var(--text-code-size);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -63,19 +63,19 @@
   color: var(--text-secondary);
 }
 
-.phase5c-chat-sidebar__item--active .phase5c-chat-sidebar__title {
+.ad-chat-sidebar__item--active .ad-chat-sidebar__title {
   color: var(--accent);
   font-weight: 600;
 }
 
-.phase5c-chat-sidebar__delete {
+.ad-chat-sidebar__delete {
   color: var(--text-tertiary);
   font-size: var(--text-small-size);
   flex-shrink: 0;
 }
 
 /* ---- Chat Area ---- */
-.phase5c-chat-area {
+.ad-chat-area {
   flex: 1;
   display: flex;
   flex-direction: column;
@@ -86,27 +86,27 @@
   overflow: hidden;
 }
 
-.phase5c-chat-messages {
+.ad-chat-messages {
   flex: 1;
   overflow: auto;
   padding: var(--space-4) var(--space-5);
 }
 
 /* ---- Message Bubbles ---- */
-.phase5c-message-row {
+.ad-message-row {
   display: flex;
   margin-bottom: var(--space-4);
 }
 
-.phase5c-message-row--user {
+.ad-message-row--user {
   justify-content: flex-end;
 }
 
-.phase5c-message-row--assistant {
+.ad-message-row--assistant {
   justify-content: flex-start;
 }
 
-.phase5c-message-bubble {
+.ad-message-bubble {
   max-width: 80%;
   padding: var(--space-3) var(--space-4);
   border-radius: var(--radius-lg);
@@ -114,39 +114,39 @@
   line-height: 1.7;
 }
 
-.phase5c-message-bubble--user {
+.ad-message-bubble--user {
   background: var(--accent-dim);
   color: var(--accent);
   border-top-right-radius: var(--radius-sm);
 }
 
-.phase5c-message-bubble--assistant {
+.ad-message-bubble--assistant {
   background: var(--bg-elevated);
   color: var(--text-primary);
   border-top-left-radius: var(--radius-sm);
 }
 
-.phase5c-message-bubble--streaming {
+.ad-message-bubble--streaming {
   background: var(--bg-elevated);
   border: 1px solid var(--border-default);
   border-top-left-radius: var(--radius-sm);
 }
 
 /* ---- Streaming Divider ---- */
-.phase5c-streaming-divider {
+.ad-streaming-divider {
   margin-top: var(--space-2);
   padding-top: var(--space-2);
   border-top: 1px solid var(--border-default);
 }
 
 /* ---- Input Area ---- */
-.phase5c-input-bar {
+.ad-input-bar {
   padding: var(--space-3) var(--space-5);
   border-top: 1px solid var(--border-default);
   background: var(--card-bg);
 }
 
-.phase5c-quick-prompts {
+.ad-quick-prompts {
   display: flex;
   align-items: center;
   gap: var(--space-2);
@@ -156,89 +156,89 @@
   color: var(--text-tertiary);
 }
 
-.phase5c-quick-prompts__spacer {
+.ad-quick-prompts__spacer {
   flex: 1;
 }
 
-.phase5c-input-row {
+.ad-input-row {
   display: flex;
   gap: 10px;
 }
 
-.phase5c-input-row .ant-input {
+.ad-input-row .ant-input {
   flex: 1;
 }
 
-.phase5c-input-row .ant-btn {
+.ad-input-row .ant-btn {
   align-self: flex-end;
 }
 
 /* ---- Quick Prompt Tags ---- */
-.phase5c-quick-tag {
+.ad-quick-tag {
   cursor: pointer;
   font-size: var(--text-label-size);
   margin: 0 !important;
 }
 
 /* ---- Icons ---- */
-.phase5c-empty-icon {
+.ad-empty-icon {
   font-size: 48px;
   color: var(--text-tertiary);
 }
 
-.phase5c-icon-rise {
+.ad-icon-rise {
   color: var(--color-rise);
 }
 
-.phase5c-icon-accent {
+.ad-icon-accent {
   color: var(--accent);
 }
 
 /* ---- Empty State ---- */
-.phase5c-empty-robot {
+.ad-empty-robot {
   margin-top: 80px;
 }
 
 /* ---- Mobile Back Button ---- */
-.phase5c-mobile-back {
+.ad-mobile-back {
   padding: var(--space-2) var(--space-3);
   border-bottom: 1px solid var(--border-default);
 }
 
 /* ---- Mobile Responsive ---- */
 @media (max-width: 767px) {
-  .phase5c-chat-layout {
+  .ad-chat-layout {
     flex-direction: column;
     height: calc(100dvh - 220px);
     min-height: 280px;
   }
 
   @supports not (height: 100dvh) {
-    .phase5c-chat-layout {
+    .ad-chat-layout {
       height: calc(100vh - 220px);
     }
   }
 
-  .phase5c-chat-sidebar {
+  .ad-chat-sidebar {
     width: 100%;
   }
 
-  .phase5c-chat-messages {
+  .ad-chat-messages {
     padding: var(--space-3) var(--space-4);
   }
 
-  .phase5c-message-bubble {
+  .ad-message-bubble {
     max-width: 90%;
   }
 
-  .phase5c-input-bar {
+  .ad-input-bar {
     padding: var(--space-3) var(--space-4) calc(var(--space-3) + env(safe-area-inset-bottom, 0px));
     position: sticky;
     bottom: 0;
     z-index: 10;
   }
 
-  .phase5c-quick-prompts {
+  .ad-quick-prompts {
     font-size: var(--text-label-size);
   }
 }

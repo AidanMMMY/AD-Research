@@ -141,7 +141,7 @@ export default function StrategyLibrary() {
           key: tab.key,
           label: tab.label,
         }))}
-        className="phase5c-tabs--padded"
+        className="ad-tabs--padded"
       />
 
       <div className="strategy-library__section">
@@ -221,7 +221,7 @@ export default function StrategyLibrary() {
               maxCount={50}
             />
             {runCodes.length === 0 && (
-              <div className="phase5c-error-hint">
+              <div className="ad-error-hint">
                 请至少选择一个标的
               </div>
             )}

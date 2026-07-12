@@ -1,0 +1,17 @@
+/* ============================================================
+   Futures — page-specific style overrides
+   Inherits CSS variables from theme.css.
+   Core component classes (PageShell, PageHeader, Panel,
+   FilterToolbar, EmptyState, ResponsiveGrid, etc.) are
+   defined in global.css and shared across the app.
+   ============================================================ */
+
+/* ── KPI value color overrides (rise / fall) ── */
+
+.futures-kpi-rise {
+  color: var(--color-rise) !important;
+}
+
+.futures-kpi-fall {
+  color: var(--color-fall) !important;
+}

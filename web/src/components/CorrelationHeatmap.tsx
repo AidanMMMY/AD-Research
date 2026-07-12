@@ -129,5 +129,5 @@ export default function CorrelationHeatmap({ codes, matrix }: CorrelationHeatmap
     }],
   };
 
-  return <ReactECharts option={option} style={{ height: isMobile ? 300 : 400 }} />;
+  return <ReactECharts option={option} style={{ height: '100%' }} />;
 }
