@@ -960,10 +960,11 @@ export default function Dashboard() {
         />
 
         {/* Scores + Hot News side by side */}
-        <ResponsiveGrid cols={2} gap="lg">
+        <ResponsiveGrid cols={2} gap="lg" stretch>
           {/* Score rankings — Top 10 */}
           <Panel
             variant="default"
+            className="discover-panel"
             title="综合评分 Top 10"
             extra={
               <span className="panel-extra-link" onClick={() => navigate('/scores')}>
@@ -986,6 +987,7 @@ export default function Dashboard() {
           {/* Hot news */}
           <Panel
             variant="default"
+            className="discover-panel"
             title={
               <span>
                 <FireOutlined className="ad-icon-accent" />

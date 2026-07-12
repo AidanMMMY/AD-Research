@@ -29,6 +29,23 @@
   padding: var(--space-4) var(--space-5) var(--space-3);
 }
 
+/* Ensure the two opportunity panels (scores + hot news) share the same top
+   alignment and stretch to equal height in the responsive grid. */
+.discover-panel {
+  height: 100%;
+}
+
+.discover-panel .ad-panel__header {
+  align-items: center;
+  flex-wrap: nowrap;
+}
+
+.discover-panel .ad-panel__title {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
 /* ── Pulse global index matrix: fixed 4-column grid, compact tiles ── */
 .dashboard-pulse-matrix {
   display: grid;
