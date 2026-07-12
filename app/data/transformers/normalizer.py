@@ -47,7 +47,12 @@ def normalize_types(df: pd.DataFrame) -> pd.DataFrame:
             df[col] = pd.to_numeric(df[col], errors="coerce")
 
     if "volume" in df.columns:
-        df["volume"] = pd.to_numeric(df["volume"], errors="coerce").astype("Int64")
+        df["volume"] = pd.to_numeric(df["volume"], errors="coerce")
+        # Convert to nullable Int64 via apply to avoid pandas failing to cast
+        # float64 -> Int64 in some versions (it tries an unsafe object route).
+        df["volume"] = df["volume"].apply(
+            lambda x: int(x) if pd.notna(x) else pd.NA
+        ).astype("Int64")
 
     if "change_pct" in df.columns:
         df["change_pct"] = pd.to_numeric(df["change_pct"], errors="coerce")
