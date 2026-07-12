@@ -56,6 +56,7 @@ from app.api.v1 import (
     stream,
 )
 from app.config import get_settings
+from app.core.celery_app import celery_app
 from app.core.scheduler import init_scheduler, scheduler, shutdown_scheduler
 
 # Import strategy modules so all built-in strategies self-register.

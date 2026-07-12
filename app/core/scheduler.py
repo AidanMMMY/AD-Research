@@ -13,9 +13,10 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.interval import IntervalTrigger
 
+from app.core.celery_app import celery_app
 from app.core.database import SessionLocal
 from app.core.redis_client import get_redis_client, redis_lock
-from app.data.indicators.calculator import batch_calculate_indicators
+from app.tasks.indicator import calculate_indicators
 from app.data.pipelines.a_share import AShareETLPipeline
 from app.data.pipelines.a_share_stock_daily import AStockDailyPipeline
 from app.data.pipelines.a_share_stock_discovery import AShareStockDiscoveryPipeline
@@ -249,17 +250,12 @@ def run_us_indicator_calculation(target_date: date | None = None):
             print("⚠️ [SCHEDULER_WARN] US indicator calculation skipped: could not acquire pipeline lock")
             return
 
-        db = SessionLocal()
-        try:
-            count = batch_calculate_indicators(
-                db, target_date=target_date, full_history=False, market_filter="US"
-            )
-            print(
-                f"[Scheduler] US indicator calculation (target={target_date}): "
-                f"{count} records updated"
-            )
-        finally:
-            db.close()
+        calculate_indicators.delay(
+            target_date=target_date.isoformat() if target_date else None,
+            full_history=False,
+            market_filter="US",
+        )
+        print(f"[Scheduler] US indicator calculation task submitted (target={target_date})")
 
 
 def run_indicator_calculation(target_date: date | None = None, full_history: bool = False):
@@ -281,17 +277,15 @@ def run_indicator_calculation(target_date: date | None = None, full_history: boo
             print("⚠️ [SCHEDULER_WARN] Indicator calculation skipped: could not acquire pipeline lock")
             return
 
-        db = SessionLocal()
-        try:
-            count = batch_calculate_indicators(
-                db, target_date=target_date, full_history=full_history, market_filter="A股"
-            )
-            print(
-                f"[Scheduler] Indicator calculation (target={target_date}, "
-                f"full_history={full_history}): {count} records updated"
-            )
-        finally:
-            db.close()
+        calculate_indicators.delay(
+            target_date=target_date.isoformat() if target_date else None,
+            full_history=full_history,
+            market_filter="A股",
+        )
+        print(
+            f"[Scheduler] A-share indicator calculation task submitted "
+            f"(target={target_date}, full_history={full_history})"
+        )
 
 
 def run_score_calculation(target_date: date | None = None):
@@ -536,17 +530,12 @@ def run_crypto_indicator_calculation(target_date: date | None = None):
             )
             return
 
-        db = SessionLocal()
-        try:
-            count = batch_calculate_indicators(
-                db, target_date=target_date, full_history=False, market_filter="CRYPTO"
-            )
-            print(
-                f"[Scheduler] Crypto indicator (target={target_date}): "
-                f"{count} records updated"
-            )
-        finally:
-            db.close()
+        calculate_indicators.delay(
+            target_date=target_date.isoformat() if target_date else None,
+            full_history=False,
+            market_filter="CRYPTO",
+        )
+        print(f"[Scheduler] Crypto indicator calculation task submitted (target={target_date})")
 
 
 def run_futures_contract_refresh():

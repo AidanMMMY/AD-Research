@@ -155,12 +155,12 @@ fi
 
 # ── 3. 停止旧容器 ──
 log_step "3/5 停止旧容器"
-docker compose stop backend nginx
+docker compose stop backend nginx celery-worker
 
 # ── 4. 启动新容器 ──
 log_step "4/5 启动新容器"
 docker compose up -d postgres redis 2>/dev/null || true
-docker compose up -d backend
+docker compose up -d backend celery-worker
 
 # 等待 backend 健康
 log_info "等待 backend 就绪 (最多 60s)..."

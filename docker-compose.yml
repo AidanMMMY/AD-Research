@@ -63,6 +63,29 @@ services:
     networks:
       - alloyresearch-network
 
+  celery-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: alloyresearch-celery-worker
+    env_file: .env
+    environment:
+      TZ: Asia/Shanghai
+      DATABASE_URL: postgresql+psycopg2://etf:${DB_PASSWORD:-etf_research_password}@postgres:5432/ad_research
+      REDIS_URL: redis://redis:6379/0
+      APP_ENV: ${APP_ENV:-development}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    volumes:
+      - .:/app
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: celery -A app.core.celery_app worker -l info -c 2 -Q celery,indicator,cninfo
+    networks:
+      - alloyresearch-network
+
 volumes:
   postgres_data:
   redis_data:
