@@ -68,9 +68,9 @@ function LivePriceCell({ tick }: { code: string; tick: ReturnType<typeof useMark
 const PAGE_SIZE = 50;
 
 const STATUS_OPTIONS = [
-  { label: '上市', value: 'listed' },
+  { label: '上市', value: 'active' },
   { label: '退市', value: 'delisted' },
-  { label: '暂停', value: 'halted' },
+  { label: '暂停', value: 'suspended' },
 ];
 
 const QDII_OPTIONS = [
@@ -580,7 +580,7 @@ export default function InstrumentList() {
                   ),
                   children: (
                     <div className="instrument-filter-groups">
-                      {/* A股 ETF — 分类 / 跟踪指数 / 管理公司 / 板块 */}
+                      {/* A股 ETF — 分类 / 行业 / 板块 / 跟踪指数 / 管理公司 / 上市板块 */}
                       {showA_shareEtfFilters && (
                         <div className="instrument-filter-group">
                           <div className="instrument-filter-group__title">A 股 ETF</div>
@@ -594,6 +594,30 @@ export default function InstrumentList() {
                                   options={toOptions(categories)}
                                   value={category}
                                   onChange={(v) => { setCategory(v); setPage(1); }}
+                                />
+                              </Col>
+                            )}
+                            {hasOptions(industries) && (
+                              <Col xs={12} sm={8} md={6}>
+                                <Select
+                                  placeholder="行业"
+                                  allowClear
+                                  className="ad-w-full"
+                                  options={toOptions(industries)}
+                                  value={industry}
+                                  onChange={(v) => { setIndustry(v); setPage(1); }}
+                                />
+                              </Col>
+                            )}
+                            {hasOptions(sectors) && (
+                              <Col xs={12} sm={8} md={6}>
+                                <Select
+                                  placeholder="板块"
+                                  allowClear
+                                  className="ad-w-full"
+                                  options={toOptions(sectors)}
+                                  value={sector}
+                                  onChange={(v) => { setSector(v); setPage(1); }}
                                 />
                               </Col>
                             )}
@@ -636,7 +660,7 @@ export default function InstrumentList() {
                             {hasOptions(boards) && (
                               <Col xs={12} sm={8} md={6}>
                                 <Select
-                                  placeholder="板块"
+                                  placeholder="上市板块"
                                   allowClear
                                   className="ad-w-full"
                                   options={toOptions(boards)}
@@ -649,7 +673,7 @@ export default function InstrumentList() {
                         </div>
                       )}
 
-                      {/* A股 STOCK — 行业 / 板块 / 状态 */}
+                      {/* A股 STOCK — 行业 / 板块 / 上市板块 / 状态 */}
                       {showA_shareStockFilters && (
                         <div className="instrument-filter-group">
                           <div className="instrument-filter-group__title">A 股个股</div>
@@ -657,12 +681,24 @@ export default function InstrumentList() {
                             {hasOptions(industries) && (
                               <Col xs={12} sm={8} md={6}>
                                 <Select
-                                  placeholder="行业 (申万一级)"
+                                  placeholder="行业"
                                   allowClear
                                   className="ad-w-full"
                                   options={toOptions(industries)}
                                   value={industry}
                                   onChange={(v) => { setIndustry(v); setPage(1); }}
+                                />
+                              </Col>
+                            )}
+                            {hasOptions(sectors) && (
+                              <Col xs={12} sm={8} md={6}>
+                                <Select
+                                  placeholder="板块"
+                                  allowClear
+                                  className="ad-w-full"
+                                  options={toOptions(sectors)}
+                                  value={sector}
+                                  onChange={(v) => { setSector(v); setPage(1); }}
                                 />
                               </Col>
                             )}
@@ -681,7 +717,7 @@ export default function InstrumentList() {
                             {hasOptions(boards) && (
                               <Col xs={12} sm={8} md={6}>
                                 <Select
-                                  placeholder="板块"
+                                  placeholder="上市板块"
                                   allowClear
                                   className="ad-w-full"
                                   options={toOptions(boards)}

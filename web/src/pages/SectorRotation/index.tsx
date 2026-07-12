@@ -462,7 +462,7 @@ export default function SectorRotation() {
           variant="default"
           className="ad-mb-4"
         >
-          <div className="ad-stack-full">
+          <div className="sector-rotation__signal-grid">
             {signals.map((signal, idx) => (
               <Alert
                 key={`${signal.sector}-${idx}`}
@@ -588,6 +588,7 @@ export default function SectorRotation() {
         title="行业板块详细数据"
         variant="default"
         padding="none"
+        className="sector-rotation__detail-panel"
       >
         <Tabs
           className="ad-px-4"

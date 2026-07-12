@@ -2,6 +2,33 @@
    SectorRotation — Page-specific styles
    ========================================================================== */
 
+/* ---- Rotation signals: two-column grid on desktop, single column on mobile ---- */
+.sector-rotation__signal-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-3);
+  width: 100%;
+}
+
+@media (max-width: 768px) {
+  .sector-rotation__signal-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.sector-rotation__signal-grid .ant-alert {
+  margin-bottom: 0;
+}
+
+/* ---- Detail panel: keep body flush while aligning header with other panels ---- */
+.sector-rotation__detail-panel.ad-panel--padding-none .ad-panel__header {
+  padding: var(--space-4) var(--space-5) var(--space-3);
+}
+
+.sector-rotation__detail-panel.ad-panel--padding-none .ad-panel__body {
+  padding: 0;
+}
+
 /* ---- Rotation signals: single-line row layout ---- */
 .sector-rotation__signal-row {
   display: flex;

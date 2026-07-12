@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Row, Col, Radio, Spin } from 'antd';
+import { Radio, Spin } from 'antd';
 import { useQuery } from '@tanstack/react-query';
 import { marketApi } from '@/api/market';
 import { useInstrumentList } from '@/hooks/useInstrumentList';
@@ -90,16 +90,16 @@ export default function ReturnComparison() {
         description="对比多只标的的历史收益曲线，支持归一化和日收益率两种模式"
       />
       <Panel title="收益曲线对比配置" variant="default">
-        <FilterToolbar>
-          <Row gutter={[16, 16]}>
-            <Col xs={24} md={12}>
+        <FilterToolbar className="return-comparison__config">
+          <div className="return-comparison__config-grid">
+            <div className="return-comparison__config-cell return-comparison__config-cell--instruments">
               <InstrumentSelector
                 value={selectedCodes}
                 onChange={setSelectedCodes}
                 maxCount={10}
               />
-            </Col>
-            <Col xs={24} md={6}>
+            </div>
+            <div className="return-comparison__config-cell return-comparison__config-cell--time-range">
               <div className="ad-filter-label">时间范围：</div>
               <Radio.Group
                 value={timeRange}
@@ -113,8 +113,8 @@ export default function ReturnComparison() {
                   </Radio.Button>
                 ))}
               </Radio.Group>
-            </Col>
-            <Col xs={24} md={6}>
+            </div>
+            <div className="return-comparison__config-cell return-comparison__config-cell--display-mode">
               <div className="ad-filter-label">显示模式：</div>
               <Radio.Group
                 value={mode}
@@ -129,8 +129,8 @@ export default function ReturnComparison() {
                   <HelpPopover termKey="daily_return" mode={settingsMode}>日收益</HelpPopover>
                 </Radio.Button>
               </Radio.Group>
-            </Col>
-          </Row>
+            </div>
+          </div>
         </FilterToolbar>
       </Panel>
 

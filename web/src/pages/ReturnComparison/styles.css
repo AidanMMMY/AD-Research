@@ -4,3 +4,70 @@
    classes; this file serves as the page-scoped stylesheet for future
    additions.
    ========================================================================== */
+
+/* ------------------------------------------------------------------------
+   配置区域网格布局
+   ------------------------------------------------------------------------
+   问题根因：FilterToolbar 默认使用 flex-wrap，且 .filter-toolbar__filters
+   没有固定宽度，其内部 Ant Design 的 Row 作为 flex item 宽度由内容决定。
+   InstrumentSelector 的「快速选择」chip 是异步加载的，内容宽度从窄变宽，
+   导致父容器在加载前后重新计算宽度，出现先折叠/换行、随后恢复的现象。
+
+   修复：将对比配置区域改为 CSS Grid，明确三列宽度（2:1:1），使桌面端列宽
+   不受异步内容宽度影响，避免初始 layout shift。
+   ------------------------------------------------------------------------ */
+
+.return-comparison__config .filter-toolbar__filters {
+  width: 100%;
+  flex: 1 1 100%;
+}
+
+.return-comparison__config-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(200px, 1fr) minmax(200px, 1fr);
+  gap: var(--space-filter-gap);
+  align-items: start;
+  width: 100%;
+}
+
+.return-comparison__config-cell {
+  min-width: 0;
+}
+
+/* 时间范围、显示模式两列保持足够宽度，避免按钮被压到换行 */
+.return-comparison__config-cell--time-range,
+.return-comparison__config-cell--display-mode {
+  min-width: 180px;
+}
+
+/* 桌面端让单选按钮组保持在一行 */
+.return-comparison__config-cell--time-range .ant-radio-group,
+.return-comparison__config-cell--display-mode .ant-radio-group {
+  white-space: nowrap;
+}
+
+/* 为异步加载的 chip 列表保留最小高度，减少加载完成时的高度跳变 */
+.return-comparison__config-cell--instruments .instrument-selector__presets {
+  min-height: 48px;
+}
+
+/* 移动端：恢复垂直堆叠，允许自然换行 */
+@media (max-width: 767px) {
+  .return-comparison__config-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .return-comparison__config-cell--time-range,
+  .return-comparison__config-cell--display-mode {
+    min-width: 0;
+  }
+
+  .return-comparison__config-cell--time-range .ant-radio-group,
+  .return-comparison__config-cell--display-mode .ant-radio-group {
+    white-space: normal;
+  }
+
+  .return-comparison__config-cell--instruments .instrument-selector__presets {
+    min-height: auto;
+  }
+}
