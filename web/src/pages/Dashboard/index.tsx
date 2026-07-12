@@ -960,7 +960,7 @@ export default function Dashboard() {
         />
 
         {/* Scores + Hot News side by side */}
-        <ResponsiveGrid cols={2} gap="lg">
+        <ResponsiveGrid cols={2} gap="lg" stretch>
           {/* Score rankings — Top 10 */}
           <Panel
             variant="default"
