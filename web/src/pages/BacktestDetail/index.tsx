@@ -14,6 +14,7 @@ import { useBacktestDetail } from '@/hooks/useBacktests';
 import { useAttribution } from '@/hooks/useAttribution';
 import { useAIHelp } from '@/hooks/useAIHelp';
 import { useSettingsStore } from '@/stores/settings';
+import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
 import ReactECharts from 'echarts-for-react';
 import type { EChartsOption } from 'echarts';
 import { buildBacktestDetailContext } from '@/utils/helpContext';
@@ -29,6 +30,10 @@ export default function BacktestDetail() {
   const { data: attribution, isLoading: attributionLoading } = useAttribution(id || '');
   const { open } = useAIHelp();
   const mode = useSettingsStore((s) => s.mode);
+  // Apple Design #14: react to live changes of prefers-reduced-motion via a
+  // matchMedia subscription (the existing hook handles listener registration
+  // and teardown).
+  const prefersReducedMotion = usePrefersReducedMotion();
 
   if (isLoading) {
     return (
@@ -96,18 +101,14 @@ export default function BacktestDetail() {
 
   // Apple Design #14: respect prefers-reduced-motion — the NAV curve renders
   // instantly instead of animating in (cross-fade/instant is the Apple
-  // reduced-motion pattern for non-interactive content).
-  const prefersReducedMotion =
-    typeof window !== 'undefined' &&
-    typeof window.matchMedia === 'function' &&
-    window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-
+  // reduced-motion pattern for non-interactive content). Uses the
+  // usePrefersReducedMotion hook above so live OS changes are observed.
   const navData: BacktestNAV[] = data.daily_nav || [];
   const navOption: EChartsOption = {
-    // Apple Design #4 Springs: critically-damped spring equivalent (cubicOut,
+    // Apple Design #4 Springs: critically-damped equivalent (cubicOut,
     // no overshoot) for the initial draw; disabled under reduced motion.
     animation: !prefersReducedMotion,
-    animationDuration: 350,
+    animationDuration: prefersReducedMotion ? 0 : 350,
     animationEasing: 'cubicOut',
     tooltip: {
       trigger: 'axis',

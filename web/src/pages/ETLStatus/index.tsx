@@ -9,6 +9,7 @@ import SectionHeading from '@/components/SectionHeading';
 import FilterToolbar from '@/components/FilterToolbar';
 import './styles.css';
 import StatusTag from '@/components/StatusTag';
+import { useDebounce } from '@/hooks/useDebounce';
 
 const STATUS_OPTIONS = [
   { label: '全部', value: '' },
@@ -21,13 +22,17 @@ const STATUS_OPTIONS = [
 export default function ETLStatus() {
   const [status, setStatus] = useState('');
   const [jobName, setJobName] = useState('');
+  // Apple Design #1 Response — debounce the query so each keystroke doesn't
+  // fire a request; only the settled value (after 300 ms of idle) hits the
+  // network, keeping the input feel instant while saving the backend.
+  const debouncedJobName = useDebounce(jobName, 300);
   const { data, isLoading } = useQuery({
-    queryKey: ['etl-status', status, jobName],
+    queryKey: ['etl-status', status, debouncedJobName],
     queryFn: () =>
       etlApi
         .status({
           status: status || undefined,
-          job_name: jobName || undefined,
+          job_name: debouncedJobName || undefined,
           limit: 50,
         })
         .then((r) => r.data),

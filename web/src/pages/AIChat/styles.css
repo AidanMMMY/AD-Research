@@ -41,6 +41,15 @@
   align-items: center;
   background: transparent;
   border: 1px solid transparent;
+  /* Native <button> rendering — strip default UA styles so it matches the
+     sidebar visual language. Agency: keyboard focus + Enter/Space already
+     work because this is a real button element. */
+  appearance: none;
+  -webkit-appearance: none;
+  font: inherit;
+  color: inherit;
+  width: 100%;
+  text-align: left;
   transition:
     background var(--transition-fast),
     border-color var(--transition-fast),
@@ -51,6 +60,11 @@
 .ad-chat-sidebar__item:hover,
 .ad-chat-sidebar__item:focus-visible {
   background: var(--bg-hover);
+}
+
+.ad-chat-sidebar__item:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
 }
 
 /* Pointer-down instant feedback — fires on press, not release */
@@ -174,7 +188,12 @@
   padding: var(--space-3) var(--space-5);
   border-top: 1px solid var(--border-default);
   /* Material layer: translucent surface with backdrop blur so scrolled
-     content reads through it — encodes the input bar's elevated depth. */
+     content reads through it — encodes the input bar's elevated depth.
+     Sticky on both desktop and mobile so the input stays anchored while
+     the user scrolls through long histories (Materials & depth). */
+  position: sticky;
+  bottom: 0;
+  z-index: 10;
   background: color-mix(in srgb, var(--card-bg) 85%, transparent);
   -webkit-backdrop-filter: saturate(180%) blur(12px);
   backdrop-filter: saturate(180%) blur(12px);
@@ -278,9 +297,6 @@
 
   .ad-input-bar {
     padding: var(--space-3) var(--space-4) calc(var(--space-3) + env(safe-area-inset-bottom, 0px));
-    position: sticky;
-    bottom: 0;
-    z-index: 10;
   }
 
   .ad-quick-prompts {

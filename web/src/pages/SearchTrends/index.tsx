@@ -14,6 +14,7 @@ import EmptyState from '@/components/EmptyState';
 import StatCard from '@/components/StatCard';
 import LastUpdated from '@/components/LastUpdated';
 import ThemeTag from '@/components/ThemeTag';
+import { useDebounce } from '@/hooks/useDebounce';
 import {
   useSearchTrendList,
   useSearchTrendDashboard,
@@ -31,7 +32,8 @@ import type { SearchTrend } from '@/api/searchTrends';
  */
 const ADX_STYLE = `
 .adx-search-trends {
-  --adx-spring: cubic-bezier(0.5, 1.6, 0.3, 1);
+  /* Critically-damped monotonic curve: y2 ≤ 1, no overshoot. */
+  --adx-spring: cubic-bezier(0.32, 0.72, 0, 1);
   --adx-ease-out: cubic-bezier(0.22, 0.9, 0.3, 1);
 }
 .adx-search-trends .ant-btn {
@@ -106,20 +108,26 @@ export default function SearchTrendsPage() {
   const [page, setPage] = useState(1);
   const [compareKeyword, setCompareKeyword] = useState<string | null>(null);
 
+  // Debounce the text inputs that flow into React Query keys. Each input
+  // fires a fresh request on every keystroke otherwise — coalescing into
+  // 250 ms keeps the network/UI in sync without feeling laggy.
+  const debouncedSearchText = useDebounce(searchText, 250);
+  const debouncedCompareKeyword = useDebounce(compareKeyword, 250);
+
   const listParams = useMemo(
     () => ({
       page,
       page_size: 20,
       source,
       category,
-      keyword: searchText || undefined,
+      keyword: debouncedSearchText || undefined,
     }),
-    [page, source, category, searchText],
+    [page, source, category, debouncedSearchText],
   );
 
   const { data: dashboard, dataUpdatedAt, isLoading: dashLoading } = useSearchTrendDashboard();
   const { data: listData, isLoading: listLoading } = useSearchTrendList(listParams);
-  const { data: compareData, isLoading: compareLoading } = useSearchTrendCompare(compareKeyword, 30);
+  const { data: compareData, isLoading: compareLoading } = useSearchTrendCompare(debouncedCompareKeyword, 30);
   const refreshMutation = useRefreshSearchTrends();
 
   const handleRefresh = async () => {

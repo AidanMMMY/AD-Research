@@ -41,14 +41,13 @@
   background: var(--accent-dim);
 }
 
-/* ── KPI cells: press feedback + optical typography ── */
+/* ── KPI cells: optical typography only (non-interactive) ──
+   The buy/sell/hold counts are read-only numeric metrics — pressing
+   them should not feel like a button. We keep typography tweaks but
+   drop the :active scale that previously implied interactivity
+   (Familiarity principle). */
 .ad-kpi-cell {
-  transition: transform var(--transition-spring-fast);
-  will-change: transform;
-}
-
-.ad-kpi-cell:active {
-  transform: scale(0.98);
+  /* No transforms — this cell has no onPress handler. */
 }
 
 /* Large numerals: negative tracking, mirroring SF large optical sizes */
@@ -61,9 +60,29 @@
   letter-spacing: 0.01em;
 }
 
-/* ── Table rows: fast background-only hover feedback ── */
+/* ── Table rows: gesture feedback on pointer-down ──
+   Rows open the signal detail drawer — wire cursor + spring-eased
+   background pulse so the click target feels immediate. */
 .ad-table-scroll .ant-table-tbody > tr {
-  transition: background var(--transition-fast);
+  cursor: pointer;
+  transition:
+    background var(--transition-fast),
+    transform var(--transition-spring-fast);
+  will-change: transform;
+}
+
+.ad-table-scroll .ant-table-tbody > tr:hover {
+  background: var(--bg-hover);
+}
+
+.ad-table-scroll .ant-table-tbody > tr:active {
+  background: var(--accent-dim);
+  transform: scale(0.998);
+}
+
+.ad-table-scroll .ant-table-tbody > tr:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
 }
 
 /* ── Table wrapper ── */
@@ -72,7 +91,7 @@
 /* ── Reduced motion: remove transforms, keep color/opacity changes ── */
 @media (prefers-reduced-motion: reduce) {
   .signal-dashboard__view-link,
-  .ad-kpi-cell {
+  .ad-table-scroll .ant-table-tbody > tr {
     transition:
       color var(--transition-fast),
       background var(--transition-fast);
@@ -80,7 +99,7 @@
   }
 
   .signal-dashboard__view-link:active,
-  .ad-kpi-cell:active {
+  .ad-table-scroll .ant-table-tbody > tr:active {
     transform: none;
   }
 }

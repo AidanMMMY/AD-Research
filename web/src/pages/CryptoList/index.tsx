@@ -1,6 +1,6 @@
 import './styles.css';
 
-import { useMemo, useState, type ReactNode } from 'react';
+import { useMemo, useState, type KeyboardEvent, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Table, Input, Select, List, Skeleton } from 'antd';
 import { SearchOutlined } from '@ant-design/icons';
@@ -26,7 +26,8 @@ import ThemeTag from '@/components/ThemeTag';
  */
 const ADX_STYLE = `
 .adx-crypto-list {
-  --adx-spring: cubic-bezier(0.5, 1.6, 0.3, 1);
+  /* Critically-damped monotonic curve: y2 ≤ 1, no overshoot. */
+  --adx-spring: cubic-bezier(0.32, 0.72, 0, 1);
   --adx-ease-out: cubic-bezier(0.22, 0.9, 0.3, 1);
 }
 .adx-crypto-list .ant-btn,
@@ -48,12 +49,16 @@ const ADX_STYLE = `
   background-color: var(--bg-active);
   transition-duration: 0ms;
 }
+/* Heading typography: keep inverse leading, but skip the negative
+   tracking that would compress CJK glyphs (zh/ja/ko). Negative tracking
+   is only meaningful for Latin/numeric runs; headings here are mixed
+   CJK so we drop it and rely on inverse leading alone. */
 .adx-crypto-list h1,
 .adx-crypto-list h2,
 .adx-crypto-list .ant-typography h1,
 .adx-crypto-list .ant-typography h2 {
-  letter-spacing: -0.02em;
   line-height: 1.18;
+  letter-spacing: normal;
 }
 .adx-crypto-list .ad-text-xs,
 .adx-crypto-list .ad-text-small {
@@ -109,7 +114,9 @@ export default function CryptoList() {
   const filters = useCryptoStore();
   const [page, setPage] = useState(1);
   const pageLoadedAt = useMemo(() => new Date().toISOString(), []);
-  const debouncedSearch = useDebounce(filters.search, 300);
+  // Shorter debounce: 150ms is below the "feels laggy" threshold while
+  // still coalescing burst keystrokes into one network request.
+  const debouncedSearch = useDebounce(filters.search, 150);
 
   const { data, isLoading } = useCryptoList({
     search: debouncedSearch || undefined,
@@ -119,6 +126,22 @@ export default function CryptoList() {
     page,
     page_size: 50,
   });
+
+  // Client-side optimistic filter: when the user types faster than the
+  // debounced fetch returns, hide rows that obviously don't match so the
+  // UI reacts within the same frame as the keystroke.
+  const visibleItems = useMemo(() => {
+    const items = data?.items ?? [];
+    const live = filters.search.trim();
+    if (!live || live === debouncedSearch) return items;
+    const needle = live.toUpperCase();
+    return items.filter(
+      (it) =>
+        it.code?.toUpperCase().includes(needle) ||
+        it.name?.toUpperCase().includes(needle) ||
+        it.name_zh?.includes(live),
+    );
+  }, [data?.items, filters.search, debouncedSearch]);
 
   const tableWrapClass = 'ad-table-scroll ad-table-sticky';
 
@@ -263,10 +286,19 @@ export default function CryptoList() {
           ) : (
             <List
               className="ad-list-compact"
-              dataSource={data?.items ?? []}
+              dataSource={visibleItems}
               renderItem={(item: any) => (
                 <div
+                  role="button"
+                  tabIndex={0}
+                  aria-label={`查看 ${item.name ?? item.code} 详情`}
                   onClick={() => navigate(`/crypto/${item.code}`)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      navigate(`/crypto/${item.code}`);
+                    }
+                  }}
                   className="mobile-list-item"
                 >
                   <div className="mobile-list-item__row">
@@ -300,13 +332,21 @@ export default function CryptoList() {
           <div className={tableWrapClass}>
             <Table
               columns={columns}
-              dataSource={data?.items ?? []}
+              dataSource={visibleItems}
               rowKey="code"
               loading={isLoading}
               size="small"
               scroll={{ x: 'max-content' }}
               onRow={(record) => ({
                 onClick: () => navigate(`/crypto/${record.code}`),
+                onKeyDown: (e: KeyboardEvent<HTMLTableRowElement>) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    navigate(`/crypto/${record.code}`);
+                  }
+                },
+                tabIndex: 0,
+                'aria-label': `查看 ${record.name ?? record.code} 详情`,
               })}
               pagination={{
                 current: page,

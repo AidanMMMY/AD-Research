@@ -570,6 +570,14 @@ export default function TradingPanel() {
         confirmLoading={createConfig.isPending}
         width={isMobile ? '100%' : 520}
         destroyOnClose
+        // Spring-eased dialog transitions + transform-origin anchored to
+        // the page top so the modal enters along a single vertical path
+        // (Springs + Spatial consistency). The CSS variables come from
+        // theme.css; the wrapper class hooks .ant-modal at styles.css.
+        transitionName="ad-modal-spring"
+        maskTransitionName="ad-fade-spring"
+        rootClassName="ad-modal-spring-root"
+        className="ad-modal-spring"
       >
         <Form
           form={createForm}
@@ -614,6 +622,10 @@ export default function TradingPanel() {
         confirmLoading={placeOrder.isPending}
         width={isMobile ? '100%' : 520}
         destroyOnClose
+        transitionName="ad-modal-spring"
+        maskTransitionName="ad-fade-spring"
+        rootClassName="ad-modal-spring-root"
+        className="ad-modal-spring"
       >
         <Form
           form={orderForm}

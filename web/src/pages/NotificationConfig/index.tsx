@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import {
-  Table, Button, Modal, Form, Input, Select, Switch, Space, message, Alert, Tabs,
+  Table, Button, Modal, Form, Input, Select, Switch, Space, message, Alert, Tabs, Popconfirm,
 } from 'antd';
 import PageShell from '@/components/PageShell';
 import PageHeader from '@/components/PageHeader';
@@ -11,6 +11,7 @@ import EmptyState from '@/components/EmptyState';
 import ThemeTag from '@/components/ThemeTag';
 import { useNotifications } from '@/hooks/useNotifications';
 import { useIsMobile } from '@/hooks/useBreakpoint';
+import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
 import { PlusOutlined, DeleteOutlined, SendOutlined, MailOutlined, LinkOutlined } from '@ant-design/icons';
 
 const CHANNEL_OPTIONS = [
@@ -23,23 +24,6 @@ const PLATFORM_OPTIONS = [
   { label: '飞书', value: 'feishu' },
   { label: '钉钉', value: 'dingtalk' },
 ];
-
-// Apple Design #14 — prefers-reduced-motion: Modals render without zoom/fade
-// motion (transitionName '' => instant cross-fade) when the user asks for less.
-function usePrefersReducedMotion() {
-  const [reduced, setReduced] = useState(
-    () =>
-      typeof window !== 'undefined' &&
-      window.matchMedia('(prefers-reduced-motion: reduce)').matches
-  );
-  useEffect(() => {
-    const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
-    const onChange = () => setReduced(mq.matches);
-    mq.addEventListener('change', onChange);
-    return () => mq.removeEventListener('change', onChange);
-  }, []);
-  return reduced;
-}
 
 export default function NotificationConfigPage() {
   const isMobile = useIsMobile();
@@ -163,9 +147,18 @@ export default function NotificationConfigPage() {
           <Button size="small" icon={<SendOutlined />} onClick={() => handleTest(record.id)}>
             测试
           </Button>
-          <Button size="small" danger icon={<DeleteOutlined />} onClick={() => handleDelete(record.id)}>
-            删除
-          </Button>
+          <Popconfirm
+            title="确认删除"
+            description={`确定要删除推送配置「${record.name}」吗？此操作不可撤销。`}
+            onConfirm={() => handleDelete(record.id)}
+            okText="删除"
+            cancelText="取消"
+            okButtonProps={{ danger: true }}
+          >
+            <Button size="small" danger icon={<DeleteOutlined />}>
+              删除
+            </Button>
+          </Popconfirm>
         </Space>
       ),
     },

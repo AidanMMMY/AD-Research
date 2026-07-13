@@ -1,13 +1,14 @@
 import './styles.css';
 import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { Card, Skeleton, Table, Tag, Tooltip } from 'antd';
+import { Alert, Skeleton, Table, Tag, Tooltip } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import {
   DollarOutlined,
   ThunderboltOutlined,
   AppstoreOutlined,
   WarningOutlined,
+  ExperimentOutlined,
 } from '@ant-design/icons';
 import PageShell from '@/components/PageShell';
 import PageHeader from '@/components/PageHeader';
@@ -16,6 +17,7 @@ import EmptyState from '@/components/EmptyState';
 import ResponsiveGrid from '@/components/ResponsiveGrid';
 import SectionHeading from '@/components/SectionHeading';
 import ThemeTag from '@/components/ThemeTag';
+import StatCard from '@/components/StatCard';
 import { usePaperAccounts } from '@/hooks/usePaperTrading';
 import { useLiveConfigs } from '@/hooks/useLiveTrading';
 import { usePoolList } from '@/hooks/usePoolDetail';
@@ -376,11 +378,29 @@ export default function Portfolio() {
           />
         ) : (
           <>
+            {/* Responsibility: surface the mock state explicitly. The actual
+               weights are fabricated client-side, so a banner + an icon on
+               every drift card makes that obvious at a glance. */}
+            <Alert
+              type="warning"
+              showIcon
+              icon={<ExperimentOutlined />}
+              className="portfolio-diff-mock-banner ad-mb-3"
+              message="演示数据"
+              description={
+                <span>
+                  下方漂移卡片的「实际权重」目前为前端 mock（用于演示 diff 视图），
+                  待真实账户持仓聚合接口稳定后将切换为后端实时计算。
+                </span>
+              }
+            />
             <ResponsiveGrid cols={2} gap="sm" className="portfolio-diff-summary" stretch>
               {diffItems.map((d) => (
-                <Card
+                <Panel
                   key={d.code}
-                  size="small"
+                  variant="default"
+                  padding="md"
+                  className="portfolio-diff-card"
                   title={
                     <span>
                       <WarningOutlined className="ad-mr-1" />
@@ -394,11 +414,22 @@ export default function Portfolio() {
                     </ThemeTag>
                   }
                 >
-                  <div className="ad-text-small ad-text-secondary">
-                    目标 {d.targetWeight.toFixed(2)}% · 实际 {d.actualWeight.toFixed(2)}%
+                  <ResponsiveGrid cols={2} gap="sm">
+                    <StatCard
+                      title="目标权重"
+                      value={`${d.targetWeight.toFixed(2)}%`}
+                      bordered={false}
+                    />
+                    <StatCard
+                      title="实际权重 (mock)"
+                      value={`${d.actualWeight.toFixed(2)}%`}
+                      bordered={false}
+                    />
+                  </ResponsiveGrid>
+                  <div className="ad-text-small ad-mt-2 ad-text-tertiary">
+                    {d.reason}
                   </div>
-                  <div className="ad-text-small ad-mt-2">{d.reason}</div>
-                </Card>
+                </Panel>
               ))}
             </ResponsiveGrid>
             <div className="ad-mb-3" />
@@ -411,9 +442,6 @@ export default function Portfolio() {
                 pagination={false}
                 scroll={{ x: 'max-content' }}
               />
-            </div>
-            <div className="ad-mt-2 ad-text-small ad-text-tertiary">
-              注：实际权重当前为前端 mock（用于演示 diff 视图），待真实账户持仓聚合接口稳定后将切换为后端实时计算。
             </div>
           </>
         )}

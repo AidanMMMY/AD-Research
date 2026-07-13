@@ -25,7 +25,8 @@ import { useSettingsStore } from '@/stores/settings';
  */
 const ADX_STYLE = `
 .adx-sentiment-dashboard {
-  --adx-spring: cubic-bezier(0.5, 1.6, 0.3, 1);
+  /* Critically-damped monotonic curve: y2 ≤ 1, no overshoot. */
+  --adx-spring: cubic-bezier(0.32, 0.72, 0, 1);
   --adx-ease-out: cubic-bezier(0.22, 0.9, 0.3, 1);
 }
 .adx-sentiment-dashboard .ant-btn {
@@ -42,8 +43,13 @@ const ADX_STYLE = `
 .adx-sentiment-dashboard .ant-slider-handle:active {
   box-shadow: 0 0 0 6px var(--bg-active);
 }
+/* Use transform: scaleX() instead of animating width — width triggers
+   layout, scaleX is a pure composite op and stays at 60fps.
+   The fill needs an explicit 100% width so scaleX has a reference frame. */
 .adx-sentiment-dashboard .ad-sentiment-bar__fill {
-  transition: width 480ms var(--adx-spring);
+  width: 100%;
+  transform-origin: left center;
+  transition: transform 480ms var(--adx-spring);
 }
 .adx-sentiment-dashboard h1,
 .adx-sentiment-dashboard h2,
@@ -67,6 +73,18 @@ const ADX_STYLE = `
   }
   .adx-sentiment-dashboard .ant-btn:active {
     transform: none;
+  }
+}
+/* Accessibility: prefers-reduced-transparency. GlassCard / Panel surfaces
+   on this page should fall back to solid backgrounds when the user opts
+   out of translucent materials — covers any future backdrop-filter
+   layer as well as the current translucent variants. */
+@media (prefers-reduced-transparency: reduce) {
+  .adx-sentiment-dashboard .glass-card,
+  .adx-sentiment-dashboard .ad-panel {
+    background: var(--card-bg) !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
   }
 }
 `;
@@ -217,11 +235,11 @@ function SentimentCard({ sentiment }: { sentiment: SentimentAggregate }) {
           </ThemeTag>
         </div>
 
-        {/* Score bar — flat accent fill */}
+        {/* Score bar — flat accent fill (composited, not layout) */}
         <div className="ad-sentiment-bar">
           <div
             className="ad-sentiment-bar__fill"
-            style={{ width: `${scorePct}%` }}
+            style={{ transform: `scaleX(${scorePct / 100})` }}
           />
           <div className="ad-sentiment-bar__center" />
         </div>

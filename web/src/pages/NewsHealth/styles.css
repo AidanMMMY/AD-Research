@@ -16,3 +16,24 @@
   /* Wrapper for the last_published_at cell with dynamic colour
      (inline style driven by ageTone() function). */
 }
+
+/* ── Multimodal feedback on polled refresh ──
+   The page polls /news/health every 30s. When a value changes
+   we briefly outline the affected cell so the user sees
+   causality ("this number just changed") rather than the
+   value silently swapping underneath them. The animation is a
+   transform-free colour/box-shadow crossfade so it stays
+   cheap. Reduced-motion users skip it (no jarring flashes). */
+.news-health-cell-changed {
+  animation: news-health-cell-flash 1200ms ease both;
+}
+@keyframes news-health-cell-flash {
+  0%   { background-color: rgba(64, 169, 255, 0.18); box-shadow: inset 0 0 0 1px rgba(64, 169, 255, 0.35); }
+  60%  { background-color: rgba(64, 169, 255, 0.10); box-shadow: inset 0 0 0 1px rgba(64, 169, 255, 0.18); }
+  100% { background-color: transparent; box-shadow: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .news-health-cell-changed {
+    animation: none;
+  }
+}

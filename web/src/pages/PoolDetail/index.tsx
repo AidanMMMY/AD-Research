@@ -121,12 +121,14 @@ export default function PoolDetail() {
     {
       title: '标的',
       render: (_: unknown, record: any) => (
-        <span
-          className="instrument-code-tag--clickable"
+        <button
+          type="button"
+          className="instrument-code-tag--clickable instrument-code-tag--button"
           onClick={() => navigate(`/instruments/${record.etf_code}`)}
+          // Apple Design #10 Agency: keep semantics of a button (Enter/Space).
         >
           <InstrumentCodeTag code={record.etf_code} name={record.etf_name} name_zh={record.name_zh} />
-        </span>
+        </button>
       ),
     },
     { title: '名称', dataIndex: 'etf_name', render: (v: string, record: any) => v || record.name_zh || '-' },
@@ -269,8 +271,24 @@ export default function PoolDetail() {
       <style>{`
         .instrument-code-tag--clickable {
           display: inline-block;
-          transition: transform var(--transition-spring-fast, 0.2s cubic-bezier(0.32, 0.72, 0.32, 1)),
+          transition: transform var(--transition-spring-fast),
             background var(--transition-fast, 150ms ease);
+        }
+        /* Reset native <button> chrome so it stays visually identical to the
+           prior <span> while gaining keyboard semantics. */
+        .instrument-code-tag--button {
+          background: none;
+          border: 0;
+          padding: 0;
+          font: inherit;
+          color: inherit;
+          cursor: pointer;
+          text-align: left;
+        }
+        .instrument-code-tag--button:focus-visible {
+          outline: 2px solid var(--accent, #0072B2);
+          outline-offset: 2px;
+          border-radius: 4px;
         }
         .instrument-code-tag--clickable:active { transform: scale(var(--press-scale-subtle, 0.99)); }
         @media (prefers-reduced-motion: reduce) {

@@ -10,6 +10,75 @@
 /* (paper-pnl--rise / paper-pnl--fall / paper-pnl--neutral are
    shared with PaperTrading and defined there.) */
 
+/* ── Apple Design: spring-eased modal motion ──
+   Replace antd's default CSS zoom with a critically-damped spring
+   that anchors its transform-origin to the page-top header — same
+   vertical axis as the page header that triggered the open. We avoid
+   transitions on width/height so the GPU stays on the cheap path. */
+.ad-modal-spring .ant-modal {
+  transform-origin: 50% 0%;
+}
+
+.ad-modal-spring-root .ant-modal-mask,
+.ad-modal-spring-root.ant-modal-mask {
+  /* opacity-only on the mask so the backdrop fades in cheaply. */
+}
+
+@keyframes ad-modal-spring-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes ad-modal-spring-out {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(12px) scale(0.98);
+  }
+}
+
+/* Override antd's default "ant-zoom-enter/leave" wrappers used by
+   transitionName="ad-modal-spring". Spring ease, transform/opacity
+   only, anchored to the header origin so it appears to bloom from
+   the trigger. */
+.ad-modal-spring-root .ant-modal.ad-modal-spring-enter,
+.ad-modal-spring-root .ant-modal.ad-modal-spring-appear {
+  animation: ad-modal-spring-in var(--spring-response) var(--ease-spring) both;
+}
+
+.ad-modal-spring-root .ant-modal.ad-modal-spring-leave {
+  animation: ad-modal-spring-out var(--transition-base) var(--ease-spring) both;
+}
+
+@keyframes ad-mask-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes ad-mask-fade-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+.ad-modal-spring-root .ant-modal-mask.ad-fade-spring-enter,
+.ad-modal-spring-root .ant-modal-mask.ad-fade-spring-appear {
+  animation: ad-mask-fade-in var(--transition-base) var(--ease-spring) both;
+}
+
+.ad-modal-spring-root .ant-modal-mask.ad-fade-spring-leave {
+  animation: ad-mask-fade-out var(--transition-fast) linear both;
+}
+
+
 /* ── PnL colour helpers (also used in this page) ── */
 .paper-pnl--rise {
   color: var(--color-rise);

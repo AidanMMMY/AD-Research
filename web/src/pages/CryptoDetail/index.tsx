@@ -36,7 +36,8 @@ import type { OHLCV } from '@/types/instrument';
  */
 const ADX_STYLE = `
 .adx-crypto-detail {
-  --adx-spring: cubic-bezier(0.5, 1.6, 0.3, 1);
+  /* Critically-damped monotonic curve: y2 ≤ 1, no overshoot. */
+  --adx-spring: cubic-bezier(0.32, 0.72, 0, 1);
   --adx-ease-out: cubic-bezier(0.22, 0.9, 0.3, 1);
 }
 .adx-crypto-detail .ant-btn {

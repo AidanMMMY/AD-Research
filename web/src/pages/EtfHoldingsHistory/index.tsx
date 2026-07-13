@@ -29,6 +29,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
+import { useDebounce } from '@/hooks/useDebounce';
 import {
   Button,
   DatePicker,
@@ -36,6 +37,7 @@ import {
   Segmented,
   Skeleton,
   Space,
+  Spin,
   Table,
   Tag,
   Tooltip,
@@ -51,7 +53,7 @@ import {
   StockOutlined,
 } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
-import dayjs, { type Dayjs } from 'dayjs';
+import dayjs from 'dayjs';
 import PageShell from '@/components/PageShell';
 import PageHeader from '@/components/PageHeader';
 import Panel from '@/components/Panel';
@@ -204,19 +206,6 @@ export default function EtfHoldingsHistoryPage() {
     holdingsQ.refetch();
     diffQ.refetch();
     message.success('已刷新');
-  };
-
-  const handleDiffApply = (from: Dayjs | null, to: Dayjs | null) => {
-    if (!from || !to) {
-      message.warning('请选择 from / to 两个日期');
-      return;
-    }
-    if (from.isSame(to)) {
-      message.warning('from 与 to 不能相同');
-      return;
-    }
-    setDiffFrom(from.format('YYYY-MM-DD'));
-    setDiffTo(to.format('YYYY-MM-DD'));
   };
 
   // -- Columns: snapshot table --------------------------------------------
@@ -505,6 +494,10 @@ export default function EtfHoldingsHistoryPage() {
       </div>
 
       {/* Body: timeline (left) + content (right) */}
+      <div
+        key={view}
+        className="ehh-mode-fade"
+      >
       {view === 'snapshot' ? (
         <div className="ehh-snapshot-layout">
           {/* Timeline */}
@@ -623,17 +616,6 @@ export default function EtfHoldingsHistoryPage() {
                   diffFrom ? d.isBefore(dayjs(diffFrom)) : false
                 }
               />
-              <Button
-                type="primary"
-                onClick={() =>
-                  handleDiffApply(
-                    diffFrom ? dayjs(diffFrom) : null,
-                    diffTo ? dayjs(diffTo) : null,
-                  )
-                }
-              >
-                应用
-              </Button>
             </Space>
           </Panel>
 
@@ -697,6 +679,7 @@ export default function EtfHoldingsHistoryPage() {
           </Panel>
         </div>
       )}
+      </div>
     </PageShell>
   );
 }
@@ -708,9 +691,13 @@ export default function EtfHoldingsHistoryPage() {
 // ---------------------------------------------------------------------------
 function EtfPickerView({ onPick }: { onPick: (code: string) => void }) {
   const [search, setSearch] = useState('');
+  /* Response: debounce the picker search so each keystroke does not fire a
+     new instrument-list request. 250ms keeps it responsive while cutting
+     noise from rapid typing. */
+  const debouncedSearch = useDebounce(search, 250);
   const listQ = useInstrumentList({
     instrument_type: 'ETF',
-    search: search || undefined,
+    search: debouncedSearch || undefined,
     page: 1,
     page_size: 50,
   });
@@ -782,6 +769,7 @@ function EtfPickerView({ onPick }: { onPick: (code: string) => void }) {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="ehh-picker-search"
+            suffix={listQ.isFetching ? <Spin size="small" /> : null}
           />
         }
       >

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Table, Button, Alert, Descriptions } from 'antd';
 import PageShell from '@/components/PageShell';
 import PageHeader from '@/components/PageHeader';
@@ -7,12 +7,17 @@ import FilterToolbar from '@/components/FilterToolbar';
 import EmptyState from '@/components/EmptyState';
 import ThemeTag from '@/components/ThemeTag';
 import { useScanner } from '@/hooks/useScanner';
+import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
 import { ReloadOutlined } from '@ant-design/icons';
 import type { ScanResult } from '@/types/scanner';
 
 export default function MarketScanner() {
   const [lastScan, setLastScan] = useState<ScanResult | null>(null);
   const { logs, isLoading, scan, isScanning } = useScanner();
+  // Apple Design #14: drop intro animation entirely when the user prefers
+  // reduced motion (and #12 always removes will-change after animationend).
+  const prefersReducedMotion = usePrefersReducedMotion();
+  const resultWrapperRef = useRef<HTMLDivElement | null>(null);
 
   const handleScan = async () => {
     try {
@@ -22,6 +27,21 @@ export default function MarketScanner() {
       // error handled by mutation
     }
   };
+
+  // Apple Design #11 Frame smoothness: clear will-change as soon as the
+  // intro animation finishes so the layer is not kept composited
+  // indefinitely. Skip when reduced-motion is requested (no animation runs).
+  useEffect(() => {
+    if (!lastScan || prefersReducedMotion) return;
+    const el = resultWrapperRef.current;
+    if (!el) return;
+    const onEnd = () => {
+      el.style.willChange = 'auto';
+      el.removeEventListener('animationend', onEnd);
+    };
+    el.addEventListener('animationend', onEnd);
+    return () => el.removeEventListener('animationend', onEnd);
+  }, [lastScan, prefersReducedMotion]);
 
   const columns = [
     { title: '扫描日期', dataIndex: 'scan_date', width: 120 },
@@ -36,19 +56,23 @@ export default function MarketScanner() {
   return (
     <PageShell maxWidth="wide">
       {/* Apple Design #12 Materials & depth: the scan-result panel materializes
-          (slide + fade along a single path, critically-damped spring curve)
-          instead of popping in. #14: reduced motion renders it instantly. */}
+          (slide + fade along a single path, critically-damped --ease-spring,
+          damping 1.0) instead of popping in. #14: reduced motion renders it
+          instantly and skips the animation entirely. will-change is scoped to
+          the animation lifetime and cleared on animationend so we never pay
+          for a permanently composited layer. */}
       <style>{`
-        .market-scanner-result {
-          animation: market-scanner-materialize 0.35s var(--ease-spring, cubic-bezier(0.32, 0.72, 0.32, 1)) both;
-          will-change: transform, opacity;
-        }
         @keyframes market-scanner-materialize {
           from { opacity: 0; transform: translateY(8px); }
           to { opacity: 1; transform: translateY(0); }
         }
-        @media (prefers-reduced-motion: reduce) {
-          .market-scanner-result { animation: none; will-change: auto; }
+        .market-scanner-result {
+          animation: market-scanner-materialize 0.35s var(--ease-spring) both;
+          will-change: transform, opacity;
+        }
+        .market-scanner-result.is-reduced-motion {
+          animation: none;
+          will-change: auto;
         }
       `}</style>
       <PageHeader
@@ -72,7 +96,14 @@ export default function MarketScanner() {
       </Panel>
 
       {result && (
-        <Panel className="ad-mb-5 market-scanner-result" title={`扫描结果 - ${result.scan_date}`}>
+        <div
+          ref={resultWrapperRef}
+          className={`ad-mb-5 market-scanner-result${prefersReducedMotion ? ' is-reduced-motion' : ''}`}
+        >
+        <Panel
+          className="ad-mb-0"
+          title={`扫描结果 - ${result.scan_date}`}
+        >
           {result.error ? (
             <Alert type="error" message={result.error} />
           ) : (
@@ -101,6 +132,7 @@ export default function MarketScanner() {
             </div>
           )}
         </Panel>
+        </div>
       )}
 
       <Panel title="扫描历史">

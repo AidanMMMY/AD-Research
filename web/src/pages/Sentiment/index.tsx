@@ -7,7 +7,6 @@ import {
   Skeleton,
   Tooltip,
   Select,
-  message,
   Space,
   Alert,
   Button,
@@ -51,14 +50,17 @@ import './styles.css';
  */
 const ADX_STYLE = `
 .adx-sentiment {
-  --adx-spring: cubic-bezier(0.5, 1.6, 0.3, 1);
+  /* Critically-damped monotonic curve: y2 ≤ 1, no overshoot. */
+  --adx-spring: cubic-bezier(0.32, 0.72, 0, 1);
   --adx-ease-out: cubic-bezier(0.22, 0.9, 0.3, 1);
 }
 .adx-sentiment .ant-btn,
 .adx-sentiment .ad-heatmap-cell,
 .adx-sentiment .ad-mover-row {
   touch-action: manipulation;
-  transition: transform 240ms var(--adx-spring), background-color 140ms var(--adx-ease-out), box-shadow 140ms var(--adx-ease-out);
+  /* Drop box-shadow from the press transition — paint-level on a dense
+     grid kills frame smoothness. Use transform + background-color only. */
+  transition: transform 240ms var(--adx-spring), background-color 140ms var(--adx-ease-out);
 }
 .adx-sentiment .ant-btn:active,
 .adx-sentiment .ad-heatmap-cell:active,
@@ -429,6 +431,27 @@ export default function SentimentOverview() {
     return list.sort((a, b) => b.count - a.count);
   }, [aggregates, search]);
 
+  // Pre-compute a symbol → average-importance lookup once per article fetch.
+  // Previously this was recomputed inside every cell render, making the
+  // heatmap O(cells × articles) per state change.
+  const avgImportanceBySymbol = useMemo(() => {
+    const map = new Map<string, ImportanceLevel | null>();
+    const totals = new Map<string, { sum: number; count: number }>();
+    for (const a of data ?? []) {
+      const w = a.importance ?? 3;
+      for (const s of a.symbols) {
+        const cur = totals.get(s.symbol) ?? { sum: 0, count: 0 };
+        cur.sum += w;
+        cur.count += 1;
+        totals.set(s.symbol, cur);
+      }
+    }
+    for (const [sym, { sum, count }] of totals) {
+      map.set(sym, count > 0 ? Math.round(sum / count) as ImportanceLevel : null);
+    }
+    return map;
+  }, [data]);
+
   // Compute distribution for the selected symbol (used in detail strip).
   const selected = useMemo(
     () => (selectedSymbol ? aggregates.find((a) => a.symbol === selectedSymbol) ?? null : null),
@@ -526,15 +549,9 @@ export default function SentimentOverview() {
             ) : (
               <div className="ad-heatmap-grid">
                 {filtered.map((row) => {
-                  // Average importance of source articles for color intensity.
-                  const avgImportance = (() => {
-                    const items = (data ?? []).filter((a) =>
-                      a.symbols.some((s) => s.symbol === row.symbol)
-                    );
-                    if (items.length === 0) return null;
-                    const total = items.reduce((acc, a) => acc + (a.importance ?? 3), 0);
-                    return Math.round(total / items.length) as ImportanceLevel;
-                  })();
+                  // Pull the pre-computed average importance (one map lookup,
+                  // not an O(articles) scan per cell).
+                  const avgImportance = avgImportanceBySymbol.get(row.symbol) ?? null;
                   return (
                     <Tooltip
                       key={row.symbol}
@@ -558,15 +575,12 @@ export default function SentimentOverview() {
                         role="button"
                         tabIndex={0}
                         aria-label={`选中 ${row.symbol}（资讯 ${row.count} 篇）`}
-                        onClick={() => {
-                          setSelectedSymbol(row.symbol);
-                          message.info(`已选中: ${row.symbol}`);
-                        }}
+                        aria-pressed={selectedSymbol === row.symbol}
+                        onClick={() => setSelectedSymbol(row.symbol)}
                         onKeyDown={(e) => {
                           if (e.key === 'Enter' || e.key === ' ') {
                             e.preventDefault();
                             setSelectedSymbol(row.symbol);
-                            message.info(`已选中: ${row.symbol}`);
                           }
                         }}
                         className={`ad-heatmap-cell ${selectedSymbol === row.symbol ? 'ad-heatmap-cell--active' : ''}`}

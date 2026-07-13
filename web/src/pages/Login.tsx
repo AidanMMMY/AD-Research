@@ -5,6 +5,7 @@ import { AxiosError } from 'axios';
 import { UserOutlined, LockOutlined, StockOutlined } from '@ant-design/icons';
 import { useAuthStore } from '@/stores/auth';
 import AuroraBackground from '@/components/AuroraBackground';
+import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
 
 const DATA_SOURCES = [
   { name: 'tushare', label: 'Tushare' },
@@ -12,12 +13,23 @@ const DATA_SOURCES = [
   { name: 'xueqiu', label: '雪球' },
 ];
 
+const ROTATION_MS = 3000;
+const CROSSFADE_MS = 220;
+
 export default function Login() {
   const navigate = useNavigate();
   const { login, isAuthenticated } = useAuthStore();
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({ username: '', password: '' });
   const [sourceIndex, setSourceIndex] = useState(0);
+  // Apple Design #2 Interruptibility — animate from live value, never snap.
+  // The label is rendered twice (current + incoming) so we can cross-fade
+  // between them instead of doing a hard swap every 3s.
+  const [incomingIndex, setIncomingIndex] = useState(
+    (1) % DATA_SOURCES.length,
+  );
+  const [isTransitioning, setIsTransitioning] = useState(false);
+  const reducedMotion = usePrefersReducedMotion();
 
   const token = localStorage.getItem('token');
   if (isAuthenticated && token) {
@@ -26,21 +38,30 @@ export default function Login() {
   }
 
   // Cycle through data source status indicators every 3 seconds.
-  // Apple Design #14: under prefers-reduced-motion the abrupt content swap is
-  // disabled entirely — the status stays static instead of cross-fading,
-  // because a recurring, non-interruptible animation is worse than none.
+  // Apple Design #14: under prefers-reduced-motion the swap is a clean cut
+  // instead of a cross-fade — we keep the status dynamic (people rely on it as
+  // a live signal) but skip the motion entirely.
   useEffect(() => {
-    if (
-      typeof window !== 'undefined' &&
-      window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    ) {
-      return;
-    }
     const interval = setInterval(() => {
-      setSourceIndex((prev) => (prev + 1) % DATA_SOURCES.length);
-    }, 3000);
+      if (reducedMotion) {
+        setSourceIndex((prev) => (prev + 1) % DATA_SOURCES.length);
+        return;
+      }
+      // 1) start the cross-fade (fade current out + incoming in)
+      setIsTransitioning(true);
+      // 2) after the transition completes, swap and reset so we're ready for
+      //    the next tick without a flash.
+      window.setTimeout(() => {
+        setSourceIndex((prev) => {
+          const next = (prev + 1) % DATA_SOURCES.length;
+          setIncomingIndex(next);
+          return next;
+        });
+        setIsTransitioning(false);
+      }, CROSSFADE_MS);
+    }, ROTATION_MS);
     return () => clearInterval(interval);
-  }, []);
+  }, [reducedMotion]);
 
   const handleSubmit = async () => {
     if (!form.username || !form.password) {
@@ -109,6 +130,28 @@ export default function Login() {
             transform: none;
           }
         }
+        /* #2 Interruptibility — cross-fade between data-source labels instead
+           of an abrupt swap. Two stacked spans share the slot; opacity is the
+           only property animated (cheap to composite, transform-free). */
+        .login-page--sci-fi .login-source-name--stage {
+          display: inline-block;
+          transition: opacity ${CROSSFADE_MS}ms cubic-bezier(0.32, 0.72, 0, 1);
+          will-change: opacity;
+        }
+        .login-page--sci-fi .login-source-name--incoming {
+          position: absolute;
+          inset-inline-start: 0;
+          top: 0;
+        }
+        .login-page--sci-fi .login-source-name--in { opacity: 1; }
+        .login-page--sci-fi .login-source-name--out { opacity: 0; }
+        .login-page--sci-fi .login-source-name--stage {
+          position: relative;
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .login-page--sci-fi .login-source-name--stage { transition: none; }
+          .login-page--sci-fi .login-source-name--incoming { display: none; }
+        }
         /* #14 Reduced transparency — fall back to a solid material. */
         @media (prefers-reduced-transparency: reduce) {
           .login-page--sci-fi .login-glass {
@@ -133,12 +176,25 @@ export default function Login() {
             让每一次投资决策，都有数据可依
           </p>
 
-          {/* Cycling data source status */}
+          {/* Cycling data source status (Apple Design #2 — cross-fade, not snap) */}
           <div className="login-source-status">
             <span className="login-source-dot" />
             <span className="login-source-label">数据源状态：</span>
-            <span className="login-source-name">
+            <span
+              className={`login-source-name login-source-name--stage ${
+                isTransitioning ? 'login-source-name--out' : 'login-source-name--in'
+              }`}
+              aria-live="polite"
+            >
               {DATA_SOURCES[sourceIndex].label}
+            </span>
+            <span
+              className={`login-source-name login-source-name--stage login-source-name--incoming ${
+                isTransitioning ? 'login-source-name--in' : 'login-source-name--out'
+              }`}
+              aria-hidden="true"
+            >
+              {DATA_SOURCES[incomingIndex].label}
             </span>
             <span className="login-source-check">{'✅'}</span>
           </div>

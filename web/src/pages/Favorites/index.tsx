@@ -31,7 +31,6 @@ import SectionHeading from '@/components/SectionHeading';
 import InstrumentCodeTag from '@/components/InstrumentCodeTag';
 import ThemeTag from '@/components/ThemeTag';
 import ReturnTag from '@/components/ReturnTag';
-import FavoriteToggleButton from '@/components/FavoriteToggleButton';
 import { formatDateTime, formatDateTimeCompact } from '@/utils/datetime';
 import { NULL_PLACEHOLDER } from '@/utils/format';
 import { getReturnColor } from '@/utils/color';
@@ -87,36 +86,68 @@ export default function Favorites() {
     liveTickByBaseCode[code] ?? liveTickByBaseCode[code.replace(/\.(SH|SZ|BJ|SS)$/i, '')];
 
   /**
-   * 移除单条：调 DELETE /api/v1/favorites/{code}，然后让 React Query
-   * 失效列表缓存，实现「删除即更新」。这里走 favoriteApi.remove() 而不是
-   * hook 里的 toggle，避免 toggle 二次请求 status。
+   * 移除单条（乐观更新）：先从缓存里删除这条记录，让列表瞬间反映「已移除」，
+   * 再发 DELETE 请求。失败时回滚到原缓存。这避免了 UI 等待网络往返的延迟，
+   * 让点击立刻可见（Response 原则）。
    */
   const handleRemove = async (code: string) => {
     setRemoving(code);
+    const previous = queryClient.getQueryData<{ items: any[]; count: number }>(['favorites', 200]);
+    queryClient.setQueryData<{ items: any[]; count: number } | undefined>(
+      ['favorites', 200],
+      (old) =>
+        old
+          ? {
+              ...old,
+              items: old.items.filter((it: any) => it.etf_code !== code),
+              count: Math.max(0, old.count - 1),
+            }
+          : old,
+    );
     try {
       await favoriteApi.remove(code).then((r) => r.data);
-      queryClient.invalidateQueries({ queryKey: ['favorites'] });
       queryClient.invalidateQueries({ queryKey: ['favorite-status', code] });
     } catch {
-      /* swallow — UI 会通过 invalidate 重新拉数据自洽 */
+      /* Rollback to the cached snapshot before the optimistic remove. */
+      if (previous) {
+        queryClient.setQueryData(['favorites', 200], previous);
+      }
+      queryClient.invalidateQueries({ queryKey: ['favorites'] });
     } finally {
       setRemoving(null);
     }
   };
 
   /**
-   * 批量移除：用 Promise.all 并发删，逐条失效缓存。
+   * 批量移除：同样乐观更新缓存后再发请求。失败时整体回滚到原快照。
    */
   const handleBulkRemove = async () => {
     if (selectedRowKeys.length === 0) return;
+    const keys = selectedRowKeys.map((k) => String(k));
     setBulkRemoving(true);
+    const previous = queryClient.getQueryData<{ items: any[]; count: number }>(['favorites', 200]);
+    queryClient.setQueryData<{ items: any[]; count: number } | undefined>(
+      ['favorites', 200],
+      (old) =>
+        old
+          ? {
+              ...old,
+              items: old.items.filter((it: any) => !keys.includes(it.etf_code)),
+              count: Math.max(0, old.count - keys.length),
+            }
+          : old,
+    );
+    setSelectedRowKeys([]);
     try {
       await Promise.all(
-        selectedRowKeys.map((key) =>
-          favoriteApi.remove(String(key)).then((r) => r.data).catch(() => null)
+        keys.map((key) =>
+          favoriteApi.remove(key).then((r) => r.data).catch(() => null)
         )
       );
-      setSelectedRowKeys([]);
+    } catch {
+      if (previous) {
+        queryClient.setQueryData(['favorites', 200], previous);
+      }
       queryClient.invalidateQueries({ queryKey: ['favorites'] });
     } finally {
       setBulkRemoving(false);
@@ -439,6 +470,7 @@ export default function Favorites() {
           />
           <Panel variant="default" padding="md">
             <Collapse
+              className="favorites__disclosure"
               ghost
               items={grouped.map((g) => ({
                 key: g.category,
@@ -480,11 +512,6 @@ export default function Favorites() {
           }
         />
       </Panel>
-
-      {/* 收藏开关的隐藏语义元素：在每个分类面板标题栏内嵌一颗星，便于将来扩展 */}
-      <div className="favorites__hidden-util" aria-hidden>
-        <FavoriteToggleButton code="" />
-      </div>
     </PageShell>
   );
 }

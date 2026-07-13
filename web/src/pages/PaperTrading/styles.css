@@ -37,6 +37,147 @@
   transform: scale(0.985);
 }
 
+/* ── Multimodal feedback: inline pulse on stat cards when state changes ──
+   When place-order or sync-market-value resolves we add `ad-trading-card--pulse`
+   to the affected stat cards so they bloom in place rather than relying on
+   a far-away toast. Token-only: uses --color-rise / --color-fall. */
+@keyframes ad-card-pulse-rise {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-rise) 40%, transparent);
+    transform: scale(1);
+  }
+  40% {
+    box-shadow: 0 0 0 6px color-mix(in srgb, var(--color-rise) 0%, transparent);
+    transform: scale(1.015);
+  }
+  100% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-rise) 0%, transparent);
+    transform: scale(1);
+  }
+}
+
+@keyframes ad-card-pulse-fall {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-fall) 40%, transparent);
+    transform: scale(1);
+  }
+  40% {
+    box-shadow: 0 0 0 6px color-mix(in srgb, var(--color-fall) 0%, transparent);
+    transform: scale(1.015);
+  }
+  100% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-fall) 0%, transparent);
+    transform: scale(1);
+  }
+}
+
+@keyframes ad-card-pulse-accent {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 35%, transparent);
+    transform: scale(1);
+  }
+  40% {
+    box-shadow: 0 0 0 6px color-mix(in srgb, var(--accent) 0%, transparent);
+    transform: scale(1.015);
+  }
+  100% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 0%, transparent);
+    transform: scale(1);
+  }
+}
+
+.ad-trading-card--pulse-rise {
+  animation: ad-card-pulse-rise 0.9s var(--ease-spring) both;
+}
+
+.ad-trading-card--pulse-fall {
+  animation: ad-card-pulse-fall 0.9s var(--ease-spring) both;
+}
+
+.ad-trading-card--pulse-accent {
+  animation: ad-card-pulse-accent 0.9s var(--ease-spring) both;
+}
+
+/* ── Apple Design: spring-eased modal motion ──
+   Same spring feel as TradingPanel: transform/opacity only, transform
+   origin anchored to header. Anti-aliased via transform3d where
+   supported. */
+.ad-modal-spring .ant-modal {
+  transform-origin: 50% 0%;
+}
+
+@keyframes ad-modal-spring-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes ad-modal-spring-out {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(12px) scale(0.98);
+  }
+}
+
+.ad-modal-spring-root .ant-modal.ad-modal-spring-enter,
+.ad-modal-spring-root .ant-modal.ad-modal-spring-appear {
+  animation: ad-modal-spring-in var(--spring-response) var(--ease-spring) both;
+}
+
+.ad-modal-spring-root .ant-modal.ad-modal-spring-leave {
+  animation: ad-modal-spring-out var(--transition-base) var(--ease-spring) both;
+}
+
+@keyframes ad-mask-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes ad-mask-fade-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+.ad-modal-spring-root .ant-modal-mask.ad-fade-spring-enter,
+.ad-modal-spring-root .ant-modal-mask.ad-fade-spring-appear {
+  animation: ad-mask-fade-in var(--transition-base) var(--ease-spring) both;
+}
+
+.ad-modal-spring-root .ant-modal-mask.ad-fade-spring-leave {
+  animation: ad-mask-fade-out var(--transition-fast) linear both;
+}
+
+/* ── Dropdown spring: faster than the modal, anchored to the trigger ──
+   The MoreOutlined button sits in the action bar; the menu blooms from
+   there. We override antd's default slide-down with a small scale +
+   fade so the interaction feels immediate and consistent with the rest
+   of the page. */
+.ad-dropdown-spring .ant-dropdown-menu {
+  transform-origin: 100% 0%; /* top-right, where the trigger lives */
+  animation: ad-dropdown-spring-in var(--spring-response-fast) var(--ease-spring) both;
+}
+
+@keyframes ad-dropdown-spring-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+
 /* ── Typography: size-specific tracking ──
    Small stat titles get positive tracking; large PnL percentage reads
    tighter (negative tracking) like SF large optical sizes. */

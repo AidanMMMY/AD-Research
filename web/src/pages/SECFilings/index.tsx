@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import {
-  Table, Input, Select, Button, Space, Tag, Skeleton, Row, Col, message,
+  Table, Input, Select, Button, Space, Tag, Skeleton, Row, Col, message, Spin,
 } from 'antd';
 import { ReloadOutlined, SearchOutlined, FileTextOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
@@ -179,6 +179,14 @@ export default function SECFilingsPage() {
     },
   ];
 
+  /* Apple "Multimodal feedback" — the full-page refresh no longer
+     only shows the button's spinner; we also surface the in-flight
+     state + post-refresh result inline near the table header so the
+     user sees causality ("refresh in progress → wrote N rows") even
+     if the button is scrolled out of view. */
+  const refreshInFlight = refreshMutation.isPending;
+  const lastRefreshResult = refreshMutation.data;
+
   return (
     <PageShell maxWidth="full">
       <PageHeader
@@ -222,6 +230,35 @@ export default function SECFilingsPage() {
           />
         </div>
       </ResponsiveGrid>
+
+      {/* Inline progress / success / error surface for the refresh
+          mutation. Avoids the case where the button spinner is the
+          only signal and the user can't see progress while scrolled
+          into the list. */}
+      {refreshInFlight && (
+        <div
+          className="sec-filings-refresh-banner sec-filings-refresh-banner--active"
+          role="status"
+          aria-live="polite"
+        >
+          <Spin size="small" />
+          <span>正在从 SEC EDGAR 全量刷新…</span>
+        </div>
+      )}
+      {!refreshInFlight && lastRefreshResult && (
+        <div
+          className="sec-filings-refresh-banner sec-filings-refresh-banner--success"
+          role="status"
+          aria-live="polite"
+        >
+          <span>
+            上次刷新完成 · 写入 {lastRefreshResult.records} 条
+            {lastRefreshResult.warnings && lastRefreshResult.warnings.length > 0
+              ? ` · ${lastRefreshResult.warnings.length} 个告警`
+              : ''}
+          </span>
+        </div>
+      )}
 
       <Panel variant="default" title="公告列表" className="ad-mt-5">
         <div className="ad-mb-3 ad-flex ad-flex-wrap ad-gap-2">

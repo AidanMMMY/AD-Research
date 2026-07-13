@@ -14,8 +14,8 @@ interface HelpPopoverProps {
   children?: React.ReactNode;
   /** 额外上下文，点击"问 AI"时会拼接进问题 */
   contextData?: string;
-  /** 触发方式，默认 hover */
-  trigger?: 'hover' | 'click';
+  /** 触发方式，默认 hover；键盘用户可使用 focus/click */
+  trigger?: 'hover' | 'click' | 'focus';
   /** 自定义样式 */
   style?: React.CSSProperties;
   /** 是否启用，默认 true */
@@ -42,7 +42,11 @@ export default function HelpPopover({
   const settingsMode = useSettingsStore((s) => s.mode);
   const mode = modeOverride ?? settingsMode;
   const term = getTerm(termKey);
-  const effectiveTrigger = trigger ?? (isMobile ? 'click' : 'hover');
+  // Keyboard accessibility: hover is pointer-only; use focus as the desktop
+  // default so tab-reach users land on the popover, and click as the mobile
+  // default where hover is unreliable. Callers can still override.
+  const effectiveTrigger =
+    trigger ?? (isMobile ? 'click' : 'focus');
 
   const handleAskAI = (
     title: string,
@@ -141,7 +145,8 @@ export default function HelpPopover({
         {/* Divider */}
         <div className="help-popover__divider" />
 
-        {/* M20: 相关术语 chip 链接 — 只展示，点击仅 console.log；P2 再接跳词条详情 */}
+        {/* M20: 相关术语 chip — 暂无独立词条详情页路由，渲染为非交互标签
+            并提供完整标题作 tooltip，避免给用户一个会进入死链的假按钮。 */}
         {term.relatedTerms && term.relatedTerms.length > 0 && (
           <div className="help-popover__related">
             <span className="help-popover__related-label">
@@ -154,21 +159,9 @@ export default function HelpPopover({
                 return (
                   <span
                     key={rk}
-                    role="button"
-                    tabIndex={0}
                     className="help-popover__related-chip"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      // TODO(M20-P2): 接入词条详情页跳转。当前仅 console 占位。
-                      console.log('[M20] related-term clicked', { from: termKey, to: rk });
-                    }}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault();
-                        console.log('[M20] related-term activated', { from: termKey, to: rk });
-                      }
-                    }}
                     title={`${rt.title} — ${rt.shortDesc}`}
+                    aria-label={`相关术语：${rt.title}（${rt.shortDesc}）`}
                   >
                     {rt.title}
                   </span>
@@ -210,6 +203,19 @@ export default function HelpPopover({
       <span
         className="help-popover__trigger"
         style={style}
+        role="button"
+        tabIndex={0}
+        aria-label={`${term.title} — 查看解释`}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            // Programmatically focus the wrapped element to open the
+            // popover for keyboard users (Popover's `focus` trigger
+            // listens to focus events).
+            e.currentTarget.focus();
+            e.currentTarget.click();
+          }
+        }}
       >
         {children || term.title}
         <InfoCircleOutlined

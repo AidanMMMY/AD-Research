@@ -8,11 +8,6 @@
   font-size: var(--text-small-size);
 }
 
-/* Hidden utility (semantic element for future extension) */
-.favorites__hidden-util {
-  display: none;
-}
-
 .favorites__header-extra {
   flex-wrap: wrap;
   row-gap: 8px;
@@ -21,4 +16,27 @@
 /* Empty state star icon */
 .fav-empty-icon {
   font-size: 48px;
+}
+
+/* Disclosure (grouped categories) — spring-eased expand/collapse.
+   Antd's default Collapse uses a fixed-duration height animation; here we
+   soften it with the critically-damped spring curve so the panel feels
+   responsive but never overshoots (Interruptibility: animate from live
+   value via transition: height, transform-only where possible). */
+.favorites__disclosure.ant-collapse > .ant-collapse-item > .ant-collapse-content {
+  transition: height var(--transition-spring-fast, cubic-bezier(0.25, 1, 0.5, 1)) 240ms;
+  will-change: height;
+}
+
+.favorites__disclosure.ant-collapse > .ant-collapse-item > .ant-collapse-header {
+  transition: background var(--transition-spring-fast, ease-out) 200ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .favorites__disclosure.ant-collapse > .ant-collapse-item > .ant-collapse-content {
+    transition: none;
+  }
+  .favorites__disclosure.ant-collapse > .ant-collapse-item > .ant-collapse-header {
+    transition: none;
+  }
 }

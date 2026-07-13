@@ -21,3 +21,37 @@
 .instrument-detail__sentiment-tag {
   margin-top: var(--space-3);
 }
+
+/* ---- K-line chart cross-fade stack ----
+   Two charts stacked: the new chart sits underneath; the previous chart
+   overlays with `animation: detail-chart-fade-out` so range/mode switches
+   cross-fade rather than hard-cut (Spatial consistency). The fade uses
+   opacity-only motion and a spring-ish curve. */
+.detail-chart-stack {
+  position: relative;
+  min-height: 320px;
+}
+
+.detail-chart-fade {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  animation: detail-chart-fade-out 320ms var(--transition-spring-fast, ease-out) forwards;
+  will-change: opacity;
+}
+
+@keyframes detail-chart-fade-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .detail-chart-fade {
+    animation: none;
+    display: none;
+  }
+}

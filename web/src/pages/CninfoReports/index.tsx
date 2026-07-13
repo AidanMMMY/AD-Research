@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   Table, Input, Select, DatePicker, Button, Space, Tag, Skeleton, message,
 } from 'antd';
@@ -62,21 +62,37 @@ const CNINFO_PAGE_STYLE = `
 .ad-detail-drawer-overlay {
   backdrop-filter: saturate(180%) blur(8px);
   -webkit-backdrop-filter: saturate(180%) blur(8px);
-  animation: cninfo-overlay-in var(--spring-response-fast, 200ms) var(--ease-spring, ease) both;
+  transition: opacity var(--transition-spring-fast, 200ms var(--ease-spring));
+  opacity: 1;
+}
+.ad-detail-drawer-overlay--leaving {
+  opacity: 0;
 }
 .ad-detail-drawer {
   transform-origin: right center;
-  will-change: transform;
   box-shadow: -8px 0 32px rgba(0, 0, 0, 0.24);
-  animation: cninfo-drawer-in var(--spring-response, 300ms) var(--ease-spring, ease) both;
+  /* Interruptible spring: animate from the live value rather than
+     playing a keyframe that restarts mid-flight. The drawer slides
+     in/out along x using the global critically-damped spring curve.
+     Entrance starts off-screen (translateX 100%); leaving state sets
+     the same translate so the transition reverses to identity.
+     'will-change' is only set during the active animation window
+     (entering/leaving modifier). */
+  transform: translateX(0);
+  transition: transform var(--transition-spring, 350ms var(--ease-spring)),
+    opacity var(--transition-spring-fast, 200ms var(--ease-spring));
+  opacity: 1;
 }
-@keyframes cninfo-drawer-in {
-  from { transform: translateX(100%); }
-  to { transform: translateX(0); }
+.ad-detail-drawer--entering,
+.ad-detail-drawer--leaving {
+  will-change: transform, opacity;
 }
-@keyframes cninfo-overlay-in {
-  from { opacity: 0; }
-  to { opacity: 1; }
+.ad-detail-drawer--entering {
+  transform: translateX(100%);
+}
+.ad-detail-drawer--leaving {
+  transform: translateX(100%);
+  opacity: 0;
 }
 .cninfo-report-row {
   cursor: pointer;
@@ -87,12 +103,13 @@ const CNINFO_PAGE_STYLE = `
 }
 @media (prefers-reduced-motion: reduce) {
   .ad-detail-drawer {
-    animation: cninfo-drawer-in-reduced 120ms ease both;
+    transition: opacity 120ms ease;
+    transform: none !important;
   }
-  @keyframes cninfo-drawer-in-reduced {
-    from { opacity: 0; }
-    to { opacity: 1; }
+  .ad-detail-drawer-overlay {
+    transition: opacity 120ms ease;
   }
+  .ad-detail-drawer--leaving { opacity: 0; }
   .cninfo-report-row { transition: none; }
 }
 @media (prefers-reduced-transparency: reduce) {
@@ -399,17 +416,47 @@ function CninfoReportDetailDrawer({
   report: CninfoReportDetail | null;
   onClose: () => void;
 }) {
-  // Lightweight detail drawer implemented as a modal — keeps the page
-  // bundle small and avoids pulling in antd's Drawer for one view.
-  if (!open) return null;
+  // Keep mounted during the exit animation so the drawer can reverse
+  // its entrance (Apple "Spatial consistency" — enter and exit must
+  // share the same axis). ``mounted`` is true from the moment ``open``
+  // flips on and stays true for one animation frame after it flips
+  // back off, so the reverse slide-out completes before unmount.
+  const [mounted, setMounted] = useState(open);
+  const [leaving, setLeaving] = useState(false);
+  useEffect(() => {
+    if (open) {
+      setMounted(true);
+      setLeaving(false);
+      return;
+    }
+    if (!mounted) return;
+    setLeaving(true);
+    const t = setTimeout(() => {
+      setMounted(false);
+      setLeaving(false);
+    }, 360);
+    return () => clearTimeout(t);
+  }, [open, mounted]);
+  if (!mounted) return null;
+
+  const drawerClasses = [
+    'ad-detail-drawer',
+    leaving
+      ? 'ad-detail-drawer--leaving'
+      : 'ad-detail-drawer--entering',
+  ].join(' ');
+  const overlayClasses = [
+    'ad-detail-drawer-overlay',
+    leaving ? 'ad-detail-drawer-overlay--leaving' : '',
+  ].join(' ');
 
   return (
     <div
-      className="ad-detail-drawer-overlay"
+      className={overlayClasses}
       onClick={onClose}
     >
       <div
-        className="ad-detail-drawer"
+        className={drawerClasses}
         onClick={(e) => e.stopPropagation()}
       >
         {loading || !report ? (

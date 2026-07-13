@@ -60,17 +60,26 @@ import { useDebounce } from '@/hooks/useDebounce';
  * 2. Reduced-motion users get no transform/transition at all.
  */
 const NEWS_PAGE_STYLE = `
+/* Pointer-down press for the political / macro filter chips
+   (Response principle). */
 .news-political-chip {
   transform-origin: center;
-  transition: transform var(--transition-fast, 150ms ease),
-    background var(--transition-fast, 150ms ease),
-    border-color var(--transition-fast, 150ms ease);
+  transition: transform var(--transition-spring-fast, 200ms var(--ease-spring)),
+    background var(--transition-spring-fast, 200ms var(--ease-spring)),
+    border-color var(--transition-spring-fast, 200ms var(--ease-spring));
 }
 .news-political-chip:active {
   transform: scale(var(--press-scale, 0.97));
 }
+/* Pointer-down press for the article card (Response principle) —
+   bg-active + subtle scale. global.css adds :hover but not :active. */
+.ad-news-card:active {
+  background: var(--bg-active);
+  transform: scale(var(--press-scale-subtle, 0.99));
+}
 @media (prefers-reduced-motion: reduce) {
-  .news-political-chip {
+  .news-political-chip,
+  .ad-news-card {
     transition: none;
     transform: none;
   }
@@ -503,16 +512,20 @@ export default function NewsFeed() {
   const debouncedSearchInput = useDebounce(searchInput, 300);
 
   // Sync URL params when filters change.
+  // NB: drive the URL ``q`` from the debounced value so we are not
+  // rewriting history on every keystroke (Response principle — kill
+  // latency). The actual list query is also keyed off the debounced
+  // value, so the URL stays in lockstep with the rendered result set.
   useEffect(() => {
     const next: Record<string, string> = {};
     if (market !== 'all') next.market = market;
     if (source) next.source = source;
     if (activeSymbol) next.symbol = activeSymbol;
-    if (searchInput) next.q = searchInput;
+    if (debouncedSearchInput) next.q = debouncedSearchInput;
     if (watchlistMode) next.watchlist = '1';
     if (eventCategories.length > 0) next.event_category = eventCategories.join(',');
     setSearchParams(next, { replace: true });
-  }, [market, source, activeSymbol, searchInput, watchlistMode, eventCategories, setSearchParams]);
+  }, [market, source, activeSymbol, debouncedSearchInput, watchlistMode, eventCategories, setSearchParams]);
 
   // Source list for the dropdown.
   const { data: sourceStats, isLoading: sourceStatsLoading } = useQuery({

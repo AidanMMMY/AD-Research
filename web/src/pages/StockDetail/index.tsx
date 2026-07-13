@@ -74,7 +74,12 @@ export default function StockDetail() {
   const mode = useSettingsStore((s) => s.mode);
   const { data: stock, isLoading: stockLoading, error: stockError } = useStockDetail(code || '');
   const { data: score } = useInstrumentScore(code || '');
-  const { isFavorite, isLoading: favLoading, toggle, isToggling } = useFavoriteStatus(code || '');
+  const { isFavorite: serverIsFavorite, toggle } = useFavoriteStatus(code || '');
+  /* Response: optimistic flip on pointer-down — see InstrumentDetail for the
+     same pattern. The UI reflects the new state immediately and rolls back
+     if the network call fails. */
+  const [optimisticFav, setOptimisticFav] = useState<boolean | null>(null);
+  const isFavorite = optimisticFav ?? serverIsFavorite;
   const [timeRange, setTimeRange] = useState(120);
 
   const [overlays, setOverlays] = useState(() => {
@@ -95,10 +100,14 @@ export default function StockDetail() {
   }, [overlays]);
 
   const handleToggleFavorite = async () => {
+    const previous = serverIsFavorite;
+    setOptimisticFav(!previous);
     try {
       const result = await toggle();
       message.success(result.data.message);
+      setOptimisticFav(null);
     } catch {
+      setOptimisticFav(previous);
       message.error('操作失败');
     }
   };
@@ -599,7 +608,6 @@ export default function StockDetail() {
             <Button
               type={isFavorite ? 'primary' : 'default'}
               icon={isFavorite ? <StarFilled /> : <StarOutlined />}
-              loading={isToggling || favLoading}
               onClick={handleToggleFavorite}
             >
               {isFavorite ? '已自选' : '加入自选'}
@@ -617,11 +625,11 @@ export default function StockDetail() {
                   style={{ color: getReturnColor(indicator.return_1m, colorConvention) }}
                 >
                   {indicator.return_1m > 0 ? (
-                    <ArrowUpOutlined className="detail-arrow-icon" aria-label="up" />
+                    <ArrowUpOutlined className="detail-arrow-icon" aria-label="上涨" />
                   ) : indicator.return_1m < 0 ? (
-                    <ArrowDownOutlined className="detail-arrow-icon" aria-label="down" />
+                    <ArrowDownOutlined className="detail-arrow-icon" aria-label="下跌" />
                   ) : (
-                    <MinusOutlined className="detail-arrow-icon" aria-label="flat" />
+                    <MinusOutlined className="detail-arrow-icon" aria-label="持平" />
                   )}
                   {formatPercent(indicator.return_1m)}
                 </div>
@@ -653,7 +661,7 @@ export default function StockDetail() {
         ))}
       </ResponsiveGrid>
 
-      <Tabs items={tabItems} defaultActiveKey="kline" />
+      <Tabs className="stock-detail__tabs" items={tabItems} defaultActiveKey="kline" />
     </PageShell>
   );
 }

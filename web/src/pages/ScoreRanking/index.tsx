@@ -102,11 +102,15 @@ export default function ScoreRanking() {
           #1/#10 Response — clickable ranking rows give instant pointer-down
           feedback (background only, no movement).
           #15 Typography — large summary numbers get size-specific negative
-          tracking (data figures read tighter at display sizes). */}
+          tracking (data figures read tighter at display sizes). The name
+          variant keeps default tracking so labels read normally. */}
       <style>{`
         .score-ranking-row--pressable > td { transition: background var(--transition-fast, 150ms ease); }
         .score-ranking-row--pressable:active > td { background: var(--bg-active) !important; }
-        .score-summary-card__value { letter-spacing: var(--tracking-data, -0.02em); }
+        /* Scope negative tracking to the numeric large variant only; the
+           name/large-text variant keeps default tracking so labels read
+           comfortably. */
+        .score-summary-card__value:not(.score-summary-card__value--name) { letter-spacing: var(--tracking-data, -0.02em); }
       `}</style>
       <PageHeader
         eyebrow="评分"
@@ -207,6 +211,15 @@ export default function ScoreRanking() {
                 }}
                 onRow={(record) => ({
                   onClick: () => navigate(`/instruments/${record.etf_code}`),
+                  // Apple Design #10 Agency: rows must be operable by keyboard.
+                  tabIndex: 0,
+                  role: 'link',
+                  onKeyDown: (e: React.KeyboardEvent<HTMLElement>) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      navigate(`/instruments/${record.etf_code}`);
+                    }
+                  },
                 })}
               />
             </div>

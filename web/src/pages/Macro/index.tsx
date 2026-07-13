@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import './styles.css';
 import {
   Row,
@@ -31,6 +31,7 @@ import FilterToolbar from '@/components/FilterToolbar';
 import LastUpdated from '@/components/LastUpdated';
 import HelpPopover from '@/components/HelpPopover';
 import { useSettingsStore } from '@/stores/settings';
+import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
 import { useMacroIndicators, useMacroSeries } from '@/hooks/useMacro';
 import {
   useMacroLatest,
@@ -48,7 +49,8 @@ import type { MacroIndicatorItem, MacroLatestItem } from '@/api/macro';
  */
 const ADX_STYLE = `
 .adx-macro {
-  --adx-spring: cubic-bezier(0.5, 1.6, 0.3, 1);
+  /* Critically-damped monotonic curve: y2 ≤ 1, no overshoot. */
+  --adx-spring: cubic-bezier(0.32, 0.72, 0, 1);
   --adx-ease-out: cubic-bezier(0.22, 0.9, 0.3, 1);
 }
 .adx-macro .ant-btn {
@@ -75,9 +77,17 @@ const ADX_STYLE = `
   from { opacity: 0; transform: translateY(8px) scale(0.98); }
   to { opacity: 1; transform: translateY(0) scale(1); }
 }
+@keyframes adx-macro-dematerialize {
+  from { opacity: 1; transform: translateY(0) scale(1); }
+  to { opacity: 0; transform: translateY(8px) scale(0.98); }
+}
 .adx-macro .adx-materialize {
   transform-origin: top center;
   animation: adx-macro-materialize 320ms var(--adx-spring) both;
+}
+.adx-macro .adx-materialize--exit {
+  transform-origin: top center;
+  animation: adx-macro-dematerialize 220ms var(--adx-spring) both;
 }
 .adx-macro h1,
 .adx-macro h2,
@@ -103,6 +113,9 @@ const ADX_STYLE = `
     transform: none;
   }
   .adx-macro .adx-materialize {
+    animation: none;
+  }
+  .adx-macro .adx-materialize--exit {
     animation: none;
   }
 }
@@ -187,11 +200,45 @@ function buildCnHeadlineFromLatest(items: MacroLatestItem[]): MacroIndicatorItem
 
 export default function Macro() {
   const mode = useSettingsStore((s) => s.mode);
+  const prefersReducedMotion = usePrefersReducedMotion();
   const [region, setRegion] = useState<string>('us');
   const [selectedCode, setSelectedCode] = useState<string | null>(null);
+  // Mirror the chart-panel mount life-cycle so the exit animation can play
+  // before the panel is actually unmounted (spatial consistency: enter
+  // and exit use the same spring path).
+  const [mountedCode, setMountedCode] = useState<string | null>(null);
+  const [isExiting, setIsExiting] = useState(false);
+  const exitTimerRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (selectedCode) {
+      // Entering (or switching chart): mount immediately, no exit animation.
+      if (exitTimerRef.current != null) {
+        window.clearTimeout(exitTimerRef.current);
+        exitTimerRef.current = null;
+      }
+      setIsExiting(false);
+      setMountedCode(selectedCode);
+    } else if (mountedCode) {
+      // Leaving: keep the mounted panel visible long enough for the
+      // dematerialize keyframe (220ms) to play before unmounting.
+      setIsExiting(true);
+      exitTimerRef.current = window.setTimeout(() => {
+        setMountedCode(null);
+        setIsExiting(false);
+        exitTimerRef.current = null;
+      }, 220);
+    }
+    return () => {
+      if (exitTimerRef.current != null) {
+        window.clearTimeout(exitTimerRef.current);
+        exitTimerRef.current = null;
+      }
+    };
+  }, [selectedCode, mountedCode]);
 
   const { data: indicators, isLoading, error } = useMacroIndicators(region);
-  const { data: series, isLoading: seriesLoading } = useMacroSeries(selectedCode, {
+  const { data: series, isLoading: seriesLoading } = useMacroSeries(mountedCode, {
     limit: 365,
   });
   const { data: latestData, dataUpdatedAt, isFetching: latestFetching } = useMacroLatest(region);
@@ -304,7 +351,14 @@ export default function Macro() {
       width: 100,
       fixed: 'right',
       render: (_, row) => (
-        <a onClick={() => setSelectedCode(row.code)}>查看走势</a>
+        <Button
+          type="link"
+          size="small"
+          onClick={() => setSelectedCode(row.code)}
+          aria-label={`查看 ${row.name_zh ?? row.code} 的走势`}
+        >
+          查看走势
+        </Button>
       ),
     },
   ];
@@ -436,7 +490,7 @@ export default function Macro() {
 
       <Row gutter={[16, 16]}>
         {/* ── Indicator list ── */}
-        <Col xs={24} lg={selectedCode ? 12 : 24}>
+        <Col xs={24} lg={mountedCode ? 12 : 24}>
           <Panel title="全部指标">
             <Spin spinning={isLoading}>
               <div className="ad-table-scroll ad-table-sticky">
@@ -449,6 +503,15 @@ export default function Macro() {
                   pagination={{ pageSize: 15, showSizeChanger: false }}
                   onRow={(record) => ({
                     onClick: () => setSelectedCode(record.code),
+                    onKeyDown: (e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        setSelectedCode(record.code);
+                      }
+                    },
+                    tabIndex: 0,
+                    role: 'button',
+                    'aria-label': `查看 ${record.name_zh ?? record.code} 的走势`,
                   })}
                   locale={{
                     emptyText: isLoading ? '加载中...' : <EmptyState title="暂无指标数据" />,
@@ -460,16 +523,36 @@ export default function Macro() {
         </Col>
 
         {/* ── Chart panel ── */}
-        {selectedCode && (
-          <Col xs={24} lg={12} className="adx-materialize">
+        {mountedCode && (
+          <Col
+            xs={24}
+            lg={12}
+            className={isExiting ? 'adx-materialize adx-materialize--exit' : 'adx-materialize'}
+            aria-hidden={isExiting}
+          >
             <Panel
               title={series ? `${series.name_zh} · 走势` : '走势'}
-              extra={<a onClick={() => setSelectedCode(null)}>关闭</a>}
+              extra={
+                <Button
+                  type="link"
+                  size="small"
+                  onClick={() => setSelectedCode(null)}
+                  aria-label="关闭走势面板"
+                >
+                  关闭
+                </Button>
+              }
             >
               <Spin spinning={seriesLoading}>
                 {chartOption ? (
                   <div className="ad-chart-container ad-chart-container--tall">
-                    <ReactECharts option={chartOption} notMerge />
+                    <ReactECharts
+                      option={{
+                        ...chartOption,
+                        animation: !prefersReducedMotion,
+                      }}
+                      notMerge
+                    />
                   </div>
                 ) : (
                   <EmptyState title="暂无历史数据" />

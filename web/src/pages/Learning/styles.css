@@ -42,6 +42,42 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* ── Term quick-reference panel: animate height/opacity, never pop ──
+   The region wraps a fixed-slot child; on close we cross-fade and
+   collapse grid rows, on open we expand. Spatial consistency — the
+   enter/exit path is the same vertical stretch. transform/opacity
+   where possible to stay compositor-friendly. */
+.learning-terms-region {
+  display: grid;
+  grid-template-rows: 1fr;
+  transition:
+    grid-template-rows var(--spring-response) var(--ease-spring),
+    opacity var(--transition-base);
+  opacity: 1;
+  will-change: grid-template-rows, opacity;
+}
+
+.learning-terms-region > * {
+  /* Child fills the collapsed track so the grid can animate height
+     between 0fr and 1fr. `min-height: 0` lets the track collapse
+     cleanly without overflow. */
+  min-height: 0;
+}
+
+.learning-terms-region--closed {
+  grid-template-rows: 0fr;
+  opacity: 0;
+}
+
+.learning-terms-region--closed > * {
+  pointer-events: none;
+}
+
+.learning-terms-region--open {
+  grid-template-rows: 1fr;
+  opacity: 1;
+}
+
 /* ── Term quick-reference rows: fast hover + press feedback ── */
 .learning-terms__item {
   border-radius: var(--radius-md);
@@ -74,4 +110,15 @@
   .learning-scenario-card:active {
     transform: none;
   }
+
+  /* Collapse via display swap rather than animated track to honour the
+     "cross-fade, not slide" guidance. */
+  .learning-terms-region {
+    transition: opacity var(--transition-fast);
+  }
+
+  .learning-terms-region--closed {
+    grid-template-rows: 0fr;
+  }
 }
+

@@ -119,6 +119,33 @@ export default function PaperTrading() {
   const [createForm] = Form.useForm();
   const [orderForm] = Form.useForm();
 
+  // Inline state-change pulse (Multimodal feedback): track which top-level
+  // cards should bloom when their underlying state changes. We tag a card
+  // with a class for ~900ms, then the CSS keyframes handle the rest.
+  const [pulse, setPulse] = useState<{
+    equity?: 'rise' | 'fall' | 'accent';
+    pnl?: 'rise' | 'fall' | 'accent';
+    orders?: 'rise' | 'fall' | 'accent';
+    marketValue?: 'rise' | 'fall' | 'accent';
+    cash?: 'rise' | 'fall' | 'accent';
+  }>({});
+  const armPulse = (
+    slot: keyof typeof pulse,
+    variant: 'rise' | 'fall' | 'accent' = 'accent'
+  ) => {
+    setPulse((p) => ({ ...p, [slot]: variant }));
+    window.setTimeout(() => {
+      setPulse((p) => {
+        if (p[slot] === variant) {
+          const next = { ...p };
+          delete next[slot];
+          return next;
+        }
+        return p;
+      });
+    }, 950);
+  };
+
   // --- Handlers ---
   const handleCreateAccount = async (values: { name: string; initial_balance: number }) => {
     try {
@@ -148,6 +175,18 @@ export default function PaperTrading() {
         data: values,
       });
       message.success(`${values.order_type === 'BUY' ? '买入' : '卖出'} 订单已成交`);
+      // Multimodal feedback: bloom the affected cards in place. BUY sells
+      // available cash, so pulse cash/equity; SELL releases it. Trade
+      // count gets an accent pulse regardless.
+      armPulse('orders', 'accent');
+      armPulse('marketValue', 'accent');
+      if (values.order_type === 'BUY') {
+        armPulse('cash', 'fall');
+        armPulse('equity', 'accent');
+      } else {
+        armPulse('cash', 'rise');
+        armPulse('equity', 'accent');
+      }
       setOrderModalOpen(false);
       orderForm.resetFields();
     } catch (err: any) {
@@ -160,6 +199,12 @@ export default function PaperTrading() {
     try {
       const res = await syncMarket.mutateAsync(selectedAccountId);
       message.success(`已更新 ${res.data.updated} 个仓位的市值`);
+      // Pulse the cards whose numbers depend on current market value.
+      armPulse('marketValue', 'accent');
+      armPulse('equity', 'accent');
+      // PnL could go either way; default to accent — the next render
+      // either keeps the up/down class so the user still sees direction.
+      armPulse('pnl', 'accent');
     } catch {
       message.error('同步失败');
     }
@@ -170,6 +215,12 @@ export default function PaperTrading() {
     try {
       const res = await autoTrade.mutateAsync({ accountId: selectedAccountId });
       message.success(`自动交易完成，执行了 ${res.data.length} 笔订单`);
+      // Auto-trade affects every metric; pulse them all with accent.
+      armPulse('orders', 'accent');
+      armPulse('marketValue', 'accent');
+      armPulse('cash', 'accent');
+      armPulse('equity', 'accent');
+      armPulse('pnl', 'accent');
     } catch {
       message.error('自动交易失败');
     }
@@ -389,7 +440,7 @@ export default function PaperTrading() {
         <>
           <SectionHeading title="账户概览" />
           <ResponsiveGrid cols={4} gap="md" className="ad-section">
-            <Card size="small" className="ad-trading-card">
+            <Card size="small" className={`ad-trading-card ${pulse.equity ? `ad-trading-card--pulse-${pulse.equity}` : ''}`}>
               <Statistic
                 title="总权益"
                 value={pnl?.total_equity ?? account?.total_value ?? account?.cash}
@@ -398,7 +449,7 @@ export default function PaperTrading() {
                 loading={pnlLoading && accountLoading}
               />
             </Card>
-            <Card size="small" className="ad-trading-card">
+            <Card size="small" className={`ad-trading-card ${pulse.cash ? `ad-trading-card--pulse-${pulse.cash}` : ''}`}>
               <Statistic
                 title="可用现金"
                 value={account?.cash}
@@ -407,7 +458,7 @@ export default function PaperTrading() {
                 loading={accountLoading}
               />
             </Card>
-            <Card size="small" className="ad-trading-card">
+            <Card size="small" className={`ad-trading-card ${pulse.marketValue ? `ad-trading-card--pulse-${pulse.marketValue}` : ''}`}>
               <Statistic
                 title="持仓市值"
                 value={pnl?.market_value}
@@ -416,7 +467,7 @@ export default function PaperTrading() {
                 loading={pnlLoading}
               />
             </Card>
-            <Card size="small" className="ad-trading-card">
+            <Card size="small" className={`ad-trading-card ${pulse.pnl ? `ad-trading-card--pulse-${pulse.pnl}` : ''}`}>
               <div className={pnl && pnl.total_pnl > 0 ? 'ad-pnl-stat--rise' : pnl && pnl.total_pnl < 0 ? 'ad-pnl-stat--fall' : 'ad-pnl-stat--neutral'}>
                 <Statistic
                   title="总盈亏"
@@ -433,7 +484,7 @@ export default function PaperTrading() {
                 </div>
               )}
             </Card>
-            <Card size="small" className="ad-trading-card">
+            <Card size="small" className={`ad-trading-card ${pulse.orders ? `ad-trading-card--pulse-${pulse.orders}` : ''}`}>
               <Statistic
                 title="交易次数"
                 value={pnl?.trade_count ?? 0}
@@ -494,6 +545,10 @@ export default function PaperTrading() {
                       },
                     ],
                   }}
+                  // Spring-eased menu motion, transform-origin anchored to
+                  // the trigger (top-right of the menu) so the dropdown
+                  // blooms from where the user pressed.
+                  overlayClassName="ad-dropdown-spring"
                 >
                   <Button icon={<MoreOutlined />} aria-label="更多操作" />
                 </Dropdown>
@@ -594,6 +649,10 @@ export default function PaperTrading() {
         confirmLoading={createAccount.isPending}
         width={isMobile ? '100%' : 520}
         destroyOnClose
+        transitionName="ad-modal-spring"
+        maskTransitionName="ad-fade-spring"
+        rootClassName="ad-modal-spring-root"
+        className="ad-modal-spring"
       >
         <Form
           form={createForm}
@@ -626,6 +685,10 @@ export default function PaperTrading() {
         confirmLoading={placeOrder.isPending}
         width={isMobile ? '100%' : 520}
         destroyOnClose
+        transitionName="ad-modal-spring"
+        maskTransitionName="ad-fade-spring"
+        rootClassName="ad-modal-spring-root"
+        className="ad-modal-spring"
       >
         <Form
           form={orderForm}

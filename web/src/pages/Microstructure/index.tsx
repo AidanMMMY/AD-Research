@@ -14,6 +14,7 @@ import ResponsiveGrid from '@/components/ResponsiveGrid';
 import LastUpdated from '@/components/LastUpdated';
 import ThemeTag from '@/components/ThemeTag';
 import { NULL_PLACEHOLDER } from '@/utils/format';
+import { useDebounce } from '@/hooks/useDebounce';
 import {
   useMicrostructureLhb,
   useMicrostructureHsgt,
@@ -38,7 +39,8 @@ import type {
  */
 const ADX_STYLE = `
 .adx-microstructure {
-  --adx-spring: cubic-bezier(0.5, 1.6, 0.3, 1);
+  /* Critically-damped monotonic curve: y2 ≤ 1, no overshoot. */
+  --adx-spring: cubic-bezier(0.32, 0.72, 0, 1);
   --adx-ease-out: cubic-bezier(0.22, 0.9, 0.3, 1);
 }
 .adx-microstructure .ant-btn {
@@ -112,17 +114,23 @@ export default function MicrostructurePage() {
   const [marginExchange, setMarginExchange] = useState<string | undefined>();
   const [releasePage, setReleasePage] = useState(1);
 
+  // Debounce the ticker so each keystroke does not fan out into 3 parallel
+  // network requests (lhb / margin / release share the same ts_code param).
+  // 250 ms is below the "feels laggy" threshold while still coalescing
+  // burst typing into a single fetch cycle.
+  const debouncedTicker = useDebounce(ticker, 250);
+
   const lhbParams = useMemo(
-    () => ({ page: lhbPage, page_size: 20, ts_code: ticker }),
-    [lhbPage, ticker],
+    () => ({ page: lhbPage, page_size: 20, ts_code: debouncedTicker }),
+    [lhbPage, debouncedTicker],
   );
   const marginParams = useMemo(
-    () => ({ page: 1, page_size: 20, ts_code: ticker, exchange: marginExchange }),
-    [ticker, marginExchange],
+    () => ({ page: 1, page_size: 20, ts_code: debouncedTicker, exchange: marginExchange }),
+    [debouncedTicker, marginExchange],
   );
   const releaseParams = useMemo(
-    () => ({ page: releasePage, page_size: 20, ts_code: ticker }),
-    [releasePage, ticker],
+    () => ({ page: releasePage, page_size: 20, ts_code: debouncedTicker }),
+    [releasePage, debouncedTicker],
   );
 
   const { data: summary, dataUpdatedAt } = useMicrostructureSummary();

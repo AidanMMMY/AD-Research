@@ -122,6 +122,8 @@ export default function Learning() {
             type={panelOpen ? 'primary' : 'default'}
             icon={<PartitionOutlined />}
             onClick={() => setPanelOpen((v) => !v)}
+            aria-expanded={panelOpen}
+            aria-controls="learning-terms-region"
           >
             {panelOpen ? '收起术语速查' : '展开术语速查'}
           </Button>
@@ -130,7 +132,16 @@ export default function Learning() {
           </span>
         </Space>
 
-        {panelOpen && <TermQuickReference initialOpen={wantsTermsPanel} />}
+        {/* Spatial consistency: the panel stays mounted so height/opacity
+            animate from the live size on close — no jump, no reflow. The
+            `aria-hidden` mirror communicates the closed state to AT. */}
+        <div
+          id="learning-terms-region"
+          className={`learning-terms-region ${panelOpen ? 'learning-terms-region--open' : 'learning-terms-region--closed'}`}
+          aria-hidden={!panelOpen}
+        >
+          <TermQuickReference initialOpen={wantsTermsPanel} />
+        </div>
       </div>
     </PageShell>
   );

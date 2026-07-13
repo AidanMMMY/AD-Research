@@ -54,6 +54,16 @@ export default function StatExplainer({
     );
   }
 
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    // Activate on Space/Enter so keyboard users reach the popover without
+    // needing a pointer device. AntD Popover's `click` trigger already does
+    // this for mouse, but the `hover` default leaves keyboard users stranded.
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      e.currentTarget.click();
+    }
+  };
+
   return (
     <Popover
       content={<div className="stat-explainer__popover">{detail}</div>}
@@ -66,6 +76,7 @@ export default function StatExplainer({
         role="button"
         tabIndex={0}
         aria-label="stat-explainer"
+        onKeyDown={handleKeyDown}
       >
         <InfoCircleOutlined className="stat-explainer__icon" />
         <span className="stat-explainer__text">{summary}</span>

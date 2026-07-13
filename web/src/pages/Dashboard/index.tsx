@@ -1,6 +1,6 @@
 import './styles.css';
 
-import { useMemo, useState, useEffect, useRef } from 'react';
+import { useMemo, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Table, Skeleton, Tooltip } from 'antd';
 import {
@@ -69,7 +69,15 @@ function NewsRow({
   return (
     <div
       className="dashboard-news-row"
+      role="button"
+      tabIndex={0}
       onClick={() => onOpen(article.id)}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onOpen(article.id);
+        }
+      }}
     >
       <div className="dashboard-news-row__meta">
         <span>{article.source}</span>
@@ -132,14 +140,36 @@ function FavoriteCard({
   onNavigate: (code: string) => void;
 }) {
   const prevPriceRef = useRef<number | undefined>(undefined);
-  const [flash, setFlash] = useState(false);
+  const flashRef = useRef<HTMLSpanElement | null>(null);
 
+  // Cancelable price-flash: when the price ticks, animate a child overlay's
+  // opacity via Web Animations API. The previous animation is canceled before
+  // a new one starts, so the flash always reflects the *latest* tick
+  // (Interruptibility: animate from live value).
   useEffect(() => {
-    if (prevPriceRef.current !== undefined && tick?.price !== undefined && tick.price !== prevPriceRef.current) {
-      setFlash(true);
-      const timer = setTimeout(() => setFlash(false), 600);
-      prevPriceRef.current = tick.price;
-      return () => clearTimeout(timer);
+    const prev = prevPriceRef.current;
+    if (
+      prev !== undefined &&
+      tick?.price !== undefined &&
+      tick.price !== prev &&
+      flashRef.current
+    ) {
+      const el = flashRef.current;
+      const reducedMotion =
+        typeof window !== 'undefined' &&
+        window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+      if (reducedMotion) {
+        el.style.opacity = '0';
+      } else {
+        el.getAnimations().forEach((a) => a.cancel());
+        el.animate(
+          [
+            { opacity: 0.55 },
+            { opacity: 0 },
+          ],
+          { duration: 600, easing: 'ease-out' },
+        );
+      }
     }
     prevPriceRef.current = tick?.price;
   }, [tick?.price]);
@@ -185,7 +215,14 @@ function FavoriteCard({
           <span className="dashboard-favorite-card__badge">{item.category}</span>
         )}
       </div>
-      <div className={`dashboard-favorite-card__price ${flash ? 'dashboard-favorite-card__price--flash' : ''}`}>
+      <div className="dashboard-favorite-card__price">
+        {/* Animated opacity overlay — interruptible. Transform/opacity-only,
+            paint-free, so it stays on the GPU compositor. */}
+        <span
+          ref={flashRef}
+          aria-hidden
+          className="dashboard-favorite-card__price-flash"
+        />
         {tick?.price != null && tick?.change_pct != null ? (
           <>
             <span className={`dashboard-favorite-card__price-value dashboard-favorite-card__price-value--${direction}`}>
@@ -783,7 +820,15 @@ export default function Dashboard() {
           action={
             <span
               className="panel-extra-link"
+              role="link"
+              tabIndex={0}
               onClick={() => navigate('/global')}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  navigate('/global');
+                }
+              }}
             >
               全球市场 →
             </span>
@@ -825,7 +870,18 @@ export default function Dashboard() {
                 </span>
               }
               extra={
-                <span className="panel-extra-link" onClick={() => navigate('/favorites')}>
+                <span
+                  className="panel-extra-link"
+                  role="link"
+                  tabIndex={0}
+                  onClick={() => navigate('/favorites')}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      navigate('/favorites');
+                    }
+                  }}
+                >
                   {favCount > 0 ? '查看全部 →' : '前往自选股 →'}
                 </span>
               }
@@ -880,7 +936,18 @@ export default function Dashboard() {
               }
               extra={
                 (pools?.length || 0) > 0 ? (
-                  <span className="panel-extra-link" onClick={() => navigate('/pools')}>
+                  <span
+                    className="panel-extra-link"
+                    role="link"
+                    tabIndex={0}
+                    onClick={() => navigate('/pools')}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        navigate('/pools');
+                      }
+                    }}
+                  >
                     管理标的池 →
                   </span>
                 ) : undefined
@@ -919,7 +986,18 @@ export default function Dashboard() {
               }
               extra={
                 favCount > 0 ? (
-                  <span className="panel-extra-link" onClick={() => navigate('/news')}>
+                  <span
+                    className="panel-extra-link"
+                    role="link"
+                    tabIndex={0}
+                    onClick={() => navigate('/news')}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        navigate('/news');
+                      }
+                    }}
+                  >
                     查看全部 →
                   </span>
                 ) : undefined
@@ -972,7 +1050,18 @@ export default function Dashboard() {
               </span>
             }
             extra={
-              <span className="panel-extra-link" onClick={() => navigate('/scores')}>
+              <span
+                className="panel-extra-link"
+                role="link"
+                tabIndex={0}
+                onClick={() => navigate('/scores')}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    navigate('/scores');
+                  }
+                }}
+              >
                 查看全部 →
               </span>
             }
@@ -1000,7 +1089,18 @@ export default function Dashboard() {
               </span>
             }
             extra={
-              <span className="panel-extra-link" onClick={() => navigate('/news')}>
+              <span
+                className="panel-extra-link"
+                role="link"
+                tabIndex={0}
+                onClick={() => navigate('/news')}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    navigate('/news');
+                  }
+                }}
+              >
                 查看全部 →
               </span>
             }

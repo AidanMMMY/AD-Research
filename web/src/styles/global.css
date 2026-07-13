@@ -109,7 +109,10 @@ body {
   color: var(--text-primary) !important;
 }
 
-.ant-table-row {
+/* Apple HIG: 默认表格行是只读的，pointer cursor 误导用户。
+   需要点击行时由调用方显式加 .ant-table-row--clickable。 */
+.ant-table-row--clickable,
+.ant-table-row--clickable .ant-table-row {
   cursor: pointer;
 }
 
@@ -812,6 +815,9 @@ a:focus-visible {
    Accessibility: respect prefers-reduced-motion
    Apple HIG: 位移/弹簧类动效降级为 cross-fade（仅 opacity），
    而不是简单“冻结”——空间关系仍通过淡入淡出表达。
+   关键策略：
+   - transform / left / top / width / height / margin 等空间过渡清零；
+   - opacity / color / background / border 等非空间过渡保留 150ms cross-fade。
    ============================================================ */
 @media (prefers-reduced-motion: reduce) {
   *,
@@ -819,8 +825,23 @@ a:focus-visible {
   *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
+    /* 仅清零空间过渡；opacity 等非空间过渡在下方显式 override 保留 */
+    transition-property: transform, top, left, right, bottom,
+      width, height, margin, padding, max-height, min-height,
+      max-width, min-width, grid-template-columns, grid-template-rows,
+      background-position !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+  }
+
+  /* 显式保留 opacity / color / background-color / border-color 的短淡入 */
+  *,
+  *::before,
+  *::after {
+    transition-property: opacity, color, background-color, border-color,
+      box-shadow, fill, stroke !important;
+    transition-duration: 150ms !important;
+    transition-timing-function: ease-out !important;
   }
 
   /* Slide/spring layers (drawers, modals, popovers, dropdowns) lose
@@ -840,10 +861,12 @@ a:focus-visible {
     transform: none !important;
   }
 
-  /* Sidebar collapse: instant width swap, no width tween. */
+  /* Sidebar collapse: kill the spring transform too — jump straight to
+     the target position, but keep opacity transition for the cross-fade. */
   .app-layout__sidebar,
   .app-layout__main {
-    transition: none !important;
+    transform: none !important;
+    transition: opacity 150ms ease-out !important;
   }
 
   /* Hide CRT scanline + vignette overlays for reduced-motion users. */
@@ -999,7 +1022,9 @@ a:focus-visible {
 
 /* Subtle horizontal-scroll hint — a right-edge gradient mask that tells
    users a table/tab strip is scrollable. Combine with .ad-table-scroll
-   or any overflow-x container. */
+   or any overflow-x container.
+   Apple HIG: 提示应跟随滚动状态 — 滚动到尽头时淡出。
+   用 :hover/.ad-scroll-hint--end 控制显隐，避免一直存在的渐变误导。 */
 .ad-scroll-hint {
   position: relative;
   overflow-x: auto;
@@ -1016,6 +1041,13 @@ a:focus-visible {
   background: linear-gradient(to left, var(--bg-elevated), transparent);
   pointer-events: none;
   z-index: 2;
+  opacity: 0;
+  transition: opacity var(--transition-fast);
+}
+
+.ad-scroll-hint:hover::after,
+.ad-scroll-hint--end::after {
+  /* 仅在用户 hover 或已滚动到尽头时显示 — 避免永久渐变干扰阅读 */
   opacity: 0.7;
 }
 
@@ -1576,7 +1608,8 @@ a:focus-visible {
 }
 
 .ad-letter-spacing {
-  letter-spacing: 1px;
+  /* Apple HIG: 用 em 表达字距，按字号缩放；0.06em ≈ body 字号下 0.84px */
+  letter-spacing: 0.06em;
 }
 
 /* Pre-formatted text blocks. */
@@ -2909,12 +2942,30 @@ main {
   left: 0;
   bottom: 0;
   z-index: 100;
-  transition: width var(--transition-slow);
+  /* Apple HIG: width 变化触发 reflow，应避免。
+     用 transform: translateX(-N) 让侧边栏“滑出”，
+     配合内部内容 opacity/translateX 的微动效表达展开/折叠。 */
+  transition: transform var(--transition-spring),
+    opacity var(--transition-spring);
   overflow: hidden;
+  will-change: transform, opacity;
 }
 
 .app-layout__sidebar--collapsed {
-  width: 72px;
+  /* 把展开态宽度保留，但平移出可视区；
+     折叠态占位宽度由下方 .app-layout__main 的 margin-left 控制。
+     Sidebar 仍占据 240px 槽位，仅视觉滑出，避免 reflow。 */
+  transform: translateX(calc(-100% + 72px));
+}
+
+/* 折叠态下隐藏的内容做快速淡出 */
+.app-layout__sidebar--collapsed .app-layout__nav-group-label,
+.app-layout__sidebar--collapsed .app-layout__nav-label,
+.app-layout__sidebar--collapsed .app-layout__logo-text,
+.app-layout__sidebar--collapsed .app-layout__nav-group-header {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--transition-fast);
 }
 
 .app-layout__logo {
@@ -3136,14 +3187,20 @@ main {
 
 .app-layout__nav-group-items {
   overflow: hidden;
-  transition: max-height var(--transition-spring-fast), opacity var(--transition-spring-fast);
+  /* Apple HIG: 用 transform/opacity 替代 max-height；
+     transform 不触发 reflow，配合 spring 曲线得到丝滑展开/折叠 */
+  transform-origin: top center;
+  transform: scaleY(1);
   opacity: 1;
-  max-height: 1200px;
+  transition:
+    transform var(--transition-spring-fast),
+    opacity var(--transition-spring-fast);
+  will-change: transform, opacity;
 }
 
 .app-layout__nav-group-items[hidden] {
   display: block; /* override HTML hidden so we can animate */
-  max-height: 0;
+  transform: scaleY(0);
   opacity: 0;
   pointer-events: none;
 }
@@ -3220,7 +3277,8 @@ main {
 .app-layout__main {
   flex: 1;
   margin-left: 240px;
-  transition: margin-left var(--transition-slow);
+  /* Apple HIG: 与 sidebar 同步 spring 曲线，配合 sidebar 滑入/滑出 */
+  transition: margin-left var(--transition-spring);
   display: flex;
   flex-direction: column;
   min-width: 0;
@@ -3246,8 +3304,9 @@ main {
 
 .app-layout__header {
   height: 60px;
+  /* Apple HIG: 背景为不透明实色，backdrop-filter 无意义且持续触发合成层。
+     改为 translucent material（半透色 + 阴影边框）即可表达“上层”层级。 */
   background: var(--bg-base);
-  backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--border-default);
   display: flex;
   align-items: center;
@@ -4236,18 +4295,23 @@ main {
   padding: 2px 8px;
   margin-left: 8px;
   border-radius: 999px;
-  font-size: 10px;
+  /* Apple HIG: 最小字号 12px；原 10px 改 12px，行高收紧以匹配 pill 高度 */
+  font-size: 12px;
   font-weight: 600;
-  letter-spacing: 0.08em;
+  letter-spacing: var(--tracking-small);
   font-family: var(--font-mono);
   background: var(--bg-surface);
   border: 1px solid var(--border-default);
   color: var(--text-tertiary);
   flex-shrink: 0;
   user-select: none;
+  line-height: 1.4;
 }
 
+/* Apple HIG: box-shadow 动画触发每帧重绘；改为 transform: scale + opacity，
+   用 ::after 伪元素承担涟漪扩散，配合外层保持可见圆点 */
 .ticker-status__dot {
+  position: relative;
   width: 6px;
   height: 6px;
   border-radius: 50%;
@@ -4262,8 +4326,6 @@ main {
 
 .ticker-status--live .ticker-status__dot {
   background: var(--color-success);
-  box-shadow: 0 0 0 0 var(--color-success);
-  animation: ticker-pulse 1.6s ease-out infinite;
 }
 
 .ticker-status--offline {
@@ -4272,14 +4334,32 @@ main {
 
 @keyframes ticker-pulse {
   0% {
-    box-shadow: 0 0 0 0 var(--color-success-dim);
+    transform: scale(1);
+    opacity: 0.8;
   }
   70% {
-    box-shadow: 0 0 0 6px transparent;
+    transform: scale(2.4);
+    opacity: 0;
   }
   100% {
-    box-shadow: 0 0 0 0 transparent;
+    transform: scale(2.4);
+    opacity: 0;
   }
+}
+
+/* 涟漪层：在原 dot 上叠加 ::after，承载 transform 动画 */
+.ticker-status__dot::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: var(--color-success);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.ticker-status--live .ticker-status__dot::after {
+  animation: ticker-pulse 1.6s ease-out infinite;
 }
 
 /* ---- Dashboard news row ---- */
@@ -4313,7 +4393,8 @@ main {
 
 .dashboard-news-row__importance {
   margin-left: auto;
-  letter-spacing: 1px;
+  /* Apple HIG: 用 em 让字距随字号缩放 */
+  letter-spacing: 0.06em;
 }
 
 .dashboard-news-row__star {
@@ -5501,11 +5582,12 @@ main {
 }
 
 .help-popover__label {
-  font-size: 10px;
+  /* Apple HIG: 12px 字号下限；用 weight+tracking 表达层级而非缩小字号 */
+  font-size: var(--text-label-size);
   font-weight: 500;
   color: var(--text-tertiary);
   text-transform: uppercase;
-  letter-spacing: 0.08em;
+  letter-spacing: var(--tracking-label);
   margin-bottom: 6px;
 }
 
@@ -5590,11 +5672,12 @@ main {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  font-size: 10px;
+  /* Apple HIG: 12px 字号下限 */
+  font-size: var(--text-label-size);
   font-weight: 600;
   color: var(--text-tertiary);
   text-transform: uppercase;
-  letter-spacing: 0.08em;
+  letter-spacing: var(--tracking-label);
 }
 
 .help-popover__related-chips {
@@ -5838,12 +5921,13 @@ main {
 }
 
 .news-list-panel__importance {
-  font-size: 10px;
+  /* Apple HIG: 12px 字号下限 */
+  font-size: var(--text-label-size);
   color: var(--text-tertiary);
 }
 
 .news-list-panel__star {
-  font-size: 9px;
+  font-size: 12px;
   margin-right: 1px;
 }
 
@@ -5858,7 +5942,8 @@ main {
 
 .news-list-panel__category {
   margin: 0;
-  font-size: 10px;
+  /* Apple HIG: 12px 字号下限 */
+  font-size: var(--text-label-size);
 }
 
 .news-list-panel__spacer {
@@ -5907,7 +5992,13 @@ main {
 
 .score-bar__fill {
   height: 100%;
-  transition: width 600ms cubic-bezier(0.4, 0, 0.2, 1);
+  width: 100%;
+  /* Apple HIG: width 触发 layout；改用 scaleX + transform-origin: left center
+     等价视觉效果，但仅 compositor 处理，60fps 稳定 */
+  transform: scaleX(var(--score-fill-ratio, 0));
+  transform-origin: left center;
+  transition: transform var(--transition-spring);
+  will-change: transform;
 }
 
 .score-bar__value {
@@ -6781,7 +6872,8 @@ main {
   font-weight: 700;
   color: var(--text-primary);
   margin: 0 0 8px 0;
-  letter-spacing: 1px;
+  /* Apple HIG: 用 em 让字距随字号缩放；24px → 0.04em ≈ 0.96px */
+  letter-spacing: 0.04em;
 }
 
 .login-subtitle {
@@ -6906,15 +6998,14 @@ main {
   width: 140%;
   height: 140%;
   border-radius: 50%;
+  /* Apple HIG: blur 静态预渲染为 filter；动画只动 transform/opacity，
+     避免浏览器每帧重新计算 filter 拉爆 GPU。 */
   filter: blur(70px);
   opacity: 0.72;
-  /* Hue shift + drift are split into two animations on the same layer so each
-     band has independent timing (some slow, some faster) without overloading
-     the keyframe engine with per-layer copies. */
   animation:
     aurora-drift 18s ease-in-out infinite,
-    aurora-hue 24s linear infinite;
-  will-change: transform, opacity, filter;
+    aurora-saturate 24s linear infinite;
+  will-change: transform, opacity;
 }
 
 .aurora-layer-1 {
@@ -6972,6 +7063,13 @@ main {
   0%   { filter: blur(70px) hue-rotate(0deg) saturate(1); }
   50%  { filter: blur(78px) hue-rotate(18deg) saturate(1.15); }
   100% { filter: blur(70px) hue-rotate(0deg) saturate(1); }
+}
+
+/* Apple HIG: saturate 微调通过 opacity 的多关键帧伪 hue 漂移，
+   保留视觉色相变化而不触发动态 filter 重算。 */
+@keyframes aurora-saturate {
+  0%, 100% { opacity: 0.72; }
+  50%      { opacity: 0.82; }
 }
 
 /* Starfield */
@@ -8478,19 +8576,24 @@ input[type="password"]::-webkit-strong-password-auto-fill-button {
   border-radius: 0;
 }
 
-/* The animation block (kept from K17) so collapse/expand is smooth. */
+/* The animation block (kept from K17) so collapse/expand is smooth.
+   Apple HIG: 用 transform/opacity 替代 max-height，避免 reflow。 */
 .app-layout__nav-group-items {
   overflow: hidden;
-  transition: max-height 180ms ease, opacity 180ms ease;
+  transform-origin: top center;
+  transform: scaleY(1);
   opacity: 1;
-  max-height: 1600px;
+  transition:
+    transform var(--transition-spring-fast),
+    opacity var(--transition-spring-fast);
+  will-change: transform, opacity;
 }
 
 /* Override HTML [hidden] only for the visual animation; screen readers
    still see the `hidden` attribute and skip collapsed items. */
 .app-layout__nav-group-items[hidden] {
   display: block;
-  max-height: 0;
+  transform: scaleY(0);
   opacity: 0;
   pointer-events: none;
 }
@@ -8719,21 +8822,34 @@ input[type="password"]::-webkit-strong-password-auto-fill-button {
 
 /* ============================================================
    Shimmer skeleton — 优雅的加载骨架动画
+   Apple HIG: background-position 触发每帧 paint；
+   改用 translateX 移动内部 ::after 高光条带，仅 compositor 工作。
    ============================================================ */
 @keyframes shimmer {
-  0%   { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
 }
 .skeleton-shimmer {
+  position: relative;
+  overflow: hidden;
+  background: var(--bg-hover);
+  border-radius: var(--radius-sm);
+}
+
+.skeleton-shimmer::after {
+  content: '';
+  position: absolute;
+  inset: 0;
   background: linear-gradient(
     90deg,
-    var(--bg-hover) 25%,
+    transparent 0%,
     var(--bg-surface) 50%,
-    var(--bg-hover) 75%
+    transparent 100%
   );
-  background-size: 200% 100%;
+  width: 50%;
+  transform: translateX(-100%);
   animation: shimmer 2s ease-in-out infinite;
-  border-radius: var(--radius-sm);
+  pointer-events: none;
 }
 
 /* ============================================================
@@ -8920,24 +9036,27 @@ input[type="password"]::-webkit-strong-password-auto-fill-button {
 
 /* ---- 2. Springs: antd 覆盖层动效换为临界阻尼弹簧曲线 -------
    drawer / modal / popover / dropdown 的进入离场全部走
-   --ease-spring（阻尼 1.0，无回弹）；回弹曲线仅留给动量交互。 */
+   --ease-spring（阻尼 1.0，无回弹）；回弹曲线仅留给动量交互。
+   Apple HIG: will-change 仅在 enter/leave 期间临时申请，
+   通过 .ant-motion-collapse-active 等动效类标识，避免持续占用 GPU 层。 */
 .ant-drawer-content-wrapper {
   transition: transform var(--transition-spring) !important;
-  will-change: transform;
 }
 
 .ant-modal-content {
   transition: transform var(--transition-spring),
     opacity var(--transition-spring) !important;
-  will-change: transform, opacity;
 }
 
-.ant-popover,
-.ant-tooltip,
-.ant-select-dropdown,
-.ant-dropdown,
-.ant-picker-dropdown,
-.ant-tour {
+/* 仅在 antd 内部动效活跃态（enter/leave 期间）申请 will-change */
+.ant-motion-collapse-active,
+.ant-drawer-content-wrapper.ant-motion,
+.ant-modal.ant-motion,
+.ant-popover.ant-motion,
+.ant-tooltip.ant-motion,
+.ant-select-dropdown.ant-motion,
+.ant-dropdown.ant-motion,
+.ant-picker-dropdown.ant-motion {
   will-change: transform, opacity;
 }
 
@@ -9009,17 +9128,21 @@ input[type="password"]::-webkit-strong-password-auto-fill-button {
   -webkit-backdrop-filter: var(--material-regular-blur);
 }
 
-/* Drawer/Modal 是更重的材质（thick），大面积但滚动内容在上层 */
+/* Drawer/Modal 是大面积材质的全屏层。
+   Apple HIG: blur(30px) 在全屏元素上 GPU 负担过重、视觉收益递减。
+   改用 regular material（20px），配合阴影边框表达层级。 */
 .ant-drawer-content {
-  background: var(--material-thick-bg) !important;
-  backdrop-filter: var(--material-thick-blur);
-  -webkit-backdrop-filter: var(--material-thick-blur);
+  background: var(--material-regular-bg) !important;
+  backdrop-filter: var(--material-regular-blur);
+  -webkit-backdrop-filter: var(--material-regular-blur);
+  box-shadow: var(--shadow-lg);
 }
 
 .ant-modal-content {
-  background: var(--material-thick-bg) !important;
-  backdrop-filter: var(--material-thick-blur);
-  -webkit-backdrop-filter: var(--material-thick-blur);
+  background: var(--material-regular-bg) !important;
+  backdrop-filter: var(--material-regular-blur);
+  -webkit-backdrop-filter: var(--material-regular-blur);
+  box-shadow: var(--shadow-lg);
 }
 
 /* Drawer body 保持不透明基底，文字始终在实色上（可读性优先） */

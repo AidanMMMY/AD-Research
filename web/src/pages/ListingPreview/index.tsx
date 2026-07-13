@@ -24,6 +24,7 @@ import { buildListingPreviewContext } from '@/utils/helpContext';
 import { getQuickQuestions } from '@/utils/helpPrompts';
 import type { ListingEvent, ListingStatus } from '@/types/listingEvent';
 import { STATUS_LABEL } from '@/types/listingEvent';
+import { useDebounce } from '@/hooks/useDebounce';
 import './styles.css';
 import ListingEventDetailModal from './DetailModal';
 
@@ -43,8 +44,24 @@ const LISTING_PAGE_STYLE = `
 .listing-preview-row:active {
   background: var(--bg-active) !important;
 }
+/* Apple "Spatial consistency": the detail modal scales out from the
+   row that opened it. The transform-origin is set inline via the
+   modal's wrap style, scoped to the listing-preview dialog so other
+   pages' modals are not affected. */
+.ant-modal.listing-preview-detail-modal .ant-modal-content {
+  transform-origin: var(--listing-modal-origin-x, 50%) var(--listing-modal-origin-y, 50%);
+  animation: listing-preview-modal-spring var(--transition-spring) both;
+}
+@keyframes listing-preview-modal-spring {
+  from { opacity: 0.4; transform: scale(0.94); }
+  to   { opacity: 1;   transform: scale(1); }
+}
 @media (prefers-reduced-motion: reduce) {
   .listing-preview-row { transition: none; }
+  .ant-modal.listing-preview-detail-modal .ant-modal-content {
+    animation: none;
+    transform: none;
+  }
 }
 `;
 
@@ -108,6 +125,14 @@ export default function ListingPreview() {
   const [pageSize] = useState(20);
   const [detailId, setDetailId] = useState<number | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
+  /* Anchor for the detail modal (Apple "Spatial consistency") — the
+     modal scales out from the row that opened it instead of popping
+     in centered. The transform-origin is also passed to <Modal>
+     via modalStyles below. */
+  const [detailAnchor, setDetailAnchor] = useState<{ x: number; y: number } | null>(null);
+  /* Apple "Response": do not refetch the list on every keystroke —
+     debounce the typed value (300ms) before it reaches the query. */
+  const debouncedSearch = useDebounce(search, 300);
 
   const listParams = useMemo(
     () => ({
@@ -120,11 +145,11 @@ export default function ListingPreview() {
       start_date: dateRange?.[0]?.format('YYYY-MM-DD'),
       end_date: dateRange?.[1]?.format('YYYY-MM-DD'),
       date_field: 'list_date' as const,
-      q: search || undefined,
+      q: debouncedSearch || undefined,
       sort_by: 'list_date' as const,
       sort_dir: 'desc' as const,
     }),
-    [page, pageSize, boards, markets, statuses, industry, dateRange, search],
+    [page, pageSize, boards, markets, statuses, industry, dateRange, debouncedSearch],
   );
 
   const { data, isLoading, refetch, dataUpdatedAt, isFetching } = useListingEventList(listParams);
@@ -159,7 +184,18 @@ export default function ListingPreview() {
     setPage(1);
   };
 
-  const handleOpenDetail = (id: number) => {
+  const handleOpenDetail = (id: number, anchorEl?: HTMLElement | null) => {
+    if (anchorEl) {
+      const rect = anchorEl.getBoundingClientRect();
+      // transform-origin is given in viewport units; the modal root
+      // covers the whole window so we forward raw client coordinates.
+      setDetailAnchor({
+        x: rect.left + rect.width / 2,
+        y: rect.top + rect.height / 2,
+      });
+    } else {
+      setDetailAnchor(null);
+    }
     setDetailId(id);
     setDetailOpen(true);
   };
@@ -167,6 +203,7 @@ export default function ListingPreview() {
   const handleCloseDetail = () => {
     setDetailOpen(false);
     setDetailId(null);
+    setDetailAnchor(null);
   };
 
   const handleRefresh = async () => {
@@ -206,7 +243,13 @@ export default function ListingPreview() {
           type="link"
           size="small"
           className="tabular-nums"
-          onClick={() => handleOpenDetail(record.id)}
+          onClick={(e) => {
+            e.stopPropagation();
+            handleOpenDetail(
+              record.id,
+              (e.currentTarget as HTMLElement | null) ?? null,
+            );
+          }}
         >
           {v}
         </Button>
@@ -443,7 +486,11 @@ export default function ListingPreview() {
                 showTotal: (t) => `共 ${t} 条`,
               }}
               onRow={(record) => ({
-                onClick: () => handleOpenDetail(record.id),
+                onClick: (e) =>
+                  handleOpenDetail(
+                    record.id,
+                    (e.currentTarget as HTMLElement | null) ?? null,
+                  ),
               })}
             />
           </div>
@@ -454,6 +501,7 @@ export default function ListingPreview() {
         open={detailOpen}
         loading={detailLoading}
         event={detail ?? null}
+        anchor={detailAnchor}
         onClose={handleCloseDetail}
       />
     </PageShell>

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import type { CSSProperties } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Select, Button, Skeleton, Modal, Empty, message, Popconfirm } from 'antd';
 import { RobotOutlined, SearchOutlined, DeleteOutlined } from '@ant-design/icons';
@@ -29,20 +30,37 @@ import remarkGfm from 'remark-gfm';
 const RESEARCH_NOTES_PAGE_STYLE = `
 .ad-research-card {
   transform-origin: center;
-  transition: transform var(--transition-fast, 150ms ease),
-    background var(--transition-fast, 150ms ease);
+  transition: transform var(--transition-spring-fast, 200ms var(--ease-spring)),
+    background var(--transition-spring-fast, 200ms var(--ease-spring));
 }
 .ad-research-card:active {
   background: var(--bg-active);
   transform: scale(var(--press-scale-subtle, 0.99));
 }
+.ad-research-card__delete {
+  transition: transform var(--transition-spring-fast, 200ms var(--ease-spring));
+}
 .ad-research-card__delete:active {
   transform: scale(var(--press-scale, 0.97));
+}
+/* Full-note modal spring — anchored to the row that opened it via
+   inline CSS variables on the modal wrap (modalOriginX/modalOriginY). */
+.ant-modal.ad-research-note-modal .ant-modal-content {
+  animation: research-note-modal-spring var(--transition-spring) both;
+  transform-origin: var(--modal-origin-x, 50%) var(--modal-origin-y, 50%);
+}
+@keyframes research-note-modal-spring {
+  from { opacity: 0; transform: scale(0.96); }
+  to   { opacity: 1; transform: scale(1); }
 }
 @media (prefers-reduced-motion: reduce) {
   .ad-research-card,
   .ad-research-card__delete {
     transition: none;
+    transform: none;
+  }
+  .ant-modal.ad-research-note-modal .ant-modal-content {
+    animation: none;
     transform: none;
   }
 }
@@ -71,6 +89,9 @@ export default function ResearchNotes() {
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [noteType, setNoteType] = useState<string | undefined>();
   const [modalNote, setModalNote] = useState<ResearchNote | null>(null);
+  /* Apple "Spatial consistency": anchor the full-note modal to the
+     triggering card via CSS variables on the modal wrap. */
+  const [modalAnchor, setModalAnchor] = useState<{ x: number; y: number } | null>(null);
   const queryClient = useQueryClient();
 
   // Debounce the search text so we don't hammer the backend on every keystroke.
@@ -211,7 +232,39 @@ export default function ResearchNotes() {
               className="ad-research-card"
               padding="md"
             >
-              <div onClick={() => setModalNote(note)}>
+              <div
+                role="button"
+                tabIndex={0}
+                aria-label={`打开研报 ${note.name ?? note.instrument_code}`}
+                onClick={(e) => {
+                  /* Apple "Spatial consistency": capture the card's
+                     viewport center so the modal scales out from it. */
+                  const target = e.currentTarget as HTMLElement | null;
+                  if (target) {
+                    const rect = target.getBoundingClientRect();
+                    setModalAnchor({
+                      x: rect.left + rect.width / 2,
+                      y: rect.top + rect.height / 2,
+                    });
+                  }
+                  setModalNote(note);
+                }}
+                onKeyDown={(e) => {
+                  /* Apple "Agency": same affordance for keyboard users. */
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    const target = e.currentTarget as HTMLElement | null;
+                    if (target) {
+                      const rect = target.getBoundingClientRect();
+                      setModalAnchor({
+                        x: rect.left + rect.width / 2,
+                        y: rect.top + rect.height / 2,
+                      });
+                    }
+                    setModalNote(note);
+                  }
+                }}
+              >
                 <div className="ad-research-card__header">
                   <div className="ad-research-card__meta">
                     <InstrumentCodeTag
@@ -246,8 +299,17 @@ export default function ResearchNotes() {
                       onCancel={(e) => e?.stopPropagation()}
                     >
                       <DeleteOutlined
+                        role="button"
+                        tabIndex={0}
+                        aria-label="删除研报"
                         className="ad-research-card__delete"
                         onClick={(e) => e.stopPropagation()}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            e.stopPropagation();
+                          }
+                        }}
                       />
                     </Popconfirm>
                   </div>
@@ -268,10 +330,23 @@ export default function ResearchNotes() {
 
       <Modal
         open={!!modalNote}
-        onCancel={() => setModalNote(null)}
+        onCancel={() => {
+          setModalNote(null);
+          setModalAnchor(null);
+        }}
+        afterClose={() => setModalAnchor(null)}
         footer={null}
         width={720}
-        className="ad-markdown-modal"
+        className="ad-research-note-modal"
+        wrapClassName="ad-research-note-modal-wrap"
+        style={
+          modalAnchor
+            ? ({
+                ['--modal-origin-x' as string]: `${modalAnchor.x}px`,
+                ['--modal-origin-y' as string]: `${modalAnchor.y}px`,
+              } as CSSProperties)
+            : undefined
+        }
       >
         {modalNote && (
           <div className="markdown-body ad-markdown-body">

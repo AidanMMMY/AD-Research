@@ -12,6 +12,7 @@ import EmptyState from '@/components/EmptyState';
 import { useBacktests } from '@/hooks/useBacktests';
 import { useStrategies } from '@/hooks/useStrategies';
 import { useInstrumentList } from '@/hooks/useInstrumentList';
+import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
 import { PlusOutlined, EyeOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import dayjs from 'dayjs';
@@ -22,6 +23,12 @@ export default function BacktestList() {
   const navigate = useNavigate();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [form] = Form.useForm();
+  // Apple Design #14: under reduced motion, suppress antd's default zoom
+  // keyframe so the modal opens/closes with an instant cut instead.
+  const reducedMotion = usePrefersReducedMotion();
+  const modalMotionProps = reducedMotion
+    ? { transitionName: '', maskTransitionName: '' }
+    : {};
 
   const { backtests, isLoading, create } = useBacktests();
   const { strategies } = useStrategies();
@@ -149,6 +156,7 @@ export default function BacktestList() {
         open={isModalOpen}
         onCancel={() => { setIsModalOpen(false); form.resetFields(); }}
         onOk={() => form.submit()}
+        {...modalMotionProps}
       >
         <Form form={form} layout="vertical" onFinish={handleCreate}>
           <Form.Item name="strategy_id" label="选择策略" rules={[{ required: true }]}>

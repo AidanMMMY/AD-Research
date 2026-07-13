@@ -33,7 +33,8 @@ import type { FuturesDailyBarOut, FuturesDashboardSection } from '@/api/futures'
  */
 const ADX_STYLE = `
 .adx-futures {
-  --adx-spring: cubic-bezier(0.5, 1.6, 0.3, 1);
+  /* Critically-damped monotonic curve: y2 ≤ 1, no overshoot. */
+  --adx-spring: cubic-bezier(0.32, 0.72, 0, 1);
   --adx-ease-out: cubic-bezier(0.22, 0.9, 0.3, 1);
 }
 .adx-futures .ant-btn {

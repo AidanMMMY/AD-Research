@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Table, Button, Space, Modal, Form, Select, Input, DatePicker, message } from 'antd';
 import ThemeTag, { ThemeTagVariant } from '@/components/ThemeTag';
 import PageShell from '@/components/PageShell';
@@ -30,17 +30,36 @@ import type { ReportMetadata } from '@/types/report';
  * 2. Reduced-motion users get a plain cross-fade.
  */
 const REPORT_BROWSER_PAGE_STYLE = `
+/* Preview panel — Apple "Spatial consistency" + "Frame smoothness":
+   - enters from the top edge of the table where the row sits (anchored
+     transform-origin to "top center"),
+   - exits via a reverse animation (slide back up + fade) so the
+     disappearance mirrors the entrance instead of a hard cut,
+   - will-change is only declared during the active animation window
+     (the data-animating attribute, set by the component), not
+     permanently — this lets the browser hand the panel back to the
+     compositor cleanly once the spring finishes. */
 .report-browser-preview {
   transform-origin: top center;
-  will-change: transform, opacity;
   animation: report-preview-in var(--spring-response, 300ms) var(--ease-spring, ease) both;
+}
+.report-browser-preview[data-animating] {
+  will-change: transform, opacity;
+}
+.report-browser-preview--leaving {
+  animation: report-preview-out var(--spring-response, 300ms) var(--ease-spring, ease) both;
 }
 @keyframes report-preview-in {
   from { opacity: 0; transform: translateY(-8px); }
   to { opacity: 1; transform: translateY(0); }
 }
+@keyframes report-preview-out {
+  from { opacity: 1; transform: translateY(0); }
+  to { opacity: 0; transform: translateY(-8px); }
+}
 @media (prefers-reduced-motion: reduce) {
-  .report-browser-preview {
+  .report-browser-preview,
+  .report-browser-preview--leaving {
     animation: report-preview-in-reduced 120ms ease both;
   }
   @keyframes report-preview-in-reduced {
@@ -70,6 +89,28 @@ export default function ReportBrowser() {
   const [selectedReport, setSelectedReport] = useState<ReportMetadata | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [form] = Form.useForm();
+
+  /* Apple "Spatial consistency" — keep the preview panel mounted for
+     one animation frame after the user clicks elsewhere so the
+     exit animation can play before unmount. ``previewMounted`` lags
+     ``hasPreviewTarget`` by the spring duration. */
+  const hasPreviewTarget = !!selectedReport && selectedReport.status === 'done';
+  const [previewMounted, setPreviewMounted] = useState(hasPreviewTarget);
+  const [previewLeaving, setPreviewLeaving] = useState(false);
+  useEffect(() => {
+    if (hasPreviewTarget) {
+      setPreviewMounted(true);
+      setPreviewLeaving(false);
+      return;
+    }
+    if (!previewMounted) return;
+    setPreviewLeaving(true);
+    const t = setTimeout(() => {
+      setPreviewMounted(false);
+      setPreviewLeaving(false);
+    }, 320);
+    return () => clearTimeout(t);
+  }, [hasPreviewTarget, previewMounted]);
 
   // Filter state — client-side only, no backend changes.
   const [statusFilter, setStatusFilter] = useState<ReportStatusFilter>('all');
@@ -268,13 +309,42 @@ export default function ReportBrowser() {
         </div>
       )}
 
-      {selectedReport?.status === 'done' && (
-        <Panel title={`报告预览: ${selectedReport.report_type} (${selectedReport.report_date})`} className="ad-mt-5 report-browser-preview">
-          <iframe
-            className="ad-preview-frame"
-            src={reportApi.downloadUrl(selectedReport.id)}
-            title={`报告预览 ${selectedReport.report_type}`}
-          />
+      {previewMounted && (
+        <Panel
+          title={`报告预览: ${selectedReport?.report_type ?? ''} (${selectedReport?.report_date ?? ''})`}
+          className={`ad-mt-5 report-browser-preview${
+            previewLeaving ? ' report-browser-preview--leaving' : ''
+          }`}
+        >
+          {/* Wrapper div owns the animationend hookup + the
+              ``data-animating`` attribute that toggles will-change for
+              the duration of the spring only. The browser hands the
+              element back to the compositor once the attribute is
+              removed (Frame smoothness principle). */}
+          <div
+            data-animating={previewLeaving || hasPreviewTarget ? '1' : undefined}
+            onAnimationEnd={(e) => {
+              // Strip the toggling attribute once the spring finishes so
+              // will-change is no longer pinned to the element.
+              if (
+                e.animationName === 'report-preview-in' ||
+                e.animationName === 'report-preview-out' ||
+                e.animationName === 'report-preview-in-reduced'
+              ) {
+                e.currentTarget.removeAttribute('data-animating');
+                if (previewLeaving) {
+                  setPreviewMounted(false);
+                  setPreviewLeaving(false);
+                }
+              }
+            }}
+          >
+            <iframe
+              className="ad-preview-frame"
+              src={selectedReport ? reportApi.downloadUrl(selectedReport.id) : undefined}
+              title={selectedReport ? `报告预览 ${selectedReport.report_type}` : '报告预览'}
+            />
+          </div>
         </Panel>
       )}
 

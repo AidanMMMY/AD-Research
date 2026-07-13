@@ -80,6 +80,7 @@
   user-select: none;
   position: relative;
   min-height: 54px;
+  will-change: background;
   /* Tap highlight handled via :active background instead of the default
      browser overlay (Apple gesture detail: feedback on touch-down). */
   -webkit-tap-highlight-color: transparent;
@@ -325,6 +326,7 @@
   transition: transform var(--transition-spring-fast), border-color var(--transition-fast), box-shadow var(--transition-fast);
   user-select: none;
   -webkit-tap-highlight-color: transparent;
+  will-change: transform;
 }
 
 .dashboard-favorite-card:hover {
@@ -333,9 +335,10 @@
   box-shadow: 0 0 0 1px var(--accent-glow);
 }
 
-/* Response: press feedback on pointer-down (scale, transform-only) */
+/* Response: press feedback on pointer-down — compose with hover translateY
+   so the spring continues from the live value (Interruptibility). */
 .dashboard-favorite-card:active {
-  transform: scale(var(--press-scale-subtle));
+  transform: translateY(-1px) scale(var(--press-scale-subtle));
 }
 
 /* Star toggle — hidden until hover */
@@ -444,27 +447,37 @@
   color: var(--text-primary);
 }
 
-/* Price update flash animation */
-@keyframes dashboard-price-flash {
-  0% {
-    background-color: var(--accent-glow);
-  }
-  100% {
-    background-color: transparent;
-  }
+/* Price update flash: opacity-driven overlay element rendered behind the
+   price text. The animation is driven via Web Animations API in
+   `FavoriteCard` so each new tick cancels the previous animation
+   (Interruptibility: animate from live value). Frame smoothness:
+   transform/opacity only — no paint of background-color. */
+.dashboard-favorite-card__price {
+  position: relative;
 }
 
-.dashboard-favorite-card__price--flash {
-  animation: dashboard-price-flash 0.6s ease-out;
+.dashboard-favorite-card__price-flash {
+  position: absolute;
+  inset: -2px calc(-1 * var(--space-1));
   border-radius: var(--radius-sm);
-  padding: 0 var(--space-1);
-  margin: 0 calc(-1 * var(--space-1));
+  background: var(--accent-glow);
+  opacity: 0;
+  pointer-events: none;
+  z-index: 0;
+  will-change: opacity;
 }
 
-/* Reduced motion: no flash animation — the value itself still updates */
+.dashboard-favorite-card__price-value,
+.dashboard-favorite-card__price-change,
+.dashboard-favorite-card__price-na {
+  position: relative;
+  z-index: 1;
+}
+
+/* Reduced motion: flash overlay stays at 0 opacity — value still updates. */
 @media (prefers-reduced-motion: reduce) {
-  .dashboard-favorite-card__price--flash {
-    animation: none;
+  .dashboard-favorite-card__price-flash {
+    display: none;
   }
 }
 
@@ -488,6 +501,7 @@
   transition: transform var(--transition-spring-fast), border-color var(--transition-fast), box-shadow var(--transition-fast);
   user-select: none;
   -webkit-tap-highlight-color: transparent;
+  will-change: transform;
 }
 
 .dashboard-pool-card:hover {
@@ -496,9 +510,10 @@
   box-shadow: 0 0 0 1px var(--accent-glow);
 }
 
-/* Response: press feedback on pointer-down (scale, transform-only) */
+/* Response: press feedback on pointer-down — compose with hover translateY
+   so the spring continues from the live value (Interruptibility). */
 .dashboard-pool-card:active {
-  transform: scale(var(--press-scale-subtle));
+  transform: translateY(-1px) scale(var(--press-scale-subtle));
 }
 
 .dashboard-pool-card__icon {

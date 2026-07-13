@@ -21,9 +21,6 @@ export default function EmptyState({
     <div className={`empty-state ${className ?? ''}`} style={style}>
       {icon ? (
         <div className="empty-state__icon-area">
-          <span className="empty-state__icon-bg" aria-hidden="true">
-            {icon}
-          </span>
           <span className="empty-state__icon">{icon}</span>
         </div>
       ) : null}

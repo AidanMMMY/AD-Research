@@ -106,11 +106,18 @@ export function useLogStream(container: string) {
     setConnected(false);
   }, []);
 
+  // Apple Design #13 Craft — clear through state, never by mutating DOM
+  // directly. Exposed so the LogViewer can reset its rendered list from a
+  // single source of truth (the `lines` state).
+  const clear = useCallback(() => {
+    setLines([]);
+  }, []);
+
   useEffect(() => {
     return () => {
       disconnect();
     };
   }, [disconnect]);
 
-  return { lines, connected, connect, disconnect };
+  return { lines, connected, connect, disconnect, clear };
 }

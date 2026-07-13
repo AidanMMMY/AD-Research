@@ -1,6 +1,7 @@
 import './styles.css';
 import { Alert, Badge, Button, Spin, Statistic, Table, Tag, Tooltip } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
+import { useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { newsApi } from '@/api/news';
 import type { NewsSourceHealth } from '@/types/news';
@@ -67,6 +68,38 @@ export default function NewsHealth() {
   const schedulerRunning = data?.scheduler_running ?? false;
   const jobs = data?.scheduler_jobs ?? [];
   const sources: NewsSourceHealth[] = data?.sources ?? [];
+
+  /* Multimodal feedback on polled refresh (Apple: causality cue).
+     Track which cells changed so we can briefly highlight them after
+     each 30s poll instead of letting values silently swap underneath
+     the user. The ref holds the previous render's snapshot keyed by
+     source key + column so the comparator stays cheap. */
+  const prevSnapshotRef = useRef<Map<string, string>>(new Map());
+  const changedSourcesRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    const next = new Map<string, string>();
+    const changed = new Set<string>();
+    for (const row of sources) {
+      const key = row.source;
+      const snapshot =
+        `${row.total}|${row.last_24h}|${row.last_published_at ?? ''}|${row.last_fetched_at ?? ''}|${row.latest_etl?.status ?? ''}|${row.latest_etl?.records ?? ''}`;
+      next.set(key, snapshot);
+      const prev = prevSnapshotRef.current.get(key);
+      if (prev !== undefined && prev !== snapshot) {
+        changed.add(key);
+      }
+    }
+    // New rows that did not exist in the previous snapshot are also
+    // surfaced — count as "changed" so the flash draws the eye.
+    for (const key of next.keys()) {
+      if (!prevSnapshotRef.current.has(key)) changed.add(key);
+    }
+    changedSourcesRef.current = changed;
+    prevSnapshotRef.current = next;
+  }, [sources]);
+  /** Test helper used by the table cells below to gate the flash class. */
+  const isSourceChanged = (source: string): boolean =>
+    changedSourcesRef.current.has(source);
 
   const columns: ColumnsType<NewsSourceHealth> = [
     {
@@ -291,9 +324,12 @@ export default function NewsHealth() {
             pagination={false}
             size="middle"
             scroll={{ x: 'max-content' }}
-            rowClassName={(row) =>
-              statusColor(row, schedulerRunning) === 'red' ? 'news-health-row-red' : ''
-            }
+            rowClassName={(row) => {
+              const classes: string[] = [];
+              if (statusColor(row, schedulerRunning) === 'red') classes.push('news-health-row-red');
+              if (isSourceChanged(row.source)) classes.push('news-health-row-changed');
+              return classes.join(' ');
+            }}
           />
         </ContentCard>
       </Spin>

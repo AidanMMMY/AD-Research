@@ -16,6 +16,7 @@ import { useSettingsStore } from '@/stores/settings';
 import { useStrategies } from '@/hooks/useStrategies';
 import { useStrategyCatalog } from '@/hooks/useStrategyCatalog';
 import { useAIHelp } from '@/hooks/useAIHelp';
+import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
 import { PlusOutlined, PlayCircleOutlined, DeleteOutlined, BookOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { buildStrategyListContext } from '@/utils/helpContext';
@@ -49,6 +50,12 @@ export default function StrategyList() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState<StrategyCatalogItem | null>(null);
   const [form] = Form.useForm();
+  // Apple Design #14: under reduced motion, swap antd's default zoom/fade
+  // keyframes for an instant cut. Configures Modal and Popconfirm at once.
+  const reducedMotion = usePrefersReducedMotion();
+  const antMotionProps = reducedMotion
+    ? { transitionName: '', maskTransitionName: '' }
+    : {};
 
   const { strategies, templates, isLoading, create, delete: deleteStrategy } = useStrategies();
   const { data: catalog } = useStrategyCatalog();
@@ -175,6 +182,7 @@ export default function StrategyList() {
             cancelText="取消"
             okButtonProps={{ danger: true }}
             onConfirm={() => handleDelete(record.id)}
+            {...antMotionProps}
           >
             <Button size="small" danger icon={<DeleteOutlined />}>
               删除
@@ -243,6 +251,7 @@ export default function StrategyList() {
         onCancel={() => { setIsModalOpen(false); setSelectedTemplate(null); form.resetFields(); }}
         onOk={() => form.submit()}
         width={600}
+        {...antMotionProps}
       >
         <Form form={form} layout="vertical" onFinish={handleCreate}>
           <Form.Item name="template" label={<HelpPopover termKey="strategy_template" mode={mode}>选择模板</HelpPopover>} rules={[{ required: true }]}>

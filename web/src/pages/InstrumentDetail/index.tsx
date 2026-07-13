@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import './styles.css';
 import { Row, Col, Statistic, Spin, Descriptions, Radio, Checkbox, Space, Alert, Button, message, Skeleton } from 'antd';
@@ -102,7 +102,12 @@ export default function InstrumentDetail() {
   const mode = useSettingsStore((s) => s.mode);
   const { data: instrument, isLoading: instrumentLoading, error: instrumentError } = useInstrumentDetail(code || '');
   const { data: score } = useInstrumentScore(code || '');
-  const { isFavorite, isLoading: favLoading, toggle, isToggling } = useFavoriteStatus(code || '');
+  const { isFavorite: serverIsFavorite, toggle } = useFavoriteStatus(code || '');
+  /* Response: optimistic favorite flip — the UI reflects the new state on
+     pointer-down instead of waiting for the network round-trip. We roll
+     back on error and re-sync with the server result when it arrives. */
+  const [optimisticFav, setOptimisticFav] = useState<boolean | null>(null);
+  const isFavorite = optimisticFav ?? serverIsFavorite;
   const [timeRange, setTimeRange] = useState(120);
   const [adjusted, setAdjusted] = useState(true);
 
@@ -124,10 +129,15 @@ export default function InstrumentDetail() {
   }, [overlays]);
 
   const handleToggleFavorite = async () => {
+    const previous = serverIsFavorite;
+    setOptimisticFav(!previous);
     try {
       const result = await toggle();
       message.success(result.data.message);
+      setOptimisticFav(null);
     } catch {
+      /* Rollback the optimistic flip — server's value remains authoritative. */
+      setOptimisticFav(previous);
       message.error('操作失败');
     }
   };
@@ -229,6 +239,30 @@ export default function InstrumentDetail() {
   const safeHistoryItems = historyData?.items || [];
   const latestNote: ResearchNote | null = researchNotes?.[0] || null;
 
+  /* Spatial consistency: when the user switches time range or复权 mode,
+     keep the previous chart rendered underneath and cross-fade so the
+     transition feels like the same panel turning over, not a hard cut. */
+  const [prevHistoryItems, setPrevHistoryItems] = useState<typeof safeHistoryItems>([]);
+  const [prevAdjusted, setPrevAdjusted] = useState(adjusted);
+  const [fading, setFading] = useState(false);
+  const isFirstRenderRef = useRef(true);
+  useEffect(() => {
+    if (isFirstRenderRef.current) {
+      isFirstRenderRef.current = false;
+      return;
+    }
+    /* When new data arrives, hold the previous snapshot for one frame, then
+       cross-fade by overlaying old on top of new. */
+    setPrevHistoryItems(safeHistoryItems);
+    setPrevAdjusted(adjusted);
+    setFading(true);
+    const t = window.setTimeout(() => setFading(false), 320);
+    return () => window.clearTimeout(t);
+    /* We deliberately only re-run when the data or adjusted mode changes,
+       not on every safeHistoryItems reference identity. */
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [historyData, adjusted]);
+
   const metaParts = [
     instrument.category,
     instrument.sector,
@@ -276,7 +310,6 @@ export default function InstrumentDetail() {
             <Button
               type={isFavorite ? 'primary' : 'default'}
               icon={isFavorite ? <StarFilled /> : <StarOutlined />}
-              loading={isToggling || favLoading}
               onClick={handleToggleFavorite}
             >
               {isFavorite ? '已自选' : '加入自选'}
@@ -406,9 +439,22 @@ export default function InstrumentDetail() {
             </Space>
           </Space>
         </div>
-        {historyLoading ? <Spin /> : (
+        {historyLoading && safeHistoryItems.length === 0 ? <Spin /> : (
           safeHistoryItems.length ? (
-            <KLineChart data={safeHistoryItems} overlays={overlays} adjusted={adjusted} />
+            <div className="detail-chart-stack">
+              <KLineChart data={safeHistoryItems} overlays={overlays} adjusted={adjusted} />
+              {/* Cross-fade overlay: previous chart sits on top and fades out
+                  while the new chart underneath is fully painted (Spatial
+                  consistency: enter/exit same path). */}
+              {fading && prevHistoryItems.length > 0 && (
+                <div
+                  className="detail-chart-fade"
+                  aria-hidden
+                >
+                  <KLineChart data={prevHistoryItems} overlays={overlays} adjusted={prevAdjusted} />
+                </div>
+              )}
+            </div>
           ) : (
             <Alert className="detail-chart__empty" message="暂无历史行情数据" type="info" showIcon />
           )

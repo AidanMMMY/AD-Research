@@ -70,7 +70,16 @@ export default function NewsListPanel({ symbol, limit = 10, bare = false }: News
         return (
           <List.Item
             className="news-list-panel__item"
+            role="link"
+            tabIndex={0}
+            aria-label={`${a.title} — 查看新闻详情`}
             onClick={() => navigate(`/news/${a.id}`)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                navigate(`/news/${a.id}`);
+              }
+            }}
           >
             <List.Item.Meta
               title={

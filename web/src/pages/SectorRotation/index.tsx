@@ -19,6 +19,7 @@ import ReturnTag from '@/components/ReturnTag';
 import ThemeTag from '@/components/ThemeTag';
 import { useSettingsStore } from '@/stores/settings';
 import { useIsMobile } from '@/hooks/useBreakpoint';
+import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
 import { getReturnColor } from '@/utils/color';
 import { readCssVar, resolveChartColors } from '@/utils/cssVar';
 import type {
@@ -39,7 +40,8 @@ import './styles.css';
  */
 const ADX_STYLE = `
 .adx-sector-rotation {
-  --adx-spring: cubic-bezier(0.5, 1.6, 0.3, 1);
+  /* Critically-damped monotonic curve: y2 ≤ 1, no overshoot. */
+  --adx-spring: cubic-bezier(0.32, 0.72, 0, 1);
   --adx-ease-out: cubic-bezier(0.22, 0.9, 0.3, 1);
 }
 .adx-sector-rotation .ant-btn {
@@ -119,6 +121,7 @@ type DetailTab = 'summary' | 'constituents';
 
 export default function SectorRotation() {
   const mode = useSettingsStore((s) => s.mode);
+  const prefersReducedMotion = usePrefersReducedMotion();
   // Industry taxonomy toggle: 申万一级 (default, A-share) vs GICS (global).
   const [classification, setClassification] = useState<SectorClassification>('SW');
   const clsLabel = classification === 'SW' ? '申万一级' : 'GICS';
@@ -168,6 +171,9 @@ export default function SectorRotation() {
   const rankOption: EChartsOption = useMemo(() => {
     const ordered = [...sectors].reverse(); // ECharts draws first at the bottom
     return {
+      // Reduced motion: drop the canvas animation so the chart appears
+      // instantly without re-drawing every paint frame.
+      animation: !prefersReducedMotion,
       tooltip: {
         trigger: 'axis',
         axisPointer: { type: 'shadow' },
@@ -208,7 +214,7 @@ export default function SectorRotation() {
         },
       ],
     };
-  }, [sectors, palette]);
+  }, [sectors, palette, prefersReducedMotion]);
 
   /** Heatmap: rows = sectors, cols = [1w, 1m, 3m, 6m, 1y], colour = return. */
   const heatmapOption: EChartsOption = useMemo(() => {
@@ -222,6 +228,8 @@ export default function SectorRotation() {
       });
     });
     return {
+      // Reduced motion: skip the canvas animation; the cells simply appear.
+      animation: !prefersReducedMotion,
       tooltip: {
         position: 'top',
         formatter: (p: any) => {
@@ -277,11 +285,13 @@ export default function SectorRotation() {
         },
       ],
     };
-  }, [sectors, palette]);
+  }, [sectors, palette, prefersReducedMotion]);
 
   /** Relative-strength bar — quick view of who is beating the market. */
   const rsOption: EChartsOption = useMemo(() => {
     return {
+      // Reduced motion: drop the canvas animation for the bar enter.
+      animation: !prefersReducedMotion,
       tooltip: {
         trigger: 'axis',
         axisPointer: { type: 'shadow' },
@@ -336,7 +346,7 @@ export default function SectorRotation() {
         },
       ],
     };
-  }, [sectors, palette]);
+  }, [sectors, palette, prefersReducedMotion]);
 
   // ------------------ Table ------------------
 

@@ -14,8 +14,9 @@ import {
   Button,
   Tooltip,
   Collapse,
+  Spin,
 } from 'antd';
-import { SearchOutlined, ReloadOutlined } from '@ant-design/icons';
+import { SearchOutlined, ReloadOutlined, LoadingOutlined } from '@ant-design/icons';
 import {
   useInstrumentList,
   useInstrumentCategories,
@@ -506,7 +507,20 @@ export default function InstrumentList() {
                   placeholder="搜索标的代码或名称"
                   allowClear
                   className="ad-w-full"
-                  prefix={<SearchOutlined className="ad-icon-tertiary" />}
+                  /* Pending indicator while debounce is in flight —
+                     Response: surface work-in-progress so the user sees
+                     feedback the keystroke was received. */
+                  prefix={
+                    debouncedSearch !== search ? (
+                      <Spin
+                        size="small"
+                        indicator={<LoadingOutlined spin />}
+                        className="ad-icon-tertiary"
+                      />
+                    ) : (
+                      <SearchOutlined className="ad-icon-tertiary" />
+                    )
+                  }
                   value={search}
                   onChange={(e) => { setSearch(e.target.value); setPage(1); }}
                 />
@@ -911,7 +925,15 @@ export default function InstrumentList() {
             dataSource={data?.items || []}
             renderItem={(item: any) => (
               <div
+                role="button"
+                tabIndex={0}
                 onClick={() => navigate(`/instruments/${item.code}`)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    navigate(`/instruments/${item.code}`);
+                  }
+                }}
                 className="mobile-list-item"
               >
                 <div className="mobile-list-item__row">
@@ -989,6 +1011,15 @@ export default function InstrumentList() {
               }}
               onRow={(record) => ({
                 onClick: () => navigate(`/instruments/${record.code}`),
+                tabIndex: 0,
+                /* Gesture detail: pointer-down feedback + keyboard navigation
+                   on table rows. */
+                onKeyDown: (e: React.KeyboardEvent<HTMLElement>) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    navigate(`/instruments/${record.code}`);
+                  }
+                },
               })}
             />
           </div>

@@ -8,6 +8,7 @@ import { useInstrumentMarkets } from '@/hooks/useInstrumentList';
 import { useScreenStore } from '@/stores/screen';
 import { useAIHelp } from '@/hooks/useAIHelp';
 import { useIsMobile } from '@/hooks/useBreakpoint';
+import { useDebounce } from '@/hooks/useDebounce';
 import PageShell from '@/components/PageShell';
 import Panel from '@/components/Panel';
 import PageHeader from '@/components/PageHeader';
@@ -41,15 +42,20 @@ export default function Screen() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(isMobile ? 20 : 50);
 
+  // Apple Design #1 Response: debounce InputNumber keystrokes so we don't
+  // refire useScreenResults on every digit. Pagination and preset stay
+  // immediate because they change discretely.
+  const debouncedFilters = useDebounce(filters, 250);
+
   // Include pagination and active preset in API request
   const queryFilters = useMemo(
     () => ({
-      ...filters,
+      ...debouncedFilters,
       ...(preset ? { preset } : {}),
       offset: (page - 1) * pageSize,
       limit: pageSize,
     }),
-    [filters, preset, page, pageSize]
+    [debouncedFilters, preset, page, pageSize]
   );
   const { data: results, isLoading, dataUpdatedAt: resultsUpdatedAt, isFetching: resultsFetching } = useScreenResults(queryFilters);
   const { data: presets } = useScreenPresets();
@@ -99,26 +105,26 @@ export default function Screen() {
       {/* Apple Design fixes:
           #1/#10 Response — clickable result rows give instant pointer-down
           feedback (background only, no movement).
-          #4 Springs + #10 — preset chips spring-press on pointer-down for a
-          direct-manipulation feel (global CSS already gives bg feedback).
-          #14 Reduced motion — chips keep color feedback, drop the scale. */}
+          #4 Springs + #10 — preset chips keep the existing critically-damped
+          (--ease-spring) curve for color/border feedback and rely on the
+          global background active state; we deliberately drop the scale
+          transform that was labelled "spring" but is in fact a one-shot
+          cubic-bezier (no real spring solver running on every frame).
+          #14 Reduced motion — chips keep color feedback, drop motion. */}
       <style>{`
         .screen-row--pressable > td { transition: background var(--transition-fast, 150ms ease); }
         .screen-row--pressable:active > td { background: var(--bg-active) !important; }
         .screen-presets .ad-status-chip {
-          transition: transform var(--transition-spring-fast, 0.2s cubic-bezier(0.32, 0.72, 0.32, 1)),
-            background var(--transition-fast, 150ms ease),
+          transition: background var(--transition-spring-fast),
             border-color var(--transition-fast, 150ms ease),
             color var(--transition-fast, 150ms ease);
         }
-        .screen-presets .ad-status-chip:active { transform: scale(var(--press-scale-subtle, 0.99)); }
         @media (prefers-reduced-motion: reduce) {
           .screen-presets .ad-status-chip {
             transition: background var(--transition-fast, 150ms ease),
               border-color var(--transition-fast, 150ms ease),
               color var(--transition-fast, 150ms ease);
           }
-          .screen-presets .ad-status-chip:active { transform: none; }
         }
       `}</style>
       <PageHeader
@@ -439,6 +445,15 @@ export default function Screen() {
               scroll={{ x: 'max-content' }}
               onRow={(record) => ({
                 onClick: () => navigate(`/instruments/${record.code}`),
+                // Apple Design #10 Agency: result rows must be operable by keyboard.
+                tabIndex: 0,
+                role: 'link',
+                onKeyDown: (e: React.KeyboardEvent<HTMLElement>) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    navigate(`/instruments/${record.code}`);
+                  }
+                },
               })}
             />
           </div>

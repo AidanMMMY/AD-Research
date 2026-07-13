@@ -9,8 +9,22 @@
 /* ── Diff summary grid (target vs actual drift cards) ── */
 .portfolio-diff-summary {
   /* ResponsiveGrid wrapper for diff cards — tight spacing
-     between the Card components showing per-symbol drift. */
+     between the Panel components showing per-symbol drift. */
+}
+
+/* ── Per-card layout: stat cards sit at the top of the panel, with the
+   reason explanation anchored to the bottom on a slightly muted colour. */
+.portfolio-diff-card .stat-card {
+  padding: 0;
+  background: transparent;
+  border: none;
 }
 
 /* ── Drift-colour helpers are applied inline via style
      because the colours are computed from data (dynamic). ── */
+
+/* ── Mock-data banner: subtle warning tint that signals the section is
+   illustrative, not authoritative. ── */
+.portfolio-diff-mock-banner {
+  border-radius: var(--radius-md);
+}

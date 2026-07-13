@@ -1,3 +1,4 @@
+import type { CSSProperties } from 'react';
 import { Descriptions, Modal, Space, Tag } from 'antd';
 import { FileTextOutlined, InboxOutlined } from '@ant-design/icons';
 import EmptyState from '@/components/EmptyState';
@@ -10,6 +11,10 @@ interface DetailModalProps {
   loading: boolean;
   event: ListingEventDetail | null | undefined;
   onClose: () => void;
+  /** Viewport coordinates of the row that opened the modal — the
+   *  modal scales out from this point per Apple "Spatial consistency"
+   *  (transform-origin anchored to the trigger). */
+  anchor?: { x: number; y: number } | null;
 }
 
 const STATUS_COLOR: Record<ListingStatus, string> = {
@@ -32,8 +37,23 @@ const formatYuan = (v: number | null | undefined): string => {
 
 const formatDate = (v: string | null | undefined): string => v ?? '-';
 
-export default function ListingEventDetailModal({ open, loading, event, onClose }: DetailModalProps) {
+export default function ListingEventDetailModal({
+  open,
+  loading,
+  event,
+  onClose,
+  anchor,
+}: DetailModalProps) {
   const isMobile = useIsMobile();
+  // ``anchor`` carries the row's viewport position; we forward it as
+  // CSS variables on the modal wrap so the entrance keyframes scale
+  // out from the row instead of from screen center.
+  const wrapStyle: CSSProperties = anchor
+    ? ({
+        ['--listing-modal-origin-x' as string]: `${anchor.x}px`,
+        ['--listing-modal-origin-y' as string]: `${anchor.y}px`,
+      } as CSSProperties)
+    : {};
   return (
     <Modal
       open={open}
@@ -41,6 +61,9 @@ export default function ListingEventDetailModal({ open, loading, event, onClose 
       footer={null}
       width={isMobile ? '100%' : 720}
       destroyOnClose
+      className="listing-preview-detail-modal"
+      wrapClassName="listing-preview-detail-modal-wrap"
+      style={wrapStyle}
       title={
         event ? (
           <Space>

@@ -134,7 +134,7 @@ export default function ETLOpsDashboard() {
   ];
 
   return (
-    <Spin spinning={isLoading || isRefetching}>
+    <Spin spinning={isLoading}>
       <PageShell maxWidth="wide">
         {/* Apple Design overrides (WWDC "Designing Fluid Interfaces").
             #1 Response — the refresh link is an <a>, so give it instant
@@ -154,26 +154,46 @@ export default function ETLOpsDashboard() {
           @media (prefers-reduced-motion: reduce) {
             .panel-extra-link { transition: none; }
           }
+          .panel-extra-link-wrap {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+          }
+          .panel-extra-link-refreshing {
+            font-size: 12px;
+            color: var(--text-secondary);
+            opacity: 0.7;
+          }
         `}</style>
         <PageHeader
           title="ETL 运维看板"
           description="展示调度任务最近一次执行状态、各市场数据新鲜度。30 秒自动刷新。"
           extra={
-            <a
-              onClick={() => refetch()}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault();
-                  refetch();
-                }
-              }}
-              role="button"
-              tabIndex={0}
-              aria-label="refresh"
-              className="panel-extra-link"
-            >
-              刷新
-            </a>
+            <span className="panel-extra-link-wrap">
+              {isRefetching && (
+                <span
+                  className="panel-extra-link-refreshing"
+                  aria-live="polite"
+                >
+                  刷新中…
+                </span>
+              )}
+              <a
+                onClick={() => refetch()}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    refetch();
+                  }
+                }}
+                role="button"
+                tabIndex={0}
+                aria-label="refresh"
+                className="panel-extra-link"
+              >
+                刷新
+              </a>
+            </span>
           }
         />
 

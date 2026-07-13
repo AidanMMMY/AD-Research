@@ -7,6 +7,7 @@ import { PlusOutlined, DeleteOutlined } from '@ant-design/icons';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { usePoolList } from '@/hooks/usePoolDetail';
 import { poolApi } from '@/api';
+import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
 import PageShell from '@/components/PageShell';
 import PageHeader from '@/components/PageHeader';
 import FilterToolbar from '@/components/FilterToolbar';
@@ -19,6 +20,12 @@ export default function PoolList() {
   const { data: pools, isLoading: poolsLoading } = usePoolList();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [form] = Form.useForm();
+  // Apple Design #14: under reduced motion, drop the modal's spring/zoom
+  // keyframe so the overlay cross-fades (or appears instantly) instead.
+  const reducedMotion = usePrefersReducedMotion();
+  const modalMotionProps = reducedMotion
+    ? { transitionName: '', maskTransitionName: '' }
+    : {};
 
   const createMutation = useMutation({
     mutationFn: (values: { name: string; description?: string }) => poolApi.create(values),
@@ -111,6 +118,16 @@ export default function PoolList() {
             loading={poolsLoading}
             onRow={(record) => ({
               onClick: () => navigate(`/pools/${record.id}`),
+              // Apple Design #10 Agency: clickable rows must be operable by
+              // keyboard — tab to focus, Enter/Space to activate.
+              tabIndex: 0,
+              role: 'link',
+              onKeyDown: (e: React.KeyboardEvent<HTMLElement>) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  navigate(`/pools/${record.id}`);
+                }
+              },
             })}
             pagination={false}
             locale={{
@@ -136,6 +153,7 @@ export default function PoolList() {
         onCancel={() => setIsModalOpen(false)}
         onOk={() => form.submit()}
         confirmLoading={createMutation.isPending}
+        {...modalMotionProps}
       >
         <Form form={form} onFinish={handleCreate} layout="vertical">
           <Form.Item name="name" label="名称" rules={[{ required: true }]}>

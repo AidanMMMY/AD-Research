@@ -177,7 +177,10 @@ export default function StrategyLibrary() {
         onCancel={() => { setCreateModalOpen(false); createForm.resetFields(); }}
         onOk={() => createForm.submit()}
         width={isMobile ? '100%' : 600}
-        destroyOnClose
+        // Apple Design #9 Spatial consistency: keep the form mounted through
+        // exit so the close transition can animate symmetrically (zoom-out
+        // matches zoom-in). Removed destroyOnClose so the overlay exit frame
+        // doesn't snap-pop while form nodes unmount.
       >
         <Form form={createForm} layout="vertical" onFinish={handleCreateSubmit}>
           <Form.Item name="strategy_type" hidden>
@@ -204,7 +207,8 @@ export default function StrategyLibrary() {
         onCancel={() => { setRunModalOpen(false); runForm.resetFields(); setRunCodes([]); }}
         onOk={() => runForm.submit()}
         width={isMobile ? '100%' : 720}
-        destroyOnClose
+        // Apple Design #9 Spatial consistency: keep mounted so exit animates
+        // symmetrically with the enter spring (no destroyOnClose snap).
         confirmLoading={runStrategy.isPending}
       >
         <Form form={runForm} layout="vertical" onFinish={handleRunSubmit}>

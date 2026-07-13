@@ -5,4 +5,32 @@
    live-price-cell, etc.) are defined in global.css.
    ============================================================ */
 
-/* ── Future page-specific overrides go here ── */
+/* Response: feedback on pointer-down for mobile list rows (Gesture detail).
+   Composes with the row's existing focus/hover states and respects the
+   interruptible spring curve defined in theme.css. */
+.mobile-list-item {
+  transition: background var(--transition-spring-fast);
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+
+.mobile-list-item:hover,
+.mobile-list-item:focus-visible {
+  background: var(--bg-hover);
+  outline: none;
+}
+
+.mobile-list-item:active {
+  background: var(--bg-active);
+}
+
+/* Desktop table rows: pointer-down feedback via :active. The
+   transform/opacity-only focus ring keeps the row on the compositor. */
+.ad-table-sticky .ant-table-tbody > tr {
+  transition: background var(--transition-spring-fast);
+}
+
+.ad-table-sticky .ant-table-tbody > tr:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}

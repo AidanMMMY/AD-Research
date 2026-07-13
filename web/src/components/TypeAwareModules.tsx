@@ -175,6 +175,15 @@ function EtfHoldingsModule({ instrument }: { instrument: InstrumentInfo }) {
             scroll={{ x: 'max-content' }}
             onRow={(row) => ({
               onClick: () => navigate(`/instruments/${row.holding_code}`),
+              onKeyDown: (e: React.KeyboardEvent<HTMLTableRowElement>) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  navigate(`/instruments/${row.holding_code}`);
+                }
+              },
+              tabIndex: 0,
+              role: 'link',
+              'aria-label': `${row.holding_name ?? row.holding_code} — 查看持仓详情`,
               style: { cursor: 'pointer' },
             })}
             columns={[

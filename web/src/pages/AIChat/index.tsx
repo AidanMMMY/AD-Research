@@ -8,6 +8,7 @@ import {
   DeleteOutlined,
   RobotOutlined,
   SendOutlined,
+  StopOutlined,
   HeartOutlined,
 } from '@ant-design/icons';
 import { chatApi, ChatSession, ChatMessage } from '@/api/chat';
@@ -37,6 +38,12 @@ export default function AIChat() {
   const [sending, setSending] = useState(false);
   const [firstMessageSent, setFirstMessageSent] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  // Holds the in-flight stream's AbortController so the user can stop
+  // mid-generation without losing input (Interruptibility principle).
+  const abortRef = useRef<AbortController | null>(null);
+  // Cached "near bottom?" so auto-scroll during streaming doesn't fight
+  // a user who has scrolled up to read history (Frame smoothness).
+  const stuckToBottomRef = useRef(true);
   const queryClient = useQueryClient();
 
   const STEP_DEFS = [
@@ -88,7 +95,6 @@ export default function AIChat() {
     reset(STEP_DEFS);
     try {
       start('fetch');
-      await new Promise((r) => setTimeout(r, 120));
       finish('fetch', 'done');
       start('llm');
       // Real SSE stream — parses meta/delta/done frames server-side.
@@ -119,12 +125,27 @@ export default function AIChat() {
             }
             resolve();
           },
-        }).catch(reject);
+        })
+          .then(({ abort }) => {
+            // Track the controller so the user can stop mid-stream.
+            abortRef.current = abort;
+          })
+          .catch(reject);
       });
       queryClient.invalidateQueries({ queryKey: ['chat-messages', activeSession] });
     } catch {
       finish('llm', 'error');
     }
+    abortRef.current = null;
+    setSending(false);
+  };
+
+  const handleStop = () => {
+    // Interruptibility: kill latency by aborting the in-flight SSE; the
+    // textarea stays enabled so the user can edit + resend immediately.
+    abortRef.current?.abort();
+    abortRef.current = null;
+    finish('stream', 'done');
     setSending(false);
   };
 
@@ -151,15 +172,28 @@ export default function AIChat() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeSession, symbolFromUrl]);
 
-  // Auto-scroll to bottom on new messages
+  // Track whether the user is reading history (scrolled up) — auto-scroll
+  // during streaming should only kick in when they're near the bottom so
+  // a smooth scroll-into-view doesn't fight their reading position
+  // (Frame smoothness: avoid animating every streamed token).
+  const onMessagesScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const el = e.currentTarget;
+    const threshold = 64; // px from bottom counts as "near bottom"
+    stuckToBottomRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < threshold;
+  };
+
   useEffect(() => {
+    if (!stuckToBottomRef.current) return;
     const reducedMotion =
       typeof window !== 'undefined' &&
       typeof window.matchMedia === 'function' &&
       window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    messagesEndRef.current?.scrollIntoView({
-      behavior: reducedMotion ? 'auto' : 'smooth',
-    });
+    // behavior:'auto' during streaming — instant jumps match the rate of
+    // incoming tokens and don't queue animations on the compositor.
+    messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
+    if (reducedMotion) {
+      // No-op; auto is already the cheapest option.
+    }
   }, [messages, streamedText]);
 
   // Show session sidebar on desktop; toggle on mobile
@@ -187,7 +221,8 @@ export default function AIChat() {
             className="ad-list-compact"
             dataSource={sessions}
             renderItem={(s: ChatSession) => (
-              <div
+              <button
+                type="button"
                 onClick={() => setActiveSession(s.id)}
                 className={`ad-chat-sidebar__item ${activeSession === s.id ? 'ad-chat-sidebar__item--active' : ''}`}
               >
@@ -207,7 +242,7 @@ export default function AIChat() {
                     onClick={(e) => e.stopPropagation()}
                   />
                 </Popconfirm>
-              </div>
+              </button>
             )}
           />
         )}
@@ -227,7 +262,7 @@ export default function AIChat() {
       )}
 
       {/* Messages */}
-      <div className="ad-chat-messages">
+      <div className="ad-chat-messages" onScroll={onMessagesScroll}>
         {!activeSession ? (
           <EmptyState
             icon={<RobotOutlined className="ad-empty-icon" />}
@@ -312,20 +347,38 @@ export default function AIChat() {
               onPressEnter={(e) => {
                 if (!e.shiftKey) {
                   e.preventDefault();
+                  if (sending) {
+                    handleStop();
+                    return;
+                  }
                   handleSend();
                 }
               }}
-              placeholder="输入问题... (Shift+Enter换行，Enter发送)"
+              placeholder="输入问题... (Shift+Enter换行，Enter发送 / Esc停止)"
               autoSize={{ minRows: 1, maxRows: 4 }}
-              disabled={sending}
+              onKeyDown={(e) => {
+                if (e.key === 'Escape' && sending) {
+                  e.preventDefault();
+                  handleStop();
+                }
+              }}
             />
-            <Button
-              type="primary"
-              icon={<SendOutlined />}
-              onClick={() => handleSend()}
-              loading={sending}
-              disabled={sending || !input.trim()}
-            />
+            {sending ? (
+              <Button
+                type="primary"
+                danger
+                icon={<StopOutlined />}
+                onClick={handleStop}
+                aria-label="停止生成"
+              />
+            ) : (
+              <Button
+                type="primary"
+                icon={<SendOutlined />}
+                onClick={() => handleSend()}
+                disabled={!input.trim()}
+              />
+            )}
           </div>
         </div>
       )}

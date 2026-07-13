@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import type { CSSProperties } from 'react';
 import {
   Table, Input, Select, Button, Space, Tag, Skeleton, message, Modal,
   Descriptions, Typography, Spin,
@@ -36,8 +37,24 @@ const RESEARCH_REPORTS_PAGE_STYLE = `
 .research-reports-row:active {
   background: var(--bg-active) !important;
 }
+/* Apple "Spatial consistency": the detail modal scales out from the
+   row that opened it instead of popping in centered. The
+   transform-origin is set inline via CSS variables on the modal
+   wrap (modalOriginX/modalOriginY). */
+.ant-modal.research-reports-detail-modal .ant-modal-content {
+  animation: research-reports-modal-spring var(--transition-spring) both;
+  transform-origin: var(--modal-origin-x, 50%) var(--modal-origin-y, 50%);
+}
+@keyframes research-reports-modal-spring {
+  from { opacity: 0; transform: scale(0.95); }
+  to   { opacity: 1; transform: scale(1); }
+}
 @media (prefers-reduced-motion: reduce) {
   .research-reports-row { transition: none; }
+  .ant-modal.research-reports-detail-modal .ant-modal-content {
+    animation: none;
+    transform: none;
+  }
 }
 `;
 
@@ -72,6 +89,9 @@ export default function ResearchReports() {
   const [pageSize] = useState(20);
   const [detailId, setDetailId] = useState<number | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
+  /* Apple "Spatial consistency": capture the row position so the
+     detail modal scales out from the row that opened it. */
+  const [detailAnchor, setDetailAnchor] = useState<{ x: number; y: number } | null>(null);
   const debouncedSearch = useDebounce(search, 300);
 
   const listParams = useMemo(
@@ -104,7 +124,16 @@ export default function ResearchReports() {
     setPage(1);
   };
 
-  const handleOpenDetail = (id: number) => {
+  const handleOpenDetail = (id: number, anchorEl?: HTMLElement | null) => {
+    if (anchorEl) {
+      const rect = anchorEl.getBoundingClientRect();
+      setDetailAnchor({
+        x: rect.left + rect.width / 2,
+        y: rect.top + rect.height / 2,
+      });
+    } else {
+      setDetailAnchor(null);
+    }
     setDetailId(id);
     setDetailOpen(true);
   };
@@ -112,6 +141,7 @@ export default function ResearchReports() {
   const handleCloseDetail = () => {
     setDetailOpen(false);
     setDetailId(null);
+    setDetailAnchor(null);
   };
 
   const handleRefresh = async () => {
@@ -149,7 +179,13 @@ export default function ResearchReports() {
           type="link"
           size="small"
           className="tabular-nums"
-          onClick={() => handleOpenDetail(record.id)}
+          onClick={(e) => {
+            e.stopPropagation();
+            handleOpenDetail(
+              record.id,
+              (e.currentTarget as HTMLElement | null) ?? null,
+            );
+          }}
         >
           {v}
         </Button>
@@ -202,7 +238,13 @@ export default function ResearchReports() {
         <Button
           type="link"
           size="small"
-          onClick={() => handleOpenDetail(record.id)}
+          onClick={(e) => {
+            e.stopPropagation();
+            handleOpenDetail(
+              record.id,
+              (e.currentTarget as HTMLElement | null) ?? null,
+            );
+          }}
           className="ad-text-left"
         >
           {v}
@@ -347,7 +389,11 @@ export default function ResearchReports() {
                 showTotal: (t) => `共 ${t} 条`,
               }}
               onRow={(record) => ({
-                onClick: () => handleOpenDetail(record.id),
+                onClick: (e) =>
+                  handleOpenDetail(
+                    record.id,
+                    (e.currentTarget as HTMLElement | null) ?? null,
+                  ),
               })}
             />
           </div>
@@ -358,7 +404,18 @@ export default function ResearchReports() {
         open={detailOpen}
         title={detail?.title ?? '研报详情'}
         onCancel={handleCloseDetail}
+        afterClose={() => setDetailAnchor(null)}
         width={isMobile ? '100%' : 720}
+        className="research-reports-detail-modal"
+        wrapClassName="research-reports-detail-modal-wrap"
+        style={
+          detailAnchor
+            ? ({
+                ['--modal-origin-x' as string]: `${detailAnchor.x}px`,
+                ['--modal-origin-y' as string]: `${detailAnchor.y}px`,
+              } as CSSProperties)
+            : undefined
+        }
         footer={[
           detail && !detail.summary ? (
             <Button

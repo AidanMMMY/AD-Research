@@ -27,6 +27,7 @@ import {
   PauseCircleOutlined,
   ClearOutlined,
 } from '@ant-design/icons';
+import { useQueryClient } from '@tanstack/react-query';
 import PageShell from '@/components/PageShell';
 import PageHeader from '@/components/PageHeader';
 import Panel from '@/components/Panel';
@@ -229,11 +230,14 @@ function ServerHealthCard({ container }: { container: ContainerStats }) {
 // Live log viewer
 // ---------------------------------------------------------------------------
 
+const PIN_THRESHOLD_PX = 24; // distance from bottom that still counts as "pinned"
+
 function LogViewer({
   lines,
   connected,
   onConnect,
   onDisconnect,
+  onClear,
   container,
   onContainerChange,
 }: {
@@ -241,16 +245,30 @@ function LogViewer({
   connected: boolean;
   onConnect: () => void;
   onDisconnect: () => void;
+  onClear: () => void;
   container: string;
   onContainerChange: (c: string) => void;
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
+  // Apple Design #5 Direct manipulation — respect the user's scroll intent.
+  // When the user scrolls up to inspect a line, stop yanking them back down;
+  // re-pin only after they return to (or near) the bottom.
+  const [pinnedToBottom, setPinnedToBottom] = useState(true);
+
+  const handleScroll = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const distanceFromBottom =
+      el.scrollHeight - el.scrollTop - el.clientHeight;
+    setPinnedToBottom(distanceFromBottom <= PIN_THRESHOLD_PX);
+  }, []);
 
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
-  }, [lines]);
+    if (!pinnedToBottom) return;
+    const el = scrollRef.current;
+    if (!el) return;
+    el.scrollTop = el.scrollHeight;
+  }, [lines, pinnedToBottom]);
 
   return (
     <div>
@@ -265,6 +283,11 @@ function LogViewer({
               </Text>
             }
           />
+          {!pinnedToBottom && (
+            <Text className="ad-text-small ad-text-secondary">
+              · 滚动到底部以跟随新日志
+            </Text>
+          )}
         </Space>
         <Space>
           <Select
@@ -288,15 +311,17 @@ function LogViewer({
           <Button
             size="small"
             icon={<ClearOutlined />}
-            onClick={() => {
-              onDisconnect();
-              if (scrollRef.current) scrollRef.current.innerHTML = '';
-            }}
+            onClick={onClear}
+            aria-label="清除日志"
           />
         </Space>
       </div>
 
-      <div ref={scrollRef} className="admin-log-terminal">
+      <div
+        ref={scrollRef}
+        className="admin-log-terminal"
+        onScroll={handleScroll}
+      >
         {lines.length === 0 && (
           <div className="admin-log-terminal__empty">
             {connected ? '等待日志 ...' : '点击「连接」开始查看实时日志'}
@@ -320,6 +345,7 @@ function LogViewer({
 // ---------------------------------------------------------------------------
 
 export default function AdminDeployments() {
+  const queryClient = useQueryClient();
   const {
     deployments,
     isLoadingDeployments,
@@ -330,7 +356,7 @@ export default function AdminDeployments() {
   } = useDeployments();
 
   const [logContainer, setLogContainer] = useState('alloyresearch-backend');
-  const { lines, connected, connect, disconnect } = useLogStream(logContainer);
+  const { lines, connected, connect, disconnect, clear: clearLogs } = useLogStream(logContainer);
 
   const handleLogContainerChange = useCallback(
     (c: string) => {
@@ -348,6 +374,14 @@ export default function AdminDeployments() {
       message.error(err?.response?.data?.detail || '触发失败');
     }
   };
+
+  // Apple Design #1 Response — revalidate React Query caches in place instead
+  // of throwing away the whole tree with window.location.reload(). Preserves
+  // scroll position, log stream state, and form drafts.
+  const handleRefresh = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ['deployments'] });
+    queryClient.invalidateQueries({ queryKey: ['server-health'] });
+  }, [queryClient]);
 
   const containers = health?.containers || [];
 
@@ -381,9 +415,7 @@ export default function AdminDeployments() {
           <Space>
             <Button
               icon={<ReloadOutlined />}
-              onClick={() => {
-                window.location.reload();
-              }}
+              onClick={handleRefresh}
               variant="outlined"
             >
               刷新
@@ -440,6 +472,7 @@ export default function AdminDeployments() {
             connected={connected}
             onConnect={connect}
             onDisconnect={disconnect}
+            onClear={clearLogs}
             container={logContainer}
             onContainerChange={handleLogContainerChange}
           />
