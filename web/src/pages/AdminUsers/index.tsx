@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Table,
   Button,
@@ -33,6 +33,24 @@ const ROLE_OPTIONS = [
   { label: '普通用户', value: 'user' },
 ];
 
+// Apple Design #14 — prefers-reduced-motion. When set, antd Modals drop their
+// zoom/fade motion (transitionName '' renders with no motion classes, i.e. an
+// instant cross-fade) instead of animating scale+opacity.
+function usePrefersReducedMotion() {
+  const [reduced, setReduced] = useState(
+    () =>
+      typeof window !== 'undefined' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  );
+  useEffect(() => {
+    const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const onChange = () => setReduced(mq.matches);
+    mq.addEventListener('change', onChange);
+    return () => mq.removeEventListener('change', onChange);
+  }, []);
+  return reduced;
+}
+
 export default function AdminUsers() {
   const { user: currentUser } = useAuthStore();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -42,6 +60,10 @@ export default function AdminUsers() {
   const [createForm] = Form.useForm();
   const [editForm] = Form.useForm();
   const [resetForm] = Form.useForm();
+  const reducedMotion = usePrefersReducedMotion();
+  const modalMotionProps = reducedMotion
+    ? { transitionName: '', maskTransitionName: '' }
+    : {};
 
   const {
     users,
@@ -251,6 +273,7 @@ export default function AdminUsers() {
         onOk={() => createForm.submit()}
         width={480}
         destroyOnClose
+        {...modalMotionProps}
       >
         <Form
           form={createForm}
@@ -301,6 +324,7 @@ export default function AdminUsers() {
         onOk={() => editForm.submit()}
         width={400}
         destroyOnClose
+        {...modalMotionProps}
       >
         <Form form={editForm} layout="vertical" onFinish={handleEdit}>
           <Form.Item
@@ -332,6 +356,7 @@ export default function AdminUsers() {
         onOk={() => resetForm.submit()}
         width={400}
         destroyOnClose
+        {...modalMotionProps}
       >
         <Form form={resetForm} layout="vertical" onFinish={handleResetPassword}>
           <Form.Item

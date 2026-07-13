@@ -27,6 +27,27 @@ import { STATUS_LABEL } from '@/types/listingEvent';
 import './styles.css';
 import ListingEventDetailModal from './DetailModal';
 
+/**
+ * Apple Design fixes scoped to this page (page styles.css is owned by
+ * another workstream): rows open a detail modal on click, so they need
+ * 1. an affordance cursor, and
+ * 2. pointer-down feedback (:active highlight on touch-down, not
+ *    release) per Apple's Response principle.
+ * Reduced-motion users get no transition at all.
+ */
+const LISTING_PAGE_STYLE = `
+.listing-preview-row {
+  cursor: pointer;
+  transition: background var(--transition-fast, 150ms ease);
+}
+.listing-preview-row:active {
+  background: var(--bg-active) !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  .listing-preview-row { transition: none; }
+}
+`;
+
 const STATUS_COLOR: Record<ListingStatus, string> = {
   upcoming: 'blue',
   subscribing: 'orange',
@@ -263,6 +284,7 @@ export default function ListingPreview() {
 
   return (
     <PageShell maxWidth="wide">
+      <style>{LISTING_PAGE_STYLE}</style>
       <PageHeader
         eyebrow="新股"
         title="上市预告"
@@ -411,6 +433,7 @@ export default function ListingPreview() {
               rowKey="id"
               size={rowSize as any}
               scroll={{ x: 'max-content' }}
+              rowClassName={() => 'listing-preview-row'}
               pagination={{
                 current: page,
                 pageSize,

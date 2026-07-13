@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { Input, Button, Slider, Tooltip, Skeleton } from 'antd';
 import { SmileOutlined, FrownOutlined, MehOutlined, SyncOutlined } from '@ant-design/icons';
@@ -14,6 +14,72 @@ import InstrumentCodeTag from '@/components/InstrumentCodeTag';
 import HelpPopover from '@/components/HelpPopover';
 import { useSettingsStore } from '@/stores/settings';
 
+/**
+ * Apple-style motion layer (scoped to this page):
+ * - Response: feedback lands on pointer-down (:active, 0ms), release springs back.
+ * - Springs: critically-damped-ish cubic-bezier; transform-only for frame smoothness.
+ * - Direct manipulation: the slider thumb tracks the pointer 1:1 (local draft
+ *   state) and only commits the query on release (see onChangeComplete below).
+ * - Typography: size-specific tracking (large tight, small loose).
+ * - Reduced motion: cross-fade only, transforms disabled.
+ */
+const ADX_STYLE = `
+.adx-sentiment-dashboard {
+  --adx-spring: cubic-bezier(0.5, 1.6, 0.3, 1);
+  --adx-ease-out: cubic-bezier(0.22, 0.9, 0.3, 1);
+}
+.adx-sentiment-dashboard .ant-btn {
+  touch-action: manipulation;
+  transition: transform 240ms var(--adx-spring), background-color 140ms var(--adx-ease-out);
+}
+.adx-sentiment-dashboard .ant-btn:active {
+  transform: scale(0.97);
+  transition-duration: 0ms;
+}
+.adx-sentiment-dashboard .ant-slider-handle {
+  transition: box-shadow 140ms var(--adx-ease-out);
+}
+.adx-sentiment-dashboard .ant-slider-handle:active {
+  box-shadow: 0 0 0 6px var(--bg-active);
+}
+.adx-sentiment-dashboard .ad-sentiment-bar__fill {
+  transition: width 480ms var(--adx-spring);
+}
+.adx-sentiment-dashboard h1,
+.adx-sentiment-dashboard h2,
+.adx-sentiment-dashboard .ant-typography h1,
+.adx-sentiment-dashboard .ant-typography h2 {
+  letter-spacing: -0.02em;
+  line-height: 1.18;
+}
+.adx-sentiment-dashboard .ad-text-xs,
+.adx-sentiment-dashboard .ad-text-small {
+  letter-spacing: 0.01em;
+}
+@media (prefers-reduced-motion: reduce) {
+  .adx-sentiment-dashboard *,
+  .adx-sentiment-dashboard *::before,
+  .adx-sentiment-dashboard *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+  .adx-sentiment-dashboard .ant-btn:active {
+    transform: none;
+  }
+}
+`;
+
+function AdxShell({ children }: { children: ReactNode }) {
+  return (
+    <div className="adx-sentiment-dashboard">
+      <style>{ADX_STYLE}</style>
+      {children}
+    </div>
+  );
+}
+
 const SENTIMENT_ICONS: Record<string, React.ReactNode> = {
   positive: <SmileOutlined className="sentiment-icon--positive" />,
   negative: <FrownOutlined className="sentiment-icon--negative" />,
@@ -24,6 +90,9 @@ export default function SentimentDashboard() {
   const [code, setCode] = useState('');
   const [selectedCode, setSelectedCode] = useState<string | null>(null);
   const [days, setDays] = useState(7);
+  // Slider draft value: the thumb tracks the pointer 1:1 via local state and
+  // only commits to the query-driving `days` on release (velocity-free snap).
+  const [daysDraft, setDaysDraft] = useState(7);
 
   const { data: sentiment, isLoading, refetch } = useQuery({
     queryKey: ['sentiment', selectedCode, days],
@@ -47,12 +116,13 @@ export default function SentimentDashboard() {
   };
 
   return (
-    <PageShell maxWidth="wide">
-      <PageHeader
-        eyebrow="市场情绪"
-        title="情绪看板"
-        description="基于新闻情绪分析，评估市场对特定标的的情绪倾向"
-      />
+    <AdxShell>
+      <PageShell maxWidth="wide">
+        <PageHeader
+          eyebrow="市场情绪"
+          title="情绪看板"
+          description="基于新闻情绪分析，评估市场对特定标的的情绪倾向"
+        />
       <AISetupBanner />
       <FilterToolbar>
         <Input
@@ -63,14 +133,18 @@ export default function SentimentDashboard() {
           className="ad-form-row__grow"
         />
         <span className="ad-text-small ad-text-tertiary ad-whitespace-nowrap">
-          回溯 {days} 天
+          回溯 {daysDraft} 天
         </span>
         <div style={{ flex: 1, minWidth: 120 }}>
           <Slider
             min={1}
             max={30}
-            value={days}
-            onChange={setDays}
+            value={daysDraft}
+            onChange={setDaysDraft}
+            onChangeComplete={(v) => {
+              setDaysDraft(v);
+              setDays(v);
+            }}
             tooltip={{ formatter: (v) => `${v}天` }}
           />
         </div>
@@ -103,7 +177,8 @@ export default function SentimentDashboard() {
           <SentimentCard sentiment={sentiment} />
         )}
       </div>
-    </PageShell>
+      </PageShell>
+    </AdxShell>
   );
 }
 

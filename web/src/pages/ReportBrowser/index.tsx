@@ -21,6 +21,35 @@ import { reportApi, poolApi } from '@/api';
 import { useReports } from '@/hooks/useReportStatus';
 import type { ReportMetadata } from '@/types/report';
 
+/**
+ * Apple Design fixes scoped to this page:
+ * 1. The report preview panel materializes (slide + fade along the y
+ *    axis, anchored to the top edge where the table sits) using the
+ *    global critically-damped spring curve instead of popping in —
+ *    spatial consistency: it enters from the direction of the trigger.
+ * 2. Reduced-motion users get a plain cross-fade.
+ */
+const REPORT_BROWSER_PAGE_STYLE = `
+.report-browser-preview {
+  transform-origin: top center;
+  will-change: transform, opacity;
+  animation: report-preview-in var(--spring-response, 300ms) var(--ease-spring, ease) both;
+}
+@keyframes report-preview-in {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .report-browser-preview {
+    animation: report-preview-in-reduced 120ms ease both;
+  }
+  @keyframes report-preview-in-reduced {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+}
+`;
+
 type ReportStatusFilter = 'all' | ReportMetadata['status'];
 
 const STATUS_FILTERS: { value: ReportStatusFilter; label: string }[] = [
@@ -155,6 +184,7 @@ export default function ReportBrowser() {
 
   return (
     <PageShell maxWidth="wide">
+      <style>{REPORT_BROWSER_PAGE_STYLE}</style>
       <PageHeader
         eyebrow="研究"
         title="报告浏览"
@@ -239,7 +269,7 @@ export default function ReportBrowser() {
       )}
 
       {selectedReport?.status === 'done' && (
-        <Panel title={`报告预览: ${selectedReport.report_type} (${selectedReport.report_date})`} className="ad-mt-5">
+        <Panel title={`报告预览: ${selectedReport.report_type} (${selectedReport.report_date})`} className="ad-mt-5 report-browser-preview">
           <iframe
             className="ad-preview-frame"
             src={reportApi.downloadUrl(selectedReport.id)}

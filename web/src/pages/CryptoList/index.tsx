@@ -1,6 +1,6 @@
 import './styles.css';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Table, Input, Select, List, Skeleton } from 'antd';
 import { SearchOutlined } from '@ant-design/icons';
@@ -16,6 +16,73 @@ import EmptyState from '@/components/EmptyState';
 import InstrumentCodeTag from '@/components/InstrumentCodeTag';
 import ReturnTag from '@/components/ReturnTag';
 import ThemeTag from '@/components/ThemeTag';
+
+/**
+ * Apple-style motion layer (scoped to this page):
+ * - Response: feedback lands on pointer-down (:active, 0ms), release springs back.
+ * - Springs: critically-damped-ish cubic-bezier; transform-only for frame smoothness.
+ * - Typography: size-specific tracking (large tight, small loose).
+ * - Reduced motion: cross-fade only, transforms disabled.
+ */
+const ADX_STYLE = `
+.adx-crypto-list {
+  --adx-spring: cubic-bezier(0.5, 1.6, 0.3, 1);
+  --adx-ease-out: cubic-bezier(0.22, 0.9, 0.3, 1);
+}
+.adx-crypto-list .ant-btn,
+.adx-crypto-list .mobile-list-item {
+  touch-action: manipulation;
+  transition: transform 240ms var(--adx-spring), background-color 140ms var(--adx-ease-out);
+}
+.adx-crypto-list .ant-btn:active,
+.adx-crypto-list .mobile-list-item:active {
+  transform: scale(0.97);
+  background-color: var(--bg-active);
+  transition-duration: 0ms;
+}
+.adx-crypto-list .ant-table-tbody > tr {
+  touch-action: manipulation;
+  transition: background-color 140ms var(--adx-ease-out);
+}
+.adx-crypto-list .ant-table-tbody > tr:active {
+  background-color: var(--bg-active);
+  transition-duration: 0ms;
+}
+.adx-crypto-list h1,
+.adx-crypto-list h2,
+.adx-crypto-list .ant-typography h1,
+.adx-crypto-list .ant-typography h2 {
+  letter-spacing: -0.02em;
+  line-height: 1.18;
+}
+.adx-crypto-list .ad-text-xs,
+.adx-crypto-list .ad-text-small {
+  letter-spacing: 0.01em;
+}
+@media (prefers-reduced-motion: reduce) {
+  .adx-crypto-list *,
+  .adx-crypto-list *::before,
+  .adx-crypto-list *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+  .adx-crypto-list .ant-btn:active,
+  .adx-crypto-list .mobile-list-item:active {
+    transform: none;
+  }
+}
+`;
+
+function AdxShell({ children }: { children: ReactNode }) {
+  return (
+    <div className="adx-crypto-list">
+      <style>{ADX_STYLE}</style>
+      {children}
+    </div>
+  );
+}
 
 const CATEGORIES = [
   'Layer1', 'L2', 'DeFi', 'Exchange', 'Payments',
@@ -127,12 +194,13 @@ export default function CryptoList() {
   ];
 
   return (
-    <PageShell maxWidth="wide">
-      <PageHeader
-        eyebrow="数字货币"
-        title="加密货币"
-        description="浏览和分析主流数字货币，数据来源于 Binance"
-      />
+    <AdxShell>
+      <PageShell maxWidth="wide">
+        <PageHeader
+          eyebrow="数字货币"
+          title="加密货币"
+          description="浏览和分析主流数字货币，数据来源于 Binance"
+        />
 
       <Panel variant="default" padding="md">
         <FilterToolbar total={`共 ${data?.total ?? 0} 只`}>
@@ -254,6 +322,7 @@ export default function CryptoList() {
           </div>
         )}
       </Panel>
-    </PageShell>
+      </PageShell>
+    </AdxShell>
   );
 }

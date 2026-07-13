@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, type ReactNode } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import './styles.css';
 import { Tabs, Spin, Alert, Table, List, Radio, Checkbox, Space, Button } from 'antd';
@@ -26,6 +26,67 @@ import { useSettingsStore } from '@/stores/settings';
 import { SENTIMENT_LABELS } from '@/utils/sentiment';
 import type { DailyBar, ResearchNote } from '@/types/crypto';
 import type { OHLCV } from '@/types/instrument';
+
+/**
+ * Apple-style motion layer (scoped to this page):
+ * - Response: feedback lands on pointer-down (:active, 0ms), release springs back.
+ * - Springs: critically-damped-ish cubic-bezier; transform-only for frame smoothness.
+ * - Typography: size-specific tracking (large tight, small loose).
+ * - Reduced motion: cross-fade only, transforms disabled.
+ */
+const ADX_STYLE = `
+.adx-crypto-detail {
+  --adx-spring: cubic-bezier(0.5, 1.6, 0.3, 1);
+  --adx-ease-out: cubic-bezier(0.22, 0.9, 0.3, 1);
+}
+.adx-crypto-detail .ant-btn {
+  touch-action: manipulation;
+  transition: transform 240ms var(--adx-spring), background-color 140ms var(--adx-ease-out);
+}
+.adx-crypto-detail .ant-btn:active {
+  transform: scale(0.97);
+  transition-duration: 0ms;
+}
+.adx-crypto-detail .ant-radio-button-wrapper,
+.adx-crypto-detail .ant-tabs-tab,
+.adx-crypto-detail .ant-checkbox-wrapper {
+  touch-action: manipulation;
+  transition: background-color 140ms var(--adx-ease-out), color 140ms var(--adx-ease-out);
+}
+.adx-crypto-detail h1,
+.adx-crypto-detail h2,
+.adx-crypto-detail .ant-typography h1,
+.adx-crypto-detail .ant-typography h2 {
+  letter-spacing: -0.02em;
+  line-height: 1.18;
+}
+.adx-crypto-detail .ad-text-xs,
+.adx-crypto-detail .ad-text-small {
+  letter-spacing: 0.01em;
+}
+@media (prefers-reduced-motion: reduce) {
+  .adx-crypto-detail *,
+  .adx-crypto-detail *::before,
+  .adx-crypto-detail *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+  .adx-crypto-detail .ant-btn:active {
+    transform: none;
+  }
+}
+`;
+
+function AdxShell({ children }: { children: ReactNode }) {
+  return (
+    <div className="adx-crypto-detail">
+      <style>{ADX_STYLE}</style>
+      {children}
+    </div>
+  );
+}
 
 const TIME_RANGE_OPTIONS = [
   { label: '30日', value: 30 },
@@ -104,49 +165,55 @@ export default function CryptoDetail() {
 
   if (detailLoading) {
     return (
-      <PageShell maxWidth="wide">
-        <Spin size="large" className="detail-loading" />
-      </PageShell>
+      <AdxShell>
+        <PageShell maxWidth="wide">
+          <Spin size="large" className="detail-loading" />
+        </PageShell>
+      </AdxShell>
     );
   }
   if (detailError) {
     return (
-      <PageShell maxWidth="wide">
-        <Button
-          type="text"
-          icon={<ArrowLeftOutlined />}
-          onClick={() => navigate('/crypto')}
-          className="ad-mb-3"
-        >
-          返回加密货币列表
-        </Button>
-        <Alert
-          className="detail-error"
-          message="加载加密货币详情失败"
-          description={(detailError as Error).message}
-          type="error"
-        />
-      </PageShell>
+      <AdxShell>
+        <PageShell maxWidth="wide">
+          <Button
+            type="text"
+            icon={<ArrowLeftOutlined />}
+            onClick={() => navigate('/crypto')}
+            className="ad-mb-3"
+          >
+            返回加密货币列表
+          </Button>
+          <Alert
+            className="detail-error"
+            message="加载加密货币详情失败"
+            description={(detailError as Error).message}
+            type="error"
+          />
+        </PageShell>
+      </AdxShell>
     );
   }
   if (!crypto) {
     return (
-      <PageShell maxWidth="wide">
-        <Button
-          type="text"
-          icon={<ArrowLeftOutlined />}
-          onClick={() => navigate('/crypto')}
-          className="ad-mb-3"
-        >
-          返回加密货币列表
-        </Button>
-        <Alert
-          className="detail-error"
-          message="币种不存在"
-          description={`未找到代码为 ${code} 的加密货币`}
-          type="warning"
-        />
-      </PageShell>
+      <AdxShell>
+        <PageShell maxWidth="wide">
+          <Button
+            type="text"
+            icon={<ArrowLeftOutlined />}
+            onClick={() => navigate('/crypto')}
+            className="ad-mb-3"
+          >
+            返回加密货币列表
+          </Button>
+          <Alert
+            className="detail-error"
+            message="币种不存在"
+            description={`未找到代码为 ${code} 的加密货币`}
+            type="warning"
+          />
+        </PageShell>
+      </AdxShell>
     );
   }
 
@@ -353,15 +420,16 @@ export default function CryptoDetail() {
   ];
 
   return (
-    <PageShell maxWidth="wide">
-      <Button
-        type="text"
-        icon={<ArrowLeftOutlined />}
-        onClick={() => navigate('/crypto')}
-        className="ad-mb-3"
-      >
-        返回加密货币列表
-      </Button>
+    <AdxShell>
+      <PageShell maxWidth="wide">
+        <Button
+          type="text"
+          icon={<ArrowLeftOutlined />}
+          onClick={() => navigate('/crypto')}
+          className="ad-mb-3"
+        >
+          返回加密货币列表
+        </Button>
       <PageHeader
         eyebrow="加密货币"
         title={crypto.name}
@@ -404,7 +472,8 @@ export default function CryptoDetail() {
         ))}
       </ResponsiveGrid>
 
-      <Tabs items={tabItems} defaultActiveKey="kline" />
-    </PageShell>
+        <Tabs items={tabItems} defaultActiveKey="kline" />
+      </PageShell>
+    </AdxShell>
   );
 }

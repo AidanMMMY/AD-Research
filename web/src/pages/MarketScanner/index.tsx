@@ -35,6 +35,22 @@ export default function MarketScanner() {
 
   return (
     <PageShell maxWidth="wide">
+      {/* Apple Design #12 Materials & depth: the scan-result panel materializes
+          (slide + fade along a single path, critically-damped spring curve)
+          instead of popping in. #14: reduced motion renders it instantly. */}
+      <style>{`
+        .market-scanner-result {
+          animation: market-scanner-materialize 0.35s var(--ease-spring, cubic-bezier(0.32, 0.72, 0.32, 1)) both;
+          will-change: transform, opacity;
+        }
+        @keyframes market-scanner-materialize {
+          from { opacity: 0; transform: translateY(8px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .market-scanner-result { animation: none; will-change: auto; }
+        }
+      `}</style>
       <PageHeader
         title="全市场扫描"
         description="自动发现新增、退市、变更的标的，保持数据库与市场同步"
@@ -56,7 +72,7 @@ export default function MarketScanner() {
       </Panel>
 
       {result && (
-        <Panel className="ad-mb-5" title={`扫描结果 - ${result.scan_date}`}>
+        <Panel className="ad-mb-5 market-scanner-result" title={`扫描结果 - ${result.scan_date}`}>
           {result.error ? (
             <Alert type="error" message={result.error} />
           ) : (

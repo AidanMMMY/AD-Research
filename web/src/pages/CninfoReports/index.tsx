@@ -41,6 +41,68 @@ const ADJUNCT_OPTIONS = (['annual', 'semi', 'q1', 'q3', 'other'] as CninfoAdjunc
   (v) => ({ label: ADJUNCT_LABEL[v] ?? v, value: v }),
 );
 
+/**
+ * Apple Design fixes scoped to this page (page styles.css is owned by
+ * another workstream, so the rules ride along inside this component):
+ *
+ * 1. Springs — the detail drawer slides in along the x axis using the
+ *    global critically-damped spring curve (--ease-spring, damping 1.0,
+ *    no bounce) instead of appearing instantly.
+ * 2. Materials & depth — the overlay gets a translucent material layer
+ *    (backdrop-filter blur + saturate) so the list stays visible
+ *    underneath; material weight encodes the drawer as a higher layer.
+ * 3. Spatial consistency — transform-origin is anchored to the right
+ *    edge (the side the drawer enters from), so exit mirrors entrance.
+ * 4. Pointer-down feedback — clickable report rows highlight on
+ *    pointer-down (:active), not on release.
+ * 5. Reduced motion / transparency — slide degrades to a cross-fade,
+ *    material blur degrades to a solid scrim.
+ */
+const CNINFO_PAGE_STYLE = `
+.ad-detail-drawer-overlay {
+  backdrop-filter: saturate(180%) blur(8px);
+  -webkit-backdrop-filter: saturate(180%) blur(8px);
+  animation: cninfo-overlay-in var(--spring-response-fast, 200ms) var(--ease-spring, ease) both;
+}
+.ad-detail-drawer {
+  transform-origin: right center;
+  will-change: transform;
+  box-shadow: -8px 0 32px rgba(0, 0, 0, 0.24);
+  animation: cninfo-drawer-in var(--spring-response, 300ms) var(--ease-spring, ease) both;
+}
+@keyframes cninfo-drawer-in {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+@keyframes cninfo-overlay-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.cninfo-report-row {
+  cursor: pointer;
+  transition: background var(--transition-fast, 150ms ease);
+}
+.cninfo-report-row:active {
+  background: var(--bg-active) !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  .ad-detail-drawer {
+    animation: cninfo-drawer-in-reduced 120ms ease both;
+  }
+  @keyframes cninfo-drawer-in-reduced {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  .cninfo-report-row { transition: none; }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .ad-detail-drawer-overlay {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+}
+`;
+
 const formatDate = (v: string | null | undefined): string => v ?? '-';
 
 const formatBytes = (v: number | null | undefined): string => {
@@ -184,6 +246,7 @@ export default function CninfoReportsPage() {
 
   return (
     <PageShell maxWidth="wide">
+      <style>{CNINFO_PAGE_STYLE}</style>
       <PageHeader
         eyebrow="研究"
         title="巨潮定期报告"
@@ -298,6 +361,7 @@ export default function CninfoReportsPage() {
               columns={columns}
               rowKey="id"
               scroll={{ x: 'max-content' }}
+              rowClassName={() => 'cninfo-report-row'}
               pagination={{
                 current: page,
                 pageSize,

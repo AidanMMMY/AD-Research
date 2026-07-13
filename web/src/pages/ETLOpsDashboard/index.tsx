@@ -105,14 +105,20 @@ export default function ETLOpsDashboard() {
       dataIndex: 'rows_affected',
       key: 'rows_affected',
       width: 110,
-      render: (v?: number) => (v == null ? '-' : v.toLocaleString()),
+      render: (v?: number) =>
+        v == null ? (
+          '-'
+        ) : (
+          <span className="tabular-nums">{v.toLocaleString()}</span>
+        ),
     },
     {
       title: '耗时(秒)',
       dataIndex: 'duration_seconds',
       key: 'duration',
       width: 100,
-      render: (v?: number) => (v == null ? '-' : v.toFixed(2)),
+      render: (v?: number) =>
+        v == null ? '-' : <span className="tabular-nums">{v.toFixed(2)}</span>,
     },
     {
       title: '错误',
@@ -130,11 +136,42 @@ export default function ETLOpsDashboard() {
   return (
     <Spin spinning={isLoading || isRefetching}>
       <PageShell maxWidth="wide">
+        {/* Apple Design overrides (WWDC "Designing Fluid Interfaces").
+            #1 Response — the refresh link is an <a>, so give it instant
+            pointer-down feedback and full keyboard parity with a button. */}
+        <style>{`
+          .panel-extra-link {
+            cursor: pointer;
+            user-select: none;
+            transition: opacity 0.32s cubic-bezier(0.32, 0.72, 0, 1);
+          }
+          .panel-extra-link:active { opacity: 0.5; transition: none; }
+          .panel-extra-link:focus-visible {
+            outline: 2px solid var(--accent);
+            outline-offset: 2px;
+            border-radius: 2px;
+          }
+          @media (prefers-reduced-motion: reduce) {
+            .panel-extra-link { transition: none; }
+          }
+        `}</style>
         <PageHeader
           title="ETL 运维看板"
           description="展示调度任务最近一次执行状态、各市场数据新鲜度。30 秒自动刷新。"
           extra={
-            <a onClick={() => refetch()} aria-label="refresh" className="panel-extra-link">
+            <a
+              onClick={() => refetch()}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  refetch();
+                }
+              }}
+              role="button"
+              tabIndex={0}
+              aria-label="refresh"
+              className="panel-extra-link"
+            >
               刷新
             </a>
           }

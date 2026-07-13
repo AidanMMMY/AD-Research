@@ -263,6 +263,21 @@ export default function PoolDetail() {
 
   return (
     <PageShell maxWidth="wide">
+      {/* Apple Design #1/#10: clickable instrument tags get a spring-press on
+          pointer-down (direct-manipulation feel). #14: reduced motion keeps the
+          global background feedback but drops the scale transform. */}
+      <style>{`
+        .instrument-code-tag--clickable {
+          display: inline-block;
+          transition: transform var(--transition-spring-fast, 0.2s cubic-bezier(0.32, 0.72, 0.32, 1)),
+            background var(--transition-fast, 150ms ease);
+        }
+        .instrument-code-tag--clickable:active { transform: scale(var(--press-scale-subtle, 0.99)); }
+        @media (prefers-reduced-motion: reduce) {
+          .instrument-code-tag--clickable { transition: background var(--transition-fast, 150ms ease); }
+          .instrument-code-tag--clickable:active { transform: none; }
+        }
+      `}</style>
       <Button
         type="text"
         icon={<ArrowLeftOutlined />}

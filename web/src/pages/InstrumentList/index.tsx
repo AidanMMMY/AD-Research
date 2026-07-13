@@ -57,7 +57,12 @@ function LivePriceCell({ tick }: { code: string; tick: ReturnType<typeof useMark
   }
   return (
     <div className="live-price-cell">
-      <span className="tabular-nums live-price-cell__price">
+      <span
+        className="tabular-nums live-price-cell__price"
+        /* Spring-eased color handoff between ticks — continuous feedback
+           during streaming updates instead of hard cuts. */
+        style={{ transition: 'color var(--transition-spring-fast)' }}
+      >
         {tick.price.toFixed(2)}
       </span>
       <ReturnTag value={tick.change_pct} />

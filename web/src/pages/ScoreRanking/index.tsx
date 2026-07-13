@@ -98,6 +98,16 @@ export default function ScoreRanking() {
 
   return (
     <PageShell maxWidth="wide">
+      {/* Apple Design fixes:
+          #1/#10 Response — clickable ranking rows give instant pointer-down
+          feedback (background only, no movement).
+          #15 Typography — large summary numbers get size-specific negative
+          tracking (data figures read tighter at display sizes). */}
+      <style>{`
+        .score-ranking-row--pressable > td { transition: background var(--transition-fast, 150ms ease); }
+        .score-ranking-row--pressable:active > td { background: var(--bg-active) !important; }
+        .score-summary-card__value { letter-spacing: var(--tracking-data, -0.02em); }
+      `}</style>
       <PageHeader
         eyebrow="评分"
         title="评分排名"
@@ -189,6 +199,7 @@ export default function ScoreRanking() {
                 columns={columns}
                 rowKey="etf_code"
                 size="small"
+                rowClassName="score-ranking-row--pressable"
                 scroll={{ x: 'max-content' }}
                 pagination={false}
                 locale={{

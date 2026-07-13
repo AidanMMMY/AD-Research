@@ -41,12 +41,22 @@
   align-items: center;
   background: transparent;
   border: 1px solid transparent;
-  transition: background var(--transition-fast), border-color var(--transition-fast);
+  transition:
+    background var(--transition-fast),
+    border-color var(--transition-fast),
+    transform var(--transition-spring-fast);
+  will-change: transform;
 }
 
 .ad-chat-sidebar__item:hover,
 .ad-chat-sidebar__item:focus-visible {
   background: var(--bg-hover);
+}
+
+/* Pointer-down instant feedback — fires on press, not release */
+.ad-chat-sidebar__item:active {
+  transform: scale(0.98);
+  background: var(--accent-dim);
 }
 
 .ad-chat-sidebar__item--active {
@@ -90,12 +100,31 @@
   flex: 1;
   overflow: auto;
   padding: var(--space-4) var(--space-5);
+  /* Keep scroll momentum inside the pane so the page doesn't chain —
+     native rubber-banding stays contained at the edges. */
+  overscroll-behavior: contain;
+  scroll-padding-bottom: var(--space-4);
 }
 
 /* ---- Message Bubbles ---- */
 .ad-message-row {
   display: flex;
   margin-bottom: var(--space-4);
+  /* Materialize, don't just fade: bubbles enter along a single short
+     vertical path with the critically-damped spring ease (no bounce).
+     transform/opacity only — compositor-friendly. */
+  animation: ad-bubble-in var(--spring-response) var(--ease-spring) both;
+}
+
+@keyframes ad-bubble-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }
 
 .ad-message-row--user {
@@ -112,6 +141,7 @@
   border-radius: var(--radius-lg);
   font-size: var(--text-body-size);
   line-height: 1.7;
+  letter-spacing: 0.005em; /* body-size text: slight positive tracking */
 }
 
 .ad-message-bubble--user {
@@ -143,7 +173,11 @@
 .ad-input-bar {
   padding: var(--space-3) var(--space-5);
   border-top: 1px solid var(--border-default);
-  background: var(--card-bg);
+  /* Material layer: translucent surface with backdrop blur so scrolled
+     content reads through it — encodes the input bar's elevated depth. */
+  background: color-mix(in srgb, var(--card-bg) 85%, transparent);
+  -webkit-backdrop-filter: saturate(180%) blur(12px);
+  backdrop-filter: saturate(180%) blur(12px);
 }
 
 .ad-quick-prompts {
@@ -177,7 +211,18 @@
 .ad-quick-tag {
   cursor: pointer;
   font-size: var(--text-label-size);
+  letter-spacing: 0.01em; /* small label text: positive tracking */
   margin: 0 !important;
+  transition:
+    transform var(--transition-spring-fast),
+    background var(--transition-fast),
+    color var(--transition-fast);
+  will-change: transform;
+}
+
+/* Pointer-down instant feedback */
+.ad-quick-tag:active {
+  transform: scale(0.94);
 }
 
 /* ---- Icons ---- */
@@ -240,5 +285,36 @@
 
   .ad-quick-prompts {
     font-size: var(--text-label-size);
+  }
+}
+
+/* ---- Accessibility: reduced motion / reduced transparency ---- */
+@media (prefers-reduced-motion: reduce) {
+  /* Cross-fade only: drop the entrance motion and all transforms. */
+  .ad-message-row {
+    animation: none;
+  }
+
+  .ad-chat-sidebar__item,
+  .ad-quick-tag {
+    transition:
+      background var(--transition-fast),
+      color var(--transition-fast),
+      border-color var(--transition-fast);
+    will-change: auto;
+  }
+
+  .ad-chat-sidebar__item:active,
+  .ad-quick-tag:active {
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  /* Solid material when the user asks for less transparency. */
+  .ad-input-bar {
+    background: var(--card-bg);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
   }
 }

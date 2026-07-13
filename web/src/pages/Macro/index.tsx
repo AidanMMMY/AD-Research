@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import './styles.css';
 import {
   Row,
@@ -37,6 +37,85 @@ import {
   useRefreshChinaMacro,
 } from '@/api/macro';
 import type { MacroIndicatorItem, MacroLatestItem } from '@/api/macro';
+
+/**
+ * Apple-style motion layer (scoped to this page):
+ * - Response: feedback lands on pointer-down (:active, 0ms), release springs back.
+ * - Springs: critically-damped-ish cubic-bezier; transform-only for frame smoothness.
+ * - Spatial consistency: the chart panel materializes (scale+fade) from its anchor.
+ * - Typography: size-specific tracking (large tight, small loose).
+ * - Reduced motion: cross-fade only, transforms disabled.
+ */
+const ADX_STYLE = `
+.adx-macro {
+  --adx-spring: cubic-bezier(0.5, 1.6, 0.3, 1);
+  --adx-ease-out: cubic-bezier(0.22, 0.9, 0.3, 1);
+}
+.adx-macro .ant-btn {
+  touch-action: manipulation;
+  transition: transform 240ms var(--adx-spring), background-color 140ms var(--adx-ease-out);
+}
+.adx-macro .ant-btn:active {
+  transform: scale(0.97);
+  transition-duration: 0ms;
+}
+.adx-macro .ant-segmented-item {
+  touch-action: manipulation;
+  transition: color 140ms var(--adx-ease-out);
+}
+.adx-macro .ant-table-tbody > tr {
+  touch-action: manipulation;
+  transition: background-color 140ms var(--adx-ease-out);
+}
+.adx-macro .ant-table-tbody > tr:active {
+  background-color: var(--bg-active);
+  transition-duration: 0ms;
+}
+@keyframes adx-macro-materialize {
+  from { opacity: 0; transform: translateY(8px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+.adx-macro .adx-materialize {
+  transform-origin: top center;
+  animation: adx-macro-materialize 320ms var(--adx-spring) both;
+}
+.adx-macro h1,
+.adx-macro h2,
+.adx-macro .ant-typography h1,
+.adx-macro .ant-typography h2 {
+  letter-spacing: -0.02em;
+  line-height: 1.18;
+}
+.adx-macro .ad-text-xs,
+.adx-macro .ad-text-small {
+  letter-spacing: 0.01em;
+}
+@media (prefers-reduced-motion: reduce) {
+  .adx-macro *,
+  .adx-macro *::before,
+  .adx-macro *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+  .adx-macro .ant-btn:active {
+    transform: none;
+  }
+  .adx-macro .adx-materialize {
+    animation: none;
+  }
+}
+`;
+
+function AdxShell({ children }: { children: ReactNode }) {
+  return (
+    <div className="adx-macro">
+      <style>{ADX_STYLE}</style>
+      {children}
+    </div>
+  );
+}
 
 const { Text } = Typography;
 
@@ -262,9 +341,10 @@ export default function Macro() {
   const headlineLoading = region === 'cn' ? latestFetching && !latestData : isLoading;
 
   return (
-    <PageShell maxWidth="wide">
-      <PageHeader
-        eyebrow="宏观指标"
+    <AdxShell>
+      <PageShell maxWidth="wide">
+        <PageHeader
+          eyebrow="宏观指标"
         title={
           {
             cn: '中国宏观看板',
@@ -381,7 +461,7 @@ export default function Macro() {
 
         {/* ── Chart panel ── */}
         {selectedCode && (
-          <Col xs={24} lg={12}>
+          <Col xs={24} lg={12} className="adx-materialize">
             <Panel
               title={series ? `${series.name_zh} · 走势` : '走势'}
               extra={<a onClick={() => setSelectedCode(null)}>关闭</a>}
@@ -406,6 +486,7 @@ export default function Macro() {
           </Col>
         )}
       </Row>
-    </PageShell>
+      </PageShell>
+    </AdxShell>
   );
 }

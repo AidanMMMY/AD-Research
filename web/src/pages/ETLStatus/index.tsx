@@ -43,7 +43,9 @@ export default function ETLStatus() {
     {
       title: '记录数',
       dataIndex: 'records_count',
-      render: (v?: number) => v?.toLocaleString() ?? '-',
+      // #15 Typography — tabular figures keep numeric columns aligned.
+      render: (v?: number) =>
+        v == null ? '-' : <span className="tabular-nums">{v.toLocaleString()}</span>,
     },
     {
       title: '错误信息',

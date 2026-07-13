@@ -20,7 +20,8 @@ export default function NotificationLogs() {
   });
 
   const columns = [
-    { title: 'ID', dataIndex: 'id', width: 70 },
+    // #15 Typography — tabular figures for numeric/id columns.
+    { title: 'ID', dataIndex: 'id', width: 70, render: (v: number) => <span className="tabular-nums">{v}</span> },
     { title: '用户', dataIndex: 'user_id', width: 120, render: (v?: string) => v || '-' },
     { title: '渠道', dataIndex: 'channel', width: 100, render: (v?: string) => v || '-' },
     {
@@ -30,11 +31,11 @@ export default function NotificationLogs() {
       ellipsis: true,
       render: (v?: string) => v || '-',
     },
-    { title: '配置ID', dataIndex: 'config_id', width: 90 },
+    { title: '配置ID', dataIndex: 'config_id', width: 90, render: (v?: number) => v == null ? '-' : <span className="tabular-nums">{v}</span> },
     {
       title: '报告ID',
       dataIndex: 'report_id',
-      render: (v?: number) => v ?? '-',
+      render: (v?: number) => (v == null ? '-' : <span className="tabular-nums">{v}</span>),
       width: 90,
     },
     {

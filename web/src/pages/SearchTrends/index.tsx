@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import './styles.css';
 import {
   Table, Input, Select, Button, Space, Tag, Skeleton, message, Tabs, Alert,
@@ -21,6 +21,71 @@ import {
   useRefreshSearchTrends,
 } from '@/api/searchTrends';
 import type { SearchTrend } from '@/api/searchTrends';
+
+/**
+ * Apple-style motion layer (scoped to this page):
+ * - Response: feedback lands on pointer-down (:active, 0ms), release springs back.
+ * - Springs: critically-damped-ish cubic-bezier; transform-only for frame smoothness.
+ * - Typography: size-specific tracking (large tight, small loose).
+ * - Reduced motion: cross-fade only, transforms disabled.
+ */
+const ADX_STYLE = `
+.adx-search-trends {
+  --adx-spring: cubic-bezier(0.5, 1.6, 0.3, 1);
+  --adx-ease-out: cubic-bezier(0.22, 0.9, 0.3, 1);
+}
+.adx-search-trends .ant-btn {
+  touch-action: manipulation;
+  transition: transform 240ms var(--adx-spring), background-color 140ms var(--adx-ease-out);
+}
+.adx-search-trends .ant-btn:active {
+  transform: scale(0.97);
+  transition-duration: 0ms;
+}
+.adx-search-trends .ant-tabs-tab {
+  touch-action: manipulation;
+  transition: color 140ms var(--adx-ease-out);
+}
+.adx-search-trends .ant-select-selector {
+  transition: border-color 140ms var(--adx-ease-out), box-shadow 140ms var(--adx-ease-out);
+}
+.adx-search-trends .ant-table-tbody > tr {
+  transition: background-color 140ms var(--adx-ease-out);
+}
+.adx-search-trends h1,
+.adx-search-trends h2,
+.adx-search-trends .ant-typography h1,
+.adx-search-trends .ant-typography h2 {
+  letter-spacing: -0.02em;
+  line-height: 1.18;
+}
+.adx-search-trends .ad-text-xs,
+.adx-search-trends .ad-text-small {
+  letter-spacing: 0.01em;
+}
+@media (prefers-reduced-motion: reduce) {
+  .adx-search-trends *,
+  .adx-search-trends *::before,
+  .adx-search-trends *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+  .adx-search-trends .ant-btn:active {
+    transform: none;
+  }
+}
+`;
+
+function AdxShell({ children }: { children: ReactNode }) {
+  return (
+    <div className="adx-search-trends">
+      <style>{ADX_STYLE}</style>
+      {children}
+    </div>
+  );
+}
 
 const SOURCES = [
   { value: 'baidu', label: '百度' },
@@ -85,9 +150,10 @@ export default function SearchTrendsPage() {
   ];
 
   return (
-    <PageShell maxWidth="wide">
-      <PageHeader
-        title="搜索热度"
+    <AdxShell>
+      <PageShell maxWidth="wide">
+        <PageHeader
+          title="搜索热度"
         description="百度热搜 + Google Trends 每日观察值。覆盖指数 / 个股 / 宏观关键词。每日 03:00 Asia/Shanghai 自动刷新。"
         extra={
           <Space>
@@ -255,7 +321,8 @@ export default function SearchTrendsPage() {
           ]}
         />
       </Panel>
-    </PageShell>
+      </PageShell>
+    </AdxShell>
   );
 }
 

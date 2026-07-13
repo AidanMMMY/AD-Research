@@ -210,6 +210,56 @@
   --transition-base: 200ms cubic-bezier(0.4, 0, 0.2, 1);
   --transition-slow: 300ms cubic-bezier(0.4, 0, 0.2, 1);
 
+  /* ---- Spring motion (Apple Fluid Interfaces) ----
+     参数语义:
+       - damping ratio 1.0 = 临界阻尼（默认，无回弹）
+       - damping ratio < 1 = 欠阻尼，仅用于动量交互（momentum only）
+       - response = 弹簧响应时长（s）
+     JS 弹簧库（framer-motion / react-spring）应直接读取这些数值;
+     CSS 无法表达真实弹簧，故提供等效的 cubic-bezier 近似曲线。 */
+  --spring-damping: 1;
+  --spring-damping-bouncy: 0.6;
+  --spring-stiffness: 300;
+  --spring-response-fast: 0.2s;
+  --spring-response: 0.35s;
+  --spring-response-slow: 0.5s;
+  /* 临界阻尼近似曲线（默认，drawer/modal/popover/sheet） */
+  --ease-spring: cubic-bezier(0.32, 0.72, 0.32, 1);
+  /* 欠阻尼近似曲线 — 仅用于释放后带速度的动量交互 */
+  --ease-spring-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
+  /* 离场/可逆过渡的镜像曲线 */
+  --ease-spring-in: cubic-bezier(0.64, 0, 0.68, 0.28);
+  --transition-spring: var(--spring-response) var(--ease-spring);
+  --transition-spring-fast: var(--spring-response-fast) var(--ease-spring);
+  --transition-spring-bounce: var(--spring-response) var(--ease-spring-bounce);
+  /* 指针按下即时反馈: 按下即缩放，不等 release */
+  --press-scale: 0.97;
+  --press-scale-subtle: 0.99;
+  /* 拖动手势阈值 (px) — JS 手势识别参考值 */
+  --drag-threshold: 10px;
+  /* 动量投射衰减系数 (exponential decay) — JS 惯性滚动参考值 */
+  --momentum-decay: 0.998;
+
+  /* ---- Materials & Depth (translucent layers) ----
+     材质重量编码层级: thin < regular < thick。
+     内容在材质下方滚动时保持可读（vibrancy = blur + saturate）。 */
+  --material-thin-bg: rgba(255, 255, 255, 0.60);
+  --material-thin-blur: blur(12px) saturate(140%);
+  --material-regular-bg: rgba(255, 255, 255, 0.72);
+  --material-regular-blur: blur(20px) saturate(180%);
+  --material-thick-bg: rgba(255, 255, 255, 0.85);
+  --material-thick-blur: blur(30px) saturate(190%);
+
+  /* ---- Size-specific tracking & leading (Apple typography) ----
+     大字号负字距、小字号正字距；行高与字号成反比。 */
+  --tracking-h1: -0.03em;
+  --tracking-h2: -0.02em;
+  --tracking-h3: -0.01em;
+  --tracking-data: -0.02em;
+  --tracking-body: 0;
+  --tracking-small: 0.005em;
+  --tracking-label: 0.12em; /* uppercase eyebrow/label 专用 */
+
   /* ---- Liquid Glass (暗色模式下由 data-theme 覆盖) ---- */
   --glass-bg: rgba(255, 255, 255, 0.50);
   --glass-border: rgba(255, 255, 255, 0.10);
@@ -397,6 +447,14 @@ html, body, #root {
   --glass-bg: rgba(13, 17, 23, 0.80);
   --glass-border: rgba(48, 54, 61, 0.60);
   --glass-blur: blur(12px) saturate(120%);
+
+  /* ---- Materials (暗色) ---- */
+  --material-thin-bg: rgba(22, 27, 34, 0.65);
+  --material-thin-blur: blur(12px) saturate(130%);
+  --material-regular-bg: rgba(22, 27, 34, 0.78);
+  --material-regular-blur: blur(20px) saturate(160%);
+  --material-thick-bg: rgba(22, 27, 34, 0.90);
+  --material-thick-blur: blur(30px) saturate(170%);
 
   /* ---- Sci-Fi Login (Aurora) ---- */
   --login-bg: #05060a;

@@ -75,16 +75,25 @@
   border: none;
   border-radius: 0;
   cursor: pointer;
-  transition: background var(--transition-fast);
+  /* Spring-eased background: interruptible, critically damped (damping 1.0) */
+  transition: background var(--transition-spring-fast);
   user-select: none;
   position: relative;
   min-height: 54px;
+  /* Tap highlight handled via :active background instead of the default
+     browser overlay (Apple gesture detail: feedback on touch-down). */
+  -webkit-tap-highlight-color: transparent;
 }
 
 .dashboard-pulse-tile:hover,
 .dashboard-pulse-tile:focus-visible {
   background: var(--bg-hover);
   outline: none;
+}
+
+/* Response: feedback on pointer-down, not release */
+.dashboard-pulse-tile:active {
+  background: var(--bg-active);
 }
 
 .dashboard-pulse-tile__group {
@@ -253,10 +262,16 @@
   cursor: pointer;
   text-decoration: underline;
   font-family: inherit;
+  transition: color var(--transition-fast), opacity var(--transition-fast);
 }
 
 .dashboard-pulse-footer__retry:hover {
   color: var(--color-accent-hover);
+}
+
+/* Response: instant press feedback on pointer-down */
+.dashboard-pulse-footer__retry:active {
+  opacity: 0.55;
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -305,14 +320,22 @@
   border: 1px solid var(--card-border);
   border-radius: var(--card-radius);
   cursor: pointer;
-  transition: transform var(--transition-fast), border-color var(--transition-fast), box-shadow var(--transition-fast);
+  /* Transform motion uses the critically-damped spring curve so an
+     interrupted hover/press animates from its live value. */
+  transition: transform var(--transition-spring-fast), border-color var(--transition-fast), box-shadow var(--transition-fast);
   user-select: none;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .dashboard-favorite-card:hover {
   transform: translateY(-1px);
   border-color: var(--accent);
   box-shadow: 0 0 0 1px var(--accent-glow);
+}
+
+/* Response: press feedback on pointer-down (scale, transform-only) */
+.dashboard-favorite-card:active {
+  transform: scale(var(--press-scale-subtle));
 }
 
 /* Star toggle — hidden until hover */
@@ -322,7 +345,7 @@
   right: 4px;
   z-index: 2;
   opacity: 0;
-  transition: opacity var(--transition-fast);
+  transition: opacity var(--transition-spring-fast);
 }
 
 .dashboard-favorite-card:hover .dashboard-favorite-card__toggle {
@@ -438,6 +461,13 @@
   margin: 0 calc(-1 * var(--space-1));
 }
 
+/* Reduced motion: no flash animation — the value itself still updates */
+@media (prefers-reduced-motion: reduce) {
+  .dashboard-favorite-card__price--flash {
+    animation: none;
+  }
+}
+
 /* Pools card grid */
 .dashboard-pools-grid {
   display: grid;
@@ -454,14 +484,21 @@
   border: 1px solid var(--card-border);
   border-radius: var(--card-radius);
   cursor: pointer;
-  transition: transform var(--transition-fast), border-color var(--transition-fast), box-shadow var(--transition-fast);
+  /* Spring-eased transform for interruptible hover/press motion */
+  transition: transform var(--transition-spring-fast), border-color var(--transition-fast), box-shadow var(--transition-fast);
   user-select: none;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .dashboard-pool-card:hover {
   transform: translateY(-1px);
   border-color: var(--accent);
   box-shadow: 0 0 0 1px var(--accent-glow);
+}
+
+/* Response: press feedback on pointer-down (scale, transform-only) */
+.dashboard-pool-card:active {
+  transform: scale(var(--press-scale-subtle));
 }
 
 .dashboard-pool-card__icon {

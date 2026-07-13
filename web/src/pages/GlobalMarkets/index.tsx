@@ -16,7 +16,7 @@
  * See docs/dev-notes/20260704-global-markets-roadmap.md.
  */
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import './styles.css';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
@@ -46,6 +46,68 @@ import {
   type MacroIndicatorSeries,
   type MacroLatestItem,
 } from '@/api/macro';
+
+/**
+ * Apple-style motion layer (scoped to this page):
+ * - Response: feedback lands on pointer-down (:active, 0ms), release springs back.
+ * - Springs: critically-damped-ish cubic-bezier; transform-only for frame smoothness.
+ * - Typography: size-specific tracking (large tight, small loose).
+ * - Reduced motion: cross-fade only, transforms disabled.
+ */
+const ADX_STYLE = `
+.adx-global-markets {
+  --adx-spring: cubic-bezier(0.5, 1.6, 0.3, 1);
+  --adx-ease-out: cubic-bezier(0.22, 0.9, 0.3, 1);
+}
+.adx-global-markets .ant-btn,
+.adx-global-markets .ad-news-events-list__item {
+  touch-action: manipulation;
+  transition: transform 240ms var(--adx-spring), background-color 140ms var(--adx-ease-out);
+}
+.adx-global-markets .ant-btn:active,
+.adx-global-markets .ad-news-events-list__item:active {
+  transform: scale(0.98);
+  background-color: var(--bg-active);
+  transition-duration: 0ms;
+}
+.adx-global-markets .ant-table-tbody > tr {
+  transition: background-color 140ms var(--adx-ease-out);
+}
+.adx-global-markets h1,
+.adx-global-markets h2,
+.adx-global-markets .ant-typography h1,
+.adx-global-markets .ant-typography h2 {
+  letter-spacing: -0.02em;
+  line-height: 1.18;
+}
+.adx-global-markets .ad-text-xs,
+.adx-global-markets .ad-text-small {
+  letter-spacing: 0.01em;
+}
+@media (prefers-reduced-motion: reduce) {
+  .adx-global-markets *,
+  .adx-global-markets *::before,
+  .adx-global-markets *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+  .adx-global-markets .ant-btn:active,
+  .adx-global-markets .ad-news-events-list__item:active {
+    transform: none;
+  }
+}
+`;
+
+function AdxShell({ children }: { children: ReactNode }) {
+  return (
+    <div className="adx-global-markets">
+      <style>{ADX_STYLE}</style>
+      {children}
+    </div>
+  );
+}
 
 const { Text } = Typography;
 
@@ -534,9 +596,10 @@ export default function GlobalMarkets() {
   };
 
   return (
-    <PageShell maxWidth="wide">
-      <PageHeader
-        eyebrow="海外资本市场"
+    <AdxShell>
+      <PageShell maxWidth="wide">
+        <PageHeader
+          eyebrow="海外资本市场"
         title="全球市场速览"
         description={
           '汇总美债收益率曲线、美元指数、商品、外汇、主要指数与波动率（VIX）。数据来自 FRED (Federal Reserve Economic Data)，每个工作日 03:00 北京时间自动刷新；FRED API key 缺失时显示为空状态。'
@@ -576,7 +639,8 @@ export default function GlobalMarkets() {
 
       {hasAnyData &&
         grouped.map((g) => <CategoryBlock key={g.key} title={g.label} rows={g.rows} />)}
-    </PageShell>
+      </PageShell>
+    </AdxShell>
   );
 }
 

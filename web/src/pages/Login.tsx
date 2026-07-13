@@ -25,8 +25,17 @@ export default function Login() {
     return null;
   }
 
-  // Cycle through data source status indicators every 3 seconds
+  // Cycle through data source status indicators every 3 seconds.
+  // Apple Design #14: under prefers-reduced-motion the abrupt content swap is
+  // disabled entirely — the status stays static instead of cross-fading,
+  // because a recurring, non-interruptible animation is worse than none.
   useEffect(() => {
+    if (
+      typeof window !== 'undefined' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    ) {
+      return;
+    }
     const interval = setInterval(() => {
       setSourceIndex((prev) => (prev + 1) % DATA_SOURCES.length);
     }, 3000);
@@ -65,6 +74,50 @@ export default function Login() {
 
   return (
     <div className="login-page login-page--sci-fi">
+      {/* Apple Design overrides scoped to the login page (global.css owns the
+          base styles; these are layered on top and win by equal specificity
+          + source order). See WWDC "Designing Fluid Interfaces". */}
+      <style>{`
+        /* #1 Response — feedback on pointer-down, not release. The base rule
+           only lifts on hover; :active gives an instant, zero-duration press. */
+        .login-page--sci-fi .login-submit:not(:disabled):active {
+          transform: translateY(0) scale(0.98);
+          opacity: 0.85;
+          transition-duration: 0ms;
+        }
+        /* #4 Springs — critically-damped spring approximation for the hover
+           lift instead of a mechanical linear-ish ease. */
+        .login-page--sci-fi .login-submit {
+          transition:
+            opacity 0.2s ease,
+            box-shadow 0.2s ease,
+            transform 0.32s cubic-bezier(0.32, 0.72, 0, 1);
+          will-change: transform;
+        }
+        /* #15 Typography — size-specific tracking: the 28px brand name gets
+           tighter tracking; the 11px hint/disclaimer get positive tracking. */
+        .login-page--sci-fi .login-brand-name { letter-spacing: -0.4px; }
+        .login-page--sci-fi .login-form-hint,
+        .login-page--sci-fi .login-disclaimer,
+        .login-page--sci-fi .login-source-status { letter-spacing: 0.1px; }
+        /* #11 Frame smoothness — promote the animating glass panels. */
+        .login-page--sci-fi .login-glass { will-change: transform, opacity; }
+        /* #14 Reduced motion — no press-scale; keep the color feedback only. */
+        @media (prefers-reduced-motion: reduce) {
+          .login-page--sci-fi .login-submit { transition: opacity 0.01ms; }
+          .login-page--sci-fi .login-submit:not(:disabled):active {
+            transform: none;
+          }
+        }
+        /* #14 Reduced transparency — fall back to a solid material. */
+        @media (prefers-reduced-transparency: reduce) {
+          .login-page--sci-fi .login-glass {
+            backdrop-filter: none;
+            -webkit-backdrop-filter: none;
+            background: var(--bg-surface, #14181f);
+          }
+        }
+      `}</style>
       <AuroraBackground />
 
       {/* ---- Brand Panel ---- */}

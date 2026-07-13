@@ -60,7 +60,13 @@ export default function AIHelpDrawer() {
   const aiAvailable = aiStatus?.available ?? false;
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    // Reduced-motion 用户：禁用平滑滚动，直接跳转（cross-fade 原则）
+    const reduceMotion = window.matchMedia?.(
+      '(prefers-reduced-motion: reduce)'
+    ).matches;
+    messagesEndRef.current?.scrollIntoView({
+      behavior: reduceMotion ? 'auto' : 'smooth',
+    });
   }, [messages, isLoading]);
 
   useEffect(() => {

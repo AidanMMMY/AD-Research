@@ -94,9 +94,26 @@ export default function BacktestDetail() {
     });
   };
 
+  // Apple Design #14: respect prefers-reduced-motion — the NAV curve renders
+  // instantly instead of animating in (cross-fade/instant is the Apple
+  // reduced-motion pattern for non-interactive content).
+  const prefersReducedMotion =
+    typeof window !== 'undefined' &&
+    typeof window.matchMedia === 'function' &&
+    window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
   const navData: BacktestNAV[] = data.daily_nav || [];
   const navOption: EChartsOption = {
-    tooltip: { trigger: 'axis' },
+    // Apple Design #4 Springs: critically-damped spring equivalent (cubicOut,
+    // no overshoot) for the initial draw; disabled under reduced motion.
+    animation: !prefersReducedMotion,
+    animationDuration: 350,
+    animationEasing: 'cubicOut',
+    tooltip: {
+      trigger: 'axis',
+      transitionDuration: prefersReducedMotion ? 0 : 0.2,
+      axisPointer: { type: 'line', snap: true },
+    },
     grid: { left: 50, right: 20, top: 30, bottom: 30 },
     xAxis: { type: 'category', data: navData.map((d: BacktestNAV) => d.date), axisLine: { lineStyle: { color: 'var(--text-tertiary)' } } },
     yAxis: { type: 'value', splitLine: { lineStyle: { color: 'var(--border-default)' } } },

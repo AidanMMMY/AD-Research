@@ -7,3 +7,71 @@
 .learning__filter-input {
   width: 220px;
 }
+
+/* ── Apple Design: scenario cards ──
+   Spring-eased press feedback on pointer-down; transform/opacity only. */
+.learning-scenario-card {
+  transition:
+    transform var(--transition-spring-fast),
+    box-shadow var(--transition-fast);
+  will-change: transform;
+}
+
+.learning-scenario-card:active {
+  transform: scale(0.995);
+}
+
+/* ── Typography: size-specific tracking & inverse leading ──
+   Titles (largest) get negative tracking + tight leading; taglines
+   (small) get positive tracking + looser leading. */
+.learning-scenario-card__title {
+  letter-spacing: -0.015em;
+  line-height: 1.25;
+}
+
+.learning-scenario-card__tagline {
+  letter-spacing: 0.005em;
+  line-height: 1.5;
+}
+
+.learning-scenario-card__step {
+  line-height: 1.6;
+}
+
+.learning-scenario-card__step-num {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Term quick-reference rows: fast hover + press feedback ── */
+.learning-terms__item {
+  border-radius: var(--radius-md);
+  transition: background var(--transition-fast);
+}
+
+.learning-terms__item:hover {
+  background: var(--bg-hover);
+}
+
+.learning-terms__title {
+  transition: color var(--transition-fast);
+}
+
+.learning-terms__title:active {
+  color: var(--accent);
+}
+
+.learning-terms__desc {
+  letter-spacing: 0.005em;
+}
+
+/* ── Reduced motion: no transforms, color-only feedback ── */
+@media (prefers-reduced-motion: reduce) {
+  .learning-scenario-card {
+    transition: none;
+    will-change: auto;
+  }
+
+  .learning-scenario-card:active {
+    transform: none;
+  }
+}

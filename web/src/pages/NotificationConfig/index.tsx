@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Table, Button, Modal, Form, Input, Select, Switch, Space, message, Alert, Tabs,
 } from 'antd';
@@ -24,12 +24,30 @@ const PLATFORM_OPTIONS = [
   { label: '钉钉', value: 'dingtalk' },
 ];
 
+// Apple Design #14 — prefers-reduced-motion: Modals render without zoom/fade
+// motion (transitionName '' => instant cross-fade) when the user asks for less.
+function usePrefersReducedMotion() {
+  const [reduced, setReduced] = useState(
+    () =>
+      typeof window !== 'undefined' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  );
+  useEffect(() => {
+    const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const onChange = () => setReduced(mq.matches);
+    mq.addEventListener('change', onChange);
+    return () => mq.removeEventListener('change', onChange);
+  }, []);
+  return reduced;
+}
+
 export default function NotificationConfigPage() {
   const isMobile = useIsMobile();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [form] = Form.useForm();
   const [channelType, setChannelType] = useState('webhook');
   const [activeTab, setActiveTab] = useState('all');
+  const reducedMotion = usePrefersReducedMotion();
 
   const { configs, isLoading, create, delete: deleteConfig, test } = useNotifications();
 
@@ -215,6 +233,9 @@ export default function NotificationConfigPage() {
         onCancel={() => { setIsModalOpen(false); form.resetFields(); setChannelType('webhook'); }}
         onOk={() => form.submit()}
         width={isMobile ? '100%' : 560}
+        // #7 Spatial consistency — antd's default zoom-origin already anchors
+        // to the trigger; under reduced motion we drop motion entirely.
+        {...(reducedMotion ? { transitionName: '', maskTransitionName: '' } : {})}
       >
         <Form
           form={form}

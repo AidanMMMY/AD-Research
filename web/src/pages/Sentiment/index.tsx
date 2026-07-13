@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef } from 'react';
+import { useState, useMemo, useEffect, useRef, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
@@ -39,6 +39,80 @@ import HelpPopover from '@/components/HelpPopover';
 import ThemeTag from '@/components/ThemeTag';
 import { useSettingsStore } from '@/stores/settings';
 import './styles.css';
+
+/**
+ * Apple-style motion layer (scoped to this page):
+ * - Response: feedback lands on pointer-down (:active, 0ms), release springs back.
+ * - Springs: critically-damped-ish cubic-bezier; transform-only for frame smoothness.
+ * - Direct manipulation: tappable cells advertise pressability via touch-action
+ *   and a scale press, telegraphing the selection destination (hint direction).
+ * - Typography: size-specific tracking (large tight, small loose).
+ * - Reduced motion: cross-fade only, transforms disabled.
+ */
+const ADX_STYLE = `
+.adx-sentiment {
+  --adx-spring: cubic-bezier(0.5, 1.6, 0.3, 1);
+  --adx-ease-out: cubic-bezier(0.22, 0.9, 0.3, 1);
+}
+.adx-sentiment .ant-btn,
+.adx-sentiment .ad-heatmap-cell,
+.adx-sentiment .ad-mover-row {
+  touch-action: manipulation;
+  transition: transform 240ms var(--adx-spring), background-color 140ms var(--adx-ease-out), box-shadow 140ms var(--adx-ease-out);
+}
+.adx-sentiment .ant-btn:active,
+.adx-sentiment .ad-heatmap-cell:active,
+.adx-sentiment .ad-mover-row:active {
+  transform: scale(0.96);
+  transition-duration: 0ms;
+}
+.adx-sentiment .ad-heatmap-cell:hover,
+.adx-sentiment .ad-mover-row:hover {
+  will-change: transform;
+}
+.adx-sentiment .ant-segmented-item {
+  touch-action: manipulation;
+  transition: color 140ms var(--adx-ease-out);
+}
+.adx-sentiment .ant-select-selector {
+  transition: border-color 140ms var(--adx-ease-out), box-shadow 140ms var(--adx-ease-out);
+}
+.adx-sentiment h1,
+.adx-sentiment h2,
+.adx-sentiment .ant-typography h1,
+.adx-sentiment .ant-typography h2 {
+  letter-spacing: -0.02em;
+  line-height: 1.18;
+}
+.adx-sentiment .ad-text-xs,
+.adx-sentiment .ad-text-small {
+  letter-spacing: 0.01em;
+}
+@media (prefers-reduced-motion: reduce) {
+  .adx-sentiment *,
+  .adx-sentiment *::before,
+  .adx-sentiment *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+  .adx-sentiment .ant-btn:active,
+  .adx-sentiment .ad-heatmap-cell:active,
+  .adx-sentiment .ad-mover-row:active {
+    transform: none;
+  }
+}
+`;
+
+function AdxShell({ children }: { children: ReactNode }) {
+  return (
+    <div className="adx-sentiment">
+      <style>{ADX_STYLE}</style>
+      {children}
+    </div>
+  );
+}
 
 const MARKET_OPTIONS: { label: string; value: NewsMarket | 'all' }[] = [
   { label: '全部', value: 'all' },
@@ -391,8 +465,9 @@ export default function SentimentOverview() {
   }, [market]);
 
   return (
-    <PageShell maxWidth="wide">
-      <div className="sentiment-page">
+    <AdxShell>
+      <PageShell maxWidth="wide">
+        <div className="sentiment-page">
         <PageHeader
           title="散户情绪看板"
           description="按市场聚合的新闻情绪分布 · 重要性与看多/看空比"
@@ -658,7 +733,8 @@ export default function SentimentOverview() {
             </Panel>
           </div>
         </div>
-      </div>
-    </PageShell>
+        </div>
+      </PageShell>
+    </AdxShell>
   );
 }

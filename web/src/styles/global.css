@@ -810,6 +810,8 @@ a:focus-visible {
 
 /* ============================================================
    Accessibility: respect prefers-reduced-motion
+   Apple HIG: 位移/弹簧类动效降级为 cross-fade（仅 opacity），
+   而不是简单“冻结”——空间关系仍通过淡入淡出表达。
    ============================================================ */
 @media (prefers-reduced-motion: reduce) {
   *,
@@ -821,10 +823,82 @@ a:focus-visible {
     scroll-behavior: auto !important;
   }
 
+  /* Slide/spring layers (drawers, modals, popovers, dropdowns) lose
+     their transform motion entirely — no travel, no rubber-band.
+     Opacity cross-fade is the only allowed spatial cue. */
+  .ant-drawer-content-wrapper,
+  .ant-drawer-content,
+  .ant-modal-content,
+  .ant-modal,
+  .ant-popover,
+  .ant-tooltip,
+  .ant-select-dropdown,
+  .ant-dropdown,
+  .ant-picker-dropdown,
+  .ant-tour,
+  .app-layout__nav-group-items {
+    transform: none !important;
+  }
+
+  /* Sidebar collapse: instant width swap, no width tween. */
+  .app-layout__sidebar,
+  .app-layout__main {
+    transition: none !important;
+  }
+
   /* Hide CRT scanline + vignette overlays for reduced-motion users. */
   body::before,
   body::after {
     display: none;
+  }
+}
+
+/* ============================================================
+   Accessibility: prefers-reduced-transparency
+   材质层退化为不透明实色，关闭 backdrop-filter。
+   ============================================================ */
+@media (prefers-reduced-transparency: reduce) {
+  .login-glass,
+  .ant-popover-inner,
+  .ant-tooltip-inner,
+  .ant-modal-content,
+  .ant-drawer-content,
+  .ant-select-dropdown,
+  .ant-dropdown-menu,
+  .ant-picker-dropdown,
+  .ant-tour-inner {
+    background: var(--card-bg) !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+
+  .app-layout__header,
+  .app-layout .ant-drawer-mask {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+}
+
+/* ============================================================
+   Accessibility: prefers-contrast: more
+   提高边框与次要文本对比度。
+   ============================================================ */
+@media (prefers-contrast: more) {
+  :root {
+    --border-default: var(--border-strong);
+    --text-secondary: var(--text-primary);
+    --text-tertiary: var(--text-secondary);
+  }
+
+  .ant-btn-default,
+  .ant-input,
+  .ant-select-selector,
+  .ant-input-number {
+    border-width: 2px !important;
+  }
+
+  *:focus-visible {
+    outline-width: 3px;
   }
 }
 
@@ -3052,7 +3126,7 @@ main {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  transition: transform 180ms ease;
+  transition: transform var(--transition-spring-fast);
   opacity: 0.6;
 }
 
@@ -3062,7 +3136,7 @@ main {
 
 .app-layout__nav-group-items {
   overflow: hidden;
-  transition: max-height 180ms ease, opacity 180ms ease;
+  transition: max-height var(--transition-spring-fast), opacity var(--transition-spring-fast);
   opacity: 1;
   max-height: 1200px;
 }
@@ -8790,4 +8864,212 @@ input[type="password"]::-webkit-strong-password-auto-fill-button {
 }
 .ad-col-rating {
   padding-right: 16px !important;
+}
+
+/* ============================================================
+   Apple Fluid Interfaces — motion, materials, press feedback
+   (2026-07-14) 全部规则向后兼容：只使用 theme.css 中的 token。
+   ============================================================ */
+
+/* ---- 1. Response: pointer-down 即时反馈 ---------------------
+   反馈发生在按下瞬间（:active = pointer down），不等 release。
+   仅 animate transform/background，保证 60fps。 */
+.ant-btn:not([disabled]):not(.ant-btn-loading) {
+  transition: transform var(--transition-fast),
+    background var(--transition-fast),
+    border-color var(--transition-fast),
+    color var(--transition-fast),
+    box-shadow var(--transition-fast);
+}
+
+.ant-btn:not([disabled]):not(.ant-btn-loading):active {
+  transform: scale(var(--press-scale));
+}
+
+/* 行/卡片类可点击元素：按下即改变背景（tap highlight 等价物） */
+.app-layout__nav-item:active,
+.app-layout__nav-group-header:active,
+.app-layout__icon-btn:active,
+.app-layout__header-collapse:active,
+.app-layout__user:active,
+.app-layout__breadcrumb-link:active,
+.ad-status-chip:active,
+.ad-news-card:active,
+.ad-mover-row:active,
+.ad-chat-sidebar__item:active,
+.ticker-cell:active,
+.ai-drawer__quick-tag:not(.ai-drawer__quick-tag--disabled):active,
+.help-popover__related-chip:active,
+.help-popover__trigger:active,
+.ad-heatmap-cell:active,
+.instrument-code-tag--clickable:active {
+  background: var(--bg-active) !important;
+}
+
+.stat-card--clickable,
+.content-card {
+  transition: transform var(--transition-fast),
+    border-color var(--transition-fast),
+    background var(--transition-fast),
+    box-shadow var(--transition-fast);
+}
+
+.stat-card--clickable:active {
+  transform: scale(var(--press-scale-subtle));
+}
+
+/* ---- 2. Springs: antd 覆盖层动效换为临界阻尼弹簧曲线 -------
+   drawer / modal / popover / dropdown 的进入离场全部走
+   --ease-spring（阻尼 1.0，无回弹）；回弹曲线仅留给动量交互。 */
+.ant-drawer-content-wrapper {
+  transition: transform var(--transition-spring) !important;
+  will-change: transform;
+}
+
+.ant-modal-content {
+  transition: transform var(--transition-spring),
+    opacity var(--transition-spring) !important;
+  will-change: transform, opacity;
+}
+
+.ant-popover,
+.ant-tooltip,
+.ant-select-dropdown,
+.ant-dropdown,
+.ant-picker-dropdown,
+.ant-tour {
+  will-change: transform, opacity;
+}
+
+/* antd rc-motion 内部 class：统一弹簧曲线 + 时长 */
+.ant-motion-collapse,
+.ant-motion-collapse-active,
+.zoom-enter,
+.zoom-enter-active,
+.zoom-appear,
+.zoom-appear-active,
+.zoom-leave,
+.zoom-leave-active,
+.slide-up-enter,
+.slide-up-enter-active,
+.slide-up-appear,
+.slide-up-appear-active,
+.slide-up-leave,
+.slide-up-leave-active,
+.move-up-enter,
+.move-up-enter-active,
+.move-up-leave,
+.move-up-leave-active {
+  transition-timing-function: var(--ease-spring) !important;
+}
+
+/* ---- 3. Spatial consistency: transform-origin 锚定触发点 ----
+   覆盖层从触发元素方向长出/收回（enter/exit 同路径镜像）。 */
+.ant-popover[data-popper-placement^="top"],
+.ant-tooltip[data-popper-placement^="top"] {
+  transform-origin: bottom center;
+}
+
+.ant-popover[data-popper-placement^="bottom"],
+.ant-tooltip[data-popper-placement^="bottom"] {
+  transform-origin: top center;
+}
+
+.ant-popover[data-popper-placement^="left"],
+.ant-tooltip[data-popper-placement^="left"] {
+  transform-origin: right center;
+}
+
+.ant-popover[data-popper-placement^="right"],
+.ant-tooltip[data-popper-placement^="right"] {
+  transform-origin: left center;
+}
+
+.ant-select-dropdown,
+.ant-dropdown,
+.ant-picker-dropdown {
+  transform-origin: top center;
+}
+
+/* ---- 4. Materials & depth: 半透明材质层 --------------------
+   弹层不再只是 fade in，而是“materialize”：模糊 + 饱和提亮，
+   内容在层下滚动时仍可感知层级。 */
+.ant-popover-inner,
+.ant-tooltip-inner {
+  background: var(--material-regular-bg) !important;
+  backdrop-filter: var(--material-regular-blur);
+  -webkit-backdrop-filter: var(--material-regular-blur);
+}
+
+.ant-select-dropdown,
+.ant-dropdown-menu,
+.ant-picker-dropdown {
+  background: var(--material-regular-bg) !important;
+  backdrop-filter: var(--material-regular-blur);
+  -webkit-backdrop-filter: var(--material-regular-blur);
+}
+
+/* Drawer/Modal 是更重的材质（thick），大面积但滚动内容在上层 */
+.ant-drawer-content {
+  background: var(--material-thick-bg) !important;
+  backdrop-filter: var(--material-thick-blur);
+  -webkit-backdrop-filter: var(--material-thick-blur);
+}
+
+.ant-modal-content {
+  background: var(--material-thick-bg) !important;
+  backdrop-filter: var(--material-thick-blur);
+  -webkit-backdrop-filter: var(--material-thick-blur);
+}
+
+/* Drawer body 保持不透明基底，文字始终在实色上（可读性优先） */
+.ant-drawer-body {
+  background: var(--bg-base) !important;
+}
+
+/* ---- 5. Rubber-banding 边界: 滚动容器隔离 + 边界阻尼 -------
+   Web 等价实现：overscroll-behavior 防止滚动链穿透到 body，
+   边界处由浏览器原生 rubber-band（iOS）或阻尼（其他）接管。 */
+.app-layout__nav,
+.app-layout__content,
+.ai-drawer__messages,
+.ad-chat-messages,
+.ad-chat-sidebar__list,
+.ant-drawer-body,
+.ant-modal-body,
+.news-translation-pair__body,
+.ad-table-scroll,
+.ad-scroll-hint,
+.ant-table-wrapper {
+  overscroll-behavior: contain;
+}
+
+/* 触屏滚动物理惯性 */
+.app-layout__content,
+.ai-drawer__messages,
+.ad-chat-messages,
+.ant-drawer-body {
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ---- 6. Typography: size-specific tracking -----------------
+   大字号收紧、小字号放宽（仅覆盖尚未显式声明 letter-spacing 的
+   关键层级；已有声明的规则保持原值）。 */
+.page-header-title,
+.masthead-title,
+.ad-detail-title {
+  letter-spacing: var(--tracking-h1);
+}
+
+.ad-section-heading__title {
+  letter-spacing: var(--tracking-h3);
+}
+
+.ad-metric-item__value {
+  letter-spacing: var(--tracking-data);
+}
+
+.empty-state__description,
+.page-header-description {
+  letter-spacing: var(--tracking-small);
 }

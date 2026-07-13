@@ -525,6 +525,7 @@ export default function EtfHoldingsHistoryPage() {
                       <button
                         type="button"
                         onClick={() => setSelectedDate(s.holdings_as_of_date)}
+                        aria-pressed={isActive}
                         className={`ehh-timeline-btn${isActive ? ' ehh-timeline-btn--active' : ''}`}
                       >
                         <div className="ehh-timeline-btn__row">

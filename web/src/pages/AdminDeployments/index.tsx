@@ -353,6 +353,27 @@ export default function AdminDeployments() {
 
   return (
     <PageShell maxWidth="wide">
+      {/* Apple Design overrides scoped to this page (see WWDC "Designing Fluid
+          Interfaces"). Layered on top of global.css rules. */}
+      <style>{`
+        /* #14 Reduced motion — freeze the in-progress spinner instead of an
+           endless non-interruptible rotation; a static icon still reads as
+           "running" via the tag color/label. */
+        @media (prefers-reduced-motion: reduce) {
+          .admin-deploy-status-tag--in_progress .anticon-spin {
+            animation: none !important;
+          }
+          .admin-log-terminal { scroll-behavior: auto !important; }
+        }
+        /* #1 Response — pointer-down feedback on the commit link. */
+        .admin-deploy-commit:active {
+          opacity: 0.6;
+          transition: none;
+        }
+        /* #15 Typography — tabular figures for the SHA so columns don't jitter
+           as logs stream in. */
+        .admin-log-line__timestamp { font-variant-numeric: tabular-nums; }
+      `}</style>
       <PageHeader
         title="部署管理"
         description="Vercel 风格部署仪表盘 — 查看部署历史、服务器状态和实时日志"

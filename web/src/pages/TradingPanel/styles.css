@@ -22,3 +22,46 @@
 .paper-pnl--neutral {
   color: var(--text-tertiary);
 }
+
+/* ── Apple Design: instant pointer-down feedback on actionable cards ──
+   Response principle — feedback fires on :active (pointer-down), using the
+   critically-damped spring ease so the press/release feels physical. */
+.ad-trading-card,
+.ad-balance-card {
+  transition:
+    transform var(--transition-spring-fast),
+    box-shadow var(--transition-fast);
+  will-change: transform;
+}
+
+.ad-trading-card:active,
+.ad-balance-card:active {
+  transform: scale(0.985);
+}
+
+/* ── Typography: size-specific tracking ──
+   Small/dense labels get positive tracking; the asset heading (larger)
+   gets slightly negative tracking, mirroring SF optical sizing. */
+.ad-trading-card .ant-statistic-title,
+.ad-balance-card__row,
+.ad-meta-label {
+  letter-spacing: 0.01em;
+}
+
+.ad-balance-card__asset {
+  letter-spacing: -0.01em;
+}
+
+/* ── Reduced motion: remove transforms, keep opacity-only changes ── */
+@media (prefers-reduced-motion: reduce) {
+  .ad-trading-card,
+  .ad-balance-card {
+    transition: none;
+    will-change: auto;
+  }
+
+  .ad-trading-card:active,
+  .ad-balance-card:active {
+    transform: none;
+  }
+}

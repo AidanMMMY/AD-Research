@@ -22,6 +22,25 @@ import { useDebounce } from '@/hooks/useDebounce';
 import { useIsMobile } from '@/hooks/useBreakpoint';
 import { NULL_PLACEHOLDER } from '@/utils/format';
 
+/**
+ * Apple Design fixes scoped to this page: rows open a detail modal on
+ * click, so they get an affordance cursor and pointer-down feedback
+ * (:active highlight on touch-down, not release — Apple's Response
+ * principle). Reduced-motion users get no transition.
+ */
+const RESEARCH_REPORTS_PAGE_STYLE = `
+.research-reports-row {
+  cursor: pointer;
+  transition: background var(--transition-fast, 150ms ease);
+}
+.research-reports-row:active {
+  background: var(--bg-active) !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  .research-reports-row { transition: none; }
+}
+`;
+
 const { Title, Paragraph } = Typography;
 
 const RATING_COLOR: Record<string, string> = {
@@ -223,6 +242,7 @@ export default function ResearchReports() {
 
   return (
     <PageShell maxWidth="wide">
+      <style>{RESEARCH_REPORTS_PAGE_STYLE}</style>
       <PageHeader
         eyebrow="研究"
         title="研报库"
@@ -317,6 +337,7 @@ export default function ResearchReports() {
               dataSource={filteredByRating}
               columns={columns}
               rowKey="id"
+              rowClassName={() => 'research-reports-row'}
               pagination={{
                 current: page,
                 pageSize,

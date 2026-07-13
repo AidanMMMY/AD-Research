@@ -12,7 +12,75 @@
 /* ── View link cell (table action column) ── */
 .signal-dashboard__view-link {
   /* Clickable link to the instrument detail page. */
+  color: var(--accent);
+  cursor: pointer;
+  font-size: var(--text-label-size);
+  letter-spacing: 0.01em; /* small text: positive tracking */
+  border-radius: var(--radius-sm);
+  padding: 2px 6px;
+  margin: -2px -6px;
+  transition:
+    color var(--transition-fast),
+    background var(--transition-fast),
+    transform var(--transition-spring-fast);
+  will-change: transform;
+}
+
+.signal-dashboard__view-link:hover {
+  background: var(--accent-dim);
+}
+
+.signal-dashboard__view-link:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+/* Pointer-down instant feedback (Response principle) */
+.signal-dashboard__view-link:active {
+  transform: scale(0.94);
+  background: var(--accent-dim);
+}
+
+/* ── KPI cells: press feedback + optical typography ── */
+.ad-kpi-cell {
+  transition: transform var(--transition-spring-fast);
+  will-change: transform;
+}
+
+.ad-kpi-cell:active {
+  transform: scale(0.98);
+}
+
+/* Large numerals: negative tracking, mirroring SF large optical sizes */
+.ad-kpi-cell__value {
+  letter-spacing: -0.02em;
+  line-height: 1.1; /* inverse leading for large display sizes */
+}
+
+.ad-kpi-cell__label {
+  letter-spacing: 0.01em;
+}
+
+/* ── Table rows: fast background-only hover feedback ── */
+.ad-table-scroll .ant-table-tbody > tr {
+  transition: background var(--transition-fast);
 }
 
 /* ── Table wrapper ── */
 /* Uses the shared ad-table-scroll class from global.css. */
+
+/* ── Reduced motion: remove transforms, keep color/opacity changes ── */
+@media (prefers-reduced-motion: reduce) {
+  .signal-dashboard__view-link,
+  .ad-kpi-cell {
+    transition:
+      color var(--transition-fast),
+      background var(--transition-fast);
+    will-change: auto;
+  }
+
+  .signal-dashboard__view-link:active,
+  .ad-kpi-cell:active {
+    transform: none;
+  }
+}

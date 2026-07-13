@@ -181,7 +181,12 @@ export default function Favorites() {
         return (
           <span
             className="tabular-nums live-price-cell__price"
-            style={{ color: getReturnColor(tick.change_pct) }}
+            style={{
+              color: getReturnColor(tick.change_pct),
+              /* Spring-eased color handoff between ticks — continuous
+                 feedback during streaming updates instead of hard cuts. */
+              transition: 'color var(--transition-spring-fast)',
+            }}
           >
             {tick.price.toFixed(2)}
           </span>
@@ -458,7 +463,19 @@ export default function Favorites() {
             <span>
               自选股是 <b>轻量级跟踪清单</b>，区别于「标的池」（中长期目标组合）和「模拟 / 真实交易」中的实际持仓。
               如需给自选股配置权重 / 算法跟踪，请到{' '}
-              <a onClick={() => navigate('/pools')}>标的池管理</a>。
+              <a
+                role="link"
+                tabIndex={0}
+                onClick={() => navigate('/pools')}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    navigate('/pools');
+                  }
+                }}
+              >
+                标的池管理
+              </a>。
             </span>
           }
         />

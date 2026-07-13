@@ -18,6 +18,36 @@ import { SENTIMENT_LABELS } from '@/utils/sentiment';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
+/**
+ * Apple Design fixes scoped to this page:
+ * 1. Pointer-down feedback — research cards open a modal on click but
+ *    previously had no touch-down state; they now highlight and press
+ *    (subtle scale) on :active, per Apple's Response principle.
+ * 2. The delete affordance gets the same press treatment.
+ * 3. Reduced-motion users get no transform/transition at all.
+ */
+const RESEARCH_NOTES_PAGE_STYLE = `
+.ad-research-card {
+  transform-origin: center;
+  transition: transform var(--transition-fast, 150ms ease),
+    background var(--transition-fast, 150ms ease);
+}
+.ad-research-card:active {
+  background: var(--bg-active);
+  transform: scale(var(--press-scale-subtle, 0.99));
+}
+.ad-research-card__delete:active {
+  transform: scale(var(--press-scale, 0.97));
+}
+@media (prefers-reduced-motion: reduce) {
+  .ad-research-card,
+  .ad-research-card__delete {
+    transition: none;
+    transform: none;
+  }
+}
+`;
+
 const SENTIMENT_VARIANTS: Record<string, ThemeTagVariant> = {
   bullish: 'rise',
   bearish: 'fall',
@@ -113,6 +143,7 @@ export default function ResearchNotes() {
 
   return (
     <PageShell maxWidth="wide">
+      <style>{RESEARCH_NOTES_PAGE_STYLE}</style>
       <PageHeader
         eyebrow="研究"
         title="研究笔记"

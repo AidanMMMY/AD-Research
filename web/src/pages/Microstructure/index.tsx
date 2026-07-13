@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import './styles.css';
 import {
   Table, Input, Select, Button, Space, Tag, Skeleton, message, Statistic, Card, Tabs,
@@ -28,6 +28,68 @@ import type {
   MarginBalance,
   RestrictedRelease,
 } from '@/api/microstructure';
+
+/**
+ * Apple-style motion layer (scoped to this page):
+ * - Response: feedback lands on pointer-down (:active, 0ms), release springs back.
+ * - Springs: critically-damped-ish cubic-bezier; transform-only for frame smoothness.
+ * - Typography: size-specific tracking (large tight, small loose).
+ * - Reduced motion: cross-fade only, transforms disabled.
+ */
+const ADX_STYLE = `
+.adx-microstructure {
+  --adx-spring: cubic-bezier(0.5, 1.6, 0.3, 1);
+  --adx-ease-out: cubic-bezier(0.22, 0.9, 0.3, 1);
+}
+.adx-microstructure .ant-btn {
+  touch-action: manipulation;
+  transition: transform 240ms var(--adx-spring), background-color 140ms var(--adx-ease-out);
+}
+.adx-microstructure .ant-btn:active {
+  transform: scale(0.97);
+  transition-duration: 0ms;
+}
+.adx-microstructure .ant-tabs-tab {
+  touch-action: manipulation;
+  transition: color 140ms var(--adx-ease-out);
+}
+.adx-microstructure .ant-table-tbody > tr {
+  transition: background-color 140ms var(--adx-ease-out);
+}
+.adx-microstructure h1,
+.adx-microstructure h2,
+.adx-microstructure .ant-typography h1,
+.adx-microstructure .ant-typography h2 {
+  letter-spacing: -0.02em;
+  line-height: 1.18;
+}
+.adx-microstructure .ad-text-xs,
+.adx-microstructure .ad-text-small {
+  letter-spacing: 0.01em;
+}
+@media (prefers-reduced-motion: reduce) {
+  .adx-microstructure *,
+  .adx-microstructure *::before,
+  .adx-microstructure *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+  .adx-microstructure .ant-btn:active {
+    transform: none;
+  }
+}
+`;
+
+function AdxShell({ children }: { children: ReactNode }) {
+  return (
+    <div className="adx-microstructure">
+      <style>{ADX_STYLE}</style>
+      {children}
+    </div>
+  );
+}
 
 function formatMoney(v: number | null | undefined, digits = 2): string {
   if (v === null || v === undefined) return NULL_PLACEHOLDER;
@@ -125,9 +187,10 @@ export default function MicrostructurePage() {
   );
 
   return (
-    <PageShell maxWidth="wide">
-      <PageHeader
-        title="微结构数据"
+    <AdxShell>
+      <PageShell maxWidth="wide">
+        <PageHeader
+          title="微结构数据"
         description="A 股龙虎榜 / 沪深港通 / 融资融券 / 限售解禁 4 类微结构信号。每交易日 18:30 Asia/Shanghai 自动刷新。"
         extra={
           <Space>
@@ -320,6 +383,7 @@ export default function MicrostructurePage() {
           ]}
         />
       </Panel>
-    </PageShell>
+      </PageShell>
+    </AdxShell>
   );
 }

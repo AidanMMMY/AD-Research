@@ -22,3 +22,42 @@
 }
 
 /* ── Page-specific overrides use ad-* classes from global.css ── */
+
+/* ── Apple Design: instant pointer-down feedback on stat cards ──
+   Press feedback on pointer-down (not release); spring-eased so the
+   release settles without bounce (critically damped). */
+.ad-trading-card {
+  transition:
+    transform var(--transition-spring-fast),
+    box-shadow var(--transition-fast);
+  will-change: transform;
+}
+
+.ad-trading-card:active {
+  transform: scale(0.985);
+}
+
+/* ── Typography: size-specific tracking ──
+   Small stat titles get positive tracking; large PnL percentage reads
+   tighter (negative tracking) like SF large optical sizes. */
+.ad-trading-card .ant-statistic-title {
+  letter-spacing: 0.01em;
+}
+
+.ad-pnl-pct--rise,
+.ad-pnl-pct--fall,
+.ad-pnl-pct--neutral {
+  letter-spacing: -0.01em;
+}
+
+/* ── Reduced motion: cross-fade only, no transforms ── */
+@media (prefers-reduced-motion: reduce) {
+  .ad-trading-card {
+    transition: none;
+    will-change: auto;
+  }
+
+  .ad-trading-card:active {
+    transform: none;
+  }
+}

@@ -79,6 +79,13 @@ export default function PoolList() {
 
   return (
     <PageShell maxWidth="wide">
+      {/* Apple Design #1 Response / #10 Gesture details: clickable rows give
+          instant pointer-down feedback (tap-highlight equivalent). Background
+          only — no movement, so no reduced-motion concern. */}
+      <style>{`
+        .pool-list-row--pressable > td { transition: background var(--transition-fast, 150ms ease); }
+        .pool-list-row--pressable:active > td { background: var(--bg-active) !important; }
+      `}</style>
       <PageHeader
         eyebrow="组合"
         title="标的池管理"
@@ -99,6 +106,7 @@ export default function PoolList() {
             columns={columns}
             rowKey="id"
             size="small"
+            rowClassName="pool-list-row--pressable"
             scroll={{ x: 'max-content' }}
             loading={poolsLoading}
             onRow={(record) => ({

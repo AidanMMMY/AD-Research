@@ -466,7 +466,14 @@ export default function StockDetail() {
                         <div
                           className="sentiment-bar__fill"
                           style={{
-                            width: `${((sentiment.avg_score + 1) / 2) * 100}%`,
+                            /* Transform-only fill: scaleX tracks the score and
+                               animates via the critically-damped spring curve
+                               (frame smoothness: no layout-affecting width). */
+                            width: '100%',
+                            transform: `scaleX(${Math.max(0, Math.min(1, (sentiment.avg_score + 1) / 2))})`,
+                            transformOrigin: 'left center',
+                            transition: 'transform var(--transition-spring-fast)',
+                            willChange: 'transform',
                             background: SENTIMENT_COLORS[sentiment.label] || 'var(--text-secondary)',
                           }}
                         />

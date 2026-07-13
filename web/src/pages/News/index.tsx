@@ -50,6 +50,33 @@ import {
 } from '@/utils/datetime';
 import { useDebounce } from '@/hooks/useDebounce';
 
+/**
+ * Apple Design fixes scoped to this page (page styles.css is owned by
+ * another workstream):
+ * 1. Pointer-down feedback — the political/macro filter chips are
+ *    antd CheckableTags, which are not covered by the global
+ *    `.ad-status-chip:active` press rule; they now press (subtle
+ *    scale) on touch-down, per Apple's Response principle.
+ * 2. Reduced-motion users get no transform/transition at all.
+ */
+const NEWS_PAGE_STYLE = `
+.news-political-chip {
+  transform-origin: center;
+  transition: transform var(--transition-fast, 150ms ease),
+    background var(--transition-fast, 150ms ease),
+    border-color var(--transition-fast, 150ms ease);
+}
+.news-political-chip:active {
+  transform: scale(var(--press-scale, 0.97));
+}
+@media (prefers-reduced-motion: reduce) {
+  .news-political-chip {
+    transition: none;
+    transform: none;
+  }
+}
+`;
+
 const { RangePicker } = DatePicker;
 
 const PAGE_SIZE = 20;
@@ -649,6 +676,7 @@ export default function NewsFeed() {
 
   return (
     <PageShell maxWidth="wide">
+      <style>{NEWS_PAGE_STYLE}</style>
       <PageHeader
         title="资讯"
         description="多市场新闻聚合 · 情绪与重要性实时标注"

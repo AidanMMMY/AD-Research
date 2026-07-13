@@ -96,6 +96,31 @@ export default function Screen() {
 
   return (
     <PageShell maxWidth="wide">
+      {/* Apple Design fixes:
+          #1/#10 Response — clickable result rows give instant pointer-down
+          feedback (background only, no movement).
+          #4 Springs + #10 — preset chips spring-press on pointer-down for a
+          direct-manipulation feel (global CSS already gives bg feedback).
+          #14 Reduced motion — chips keep color feedback, drop the scale. */}
+      <style>{`
+        .screen-row--pressable > td { transition: background var(--transition-fast, 150ms ease); }
+        .screen-row--pressable:active > td { background: var(--bg-active) !important; }
+        .screen-presets .ad-status-chip {
+          transition: transform var(--transition-spring-fast, 0.2s cubic-bezier(0.32, 0.72, 0.32, 1)),
+            background var(--transition-fast, 150ms ease),
+            border-color var(--transition-fast, 150ms ease),
+            color var(--transition-fast, 150ms ease);
+        }
+        .screen-presets .ad-status-chip:active { transform: scale(var(--press-scale-subtle, 0.99)); }
+        @media (prefers-reduced-motion: reduce) {
+          .screen-presets .ad-status-chip {
+            transition: background var(--transition-fast, 150ms ease),
+              border-color var(--transition-fast, 150ms ease),
+              color var(--transition-fast, 150ms ease);
+          }
+          .screen-presets .ad-status-chip:active { transform: none; }
+        }
+      `}</style>
       <PageHeader
         eyebrow="全市场"
         title="全市场筛选器"
@@ -394,6 +419,7 @@ export default function Screen() {
               dataSource={results?.items || []}
               columns={columns}
               rowKey="code"
+              rowClassName="screen-row--pressable"
               loading={isLoading}
               pagination={{
                 current: page,
