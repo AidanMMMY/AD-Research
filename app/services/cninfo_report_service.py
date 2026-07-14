@@ -23,6 +23,7 @@ from sqlalchemy.orm import Session
 
 from app.config import get_settings
 from app.data.providers.cninfo_provider import CninfoProvider
+from app.data.providers.exchange_provider import ExchangeProvider
 from app.data.providers.tushare_provider import TushareProvider
 from app.models.cninfo_report import CninfoReport
 from app.models.etf import ETFInfo
@@ -353,6 +354,152 @@ class CninfoReportService:
         self.db.add(report)
         self.db.commit()
         return target
+
+    # ------------------------------------------------------------------
+    # Fallback PDF download (exchange → cninfo)
+    # ------------------------------------------------------------------
+
+    # Re-use cninfo's PDF directory layout so fallback hits the same
+    # path the original ``download_pdf`` would have produced —
+    # downstream code (extraction, API) needs no special-casing.
+    def download_with_fallback(
+        self,
+        report_id: int,
+        *,
+        exchange_provider: ExchangeProvider | None = None,
+    ) -> dict[str, Any]:
+        """Try cninfo first; if it returns ``None``, walk SSE / SZSE /
+        BSE listing pages and download from there.
+
+        Returns::
+
+            {
+                "path": Path | None,
+                "source": "cninfo" | "sse" | "szse" | "bse" | None,
+                "fallback_used": bool,
+                "error": str | None,  # only set when both failed
+            }
+
+        The ORM row's ``source`` and ``file_path`` / ``file_size``
+        columns are kept in sync — so the rest of the pipeline
+        (text extraction, the detail API) can't tell which channel
+        the PDF originally came from.
+        """
+        report = self.db.get(CninfoReport, report_id)
+        if report is None:
+            return {"path": None, "source": None, "fallback_used": False,
+                    "error": "report not found"}
+
+        # Step 1: try the original cninfo URL via the existing
+        # helper.  Its return value already walks the path-writing +
+        # DB-update flow; we just inspect the side effects.
+        try:
+            path = self.download_pdf(report_id)
+        except Exception as exc:  # pragma: no cover - defensive
+            logger.warning("cninfo download raised for %s: %s", report_id, exc)
+            path = None
+
+        if path is not None:
+            # cninfo succeeded — make sure source is normalised to
+            # 'cninfo' even if a prior fallback run wrote 'szse' etc.
+            report.source = "cninfo"
+            try:
+                self.db.add(report)
+                self.db.commit()
+            except Exception:  # pragma: no cover - defensive
+                self.db.rollback()
+            return {
+                "path": path,
+                "source": "cninfo",
+                "fallback_used": False,
+                "error": None,
+            }
+
+        # Step 2: cninfo failed — try the official exchange listing.
+        target_dir = _DEFAULT_PDF_DIR / report.ts_code
+        try:
+            target_dir.mkdir(parents=True, exist_ok=True)
+        except OSError as exc:  # pragma: no cover - permissions
+            logger.warning("cannot mkdir %s: %s", target_dir, exc)
+            return {"path": None, "source": None, "fallback_used": False,
+                    "error": f"mkdir failed: {exc}"}
+        target = target_dir / f"{report.announcement_id}.pdf"
+
+        ann_dt = report.announcement_time
+        ann_date = ann_dt.date() if hasattr(ann_dt, "date") else None
+        if ann_date is None:
+            return {"path": None, "source": None, "fallback_used": False,
+                    "error": "no announcement_time"}
+
+        provider = exchange_provider or ExchangeProvider()
+        try:
+            url = provider.find_report_pdf(
+                report.ts_code,
+                ann_date,
+                title_hint=report.announcement_title,
+            )
+        except Exception as exc:  # pragma: no cover - defensive
+            logger.warning("ExchangeProvider error for %s: %s", report.ts_code, exc)
+            url = None
+
+        if not url:
+            logger.info(
+                "fallback: no exchange PDF for %s ann=%s on %s",
+                report.ts_code,
+                report.announcement_id,
+                ann_date.isoformat(),
+            )
+            return {"path": None, "source": None, "fallback_used": False,
+                    "error": "no exchange match"}
+
+        # Step 3: download the candidate URL.
+        ok, err, size = provider.download_candidate(url, str(target))
+        if not ok:
+            logger.info(
+                "fallback: exchange download failed for %s url=%s err=%s",
+                report.ts_code, url, err,
+            )
+            return {"path": None, "source": None, "fallback_used": False,
+                    "error": f"exchange download failed: {err}"}
+
+        # The exchange source depends on the URL host (covers
+        # SSE / SZSE / BSE uniformly) — fall back to SZSE when the
+        # host is unknown so we still record *something*.
+        if "sse.com.cn" in url:
+            source_label = "sse"
+        elif "szse.cn" in url:
+            source_label = "szse"
+        elif "bse.cn" in url:
+            source_label = "bse"
+        else:
+            source_label = "szse"
+
+        report.file_path = str(target)
+        report.file_size = size
+        report.source = source_label
+        report.extraction_status = "downloaded"
+        try:
+            self.db.add(report)
+            self.db.commit()
+        except Exception:  # pragma: no cover - defensive
+            self.db.rollback()
+            return {"path": None, "source": None, "fallback_used": False,
+                    "error": "DB commit failed"}
+
+        logger.info(
+            "fallback: downloaded via %s for %s ann=%s url=%s size=%s",
+            source_label,
+            report.ts_code,
+            report.announcement_id,
+            url,
+            size,
+        )
+        return {
+            "path": target,
+            "source": source_label,
+            "fallback_used": True,
+            "error": None,
+        }
 
     # ------------------------------------------------------------------
     # PDF text extraction

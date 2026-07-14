@@ -22,6 +22,7 @@ from pathlib import Path
 
 from app.core.celery_app import celery_app
 from app.core.database import SessionLocal
+from app.data.providers.exchange_provider import ExchangeProvider
 from app.services.cninfo_report_service import (
     CninfoReportService,
     _DEFAULT_PDF_DIR,
@@ -67,7 +68,9 @@ def download_cninfo_pdfs(
 
     Returns:
         Dict with counters: ``scanned`` / ``downloaded`` / ``skipped`` /
-        ``extracted`` / ``failed`` / ``bytes``.
+        ``extracted`` / ``failed`` / ``bytes`` /
+        ``fallback_used`` (count of downloads salvaged by the exchange
+        fallback when cninfo was down).
     """
     all_codes = _load_ts_codes()
     shard = all_codes[offset : offset + limit]
@@ -80,6 +83,7 @@ def download_cninfo_pdfs(
             "extracted": 0,
             "failed": 0,
             "bytes": 0,
+            "fallback_used": 0,
         }
 
     try:
@@ -93,10 +97,14 @@ def download_cninfo_pdfs(
             "extracted": 0,
             "failed": 1,
             "bytes": 0,
+            "fallback_used": 0,
         }
 
     db = SessionLocal()
     service = CninfoReportService(db)
+    # One session-scoped ExchangeProvider so we reuse TCP connections
+    # across many resolutions inside the shard.
+    exchange_provider = ExchangeProvider()
 
     scanned = 0
     downloaded = 0
@@ -104,6 +112,7 @@ def download_cninfo_pdfs(
     skipped = 0
     failed = 0
     total_bytes = 0
+    fallback_used = 0
     t0 = time.time()
 
     log.info(
@@ -155,13 +164,15 @@ def download_cninfo_pdfs(
                 scanned += 1
                 rid = report.id
 
-                # Step 3: download.
+                # Step 3: download (with exchange fallback).
                 if download and not report.file_path:
                     try:
-                        path = service.download_pdf(rid)
+                        result = service.download_with_fallback(
+                            rid, exchange_provider=exchange_provider
+                        )
                     except Exception as exc:
                         log.warning(
-                            "download failed for %s id=%s: %s",
+                            "download raised for %s id=%s: %s",
                             ts_code,
                             rid,
                             exc,
@@ -169,14 +180,25 @@ def download_cninfo_pdfs(
                         failed += 1
                         continue
 
+                    path = result.get("path")
+                    source = result.get("source") or "?"
                     if path is None:
-                        # download_pdf already logs the underlying cause
-                        # (no URL / HTTP != 200 / OSError).  Treat as a
+                        # download_with_fallback already logged the
+                        # underlying cause (no URL / HTTP != 200 /
+                        # OSError / no exchange match).  Treat as a
                         # permanent skip so we don't tight-loop on it.
                         failed += 1
                         continue
 
                     downloaded += 1
+                    if result.get("fallback_used"):
+                        fallback_used += 1
+                        log.info(
+                            "fallback hit: %s id=%s source=%s",
+                            ts_code,
+                            rid,
+                            source,
+                        )
                     try:
                         total_bytes += path.stat().st_size
                     except OSError:  # pragma: no cover - defensive
@@ -211,8 +233,8 @@ def download_cninfo_pdfs(
                 eta_min = (len(shard) - done) * avg / 60
                 log.info(
                     "[%d/%d] progress — scanned=%d downloaded=%d "
-                    "extracted=%d skipped=%d failed=%d bytes=%.1fMB "
-                    "avg=%.1fs/stock eta=%.0fmin",
+                    "extracted=%d skipped=%d failed=%d fallback=%d "
+                    "bytes=%.1fMB avg=%.1fs/stock eta=%.0fmin",
                     done,
                     len(shard),
                     scanned,
@@ -220,6 +242,7 @@ def download_cninfo_pdfs(
                     extracted,
                     skipped,
                     failed,
+                    fallback_used,
                     total_bytes / (1024 * 1024),
                     avg,
                     eta_min,
@@ -240,7 +263,7 @@ def download_cninfo_pdfs(
     total_time = time.time() - t0
     log.info(
         "download_cninfo_pdfs DONE shard=[%d:%d] — scanned=%d downloaded=%d "
-        "extracted=%d skipped=%d failed=%d bytes=%.1fMB %.0fs",
+        "extracted=%d skipped=%d failed=%d fallback=%d bytes=%.1fMB %.0fs",
         offset,
         offset + limit,
         scanned,
@@ -248,6 +271,7 @@ def download_cninfo_pdfs(
         extracted,
         skipped,
         failed,
+        fallback_used,
         total_bytes / (1024 * 1024),
         total_time,
     )
@@ -258,4 +282,5 @@ def download_cninfo_pdfs(
         "skipped": skipped,
         "failed": failed,
         "bytes": total_bytes,
+        "fallback_used": fallback_used,
     }
