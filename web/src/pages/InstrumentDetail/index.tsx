@@ -179,6 +179,36 @@ export default function InstrumentDetail() {
     },
   });
 
+  /* NOTE: hooks below must run on every render, including the loading /
+     error / not-found branches, so React keeps a stable hook order across
+     renders (otherwise error #310 fires when the early-return paths give
+     way to the success path). */
+  const safeHistoryItems = historyData?.items || [];
+
+  /* Spatial consistency: when the user switches time range or复权 mode,
+     keep the previous chart rendered underneath and cross-fade so the
+     transition feels like the same panel turning over, not a hard cut. */
+  const [prevHistoryItems, setPrevHistoryItems] = useState<typeof safeHistoryItems>([]);
+  const [prevAdjusted, setPrevAdjusted] = useState(adjusted);
+  const [fading, setFading] = useState(false);
+  const isFirstRenderRef = useRef(true);
+  useEffect(() => {
+    if (isFirstRenderRef.current) {
+      isFirstRenderRef.current = false;
+      return;
+    }
+    /* When new data arrives, hold the previous snapshot for one frame, then
+       cross-fade by overlaying old on top of new. */
+    setPrevHistoryItems(safeHistoryItems);
+    setPrevAdjusted(adjusted);
+    setFading(true);
+    const t = window.setTimeout(() => setFading(false), 320);
+    return () => window.clearTimeout(t);
+    /* We deliberately only re-run when the data or adjusted mode changes,
+       not on every safeHistoryItems reference identity. */
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [historyData, adjusted]);
+
   if (instrumentLoading) {
     return (
       <PageShell maxWidth="wide">
@@ -236,32 +266,7 @@ export default function InstrumentDetail() {
     });
   };
 
-  const safeHistoryItems = historyData?.items || [];
   const latestNote: ResearchNote | null = researchNotes?.[0] || null;
-
-  /* Spatial consistency: when the user switches time range or复权 mode,
-     keep the previous chart rendered underneath and cross-fade so the
-     transition feels like the same panel turning over, not a hard cut. */
-  const [prevHistoryItems, setPrevHistoryItems] = useState<typeof safeHistoryItems>([]);
-  const [prevAdjusted, setPrevAdjusted] = useState(adjusted);
-  const [fading, setFading] = useState(false);
-  const isFirstRenderRef = useRef(true);
-  useEffect(() => {
-    if (isFirstRenderRef.current) {
-      isFirstRenderRef.current = false;
-      return;
-    }
-    /* When new data arrives, hold the previous snapshot for one frame, then
-       cross-fade by overlaying old on top of new. */
-    setPrevHistoryItems(safeHistoryItems);
-    setPrevAdjusted(adjusted);
-    setFading(true);
-    const t = window.setTimeout(() => setFading(false), 320);
-    return () => window.clearTimeout(t);
-    /* We deliberately only re-run when the data or adjusted mode changes,
-       not on every safeHistoryItems reference identity. */
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [historyData, adjusted]);
 
   const metaParts = [
     instrument.category,
