@@ -516,10 +516,18 @@
   transform: translateY(-1px) scale(var(--press-scale-subtle));
 }
 
+.dashboard-pool-card__header {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
 .dashboard-pool-card__icon {
   font-size: 14px;
   color: var(--accent);
-  margin-bottom: 0;
+  flex-shrink: 0;
 }
 
 .dashboard-pool-card__name {
@@ -529,11 +537,15 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  flex: 1;
+  min-width: 0;
 }
 
 .dashboard-pool-card__meta {
   font-size: var(--text-label-size);
   color: var(--text-tertiary);
+  /* Indent to align with the name (offset by icon width + gap) */
+  padding-left: calc(14px + var(--space-2));
 }
 
 /* News sentiment tags — follow the global rise/fall convention */

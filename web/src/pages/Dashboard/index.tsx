@@ -260,10 +260,12 @@ function PoolCard({
         }
       }}
     >
-      <div className="dashboard-pool-card__icon">
-        <FolderOpenOutlined />
+      <div className="dashboard-pool-card__header">
+        <div className="dashboard-pool-card__icon">
+          <FolderOpenOutlined />
+        </div>
+        <div className="dashboard-pool-card__name">{pool.name}</div>
       </div>
-      <div className="dashboard-pool-card__name">{pool.name}</div>
       <div className="dashboard-pool-card__meta">
         {pool.members?.length || 0} 只标的
       </div>

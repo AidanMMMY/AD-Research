@@ -56,8 +56,7 @@ import {
  */
 const ADX_STYLE = `
 .adx-global-markets {
-  /* Critically-damped monotonic curve: y2 ≤ 1, no overshoot. */
-  --adx-spring: cubic-bezier(0.32, 0.72, 0, 1);
+  --adx-spring: cubic-bezier(0.5, 1.6, 0.3, 1);
   --adx-ease-out: cubic-bezier(0.22, 0.9, 0.3, 1);
 }
 .adx-global-markets .ant-btn,
@@ -435,17 +434,8 @@ function RecentWeekEvents(): JSX.Element | null {
         {items.map((a) => (
           <li
             key={a.id}
-            role="button"
-            tabIndex={0}
-            aria-label={`查看资讯: ${a.title}`}
             className="ad-news-events-list__item"
             onClick={() => navigate(`/news/${a.id}`)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault();
-                navigate(`/news/${a.id}`);
-              }
-            }}
           >
             <div className="ad-news-events-list__meta">
               <Tag
@@ -649,7 +639,7 @@ export default function GlobalMarkets() {
 
       {hasAnyData &&
         grouped.map((g) => <CategoryBlock key={g.key} title={g.label} rows={g.rows} />)}
-      </PageShell>
+    </PageShell>
     </AdxShell>
   );
 }
