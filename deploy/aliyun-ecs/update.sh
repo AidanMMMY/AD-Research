@@ -159,15 +159,18 @@ docker compose stop backend nginx celery-worker
 
 # ── 3.5 清理可能残留的孤儿容器（防止上一次 deploy 失败留下同名容器导致 Conflict）
 log_step "3.5/5 清理残留容器"
+# 用子 shell + set +e 显式关闭 errexit/pipefail，避免 `docker compose rm` 返回 5
+# 或 `docker compose ls | jq` 管道失败时让整段脚本中断（set -euo pipefail 会）。
 # 只清理本 compose project 的容器，绝不影响其他项目或手动容器。
-# `docker compose rm -f` 会读取当前 compose 配置，自动限定到本 project。
-docker compose rm -f -s backend celery-worker nginx 2>/dev/null || true
-# 兜底：清理带本 compose project 标签的 Exited 容器
-PROJECT_NAME=$(docker compose ls --format json 2>/dev/null | jq -r '.Name // empty' 2>/dev/null | head -1)
-if [ -n "$PROJECT_NAME" ]; then
-  log_info "清理 compose project='${PROJECT_NAME}' 的残留容器"
-  docker container prune -f --filter "label=com.docker.compose.project=${PROJECT_NAME}" 2>/dev/null || true
-fi
+(
+    set +e
+    docker compose rm -f -s backend celery-worker nginx >/dev/null 2>&1
+    docker compose ls --format json 2>/dev/null \
+        | jq -r '.Name // empty' 2>/dev/null \
+        | head -1 \
+        | xargs -r -I{} docker container prune -f --filter "label=com.docker.compose.project={}" >/dev/null 2>&1
+    true
+)
 
 # ── 4. 启动新容器 ──
 log_step "4/5 启动新容器"

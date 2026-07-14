@@ -435,7 +435,26 @@ class FundFlowPipeline(ETLPipeline):
             seen.add(key)
             deduped.append(r)
 
-        stmt = insert(EtfFundFlow).values(deduped)
+        # ETF 子任务合并了两个数据源：spot 提供 shares_outstanding/turnover，
+        # fund_daily 只提供 price/net_value/premium_rate。SQLAlchemy 的多行
+        # insert().values([...]) 要求每个字典拥有相同的键，尤其是在 ON CONFLICT
+        # 的 set_ 中引用 excluded.<col> 时；否则会出现 CompileError：
+        # "INSERT value for column shares_outstanding is explicitly rendered as a
+        # boundparameter..." 这里统一补缺失键为 None。
+        columns = {
+            "ts_code",
+            "trade_date",
+            "price",
+            "net_value",
+            "premium_rate",
+            "shares_outstanding",
+            "shares_change",
+            "turnover",
+            "inferred_net_inflow",
+        }
+        normalized = [{col: r.get(col) for col in columns} for r in deduped]
+
+        stmt = insert(EtfFundFlow).values(normalized)
         excluded = insert(EtfFundFlow).excluded
         stmt = stmt.on_conflict_do_update(
             index_elements=["ts_code", "trade_date"],

@@ -130,3 +130,4 @@ docker logs alloyresearch-backend | grep 'fund_flow_daily'
 3. **股东户数季度更新**：`stock_zh_a_gdhs` 实际更新频率约季度，pipeline 每天跑也无新数据
 4. **AH 溢价 220 行限制**：港股通标的就这么多，超出范围的标的查不到
 5. **scheduled-task-recovery-guide**：若 cron 因 backend 重启错过，参考既有「定时任务恢复操作指南」（`docs/dev-notes/20260627-scheduled-task-recovery-guide.md`）手动 `run_daily()` 补跑
+6. **ETF 子任务 upsert 键不一致导致 SQL 编译错误**：ETF 合并 `fund_etf_spot_em`（含 `shares_outstanding`、`turnover`）与 `fund_etf_fund_daily_em`（不含这两个字段）后，传入 `insert(EtfFundFlow).values([...])` 的字典键不统一；SQLAlchemy 在 `ON CONFLICT ... SET excluded.shares_outstanding` 时抛出 `CompileError: INSERT value for column shares_outstanding is explicitly rendered as a boundparameter...`。修复：`app/data/pipelines/fund_flow.py` 的 `_upsert_etf()` 在构建 `insert` 前先统一所有字典键，缺失字段补 `None`。后续新增数据源合并时，务必保证 upsert 字典键一致或为缺失键提供默认值。

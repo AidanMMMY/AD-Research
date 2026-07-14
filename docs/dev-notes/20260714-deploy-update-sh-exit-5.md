@@ -40,19 +40,23 @@ ssh -i ~/.ssh/claude_aliyun root@47.239.13.111 '
 
 预期输出：`{"status":"ok",...}`
 
-## 4. 永久修复（待实施）
+## 4. 永久修复（已应用，2026-07-15）
 
 修复 `update.sh` step 3.5：
 
 ```bash
 log_step "3.5/5 清理残留容器"
-# 用 || true + 显式 set +e 包住每一行，避免 pipefail 中断
+# 用子 shell + set +e 显式关闭 errexit/pipefail，避免 `docker compose rm` 返回 5
+# 或 `docker compose ls | jq` 管道失败时让整段脚本中断（set -euo pipefail 会）。
+# 只清理本 compose project 的容器，绝不影响其他项目或手动容器。
 (
-  set +e
-  docker compose rm -f -s backend celery-worker nginx >/dev/null 2>&1
-  docker compose ls --format json 2>/dev/null | jq -r '.Name // empty' 2>/dev/null | head -1 | \
-    xargs -r -I{} docker container prune -f --filter "label=com.docker.compose.project={}" >/dev/null 2>&1
-  true
+    set +e
+    docker compose rm -f -s backend celery-worker nginx >/dev/null 2>&1
+    docker compose ls --format json 2>/dev/null \
+        | jq -r '.Name // empty' 2>/dev/null \
+        | head -1 \
+        | xargs -r -I{} docker container prune -f --filter "label=com.docker.compose.project={}" >/dev/null 2>&1
+    true
 )
 ```
 
@@ -61,6 +65,12 @@ log_step "3.5/5 清理残留容器"
 2. `>/dev/null 2>&1` 完全抑制 stderr
 3. 块尾 `true` 显式返回 0
 4. 用 `xargs` 替代 `if [...]` 避免 `docker compose ls` 失败时中断
+
+应用记录：
+- 文件：`deploy/aliyun-ecs/update.sh`
+- 时间：2026-07-15
+- 触发：GitHub Actions run #242（commit docs: add runbooks for fund-flow, indicator completeness, deploy exit-5）再次触发 exit 5 告警后本地排查
+- 结果：已本地修改，尚未 push（等待用户确认）
 
 ## 5. 临时跳过 step 3.5 的应急方案
 
