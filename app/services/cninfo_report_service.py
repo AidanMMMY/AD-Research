@@ -404,6 +404,41 @@ class CninfoReportService:
     # Query helpers
     # ------------------------------------------------------------------
 
+    def list_reports_for_download(
+        self,
+        ts_code: str,
+        start_date: date,
+        report_type: str = "all",
+        only_pending: bool = True,
+    ) -> list[CninfoReport]:
+        """Return ORM rows for one ``ts_code`` that need a PDF download.
+
+        Args:
+            ts_code: Tushare 证券代码 (e.g. ``600519.SH``).
+            start_date: Lower bound on ``announcement_time`` (inclusive).
+            report_type: ``annual`` / ``semi`` / ``q1`` / ``q3`` / ``all``.
+                Only applied when set to one of the four concrete values.
+            only_pending: When ``True`` (default), skip rows that already
+                have ``file_path`` set — used for idempotent re-runs.
+
+        Returns:
+            ORM rows ordered by ``announcement_time`` desc.
+        """
+        stmt = select(CninfoReport).where(
+            and_(
+                CninfoReport.ts_code == ts_code,
+                CninfoReport.announcement_time >= start_date,
+                CninfoReport.adjunct_url.isnot(None),
+            )
+        )
+        if report_type in ("annual", "semi", "q1", "q3"):
+            stmt = stmt.where(CninfoReport.adjunct_type == report_type)
+        if only_pending:
+            stmt = stmt.where(CninfoReport.file_path.is_(None))
+        stmt = stmt.order_by(CninfoReport.announcement_time.desc())
+
+        return list(self.db.execute(stmt).scalars().all())
+
     def list_reports(
         self,
         ts_code: str | None = None,

@@ -18,6 +18,7 @@ celery_app = Celery(
     include=[
         "app.tasks.indicator",
         "app.tasks.cninfo",
+        "app.tasks.cninfo_pdf",
     ],
 )
 

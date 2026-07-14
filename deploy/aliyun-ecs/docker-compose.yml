@@ -28,6 +28,7 @@ x-backend-env: &backend-env
   BLS_API_KEY: ${BLS_API_KEY:-}
   XUEQIU_COOKIE: ${XUEQIU_COOKIE:-}
   CORS_ORIGINS: ${CORS_ORIGINS:-}
+  CNINFO_PDF_DIR: ${CNINFO_PDF_DIR:-/data/alloy-research/cninfo_pdfs}
 
 services:
   postgres:
@@ -120,6 +121,7 @@ services:
         condition: service_healthy
     volumes:
       - web_dist:/app/web/dist
+      - cninfo_pdfs:/data/alloy-research/cninfo_pdfs
       - /var/run/docker.sock:/var/run/docker.sock:ro
     command: celery -A app.core.celery_app worker -l info -c 2 -Q celery,indicator,cninfo
     networks:
@@ -156,6 +158,7 @@ volumes:
   postgres_data:
   redis_data:
   web_dist:
+  cninfo_pdfs:
 
 networks:
   alloyresearch-network:

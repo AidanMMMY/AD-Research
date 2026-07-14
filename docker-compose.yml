@@ -75,8 +75,10 @@ services:
       REDIS_URL: redis://redis:6379/0
       APP_ENV: ${APP_ENV:-development}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      CNINFO_PDF_DIR: ${CNINFO_PDF_DIR:-/data/alloy-research/cninfo_pdfs}
     volumes:
       - .:/app
+      - cninfo_pdfs:/data/alloy-research/cninfo_pdfs
     depends_on:
       postgres:
         condition: service_healthy
@@ -89,6 +91,7 @@ services:
 volumes:
   postgres_data:
   redis_data:
+  cninfo_pdfs:
 
 networks:
   alloyresearch-network:
