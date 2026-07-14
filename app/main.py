@@ -29,6 +29,7 @@ from app.api.v1 import (
     etl,
     etl_status,
     favorites,
+    fund_flow,
     futures,
     indicators,
     live_trading,
@@ -292,6 +293,11 @@ app.include_router(
     microstructure.router,
     prefix=f"{settings.api_v1_prefix}",
     tags=["Microstructure"],
+)
+app.include_router(
+    fund_flow.router,
+    prefix=f"{settings.api_v1_prefix}",
+    tags=["Fund Flow"],
 )
 app.include_router(
     search_trends.router,

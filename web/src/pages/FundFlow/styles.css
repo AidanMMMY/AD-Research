@@ -1,0 +1,338 @@
+/* ============================================================
+   FundFlow — page-specific style overrides.
+   Inherits CSS variables from theme.css and component classes from
+   global.css (PageShell / PageHeader / StatCard / Panel / SectionHeading
+   / FilterToolbar / EmptyState / ResponsiveGrid / Sparkline).
+   ============================================================ */
+
+/* ── KPI strip ─────────────────────────────────────────────── */
+
+/* Stack the value row and the sparkline so the tile keeps a fixed
+   footprint on tablet / mobile (the page header is the only thing
+   that scrolls on small screens). */
+.fund-flow__kpi-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.fund-flow__kpi-meta {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+/* Pct chip — small uppercase tag next to the headline number. */
+.fund-flow__kpi-pct {
+  display: inline-flex;
+  align-items: center;
+  height: 18px;
+  padding: 0 6px;
+  border-radius: 9999px;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  line-height: 1;
+}
+
+.fund-flow__kpi-pct--rise {
+  background: var(--color-rise-dim);
+  color: var(--color-rise);
+}
+
+.fund-flow__kpi-pct--fall {
+  background: var(--color-fall-dim);
+  color: var(--color-fall);
+}
+
+.fund-flow__kpi-pct--flat {
+  background: var(--bg-surface);
+  color: var(--text-tertiary);
+}
+
+/* ── Composite score chip — uses rise/fall/flat triplet ── */
+
+.fund-flow__score-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-variant-numeric: tabular-nums;
+}
+
+.fund-flow__score-cell__chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 52px;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 4px;
+  font-weight: 600;
+  font-size: 12px;
+  letter-spacing: -0.01em;
+}
+
+.fund-flow__score-cell__chip--rise {
+  background: var(--color-rise);
+  color: var(--text-on-accent);
+}
+
+.fund-flow__score-cell__chip--fall {
+  background: var(--color-fall);
+  color: var(--text-on-accent);
+}
+
+.fund-flow__score-cell__chip--neutral {
+  background: var(--bg-surface);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-default);
+}
+
+/* ── Premium / discount rate colouring (ETF table) ────────── */
+
+.fund-flow__premium {
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+}
+
+.fund-flow__premium--rise {
+  color: var(--color-rise);
+}
+
+.fund-flow__premium--fall {
+  color: var(--color-fall);
+}
+
+.fund-flow__premium--neutral {
+  color: var(--text-tertiary);
+}
+
+/* ── Sign-coded row tint (subtle background for big inflow rows) ── */
+
+.fund-flow__row--rise {
+  /* Subtle wash, only kicks in via inline style. We expose the class
+     so future "spotlight top-3" wiring stays consistent. */
+}
+
+.fund-flow__row--fall {
+}
+
+/* ── Inline money cell ─────────────────────────────────────── */
+
+.fund-flow__money {
+  font-variant-numeric: tabular-nums;
+  font-family: var(--font-mono);
+}
+
+.fund-flow__money--rise {
+  color: var(--color-rise);
+  font-weight: 600;
+}
+
+.fund-flow__money--fall {
+  color: var(--color-fall);
+  font-weight: 600;
+}
+
+/* ── Tab label with optional badge ──────────────────────────── */
+
+.fund-flow__tab-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.fund-flow__tab-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 16px;
+  padding: 0 5px;
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 1;
+  color: var(--text-secondary);
+  background: var(--bg-elevated);
+  border-radius: 8px;
+}
+
+/* ── Score breakdown (expanded row) ───────────────────────── */
+
+.fund-flow__breakdown {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-5);
+  background: var(--bg-elevated);
+  border-top: 1px dashed var(--border-default);
+}
+
+.fund-flow__breakdown-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 90px;
+  flex: 1 1 90px;
+}
+
+.fund-flow__breakdown-label {
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.fund-flow__breakdown-bar {
+  height: 4px;
+  background: var(--bg-surface);
+  border-radius: 2px;
+  overflow: hidden;
+  position: relative;
+}
+
+.fund-flow__breakdown-bar__fill {
+  position: absolute;
+  inset: 0;
+  transform-origin: left center;
+  transition: transform 480ms var(--transition-spring-fast);
+}
+
+.fund-flow__breakdown-bar__fill--rise {
+  background: var(--color-rise);
+}
+
+.fund-flow__breakdown-bar__fill--fall {
+  background: var(--color-fall);
+}
+
+.fund-flow__breakdown-bar__fill--neutral {
+  background: var(--text-muted);
+}
+
+.fund-flow__breakdown-value {
+  font-size: 12px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+}
+
+/* ── Source disclosure block (collapsed panel) ─────────────── */
+
+.fund-flow__sources {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-3);
+  font-size: var(--text-small-size);
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+@media (min-width: 768px) {
+  .fund-flow__sources {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 1200px) {
+  .fund-flow__sources {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+.fund-flow__source {
+  padding: var(--space-3);
+  border-radius: var(--card-radius);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+}
+
+.fund-flow__source-title {
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.fund-flow__source-desc {
+  color: var(--text-tertiary);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+/* ── Header extras (date picker + refresh) ────────────────── */
+
+.fund-flow__date-picker {
+  width: 160px;
+}
+
+.fund-flow__refresh-btn {
+  /* Spring-eased press feedback, page-local */
+  transition: transform 240ms var(--transition-spring-fast, cubic-bezier(0.32, 0.72, 0, 1));
+}
+
+.fund-flow__refresh-btn:active {
+  transform: scale(0.97);
+}
+
+/* ── Responsive breakpoints ───────────────────────────────── */
+
+@media (max-width: 575px) {
+  .fund-flow__kpi-stack {
+    gap: 4px;
+  }
+  .fund-flow__breakdown {
+    padding: var(--space-2) var(--space-3);
+  }
+  .fund-flow__breakdown-item {
+    min-width: 70px;
+    flex: 1 1 70px;
+  }
+}
+
+@media (min-width: 1200px) {
+  /* Desktop ≥1200px — let the KPI strip breathe with a 4-up row. The
+     first 3 cards are the exchange KPIs; the 4th is the trend card. */
+  .fund-flow__kpi-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 992px) and (max-width: 1199px) {
+  /* Tablet — 3-up KPI row + 1-up trend card under it. */
+  .fund-flow__kpi-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 991px) {
+  /* <992px — single column KPI strip; StatCard handles its own padding. */
+  .fund-flow__kpi-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ── Accessibility: reduced motion (mirrors Macro/Microstructure pages) ── */
+@media (prefers-reduced-motion: reduce) {
+  .fund-flow__breakdown-bar__fill,
+  .fund-flow__refresh-btn {
+    transition: none !important;
+  }
+  .fund-flow__refresh-btn:active {
+    transform: none;
+  }
+}
+
+/* ── Accessibility: reduced transparency fallback ─────────── */
+@media (prefers-reduced-transparency: reduce) {
+  .fund-flow__source,
+  .fund-flow__breakdown {
+    background: var(--card-bg) !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+}

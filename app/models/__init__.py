@@ -14,6 +14,12 @@ from app.models.etf import (
     StockFundamental,
     StockIncome,
 )
+from app.models.fund_flow import (
+    EtfFundFlow,
+    FlowSignal,
+    IndividualFundFlow,
+    SectorFundFlow,
+)
 from app.models.etl import BacktestResult, DataSourceConfig, ETLLog, Signal, StrategyConfig
 from app.models.listing import ListingEvent
 from app.models.macro import MacroIndicator
@@ -91,4 +97,9 @@ __all__ = [
     "CninfoReport",
     # Company disclosure route knowledge base
     "CompanyDisclosureRoute",
+    # Fund-flow (免费资金流 - 方案 C)
+    "IndividualFundFlow",
+    "SectorFundFlow",
+    "EtfFundFlow",
+    "FlowSignal",
 ]

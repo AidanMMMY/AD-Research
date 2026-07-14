@@ -50,6 +50,7 @@ const GlobalMarkets = lazy(() => import('./pages/GlobalMarkets'));
 const Learning = lazy(() => import('./pages/Learning'));
 const Favorites = lazy(() => import('./pages/Favorites'));
 const EtfHoldingsHistory = lazy(() => import('./pages/EtfHoldingsHistory'));
+const FundFlow = lazy(() => import('./pages/FundFlow'));
 
 export type SidebarGroupKey =
   | 'home'
@@ -130,6 +131,8 @@ export const routes: RouteConfig[] = [
   { path: '/macro', element: wrap(Macro), auth: true, menu: { name: '宏观经济', icon: 'FundProjectionScreenOutlined', group: 'macro' } },
   { path: '/sentiment', element: wrap(SentimentOverview), auth: true, menu: { name: '市场情绪', icon: 'HeartOutlined', group: 'macro' } },
   { path: '/search-trends', element: wrap(SearchTrends), auth: true, menu: { name: '搜索热度', icon: 'FireOutlined', group: 'macro' } },
+  // 资金流监控（fund-flow, 2026-07-14）：大盘 / 个股 / 板块 / ETF + 综合信号
+  { path: '/fund-flow', element: wrap(FundFlow), auth: true, menu: { name: '资金流', label: '资金流', icon: 'ExperimentOutlined', group: 'market' } },
   // === 量化与回测 ===
   { path: '/strategies', element: wrap(StrategyList), auth: true, menu: { name: '策略管理', icon: 'SettingOutlined', group: 'quant' } },
   { path: '/strategy-library', element: wrap(StrategyLibrary), auth: true, menu: { name: '策略库', icon: 'BookOutlined', group: 'quant' } },

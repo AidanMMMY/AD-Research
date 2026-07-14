@@ -27,6 +27,7 @@ from app.data.pipelines.crypto_daily import CryptoDailyPipeline
 from app.data.pipelines.etf_holdings import ETFHoldingsPipeline
 from app.data.pipelines.etf_metadata_enrichment import ETFMetadataEnrichmentPipeline
 from app.data.pipelines.futures import FuturesContractDiscoveryPipeline, FuturesDailyPipeline
+from app.data.pipelines.fund_flow import FundFlowPipeline
 from app.data.pipelines.listing_events import ListingEventsPipeline
 from app.data.pipelines.microstructure import MicrostructurePipeline
 from app.data.pipelines.research_reports import ResearchReportsPipeline
@@ -265,6 +266,28 @@ def run_indicator_calculation(target_date: date | None = None, full_history: boo
     (run_us_indicator_calculation, run_crypto_indicator_calculation) that
     run immediately after their respective ETL pipelines.
 
+    The ``market_filter='A股'`` path inside ``batch_calculate_indicators``
+    covers **all** active A-share instruments — both ETFs
+    (``instrument_type='ETF'``) and individual stocks
+    (``instrument_type='STOCK'``). It does NOT filter on ``instrument_type``,
+    so a single call processes ~7 100 codes. The A-share daily-bar ETL,
+    however, is split across two pipelines that fetch from different
+    providers:
+
+    * ``AShareETLPipeline`` (akshare) — only ``instrument_type == 'ETF'``
+      — runs daily at 15:30 Asia/Shanghai.
+    * ``AStockDailyPipeline`` (tushare) — only ``instrument_type == 'STOCK'``
+      — runs daily at 16:00 Asia/Shanghai.
+
+    When one of those two pipelines fails on a given day (transient
+    upstream errors, type-cast failures, etc.) the corresponding
+    ``instrument_daily_bar`` rows never land and the indicator calc on
+    the next morning only sees half the universe. The companion
+    ``run_a_share_indicator_fallback`` cron below re-runs the calc at
+    17:00 — after both ETLs have finished and any retries inside
+    ``run_with_retry`` have completed — to cover anything the 08:00
+    run missed.
+
     Args:
         target_date: If provided, calculate indicators up to this date.
         full_history: If True, upsert indicators for every historical trade
@@ -285,6 +308,52 @@ def run_indicator_calculation(target_date: date | None = None, full_history: boo
         print(
             f"[Scheduler] A-share indicator calculation task submitted "
             f"(target={target_date}, full_history={full_history})"
+        )
+
+
+def run_a_share_indicator_fallback(target_date: date | None = None):
+    """Defensive 17:00 re-run of A-share indicator calculation.
+
+    The 08:00 cron entry for ``run_indicator_calculation`` runs *before*
+    the 16:00 A-share stock daily-bar ETL, so on days when either of the
+    two daily-bar pipelines (ETF at 15:30, STOCK at 16:00) fails or
+    retries into the late afternoon, the morning indicator calc only
+    sees half the universe and writes either ETF-only or STOCK-only
+    records for that trade date.
+
+    This fallback fires at 17:00 Asia/Shanghai — 1 hour after the stock
+    ETL completes and after the microstructure (18:30) and the
+    fundamentals (16:30) runs — and re-submits the same
+    ``market_filter='A股'`` task so whatever bars are in
+    ``instrument_daily_bar`` by 17:00 (both ETF and STOCK, assuming
+    both ETLs finished) get processed into the ``etf_indicator`` table.
+
+    The Celery task is idempotent: ``on_conflict_do_update`` upserts by
+    (etf_code, trade_date), so a second run on the same trade date
+    simply overwrites stale values without duplicating rows. A no-op
+    (no new bars) is cheap (~10 s of SELECT-then-empty-UPSERT).
+
+    Args:
+        target_date: If provided, calculate indicators up to this date.
+    """
+    # Wait for the daily ETL lock to be released (covers any
+    # ``run_with_retry`` still chewing on the 15:30 / 16:00 ETL).
+    with redis_lock(_LOCK_DAILY_PIPELINE, expire_seconds=3600, wait_timeout=1800) as acquired:
+        if not acquired:
+            print(
+                "⚠️ [SCHEDULER_WARN] A-share indicator fallback skipped: "
+                "could not acquire pipeline lock"
+            )
+            return
+
+        calculate_indicators.delay(
+            target_date=target_date.isoformat() if target_date else None,
+            full_history=False,
+            market_filter="A股",
+        )
+        print(
+            f"[Scheduler] A-share indicator fallback task submitted "
+            f"(target={target_date})"
         )
 
 
@@ -624,6 +693,30 @@ def run_microstructure_daily():
             db.close()
 
 
+def run_fund_flow_daily():
+    """Refresh A-share fund-flow tables (daily 17:30 Asia/Shanghai).
+
+    4 个 sub-task (individual / sector / etf / signals) 各自独立 try/except，
+    单源失败不阻塞其他数据源。  调度时间设在 A 股收盘 15:00 之后 2.5 小时，
+    既能拿到当天的稳定数据，又在 18:30 microstructure 之前完成。
+    """
+    with redis_lock("fund_flow_daily", expire_seconds=3600) as acquired:
+        if not acquired:
+            print("⚠️ [SCHEDULER_WARN] Fund-flow refresh skipped: lock in use")
+            return
+        db = SessionLocal()
+        try:
+            pipeline = FundFlowPipeline(db)
+            result = pipeline.run_with_retry(max_attempts=1)
+            print(
+                f"[Scheduler] Fund-flow refresh: "
+                f"success={result.success}, records={result.records}, "
+                f"warnings={len(result.warnings)}"
+            )
+        finally:
+            db.close()
+
+
 def run_search_trends_daily():
     """Refresh Xueqiu-derived search-trend observations (daily 03:00 Asia/Shanghai).
 
@@ -952,6 +1045,8 @@ def init_scheduler():
       - A-share stock discovery weekly Monday 01:00
       - A-share stock financials weekly Monday 02:00
       - Indicator calculation at 08:00 daily (A-share market only)
+      - A-share indicator fallback at 17:00 daily (covers ETF + STOCK
+        even when one of the two daily-bar ETLs was delayed)
       - Score calculation at 08:30 daily
       - Weekly pool reports on Sunday at 22:00
       - ETF market scan on Sunday at 03:00
@@ -1001,6 +1096,22 @@ def init_scheduler():
         trigger=CronTrigger(hour=8, minute=0, timezone="Asia/Shanghai"),
         id="indicator_calculation",
         name="指标批量计算",
+        replace_existing=True,
+        max_instances=1,
+    )
+    # ── A-Share Indicator Fallback (17:00 Asia/Shanghai) ──
+    # Defensive second pass: by 17:00 the ETF ETL (15:30) and STOCK
+    # ETL (16:00) have both finished (with their internal
+    # ``run_with_retry`` exhausted), so re-running the indicator calc
+    # here guarantees the etf_indicator table for the current trade
+    # date contains both ETF + STOCK rows even if the 08:00 run fired
+    # before one of the two ETLs landed. Idempotent UPSERT, so a
+    # no-op re-run is cheap.
+    scheduler.add_job(
+        run_a_share_indicator_fallback,
+        trigger=CronTrigger(hour=17, minute=0, timezone="Asia/Shanghai"),
+        id="a_share_indicator_fallback",
+        name="A股指标17点兜底补算",
         replace_existing=True,
         max_instances=1,
     )
@@ -1414,6 +1525,16 @@ def init_scheduler():
         trigger=CronTrigger(hour=18, minute=30, timezone="Asia/Shanghai"),
         id="microstructure_daily",
         name="A 股微结构数据日刷",
+        replace_existing=True,
+        max_instances=1,
+    )
+    # ── Fund Flow (方案 C) ── daily 17:30 Asia/Shanghai
+    # A 股盘后 2.5h (留 1h 给 microstructure 18:30 之前完成)
+    scheduler.add_job(
+        run_fund_flow_daily,
+        trigger=CronTrigger(hour=17, minute=30, timezone="Asia/Shanghai"),
+        id="fund_flow_daily",
+        name="A 股免费资金流日刷",
         replace_existing=True,
         max_instances=1,
     )

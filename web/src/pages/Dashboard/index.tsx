@@ -15,6 +15,7 @@ import {
   LineChartOutlined,
   WalletOutlined,
   AppstoreOutlined,
+  ExperimentOutlined,
 } from '@ant-design/icons';
 import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { useScores } from '@/hooks/useScores';
@@ -51,6 +52,12 @@ import { usePriceStream } from '@/hooks/usePriceStream';
 import { useMarketStream } from '@/hooks/useMarketStream';
 import type { NewsArticle } from '@/types/news';
 import { SENTIMENT_LABELS } from '@/utils/sentiment';
+import {
+  useFundFlowMarket,
+  useFundFlowSignals,
+  useFundFlowEtf,
+  sortField,
+} from '@/api/fundFlow';
 
 
 
@@ -402,6 +409,130 @@ function isMarketOpen(tz: string, openHour: number, openMin: number, closeHour: 
   const open = openHour * 60 + openMin;
   const close = closeHour * 60 + closeMin;
   return total >= open && total < close;
+}
+
+/* =============================================================================
+ * PulseFundFlowStrip — 3-tile Pulse strip that funnels into the dedicated
+ * /fund-flow page. Reuses the same `dashboard-pulse-tile` styling so the two
+ * strips look like one cohesive global header.
+ * =========================================================================== */
+function PulseFundFlowStrip() {
+  const navigate = useNavigate();
+  const { data: market, isLoading: mLoading } = useFundFlowMarket();
+  const { data: signals = [], isLoading: sLoading } = useFundFlowSignals({
+    sort: sortField('composite_score'),
+    limit: 1,
+  });
+  const { data: etfList = [], isLoading: eLoading } = useFundFlowEtf({
+    sort: sortField('premium_rate', 'desc'),
+    limit: 1,
+  });
+
+  const marketLoading = mLoading && !market;
+  const signalLoading = sLoading && signals.length === 0;
+  const etfLoading = eLoading && etfList.length === 0;
+
+  const shMain = market?.sh_main_net_inflow ?? null;
+  const szMain = market?.sz_main_net_inflow ?? null;
+  const total =
+    shMain != null && szMain != null ? shMain + szMain : (shMain ?? szMain ?? null);
+
+  const totalPct =
+    market?.sh_main_net_pct != null && market?.sz_main_net_pct != null
+      ? market.sh_main_net_pct + market.sz_main_net_pct
+      : null;
+
+  const topSignal = signals[0];
+  const topEtf = etfList[0];
+
+  const tiles: Array<{
+    title: string;
+    value: string;
+    change: number | null;
+    loading: boolean;
+  }> = [
+    {
+      title: '大盘净流入',
+      value: total != null ? formatSignedMoney(total) : '—',
+      change: totalPct,
+      loading: marketLoading,
+    },
+    {
+      title: '综合信号 Top1',
+      value: topSignal?.ts_code ?? '—',
+      change: topSignal?.composite_score ?? null,
+      loading: signalLoading,
+    },
+    {
+      title: 'ETF 折溢价 Top1',
+      value: topEtf?.ts_code ?? '—',
+      change: topEtf?.premium_rate ?? null,
+      loading: etfLoading,
+    },
+  ];
+
+  return (
+    <Panel
+      variant="transparent"
+      padding="none"
+      className="dashboard-pulse-group"
+      title={
+        <span className="dashboard-pulse-group__title">
+          <ExperimentOutlined />
+          资金流速览
+        </span>
+      }
+      extra={
+        <span
+          className="panel-extra-link"
+          role="link"
+          tabIndex={0}
+          onClick={() => navigate('/fund-flow')}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              navigate('/fund-flow');
+            }
+          }}
+        >
+          资金流监控 →
+        </span>
+      }
+    >
+      <div className="dashboard-pulse-matrix dashboard-pulse-matrix--fund-flow">
+        {tiles.map((tile) => (
+          <div
+            key={tile.title}
+            className="dashboard-pulse-tile"
+            role="button"
+            tabIndex={0}
+            onClick={() => navigate('/fund-flow')}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                navigate('/fund-flow');
+              }
+            }}
+            aria-label={`${tile.title}: ${tile.value}`}
+          >
+            <span className="dashboard-pulse-tile__code">{tile.title}</span>
+            <span className="dashboard-pulse-tile__value">{tile.value}</span>
+            <ReturnTag value={tile.change} />
+          </div>
+        ))}
+      </div>
+    </Panel>
+  );
+}
+
+/** Page-local money formatter for the Pulse strip — 万 / 亿. */
+function formatSignedMoney(v: number | null | undefined): string {
+  if (v == null || Number.isNaN(v)) return '—';
+  const abs = Math.abs(v);
+  const sign = v < 0 ? '-' : '';
+  if (abs >= 1e8) return `${sign}${(abs / 1e8).toFixed(2)} 亿`;
+  if (abs >= 1e4) return `${sign}${(abs / 1e4).toFixed(2)} 万`;
+  return `${sign}${abs.toFixed(2)}`;
 }
 
 /* ================================================================
@@ -841,6 +972,9 @@ export default function Dashboard() {
         />
 
         <PulseGlobalStrip />
+
+        {/* 资金流速览 — 3 tiles funnel into /fund-flow */}
+        <PulseFundFlowStrip />
       </section>
 
       {/* ═══════════════════════════════════════════════════════════

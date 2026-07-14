@@ -24,6 +24,7 @@ def calculate_indicators(
     target_date: date | str | None = None,
     full_history: bool = False,
     market_filter: str = "A股",
+    instrument_type_filter: str | None = None,
 ) -> int:
     """Calculate technical/risk indicators for all active instruments in a market.
 
@@ -34,6 +35,11 @@ def calculate_indicators(
             only the latest day.
         market_filter: Market to filter by, e.g. ``"A股"``, ``"US"``,
             ``"CRYPTO"``.
+        instrument_type_filter: Optional secondary filter on
+            ``etf_info.instrument_type`` — pass ``"ETF"`` or ``"STOCK"`` to
+            narrow the universe. Defaults to ``None`` which keeps the
+            original behaviour where ``market_filter='A股'`` already covers
+            every active A-share code in a single pass.
 
     Returns:
         Number of indicator records written.
@@ -46,6 +52,7 @@ def calculate_indicators(
             target_date=effective_date,
             full_history=full_history,
             market_filter=market_filter,
+            instrument_type_filter=instrument_type_filter,
         )
         return count
     except Exception as exc:
