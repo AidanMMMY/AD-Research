@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import './styles.css';
 import {
   Row,
@@ -174,7 +175,11 @@ const HEADLINE_CODES: Record<string, string[]> = {
   us: ['us_cpi', 'us_unrate', 'us_fed_funds', 'us_dgs10', 'us_vix'],
   eu: ['eu_cpi', 'eu_unrate', 'eu_ecb_deposit_rate', 'eu_gdp'],
   cn: ['gdp_yoy', 'cpi_yoy', 'ppi_yoy', 'm2_yoy', 'pmi_manufacturing', 'shibor_3m'],
-  global: ['global_sp500', 'global_dxy', 'global_brent', 'global_wti'],
+  global: [
+    'global_sp500', 'global_nasdaq', 'global_dow', 'global_dxy',
+    'global_brent', 'global_wti', 'global_shcomp', 'global_hsi',
+    'global_n225', 'global_szse',
+  ],
 };
 
 // Headline cards for CN cannot be derived from the FRED-backed list
@@ -201,8 +206,28 @@ function buildCnHeadlineFromLatest(items: MacroLatestItem[]): MacroIndicatorItem
 export default function Macro() {
   const mode = useSettingsStore((s) => s.mode);
   const prefersReducedMotion = usePrefersReducedMotion();
-  const [region, setRegion] = useState<string>('us');
-  const [selectedCode, setSelectedCode] = useState<string | null>(null);
+  // Initialize region / selectedCode from URL search params so deep-links
+  // from Dashboard's Market Pulse tiles (e.g. /macro?region=global&code=global_sp500)
+  // land on the right panel without a manual region switch.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const urlRegion = searchParams.get('region');
+  const urlCode = searchParams.get('code');
+  const initialRegion: 'us' | 'eu' | 'cn' | 'global' =
+    urlRegion === 'us' || urlRegion === 'eu' || urlRegion === 'cn' || urlRegion === 'global'
+      ? urlRegion
+      : 'us';
+  const initialCode = urlCode;
+  const [region, setRegion] = useState<string>(initialRegion);
+  const [selectedCode, setSelectedCode] = useState<string | null>(initialCode);
+  // Mirror region / selectedCode into the URL so deep-links stay shareable
+  // and back/forward navigation works. We omit the region param when it
+  // equals the default ('us') to keep URLs short.
+  useEffect(() => {
+    const next = new URLSearchParams();
+    if (region !== 'us') next.set('region', region);
+    if (selectedCode) next.set('code', selectedCode);
+    setSearchParams(next, { replace: true });
+  }, [region, selectedCode, setSearchParams]);
   // Mirror the chart-panel mount life-cycle so the exit animation can play
   // before the panel is actually unmounted (spatial consistency: enter
   // and exit use the same spring path).
@@ -414,7 +439,10 @@ export default function Macro() {
               value={region}
               onChange={(v) => {
                 setRegion(v);
-                setSelectedCode(null);
+                // Keep selectedCode so deep-linked series still renders after a
+                // region switch — useMacroSeries will hit FredService ->
+                // MacroDataService fallback if the code isn't in the current
+                // region's headline list.
               }}
               options={REGION_OPTIONS}
             />

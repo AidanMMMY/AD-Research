@@ -27,6 +27,7 @@ import {
 } from '@/utils/datetime';
 import { newsApi } from '@/api/news';
 import { useMacroLatest, macroApi } from '@/api/macro';
+import { codeToRegion } from '../../utils/macroRegion';
 import PageShell from '@/components/PageShell';
 import PageHeader from '@/components/PageHeader';
 import ResponsiveGrid from '@/components/ResponsiveGrid';
@@ -535,7 +536,9 @@ function PulseGlobalStrip() {
                     data?.value != null ? formatTileValue(data.value, tile.unit) : '—';
                   const termKey = GLOBAL_OVERVIEW_TERM_MAP[tile.code];
                   const navPath =
-                    tile.type === 'realtime' ? `/instruments/${tile.code}` : '/macro';
+                    tile.type === 'realtime'
+                      ? `/instruments/${tile.code}`
+                      : `/macro?region=${codeToRegion(tile.code)}&code=${encodeURIComponent(tile.code)}`;
                   return (
                     <div
                       key={tile.code}
