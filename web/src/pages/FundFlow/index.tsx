@@ -248,7 +248,7 @@ export default function FundFlowPage() {
   /* --- Section 2: composite signals Top 20 --- */
   const signalParams = useMemo(
     () => ({
-      date: dateParam,
+      trade_date: dateParam,
       sort: sortField('composite_score'),
       limit: 20,
     }),
@@ -277,7 +277,7 @@ export default function FundFlowPage() {
   const [individualSortField, setIndividualSortField] = useState<string | null>(null);
   const individualParams = useMemo(
     () => ({
-      date: dateParam,
+      trade_date: dateParam,
       sort: individualSortField ?? sortField('main_net_inflow'),
       limit: 50,
       market: marketFilter,
@@ -292,7 +292,7 @@ export default function FundFlowPage() {
   const [sectorType, setSectorType] = useState<SectorType>('行业');
   const sectorParams = useMemo(
     () => ({
-      date: dateParam,
+      trade_date: dateParam,
       sector_type: sectorType,
       sort: sortField('main_net_inflow'),
     }),
@@ -305,7 +305,7 @@ export default function FundFlowPage() {
   const [etfSortField, setEtfSortField] = useState<string | null>(null);
   const etfParams = useMemo(
     () => ({
-      date: dateParam,
+      trade_date: dateParam,
       sort: etfSortField ?? sortField('inferred_net_inflow'),
       limit: 50,
     }),
@@ -625,11 +625,11 @@ export default function FundFlowPage() {
       render: (v: number) => formatNumber((v ?? 0) / 10000, 0),
     },
     {
-      title: '换手率',
+      title: '成交额（元）',
       dataIndex: 'turnover',
       key: 'turnover',
-      width: 100,
-      render: (v: number) => formatPct(v),
+      width: 140,
+      render: (v: number) => formatNumber(v ?? 0, 0),
     },
     {
       title: '估算净流入',

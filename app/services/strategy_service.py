@@ -65,6 +65,15 @@ class StrategyService:
         user_id: int | None = None,
     ) -> dict[str, Any]:
         """Create a new strategy configuration."""
+        # Validate that strategy_type is registered. Prevents users from
+        # saving zombie configs that silently fail at runtime (see P0 review).
+        from app.strategies.base import StrategyRegistry
+        available = list(StrategyRegistry.list_all().keys())
+        if strategy_type not in available:
+            raise ValueError(
+                f"未注册的策略类型: {strategy_type!r}。"
+                f"可用类型: {', '.join(sorted(available))}"
+            )
         strategy = StrategyConfig(
             user_id=user_id,
             name=name,

@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import {
-  Table, Button, Modal, Form, Input, Select, Switch, Space, message, Popconfirm,
+  Table, Button, Modal, Form, Input, InputNumber, Select, Switch, Space, message, Popconfirm,
 } from 'antd';
 import './styles.css';
 import PageShell from '@/components/PageShell';
@@ -298,9 +298,9 @@ export default function StrategyList() {
                 label={config.label || key}
                 initialValue={initial}
               >
-                <Input
-                  type="number"
+                <InputNumber
                   step={config.type === 'int' ? 1 : 0.01}
+                  style={{ width: '100%' }}
                 />
               </Form.Item>
             );

@@ -317,12 +317,14 @@ class FundFlowPipeline(ETLPipeline):
             bt = bt_map.get(ts_code)
             # 股东户数反向 (负=集中) → 乘 -1 后归一化
             sh_for_score = -float(sh) if sh is not None else None
+            # AH 溢价反向 (高溢价 = A 相对 H 贵 = 负面信号) → 乘 -1 后归一化
+            ah_for_score = -float(ah) if ah is not None else None
             score, breakdown = _compute_composite({
                 "main": main,
                 "margin": margin,
                 "lhb": lhb,
                 "shareholder": sh_for_score,
-                "ah": ah,
+                "ah": ah_for_score,
                 "block": bt,
             })
             out.append({

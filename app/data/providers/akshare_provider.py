@@ -377,7 +377,10 @@ class AkshareProvider(DataProvider):
         return result
 
     def fetch_realtime_quotes(self, codes: list[str]) -> pd.DataFrame:
-        """获取实时行情"""
+        """获取实时行情（ak.fund_etf_spot_em）并把中文列名标准化为英文，
+        以匹配 ``PaperTradingService`` 等下游消费者期望的字段：
+        ``etf_code``、``price``、``change_pct``。
+        """
         try:
             df = ak.fund_etf_spot_em()
         except Exception as exc:
@@ -386,11 +389,26 @@ class AkshareProvider(DataProvider):
         if df.empty:
             return pd.DataFrame()
 
-        df["完整代码"] = df["代码"].astype(str).apply(
+        # 拼接完整代码（例如 "510300" -> "510300.SH"）
+        df["etf_code"] = df["代码"].astype(str).apply(
             lambda c: f"{c}.SH" if c.startswith("5") else f"{c}.SZ"
         )
-        mask = df["完整代码"].isin(codes)
-        return df[mask].copy()
+        # 中文列名 → 英文
+        rename_map = {"现价": "price", "涨跌幅": "change_pct", "最新价": "price"}
+        df = df.rename(columns={k: v for k, v in rename_map.items() if k in df.columns})
+        if "price" not in df.columns:
+            # akshare 部分版本用"最新价"或"单位净值"，尝试更多别名
+            for alt in ("最新价", "单位净值"):
+                if alt in df.columns:
+                    df = df.rename(columns={alt: "price"})
+                    break
+        mask = df["etf_code"].isin(codes)
+        out = df[mask].copy()
+        # 仅返回下游需要的标准字段，缺失补空
+        for col in ("etf_code", "price", "change_pct"):
+            if col not in out.columns:
+                out[col] = None
+        return out[["etf_code", "price", "change_pct"]]
 
     def fetch_etf_holdings(self, code: str) -> pd.DataFrame:
         """Fetch top-10 ETF holdings for the latest quarter from Akshare.

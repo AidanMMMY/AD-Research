@@ -182,6 +182,16 @@ export default function NewsDetail() {
     };
   }, [data?.title]);
 
+  // Defence-layer cleanup: strip DeepSeek-style  thinking blocks and
+  // repeated title lines before we render the Markdown body.
+  // NOTE: this useMemo must be declared before any early return so the
+  // hook count is identical across loading and loaded renders.
+  const fullContentToRender = renderedFullContent ?? data?.full_content;
+  const cleanedFullContent = useMemo(
+    () => (fullContentToRender && data?.title ? cleanNewsFullContent(fullContentToRender, data.title) : null),
+    [fullContentToRender, data?.title],
+  );
+
   if (isLoading) {
     return (
       <PageShell maxWidth="full">
@@ -218,14 +228,6 @@ export default function NewsDetail() {
   const showFetchError =
     fetchFullContent.isError ||
     (fetchFullContent.data && !fetchFullContent.data.success);
-  const fullContentToRender = renderedFullContent ?? data.full_content;
-
-  // Defence-layer cleanup: strip DeepSeek-style <think> blocks and
-  // repeated title lines before we render the Markdown body.
-  const cleanedFullContent = useMemo(
-    () => (fullContentToRender ? cleanNewsFullContent(fullContentToRender, data.title) : null),
-    [fullContentToRender, data.title],
-  );
 
   // AI-cleanup observability banner (M22-3, 2026-07-05).
   //

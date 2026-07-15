@@ -95,26 +95,26 @@ export function sortField(field: string, dir: SortDir = 'desc'): string {
 // ---------------------------------------------------------------------------
 
 export interface IndividualListParams {
-  date?: string;
+  trade_date?: string;
   sort?: string;
   limit?: number;
   market?: string;
 }
 
 export interface SectorListParams {
-  date?: string;
+  trade_date?: string;
   sector_type?: SectorType;
   sort?: string;
 }
 
 export interface EtfListParams {
-  date?: string;
+  trade_date?: string;
   sort?: string;
   limit?: number;
 }
 
 export interface SignalListParams {
-  date?: string;
+  trade_date?: string;
   sort?: string;
   limit?: number;
 }
@@ -124,8 +124,8 @@ export const fundFlowApi = {
    * Aggregated exchange-level main-fund net inflow for a given trade date.
    * SH + SZ main flows plus their share-of-turnover percentage.
    */
-  market(date?: string): Promise<{ data: MarketFundFlow }> {
-    return client.get<MarketFundFlow>('/fund-flow/market', { params: { date } });
+  market(trade_date?: string): Promise<{ data: MarketFundFlow }> {
+    return client.get<MarketFundFlow>('/fund-flow/market', { params: { trade_date } });
   },
 
   /**
@@ -185,11 +185,11 @@ const SHARED_OPTIONS = {
   refetchOnWindowFocus: false,
 } as const;
 
-/** Today's main-fund exchange-level flow. Optional `date` for history. */
-export function useFundFlowMarket(date?: string) {
+/** Today's main-fund exchange-level flow. Optional `trade_date` for history. */
+export function useFundFlowMarket(trade_date?: string) {
   return useQuery({
-    queryKey: ['fund-flow', 'market', date ?? 'today'],
-    queryFn: () => fundFlowApi.market(date).then((r) => r.data),
+    queryKey: ['fund-flow', 'market', trade_date ?? 'today'],
+    queryFn: () => fundFlowApi.market(trade_date).then((r) => r.data),
     ...SHARED_OPTIONS,
   });
 }
