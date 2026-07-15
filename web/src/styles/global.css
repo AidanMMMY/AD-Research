@@ -121,6 +121,16 @@ body {
   background: var(--accent-dim) !important;
 }
 
+/* 统一表格行最小高度与垂直居中，避免不同数据导致行高不一致、
+   进而出现卡片顶端对不齐的观感。 */
+.ant-table-row {
+  min-height: 48px;
+}
+
+.ant-table-tbody > tr > td {
+  vertical-align: middle !important;
+}
+
 /* Pagination */
 .ant-pagination {
   color: var(--text-secondary);
@@ -8871,14 +8881,11 @@ input[type="password"]::-webkit-strong-password-auto-fill-button {
   opacity: 0.6;
 }
 
-/* 表格行悬停：渐变背景替代纯色（感觉更流畅） */
+/* 表格行悬停：使用统一纯色背景，避免渐变在左侧形成竖线状色块，
+   同时保证所有行 hover 状态不引入额外 padding/margin/border。 */
 .ant-table-tbody > tr:hover > td {
-  background: linear-gradient(
-    90deg,
-    var(--bg-hover) 0%,
-    var(--bg-hover) 98%,
-    transparent 100%
-  ) !important;
+  background: var(--bg-hover) !important;
+  color: var(--text-primary) !important;
 }
 
 /* 标签（Tag）精致化：稍许增加圆角和内边距 */
@@ -8899,13 +8906,22 @@ input[type="password"]::-webkit-strong-password-auto-fill-button {
   border: none !important;
 }
 
-/* Card 增加微妙的顶部彩色条（2px）作为视觉锚点 */
+/* Card 顶部彩色条：使用内阴影实现，不改变 border 厚度，
+   避免 hover 时卡片整体高度/对齐发生偏移。 */
 .ad-panel--default {
-  border-top: 2px solid transparent;
-  transition: border-color 200ms;
+  position: relative;
 }
-.ad-panel--default:hover {
-  border-top-color: var(--border-accent);
+.ad-panel--default::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  box-shadow: inset 0 2px 0 0 transparent;
+  transition: box-shadow 200ms;
+}
+.ad-panel--default:hover::before {
+  box-shadow: inset 0 2px 0 0 var(--border-accent);
 }
 
 /* ============================================================
