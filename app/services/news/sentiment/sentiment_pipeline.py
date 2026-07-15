@@ -474,7 +474,11 @@ class SentimentPipeline:
         if not scores:
             return
         avg = sum(scores) / len(scores)
-        label = "bullish" if avg > 0.15 else "bearish" if avg < -0.15 else "neutral"
+        # Unified label vocabulary: positive / negative / neutral.
+        # The legacy "bullish/bearish" labels were misaligned with the
+        # frontend SENTIMENT_LABELS map (`positive/negative`), causing
+        # the retail sentiment board to always read "neutral".
+        label = "positive" if avg > 0.15 else "negative" if avg < -0.15 else "neutral"
         try:
             from app.services.news._model_loader import NewsArticle
 

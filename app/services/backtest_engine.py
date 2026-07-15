@@ -247,6 +247,7 @@ def _simulate(
     execution_price_model: str,
     market: str,
     apply_friction: bool,
+    risk_free_rate: float = 0.02,
 ) -> BacktestResult:
     """Run the per-bar simulation loop. Pure function over ``df``.
 
@@ -399,7 +400,7 @@ def _simulate(
     if len(daily_returns) > 1 and daily_returns.std() > 0:
         annual_return = daily_returns.mean() * 252
         annual_vol = daily_returns.std() * np.sqrt(252)
-        sharpe = (annual_return - risk_free_rate_default()) / annual_vol
+        sharpe = (annual_return - risk_free_rate) / annual_vol
     else:
         sharpe = 0
 
@@ -434,7 +435,7 @@ def _simulate(
         "commission_rate": commission_rate,
         "slippage_rate": slippage_rate,
         "position_size": position_size,
-        "risk_free_rate": risk_free_rate_default(),
+        "risk_free_rate": risk_free_rate,
         "execution_price_model": execution_price_model,
         "market": market,
         "apply_friction": apply_friction,
@@ -548,6 +549,7 @@ def run_backtest(
         execution_price_model=execution_price_model,
         market=market,
         apply_friction=apply_friction,
+        risk_free_rate=risk_free_rate,
     )
 
     return result

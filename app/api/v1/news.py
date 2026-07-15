@@ -220,6 +220,14 @@ def list_news(
     source: str | None = Query(None, description="Filter by source id (e.g. xinhua_rss)"),
     from_date: str | None = Query(None, description="ISO-8601 lower bound on published_at"),
     to_date: str | None = Query(None, description="ISO-8601 upper bound on published_at"),
+    q: str | None = Query(
+        None,
+        max_length=200,
+        description=(
+            "Best-effort full-text search across title, summary and "
+            "content. Empty / whitespace strings are ignored."
+        ),
+    ),
     importance_min: int | None = Query(None, ge=1, le=5, description="Minimum importance level (1-5)"),
     event_category: list[str] | None = Query(
         None,
@@ -254,6 +262,30 @@ def list_news(
     if to_dt is not None:
         stmt = stmt.where(NewsArticle.published_at <= to_dt)
         count_stmt = count_stmt.where(NewsArticle.published_at <= to_dt)
+    # Best-effort full-text search across title + summary + content. We
+    # use ILIKE for cross-DB portability (Postgres); spaces become AND
+    # so multi-word queries narrow results. Substring search is fine for
+    # the news volume (~10k rows) — no need for tsvector here.
+    if q is not None and q.strip():
+        from sqlalchemy import or_
+        tokens = [t for t in q.strip().split() if t]
+        if tokens:
+            for token in tokens:
+                pattern = f"%{token}%"
+                stmt = stmt.where(
+                    or_(
+                        NewsArticle.title.ilike(pattern),
+                        NewsArticle.summary.ilike(pattern),
+                        NewsArticle.content.ilike(pattern),
+                    )
+                )
+                count_stmt = count_stmt.where(
+                    or_(
+                        NewsArticle.title.ilike(pattern),
+                        NewsArticle.summary.ilike(pattern),
+                        NewsArticle.content.ilike(pattern),
+                    )
+                )
     if symbol:
         # Subquery for the linked-symbol filter.
         sub = (
