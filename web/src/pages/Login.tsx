@@ -160,6 +160,33 @@ export default function Login() {
             background: var(--bg-surface, #14181f);
           }
         }
+        /* Visual audit fixes (2026-07-16):
+           - center brand content vertically so the panel doesn't feel top-heavy
+           - tighten the gap between the form title and the inputs
+           - keep the login page readable in light theme by forcing dark foreground tokens */
+        .login-brand-panel {
+          justify-content: center;
+        }
+        .login-brand-footer {
+          margin-top: auto;
+        }
+        .login-form-header {
+          margin-bottom: 16px;
+        }
+        :root[data-theme="light"] .login-page--sci-fi {
+          --text-primary: #E6EDF3;
+          --text-secondary: #A0A0A0;
+          --text-tertiary: #787878;
+          --text-muted: #606060;
+          --text-on-accent: #0D1117;
+          --accent: #60A5FA;
+          --accent-hover: #93BBFD;
+          --accent-dim: rgba(96, 165, 250, 0.12);
+          --accent-soft: rgba(96, 165, 250, 0.12);
+          --accent-border: rgba(96, 165, 250, 0.25);
+          --accent-glow: rgba(96, 165, 250, 0.15);
+          --color-success-bright: #22c55e;
+        }
       `}</style>
       <AuroraBackground />
 

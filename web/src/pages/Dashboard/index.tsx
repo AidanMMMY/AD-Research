@@ -1,6 +1,6 @@
 import './styles.css';
 
-import { useMemo, useEffect, useRef } from 'react';
+import { useMemo, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Table, Skeleton, Tooltip } from 'antd';
 import {
@@ -21,6 +21,7 @@ import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { useScores } from '@/hooks/useScores';
 import { useFavorites } from '@/hooks/useFavorites';
 import { usePoolList } from '@/hooks/usePoolDetail';
+import { useIsMobile } from '@/hooks/useBreakpoint';
 import { statsApi } from '@/api/stats';
 import {
   formatDateTime,
@@ -47,7 +48,7 @@ import HelpPopover from '@/components/HelpPopover';
 import DailyLesson from '@/components/DailyLesson';
 import DataFreshnessHint from '@/components/DataFreshnessHint';
 import EtfHoldingsCoverageCard from '@/components/EtfHoldingsCoverageCard';
-import { useSettingsStore } from '@/stores/settings';
+import { useSettingsStore, type HelpMode } from '@/stores/settings';
 import { usePriceStream } from '@/hooks/usePriceStream';
 import { useMarketStream } from '@/hooks/useMarketStream';
 import type { NewsArticle } from '@/types/news';
@@ -411,6 +412,119 @@ function isMarketOpen(tz: string, openHour: number, openMin: number, closeHour: 
   return total >= open && total < close;
 }
 
+/**
+ * Responsive column count for the pulse matrix. Mirrors the media queries in
+ * styles.css so we can pad partial rows with empty placeholder cells.
+ */
+function usePulseColumns() {
+  const [cols, setCols] = useState(4);
+  useEffect(() => {
+    const m2 = window.matchMedia('(max-width: 767px)');
+    const m3 = window.matchMedia('(max-width: 1023px)');
+    const update = () => {
+      if (m2.matches) setCols(2);
+      else if (m3.matches) setCols(3);
+      else setCols(4);
+    };
+    update();
+    m2.addEventListener('change', update);
+    m3.addEventListener('change', update);
+    return () => {
+      m2.removeEventListener('change', update);
+      m3.removeEventListener('change', update);
+    };
+  }, []);
+  return cols;
+}
+
+interface PulseTileGridProps<T> {
+  className?: string;
+  items: T[];
+  render: (item: T) => React.ReactNode;
+}
+
+function PulseTileGrid<T>({ className, items, render }: PulseTileGridProps<T>) {
+  const cols = usePulseColumns();
+  const remainder = items.length % cols;
+  const padding = remainder === 0 ? 0 : cols - remainder;
+  return (
+    <div className={`dashboard-pulse-matrix ${className || ''}`.trim()}>
+      {items.map((item) => render(item))}
+      {Array.from({ length: padding }).map((_, i) => (
+        <div
+          key={`pad-${i}`}
+          className="dashboard-pulse-tile dashboard-pulse-tile--empty"
+          aria-hidden="true"
+        />
+      ))}
+    </div>
+  );
+}
+
+interface GlobalPulseTileProps {
+  tile: GroupTileDef;
+  data: { value: number | null; change_pct: number | null } | null;
+  isLoading: boolean;
+  navigate: (path: string) => void;
+  mode: HelpMode;
+}
+
+function GlobalPulseTile({ tile, data, isLoading, navigate, mode }: GlobalPulseTileProps) {
+  const change = data?.change_pct;
+  const valueStr = data?.value != null ? formatTileValue(data.value, tile.unit) : '—';
+  const termKey = GLOBAL_OVERVIEW_TERM_MAP[tile.code];
+  const navPath =
+    tile.type === 'realtime'
+      ? `/instruments/${tile.code}`
+      : `/macro?region=${codeToRegion(tile.code)}&code=${encodeURIComponent(tile.code)}`;
+  return (
+    <div
+      key={tile.code}
+      className="dashboard-pulse-tile"
+      role="button"
+      tabIndex={0}
+      onClick={() => navigate(navPath)}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          navigate(navPath);
+        }
+      }}
+      aria-label={`${tile.title}: ${valueStr}`}
+    >
+      <span className="dashboard-pulse-tile__code">
+        {termKey ? (
+          <span
+            className="dashboard-pulse-tile__help"
+            onClick={(e) => e.stopPropagation()}
+            role="presentation"
+          >
+            <HelpPopover
+              termKey={termKey}
+              mode={mode}
+              contextData={[
+                `当前指标：${tile.title}`,
+                `最新数值：${valueStr}`,
+                `涨跌幅：${
+                  change == null ? '—' : `${change > 0 ? '+' : ''}${change.toFixed(2)}%`
+                }`,
+              ].join('\n')}
+            >
+              {tile.title}
+            </HelpPopover>
+          </span>
+        ) : (
+          tile.title
+        )}
+      </span>
+      <span className="dashboard-pulse-tile__value">
+        {isLoading && tile.type === 'macro' && !data ? '—' : valueStr}
+      </span>
+      <ReturnTag value={change} />
+    </div>
+  );
+}
+
 /* =============================================================================
  * PulseFundFlowStrip — 3-tile Pulse strip that funnels into the dedicated
  * /fund-flow page. Reuses the same `dashboard-pulse-tile` styling so the two
@@ -499,8 +613,10 @@ function PulseFundFlowStrip() {
         </span>
       }
     >
-      <div className="dashboard-pulse-matrix dashboard-pulse-matrix--fund-flow">
-        {tiles.map((tile) => (
+      <PulseTileGrid
+        className="dashboard-pulse-matrix--fund-flow"
+        items={tiles}
+        render={(tile) => (
           <div
             key={tile.title}
             className="dashboard-pulse-tile"
@@ -519,8 +635,8 @@ function PulseFundFlowStrip() {
             <span className="dashboard-pulse-tile__value">{tile.value}</span>
             <ReturnTag value={tile.change} />
           </div>
-        ))}
-      </div>
+        )}
+      />
     </Panel>
   );
 }
@@ -659,67 +775,18 @@ function PulseGlobalStrip() {
                 </span>
               }
             >
-              <div className="dashboard-pulse-matrix">
-                {group.tiles.map((tile) => {
-                  const data = resolveTile(tile);
-                  const change = data?.change_pct;
-                  const valueStr =
-                    data?.value != null ? formatTileValue(data.value, tile.unit) : '—';
-                  const termKey = GLOBAL_OVERVIEW_TERM_MAP[tile.code];
-                  const navPath =
-                    tile.type === 'realtime'
-                      ? `/instruments/${tile.code}`
-                      : `/macro?region=${codeToRegion(tile.code)}&code=${encodeURIComponent(tile.code)}`;
-                  return (
-                    <div
-                      key={tile.code}
-                      className="dashboard-pulse-tile"
-                      role="button"
-                      tabIndex={0}
-                      onClick={() => navigate(navPath)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' || e.key === ' ') {
-                          e.preventDefault();
-                          navigate(navPath);
-                        }
-                      }}
-                      aria-label={`${tile.title}: ${valueStr}`}
-                    >
-                      <span className="dashboard-pulse-tile__code">
-                        {termKey ? (
-                          <span
-                            className="dashboard-pulse-tile__help"
-                            onClick={(e) => e.stopPropagation()}
-                            role="presentation"
-                          >
-                            <HelpPopover
-                              termKey={termKey}
-                              mode={mode}
-                              contextData={[
-                                `当前指标：${tile.title}`,
-                                `最新数值：${valueStr}`,
-                                `涨跌幅：${
-                                  change == null
-                                    ? '—'
-                                    : `${change > 0 ? '+' : ''}${change.toFixed(2)}%`
-                                }`,
-                              ].join('\n')}
-                            >
-                              {tile.title}
-                            </HelpPopover>
-                          </span>
-                        ) : (
-                          tile.title
-                        )}
-                      </span>
-                      <span className="dashboard-pulse-tile__value">
-                        {isLoading && tile.type === 'macro' && !data ? '—' : valueStr}
-                      </span>
-                      <ReturnTag value={change} />
-                    </div>
-                  );
-                })}
-              </div>
+              <PulseTileGrid
+                items={group.tiles}
+                render={(tile) => (
+                  <GlobalPulseTile
+                    tile={tile}
+                    data={resolveTile(tile)}
+                    isLoading={isLoading}
+                    navigate={navigate}
+                    mode={mode}
+                  />
+                )}
+              />
             </Panel>
           );
         })}
@@ -864,56 +931,66 @@ export default function Dashboard() {
   const { prices: favPrices } = usePriceStream(favCodes);
   const { latest: favMarketLatest } = useMarketStream(favCodes);
 
-  const scoreColumns = [
-    {
-      title: <HelpPopover termKey="rank_overall" mode={mode}>排名</HelpPopover>,
-      dataIndex: 'rank_overall',
-      width: 70,
-      render: (v: number) => (
-        <span
-          className={`tabular-nums dashboard-rank-cell ${v <= 3 ? 'dashboard-rank-cell--top3' : 'dashboard-rank-cell--normal'}`}
-        >
-          {v}
-        </span>
-      ),
-    },
-    {
-      title: '标的',
-      render: (_: unknown, record: any) => (
-        <InstrumentCodeTag code={record.etf_code} name={record.etf_name} />
-      ),
-    },
-    {
-      title: <HelpPopover termKey="composite_score" mode={mode}>评分</HelpPopover>,
-      render: (_: unknown, record: any) => (
-        <ScoreBar score={record.composite_score} size="small" />
-      ),
-      width: 160,
-    },
-    {
-      title: <HelpPopover termKey="return_1m" mode={mode}>1月收益</HelpPopover>,
-      render: (_: unknown, record: any) => <ReturnTag value={record.return_1m} />,
-      width: 110,
-    },
-    {
-      title: '趋势',
-      width: 60,
-      render: (_: unknown, record: any) =>
-        record.return_1m >= 0 ? (
-          <ArrowUpOutlined className="ad-icon-rise" />
-        ) : (
-          <ArrowDownOutlined className="ad-icon-fall" />
+  const isMobile = useIsMobile();
+  const scoreColumns = useMemo(() => {
+    const cols = [
+      {
+        title: <HelpPopover termKey="rank_overall" mode={mode}>排名</HelpPopover>,
+        dataIndex: 'rank_overall',
+        width: 70,
+        className: 'dashboard-score-col--rank',
+        render: (v: number) => (
+          <span
+            className={`tabular-nums dashboard-rank-cell ${v <= 3 ? 'dashboard-rank-cell--top3' : 'dashboard-rank-cell--normal'}`}
+          >
+            {v}
+          </span>
         ),
-    },
-    {
-      title: '',
-      key: 'favorite',
-      width: 48,
-      render: (_: unknown, record: any) => (
-        <FavoriteToggleButton code={record.etf_code} name={record.etf_name} />
-      ),
-    },
-  ];
+      },
+      {
+        title: '标的',
+        className: 'dashboard-score-col--instrument',
+        render: (_: unknown, record: any) => (
+          <InstrumentCodeTag code={record.etf_code} name={record.etf_name} />
+        ),
+      },
+      {
+        title: <HelpPopover termKey="composite_score" mode={mode}>评分</HelpPopover>,
+        className: 'dashboard-score-col--score',
+        render: (_: unknown, record: any) => (
+          <ScoreBar score={record.composite_score} size="small" />
+        ),
+        width: 160,
+      },
+      {
+        title: <HelpPopover termKey="return_1m" mode={mode}>1月收益</HelpPopover>,
+        className: 'dashboard-score-col--return',
+        render: (_: unknown, record: any) => <ReturnTag value={record.return_1m} />,
+        width: 110,
+      },
+      {
+        title: '趋势',
+        className: 'dashboard-score-col--trend',
+        width: 60,
+        render: (_: unknown, record: any) =>
+          record.return_1m >= 0 ? (
+            <ArrowUpOutlined className="ad-icon-rise" />
+          ) : (
+            <ArrowDownOutlined className="ad-icon-fall" />
+          ),
+      },
+      {
+        title: '',
+        key: 'favorite',
+        className: 'dashboard-score-col--favorite',
+        width: 48,
+        render: (_: unknown, record: any) => (
+          <FavoriteToggleButton code={record.etf_code} name={record.etf_name} />
+        ),
+      },
+    ];
+    return isMobile ? cols.filter((c) => c.className !== 'dashboard-score-col--trend') : cols;
+  }, [mode, isMobile]);
 
   return (
     <PageShell maxWidth="full" className="dashboard-shell">

@@ -73,6 +73,28 @@
   --color-warning-hover-dim: rgba(251, 191, 36, 0.18);
   --color-info: var(--accent);
 
+  /* ---- News Category Colors (political / macro chips) ---- */
+  --category-geopolitics: #FF5722;
+  --category-geopolitics-dim: rgba(255, 87, 34, 0.12);
+  --category-geopolitics-border: rgba(255, 87, 34, 0.55);
+  --category-geopolitics-text: #D4380D;
+  --category-central-bank: #1890FF;
+  --category-central-bank-dim: rgba(24, 144, 255, 0.12);
+  --category-central-bank-border: rgba(24, 144, 255, 0.55);
+  --category-central-bank-text: #096DD9;
+  --category-election: #722ED1;
+  --category-election-dim: rgba(114, 46, 209, 0.12);
+  --category-election-border: rgba(114, 46, 209, 0.55);
+  --category-election-text: #531DAB;
+  --category-trade-war: #F5222D;
+  --category-trade-war-dim: rgba(245, 34, 45, 0.12);
+  --category-trade-war-border: rgba(245, 34, 45, 0.55);
+  --category-trade-war-text: #CF1322;
+  --category-sanction: #EB2F96;
+  --category-sanction-dim: rgba(235, 47, 150, 0.12);
+  --category-sanction-border: rgba(235, 47, 150, 0.55);
+  --category-sanction-text: #C41D7F;
+
   /* ---- Score Colors ---- */
   --score-fill: var(--accent);
   --score-excellent: #10b981;
@@ -399,6 +421,28 @@ html, body, #root {
   --color-warning-bright: #facc15;
   --color-warning-hover-dim: rgba(250, 204, 21, 0.18);
   --color-info: var(--accent);
+
+  /* ---- News Category Colors (political / macro chips) ---- */
+  --category-geopolitics: #FF7A45;
+  --category-geopolitics-dim: rgba(255, 87, 34, 0.20);
+  --category-geopolitics-border: rgba(255, 87, 34, 0.55);
+  --category-geopolitics-text: #FFBB96;
+  --category-central-bank: #69C0FF;
+  --category-central-bank-dim: rgba(24, 144, 255, 0.20);
+  --category-central-bank-border: rgba(24, 144, 255, 0.55);
+  --category-central-bank-text: #BAE7FF;
+  --category-election: #B37FEB;
+  --category-election-dim: rgba(114, 46, 209, 0.20);
+  --category-election-border: rgba(114, 46, 209, 0.55);
+  --category-election-text: #D3ADF7;
+  --category-trade-war: #FF7875;
+  --category-trade-war-dim: rgba(245, 34, 45, 0.20);
+  --category-trade-war-border: rgba(245, 34, 45, 0.55);
+  --category-trade-war-text: #FFA39E;
+  --category-sanction: #F759AB;
+  --category-sanction-dim: rgba(235, 47, 150, 0.20);
+  --category-sanction-border: rgba(235, 47, 150, 0.55);
+  --category-sanction-text: #FFADD2;
 
   /* ---- Score Colors ---- */
   --score-fill: var(--accent);

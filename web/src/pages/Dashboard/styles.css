@@ -769,3 +769,13 @@
 .dashboard-favorite-card__price {
   min-height: 20px;
 }
+
+/* Constrain the discover panel so it does not blow out the grid track on mobile. */
+.discover-panel {
+  min-width: 0;
+}
+
+/* ResponsiveGrid children should be allowed to shrink below their content size. */
+.responsive-grid--stretch > * {
+  min-width: 0;
+}

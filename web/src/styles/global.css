@@ -5151,6 +5151,8 @@ main {
   font-size: 12px;
   color: var(--text-tertiary);
   margin-bottom: 8px;
+  color: var(--text-primary);
+  font-size: var(--text-body-size);
 }
 
 .ai-drawer__quick-tags {
@@ -5308,6 +5310,8 @@ main {
   width: 100%;
   border-collapse: collapse;
   margin-bottom: 8px;
+  color: var(--text-primary);
+  font-size: var(--text-body-size);
   font-size: 13px;
 }
 
@@ -5633,6 +5637,8 @@ main {
 /* ---- InstrumentSelector ---- */
 .instrument-selector__label {
   margin-bottom: 8px;
+  color: var(--text-primary);
+  font-size: var(--text-body-size);
 }
 
 .instrument-selector__tags {
@@ -7318,8 +7324,8 @@ main {
   }
 }
 
-/* ---- Mobile: stack vertically (<768px) ---- */
-@media (max-width: 767px) {
+/* ---- Tablet/Mobile: stack vertically (<992px) ---- */
+@media (max-width: 991px) {
   .login-page--sci-fi {
     flex-direction: column;
     gap: var(--space-5);
@@ -7330,7 +7336,7 @@ main {
   .login-form-panel {
     flex: none;
     width: 100%;
-    max-width: min(420px, calc(100vw - 32px));
+    max-width: min(480px, calc(100vw - 32px));
     min-height: unset;
     box-sizing: border-box;
   }
@@ -7864,6 +7870,8 @@ input[type="password"]::-webkit-strong-password-auto-fill-button {
   gap: 10px;
   align-items: flex-start;
   margin-bottom: 8px;
+  color: var(--text-primary);
+  font-size: var(--text-body-size);
   font-size: 13.5px;
   line-height: 1.6;
   color: var(--text-primary, #222);

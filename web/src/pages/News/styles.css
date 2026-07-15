@@ -22,34 +22,81 @@
 
 .news-political-chip {
   /* Individual chip for a political / macro category. */
+  transition: transform 160ms var(--ease-spring),
+    background 160ms var(--ease-spring),
+    border-color 160ms var(--ease-spring),
+    color 160ms var(--ease-spring);
 }
 
-.news-political-chip--active {
-  /* Active (selected) chip state. */
+.news-political-chip:hover {
+  opacity: 0.85;
+}
+
+.news-political-chip:active {
+  transform: scale(0.97);
+}
+
+/* Category-specific inactive states (subtle tinted borders). */
+.news-political-chip--geopolitics {
+  border-color: var(--category-geopolitics-border) !important;
+  color: var(--category-geopolitics) !important;
+}
+.news-political-chip--central_bank {
+  border-color: var(--category-central-bank-border) !important;
+  color: var(--category-central-bank) !important;
+}
+.news-political-chip--election {
+  border-color: var(--category-election-border) !important;
+  color: var(--category-election) !important;
+}
+.news-political-chip--trade_war {
+  border-color: var(--category-trade-war-border) !important;
+  color: var(--category-trade-war) !important;
+}
+.news-political-chip--sanction {
+  border-color: var(--category-sanction-border) !important;
+  color: var(--category-sanction) !important;
+}
+
+/* Active (selected) states with solid backgrounds. */
+.news-political-chip--geopolitics.news-political-chip--active {
+  background: var(--category-geopolitics-dim) !important;
+  border-color: var(--category-geopolitics-border) !important;
+  color: var(--category-geopolitics-text) !important;
+  font-weight: 500;
+}
+.news-political-chip--central_bank.news-political-chip--active {
+  background: var(--category-central-bank-dim) !important;
+  border-color: var(--category-central-bank-border) !important;
+  color: var(--category-central-bank-text) !important;
+  font-weight: 500;
+}
+.news-political-chip--election.news-political-chip--active {
+  background: var(--category-election-dim) !important;
+  border-color: var(--category-election-border) !important;
+  color: var(--category-election-text) !important;
+  font-weight: 500;
+}
+.news-political-chip--trade_war.news-political-chip--active {
+  background: var(--category-trade-war-dim) !important;
+  border-color: var(--category-trade-war-border) !important;
+  color: var(--category-trade-war-text) !important;
+  font-weight: 500;
+}
+.news-political-chip--sanction.news-political-chip--active {
+  background: var(--category-sanction-dim) !important;
+  border-color: var(--category-sanction-border) !important;
+  color: var(--category-sanction-text) !important;
+  font-weight: 500;
 }
 
 .news-political-chip--clear {
-  /* "清除" chip to reset the category filter. */
+  color: var(--text-tertiary) !important;
+  border-color: var(--border-default) !important;
 }
-
-.news-political-chip--geopolitics {
-  /* Per-category colour overrides applied via className. */
-}
-
-.news-political-chip--central_bank {
-  /* Central bank category chip. */
-}
-
-.news-political-chip--election {
-  /* Election category chip. */
-}
-
-.news-political-chip--trade_war {
-  /* Trade war category chip. */
-}
-
-.news-political-chip--sanction {
-  /* Sanction category chip. */
+.news-political-chip--clear:hover {
+  color: var(--color-error) !important;
+  border-color: var(--color-error) !important;
 }
 
 /* ── Hot symbol sidebar ── */
@@ -58,3 +105,34 @@
 /* ── Importance stars are rendered inline (dynamic colour). ── */
 
 /* ── Sentiment labels are rendered inline (dynamic colour). ── */
+
+/* ── News card original-link icon ── */
+.ad-news-card__link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: var(--radius-sm, 4px);
+  color: var(--text-tertiary);
+  font-size: 13px;
+  transition: background 160ms var(--ease-spring),
+    color 160ms var(--ease-spring);
+}
+
+.ad-news-card__link:hover {
+  background: var(--bg-hover);
+  color: var(--accent);
+}
+
+.ad-news-card__link:active {
+  background: var(--bg-active);
+  color: var(--accent);
+}
+
+@media (max-width: 767px) {
+  .ad-news-card__link {
+    width: 28px;
+    height: 28px;
+  }
+}

@@ -1,6 +1,6 @@
 import './styles.css';
 import { SENTIMENT_COLORS, SENTIMENT_LABELS } from '@/utils/sentiment';
-import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import {
@@ -371,6 +371,19 @@ function NewsCard({
             <EyeOutlined /> {formatBigNumber(article.engagement.views)}
           </span>
         )}
+        <Tooltip title="查看原文">
+          <a
+            href={article.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="ad-news-card__link"
+            aria-label={`原文链接: ${article.title}`}
+            onClick={(e) => e.stopPropagation()}
+            onKeyDown={(e) => e.stopPropagation()}
+          >
+            <LinkOutlined />
+          </a>
+        </Tooltip>
       </div>
     </article>
   );
@@ -600,25 +613,29 @@ export default function NewsFeed() {
   }, [data, watchlistMode]);
 
   // Infinite-scroll via IntersectionObserver.
-  const sentinelRef = useCallback(
-    (node: HTMLDivElement | null) => {
-      if (!node) return;
-      const obs = new IntersectionObserver(
-        (entries) => {
-          if (entries[0]?.isIntersecting && hasNextPage && !isFetchingNextPage) {
-            fetchNextPage();
-          }
-        },
-        { rootMargin: '200px' }
-      );
-      obs.observe(node);
-      return () => obs.disconnect();
-    },
-    [hasNextPage, isFetchingNextPage, fetchNextPage]
-  );
+  // NOTE: avoid callback refs that return a cleanup function — React 18
+  // warns about it and React 19 treats it as a cleanup, but our current
+  // bundle is pinned to React 18 where the behaviour is inconsistent.
+  const sentinelNodeRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    const node = sentinelNodeRef.current;
+    if (!node || !hasNextPage || isFetchingNextPage) return;
+    const obs = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting && hasNextPage && !isFetchingNextPage) {
+          fetchNextPage();
+        }
+      },
+      { rootMargin: '200px' }
+    );
+    obs.observe(node);
+    return () => obs.disconnect();
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   const articles = useMemo(() => {
-    return (data?.pages ?? []).flatMap((p) => p.items);
+    return (data?.pages ?? [])
+      .flatMap((p) => p?.items ?? [])
+      .filter((a): a is NewsArticle => a != null && typeof a === 'object');
   }, [data]);
 
   // Aggregate top-10 symbols by importance-weighted sentiment for sidebar.
@@ -637,7 +654,9 @@ export default function NewsFeed() {
       }
     >();
     for (const a of articles) {
-      for (const s of a.symbols) {
+      const symbols = a.symbols ?? [];
+      for (const s of symbols) {
+        if (!s) continue;
         const cur = bucket.get(s.symbol) ?? {
           count: 0,
           weighted: 0,
@@ -817,7 +836,7 @@ export default function NewsFeed() {
                 />
               ))}
               <div
-                ref={sentinelRef}
+                ref={sentinelNodeRef}
                 className="ad-news-sentinel"
               >
                 {isFetchingNextPage ? (
