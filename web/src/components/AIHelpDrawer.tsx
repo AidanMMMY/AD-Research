@@ -11,6 +11,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { useAIHelp } from '@/hooks/useAIHelp';
 import { useAIStatus } from '@/components/AISetupBanner';
+import { useSettingsStore } from '@/stores/settings';
 import { useIsMobile } from '@/hooks/useBreakpoint';
 import StepProgress from '@/components/StepProgress';
 import type { HelpMessage } from '@/types/help';
@@ -53,6 +54,7 @@ export default function AIHelpDrawer() {
     retryLast,
   } = useAIHelp();
   const { data: aiStatus, isLoading: aiStatusLoading } = useAIStatus();
+  const { mode } = useSettingsStore();
   const isMobile = useIsMobile();
   const [input, setInput] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -117,6 +119,9 @@ export default function AIHelpDrawer() {
           </div>
 
           <div className="ai-drawer__header-actions">
+            <Tag className={`ai-drawer__mode-tag ai-drawer__mode-tag--${mode}`}>
+              {mode === 'novice' ? '新手' : '专业'}
+            </Tag>
             {context?.contextData && (
               <Tag className="ai-drawer__context-tag">
                 <ThunderboltOutlined className="ai-drawer__context-tag-icon" />

@@ -677,3 +677,95 @@
     opacity: 1;
   }
 }
+
+/* Pulse partial-row placeholder: fills the grid background so a group with
+   fewer than N tiles still looks like a solid panel rather than showing the
+   border-colored gap through empty tracks. */
+.dashboard-pulse-tile--empty {
+  background: var(--card-bg);
+  cursor: default;
+  pointer-events: none;
+}
+
+.dashboard-pulse-tile--empty:hover,
+.dashboard-pulse-tile--empty:focus-visible,
+.dashboard-pulse-tile--empty:active {
+  background: var(--card-bg);
+}
+
+/* Discover panel: constrain the table wrapper so it doesn't blow out the
+   2-column grid on narrow viewports. */
+.discover-panel .ad-panel__body {
+  min-width: 0;
+}
+
+.discover-panel .ant-table-wrapper {
+  max-width: 100%;
+}
+
+/* Mobile score table: hide the trend column and tighten fixed columns so the
+   table fits within the discover panel without page-level overflow. */
+@media (max-width: 767px) {
+  .discover-panel th.dashboard-score-col--trend,
+  .discover-panel td.dashboard-score-col--trend {
+    display: none;
+  }
+  .discover-panel th.dashboard-score-col--rank,
+  .discover-panel td.dashboard-score-col--rank {
+    width: 48px !important;
+  }
+  .discover-panel th.dashboard-score-col--score,
+  .discover-panel td.dashboard-score-col--score {
+    width: 120px !important;
+  }
+  .discover-panel th.dashboard-score-col--return,
+  .discover-panel td.dashboard-score-col--return {
+    width: 90px !important;
+  }
+  .discover-panel th.dashboard-score-col--favorite,
+  .discover-panel td.dashboard-score-col--favorite {
+    width: 40px !important;
+  }
+}
+
+/* Density-aware spacing for the dashboard. */
+.dashboard-zone {
+  margin-top: var(--density-section-gap);
+}
+
+.dashboard-zone:first-of-type {
+  margin-top: 0;
+}
+
+.dashboard-zone--discover .ad-panel__body {
+  padding: var(--density-card-padding);
+}
+
+.dashboard-zone--discover .ad-panel__header {
+  padding: var(--density-cell-py) var(--density-card-padding) var(--space-3);
+}
+
+.dashboard-favorite-card,
+.dashboard-pool-card,
+.dashboard-news-row {
+  padding: var(--density-cell-py) var(--density-cell-px);
+}
+
+.dashboard-favorite-card__price {
+  min-height: var(--density-row-height);
+}
+
+/* Override the density overrides for cards/rows: keep their original compact
+   feel and only vary the section gap / panel padding. */
+.dashboard-favorite-card,
+.dashboard-pool-card {
+  padding: var(--space-2);
+}
+
+.dashboard-news-row {
+  padding: var(--space-3) 0;
+}
+
+.dashboard-favorite-card__price {
+  min-height: 20px;
+}

@@ -20,6 +20,7 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import './styles.css';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
+import { useIsMobile } from '@/hooks/useBreakpoint';
 import { Skeleton, Table, Tag, Tooltip, Typography } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import PageShell from '@/components/PageShell';
@@ -239,14 +240,14 @@ function inferCategoryKey(code: string): string {
   return 'index';
 }
 
-function CategoryBlock({ title, rows }: { title: string; rows: RowVm[] }): JSX.Element | null {
+function CategoryBlock({ title, rows, isMobile }: { title: string; rows: RowVm[]; isMobile: boolean }): JSX.Element | null {
   if (rows.length === 0) return null;
   const columns: ColumnsType<RowVm> = [
     {
       title: '指标',
       dataIndex: 'name',
       key: 'name',
-      width: 220,
+      width: isMobile ? 120 : 220,
       render: (n: string, row) => (
         <div>
           <Text strong>{n}</Text>
@@ -262,7 +263,7 @@ function CategoryBlock({ title, rows }: { title: string; rows: RowVm[] }): JSX.E
       title: '最新值',
       dataIndex: 'latest',
       key: 'latest',
-      width: 140,
+      width: isMobile ? 80 : 140,
       align: 'right',
       render: (v: number | null, row) => (
         <Text strong className="tabular-nums">
@@ -274,7 +275,7 @@ function CategoryBlock({ title, rows }: { title: string; rows: RowVm[] }): JSX.E
       title: '日涨跌',
       dataIndex: 'changePct',
       key: 'changePct',
-      width: 110,
+      width: isMobile ? 70 : 110,
       align: 'right',
       render: (v: number | null) =>
         v == null ? <Text type="secondary">—</Text> : <ReturnTag value={v} />,
@@ -283,10 +284,10 @@ function CategoryBlock({ title, rows }: { title: string; rows: RowVm[] }): JSX.E
       title: '近30日',
       dataIndex: 'sparkline',
       key: 'sparkline',
-      width: 160,
+      width: isMobile ? 80 : 160,
       render: (s: number[]) =>
         s.length >= 2 ? (
-          <Sparkline data={s} width={140} height={26} />
+          <Sparkline data={s} width={isMobile ? 70 : 140} height={isMobile ? 20 : 26} />
         ) : (
           <Text type="secondary">—</Text>
         ),
@@ -295,7 +296,8 @@ function CategoryBlock({ title, rows }: { title: string; rows: RowVm[] }): JSX.E
       title: '数据日期',
       dataIndex: 'asOf',
       key: 'asOf',
-      width: 130,
+      width: isMobile ? 0 : 130,
+      className: isMobile ? 'ad-hidden-mobile' : undefined,
       render: (p: string | null) =>
         p ? <Text type="secondary">{p}</Text> : <Text type="secondary">未采集</Text>,
     },
@@ -303,7 +305,8 @@ function CategoryBlock({ title, rows }: { title: string; rows: RowVm[] }): JSX.E
       title: '区域',
       dataIndex: 'region',
       key: 'region',
-      width: 90,
+      width: isMobile ? 0 : 90,
+      className: isMobile ? 'ad-hidden-mobile' : undefined,
       render: (r: string) =>
         r === 'global' ? <ThemeTag variant="neutral">全球</ThemeTag> : <ThemeTag variant="accent">美国</ThemeTag>,
     },
@@ -464,6 +467,7 @@ function RecentWeekEvents(): JSX.Element | null {
 }
 
 export default function GlobalMarkets() {
+  const isMobile = useIsMobile();
   // AI Help wiring (M22-1): pass the current indicator rows plus the
   // most recent 5 political / macro news items into the help drawer
   // so the LLM has both market context and event context.
@@ -638,7 +642,7 @@ export default function GlobalMarkets() {
       )}
 
       {hasAnyData &&
-        grouped.map((g) => <CategoryBlock key={g.key} title={g.label} rows={g.rows} />)}
+        grouped.map((g) => <CategoryBlock key={g.key} title={g.label} rows={g.rows} isMobile={isMobile} />)}
     </PageShell>
     </AdxShell>
   );

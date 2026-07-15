@@ -109,26 +109,13 @@ body {
   color: var(--text-primary) !important;
 }
 
-/* Apple HIG: 默认表格行是只读的，pointer cursor 误导用户。
-   需要点击行时由调用方显式加 .ant-table-row--clickable。 */
-.ant-table-row--clickable,
-.ant-table-row--clickable .ant-table-row {
+.ant-table-row {
   cursor: pointer;
 }
 
 .ant-table-tbody > tr.ant-table-row-selected > td,
 .ant-table-tbody > tr[aria-selected="true"] > td {
   background: var(--accent-dim) !important;
-}
-
-/* 统一表格行最小高度与垂直居中，避免不同数据导致行高不一致、
-   进而出现卡片顶端对不齐的观感。 */
-.ant-table-row {
-  min-height: 48px;
-}
-
-.ant-table-tbody > tr > td {
-  vertical-align: middle !important;
 }
 
 /* Pagination */
@@ -454,7 +441,7 @@ body {
 }
 
 .ant-checkbox-checked .ant-checkbox-inner::after {
-  border-color: var(--text-on-accent);
+  border-color: #fff;
 }
 
 /* Slider */
@@ -499,12 +486,12 @@ body {
 /* Skeleton */
 .ant-skeleton-active .ant-skeleton-paragraph > li,
 .ant-skeleton-active .ant-skeleton-title {
-  background: linear-gradient(90deg, var(--bg-hover) 25%, var(--bg-active) 37%, var(--bg-hover) 63%);
+  background: linear-gradient(90deg, rgba(0, 0, 0, 0.03) 25%, rgba(0, 0, 0, 0.08) 37%, rgba(0, 0, 0, 0.03) 63%);
 }
 
 :root[data-theme="dark"] .ant-skeleton-active .ant-skeleton-paragraph > li,
 :root[data-theme="dark"] .ant-skeleton-active .ant-skeleton-title {
-  background: linear-gradient(90deg, var(--bg-hover) 25%, var(--bg-active) 37%, var(--bg-hover) 63%);
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.03) 25%, rgba(255, 255, 255, 0.08) 37%, rgba(255, 255, 255, 0.03) 63%);
 }
 
 /* ============================================================
@@ -823,11 +810,6 @@ a:focus-visible {
 
 /* ============================================================
    Accessibility: respect prefers-reduced-motion
-   Apple HIG: 位移/弹簧类动效降级为 cross-fade（仅 opacity），
-   而不是简单“冻结”——空间关系仍通过淡入淡出表达。
-   关键策略：
-   - transform / left / top / width / height / margin 等空间过渡清零；
-   - opacity / color / background / border 等非空间过渡保留 150ms cross-fade。
    ============================================================ */
 @media (prefers-reduced-motion: reduce) {
   *,
@@ -835,103 +817,14 @@ a:focus-visible {
   *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
-    /* 仅清零空间过渡；opacity 等非空间过渡在下方显式 override 保留 */
-    transition-property: transform, top, left, right, bottom,
-      width, height, margin, padding, max-height, min-height,
-      max-width, min-width, grid-template-columns, grid-template-rows,
-      background-position !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
-  }
-
-  /* 显式保留 opacity / color / background-color / border-color 的短淡入 */
-  *,
-  *::before,
-  *::after {
-    transition-property: opacity, color, background-color, border-color,
-      box-shadow, fill, stroke !important;
-    transition-duration: 150ms !important;
-    transition-timing-function: ease-out !important;
-  }
-
-  /* Slide/spring layers (drawers, modals, popovers, dropdowns) lose
-     their transform motion entirely — no travel, no rubber-band.
-     Opacity cross-fade is the only allowed spatial cue. */
-  .ant-drawer-content-wrapper,
-  .ant-drawer-content,
-  .ant-modal-content,
-  .ant-modal,
-  .ant-popover,
-  .ant-tooltip,
-  .ant-select-dropdown,
-  .ant-dropdown,
-  .ant-picker-dropdown,
-  .ant-tour,
-  .app-layout__nav-group-items {
-    transform: none !important;
-  }
-
-  /* Sidebar collapse: kill the spring transform too — jump straight to
-     the target position, but keep opacity transition for the cross-fade. */
-  .app-layout__sidebar,
-  .app-layout__main {
-    transform: none !important;
-    transition: opacity 150ms ease-out !important;
   }
 
   /* Hide CRT scanline + vignette overlays for reduced-motion users. */
   body::before,
   body::after {
     display: none;
-  }
-}
-
-/* ============================================================
-   Accessibility: prefers-reduced-transparency
-   材质层退化为不透明实色，关闭 backdrop-filter。
-   ============================================================ */
-@media (prefers-reduced-transparency: reduce) {
-  .login-glass,
-  .ant-popover-inner,
-  .ant-tooltip-inner,
-  .ant-modal-content,
-  .ant-drawer-content,
-  .ant-select-dropdown,
-  .ant-dropdown-menu,
-  .ant-picker-dropdown,
-  .ant-tour-inner {
-    background: var(--card-bg) !important;
-    backdrop-filter: none !important;
-    -webkit-backdrop-filter: none !important;
-  }
-
-  .app-layout__header,
-  .app-layout .ant-drawer-mask {
-    backdrop-filter: none !important;
-    -webkit-backdrop-filter: none !important;
-  }
-}
-
-/* ============================================================
-   Accessibility: prefers-contrast: more
-   提高边框与次要文本对比度。
-   ============================================================ */
-@media (prefers-contrast: more) {
-  :root {
-    --border-default: var(--border-strong);
-    --text-secondary: var(--text-primary);
-    --text-tertiary: var(--text-secondary);
-  }
-
-  .ant-btn-default,
-  .ant-input,
-  .ant-select-selector,
-  .ant-input-number {
-    border-width: 2px !important;
-  }
-
-  *:focus-visible {
-    outline-width: 3px;
   }
 }
 
@@ -1028,61 +921,6 @@ a:focus-visible {
   top: 0;
   z-index: 2;
   background: var(--card-bg) !important;
-}
-
-/* Subtle horizontal-scroll hint — a right-edge gradient mask that tells
-   users a table/tab strip is scrollable. Combine with .ad-table-scroll
-   or any overflow-x container.
-   Apple HIG: 提示应跟随滚动状态 — 滚动到尽头时淡出。
-   用 :hover/.ad-scroll-hint--end 控制显隐，避免一直存在的渐变误导。 */
-.ad-scroll-hint {
-  position: relative;
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-}
-
-.ad-scroll-hint::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  width: 24px;
-  background: linear-gradient(to left, var(--bg-elevated), transparent);
-  pointer-events: none;
-  z-index: 2;
-  opacity: 0;
-  transition: opacity var(--transition-fast);
-}
-
-.ad-scroll-hint:hover::after,
-.ad-scroll-hint--end::after {
-  /* 仅在用户 hover 或已滚动到尽头时显示 — 避免永久渐变干扰阅读 */
-  opacity: 0.7;
-}
-
-@media (max-width: 767px) {
-  .ad-scroll-hint::after {
-    width: 16px;
-  }
-}
-
-/* Optional: thin scrollbar styling for webkit browsers. */
-.ad-scroll-hint::-webkit-scrollbar {
-  height: 6px;
-}
-
-.ad-scroll-hint::-webkit-scrollbar-thumb {
-  background: var(--border-hover);
-  border-radius: 3px;
-}
-
-.ad-scroll-hint::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.ad-scroll-hint::-webkit-scrollbar-thumb:hover {
-  background: var(--text-muted);
 }
 
 /* Sentiment heatmap grid. */
@@ -1350,7 +1188,7 @@ a:focus-visible {
   justify-content: space-between;
   padding: var(--space-3) var(--space-4);
   border-bottom: 1px solid var(--card-border);
-  background: var(--bg-hover);
+  background: var(--bg-hover, rgba(0, 0, 0, 0.02));
   font-size: 13px;
   font-weight: 600;
   color: var(--text-primary);
@@ -1496,7 +1334,7 @@ a:focus-visible {
 .ad-detail-drawer-overlay {
   position: fixed;
   inset: 0;
-  background: var(--overlay);
+  background: rgba(0, 0, 0, 0.45);
   display: flex;
   justify-content: flex-end;
   z-index: 1000;
@@ -1618,8 +1456,7 @@ a:focus-visible {
 }
 
 .ad-letter-spacing {
-  /* Apple HIG: 用 em 表达字距，按字号缩放；0.06em ≈ body 字号下 0.84px */
-  letter-spacing: 0.06em;
+  letter-spacing: 1px;
 }
 
 /* Pre-formatted text blocks. */
@@ -1772,11 +1609,11 @@ a:focus-visible {
 
 /* Directional text colors. */
 .ad-text-rise {
-  color: var(--color-rise);
+  color: var(--color-up, #ef232a);
 }
 
 .ad-text-fall {
-  color: var(--color-fall);
+  color: var(--color-down, #14b143);
 }
 
 /* Typography helpers. */
@@ -2952,30 +2789,12 @@ main {
   left: 0;
   bottom: 0;
   z-index: 100;
-  /* Apple HIG: width 变化触发 reflow，应避免。
-     用 transform: translateX(-N) 让侧边栏“滑出”，
-     配合内部内容 opacity/translateX 的微动效表达展开/折叠。 */
-  transition: transform var(--transition-spring),
-    opacity var(--transition-spring);
+  transition: width var(--transition-slow);
   overflow: hidden;
-  will-change: transform, opacity;
 }
 
 .app-layout__sidebar--collapsed {
-  /* 把展开态宽度保留，但平移出可视区；
-     折叠态占位宽度由下方 .app-layout__main 的 margin-left 控制。
-     Sidebar 仍占据 240px 槽位，仅视觉滑出，避免 reflow。 */
-  transform: translateX(calc(-100% + 72px));
-}
-
-/* 折叠态下隐藏的内容做快速淡出 */
-.app-layout__sidebar--collapsed .app-layout__nav-group-label,
-.app-layout__sidebar--collapsed .app-layout__nav-label,
-.app-layout__sidebar--collapsed .app-layout__logo-text,
-.app-layout__sidebar--collapsed .app-layout__nav-group-header {
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity var(--transition-fast);
+  width: 72px;
 }
 
 .app-layout__logo {
@@ -3187,7 +3006,7 @@ main {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  transition: transform var(--transition-spring-fast);
+  transition: transform 180ms ease;
   opacity: 0.6;
 }
 
@@ -3197,20 +3016,14 @@ main {
 
 .app-layout__nav-group-items {
   overflow: hidden;
-  /* Apple HIG: 用 transform/opacity 替代 max-height；
-     transform 不触发 reflow，配合 spring 曲线得到丝滑展开/折叠 */
-  transform-origin: top center;
-  transform: scaleY(1);
+  transition: max-height 180ms ease, opacity 180ms ease;
   opacity: 1;
-  transition:
-    transform var(--transition-spring-fast),
-    opacity var(--transition-spring-fast);
-  will-change: transform, opacity;
+  max-height: 1200px;
 }
 
 .app-layout__nav-group-items[hidden] {
   display: block; /* override HTML hidden so we can animate */
-  transform: scaleY(0);
+  max-height: 0;
   opacity: 0;
   pointer-events: none;
 }
@@ -3287,8 +3100,7 @@ main {
 .app-layout__main {
   flex: 1;
   margin-left: 240px;
-  /* Apple HIG: 与 sidebar 同步 spring 曲线，配合 sidebar 滑入/滑出 */
-  transition: margin-left var(--transition-spring);
+  transition: margin-left var(--transition-slow);
   display: flex;
   flex-direction: column;
   min-width: 0;
@@ -3314,9 +3126,8 @@ main {
 
 .app-layout__header {
   height: 60px;
-  /* Apple HIG: 背景为不透明实色，backdrop-filter 无意义且持续触发合成层。
-     改为 translucent material（半透色 + 阴影边框）即可表达“上层”层级。 */
   background: var(--bg-base);
+  backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--border-default);
   display: flex;
   align-items: center;
@@ -3492,7 +3303,7 @@ main {
 }
 
 .app-layout .ant-drawer-mask {
-  background: var(--overlay);
+  background: rgba(0, 0, 0, 0.6);
   backdrop-filter: blur(4px);
 }
 
@@ -3501,12 +3312,12 @@ main {
    ============================================================ */
 
 /* Common section spacing for Phase 5c pages */
-.ad-section {
+.phase5c-section {
   margin-bottom: var(--space-section);
 }
 
 /* AI Chat page */
-.ad-chat-layout {
+.phase5c-chat-layout {
   display: flex;
   gap: var(--space-4);
   height: calc(100dvh - 280px);
@@ -3514,12 +3325,12 @@ main {
 }
 
 @supports not (height: 100dvh) {
-  .ad-chat-layout {
+  .phase5c-chat-layout {
     height: calc(100vh - 280px);
   }
 }
 
-.ad-chat-sidebar {
+.phase5c-chat-sidebar {
   width: 240px;
   flex-shrink: 0;
   display: flex;
@@ -3527,12 +3338,12 @@ main {
   gap: var(--space-3);
 }
 
-.ad-chat-sidebar__list {
+.phase5c-chat-sidebar__list {
   flex: 1;
   overflow: auto;
 }
 
-.ad-chat-sidebar__item {
+.phase5c-chat-sidebar__item {
   padding: var(--space-2);
   border-radius: var(--radius-lg);
   cursor: pointer;
@@ -3545,17 +3356,17 @@ main {
   transition: background var(--transition-fast), border-color var(--transition-fast);
 }
 
-.ad-chat-sidebar__item:hover,
-.ad-chat-sidebar__item:focus-visible {
+.phase5c-chat-sidebar__item:hover,
+.phase5c-chat-sidebar__item:focus-visible {
   background: var(--bg-hover);
 }
 
-.ad-chat-sidebar__item--active {
+.phase5c-chat-sidebar__item--active {
   background: var(--accent-dim);
   border-color: var(--card-border);
 }
 
-.ad-chat-sidebar__title {
+.phase5c-chat-sidebar__title {
   font-size: 13px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -3564,12 +3375,12 @@ main {
   color: var(--text-secondary);
 }
 
-.ad-chat-sidebar__item--active .ad-chat-sidebar__title {
+.phase5c-chat-sidebar__item--active .phase5c-chat-sidebar__title {
   color: var(--accent);
   font-weight: 600;
 }
 
-.ad-chat-area {
+.phase5c-chat-area {
   flex: 1;
   display: flex;
   flex-direction: column;
@@ -3580,26 +3391,26 @@ main {
   overflow: hidden;
 }
 
-.ad-chat-messages {
+.phase5c-chat-messages {
   flex: 1;
   overflow: auto;
   padding: var(--space-4) var(--space-5);
 }
 
-.ad-message-row {
+.phase5c-message-row {
   display: flex;
   margin-bottom: var(--space-4);
 }
 
-.ad-message-row--user {
+.phase5c-message-row--user {
   justify-content: flex-end;
 }
 
-.ad-message-row--assistant {
+.phase5c-message-row--assistant {
   justify-content: flex-start;
 }
 
-.ad-message-bubble {
+.phase5c-message-bubble {
   max-width: 80%;
   padding: 12px 16px;
   border-radius: var(--radius-lg);
@@ -3607,31 +3418,31 @@ main {
   line-height: 1.7;
 }
 
-.ad-message-bubble--user {
+.phase5c-message-bubble--user {
   background: var(--accent-dim);
   color: var(--accent);
   border-top-right-radius: 4px;
 }
 
-.ad-message-bubble--assistant {
+.phase5c-message-bubble--assistant {
   background: var(--bg-elevated);
   color: var(--text-primary);
   border-top-left-radius: 4px;
 }
 
-.ad-message-bubble--streaming {
+.phase5c-message-bubble--streaming {
   background: var(--bg-elevated);
   border: 1px solid var(--border-default);
   border-top-left-radius: 4px;
 }
 
-.ad-input-bar {
+.phase5c-input-bar {
   padding: var(--space-3) var(--space-5);
   border-top: 1px solid var(--border-default);
   background: var(--card-bg);
 }
 
-.ad-quick-prompts {
+.phase5c-quick-prompts {
   display: flex;
   align-items: center;
   gap: var(--space-2);
@@ -3641,67 +3452,67 @@ main {
   color: var(--text-tertiary);
 }
 
-.ad-quick-prompts__spacer {
+.phase5c-quick-prompts__spacer {
   flex: 1;
 }
 
-.ad-input-row {
+.phase5c-input-row {
   display: flex;
   gap: 10px;
 }
 
-.ad-input-row .ant-input {
+.phase5c-input-row .ant-input {
   flex: 1;
 }
 
-.ad-input-row .ant-btn {
+.phase5c-input-row .ant-btn {
   align-self: flex-end;
 }
 
 @media (max-width: 767px) {
-  .ad-chat-layout {
+  .phase5c-chat-layout {
     flex-direction: column;
     height: calc(100dvh - 220px);
     min-height: 280px;
   }
 
   @supports not (height: 100dvh) {
-    .ad-chat-layout {
+    .phase5c-chat-layout {
       height: calc(100vh - 220px);
     }
   }
 
-  .ad-chat-sidebar {
+  .phase5c-chat-sidebar {
     width: 100%;
   }
 
-  .ad-chat-messages {
+  .phase5c-chat-messages {
     padding: var(--space-3) var(--space-4);
   }
 
-  .ad-message-bubble {
+  .phase5c-message-bubble {
     max-width: 90%;
   }
 
-  .ad-input-bar {
+  .phase5c-input-bar {
     padding: var(--space-3) var(--space-4);
     position: sticky;
     bottom: 0;
     z-index: 10;
   }
 
-  .ad-quick-prompts {
+  .phase5c-quick-prompts {
     font-size: var(--text-small-size);
   }
 }
 
 /* Research notes */
-.ad-research-card {
+.phase5c-research-card {
   cursor: pointer;
   margin-bottom: var(--space-4);
 }
 
-.ad-research-card__header {
+.phase5c-research-card__header {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
@@ -3709,33 +3520,33 @@ main {
   gap: var(--space-3);
 }
 
-.ad-research-card__meta {
+.phase5c-research-card__meta {
   display: flex;
   gap: var(--space-2);
   align-items: center;
   flex-wrap: wrap;
 }
 
-.ad-research-card__code {
+.phase5c-research-card__code {
   font-size: 14px;
   font-weight: 600;
   color: var(--accent);
   font-family: var(--font-mono);
 }
 
-.ad-research-card__date {
+.phase5c-research-card__date {
   font-size: var(--text-small-size);
   color: var(--text-tertiary);
   white-space: nowrap;
 }
 
-.ad-research-card__actions {
+.phase5c-research-card__actions {
   display: flex;
   align-items: center;
   gap: var(--space-2);
 }
 
-.ad-research-card__delete {
+.phase5c-research-card__delete {
   color: var(--text-tertiary);
   font-size: 14px;
   padding: 4px;
@@ -3743,19 +3554,19 @@ main {
   transition: color 0.2s ease, background-color 0.2s ease;
 }
 
-.ad-research-card__delete:hover {
+.phase5c-research-card__delete:hover {
   color: var(--color-fall);
   background-color: var(--bg-elevated);
 }
 
-.ad-research-card__summary {
+.phase5c-research-card__summary {
   margin: 0;
   font-size: 13px;
   color: var(--text-primary);
   line-height: 1.6;
 }
 
-.ad-research-card__more {
+.phase5c-research-card__more {
   margin-top: var(--space-2);
   font-size: var(--text-small-size);
   color: var(--text-tertiary);
@@ -3765,35 +3576,35 @@ main {
 }
 
 /* KPI / metric strips */
-.ad-kpi-strip {
+.phase5c-kpi-strip {
   display: grid;
   border-top: 1px solid var(--border-default);
   border-bottom: 1px solid var(--border-default);
   margin-bottom: var(--space-5);
 }
 
-.ad-kpi-strip--cols-2 {
+.phase5c-kpi-strip--cols-2 {
   grid-template-columns: repeat(2, 1fr);
 }
 
-.ad-kpi-strip--cols-3 {
+.phase5c-kpi-strip--cols-3 {
   grid-template-columns: repeat(3, 1fr);
 }
 
-.ad-kpi-strip--cols-4 {
+.phase5c-kpi-strip--cols-4 {
   grid-template-columns: repeat(4, 1fr);
 }
 
-.ad-kpi-cell {
+.phase5c-kpi-cell {
   padding: var(--space-5) var(--space-4);
   border-right: 1px solid var(--border-default);
 }
 
-.ad-kpi-cell:last-child {
+.phase5c-kpi-cell:last-child {
   border-right: none;
 }
 
-.ad-kpi-cell__label {
+.phase5c-kpi-cell__label {
   font-size: var(--text-label-size);
   color: var(--text-tertiary);
   font-weight: 500;
@@ -3802,7 +3613,7 @@ main {
   text-transform: uppercase;
 }
 
-.ad-kpi-cell__value {
+.phase5c-kpi-cell__value {
   font-size: var(--text-data-xl-size);
   font-weight: 400;
   font-family: var(--font-mono);
@@ -3810,7 +3621,7 @@ main {
   letter-spacing: -0.02em;
 }
 
-.ad-kpi-cell__suffix {
+.phase5c-kpi-cell__suffix {
   font-size: var(--text-body-size);
   color: var(--text-tertiary);
   margin-left: 4px;
@@ -3818,79 +3629,84 @@ main {
 }
 
 @media (max-width: 767px) {
-  .ad-kpi-strip--cols-2,
-  .ad-kpi-strip--cols-3,
-  .ad-kpi-strip--cols-4 {
+  .phase5c-kpi-strip--cols-2,
+  .phase5c-kpi-strip--cols-3,
+  .phase5c-kpi-strip--cols-4 {
     grid-template-columns: repeat(2, 1fr);
   }
 
-  .ad-kpi-cell:nth-child(2n) {
+  .phase5c-kpi-cell:nth-child(2n) {
     border-right: none;
   }
 
-  .ad-kpi-cell {
+  .phase5c-kpi-cell {
     padding: var(--space-4) var(--space-3);
   }
 
-  .ad-kpi-cell__value {
+  .phase5c-kpi-cell__value {
     font-size: var(--text-data-lg-size);
   }
 }
 
 /* Trading / paper / live cards */
-.ad-trading-grid {
+.phase5c-trading-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
   gap: var(--space-4);
   margin-bottom: var(--space-6);
 }
 
-.ad-trading-card .ant-statistic-content {
+.phase5c-trading-card .ant-statistic-content {
   font-family: var(--font-mono);
 }
 
-.ad-trading-card__extra {
+.phase5c-trading-card__extra {
   font-size: var(--text-small-size);
 }
 
-.ad-action-bar {
+.phase5c-action-bar {
   display: flex;
   gap: var(--space-3);
   margin-bottom: var(--space-6);
   flex-wrap: wrap;
 }
 
-.ad-account-selector {
+.phase5c-account-selector {
   margin-bottom: var(--space-6);
 }
 
-.ad-balance-grid {
+.phase5c-balance-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
   gap: var(--space-3);
 }
 
-.ad-balance-card {
+.phase5c-balance-card {
   background: var(--bg-elevated);
 }
 
-.ad-balance-card__asset {
+.phase5c-balance-card__asset {
   font-family: var(--font-mono);
   font-weight: 600;
 }
 
-.ad-balance-card__row {
+.phase5c-balance-card__row {
   font-size: var(--text-small-size);
   color: var(--text-tertiary);
 }
 
 /* Empty states */
-.ad-empty {
+.phase5c-empty {
   padding: var(--space-9) 0;
 }
 
+/* Table wrappers */
+.phase5c-table-wrap {
+  overflow-x: auto;
+}
+
 /* Density toggle spacing */
-.ad-density-row {
+.phase5c-density-row {
   display: flex;
   align-items: center;
   justify-content: flex-end;
@@ -3898,81 +3714,106 @@ main {
 }
 
 /* Mobile back button in chat */
-.ad-mobile-back {
+.phase5c-mobile-back {
   padding: var(--space-2) var(--space-3);
   border-bottom: 1px solid var(--border-default);
 }
 
-.ad-chat-sidebar__delete {
+.phase5c-chat-sidebar__delete {
   color: var(--text-tertiary);
   font-size: 12px;
   flex-shrink: 0;
 }
 
 /* Form helpers */
-.ad-form-input--full {
+.phase5c-form-row {
+  display: flex;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.phase5c-form-input--full {
   width: 100%;
 }
 
-.ad-error-hint {
+.phase5c-error-hint {
   color: var(--color-fall);
   font-size: 12px;
   margin-top: 4px;
 }
 
-.ad-detail-line {
+.phase5c-detail-line {
   font-size: var(--text-small-size);
   color: var(--text-secondary);
   margin-left: 8px;
 }
 
-.ad-tabs--padded {
+.phase5c-tabs--padded {
   margin-bottom: 24px;
 }
 
 /* Markdown modal body */
-.ad-markdown-body {
+.phase5c-markdown-body {
   color: var(--text-primary);
   font-size: 14px;
   line-height: 1.8;
 }
 
 /* Empty state offset */
-.ad-empty-robot {
+.phase5c-empty-robot {
   margin-top: 80px;
 }
 
 /* Streaming message divider */
-.ad-streaming-divider {
+.phase5c-streaming-divider {
   margin-top: 8px;
   padding-top: 8px;
   border-top: 1px solid var(--border-default);
 }
 
 /* Trading pages */
-.ad-inline-code {
+.phase5c-inline-code {
   font-family: var(--font-mono);
 }
 
-.ad-inline-code--bold {
+.phase5c-inline-code--bold {
   font-family: var(--font-mono);
   font-weight: 600;
 }
 
-.ad-meta-label {
+.phase5c-meta-label {
   color: var(--text-tertiary);
   font-size: 12px;
   margin-bottom: 4px;
 }
 
-.ad-select-min {
+.phase5c-select-min {
   min-width: 200px;
 }
 
-.ad-flex-center {
+.phase5c-flex-center {
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+.phase5c-flex-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: center;
+}
+
+@media (max-width: 767px) {
+  /* Mobile: account-selector / live-trading header stacks vertically. */
+  .phase5c-flex-wrap {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .phase5c-flex-wrap > * {
+    width: 100%;
+  }
 }
 
 /* ============================================================
@@ -4151,7 +3992,7 @@ main {
 }
 
 .dashboard-coverage-card__pct--mid {
-  color: var(--color-warning);
+  color: var(--color-warning, #f59e0b);
 }
 
 .dashboard-coverage-card__pct--high {
@@ -4215,20 +4056,17 @@ main {
 
 .dashboard-coverage-card__badge--ok {
   color: var(--color-success-bright);
-  background: var(--color-success-dim);
-  border-color: var(--color-success-border);
+  background: rgba(40, 199, 111, 0.08);
 }
 
 .dashboard-coverage-card__badge--warn {
-  color: var(--color-error-bright);
-  background: var(--color-error-dim);
-  border-color: var(--color-error-border);
+  background: rgba(255, 90, 95, 0.08);
 }
 
 .dashboard-coverage-card__footer {
   margin-top: var(--space-3);
   padding-top: var(--space-3);
-  border-top: 1px solid var(--border-default);
+  border-top: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.06));
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -4305,23 +4143,18 @@ main {
   padding: 2px 8px;
   margin-left: 8px;
   border-radius: 999px;
-  /* Apple HIG: 最小字号 12px；原 10px 改 12px，行高收紧以匹配 pill 高度 */
-  font-size: 12px;
+  font-size: 10px;
   font-weight: 600;
-  letter-spacing: var(--tracking-small);
+  letter-spacing: 0.08em;
   font-family: var(--font-mono);
   background: var(--bg-surface);
   border: 1px solid var(--border-default);
   color: var(--text-tertiary);
   flex-shrink: 0;
   user-select: none;
-  line-height: 1.4;
 }
 
-/* Apple HIG: box-shadow 动画触发每帧重绘；改为 transform: scale + opacity，
-   用 ::after 伪元素承担涟漪扩散，配合外层保持可见圆点 */
 .ticker-status__dot {
-  position: relative;
   width: 6px;
   height: 6px;
   border-radius: 50%;
@@ -4336,6 +4169,8 @@ main {
 
 .ticker-status--live .ticker-status__dot {
   background: var(--color-success);
+  box-shadow: 0 0 0 0 var(--color-success);
+  animation: ticker-pulse 1.6s ease-out infinite;
 }
 
 .ticker-status--offline {
@@ -4344,32 +4179,14 @@ main {
 
 @keyframes ticker-pulse {
   0% {
-    transform: scale(1);
-    opacity: 0.8;
+    box-shadow: 0 0 0 0 var(--color-success-dim);
   }
   70% {
-    transform: scale(2.4);
-    opacity: 0;
+    box-shadow: 0 0 0 6px transparent;
   }
   100% {
-    transform: scale(2.4);
-    opacity: 0;
+    box-shadow: 0 0 0 0 transparent;
   }
-}
-
-/* 涟漪层：在原 dot 上叠加 ::after，承载 transform 动画 */
-.ticker-status__dot::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: 50%;
-  background: var(--color-success);
-  opacity: 0;
-  pointer-events: none;
-}
-
-.ticker-status--live .ticker-status__dot::after {
-  animation: ticker-pulse 1.6s ease-out infinite;
 }
 
 /* ---- Dashboard news row ---- */
@@ -4403,8 +4220,7 @@ main {
 
 .dashboard-news-row__importance {
   margin-left: auto;
-  /* Apple HIG: 用 em 让字距随字号缩放 */
-  letter-spacing: 0.06em;
+  letter-spacing: 1px;
 }
 
 .dashboard-news-row__star {
@@ -5268,6 +5084,25 @@ main {
   color: var(--accent);
 }
 
+.ai-drawer__mode-tag {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.ai-drawer__mode-tag--novice {
+  color: var(--color-success);
+  border-color: var(--color-success-border);
+  background: var(--color-success-dim);
+}
+
+.ai-drawer__mode-tag--pro {
+  color: var(--accent);
+  border-color: var(--accent-border);
+  background: var(--accent-dim);
+}
+
 .ai-drawer__context-tag-icon {
   margin-right: 4px;
 }
@@ -5365,7 +5200,7 @@ main {
 }
 
 .ai-drawer .ant-drawer-mask {
-  background: var(--overlay);
+  background: rgba(0, 0, 0, 0.6);
   backdrop-filter: blur(4px);
 }
 
@@ -5592,12 +5427,11 @@ main {
 }
 
 .help-popover__label {
-  /* Apple HIG: 12px 字号下限；用 weight+tracking 表达层级而非缩小字号 */
-  font-size: var(--text-label-size);
+  font-size: 10px;
   font-weight: 500;
   color: var(--text-tertiary);
   text-transform: uppercase;
-  letter-spacing: var(--tracking-label);
+  letter-spacing: 0.08em;
   margin-bottom: 6px;
 }
 
@@ -5682,12 +5516,11 @@ main {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  /* Apple HIG: 12px 字号下限 */
-  font-size: var(--text-label-size);
+  font-size: 10px;
   font-weight: 600;
   color: var(--text-tertiary);
   text-transform: uppercase;
-  letter-spacing: var(--tracking-label);
+  letter-spacing: 0.08em;
 }
 
 .help-popover__related-chips {
@@ -5931,13 +5764,12 @@ main {
 }
 
 .news-list-panel__importance {
-  /* Apple HIG: 12px 字号下限 */
-  font-size: var(--text-label-size);
+  font-size: 10px;
   color: var(--text-tertiary);
 }
 
 .news-list-panel__star {
-  font-size: 12px;
+  font-size: 9px;
   margin-right: 1px;
 }
 
@@ -5952,8 +5784,7 @@ main {
 
 .news-list-panel__category {
   margin: 0;
-  /* Apple HIG: 12px 字号下限 */
-  font-size: var(--text-label-size);
+  font-size: 10px;
 }
 
 .news-list-panel__spacer {
@@ -6002,13 +5833,7 @@ main {
 
 .score-bar__fill {
   height: 100%;
-  width: 100%;
-  /* Apple HIG: width 触发 layout；改用 scaleX + transform-origin: left center
-     等价视觉效果，但仅 compositor 处理，60fps 稳定 */
-  transform: scaleX(var(--score-fill-ratio, 0));
-  transform-origin: left center;
-  transition: transform var(--transition-spring);
-  will-change: transform;
+  transition: width 600ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .score-bar__value {
@@ -6176,8 +6001,8 @@ main {
 }
 
 .strategy-card:hover {
-  border-color: var(--accent);
-  box-shadow: var(--shadow-card-hover);
+  border-color: var(--color-primary);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
 .strategy-card__body {
@@ -6418,7 +6243,7 @@ main {
 }
 
 .admin-text-error {
-  color: var(--color-error);
+  color: var(--color-loss);
 }
 
 .admin-text-muted {
@@ -6562,24 +6387,32 @@ main {
 .ad-whitespace-nowrap { white-space: nowrap; }
 
 /* ---- AI Chat ---- */
-.ad-empty-icon {
+.phase5c-empty-icon {
   font-size: 48px;
   color: var(--text-tertiary);
 }
 
-.ad-icon-title {
+.phase5c-icon-rise {
+  color: var(--color-rise);
+}
+
+.phase5c-icon-accent {
+  color: var(--accent);
+}
+
+.phase5c-icon-title {
   color: var(--accent);
   margin-right: 6px;
 }
 
-.ad-quick-tag {
+.phase5c-quick-tag {
   cursor: pointer;
   font-size: 11px;
   margin: 0 !important;
 }
 
 /* ---- Research notes ---- */
-.ad-markdown-modal .ant-modal-body {
+.phase5c-markdown-modal .ant-modal-body {
   max-height: 70vh;
   overflow: auto;
 }
@@ -6592,77 +6425,77 @@ main {
   color: var(--color-fall);
 }
 
-.ad-order-side--buy {
+.phase5c-order-side--buy {
   font-weight: 600;
   color: var(--color-rise);
 }
-.ad-order-side--sell {
+.phase5c-order-side--sell {
   font-weight: 600;
   color: var(--color-fall);
 }
 
-.ad-status--filled {
+.phase5c-status--filled {
   color: var(--color-rise);
 }
-.ad-status--pending {
+.phase5c-status--pending {
   color: var(--accent);
 }
-.ad-status--cancelled {
+.phase5c-status--cancelled {
   color: var(--text-tertiary);
 }
-.ad-status--rejected {
+.phase5c-status--rejected {
   color: var(--color-fall);
 }
 
-.ad-select--xs { width: 120px; }
-.ad-select--sm { width: 140px; }
-.ad-select--md { width: 160px; }
-.ad-select--lg { min-width: 260px; }
+.phase5c-select--xs { width: 120px; }
+.phase5c-select--sm { width: 140px; }
+.phase5c-select--md { width: 160px; }
+.phase5c-select--lg { min-width: 260px; }
 
-.ad-input--sm { width: 100px; }
+.phase5c-input--sm { width: 100px; }
 
 @media (max-width: 767px) {
-  .ad-select--xs,
-  .ad-select--sm,
-  .ad-select--md,
-  .ad-select--lg,
-  .ad-input--sm,
-  .ad-input--md {
+  .phase5c-select--xs,
+  .phase5c-select--sm,
+  .phase5c-select--md,
+  .phase5c-select--lg,
+  .phase5c-input--sm,
+  .phase5c-input--md {
     width: 100% !important;
     min-width: 0;
   }
 }
 
-.ad-skeleton-pad {
+.phase5c-skeleton-pad {
   padding: var(--space-4);
 }
 
-.ad-pnl-stat--rise .ant-statistic-content,
-.ad-pnl-pct--rise {
+.phase5c-pnl-stat--rise .ant-statistic-content,
+.phase5c-pnl-pct--rise {
   font-weight: 600;
   color: var(--color-rise);
 }
-.ad-pnl-stat--fall .ant-statistic-content,
-.ad-pnl-pct--fall {
+.phase5c-pnl-stat--fall .ant-statistic-content,
+.phase5c-pnl-pct--fall {
   font-weight: 600;
   color: var(--color-fall);
 }
-.ad-pnl-stat--neutral .ant-statistic-content {
+.phase5c-pnl-stat--neutral .ant-statistic-content {
   font-weight: 600;
 }
-.ad-pnl-pct--neutral {
+.phase5c-pnl-pct--neutral {
   font-weight: 600;
   color: var(--text-tertiary);
 }
 
 /* ---- Signal dashboard ---- */
-.ad-kpi-cell__value--rise {
+.phase5c-kpi-cell__value--rise {
   color: var(--color-rise);
 }
-.ad-kpi-cell__value--fall {
+.phase5c-kpi-cell__value--fall {
   color: var(--color-fall);
 }
-.ad-kpi-cell__value--primary {
+.phase5c-kpi-cell__value--primary {
   color: var(--text-primary);
 }
 
@@ -6828,8 +6661,8 @@ main {
   position: absolute;
   inset: 0;
   background-image:
-    linear-gradient(var(--login-input-bg) 1px, transparent 1px),
-    linear-gradient(90deg, var(--login-input-bg) 1px, transparent 1px);
+    linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
   background-size: 60px 60px;
   pointer-events: none;
   z-index: 0;
@@ -6846,7 +6679,7 @@ main {
 .login-card {
   width: 420px;
   padding: var(--space-8) var(--space-7);
-  background: var(--login-card-bg);
+  background: rgba(17, 17, 17, 0.72);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border: 1px solid var(--card-border);
@@ -6874,7 +6707,7 @@ main {
 
 .login-logo-icon {
   font-size: 32px;
-  color: var(--text-on-accent);
+  color: #fff;
 }
 
 .login-brand {
@@ -6882,8 +6715,7 @@ main {
   font-weight: 700;
   color: var(--text-primary);
   margin: 0 0 8px 0;
-  /* Apple HIG: 用 em 让字距随字号缩放；24px → 0.04em ≈ 0.96px */
-  letter-spacing: 0.04em;
+  letter-spacing: 1px;
 }
 
 .login-subtitle {
@@ -6939,7 +6771,7 @@ main {
   border-radius: var(--radius-lg);
   border: none;
   background: var(--accent);
-  color: var(--text-on-accent);
+  color: #fff;
   font-size: 15px;
   font-weight: 600;
   cursor: pointer;
@@ -6984,7 +6816,7 @@ main {
    ============================================================ */
 
 .login-page--sci-fi {
-  background: var(--login-bg);
+  background: #05060a;
 }
 
 /* ---- Aurora background ---- */
@@ -6998,7 +6830,7 @@ main {
 .aurora-base {
   position: absolute;
   inset: 0;
-  background: var(--login-bg);
+  background: #05060a;
 }
 
 .aurora-layer {
@@ -7008,30 +6840,31 @@ main {
   width: 140%;
   height: 140%;
   border-radius: 50%;
-  /* Apple HIG: blur 静态预渲染为 filter；动画只动 transform/opacity，
-     避免浏览器每帧重新计算 filter 拉爆 GPU。 */
   filter: blur(70px);
   opacity: 0.72;
+  /* Hue shift + drift are split into two animations on the same layer so each
+     band has independent timing (some slow, some faster) without overloading
+     the keyframe engine with per-layer copies. */
   animation:
     aurora-drift 18s ease-in-out infinite,
-    aurora-saturate 24s linear infinite;
-  will-change: transform, opacity;
+    aurora-hue 24s linear infinite;
+  will-change: transform, opacity, filter;
 }
 
 .aurora-layer-1 {
-  background: radial-gradient(ellipse at 30% 20%, var(--aurora-cyan) 0%, transparent 55%);
+  background: radial-gradient(ellipse at 30% 20%, rgba(0, 229, 255, 0.26) 0%, transparent 55%);
   animation-delay: 0s, 0s;
   animation-duration: 16s, 22s;
 }
 
 .aurora-layer-2 {
-  background: radial-gradient(ellipse at 70% 60%, var(--aurora-blue) 0%, transparent 50%);
+  background: radial-gradient(ellipse at 70% 60%, rgba(0, 180, 255, 0.20) 0%, transparent 50%);
   animation-delay: -4s, -6s;
   animation-duration: 20s, 26s;
 }
 
 .aurora-layer-3 {
-  background: radial-gradient(ellipse at 50% 80%, var(--aurora-violet) 0%, transparent 45%);
+  background: radial-gradient(ellipse at 50% 80%, rgba(120, 80, 255, 0.16) 0%, transparent 45%);
   animation-delay: -8s, -12s;
   animation-duration: 24s, 28s;
 }
@@ -7039,13 +6872,13 @@ main {
 /* .aurora-layer-4 / .aurora-layer-5 add a soft teal-violet band that drifts
    along a different path; both share the .aurora-layer base class. */
 .aurora-layer-4 {
-  background: radial-gradient(ellipse at 20% 70%, var(--aurora-teal) 0%, transparent 50%);
+  background: radial-gradient(ellipse at 20% 70%, rgba(64, 220, 220, 0.18) 0%, transparent 50%);
   animation-delay: -10s, -3s;
   animation-duration: 22s, 30s;
 }
 
 .aurora-layer-5 {
-  background: radial-gradient(ellipse at 80% 30%, var(--aurora-lavender) 0%, transparent 50%);
+  background: radial-gradient(ellipse at 80% 30%, rgba(180, 120, 255, 0.16) 0%, transparent 50%);
   animation-delay: -14s, -18s;
   animation-duration: 28s, 34s;
 }
@@ -7075,13 +6908,6 @@ main {
   100% { filter: blur(70px) hue-rotate(0deg) saturate(1); }
 }
 
-/* Apple HIG: saturate 微调通过 opacity 的多关键帧伪 hue 漂移，
-   保留视觉色相变化而不触发动态 filter 重算。 */
-@keyframes aurora-saturate {
-  0%, 100% { opacity: 0.72; }
-  50%      { opacity: 0.82; }
-}
-
 /* Starfield */
 .aurora-stars {
   position: absolute;
@@ -7094,22 +6920,22 @@ main {
   width: 2px;
   height: 2px;
   border-radius: 50%;
-  background: var(--star-white);
-  box-shadow: 0 0 6px var(--star-glow-white);
+  background: rgba(255, 255, 255, 0.6);
+  box-shadow: 0 0 6px rgba(255, 255, 255, 0.35);
   animation: star-pulse 4s ease-in-out infinite;
 }
 
 .aurora-star:nth-child(3n) {
-  background: var(--star-cyan);
-  box-shadow: 0 0 8px var(--star-glow-cyan);
+  background: rgba(0, 229, 255, 0.8);
+  box-shadow: 0 0 8px rgba(0, 229, 255, 0.5);
 }
 
 /* Accent (cyan/violet) star variant — set by component for a brighter, hue-
    shifted twinkle. Falls back to the default white pulse if the variant
    isn't used. */
 .aurora-star--accent {
-  background: var(--star-accent);
-  box-shadow: 0 0 10px var(--star-glow-accent);
+  background: rgba(120, 220, 255, 0.85);
+  box-shadow: 0 0 10px rgba(0, 229, 255, 0.55);
 }
 
 @keyframes star-pulse {
@@ -7133,11 +6959,11 @@ main {
   border-radius: 999px;
   background: linear-gradient(
     90deg,
-    var(--meteor-fade) 0%,
-    var(--meteor-cyan) 35%,
-    var(--meteor-white) 100%
+    rgba(255, 255, 255, 0) 0%,
+    rgba(180, 240, 255, 0.6) 35%,
+    rgba(255, 255, 255, 0.95) 100%
   );
-  box-shadow: 0 0 6px var(--meteor-glow);
+  box-shadow: 0 0 6px rgba(0, 229, 255, 0.35);
   opacity: 0;
   transform: rotate(20deg);
   animation: meteor-fall 7s linear infinite;
@@ -7174,7 +7000,7 @@ main {
     0deg,
     transparent,
     transparent 3px,
-    var(--scanline-cyan) 4px
+    rgba(0, 229, 255, 0.02) 4px
   );
   pointer-events: none;
 }
@@ -7183,7 +7009,7 @@ main {
 .aurora-vignette {
   position: absolute;
   inset: 0;
-  background: radial-gradient(circle at center, transparent 30%, var(--vignette-dark) 100%);
+  background: radial-gradient(circle at center, transparent 30%, rgba(5, 6, 10, 0.6) 100%);
   pointer-events: none;
 }
 
@@ -7256,12 +7082,12 @@ main {
   width: 48px;
   height: 48px;
   border-radius: 14px;
-  background: linear-gradient(135deg, var(--accent-glow), var(--accent-dim));
-  border: 1px solid var(--accent-border);
+  background: linear-gradient(135deg, rgba(96, 165, 250, 0.18), rgba(167, 139, 250, 0.12));
+  border: 1px solid rgba(96, 165, 250, 0.25);
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 0 24px var(--accent-glow);
+  box-shadow: 0 0 24px rgba(96, 165, 250, 0.1);
   flex-shrink: 0;
 }
 
@@ -7292,8 +7118,8 @@ main {
   margin-top: var(--space-3);
   font-size: 12px;
   padding: var(--space-3) 0;
-  border-top: 1px solid var(--login-divider);
-  border-bottom: 1px solid var(--login-divider);
+  border-top: 1px solid rgba(255, 255, 255, 0.04);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
 }
 
 .login-source-dot {
@@ -7363,8 +7189,8 @@ main {
   gap: 12px;
   padding: 0 16px;
   height: 44px;
-  background: var(--login-input-bg);
-  border: 1px solid var(--login-input-border);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 10px;
   transition: border-color 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
 }
@@ -7372,7 +7198,7 @@ main {
 .login-page--sci-fi .login-input-wrapper:focus-within {
   border-color: var(--accent-border);
   box-shadow: 0 0 0 3px var(--accent-soft);
-  background: var(--login-input-focus-bg);
+  background: rgba(255, 255, 255, 0.05);
 }
 
 .login-page--sci-fi .login-input-icon {
@@ -7409,8 +7235,8 @@ main {
   margin-top: 8px;
   border-radius: 10px;
   border: none;
-  background: linear-gradient(135deg, var(--accent) 0%, var(--accent-hover) 100%);
-  color: var(--text-on-accent);
+  background: var(--primary-gradient);
+  color: #fff;
   font-size: 15px;
   font-weight: 600;
   cursor: pointer;
@@ -7585,9 +7411,9 @@ input:-webkit-autofill:active,
 .ant-input-affix-wrapper:-webkit-autofill,
 textarea:-webkit-autofill,
 select:-webkit-autofill {
-  -webkit-box-shadow: 0 0 0 1000px var(--bg-input) inset !important;
-  -webkit-text-fill-color: var(--text-primary) !important;
-  caret-color: var(--text-primary) !important;
+  -webkit-box-shadow: 0 0 0 1000px var(--bg-input, #ffffff) inset !important;
+  -webkit-text-fill-color: var(--text-primary, #111113) !important;
+  caret-color: var(--text-primary, #111113) !important;
   transition: background-color 5000s ease-in-out 0s !important;
 }
 
@@ -7599,8 +7425,8 @@ select:-webkit-autofill {
 :root[data-theme="dark"] .ant-input:-webkit-autofill,
 :root[data-theme="dark"] textarea:-webkit-autofill,
 :root[data-theme="dark"] select:-webkit-autofill {
-  -webkit-box-shadow: 0 0 0 1000px var(--bg-base) inset !important;
-  -webkit-text-fill-color: var(--text-primary) !important;
+  -webkit-box-shadow: 0 0 0 1000px var(--bg-base, #0a0a0a) inset !important;
+  -webkit-text-fill-color: var(--text-primary, #f5f5f0) !important;
 }
 
 /* Hide Chrome / Edge's built-in credential autofill icons (small key/lock)
@@ -7621,18 +7447,18 @@ input[type="password"]::-webkit-strong-password-auto-fill-button {
 .login-page--sci-fi .login-input:-webkit-autofill:hover,
 .login-page--sci-fi .login-input:-webkit-autofill:focus,
 .login-page--sci-fi .login-input:-webkit-autofill:active {
-  -webkit-box-shadow: 0 0 0 1000px var(--bg-input) inset !important;
+  -webkit-box-shadow: 0 0 0 1000px rgba(255, 255, 255, 0.03) inset !important;
   -webkit-text-fill-color: var(--text-primary) !important;
   caret-color: var(--accent) !important;
   transition: background-color 5000s ease-in-out 0s !important;
 }
 
 .login-page--sci-fi .login-input-wrapper:focus-within .login-input:-webkit-autofill {
-  -webkit-box-shadow: 0 0 0 1000px var(--bg-active) inset !important;
+  -webkit-box-shadow: 0 0 0 1000px rgba(255, 255, 255, 0.05) inset !important;
 }
 
 /* Inline-style cleanup extras */
-.ad-tag-xs {
+.phase5c-tag-xs {
   font-size: 10px !important;
 }
 
@@ -7643,8 +7469,8 @@ input[type="password"]::-webkit-strong-password-auto-fill-button {
 .ad-justify-center { justify-content: center; }
 .ad-slider--sm { width: 120px; }
 
-.ad-select--xxs { width: 90px; }
-.ad-input--md { width: 220px; }
+.phase5c-select--xxs { width: 90px; }
+.phase5c-input--md { width: 220px; }
 
 /* ============================================================
    Auth loading + global error boundary
@@ -7679,17 +7505,19 @@ input[type="password"]::-webkit-strong-password-auto-fill-button {
 .page-header-tutorial {
   margin-top: var(--space-2, 8px);
   padding: var(--space-3, 12px) var(--space-4, 16px);
-  background: linear-gradient(135deg, var(--accent-dim), var(--accent-glow));
-  border-left: 3px solid var(--accent);
+  background: linear-gradient(135deg,
+    rgba(64, 169, 255, 0.08),
+    rgba(120, 109, 245, 0.06));
+  border-left: 3px solid var(--color-primary, #4096ff);
   border-radius: 6px;
   font-size: 13px;
   line-height: 1.6;
-  color: var(--text-secondary);
+  color: var(--text-secondary, #555);
   max-width: 880px;
 }
 
 .page-header-tutorial b {
-  color: var(--accent);
+  color: var(--color-primary, #4096ff);
   font-weight: 600;
 }
 
@@ -7698,7 +7526,7 @@ input[type="password"]::-webkit-strong-password-auto-fill-button {
   margin-top: 6px;
   font-size: 12px;
   line-height: 1.4;
-  color: var(--text-tertiary);
+  color: var(--text-tertiary, #888);
   display: inline-flex;
   align-items: center;
   gap: 4px;
@@ -7714,7 +7542,7 @@ input[type="password"]::-webkit-strong-password-auto-fill-button {
 }
 
 .stat-explainer--clickable:hover {
-  color: var(--accent);
+  color: var(--color-primary, #4096ff);
 }
 
 .stat-explainer__icon {
@@ -7799,7 +7627,7 @@ input[type="password"]::-webkit-strong-password-auto-fill-button {
   border: 1px solid var(--accent-border);
   border-left: 5px solid var(--accent);
   border-radius: var(--radius-sm);
-  box-shadow: var(--shadow-sm);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
 }
 
 .daily-lesson__tip-icon {
@@ -7938,7 +7766,7 @@ input[type="password"]::-webkit-strong-password-auto-fill-button {
 
 .app-layout__user-menu-label {
   font-size: 12px;
-  color: var(--text-tertiary);
+  color: var(--text-tertiary, #888);
   display: flex;
   align-items: center;
   gap: 6px;
@@ -7955,7 +7783,7 @@ input[type="password"]::-webkit-strong-password-auto-fill-button {
   margin: var(--space-2, 8px) 0;
   padding: 8px 10px;
   border-radius: 8px;
-  background: var(--accent-dim);
+  background: rgba(64, 169, 255, 0.04);
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
 }
@@ -7963,7 +7791,7 @@ input[type="password"]::-webkit-strong-password-auto-fill-button {
 .dashboard-learning-chips__label {
   font-size: 12px;
   font-weight: 600;
-  color: var(--text-secondary);
+  color: var(--text-secondary, #555);
   white-space: nowrap;
 }
 
@@ -7973,7 +7801,7 @@ input[type="password"]::-webkit-strong-password-auto-fill-button {
 }
 
 .dashboard-learning-chip:hover {
-  box-shadow: var(--shadow-sm);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
 }
 
 @media (max-width: 767px) {
@@ -8015,13 +7843,13 @@ input[type="password"]::-webkit-strong-password-auto-fill-button {
 .learning-scenario-card__title {
   font-size: 17px;
   font-weight: 600;
-  color: var(--text-primary);
+  color: var(--text-primary, #222);
   line-height: 1.3;
 }
 
 .learning-scenario-card__tagline {
   font-size: 13px;
-  color: var(--text-secondary);
+  color: var(--text-secondary, #555);
   margin-top: 4px;
 }
 
@@ -8039,7 +7867,7 @@ input[type="password"]::-webkit-strong-password-auto-fill-button {
   margin-bottom: 8px;
   font-size: 13.5px;
   line-height: 1.6;
-  color: var(--text-primary);
+  color: var(--text-primary, #222);
 }
 
 .learning-scenario-card__step-num {
@@ -8047,8 +7875,8 @@ input[type="password"]::-webkit-strong-password-auto-fill-button {
   width: 22px;
   height: 22px;
   border-radius: 50%;
-  background: var(--accent-dim);
-  color: var(--accent);
+  background: rgba(64, 169, 255, 0.12);
+  color: var(--color-primary, #4096ff);
   font-weight: 600;
   font-size: 12px;
   display: inline-flex;
@@ -8072,12 +7900,12 @@ input[type="password"]::-webkit-strong-password-auto-fill-button {
 
 .learning-scenario-card__initial-q {
   font-size: 12.5px;
-  color: var(--text-tertiary);
+  color: var(--text-tertiary, #888);
   line-height: 1.5;
 }
 
 .learning-scenario-card__initial-q-label {
-  color: var(--accent);
+  color: var(--color-primary, #4096ff);
   font-weight: 600;
   margin-right: 4px;
 }
@@ -8215,7 +8043,7 @@ input[type="password"]::-webkit-strong-password-auto-fill-button {
 .stat-card__explainer {
   margin-top: 6px;
   padding-top: 2px;
-  border-top: 1px dashed var(--border-default);
+  border-top: 1px dashed rgba(0, 0, 0, 0.04);
 }
 
 @media (max-width: 575px) {
@@ -8258,26 +8086,26 @@ input[type="password"]::-webkit-strong-password-auto-fill-button {
   width: 22px;
   height: 22px;
   border-radius: 50%;
-  background: var(--accent-dim);
-  color: var(--accent);
+  background: rgba(64, 169, 255, 0.12);
+  color: var(--color-primary, #4096ff);
 }
 
 .onboarding-tour__indicator {
   font-size: 12px;
-  color: var(--text-tertiary);
+  color: var(--text-tertiary, #888);
   font-variant-numeric: tabular-nums;
 }
 
 .onboarding-tour__title {
   font-size: 16px;
   font-weight: 600;
-  color: var(--text-primary);
+  color: var(--text-primary, #222);
   margin-bottom: 4px;
 }
 
 .onboarding-tour__desc {
   font-size: 13px;
-  color: var(--text-secondary);
+  color: var(--text-secondary, #555);
   line-height: 1.55;
 }
 
@@ -8328,7 +8156,7 @@ input[type="password"]::-webkit-strong-password-auto-fill-button {
 .ad-news-events-list__title {
   font-size: 13.5px;
   line-height: 1.5;
-  color: var(--text-primary);
+  color: var(--text-primary, #222);
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
@@ -8586,24 +8414,19 @@ input[type="password"]::-webkit-strong-password-auto-fill-button {
   border-radius: 0;
 }
 
-/* The animation block (kept from K17) so collapse/expand is smooth.
-   Apple HIG: 用 transform/opacity 替代 max-height，避免 reflow。 */
+/* The animation block (kept from K17) so collapse/expand is smooth. */
 .app-layout__nav-group-items {
   overflow: hidden;
-  transform-origin: top center;
-  transform: scaleY(1);
+  transition: max-height 180ms ease, opacity 180ms ease;
   opacity: 1;
-  transition:
-    transform var(--transition-spring-fast),
-    opacity var(--transition-spring-fast);
-  will-change: transform, opacity;
+  max-height: 1600px;
 }
 
 /* Override HTML [hidden] only for the visual animation; screen readers
    still see the `hidden` attribute and skip collapsed items. */
 .app-layout__nav-group-items[hidden] {
   display: block;
-  transform: scaleY(0);
+  max-height: 0;
   opacity: 0;
   pointer-events: none;
 }
@@ -8832,34 +8655,21 @@ input[type="password"]::-webkit-strong-password-auto-fill-button {
 
 /* ============================================================
    Shimmer skeleton — 优雅的加载骨架动画
-   Apple HIG: background-position 触发每帧 paint；
-   改用 translateX 移动内部 ::after 高光条带，仅 compositor 工作。
    ============================================================ */
 @keyframes shimmer {
-  0%   { transform: translateX(-100%); }
-  100% { transform: translateX(100%); }
+  0%   { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
 }
 .skeleton-shimmer {
-  position: relative;
-  overflow: hidden;
-  background: var(--bg-hover);
-  border-radius: var(--radius-sm);
-}
-
-.skeleton-shimmer::after {
-  content: '';
-  position: absolute;
-  inset: 0;
   background: linear-gradient(
     90deg,
-    transparent 0%,
+    var(--bg-hover) 25%,
     var(--bg-surface) 50%,
-    transparent 100%
+    var(--bg-hover) 75%
   );
-  width: 50%;
-  transform: translateX(-100%);
+  background-size: 200% 100%;
   animation: shimmer 2s ease-in-out infinite;
-  pointer-events: none;
+  border-radius: var(--radius-sm);
 }
 
 /* ============================================================
@@ -8881,11 +8691,14 @@ input[type="password"]::-webkit-strong-password-auto-fill-button {
   opacity: 0.6;
 }
 
-/* 表格行悬停：使用统一纯色背景，避免渐变在左侧形成竖线状色块，
-   同时保证所有行 hover 状态不引入额外 padding/margin/border。 */
+/* 表格行悬停：渐变背景替代纯色（感觉更流畅） */
 .ant-table-tbody > tr:hover > td {
-  background: var(--bg-hover) !important;
-  color: var(--text-primary) !important;
+  background: linear-gradient(
+    90deg,
+    var(--bg-hover) 0%,
+    var(--bg-hover) 98%,
+    transparent 100%
+  ) !important;
 }
 
 /* 标签（Tag）精致化：稍许增加圆角和内边距 */
@@ -8906,22 +8719,13 @@ input[type="password"]::-webkit-strong-password-auto-fill-button {
   border: none !important;
 }
 
-/* Card 顶部彩色条：使用内阴影实现，不改变 border 厚度，
-   避免 hover 时卡片整体高度/对齐发生偏移。 */
+/* Card 增加微妙的顶部彩色条（2px）作为视觉锚点 */
 .ad-panel--default {
-  position: relative;
+  border-top: 2px solid transparent;
+  transition: border-color 200ms;
 }
-.ad-panel--default::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  pointer-events: none;
-  box-shadow: inset 0 2px 0 0 transparent;
-  transition: box-shadow 200ms;
-}
-.ad-panel--default:hover::before {
-  box-shadow: inset 0 2px 0 0 var(--border-accent);
+.ad-panel--default:hover {
+  border-top-color: var(--border-accent);
 }
 
 /* ============================================================
@@ -8996,219 +8800,4 @@ input[type="password"]::-webkit-strong-password-auto-fill-button {
 }
 .ad-col-rating {
   padding-right: 16px !important;
-}
-
-/* ============================================================
-   Apple Fluid Interfaces — motion, materials, press feedback
-   (2026-07-14) 全部规则向后兼容：只使用 theme.css 中的 token。
-   ============================================================ */
-
-/* ---- 1. Response: pointer-down 即时反馈 ---------------------
-   反馈发生在按下瞬间（:active = pointer down），不等 release。
-   仅 animate transform/background，保证 60fps。 */
-.ant-btn:not([disabled]):not(.ant-btn-loading) {
-  transition: transform var(--transition-fast),
-    background var(--transition-fast),
-    border-color var(--transition-fast),
-    color var(--transition-fast),
-    box-shadow var(--transition-fast);
-}
-
-.ant-btn:not([disabled]):not(.ant-btn-loading):active {
-  transform: scale(var(--press-scale));
-}
-
-/* 行/卡片类可点击元素：按下即改变背景（tap highlight 等价物） */
-.app-layout__nav-item:active,
-.app-layout__nav-group-header:active,
-.app-layout__icon-btn:active,
-.app-layout__header-collapse:active,
-.app-layout__user:active,
-.app-layout__breadcrumb-link:active,
-.ad-status-chip:active,
-.ad-news-card:active,
-.ad-mover-row:active,
-.ad-chat-sidebar__item:active,
-.ticker-cell:active,
-.ai-drawer__quick-tag:not(.ai-drawer__quick-tag--disabled):active,
-.help-popover__related-chip:active,
-.help-popover__trigger:active,
-.ad-heatmap-cell:active,
-.instrument-code-tag--clickable:active {
-  background: var(--bg-active) !important;
-}
-
-.stat-card--clickable,
-.content-card {
-  transition: transform var(--transition-fast),
-    border-color var(--transition-fast),
-    background var(--transition-fast),
-    box-shadow var(--transition-fast);
-}
-
-.stat-card--clickable:active {
-  transform: scale(var(--press-scale-subtle));
-}
-
-/* ---- 2. Springs: antd 覆盖层动效换为临界阻尼弹簧曲线 -------
-   drawer / modal / popover / dropdown 的进入离场全部走
-   --ease-spring（阻尼 1.0，无回弹）；回弹曲线仅留给动量交互。
-   Apple HIG: will-change 仅在 enter/leave 期间临时申请，
-   通过 .ant-motion-collapse-active 等动效类标识，避免持续占用 GPU 层。 */
-.ant-drawer-content-wrapper {
-  transition: transform var(--transition-spring) !important;
-}
-
-.ant-modal-content {
-  transition: transform var(--transition-spring),
-    opacity var(--transition-spring) !important;
-}
-
-/* 仅在 antd 内部动效活跃态（enter/leave 期间）申请 will-change */
-.ant-motion-collapse-active,
-.ant-drawer-content-wrapper.ant-motion,
-.ant-modal.ant-motion,
-.ant-popover.ant-motion,
-.ant-tooltip.ant-motion,
-.ant-select-dropdown.ant-motion,
-.ant-dropdown.ant-motion,
-.ant-picker-dropdown.ant-motion {
-  will-change: transform, opacity;
-}
-
-/* antd rc-motion 内部 class：统一弹簧曲线 + 时长 */
-.ant-motion-collapse,
-.ant-motion-collapse-active,
-.zoom-enter,
-.zoom-enter-active,
-.zoom-appear,
-.zoom-appear-active,
-.zoom-leave,
-.zoom-leave-active,
-.slide-up-enter,
-.slide-up-enter-active,
-.slide-up-appear,
-.slide-up-appear-active,
-.slide-up-leave,
-.slide-up-leave-active,
-.move-up-enter,
-.move-up-enter-active,
-.move-up-leave,
-.move-up-leave-active {
-  transition-timing-function: var(--ease-spring) !important;
-}
-
-/* ---- 3. Spatial consistency: transform-origin 锚定触发点 ----
-   覆盖层从触发元素方向长出/收回（enter/exit 同路径镜像）。 */
-.ant-popover[data-popper-placement^="top"],
-.ant-tooltip[data-popper-placement^="top"] {
-  transform-origin: bottom center;
-}
-
-.ant-popover[data-popper-placement^="bottom"],
-.ant-tooltip[data-popper-placement^="bottom"] {
-  transform-origin: top center;
-}
-
-.ant-popover[data-popper-placement^="left"],
-.ant-tooltip[data-popper-placement^="left"] {
-  transform-origin: right center;
-}
-
-.ant-popover[data-popper-placement^="right"],
-.ant-tooltip[data-popper-placement^="right"] {
-  transform-origin: left center;
-}
-
-.ant-select-dropdown,
-.ant-dropdown,
-.ant-picker-dropdown {
-  transform-origin: top center;
-}
-
-/* ---- 4. Materials & depth: 半透明材质层 --------------------
-   弹层不再只是 fade in，而是“materialize”：模糊 + 饱和提亮，
-   内容在层下滚动时仍可感知层级。 */
-.ant-popover-inner,
-.ant-tooltip-inner {
-  background: var(--material-regular-bg) !important;
-  backdrop-filter: var(--material-regular-blur);
-  -webkit-backdrop-filter: var(--material-regular-blur);
-}
-
-.ant-select-dropdown,
-.ant-dropdown-menu,
-.ant-picker-dropdown {
-  background: var(--material-regular-bg) !important;
-  backdrop-filter: var(--material-regular-blur);
-  -webkit-backdrop-filter: var(--material-regular-blur);
-}
-
-/* Drawer/Modal 是大面积材质的全屏层。
-   Apple HIG: blur(30px) 在全屏元素上 GPU 负担过重、视觉收益递减。
-   改用 regular material（20px），配合阴影边框表达层级。 */
-.ant-drawer-content {
-  background: var(--material-regular-bg) !important;
-  backdrop-filter: var(--material-regular-blur);
-  -webkit-backdrop-filter: var(--material-regular-blur);
-  box-shadow: var(--shadow-lg);
-}
-
-.ant-modal-content {
-  background: var(--material-regular-bg) !important;
-  backdrop-filter: var(--material-regular-blur);
-  -webkit-backdrop-filter: var(--material-regular-blur);
-  box-shadow: var(--shadow-lg);
-}
-
-/* Drawer body 保持不透明基底，文字始终在实色上（可读性优先） */
-.ant-drawer-body {
-  background: var(--bg-base) !important;
-}
-
-/* ---- 5. Rubber-banding 边界: 滚动容器隔离 + 边界阻尼 -------
-   Web 等价实现：overscroll-behavior 防止滚动链穿透到 body，
-   边界处由浏览器原生 rubber-band（iOS）或阻尼（其他）接管。 */
-.app-layout__nav,
-.app-layout__content,
-.ai-drawer__messages,
-.ad-chat-messages,
-.ad-chat-sidebar__list,
-.ant-drawer-body,
-.ant-modal-body,
-.news-translation-pair__body,
-.ad-table-scroll,
-.ad-scroll-hint,
-.ant-table-wrapper {
-  overscroll-behavior: contain;
-}
-
-/* 触屏滚动物理惯性 */
-.app-layout__content,
-.ai-drawer__messages,
-.ad-chat-messages,
-.ant-drawer-body {
-  -webkit-overflow-scrolling: touch;
-}
-
-/* ---- 6. Typography: size-specific tracking -----------------
-   大字号收紧、小字号放宽（仅覆盖尚未显式声明 letter-spacing 的
-   关键层级；已有声明的规则保持原值）。 */
-.page-header-title,
-.masthead-title,
-.ad-detail-title {
-  letter-spacing: var(--tracking-h1);
-}
-
-.ad-section-heading__title {
-  letter-spacing: var(--tracking-h3);
-}
-
-.ad-metric-item__value {
-  letter-spacing: var(--tracking-data);
-}
-
-.empty-state__description,
-.page-header-description {
-  letter-spacing: var(--tracking-small);
 }

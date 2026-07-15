@@ -17,7 +17,6 @@ import {
   Switch,
   Table,
 } from 'antd';
-import type { ColumnsType } from 'antd/es/table';
 import PageShell from '@/components/PageShell';
 import PageHeader from '@/components/PageHeader';
 import Panel from '@/components/Panel';
@@ -191,13 +190,11 @@ export default function TradingPanel() {
   };
 
   // --- Position table columns ---
-  const positionColumns: ColumnsType<LivePosition> = [
+  const positionColumns = [
     {
       title: '币种',
       dataIndex: 'instrument_code',
       key: 'code',
-      fixed: 'left',
-      width: 140,
       render: (_: string, r: LivePosition) => (
         <InstrumentCodeTag code={r.instrument_code} name={r.instrument_name} />
       ),
@@ -251,13 +248,11 @@ export default function TradingPanel() {
   ];
 
   // --- Order table columns ---
-  const orderColumns: ColumnsType<LiveOrder> = [
+  const orderColumns = [
     {
       title: '时间',
       dataIndex: 'created_at',
       key: 'time',
-      fixed: 'left',
-      width: 150,
       responsive: ['md'] as ('md' | 'lg' | 'xl' | 'xxl')[],
       render: (v: string | null) => formatDateTime(v),
     },
@@ -266,7 +261,7 @@ export default function TradingPanel() {
       dataIndex: 'side',
       key: 'side',
       render: (v: string) => (
-        <span className={v === 'BUY' ? 'ad-order-side--buy' : 'ad-order-side--sell'}>
+        <span className={v === 'BUY' ? 'phase5c-order-side--buy' : 'phase5c-order-side--sell'}>
           {v === 'BUY' ? '买入' : '卖出'}
         </span>
       ),
@@ -312,8 +307,6 @@ export default function TradingPanel() {
     {
       title: '操作',
       key: 'actions',
-      fixed: 'right',
-      width: 100,
       render: (_: unknown, r: LiveOrder) =>
         r.status === 'pending' || r.status === 'new' ? (
           <Popconfirm
@@ -360,8 +353,8 @@ export default function TradingPanel() {
         }
       />
 
-      <Panel variant="default" className="ad-account-selector">
-        <div className="ad-flex ad-flex-wrap">
+      <Panel variant="default" className="phase5c-account-selector">
+        <div className="phase5c-flex-wrap">
           {configsLoading ? (
             <Skeleton.Input active size="small" />
           ) : configs.length === 0 ? (
@@ -373,18 +366,18 @@ export default function TradingPanel() {
             <Select
               value={selectedConfigId}
               onChange={setSelectedConfigId}
-              className="ad-select-min"
+              className="phase5c-select-min"
               options={configs.map((c) => ({
                 value: c.id,
                 label: (
                   <Space>
                     <span>{c.name}</span>
                     {c.is_testnet ? (
-                      <ThemeTag variant="warning" className="ad-tag-xs">
+                      <ThemeTag variant="warning" className="phase5c-tag-xs">
                         TESTNET
                       </ThemeTag>
                     ) : (
-                      <ThemeTag variant="error" className="ad-tag-xs">
+                      <ThemeTag variant="error" className="phase5c-tag-xs">
                         LIVE
                       </ThemeTag>
                     )}
@@ -420,8 +413,8 @@ export default function TradingPanel() {
       {selectedConfig && (
         <>
           <SectionHeading title="风控与限额" />
-          <ResponsiveGrid cols={4} gap="md" className="ad-section">
-            <Card size="small" className="ad-trading-card">
+          <ResponsiveGrid cols={4} gap="md" className="phase5c-section">
+            <Card size="small" className="phase5c-trading-card">
               <Statistic
                 title="今日订单"
                 value={risk?.orders_today ?? 0}
@@ -429,7 +422,7 @@ export default function TradingPanel() {
                 loading={riskLoading}
               />
             </Card>
-            <Card size="small" className="ad-trading-card">
+            <Card size="small" className="phase5c-trading-card">
               <Statistic
                 title="单笔上限"
                 value={selectedConfig.max_order_value}
@@ -437,8 +430,8 @@ export default function TradingPanel() {
                 loading={configsLoading}
               />
             </Card>
-            <Card size="small" className="ad-trading-card">
-              <div className={risk && Number(risk.realized_pnl_today) > 0 ? 'ad-pnl-stat--rise' : risk && Number(risk.realized_pnl_today) < 0 ? 'ad-pnl-stat--fall' : 'ad-pnl-stat--neutral'}>
+            <Card size="small" className="phase5c-trading-card">
+              <div className={risk && Number(risk.realized_pnl_today) > 0 ? 'phase5c-pnl-stat--rise' : risk && Number(risk.realized_pnl_today) < 0 ? 'phase5c-pnl-stat--fall' : 'phase5c-pnl-stat--neutral'}>
                 <Statistic
                   title="今日已实现"
                   value={Number.isFinite(Number(risk?.realized_pnl_today)) ? Number(risk?.realized_pnl_today) : 0}
@@ -448,10 +441,10 @@ export default function TradingPanel() {
                 />
               </div>
             </Card>
-            <Card size="small" className="ad-trading-card">
-              <div className="ad-flex-center">
+            <Card size="small" className="phase5c-trading-card">
+              <div className="phase5c-flex-center">
                 <div>
-                  <div className="ad-meta-label">
+                  <div className="phase5c-meta-label">
                     熔断状态
                   </div>
                   <RiskBadge risk={risk} />
@@ -478,34 +471,34 @@ export default function TradingPanel() {
           </ResponsiveGrid>
 
           <SectionHeading title="账户余额" />
-          <Panel variant="default" className="ad-section">
+          <Panel variant="default" className="phase5c-section">
             {accountLoading ? (
               <Skeleton active paragraph={{ rows: 3 }} />
             ) : account && account.balances.length > 0 ? (
-              <div className="ad-balance-grid">
+              <div className="phase5c-balance-grid">
                 {account.balances.map((b) => (
-                  <Card key={b.asset} size="small" className="ad-balance-card">
-                    <div className="ad-balance-card__asset">
+                  <Card key={b.asset} size="small" className="phase5c-balance-card">
+                    <div className="phase5c-balance-card__asset">
                       {b.asset}
                     </div>
-                    <div className="ad-balance-card__row">
+                    <div className="phase5c-balance-card__row">
                       可用: {fmtNumberString(b.free)}
                     </div>
-                    <div className="ad-balance-card__row">
+                    <div className="phase5c-balance-card__row">
                       冻结: {fmtNumberString(b.locked)}
                     </div>
                   </Card>
                 ))}
               </div>
             ) : (
-              <div className="ad-empty">
+              <div className="phase5c-empty">
                 <EmptyState title="无余额数据" description="当前账户没有余额数据" />
               </div>
             )}
           </Panel>
 
           <SectionHeading title="操作" />
-          <div className="ad-action-bar ad-section">
+          <div className="phase5c-action-bar phase5c-section">
             <Button
               icon={<PlusOutlined />}
               type="primary"
@@ -517,10 +510,10 @@ export default function TradingPanel() {
           </div>
 
           <SectionHeading title="当前持仓" />
-          <Panel variant="default" className="ad-section">
-            <div className="ad-table-scroll">
+          <Panel variant="default" className="phase5c-section">
+            <div className="phase5c-table-wrap">
               {positionsLoading ? (
-                <Skeleton active paragraph={{ rows: 5 }} className="ad-skeleton-pad" />
+                <Skeleton active paragraph={{ rows: 5 }} className="phase5c-skeleton-pad" />
               ) : positions && positions.length > 0 ? (
                 <Table
                   columns={positionColumns}
@@ -531,7 +524,7 @@ export default function TradingPanel() {
                   scroll={{ x: 'max-content' }}
                 />
               ) : (
-                <div className="ad-empty">
+                <div className="phase5c-empty">
                   <EmptyState title="暂无持仓" description="当前账户没有持仓记录" />
                 </div>
               )}
@@ -540,9 +533,9 @@ export default function TradingPanel() {
 
           <SectionHeading title="最近订单" />
           <Panel variant="default">
-            <div className="ad-table-scroll">
+            <div className="phase5c-table-wrap">
               {ordersLoading ? (
-                <Skeleton active paragraph={{ rows: 5 }} className="ad-skeleton-pad" />
+                <Skeleton active paragraph={{ rows: 5 }} className="phase5c-skeleton-pad" />
               ) : orders && orders.length > 0 ? (
                 <Table
                   columns={orderColumns}
@@ -553,7 +546,7 @@ export default function TradingPanel() {
                   scroll={{ x: 'max-content' }}
                 />
               ) : (
-                <div className="ad-empty">
+                <div className="phase5c-empty">
                   <EmptyState title="暂无订单" description="当前账户没有订单记录" />
                 </div>
               )}
@@ -570,14 +563,6 @@ export default function TradingPanel() {
         confirmLoading={createConfig.isPending}
         width={isMobile ? '100%' : 520}
         destroyOnClose
-        // Spring-eased dialog transitions + transform-origin anchored to
-        // the page top so the modal enters along a single vertical path
-        // (Springs + Spatial consistency). The CSS variables come from
-        // theme.css; the wrapper class hooks .ant-modal at styles.css.
-        transitionName="ad-modal-spring"
-        maskTransitionName="ad-fade-spring"
-        rootClassName="ad-modal-spring-root"
-        className="ad-modal-spring"
       >
         <Form
           form={createForm}
@@ -603,13 +588,13 @@ export default function TradingPanel() {
             <Switch />
           </Form.Item>
           <Form.Item name="max_order_value" label="单笔最大金额 (USDT)">
-            <InputNumber min={0} className="ad-form-input--full" />
+            <InputNumber min={0} className="phase5c-form-input--full" />
           </Form.Item>
           <Form.Item name="max_daily_loss" label="每日最大亏损 (USDT)">
-            <InputNumber min={0} className="ad-form-input--full" />
+            <InputNumber min={0} className="phase5c-form-input--full" />
           </Form.Item>
           <Form.Item name="max_daily_orders" label="每日最多下单次数">
-            <InputNumber min={1} max={1000} className="ad-form-input--full" />
+            <InputNumber min={1} max={1000} className="phase5c-form-input--full" />
           </Form.Item>
         </Form>
       </Modal>
@@ -622,10 +607,6 @@ export default function TradingPanel() {
         confirmLoading={placeOrder.isPending}
         width={isMobile ? '100%' : 520}
         destroyOnClose
-        transitionName="ad-modal-spring"
-        maskTransitionName="ad-fade-spring"
-        rootClassName="ad-modal-spring-root"
-        className="ad-modal-spring"
       >
         <Form
           form={orderForm}
@@ -657,10 +638,10 @@ export default function TradingPanel() {
             />
           </Form.Item>
           <Form.Item name="quantity" label="数量" rules={[{ required: true }]}>
-            <InputNumber min={0.00000001} step={0.001} className="ad-form-input--full" />
+            <InputNumber min={0.00000001} step={0.001} className="phase5c-form-input--full" />
           </Form.Item>
           <Form.Item name="price" label="限价 (市价单留空)">
-            <InputNumber min={0} className="ad-form-input--full" placeholder="市价" />
+            <InputNumber min={0} className="phase5c-form-input--full" placeholder="市价" />
           </Form.Item>
         </Form>
       </Modal>

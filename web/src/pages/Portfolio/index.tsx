@@ -1,14 +1,12 @@
 import './styles.css';
 import { useMemo } from 'react';
-import { Link } from 'react-router-dom';
-import { Alert, Skeleton, Table, Tag, Tooltip } from 'antd';
+import { Card, Skeleton, Table, Tag, Tooltip } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import {
   DollarOutlined,
   ThunderboltOutlined,
   AppstoreOutlined,
   WarningOutlined,
-  ExperimentOutlined,
 } from '@ant-design/icons';
 import PageShell from '@/components/PageShell';
 import PageHeader from '@/components/PageHeader';
@@ -17,7 +15,6 @@ import EmptyState from '@/components/EmptyState';
 import ResponsiveGrid from '@/components/ResponsiveGrid';
 import SectionHeading from '@/components/SectionHeading';
 import ThemeTag from '@/components/ThemeTag';
-import StatCard from '@/components/StatCard';
 import { usePaperAccounts } from '@/hooks/usePaperTrading';
 import { useLiveConfigs } from '@/hooks/useLiveTrading';
 import { usePoolList } from '@/hooks/usePoolDetail';
@@ -167,7 +164,7 @@ export default function Portfolio() {
       title: '持仓',
       width: 100,
       render: (_: unknown, row: PaperAccountRow) => (
-        <Link to={`/paper-trading?account=${row.id}`}>查看</Link>
+        <a href={`/paper-trading?account=${row.id}`}>查看</a>
       ),
     },
   ];
@@ -256,9 +253,9 @@ export default function Portfolio() {
             </span>
           }
           action={
-            <Link to="/paper-trading" className="ad-text-small">
+            <a href="/paper-trading" className="ad-text-small">
               管理模拟账户 →
-            </Link>
+            </a>
           }
         />
         {accountsLoading ? (
@@ -268,11 +265,11 @@ export default function Portfolio() {
             title="尚未创建模拟账户"
             description="前往模拟交易页面创建一个模拟账户即可在此查看权益与持仓。"
             action={
-              <Link to="/paper-trading">
+              <a href="/paper-trading">
                 <Tag color="gold" className="ad-cursor-pointer">
                   新建模拟账户
                 </Tag>
-              </Link>
+              </a>
             }
           />
         ) : (
@@ -301,9 +298,9 @@ export default function Portfolio() {
             </span>
           }
           action={
-            <Link to="/live-trading" className="ad-text-small">
+            <a href="/live-trading" className="ad-text-small">
               管理真实配置 →
-            </Link>
+            </a>
           }
         />
         {liveLoading ? (
@@ -313,11 +310,11 @@ export default function Portfolio() {
             title="尚未配置真实交易账户"
             description="前往真实交易页面创建 Binance 配置即可在此查看实际持仓与盈亏。"
             action={
-              <Link to="/live-trading">
+              <a href="/live-trading">
                 <Tag color="magenta" className="ad-cursor-pointer">
                   新建真实配置
                 </Tag>
-              </Link>
+              </a>
             }
           />
         ) : (
@@ -347,13 +344,13 @@ export default function Portfolio() {
           }
           action={
             targetPool ? (
-              <Link to={`/pools/${targetPool.id}`} className="ad-text-small">
+              <a href={`/pools/${targetPool.id}`} className="ad-text-small">
                 管理目标池 ({targetPool.name}) →
-              </Link>
+              </a>
             ) : (
-              <Link to="/pools" className="ad-text-small">
+              <a href="/pools" className="ad-text-small">
                 新建目标池 →
-              </Link>
+              </a>
             )
           }
         />
@@ -364,11 +361,11 @@ export default function Portfolio() {
             title="尚未建立目标组合"
             description="在「标的池管理」中创建一个目标池（例如：核心 ETF、卫星 ETF），组合中心会按目标权重与实际持仓做偏离度对比。"
             action={
-              <Link to="/pools">
+              <a href="/pools">
                 <Tag color="default" className="ad-cursor-pointer">
                   创建目标池
                 </Tag>
-              </Link>
+              </a>
             }
           />
         ) : diffItems.length === 0 ? (
@@ -378,29 +375,11 @@ export default function Portfolio() {
           />
         ) : (
           <>
-            {/* Responsibility: surface the mock state explicitly. The actual
-               weights are fabricated client-side, so a banner + an icon on
-               every drift card makes that obvious at a glance. */}
-            <Alert
-              type="warning"
-              showIcon
-              icon={<ExperimentOutlined />}
-              className="portfolio-diff-mock-banner ad-mb-3"
-              message="演示数据"
-              description={
-                <span>
-                  下方漂移卡片的「实际权重」目前为前端 mock（用于演示 diff 视图），
-                  待真实账户持仓聚合接口稳定后将切换为后端实时计算。
-                </span>
-              }
-            />
             <ResponsiveGrid cols={2} gap="sm" className="portfolio-diff-summary" stretch>
               {diffItems.map((d) => (
-                <Panel
+                <Card
                   key={d.code}
-                  variant="default"
-                  padding="md"
-                  className="portfolio-diff-card"
+                  size="small"
                   title={
                     <span>
                       <WarningOutlined className="ad-mr-1" />
@@ -414,22 +393,11 @@ export default function Portfolio() {
                     </ThemeTag>
                   }
                 >
-                  <ResponsiveGrid cols={2} gap="sm">
-                    <StatCard
-                      title="目标权重"
-                      value={`${d.targetWeight.toFixed(2)}%`}
-                      bordered={false}
-                    />
-                    <StatCard
-                      title="实际权重 (mock)"
-                      value={`${d.actualWeight.toFixed(2)}%`}
-                      bordered={false}
-                    />
-                  </ResponsiveGrid>
-                  <div className="ad-text-small ad-mt-2 ad-text-tertiary">
-                    {d.reason}
+                  <div className="ad-text-small ad-text-secondary">
+                    目标 {d.targetWeight.toFixed(2)}% · 实际 {d.actualWeight.toFixed(2)}%
                   </div>
-                </Panel>
+                  <div className="ad-text-small ad-mt-2">{d.reason}</div>
+                </Card>
               ))}
             </ResponsiveGrid>
             <div className="ad-mb-3" />
@@ -442,6 +410,9 @@ export default function Portfolio() {
                 pagination={false}
                 scroll={{ x: 'max-content' }}
               />
+            </div>
+            <div className="ad-mt-2 ad-text-small ad-text-tertiary">
+              注：实际权重当前为前端 mock（用于演示 diff 视图），待真实账户持仓聚合接口稳定后将切换为后端实时计算。
             </div>
           </>
         )}

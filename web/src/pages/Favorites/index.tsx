@@ -21,7 +21,6 @@ import { useFavorites } from '@/hooks/useFavorites';
 import { useMarketStream, type MarketTick } from '@/hooks/useMarketStream';
 import { favoriteApi } from '@/api/favorite';
 import './styles.css';
-import { type ColumnsType } from 'antd/es/table';
 import PageShell from '@/components/PageShell';
 import PageHeader from '@/components/PageHeader';
 import Panel from '@/components/Panel';
@@ -31,6 +30,7 @@ import SectionHeading from '@/components/SectionHeading';
 import InstrumentCodeTag from '@/components/InstrumentCodeTag';
 import ThemeTag from '@/components/ThemeTag';
 import ReturnTag from '@/components/ReturnTag';
+import FavoriteToggleButton from '@/components/FavoriteToggleButton';
 import { formatDateTime, formatDateTimeCompact } from '@/utils/datetime';
 import { NULL_PLACEHOLDER } from '@/utils/format';
 import { getReturnColor } from '@/utils/color';
@@ -86,68 +86,36 @@ export default function Favorites() {
     liveTickByBaseCode[code] ?? liveTickByBaseCode[code.replace(/\.(SH|SZ|BJ|SS)$/i, '')];
 
   /**
-   * 移除单条（乐观更新）：先从缓存里删除这条记录，让列表瞬间反映「已移除」，
-   * 再发 DELETE 请求。失败时回滚到原缓存。这避免了 UI 等待网络往返的延迟，
-   * 让点击立刻可见（Response 原则）。
+   * 移除单条：调 DELETE /api/v1/favorites/{code}，然后让 React Query
+   * 失效列表缓存，实现「删除即更新」。这里走 favoriteApi.remove() 而不是
+   * hook 里的 toggle，避免 toggle 二次请求 status。
    */
   const handleRemove = async (code: string) => {
     setRemoving(code);
-    const previous = queryClient.getQueryData<{ items: any[]; count: number }>(['favorites', 200]);
-    queryClient.setQueryData<{ items: any[]; count: number } | undefined>(
-      ['favorites', 200],
-      (old) =>
-        old
-          ? {
-              ...old,
-              items: old.items.filter((it: any) => it.etf_code !== code),
-              count: Math.max(0, old.count - 1),
-            }
-          : old,
-    );
     try {
       await favoriteApi.remove(code).then((r) => r.data);
+      queryClient.invalidateQueries({ queryKey: ['favorites'] });
       queryClient.invalidateQueries({ queryKey: ['favorite-status', code] });
     } catch {
-      /* Rollback to the cached snapshot before the optimistic remove. */
-      if (previous) {
-        queryClient.setQueryData(['favorites', 200], previous);
-      }
-      queryClient.invalidateQueries({ queryKey: ['favorites'] });
+      /* swallow — UI 会通过 invalidate 重新拉数据自洽 */
     } finally {
       setRemoving(null);
     }
   };
 
   /**
-   * 批量移除：同样乐观更新缓存后再发请求。失败时整体回滚到原快照。
+   * 批量移除：用 Promise.all 并发删，逐条失效缓存。
    */
   const handleBulkRemove = async () => {
     if (selectedRowKeys.length === 0) return;
-    const keys = selectedRowKeys.map((k) => String(k));
     setBulkRemoving(true);
-    const previous = queryClient.getQueryData<{ items: any[]; count: number }>(['favorites', 200]);
-    queryClient.setQueryData<{ items: any[]; count: number } | undefined>(
-      ['favorites', 200],
-      (old) =>
-        old
-          ? {
-              ...old,
-              items: old.items.filter((it: any) => !keys.includes(it.etf_code)),
-              count: Math.max(0, old.count - keys.length),
-            }
-          : old,
-    );
-    setSelectedRowKeys([]);
     try {
       await Promise.all(
-        keys.map((key) =>
-          favoriteApi.remove(key).then((r) => r.data).catch(() => null)
+        selectedRowKeys.map((key) =>
+          favoriteApi.remove(String(key)).then((r) => r.data).catch(() => null)
         )
       );
-    } catch {
-      if (previous) {
-        queryClient.setQueryData(['favorites', 200], previous);
-      }
+      setSelectedRowKeys([]);
       queryClient.invalidateQueries({ queryKey: ['favorites'] });
     } finally {
       setBulkRemoving(false);
@@ -172,7 +140,7 @@ export default function Favorites() {
   }, [favorites]);
 
   /** 表格列定义（每行一个自选股） */
-  const columns: ColumnsType<any> = [
+  const columns = [
     {
       title: '标的',
       key: 'code',
@@ -194,7 +162,6 @@ export default function Favorites() {
       title: '市场',
       dataIndex: 'market',
       width: 90,
-      responsive: ['md'] as ('md' | 'lg' | 'xl' | 'xxl')[],
       render: (v?: string) => (
         <span className="tabular-nums font-mono ad-text-muted">{v || NULL_PLACEHOLDER}</span>
       ),
@@ -212,12 +179,7 @@ export default function Favorites() {
         return (
           <span
             className="tabular-nums live-price-cell__price"
-            style={{
-              color: getReturnColor(tick.change_pct),
-              /* Spring-eased color handoff between ticks — continuous
-                 feedback during streaming updates instead of hard cuts. */
-              transition: 'color var(--transition-spring-fast)',
-            }}
+            style={{ color: getReturnColor(tick.change_pct) }}
           >
             {tick.price.toFixed(2)}
           </span>
@@ -241,7 +203,6 @@ export default function Favorites() {
       title: '添加时间',
       key: 'added',
       width: 170,
-      responsive: ['md'] as ('md' | 'lg' | 'xl' | 'xxl')[],
       render: (_: unknown, record: any) =>
         record.created_at ? (
           <Tooltip title={formatDateTime(record.created_at, 'YYYY-MM-DD HH:mm:ss')}>
@@ -300,7 +261,7 @@ export default function Favorites() {
       rowKey="etf_code"
       size="middle"
       pagination={false}
-      scroll={{ x: 'max-content' }}
+      scroll={{ x: 720 }}
       onRow={(record: any) => ({
         onClick: () => navigate(`/instruments/${record.etf_code}`),
         style: { cursor: 'pointer' },
@@ -382,7 +343,7 @@ export default function Favorites() {
         }
         description={`共 ${count} 只标的，按加入时间倒序排列。${isConnected ? '实时行情已连接' : '实时行情连接中…'}`}
         extra={
-          <Space wrap className="favorites__header-extra">
+          <Space>
             {selectedRowKeys.length > 0 && (
               <Popconfirm
                 title={`确认移除选中的 ${selectedRowKeys.length} 只标的？`}
@@ -433,7 +394,7 @@ export default function Favorites() {
           rowKey="etf_code"
           size="middle"
           pagination={{ pageSize: 20, showSizeChanger: false }}
-          scroll={{ x: 'max-content' }}
+          scroll={{ x: 720 }}
           rowSelection={{
             selectedRowKeys,
             onChange: (keys) => setSelectedRowKeys(keys),
@@ -470,7 +431,6 @@ export default function Favorites() {
           />
           <Panel variant="default" padding="md">
             <Collapse
-              className="favorites__disclosure"
               ghost
               items={grouped.map((g) => ({
                 key: g.category,
@@ -495,23 +455,16 @@ export default function Favorites() {
             <span>
               自选股是 <b>轻量级跟踪清单</b>，区别于「标的池」（中长期目标组合）和「模拟 / 真实交易」中的实际持仓。
               如需给自选股配置权重 / 算法跟踪，请到{' '}
-              <a
-                role="link"
-                tabIndex={0}
-                onClick={() => navigate('/pools')}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    navigate('/pools');
-                  }
-                }}
-              >
-                标的池管理
-              </a>。
+              <a onClick={() => navigate('/pools')}>标的池管理</a>。
             </span>
           }
         />
       </Panel>
+
+      {/* 收藏开关的隐藏语义元素：在每个分类面板标题栏内嵌一颗星，便于将来扩展 */}
+      <div className="favorites__hidden-util" aria-hidden>
+        <FavoriteToggleButton code="" />
+      </div>
     </PageShell>
   );
 }

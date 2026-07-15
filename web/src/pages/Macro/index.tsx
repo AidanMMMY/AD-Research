@@ -33,6 +33,7 @@ import LastUpdated from '@/components/LastUpdated';
 import HelpPopover from '@/components/HelpPopover';
 import { useSettingsStore } from '@/stores/settings';
 import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
+import { useIsMobile } from '@/hooks/useBreakpoint';
 import { useMacroIndicators, useMacroSeries } from '@/hooks/useMacro';
 import {
   useMacroLatest,
@@ -206,6 +207,7 @@ function buildCnHeadlineFromLatest(items: MacroLatestItem[]): MacroIndicatorItem
 export default function Macro() {
   const mode = useSettingsStore((s) => s.mode);
   const prefersReducedMotion = usePrefersReducedMotion();
+  const isMobile = useIsMobile();
   // Initialize region / selectedCode from URL search params so deep-links
   // from Dashboard's Market Pulse tiles (e.g. /macro?region=global&code=global_sp500)
   // land on the right panel without a manual region switch.
@@ -325,7 +327,7 @@ export default function Macro() {
       dataIndex: 'name_zh',
       key: 'name_zh',
       width: 200,
-      fixed: 'left',
+      fixed: isMobile ? 'left' : undefined,
       render: (name: string, row) => (
         <Space direction="vertical" size={0}>
           <Text strong>{name}</Text>
@@ -364,7 +366,7 @@ export default function Macro() {
       render: (t?: string | null) =>
         t ? (
           <Text type="secondary" className="ad-text-xs">
-            {new Date(t).toLocaleString()}
+            {new Date(t).toLocaleString('zh-CN')}
           </Text>
         ) : (
           <Text type="secondary">—</Text>
@@ -374,7 +376,7 @@ export default function Macro() {
       title: '操作',
       key: 'actions',
       width: 100,
-      fixed: 'right',
+      fixed: isMobile ? 'right' : undefined,
       render: (_, row) => (
         <Button
           type="link"
@@ -527,7 +529,7 @@ export default function Macro() {
                   size="small"
                   dataSource={indicators ?? []}
                   columns={columns}
-                  scroll={{ x: 'max-content' }}
+                  scroll={isMobile ? { x: 800 } : undefined}
                   pagination={{ pageSize: 15, showSizeChanger: false }}
                   onRow={(record) => ({
                     onClick: () => setSelectedCode(record.code),

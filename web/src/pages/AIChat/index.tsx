@@ -8,7 +8,6 @@ import {
   DeleteOutlined,
   RobotOutlined,
   SendOutlined,
-  StopOutlined,
   HeartOutlined,
 } from '@ant-design/icons';
 import { chatApi, ChatSession, ChatMessage } from '@/api/chat';
@@ -38,12 +37,6 @@ export default function AIChat() {
   const [sending, setSending] = useState(false);
   const [firstMessageSent, setFirstMessageSent] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  // Holds the in-flight stream's AbortController so the user can stop
-  // mid-generation without losing input (Interruptibility principle).
-  const abortRef = useRef<AbortController | null>(null);
-  // Cached "near bottom?" so auto-scroll during streaming doesn't fight
-  // a user who has scrolled up to read history (Frame smoothness).
-  const stuckToBottomRef = useRef(true);
   const queryClient = useQueryClient();
 
   const STEP_DEFS = [
@@ -95,6 +88,7 @@ export default function AIChat() {
     reset(STEP_DEFS);
     try {
       start('fetch');
+      await new Promise((r) => setTimeout(r, 120));
       finish('fetch', 'done');
       start('llm');
       // Real SSE stream — parses meta/delta/done frames server-side.
@@ -125,27 +119,12 @@ export default function AIChat() {
             }
             resolve();
           },
-        })
-          .then(({ abort }) => {
-            // Track the controller so the user can stop mid-stream.
-            abortRef.current = abort;
-          })
-          .catch(reject);
+        }).catch(reject);
       });
       queryClient.invalidateQueries({ queryKey: ['chat-messages', activeSession] });
     } catch {
       finish('llm', 'error');
     }
-    abortRef.current = null;
-    setSending(false);
-  };
-
-  const handleStop = () => {
-    // Interruptibility: kill latency by aborting the in-flight SSE; the
-    // textarea stays enabled so the user can edit + resend immediately.
-    abortRef.current?.abort();
-    abortRef.current = null;
-    finish('stream', 'done');
     setSending(false);
   };
 
@@ -172,35 +151,22 @@ export default function AIChat() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeSession, symbolFromUrl]);
 
-  // Track whether the user is reading history (scrolled up) — auto-scroll
-  // during streaming should only kick in when they're near the bottom so
-  // a smooth scroll-into-view doesn't fight their reading position
-  // (Frame smoothness: avoid animating every streamed token).
-  const onMessagesScroll = (e: React.UIEvent<HTMLDivElement>) => {
-    const el = e.currentTarget;
-    const threshold = 64; // px from bottom counts as "near bottom"
-    stuckToBottomRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < threshold;
-  };
-
+  // Auto-scroll to bottom on new messages
   useEffect(() => {
-    if (!stuckToBottomRef.current) return;
     const reducedMotion =
       typeof window !== 'undefined' &&
       typeof window.matchMedia === 'function' &&
       window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    // behavior:'auto' during streaming — instant jumps match the rate of
-    // incoming tokens and don't queue animations on the compositor.
-    messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
-    if (reducedMotion) {
-      // No-op; auto is already the cheapest option.
-    }
-  }, [messages, streamedText]);
+    messagesEndRef.current?.scrollIntoView({
+      behavior: reducedMotion ? 'auto' : 'smooth',
+    });
+  }, [messages]);
 
   // Show session sidebar on desktop; toggle on mobile
   const showSidebar = !isMobile || !activeSession;
 
   const sidebar = (
-    <div className="ad-chat-sidebar">
+    <div className="phase5c-chat-sidebar">
       <Button
         type="primary"
         icon={<PlusOutlined />}
@@ -211,7 +177,7 @@ export default function AIChat() {
         新对话
       </Button>
 
-      <div className="ad-chat-sidebar__list">
+      <div className="phase5c-chat-sidebar__list">
         {sessionsLoading ? (
           <Skeleton active paragraph={{ rows: 4 }} />
         ) : !sessions?.length ? (
@@ -221,12 +187,11 @@ export default function AIChat() {
             className="ad-list-compact"
             dataSource={sessions}
             renderItem={(s: ChatSession) => (
-              <button
-                type="button"
+              <div
                 onClick={() => setActiveSession(s.id)}
-                className={`ad-chat-sidebar__item ${activeSession === s.id ? 'ad-chat-sidebar__item--active' : ''}`}
+                className={`phase5c-chat-sidebar__item ${activeSession === s.id ? 'phase5c-chat-sidebar__item--active' : ''}`}
               >
-                <span className="ad-chat-sidebar__title">
+                <span className="phase5c-chat-sidebar__title">
                   {s.title || '新对话'}
                 </span>
                 <Popconfirm
@@ -238,11 +203,11 @@ export default function AIChat() {
                   onCancel={(e) => e?.stopPropagation()}
                 >
                   <DeleteOutlined
-                    className="ad-chat-sidebar__delete"
+                    className="phase5c-chat-sidebar__delete"
                     onClick={(e) => e.stopPropagation()}
                   />
                 </Popconfirm>
-              </button>
+              </div>
             )}
           />
         )}
@@ -251,10 +216,10 @@ export default function AIChat() {
   );
 
   const chatArea = (
-    <div className="ad-chat-area">
+    <div className="phase5c-chat-area">
       {/* Mobile back button */}
       {isMobile && activeSession && (
-        <div className="ad-mobile-back">
+        <div className="phase5c-mobile-back">
           <Button type="text" onClick={() => setActiveSession(null)}>
             ← 返回列表
           </Button>
@@ -262,28 +227,22 @@ export default function AIChat() {
       )}
 
       {/* Messages */}
-      <div className="ad-chat-messages" onScroll={onMessagesScroll}>
+      <div className="phase5c-chat-messages">
         {!activeSession ? (
           <EmptyState
-            icon={<RobotOutlined className="ad-empty-icon" />}
+            icon={<RobotOutlined className="phase5c-empty-icon" />}
             title="选择一个对话或创建新对话"
             description="左侧选择已有对话，或点击「新建对话」开始 AI 投研"
           />
         ) : messagesLoading ? (
           <Skeleton active paragraph={{ rows: 6 }} />
-        ) : messages?.length === 0 ? (
-          <EmptyState
-            icon={<RobotOutlined className="ad-empty-icon" />}
-            title="暂无消息"
-            description="输入问题，开始 AI 投研对话"
-          />
         ) : (
           messages?.map((msg: ChatMessage) => (
             <div
               key={msg.id}
-              className={`ad-message-row ${msg.role === 'user' ? 'ad-message-row--user' : 'ad-message-row--assistant'}`}
+              className={`phase5c-message-row ${msg.role === 'user' ? 'phase5c-message-row--user' : 'phase5c-message-row--assistant'}`}
             >
-              <div className={`ad-message-bubble ${msg.role === 'user' ? 'ad-message-bubble--user' : 'ad-message-bubble--assistant'}`}>
+              <div className={`phase5c-message-bubble ${msg.role === 'user' ? 'phase5c-message-bubble--user' : 'phase5c-message-bubble--assistant'}`}>
                 {msg.role === 'assistant' ? (
                   <ReactMarkdown remarkPlugins={[remarkGfm]}>
                     {msg.content}
@@ -296,11 +255,11 @@ export default function AIChat() {
           ))
         )}
         {sending && (
-          <div className="ad-message-row ad-message-row--assistant">
-            <div className="ad-message-bubble ad-message-bubble--streaming">
+          <div className="phase5c-message-row phase5c-message-row--assistant">
+            <div className="phase5c-message-bubble phase5c-message-bubble--streaming">
               <StepProgress steps={steps} compact />
               {streamedText && (
-                <div className="ad-streaming-divider">
+                <div className="phase5c-streaming-divider">
                   <ReactMarkdown remarkPlugins={[remarkGfm]}>
                     {streamedText}
                   </ReactMarkdown>
@@ -314,71 +273,53 @@ export default function AIChat() {
 
       {/* Input */}
       {activeSession && (
-        <div className="ad-input-bar">
+        <div className="phase5c-input-bar">
           {/* Sentiment quick-prompt hint. Tells the user the assistant has
               access to news/sentiment data and surfaces a clickable tag to
               jump to the sentiment dashboard. */}
-          <div className="ad-quick-prompts">
-            <HeartOutlined className="ad-icon-rise" />
+          <div className="phase5c-quick-prompts">
+            <HeartOutlined className="phase5c-icon-rise" />
             <span>AI 可访问资讯与情绪数据：</span>
             {QUICK_PROMPTS.map((s) => (
               <Tag
                 key={s.label}
-                className="ad-quick-tag"
+                className="phase5c-quick-tag"
                 onClick={() => setInput(s.prompt)}
               >
                 {s.label}
               </Tag>
             ))}
-            <span className="ad-quick-prompts__spacer" />
+            <span className="phase5c-quick-prompts__spacer" />
             <Tag
               icon={<HeartOutlined />}
               color="default"
-              className="ad-quick-tag"
+              className="phase5c-quick-tag"
               onClick={() => navigate('/sentiment')}
             >
               打开情绪看板
             </Tag>
           </div>
-          <div className="ad-input-row">
+          <div className="phase5c-input-row">
             <Input.TextArea
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onPressEnter={(e) => {
                 if (!e.shiftKey) {
                   e.preventDefault();
-                  if (sending) {
-                    handleStop();
-                    return;
-                  }
                   handleSend();
                 }
               }}
-              placeholder="输入问题... (Shift+Enter换行，Enter发送 / Esc停止)"
+              placeholder="输入问题... (Shift+Enter换行，Enter发送)"
               autoSize={{ minRows: 1, maxRows: 4 }}
-              onKeyDown={(e) => {
-                if (e.key === 'Escape' && sending) {
-                  e.preventDefault();
-                  handleStop();
-                }
-              }}
+              disabled={sending}
             />
-            {sending ? (
-              <Button
-                type="primary"
-                danger
-                icon={<StopOutlined />}
-                onClick={handleStop}
-                aria-label="停止生成"
-              />
-            ) : (
-              <Button
-                type="primary"
-                icon={<SendOutlined />}
-                onClick={() => handleSend()}
-                disabled={!input.trim()}
-              />
-            )}
+            <Button
+              type="primary"
+              icon={<SendOutlined />}
+              onClick={() => handleSend()}
+              loading={sending}
+              disabled={sending || !input.trim()}
+            />
           </div>
         </div>
       )}
@@ -393,7 +334,7 @@ export default function AIChat() {
         title="AI 助手"
         description="多会话 AI 对话，支持 Markdown 与代码高亮"
       />
-      <div className="ad-chat-layout">
+      <div className="phase5c-chat-layout">
         {(showSidebar || !isMobile) && sidebar}
         {(!showSidebar || !isMobile) && chatArea}
       </div>

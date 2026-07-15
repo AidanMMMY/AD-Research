@@ -12,7 +12,6 @@ import {
   message,
   Popconfirm,
 } from 'antd';
-import type { ColumnsType } from 'antd/es/table';
 import {
   PlusOutlined,
   EditOutlined,
@@ -26,7 +25,6 @@ import SectionHeading from '@/components/SectionHeading';
 import ThemeTag from '@/components/ThemeTag';
 import { useAdminUsers } from '@/hooks/useAdminUsers';
 import { useAuthStore } from '@/stores/auth';
-import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
 import type { UserAdminItem } from '@/types/user';
 
 const ROLE_OPTIONS = [
@@ -43,10 +41,6 @@ export default function AdminUsers() {
   const [createForm] = Form.useForm();
   const [editForm] = Form.useForm();
   const [resetForm] = Form.useForm();
-  const reducedMotion = usePrefersReducedMotion();
-  const modalMotionProps = reducedMotion
-    ? { transitionName: '', maskTransitionName: '' }
-    : {};
 
   const {
     users,
@@ -134,7 +128,7 @@ export default function AdminUsers() {
     setIsResetOpen(true);
   };
 
-  const columns: ColumnsType<UserAdminItem> = [
+  const columns = [
     { title: 'ID', dataIndex: 'id', width: 60 },
     { title: '用户名', dataIndex: 'username' },
     {
@@ -162,9 +156,7 @@ export default function AdminUsers() {
     },
     {
       title: '操作',
-      key: 'action',
       width: 180,
-      fixed: 'right',
       render: (_: any, record: UserAdminItem) => {
         const self = isSelf(record);
         const tooltipTitle = self ? '不能修改自己的账号' : '';
@@ -256,7 +248,6 @@ export default function AdminUsers() {
         onOk={() => createForm.submit()}
         width={480}
         destroyOnClose
-        {...modalMotionProps}
       >
         <Form
           form={createForm}
@@ -307,7 +298,6 @@ export default function AdminUsers() {
         onOk={() => editForm.submit()}
         width={400}
         destroyOnClose
-        {...modalMotionProps}
       >
         <Form form={editForm} layout="vertical" onFinish={handleEdit}>
           <Form.Item
@@ -339,7 +329,6 @@ export default function AdminUsers() {
         onOk={() => resetForm.submit()}
         width={400}
         destroyOnClose
-        {...modalMotionProps}
       >
         <Form form={resetForm} layout="vertical" onFinish={handleResetPassword}>
           <Form.Item

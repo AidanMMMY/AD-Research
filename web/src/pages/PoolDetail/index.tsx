@@ -131,7 +131,6 @@ export default function PoolDetail() {
         </button>
       ),
     },
-    { title: '名称', dataIndex: 'etf_name', render: (v: string, record: any) => v || record.name_zh || '-' },
     { title: '加入时间', dataIndex: 'added_at', render: (v: string) => v ? v.slice(0, 10) : '-' },
     { title: '备注', dataIndex: 'note', render: (v?: string) => v || '-' },
     {
