@@ -84,7 +84,7 @@ export default function NewsDetail() {
   const navigate = useNavigate();
   const articleId = Number(id);
   const queryClient = useQueryClient();
-  const mode = useSettingsStore((s) => s.mode);
+  const mode = useSettingsStore((s) => s?.mode ?? 'novice');
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['news-detail', articleId],

@@ -91,13 +91,13 @@ body {
   text-transform: uppercase;
   letter-spacing: 0.12em;
   border-bottom: 1px solid var(--border-default) !important;
-  padding: var(--space-3) var(--space-4) !important;
+  padding: var(--density-cell-py) var(--density-cell-px) !important;
 }
 
 .ant-table-tbody > tr > td {
   border-bottom: 1px solid var(--border-default) !important;
   color: var(--text-secondary);
-  padding: 14px var(--space-4) !important;
+  padding: var(--density-cell-py) var(--density-cell-px) !important;
   transition: color var(--transition-fast), background var(--transition-fast);
   /* P0-2: 全局强制等宽数字，防止数值列排序/比较时抖动 */
   font-variant-numeric: tabular-nums;
@@ -111,6 +111,7 @@ body {
 
 .ant-table-row {
   cursor: pointer;
+  min-height: var(--density-row-height);
 }
 
 .ant-table-tbody > tr.ant-table-row-selected > td,
@@ -805,8 +806,6 @@ a:focus-visible {
    Density toggle was removed in 2026-07-09, so all tables use
    this layout regardless of user preference.
    ============================================================ */
-.ad-density-spacious .ant-table-tbody > tr > td,
-.ad-density-spacious .ant-table-thead > tr > th { padding: 12px 16px !important; }
 
 /* ============================================================
    Accessibility: respect prefers-reduced-motion
