@@ -184,10 +184,20 @@ docker compose up -d --force-recreate backend celery-worker
 #   - status == "ok"        → 关键依赖(DB/Redis)就绪，放行
 #   - status == "degraded"  → 进程活着但依赖未就绪，继续等待（多见于 DB 尚在迁移/预热）
 # 等待窗口从 60s 提升到 120s（60 次 × 2s），给冷启动 + 迁移预热留足时间。
+BACKEND_CONTAINER="${BACKEND_CONTAINER:-alloyresearch-backend}"
 log_info "等待 backend 就绪 (最多 120s，需 /health status=ok)..."
 _backend_ready=false
 for i in $(seq 1 60); do
-    _body=$(curl -sf --max-time 5 http://localhost:8000/health 2>/dev/null || true)
+    # backend service 只 expose 8000 给容器网络，没有映射到 host，
+    # 因此不能从 host curl localhost:8000/health。在容器内探测。
+    _body=$(docker exec "${BACKEND_CONTAINER}" python - <<'PY' 2>/dev/null || true
+import urllib.request
+try:
+    print(urllib.request.urlopen('http://localhost:8000/health', timeout=5).read().decode())
+except Exception:
+    pass
+PY
+)
     if [ -n "$_body" ]; then
         # grep 兼容无 jq 环境：匹配 "status":"ok"（容忍空格）。
         if printf '%s' "$_body" | grep -Eq '"status"[[:space:]]*:[[:space:]]*"ok"'; then
@@ -204,7 +214,7 @@ for i in $(seq 1 60); do
 done
 
 if [ "$_backend_ready" = false ]; then
-    log_error "Backend 启动超时或依赖未就绪，查看日志: docker compose logs backend --tail 50; 健康详情: curl -s http://localhost:8000/health"
+    log_error "Backend 启动超时或依赖未就绪，查看日志: docker compose logs backend --tail 50; 健康详情: docker exec ${BACKEND_CONTAINER} python -c \"import urllib.request; print(urllib.request.urlopen('http://localhost:8000/health', timeout=5).read().decode())\""
     # Action-253 root-cause: previously exited 0 even when /health
     # never came up, masking real failures (pool exhaustion, missing
     # migrations, import errors). Refuse to continue to nginx so the

@@ -224,14 +224,17 @@ jobs:
           set -euo pipefail
           echo "[INFO] 等待 backend 就绪..."
 
+          # backend service 只 expose 8000 给容器网络，没有映射到 host，
+          # 因此不能从 host curl localhost:8000/health。在容器内探测。
           HEALTHY=false
           for i in $(seq 1 30); do
-            if curl -sf "${HEALTH_URL}" >/dev/null 2>&1; then
-              echo "[OK] /health 通过（第 ${i} 次，${HEALTH_URL}）"
+            _status=$(docker exec "${BACKEND_CONTAINER}" python -c "import urllib.request; print(urllib.request.urlopen('http://localhost:8000/health', timeout=5).status)" 2>/dev/null || echo "ERR")
+            if [ "${_status}" = "200" ]; then
+              echo "[OK] /health 通过（第 ${i} 次，容器内 localhost:8000）"
               HEALTHY=true
               break
             fi
-            echo "[WAIT] 第 ${i}/30 次探测失败，2s 后重试..."
+            echo "[WAIT] 第 ${i}/30 次探测失败（status=${_status}），2s 后重试..."
             sleep 2
           done
 
