@@ -71,6 +71,7 @@ import { useSettingsStore } from '@/stores/settings';
 import { menuRoutes, sidebarGroups, type SidebarGroupKey } from '@/routes';
 import { useIsMobile } from '@/hooks/useBreakpoint';
 import { useTheme, type Theme } from '@/hooks/useTheme';
+import { useFocusRestore } from '@/hooks/useFocusRestore';
 import OnboardingTour from '@/components/OnboardingTour';
 import './AppLayout.css';
 
@@ -469,6 +470,11 @@ export default function AppLayout() {
   const isMobile = useIsMobile();
   const navigate = useNavigate();
   const location = useLocation();
+
+  // WCAG 2.4.3: when the mobile nav drawer closes (either via the scrim
+  // tap, the Esc key, or by selecting a nav item), return focus to the
+  // hamburger trigger button in the header.
+  useFocusRestore(isMobile && drawerOpen);
 
   // First-login auto-trigger: pop the onboarding tour once per user.
   useEffect(() => {
