@@ -47,7 +47,10 @@ REQUEST_TIMEOUT: Final[float] = 30.0
 # Minimum meaningful body length after deterministic cleanup. If the
 # cleaned body is shorter than this, we fall back to the raw Jina
 # Markdown so the user still has something to read.
-MIN_BODY_LENGTH: Final[int] = 20
+# 20 was too strict (review-news-analyst P0-5): short news flashes and
+# Jina's truncated excerpts were rejected, showing a red `failed` Alert
+# on every detail page. 80 chars roughly maps to "one meaningful sentence".
+MIN_BODY_LENGTH: Final[int] = 80
 
 # Hard cap on stored content to keep the DB row reasonable.
 MAX_CONTENT_CHARS: Final[int] = 10_000

@@ -34,10 +34,28 @@ export default function StatCard({
   term,
   explainer,
 }: StatCardProps) {
+  // a11y: when clickable, the card must be reachable by keyboard
+  // (review-a11y-mobile P0-2). role="button" + tabIndex=0 + Enter/Space.
+  const isClickable = Boolean(onClick);
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (!isClickable) return;
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      onClick?.();
+    }
+  };
   return (
     <div
-      className={`stat-card ${onClick ? 'stat-card--clickable' : ''} ${bordered ? '' : 'stat-card--borderless'}`}
+      className={`stat-card ${isClickable ? 'stat-card--clickable' : ''} ${bordered ? '' : 'stat-card--borderless'}`}
       onClick={onClick}
+      role={isClickable ? 'button' : undefined}
+      tabIndex={isClickable ? 0 : undefined}
+      onKeyDown={handleKeyDown}
+      aria-label={
+        isClickable && (typeof title === 'string' || typeof title === 'number')
+          ? `${title}: ${value}`
+          : undefined
+      }
     >
       <div className="stat-card__inner">
         <div className="stat-card__main">

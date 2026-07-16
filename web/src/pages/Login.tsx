@@ -242,9 +242,18 @@ export default function Login() {
         <div className="login-form">
           <div className="login-input-wrapper">
             <UserOutlined className="login-input-icon" />
+            {/* a11y: explicit aria-label since the visual placeholder
+                is not a sufficient label for screen readers
+                (review-a11y-mobile P0-1). */}
+            <label htmlFor="login-username" className="ad-sr-only">
+              用户名
+            </label>
             <input
+              id="login-username"
               type="text"
               placeholder="用户名"
+              aria-label="用户名"
+              aria-required="true"
               value={form.username}
               onChange={(e) => setForm({ ...form, username: e.target.value })}
               onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
@@ -267,16 +276,24 @@ export default function Login() {
               data-lpignore="true"
               data-dashlane-ignore
               name="login-username-no-autofill"
-              id="login-username"
               aria-autocomplete="none"
             />
           </div>
 
           <div className="login-input-wrapper">
             <LockOutlined className="login-input-icon" />
+            {/* a11y: explicit aria-label since visual placeholder is not a
+                sufficient label for screen readers
+                (review-a11y-mobile P0-1). */}
+            <label htmlFor="login-password" className="ad-sr-only">
+              密码
+            </label>
             <input
+              id="login-password"
               type="password"
               placeholder="密码"
+              aria-label="密码"
+              aria-required="true"
               value={form.password}
               onChange={(e) => setForm({ ...form, password: e.target.value })}
               onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
@@ -299,7 +316,6 @@ export default function Login() {
               data-lpignore="true"
               data-dashlane-ignore
               name="login-password-no-autofill"
-              id="login-password"
               aria-autocomplete="none"
             />
           </div>

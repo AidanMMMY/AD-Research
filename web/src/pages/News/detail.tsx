@@ -79,6 +79,105 @@ function formatBigNumber(n: number | undefined): string {
   return String(n);
 }
 
+/**
+ * Normalize sentiment_score regardless of backend convention.
+ * Backend stores either the `-100..+100` integer range (legacy pipeline)
+ * or the `-1..+1` float range (newer pipeline). Detect by magnitude and
+ * surface a uniform "-0.78" style number to the UI.
+ * (review-news-analyst P0-6)
+ */
+function formatSentimentScore(score: number): string {
+  if (!Number.isFinite(score)) return '—';
+  // |x| > 2 → treat as -100..+100 scale.
+  const normalized = Math.abs(score) > 2 ? score / 100 : score;
+  return normalized.toFixed(2);
+}
+
+/**
+ * RetailSentimentPanel — wires the existing `/news/retail-sentiment/{symbol}`
+ * endpoint to the previously-static placeholder.  Reviews flagged this as
+ * a permanent empty state; now it actually fetches & renders the 7-day
+ * community chatter summary.
+ */
+function RetailSentimentPanel({ symbol }: { symbol: string }) {
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ['news-retail-sentiment', symbol],
+    queryFn: () => newsApi.retailSentiment(symbol, '7d').then((r) => r.data),
+    staleTime: 5 * 60_000,
+    refetchOnWindowFocus: false,
+  });
+
+  return (
+    <Panel
+      variant="default"
+      title={
+        <span>
+          <ChatOutlined className="ad-icon-mr" />
+          散户讨论
+          <span className="ad-text-secondary ad-text-12 ad-ml-2">{symbol}</span>
+        </span>
+      }
+      className="ad-mt-5"
+      padding="md"
+    >
+      {isLoading ? (
+        <Skeleton active paragraph={{ rows: 2 }} />
+      ) : isError || !data ? (
+        <EmptyState
+          title="暂未采集到散户讨论"
+          description="雪球 / 东方财富股吧 / Reddit 等社区讨论将在下一轮调度后接入"
+        />
+      ) : (
+        <div className="ad-flex ad-flex-col ad-gap-3">
+          <div className="ad-flex ad-items-baseline ad-gap-3">
+            <span className="ad-text-12 ad-text-secondary">整体情绪</span>
+            <span className="ad-text-18 ad-font-medium">
+              {formatSentimentScore(data.overall)}
+            </span>
+            <span className="ad-text-12 ad-text-tertiary">
+              （-1.00 ~ +1.00；正值偏多）
+            </span>
+          </div>
+          {(data.bull_bear_ratio?.bull != null || data.bull_bear_ratio?.bear != null) && (
+            <div className="ad-flex ad-items-baseline ad-gap-3">
+              <span className="ad-text-12 ad-text-secondary">多空比</span>
+              <span className="ad-text-14 tabular-nums">
+                {data.bull_bear_ratio?.bull ?? 0}
+              </span>
+              <span className="ad-text-12 ad-text-tertiary">vs</span>
+              <span className="ad-text-14 tabular-nums">
+                {data.bull_bear_ratio?.bear ?? 0}
+              </span>
+            </div>
+          )}
+          {typeof data.controversy === 'number' && (
+            <div className="ad-flex ad-items-baseline ad-gap-3">
+              <span className="ad-text-12 ad-text-secondary">分歧度</span>
+              <span className="ad-text-14 tabular-nums">
+                {data.controversy.toFixed(2)}
+              </span>
+              <span className="ad-text-12 ad-text-tertiary">（0=一致，1=分歧）</span>
+            </div>
+          )}
+          {data.main_themes && data.main_themes.length > 0 && (
+            <div className="ad-flex ad-flex-wrap ad-gap-1">
+              <span className="ad-text-12 ad-text-secondary">主题</span>
+              {data.main_themes.slice(0, 5).map((t, i) => (
+                <Tag key={i}>{t.theme}</Tag>
+              ))}
+            </div>
+          )}
+          {data.summary && (
+            <div className="ad-text-13 ad-text-secondary">
+              {data.summary}
+            </div>
+          )}
+        </div>
+      )}
+    </Panel>
+  );
+}
+
 export default function NewsDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -345,7 +444,7 @@ export default function NewsDetail() {
                 >
                   {SENTIMENT_LABELS[sentiment]}
                   {data.sentiment_score != null &&
-                    ` · ${data.sentiment_score.toFixed(2)}`}
+                    ` · ${formatSentimentScore(data.sentiment_score)}`}
                 </span>
               }
             />
@@ -574,21 +673,11 @@ export default function NewsDetail() {
             </Panel>
           )}
 
-          {/* Social discussion placeholder (xueqiu/reddit). */}
-          {showSocial && (
-            <Panel
-              variant="default"
-              title={
-                <span>
-                  <ChatOutlined className="ad-icon-mr" />
-                  散户讨论
-                </span>
-              }
-              className="ad-mt-5"
-              padding="md"
-            >
-              <EmptyState title="散户讨论内容由 Agent E 后续接入" description="将汇总雪球、东方财富股吧、Reddit 等社区讨论" />
-            </Panel>
+          {/* Social discussion (xueqiu/reddit retail sentiment).
+              Wires the existing backend endpoint instead of showing a
+              permanent placeholder (see review-news-analyst P0-4). */}
+          {showSocial && primarySymbol && (
+            <RetailSentimentPanel symbol={primarySymbol} />
           )}
         </div>
 
