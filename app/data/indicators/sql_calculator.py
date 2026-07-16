@@ -122,66 +122,93 @@ INDICATOR_OUTPUT_COLUMNS: tuple[str, ...] = (
 # ---------------------------------------------------------------------------
 
 
-def _bars_cte(codes_bind: str, target_filter_sql: str) -> str:
-    """Anchor CTE: per-row trade-date window over the requested codes.
+def _bars_source_cte(
+    codes_bind: str,
+    target_filter_sql: str,
+    *,
+    max_bars: int | None = None,
+) -> str:
+    """Build the ``windowed`` source CTE used by ``bars``.
 
-    ``codes_bind`` is a SQLAlchemy bind parameter name (e.g. ``:codes``)
-    for an array of strings. ``target_filter_sql`` is an extra
-    ``AND`` clause (e.g. ``AND b.trade_date <= :target_date``).
-
-    Pre-filters to codes that have at least one row in
-    ``instrument_daily_bar`` on or before the effective target date
-    (CURRENT_DATE when ``:target_date`` is NULL). This avoids paying
-    for ``WITH RECURSIVE`` planning/walking for codes the daily-bar
-    scheduler hasn't written yet (e.g. NEAR.US, PEPE.US, WIF.US,
-    BONK.US, and other recently-listed crypto ETFs that have rows
-    in ``etf_info`` but not yet in ``instrument_daily_bar``). For a
-    chunk of 20 codes containing 5 empty codes the planner only has
-    to set up 15 partitions instead of 20, which materially reduces
-    recursive-CTE work and the ``pgsql_tmp`` spill pressure that
-    caused the 810 s DiskFull failure on ad-research.
+    Returns the SQL for a CTE named ``windowed`` that selects the
+    relevant rows from ``instrument_daily_bar`` for the requested
+    codes, optionally limiting each code to its most recent
+    ``max_bars`` rows.  The caller must define ``bars`` after this
+    CTE.
     """
+    if max_bars is not None:
+        return f"""
+        windowed AS (
+            SELECT *
+            FROM (
+                SELECT
+                    b.etf_code,
+                    b.trade_date,
+                    b.close,
+                    b.high,
+                    b.low,
+                    b.adj_factor,
+                    ROW_NUMBER() OVER (PARTITION BY b.etf_code ORDER BY b.trade_date DESC) AS rn_desc
+                FROM instrument_daily_bar b
+                WHERE b.etf_code = ANY({codes_bind})
+                  AND EXISTS (
+                      SELECT 1 FROM instrument_daily_bar ec
+                      WHERE ec.etf_code = b.etf_code
+                        AND ec.trade_date <= COALESCE(:target_date, CURRENT_DATE)
+                  )
+                  {target_filter_sql}
+            ) ranked
+            WHERE rn_desc <= {max_bars}
+        )
+        """
     return f"""
-        bars AS (
+        windowed AS (
             SELECT
                 b.etf_code,
                 b.trade_date,
-                b.close::numeric                                        AS close,
-                b.high::numeric                                         AS high,
-                b.low::numeric                                          AS low,
-                (b.close * COALESCE(b.adj_factor, 1.0))::numeric        AS adj_close,
-                b.amount::numeric                                       AS amount,
-                b.volume                                                AS volume,
-                LAG(b.close)        OVER w_etf                          AS prev_close_raw,
-                LAG(b.close * COALESCE(b.adj_factor, 1.0))
-                                    OVER w_etf                          AS prev_adj_close,
-                ROW_NUMBER() OVER w_etf                                 AS rn,
-                -- Total row count for the partition (NOT a running
-                -- count). Drop the ORDER BY so the window is the
-                -- whole partition, not "from start to current".
-                COUNT(*) OVER (PARTITION BY b.etf_code)                 AS bar_count,
-                b.close / NULLIF(LAG(b.close) OVER w_etf, 0) - 1        AS daily_return_raw,
-                (b.close * COALESCE(b.adj_factor, 1.0))
-                  / NULLIF(LAG(b.close * COALESCE(b.adj_factor, 1.0)) OVER w_etf, 0) - 1
-                                                                        AS daily_return_adj
+                b.close,
+                b.high,
+                b.low,
+                b.adj_factor
             FROM instrument_daily_bar b
             WHERE b.etf_code = ANY({codes_bind})
-              -- Pre-filter: only walk codes with at least 1 bar
-              -- row on or before the effective target date. The
-              -- ``:target_date`` bind is always provided by
-              -- ``_execute_indicator_query`` (defaults to
-              -- ``date.today()`` when the caller passes ``None``),
-              -- so we can safely reference it inside the EXISTS
-              -- subquery without worrying about NULL propagation.
               AND EXISTS (
                   SELECT 1 FROM instrument_daily_bar ec
                   WHERE ec.etf_code = b.etf_code
                     AND ec.trade_date <= COALESCE(:target_date, CURRENT_DATE)
               )
               {target_filter_sql}
-            WINDOW w_etf AS (PARTITION BY b.etf_code ORDER BY b.trade_date)
         )
     """
+
+
+_bars_select_sql = """
+    bars AS (
+        SELECT
+            b.etf_code,
+            b.trade_date,
+            b.close::numeric                                        AS close,
+            b.high::numeric                                         AS high,
+            b.low::numeric                                          AS low,
+            (b.close * COALESCE(b.adj_factor, 1.0))::numeric        AS adj_close,
+            b.amount::numeric                                       AS amount,
+            b.volume                                                AS volume,
+            LAG(b.close)        OVER w_etf                          AS prev_close_raw,
+            LAG(b.close * COALESCE(b.adj_factor, 1.0))
+                                OVER w_etf                          AS prev_adj_close,
+            ROW_NUMBER() OVER w_etf                                 AS rn,
+            -- Total row count for the partition (NOT a running
+            -- count). Drop the ORDER BY so the window is the
+            -- whole partition, not "from start to current".
+            COUNT(*) OVER (PARTITION BY b.etf_code)                 AS bar_count,
+            b.close / NULLIF(LAG(b.close) OVER w_etf, 0) - 1        AS daily_return_raw,
+            (b.close * COALESCE(b.adj_factor, 1.0))
+              / NULLIF(LAG(b.close * COALESCE(b.adj_factor, 1.0)) OVER w_etf, 0) - 1
+                                                                    AS daily_return_adj
+        FROM windowed b
+        WINDOW w_etf AS (PARTITION BY b.etf_code ORDER BY b.trade_date)
+    )
+"""
 
 
 def _ema_chain(span: int) -> str:
@@ -215,7 +242,12 @@ def build_indicator_query_sql(
     caller binds ``:codes`` (an array of strings) and optionally
     ``:target_date``.
     """
-    bars_cte = _bars_cte(":codes", target_filter_sql)
+    # Longest look-back is the 252-day risk window. For ``full_history=False``
+    # we only need enough bars to warm up that window plus a safety margin;
+    # reading the entire history per code is wasteful and dominates runtime
+    # for instruments with many years of daily bars.
+    max_bars = None if full_history else 500
+    windowed_cte = _bars_source_cte(":codes", target_filter_sql, max_bars=max_bars)
 
     one_minus_rsi = RSI_WINDOW - 1
     one_minus_atr = ATR_WINDOW - 1
@@ -330,7 +362,8 @@ def build_indicator_query_sql(
 
     sql = f"""
     WITH RECURSIVE
-    {bars_cte},
+    {windowed_cte},
+    {_bars_select_sql},
     wilder_input AS (
         SELECT
             b.etf_code, b.trade_date, b.rn, b.close, b.high, b.low,
