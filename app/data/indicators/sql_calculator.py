@@ -148,6 +148,8 @@ def _bars_source_cte(
                     b.high,
                     b.low,
                     b.adj_factor,
+                    b.amount,
+                    b.volume,
                     ROW_NUMBER() OVER (PARTITION BY b.etf_code ORDER BY b.trade_date DESC) AS rn_desc
                 FROM instrument_daily_bar b
                 WHERE b.etf_code = ANY({codes_bind})
@@ -169,7 +171,9 @@ def _bars_source_cte(
                 b.close,
                 b.high,
                 b.low,
-                b.adj_factor
+                b.adj_factor,
+                b.amount,
+                b.volume
             FROM instrument_daily_bar b
             WHERE b.etf_code = ANY({codes_bind})
               AND EXISTS (
