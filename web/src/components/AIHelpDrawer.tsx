@@ -13,6 +13,7 @@ import { useAIHelp } from '@/hooks/useAIHelp';
 import { useAIStatus } from '@/components/AISetupBanner';
 import { useSettingsStore } from '@/stores/settings';
 import { useIsMobile } from '@/hooks/useBreakpoint';
+import { useFocusRestore } from '@/hooks/useFocusRestore';
 import StepProgress from '@/components/StepProgress';
 import type { HelpMessage } from '@/types/help';
 
@@ -60,6 +61,11 @@ export default function AIHelpDrawer() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const aiAvailable = aiStatus?.available ?? false;
+
+  // WCAG 2.4.3: when the AI drawer closes, return focus to the trigger
+  // button (the help icon in the header) so keyboard users don't get
+  // dumped back at <body>.
+  useFocusRestore(isOpen);
 
   useEffect(() => {
     // Reduced-motion 用户：禁用平滑滚动，直接跳转（cross-fade 原则）
