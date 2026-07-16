@@ -1,6 +1,6 @@
 import './styles.css';
 import { useMemo } from 'react';
-import { Card, Skeleton, Table, Tag, Tooltip } from 'antd';
+import { Skeleton, Table, Tag, Tooltip } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import {
   DollarOutlined,
@@ -377,9 +377,10 @@ export default function Portfolio() {
           <>
             <ResponsiveGrid cols={2} gap="sm" className="portfolio-diff-summary" stretch>
               {diffItems.map((d) => (
-                <Card
+                <Panel
                   key={d.code}
-                  size="small"
+                  variant="default"
+                  padding="sm"
                   title={
                     <span>
                       <WarningOutlined className="ad-mr-1" />
@@ -397,7 +398,7 @@ export default function Portfolio() {
                     目标 {d.targetWeight.toFixed(2)}% · 实际 {d.actualWeight.toFixed(2)}%
                   </div>
                   <div className="ad-text-small ad-mt-2">{d.reason}</div>
-                </Card>
+                </Panel>
               ))}
             </ResponsiveGrid>
             <div className="ad-mb-3" />
