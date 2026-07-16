@@ -44,6 +44,7 @@ from app.models.trading import (
 )
 from app.models.user import User
 from app.models.audit_log import AuditLog
+from app.models.web_vitals import WebVitalsLog
 
 __all__ = [
     # ETF models
@@ -68,6 +69,8 @@ __all__ = [
     "User",
     # Audit log
     "AuditLog",
+    # Frontend performance telemetry (Core Web Vitals)
+    "WebVitalsLog",
     # ETL / Strategy models
     "DataSourceConfig",
     "ETLLog",
