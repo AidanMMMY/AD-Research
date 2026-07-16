@@ -9,6 +9,7 @@ import logging
 from datetime import date, datetime, timezone
 from typing import Any
 
+from apscheduler.executors.pool import ThreadPoolExecutor
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.interval import IntervalTrigger
@@ -16,13 +17,13 @@ from apscheduler.triggers.interval import IntervalTrigger
 from app.core.celery_app import celery_app
 from app.core.database import SessionLocal
 from app.core.redis_client import get_redis_client, redis_lock
+from app.tasks.cninfo import refresh_cninfo_reports_daily
 from app.tasks.indicator import calculate_indicators
 from app.data.pipelines.a_share import AShareETLPipeline
 from app.data.pipelines.a_share_stock_daily import AStockDailyPipeline
 from app.data.pipelines.a_share_stock_discovery import AShareStockDiscoveryPipeline
 from app.data.pipelines.a_share_stock_financials import AStockFinancialsPipeline
 from app.data.pipelines.a_share_stock_fundamental import AStockFundamentalPipeline
-from app.data.pipelines.cninfo_reports import CninfoReportsPipeline
 from app.data.pipelines.crypto_daily import CryptoDailyPipeline
 from app.data.pipelines.etf_holdings import ETFHoldingsPipeline
 from app.data.pipelines.etf_metadata_enrichment import ETFMetadataEnrichmentPipeline
@@ -48,7 +49,11 @@ from app.services.scoring_service import ScoringService
 from app.services.signal_service import SignalService
 from app.strategies.base import StrategyRegistry
 
-scheduler = BackgroundScheduler()
+# Limit the default APScheduler thread pool. The default 20 workers can
+# launch too many long-running DB-holding jobs concurrently and exhaust the
+# backend connection pool (Action-253 follow-up). 5 concurrent scheduler
+# jobs is enough for our nightly batch while leaving headroom for the API.
+scheduler = BackgroundScheduler(executors={"default": ThreadPoolExecutor(max_workers=5)})
 
 # Names for distributed locks used by scheduled jobs.
 _LOCK_ETL = "daily_etl"
@@ -1009,24 +1014,17 @@ def run_signal_generation(target_date: date | None = None):
 def run_cninfo_reports_daily():
     """Refresh cninfo periodic reports (daily 17:00 Asia/Shanghai).
 
-    Walks the HS300 + CS500 universe (B-tier) and pulls the four
-    periodic-report categories published in the last 7 days.  Safe to
-    re-run thanks to the unique constraint on ``announcement_id``.
+    Offloads the actual work to a dedicated Celery worker so a backend
+    container restart does not interrupt the nightly B-tier (HS300 + CS500)
+    report fetch. The task is idempotent thanks to the unique constraint on
+    ``announcement_id``.
     """
     with redis_lock("cninfo_reports_daily", expire_seconds=7200, wait_timeout=600) as acquired:
         if not acquired:
             print("⚠️ [SCHEDULER_WARN] Cninfo reports refresh skipped: lock in use")
             return
-        db = SessionLocal()
-        try:
-            pipeline = CninfoReportsPipeline(db)
-            result = pipeline.run_with_retry(max_attempts=2)
-            print(
-                f"[Scheduler] Cninfo reports daily: "
-                f"success={result.success}, records={result.records}"
-            )
-        finally:
-            db.close()
+        result = refresh_cninfo_reports_daily.delay()
+        print(f"[Scheduler] Cninfo reports daily queued: task_id={result.id}")
 
 
 def init_scheduler():

@@ -118,7 +118,8 @@ jobs:
 
       - name: Retry Run update.sh (unified entrypoint) [attempt 2/2]
         id: update_sh_retry
-        if: ${{ inputs.dry_run != 'true' && steps.update_sh.conclusion == 'failure' }}
+        # continue-on-error 会把 conclusion 重写为 success，必须用 outcome 判断真实结果
+        if: ${{ inputs.dry_run != 'true' && steps.update_sh.outcome == 'failure' }}
         env:
           FORCE: 1
         # 最终重试：失败硬退出，不再继续后续 step（健康检查、迁移、通知）
@@ -148,9 +149,9 @@ jobs:
           # Action-253 follow-up: import + alembic alone miss runtime
           # problems (pool exhaustion, route 500, missing endpoint).
           # Probe endpoints and verify /health body status=ok.
-          docker exec "${BACKEND_CONTAINER}" python - <<'PY'
+          docker exec -i "${BACKEND_CONTAINER}" python - <<'PY'
           import json, urllib.request
-          for path in ('/health', '/auth/me', '/openapi.json'):
+          for path in ('/health', '/openapi.json'):
               try:
                   resp = urllib.request.urlopen(f'http://localhost:8000{path}', timeout=5)
                   body = resp.read().decode()

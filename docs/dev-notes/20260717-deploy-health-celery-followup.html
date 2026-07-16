@@ -1,0 +1,322 @@
+
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<title>2026-07-17 Deploy / Health / Celery 修复跟进</title>
+<style>
+  :root {
+    --bg-base: #FAFBFC;
+    --bg-elevated: #F3F5F7;
+    --bg-surface: #EDF0F3;
+    --text-primary: #0F1115;
+    --text-secondary: #5B6778;
+    --text-tertiary: #8894A4;
+    --border-default: #e5e7eb;
+    --accent: #2563EB;
+    --accent-dim: rgba(37, 99, 235, 0.08);
+    --accent-border: rgba(37, 99, 235, 0.20);
+    --color-rise: #dc2626;
+    --color-fall: #16a34a;
+    --color-warning: #f59e0b;
+    --color-success: #30A46C;
+    --radius-md: 8px;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC",
+      "Microsoft YaHei", "Helvetica Neue", Arial, sans-serif;
+    background: var(--bg-base);
+    color: var(--text-primary);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 48px 32px 96px;
+  }
+  header {
+    border-bottom: 1px solid var(--border-default);
+    padding-bottom: 24px;
+    margin-bottom: 32px;
+  }
+  h1 {
+    font-size: 32px;
+    font-weight: 600;
+    line-height: 1.2;
+    margin: 0 0 12px;
+    letter-spacing: -0.02em;
+  }
+  h2 {
+    font-size: 22px;
+    font-weight: 600;
+    margin: 40px 0 16px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border-default);
+  }
+  h3 {
+    font-size: 17px;
+    font-weight: 600;
+    margin: 28px 0 12px;
+  }
+  p { margin: 0 0 14px; }
+  ul, ol { margin: 0 0 16px; padding-left: 24px; }
+  li { margin-bottom: 6px; }
+  code {
+    font-family: "SF Mono", Monaco, "Courier New", monospace;
+    font-size: 0.9em;
+    background: var(--bg-surface);
+    padding: 2px 6px;
+    border-radius: 4px;
+  }
+  pre {
+    background: #0F1115;
+    color: #E8ECF1;
+    padding: 16px;
+    border-radius: var(--radius-md);
+    overflow-x: auto;
+    font-size: 13px;
+    line-height: 1.5;
+  }
+  pre code { background: transparent; padding: 0; color: inherit; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 16px 0;
+    font-size: 14px;
+  }
+  th, td {
+    border: 1px solid var(--border-default);
+    padding: 10px 12px;
+    text-align: left;
+  }
+  th {
+    background: var(--bg-elevated);
+    font-weight: 600;
+  }
+  tr:nth-child(even) { background: var(--bg-elevated); }
+  blockquote {
+    margin: 16px 0;
+    padding: 12px 16px;
+    background: var(--accent-dim);
+    border-left: 3px solid var(--accent);
+    border-radius: 0 var(--radius-md) var(--radius-md) 0;
+  }
+  blockquote p { margin: 0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1>2026-07-17 Deploy / Health / Celery 修复跟进</h1>
+  <p style="color: var(--text-secondary); margin: 0;">决策日志与后续 TODO</p>
+</header>
+<h1>2026-07-17 Deploy / Health / Celery 修复跟进</h1>
+<blockquote>
+<p>决策日志：记录 2026-07-16 ~ 2026-07-17 连续 deploy 失败 (#255-#258) 的根因、修复过程与后续加固措施。
+相关 runbook：[[20260712-celery-worker-runbook]]、[[20260714-deploy-update-sh-exit-5-fix]]、[[20260707-cninfo-reports-fix]]。</p>
+</blockquote>
+<h2>1. 事件摘要</h2>
+<table>
+<thead>
+<tr>
+<th>项目</th>
+<th>内容</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>时间</td>
+<td>2026-07-16 ~ 2026-07-17</td>
+</tr>
+<tr>
+<td>现象</td>
+<td>GitHub Actions deploy #255-#258 连续失败，网站一度不可访问</td>
+</tr>
+<tr>
+<td>根因</td>
+<td>① backend 仅 <code>expose:8000</code>，host 侧 <code>curl localhost:8000/health</code> 探测失败；② <code>/health</code> 数据新鲜度查询扫描 ~16M 行耗时 14s，并发探针放大后耗尽 QueuePool；③ <code>update.sh</code> 在 backend 未就绪时继续启动 nginx；④ entrypoint 脚本未 <code>chmod +x</code>；⑤ ECS <code>/data</code> 磁盘 97% 满 / build OOM</td>
+</tr>
+<tr>
+<td>恢复</td>
+<td>已清理磁盘、重建镜像、重启 backend/celery-worker/nginx，<code>https://www.alloyresearch.net/health</code> 返回 200 且 <code>status=ok</code></td>
+</tr>
+</tbody>
+</table>
+<h2>2. 已应用的修复</h2>
+<h3>2.1 部署流程（deploy.yml / update.sh / rollback.sh）</h3>
+<table>
+<thead>
+<tr>
+<th>修复点</th>
+<th>文件</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>workflow retry 判断 <code>outcome</code> 而非 <code>conclusion</code></td>
+<td><code>.github/workflows/deploy.yml:122</code></td>
+<td><code>continue-on-error</code> 会把 <code>conclusion</code> 重写为 <code>success</code>，必须用 <code>outcome</code> 判断真实失败，否则重试永不触发</td>
+</tr>
+<tr>
+<td>smoke check 移除 <code>/auth/me</code></td>
+<td><code>.github/workflows/deploy.yml:151</code></td>
+<td><code>/auth/me</code> 不存在且受保护，会 401 导致 smoke check 失败</td>
+</tr>
+<tr>
+<td>镜像 tag 方向修正</td>
+<td><code>deploy/aliyun-ecs/update.sh:148</code></td>
+<td>旧逻辑会把新构建的 <code>${GIT_SHA}</code> 覆盖回旧的 <code>latest</code>；改为 <code>ad-research:${GIT_SHA} -&gt; latest</code></td>
+</tr>
+<tr>
+<td>回滚时镜像缺失自动 build</td>
+<td><code>scripts/rollback.sh:149-154</code></td>
+<td>若目标版本镜像不存在，基于目标 commit 重新构建，避免 <code>pull_policy: never</code> 导致回滚失败</td>
+</tr>
+<tr>
+<td>backend build 传入 <code>GIT_SHA</code></td>
+<td><code>deploy/aliyun-ecs/docker-compose.yml:99-102</code></td>
+<td><code>/health</code> 能显示准确 commit</td>
+</tr>
+<tr>
+<td>backend healthcheck 解析 <code>status=ok</code></td>
+<td><code>deploy/aliyun-ecs/docker-compose.yml:109-114</code></td>
+<td>避免 DB 未就绪时 nginx/celery-worker 提前启动</td>
+</tr>
+</tbody>
+</table>
+<h3>2.2 健康检查与数据库连接池</h3>
+<table>
+<thead>
+<tr>
+<th>修复点</th>
+<th>文件</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>/health</code> 使用独立 NullPool 引擎</td>
+<td><code>app/core/health.py:56-66</code></td>
+<td>不再与业务请求竞争主 QueuePool；设置连接级 <code>statement_timeout=3000ms</code></td>
+</tr>
+<tr>
+<td>简化新鲜度查询</td>
+<td><code>app/core/health.py:163-166</code></td>
+<td>从 per-market join 改为全局 <code>max(trade_date)</code></td>
+</tr>
+<tr>
+<td>新增 <code>trade_date</code> 单列索引</td>
+<td><code>alembic/versions/2026_07_17_add_instrument_daily_bar_trade_date_index.py</code></td>
+<td>保证 <code>max(trade_date)</code> 走 Index Only Scan；保留原 <code>(etf_code, trade_date DESC)</code> 复合索引</td>
+</tr>
+<tr>
+<td>Postgres 提高 <code>max_connections</code></td>
+<td><code>deploy/aliyun-ecs/docker-compose.yml:40</code></td>
+<td>默认 100 太紧张，改为 200</td>
+</tr>
+<tr>
+<td>限制 APScheduler 并发线程</td>
+<td><code>app/core/scheduler.py:52-56</code></td>
+<td>默认 20 线程会放大连接池占用，改为 5</td>
+</tr>
+</tbody>
+</table>
+<h3>2.3 Celery 改造收尾</h3>
+<table>
+<thead>
+<tr>
+<th>修复点</th>
+<th>文件</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>新增日刷 Celery 任务</td>
+<td><code>app/tasks/cninfo.py:132-164</code></td>
+<td><code>refresh_cninfo_reports_daily</code> 在 worker 中执行 <code>CninfoReportsPipeline</code></td>
+</tr>
+<tr>
+<td>scheduler 改为提交 Celery</td>
+<td><code>app/core/scheduler.py:1009-1019</code></td>
+<td><code>run_cninfo_reports_daily</code> 调用 <code>.delay()</code>，backend 重启不中断</td>
+</tr>
+</tbody>
+</table>
+<h2>3. 验证结果</h2>
+<ul>
+<li><code>python -m py_compile app/core/health.py app/core/scheduler.py app/tasks/cninfo.py alembic/versions/2026_07_17_add_instrument_daily_bar_trade_date_index.py</code> 通过</li>
+<li>ECS 容器状态：backend/celery-worker/nginx/postgres/redis 全部 running/healthy</li>
+<li>外部 <code>https://www.alloyresearch.net/health</code>：<code>status=ok</code>、<code>db=ok</code>、<code>redis=ok</code>、<code>data=ok</code>（latest_date=2026-07-15，age_days=2）</li>
+</ul>
+<h2>4. 仍存在的风险与后续 TODO</h2>
+<table>
+<thead>
+<tr>
+<th>优先级</th>
+<th>事项</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>P1</td>
+<td>真 secret rotate</td>
+<td>DeepSeek/雪球/Tushare 真 key 已识别，需下一轮 sprint 执行，仓库历史里 <code>.env</code> 未抹（见 [[20260704-secret-rotate-runbook]]、[[20260705-secret-rotate-3-providers]]）</td>
+</tr>
+<tr>
+<td>P1</td>
+<td>UI Sprint 遗留 4 项</td>
+<td>见 [[20260701-p0-and-ui-sprint-results]]</td>
+</tr>
+<tr>
+<td>P2</td>
+<td>scheduler 长会话优化</td>
+<td>当前多个 scheduler 函数把 <code>SessionLocal()</code> 持有到 pipeline 结束，应把 session 生命周期控制在真正 DB 事务范围内</td>
+</tr>
+<tr>
+<td>P2</td>
+<td>独立 scheduler 容器</td>
+<td>避免 scheduler 与 API worker 共享连接池</td>
+</tr>
+<tr>
+<td>P3</td>
+<td><code>cninfo_pdf.py</code> 冗余 <code>db.close()</code></td>
+<td><code>try</code> 块内和 <code>finally</code> 块中各一次，可清理</td>
+</tr>
+<tr>
+<td>P3</td>
+<td>回滚/失败日志保留多份</td>
+<td>当前 <code>previous_head</code> 与 <code>rollback-latest.log</code> 只保留最新一份，不利于多次失败审计</td>
+</tr>
+</tbody>
+</table>
+<h2>5. 操作命令速查</h2>
+<pre><code class="language-bash"># 生产环境检查所有服务
+cd /opt/ad-research/deploy/aliyun-ecs
+docker compose ps
+
+# 容器内 /health
+docker exec alloyresearch-backend python -c &quot;import urllib.request,json; print(json.loads(urllib.request.urlopen('http://localhost:8000/health',timeout=5).read()))&quot;
+
+# 手动触发 cninfo 日刷
+docker exec alloyresearch-backend python -c &quot;from app.tasks.cninfo import refresh_cninfo_reports_daily; refresh_cninfo_reports_daily.delay()&quot;
+
+# 查看 celery worker 活跃任务
+docker exec alloyresearch-celery-worker celery -A app.core.celery_app inspect active
+
+# 手动回滚到某个 commit
+bash scripts/rollback.sh &lt;COMMIT_SHA&gt;
+</code></pre>
+<h2>6. 决策与回滚</h2>
+<ul>
+<li><strong>决策</strong>：本次修改同时涉及部署脚本、Docker 配置、健康检查、数据库索引、Celery 任务，属于跨多文件重构，已同步更新本决策日志、代码注释与 MEMORY 指针。</li>
+<li><strong>回滚方式</strong>：若新代码导致问题，可执行 <code>bash scripts/rollback.sh &lt;previous_commit_sha&gt;</code>；ECS 当前已恢复，回滚目标镜像 <code>ad-research:0ba98c2</code> 仍存在。</li>
+</ul>
+</div>
+</body>
+</html>

@@ -144,8 +144,8 @@ else
         sleep 5
         docker compose build backend ${_BUILD_ARGS}
     fi
-    # 给镜像打版本 tag，便于回滚；latest tag 用于 compose 默认引用
-    docker tag ad-research:latest "ad-research:${GIT_SHA}" || log_warn "版本 tag 打标失败"
+    # 给镜像打 latest tag，便于 compose 默认引用；版本 tag 已由 compose 构建时生成
+    docker tag "ad-research:${GIT_SHA}" ad-research:latest || log_warn "latest tag 打标失败"
     BUILD_END=$(date +%s)
     BUILD_ELAPSED=$((BUILD_END - BUILD_START))
     if [ "$BUILD_ELAPSED" -lt 30 ]; then
@@ -189,14 +189,14 @@ _backend_ready=false
 for i in $(seq 1 60); do
     # backend service 只 expose 8000 给容器网络，没有映射到 host，
     # 因此不能从 host curl localhost:8000/health。在容器内探测。
-    _body=$(docker exec "${BACKEND_CONTAINER}" python - <<'PY' 2>/dev/null || true
+    # 使用单行的 python -c，避免某些 Docker/shell 环境下 heredoc 无输出。
+    _body=$(docker exec "${BACKEND_CONTAINER}" python -c "
 import urllib.request
 try:
     print(urllib.request.urlopen('http://localhost:8000/health', timeout=5).read().decode())
 except Exception:
     pass
-PY
-)
+" 2>/dev/null || true)
     if [ -n "$_body" ]; then
         # grep 兼容无 jq 环境：匹配 "status":"ok"（容忍空格）。
         if printf '%s' "$_body" | grep -Eq '"status"[[:space:]]*:[[:space:]]*"ok"'; then

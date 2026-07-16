@@ -39,10 +39,30 @@ from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeout
 from datetime import date, datetime, timezone
 from typing import Any
 
+from sqlalchemy import create_engine, text
+from sqlalchemy.pool import NullPool
+
+from app.config import get_settings
+
 # A market bucket is "stale" once its latest daily bar is older than this
 # many calendar days. 4 days tolerates a normal Fri→Mon weekend gap plus a
 # public holiday without crying wolf.
 _STALE_AFTER_DAYS = 4
+
+# Health checks must never compete with the main application connection pool.
+# Use a dedicated NullPool engine so every probe opens and immediately closes
+# its own short-lived connection, and set a hard statement_timeout so a slow
+# query can never pin a probe thread (ops incident 2026-07-16).
+_HEALTH_STATEMENT_TIMEOUT_MS = 3000
+_health_engine = create_engine(
+    get_settings().database_url,
+    poolclass=NullPool,
+    pool_pre_ping=True,
+    connect_args={
+        "connect_timeout": 5,
+        "options": f"-c statement_timeout={_HEALTH_STATEMENT_TIMEOUT_MS}",
+    },
+)
 
 # Overall /health response must return faster than this. Load balancers and
 # ECS probes typically use 5–10s; we keep a 4s ceiling so there is headroom.
@@ -90,21 +110,15 @@ def _classify_exception(exc: Exception) -> dict[str, Any]:
 
 
 def _check_db() -> dict[str, Any]:
-    """Round-trip ``SELECT 1`` using a dedicated autocommit connection.
+    """Round-trip ``SELECT 1`` using a dedicated, non-pooled connection.
 
-    Using ``engine.connect()`` with AUTOCOMMIT avoids entering the shared
-    ORM session pool and lets us set a tight ``statement_timeout`` without
-    affecting application sessions.
+    The connection comes from a private NullPool engine so a saturated main
+    QueuePool cannot make this probe time out. ``statement_timeout`` is set
+    once at connection level via ``connect_args`` and is therefore guaranteed
+    to apply to the probe query.
     """
     try:
-        from sqlalchemy import text
-
-        from app.core.database import engine
-
-        with engine.connect().execution_options(isolation_level="AUTOCOMMIT") as conn:
-            # Cancel any query that takes longer than 2s so a hung DB cannot
-            # pin this probe thread indefinitely.
-            conn.execute(text("SET LOCAL statement_timeout = '2s'"))
+        with _health_engine.connect() as conn:
             conn.execute(text("SELECT 1"))
         return {"status": "ok"}
     except FutureTimeoutError:
@@ -151,16 +165,11 @@ def _check_data_staleness() -> dict[str, Any]:
     ops incident 2026-07-16: the previous per-market join against ``etf_info``
     scanned ~16M rows and took 6–15s, which made the whole ``/health``
     endpoint time out and cascaded into QueuePool exhaustion. We now use the
-    much cheaper ``max(trade_date)`` over the whole table with a tight
-    ``statement_timeout``.
+    much cheaper ``max(trade_date)`` over the whole table, served by a
+    dedicated NullPool engine with a hard statement timeout.
     """
-    from sqlalchemy import text
-
-    from app.core.database import engine
-
     try:
-        with engine.connect().execution_options(isolation_level="AUTOCOMMIT") as conn:
-            conn.execute(text("SET LOCAL statement_timeout = '3s'"))
+        with _health_engine.connect() as conn:
             row = conn.execute(
                 text("SELECT max(trade_date) FROM instrument_daily_bar")
             ).one()

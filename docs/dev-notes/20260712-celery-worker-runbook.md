@@ -36,7 +36,7 @@
 
 - `app/core/celery_app.py`：Celery 应用单例与配置。
 - `app/tasks/indicator.py`：指标计算 Celery 任务。
-- `app/tasks/cninfo.py`：cninfo 回填 Celery 任务。
+- `app/tasks/cninfo.py`：cninfo 全量回填 `backfill_cninfo_reports` 与每日刷新 `refresh_cninfo_reports_daily` Celery 任务。
 - `app/core/scheduler.py`：APScheduler 定时将任务提交到 Celery。
 - `scripts/trigger_indicator_calc.py`：手动触发指标计算。
 - `scripts/trigger_cninfo_backfill.py`：手动触发 cninfo 回填（自动分片）。
@@ -117,6 +117,9 @@ python3 scripts/trigger_cninfo_backfill.py --type annual
 
 # 试运行，只打印分片不提交
 python3 scripts/trigger_cninfo_backfill.py --dry-run
+
+# 手动触发每日刷新任务（HS300 + CS500 最近 7 天）
+python3 -c "from app.tasks.cninfo import refresh_cninfo_reports_daily; refresh_cninfo_reports_daily.delay()"
 ```
 
 ### 4.5 重启 worker

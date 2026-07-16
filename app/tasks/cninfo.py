@@ -12,6 +12,7 @@ from pathlib import Path
 
 from app.core.celery_app import celery_app
 from app.core.database import SessionLocal
+from app.data.pipelines.cninfo_reports import CninfoReportsPipeline
 from app.data.providers.cninfo_provider import CninfoProvider
 from app.services.cninfo_report_service import CninfoReportService
 
@@ -126,3 +127,38 @@ def backfill_cninfo_reports(
         "written": total_written,
         "skipped": total_skipped,
     }
+
+
+@celery_app.task(bind=True, max_retries=2, default_retry_delay=300)
+def refresh_cninfo_reports_daily(self, window_days: int = 7) -> dict:
+    """Daily refresh of cninfo periodic reports for the B-tier universe.
+
+    Mirrors the old scheduler-local ``CninfoReportsPipeline`` run but executes
+    inside the dedicated celery worker. Idempotent thanks to the unique
+    constraint on ``announcement_id``.
+
+    Args:
+        window_days: How many days back from today to fetch (default 7).
+
+    Returns:
+        Dict with ``success``, ``records``, and optional ``error``.
+    """
+    db = SessionLocal()
+    try:
+        pipeline = CninfoReportsPipeline(db, window_days=window_days)
+        result = pipeline.run_with_retry(max_attempts=2)
+        log.info(
+            "Cninfo daily refresh: success=%s records=%s",
+            result.success,
+            result.records,
+        )
+        return {
+            "success": result.success,
+            "records": result.records,
+            "error": result.error,
+        }
+    except Exception as exc:
+        log.exception("Cninfo daily refresh failed: %s", exc)
+        raise self.retry(exc=exc)
+    finally:
+        db.close()

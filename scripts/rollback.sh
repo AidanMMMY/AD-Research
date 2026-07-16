@@ -148,6 +148,11 @@ if docker image inspect "ad-research:${TARGET_SHA}" >/dev/null 2>&1; then
     docker tag "ad-research:${TARGET_SHA}" ad-research:latest
 else
     log_warn "未找到 ad-research:${TARGET_SHA}，将基于目标 commit 重新构建"
+    if ! (cd "$COMPOSE_DIR" && docker compose build backend) 2>&1 | tee -a "$ROLLBACK_LOG"; then
+        log_error "镜像构建失败，回滚失败"
+        log_error "请人工检查后跑 update.sh 重新同步到 main"
+        exit 1
+    fi
 fi
 
 export GIT_SHA="${TARGET_SHA}"

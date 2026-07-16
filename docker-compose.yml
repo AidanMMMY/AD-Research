@@ -2,6 +2,7 @@ services:
   postgres:
     image: postgres:16-alpine
     container_name: alloyresearch-postgres-dev
+    command: postgres -c max_connections=200
     environment:
       POSTGRES_DB: ad_research
       POSTGRES_USER: etf
@@ -37,6 +38,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        GIT_SHA: ${GIT_SHA:-unknown}
     container_name: alloyresearch-backend-dev
     # Note: backend is reached via the docker internal network only.
     # alloyresearch-nginx (host-network) proxies /api/ → http://backend:8000.
