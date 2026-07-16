@@ -22,6 +22,7 @@ import { useIsMobile } from '@/hooks/useBreakpoint';
 import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
 import { getReturnColor } from '@/utils/color';
 import { readCssVar, resolveChartColors } from '@/utils/cssVar';
+import { subscribeChartThemeCache } from '@/utils/chartColors';
 import type {
   SectorClassification,
   SectorConstituent,
@@ -116,6 +117,58 @@ function toEChartsColor(cssVarRef: string, fallback: string): string {
   return resolved;
 }
 
+/**
+ * Compute a dynamic visualMap domain for the multi-period return heatmap.
+ * dataviz P0-3: hard-coded ±6% clamps everything to mid-tone in normal
+ * markets and saturates the gradient in bull/bear markets. Use 2σ around
+ * the observed mean as the default and fall back to ±3% only when data is
+ * too sparse / flat to estimate a meaningful std.
+ */
+function computeHeatmapDomain(
+  sectors: SectorPerformance[],
+): { min: number; max: number } {
+  const FALLBACK = { min: -3, max: 3 };
+
+  const values: number[] = [];
+  sectors.forEach((s) => {
+    SECTOR_RETURN_PERIODS.forEach((period) => {
+      const key = PERIOD_RETURN_KEY[period];
+      const v = Number(s[key] ?? 0);
+      if (Number.isFinite(v)) values.push(v);
+    });
+  });
+
+  if (values.length < 2) return FALLBACK;
+
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const mean = values.reduce((sum, v) => sum + v, 0) / values.length;
+  const variance =
+    values.reduce((sum, v) => sum + (v - mean) ** 2, 0) / values.length;
+  const std = Math.sqrt(variance);
+
+  // Std too small (flat data or single value) — fall back to a symmetric
+  // ±3% which keeps the gradient useful without crushing contrast.
+  if (std < 0.1) return FALLBACK;
+
+  // 2σ around mean, but always honour the observed extremes so no
+  // saturated cell gets clipped beyond the gradient's end-stop.
+  let lo = Math.min(mean - 2 * std, min);
+  let hi = Math.max(mean + 2 * std, max);
+
+  // Round to nearest 0.5 for cleaner visualMap tick labels.
+  lo = Math.floor(lo * 2) / 2;
+  hi = Math.ceil(hi * 2) / 2;
+
+  // Guard against degenerate ranges.
+  if (hi - lo < 1) {
+    const mid = (hi + lo) / 2;
+    return { min: mid - 1.5, max: mid + 1.5 };
+  }
+
+  return { min: lo, max: hi };
+}
+
 // Detail-panel tab keys (板块汇总 / 成份股构成).
 type DetailTab = 'summary' | 'constituents';
 
@@ -136,11 +189,10 @@ export default function SectorRotation() {
   const [detailTab, setDetailTab] = useState<DetailTab>('summary');
   // Re-render when the theme toggles so chart colours pick up new vars.
   const [themeTick, setThemeTick] = useState(0);
-  useEffect(() => {
-    const handler = () => setThemeTick((t) => t + 1);
-    document.addEventListener('themechange', handler);
-    return () => document.removeEventListener('themechange', handler);
-  }, []);
+  useEffect(
+    () => subscribeChartThemeCache(() => setThemeTick((t) => t + 1)),
+    [],
+  );
 
   const sectors = data?.sectors || [];
   const isMobile = useIsMobile();
@@ -227,6 +279,8 @@ export default function SectorRotation() {
         data.push([colIdx, rowIdx, Number(v.toFixed(2))]);
       });
     });
+    // dataviz P0-3: dynamic visualMap domain — see computeHeatmapDomain above.
+    const { min: vmMin, max: vmMax } = computeHeatmapDomain(ordered);
     return {
       // Reduced motion: skip the canvas animation; the cells simply appear.
       animation: !prefersReducedMotion,
@@ -253,13 +307,13 @@ export default function SectorRotation() {
         axisLabel: { color: palette.textPrimary, fontSize: 12 },
       },
       visualMap: {
-        min: -6,
-        max: 6,
+        min: vmMin,
+        max: vmMax,
         calculable: true,
         orient: 'horizontal',
         left: 'center',
         bottom: 6,
-        text: ['+6%', '-6%'],
+        text: [`+${vmMax.toFixed(1)}%`, `${vmMin.toFixed(1)}%`],
         textStyle: { color: palette.textSecondary, fontSize: 11 },
         inRange: { color: [palette.downHex, palette.midHex, palette.upHex] },
         itemWidth: 12,

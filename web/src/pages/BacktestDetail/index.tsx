@@ -1,4 +1,5 @@
 import './styles.css';
+import { useEffect, useMemo, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Statistic, Table, Spin, Tabs, Alert, Button } from 'antd';
 import { ArrowUpOutlined, ArrowDownOutlined, ExperimentOutlined } from '@ant-design/icons';
@@ -21,6 +22,8 @@ import { buildBacktestDetailContext } from '@/utils/helpContext';
 import { getQuickQuestions } from '@/utils/helpPrompts';
 import { formatDateTime } from '@/utils/datetime';
 import { NULL_PLACEHOLDER } from '@/utils/format';
+// dataviz P0-1: ECharts cannot resolve CSS variables inside `option`.
+import { resolveChartColor, subscribeChartThemeCache } from '@/utils/chartColors';
 import type { AttributionEffect, BacktestMetrics, BacktestNAV, BacktestTrade } from '@/types/backtest';
 
 export default function BacktestDetail() {
@@ -34,6 +37,12 @@ export default function BacktestDetail() {
   // matchMedia subscription (the existing hook handles listener registration
   // and teardown).
   const prefersReducedMotion = usePrefersReducedMotion();
+  // dataviz P0-1: bump on themechange so memoised chart colors re-resolve.
+  const [themeTick, setThemeTick] = useState(0);
+  useEffect(
+    () => subscribeChartThemeCache(() => setThemeTick((t) => t + 1)),
+    [],
+  );
 
   if (isLoading) {
     return (
@@ -104,29 +113,53 @@ export default function BacktestDetail() {
   // reduced-motion pattern for non-interactive content). Uses the
   // usePrefersReducedMotion hook above so live OS changes are observed.
   const navData: BacktestNAV[] = data.daily_nav || [];
-  const navOption: EChartsOption = {
-    // Apple Design #4 Springs: critically-damped equivalent (cubicOut,
-    // no overshoot) for the initial draw; disabled under reduced motion.
-    animation: !prefersReducedMotion,
-    animationDuration: prefersReducedMotion ? 0 : 350,
-    animationEasing: 'cubicOut',
-    tooltip: {
-      trigger: 'axis',
-      transitionDuration: prefersReducedMotion ? 0 : 0.2,
-      axisPointer: { type: 'line', snap: true },
-    },
-    grid: { left: 50, right: 20, top: 30, bottom: 30 },
-    xAxis: { type: 'category', data: navData.map((d: BacktestNAV) => d.date), axisLine: { lineStyle: { color: 'var(--text-tertiary)' } } },
-    yAxis: { type: 'value', splitLine: { lineStyle: { color: 'var(--border-default)' } } },
-    series: [{
-      type: 'line',
-      data: navData.map((d: BacktestNAV) => d.nav),
-      smooth: true,
-      lineStyle: { color: 'var(--accent)', width: 2 },
-      itemStyle: { color: 'var(--accent)' },
-      areaStyle: { color: 'var(--accent-dim)' },
-    }],
-  };
+  // dataviz P0-1: ECharts cannot resolve `var(--xxx)` inside `option`. Read
+  // computed CSS values once per render (memoised on themeTick) so the
+  // line/grid/axis/tooltip colors track the active theme.
+  const navColors = useMemo(
+    () => ({
+      axisLine: resolveChartColor('--text-tertiary'),
+      splitLine: resolveChartColor('--border-default'),
+      accent: resolveChartColor('--accent'),
+      accentDim: resolveChartColor('--accent-dim'),
+    }),
+    [themeTick],
+  );
+  const navOption: EChartsOption = useMemo(
+    () => ({
+      // Apple Design #4 Springs: critically-damped equivalent (cubicOut,
+      // no overshoot) for the initial draw; disabled under reduced motion.
+      animation: !prefersReducedMotion,
+      animationDuration: prefersReducedMotion ? 0 : 350,
+      animationEasing: 'cubicOut',
+      tooltip: {
+        trigger: 'axis',
+        transitionDuration: prefersReducedMotion ? 0 : 0.2,
+        axisPointer: { type: 'line', snap: true },
+      },
+      grid: { left: 50, right: 20, top: 30, bottom: 30 },
+      xAxis: {
+        type: 'category',
+        data: navData.map((d: BacktestNAV) => d.date),
+        axisLine: { lineStyle: { color: navColors.axisLine } },
+      },
+      yAxis: {
+        type: 'value',
+        splitLine: { lineStyle: { color: navColors.splitLine } },
+      },
+      series: [
+        {
+          type: 'line',
+          data: navData.map((d: BacktestNAV) => d.nav),
+          smooth: true,
+          lineStyle: { color: navColors.accent, width: 2 },
+          itemStyle: { color: navColors.accent },
+          areaStyle: { color: navColors.accentDim },
+        },
+      ],
+    }),
+    [navData, navColors, prefersReducedMotion],
+  );
 
   const formatSigned = (v?: number | null) => {
     if (v == null) return '—';

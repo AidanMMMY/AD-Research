@@ -3,6 +3,7 @@ import ReactECharts from 'echarts-for-react';
 import type { EChartsOption } from 'echarts';
 import { useIsMobile } from '@/hooks/useBreakpoint';
 import { resolveChartColors } from '@/utils/cssVar';
+import { subscribeChartThemeCache } from '@/utils/chartColors';
 import { useSettingsStore } from '@/stores/settings';
 
 interface CorrelationHeatmapProps {
@@ -14,11 +15,10 @@ export default function CorrelationHeatmap({ codes, matrix }: CorrelationHeatmap
   const isMobile = useIsMobile();
   const colorConvention = useSettingsStore((s) => s.colorConvention);
   const [themeTick, setThemeTick] = useState(0);
-  useEffect(() => {
-    const handler = () => setThemeTick((t) => t + 1);
-    document.addEventListener('themechange', handler);
-    return () => document.removeEventListener('themechange', handler);
-  }, []);
+  useEffect(
+    () => subscribeChartThemeCache(() => setThemeTick((t) => t + 1)),
+    [],
+  );
 
   const data: [number, number, number][] = [];
   matrix.forEach((row, i) => {
@@ -33,18 +33,6 @@ export default function CorrelationHeatmap({ codes, matrix }: CorrelationHeatmap
   // light-theme defaults in theme.css so SSR / no-DOM still renders correctly.
   const bgElevated = useMemo(
     () => resolveChartColors(['var(--bg-elevated)'], ['#F3F5F7'])[0],
-    [themeTick, colorConvention],
-  );
-  const bgBase = useMemo(
-    () => resolveChartColors(['var(--bg-base)'], ['#FAFBFC'])[0],
-    [themeTick, colorConvention],
-  );
-  const colorFall = useMemo(
-    () => resolveChartColors(['var(--color-fall)'], ['#16a34a'])[0],
-    [themeTick, colorConvention],
-  );
-  const colorRise = useMemo(
-    () => resolveChartColors(['var(--color-rise)'], ['#dc2626'])[0],
     [themeTick, colorConvention],
   );
   const textPrimary = useMemo(
@@ -125,7 +113,13 @@ export default function CorrelationHeatmap({ codes, matrix }: CorrelationHeatmap
       left: 'center',
       bottom: 0,
       textStyle: { color: textSecondary, fontSize: isMobile ? 10 : 12 },
-      inRange: { color: [colorFall, bgBase, colorRise] },
+      // dataviz P0-2: correlation is a statistical measure, NOT a return,
+      // so the rise/fall color convention doesn't apply. Use a fixed
+      // diverging blue→gray→red gradient: cool blue for negative
+      // correlation, neutral gray for zero, warm red for positive.
+      // Literal hex (no CSS vars) — visualMap gradients look the same
+      // in light & dark themes and aren't tied to market semantics.
+      inRange: { color: ['#3b82f6', '#9ca3af', '#ef4444'] },
     },
     series: [{
       type: 'heatmap',
