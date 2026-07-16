@@ -17,6 +17,7 @@ import SignalDetailDrawer from '@/components/SignalDetailDrawer';
 import ExportButton from '@/components/ExportButton';
 import { useSignals } from '@/hooks/useSignals';
 import { useAIHelp } from '@/hooks/useAIHelp';
+import { clickableRow } from '@/utils/a11y';
 import { buildSignalDashboardContext } from '@/utils/helpContext';
 import { getQuickQuestions } from '@/utils/helpPrompts';
 import type { Signal } from '@/types/signal';
@@ -245,12 +246,10 @@ export default function SignalDashboard() {
               locale={{
                 emptyText: <EmptyState title="暂无信号" description="当前没有符合条件的交易信号" />,
               }}
-              onRow={(record) => ({
-                // Row click opens the signal detail drawer. To navigate to
-                // the underlying instrument detail page, use the explicit
-                // "查看标的" link in the right-most column.
-                onClick: () => setSelectedSignal(record),
-              })}
+              // Row click opens the signal detail drawer. To navigate to
+              // the underlying instrument detail page, use the explicit
+              // "查看标的" link in the right-most column.
+              onRow={(record) => clickableRow(() => setSelectedSignal(record))}
             />
           </div>
         </Panel>

@@ -588,7 +588,7 @@ export default function SectorRotation() {
                   description={`当前 A 股范围内无${clsLabel}板块数据，请稍后重试或检查 ETL。`}
                 />
               ) : (
-                <ReactECharts option={rankOption} />
+                <ReactECharts option={rankOption} role="img" aria-label="行业轮动排名" />
               )}
             </div>
           </Panel>
@@ -613,7 +613,7 @@ export default function SectorRotation() {
                   description={`当前 A 股范围内无${clsLabel}板块数据。`}
                 />
               ) : (
-                <ReactECharts option={rsOption} />
+                <ReactECharts option={rsOption} role="img" aria-label="相对强弱图" />
               )}
             </div>
           </Panel>
@@ -643,7 +643,7 @@ export default function SectorRotation() {
               className="ad-chart-container sector-rotation__heatmap-container"
               style={{ height: heatmapHeight, minHeight: heatmapHeight }}
             >
-              <ReactECharts option={heatmapOption} />
+              <ReactECharts option={heatmapOption} role="img" aria-label="相关性热力图" />
             </div>
           )}
         </Panel>

@@ -20,6 +20,7 @@ import {
 } from '@/api/cninfoReportApi';
 import type { CninfoReport, CninfoAdjunctType, CninfoReportDetail } from '@/types/cninfoReport';
 import { useDebounce } from '@/hooks/useDebounce';
+import { clickableRow } from '@/utils/a11y';
 
 const ADJUNCT_LABEL: Record<string, string> = {
   annual: '年报',
@@ -387,9 +388,7 @@ export default function CninfoReportsPage() {
                 showSizeChanger: false,
                 showTotal: (t) => `共 ${t} 条`,
               }}
-              onRow={(record) => ({
-                onClick: () => handleOpenDetail(record.id),
-              })}
+              onRow={(record) => clickableRow(() => handleOpenDetail(record.id))}
             />
           </div>
         )}

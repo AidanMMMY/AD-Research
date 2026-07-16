@@ -41,7 +41,7 @@ export default function LoadingBlock({
   const config = skeletonConfig[size];
 
   return (
-    <div className="loading-block" style={style}>
+    <div className="loading-block" aria-busy="true" aria-label="正在加载内容" style={style}>
       <div className="loading-block__bars">
         {config.short.map((widthPct, i) => (
           <div

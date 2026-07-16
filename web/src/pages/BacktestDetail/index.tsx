@@ -258,7 +258,7 @@ export default function BacktestDetail() {
           />
         }
       >
-        <ReactECharts option={navOption} className="detail-chart" />
+        <ReactECharts option={navOption} className="detail-chart" role="img" aria-label="回测净值图" />
       </Panel>
     </div>
   );

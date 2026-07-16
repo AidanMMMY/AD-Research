@@ -44,6 +44,7 @@ import SparklineCell from '@/components/SparklineCell';
 import ReturnTag from '@/components/ReturnTag';
 import LastUpdated from '@/components/LastUpdated';
 import { useIsMobile } from '@/hooks/useBreakpoint';
+import { clickableRow } from '@/utils/a11y';
 import { NULL_PLACEHOLDER } from '@/utils/format';
 import ExportButton from '@/components/ExportButton';
 
@@ -1030,18 +1031,7 @@ export default function InstrumentList() {
               locale={{
                 emptyText: <EmptyState title="暂无数据" />,
               }}
-              onRow={(record) => ({
-                onClick: () => navigate(`/instruments/${record.code}`),
-                tabIndex: 0,
-                /* Gesture detail: pointer-down feedback + keyboard navigation
-                   on table rows. */
-                onKeyDown: (e: React.KeyboardEvent<HTMLElement>) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    navigate(`/instruments/${record.code}`);
-                  }
-                },
-              })}
+              onRow={(record) => clickableRow(() => navigate(`/instruments/${record.code}`))}
             />
           </div>
         )}

@@ -218,7 +218,7 @@ body {
 /* Button */
 .ant-btn {
   border-radius: var(--radius-md);
-  transition: background var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast), box-shadow var(--transition-fast);
+  transition: background var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast), box-shadow var(--transition-fast), transform var(--transition-fast);
   font-weight: 500;
 }
 
@@ -234,6 +234,19 @@ body {
   background: var(--bg-hover);
 }
 
+.ant-btn-default:active {
+  border-color: var(--text-secondary);
+  color: var(--text-primary);
+  background: var(--bg-active);
+  transform: scale(var(--press-scale));
+}
+
+.ant-btn-default:focus-visible,
+.ant-btn-primary:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
 .ant-btn-primary {
   background: var(--accent);
   border: none;
@@ -244,6 +257,23 @@ body {
 .ant-btn-primary:hover {
   background: var(--accent-hover);
   box-shadow: 0 0 16px var(--accent-glow);
+}
+
+.ant-btn-primary:active {
+  background: var(--accent-active);
+  box-shadow: 0 0 8px var(--accent-glow);
+  transform: scale(var(--press-scale));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ant-btn {
+    transition: none;
+  }
+
+  .ant-btn-default:active,
+  .ant-btn-primary:active {
+    transform: none;
+  }
 }
 
 /* Form */
@@ -2083,6 +2113,51 @@ main {
   margin-top: var(--space-block);
 }
 
+/* ---- GlassCard ----
+   Translucent surface wrapper built on top of Panel. Provides a frosted
+   glass look with optional hover lift and accent glow. */
+.glass-card {
+  background: color-mix(in srgb, var(--card-bg) 75%, transparent);
+  border: 1px solid var(--card-border);
+  border-radius: var(--card-radius);
+  box-shadow: var(--shadow-card);
+  -webkit-backdrop-filter: saturate(180%) blur(12px);
+  backdrop-filter: saturate(180%) blur(12px);
+}
+
+.glass-card--hover {
+  transition:
+    border-color var(--transition-fast),
+    box-shadow var(--transition-fast),
+    transform var(--transition-fast);
+}
+
+.glass-card--hover:hover {
+  border-color: var(--border-accent);
+  box-shadow: var(--shadow-card), 0 0 0 1px var(--accent-glow);
+  transform: translateY(-1px);
+}
+
+.glass-card--glow {
+  position: relative;
+  z-index: 0;
+}
+
+.glass-card--glow::before {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  z-index: -1;
+  border-radius: calc(var(--card-radius) + 4px);
+  background: radial-gradient(
+    circle at 50% 0%,
+    var(--accent-glow) 0%,
+    transparent 70%
+  );
+  opacity: 0.5;
+  pointer-events: none;
+}
+
 /* ---- StatCard ---- */
 .stat-card {
   background: var(--card-bg);
@@ -3315,194 +3390,10 @@ main {
   margin-bottom: var(--space-section);
 }
 
-/* AI Chat page */
-.phase5c-chat-layout {
-  display: flex;
-  gap: var(--space-4);
-  height: calc(100dvh - 280px);
-  min-height: 320px;
-}
-
-@supports not (height: 100dvh) {
-  .phase5c-chat-layout {
-    height: calc(100vh - 280px);
-  }
-}
-
-.phase5c-chat-sidebar {
-  width: 240px;
-  flex-shrink: 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-}
-
-.phase5c-chat-sidebar__list {
-  flex: 1;
-  overflow: auto;
-}
-
-.phase5c-chat-sidebar__item {
-  padding: var(--space-2);
-  border-radius: var(--radius-lg);
-  cursor: pointer;
-  margin-bottom: 4px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  background: transparent;
-  border: 1px solid transparent;
-  transition: background var(--transition-fast), border-color var(--transition-fast);
-}
-
-.phase5c-chat-sidebar__item:hover,
-.phase5c-chat-sidebar__item:focus-visible {
-  background: var(--bg-hover);
-}
-
-.phase5c-chat-sidebar__item--active {
-  background: var(--accent-dim);
-  border-color: var(--card-border);
-}
-
-.phase5c-chat-sidebar__title {
-  font-size: 13px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  flex: 1;
-  color: var(--text-secondary);
-}
-
-.phase5c-chat-sidebar__item--active .phase5c-chat-sidebar__title {
+/* Phase 5c icon title — used in Sentiment and other Phase 5c pages. */
+.phase5c-icon-title {
   color: var(--accent);
-  font-weight: 600;
-}
-
-.phase5c-chat-area {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  background: var(--card-bg);
-  border-radius: var(--card-radius);
-  border: 1px solid var(--card-border);
-  box-shadow: var(--shadow-card);
-  overflow: hidden;
-}
-
-.phase5c-chat-messages {
-  flex: 1;
-  overflow: auto;
-  padding: var(--space-4) var(--space-5);
-}
-
-.phase5c-message-row {
-  display: flex;
-  margin-bottom: var(--space-4);
-}
-
-.phase5c-message-row--user {
-  justify-content: flex-end;
-}
-
-.phase5c-message-row--assistant {
-  justify-content: flex-start;
-}
-
-.phase5c-message-bubble {
-  max-width: 80%;
-  padding: 12px 16px;
-  border-radius: var(--radius-lg);
-  font-size: 14px;
-  line-height: 1.7;
-}
-
-.phase5c-message-bubble--user {
-  background: var(--accent-dim);
-  color: var(--accent);
-  border-top-right-radius: 4px;
-}
-
-.phase5c-message-bubble--assistant {
-  background: var(--bg-elevated);
-  color: var(--text-primary);
-  border-top-left-radius: 4px;
-}
-
-.phase5c-message-bubble--streaming {
-  background: var(--bg-elevated);
-  border: 1px solid var(--border-default);
-  border-top-left-radius: 4px;
-}
-
-.phase5c-input-bar {
-  padding: var(--space-3) var(--space-5);
-  border-top: 1px solid var(--border-default);
-  background: var(--card-bg);
-}
-
-.phase5c-quick-prompts {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  flex-wrap: wrap;
-  margin-bottom: var(--space-2);
-  font-size: 12px;
-  color: var(--text-tertiary);
-}
-
-.phase5c-quick-prompts__spacer {
-  flex: 1;
-}
-
-.phase5c-input-row {
-  display: flex;
-  gap: 10px;
-}
-
-.phase5c-input-row .ant-input {
-  flex: 1;
-}
-
-.phase5c-input-row .ant-btn {
-  align-self: flex-end;
-}
-
-@media (max-width: 767px) {
-  .phase5c-chat-layout {
-    flex-direction: column;
-    height: calc(100dvh - 220px);
-    min-height: 280px;
-  }
-
-  @supports not (height: 100dvh) {
-    .phase5c-chat-layout {
-      height: calc(100vh - 220px);
-    }
-  }
-
-  .phase5c-chat-sidebar {
-    width: 100%;
-  }
-
-  .phase5c-chat-messages {
-    padding: var(--space-3) var(--space-4);
-  }
-
-  .phase5c-message-bubble {
-    max-width: 90%;
-  }
-
-  .phase5c-input-bar {
-    padding: var(--space-3) var(--space-4);
-    position: sticky;
-    bottom: 0;
-    z-index: 10;
-  }
-
-  .phase5c-quick-prompts {
-    font-size: var(--text-small-size);
-  }
+  margin-right: 6px;
 }
 
 /* Research notes */
@@ -3712,18 +3603,6 @@ main {
   margin-bottom: var(--space-3);
 }
 
-/* Mobile back button in chat */
-.phase5c-mobile-back {
-  padding: var(--space-2) var(--space-3);
-  border-bottom: 1px solid var(--border-default);
-}
-
-.phase5c-chat-sidebar__delete {
-  color: var(--text-tertiary);
-  font-size: 12px;
-  flex-shrink: 0;
-}
-
 /* Form helpers */
 .phase5c-form-row {
   display: flex;
@@ -3757,18 +3636,6 @@ main {
   color: var(--text-primary);
   font-size: 14px;
   line-height: 1.8;
-}
-
-/* Empty state offset */
-.phase5c-empty-robot {
-  margin-top: 80px;
-}
-
-/* Streaming message divider */
-.phase5c-streaming-divider {
-  margin-top: 8px;
-  padding-top: 8px;
-  border-top: 1px solid var(--border-default);
 }
 
 /* Trading pages */
@@ -5883,6 +5750,7 @@ main {
   font-size: var(--text-small-size);
   font-weight: 500;
   padding: 2px 8px;
+  border: 1px solid transparent;
 }
 
 .status-tag--success {
@@ -6390,31 +6258,6 @@ main {
 .ad-mb-1 { margin-bottom: var(--space-1); }
 .ad-mb-8 { margin-bottom: var(--space-8); }
 .ad-whitespace-nowrap { white-space: nowrap; }
-
-/* ---- AI Chat ---- */
-.phase5c-empty-icon {
-  font-size: 48px;
-  color: var(--text-tertiary);
-}
-
-.phase5c-icon-rise {
-  color: var(--color-rise);
-}
-
-.phase5c-icon-accent {
-  color: var(--accent);
-}
-
-.phase5c-icon-title {
-  color: var(--accent);
-  margin-right: 6px;
-}
-
-.phase5c-quick-tag {
-  cursor: pointer;
-  font-size: 11px;
-  margin: 0 !important;
-}
 
 /* ---- Research notes ---- */
 .phase5c-markdown-modal .ant-modal-body {
@@ -8661,42 +8504,8 @@ input[type="password"]::-webkit-strong-password-auto-fill-button {
 
 
 /* ============================================================
-   Shimmer skeleton — 优雅的加载骨架动画
-   ============================================================ */
-@keyframes shimmer {
-  0%   { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
-}
-.skeleton-shimmer {
-  background: linear-gradient(
-    90deg,
-    var(--bg-hover) 25%,
-    var(--bg-surface) 50%,
-    var(--bg-hover) 75%
-  );
-  background-size: 200% 100%;
-  animation: shimmer 2s ease-in-out infinite;
-  border-radius: var(--radius-sm);
-}
-
-/* ============================================================
    Refined Details — 精致化打磨
    ============================================================ */
-
-/* 分割线：用渐隐的 hairline 替代纯实线 */
-.ad-section-heading::after {
-  content: '';
-  display: block;
-  margin-top: var(--space-4);
-  height: 1px;
-  background: linear-gradient(
-    to right,
-    var(--border-default) 0%,
-    var(--border-default) 50%,
-    transparent 100%
-  );
-  opacity: 0.6;
-}
 
 /* 表格行悬停：渐变背景替代纯色（感觉更流畅） */
 .ant-table-tbody > tr:hover > td {
@@ -8714,25 +8523,6 @@ input[type="password"]::-webkit-strong-password-auto-fill-button {
   padding: 2px 10px;
   font-weight: 500;
   letter-spacing: 0.01em;
-}
-
-/* Primary 按钮增加微妙的渐变光泽 */
-.ant-btn-primary {
-  background: linear-gradient(
-    135deg,
-    var(--accent) 0%,
-    var(--accent-hover) 100%
-  ) !important;
-  border: none !important;
-}
-
-/* Card 增加微妙的顶部彩色条（2px）作为视觉锚点 */
-.ad-panel--default {
-  border-top: 2px solid transparent;
-  transition: border-color 200ms;
-}
-.ad-panel--default:hover {
-  border-top-color: var(--border-accent);
 }
 
 /* ============================================================

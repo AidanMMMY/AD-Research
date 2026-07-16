@@ -20,6 +20,7 @@ import {
   useRefreshListingEvents,
 } from '@/api/listingEvents';
 import { useAIHelp } from '@/hooks/useAIHelp';
+import { clickableRow } from '@/utils/a11y';
 import { buildListingPreviewContext } from '@/utils/helpContext';
 import { getQuickQuestions } from '@/utils/helpPrompts';
 import type { ListingEvent, ListingStatus } from '@/types/listingEvent';
@@ -485,13 +486,12 @@ export default function ListingPreview() {
                 showSizeChanger: false,
                 showTotal: (t) => `共 ${t} 条`,
               }}
-              onRow={(record) => ({
-                onClick: (e) =>
-                  handleOpenDetail(
-                    record.id,
-                    (e.currentTarget as HTMLElement | null) ?? null,
-                  ),
-              })}
+              onRow={(record) => clickableRow((e) =>
+                handleOpenDetail(
+                  record.id,
+                  (e.currentTarget as HTMLElement | null) ?? null,
+                ),
+              )}
             />
           </div>
         )}

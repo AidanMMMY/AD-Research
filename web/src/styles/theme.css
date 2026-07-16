@@ -52,28 +52,31 @@
 
   /* ---- Market Colors (China A-share convention 默认: 红涨绿跌) ----
      AA contrast fixes — light bg #FAFBFC:
-       rise #1F8B45 ≈ 5.0:1 (was #16a34a ≈ 3.4:1, fail)
+       rise #1B7A3C ≈ 5.4:1 (was #1F8B45 ≈ 4.3:1, fail)
        fall #C0392B ≈ 5.7:1 (was #dc2626 ≈ 4.0:1, borderline) */
-  --color-rise: #1F8B45;
-  --color-rise-dim: rgba(31, 139, 69, 0.08);
-  --color-rise-border: rgba(31, 139, 69, 0.20);
+  --color-rise: #1B7A3C;
+  --color-rise-dim: rgba(27, 122, 60, 0.08);
+  --color-rise-border: rgba(27, 122, 60, 0.20);
   --color-fall: #C0392B;
   --color-fall-dim: rgba(192, 57, 43, 0.08);
   --color-fall-border: rgba(192, 57, 43, 0.20);
   --color-neutral: #9ca3af;
 
-  /* ---- Semantic Colors ---- */
-  --color-success: #30A46C;
-  --color-success-dim: rgba(48, 164, 108, 0.08);
-  --color-success-border: rgba(48, 164, 108, 0.20);
+  /* ---- Semantic Colors (AA 4.5:1 on white card bg) ----
+       success #2A6E3F ≈ 6.0:1 (was #30A46C ≈ 3.2:1)
+       error   #C62828 ≈ 5.6:1 (was #E5484D ≈ 3.9:1)
+       warning #8B5A00 ≈ 5.9:1 (was #F0B100 ≈ 1.9:1) */
+  --color-success: #2A6E3F;
+  --color-success-dim: rgba(42, 110, 63, 0.08);
+  --color-success-border: rgba(42, 110, 63, 0.20);
   --color-success-bright: #3CB97A;
-  --color-error: #E5484D;
-  --color-error-dim: rgba(229, 72, 77, 0.08);
-  --color-error-border: rgba(229, 72, 77, 0.20);
+  --color-error: #C62828;
+  --color-error-dim: rgba(198, 40, 40, 0.08);
+  --color-error-border: rgba(198, 40, 40, 0.20);
   --color-error-bright: #F16A6F;
-  --color-warning: #F0B100;
-  --color-warning-dim: rgba(240, 177, 0, 0.08);
-  --color-warning-border: rgba(240, 177, 0, 0.20);
+  --color-warning: #8B5A00;
+  --color-warning-dim: rgba(139, 90, 0, 0.08);
+  --color-warning-border: rgba(139, 90, 0, 0.20);
   --color-warning-bright: #F5C842;
   --color-warning-hover-dim: rgba(251, 191, 36, 0.18);
   --color-info: var(--accent);
@@ -364,10 +367,10 @@ html, body, #root {
    Color Convention — 红涨绿跌 vs 绿涨红跌
    ============================================================ */
 :root[data-color-convention="us"] {
-  /* AA: rise #1F8B45 (green-up), fall #C0392B (red-down) — same contrast target as default. */
-  --color-rise: #1F8B45;
-  --color-rise-dim: rgba(31, 139, 69, 0.08);
-  --color-rise-border: rgba(31, 139, 69, 0.20);
+  /* AA: rise #1B7A3C (green-up), fall #C0392B (red-down) — same contrast target as default. */
+  --color-rise: #1B7A3C;
+  --color-rise-dim: rgba(27, 122, 60, 0.08);
+  --color-rise-border: rgba(27, 122, 60, 0.20);
   --color-fall: #C0392B;
   --color-fall-dim: rgba(192, 57, 43, 0.08);
   --color-fall-border: rgba(192, 57, 43, 0.20);
@@ -417,14 +420,17 @@ html, body, #root {
   --color-fall-border: rgba(125, 203, 153, 0.30);
   --color-neutral: #888888;
 
-  /* ---- Semantic Colors (AA-anchored to rise/fall palette) ---- */
-  --color-success: #7DCB99;
-  --color-success-dim: rgba(125, 203, 153, 0.14);
-  --color-success-border: rgba(125, 203, 153, 0.30);
+  /* ---- Semantic Colors (dark, intentionally distinct from rise/fall) ----
+       success: emerald green, separate from fall's muted teal
+       error:   vivid red, separate from rise's salmon pink
+       warning: amber, same family as light but adapted for dark */
+  --color-success: #34D399;
+  --color-success-dim: rgba(52, 211, 153, 0.14);
+  --color-success-border: rgba(52, 211, 153, 0.30);
   --color-success-bright: #22c55e;
-  --color-error: #FF8585;
-  --color-error-dim: rgba(255, 133, 133, 0.14);
-  --color-error-border: rgba(255, 133, 133, 0.30);
+  --color-error: #F87171;
+  --color-error-dim: rgba(248, 113, 113, 0.14);
+  --color-error-border: rgba(248, 113, 113, 0.30);
   --color-error-bright: #ef4444;
   --color-warning: #EAB308;
   --color-warning-dim: rgba(234, 179, 8, 0.12);

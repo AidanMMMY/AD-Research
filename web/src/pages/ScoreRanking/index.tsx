@@ -19,6 +19,7 @@ import ScoreBar from '@/components/ScoreBar';
 import TemplateManagement from '@/components/TemplateManagement';
 import PageHeader from '@/components/PageHeader';
 import LastUpdated from '@/components/LastUpdated';
+import { clickableRow } from '@/utils/a11y';
 import { buildScoreRankingContext } from '@/utils/helpContext';
 import { getQuickQuestions } from '@/utils/helpPrompts';
 
@@ -209,18 +210,7 @@ export default function ScoreRanking() {
                 locale={{
                   emptyText: <EmptyState title="暂无数据" />,
                 }}
-                onRow={(record) => ({
-                  onClick: () => navigate(`/instruments/${record.etf_code}`),
-                  // Apple Design #10 Agency: rows must be operable by keyboard.
-                  tabIndex: 0,
-                  role: 'link',
-                  onKeyDown: (e: React.KeyboardEvent<HTMLElement>) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      e.preventDefault();
-                      navigate(`/instruments/${record.etf_code}`);
-                    }
-                  },
-                })}
+                onRow={(record) => clickableRow(() => navigate(`/instruments/${record.etf_code}`))}
               />
             </div>
           </Panel>

@@ -8,6 +8,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { usePoolList } from '@/hooks/usePoolDetail';
 import { poolApi } from '@/api';
 import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
+import { clickableRow } from '@/utils/a11y';
 import PageShell from '@/components/PageShell';
 import PageHeader from '@/components/PageHeader';
 import FilterToolbar from '@/components/FilterToolbar';
@@ -116,19 +117,7 @@ export default function PoolList() {
             rowClassName="pool-list-row--pressable"
             scroll={{ x: 'max-content' }}
             loading={poolsLoading}
-            onRow={(record) => ({
-              onClick: () => navigate(`/pools/${record.id}`),
-              // Apple Design #10 Agency: clickable rows must be operable by
-              // keyboard — tab to focus, Enter/Space to activate.
-              tabIndex: 0,
-              role: 'link',
-              onKeyDown: (e: React.KeyboardEvent<HTMLElement>) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault();
-                  navigate(`/pools/${record.id}`);
-                }
-              },
-            })}
+            onRow={(record) => clickableRow(() => navigate(`/pools/${record.id}`))}
             pagination={false}
             locale={{
               emptyText: poolsLoading ? '加载中...' : (

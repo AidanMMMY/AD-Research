@@ -161,6 +161,7 @@ export default function TickerTape({
               className={`ticker-cell tabular-nums ${dirClass}`}
               role="button"
               tabIndex={0}
+              aria-label={`${item.name} ${item.code} 当前价 ${priceDisplay} 涨跌 ${cpDisplay}`}
               onClick={() => navigate(`/instruments/${item.code}`)}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' || e.key === ' ') {

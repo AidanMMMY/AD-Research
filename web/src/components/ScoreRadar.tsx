@@ -108,5 +108,5 @@ export default function ScoreRadar({ data }: ScoreRadarProps) {
     },
   };
 
-  return <ReactECharts option={option} style={{ height: isMobile ? 240 : 300 }} />;
+  return <ReactECharts option={option} style={{ height: isMobile ? 240 : 300 }} role="img" aria-label="评分雷达图" />;
 }

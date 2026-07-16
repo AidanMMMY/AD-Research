@@ -16,6 +16,7 @@ import EmptyState from '@/components/EmptyState';
 import InstrumentCodeTag from '@/components/InstrumentCodeTag';
 import ThemeTag from '@/components/ThemeTag';
 import { useIsMobile } from '@/hooks/useBreakpoint';
+import { clickableRow } from '@/utils/a11y';
 
 export default function StocksList() {
   const navigate = useNavigate();
@@ -210,9 +211,7 @@ export default function StocksList() {
               locale={{
                 emptyText: <EmptyState title="暂无数据" />,
               }}
-              onRow={(record) => ({
-                onClick: () => navigate(`/stocks/${record.code}`),
-              })}
+              onRow={(record) => clickableRow(() => navigate(`/stocks/${record.code}`))}
             />
           </div>
         )}

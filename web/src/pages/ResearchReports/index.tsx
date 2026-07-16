@@ -21,6 +21,7 @@ import {
 import type { ResearchReportOut } from '@/api/researchReports';
 import { useDebounce } from '@/hooks/useDebounce';
 import { useIsMobile } from '@/hooks/useBreakpoint';
+import { clickableRow } from '@/utils/a11y';
 import { NULL_PLACEHOLDER } from '@/utils/format';
 
 /**
@@ -388,13 +389,12 @@ export default function ResearchReports() {
                 showSizeChanger: false,
                 showTotal: (t) => `共 ${t} 条`,
               }}
-              onRow={(record) => ({
-                onClick: (e) =>
-                  handleOpenDetail(
-                    record.id,
-                    (e.currentTarget as HTMLElement | null) ?? null,
-                  ),
-              })}
+              onRow={(record) => clickableRow((e) =>
+                handleOpenDetail(
+                  record.id,
+                  (e.currentTarget as HTMLElement | null) ?? null,
+                ),
+              )}
             />
           </div>
         )}

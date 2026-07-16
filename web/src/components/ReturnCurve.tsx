@@ -122,5 +122,5 @@ export default function ReturnCurve({ series }: ReturnCurveProps) {
     })),
   };
 
-  return <ReactECharts option={option} style={{ height: isMobile ? 240 : 320 }} />;
+  return <ReactECharts option={option} style={{ height: isMobile ? 240 : 320 }} role="img" aria-label="收益曲线图" />;
 }

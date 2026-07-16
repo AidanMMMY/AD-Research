@@ -5,6 +5,7 @@ import { useIsMobile } from '@/hooks/useBreakpoint';
 import { useSettingsStore } from '@/stores/settings';
 import { getUpColor, getDownColor } from '@/utils/color';
 import { resolveChartColor, readCssVar } from '@/utils/cssVar';
+import { chartA11yProps } from '@/utils/a11y';
 
 interface IndicatorOverlay {
   ma5?: boolean;
@@ -415,5 +416,5 @@ export default function KLineChart({ data, overlays = DEFAULT_OVERLAYS, adjusted
     );
   }
 
-  return <div ref={chartContainerRef} className="kline-chart" style={{ height: containerHeight }} />;
+  return <div ref={chartContainerRef} className="kline-chart" style={{ height: containerHeight }} {...chartA11yProps('K 线图')} />;
 }

@@ -39,6 +39,7 @@ import {
   useMacroLatest,
   useRefreshChinaMacro,
 } from '@/api/macro';
+import { clickableRow } from '@/utils/a11y';
 import type { MacroIndicatorItem, MacroLatestItem } from '@/api/macro';
 
 const { Text } = Typography;
@@ -454,15 +455,7 @@ export default function Macro() {
                   scroll={isMobile ? { x: 800 } : undefined}
                   pagination={{ pageSize: 15, showSizeChanger: false }}
                   onRow={(record) => ({
-                    onClick: () => setSelectedCode(record.code),
-                    onKeyDown: (e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault();
-                        setSelectedCode(record.code);
-                      }
-                    },
-                    tabIndex: 0,
-                    role: 'button',
+                    ...clickableRow(() => setSelectedCode(record.code), { role: 'button' }),
                     'aria-label': `查看 ${record.name_zh ?? record.code} 的走势`,
                   })}
                   locale={{

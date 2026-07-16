@@ -23,6 +23,7 @@ import { useFavorites } from '@/hooks/useFavorites';
 import { usePoolList } from '@/hooks/usePoolDetail';
 import { useIsMobile } from '@/hooks/useBreakpoint';
 import { statsApi } from '@/api/stats';
+import { clickableRow } from '@/utils/a11y';
 import {
   formatDateTime,
   formatRelative as formatRelativeTz,
@@ -1289,7 +1290,7 @@ export default function Dashboard() {
               size="small"
               scroll={{ x: 'max-content' }}
               pagination={false}
-              onRow={(record) => ({ onClick: () => navigate(`/instruments/${record.etf_code}`) })}
+              onRow={(record) => clickableRow(() => navigate(`/instruments/${record.etf_code}`))}
             />
           </Panel>
 

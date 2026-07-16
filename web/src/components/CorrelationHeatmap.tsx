@@ -129,5 +129,5 @@ export default function CorrelationHeatmap({ codes, matrix }: CorrelationHeatmap
     }],
   };
 
-  return <ReactECharts option={option} style={{ height: '100%' }} />;
+  return <ReactECharts option={option} style={{ height: '100%' }} role="img" aria-label="相关性热力图" />;
 }

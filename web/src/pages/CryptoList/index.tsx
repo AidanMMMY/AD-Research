@@ -1,6 +1,6 @@
 import './styles.css';
 
-import { useMemo, useState, type KeyboardEvent, type ReactNode } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Table, Input, Select, List, Skeleton } from 'antd';
 import { SearchOutlined } from '@ant-design/icons';
@@ -8,6 +8,7 @@ import { useCryptoList } from '@/hooks/useCrypto';
 import { useCryptoStore } from '@/stores/crypto';
 import { useIsMobile } from '@/hooks/useBreakpoint';
 import { useDebounce } from '@/hooks/useDebounce';
+import { clickableRow } from '@/utils/a11y';
 import PageShell from '@/components/PageShell';
 import PageHeader from '@/components/PageHeader';
 import FilterToolbar from '@/components/FilterToolbar';
@@ -338,14 +339,7 @@ export default function CryptoList() {
               size="small"
               scroll={{ x: 'max-content' }}
               onRow={(record) => ({
-                onClick: () => navigate(`/crypto/${record.code}`),
-                onKeyDown: (e: KeyboardEvent<HTMLTableRowElement>) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    navigate(`/crypto/${record.code}`);
-                  }
-                },
-                tabIndex: 0,
+                ...clickableRow(() => navigate(`/crypto/${record.code}`)),
                 'aria-label': `查看 ${record.name ?? record.code} 详情`,
               })}
               pagination={{

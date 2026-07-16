@@ -1,5 +1,6 @@
 import React from 'react';
 import { Tag } from 'antd';
+import { clickableProps } from '@/utils/a11y';
 
 export type ThemeTagVariant =
   | 'default'
@@ -45,8 +46,10 @@ export default function ThemeTag({
     .filter(Boolean)
     .join(' ');
 
+  const clickProps = onClick ? clickableProps(onClick) : {};
+
   return (
-    <Tag className={classes} icon={icon} title={title} onClick={onClick} style={style}>
+    <Tag className={classes} icon={icon} title={title} style={style} {...clickProps}>
       {children}
     </Tag>
   );

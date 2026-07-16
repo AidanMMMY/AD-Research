@@ -38,6 +38,7 @@ import ExportButton from '@/components/ExportButton';
 import ThemeTag from '@/components/ThemeTag';
 import ReturnTag from '@/components/ReturnTag';
 import { useChartMotion } from '@/hooks/useChartMotion';
+import { clickableRow } from '@/utils/a11y';
 import { NULL_PLACEHOLDER, formatNumber } from '@/utils/format';
 import {
   useFundFlowMarket,
@@ -752,7 +753,7 @@ export default function FundFlowPage() {
             scroll={{ x: 1100 }}
             pagination={false}
             onRow={(record) => ({
-              onClick: () => navigate(`/instruments/${record.ts_code}`),
+              ...clickableRow(() => navigate(`/instruments/${record.ts_code}`)),
               style: { cursor: 'pointer' },
             })}
             onChange={(_p, _f, sorter) => applySortChange(sorter, setIndividualSortField)}
@@ -842,7 +843,7 @@ export default function FundFlowPage() {
                       pagination={{ pageSize: 20, showSizeChanger: false }}
                       scroll={{ x: 900 }}
                       onRow={(record) => ({
-                        onClick: () => navigate(`/instruments/${record.ts_code}`),
+                        ...clickableRow(() => navigate(`/instruments/${record.ts_code}`)),
                         style: { cursor: 'pointer' },
                       })}
                       locale={{
@@ -937,7 +938,7 @@ export default function FundFlowPage() {
                       pagination={{ pageSize: 20, showSizeChanger: false }}
                       scroll={{ x: 900 }}
                       onRow={(record) => ({
-                        onClick: () => navigate(`/instruments/${record.ts_code}`),
+                        ...clickableRow(() => navigate(`/instruments/${record.ts_code}`)),
                         style: { cursor: 'pointer' },
                       })}
                       locale={{

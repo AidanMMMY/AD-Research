@@ -160,10 +160,12 @@ export default function Login() {
             background: var(--bg-surface, #14181f);
           }
         }
-        /* Visual audit fixes (2026-07-16):
+        /* Visual audit fixes (2026-07-16 / 2026-07-17):
            - center brand content vertically so the panel doesn't feel top-heavy
            - tighten the gap between the form title and the inputs
-           - keep the login page readable in light theme by forcing dark foreground tokens */
+           - keep the login page readable in light theme by forcing dark foreground tokens
+             (use the exact dark-theme values so contrast on the dark aurora/card
+             background stays >= AA: text-tertiary #9CA3AF, text-muted #7B828E) */
         .login-brand-panel {
           justify-content: center;
         }
@@ -176,8 +178,8 @@ export default function Login() {
         :root[data-theme="light"] .login-page--sci-fi {
           --text-primary: #E6EDF3;
           --text-secondary: #A0A0A0;
-          --text-tertiary: #787878;
-          --text-muted: #606060;
+          --text-tertiary: #9CA3AF;
+          --text-muted: #7B828E;
           --text-on-accent: #0D1117;
           --accent: #60A5FA;
           --accent-hover: #93BBFD;

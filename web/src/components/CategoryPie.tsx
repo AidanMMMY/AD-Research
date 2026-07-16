@@ -89,5 +89,5 @@ export default function CategoryPie({ data, mode = 'count' }: CategoryPieProps) 
     }],
   };
 
-  return <ReactECharts option={option} style={{ height: isMobile ? 220 : 280 }} />;
+  return <ReactECharts option={option} style={{ height: isMobile ? 220 : 280 }} role="img" aria-label="分类占比饼图" />;
 }

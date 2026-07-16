@@ -133,12 +133,14 @@ export default function InstrumentSelector({
             {value.map((code) => (
               <ThemeTag key={code} variant="accent" className="instrument-selector__tag">
                 {code}
-                <span
+                <button
+                  type="button"
+                  aria-label={`移除 ${code}`}
                   className="instrument-selector__remove"
                   onClick={() => handleRemoveCode(code)}
                 >
                   ×
-                </span>
+                </button>
               </ThemeTag>
             ))}
           </Space>

@@ -31,6 +31,7 @@ import InstrumentCodeTag from '@/components/InstrumentCodeTag';
 import ThemeTag from '@/components/ThemeTag';
 import ReturnTag from '@/components/ReturnTag';
 import FavoriteToggleButton from '@/components/FavoriteToggleButton';
+import { clickableRow } from '@/utils/a11y';
 import { formatDateTime, formatDateTimeCompact } from '@/utils/datetime';
 import { NULL_PLACEHOLDER } from '@/utils/format';
 import { getReturnColor } from '@/utils/color';
@@ -263,7 +264,7 @@ export default function Favorites() {
       pagination={false}
       scroll={{ x: 720 }}
       onRow={(record: any) => ({
-        onClick: () => navigate(`/instruments/${record.etf_code}`),
+        ...clickableRow(() => navigate(`/instruments/${record.etf_code}`)),
         style: { cursor: 'pointer' },
       })}
     />
@@ -401,7 +402,7 @@ export default function Favorites() {
             preserveSelectedRowKeys: true,
           }}
           onRow={(record: any) => ({
-            onClick: (e) => {
+            ...clickableRow((e) => {
               // 选中复选框 / 操作列时不要跳转
               const target = e.target as HTMLElement;
               if (
@@ -412,7 +413,7 @@ export default function Favorites() {
                 return;
               }
               navigate(`/instruments/${record.etf_code}`);
-            },
+            }),
             style: { cursor: 'pointer' },
           })}
         />

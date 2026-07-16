@@ -193,6 +193,7 @@ export default function Screen() {
                 <Row gutter={[16, 12]}>
                   <Col xs={12} sm={8} md={6}>
                     <Select
+                      aria-label="市场"
                       placeholder="市场"
                       allowClear
                       className="ad-w-full"
@@ -206,6 +207,7 @@ export default function Screen() {
                   </Col>
                   <Col xs={12} sm={8} md={6}>
                     <Select
+                      aria-label="分类"
                       placeholder={categoryDisabled ? '该市场暂无分类' : '分类'}
                       allowClear
                       className="ad-w-full"
@@ -223,6 +225,7 @@ export default function Screen() {
                   {scoreTemplates && scoreTemplates.length > 0 && (
                     <Col xs={12} sm={8} md={6}>
                       <Select
+                        aria-label="评分模板"
                         placeholder="评分模板"
                         allowClear
                         className="ad-w-full"
@@ -244,6 +247,7 @@ export default function Screen() {
                 <Row gutter={[16, 12]}>
                   <Col xs={12} sm={8} md={6}>
                     <InputNumber
+                      aria-label="1月收益最小 (%)"
                       placeholder="1月 最小 (%)"
                       className="ad-w-full"
                       step={1}
@@ -253,6 +257,7 @@ export default function Screen() {
                   </Col>
                   <Col xs={12} sm={8} md={6}>
                     <InputNumber
+                      aria-label="1月收益最大 (%)"
                       placeholder="1月 最大 (%)"
                       className="ad-w-full"
                       step={1}
@@ -262,6 +267,7 @@ export default function Screen() {
                   </Col>
                   <Col xs={12} sm={8} md={6}>
                     <InputNumber
+                      aria-label="3月收益最小 (%)"
                       placeholder="3月 最小 (%)"
                       className="ad-w-full"
                       step={1}
@@ -271,6 +277,7 @@ export default function Screen() {
                   </Col>
                   <Col xs={12} sm={8} md={6}>
                     <InputNumber
+                      aria-label="3月收益最大 (%)"
                       placeholder="3月 最大 (%)"
                       className="ad-w-full"
                       step={1}
@@ -280,6 +287,7 @@ export default function Screen() {
                   </Col>
                   <Col xs={12} sm={8} md={6}>
                     <InputNumber
+                      aria-label="1年收益最小 (%)"
                       placeholder="1年 最小 (%)"
                       className="ad-w-full"
                       step={1}
@@ -289,6 +297,7 @@ export default function Screen() {
                   </Col>
                   <Col xs={12} sm={8} md={6}>
                     <InputNumber
+                      aria-label="1年收益最大 (%)"
                       placeholder="1年 最大 (%)"
                       className="ad-w-full"
                       step={1}
@@ -305,6 +314,7 @@ export default function Screen() {
                 <Row gutter={[16, 12]}>
                   <Col xs={12} sm={8} md={6}>
                     <InputNumber
+                      aria-label="评分最小"
                       placeholder="评分 最小"
                       className="ad-w-full"
                       min={0} max={100}
@@ -314,6 +324,7 @@ export default function Screen() {
                   </Col>
                   <Col xs={12} sm={8} md={6}>
                     <InputNumber
+                      aria-label="评分最大"
                       placeholder="评分 最大"
                       className="ad-w-full"
                       min={0} max={100}
@@ -323,6 +334,7 @@ export default function Screen() {
                   </Col>
                   <Col xs={12} sm={8} md={6}>
                     <InputNumber
+                      aria-label="RSI 最小"
                       placeholder="RSI 最小"
                       className="ad-w-full"
                       min={0} max={100}
@@ -332,6 +344,7 @@ export default function Screen() {
                   </Col>
                   <Col xs={12} sm={8} md={6}>
                     <InputNumber
+                      aria-label="RSI 最大"
                       placeholder="RSI 最大"
                       className="ad-w-full"
                       min={0} max={100}
@@ -341,6 +354,7 @@ export default function Screen() {
                   </Col>
                   <Col xs={12} sm={8} md={6}>
                     <InputNumber
+                      aria-label="夏普最小"
                       placeholder="夏普 最小"
                       className="ad-w-full"
                       step={0.1}
@@ -350,6 +364,7 @@ export default function Screen() {
                   </Col>
                   <Col xs={12} sm={8} md={6}>
                     <InputNumber
+                      aria-label="夏普最大"
                       placeholder="夏普 最大"
                       className="ad-w-full"
                       step={0.1}
@@ -366,6 +381,7 @@ export default function Screen() {
                 <Row gutter={[16, 12]}>
                   <Col xs={12} sm={8} md={6}>
                     <InputNumber
+                      aria-label="波动率最小 (%)"
                       placeholder="波动率 最小 (%)"
                       className="ad-w-full"
                       min={0}
@@ -376,6 +392,7 @@ export default function Screen() {
                   </Col>
                   <Col xs={12} sm={8} md={6}>
                     <InputNumber
+                      aria-label="波动率最大 (%)"
                       placeholder="波动率 最大 (%)"
                       className="ad-w-full"
                       min={0}
@@ -386,6 +403,7 @@ export default function Screen() {
                   </Col>
                   <Col xs={12} sm={8} md={6}>
                     <InputNumber
+                      aria-label="回撤1年最小 (%)"
                       placeholder="回撤1y 最小 (%)"
                       className="ad-w-full"
                       step={1}
@@ -395,6 +413,7 @@ export default function Screen() {
                   </Col>
                   <Col xs={12} sm={8} md={6}>
                     <InputNumber
+                      aria-label="回撤1年最大 (%)"
                       placeholder="回撤1y 最大 (%)"
                       className="ad-w-full"
                       step={1}
