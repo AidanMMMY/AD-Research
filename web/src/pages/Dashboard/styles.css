@@ -327,6 +327,11 @@
   user-select: none;
   -webkit-tap-highlight-color: transparent;
   will-change: transform;
+  /* WCAG 2.5.5 (Target Size, AAA): the favorite-card is a tap target that
+     navigates to the instrument detail page. The natural height (≈32px
+     with 2-line content + 8px padding) is under the 44px minimum, so we
+     floor it. */
+  min-height: 44px;
 }
 
 .dashboard-favorite-card:hover {
@@ -502,6 +507,10 @@
   user-select: none;
   -webkit-tap-highlight-color: transparent;
   will-change: transform;
+  /* WCAG 2.5.5 (Target Size, AAA): the pool-card is a tap target that
+     navigates to the pool detail page. Floor the height at 44px so the
+     tap zone clears the recommended minimum even with a short pool name. */
+  min-height: 44px;
 }
 
 .dashboard-pool-card:hover {
@@ -640,6 +649,13 @@
   font-size: var(--text-label-size) !important;
   padding: 2px 6px !important;
   line-height: 1.4 !important;
+  /* WCAG 2.5.5 (Target Size): AAA wants 44x44 CSS px; these chips are
+     tap-targets for navigation (估值 / 组合 / 标的池 / 知识图谱). Bump
+     padding so the click rect ≥ 44px tall without changing the visual
+     chip size (the visible background still hugs the text). */
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
 }
 
 .dashboard-shell__quickbar .theme-tag .anticon {
