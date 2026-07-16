@@ -4,10 +4,16 @@ on:
   pull_request:
     paths:
       - 'web/**'
+  push:
+    branches: [main]
+    paths:
+      - 'web/**'
 
 jobs:
-  lint-css:
+  check:
+    name: Web lint / typecheck / build
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     defaults:
       run:
         working-directory: ./web
@@ -22,5 +28,7 @@ jobs:
           cache-dependency-path: 'web/package-lock.json'
       - name: Install dependencies
         run: npm ci
-      - name: Lint CSS
-        run: npm run lint:css
+      - name: Verify required dependencies are declared
+        run: npm run check:deps
+      - name: Lint + typecheck + build
+        run: npm run check:ci
