@@ -21,12 +21,16 @@ Design contract:
   overall status to ``degraded``). Stale data and a missing scheduler
   heartbeat are *warnings* — surfaced but non-fatal — because a fresh
   deploy or a weekend can legitimately produce stale bars.
+* **Never blocks the response.** Each synchronous probe runs under its own
+  timeout so a slow DB query or a stuck scheduler call cannot make the
+  whole ``/health`` endpoint time out (see ops incident 2026-07-16).
 """
 
 from __future__ import annotations
 
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeoutError
 from datetime import date, datetime, timezone
-from typing import Any
+from typing import Any, Callable
 
 # A market bucket is "stale" once its latest daily bar is older than this
 # many calendar days. 4 days tolerates a normal Fri→Mon weekend gap plus a
@@ -79,15 +83,15 @@ def _latest_bar_age_days(db, market: str) -> int | None:
 
     from app.models.etf import ETFInfo, InstrumentDailyBar
 
-    sub = (
-        db.query(InstrumentDailyBar.etf_code)
-        .join(ETFInfo, ETFInfo.code == InstrumentDailyBar.etf_code)
-        .filter(ETFInfo.market == market)
-        .subquery()
-    )
+    # ops incident 2026-07-16: the previous subquery formulation
+    #   SELECT ... WHERE etf_code IN (SELECT etf_code FROM ... JOIN ...)
+    # could run for tens of seconds on a large ``instrument_daily_bar`` table
+    # because the subquery returned one row per bar. Use a plain join + max()
+    # instead; PostgreSQL can use idx_etf_info_market and the PK.
     row = (
         db.query(func.max(InstrumentDailyBar.trade_date))
-        .filter(InstrumentDailyBar.etf_code.in_(sub))
+        .join(ETFInfo, ETFInfo.code == InstrumentDailyBar.etf_code)
+        .filter(ETFInfo.market == market)
         .first()
     )
     if not row or row[0] is None:
@@ -134,6 +138,24 @@ def _check_data_staleness() -> dict[str, Any]:
     }
 
 
+def _run_with_timeout(fn: Callable[[], Any], timeout_seconds: float) -> Any:
+    """Run ``fn`` in a worker thread and return its result or a timeout error.
+
+    The worker thread is detached on timeout so a stuck synchronous call
+    (slow DB query, blocking scheduler attribute) cannot block the HTTP
+    response. The thread may continue running in the background, but it will
+    be killed when the process exits.
+    """
+    executor = ThreadPoolExecutor(max_workers=1)
+    try:
+        future = executor.submit(fn)
+        return future.result(timeout=timeout_seconds)
+    except FutureTimeoutError:
+        return {"status": "error", "detail": f"probe timed out after {timeout_seconds}s"}
+    finally:
+        executor.shutdown(wait=False)
+
+
 def readiness_check() -> dict[str, Any]:
     """Probe every container concern and return a JSON-safe health report.
 
@@ -151,13 +173,14 @@ def readiness_check() -> dict[str, Any]:
           },
         }
 
-    Only ``db`` and ``redis`` are treated as critical.
+    Only ``db`` and ``redis`` are treated as critical. Each probe has its own
+    timeout so one slow dependency cannot make ``/health`` time out.
     """
     components = {
-        "db": _check_db(),
-        "redis": _check_redis(),
-        "scheduler": _check_scheduler(),
-        "data": _check_data_staleness(),
+        "db": _run_with_timeout(_check_db, 3.0),
+        "redis": _run_with_timeout(_check_redis, 3.0),
+        "scheduler": _run_with_timeout(_check_scheduler, 3.0),
+        "data": _run_with_timeout(_check_data_staleness, 5.0),
     }
 
     critical_ok = all(
