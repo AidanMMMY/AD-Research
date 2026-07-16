@@ -205,6 +205,11 @@ done
 
 if [ "$_backend_ready" = false ]; then
     log_error "Backend 启动超时或依赖未就绪，查看日志: docker compose logs backend --tail 50; 健康详情: curl -s http://localhost:8000/health"
+    # Action-253 root-cause: previously exited 0 even when /health
+    # never came up, masking real failures (pool exhaustion, missing
+    # migrations, import errors). Refuse to continue to nginx so the
+    # deploy workflow's "Backend smoke check" can flag the run.
+    exit 1
 fi
 
 # 启动 nginx

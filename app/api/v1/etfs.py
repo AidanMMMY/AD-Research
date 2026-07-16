@@ -44,7 +44,13 @@ def parse_etf_filter_params(
     board: str = Query(None, description="Filter by A-share board (主板/创业板/科创板/北交所)"),
     exchange: str = Query(None, description="Filter by exchange code (NYSE / NASDAQ / ...)"),
     page: int = Query(1, ge=1),
-    page_size: int = Query(50, ge=1, le=10000),
+    # Cap at 200 (down from 10 000). The ``le=10000`` default allowed
+    # the InstrumentSelector / PoolDetail / ReturnComparison /
+    # BacktestList pages to pull the entire instrument universe in one
+    # shot, which saturated the SQLAlchemy pool (5+10=15) and made
+    # /health time out → nginx 504. Frontends should use search +
+    # pagination instead of dumping 10k rows.
+    page_size: int = Query(50, ge=1, le=200),
 ) -> ETFFilterParams:
     """Build ETFFilterParams from query string arguments."""
     return ETFFilterParams(

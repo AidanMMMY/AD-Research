@@ -93,8 +93,23 @@ def delete_pool(
     current_user: UserResponse = Depends(get_current_user),
     service: PoolService = Depends(get_pool_service),
 ):
-    """Delete a pool by ID (M21-3 owner-scoped)."""
-    deleted = service.delete_pool(pool_id, current_user=current_user)
+    """Delete a pool by ID (M21-3 owner-scoped).
+
+    Status codes:
+      - 204: deleted
+      - 403: pool exists but is shared/legacy (``user_id IS NULL``) or
+             owned by another user
+      - 404: pool does not exist or already deleted
+    """
+    try:
+        deleted = service.delete_pool(pool_id, current_user=current_user)
+    except PermissionError as e:
+        if str(e) == "system_pool":
+            raise HTTPException(
+                status_code=403,
+                detail=f"系统预置标的池（id={pool_id}）不可删除，请新建一个自定义池代替",
+            )
+        raise HTTPException(status_code=403, detail="无权删除该标的池")
     if not deleted:
         raise HTTPException(status_code=404, detail=f"Pool {pool_id} not found")
     return None

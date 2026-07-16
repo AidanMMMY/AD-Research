@@ -32,3 +32,32 @@ jobs:
         run: npm run check:deps
       - name: Lint + typecheck + build
         run: npm run check:ci
+
+  # ---------------------------------------------------------------------
+  # Phase 7c (2026-07-16) — a11y smoke tests using axe-core.
+  #
+  # Runs in parallel with ``check`` so the new suite doesn't bloat the
+  # critical-path PR feedback. The suite is unit-level (jsdom + vitest +
+  # axe-core) and completes in ~3s locally; we still cap it at 10 min
+  # for safety on a cold runner.
+  # ---------------------------------------------------------------------
+  a11y:
+    name: Web a11y smoke (axe-core)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: ./web
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: 'web/package-lock.json'
+      - name: Install dependencies
+        run: npm ci
+      - name: Run a11y smoke tests
+        run: npx vitest run tests/a11y

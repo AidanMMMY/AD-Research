@@ -133,17 +133,35 @@ class PoolService:
     def delete_pool(
         self, pool_id: int, current_user: UserResponse | None = None
     ) -> bool:
-        """Soft-delete a pool, respecting owner-scoping (M21-3)."""
-        q = (
+        """Soft-delete a pool, respecting owner-scoping (M21-3).
+
+        Behaviour matrix:
+          - admin                → can delete any active pool.
+          - regular user, owned  → can delete (returns True, sets deleted_at).
+          - regular user, NULL   → cannot delete (raises PermissionError("system_pool")).
+          - regular user, other  → cannot delete (raises PermissionError("not_owner")).
+          - already deleted/missing → returns False (caller maps to 404).
+
+        Previously (review-pool-bug) the ownership filter excluded
+        ``user_id IS NULL`` rows so non-admins silently hit a 404
+        ("Pool 1 not found") on seeded system pools. The 3-way check
+        below fixes that by surfacing a 403 with a clear Chinese message
+        from the API layer.
+        """
+        pool = (
             self.db.query(ETFPools)
             .filter(ETFPools.id == pool_id)
             .filter(ETFPools.deleted_at.is_(None))
+            .first()
         )
-        if current_user is not None and current_user.role != "admin":
-            q = q.filter(ETFPools.user_id == current_user.id)
-        pool = q.first()
         if not pool:
             return False
+
+        is_admin = current_user is not None and current_user.role == "admin"
+        if not is_admin and pool.user_id is None:
+            raise PermissionError("system_pool")
+        if not is_admin and pool.user_id != current_user.id:
+            raise PermissionError("not_owner")
 
         pool.deleted_at = datetime.now(UTC)
         self.db.commit()

@@ -73,12 +73,17 @@ jobs:
 
           # 安全 reset：先 dry-check 工作树状态
           if [ -n "$(git status --porcelain)" ]; then
-            echo "[WARN] 工作树有未提交变更，将被丢弃（已被 git stash 备份）"
-            git stash push -u -m "auto-stash-before-deploy-$(date +%s)" || true
+            # Action-253 follow-up: previously we silently `git clean -fd`'d
+            # half-finished local edits, so untracked files (new endpoints,
+            # models, alembic migrations) were never deployed. Bail loudly
+            # so a developer commits the work first instead of losing it.
+            echo "::error::工作树有未提交变更，请先 commit + push 再部署。"
+            echo "::error::检测到的变更："
+            git status --porcelain | head -50
+            exit 1
           fi
 
           git reset --hard "${TARGET_REF}"
-          git clean -fd
           echo "[INFO] 已同步到：$(git rev-parse --short HEAD)"
 
       # ── 3. 调用统一入口：deploy/aliyun-ecs/update.sh ──
@@ -121,15 +126,29 @@ jobs:
 
           bash update.sh ${EXTRA_ARGS}
 
-      # ── 3.5 Backend smoke check：导入 + 迁移版本 ──
+      # ── 3.5 Backend smoke check：导入 + 迁移 + endpoint ping ──
       - name: Backend smoke check
         if: ${{ inputs.dry_run != 'true' }}
         timeout-minutes: 5
         run: |
           set -euo pipefail
-          echo "[SMOKE] 校验 backend 容器内 Python 导入 + alembic current"
+          echo "[SMOKE] 校验 backend 容器内 Python 导入 + alembic current + endpoint 响应"
           docker exec "${BACKEND_CONTAINER}" python -c "from app.main import app; print('routes:', len(app.routes))"
           docker exec "${BACKEND_CONTAINER}" alembic current
+          # Action-253 follow-up: import + alembic alone miss runtime
+          # problems (pool exhaustion, route 500, missing endpoint).
+          # Probe two cheap endpoints to confirm the HTTP server is
+          # actually responding before we declare success.
+          docker exec "${BACKEND_CONTAINER}" python - <<'PY'
+          import urllib.request
+          for path in ('/health', '/auth/me', '/openapi.json'):
+              try:
+                  code = urllib.request.urlopen(f'http://localhost:8000{path}', timeout=5).status
+                  print(f'[SMOKE] {path} -> {code}')
+              except Exception as e:
+                  print(f'[SMOKE] {path} -> ERR {e}')
+                  raise
+          PY
 
       - name: Dry-run skip rebuild, just sync code
         if: ${{ inputs.dry_run == 'true' }}

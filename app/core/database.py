@@ -17,6 +17,18 @@ engine = create_engine(
     settings.database_url,
     pool_pre_ping=settings.is_development,
     echo=settings.is_development,
+    # Pool sizing — defaults (5/10/30s) were too tight for the
+    # AD-Research workload: several pages fire /etfs?page_size=10000
+    # concurrently and the cel-worker also holds connections, so the
+    # default 5+10=15 saturated and /health's `SELECT 1` timed out →
+    # nginx 504. Action-253 root-cause analysis (2026-07-16):
+    # bump to 10/20, halve the timeout, recycle every 30 min so
+    # stale connections don't accumulate. ``pool_timeout=10`` makes
+    # overload fail fast (and visible) instead of stacking 30s waits.
+    pool_size=10,
+    max_overflow=20,
+    pool_timeout=10,
+    pool_recycle=1800,
 )
 
 SessionLocal = sessionmaker(
