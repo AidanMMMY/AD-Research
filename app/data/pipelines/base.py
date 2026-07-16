@@ -173,6 +173,29 @@ class ETLPipeline(ABC):
             result.success = False
             result.error = error_msg
             self._update_log(status="failed", error=error_msg)
+            # P0-6 (2026-07-16): notify admins on hard failure so a silent
+            # crash doesn't go unnoticed until the next morning's
+            # freshness check. Imported lazily so the ETL base class
+            # stays importable without the notification stack.
+            try:
+                from app.core.database import SessionLocal
+                from app.services.notification_service import NotificationService
+
+                alert_db = SessionLocal()
+                try:
+                    notifier = NotificationService(alert_db)
+                    notifier.send_etl_alert(
+                        job_name=self.job_name,
+                        error_msg=error_msg,
+                    )
+                finally:
+                    try:
+                        alert_db.close()
+                    except Exception:
+                        pass
+            except Exception:
+                # Never let an alerting failure mask the original error.
+                pass
 
         return result
 

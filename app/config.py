@@ -4,9 +4,39 @@ Loads configuration from environment variables and .env files.
 Use `get_settings()` to retrieve a cached Settings instance.
 """
 
+import logging
+import os
 from functools import lru_cache
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+logger = logging.getLogger(__name__)
+
+# P0-7 (2026-07-16): ``SECRET_KEY`` must not ship with the well-known
+# placeholder that was previously hard-coded as the default in this
+# file. The set of "known-bad" values covers both the original
+# placeholder and a few variants seen in commits / tutorials so a
+# stray ``AUTH_SECRET_KEY=secret`` / ``change-me`` no longer reaches a
+# production process silently. The validation runs once at module
+# import time (``auth_settings = AuthSettings()`` below) so a bad
+# value prevents the process from starting.
+#
+# In development (``APP_ENV=development``) we log a warning instead of
+# refusing to start — local Docker compose + pytest setups historically
+# rely on the placeholder to keep ``.env`` files out of git.
+_KNOWN_BAD_SECRET_KEYS: frozenset[str] = frozenset(
+    {
+        "your-secret-key-change-in-production",
+        "your-secret-key",
+        "change-me",
+        "changeme",
+        "secret",
+        "secret-key",
+        "default-secret-key",
+        "",
+    }
+)
+_DEV_PLACEHOLDER_SECRET_KEY = "your-secret-key-change-in-production"
 
 
 class Settings(BaseSettings):
@@ -174,9 +204,15 @@ class AuthSettings(BaseSettings):
 
     Never commit plaintext passwords to source control. Set these via
     environment variables or a secrets manager in production.
+
+    P0-7: the ``SECRET_KEY`` field has no safe hard-coded default. A
+    bare ``your-secret-key-change-in-production`` placeholder would let
+    a misconfigured deployment mint tokens with a publicly-known key,
+    so we ship ``SECRET_KEY=""`` and refuse to construct the settings
+    object if the resolved value is one of the well-known placeholders.
     """
 
-    SECRET_KEY: str = "your-secret-key-change-in-production"
+    SECRET_KEY: str = ""
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24  # 1 day
     ADMIN_USERNAME: str = "admin"
     ADMIN_PASSWORD: str = ""
@@ -187,6 +223,78 @@ class AuthSettings(BaseSettings):
         env_file_encoding="utf-8",
         extra="ignore",
     )
+
+    @classmethod
+    def _enforce_secret_key(cls, value: str) -> str:
+        # Default to "development" when APP_ENV is unset so local
+        # ``python -c "from app.main import app"`` smoke tests keep
+        # working with the historical dev placeholder.
+        app_env = os.environ.get("APP_ENV", "development")
+        is_dev = app_env.lower() == "development"
+        # In development we allow the empty default + the historical
+        # dev placeholder so the project still boots locally without a
+        # pre-configured ``.env``. In production (or any other env) the
+        # placeholder is rejected outright.
+        if value == _DEV_PLACEHOLDER_SECRET_KEY and is_dev:
+            logger.warning(
+                "[config] AUTH_SECRET_KEY is the development placeholder. "
+                "This is allowed only because APP_ENV=development; production "
+                "deployments MUST override AUTH_SECRET_KEY."
+            )
+            return value
+        if value == _DEV_PLACEHOLDER_SECRET_KEY and not is_dev:
+            raise RuntimeError(
+                "AUTH_SECRET_KEY is the development placeholder but "
+                f"APP_ENV={app_env!r}. Refusing to start. Set AUTH_SECRET_KEY "
+                "to a high-entropy random string (>= 32 bytes)."
+            )
+        if not value:
+            if is_dev:
+                # Default ``""`` when AUTH_SECRET_KEY is unset + dev mode.
+                # We synthesize the dev placeholder so JWT signing keeps
+                # working through the rest of the app without manual env
+                # tweaks. The warning still fires because the property
+                # *value* is unsafe.
+                logger.warning(
+                    "[config] AUTH_SECRET_KEY is unset; using the development "
+                    "placeholder. Set AUTH_SECRET_KEY to a high-entropy random "
+                    "string before going to production."
+                )
+                return _DEV_PLACEHOLDER_SECRET_KEY
+            raise RuntimeError(
+                "AUTH_SECRET_KEY is unset. Refusing to start. Set "
+                "AUTH_SECRET_KEY to a high-entropy random string (>= 32 bytes)."
+            )
+        # Any other known-bad value (e.g. "secret", "changeme") is
+        # rejected in every environment.
+        if value in (_KNOWN_BAD_SECRET_KEYS - {_DEV_PLACEHOLDER_SECRET_KEY}):
+            raise RuntimeError(
+                "AUTH_SECRET_KEY matches a well-known placeholder "
+                f"({sorted(_KNOWN_BAD_SECRET_KEYS)!r}). Refusing to start "
+                "with an insecure JWT signing key. Set AUTH_SECRET_KEY to a "
+                "high-entropy random string (>= 32 bytes)."
+            )
+        if len(value) < 32:
+            raise RuntimeError(
+                "AUTH_SECRET_KEY is too short (< 32 chars). Use a high-entropy "
+                "random string such as `python -c \"import secrets; print(secrets.token_urlsafe(48))\"`."
+            )
+        return value
+
+
+# Pydantic v2 calls ``model_validator`` / ``field_validator`` AFTER the
+# value has been sourced from env / .env. We use ``model_post_init__``
+# on the constructed instance so the safety check runs after env merge
+# but before any caller can read ``auth_settings.SECRET_KEY``.
+_orig_init = AuthSettings.__init__
+
+
+def _auth_settings_init(self, **data):  # type: ignore[no-untyped-def]
+    _orig_init(self, **data)
+    self.__dict__["SECRET_KEY"] = AuthSettings._enforce_secret_key(self.SECRET_KEY)
+
+
+AuthSettings.__init__ = _auth_settings_init  # type: ignore[assignment]
 
 
 auth_settings = AuthSettings()

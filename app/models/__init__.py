@@ -43,6 +43,7 @@ from app.models.trading import (
     RiskRule,
 )
 from app.models.user import User
+from app.models.audit_log import AuditLog
 
 __all__ = [
     # ETF models
@@ -65,6 +66,8 @@ __all__ = [
     "ReportMetadata",
     # User model
     "User",
+    # Audit log
+    "AuditLog",
     # ETL / Strategy models
     "DataSourceConfig",
     "ETLLog",

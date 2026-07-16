@@ -16,13 +16,15 @@ from collections.abc import Generator
 from datetime import datetime, timedelta, timezone
 
 import bcrypt
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from jose import jwt
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user
 from app.config import auth_settings
+from app.core.audit import client_ip_from_headers
 from app.core.database import SessionLocal
+from app.core.rate_limit import check_login_rate_limit, clear_login_attempts
 from app.core.redis_client import blacklist_token
 from app.models.refresh_token import RefreshToken
 from app.models.user import User
@@ -107,13 +109,33 @@ def _remaining_ttl(exp: int | float) -> int:
 # ── Endpoints ──
 
 @router.post("/login", response_model=LoginResponse)
-def login(request: LoginRequest, db: Session = Depends(_get_db)):
-    """Authenticate a user, return access + refresh tokens."""
+def login(request: LoginRequest, http_request: Request, db: Session = Depends(_get_db)):
+    """Authenticate a user, return access + refresh tokens.
+
+    P0-5 (2026-07-16): rate-limited via Redis. 5 attempts / IP / minute
+    and 20 / username / hour. Exceeding either window returns 429 with
+    a ``Retry-After`` header.
+    """
+    client_ip = client_ip_from_headers(dict(http_request.headers)) or (
+        http_request.client.host if http_request.client else None
+    )
+    allowed, retry_after = check_login_rate_limit(client_ip, request.username)
+    if not allowed:
+        raise HTTPException(
+            status_code=429,
+            detail="Too many login attempts. Please try again later.",
+            headers={"Retry-After": str(retry_after)},
+        )
+
     user = db.query(User).filter(User.username == request.username).first()
     if not user or not _verify_password(request.password, user.password_hash):
         raise HTTPException(status_code=401, detail="Invalid credentials")
     if not user.is_active:
         raise HTTPException(status_code=401, detail="User is inactive")
+
+    # Successful login — clear the per-user counter so the user doesn't
+    # carry forward a near-limit count from earlier wrong-password tries.
+    clear_login_attempts(user.username)
 
     # Generate tokens
     jti = _generate_jti()

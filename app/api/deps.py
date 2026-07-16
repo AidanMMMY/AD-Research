@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 from app.config import auth_settings
 from app.core.database import SessionLocal
 from app.core.redis_client import is_token_blacklisted
+from app.models.user import User
 from app.schemas.auth import UserResponse
 
 # Context variable to expose the current request's jti (for logout blacklist)
@@ -129,6 +130,53 @@ def require_admin(
     if current_user.role != "admin":
         raise HTTPException(status_code=403, detail="Admin access required")
     return current_user
+
+
+def count_active_admins(db: Session) -> int:
+    """Return the number of active admin users in the system.
+
+    Used by ``admin_users`` write paths to enforce "at least one active
+    admin must remain" (last-admin protection).
+    """
+    return (
+        db.query(User)
+        .filter(User.role == "admin", User.is_active.is_(True))
+        .count()
+    )
+
+
+def assert_would_keep_at_least_one_admin(
+    db: Session,
+    *,
+    target_user_id: int,
+    new_role: str | None = None,
+    new_is_active: bool | None = None,
+) -> None:
+    """Block an admin write that would orphan the system of admins.
+
+    Raises 409 if the proposed change would leave zero active admins.
+    ``new_role`` / ``new_is_active`` describe the *intended* state of
+    the target row BEFORE the write is committed — pass ``None`` to
+    leave that field unchanged.
+    """
+    target = db.query(User).filter(User.id == target_user_id).first()
+    if not target:
+        return  # not-found will be surfaced by the caller
+
+    effective_role = new_role if new_role is not None else target.role
+    effective_active = new_is_active if new_is_active is not None else target.is_active
+
+    # Demoting/deactivating an admin only matters when the target is
+    # currently an active admin.
+    currently_admin = target.role == "admin" and target.is_active
+    will_still_be_admin = effective_role == "admin" and effective_active
+    if currently_admin and not will_still_be_admin:
+        active_admin_count = count_active_admins(db)
+        if active_admin_count <= 1:
+            raise HTTPException(
+                status_code=409,
+                detail="At least one active admin must remain",
+            )
 
 
 def get_current_user_optional(request) -> UserResponse | None:

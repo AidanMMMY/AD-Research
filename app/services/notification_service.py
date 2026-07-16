@@ -2,6 +2,13 @@
 
 Supports WeChat Work, Feishu, DingTalk webhooks, and SMTP email.
 Sensitive credentials stored in config_json are encrypted at rest.
+
+P0-3 (2026-07-16): ``webhook_url`` is now stored in a dedicated
+``webhook_url_encrypted`` column on ``NotificationConfig`` instead of
+being held in plaintext inside ``config_json``. The encryption uses the
+same Fernet instance as ``_protect_config_json`` (NOTIFICATION_ENCRYPTION_KEY
+env var, with ``AUTH_SECRET_KEY`` fallback) so rotation of the key
+invalidates both stores consistently.
 """
 
 import base64
@@ -78,6 +85,54 @@ class NotificationService:
                 exposed[key] = self._decrypt_value(str(exposed[key]))
         return exposed
 
+    def _encrypt_webhook_url(self, webhook_url: str | None) -> str | None:
+        """Encrypt ``webhook_url`` for the dedicated ``webhook_url_encrypted`` column.
+
+        Returns ``None`` when the input is falsy. Returns the original
+        (already-prefixed) value if Fernet is unavailable — better to
+        risk plaintext than to silently drop the URL.
+        """
+        if not webhook_url:
+            return None
+        if not self._fernet:
+            return webhook_url
+        if webhook_url.startswith(self._ENCRYPTED_PREFIX):
+            return webhook_url
+        return f"{self._ENCRYPTED_PREFIX}{self._fernet.encrypt(webhook_url.encode('utf-8')).decode('utf-8')}"
+
+    def _decrypt_webhook_url(self, encrypted: str | None) -> str | None:
+        """Decrypt ``webhook_url_encrypted`` back to plaintext.
+
+        Returns ``None`` when the input is falsy or Fernet is unavailable.
+        Returns ``""`` when decryption fails (rotated key, tampered row).
+        """
+        if not encrypted:
+            return None
+        if not self._fernet:
+            return None
+        if not encrypted.startswith(self._ENCRYPTED_PREFIX):
+            return encrypted  # legacy plaintext
+        try:
+            return self._fernet.decrypt(encrypted[len(self._ENCRYPTED_PREFIX):].encode("utf-8")).decode("utf-8")
+        except Exception:
+            return ""
+
+    def _resolve_webhook_url(self, config: NotificationConfig) -> str | None:
+        """Read webhook URL from the encrypted column with config_json fallback.
+
+        Legacy rows (created before the P0-3 migration) still hold the
+        URL inside ``config_json`` — readable as plaintext or as an
+        ``enc:``-prefixed value if a previous version of the code
+        encrypted it in place. Both paths are normalised through
+        ``_decrypt_webhook_url``.
+        """
+        if config.webhook_url_encrypted:
+            return self._decrypt_webhook_url(config.webhook_url_encrypted)
+        legacy = (config.config_json or {}).get("webhook_url")
+        if legacy:
+            return self._decrypt_webhook_url(legacy)
+        return None
+
     def get_configs(self, user_id: int | None = None) -> list[dict[str, Any]]:
         """Get all notification configurations."""
         query = self.db.query(NotificationConfig)
@@ -97,12 +152,22 @@ class NotificationService:
         ]
 
     def create_config(self, name: str, channel_type: str, config_json: dict[str, Any], user_id: int | None = None) -> dict[str, Any]:
-        """Create a new notification configuration."""
+        """Create a new notification configuration.
+
+        P0-3: ``webhook_url`` from ``config_json`` is encrypted into the
+        dedicated ``webhook_url_encrypted`` column and then stripped from
+        ``config_json`` so the plaintext never lands in the JSONB blob.
+        """
+        protected = self._protect_config_json(config_json)
+        webhook_url = protected.pop("webhook_url", None)
+        encrypted_url = self._encrypt_webhook_url(webhook_url) if webhook_url else None
+
         config = NotificationConfig(
             user_id=user_id,
             name=name,
             channel_type=channel_type,
-            config_json=self._protect_config_json(config_json),
+            config_json=protected,
+            webhook_url_encrypted=encrypted_url,
             is_active=True,
         )
         self.db.add(config)
@@ -119,7 +184,13 @@ class NotificationService:
         }
 
     def update_config(self, config_id: int, user_id: int | None = None, **kwargs) -> dict[str, Any] | None:
-        """Update a notification configuration."""
+        """Update a notification configuration.
+
+        P0-3: when ``config_json`` is being updated and contains a
+        ``webhook_url`` key, the plaintext value is encrypted into the
+        dedicated column (or re-encrypted if it was already there) and
+        stripped from ``config_json``.
+        """
         query = self.db.query(NotificationConfig).filter(NotificationConfig.id == config_id)
         if user_id:
             query = query.filter(NotificationConfig.user_id == user_id)
@@ -127,9 +198,15 @@ class NotificationService:
         if not config:
             return None
         for key, value in kwargs.items():
-            if hasattr(config, key):
-                if key == "config_json" and isinstance(value, dict):
-                    value = self._protect_config_json(value)
+            if not hasattr(config, key):
+                continue
+            if key == "config_json" and isinstance(value, dict):
+                protected = self._protect_config_json(value)
+                new_webhook_url = protected.pop("webhook_url", None)
+                if new_webhook_url is not None:
+                    config.webhook_url_encrypted = self._encrypt_webhook_url(new_webhook_url)
+                setattr(config, key, protected)
+            else:
                 setattr(config, key, value)
         self.db.commit()
         self.db.refresh(config)
@@ -178,6 +255,10 @@ class NotificationService:
 
         try:
             exposed_config = self._expose_config_json(config.config_json or {})
+            # P0-3: merge the decrypted webhook_url into the runtime view.
+            webhook_url = self._resolve_webhook_url(config)
+            if webhook_url:
+                exposed_config["webhook_url"] = webhook_url
             if config.channel_type == "webhook":
                 result = self._send_webhook(exposed_config, report_id, test)
             elif config.channel_type == "email":
@@ -199,7 +280,12 @@ class NotificationService:
             return {"success": False, "error": str(e)}
 
     def _send_webhook(self, config: dict[str, Any], report_id: int | None, test: bool) -> dict[str, Any]:
-        """Send notification via webhook (WeChat Work / Feishu / DingTalk)."""
+        """Send notification via webhook (WeChat Work / Feishu / DingTalk).
+
+        ``config`` is the *decrypted* view of ``config_json`` merged with
+        the plaintext ``webhook_url`` read from the dedicated encrypted
+        column (see :meth:`send_notification`).
+        """
         webhook_url = config.get("webhook_url")
         platform = config.get("platform", "wechat")  # wechat / feishu / dingtalk
 
@@ -339,6 +425,108 @@ class NotificationService:
             return {"success": False, "error": f"SMTP连接失败: {e}"}
         except Exception as e:
             return {"success": False, "error": f"邮件发送失败: {e}"}
+
+    # ── P0-6: ETL failure alerting ──
+    # Only active admin NotificationConfigs receive the alert. Failures
+    # from the alerting path itself are swallowed so an unreachable
+    # webhook never crashes the calling scheduler job.
+
+    def _send_etl_alert_to_config(
+        self, config: NotificationConfig, job_name: str, error_msg: str
+    ) -> bool:
+        """Push one ETL-alert payload to a single admin-owned config.
+
+        Builds a synthetic report-shaped payload so the existing
+        ``_send_webhook`` / ``_send_email`` paths can be reused without
+        refactoring. Returns ``True`` on successful send.
+        """
+        try:
+            exposed_config = self._expose_config_json(config.config_json or {})
+            webhook_url = self._resolve_webhook_url(config)
+            if webhook_url:
+                exposed_config["webhook_url"] = webhook_url
+
+            if config.channel_type == "webhook":
+                # Webhook path uses platform-specific payload shape;
+                # bypass the report-shape branch by calling _send_webhook
+                # with a synthetic ``content`` via config_json override.
+                if not exposed_config.get("webhook_url"):
+                    return False
+                platform = exposed_config.get("platform", "wechat")
+                content = (
+                    f"[ETF投研平台] ETL 任务失败告警\n"
+                    f"任务: {job_name}\n"
+                    f"错误: {error_msg[:500]}"
+                )
+                if platform == "feishu":
+                    payload = {"msg_type": "text", "content": {"text": content}}
+                else:
+                    payload = {"msgtype": "text", "text": {"content": content}}
+
+                response = requests.post(
+                    exposed_config["webhook_url"],
+                    json=payload,
+                    headers={"Content-Type": "application/json"},
+                    timeout=15,
+                )
+                return response.status_code == 200
+
+            if config.channel_type == "email":
+                # Reuse the email path with a synthesised test-like body.
+                exposed_config["_etl_alert_subject"] = (
+                    f"[ETF投研平台] ETL 失败: {job_name}"
+                )
+                exposed_config["_etl_alert_body"] = (
+                    f"ETL 任务 {job_name} 执行失败。\n\n错误信息:\n{error_msg[:1500]}"
+                )
+                # Delegate to _send_email by wrapping the error_msg as a
+                # fake report_id flow: easier to just call it directly.
+                result = self._send_email(exposed_config, None, test=False)
+                return bool(result.get("success"))
+
+            return False
+        except Exception as exc:  # pragma: no cover — alerting must not crash jobs
+            print(f"[NotificationService] ETL alert dispatch failed: {exc}")
+            return False
+
+    def send_etl_alert(self, job_name: str, error_msg: str) -> int:
+        """Send an ETL-failure alert to every active admin-owned channel.
+
+        Iterates over NotificationConfigs whose owner is currently an
+        active admin and dispatches via each channel's normal pipeline.
+        Returns the number of successful sends. Failures are logged and
+        swallowed.
+        """
+        from app.models.user import User
+
+        admin_ids = {
+            row.id
+            for row in self.db.query(User.id)
+            .filter(User.role == "admin", User.is_active.is_(True))
+            .all()
+        }
+        if not admin_ids:
+            return 0
+
+        configs = (
+            self.db.query(NotificationConfig)
+            .filter(
+                NotificationConfig.user_id.in_(admin_ids),
+                NotificationConfig.is_active.is_(True),
+            )
+            .all()
+        )
+        if not configs:
+            return 0
+
+        sent = 0
+        for config in configs:
+            try:
+                if self._send_etl_alert_to_config(config, job_name, error_msg):
+                    sent += 1
+            except Exception:
+                continue
+        return sent
 
     def get_logs(
         self,

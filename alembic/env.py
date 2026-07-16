@@ -26,6 +26,7 @@ from app.models.notification import *
 from app.models.pool import *
 from app.models.research import *
 from app.models.scoring import *
+from app.models.audit_log import *
 
 target_metadata = Base.metadata
 
