@@ -4,6 +4,7 @@ import { Button, Space, Tour, type TourProps } from 'antd';
 import { useOnboardingStore } from '@/stores/onboarding';
 import { useSettingsStore } from '@/stores/settings';
 import { useOnboardingSteps } from '@/hooks/useOnboardingSteps';
+import { useFocusRestore } from '@/hooks/useFocusRestore';
 
 /**
  * OnboardingTour is the global 5-step first-time tour. It mounts in AppLayout
@@ -23,6 +24,12 @@ export default function OnboardingTour() {
   const [current, setCurrent] = useState(0);
   const STEPS = useOnboardingSteps();
 
+  // WCAG 2.4.3: when the onboarding tour closes (either via Skip or via
+  // Finish), return keyboard focus to the element that triggered the
+  // tour (typically the dashboard root, or the user-menu entry that
+  // called "重新触发新手引导").
+  useFocusRestore(open);
+
   // Trigger logic — open when not completed and we're on /dashboard, or when
   // the user explicitly clicks "reopen".
   useEffect(() => {
@@ -39,13 +46,36 @@ export default function OnboardingTour() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.pathname, completed, reopen]);
 
+  const handleSkip = () => {
+    // WCAG 2.2.1 (Timing Adjustable) / 2.4.3 (Focus Order): users can bail
+    // out of the tour at any time. We mark completed so it never auto-pops
+    // again and close the surface so useFocusRestore returns keyboard
+    // focus to the trigger.
+    setOpen(false);
+    setCompleted(true);
+  };
+
   const tourSteps: TourProps['steps'] = useMemo(
     () =>
       STEPS.map((s, idx) => ({
         title: (
-          <Space>
-            <span className="onboarding-tour__step-icon">{s.icon}</span>
-            <span>{`第 ${idx + 1} 步 / 共 ${STEPS.length} 步`}</span>
+          <Space style={{ width: '100%', justifyContent: 'space-between' }}>
+            <Space>
+              <span className="onboarding-tour__step-icon">{s.icon}</span>
+              <span>{`第 ${idx + 1} 步 / 共 ${STEPS.length} 步`}</span>
+            </Space>
+            {/* WCAG 2.4.1 (Bypass Blocks): "Skip Tour" link gives users a
+                one-click exit at every step, not just the last. Visually
+                unobtrusive (link, not button) so it doesn't compete with
+                the primary "Next / Finish" CTA. */}
+            <Button
+              type="link"
+              size="small"
+              className="onboarding-tour__skip"
+              onClick={handleSkip}
+            >
+              跳过引导
+            </Button>
           </Space>
         ),
         description: (
