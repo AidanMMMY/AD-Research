@@ -144,7 +144,20 @@ export default function StocksList() {
             dataSource={data?.items || []}
             renderItem={(item: any) => (
               <div
+                role="button"
+                tabIndex={0}
+                aria-label={`${item.name || item.code} (${item.code}) — 查看详情`}
                 onClick={() => navigate(`/stocks/${item.code}`)}
+                onKeyDown={(e) => {
+                  // WCAG 2.1.1 (Keyboard): a clickable list item that
+                  // routes to a detail page must be reachable via Tab and
+                  // activatable via Enter/Space — AntD's <List> row is a
+                  // plain <div> so we wire the keyboard handler here.
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    navigate(`/stocks/${item.code}`);
+                  }
+                }}
                 className="mobile-list-item"
               >
                 <div className="mobile-list-item__row">
