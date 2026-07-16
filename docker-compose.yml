@@ -87,7 +87,7 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-    command: celery -A app.core.celery_app worker -l info -c 2 -Q celery,indicator,cninfo
+    command: celery -A app.core.celery_app worker -l info -c 4 -Q celery,indicator,cninfo
     networks:
       - ad-research-dev-network
 

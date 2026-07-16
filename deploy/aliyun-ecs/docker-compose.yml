@@ -160,7 +160,7 @@ services:
       - web_dist:/app/web/dist
       - cninfo_pdfs:/data/alloy-research/cninfo_pdfs
       - /var/run/docker.sock:/var/run/docker.sock:ro
-    command: celery -A app.core.celery_app worker -l info -c 2 -Q celery,indicator,cninfo
+    command: celery -A app.core.celery_app worker -l info -c 4 -Q celery,indicator,cninfo
     networks:
       - alloyresearch-network
     logging:
@@ -171,8 +171,8 @@ services:
     deploy:
       resources:
         limits:
-          cpus: "2.0"
-          memory: 2G
+          cpus: "4.0"
+          memory: 4G
         reservations:
           cpus: "0.5"
           memory: 512M
