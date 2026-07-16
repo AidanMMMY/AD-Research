@@ -25,7 +25,7 @@ import os
 from datetime import date, datetime
 
 import pandas as pd
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
@@ -209,6 +209,7 @@ def batch_calculate_indicators(
     full_history: bool = False,
     market_filter: str | None = None,
     instrument_type_filter: str | None = None,
+    code_prefix: str | list[str] | None = None,
 ) -> int:
     """Batch-calculate indicators for all active ETFs.
 
@@ -232,6 +233,9 @@ def batch_calculate_indicators(
             extra filter — preserves the original behaviour where
             ``market_filter='A股'`` covers both ETFs and stocks in one
             pass).
+        code_prefix: If provided, only process codes whose ``etf_code``
+            starts with this prefix. Useful for sharding a large market
+            (e.g. A-share stocks) across multiple workers.
 
     Returns:
         Number of indicator records updated/inserted.
@@ -252,6 +256,9 @@ def batch_calculate_indicators(
         stmt = stmt.where(ETFInfo.market == market_filter)
     if instrument_type_filter is not None:
         stmt = stmt.where(ETFInfo.instrument_type == instrument_type_filter)
+    if code_prefix is not None:
+        prefixes = [code_prefix] if isinstance(code_prefix, str) else code_prefix
+        stmt = stmt.where(or_(*[ETFInfo.code.like(f"{p}%") for p in prefixes]))
     active_rows = db.execute(stmt).all()
 
     if not active_rows:
@@ -285,13 +292,14 @@ def batch_calculate_indicators(
         }
         codes = [c for c in code_meta if c in codes_with_bars]
         logger.info(
-            "indicator_calc[sql] backend=%s active=%d with_bars=%d target=%s full_history=%s instrument_type=%s",
+            "indicator_calc[sql] backend=%s active=%d with_bars=%d target=%s full_history=%s instrument_type=%s code_prefix=%s",
             INDICATOR_BACKEND,
             len(code_meta),
             len(codes),
             target_date,
             full_history,
             instrument_type_filter,
+            code_prefix,
         )
         try:
             updated_count = _batch_calculate_indicators_sql(

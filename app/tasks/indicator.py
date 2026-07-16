@@ -25,6 +25,7 @@ def calculate_indicators(
     full_history: bool = False,
     market_filter: str = "A股",
     instrument_type_filter: str | None = None,
+    code_prefix: str | list[str] | None = None,
 ) -> int:
     """Calculate technical/risk indicators for all active instruments in a market.
 
@@ -40,6 +41,9 @@ def calculate_indicators(
             narrow the universe. Defaults to ``None`` which keeps the
             original behaviour where ``market_filter='A股'`` already covers
             every active A-share code in a single pass.
+        code_prefix: Optional prefix filter on ``etf_info.code``. Used to
+            shard a large universe (e.g. A-share stocks) across multiple
+            workers without code duplication.
 
     Returns:
         Number of indicator records written.
@@ -53,6 +57,7 @@ def calculate_indicators(
             full_history=full_history,
             market_filter=market_filter,
             instrument_type_filter=instrument_type_filter,
+            code_prefix=code_prefix,
         )
         return count
     except Exception as exc:
