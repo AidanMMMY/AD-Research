@@ -101,164 +101,167 @@ def download_cninfo_pdfs(
         }
 
     db = SessionLocal()
-    service = CninfoReportService(db)
-    # One session-scoped ExchangeProvider so we reuse TCP connections
-    # across many resolutions inside the shard.
-    exchange_provider = ExchangeProvider()
-
-    scanned = 0
-    downloaded = 0
-    extracted = 0
-    skipped = 0
-    failed = 0
-    total_bytes = 0
-    fallback_used = 0
-    t0 = time.time()
-
-    log.info(
-        "download_cninfo_pdfs START shard=[%d:%d] start_date=%s type=%s "
-        "download=%s extract=%s pdf_dir=%s",
-        offset,
-        offset + limit,
-        cutoff.isoformat(),
-        report_type,
-        download,
-        extract_text,
-        PDF_DIR,
-    )
-
-    for idx, ts_code in enumerate(shard):
-        try:
-            # Step 1: ensure metadata exists.  fetch_for_stock is a no-op
-            # when there is no orgId in the lookup table, so this only
-            # hits cninfo for stocks we *can* actually resolve.
+    try:
+        service = CninfoReportService(db)
+        # One session-scoped ExchangeProvider so we reuse TCP connections
+        # across many resolutions inside the shard.
+        exchange_provider = ExchangeProvider()
+    
+        scanned = 0
+        downloaded = 0
+        extracted = 0
+        skipped = 0
+        failed = 0
+        total_bytes = 0
+        fallback_used = 0
+        t0 = time.time()
+    
+        log.info(
+            "download_cninfo_pdfs START shard=[%d:%d] start_date=%s type=%s "
+            "download=%s extract=%s pdf_dir=%s",
+            offset,
+            offset + limit,
+            cutoff.isoformat(),
+            report_type,
+            download,
+            extract_text,
+            PDF_DIR,
+        )
+    
+        for idx, ts_code in enumerate(shard):
             try:
-                service.fetch_for_stock(
-                    ts_code,
-                    start_date=cutoff,
-                    end_date=date.today(),
-                )
+                # Step 1: ensure metadata exists.  fetch_for_stock is a no-op
+                # when there is no orgId in the lookup table, so this only
+                # hits cninfo for stocks we *can* actually resolve.
+                try:
+                    service.fetch_for_stock(
+                        ts_code,
+                        start_date=cutoff,
+                        end_date=date.today(),
+                    )
+                except Exception as exc:
+                    # Don't blow up the whole shard on a single fetch hiccup.
+                    log.warning("metadata fetch failed for %s: %s", ts_code, exc)
+    
+                # Step 2: list pending reports.
+                try:
+                    reports = service.list_reports_for_download(
+                        ts_code=ts_code,
+                        start_date=cutoff,
+                        report_type=report_type,
+                        only_pending=True,
+                    )
+                except Exception as exc:
+                    log.warning("DB query failed for %s: %s", ts_code, exc)
+                    failed += 1
+                    continue
+    
+                if not reports:
+                    skipped += 1
+                    scanned += 1
+                    continue
+    
+                for report in reports:
+                    scanned += 1
+                    rid = report.id
+    
+                    # Step 3: download (with exchange fallback).
+                    if download and not report.file_path:
+                        try:
+                            result = service.download_with_fallback(
+                                rid, exchange_provider=exchange_provider
+                            )
+                        except Exception as exc:
+                            log.warning(
+                                "download raised for %s id=%s: %s",
+                                ts_code,
+                                rid,
+                                exc,
+                            )
+                            failed += 1
+                            continue
+    
+                        path = result.get("path")
+                        source = result.get("source") or "?"
+                        if path is None:
+                            # download_with_fallback already logged the
+                            # underlying cause (no URL / HTTP != 200 /
+                            # OSError / no exchange match).  Treat as a
+                            # permanent skip so we don't tight-loop on it.
+                            failed += 1
+                            continue
+    
+                        downloaded += 1
+                        if result.get("fallback_used"):
+                            fallback_used += 1
+                            log.info(
+                                "fallback hit: %s id=%s source=%s",
+                                ts_code,
+                                rid,
+                                source,
+                            )
+                        try:
+                            total_bytes += path.stat().st_size
+                        except OSError:  # pragma: no cover - defensive
+                            pass
+    
+                        # Polite pacing between consecutive downloads — the
+                        # metadata backfill uses ~2s but the static.cninfo
+                        # CDN tolerates more.
+                        time.sleep(_DOWNLOAD_SLEEP)
+    
+                    # Step 4: extract text.
+                    if extract_text:
+                        try:
+                            ok = service.extract_text_for_report(rid)
+                        except Exception as exc:
+                            log.warning(
+                                "extraction raised for %s id=%s: %s",
+                                ts_code,
+                                rid,
+                                exc,
+                            )
+                            failed += 1
+                            continue
+                        if ok:
+                            extracted += 1
+                        # If ok is False the service has already marked the
+                        # row ``failed``; don't double-count.
+    
+                if (idx + 1) % _ETA_INTERVAL == 0:
+                    done = idx + 1
+                    avg = (time.time() - t0) / max(done, 1)
+                    eta_min = (len(shard) - done) * avg / 60
+                    log.info(
+                        "[%d/%d] progress — scanned=%d downloaded=%d "
+                        "extracted=%d skipped=%d failed=%d fallback=%d "
+                        "bytes=%.1fMB avg=%.1fs/stock eta=%.0fmin",
+                        done,
+                        len(shard),
+                        scanned,
+                        downloaded,
+                        extracted,
+                        skipped,
+                        failed,
+                        fallback_used,
+                        total_bytes / (1024 * 1024),
+                        avg,
+                        eta_min,
+                    )
+    
             except Exception as exc:
-                # Don't blow up the whole shard on a single fetch hiccup.
-                log.warning("metadata fetch failed for %s: %s", ts_code, exc)
-
-            # Step 2: list pending reports.
-            try:
-                reports = service.list_reports_for_download(
-                    ts_code=ts_code,
-                    start_date=cutoff,
-                    report_type=report_type,
-                    only_pending=True,
-                )
-            except Exception as exc:
-                log.warning("DB query failed for %s: %s", ts_code, exc)
+                # Last-resort guard: never let one bad stock kill the shard.
+                log.exception("unhandled error on %s: %s", ts_code, exc)
                 failed += 1
+                try:
+                    db.rollback()
+                except Exception:  # pragma: no cover - defensive
+                    pass
                 continue
-
-            if not reports:
-                skipped += 1
-                scanned += 1
-                continue
-
-            for report in reports:
-                scanned += 1
-                rid = report.id
-
-                # Step 3: download (with exchange fallback).
-                if download and not report.file_path:
-                    try:
-                        result = service.download_with_fallback(
-                            rid, exchange_provider=exchange_provider
-                        )
-                    except Exception as exc:
-                        log.warning(
-                            "download raised for %s id=%s: %s",
-                            ts_code,
-                            rid,
-                            exc,
-                        )
-                        failed += 1
-                        continue
-
-                    path = result.get("path")
-                    source = result.get("source") or "?"
-                    if path is None:
-                        # download_with_fallback already logged the
-                        # underlying cause (no URL / HTTP != 200 /
-                        # OSError / no exchange match).  Treat as a
-                        # permanent skip so we don't tight-loop on it.
-                        failed += 1
-                        continue
-
-                    downloaded += 1
-                    if result.get("fallback_used"):
-                        fallback_used += 1
-                        log.info(
-                            "fallback hit: %s id=%s source=%s",
-                            ts_code,
-                            rid,
-                            source,
-                        )
-                    try:
-                        total_bytes += path.stat().st_size
-                    except OSError:  # pragma: no cover - defensive
-                        pass
-
-                    # Polite pacing between consecutive downloads — the
-                    # metadata backfill uses ~2s but the static.cninfo
-                    # CDN tolerates more.
-                    time.sleep(_DOWNLOAD_SLEEP)
-
-                # Step 4: extract text.
-                if extract_text:
-                    try:
-                        ok = service.extract_text_for_report(rid)
-                    except Exception as exc:
-                        log.warning(
-                            "extraction raised for %s id=%s: %s",
-                            ts_code,
-                            rid,
-                            exc,
-                        )
-                        failed += 1
-                        continue
-                    if ok:
-                        extracted += 1
-                    # If ok is False the service has already marked the
-                    # row ``failed``; don't double-count.
-
-            if (idx + 1) % _ETA_INTERVAL == 0:
-                done = idx + 1
-                avg = (time.time() - t0) / max(done, 1)
-                eta_min = (len(shard) - done) * avg / 60
-                log.info(
-                    "[%d/%d] progress — scanned=%d downloaded=%d "
-                    "extracted=%d skipped=%d failed=%d fallback=%d "
-                    "bytes=%.1fMB avg=%.1fs/stock eta=%.0fmin",
-                    done,
-                    len(shard),
-                    scanned,
-                    downloaded,
-                    extracted,
-                    skipped,
-                    failed,
-                    fallback_used,
-                    total_bytes / (1024 * 1024),
-                    avg,
-                    eta_min,
-                )
-
-        except Exception as exc:
-            # Last-resort guard: never let one bad stock kill the shard.
-            log.exception("unhandled error on %s: %s", ts_code, exc)
-            failed += 1
-            try:
-                db.rollback()
-            except Exception:  # pragma: no cover - defensive
-                pass
-            continue
-
-    db.close()
+    
+        db.close()
+    finally:
+        db.close()
 
     total_time = time.time() - t0
     log.info(

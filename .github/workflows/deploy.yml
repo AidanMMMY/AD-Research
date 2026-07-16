@@ -101,7 +101,7 @@ jobs:
           cd "${PROJECT_ROOT}/deploy/aliyun-ecs"
 
           EXTRA_ARGS=""
-          if [ "${{ inputs.skip_migrations }}" = "true" ]]; then
+          if [ "${{ inputs.skip_migrations }}" = "true" ]; then
             EXTRA_ARGS="--no-db"
           fi
 
@@ -120,7 +120,7 @@ jobs:
           cd "${PROJECT_ROOT}/deploy/aliyun-ecs"
 
           EXTRA_ARGS=""
-          if [ "${{ inputs.skip_migrations }}" = "true" ]]; then
+          if [ "${{ inputs.skip_migrations }}" = "true" ]; then
             EXTRA_ARGS="--no-db"
           fi
 

@@ -43,31 +43,39 @@ ENV_FILE="${SCRIPT_DIR}/.env"
 #   - 必须在 log_info/log_warn 定义之后执行，否则 FORCE=1 时会报
 #     "command not found"。
 # ============================================================
-MANUAL_LOCK="${MANUAL_LOCK:-/var/run/ad-research-manual-deploy.lock}"
-AUTO_LOCK="${AUTO_LOCK:-/var/run/ad-research-auto-deploy.lock}"
+# ── 4.5 Race-condition 防护：自动/手动 deploy 互斥 ──
+# 背景：
+#   旧实现用两个独立锁文件 + 两个 trap，第二个 trap 会覆盖第一个，
+#   导致 FORCE=1 的自动 deploy 遗留永久手动锁；且逻辑上把"手动锁"
+#   与"FORCE=1"混用，auto/manual 互斥形同虚设。
+#
+# 机制：
+#   使用 flock 做真正的跨进程互斥锁。无论手动还是自动 deploy，
+#   启动时尝试获取 /var/run/ad-research-deploy.lock 的非阻塞排他锁；
+#   获取失败说明已有其他 deploy 在运行，立即退出让路。
+#   trap 确保本进程退出时释放锁并删除锁文件。
+LOCK_FILE="${LOCK_FILE:-/var/run/ad-research-deploy.lock}"
 
-# 如果调用方明确 FORCE=1，先把"手动锁"建上，告诉后来的 auto deploy 退避
-if [ "${FORCE:-0}" = "1" ]; then
-    if [ -w "$(dirname "$MANUAL_LOCK")" ] || mkdir -p "$(dirname "$MANUAL_LOCK")" 2>/dev/null; then
-        echo "$$ $(date -Iseconds 2>/dev/null || date) FORCE=1" > "$MANUAL_LOCK" 2>/dev/null \
-            && log_info "已创建手动 deploy 锁: ${MANUAL_LOCK}" || \
-            log_warn "无法写入 ${MANUAL_LOCK}（可能缺权限），继续运行"
-        trap 'rm -f "$MANUAL_LOCK"' EXIT
-    fi
-fi
+_cleanup_deploy_lock() {
+    rm -f "$LOCK_FILE"
+}
+trap _cleanup_deploy_lock EXIT
 
-# 检测手动锁：有则让路给人为操作
-if [ -f "$MANUAL_LOCK" ] && [ "${FORCE:-0}" != "1" ]; then
-    log_info "检测到手动 deploy 锁 (${MANUAL_LOCK})，auto deploy 让路退出"
-    log_info "（如需强制覆盖：FORCE=1 ./update.sh，或删除该锁文件）"
+# 确保锁文件存在（flock 需要一个已存在的文件描述符目标）
+mkdir -p "$(dirname "$LOCK_FILE")" 2>/dev/null || true
+: > "$LOCK_FILE" 2>/dev/null || {
+    log_warn "无法写入锁文件 ${LOCK_FILE}（可能缺权限），继续运行但互斥失效"
+}
+
+# 尝试获取非阻塞排他锁
+exec 200>"$LOCK_FILE"
+if ! flock -n 200; then
+    log_info "检测到另一个 deploy 进程正在运行，本次让路退出"
+    log_info "（如需强制覆盖：先确认无其他 update.sh 在跑，或删除 ${LOCK_FILE}）"
     exit 0
 fi
-
-# 标记本次 auto deploy 开始
-if mkdir -p "$(dirname "$AUTO_LOCK")" 2>/dev/null; then
-    echo "$$ $(date -Iseconds 2>/dev/null || date) auto" > "$AUTO_LOCK" 2>/dev/null || true
-    trap 'rm -f "$AUTO_LOCK"' EXIT
-fi
+echo "$$ $(date -Iseconds 2>/dev/null || date) $0 FORCE=${FORCE:-0} HOST=$(hostname)" >&200
+log_info "已获取 deploy 互斥锁: ${LOCK_FILE}"
 
 NO_DB=false
 FRONTEND_ONLY=false

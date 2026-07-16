@@ -15,7 +15,10 @@ settings = get_settings()
 
 engine = create_engine(
     settings.database_url,
-    pool_pre_ping=settings.is_development,
+    # Always validate connections before handing them out. Production has
+    # seen idle connections dropped by PostgreSQL (idle_timeout, LB, etc.)
+    # which then surface as OperationalError and accelerate pool exhaustion.
+    pool_pre_ping=True,
     echo=settings.is_development,
     # Pool sizing — defaults (5/10/30s) were too tight for the
     # AD-Research workload: several pages fire /etfs?page_size=10000
