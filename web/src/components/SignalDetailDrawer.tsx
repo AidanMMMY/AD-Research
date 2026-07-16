@@ -1,6 +1,7 @@
 import { Drawer, Descriptions, Tag } from 'antd';
 import type { Signal } from '@/types/signal';
 import { useIsMobile } from '@/hooks/useBreakpoint';
+import { useFocusRestore } from '@/hooks/useFocusRestore';
 
 interface Props {
   signal: Signal | null;
@@ -25,6 +26,9 @@ const SIGNAL_TYPE_COLOR: Record<string, string> = {
  */
 export default function SignalDetailDrawer({ signal, onClose }: Props) {
   const isMobile = useIsMobile();
+  // WCAG 2.4.3: when the drawer closes, return keyboard focus to the
+  // signal row in the dashboard table that opened it.
+  useFocusRestore(!!signal);
   if (!signal) return null;
 
   const signalType = signal.signal_type;
