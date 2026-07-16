@@ -24,8 +24,9 @@ if [ -S /var/run/docker.sock ]; then
 fi
 
 # Make sure runtime directories are writable.
-mkdir -p /app/web/dist /app/reports
-chown -R app:app /app/web/dist /app/web/dist-image /app/reports 2>/dev/null || true
+mkdir -p /app/web/dist /app/reports "${CNINFO_PDF_DIR:-/data/alloy-research/cninfo_pdfs}"
+chown -R app:app /app/web/dist /app/web/dist-image /app/reports "${CNINFO_PDF_DIR:-/data/alloy-research/cninfo_pdfs}" 2>/dev/null || true
+chmod -R u+w "${CNINFO_PDF_DIR:-/data/alloy-research/cninfo_pdfs}" 2>/dev/null || true
 
 # Default CMD is uvicorn: prepare frontend dist and run migrations.
 if [ "$1" = "uvicorn" ]; then
