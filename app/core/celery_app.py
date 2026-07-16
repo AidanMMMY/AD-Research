@@ -44,6 +44,15 @@ celery_app.conf.update(
     task_default_queue="celery",
     # Track started state so callers can see "PENDING" vs "STARTED".
     task_track_started=True,
+    # Route long-running tasks to dedicated queues so they don't block each
+    # other on the default ``celery`` queue.  Workers listen to all three
+    # queues (``-Q celery,indicator,cninfo``), but routing keeps indicator
+    # calculation responsive even when a large cninfo backfill is in flight.
+    task_routes={
+        "app.tasks.indicator.*": {"queue": "indicator"},
+        "app.tasks.cninfo.*": {"queue": "cninfo"},
+        "app.tasks.cninfo_pdf.*": {"queue": "cninfo"},
+    },
 )
 
 # Convenience alias used by scripts and the scheduler.

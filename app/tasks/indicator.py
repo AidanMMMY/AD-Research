@@ -18,7 +18,7 @@ def _parse_date(value: date | str | None) -> date | None:
     return date.fromisoformat(value)
 
 
-@celery_app.task(bind=True, max_retries=3, default_retry_delay=60)
+@celery_app.task(bind=True, max_retries=3, default_retry_delay=60, queue="indicator")
 def calculate_indicators(
     self,
     target_date: date | str | None = None,

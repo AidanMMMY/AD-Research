@@ -44,7 +44,7 @@ _DOWNLOAD_SLEEP = 0.5
 _ETA_INTERVAL = 50
 
 
-@celery_app.task(bind=True, max_retries=3, default_retry_delay=30, acks_late=True)
+@celery_app.task(bind=True, max_retries=3, default_retry_delay=30, acks_late=True, queue="cninfo")
 def download_cninfo_pdfs(
     self,
     offset: int,

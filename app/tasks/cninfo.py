@@ -31,7 +31,7 @@ def _load_ts_codes() -> list[str]:
     return sorted(k for k in data if not k.startswith("_"))
 
 
-@celery_app.task(bind=True, max_retries=2, default_retry_delay=60)
+@celery_app.task(bind=True, max_retries=2, default_retry_delay=60, queue="cninfo")
 def backfill_cninfo_reports(
     self,
     offset: int,
@@ -129,7 +129,7 @@ def backfill_cninfo_reports(
     }
 
 
-@celery_app.task(bind=True, max_retries=2, default_retry_delay=300)
+@celery_app.task(bind=True, max_retries=2, default_retry_delay=300, queue="cninfo")
 def refresh_cninfo_reports_daily(self, window_days: int = 7) -> dict:
     """Daily refresh of cninfo periodic reports for the B-tier universe.
 
