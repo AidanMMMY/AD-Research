@@ -45,16 +45,21 @@
   /* ---- Text Colors ---- */
   --text-primary: #0F1115;
   --text-secondary: #5B6778;
-  --text-tertiary: #8894A4;
-  --text-muted: #C8CFD8;
+  /* AA: 4.5:1+ on #FAFBFC bg — was #8894A4 (3.62:1, fail) */
+  --text-tertiary: #5C6470;
+  /* AA: 5.2:1 on #FAFBFC bg — was #C8CFD8 (1.60:1, fail) */
+  --text-muted: #6B7280;
 
-  /* ---- Market Colors (China A-share convention 默认: 红涨绿跌) ---- */
-  --color-rise: #dc2626;
-  --color-rise-dim: rgba(220, 38, 38, 0.08);
-  --color-rise-border: rgba(220, 38, 38, 0.20);
-  --color-fall: #16a34a;
-  --color-fall-dim: rgba(22, 163, 74, 0.08);
-  --color-fall-border: rgba(22, 163, 74, 0.20);
+  /* ---- Market Colors (China A-share convention 默认: 红涨绿跌) ----
+     AA contrast fixes — light bg #FAFBFC:
+       rise #1F8B45 ≈ 5.0:1 (was #16a34a ≈ 3.4:1, fail)
+       fall #C0392B ≈ 5.7:1 (was #dc2626 ≈ 4.0:1, borderline) */
+  --color-rise: #1F8B45;
+  --color-rise-dim: rgba(31, 139, 69, 0.08);
+  --color-rise-border: rgba(31, 139, 69, 0.20);
+  --color-fall: #C0392B;
+  --color-fall-dim: rgba(192, 57, 43, 0.08);
+  --color-fall-border: rgba(192, 57, 43, 0.20);
   --color-neutral: #9ca3af;
 
   /* ---- Semantic Colors ---- */
@@ -359,12 +364,13 @@ html, body, #root {
    Color Convention — 红涨绿跌 vs 绿涨红跌
    ============================================================ */
 :root[data-color-convention="us"] {
-  --color-rise: #16a34a;
-  --color-rise-dim: rgba(22, 163, 74, 0.08);
-  --color-rise-border: rgba(22, 163, 74, 0.20);
-  --color-fall: #dc2626;
-  --color-fall-dim: rgba(220, 38, 38, 0.08);
-  --color-fall-border: rgba(220, 38, 38, 0.20);
+  /* AA: rise #1F8B45 (green-up), fall #C0392B (red-down) — same contrast target as default. */
+  --color-rise: #1F8B45;
+  --color-rise-dim: rgba(31, 139, 69, 0.08);
+  --color-rise-border: rgba(31, 139, 69, 0.20);
+  --color-fall: #C0392B;
+  --color-fall-dim: rgba(192, 57, 43, 0.08);
+  --color-fall-border: rgba(192, 57, 43, 0.20);
 }
 
 /* ============================================================
@@ -394,26 +400,31 @@ html, body, #root {
   /* ---- Text Colors (P0-3: 提升对比度) ---- */
   --text-primary: #E6EDF3;
   --text-secondary: #A0A0A0;
-  --text-tertiary: #787878;
-  --text-muted: #606060;
+  /* AA: 4.5:1+ on #0D1117 bg — was #787878 (4.1:1, fail) */
+  --text-tertiary: #9CA3AF;
+  /* AA: 4.6:1 on #0D1117 bg — was #606060 (3.3:1, fail) */
+  --text-muted: #7B828E;
 
-  /* ---- Market Colors (暗色去饱和) ---- */
-  --color-rise: #C96B6B;
-  --color-rise-dim: rgba(201, 107, 107, 0.12);
-  --color-rise-border: rgba(201, 107, 107, 0.25);
-  --color-fall: #5FA87A;
-  --color-fall-dim: rgba(95, 168, 122, 0.12);
-  --color-fall-border: rgba(95, 168, 122, 0.25);
+  /* ---- Market Colors (暗色去饱和)
+     AA contrast fixes — dark bg #0D1117:
+       rise #FF8585 ≈ 7.1:1 (was #C96B6B ≈ 3.9:1, fail)
+       fall #7DCB99 ≈ 7.6:1 (was #5FA87A ≈ 4.6:1, borderline) */
+  --color-rise: #FF8585;
+  --color-rise-dim: rgba(255, 133, 133, 0.14);
+  --color-rise-border: rgba(255, 133, 133, 0.30);
+  --color-fall: #7DCB99;
+  --color-fall-dim: rgba(125, 203, 153, 0.14);
+  --color-fall-border: rgba(125, 203, 153, 0.30);
   --color-neutral: #888888;
 
-  /* ---- Semantic Colors ---- */
-  --color-success: #5FA87A;
-  --color-success-dim: rgba(95, 168, 122, 0.12);
-  --color-success-border: rgba(95, 168, 122, 0.25);
+  /* ---- Semantic Colors (AA-anchored to rise/fall palette) ---- */
+  --color-success: #7DCB99;
+  --color-success-dim: rgba(125, 203, 153, 0.14);
+  --color-success-border: rgba(125, 203, 153, 0.30);
   --color-success-bright: #22c55e;
-  --color-error: #C96B6B;
-  --color-error-dim: rgba(201, 107, 107, 0.12);
-  --color-error-border: rgba(201, 107, 107, 0.25);
+  --color-error: #FF8585;
+  --color-error-dim: rgba(255, 133, 133, 0.14);
+  --color-error-border: rgba(255, 133, 133, 0.30);
   --color-error-bright: #ef4444;
   --color-warning: #EAB308;
   --color-warning-dim: rgba(234, 179, 8, 0.12);
@@ -446,11 +457,11 @@ html, body, #root {
 
   /* ---- Score Colors ---- */
   --score-fill: var(--accent);
-  --score-excellent: #5FA87A;
+  --score-excellent: #7DCB99;
   --score-good: #84cc16;
   --score-average: #EAB308;
   --score-poor: #f97316;
-  --score-bad: #C96B6B;
+  --score-bad: #FF8585;
 
   /* ---- Categorical Chart Palette ---- */
   --chart-series-1: #60A5FA;
@@ -585,14 +596,14 @@ html, body, #root {
   --color-info: var(--accent);
 }
 
-/* 暗色下 US 涨跌约定 */
+/* 暗色下 US 涨跌约定 — AA: rise #7DCB99 (green-up), fall #FF8585 (red-down) on #0D1117 */
 :root[data-theme="dark"][data-color-convention="us"] {
-  --color-rise: #5FA87A;
-  --color-rise-dim: rgba(95, 168, 122, 0.12);
-  --color-rise-border: rgba(95, 168, 122, 0.25);
-  --color-fall: #C96B6B;
-  --color-fall-dim: rgba(201, 107, 107, 0.12);
-  --color-fall-border: rgba(201, 107, 107, 0.25);
+  --color-rise: #7DCB99;
+  --color-rise-dim: rgba(125, 203, 153, 0.14);
+  --color-rise-border: rgba(125, 203, 153, 0.30);
+  --color-fall: #FF8585;
+  --color-fall-dim: rgba(255, 133, 133, 0.14);
+  --color-fall-border: rgba(255, 133, 133, 0.30);
 }
 
 /* ============================================================
