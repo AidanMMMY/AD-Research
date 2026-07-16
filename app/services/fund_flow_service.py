@@ -380,6 +380,7 @@ def _to_float(v: Any) -> float | None:
 
 def _individual_to_dict(r: IndividualFundFlow) -> dict[str, Any]:
     return {
+        "id": r.id,
         "ts_code": r.ts_code,
         "trade_date": r.trade_date.isoformat() if r.trade_date else None,
         "main_net_inflow": _to_float(r.main_net_inflow),
@@ -399,6 +400,7 @@ def _individual_to_dict(r: IndividualFundFlow) -> dict[str, Any]:
 
 def _sector_to_dict(r: SectorFundFlow) -> dict[str, Any]:
     return {
+        "id": r.id,
         "sector_name": r.sector_name,
         "sector_type": r.sector_type,
         "trade_date": r.trade_date.isoformat() if r.trade_date else None,
@@ -412,6 +414,7 @@ def _sector_to_dict(r: SectorFundFlow) -> dict[str, Any]:
 
 def _etf_to_dict(r: EtfFundFlow) -> dict[str, Any]:
     return {
+        "id": r.id,
         "ts_code": r.ts_code,
         "trade_date": r.trade_date.isoformat() if r.trade_date else None,
         "price": _to_float(r.price),
@@ -426,6 +429,7 @@ def _etf_to_dict(r: EtfFundFlow) -> dict[str, Any]:
 
 def _signal_to_dict(r: FlowSignal) -> dict[str, Any]:
     return {
+        "id": r.id,
         "ts_code": r.ts_code,
         "trade_date": r.trade_date.isoformat() if r.trade_date else None,
         "main_net_inflow": _to_float(r.main_net_inflow),
