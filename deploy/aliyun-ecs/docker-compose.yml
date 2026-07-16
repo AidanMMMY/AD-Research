@@ -29,6 +29,7 @@ x-backend-env: &backend-env
   XUEQIU_COOKIE: ${XUEQIU_COOKIE:-}
   CORS_ORIGINS: ${CORS_ORIGINS:-}
   CNINFO_PDF_DIR: ${CNINFO_PDF_DIR:-/data/alloy-research/cninfo_pdfs}
+  INDICATOR_BACKEND: ${INDICATOR_BACKEND:-sql}
 
 services:
   postgres:
