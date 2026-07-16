@@ -2,6 +2,7 @@ import './styles.css';
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Table, Select, Row, Col } from 'antd';
+import { CaretUpOutlined, CaretDownOutlined, MinusOutlined } from '@ant-design/icons';
 import PageShell from '@/components/PageShell';
 import PageHeader from '@/components/PageHeader';
 import Panel from '@/components/Panel';
@@ -29,6 +30,18 @@ const SIGNAL_LABELS: Record<string, string> = {
   BUY: '买入',
   SELL: '卖出',
   HOLD: '持有',
+};
+
+/**
+ * WCAG SC 1.4.1 (Use of Color): BUY/SELL/HOLD must not rely on color alone.
+ * Each variant gets a distinct icon (up / down / minus) that mirrors the
+ * semantic direction; combined with the explicit text label, colorblind
+ * users still get the signal from shape + words.
+ */
+const SIGNAL_ICONS: Record<string, React.ReactNode> = {
+  BUY: <CaretUpOutlined aria-hidden="true" className="signal-dashboard__type-icon" />,
+  SELL: <CaretDownOutlined aria-hidden="true" className="signal-dashboard__type-icon" />,
+  HOLD: <MinusOutlined aria-hidden="true" className="signal-dashboard__type-icon" />,
 };
 
 const FAMILY_LABELS: Record<string, string> = {
@@ -84,7 +97,13 @@ export default function SignalDashboard() {
     {
       title: '信号',
       dataIndex: 'signal_type',
-      render: (v: string) => <ThemeTag variant={SIGNAL_VARIANTS[v]}>{SIGNAL_LABELS[v] || v}</ThemeTag>,
+      render: (v: string) => (
+        <ThemeTag variant={SIGNAL_VARIANTS[v]}>
+          {/* WCAG SC 1.4.1: icon + text label so meaning isn't color-only */}
+          {SIGNAL_ICONS[v]}
+          <span>{SIGNAL_LABELS[v] || v}</span>
+        </ThemeTag>
+      ),
       width: 80,
     },
     { title: '强度', dataIndex: 'strength', width: 80, render: (v: any) => <span className="tabular-nums">{v}</span> },
