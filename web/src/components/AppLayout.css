@@ -98,6 +98,18 @@
   font-size: var(--text-small-size);
 }
 
+/* Theme toggle (Light/Dark/System) — icon + short label in a row */
+.app-layout__theme-toggle-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  line-height: 1;
+}
+
+.app-layout__theme-toggle-option .anticon {
+  font-size: 13px;
+}
+
 /* Mobile: stack the controls in the header so they don't overflow. */
 @media (max-width: 767px) {
   .app-layout__header-controls {

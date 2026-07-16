@@ -4,8 +4,13 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ConfigProvider, theme } from 'antd';
 import zhCN from 'antd/locale/zh_CN';
 import App from './App';
-import { getInitialTheme, type Theme } from '@/hooks/useTheme';
+import {
+  getInitialTheme,
+  resolveTheme,
+  type ResolvedTheme,
+} from '@/hooks/useTheme';
 import { readCssVar } from '@/utils/cssVar';
+import { reportWebVitals } from '@/utils/webVitals';
 // 自托管字体（Inter + JetBrains Mono），统一跨平台字体体验
 import '@fontsource/inter/400.css';
 import '@fontsource/inter/500.css';
@@ -16,9 +21,12 @@ import '@fontsource/jetbrains-mono/500.css';
 import './styles/theme.css';
 import './styles/global.css';
 
-// Apply persisted theme synchronously to avoid flash of wrong theme
-const initialTheme = getInitialTheme();
-document.documentElement.setAttribute('data-theme', initialTheme);
+// Apply persisted theme synchronously to avoid flash of wrong theme.
+// P3 (2026-07-16): also resolve `'system'` against `prefers-color-scheme`
+// so the very first paint already matches the OS — without this the user
+// would see a light flash before the React useEffect catches up.
+const initialResolved: ResolvedTheme = resolveTheme(getInitialTheme());
+document.documentElement.setAttribute('data-theme', initialResolved);
 // Default color convention attribute is applied by AppLayout after mount
 // (settings store value is the source of truth; SSR/no-store fallback is
 // "china" via the :root CSS rules above).
@@ -40,15 +48,17 @@ const queryClient = new QueryClient({
  * market rise/fall colors, which are not used by antd's base palette.
  */
 const useAntdTheme = () => {
-  const [mode, setMode] = useState<Theme>(() =>
+  // `data-theme` is always the resolved value ('light' | 'dark') — it never
+  // holds the literal `'system'` because useTheme resolves before writing.
+  const [mode, setMode] = useState<ResolvedTheme>(() =>
     typeof document !== 'undefined'
-      ? (document.documentElement.getAttribute('data-theme') as Theme) || 'light'
+      ? (document.documentElement.getAttribute('data-theme') as ResolvedTheme) || 'light'
       : 'light',
   );
 
   useEffect(() => {
     const handler = (e: Event) => {
-      const detail = (e as CustomEvent<Theme>).detail;
+      const detail = (e as CustomEvent<ResolvedTheme>).detail;
       setMode(detail === 'dark' ? 'dark' : 'light');
     };
     document.addEventListener('themechange', handler);
@@ -178,3 +188,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     </QueryClientProvider>
   </React.StrictMode>,
 );
+
+// P7c (2026-07-16): start Web Vitals observers once React has begun
+// mounting. The reporter is idempotent — multiple calls are safe.
+reportWebVitals();

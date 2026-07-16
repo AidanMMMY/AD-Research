@@ -57,6 +57,7 @@ import {
   BlockOutlined,
   SunOutlined,
   MoonOutlined,
+  DesktopOutlined,
   BulbOutlined,
   CompassOutlined,
   FundProjectionScreenOutlined,
@@ -73,6 +74,8 @@ import { useIsMobile } from '@/hooks/useBreakpoint';
 import { useTheme, type Theme } from '@/hooks/useTheme';
 import { useFocusRestore } from '@/hooks/useFocusRestore';
 import OnboardingTour from '@/components/OnboardingTour';
+import PerformanceIndicator from '@/components/PerformanceIndicator';
+import CommandPalette from '@/components/CommandPalette';
 import './AppLayout.css';
 
 const iconMap: Record<string, React.ComponentType> = {
@@ -349,29 +352,66 @@ function SidebarContent({ collapsed, onItemClick }: SidebarContentProps) {
 }
 
 /* ------------------------------------------------------------
- * ThemeToggle — header control for light/dark.  Phase 3 spec
- * says no flash on switch, so the toggle writes to useTheme
- * synchronously (the existing Phase 1 main.tsx subscriber
- * applies the data-theme attribute on the same tick).
+ * ThemeToggle — P3 (2026-07-16): 3-option segmented control for
+ * Light / Dark / Follow-system.  Lives in the header right cluster
+ * (desktop) and the Settings dropdown (mobile).
+ *
+ * Picking `'system'` tracks OS-level `prefers-color-scheme` and
+ * keeps ConfigProvider in sync via the `themechange` event
+ * dispatched by useTheme.
  * ------------------------------------------------------------ */
 interface ThemeToggleProps {
   theme: Theme;
+  effectiveTheme: 'light' | 'dark';
+  systemPreference: 'light' | 'dark';
   onChange: (t: Theme) => void;
 }
 
-function ThemeToggle({ theme, onChange }: ThemeToggleProps) {
+function ThemeToggle({ theme, effectiveTheme, systemPreference, onChange }: ThemeToggleProps) {
+  // Tooltip on the whole control: tells the user what each option means
+  // and notes the live OS preference when on 'system' (useful for QA).
+  const tooltip =
+    theme === 'system'
+      ? `跟随系统（系统当前：${systemPreference === 'dark' ? '深色' : '浅色'} · 实际渲染：${effectiveTheme === 'dark' ? '深色' : '浅色'}）`
+      : theme === 'dark'
+      ? '当前：深色'
+      : '当前：浅色';
+
   return (
-    <Tooltip title={theme === 'light' ? '当前：浅色 · 点击切换深色' : '当前：深色 · 点击切换浅色'}>
-      <button
-        type="button"
-        className="app-layout__header-collapse"
-        aria-label={theme === 'light' ? '切换到深色主题' : '切换到浅色主题'}
-        onClick={() => onChange(theme === 'light' ? 'dark' : 'light')}
-      >
-        <span className="app-layout__header-collapse-icon" aria-hidden="true">
-          {theme === 'light' ? <MoonOutlined /> : <SunOutlined />}
-        </span>
-      </button>
+    <Tooltip title={tooltip}>
+      <Segmented
+        className="app-layout__header-segmented"
+        size="small"
+        value={theme}
+        onChange={(v) => onChange(v as Theme)}
+        aria-label="切换主题模式"
+        options={[
+          {
+            label: (
+              <span className="app-layout__theme-toggle-option">
+                <SunOutlined aria-hidden="true" /> <span>浅色</span>
+              </span>
+            ),
+            value: 'light',
+          },
+          {
+            label: (
+              <span className="app-layout__theme-toggle-option">
+                <MoonOutlined aria-hidden="true" /> <span>深色</span>
+              </span>
+            ),
+            value: 'dark',
+          },
+          {
+            label: (
+              <span className="app-layout__theme-toggle-option">
+                <DesktopOutlined aria-hidden="true" /> <span>系统</span>
+              </span>
+            ),
+            value: 'system',
+          },
+        ]}
+      />
     </Tooltip>
   );
 }
@@ -464,9 +504,10 @@ export default function AppLayout() {
     crtEffect,
     setCrtEffect,
   } = useSettingsStore();
-  const [theme, setTheme] = useTheme();
+  const { theme, setTheme, effectiveTheme, systemPreference } = useTheme();
   const [collapsed, setCollapsed] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [paletteOpen, setPaletteOpen] = useState(false);
   const isMobile = useIsMobile();
   const navigate = useNavigate();
   const location = useLocation();
@@ -475,6 +516,24 @@ export default function AppLayout() {
   // tap, the Esc key, or by selecting a nav item), return focus to the
   // hamburger trigger button in the header.
   useFocusRestore(isMobile && drawerOpen);
+
+  // Command palette: ⌘K (mac) / Ctrl+K (win/linux) toggles it open, and
+  // PageHeader's search button dispatches a custom event to open it too.
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && (e.key === 'k' || e.key === 'K')) {
+        e.preventDefault();
+        setPaletteOpen((prev) => !prev);
+      }
+    };
+    const onOpenEvent = () => setPaletteOpen(true);
+    window.addEventListener('keydown', onKeyDown);
+    window.addEventListener('ad-research:open-command-palette', onOpenEvent);
+    return () => {
+      window.removeEventListener('keydown', onKeyDown);
+      window.removeEventListener('ad-research:open-command-palette', onOpenEvent);
+    };
+  }, []);
 
   // First-login auto-trigger: pop the onboarding tour once per user.
   useEffect(() => {
@@ -672,7 +731,12 @@ export default function AppLayout() {
                 <CollapseToggle collapsed={collapsed} onChange={setCollapsed} />
                 <DensityToggle />
                 <ColorConventionToggle />
-                <ThemeToggle theme={theme} onChange={setTheme} />
+                <ThemeToggle
+                  theme={theme}
+                  effectiveTheme={effectiveTheme}
+                  systemPreference={systemPreference}
+                  onChange={setTheme}
+                />
               </>
             )}
 
@@ -702,7 +766,12 @@ export default function AppLayout() {
                       key: 'theme',
                       label: (
                         <div onClick={(e) => e.stopPropagation()}>
-                          <ThemeToggle theme={theme} onChange={setTheme} />
+                          <ThemeToggle
+                            theme={theme}
+                            effectiveTheme={effectiveTheme}
+                            systemPreference={systemPreference}
+                            onChange={setTheme}
+                          />
                         </div>
                       ),
                     },
@@ -852,6 +921,14 @@ export default function AppLayout() {
 
       {/* K14: global onboarding tour, mounts only when not completed. */}
       <OnboardingTour />
+
+      {/* ⌘K command palette + global search (2026-07-16). */}
+      <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
+
+
+      {/* P7c (2026-07-16): dev-only Web Vitals indicator. Tree-shaken
+          out of production bundles by the `import.meta.env.DEV` gate. */}
+      {import.meta.env.DEV && <PerformanceIndicator />}
     </div>
   );
 }
