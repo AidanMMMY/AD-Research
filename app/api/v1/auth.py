@@ -10,6 +10,7 @@ Blacklist:
 """
 
 import hashlib
+import logging
 import secrets
 import uuid
 from collections.abc import Generator
@@ -24,6 +25,7 @@ from app.api.deps import get_current_user
 from app.config import auth_settings
 from app.core.audit import client_ip_from_headers
 from app.core.database import SessionLocal
+from app.core.log_sanitize import sanitize
 from app.core.rate_limit import check_login_rate_limit, clear_login_attempts
 from app.core.redis_client import blacklist_token
 from app.models.refresh_token import RefreshToken
@@ -38,6 +40,8 @@ from app.schemas.auth import (
     RegisterDeviceRequest,
     UserResponse,
 )
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -121,6 +125,10 @@ def login(request: LoginRequest, http_request: Request, db: Session = Depends(_g
     )
     allowed, retry_after = check_login_rate_limit(client_ip, request.username)
     if not allowed:
+        logger.warning(
+            "Login rate-limited: %s",
+            sanitize(f"username={request.username} ip={client_ip}"),
+        )
         raise HTTPException(
             status_code=429,
             detail="Too many login attempts. Please try again later.",
@@ -129,6 +137,10 @@ def login(request: LoginRequest, http_request: Request, db: Session = Depends(_g
 
     user = db.query(User).filter(User.username == request.username).first()
     if not user or not _verify_password(request.password, user.password_hash):
+        logger.warning(
+            "Failed login attempt: %s",
+            sanitize(f"username={request.username} ip={client_ip}"),
+        )
         raise HTTPException(status_code=401, detail="Invalid credentials")
     if not user.is_active:
         raise HTTPException(status_code=401, detail="User is inactive")

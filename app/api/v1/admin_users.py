@@ -1,11 +1,14 @@
 """Admin user management API routes."""
 
+import logging
+
 import bcrypt
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 
 from app.api.deps import assert_would_keep_at_least_one_admin, get_db, require_admin
 from app.core.audit import client_ip_from_headers, record_audit
+from app.core.log_sanitize import sanitize
 from app.models.user import User
 from app.schemas.auth import UserResponse
 from app.schemas.user import (
@@ -14,6 +17,8 @@ from app.schemas.user import (
     UserCreateRequest,
     UserUpdateRequest,
 )
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -54,6 +59,12 @@ def create_user(
     db.add(user)
     db.commit()
     db.refresh(user)
+
+    logger.info(
+        "Admin %s created user: %s",
+        sanitize(actor.username),
+        sanitize(f"username={user.username} role={user.role}"),
+    )
 
     record_audit(
         db,
@@ -132,6 +143,13 @@ def reset_password(
     user.password_hash = _hash_password(data.new_password)
     db.commit()
 
+    logger.info(
+        "Admin %s reset password for user_id=%s (%s)",
+        sanitize(actor.username),
+        user_id,
+        sanitize(user.username),
+    )
+
     record_audit(
         db,
         action="POST /admin/users/{user_id}/reset-password",
@@ -170,6 +188,12 @@ def delete_user(
     deleted_username = user.username
     db.delete(user)
     db.commit()
+
+    logger.warning(
+        "Admin %s deleted user: %s",
+        sanitize(actor.username),
+        sanitize(f"user_id={user_id} username={deleted_username}"),
+    )
 
     record_audit(
         db,

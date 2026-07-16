@@ -178,17 +178,34 @@ docker compose up -d postgres redis 2>/dev/null || true
 docker compose up -d --force-recreate backend celery-worker
 
 # 等待 backend 健康
-log_info "等待 backend 就绪 (最多 60s)..."
-for i in $(seq 1 30); do
-    if curl -sf http://localhost:8000/health > /dev/null 2>&1; then
-        log_info "Backend 就绪 ✓"
-        break
-    fi
-    if [ "$i" -eq 30 ]; then
-        log_error "Backend 启动超时，查看日志: docker compose logs backend --tail 50"
+# ── ops P1-13 ──
+# /health 现在始终返回 200，并在 body 里按组件报告状态（db/redis/scheduler/data）。
+# 因此不能再只看 HTTP 状态码，必须解析 body 的 "status" 字段：
+#   - status == "ok"        → 关键依赖(DB/Redis)就绪，放行
+#   - status == "degraded"  → 进程活着但依赖未就绪，继续等待（多见于 DB 尚在迁移/预热）
+# 等待窗口从 60s 提升到 120s（60 次 × 2s），给冷启动 + 迁移预热留足时间。
+log_info "等待 backend 就绪 (最多 120s，需 /health status=ok)..."
+_backend_ready=false
+for i in $(seq 1 60); do
+    _body=$(curl -sf --max-time 5 http://localhost:8000/health 2>/dev/null || true)
+    if [ -n "$_body" ]; then
+        # grep 兼容无 jq 环境：匹配 "status":"ok"（容忍空格）。
+        if printf '%s' "$_body" | grep -Eq '"status"[[:space:]]*:[[:space:]]*"ok"'; then
+            log_info "Backend 就绪 ✓ (/health status=ok)"
+            _backend_ready=true
+            break
+        fi
+        # 进程已响应但依赖降级——打印一次组件明细，便于定位。
+        if [ "$((i % 10))" -eq 0 ]; then
+            log_warn "backend 已响应但 /health 未就绪 (第 ${i} 次): ${_body}"
+        fi
     fi
     sleep 2
 done
+
+if [ "$_backend_ready" = false ]; then
+    log_error "Backend 启动超时或依赖未就绪，查看日志: docker compose logs backend --tail 50; 健康详情: curl -s http://localhost:8000/health"
+fi
 
 # 启动 nginx
 docker compose up -d nginx

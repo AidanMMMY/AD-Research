@@ -1,7 +1,7 @@
-import { Badge, Descriptions, Spin, Table, Tag } from 'antd';
+import { Badge, Button, Descriptions, Spin, Table, Tag, message } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
-import { useQuery } from '@tanstack/react-query';
-import { etlApi, type ETLTask } from '@/api/etl';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { etlApi, type ETLTask, type SchedulerJob } from '@/api/etl';
 import PageShell from '@/components/PageShell';
 import PageHeader from '@/components/PageHeader';
 import Panel from '@/components/Panel';
@@ -52,11 +52,35 @@ function freshnessBadge(value: string | null | undefined, now: Date) {
 }
 
 export default function ETLOpsDashboard() {
+  const queryClient = useQueryClient();
   const { data, isLoading, refetch, isRefetching } = useQuery({
     queryKey: ['etl-ops-dashboard'],
     queryFn: () => etlApi.dashboard().then((r) => r.data),
     refetchInterval: 30_000,
   });
+
+  const {
+    data: schedulerData,
+    isLoading: jobsLoading,
+    refetch: refetchJobs,
+  } = useQuery({
+    queryKey: ['etl-scheduler-jobs'],
+    queryFn: () => etlApi.schedulerJobs().then((r) => r.data.jobs),
+    refetchInterval: 30_000,
+  });
+
+  const runNow = useMutation({
+    mutationFn: (jobId: string) => etlApi.runJobNow(jobId).then((r) => r.data),
+    onSuccess: (res) => {
+      message.success(`已触发「${res.job_name}」（task ${res.task_id.slice(0, 8)}）`);
+      queryClient.invalidateQueries({ queryKey: ['etl-scheduler-jobs'] });
+    },
+    onError: () => {
+      message.error('触发失败，请稍后重试或检查权限');
+    },
+  });
+
+  const jobs: SchedulerJob[] = schedulerData ?? [];
 
   const now = new Date();
   const freshness = data?.data_freshness;
@@ -130,6 +154,78 @@ export default function ETLOpsDashboard() {
         ) : (
           <span className="admin-text-muted">-</span>
         ),
+    },
+  ];
+
+  const jobColumns: ColumnsType<SchedulerJob> = [
+    {
+      title: '任务',
+      dataIndex: 'name',
+      key: 'name',
+      render: (_v, row) => (
+        <div>
+          <div className="admin-task-label__name">{row.name}</div>
+          <div className="admin-task-label__id">{row.id}</div>
+        </div>
+      ),
+    },
+    {
+      title: '下次运行',
+      dataIndex: 'next_run',
+      key: 'next_run',
+      width: 180,
+      render: (v: string | null) => (v ? new Date(v).toLocaleString() : '-'),
+    },
+    {
+      title: '最近运行',
+      dataIndex: 'last_run',
+      key: 'last_run',
+      width: 180,
+      render: (v: string | null) => (v ? new Date(v).toLocaleString() : '-'),
+    },
+    {
+      title: '最近状态',
+      dataIndex: 'last_status',
+      key: 'last_status',
+      width: 110,
+      render: (v: string | null) => statusBadge(v),
+    },
+    {
+      title: '耗时(ms)',
+      dataIndex: 'last_duration_ms',
+      key: 'last_duration_ms',
+      width: 100,
+      render: (v: number | null) =>
+        v == null ? '-' : <span className="tabular-nums">{v.toLocaleString()}</span>,
+    },
+    {
+      title: '最近错误',
+      dataIndex: 'last_error',
+      key: 'last_error',
+      render: (v: string | null) =>
+        v ? (
+          <span className="admin-text-error">{v}</span>
+        ) : (
+          <span className="admin-text-muted">-</span>
+        ),
+    },
+    {
+      title: '操作',
+      key: 'action',
+      width: 120,
+      fixed: 'right',
+      render: (_v, row) => (
+        <Button
+          size="small"
+          type="primary"
+          ghost
+          disabled={!row.runnable}
+          loading={runNow.isPending && runNow.variables === row.id}
+          onClick={() => runNow.mutate(row.id)}
+        >
+          立即运行
+        </Button>
+      ),
     },
   ];
 
@@ -245,6 +341,40 @@ export default function ETLOpsDashboard() {
               size="middle"
               columns={columns}
               dataSource={tasks}
+              pagination={{ pageSize: 20, hideOnSinglePage: true }}
+              scroll={{ x: 'max-content' }}
+            />
+          </Panel>
+        </div>
+
+        <div className="admin-section">
+          <SectionHeading
+            title="调度任务"
+            action={
+              <a
+                onClick={() => refetchJobs()}
+                role="button"
+                tabIndex={0}
+                aria-label="refresh-jobs"
+                className="panel-extra-link"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    refetchJobs();
+                  }
+                }}
+              >
+                刷新
+              </a>
+            }
+          />
+          <Panel variant="default" padding="md">
+            <Table<SchedulerJob>
+              rowKey="id"
+              size="middle"
+              loading={jobsLoading}
+              columns={jobColumns}
+              dataSource={jobs}
               pagination={{ pageSize: 20, hideOnSinglePage: true }}
               scroll={{ x: 'max-content' }}
             />

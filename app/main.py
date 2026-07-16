@@ -118,51 +118,47 @@ app.add_middleware(
 )
 
 # Health check endpoint
-# ── Strict liveness probe ──
-# Returns 200 only when every dependency check passes; any single failure
-# flips the response to 503 so load balancers / Docker healthchecks can
-# route around the unhealthy instance. Used by:
+# ── Readiness probe (ops P1-13) ──
+# Delegates every dependency check to ``app.core.health.readiness_check`` so
+# each container concern (DB, Redis, scheduler heartbeat, data staleness) is
+# reported per-component. The endpoint ALWAYS returns HTTP 200 — even when a
+# dependency is degraded — and carries the machine-readable verdict in the
+# body (``status`` = "ok" | "degraded"). This lets ECS / monitors / on-call
+# read *which* concern is unhealthy without SSH-ing in to inspect logs.
+# Consumers:
 #   - scripts/post_deploy_check.sh
-#   - update.sh's polling loop
+#   - update.sh's polling loop (inspects body ``status``/``db``)
 #   - external monitors (UptimeRobot, Nagios, etc.)
 @app.get("/health")
 def health_check():
-    checks: dict[str, str] = {}
-    healthy = True
+    from app.core.health import readiness_check
 
-    # Database — SELECT 1 round-trip via the shared engine.
-    try:
-        from sqlalchemy import text
-
-        from app.core.database import engine
-
-        with engine.connect() as conn:
-            conn.execute(text("SELECT 1"))
-        checks["db"] = "ok"
-    except Exception as exc:  # noqa: BLE001 — surface any infra-level failure
-        healthy = False
-        checks["db"] = f"error: {exc.__class__.__name__}"
-
-    # Redis — PING the configured instance.
-    try:
-        from app.core.redis_client import get_redis_client
-
-        if get_redis_client().ping():
-            checks["redis"] = "ok"
-        else:
-            healthy = False
-            checks["redis"] = "error: ping returned falsy"
-    except Exception as exc:  # noqa: BLE001
-        healthy = False
-        checks["redis"] = f"error: {exc.__class__.__name__}"
+    report = readiness_check()
+    components = report.get("components", {})
 
     payload = {
-        "status": "ok" if healthy else "degraded",
+        "status": report.get("status", "degraded"),
+        "ready": report.get("ready", False),
         "version": __version__,
         "git_sha": GIT_SHA,
-        **checks,
+        # Back-compat: flatten the two critical components to top-level
+        # "ok" / "error: <Name>" strings that existing scripts already parse.
+        "db": (
+            "ok"
+            if components.get("db", {}).get("status") == "ok"
+            else f"error: {components.get('db', {}).get('detail', 'unknown')}"
+        ),
+        "redis": (
+            "ok"
+            if components.get("redis", {}).get("status") == "ok"
+            else f"error: {components.get('redis', {}).get('detail', 'unknown')}"
+        ),
+        "checked_at": report.get("checked_at"),
+        "components": components,
     }
-    return JSONResponse(content=payload, status_code=200 if healthy else 503)
+    # Always 200 — the body carries the real verdict (constraint: report
+    # per-component status even when DB is degraded).
+    return JSONResponse(content=payload, status_code=200)
 
 # Include v1 routers
 app.include_router(etfs.router, prefix=f"{settings.api_v1_prefix}/etfs", tags=["ETFs"])

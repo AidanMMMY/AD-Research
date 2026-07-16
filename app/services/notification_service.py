@@ -12,6 +12,7 @@ invalidates both stores consistently.
 """
 
 import base64
+import logging
 import smtplib
 from datetime import datetime
 from email.mime.multipart import MIMEMultipart
@@ -23,8 +24,11 @@ from cryptography.fernet import Fernet
 from sqlalchemy.orm import Session
 
 from app.config import auth_settings, get_settings
+from app.core.log_sanitize import sanitize
 from app.models.notification import NotificationConfig, NotificationLog
 from app.models.scoring import ReportMetadata
+
+logger = logging.getLogger(__name__)
 
 
 class NotificationService:
@@ -486,8 +490,105 @@ class NotificationService:
 
             return False
         except Exception as exc:  # pragma: no cover — alerting must not crash jobs
-            print(f"[NotificationService] ETL alert dispatch failed: {exc}")
+            logger.error(
+                "[NotificationService] ETL alert dispatch failed: %s",
+                sanitize(str(exc)),
+            )
             return False
+
+    def _send_etl_message_to_config(
+        self, config: NotificationConfig, subject: str, content: str
+    ) -> bool:
+        """Push a free-form ops message to a single admin-owned config.
+
+        Shares the webhook / email plumbing with the failure-alert path but
+        takes an arbitrary subject + body so it can carry *completion*
+        notices (ops P1-4) as well as failures.
+        """
+        try:
+            exposed_config = self._expose_config_json(config.config_json or {})
+            webhook_url = self._resolve_webhook_url(config)
+            if webhook_url:
+                exposed_config["webhook_url"] = webhook_url
+
+            if config.channel_type == "webhook":
+                if not exposed_config.get("webhook_url"):
+                    return False
+                platform = exposed_config.get("platform", "wechat")
+                if platform == "feishu":
+                    payload = {"msg_type": "text", "content": {"text": content}}
+                else:
+                    payload = {"msgtype": "text", "text": {"content": content}}
+                response = requests.post(
+                    exposed_config["webhook_url"],
+                    json=payload,
+                    headers={"Content-Type": "application/json"},
+                    timeout=15,
+                )
+                return response.status_code == 200
+
+            if config.channel_type == "email":
+                exposed_config["_etl_alert_subject"] = subject
+                exposed_config["_etl_alert_body"] = content
+                result = self._send_email(exposed_config, None, test=False)
+                return bool(result.get("success"))
+
+            return False
+        except Exception as exc:  # pragma: no cover — alerting must not crash callers
+            logger.error(
+                "[NotificationService] ETL message dispatch failed: %s",
+                sanitize(str(exc)),
+            )
+            return False
+
+    def send_etl_completion(
+        self, job_name: str, status: str = "success", detail: str = ""
+    ) -> int:
+        """Broadcast an ETL-run completion notice to active-admin channels.
+
+        Mirrors :meth:`send_etl_alert` but for successful / manual re-runs
+        (ops P1-4). Returns the number of successful sends; failures are
+        logged and swallowed so a re-run never crashes on a dead webhook.
+        """
+        from app.models.user import User
+
+        admin_ids = {
+            row.id
+            for row in self.db.query(User.id)
+            .filter(User.role == "admin", User.is_active.is_(True))
+            .all()
+        }
+        if not admin_ids:
+            return 0
+
+        configs = (
+            self.db.query(NotificationConfig)
+            .filter(
+                NotificationConfig.user_id.in_(admin_ids),
+                NotificationConfig.is_active.is_(True),
+            )
+            .all()
+        )
+        if not configs:
+            return 0
+
+        subject = f"[ETF投研平台] ETL 任务完成: {job_name}"
+        content = (
+            f"[ETF投研平台] ETL 任务完成通知\n"
+            f"任务: {job_name}\n"
+            f"状态: {status}\n"
+            f"备注: {detail or '—'}"
+        )
+
+        sent = 0
+        for config in configs:
+            try:
+                if self._send_etl_message_to_config(config, subject, content):
+                    sent += 1
+            except Exception:
+                continue
+        return sent
+
 
     def send_etl_alert(self, job_name: str, error_msg: str) -> int:
         """Send an ETL-failure alert to every active admin-owned channel.
