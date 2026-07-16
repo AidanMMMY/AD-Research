@@ -1,5 +1,35 @@
 import React from 'react';
+import { Tooltip } from 'antd';
+import { SearchOutlined } from '@ant-design/icons';
 import { useSettingsStore } from '@/stores/settings';
+
+/** Detect mac to show the correct ⌘ / Ctrl hint on the search trigger. */
+const IS_MAC =
+  typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform);
+
+/**
+ * Small ⌘K / Ctrl+K search trigger. Dispatches a window event that
+ * AppLayout listens for to open the Command Palette — avoids prop-drilling
+ * palette state down to every page's header.
+ */
+function CommandPaletteTrigger() {
+  const openPalette = () =>
+    window.dispatchEvent(new CustomEvent('ad-research:open-command-palette'));
+  return (
+    <Tooltip title="全局搜索">
+      <button
+        type="button"
+        className="page-header-search"
+        aria-label="打开全局搜索（命令面板）"
+        aria-keyshortcuts={IS_MAC ? 'Meta+K' : 'Control+K'}
+        onClick={openPalette}
+      >
+        <SearchOutlined aria-hidden="true" />
+        <span className="page-header-search-hint">{IS_MAC ? '⌘K' : 'Ctrl+K'}</span>
+      </button>
+    </Tooltip>
+  );
+}
 
 /**
  * Standardized page header used at the top of every primary page.
@@ -68,7 +98,10 @@ export default function PageHeader({
             <div className="page-header-tutorial">{tutorial}</div>
           ) : null}
         </div>
-        {extra ? <div className="page-header-extra">{extra}</div> : null}
+        <div className="page-header-actions">
+          <CommandPaletteTrigger />
+          {extra ? <div className="page-header-extra">{extra}</div> : null}
+        </div>
       </div>
     </header>
   );
