@@ -54,6 +54,7 @@ COPY app/ ./app/
 COPY alembic/ ./alembic/
 COPY alembic.ini ./
 COPY scripts/docker-entrypoint.sh ./scripts/docker-entrypoint.sh
+RUN chmod +x /app/scripts/docker-entrypoint.sh
 
 # Copy frontend build output to a staging directory; it is copied into the
 # shared volume at runtime so Nginx always serves the latest build.
