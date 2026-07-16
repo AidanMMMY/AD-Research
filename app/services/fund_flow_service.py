@@ -342,6 +342,7 @@ def _parse_sort(sort: str, default_col: str) -> tuple[Any, str]:
         },
         "main_net_inflow": {
             IndividualFundFlow: IndividualFundFlow.main_net_inflow,
+            SectorFundFlow: SectorFundFlow.main_net_inflow,
             FlowSignal: FlowSignal.main_net_inflow,
         },
         "inferred_net_inflow": {EtfFundFlow: EtfFundFlow.inferred_net_inflow},
@@ -351,6 +352,16 @@ def _parse_sort(sort: str, default_col: str) -> tuple[Any, str]:
             EtfFundFlow: EtfFundFlow.ts_code,
             FlowSignal: FlowSignal.ts_code,
         },
+        # ETF-only fields. Without these, sorting by `-premium_rate` /
+        # `-net_value` / `-shares_change` falls back to ``IndividualFundFlow``
+        # and produces ``UndefinedTable: individual_fund_flow`` SQL errors
+        # when the active query is on the ETF table (review-fund-flow P0).
+        "premium_rate": {EtfFundFlow: EtfFundFlow.premium_rate},
+        "net_value": {EtfFundFlow: EtfFundFlow.net_value},
+        "shares_change": {EtfFundFlow: EtfFundFlow.shares_change},
+        "shares_outstanding": {EtfFundFlow: EtfFundFlow.shares_outstanding},
+        "price": {EtfFundFlow: EtfFundFlow.price},
+        "turnover": {EtfFundFlow: EtfFundFlow.turnover},
     }
     for prefix, table_map in col_map.items():
         if col_name == prefix:

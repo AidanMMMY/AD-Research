@@ -29,6 +29,7 @@ from app.schemas.fund_flow import (
     FlowSignalListResponse,
     IndividualFundFlowListResponse,
     MarketFundFlowListResponse,
+    MarketFundFlowOut,
     SectorFundFlowListResponse,
 )
 from app.services import fund_flow_service as svc
@@ -167,17 +168,33 @@ def list_sector_history(
 # ---------------------------------------------------------------------------
 
 
-@router.get("/market", response_model=MarketFundFlowListResponse)
+@router.get("/market", response_model=MarketFundFlowOut)
 def list_market_fund_flow(
     days: int = Query(30, ge=1, le=365),
     db: Session = Depends(get_db),
-) -> MarketFundFlowListResponse:
+) -> MarketFundFlowOut:
     """大盘整体资金流 (近 N 日)。
+
+    返回单条最新交易日的 market_fund_flow 快照（之前错误地返回了
+    ``MarketFundFlowListResponse`` 列表，但前端期望单个对象，见
+    review-fund-flow P0-3）。
 
     注意：本接口返回的是基于 sector_fund_flow 行业段聚合的近似值；
     真正的 sh/sz 分离口径在 ak.stock_market_fund_flow 但未单独建表。
     """
-    return svc.list_market(db, days=days)  # type: ignore[return-value]
+    result = svc.list_market(db, days=days)
+    items = result.get("items", []) if isinstance(result, dict) else []
+    if not items:
+        # Stub for empty data so the contract holds.
+        from datetime import date as _date
+        return MarketFundFlowOut(
+            trade_date=_date.today().isoformat(),
+            sh_main_net_inflow=None,
+            sz_main_net_inflow=None,
+            sh_main_net_pct=None,
+            sz_main_net_pct=None,
+        )
+    return items[0]
 
 
 # ---------------------------------------------------------------------------

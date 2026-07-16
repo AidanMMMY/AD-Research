@@ -223,7 +223,11 @@ def run_retail_aggregation(top_n: int = 50) -> int:
                 .filter(SentimentData.ingested_at >= cutoff)
                 .filter(SentimentData.instrument_code.isnot(None))
                 .group_by(SentimentData.instrument_code)
-                .order_by(desc(SentimentData.id))
+                # ORDER BY must reference a column in the GROUP BY or an
+                # aggregate. ``SentimentData.id`` is neither when grouped by
+                # ``instrument_code`` (PostgreSQL GroupingError). Sort by
+                # ``instrument_code`` for stable, deterministic output.
+                .order_by(SentimentData.instrument_code)
                 .limit(top_n)
                 .all()
             )
