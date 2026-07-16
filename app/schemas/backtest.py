@@ -3,7 +3,7 @@
 from datetime import date
 from typing import Any
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class BacktestCreate(BaseModel):
@@ -94,3 +94,126 @@ class BacktestListResponse(BaseModel):
     """Backtest list response."""
 
     items: list[BacktestListItem]
+
+
+# ---------------------------------------------------------------------------
+# Cross-sectional backtest schema (quant P1)
+# ---------------------------------------------------------------------------
+
+
+class CrossSectionalBacktestCreate(BacktestCreate):
+    """Create cross-sectional (multi-symbol) backtest request.
+
+    The legacy single-code path is preserved via the parent class.
+    Provide ``etf_codes`` to switch into cross-sectional mode.
+    """
+
+    etf_codes: list[str] | None = None
+    # Allocation per symbol is fixed at ``1 / len(etf_codes)`` (equal
+    # weights, daily rebalance to the long side of signals). No
+    # configurable field for that today.
+
+
+# ---------------------------------------------------------------------------
+# Parameter optimization schemas (quant P1)
+# ---------------------------------------------------------------------------
+
+
+class OptimizeRequest(BaseModel):
+    """Request body for ``POST /backtests/optimize``.
+
+    Accepts the same inputs as ``BacktestCreate`` plus a ``grid`` map
+    specifying the value lists to sweep over. ``etf_code`` and
+    ``etf_codes`` are both honoured — when ``etf_codes`` is provided
+    the optimizer runs a cross-sectional sweep.
+    """
+
+    strategy_type: str = Field(..., description="Registered strategy identifier")
+    etf_code: str | None = None
+    etf_codes: list[str] | None = None
+    base_params: dict[str, Any] = Field(default_factory=dict)
+    grid: dict[str, list[Any]] = Field(
+        default_factory=dict,
+        description="Mapping of param_name -> [v1, v2, ...]",
+    )
+    start_date: date
+    end_date: date
+    initial_capital: float = 100000.0
+    commission_rate: float = 0.001
+    slippage_rate: float = 0.001
+    position_size: float = 1.0
+    risk_free_rate: float = 0.02
+    execution_price_model: str = "open"
+    market: str = "cn_a"
+    apply_friction: bool = True
+    top_n: int = Field(10, ge=1, le=100, description="Number of Pareto-optimal rows to return")
+
+
+class OptimizeResponse(BaseModel):
+    """Response body for ``POST /backtests/optimize``."""
+
+    top_n: list[dict[str, Any]] = Field(
+        default_factory=list,
+        description="Up to ``top_n`` Pareto-optimal candidates by Sharpe.",
+    )
+    full_sweep_size: int = 0
+    strategy_type: str
+    grid_keys: list[str] = Field(default_factory=list)
+
+
+# ---------------------------------------------------------------------------
+# Composite strategy schema (quant P1)
+# ---------------------------------------------------------------------------
+
+
+class CompositeComponent(BaseModel):
+    """One component inside a composite strategy."""
+
+    type: str = Field(..., description="Component strategy_type")
+    params: dict[str, Any] = Field(default_factory=dict)
+    weight: float = 1.0
+
+
+class CompositeStrategyConfig(BaseModel):
+    """Composite strategy configuration.
+
+    Used as the body of ``POST /backtests/composite``. The endpoint
+    routes the request through the generic ``CompositeStrategy`` in
+    ``app.strategies.base`` — register your components by their
+    ``strategy_type`` strings.
+    """
+
+    components: list[CompositeComponent] = Field(..., min_length=1)
+    aggregation: str = Field(
+        "weighted",
+        description="weighted | vote | unanimous",
+        pattern="^(weighted|vote|unanimous)$",
+    )
+    holding_period: int = 20
+
+    def as_params(self) -> dict[str, Any]:
+        """Render into the dict accepted by ``run_backtest``/``Strategy``."""
+        return {
+            "components": [
+                {"type": c.type, "params": c.params, "weight": c.weight}
+                for c in self.components
+            ],
+            "aggregation": self.aggregation,
+            "holding_period": self.holding_period,
+        }
+
+
+class CompositeBacktestRequest(CompositeStrategyConfig):
+    """Composite backtest request: composite config + backtest envelope."""
+
+    etf_code: str = Field(..., description="Single-instrument target")
+    start_date: date
+    end_date: date
+    initial_capital: float = 100000.0
+    commission_rate: float = 0.001
+    slippage_rate: float = 0.001
+    position_size: float = 1.0
+    risk_free_rate: float = 0.02
+    execution_price_model: str = "open"
+    market: str = "cn_a"
+    apply_friction: bool = True

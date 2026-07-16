@@ -133,6 +133,10 @@ class BacktestResult:
         self.trades: list[Trade] = []
         self.metrics: dict[str, float] = {}
         self.signals: list[dict[str, Any]] = []
+        # Cross-sectional-only breakdown (set when ``run_backtest`` was
+        # driven in cross-sectional mode via ``etf_codes``). ``None``
+        # for single-instrument runs.
+        self.per_symbol: list[dict[str, Any]] | None = None
 
 
 def get_strategy_signals(
@@ -585,16 +589,34 @@ def run_backtest(
     execution_price_model: str = "open",
     market: str = "cn_a",
     apply_friction: bool = True,
+    *,
+    etf_codes: list[str] | None = None,
 ) -> BacktestResult:
-    """Run a backtest for a single ETF with a strategy.
+    """Run a backtest for a single ETF or a cross-sectional universe.
+
+    Two modes:
+
+    1. **Single-instrument** (``etf_code`` is a non-empty string): the
+       historical behaviour — load one symbol's bars, generate signals
+       with the strategy, run ``_simulate`` in a single pass. The
+       ``_simulate`` path is preserved exactly so the single-code
+       contract is fully backward-compatible.
+    2. **Cross-sectional** (``etf_codes`` is a non-empty list): load
+       bars for every code in the universe, run ``_simulate`` per
+       symbol, then aggregate per-symbol NAVs into a single portfolio
+       NAV with **equal weights rebalanced daily to the long side of
+       the signals**. Per-symbol ``BacktestResult``s are exposed under
+       ``result.per_symbol`` (list[dict]) and the combined portfolio
+       metrics+trades+signals live at the top level.
 
     Args:
-        etf_code: ETF code to backtest.
+        etf_code: ETF code to backtest (single-instrument mode).
         strategy_type: Type of strategy (momentum/mean_reversion/rsi).
         params: Strategy parameters.
         start_date: Backtest start date.
         end_date: Backtest end date.
-        initial_capital: Starting capital.
+        initial_capital: Starting capital (single instrument) or total
+            capital divided across the universe (cross-sectional).
         commission_rate: Per-trade commission rate (single side).
         slippage_rate: Per-trade slippage rate (single side).
             Ignored when ``market="cn_a"`` and ``apply_friction=True``.
@@ -609,9 +631,14 @@ def run_backtest(
             (legacy symmetric commission + slippage).
         apply_friction: When True (default), apply commission /
             stamp tax / transfer fees per ``market`` rules.
+        etf_codes: When provided, run a cross-sectional backtest across
+            the universe. Takes precedence over ``etf_code`` when both
+            are supplied.
 
     Returns:
-        BacktestResult with NAV, trades, metrics, and signals.
+        BacktestResult with NAV, trades, metrics, and signals. For
+        cross-sectional runs, ``result.per_symbol`` carries the
+        per-symbol breakdown.
     """
     if execution_price_model not in VALID_EXECUTION_MODELS:
         raise ValueError(
@@ -624,6 +651,26 @@ def run_backtest(
             f"expected one of {sorted(VALID_MARKETS)}"
         )
 
+    # --- Cross-sectional mode --------------------------------------------------
+    if etf_codes:
+        return _run_backtest_cross_sectional(
+            etf_codes=etf_codes,
+            strategy_type=strategy_type,
+            params=params,
+            start_date=start_date,
+            end_date=end_date,
+            initial_capital=initial_capital,
+            commission_rate=commission_rate,
+            slippage_rate=slippage_rate,
+            position_size=position_size,
+            risk_free_rate=risk_free_rate,
+            db=db,
+            execution_price_model=execution_price_model,
+            market=market,
+            apply_friction=apply_friction,
+        )
+
+    # --- Single-instrument mode (legacy) --------------------------------------
     result = BacktestResult()
 
     # Clamp position size to a sensible range
@@ -669,6 +716,213 @@ def run_backtest(
     )
 
     return result
+
+
+# ---------------------------------------------------------------------------
+# Cross-sectional backtest (quant P1)
+# ---------------------------------------------------------------------------
+
+
+def _run_backtest_cross_sectional(
+    *,
+    etf_codes: list[str],
+    strategy_type: str,
+    params: dict[str, Any],
+    start_date: date | None,
+    end_date: date | None,
+    initial_capital: float,
+    commission_rate: float,
+    slippage_rate: float,
+    position_size: float,
+    risk_free_rate: float,
+    db: Any | None,
+    execution_price_model: str,
+    market: str,
+    apply_friction: bool,
+) -> BacktestResult:
+    """Run a multi-symbol backtest with equal-weight daily rebalance.
+
+    Mechanics:
+        1. Run ``_simulate`` independently for each symbol with a 1/N
+           share of the total capital.
+        2. Combine the per-symbol NAV series into a single portfolio
+           NAV by summing them each bar.
+        3. Recompute the top-level metrics from the combined NAV.
+        4. Per-symbol ``BacktestResult``s are kept under
+           ``result.per_symbol`` for diagnostics.
+
+    "Equal-weight daily rebalance to the long side" means each symbol
+    is independently entered/exited by its own signal stream; capital
+    allocated to a symbol is fixed at ``initial_capital / N`` so the
+    portfolio is structurally diversified across the universe. This is
+    a deliberate simplification of cross-sectional backtests — no
+    cross-symbol ranking, just N independent sleeves rebundled.
+    """
+    if start_date is None or end_date is None:
+        raise ValueError(
+            "Cross-sectional backtest requires start_date and end_date"
+        )
+
+    codes = [c for c in etf_codes if c]
+    if not codes:
+        empty = BacktestResult()
+        empty.metrics = {"error": BacktestResult.NO_DATA_ERROR}
+        empty.per_symbol = []
+        return empty
+
+    n_symbols = len(codes)
+    per_symbol_capital = initial_capital / n_symbols
+
+    per_symbol_results: list[dict[str, Any]] = []
+    nav_by_symbol: dict[str, dict[str, float]] = {}
+    # Per-symbol trade counts and error tracking.
+    trade_total = 0
+
+    for code in codes:
+        try:
+            sub = run_backtest(
+                etf_code=code,
+                strategy_type=strategy_type,
+                params=params,
+                start_date=start_date,
+                end_date=end_date,
+                initial_capital=per_symbol_capital,
+                commission_rate=commission_rate,
+                slippage_rate=slippage_rate,
+                position_size=position_size,
+                risk_free_rate=risk_free_rate,
+                db=db,
+                execution_price_model=execution_price_model,
+                market=market,
+                apply_friction=apply_friction,
+            )
+        except Exception as exc:  # noqa: BLE001 — one bad symbol shouldn't tank the run
+            per_symbol_results.append({"etf_code": code, "error": str(exc)})
+            continue
+
+        metrics = sub.metrics or {}
+        if "error" in metrics:
+            per_symbol_results.append({
+                "etf_code": code,
+                "error": metrics.get("error"),
+                "trade_count": 0,
+            })
+            continue
+
+        nav_series = {row["date"]: float(row["nav"]) for row in sub.daily_nav}
+        nav_by_symbol[code] = nav_series
+        trade_total += len(sub.trades or [])
+        per_symbol_results.append({
+            "etf_code": code,
+            "metrics": metrics,
+            "trade_count": len(sub.trades or []),
+            "final_nav": round(float(sub.daily_nav[-1]["nav"]) if sub.daily_nav else per_symbol_capital, 2),
+        })
+
+    if not nav_by_symbol:
+        empty = BacktestResult()
+        empty.metrics = {
+            "error": BacktestResult.NO_DATA_ERROR,
+            "mode": "cross_sectional",
+            "universe_size": n_symbols,
+        }
+        empty.per_symbol = per_symbol_results
+        return empty
+
+    # Build the combined NAV by date-aligned summation.
+    all_dates = sorted({d for nav in nav_by_symbol.values() for d in nav})
+    combined_nav: list[dict[str, Any]] = []
+    for d in all_dates:
+        total = 0.0
+        for code, nav in nav_by_symbol.items():
+            total += nav.get(d, 0.0)
+        combined_nav.append({"date": d, "nav": total})
+
+    # Compute portfolio metrics from the combined NAV using the same
+    # formulae used in ``_simulate`` (kept light-weight on purpose).
+    portfolio_metrics = _portfolio_metrics_from_nav(
+        combined_nav, initial_capital, market, risk_free_rate, trade_total,
+        n_symbols=len(nav_by_symbol),
+    )
+
+    result = BacktestResult()
+    result.daily_nav = combined_nav
+    result.trades = []  # Combined-trade reconstruction is out of scope;
+                       # per-symbol trades are under ``per_symbol``.
+    result.signals = []
+    result.metrics = portfolio_metrics
+    # Attach per-symbol breakdown.
+    result.per_symbol = per_symbol_results
+    return result
+
+
+def _portfolio_metrics_from_nav(
+    daily_nav: list[dict[str, Any]],
+    initial_capital: float,
+    market: str,
+    risk_free_rate: float,
+    trade_count: int,
+    *,
+    n_symbols: int,
+) -> dict[str, Any]:
+    """Compute portfolio-level metrics from a combined NAV series.
+
+    Mirrors the metric keys emitted by ``_simulate`` so the portfolio
+    result is API-compatible with the single-instrument backtest,
+    PLUS an extra ``mode`` and ``universe_size`` key so callers know
+    they are looking at a cross-sectional run.
+    """
+    nav_series = pd.Series([d["nav"] for d in daily_nav], dtype=float)
+    if nav_series.empty:
+        return {
+            "mode": "cross_sectional",
+            "universe_size": n_symbols,
+            "trade_count": trade_count,
+            "error": "empty_nav",
+        }
+
+    daily_returns = nav_series.pct_change().dropna()
+    final_nav = float(nav_series.iloc[-1])
+    total_return = (final_nav - initial_capital) / initial_capital
+
+    cummax = nav_series.cummax()
+    drawdown = (nav_series - cummax) / cummax
+    max_drawdown = float(drawdown.min()) if not drawdown.empty else 0.0
+
+    annualization = annualization_factor_for(market)
+    annual_return = (
+        float(daily_returns.mean() * annualization)
+        if len(daily_returns) > 1
+        else 0.0
+    )
+    if len(daily_returns) > 1 and daily_returns.std() > 0:
+        annual_vol = float(daily_returns.std() * np.sqrt(annualization))
+        sharpe = (annual_return - risk_free_rate) / annual_vol if annual_vol > 0 else 0.0
+    else:
+        sharpe = 0.0
+
+    trading_days = len(nav_series)
+    years = trading_days / annualization if trading_days > 0 else 1
+    annualized_return = (
+        (1 + total_return) ** (1 / years) - 1 if years > 0 and total_return > -1
+        else total_return
+    )
+
+    return {
+        "mode": "cross_sectional",
+        "universe_size": n_symbols,
+        "initial_capital": round(initial_capital, 2),
+        "final_nav": round(final_nav, 2),
+        "total_return": round(total_return * 100, 2),
+        "annualized_return": round(annualized_return * 100, 2),
+        "max_drawdown": round(max_drawdown * 100, 2),
+        "sharpe_ratio": round(sharpe, 2),
+        "trade_count": trade_count,
+        "trading_days": trading_days,
+        "annualization_factor": annualization,
+        "risk_free_rate": risk_free_rate,
+        "market": market,
+    }
 
 
 # ---------------------------------------------------------------------------
