@@ -103,39 +103,49 @@ def _latest_bar_age_days(db, market: str) -> int | None:
 
 
 def _check_data_staleness() -> dict[str, Any]:
-    """Freshness of the most recent A-share / US daily bars.
+    """Freshness of the most recent daily bar in ``instrument_daily_bar``.
 
-    Non-critical: a stale market is reported as ``warn`` so monitors can
-    alert, but it never flips the overall probe to ``degraded``.
+    Non-critical: stale data is reported as ``warn`` so monitors can alert,
+    but it never flips the overall probe to ``degraded``.
+
+    ops incident 2026-07-16: the previous per-market join against ``etf_info``
+    scanned ~16M rows and took 6–15s even after adding an index, which made
+    the whole ``/health`` endpoint time out. We now use the much cheaper
+    ``max(trade_date)`` over the whole table (index-only scan on the PK).
     """
+    from sqlalchemy import func
+
     from app.core.database import SessionLocal
+    from app.models.etf import InstrumentDailyBar
 
     db = SessionLocal()
-    markets: dict[str, Any] = {}
-    stale: list[str] = []
     try:
-        for label, market in (("a_share", "A股"), ("us_stock", "US")):
-            try:
-                age = _latest_bar_age_days(db, market)
-            except Exception as exc:  # noqa: BLE001 — one bad query != probe failure
-                markets[label] = {"status": "error", "detail": exc.__class__.__name__}
-                continue
-            if age is None:
-                markets[label] = {"status": "warn", "age_days": None}
-                stale.append(label)
-            elif age > _STALE_AFTER_DAYS:
-                markets[label] = {"status": "warn", "age_days": age}
-                stale.append(label)
-            else:
-                markets[label] = {"status": "ok", "age_days": age}
+        overall_max = db.query(func.max(InstrumentDailyBar.trade_date)).scalar()
+        if overall_max is None:
+            return {
+                "status": "warn",
+                "stale_markets": ["all"],
+                "markets": {},
+            }
+        if isinstance(overall_max, datetime):
+            overall_max = overall_max.date()
+        age = (date.today() - overall_max).days
+        status = "ok" if age <= _STALE_AFTER_DAYS else "warn"
+        return {
+            "status": status,
+            "stale_markets": [] if status == "ok" else ["all"],
+            "markets": {
+                "overall": {
+                    "status": status,
+                    "age_days": age,
+                    "latest_date": overall_max.isoformat(),
+                }
+            },
+        }
+    except Exception as exc:  # noqa: BLE001
+        return {"status": "warn", "detail": exc.__class__.__name__}
     finally:
         db.close()
-
-    return {
-        "status": "warn" if stale else "ok",
-        "stale_markets": stale,
-        "markets": markets,
-    }
 
 
 def _run_with_timeout(fn: Callable[[], Any], timeout_seconds: float) -> Any:
