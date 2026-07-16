@@ -41,11 +41,40 @@ async function fetchMetric(metric: DashboardMetric): Promise<number> {
   }
 }
 
+/**
+ * Payload sent by the Web Vitals reporter. Mirrors the shape of
+ * `web-vitals`'s `Metric` plus a `page` so the backend can attribute
+ * values to specific routes. See `web/src/utils/webVitals.ts`.
+ */
+export interface WebVitalsPayload {
+  name: 'CLS' | 'FCP' | 'INP' | 'LCP' | 'TTFB';
+  value: number;
+  id: string;
+  rating: 'good' | 'needs-improvement' | 'poor';
+  navigationType:
+    | 'navigate'
+    | 'reload'
+    | 'back-forward'
+    | 'back-forward-cache'
+    | 'prerender'
+    | 'restore';
+  page: string;
+}
+
 export const statsApi = {
   overview: () => client.get<StatsOverview>('/stats/overview'),
 
   /** Per-metric parallel fetcher used by Dashboard KPI strip. */
   metric(metric: DashboardMetric): Promise<number> {
     return fetchMetric(metric);
+  },
+
+  /**
+   * Fire-and-forget POST used by the Web Vitals reporter. The endpoint
+   * is intentionally allowed to 404 in dev — the reporter swallows
+   * network errors so the UI never blocks on telemetry.
+   */
+  webVitals(payload: WebVitalsPayload): Promise<unknown> {
+    return client.post('/stats/web-vitals', payload);
   },
 };
