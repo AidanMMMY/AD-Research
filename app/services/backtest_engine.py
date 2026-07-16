@@ -39,7 +39,29 @@ TRANSFER_FEE = 0.00001     # 过户费：双边 0.001%
 COMMISSION_MIN = 5.0       # 最低佣金 ¥5
 
 VALID_EXECUTION_MODELS = {"open", "close", "next_open"}
-VALID_MARKETS = {"cn_a", "other"}
+VALID_MARKETS = {"cn_a", "us", "hk", "crypto", "other"}
+
+# ---------------------------------------------------------------------------
+# Market-specific annualization factors (quant P0-4)
+# A-share=244, US=252, crypto=365, HK=247. Stocks trade ~244-252 days/yr
+# depending on holidays; crypto is 24/7 (365). Crypto also trades
+# weekends, so we keep that separate from the equity buckets.
+# ---------------------------------------------------------------------------
+ANNUALIZATION_FACTORS: dict[str, int] = {
+    "cn_a": 244,
+    "us": 252,
+    "hk": 247,
+    "crypto": 365,
+    "other": 252,  # legacy default — same as US convention
+}
+
+
+def annualization_factor_for(market: str) -> int:
+    """Return the per-market annualization factor used by Sharpe/Sortino.
+
+    Defaults to 252 for unknown markets so legacy callers don't break.
+    """
+    return ANNUALIZATION_FACTORS.get(market, 252)
 
 
 def _load_bars(etf_code: str, start_date: date, end_date: date, db: Any) -> pd.DataFrame:
@@ -395,14 +417,66 @@ def _simulate(
     cummax = nav_series.cummax()
     drawdown = (nav_series - cummax) / cummax
     max_drawdown = drawdown.min()
+    max_drawdown_pct = (
+        round(float(max_drawdown) * 100, 2) if not np.isnan(max_drawdown) else 0.0
+    )
 
-    # Sharpe ratio (annualized)
+    # Market-specific annualization (quant P0-4). Defaults to 252 for
+    # legacy/other markets so existing dashboards keep working.
+    annualization = annualization_factor_for(market)
+
+    # Annualized mean return
+    annual_return = (
+        float(daily_returns.mean() * annualization)
+        if len(daily_returns) > 1
+        else 0.0
+    )
+
+    # Sharpe ratio (annualized, market-aware)
     if len(daily_returns) > 1 and daily_returns.std() > 0:
-        annual_return = daily_returns.mean() * 252
-        annual_vol = daily_returns.std() * np.sqrt(252)
-        sharpe = (annual_return - risk_free_rate) / annual_vol
+        annual_vol = float(daily_returns.std() * np.sqrt(annualization))
+        sharpe = (annual_return - risk_free_rate) / annual_vol if annual_vol > 0 else 0.0
     else:
-        sharpe = 0
+        annual_vol = 0.0
+        sharpe = 0.0
+
+    # --- New risk metrics (quant P0-9) ---
+
+    # Sortino: like Sharpe, but only penalises downside volatility.
+    # downside_deviation = sqrt(mean(min(r - target, 0)^2)); we use
+    # MAR = 0 (target daily return of 0) as is standard for absolute-return
+    # strategies.
+    sortino: float | None = None
+    if len(daily_returns) > 1:
+        downside = daily_returns[ daily_returns < 0 ]
+        if len(downside) > 0:
+            downside_dev = float(np.sqrt((downside ** 2).mean()))
+            if downside_dev > 0:
+                sortino = (annual_return - risk_free_rate) / (
+                    downside_dev * np.sqrt(annualization)
+                )
+
+    # Calmar: annualized return / |max drawdown|. None when MDD == 0
+    # (cannot divide by zero / no drawdown to compare against).
+    calmar: float | None = None
+    if max_drawdown < 0:
+        calmar = annual_return / abs(float(max_drawdown))
+
+    # VaR / CVaR at 95% confidence. Both expressed as positive losses
+    # (i.e. the typical 1-day 95% loss). We return None when the
+    # observation count is too small to be meaningful.
+    var_95: float | None = None
+    cvar_95: float | None = None
+    if len(daily_returns) >= 20:
+        var_95 = float(-np.percentile(daily_returns, 5))
+        tail = daily_returns[daily_returns <= -var_95]
+        if len(tail) > 0:
+            cvar_95 = float(-tail.mean())
+
+    # Max drawdown duration: longest streak (in trading days) from
+    # a peak to a full recovery. A drawdown that is still in progress
+    # counts the bars since the last peak. None when not computable.
+    max_dd_duration: int | None = _max_drawdown_duration(nav_series)
 
     # Win rate
     if result.trades:
@@ -415,17 +489,20 @@ def _simulate(
         avg_win = 0
         avg_loss = 0
 
-    # Trading days count
+    # Trading days count — use the market-specific annualization factor
+    # when computing ``years`` so the geometric annualisation lines up
+    # with the Sharpe/Sortino scaling.
     trading_days = len(df)
-    years = trading_days / 252 if trading_days > 0 else 1
+    years = trading_days / annualization if trading_days > 0 else 1
     annualized_return = (1 + total_return) ** (1 / years) - 1 if years > 0 and total_return > -1 else total_return
 
     result.metrics = {
+        # Backward-compatible keys (must remain present for legacy callers)
         "initial_capital": initial_capital,
         "final_nav": round(final_nav, 2),
         "total_return": round(total_return * 100, 2),
         "annualized_return": round(annualized_return * 100, 2),
-        "max_drawdown": round(max_drawdown * 100, 2),
+        "max_drawdown": max_drawdown_pct,
         "sharpe_ratio": round(sharpe, 2),
         "win_rate": round(win_rate * 100, 2),
         "trade_count": len(result.trades),
@@ -439,9 +516,48 @@ def _simulate(
         "execution_price_model": execution_price_model,
         "market": market,
         "apply_friction": apply_friction,
+        # New metrics (quant P0-9). None means "not computable", NOT 0.
+        "sortino_ratio": (
+            round(sortino, 2) if sortino is not None else None
+        ),
+        "calmar_ratio": (
+            round(calmar, 2) if calmar is not None else None
+        ),
+        "var_95": round(var_95 * 100, 2) if var_95 is not None else None,
+        "cvar_95": round(cvar_95 * 100, 2) if cvar_95 is not None else None,
+        "max_drawdown_duration": max_dd_duration,
+        "annualization_factor": annualization,
     }
 
     return result
+
+
+def _max_drawdown_duration(nav_series: pd.Series) -> int | None:
+    """Longest underwater period (in trading bars) for ``nav_series``.
+
+    An underwater period starts at a new equity peak and ends the first
+    day the NAV reaches a new peak >= the prior peak. A drawdown that
+    is still in progress at the end of the series counts the bars
+    since the last peak.
+
+    Returns ``None`` if the series is too short to compute.
+    """
+    if len(nav_series) < 2:
+        return None
+    cummax = nav_series.cummax()
+    underwater = nav_series < cummax
+    if not underwater.any():
+        return 0
+
+    max_streak = 0
+    cur_streak = 0
+    for is_under in underwater:
+        if is_under:
+            cur_streak += 1
+            max_streak = max(max_streak, cur_streak)
+        else:
+            cur_streak = 0
+    return int(max_streak)
 
 
 def risk_free_rate_default() -> float:
@@ -637,6 +753,14 @@ def run_walk_forward(
     folds: list[dict[str, Any]] = []
     ic_per_fold: list[float | None] = []
 
+    # Optional explicit param grid; if absent we fall back to a small
+    # default grid based on the strategy_type. This keeps backward
+    # compatibility for callers that don't supply one.
+    param_grid = backtest_config.get("param_grid")
+    strategy_type = backtest_config.get("strategy_type")
+    if param_grid is None and strategy_type is not None:
+        param_grid = _default_param_grid(strategy_type, backtest_config.get("params", {}))
+
     for k in range(n_folds):
         train_start = start
         train_end = start + pd.Timedelta(days=train_days).to_pytimedelta()
@@ -648,14 +772,27 @@ def run_walk_forward(
             else end
         )
 
+        # 1) Grid-search on the train window. Pick the params with the
+        #    best Sharpe (tie-broken by total_return). The chosen
+        #    params are then applied to the test window.
+        best_params, best_score, all_scores = _select_best_params(
+            base_cfg=backtest_config,
+            param_grid=param_grid,
+            train_start=train_start,
+            train_end=train_end,
+            db=db,
+        )
+
         train_cfg = dict(backtest_config)
         train_cfg["start_date"] = train_start
         train_cfg["end_date"] = train_end
+        train_cfg["params"] = best_params
         train_result = run_backtest(db=db, **train_cfg)
 
         test_cfg = dict(backtest_config)
         test_cfg["start_date"] = test_start
         test_cfg["end_date"] = test_end
+        test_cfg["params"] = best_params
         test_result = run_backtest(db=db, **test_cfg)
 
         ic = _compute_ic(test_result, train_result)
@@ -670,6 +807,10 @@ def run_walk_forward(
             "train_metrics": train_result.metrics,
             "test_metrics": test_result.metrics,
             "ic": ic,
+            # New: chosen params from the train grid search (quant P0-5)
+            "chosen_params": best_params,
+            "train_score": best_score,
+            "all_grid_scores": all_scores,
         })
 
     return {
@@ -760,3 +901,137 @@ def _aggregate_test_metrics(folds: list[dict[str, Any]]) -> dict[str, Any]:
             agg[f"min_{k}"] = round(float(np.min(values)), 2)
             agg[f"max_{k}"] = round(float(np.max(values)), 2)
     return agg
+
+
+# ---------------------------------------------------------------------------
+# Walk-forward grid search (quant P0-5)
+# ---------------------------------------------------------------------------
+
+
+def _default_param_grid(
+    strategy_type: str,
+    base_params: dict[str, Any],
+) -> list[dict[str, Any]] | None:
+    """Return a small default grid for the given strategy type.
+
+    The grids below are intentionally small (4-8 candidates) — the goal
+    is to differentiate trends across the train window, not to do a
+    full hyper-parameter sweep. Returns ``None`` when no sensible grid
+    is known for the strategy, in which case the caller falls back to
+    using ``base_params`` for every fold.
+    """
+    if strategy_type in {"momentum", "price_momentum"}:
+        # Vary window × threshold around the base params
+        window = int(base_params.get("momentum_window", 20))
+        threshold = float(base_params.get("threshold", 0.05))
+        return [
+            {"momentum_window": max(5, window - 5), "threshold": threshold,
+             "holding_period": int(base_params.get("holding_period", 20))},
+            {"momentum_window": window, "threshold": threshold,
+             "holding_period": int(base_params.get("holding_period", 20))},
+            {"momentum_window": window + 5, "threshold": threshold,
+             "holding_period": int(base_params.get("holding_period", 20))},
+            {"momentum_window": window, "threshold": max(0.01, threshold * 0.75),
+             "holding_period": int(base_params.get("holding_period", 20))},
+            {"momentum_window": window, "threshold": threshold * 1.25,
+             "holding_period": int(base_params.get("holding_period", 20))},
+        ]
+    if strategy_type in {"mean_reversion", "z_score_reversion"}:
+        window = int(base_params.get("lookback_window", 20))
+        z = float(base_params.get("z_score_threshold", base_params.get("z_threshold", 2.0)))
+        return [
+            {"lookback_window": max(5, window - 5), "z_score_threshold": z,
+             "holding_period": int(base_params.get("holding_period", 5))},
+            {"lookback_window": window, "z_score_threshold": z,
+             "holding_period": int(base_params.get("holding_period", 5))},
+            {"lookback_window": window + 5, "z_score_threshold": z,
+             "holding_period": int(base_params.get("holding_period", 5))},
+            {"lookback_window": window, "z_score_threshold": max(0.5, z * 0.8),
+             "holding_period": int(base_params.get("holding_period", 5))},
+            {"lookback_window": window, "z_score_threshold": min(4.0, z * 1.2),
+             "holding_period": int(base_params.get("holding_period", 5))},
+        ]
+    if strategy_type == "rsi":
+        period = int(base_params.get("rsi_period", 14))
+        return [
+            {"rsi_period": max(5, period - 4), "overbought": 70, "oversold": 30,
+             "holding_period": int(base_params.get("holding_period", 5))},
+            {"rsi_period": period, "overbought": 70, "oversold": 30,
+             "holding_period": int(base_params.get("holding_period", 5))},
+            {"rsi_period": period + 4, "overbought": 70, "oversold": 30,
+             "holding_period": int(base_params.get("holding_period", 5))},
+        ]
+    # Unknown strategy — no grid available
+    return None
+
+
+def _select_best_params(
+    *,
+    base_cfg: dict[str, Any],
+    param_grid: list[dict[str, Any]] | None,
+    train_start: date,
+    train_end: date,
+    db: Any | None,
+) -> tuple[dict[str, Any], float, list[dict[str, Any]]]:
+    """Grid-search the train window and return the best params.
+
+    The scoring function is the *Sharpe ratio* on the train window, with
+    total_return as the tie-breaker. Returns
+    ``(chosen_params, best_score, all_scores)``. If ``param_grid`` is
+    ``None`` or empty, the function falls back to ``base_cfg["params"]``
+    with a score of ``0.0`` and an empty ``all_scores`` list.
+    """
+    base_params = dict(base_cfg.get("params") or {})
+
+    if not param_grid:
+        return base_params, 0.0, []
+
+    best_params: dict[str, Any] = base_params
+    best_score: float = -np.inf
+    all_scores: list[dict[str, Any]] = []
+
+    for candidate in param_grid:
+        # Merge over the base so any un-specified param still inherits.
+        merged = {**base_params, **candidate}
+        cfg = dict(base_cfg)
+        cfg["start_date"] = train_start
+        cfg["end_date"] = train_end
+        cfg["params"] = merged
+        try:
+            res = run_backtest(db=db, **cfg)
+        except Exception as exc:  # noqa: BLE001 — keep walk-forward alive
+            all_scores.append({"params": merged, "error": str(exc)})
+            continue
+
+        m = res.metrics or {}
+        if "error" in m:
+            all_scores.append({"params": merged, "error": m["error"]})
+            continue
+
+        sharpe = float(m.get("sharpe_ratio") or 0.0)
+        score = sharpe
+        all_scores.append({
+            "params": merged,
+            "sharpe_ratio": sharpe,
+            "total_return": m.get("total_return"),
+            "max_drawdown": m.get("max_drawdown"),
+        })
+
+        # Tie-break: higher total_return wins.
+        cur_ret = float(m.get("total_return") or 0.0)
+        if (score > best_score) or (
+            score == best_score and cur_ret > float(
+                best_params.get("_tiebreak_return", float("-inf"))
+            )
+        ):
+            best_score = score
+            best_params = merged
+            # stash tiebreaker; stripped before returning
+            best_params = {**merged, "_tiebreak_return": cur_ret}
+
+    # Strip the tiebreaker helper before handing params to the test run.
+    clean = {k: v for k, v in best_params.items() if k != "_tiebreak_return"}
+    if best_score == -np.inf:
+        # Every candidate failed — fall back to base params, score=0.
+        return base_params, 0.0, all_scores
+    return clean, float(best_score), all_scores

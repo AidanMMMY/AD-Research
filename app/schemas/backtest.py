@@ -38,6 +38,17 @@ class BacktestMetrics(BaseModel):
     slippage_rate: float = 0.001
     position_size: float = 1.0
     risk_free_rate: float = 0.02
+    # New (quant P0-9) — None means "not computable" rather than 0
+    sortino_ratio: float | None = None
+    calmar_ratio: float | None = None
+    var_95: float | None = None
+    cvar_95: float | None = None
+    max_drawdown_duration: int | None = None
+    annualization_factor: int = 252
+    # Execution-config echoes
+    execution_price_model: str = "open"
+    market: str = "cn_a"
+    apply_friction: bool = True
 
 
 class BacktestTrade(BaseModel):

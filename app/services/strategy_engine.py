@@ -56,6 +56,15 @@ def run_strategy_on_instrument(
 
     Returns a list containing zero or one signal dict. The signal dict has
     keys: ``type`` (BUY/SELL/HOLD), ``strength`` (0-100), ``metadata``.
+
+    Look-ahead protection (quant P0-6):
+      When ``trade_date`` equals today AND the most recent bar in the
+      fetched frame is dated AFTER ``trade_date``, we drop that bar and
+      run the strategy on the previous bar only.  This avoids
+      accidentally using today's intraday / end-of-session prices as
+      if they were known at the strategy decision time.  The signal is
+      flagged ``metadata["stale"] = True`` so downstream consumers
+      (paper trading, alerts) can react accordingly.
     """
     strategy_class = StrategyRegistry.get(strategy_type)
     if strategy_class is None:
@@ -70,14 +79,41 @@ def run_strategy_on_instrument(
     if df.empty or len(df) < min_needed:
         return []
 
+    # Look-ahead guard: if we're evaluating "today" but the last bar in
+    # the frame is newer than the requested trade_date, that bar
+    # cannot be used to make a decision for ``trade_date``.
+    stale = False
+    if trade_date == date.today():
+        last_bar_date = df["trade_date"].iloc[-1]
+        # ``last_bar_date`` is a ``date`` (already cast in
+        # ``_fetch_bars`` via ``pd.to_datetime(...).dt.date`` upstream).
+        if isinstance(last_bar_date, pd.Timestamp):
+            last_bar_date = last_bar_date.date()
+        if last_bar_date != trade_date:
+            df = df.iloc[:-1].reset_index(drop=True)
+            stale = True
+            if len(df) < min_needed:
+                # Not enough history left after dropping the look-ahead
+                # bar. Refuse to emit a signal.
+                return []
+
     result = strategy.generate(df)
     if result is None:
         return []
 
+    metadata = dict(result.metadata or {})
+    if stale:
+        metadata["stale"] = True
+        metadata["as_of_date"] = (
+            df["trade_date"].iloc[-1].isoformat()
+            if hasattr(df["trade_date"].iloc[-1], "isoformat")
+            else str(df["trade_date"].iloc[-1])
+        )
+
     return [{
         "type": result.signal_type,
         "strength": result.strength,
-        "metadata": result.metadata,
+        "metadata": metadata,
     }]
 
 

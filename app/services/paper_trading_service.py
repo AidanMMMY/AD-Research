@@ -29,6 +29,20 @@ class PaperTradingError(Exception):
     """Raised when a paper-trade operation cannot be completed."""
 
 
+# ---------------------------------------------------------------------------
+# Auto-trade sizing (quant P0-8)
+#
+# Position sizing is now scaled by signal strength rather than a fixed
+# allocation.  ``BASE_POSITION_PCT`` is the allocation used when the
+# signal strength is at the maximum (100).  A weaker signal (e.g. 40/100)
+# is allocated ``BASE * 40/100`` of equity, capped at
+# ``MAX_POSITION_PCT``.
+# ---------------------------------------------------------------------------
+BASE_POSITION_PCT = Decimal("0.10")   # 10% baseline for a max-strength signal
+MAX_POSITION_PCT = Decimal("0.25")    # hard cap regardless of strength
+MIN_POSITION_PCT = Decimal("0.01")    # below this we skip the trade (rounding)
+
+
 class PaperTradingService:
     """Simulated trading with market-aware provider selection.
 
@@ -644,11 +658,24 @@ class PaperTradingService:
         for sig in signals:
             try:
                 if sig.signal_type == "BUY":
-                    # Allocate ~10% of current equity per BUY signal
+                    # Scale position by signal strength (quant P0-8).
+                    # sizing = BASE_POSITION_PCT * (abs(strength) / 100),
+                    # capped at MAX_POSITION_PCT.  Strength defaults to
+                    # 50 (HOLD-strength) so an unscaled signal still
+                    # gets a meaningful allocation.
+                    strength = abs(int(sig.strength or 50))
+                    strength_ratio = Decimal(strength) / Decimal("100")
+                    sizing_pct = BASE_POSITION_PCT * strength_ratio
+                    if sizing_pct > MAX_POSITION_PCT:
+                        sizing_pct = MAX_POSITION_PCT
+                    if sizing_pct < MIN_POSITION_PCT:
+                        # Below 1% — rounding/fees would dominate. Skip.
+                        continue
+
                     positions = self.get_positions(account_id)
                     total_mv = sum((p.market_value or 0) for p in positions)
                     equity = account.cash + total_mv
-                    allocation = equity * Decimal("0.1")
+                    allocation = equity * sizing_pct
                     market_price = self._get_current_price(sig.etf_code)
                     if market_price is None or market_price <= 0:
                         continue
