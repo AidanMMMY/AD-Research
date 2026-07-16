@@ -1,7 +1,7 @@
 import './styles.css';
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Table, Select, Row, Col } from 'antd';
+import { Table, Select, Row, Col, Space } from 'antd';
 import { CaretUpOutlined, CaretDownOutlined, MinusOutlined } from '@ant-design/icons';
 import PageShell from '@/components/PageShell';
 import PageHeader from '@/components/PageHeader';
@@ -14,6 +14,7 @@ import HelpTrigger from '@/components/HelpTrigger';
 import ContextHint from '@/components/ContextHint';
 import DataFreshnessHint from '@/components/DataFreshnessHint';
 import SignalDetailDrawer from '@/components/SignalDetailDrawer';
+import ExportButton from '@/components/ExportButton';
 import { useSignals } from '@/hooks/useSignals';
 import { useAIHelp } from '@/hooks/useAIHelp';
 import { buildSignalDashboardContext } from '@/utils/helpContext';
@@ -183,7 +184,21 @@ export default function SignalDashboard() {
         <Panel
           variant="default"
           title="最新交易信号"
-          extra={<HelpTrigger tooltip="AI 解释信号含义" onClick={handleOpenHelp} />}
+          extra={
+            <Space size="small">
+              <HelpTrigger tooltip="AI 解释信号含义" onClick={handleOpenHelp} />
+              <ExportButton
+                rows={filteredItems as unknown as Record<string, unknown>[]}
+                filename={`signals-${
+                  typeFilter !== 'all' || familyFilter !== 'all'
+                    ? `${typeFilter}-${familyFilter}`
+                    : 'all'
+                }`}
+                headers={['strategy_id', 'etf_code', 'etf_name', 'trade_date', 'signal_type', 'strength', 'strategy_type']}
+                successPrefix="已导出信号"
+              />
+            </Space>
+          }
         >
           <ContextHint
             hintId="signal-dashboard-table"

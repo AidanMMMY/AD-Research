@@ -34,6 +34,7 @@ import Panel from '@/components/Panel';
 import EmptyState from '@/components/EmptyState';
 import InstrumentCodeTag from '@/components/InstrumentCodeTag';
 import Sparkline from '@/components/Sparkline';
+import ExportButton from '@/components/ExportButton';
 import ThemeTag from '@/components/ThemeTag';
 import ReturnTag from '@/components/ReturnTag';
 import { useChartMotion } from '@/hooks/useChartMotion';
@@ -731,7 +732,17 @@ export default function FundFlowPage() {
           }
           className="ad-mt-5"
         />
-        <Panel padding="none">
+        <Panel
+          padding="none"
+          extra={
+            <ExportButton
+              rows={signalRows as unknown as Record<string, unknown>[]}
+              filename={`fundflow-signals-${dateParam ?? 'latest'}`}
+              headers={['ts_code', 'name', 'composite_score', 'main_net_inflow', 'margin_net_change', 'lhb_net_buy', 'shareholder_count_change', 'ah_premium', 'block_trade_net']}
+              successPrefix="已导出综合信号榜"
+            />
+          }
+        >
           <Table<FlowSignal>
             rowKey="ts_code"
             size="middle"
@@ -811,6 +822,14 @@ export default function FundFlowPage() {
                         label: b,
                       }))}
                     />
+                    <div className="ad-flex ad-justify-end ad-mb-2">
+                      <ExportButton
+                        rows={individualRows as unknown as Record<string, unknown>[]}
+                        filename={`fundflow-individual-${board}-${dateParam ?? 'latest'}`}
+                        headers={['ts_code', 'name', 'main_net_inflow', 'main_net_pct', 'super_large_net', 'large_net', 'medium_net', 'small_net', 'source']}
+                        successPrefix="已导出个股资金流"
+                      />
+                    </div>
                     <Table<IndividualFundFlow>
                       rowKey={(r) => `${r.trade_date}-${r.ts_code}`}
                       size="middle"
@@ -860,6 +879,14 @@ export default function FundFlowPage() {
                         label: t,
                       }))}
                     />
+                    <div className="ad-flex ad-justify-end ad-mb-2">
+                      <ExportButton
+                        rows={sectorRows as unknown as Record<string, unknown>[]}
+                        filename={`fundflow-sector-${sectorType}-${dateParam ?? 'latest'}`}
+                        headers={['sector_name', 'sector_type', 'main_net_inflow', 'main_net_pct', 'super_large_net', 'large_net', 'leading_stock']}
+                        successPrefix="已导出板块资金流"
+                      />
+                    </div>
                     <Table<SectorFundFlow>
                       rowKey={(r) => `${r.trade_date}-${r.sector_name}`}
                       size="middle"
@@ -891,28 +918,38 @@ export default function FundFlowPage() {
                   </span>
                 ),
                 children: (
-                  <Table<EtfFundFlow>
-                    rowKey={(r) => `${r.trade_date}-${r.ts_code}`}
-                    size="middle"
-                    columns={etfColumns}
-                    dataSource={etfRows}
-                    loading={etfLoading}
-                    onChange={(_p, _f, sorter) => applySortChange(sorter, setEtfSortField)}
-                    pagination={{ pageSize: 20, showSizeChanger: false }}
-                    scroll={{ x: 900 }}
-                    onRow={(record) => ({
-                      onClick: () => navigate(`/instruments/${record.ts_code}`),
-                      style: { cursor: 'pointer' },
-                    })}
-                    locale={{
-                      emptyText: (
-                        <EmptyState
-                          title="ETF 暂无资金流数据"
-                          description="折溢价率基于 IOPV 与现价估算"
-                        />
-                      ),
-                    }}
-                  />
+                  <div className="fund-flow__tab-panel">
+                    <div className="ad-flex ad-justify-end ad-mb-2">
+                      <ExportButton
+                        rows={etfRows as unknown as Record<string, unknown>[]}
+                        filename={`fundflow-etf-${dateParam ?? 'latest'}`}
+                        headers={['ts_code', 'name', 'price', 'net_value', 'premium_rate', 'shares_change', 'turnover', 'inferred_net_inflow']}
+                        successPrefix="已导出 ETF 资金流"
+                      />
+                    </div>
+                    <Table<EtfFundFlow>
+                      rowKey={(r) => `${r.trade_date}-${r.ts_code}`}
+                      size="middle"
+                      columns={etfColumns}
+                      dataSource={etfRows}
+                      loading={etfLoading}
+                      onChange={(_p, _f, sorter) => applySortChange(sorter, setEtfSortField)}
+                      pagination={{ pageSize: 20, showSizeChanger: false }}
+                      scroll={{ x: 900 }}
+                      onRow={(record) => ({
+                        onClick: () => navigate(`/instruments/${record.ts_code}`),
+                        style: { cursor: 'pointer' },
+                      })}
+                      locale={{
+                        emptyText: (
+                          <EmptyState
+                            title="ETF 暂无资金流数据"
+                            description="折溢价率基于 IOPV 与现价估算"
+                          />
+                        ),
+                      }}
+                    />
+                  </div>
                 ),
               },
             ]}

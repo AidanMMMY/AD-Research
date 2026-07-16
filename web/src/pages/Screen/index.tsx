@@ -21,6 +21,7 @@ import ContextHint from '@/components/ContextHint';
 import InstrumentCodeTag from '@/components/InstrumentCodeTag';
 import ReturnTag from '@/components/ReturnTag';
 import LastUpdated from '@/components/LastUpdated';
+import ExportButton from '@/components/ExportButton';
 import { buildScreenContext } from '@/utils/helpContext';
 import { getQuickQuestions } from '@/utils/helpPrompts';
 
@@ -420,6 +421,17 @@ export default function Screen() {
             }
           />
         ) : (
+          <>
+            <div className="ad-flex ad-justify-end ad-mb-2">
+              <ExportButton
+                rows={(results?.items || []) as unknown as Record<string, unknown>[]}
+                filename={`screen-${
+                  [filters.market, filters.category, preset].filter(Boolean).join('-') || 'all'
+                }`}
+                headers={['code', 'name', 'category', 'composite_score', 'rsi14', 'sharpe_1y', 'return_1m', 'return_3m', 'return_1y', 'volatility_20d']}
+                successPrefix="已导出筛选结果"
+              />
+            </div>
           <div className="ad-table-scroll ad-table-sticky">
             <Table
               dataSource={results?.items || []}
@@ -457,6 +469,7 @@ export default function Screen() {
               })}
             />
           </div>
+          </>
         )}
       </div>
     </PageShell>

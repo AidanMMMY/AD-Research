@@ -22,6 +22,7 @@ import { buildBacktestDetailContext } from '@/utils/helpContext';
 import { getQuickQuestions } from '@/utils/helpPrompts';
 import { formatDateTime } from '@/utils/datetime';
 import { NULL_PLACEHOLDER } from '@/utils/format';
+import ExportButton from '@/components/ExportButton';
 // dataviz P0-1: ECharts cannot resolve CSS variables inside `option`.
 import { resolveChartColor, subscribeChartThemeCache } from '@/utils/chartColors';
 import type { AttributionEffect, BacktestMetrics, BacktestNAV, BacktestTrade } from '@/types/backtest';
@@ -245,7 +246,18 @@ export default function BacktestDetail() {
         </ResponsiveGrid>
       </Panel>
 
-      <Panel title={<HelpPopover termKey="nav_curve" mode={mode}>净值曲线</HelpPopover>} padding="md">
+      <Panel
+        title={<HelpPopover termKey="nav_curve" mode={mode}>净值曲线</HelpPopover>}
+        padding="md"
+        extra={
+          <ExportButton
+            rows={navData as unknown as Record<string, unknown>[]}
+            filename={`backtest-${data.id}-daily-nav`}
+            headers={['date', 'nav']}
+            successPrefix="已导出净值曲线"
+          />
+        }
+      >
         <ReactECharts option={navOption} className="detail-chart" />
       </Panel>
     </div>
@@ -301,7 +313,18 @@ export default function BacktestDetail() {
 
   const tradesTab = (
     <div className="detail-tab-panel">
-      <Panel title={<HelpPopover termKey="trade_record" mode={mode}>交易记录</HelpPopover>} padding="md">
+      <Panel
+        title={<HelpPopover termKey="trade_record" mode={mode}>交易记录</HelpPopover>}
+        padding="md"
+        extra={
+          <ExportButton
+            rows={(data.trades || []) as unknown as Record<string, unknown>[]}
+            filename={`backtest-${data.id}-trades`}
+            headers={['entry_date', 'exit_date', 'entry_price', 'exit_price', 'pnl_pct']}
+            successPrefix="已导出交易记录"
+          />
+        }
+      >
         <Table
           dataSource={data.trades || []}
           columns={tradeColumns}

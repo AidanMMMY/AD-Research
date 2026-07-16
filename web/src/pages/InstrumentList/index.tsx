@@ -45,6 +45,7 @@ import ReturnTag from '@/components/ReturnTag';
 import LastUpdated from '@/components/LastUpdated';
 import { useIsMobile } from '@/hooks/useBreakpoint';
 import { NULL_PLACEHOLDER } from '@/utils/format';
+import ExportButton from '@/components/ExportButton';
 
 /** Row-level live price cell. Reads from the shared MarketStream map so we
  *  do not open one SSE connection per row. */
@@ -485,7 +486,27 @@ export default function InstrumentList() {
         extra={<LastUpdated at={dataUpdatedAt} loading={isFetching && !data} />}
       />
 
-      <Panel variant="default" padding="md">
+      <Panel
+        variant="default"
+        padding="md"
+        extra={
+          <ExportButton
+            rows={(data?.items || []) as unknown as Record<string, unknown>[]}
+            filename={`instruments-${[
+              market,
+              instrumentType,
+              category,
+              sector,
+              industry,
+              stage2Summary,
+            ]
+              .filter(Boolean)
+              .join('-') || 'all'}`}
+            headers={['code', 'name', 'category', 'market', 'listing_market', 'board', 'instrument_type', 'status', 'fund_manager', 'underlying_index', 'fund_size', 'market_cap']}
+            successPrefix="已导出标的列表"
+          />
+        }
+      >
         <FilterToolbar
           title="筛选条件"
           total={`共 ${data?.total || 0} 只`}
