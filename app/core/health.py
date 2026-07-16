@@ -208,6 +208,22 @@ def _run_probes() -> dict[str, Any]:
     return components
 
 
+def _pool_status() -> dict[str, int]:
+    """Return SQLAlchemy connection pool counters for observability."""
+    try:
+        from app.core.database import engine
+
+        pool = engine.pool
+        return {
+            "size": pool.size(),
+            "checked_in": pool.checked_in(),
+            "checked_out": pool.checked_out(),
+            "overflow": pool.overflow(),
+        }
+    except Exception:  # noqa: BLE001
+        return {"size": -1, "checked_in": -1, "checked_out": -1, "overflow": -1}
+
+
 def readiness_check() -> dict[str, Any]:
     """Probe every container concern and return a JSON-safe health report.
 
@@ -232,6 +248,7 @@ def readiness_check() -> dict[str, Any]:
         "version": __import__("app.main", fromlist=["__version__"]).__version__,
         "git_sha": __import__("app.main", fromlist=["GIT_SHA"]).GIT_SHA,
         "checked_at": datetime.now(timezone.utc).isoformat(),
+        "pool": _pool_status(),
         "components": components,
     }
 

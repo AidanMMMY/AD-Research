@@ -1,7 +1,7 @@
 services:
   postgres:
     image: postgres:16-alpine
-    container_name: alloyresearch-postgres
+    container_name: alloyresearch-postgres-dev
     environment:
       POSTGRES_DB: ad_research
       POSTGRES_USER: etf
@@ -16,11 +16,11 @@ services:
       timeout: 5s
       retries: 5
     networks:
-      - alloyresearch-network
+      - ad-research-dev-network
 
   redis:
     image: redis:7-alpine
-    container_name: alloyresearch-redis
+    container_name: alloyresearch-redis-dev
     ports:
       - "6379:6379"
     volumes:
@@ -31,13 +31,13 @@ services:
       timeout: 5s
       retries: 5
     networks:
-      - alloyresearch-network
+      - ad-research-dev-network
 
   backend:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: alloyresearch-backend
+    container_name: alloyresearch-backend-dev
     # Note: backend is reached via the docker internal network only.
     # alloyresearch-nginx (host-network) proxies /api/ → http://backend:8000.
     # We do NOT publish 8000 on the host because alloyresearch-nginx already binds
@@ -59,15 +59,15 @@ services:
       redis:
         condition: service_healthy
     command: >
-      sh -c "mkdir -p /app/web/dist && (cp -r /dist-image/* /app/web/dist/ 2>/dev/null || true) && alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload --workers 1"
+      sh -c "mkdir -p /app/web/dist && (cp -r /app/web/dist-image/* /app/web/dist/ 2>/dev/null || true) && alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload --workers 1"
     networks:
-      - alloyresearch-network
+      - ad-research-dev-network
 
   celery-worker:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: alloyresearch-celery-worker
+    container_name: alloyresearch-celery-worker-dev
     env_file: .env
     environment:
       TZ: Asia/Shanghai
@@ -86,7 +86,7 @@ services:
         condition: service_healthy
     command: celery -A app.core.celery_app worker -l info -c 2 -Q celery,indicator,cninfo
     networks:
-      - alloyresearch-network
+      - ad-research-dev-network
 
 volumes:
   postgres_data:
@@ -94,13 +94,5 @@ volumes:
   cninfo_pdfs:
 
 networks:
-  alloyresearch-network:
-    # NOTE: existing redis/postgres containers are attached to a
-    # project-prefixed network (e.g. aliyun-ecs_alloyresearch-network), not the
-    # default ad-research_alloyresearch-network that docker compose would create
-    # when this file is invoked. Declaring the network external avoids
-    # creating a duplicate network that the redis/postgres containers
-    # are NOT on, which would otherwise produce
-    # "Temporary failure in name resolution" on backend startup.
-    external: true
-    name: aliyun-ecs_alloyresearch-network
+  ad-research-dev-network:
+    driver: bridge

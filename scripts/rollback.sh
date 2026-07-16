@@ -8,9 +8,10 @@
 # 行为：
 #   1. 备份当前 HEAD 到 /var/log/ad-research/rollback-latest.log
 #   2. git reset --hard 到目标 commit
-#   3. 重新构建并启动 backend 容器
-#   4. 健康检查 60s（与 update.sh 一致的循环逻辑）
-#   5. 输出变更摘要（git log PREV..TARGET）
+#   3. 切换 docker 镜像 tag：ad-research:${TARGET_SHA} → ad-research:latest
+#   4. 重新启动 backend / celery-worker / nginx
+#   5. 容器内健康检查 60s，要求 /health status=ok
+#   6. 输出变更摘要
 #
 # 失败处理：
 #   任何阶段出错即退出，明确给出「回滚失败」提示，
@@ -26,7 +27,6 @@ COMPOSE_DIR="${PROJECT_ROOT}/deploy/aliyun-ecs"
 COMPOSE_FILE="${COMPOSE_DIR}/docker-compose.yml"
 ROLLBACK_LOG_DIR="/var/log/ad-research"
 ROLLBACK_LOG="${ROLLBACK_LOG_DIR}/rollback-latest.log"
-HEALTH_URL="http://localhost:8000/health"
 BACKEND_CONTAINER="alloyresearch-backend"
 
 RED='\033[0;31m'
@@ -94,14 +94,15 @@ fi
 
 PREV=$(git -C "$PROJECT_ROOT" rev-parse HEAD)
 TARGET_FULL=$(git -C "$PROJECT_ROOT" rev-parse "$TARGET")
+TARGET_SHA="${TARGET_FULL:0:7}"
 
 if [ "$PREV" = "$TARGET_FULL" ]; then
-    log_warn "当前 HEAD 已是目标 commit，无需回滚：${TARGET_FULL:0:7}"
+    log_warn "当前 HEAD 已是目标 commit，无需回滚：${TARGET_SHA}"
     exit 0
 fi
 
 log_info "当前 HEAD: ${PREV:0:7}"
-log_info "目标 commit: ${TARGET_FULL:0:7}"
+log_info "目标 commit: ${TARGET_SHA}"
 
 # ── 1. 备份当前 HEAD ──
 log_step "1/5 备份当前 HEAD"
@@ -138,11 +139,23 @@ if ! git -C "$PROJECT_ROOT" reset --hard "$TARGET_FULL" 2>&1 | tee -a "$ROLLBACK
     exit 1
 fi
 
-# ── 3. 重新构建并启动 backend ──
-log_step "3/5 重新构建 backend 容器"
+# ── 3. 切换镜像 tag 并重启服务 ──
+log_step "3/5 切换镜像并重启服务"
 
-if ! (cd "$COMPOSE_DIR" && docker compose up -d --build backend) 2>&1 | tee -a "$ROLLBACK_LOG"; then
-    log_error "docker compose up -d --build backend 失败"
+# 优先复用已存在的版本 tag；如果不存在则回退到构建。
+if docker image inspect "ad-research:${TARGET_SHA}" >/dev/null 2>&1; then
+    log_info "复用现有镜像 tag: ad-research:${TARGET_SHA}"
+    docker tag "ad-research:${TARGET_SHA}" ad-research:latest
+else
+    log_warn "未找到 ad-research:${TARGET_SHA}，将基于目标 commit 重新构建"
+fi
+
+export GIT_SHA="${TARGET_SHA}"
+
+if ! (cd "$COMPOSE_DIR" && docker compose stop backend celery-worker nginx && \
+      docker compose rm -f backend celery-worker nginx && \
+      docker compose up -d --force-recreate backend celery-worker nginx) 2>&1 | tee -a "$ROLLBACK_LOG"; then
+    log_error "docker compose 重启失败"
     log_error "回滚失败：请人工检查后跑 update.sh 重新同步到 main"
     exit 1
 fi
@@ -152,8 +165,16 @@ log_step "4/5 健康检查（最多 60s）"
 
 HEALTH_OK=false
 for i in $(seq 1 30); do
-    if curl -sf "$HEALTH_URL" > /dev/null 2>&1; then
-        log_info "Backend /health 就绪 ✓（第 ${i} 次探测）"
+    _status=$(docker exec "${BACKEND_CONTAINER}" python -c "
+import urllib.request, json
+try:
+    r = json.loads(urllib.request.urlopen('http://localhost:8000/health', timeout=5).read())
+    print(r.get('status', 'unknown'))
+except Exception:
+    print('err')
+" 2>/dev/null || echo "err")
+    if [ "${_status}" = "ok" ]; then
+        log_info "Backend /health status=ok ✓（第 ${i} 次探测）"
         HEALTH_OK=true
         break
     fi
@@ -162,7 +183,7 @@ done
 
 if [ "$HEALTH_OK" = false ]; then
     log_error "Backend 健康检查超时（60s）"
-    log_error "回滚失败：容器起来了但 /health 不可达"
+    log_error "回滚失败：容器起来了但 /health 未就绪"
     log_error "请查看：docker compose -f ${COMPOSE_FILE} logs backend --tail 100"
     log_error "可手动跑：bash ${PROJECT_ROOT}/deploy/aliyun-ecs/update.sh"
     exit 1
@@ -186,7 +207,6 @@ log_info "当前 HEAD 已变为：${NEW_HEAD:0:7}"
 echo ""
 echo "  ✅ 回滚完成"
 echo "  📋 日志位置：$ROLLBACK_LOG"
-echo "  🌐 健康检查：$HEALTH_URL"
 echo "  🔍 容器状态：docker ps | grep ${BACKEND_CONTAINER}"
 echo ""
 echo "  如需重新拉回 main:"

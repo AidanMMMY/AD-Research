@@ -2,10 +2,14 @@
 set -euo pipefail
 
 # ============================================================
-# 阿里云 ECS 更新脚本 — 拉取最新代码并热更新服务
+# 阿里云 ECS 更新脚本 — 热更新服务
 # 用法：./update.sh [--no-db] [--frontend-only]
-#   --no-db           跳过数据库迁移（由 backend 容器自动执行）
+#   --no-db           跳过数据库迁移校验（backend 入口仍会执行迁移）
 #   --frontend-only   仅更新前端（跳过后端镜像重编译，更快）
+#
+# 注意：
+#   代码同步由调用方（如 GitHub Actions deploy.yml）负责。本脚本只读取
+#   当前 HEAD 并构建镜像。backend 容器入口是唯一的 alembic 升级执行点。
 # ============================================================
 
 RED='\033[0;31m'
@@ -109,25 +113,13 @@ fi
 # 加载 .env
 set -a; source "$ENV_FILE"; set +a
 
-# ── 1. 拉取代码 ──
-log_step "1/5 拉取最新代码"
-cd "$PROJECT_ROOT"
-before=$(git rev-parse HEAD)
-git pull origin main 2>&1 | tail -1 || {
-    log_warn "git pull 失败，尝试继续使用本地代码"
-}
-after=$(git rev-parse HEAD)
+# 读取当前代码版本（由调用方负责同步）
+GIT_SHA=$(git rev-parse --short HEAD)
+log_info "当前部署版本: ${GIT_SHA}"
+export GIT_SHA
 
-if [ "$before" = "$after" ] && [ "${FORCE:-0}" != "1" ]; then
-    log_info "代码已是最新，无变更（${before:0:7}）"
-    log_info "如需强制重编，运行: FORCE=1 ./update.sh"
-    exit 0
-fi
-
-log_info "代码更新: ${before:0:7} → ${after:0:7}"
-
-# ── 2. 构建镜像 ──
-log_step "2/5 构建镜像"
+# ── 1. 构建镜像 ──
+log_step "1/4 构建镜像"
 cd "$SCRIPT_DIR"
 
 if [ "$FRONTEND_ONLY" = true ]; then
@@ -146,13 +138,14 @@ else
     # 同时启用 BuildKit inline cache（--build-arg BUILDKIT_INLINE_CACHE=1），
     # 让后续若切到 cache-from 模式时无需再改脚本即可复用 layer 元数据。
     BUILD_START=$(date +%s)
-    GIT_SHA=$(git rev-parse --short HEAD)
     _BUILD_ARGS="--no-cache --build-arg BUILDKIT_INLINE_CACHE=1 --build-arg GIT_SHA=${GIT_SHA}"
     if ! docker compose build backend ${_BUILD_ARGS}; then
         log_warn "首次 docker compose build 失败（多为阿里云 registry 抖动），5s 后重试一次"
         sleep 5
         docker compose build backend ${_BUILD_ARGS}
     fi
+    # 给镜像打版本 tag，便于回滚；latest tag 用于 compose 默认引用
+    docker tag ad-research:latest "ad-research:${GIT_SHA}" || log_warn "版本 tag 打标失败"
     BUILD_END=$(date +%s)
     BUILD_ELAPSED=$((BUILD_END - BUILD_START))
     if [ "$BUILD_ELAPSED" -lt 30 ]; then
@@ -163,27 +156,23 @@ else
     fi
 fi
 
-# ── 3. 停止旧容器 ──
-log_step "3/5 停止旧容器"
+# ── 2. 停止旧容器 ──
+log_step "2/4 停止旧容器"
 docker compose stop backend nginx celery-worker
 
-# ── 3.5 清理可能残留的孤儿容器（防止上一次 deploy 失败留下同名容器导致 Conflict）
-log_step "3.5/5 清理残留容器"
+# ── 2.5 清理可能残留的孤儿容器（防止上一次 deploy 失败留下同名容器导致 Conflict）
+log_step "2.5/4 清理残留容器"
 # 用子 shell + set +e 显式关闭 errexit/pipefail，避免 `docker compose rm` 返回 5
 # 或 `docker compose ls | jq` 管道失败时让整段脚本中断（set -euo pipefail 会）。
 # 只清理本 compose project 的容器，绝不影响其他项目或手动容器。
 (
     set +e
     docker compose rm -f -s backend celery-worker nginx >/dev/null 2>&1
-    docker compose ls --format json 2>/dev/null \
-        | jq -r '.Name // empty' 2>/dev/null \
-        | head -1 \
-        | xargs -r -I{} docker container prune -f --filter "label=com.docker.compose.project={}" >/dev/null 2>&1
     true
 )
 
-# ── 4. 启动新容器 ──
-log_step "4/5 启动新容器"
+# ── 3. 启动新容器 ──
+log_step "3/4 启动新容器"
 docker compose up -d postgres redis 2>/dev/null || true
 docker compose up -d --force-recreate backend celery-worker
 
@@ -235,25 +224,24 @@ fi
 # 启动 nginx
 docker compose up -d nginx
 
-# ── 5. 数据库迁移（可选） ──
+# ── 4. 数据库迁移状态校验 ──
+# backend 容器入口是唯一的 alembic upgrade head 执行点。这里只做只读校验，
+# 如果 current != head 说明入口迁移失败或未执行，必须退出让调用方处理。
 if [ "$NO_DB" = false ] && [ "$FRONTEND_ONLY" = false ]; then
-    log_step "5/5 数据库迁移"
-    # ── 4.6 幂等：先比较 current vs head，避免无变更时仍跑 upgrade ──
+    log_step "4/4 数据库迁移状态校验"
     CURRENT_REV=$(docker compose exec -T backend alembic current 2>/dev/null \
         | awk 'NF && $1 !~ /^INFO/ { print $1; exit }' || true)
     HEAD_REV=$(docker compose exec -T backend alembic heads 2>/dev/null \
         | awk '/\(head\)/ { print $1; exit }' || true)
 
     if [ -n "$CURRENT_REV" ] && [ -n "$HEAD_REV" ] && [ "$CURRENT_REV" = "$HEAD_REV" ]; then
-        log_info "alembic current 已等于 head（${HEAD_REV}），跳过 migration"
+        log_info "alembic current 已等于 head（${HEAD_REV}）"
     else
-        log_info "alembic current=${CURRENT_REV:-<empty>}  head=${HEAD_REV:-<unknown>}，执行 upgrade head"
-        docker compose exec backend alembic upgrade head || {
-            log_warn "迁移未执行或已由启动脚本自动完成"
-        }
+        log_error "alembic current=${CURRENT_REV:-<empty>} 与 head=${HEAD_REV:-<unknown>} 不一致，backend 入口迁移可能失败"
+        exit 1
     fi
 else
-    log_info "跳过数据库迁移"
+    log_info "跳过数据库迁移状态校验"
 fi
 
 # ── 完成 ──
@@ -266,10 +254,5 @@ echo ""
 echo "  ✅ 服务已更新"
 echo "  🌐 访问地址: http://${public_ip}:8000"
 echo "  📋 查看日志: docker compose logs -f backend"
-
-# 显示变更摘要
-echo ""
-echo "  本次变更:"
-cd "$PROJECT_ROOT"
-git log --oneline "${before}..${after}" 2>/dev/null | head -10 || echo "  (无法获取变更记录)"
+echo "  🔖 当前版本: ${GIT_SHA}"
 echo ""

@@ -25,7 +25,6 @@ env:
   PROJECT_ROOT: /opt/ad-research
   BACKEND_CONTAINER: alloyresearch-backend
   ROLLBACK_LOG_DIR: /var/log/ad-research
-  HEALTH_URL: http://localhost:8000/health
 
 jobs:
   deploy:
@@ -33,7 +32,7 @@ jobs:
     concurrency:
       group: aliyun-deploy
       cancel-in-progress: false
-    timeout-minutes: 30
+    timeout-minutes: 45
 
     steps:
       # ── 1. Checkout ──
@@ -47,6 +46,7 @@ jobs:
 
       # ── 2. 同步代码：备份 head → fetch → reset --hard ──
       - name: Sync to origin/main (with head backup)
+        id: sync_code
         run: |
           set -euo pipefail
           cd "${PROJECT_ROOT}"
@@ -62,6 +62,7 @@ jobs:
           PREVIOUS_LOG="${ROLLBACK_LOG_DIR}/previous_head"
           PREVIOUS_HEAD=$(git rev-parse HEAD)
           echo "${PREVIOUS_HEAD}" | tee "${PREVIOUS_LOG}"
+          echo "previous_head=${PREVIOUS_HEAD}" >> $GITHUB_OUTPUT
           echo "[INFO] 备份当前 HEAD：${PREVIOUS_HEAD:0:7} → ${PREVIOUS_LOG}"
 
           # 确保目标 ref 存在
@@ -86,6 +87,14 @@ jobs:
           git reset --hard "${TARGET_REF}"
           echo "[INFO] 已同步到：$(git rev-parse --short HEAD)"
 
+      # ── 2.5 部署前基线健康检查 ──
+      - name: Pre-deploy baseline health check
+        run: |
+          set -euo pipefail
+          BASELINE_STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8000/health || echo "000")
+          echo "[INFO] 部署前 baseline /health status: ${BASELINE_STATUS}"
+          echo "baseline_status=${BASELINE_STATUS}" >> $GITHUB_ENV
+
       # ── 3. 调用统一入口：deploy/aliyun-ecs/update.sh ──
       # 近期 4/10 失败多为阿里云 HTTP/2 registry 抖动；外层包一次 retry step
       # （最多 2 次，间隔 30s），第二次失败则硬退出。
@@ -108,6 +117,7 @@ jobs:
           bash update.sh ${EXTRA_ARGS}
 
       - name: Retry Run update.sh (unified entrypoint) [attempt 2/2]
+        id: update_sh_retry
         if: ${{ inputs.dry_run != 'true' && steps.update_sh.conclusion == 'failure' }}
         env:
           FORCE: 1
@@ -137,14 +147,18 @@ jobs:
           docker exec "${BACKEND_CONTAINER}" alembic current
           # Action-253 follow-up: import + alembic alone miss runtime
           # problems (pool exhaustion, route 500, missing endpoint).
-          # Probe two cheap endpoints to confirm the HTTP server is
-          # actually responding before we declare success.
+          # Probe endpoints and verify /health body status=ok.
           docker exec "${BACKEND_CONTAINER}" python - <<'PY'
-          import urllib.request
+          import json, urllib.request
           for path in ('/health', '/auth/me', '/openapi.json'):
               try:
-                  code = urllib.request.urlopen(f'http://localhost:8000{path}', timeout=5).status
-                  print(f'[SMOKE] {path} -> {code}')
+                  resp = urllib.request.urlopen(f'http://localhost:8000{path}', timeout=5)
+                  body = resp.read().decode()
+                  print(f'[SMOKE] {path} -> {resp.status}')
+                  if path == '/health':
+                      report = json.loads(body)
+                      if report.get('status') != 'ok':
+                          raise RuntimeError(f'/health status={report.get("status")}: {body[:500]}')
               except Exception as e:
                   print(f'[SMOKE] {path} -> ERR {e}')
                   raise
@@ -156,7 +170,9 @@ jobs:
           echo "[INFO] dry_run=true：仅同步代码，不重建镜像"
           echo "[INFO] 如需真正部署，请触发 workflow_dispatch 时将 dry_run 设为 false"
 
-      # ── 4. alembic 迁移完整性校验 ──
+      # ── 4. alembic 迁移完整性校验（只读） ──
+      # backend 容器入口是唯一的 alembic upgrade head 执行点。
+      # 这里只做 current == head 校验，不主动执行升级。
       - name: Wait for backend to be running
         run: |
           set -euo pipefail
@@ -195,24 +211,12 @@ jobs:
               echo "[OK] migrations are in sync"
               ;;
             10)
-              echo "::error title=需要数据库迁移::alembic head 与 current 不一致，触发自动升级"
-              cd "${PROJECT_ROOT}/deploy/aliyun-ecs"
-              docker compose exec -T backend alembic upgrade head
-              # 再校验一次
-              cd "${PROJECT_ROOT}"
-              set +e
-              bash scripts/check_migrations.sh deploy/aliyun-ecs/docker-compose.yml
-              RC2=$?
-              set -e
-              if [ "${RC2}" -ne 0 ]; then
-                echo "::error::升级后仍未通过，rollback..."
-                echo "rollback=true" >> $GITHUB_OUTPUT
-                exit 1
-              fi
+              echo "::error title=需要数据库迁移::alembic head 与 current 不一致"
+              echo "::error::backend 入口迁移可能失败或未执行，触发自动回滚"
+              exit 1
               ;;
             *)
               echo "::error title=migration 校验异常::check_migrations.sh 退出码 ${RC}"
-              echo "rollback=true" >> $GITHUB_OUTPUT
               exit 1
               ;;
           esac
@@ -228,9 +232,9 @@ jobs:
           # 因此不能从 host curl localhost:8000/health。在容器内探测。
           HEALTHY=false
           for i in $(seq 1 30); do
-            _status=$(docker exec "${BACKEND_CONTAINER}" python -c "import urllib.request; print(urllib.request.urlopen('http://localhost:8000/health', timeout=5).status)" 2>/dev/null || echo "ERR")
-            if [ "${_status}" = "200" ]; then
-              echo "[OK] /health 通过（第 ${i} 次，容器内 localhost:8000）"
+            _status=$(docker exec "${BACKEND_CONTAINER}" python -c "import urllib.request, json; r=json.loads(urllib.request.urlopen('http://localhost:8000/health', timeout=5).read()); print(r.get('status','unknown'))" 2>/dev/null || echo "ERR")
+            if [ "${_status}" = "ok" ]; then
+              echo "[OK] /health status=ok（第 ${i} 次，容器内 localhost:8000）"
               HEALTHY=true
               break
             fi
@@ -245,17 +249,47 @@ jobs:
             exit 1
           fi
 
-      # ── 6. 失败兜底：dry-run 写日志（待 webhook 接入） ──
-      - name: Notify on failure (dry-run, log only)
+      # ── 6. 失败时自动回滚 + 通知 ──
+      - name: Rollback on failure
         if: failure()
         run: |
           set -euo pipefail
+          PREVIOUS_HEAD=$(cat "${ROLLBACK_LOG_DIR}/previous_head" 2>/dev/null || echo "")
+          CURRENT_HEAD=$(cd "${PROJECT_ROOT}" && git rev-parse HEAD 2>/dev/null || echo "unknown")
+
+          echo "::error::部署失败，current=${CURRENT_HEAD:0:7}，准备回滚到 previous=${PREVIOUS_HEAD:0:7}"
+
+          if [ -n "${PREVIOUS_HEAD}" ] && [ "${PREVIOUS_HEAD}" != "${CURRENT_HEAD}" ]; then
+            if bash "${PROJECT_ROOT}/scripts/rollback.sh" "${PREVIOUS_HEAD}"; then
+              echo "[OK] 自动回滚完成"
+              # 回滚后再做一次健康检查
+              for i in $(seq 1 30); do
+                _status=$(docker exec "${BACKEND_CONTAINER}" python -c "import urllib.request, json; r=json.loads(urllib.request.urlopen('http://localhost:8000/health', timeout=5).read()); print(r.get('status','unknown'))" 2>/dev/null || echo "ERR")
+                if [ "${_status}" = "ok" ]; then
+                  echo "[OK] 回滚后 /health status=ok"
+                  break
+                fi
+                echo "[WAIT] 回滚后健康检查第 ${i}/30 次..."
+                sleep 2
+              done
+            else
+              echo "::error::自动回滚失败，请手动修复"
+            fi
+          else
+            echo "::error::无法获取 previous_head，跳过自动回滚"
+          fi
+
+          # 轻量 webhook 通知（如果配置了）
+          if [ -n "${DEPLOY_WEBHOOK_URL:-}" ]; then
+            curl -s -X POST "${DEPLOY_WEBHOOK_URL}" \
+              -H 'Content-Type: application/json' \
+              -d "{\"workflow\":\"${{ github.workflow }}\",\"run_id\":\"${{ github.run_id }}\",\"run_attempt\":\"${{ github.run_attempt }}\",\"actor\":\"${{ github.actor }}\",\"previous\":\"${PREVIOUS_HEAD}\",\"current\":\"${CURRENT_HEAD}\",\"status\":\"failed/rolled-back\"}" \
+              >/dev/null 2>&1 || echo "[WARN] webhook 通知发送失败"
+          fi
+
+          # 同时写入本地日志
           LOG_FILE="${ROLLBACK_LOG_DIR}/deploy-failures.log"
           mkdir -p "${ROLLBACK_LOG_DIR}" 2>/dev/null || LOG_FILE="/tmp/deploy-failures.log"
-
-          PREVIOUS_HEAD=$(cat "${ROLLBACK_LOG_DIR}/previous_head" 2>/dev/null || echo "unknown")
-          ROLLBACK_CMD="bash ${PROJECT_ROOT}/scripts/rollback.sh ${PREVIOUS_HEAD}"
-
           {
             echo "============================================"
             echo "timestamp: $(date -Iseconds 2>/dev/null || date)"
@@ -264,14 +298,9 @@ jobs:
             echo "run_attempt: ${{ github.run_attempt }}"
             echo "actor:     ${{ github.actor }}"
             echo "previous_head: ${PREVIOUS_HEAD}"
-            echo "current_head:  $(cd ${PROJECT_ROOT} && git rev-parse HEAD 2>/dev/null || echo unknown)"
-            echo "rollback_cmd:  ${ROLLBACK_CMD}"
+            echo "current_head:  ${CURRENT_HEAD}"
             echo "============================================"
           } | tee -a "${LOG_FILE}"
-
-          echo "[DRY-RUN] 失败通知已写入：${LOG_FILE}"
-          echo "[DRY-RUN] webhook 通知待接入（当前仅写日志）"
-          echo "[DRY-RUN] 如需手动回滚：${ROLLBACK_CMD}"
 
       # ── 7. 成功摘要 ──
       - name: Deployment summary
