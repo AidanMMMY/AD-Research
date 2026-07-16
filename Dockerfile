@@ -11,6 +11,12 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
+# Build-time metadata: GIT_SHA is injected by CI/update.sh so /health can
+# report the exact commit the image was built from. Falls back to "unknown"
+# when not provided (legacy/local builds).
+ARG GIT_SHA=""
+ENV GIT_SHA=${GIT_SHA}
+
 # Install system dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \

@@ -138,10 +138,12 @@ else
     # 同时启用 BuildKit inline cache（--build-arg BUILDKIT_INLINE_CACHE=1），
     # 让后续若切到 cache-from 模式时无需再改脚本即可复用 layer 元数据。
     BUILD_START=$(date +%s)
-    if ! docker compose build backend --no-cache --build-arg BUILDKIT_INLINE_CACHE=1; then
+    GIT_SHA=$(git rev-parse --short HEAD)
+    _BUILD_ARGS="--no-cache --build-arg BUILDKIT_INLINE_CACHE=1 --build-arg GIT_SHA=${GIT_SHA}"
+    if ! docker compose build backend ${_BUILD_ARGS}; then
         log_warn "首次 docker compose build 失败（多为阿里云 registry 抖动），5s 后重试一次"
         sleep 5
-        docker compose build backend --no-cache --build-arg BUILDKIT_INLINE_CACHE=1
+        docker compose build backend ${_BUILD_ARGS}
     fi
     BUILD_END=$(date +%s)
     BUILD_ELAPSED=$((BUILD_END - BUILD_START))
