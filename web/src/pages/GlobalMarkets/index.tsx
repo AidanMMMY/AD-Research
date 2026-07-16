@@ -16,11 +16,12 @@
  * See docs/dev-notes/20260704-global-markets-roadmap.md.
  */
 
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type CSSProperties } from 'react';
 import './styles.css';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useIsMobile } from '@/hooks/useBreakpoint';
+import { useChartMotion } from '@/hooks/useChartMotion';
 import { Skeleton, Table, Tag, Tooltip, Typography } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import PageShell from '@/components/PageShell';
@@ -49,66 +50,31 @@ import {
 } from '@/api/macro';
 
 /**
- * Apple-style motion layer (scoped to this page):
- * - Response: feedback lands on pointer-down (:active, 0ms), release springs back.
- * - Springs: critically-damped-ish cubic-bezier; transform-only for frame smoothness.
- * - Typography: size-specific tracking (large tight, small loose).
- * - Reduced motion: cross-fade only, transforms disabled.
+ * GlobalMarkets keeps two page-local deltas on top of the shared
+ * `.adx-motion` layer (see useChartMotion):
+ *  - a bouncier overshoot spring (applied via the `--adx-spring` inline var
+ *    on the wrapper below), and
+ *  - a slightly deeper press (scale 0.98 + bg tint) on buttons and the
+ *    news-events list rows.
  */
-const ADX_STYLE = `
-.adx-global-markets {
-  --adx-spring: cubic-bezier(0.5, 1.6, 0.3, 1);
-  --adx-ease-out: cubic-bezier(0.22, 0.9, 0.3, 1);
-}
-.adx-global-markets .ant-btn,
-.adx-global-markets .ad-news-events-list__item {
-  touch-action: manipulation;
-  transition: transform 240ms var(--adx-spring), background-color 140ms var(--adx-ease-out);
-}
-.adx-global-markets .ant-btn:active,
-.adx-global-markets .ad-news-events-list__item:active {
+const GM_MOTION_OVERRIDES = `
+.gm-motion .ant-btn:active,
+.gm-motion .ad-news-events-list__item:active {
   transform: scale(0.98);
   background-color: var(--bg-active);
-  transition-duration: 0ms;
-}
-.adx-global-markets .ant-table-tbody > tr {
-  transition: background-color 140ms var(--adx-ease-out);
-}
-.adx-global-markets h1,
-.adx-global-markets h2,
-.adx-global-markets .ant-typography h1,
-.adx-global-markets .ant-typography h2 {
-  letter-spacing: -0.02em;
-  line-height: 1.18;
-}
-.adx-global-markets .ad-text-xs,
-.adx-global-markets .ad-text-small {
-  letter-spacing: 0.01em;
 }
 @media (prefers-reduced-motion: reduce) {
-  .adx-global-markets *,
-  .adx-global-markets *::before,
-  .adx-global-markets *::after {
-    animation-duration: 0.001ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.001ms !important;
-    scroll-behavior: auto !important;
-  }
-  .adx-global-markets .ant-btn:active,
-  .adx-global-markets .ad-news-events-list__item:active {
+  .gm-motion .ant-btn:active,
+  .gm-motion .ad-news-events-list__item:active {
     transform: none;
   }
 }
 `;
 
-function AdxShell({ children }: { children: ReactNode }) {
-  return (
-    <div className="adx-global-markets">
-      <style>{ADX_STYLE}</style>
-      {children}
-    </div>
-  );
-}
+/** Overshoot spring override for this page (bouncier than the default). */
+const GM_MOTION_STYLE = {
+  ['--adx-spring']: 'cubic-bezier(0.5, 1.6, 0.3, 1)',
+} as CSSProperties;
 
 const { Text } = Typography;
 
@@ -467,6 +433,8 @@ function RecentWeekEvents(): JSX.Element | null {
 }
 
 export default function GlobalMarkets() {
+  // Injects the shared `.adx-motion` stylesheet (Apple-pattern press/hover).
+  useChartMotion();
   const isMobile = useIsMobile();
   // AI Help wiring (M22-1): pass the current indicator rows plus the
   // most recent 5 political / macro news items into the help drawer
@@ -600,7 +568,8 @@ export default function GlobalMarkets() {
   };
 
   return (
-    <AdxShell>
+    <div className="adx-motion gm-motion" style={GM_MOTION_STYLE}>
+      <style>{GM_MOTION_OVERRIDES}</style>
       <PageShell maxWidth="wide">
         <PageHeader
           eyebrow="海外资本市场"
@@ -644,7 +613,7 @@ export default function GlobalMarkets() {
       {hasAnyData &&
         grouped.map((g) => <CategoryBlock key={g.key} title={g.label} rows={g.rows} isMobile={isMobile} />)}
     </PageShell>
-    </AdxShell>
+    </div>
   );
 }
 

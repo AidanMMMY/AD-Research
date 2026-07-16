@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import './styles.css';
 import {
@@ -32,7 +32,7 @@ import FilterToolbar from '@/components/FilterToolbar';
 import LastUpdated from '@/components/LastUpdated';
 import HelpPopover from '@/components/HelpPopover';
 import { useSettingsStore } from '@/stores/settings';
-import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
+import { useChartMotion } from '@/hooks/useChartMotion';
 import { useIsMobile } from '@/hooks/useBreakpoint';
 import { useMacroIndicators, useMacroSeries } from '@/hooks/useMacro';
 import {
@@ -40,97 +40,6 @@ import {
   useRefreshChinaMacro,
 } from '@/api/macro';
 import type { MacroIndicatorItem, MacroLatestItem } from '@/api/macro';
-
-/**
- * Apple-style motion layer (scoped to this page):
- * - Response: feedback lands on pointer-down (:active, 0ms), release springs back.
- * - Springs: critically-damped-ish cubic-bezier; transform-only for frame smoothness.
- * - Spatial consistency: the chart panel materializes (scale+fade) from its anchor.
- * - Typography: size-specific tracking (large tight, small loose).
- * - Reduced motion: cross-fade only, transforms disabled.
- */
-const ADX_STYLE = `
-.adx-macro {
-  /* Critically-damped monotonic curve: y2 ≤ 1, no overshoot. */
-  --adx-spring: cubic-bezier(0.32, 0.72, 0, 1);
-  --adx-ease-out: cubic-bezier(0.22, 0.9, 0.3, 1);
-}
-.adx-macro .ant-btn {
-  touch-action: manipulation;
-  transition: transform 240ms var(--adx-spring), background-color 140ms var(--adx-ease-out);
-}
-.adx-macro .ant-btn:active {
-  transform: scale(0.97);
-  transition-duration: 0ms;
-}
-.adx-macro .ant-segmented-item {
-  touch-action: manipulation;
-  transition: color 140ms var(--adx-ease-out);
-}
-.adx-macro .ant-table-tbody > tr {
-  touch-action: manipulation;
-  transition: background-color 140ms var(--adx-ease-out);
-}
-.adx-macro .ant-table-tbody > tr:active {
-  background-color: var(--bg-active);
-  transition-duration: 0ms;
-}
-@keyframes adx-macro-materialize {
-  from { opacity: 0; transform: translateY(8px) scale(0.98); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
-}
-@keyframes adx-macro-dematerialize {
-  from { opacity: 1; transform: translateY(0) scale(1); }
-  to { opacity: 0; transform: translateY(8px) scale(0.98); }
-}
-.adx-macro .adx-materialize {
-  transform-origin: top center;
-  animation: adx-macro-materialize 320ms var(--adx-spring) both;
-}
-.adx-macro .adx-materialize--exit {
-  transform-origin: top center;
-  animation: adx-macro-dematerialize 220ms var(--adx-spring) both;
-}
-.adx-macro h1,
-.adx-macro h2,
-.adx-macro .ant-typography h1,
-.adx-macro .ant-typography h2 {
-  letter-spacing: -0.02em;
-  line-height: 1.18;
-}
-.adx-macro .ad-text-xs,
-.adx-macro .ad-text-small {
-  letter-spacing: 0.01em;
-}
-@media (prefers-reduced-motion: reduce) {
-  .adx-macro *,
-  .adx-macro *::before,
-  .adx-macro *::after {
-    animation-duration: 0.001ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.001ms !important;
-    scroll-behavior: auto !important;
-  }
-  .adx-macro .ant-btn:active {
-    transform: none;
-  }
-  .adx-macro .adx-materialize {
-    animation: none;
-  }
-  .adx-macro .adx-materialize--exit {
-    animation: none;
-  }
-}
-`;
-
-function AdxShell({ children }: { children: ReactNode }) {
-  return (
-    <div className="adx-macro">
-      <style>{ADX_STYLE}</style>
-      {children}
-    </div>
-  );
-}
 
 const { Text } = Typography;
 
@@ -206,7 +115,7 @@ function buildCnHeadlineFromLatest(items: MacroLatestItem[]): MacroIndicatorItem
 
 export default function Macro() {
   const mode = useSettingsStore((s) => s.mode);
-  const prefersReducedMotion = usePrefersReducedMotion();
+  const { reducedMotion, enterProps, exitProps } = useChartMotion();
   const isMobile = useIsMobile();
   // Initialize region / selectedCode from URL search params so deep-links
   // from Dashboard's Market Pulse tiles (e.g. /macro?region=global&code=global_sp500)
@@ -235,6 +144,10 @@ export default function Macro() {
   // and exit use the same spring path).
   const [mountedCode, setMountedCode] = useState<string | null>(null);
   const [isExiting, setIsExiting] = useState(false);
+  // `entered` drives the enter transition: the panel mounts in its `initial`
+  // (hidden) style, then flips to `entered` on the next frame so the CSS
+  // transition animates it in (spatial consistency: enter/exit share a spring).
+  const [entered, setEntered] = useState(false);
   const exitTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
@@ -263,6 +176,15 @@ export default function Macro() {
       }
     };
   }, [selectedCode, mountedCode]);
+
+  useEffect(() => {
+    if (!mountedCode || isExiting) {
+      setEntered(false);
+      return;
+    }
+    const raf = window.requestAnimationFrame(() => setEntered(true));
+    return () => window.cancelAnimationFrame(raf);
+  }, [mountedCode, isExiting]);
 
   const { data: indicators, isLoading, error } = useMacroIndicators(region);
   const { data: series, isLoading: seriesLoading } = useMacroSeries(mountedCode, {
@@ -422,7 +344,7 @@ export default function Macro() {
   const headlineLoading = region === 'cn' ? latestFetching && !latestData : isLoading;
 
   return (
-    <AdxShell>
+    <div className="adx-motion">
       <PageShell maxWidth="wide">
         <PageHeader
           eyebrow="宏观指标"
@@ -557,7 +479,15 @@ export default function Macro() {
           <Col
             xs={24}
             lg={12}
-            className={isExiting ? 'adx-materialize adx-materialize--exit' : 'adx-materialize'}
+            style={{
+              transformOrigin: 'top center',
+              ...enterProps.transition,
+              ...(isExiting
+                ? exitProps.exit
+                : entered
+                ? enterProps.animate
+                : enterProps.initial),
+            }}
             aria-hidden={isExiting}
           >
             <Panel
@@ -579,7 +509,7 @@ export default function Macro() {
                     <ReactECharts
                       option={{
                         ...chartOption,
-                        animation: !prefersReducedMotion,
+                        animation: !reducedMotion,
                       }}
                       notMerge
                     />
@@ -600,6 +530,6 @@ export default function Macro() {
         )}
       </Row>
       </PageShell>
-    </AdxShell>
+    </div>
   );
 }

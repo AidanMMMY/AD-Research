@@ -49,6 +49,7 @@ import {
   formatRelative as formatRelativeTz,
 } from '@/utils/datetime';
 import { useDebounce } from '@/hooks/useDebounce';
+import { useSettingsStore } from '@/stores/settings';
 
 /**
  * Apple Design fixes scoped to this page (page styles.css is owned by
@@ -482,6 +483,9 @@ function HotSymbolSidebar({
 
 export default function NewsFeed() {
   const navigate = useNavigate();
+  // Color convention drives the sentiment-legend colour words: A-share
+  // (china) is 红涨绿跌 → positive=红 / negative=绿; US convention inverts it.
+  const colorConvention = useSettingsStore((s) => s.colorConvention);
   const [searchParams, setSearchParams] = useSearchParams();
   const [market, setMarket] = useState<NewsMarket | 'all'>(
     (searchParams.get('market') as NewsMarket | 'all' | null) ?? 'all'
@@ -860,14 +864,26 @@ export default function NewsFeed() {
           />
           <Panel variant="default" title="情绪图例" padding="md">
             <Space direction="vertical" size={6}>
-              {(['positive', 'neutral', 'negative'] as SentimentLabel[]).map((l) => (
-                <div key={l} className="ad-flex ad-items-center ad-gap-2">
-                  <Badge color={SENTIMENT_COLORS[l]} />
-                  <span className="ad-text-small ad-text-secondary">
-                    {SENTIMENT_LABELS[l]} ({(l === 'positive' && '绿') || (l === 'neutral' && '灰') || '红'})
-                  </span>
-                </div>
-              ))}
+              {(['positive', 'neutral', 'negative'] as SentimentLabel[]).map((l) => {
+                const colorWord =
+                  l === 'neutral'
+                    ? '灰'
+                    : l === 'positive'
+                    ? colorConvention === 'china'
+                      ? '红'
+                      : '绿'
+                    : colorConvention === 'china'
+                    ? '绿'
+                    : '红';
+                return (
+                  <div key={l} className="ad-flex ad-items-center ad-gap-2">
+                    <Badge color={SENTIMENT_COLORS[l]} />
+                    <span className="ad-text-small ad-text-secondary">
+                      {SENTIMENT_LABELS[l]} ({colorWord})
+                    </span>
+                  </div>
+                );
+              })}
               <div className="ad-flex ad-items-center ad-gap-1 ad-mt-2 ad-text-small ad-text-tertiary">
                 <StarOutlined className="ad-icon-warning" /> 重要性 1-5
               </div>

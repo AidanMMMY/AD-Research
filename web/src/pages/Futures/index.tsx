@@ -16,6 +16,7 @@ import ResponsiveGrid from '@/components/ResponsiveGrid';
 import LastUpdated from '@/components/LastUpdated';
 import HelpPopover from '@/components/HelpPopover';
 import { useSettingsStore } from '@/stores/settings';
+import { useChartMotion } from '@/hooks/useChartMotion';
 import { NULL_PLACEHOLDER } from '@/utils/format';
 import {
   useFuturesDashboard,
@@ -23,69 +24,6 @@ import {
   useFuturesStats,
 } from '@/api/futures';
 import type { FuturesDailyBarOut, FuturesDashboardSection } from '@/api/futures';
-
-/**
- * Apple-style motion layer (scoped to this page):
- * - Response: feedback lands on pointer-down (:active, 0ms), release springs back.
- * - Springs: critically-damped-ish cubic-bezier; transform-only for frame smoothness.
- * - Typography: size-specific tracking (large tight, small loose).
- * - Reduced motion: cross-fade only, transforms disabled.
- */
-const ADX_STYLE = `
-.adx-futures {
-  /* Critically-damped monotonic curve: y2 ≤ 1, no overshoot. */
-  --adx-spring: cubic-bezier(0.32, 0.72, 0, 1);
-  --adx-ease-out: cubic-bezier(0.22, 0.9, 0.3, 1);
-}
-.adx-futures .ant-btn {
-  touch-action: manipulation;
-  transition: transform 240ms var(--adx-spring), background-color 140ms var(--adx-ease-out);
-}
-.adx-futures .ant-btn:active {
-  transform: scale(0.97);
-  transition-duration: 0ms;
-}
-.adx-futures .ant-tabs-tab {
-  touch-action: manipulation;
-  transition: color 140ms var(--adx-ease-out);
-}
-.adx-futures .ant-table-tbody > tr {
-  transition: background-color 140ms var(--adx-ease-out);
-}
-.adx-futures h1,
-.adx-futures h2,
-.adx-futures .ant-typography h1,
-.adx-futures .ant-typography h2 {
-  letter-spacing: -0.02em;
-  line-height: 1.18;
-}
-.adx-futures .ad-text-xs,
-.adx-futures .ad-text-small {
-  letter-spacing: 0.01em;
-}
-@media (prefers-reduced-motion: reduce) {
-  .adx-futures *,
-  .adx-futures *::before,
-  .adx-futures *::after {
-    animation-duration: 0.001ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.001ms !important;
-    scroll-behavior: auto !important;
-  }
-  .adx-futures .ant-btn:active {
-    transform: none;
-  }
-}
-`;
-
-function AdxShell({ children }: { children: ReactNode }) {
-  return (
-    <div className="adx-futures">
-      <style>{ADX_STYLE}</style>
-      {children}
-    </div>
-  );
-}
 
 const PRODUCTS = ['金属', '能源化工', '农产品', '金融期货'] as const;
 type Product = (typeof PRODUCTS)[number];
@@ -280,6 +218,8 @@ function ProductTab({ product, section }: TabContentProps) {
 }
 
 export default function Futures() {
+  // Injects the shared `.adx-motion` stylesheet (Apple-pattern press/hover).
+  useChartMotion();
   const { data: dashboard, isLoading: dashLoading, dataUpdatedAt } = useFuturesDashboard();
   const { data: gainers } = useFuturesLeaderboard('gainers');
   const { data: losers } = useFuturesLeaderboard('losers');
@@ -313,7 +253,7 @@ export default function Futures() {
   const latestDate = dashboard?.trade_date ?? stats?.latest_trade_date ?? null;
 
   return (
-    <AdxShell>
+    <div className="adx-motion">
       <PageShell maxWidth="wide">
         <PageHeader
           eyebrow="期货"
@@ -361,6 +301,6 @@ export default function Futures() {
 
         <Tabs items={tabItems} defaultActiveKey="金属" />
       </PageShell>
-    </AdxShell>
+    </div>
   );
 }

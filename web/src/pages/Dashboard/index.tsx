@@ -1289,7 +1289,6 @@ export default function Dashboard() {
               size="small"
               scroll={{ x: 'max-content' }}
               pagination={false}
-              showHeader={false}
               onRow={(record) => ({ onClick: () => navigate(`/instruments/${record.etf_code}`) })}
             />
           </Panel>

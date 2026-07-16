@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Alert, Segmented, Select, Spin, Table, Tabs, Tag } from 'antd';
 import { InfoCircleOutlined } from '@ant-design/icons';
 import ReactECharts from 'echarts-for-react';
@@ -20,6 +20,7 @@ import ThemeTag from '@/components/ThemeTag';
 import { useSettingsStore } from '@/stores/settings';
 import { useIsMobile } from '@/hooks/useBreakpoint';
 import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
+import { useChartMotion } from '@/hooks/useChartMotion';
 import { getReturnColor } from '@/utils/color';
 import { readCssVar, resolveChartColors } from '@/utils/cssVar';
 import { subscribeChartThemeCache } from '@/utils/chartColors';
@@ -31,73 +32,6 @@ import type {
 } from '@/types/sector_rotation';
 import { SECTOR_RETURN_LABELS, SECTOR_RETURN_PERIODS } from '@/types/sector_rotation';
 import './styles.css';
-
-/**
- * Apple-style motion layer (scoped to this page):
- * - Response: feedback lands on pointer-down (:active, 0ms), release springs back.
- * - Springs: critically-damped-ish cubic-bezier; transform-only for frame smoothness.
- * - Typography: size-specific tracking (large tight, small loose).
- * - Reduced motion: cross-fade only, transforms disabled.
- */
-const ADX_STYLE = `
-.adx-sector-rotation {
-  /* Critically-damped monotonic curve: y2 ≤ 1, no overshoot. */
-  --adx-spring: cubic-bezier(0.32, 0.72, 0, 1);
-  --adx-ease-out: cubic-bezier(0.22, 0.9, 0.3, 1);
-}
-.adx-sector-rotation .ant-btn {
-  touch-action: manipulation;
-  transition: transform 240ms var(--adx-spring), background-color 140ms var(--adx-ease-out);
-}
-.adx-sector-rotation .ant-btn:active {
-  transform: scale(0.97);
-  transition-duration: 0ms;
-}
-.adx-sector-rotation .ant-segmented-item,
-.adx-sector-rotation .ant-tabs-tab {
-  touch-action: manipulation;
-  transition: color 140ms var(--adx-ease-out);
-}
-.adx-sector-rotation .ant-select-selector {
-  transition: border-color 140ms var(--adx-ease-out), box-shadow 140ms var(--adx-ease-out);
-}
-.adx-sector-rotation .ant-table-tbody > tr {
-  transition: background-color 140ms var(--adx-ease-out);
-}
-.adx-sector-rotation h1,
-.adx-sector-rotation h2,
-.adx-sector-rotation .ant-typography h1,
-.adx-sector-rotation .ant-typography h2 {
-  letter-spacing: -0.02em;
-  line-height: 1.18;
-}
-.adx-sector-rotation .ad-text-xs,
-.adx-sector-rotation .ad-text-small {
-  letter-spacing: 0.01em;
-}
-@media (prefers-reduced-motion: reduce) {
-  .adx-sector-rotation *,
-  .adx-sector-rotation *::before,
-  .adx-sector-rotation *::after {
-    animation-duration: 0.001ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.001ms !important;
-    scroll-behavior: auto !important;
-  }
-  .adx-sector-rotation .ant-btn:active {
-    transform: none;
-  }
-}
-`;
-
-function AdxShell({ children }: { children: ReactNode }) {
-  return (
-    <div className="adx-sector-rotation">
-      <style>{ADX_STYLE}</style>
-      {children}
-    </div>
-  );
-}
 
 const PERIOD_RETURN_KEY: Record<SectorReturnPeriod, keyof SectorPerformance> = {
   '1w': 'return_1w',
@@ -175,6 +109,8 @@ type DetailTab = 'summary' | 'constituents';
 export default function SectorRotation() {
   const mode = useSettingsStore((s) => s.mode);
   const prefersReducedMotion = usePrefersReducedMotion();
+  // Injects the shared `.adx-motion` stylesheet (Apple-pattern press/hover).
+  useChartMotion();
   // Industry taxonomy toggle: 申万一级 (default, A-share) vs GICS (global).
   const [classification, setClassification] = useState<SectorClassification>('SW');
   const clsLabel = classification === 'SW' ? '申万一级' : 'GICS';
@@ -493,7 +429,7 @@ export default function SectorRotation() {
   const etfCount = sectors.reduce((sum, s) => sum + s.etf_count, 0);
 
   return (
-    <AdxShell>
+    <div className="adx-motion">
       <PageShell maxWidth="wide">
         <PageHeader
           eyebrow="行业研究"
@@ -752,7 +688,7 @@ export default function SectorRotation() {
         )}
       </Panel>
       </PageShell>
-    </AdxShell>
+    </div>
   );
 }
 

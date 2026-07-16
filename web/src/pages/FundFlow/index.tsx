@@ -1,6 +1,6 @@
 import './styles.css';
 
-import { useMemo, useState, type ReactNode } from 'react';
+import { useMemo, useState } from 'react';
 import dayjs, { type Dayjs } from 'dayjs';
 import {
   Table,
@@ -36,6 +36,7 @@ import InstrumentCodeTag from '@/components/InstrumentCodeTag';
 import Sparkline from '@/components/Sparkline';
 import ThemeTag from '@/components/ThemeTag';
 import ReturnTag from '@/components/ReturnTag';
+import { useChartMotion } from '@/hooks/useChartMotion';
 import { NULL_PLACEHOLDER, formatNumber } from '@/utils/format';
 import {
   useFundFlowMarket,
@@ -94,65 +95,6 @@ function premiumClass(v: number | null | undefined): 'rise' | 'fall' | 'neutral'
   if (v > 0.5) return 'rise';
   if (v < -0.5) return 'fall';
   return 'neutral';
-}
-
-/* =============================================================================
- * Page-local style overrides (Apple-pattern motion, mirrors Microstructure).
- * =========================================================================== */
-const ADX_STYLE = `
-.adx-fund-flow {
-  /* Critically-damped monotonic spring (Apple-style). */
-  --adx-spring: cubic-bezier(0.32, 0.72, 0, 1);
-  --adx-ease-out: cubic-bezier(0.22, 0.9, 0.3, 1);
-}
-.adx-fund-flow .ant-btn {
-  touch-action: manipulation;
-  transition: transform 240ms var(--adx-spring), background-color 140ms var(--adx-ease-out);
-}
-.adx-fund-flow .ant-btn:active {
-  transform: scale(0.97);
-  transition-duration: 0ms;
-}
-.adx-fund-flow .ant-tabs-tab {
-  touch-action: manipulation;
-  transition: color 140ms var(--adx-ease-out);
-}
-.adx-fund-flow .ant-table-tbody > tr {
-  transition: background-color 140ms var(--adx-ease-out);
-}
-.adx-fund-flow h1,
-.adx-fund-flow h2,
-.adx-fund-flow .ant-typography h1,
-.adx-fund-flow .ant-typography h2 {
-  letter-spacing: -0.02em;
-  line-height: 1.18;
-}
-.adx-fund-flow .ad-text-xs,
-.adx-fund-flow .ad-text-small {
-  letter-spacing: 0.01em;
-}
-@media (prefers-reduced-motion: reduce) {
-  .adx-fund-flow *,
-  .adx-fund-flow *::before,
-  .adx-fund-flow *::after {
-    animation-duration: 0.001ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.001ms !important;
-    scroll-behavior: auto !important;
-  }
-  .adx-fund-flow .ant-btn:active {
-    transform: none;
-  }
-}
-`;
-
-function AdxShell({ children }: { children: ReactNode }) {
-  return (
-    <div className="adx-fund-flow">
-      <style>{ADX_STYLE}</style>
-      {children}
-    </div>
-  );
 }
 
 /* =============================================================================
@@ -234,6 +176,8 @@ function PctChip({ value }: { value: number | null | undefined }) {
 
 export default function FundFlowPage() {
   const navigate = useNavigate();
+  // Injects the shared `.adx-motion` stylesheet (Apple-pattern press/hover).
+  useChartMotion();
 
   // Single shared date — drives market, individual, sector, etf, signals tables.
   const [date, setDate] = useState<Dayjs | null>(null);
@@ -663,7 +607,7 @@ export default function FundFlowPage() {
    * ============================================================ */
 
   return (
-    <AdxShell>
+    <div className="adx-motion">
       <PageShell maxWidth="wide">
         <PageHeader
           eyebrow="市场脉搏"
@@ -1034,7 +978,7 @@ export default function FundFlowPage() {
           />
         </Panel>
       </PageShell>
-    </AdxShell>
+    </div>
   );
 }
 

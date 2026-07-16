@@ -3,7 +3,7 @@ import { Radio, Spin } from 'antd';
 import { useQuery } from '@tanstack/react-query';
 import { marketApi } from '@/api/market';
 import { useInstrumentList } from '@/hooks/useInstrumentList';
-import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
+import { useChartMotion } from '@/hooks/useChartMotion';
 import PageShell from '@/components/PageShell';
 import PageHeader from '@/components/PageHeader';
 import Panel from '@/components/Panel';
@@ -37,7 +37,7 @@ export default function ReturnComparison() {
   // Apple Design #14: when the user prefers reduced motion, drop the
   // curve's intro animation so range / mode switches cut to the new data
   // instead of re-animating in.
-  const prefersReducedMotion = usePrefersReducedMotion();
+  const { reducedMotion } = useChartMotion();
 
   const { data: etfList } = useInstrumentList({ page_size: 10000 });
 
@@ -148,7 +148,7 @@ export default function ReturnComparison() {
         ) : etfQueries.isLoading ? (
           <Spin size="large" className="ad-spin-center" />
         ) : visibleSeries.length > 0 ? (
-          <div className="ad-chart-container" data-reduced-motion={prefersReducedMotion ? 'true' : undefined}>
+          <div className="ad-chart-container" data-reduced-motion={reducedMotion ? 'true' : undefined}>
             <ReturnCurve series={visibleSeries} />
           </div>
         ) : (
