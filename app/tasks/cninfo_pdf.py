@@ -258,8 +258,7 @@ def download_cninfo_pdfs(
                 except Exception:  # pragma: no cover - defensive
                     pass
                 continue
-    
-        db.close()
+
     finally:
         db.close()
 
