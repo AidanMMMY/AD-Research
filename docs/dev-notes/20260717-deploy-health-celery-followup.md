@@ -52,6 +52,13 @@
 | Redis `unacked` 重入队 | ECS 临时脚本 `/tmp/requeue_unacked.py` | worker 重启后滞留在 `unacked` 的 indicator 任务重新 `LPUSH` 回队列 |
 | 临时文件清理 | ECS `/tmp`、本地 `/tmp` | trigger/requeue/test 脚本已删除 |
 
+### 2.5 部署失败根因与修复（2026-07-17 上午 #270/#271/#272）
+
+| 修复点 | 文件 | 说明 |
+|---|---|---|
+| ECS 工作树脏导致 `sync_code` 失败 | `.github/workflows/deploy.yml:76-85` | `/opt/ad-research` 上应急热修未提交，触发 `git status --porcelain` 保护逻辑 |
+| 清理 ECS 工作树 | `/opt/ad-research` | 执行 `git fetch origin && git reset --hard origin/main`，工作树恢复干净 |
+
 ## 3. 验证结果
 
 - `python -m py_compile app/core/health.py app/core/scheduler.py app/tasks/cninfo.py alembic/versions/2026_07_17_add_instrument_daily_bar_trade_date_index.py` 通过

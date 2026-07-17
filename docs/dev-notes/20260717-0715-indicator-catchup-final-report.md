@@ -127,5 +127,22 @@ docker exec -i alloyresearch-backend python -c \
 
 ## 7. 决策与回滚
 
-- **决策**：本次跨文件修改（部署配置、SQL calculator、模型、迁移、队列运维）已同步更新代码、迁移文件与决策日志。未执行 `git push`，等待用户明确指令。
+- **决策**：本次跨文件修改（部署配置、SQL calculator、模型、迁移、队列运维）已同步更新代码、迁移文件、决策日志与 MEMORY 索引。
+- **推送**：已在 2026-07-17 约 12:30 CST 执行 `git push origin main`，提交 `7dde164`。
 - **回滚方式**：若新迁移/模型改动导致问题，可执行 `alembic downgrade 2026_07_17_add_instrument_daily_bar_trade_date_index`；部署相关回滚使用 `bash scripts/rollback.sh <COMMIT_SHA>`。
+
+## 8. 部署失败根因与修复
+
+2026-07-17 上午 GitHub Actions #270、#271 以及刚 push 后的 #272 均失败，失败 step 均为 `sync_code`。
+
+- **根因**：ECS 自托管 runner 的工作目录 `/opt/ad-research` 存在未提交变更（应急热修 `sql_calculator.py`、`docker-compose.yml` 等）。`.github/workflows/deploy.yml` 的 `sync_code` step 会检查 `git status --porcelain`，发现脏工作树后直接退出，防止未提交修改被覆盖。
+- **涉及文件**：
+  - `app/data/indicators/calculator.py`
+  - `app/data/indicators/sql_calculator.py`
+  - `app/tasks/indicator.py`
+  - `deploy/aliyun-ecs/docker-compose.yml`
+- **修复**：在 ECS 上执行 `git fetch origin && git reset --hard origin/main`，工作树已恢复干净。
+- **结果**：脏工作树清除后，后续 push 将能正常进入 `update.sh` 与 health check。
+
+> 运维教训：生产环境应急热修后，要么立即 commit + push，要么在本地分支操作；直接在 runner 工作树修改会阻塞 GitHub Actions 自动部署。
+
