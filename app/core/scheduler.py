@@ -74,15 +74,12 @@ def run_a_share_etl(target_date: date | None = None, prefer_sina: bool = False):
             print("⚠️ [SCHEDULER_WARN] A-share ETL skipped: daily pipeline lock in use")
             return
 
-        db = SessionLocal()
-        try:
+        with SessionLocal() as db:
             pipeline = AShareETLPipeline(db, target_date=target_date, prefer_sina=prefer_sina)
             result = pipeline.run_with_retry(max_attempts=3)
             print(
                 f"[Scheduler] A-share ETL (target={target_date}, sina={prefer_sina}): success={result.success}, records={result.records}"
             )
-        finally:
-            db.close()
 
 
 def run_a_share_stock_etl(target_date: date | None = None):
@@ -101,16 +98,13 @@ def run_a_share_stock_etl(target_date: date | None = None):
             print("⚠️ [SCHEDULER_WARN] A-stock daily ETL skipped: lock in use")
             return
 
-        db = SessionLocal()
-        try:
+        with SessionLocal() as db:
             pipeline = AStockDailyPipeline(db, target_date=target_date)
             result = pipeline.run_with_retry(max_attempts=3)
             print(
                 f"[Scheduler] A-stock daily ETL (target={target_date}): "
                 f"success={result.success}, records={result.records}"
             )
-        finally:
-            db.close()
 
 
 def run_a_share_stock_fundamental(target_date: date | None = None):
@@ -129,16 +123,13 @@ def run_a_share_stock_fundamental(target_date: date | None = None):
             print("⚠️ [SCHEDULER_WARN] A-stock fundamental ETL skipped: lock in use")
             return
 
-        db = SessionLocal()
-        try:
+        with SessionLocal() as db:
             pipeline = AStockFundamentalPipeline(db, target_date=target_date)
             result = pipeline.run_with_retry(max_attempts=2)
             print(
                 f"[Scheduler] A-stock fundamental ETL (target={target_date}): "
                 f"success={result.success}, records={result.records}"
             )
-        finally:
-            db.close()
 
 
 def run_a_share_stock_discovery():
@@ -151,16 +142,13 @@ def run_a_share_stock_discovery():
         if not acquired:
             print("⚠️ [SCHEDULER_WARN] A-share stock discovery skipped: lock in use")
             return
-        db = SessionLocal()
-        try:
+        with SessionLocal() as db:
             pipeline = AShareStockDiscoveryPipeline(db)
             result = pipeline.run_with_retry(max_attempts=2)
             print(
                 f"[Scheduler] A-share stock discovery: "
                 f"success={result.success}, records={result.records}"
             )
-        finally:
-            db.close()
 
 
 def run_a_share_stock_financials():
@@ -174,16 +162,13 @@ def run_a_share_stock_financials():
         if not acquired:
             print("⚠️ [SCHEDULER_WARN] A-share stock financials skipped: lock in use")
             return
-        db = SessionLocal()
-        try:
+        with SessionLocal() as db:
             pipeline = AStockFinancialsPipeline(db)
             result = pipeline.run_with_retry(max_attempts=2)
             print(
                 f"[Scheduler] A-share stock financials: "
                 f"success={result.success}, records={result.records}"
             )
-        finally:
-            db.close()
 
 
 def run_us_etl(target_date: date | None = None):
@@ -202,16 +187,13 @@ def run_us_etl(target_date: date | None = None):
             print("⚠️ [SCHEDULER_WARN] US ETL skipped: US pipeline lock in use")
             return
 
-        db = SessionLocal()
-        try:
+        with SessionLocal() as db:
             pipeline = USDailyPipeline(db, target_date=target_date)
             result = pipeline.run_with_retry(max_attempts=3)
             print(
                 f"[Scheduler] US ETL (target={target_date}): "
                 f"success={result.success}, records={result.records}"
             )
-        finally:
-            db.close()
 
 
 def run_us_historical_backfill():
@@ -229,16 +211,13 @@ def run_us_historical_backfill():
             print("⚠️ [SCHEDULER_WARN] US historical backfill skipped: lock in use")
             return
 
-        db = SessionLocal()
-        try:
+        with SessionLocal() as db:
             pipeline = USHistoricalBackfillPipeline(db)
             result = pipeline.run_with_retry(max_attempts=2)
             print(
                 f"[Scheduler] US historical backfill: "
                 f"success={result.success}, records={result.records}"
             )
-        finally:
-            db.close()
 
 
 def run_us_indicator_calculation(target_date: date | None = None):
@@ -373,14 +352,11 @@ def run_score_calculation(target_date: date | None = None):
             print("⚠️ [SCHEDULER_WARN] Score calculation skipped: could not acquire pipeline lock")
             return
 
-        db = SessionLocal()
-        try:
+        with SessionLocal() as db:
             service = ScoringService(db)
             results = service.calculate_daily_scores(trade_date=target_date)
             total = sum(results.values())
             print(f"[Scheduler] Score calculation (target={target_date}): {total} scores across {len(results)} templates")
-        finally:
-            db.close()
 
 
 def run_weekly_pool_reports():
@@ -389,24 +365,26 @@ def run_weekly_pool_reports():
         if not acquired:
             print("⚠️ [SCHEDULER_WARN] Weekly pool reports skipped: lock in use")
             return
-        db = SessionLocal()
-        try:
-            service = ReportService(db)
-            pools = db.query(ETFPools).all()
-            for pool in pools:
-                try:
+        # Fetch the pool list in a short session; each report gets its own
+        # session so a long-running report does not hold a connection while
+        # other reports are being generated.
+        with SessionLocal() as db:
+            pool_ids = [p.id for p in db.query(ETFPools).all()]
+
+        for pool_id in pool_ids:
+            try:
+                with SessionLocal() as db:
+                    service = ReportService(db)
                     metadata = service.generate_pool_report(
-                        pool_id=pool.id,
+                        pool_id=pool_id,
                         report_type="pool_weekly",
                         format="html",
                     )
-                    print(
-                        f"[Scheduler] Weekly report for pool {pool.id}: {metadata.status}"
-                    )
-                except Exception as e:
-                    print(f"[Scheduler] Failed to generate report for pool {pool.id}: {e}")
-        finally:
-            db.close()
+                print(
+                    f"[Scheduler] Weekly report for pool {pool_id}: {metadata.status}"
+                )
+            except Exception as e:
+                print(f"[Scheduler] Failed to generate report for pool {pool_id}: {e}")
 
 
 def run_us_etf_discovery():
@@ -420,16 +398,13 @@ def run_us_etf_discovery():
         if not acquired:
             print("⚠️ [SCHEDULER_WARN] US ETF discovery skipped: lock in use")
             return
-        db = SessionLocal()
-        try:
+        with SessionLocal() as db:
             pipeline = USEtfDiscoveryPipeline(db)
             result = pipeline.run_with_retry(max_attempts=2)
             print(
                 f"[Scheduler] US ETF discovery: success={result.success}, "
                 f"records={result.records}"
             )
-        finally:
-            db.close()
 
 
 def run_us_stock_discovery():
@@ -442,16 +417,13 @@ def run_us_stock_discovery():
         if not acquired:
             print("⚠️ [SCHEDULER_WARN] US stock discovery skipped: lock in use")
             return
-        db = SessionLocal()
-        try:
+        with SessionLocal() as db:
             pipeline = USStockDiscoveryPipeline(db)
             result = pipeline.run_with_retry(max_attempts=2)
             print(
                 f"[Scheduler] US stock discovery: success={result.success}, "
                 f"records={result.records}"
             )
-        finally:
-            db.close()
 
 
 def run_us_stock_enrichment():
@@ -465,16 +437,13 @@ def run_us_stock_enrichment():
         if not acquired:
             print("⚠️ [SCHEDULER_WARN] US stock enrichment skipped: lock in use")
             return
-        db = SessionLocal()
-        try:
+        with SessionLocal() as db:
             pipeline = USStockEnrichmentPipeline(db, batch_size=200)
             result = pipeline.run_with_retry(max_attempts=2)
             print(
                 f"[Scheduler] US stock enrichment: success={result.success}, "
                 f"records={result.records}"
             )
-        finally:
-            db.close()
 
 
 def run_etf_scan():
@@ -483,14 +452,11 @@ def run_etf_scan():
         if not acquired:
             print("⚠️ [SCHEDULER_WARN] ETF scan skipped: lock in use")
             return
-        db = SessionLocal()
-        try:
+        with SessionLocal() as db:
             service = ETFScannerService(db)
             result = service.scan_market()
             total = len(result.get("new", [])) + len(result.get("delisted", [])) + len(result.get("changed", []))
             print(f"[Scheduler] ETF scan: {total} changes found")
-        finally:
-            db.close()
 
 
 def run_etf_metadata_enrichment():
@@ -503,16 +469,13 @@ def run_etf_metadata_enrichment():
         if not acquired:
             print("⚠️ [SCHEDULER_WARN] ETF metadata enrichment skipped: lock in use")
             return
-        db = SessionLocal()
-        try:
+        with SessionLocal() as db:
             pipeline = ETFMetadataEnrichmentPipeline(db)
             result = pipeline.run_with_retry(max_attempts=2)
             print(
                 f"[Scheduler] ETF metadata enrichment: "
                 f"success={result.success}, records={result.records}"
             )
-        finally:
-            db.close()
 
 
 def run_etf_holdings():
@@ -526,16 +489,13 @@ def run_etf_holdings():
         if not acquired:
             print("⚠️ [SCHEDULER_WARN] ETF holdings skipped: lock in use")
             return
-        db = SessionLocal()
-        try:
+        with SessionLocal() as db:
             pipeline = ETFHoldingsPipeline(db)
             result = pipeline.run_with_retry(max_attempts=2)
             print(
                 f"[Scheduler] ETF holdings: "
                 f"success={result.success}, records={result.records}"
             )
-        finally:
-            db.close()
 
 
 def run_listing_events():
@@ -548,16 +508,13 @@ def run_listing_events():
         if not acquired:
             print("⚠️ [SCHEDULER_WARN] Listing events refresh skipped: lock in use")
             return
-        db = SessionLocal()
-        try:
+        with SessionLocal() as db:
             pipeline = ListingEventsPipeline(db)
             result = pipeline.run_with_retry(max_attempts=2)
             print(
                 f"[Scheduler] Listing events refresh: "
                 f"success={result.success}, records={result.records}"
             )
-        finally:
-            db.close()
 
 
 def run_crypto_etl(target_date: date | None = None):
@@ -574,16 +531,13 @@ def run_crypto_etl(target_date: date | None = None):
             print("⚠️ [SCHEDULER_WARN] Crypto ETL skipped: lock in use")
             return
 
-        db = SessionLocal()
-        try:
+        with SessionLocal() as db:
             pipeline = CryptoDailyPipeline(db, target_date=target_date)
             result = pipeline.run_with_retry(max_attempts=3)
             print(
                 f"[Scheduler] Crypto ETL (target={target_date}): "
                 f"success={result.success}, records={result.records}"
             )
-        finally:
-            db.close()
 
 
 def run_crypto_indicator_calculation(target_date: date | None = None):
@@ -618,16 +572,13 @@ def run_futures_contract_refresh():
         if not acquired:
             print("⚠️ [SCHEDULER_WARN] Futures contract refresh skipped: lock in use")
             return
-        db = SessionLocal()
-        try:
+        with SessionLocal() as db:
             pipeline = FuturesContractDiscoveryPipeline(db)
             result = pipeline.run_with_retry(max_attempts=2)
             print(
                 f"[Scheduler] Futures contract refresh: success={result.success}, "
                 f"records={result.records}"
             )
-        finally:
-            db.close()
 
 
 def run_futures_daily(target_date: date | None = None):
@@ -640,16 +591,13 @@ def run_futures_daily(target_date: date | None = None):
         if not acquired:
             print("⚠️ [SCHEDULER_WARN] Futures daily skipped: lock in use")
             return
-        db = SessionLocal()
-        try:
+        with SessionLocal() as db:
             pipeline = FuturesDailyPipeline(db, target_date=target_date)
             result = pipeline.run_with_retry(max_attempts=2)
             print(
                 f"[Scheduler] Futures daily (target={target_date}): "
                 f"success={result.success}, records={result.records}"
             )
-        finally:
-            db.close()
 
 
 def run_sec_edgar_daily():
@@ -664,16 +612,13 @@ def run_sec_edgar_daily():
         if not acquired:
             print("⚠️ [SCHEDULER_WARN] SEC EDGAR refresh skipped: lock in use")
             return
-        db = SessionLocal()
-        try:
+        with SessionLocal() as db:
             pipeline = SecEdgarPipeline(db, batch_size=50)
             result = pipeline.run_with_retry(max_attempts=1)
             print(
                 f"[Scheduler] SEC EDGAR refresh: "
                 f"success={result.success}, records={result.records}"
             )
-        finally:
-            db.close()
 
 
 def run_microstructure_daily():
@@ -686,16 +631,13 @@ def run_microstructure_daily():
         if not acquired:
             print("⚠️ [SCHEDULER_WARN] Microstructure refresh skipped: lock in use")
             return
-        db = SessionLocal()
-        try:
+        with SessionLocal() as db:
             pipeline = MicrostructurePipeline(db)
             result = pipeline.run_with_retry(max_attempts=1)
             print(
                 f"[Scheduler] Microstructure refresh: "
                 f"success={result.success}, records={result.records}"
             )
-        finally:
-            db.close()
 
 
 def run_fund_flow_daily():
@@ -709,8 +651,7 @@ def run_fund_flow_daily():
         if not acquired:
             print("⚠️ [SCHEDULER_WARN] Fund-flow refresh skipped: lock in use")
             return
-        db = SessionLocal()
-        try:
+        with SessionLocal() as db:
             pipeline = FundFlowPipeline(db)
             result = pipeline.run_with_retry(max_attempts=1)
             print(
@@ -718,8 +659,6 @@ def run_fund_flow_daily():
                 f"success={result.success}, records={result.records}, "
                 f"warnings={len(result.warnings)}"
             )
-        finally:
-            db.close()
 
 
 def run_search_trends_daily():
@@ -735,16 +674,13 @@ def run_search_trends_daily():
         if not acquired:
             print("⚠️ [SCHEDULER_WARN] Search trends refresh skipped: lock in use")
             return
-        db = SessionLocal()
-        try:
+        with SessionLocal() as db:
             pipeline = SearchTrendsPipeline(db)
             result = pipeline.run_with_retry(max_attempts=1)
             print(
                 f"[Scheduler] Search trends refresh: "
                 f"success={result.success}, records={result.records}"
             )
-        finally:
-            db.close()
 
 
 def run_china_macro_refresh():
@@ -821,16 +757,13 @@ def run_research_reports_daily():
         if not acquired:
             print("⚠️ [SCHEDULER_WARN] Research-reports refresh skipped: lock in use")
             return
-        db = SessionLocal()
-        try:
+        with SessionLocal() as db:
             pipeline = ResearchReportsPipeline(db)
             result = pipeline.run_with_retry(max_attempts=2)
             print(
                 f"[Scheduler] Research-reports daily: "
                 f"success={result.success}, records={result.records}"
             )
-        finally:
-            db.close()
 
 
 def run_summarize_pending_reports():
@@ -845,13 +778,10 @@ def run_summarize_pending_reports():
         if not acquired:
             print("⚠️ [SCHEDULER_WARN] Research-reports summarize skipped: lock in use")
             return
-        db = SessionLocal()
-        try:
+        with SessionLocal() as db:
             service = ResearchReportService(db)
             count = service.summarize_pending_reports(batch_size=20, max_per_run=20)
             print(f"[Scheduler] Research-reports summarize: {count} summarized")
-        finally:
-            db.close()
 
 
 def run_paper_trade_market_update():
@@ -866,15 +796,12 @@ def run_paper_trade_market_update():
         if not acquired:
             print("⚠️ [SCHEDULER_WARN] Paper trade market update skipped: lock in use")
             return
-        db = SessionLocal()
-        try:
+        with SessionLocal() as db:
             from app.services.paper_trading_service import PaperTradingService
 
             service = PaperTradingService(db)
             updated = service.update_market_values()
             print(f"[Scheduler] Paper trade market update: {updated} positions refreshed")
-        finally:
-            db.close()
 
 
 def run_paper_trade_auto():
@@ -900,25 +827,27 @@ def run_paper_trade_auto():
         if not acquired:
             print("⚠️ [SCHEDULER_WARN] Paper trade auto skipped: lock in use")
             return
-        db = SessionLocal()
-        try:
+        # Fetch account IDs in a short session; each account trades in its own
+        # session so a long-running trade does not hold a connection.
+        with SessionLocal() as db:
             from app.services.paper_trading_service import PaperTradingService
 
             service = PaperTradingService(db)
-            accounts = service.get_accounts()
-            total_orders = 0
-            for acct in accounts:
-                try:
-                    orders = service.auto_trade_from_signals(acct.id)
+            account_ids = [acct.id for acct in service.get_accounts()]
+
+        total_orders = 0
+        for account_id in account_ids:
+            try:
+                with SessionLocal() as db:
+                    service = PaperTradingService(db)
+                    orders = service.auto_trade_from_signals(account_id)
                     total_orders += len(orders)
-                except Exception:
-                    continue
-            print(
-                f"[Scheduler] Paper trade auto: {total_orders} orders "
-                f"across {len(accounts)} accounts"
-            )
-        finally:
-            db.close()
+            except Exception:
+                continue
+        print(
+            f"[Scheduler] Paper trade auto: {total_orders} orders "
+            f"across {len(account_ids)} accounts"
+        )
 
 
 def run_signal_generation(target_date: date | None = None):
@@ -927,10 +856,8 @@ def run_signal_generation(target_date: date | None = None):
     Args:
         target_date: If provided, generate signals for this date instead of today.
     """
-    db = SessionLocal()
-    try:
-        signal_service = SignalService(db)
-
+    # Short-lived session: only read config and the instrument universe.
+    with SessionLocal() as db:
         # Scheduler-generated signals are owned by the system admin (id=1).
         default_user_id = db.query(User.id).filter(User.id == 1).scalar() or 1
 
@@ -952,8 +879,6 @@ def run_signal_generation(target_date: date | None = None):
 
         # Get all active instruments (ETFs, stocks, crypto).
         etfs = db.query(ETFInfo).filter(ETFInfo.status == "active").all()
-    finally:
-        db.close()
 
     expire_seconds = max(1800, min(14400, len(active_strategies) * len(etfs) * 2))
 
@@ -962,8 +887,10 @@ def run_signal_generation(target_date: date | None = None):
             print("⚠️ [SCHEDULER_WARN] Signal generation skipped: could not acquire pipeline lock")
             return
 
-        db = SessionLocal()
-        try:
+        # Create a fresh session for the actual signal generation so the
+        # config-reading session above can be closed promptly.
+        with SessionLocal() as db:
+            signal_service = SignalService(db)
             trade_date = target_date or date.today()
             total_signals = 0
             etf_codes = [e.code for e in etfs]
@@ -1007,8 +934,6 @@ def run_signal_generation(target_date: date | None = None):
                     print(f"[Scheduler] Signal generation failed for strategy {strategy_id}: {e}")
 
             print(f"[Scheduler] Signal generation (target={target_date}): {total_signals} signals generated")
-        finally:
-            db.close()
 
 
 def run_cninfo_reports_daily():
