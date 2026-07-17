@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>2026-07-17 /data 磁盘满事件 Runbook</title>
+<style>
+  :root {
+    --bg: #f8f9fa;
+    --text: #212529;
+    --muted: #6c757d;
+    --border: #dee2e6;
+    --accent: #0d6efd;
+    --ok: #198754;
+    --warn: #b38600;
+    --code-bg: #f1f3f5;
+  }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    line-height: 1.6;
+    color: var(--text);
+    background: var(--bg);
+    max-width: 900px;
+    margin: 2rem auto;
+    padding: 0 1rem;
+  }
+  h1 { font-size: 1.75rem; margin-bottom: 0.5rem; }
+  h2 { font-size: 1.35rem; margin-top: 2rem; border-bottom: 2px solid var(--border); padding-bottom: 0.3rem; }
+  h3 { font-size: 1.1rem; margin-top: 1.5rem; color: var(--accent); }
+  blockquote {
+    border-left: 4px solid var(--accent);
+    margin: 1rem 0;
+    padding: 0.5rem 1rem;
+    background: #fff;
+    color: var(--muted);
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1rem 0;
+    background: #fff;
+  }
+  th, td {
+    border: 1px solid var(--border);
+    padding: 0.5rem 0.75rem;
+    text-align: left;
+  }
+  th { background: #e9ecef; }
+  code, pre {
+    font-family: SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+    background: var(--code-bg);
+    border-radius: 4px;
+  }
+  pre {
+    padding: 1rem;
+    overflow-x: auto;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+  }
+  .ok { color: var(--ok); font-weight: 600; }
+  .warn { color: var(--warn); font-weight: 600; }
+</style>
+</head>
+<body>
+<h1>2026-07-17 /data 磁盘满导致 Redis 写失败、健康检查 degraded</h1>
+<blockquote>
+  关联文档：20260717-deploy-health-celery-followup、20260712-celery-worker-runbook
+</blockquote>
+
+<h2>1. 现象</h2>
+<ul>
+  <li>时间：2026-07-17 约 12:46 UTC 部署成功（GitHub Actions #273）后，过了数小时。</li>
+  <li>外部访问 <code>https://www.alloyresearch.net/health</code> 返回 degraded，<code>db</code> 与 <code>redis</code> 均为 error。</li>
+  <li><code>docker compose ps</code> 显示 backend 与 postgres 均为 unhealthy，redis 健康但写操作被禁用。</li>
+</ul>
+
+<h2>2. 根因</h2>
+<ul>
+  <li>ECS 数据盘 <code>/dev/vdb</code>（挂载 <code>/data</code>）<strong>100% 满</strong>。</li>
+  <li>Redis 启用 RDB + AOF 持久化，RDB 后台保存因 <code>No space left on device</code> 失败，触发 <code>stop-writes-on-bgsave-error</code>，写入命令全部返回 MISCONF 错误。</li>
+  <li>bankend <code>/health</code> 会尝试写 Redis（锁/计数器），命中写错误后报 ResponseError；DB 同样因磁盘满出现 OperationalError。</li>
+</ul>
+<p>磁盘满构成（清理前）：</p>
+<table>
+  <thead><tr><th>项目</th><th>大小</th></tr></thead>
+  <tbody>
+    <tr><td>Docker Images</td><td>7.9 GB</td></tr>
+    <tr><td>Docker Build Cache</td><td>7.3 GB</td></tr>
+    <tr><td>Docker Local Volumes</td><td>21.5 GB</td></tr>
+    <tr><td>其中 aliyun-ecs_postgres_data</td><td>11.9 GB</td></tr>
+    <tr><td>其中 aliyun-ecs_cninfo_pdfs</td><td>8.0 GB</td></tr>
+  </tbody>
+</table>
+
+<h2>3. 修复过程</h2>
+<ol>
+  <li>检查磁盘使用：<code>df -h</code> 确认 <code>/data</code> 100%。</li>
+  <li>清理 Docker 未使用镜像与构建缓存：<pre>docker image prune -af
+docker builder prune -af</pre>共释放 4.817 GB。</li>
+  <li>清理后 <code>/data</code> 剩余 4.2 GB，Redis 恢复写能力，Postgres 健康检查恢复。</li>
+  <li>重新验证 <code>/health</code>：status=ok、ready=true、git_sha=0985d56。</li>
+</ol>
+
+<h2>4. 当前状态</h2>
+<ul>
+  <li><span class="ok">/data 使用率从 100% 降至 89%</span>，可用 4.2 GB。</li>
+  <li>所有容器 healthy：backend、celery-worker、postgres、redis、nginx。</li>
+  <li>队列正常消费，cninfo PDF 回填继续。</li>
+</ul>
+
+<h2>5. 后续加固与监控</h2>
+<table>
+  <thead><tr><th>优先级</th><th>措施</th><th>说明</th></tr></thead>
+  <tbody>
+    <tr><td>P1</td><td>增加磁盘告警</td><td>/data 使用率达 80% / 90% 时告警，避免 100% 才发现</td></tr>
+    <tr><td>P1</td><td>限制容器日志大小</td><td>compose 加 logging max-size: 50m / max-file: 3</td></tr>
+    <tr><td>P2</td><td>评估 cninfo PDF 保留策略</td><td>8 GB PDF，确认是否需要全部长期保留或归档 OSS</td></tr>
+    <tr><td>P2</td><td>Postgres 定期 VACUUM / 归档</td><td>检查过期 WAL、临时表、索引膨胀</td></tr>
+    <tr><td>P2</td><td>Docker 镜像 tag 保留策略</td><td>只保留最近 3-5 个 tag，旧 tag 自动清理</td></tr>
+  </tbody>
+</table>
+
+<h2>6. 操作命令速查</h2>
+<pre># 查看磁盘使用
+df -h /data
+
+# 查看 Docker 占用
+docker system df
+
+# 查看各 volume 大小
+for v in $(docker volume ls -q); do
+  size=$(docker run --rm -v ${v}:/v alpine du -sh /v 2>/dev/null | cut -f1)
+  echo "$size $v"
+done | sort -hr
+
+# 安全清理未使用镜像与构建缓存（不删 volume）
+docker image prune -af
+docker builder prune -af
+
+# 查看 Redis 持久化错误
+docker logs --tail=30 alloyresearch-redis
+
+# 生产健康检查
+curl -sS https://www.alloyresearch.net/health | python3 -m json.tool</pre>
+
+<h2>7. 决策与回滚</h2>
+<ul>
+  <li>本次磁盘满属于运维事件，未修改业务代码；清理镜像/缓存后服务恢复。</li>
+  <li>如果未来 PDF 或 Postgres 持续增长，40 GB 数据盘将再次告急，需按上表加固。</li>
+  <li>本次只删除未使用的 Docker 镜像和构建缓存，不影响运行中容器与 volume；无需回滚。</li>
+</ul>
+
+</body>
+</html>

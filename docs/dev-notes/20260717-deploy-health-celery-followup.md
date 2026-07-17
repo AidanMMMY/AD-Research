@@ -94,9 +94,19 @@ docker exec alloyresearch-celery-worker celery -A app.core.celery_app inspect ac
 
 # 手动回滚到某个 commit
 bash scripts/rollback.sh <COMMIT_SHA>
+
+# 磁盘满应急清理（见 20260717-disk-full-redis-write-error）
+docker image prune -af
+docker builder prune -af
 ```
 
-## 6. 决策与回滚
+## 6. 新增关联事件：2026-07-17 /data 磁盘满
+
+- 本次部署成功后数小时，`/data` 数据盘 100% 满，导致 Redis 触发 `stop-writes-on-bgsave-error`，`/health` 返回 degraded。
+- 已执行 `docker image prune -af` + `docker builder prune -af` 释放 4.817 GB，服务恢复。
+- 详细根因、命令、加固措施见专门 runbook：[[20260717-disk-full-redis-write-error]]。
+
+## 7. 决策与回滚
 
 - **决策**：本次修改同时涉及部署脚本、Docker 配置、健康检查、数据库索引、Celery 任务，属于跨多文件重构，已同步更新本决策日志、代码注释与 MEMORY 指针。
 - **回滚方式**：若新代码导致问题，可执行 `bash scripts/rollback.sh <previous_commit_sha>`；ECS 当前已恢复，回滚目标镜像 `ad-research:0ba98c2` 仍存在。
