@@ -6,12 +6,15 @@
 #   <git-rev-before>   要回退到的 commit hash（短 / 长均可）
 #
 # 行为：
-#   1. 备份当前 HEAD 到 /var/log/ad-research/rollback-latest.log
-#   2. git reset --hard 到目标 commit
-#   3. 切换 docker 镜像 tag：ad-research:${TARGET_SHA} → ad-research:latest
-#   4. 重新启动 backend / celery-worker / nginx
-#   5. 容器内健康检查 60s，要求 /health status=ok
-#   6. 输出变更摘要
+#   1. 备份当前 HEAD 到 /var/log/ad-research/rollback-YYYYMMDD-HHMMSS.log
+#      并通过 rollback-latest.log 软链接指向最新日志
+#   2. 将当前 HEAD 写入 /var/log/ad-research/previous_head-YYYYMMDD-HHMMSS.txt
+#      并通过 previous_head 软链接指向最新快照，便于后续自动回滚读取
+#   3. git reset --hard 到目标 commit
+#   4. 切换 docker 镜像 tag：ad-research:${TARGET_SHA} → ad-research:latest
+#   5. 重新启动 backend / celery-worker / nginx
+#   6. 容器内健康检查 60s，要求 /health status=ok
+#   7. 输出变更摘要
 #
 # 失败处理：
 #   任何阶段出错即退出，明确给出「回滚失败」提示，
@@ -26,7 +29,8 @@ PROJECT_ROOT="${PROJECT_ROOT:-/opt/ad-research}"
 COMPOSE_DIR="${PROJECT_ROOT}/deploy/aliyun-ecs"
 COMPOSE_FILE="${COMPOSE_DIR}/docker-compose.yml"
 ROLLBACK_LOG_DIR="/var/log/ad-research"
-ROLLBACK_LOG="${ROLLBACK_LOG_DIR}/rollback-latest.log"
+ROLLBACK_LOG=""
+ROTATE_HELPER="${SCRIPT_DIR}/rotate-log.sh"
 BACKEND_CONTAINER="alloyresearch-backend"
 
 RED='\033[0;31m'
@@ -104,13 +108,19 @@ fi
 log_info "当前 HEAD: ${PREV:0:7}"
 log_info "目标 commit: ${TARGET_SHA}"
 
-# ── 1. 备份当前 HEAD ──
+# ── 1. 备份当前 HEAD / 准备回滚日志 ──
 log_step "1/5 备份当前 HEAD"
 
-mkdir -p "$ROLLBACK_LOG_DIR" 2>/dev/null || {
+if ROLLBACK_LOG=$(bash "${ROTATE_HELPER}" "${ROLLBACK_LOG_DIR}" "rollback" "log" "rollback-latest.log" 10 2>/dev/null); then
+    # 同时记录本次回滚前的 HEAD 作为 previous_head 快照
+    if PREVIOUS_HEAD_LOG=$(bash "${ROTATE_HELPER}" "${ROLLBACK_LOG_DIR}" "previous_head" "txt" "previous_head" 10 2>/dev/null); then
+        echo "${PREV}" > "${PREVIOUS_HEAD_LOG}"
+    fi
+else
     log_warn "无法创建 ${ROLLBACK_LOG_DIR}，回滚日志将写入 /tmp"
     ROLLBACK_LOG="/tmp/ad-research-rollback-latest.log"
-}
+    mkdir -p "$(dirname "${ROLLBACK_LOG}")" 2>/dev/null || true
+fi
 
 {
     echo "============================================"
@@ -118,6 +128,7 @@ mkdir -p "$ROLLBACK_LOG_DIR" 2>/dev/null || {
     echo "rollback target:    ${TARGET_FULL}"
     echo "rollback previous:  ${PREV}"
     echo "rollback operator:  ${USER:-unknown}"
+    echo "log file:           ${ROLLBACK_LOG}"
     echo "============================================"
     echo ""
     echo "[git status before rollback]"

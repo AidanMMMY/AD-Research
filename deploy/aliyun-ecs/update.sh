@@ -25,6 +25,20 @@ log_step()  { echo -e "\n${GREEN}━━━ $1 ━━━${NC}"; }
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 ENV_FILE="${SCRIPT_DIR}/.env"
+DEPLOY_LOG_DIR="/var/log/ad-research"
+ROTATE_HELPER="${PROJECT_ROOT}/scripts/rotate-log.sh"
+
+DEPLOY_LOG=""
+if DEPLOY_LOG=$(bash "${ROTATE_HELPER}" "${DEPLOY_LOG_DIR}" "deploy" "log" "deploy-latest.log" 10 2>/dev/null); then
+    :
+else
+    echo "[WARN] 无法创建 ${DEPLOY_LOG_DIR}，deploy 日志将写入 /tmp/ad-research-deploy-latest.log" >&2
+    DEPLOY_LOG="/tmp/ad-research-deploy-latest.log"
+fi
+# 后续所有 stdout/stderr 同时写入 deploy 日志
+exec > >(tee -a "${DEPLOY_LOG}") 2>&1
+
+log_info "deploy 日志: ${DEPLOY_LOG}"
 
 # ============================================================
 # 4.5 Race-condition 防护：手动/自动 deploy 互斥
@@ -117,6 +131,12 @@ set -a; source "$ENV_FILE"; set +a
 GIT_SHA=$(git rev-parse --short HEAD)
 log_info "当前部署版本: ${GIT_SHA}"
 export GIT_SHA
+
+# 记录部署前 HEAD（previous_head），与 rollback.sh 保持一致的命名/轮换策略
+if PREVIOUS_HEAD_LOG=$(bash "${ROTATE_HELPER}" "${DEPLOY_LOG_DIR}" "previous_head" "txt" "previous_head" 10 2>/dev/null); then
+    git rev-parse HEAD > "${PREVIOUS_HEAD_LOG}"
+    log_info "previous_head 已写入: ${PREVIOUS_HEAD_LOG}"
+fi
 
 # ── 1. 构建镜像 ──
 log_step "1/4 构建镜像"

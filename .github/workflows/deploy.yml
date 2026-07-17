@@ -56,10 +56,11 @@ jobs:
             TARGET_REF="${{ inputs.ref }}"
           fi
 
-          mkdir -p "${ROLLBACK_LOG_DIR}" 2>/dev/null || \
+          if ! PREVIOUS_LOG=$(bash "${PROJECT_ROOT}/scripts/rotate-log.sh" "${ROLLBACK_LOG_DIR}" "previous_head" "txt" "previous_head" 10 2>/dev/null); then
             echo "[WARN] 无法创建 ${ROLLBACK_LOG_DIR}，previous_head 将写入 /tmp"
+            PREVIOUS_LOG="/tmp/previous_head"
+          fi
 
-          PREVIOUS_LOG="${ROLLBACK_LOG_DIR}/previous_head"
           PREVIOUS_HEAD=$(git rev-parse HEAD)
           echo "${PREVIOUS_HEAD}" | tee "${PREVIOUS_LOG}"
           echo "previous_head=${PREVIOUS_HEAD}" >> $GITHUB_OUTPUT
