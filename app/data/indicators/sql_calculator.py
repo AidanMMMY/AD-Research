@@ -39,6 +39,7 @@ from __future__ import annotations
 
 import logging
 import os
+import time
 from datetime import date
 from typing import Iterable
 
@@ -89,6 +90,35 @@ RETURN_WINDOWS: dict[str, int] = {
 # Annualisation factor (trading days per year) and risk-free rate.
 TRADING_DAYS_PER_YEAR = 252
 RISK_FREE_RATE = 0.02
+
+# Query timeout. The SQL backend must stay within the 600 s orchestrator
+# budget per chunk, so the default statement timeout is 600 000 ms.
+INDICATOR_SQL_STATEMENT_TIMEOUT_MS: int = int(
+    os.environ.get("INDICATOR_SQL_STATEMENT_TIMEOUT_MS", "600000")
+)
+
+# The longest look-back is the 252-day risk window. A latest-only run must
+# read at least this many bars or the 1-year risk metrics will be computed
+# on a truncated sample and lose precision.
+_MIN_SAFE_MAX_BARS: int = 252
+
+
+def _get_max_bars_for_prefix(prefix: str | None) -> int:
+    """Resolve the per-prefix ``max_bars`` cap for latest-only runs.
+
+    ``full_history`` ignores this value entirely (it scans the whole
+    history). The default is read from ``INDICATOR_SQL_MAX_BARS``; a
+    prefix can be tuned with ``INDICATOR_SQL_MAX_BARS_PREFIX_<P>``,
+    e.g. ``INDICATOR_SQL_MAX_BARS_PREFIX_6=280`` for the dense Shanghai
+    A-share shard.
+    """
+    default = int(os.environ.get("INDICATOR_SQL_MAX_BARS", "300"))
+    if not prefix:
+        return default
+    override = os.environ.get(f"INDICATOR_SQL_MAX_BARS_PREFIX_{prefix}")
+    if override:
+        return int(override)
+    return default
 
 # Columns the calculator writes back to ETFIndicator. Must match
 # ``calculator._INDICATOR_COLUMNS`` so the existing upsert works
@@ -239,7 +269,7 @@ def _ema_chain(span: int) -> str:
 
 
 def build_indicator_query_sql(
-    *, full_history: bool, target_filter_sql: str = ""
+    *, full_history: bool, target_filter_sql: str = "", max_bars: int | None = None
 ) -> str:
     """Build the full per-code indicator SELECT statement.
 
@@ -251,7 +281,17 @@ def build_indicator_query_sql(
     # we only need enough bars to warm up that window plus a safety margin;
     # reading the entire history per code is wasteful and dominates runtime
     # for instruments with many years of daily bars.
-    max_bars = None if full_history else int(os.environ.get("INDICATOR_SQL_MAX_BARS", "300"))
+    if full_history:
+        max_bars = None
+    elif max_bars is None:
+        max_bars = int(os.environ.get("INDICATOR_SQL_MAX_BARS", "300"))
+
+    if max_bars is not None and max_bars < _MIN_SAFE_MAX_BARS:
+        logger.warning(
+            "INDICATOR_SQL_MAX_BARS=%d is below the 252-day minimum; "
+            "1-year risk indicators may be computed on a truncated sample.",
+            max_bars,
+        )
     windowed_cte = _bars_source_cte(":codes", target_filter_sql, max_bars=max_bars)
 
     one_minus_rsi = RSI_WINDOW - 1
@@ -569,20 +609,26 @@ def _execute_indicator_query(
     target_filter_sql = "AND b.trade_date <= :target_date"
     params: dict = {"codes": codes_list, "target_date": effective_target}
 
+    prefix = codes_list[0][0] if codes_list else None
+    max_bars = None if full_history else _get_max_bars_for_prefix(prefix)
     sql = build_indicator_query_sql(
         full_history=full_history,
         target_filter_sql=target_filter_sql,
+        max_bars=max_bars,
     )
 
     stmt = text(sql).bindparams(bindparam("codes", type_=ARRAY(TEXT)))
     stmt = stmt.bindparams(target_date=effective_target)
 
     logger.info(
-        "sql_calculator: running indicator query codes=%d full_history=%s target=%s",
+        "sql_calculator: running indicator query codes=%d full_history=%s target=%s max_bars=%s",
         len(codes_list),
         full_history,
         effective_target,
+        max_bars,
     )
+    start = time.perf_counter()
+    rows: list[dict] = []
     # Use a detached AUTOCOMMIT Core connection for each indicator query.
     # Detaching forces SQLAlchemy to close the underlying DBAPI connection
     # when done instead of returning it to the pool.  This avoids the
@@ -591,15 +637,21 @@ def _execute_indicator_query(
     # server-side activity.
     conn = db.bind.connect().execution_options(isolation_level="AUTOCOMMIT")
     try:
-        # 600000 ms = 10 min: the full ~8k A-share universe can exceed the
-        # old 60 s budget during cold-cache / first-run execution.
-        conn.execute(text("SET statement_timeout = '600000'"))
+        # The statement timeout enforces the 600 s per-chunk budget.
+        conn.execute(text(f"SET statement_timeout = '{INDICATOR_SQL_STATEMENT_TIMEOUT_MS}'"))
         with conn.execute(stmt, params) as result:
             columns = result.keys()
             rows = [dict(zip(columns, row)) for row in result.fetchall()]
     finally:
+        elapsed = time.perf_counter() - start
         conn.detach()
         conn.close()
+    logger.info(
+        "sql_calculator: indicator query finished codes=%d rows=%d elapsed=%.3fs",
+        len(codes_list),
+        len(rows),
+        elapsed,
+    )
     return rows
 
 

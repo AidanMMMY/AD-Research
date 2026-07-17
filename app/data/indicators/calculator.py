@@ -22,7 +22,9 @@ call time so the operator can A/B test without a redeploy).
 
 import logging
 import os
+import time
 from datetime import date, datetime
+from typing import Iterable
 
 import pandas as pd
 from sqlalchemy import or_, select
@@ -56,8 +58,54 @@ INDICATOR_BACKEND: str = os.environ.get("INDICATOR_BACKEND", "pandas").lower()
 # never returned).  We default to 20 to keep each individual query
 # well under 30 s on the 7.1 GB ECS instance.  Override via env var
 # if you need finer control (e.g. INDICATOR_SQL_CHUNK_SIZE=10 on
-# a smaller box, or =50 on a beefier one).
-_SQL_BATCH_CHUNK_SIZE: int = int(os.environ.get("INDICATOR_SQL_CHUNK_SIZE", "20"))
+# a smaller box, or =50 on a beefier one).  Prefix-specific overrides
+# are resolved by ``_get_sql_chunk_size_for_prefix`` below.
+
+
+def _get_sql_chunk_size_for_prefix(prefix: str | None) -> int:
+    """Resolve the per-prefix SQL chunk size.
+
+    ``INDICATOR_SQL_CHUNK_SIZE`` sets the global default. Operators can
+    override individual prefixes with ``INDICATOR_SQL_CHUNK_SIZE_PREFIX_<P>``.
+    Prefix ``6`` (Shanghai-listed A-shares) defaults to 15 because the
+    2026-07-15 catch-up showed that shard is the densest and most likely
+    to exceed the 600 s per-chunk budget when using the default size of 20.
+    """
+    default = int(os.environ.get("INDICATOR_SQL_CHUNK_SIZE", "20"))
+    if not prefix:
+        return default
+    override = os.environ.get(f"INDICATOR_SQL_CHUNK_SIZE_PREFIX_{prefix}")
+    if override:
+        return int(override)
+    if prefix == "6":
+        return 15
+    return default
+
+
+def _iter_code_chunks(
+    codes: list[str], prefix_hint: str | list[str] | None
+) -> Iterable[tuple[str, list[str]]]:
+    """Yield ``(prefix, chunk)`` pairs for SQL backend execution.
+
+    When a single prefix is hinted (e.g. ``code_prefix='6'``), all codes
+    are chunked with that prefix's size. Otherwise codes are grouped by
+    their first character so each prefix can use its own chunk size and
+    a single mixed-market task does not force a one-size-fits-all plan.
+    """
+    if isinstance(prefix_hint, str):
+        size = _get_sql_chunk_size_for_prefix(prefix_hint)
+        for i in range(0, len(codes), size):
+            yield prefix_hint, codes[i : i + size]
+        return
+
+    by_prefix: dict[str, list[str]] = {}
+    for c in codes:
+        by_prefix.setdefault(c[0] if c else "", []).append(c)
+    for prefix, p_codes in sorted(by_prefix.items()):
+        size = _get_sql_chunk_size_for_prefix(prefix)
+        for i in range(0, len(p_codes), size):
+            yield prefix, p_codes[i : i + size]
+
 
 # Mapping of DataFrame column names to ETFIndicator model attribute names
 _INDICATOR_COLUMNS = [
@@ -308,6 +356,7 @@ def batch_calculate_indicators(
                 code_meta,
                 target_date=target_date,
                 full_history=full_history,
+                code_prefix=code_prefix,
             )
         except Exception as exc:
             errors.append(f"sql-backend: {exc}")
@@ -443,10 +492,11 @@ def _batch_calculate_indicators_sql(
     *,
     target_date: date | None,
     full_history: bool,
+    code_prefix: str | list[str] | None = None,
 ) -> int:
     """SQL-backend path: chunked single-query execution + UPSERT.
 
-    Iterates the codes in ``_SQL_BATCH_CHUNK_SIZE`` chunks, runs
+    Iterates the codes in prefix-aware chunks, runs
     ``sql_calculate_latest`` / ``sql_calculate_full_history`` for
     each chunk, and UPSERTs the rows into ``etf_indicator``.
 
@@ -472,16 +522,20 @@ def _batch_calculate_indicators_sql(
     fallback_count = 0
     runner = sql_calculate_full_history if full_history else sql_calculate_latest
 
-    for chunk_start in range(0, len(codes), _SQL_BATCH_CHUNK_SIZE):
-        chunk = codes[chunk_start : chunk_start + _SQL_BATCH_CHUNK_SIZE]
+    chunk_index = 0
+    for prefix, chunk in _iter_code_chunks(codes, code_prefix):
+        chunk_index += 1
         logger.info(
-            "indicator_calc[sql]: processing chunk %d-%d / %d",
-            chunk_start,
-            chunk_start + len(chunk),
+            "indicator_calc[sql]: processing chunk %d prefix=%s size=%d / total=%d",
+            chunk_index,
+            prefix,
+            len(chunk),
             len(codes),
         )
+        t0 = time.perf_counter()
         try:
             rows = runner(db, chunk, target_date=target_date)
+            elapsed = time.perf_counter() - t0
             records = [build_indicator_payload(r) for r in rows]
             # Defensive upsert: drop any record that came back all-NULL
             # (e.g. a code whose bars CTE partition ended up empty
@@ -489,6 +543,13 @@ def _batch_calculate_indicators_sql(
             # ``_drop_empty_indicator_rows`` logs each skip so we have
             # a paper trail for what got filtered.
             records = _drop_empty_indicator_rows(records)
+            logger.info(
+                "indicator_calc[sql]: chunk %d prefix=%s rows=%d elapsed=%.3fs",
+                chunk_index,
+                prefix,
+                len(records),
+                elapsed,
+            )
             if not records:
                 continue
             insert_stmt = insert(ETFIndicator).values(records)
@@ -500,12 +561,14 @@ def _batch_calculate_indicators_sql(
             db.commit()
             updated_count += len(records)
         except Exception as exc:
+            elapsed = time.perf_counter() - t0
             db.rollback()
             logger.warning(
-                "indicator_calc[sql]: chunk %d-%d failed (%s), "
+                "indicator_calc[sql]: chunk %d prefix=%s failed after %.3fs (%s), "
                 "falling back to pandas for %d codes",
-                chunk_start,
-                chunk_start + len(chunk),
+                chunk_index,
+                prefix,
+                elapsed,
                 exc,
                 len(chunk),
             )
