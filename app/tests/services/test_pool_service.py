@@ -5,8 +5,13 @@ Focuses on lifecycle: create -> add member -> list -> soft-delete.
 
 from app.models.etf import ETFInfo
 from app.models.pool import ETFPools, PoolMember
+from app.schemas.auth import UserResponse
 from app.schemas.pool import PoolCreate, PoolMemberCreate, PoolUpdate
 from app.services.pool_service import PoolService
+
+
+TEST_USER = UserResponse(id=1, username="test", role="user")
+ADMIN_USER = UserResponse(id=2, username="admin", role="admin")
 
 
 def _seed_etfs(db, codes):
@@ -25,10 +30,10 @@ def test_create_pool_returns_response(db_session):
 
 def test_list_pools_excludes_deleted(db_session):
     svc = PoolService(db_session)
-    p1 = svc.create_pool(PoolCreate(name="A", description=""))
-    p2 = svc.create_pool(PoolCreate(name="B", description=""))
-    svc.delete_pool(p2.id)
-    visible = [p.name for p in svc.list_pools()]
+    p1 = svc.create_pool(PoolCreate(name="A", description=""), current_user=TEST_USER)
+    p2 = svc.create_pool(PoolCreate(name="B", description=""), current_user=TEST_USER)
+    svc.delete_pool(p2.id, current_user=TEST_USER)
+    visible = [p.name for p in svc.list_pools(current_user=TEST_USER)]
     assert visible == ["A"]
 
 
@@ -68,8 +73,8 @@ def test_add_member_then_remove_is_idempotent(db_session):
 
 def test_delete_pool_soft_deletes(db_session):
     svc = PoolService(db_session)
-    pool = svc.create_pool(PoolCreate(name="X", description=""))
-    assert svc.delete_pool(pool.id) is True
+    pool = svc.create_pool(PoolCreate(name="X", description=""), current_user=TEST_USER)
+    assert svc.delete_pool(pool.id, current_user=TEST_USER) is True
     # Second delete is a no-op
-    assert svc.delete_pool(pool.id) is False
-    assert svc.get_pool(pool.id) is None
+    assert svc.delete_pool(pool.id, current_user=TEST_USER) is False
+    assert svc.get_pool(pool.id, current_user=TEST_USER) is None
