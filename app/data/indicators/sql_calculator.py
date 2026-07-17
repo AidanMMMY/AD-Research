@@ -38,6 +38,7 @@ Public entrypoints
 from __future__ import annotations
 
 import logging
+import os
 from datetime import date
 from typing import Iterable
 
@@ -250,7 +251,7 @@ def build_indicator_query_sql(
     # we only need enough bars to warm up that window plus a safety margin;
     # reading the entire history per code is wasteful and dominates runtime
     # for instruments with many years of daily bars.
-    max_bars = None if full_history else 500
+    max_bars = None if full_history else int(os.environ.get("INDICATOR_SQL_MAX_BARS", "300"))
     windowed_cte = _bars_source_cte(":codes", target_filter_sql, max_bars=max_bars)
 
     one_minus_rsi = RSI_WINDOW - 1

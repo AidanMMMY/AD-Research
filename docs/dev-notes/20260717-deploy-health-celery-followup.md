@@ -42,6 +42,16 @@
 | 新增日刷 Celery 任务 | `app/tasks/cninfo.py:132-164` | `refresh_cninfo_reports_daily` 在 worker 中执行 `CninfoReportsPipeline` |
 | scheduler 改为提交 Celery | `app/core/scheduler.py:1009-1019` | `run_cninfo_reports_daily` 调用 `.delay()`，backend 重启不中断 |
 
+### 2.4 2026-07-15 A 股指标补齐收尾
+
+| 修复点 | 文件 | 说明 |
+|---|---|---|
+| SQL indicator 性能调优 | `app/data/indicators/sql_calculator.py` | `max_bars` 默认从 500 降至 300，减少递归 CTE 行数 |
+| worker 并发与队列恢复 | `deploy/aliyun-ecs/docker-compose.yml` | 并发从 2 提到 3，命令恢复为 `-Q celery,indicator,cninfo` |
+| 高波动字段溢出问题 | `app/models/etf.py`、`alembic/versions/2026_07_17_widen_etf_indicator_volatility_sharpe.py` | `volatility_20d/volatility_60d/sharpe_1y` 从 `numeric(8,4)` 扩到 `numeric(12,4)`，解决 `600653.SH` 等极值写入失败 |
+| Redis `unacked` 重入队 | ECS 临时脚本 `/tmp/requeue_unacked.py` | worker 重启后滞留在 `unacked` 的 indicator 任务重新 `LPUSH` 回队列 |
+| 临时文件清理 | ECS `/tmp`、本地 `/tmp` | trigger/requeue/test 脚本已删除 |
+
 ## 3. 验证结果
 
 - `python -m py_compile app/core/health.py app/core/scheduler.py app/tasks/cninfo.py alembic/versions/2026_07_17_add_instrument_daily_bar_trade_date_index.py` 通过

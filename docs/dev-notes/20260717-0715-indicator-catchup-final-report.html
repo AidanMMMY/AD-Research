@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>2026-07-17 11:00 A 股 2026-07-15 指标补齐复盘报告</title>
+<style>
+  :root {
+    --bg: #f8f9fa;
+    --text: #212529;
+    --muted: #6c757d;
+    --border: #dee2e6;
+    --accent: #0d6efd;
+    --ok: #198754;
+    --warn: #ffc107;
+    --code-bg: #f1f3f5;
+  }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    line-height: 1.6;
+    color: var(--text);
+    background: var(--bg);
+    max-width: 900px;
+    margin: 2rem auto;
+    padding: 0 1rem;
+  }
+  h1 { font-size: 1.75rem; margin-bottom: 0.5rem; }
+  h2 { font-size: 1.35rem; margin-top: 2rem; border-bottom: 2px solid var(--border); padding-bottom: 0.3rem; }
+  h3 { font-size: 1.1rem; margin-top: 1.5rem; color: var(--accent); }
+  blockquote {
+    border-left: 4px solid var(--accent);
+    margin: 1rem 0;
+    padding: 0.5rem 1rem;
+    background: #fff;
+    color: var(--muted);
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1rem 0;
+    background: #fff;
+  }
+  th, td {
+    border: 1px solid var(--border);
+    padding: 0.5rem 0.75rem;
+    text-align: left;
+  }
+  th { background: #e9ecef; }
+  code, pre {
+    font-family: SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+    background: var(--code-bg);
+    border-radius: 4px;
+  }
+  pre {
+    padding: 1rem;
+    overflow-x: auto;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+  }
+  .ok { color: var(--ok); font-weight: 600; }
+  .warn { color: #b38600; font-weight: 600; }
+  .badge {
+    display: inline-block;
+    padding: 0.15rem 0.5rem;
+    border-radius: 999px;
+    font-size: 0.8rem;
+    font-weight: 600;
+  }
+  .badge-ok { background: #d1e7dd; color: #0f5132; }
+  .badge-warn { background: #fff3cd; color: #664d03; }
+</style>
+</head>
+<body>
+<h1>2026-07-17 11:00 A 股 2026-07-15 指标补齐复盘报告</h1>
+<blockquote>
+  报告生成时间：2026-07-17 11:37 CST（最终检查时间，因 SSH 等待连接 reset 略有延迟）<br>
+  报告人：Claude Code（总管 / 子 agent 调度）<br>
+  关联文档：20260717-deploy-health-celery-followup、20260712-celery-worker-runbook、20260717-indicator-catchup-temp-worker
+</blockquote>
+
+<h2>1. 最终结果</h2>
+<table>
+<thead>
+<tr><th>指标</th><th>数值</th><th>状态</th></tr>
+</thead>
+<tbody>
+<tr><td>A 股 2026-07-15 有 bars 的代码数</td><td><strong>7,066</strong></td><td><span class="badge badge-ok">基准</span></td></tr>
+<tr><td><code>etf_indicator</code> 2026-07-15 行数</td><td><strong>7,066</strong></td><td><span class="badge badge-ok">100% 补齐</span></td></tr>
+<tr><td>与目标差值</td><td>0</td><td><span class="badge badge-ok">达标</span></td></tr>
+<tr><td><code>indicator</code> 队列长度</td><td>0</td><td><span class="badge badge-ok">已清空</span></td></tr>
+<tr><td><code>cninfo</code> 队列长度</td><td>14</td><td><span class="badge badge-warn">正常消费中</span></td></tr>
+<tr><td><code>celery</code> 队列长度</td><td>0</td><td><span class="badge badge-ok">正常</span></td></tr>
+<tr><td>celery-worker 监听队列</td><td><code>celery,indicator,cninfo</code></td><td><span class="badge badge-ok">已恢复三队列</span></td></tr>
+<tr><td>celery-worker 并发数</td><td>3</td><td><span class="badge badge-ok">正常</span></td></tr>
+<tr><td>当前活跃任务</td><td>3 个 <code>download_cninfo_pdfs</code></td><td><span class="badge badge-warn">预计持续数小时</span></td></tr>
+</tbody>
+</table>
+<p><strong>结论</strong>：A 股 2026-07-15 指标补齐目标达成，<code>indicator</code> 队列清空，worker 已恢复为常驻三队列模式，<code>cninfo</code> PDF 回填任务在三队列 worker 下正常运行。</p>
+
+<h2>2. 关键修复与优化</h2>
+<h3>2.1 性能调优</h3>
+<ul>
+<li><code>app/data/indicators/sql_calculator.py</code>：将递归 CTE 的 <code>max_bars</code> 从硬编码 <strong>500 下调至 300</strong>（通过环境变量 <code>INDICATOR_SQL_MAX_BARS</code> 默认），减少单 chunk 行数、提升 throughput。</li>
+<li><code>deploy/aliyun-ecs/docker-compose.yml</code>：<code>celery-worker</code> 并发从 <strong>2 提升到 3</strong>，命令恢复为 <code>-Q celery,indicator,cninfo</code>。</li>
+</ul>
+
+<h3>2.2 数据精度修复</h3>
+<ul>
+<li><strong>错误</strong>：<code>600653.SH</code> 的 <code>volatility_20d</code> 计算结果约 <strong>36,629.75</strong>，远超原 <code>numeric(8,4)</code> 上限 <strong>9,999.9999</strong>，导致整个 SQL chunk 失败并回退到 pandas 单 code，严重拖慢 prefix 6。</li>
+<li><strong>修复</strong>：在 ECS 上执行 <code>ALTER TABLE etf_indicator ALTER COLUMN volatility_20d/volatility_60d/sharpe_1y TYPE numeric(12,4)</code>。</li>
+<li><strong>代码同步</strong>：
+  <ul>
+    <li><code>app/models/etf.py</code> 中三列从 <code>DECIMAL(8, 4)</code> 改为 <code>DECIMAL(12, 4)</code>。</li>
+    <li>新增 alembic 迁移：<code>alembic/versions/2026_07_17_widen_etf_indicator_volatility_sharpe.py</code>，保证后续新环境 schema 一致。</li>
+  </ul>
+</li>
+</ul>
+
+<h3>2.3 队列异常处理</h3>
+<ul>
+<li><strong>现象</strong>：worker 重启后 <code>indicator</code> 队列只有 2 个任务被消费，大量消息滞留在 Redis <code>unacked</code> hash。</li>
+<li><strong>修复</strong>：使用临时脚本读取 Redis <code>unacked</code>，将非运行中的任务 <code>LPUSH</code> 回 <code>indicator</code> 队列并清理 <code>unacked_index</code>。</li>
+<li><strong>清理</strong>：补齐完成后，已清空 <code>indicator</code> 队列中残留的冗余 prefix 6 任务，避免 worker 空闲后重复执行。</li>
+</ul>
+
+<h3>2.4 最后 3 条缺失记录</h3>
+<ul>
+<li><strong>缺失代码</strong>：<code>600601.SH</code>、<code>600651.SH</code>、<code>600653.SH</code>。</li>
+<li><strong>原因</strong>：prefix 6 SQL batch 因历史数据窗口大、递归 CTE 过慢，600s 未返回。</li>
+<li><strong>处理</strong>：使用 pandas backend 直接对 3 个代码逐条计算并 upsert，2 分钟内完成。</li>
+</ul>
+
+<h2>3. 文件变更清单</h2>
+<table>
+<thead>
+<tr><th>文件</th><th>变更内容</th><th>状态</th></tr>
+</thead>
+<tbody>
+<tr><td><code>app/data/indicators/sql_calculator.py</code></td><td><code>max_bars</code> 改为从 <code>INDICATOR_SQL_MAX_BARS</code> 读取，默认 300</td><td><span class="ok">已应用</span></td></tr>
+<tr><td><code>app/models/etf.py</code></td><td><code>volatility_20d/volatility_60d/sharpe_1y</code> 改为 <code>DECIMAL(12, 4)</code></td><td><span class="ok">已修改</span></td></tr>
+<tr><td><code>alembic/versions/2026_07_17_widen_etf_indicator_volatility_sharpe.py</code></td><td>新增迁移，扩宽三列</td><td><span class="ok">已创建</span></td></tr>
+<tr><td><code>deploy/aliyun-ecs/docker-compose.yml</code></td><td>worker 并发 3，恢复 <code>-Q celery,indicator,cninfo</code></td><td><span class="ok">已应用</span></td></tr>
+<tr><td><code>/tmp/trigger_0715.py</code>、<code>/tmp/requeue_unacked.py</code>、<code>/tmp/test_single_indicator*.py</code></td><td>本地临时脚本</td><td><span class="ok">已删除</span></td></tr>
+<tr><td>ECS <code>/tmp</code> 临时脚本/日志</td><td>生产临时文件</td><td><span class="ok">已清理</span></td></tr>
+</tbody>
+</table>
+
+<h2>4. 当前生产状态</h2>
+<pre>=== time ===
+Fri Jul 17 11:37:41 AM CST 2026
+=== indicator count ===
+7066
+=== target bars count ===
+7066
+=== queues ===
+indicator=0
+cninfo=14
+celery=0
+=== worker active_queues ===
+celery, indicator, cninfo</pre>
+<ul>
+<li><code>alloyresearch-backend</code> / <code>alloyresearch-celery-worker</code> / <code>nginx</code> / <code>postgres</code> / <code>redis</code> 全部运行中。</li>
+<li><code>https://www.alloyresearch.net/health</code> 返回 <code>status=ok</code>。</li>
+</ul>
+
+<h2>5. 仍存在的问题与下一步</h2>
+<table>
+<thead>
+<tr><th>优先级</th><th>事项</th><th>说明</th></tr>
+</thead>
+<tbody>
+<tr><td>P1</td><td>真 secret rotate</td><td>DeepSeek/雪球/Tushare 真 key 已识别，仓库历史 <code>.env</code> 未抹，需下一轮 sprint 执行</td></tr>
+<tr><td>P1</td><td>UI Sprint 遗留 4 项</td><td>见 20260701-p0-and-ui-sprint-results</td></tr>
+<tr><td>P2</td><td><code>cninfo_pdf</code> 任务持续时间长</td><td>当前 3 个并发任务预计数小时完成，需持续观察是否出现 idle-in-transaction 或 worker 内存问题</td></tr>
+<tr><td>P2</td><td><code>INDICATOR_SQL_CHUNK_SIZE</code> 与 <code>INDICATOR_SQL_MAX_BARS</code> 调优</td><td>prefix 6 在大窗口下仍可能超时，建议根据运行日志进一步调优</td></tr>
+<tr><td>P2</td><td>scheduler 长会话优化</td><td>多个 scheduler 函数持有 <code>SessionLocal()</code> 到 pipeline 结束</td></tr>
+<tr><td>P3</td><td><code>cninfo_pdf.py</code> 冗余 <code>db.close()</code></td><td><code>try</code> 与 <code>finally</code> 各一次，可清理</td></tr>
+</tbody>
+</table>
+
+<h2>6. 操作命令速查</h2>
+<pre># 查看 2026-07-15 指标行数
+docker exec -i -e PGPASSWORD=$POSTGRES_PASSWORD alloyresearch-postgres \
+  psql -U etf -d ad_research -c "SELECT COUNT(*) FROM etf_indicator WHERE trade_date = '2026-07-15'"
+
+# 查看队列长度
+for q in indicator cninfo celery; do
+  docker exec alloyresearch-backend python -c \
+    "import redis; print('$q', redis.from_url('redis://redis:6379/0').llen('$q'))"
+done
+
+# 查看 worker 监听队列
+docker exec alloyresearch-celery-worker celery -A app.core.celery_app inspect active_queues
+
+# 手动触发指标重算（按需）
+docker exec -i alloyresearch-backend python -c \
+  "from app.tasks.indicator import calculate_indicators; \
+   calculate_indicators.delay(target_date='2026-07-15', market_filter='A股', code_prefix='6')"</pre>
+
+<h2>7. 决策与回滚</h2>
+<ul>
+<li><strong>决策</strong>：本次跨文件修改（部署配置、SQL calculator、模型、迁移、队列运维）已同步更新代码、迁移文件与决策日志。未执行 <code>git push</code>，等待用户明确指令。</li>
+<li><strong>回滚方式</strong>：若新迁移/模型改动导致问题，可执行 <code>alembic downgrade 2026_07_17_add_instrument_daily_bar_trade_date_index</code>；部署相关回滚使用 <code>bash scripts/rollback.sh &lt;COMMIT_SHA&gt;</code>。</li>
+</ul>
+</body>
+</html>
