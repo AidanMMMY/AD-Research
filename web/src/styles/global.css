@@ -6665,6 +6665,10 @@ main {
 
 .login-page--sci-fi {
   background: #05060a;
+  /* Override the light theme's translucent white glass so the login cards stay
+     dark and readable against the aurora/starry background. */
+  --glass-bg: rgba(13, 17, 23, 0.92);
+  --glass-border: rgba(255, 255, 255, 0.08);
 }
 
 /* ---- Aurora background ---- */
@@ -6877,6 +6881,7 @@ main {
 .login-glass {
   background: var(--glass-bg);
   border: 1px solid var(--glass-border);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(255, 255, 255, 0.04);
   backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);
   border-radius: var(--radius-xl);

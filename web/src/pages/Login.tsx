@@ -152,12 +152,13 @@ export default function Login() {
           .login-page--sci-fi .login-source-name--stage { transition: none; }
           .login-page--sci-fi .login-source-name--incoming { display: none; }
         }
-        /* #14 Reduced transparency — fall back to a solid material. */
+        /* #14 Reduced transparency — fall back to a solid dark material so
+           light text remains readable. */
         @media (prefers-reduced-transparency: reduce) {
           .login-page--sci-fi .login-glass {
             backdrop-filter: none;
             -webkit-backdrop-filter: none;
-            background: var(--bg-surface, #14181f);
+            background: #14181f;
           }
         }
         /* Visual audit fixes (2026-07-16 / 2026-07-17):
