@@ -1,0 +1,222 @@
+[
+  {
+    "id": "ml-01",
+    "title": "基于机器学习的实证资产定价",
+    "original_title": "Empirical Asset Pricing via Machine Learning",
+    "authors": [
+      "Shihao Gu",
+      "Bryan T. Kelly",
+      "Dacheng Xiu"
+    ],
+    "source": "NBER",
+    "url": "https://www.nber.org/papers/w25398",
+    "date": "2019",
+    "accessed_at": "2026-07-18",
+    "category": "论文",
+    "tags": [
+      "机器学习",
+      "资产定价",
+      "股票预测",
+      "随机森林",
+      "神经网络",
+      "样本外稳健性"
+    ],
+    "summary": "该文系统比较了广义线性模型、降维、随机森林、梯度提升和神经网络等方法在股票横截面收益预测中的表现。研究发现，树模型和神经网络因能捕捉非线性预测因子交互而显著优于传统线性回归；动量、流动性与波动率是所有方法共同识别出的核心信号。",
+    "key_points": [
+      "树模型和神经网络在收益预测中表现最优",
+      "非线性预测因子交互是机器学习超额收益的主要来源",
+      "所有方法一致识别出动量、流动性、波动率为核心信号",
+      "机器学习能显著改善风险溢价的样本外测度"
+    ],
+    "related_sectors": [],
+    "related_tickers": [],
+    "impact": "高",
+    "original_language": "en",
+    "translated": true,
+    "applicability_to_a_share": "A股拥有大量公司特征与宏观变量，该文框架可直接迁移。但A股噪声更高、散户主导且监管干预频繁，需要更严格的时间序列切分和本土化特征工程。",
+    "limitations": "研究基于美股CRSP长样本，高流动性和充分历史数据是其结论成立的前提；对小微盘股、新兴市场或A股等低信噪比环境的外推需谨慎，且未充分考虑交易成本与流动性冲击。"
+  },
+  {
+    "id": "ml-02",
+    "title": "资产定价中的深度学习",
+    "original_title": "Deep Learning in Asset Pricing",
+    "authors": [
+      "Luyang Chen",
+      "Markus Pelger",
+      "Jason Zhu"
+    ],
+    "source": "arXiv",
+    "url": "https://arxiv.org/abs/1904.00745",
+    "date": "2019",
+    "accessed_at": "2026-07-18",
+    "category": "论文",
+    "tags": [
+      "深度学习",
+      "资产定价",
+      "无套利条件",
+      "LSTM",
+      "生成对抗网络",
+      "样本外稳健性"
+    ],
+    "summary": "作者将基本无套利条件嵌入神经网络目标函数，利用生成对抗网络构造最具信息量的测试资产，并用LSTM从大量宏观经济时间序列中提取经济状态。样本外结果表明，该模型在夏普比率、解释变异和定价误差上均优于线性基准与Fama-French五因子模型。",
+    "key_points": [
+      "将无套利约束嵌入深度学习有助于提取风险溢价信号",
+      "生成对抗网络可数据驱动地构建信息性测试资产",
+      "LSTM能提取少量宏观经济状态过程并捕捉时变",
+      "样本外夏普比率和解释力均显著优于主流基准"
+    ],
+    "related_sectors": [],
+    "related_tickers": [],
+    "impact": "高",
+    "original_language": "en",
+    "translated": true,
+    "applicability_to_a_share": "无套利约束与宏观经济状态提取对A股多因子构建具有参考价值。但A股存在卖空限制、涨跌停制度及频繁政策冲击，会削弱无套利假设的适用性。",
+    "limitations": "模型复杂度高，对数据质量和样本长度要求严苛；对抗训练稳定性与可解释性不足；未充分讨论在交易受限市场（如A股）中的实施成本与容量约束。"
+  },
+  {
+    "id": "ml-03",
+    "title": "伪数学与金融骗术：回测过拟合对样本外表现的影响",
+    "original_title": "Pseudo-Mathematics and Financial Charlatanism: The Effects of Backtest Overfitting on Out-of-Sample Performance",
+    "authors": [
+      "David H. Bailey",
+      "Jonathan Borwein",
+      "Marcos López de Prado",
+      "Qiji Jim Zhu"
+    ],
+    "source": "SSRN",
+    "url": "https://papers.ssrn.com/sol3/papers.cfm?abstract_id=2308659",
+    "date": "2014",
+    "accessed_at": "2026-07-18",
+    "category": "论文",
+    "tags": [
+      "回测过拟合",
+      "样本外表现",
+      "多重检验",
+      "量化策略",
+      "批判性视角"
+    ],
+    "summary": "文章通过数学证明指出，在回测中尝试足够多的策略配置，总能产生优异的模拟业绩。若研究者不披露尝试次数，投资者无法评估过拟合程度；在记忆效应（序列相关）存在时，过拟合甚至会导致样本外负期望收益。",
+    "key_points": [
+      "尝试的策略配置数量越多，回测过拟合概率越大",
+      "不披露搜索空间会误导投资者对策略真实性的判断",
+      "在存在序列相关时，过拟合可导致样本外负收益",
+      "强调多重检验校正与最小回测长度的重要性"
+    ],
+    "related_sectors": [],
+    "related_tickers": [],
+    "impact": "高",
+    "original_language": "en",
+    "translated": true,
+    "applicability_to_a_share": "对A股量化策略开发极具警示意义：A股因子挖掘和参数优化同样面临严重的多重检验问题，必须报告搜索空间、使用组合对称交叉验证（CPCV）或防御性夏普比率等工具。",
+    "limitations": "以数学证明和模拟为主，未覆盖所有市场微观结构；对A股特有的政策、流动性、投资者结构等噪声源讨论不足。"
+  },
+  {
+    "id": "ml-04",
+    "title": "机器能“学习”金融吗？",
+    "original_title": "Can Machines 'Learn' Finance?",
+    "authors": [
+      "Ronen Israel",
+      "Bryan T. Kelly",
+      "Tobias J. Moskowitz"
+    ],
+    "source": "SSRN",
+    "url": "https://papers.ssrn.com/sol3/papers.cfm?abstract_id=3624052",
+    "date": "2020",
+    "accessed_at": "2026-07-18",
+    "category": "论文",
+    "tags": [
+      "机器学习",
+      "资产管理",
+      "经济理论",
+      "可解释性",
+      "批判性视角"
+    ],
+    "summary": "文章讨论机器学习在资产管理中面临的独特挑战：低信噪比、非平稳分布和经济机制模糊。作者认为，成功的金融机器学习必须依赖经济理论、人类专家知识与合理预期管理，而非简单套用通用算法。",
+    "key_points": [
+      "金融数据信噪比极低，远非机器学习传统优势领域",
+      "缺乏经济理论指导的通用模型在金融环境中容易失效",
+      "人类专家在特征工程、模型解释和风险控制中不可替代",
+      "需要区分有益用例与市场营销中的炒作陷阱"
+    ],
+    "related_sectors": [],
+    "related_tickers": [],
+    "impact": "中",
+    "original_language": "en",
+    "translated": true,
+    "applicability_to_a_share": "非常适用于A股：单纯堆叠模型和特征在A股极易产生伪相关，必须结合产业逻辑、政策周期与行为金融学约束，防止“黑箱”预测。",
+    "limitations": "偏向观点性与综述性，缺乏大规模实证对比；对具体模型实现和A股市场制度约束着墨较少。"
+  },
+  {
+    "id": "ml-05",
+    "title": "驯服因子动物园：新因子的检验",
+    "original_title": "Taming the Factor Zoo: A Test of New Factors",
+    "authors": [
+      "Guanhao Feng",
+      "Stefano Giglio",
+      "Dacheng Xiu"
+    ],
+    "source": "NBER",
+    "url": "https://www.nber.org/papers/w25481",
+    "date": "2019",
+    "accessed_at": "2026-07-18",
+    "category": "论文",
+    "tags": [
+      "因子选择",
+      "高维模型",
+      "LASSO",
+      "可解释性",
+      "遗漏变量偏差",
+      "批判性视角"
+    ],
+    "summary": "作者提出双选择LASSO方法，在高维现有因子集中评估新因子的边际贡献。研究发现，大多数新因子在控制已有因子后变得冗余，仅盈利能力、投资等少数因子具有显著且稳健的增量信息。",
+    "key_points": [
+      "双选择LASSO可纠正模型选择错误导致的遗漏变量偏差",
+      "大部分新因子在控制已有因子后不再显著",
+      "盈利能力等少数因子具有稳健增量解释力",
+      "简单LASSO选择的模型不稳定，估计值不可靠"
+    ],
+    "related_sectors": [],
+    "related_tickers": [],
+    "impact": "高",
+    "original_language": "en",
+    "translated": true,
+    "applicability_to_a_share": "A股因子库快速膨胀，该文方法可用于甄别真正的alpha因子与伪因子。但A股因子相关性、数据质量和市场结构与美国差异大，需调整惩罚参数和推断方法。",
+    "limitations": "基于月度因子收益和线性设定，对高频或日内因子不适用；对非线性交互和因子时变的建模有限。"
+  },
+  {
+    "id": "ml-06",
+    "title": "机器学习在股票选择中的应用",
+    "original_title": "Machine Learning for Stock Selection",
+    "authors": [
+      "Keywan Christian Rasekhschaffe",
+      "Robert C. Jones"
+    ],
+    "source": "SSRN",
+    "url": "https://papers.ssrn.com/sol3/papers.cfm?abstract_id=3330946",
+    "date": "2019",
+    "accessed_at": "2026-07-18",
+    "category": "论文",
+    "tags": [
+      "机器学习",
+      "股票选择",
+      "梯度提升",
+      "随机森林",
+      "过拟合控制",
+      "实践指南"
+    ],
+    "summary": "面向投资实践者，文章介绍如何运用机器学习预测股票横截面超额收益。通过多训练窗口、多种算法（梯度提升、神经网络、随机森林等）和预测组合，显著降低过拟合并提升样本外表现。",
+    "key_points": [
+      "预测组合在不同算法和训练窗口下表现优于单一模型",
+      "特征工程与样本外Walk-forward框架对控制过拟合至关重要",
+      "非线性模型可捕捉传统线性因子模型遗漏的关系",
+      "需警惕交易成本、策略容量和模型可解释性"
+    ],
+    "related_sectors": [],
+    "related_tickers": [],
+    "impact": "中",
+    "original_language": "en",
+    "translated": true,
+    "applicability_to_a_share": "提供了可直接借鉴的实操框架：A股多因子选股同样可运用多种机器学习算法与预测组合，但需替换为本土特征并调整风险模型。",
+    "limitations": "使用发达市场数据，样本期和A股差异较大；对交易成本、市场冲击和容量约束讨论较简略，A股小盘股应用时需谨慎。"
+  }
+]

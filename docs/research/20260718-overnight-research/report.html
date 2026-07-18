@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>2026-07-18 Overnight 研究报告</title>
+  <style>
+:root { color-scheme: light dark; }
+body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; line-height: 1.7; max-width: 900px; margin: 0 auto; padding: 2rem; color: #222; background: #fff; }
+h1, h2, h3, h4 { color: #111; margin-top: 1.6em; }
+h1 { border-bottom: 2px solid #ddd; padding-bottom: .3em; }
+h2 { border-bottom: 1px solid #eee; padding-bottom: .2em; }
+table { border-collapse: collapse; width: 100%; margin: 1em 0; }
+th, td { border: 1px solid #ddd; padding: .5em .75em; text-align: left; }
+th { background: #f6f6f6; }
+code { background: #f4f4f4; padding: .15em .35em; border-radius: 4px; font-family: SFMono-Regular, Consolas, monospace; }
+pre { background: #f8f8f8; padding: 1em; border-radius: 6px; overflow-x: auto; }
+blockquote { border-left: 4px solid #ddd; margin: 0; padding-left: 1em; color: #555; }
+a { color: #0066cc; }
+#toc { background: #f9f9f9; padding: 1em; border-radius: 6px; margin-bottom: 2em; }
+#toc ul { padding-left: 1.2em; }
+@media (prefers-color-scheme: dark) {
+  body { color: #e0e0e0; background: #1a1a1a; }
+  h1, h2, h3, h4 { color: #f0f0f0; }
+  h1 { border-bottom-color: #444; }
+  h2 { border-bottom-color: #333; }
+  th, td { border-color: #444; }
+  th { background: #2a2a2a; }
+  code { background: #2a2a2a; }
+  pre { background: #222; }
+  blockquote { border-left-color: #555; color: #aaa; }
+  a { color: #66b3ff; }
+  #toc { background: #252525; }
+}
+</style>
+</head>
+<body>
+<h1 id="2026-07-18-overnight-a">2026-07-18 Overnight 研究报告：中国经济社会运行机制与 A 股投资研究框架</h1>
+<blockquote>
+<p><strong>研究周期</strong>：约 20 小时<br />
+<strong>生成时间</strong>：2026-07-18<br />
+<strong>输出目录</strong>：<code>docs/research/20260718-overnight-research/</code><br />
+<strong>数据库</strong>：<code>db/overnight_research.db</code>（SQLite + FTS5）<br />
+<strong>记录总数</strong>：140 条</p>
+</blockquote>
+<hr />
+<h2 id="1">1. 执行摘要</h2>
+<p>本报告通过 5 个并行的 overnight 研究 agent，系统收集并结构化了五类信息：</p>
+<ol>
+<li><strong>中国社会、政治、经济运行机制</strong>（20 条）</li>
+<li><strong>中外投资大佬公开讲话/访谈/股东信</strong>（44 条）</li>
+<li><strong>学术研究</strong>（30 条）</li>
+<li><strong>A 股代表性行业深度</strong>（35 条）</li>
+<li><strong>历史事件-市场反应案例</strong>（11 条）</li>
+</ol>
+<p>所有资料均来自公开可访问来源，英文内容已翻译成中文，统一以 JSON 形式存入 SQLite 数据库，并建立 FTS5 全文检索。研究核心结论：</p>
+<ul>
+<li><strong>A 股是政策驱动型市场</strong>，政治经济周期、央地财政、货币政策、房地产-银行-地方财政三角、产业政策是理解市场方向的底层框架。</li>
+<li><strong>资本市场制度正在向“投资端”倾斜</strong>，新“国九条”、注册制、退市新规、国家队/类平准基金共同重塑市场生态，长期利好蓝筹、高股息、优质龙头。</li>
+<li><strong>行业层面呈现“政策+产业周期”双轮驱动</strong>，新能源、半导体、消费、金融、房地产分别处于不同周期阶段，需区分产能过剩/出清/成长阶段。</li>
+<li><strong>行为金融与因子研究支持 A 股存在显著异象</strong>，散户情绪、彩票偏好、行业动量、订单流反转等可作为量化策略输入。</li>
+<li><strong>历史案例显示</strong>，重大政策/外部冲击通常先引发情绪过度反应，随后进入政策对冲与基本面验证阶段，事件驱动策略需要“预期-细则-订单-业绩”四阶段节奏判断。</li>
+</ul>
+<hr />
+<h2 id="2">2. 研究范围与方法</h2>
+<table>
+<thead>
+<tr>
+<th>维度</th>
+<th>内容</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>主题</strong></td>
+<td>中国经济社会运行机制、投资大佬公开讲话、学术研究、行业深度、历史事件-市场反应</td>
+</tr>
+<tr>
+<td><strong>语言</strong></td>
+<td>以中文为主；英文来源已翻译并标注原文语言</td>
+</tr>
+<tr>
+<td><strong>来源</strong></td>
+<td>政府官网、监管部门、交易所、财经媒体、学术论文、投资人公开信/访谈/股东大会实录</td>
+</tr>
+<tr>
+<td><strong>结构化字段</strong></td>
+<td>id / title / source / url / date / category / tags / summary / key_points / related_sectors / related_tickers / impact / original_language / translated</td>
+</tr>
+<tr>
+<td><strong>数据库</strong></td>
+<td>SQLite，5 张主题表 + 每张表独立 FTS5 全文索引</td>
+</tr>
+<tr>
+<td><strong>可搜索能力</strong></td>
+<td>支持按关键词在 title、summary 中全文检索；可按 category / tags / related_sectors / related_tickers 过滤</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="3">3. 五大主题核心发现</h2>
+<h3 id="31-20">3.1 中国经济社会运行机制（20 条）</h3>
+<p><strong>关键机制与 A 股影响</strong></p>
+<table>
+<thead>
+<tr>
+<th>主题</th>
+<th>核心机制</th>
+<th>投资含义</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>政治经济周期</td>
+<td>两会、政治局会议（4/7/10/12 月）、三中全会、中央经济工作会议</td>
+<td>7 月政治局会议与 12 月中央经济工作会议是政策基调切换的关键节点</td>
+</tr>
+<tr>
+<td>央地财政</td>
+<td>分税制后财权事权不匹配、转移支付、地方债</td>
+<td>财政松绑利好基建/消费/地方国企；化债利好银行/基建</td>
+</tr>
+<tr>
+<td>土地财政</td>
+<td>土地出让+土地抵押+居民按揭</td>
+<td>退潮利空地产链/地方银行；消费/家电/汽车受益转型</td>
+</tr>
+<tr>
+<td>货币框架</td>
+<td>7 天逆回购→SLF→LPR→存款利率→MLF</td>
+<td>降息降准利好成长股、高负债行业、券商</td>
+</tr>
+<tr>
+<td>地产-银行-财政三角</td>
+<td>相互抵押、债务联动</td>
+<td>三角稳定是金融地产估值修复前提</td>
+</tr>
+<tr>
+<td>新能源产业</td>
+<td>补贴退坡、市场化交易、消纳政策</td>
+<td>龙头集中，储能/电网/绿氢是结构性机会</td>
+</tr>
+<tr>
+<td>半导体产业</td>
+<td>大基金三期、国产替代、制裁风险</td>
+<td>利好设备/材料/先进封装/AI 芯片</td>
+</tr>
+<tr>
+<td>资本市场制度</td>
+<td>新“国九条”、注册制、退市新规、互联互通、国家队</td>
+<td>长期利好蓝筹/高股息/龙头；利空绩差/小盘/壳资源</td>
+</tr>
+<tr>
+<td>政策传导路径</td>
+<td>高层→部委→地方→行业→标的</td>
+<td>决定主题投资节奏：预期博弈→细则落地→订单验证→业绩兑现</td>
+</tr>
+</tbody>
+</table>
+<p><strong>投资研究框架启示</strong>：宏观政策信号应作为 A 股仓位与风格判断的“第一层过滤”。例如，2024 年 12 月中央经济工作会议将货币政策定调从“稳健”改为“适度宽松”，随后 2024-09-24 政策组合拳的快速落地，均显示政策拐点对市场风险偏好的显著影响。</p>
+<hr />
+<h3 id="32-44">3.2 投资大佬公开讲话（44 条）</h3>
+<p><strong>覆盖人物</strong>：Warren Buffett、Charlie Munger、Ray Dalio、Howard Marks、Stanley Druckenmiller、Bill Ackman、Jeffrey Gundlach、李录、段永平、张坤、但斌、邱国鹭、冯柳、林园、朱少醒、谢治宇等。</p>
+<p><strong>核心共识</strong></p>
+<ol>
+<li><strong>长期主义与能力圈</strong>：段永平强调“买股票就是买公司”，安全边际来自理解深度；张坤指出“自由现金流是投资者回报的唯一可靠来源”。</li>
+<li><strong>中国资产的长期配置价值</strong>：多数华人投资人认为当前估值已充分反映悲观预期，优质消费、医药、互联网龙头具备“高确定性基础回报 + 免费看涨期权”。</li>
+<li><strong>宏观不可预测，微观更可靠</strong>：李录、段永平等倾向于淡化宏观判断，聚焦企业长期现金流与护城河。</li>
+<li><strong>美股 2026 年看法分化</strong>：Ackman 对政策/AI/资本支出持建设性态度；Dalio 警告“我们正进入非常黑暗的时期”，关注债务、地缘与内部冲突。</li>
+<li><strong>市场赌场化</strong>：Buffett/Ackman 均指出指数化与杠杆交易导致短期波动加剧，为长期投资者创造机会。</li>
+</ol>
+<p><strong>对平台的启示</strong>：可将投资人讲话按“情绪/观点”打标，与事件驱动模块结合，例如当多位长期价值投资者对同一行业（消费、医药、互联网）表达乐观时，可作为“长期资金情绪”信号。</p>
+<hr />
+<h3 id="33-30">3.3 学术研究（30 条）</h3>
+<p><strong>主题分布</strong></p>
+<table>
+<thead>
+<tr>
+<th>主题</th>
+<th>数量</th>
+<th>核心发现</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>资产定价与因子投资</td>
+<td>6</td>
+<td>价值/动量/质量/低波动因子在 A 股存在不同程度有效性</td>
+</tr>
+<tr>
+<td>宏观因子与股市收益</td>
+<td>6</td>
+<td>货币政策、信用周期、汇率、全球流动性对 A 股有显著解释力</td>
+</tr>
+<tr>
+<td>A 股异象与行为金融</td>
+<td>6</td>
+<td>散户情绪、彩票偏好、大单异象、行业动量显著</td>
+</tr>
+<tr>
+<td>ESG 与量化投资</td>
+<td>6</td>
+<td>ESG 评级、绿色债券、量化策略在 A 股适用性存在样本外挑战</td>
+</tr>
+<tr>
+<td>机器学习预测股票</td>
+<td>6</td>
+<td>机器学习可提升预测能力，但过拟合、数据窥探、可解释性是主要局限</td>
+</tr>
+</tbody>
+</table>
+<p><strong>可直接用于策略构建的发现</strong></p>
+<ul>
+<li><strong>A 股低波动率异象</strong>：彩票偏好（MAX、偏度）放大定价错误，小盘股是核心载体。</li>
+<li><strong>行业动量</strong>：6 个月形成期 / 6 个月持有期的行业动量策略在申万行业上表现显著。</li>
+<li><strong>大单异象</strong>：当月大单净买入与下月收益负相关，可在小市值、低机构覆盖股票中构建反向策略。</li>
+<li><strong>政策冲击</strong>：1994 年救市到 2015 年沪港通的研究显示，重大政策对 A 股存在显著短期与中期影响。</li>
+</ul>
+<p><strong>对平台的启示</strong>：学术研究可作为因子库与策略假设来源。建议在平台中增设“学术因子”标签，将论文发现映射到可回测的因子（如低波动、行业动量、情绪、订单流），并标注样本区间与局限。</p>
+<hr />
+<h3 id="34-a-35">3.4 A 股代表性行业深度（35 条）</h3>
+<table>
+<thead>
+<tr>
+<th>行业</th>
+<th>周期阶段</th>
+<th>关键驱动</th>
+<th>代表 ETF / 个股</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>新能源</strong></td>
+<td>供给出清、技术迭代</td>
+<td>新能源入市、差价结算、储能/海风、固态电池</td>
+<td>159875.SZ、515700.SH、300750.SZ、601012.SH、002594.SZ</td>
+</tr>
+<tr>
+<td><strong>半导体</strong></td>
+<td>国产替代加速、制裁扰动</td>
+<td>大基金三期、设备材料、先进封装、AI 芯片</td>
+<td>512480.SH、159995.SZ、688981.SH、603019.SH、300308.SZ</td>
+</tr>
+<tr>
+<td><strong>金融</strong></td>
+<td>低估值、政策托底</td>
+<td>利率市场化、化债、资本市场改革、险资入市</td>
+<td>510230.SH、512000.SH、600030.SH、601318.SH、601398.SH</td>
+</tr>
+<tr>
+<td><strong>消费</strong></td>
+<td>弱复苏、估值修复</td>
+<td>以旧换新、居民储蓄释放、通缩预期</td>
+<td>159928.SZ、511380.SH、600519.SH、000858.SZ、601888.SH</td>
+</tr>
+<tr>
+<td><strong>房地产及产业链</strong></td>
+<td>政策底、销售底尚未确认</td>
+<td>限购放松、收储、白名单、城中村改造</td>
+<td>512200.SH、600048.SH、000002.SZ、000333.SZ、002271.SZ</td>
+</tr>
+</tbody>
+</table>
+<p><strong>共同规律</strong></p>
+<ul>
+<li>每个行业都受 <strong>政策周期</strong> 与 <strong>产业周期</strong> 双重影响。</li>
+<li>龙头集中度提升是共性趋势，尤其在产能过剩阶段。</li>
+<li>宏观变量（利率、地产、出口、消费）对行业盈利预期有系统性影响。</li>
+</ul>
+<p><strong>对平台的启示</strong>：行业深度数据可直接接入“行业轮动”模块。每张记录包含 <code>related_tickers</code>、<code>related_sectors</code>、<code>impact</code>、<code>tags</code>，可用于构建“行业景气度 + 政策事件”标签体系。</p>
+<hr />
+<h3 id="35-11">3.5 历史事件-市场反应案例（11 条）</h3>
+<p><strong>覆盖事件</strong>：2015 股灾与救市、2018 中美贸易摩擦、2020 新冠疫情、2021 监管风暴、2022 俄乌冲突 / 美联储加息 / 上海封控 / 防疫政策调整、2023 AI 主题行情、2024 9·24 政策组合拳、2025-2026 政策深化与科技突破。</p>
+<p><strong>共同模式</strong></p>
+<ol>
+<li><strong>冲击阶段</strong>：事件触发情绪恐慌，市场短期过度下跌。</li>
+<li><strong>政策对冲阶段</strong>：货币/财政/监管政策快速出台，市场企稳。</li>
+<li><strong>结构分化阶段</strong>：受益行业率先反弹，受损行业持续承压。</li>
+<li><strong>业绩验证阶段</strong>：股价走势回归基本面。</li>
+</ol>
+<p><strong>关键经验</strong></p>
+<ul>
+<li><strong>流动性危机</strong>（2015、2022 年 4 月）往往伴随极端成交量与北向资金流出，政策底与市场底不一定同步。</li>
+<li><strong>外部冲击</strong>（贸易摩擦、俄乌冲突、美联储加息）对 A 股影响通过汇率、大宗商品、资本流动三条路径传导。</li>
+<li><strong>政策组合拳</strong>（2024 年 9·24）可在短期内快速扭转风险偏好，但中长期仍取决于经济数据验证。</li>
+</ul>
+<p><strong>对平台的启示</strong>：事件案例库可用于训练“事件驱动”信号。每条记录包含 <code>event_date</code>、<code>related_tickers</code>、<code>impact</code>，可构建事件日历、冲击强度评分、受影响标的列表。</p>
+<hr />
+<h2 id="4">4. 投资研究框架：如何接入平台</h2>
+<p>基于以上五类研究，建议构建 <strong>四层研究框架</strong>：</p>
+<pre><code>┌─────────────────────────────────────────────┐
+│  第一层：宏观与政策信号                        │
+│  政治局会议 / 两会 / 中央经济工作会议 / 货币政策 │
+│  → 决定仓位、风格（成长/价值、大盘/小盘）        │
+├─────────────────────────────────────────────┤
+│  第二层：行业景气与产业周期                    │
+│  新能源 / 半导体 / 金融 / 消费 / 房地产         │
+│  → 决定行业配置权重与主题方向                   │
+├─────────────────────────────────────────────┤
+│  第三层：事件与情绪                            │
+│  政策发布 / 外部冲击 / 投资人讲话 / 学术因子     │
+│  → 决定交易节奏与标的映射                       │
+├─────────────────────────────────────────────┤
+│  第四层：标的选择与风险管理                    │
+│  ETF / 个股 / 因子组合 / 止损规则               │
+│  → 落地为可执行信号与组合                       │
+└─────────────────────────────────────────────┘
+</code></pre>
+<p><strong>与现有平台模块的对接建议</strong></p>
+<table>
+<thead>
+<tr>
+<th>平台模块</th>
+<th>可接入数据</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>宏观/市场概览</strong></td>
+<td>政治经济周期、货币政策、汇率、房地产-银行-财政三角</td>
+</tr>
+<tr>
+<td><strong>行业轮动</strong></td>
+<td>35 条行业深度记录的 <code>related_sectors</code>、<code>impact</code>、<code>tags</code></td>
+</tr>
+<tr>
+<td><strong>信号仪表盘</strong></td>
+<td>事件案例的 <code>event_date</code> + <code>related_tickers</code>；投资人讲话情绪标签</td>
+</tr>
+<tr>
+<td><strong>选股/因子</strong></td>
+<td>学术研究中的低波动、行业动量、情绪、订单流异象</td>
+</tr>
+<tr>
+<td><strong>ETF 研究</strong></td>
+<td>每条记录附带的 <code>related_tickers</code>（ETF 代码）</td>
+</tr>
+<tr>
+<td><strong>AI 聊天/研究问答</strong></td>
+<td>SQLite FTS5 全文检索作为知识库来源</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="5">5. 可接入平台的结构化数据说明</h2>
+<h3 id="51">5.1 数据库文件</h3>
+<ul>
+<li><strong>路径</strong>：<code>docs/research/20260718-overnight-research/db/overnight_research.db</code></li>
+<li><strong>格式</strong>：SQLite 3</li>
+<li><strong>表数量</strong>：5 张主题表 + 1 张统计表</li>
+<li><strong>FTS5 索引</strong>：每张主题表附带 <code>{table}_fts</code> 虚拟表，支持 <code>title</code> 和 <code>summary</code> 全文检索</li>
+</ul>
+<h3 id="52">5.2 表结构</h3>
+<table>
+<thead>
+<tr>
+<th>表名</th>
+<th>记录数</th>
+<th>主要字段</th>
+<th>特殊字段</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>china_mechanisms</code></td>
+<td>20</td>
+<td>公共字段</td>
+<td>无</td>
+</tr>
+<tr>
+<td><code>investor_speeches</code></td>
+<td>44</td>
+<td>公共字段</td>
+<td><code>speaker</code></td>
+</tr>
+<tr>
+<td><code>academic_research</code></td>
+<td>30</td>
+<td>公共字段</td>
+<td><code>authors</code>, <code>original_title</code>, <code>applicability_to_a_share</code>, <code>limitations</code></td>
+</tr>
+<tr>
+<td><code>industry_deep_dive</code></td>
+<td>35</td>
+<td>公共字段</td>
+<td><code>sector</code></td>
+</tr>
+<tr>
+<td><code>event_cases</code></td>
+<td>11</td>
+<td>公共字段</td>
+<td><code>event_date</code></td>
+</tr>
+<tr>
+<td><code>stats</code></td>
+<td>5</td>
+<td><code>table_name</code>, <code>count</code>, <code>built_at</code></td>
+<td>汇总统计</td>
+</tr>
+</tbody>
+</table>
+<h3 id="53">5.3 常用查询示例</h3>
+<pre><code class="language-sql">-- 全文搜索“半导体”
+SELECT m.id, m.title, m.summary
+FROM china_mechanisms m
+JOIN china_mechanisms_fts fts ON m.rowid = fts.rowid
+WHERE china_mechanisms_fts MATCH '半导体';
+
+-- 按行业标签过滤
+SELECT * FROM industry_deep_dive
+WHERE sector = '半导体';
+
+-- 按相关股票代码查找记录
+SELECT * FROM event_cases
+WHERE related_tickers LIKE '%300750.SZ%';
+</code></pre>
+<h3 id="54">5.4 数组字段的存储方式</h3>
+<p><code>tags</code>、<code>key_points</code>、<code>related_sectors</code>、<code>related_tickers</code>、<code>authors</code> 等数组字段以 JSON 字符串形式存储，读取时可用 <code>json.loads()</code> 还原。</p>
+<hr />
+<h2 id="6">6. 局限与后续建议</h2>
+<h3 id="61">6.1 当前局限</h3>
+<ol>
+<li><strong>来源以公开中文媒体为主</strong>：部分海外学术论文链接可能指向摘要或 PDF，未逐一核对全文可访问性。</li>
+<li><strong>历史案例的价格数据为定性描述</strong>：未与平台实际行情数据自动校验涨跌幅。</li>
+<li><strong>投资人讲话存在选择性披露</strong>：公开讲话可能滞后于实际调仓，不能作为唯一信号。</li>
+<li><strong>学术研究存在数据窥探与过拟合风险</strong>：需经平台回测验证后才能纳入实盘因子库。</li>
+</ol>
+<h3 id="62">6.2 后续建议</h3>
+<ol>
+<li><strong>建立定期更新机制</strong>：每周/每月自动补充最新政策、讲话、论文、事件，保持数据库时效性。</li>
+<li><strong>与行情数据联动</strong>：将事件案例中的 <code>related_tickers</code> 与平台 K 线、指标、资金流数据打通，实现事件前后涨跌幅量化分析。</li>
+<li><strong>构建情绪指数</strong>：基于投资人讲话和新闻文本，训练面向 A 股政策/行业的情绪打分模型。</li>
+<li><strong>因子回测与验证</strong>：将学术研究中的因子假设接入平台回测系统，评估样本外表现。</li>
+<li><strong>接入 AI 问答</strong>：将 SQLite 数据库作为平台 AI 聊天模块的检索增强（RAG）知识库，支持自然语言查询。</li>
+</ol>
+<hr />
+<h2 id="7">7. 附件清单</h2>
+<table>
+<thead>
+<tr>
+<th>文件</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>raw/china_mechanisms.json</code> / <code>.md</code></td>
+<td>中国经济社会运行机制</td>
+</tr>
+<tr>
+<td><code>raw/investor_speeches.json</code> / <code>.md</code></td>
+<td>投资大佬公开讲话</td>
+</tr>
+<tr>
+<td><code>raw/academic_research.json</code> / <code>.md</code></td>
+<td>学术研究</td>
+</tr>
+<tr>
+<td><code>raw/industry_deep_dive.json</code> / <code>.md</code></td>
+<td>行业深度</td>
+</tr>
+<tr>
+<td><code>raw/event_cases.json</code> / <code>.md</code></td>
+<td>历史事件案例</td>
+</tr>
+<tr>
+<td><code>db/overnight_research.db</code></td>
+<td>SQLite 可搜索数据库</td>
+</tr>
+<tr>
+<td><code>build_db.py</code></td>
+<td>数据库构建脚本</td>
+</tr>
+<tr>
+<td><code>report.md</code> / <code>report.html</code></td>
+<td>本报告</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<p><em>本报告为 overnight 研究成果，数据截至 2026-07-18，供内部研究与平台接入参考。</em></p>
+</body>
+</html>

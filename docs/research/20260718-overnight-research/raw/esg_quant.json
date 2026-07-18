@@ -1,0 +1,190 @@
+[
+  {
+    "id": "esg-01",
+    "title": "关于ESG信念与投资者持仓的四项事实",
+    "original_title": "Four Facts About ESG Beliefs and Investor Portfolios",
+    "authors": [
+      "Stefano Giglio",
+      "Matteo Maggiori",
+      "Johannes Stroebel",
+      "Zhenhao Tan",
+      "Stephen Utkus",
+      "Xiao Xu"
+    ],
+    "source": "NBER",
+    "url": "https://www.nber.org/papers/w31114",
+    "date": "2023",
+    "accessed_at": "2026-07-18",
+    "category": "论文",
+    "tags": ["ESG", "投资者行为", "资产定价", "问卷调查", "可持续投资"],
+    "summary": "该研究通过追踪调查揭示，2021年中至2023年末，投资者平均预期ESG投资未来十年年化回报比整体股市低约2.1个百分点；投资者持有ESG资产的主要动机高度异质，包括伦理、气候对冲与收益预期；即便是出于伦理或对冲动机的投资者，也只有当其预期ESG将跑赢市场时，才会配置显著ESG资产。",
+    "key_points": [
+      "投资者普遍预期ESG投资跑输整体市场",
+      "持有ESG资产的动机分为伦理、气候对冲、收益预期与无动机四类",
+      "自陈动机与实际持仓高度一致",
+      "预期收益仍是实际持有ESG资产的重要边际条件"
+    ],
+    "related_sectors": ["资产管理", "财富管理"],
+    "related_tickers": [],
+    "impact": "中",
+    "original_language": "en",
+    "translated": true,
+    "applicability_to_a_share": "对A股ESG基金与绿色金融产品设计有启示：居民对ESG主题产品的收益预期普遍偏低，若仅强调社会责任而忽视收益说服力，可能限制规模扩张；该框架可用于评估国内ESG基金投资者的偏好异质。",
+    "limitations": "样本为美国散户与401(k)参与者，文化、制度与投资者结构差异可能降低结论对A股个人投资者的直接外推性；调查数据存在自述偏差。"
+  },
+  {
+    "id": "esg-02",
+    "title": "ESG需求：投资者愿意为ESG支付多少",
+    "original_title": "Demand for ESG",
+    "authors": [
+      "Malcolm Baker",
+      "Mark L. Egan",
+      "Suproteem K. Sarkar"
+    ],
+    "source": "NBER",
+    "url": "https://www.nber.org/papers/w30708",
+    "date": "2022",
+    "accessed_at": "2026-07-18",
+    "category": "论文",
+    "tags": ["ESG", "基金流动", "投资者偏好", "绿色洗钱", "费用溢价"],
+    "summary": "作者用揭示偏好方法量化投资者对ESG目标的支付意愿。2019至2023年间，美国投资者对ESG指数基金的支付溢价从3个基点升至2020年峰值17个基点，随后转为负值；欧洲投资者支付意愿始终为正。研究表明，ESG标签本身即可驱动大量需求，但也可能使投资者面临漂绿风险。",
+    "key_points": [
+      "美国投资者对ESG基金的支付溢价在2020年达到顶峰后回落",
+      "欧洲投资者支付意愿持续高于美国",
+      "ESG标签本身对资金流入的解释力超过持仓差异",
+      "气候意识较强地区和低排放行业的401(k)参与者需求更高"
+    ],
+    "related_sectors": ["资产管理", "养老金", "共同基金"],
+    "related_tickers": [],
+    "impact": "高",
+    "original_language": "en",
+    "translated": true,
+    "applicability_to_a_share": "对A股公募ESG基金费率设计与营销定位有参考价值：标签溢价易受市场情绪影响，监管需关注漂绿；可借鉴该框架评估国内ESG基金投资者对费率与ESG标签的敏感度。",
+    "limitations": "数据来自美国与欧洲的基金市场，费率结构、披露要求与监管环境不同于中国；研究主要关注指数型基金，对主动型ESG基金的适用性有限。"
+  },
+  {
+    "id": "esg-03",
+    "title": "主权绿色债券：可持续债务市场发展的催化剂？",
+    "original_title": "Sovereign green bonds: a catalyst for sustainable debt market development?",
+    "authors": [
+      "Gong Cheng",
+      "Torsten Ehlers",
+      "Frank Packer",
+      "Yanzhe Xiao"
+    ],
+    "source": "BIS Paper",
+    "url": "https://www.bis.org/publ/work1198.htm",
+    "date": "2024",
+    "accessed_at": "2026-07-18",
+    "category": "论文",
+    "tags": ["ESG", "绿色债券", "主权债务", "可持续金融", "气候政策"],
+    "summary": "本文研究主权绿色债券发行是否带动私营部门可持续债券市场。发现主权绿色债券 debut 后，同一司法辖区内的企业绿色债券在发行规模、数量、流动性及利差方面均改善，尤其在气候政策较强的国家效果更显著；同时有助于提升绿色认证与信息披露标准。",
+    "key_points": [
+      "主权绿色债券发行显著增加同一辖区企业绿色债券发行规模与数量",
+      "气候政策越强的国家，催化效应越明显",
+      "企业绿色债券流动性提升、利差收窄",
+      "绿色认证与信息披露标准随之改善"
+    ],
+    "related_sectors": ["固定收益", "主权债", "绿色金融"],
+    "related_tickers": [],
+    "impact": "中",
+    "original_language": "en",
+    "translated": true,
+    "applicability_to_a_share": "对中国地方政府与政策性银行绿色债券发行有借鉴意义：主权/准主权绿色债券可发挥市场基准与信号作用，推动国内绿色债券标准统一和二级市场流动性提升。",
+    "limitations": "样本以发达与新兴市场经济体为主，中国绿色债券市场规模已居全球前列，制度背景差异较大；研究聚焦主权与企业绿色债券联动，对绿色贷款等替代融资工具覆盖不足。"
+  },
+  {
+    "id": "esg-04",
+    "title": "主权ESG投资：追逐难以捉摸的可持续性",
+    "original_title": "Sovereign Environmental, Social, and Governance (ESG) Investing: Chasing Elusive Sustainability",
+    "authors": [
+      "Ekaterina Gratcheva",
+      "Bryan Gurhy"
+    ],
+    "source": "IMF Working Paper",
+    "url": "https://www.elibrary.imf.org/view/journals/001/2024/102/article-A000-en.xml",
+    "date": "2024",
+    "accessed_at": "2026-07-18",
+    "category": "论文",
+    "tags": ["ESG", "主权投资", "ESG评级", "可持续投资", "固定收益"],
+    "summary": "IMF工作论文评估2021年以来主权ESG投资方法论演进，比较七家主要ESG评级机构。发现主权ESG评分存在显著的收入偏误、环境评分异质性以及风险与可持续性目标混同问题，导致可持续目标难以在组合层面被有效追踪。",
+    "key_points": [
+      "主权ESG评分方法论在2021年后快速演进但分歧仍然显著",
+      "高收入国家评分系统性偏高，存在收入偏误",
+      "环境维度评分机构间差异最大",
+      "风险评级与可持续性目标常被混为一谈"
+    ],
+    "related_sectors": ["主权债", "中央银行", "储备管理"],
+    "related_tickers": [],
+    "impact": "高",
+    "original_language": "en",
+    "translated": true,
+    "applicability_to_a_share": "对中国主权债与地方债的ESG纳入及外汇储备可持续投资有警示作用：直接使用外部主权ESG评级可能引入国家发展阶段偏误，需结合国内环境与社会政策目标构建本土化主权ESG框架。",
+    "limitations": "主要聚焦主权债券投资者与评级机构，对股票市场与国家层面ESG指标的联系讨论较少；部分评级数据可得性受限。"
+  },
+  {
+    "id": "quant-01",
+    "title": "用可解释机器学习剖析ESG特征对股票收益的解释力",
+    "original_title": "Dissecting the explanatory power of ESG features on equity returns by sector, capitalization, and year with interpretable machine learning",
+    "authors": [
+      "Jérémi Assael",
+      "Laurent Carlier",
+      "Damien Challet"
+    ],
+    "source": "arXiv",
+    "url": "https://arxiv.org/abs/2201.04393",
+    "date": "2022",
+    "accessed_at": "2026-07-18",
+    "category": "论文",
+    "tags": ["ESG", "量化投资", "可解释机器学习", "LightGBM", "股票收益", "SHAP"],
+    "summary": "作者利用LightGBM与SHAP可解释方法，在欧洲市场研究ESG特征对个股残差收益符号的解释力。发现ESG争议度评分与收益关系最强且单调；ESG评分对大盘股和小盘股的影响方向相反；随着数据质量提升，ESG特征的预测力在2018至2019年间增强。",
+    "key_points": [
+      "ESG特征在控制经典因子后仍能解释部分个股收益方向",
+      "ESG争议度是最稳健的收益预测指标",
+      "大盘股中更好的ESG评分与更高收益相关，小盘股相反",
+      "ESG数据质量随时间提升，模型解释力同步增强"
+    ],
+    "related_sectors": ["量化投资", "资产管理"],
+    "related_tickers": [],
+    "impact": "高",
+    "original_language": "en",
+    "translated": true,
+    "applicability_to_a_share": "对A股量化策略中引入ESG因子具有直接参考：可借鉴LightGBM+SHAP框架筛选本土ESG数据源，识别争议事件、行业与市值异质性，避免简单线性化用ESG总分。",
+    "limitations": "基于欧洲市场与Refinitiv ESG数据，A股ESG评级机构、披露标准与投资者结构差异较大；目标变量为收益符号而非收益率大小，策略构建时需进一步转换。"
+  },
+  {
+    "id": "quant-02",
+    "title": "AlphaForge：挖掘并动态组合公式化Alpha因子的框架",
+    "original_title": "AlphaForge: A Framework to Mine and Dynamically Combine Formulaic Alpha Factors",
+    "authors": [
+      "Hao Shi",
+      "Weili Song",
+      "Xinting Zhang",
+      "Jiahe Shi",
+      "Cuicui Luo",
+      "Xiang Ao",
+      "Hamid Arian",
+      "Luis Angel Seco"
+    ],
+    "source": "arXiv",
+    "url": "https://arxiv.org/abs/2406.18394",
+    "date": "2024",
+    "accessed_at": "2026-07-18",
+    "category": "论文",
+    "tags": ["量化投资", "Alpha因子", "因子挖掘", "动态组合", "深度学习", "A股"],
+    "summary": "本文提出一种生成式深度网络与预测器协同的公式化Alpha因子挖掘框架，并通过动态选择与加权构建'Mega-Alpha'。在沪深300与中证500数据集上，该方法在信息系数、RankIC与组合收益方面优于传统机器学习基线；最优因子池规模约为10个。",
+    "key_points": [
+      "生成式神经网络可有效探索稀疏公式化因子空间",
+      "多样性损失避免挖掘出高度同质化的因子",
+      "动态组合显著优于静态等权组合",
+      "在中国A股宽基指数上验证有效"
+    ],
+    "related_sectors": ["量化投资", "对冲基金", "资产管理"],
+    "related_tickers": [],
+    "impact": "高",
+    "original_language": "en",
+    "translated": true,
+    "applicability_to_a_share": "高度适用于A股量化策略研发：直接以沪深300、中证500为测试对象，因子公式化形式便于落地与风控；动态组合机制可纳入现有多因子选股框架，提升因子池适应性与夏普表现。",
+    "limitations": "训练与评估基于历史A股数据，未来市场结构变化、监管限制与交易成本可能削弱样本外表现；深度生成模型对算力与调参要求较高，且因子可解释性仍需人工复核。"
+  }
+]
