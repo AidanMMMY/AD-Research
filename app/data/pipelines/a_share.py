@@ -6,8 +6,10 @@ upserts them into the ``instrument_daily_bar`` table.
 
 import logging
 from datetime import date, timedelta
+from typing import Any
 
 import pandas as pd
+from sqlalchemy import case
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
@@ -73,57 +75,68 @@ class AShareETLPipeline(ETLPipeline):
 
         Uses PostgreSQL ON CONFLICT DO UPDATE for idempotent writes.
         The unique key is (etf_code, trade_date).
+
+        All records are normalized to the same set of keys so SQLAlchemy can
+        compile a bulk INSERT.  For idempotent reruns, a ``CASE`` expression
+        keeps the existing row value when the incoming value is NULL, which
+        avoids wiping already-populated columns when a fallback source
+        (e.g. Sina) is missing a field like ``turnover_rate``.
         """
         if data.empty:
             return 0
 
-        records = []
+        all_cols = [
+            "etf_code",
+            "trade_date",
+            "open",
+            "high",
+            "low",
+            "close",
+            "volume",
+            "amount",
+            "pre_close",
+            "change_pct",
+            "turnover_rate",
+            "adj_factor",
+        ]
+        present_cols = [c for c in all_cols if c in data.columns]
+
+        records: list[dict] = []
         for _, row in data.iterrows():
-            record = {
-                "etf_code": row.get("etf_code"),
-                "trade_date": row.get("trade_date"),
-                "open": row.get("open"),
-                "high": row.get("high"),
-                "low": row.get("low"),
-                "close": row.get("close"),
-                "volume": row.get("volume"),
-                "amount": row.get("amount"),
-                "pre_close": row.get("pre_close"),
-                "change_pct": row.get("change_pct"),
-                "turnover_rate": row.get("turnover_rate"),
-                "adj_factor": row.get("adj_factor"),
-            }
-            # Drop None/NaN values so they don't overwrite existing data on conflict,
-            # but keep legitimate zeros (e.g. volume=0, change_pct=0).
-            record = {
-                k: v
-                for k, v in record.items()
-                if v is not None
-                and not (isinstance(v, float) and pd.isna(v))
-            }
+            record = {}
+            for col in present_cols:
+                v = row.get(col)
+                if v is None or (isinstance(v, float) and pd.isna(v)) or pd.isna(v):
+                    record[col] = None
+                else:
+                    record[col] = v
             records.append(record)
 
         if not records:
             return 0
 
-        stmt = (
-            insert(InstrumentDailyBar)
-            .values(records)
-            .on_conflict_do_update(
-                index_elements=["etf_code", "trade_date"],
-                set_={
-                    "open": insert(InstrumentDailyBar).excluded.open,
-                    "high": insert(InstrumentDailyBar).excluded.high,
-                    "low": insert(InstrumentDailyBar).excluded.low,
-                    "close": insert(InstrumentDailyBar).excluded.close,
-                    "volume": insert(InstrumentDailyBar).excluded.volume,
-                    "amount": insert(InstrumentDailyBar).excluded.amount,
-                    "adj_factor": insert(InstrumentDailyBar).excluded.adj_factor,
-                    "pre_close": insert(InstrumentDailyBar).excluded.pre_close,
-                    "change_pct": insert(InstrumentDailyBar).excluded.change_pct,
-                    "turnover_rate": insert(InstrumentDailyBar).excluded.turnover_rate,
-                },
+        # Determine which columns actually carry data.  Columns that are all
+        # NULL are omitted from the DO UPDATE SET so we do not overwrite
+        # existing values with NULL.
+        cols_with_data = [
+            col
+            for col in present_cols
+            if col not in ("etf_code", "trade_date")
+            and any(record.get(col) is not None for record in records)
+        ]
+
+        stmt = insert(InstrumentDailyBar).values(records)
+        set_clause: dict[str, Any] = {}
+        for col in cols_with_data:
+            excluded_col = getattr(stmt.excluded, col)
+            set_clause[col] = case(
+                (excluded_col.is_not(None), excluded_col),
+                else_=getattr(InstrumentDailyBar, col),
             )
+
+        stmt = stmt.on_conflict_do_update(
+            index_elements=["etf_code", "trade_date"],
+            set_=set_clause,
         )
 
         self.db.execute(stmt)
