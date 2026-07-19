@@ -583,6 +583,10 @@ class SectorRotationService:
                     "sw_l1_code": (info.sw_l1_code if classification == "SW" else None),
                 },
             )
+            # Phase 3: SW 模式下，优先用 STOCK 的 sw_l1_code（ETF 通常没填
+            # 这列）；第一个到达的非 None 值粘住。
+            if classification == "SW" and not bucket["sw_l1_code"] and info.sw_l1_code:
+                bucket["sw_l1_code"] = info.sw_l1_code
             bucket["count"] += 1
             if info.instrument_type == "STOCK":
                 bucket["stock_count"] += 1
