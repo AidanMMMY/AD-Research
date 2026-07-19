@@ -178,7 +178,9 @@ fi
 
 # ── 2. 停止旧容器 ──
 log_step "2/4 停止旧容器"
-docker compose stop backend nginx celery-worker
+# compose 里 celery 拆成 indicator / cninfo 两个独立 worker，避免一个 queue
+# 阻塞另一个；update.sh 必须分别 stop，不能假定单一 celery-worker。
+docker compose stop backend nginx celery-worker-indicator celery-worker-cninfo
 
 # ── 2.5 清理可能残留的孤儿容器（防止上一次 deploy 失败留下同名容器导致 Conflict）
 log_step "2.5/4 清理残留容器"
@@ -187,14 +189,14 @@ log_step "2.5/4 清理残留容器"
 # 只清理本 compose project 的容器，绝不影响其他项目或手动容器。
 (
     set +e
-    docker compose rm -f -s backend celery-worker nginx >/dev/null 2>&1
+    docker compose rm -f -s backend celery-worker-indicator celery-worker-cninfo nginx >/dev/null 2>&1
     true
 )
 
 # ── 3. 启动新容器 ──
 log_step "3/4 启动新容器"
 docker compose up -d postgres redis 2>/dev/null || true
-docker compose up -d --force-recreate backend celery-worker
+docker compose up -d --force-recreate backend celery-worker-indicator celery-worker-cninfo
 
 # 等待 backend 健康
 # ── ops P1-13 ──
