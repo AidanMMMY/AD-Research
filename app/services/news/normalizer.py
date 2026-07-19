@@ -17,12 +17,14 @@ crawler's ``run`` method) keeps going.
 
 from __future__ import annotations
 
+import contextlib
 import hashlib
 import json
 import logging
 import re
 from typing import Any
 
+from simhash import Simhash
 from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
@@ -42,6 +44,22 @@ def _hash_text(value: str | None) -> str | None:
     return hashlib.md5(value.encode("utf-8", errors="ignore")).hexdigest()
 
 
+def _simhash_text(value: str | None) -> str | None:
+    """Return a 64-bit simhash of ``value`` as a decimal string, or ``None``.
+
+    The value is stored as a plain integer string so downstream dedup code
+    can rebuild a :class:`simhash.Simhash` directly without parsing a hex
+    prefix.  64-bit simhash fits comfortably in a 20-char decimal string.
+    """
+    if not value:
+        return None
+    try:
+        return str(Simhash(value.strip()).value)
+    except Exception as exc:  # pragma: no cover - defensive
+        logger.debug("simhash failed: %s", exc)
+        return None
+
+
 def _safe_json(value: Any) -> dict | list | None:
     """Return a JSON-safe dict/list for the engagement column.
 
@@ -50,12 +68,12 @@ def _safe_json(value: Any) -> dict | list | None:
     """
     if value is None or value == "":
         return {}
-    if isinstance(value, (dict, list)):
+    if isinstance(value, dict | list):
         return value
     if isinstance(value, str):
         try:
             data = json.loads(value)
-            if isinstance(data, (dict, list)):
+            if isinstance(data, dict | list):
                 return data
         except (TypeError, ValueError):
             return {"raw": value[:1000]}
@@ -132,6 +150,7 @@ class NewsNormalizer:
                 # than waiting for the lazy Jina Reader fetch.
                 body=full_body,
                 full_content=full_body if _looks_full_article(full_body) else None,
+                content_hash=_simhash_text(full_body),
                 author=raw.author,
                 language=raw.language or "zh",
                 market=raw.market or "cn_a",
@@ -159,10 +178,8 @@ class NewsNormalizer:
             return None
         except Exception as exc:  # noqa: BLE001
             logger.warning("normalize: unexpected error for url=%s: %s", raw.url, exc)
-            try:
+            with contextlib.suppress(Exception):
                 self.db.rollback()
-            except Exception:  # noqa: BLE001
-                pass
             return None
 
     # ------------------------------------------------------------------
@@ -195,7 +212,7 @@ class NewsNormalizer:
         etf_by_code = {row.code: row for row in etf_rows}
 
         seen: set[str] = set()
-        for sym, market, conf in candidates:
+        for sym, _market, conf in candidates:
             if not sym or sym in seen:
                 continue
             seen.add(sym)

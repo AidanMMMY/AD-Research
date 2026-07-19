@@ -314,6 +314,127 @@ def run_wechat_zeping_crawl() -> dict[str, int]:
     }
 
 
+# ── New Chinese news sources (added 2026-07-18) ──
+
+@_record_etl("news_wallstreetcn_5m")
+def run_wallstreetcn_crawl() -> dict[str, int]:
+    from app.services.news.sources.wallstreetcn import WallstreetcnCrawler
+
+    async def _go():
+        async with WallstreetcnCrawler() as c:
+            return await c.crawl()
+
+    try:
+        articles = _run_async(_go())
+        written = _write_to_db(articles)
+        return {"fetched": len(articles), "written": written}
+    except Exception as exc:
+        logger.exception("wallstreetcn crawl failed: %s", exc)
+        return {"fetched": 0, "written": 0}
+
+
+@_record_etl("news_36kr_10m")
+def run_kr36_crawl() -> dict[str, int]:
+    from app.services.news.sources.kr36 import Kr36Crawler
+
+    async def _go():
+        async with Kr36Crawler() as c:
+            return await c.crawl()
+
+    try:
+        articles = _run_async(_go())
+        written = _write_to_db(articles)
+        return {"fetched": len(articles), "written": written}
+    except Exception as exc:
+        logger.exception("36kr crawl failed: %s", exc)
+        return {"fetched": 0, "written": 0}
+
+
+@_record_etl("news_huxiu_10m")
+def run_huxiu_crawl() -> dict[str, int]:
+    from app.services.news.sources.huxiu import HuxiuCrawler
+
+    async def _go():
+        async with HuxiuCrawler() as c:
+            return await c.crawl()
+
+    try:
+        articles = _run_async(_go())
+        written = _write_to_db(articles)
+        return {"fetched": len(articles), "written": written}
+    except Exception as exc:
+        logger.exception("huxiu crawl failed: %s", exc)
+        return {"fetched": 0, "written": 0}
+
+
+@_record_etl("news_jiemian_10m")
+def run_jiemian_crawl() -> dict[str, int]:
+    from app.services.news.sources.jiemian import JiemianCrawler
+
+    async def _go():
+        async with JiemianCrawler() as c:
+            return await c.crawl()
+
+    try:
+        articles = _run_async(_go())
+        written = _write_to_db(articles)
+        return {"fetched": len(articles), "written": written}
+    except Exception as exc:
+        logger.exception("jiemian crawl failed: %s", exc)
+        return {"fetched": 0, "written": 0}
+
+
+@_record_etl("news_caixin_10m")
+def run_caixin_crawl() -> dict[str, int]:
+    from app.services.news.sources.caixin import CaixinCrawler
+
+    async def _go():
+        async with CaixinCrawler() as c:
+            return await c.crawl()
+
+    try:
+        articles = _run_async(_go())
+        written = _write_to_db(articles)
+        return {"fetched": len(articles), "written": written}
+    except Exception as exc:
+        logger.exception("caixin crawl failed: %s", exc)
+        return {"fetched": 0, "written": 0}
+
+
+@_record_etl("news_chinanews_finance_15m")
+def run_chinanews_finance_crawl() -> dict[str, int]:
+    from app.services.news.sources.chinanews_finance import ChinanewsFinanceCrawler
+
+    async def _go():
+        async with ChinanewsFinanceCrawler() as c:
+            return await c.crawl()
+
+    try:
+        articles = _run_async(_go())
+        written = _write_to_db(articles)
+        return {"fetched": len(articles), "written": written}
+    except Exception as exc:
+        logger.exception("chinanews_finance crawl failed: %s", exc)
+        return {"fetched": 0, "written": 0}
+
+
+@_record_etl("news_stats_gov_30m")
+def run_stats_gov_crawl() -> dict[str, int]:
+    from app.services.news.sources.stats_gov import StatsGovCrawler
+
+    async def _go():
+        async with StatsGovCrawler() as c:
+            return await c.crawl()
+
+    try:
+        articles = _run_async(_go())
+        written = _write_to_db(articles)
+        return {"fetched": len(articles), "written": written}
+    except Exception as exc:
+        logger.exception("stats_gov crawl failed: %s", exc)
+        return {"fetched": 0, "written": 0}
+
+
 # ── US ──
 
 @_record_etl("news_yahoo_5m")

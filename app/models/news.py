@@ -11,7 +11,6 @@ Tables:
   - reddit_comment_cache   : optional second-level discussion cache
 """
 
-from datetime import datetime
 
 from sqlalchemy import (
     BigInteger,
@@ -31,7 +30,6 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
 
 from app.core.database import Base
-
 
 # Use JSON type with fallback for SQLite tests.
 try:  # pragma: no cover - import-time branch
@@ -57,6 +55,13 @@ class NewsArticle(Base):
     url = Column(String(1000), nullable=False)
     url_hash = Column(String(32), nullable=False, unique=True, index=True, comment="MD5(url) for dedup")
     content_hash = Column(String(32), index=True, comment="simhash for near-duplicate detection")
+    duplicate_of = Column(
+        Integer,
+        ForeignKey("news_article.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+        comment="Points to the older article this row is a near-duplicate of",
+    )
     title = Column(String(1000), nullable=False)
     summary = Column(Text, comment="Body excerpt or RSS summary")
     body = Column(Text, comment="Full body if available")
@@ -85,6 +90,10 @@ class NewsArticle(Base):
     event_category = Column(String(50), comment="earnings|m&a|product|macro|regulation|guidance|analyst|legal|rumor|geopolitics|central_bank|election|trade_war|sanction|other")
     importance = Column(SmallInteger, comment="1..5 LLM importance rating")
     sentiment_processed_at = Column(DateTime, comment="When LLM sentiment was filled")
+    # RAG: vector embedding and metadata for semantic retrieval.
+    embedding = Column(_JSON_TYPE, comment="Embedding vector as a JSON list")
+    embedding_model = Column(String(50), comment="Model that produced the embedding")
+    embedded_at = Column(DateTime, comment="When the embedding was persisted")
     # Chinese translation cache, filled on demand by the
     # ``/news/{id}/translate`` endpoint. Populated only for English
     # articles (the API enforces ``language == 'en'`` before writing).

@@ -29,7 +29,7 @@ from sqlalchemy import desc
 from app.core.database import SessionLocal
 from app.core.redis_client import redis_lock
 from app.models.research import SentimentData
-from app.services.news.sentiment import SentimentPipeline, LLMPipelineMonitor
+from app.services.news.sentiment import LLMPipelineMonitor, SentimentPipeline
 from app.services.news.sentiment.cache import SentimentCache
 
 logger = logging.getLogger(__name__)
@@ -201,6 +201,79 @@ def run_news_article_categorization(limit: int = 30) -> int:
             db.close()
 
 
+def run_source_sentiment_backfill(sources: list[str], limit: int = 500) -> int:
+    """Backfill LLM sentiment for unprocessed ``news_article`` rows.
+
+    Unlike ``run_news_article_categorization`` (which only handles rows
+    lacking ``event_category``), this task targets rows that have never
+    been touched by the sentiment pipeline at all
+    (``sentiment_processed_at IS NULL``).  It is intended for one-off or
+    low-frequency catch-up runs after new sources are added.
+    """
+    if not sources:
+        return 0
+    source_list = list(sources)
+    with redis_lock(f"{_LOCK_BATCH}_news_backfill", expire_seconds=600) as acquired:
+        if not acquired:
+            logger.info("[NewsSentimentBackfill] Skipped: lock in use")
+            return 0
+        db = SessionLocal()
+        try:
+            from app.services.news._model_loader import NewsArticle
+
+            rows = (
+                db.query(NewsArticle)
+                .filter(NewsArticle.source.in_(source_list))
+                .filter(NewsArticle.sentiment_processed_at.is_(None))
+                .order_by(desc(NewsArticle.published_at))
+                .limit(limit)
+                .all()
+            )
+            articles = [
+                {
+                    "id": r.id,
+                    "url": r.url or f"news:{r.id}",
+                    "title": r.title or "",
+                    "body": r.body or r.full_content or r.summary or "",
+                    "published_at": r.published_at,
+                }
+                for r in rows
+            ]
+            if not articles:
+                return 0
+
+            pipe = SentimentPipeline(db)
+
+            async def _go():
+                return await pipe.process_batch(articles, concurrency=5)
+
+            results = _run_async(_go())
+            ok = sum(1 for r in results if r.success)
+            logger.info(
+                "[NewsSentimentBackfill] sources=%s processed=%d success=%d cache_hits=%d",
+                source_list,
+                len(results),
+                ok,
+                sum(1 for r in results if r.cache_hit),
+            )
+            return ok
+        finally:
+            db.close()
+
+
+# Chinese financial news sources that were added in 2026-07.  Used by the
+# low-frequency backfill job and the CLI script.
+_CHINESE_BACKFILL_SOURCES = [
+    "wallstreetcn",
+    "36kr",
+    "huxiu",
+    "jiemian",
+    "caixin",
+    "chinanews_finance",
+    "stats_gov",
+]
+
+
 def run_retail_aggregation(top_n: int = 50) -> int:
     """Aggregate retail chatter for the top hot symbols.
 
@@ -324,5 +397,14 @@ def init_sentiment_jobs(scheduler: BackgroundScheduler) -> None:
         name="情绪成本日终落库-00:05",
         replace_existing=True,
         max_instances=1,
+    )
+    scheduler.add_job(
+        lambda: run_source_sentiment_backfill(_CHINESE_BACKFILL_SOURCES, limit=500),
+        trigger=IntervalTrigger(hours=6),
+        id="news_sentiment_backfill_6h",
+        name="中文新闻情绪补跑-6小时",
+        replace_existing=True,
+        max_instances=1,
+        coalesce=True,
     )
     logger.info("[SentimentScheduler] jobs registered")

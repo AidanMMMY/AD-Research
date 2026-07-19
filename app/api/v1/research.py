@@ -8,6 +8,8 @@ import asyncio
 import json
 import logging
 from collections.abc import AsyncGenerator
+from datetime import datetime, timedelta, timezone
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import StreamingResponse
@@ -18,6 +20,7 @@ import os
 
 from app.api.deps import get_current_user, get_db
 from app.models.etf import ETFInfo
+from app.models.research import SentimentData
 from app.models.user import User
 from app.services.chat_service import ChatService
 from app.services.research_service import ResearchService
@@ -96,6 +99,33 @@ class SentimentResponse(BaseModel):
     neutral_count: int
     total_articles: int
     period_days: int
+
+
+class SentimentDataAggregateItem(BaseModel):
+    """Per-symbol aggregate over ``sentiment_data``.
+
+    ``label`` is derived from the average score: positive if
+    ``avg_score > 0.2``, negative if ``avg_score < -0.2``, otherwise
+    neutral.  ``bull`` / ``bear`` / ``neutral`` count the raw
+    ``sentiment_label`` rows for that symbol.
+    """
+
+    instrument_code: str
+    count: int
+    avg_score: float
+    label: str
+    bull: int
+    bear: int
+    neutral: int
+    sparkline: list[float]
+    name: str | None = None
+    name_zh: str | None = None
+    latest_title: str | None = None
+    latest_published_at: str | None = None
+
+
+class SentimentDataAggregateResponse(BaseModel):
+    items: list[SentimentDataAggregateItem]
 
 
 class ChatSessionRequest(BaseModel):
@@ -277,6 +307,146 @@ def ingest_sentiment(
             },
         ) from exc
     return {"instrument_code": instrument_code, "articles_ingested": count}
+
+
+# ------------------------------------------------------------------
+# Sentiment data aggregation (by symbol)
+# ------------------------------------------------------------------
+
+def _iso_utc(value: datetime | None) -> str | None:
+    """Serialize a naive-UTC datetime as an explicit UTC ISO-8601 string."""
+    if value is None:
+        return None
+    if value.tzinfo is None:
+        value = value.replace(tzinfo=timezone.utc)
+    else:
+        value = value.astimezone(timezone.utc)
+    return value.isoformat(timespec="seconds")
+
+
+def _sentiment_market_bucket(code: str | None) -> str:
+    """Classify a ``SentimentData.instrument_code`` into a market bucket."""
+    if not code:
+        return "other"
+    if code.endswith((".SH", ".SZ", ".BJ")):
+        return "a_share"
+    if code.endswith(".US"):
+        return "us"
+    if code.endswith("-US"):
+        return "crypto"
+    return "other"
+
+
+@router.get("/sentiment-data/aggregate", response_model=SentimentDataAggregateResponse)
+def sentiment_data_aggregate(
+    days: int = Query(7, ge=1, le=30),
+    market: str | None = Query(
+        None,
+        description="Filter by market bucket: a_share | us | crypto | all. Defaults to all.",
+    ),
+    limit: int = Query(100, ge=1, le=500),
+    min_articles: int = Query(1, ge=1),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Aggregate ``sentiment_data`` rows by instrument code.
+
+    Returns a ranked list of symbols with average sentiment, label counts,
+    a 14-day sparkline, and the latest title.  This is the backing endpoint
+    for the SentimentOverview "按标的聚合" view.
+    """
+    cutoff = datetime.utcnow() - timedelta(days=days)
+    rows = (
+        db.query(SentimentData)
+        .filter(SentimentData.published_at >= cutoff)
+        .filter(SentimentData.instrument_code.isnot(None))
+        .all()
+    )
+
+    market_filter = (market or "all").lower()
+    if market_filter != "all":
+        rows = [
+            r for r in rows
+            if _sentiment_market_bucket(r.instrument_code) == market_filter
+        ]
+
+    # Group by symbol.
+    from collections import defaultdict
+    groups: dict[str, list[SentimentData]] = defaultdict(list)
+    for r in rows:
+        groups[r.instrument_code].append(r)
+
+    # Apply minimum-article threshold and keep the most-mentioned symbols.
+    eligible = [
+        (code, items) for code, items in groups.items()
+        if len(items) >= min_articles
+    ]
+    eligible.sort(key=lambda x: len(x[1]), reverse=True)
+    eligible = eligible[:limit]
+
+    codes = [code for code, _ in eligible]
+    etf_rows = db.query(ETFInfo).filter(ETFInfo.code.in_(codes)).all()
+    etf_by_code = {e.code: e for e in etf_rows}
+
+    # Sparkline window: last 14 days, ascending, missing days padded with 0.
+    spark_end = datetime.utcnow().date()
+    spark_start = spark_end - timedelta(days=13)
+
+    items: list[SentimentDataAggregateItem] = []
+    for code, records in eligible:
+        scores = [
+            float(r.sentiment_score) for r in records
+            if r.sentiment_score is not None
+        ]
+        avg_score = sum(scores) / len(scores) if scores else 0.0
+
+        if avg_score > 0.2:
+            label = "positive"
+        elif avg_score < -0.2:
+            label = "negative"
+        else:
+            label = "neutral"
+
+        bull = sum(1 for r in records if r.sentiment_label == "positive")
+        bear = sum(1 for r in records if r.sentiment_label == "negative")
+        neutral = sum(1 for r in records if r.sentiment_label == "neutral")
+
+        # Daily averages for the sparkline.
+        daily: dict[Any, list[float]] = defaultdict(list)
+        for r in records:
+            if r.published_at is None or r.sentiment_score is None:
+                continue
+            day = r.published_at.date() if isinstance(r.published_at, datetime) else r.published_at
+            if spark_start <= day <= spark_end:
+                daily[day].append(float(r.sentiment_score))
+
+        sparkline = []
+        for d in range(14):
+            day = spark_start + timedelta(days=d)
+            vals = daily.get(day, [])
+            sparkline.append(round(sum(vals) / len(vals), 4) if vals else 0.0)
+
+        latest = max(records, key=lambda r: r.published_at or datetime.min)
+        etf = etf_by_code.get(code)
+
+        items.append(
+            SentimentDataAggregateItem(
+                instrument_code=code,
+                count=len(records),
+                avg_score=round(avg_score, 4),
+                label=label,
+                bull=bull,
+                bear=bear,
+                neutral=neutral,
+                sparkline=sparkline,
+                name=etf.name if etf else None,
+                name_zh=etf.name_zh if etf else None,
+                latest_title=latest.title,
+                latest_published_at=_iso_utc(latest.published_at),
+            )
+        )
+
+    return SentimentDataAggregateResponse(items=items)
 
 
 # ------------------------------------------------------------------
