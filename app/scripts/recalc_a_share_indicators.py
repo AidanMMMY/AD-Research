@@ -25,7 +25,7 @@ def main() -> int:
         updated = batch_calculate_indicators(
             db,
             target_date=None,
-            full_history=False,
+            full_history=True,
             market_filter="A股",
         )
         logger.info("Updated %d A-share indicator records", updated)

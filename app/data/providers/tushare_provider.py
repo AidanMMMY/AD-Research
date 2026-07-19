@@ -182,6 +182,33 @@ def _to_ts_code(internal_code: str) -> str:
     return internal_code
 
 
+def _format_tushare_date(value: date | datetime | str | None) -> str | None:
+    """Normalize a date parameter into Tushare's ``YYYYMMDD`` string format.
+
+    Accepts ``date``, ``datetime``, ``str`` (``YYYY-MM-DD`` or ``YYYYMMDD``),
+    or ``None``. This keeps callers from needing to convert string dates
+    before passing them to provider methods.
+    """
+    if value is None:
+        return None
+    if isinstance(value, date):
+        return value.strftime("%Y%m%d")
+    if isinstance(value, datetime):
+        return value.strftime("%Y%m%d")
+    if isinstance(value, str):
+        value = value.strip()
+        if not value:
+            return None
+        # Already YYYYMMDD
+        if len(value) == 8 and value.isdigit():
+            return value
+        # ISO format YYYY-MM-DD
+        if len(value) == 10 and value[4] == "-" and value[7] == "-":
+            return value.replace("-", "")
+        raise ValueError(f"Unsupported date string format: {value!r}")
+    raise TypeError(f"Unsupported date type: {type(value)}")
+
+
 class TushareProvider(DataProvider):
     """Tushare Pro data provider for A-share individual stocks.
 
@@ -501,9 +528,9 @@ class TushareProvider(DataProvider):
     def fetch_adj_factor(
         self,
         ts_code: str | None = None,
-        trade_date: date | None = None,
-        start_date: date | None = None,
-        end_date: date | None = None,
+        trade_date: date | datetime | str | None = None,
+        start_date: date | datetime | str | None = None,
+        end_date: date | datetime | str | None = None,
     ) -> pd.DataFrame:
         """Fetch cumulative adjustment factors from Tushare ``adj_factor()``.
 
@@ -517,11 +544,11 @@ class TushareProvider(DataProvider):
         if ts_code:
             params["ts_code"] = _to_ts_code(ts_code)
         if trade_date is not None:
-            params["trade_date"] = trade_date.strftime("%Y%m%d")
+            params["trade_date"] = _format_tushare_date(trade_date)
         if start_date is not None:
-            params["start_date"] = start_date.strftime("%Y%m%d")
+            params["start_date"] = _format_tushare_date(start_date)
         if end_date is not None:
-            params["end_date"] = end_date.strftime("%Y%m%d")
+            params["end_date"] = _format_tushare_date(end_date)
 
         try:
             self._limiter.acquire()
