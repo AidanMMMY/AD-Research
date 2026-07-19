@@ -25,10 +25,14 @@ Tier 3: 行业 / 主题 / 杠杆 ETF：
         - Select Sector SPDRs (XL*) — 标普 11 大行业（GICS 板块代表）
         - 常见主题：ARKK / SOXL / SOXS / TLT / GLD / SLV
         - 主要杠杆 / 反向（TQQQ / SQQQ / SPXL / UPRO 等）
-Tier 4: 其他 ETF + 其他 STOCK（含 underlying_index 含主要指数但不在 Tier 2 名单）
+Tier 4: 其他 ETF + 其他 STOCK。
+        Tier 4 内嵌次级 fallback：若 ``underlying_index`` 含 ``s&p / dow /
+        nasdaq / russell / total market`` 关键词，标记为「次要宽基 ETF」
+        （reason 区分）；否则为「其他美股 ETF」。
 
-Tier 4 内嵌次级 fallback：若 ``underlying_index`` 含 ``s&p / dow / nasdaq / russell /
-total market`` 关键词，标记为「次要宽基 ETF」；否则为「其他美股 ETF」。
+备注：原本 7-01 sprint 计划「把 2 档扩到 4 档」已在 2026-07-01 同一份
+commit 里完成（见 git log），后续 sprint 不需要再扩。实际层级是
+Tier 1~4 + Tier 99 (已有数据)。
 
 用法
 ----
@@ -239,7 +243,7 @@ def main():
         "--tier",
         type=int,
         default=None,
-        help="只看某个 tier（1~6）",
+        help="只看某个 tier（1=SP500 STOCK, 2=核心宽基 ETF, 3=行业主题 ETF, 4=其他, 99=已有数据）",
     )
     parser.add_argument(
         "--only-missing",
