@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>20 小时 Overnight 研究 Worker 改进报告</title>
+<style>
+body { font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; line-height: 1.7; max-width: 900px; margin: 0 auto; padding: 2rem; color: #333; background: #fff; }
+h1 { border-bottom: 2px solid #eee; padding-bottom: .5rem; }
+h2 { margin-top: 2rem; border-bottom: 1px solid #eee; padding-bottom: .3rem; }
+h3 { margin-top: 1.5rem; }
+p { margin: .8rem 0; }
+table { border-collapse: collapse; width: 100%; margin: 1em 0; font-size: .95em; }
+th, td { border: 1px solid #ddd; padding: .5em .8em; text-align: left; }
+th { background: #f5f5f5; }
+code { background: #f4f4f4; padding: .1em .3em; border-radius: 3px; font-family: Menlo, Monaco, Consolas, monospace; }
+pre { background: #f8f8f8; padding: 1em; border-radius: 6px; overflow-x: auto; }
+pre code { background: none; padding: 0; }
+ul, ol { margin: .8rem 0; padding-left: 1.5rem; }
+blockquote { border-left: 4px solid #ddd; padding-left: 1rem; color: #666; margin: 1rem 0; }
+</style>
+</head>
+<body>
+<h1>20 小时 Overnight 研究 Worker 改进报告</h1>
+
+<blockquote><strong>报告时间</strong>：2026-07-18  </blockquote>
+<blockquote><strong>目标</strong>：让 <code>overnight_research.py</code> 能持续 20 小时高密度地搜集、分析、沉淀高质量学习/研究资料。  </blockquote>
+<blockquote><strong>文件</strong>：<code>agent/workers/overnight_research_v2.py</code>（保留旧版 <code>overnight_research.py</code>）  </blockquote>
+<blockquote><strong>测试目录</strong>：<code>/data/ad-research/overnight_test_20260718/</code></blockquote>
+
+<p>---</p>
+
+<h2>1. 摘要</h2>
+
+<p>当前 ECS 上运行的 <code>overnight_research.py</code>（v1）在启动后约 1 小时内 5 个 theme agent 全部退出，剩余 ~17 小时 orchestrator 空转，只产生 68 条记录，且内容相关度、来源质量、字段深度均不理想。</p>
+
+<p>本次改进实现 <code>overnight_research_v2.py</code>，核心变化：</p>
+
+<p>1. <strong>Supervisor 持续循环</strong>：任一 theme agent 结束后自动换方向/换子主题重新 spawn，直到 deadline。</p>
+<p>2. <strong>LLM 多 provider fallback</strong>：Anthropic → OpenAI → DeepSeek → MiniMax，自动处理敏感/过滤错误并拆分 prompt。</p>
+<p>3. <strong>搜索与提取增强</strong>：Jina Reader / Jina Search、SearXNG、RSS/feed（含 stdlib 兜底）、readability-lxml、Playwright 兜底。</p>
+<p>4. <strong>增强记录字段</strong>：核心论点、数据/论据、影响链条、投资启示、风险点、质量分、跨主题引用、原始正文片段。</p>
+<p>5. <strong>跨主题去重与链接</strong>：URL 精确去重 + title 相似度去重 + content_hash 去重。</p>
+<p>6. <strong>中间报告快照</strong>：每 2 小时生成一次 <code>report_snapshot_<n>.md/html</code>。</p>
+<p>7. <strong>更详细可观测性</strong>：heartbeat 携带各 agent 记录数、LLM/搜索成功失败比例、失败原因统计。</p>
+
+<p>---</p>
+
+<h2>2. 当前架构与问题诊断</h2>
+
+<h3>2.1 v1 架构</h3>
+
+<pre><code class="language-text">┌─────────────────────────────────────────────────────────────────┐
+│                       Orchestrator (主进程)                      │
+│  - 计算 deadline（20h）                                          │
+│  - 为每个主题 spawn 一个 multiprocessing.Process                  │
+│  - 每 5 分钟 heartbeat：统计记录数                               │
+│  - 到 deadline 后 terminate 子进程、合并 DB、生成 report          │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+        ┌──────────┬──────────┼──────────┬──────────┐
+        ▼          ▼          ▼          ▼          ▼
+   ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐
+   │ 机制    │ │ 讲话    │ │ 论文    │ │ 行业    │ │ 事件    │
+   │ ThemeAgent │ ThemeAgent │ ThemeAgent │ ThemeAgent │ ThemeAgent │
+   │ - queries  │ - queries  │ - queries  │ - queries  │ - queries  │
+   │ - search   │ - search   │ - search   │ - search   │ - search   │
+   │ - fetch    │ - fetch    │ - fetch    │ - fetch    │ - fetch    │
+   │ - LLM 提取 │ - LLM 提取 │ - LLM 提取 │ - LLM 提取 │ - LLM 提取 │
+   │ - reflect  │ - reflect  │ - reflect  │ - reflect  │ - reflect  │
+   └─────────┘ └─────────┘ └─────────┘ └─────────┘ └─────────┘</code></pre>
+
+<h3>2.2 关键问题</h3>
+
+<table>
+<thead><tr>
+<th>问题</th>
+<th>表现</th>
+<th>根因</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>**搜索成功率低**</td>
+<td>学术主题 0 记录；总体有效查询率约 23%</td>
+<td>Bing/Baidu/DDG  scraping 脆弱；部分查询过宽，返回大量不相关结果；无备用搜索源</td>
+</tr>
+<tr>
+<td>**内容提取浅**</td>
+<td>仅 title/summary/key_points，缺少论点、论据、影响链、投资启示</td>
+<td>`ResearchRecord` 模型字段不足</td>
+</tr>
+<tr>
+<td>**LLM 稳定性差**</td>
+<td>日志大量 `LLM call failed: input new_sensitive (1026)`</td>
+<td>v1 只初始化一个 provider，无自动降级；长 prompt 容易触发 MiniMax 敏感过滤</td>
+</tr>
+<tr>
+<td>**去重弱**</td>
+<td>同 URL 重复出现（如 china_mechanisms 9 组重复 URL）</td>
+<td>仅依赖 content_hash 且作用域局限在单主题</td>
+</tr>
+<tr>
+<td>**可观测性不足**</td>
+<td>仅 INFO 级别心跳，失败原因未分类统计</td>
+<td>日志级别为 INFO，DEBUG/ERROR 信息未充分记录</td>
+</tr>
+<tr>
+<td>**空等 deadline**</td>
+<td>68 条记录后 17 小时无产出</td>
+<td>没有 supervisor 重新 spawn 机制，也无中间快照</td>
+</tr>
+</tbody>
+</table>
+
+<h3>2.3 当前运行数据（ECS `/data/ad-research/overnight_20260718/`）</h3>
+
+<table>
+<thead><tr>
+<th>主题</th>
+<th>记录数</th>
+<th>唯一 URL</th>
+<th>备注</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>event_cases</td>
+<td>20</td>
+<td>17</td>
+<td>含 Wikipedia 虚构 2026 战争条目，来源不可靠</td>
+</tr>
+<tr>
+<td>industry_deep_dive</td>
+<td>5</td>
+<td>3</td>
+<td>来源集中在 ai-bot.cn 和百度热搜</td>
+</tr>
+<tr>
+<td>investor_speeches</td>
+<td>5</td>
+<td>4</td>
+<td>严重跑题：CISA 网络安全、百度百科“投资”词条</td>
+</tr>
+<tr>
+<td>academic_research</td>
+<td>0</td>
+<td>0</td>
+<td>零记录</td>
+</tr>
+<tr>
+<td>**合计**</td>
+<td>**68**</td>
+<td>—</td>
+<td>有效研究时间约 35 分钟</td>
+</tr>
+</tbody>
+</table>
+
+<p>---</p>
+
+<h2>3. 改进设计</h2>
+
+<h3>3.1 v2 整体流程</h3>
+
+<pre><code class="language-text">┌────────────────────────────────────────────────────────────────────┐
+│                          Supervisor (主进程)                        │
+│  - 启动 5 个 theme agent                                          │
+│  - 每 N 秒 heartbeat：统计记录数、LLM/搜索失败率                   │
+│  - 任一 agent 结束 → 读取 DB 记录数 → 生成新方向 → 重新 spawn     │
+│  - 每 2 小时触发 Merger + SnapshotReporter                         │
+│  - 到 deadline 后 wind-down、最终合并、生成 report_v2.md/html       │
+└────────────────────────────────────────────────────────────────────┘
+                              │
+        ┌──────────┬──────────┼──────────┬──────────┐
+        ▼          ▼          ▼          ▼          ▼
+   ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐
+   │ ThemeAgent │ ThemeAgent │ ThemeAgent │ ThemeAgent │ ThemeAgent │
+   │ v2       │ v2       │ v2       │ v2       │ v2       │
+   │ - 初始 queries + fallback_directions                          │
+   │ - 搜索失败/无结果 → 自动换引擎 → RSS 兜底                     │
+   │ - 提取增强：arguments/evidence/impact_chain/quality_score 等  │
+   │ - query 耗尽 → LLM 生成新方向 → 继续研究                       │
+   │ - 到 deadline 或外部 SIGTERM 才退出                            │
+   └─────────┘ └─────────┘ └─────────┘ └─────────┘ └─────────┘
+                              │
+                              ▼
+   ┌────────────────────────────────────────────────────────────┐
+   │  Merger + CrossReference                                   │
+   │  - 合并 5 个主题 DB                                          │
+   │  - URL 精确去重 + title Jaccard 相似度去重 + content_hash 去重 │
+   │  - 生成合并后的 overnight_research_v2.db + FTS5              │
+   └────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+   ┌────────────────────────────────────────────────────────────┐
+   │  SnapshotReporter / ReportBuilder                          │
+   │  - 每 2h 生成 report_snapshot_&lt;n&gt;.md/html                    │
+   │  - 最终生成 report_v2.md/html                                │
+   └────────────────────────────────────────────────────────────┘</code></pre>
+
+<h3>3.2 关键模块改进</h3>
+
+<h4>3.2.1 LLMClient（多 provider fallback）</h4>
+
+<ul><li>初始化时依次注册 Anthropic、OpenAI、DeepSeek、MiniMax。</li></ul>
+<ul><li>按优先级排序：<code>Anthropic → OpenAI → DeepSeek → MiniMax</code>。</li></ul>
+<ul><li><code>complete()</code> 内循环调用每个 provider；任一失败时自动切换下一个。</li></ul>
+<ul><li>对敏感/内容过滤类错误（<code>sensitive/new_sensitive/content_filter/policy/moderation/1026/10013</code>），先尝试将 prompt 拆成 4000 字符块分别调用，再降级。</li></ul>
+
+<h4>3.2.2 SearchEngine（多源搜索）</h4>
+
+<ul><li>默认顺序：Jina Search → Bing → DDG → Baidu。</li></ul>
+<ul><li>若环境变量 <code>SEARXNG_URL</code> 存在，则优先使用 SearXNG JSON API。</li></ul>
+<ul><li>新增 <code>FeedSource</code>：为每个主题配置 2 个 RSS/feed 源，作为搜索补充；支持 <code>feedparser</code> 或 stdlib <code>xml.etree.ElementTree</code> 解析。</li></ul>
+
+<h4>3.2.3 Fetcher（多层正文提取）</h4>
+
+<pre><code class="language-text">URL → Jina Reader → 直接请求 + readability-lxml → Playwright 无头兜底 → 返回可用文本</code></pre>
+
+<ul><li>修正 Jina Reader URL 构造：<code>https://r.jina.ai/http://<host></code> / <code>https://r.jina.ai/https://<host></code>。</li></ul>
+<ul><li>若 <code>readability-lxml</code> 未安装，自动降级到 BeautifulSoup 启发式提取。</li></ul>
+<ul><li>若 <code>playwright</code> 未安装，跳过该层。</li></ul>
+
+<h4>3.2.4 ThemeAgent（持续迭代）</h4>
+
+<ul><li>主循环 <code>while time.time() < deadline - 10s</code>，由 supervisor 通过 SIGTERM 终止。</li></ul>
+<ul><li>当 <code>queries</code> 耗尽时，调用 <code>_generate_new_directions()</code> 基于已有记录生成 5-8 个新子主题。</li></ul>
+<ul><li>若 LLM 生成失败或达到最大 reflection 次数，使用 <code>fallback_directions</code> 继续。</li></ul>
+<ul><li>每 3 次迭代做一次 reflection，补充新 query。</li></ul>
+<ul><li>启动时先处理 RSS 源，加速种子记录生成。</li></ul>
+
+<h4>3.2.5 ResearchRecord（增强字段）</h4>
+
+<p>新增字段：</p>
+
+<table>
+<thead><tr>
+<th>字段</th>
+<th>含义</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>`evidence`</td>
+<td>关键数据/论据（50-200 字）</td>
+</tr>
+<tr>
+<td>`impact_chain`</td>
+<td>影响链条（如政策→行业→个股→风险）</td>
+</tr>
+<tr>
+<td>`investment_implications`</td>
+<td>投资启示</td>
+</tr>
+<tr>
+<td>`risk_factors`</td>
+<td>风险点</td>
+</tr>
+<tr>
+<td>`quality_score`</td>
+<td>0-100 质量分（字段完整性、摘要长度、关联标的等）</td>
+</tr>
+<tr>
+<td>`cross_refs`</td>
+<td>跨主题引用记录 id</td>
+</tr>
+<tr>
+<td>`original_text`</td>
+<td>原始正文片段（用于溯源/去重）</td>
+</tr>
+</tbody>
+</table>
+
+<h4>3.2.6 去重策略</h4>
+
+<ul><li>主题内：插入前检查 <code>content_hash</code> 是否已存在。</li></ul>
+<ul><li>主题间：Merger 合并时先 URL 精确去重，再 title 字符二元组 Jaccard 相似度 >= 0.82 去重。</li></ul>
+<ul><li>质量分：为每条记录计算 <code>quality_score</code>，便于后续筛选和排序。</li></ul>
+
+<h3>3.3 短周期测试设计</h3>
+
+<ul><li>命令：<code>python /workspace/workers/overnight_research_v2.py --output /data/ad-research/overnight_test_20260718 --runtime-hours 0.5</code></li></ul>
+<ul><li>验证点：</li></ul>
+<p>  1. 5 个 theme agent 是否持续运行，结束后是否被 supervisor 重新 spawn。</p>
+<p>  2. LLM fallback 是否生效（所有 provider 被注册）。</p>
+<p>  3. 新字段是否正确写入 DB。</p>
+<p>  4. 中间快照是否生成。</p>
+<p>  5. 各主题记录数、LLM 成功/失败数、搜索成功/失败数。</p>
+
+<p>---</p>
+
+<h2>4. 实现清单与关键代码说明</h2>
+
+<h3>4.1 文件变更</h3>
+
+<table>
+<thead><tr>
+<th>文件</th>
+<th>操作</th>
+<th>说明</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>`agent/requirements.txt`</td>
+<td>修改</td>
+<td>新增 `readability-lxml>=0.8.1`</td>
+</tr>
+<tr>
+<td>`docs/research/20260718-overnight-research-improvement.md`</td>
+<td>新建</td>
+<td>本报告</td>
+</tr>
+<tr>
+<td>`docs/research/20260718-overnight-research-improvement.html`</td>
+<td>新建</td>
+<td>自包含 HTML 版</td>
+</tr>
+</tbody>
+</table>
+
+<h3>4.2 关键代码片段</h3>
+
+<h4>4.2.1 Supervisor 持续 spawn</h4>
+
+<pre><code class="language-python">class Supervisor:
+    def _spawn_theme(self, theme: str) -&gt; None:
+        if self.deadline - time.time() &lt; 60:  # 不足 1 分钟不再 spawn
+            return
+        phase = self.phase_counter[theme]
+        p = self.ctx.Process(
+            target=_run_theme_agent,
+            args=(theme, self.output_dir, self.deadline, phase),
+        )
+        p.start()
+        self.processes[theme] = p
+        self.phase_counter[theme] += 1
+
+    def _respawn_finished(self) -&gt; None:
+        for theme, p in list(self.processes.items()):
+            if not p.is_alive():
+                p.join(timeout=10)
+                # 读取记录数后重新 spawn，换方向
+                self._spawn_theme(theme)</code></pre>
+
+<h4>4.2.2 LLM 多 provider fallback</h4>
+
+<pre><code class="language-python">class LLMClient:
+    def __init__(self) -&gt; None:
+        self.providers: list[_LLMProvider] = []
+        # Anthropic / OpenAI / MiniMax / DeepSeek 注册
+        self.providers.sort(key=lambda p: p.priority)
+
+    def complete(self, prompt, system=None, max_tokens=2048, temperature=0.6) -&gt; str:
+        for provider in self.providers:
+            try:
+                return provider.complete(prompt, system, max_tokens, temperature)
+            except Exception as exc:
+                # 敏感/过滤错误：先拆分 prompt，再降级
+                if any(k in str(exc).lower() for k in ("sensitive", "new_sensitive", ...)):
+                    # split prompt retry
+                continue
+        return ""</code></pre>
+
+<h4>4.2.3 Fetcher 多层提取</h4>
+
+<pre><code class="language-python">class Fetcher:
+    def fetch_content(self, url: str) -&gt; str:
+        text = self.jina_read(url)
+        if len(text) &gt;= 80: return text
+        text = self.direct_fetch(url)
+        if len(text) &gt;= 80: return text
+        text = self.playwright_fetch(url)
+        if len(text) &gt;= 80: return text
+        return text</code></pre>
+
+<h4>4.2.4 增强提取 prompt</h4>
+
+<pre><code class="language-text">请从正文中提取 1-3 条高质量研究记录。每条记录包括：
+- title, source, url, date, tags, summary, key_points
+- related_sectors, related_tickers, impact
+- arguments: 核心论点
+- evidence: 关键数据/论据
+- impact_chain: 影响链条
+- investment_implications: 投资启示
+- risk_factors: 风险点</code></pre>
+
+<p>---</p>
+
+<h2>5. 短周期测试结果</h2>
+
+<blockquote><strong>容器启动命令</strong>：</blockquote>
+<blockquote>```bash</blockquote>
+<blockquote>docker run -d --rm --name alloyresearch-overnight-v2-test \</blockquote>
+<blockquote>  --entrypoint python \</blockquote>
+<blockquote>  -v /opt/ad-research/agent/workers:/workspace/workers:ro \</blockquote>
+<blockquote>  -v /data/ad-research/overnight_test_20260718:/data:rw \</blockquote>
+<blockquote>  --env-file /tmp/overnight_v2_env.txt \</blockquote>
+<blockquote>  -e RESEARCH_SNAPSHOT_SECONDS=600 \</blockquote>
+<blockquote>  -e RESEARCH_HEARTBEAT_SECONDS=60 \</blockquote>
+<blockquote>  ad-research:a539451 \</blockquote>
+<blockquote>  /workspace/workers/overnight_research_v2.py --output /data --runtime-hours 0.5</blockquote>
+<blockquote>```</blockquote>
+<blockquote>其中 <code>/tmp/overnight_v2_env.txt</code> 从当前运行的 <code>alloyresearch-overnight-research</code> 容器复制 API key 环境变量，避免硬编码。</blockquote>
+<blockquote></blockquote>
+<blockquote><strong>进程内命令</strong>：<code>python /workspace/workers/overnight_research_v2.py --output /data --runtime-hours 0.5</code></blockquote>
+
+<h3>5.1 运行概况</h3>
+
+<table>
+<thead><tr>
+<th>指标</th>
+<th>数值</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>测试结束时间</td>
+<td>2026-07-18 11:34:45 UTC</td>
+</tr>
+<tr>
+<td>总运行时长</td>
+<td>约 27 分钟（0.5h 的 90% 主循环 + 10% wind-down）</td>
+</tr>
+<tr>
+<td>5 个 agent 是否持续运行</td>
+<td>是，整个主循环期间 `alive=5/5`</td>
+</tr>
+<tr>
+<td>是否有 agent 提前结束</td>
+<td>否</td>
+</tr>
+<tr>
+<td>是否被 supervisor 重新 spawn</td>
+<td>30 分钟内未触发（agent 未退出），但代码已实现；新方向生成已验证</td>
+</tr>
+</tbody>
+</table>
+
+<h3>5.2 记录统计</h3>
+
+<table>
+<thead><tr>
+<th>主题</th>
+<th>原始记录数</th>
+<th>合并后记录数</th>
+<th>高质量记录数 (>=60)</th>
+<th>备注</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>investor_speeches</td>
+<td>6</td>
+<td>6</td>
+<td>6</td>
+<td>无跨主题重复</td>
+</tr>
+<tr>
+<td>academic_research</td>
+<td>3</td>
+<td>1</td>
+<td>1</td>
+<td>学术搜索仍偏难，部分被跨主题去重</td>
+</tr>
+<tr>
+<td>industry_deep_dive</td>
+<td>14</td>
+<td>10</td>
+<td>10</td>
+<td>数量最多，半导体/AI 相关</td>
+</tr>
+<tr>
+<td>event_cases</td>
+<td>5</td>
+<td>4</td>
+<td>4</td>
+<td>部分 Nexon/游戏事件记录被去重</td>
+</tr>
+<tr>
+<td>**合计**</td>
+<td>**34**</td>
+<td>**24**</td>
+<td>**24**</td>
+<td>合并去重 10 条；质量分分布全部在 80-100 区间</td>
+</tr>
+</tbody>
+</table>
+
+<h3>5.3 LLM 与搜索统计</h3>
+
+<table>
+<thead><tr>
+<th>指标</th>
+<th>数值/说明</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>LLM 失败次数</td>
+<td>5 分钟验证中 `llm_failures=0`；30 分钟测试中观察到 Anthropic `input new_sensitive (1026)` 与 OpenAI `invalid model gpt-4o-mini` 报错，但记录仍持续产生，说明 fallback 生效</td>
+</tr>
+<tr>
+<td>搜索总调用次数</td>
+<td>5 分钟验证为 29 次</td>
+</tr>
+<tr>
+<td>搜索失败次数</td>
+<td>5 分钟验证为 7 次（搜索失败率约 24%）</td>
+</tr>
+<tr>
+<td>提取失败/内容过短</td>
+<td>5 分钟验证中 `fetch_failures=5`；部分 URL 因 Jina 429 或内容过短被跳过</td>
+</tr>
+<tr>
+<td>去重跳过</td>
+<td>30 分钟测试合并去重 10 条；5 分钟验证去重 2 条</td>
+</tr>
+</tbody>
+</table>
+
+<h3>5.4 Supervisor 循环与新方向生成验证</h3>
+
+<table>
+<thead><tr>
+<th>检查项</th>
+<th>结果</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>结束后是否被重新 spawn</td>
+<td>代码已实现；30 分钟与 5 分钟测试均未触发（agent 未退出）</td>
+</tr>
+<tr>
+<td>是否有新方向生成</td>
+<td>是。日志可见 `[investor_speeches] generated new directions: 8`、`[event_cases] generated new directions: 8` 等</td>
+</tr>
+<tr>
+<td>中间快照是否生成</td>
+<td>30 分钟测试生成 4 份 snapshot（最终代码已修复启动时即快照的问题）；5 分钟验证仅 1 份最终快照</td>
+</tr>
+<tr>
+<td>最终报告</td>
+<td>生成 `report_v2.md` + `report_v2.html`</td>
+</tr>
+</tbody>
+</table>
+
+<h3>5.5 新字段验证</h3>
+
+<table>
+<thead><tr>
+<th>字段</th>
+<th>是否写入 DB</th>
+<th>示例说明</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>evidence</td>
+<td>是</td>
+<td>"2011 年 12 月日本子公司升格...NXC 直接持股 28.5%..."</td>
+</tr>
+<tr>
+<td>impact_chain</td>
+<td>是</td>
+<td>已写入，可在 DB 中查询</td>
+</tr>
+<tr>
+<td>investment_implications</td>
+<td>是</td>
+<td>"Nexon 的跨国控股模式为 A 股游戏公司...提供参考..."</td>
+</tr>
+<tr>
+<td>risk_factors</td>
+<td>是</td>
+<td>"1）控股母公司 NXC 的间接持股结构增加治理复杂性..."</td>
+</tr>
+<tr>
+<td>quality_score</td>
+<td>是</td>
+<td>合并后 24 条全部 >= 80，最高 100</td>
+</tr>
+<tr>
+<td>cross_refs</td>
+<td>是</td>
+<td>字段已存在，30 分钟测试内跨主题引用较少</td>
+</tr>
+<tr>
+<td>original_text</td>
+<td>是</td>
+<td>原始正文片段已保存</td>
+</tr>
+</tbody>
+</table>
+
+<h3>5.6 最终代码 5 分钟验证（修复后）</h3>
+
+<table>
+<thead><tr>
+<th>检查项</th>
+<th>结果</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>stats_v2.json 是否生成</td>
+<td>是，按主题统计 LLM/搜索/记录数</td>
+</tr>
+<tr>
+<td>heartbeat 是否显示 LLM/搜索失败数</td>
+<td>是</td>
+</tr>
+<tr>
+<td>记录是否持续产生</td>
+<td>是，5 分钟产生 15 条原始记录</td>
+</tr>
+<tr>
+<td>学术主题</td>
+<td>仍为 0 条，需要单独优化学术源</td>
+</tr>
+</tbody>
+</table>
+
+<p>---</p>
+
+<h2>6. 下一步可继续优化方向</h2>
+
+<p>1. <strong>搜索质量提升</strong></p>
+<p>   - 部署私有 SearXNG 实例，聚合 Google/Bing/Baidu/DDG，减少单点失败。</p>
+<p>   - 为每个主题维护“高质量源白名单”，优先抓取政府官网、主流财经媒体、券商研报、学术论文站点。</p>
+<p>   - 引入搜索结果相关性打分，过滤标题/摘要明显跑题的结果。</p>
+
+<p>2. <strong>LLM 输出稳定性</strong></p>
+<p>   - 使用 OpenAI/Anthropic JSON mode / tool use 强制结构化输出，降低解析失败率。</p>
+<p>   - 对低质量记录做二次 LLM 提炼，提高摘要和论点质量。</p>
+<p>   - 对 MiniMax 等敏感过滤频繁的 provider，增加输入预处理（关键词过滤、分段）。</p>
+
+<p>3. <strong>去重与质量</strong></p>
+<p>   - 引入 simhash/minhash 做正文近重复检测，替代简单的 title 相似度。</p>
+<p>   - 为来源域名建立权威性评分，自动降低低质量源权重。</p>
+<p>   - 增加时效性评分，优先沉淀近 7-30 天内容。</p>
+
+<p>4. <strong>可观测性增强</strong></p>
+<p>   - 日志切分 DEBUG/INFO/WARNING 级别，失败原因分类统计。</p>
+<p>   - 将 stats 写入 SQLite 或 Prometheus metrics，方便面板监控。</p>
+<p>   - 为每个 theme agent 保存独立日志，便于单独排查。</p>
+
+<p>5. <strong>内容深度</strong></p>
+<p>   - 对 PDF/论文页面做特殊处理（pdfplumber / PyMuPDF）。</p>
+<p>   - 增加“原始 vs 中文翻译”字段，对英文内容自动翻译并保存原文。</p>
+<p>   - 提取表格、数据点，生成结构化 evidence 条目。</p>
+
+<p>6. <strong>部署与依赖</strong></p>
+<p>   - 在 <code>ad-research:latest</code> 镜像中安装 <code>readability-lxml</code>、<code>feedparser</code>（已加入 requirements.txt，待 rebuild）。</p>
+<p>   - 考虑为 overnight 单独构建一个容器/服务，避免与 backend 共用容器。</p>
+<p>   - 增加 <code>HEALTHCHECK</code> 和自动重启策略。</p>
+
+<p>---</p>
+
+<h2>7. 结论</h2>
+
+<p><code>overnight_research_v2.py</code> 通过 Supervisor 持续循环、LLM 多 provider fallback、搜索/提取增强、字段深度扩展、跨主题去重和中间快照，解决了 v1 的核心问题：worker 提前退出、空等 deadline、LLM 失败无降级、内容字段浅、可观测性不足。</p>
+
+<p>30 分钟短周期测试验证：</p>
+<ul><li>5 个 theme agent 全程运行，未出现 v1 中提前结束空等的情况。</li></ul>
+<ul><li>新方向生成机制生效，agent 在初始查询耗尽或达到迭代预算后自动生成新子主题。</li></ul>
+<ul><li>LLM fallback 机制生效，在 Anthropic 返回 <code>input new_sensitive</code>、OpenAI 返回模型错误时，仍能持续产生记录。</li></ul>
+<ul><li>增强字段（arguments、evidence、impact_chain、investment_implications、risk_factors、quality_score 等）已正确写入 DB。</li></ul>
+<ul><li>跨主题去重生效，34 条原始记录合并后为 24 条，且全部在 80-100 质量分区间。</li></ul>
+<ul><li>中间快照与最终报告正常生成。</li></ul>
+
+<p>测试中也暴露以下待继续优化点（已纳入下一步）：</p>
+<ul><li>搜索成功率仍偏低，Jina Reader 免费额度下 429 频繁；建议引入 SearXNG 私有聚合搜索或提高 Jina RPM。</li></ul>
+<ul><li>学术主题（academic_research）搜索/提取难度大，产出偏少；建议增加 arXiv/NBER/SSRN 等专门源。</li></ul>
+<ul><li>新方向生成偶有跑题；已在最终代码中加入主题约束，并可在实际运行中继续微调。</li></ul>
+<ul><li>子进程日志默认进入 Docker 日志，落地文件需改进；同时 stats 持久化已修复为 SIGTERM 安全。</li></ul>
+</body>
+</html>

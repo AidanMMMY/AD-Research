@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Worker 内容巡检报告</title>
+<style>
+/* 自包含 CSS */
+:root {
+  --bg: #f8f9fa;
+  --fg: #1a1d21;
+  --muted: #5b6370;
+  --card: #ffffff;
+  --border: #e2e5e9;
+  --accent: #2563eb;
+  --accent-fg: #ffffff;
+  --warn: #b45309;
+  --danger: #dc2626;
+  --ok: #15803d;
+}
+* { box-sizing: border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", sans-serif;
+  line-height: 1.7;
+  color: var(--fg);
+  background: var(--bg);
+  margin: 0;
+  padding: 0;
+}
+.container {
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 32px 24px;
+}
+.card {
+  background: var(--card);
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  padding: 24px 28px;
+  margin-bottom: 24px;
+  border: 1px solid var(--border);
+}
+h1 { font-size: 2rem; margin: 0 0 12px; letter-spacing: -0.5px; }
+h2 { font-size: 1.5rem; margin-top: 0; padding-bottom: 8px; border-bottom: 2px solid var(--border); }
+h3 { font-size: 1.2rem; margin-top: 24px; }
+h4 { font-size: 1.05rem; margin-top: 18px; color: var(--muted); }
+p, li { margin: 0 0 10px; }
+ul { padding-left: 20px; }
+blockquote {
+  border-left: 4px solid var(--accent);
+  background: #eff6ff;
+  margin: 12px 0;
+  padding: 12px 16px;
+  color: var(--fg);
+  border-radius: 0 8px 8px 0;
+}
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 14px 0;
+  font-size: 0.95rem;
+}
+.data-table th, .data-table td {
+  border: 1px solid var(--border);
+  padding: 10px 12px;
+  text-align: left;
+  vertical-align: top;
+}
+.data-table th {
+  background: #f1f5f9;
+  font-weight: 600;
+}
+.data-table tbody tr:nth-child(even) { background: #f8fafc; }
+.data-table tbody tr:hover { background: #eff6ff; }
+code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  background: #f1f5f9;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.9em;
+}
+.meta {
+  color: var(--muted);
+  font-size: 0.95rem;
+  margin-bottom: 18px;
+}
+.status-ok { color: var(--ok); font-weight: 600; }
+.status-warn { color: var(--warn); font-weight: 600; }
+.status-danger { color: var(--danger); font-weight: 600; }
+@media (max-width: 720px) {
+  .container { padding: 18px 14px; }
+  .data-table { font-size: 0.85rem; }
+  .data-table th, .data-table td { padding: 8px; }
+}
+</style>
+</head>
+<body>
+<div class="container">
+<h1>Worker 内容巡检报告</h1>
+<p></p>
+<p><strong>生成时间:</strong> 2026-07-18 09:27:13 UTC (UTC)</p>
+<p></p>
+<p><strong>巡检范围:</strong> ECS 生产环境 (host <code>ad-research</code>) 上的 8 支资讯/情绪 Worker（Celery、APScheduler、新闻爬虫、LLM 情绪流水线）</p>
+<p></p>
+<p><strong>数据来源:</strong> 仅读 backend 容器内 PostgreSQL（<code>news_article</code>、<code>sentiment_data</code>、<code>etl_log</code>），未写入或删除任何生产数据。</p>
+<p></p>
+<h2 id='一-执行摘要'>一、执行摘要</h2>
+<p></p>
+<h3 id='ecs-容器状态'>ECS 容器状态</h3>
+<p></p>
+<table class='data-table'><thead><tr><th>容器名</th><th>状态</th><th>备注</th></tr></thead><tbody><tr><td>alloyresearch-backend</td><td>Up 2h (healthy)</td><td>主 API / APScheduler</td></tr><tr><td>alloyresearch-celery-worker</td><td>Up 2h</td><td>Celery 4 并发 worker</td></tr><tr><td>alloyresearch-postgres</td><td>Up 40h (healthy)</td><td>PostgreSQL 5432</td></tr><tr><td>alloyresearch-redis</td><td>Up 41h (healthy)</td><td>Redis 6379</td></tr><tr><td>alloyresearch-nginx</td><td>Up 2h</td><td>80/443/8000</td></tr><tr><td>alloyresearch-overnight-research</td><td>Up 2h</td><td>8000/tcp</td></tr><tr><td>alloyresearch-hermes</td><td>Up 6d</td><td>8000/8080/9090</td></tr></tbody></table>
+<p></p>
+<blockquote>主机负载：<code>6.10, 5.75, 5.52</code>（22 天 uptime，负载正常偏高，与正在运行的 A 股指标重算一致）。</blockquote>
+<p></p>
+<h3 id='celery-worker-状态'>Celery Worker 状态</h3>
+<p></p>
+<table class='data-table'><thead><tr><th>项目</th><th>值</th></tr></thead><tbody><tr><td>启动命令</td><td><code>celery -A app.core.celery_app worker -l info -c 4 -Q celery,indicator,cninfo</code></td></tr><tr><td>并发模型</td><td>prefork</td></tr><tr><td>最大并发数</td><td>4</td></tr><tr><td>当前活跃任务</td><td>4（cninfo_pdf × 2、indicator_calculate × 1、cninfo_backfill × 1）</td></tr><tr><td>在线节点</td><td>1</td></tr></tbody></table>
+<p></p>
+<h3 id='apscheduler-调度器状态'>APScheduler 调度器状态</h3>
+<p></p>
+<ul><li>调度器心跳存在（Redis <code>ad_research:scheduler:heartbeat</code> 存在），Leader 存活。</li><li>从 Redis 快照读取到全部 53 个调度任务，其中 8 个资讯/情绪任务见下表。</li></ul>
+<p></p>
+<h3 id='数据总量概览'>数据总量概览</h3>
+<p></p>
+<table class='data-table'><thead><tr><th>表</th><th>近 7 天记录数</th><th>本次采样数</th></tr></thead><tbody><tr><td>news_article</td><td>6215</td><td>500</td></tr><tr><td>sentiment_data</td><td>174</td><td>174</td></tr></tbody></table>
+<p></p>
+<ul><li><strong>24h 新增新闻来源分布</strong>：[{&#x27;source&#x27;: &#x27;yahoo_finance&#x27;, &#x27;count&#x27;: 602}, {&#x27;source&#x27;: &#x27;sina_finance&#x27;, &#x27;count&#x27;: 121}, {&#x27;source&#x27;: &#x27;cointelegraph&#x27;, &#x27;count&#x27;: 17}, {&#x27;source&#x27;: &#x27;coindesk&#x27;, &#x27;count&#x27;: 11}, {&#x27;source&#x27;: &#x27;cninfo&#x27;, &#x27;count&#x27;: 9}, {&#x27;source&#x27;: &#x27;cnbc&#x27;, &#x27;count&#x27;: 1}, {&#x27;source&#x27;: &#x27;sec_edgar&#x27;, &#x27;count&#x27;: 1}]。</li><li><strong>7d 新增新闻来源分布</strong>：[{&#x27;source&#x27;: &#x27;yahoo_finance&#x27;, &#x27;count&#x27;: 3570}, {&#x27;source&#x27;: &#x27;sina_finance&#x27;, &#x27;count&#x27;: 2357}, {&#x27;source&#x27;: &#x27;cointelegraph&#x27;, &#x27;count&#x27;: 121}, {&#x27;source&#x27;: &#x27;coindesk&#x27;, &#x27;count&#x27;: 113}, {&#x27;source&#x27;: &#x27;cnbc&#x27;, &#x27;count&#x27;: 34}, {&#x27;source&#x27;: &#x27;cninfo&#x27;, &#x27;count&#x27;: 15}, {&#x27;source&#x27;: &#x27;sec_edgar&#x27;, &#x27;count&#x27;: 5}]。</li></ul>
+<p></p>
+<h3 id='8-worker-健康总览'>8 Worker 健康总览</h3>
+<p></p>
+<table class='data-table'><thead><tr><th>ID</th><th>名称</th><th>调度周期</th><th>近 24h 运行</th><th>24h 成功</th><th>24h 失败</th><th>24h 记录</th><th>最近状态</th><th>健康评估</th></tr></thead><tbody><tr><td>news_reddit_5m</td><td>Reddit 散户讨论</td><td>每 5 分钟</td><td>89</td><td>0</td><td>0</td><td>0</td><td>skipped</td><td>⏸️ 被跳过/未配置</td></tr><tr><td>news_coindesk_5m</td><td>CoinDesk RSS</td><td>每 5 分钟</td><td>89</td><td>89</td><td>0</td><td>11</td><td>success</td><td>✅ 正常</td></tr><tr><td>news_cointelegraph_5m</td><td>Cointelegraph RSS</td><td>每 5 分钟</td><td>86</td><td>86</td><td>0</td><td>17</td><td>success</td><td>✅ 正常</td></tr><tr><td>news_xueqiu_5m</td><td>雪球 散户讨论</td><td>每 5 分钟</td><td>78</td><td>78</td><td>0</td><td>0</td><td>success</td><td>✅ 正常</td></tr><tr><td>news_article_categorization_1m</td><td>新闻事件分类</td><td>每 1 分钟</td><td>0</td><td>0</td><td>0</td><td>0</td><td>无日志</td><td>❓ 无 ETL 日志（可能未启用或日志未写入）</td></tr><tr><td>sentiment_retail_agg_30m</td><td>散户讨论聚合</td><td>每 30 分钟</td><td>0</td><td>0</td><td>0</td><td>0</td><td>无日志</td><td>❓ 无 ETL 日志（可能未启用或日志未写入）</td></tr><tr><td>sentiment_batch_30s</td><td>情绪批量处理</td><td>每 30 秒</td><td>0</td><td>0</td><td>0</td><td>0</td><td>无日志</td><td>❓ 无 ETL 日志（可能未启用或日志未写入）</td></tr><tr><td>sentiment_low_latency_5m</td><td>情绪低延迟处理</td><td>每 5 分钟</td><td>0</td><td>0</td><td>0</td><td>0</td><td>无日志</td><td>❓ 无 ETL 日志（可能未启用或日志未写入）</td></tr></tbody></table>
+<p></p>
+<h2 id='二-8-worker-详细状态'>二、8 Worker 详细状态</h2>
+<p></p>
+<h3 id='reddit-散户讨论--news_reddit_5m'>Reddit 散户讨论（`news_reddit_5m`）</h3>
+<p></p>
+<ul><li><strong>调度周期:</strong> 每 5 分钟</li><li><strong>数据去向:</strong> Reddit</li><li><strong>任务说明:</strong> 抓取 Reddit 指定 subreddit 的散户讨论帖，经过去重、营销过滤后写入 news_article。</li><li><strong>近 24h 运行:</strong> 89 次，成功 0 次，失败 0 次，跳过 88 次</li><li><strong>近 24h 抓取/处理记录:</strong> 0 条</li><li><strong>最近运行:</strong> 2026-07-18 09:26:44 UTC</li><li><strong>最近状态:</strong> skipped</li><li><strong>最近记录数:</strong> 0</li><li><strong>额外元数据:</strong> <code>{&quot;reason&quot;: &quot;missing_credentials&quot;, &quot;duration_seconds&quot;: 0.023}</code></li></ul>
+<p></p>
+<h3 id='coindesk-rss--news_coindesk_5m'>CoinDesk RSS（`news_coindesk_5m`）</h3>
+<p></p>
+<ul><li><strong>调度周期:</strong> 每 5 分钟</li><li><strong>数据去向:</strong> CoinDesk</li><li><strong>任务说明:</strong> 拉取 CoinDesk RSS 获取加密货币市场新闻。</li><li><strong>近 24h 运行:</strong> 89 次，成功 89 次，失败 0 次，跳过 0 次</li><li><strong>近 24h 抓取/处理记录:</strong> 11 条</li><li><strong>最近运行:</strong> 2026-07-18 09:26:44 UTC</li><li><strong>最近状态:</strong> success</li><li><strong>最近记录数:</strong> 0</li><li><strong>额外元数据:</strong> <code>{&quot;duration_seconds&quot;: 0.452}</code></li></ul>
+<p></p>
+<h3 id='cointelegraph-rss--news_cointelegraph_5m'>Cointelegraph RSS（`news_cointelegraph_5m`）</h3>
+<p></p>
+<ul><li><strong>调度周期:</strong> 每 5 分钟</li><li><strong>数据去向:</strong> Cointelegraph</li><li><strong>任务说明:</strong> 拉取 Cointelegraph RSS 获取加密货币行业资讯。</li><li><strong>近 24h 运行:</strong> 86 次，成功 86 次，失败 0 次，跳过 0 次</li><li><strong>近 24h 抓取/处理记录:</strong> 17 条</li><li><strong>最近运行:</strong> 2026-07-18 09:26:44 UTC</li><li><strong>最近状态:</strong> success</li><li><strong>最近记录数:</strong> 0</li><li><strong>额外元数据:</strong> <code>{&quot;duration_seconds&quot;: 0.474}</code></li></ul>
+<p></p>
+<h3 id='雪球-散户讨论--news_xueqiu_5m'>雪球 散户讨论（`news_xueqiu_5m`）</h3>
+<p></p>
+<ul><li><strong>调度周期:</strong> 每 5 分钟</li><li><strong>数据去向:</strong> Xueqiu</li><li><strong>任务说明:</strong> 通过 Xueqiu 关注/交易排行榜抓取 A 股散户讨论帖并归一化为 news_article。</li><li><strong>近 24h 运行:</strong> 78 次，成功 78 次，失败 0 次，跳过 0 次</li><li><strong>近 24h 抓取/处理记录:</strong> 0 条</li><li><strong>最近运行:</strong> 2026-07-18 09:26:44 UTC</li><li><strong>最近状态:</strong> success</li><li><strong>最近记录数:</strong> 0</li><li><strong>额外元数据:</strong> <code>{&quot;duration_seconds&quot;: 0.032, &quot;symbols_total&quot;: 0, &quot;symbols_ok&quot;: 0, &quot;symbols_failed&quot;: 0, &quot;auth_ok&quot;: 0, &quot;users_refreshed&quot;: 0}</code></li></ul>
+<p></p>
+<h3 id='新闻事件分类--news_article_categorization_1m'>新闻事件分类（`news_article_categorization_1m`）</h3>
+<p></p>
+<ul><li><strong>调度周期:</strong> 每 1 分钟</li><li><strong>数据去向:</strong> news_article</li><li><strong>任务说明:</strong> 对近 30 条未分类的 news_article 调用 LLM 情绪流水线，填充 event_category 等字段。</li><li><strong>近 24h 运行:</strong> 0 次，成功 0 次，失败 0 次，跳过 0 次</li><li><strong>近 24h 抓取/处理记录:</strong> 0 条</li><li><strong>最近运行:</strong> 近 24h 无 ETL 日志</li></ul>
+<p></p>
+<h3 id='散户讨论聚合--sentiment_retail_agg_30m'>散户讨论聚合（`sentiment_retail_agg_30m`）</h3>
+<p></p>
+<ul><li><strong>调度周期:</strong> 每 30 分钟</li><li><strong>数据去向:</strong> sentiment_data</li><li><strong>任务说明:</strong> 基于最近 24h 的 sentiment_data 聚合热门标的，并刷新 Redis 热股 zset。</li><li><strong>近 24h 运行:</strong> 0 次，成功 0 次，失败 0 次，跳过 0 次</li><li><strong>近 24h 抓取/处理记录:</strong> 0 条</li><li><strong>最近运行:</strong> 近 24h 无 ETL 日志</li></ul>
+<p></p>
+<h3 id='情绪批量处理--sentiment_batch_30s'>情绪批量处理（`sentiment_batch_30s`）</h3>
+<p></p>
+<ul><li><strong>调度周期:</strong> 每 30 秒</li><li><strong>数据去向:</strong> sentiment_data</li><li><strong>任务说明:</strong> 批量处理最多 100 条未处理文章，通过 LLM 情绪流水线生成 sentiment_label/score/drivers。</li><li><strong>近 24h 运行:</strong> 0 次，成功 0 次，失败 0 次，跳过 0 次</li><li><strong>近 24h 抓取/处理记录:</strong> 0 条</li><li><strong>最近运行:</strong> 近 24h 无 ETL 日志</li></ul>
+<p></p>
+<h3 id='情绪低延迟处理--sentiment_low_latency_5m'>情绪低延迟处理（`sentiment_low_latency_5m`）</h3>
+<p></p>
+<ul><li><strong>调度周期:</strong> 每 5 分钟</li><li><strong>数据去向:</strong> sentiment_data</li><li><strong>任务说明:</strong> 对最近 5 分钟入库的文章进行低延迟 LLM 情绪分析，优先保证热点时效。</li><li><strong>近 24h 运行:</strong> 0 次，成功 0 次，失败 0 次，跳过 0 次</li><li><strong>近 24h 抓取/处理记录:</strong> 0 条</li><li><strong>最近运行:</strong> 近 24h 无 ETL 日志</li></ul>
+<p></p>
+<h2 id='三-近-7-天资讯内容汇总'>三、近 7 天资讯内容汇总</h2>
+<p></p>
+<p>本章节从 <code>news_article</code> 表中抽取最近 7 天（或最新 500 条，取更少）的 500 条记录，按来源归类展示。</p>
+<p></p>
+<h3 id='3-1-来源分布'>3.1 来源分布</h3>
+<p></p>
+<table class='data-table'><thead><tr><th>来源</th><th>24h 数量</th><th>7d 数量</th><th>类型</th></tr></thead><tbody><tr><td>yahoo_finance</td><td>602</td><td>3570</td><td>美股新闻</td></tr><tr><td>sina_finance</td><td>121</td><td>2357</td><td>A 股新闻</td></tr><tr><td>cointelegraph</td><td>17</td><td>121</td><td>加密货币</td></tr><tr><td>coindesk</td><td>11</td><td>113</td><td>加密货币</td></tr><tr><td>cnbc</td><td>1</td><td>34</td><td>美股新闻</td></tr><tr><td>cninfo</td><td>9</td><td>15</td><td>A 股公告</td></tr><tr><td>sec_edgar</td><td>1</td><td>5</td><td>SEC 公告</td></tr></tbody></table>
+<p></p>
+<h3 id='3-2-代表性内容'>3.2 代表性内容</h3>
+<p></p>
+<h4>yahoo_finance（409 条 / 样本）</h4>
+<p></p>
+<ul><li><strong>2026-07-18 04:37:37 </strong> — <a href='https://finnhub.io/api/news?id=98b884381cbdc68c2330a85e74da019273c14176ab7416072f5b61203fec50db' target='_blank'>JPMorgan Chase: In Hyper-CapEx Supercycle</a></li></ul>
+<p>  - 摘要：JPMorgan&#x27;s strategic shift reallocates capital from buybacks to financing global infrastructure, AI, and defense. See why JPM stock is upgraded to a buy.</p>
+<p>  - 相关标的：CAPEX.US, CHASE.US, HYPER.US, JPM.US, SEE.US, SHIFT.US</p>
+<ul><li><strong>2026-07-18 08:30:37 </strong> — <a href='https://finnhub.io/api/news?id=51adbbd19a3b491411b624a0df7dab6368589899f8c0107d1f0f25e1a2ac922b' target='_blank'>Netflix (NASDAQ:NFLX): A Top Affordable Growth Stock With Strong Momentum</a></li></ul>
+<p>  - 摘要：Netflix stock analysis reveals strong growth with 32.9% EPS growth, reasonable P/E of 26, and top profitability ratings, making it a prime candidate for the affordable growth investment strategy.</p>
+<p>  - 相关标的：NFLX.US, PRIME.US, TOP.US</p>
+<ul><li><strong>2026-07-18 04:36:34 </strong> — <a href='https://finnhub.io/api/news?id=921c7b79c1698d55f263f4ccfd91611cea3e916e8b66d99c427260c39226f510' target='_blank'>Amazon: A Scaled-Up AWS Rinse And Repeat Is All It Needs</a></li></ul>
+<p>  - 摘要：Amazon outlook: Q2 2026 revenue +16.8%, AWS &amp; generative AI CapEx nearing $200B, bullish 40â45% AWS growth thesis. Click here to read more in detail.</p>
+<p>  - 相关标的：AMZN.US, AWS.US, CAPEX.US, CLICK.US, HERE.US, NEEDS.US, READ.US, RINSE.US</p>
+<ul><li><strong>2026-07-18 06:08:52 </strong> — <a href='https://finnhub.io/api/news?id=941eba9c5522ae71683d4b4d0e1077c545b61394ea608544a92b0981fa3a3861' target='_blank'>American Express (AXP) Joins X402 And Raises Platinum Card Fee To $895</a></li></ul>
+<p>  - 摘要：American Express (NYSE:AXP) has joined Visa, Mastercard, and Stripe in backing the x402 Foundation, an AI driven, open source payment protocol initiative. The company has also raised the annual fee on</p>
+<p>  - 相关标的：AXP.US, CARD.US, FEE.US, FIRST.US, JOINS.US, LINKS.US, MOVES.US, NYSE.US, OPEN.US, SINCE.US, THESE.US, VISA.US</p>
+<ul><li><strong>2026-07-18 07:20:00 </strong> — <a href='https://finnhub.io/api/news?id=bd7647c4077bbd58c6eaceca297e4cccfd5bddac451d0cf76ddbcc708c99783b' target='_blank'>I Know That a Bear Market Is Coming Eventually. This Is Warren Buffett&#x27;s Single Best Piece of Advice for Investors.</a></li></ul>
+<p>  - 摘要：Not surprisingly, Warren Buffett looks on the bright side of market crashes.</p>
+<p>  - 相关标的：KNOW.US, LOOKS.US, PIECE.US, SIDE.US</p>
+<p></p>
+<h4>sina_finance（71 条 / 样本）</h4>
+<p></p>
+<ul><li><strong>2026-07-18 08:21:02 </strong> — <a href='https://finance.sina.com.cn/roll/2026-07-18/doc-iniifhty3916711.shtml' target='_blank'>养老FOF清盘小高峰，全年近40只发起式清盘，“定制局”何解？</a></li></ul>
+<p>  - 摘要：来源：财联社 财联社7月18日讯（记者 封其娟）2026年刚过半，养老FOF迎来清盘潮，年内清盘数量已超过去4年任意单年清盘峰值。 截至7月17日，据Choice统计...</p>
+<ul><li><strong>2026-07-18 08:21:23 </strong> — <a href='https://finance.sina.com.cn/money/future/fmnews/2026-07-18/doc-iniifhuc8385437.shtml' target='_blank'>国投期货周小燕：纯碱漫漫寻底路</a></li></ul>
+<p>  - 摘要：作者 ：国投期货 周小燕 投资咨询号：Z0016691 近期纯碱加速下跌，本周五08合约跌破1000元/吨，09主力合约逼近1000元/吨，市场情绪悲观。</p>
+<ul><li><strong>2026-07-18 08:09:05 </strong> — <a href='https://finance.sina.com.cn/roll/2026-07-18/doc-iniifhty3906310.shtml' target='_blank'>世界杯决赛或受加拿大山火影响，特朗普威胁加关税</a></li></ul>
+<p>  - 摘要：伴随着19日世界杯决赛日的临近，位于新泽西州的决赛场馆却笼罩在烟霾之下。 据央视新闻微信公众号，当地时间17日，加拿大山火导致的大量烟霾继续在美国中部及东北部扩散蔓...</p>
+<ul><li><strong>2026-07-18 08:04:00 </strong> — <a href='https://finance.sina.com.cn/wm/2026-07-18/doc-iniifhty3903943.shtml' target='_blank'>飞天茅台价格大涨，原箱批价突破1700元/瓶</a></li></ul>
+<p>  - 摘要：7月18日，第三方平台“今日酒价”数据显示，26、25年飞天茅台全线上涨，2026年飞天茅台原箱报1700元/瓶，较前一日涨50元，2025年飞天茅台原箱报1760元/瓶，较前一日涨55元。</p>
+<p>  - 事件分类：<code>product</code></p>
+<p>  - 情绪标签：<code>positive</code> / 分数：<code>70</code></p>
+<ul><li><strong>2026-07-18 07:38:13 </strong> — <a href='https://finance.sina.com.cn/stock/usstock/c/2026-07-18/doc-iniifhua1569091.shtml' target='_blank'>加拿大野火烟雾蔓延至美国，特朗普痛批并称要加税</a></li></ul>
+<p>  - 摘要：美国总统特朗普周五猛烈抨击加拿大，称其野火产生的烟雾笼罩了美国大片地区，并表示他将把污染造成的损失计入现有关税。</p>
+<p></p>
+<h4>cointelegraph（17 条 / 样本）</h4>
+<p></p>
+<ul><li><strong>2026-07-17 21:40:18 </strong> — <a href='https://cointelegraph.com/news/ftx-distribute-millions-creditors-fifth-payment-round?utm_source=rss_feed&amp;utm_medium=rss&amp;utm_campaign=rss_partner_inbound' target='_blank'>FTX to distribute $900M to creditors in fifth payment round</a></li></ul>
+<p>  - 摘要：The FTX Recovery Trust and company have distributed about $10 billion since the exchange filed for bankruptcy in November 2022, leaving users cut off from their funds.</p>
+<p>  - 相关标的：ABOUT.US, FIFTH.US, FILED.US, FTX.US, FUNDS.US, OFF.US, ROUND.US, SINCE.US, THEIR.US, TRUST.US, USERS.US</p>
+<ul><li><strong>2026-07-17 20:03:32 </strong> — <a href='https://cointelegraph.com/news/galaxy-lands-15-year-texas-tech-stadium-naming-rights-deal?utm_source=rss_feed&amp;utm_medium=rss&amp;utm_campaign=rss_partner_inbound' target='_blank'>Galaxy lands 15-year Texas Tech stadium naming rights deal</a></li></ul>
+<p>  - 摘要：Galaxy Digital will rename Texas Tech’s football stadium under a 15-year agreement, expanding its West Texas presence as the state attracts growing crypto investment.</p>
+<p>  - 相关标的：DEAL.US, LANDS.US, STATE.US, TECH.US, TEXAS.US, UNDER.US, WEST.US</p>
+<ul><li><strong>2026-07-17 19:33:58 </strong> — <a href='https://cointelegraph.com/news/consensys-north-korean-hacker-software-developer?utm_source=rss_feed&amp;utm_medium=rss&amp;utm_campaign=rss_partner_inbound' target='_blank'>Consensys unknowingly outsourced developer work to North Korean</a></li></ul>
+<p>  - 摘要：Through an introduction with a “reputable third-party service provider,“ the company took on a developer who, as part of an investigation, was revealed to be tied to North Korea.</p>
+<p>  - 相关标的：KOREA.US, NORTH.US, PART.US, PARTY.US, THIRD.US, TIED.US, TOOK.US</p>
+<ul><li><strong>2026-07-17 19:23:53 </strong> — <a href='https://cointelegraph.com/news/crypto-biz-when-dollars-disappear-stablecoins-step-in?utm_source=rss_feed&amp;utm_medium=rss&amp;utm_campaign=rss_partner_inbound' target='_blank'>Crypto Biz: When dollars disappear, stablecoins step in</a></li></ul>
+<p>  - 摘要：Bolivia moves to recognize USDT amid a dollar shortage, while Bitcoin miners’ AI ambitions face fresh investor scrutiny.</p>
+<p>  - 相关标的：AMID.US, BIZ.US, FACE.US, FRESH.US, MOVES.US, STEP.US, USDT.US, WHILE.US</p>
+<ul><li><strong>2026-07-17 14:37:39 </strong> — <a href='https://cointelegraph.com/markets/bitcoin-price-sags-under-625k-as-iran-strikes-add-to-us-stocks-pressure?utm_source=rss_feed&amp;utm_medium=rss&amp;utm_campaign=rss_partner_inbound' target='_blank'>Bitcoin price sags under $62.5K as Iran strikes add to US stocks pressure</a></li></ul>
+<p>  - 摘要：Bitcoin saw a key rejection at local highs before reversing lower, moving with stocks for a second day as US-Iran war downside took its toll.</p>
+<p>  - 相关标的：ADD.US, HIGHS.US, IRAN.US, KEY.US, LOCAL.US, LOWER.US, SAGS.US, SAW.US, TOLL.US, TOOK.US, UNDER.US, WAR.US</p>
+<p></p>
+<h4>coindesk（2 条 / 样本）</h4>
+<p></p>
+<ul><li><strong>2026-07-17 18:00:11 </strong> — <a href='https://www.coindesk.com/markets/2026/07/17/polymarket-traders-cut-clarity-act-passage-odds-to-record-low-as-senate-delay-drags-on' target='_blank'>Polymarket traders cut Clarity Act passage odds to record low as Senate delay drags on</a></li></ul>
+<p>  - 摘要：Polymarket bettors have cut the odds of the CLARITY Act passing this year to a record low as Senate negotiations over ethics provisions remain unresolved.</p>
+<p>  - 相关标的：ACT.US, DELAY.US, DRAGS.US, LOW.US, ODDS.US</p>
+<ul><li><strong>2026-07-17 17:23:01 </strong> — <a href='https://www.coindesk.com/business/2026/07/17/stripe-and-swift-race-to-control-the-next-generation-of-global-payments-infrastructure' target='_blank'>Stripe and Swift race to control the next generation of global payments infrastructure</a></li></ul>
+<p>  - 摘要：Crypto and blockchain experts say this week&#x27;s moves show the two established finance companies are increasingly competing for control of the infrastructure behind digital payments.</p>
+<p>  - 相关标的：MOVES.US, NEXT.US, RACE.US, SHOW.US, SWIFT.US</p>
+<p></p>
+<h4>sec_edgar（1 条 / 样本）</h4>
+<p></p>
+<ul><li><strong>2026-07-17 00:00:00 </strong> — <a href='https://www.sec.gov/Archives/edgar/data/1065280/000106528026000212/nflx-20260630.htm' target='_blank'>10-Q — NFLX (10-Q)</a></li></ul>
+<p>  - 摘要：10-Q \| Filed: 2026-07-17 \| Period: 2026-06-30</p>
+<p>  - 相关标的：FILED.US, NFLX.US</p>
+<p></p>
+<h3 id='3-3-情绪数据--sentiment_data--概览'>3.3 情绪数据 (sentiment_data) 概览</h3>
+<p></p>
+<ul><li><strong>7d 总量:</strong> 174 条</li><li><strong>来源:</strong> 全部为 <code>llm_pipeline</code>（LLM 情绪流水线产出）</li><li><strong>情绪分布（样本）:</strong> {&#x27;positive&#x27;: 46, &#x27;neutral&#x27;: 13, &#x27;negative&#x27;: 115}</li></ul>
+<p></p>
+<table class='data-table'><thead><tr><th>时间</th><th>标的</th><th>标题</th><th>情绪</th><th>分数</th><th>置信度</th></tr></thead><tbody><tr><td>2026-07-18 08:12:50</td><td>600519.SH</td><td>飞天茅台价格大涨，原箱批价突破1700元/瓶</td><td>positive</td><td>0.7</td><td>0.85</td></tr><tr><td>2026-07-17 17:07:23</td><td>688146.SH</td><td>中船特气2026年半年度报告_摘要</td><td>neutral</td><td>—</td><td>0.5</td></tr><tr><td>2026-07-17 17:07:17</td><td>688146.SH</td><td>中船特气2026年半年度报告</td><td>neutral</td><td>—</td><td>0.3</td></tr><tr><td>2026-07-17 05:21:41</td><td>301358.SZ</td><td>旺季来临！湖南裕能发布磷酸铁锂涨价函 多家企业已启动调价沟通</td><td>positive</td><td>0.7</td><td>0.8</td></tr><tr><td>2026-07-17 03:24:24</td><td>600236.SH</td><td>华银电力等多股封板，华宝基金电力ETF（159146）逆市涨超2.5%！厄尔尼诺持续演绎，重视板块量价双升机会</td><td>positive</td><td>0.9</td><td>0.85</td></tr><tr><td>2026-07-17 03:24:24</td><td>159146.SZ</td><td>华银电力等多股封板，华宝基金电力ETF（159146）逆市涨超2.5%！厄尔尼诺持续演绎，重视板块量价双升机会</td><td>positive</td><td>0.85</td><td>0.85</td></tr><tr><td>2026-07-17 03:24:24</td><td>600744.SH</td><td>华银电力等多股封板，华宝基金电力ETF（159146）逆市涨超2.5%！厄尔尼诺持续演绎，重视板块量价双升机会</td><td>positive</td><td>0.9</td><td>0.85</td></tr><tr><td>2026-07-17 03:24:24</td><td>001258.SZ</td><td>华银电力等多股封板，华宝基金电力ETF（159146）逆市涨超2.5%！厄尔尼诺持续演绎，重视板块量价双升机会</td><td>positive</td><td>0.9</td><td>0.85</td></tr><tr><td>2026-07-17 03:24:24</td><td>000899.SZ</td><td>华银电力等多股封板，华宝基金电力ETF（159146）逆市涨超2.5%！厄尔尼诺持续演绎，重视板块量价双升机会</td><td>positive</td><td>0.9</td><td>0.85</td></tr><tr><td>2026-07-17 03:24:24</td><td>600644.SH</td><td>华银电力等多股封板，华宝基金电力ETF（159146）逆市涨超2.5%！厄尔尼诺持续演绎，重视板块量价双升机会</td><td>positive</td><td>0.9</td><td>0.85</td></tr></tbody></table>
+<p></p>
+<h2 id='四-数据表结构与字段说明'>四、数据表结构与字段说明</h2>
+<p></p>
+<h3 id='4-1--news_article--统一资讯表'>4.1 `news_article`（统一资讯表）</h3>
+<p></p>
+<table class='data-table'><thead><tr><th>字段</th><th>类型</th><th>说明</th></tr></thead><tbody><tr><td>id</td><td>int</td><td>自增主键</td></tr><tr><td>source</td><td>varchar(50)</td><td>来源，如 <code>yahoo_finance</code>、<code>sina_finance</code>、<code>coindesk</code>、<code>cointelegraph</code>、<code>cninfo</code>、<code>sec_edgar</code></td></tr><tr><td>source_id</td><td>varchar(200)</td><td>来源原生 ID</td></tr><tr><td>url</td><td>varchar(1000)</td><td>原文链接</td></tr><tr><td>url_hash</td><td>varchar(32)</td><td>MD5(url) 去重</td></tr><tr><td>title</td><td>varchar(1000)</td><td>标题</td></tr><tr><td>summary</td><td>text</td><td>摘要/RSS 摘要</td></tr><tr><td>body</td><td>text</td><td>正文</td></tr><tr><td>full_content</td><td>text</td><td>Jina Reader 抓取的完整正文</td></tr><tr><td>author</td><td>varchar(200)</td><td>作者</td></tr><tr><td>author_followers</td><td>int</td><td>粉丝数（散户来源）</td></tr><tr><td>language</td><td>varchar(10)</td><td>语言</td></tr><tr><td>market</td><td>varchar(20)</td><td>US / HK / CN / CRYPTO / GLOBAL</td></tr><tr><td>published_at</td><td>datetime</td><td>原文发布时间</td></tr><tr><td>fetched_at</td><td>datetime</td><td>入库时间</td></tr><tr><td>category</td><td>varchar(100)</td><td>可选类别标签</td></tr><tr><td>event_category</td><td>varchar(50)</td><td>事件分类：earnings、m&amp;a、product、macro、regulation、guidance、analyst、legal、rumor、geopolitics、central_bank、election、trade_war、sanction、other</td></tr><tr><td>sentiment_score</td><td>int</td><td>-100..100 情绪分</td></tr><tr><td>sentiment_label</td><td>varchar(20)</td><td>bullish / bearish / neutral</td></tr><tr><td>sentiment_confidence</td><td>float</td><td>0..1</td></tr><tr><td>sentiment_drivers</td><td>jsonb</td><td>情绪驱动关键词</td></tr><tr><td>importance</td><td>smallint</td><td>1..5 重要性</td></tr><tr><td>engagement</td><td>jsonb</td><td>来源相关指标（upvotes、comments、score 等）</td></tr><tr><td>ai_cleanup_status</td><td>varchar(16)</td><td>AI 清洗状态</td></tr></tbody></table>
+<p></p>
+<h3 id='4-2--news_article_symbol--多对多标的关系'>4.2 `news_article_symbol`（多对多标的关系）</h3>
+<p></p>
+<table class='data-table'><thead><tr><th>字段</th><th>说明</th></tr></thead><tbody><tr><td>article_id</td><td>外键到 news_article</td></tr><tr><td>symbol</td><td>内部代码，如 <code>AAPL.US</code></td></tr><tr><td>match_type</td><td>title / body / cashtag / subreddit</td></tr><tr><td>confidence</td><td>提取置信度</td></tr><tr><td>name / name_zh</td><td>标的显示名称</td></tr></tbody></table>
+<p></p>
+<h3 id='4-3--sentiment_data--llm-情绪产出'>4.3 `sentiment_data`（LLM 情绪产出）</h3>
+<p></p>
+<table class='data-table'><thead><tr><th>字段</th><th>说明</th></tr></thead><tbody><tr><td>id</td><td>自增主键</td></tr><tr><td>instrument_code</td><td>标的代码（可为 NULL 表示市场级）</td></tr><tr><td>source</td><td>来源，当前全部为 <code>llm_pipeline</code></td></tr><tr><td>title</td><td>文章标题</td></tr><tr><td>content</td><td>正文</td></tr><tr><td>url</td><td>链接</td></tr><tr><td>sentiment_score</td><td>-1.0..1.0</td></tr><tr><td>sentiment_label</td><td>positive / negative / neutral</td></tr><tr><td>confidence</td><td>0..1</td></tr><tr><td>published_at</td><td>原文发布时间</td></tr><tr><td>ingested_at</td><td>入库时间</td></tr></tbody></table>
+<p></p>
+<h3 id='4-4--etl_log--任务执行日志'>4.4 `etl_log`（任务执行日志）</h3>
+<p></p>
+<table class='data-table'><thead><tr><th>字段</th><th>说明</th></tr></thead><tbody><tr><td>job_name</td><td>任务 ID，如 <code>news_reddit_5m</code></td></tr><tr><td>status</td><td>running / success / failed / skipped</td></tr><tr><td>start_time / end_time</td><td>起止时间</td></tr><tr><td>records_count</td><td>处理记录数</td></tr><tr><td>error_msg</td><td>错误信息</td></tr><tr><td>extra_data</td><td>JSON 元数据</td></tr></tbody></table>
+<p></p>
+<h2 id='五-前端结合建议'>五、前端结合建议</h2>
+<p></p>
+<h3 id='5-1-资讯流-news-feed'>5.1 资讯流（News Feed）</h3>
+<p></p>
+<ul><li>直接消费 <code>news_article</code> 表，按 <code>published_at</code> 倒序展示。</li><li>按 <code>source</code> 和 <code>market</code> 过滤：A 股（sina/cninfo/xueqiu）、美股（yahoo/cnbc/sec）、加密货币（coindesk/cointelegraph）。</li><li>已爬取的 <code>full_content</code> 可支持内展开，减少跳转到外部。</li></ul>
+<p></p>
+<h3 id='5-2-ai-聊天-rag'>5.2 AI 聊天 RAG</h3>
+<p></p>
+<ul><li>将 <code>news_article</code> 的 <code>title</code> + <code>summary</code> / <code>body</code> + <code>full_content</code> 切片向量化，作为 RAG 上下文。</li><li><code>sentiment_data</code> 和 <code>event_category</code> 可作为检索过滤器，回答“最近市场对 NVDA 的情绪如何？”这类问题。</li><li>建议按 <code>instrument_code</code> 和 <code>event_category</code> 建立索引，加速多轮对话召回。</li></ul>
+<p></p>
+<h3 id='5-3-情绪仪表盘'>5.3 情绪仪表盘</h3>
+<p></p>
+<ul><li>利用 <code>sentiment_data</code> 的 <code>sentiment_score</code> / <code>sentiment_label</code> 生成时序图和情绪热力图。</li><li>结合 <code>news_article_symbol</code> 做标的维度聚合，展示 Top10 看涨/看跌标的。</li><li>当前 7 天仅有 174 条 LLM 情绪产出，样本量偏小，建议确认 sentiment jobs 是否真正运行或处理队列是否阻塞。</li></ul>
+<p></p>
+<h3 id='5-4-事件驱动信号'>5.4 事件驱动信号</h3>
+<p></p>
+<ul><li><code>event_category</code> 当前覆盖率低（500 条样本中仅 1 条 <code>product</code>），需优先修复新闻事件分类 job 的落地（如补充 ETLLog 确认运行、检查 LLM 调用是否成功）。</li><li>事件分类稳定后，可在策略模块订阅 <code>earnings</code>、<code>m&amp;a</code>、<code>central_bank</code>、<code>trade_war</code> 等事件，生成事件驱动信号。</li></ul>
+<p></p>
+<h3 id='5-5-散户讨论-reddit---雪球'>5.5 散户讨论（Reddit / 雪球）</h3>
+<p></p>
+<ul><li>Reddit 当前因 <code>missing_credentials</code> 被跳过，需配置 <code>REDDIT_CLIENT_ID</code> / <code>REDDIT_CLIENT_SECRET</code> 才能产出内容。</li><li>雪球运行成功但 24h 记录为 0，可能 cookies 失效或抓取目标无更新，建议检查 <code>XUEQIU_COOKIE</code> 和 <code>news_xueqiu_5m</code> 的 symbol 配置。</li><li>散户讨论聚合 job 当前无 ETLLog，建议添加日志以便观察其是否真正刷新 Redis 热股 zset。</li></ul>
+<p></p>
+<h3 id='5-6-可观测性改进'>5.6 可观测性改进</h3>
+<p></p>
+<ul><li>4 个情绪/分类 job（batch、low_latency、retail_agg、news_article_categorization）未写入 <code>etl_log</code>，导致无法从 ETL 日志判断运行状态。建议统一使用 <code>_record_etl</code> 装饰器包装。</li><li>在健康检查 <code>/health</code> 或后台页面中暴露 <code>etl_log</code> 的最近运行状态，便于运营监控。</li></ul>
+<p></p>
+<hr/>
+<p></p>
+<p>*报告结束。数据由 ECS 生产数据库只读生成，未做任何写入或删除操作。*</p>
+<p></p>
+</div>
+</body>
+</html>

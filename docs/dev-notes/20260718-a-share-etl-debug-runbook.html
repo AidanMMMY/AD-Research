@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>A 股 ETF 日线/指标补齐 Debug Runbook</title>
+  <style>
+:root {
+  --bg: #f8f9fa;
+  --card-bg: #ffffff;
+  --text: #1a1a1a;
+  --muted: #6b7280;
+  --border: #e5e7eb;
+  --accent: #2563eb;
+  --accent-light: #eff6ff;
+  --error: #dc2626;
+  --warn: #d97706;
+  --ok: #16a34a;
+  --code-bg: #f3f4f6;
+}
+* { box-sizing: border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.7;
+  margin: 0;
+  padding: 0 1rem 3rem;
+}
+.container { max-width: 900px; margin: 0 auto; padding: 2rem 1rem; background: var(--card-bg); border-radius: 0.75rem; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
+h1 { font-size: 1.75rem; border-bottom: 2px solid var(--border); padding-bottom: 0.5rem; margin-top: 0; }
+h2 { font-size: 1.4rem; margin-top: 2rem; color: var(--text); border-bottom: 1px solid var(--border); padding-bottom: 0.3rem; }
+h3 { font-size: 1.15rem; margin-top: 1.5rem; color: var(--text); }
+h4 { font-size: 1rem; margin-top: 1.25rem; color: var(--muted); }
+p { margin: 0.75rem 0; }
+blockquote {
+  margin: 1rem 0;
+  padding: 0.5rem 1rem;
+  border-left: 4px solid var(--accent);
+  background: var(--accent-light);
+  color: var(--text);
+}
+blockquote > p { margin: 0.25rem 0; }
+pre {
+  background: var(--code-bg);
+  padding: 1rem;
+  border-radius: 0.5rem;
+  overflow-x: auto;
+  border: 1px solid var(--border);
+}
+code {
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  font-size: 0.9em;
+  background: var(--code-bg);
+  padding: 0.15rem 0.3rem;
+  border-radius: 0.25rem;
+}
+pre code { background: transparent; padding: 0; }
+ul, ol { padding-left: 1.5rem; }
+li { margin: 0.35rem 0; }
+table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 1rem 0;
+  border: 1px solid var(--border);
+}
+th, td {
+  border: 1px solid var(--border);
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+}
+th { background: var(--code-bg); font-weight: 600; }
+tr:nth-child(even) { background: #fafafa; }
+hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+@media (max-width: 640px) {
+  .container { padding: 1rem; }
+  h1 { font-size: 1.5rem; }
+  h2 { font-size: 1.25rem; }
+}
+</style>
+</head>
+<body>
+  <div class="container">
+<h1 id="a-etf-debug-runbook">A 股 ETF 日线/指标补齐 Debug Runbook</h1>
+<blockquote>
+<p>适用场景：A 股日线（<code>instrument_daily_bar</code>）或指标（<code>etf_indicator</code>）缺失、重算中断、数据源切换、部署后需要手动回补。<br />
+记录时间：2026-07-18<br />
+相关记忆：[[生产 /data 磁盘满事件]]、[[指标补齐临时切换 celery-worker 为 indicator-only]]、[[A 股 2026-07-15 指标补齐最终复盘报告]]</p>
+</blockquote>
+<hr />
+<h2 id="1">1. 数据链路总览</h2>
+<pre><code>ETFInfo (active A-share ETFs)
+        │
+        ▼
+AkshareProvider.fetch_daily_bars(codes, start, end)
+        │
+        ▼
+AShareETLPipeline.extract()  -&gt;  只保留 target_date 的行
+        │
+        ▼
+AShareETLPipeline.load()     -&gt;  ON CONFLICT (etf_code, trade_date) DO UPDATE
+        │
+        ▼
+instrument_daily_bar
+        │
+        ▼
+batch_calculate_indicators(target_date, market_filter='A股')
+        │
+        ▼
+etf_indicator  (ON CONFLICT (etf_code, trade_date) DO UPDATE)
+</code></pre>
+<p>关键文件：</p>
+<ul>
+<li><code>app/data/pipelines/a_share.py</code> — 日线 ETL，负责写入 <code>instrument_daily_bar</code>。</li>
+<li><code>app/data/indicators/calculator.py</code> — 指标计算，写入 <code>etf_indicator</code>。</li>
+<li><code>app/tasks/indicator.py</code> — Celery 任务 <code>calculate_indicators</code>。</li>
+<li><code>app/core/celery_app.py</code> — Celery 应用配置。</li>
+<li><code>deploy/aliyun-ecs/docker-compose.yml</code> — <code>celery-worker</code> 服务定义。</li>
+</ul>
+<hr />
+<h2 id="2">2. 快速检查清单</h2>
+<h3 id="21">2.1 检查某日日线是否补齐</h3>
+<pre><code class="language-sql">SELECT trade_date, COUNT(*) AS cnt
+FROM instrument_daily_bar
+WHERE trade_date IN ('2026-07-15', '2026-07-16', '2026-07-17')
+GROUP BY trade_date
+ORDER BY trade_date;
+</code></pre>
+<p>目标值 ≈ 当日有行情的 A 股 ETF 数量（<code>etf_info</code> 中 <code>market='A股' AND status='active'</code>）。</p>
+<h3 id="22">2.2 检查某日指标是否补齐</h3>
+<pre><code class="language-sql">SELECT trade_date, COUNT(*) AS cnt
+FROM etf_indicator
+WHERE trade_date IN ('2026-07-15', '2026-07-16', '2026-07-17')
+GROUP BY trade_date
+ORDER BY trade_date;
+</code></pre>
+<p>指标行数应 ≥ 日线行数（同一 <code>etf_code + trade_date</code> 对应一条指标记录）。</p>
+<h3 id="23-active-etf">2.3 检查 active ETF 总数</h3>
+<pre><code class="language-sql">SELECT COUNT(*) FROM etf_info
+WHERE market = 'A股' AND status = 'active';
+</code></pre>
+<h3 id="24-code">2.4 检查哪些 code 缺失</h3>
+<pre><code class="language-sql">WITH active AS (
+    SELECT code FROM etf_info WHERE market='A股' AND status='active'
+)
+SELECT a.code
+FROM active a
+LEFT JOIN instrument_daily_bar b
+    ON a.code = b.etf_code AND b.trade_date = '2026-07-17'
+WHERE b.etf_code IS NULL;
+</code></pre>
+<hr />
+<h2 id="3">3. 常见故障模式与处理</h2>
+<h3 id="31-em-sina">3.1 EM 接口连续失败，回落到 Sina 数据源</h3>
+<p>现象：Celery / backend 日志出现：</p>
+<pre><code>[INFO] EM 接口连续失败 2 次，后续将直接使用 Sina 接口
+</code></pre>
+<p>影响：</p>
+<ul>
+<li>Sina 接口可能缺少 <code>turnover_rate</code> 等字段。</li>
+<li><code>AShareETLPipeline.load()</code> 已做幂等保护：NULL 值不会覆盖已有非 NULL 值（<code>CASE WHEN excluded.col IS NOT NULL THEN excluded.col ELSE existing_col END</code>）。</li>
+<li>若某字段为 NULL，可等数据源恢复后重跑该日期，ETL 会自动补全。</li>
+</ul>
+<p>处理：</p>
+<ol>
+<li>观察 EM 接口是否恢复（网络、akshare 版本、节假日）。</li>
+<li>若长期缺失，可手动用 Sina 先补，后续 EM 恢复后再重跑。</li>
+</ol>
+<h3 id="32-backend">3.2 指标重算任务被 backend 重启中断</h3>
+<p>背景：重算任务原本在 <code>alloyresearch-backend</code> 容器内通过 <code>docker exec</code> 运行，backend 部署/重启会杀死它。</p>
+<p>当前状态：指标重算已改造为 Celery 任务，由独立的 <code>alloyresearch-celery-worker</code> 容器消费。backend 重启不会影响已入队任务。</p>
+<p>验证 worker 是否在线：</p>
+<pre><code class="language-bash">ssh ad-research
+docker top alloyresearch-celery-worker | grep celery
+docker exec alloyresearch-celery-worker celery -A app.core.celery_app inspect active
+</code></pre>
+<h3 id="33-data-postgres-panic">3.3 /data 磁盘满导致 Postgres PANIC</h3>
+<p>现象：</p>
+<pre><code>PANIC: could not write to file ... No space left on device
+</code></pre>
+<p>处理：</p>
+<ol>
+<li>检查磁盘：</li>
+</ol>
+<p><code>bash
+   ssh ad-research df -h /data</code></p>
+<ol>
+<li>若 Aliyun 控制台已扩容到 120 GiB 但系统仍显示 40 GB，执行在线扩容：</li>
+</ol>
+<p><code>bash
+   ssh ad-research
+   sudo resize2fs /dev/vdb</code></p>
+<ol>
+<li>清理：删除旧 Docker build cache、过期日志、不必要的备份。</li>
+</ol>
+<p>监控阈值：建议 <code>/data</code> 使用率 ≥ 80%（约 95 GB）时告警。</p>
+<h3 id="34-on-conflict-etl">3.4 <code>ON CONFLICT</code> 字段不匹配导致 ETL 报错</h3>
+<p>现象：ETL 插入时报 <code>ON CONFLICT DO UPDATE</code> 列不匹配。</p>
+<p>根因：DataFrame 中不同来源的列集不同，SQLAlchemy bulk insert 要求所有 value dict 键一致。</p>
+<p>修复：当前 <code>a_share.py</code> 的 <code>load()</code> 已把所有记录规范化到相同的 <code>present_cols</code> 集合；若某来源缺少某列，则该列在该批次记录中全部为 NULL，并在 DO UPDATE SET 中跳过该列。</p>
+<hr />
+<h2 id="4">4. 指标缺失根因与修复</h2>
+<p>2026-07-15 前后 A 股指标多次出现大面积缺失，复盘后定位到 5 类根因与对应修复措施。</p>
+<h3 id="41-decimal84">4.1 DECIMAL(8,4) 对极端收益溢出</h3>
+<p>现象：指标计算写入 <code>etf_indicator</code> 时报 <code>numeric field overflow</code>，任务失败。</p>
+<p>根因：<code>return_1y</code>、<code>change_pct</code> 等字段使用 <code>DECIMAL(8,4)</code>，对类似 <code>600601.SH</code> 这种退市整理/极端行情个股，收益值超过 9999.9999 可表示范围，导致 SQL 报错。</p>
+<p>修复：</p>
+<ul>
+<li>相关收益/波动字段扩宽为 <code>DECIMAL(12,4)</code> 或 <code>DECIMAL(18,8)</code>，保留 4 位小数但扩大整数位。</li>
+<li>计算层在 <code>calculator.py</code> 中增加 <code>np.clip</code> 或 <code>Decimal</code> 边界兜底，避免写入时二次溢出。</li>
+</ul>
+<p>验证：</p>
+<pre><code class="language-sql">SELECT column_name, data_type, numeric_precision, numeric_scale
+FROM information_schema.columns
+WHERE table_name = 'etf_indicator' AND column_name LIKE 'return%';
+</code></pre>
+<h3 id="42-data-postgres">4.2 /data 磁盘满导致 Postgres 崩溃</h3>
+<p>现象：</p>
+<pre><code>PANIC: could not write to file ... No space left on device
+ERROR: could not fsync file ...: No space left on device
+</code></pre>
+<p>根因：/data 只显示 40 GB 但实际磁盘已扩容到 120 GB，文件系统未 <code>resize2fs</code>；同时 Docker build cache、过期日志占用空间，最终 100% 导致 Postgres 无法写入 WAL/临时文件，部分进程崩溃。</p>
+<p>修复：</p>
+<ul>
+<li>已执行 <code>sudo resize2fs /dev/vdb</code>，/data 扩展到约 118 GB。</li>
+<li>清理 Docker build cache、过期日志和临时备份。</li>
+<li>在 /health 中增加磁盘使用率检查，≥ 80% 返回 degraded。</li>
+<li>设置告警阈值：/data 使用率 ≥ 80%（约 95 GB）触发告警。</li>
+</ul>
+<p>详见：[[生产 /data 磁盘满事件]]。</p>
+<h3 id="43-celery-redis-visibility_timeout-1h">4.3 Celery Redis visibility_timeout 默认 1h 小于指标任务运行时长</h3>
+<p>现象：指标重算任务重复执行，同一日期被多个 worker 同时消费，日志出现多次 <code>calculate_indicators</code> 入口。</p>
+<p>根因：Redis broker 默认 <code>visibility_timeout=3600</code>（1 小时），而 A 股全量指标重算在数据量大时可能超过 1 小时。任务未及时确认，被 broker 重新投递。</p>
+<p>修复：在 <code>app/core/celery_app.py</code> 中显式配置：</p>
+<pre><code class="language-python">app.conf.broker_transport_options = {
+    &quot;visibility_timeout&quot;: 86400,  # 24h，避免长任务被重复投递
+    &quot;queue_order_strategy&quot;: &quot;priority&quot;,
+}
+</code></pre>
+<p>同时指标任务设置 <code>time_limit</code> 和 <code>soft_time_limit</code>：</p>
+<pre><code class="language-python">@app.task(bind=True, time_limit=3600*4, soft_time_limit=3600*3)
+def calculate_indicators(self, target_date=None, market_filter=None):
+    ...
+</code></pre>
+<h3 id="44-worker-indicator-cninfo-celerycninfo_pdf">4.4 单一 worker 同时跑 indicator / cninfo / celery，cninfo_pdf 长时间占满并发</h3>
+<p>现象：指标任务排队严重，晚上 cninfo 定期报告任务启动后，4 个并发槽被 PDF 下载长时间占满，指标计算延迟数小时。</p>
+<p>根因：旧部署中一个 <code>celery-worker</code> 容器同时监听 <code>celery</code>、<code>indicator</code>、<code>cninfo</code> 队列，<code>-c 4</code> 的并发被 cninfo_pdf 这类 I/O 长任务占满，指标任务无法及时执行。</p>
+<p>修复：</p>
+<ul>
+<li>拆分为独立 worker 服务：</li>
+<li><code>celery-worker</code>：处理普通 <code>celery</code> 队列。</li>
+<li><code>indicator-worker</code>：仅监听 <code>indicator</code> 队列，保证指标重算不被其他任务挤占。</li>
+<li><code>cninfo-worker</code>：仅监听 <code>cninfo</code> 队列，避免 PDF 下载占用指标 worker 并发。</li>
+<li><code>docker-compose.yml</code> 中分别定义服务，并限制资源。</li>
+</ul>
+<h3 id="45-target_datenone-latest-date">4.5 调度器使用 target_date=None，两次调度造成 latest-date 漂移和重复跑</h3>
+<p>现象：夜间调度出现同一日期跑两次，或最新交易日漂移（例如跑到非目标日期）。</p>
+<p>根因：定时任务调用 <code>calculate_indicators.delay()</code> 时未传 <code>target_date</code>，函数内部使用 <code>date.today()</code> 或查询最新日期；当调度器在 00:00 前后触发两次时，第二次可能已跨天，导致 latest-date 漂移。此外，未传 market_filter 时可能误触其他市场。</p>
+<p>修复：</p>
+<ul>
+<li>调度器始终显式传入 <code>target_date</code> 和 <code>market_filter</code>：</li>
+</ul>
+<pre><code class="language-python">from datetime import date, timedelta
+
+# 取上一交易日
+target = (date.today() - timedelta(days=1)).isoformat()
+calculate_indicators.delay(target_date=target, market_filter='A股')
+</code></pre>
+<ul>
+<li>在任务入口增加防御性检查：若 <code>target_date</code> 为空则直接报错，拒绝“隐式今天”。</li>
+<li>调度器幂等：使用唯一调度键或 Redis 锁，同一日期 5 分钟内只触发一次。</li>
+</ul>
+<h3 id="46">4.6 完整性巡检</h3>
+<p>除上述修复外，建立每日巡检机制：</p>
+<ul>
+<li>运行审计脚本检查指标覆盖率：</li>
+</ul>
+<p><code>bash
+  DATABASE_URL=postgresql://... python scripts/audit_indicator_completeness.py</code></p>
+<ul>
+<li>覆盖率低于 95% 触发 WARN，低于 90% 触发 CRITICAL，自动通知运维。</li>
+<li>巡检纳入 <code>/health</code> 接口或独立 cron 任务。</li>
+</ul>
+<hr />
+<h2 id="5">5. 手动触发与回填</h2>
+<h3 id="51-etl">5.1 手动触发日线 ETL（单日期）</h3>
+<pre><code class="language-bash">ssh ad-research
+docker exec -i alloyresearch-backend python - &lt;&lt;'PY'
+from datetime import date
+from app.core.database import SessionLocal
+from app.data.pipelines.a_share import AShareETLPipeline
+
+db = SessionLocal()
+try:
+    pipe = AShareETLPipeline(db, target_date=date(2026, 7, 17))
+    rows = pipe.run()
+    print(&quot;upserted&quot;, rows)
+finally:
+    db.close()
+PY
+</code></pre>
+<h3 id="52-celery">5.2 通过 Celery 触发指标重算</h3>
+<pre><code class="language-bash">ssh ad-research
+docker exec alloyresearch-celery-worker python -c &quot;
+from app.tasks.indicator import calculate_indicators
+r = calculate_indicators.delay(target_date='2026-07-17', market_filter='A股')
+print(r.id)
+&quot;
+</code></pre>
+<p>查询任务状态：</p>
+<pre><code class="language-bash">docker exec alloyresearch-celery-worker celery -A app.core.celery_app inspect active
+</code></pre>
+<h3 id="53-n">5.3 批量回补最近 N 天</h3>
+<pre><code class="language-bash">ssh ad-research
+docker exec alloyresearch-celery-worker python -c &quot;
+from datetime import date, timedelta
+from app.tasks.indicator import calculate_indicators
+for i in range(3):
+    d = (date.today() - timedelta(days=i+1)).isoformat()
+    calculate_indicators.delay(target_date=d, market_filter='A股')
+    print('queued', d)
+&quot;
+</code></pre>
+<hr />
+<h2 id="6">6. 验证与收尾</h2>
+<p>回补后必须执行：</p>
+<pre><code class="language-sql">-- 日线
+SELECT trade_date, COUNT(*) FROM instrument_daily_bar
+WHERE trade_date &gt;= '2026-07-15' GROUP BY trade_date ORDER BY trade_date;
+
+-- 指标
+SELECT trade_date, COUNT(*) FROM etf_indicator
+WHERE trade_date &gt;= '2026-07-15' GROUP BY trade_date ORDER BY trade_date;
+</code></pre>
+<p>若指标仍少于日线，查看 Celery worker 日志：</p>
+<pre><code class="language-bash">ssh ad-research
+docker logs --tail 100 alloyresearch-celery-worker
+</code></pre>
+<p>常见原因：</p>
+<ul>
+<li><code>max_bars</code> 窗口不足 -&gt; 检查 <code>calculator.py</code> 中的参数。</li>
+<li>某代码历史 bar 不足 -&gt; 该 code 指标为 NULL，属正常。</li>
+<li>SQL backend 查询超时 -&gt; 改用 pandas backend 或分片。</li>
+</ul>
+<hr />
+<h2 id="7">7. 关键设计决策</h2>
+<ol>
+<li><strong>幂等写入</strong>：日线和指标表都有唯一索引 <code>(etf_code, trade_date)</code>，重跑不会重复。</li>
+<li><strong>NULL 不覆盖</strong>：日线 ETL 用 <code>CASE ... ELSE existing_col</code> 保护，避免 Sina 回落清空 EM 已写字段。</li>
+<li><strong>Celery 隔离</strong>：长时重算任务在独立 worker 容器，backend 部署不再中断它们。</li>
+<li><strong>并发限制</strong>：worker <code>-c 4</code> 同时跑 4 个任务，防止拖垮数据库。</li>
+</ol>
+<hr />
+<h2 id="8-sql">8. 附录：相关 SQL 与命令速查</h2>
+<h3 id="81">8.1 常用命令</h3>
+<pre><code class="language-bash"># 查看当前活跃 Celery 任务
+docker exec alloyresearch-celery-worker celery -A app.core.celery_app inspect active
+
+# 查看指定队列任务数（scheduled / reserved）
+docker exec alloyresearch-celery-worker celery -A app.core.celery_app inspect scheduled
+docker exec alloyresearch-celery-worker celery -A app.core.celery_app inspect reserved
+
+# 清空某个队列（危险，仅在确认需要时执行）
+docker exec alloyresearch-celery-worker celery -A app.core.celery_app control queue_purge indicator
+
+# 运行指标完整性审计脚本（自动取 A 股最新交易日）
+DATABASE_URL=postgresql://user:pass@localhost:5432/ad_research \
+  python scripts/audit_indicator_completeness.py
+
+# 审计指定日期
+DATABASE_URL=postgresql://user:pass@localhost:5432/ad_research \
+  python scripts/audit_indicator_completeness.py --date 2026-07-17
+</code></pre>
+<h3 id="82-sql">8.2 常用 SQL</h3>
+<pre><code class="language-sql">-- 按来源查看某日写入量
+SELECT source, COUNT(*) FROM news_article
+WHERE DATE(published_at) = '2026-07-17'
+GROUP BY source ORDER BY COUNT(*) DESC;
+
+-- 查看 celery 任务结果（若启用 result backend）
+-- redis-cli -n 0 KEYS 'celery-task-meta-*' | head
+</code></pre>
+<pre><code class="language-bash"># 查看 Redis 队列堆积
+docker exec alloyresearch-celery-worker celery -A app.core.celery_app inspect scheduled
+docker exec alloyresearch-celery-worker celery -A app.core.celery_app inspect reserved
+
+# 清空 indicator 队列（危险，仅在需要时）
+docker exec alloyresearch-redis redis-cli -n 0 DEL celery:indicator
+</code></pre>
+  </div>
+</body>
+</html>

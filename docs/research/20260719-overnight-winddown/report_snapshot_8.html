@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Overnight Research Report v2 - Snapshot 8</title>
+<style>
+body { font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif; line-height: 1.6; max-width: 900px; margin: 0 auto; padding: 2rem; }
+table { border-collapse: collapse; width: 100%; margin: 1em 0; }
+th, td { border: 1px solid #ddd; padding: .5em; text-align: left; }
+th { background: #f5f5f5; }
+</style>
+</head>
+<body>
+<p># Overnight 研究中间快照 #8</p>
+<br>
+<p>- **生成时间**：2026-07-19 04:19:02 UTC</p>
+<p>- **数据来源**：公开网络搜索 + RSS/feed + LLM 结构化提取</p>
+<p>- **记录总数**：143</p>
+<p>- **高质量记录（quality_score >= 60）**：71</p>
+<br>
+<p>## 主题分布</p>
+<br>
+<p>| 主题 | 记录数 |</p>
+<p>|------|--------|</p>
+<p>| china_mechanisms | 56 |</p>
+<p>| investor_speeches | 17 |</p>
+<p>| academic_research | 3 |</p>
+<p>| industry_deep_dive | 22 |</p>
+<p>| event_cases | 45 |</p>
+<br>
+<p>## 改进说明</p>
+<br>
+<p>v2 相对 v1 的主要改进：</p>
+<p>1. **Supervisor 循环**：theme agent 结束后自动换方向重新 spawn，避免空等 deadline。</p>
+<p>2. **LLM 多 provider fallback**：Anthropic → OpenAI → DeepSeek → MiniMax。</p>
+<p>3. **搜索与提取增强**：Jina Reader / Jina Search、SearXNG、RSS、readability-lxml、Playwright 兜底。</p>
+<p>4. **增强记录字段**：核心论点、数据论据、影响链条、投资启示、风险点、质量分。</p>
+<p>5. **跨主题去重与链接**：URL + title 相似度去重。</p>
+<p>6. **中间快照**：每 2 小时生成 report_snapshot。</p>
+<br>
+<p>## 后续建议</p>
+<br>
+<p>1. 将 `overnight_research_v2.db` 同步到本地项目作为 RAG 知识库。</p>
+<p>2. 接入平台 AI 问答模块。</p>
+<p>3. 根据质量分对低质量记录做二次 LLM 提炼。</p>
+</body>
+</html>
