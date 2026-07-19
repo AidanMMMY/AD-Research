@@ -1393,6 +1393,15 @@ class Supervisor:
         self.phase_counter: dict[str, int] = {theme: 0 for theme in CATEGORIES}
         self.stats: dict[str, AgentStats] = {theme: AgentStats() for theme in CATEGORIES}
         self.stats_lock = threading.Lock()
+        # 2026-07-19 patch：SIGTERM/SIGINT 触发 wind-down。
+        # 之前版本（v2 wind-down 复盘里的 #1 bug）supervisor 没有 signal handler，
+        # 外部 SIGTERM 直接让 supervisor 进程 exit，跳过 _merge_and_report()，
+        # 永远不会生成最终 report.md/.html，需要人工手动基于 db 写终稿。
+        # 现在：信号只触发 _shutdown_event，主循环检查后走现有 wind-down 路径，
+        # 与正常 deadline 到期的清理共用同一段代码，最终产物完整。
+        self._shutdown_event = threading.Event()
+        self._shutdown_reason: str | None = None
+        self._shutdown_signal_time: float | None = None
 
     def start(self) -> None:
         logger.info("Supervisor starting, runtime=%.1fh, deadline=%s", RUNTIME_HOURS, datetime.fromtimestamp(self.deadline, tz=timezone.utc))
@@ -1468,6 +1477,7 @@ class Supervisor:
                 self._spawn_theme(theme)
 
     def run(self) -> None:
+        self._install_signal_handlers()
         self.start()
         # 对短 runtime，wind-down 取 runtime 的 10% 且不超过 30 分钟；保证至少 1 分钟主循环
         runtime_minutes = RUNTIME_HOURS * 60
@@ -1476,24 +1486,75 @@ class Supervisor:
         last_snapshot = time.time()  # 避免启动时立即快照
         # 短 runtime 时加快 heartbeat，避免错过进程状态
         heartbeat_interval = min(HEARTBEAT_SECONDS, max(30, int(runtime_minutes * 60 / 20)))
-        while time.time() < wind_down:
+        # 主循环退出条件：deadline 倒计时归零，或外部 SIGTERM/SIGINT 触发 _shutdown_event
+        while time.time() < wind_down and not self._shutdown_event.is_set():
             self._heartbeat()
             self._respawn_finished()
             if time.time() - last_snapshot >= SNAPSHOT_INTERVAL_SECONDS:
                 self._snapshot()
                 last_snapshot = time.time()
-            time.sleep(heartbeat_interval)
+            # 用 Event.wait 替代 time.sleep，立即响应 shutdown
+            if self._shutdown_event.wait(timeout=heartbeat_interval):
+                break
 
-        logger.info("[supervisor] entering wind-down phase")
+        if self._shutdown_event.is_set():
+            logger.warning(
+                "[supervisor] entering wind-down phase (reason=%s, elapsed=%.1fs)",
+                self._shutdown_reason,
+                time.time() - (self._shutdown_signal_time or time.time()),
+            )
+        else:
+            logger.info("[supervisor] entering wind-down phase (deadline reached)")
+
+        # 子进程 graceful terminate：先 SIGTERM 给 30s 让 _run_theme_agent
+        # 的 signal handler 走 sys.exit(0) + finally 块落 stats，再 SIGKILL 兜底。
         for p in self.processes.values():
             if p.is_alive():
                 p.terminate()
+        deadline_join = time.time() + 30
         for p in self.processes.values():
-            p.join(timeout=60)
+            remaining = max(1, int(deadline_join - time.time()))
+            p.join(timeout=remaining)
+            if p.is_alive() and p.exitcode is None:
+                logger.warning("[supervisor] %s still alive after SIGTERM+30s, sending SIGKILL", p.name)
+                p.kill()
+                p.join(timeout=10)
 
-        # 最终快照与合并
+        # 最终快照与合并——这是 SIGTERM 路径的关键，必须无条件执行。
+        # 之前 v2 wind-down 时缺这一步，外部 kill 后没有任何 report.md/.html 产出。
         self._snapshot(is_final=True)
         self._merge_and_report()
+
+    def _install_signal_handlers(self) -> None:
+        """捕获 SIGTERM/SIGINT，仅标记 _shutdown_event，不直接 sys.exit。
+
+        真正的退出由主循环的 Event 检查触发，复用现有 wind-down 逻辑，
+        保证最终 report.md/.html 与 normal deadline 路径一致。
+        """
+
+        def _handler(signum: int, _frame) -> None:
+            # signal handler 里只做最少事：设标志 + 记日志。
+            # join/ps 等都放到主线程里。
+            try:
+                sig_name = signal.Signals(signum).name
+            except ValueError:
+                sig_name = f"SIG{signum}"
+            if self._shutdown_event.is_set():
+                # 重复信号：第二次直接强制退出，避免 supervisor 卡在
+                # grace period 里。
+                logger.warning("[supervisor] received %s again during wind-down, forcing exit", sig_name)
+                sys.exit(1)
+            self._shutdown_reason = sig_name
+            self._shutdown_signal_time = time.time()
+            self._shutdown_event.set()
+            logger.warning("[supervisor] received %s, will wind down after current iteration", sig_name)
+
+        for sig in (signal.SIGTERM, signal.SIGINT):
+            try:
+                signal.signal(sig, _handler)
+            except (ValueError, OSError):
+                # subprocess / 非主线程下不可设 handler；忽略即可
+                pass
 
     def _snapshot(self, is_final: bool = False) -> None:
         try:
