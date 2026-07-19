@@ -3115,6 +3115,22 @@ doc = ["intersphinx_registry", "jupyterlite-pyodide-kernel", "jupyterlite-sphinx
 test = ["Cython", "array-api-strict (>=2.3.1)", "asv", "gmpy2", "hypothesis (>=6.30)", "meson", "mpmath", "ninja ; sys_platform != \"emscripten\"", "pooch", "pytest (>=8.0.0)", "pytest-cov", "pytest-timeout", "pytest-xdist", "scikit-umfpack", "scipy-doctest (>=2.0.0)", "threadpoolctl"]
 
 [[package]]
+name = "simhash"
+version = "2.1.2"
+description = "A Python implementation of Simhash Algorithm"
+optional = false
+python-versions = "*"
+groups = ["main"]
+files = [
+    {file = "simhash-2.1.2-py2-none-any.whl", hash = "sha256:49c5d81f31254f7e3f71dc2f5a245625c3d6143584478fdf4ffd2e63e4929366"},
+    {file = "simhash-2.1.2-py3-none-any.whl", hash = "sha256:968de16c82c227a631aa00e57ab58f9e4ee9e47e8408486199a9eb59c1d6979b"},
+    {file = "simhash-2.1.2.tar.gz", hash = "sha256:533bc8cf41e4e6dd83f0b1847363516bf3323e0fa92e63d9e6df4e281e882e1b"},
+]
+
+[package.dependencies]
+numpy = "*"
+
+[[package]]
 name = "simplejson"
 version = "4.1.1"
 description = "Simple, fast, extensible JSON encoder/decoder for Python"
@@ -3890,4 +3906,4 @@ repair = ["scipy (>=1.6.3)"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.11"
-content-hash = "ca40005613c8d6655ba32a75b9ee4c13934486b94ae408d31e9b8a32e177f9e0"
+content-hash = "245bc8fc8c6a26750d0fbd2c58ee5ee315b2d22f7130c9d4e6e4158255c25437"
