@@ -187,9 +187,20 @@ log_step "2.5/4 清理残留容器"
 # 用子 shell + set +e 显式关闭 errexit/pipefail，避免 `docker compose rm` 返回 5
 # 或 `docker compose ls | jq` 管道失败时让整段脚本中断（set -euo pipefail 会）。
 # 只清理本 compose project 的容器，绝不影响其他项目或手动容器。
+#
+# 2026-07-19 教训：必须 --remove-orphans，否则 compose 不识别的旧容器（如历史的
+# `alloyresearch-celery-worker` / `alloyresearch-temp-indicator-worker`）会继续向
+# `etf_indicator` 表 INSERT，阻塞 alembic 的 ALTER COLUMN ... TYPE 拿 AccessExclusiveLock，
+# 直到 backend healthcheck 超时。`docker compose up --remove-orphans` 会删掉这些
+# 孤儿，避免下次 deploy 重蹈覆辙。
 (
     set +e
     docker compose rm -f -s backend celery-worker-indicator celery-worker-cninfo nginx >/dev/null 2>&1
+    # orphan 容器手动 docker rm，避免影响下次 --force-recreate。
+    # 限定 project 名（alloyresearch）确保不影响其他项目容器。
+    docker ps -a --filter "label=com.docker.compose.project=alloyresearch" \
+        --format '{{.ID}} {{.Names}}' | awk '$2 !~ /^(alloyresearch-backend|alloyresearch-celery-worker-indicator|alloyresearch-celery-worker-cninfo|alloyresearch-nginx|alloyresearch-postgres|alloyresearch-redis)$/ {print $1}' \
+        | xargs -r docker rm -f >/dev/null 2>&1
     true
 )
 
@@ -204,11 +215,12 @@ docker compose up -d --force-recreate backend celery-worker-indicator celery-wor
 # 因此不能再只看 HTTP 状态码，必须解析 body 的 "status" 字段：
 #   - status == "ok"        → 关键依赖(DB/Redis)就绪，放行
 #   - status == "degraded"  → 进程活着但依赖未就绪，继续等待（多见于 DB 尚在迁移/预热）
-# 等待窗口从 60s 提升到 120s（60 次 × 2s），给冷启动 + 迁移预热留足时间。
+# 等待窗口从 120s 提升到 300s（150 次 × 2s），覆盖 alembic 大列 ALTER rewrite
+# （2026-07-19 etf_indicator 6 列 numeric 扩宽实测 ~5min）+ 冷启动 + 迁移预热。
 BACKEND_CONTAINER="${BACKEND_CONTAINER:-alloyresearch-backend}"
-log_info "等待 backend 就绪 (最多 120s，需 /health status=ok)..."
+log_info "等待 backend 就绪 (最多 300s，需 /health status=ok)..."
 _backend_ready=false
-for i in $(seq 1 60); do
+for i in $(seq 1 150); do
     # backend service 只 expose 8000 给容器网络，没有映射到 host，
     # 因此不能从 host curl localhost:8000/health。在容器内探测。
     # 使用单行的 python -c，避免某些 Docker/shell 环境下 heredoc 无输出。
