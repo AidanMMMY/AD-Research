@@ -20,9 +20,11 @@ export interface SignalListResponse {
 }
 
 export interface SignalGenerateRequest {
-  strategy_id: number;
+  strategy_id?: number;
+  strategy_type?: string;
   etf_code: string;
   trade_date?: string;
+  event_signal_id?: number;
 }
 
 export interface SignalGenerateResponse {

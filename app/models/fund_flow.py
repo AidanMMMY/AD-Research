@@ -190,7 +190,69 @@ class EtfFundFlow(Base):
 
 
 # ---------------------------------------------------------------------------
-# 4. 综合资金信号
+# 4. 大盘资金流
+# ---------------------------------------------------------------------------
+
+
+class MarketFundFlow(Base):
+    """大盘资金流 (按日)。
+
+    ``market`` ∈ {'SH', 'SZ', 'ALL'}：
+    - ``ALL`` 来自 ``ak.stock_market_fund_flow`` 的沪深 A 股整体主力净流入；
+    - ``SH`` / ``SZ`` 由 ``individual_fund_flow`` 按后缀聚合得到指数级
+      净流入，并附带上证综指 / 深证成指 收盘价与涨跌幅。
+
+    货币字段单位均为 **元 (CNY)**，与个股/板块资金流保持一致。
+    """
+
+    __tablename__ = "market_fund_flow"
+
+    id = Column(Integer, primary_key=True, autoincrement=True, comment="ID")
+
+    trade_date = Column(Date, nullable=False, index=True, comment="交易日期")
+    market = Column(
+        String(10), nullable=False, index=True, comment="市场: SH / SZ / ALL"
+    )
+
+    close_price = Column(Numeric(12, 4), comment="大盘指数收盘价 (ALL 为空)")
+    pct_change = Column(Numeric(8, 4), comment="大盘指数涨跌幅 (%)")
+
+    main_net_inflow = Column(Numeric(20, 4), comment="主力净流入净额 (元)")
+    main_net_pct = Column(Numeric(8, 4), comment="主力净流入净占比 (%)")
+    super_large_net = Column(Numeric(20, 4), comment="超大单净额 (元)")
+    large_net = Column(Numeric(20, 4), comment="大单净额 (元)")
+    medium_net = Column(Numeric(20, 4), comment="中单净额 (元)")
+    small_net = Column(Numeric(20, 4), comment="小单净额 (元)")
+
+    total_amount = Column(Numeric(20, 4), comment="市场成交额 (元)")
+
+    source = Column(
+        String(20),
+        nullable=False,
+        server_default="akshare",
+        comment="数据来源: akshare / derived",
+    )
+    fetched_at = Column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+        comment="抓取时间",
+    )
+
+    __table_args__ = (
+        UniqueConstraint(
+            "trade_date", "market",
+            name="uq_market_fund_flow_date_market",
+        ),
+        Index(
+            "ix_market_fund_flow_main_net",
+            "trade_date", "main_net_inflow",
+        ),
+    )
+
+
+# ---------------------------------------------------------------------------
+# 5. 综合资金信号
 # ---------------------------------------------------------------------------
 
 

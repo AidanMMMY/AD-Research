@@ -4,12 +4,15 @@ import type { ColumnsType } from 'antd/es/table';
 import { useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { newsApi } from '@/api/news';
-import type { NewsSourceHealth } from '@/types/news';
+import type { NewsHealthResponse, NewsSourceHealth, NewsWorkerStatus } from '@/types/news';
 import PageShell from '@/components/PageShell';
 import PageHeader from '@/components/PageHeader';
 import FilterToolbar from '@/components/FilterToolbar';
 import ContentCard from '@/components/ContentCard';
 import DataFreshnessHint from '@/components/DataFreshnessHint';
+import StatCard from '@/components/StatCard';
+import ThemeTag, { type ThemeTagVariant } from '@/components/ThemeTag';
+import EmptyState from '@/components/EmptyState';
 
 const REFRESH_MS = 30_000;
 
@@ -38,7 +41,7 @@ const STATUS_LABEL: Record<HealthTone, string> = {
 };
 
 function fmtTime(iso: string | null): string {
-  if (!iso) return '-';
+  if (!iso) return '—';
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return iso;
   return d.toLocaleString();
@@ -58,8 +61,16 @@ function ageTone(minutes: number | null): string {
   return 'var(--color-error)';
 }
 
+function workerStatusProps(status: string): { variant: ThemeTagVariant; label: string } {
+  const s = status.toLowerCase();
+  if (s === 'success') return { variant: 'success', label: '正常' };
+  if (s === 'failed') return { variant: 'error', label: '失败' };
+  if (s === 'never_run') return { variant: 'neutral', label: '未运行' };
+  return { variant: 'warning', label: status || '未知' };
+}
+
 export default function NewsHealth() {
-  const { data, isLoading, refetch, isRefetching, dataUpdatedAt } = useQuery({
+  const { data, isLoading, refetch, isRefetching, dataUpdatedAt } = useQuery<NewsHealthResponse>({
     queryKey: ['news-health'],
     queryFn: () => newsApi.health().then((r) => r.data),
     refetchInterval: REFRESH_MS,
@@ -68,6 +79,10 @@ export default function NewsHealth() {
   const schedulerRunning = data?.scheduler_running ?? false;
   const jobs = data?.scheduler_jobs ?? [];
   const sources: NewsSourceHealth[] = data?.sources ?? [];
+  const workers: NewsWorkerStatus[] = data?.workers ?? [];
+  const workerTotal = workers.length;
+  const workerHealthy = workers.filter((w) => w.last_status.toLowerCase() === 'success').length;
+  const workerUnhealthy = workerTotal - workerHealthy;
 
   /* Multimodal feedback on polled refresh (Apple: causality cue).
      Track which cells changed so we can briefly highlight them after
@@ -100,6 +115,29 @@ export default function NewsHealth() {
   /** Test helper used by the table cells below to gate the flash class. */
   const isSourceChanged = (source: string): boolean =>
     changedSourcesRef.current.has(source);
+
+  /* Same causality cue for the worker table. */
+  const prevWorkerSnapshotRef = useRef<Map<string, string>>(new Map());
+  const changedWorkersRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    const next = new Map<string, string>();
+    const changed = new Set<string>();
+    for (const row of workers) {
+      const key = row.name;
+      const snapshot = `${row.last_status}|${row.last_run ?? ''}|${row.articles_24h}|${row.last_error ?? ''}`;
+      next.set(key, snapshot);
+      const prev = prevWorkerSnapshotRef.current.get(key);
+      if (prev !== undefined && prev !== snapshot) {
+        changed.add(key);
+      }
+    }
+    for (const key of next.keys()) {
+      if (!prevWorkerSnapshotRef.current.has(key)) changed.add(key);
+    }
+    changedWorkersRef.current = changed;
+    prevWorkerSnapshotRef.current = next;
+  }, [workers]);
+  const isWorkerChanged = (name: string): boolean => changedWorkersRef.current.has(name);
 
   const columns: ColumnsType<NewsSourceHealth> = [
     {
@@ -192,6 +230,73 @@ export default function NewsHealth() {
     },
   ];
 
+  const workerColumns: ColumnsType<NewsWorkerStatus> = [
+    {
+      title: 'Worker',
+      key: 'worker',
+      width: 220,
+      render: (_v, row) => (
+        <div>
+          <div className="ad-font-medium">{row.label}</div>
+          <div className="ad-text-xs ad-text-tertiary">{row.name}</div>
+        </div>
+      ),
+    },
+    {
+      title: '调度周期',
+      dataIndex: 'schedule',
+      key: 'schedule',
+      width: 140,
+    },
+    {
+      title: '状态',
+      key: 'status',
+      width: 110,
+      render: (_v, row) => {
+        const { variant, label } = workerStatusProps(row.last_status);
+        return <ThemeTag variant={variant}>{label}</ThemeTag>;
+      },
+    },
+    {
+      title: '最近运行',
+      key: 'last_run',
+      width: 220,
+      render: (_v, row) => {
+        const v = row.last_run;
+        const minutes = ageMinutes(v);
+        const base = fmtTime(v);
+        if (minutes === null) return <span>{base}</span>;
+        return (
+          <Tooltip title={base}>
+            <span className="news-health-age" style={{ color: ageTone(minutes) }}>
+              {base} <span className="ad-text-xs">({minutes}m 前)</span>
+            </span>
+          </Tooltip>
+        );
+      },
+    },
+    {
+      title: '24h 记录数',
+      dataIndex: 'articles_24h',
+      key: 'articles_24h',
+      width: 120,
+      render: (v: number) => v.toLocaleString(),
+    },
+    {
+      title: '最近错误',
+      key: 'last_error',
+      render: (_v, row) => {
+        const v = row.last_error;
+        if (!v) return <span>—</span>;
+        return (
+          <Tooltip title={v}>
+            <div className="ad-error-ellipsis">{v}</div>
+          </Tooltip>
+        );
+      },
+    },
+  ];
+
   return (
     <PageShell maxWidth="wide">
       <PageHeader
@@ -230,6 +335,18 @@ export default function NewsHealth() {
           </div>
         }
       />
+
+      <div className="ad-flex ad-flex-wrap ad-gap-4 ad-mb-4">
+        <div className="news-health-stat">
+          <StatCard title="Worker 总数" value={workerTotal} loading={isLoading} />
+        </div>
+        <div className="news-health-stat">
+          <StatCard title="正常" value={workerHealthy} loading={isLoading} />
+        </div>
+        <div className="news-health-stat">
+          <StatCard title="异常" value={workerUnhealthy} loading={isLoading} />
+        </div>
+      </div>
 
       <ContentCard title="Scheduler 任务" className="ad-mb-4">
         {jobs.length > 0 ? (
@@ -272,9 +389,7 @@ export default function NewsHealth() {
                 }
               />
             )}
-            <div
-              className="ad-flex ad-flex-wrap ad-gap-4 news-health__ai-stats"
-            >
+            <div className="ad-flex ad-flex-wrap ad-gap-4 news-health__ai-stats">
               <Statistic
                 title="已清理"
                 value={data.ai_cleanup_24h.cleaned}
@@ -292,9 +407,10 @@ export default function NewsHealth() {
                 value={data.ai_cleanup_24h.failed}
                 suffix="条"
                 valueStyle={{
-                  color: data.ai_cleanup_24h.failed > 0
-                    ? 'var(--color-error)'
-                    : 'var(--text-secondary)',
+                  color:
+                    data.ai_cleanup_24h.failed > 0
+                      ? 'var(--color-error)'
+                      : 'var(--text-secondary)',
                 }}
               />
               <Statistic
@@ -316,7 +432,7 @@ export default function NewsHealth() {
       </ContentCard>
 
       <Spin spinning={isLoading}>
-        <ContentCard title="数据源健康度">
+        <ContentCard title="数据源健康度" className="ad-mb-4">
           <Table
             dataSource={sources}
             columns={columns}
@@ -331,6 +447,27 @@ export default function NewsHealth() {
               return classes.join(' ');
             }}
           />
+        </ContentCard>
+
+        <ContentCard title="Worker 健康度">
+          {workers.length > 0 ? (
+            <Table
+              dataSource={workers}
+              columns={workerColumns}
+              rowKey="name"
+              pagination={false}
+              size="middle"
+              scroll={{ x: 'max-content' }}
+              rowClassName={(row) =>
+                isWorkerChanged(row.name) ? 'news-health-row-changed' : ''
+              }
+            />
+          ) : (
+            <EmptyState
+              title="暂无 worker 数据"
+              description="等待后端接口返回…"
+            />
+          )}
         </ContentCard>
       </Spin>
     </PageShell>

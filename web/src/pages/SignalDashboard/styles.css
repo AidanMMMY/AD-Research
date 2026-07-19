@@ -50,6 +50,161 @@
   /* No transforms — this cell has no onPress handler. */
 }
 
+/* Pointer-down instant feedback (Response principle) */
+.signal-dashboard__view-link:active {
+  transform: scale(0.94);
+  background: var(--accent-dim);
+}
+
+/* ── Event signals panel ── */
+.signal-dashboard__event-panel {
+  margin-top: var(--space-4);
+}
+
+.signal-dashboard__event-title {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.signal-dashboard__event-link {
+  color: var(--accent);
+  cursor: pointer;
+  font-size: var(--text-body-size);
+  padding: 2px;
+  border-radius: var(--radius-sm);
+  transition:
+    color var(--transition-fast),
+    background var(--transition-fast),
+    transform var(--transition-spring-fast);
+}
+
+.signal-dashboard__event-link:hover {
+  color: var(--accent-hover);
+  background: var(--accent-dim);
+}
+
+.signal-dashboard__event-link:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.signal-dashboard__event-link:active {
+  transform: scale(0.92);
+}
+
+.signal-dashboard__event-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  color: var(--text-secondary);
+  font-size: var(--text-small-size);
+}
+
+.signal-dashboard__event-time {
+  color: var(--text-tertiary);
+}
+
+.signal-dashboard__importance {
+  display: inline-flex;
+  gap: 2px;
+  font-size: var(--text-small-size);
+}
+
+.signal-dashboard__star {
+  font-size: 10px;
+  transition: color var(--transition-fast);
+}
+
+.signal-dashboard__star--filled {
+  color: var(--color-warning);
+}
+
+.signal-dashboard__star--empty {
+  color: var(--border-strong);
+  opacity: 0.6;
+}
+
+.signal-dashboard__symbols {
+  row-gap: 4px;
+}
+
+.signal-dashboard__symbol-wrapper {
+  display: inline-block;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition: background var(--transition-fast);
+}
+
+.signal-dashboard__symbol-wrapper:hover {
+  background: var(--bg-hover);
+}
+
+.signal-dashboard__symbol-wrapper:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.signal-dashboard__no-symbol {
+  color: var(--text-tertiary);
+}
+
+.signal-dashboard__event-summary {
+  color: var(--text-secondary);
+  font-size: var(--text-small-size);
+  display: inline-block;
+  max-width: 320px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.signal-dashboard__generate-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--accent);
+  cursor: pointer;
+  font-size: var(--text-label-size);
+  border-radius: var(--radius-sm);
+  padding: 2px 6px;
+  margin: -2px -6px;
+  transition:
+    color var(--transition-fast),
+    background var(--transition-fast),
+    transform var(--transition-spring-fast);
+  will-change: transform;
+}
+
+.signal-dashboard__generate-link:hover {
+  background: var(--accent-dim);
+}
+
+.signal-dashboard__generate-link:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.signal-dashboard__generate-link:active {
+  transform: scale(0.94);
+  background: var(--accent-dim);
+}
+
+.signal-dashboard__importance-filter {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 0 8px;
+}
+
+.signal-dashboard__importance-label {
+  color: var(--text-secondary);
+  font-size: var(--text-small-size);
+  white-space: nowrap;
+}
+
 /* Large numerals: negative tracking, mirroring SF large optical sizes */
 .ad-kpi-cell__value {
   letter-spacing: -0.02em;

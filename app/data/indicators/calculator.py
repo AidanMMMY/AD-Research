@@ -32,6 +32,7 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
 from app.core.cache import cache_invalidate_pattern
+from app.data.indicators.market_config import get_market_config, normalise_market
 from app.data.indicators.risk import calculate_return_indicators, calculate_risk_indicators
 from app.data.indicators.technical import calculate_technical_indicators
 from app.models.etf import InstrumentDailyBar, ETFIndicator, ETFInfo
@@ -133,31 +134,77 @@ _INDICATOR_COLUMNS = [
 ]
 
 
-def _safe_float(value) -> float | None:
-    """Convert a value to float, returning None for NaN/inf."""
+# Return / drawdown columns widened to DECIMAL(18, 6).  Used by
+# ``_build_indicator_record`` to clamp extreme values before upsert
+# so a single outlier (e.g. 600601.SH style returns) cannot fail the
+# whole indicator chunk.
+_RETURN_DRAWDOWN_COLUMNS: dict[str, tuple[int, int]] = {
+    "max_drawdown_1y": (18, 6),
+    "return_1w": (18, 6),
+    "return_1m": (18, 6),
+    "return_3m": (18, 6),
+    "return_6m": (18, 6),
+    "return_1y": (18, 6),
+}
+
+
+def _clamp_decimal(value: float, precision: int, scale: int) -> float:
+    """把 float 截断到 DECIMAL(precision, scale) 可表达的范围.
+
+    最大可表示绝对值为 ``10^(precision - scale) - 10^(-scale)``。
+    超出时返回边界值，避免 upsert 阶段触发 numeric field overflow。
+    """
+    max_val = 10 ** (precision - scale) - 10 ** (-scale)
+    if value > max_val:
+        return max_val
+    if value < -max_val:
+        return -max_val
+    return value
+
+
+def _safe_float(value, precision: int | None = None, scale: int | None = None) -> float | None:
+    """Convert a value to float, returning None for NaN/inf.
+
+    如果提供 ``precision`` 与 ``scale``，则进一步截断到 DECIMAL(precision, scale)
+    可表达的最大值，从源头防止极端收益/回撤导致整个 upsert chunk 失败。
+    """
     if value is None or pd.isna(value):
         return None
     if isinstance(value, int | float):
         if pd.isna(value) or (isinstance(value, float) and (value == float("inf") or value == float("-inf"))):
             return None
-        return float(value)
-    try:
         f = float(value)
+    else:
+        try:
+            f = float(value)
+        except (TypeError, ValueError):
+            return None
         if pd.isna(f) or f == float("inf") or f == float("-inf"):
             return None
-        return f
-    except (TypeError, ValueError):
-        return None
+
+    if precision is not None and scale is not None:
+        return _clamp_decimal(f, precision, scale)
+    return f
 
 
-def calculate_single_etf(etf_code: str, bars_df: pd.DataFrame) -> pd.DataFrame:
+def calculate_single_etf(
+    etf_code: str,
+    bars_df: pd.DataFrame,
+    *,
+    market: str = "A股",
+    config: object | None = None,
+) -> pd.DataFrame:
     """Calculate all indicators for a single ETF.
 
     Args:
         etf_code: ETF code (used for logging / context only).
         bars_df: DataFrame with columns trade_date, open, high, low,
-            close (raw market price), adj_close (split/dividend adjusted),
+            close (raw market price), qfq_close (前复权 close),
             volume, amount. Must be sorted by trade_date ascending.
+        market: Market key used to select the correct windows and
+            annualisation factor when ``config`` is not provided.
+        config: Optional ``MarketIndicatorConfig`` overriding the
+            market lookup.
 
     Returns:
         DataFrame with all indicator columns appended. Returns an empty
@@ -172,41 +219,33 @@ def calculate_single_etf(etf_code: str, bars_df: pd.DataFrame) -> pd.DataFrame:
     if "trade_date" in df.columns:
         df = df.sort_values("trade_date").reset_index(drop=True)
 
-    # Technical indicators (MA/RSI/MACD/Bollinger/ATR) are computed on raw
-    # close so they align with the market price users see in the UI.
-    raw_df = df[["trade_date", "open", "high", "low", "close", "volume", "amount"]].copy()
-    raw_df = calculate_technical_indicators(raw_df)
+    # Synthesise qfq_close if the caller did not provide it. This keeps
+    # backfill scripts and external callers working even when they only
+    # have raw close + adj_factor.
+    if "qfq_close" not in df.columns:
+        adj_factor = df.get("adj_factor", pd.Series(1.0, index=df.index))
+        latest_adj_factor = float(adj_factor.iloc[-1] if len(adj_factor) else 1.0)
+        df["qfq_close"] = (
+            df["close"].astype(float)
+            * adj_factor.astype(float)
+            / latest_adj_factor
+        )
 
-    # Volatility / drawdown / Sharpe are computed on the dividend-adjusted
-    # close so long-window metrics stay comparable across corporate actions.
-    adj_df = df[["trade_date", "open", "high", "low", "adj_close", "volume", "amount"]].copy()
-    adj_df = adj_df.rename(columns={"adj_close": "close"})
-    adj_df = calculate_risk_indicators(adj_df)
+    # All indicators are now computed on the 前复权 close so that
+    # technical, risk, and return metrics stay comparable across
+    # splits / dividends / corporate actions while anchoring to the
+    # latest market price level.
+    qfq_df = df[["trade_date", "open", "high", "low", "qfq_close", "volume", "amount"]].copy()
+    qfq_df = qfq_df.rename(columns={"qfq_close": "close"})
 
-    # Period returns are computed on the **raw** close, NOT adj_close.
-    # Rationale: the recent adj_factor normalisation makes historical
-    # adj_factor values < 1.0 for every older date, so adj_close for an
-    # older bar equals ``close * factor < close``. Computing the return as
-    # ``adj_close[latest] / adj_close[old] - 1`` then bakes future dividend
-    # yields into the divisor — that is "total-return" semantics, which
-    # flattens (or even flips the sign of) the displayed 1m / 3m / 1y
-    # numbers whenever a dividend lands inside the lookback window. For
-    # ETF 512760.SH this dropped the 1m return from a few-percent move
-    # down to 0.71 %, which is exactly the regression the bug report
-    # flags. Use raw close so the UI shows the price-return view users
-    # expect from a market chart.
-    raw_df = calculate_return_indicators(raw_df)
+    if config is None:
+        config = get_market_config(market)
 
-    # Merge: keep OHLCV from raw price space; append technical columns
-    # from raw_df, vol/drawdown/Sharpe from adj_df, and period returns
-    # from raw_df (overwriting whatever adj_df produced — those were the
-    # wrong, adj_close-based values).
-    result = raw_df.copy()
-    risk_cols = [c for c in adj_df.columns if c not in result.columns and c != "daily_return"]
-    for col in risk_cols:
-        result[col] = adj_df[col].values
+    qfq_df = calculate_technical_indicators(qfq_df, market=market, config=config)
+    qfq_df = calculate_risk_indicators(qfq_df, market=market, config=config)
+    qfq_df = calculate_return_indicators(qfq_df, market=market, config=config)
 
-    return result
+    return qfq_df
 
 
 def _build_indicator_record(etf_code: str, row: pd.Series) -> dict:
@@ -216,7 +255,8 @@ def _build_indicator_record(etf_code: str, row: pd.Series) -> dict:
         "trade_date": row["trade_date"],
     }
     for col in _INDICATOR_COLUMNS:
-        record[col] = _safe_float(row.get(col))
+        precision, scale = _RETURN_DRAWDOWN_COLUMNS.get(col, (None, None))
+        record[col] = _safe_float(row.get(col), precision=precision, scale=scale)
     return record
 
 
@@ -299,6 +339,7 @@ def batch_calculate_indicators(
         ETFInfo.list_date,
         ETFInfo.inception_date,
         ETFInfo.delist_date,
+        ETFInfo.market,
     ).where(ETFInfo.status == "active")
     if market_filter is not None:
         stmt = stmt.where(ETFInfo.market == market_filter)
@@ -314,53 +355,63 @@ def batch_calculate_indicators(
         _log_etl(db, "indicator_calc", "success", 0, start_time, None)
         return 0
 
+    # Group by market so each path (SQL/pandas) can use the correct
+    # MarketIndicatorConfig (windows, annualisation factor, min_periods).
+    by_market: dict[str, list] = {}
+    for r in active_rows:
+        by_market.setdefault(normalise_market(r.market), []).append(r)
+
+    effective_target = target_date if target_date is not None else date.today()
+
     # Fast path: single-query SQL backend. Skip per-ETF date checks
-    # (the SQL handles ``target_date`` filtering) and dispatch in
-    # one go. Pandas path keeps the listing-date / delisted-date
-    # guards because it needs to fetch bars per-ETF.
+    # (the SQL handles ``target_date`` filtering) and dispatch per market
+    # so each query uses the right window sizes. Pandas path keeps the
+    # listing-date / delisted-date guards because it fetches bars per-ETF.
     if INDICATOR_BACKEND == "sql":
-        code_meta = {
-            r.code: (r.list_date or r.inception_date, r.delist_date)
-            for r in active_rows
-        }
-        # Pre-filter to codes that actually have daily bars on or before
-        # the target date.  This avoids setting up recursive CTE partitions
-        # for thousands of recently-listed US/crypto ETFs that the daily-bar
-        # scheduler hasn't caught up to yet, which is the dominant cause of
-        # the local-Docker stalls seen during full-market runs.
-        effective_target = target_date if target_date is not None else date.today()
-        codes_with_bars = {
-            row[0]
-            for row in db.execute(
-                select(InstrumentDailyBar.etf_code).distinct().where(
-                    InstrumentDailyBar.etf_code.in_(code_meta.keys()),
-                    InstrumentDailyBar.trade_date <= effective_target,
+        for market, market_rows in by_market.items():
+            code_meta = {
+                r.code: (r.list_date or r.inception_date, r.delist_date, market)
+                for r in market_rows
+            }
+            # Pre-filter to codes that actually have daily bars on or before
+            # the target date.  This avoids setting up recursive CTE partitions
+            # for thousands of recently-listed US/crypto ETFs that the daily-bar
+            # scheduler hasn't caught up to yet, which is the dominant cause of
+            # the local-Docker stalls seen during full-market runs.
+            codes_with_bars = {
+                row[0]
+                for row in db.execute(
+                    select(InstrumentDailyBar.etf_code).distinct().where(
+                        InstrumentDailyBar.etf_code.in_(code_meta.keys()),
+                        InstrumentDailyBar.trade_date <= effective_target,
+                    )
                 )
+            }
+            codes = [c for c in code_meta if c in codes_with_bars]
+            logger.info(
+                "indicator_calc[sql] backend=%s market=%s active=%d with_bars=%d target=%s full_history=%s instrument_type=%s code_prefix=%s",
+                INDICATOR_BACKEND,
+                market,
+                len(code_meta),
+                len(codes),
+                target_date,
+                full_history,
+                instrument_type_filter,
+                code_prefix,
             )
-        }
-        codes = [c for c in code_meta if c in codes_with_bars]
-        logger.info(
-            "indicator_calc[sql] backend=%s active=%d with_bars=%d target=%s full_history=%s instrument_type=%s code_prefix=%s",
-            INDICATOR_BACKEND,
-            len(code_meta),
-            len(codes),
-            target_date,
-            full_history,
-            instrument_type_filter,
-            code_prefix,
-        )
-        try:
-            updated_count = _batch_calculate_indicators_sql(
-                db,
-                codes,
-                code_meta,
-                target_date=target_date,
-                full_history=full_history,
-                code_prefix=code_prefix,
-            )
-        except Exception as exc:
-            errors.append(f"sql-backend: {exc}")
-            logger.exception("indicator_calc[sql] failed: %s", exc)
+            try:
+                updated_count += _batch_calculate_indicators_sql(
+                    db,
+                    codes,
+                    code_meta,
+                    target_date=target_date,
+                    full_history=full_history,
+                    code_prefix=code_prefix,
+                    market=market,
+                )
+            except Exception as exc:
+                errors.append(f"sql-backend-{market}: {exc}")
+                logger.exception("indicator_calc[sql] failed for %s: %s", market, exc)
 
         # Final cache invalidation (also run for the SQL path).
         try:
@@ -374,30 +425,31 @@ def batch_calculate_indicators(
         _log_etl(db, "indicator_calc", status, updated_count, start_time, error_msg)
         return updated_count
 
-    for row in active_rows:
-        etf_code = row.code
-        list_date = row.list_date or row.inception_date
-        delist_date = row.delist_date
+    for market, market_rows in by_market.items():
+        for row in market_rows:
+            etf_code = row.code
+            list_date = row.list_date or row.inception_date
+            delist_date = row.delist_date
 
-        records = _calculate_single_code_pandas(
-            db, etf_code, list_date, delist_date, target_date, full_history
-        )
-        if not records:
-            continue
-
-        try:
-            insert_stmt = insert(ETFIndicator).values(records)
-            upsert_stmt = insert_stmt.on_conflict_do_update(
-                index_elements=["etf_code", "trade_date"],
-                set_={col: insert_stmt.excluded[col] for col in _INDICATOR_COLUMNS},
+            records = _calculate_single_code_pandas(
+                db, etf_code, list_date, delist_date, target_date, full_history, market=market
             )
-            db.execute(upsert_stmt)
-            db.commit()
-            updated_count += len(records)
-        except Exception as exc:
-            db.rollback()
-            errors.append(f"{etf_code}: {exc}")
-            continue
+            if not records:
+                continue
+
+            try:
+                insert_stmt = insert(ETFIndicator).values(records)
+                upsert_stmt = insert_stmt.on_conflict_do_update(
+                    index_elements=["etf_code", "trade_date"],
+                    set_={col: insert_stmt.excluded[col] for col in _INDICATOR_COLUMNS},
+                )
+                db.execute(upsert_stmt)
+                db.commit()
+                updated_count += len(records)
+            except Exception as exc:
+                db.rollback()
+                errors.append(f"{etf_code}: {exc}")
+                continue
 
     # Final cache invalidation (outside the per-ETF loop)
     try:
@@ -420,6 +472,8 @@ def _calculate_single_code_pandas(
     delist_date: date | None,
     target_date: date | None,
     full_history: bool,
+    *,
+    market: str = "A股",
 ) -> list[dict]:
     """Calculate indicators for a single ETF using the pandas path.
 
@@ -450,6 +504,8 @@ def _calculate_single_code_pandas(
         if not bars or len(bars) < _MIN_BARS:
             return []
 
+        latest_adj_factor = float(bars[-1].adj_factor or 1.0)
+
         df = pd.DataFrame(
             [
                 {
@@ -458,7 +514,7 @@ def _calculate_single_code_pandas(
                     "high": b.high,
                     "low": b.low,
                     "close": float(b.close),
-                    "adj_close": float(b.close) * float(b.adj_factor or 1.0),
+                    "qfq_close": float(b.close) * float(b.adj_factor or 1.0) / latest_adj_factor,
                     "volume": b.volume,
                     "amount": b.amount,
                 }
@@ -466,7 +522,7 @@ def _calculate_single_code_pandas(
             ]
         )
 
-        result_df = calculate_single_etf(etf_code, df)
+        result_df = calculate_single_etf(etf_code, df, market=market)
         if result_df.empty:
             return []
 
@@ -488,11 +544,12 @@ def _calculate_single_code_pandas(
 def _batch_calculate_indicators_sql(
     db: Session,
     codes: list[str],
-    code_meta: dict[str, tuple[date | None, date | None]],
+    code_meta: dict[str, tuple[date | None, date | None, str]],
     *,
     target_date: date | None,
     full_history: bool,
     code_prefix: str | list[str] | None = None,
+    market: str = "A股",
 ) -> int:
     """SQL-backend path: chunked single-query execution + UPSERT.
 
@@ -534,7 +591,7 @@ def _batch_calculate_indicators_sql(
         )
         t0 = time.perf_counter()
         try:
-            rows = runner(db, chunk, target_date=target_date)
+            rows = runner(db, chunk, target_date=target_date, market=market)
             elapsed = time.perf_counter() - t0
             records = [build_indicator_payload(r) for r in rows]
             # Defensive upsert: drop any record that came back all-NULL
@@ -573,9 +630,11 @@ def _batch_calculate_indicators_sql(
                 len(chunk),
             )
             for etf_code in chunk:
-                list_date, delist_date = code_meta.get(etf_code, (None, None))
+                list_date, delist_date, _market = code_meta.get(
+                    etf_code, (None, None, market)
+                )
                 records = _calculate_single_code_pandas(
-                    db, etf_code, list_date, delist_date, target_date, full_history
+                    db, etf_code, list_date, delist_date, target_date, full_history, market=_market
                 )
                 if not records:
                     continue

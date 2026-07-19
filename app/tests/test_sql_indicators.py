@@ -413,7 +413,9 @@ def test_sql_matches_pandas_for_synthetic_ashare_etf(parity_db) -> None:
 
     # Pandas baseline
     pdf = bars.copy()
-    pdf["adj_close"] = pdf["close"] * pdf["adj_factor"]
+    # qfq_close = close * adj_factor / latest_adj_factor. In these
+    # fixtures latest adj_factor is 1.0, so qfq_close equals adj_close.
+    pdf["qfq_close"] = pdf["close"] * pdf["adj_factor"]
     pandas_out = calculate_single_etf(code, pdf)
     pandas_last = pandas_out.iloc[-1]
 
@@ -427,7 +429,7 @@ def test_sql_matches_pandas_for_synthetic_ashare_etf(parity_db) -> None:
 def test_sql_matches_pandas_for_etf_with_split(parity_db) -> None:
     """ETF with a synthetic split at bar 150: SQL must keep the same
     numeric values as pandas because both compute long-window stats
-    on adj_close.
+    on qfq_close.
     """
     from app.data.indicators.sql_calculator import sql_calculate_latest
 
@@ -439,7 +441,7 @@ def test_sql_matches_pandas_for_etf_with_split(parity_db) -> None:
     _insert_synthetic_bars(db, code, bars)
 
     pdf = bars.copy()
-    pdf["adj_close"] = pdf["close"] * pdf["adj_factor"]
+    pdf["qfq_close"] = pdf["close"] * pdf["adj_factor"]
     pandas_out = calculate_single_etf(code, pdf)
     pandas_last = pandas_out.iloc[-1]
 
@@ -465,7 +467,7 @@ def test_sql_batch_against_pandas_baseline(parity_db) -> None:
         bars = _make_synthetic_bars(n=200, seed=10 + i, trend=0.0005 + 0.0001 * i)
         _insert_synthetic_bars(db, c, bars)
         pdf = bars.copy()
-        pdf["adj_close"] = pdf["close"] * pdf["adj_factor"]
+        pdf["qfq_close"] = pdf["close"] * pdf["adj_factor"]
         pdfs[c] = calculate_single_etf(c, pdf).iloc[-1]
 
     rows = sql_calculate_latest(db, codes)
@@ -490,7 +492,7 @@ def test_sql_full_history_matches_pandas_per_row(parity_db) -> None:
     _insert_synthetic_bars(db, code, bars)
 
     pdf = bars.copy()
-    pdf["adj_close"] = pdf["close"] * pdf["adj_factor"]
+    pdf["qfq_close"] = pdf["close"] * pdf["adj_factor"]
     pandas_out = calculate_single_etf(code, pdf)
 
     rows = sql_calculate_full_history(db, [code])
@@ -525,16 +527,16 @@ def test_sql_handles_us_style_short_history(parity_db) -> None:
     _insert_synthetic_bars(db, code, bars)
 
     pdf = bars.copy()
-    pdf["adj_close"] = pdf["close"] * pdf["adj_factor"]
+    pdf["qfq_close"] = pdf["close"] * pdf["adj_factor"]
     pandas_out = calculate_single_etf(code, pdf)
     pandas_last = pandas_out.iloc[-1]
 
     rows = sql_calculate_latest(db, [code])
     assert len(rows) == 1
     _parity_assert(pandas_last, rows[0], code=code)
-    # Long-window stats should both be None at 80 bars (RISK_LONG_MIN_PERIODS=60
-    # passes — but pandas' rolling-apply at < 252 bars produces NaN too).
-    # The key check is parity, which is covered by _parity_assert.
+    # Long-window stats are now emitted once rn >= RISK_LONG_MIN_PERIODS,
+    # so at 80 bars both pandas and SQL should produce real values (parity
+    # check covers this).
 
 
 @ pytestmark_sql

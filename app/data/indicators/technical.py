@@ -7,6 +7,8 @@ Provides functions for computing common technical indicators
 import numpy as np
 import pandas as pd
 
+from app.data.indicators.market_config import get_market_config
+
 
 def calc_ma(series: pd.Series, window: int) -> pd.Series:
     """Calculate simple moving average.
@@ -121,7 +123,12 @@ def calc_bollinger(
     return upper, lower
 
 
-def calculate_technical_indicators(df: pd.DataFrame) -> pd.DataFrame:
+def calculate_technical_indicators(
+    df: pd.DataFrame,
+    *,
+    market: str = "A股",
+    config: object | None = None,
+) -> pd.DataFrame:
     """Calculate all technical indicators for a DataFrame of OHLCV data.
 
     Input DataFrame must contain columns:
@@ -133,10 +140,17 @@ def calculate_technical_indicators(df: pd.DataFrame) -> pd.DataFrame:
 
     Args:
         df: DataFrame with OHLCV bars, sorted by trade_date ascending.
+        market: Market key used to load the correct windows when
+            ``config`` is not provided.
+        config: Optional ``MarketIndicatorConfig`` overriding the
+            market lookup.
 
     Returns:
         DataFrame with indicator columns appended.
     """
+    if config is None:
+        config = get_market_config(market)
+
     result = df.copy()
 
     # Ensure numeric types
@@ -148,14 +162,16 @@ def calculate_technical_indicators(df: pd.DataFrame) -> pd.DataFrame:
     high = result["high"]
     low = result["low"]
 
-    # Moving averages
-    result["ma5"] = calc_ma(close, window=5)
-    result["ma10"] = calc_ma(close, window=10)
-    result["ma20"] = calc_ma(close, window=20)
-    result["ma60"] = calc_ma(close, window=60)
+    ma_windows = config.ma_windows
+    # Moving averages: the output column names (ma5/ma10/ma20/ma60) are
+    # fixed by the ETFIndicator schema, but the lookback windows are read
+    # from the market config so crypto can use 7/14/30/90 calendar days.
+    ma_labels = ("ma5", "ma10", "ma20", "ma60")
+    for label, window in zip(ma_labels, ma_windows):
+        result[label] = calc_ma(close, window=window)
 
     # RSI
-    result["rsi14"] = calc_rsi(close, window=14)
+    result["rsi14"] = calc_rsi(close, window=config.rsi_window)
 
     # MACD
     dif, dea, hist = calc_macd(close)
@@ -164,10 +180,10 @@ def calculate_technical_indicators(df: pd.DataFrame) -> pd.DataFrame:
     result["macd_hist"] = hist
 
     # ATR
-    result["atr14"] = calc_atr(high, low, close, window=14)
+    result["atr14"] = calc_atr(high, low, close, window=config.atr_window)
 
     # Bollinger Bands
-    bb_upper, bb_lower = calc_bollinger(close)
+    bb_upper, bb_lower = calc_bollinger(close, window=config.bb_window)
     result["bb_upper"] = bb_upper
     result["bb_lower"] = bb_lower
 

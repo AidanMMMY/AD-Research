@@ -628,14 +628,12 @@ class SectorRotationService:
             avg_1m = avg(vals["return_1m"])
             avg_3m = avg(vals["return_3m"])
 
-            # Relative Strength = sector return / market average return
-            rs_1m = (avg_1m / market_avg["return_1m"]) if market_avg["return_1m"] else 1.0
-            rs_3m = (avg_3m / market_avg["return_3m"]) if market_avg["return_3m"] else 1.0
-            rs_1w = (
-                avg(vals["return_1w"]) / market_avg["return_1w"]
-                if market_avg["return_1w"]
-                else 1.0
-            )
+            # Relative Strength = excess return over market average (percentage points).
+            # Using a difference instead of a ratio prevents colour/direction reversal
+            # when the overall market is negative.
+            rs_1m = avg_1m - market_avg["return_1m"]
+            rs_3m = avg_3m - market_avg["return_3m"]
+            rs_1w = avg(vals["return_1w"]) - market_avg["return_1w"]
 
             sector_rows.append({
                 "sector": sector,
@@ -698,27 +696,47 @@ class SectorRotationService:
             "rotation_signals": [],
         }
 
+    def _find_lookback_date(
+        self, trade_date: date, trading_days: int = 5
+    ) -> date | None:
+        """Return the N-th available trading date strictly before ``trade_date``.
+
+        Counts only A-share ETF/STOCK indicator dates. If history is shorter
+        than ``trading_days`` days, returns ``None`` so the caller can skip
+        signal generation.
+        """
+        row = (
+            self.db.query(ETFIndicator.trade_date)
+            .join(ETFInfo, ETFIndicator.etf_code == ETFInfo.code)
+            .filter(
+                ETFIndicator.trade_date < trade_date,
+                ETFInfo.market == self._SCOPE_MARKET,
+                ETFInfo.instrument_type.in_(self._SCOPE_INSTRUMENT_TYPES),
+            )
+            .distinct()
+            .order_by(ETFIndicator.trade_date.desc())
+            .offset(trading_days - 1)
+            .limit(1)
+            .first()
+        )
+        return row[0] if row else None
+
     def _detect_rotation_signals(
         self,
         current_sectors: list[dict[str, Any]],
         trade_date: date,
         classification: Classification = "GICS",
     ) -> list[dict[str, Any]]:
-        """Detect sector rotation by comparing with previous period.
+        """Detect sector rotation by comparing with ~1 week prior.
 
-        The previous period is the most recent indicator date strictly
-        before ``trade_date`` (typically one week earlier on a daily
-        refresh). We re-aggregate by sector for that date and compare
-        rank deltas.
+        The previous period is the 5-th available trading date strictly before
+        ``trade_date`` (≈ one trading week). We re-aggregate by sector for that
+        date and compare 1-month return rank deltas.
 
-        A swing of ≥ 3 positions in the 1-month return ranking is
-        surfaced as a signal.
+        A swing of ≥ 3 positions in the 1-month return ranking is surfaced as a
+        signal. If history is shorter than 5 trading days, no signals are emitted.
         """
-        prev_available = (
-            self.db.query(func.max(ETFIndicator.trade_date))
-            .filter(ETFIndicator.trade_date < trade_date)
-            .scalar()
-        )
+        prev_available = self._find_lookback_date(trade_date, trading_days=5)
         if prev_available is None:
             return []
 
@@ -787,9 +805,12 @@ class SectorRotationService:
 
         return signals
 
-
-# ---------------------------------------------------------------------------
-# 申万一级行业 (SW 2021) support — shipped 2026-07-09
+    # TODO(Phase 3): Add an official industry index return view (e.g. 申万/中信
+    # industry indices). The current equal-weight average of constituent stocks +
+    # ETFs is a practical approximation but is not identical to the official
+    # index return. Implementation should use a dedicated index-return table or
+    # an external source without relying on ``etf_indicator`` + ``etf_info.sw_l1``
+    # alone.
 #
 # ``analyze_sectors`` / ``get_sector_list`` accept ``classification="SW"`` to
 # bucket A-share instruments by the 31 申万2021一级行业 instead of GICS. The

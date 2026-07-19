@@ -232,7 +232,14 @@ class ScoreCalculator:
                     if val is not None and not (
                         isinstance(val, float) and np.isnan(val)
                     ):
-                        metric_values.append(float(val))
+                        # Drawdown is stored as a negative number (e.g. -0.15).
+                        # For risk aggregation it must be a positive magnitude,
+                        # otherwise averaging it with positive volatility cancels
+                        # out the signal.
+                        v = float(val)
+                        if metric.startswith("max_drawdown") and v < 0:
+                            v = -v
+                        metric_values.append(v)
 
                 if metric_values:
                     avg_value = sum(metric_values) / len(metric_values)

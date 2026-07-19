@@ -109,29 +109,31 @@ def test_ensure_min_sample_masks_entire_series_when_listing_too_recent() -> None
 
 def test_ensure_min_sample_keeps_history_when_listing_unknown() -> None:
     """When ``days_since_listing`` is None we must NOT throw and must
-    NOT blanket-mask the series. Only the rolling-not-null gate fires,
-    which preserves historical backfills that don't have list_date.
-    The proof is that the tail of the series (rows 60+) keeps its values
-    — only the leading warmup rows are masked by the rolling gate.
+    NOT blanket-mask the series. The rolling-not-null gate is now
+    handled by the upstream rolling ``min_periods`` so that the pandas
+    and SQL thresholds align at 60; ``ensure_min_sample`` itself just
+    passes through when listing age is unknown.
     """
     raw = pd.Series(
         [0.1] * 70  # 70 valid points — clears the 60-period rolling gate
     )
     out = ensure_min_sample(raw, min_periods=60, days_since_listing=None)
-    # Tail (rows 60..69, 0-indexed) must be unmasked — that's the proof
-    # that days_since_listing=None does NOT blanket-mask.
+    # Series should be returned unchanged when days_since_listing is None.
+    pd.testing.assert_series_equal(out, raw, check_names=False)
+    # Tail must be unmasked.
     assert not out.iloc[60:].isna().any(), (
         "list_date-less history should not be blanket-masked"
     )
-    # Leading warmup (rows 0..58) is masked by the rolling-not-null
-    # gate — that's expected and unrelated to the listing-age fix.
-    assert out.iloc[:59].isna().all()
+    # Leading rows are also preserved by ensure_min_sample; the upstream
+    # rolling min_periods is what masks them in calculate_risk_indicators.
+    assert pd.notna(out.iloc[0]), "ensure_min_sample should not mask leading rows"
 
 
 def test_ensure_min_sample_masks_short_rolling_window() -> None:
-    """Even when ``days_since_listing`` is large enough, rows whose
-    trailing 60-period window still has fewer than 60 non-null samples
-    must be NaN. Here the trailing window only has 50 valid points.
+    """When ``days_since_listing`` is known and large enough, the
+    rolling-not-null gate still masks rows whose trailing 60-period
+    window has fewer than 60 non-null samples. Here the trailing window
+    only has 50 valid points.
     """
     raw = pd.Series([np.nan] * 50 + [0.1] * 50)  # first 50 NaN, last 50 valid
     out = ensure_min_sample(raw, min_periods=60, days_since_listing=365)

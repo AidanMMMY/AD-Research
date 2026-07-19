@@ -1,4 +1,5 @@
 import client from './client';
+import type { NewsMarket, SentimentAggregateItem } from '@/types/news';
 
 export interface AIStatus {
   available: boolean;
@@ -64,4 +65,14 @@ export const researchApi = {
     client.post(`/research/sentiment/${instrument_code}/ingest`, null, {
       params: { days },
     }),
+
+  sentimentAggregate: (params?: {
+    market?: NewsMarket | 'all';
+    days?: number;
+    limit?: number;
+    min_articles?: number;
+  }) =>
+    client
+      .get<{ items: SentimentAggregateItem[] }>('/research/sentiment-data/aggregate', { params })
+      .then((resp) => ({ data: resp.data.items })),
 };

@@ -212,6 +212,18 @@ export interface NewsSchedulerJob {
   next_run_time: string | null;
 }
 
+/** Status of a single news / sentiment worker job. */
+export interface NewsWorkerStatus {
+  name: string;
+  label: string;
+  schedule: string;
+  last_run: string | null;
+  last_status: 'success' | 'failed' | 'never_run' | 'unknown';
+  last_records: number | null;
+  last_error: string | null;
+  articles_24h: number;
+}
+
 /** Full response shape of /news/health. */
 export interface NewsHealthResponse {
   as_of: string;
@@ -219,6 +231,11 @@ export interface NewsHealthResponse {
   scheduler_jobs: NewsSchedulerJob[];
   scheduler_total_jobs: number;
   sources: NewsSourceHealth[];
+  /**
+   * M22-4 (2026-07-18) worker health grid — one row per news / sentiment
+   * scheduler job.  Mirrors the diagnostics shown on the NewsHealth page.
+   */
+  workers: NewsWorkerStatus[];
   /**
    * M22-3 (2026-07-05) AI-cleanup observability — breakdown of the
    * last 24 hours of ``news_article`` rows whose
@@ -242,6 +259,37 @@ export interface NewsHealthResponse {
   };
 }
 
+/** A single event-driven signal returned by ``/news/event-signals``. */
+export interface EventSignal {
+  id: number;
+  title: string;
+  source: string;
+  url: string;
+  market: NewsMarket;
+  event_category: string;
+  importance: ImportanceLevel;
+  sentiment_score: number | null;
+  sentiment_label: SentimentLabel | null;
+  published_at: string;
+  summary: string | null;
+  symbols: NewsSymbol[];
+  signal_direction: 'bullish' | 'bearish' | 'neutral';
+  signal_strength: number;
+}
+
+/** Query parameters for ``GET /news/event-signals``. */
+export interface EventSignalsParams {
+  days?: number;
+  market?: NewsMarket | string;
+  event_category?: string[];
+  limit?: number;
+}
+
+/** Response shape for ``GET /news/event-signals``. */
+export interface EventSignalsResponse {
+  items: EventSignal[];
+}
+
 /** Theme weight in retail sentiment aggregation. */
 export interface RetailTheme {
   theme: string;
@@ -259,3 +307,40 @@ export interface RetailSentiment {
   /** LLM-generated summary of retail discussion. */
   summary: string;
 }
+
+/**
+ * Per-symbol sentiment aggregate returned by ``GET /research/sentiment-data/aggregate``.
+ */
+export interface SentimentAggregateItem {
+  symbol: string;
+  /** Backend alias used by the research API; mapped to ``symbol`` if needed. */
+  instrument_code?: string | null;
+  name?: string | null;
+  name_zh?: string | null;
+  market?: string | null;
+  /** Average sentiment score in ``[-1, 1]``. */
+  avg_score: number;
+  /** Overall sentiment label derived from ``avg_score``. */
+  label: SentimentLabel;
+  /** Number of contributing records. */
+  count: number;
+  /** Count of positive-labeled records. */
+  bull: number;
+  /** Count of negative-labeled records. */
+  bear: number;
+  /** Count of neutral-labeled records. */
+  neutral: number;
+  /** Daily average scores over the requested window (oldest -> newest). */
+  sparkline: number[];
+  /** Title of the most recent record. */
+  latest_title?: string | null;
+  /** ``news_article.id`` of the most recent record, when available. */
+  latest_id?: number | null;
+  /** Direct URL of the most recent record, when available. */
+  latest_url?: string | null;
+  /** ISO timestamp of the most recent record. */
+  latest_published_at?: string | null;
+}
+
+/** Alias for consumers that expect the older name. */
+export type EventSignalListResponse = EventSignalsResponse;

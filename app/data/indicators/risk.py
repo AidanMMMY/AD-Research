@@ -27,6 +27,8 @@ scaling in every caller.
 import numpy as np
 import pandas as pd
 
+from app.data.indicators.market_config import get_market_config
+
 
 # Minimum number of observations required before the long-window risk
 # metrics (``sharpe_1y`` / ``max_drawdown_1y``) are considered trustworthy.
@@ -43,34 +45,46 @@ def ensure_min_sample(
 ) -> pd.Series:
     """Mask a rolling risk series when the sample is too small.
 
-    Returns a series of the same length / index as ``series``. For rows
-    where (a) ``days_since_listing`` is known and less than ``min_periods``,
-    OR (b) fewer than ``min_periods`` of the most recent observations are
-    non-null, the value is replaced with ``NaN``.
+    Returns a series of the same length / index as ``series``. When
+    ``days_since_listing`` is ``None`` (i.e. the upstream inventory has no
+    ``list_date``), the series is passed through unchanged — the upstream
+    rolling ``min_periods`` gate is the single source of truth so the
+    pandas and SQL thresholds align.
 
-    When ``days_since_listing`` is ``None`` (i.e. the upstream inventory
-    has no ``list_date``), we only enforce rule (b) — we do not throw.
-    This keeps historical backfills intact.
+    When ``days_since_listing`` is known and less than ``min_periods``,
+    the entire series is blanket-masked with ``NaN``. Otherwise, rows
+    where fewer than ``min_periods`` of the most recent observations are
+    non-null are replaced with ``NaN``.
     """
-    full_window = min_periods
     out = series.copy()
-    # Rule (b): rolling not-null count must clear the bar.
-    notnull_count = series.notna().rolling(full_window, min_periods=min_periods).sum()
-    out = out.where(notnull_count >= min_periods)
+
+    if days_since_listing is None:
+        return out
 
     # Rule (a): listed for less than the window → blanket-mask the series.
-    if days_since_listing is not None and days_since_listing < full_window:
-        out = pd.Series([np.nan] * len(series), index=series.index)
+    if days_since_listing < min_periods:
+        return pd.Series([np.nan] * len(series), index=series.index)
+
+    # Rule (b): rolling not-null count must clear the bar.
+    notnull_count = series.notna().rolling(min_periods, min_periods=min_periods).sum()
+    out = out.where(notnull_count >= min_periods)
 
     return out
 
 
-def calc_volatility(returns: pd.Series, window: int = 20) -> float:
+def calc_volatility(
+    returns: pd.Series,
+    window: int = 20,
+    *,
+    annualization_factor: int = 252,
+) -> float:
     """Calculate annualized volatility from a return series.
 
     Args:
         returns: Daily return series (as decimals, e.g. 0.01 = 1%).
         window: Lookback window for std calculation.
+        annualization_factor: Periods per year used for annualisation
+            (252 for A-share/US equities, 365 for crypto).
 
     Returns:
         Annualized volatility as a decimal (e.g. 0.1648 ≈ 16.48%).
@@ -78,7 +92,7 @@ def calc_volatility(returns: pd.Series, window: int = 20) -> float:
     recent = returns.tail(window)
     if len(recent) < 2:
         return np.nan
-    return recent.std() * np.sqrt(252)
+    return recent.std() * np.sqrt(annualization_factor)
 
 
 def calc_max_drawdown(prices: pd.Series) -> float:
@@ -98,20 +112,30 @@ def calc_max_drawdown(prices: pd.Series) -> float:
     return drawdown.min()
 
 
-def calc_sharpe(returns: pd.Series, risk_free_rate: float = 0.02) -> float:
+def calc_sharpe(
+    returns: pd.Series,
+    risk_free_rate: float = 0.02,
+    *,
+    annualization_factor: int = 252,
+    trading_days_per_year: int = 252,
+) -> float:
     """Calculate annualized Sharpe ratio.
 
     Args:
         returns: Daily return series (as decimals).
         risk_free_rate: Annual risk-free rate (default 2%).
+        annualization_factor: Periods per year used to annualise the
+            standard deviation (252 for equities, 365 for crypto).
+        trading_days_per_year: Periods per year used to annualise the
+            mean return. Usually equals ``annualization_factor``.
 
     Returns:
         Sharpe ratio.
     """
     if len(returns) < 2:
         return np.nan
-    annual_return = returns.mean() * 252
-    annual_vol = returns.std() * np.sqrt(252)
+    annual_return = returns.mean() * trading_days_per_year
+    annual_vol = returns.std() * np.sqrt(annualization_factor)
     if annual_vol == 0 or np.isnan(annual_vol):
         return np.nan
     return (annual_return - risk_free_rate) / annual_vol
@@ -132,9 +156,10 @@ def calc_return(prices: pd.Series, window: int) -> float:
     return prices.iloc[-1] / prices.iloc[-window] - 1
 
 
-# Mapping from period label to trading-day lookback window. Centralised so
-# the same windows are used by both ``calculate_risk_indicators`` and the
-# raw-close ``calculate_return_indicators`` (see :func:`calculate_return_indicators`).
+# Mapping from period label to A-share/US trading-day lookback window.
+# Centralised so the same windows are used by legacy callers and by the
+# default A-share ``calculate_return_indicators`` path.  Crypto and other
+# markets receive their windows from ``MarketIndicatorConfig.return_windows``.
 RETURN_PERIODS: dict[str, int] = {
     "return_1w": 5,
     "return_1m": 21,
@@ -144,7 +169,12 @@ RETURN_PERIODS: dict[str, int] = {
 }
 
 
-def calculate_return_indicators(df: pd.DataFrame) -> pd.DataFrame:
+def calculate_return_indicators(
+    df: pd.DataFrame,
+    *,
+    market: str = "A股",
+    config: object | None = None,
+) -> pd.DataFrame:
     """Calculate period returns (1w/1m/3m/6m/1y) on the ``close`` column.
 
     This is intentionally a separate function from
@@ -161,13 +191,20 @@ def calculate_return_indicators(df: pd.DataFrame) -> pd.DataFrame:
 
     Args:
         df: DataFrame with at least a ``close`` column.
+        market: Market key used to look up windows when ``config`` is
+            not provided.
+        config: Optional ``MarketIndicatorConfig`` overriding the
+            market lookup.
 
     Returns:
         DataFrame with the period return columns appended.
     """
+    if config is None:
+        config = get_market_config(market)
+
     result = df.copy()
     close = pd.to_numeric(result["close"], errors="coerce")
-    for col, periods in RETURN_PERIODS.items():
+    for col, periods in config.return_windows.items():
         result[col] = close.pct_change(periods=periods)
     return result
 
@@ -175,6 +212,9 @@ def calculate_return_indicators(df: pd.DataFrame) -> pd.DataFrame:
 def calculate_risk_indicators(
     df: pd.DataFrame,
     days_since_listing: int | None = None,
+    *,
+    market: str = "A股",
+    config: object | None = None,
 ) -> pd.DataFrame:
     """Calculate all risk indicators for a DataFrame of OHLCV data.
 
@@ -191,19 +231,26 @@ def calculate_risk_indicators(
 
     Args:
         df: DataFrame with OHLCV bars, sorted by trade_date ascending.
-        days_since_listing: Optional integer — number of trading days
-            since the instrument was listed. When provided, the
+        days_since_listing: Optional integer — number of market-native
+            days since the instrument was listed. When provided, the
             long-window metrics (``sharpe_1y`` / ``max_drawdown_1y``)
-            are blanked out for instruments listed less than
-            ``RISK_LONG_MIN_PERIODS`` trading days ago (see
+            are blanked out for instruments listed less than the
+            configured ``risk_long_min_periods`` (see
             :func:`ensure_min_sample`). When ``None``, only the
             rolling-not-null gate is applied — this preserves backwards
             compatibility for callers that haven't migrated to passing
             ``list_date``.
+        market: Market key used to load the correct windows and
+            annualisation factor when ``config`` is not provided.
+        config: Optional ``MarketIndicatorConfig`` overriding the
+            market lookup.
 
     Returns:
         DataFrame with risk indicator columns appended.
     """
+    if config is None:
+        config = get_market_config(market)
+
     result = df.copy()
 
     # Ensure numeric close prices
@@ -212,7 +259,8 @@ def calculate_risk_indicators(
     # Daily returns (kept as a column for downstream use)
     result["daily_return"] = result["close"].pct_change()
 
-    # Rolling calculations using expanding windows where appropriate
+    ann_factor = np.sqrt(config.annualization_factor)
+
     # Volatility: rolling std over fixed windows, annualized. Short
     # windows (20d / 60d) keep their existing min_periods — they are
     # by design short-window indicators.
@@ -221,40 +269,55 @@ def calculate_risk_indicators(
         .pct_change()
         .rolling(window=20, min_periods=5)
         .std()
-        * np.sqrt(252)
+        * ann_factor
     )
     result["volatility_60d"] = (
         result["close"]
         .pct_change()
         .rolling(window=60, min_periods=10)
         .std()
-        * np.sqrt(252)
+        * ann_factor
     )
 
-    # Max drawdown: rolling 252-day max drawdown. ``min_periods`` raised
-    # from 20 → 60 so newly-listed instruments don't emit unstable
-    # drawdown estimates. The result is then masked by
-    # ``ensure_min_sample`` when ``days_since_listing`` is known and
-    # shorter than the window.
+    long_window = config.risk_long_window
+    long_min_periods = config.risk_long_min_periods
+
+    # Max drawdown: rolling long-window max drawdown. ``min_periods``
+    # comes from the market config so newly-listed instruments don't emit
+    # unstable drawdown estimates. The ``ensure_min_sample`` blanket mask
+    # only applies when ``days_since_listing`` is known and shorter than
+    # the window; otherwise we rely on the rolling min_periods gate, which
+    # matches the SQL path threshold.
     raw_max_dd = (
         result["close"]
-        .rolling(window=252, min_periods=RISK_LONG_MIN_PERIODS)
+        .rolling(window=long_window, min_periods=long_min_periods)
         .apply(lambda x: calc_max_drawdown(x), raw=False)
     )
-    result["max_drawdown_1y"] = ensure_min_sample(
-        raw_max_dd, RISK_LONG_MIN_PERIODS, days_since_listing
+    result["max_drawdown_1y"] = (
+        ensure_min_sample(raw_max_dd, long_min_periods, days_since_listing)
+        if days_since_listing is not None
+        else raw_max_dd
     )
 
-    # Sharpe ratio: rolling 252-day Sharpe. Same tightening rationale
-    # as max_drawdown_1y — ``min_periods`` raised from 20 → 60.
+    # Sharpe ratio: rolling long-window Sharpe. Same tightening rationale
+    # as max_drawdown_1y — ``min_periods`` comes from the market config.
     raw_sharpe = (
         result["close"]
         .pct_change()
-        .rolling(window=252, min_periods=RISK_LONG_MIN_PERIODS)
-        .apply(lambda x: calc_sharpe(x), raw=False)
+        .rolling(window=long_window, min_periods=long_min_periods)
+        .apply(
+            lambda x: calc_sharpe(
+                x,
+                annualization_factor=config.annualization_factor,
+                trading_days_per_year=config.annualization_factor,
+            ),
+            raw=False,
+        )
     )
-    result["sharpe_1y"] = ensure_min_sample(
-        raw_sharpe, RISK_LONG_MIN_PERIODS, days_since_listing
+    result["sharpe_1y"] = (
+        ensure_min_sample(raw_sharpe, long_min_periods, days_since_listing)
+        if days_since_listing is not None
+        else raw_sharpe
     )
 
     # Period returns: true N-period lookback returns (decimals).
@@ -262,13 +325,13 @@ def calculate_risk_indicators(
     # conventional N-day return.  Using this directly removes the previous
     # window/calc_return mismatch that produced one-period-too-short returns.
     # NOTE: the platform's main entrypoint (``calculate_single_etf`` in
-    # calculator.py) overrides these with raw-close returns via
+    # calculator.py) overrides these with returns via
     # :func:`calculate_return_indicators`, because adjusted-close returns
     # bake future dividends into the divisor and report "total return"
     # semantics — which makes the 1m/3m/1y numbers shown on the ETF
     # detail page look unrealistically small whenever a dividend lands
     # inside the lookback window. See calculator.py for the override.
-    for col, periods in RETURN_PERIODS.items():
+    for col, periods in config.return_windows.items():
         result[col] = result["close"].pct_change(periods=periods)
 
     return result

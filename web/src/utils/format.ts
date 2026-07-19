@@ -6,8 +6,9 @@ export const NULL_PLACEHOLDER = '—';
 /** 格式化百分比，signed=true 时正数显示 + 号 */
 export function formatPercent(v: number | null | undefined, decimals = 2, signed = true): string {
   if (v == null || Number.isNaN(v)) return NULL_PLACEHOLDER;
-  const sign = signed && v > 0 ? '+' : '';
-  return `${sign}${v.toFixed(decimals)}%`;
+  const pct = v * 100;
+  const sign = signed && pct > 0 ? '+' : '';
+  return `${sign}${pct.toFixed(decimals)}%`;
 }
 
 /** 格式化千分位数字 */

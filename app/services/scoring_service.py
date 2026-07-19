@@ -115,46 +115,63 @@ class ScoringService:
 
         Args:
             trade_date: Date to calculate scores for. Defaults to the latest
-                available indicator date.
+                available indicator date per market, so a lagging market
+                (e.g. A股) is not skipped when another market (e.g. US) has
+                already advanced to a newer date.
 
         Returns:
             Dict mapping template_id to number of ETF scores calculated.
         """
-        if trade_date is None:
-            latest = self.db.query(func.max(ETFIndicator.trade_date)).scalar()
-            if latest is None:
-                return {}
-            trade_date = latest
-
         # Fetch all templates (init defaults if none exist)
         templates = self.get_templates()
         if not templates:
             self._init_default_templates()
             templates = self.get_templates()
 
-        # Fetch all indicators for the requested date, excluding delisted ETFs
-        # (survivorship bias: ETFs with delist_date < trade_date are not scored)
-        indicators = (
-            self.db.query(ETFIndicator)
-            .join(ETFInfo, ETFIndicator.etf_code == ETFInfo.code)
-            .filter(ETFIndicator.trade_date == trade_date)
-            .filter(
-                (ETFInfo.delist_date.is_(None)) | (ETFInfo.delist_date > trade_date)
-            )
-            .all()
-        )
-
-        if not indicators:
-            return {}
-
         results: dict[int, int] = {}
         buckets_by_template: dict[int, dict[str, list[str]]] = {}
-        for template in templates:
-            count, buckets_used = self._calculate_scores_for_template(
-                template, indicators, trade_date
+
+        if trade_date is not None:
+            market_dates = [(None, trade_date)]
+        else:
+            # Latest indicator date per market. NULL markets are grouped
+            # under a single None bucket.
+            market_dates = (
+                self.db.query(
+                    ETFInfo.market,
+                    func.max(ETFIndicator.trade_date).label("latest"),
+                )
+                .join(ETFInfo, ETFIndicator.etf_code == ETFInfo.code)
+                .filter(ETFInfo.status == "active")
+                .group_by(ETFInfo.market)
+                .all()
             )
-            results[template.id] = count
-            buckets_by_template[template.id] = buckets_used
+            if not market_dates:
+                return {}
+
+        for market, market_date in market_dates:
+            indicators_query = (
+                self.db.query(ETFIndicator)
+                .join(ETFInfo, ETFIndicator.etf_code == ETFInfo.code)
+                .filter(ETFIndicator.trade_date == market_date)
+                .filter(
+                    (ETFInfo.delist_date.is_(None))
+                    | (ETFInfo.delist_date > market_date)
+                )
+            )
+            if market is not None:
+                indicators_query = indicators_query.filter(ETFInfo.market == market)
+
+            indicators = indicators_query.all()
+            if not indicators:
+                continue
+
+            for template in templates:
+                count, buckets_used = self._calculate_scores_for_template(
+                    template, indicators, market_date
+                )
+                results[template.id] = results.get(template.id, 0) + count
+                buckets_by_template.setdefault(template.id, {}).update(buckets_used)
 
         # Stash the most recent buckets mapping on the instance for
         # diagnostic / API consumers. This is a side channel that does

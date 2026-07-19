@@ -81,6 +81,7 @@ export default function StockDetail() {
   const [optimisticFav, setOptimisticFav] = useState<boolean | null>(null);
   const isFavorite = optimisticFav ?? serverIsFavorite;
   const [timeRange, setTimeRange] = useState(120);
+  const [adjusted, setAdjusted] = useState(true);
 
   const [overlays, setOverlays] = useState(() => {
     try {
@@ -113,8 +114,8 @@ export default function StockDetail() {
   };
 
   const { data: historyData, isLoading: historyLoading } = useQuery({
-    queryKey: ['stock-history', code, timeRange],
-    queryFn: () => marketApi.history(code || '', { limit: timeRange }).then((r) => r.data),
+    queryKey: ['stock-history', code, timeRange, adjusted],
+    queryFn: () => marketApi.history(code || '', { limit: timeRange, adjusted }).then((r) => r.data),
     enabled: !!code,
     retry: 1,
   });
@@ -237,7 +238,8 @@ export default function StockDetail() {
 
   const formatSigned = (v?: number | null) => {
     if (v == null) return '—';
-    return `${v >= 0 ? '+' : ''}${v.toFixed(2)}`;
+    const pct = v * 100;
+    return `${pct >= 0 ? '+' : ''}${pct.toFixed(2)}`;
   };
 
   const tabItems = [
@@ -265,6 +267,19 @@ export default function StockDetail() {
                 </Radio.Group>
               </Space>
               <Space>
+                <span>复权：</span>
+                <Radio.Group
+                  value={adjusted}
+                  onChange={(e) => setAdjusted(e.target.value)}
+                  optionType="button"
+                  buttonStyle="solid"
+                  size="small"
+                >
+                  <Radio.Button value={false}>不复权</Radio.Button>
+                  <Radio.Button value={true}>前复权</Radio.Button>
+                </Radio.Group>
+              </Space>
+              <Space>
                 <span>技术指标：</span>
                 <Checkbox.Group
                   value={Object.entries(overlays)
@@ -289,7 +304,7 @@ export default function StockDetail() {
           </div>
           {historyLoading ? <Spin /> : (
             safeHistoryItems.length ? (
-              <KLineChart data={safeHistoryItems} overlays={overlays} />
+              <KLineChart data={safeHistoryItems} overlays={overlays} adjusted={adjusted} />
             ) : (
               <Alert className="detail-chart__empty" message="暂无历史行情数据" type="info" showIcon />
             )

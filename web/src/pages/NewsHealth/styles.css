@@ -6,24 +6,44 @@
    across the app.
    ============================================================ */
 
+/* ── Worker summary stat cards ── */
+.news-health-stat {
+  flex: 1 1 160px;
+  min-width: 0;
+}
+
+/* ── Last published / last run age indicator ── */
+.news-health-age {
+  /* Wrapper for timestamp cells with dynamic colour
+     (inline style driven by ageTone() function). */
+}
+
 /* ── AI cleanup statistics row ── */
 .news-health__ai-stats {
   min-width: 0;
 }
 
-/* ── Last published age indicator ── */
-.news-health-age {
-  /* Wrapper for the last_published_at cell with dynamic colour
-     (inline style driven by ageTone() function). */
+/* ── Multimodal feedback on polled refresh ──
+   The page polls /news/health every 30s. When a value changes we
+   briefly highlight the affected row so the user sees causality
+   ("this row just changed") rather than the value silently swapping
+   underneath them. The animation is a transform-free colour crossfade
+   so it stays cheap. Reduced-motion users skip it (no jarring flashes). */
+.news-health-row-changed td {
+  animation: news-health-row-flash 1200ms ease both;
+}
+@keyframes news-health-row-flash {
+  0%   { background-color: rgba(64, 169, 255, 0.18); }
+  60%  { background-color: rgba(64, 169, 255, 0.10); }
+  100% { background-color: transparent; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .news-health-row-changed td {
+    animation: none;
+  }
 }
 
-/* ── Multimodal feedback on polled refresh ──
-   The page polls /news/health every 30s. When a value changes
-   we briefly outline the affected cell so the user sees
-   causality ("this number just changed") rather than the
-   value silently swapping underneath them. The animation is a
-   transform-free colour/box-shadow crossfade so it stays
-   cheap. Reduced-motion users skip it (no jarring flashes). */
+/* Legacy cell-level flash class (kept for backwards compatibility). */
 .news-health-cell-changed {
   animation: news-health-cell-flash 1200ms ease both;
 }

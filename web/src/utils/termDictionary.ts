@@ -1101,10 +1101,10 @@ const entries: TermEntry[] = [
   // ===== 板块轮动 =====
   {
     key: 'relative_strength',
-    title: '相对强弱',
-    shortDesc: '某板块收益相对市场平均收益的比值。',
-    fullDesc: '相对强弱 = 板块收益 / 市场平均收益。值 > 1 表示跑赢市场，< 1 表示跑输。',
-    interpretation: '持续相对强弱 > 1 的板块可能是当前市场主线；轮动策略会增配强势板块。',
+    title: '相对强弱（超额收益）',
+    shortDesc: '板块收益相对市场平均收益的超额收益（百分点）。',
+    fullDesc: '相对强弱 = 板块收益 - 市场平均收益。值 > 0 表示跑赢市场，< 0 表示跑输。使用差值而非比值，可避免市场整体下跌时强弱方向反转。',
+    interpretation: '持续相对强弱为正（跑赢基准）的板块可能是当前市场主线；轮动策略会关注相对强弱改善的板块。',
     relatedPageType: 'instrument_detail',
   },
   {

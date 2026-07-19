@@ -53,7 +53,7 @@ function calcBB(data: { close: number }[], period: number = 20, stdDev: number =
         const diff = data[i - j].close - (sma[i] as number);
         sumSq += diff * diff;
       }
-      const std = Math.sqrt(sumSq / period);
+      const std = Math.sqrt(sumSq / (period - 1));
       upper.push((sma[i] as number) + stdDev * std);
       lower.push((sma[i] as number) - stdDev * std);
     }
@@ -115,29 +115,34 @@ function calcMACD(data: { close: number }[], fast: number = 12, slow: number = 2
   return { dif, dea, hist };
 }
 
-function adjustOHLC(item: OHLCV): OHLCV {
-  // Backward adjustment (后复权): multiply by the stored
-  // ``adj_factor`` (latest day = 1.0; historical days scaled by the
-  // cumulative split ratio).  The user-facing "前复权 / 后复权"
-  // toggle in the UI labels this view as "前复权" because the result
-  // is the same continuous series the user expects from a 前复权
-  // chart on any mainstream Chinese broker app: the latest bar is
-  // unchanged, splits are absorbed, and the historical line chains
-  // smoothly into the current price.
+function adjustOHLC(data: OHLCV[]): OHLCV[] {
+  // Forward adjustment (前复权): scale historical bars so that the
+  // latest bar's close equals its raw market price.  This is the
+  // convention used by mainstream Chinese broker apps and matches the
+  // "前复权" label in the UI toggle.
   //
-  // Verified against 512760.SH 2026-03-26 / 03-27 1:2 reverse split:
-  //   factor=0.50  close=1.588 -> adj=0.794
-  //   factor=1.00  close=0.798 -> adj=0.798
-  //   continuous across the split event.
-  const factor = item.adj_factor;
-  if (factor == null || factor === 0 || factor === 1) return item;
-  return {
-    ...item,
-    open: item.open * factor,
-    high: item.high * factor,
-    low: item.low * factor,
-    close: item.close * factor,
-  };
+  // Tushare's adj_factor is cumulative backward-looking.  To obtain a
+  // forward-adjusted price we divide by the latest factor:
+  //   qfq_close = close * adj_factor / latest_adj_factor
+  //
+  // Verified against 600026.SH (2026-07-17 latest_factor=1.9428):
+  //   2026-07-17 close=14.21 -> qfq=14.21 (unchanged)
+  //   2026-06-26 close=19.96 -> qfq=19.96*1.8934/1.9428=19.45
+  if (data.length === 0) return data;
+  const latestFactor = data[data.length - 1].adj_factor ?? 1;
+  if (!latestFactor || latestFactor === 1) return data;
+  return data.map((item) => {
+    const factor = item.adj_factor ?? 1;
+    const scale = factor / latestFactor;
+    if (scale === 1) return item;
+    return {
+      ...item,
+      open: item.open * scale,
+      high: item.high * scale,
+      low: item.low * scale,
+      close: item.close * scale,
+    };
+  });
 }
 
 export const DEFAULT_OVERLAYS: IndicatorOverlay = {
@@ -300,7 +305,7 @@ export default function KLineChart({ data, overlays = DEFAULT_OVERLAYS, adjusted
       );
       if (!validData.length) return;
 
-      const adjustedData = adjusted ? validData.map(adjustOHLC) : validData;
+      const adjustedData = adjusted ? adjustOHLC(validData) : validData;
 
       const toTime = (d: { trade_date: string }) => d.trade_date as Time;
       const times = adjustedData.map(toTime);

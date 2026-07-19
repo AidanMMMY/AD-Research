@@ -177,6 +177,12 @@ class MarketFundFlowOut(BaseModel):
     sz_main_net_inflow: float | None = None
     sh_main_net_pct: float | None = None
     sz_main_net_pct: float | None = None
+    total_main_net_inflow: float | None = Field(
+        None, description="沪深整体主力净流入 (来自 market='ALL' 行)"
+    )
+    total_main_net_pct: float | None = Field(
+        None, description="沪深整体主力净流入占比 (%)"
+    )
 
 
 class MarketFundFlowListResponse(BaseModel):

@@ -15,6 +15,8 @@ export interface MarketFundFlow {
   sz_main_net_inflow: number;
   sh_main_net_pct: number;
   sz_main_net_pct: number;
+  total_main_net_inflow?: number;
+  total_main_net_pct?: number;
 }
 
 export type FundFlowSource = 'akshare' | 'eastmoney';

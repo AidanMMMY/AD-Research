@@ -1,5 +1,7 @@
 import client from './client';
 import type {
+  EventSignalsParams,
+  EventSignalsResponse,
   NewsArticle,
   NewsFetchContentResponse,
   NewsHealthResponse,
@@ -13,6 +15,9 @@ import type {
 } from '@/types/news';
 
 export type {
+  EventSignal,
+  EventSignalsParams,
+  EventSignalsResponse,
   NewsArticle,
   NewsEngagement,
   NewsFetchContentResponse,
@@ -46,6 +51,16 @@ export const newsApi = {
     // by default, which is exactly what the FastAPI backend expects for
     // a repeatable query parameter. No transform needed.
     return client.get<NewsListResponse>('/news', { params });
+  },
+
+  /**
+   * Event-driven signals derived from classified news articles.
+   * Returns a flat list of signals with direction, importance and
+   * affected symbols. The backend is expected to classify articles by
+   * event category and derive a bullish / bearish / neutral stance.
+   */
+  eventSignals(params: EventSignalsParams = {}): Promise<{ data: EventSignalsResponse }> {
+    return client.get<EventSignalsResponse>('/news/event-signals', { params });
   },
 
   /**

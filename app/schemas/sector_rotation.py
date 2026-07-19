@@ -45,13 +45,13 @@ class SectorPerformance(BaseModel):
     rsi14: float = Field(..., description="RSI14 (average)")
     amount_total: float = Field(..., description="Aggregate turnover (元)")
     relative_strength_1w: float = Field(
-        ..., description="Relative strength vs market avg (1w)"
+        ..., description="Excess return over market average (1w, percentage points)"
     )
     relative_strength_1m: float = Field(
-        ..., description="Relative strength vs market avg (1m)"
+        ..., description="Excess return over market average (1m, percentage points)"
     )
     relative_strength_3m: float = Field(
-        ..., description="Relative strength vs market avg (3m)"
+        ..., description="Excess return over market average (3m, percentage points)"
     )
     momentum_rank: int = Field(..., description="Rank by 1m return (1=best)")
 

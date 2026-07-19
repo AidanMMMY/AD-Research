@@ -213,9 +213,9 @@ export default function FundFlowPage() {
     全部: undefined,
     沪市: 'SH',
     深市: 'SZ',
-    创业板: 'CY',
-    科创板: 'STAR',
-    北交所: 'BSE',
+    创业板: 'CYB',
+    科创板: 'KCB',
+    北交所: 'BJ',
   };
   const [board, setBoard] = useState<IndividualBoard>('全部');
   const marketFilter = BOARD_TO_MARKET[board];
@@ -683,15 +683,17 @@ export default function FundFlowPage() {
                 value={
                   <>
                     {formatMoney(
-                      market.sh_main_net_inflow != null && market.sz_main_net_inflow != null
-                        ? market.sh_main_net_inflow + market.sz_main_net_inflow
-                        : null,
+                      market.total_main_net_inflow ??
+                        (market.sh_main_net_inflow != null && market.sz_main_net_inflow != null
+                          ? market.sh_main_net_inflow + market.sz_main_net_inflow
+                          : null),
                     )}
                     <PctChip
                       value={
-                        market.sh_main_net_pct != null && market.sz_main_net_pct != null
-                          ? market.sh_main_net_pct + market.sz_main_net_pct
-                          : null
+                        market.total_main_net_pct ??
+                          (market.sh_main_net_pct != null && market.sz_main_net_pct != null
+                            ? market.sh_main_net_pct + market.sz_main_net_pct
+                            : null)
                       }
                     />
                   </>

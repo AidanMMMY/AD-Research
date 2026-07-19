@@ -285,6 +285,11 @@ export default function SectorRotation() {
       tooltip: {
         trigger: 'axis',
         axisPointer: { type: 'shadow' },
+        formatter: (params: any) => {
+          const p = Array.isArray(params) ? params[0] : params;
+          const v = Number(p?.value ?? 0);
+          return `${p?.name ?? ''}<br/>1月超额收益: <b>${v >= 0 ? '+' : ''}${v.toFixed(2)}%</b>`;
+        },
       },
       grid: { left: 130, right: 32, top: 20, bottom: 32 },
       xAxis: {
@@ -306,7 +311,7 @@ export default function SectorRotation() {
             value: Number(s.relative_strength_1m.toFixed(2)),
             itemStyle: {
               color:
-                s.relative_strength_1m >= 1 ? palette.upHex : palette.downHex,
+                s.relative_strength_1m >= 0 ? palette.upHex : palette.downHex,
               opacity: 0.85,
             },
           })),
@@ -321,9 +326,9 @@ export default function SectorRotation() {
             symbol: 'none',
             data: [
               {
-                xAxis: 1,
+                xAxis: 0,
                 label: {
-                  formatter: '市场平均 = 1.0',
+                  formatter: '市场基准 = 0',
                   color: palette.textSecondary,
                 },
                 lineStyle: {
@@ -409,13 +414,13 @@ export default function SectorRotation() {
       ),
     },
     {
-      title: <HelpPopover termKey="relative_strength" mode={mode}>相对强弱</HelpPopover>,
+      title: <HelpPopover termKey="relative_strength" mode={mode}>相对强弱（超额收益）</HelpPopover>,
       dataIndex: 'relative_strength_1m',
       width: 110,
       render: (v: number) => {
         let variant: 'rise' | 'fall' | 'neutral' = 'neutral';
-        if (v > 1) variant = 'rise';
-        if (v < 1) variant = 'fall';
+        if (v > 0) variant = 'rise';
+        if (v < 0) variant = 'fall';
         return <ThemeTag variant={variant}>{v.toFixed(2)}</ThemeTag>;
       },
     },
@@ -437,7 +442,7 @@ export default function SectorRotation() {
         description={`基于${clsLabel}行业分类的 A 股板块表现跟踪，相对强弱与轮动信号`}
         tutorial={
           <span>
-            按行业板块（{clsLabel}）查看 A 股个股 + ETF 的整体表现：左侧是动量排名，中间是各周期收益热力图，右下角是相对强弱。出现「轮动信号」说明该板块排名一周内上升或下降 ≥3 位。
+            按行业板块（{clsLabel}）查看 A 股个股 + ETF 的整体表现：左侧是动量排名，中间是各周期收益热力图，右下角是相对强弱。出现「轮动信号」说明该板块最近一周（5 个交易日）排名变化 ≥3 位。
           </span>
         }
         extra={
@@ -596,7 +601,7 @@ export default function SectorRotation() {
             title="行业相对强弱 (vs 市场平均)"
             extra={
               <span className="ad-table-text-secondary sector-rotation__chart-hint">
-                1月相对强弱 = 板块收益 / 市场平均
+                1月超额收益 = 板块收益 - 市场平均
               </span>
             }
             variant="default"

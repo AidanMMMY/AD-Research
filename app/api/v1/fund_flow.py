@@ -55,6 +55,7 @@ def list_individual(
     trade_date: date | None = Query(None, description="指定交易日 (默认: 最新)"),
     start_date: date | None = None,
     end_date: date | None = None,
+    market: str | None = Query(None, description="市场/板块过滤: SH/SZ/创业板/科创板/北交所"),
     sort: str = Query(
         "-main_net_inflow",
         description="排序: main_net_inflow / -main_net_inflow / trade_date / -trade_date",
@@ -70,6 +71,7 @@ def list_individual(
         trade_date=trade_date,
         start_date=start_date,
         end_date=end_date,
+        market=market,
         sort=sort,
         limit=limit,
     )
@@ -170,22 +172,19 @@ def list_sector_history(
 
 @router.get("/market", response_model=MarketFundFlowOut)
 def list_market_fund_flow(
+    trade_date: date | None = Query(None, description="指定交易日 (默认: 最新)"),
     days: int = Query(30, ge=1, le=365),
     db: Session = Depends(get_db),
 ) -> MarketFundFlowOut:
-    """大盘整体资金流 (近 N 日)。
+    """大盘整体资金流。
 
-    返回单条最新交易日的 market_fund_flow 快照（之前错误地返回了
-    ``MarketFundFlowListResponse`` 列表，但前端期望单个对象，见
-    review-fund-flow P0-3）。
-
-    注意：本接口返回的是基于 sector_fund_flow 行业段聚合的近似值；
-    真正的 sh/sz 分离口径在 ak.stock_market_fund_flow 但未单独建表。
+    返回 ``market_fund_flow`` 表中 ``market='ALL'``（沪深整体）以及
+    ``market='SH'`` / ``market='SZ'`` 的主力净流入。
+    未指定 ``trade_date`` 时默认取最新交易日。
     """
-    result = svc.list_market(db, days=days)
+    result = svc.list_market(db, trade_date=trade_date, days=days)
     items = result.get("items", []) if isinstance(result, dict) else []
     if not items:
-        # Stub for empty data so the contract holds.
         from datetime import date as _date
         return MarketFundFlowOut(
             trade_date=_date.today().isoformat(),

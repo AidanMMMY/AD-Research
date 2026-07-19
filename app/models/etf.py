@@ -153,6 +153,86 @@ class InstrumentDailyBar(Base):
     created_at = Column(DateTime, server_default=func.now(), comment="Creation time")
 
 
+class AdjFactorHistory(Base):
+    """A-share cumulative adjustment factor history.
+
+    Stores the full historical Tushare ``adj_factor`` for each A-share
+    instrument. The factor is cumulative and front-adjusted:
+
+        true 前复权 close = raw_close * adj_factor / latest_adj_factor
+
+    This table is the authoritative source for dividend/split adjustment.
+    ``InstrumentDailyBar.adj_factor`` is kept in sync for backwards
+    compatibility with existing indicator and return calculations.
+
+    Alembic migration note (run ``alembic revision --autogenerate`` when
+    the model is approved; do NOT run it automatically here):
+
+        op.create_table(
+            'adj_factor_history',
+            sa.Column('etf_code', sa.String(20),
+                      sa.ForeignKey('etf_info.code', ondelete='CASCADE'),
+                      nullable=False),
+            sa.Column('trade_date', sa.Date(), nullable=False),
+            sa.Column('adj_factor', sa.DECIMAL(18, 8), nullable=False),
+            sa.Column('source', sa.String(20), server_default='tushare'),
+            sa.Column('created_at', sa.DateTime(), server_default=sa.func.now()),
+            sa.Column('updated_at', sa.DateTime(), server_default=sa.func.now(),
+                      onupdate=sa.func.now()),
+            sa.PrimaryKeyConstraint('etf_code', 'trade_date'),
+            sa.UniqueConstraint('etf_code', 'trade_date',
+                                name='uq_adj_factor_history_code_date'),
+            sa.Index('idx_adj_factor_history_code', 'etf_code'),
+            sa.Index('idx_adj_factor_history_date', 'trade_date'),
+        )
+    """
+
+    __tablename__ = "adj_factor_history"
+
+    etf_code = Column(
+        String(20),
+        ForeignKey("etf_info.code", ondelete="CASCADE"),
+        primary_key=True,
+        comment="Instrument code (e.g. 600519.SH)",
+    )
+    trade_date = Column(
+        Date,
+        primary_key=True,
+        comment="Trade date",
+    )
+    adj_factor = Column(
+        DECIMAL(18, 8),
+        nullable=False,
+        comment="Cumulative front-adjusted adjustment factor from Tushare",
+    )
+    source = Column(
+        String(20),
+        default="tushare",
+        comment="Data source (tushare)",
+    )
+    created_at = Column(
+        DateTime,
+        server_default=func.now(),
+        comment="Creation time",
+    )
+    updated_at = Column(
+        DateTime,
+        server_default=func.now(),
+        onupdate=func.now(),
+        comment="Update time",
+    )
+
+    __table_args__ = (
+        UniqueConstraint(
+            "etf_code",
+            "trade_date",
+            name="uq_adj_factor_history_code_date",
+        ),
+        Index("idx_adj_factor_history_code", "etf_code"),
+        Index("idx_adj_factor_history_date", "trade_date"),
+    )
+
+
 class ETFCorporateAction(Base):
     """Corporate actions: splits, reverse splits, and dividends.
 
@@ -387,13 +467,13 @@ class ETFIndicator(Base):
     macd_hist = Column(DECIMAL(12, 4), comment="MACD histogram")
     volatility_20d = Column(DECIMAL(12, 4), comment="20-day volatility")
     volatility_60d = Column(DECIMAL(12, 4), comment="60-day volatility")
-    max_drawdown_1y = Column(DECIMAL(8, 4), comment="1-year max drawdown")
+    max_drawdown_1y = Column(DECIMAL(18, 6), comment="1-year max drawdown")
     sharpe_1y = Column(DECIMAL(12, 4), comment="1-year Sharpe ratio")
-    return_1w = Column(DECIMAL(8, 4), comment="1-week return")
-    return_1m = Column(DECIMAL(8, 4), comment="1-month return")
-    return_3m = Column(DECIMAL(8, 4), comment="3-month return")
-    return_6m = Column(DECIMAL(8, 4), comment="6-month return")
-    return_1y = Column(DECIMAL(8, 4), comment="1-year return")
+    return_1w = Column(DECIMAL(18, 6), comment="1-week return")
+    return_1m = Column(DECIMAL(18, 6), comment="1-month return")
+    return_3m = Column(DECIMAL(18, 6), comment="3-month return")
+    return_6m = Column(DECIMAL(18, 6), comment="6-month return")
+    return_1y = Column(DECIMAL(18, 6), comment="1-year return")
     amount = Column(DECIMAL(18, 4), comment="Turnover amount")
     atr14 = Column(DECIMAL(12, 4), comment="ATR14")
     bb_upper = Column(DECIMAL(12, 4), comment="Bollinger upper band")

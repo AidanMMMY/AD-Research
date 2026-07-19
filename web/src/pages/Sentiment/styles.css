@@ -69,3 +69,70 @@
   width: 100%;
   height: auto;
 }
+
+/* === Aggregate-by-symbol table === */
+
+.sentiment-page .ad-segmented-with-icon {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.sentiment-page .ad-sentiment-aggregate-table .ant-table-cell {
+  vertical-align: middle;
+}
+
+.sentiment-page .ad-sentiment-symbol-cell {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2, 8px);
+  min-width: 0;
+}
+
+.sentiment-page .ad-sentiment-symbol-link {
+  padding: 0;
+  height: auto;
+  line-height: 1;
+  font-size: var(--text-small-size, 12px);
+  white-space: nowrap;
+}
+
+.sentiment-page .ad-sentiment-breakdown {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2, 8px);
+}
+
+.sentiment-page .ad-sentiment-breakdown-text {
+  font-size: var(--text-small-size, 12px);
+  color: var(--text-tertiary);
+  white-space: nowrap;
+}
+
+.sentiment-page .ad-sentiment-latest-title {
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: left;
+  padding: 0;
+  height: auto;
+  display: block;
+}
+
+/* Mobile: drop the sparkline and latest-news columns to keep the table readable. */
+@media (max-width: 768px) {
+  .sentiment-page .ad-sentiment-aggregate-table .ad-sentiment-sparkline-col,
+  .sentiment-page .ad-sentiment-aggregate-table .ad-sentiment-latest-col {
+    display: none;
+  }
+
+  .sentiment-page .ad-sentiment-breakdown-text {
+    display: none;
+  }
+
+  .sentiment-page .ad-sentiment-symbol-link {
+    display: none;
+  }
+}
