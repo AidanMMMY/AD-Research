@@ -815,3 +815,73 @@ class AkshareProvider(DataProvider):
                     "unit": "%",
                 })
         return out
+
+    def fetch_sw_industry_index_daily(
+        self, symbol: str, lookback_days: int = 400
+    ) -> list[dict]:
+        """申万一级行业指数日线 — Phase 3 sector rotation 数据源。
+
+        调用 AKShare ``ak.index_hist_sw(symbol="801xxx", period="day")``。
+        该 API 一次返回指数全历史（数千行），不接受起止日期过滤；我们
+        本地 ``tail(lookback_days)`` 截断。
+
+        Args:
+            symbol: 6 位行业代码 (e.g. ``"801080"`` = 电子), 与
+                ``etf_info.sw_l1_code`` 一致 (去掉 ``.SI`` 后缀)。
+            lookback_days: 截断到最近 N 个交易日 (默认 400 ≈ 一年半)。
+
+        Returns:
+            list of dict ``[{date, close}, ...]`` 按日期升序。空列表表示
+            拉取失败 (AKShare 限流 / 网络抖动 / 行业代码错误)。
+        """
+        try:
+            df = ak.index_hist_sw(symbol=symbol, period="day")
+        except Exception as exc:
+            print(
+                f"[AkshareProvider] fetch_sw_industry_index_daily("
+                f"{symbol}) failed: {exc}"
+            )
+            return []
+
+        if df is None or df.empty:
+            return []
+
+        if len(df) > lookback_days:
+            df = df.tail(lookback_days)
+
+        out: list[dict] = []
+        for _, row in df.iterrows():
+            period = _coerce_date(row.get("日期"))
+            close = _coerce_float(row.get("收盘"))
+            if period is None or close is None:
+                continue
+            out.append({"date": period, "close": close})
+        return out
+
+    def fetch_sw_industry_index_info(self) -> list[dict]:
+        """申万一级行业清单 (代码 + 名称)。
+
+        用于初始化时获取全部 31 个 SW2021 一级行业的代码清单，便于
+        调度任务不依赖硬编码。
+
+        Returns:
+            list of ``{index_code, industry_name}`` (e.g.
+            ``"801080.SI" / "电子"``)。
+        """
+        try:
+            df = ak.sw_index_first_info()
+        except Exception as exc:
+            print(f"[AkshareProvider] fetch_sw_industry_index_info failed: {exc}")
+            return []
+
+        if df is None or df.empty:
+            return []
+
+        out: list[dict] = []
+        for _, row in df.iterrows():
+            code = row.get("行业代码")
+            name = row.get("行业名称")
+            if not code or not name:
+                continue
+            out.append({"index_code": str(code), "industry_name": str(name)})
+        return out

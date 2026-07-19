@@ -93,6 +93,7 @@ _ETL_JOB_LOCK_MAP: dict[str, str | list[str]] = {
     "us_stock_enrichment": "us_stock_enrichment",
     "crypto_daily_etl": "crypto_daily_pipeline",
     "weekly_pool_reports": "weekly_pool_reports",
+    "sw_industry_index_refresh": "sw_industry_index_refresh",
     "etf_scan": "etf_scan",
     "etf_metadata_enrichment": "etf_metadata_enrichment",
     "etf_holdings": "etf_holdings",
@@ -671,6 +672,23 @@ def run_score_calculation(target_date: date | None = None):
             results = service.calculate_daily_scores(trade_date=target_date)
             total = sum(results.values())
             print(f"[Scheduler] Score calculation (target={target_date}): {total} scores across {len(results)} templates")
+
+
+def run_sw_industry_index_refresh():
+    """Refresh SW2021 一级行业指数回报 (Phase 3 sector rotation 数据源)。
+
+    调度：每周一 09:30 Asia/Shanghai（盘前完成，覆盖到周一开盘用户）。
+    通过 Celery 投递到 ``industry`` 队列，由 celery-worker-cninfo
+    消费（队列默认并发 2，足够 31 个指数的 AKShare 拉取）。
+    """
+    from app.tasks.sw_industry import refresh_sw_industry_returns
+
+    with redis_lock("sw_industry_index_refresh", expire_seconds=1800) as acquired:
+        if not acquired:
+            print("⚠️ [SCHEDULER_WARN] SW industry index refresh skipped: lock in use")
+            return
+        result = refresh_sw_industry_returns.delay(lookback_days=400)
+        print(f"[Scheduler] SW industry index refresh dispatched: task_id={result.id}")
 
 
 def run_weekly_pool_reports():
@@ -1938,6 +1956,16 @@ def init_scheduler():
         trigger=CronTrigger(hour="*", minute=45),
         id="cleanup_stuck_etl_jobs",
         name="清理卡死的ETL任务",
+        replace_existing=True,
+        max_instances=1,
+    )
+    scheduler.add_job(
+        run_sw_industry_index_refresh,
+        trigger=CronTrigger(
+            day_of_week="mon", hour=9, minute=30, timezone="Asia/Shanghai"
+        ),
+        id="sw_industry_index_refresh",
+        name="申万一级行业指数回报刷新 (Phase 3)",
         replace_existing=True,
         max_instances=1,
     )

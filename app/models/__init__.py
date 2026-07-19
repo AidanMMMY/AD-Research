@@ -33,6 +33,7 @@ from app.models.research_report import ResearchReport
 from app.models.news import XueqiuFetchState, XueqiuUserCache
 from app.models.pool import ETFPools, PoolMember, PoolSnapshot, PoolWeight
 from app.models.scoring import ETFScore, ReportMetadata, ScoreTemplate
+from app.models.sw_industry_index import SWIndustryIndexReturn
 from app.models.trading import (
     LiveTradeConfig,
     LiveTradeOrder,
@@ -108,4 +109,6 @@ __all__ = [
     "SectorFundFlow",
     "EtfFundFlow",
     "FlowSignal",
+    # Phase 3 sector rotation: 申万一级行业指数回报
+    "SWIndustryIndexReturn",
 ]

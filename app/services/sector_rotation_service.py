@@ -65,6 +65,7 @@ from sqlalchemy.orm import Session
 
 from app.data.indicators.a_share_sw_mapping import ETF_SW_HINTS
 from app.models.etf import ETFIndicator, ETFInfo, StockFundamental
+from app.models.sw_industry_index import SWIndustryIndexReturn
 
 #: Industry classification systems supported by this service. ``GICS`` is the
 #: cross-market default (also used for US/HK if ever added); ``SW`` is the
@@ -550,6 +551,7 @@ class SectorRotationService:
         #   'volatility_20d': list[float],
         #   'rsi14': list[float],
         #   'amount': list[float],
+        #   'sw_l1_code': str | None,  # only set under classification="SW"
         # }
         sectors: dict[str, dict[str, Any]] = {}
         market_returns: dict[str, list[float]] = {
@@ -578,6 +580,7 @@ class SectorRotationService:
                     "volatility_20d": [],
                     "rsi14": [],
                     "amount": [],
+                    "sw_l1_code": (info.sw_l1_code if classification == "SW" else None),
                 },
             )
             bucket["count"] += 1
@@ -608,6 +611,49 @@ class SectorRotationService:
                 trade_date=trade_date, classification=classification
             )
 
+        # ------------------------------------------------------------------
+        # Phase 3: SW 模式下，预先按 sw_l1_code 取官方指数回报。
+        # sector_rows 构建时会用它覆盖 equal-weight 的 return_* 字段。
+        # 容忍 1 天错位：用 ``<=trade_date`` 的最近一行（A 股 SW 指数比
+        # 整体 etf_indicator 通常落后 0~1 个交易日，因为 SW 指数由 AKShare
+        # 每周一刷新）。
+        # ------------------------------------------------------------------
+        official_returns_by_code: dict[str, SWIndustryIndexReturn] = {}
+        official_market_avg: dict[str, float] = {}
+        if classification == "SW":
+            sw_codes = sorted(
+                {v["sw_l1_code"] for v in sectors.values() if v["sw_l1_code"]}
+            )
+            if sw_codes:
+                # 一次拉所有这些 code 的全部行，Python 端按 trade_date 选最新
+                # 一条 <= trade_date 的 row
+                all_idx_rows = (
+                    self.db.query(SWIndustryIndexReturn)
+                    .filter(
+                        SWIndustryIndexReturn.sw_l1_code.in_(sw_codes),
+                        SWIndustryIndexReturn.trade_date <= trade_date,
+                    )
+                    .order_by(
+                        SWIndustryIndexReturn.sw_l1_code,
+                        SWIndustryIndexReturn.trade_date.desc(),
+                    )
+                    .all()
+                )
+                for r in all_idx_rows:
+                    if r.sw_l1_code not in official_returns_by_code:
+                        official_returns_by_code[r.sw_l1_code] = r
+                # 官方指数的市场均值（仅在有数据的代码上算）
+                rows_idx = list(official_returns_by_code.values())
+                for period in ("1w", "1m", "3m", "6m", "1y"):
+                    vals = [
+                        float(getattr(r, f"return_{period}"))
+                        for r in rows_idx
+                        if getattr(r, f"return_{period}") is not None
+                    ]
+                    official_market_avg[period] = (
+                        (sum(vals) / len(vals)) if vals else 0.0
+                    )
+
         market_avg: dict[str, float] = {}
         for period, vals in market_returns.items():
             market_avg[period] = (sum(vals) / len(vals)) if vals else 0.0
@@ -635,7 +681,7 @@ class SectorRotationService:
             rs_3m = avg_3m - market_avg["return_3m"]
             rs_1w = avg(vals["return_1w"]) - market_avg["return_1w"]
 
-            sector_rows.append({
+            row: dict[str, Any] = {
                 "sector": sector,
                 "count": vals["count"],
                 "stock_count": vals["stock_count"],
@@ -652,7 +698,44 @@ class SectorRotationService:
                 "relative_strength_1w": round(rs_1w, 4),
                 "relative_strength_1m": round(rs_1m, 4),
                 "relative_strength_3m": round(rs_3m, 4),
-            })
+            }
+
+            # ------------------------------------------------------------------
+            # Phase 3: SW 分类下，用官方申万一级指数回报覆盖 return_*，
+            # 同时保留 constituent_return_* 字段以便 UI 对照显示。
+            # return_source: "official_index" | "constituents_equal_weight"
+            # ------------------------------------------------------------------
+            if classification == "SW":
+                sw_code = vals["sw_l1_code"]
+                idx_row = official_returns_by_code.get(sw_code) if sw_code else None
+                if idx_row is not None:
+                    row["return_source"] = "official_index"
+                    row["sw_l1_code"] = sw_code
+                    row["official_close"] = (
+                        float(idx_row.close) if idx_row.close is not None else None
+                    )
+                    for period in ("1w", "1m", "3m", "6m", "1y"):
+                        v = getattr(idx_row, f"return_{period}", None)
+                        if v is not None:
+                            row[f"return_{period}"] = round(float(v), 4)
+                            # 用官方指数回报的 RS（用官方市场均值）
+                            m_avg = official_market_avg.get(period, 0.0)
+                            row[f"relative_strength_{period}"] = round(
+                                float(v) - m_avg, 4
+                            )
+                else:
+                    row["return_source"] = "constituents_equal_weight"
+                    row["sw_l1_code"] = sw_code
+                # 不论官方/等权，都附上 constituent_return_* 以便 UI 对照
+                row["constituent_return_1w"] = round(avg(vals["return_1w"]), 4)
+                row["constituent_return_1m"] = round(avg_1m, 4)
+                row["constituent_return_3m"] = round(avg_3m, 4)
+                row["constituent_return_6m"] = round(avg(vals["return_6m"]), 4)
+                row["constituent_return_1y"] = round(avg(vals["return_1y"]), 4)
+            else:
+                row["return_source"] = "constituents_equal_weight"
+
+            sector_rows.append(row)
 
         # Sort by 1-month return for momentum ranking
         sector_rows.sort(key=lambda x: x["return_1m"], reverse=True)

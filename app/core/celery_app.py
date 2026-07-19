@@ -19,6 +19,7 @@ celery_app = Celery(
         "app.tasks.indicator",
         "app.tasks.cninfo",
         "app.tasks.cninfo_pdf",
+        "app.tasks.sw_industry",
     ],
 )
 
@@ -55,6 +56,7 @@ celery_app.conf.update(
         "app.tasks.indicator.*": {"queue": "indicator"},
         "app.tasks.cninfo.*": {"queue": "cninfo"},
         "app.tasks.cninfo_pdf.*": {"queue": "cninfo"},
+        "app.tasks.sw_industry.*": {"queue": "industry"},
     },
 )
 
