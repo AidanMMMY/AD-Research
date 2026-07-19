@@ -201,3 +201,9 @@ cls/
 eastmoney_news/
 gov_china/
 fed_intl/
+# Overnight research worker outputs (large DB / logs / snapshots; live under
+# /data/ad-research/overnight_*/ on ECS, never committed). Without this rule
+# the worktree stays dirty and the Deploy workflow refuses to reset hard.
+overnight_*/
+overnight_test*/
+agent/overnight_hermes.env
