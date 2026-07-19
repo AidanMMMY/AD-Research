@@ -35,6 +35,27 @@ export interface SectorPerformance {
   relative_strength_1m: number;
   relative_strength_3m: number;
   momentum_rank: number;
+  // ----------------------------------------------------------------
+  // Phase 3 (added 2026-07-19): SW 模式下，return_* 已切换为申万一级
+  // 指数官方回报；constituent_return_* 保留等权 ETF+STOCK 回报作为
+  // 对照。return_source 标记当前 return_* 的来源。
+  //
+  // - return_source: "official_index"           — return_* 来自官方指数
+  //                         (SW 模式 + sw_industry_index_return 有行)
+  //                 : "constituents_equal_weight" — return_* 来自等权平均
+  //                         (GICS 模式或 SW 模式但缺官方行)
+  // - sw_l1_code: 申万一级行业代码 (e.g. "801080"), 仅 SW 模式有
+  // - official_close: 申万指数当日收盘点位, 仅 SW 模式有
+  // - constituent_return_*: 等权回报对照, 仅 SW 模式有
+  // ----------------------------------------------------------------
+  return_source?: 'official_index' | 'constituents_equal_weight';
+  sw_l1_code?: string | null;
+  official_close?: number | null;
+  constituent_return_1w?: number | null;
+  constituent_return_1m?: number | null;
+  constituent_return_3m?: number | null;
+  constituent_return_6m?: number | null;
+  constituent_return_1y?: number | null;
 }
 
 export interface RotationSignal {

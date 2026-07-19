@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Alert, Segmented, Select, Spin, Table, Tabs, Tag } from 'antd';
+import { Alert, Segmented, Select, Spin, Table, Tabs, Tag, Tooltip } from 'antd';
 import { InfoCircleOutlined } from '@ant-design/icons';
 import ReactECharts from 'echarts-for-react';
 import type { EChartsOption } from 'echarts';
@@ -32,6 +32,70 @@ import type {
 } from '@/types/sector_rotation';
 import { SECTOR_RETURN_LABELS, SECTOR_RETURN_PERIODS } from '@/types/sector_rotation';
 import './styles.css';
+
+// ---------------------------------------------------------------------------
+// Phase 3 ReturnTag wrapper
+// ---------------------------------------------------------------------------
+// 官方指数回报下，hover 时显示等权回报作为对照；GICS / fallback 模式
+// 直接透传 ReturnTag。
+// ---------------------------------------------------------------------------
+
+const CONSTITUENT_RETURN_KEY: Record<SectorReturnPeriod, keyof SectorPerformance> = {
+  '1w': 'constituent_return_1w',
+  '1m': 'constituent_return_1m',
+  '3m': 'constituent_return_3m',
+  '6m': 'constituent_return_6m',
+  '1y': 'constituent_return_1y',
+};
+
+function formatPct(v: number | null | undefined): string {
+  if (v == null) return '—';
+  const sign = v >= 0 ? '+' : '';
+  return `${sign}${(v * 100).toFixed(2)}%`;
+}
+
+function Phase3ReturnTag({
+  value,
+  sector,
+  period,
+}: {
+  value: number;
+  sector: SectorPerformance;
+  period: SectorReturnPeriod;
+}) {
+  // SW 模式 + 官方指数 + 有等权对照：hover 显示
+  if (
+    sector.return_source === 'official_index' &&
+    sector.sw_l1_code
+  ) {
+    const eqField = CONSTITUENT_RETURN_KEY[period];
+    const eqValue = sector[eqField] as number | null | undefined;
+    const tooltip = (
+      <div style={{ lineHeight: 1.6 }}>
+        <div>
+          申万一级指数 <strong>{sector.sw_l1_code}</strong> 官方回报
+        </div>
+        {eqValue != null && (
+          <div>
+            等权 ETF+STOCK 回报对照：
+            <strong style={{ color: eqValue >= 0 ? 'var(--color-rise, #ef232a)' : 'var(--color-fall, #14b143)' }}>
+              {' '}
+              {formatPct(eqValue)}
+            </strong>
+          </div>
+        )}
+      </div>
+    );
+    return (
+      <Tooltip title={tooltip} mouseEnterDelay={0.1}>
+        <span style={{ cursor: 'help' }}>
+          <ReturnTag value={value} />
+        </span>
+      </Tooltip>
+    );
+  }
+  return <ReturnTag value={value} />;
+}
 
 const PERIOD_RETURN_KEY: Record<SectorReturnPeriod, keyof SectorPerformance> = {
   '1w': 'return_1w',
@@ -357,10 +421,34 @@ export default function SectorRotation() {
     {
       title: `行业板块 (${clsLabel})`,
       dataIndex: 'sector',
-      width: 200,
+      width: 220,
       render: (v: string, r: SectorPerformance) => (
         <div className="ad-stack-xs">
-          <span className="ad-table-text-primary">{v}</span>
+          <span className="ad-table-text-primary">
+            {v}
+            {r.return_source === 'official_index' && (
+              <Tag
+                color="blue"
+                style={{ marginLeft: 6, fontSize: 10, lineHeight: '14px', padding: '0 4px' }}
+                title={`申万一级指数 ${r.sw_l1_code ?? ''} 当日收盘 ${
+                  r.official_close != null
+                    ? r.official_close.toLocaleString('zh-CN', { maximumFractionDigits: 2 })
+                    : '—'
+                }`}
+              >
+                官方
+              </Tag>
+            )}
+            {r.return_source === 'constituents_equal_weight' && r.sw_l1_code && (
+              <Tag
+                color="default"
+                style={{ marginLeft: 6, fontSize: 10, lineHeight: '14px', padding: '0 4px' }}
+                title={`申万一级 ${r.sw_l1_code} 暂无官方指数回报,当前显示等权 ETF+STOCK 回报`}
+              >
+                等权
+              </Tag>
+            )}
+          </span>
           <span className="ad-table-text-secondary">
             {r.stock_count} 只个股 / {r.etf_count} 只 ETF
           </span>
@@ -371,31 +459,41 @@ export default function SectorRotation() {
       title: <HelpPopover termKey="return_1w" mode={mode}>1周</HelpPopover>,
       dataIndex: 'return_1w',
       width: 90,
-      render: (v: number) => <ReturnTag value={v} />,
+      render: (v: number, r: SectorPerformance) => (
+        <Phase3ReturnTag value={v} sector={r} period="1w" />
+      ),
     },
     {
       title: <HelpPopover termKey="return_1m" mode={mode}>1月</HelpPopover>,
       dataIndex: 'return_1m',
       width: 90,
-      render: (v: number) => <ReturnTag value={v} />,
+      render: (v: number, r: SectorPerformance) => (
+        <Phase3ReturnTag value={v} sector={r} period="1m" />
+      ),
     },
     {
       title: <HelpPopover termKey="return_3m" mode={mode}>3月</HelpPopover>,
       dataIndex: 'return_3m',
       width: 90,
-      render: (v: number) => <ReturnTag value={v} />,
+      render: (v: number, r: SectorPerformance) => (
+        <Phase3ReturnTag value={v} sector={r} period="3m" />
+      ),
     },
     {
       title: <HelpPopover termKey="return_6m" mode={mode}>6月</HelpPopover>,
       dataIndex: 'return_6m',
       width: 90,
-      render: (v: number) => <ReturnTag value={v} />,
+      render: (v: number, r: SectorPerformance) => (
+        <Phase3ReturnTag value={v} sector={r} period="6m" />
+      ),
     },
     {
       title: <HelpPopover termKey="return_1y" mode={mode}>1年</HelpPopover>,
       dataIndex: 'return_1y',
       width: 90,
-      render: (v: number) => <ReturnTag value={v} />,
+      render: (v: number, r: SectorPerformance) => (
+        <Phase3ReturnTag value={v} sector={r} period="1y" />
+      ),
     },
     {
       title: <HelpPopover termKey="sharpe_1y" mode={mode}>夏普</HelpPopover>,
@@ -493,6 +591,34 @@ export default function SectorRotation() {
           </div>
         </div>
       </Panel>
+
+      {/* Phase 3 数据源分布 — 仅 SW 分类下展示 */}
+      {classification === 'SW' && sectors.length > 0 && (
+        <div
+          className="ad-callout ad-mb-3"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 12,
+            flexWrap: 'wrap',
+            padding: '10px 14px',
+            borderRadius: 8,
+            background: 'var(--color-surface-soft, rgba(0,0,0,0.03))',
+            fontSize: 12,
+          }}
+        >
+          <span style={{ color: 'var(--color-text-secondary, #666)' }}>
+            <strong>Phase 3 官方指数回报：</strong>
+            {sectors.filter((s) => s.return_source === 'official_index').length}
+            {' '}/ {sectors.length} 行业
+          </span>
+          {sectors.some((s) => s.return_source === 'official_index') && (
+            <span style={{ color: 'var(--color-text-tertiary, #999)' }}>
+              · 鼠标悬停 1周/1月/3月/6月/1年 回报格查看等权 ETF+STOCK 对照
+            </span>
+          )}
+        </div>
+      )}
 
       {/* Headline metrics */}
       <div className="ad-metric-strip ad-metric-strip--cols-4 ad-mb-5">
