@@ -30,7 +30,7 @@ import Panel from '@/components/Panel';
 import SectionHeading from '@/components/SectionHeading';
 import EmptyState from '@/components/EmptyState';
 import Sparkline from '@/components/Sparkline';
-import ReturnTag from '@/components/ReturnTag';
+import ReturnTagPct from '@/components/ReturnTagPct';
 import LastUpdated from '@/components/LastUpdated';
 import HelpTrigger from '@/components/HelpTrigger';
 import ThemeTag from '@/components/ThemeTag';
@@ -244,7 +244,7 @@ function CategoryBlock({ title, rows, isMobile }: { title: string; rows: RowVm[]
       width: isMobile ? 70 : 110,
       align: 'right',
       render: (v: number | null) =>
-        v == null ? <Text type="secondary">—</Text> : <ReturnTag value={v} />,
+        v == null ? <Text type="secondary">—</Text> : <ReturnTagPct value={v} />,
     },
     {
       title: '近30日',

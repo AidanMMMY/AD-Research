@@ -15,7 +15,7 @@ import FilterToolbar from '@/components/FilterToolbar';
 import Panel from '@/components/Panel';
 import EmptyState from '@/components/EmptyState';
 import InstrumentCodeTag from '@/components/InstrumentCodeTag';
-import ReturnTag from '@/components/ReturnTag';
+import ReturnTagPct from '@/components/ReturnTagPct';
 import ThemeTag from '@/components/ThemeTag';
 
 /**
@@ -181,7 +181,7 @@ export default function CryptoList() {
       dataIndex: 'change_pct',
       width: 120,
       render: (_: unknown, record: any) => (
-        <ReturnTag
+        <ReturnTagPct
           value={record.change_pct ?? record.change_24h}
         />
       ),
@@ -310,7 +310,7 @@ export default function CryptoList() {
                       <span className="tabular-nums mobile-list-item__value">
                         {item.price != null ? `$${item.price < 0.01 ? item.price.toFixed(6) : item.price < 1 ? item.price.toFixed(4) : item.price.toFixed(2)}` : '-'}
                       </span>
-                      <ReturnTag value={item.change_pct ?? item.change_24h} />
+                      <ReturnTagPct value={item.change_pct ?? item.change_24h} />
                     </div>
                   </div>
                   <div className="mobile-list-item__tags">

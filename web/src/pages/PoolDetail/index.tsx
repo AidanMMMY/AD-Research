@@ -152,10 +152,10 @@ export default function PoolDetail() {
 
   const perf = analytics?.performance;
   const heroStats = [
-    { title: '1月收益', value: perf?.return_1m, suffix: '%', color: (perf?.return_1m ?? 0) >= 0 ? 'detail-kpi-rise' : 'detail-kpi-fall' },
-    { title: '3月收益', value: perf?.return_3m, suffix: '%', color: (perf?.return_3m ?? 0) >= 0 ? 'detail-kpi-rise' : 'detail-kpi-fall' },
+    { title: '1月收益', value: perf?.return_1m != null ? perf.return_1m * 100 : undefined, suffix: '%', color: (perf?.return_1m ?? 0) >= 0 ? 'detail-kpi-rise' : 'detail-kpi-fall' },
+    { title: '3月收益', value: perf?.return_3m != null ? perf.return_3m * 100 : undefined, suffix: '%', color: (perf?.return_3m ?? 0) >= 0 ? 'detail-kpi-rise' : 'detail-kpi-fall' },
     { title: '夏普', value: perf?.sharpe_1y, suffix: undefined, color: 'detail-kpi-accent' },
-    { title: '最大回撤', value: perf?.max_drawdown, suffix: '%', color: 'detail-kpi-fall' },
+    { title: '最大回撤', value: perf?.max_drawdown_1y != null ? perf.max_drawdown_1y * 100 : undefined, suffix: '%', color: 'detail-kpi-fall' },
   ];
 
   const tabItems = [

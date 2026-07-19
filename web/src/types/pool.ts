@@ -41,7 +41,7 @@ export interface PoolAnalytics {
     return_3m?: number;
     volatility_20d?: number;
     sharpe_1y?: number;
-    max_drawdown?: number;
+    max_drawdown_1y?: number;
   };
   rebalance_needed?: Array<{
     code: string;

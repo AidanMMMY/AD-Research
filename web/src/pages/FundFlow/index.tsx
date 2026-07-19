@@ -36,7 +36,7 @@ import InstrumentCodeTag from '@/components/InstrumentCodeTag';
 import Sparkline from '@/components/Sparkline';
 import ExportButton from '@/components/ExportButton';
 import ThemeTag from '@/components/ThemeTag';
-import ReturnTag from '@/components/ReturnTag';
+import ReturnTagPct from '@/components/ReturnTagPct';
 import { useChartMotion } from '@/hooks/useChartMotion';
 import { clickableRow } from '@/utils/a11y';
 import { NULL_PLACEHOLDER, formatNumber } from '@/utils/format';
@@ -349,7 +349,7 @@ export default function FundFlowPage() {
       dataIndex: 'ah_premium',
       key: 'ah_premium',
       width: 100,
-      render: (v: number) => <ReturnTag value={v} />,
+      render: (v: number) => <ReturnTagPct value={v} />,
     },
     {
       title: '大宗交易净买',
@@ -398,7 +398,7 @@ export default function FundFlowPage() {
       dataIndex: 'main_net_pct',
       key: 'main_net_pct',
       width: 110,
-      render: (v: number) => <ReturnTag value={v} />,
+      render: (v: number) => <ReturnTagPct value={v} />,
     },
     {
       title: '超大单',
@@ -491,7 +491,7 @@ export default function FundFlowPage() {
       dataIndex: 'main_net_pct',
       key: 'main_net_pct',
       width: 110,
-      render: (v: number) => <ReturnTag value={v} />,
+      render: (v: number) => <ReturnTagPct value={v} />,
     },
     {
       title: '超大单',

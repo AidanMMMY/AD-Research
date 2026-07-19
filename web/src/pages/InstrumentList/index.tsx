@@ -41,7 +41,7 @@ import EmptyState from '@/components/EmptyState';
 import InstrumentCodeTag from '@/components/InstrumentCodeTag';
 import ThemeTag from '@/components/ThemeTag';
 import SparklineCell from '@/components/SparklineCell';
-import ReturnTag from '@/components/ReturnTag';
+import ReturnTagPct from '@/components/ReturnTagPct';
 import LastUpdated from '@/components/LastUpdated';
 import { useIsMobile } from '@/hooks/useBreakpoint';
 import { clickableRow } from '@/utils/a11y';
@@ -68,7 +68,7 @@ function LivePriceCell({ tick }: { code: string; tick: ReturnType<typeof useMark
       >
         {tick.price.toFixed(2)}
       </span>
-      <ReturnTag value={tick.change_pct} />
+      <ReturnTagPct value={tick.change_pct} />
     </div>
   );
 }

@@ -98,7 +98,7 @@ export default function Screen() {
     { title: <HelpPopover termKey="return_1m" mode={mode}>1月</HelpPopover>, dataIndex: 'return_1m', width: 100, sorter: (a: any, b: any) => (a.return_1m ?? -Infinity) - (b.return_1m ?? -Infinity), render: (v: number) => <ReturnTag value={v} /> },
     { title: <HelpPopover termKey="return_3m" mode={mode}>3月</HelpPopover>, dataIndex: 'return_3m', width: 100, responsive: ['md'], sorter: (a: any, b: any) => (a.return_3m ?? -Infinity) - (b.return_3m ?? -Infinity), render: (v: number) => <ReturnTag value={v} /> },
     { title: <HelpPopover termKey="return_1y" mode={mode}>1年</HelpPopover>, dataIndex: 'return_1y', width: 100, responsive: ['md'], sorter: (a: any, b: any) => (a.return_1y ?? -Infinity) - (b.return_1y ?? -Infinity), render: (v: number) => <ReturnTag value={v} /> },
-    { title: <HelpPopover termKey="volatility_20d" mode={mode}>波动率</HelpPopover>, dataIndex: 'volatility_20d', width: 90, responsive: ['md'], render: (v: number) => v ? <span className="font-mono ad-table-mono">{v.toFixed(1)}%</span> : '-' },
+    { title: <HelpPopover termKey="volatility_20d" mode={mode}>波动率</HelpPopover>, dataIndex: 'volatility_20d', width: 90, responsive: ['md'], render: (v: number) => v != null ? <span className="font-mono ad-table-mono">{(v * 100).toFixed(1)}%</span> : '-' },
   ];
 
   return (

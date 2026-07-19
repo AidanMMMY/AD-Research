@@ -29,7 +29,7 @@ import LoadingBlock from '@/components/LoadingBlock';
 import SectionHeading from '@/components/SectionHeading';
 import InstrumentCodeTag from '@/components/InstrumentCodeTag';
 import ThemeTag from '@/components/ThemeTag';
-import ReturnTag from '@/components/ReturnTag';
+import ReturnTagPct from '@/components/ReturnTagPct';
 import FavoriteToggleButton from '@/components/FavoriteToggleButton';
 import { clickableRow } from '@/utils/a11y';
 import { formatDateTime, formatDateTimeCompact } from '@/utils/datetime';
@@ -197,7 +197,7 @@ export default function Favorites() {
         if (!tick || tick.change_pct == null) {
           return <span className="ad-text-muted">{NULL_PLACEHOLDER}</span>;
         }
-        return <ReturnTag value={tick.change_pct} />;
+        return <ReturnTagPct value={tick.change_pct} />;
       },
     },
     {

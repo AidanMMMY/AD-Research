@@ -257,7 +257,8 @@ export default function SectorRotation() {
             show: true,
             formatter: (params: any) => {
               const v = Number(params?.value ?? 0);
-              return `${v.toFixed(2)}%`;
+              // sector returns are decimals (e.g. 0.025 = +2.5%); multiply by 100 before display.
+              return `${(v * 100).toFixed(2)}%`;
             },
             fontSize: 11,
             color: palette.textPrimary,
@@ -290,7 +291,7 @@ export default function SectorRotation() {
           const [c, r, v] = p.value as [number, number, number];
           const sector = ordered[r]?.sector ?? '';
           const period = SECTOR_RETURN_LABELS[SECTOR_RETURN_PERIODS[c]];
-          return `${sector} · ${period}<br/><b>${v >= 0 ? '+' : ''}${v.toFixed(2)}%</b>`;
+          return `${sector} · ${period}<br/><b>${v >= 0 ? '+' : ''}${(v * 100).toFixed(2)}%</b>`;
         },
       },
       grid: { left: 150, right: 30, top: 32, bottom: 50 },
@@ -313,7 +314,7 @@ export default function SectorRotation() {
         orient: 'horizontal',
         left: 'center',
         bottom: 6,
-        text: [`+${vmMax.toFixed(1)}%`, `${vmMin.toFixed(1)}%`],
+        text: [`+${(vmMax * 100).toFixed(1)}%`, `${(vmMin * 100).toFixed(1)}%`],
         textStyle: { color: palette.textSecondary, fontSize: 11 },
         inRange: { color: [palette.downHex, palette.midHex, palette.upHex] },
         itemWidth: 12,
@@ -327,7 +328,8 @@ export default function SectorRotation() {
             show: true,
             formatter: (p: any) => {
               const v = p.value[2] as number;
-              return `${v >= 0 ? '+' : ''}${v.toFixed(1)}%`;
+              // Heatmap values come from etf_indicator.return_* (decimals); ×100 before display.
+              return `${v >= 0 ? '+' : ''}${(v * 100).toFixed(1)}%`;
             },
             fontSize: 11,
             color: palette.textPrimary,
@@ -352,7 +354,7 @@ export default function SectorRotation() {
         formatter: (params: any) => {
           const p = Array.isArray(params) ? params[0] : params;
           const v = Number(p?.value ?? 0);
-          return `${p?.name ?? ''}<br/>1月超额收益: <b>${v >= 0 ? '+' : ''}${v.toFixed(2)}%</b>`;
+          return `${p?.name ?? ''}<br/>1月超额收益: <b>${v >= 0 ? '+' : ''}${(v * 100).toFixed(2)}%</b>`;
         },
       },
       grid: { left: 130, right: 32, top: 20, bottom: 32 },

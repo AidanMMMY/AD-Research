@@ -19,7 +19,7 @@ import StatCard from '@/components/StatCard';
 import SectionHeading from '@/components/SectionHeading';
 import InstrumentCodeTag from '@/components/InstrumentCodeTag';
 import ThemeTag from '@/components/ThemeTag';
-import ReturnTag from '@/components/ReturnTag';
+import ReturnTagPct from '@/components/ReturnTagPct';
 import NewsListPanel from '@/components/NewsListPanel';
 import HelpPopover from '@/components/HelpPopover';
 import { useSettingsStore } from '@/stores/settings';
@@ -445,7 +445,7 @@ export default function CryptoDetail() {
               {crypto.price != null ? `$${formatPrice(crypto.price)}` : '-'}
             </div>
             <div className="detail-hero__kpi-tag">
-              <ReturnTag value={crypto.change_pct ?? crypto.change_24h} />
+              <ReturnTagPct value={crypto.change_pct ?? crypto.change_24h} />
             </div>
           </div>
         }
