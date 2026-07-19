@@ -12,13 +12,14 @@ import logging
 from datetime import date, timedelta
 
 import pandas as pd
+from sqlalchemy import func
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
 from app.core.cache import cache_invalidate_pattern
 from app.data.pipelines.base import ETLPipeline
 from app.data.providers.tushare_provider import TushareProvider
-from app.models.etf import InstrumentDailyBar, ETFInfo
+from app.models.etf import AdjFactorHistory, ETFInfo, InstrumentDailyBar
 
 logger = logging.getLogger(__name__)
 
@@ -140,6 +141,10 @@ class AStockDailyPipeline(ETLPipeline):
         self.db.execute(stmt)
         self.db.commit()
 
+        # Also persist the target-date adj_factor into the authoritative
+        # AdjFactorHistory table (full history is backfilled weekly).
+        self._load_adj_factor_history(data)
+
         # Invalidate caches that depend on daily bar data
         try:
             cache_invalidate_pattern("indicator:*")
@@ -148,4 +153,46 @@ class AStockDailyPipeline(ETLPipeline):
         except Exception:
             logger.exception("Failed to invalidate caches after A-stock daily ETL")
 
+        return len(records)
+
+    def _load_adj_factor_history(self, data: pd.DataFrame) -> int:
+        """Upsert target-date adj_factor rows into ``adj_factor_history``."""
+        if data.empty or "adj_factor" not in data.columns:
+            return 0
+
+        records = []
+        for _, row in data.iterrows():
+            af = row.get("adj_factor")
+            if af is None or pd.isna(af):
+                continue
+            records.append(
+                {
+                    "etf_code": row.get("etf_code"),
+                    "trade_date": row.get("trade_date"),
+                    "adj_factor": float(af),
+                    "source": "tushare",
+                }
+            )
+
+        if not records:
+            return 0
+
+        stmt = (
+            insert(AdjFactorHistory)
+            .values(records)
+            .on_conflict_do_update(
+                index_elements=["etf_code", "trade_date"],
+                set_={
+                    "adj_factor": insert(AdjFactorHistory).excluded.adj_factor,
+                    "source": insert(AdjFactorHistory).excluded.source,
+                    "updated_at": func.now(),
+                },
+            )
+        )
+        self.db.execute(stmt)
+        self.db.commit()
+        logger.info(
+            "AStockDailyPipeline: upserted %d rows into adj_factor_history",
+            len(records),
+        )
         return len(records)

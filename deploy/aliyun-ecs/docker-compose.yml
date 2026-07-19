@@ -144,10 +144,10 @@ services:
           cpus: "0.5"
           memory: 512M
 
-  celery-worker:
-    image: ad-research:${GIT_SHA:-latest}
+  celery-worker-indicator:
+    image: ad-research:latest
     pull_policy: never
-    container_name: alloyresearch-celery-worker
+    container_name: alloyresearch-celery-worker-indicator
     restart: unless-stopped
     environment: *backend-env
     depends_on:
@@ -161,7 +161,7 @@ services:
       - web_dist:/app/web/dist
       - cninfo_pdfs:/data/alloy-research/cninfo_pdfs
       - /var/run/docker.sock:/var/run/docker.sock:ro
-    command: celery -A app.core.celery_app worker -l info -c 4 -Q celery,indicator,cninfo
+    command: celery -A app.core.celery_app worker -l info -c 4 -Q indicator
     networks:
       - alloyresearch-network
     logging:
@@ -177,6 +177,40 @@ services:
         reservations:
           cpus: "0.5"
           memory: 512M
+
+  celery-worker-cninfo:
+    image: ad-research:latest
+    pull_policy: never
+    container_name: alloyresearch-celery-worker-cninfo
+    restart: unless-stopped
+    environment: *backend-env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+    volumes:
+      - web_dist:/app/web/dist
+      - cninfo_pdfs:/data/alloy-research/cninfo_pdfs
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    command: celery -A app.core.celery_app worker -l info -c 2 -Q celery,cninfo
+    networks:
+      - alloyresearch-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "5"
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 2G
+        reservations:
+          cpus: "0.25"
+          memory: 256M
 
   nginx:
     image: nginx:alpine

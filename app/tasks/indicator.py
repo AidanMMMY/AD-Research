@@ -18,7 +18,15 @@ def _parse_date(value: date | str | None) -> date | None:
     return date.fromisoformat(value)
 
 
-@celery_app.task(bind=True, max_retries=3, default_retry_delay=60, queue="indicator")
+@celery_app.task(
+    bind=True,
+    max_retries=3,
+    default_retry_delay=60,
+    queue="indicator",
+    # 防止任务无限挂起、触发 Redis 重复投递；先给 4h 软超时报警，6h 强制终止。
+    soft_time_limit=4 * 3600,
+    time_limit=6 * 3600,
+)
 def calculate_indicators(
     self,
     target_date: date | str | None = None,

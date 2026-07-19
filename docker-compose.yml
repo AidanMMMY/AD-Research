@@ -67,11 +67,9 @@ services:
     networks:
       - ad-research-dev-network
 
-  celery-worker:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: alloyresearch-celery-worker-dev
+  celery-worker-indicator:
+    image: ad-research:latest
+    container_name: alloyresearch-celery-worker-indicator-dev
     env_file: .env
     environment:
       TZ: Asia/Shanghai
@@ -89,7 +87,31 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-    command: celery -A app.core.celery_app worker -l info -c 4 -Q celery,indicator,cninfo
+    command: celery -A app.core.celery_app worker -l info -c 4 -Q indicator
+    networks:
+      - ad-research-dev-network
+
+  celery-worker-cninfo:
+    image: ad-research:latest
+    container_name: alloyresearch-celery-worker-cninfo-dev
+    env_file: .env
+    environment:
+      TZ: Asia/Shanghai
+      DATABASE_URL: postgresql+psycopg2://etf:${DB_PASSWORD:-etf_research_password}@postgres:5432/ad_research
+      REDIS_URL: redis://redis:6379/0
+      APP_ENV: ${APP_ENV:-development}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      INDICATOR_BACKEND: ${INDICATOR_BACKEND:-sql}
+      CNINFO_PDF_DIR: ${CNINFO_PDF_DIR:-/data/alloy-research/cninfo_pdfs}
+    volumes:
+      - .:/app
+      - cninfo_pdfs:/data/alloy-research/cninfo_pdfs
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: celery -A app.core.celery_app worker -l info -c 2 -Q celery,cninfo
     networks:
       - ad-research-dev-network
 

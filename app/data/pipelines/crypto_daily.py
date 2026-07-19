@@ -9,7 +9,7 @@ timezone so the CronTrigger value is 08:05 local time.
 """
 
 import logging
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta, timezone
 
 import pandas as pd
 from sqlalchemy.dialects.postgresql import insert
@@ -120,10 +120,12 @@ class CryptoDailyPipeline(ETLPipeline):
         )
 
         # Crypto markets are 24/7.  The target date is "yesterday" in UTC
-        # because the daily candle closes at 00:00 UTC.
-        target_date = self.target_date or (date.today() - timedelta(days=1))
-        # Fetch a 7-day window to give the normaliser/validator context
-        start_date = target_date - timedelta(days=7)
+        # because the daily candle closes at 00:00 UTC.  Use a 90-day window
+        # so missed days can be backfilled automatically.
+        target_date = self.target_date or (
+            datetime.now(timezone.utc).date() - timedelta(days=1)
+        )
+        start_date = target_date - timedelta(days=90)
         end_date = target_date
 
         df = self.provider.fetch_daily_bars(codes, start_date, end_date)

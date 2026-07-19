@@ -91,8 +91,10 @@ class YFinanceProvider(DataProvider):
         turnover amount separately).
 
         Note:
-          - Batch downloads do not expose split/dividend actions, so
-            adj_factor is set to 1.0 for batch-fetched rows.
+          - Batch downloads do not expose split/dividend actions, but they
+            do include an ``Adj Close`` column. We derive a per-row
+            ``adj_factor = Adj Close / Close`` so the downstream qfq
+            indicator path can still produce correct total-return metrics.
           - Single-ticker fetches request actions=True and compute a proper
             cumulative adjustment factor.
         """
@@ -143,6 +145,12 @@ class YFinanceProvider(DataProvider):
                                 else trade_date_val
                             )
                             close_price = float(row.get("Close", 0) or 0)
+                            adj_close = float(row.get("Adj Close", close_price) or close_price)
+                            adj_factor = (
+                                adj_close / close_price
+                                if close_price and close_price != 0
+                                else 1.0
+                            )
                             volume_val = int(row.get("Volume", 0) or 0)
                             rows.append(
                                 {
@@ -154,7 +162,7 @@ class YFinanceProvider(DataProvider):
                                     "close": close_price,
                                     "volume": volume_val,
                                     "amount": volume_val * close_price,
-                                    "adj_factor": 1.0,  # batch download lacks actions
+                                    "adj_factor": adj_factor,
                                 }
                             )
                     except Exception:

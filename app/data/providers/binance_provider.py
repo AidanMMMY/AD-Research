@@ -11,7 +11,7 @@ Rate limit: 0.1 s sleep per request (~10 req/s) leaves comfortable headroom.
 
 import json
 import time
-from datetime import date, datetime
+from datetime import date, datetime, timedelta, timezone
 
 import pandas as pd
 import requests
@@ -200,15 +200,18 @@ class BinanceProvider(DataProvider):
             "volume", "amount", "change_pct",
         ]
 
-        # Binance timestamps are ms since epoch, inclusive of start but
-        # the API uses *open time* of the candle so we extend start_date
-        # by a day to ensure inclusivity.
-        start_ms = int(
-            datetime.combine(start_date, datetime.min.time()).timestamp() * 1000
+        # Binance timestamps are UTC ms since epoch. The daily kline's
+        # open_time is 00:00:00 UTC. We extend end_date by one day so that
+        # the target day's candle (open_time = target_date 00:00 UTC) is
+        # included even when the container runs in Asia/Shanghai timezone.
+        start_dt = datetime.combine(
+            start_date, datetime.min.time(), tzinfo=timezone.utc
         )
-        end_ms = int(
-            datetime.combine(end_date, datetime.min.time()).timestamp() * 1000
+        end_dt = datetime.combine(
+            end_date + timedelta(days=1), datetime.min.time(), tzinfo=timezone.utc
         )
+        start_ms = int(start_dt.timestamp() * 1000)
+        end_ms = int(end_dt.timestamp() * 1000)
 
         rows: list[dict] = []
         for code in codes:

@@ -33,6 +33,9 @@ celery_app.conf.update(
     # Use UTC internally; timestamps are converted by the client as needed.
     timezone="UTC",
     enable_utc=True,
+    # Redis broker visibility_timeout: 指标任务可能跑 4-8 小时，必须大于最长任务
+    # 运行时间，否则 Redis 会重复投递同一任务。
+    broker_transport_options={"visibility_timeout": 43200},
     # Long-running tasks benefit from late ack: if the worker is killed mid-task,
     # the task is redelivered to another worker.  Downside is that tasks must be
     # idempotent, which our DB upserts guarantee.

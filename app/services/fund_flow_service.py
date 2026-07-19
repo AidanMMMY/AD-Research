@@ -12,7 +12,7 @@ import logging
 from datetime import date, timedelta
 from typing import Any
 
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from app.data.pipelines.fund_flow import FundFlowPipeline
@@ -20,6 +20,7 @@ from app.models.fund_flow import (
     EtfFundFlow,
     FlowSignal,
     IndividualFundFlow,
+    MarketFundFlow,
     SectorFundFlow,
 )
 
@@ -40,16 +41,22 @@ def list_individual(
     start_date: date | None = None,
     end_date: date | None = None,
     ts_code: str | None = None,
+    market: str | None = None,
     sort: str = "-main_net_inflow",
     limit: int | None = None,
 ) -> dict[str, Any]:
     """分页查询个股资金流。``sort`` 支持 ``main_net_inflow`` / ``-main_net_inflow`` / ``trade_date``。
 
     当 ``ts_code`` 提供时,返回该股票所有 trade_date 的历史 (按日期降序)。
+    当未指定任何日期参数且未指定个股时，默认取该表最新交易日，保证首屏为当日数据。
     """
     page = max(1, page)
     page_size = max(1, min(100, page_size))
     sort_col, sort_dir = _parse_sort(sort, default_col="main_net_inflow")
+
+    # 未指定日期/个股时，默认使用最新交易日（避免首屏返回全历史）
+    if not trade_date and not start_date and not end_date and not ts_code:
+        trade_date = _latest_trade_date(db, IndividualFundFlow)
 
     stmt = select(IndividualFundFlow)
     count_stmt = select(func.count(IndividualFundFlow.id))
@@ -57,6 +64,11 @@ def list_individual(
     if ts_code:
         stmt = stmt.where(IndividualFundFlow.ts_code == ts_code)
         count_stmt = count_stmt.where(IndividualFundFlow.ts_code == ts_code)
+    if market:
+        market_filter = _market_filter_for(IndividualFundFlow, market)
+        if market_filter is not None:
+            stmt = stmt.where(market_filter)
+            count_stmt = count_stmt.where(market_filter)
     if trade_date:
         stmt = stmt.where(IndividualFundFlow.trade_date == trade_date)
         count_stmt = count_stmt.where(IndividualFundFlow.trade_date == trade_date)
@@ -115,6 +127,10 @@ def list_sector(
     page_size = max(1, min(100, page_size))
     sort_col, sort_dir = _parse_sort(sort, default_col="main_net_inflow")
 
+    # 未指定交易日时，默认取板块资金流最新交易日
+    if not trade_date:
+        trade_date = _latest_trade_date(db, SectorFundFlow)
+
     stmt = select(SectorFundFlow)
     count_stmt = select(func.count(SectorFundFlow.id))
 
@@ -153,52 +169,127 @@ def list_sector(
 def list_market(
     db: Session,
     *,
+    trade_date: date | None = None,
     days: int = 30,
 ) -> dict[str, Any]:
-    """从 individual_fund_flow 聚合 (无独立 market 表)。
+    """从 ``market_fund_flow`` 读取大盘资金流。
 
-    注：本项目暂未单独建大盘资金流表；返回当日的 market_fund_flow 字段
-    从 ``sector_fund_flow`` 行业维度的 '上证' / '深证' 合成 — 但 akshare
-    的 sector_fund_flow 不直接提供 sh/sz 字段。
-
-    为简化：从 ``FundFlowPipeline`` 的 ``fetch_market_fund_flow`` 数据源
-    走单独的接口返回 — 但因为 akshare 调用是日 ETL 的副产物，service
-    层这里只能返回基于 ``sector_fund_flow`` 中 '上证' / '深证' 名称的
-    模糊聚合（结果可能为 None）；主指标来源仍以 Pipeline 的 ETL 日志为准。
-
-    真正的"市场整体"在 ak.stock_market_fund_flow 中，但本项目暂未持久化
-    大盘表 — 此处返回最新一天的轻量 stub (来自 individual_fund_flow 的
-    SH/SZ 段合计)，满足前端 /fund-flow/market 接口的契约。
+    返回 ``market='ALL'``（沪深整体，来自 akshare）以及派生的
+    ``market='SH'`` / ``market='SZ'`` 净流入。
+    当未指定 ``trade_date`` 时，取表中最新交易日。
     """
-    cutoff = date.today() - timedelta(days=days)
-    # 找最近一个有数据的 trade_date
-    latest_date = db.execute(
-        select(func.max(SectorFundFlow.trade_date))
-    ).scalar() or date.today()
-    # 聚合 main_net_inflow 总量作为大盘代理
-    total_main = db.execute(
-        select(func.coalesce(func.sum(SectorFundFlow.main_net_inflow), 0)).where(
-            SectorFundFlow.trade_date == latest_date
-        )
-    ).scalar() or 0.0
+    _ = days  # 保留参数以兼容旧契约；实际按日期查询
 
-    # 行业段: 没有 sh/sz 区分；返回单点 stub
+    if not trade_date:
+        trade_date = _latest_trade_date(db, MarketFundFlow)
+
+    if not trade_date:
+        return {"items": [], "total": 0}
+
+    rows = (
+        db.execute(
+            select(MarketFundFlow).where(MarketFundFlow.trade_date == trade_date)
+        )
+        .scalars()
+        .all()
+    )
+    by_market: dict[str, MarketFundFlow] = {r.market: r for r in rows}
+
+    # 若 SH/SZ 行缺失，兜底从 individual_fund_flow 聚合（幂等，不写入）
+    for suffix, market in ((".SH", "SH"), (".SZ", "SZ")):
+        if market not in by_market:
+            agg = _aggregate_individual_fund_flow(db, trade_date, suffix)
+            if agg:
+                by_market[market] = _market_row_from_dict(agg, market, trade_date)
+
+    all_row = by_market.get("ALL")
+    sh_row = by_market.get("SH")
+    sz_row = by_market.get("SZ")
+
     return {
         "items": [
             {
-                "trade_date": latest_date.isoformat(),
-                "sh_main_net_inflow": None,
-                "sz_main_net_inflow": None,
-                "sh_main_net_pct": None,
-                "sz_main_net_pct": None,
-                "_note": (
-                    "大盘口径未单独建表，sh/sz 字段待接入;此处仅返回最新交易日 "
-                    f"与 {float(total_main):.2f} 元行业段合计"
+                "trade_date": trade_date.isoformat(),
+                "sh_main_net_inflow": _to_float(
+                    sh_row.main_net_inflow if sh_row else None
+                ),
+                "sz_main_net_inflow": _to_float(
+                    sz_row.main_net_inflow if sz_row else None
+                ),
+                "sh_main_net_pct": _to_float(
+                    sh_row.main_net_pct if sh_row else None
+                ),
+                "sz_main_net_pct": _to_float(
+                    sz_row.main_net_pct if sz_row else None
+                ),
+                "total_main_net_inflow": _to_float(
+                    all_row.main_net_inflow if all_row else None
+                ),
+                "total_main_net_pct": _to_float(
+                    all_row.main_net_pct if all_row else None
                 ),
             }
         ],
         "total": 1,
     }
+
+
+def _aggregate_individual_fund_flow(
+    db: Session, trade_date: date, suffix: str
+) -> dict[str, Any] | None:
+    """按 ts_code 后缀聚合 individual_fund_flow（用于 SH/SZ 兜底）。"""
+    stmt = (
+        select(
+            func.coalesce(func.sum(IndividualFundFlow.main_net_inflow), 0).label(
+                "main_net_inflow"
+            ),
+            func.coalesce(func.sum(IndividualFundFlow.super_large_net), 0).label(
+                "super_large_net"
+            ),
+            func.coalesce(func.sum(IndividualFundFlow.large_net), 0).label(
+                "large_net"
+            ),
+            func.coalesce(func.sum(IndividualFundFlow.medium_net), 0).label(
+                "medium_net"
+            ),
+            func.coalesce(func.sum(IndividualFundFlow.small_net), 0).label(
+                "small_net"
+            ),
+        )
+        .where(IndividualFundFlow.trade_date == trade_date)
+        .where(IndividualFundFlow.ts_code.endswith(suffix))
+    )
+    row = db.execute(stmt).one_or_none()
+    if row is None:
+        return None
+    out: dict[str, Any] = {}
+    for col in (
+        "main_net_inflow",
+        "super_large_net",
+        "large_net",
+        "medium_net",
+        "small_net",
+    ):
+        value = getattr(row, col)
+        out[col] = float(value) if value is not None else None
+    if all(v is None or v == 0 for v in out.values()):
+        return None
+    return out
+
+
+def _market_row_from_dict(
+    data: dict[str, Any], market: str, trade_date: date
+) -> MarketFundFlow:
+    """从聚合字典构造一个只读 ``MarketFundFlow`` 实例（不写入 DB）。"""
+    return MarketFundFlow(
+        trade_date=trade_date,
+        market=market,
+        main_net_inflow=data.get("main_net_inflow"),
+        super_large_net=data.get("super_large_net"),
+        large_net=data.get("large_net"),
+        medium_net=data.get("medium_net"),
+        small_net=data.get("small_net"),
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -218,6 +309,10 @@ def list_etf(
     page = max(1, page)
     page_size = max(1, min(100, page_size))
     sort_col, sort_dir = _parse_sort(sort, default_col="inferred_net_inflow")
+
+    # 未指定日期/ETF 时，默认取 ETF 资金流最新交易日
+    if not trade_date and not ts_code:
+        trade_date = _latest_trade_date(db, EtfFundFlow)
 
     stmt = select(EtfFundFlow)
     count_stmt = select(func.count(EtfFundFlow.id))
@@ -265,6 +360,10 @@ def list_signals(
     page = max(1, page)
     page_size = max(1, min(100, page_size))
     sort_col, sort_dir = _parse_sort(sort, default_col="composite_score")
+
+    # 未指定日期/个股时，默认取综合信号最新交易日
+    if not trade_date and not ts_code:
+        trade_date = _latest_trade_date(db, FlowSignal)
 
     stmt = select(FlowSignal)
     count_stmt = select(func.count(FlowSignal.id))
@@ -314,6 +413,44 @@ def run_fund_flow_refresh(db: Session, target_date: date | None = None) -> dict[
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
+
+def _latest_trade_date(db: Session, model: type) -> date | None:
+    """获取指定资金流表最新交易日；无数据时返回 None。"""
+    return db.execute(select(func.max(model.trade_date))).scalar()
+
+
+def _market_filter_for(model: type[IndividualFundFlow], market: str) -> Any | None:
+    """根据市场/板块标签生成 ts_code 过滤条件；不支持的标签返回 None。
+
+    支持中文标签与短代码：
+    - SH / 沪市      -> 后缀 .SH
+    - SZ / 深市      -> 后缀 .SZ
+    - CYB / 创业板   -> 前缀 300 / 301
+    - KCB / 科创板   -> 前缀 688
+    - BJ / 北交所    -> 前缀 8 / 43 / 83 / 87
+    """
+    # 后缀匹配：沪市 / 深市
+    suffix_map = {
+        "SH": ".SH",
+        "沪市": ".SH",
+        "SZ": ".SZ",
+        "深市": ".SZ",
+    }
+    # 前缀匹配：创业板 / 科创板 / 北交所
+    prefix_map = {
+        "CYB": ["300", "301"],
+        "创业板": ["300", "301"],
+        "KCB": ["688"],
+        "科创板": ["688"],
+        "BJ": ["8", "43", "83", "87"],
+        "北交所": ["8", "43", "83", "87"],
+    }
+    if market in suffix_map:
+        return model.ts_code.endswith(suffix_map[market])
+    if market in prefix_map:
+        return or_(*[model.ts_code.startswith(p) for p in prefix_map[market]])
+    return None
 
 
 def _parse_sort(sort: str, default_col: str) -> tuple[Any, str]:

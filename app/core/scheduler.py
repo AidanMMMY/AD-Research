@@ -26,10 +26,12 @@ from app.data.pipelines.a_share_stock_financials import AStockFinancialsPipeline
 from app.data.pipelines.a_share_stock_fundamental import AStockFundamentalPipeline
 from app.data.pipelines.crypto_daily import CryptoDailyPipeline
 from app.data.pipelines.etf_holdings import ETFHoldingsPipeline
+from app.scripts.backfill_a_share_adj_factor import backfill_adj_factor
 from app.data.pipelines.etf_metadata_enrichment import ETFMetadataEnrichmentPipeline
 from app.data.pipelines.futures import FuturesContractDiscoveryPipeline, FuturesDailyPipeline
 from app.data.pipelines.fund_flow import FundFlowPipeline
 from app.data.pipelines.listing_events import ListingEventsPipeline
+from app.data.pipelines.market_fund_flow import MarketFundFlowPipeline
 from app.data.pipelines.microstructure import MicrostructurePipeline
 from app.data.pipelines.research_reports import ResearchReportsPipeline
 from app.data.pipelines.search_trends import SearchTrendsPipeline
@@ -40,7 +42,7 @@ from app.data.pipelines.us_etf_discovery import USEtfDiscoveryPipeline
 from app.data.pipelines.us_stock_discovery import USStockDiscoveryPipeline
 from app.data.pipelines.us_stock_enrichment import USStockEnrichmentPipeline
 from app.models.etf import ETFInfo
-from app.models.etl import StrategyConfig
+from app.models.etl import ETLLog, StrategyConfig
 from app.models.pool import ETFPools
 from app.models.user import User
 from app.services.etf_scanner_service import ETFScannerService
@@ -58,6 +60,179 @@ scheduler = BackgroundScheduler(executors={"default": ThreadPoolExecutor(max_wor
 # Names for distributed locks used by scheduled jobs.
 _LOCK_ETL = "daily_etl"
 _LOCK_DAILY_PIPELINE = "daily_pipeline"
+
+# Running ETL jobs older than this are considered stuck and will be cleaned
+# up before the next scheduled run (see ``cleanup_stuck_etl_jobs``).
+_STUCK_ETL_THRESHOLD_MINUTES = 120
+
+
+# Maps ETLLog.job_name -> Redis lock name(s) used by the scheduler.
+# Keep this in sync with the lock names used in each run_* function below.
+_ETL_JOB_LOCK_MAP: dict[str, str | list[str]] = {
+    "a_share_daily_etl": "daily_pipeline",
+    "a_stock_daily_etl": "a_stock_daily_pipeline",
+    "a_share_fundamental_etl": "a_stock_fundamental_pipeline",
+    "a_share_discovery_etl": "a_stock_discovery",
+    "a_share_financials_etl": "a_stock_financials",
+    "a_share_adj_factor_backfill": "a_share_adj_factor_backfill",
+    "us_daily_etl": "us_daily_pipeline",
+    "us_historical_backfill": "us_backfill_pipeline",
+    "us_etf_discovery": "us_etf_discovery",
+    "us_stock_discovery": "us_stock_discovery",
+    "us_stock_enrichment": "us_stock_enrichment",
+    "crypto_daily_etl": "crypto_daily_pipeline",
+    "weekly_pool_reports": "weekly_pool_reports",
+    "etf_scan": "etf_scan",
+    "etf_metadata_enrichment": "etf_metadata_enrichment",
+    "etf_holdings": "etf_holdings",
+    "listing_events_daily": "listing_events_daily",
+    "futures_contracts_refresh": "futures_contracts_refresh",
+    "futures_daily": "futures_daily",
+    "sec_edgar_daily": "sec_edgar_daily",
+    "microstructure_daily": "microstructure_daily",
+    "fund_flow_daily": "fund_flow_daily",
+    "market_fund_flow_daily": "market_fund_flow_daily",
+    "research_reports_daily": "research_reports_daily",
+    "search_trends_daily": "search_trends_daily",
+    "china_macro_daily": "china_macro_daily",
+    "global_indices_daily": "global_indices_daily",
+    "cninfo_reports_daily": "cninfo_reports_daily",
+}
+
+
+def _resolve_a_share_target_date(
+    target_date: date | None,
+    db: Any,
+) -> date | None:
+    """解析显式 target_date，未传入时从 A 股最新 bar 推断。
+
+    查询 ``instrument_daily_bar`` 表中 ``market='A股'`` 的最大
+    ``trade_date``，避免调度器在 bars 未落地时发起空跑任务。
+
+    当最新 bar 明显滞后（>2 个交易日）时打印告警，便于运维在数据
+    停滞时第一时间发现，而不是等到下游指标/评分缺失才排查。
+    """
+    if target_date is not None:
+        return target_date
+
+    from app.models.etf import ETFInfo, InstrumentDailyBar
+
+    row = (
+        db.query(InstrumentDailyBar.trade_date)
+        .join(ETFInfo, ETFInfo.code == InstrumentDailyBar.etf_code)
+        .filter(ETFInfo.market == "A股")
+        .order_by(InstrumentDailyBar.trade_date.desc())
+        .first()
+    )
+    latest = row[0] if row else None
+    if latest is not None:
+        today = date.today()
+        lag = (today - latest).days
+        # 简单 heuristic：非周五时滞后 >2 个自然日即告警
+        if lag > 2:
+            logger = logging.getLogger(__name__)
+            logger.warning(
+                "A-share latest bar %s is %d calendar day(s) behind today %s; "
+                "indicator calc may operate on stale data",
+                latest,
+                lag,
+                today,
+            )
+    return latest
+
+
+def _acquire_indicator_date_lock(target_date: date, full_history: bool) -> bool:
+    """以日期维度获取 Redis 锁，防止同一日期的指标任务被重复调度。
+
+    锁的 TTL 设为 12 小时，覆盖指标任务最长运行时间；任务完成后即使未主动
+    释放，也会在下一个交易日自动过期。
+    """
+    client = get_redis_client()
+    lock_key = (
+        f"ad_research:indicator:a_share:{target_date.isoformat()}"
+        f":fh={full_history}"
+    )
+    return client.set(lock_key, "1", nx=True, ex=12 * 3600) is True
+
+
+def _lock_names_for_job(job_name: str) -> list[str]:
+    """Return Redis lock name(s) that may belong to a given ETL job."""
+    mapped = _ETL_JOB_LOCK_MAP.get(job_name)
+    names: list[str] = []
+    if mapped:
+        if isinstance(mapped, list):
+            names.extend(mapped)
+        else:
+            names.append(mapped)
+    if job_name not in names:
+        names.append(job_name)
+    return names
+
+
+def cleanup_stuck_etl_jobs(threshold_minutes: int = _STUCK_ETL_THRESHOLD_MINUTES) -> int:
+    """Clean up ETL jobs stuck in the ``running`` state.
+
+    When a container is SIGKILLed or a process dies without updating its
+    ``ETLLog`` row, the record stays ``running`` and the Redis lock may still
+    be held.  This function marks those rows as ``failed`` and deletes the
+    associated Redis locks so the next scheduled run is not blocked.
+
+    Returns the number of stuck rows cleaned up.
+    """
+    from datetime import timedelta
+
+    cutoff = datetime.now(timezone.utc) - timedelta(minutes=threshold_minutes)
+    cleaned = 0
+
+    with SessionLocal() as db:
+        stuck_logs = (
+            db.query(ETLLog)
+            .filter(ETLLog.status == "running")
+            .filter(ETLLog.start_time < cutoff)
+            .order_by(ETLLog.start_time.asc())
+            .all()
+        )
+
+        if not stuck_logs:
+            return 0
+
+        logger = logging.getLogger(__name__)
+        logger.warning(
+            "Found %d stuck ETL job(s) older than %d minutes",
+            len(stuck_logs),
+            threshold_minutes,
+        )
+
+        client = get_redis_client()
+        for log in stuck_logs:
+            job_name = log.job_name or "unknown"
+            start = log.start_time.isoformat() if log.start_time else "?"
+            logger.info("Cleaning up stuck ETL job %s (started %s)", job_name, start)
+
+            log.status = "failed"
+            log.end_time = datetime.now(timezone.utc)
+            log.error_msg = (
+                (log.error_msg or "")
+                + "; [scheduler-cleanup] process terminated or lease expired"
+            )
+            cleaned += 1
+
+            for lock_name in _lock_names_for_job(job_name):
+                lock_key = f"lock:{lock_name}"
+                try:
+                    if client.delete(lock_key):
+                        logger.info("Released Redis lock %s", lock_key)
+                except Exception:
+                    logger.exception("Failed to delete Redis lock %s", lock_key)
+
+        try:
+            db.commit()
+        except Exception:
+            db.rollback()
+            logger.exception("Failed to commit stuck-ETL cleanup")
+            raise
+
+    return cleaned
 
 
 def run_a_share_etl(target_date: date | None = None, prefer_sina: bool = False):
@@ -171,6 +346,43 @@ def run_a_share_stock_financials():
             )
 
 
+def run_a_share_adj_factor_backfill():
+    """Weekly full-history backfill of A-share adj_factor from Tushare.
+
+    Runs every Sunday at 03:30 Asia/Shanghai. For each active A-share
+    instrument the script fetches the cumulative adjustment factor over the
+    full range of locally stored daily bars, upserts the result into
+    ``adj_factor_history``, and mirrors the values back to
+    ``instrument_daily_bar.adj_factor`` for backwards compatibility.
+
+    After this job completes, run ``recalc_a_share_indicators.py`` (or the
+    daily 08:00/17:00 indicator calculation) to recompute A-share indicators
+    on the corrected dividend-adjusted close.
+    """
+    lock_name = "a_share_adj_factor_backfill"
+    with redis_lock(lock_name, expire_seconds=14400) as acquired:
+        if not acquired:
+            print(
+                "⚠️ [SCHEDULER_WARN] A-share adj_factor backfill skipped: lock in use"
+            )
+            return
+
+        with SessionLocal() as db:
+            result = backfill_adj_factor(
+                db,
+                codes=None,
+                update_daily_bar=True,
+                dry_run=False,
+                chunk_size=5000,
+            )
+            print(
+                f"[Scheduler] A-share adj_factor backfill: "
+                f"history={result['adj_factor_history_records']}, "
+                f"daily_bar_updated={result['daily_bar_updated']}, "
+                f"errors={result['errors']}"
+            )
+
+
 def run_us_etl(target_date: date | None = None):
     """Run the US equity daily ETL pipeline.
 
@@ -277,6 +489,17 @@ def run_indicator_calculation(target_date: date | None = None, full_history: boo
         full_history: If True, upsert indicators for every historical trade
             date instead of only the latest day. Useful for backfilling.
     """
+    # Resolve target_date first: explicit value takes precedence; otherwise
+    # infer from the latest A-share bar in instrument_daily_bar.
+    with SessionLocal() as db:
+        effective_date = _resolve_a_share_target_date(target_date, db)
+        if effective_date is None:
+            print(
+                "⚠️ [SCHEDULER_WARN] A-share indicator calculation skipped: "
+                "no A-share bars found"
+            )
+            return
+
     # Wait for the daily ETL lock to be released to avoid calculating
     # indicators while bars are still being written.
     with redis_lock(_LOCK_DAILY_PIPELINE, expire_seconds=3600, wait_timeout=1800) as acquired:
@@ -284,14 +507,22 @@ def run_indicator_calculation(target_date: date | None = None, full_history: boo
             print("⚠️ [SCHEDULER_WARN] Indicator calculation skipped: could not acquire pipeline lock")
             return
 
+        # Avoid duplicate dispatch for the same date (08:00 main run vs 17:00 fallback).
+        if not _acquire_indicator_date_lock(effective_date, full_history):
+            print(
+                f"⚠️ [SCHEDULER_WARN] A-share indicator calculation skipped: "
+                f"task for {effective_date} (full_history={full_history}) is already running or reserved"
+            )
+            return
+
         calculate_indicators.delay(
-            target_date=target_date.isoformat() if target_date else None,
+            target_date=effective_date.isoformat(),
             full_history=full_history,
             market_filter="A股",
         )
         print(
             f"[Scheduler] A-share indicator calculation task submitted "
-            f"(target={target_date}, full_history={full_history})"
+            f"(target={effective_date}, full_history={full_history})"
         )
 
 
@@ -320,6 +551,17 @@ def run_a_share_indicator_fallback(target_date: date | None = None):
     Args:
         target_date: If provided, calculate indicators up to this date.
     """
+    # Resolve target_date first: explicit value takes precedence; otherwise
+    # infer from the latest A-share bar in instrument_daily_bar.
+    with SessionLocal() as db:
+        effective_date = _resolve_a_share_target_date(target_date, db)
+        if effective_date is None:
+            print(
+                "⚠️ [SCHEDULER_WARN] A-share indicator fallback skipped: "
+                "no A-share bars found"
+            )
+            return
+
     # Wait for the daily ETL lock to be released (covers any
     # ``run_with_retry`` still chewing on the 15:30 / 16:00 ETL).
     with redis_lock(_LOCK_DAILY_PIPELINE, expire_seconds=3600, wait_timeout=1800) as acquired:
@@ -330,14 +572,22 @@ def run_a_share_indicator_fallback(target_date: date | None = None):
             )
             return
 
+        # Avoid duplicate dispatch for the same date (17:00 fallback vs 08:00 main run).
+        if not _acquire_indicator_date_lock(effective_date, False):
+            print(
+                f"⚠️ [SCHEDULER_WARN] A-share indicator fallback skipped: "
+                f"task for {effective_date} is already running or reserved"
+            )
+            return
+
         calculate_indicators.delay(
-            target_date=target_date.isoformat() if target_date else None,
+            target_date=effective_date.isoformat(),
             full_history=False,
             market_filter="A股",
         )
         print(
             f"[Scheduler] A-share indicator fallback task submitted "
-            f"(target={target_date})"
+            f"(target={effective_date})"
         )
 
 
@@ -661,6 +911,29 @@ def run_fund_flow_daily():
             )
 
 
+def run_market_fund_flow_daily(target_date: date | None = None):
+    """Refresh 大盘资金流表 (daily 18:35 Asia/Shanghai)。
+
+    在 ``fund_flow_daily`` (17:30) 与 ``microstructure_daily`` (18:30)
+    之后执行，确保 ``individual_fund_flow`` 已落地，可据此派生沪市/深市
+    净流入。写入 ``market_fund_flow`` 的 ``ALL`` / ``SH`` / ``SZ`` 三行。
+    """
+    with redis_lock("market_fund_flow_daily", expire_seconds=3600) as acquired:
+        if not acquired:
+            print(
+                "⚠️ [SCHEDULER_WARN] Market fund-flow refresh skipped: lock in use"
+            )
+            return
+        with SessionLocal() as db:
+            pipeline = MarketFundFlowPipeline(db, target_date=target_date)
+            result = pipeline.run_with_retry(max_attempts=2)
+            print(
+                f"[Scheduler] Market fund-flow refresh: "
+                f"success={result.success}, records={result.records}, "
+                f"warnings={len(result.warnings)}"
+            )
+
+
 def run_search_trends_daily():
     """Refresh Xueqiu-derived search-trend observations (daily 03:00 Asia/Shanghai).
 
@@ -967,6 +1240,7 @@ def init_scheduler():
       - A-share stock fundamental at 16:30 daily
       - A-share stock discovery weekly Monday 01:00
       - A-share stock financials weekly Monday 02:00
+      - A-share adj_factor full-history backfill weekly Sunday 03:30
       - Indicator calculation at 08:00 daily (A-share market only)
       - A-share indicator fallback at 17:00 daily (covers ETF + STOCK
         even when one of the two daily-bar ETLs was delayed)
@@ -982,6 +1256,16 @@ def init_scheduler():
       - Research reports daily ETL at 18:00 daily
       - Research report DeepSeek summarization every 2 hours
     """
+    # Clean up any ETL jobs that were killed during a previous deployment
+    # before starting today's schedule.
+    try:
+        cleaned = cleanup_stuck_etl_jobs()
+        if cleaned:
+            print(f"[Scheduler] Cleaned up {cleaned} stuck ETL job(s) on startup")
+    except Exception:
+        logging.getLogger(__name__).exception(
+            "Startup stuck-ETL cleanup failed; continuing anyway"
+        )
     scheduler.add_job(
         run_us_etl,
         trigger=CronTrigger(hour=5, minute=0, timezone="Asia/Shanghai"),
@@ -1254,6 +1538,20 @@ def init_scheduler():
         replace_existing=True,
         max_instances=1,
     )
+    # ── A-Share adj_factor full-history backfill ──
+    # Weekly catch-up for dividend/split adjustments. The daily stock ETL
+    # only writes the target date; this job refreshes the entire history so
+    # older ex-dividend events are correctly reflected.
+    scheduler.add_job(
+        run_a_share_adj_factor_backfill,
+        trigger=CronTrigger(
+            day_of_week="sun", hour=3, minute=30, timezone="Asia/Shanghai"
+        ),
+        id="a_share_adj_factor_backfill",
+        name="A股复权因子全历史回填",
+        replace_existing=True,
+        max_instances=1,
+    )
     # ── Research Reports ──
     scheduler.add_job(
         run_research_reports_daily,
@@ -1275,7 +1573,7 @@ def init_scheduler():
     # ── Macro (FRED) — daily after FRED publishes (~15:00 ET)
     try:
         from app.services.news.scheduler_jobs import run_fred_refresh
-        from app.core.redis_client import redis_lock
+        from app.core.redis_client import get_redis_client, redis_lock
 
         def _fred_wrapper():
             with redis_lock("fred_macro_daily", expire_seconds=1800) as acquired:
@@ -1304,7 +1602,10 @@ def init_scheduler():
     # NOTE: xinhua RSS endpoints are currently 404; disabled to avoid log spam.
     try:
         from app.services.news.scheduler_jobs import (
-            run_cninfo_crawl, run_sina_crawl,
+            run_caixin_crawl, run_chinanews_finance_crawl,
+            run_cninfo_crawl, run_huxiu_crawl, run_jiemian_crawl,
+            run_kr36_crawl,
+            run_sina_crawl, run_stats_gov_crawl, run_wallstreetcn_crawl,
             run_wechat_zeping_crawl,
             run_yahoo_crawl, run_cnbc_crawl, run_sec_edgar_crawl,
             run_reddit_crawl,
@@ -1391,6 +1692,70 @@ def init_scheduler():
             max_instances=1,
             coalesce=True,
         )
+        # New Chinese news sources (added 2026-07-18)
+        scheduler.add_job(
+            run_wallstreetcn_crawl,
+            trigger=IntervalTrigger(minutes=5),
+            id="news_wallstreetcn_5m",
+            name="华尔街见闻 7x24",
+            replace_existing=True,
+            max_instances=1,
+            coalesce=True,
+        )
+        scheduler.add_job(
+            run_kr36_crawl,
+            trigger=IntervalTrigger(minutes=10),
+            id="news_36kr_10m",
+            name="36氪快讯",
+            replace_existing=True,
+            max_instances=1,
+            coalesce=True,
+        )
+        scheduler.add_job(
+            run_huxiu_crawl,
+            trigger=IntervalTrigger(minutes=10),
+            id="news_huxiu_10m",
+            name="虎嗅 RSS",
+            replace_existing=True,
+            max_instances=1,
+            coalesce=True,
+        )
+        scheduler.add_job(
+            run_jiemian_crawl,
+            trigger=IntervalTrigger(minutes=10),
+            id="news_jiemian_10m",
+            name="界面新闻 RSS",
+            replace_existing=True,
+            max_instances=1,
+            coalesce=True,
+        )
+        scheduler.add_job(
+            run_caixin_crawl,
+            trigger=IntervalTrigger(minutes=10),
+            id="news_caixin_10m",
+            name="财新最新文章",
+            replace_existing=True,
+            max_instances=1,
+            coalesce=True,
+        )
+        scheduler.add_job(
+            run_chinanews_finance_crawl,
+            trigger=IntervalTrigger(minutes=15),
+            id="news_chinanews_finance_15m",
+            name="中新网财经",
+            replace_existing=True,
+            max_instances=1,
+            coalesce=True,
+        )
+        scheduler.add_job(
+            run_stats_gov_crawl,
+            trigger=IntervalTrigger(minutes=30),
+            id="news_stats_gov_30m",
+            name="国家统计局数据发布",
+            replace_existing=True,
+            max_instances=1,
+            coalesce=True,
+        )
     except ImportError:
         pass
 
@@ -1461,6 +1826,17 @@ def init_scheduler():
         replace_existing=True,
         max_instances=1,
     )
+    # ── Market Fund Flow (Phase 2.10) ── daily 18:35 Asia/Shanghai
+    # 在 fund_flow_daily 与 microstructure_daily 之后，利用已落地的
+    # individual_fund_flow 派生 SH/SZ 大盘净流入。
+    scheduler.add_job(
+        run_market_fund_flow_daily,
+        trigger=CronTrigger(hour=18, minute=35, timezone="Asia/Shanghai"),
+        id="market_fund_flow_daily",
+        name="A 股大盘资金流日刷",
+        replace_existing=True,
+        max_instances=1,
+    )
     # ── Search Trends (Phase 9) ── daily 03:00 Asia/Shanghai
     scheduler.add_job(
         run_search_trends_daily,
@@ -1476,6 +1852,16 @@ def init_scheduler():
         trigger=IntervalTrigger(minutes=1),
         id="scheduler_heartbeat",
         name="调度器心跳",
+        replace_existing=True,
+        max_instances=1,
+    )
+    # ── Stuck ETL cleanup ── hourly, so a killed job never blocks the
+    # next scheduled run for more than an hour.
+    scheduler.add_job(
+        cleanup_stuck_etl_jobs,
+        trigger=CronTrigger(hour="*", minute=45),
+        id="cleanup_stuck_etl_jobs",
+        name="清理卡死的ETL任务",
         replace_existing=True,
         max_instances=1,
     )
