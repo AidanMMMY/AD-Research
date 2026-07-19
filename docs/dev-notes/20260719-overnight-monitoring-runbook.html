@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Overnight Worker 监控告警 Runbook</title>
+<style>
+body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; line-height: 1.7; max-width: 960px; margin: 0 auto; padding: 2rem; color: #333; background: #fff; }
+h1 { font-size: 1.9rem; border-bottom: 2px solid #2c3e50; padding-bottom: .6rem; }
+h2 { font-size: 1.5rem; margin-top: 2rem; color: #2c3e50; }
+h3 { font-size: 1.2rem; margin-top: 1.5rem; color: #34495e; }
+table { border-collapse: collapse; width: 100%; margin: 1rem 0; }
+th, td { border: 1px solid #ddd; padding: .5rem .75rem; text-align: left; }
+th { background: #f4f6f8; font-weight: 600; }
+code { background: #f4f6f8; padding: .15rem .35rem; border-radius: 4px; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace; font-size: .9em; }
+pre { background: #f4f6f8; padding: 1rem; border-radius: 6px; overflow-x: auto; }
+ul li { margin: .4rem 0; }
+</style>
+</head>
+<body>
+<h1>Overnight Worker 监控告警 Runbook</h1>
+<p><strong>日期：</strong> 2026-07-19<br />
+<strong>触发：</strong> 所有 news/social/IR 抓取源 7-11 后再没刷新过；overnight v2
+的报告也没自动跑过。需要可观测性 + 自动告警。<br />
+<strong>作者：</strong> 总管 Agent</p>
+<h2>背景</h2>
+<ul>
+<li><code>orchestrate_v2</code> 每小时 :47 跑 8 个 source (quick + logged_in)；
+<strong>目前没有 monitor</strong>，抓取挂了我们只能看 docker logs 后知后觉。</li>
+<li><code>overnight_research_v2</code> 是单次任务（手动 kick），不靠 cron。
+SIGTERM 修好后（commit <code>b010311</code>）能正常 wind-down 出报告，但
+缺勤告警。</li>
+<li><code>agent/scripts/status_report.py</code> 已经能渲染每个 source 的
+<code>fetched_at / items / login_state</code> 表，但<strong>无 staleness 计算，
+无退出码</strong>。</li>
+</ul>
+<h2>修复</h2>
+<h3>1. <code>status_report.py</code> 加 staleness + 退出码</h3>
+<ul>
+<li><strong>新阈值</strong> (<code>THRESHOLD_HOURS</code>):
+<ul>
+<li><code>quick</code>: 6h warn / 12h critical</li>
+<li><code>logged_in</code>: 24h warn / 48h critical</li>
+<li><code>overnight</code>: 36h warn / 60h critical</li>
+</ul>
+</li>
+<li><strong><code>summarize()</code></strong>: 输出多保留 <code>_fetched_iso</code> 给 staleness 计算用。</li>
+<li><strong><code>read_source()</code></strong>: 当 payload 是 list（无顶层 fetched_at）时，
+用文件 mtime 兜底，避免某些 source 永远 stale=missing。</li>
+<li><strong><code>read_overnight_v2()</code></strong> 新函数：扫 <code>/data/ad-research/overnight_*_v2/</code>
+目录，mtime 最新的取 <code>overnight_research_v2.db</code> 的修改时间作为
+freshness 信号。items 列显示 db 大小（KB）作为 proxy。</li>
+<li><strong><code>annotate_staleness()</code></strong>: 给每行打 level (<code>ok/warn/critical/missing</code>)
++ hours_since。</li>
+<li><strong>退出码</strong>:
+<ul>
+<li>0 = all ok</li>
+<li>1 = 有 warn 但无 critical</li>
+<li>2 = 有 critical 或 missing</li>
+<li><code>--no-exit-code</code> 强制 0，方便 cron + 报告展示</li>
+</ul>
+</li>
+</ul>
+<h3>2. <code>setup_cron.sh</code> 加 status_report 调度</h3>
+<ul>
+<li>新 cron tag: <code>ad-research-status-report</code></li>
+<li>每整点 :15（错开 orchestrate :47）</li>
+<li>写 <code>/root/ad-research/logs/cron-status-report.log</code></li>
+<li>使用 <code>--no-exit-code</code> 避免 cron 把告警当任务失败发邮件噪声</li>
+<li><code>do_install</code> / <code>do_uninstall</code> 同步处理</li>
+</ul>
+<h3>3. 验证（2026-07-19 10:24 UTC 实测）</h3>
+<table>
+<thead>
+<tr>
+<th>source</th>
+<th>category</th>
+<th>staleness</th>
+<th>last fetched</th>
+<th>hours</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>eastmoney_news</td>
+<td>quick</td>
+<td>🔴 critical</td>
+<td>(file mtime 7-11)</td>
+<td>191.6h</td>
+</tr>
+<tr>
+<td>gov_china</td>
+<td>quick</td>
+<td>🔴 critical</td>
+<td>2026-07-11 10:50 UTC</td>
+<td>191.6h</td>
+</tr>
+<tr>
+<td>fed_intl</td>
+<td>quick</td>
+<td>🔴 critical</td>
+<td>2026-07-11 10:51 UTC</td>
+<td>191.5h</td>
+</tr>
+<tr>
+<td>stocktwits</td>
+<td>quick</td>
+<td>🔴 critical</td>
+<td>2026-07-11 10:51 UTC</td>
+<td>191.5h</td>
+</tr>
+<tr>
+<td>cls</td>
+<td>quick</td>
+<td>🔴 critical</td>
+<td>2026-07-11 10:51 UTC</td>
+<td>191.5h</td>
+</tr>
+<tr>
+<td>xueqiu_playwright</td>
+<td>logged_in</td>
+<td>🔴 critical</td>
+<td>2026-07-11 10:52 UTC</td>
+<td>191.5h</td>
+</tr>
+<tr>
+<td>x</td>
+<td>logged_in</td>
+<td>🔴 critical</td>
+<td>2026-07-11 10:53 UTC</td>
+<td>191.5h</td>
+</tr>
+<tr>
+<td>reddit_curl_cffi</td>
+<td>logged_in</td>
+<td>🔴 critical</td>
+<td>(file mtime 7-11)</td>
+<td>191.5h</td>
+</tr>
+<tr>
+<td>overnight_v2</td>
+<td>overnight</td>
+<td>✅ ok</td>
+<td>2026-07-19 04:19 UTC</td>
+<td>6.1h</td>
+</tr>
+</tbody>
+</table>
+<p><strong>OVERALL: critical (exit 2)</strong> — 8 个 source 全部 7-11 之后没刷，
+<strong>确认 orchestrate_v2 自 7-11 起没跑过</strong>（与 <code>cron-orchestrate.log</code>
+应一并检查）。</p>
+<h2>部署步骤</h2>
+<pre><code># 1. push 后 ECS 上拉最新代码
+cd /opt/ad-research/agent    # 或 /root/ad-research/agent，看实际路径
+git pull
+
+# 2. 装新的 status_report cron（保留现有 orchestrate）
+bash scripts/setup_cron.sh install
+
+# 3. 验证：手动跑一次
+python3 scripts/status_report.py --no-exit-code
+echo "exit=$?"  # 期望 0（用了 --no-exit-code）
+
+# 4. 不加 --no-exit-code 看真实退出码
+python3 scripts/status_report.py &gt;/dev/null
+echo "exit=$?"  # 期望 2（critical）
+
+# 5. 看 cron 日志
+tail -f /root/ad-research/logs/cron-status-report.log
+</code></pre>
+<h2>后续</h2>
+<ol>
+<li>
+<p><strong>orchestrate_v2 7-11 后没跑过</strong> — 单独排查（与本 runbook 无关）</p>
+<ul>
+<li><code>tail /root/ad-research/logs/cron-orchestrate.log</code></li>
+<li><code>systemctl status cron</code> / <code>crontab -l</code></li>
+<li>可能 docker container 挂 / ad-research 仓库 dirty 触发
+deploy-tripwire（见 20260719-deploy-tripwires.md）</li>
+</ul>
+<p><strong>根因补记 (2026-07-19 19:43)</strong>：是 <code>docker image prune -a --filter until=168h</code>
+周末清掉了 <code>alloyresearch-agent:latest</code>。修复见
+<a href="20260719-orchestrate-image-fix.html">20260719-orchestrate-image-fix</a>
+(runworker build fallback + cleanup.sh 白名单)。</p>
+</li>
+<li>
+<p><strong>未来接入 Pushgateway / Slack</strong>：</p>
+<ul>
+<li>status_report.py 已支持 <code>--json</code>，cron 里再加一步
+<code>python3 -c "import json,sys,urllib.request; ..."</code> 即可</li>
+<li>推荐先接 Slack <code>#ad-research-ops</code> 频道</li>
+</ul>
+</li>
+<li>
+<p><strong>回退</strong>：<code>bash scripts/setup_cron.sh uninstall</code> 一次性清两条 cron</p>
+</li>
+</ol>
+<h2>关联</h2>
+<ul>
+<li>监控脚本：<code>agent/scripts/status_report.py</code></li>
+<li>调度脚本：<code>agent/scripts/setup_cron.sh</code></li>
+<li>数据根：<code>/data/ad-research/</code>（与 <code>/opt/ad-research/</code> 软链）</li>
+<li>抓取源：<code>agent/scripts/orchestrate_v2.py</code> (<code>WORKERS</code>)</li>
+<li>overnight 任务：<code>agent/workers/overnight_research_v2.py</code></li>
+</ul>
+<hr />
+<p><em>报告文件：</em></p>
+<ul>
+<li>Markdown: <code>docs/dev-notes/20260719-overnight-monitoring-runbook.md</code></li>
+<li>HTML: <code>docs/dev-notes/20260719-overnight-monitoring-runbook.html</code></li>
+</ul>
+</body>
+</html>

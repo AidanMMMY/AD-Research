@@ -64,8 +64,26 @@ if [[ ! -d "$AD_AGENT_WORKERS" ]]; then
   exit 65
 fi
 if ! docker image inspect "$AD_AGENT_IMAGE" >/dev/null 2>&1; then
-  echo "[run_worker] ERROR: image $AD_AGENT_IMAGE not found locally" >&2
-  exit 66
+  # 2026-07-19: 镜像丢失的常见原因是周日 docker-cleanup.sh 的
+  # `docker image prune -a --filter until=168h` 把 7 天没用的镜像清掉。
+  # 修复：找不到时自动 build（从 $AD_AGENT_ROOT/Dockerfile），
+  # 避免 orchestrate_v2 cron 每小时 :47 全部 0.04s 失败 8 次。
+  AGENT_ROOT="${AD_AGENT_ROOT:-/root/ad-research/agent}"
+  DOCKERFILE="$AGENT_ROOT/Dockerfile"
+  if [[ ! -f "$DOCKERFILE" ]]; then
+    echo "[run_worker] ERROR: image $AD_AGENT_IMAGE not found locally and Dockerfile missing at $DOCKERFILE" >&2
+    exit 66
+  fi
+  echo "[run_worker] image $AD_AGENT_IMAGE missing, building from $DOCKERFILE ..." >&2
+  if ! docker build -t "$AD_AGENT_IMAGE" -f "$DOCKERFILE" "$AGENT_ROOT" >&2; then
+    echo "[run_worker] ERROR: docker build failed for $AD_AGENT_IMAGE" >&2
+    exit 66
+  fi
+  if ! docker image inspect "$AD_AGENT_IMAGE" >/dev/null 2>&1; then
+    echo "[run_worker] ERROR: image $AD_AGENT_IMAGE still missing after build" >&2
+    exit 66
+  fi
+  echo "[run_worker] built $AD_AGENT_IMAGE ok" >&2
 fi
 if ! docker network inspect "$AD_AGENT_NETWORK" >/dev/null 2>&1; then
   echo "[run_worker] ERROR: network $AD_AGENT_NETWORK not found" >&2

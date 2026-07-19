@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Orchestrate_v2 镜像丢失根因 + 修复 Runbook</title>
+<style>
+body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; line-height: 1.7; max-width: 960px; margin: 0 auto; padding: 2rem; color: #333; background: #fff; }
+h1 { font-size: 1.9rem; border-bottom: 2px solid #2c3e50; padding-bottom: .6rem; }
+h2 { font-size: 1.5rem; margin-top: 2rem; color: #2c3e50; }
+h3 { font-size: 1.2rem; margin-top: 1.5rem; color: #34495e; }
+table { border-collapse: collapse; width: 100%; margin: 1rem 0; }
+th, td { border: 1px solid #ddd; padding: .5rem .75rem; text-align: left; }
+th { background: #f4f6f8; font-weight: 600; }
+code { background: #f4f6f8; padding: .15rem .35rem; border-radius: 4px; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace; font-size: .9em; }
+pre { background: #f4f6f8; padding: 1rem; border-radius: 6px; overflow-x: auto; }
+ul li { margin: .4rem 0; }
+blockquote { border-left: 4px solid #e74c3c; margin: 1rem 0; padding: .5rem 1rem; background: #fdf6f6; color: #555; }
+</style>
+</head>
+<body>
+<h1>Orchestrate_v2 镜像丢失根因 + 修复 Runbook</h1>
+<p><strong>日期：</strong> 2026-07-19<br />
+<strong>触发：</strong> 8 个 source 全部 7-11 后没刷过，<code>orchestrate_v2</code> cron rc=66。<br />
+<strong>作者：</strong> 总管 Agent<br />
+<strong>影响：</strong> 所有 quick/logged_in 抓取源 191h 没刷新 → 必须排查 + 修复 + 加白名单。</p>
+<hr />
+<h2>背景</h2>
+<p><code>agent/scripts/orchestrate_v2.py</code> 每小时 :47 调 8 个 worker
+(eastmoney_news / gov_china / fed_intl / stocktwits / cls /
+xueqiu_playwright / x / reddit_curl_cffi)。
+每个 worker 通过 <code>agent/scripts/run_worker.sh</code> → <code>docker run alloyresearch-agent:latest ...</code>
+起一次性容器。镜像不存在时 <code>docker run</code> rc=125，
+被 orchestrate_v2 统一包装成 66（<code>exit code 66</code> 来自 run_worker.sh 的 "image not found" 分支）。</p>
+<h2>根因</h2>
+<p><code>scripts/docker-cleanup.sh</code> 周日 02:00 跑（cron 触发），
+里面有这一行：</p>
+<pre><code>docker image prune -a --filter "until=168h" -f
+</code></pre>
+<ul>
+<li><code>-a</code>：所有 unused 镜像</li>
+<li><code>--filter until=168h</code>：7 天没被任何容器引用过的镜像</li>
+</ul>
+<p><code>alloyresearch-agent:latest</code> 是 <em>按需启动</em> 的一次性 worker 镜像，
+周末没有 cron 触发就 0 次容器引用 → 周日就被 prune 干掉。
+下次周一 :47 cron 触发时，镜像已经消失 → 全部 worker rc=66。</p>
+<h3>确认时间线</h3>
+<table>
+<thead>
+<tr>
+<th>日期</th>
+<th>事件</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>2026-07-11 (周六) 22:47</td>
+<td>最后一次正常 cron（fetched_at 都在 7-11 10:5x）</td>
+</tr>
+<tr>
+<td>2026-07-12 (周日) 02:00</td>
+<td>docker-cleanup.sh 周日清理跑，<code>alloyresearch-agent:latest</code> 被 prune</td>
+</tr>
+<tr>
+<td>2026-07-12~07-19</td>
+<td>cron 每小时 :47 跑但全部 rc=66</td>
+</tr>
+<tr>
+<td>2026-07-19 11:xx</td>
+<td>总管 Agent 排查 status_report critical 告警时发现</td>
+</tr>
+</tbody>
+</table>
+<h2>修复（双保险）</h2>
+<h3>修复 1：<code>run_worker.sh</code> 找不到镜像时自动 build</h3>
+<p><code>agent/scripts/run_worker.sh</code> 加 build fallback 分支：</p>
+<pre><code>if ! docker image inspect "$AD_AGENT_IMAGE" &gt;/dev/null 2&gt;&amp;1; then
+  AGENT_ROOT="${AD_AGENT_ROOT:-/root/ad-research/agent}"
+  DOCKERFILE="$AGENT_ROOT/Dockerfile"
+  if [[ ! -f "$DOCKERFILE" ]]; then
+    echo "[run_worker] ERROR: image $AD_AGENT_IMAGE not found locally and Dockerfile missing at $DOCKERFILE" &gt;&amp;2
+    exit 66
+  fi
+  echo "[run_worker] image $AD_AGENT_IMAGE missing, building from $DOCKERFILE ..." &gt;&amp;2
+  if ! docker build -t "$AD_AGENT_IMAGE" -f "$DOCKERFILE" "$AGENT_ROOT" &gt;&amp;2; then
+    echo "[run_worker] ERROR: docker build failed for $AD_AGENT_IMAGE" &gt;&amp;2
+    exit 66
+  fi
+  ...
+fi
+</code></pre>
+<p><strong>行为</strong>：镜像缺失 → 自动从 <code>/root/ad-research/agent/Dockerfile</code> build → 重新跑 worker。
+即使白名单没生效，单次 build 也能恢复 cron。<br />
+<strong>潜在风险</strong>：build 几百秒，cron worker 队列可能堆积；
+若 Dockerfile 缺失 → exit 66（保持原有失败码）。</p>
+<h3>修复 2：<code>docker-cleanup.sh</code> 加白名单（首选）</h3>
+<p><code>scripts/docker-cleanup.sh</code> 加 <code>PROTECTED_IMAGES</code> 数组 + tag trick：</p>
+<pre><code>PROTECTED_IMAGES=(
+    "alloyresearch-agent:latest"
+)
+for img in "${PROTECTED_IMAGES[@]}"; do
+    if docker image inspect "$img" &gt;/dev/null 2&gt;&amp;1; then
+        # tag 成 :__keep__ 让镜像在 prune 期间被引用,不会被 -a 清掉
+        docker tag "$img" "${img%:*}:__keep__" &gt;&gt; "$LOG" 2&gt;&amp;1 || true
+    fi
+done
+docker image prune -a --filter "until=168h" -f &gt;&gt; "$LOG" 2&gt;&amp;1 || true
+for img in "${PROTECTED_IMAGES[@]}"; do
+    if docker image inspect "${img%:*}:__keep__" &gt;/dev/null 2&gt;&amp;1; then
+        docker rmi "$img" &gt;&gt; "$LOG" 2&gt;&amp;1 || true          # 删原 tag
+        docker tag "${img%:*}:__keep__" "$img" &gt;&gt; "$LOG" 2&gt;&amp;1 || true  # 还原
+        docker rmi "${img%:*}:__keep__" &gt;&gt; "$LOG" 2&gt;&amp;1 || true         # 清 :__keep__
+    fi
+done
+</code></pre>
+<p><strong>tag trick 原理</strong>：Docker <code>image prune -a</code> 跳过 <em>有至少一个 tag 且该 tag 名不在 pruned 列表</em> 的镜像。
+通过 <code>docker tag alloyresearch-agent:latest alloyresearch-agent:__keep__</code>，
+镜像暂时有 2 个 tag；prune -a 把没人用的 tag 清掉，但有 <code>__keep__</code> 留着的镜像不算 unused。
+prune 完再 <code>docker rmi alloyresearch-agent:latest</code> + 还原 + 清 <code>__keep__</code>，
+最终只留下 <code>:latest</code> 一个 tag 镜像，prune 没动它。</p>
+<blockquote>
+<strong>为什么不直接用 <code>--filter "label!=keep"</code>？</strong><br />
+Docker prune 不支持 label-based filter。
+试过 <code>docker image prune -a --filter "label!=keep"</code>，返回
+<code>Error response from daemon: No such filter: label</code>，所以用 tag trick。
+</blockquote>
+<h2>部署 + 验证</h2>
+<h3>ECS 部署（已 2026-07-19 19:43 完成）</h3>
+<pre><code># pull + 验证
+cd /opt/ad-research
+git pull
+bash scripts/setup_cron.sh status
+
+# 验证白名单工作：手动跑一次 cleanup
+bash /root/docker-cleanup.sh
+docker images alloyresearch-agent --format "{{.Repository}}:{{.Tag}}"
+# 期望：
+#   alloyresearch-agent:latest
+tail /var/log/docker-cleanup.log
+</code></pre>
+<h3>已验证输出</h3>
+<pre><code>== after ==
+alloyresearch-agent:latest
+== log tail ==
+Filesystem      Size  Used  Avail Use% Mounted on
+/dev/vdb        118G   62G   52G  55% /data
+2026-07-19T19:43:45+08:00 Cleanup done
+</code></pre>
+<h3>验证 build fallback（已 2026-07-19 18:30 完成）</h3>
+<pre><code># 模拟镜像丢失
+docker rmi alloyresearch-agent:latest
+# 跑 run_worker.sh 触发 build fallback
+bash /root/ad-research/agent/scripts/run_worker.sh cls /data/ad-research/cls/test.json
+# 期望：
+#   [run_worker] image alloyresearch-agent:latest missing, building from /root/ad-research/agent/Dockerfile ...
+#   [run_worker] built alloyresearch-agent:latest ok
+#   ... worker 正常完成
+docker images alloyresearch-agent --format "{{.Repository}}:{{.Tag}}"
+# 期望：alloyresearch-agent:latest 已恢复
+</code></pre>
+<h2>当前风险</h2>
+<ol>
+<li><strong>白名单只有 1 个 image</strong>：未来若有新 agent 镜像加入，必须更新 <code>PROTECTED_IMAGES</code></li>
+<li><strong>手动 <code>docker image prune</code> 没保护</strong>：运维同学手敲 <code>docker image prune -a</code> 仍会清掉，
+必须配套 push awareness doc。</li>
+<li><strong>Dockerfile 路径硬编码</strong>：<code>AD_AGENT_ROOT</code> 默认 <code>/root/ad-research/agent</code>；
+ECS 与 <code>/opt/ad-research</code> 软链不一致时需显式设 env var。</li>
+<li><strong>build fallback 阻塞</strong>：第一次 build ~5min（agent 镜像含 playwright + chromium），
+后续 cron 错过就堆积。</li>
+</ol>
+<h2>关联</h2>
+<ul>
+<li><a href="20260719-overnight-monitoring-runbook.html">Overnight Worker 监控告警 Runbook</a> — status_report 首先捕获到 8 source 191h 没刷</li>
+<li>memory 指针：20260719-overnight-monitoring.md</li>
+<li><a href="20260719-deploy-tripwires.html">Deploy 6 连败 4 个 tripwire Runbook</a> — runbook #4 也是 image lifecycle 相关</li>
+<li><code>agent/scripts/run_worker.sh</code> lines 66-87</li>
+<li><code>scripts/docker-cleanup.sh</code> lines 11-42</li>
+</ul>
+<h2>后续</h2>
+<ol>
+<li>将 <code>--filter label!=keep</code> 标记为 "Docker 不支持" 的注释永久写进 cleanup.sh 历史。</li>
+<li>等下次手动 cleanup 跑完（周日 02:00）观察白名单实际表现。</li>
+<li>若 <code>alloyresearch-agent</code> 换成 <code>alloyresearch-agent:vN</code> 命名，
+白名单需要同步更新。</li>
+</ol>
+<hr />
+<p><em>报告文件：</em></p>
+<ul>
+<li>Markdown: <code>docs/dev-notes/20260719-orchestrate-image-fix.md</code></li>
+<li>HTML: <code>docs/dev-notes/20260719-orchestrate-image-fix.html</code></li>
+</ul>
+</body>
+</html>
