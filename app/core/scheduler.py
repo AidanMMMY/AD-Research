@@ -7,6 +7,7 @@ scoring, report generation, market scan, and signal generation jobs.
 import json
 import logging
 from datetime import date, datetime, timezone
+from pathlib import Path
 from typing import Any
 
 from apscheduler.executors.pool import ThreadPoolExecutor
@@ -64,6 +65,16 @@ _LOCK_DAILY_PIPELINE = "daily_pipeline"
 # Running ETL jobs older than this are considered stuck and will be cleaned
 # up before the next scheduled run (see ``cleanup_stuck_etl_jobs``).
 _STUCK_ETL_THRESHOLD_MINUTES = 120
+
+# 2026-07-19：磁盘监控阈值（/data 实际容量 118GB / resize2fs 后）。
+# 2026-07-17 /data 100% 触发 Redis 写失败 / health degraded（见 20260717-disk-full
+# runbook），但当时 /data 仅 40GB，现在已扩到 120GB。阈值按新容量重配：
+#   - 80% warn  → 96GB  → 提醒人工清理
+#   - 95% error → 114GB → 强烈建议立刻清理，否则会撞 2026-07-17 同样的故障
+# 旧 memory 里"40GB / 80% 阈值"已过期，这里以新容量为基准。
+_DISK_WARN_RATIO = 0.80
+_DISK_ERROR_RATIO = 0.95
+_DISK_PATHS = ("/data", "/")
 
 
 # Maps ETLLog.job_name -> Redis lock name(s) used by the scheduler.
@@ -233,6 +244,59 @@ def cleanup_stuck_etl_jobs(threshold_minutes: int = _STUCK_ETL_THRESHOLD_MINUTES
             raise
 
     return cleaned
+
+
+def check_disk_usage() -> dict[str, dict[str, float]]:
+    """检查 /data 与 / 的磁盘使用率，超阈值打 warning/error 日志。
+
+    2026-07-17 /data 100% 触发 Redis 写失败 + /health degraded (见
+    20260717-disk-full-redis-write-error.md)；当时 /data 仅 40GB，
+    现已 resize2fs 到 118GB。本函数作为低成本兜底：每小时由 scheduler
+    触发，超阈值打日志（warn = 80%, error = 95%），便于运维提前干预。
+    没接 Prometheus / Grafana — 项目目前没有集中监控；日志路径走
+    docker compose logs backend 即可检索。
+
+    Returns:
+        每路径一个 dict: ``{path: {"total_gb", "used_gb", "free_gb", "ratio"}}``，
+        便于后续接 API 暴露或写 JSON 指标文件。
+    """
+    import shutil
+
+    logger = logging.getLogger(__name__)
+    out: dict[str, dict[str, float]] = {}
+    for path in _DISK_PATHS:
+        if not Path(path).exists():
+            continue
+        try:
+            usage = shutil.disk_usage(path)
+        except Exception:
+            logger.exception("disk_usage check failed for %s", path)
+            continue
+        total_gb = usage.total / (1024 ** 3)
+        used_gb = usage.used / (1024 ** 3)
+        free_gb = usage.free / (1024 ** 3)
+        ratio = usage.used / usage.total if usage.total else 0.0
+        out[path] = {
+            "total_gb": round(total_gb, 2),
+            "used_gb": round(used_gb, 2),
+            "free_gb": round(free_gb, 2),
+            "ratio": round(ratio, 4),
+        }
+        if ratio >= _DISK_ERROR_RATIO:
+            logger.error(
+                "[disk] %s 已用 %.1f%% (%.1f/%.1f GB)，超过 error 阈值 %.0f%%，"
+                "请立即清理（参考 docs/dev-notes/20260717-disk-full-redis-write-error.md）",
+                path, ratio * 100, used_gb, total_gb, _DISK_ERROR_RATIO * 100,
+            )
+        elif ratio >= _DISK_WARN_RATIO:
+            logger.warning(
+                "[disk] %s 已用 %.1f%% (%.1f/%.1f GB)，超过 warn 阈值 %.0f%%，"
+                "建议尽快清理",
+                path, ratio * 100, used_gb, total_gb, _DISK_WARN_RATIO * 100,
+            )
+        else:
+            logger.debug("[disk] %s 已用 %.1f%% (%.1f/%.1f GB)", path, ratio * 100, used_gb, total_gb)
+    return out
 
 
 def run_a_share_etl(target_date: date | None = None, prefer_sina: bool = False):
@@ -1279,6 +1343,18 @@ def init_scheduler():
         trigger=CronTrigger(hour="*", minute=0, timezone="Asia/Shanghai"),
         id="us_historical_backfill",
         name="美股历史数据回填",
+        replace_existing=True,
+        max_instances=1,
+    )
+    # 2026-07-19：磁盘监控（/data + /），每整点检查一次。
+    # 阈值：80% warn / 95% error（基于 /data resize2fs 后 118GB）。
+    # 没有 Prometheus / Grafana，靠 docker logs backend 检索；下次接监控时
+    # 把 check_disk_usage() 的返回值直接吐到 metric 文件即可。
+    scheduler.add_job(
+        check_disk_usage,
+        trigger=CronTrigger(hour="*", minute=15, timezone="Asia/Shanghai"),
+        id="disk_usage_check",
+        name="/data 与 / 磁盘使用率检查",
         replace_existing=True,
         max_instances=1,
     )
