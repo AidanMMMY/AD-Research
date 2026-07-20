@@ -58,11 +58,10 @@ class MarketFundFlowPipeline(ETLPipeline):
         try:
             raw_rows = self._ff_provider.fetch_market_fund_flow(days=120)
             if not raw_rows:
-                result.warnings.append(
-                    "fetch_market_fund_flow returned empty; nothing to upsert"
-                )
+                msg = "fetch_market_fund_flow returned empty; nothing to upsert"
+                result.warnings.append(msg)
                 result.success = True
-                self._update_log(status="success", records=0)
+                self._update_log(status="partial", records=0, error=msg)
                 return result
 
             start = self.target_date - timedelta(days=self.lookback_days)
@@ -73,11 +72,10 @@ class MarketFundFlowPipeline(ETLPipeline):
                 and start <= r["trade_date"] <= self.target_date
             }
             if not target_dates:
-                result.warnings.append(
-                    f"No market flow data between {start} and {self.target_date}"
-                )
+                msg = f"No market flow data between {start} and {self.target_date}"
+                result.warnings.append(msg)
                 result.success = True
-                self._update_log(status="success", records=0)
+                self._update_log(status="partial", records=0, error=msg)
                 return result
 
             all_records, market_meta = self._build_all_records(raw_rows, target_dates)
@@ -161,6 +159,7 @@ class MarketFundFlowPipeline(ETLPipeline):
         for td in sorted(target_dates):
             meta = market_meta.get(td, {})
             for suffix, market in ((".SH", "SH"), (".SZ", "SZ")):
+                sums = self._aggregate_individual(td, suffix)
                 if not sums:
                     continue
                 records.append({

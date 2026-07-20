@@ -5,7 +5,7 @@
 * 融资融券 — ``ak.stock_margin_detail_sse`` (SSE 每日融资余额)
 * 龙虎榜   — ``ak.stock_lhb_detail_em`` (按日，提取机构净买)
 * 股东户数 — ``ak.stock_zh_a_gdhs(symbol='最新')`` (最新一期)
-* AH 溢价  — ``ak.stock_zh_ah_spot()`` (实时，仅 A+H 同时上市)
+* AH 溢价  — 已禁用 (实时快照无 H 股口径，只会产生占位垃圾行)
 * 大宗交易 — ``ak.stock_dzjy_mrtj(start, end)`` (按日)
 
 每个方法都返回 ``list[dict]``，按 (ts_code, trade_date) 一一对应，
@@ -196,7 +196,9 @@ class FlowSignalsProvider:
     ) -> list[dict[str, Any]]:
         """最新一期股东户数 (ak.stock_zh_a_gdhs)。
 
-        返回字段 ``shareholder_count_change`` = ``HOLDER_NUM_CHANGE`` (户数变化)。
+        返回字段 ``shareholder_count_change`` = 股东户数变化 (户)；
+        akshare 新旧版列名不同 (英文 ``HOLDER_NUM_CHANGE`` /
+        中文 ``股东户数-增减``)，已做兼容。
         """
         import akshare as ak
 
@@ -214,9 +216,14 @@ class FlowSignalsProvider:
 
         out: list[dict[str, Any]] = []
         for _, row in df.iterrows():
-            ts_code = _code_to_ts_code(row.get("SECURITY_CODE"))
+            # akshare 新版将列名从英文改为中文，做中英列名兼容
+            ts_code = _code_to_ts_code(row.get("SECURITY_CODE") or row.get("代码"))
             change = _coerce_float(row.get("HOLDER_NUM_CHANGE"))
-            hold_notice = _coerce_date(row.get("HOLD_NOTICE_DATE"))
+            if change is None:
+                change = _coerce_float(row.get("股东户数-增减"))
+            hold_notice = _coerce_date(row.get("HOLD_NOTICE_DATE")) or _coerce_date(
+                row.get("公告日期")
+            )
             if not (ts_code and change is not None):
                 continue
             out.append({
@@ -231,41 +238,14 @@ class FlowSignalsProvider:
     def fetch_ah_premium(
         self, target_date: date | None = None
     ) -> list[dict[str, Any]]:
-        """AH 溢价 (ak.stock_zh_ah_spot)。
+        """AH 溢价 — 当前禁用，恒返回空列表。
 
-        数据源是腾讯财经的实时快照，没有按日的历史；Pipeline 调用时仅
-        标记"当日快照"语义。``ah_premium`` 字段保留给后续若能补历史的
-        扩展点。
+        ``ak.stock_zh_ah_spot`` 是腾讯财经实时快照，只给 A 股现价，没有
+        H 股折算口径；历史实现每天写入约 201 行 ``ah_premium=None`` 的
+        占位垃圾行（六分量全 NULL、score=0）进入 ``flow_signal`` 并集。
+        接入真正的跨市场 AH 溢价源之前直接返回空，不再污染并集。
         """
-        import akshare as ak
-
-        try:
-            self._limiter.acquire()
-            df = ak.stock_zh_ah_spot()
-        except Exception as exc:  # noqa: BLE001
-            logger.warning(
-                "[FlowSignalsProvider] stock_zh_ah_spot failed: %s", exc
-            )
-            return []
-
-        if df is None or df.empty:
-            return []
-
-        target = target_date or date.today()
-        out: list[dict[str, Any]] = []
-        for _, row in df.iterrows():
-            ts_code = _code_to_ts_code(row.get("代码"))
-            if not ts_code:
-                continue
-            # 腾讯 AH 接口只给 A 股实时价；H 股价 / A 股价 = (1 - 折价)
-            # 这里只是占位 — 真正的 AH 溢价需要跨市场汇率换算，
-            # 当前为 None 让前端用 (name 字段) 自行提示。
-            out.append({
-                "ts_code": ts_code,
-                "trade_date": target,
-                "ah_premium": None,  # 占位；前端展示时按 name 标识
-            })
-        return out
+        return []
 
     # ---- 大宗交易 ------------------------------------------------------------
 

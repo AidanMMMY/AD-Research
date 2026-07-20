@@ -20,11 +20,15 @@ from datetime import date, datetime
 from typing import Any
 
 import pandas as pd
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
+from app.core.calendar import is_trading_day
 from app.data.pipelines.base import ETLPipeline, ETLResult
+from app.data.providers.eastmoney_fund_flow_provider import (
+    EastMoneyFundFlowProvider,
+)
 from app.data.providers.etf_flow_provider import EtfFlowProvider
 from app.data.providers.flow_signals_provider import FlowSignalsProvider
 from app.data.providers.fund_flow_provider import FundFlowProvider
@@ -79,15 +83,28 @@ def _norm(x: float | None, threshold: float) -> float:
 
 
 def _compute_composite(parts: dict[str, float | None]) -> tuple[float, dict[str, float]]:
-    """计算 composite_score + 各分量贡献 (raw, 0-100 范围)。"""
+    """计算 composite_score + 各分量贡献 (raw, 0-100 范围)。
+
+    缺失分量 (None) 不再按 0 计入：按有效权重归一
+    (score ÷ Σ有效权重)，保证部分分量缺失时 composite_score 仍落在
+    [-100, +100] 全量程；``breakdown["coverage"]`` 记录有效权重占比。
+    """
     breakdown: dict[str, float] = {}
     score = 0.0
+    effective_weight = 0.0
     for name, weight in WEIGHTS.items():
         x = parts.get(name)
+        if x is None:
+            breakdown[name] = 0.0
+            continue
         norm = _norm(x, NORM_THRESHOLDS[name])
         contrib = norm * weight * 100.0
         breakdown[name] = round(contrib, 4)
         score += contrib
+        effective_weight += weight
+    if effective_weight > 0:
+        score = score / effective_weight
+    breakdown["coverage"] = round(effective_weight, 4)
     return round(score, 4), breakdown
 
 
@@ -126,11 +143,21 @@ class FundFlowPipeline(ETLPipeline):
         self.sub_task_counts: dict[str, int] = {
             "individual": 0, "sector": 0, "etf": 0, "signals": 0,
         }
+        # Non-fatal degradation notes (e.g. fallback source used)
+        self.sub_task_warnings: list[str] = []
 
     def run(self) -> ETLResult:
         """Run 4 sub-tasks independently with try/except guards."""
         result = ETLResult()
         self._create_log()
+
+        # 非交易日直接跳过，避免周末/节假日把数据错标到 target_date
+        if not is_trading_day(self.target_date):
+            msg = f"{self.target_date} is not an A-share trading day; skipped"
+            result.warnings.append(msg)
+            result.success = True
+            self._update_log(status="skipped", records=0, error=msg)
+            return result
 
         results: dict[str, int] = {}
         sub_tasks = (
@@ -140,15 +167,12 @@ class FundFlowPipeline(ETLPipeline):
             ("signals", self._run_signals),
         )
 
-        any_success = False
         try:
             for name, fn in sub_tasks:
                 try:
                     written = fn()
                     results[name] = written
                     self.sub_task_counts[name] = written
-                    if written > 0:
-                        any_success = True
                     logger.info(
                         "FundFlowPipeline[%s]: upserted %d rows", name, written
                     )
@@ -165,13 +189,21 @@ class FundFlowPipeline(ETLPipeline):
                         pass
 
             result.records = sum(results.values())
-            result.success = any_success or all(v == 0 for v in results.values())
+            result.warnings.extend(self.sub_task_warnings)
+            empty_tasks = [name for name, count in results.items() if count == 0]
+            result.success = result.records > 0
+            # 关键子任务为空/失败时记 partial 而非 success，warnings 写入
+            # error_msg，避免 etl_log 把 degraded run 伪装成成功。
+            status = "success" if not empty_tasks else "partial"
+            error_msg = "; ".join(result.warnings) or None
+            if empty_tasks:
+                note = f"empty sub-tasks: {', '.join(empty_tasks)}"
+                error_msg = f"{error_msg}; {note}" if error_msg else note
             try:
                 self._update_log(
-                    status="success" if result.success else "partial",
+                    status=status,
                     records=result.records,
-                    error=None if result.success else "; ".join(result.warnings)
-                    or "all sub-tasks empty",
+                    error=error_msg if status != "success" else None,
                 )
             except Exception as exc:  # noqa: BLE001
                 logger.warning("etl_log update failed: %s", exc)
@@ -207,14 +239,68 @@ class FundFlowPipeline(ETLPipeline):
     # -----------------------------------------------------------------
 
     def _run_individual(self) -> int:
-        """个股主力资金流 (ak.fund_etf_spot_em 不行时改用 stock_individual_fund_flow_rank)。"""
+        """个股主力资金流 (akshare 排行；失败时降级 EastMoney push2 直连)。"""
         rows = self._ff_provider.fetch_individual_rank(indicator="今日")
+        if not rows:
+            # akshare 东财接口失败 (生产 ECS 被封 / 接口失效) 时降级：
+            # EastMoney push2 直连拉候选集的实时资金流。
+            rows = self._fetch_individual_fallback()
         if not rows:
             return 0
         # 补 trade_date (Pipeline 显式以 target_date 写入)
         for r in rows:
             r["trade_date"] = self.target_date
         return self._upsert_individual(rows)
+
+    _FALLBACK_CANDIDATE_LIMIT = 200
+
+    def _fetch_individual_fallback(self) -> list[dict[str, Any]]:
+        """individual 子任务的降级路径 (EastMoney push2 直连)。
+
+        逐股拉全市场不现实，候选集限制为最近一个交易日
+        |main_net_inflow| 最高的 N 只；行标记 ``source="eastmoney"``
+        并在 sub_task_warnings 里记录降级事实。
+        """
+        candidates = self._fetch_fallback_candidates(self._FALLBACK_CANDIDATE_LIMIT)
+        if not candidates:
+            return []
+        provider = EastMoneyFundFlowProvider()
+        out: list[dict[str, Any]] = []
+        for ts_code in candidates:
+            quote = provider.fetch_realtime_quote(ts_code)
+            if not quote or quote.get("main_net_inflow") is None:
+                continue
+            out.append({
+                "ts_code": ts_code,
+                "main_net_inflow": quote.get("main_net_inflow"),
+                "main_net_pct": quote.get("main_net_pct"),
+                "super_large_net": quote.get("super_large_net"),
+                "large_net": quote.get("large_net"),
+                "medium_net": quote.get("medium_net"),
+                "small_net": quote.get("small_net"),
+                "source": "eastmoney",
+            })
+        if out:
+            self.sub_task_warnings.append(
+                "individual: akshare rank failed; degraded to eastmoney "
+                f"realtime for {len(out)}/{len(candidates)} candidate codes"
+            )
+        return out
+
+    def _fetch_fallback_candidates(self, limit: int) -> list[str]:
+        """最近一个交易日 |main_net_inflow| 最高的 ts_code 列表。"""
+        latest = self.db.execute(
+            select(func.max(IndividualFundFlow.trade_date))
+        ).scalar()
+        if latest is None:
+            return []
+        stmt = (
+            select(IndividualFundFlow.ts_code)
+            .where(IndividualFundFlow.trade_date == latest)
+            .order_by(func.abs(IndividualFundFlow.main_net_inflow).desc())
+            .limit(limit)
+        )
+        return [row[0] for row in self.db.execute(stmt).all() if row[0]]
 
     def _run_sector(self) -> int:
         """行业 + 概念 + 地域 板块资金流。"""
