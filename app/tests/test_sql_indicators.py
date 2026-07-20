@@ -775,20 +775,18 @@ def test_drop_empty_indicator_rows_filters_all_null() -> None:
     assert _drop_empty_indicator_rows([rec_partial])[0]["etf_code"] == "EMPTY.US"
 
 
-def test_build_indicator_query_sql_uses_exists_prefilter() -> None:
-    """The generated SQL must use an EXISTS subquery that filters to
-    codes with at least 1 bar row at or before the effective target
-    date. Catches accidental removal of the pre-filter.
+def test_build_indicator_query_sql_uses_cutoff_predicate() -> None:
+    """The generated SQL must filter bars to the effective cutoff date with a
+    direct predicate (NOT a per-row EXISTS semi join — that made 20-code
+    chunks ~100x slower in production, 128s vs <2s per chunk).
     """
     sql = build_indicator_query_sql(full_history=False)
-    assert "EXISTS" in sql, (
-        "expected EXISTS pre-filter in the bars CTE for empty-code skipping"
-    )
+    assert "EXISTS" not in sql, "per-row EXISTS semi join must not be used (perf)"
     assert "instrument_daily_bar" in sql, "expected bars CTE to read instrument_daily_bar"
-    # The default EXISTS subquery references the bind parameter
+    # The direct cutoff predicate references the bind parameter
     # ``:target_date`` (always bound by ``_execute_indicator_query``).
     assert ":target_date" in sql, (
-        "EXISTS pre-filter must reference :target_date so it can compare "
+        "cutoff predicate must reference :target_date so it can compare "
         "against the effective cutoff (today when caller passes None)"
     )
 

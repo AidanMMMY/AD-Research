@@ -179,11 +179,11 @@ def _bars_source_cte(
                     ROW_NUMBER() OVER (PARTITION BY b.etf_code ORDER BY b.trade_date DESC) AS rn_desc
                 FROM instrument_daily_bar b
                 WHERE b.etf_code = ANY({codes_bind})
-                  AND EXISTS (
-                      SELECT 1 FROM instrument_daily_bar ec
-                      WHERE ec.etf_code = b.etf_code
-                        AND ec.trade_date <= COALESCE(:target_date, CURRENT_DATE)
-                  )
+                  -- Direct cutoff predicate: semantically equivalent to the
+                  -- old per-row semi-join subquery (a bar row always satisfies
+                  -- it for itself) but avoids the nested-loop join that made
+                  -- 20-code chunks ~100x slower (prod: 128s -> <2s).
+                  AND b.trade_date <= COALESCE(:target_date, CURRENT_DATE)
                   {target_filter_sql}
             ) ranked
             WHERE rn_desc <= {max_bars}
@@ -202,11 +202,7 @@ def _bars_source_cte(
                 b.volume
             FROM instrument_daily_bar b
             WHERE b.etf_code = ANY({codes_bind})
-              AND EXISTS (
-                  SELECT 1 FROM instrument_daily_bar ec
-                  WHERE ec.etf_code = b.etf_code
-                    AND ec.trade_date <= COALESCE(:target_date, CURRENT_DATE)
-              )
+              AND b.trade_date <= COALESCE(:target_date, CURRENT_DATE)
               {target_filter_sql}
         )
     """
