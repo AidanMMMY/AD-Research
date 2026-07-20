@@ -1,4 +1,3 @@
-import './styles.css';
 import './command-center.css';
 
 import { useMemo } from 'react';
@@ -18,6 +17,7 @@ import { newsApi } from '@/api/news';
 import { useMacroLatest, macroApi } from '@/api/macro';
 import { codeToRegion } from '../../utils/macroRegion';
 import EmptyState from '@/components/EmptyState';
+import ReturnTag from '@/components/ReturnTag';
 import { useSettingsStore } from '@/stores/settings';
 import { usePriceStream } from '@/hooks/usePriceStream';
 import { useMarketStream } from '@/hooks/useMarketStream';
@@ -48,19 +48,12 @@ interface GroupDef {
   key: string;
   label: string;
   tiles: GroupTileDef[];
-  tz: string;
-  openHour: number;
-  openMin: number;
-  closeHour: number;
-  closeMin: number;
 }
 
 const PULSE_GROUPS: GroupDef[] = [
   {
     key: 'us_equity',
     label: '美股',
-    tz: 'America/New_York',
-    openHour: 9, openMin: 30, closeHour: 16, closeMin: 0,
     tiles: [
       { code: 'global_sp500', title: '标普 500', unit: '', type: 'macro' },
       { code: 'global_nasdaq', title: '纳斯达克', unit: '', type: 'macro' },
@@ -71,8 +64,6 @@ const PULSE_GROUPS: GroupDef[] = [
   {
     key: 'us_bonds_fx',
     label: '美债/汇率',
-    tz: 'America/New_York',
-    openHour: 8, openMin: 0, closeHour: 17, closeMin: 0,
     tiles: [
       { code: 'us_dgs10', title: 'US 10Y', unit: '%', type: 'macro' },
       { code: 'usd_cny', title: 'USD/CNY', unit: '', type: 'macro' },
@@ -83,8 +74,6 @@ const PULSE_GROUPS: GroupDef[] = [
   {
     key: 'asia_pacific',
     label: '亚太',
-    tz: 'Asia/Shanghai',
-    openHour: 9, openMin: 30, closeHour: 15, closeMin: 0,
     tiles: [
       { code: 'global_shcomp', title: '上证', unit: '', type: 'macro' },
       { code: 'global_hsi', title: '恒生', unit: '', type: 'macro' },
@@ -98,8 +87,6 @@ const PULSE_GROUPS: GroupDef[] = [
   {
     key: 'europe',
     label: '欧洲',
-    tz: 'Europe/London',
-    openHour: 8, openMin: 0, closeHour: 16, closeMin: 30,
     tiles: [
       { code: 'global_ftse', title: 'FTSE 100', unit: '', type: 'macro' },
       { code: 'global_dax', title: 'DAX', unit: '', type: 'macro' },
@@ -109,8 +96,6 @@ const PULSE_GROUPS: GroupDef[] = [
   {
     key: 'crypto',
     label: '加密',
-    tz: 'UTC',
-    openHour: 0, openMin: 0, closeHour: 24, closeMin: 0,
     tiles: [
       { code: 'BTC.US', title: 'BTC', unit: '', type: 'realtime' },
     ],
@@ -230,9 +215,11 @@ function useGlobalPulseData() {
 
   const isLoading = gLoading || uLoading || rtLoading;
 
-  const items = useMemo(() => {
-    const flat = PULSE_GROUPS.flatMap((g) =>
-      g.tiles.map((tile) => {
+  const groups = useMemo(() => {
+    return PULSE_GROUPS.map((g) => ({
+      key: g.key,
+      label: g.label,
+      tiles: g.tiles.map((tile) => {
         let value: number | null = null;
         let change: number | null = null;
         if (tile.type === 'macro') {
@@ -252,12 +239,11 @@ function useGlobalPulseData() {
           unit: tile.unit,
           type: tile.type,
         };
-      })
-    );
-    return flat;
+      }),
+    }));
   }, [lookup, marketLatest, prices]);
 
-  return { items, isLoading };
+  return { groups, isLoading };
 }
 
 function useFundFlowCardData() {
@@ -275,9 +261,10 @@ function useFundFlowCardData() {
   const szMain = market?.sz_main_net_inflow ?? null;
   const total = shMain != null && szMain != null ? shMain + szMain : (shMain ?? szMain ?? null);
   const totalPct =
-    market?.sh_main_net_pct != null && market?.sz_main_net_pct != null
+    market?.total_main_net_pct ??
+    (market?.sh_main_net_pct != null && market?.sz_main_net_pct != null
       ? market.sh_main_net_pct + market.sz_main_net_pct
-      : null;
+      : null);
 
   return {
     total,
@@ -314,7 +301,7 @@ export default function Dashboard() {
   const { favorites, count: favCount, isLoading: favLoading } = useFavorites(6);
   const { data: pools } = usePoolList();
   const statsKpis = useDashboardStatsKpis();
-  const { items: pulseItems, isLoading: pulseLoading } = useGlobalPulseData();
+  const { groups: pulseGroups, isLoading: pulseLoading } = useGlobalPulseData();
   const { total, totalPct, topSignal, topEtf, isLoading: ffLoading } = useFundFlowCardData();
   const momentum = useScoreMomentum(5);
   const { signals, hotNews } = useSignalStream();
@@ -338,7 +325,6 @@ export default function Dashboard() {
     { label: '研究', path: '/learning' },
   ];
 
-  const topPulse = pulseItems.slice(0, 5);
   const maxScore = Math.max(1, ...momentum.map((s: any) => s.composite_score ?? 0));
 
   const formatChange = (v: number | null | undefined) => {
@@ -361,7 +347,20 @@ export default function Dashboard() {
             <span className="cc-topbar__subtitle">市场指挥中心</span>
           </div>
         </div>
-        <div className="cc-topbar__search">搜索标的、新闻、研报…</div>
+        <div className="cc-topbar__search">
+          <input
+            className="cc-topbar__search-input"
+            type="search"
+            placeholder="搜索标的、新闻、研报…"
+            aria-label="搜索标的"
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                const q = e.currentTarget.value.trim();
+                if (q) navigate(`/instruments?q=${encodeURIComponent(q)}`);
+              }
+            }}
+          />
+        </div>
         <div className="cc-topbar__pulse">
           <span className="cc-topbar__pulse-label">PULSE</span>
           <div className="cc-pulse-bars">
@@ -419,42 +418,51 @@ export default function Dashboard() {
               <GlobalOutlined style={{ color: 'var(--cc-muted)', fontSize: 12 }} />
               <span className="cc-pulse-grid__title">全球资产脉搏</span>
             </div>
-            {topPulse.map((tile) => {
-              const change = tile.change;
-              return (
-                <div
-                  key={tile.code}
-                  className="cc-pulse-item"
-                  role="button"
-                  tabIndex={0}
-                  onClick={() =>
-                    navigate(
-                      tile.type === 'realtime'
-                        ? `/instruments/${tile.code}`
-                        : `/macro?region=${codeToRegion(tile.code)}&code=${encodeURIComponent(tile.code)}`
-                    )
-                  }
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      e.preventDefault();
-                      navigate(
-                        tile.type === 'realtime'
-                          ? `/instruments/${tile.code}`
-                          : `/macro?region=${codeToRegion(tile.code)}&code=${encodeURIComponent(tile.code)}`
+            <div className="cc-pulse-groups">
+              {pulseGroups.map((group) => (
+                <div key={group.key} className="cc-pulse-group">
+                  <div className="cc-pulse-group__label">{group.label}</div>
+                  <div className="cc-pulse-group__tiles">
+                    {group.tiles.map((tile) => {
+                      const change = tile.change;
+                      return (
+                        <div
+                          key={tile.code}
+                          className="cc-pulse-item"
+                          role="button"
+                          tabIndex={0}
+                          onClick={() =>
+                            navigate(
+                              tile.type === 'realtime'
+                                ? `/instruments/${tile.code}`
+                                : `/macro?region=${codeToRegion(tile.code)}&code=${encodeURIComponent(tile.code)}`
+                            )
+                          }
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault();
+                              navigate(
+                                tile.type === 'realtime'
+                                  ? `/instruments/${tile.code}`
+                                  : `/macro?region=${codeToRegion(tile.code)}&code=${encodeURIComponent(tile.code)}`
+                              );
+                            }
+                          }}
+                        >
+                          <span className="cc-pulse-item__code">{tile.title}</span>
+                          <span className="cc-pulse-item__value">
+                            {pulseLoading && !tile.value ? '—' : formatTileValue(tile.value, tile.unit)}
+                          </span>
+                          <span className="cc-pulse-item__change" style={{ color: changeColor(change) }}>
+                            {formatChange(change)}
+                          </span>
+                        </div>
                       );
-                    }
-                  }}
-                >
-                  <span className="cc-pulse-item__code">{tile.title}</span>
-                  <span className="cc-pulse-item__value">
-                    {pulseLoading && !tile.value ? '—' : formatTileValue(tile.value, tile.unit)}
-                  </span>
-                  <span className="cc-pulse-item__change" style={{ color: changeColor(change) }}>
-                    {formatChange(change)}
-                  </span>
+                    })}
+                  </div>
                 </div>
-              );
-            })}
+              ))}
+            </div>
           </section>
 
           <div className="cc-grid">
@@ -567,8 +575,8 @@ export default function Dashboard() {
                         }}
                       />
                     </div>
-                    <span className="cc-sector-row__mom" style={{ color: changeColor(ret) }}>
-                      {formatChange(ret)}
+                    <span className="cc-sector-row__mom">
+                      <ReturnTag value={s.return_1m} />
                     </span>
                     <span className="cc-sector-row__score">{score.toFixed(1)}</span>
                   </div>
@@ -588,7 +596,19 @@ export default function Dashboard() {
                 </span>
               </div>
               {signals.slice(0, 3).map((sig: any, i: number) => (
-                <div key={sig.ts_code || i} className="cc-signal">
+                <div
+                  key={sig.ts_code || i}
+                  className="cc-signal"
+                  onClick={() => sig.ts_code && navigate(`/instruments/${sig.ts_code}`)}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if ((e.key === 'Enter' || e.key === ' ') && sig.ts_code) {
+                      e.preventDefault();
+                      navigate(`/instruments/${sig.ts_code}`);
+                    }
+                  }}
+                >
                   <span className="cc-signal__time">{sig.ts_code}</span>
                   <span className="cc-signal__badge" style={{ color: 'var(--cc-accent)' }}>资金</span>
                   <div>
@@ -646,7 +666,6 @@ export default function Dashboard() {
                 <span>标的</span>
                 <span>价格</span>
                 <span>涨跌</span>
-                <span>趋势</span>
                 <span>评分</span>
               </div>
               {favLoading ? (
@@ -683,19 +702,6 @@ export default function Dashboard() {
                       <span className="cc-watch-row__change" style={{ color: changeColor(change) }}>
                         {formatChange(change)}
                       </span>
-                      <div className="cc-sparkline">
-                        {Array.from({ length: 5 }).map((_, i) => (
-                          <span
-                            key={i}
-                            className="cc-sparkline__bar"
-                            style={{
-                              height: `${6 + i * 2 + Math.random() * 4}px`,
-                              background: changeColor(change),
-                              opacity: 0.5 + i * 0.1,
-                            }}
-                          />
-                        ))}
-                      </div>
                       <span className="cc-watch-row__score">{score ? Math.round(score) : '—'}</span>
                     </div>
                   );
@@ -703,11 +709,11 @@ export default function Dashboard() {
               )}
             </section>
 
-            {/* AI Briefing */}
+            {/* News Briefing */}
             <section className="cc-card">
               <div className="cc-card__header">
                 <div>
-                  <div className="cc-card__title">AI 简报</div>
+                  <div className="cc-card__title">要闻速递</div>
                   <div className="cc-card__subtitle">今日重要资讯</div>
                 </div>
                 <span className="cc-card__extra" onClick={() => navigate('/news')} role="button" tabIndex={0}>
@@ -771,19 +777,6 @@ export default function Dashboard() {
                 <span className="cc-decision__value" style={{ color: 'var(--cc-warn)' }}>
                   {pools?.length ?? 0}
                 </span>
-              </div>
-              <div className="cc-divider" />
-              <div className="cc-data-health__row">
-                <span className="cc-data-health__source">A股</span>
-                <span className="cc-data-health__status" style={{ color: 'var(--cc-fall)' }}>正常</span>
-              </div>
-              <div className="cc-data-health__row">
-                <span className="cc-data-health__source">美股</span>
-                <span className="cc-data-health__status" style={{ color: 'var(--cc-fall)' }}>正常</span>
-              </div>
-              <div className="cc-data-health__row">
-                <span className="cc-data-health__source">Crypto</span>
-                <span className="cc-data-health__status" style={{ color: 'var(--cc-fall)' }}>正常</span>
               </div>
             </section>
           </div>

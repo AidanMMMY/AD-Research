@@ -52,14 +52,14 @@
 
   /* ---- Market Colors (China A-share convention 默认: 红涨绿跌) ----
      AA contrast fixes — light bg #FAFBFC:
-       rise #1B7A3C ≈ 5.4:1 (was #1F8B45 ≈ 4.3:1, fail)
-       fall #C0392B ≈ 5.7:1 (was #dc2626 ≈ 4.0:1, borderline) */
-  --color-rise: #1B7A3C;
-  --color-rise-dim: rgba(27, 122, 60, 0.08);
-  --color-rise-border: rgba(27, 122, 60, 0.20);
-  --color-fall: #C0392B;
-  --color-fall-dim: rgba(192, 57, 43, 0.08);
-  --color-fall-border: rgba(192, 57, 43, 0.20);
+       rise #C0392B ≈ 5.7:1 (red-up; was #dc2626 ≈ 4.0:1, borderline)
+       fall #1B7A3C ≈ 5.4:1 (green-down; was #1F8B45 ≈ 4.3:1, fail) */
+  --color-rise: #C0392B;
+  --color-rise-dim: rgba(192, 57, 43, 0.08);
+  --color-rise-border: rgba(192, 57, 43, 0.20);
+  --color-fall: #1B7A3C;
+  --color-fall-dim: rgba(27, 122, 60, 0.08);
+  --color-fall-border: rgba(27, 122, 60, 0.20);
   --color-neutral: #9ca3af;
 
   /* ---- Semantic Colors (AA 4.5:1 on white card bg) ----

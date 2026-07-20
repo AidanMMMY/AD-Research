@@ -259,14 +259,6 @@ export default function FundFlowPage() {
   );
   const { data: etfRows = [], isLoading: etfLoading } = useFundFlowEtf(etfParams);
 
-  /* ---------- Synthesised 5-day sparkline series (best-effort).
-     We don't have a per-exchange historical API on this page (the trend card is a
-     separate endpoint family), so we keep empty series and the 4th card falls
-     back to the placeholder em-dash — the page still renders the KPI cleanly. */
-  const shSpark: number[] = [];
-  const szSpark: number[] = [];
-  const trendSeries: number[] = [];
-
   /* ============================================================
    * Columns
    * ============================================================ */
@@ -699,25 +691,6 @@ export default function FundFlowPage() {
                   </>
                 }
               />
-              <StatCard
-                title="近 5 日趋势（合计）"
-                value={
-                  trendSeries.length > 0 ? (
-                    <Sparkline
-                      data={trendSeries}
-                      width={140}
-                      height={28}
-                    />
-                  ) : (
-                    <span className="ad-text-tertiary">—</span>
-                  )
-                }
-              />
-              {/* Hidden placeholders so the layout grid keeps its 4-column
-                  rhythm even when the 4th card is non-numeric. */}
-              <div style={{ display: 'none' }} data-spark={shSpark.length} />
-              <div style={{ display: 'none' }} data-spark={szSpark.length} />
-              <div style={{ display: 'none' }} data-trend={trendSeries.length} />
             </div>
           )}
         </Panel>
@@ -758,7 +731,6 @@ export default function FundFlowPage() {
               ...clickableRow(() => navigate(`/instruments/${record.ts_code}`)),
               style: { cursor: 'pointer' },
             })}
-            onChange={(_p, _f, sorter) => applySortChange(sorter, setIndividualSortField)}
             expandable={{
               expandedRowRender: (record) => (
                 <ScoreBreakdown breakdown={record.score_breakdown ?? {}} />

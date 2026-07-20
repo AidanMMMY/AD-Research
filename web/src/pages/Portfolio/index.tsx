@@ -1,6 +1,7 @@
 import './styles.css';
 import { useMemo } from 'react';
-import { Skeleton, Table, Tag, Tooltip } from 'antd';
+import { Link } from 'react-router-dom';
+import { Badge, Skeleton, Table, Tag, Tooltip } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import {
   DollarOutlined,
@@ -164,7 +165,7 @@ export default function Portfolio() {
       title: '持仓',
       width: 100,
       render: (_: unknown, row: PaperAccountRow) => (
-        <a href={`/paper-trading?account=${row.id}`}>查看</a>
+        <Link to={`/paper-trading?account=${row.id}`}>查看</Link>
       ),
     },
   ];
@@ -253,9 +254,9 @@ export default function Portfolio() {
             </span>
           }
           action={
-            <a href="/paper-trading" className="ad-text-small">
+            <Link to="/paper-trading" className="ad-text-small">
               管理模拟账户 →
-            </a>
+            </Link>
           }
         />
         {accountsLoading ? (
@@ -265,11 +266,11 @@ export default function Portfolio() {
             title="尚未创建模拟账户"
             description="前往模拟交易页面创建一个模拟账户即可在此查看权益与持仓。"
             action={
-              <a href="/paper-trading">
+              <Link to="/paper-trading">
                 <Tag color="gold" className="ad-cursor-pointer">
                   新建模拟账户
                 </Tag>
-              </a>
+              </Link>
             }
           />
         ) : (
@@ -298,9 +299,9 @@ export default function Portfolio() {
             </span>
           }
           action={
-            <a href="/live-trading" className="ad-text-small">
+            <Link to="/live-trading" className="ad-text-small">
               管理真实配置 →
-            </a>
+            </Link>
           }
         />
         {liveLoading ? (
@@ -310,11 +311,11 @@ export default function Portfolio() {
             title="尚未配置真实交易账户"
             description="前往真实交易页面创建 Binance 配置即可在此查看实际持仓与盈亏。"
             action={
-              <a href="/live-trading">
+              <Link to="/live-trading">
                 <Tag color="magenta" className="ad-cursor-pointer">
                   新建真实配置
                 </Tag>
-              </a>
+              </Link>
             }
           />
         ) : (
@@ -340,17 +341,23 @@ export default function Portfolio() {
             <span>
               <AppstoreOutlined className="ad-mr-2" />
               目标 Pool vs 实际持仓
+              <Badge
+                count="演示数据"
+                color="#faad14"
+                className="ad-ml-2"
+                title="实际权重/漂移/原因当前为前端 mock 数据，仅供演示"
+              />
             </span>
           }
           action={
             targetPool ? (
-              <a href={`/pools/${targetPool.id}`} className="ad-text-small">
+              <Link to={`/pools/${targetPool.id}`} className="ad-text-small">
                 管理目标池 ({targetPool.name}) →
-              </a>
+              </Link>
             ) : (
-              <a href="/pools" className="ad-text-small">
+              <Link to="/pools" className="ad-text-small">
                 新建目标池 →
-              </a>
+              </Link>
             )
           }
         />
@@ -361,11 +368,11 @@ export default function Portfolio() {
             title="尚未建立目标组合"
             description="在「标的池管理」中创建一个目标池（例如：核心 ETF、卫星 ETF），组合中心会按目标权重与实际持仓做偏离度对比。"
             action={
-              <a href="/pools">
+              <Link to="/pools">
                 <Tag color="default" className="ad-cursor-pointer">
                   创建目标池
                 </Tag>
-              </a>
+              </Link>
             }
           />
         ) : diffItems.length === 0 ? (

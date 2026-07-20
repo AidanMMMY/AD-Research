@@ -2,7 +2,6 @@ import { useMemo, useState } from 'react';
 import { Radio, Spin } from 'antd';
 import { useQuery } from '@tanstack/react-query';
 import { marketApi } from '@/api/market';
-import { useInstrumentList } from '@/hooks/useInstrumentList';
 import { useChartMotion } from '@/hooks/useChartMotion';
 import PageShell from '@/components/PageShell';
 import PageHeader from '@/components/PageHeader';
@@ -39,7 +38,21 @@ export default function ReturnComparison() {
   // instead of re-animating in.
   const { reducedMotion } = useChartMotion();
 
-  const { data: etfList } = useInstrumentList({ page_size: 10000 });
+  // Fetch display names only for the selected codes (batch snapshot
+  // endpoint) instead of pulling the full instrument list; fall back to
+  // the bare code when the lookup fails.
+  const { data: snapshots } = useQuery({
+    queryKey: ['return-comparison-names', selectedCodes],
+    queryFn: () => marketApi.snapshot(selectedCodes).then((r) => r.data),
+    enabled: selectedCodes.length >= 1,
+    staleTime: 60_000,
+  });
+
+  const nameMap = useMemo(() => {
+    const map = new Map<string, string>();
+    snapshots?.forEach((s) => map.set(s.code, s.name));
+    return map;
+  }, [snapshots]);
 
   const etfQueries = useQuery({
     queryKey: ['return-comparison', selectedCodes, timeRange],
@@ -61,7 +74,7 @@ export default function ReturnComparison() {
   const series: SeriesData[] = useMemo(() => {
     if (!etfQueries.data) return [];
     return etfQueries.data.map(({ code, items }) => {
-      const etfName = etfList?.items.find((e) => e.code === code)?.name || code;
+      const etfName = nameMap.get(code) || code;
       if (mode === 'normalized') {
         const base = items[0]?.close || 1;
         return {
@@ -84,7 +97,7 @@ export default function ReturnComparison() {
         };
       }
     });
-  }, [etfQueries.data, mode, etfList]);
+  }, [etfQueries.data, mode, nameMap]);
 
   const visibleSeries = series.filter((s) => s.dates.length > 0);
 

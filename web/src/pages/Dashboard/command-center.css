@@ -3,6 +3,7 @@
    Dark-first, high-density financial dashboard.
    ============================================================ */
 
+/* stylelint-disable ad-research/no-bare-color-values -- local dark-first design tokens; these declarations ARE the token definitions, bare values are intentional */
 .dashboard-command-center {
   --cc-canvas: #080B11;
   --cc-surface: #101621;
@@ -17,6 +18,7 @@
   --cc-rise: #FF5858;
   --cc-fall: #38D182;
   --cc-warn: #F6BD69;
+  /* stylelint-enable ad-research/no-bare-color-values */
 
   min-height: 100%;
   background: var(--cc-canvas);
@@ -88,6 +90,22 @@
   color: var(--cc-muted);
   font-size: 13px;
   flex-shrink: 0;
+  display: flex;
+  align-items: center;
+}
+
+.cc-topbar__search-input {
+  width: 100%;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--cc-text);
+  font-size: 13px;
+  font-family: inherit;
+}
+
+.cc-topbar__search-input::placeholder {
+  color: var(--cc-muted);
 }
 
 .cc-topbar__pulse {
@@ -276,9 +294,6 @@
 
 /* Global pulse */
 .cc-pulse-grid {
-  display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: var(--space-3);
   background: var(--cc-surface);
   border: 1px solid var(--cc-border);
   border-radius: 12px;
@@ -287,7 +302,6 @@
 }
 
 .cc-pulse-grid__header {
-  grid-column: 1 / -1;
   display: flex;
   align-items: center;
   gap: var(--space-3);
@@ -300,6 +314,31 @@
   color: var(--cc-muted);
   letter-spacing: 0.04em;
   font-family: var(--font-mono);
+}
+
+.cc-pulse-groups {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: var(--space-3);
+}
+
+.cc-pulse-group {
+  min-width: 0;
+}
+
+.cc-pulse-group__label {
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--cc-muted);
+  letter-spacing: 0.04em;
+  font-family: var(--font-mono);
+  margin-bottom: var(--space-2);
+}
+
+.cc-pulse-group__tiles {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
 }
 
 .cc-pulse-item {
@@ -422,7 +461,7 @@
 /* Sector momentum */
 .cc-sector-header {
   display: grid;
-  grid-template-columns: 40px 80px 1fr 50px 50px;
+  grid-template-columns: 40px 80px 1fr 72px 50px;
   gap: var(--space-2);
   padding: 0 var(--space-2) var(--space-2);
   font-size: 9px;
@@ -434,7 +473,7 @@
 
 .cc-sector-row {
   display: grid;
-  grid-template-columns: 40px 80px 1fr 50px 50px;
+  grid-template-columns: 40px 80px 1fr 72px 50px;
   align-items: center;
   gap: var(--space-2);
   padding: var(--space-2) 0;
@@ -555,7 +594,7 @@
 /* Watchlist */
 .cc-watch-header {
   display: grid;
-  grid-template-columns: 120px 80px 70px 80px 50px;
+  grid-template-columns: 120px 80px 70px 50px;
   gap: var(--space-2);
   padding: 0 var(--space-2) var(--space-2);
   font-size: 9px;
@@ -566,7 +605,7 @@
 
 .cc-watch-row {
   display: grid;
-  grid-template-columns: 120px 80px 70px 80px 50px;
+  grid-template-columns: 120px 80px 70px 50px;
   align-items: center;
   gap: var(--space-2);
   padding: var(--space-2) 0;
@@ -604,19 +643,6 @@
 .cc-watch-row__change {
   font-size: 12px;
   font-family: var(--font-mono);
-}
-
-.cc-sparkline {
-  display: flex;
-  align-items: flex-end;
-  gap: 2px;
-  height: 14px;
-}
-
-.cc-sparkline__bar {
-  width: 8px;
-  border-radius: 1px;
-  background: var(--cc-rise);
 }
 
 .cc-watch-row__score {
@@ -712,28 +738,6 @@
   font-family: var(--font-mono);
 }
 
-.cc-divider {
-  height: 1px;
-  background: var(--cc-border);
-  margin: var(--space-3) 0;
-}
-
-.cc-data-health__row {
-  display: flex;
-  justify-content: space-between;
-  padding: var(--space-2) 0;
-  font-size: 11px;
-}
-
-.cc-data-health__source {
-  color: var(--cc-muted);
-  font-family: var(--font-mono);
-}
-
-.cc-data-health__status {
-  font-family: var(--font-mono);
-}
-
 /* Footer */
 .cc-footer {
   display: flex;
@@ -764,7 +768,7 @@
     grid-template-columns: 1fr 1fr;
   }
 
-  .cc-pulse-grid {
+  .cc-pulse-groups {
     grid-template-columns: repeat(3, 1fr);
   }
 }
@@ -783,7 +787,7 @@
     grid-template-columns: 1fr;
   }
 
-  .cc-pulse-grid {
+  .cc-pulse-groups {
     grid-template-columns: repeat(2, 1fr);
   }
 

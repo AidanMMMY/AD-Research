@@ -30,6 +30,7 @@ export function useBacktests(strategyId?: number) {
     backtests: backtestsQuery.data?.items || [],
     isLoading: backtestsQuery.isLoading,
     create: createMutation.mutateAsync,
+    isCreating: createMutation.isPending,
   };
 }
 

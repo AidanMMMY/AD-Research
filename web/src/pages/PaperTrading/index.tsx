@@ -416,7 +416,7 @@ export default function PaperTrading() {
               <div className={pnl && pnl.total_pnl > 0 ? 'phase5c-pnl-stat--rise' : pnl && pnl.total_pnl < 0 ? 'phase5c-pnl-stat--fall' : 'phase5c-pnl-stat--neutral'}>
                 <Statistic
                   title="总盈亏"
-                  value={pnl?.total_pnl ?? 0}
+                  value={pnl ? Math.abs(pnl.total_pnl) : 0}
                   precision={2}
                   prefix={pnl && pnl.total_pnl >= 0 ? '+$' : '-$'}
                   loading={pnlLoading}

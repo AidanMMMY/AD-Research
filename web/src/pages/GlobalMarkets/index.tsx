@@ -445,10 +445,14 @@ export default function GlobalMarkets() {
   // Fetch latest for both 'global' and 'us' so we can cover DXY,
   // USDJPY, Brent, WTI, Gold, SP500 *and* the legacy US series
   // (VIX, UST yields, Treasury spreads).
-  const { data: latestGlobal, isLoading: gLoading } = useMacroLatest('global');
-  const { data: latestUs, isLoading: uLoading } = useMacroLatest('us');
+  const { data: latestGlobal, isLoading: gLoading, dataUpdatedAt: gUpdatedAt } =
+    useMacroLatest('global');
+  const { data: latestUs, isLoading: uLoading, dataUpdatedAt: uUpdatedAt } =
+    useMacroLatest('us');
 
   const isLoading = gLoading || uLoading;
+  // Show the fresher of the two query timestamps in the header.
+  const dataUpdatedAt = Math.max(gUpdatedAt, uUpdatedAt) || undefined;
   const allLatest: MacroLatestItem[] = useMemo(
     () => [...(latestGlobal?.items ?? []), ...(latestUs?.items ?? [])],
     [latestGlobal, latestUs],
@@ -580,7 +584,7 @@ export default function GlobalMarkets() {
         extra={
           <>
             <HelpTrigger tooltip="AI 解读全球市场 + 最近地缘事件" onClick={handleOpenHelp} />
-            <LastUpdated at={undefined} loading={isLoading} />
+            <LastUpdated at={dataUpdatedAt} loading={isLoading} />
           </>
         }
       />

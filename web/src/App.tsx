@@ -1,5 +1,6 @@
 import { Component, type ReactNode, type ErrorInfo } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import axios from 'axios';
 import { routes } from './routes';
 import AppLayout from './components/AppLayout';
 import { AIHelpProvider } from './components/AIHelpProvider';
@@ -11,14 +12,18 @@ import { Spin, Alert, Button } from 'antd';
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const { isAuthenticated } = useAuthStore();
-  const { isError, isLoading } = useMe();
+  const { isError, error, isLoading, refetch } = useMe();
   const { logout } = useAuthStore();
 
+  const isUnauthorized = axios.isAxiosError(error) && error.response?.status === 401;
+
   useEffect(() => {
-    if (isError) {
+    // Only a 401 means the session is truly invalid — transient failures
+    // (5xx, network blips) must not kick the user out.
+    if (isError && isUnauthorized) {
       logout();
     }
-  }, [isError, logout]);
+  }, [isError, isUnauthorized, logout]);
 
   // If there is a token in storage but /auth/me hasn't finished yet, wait
   // so that protected pages don't mount with a potentially stale/expired token.
@@ -26,6 +31,22 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
     return (
       <div className="auth-loading">
         <Spin size="large" />
+      </div>
+    );
+  }
+
+  // Non-401 failure: keep the session and offer a manual retry instead of
+  // logging the user out on every backend hiccup.
+  if (isAuthenticated && isError && !isUnauthorized) {
+    return (
+      <div className="global-error-boundary">
+        <Alert
+          message="无法获取用户信息"
+          description="网络或服务暂时异常，请稍后重试。"
+          type="error"
+          showIcon
+          action={<Button onClick={() => refetch()}>重试</Button>}
+        />
       </div>
     );
   }
@@ -105,9 +126,7 @@ export default function App() {
                     path={route.path}
                     element={
                       route.auth ? (
-                        route.path === '/admin/users' ||
-                        route.path === '/admin/deployments' ||
-                        route.path === '/admin/etl-status' ? (
+                        route.admin ? (
                           <RequireAuth>
                             <AdminRouteGuard>{route.element}</AdminRouteGuard>
                           </RequireAuth>

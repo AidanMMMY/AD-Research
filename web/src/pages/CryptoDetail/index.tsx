@@ -18,6 +18,7 @@ import ResponsiveGrid from '@/components/ResponsiveGrid';
 import StatCard from '@/components/StatCard';
 import SectionHeading from '@/components/SectionHeading';
 import InstrumentCodeTag from '@/components/InstrumentCodeTag';
+import FavoriteToggleButton from '@/components/FavoriteToggleButton';
 import ThemeTag from '@/components/ThemeTag';
 import ReturnTagPct from '@/components/ReturnTagPct';
 import NewsListPanel from '@/components/NewsListPanel';
@@ -453,6 +454,7 @@ export default function CryptoDetail() {
 
       <div className="detail-hero">
         <InstrumentCodeTag code={crypto.code} name={crypto.name} />
+        <FavoriteToggleButton code={crypto.code} name={crypto.name} />
         {crypto.category && <ThemeTag>{crypto.category}</ThemeTag>}
         {crypto.market && <ThemeTag variant="accent">{crypto.market}</ThemeTag>}
       </div>

@@ -73,11 +73,14 @@ client.interceptors.response.use(
           { refresh_token: refreshToken }
         );
         const newAccessToken = data.access_token;
+        // The backend rotates refresh tokens; persist the new one or the session dies
+        const newRefreshToken: string = data.refresh_token || refreshToken;
 
-        // Store new token
+        // Store new tokens
         localStorage.setItem('token', newAccessToken);
+        localStorage.setItem('refresh_token', newRefreshToken);
         import('@/stores/auth')
-          .then(({ useAuthStore }) => useAuthStore.getState().setTokens(newAccessToken, refreshToken))
+          .then(({ useAuthStore }) => useAuthStore.getState().setTokens(newAccessToken, newRefreshToken))
           .catch(() => {});
 
         // Drain queued requests

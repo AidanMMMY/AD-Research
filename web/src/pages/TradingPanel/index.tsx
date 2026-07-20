@@ -312,7 +312,14 @@ export default function TradingPanel() {
           <Popconfirm
             title="确认撤单？"
             onConfirm={() =>
-              cancelOrder.mutate({ configId: selectedConfigId!, orderId: r.id })
+              cancelOrder.mutate(
+                { configId: selectedConfigId!, orderId: r.id },
+                {
+                  onSuccess: () => message.success('撤单成功'),
+                  onError: (err: any) =>
+                    message.error(err?.response?.data?.detail || '撤单失败'),
+                },
+              )
             }
           >
             <Button size="middle" danger>
@@ -600,13 +607,54 @@ export default function TradingPanel() {
       </Modal>
 
       <Modal
-        title="下单"
+        title={
+          <Space>
+            <span>下单</span>
+            {selectedConfig && (
+              <>
+                <span className="ad-text-small ad-text-secondary">
+                  {selectedConfig.name}
+                </span>
+                {selectedConfig.is_testnet ? (
+                  <ThemeTag variant="warning" className="phase5c-tag-xs">
+                    TESTNET
+                  </ThemeTag>
+                ) : (
+                  <ThemeTag variant="error" className="phase5c-tag-xs">
+                    LIVE
+                  </ThemeTag>
+                )}
+              </>
+            )}
+          </Space>
+        }
         open={orderModalOpen}
         onCancel={() => setOrderModalOpen(false)}
         onOk={() => orderForm.submit()}
         confirmLoading={placeOrder.isPending}
         width={isMobile ? '100%' : 520}
         destroyOnClose
+        footer={
+          selectedConfig && !selectedConfig.is_testnet
+            ? [
+                <Button key="cancel" onClick={() => setOrderModalOpen(false)}>
+                  取消
+                </Button>,
+                <Popconfirm
+                  key="confirm"
+                  title="确认提交实盘订单？"
+                  description={`当前配置「${selectedConfig.name}」连接真实交易环境，订单将使用真实资金成交，请再次确认。`}
+                  okText="确认下单"
+                  cancelText="再想想"
+                  onConfirm={() => orderForm.submit()}
+                >
+                  <Button type="primary" loading={placeOrder.isPending}>
+                    下单（真实资金）
+                  </Button>
+                </Popconfirm>,
+              ]
+            : undefined
+        }
       >
         <Form
           form={orderForm}
@@ -640,8 +688,31 @@ export default function TradingPanel() {
           <Form.Item name="quantity" label="数量" rules={[{ required: true }]}>
             <InputNumber min={0.00000001} step={0.001} className="phase5c-form-input--full" />
           </Form.Item>
-          <Form.Item name="price" label="限价 (市价单留空)">
-            <InputNumber min={0} className="phase5c-form-input--full" placeholder="市价" />
+          <Form.Item
+            noStyle
+            shouldUpdate={(prev, cur) => prev.order_type !== cur.order_type}
+          >
+            {({ getFieldValue }) => {
+              const isLimit = getFieldValue('order_type') !== 'MARKET';
+              return (
+                <Form.Item
+                  name="price"
+                  label={isLimit ? '限价' : '限价（市价单无需填写）'}
+                  rules={
+                    isLimit
+                      ? [{ required: true, message: '限价单必须填写价格' }]
+                      : []
+                  }
+                >
+                  <InputNumber
+                    min={0}
+                    className="phase5c-form-input--full"
+                    placeholder={isLimit ? '限价' : '市价'}
+                    disabled={!isLimit}
+                  />
+                </Form.Item>
+              );
+            }}
           </Form.Item>
         </Form>
       </Modal>

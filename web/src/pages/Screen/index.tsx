@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Table, Space, Select, InputNumber, Button, Row, Col } from 'antd';
-import type { ColumnsType } from 'antd/es/table';
+import type { ColumnsType, TableProps } from 'antd/es/table';
 import { useScreenResults, useScreenPresets, useScreenCategories } from '@/hooks/useScreenResults';
 import { useScoreTemplates } from '@/hooks/useScores';
 import { useInstrumentMarkets } from '@/hooks/useInstrumentList';
@@ -36,12 +36,26 @@ const MARKET_LABELS: Record<string, string> = {
 
 export default function Screen() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { open } = useAIHelp();
   const isMobile = useIsMobile();
   const mode = useSettingsStore((s) => s.mode);
-  const { filters, preset, setFilter, resetFilters, applyPreset } = useScreenStore();
+  const { filters, preset, setFilter, setFilters, resetFilters, applyPreset } = useScreenStore();
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(isMobile ? 20 : 50);
+
+  // Consume deep-link params (e.g. /screen?market=...&category=... from the
+  // "find similar instruments" jump on detail pages) once, then strip them
+  // from the URL so later manual filter edits are not clobbered on re-render.
+  useEffect(() => {
+    const market = searchParams.get('market');
+    const category = searchParams.get('category');
+    if (!market && !category) return;
+    if (market) setFilter('market', market);
+    if (category) setFilter('category', category);
+    setPage(1);
+    setSearchParams({}, { replace: true });
+  }, [searchParams, setFilter, setSearchParams]);
 
   // Apple Design #1 Response: debounce InputNumber keystrokes so we don't
   // refire useScreenResults on every digit. Pagination and preset stay
@@ -89,15 +103,33 @@ export default function Screen() {
     });
   };
 
+  // Server-side sorting: the list API paginates on the backend, so a client
+  // sorter would only reshuffle the current page. The /screen endpoint
+  // accepts sort_by/sort_order (store defaults: composite_score desc), so the
+  // table sorter is wired into the store and the query refetches globally
+  // sorted results. Guard against no-op changes because onChange also fires
+  // on pagination, which owns its own page state.
+  const sortOrderFor = (field: string): 'ascend' | 'descend' | null =>
+    filters.sort_by === field ? (filters.sort_order === 'asc' ? 'ascend' : 'descend') : null;
+
+  const handleTableChange: TableProps<any>['onChange'] = (_pagination, _tableFilters, sorter) => {
+    const s = Array.isArray(sorter) ? sorter[0] : sorter;
+    const sortBy = s?.order ? String(s.field) : 'composite_score';
+    const sortOrder = s?.order === 'ascend' ? 'asc' : 'desc';
+    if (sortBy === filters.sort_by && sortOrder === filters.sort_order) return;
+    setFilters({ ...filters, sort_by: sortBy, sort_order: sortOrder });
+    setPage(1);
+  };
+
   const columns: ColumnsType<any> = [
     { title: '代码', dataIndex: 'code', width: 100, fixed: 'left', render: (v: string, r: any) => <InstrumentCodeTag code={v} name={r.name} name_zh={r.name_zh} /> },
     { title: '分类', dataIndex: 'category', width: 100, responsive: ['md'], render: (v: string) => v ? <span className="ad-table-text-secondary">{v}</span> : '-' },
-    { title: <HelpPopover termKey="composite_score_filter" mode={mode}>评分</HelpPopover>, dataIndex: 'composite_score', width: 80, sorter: (a: any, b: any) => (a.composite_score ?? -Infinity) - (b.composite_score ?? -Infinity), render: (v: number) => <span className="font-mono ad-table-accent">{v?.toFixed(1)}</span> },
-    { title: <HelpPopover termKey="rsi14" mode={mode}>RSI</HelpPopover>, dataIndex: 'rsi14', width: 70, responsive: ['md'], sorter: (a: any, b: any) => (a.rsi14 ?? -Infinity) - (b.rsi14 ?? -Infinity), render: (v: number) => <span className="font-mono ad-table-mono">{v?.toFixed(1)}</span> },
+    { title: <HelpPopover termKey="composite_score_filter" mode={mode}>评分</HelpPopover>, dataIndex: 'composite_score', width: 80, sorter: true, sortOrder: sortOrderFor('composite_score'), render: (v: number) => <span className="font-mono ad-table-accent">{v?.toFixed(1)}</span> },
+    { title: <HelpPopover termKey="rsi14" mode={mode}>RSI</HelpPopover>, dataIndex: 'rsi14', width: 70, responsive: ['md'], sorter: true, sortOrder: sortOrderFor('rsi14'), render: (v: number) => <span className="font-mono ad-table-mono">{v?.toFixed(1)}</span> },
     { title: <HelpPopover termKey="sharpe_1y" mode={mode}>夏普</HelpPopover>, dataIndex: 'sharpe_1y', width: 80, responsive: ['md'], render: (v: number) => <span className="font-mono ad-table-mono">{v?.toFixed(2)}</span> },
-    { title: <HelpPopover termKey="return_1m" mode={mode}>1月</HelpPopover>, dataIndex: 'return_1m', width: 100, sorter: (a: any, b: any) => (a.return_1m ?? -Infinity) - (b.return_1m ?? -Infinity), render: (v: number) => <ReturnTag value={v} /> },
-    { title: <HelpPopover termKey="return_3m" mode={mode}>3月</HelpPopover>, dataIndex: 'return_3m', width: 100, responsive: ['md'], sorter: (a: any, b: any) => (a.return_3m ?? -Infinity) - (b.return_3m ?? -Infinity), render: (v: number) => <ReturnTag value={v} /> },
-    { title: <HelpPopover termKey="return_1y" mode={mode}>1年</HelpPopover>, dataIndex: 'return_1y', width: 100, responsive: ['md'], sorter: (a: any, b: any) => (a.return_1y ?? -Infinity) - (b.return_1y ?? -Infinity), render: (v: number) => <ReturnTag value={v} /> },
+    { title: <HelpPopover termKey="return_1m" mode={mode}>1月</HelpPopover>, dataIndex: 'return_1m', width: 100, sorter: true, sortOrder: sortOrderFor('return_1m'), render: (v: number) => <ReturnTag value={v} /> },
+    { title: <HelpPopover termKey="return_3m" mode={mode}>3月</HelpPopover>, dataIndex: 'return_3m', width: 100, responsive: ['md'], sorter: true, sortOrder: sortOrderFor('return_3m'), render: (v: number) => <ReturnTag value={v} /> },
+    { title: <HelpPopover termKey="return_1y" mode={mode}>1年</HelpPopover>, dataIndex: 'return_1y', width: 100, responsive: ['md'], sorter: true, sortOrder: sortOrderFor('return_1y'), render: (v: number) => <ReturnTag value={v} /> },
     { title: <HelpPopover termKey="volatility_20d" mode={mode}>波动率</HelpPopover>, dataIndex: 'volatility_20d', width: 90, responsive: ['md'], render: (v: number) => v != null ? <span className="font-mono ad-table-mono">{(v * 100).toFixed(1)}%</span> : '-' },
   ];
 
@@ -458,6 +490,7 @@ export default function Screen() {
               rowKey="code"
               rowClassName="screen-row--pressable"
               loading={isLoading}
+              onChange={handleTableChange}
               pagination={{
                 current: page,
                 pageSize: pageSize,

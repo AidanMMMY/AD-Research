@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import {
   Table, Button, Modal, Form, Select, DatePicker, InputNumber, Space, message,
 } from 'antd';
@@ -14,13 +14,14 @@ import { useStrategies } from '@/hooks/useStrategies';
 import { useInstrumentList } from '@/hooks/useInstrumentList';
 import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
 import { PlusOutlined, EyeOutlined } from '@ant-design/icons';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import dayjs from 'dayjs';
 import type { BacktestListItem, BacktestMetrics } from '@/types/backtest';
 import type { InstrumentInfo } from '@/types/instrument';
 
 export default function BacktestList() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [form] = Form.useForm();
   // Apple Design #14: under reduced motion, suppress antd's default zoom
@@ -30,9 +31,29 @@ export default function BacktestList() {
     ? { transitionName: '', maskTransitionName: '' }
     : {};
 
-  const { backtests, isLoading, create } = useBacktests();
+  // Deep-link params: /backtests?strategy_id=N (from StrategyList) filters
+  // server-side; /backtests?strategy_type=xxx (from StrategyLibrary) has no
+  // backend filter, so it is applied client-side via the strategies list.
+  const strategyIdParam = Number(searchParams.get('strategy_id')) || undefined;
+  const strategyTypeParam = searchParams.get('strategy_type') || undefined;
+
+  const { backtests, isLoading, create, isCreating } = useBacktests(strategyIdParam);
   const { strategies } = useStrategies();
   const { data: etfList, isLoading: etfLoading } = useInstrumentList({ page_size: 10000 });
+
+  const strategyNameById = useMemo(
+    () => new Map<number, string>((strategies || []).map((s: any) => [s.id, s.name])),
+    [strategies]
+  );
+
+  const displayedBacktests = useMemo(() => {
+    if (!strategyTypeParam) return backtests;
+    return backtests.filter(
+      (bt) => (strategies || []).some(
+        (s: any) => s.id === bt.strategy_id && s.strategy_type === strategyTypeParam
+      )
+    );
+  }, [backtests, strategies, strategyTypeParam]);
 
   const etfOptions = (etfList?.items || []).map((item: InstrumentInfo) => ({
     label: `${item.code} ${item.name}`,
@@ -62,7 +83,7 @@ export default function BacktestList() {
         slippage_rate: values.slippage_rate ?? 0.001,
         position_size: values.position_size ?? 1.0,
       });
-      message.success('回测已触发');
+      message.success('回测完成');
       setIsModalOpen(false);
       form.resetFields();
     } catch {
@@ -75,7 +96,13 @@ export default function BacktestList() {
 
   const columns = [
     { title: 'ID', dataIndex: 'id', width: 60, render: (v: number) => <span className="tabular-nums">{v}</span> },
-    { title: '策略ID', dataIndex: 'strategy_id', width: 80, render: (v: number) => <span className="tabular-nums">{v}</span> },
+    {
+      title: '策略',
+      dataIndex: 'strategy_id',
+      width: 140,
+      render: (v: number) => strategyNameById.get(v) || <span className="tabular-nums">#{v}</span>,
+    },
+    { title: '标的代码', dataIndex: 'etf_code', width: 100, render: (v: string | null) => v || '-' },
     { title: '起始日期', dataIndex: 'start_date' },
     { title: '结束日期', dataIndex: 'end_date' },
     {
@@ -117,20 +144,31 @@ export default function BacktestList() {
         title="回测管理"
         description="创建和查看策略回测结果，评估策略历史表现与风险指标"
         extra={
-          <Button type="primary" icon={<PlusOutlined />} onClick={() => setIsModalOpen(true)}>
+          <Button
+            type="primary"
+            icon={<PlusOutlined />}
+            onClick={() => {
+              // Preselect the strategy carried by the deep-link params, if any.
+              const presetStrategyId =
+                strategyIdParam ??
+                (strategies || []).find((s: any) => s.strategy_type === strategyTypeParam)?.id;
+              if (presetStrategyId) form.setFieldsValue({ strategy_id: presetStrategyId });
+              setIsModalOpen(true);
+            }}
+          >
             新建回测
           </Button>
         }
       />
 
-      <FilterToolbar total={`共 ${(backtests || []).length} 个`} />
+      <FilterToolbar total={`共 ${displayedBacktests.length} 个`} />
 
       <SectionHeading title="回测列表" />
 
       <Panel variant="default" padding="none">
         <div className={tableWrapClass}>
           <Table
-            dataSource={backtests}
+            dataSource={displayedBacktests}
             columns={columns}
             rowKey="id"
             size={rowSize as any}
@@ -156,6 +194,7 @@ export default function BacktestList() {
         open={isModalOpen}
         onCancel={() => { setIsModalOpen(false); form.resetFields(); }}
         onOk={() => form.submit()}
+        confirmLoading={isCreating}
         {...modalMotionProps}
       >
         <Form form={form} layout="vertical" onFinish={handleCreate}>

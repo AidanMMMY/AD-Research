@@ -49,6 +49,7 @@ export interface Backtest {
 export interface BacktestListItem {
   id: number;
   strategy_id: number;
+  etf_code?: string | null;
   start_date?: string;
   end_date?: string;
   metrics: Record<string, any>;

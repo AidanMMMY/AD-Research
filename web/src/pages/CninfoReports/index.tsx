@@ -422,10 +422,17 @@ function CninfoReportDetailDrawer({
   // back off, so the reverse slide-out completes before unmount.
   const [mounted, setMounted] = useState(open);
   const [leaving, setLeaving] = useState(false);
+  // ``entering`` is only true for the first painted frame(s): the drawer
+  // mounts with translateX(100%) (the --entering modifier), then the class
+  // is dropped on the next frame so the spring transition carries it to
+  // translateX(0). Without this removal the modifier (same specificity as
+  // the base rule, defined later) kept the drawer off-screen forever.
+  const [entering, setEntering] = useState(open);
   useEffect(() => {
     if (open) {
       setMounted(true);
       setLeaving(false);
+      setEntering(true);
       return;
     }
     if (!mounted) return;
@@ -433,16 +440,33 @@ function CninfoReportDetailDrawer({
     const t = setTimeout(() => {
       setMounted(false);
       setLeaving(false);
+      setEntering(false);
     }, 360);
     return () => clearTimeout(t);
   }, [open, mounted]);
+
+  // Wait until the entering styles have been painted (double rAF), then
+  // remove the --entering class so the drawer slides into place.
+  useEffect(() => {
+    if (!mounted || !entering || leaving) return;
+    let inner = 0;
+    const outer = requestAnimationFrame(() => {
+      inner = requestAnimationFrame(() => setEntering(false));
+    });
+    return () => {
+      cancelAnimationFrame(outer);
+      cancelAnimationFrame(inner);
+    };
+  }, [mounted, entering, leaving]);
   if (!mounted) return null;
 
   const drawerClasses = [
     'ad-detail-drawer',
     leaving
       ? 'ad-detail-drawer--leaving'
-      : 'ad-detail-drawer--entering',
+      : entering
+        ? 'ad-detail-drawer--entering'
+        : '',
   ].join(' ');
   const overlayClasses = [
     'ad-detail-drawer-overlay',

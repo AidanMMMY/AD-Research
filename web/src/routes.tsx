@@ -51,6 +51,8 @@ const Learning = lazy(() => import('./pages/Learning'));
 const Favorites = lazy(() => import('./pages/Favorites'));
 const EtfHoldingsHistory = lazy(() => import('./pages/EtfHoldingsHistory'));
 const FundFlow = lazy(() => import('./pages/FundFlow'));
+const SentimentDashboard = lazy(() => import('./pages/SentimentDashboard'));
+const NotFound = lazy(() => import('./pages/NotFound'));
 
 export type SidebarGroupKey =
   | 'home'
@@ -68,6 +70,8 @@ export interface RouteConfig {
   path: string;
   element: React.ReactNode;
   auth?: boolean;
+  /** Admin-only route: wrapped in AdminRouteGuard and hidden from non-admin menus */
+  admin?: boolean;
   menu?: {
     name: string;
     icon?: string;
@@ -123,13 +127,14 @@ export const routes: RouteConfig[] = [
   { path: '/news/:id', element: wrap(NewsDetail), auth: true },
   { path: '/research', element: wrap(ResearchNotes), auth: true, menu: { name: 'AI 研究笔记', label: 'AI 研究笔记', icon: 'BulbOutlined', group: 'research' } },
   { path: '/reports', element: wrap(ReportBrowser), auth: true, menu: { name: '投研报告', icon: 'FileTextOutlined', group: 'research' } },
-  { path: '/research-reports', element: wrap(ResearchReports), auth: true },
-  { path: '/cninfo-reports', element: wrap(CninfoReports), auth: true },
+  { path: '/research-reports', element: wrap(ResearchReports), auth: true, menu: { name: '研报库', icon: 'FilePdfOutlined', group: 'research' } },
+  { path: '/cninfo-reports', element: wrap(CninfoReports), auth: true, menu: { name: '巨潮定期报告', icon: 'FileTextOutlined', group: 'research' } },
   { path: '/sec-filings', element: wrap(SECFilings), auth: true, menu: { name: 'SEC 公告', icon: 'BankOutlined', group: 'research' } },
   { path: '/listing-preview', element: wrap(ListingPreview), auth: true, menu: { name: '上市预告', icon: 'CalendarOutlined', group: 'research' } },
   // === 宏观与情绪 ===
   { path: '/macro', element: wrap(Macro), auth: true, menu: { name: '宏观经济', icon: 'FundProjectionScreenOutlined', group: 'macro' } },
   { path: '/sentiment', element: wrap(SentimentOverview), auth: true, menu: { name: '市场情绪', icon: 'HeartOutlined', group: 'macro' } },
+  { path: '/instrument-sentiment', element: wrap(SentimentDashboard), auth: true, menu: { name: '单标情绪看板', icon: 'SmileOutlined', group: 'macro' } },
   { path: '/search-trends', element: wrap(SearchTrends), auth: true, menu: { name: '搜索热度', icon: 'FireOutlined', group: 'macro' } },
   // 资金流监控（fund-flow, 2026-07-14）：大盘 / 个股 / 板块 / ETF + 综合信号
   { path: '/fund-flow', element: wrap(FundFlow), auth: true, menu: { name: '资金流', label: '资金流', icon: 'ExperimentOutlined', group: 'market' } },
@@ -156,12 +161,14 @@ export const routes: RouteConfig[] = [
   { path: '/notification-logs', element: wrap(NotificationLogs), auth: true },
   // === 运维 ===
   { path: '/etl-status', element: wrap(ETLStatus), auth: true, menu: { name: 'ETL 状态', label: 'ETL 状态', icon: 'ClockCircleOutlined', group: 'ops' } },
-  { path: '/admin/etl-status', element: wrap(ETLOpsDashboard), auth: true, menu: { name: 'ETL 运维看板', icon: 'MonitorOutlined', group: 'ops' } },
+  { path: '/admin/etl-status', element: wrap(ETLOpsDashboard), auth: true, admin: true, menu: { name: 'ETL 运维看板', icon: 'MonitorOutlined', group: 'ops' } },
   { path: '/news/health', element: wrap(NewsHealth), auth: true, menu: { name: '资讯健康度', icon: 'MonitorOutlined', group: 'ops' } },
   // === 管理 ===
-  { path: '/admin/users', element: wrap(AdminUsers), auth: true, menu: { name: '用户管理', icon: 'TeamOutlined', group: 'admin' } },
-  { path: '/admin/deployments', element: wrap(AdminDeployments), auth: true, menu: { name: '部署管理', icon: 'CloudServerOutlined', group: 'admin' } },
+  { path: '/admin/users', element: wrap(AdminUsers), auth: true, admin: true, menu: { name: '用户管理', icon: 'TeamOutlined', group: 'admin' } },
+  { path: '/admin/deployments', element: wrap(AdminDeployments), auth: true, admin: true, menu: { name: '部署管理', icon: 'CloudServerOutlined', group: 'admin' } },
   { path: '/', element: <Navigate to="/dashboard" replace />, auth: true },
+  // Catch-all 404 (must stay last)
+  { path: '*', element: wrap(NotFound), auth: true },
 ];
 
 export const menuRoutes = routes.filter((r) => r.menu);

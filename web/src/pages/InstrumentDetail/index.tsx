@@ -291,9 +291,11 @@ export default function InstrumentDetail() {
     { title: '最大回撤', value: indicator?.max_drawdown_1y, suffix: '%', color: 'detail-kpi-fall', term: 'max_drawdown_1y' },
   ];
 
+  // Percentage stats (return/volatility/drawdown) use decimal semantics, so ×100 here.
   const formatSigned = (v?: number | null) => {
     if (v == null) return '—';
-    return `${v >= 0 ? '+' : ''}${v.toFixed(2)}`;
+    const pct = v * 100;
+    return `${pct >= 0 ? '+' : ''}${pct.toFixed(2)}`;
   };
 
   return (
@@ -473,7 +475,14 @@ export default function InstrumentDetail() {
           <div key={stat.title} className={stat.color}>
             <StatCard
               title={stat.title}
-              value={stat.value != null ? formatSigned(stat.value) : '—'}
+              value={
+                stat.value != null
+                  ? // RSI14 is an absolute indicator value, not a decimal percentage.
+                    stat.suffix === '%'
+                    ? formatSigned(stat.value)
+                    : stat.value.toFixed(1)
+                  : '—'
+              }
               suffix={stat.suffix}
               term={stat.term}
             />

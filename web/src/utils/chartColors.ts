@@ -53,8 +53,8 @@ const DEFAULT_FALLBACKS: Record<string, string> = {
   '--bg-surface': '#EDF0F3',
   '--accent': '#2563EB',
   '--accent-dim': 'rgba(37, 99, 235, 0.08)',
-  '--color-rise': '#dc2626',
-  '--color-fall': '#16a34a',
+  '--color-rise': '#C0392B',
+  '--color-fall': '#1B7A3C',
   '--color-neutral': '#9ca3af',
 };
 

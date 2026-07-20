@@ -669,7 +669,14 @@ export default function StockDetail() {
           <div key={stat.title} className={stat.color}>
             <StatCard
               title={stat.title}
-              value={stat.value != null ? formatSigned(stat.value) : '—'}
+              value={
+                stat.value != null
+                  ? // RSI14 is an absolute indicator value, not a decimal percentage.
+                    stat.suffix === '%'
+                    ? formatSigned(stat.value)
+                    : stat.value.toFixed(1)
+                  : '—'
+              }
               suffix={stat.suffix}
             />
           </div>

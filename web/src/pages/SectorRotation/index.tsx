@@ -521,7 +521,7 @@ export default function SectorRotation() {
         let variant: 'rise' | 'fall' | 'neutral' = 'neutral';
         if (v > 0) variant = 'rise';
         if (v < 0) variant = 'fall';
-        return <ThemeTag variant={variant}>{v.toFixed(2)}</ThemeTag>;
+        return <ThemeTag variant={variant}>{((v ?? 0) * 100).toFixed(2)}%</ThemeTag>;
       },
     },
   ];
@@ -634,7 +634,7 @@ export default function SectorRotation() {
             className="ad-metric-item__value ad-metric-item__value--colored"
             style={{ color: getReturnColor(marketAvg?.return_1m ?? 0) }}
           >
-            {(marketAvg?.return_1m ?? 0).toFixed(2)}
+            {((marketAvg?.return_1m ?? 0) * 100).toFixed(2)}
             <span className="ad-metric-item__suffix">%</span>
           </div>
         </div>

@@ -66,6 +66,7 @@ import {
   SafetyCertificateOutlined,
   WalletOutlined,
   StarOutlined,
+  SmileOutlined,
 } from '@ant-design/icons';
 import { useAuthStore } from '@/stores/auth';
 import { useSettingsStore } from '@/stores/settings';
@@ -118,9 +119,23 @@ const iconMap: Record<string, React.ComponentType> = {
   WalletOutlined,
   BulbOutlined,
   StarOutlined,
+  SmileOutlined,
 };
 
 const SIDEBAR_EXPANDED_KEY = 'ad-research:sidebar:expanded';
+
+/**
+ * Notify chart-color cache subscribers (chartColors.ts) and the antd theme
+ * listener (main.tsx) that CSS variables on <html> may have changed.
+ * Both listeners are installed on `document`, and the antd listener reads
+ * `event.detail` as the resolved theme — so we dispatch a CustomEvent on
+ * `document` with the current `data-theme` value as detail.
+ */
+function dispatchThemeChange() {
+  if (typeof document === 'undefined') return;
+  const resolved = document.documentElement.getAttribute('data-theme') || 'light';
+  document.dispatchEvent(new CustomEvent('themechange', { detail: resolved }));
+}
 
 function loadExpandedGroups(): Record<string, boolean> {
   try {
@@ -164,6 +179,9 @@ function SidebarContent({ collapsed, onItemClick }: SidebarContentProps) {
       const group = route.menu?.group;
       if (!group) continue;
       if (group === 'admin' && !isAdmin) continue;
+      // Admin-flagged routes outside the admin group (e.g. ETL 运维看板
+      // under ops) are hidden from non-admin users as well.
+      if (route.admin && !isAdmin) continue;
       if (!map.has(group)) map.set(group, []);
       map.get(group)!.push(route);
     }
@@ -553,18 +571,22 @@ export default function AppLayout() {
   useEffect(() => {
     if (typeof document === 'undefined') return;
     document.documentElement.setAttribute('data-color-convention', colorConvention);
+    // Invalidate cached chart colors (rise/fall convention changed).
+    dispatchThemeChange();
   }, [colorConvention]);
 
   // Phase 7b (2026-07-11): 同步 density 到 <html data-density>
   useEffect(() => {
     if (typeof document === 'undefined') return;
     document.documentElement.setAttribute('data-density', density);
+    dispatchThemeChange();
   }, [density]);
 
   // Phase 7b (2026-07-11): 同步 crtEffect 到 <html data-crt>
   useEffect(() => {
     if (typeof document === 'undefined') return;
     document.documentElement.setAttribute('data-crt', crtEffect ? 'on' : 'off');
+    dispatchThemeChange();
   }, [crtEffect]);
 
   // One-shot "已开启学习模式" hint so users notice the new default without
