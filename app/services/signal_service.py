@@ -149,7 +149,10 @@ class SignalService:
             StrategyConfig, Signal.strategy_id == StrategyConfig.id
         )
         if user_id:
-            query = query.filter(Signal.user_id == user_id)
+            # System-generated signals have user_id NULL and are visible to everyone.
+            query = query.filter(
+                (Signal.user_id == user_id) | (Signal.user_id.is_(None))
+            )
         if strategy_id:
             query = query.filter(Signal.strategy_id == strategy_id)
         if etf_code:

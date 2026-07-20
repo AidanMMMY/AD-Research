@@ -45,7 +45,6 @@ from app.data.pipelines.us_stock_enrichment import USStockEnrichmentPipeline
 from app.models.etf import ETFInfo
 from app.models.etl import ETLLog, StrategyConfig
 from app.models.pool import ETFPools
-from app.models.user import User
 from app.services.etf_scanner_service import ETFScannerService
 from app.services.report_service import ReportService
 from app.services.scoring_service import ScoringService
@@ -877,11 +876,26 @@ def run_crypto_indicator_calculation(target_date: date | None = None):
 
     Waits for the crypto ETL lock to be released before calculating.
 
+    The wait window is aligned with the ETL lock TTL: the 08:05 crypto ETL
+    holds ``crypto_daily_pipeline`` with ``expire_seconds=3600`` (expires
+    09:05 at the latest), so this job must wait up to 2100s from 08:30 to
+    cover the full window. The previous 1800s timeout gave up at 09:00 —
+    five minutes before lock expiry — which silently skipped the dispatch
+    every day the ETL ran long (e.g. when api.binance.com was geo-blocked
+    and every request burned a 30s timeout across all retry attempts).
+
+    Note: while ``instrument_daily_bar`` has zero CRYPTO rows (the current
+    production state until the Binance failover fix lands), the dispatched
+    Celery task is a deliberate no-op: ``batch_calculate_indicators``
+    filters to codes that actually have bars and upserts idempotently, so
+    it writes 0 indicator rows and a ``crypto_indicator_calculation``
+    ETLLog entry with records_count=0.
+
     Args:
         target_date: If provided, calculate indicators up to this date.
     """
     with redis_lock(
-        "crypto_daily_pipeline", expire_seconds=3600, wait_timeout=1800
+        "crypto_daily_pipeline", expire_seconds=3600, wait_timeout=2100
     ) as acquired:
         if not acquired:
             print(
@@ -1213,8 +1227,9 @@ def run_signal_generation(target_date: date | None = None):
     """
     # Short-lived session: only read config and the instrument universe.
     with SessionLocal() as db:
-        # Scheduler-generated signals are owned by the system admin (id=1).
-        default_user_id = db.query(User.id).filter(User.id == 1).scalar() or 1
+        # Scheduler-generated signals are system-wide: user_id stays NULL so
+        # every authenticated user can see them (see SignalService.get_signals).
+        default_user_id = None
 
         # Query active strategy configs directly (bypass StrategyService which
         # requires user_id scoping — the scheduler operates system-wide).

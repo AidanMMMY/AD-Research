@@ -508,6 +508,43 @@ class ScoringService:
 
         return output
 
+    def count_scores(
+        self,
+        template_id: int | None = None,
+        trade_date: date | None = None,
+        market: str | None = None,
+        category: str | None = None,
+    ) -> int:
+        """Return the total number of scores matching the filters.
+
+        Mirrors :meth:`get_scores` (including default template / latest
+        trade date resolution) so list endpoints can report the real total
+        for pagination instead of the truncated page size.
+        """
+        if template_id is None:
+            default = self.get_default_template()
+            template_id = default.id if default else 1
+
+        if trade_date is None:
+            trade_date = self.db.query(func.max(ETFScore.trade_date)).filter(
+                ETFScore.template_id == template_id
+            ).scalar()
+
+        query = (
+            self.db.query(func.count(ETFScore.id))
+            .join(ETFInfo, ETFScore.etf_code == ETFInfo.code)
+            .filter(ETFScore.template_id == template_id)
+        )
+
+        if trade_date is not None:
+            query = query.filter(ETFScore.trade_date == trade_date)
+        if market:
+            query = query.filter(ETFInfo.market == market)
+        if category:
+            query = query.filter(ETFInfo.category == category)
+
+        return query.scalar() or 0
+
     def get_latest_score(
         self,
         etf_code: str,
@@ -515,15 +552,19 @@ class ScoringService:
     ) -> dict[str, Any] | None:
         """Return the most recent composite score for a single instrument.
 
-        Looks up the latest ``ETFScore`` row for the instrument across all
-        templates, optionally filtering by ``ETFInfo.market``. The returned
-        dict mirrors the fields consumed by the crypto detail/score page.
+        Looks up the latest ``ETFScore`` row for the instrument under the
+        default score template, optionally filtering by ``ETFInfo.market``.
+        The returned dict mirrors the fields consumed by the crypto
+        detail/score page.
         """
         query = (
             self.db.query(ETFScore, ETFInfo)
             .join(ETFInfo, ETFScore.etf_code == ETFInfo.code)
             .filter(ETFScore.etf_code == etf_code)
         )
+        default = self.get_default_template()
+        if default is not None:
+            query = query.filter(ETFScore.template_id == default.id)
         if market:
             query = query.filter(ETFInfo.market == market)
 

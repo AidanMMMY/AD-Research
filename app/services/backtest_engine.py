@@ -4,13 +4,19 @@ Simulates trading based on strategy signals and calculates performance metrics.
 
 Supports configurable execution price models and friction regimes so that
 the engine can be calibrated per market:
-  - ``execution_price_model="open"`` (default): fills at signal-day OPEN,
-    avoiding look-ahead bias from using adjusted close on the same bar.
+  - ``execution_price_model="open"`` (default): fills at the adjusted OPEN
+    of the bar AFTER the signal bar — the signal computed from bar i's
+    close is executed at bar i+1's open. This avoids look-ahead bias:
+    a signal derived from a close can never fill at an earlier open.
   - ``execution_price_model="close"``: legacy behaviour using adj_close
     on the signal bar. BASELINE ONLY — known to introduce look-ahead
     bias. Kept for rollback / baseline comparison.
   - ``execution_price_model="next_open"``: event-driven style — fills at
-    the NEXT session's OPEN. Most conservative.
+    the NEXT session's adjusted OPEN. Most conservative.
+
+All fill prices use the split/dividend-adjusted price basis (raw price
+scaled by ``adj_close / close``) so entries, exits and the NAV
+mark-to-market share a single adjusted quote convention.
 
 Friction model:
   - ``market="cn_a"`` (default): A-share standard rates — stamp duty on
@@ -74,8 +80,11 @@ def _load_bars(etf_code: str, start_date: date, end_date: date, db: Any) -> pd.D
     list_date = price_repository.get_list_date(db, etf_code)
     delist_date = price_repository.get_delist_date(db, etf_code)
 
-    # If instrument was delisted before the backtest end date, exclude it.
-    if delist_date and end_date < delist_date:
+    # If the instrument was already delisted before the backtest window
+    # starts, there is nothing to trade — exclude it. Windows that overlap
+    # the instrument's listed lifetime are allowed and clamped to
+    # [list_date, delist_date] below.
+    if delist_date and start_date > delist_date:
         return pd.DataFrame()
 
     if list_date and end_date < list_date:
@@ -214,6 +223,23 @@ def _calculate_transaction_cost(
 # ---------------------------------------------------------------------------
 
 
+def _adjusted_open(df: pd.DataFrame, i: int) -> float:
+    """Return bar ``i``'s OPEN on the adjusted price basis.
+
+    The raw open is scaled by the bar's adjustment ratio
+    (``adj_close / close``) so fill prices share the same
+    split/dividend-adjusted convention as the NAV mark-to-market and
+    the end-of-data forced liquidation (both use ``adj_close``).
+    """
+    row = df.iloc[i]
+    close = float(row["close"])
+    if close == 0:
+        # Degenerate bar — fall back to the raw open rather than divide
+        # by zero.
+        return float(row["open"])
+    return float(row["open"]) * float(row["adj_close"]) / close
+
+
 def _execution_price(
     df: pd.DataFrame,
     i: int,
@@ -223,19 +249,19 @@ def _execution_price(
 
     Args:
         df: Bars DataFrame sorted by trade_date, with columns
-            ``open`` and ``adj_close``.
-        i: Index of the bar where the signal was generated.
+            ``open``, ``close`` and ``adj_close``.
+        i: Index of the bar where the (possibly shifted) signal fires.
         model: One of ``"open"``, ``"close"``, ``"next_open"``.
 
     Notes:
-        - ``"open"`` uses the signal bar's OPEN. This is the default
-          and the realistic choice — you can decide at the open based
-          on yesterday's close, but you cannot know today's close in
-          advance.
+        - ``"open"`` uses the ADJUSTED open of the current bar. The
+          caller (``_simulate``) shifts the raw signal series by one bar
+          for this model, so the fill at bar ``i``'s open executes the
+          signal computed from bar ``i-1``'s close — no look-ahead.
         - ``"close"`` uses the signal bar's ADJ_CLOSE. BASELINE ONLY:
           this is a look-ahead bias and is kept only for rollback.
-        - ``"next_open"`` uses the NEXT session's OPEN. The cleanest
-          for event-driven strategies.
+        - ``"next_open"`` uses the NEXT session's ADJUSTED open. The
+          cleanest for event-driven strategies.
     """
     if model not in VALID_EXECUTION_MODELS:
         raise ValueError(
@@ -247,11 +273,11 @@ def _execution_price(
         return float(df.iloc[i]["adj_close"])
 
     if model == "open":
-        return float(df.iloc[i]["open"])
+        return _adjusted_open(df, i)
 
     # model == "next_open"
     if i + 1 < len(df):
-        return float(df.iloc[i + 1]["open"])
+        return _adjusted_open(df, i + 1)
     # No next bar — fall back to last available price (end-of-data).
     return float(df.iloc[i]["adj_close"])
 
@@ -279,8 +305,22 @@ def _simulate(
 
     Extracted so that tests can drive the engine with an in-memory
     DataFrame without needing a database session.
+
+    Look-ahead guard: under the default ``"open"`` execution model the
+    raw signal series is shifted by one bar before the loop, so the fill
+    at bar ``i``'s open executes the signal computed from bar ``i-1``'s
+    close. ``"close"`` is the legacy look-ahead baseline and
+    ``"next_open"`` already waits a full bar, so neither is shifted.
     """
     result = BacktestResult()
+
+    if execution_price_model == "open":
+        # A signal derived from bar i's CLOSE cannot fill at bar i's
+        # OPEN (the open happens earlier in the session) — that would be
+        # classic look-ahead bias. Shift the series so bar i's open fill
+        # acts on the signal from bar i-1's close. The first bar gets a
+        # neutral 0 (no prior close to trade on).
+        signals = signals.shift(1).fillna(0).astype(int)
 
     capital = initial_capital
     position = 0.0  # number of shares held
@@ -624,9 +664,11 @@ def run_backtest(
         risk_free_rate: Annual risk-free rate used in Sharpe calculation.
         db: Optional SQLAlchemy session. If provided, reads adjusted bars
             from instrument_daily_bar; otherwise falls back to AkshareProvider.
-        execution_price_model: ``"open"`` (default, signal-day OPEN),
-            ``"close"`` (BASELINE — adj_close, has look-ahead bias), or
-            ``"next_open"`` (next session OPEN).
+        execution_price_model: ``"open"`` (default — fills at the NEXT
+            bar's adjusted OPEN, executing the signal from the prior
+            bar's close; look-ahead safe), ``"close"`` (BASELINE —
+            adj_close, has look-ahead bias), or ``"next_open"`` (next
+            session adjusted OPEN).
         market: ``"cn_a"`` (default, A-share friction) or ``"other"``
             (legacy symmetric commission + slippage).
         apply_friction: When True (default), apply commission /

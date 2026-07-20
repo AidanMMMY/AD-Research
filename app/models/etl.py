@@ -142,7 +142,11 @@ class Signal(Base):
     __tablename__ = "signal"
 
     id = Column(Integer, primary_key=True, autoincrement=True, comment="ID")
-    user_id = Column(Integer, nullable=False, comment="Owner user ID")
+    user_id = Column(
+        Integer,
+        nullable=True,
+        comment="Owner user ID (NULL for system-generated signals)",
+    )
     strategy_id = Column(
         Integer,
         ForeignKey("strategy_config.id", ondelete="CASCADE"),

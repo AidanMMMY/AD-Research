@@ -121,6 +121,8 @@ class BacktestService:
             {
                 "id": r.id,
                 "strategy_id": r.strategy_id,
+                # etf_code is not a table column; it lives in config_snapshot.
+                "etf_code": (r.config_snapshot or {}).get("etf_code"),
                 "start_date": r.start_date.isoformat() if r.start_date else None,
                 "end_date": r.end_date.isoformat() if r.end_date else None,
                 "metrics": r.metrics,

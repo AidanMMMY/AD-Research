@@ -83,6 +83,7 @@ class BacktestListItem(BaseModel):
 
     id: int
     strategy_id: int
+    etf_code: str | None = None
     start_date: str | None = None
     end_date: str | None = None
     metrics: dict[str, Any]
