@@ -2,11 +2,11 @@
 
 from fastapi import APIRouter, Depends, HTTPException
 
-from app.api.deps import get_attribution_service
+from app.api.deps import get_attribution_service, get_current_user
 from app.schemas.attribution import AttributionResponse
 from app.services.attribution_service import AttributionService
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(get_current_user)])
 
 
 @router.get("/attribution/{backtest_id}", response_model=AttributionResponse)

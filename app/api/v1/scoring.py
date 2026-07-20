@@ -7,7 +7,8 @@ from datetime import date
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
-from app.api.deps import get_scoring_service
+from app.api.deps import get_current_user, get_scoring_service, require_admin
+from app.schemas.auth import UserResponse
 from app.schemas.scoring import (
     ETFScoreListResponse,
     ETFScoreResponse,
@@ -17,7 +18,7 @@ from app.schemas.scoring import (
 )
 from app.services.scoring_service import ScoringService
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(get_current_user)])
 
 
 # ------------------------------------------------------------------
@@ -35,6 +36,7 @@ def list_templates(service: ScoringService = Depends(get_scoring_service)):
 def create_template(
     data: ScoreTemplateCreate,
     service: ScoringService = Depends(get_scoring_service),
+    current_user: UserResponse = Depends(require_admin),
 ):
     """Create a new score template."""
     return service.create_template(
@@ -50,6 +52,7 @@ def update_template(
     template_id: int,
     data: ScoreTemplateUpdate,
     service: ScoringService = Depends(get_scoring_service),
+    current_user: UserResponse = Depends(require_admin),
 ):
     """Update an existing score template."""
     template = service.get_template(template_id)
@@ -74,6 +77,7 @@ def update_template(
 def delete_template(
     template_id: int,
     service: ScoringService = Depends(get_scoring_service),
+    current_user: UserResponse = Depends(require_admin),
 ):
     """Delete a score template (cannot delete the default template)."""
     template = service.get_template(template_id)
@@ -134,9 +138,16 @@ def list_scores(
             .scalar()
         )
 
+    total = service.count_scores(
+        template_id=template_id,
+        trade_date=trade_date,
+        market=market,
+        category=category,
+    )
+
     return ETFScoreListResponse(
         items=scores,
-        total=len(scores),
+        total=total,
         template_id=effective_template_id,
         trade_date=effective_trade_date,
     )
@@ -150,18 +161,6 @@ def get_etf_score(
     service: ScoringService = Depends(get_scoring_service),
 ):
     """Get the composite score for a single ETF."""
-    scores = service.get_scores(
-        template_id=template_id,
-        trade_date=trade_date,
-        limit=1,
-    )
-
-    # Filter to the requested ETF code
-    for score in scores:
-        if score["etf_code"] == etf_code:
-            return ETFScoreResponse(**score)
-
-    # If not found in the default query, try a broader search
     from sqlalchemy import func
 
     from app.models.etf import ETFInfo

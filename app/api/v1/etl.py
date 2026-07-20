@@ -12,7 +12,7 @@ from fastapi import APIRouter, Body, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_db, require_admin
+from app.api.deps import get_current_user, get_db, require_admin
 from app.models.etl import ETLLog
 from app.schemas.auth import UserResponse
 from app.services import scheduler_service
@@ -33,10 +33,12 @@ def get_etl_status(
     status: str | None = Query(None),
     limit: int = Query(20, ge=1, le=100),
     db: Session = Depends(get_db),
+    _: UserResponse = Depends(get_current_user),
 ):
-    """Get ETL job execution logs.
+    """Get ETL job execution logs (authenticated users only).
 
-    Optionally filter by job_name and/or status.
+    Optionally filter by job_name and/or status. The response may echo
+    internal ``error_msg`` details, so the endpoint requires a login.
     """
     query = db.query(ETLLog)
 

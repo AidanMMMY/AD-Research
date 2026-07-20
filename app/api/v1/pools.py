@@ -6,7 +6,9 @@ weight management, analytics, and snapshots.
 M21-3: pool routes are owner-scoped — list / get / create accept the
 authenticated user (injected via ``get_current_user``) and pass it to
 the service layer so regular users see only their own pools + legacy
-NULL-owner shared pools, while admins see every pool.
+NULL-owner shared pools, while admins see every pool. Write endpoints
+(update / members / weights / snapshots) enforce the same ownership
+rules as delete and map violations to 403.
 """
 
 from datetime import date
@@ -36,6 +38,21 @@ from app.services.pool_enhancement_service import PoolEnhancementService
 from app.services.pool_service import PoolService
 
 router = APIRouter(dependencies=[Depends(get_current_user)])
+
+
+def _raise_write_permission_error(e: PermissionError, pool_id: int) -> None:
+    """Map a service-layer ``PermissionError`` to a 403 HTTPException (M21-3).
+
+    Used by all pool write endpoints (update / members / weights /
+    snapshots) so a shared system pool and someone else's pool both get a
+    clear Chinese 403 instead of silently succeeding (IDOR fix).
+    """
+    if str(e) == "system_pool":
+        raise HTTPException(
+            status_code=403,
+            detail=f"系统预置标的池（id={pool_id}）不可修改，请新建一个自定义池代替",
+        )
+    raise HTTPException(status_code=403, detail="无权修改该标的池")
 
 
 # ------------------------------------------------------------------
@@ -78,10 +95,14 @@ def get_pool(
 def update_pool(
     pool_id: int,
     data: PoolUpdate,
+    current_user: UserResponse = Depends(get_current_user),
     service: PoolService = Depends(get_pool_service),
 ):
-    """Update an existing pool."""
-    pool = service.update_pool(pool_id, data)
+    """Update an existing pool (M21-3 owner-scoped; 403 if not writable)."""
+    try:
+        pool = service.update_pool(pool_id, data, current_user=current_user)
+    except PermissionError as e:
+        _raise_write_permission_error(e, pool_id)
     if not pool:
         raise HTTPException(status_code=404, detail=f"Pool {pool_id} not found")
     return pool
@@ -123,10 +144,14 @@ def delete_pool(
 def add_member(
     pool_id: int,
     data: PoolMemberCreate,
+    current_user: UserResponse = Depends(get_current_user),
     service: PoolService = Depends(get_pool_service),
 ):
-    """Add an ETF to a pool."""
-    pool = service.add_member(pool_id, data)
+    """Add an ETF to a pool (M21-3 owner-scoped; 403 if not writable)."""
+    try:
+        pool = service.add_member(pool_id, data, current_user=current_user)
+    except PermissionError as e:
+        _raise_write_permission_error(e, pool_id)
     if not pool:
         raise HTTPException(status_code=404, detail=f"Pool {pool_id} not found")
     return pool
@@ -136,10 +161,14 @@ def add_member(
 def remove_member(
     pool_id: int,
     etf_code: str,
+    current_user: UserResponse = Depends(get_current_user),
     service: PoolService = Depends(get_pool_service),
 ):
-    """Remove an ETF from a pool (soft delete)."""
-    pool = service.remove_member(pool_id, etf_code)
+    """Remove an ETF from a pool (soft delete; M21-3 owner-scoped)."""
+    try:
+        pool = service.remove_member(pool_id, etf_code, current_user=current_user)
+    except PermissionError as e:
+        _raise_write_permission_error(e, pool_id)
     if not pool:
         raise HTTPException(status_code=404, detail=f"Pool {pool_id} not found")
     return pool
@@ -163,10 +192,16 @@ def update_pool_weight(
     pool_id: int,
     etf_code: str,
     data: PoolWeightUpdateRequest,
+    current_user: UserResponse = Depends(get_current_user),
     service: PoolEnhancementService = Depends(get_pool_enhancement_service),
 ):
-    """Update the target weight for an ETF in a pool."""
-    result = service.update_weight(pool_id, etf_code, data.target_weight)
+    """Update the target weight for an ETF in a pool (M21-3 owner-scoped)."""
+    try:
+        result = service.update_weight(
+            pool_id, etf_code, data.target_weight, current_user=current_user
+        )
+    except PermissionError as e:
+        _raise_write_permission_error(e, pool_id)
     if not result:
         raise HTTPException(status_code=404, detail=f"Pool {pool_id} not found")
     return result
@@ -176,15 +211,23 @@ def update_pool_weight(
 def suggest_pool_weights(
     pool_id: int,
     data: PoolWeightSuggestRequest,
+    current_user: UserResponse = Depends(get_current_user),
     service: PoolEnhancementService = Depends(get_pool_enhancement_service),
 ):
     """Generate suggested weights for pool members using an algorithm.
 
     Supported algorithms: equal, score, risk_parity.
+    (M21-3 owner-scoped; 403 if the pool is not writable by the caller.)
     """
-    return service.suggest_weights(
-        pool_id, algorithm=data.algorithm, template_id=data.template_id
-    )
+    try:
+        return service.suggest_weights(
+            pool_id,
+            algorithm=data.algorithm,
+            template_id=data.template_id,
+            current_user=current_user,
+        )
+    except PermissionError as e:
+        _raise_write_permission_error(e, pool_id)
 
 
 # ------------------------------------------------------------------
@@ -233,10 +276,16 @@ def get_pool_snapshots(
 def create_pool_snapshot(
     pool_id: int,
     snapshot_date: date | None = None,
+    current_user: UserResponse = Depends(get_current_user),
     service: PoolEnhancementService = Depends(get_pool_enhancement_service),
 ):
-    """Create a snapshot of pool data for a given date."""
-    result = service.create_snapshot(pool_id, snapshot_date=snapshot_date)
+    """Create a snapshot of pool data for a given date (M21-3 owner-scoped)."""
+    try:
+        result = service.create_snapshot(
+            pool_id, snapshot_date=snapshot_date, current_user=current_user
+        )
+    except PermissionError as e:
+        _raise_write_permission_error(e, pool_id)
     if not result:
         raise HTTPException(status_code=404, detail=f"Pool {pool_id} not found")
     return result

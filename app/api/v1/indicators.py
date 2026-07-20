@@ -7,11 +7,11 @@ from datetime import date
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
-from app.api.deps import get_indicator_service
+from app.api.deps import get_current_user, get_indicator_service
 from app.schemas.indicators import IndicatorBatchResponse, IndicatorResponse
 from app.services.indicator_service import IndicatorService
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(get_current_user)])
 
 
 @router.get("/{code}", response_model=IndicatorResponse)

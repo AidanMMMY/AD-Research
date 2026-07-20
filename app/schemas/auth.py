@@ -30,6 +30,7 @@ class RefreshRequest(BaseModel):
 
 class RefreshResponse(BaseModel):
     access_token: str
+    refresh_token: str = Field(..., description="Rotated refresh token; the old one is revoked")
     token_type: str = "bearer"
 
 

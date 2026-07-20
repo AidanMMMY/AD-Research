@@ -105,10 +105,30 @@ class PoolService:
         self.db.refresh(pool)
         return self._to_response(pool)
 
+    def _assert_write_access(self, pool: ETFPools, current_user: UserResponse | None) -> None:
+        """Enforce owner-scoped write access (same rules as ``delete_pool``).
+
+        ``current_user=None`` means an internal/unscoped caller and skips
+        the check (same convention as ``list_pools`` / ``get_pool``).
+        Raises ``PermissionError("system_pool")`` for NULL-owner shared
+        pools and ``PermissionError("not_owner")`` for pools owned by
+        another user.
+        """
+        if current_user is None:
+            return
+        is_admin = current_user.role == "admin"
+        if not is_admin and pool.user_id is None:
+            raise PermissionError("system_pool")
+        if not is_admin and pool.user_id != current_user.id:
+            raise PermissionError("not_owner")
+
     def update_pool(
-        self, pool_id: int, data: PoolUpdate
+        self,
+        pool_id: int,
+        data: PoolUpdate,
+        current_user: UserResponse | None = None,
     ) -> PoolResponse | None:
-        """Update an existing active pool."""
+        """Update an existing active pool (owner-scoped, M21-3)."""
         pool = (
             self.db.query(ETFPools)
             .options(
@@ -120,6 +140,7 @@ class PoolService:
         )
         if not pool:
             return None
+        self._assert_write_access(pool, current_user)
 
         if data.name is not None:
             pool.name = data.name
@@ -168,9 +189,12 @@ class PoolService:
         return True
 
     def add_member(
-        self, pool_id: int, data: PoolMemberCreate
+        self,
+        pool_id: int,
+        data: PoolMemberCreate,
+        current_user: UserResponse | None = None,
     ) -> PoolResponse | None:
-        """Add an ETF to an active pool."""
+        """Add an ETF to an active pool (owner-scoped, M21-3)."""
         pool = (
             self.db.query(ETFPools)
             .options(
@@ -183,6 +207,7 @@ class PoolService:
         )
         if not pool:
             return None
+        self._assert_write_access(pool, current_user)
 
         # Check if the ETF is already an active member
         existing = (
@@ -218,7 +243,10 @@ class PoolService:
         return self._to_response(pool)
 
     def remove_member(
-        self, pool_id: int, etf_code: str
+        self,
+        pool_id: int,
+        etf_code: str,
+        current_user: UserResponse | None = None,
     ) -> PoolResponse | None:
         """Soft-remove an ETF from a pool and clear its weight records."""
         pool = (
@@ -233,6 +261,7 @@ class PoolService:
         )
         if not pool:
             return None
+        self._assert_write_access(pool, current_user)
 
         member = (
             self.db.query(PoolMember)

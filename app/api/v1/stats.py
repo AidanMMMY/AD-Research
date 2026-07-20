@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, Request, Response, status
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_user_optional, get_db, require_admin
+from app.api.deps import get_current_user, get_current_user_optional, get_db, require_admin
 from app.models.etf import ETFIndicator, ETFInfo
 from app.models.scoring import ETFScore, ScoreTemplate
 from app.models.web_vitals import WebVitalsLog
@@ -54,8 +54,11 @@ def _collect_overview(db: Session) -> dict:
 
 
 @router.get("/overview")
-def get_overview(db: Session = Depends(get_db)):
-    """Get dashboard overview statistics."""
+def get_overview(
+    db: Session = Depends(get_db),
+    _: UserResponse = Depends(get_current_user),
+):
+    """Get dashboard overview statistics (authenticated users only)."""
     return _collect_overview(db)
 
 
@@ -76,7 +79,11 @@ _METRIC_FIELDS = {
 
 
 @router.get("/overview/{metric}")
-def get_overview_metric(metric: str, db: Session = Depends(get_db)):
+def get_overview_metric(
+    metric: str,
+    db: Session = Depends(get_db),
+    _: UserResponse = Depends(get_current_user),
+):
     """Return a single dashboard counter.
 
     ``metric`` is one of: ``etf-count``, ``score-count``,

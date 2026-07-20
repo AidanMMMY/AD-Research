@@ -8,11 +8,11 @@ from typing import Literal
 
 from fastapi import APIRouter, Depends, Query
 
-from app.api.deps import get_analysis_service, get_risk_analysis_service
+from app.api.deps import get_analysis_service, get_current_user, get_risk_analysis_service
 from app.services.analysis_service import AnalysisService
 from app.services.risk_analysis_service import RiskAnalysisService
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(get_current_user)])
 
 
 @router.get("/correlation")

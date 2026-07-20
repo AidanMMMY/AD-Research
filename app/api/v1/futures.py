@@ -14,7 +14,7 @@ from datetime import date
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_db, require_admin
+from app.api.deps import get_current_user, get_db, require_admin
 from app.core.database import SessionLocal
 from app.core.redis_client import redis_lock
 from app.data.pipelines.futures import (
@@ -35,7 +35,7 @@ from app.services.futures_service import FuturesService
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(get_current_user)])
 
 
 def _get_service(db: Session) -> FuturesService:

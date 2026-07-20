@@ -6,13 +6,13 @@ information and financial statement history.
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
-from app.api.deps import get_etf_service, get_stock_fundamental_service
+from app.api.deps import get_current_user, get_etf_service, get_stock_fundamental_service
 from app.schemas.etf import ETFInfoResponse, ETFListResponse, ETFFilterParams
 from app.schemas.stock_financials import StockFinancialsResponse
 from app.services.etf_service import ETFService
 from app.services.stock_fundamental_service import StockFundamentalService
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(get_current_user)])
 
 
 @router.get("", response_model=ETFListResponse)

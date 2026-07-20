@@ -192,7 +192,12 @@ def refresh(request: RefreshRequest, db: Session = Depends(_get_db)):
         .first()
     )
 
-    if not stored or stored.expires_at < datetime.now(timezone.utc):
+    # SQLite drops tzinfo on DateTime(timezone=True); treat naive as UTC
+    expires_at = stored.expires_at if stored else None
+    if expires_at is not None and expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=timezone.utc)
+
+    if not stored or expires_at < datetime.now(timezone.utc):
         raise HTTPException(status_code=401, detail="Invalid or expired refresh token")
 
     # Revoke old refresh token (rotation)
@@ -227,7 +232,7 @@ def refresh(request: RefreshRequest, db: Session = Depends(_get_db)):
         )
         db.commit()
 
-    return RefreshResponse(access_token=access_token)
+    return RefreshResponse(access_token=access_token, refresh_token=raw_refresh)
 
 
 @router.post("/logout")

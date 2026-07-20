@@ -1,11 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_stock_fundamental_service
+from app.api.deps import get_current_user, get_stock_fundamental_service
 from app.schemas.stock_fundamental import StockFundamentalResponse
 from app.services.stock_fundamental_service import StockFundamentalService
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(get_current_user)])
 
 
 @router.get("/{code}", response_model=StockFundamentalResponse)

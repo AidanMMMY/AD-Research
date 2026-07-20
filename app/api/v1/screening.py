@@ -7,7 +7,7 @@ and category enumeration with ETF counts.
 
 from fastapi import APIRouter, Depends, Query
 
-from app.api.deps import get_screening_service
+from app.api.deps import get_current_user, get_screening_service
 from app.schemas.screening import (
     CategoryListResponse,
     PresetListResponse,
@@ -15,7 +15,7 @@ from app.schemas.screening import (
 )
 from app.services.screening_service import ScreeningService
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(get_current_user)])
 
 
 @router.get("", response_model=ScreenResult)

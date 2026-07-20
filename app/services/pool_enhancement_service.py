@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 from app.models.etf import ETFIndicator, ETFInfo
 from app.models.pool import ETFPools, PoolMember, PoolSnapshot, PoolWeight
 from app.models.scoring import ETFScore
+from app.schemas.auth import UserResponse
 
 
 class PoolEnhancementService:
@@ -23,6 +24,37 @@ class PoolEnhancementService:
 
     def __init__(self, db: Session):
         self.db = db
+
+    # ------------------------------------------------------------------
+    # Owner-scoped access control
+    # ------------------------------------------------------------------
+
+    def _get_pool_for_write(
+        self, pool_id: int, current_user: UserResponse | None
+    ) -> ETFPools | None:
+        """Fetch the active pool and enforce owner-scoped write access.
+
+        Returns ``None`` when the pool does not exist (caller maps that to
+        its usual not-found behaviour). Raises
+        ``PermissionError("system_pool")`` for NULL-owner shared pools and
+        ``PermissionError("not_owner")`` for pools owned by another user —
+        same rules as ``PoolService.delete_pool``. ``current_user=None``
+        means an internal/unscoped caller and skips the check.
+        """
+        pool = (
+            self.db.query(ETFPools)
+            .filter(ETFPools.id == pool_id)
+            .filter(ETFPools.deleted_at.is_(None))
+            .first()
+        )
+        if pool is None or current_user is None:
+            return pool
+        is_admin = current_user.role == "admin"
+        if not is_admin and pool.user_id is None:
+            raise PermissionError("system_pool")
+        if not is_admin and pool.user_id != current_user.id:
+            raise PermissionError("not_owner")
+        return pool
 
     # ------------------------------------------------------------------
     # Weight management
@@ -66,16 +98,25 @@ class PoolEnhancementService:
         ]
 
     def update_weight(
-        self, pool_id: int, etf_code: str, target_weight: float
+        self,
+        pool_id: int,
+        etf_code: str,
+        target_weight: float,
+        current_user: UserResponse | None = None,
     ) -> dict[str, Any] | None:
         """Update the target weight for an active ETF in a pool.
 
         Creates a new weight record if one doesn't exist. Returns None if
-        the ETF is not an active member of the pool. Rejects negative weights
-        or weights that would push the pool total above 100%.
+        the pool does not exist or the ETF is not an active member of the
+        pool. Rejects negative weights or weights that would push the pool
+        total above 100%. Enforces owner-scoped write access (M21-3).
         """
         if target_weight < 0 or target_weight > 100:
             raise ValueError("target_weight must be between 0 and 100")
+
+        pool = self._get_pool_for_write(pool_id, current_user)
+        if pool is None:
+            return None
 
         # Only allow weight updates for active members
         member = (
@@ -150,6 +191,7 @@ class PoolEnhancementService:
         pool_id: int,
         algorithm: str = "equal",
         template_id: int | None = None,
+        current_user: UserResponse | None = None,
     ) -> list[dict[str, Any]]:
         """Generate suggested weights for pool members using an algorithm.
 
@@ -157,10 +199,16 @@ class PoolEnhancementService:
             pool_id: The pool ID.
             algorithm: One of "equal", "score", "risk_parity".
             template_id: Score template ID (required for "score" algorithm).
+            current_user: Authenticated caller; used to enforce owner-scoped
+                write access (M21-3). ``None`` skips the check (internal).
 
         Returns:
             List of weight suggestion dicts.
         """
+        pool = self._get_pool_for_write(pool_id, current_user)
+        if pool is None:
+            return []
+
         members = self._get_active_members(pool_id)
         if not members:
             return []
@@ -510,19 +558,18 @@ class PoolEnhancementService:
     # ------------------------------------------------------------------
 
     def create_snapshot(
-        self, pool_id: int, snapshot_date: date | None = None
+        self,
+        pool_id: int,
+        snapshot_date: date | None = None,
+        current_user: UserResponse | None = None,
     ) -> dict[str, Any] | None:
         """Create a snapshot of pool data for a given date.
 
         Captures current weights, member list, and performance metrics.
+        Enforces owner-scoped write access (M21-3).
         """
-        pool = (
-            self.db.query(ETFPools)
-            .filter(ETFPools.id == pool_id)
-            .filter(ETFPools.deleted_at.is_(None))
-            .first()
-        )
-        if not pool:
+        pool = self._get_pool_for_write(pool_id, current_user)
+        if pool is None:
             return None
 
         if snapshot_date is None:

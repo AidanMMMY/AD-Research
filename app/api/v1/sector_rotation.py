@@ -5,7 +5,7 @@ from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
-from app.api.deps import get_sector_rotation_service
+from app.api.deps import get_current_user, get_sector_rotation_service
 from app.schemas.sector_rotation import (
     SectorConstituentsResponse,
     SectorListItem,
@@ -14,7 +14,7 @@ from app.schemas.sector_rotation import (
 )
 from app.services.sector_rotation_service import SectorRotationService
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(get_current_user)])
 
 
 @router.get("/sector-rotation", response_model=SectorRotationResponse)

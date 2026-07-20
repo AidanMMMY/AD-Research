@@ -4,7 +4,8 @@ from typing import Any
 
 from fastapi import APIRouter, Depends
 
-from app.api.deps import get_etf_scanner_service
+from app.api.deps import get_etf_scanner_service, require_admin
+from app.schemas.auth import UserResponse
 from app.services.etf_scanner_service import ETFScannerService
 
 router = APIRouter()
@@ -13,8 +14,9 @@ router = APIRouter()
 @router.post("/scan", response_model=dict[str, Any])
 def trigger_scan(
     service: ETFScannerService = Depends(get_etf_scanner_service),
+    _: UserResponse = Depends(require_admin),
 ):
-    """Manually trigger an ETF market scan."""
+    """Manually trigger an ETF market scan (admin only — heavy full-market job)."""
     return service.scan_market()
 
 

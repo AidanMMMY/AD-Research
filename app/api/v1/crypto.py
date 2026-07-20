@@ -16,6 +16,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app.api.deps import (
+    get_current_user,
     get_db,
     get_etf_service,
     get_indicator_service,
@@ -40,7 +41,7 @@ from app.services.research_service import ResearchService
 from app.services.scoring_service import ScoringService
 from app.services.signal_service import SignalService
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(get_current_user)])
 
 
 # ---------------------------------------------------------------------------

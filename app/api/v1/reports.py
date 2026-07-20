@@ -9,7 +9,7 @@ import os
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import FileResponse
 
-from app.api.deps import get_report_service
+from app.api.deps import get_current_user, get_report_service
 from app.schemas.report import (
     ReportGenerateRequest,
     ReportResponse,
@@ -17,7 +17,7 @@ from app.schemas.report import (
 )
 from app.services.report_service import ReportService
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(get_current_user)])
 
 
 @router.get("", response_model=list[ReportResponse])
