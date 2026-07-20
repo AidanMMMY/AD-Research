@@ -163,10 +163,23 @@ def _bars_source_cte(
     CTE.
     """
     if max_bars is not None:
+        # Per-code LATERAL limit: one indexed range scan per code returning at
+        # most ``max_bars`` rows, instead of a full-history scan + ROW_NUMBER
+        # window over every bar the code ever had (prod: 40k rows/chunk and
+        # ~110s down to 6k rows and <5s).
         return f"""
         windowed AS (
-            SELECT *
-            FROM (
+            SELECT
+                b.etf_code,
+                b.trade_date,
+                b.close,
+                b.high,
+                b.low,
+                b.adj_factor,
+                b.amount,
+                b.volume
+            FROM (SELECT unnest({codes_bind}) AS code) c
+            CROSS JOIN LATERAL (
                 SELECT
                     b.etf_code,
                     b.trade_date,
@@ -175,18 +188,14 @@ def _bars_source_cte(
                     b.low,
                     b.adj_factor,
                     b.amount,
-                    b.volume,
-                    ROW_NUMBER() OVER (PARTITION BY b.etf_code ORDER BY b.trade_date DESC) AS rn_desc
+                    b.volume
                 FROM instrument_daily_bar b
-                WHERE b.etf_code = ANY({codes_bind})
-                  -- Direct cutoff predicate: semantically equivalent to the
-                  -- old per-row semi-join subquery (a bar row always satisfies
-                  -- it for itself) but avoids the nested-loop join that made
-                  -- 20-code chunks ~100x slower (prod: 128s -> <2s).
+                WHERE b.etf_code = c.code
                   AND b.trade_date <= COALESCE(:target_date, CURRENT_DATE)
                   {target_filter_sql}
-            ) ranked
-            WHERE rn_desc <= {max_bars}
+                ORDER BY b.trade_date DESC
+                LIMIT {max_bars}
+            ) b
         )
         """
     return f"""
