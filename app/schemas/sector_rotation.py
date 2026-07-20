@@ -54,6 +54,12 @@ class SectorPerformance(BaseModel):
         ..., description="Excess return over market average (3m, percentage points)"
     )
     momentum_rank: int = Field(..., description="Rank by 1m return (1=best)")
+    return_source: str | None = Field(
+        None,
+        description="Return basis: official_index (申万一级官方指数) or constituents_equal_weight",
+    )
+    official_close: float | None = Field(None, description="申万一级指数官方收盘点位 (SW mode)")
+    sw_l1_code: str | None = Field(None, description="申万一级行业代码 (SW mode)")
 
 
 class RotationSignal(BaseModel):
