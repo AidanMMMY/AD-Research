@@ -8,12 +8,14 @@ Covers:
 - /stats: diagnostics counts.
 
 The DB dependency is overridden with an in-memory SQLite session backed
-by a clean schema. The futures endpoints do not require auth so there's
-no auth override needed; they sit behind the standard ``get_db`` dep.
+by a clean schema. The futures endpoints sit behind the standard
+``get_current_user`` auth dependency, which is overridden with a fake
+user so no JWT is needed.
 """
 
 from datetime import date
 from decimal import Decimal
+from types import SimpleNamespace
 
 import pytest
 from fastapi.testclient import TestClient
@@ -54,7 +56,7 @@ def db_session():
 
 @pytest.fixture
 def client(db_session):
-    """TestClient with DB dependency overridden to the in-memory session."""
+    """TestClient with DB + auth dependencies overridden."""
 
     def _get_db_override():
         try:
@@ -62,7 +64,11 @@ def client(db_session):
         finally:
             pass
 
+    def _fake_user():
+        return SimpleNamespace(id=1, username="tester", role="admin", is_active=True)
+
     app.dependency_overrides[api_deps.get_db] = _get_db_override
+    app.dependency_overrides[api_deps.get_current_user] = _fake_user
     with TestClient(app) as c:
         try:
             yield c

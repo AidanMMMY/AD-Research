@@ -129,7 +129,11 @@ def test_fetch_stale_cache_triggers_request(db_session, seeded_article) -> None:
     )
     db_session.commit()
 
-    fake_md = "# fresh markdown\n\nHello world"
+    fake_md = (
+        "# fresh markdown\n\n"
+        "Hello world. This body is intentionally long so the cleaned text "
+        "stays above the minimum body-length guard."
+    )
     with patch(
         "app.services.news.content_fetcher.httpx.get",
         return_value=_fake_response(fake_md),
@@ -199,7 +203,11 @@ def test_force_flag_bypasses_cache(db_session, seeded_article) -> None:
     seeded_article.full_content_fetched_at = datetime.now(tz=UTC)
     db_session.commit()
 
-    fake_md = "# re-fetched markdown body\n\nMore body content here."
+    fake_md = (
+        "# re-fetched markdown body\n\n"
+        "More body content here, padded with enough extra text to clear "
+        "the minimum body-length guard after cleanup."
+    )
     with patch(
         "app.services.news.content_fetcher.httpx.get",
         return_value=_fake_response(fake_md),
@@ -262,7 +270,11 @@ def fastapi_client(db_session, seeded_article):
 
 
 def test_fetch_endpoint_success(fastapi_client, seeded_article) -> None:
-    fake_md = "# hello\n\nmarkdown body"
+    fake_md = (
+        "# hello\n\n"
+        "markdown body with enough additional text to pass the minimum "
+        "body-length guard once the cleanup has run."
+    )
     with patch(
         "app.services.news.content_fetcher.httpx.get",
         return_value=_fake_response(fake_md),
@@ -357,6 +369,7 @@ def test_fetch_strips_repeated_title_and_metadata(db_session) -> None:
         "2026年07月11日 15:59 21世纪经济报道\n\n"
         "真正正文开始。这是一段足够长的正文内容，用来确保清理后的长度可以通过最小阈值检查，"
         "并且仍然包含清晰的中文语义，让测试能够验证正文已经被正确提取。"
+        "这里再补充一句，进一步保证清理后的正文长度稳定超过最小正文长度阈值。"
     )
     raw = _jina_structured(title, "2026-07-11 15:59", markdown)
 
@@ -383,6 +396,7 @@ def test_fetch_removes_think_tags_from_raw(db_session) -> None:
         "正文内容。"
         "这一段正文故意写得长一点，确保清理后的长度可以通过最小正文长度阈值，"
         "从而完整测出 think 标签过滤之后还能拿到正文。"
+        "再补充一句正文，进一步保证清理后的长度稳定超过阈值。"
     )
     raw = _jina_structured(article.title, "2026-07-11", markdown)
 

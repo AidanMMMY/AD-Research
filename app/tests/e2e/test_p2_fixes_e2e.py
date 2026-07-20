@@ -95,6 +95,7 @@ def _seed_backtest_result(
     from app.models.etl import BacktestResult
 
     br = BacktestResult(
+        user_id=strategy_config.user_id,
         strategy_id=strategy_config.id,
         start_date=date(2024, 1, 1),
         end_date=date(2024, 6, 30),
@@ -393,10 +394,10 @@ def test_p2_5_paper_trading_pnl_summary_does_not_call_update_market_values(db_se
     needed either).
     """
     svc = PaperTradingService(db_session)
-    account = svc.create_account("P25", Decimal("10000"))
+    account = svc.create_account("P25", Decimal("10000"), user_id=1)
 
     with patch.object(svc, "update_market_values") as mock_update, patch.object(
-        PaperTradingService, "provider", new=_provider(100.0)
+        PaperTradingService, "_get_provider_for_code", return_value=_provider(100.0)
     ):
         svc.get_pnl_summary(account.id)
 
@@ -409,10 +410,10 @@ def test_p2_5_paper_trading_pnl_summary_one_batched_quote_call(db_session, crypt
     not once per position.
     """
     svc = PaperTradingService(db_session)
-    account = svc.create_account("P25B", Decimal("100000"))
+    account = svc.create_account("P25B", Decimal("100000"), user_id=1)
 
     # Open positions on both BTC.US and ETH.US so the symbol set is plural
-    with patch.object(PaperTradingService, "provider", new=_provider(100.0)):
+    with patch.object(PaperTradingService, "_get_provider_for_code", return_value=_provider(100.0)):
         svc.place_order(account.id, "BTC.US", "BUY", Decimal("0.5"))
         svc.place_order(account.id, "ETH.US", "BUY", Decimal("1.0"))
     # After the two BUYs, both positions have avg_cost = 100.
@@ -429,7 +430,7 @@ def test_p2_5_paper_trading_pnl_summary_one_batched_quote_call(db_session, crypt
     multi_mock = MagicMock()
     multi_mock.fetch_realtime_quotes.return_value = quotes_df
 
-    with patch.object(PaperTradingService, "provider", new=multi_mock):
+    with patch.object(PaperTradingService, "_get_provider_for_code", return_value=multi_mock):
         summary = svc.get_pnl_summary(account.id)
 
     # Exactly one batched fetch
@@ -455,15 +456,15 @@ def test_p2_5_paper_trading_pnl_summary_still_returns_zero_when_provider_fails(
     too).  We assert the contract is preserved.
     """
     svc = PaperTradingService(db_session)
-    account = svc.create_account("P25C", Decimal("10000"))
+    account = svc.create_account("P25C", Decimal("10000"), user_id=1)
 
-    with patch.object(PaperTradingService, "provider", new=_provider(100.0)):
+    with patch.object(PaperTradingService, "_get_provider_for_code", return_value=_provider(100.0)):
         svc.place_order(account.id, "BTC.US", "BUY", Decimal("0.1"))
 
     broken_mock = MagicMock()
     broken_mock.fetch_realtime_quotes.side_effect = RuntimeError("binance down")
 
-    with patch.object(PaperTradingService, "provider", new=broken_mock):
+    with patch.object(PaperTradingService, "_get_provider_for_code", return_value=broken_mock):
         summary = svc.get_pnl_summary(account.id)
 
     # The summary structure must still be intact

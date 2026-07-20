@@ -76,11 +76,13 @@ def _buy_signal_series(bar_count: int, trigger_idx: int = 2) -> pd.Series:
 
 
 def test_open_execution_no_lookahead():
-    """Under execution_price_model='open' the BUY fill must use the
-    signal bar's OPEN (not its adj_close). With open != close on every
-    bar, the BUY-side fill must differ between the 'open' and 'close'
-    models — this is the load-bearing assertion (avoiding look-ahead
-    bias)."""
+    """Under execution_price_model='open' the raw signal series is shifted
+    by one bar, so a BUY signal computed from bar 2's close fills at
+    bar 3's OPEN (not bar 2's open — that would be look-ahead, since the
+    open precedes the close). Fills also use the adjusted-open basis
+    (open * adj_close / close; here adj_close == close, so adjusted open
+    == raw open). The 'close' baseline model still fills at the signal
+    bar's adj_close — this is the load-bearing contrast."""
     df = _make_bars(n=30, open_vs_close=0.01, seed=7)
     signals = _buy_signal_series(len(df), trigger_idx=2)
 
@@ -116,20 +118,23 @@ def test_open_execution_no_lookahead():
     trade_open = res_open.trades[0]
     trade_close = res_close.trades[0]
 
-    # OPEN-based entry price is strictly different from CLOSE-based.
-    # (With open = adj_close * 1.01, the difference is ~1% of price.)
+    # OPEN-based entry happens ONE BAR AFTER the signal (bar 3, not
+    # bar 2) and uses the adjusted open. CLOSE-based entry fills on the
+    # signal bar's adj_close (legacy look-ahead baseline).
     assert trade_open.entry_price != pytest.approx(trade_close.entry_price)
-    assert trade_open.entry_price == pytest.approx(float(df.iloc[2]["open"]))
+    assert trade_open.entry_price == pytest.approx(float(df.iloc[3]["open"]))
+    assert trade_open.entry_date == df.iloc[3]["trade_date"]
     assert trade_close.entry_price == pytest.approx(float(df.iloc[2]["adj_close"]))
 
-    # The SELL fill must likewise be the open of the SELL bar, not its close.
+    # The SELL fill must likewise be the open of the bar AFTER the SELL
+    # signal bar (signal at bar 7 -> fill at bar 8's open).
     assert trade_open.exit_price != pytest.approx(trade_close.exit_price)
-    assert trade_open.exit_price == pytest.approx(float(df.iloc[7]["open"]))
+    assert trade_open.exit_price == pytest.approx(float(df.iloc[8]["open"]))
 
     # And confirm via the signal log too (defence-in-depth).
     buy_log_open = next(s for s in res_open.signals if s["type"] == "BUY")
     buy_log_close = next(s for s in res_close.signals if s["type"] == "BUY")
-    assert buy_log_open["price"] == pytest.approx(float(df.iloc[2]["open"]))
+    assert buy_log_open["price"] == pytest.approx(float(df.iloc[3]["open"]))
     assert buy_log_close["price"] == pytest.approx(float(df.iloc[2]["adj_close"]))
 
 
@@ -150,6 +155,38 @@ def test_execution_price_model_invalid_rejected():
             market="other",
             apply_friction=False,
         )
+
+
+def test_open_fill_uses_adjusted_price_basis():
+    """Fills under the 'open' model must be on the adjusted basis:
+    open * adj_close / close. Before the fix the raw open was used while
+    NAV mark-to-market used adj_close, mixing two price conventions in
+    one trade. Here adj_close = 2 * close on every bar, so the fill must
+    be exactly 2x the raw open."""
+    df = _make_bars(n=15, open_vs_close=0.0, seed=3)
+    df["adj_close"] = df["close"] * 2.0  # e.g. a 1:2 split on every bar
+    signals = _buy_signal_series(len(df), trigger_idx=2)
+
+    res = _simulate(
+        df,
+        signals,
+        initial_capital=100_000.0,
+        commission_rate=0.0,
+        slippage_rate=0.0,
+        position_size=1.0,
+        holding_period=10,
+        execution_price_model="open",
+        market="other",
+        apply_friction=False,
+    )
+
+    assert len(res.trades) == 1
+    trade = res.trades[0]
+    # Signal at bar 2 -> shifted fill at bar 3's adjusted open.
+    expected_entry = float(df.iloc[3]["open"]) * 2.0
+    expected_exit = float(df.iloc[8]["open"]) * 2.0
+    assert trade.entry_price == pytest.approx(expected_entry)
+    assert trade.exit_price == pytest.approx(expected_exit)
 
 
 # ---------------------------------------------------------------------------

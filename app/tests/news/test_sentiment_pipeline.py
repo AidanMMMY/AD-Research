@@ -224,6 +224,13 @@ def _article(url: str = "https://example.com/a", title: str = "AAPL beats Q3") -
 
 
 def test_process_article_happy_path_writes_db_and_cache(db_session, fake_redis):
+    # The persist layer validates instrument codes against etf_info before
+    # insert; seed the mapped internal code for the stub's raw "AAPL".
+    from app.models.etf import ETFInfo
+
+    db_session.add(ETFInfo(code="AAPL.US", name="Apple Inc"))
+    db_session.commit()
+
     pipe = _make_pipeline(db_session, fake_redis)
     res = asyncio.run(pipe.process_article(_article()))
 
@@ -240,12 +247,27 @@ def test_process_article_happy_path_writes_db_and_cache(db_session, fake_redis):
 
     rows = db_session.query(SentimentData).filter_by(source="llm_pipeline").all()
     assert len(rows) == 1
+    assert rows[0].instrument_code == "AAPL.US"
     assert rows[0].sentiment_label == "positive"
 
     # Cache populated
     cached = pipe.cache.get_article("https://example.com/a")
     assert cached is not None
     assert cached["importance"] == 5
+
+
+def test_process_article_skips_symbol_not_in_etf_info(db_session, fake_redis, caplog):
+    """Symbols missing from etf_info are skipped, not committed (no FK error)."""
+    from app.models.research import SentimentData
+
+    pipe = _make_pipeline(db_session, fake_redis)
+    with caplog.at_level("WARNING", logger="app.services.news.sentiment.sentiment_pipeline"):
+        res = asyncio.run(pipe.process_article(_article()))
+
+    assert res.success is True
+    rows = db_session.query(SentimentData).filter_by(source="llm_pipeline").all()
+    assert rows == []
+    assert any("not in etf_info" in r.message for r in caplog.records)
 
 
 def test_process_article_cache_hit_skips_llm(db_session, fake_redis):

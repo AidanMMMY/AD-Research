@@ -21,7 +21,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
-from app.api.deps import get_db, get_sector_rotation_service
+from app.api.deps import get_current_user, get_db, get_sector_rotation_service
 from app.api.v1 import sector_rotation as sector_rotation_module
 from app.core.database import Base
 from app.models.etf import ETFIndicator, ETFInfo
@@ -78,8 +78,14 @@ def sector_rotation_client(sr_session):
         from app.services.sector_rotation_service import SectorRotationService
         return SectorRotationService(sr_session)
 
+    def _fake_user():
+        from types import SimpleNamespace
+
+        return SimpleNamespace(id=1, username="tester", role="user", is_active=True)
+
     test_app.dependency_overrides[get_db] = _override_db
     test_app.dependency_overrides[get_sector_rotation_service] = _override_service
+    test_app.dependency_overrides[get_current_user] = _fake_user
 
     with TestClient(test_app) as client:
         yield client

@@ -51,6 +51,7 @@ def _make_settings(trading_enabled: bool = True) -> Settings:
 
 def _make_config(**overrides) -> LiveTradeConfig:
     defaults = dict(
+        user_id=1,
         name="test-config",
         is_testnet=True,
         is_enabled=True,

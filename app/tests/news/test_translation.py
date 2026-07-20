@@ -4,7 +4,7 @@ Covers:
 
 * Service unit tests (no LLM call) — cache hit, language gate,
   empty-body guard, ``unsupported target_language`` rejection.
-* Service unit tests with a stubbed DeepSeekProvider — first call
+* Service unit tests with a stubbed LLM provider — first call
   persists, second call returns cached, no LLM call.
 * API smoke tests — 200 on success, 400 on non-English, 404 on
   missing, 429 when the daily limit trips, 409 when the Redis
@@ -140,7 +140,7 @@ def _make_chinese_article(news_db) -> NewsArticle:
 
 
 def _patch_provider(translation_text: str = "你好，世界。"):
-    """Patch DeepSeekProvider so no real network call is made.
+    """Patch the ``get_llm_provider`` factory so no real network call is made.
 
     Returns a context manager; yields the mock instance so tests can
     inspect ``call_count`` or change behaviour mid-test.
@@ -149,7 +149,7 @@ def _patch_provider(translation_text: str = "你好，世界。"):
     fake_provider.is_available = True
     fake_provider.chat.return_value = translation_text
     return patch(
-        "app.services.llm.deepseek_provider.DeepSeekProvider",
+        "app.services.llm.get_llm_provider",
         return_value=fake_provider,
     ), fake_provider
 
@@ -257,39 +257,25 @@ class TestNewsTranslationService:
         sent = messages[0]["content"]
         assert "Long full content here" in sent
 
-    def test_provider_no_key_raises_runtime_error(self, news_db, monkeypatch):
+    def test_provider_no_key_raises_runtime_error(self, news_db):
         from app.services.news.translation_service import NewsTranslationService
-        from app.services.llm import deepseek_provider
 
         article = _make_english_article(news_db)
-        # Force the provider to report unavailable.
-        monkeypatch.setattr(
-            deepseek_provider.DeepSeekProvider,
-            "__init__",
-            lambda self, model=None: (_ for _ in ()).throw(
-                AttributeError("unused")
-            )
-            or None,
-        )
 
         class _NoKeyProvider:
             is_available = False
             def chat(self, *a, **k):  # pragma: no cover
                 return ""
 
-        monkeypatch.setattr(
-            "app.services.news.translation_service.NewsTranslationService._call_llm_with_retry",
-            lambda *a, **k: (None, None),
-        )
-
         # When is_available is False, the service should raise RuntimeError.
         with patch(
-            "app.services.llm.deepseek_provider.DeepSeekProvider",
+            "app.services.llm.get_llm_provider",
             return_value=_NoKeyProvider(),
         ):
             with pytest.raises(RuntimeError) as exc:
                 NewsTranslationService(news_db).translate(article.id)
-        assert "DEEPSEEK_API_KEY" in str(exc.value)
+        assert "_NoKeyProvider" in str(exc.value)
+        assert "not configured" in str(exc.value)
 
     def test_get_cached_translation(self, news_db):
         from app.services.news.translation_service import NewsTranslationService
@@ -392,12 +378,12 @@ class TestTranslateEndpoint:
                 return ""
 
         with patch(
-            "app.services.llm.deepseek_provider.DeepSeekProvider",
+            "app.services.llm.get_llm_provider",
             return_value=_NoKeyProvider(),
         ):
             resp = api_client.post(f"/api/v1/news/{article.id}/translate")
         assert resp.status_code == 502
-        assert "DEEPSEEK_API_KEY" in resp.json()["detail"]
+        assert "_NoKeyProvider" in resp.json()["detail"]
 
     def test_get_article_includes_translation_fields(self, api_client, news_db):
         article = _make_english_article(news_db)

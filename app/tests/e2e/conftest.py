@@ -30,6 +30,7 @@ from app.models.trading import (
     PaperTradeOrder,
     PaperTradePosition,
 )
+from app.models.user import User
 
 
 # ---------------------------------------------------------------------------
@@ -307,14 +308,34 @@ def seeded_etf_universe(db_session):
 
 
 # ---------------------------------------------------------------------------
+# Test user (multi-tenant user_id columns are NOT NULL)
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def test_user(db_session):
+    """A minimal users row so models with ``user_id nullable=False`` can be seeded."""
+    user = User(
+        username="e2e_tester",
+        password_hash="not-a-real-hash",
+        role="user",
+        is_active=True,
+    )
+    db_session.add(user)
+    db_session.commit()
+    return user
+
+
+# ---------------------------------------------------------------------------
 # Strategy / backtest fixtures
 # ---------------------------------------------------------------------------
 
 
 @pytest.fixture
-def strategy_config(db_session):
+def strategy_config(db_session, test_user):
     """A single momentum strategy persisted to the DB."""
     cfg = StrategyConfig(
+        user_id=test_user.id,
         name="Momentum 20/5%",
         description="Momentum strategy used in e2e backtest",
         strategy_type="momentum",
@@ -374,6 +395,7 @@ def backtest_result(db_session, strategy_config):
         "params": {"momentum_window": 20, "threshold": 0.05},
     }
     br = BacktestResult(
+        user_id=strategy_config.user_id,
         strategy_id=strategy_config.id,
         start_date=date(2024, 1, 1),
         end_date=date(2024, 6, 30),
@@ -409,9 +431,10 @@ def backtest_result(db_session, strategy_config):
 
 
 @pytest.fixture
-def live_config(db_session):
+def live_config(db_session, test_user):
     """A single LiveTradeConfig with conservative risk limits for tests."""
     cfg = LiveTradeConfig(
+        user_id=test_user.id,
         name="E2E Test Config",
         is_testnet=True,
         is_enabled=True,

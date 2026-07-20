@@ -62,8 +62,10 @@ def seeded_db(db_session):
 
 def test_create_account_defaults(seeded_db):
     svc = PaperTradingService(seeded_db)
-    with patch.object(PaperTradingService, "provider", new=_make_provider_mock(100)):
-        account = svc.create_account("Main", Decimal("5000"))
+    with patch.object(
+        PaperTradingService, "_get_provider_for_code", return_value=_make_provider_mock(100)
+    ):
+        account = svc.create_account("Main", Decimal("5000"), user_id=1)
     assert account.id is not None
     assert account.cash == Decimal("5000")
     assert account.initial_balance == Decimal("5000")
@@ -72,7 +74,7 @@ def test_create_account_defaults(seeded_db):
 
 def test_get_account_excludes_archived(seeded_db):
     svc = PaperTradingService(seeded_db)
-    a = svc.create_account("A", Decimal("1000"))
+    a = svc.create_account("A", Decimal("1000"), user_id=1)
     svc.archive_account(a.id)
     assert svc.get_account(a.id) is None
     assert svc.get_accounts() == []
@@ -90,8 +92,10 @@ def test_archive_unknown_account_returns_false(seeded_db):
 
 def test_buy_order_reduces_cash_and_creates_position(seeded_db):
     svc = PaperTradingService(seeded_db)
-    account = svc.create_account("X", Decimal("10000"))
-    with patch.object(PaperTradingService, "provider", new=_make_provider_mock(100)):
+    account = svc.create_account("X", Decimal("10000"), user_id=1)
+    with patch.object(
+        PaperTradingService, "_get_provider_for_code", return_value=_make_provider_mock(100)
+    ):
         order = svc.place_order(account.id, "BTC.US", "BUY", Decimal("0.1"))
     assert order.status == "filled"
     assert order.filled_quantity == Decimal("0.1")
@@ -112,27 +116,35 @@ def test_buy_order_reduces_cash_and_creates_position(seeded_db):
 
 def test_buy_insufficient_cash_raises(seeded_db):
     svc = PaperTradingService(seeded_db)
-    account = svc.create_account("Y", Decimal("10"))  # very little cash
-    with patch.object(PaperTradingService, "provider", new=_make_provider_mock(100)):
+    account = svc.create_account("Y", Decimal("10"), user_id=1)  # very little cash
+    with patch.object(
+        PaperTradingService, "_get_provider_for_code", return_value=_make_provider_mock(100)
+    ):
         with pytest.raises(PaperTradingError, match="Insufficient cash"):
             svc.place_order(account.id, "BTC.US", "BUY", Decimal("1"))
 
 
 def test_buy_unknown_instrument_raises(seeded_db):
     svc = PaperTradingService(seeded_db)
-    account = svc.create_account("Z", Decimal("10000"))
-    with patch.object(PaperTradingService, "provider", new=_make_provider_mock(100)):
+    account = svc.create_account("Z", Decimal("10000"), user_id=1)
+    with patch.object(
+        PaperTradingService, "_get_provider_for_code", return_value=_make_provider_mock(100)
+    ):
         with pytest.raises(PaperTradingError, match="not found"):
             svc.place_order(account.id, "GHOST.US", "BUY", Decimal("0.1"))
 
 
 def test_sell_reduces_position_and_realises_pnl(seeded_db):
     svc = PaperTradingService(seeded_db)
-    account = svc.create_account("S", Decimal("10000"))
+    account = svc.create_account("S", Decimal("10000"), user_id=1)
     # BUY at 100, then SELL at 120 -> +$2 realised PnL
-    with patch.object(PaperTradingService, "provider", new=_make_provider_mock(100)):
+    with patch.object(
+        PaperTradingService, "_get_provider_for_code", return_value=_make_provider_mock(100)
+    ):
         svc.place_order(account.id, "BTC.US", "BUY", Decimal("0.1"))
-    with patch.object(PaperTradingService, "provider", new=_make_provider_mock(120)):
+    with patch.object(
+        PaperTradingService, "_get_provider_for_code", return_value=_make_provider_mock(120)
+    ):
         sell = svc.place_order(account.id, "BTC.US", "SELL", Decimal("0.1"))
     assert sell.status == "filled"
     pos = (
@@ -150,8 +162,10 @@ def test_sell_reduces_position_and_realises_pnl(seeded_db):
 
 def test_sell_more_than_held_raises(seeded_db):
     svc = PaperTradingService(seeded_db)
-    account = svc.create_account("Q", Decimal("10000"))
-    with patch.object(PaperTradingService, "provider", new=_make_provider_mock(100)):
+    account = svc.create_account("Q", Decimal("10000"), user_id=1)
+    with patch.object(
+        PaperTradingService, "_get_provider_for_code", return_value=_make_provider_mock(100)
+    ):
         svc.place_order(account.id, "BTC.US", "BUY", Decimal("0.1"))
         with pytest.raises(PaperTradingError, match="Insufficient position"):
             svc.place_order(account.id, "BTC.US", "SELL", Decimal("0.5"))
@@ -164,8 +178,10 @@ def test_sell_more_than_held_raises(seeded_db):
 
 def test_pnl_summary_no_trades(seeded_db):
     svc = PaperTradingService(seeded_db)
-    account = svc.create_account("P", Decimal("1000"))
-    with patch.object(PaperTradingService, "provider", new=_make_provider_mock(100)):
+    account = svc.create_account("P", Decimal("1000"), user_id=1)
+    with patch.object(
+        PaperTradingService, "_get_provider_for_code", return_value=_make_provider_mock(100)
+    ):
         summary = svc.get_pnl_summary(account.id)
     assert summary["trade_count"] == 0
     assert summary["cash"] == Decimal("1000")
@@ -175,10 +191,14 @@ def test_pnl_summary_no_trades(seeded_db):
 
 def test_pnl_summary_after_buy(seeded_db):
     svc = PaperTradingService(seeded_db)
-    account = svc.create_account("P2", Decimal("10000"))
-    with patch.object(PaperTradingService, "provider", new=_make_provider_mock(100)):
+    account = svc.create_account("P2", Decimal("10000"), user_id=1)
+    with patch.object(
+        PaperTradingService, "_get_provider_for_code", return_value=_make_provider_mock(100)
+    ):
         svc.place_order(account.id, "BTC.US", "BUY", Decimal("0.5"))
-    with patch.object(PaperTradingService, "provider", new=_make_provider_mock(150)):
+    with patch.object(
+        PaperTradingService, "_get_provider_for_code", return_value=_make_provider_mock(150)
+    ):
         summary = svc.get_pnl_summary(account.id)
     assert summary["trade_count"] == 1
     # Unrealized PnL = 0.5 * (150 - 100) = 25

@@ -67,6 +67,7 @@ def test_attribution_empty_trades_returns_zero_effects(db_session, strategy_conf
     from app.models.etl import BacktestResult
 
     br = BacktestResult(
+        user_id=strategy_config.user_id,
         strategy_id=strategy_config.id,
         start_date=__import__("datetime").date(2024, 1, 1),
         end_date=__import__("datetime").date(2024, 6, 30),

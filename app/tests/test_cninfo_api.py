@@ -321,23 +321,29 @@ def test_provider_get_org_id_lookup():
 
 
 def test_provider_fetch_returns_normalised_records():
-    """Mocked HTTP: provider returns dicts shaped for the ORM."""
+    """Mocked HTTP: provider returns dicts shaped for the ORM.
+
+    The provider now issues a single ``secid``-based request per page and
+    de-duplicates by ``announcementId``, so a duplicate ID in the same
+    response must collapse into one record.
+    """
     from app.data.providers.cninfo_provider import CninfoProvider
 
     provider = CninfoProvider()
 
+    def _ann(announcement_id: str) -> dict:
+        return {
+            "announcementId": announcement_id,
+            "announcementTitle": "贵州茅台2025年年度报告",
+            "adjunctUrl": f"/finalpage/2026-03-15/{announcement_id}.PDF",
+            "announcementTime": "2026-03-15 09:00:00",
+            "secCode": "600519",
+        }
+
     fake_response = MagicMock()
     fake_response.status_code = 200
     fake_response.json.return_value = {
-        "announcements": [
-            {
-                "announcementId": "1234",
-                "announcementTitle": "贵州茅台2025年年度报告",
-                "adjunctUrl": "/finalpage/2026-03-15/1234.PDF",
-                "announcementTime": "2026-03-15 09:00:00",
-                "secCode": "600519",
-            }
-        ]
+        "announcements": [_ann("1234"), _ann("1234"), _ann("5678")]
     }
 
     with patch("app.data.providers.cninfo_provider.requests.post", return_value=fake_response):
@@ -348,8 +354,9 @@ def test_provider_fetch_returns_normalised_records():
             period_type="annual",
         )
 
-    assert len(records) == 3  # one per column (sse / szse / bse)
-    assert all(r["announcement_id"] == "1234" for r in records)
+    # The duplicate announcementId is deduped → 2 unique records.
+    assert len(records) == 2
+    assert {r["announcement_id"] for r in records} == {"1234", "5678"}
     assert all(r["adjunct_type"] == "annual" for r in records)
     assert all(r["fiscal_quarter"] == 4 for r in records)
     assert all(r["is_periodic"] is True for r in records)
