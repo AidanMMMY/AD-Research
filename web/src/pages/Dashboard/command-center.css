@@ -159,76 +159,12 @@
   font-family: var(--font-mono);
 }
 
-/* Layout */
+/* Layout — the page renders inside AppLayout, whose own sidebar owns
+ * navigation, so the command-center content is a single column. */
 .cc-layout {
   display: grid;
-  grid-template-columns: 220px 1fr;
+  grid-template-columns: 1fr;
   min-height: calc(100vh - 72px);
-}
-
-/* Sidebar */
-.cc-sidebar {
-  background: var(--cc-surface);
-  border-right: 1px solid var(--cc-border);
-  padding: var(--space-4) var(--space-3);
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-}
-
-.cc-nav-item {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  height: 44px;
-  padding: 0 var(--space-3);
-  border-radius: 10px;
-  color: var(--cc-text2);
-  font-size: 14px;
-  cursor: pointer;
-  transition: background 150ms ease, color 150ms ease;
-}
-
-.cc-nav-item:hover,
-.cc-nav-item--active {
-  background: var(--cc-accent-soft);
-  color: var(--cc-text);
-}
-
-.cc-nav-item--active {
-  font-weight: 600;
-}
-
-.cc-nav-icon {
-  width: 18px;
-  height: 18px;
-  border-radius: 4px;
-  background: currentColor;
-  opacity: 0.6;
-}
-
-.cc-nav-item--active .cc-nav-icon {
-  opacity: 1;
-  background: var(--cc-accent);
-}
-
-.cc-user-card {
-  margin-top: auto;
-  padding: var(--space-3);
-  background: var(--cc-surface-hover);
-  border: 1px solid var(--cc-border);
-  border-radius: 12px;
-}
-
-.cc-user-name {
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--cc-text);
-}
-
-.cc-user-mode {
-  font-size: 11px;
-  color: var(--cc-muted);
 }
 
 /* Main content */
@@ -774,14 +710,6 @@
 }
 
 @media (max-width: 1024px) {
-  .cc-layout {
-    grid-template-columns: 1fr;
-  }
-
-  .cc-sidebar {
-    display: none;
-  }
-
   .cc-grid,
   .cc-grid--bottom {
     grid-template-columns: 1fr;

@@ -18,7 +18,6 @@ import { useMacroLatest, macroApi } from '@/api/macro';
 import { codeToRegion } from '../../utils/macroRegion';
 import EmptyState from '@/components/EmptyState';
 import ReturnTag from '@/components/ReturnTag';
-import { useSettingsStore } from '@/stores/settings';
 import { usePriceStream } from '@/hooks/usePriceStream';
 import { useMarketStream } from '@/hooks/useMarketStream';
 import type { NewsArticle } from '@/types/news';
@@ -297,7 +296,6 @@ function useSignalStream() {
 
 export default function Dashboard() {
   const navigate = useNavigate();
-  const mode = useSettingsStore((s) => s.mode);
   const { favorites, count: favCount, isLoading: favLoading } = useFavorites(6);
   const { data: pools } = usePoolList();
   const statsKpis = useDashboardStatsKpis();
@@ -313,17 +311,6 @@ export default function Dashboard() {
   const now = new Date();
   const timeString = now.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
   const dateString = now.toLocaleDateString('zh-CN', { month: 'long', day: 'numeric', weekday: 'short' });
-
-  const navItems = [
-    { label: '指挥中心', path: '/', active: true },
-    { label: '全球市场', path: '/global' },
-    { label: '板块轮动', path: '/sector-rotation' },
-    { label: '资金流', path: '/fund-flow' },
-    { label: '自选股', path: '/favorites' },
-    { label: '标的池', path: '/pools' },
-    { label: '新闻', path: '/news' },
-    { label: '研究', path: '/learning' },
-  ];
 
   const maxScore = Math.max(1, ...momentum.map((s: any) => s.composite_score ?? 0));
 
@@ -381,31 +368,6 @@ export default function Dashboard() {
       </header>
 
       <div className="cc-layout">
-        <aside className="cc-sidebar" aria-label="主导航">
-          {navItems.map((item) => (
-            <div
-              key={item.path}
-              className={`cc-nav-item ${item.active ? 'cc-nav-item--active' : ''}`}
-              onClick={() => navigate(item.path)}
-              role="button"
-              tabIndex={0}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault();
-                  navigate(item.path);
-                }
-              }}
-            >
-              <span className="cc-nav-icon" aria-hidden />
-              {item.label}
-            </div>
-          ))}
-          <div className="cc-user-card">
-            <div className="cc-user-name">研究员</div>
-            <div className="cc-user-mode">{mode === 'pro' ? '专业模式' : '标准模式'}</div>
-          </div>
-        </aside>
-
         <main className="cc-main">
           <header className="cc-header">
             <div className="cc-header__eyebrow">MARKET COMMAND CENTER</div>
