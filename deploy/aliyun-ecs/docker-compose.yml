@@ -22,7 +22,6 @@ x-backend-env: &backend-env
   AUTH_ACCESS_TOKEN_EXPIRE_MINUTES: ${AUTH_ACCESS_TOKEN_EXPIRE_MINUTES:-480}
   GITHUB_TOKEN: ${GITHUB_TOKEN:-}
   GITHUB_REPO: ${GITHUB_REPO:-}
-  ENABLE_SCHEDULER: ${ENABLE_SCHEDULER:-true}
   FRED_API_KEY: ${FRED_API_KEY:-}
   BEA_API_KEY: ${BEA_API_KEY:-}
   BLS_API_KEY: ${BLS_API_KEY:-}
@@ -110,8 +109,11 @@ services:
     restart: unless-stopped
     expose:
       - "8000"
-    environment: *backend-env
-    healthcheck:
+    # Scheduler must run in exactly one place; the anchor no longer carries
+    # ENABLE_SCHEDULER so celery workers never see a misleading "true".
+    environment:
+      <<: *backend-env
+      ENABLE_SCHEDULER: ${ENABLE_SCHEDULER:-true}
       # /health always returns HTTP 200; we must parse the body status so nginx and
       # celery-worker don't start before DB/Redis are actually ready.
       test: ["CMD-SHELL", "python -c 'import urllib.request,json,sys; r=json.loads(urllib.request.urlopen(\"http://localhost:8000/health\",timeout=5).read()); sys.exit(0 if r.get(\"status\")==\"ok\" else 1)'"]
@@ -167,7 +169,7 @@ services:
       - web_dist:/app/web/dist
       - cninfo_pdfs:/data/alloy-research/cninfo_pdfs
       - /var/run/docker.sock:/var/run/docker.sock:ro
-    command: celery -A app.core.celery_app worker -l info -c 4 -Q indicator
+    command: celery -A app.core.celery_app worker -E -l info -c 4 -Q indicator
     networks:
       - alloyresearch-network
     logging:
@@ -201,7 +203,7 @@ services:
       - web_dist:/app/web/dist
       - cninfo_pdfs:/data/alloy-research/cninfo_pdfs
       - /var/run/docker.sock:/var/run/docker.sock:ro
-    command: celery -A app.core.celery_app worker -l info -c 2 -Q celery,cninfo,industry
+    command: celery -A app.core.celery_app worker -E -l info -c 2 -Q celery,cninfo,industry
     networks:
       - alloyresearch-network
     logging:
