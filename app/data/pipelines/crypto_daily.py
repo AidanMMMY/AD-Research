@@ -147,6 +147,22 @@ class CryptoDailyPipeline(ETLPipeline):
                 f"Binance returned no rows for target date {target_date} "
                 f"across {len(codes)} active crypto instruments"
             )
+
+        # Ultra-low-priced coins (e.g. PEPE/BONK at ~1e-5) cannot fit the
+        # numeric(12,4) columns of instrument_daily_bar and would be stored
+        # as 0, polluting downstream indicator calculations. Skip them with
+        # a warning instead of writing zero prices.
+        low_price_mask = pd.to_numeric(df["close"], errors="coerce") < 0.0001
+        if low_price_mask.any():
+            skipped = sorted(df.loc[low_price_mask, "etf_code"].unique())
+            logger.warning(
+                "CryptoDailyPipeline: skipping %d instrument(s) with "
+                "close < 0.0001 (below numeric(12,4) precision): %s",
+                len(skipped),
+                skipped,
+            )
+            df = df[~low_price_mask].copy()
+
         logger.info(
             "CryptoDailyPipeline: Extracted %d rows for target date %s",
             len(df),

@@ -601,9 +601,8 @@ def run_a_share_indicator_fallback(target_date: date | None = None):
     records for that trade date.
 
     This fallback fires at 17:00 Asia/Shanghai — 1 hour after the stock
-    ETL completes and after the microstructure (18:30) and the
-    fundamentals (16:30) runs — and re-submits the same
-    ``market_filter='A股'`` task so whatever bars are in
+    ETL completes and after the fundamentals (16:30) run — and re-submits
+    the same ``market_filter='A股'`` task so whatever bars are in
     ``instrument_daily_bar`` by 17:00 (both ETF and STOCK, assuming
     both ETLs finished) get processed into the ``etf_indicator`` table.
 
@@ -676,7 +675,9 @@ def run_score_calculation(target_date: date | None = None):
 def run_sw_industry_index_refresh():
     """Refresh SW2021 一级行业指数回报 (Phase 3 sector rotation 数据源)。
 
-    调度：每周一 09:30 Asia/Shanghai（盘前完成，覆盖到周一开盘用户）。
+    调度：每日 (mon-fri) 20:00 Asia/Shanghai。上游申万指数在白天
+    时段发布，原周一 09:30 盘前跑永远拿不到最新交易日数据；改为
+    每交易日 20:00，确保上游当天发布的数据当晚落库。
     通过 Celery 投递到 ``industry`` 队列，由 celery-worker-cninfo
     消费（队列默认并发 2，足够 31 个指数的 AKShare 拉取）。
     """
@@ -968,7 +969,7 @@ def run_sec_edgar_daily():
 
 
 def run_microstructure_daily():
-    """Refresh A-share micro-structure tables (daily 18:30 Asia/Shanghai).
+    """Refresh A-share micro-structure tables (daily 19:30 Asia/Shanghai).
 
     Runs the 4 sub-tasks (LHB / HSGT / margin / restricted) each in
     its own try/except guard — one failure does not abort the others.
@@ -991,7 +992,7 @@ def run_fund_flow_daily():
 
     4 个 sub-task (individual / sector / etf / signals) 各自独立 try/except，
     单源失败不阻塞其他数据源。  调度时间设在 A 股收盘 15:00 之后 2.5 小时，
-    既能拿到当天的稳定数据，又在 18:30 microstructure 之前完成。
+    既能拿到当天的稳定数据，又在 19:30 microstructure 之前完成。
     """
     with redis_lock("fund_flow_daily", expire_seconds=3600) as acquired:
         if not acquired:
@@ -1010,9 +1011,9 @@ def run_fund_flow_daily():
 def run_market_fund_flow_daily(target_date: date | None = None):
     """Refresh 大盘资金流表 (daily 18:35 Asia/Shanghai)。
 
-    在 ``fund_flow_daily`` (17:30) 与 ``microstructure_daily`` (18:30)
-    之后执行，确保 ``individual_fund_flow`` 已落地，可据此派生沪市/深市
-    净流入。写入 ``market_fund_flow`` 的 ``ALL`` / ``SH`` / ``SZ`` 三行。
+    在 ``fund_flow_daily`` (17:30) 之后执行，确保 ``individual_fund_flow``
+    已落地，可据此派生沪市/深市净流入。写入 ``market_fund_flow`` 的
+    ``ALL`` / ``SH`` / ``SZ`` 三行（不依赖 microstructure_daily）。
     """
     with redis_lock("market_fund_flow_daily", expire_seconds=3600) as acquired:
         if not acquired:
@@ -1087,9 +1088,10 @@ def run_global_indices_refresh():
     failures are logged inside ``run_global_indices_refresh`` and
     never crash the scheduler.
 
-    Runs daily at 16:00 Asia/Shanghai — 1 hour after Asia close so
-    that the most recent Hong Kong / Japan / Australia / A-share
-    closes are settled.
+    Runs daily at 17:00 Asia/Shanghai — after the HKEX closing
+    auction ends (~16:10) and after Sina publishes the current-day
+    A-share index daily bars, so the most recent Hong Kong / Japan /
+    Australia / A-share closes are settled.
     """
     from app.services.macro.global_indices_fetcher import (
         run_global_indices_refresh as _run,
@@ -1549,14 +1551,17 @@ def init_scheduler():
         max_instances=1,
     )
     # ── Global Market Indices (yfinance + akshare) ──
-    # 16:00 Asia/Shanghai = 1 hour after Asia close so HK / JP / AU /
-    # A-share closes are settled.  Mon-Fri only — equities are closed
-    # on weekends; Saturday / Sunday snapshots from upstream would be
-    # Friday's close repeated.
+    # 17:00 Asia/Shanghai: the HKEX closing auction session runs until
+    # ~16:10, so a 16:00 run captured pre-final Hang Seng values; and
+    # Sina's A-share index daily bars for the current day only appear
+    # after ~16:00. Running at 17:00 keeps HK / JP / AU / A-share
+    # closes settled. Mon-Fri only — equities are closed on weekends;
+    # Saturday / Sunday snapshots from upstream would be Friday's
+    # close repeated.
     scheduler.add_job(
         run_global_indices_refresh,
         trigger=CronTrigger(
-            hour=16, minute=0, day_of_week="mon-fri", timezone="Asia/Shanghai"
+            hour=17, minute=0, day_of_week="mon-fri", timezone="Asia/Shanghai"
         ),
         id="global_indices_daily",
         name="全球主要指数日刷",
@@ -1916,17 +1921,22 @@ def init_scheduler():
         replace_existing=True,
         max_instances=1,
     )
-    # ── Microstructure (Phase 7) ── daily 18:30 Asia/Shanghai
+    # ── Microstructure (Phase 7) ── daily 19:30 Asia/Shanghai
+    # Moved from 18:30: the margin sub-task pulls SSE margin detail
+    # (stock_margin_detail_sse) for the current trade date, which the
+    # exchange only publishes in the evening (not reliably before
+    # ~19:00). LHB / HSGT are available earlier, so the later slot is
+    # safe for all four sub-tasks.
     scheduler.add_job(
         run_microstructure_daily,
-        trigger=CronTrigger(hour=18, minute=30, timezone="Asia/Shanghai"),
+        trigger=CronTrigger(hour=19, minute=30, timezone="Asia/Shanghai"),
         id="microstructure_daily",
         name="A 股微结构数据日刷",
         replace_existing=True,
         max_instances=1,
     )
     # ── Fund Flow (方案 C) ── daily 17:30 Asia/Shanghai
-    # A 股盘后 2.5h (留 1h 给 microstructure 18:30 之前完成)
+    # A 股盘后 2.5h (留 2h 给 microstructure 19:30 之前完成)
     scheduler.add_job(
         run_fund_flow_daily,
         trigger=CronTrigger(hour=17, minute=30, timezone="Asia/Shanghai"),
@@ -1936,8 +1946,8 @@ def init_scheduler():
         max_instances=1,
     )
     # ── Market Fund Flow (Phase 2.10) ── daily 18:35 Asia/Shanghai
-    # 在 fund_flow_daily 与 microstructure_daily 之后，利用已落地的
-    # individual_fund_flow 派生 SH/SZ 大盘净流入。
+    # 在 fund_flow_daily 之后，利用已落地的 individual_fund_flow
+    # 派生 SH/SZ 大盘净流入（不依赖 microstructure_daily）。
     scheduler.add_job(
         run_market_fund_flow_daily,
         trigger=CronTrigger(hour=18, minute=35, timezone="Asia/Shanghai"),
@@ -1974,10 +1984,16 @@ def init_scheduler():
         replace_existing=True,
         max_instances=1,
     )
+    # ── SW Industry Index Returns ──
+    # 20:00 Asia/Shanghai, Mon-Fri: the upstream SW index vendor only
+    # publishes during daytime hours, so the old Monday 09:30 pre-open
+    # slot could never pick up the latest trade date (production run on
+    # 7/20 09:30 succeeded but max(trade_date) stayed at 7/16). A daily
+    # evening run guarantees same-day publication lands the same night.
     scheduler.add_job(
         run_sw_industry_index_refresh,
         trigger=CronTrigger(
-            day_of_week="mon", hour=9, minute=30, timezone="Asia/Shanghai"
+            day_of_week="mon-fri", hour=20, minute=0, timezone="Asia/Shanghai"
         ),
         id="sw_industry_index_refresh",
         name="申万一级行业指数回报刷新 (Phase 3)",

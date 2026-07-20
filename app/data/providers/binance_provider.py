@@ -219,8 +219,9 @@ class BinanceProvider(DataProvider):
         Returns:
             DataFrame with columns: ``etf_code``, ``trade_date``, ``open``,
             ``high``, ``low``, ``close``, ``volume``, ``amount``,
-            ``change_pct``.  Empty DataFrame only when every request
-            succeeded but Binance returned no candles.
+            ``change_pct`` (prev-close basis; NaN for the first row per
+            code).  Empty DataFrame only when every request succeeded but
+            Binance returned no candles.
         """
         COLUMNS = [
             "etf_code", "trade_date",
@@ -291,12 +292,6 @@ class BinanceProvider(DataProvider):
                             "close": close_px,
                             "volume": float(candle[5]),
                             "amount": float(candle[7]),   # quote volume in USDT
-                            "change_pct": (
-                                (close_px - open_px)
-                                / open_px * 100
-                                if open_px != 0
-                                else 0
-                            ),
                         }
                     )
                 except (IndexError, ValueError, TypeError) as exc:
@@ -322,6 +317,15 @@ class BinanceProvider(DataProvider):
 
         df = pd.DataFrame(rows)
         df["trade_date"] = pd.to_datetime(df["trade_date"]).dt.date
+        # change_pct uses the prev-close basis (close-to-close), matching
+        # every other provider on the platform. Crypto trades 24/7 so this
+        # is numerically almost identical to the previous open→close basis;
+        # the change is purely a convention alignment. The first row per
+        # code has no previous close and stays NaN.
+        df = df.sort_values(["etf_code", "trade_date"]).reset_index(drop=True)
+        df["change_pct"] = (
+            df.groupby("etf_code")["close"].pct_change(fill_method=None) * 100
+        )
         return df
 
     # ------------------------------------------------------------------

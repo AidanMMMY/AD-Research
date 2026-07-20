@@ -526,6 +526,66 @@ def test_daily_pipeline_extract_picks_highest_oi_per_day(db_session):
     assert float(cu_day2.iloc[0]["close"]) == 104.0
 
 
+def test_daily_pipeline_pre_settle_inherited_when_symbol_unchanged(db_session):
+    """Same picked contract two days running → pre_settle = previous day's settle."""
+    _seed_main_contract(db_session, code="CU0", exchange="SHFE", product="金属")
+    _seed_main_contract(db_session, code="AU0", exchange="SHFE", product="金属")
+    db_session.commit()
+
+    with _patch_fetch_all_markets({"SHFE": SAMPLE_SHFE}):
+        pipeline = FuturesDailyPipeline(db_session)
+        out = pipeline.extract()
+
+    # CU2608 leads on both days: day2 pre_settle must equal day1 settle (102.5).
+    cu_day2 = out[(out["etf_code"] == "CU0") & (out["trade_date"] == date(2026, 7, 2))]
+    assert float(cu_day2.iloc[0]["pre_settle"]) == 102.5
+
+
+def test_daily_pipeline_pre_settle_none_on_main_contract_roll(db_session):
+    """On a main-contract roll the previous settle belongs to the old contract.
+
+    Carrying it over distorts the daily change (production incident: CFFEX
+    delivery-day roll showed -3.44% instead of -1.18%), so pre_settle must
+    be left empty and the front end shows "-".
+    """
+    _seed_main_contract(db_session, code="CU0", exchange="SHFE", product="金属")
+    db_session.commit()
+
+    rolled = _build_market_frame(
+        "SHFE",
+        [
+            # day 1: CU2607 leads on open interest
+            {"symbol": "CU2607", "date": "2026-07-01", "variety": "CU",
+             "open": 100.0, "high": 102.0, "low": 99.0, "close": 101.0,
+             "volume": 50000, "open_interest": 200000, "turnover": 1.0,
+             "settle": 100.0, "pre_settle": 99.0},
+            {"symbol": "CU2608", "date": "2026-07-01", "variety": "CU",
+             "open": 110.0, "high": 112.0, "low": 109.0, "close": 111.0,
+             "volume": 30000, "open_interest": 100000, "turnover": 1.0,
+             "settle": 110.0, "pre_settle": 109.0},
+            # day 2: roll — CU2608 takes over the lead
+            {"symbol": "CU2608", "date": "2026-07-02", "variety": "CU",
+             "open": 111.0, "high": 113.0, "low": 110.0, "close": 112.0,
+             "volume": 60000, "open_interest": 250000, "turnover": 1.0,
+             "settle": 111.0, "pre_settle": 110.0},
+            {"symbol": "CU2607", "date": "2026-07-02", "variety": "CU",
+             "open": 100.0, "high": 101.0, "low": 99.0, "close": 100.0,
+             "volume": 10000, "open_interest": 50000, "turnover": 1.0,
+             "settle": 100.5, "pre_settle": 100.0},
+        ],
+    )
+
+    with _patch_fetch_all_markets({"SHFE": rolled}):
+        pipeline = FuturesDailyPipeline(db_session)
+        out = pipeline.extract()
+
+    day2 = out[out["trade_date"] == date(2026, 7, 2)]
+    assert len(day2) == 1
+    # The old contract's settle (100.0) must NOT leak into day2's pre_settle,
+    # and the upstream per-contract pre_settle must not resurrect it either.
+    assert pd.isna(day2.iloc[0]["pre_settle"])
+
+
 def test_daily_pipeline_extract_respects_history_window(db_session):
     _seed_main_contract(db_session)
     db_session.commit()

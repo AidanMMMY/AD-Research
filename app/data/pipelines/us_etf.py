@@ -6,8 +6,11 @@ historical price data, and upserts them into the ``instrument_daily_bar`` table.
 Production data source: Tiingo (free tier: 50 req/hour, 500 symbols/month).
 FMP is no longer used because its `historical-price-full` endpoint returns
 403 for free-tier keys registered after the legacy endpoint deprecation.
-yfinance is kept only as a last-resort fallback because batch downloads are
-heavily rate-limited from cloud server IPs.
+yfinance is kept as a mid-tier fallback because batch downloads are
+heavily rate-limited from cloud server IPs. Sina (via akshare
+``stock_us_daily``) is the final last-resort fallback: it requires no API
+key, stays reachable from cloud IPs, and its values have been verified to
+match the bars already stored in the database.
 """
 
 import logging
@@ -21,6 +24,7 @@ from app.core.cache import cache_invalidate_pattern
 from app.core.exceptions import DataProviderError
 from app.core.redis_client import get_redis_client
 from app.data.pipelines.base import ETLPipeline
+from app.data.providers.sina_us_provider import SinaUSProvider
 from app.data.providers.tiingo_provider import TiingoProvider
 from app.data.providers.yfinance_provider import YFinanceProvider
 from app.models.etf import ETFInfo, InstrumentDailyBar
@@ -38,7 +42,8 @@ class USDailyPipeline(ETLPipeline):
     """ETL pipeline for US equity daily bars.
 
     Covers active instruments with market="US" that already have historical
-    price data. Uses Tiingo as primary source with yfinance fallback.
+    price data. Uses Tiingo as primary source with yfinance and Sina
+    (akshare) as fallbacks.
     Instruments without any price data are skipped here and handled by
     USHistoricalBackfillPipeline to avoid burning Tiingo's 500 symbols/month
     limit on symbols that may not be available.
@@ -199,6 +204,37 @@ class USDailyPipeline(ETLPipeline):
                     )
             elif not any(e.startswith("yfinance:") for e in source_errors):
                 source_errors.append("yfinance: returned empty")
+
+        # Last-resort fallback: Sina (akshare) for all remaining symbols.
+        covered: set[str] = set()
+        for frame in frames:
+            covered.update(frame["etf_code"].unique())
+        sina_codes = [c for c in codes if c not in covered]
+        if sina_codes:
+            logger.info(
+                "USDailyPipeline: Fetching %d symbols via Sina (last resort)",
+                len(sina_codes),
+            )
+            sina_provider = SinaUSProvider()
+            try:
+                df_sina = sina_provider.fetch_daily_bars(sina_codes, start_date, end_date)
+            except Exception as exc:
+                df_sina = pd.DataFrame()
+                source_errors.append(f"sina_us: {exc}")
+                logger.warning("USDailyPipeline: Sina fetch failed: %s", exc)
+            if not df_sina.empty:
+                df_sina = df_sina[df_sina["trade_date"] == target_date].copy()
+                if not df_sina.empty:
+                    frames.append(df_sina)
+                    logger.info(
+                        "USDailyPipeline: Sina returned %d rows for target date %s",
+                        len(df_sina),
+                        target_date,
+                    )
+                else:
+                    source_errors.append(f"sina_us: no rows for target date {target_date}")
+            elif not any(e.startswith("sina_us:") for e in source_errors):
+                source_errors.append("sina_us: returned empty")
 
         if not frames:
             # Raise an explicit per-source error instead of returning an

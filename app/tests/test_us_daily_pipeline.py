@@ -14,6 +14,7 @@ import pytest
 
 from app.core.exceptions import DataProviderError
 from app.data.pipelines.us_etf import USDailyPipeline
+from app.data.providers.sina_us_provider import SinaUSProvider
 from app.data.providers.tiingo_provider import (
     _MAX_CONSECUTIVE_RATE_LIMITS,
     TiingoProvider,
@@ -123,8 +124,12 @@ class TestUSDailyExtractErrors:
         pipeline = _make_pipeline(db_session)
         pipeline.provider.fetch_daily_bars.return_value = pd.DataFrame()
 
-        with patch("app.data.pipelines.us_etf.YFinanceProvider") as mock_yf:
+        with (
+            patch("app.data.pipelines.us_etf.YFinanceProvider") as mock_yf,
+            patch("app.data.pipelines.us_etf.SinaUSProvider") as mock_sina,
+        ):
             mock_yf.return_value.fetch_daily_bars.return_value = pd.DataFrame()
+            mock_sina.return_value.fetch_daily_bars.return_value = pd.DataFrame()
             with pytest.raises(DataProviderError) as exc_info:
                 pipeline.extract()
 
@@ -132,6 +137,7 @@ class TestUSDailyExtractErrors:
         assert "all sources returned no data" in msg
         assert "tiingo: returned empty" in msg
         assert "yfinance: returned empty" in msg
+        assert "sina_us: returned empty" in msg
 
     def test_provider_exception_is_surfaced(self, db_session, monkeypatch):
         _seed_us_instrument(db_session)
@@ -141,8 +147,12 @@ class TestUSDailyExtractErrors:
             "tiingo auth failed (HTTP 401) for SPY"
         )
 
-        with patch("app.data.pipelines.us_etf.YFinanceProvider") as mock_yf:
+        with (
+            patch("app.data.pipelines.us_etf.YFinanceProvider") as mock_yf,
+            patch("app.data.pipelines.us_etf.SinaUSProvider") as mock_sina,
+        ):
             mock_yf.return_value.fetch_daily_bars.return_value = pd.DataFrame()
+            mock_sina.return_value.fetch_daily_bars.return_value = pd.DataFrame()
             with pytest.raises(DataProviderError) as exc_info:
                 pipeline.extract()
 
@@ -168,10 +178,161 @@ class TestUSDailyExtractErrors:
             ]
         )
 
-        with patch("app.data.pipelines.us_etf.YFinanceProvider") as mock_yf:
+        with (
+            patch("app.data.pipelines.us_etf.YFinanceProvider") as mock_yf,
+            patch("app.data.pipelines.us_etf.SinaUSProvider") as mock_sina,
+        ):
             df = pipeline.extract()
-            # Tiingo covered the only symbol, so yfinance is not needed.
+            # Tiingo covered the only symbol, so fallbacks are not needed.
             mock_yf.return_value.fetch_daily_bars.assert_not_called()
+            mock_sina.return_value.fetch_daily_bars.assert_not_called()
 
         assert len(df) == 1
         assert df.iloc[0]["etf_code"] == "SPY.US"
+
+
+# ---------------------------------------------------------------------------
+# SinaUSProvider (akshare stock_us_daily) behaviour
+# ---------------------------------------------------------------------------
+
+
+def _sina_raw_frame() -> pd.DataFrame:
+    """Raw frame as returned by ak.stock_us_daily(adjust="")."""
+    return pd.DataFrame(
+        {
+            "date": [date(2026, 7, 9), date(2026, 7, 17), date(2026, 7, 18)],
+            "open": [700.0, 742.0, 750.0],
+            "high": [705.0, 747.0, 755.0],
+            "low": [698.0, 740.0, 748.0],
+            "close": [702.0, 743.0, 754.0],
+            "volume": [1000.0, 2000.0, 3000.0],
+        }
+    )
+
+
+class TestSinaUSProvider:
+    def test_converts_symbol_and_filters_date_range(self):
+        with (
+            patch(
+                "app.data.providers.sina_us_provider.ak.stock_us_daily",
+                return_value=_sina_raw_frame(),
+            ) as mock_call,
+            patch("app.data.providers.sina_us_provider.time.sleep"),
+        ):
+            df = SinaUSProvider().fetch_daily_bars(["SPY.US"], START, END)
+
+        mock_call.assert_called_once_with(symbol="SPY", adjust="")
+        # The out-of-range row (2026-07-09) is dropped.
+        assert len(df) == 2
+        row = df.iloc[-1]
+        assert row["etf_code"] == "SPY.US"
+        assert row["trade_date"] == date(2026, 7, 18)
+        assert row["close"] == 754.0
+        assert row["amount"] == 3000 * 754.0
+        assert row["adj_factor"] == 1.0
+
+    def test_single_symbol_failure_is_skipped(self):
+        with (
+            patch(
+                "app.data.providers.sina_us_provider.ak.stock_us_daily",
+                side_effect=Exception("sina unreachable"),
+            ),
+            patch("app.data.providers.sina_us_provider.time.sleep"),
+        ):
+            df = SinaUSProvider().fetch_daily_bars(["SPY.US"], START, END)
+        assert df.empty
+        assert list(df.columns) == [
+            "etf_code",
+            "trade_date",
+            "open",
+            "high",
+            "low",
+            "close",
+            "volume",
+            "amount",
+            "adj_factor",
+        ]
+
+
+# ---------------------------------------------------------------------------
+# USDailyPipeline three-source fallback chain
+# ---------------------------------------------------------------------------
+
+
+def _sina_bar(code: str = "SPY.US") -> pd.DataFrame:
+    return pd.DataFrame(
+        [
+            {
+                "etf_code": code,
+                "trade_date": END,
+                "open": 750.0,
+                "high": 755.0,
+                "low": 748.0,
+                "close": 754.0,
+                "volume": 3000,
+                "amount": 754.0 * 3000,
+                "adj_factor": 1.0,
+            }
+        ]
+    )
+
+
+class TestUSDailyFallbackChain:
+    def test_sina_covers_symbols_missed_by_tiingo_and_yfinance(self, db_session, monkeypatch):
+        _seed_us_instrument(db_session)
+        monkeypatch.setattr("app.data.pipelines.us_etf.get_redis_client", _no_redis)
+        pipeline = _make_pipeline(db_session)
+        pipeline.provider.fetch_daily_bars.return_value = pd.DataFrame()
+
+        with (
+            patch("app.data.pipelines.us_etf.YFinanceProvider") as mock_yf,
+            patch("app.data.pipelines.us_etf.SinaUSProvider") as mock_sina,
+        ):
+            mock_yf.return_value.fetch_daily_bars.return_value = pd.DataFrame()
+            mock_sina.return_value.fetch_daily_bars.return_value = _sina_bar()
+            df = pipeline.extract()
+
+        assert len(df) == 1
+        assert df.iloc[0]["etf_code"] == "SPY.US"
+        assert df.iloc[0]["close"] == 754.0
+        mock_sina.return_value.fetch_daily_bars.assert_called_once()
+        # Only the symbols not covered by earlier sources are requested.
+        assert mock_sina.return_value.fetch_daily_bars.call_args[0][0] == ["SPY.US"]
+
+    def test_sina_not_called_when_yfinance_covers_all(self, db_session, monkeypatch):
+        _seed_us_instrument(db_session)
+        monkeypatch.setattr("app.data.pipelines.us_etf.get_redis_client", _no_redis)
+        pipeline = _make_pipeline(db_session)
+        pipeline.provider.fetch_daily_bars.return_value = pd.DataFrame()
+
+        with (
+            patch("app.data.pipelines.us_etf.YFinanceProvider") as mock_yf,
+            patch("app.data.pipelines.us_etf.SinaUSProvider") as mock_sina,
+        ):
+            mock_yf.return_value.fetch_daily_bars.return_value = _sina_bar()
+            df = pipeline.extract()
+            mock_sina.return_value.fetch_daily_bars.assert_not_called()
+
+        assert len(df) == 1
+
+    def test_all_three_sources_fail_lists_each_in_error(self, db_session, monkeypatch):
+        _seed_us_instrument(db_session)
+        monkeypatch.setattr("app.data.pipelines.us_etf.get_redis_client", _no_redis)
+        pipeline = _make_pipeline(db_session)
+        pipeline.provider.fetch_daily_bars.side_effect = DataProviderError(
+            "tiingo auth failed (HTTP 401)"
+        )
+
+        with (
+            patch("app.data.pipelines.us_etf.YFinanceProvider") as mock_yf,
+            patch("app.data.pipelines.us_etf.SinaUSProvider") as mock_sina,
+        ):
+            mock_yf.return_value.fetch_daily_bars.side_effect = RuntimeError("yahoo rate limited")
+            mock_sina.return_value.fetch_daily_bars.side_effect = RuntimeError("sina unreachable")
+            with pytest.raises(DataProviderError) as exc_info:
+                pipeline.extract()
+
+        msg = str(exc_info.value)
+        assert "tiingo: tiingo auth failed (HTTP 401)" in msg
+        assert "yfinance: yahoo rate limited" in msg
+        assert "sina_us: sina unreachable" in msg

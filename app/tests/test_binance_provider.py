@@ -137,6 +137,63 @@ def test_fetch_daily_bars_empty_candles_without_failures_returns_empty(
     assert df.empty
 
 
+def test_fetch_daily_bars_change_pct_uses_prev_close_basis(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """change_pct must be close-to-close (prev-close basis), not open→close."""
+    day1_ms = int(datetime(2026, 7, 17, tzinfo=UTC).timestamp() * 1000)
+    day2_ms = int(datetime(2026, 7, 18, tzinfo=UTC).timestamp() * 1000)
+
+    def fake_get(url, params=None, timeout=30):
+        return _FakeResponse(
+            [
+                _kline(day1_ms, open_px=99.0, close_px=100.0),
+                _kline(day2_ms, open_px=101.0, close_px=103.0),
+            ]
+        )
+
+    monkeypatch.setattr("app.data.providers.binance_provider.requests.get", fake_get)
+    _no_sleep(monkeypatch)
+
+    df = BinanceProvider().fetch_daily_bars(["BTC.US"], date(2026, 7, 17), date(2026, 7, 18))
+
+    assert len(df) == 2
+    df = df.sort_values("trade_date").reset_index(drop=True)
+    # First row has no previous close → NaN.
+    assert pd.isna(df.iloc[0]["change_pct"])
+    # (103 - 100) / 100 * 100 = 3.0 — prev-close basis. The old open→close
+    # basis would have produced (103 - 101) / 101 * 100 ≈ 1.98.
+    assert df.iloc[1]["change_pct"] == pytest.approx(3.0)
+
+
+def test_fetch_daily_bars_change_pct_computed_per_code(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """pct_change must not leak across instruments."""
+    day1_ms = int(datetime(2026, 7, 17, tzinfo=UTC).timestamp() * 1000)
+    day2_ms = int(datetime(2026, 7, 18, tzinfo=UTC).timestamp() * 1000)
+
+    def fake_get(url, params=None, timeout=30):
+        if params["symbol"] == "BTCUSDT":
+            return _FakeResponse(
+                [_kline(day1_ms, 100.0, 100.0), _kline(day2_ms, 100.0, 110.0)]
+            )
+        return _FakeResponse(
+            [_kline(day1_ms, 50.0, 50.0), _kline(day2_ms, 50.0, 52.5)]
+        )
+
+    monkeypatch.setattr("app.data.providers.binance_provider.requests.get", fake_get)
+    _no_sleep(monkeypatch)
+
+    df = BinanceProvider().fetch_daily_bars(
+        ["BTC.US", "ETH.US"], date(2026, 7, 17), date(2026, 7, 18)
+    )
+
+    for code, expected in (("BTC.US", 10.0), ("ETH.US", 5.0)):
+        row = df[(df["etf_code"] == code) & (df["trade_date"] == date(2026, 7, 18))]
+        assert row.iloc[0]["change_pct"] == pytest.approx(expected)
+
+
 # ---------------------------------------------------------------------------
 # CryptoDailyPipeline empty-feed guard
 # ---------------------------------------------------------------------------
@@ -201,3 +258,21 @@ def test_extract_returns_only_target_date_rows(crypto_pipeline) -> None:
 
     assert len(out) == 1
     assert out.iloc[0]["trade_date"] == _TARGET
+
+
+def test_extract_skips_ultra_low_priced_instruments(crypto_pipeline, caplog) -> None:
+    """Coins priced below numeric(12,4) precision (e.g. PEPE/BONK at ~1e-5)
+    would be stored as 0 and pollute indicators — skip them with a warning.
+    """
+    low_price = _bars(_TARGET)
+    low_price["etf_code"] = "BONK.US"
+    low_price["close"] = 0.000012
+    df = pd.concat([_bars(_TARGET), low_price], ignore_index=True)
+    crypto_pipeline.provider.fetch_daily_bars.return_value = df
+
+    with caplog.at_level("WARNING", logger="app.data.pipelines.crypto_daily"):
+        out = crypto_pipeline.extract()
+
+    assert len(out) == 1
+    assert out.iloc[0]["etf_code"] == "BTC.US"
+    assert any("BONK.US" in r.message for r in caplog.records)

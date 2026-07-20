@@ -996,21 +996,28 @@ class FuturesDailyPipeline(ETLPipeline):
         cutoff = end_day - timedelta(days=self.history_days)
         out = out[out["trade_date"] > cutoff]
 
-        # Compute pre_settle = previous row's settle within each contract.
+        # Compute pre_settle = previous row's settle within each contract,
+        # but only when the picked underlying symbol is unchanged from the
+        # previous day. On a main-contract roll the previous row's settle
+        # belongs to the old contract; carrying it over distorts the daily
+        # change (e.g. CFFEX delivery-day rolls), so leave pre_settle empty
+        # and let the front end show "-" instead.
         # Per-exchange daily data may not arrive strictly sorted, so sort.
         out = out.sort_values(["__code", "trade_date"]).reset_index(drop=True)
-        out["pre_settle"] = out.groupby("__code")["settle"].shift(1)
+        prev_settle = out.groupby("__code")["settle"].shift(1)
+        prev_symbol = out.groupby("__code")["symbol"].shift(1)
+        same_symbol = out["symbol"].astype(str) == prev_symbol.astype(str)
+        out["pre_settle"] = prev_settle.where(same_symbol)
 
-        # ``pre_settle`` was already supplied by upstream; our shift fills
-        # the first row of each contract. Prefer the upstream value when
-        # both are present.
+        # ``pre_settle`` was already supplied by upstream; use it only to
+        # fill gaps where the previous day's settle was missing for the
+        # SAME picked contract. Roll days (symbol changed) stay empty.
         if "pre_settle" in picks.columns:
             upstream_pre = pd.to_numeric(
                 picks["pre_settle"], errors="coerce"
             ).reset_index(drop=True)
-            out["pre_settle"] = out["pre_settle"].where(
-                out["pre_settle"].notna(), upstream_pre
-            )
+            fill_mask = out["pre_settle"].isna() & same_symbol
+            out["pre_settle"] = out["pre_settle"].where(~fill_mask, upstream_pre)
 
         # Use "etf_code" as the internal symbol column name so this pipeline
         # can still share the same light format check as other bar pipelines.

@@ -8,7 +8,17 @@ Rotation strategy:
   - All active US instruments are sorted by code.
   - Each run consumes a fixed batch starting from a persisted offset.
   - The offset is stored in Redis and wraps around when the list ends.
-  - Instruments without any price data are always processed first.
+  - Instruments without any price data are processed first, unless they
+    are in failure cooldown (see below).
+
+Failure cooldown:
+  - A code that returns no data from every provider increments a
+    consecutive-failure counter in Redis; any success resets it.
+  - After ``_MAX_CONSECUTIVE_FAILURES`` consecutive failures the code
+    enters a cooldown (``_COOLDOWN_SECONDS``) and stops being
+    prioritized as "missing"; it sinks back into the normal rotation.
+    This keeps permanently unfetchable tickers (e.g. delisted or
+    unsupported share classes) from starving the whole rotation.
 
 Rate limits (free tier):
   - Tiingo: 50 req/hour, 500 symbols/month. Used as primary.
@@ -41,6 +51,16 @@ _HISTORY_DAYS = 90
 
 # Redis key for the rotation offset.
 _OFFSET_KEY = "us_backfill:offset"
+
+# Redis key templates for the failure cooldown.
+_FAIL_COUNT_KEY = "us_backfill:fail_count:{code}"
+_COOLDOWN_KEY = "us_backfill:cooldown:{code}"
+
+# A missing-data code that fails this many consecutive runs enters cooldown.
+_MAX_CONSECUTIVE_FAILURES = 3
+
+# How long a cooled-down code stays out of the missing-data priority lane.
+_COOLDOWN_SECONDS = 7 * 24 * 3600
 
 
 class USHistoricalBackfillPipeline(ETLPipeline):
@@ -90,16 +110,53 @@ class USHistoricalBackfillPipeline(ETLPipeline):
         except Exception as exc:
             logger.warning("Failed to write backfill offset to Redis: %s", exc)
 
+    def _is_in_cooldown(self, code: str) -> bool:
+        """Return True if the code is currently in failure cooldown."""
+        try:
+            return bool(self.redis.exists(_COOLDOWN_KEY.format(code=code)))
+        except Exception as exc:
+            logger.warning("Failed to read backfill cooldown from Redis: %s", exc)
+            return False
+
+    def _record_fetch_results(self, batch: list[str], fetched_codes: set[str]) -> None:
+        """Update per-code consecutive-failure counters after a fetch.
+
+        Codes that returned data reset their counter; codes that returned
+        nothing increment it and enter cooldown once the threshold is hit.
+        """
+        try:
+            for code in batch:
+                fail_key = _FAIL_COUNT_KEY.format(code=code)
+                if code in fetched_codes:
+                    self.redis.delete(fail_key)
+                    continue
+                failures = int(self.redis.incr(fail_key))
+                if failures >= _MAX_CONSECUTIVE_FAILURES:
+                    self.redis.set(_COOLDOWN_KEY.format(code=code), "1", ex=_COOLDOWN_SECONDS)
+                    self.redis.delete(fail_key)
+                    logger.warning(
+                        "USBackfill: %s failed %d consecutive runs, entering %d-day cooldown",
+                        code,
+                        failures,
+                        _COOLDOWN_SECONDS // 86400,
+                    )
+        except Exception as exc:
+            logger.warning("Failed to record backfill fetch results: %s", exc)
+
     def _select_batch(self, codes: list[str], codes_with_data: set[str]) -> list[str]:
         """Select the next batch of codes to backfill.
 
-        Prioritizes instruments without any price data. Once all instruments
-        have at least some data, rotates through the full list in chunks.
+        Prioritizes instruments without any price data, except those in
+        failure cooldown. Once all instruments have at least some data (or
+        the missing ones are all cooled down), rotates through the full
+        list in chunks.
         """
         if not codes:
             return []
 
-        missing_codes = [c for c in codes if c not in codes_with_data]
+        missing_codes = [
+            c for c in codes if c not in codes_with_data and not self._is_in_cooldown(c)
+        ]
 
         if missing_codes:
             # Always backfill missing-data instruments first, in code order.
@@ -195,6 +252,10 @@ class USHistoricalBackfillPipeline(ETLPipeline):
                     len(df),
                     df["etf_code"].nunique(),
                 )
+
+        # Update failure cooldown counters based on what both sources returned.
+        final_fetched = set(df["etf_code"].unique()) if not df.empty else set()
+        self._record_fetch_results(batch, final_fetched)
 
         if df.empty:
             logger.warning("USBackfill: No data returned for batch")

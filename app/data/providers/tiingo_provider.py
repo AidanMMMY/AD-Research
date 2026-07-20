@@ -64,10 +64,15 @@ class TiingoProvider(DataProvider):
         return "tiingo"
 
     def _to_tiingo_symbol(self, code: str) -> str:
-        """Convert internal code to Tiingo symbol (plain ticker)."""
+        """Convert internal code to Tiingo symbol (plain ticker).
+
+        US share-class tickers use '-' on Tiingo (BRK-B), not '.' (BRK.B),
+        so dots in the ticker part are mapped to dashes.
+        """
         for suffix in (".US", ".HK", ".JP"):
             if code.endswith(suffix):
-                return code[: -len(suffix)]
+                ticker = code[: -len(suffix)]
+                return ticker.replace(".", "-") if suffix == ".US" else ticker
         return code
 
     def fetch_etf_list(self) -> list[ETFInfo]:

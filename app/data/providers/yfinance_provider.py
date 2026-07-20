@@ -57,7 +57,8 @@ class YFinanceProvider(DataProvider):
 
         Mapping rules (in priority order):
           1. Exact match in CODE_MAP (for non-standard tickers)
-          2. .US suffix → strip (e.g. SPY.US → SPY)
+          2. .US suffix → strip, share-class dots → dashes
+             (e.g. SPY.US → SPY, BRK.B.US → BRK-B)
           3. .JP suffix → .T   (e.g. 1321.JP → 1321.T)
           4. .HK suffix → keep (e.g. 2800.HK → 2800.HK)
           5. Fallback: return as-is
@@ -66,7 +67,8 @@ class YFinanceProvider(DataProvider):
             return self.CODE_MAP[code]
 
         if code.endswith(".US"):
-            return code[:-3]
+            # yfinance expects share classes as BRK-B, not BRK.B.
+            return code[:-3].replace(".", "-")
         if code.endswith(".JP"):
             return code[:-3] + ".T"
         if code.endswith(".HK"):
