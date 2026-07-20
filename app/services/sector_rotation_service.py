@@ -72,6 +72,19 @@ from app.models.sw_industry_index import SWIndustryIndexReturn
 #: 申万2021一级行业 view exposed for A-share-only analysis.
 Classification = Literal["GICS", "SW"]
 
+#: Physically-plausible bound for a period return. Anything outside ±1000%
+#: is corrupt data (e.g. the -1e9 missing-value sentinel or a dirty
+#: adjustment-factor ratio) and must never reach an average or the UI.
+_RETURN_ABS_CAP = 10.0
+
+
+def _sane_return(value: float | None) -> float | None:
+    """Return ``value`` when inside the plausible range, else ``None``."""
+    if value is None or abs(value) >= _RETURN_ABS_CAP:
+        return None
+    return value
+
+
 # ---------------------------------------------------------------------------
 # ETF sub_category / underlying_index → GICS sector heuristic mapping.
 #
@@ -453,11 +466,21 @@ class SectorRotationService:
                 "weight": weight_value,
                 "weight_unit": weight_unit,
                 "weight_label": weight_label,
-                "return_1w": float(ind.return_1w) if ind and ind.return_1w is not None else None,
-                "return_1m": float(ind.return_1m) if ind and ind.return_1m is not None else None,
-                "return_3m": float(ind.return_3m) if ind and ind.return_3m is not None else None,
-                "return_6m": float(ind.return_6m) if ind and ind.return_6m is not None else None,
-                "return_1y": float(ind.return_1y) if ind and ind.return_1y is not None else None,
+                "return_1w": _sane_return(
+                    float(ind.return_1w) if ind and ind.return_1w is not None else None
+                ),
+                "return_1m": _sane_return(
+                    float(ind.return_1m) if ind and ind.return_1m is not None else None
+                ),
+                "return_3m": _sane_return(
+                    float(ind.return_3m) if ind and ind.return_3m is not None else None
+                ),
+                "return_6m": _sane_return(
+                    float(ind.return_6m) if ind and ind.return_6m is not None else None
+                ),
+                "return_1y": _sane_return(
+                    float(ind.return_1y) if ind and ind.return_1y is not None else None
+                ),
                 "sharpe_1y": float(ind.sharpe_1y) if ind and ind.sharpe_1y is not None else None,
                 "rsi14": float(ind.rsi14) if ind and ind.rsi14 is not None else None,
                 "amount_total": float(ind.amount) if ind and ind.amount is not None else None,
@@ -597,6 +620,10 @@ class SectorRotationService:
                 col = getattr(ind, f"return_{period}", None)
                 if col is not None:
                     f = float(col)
+                    # Drop corrupt values (missing-value sentinel / dirty
+                    # adjustment factors) — they must not enter any average.
+                    if abs(f) >= _RETURN_ABS_CAP:
+                        continue
                     bucket[f"return_{period}"].append(f)
                     market_returns[f"return_{period}"].append(f)
 
@@ -846,7 +873,11 @@ class SectorRotationService:
             sector = _resolve_sector(info, classification)
             if not sector or ind.return_1m is None:
                 continue
-            prev_returns.setdefault(sector, []).append(float(ind.return_1m))
+            f = float(ind.return_1m)
+            # Same corrupt-value guard as the main aggregation.
+            if abs(f) >= _RETURN_ABS_CAP:
+                continue
+            prev_returns.setdefault(sector, []).append(f)
 
         if not prev_returns:
             return []

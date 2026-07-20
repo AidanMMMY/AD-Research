@@ -28,6 +28,7 @@ running pytest against the ECS Postgres (see
 
 from __future__ import annotations
 
+import logging
 import math
 from datetime import date, timedelta
 
@@ -40,6 +41,7 @@ from app.core.database import engine
 from app.data.indicators.calculator import calculate_single_etf
 from app.data.indicators.sql_calculator import (
     INDICATOR_OUTPUT_COLUMNS,
+    RETURN_WINDOWS,
     build_indicator_payload,
     build_indicator_query_sql,
 )
@@ -362,6 +364,57 @@ def test_build_indicator_query_sql_uses_target_date_when_present() -> None:
     assert "AND b.trade_date <= :target_date" in sql
 
 
+def test_build_indicator_query_sql_return_clamp_is_null_safe() -> None:
+    """Regression: the return_* clamp must not wrap the LAG inline.
+
+    PostgreSQL's GREATEST/LEAST skip NULL arguments, so the pre-fix
+    ``GREATEST(qfq / NULLIF(LAG(...), 0) - 1, -1e9)`` turned a missing
+    lookback (history shorter than the window) into the -1e9 sentinel
+    instead of NULL. The SQL must materialize the lagged close in a
+    ``lagged`` CTE and gate every return window with an explicit
+    NULL / non-positive CASE check before clamping.
+    """
+    sql = build_indicator_query_sql(full_history=False)
+    assert "lagged AS (" in sql, "expected a lagged CTE materializing the lookback closes"
+    for col, n in RETURN_WINDOWS.items():
+        label = col.removeprefix("return_")
+        assert f"LAG(b.qfq_close, {n}) OVER w_etf AS prev_qfq_{label}" in sql
+        assert (
+            f"CASE WHEN b.prev_qfq_{label} IS NULL OR b.prev_qfq_{label} <= 0 THEN NULL" in sql
+        ), f"{col}: return must be NULL (not the -1e9 clamp) when history is short"
+    assert (
+        "GREATEST(b.qfq_close / NULLIF(LAG(" not in sql
+    ), "the return clamp must no longer wrap the LAG expression inline"
+
+
+def test_build_indicator_payload_drops_implausible_return_sentinel(caplog) -> None:
+    """|return_*| >= 1e8 values are the -1e9 sentinel (or dirty data)
+    and must be coerced to None with a warning, never upserted.
+    """
+    row = {
+        "etf_code": "SENT.SH",
+        "trade_date": date(2026, 7, 20),
+        "ma5": 1.5,
+        "return_1w": -1_000_000_000.0,
+        "return_1m": 1e8,  # boundary: >= 1e8 is implausible
+        "return_3m": -0.5,  # legitimate large negative return
+        "return_6m": 9.9e7,  # below the guard, kept
+        "return_1y": None,
+    }
+    with caplog.at_level(logging.WARNING, logger="app.data.indicators.sql_calculator"):
+        payload = build_indicator_payload(row)
+    assert payload["return_1w"] is None
+    assert payload["return_1m"] is None
+    assert payload["return_3m"] == -0.5
+    assert payload["return_6m"] == 9.9e7
+    assert payload["return_1y"] is None
+    assert payload["ma5"] == 1.5
+    warnings = [r.message for r in caplog.records if r.levelno == logging.WARNING]
+    assert any(
+        "implausible" in m and "return_1w" in m for m in warnings
+    ), "expected a warning naming the dropped sentinel column"
+
+
 # ---------------------------------------------------------------------------
 # Parity tests (require PostgreSQL)
 # ---------------------------------------------------------------------------
@@ -537,6 +590,34 @@ def test_sql_handles_us_style_short_history(parity_db) -> None:
     # Long-window stats are now emitted once rn >= RISK_LONG_MIN_PERIODS,
     # so at 80 bars both pandas and SQL should produce real values (parity
     # check covers this).
+
+
+@pytestmark_sql
+def test_sql_short_history_returns_null_not_sentinel(parity_db) -> None:
+    """Regression for the -1e9 sentinel: with fewer bars than the
+    return window, ``return_*`` must be NULL (pandas parity), never
+    the -1e9 clamp bound produced by the pre-fix GREATEST/LEAST wrap.
+    """
+    from app.data.indicators.sql_calculator import sql_calculate_full_history
+
+    db, register = parity_db
+    code = _short_code("short_hist_returns")
+    register(code)
+
+    bars = _make_synthetic_bars(n=10, seed=5)
+    _insert_synthetic_bars(db, code, bars)
+
+    rows = sql_calculate_full_history(db, [code])
+    assert len(rows) == 10
+    for r in rows:
+        # 10 bars is shorter than every window except return_1w (5).
+        for col in ("return_1m", "return_3m", "return_6m", "return_1y"):
+            assert r[col] is None, f"{col} must be NULL with only 10 bars, got {r[col]!r}"
+        if r["return_1w"] is not None:
+            assert abs(r["return_1w"]) < 1e8, f"return_1w sentinel leaked: {r['return_1w']!r}"
+    # The first 5 rows lack the 5-bar lookback entirely -> NULL, not -1e9.
+    first_five = sorted(rows, key=lambda r: r["trade_date"])[:5]
+    assert all(r["return_1w"] is None for r in first_five)
 
 
 @ pytestmark_sql

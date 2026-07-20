@@ -189,22 +189,23 @@ def test_rotation_signals_detect_three_plus_rank_changes(service, sr_session):
 
     def make_return(sector, td):
         # Lookback date (index 0): ranks 1=HC, 2=FIN, 3=ENE, 4=IT
+        # (returns are decimals, e.g. 0.12 = 12%)
         if td == dates[0]:
             return {
-                "Health Care": 12.0,
-                "Financials": 9.0,
-                "Energy": 6.0,
-                "Information Technology": 1.0,
+                "Health Care": 0.12,
+                "Financials": 0.09,
+                "Energy": 0.06,
+                "Information Technology": 0.01,
             }[sector]
         # Current date (index 5): ranks 1=IT, 2=ENE, 3=FIN, 4=HC
         if td == dates[5]:
             return {
-                "Information Technology": 10.0,
-                "Energy": 7.0,
-                "Financials": 4.0,
-                "Health Care": 1.0,
+                "Information Technology": 0.10,
+                "Energy": 0.07,
+                "Financials": 0.04,
+                "Health Care": 0.01,
             }[sector]
-        return 5.0
+        return 0.05
 
     _seed_daily_history(sr_session, sectors, dates, make_return)
 
@@ -244,3 +245,101 @@ def test_rotation_signals_skipped_with_insufficient_history(service, sr_session)
 
     result = service.analyze_sectors(d)
     assert result["rotation_signals"] == []
+
+
+# ---------------------------------------------------------------------------
+# Corrupt-value (missing-value sentinel / dirty adjustment) filtering tests
+# ---------------------------------------------------------------------------
+
+#: The missing-value sentinel observed in production indicator rows.
+_SENTINEL = -1e9
+
+
+def test_market_avg_excludes_sentinel_returns(service, sr_session):
+    """Sentinel / out-of-range returns must not pollute sector or market averages."""
+    d = date(2024, 6, 30)
+    profiles = [
+        _InstrumentProfile("IT1", "Information Technology", return_1m=2.0),
+        _InstrumentProfile("IT2", "Information Technology", return_1m=4.0),
+        _InstrumentProfile("IT3", "Information Technology", return_1m=_SENTINEL),
+        _InstrumentProfile("HC1", "Health Care", return_1m=-2.0),
+    ]
+    _seed_universe(sr_session, profiles, d)
+
+    result = service.analyze_sectors(d)
+
+    # Market average is computed from the sane values only: (2 + 4 - 2) / 3.
+    assert result["market_avg"]["return_1m"] == pytest.approx(4.0 / 3.0, abs=1e-4)
+
+    sectors = {s["sector"]: s for s in result["sectors"]}
+    # The sentinel row is excluded from the IT bucket: (2 + 4) / 2 = 3.0.
+    # (Note: _seed_universe sets return_3m/6m/1y = k * return_1m, so the
+    # sentinel row's other periods are filtered by the same guard.)
+    assert sectors["Information Technology"]["return_1m"] == pytest.approx(3.0, abs=1e-4)
+    assert sectors["Health Care"]["return_1m"] == pytest.approx(-2.0, abs=1e-4)
+    # RS uses the clean market average: 3.0 - 4/3.
+    assert sectors["Information Technology"]["relative_strength_1m"] == pytest.approx(
+        3.0 - 4.0 / 3.0, abs=1e-4
+    )
+
+
+def test_constituents_sentinel_returns_output_none(service, sr_session):
+    """Constituent rows surface corrupt returns as None (UI shows '-'), never raw values."""
+    d = date(2024, 6, 30)
+    profiles = [
+        _InstrumentProfile("IT1", "Information Technology", return_1m=2.0),
+        _InstrumentProfile("IT3", "Information Technology", return_1m=_SENTINEL),
+    ]
+    _seed_universe(sr_session, profiles, d)
+
+    result = service.get_sector_constituents("Information Technology", trade_date=d)
+    items = {i["code"]: i for i in result["items"]}
+
+    assert items["IT1"]["return_1m"] == pytest.approx(2.0, abs=1e-4)
+    assert items["IT3"]["return_1m"] is None
+    # The sentinel also leaks into 3m/6m/1y via _seed_universe's k * return_1m;
+    # every period must be masked.
+    assert items["IT3"]["return_3m"] is None
+    assert items["IT3"]["return_1y"] is None
+
+
+def test_prev_returns_sentinel_excluded_from_rotation_ranking(service, sr_session):
+    """A sentinel on the lookback date must not shift the previous-period rank."""
+    start = date(2024, 6, 3)
+    dates = [start + timedelta(days=i) for i in range(6)]
+
+    sectors = {
+        "Information Technology": "IT0001",
+        "Health Care": "HC0001",
+        "Financials": "FIN001",
+    }
+
+    def make_return(sector, td):
+        # Lookback date: HC holds the sentinel; without filtering HC would
+        # rank last (avg -1e9) instead of first.
+        if td == dates[0]:
+            return {
+                "Health Care": _SENTINEL,
+                "Financials": 9.0,
+                "Information Technology": 1.0,
+            }[sector]
+        if td == dates[5]:
+            return {
+                "Information Technology": 10.0,
+                "Health Care": 8.0,
+                "Financials": 4.0,
+            }[sector]
+        return 5.0
+
+    _seed_daily_history(sr_session, sectors, dates, make_return)
+
+    result = service.analyze_sectors(dates[-1])
+    signals = {s["sector"]: s for s in result["rotation_signals"]}
+
+    # Without the sentinel, HC would rank 1st on the lookback date. With the
+    # guard, HC has no sane lookback value, so it gets no previous rank and
+    # emits no signal.
+    assert "Health Care" not in signals
+    # IT: prev ranks among sane sectors are FIN=1, IT=2 → current ranks
+    # IT=1, HC=2, FIN=3 → change = 2 - 1 = +1, below the ±3 threshold.
+    assert "Information Technology" not in signals

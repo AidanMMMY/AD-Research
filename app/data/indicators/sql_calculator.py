@@ -78,6 +78,14 @@ RISK_LONG_MIN_PERIODS = _DEFAULT_CONFIG.risk_long_min_periods
 
 RETURN_WINDOWS: dict[str, int] = _DEFAULT_CONFIG.return_windows
 
+# Clamp bound for period returns. WARNING: PostgreSQL's GREATEST/LEAST
+# skip NULL arguments instead of propagating NULL, so this bound must
+# never be applied to a potentially-NULL LAG expression inline —
+# GREATEST(NULL, -1e9) returns -1e9, silently turning "history shorter
+# than the window" into a -1000000000 sentinel row (production incident,
+# etf_indicator return_* columns). The generated SQL materializes the
+# lagged close in the ``lagged`` CTE and gates the ratio with an
+# explicit NULL / non-positive CASE check before clamping.
 RETURN_CLAMP: float = 1e9
 
 TRADING_DAYS_PER_YEAR = _DEFAULT_CONFIG.annualization_factor
@@ -417,9 +425,23 @@ def build_indicator_query_sql(
         f"ROWS BETWEEN {w - 1} PRECEDING AND CURRENT ROW) AS {col}"
         for col, w in zip(ma_labels, config.ma_windows)
     )
-    return_frags = ",\n            ".join(
-        f"LEAST(GREATEST(b.qfq_close / NULLIF(LAG(b.qfq_close, {n}) OVER w_etf, 0) - 1, -{RETURN_CLAMP}), {RETURN_CLAMP}) AS {col}"
+    # Period returns on 前复权 close. PostgreSQL's GREATEST/LEAST skip
+    # NULL arguments, so clamping ``LAG(...)`` inline would turn a
+    # missing lookback (history shorter than the window) into the
+    # -1e9 lower bound instead of NULL. The lagged close per window is
+    # materialized once in the ``lagged`` CTE below and the ratio is
+    # gated with an explicit NULL / non-positive check, matching the
+    # pandas path which emits NaN (-> NULL) for the same warmup rows.
+    lag_frags = ",\n            ".join(
+        f"LAG(b.qfq_close, {n}) OVER w_etf AS prev_qfq_{col.removeprefix('return_')}"
         for col, n in config.return_windows.items()
+    )
+    return_frags = ",\n            ".join(
+        f"CASE WHEN b.prev_qfq_{col.removeprefix('return_')} IS NULL "
+        f"OR b.prev_qfq_{col.removeprefix('return_')} <= 0 THEN NULL "
+        f"ELSE LEAST(GREATEST(b.qfq_close / b.prev_qfq_{col.removeprefix('return_')} - 1, "
+        f"-{RETURN_CLAMP}), {RETURN_CLAMP}) END AS {col}"
+        for col in config.return_windows
     )
 
     # Filter: latest-only vs. full-history
@@ -437,6 +459,16 @@ def build_indicator_query_sql(
     WITH RECURSIVE
     {windowed_cte},
     {_bars_select_sql},
+    lagged AS (
+        SELECT
+            b.*,
+            -- Lagged 前复权 close per return window, materialized here
+            -- so the return CASE expressions in per_row can test for
+            -- NULL before applying the GREATEST/LEAST clamp.
+            {lag_frags}
+        FROM bars b
+        WINDOW w_etf AS (PARTITION BY b.etf_code ORDER BY b.trade_date)
+    ),
     wilder_input AS (
         SELECT
             b.etf_code, b.trade_date, b.rn, b.qfq_close, b.high, b.low,
@@ -557,7 +589,7 @@ def build_indicator_query_sql(
             / NULLIF(STDDEV_SAMP(b.daily_return) OVER (PARTITION BY b.etf_code ORDER BY b.trade_date
                 ROWS BETWEEN {long_window - 1} PRECEDING AND CURRENT ROW), 0)
             * sqrt({annualization_factor}) AS sharpe_1y_raw
-        FROM bars b
+        FROM lagged b
         LEFT JOIN wilder_input w ON b.etf_code = w.etf_code AND b.rn = w.rn
         LEFT JOIN atr_out atr ON b.etf_code = atr.etf_code AND b.rn = atr.rn
         LEFT JOIN rsi_out rsi ON b.etf_code = rsi.etf_code AND b.rn = rsi.rn
@@ -762,6 +794,14 @@ def _clamp_decimal(value: float, precision: int | None, scale: int | None) -> fl
     return value
 
 
+# Data-quality gate for period returns. No legitimate 1w/1m/3m/6m/1y
+# return can reach 1e8 (100 亿倍); values at this magnitude are the
+# -1e9 sentinel produced by the pre-fix GREATEST/LEAST clamp bug (or
+# future dirty rows). ``build_indicator_payload`` coerces them to None
+# so they never reach the upsert / aggregation layers again.
+_RETURN_ABS_GUARD: float = 1e8
+
+
 def build_indicator_payload(row: dict) -> dict:
     """Coerce a SQL result row to the ETFIndicator upsert shape.
 
@@ -769,6 +809,8 @@ def build_indicator_payload(row: dict) -> dict:
     of failing the numeric column constraint. Return / drawdown
     columns are clamped to DECIMAL(18, 6) to prevent a single extreme
     value (e.g. 600601.SH style returns) from failing the whole chunk.
+    ``return_*`` values with absolute magnitude >= 1e8 are treated as
+    corrupt sentinels, logged, and coerced to ``None``.
     """
     record: dict = {
         "etf_code": row["etf_code"],
@@ -785,6 +827,17 @@ def build_indicator_payload(row: dict) -> dict:
             record[col] = None
             continue
         if pd.isna(f) or f == float("inf") or f == float("-inf"):
+            record[col] = None
+        elif col.startswith("return_") and abs(f) >= _RETURN_ABS_GUARD:
+            logger.warning(
+                "build_indicator_payload: dropping implausible %s=%r for %s on %s "
+                "(|return| >= %g sentinel guard)",
+                col,
+                f,
+                row.get("etf_code"),
+                row.get("trade_date"),
+                _RETURN_ABS_GUARD,
+            )
             record[col] = None
         else:
             record[col] = _clamp_decimal(f, *_RETURN_DRAWDOWN_COLUMNS.get(col, (None, None)))
