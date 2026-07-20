@@ -114,8 +114,9 @@ services:
     environment:
       <<: *backend-env
       ENABLE_SCHEDULER: ${ENABLE_SCHEDULER:-true}
-      # /health always returns HTTP 200; we must parse the body status so nginx and
-      # celery-worker don't start before DB/Redis are actually ready.
+    # /health always returns HTTP 200; we must parse the body status so nginx and
+    # celery-worker don't start before DB/Redis are actually ready.
+    healthcheck:
       test: ["CMD-SHELL", "python -c 'import urllib.request,json,sys; r=json.loads(urllib.request.urlopen(\"http://localhost:8000/health\",timeout=5).read()); sys.exit(0 if r.get(\"status\")==\"ok\" else 1)'"]
       interval: 10s
       timeout: 5s

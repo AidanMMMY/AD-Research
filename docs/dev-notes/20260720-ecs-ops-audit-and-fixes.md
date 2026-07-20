@@ -100,3 +100,17 @@
 - [ ] postgres 不明角色探测 FATAL：可临时开 log_connections 抓来源
 - [ ] 扫描器噪音：已知扫描路径 return 444 或静态 location 限流
 - [ ] fed_intl rc=0 空占位与真实条目不区分（status_report 改进）
+
+## 五、追加 tripwire（2026-07-20 晚，部署 run 29709418777 失败实录）
+
+**教训：不要在 `/opt/ad-research` 工作树上直接改文件，哪怕只是服务器侧的热修。**
+
+本次 backup_postgres.sh 的服务器侧热修（agent 同步改了仓库并验证 diff 一致）仍让工作树
+`git status` 变脏，deploy.yml step 2 的脏检查（tripwire #1 保护）直接 bail，第一次部署失败。
+正确姿势：服务器热修后立刻 `git checkout -- <file>` 还原（修复已在仓库里，reset 后自然生效），
+.bak 文件放 `/root/` 而非工作树内。
+
+另：本地网络对 GitHub 的访问可能整体抖动（443 全部 IP 超时但 SSH 22 通）。应急 push 路径：
+`git bundle create x.bundle origin/main..main` → scp 到 ECS →
+`git fetch x.bundle main && git push origin FETCH_HEAD:refs/heads/main`（凭据在
+`/data/ad-research/.git-credentials`，push 不触碰工作树，不影响部署脏检查）。
