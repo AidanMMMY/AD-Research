@@ -118,7 +118,13 @@ export function formatRelative(
   const t = toLocal(value);
   if (!t.isValid()) return '';
   // Diff in minutes, computed in the same tz so DST / tz shifts line up.
-  const diff = dayjs().tz(DISPLAY_TZ).diff(t, 'minute');
+  const now = dayjs().tz(DISPLAY_TZ);
+  const diff = now.diff(t, 'minute');
+  // Future timestamps (e.g. cninfo announcements whose published_at is
+  // disclosure-day midnight) must not render as "刚刚".
+  if (diff < 0) {
+    return t.isSame(now, 'day') ? `今天 ${t.format('HH:mm')}` : t.format('YYYY-MM-DD HH:mm');
+  }
   if (diff < 1) return '刚刚';
   if (diff < 60) return `${diff} 分钟前`;
   const h = Math.floor(diff / 60);

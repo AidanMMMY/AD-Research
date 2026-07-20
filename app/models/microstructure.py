@@ -204,7 +204,7 @@ class RestrictedRelease(Base):
     )
     restricted_number = Column(Numeric(20, 4), comment="解禁数量 (股)")
     restricted_amount = Column(Numeric(20, 4), comment="解禁市值 (元)")
-    lift_ratio = Column(Numeric(10, 4), comment="占总股本比例 (%)")
+    lift_ratio = Column(Numeric(10, 4), comment="占总股本比例 (小数, 如 0.0281 = 2.81%)")
 
     source = Column(
         String(32),

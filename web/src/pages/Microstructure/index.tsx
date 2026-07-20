@@ -105,6 +105,13 @@ function formatPct(v: number | null | undefined): string {
   return `${v.toFixed(2)}%`;
 }
 
+// lift_ratio is stored as a decimal ratio (0.0281 = 2.81%), unlike
+// pct_change which is already a percent value.
+function formatRatioPct(v: number | null | undefined): string {
+  if (v === null || v === undefined) return NULL_PLACEHOLDER;
+  return `${(v * 100).toFixed(2)}%`;
+}
+
 export default function MicrostructurePage() {
   const [tab, setTab] = useState('lhb');
 
@@ -182,7 +189,7 @@ export default function MicrostructurePage() {
     { title: '类型', dataIndex: 'restricted_type', key: 'restricted_type', width: 90 },
     { title: '解禁数量', dataIndex: 'restricted_number', key: 'restricted_number', width: 120, className: 'tabular-nums', render: (v: number | null) => v?.toLocaleString() ?? NULL_PLACEHOLDER },
     { title: '解禁市值', dataIndex: 'restricted_amount', key: 'restricted_amount', width: 120, className: 'tabular-nums', render: (v: number | null) => formatMoney(v) },
-    { title: '占比 %', dataIndex: 'lift_ratio', key: 'lift_ratio', width: 90, className: 'tabular-nums', render: formatPct },
+    { title: '占比 %', dataIndex: 'lift_ratio', key: 'lift_ratio', width: 90, className: 'tabular-nums', render: formatRatioPct },
   ];
 
   const totalCount = useMemo(
@@ -228,9 +235,9 @@ export default function MicrostructurePage() {
           <Statistic
             title="北向净流入"
             value={summary?.hsgt?.north_net ?? 0}
-            precision={0}
+            precision={2}
             className={(summary?.hsgt?.north_net ?? 0) >= 0 ? 'micro-kpi-rise' : 'micro-kpi-fall'}
-            suffix="元"
+            suffix="亿元"
           />
         </Card>
         <Card>
