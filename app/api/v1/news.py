@@ -1088,7 +1088,7 @@ def translate_article(
     * 400 — non-English article, empty body, or unsupported target
     * 429 — daily limit exceeded
     * 409 — concurrent translate already in progress
-    * 502 — DeepSeek call failed (no key, timeout, 5xx…)
+    * 502 — LLM provider call failed (no key, timeout, 5xx…)
     """
     # Per-user daily counter. Keyed by user + ISO date so it rolls
     # over at midnight UTC. Redis-down → fail-open (logged + skip).

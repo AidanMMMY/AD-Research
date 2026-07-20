@@ -46,8 +46,10 @@ if [ -n "$COMPOSE_FILE" ] && [ -f "$COMPOSE_FILE" ]; then
     docker compose -f "$COMPOSE_FILE" exec -T postgres pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" | gzip > "$BACKUP_FILE"
 elif docker exec "$BACKEND_CONTAINER" pg_dump -h "$POSTGRES_HOST" -p "$POSTGRES_PORT" -U "$POSTGRES_USER" -d "$POSTGRES_DB" >/dev/null 2>&1; then
     docker exec "$BACKEND_CONTAINER" pg_dump -h "$POSTGRES_HOST" -p "$POSTGRES_PORT" -U "$POSTGRES_USER" -d "$POSTGRES_DB" | gzip > "$BACKUP_FILE"
+elif docker exec alloyresearch-postgres pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" >/dev/null 2>&1; then
+    docker exec alloyresearch-postgres pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" | gzip > "$BACKUP_FILE"
 else
-    log_warn "未找到 compose 文件或 backend 容器内无 pg_dump，尝试本地 pg_dump"
+    log_warn "未找到 compose 文件或容器内无 pg_dump，尝试本地 pg_dump"
     pg_dump -h "$POSTGRES_HOST" -p "$POSTGRES_PORT" -U "$POSTGRES_USER" -d "$POSTGRES_DB" | gzip > "$BACKUP_FILE"
 fi
 

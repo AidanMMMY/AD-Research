@@ -176,13 +176,17 @@ class NewsTranslationService:
                 f"Article {article_id} has no body / full_content to translate"
             )
 
-        # Call DeepSeek (imported lazily so unit tests can patch the
-        # provider without paying the OpenAI SDK import cost).
+        # Call the configured LLM provider (imported lazily so unit tests
+        # can patch the factory without paying the OpenAI SDK import cost).
         from app.services.llm import get_llm_provider
 
         provider = get_llm_provider()
         if not provider.is_available:
-            raise RuntimeError("DEEPSEEK_API_KEY is not configured on the server")
+            provider_name = type(provider).__name__
+            raise RuntimeError(
+                f"LLM provider {provider_name} is not available "
+                "(API key is not configured on the server)"
+            )
 
         system = _TRANSLATION_SYSTEM
         user = _truncate(source)
@@ -190,7 +194,8 @@ class NewsTranslationService:
         content, tokens = self._call_llm_with_retry(provider, system, user)
         if not content:
             raise RuntimeError(
-                "DeepSeek returned no usable translation (timeout, 429 or empty response)"
+                f"{type(provider).__name__} returned no usable translation "
+                "(timeout, 429 or empty response)"
             )
 
         # Persist. We use a fresh ``now`` rather than func.now() so the
@@ -214,10 +219,10 @@ class NewsTranslationService:
     def _call_llm_with_retry(
         self, provider, system: str, user: str
     ) -> tuple[str | None, int | None]:
-        """Single DeepSeek call with one 429 retry.
+        """Single LLM call with one 429 retry.
 
         Returns ``(content, tokens_used)``. ``tokens_used`` is reported
-        as ``None`` when DeepSeek isn't configured or the call fails —
+        as ``None`` when the provider isn't configured or the call fails —
         the provider does not currently expose a usage field on its
         ``chat()`` shortcut, so we report ``None`` rather than guess.
         """

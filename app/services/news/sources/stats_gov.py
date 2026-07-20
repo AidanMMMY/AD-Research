@@ -39,6 +39,9 @@ class StatsGovCrawler(BaseCrawler):
     rate_limit_per_min = 10
     market = "macro"
     language = "zh"
+    # The zxfb feed is multi-MB; the default 20s timeout is not enough on
+    # slow links, and every retry re-downloads the whole body.
+    request_timeout = 60.0
 
     def __init__(self, *, interpretation: bool = False, **kwargs: Any) -> None:
         kwargs.setdefault("rate_limit_per_min", self.rate_limit_per_min)

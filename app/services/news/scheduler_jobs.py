@@ -362,9 +362,11 @@ def run_huxiu_crawl() -> dict[str, int]:
         articles = _run_async(_go())
         written = _write_to_db(articles)
         return {"fetched": len(articles), "written": written}
-    except Exception as exc:
-        logger.exception("huxiu crawl failed: %s", exc)
-        return {"fetched": 0, "written": 0}
+    except Exception:
+        # Re-raise so _record_etl marks the run "failed"; returning zeros
+        # here recorded a fake success and hid source outages.
+        logger.exception("huxiu crawl failed")
+        raise
 
 
 @_record_etl("news_jiemian_10m")
@@ -379,9 +381,11 @@ def run_jiemian_crawl() -> dict[str, int]:
         articles = _run_async(_go())
         written = _write_to_db(articles)
         return {"fetched": len(articles), "written": written}
-    except Exception as exc:
-        logger.exception("jiemian crawl failed: %s", exc)
-        return {"fetched": 0, "written": 0}
+    except Exception:
+        # Re-raise so _record_etl marks the run "failed"; returning zeros
+        # here recorded a fake success and hid source outages.
+        logger.exception("jiemian crawl failed")
+        raise
 
 
 @_record_etl("news_caixin_10m")
@@ -396,9 +400,11 @@ def run_caixin_crawl() -> dict[str, int]:
         articles = _run_async(_go())
         written = _write_to_db(articles)
         return {"fetched": len(articles), "written": written}
-    except Exception as exc:
-        logger.exception("caixin crawl failed: %s", exc)
-        return {"fetched": 0, "written": 0}
+    except Exception:
+        # Re-raise so _record_etl marks the run "failed"; returning zeros
+        # here recorded a fake success and hid source outages.
+        logger.exception("caixin crawl failed")
+        raise
 
 
 @_record_etl("news_chinanews_finance_15m")
@@ -430,9 +436,11 @@ def run_stats_gov_crawl() -> dict[str, int]:
         articles = _run_async(_go())
         written = _write_to_db(articles)
         return {"fetched": len(articles), "written": written}
-    except Exception as exc:
-        logger.exception("stats_gov crawl failed: %s", exc)
-        return {"fetched": 0, "written": 0}
+    except Exception:
+        # Re-raise so _record_etl marks the run "failed"; returning zeros
+        # here recorded a fake success and hid source outages.
+        logger.exception("stats_gov crawl failed")
+        raise
 
 
 # ── US ──

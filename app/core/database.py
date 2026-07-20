@@ -28,8 +28,16 @@ engine = create_engine(
     # bump to 10/20, halve the timeout, recycle every 30 min so
     # stale connections don't accumulate. ``pool_timeout=10`` makes
     # overload fail fast (and visible) instead of stacking 30s waits.
-    pool_size=10,
-    max_overflow=20,
+    # 2026-07-19: 10/20 still saturated once SSE streams and the 30s
+    # sentiment batch overlapped with web traffic (QueuePool timeout
+    # 26+ times/24h). The holding-connection-too-long bugs were fixed
+    # in app/api/v1/stream.py and scheduler_sentiment.py; this bump to
+    # 15/30 only adds headroom for bursts. Budget check: production
+    # Postgres runs with max_connections=200 (deploy/aliyun-ecs
+    # docker-compose); worst case is backend(45) + celery children
+    # (6 × base pool, their overflow stays transient) ≈ 135 < 200.
+    pool_size=15,
+    max_overflow=30,
     pool_timeout=10,
     pool_recycle=1800,
 )

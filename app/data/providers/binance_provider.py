@@ -76,7 +76,38 @@ class BinanceProvider(DataProvider):
     The provider maps this to Binance trading pair ``BTCUSDT``.
     """
 
-    BASE_URL = "https://api.binance.com"
+    # Public REST hosts, tried in order. ``api.binance.com`` is geo-blocked
+    # in some regions (e.g. mainland-China ECS where it returns HTTP 451 or
+    # times out); ``data-api.binance.vision`` is Binance's official
+    # market-data-only host serving the same public endpoints (klines,
+    # ticker, exchangeInfo, ping) without geo restrictions.
+    BASE_URLS = (
+        "https://api.binance.com",
+        "https://data-api.binance.vision",
+    )
+    BASE_URL = BASE_URLS[0]  # backwards-compatible alias
+
+    # ------------------------------------------------------------------
+    # HTTP helper
+    # ------------------------------------------------------------------
+
+    def _get(self, path: str, params: dict | None = None, timeout: int = 30):
+        """GET a public endpoint, failing over across ``BASE_URLS``.
+
+        Returns the parsed JSON body. Raises ``DataProviderError`` when
+        every host fails, so callers can distinguish a real outage from
+        an empty (but successful) response.
+        """
+        last_exc: Exception | None = None
+        for base in self.BASE_URLS:
+            try:
+                resp = requests.get(f"{base}{path}", params=params, timeout=timeout)
+                resp.raise_for_status()
+                return resp.json()
+            except requests.RequestException as exc:
+                last_exc = exc
+                continue
+        raise DataProviderError(f"Binance request {path} failed on all hosts: {last_exc}")
 
     # ------------------------------------------------------------------
     # DataProvider interface
@@ -146,13 +177,7 @@ class BinanceProvider(DataProvider):
         Returns a list of dicts with keys: ``symbol``, ``baseAsset``,
         ``quoteAsset``, ``status``.
         """
-        url = f"{self.BASE_URL}/api/v3/exchangeInfo"
-        try:
-            resp = requests.get(url, timeout=30)
-            resp.raise_for_status()
-            data = resp.json()
-        except requests.RequestException as exc:
-            raise DataProviderError(f"Binance exchangeInfo failed: {exc}") from exc
+        data = self._get("/api/v3/exchangeInfo")
 
         pairs: list[dict] = []
         for s in data.get("symbols", []):
@@ -182,7 +207,9 @@ class BinanceProvider(DataProvider):
         Calls ``GET /api/v3/klines`` for each symbol individually because
         Binance does not provide a batch-kline endpoint.  Symbol-level
         failures are logged and skipped; the method returns whatever data
-        was successfully retrieved.
+        was successfully retrieved, but raises ``DataProviderError`` when
+        request-level failures left zero rows (i.e. the feed is down)
+        instead of silently returning an empty frame.
 
         Args:
             codes: Internal instrument codes (e.g. ``["BTC.US", "ETH.US"]``).
@@ -192,7 +219,8 @@ class BinanceProvider(DataProvider):
         Returns:
             DataFrame with columns: ``etf_code``, ``trade_date``, ``open``,
             ``high``, ``low``, ``close``, ``volume``, ``amount``,
-            ``change_pct``.  Empty DataFrame if all symbols fail.
+            ``change_pct``.  Empty DataFrame only when every request
+            succeeded but Binance returned no candles.
         """
         COLUMNS = [
             "etf_code", "trade_date",
@@ -214,9 +242,9 @@ class BinanceProvider(DataProvider):
         end_ms = int(end_dt.timestamp() * 1000)
 
         rows: list[dict] = []
+        failed_codes: list[str] = []
         for code in codes:
             symbol = self.to_binance_symbol(code)
-            url = f"{self.BASE_URL}/api/v3/klines"
             params = {
                 "symbol": symbol,
                 "interval": "1d",
@@ -226,11 +254,10 @@ class BinanceProvider(DataProvider):
             }
 
             try:
-                resp = requests.get(url, params=params, timeout=30)
-                resp.raise_for_status()
-                candles = resp.json()
-            except requests.RequestException as exc:
+                candles = self._get("/api/v3/klines", params=params)
+            except DataProviderError as exc:
                 print(f"[BinanceProvider] Failed to fetch {code}: {exc}")
+                failed_codes.append(code)
                 time.sleep(_REQUEST_DELAY)
                 continue
 
@@ -246,8 +273,11 @@ class BinanceProvider(DataProvider):
             for candle in candles:
                 try:
                     open_time_ms = candle[0]
+                    # Binance daily candles open at 00:00:00 UTC; pin the
+                    # conversion to UTC so the trade date does not depend
+                    # on the container's local timezone.
                     trade_date_val = datetime.fromtimestamp(
-                        open_time_ms / 1000
+                        open_time_ms / 1000, tz=timezone.utc
                     ).date()
                     open_px = float(candle[1])
                     close_px = float(candle[4])
@@ -279,6 +309,15 @@ class BinanceProvider(DataProvider):
             time.sleep(_REQUEST_DELAY)
 
         if not rows:
+            if failed_codes:
+                # Every request-level failure with zero rows landed means
+                # the feed is down (geo-block, DNS, outage) — fail loudly
+                # instead of returning an empty frame that downstream
+                # pipelines would record as a fake "success".
+                raise DataProviderError(
+                    f"Binance klines failed for all {len(failed_codes)} "
+                    f"symbol(s): {', '.join(failed_codes)}"
+                )
             return pd.DataFrame(columns=COLUMNS)
 
         df = pd.DataFrame(rows)
@@ -306,17 +345,9 @@ class BinanceProvider(DataProvider):
         ]
 
         symbols = [self.to_binance_symbol(c) for c in codes]
-        url = f"{self.BASE_URL}/api/v3/ticker/24hr"
         params = {"symbols": json.dumps(symbols, separators=(",", ":"))}
 
-        try:
-            resp = requests.get(url, params=params, timeout=30)
-            resp.raise_for_status()
-            data = resp.json()
-        except requests.RequestException as exc:
-            raise DataProviderError(
-                f"Binance ticker/24hr failed: {exc}"
-            ) from exc
+        data = self._get("/api/v3/ticker/24hr", params=params)
 
         if not isinstance(data, list):
             return pd.DataFrame(columns=COLUMNS)
@@ -357,12 +388,9 @@ class BinanceProvider(DataProvider):
     # ------------------------------------------------------------------
 
     def check_health(self) -> bool:
-        """Check whether the Binance API is accessible."""
+        """Check whether any Binance public host is accessible."""
         try:
-            resp = requests.get(
-                f"{self.BASE_URL}/api/v3/ping", timeout=10
-            )
-            resp.raise_for_status()
+            self._get("/api/v3/ping", timeout=10)
             return True
-        except requests.RequestException:
+        except DataProviderError:
             return False

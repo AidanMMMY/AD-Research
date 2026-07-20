@@ -7,7 +7,9 @@ Used as the primary fallback when yfinance is rate-limited or returns empty data
 API docs: https://www.tiingo.com/documentation/end-of-day
 """
 
+import logging
 import os
+import re
 import time
 from datetime import date, datetime, timedelta
 
@@ -17,9 +19,26 @@ import requests
 from app.core.exceptions import DataProviderError
 from app.data.providers.base import DataProvider, ETFInfo, MarketHours
 
+logger = logging.getLogger(__name__)
+
 # Tiingo requires a minimum 1-second delay between requests in practice,
 # though the official rate limit is 50/hour.
 _FREE_TIER_SAFE_DELAY = 1.5  # seconds
+
+# Abort the batch after this many consecutive HTTP 429 responses: the
+# hourly quota is exhausted and hammering the remaining symbols only
+# burns the daily/monthly quota for nothing.
+_MAX_CONSECUTIVE_RATE_LIMITS = 3
+
+
+def _redact_api_key(message: object) -> str:
+    """Mask API-key query params in URLs embedded in error messages.
+
+    ``requests`` exceptions include the full request URL (e.g. urllib3
+    connection errors and ``HTTPError`` from ``raise_for_status``), and the
+    Tiingo key travels as a ``token=`` query param — never log it raw.
+    """
+    return re.sub(r"(?i)(token|apikey|api_key)=[^&\s]+", r"\1=***", str(message))
 
 
 def _api_key() -> str:
@@ -67,9 +86,14 @@ class TiingoProvider(DataProvider):
         close and set adj_factor = adjClose / close so consumers can compute
         split/dividend adjusted prices as close * adj_factor.
 
-        Single-code failures are logged and skipped.
+        Single-code failures are logged with the HTTP status and skipped.
+        Auth failures (401/403) raise immediately since no request in the
+        batch can succeed; repeated 429s abort the batch early so the
+        caller can fall back to another source.
         """
         rows = []
+        failed = 0
+        consecutive_rate_limits = 0
         for code in codes:
             ticker = self._to_tiingo_symbol(code)
             url = (
@@ -81,10 +105,45 @@ class TiingoProvider(DataProvider):
 
             try:
                 resp = requests.get(url, timeout=30)
+            except requests.RequestException as exc:
+                failed += 1
+                logger.warning(
+                    "[TiingoProvider] Request failed for %s (%s): %s",
+                    code, ticker, _redact_api_key(exc),
+                )
+                continue
+
+            if resp.status_code in (401, 403):
+                raise DataProviderError(
+                    f"tiingo auth failed (HTTP {resp.status_code}) for {ticker}: "
+                    f"{resp.text[:200]} — check TIINGO_API_KEY"
+                )
+            if resp.status_code == 429:
+                failed += 1
+                consecutive_rate_limits += 1
+                logger.warning(
+                    "[TiingoProvider] Rate limited (HTTP 429) for %s (%s): %s",
+                    code, ticker, resp.text[:200],
+                )
+                if consecutive_rate_limits >= _MAX_CONSECUTIVE_RATE_LIMITS:
+                    logger.warning(
+                        "[TiingoProvider] Aborting batch after %d consecutive "
+                        "429 responses (hourly quota likely exhausted)",
+                        consecutive_rate_limits,
+                    )
+                    break
+                continue
+            consecutive_rate_limits = 0
+
+            try:
                 resp.raise_for_status()
                 data = resp.json()
-            except requests.RequestException as exc:
-                print(f"[TiingoProvider] Failed to fetch {code}: {exc}")
+            except (requests.RequestException, ValueError) as exc:
+                failed += 1
+                logger.warning(
+                    "[TiingoProvider] Failed to fetch %s (%s), HTTP %s: %s",
+                    code, ticker, resp.status_code, _redact_api_key(exc),
+                )
                 continue
 
             if not isinstance(data, list) or not data:
@@ -122,6 +181,10 @@ class TiingoProvider(DataProvider):
             time.sleep(_FREE_TIER_SAFE_DELAY)
 
         if not rows:
+            logger.warning(
+                "[TiingoProvider] No rows returned for %d/%d requested codes",
+                len(codes) - failed, len(codes),
+            )
             return pd.DataFrame(
                 columns=[
                     "etf_code", "trade_date", "open", "high", "low",

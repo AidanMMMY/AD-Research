@@ -11,7 +11,6 @@ heavily rate-limited from cloud server IPs.
 """
 
 import logging
-import os
 from datetime import date, timedelta
 
 import pandas as pd
@@ -19,11 +18,12 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
 from app.core.cache import cache_invalidate_pattern
+from app.core.exceptions import DataProviderError
 from app.core.redis_client import get_redis_client
 from app.data.pipelines.base import ETLPipeline
 from app.data.providers.tiingo_provider import TiingoProvider
 from app.data.providers.yfinance_provider import YFinanceProvider
-from app.models.etf import InstrumentDailyBar, ETFInfo
+from app.models.etf import ETFInfo, InstrumentDailyBar
 
 logger = logging.getLogger(__name__)
 
@@ -134,12 +134,18 @@ class USDailyPipeline(ETLPipeline):
         )
 
         frames: list[pd.DataFrame] = []
+        source_errors: list[str] = []
 
         # Primary: Tiingo for the rotating batch.
         if tiingo_codes:
-            df_tiingo = self.provider.fetch_daily_bars(
-                tiingo_codes, start_date, end_date
-            )
+            try:
+                df_tiingo = self.provider.fetch_daily_bars(
+                    tiingo_codes, start_date, end_date
+                )
+            except Exception as exc:
+                df_tiingo = pd.DataFrame()
+                source_errors.append(f"tiingo: {exc}")
+                logger.warning("USDailyPipeline: Tiingo fetch failed: %s", exc)
             if not df_tiingo.empty:
                 df_tiingo = df_tiingo[df_tiingo["trade_date"] == target_date].copy()
                 if not df_tiingo.empty:
@@ -148,7 +154,12 @@ class USDailyPipeline(ETLPipeline):
                         "USDailyPipeline: Tiingo returned %d rows for target date %s",
                         len(df_tiingo), target_date,
                     )
-            else:
+                else:
+                    source_errors.append(
+                        f"tiingo: no rows for target date {target_date}"
+                    )
+            elif not any(e.startswith("tiingo:") for e in source_errors):
+                source_errors.append("tiingo: returned empty for batch")
                 logger.warning(
                     "USDailyPipeline: Tiingo returned empty for batch, will rely on yfinance"
                 )
@@ -166,9 +177,14 @@ class USDailyPipeline(ETLPipeline):
             yf_provider = YFinanceProvider()
             # yfinance's end date is exclusive, so extend by one day to
             # ensure the target_date is included.
-            df_yf = yf_provider.fetch_daily_bars(
-                yf_codes, start_date, end_date + timedelta(days=1)
-            )
+            try:
+                df_yf = yf_provider.fetch_daily_bars(
+                    yf_codes, start_date, end_date + timedelta(days=1)
+                )
+            except Exception as exc:
+                df_yf = pd.DataFrame()
+                source_errors.append(f"yfinance: {exc}")
+                logger.warning("USDailyPipeline: yfinance fetch failed: %s", exc)
             if not df_yf.empty:
                 df_yf = df_yf[df_yf["trade_date"] == target_date].copy()
                 if not df_yf.empty:
@@ -177,14 +193,22 @@ class USDailyPipeline(ETLPipeline):
                         "USDailyPipeline: yfinance returned %d rows for target date %s",
                         len(df_yf), target_date,
                     )
-            else:
-                logger.warning("USDailyPipeline: yfinance also returned empty")
+                else:
+                    source_errors.append(
+                        f"yfinance: no rows for target date {target_date}"
+                    )
+            elif not any(e.startswith("yfinance:") for e in source_errors):
+                source_errors.append("yfinance: returned empty")
 
         if not frames:
-            logger.warning(
-                "USDailyPipeline: No data returned for any symbol on %s", target_date
+            # Raise an explicit per-source error instead of returning an
+            # empty DataFrame, which used to surface as the misleading
+            # "Validation failed: Missing required columns" message.
+            raise DataProviderError(
+                f"USDailyPipeline: all sources returned no data for "
+                f"{target_date} ({len(codes)} symbols). "
+                + "; ".join(source_errors or ["no source attempted"])
             )
-            return pd.DataFrame()
 
         df = pd.concat(frames, ignore_index=True)
 

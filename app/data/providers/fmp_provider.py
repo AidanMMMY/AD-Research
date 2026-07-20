@@ -8,6 +8,7 @@ API docs: https://site.financialmodelingprep.com/developer/docs
 """
 
 import os
+import re
 import time
 from datetime import date, timedelta
 from typing import Any
@@ -34,6 +35,15 @@ def _api_key() -> str:
     return key
 
 
+def _redact_api_key(message: object) -> str:
+    """Mask API-key query params in URLs embedded in error messages.
+
+    ``requests`` exceptions include the full request URL, and the FMP key
+    travels as an ``apikey=`` query param — never propagate it raw.
+    """
+    return re.sub(r"(?i)(token|apikey|api_key)=[^&\s]+", r"\1=***", str(message))
+
+
 def _get(endpoint: str, params: dict[str, Any] | None = None) -> Any:
     """Make a GET request to the FMP API."""
     url_params = params or {}
@@ -49,7 +59,7 @@ def _get(endpoint: str, params: dict[str, Any] | None = None) -> Any:
             raise DataProviderError(f"FMP API error: {data['Error Message']}")
         return data
     except requests.RequestException as exc:
-        raise DataProviderError(f"FMP request failed: {exc}") from exc
+        raise DataProviderError(f"FMP request failed: {_redact_api_key(exc)}") from exc
 
 
 _SP500_CSV_URL = (

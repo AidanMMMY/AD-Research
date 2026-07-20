@@ -90,6 +90,11 @@ def run_sentiment_batch(limit: int = 100) -> int:
             if not articles:
                 return 0
 
+            # Release the pooled connection pinned by the SELECT above
+            # before the (potentially minutes-long) LLM batch phase;
+            # the pipeline lazily re-acquires one per ``_persist`` commit.
+            db.rollback()
+
             pipe = SentimentPipeline(db)
 
             async def _go():
@@ -136,6 +141,12 @@ def run_sentiment_low_latency(window_minutes: int = 5) -> int:
             ]
             if not articles:
                 return 0
+
+            # Release the pooled connection pinned by the SELECT above
+            # before the (potentially minutes-long) LLM batch phase;
+            # the pipeline lazily re-acquires one per ``_persist`` commit.
+            db.rollback()
+
             pipe = SentimentPipeline(db)
 
             async def _go():
@@ -182,6 +193,11 @@ def run_news_article_categorization(limit: int = 30) -> int:
             ]
             if not articles:
                 return 0
+
+            # Release the pooled connection pinned by the SELECT above
+            # before the (potentially minutes-long) LLM batch phase;
+            # the pipeline lazily re-acquires one per ``_persist`` commit.
+            db.rollback()
 
             pipe = SentimentPipeline(db)
 
@@ -241,6 +257,11 @@ def run_source_sentiment_backfill(sources: list[str], limit: int = 500) -> int:
             ]
             if not articles:
                 return 0
+
+            # Release the pooled connection pinned by the SELECT above
+            # before the (potentially minutes-long) LLM batch phase;
+            # the pipeline lazily re-acquires one per ``_persist`` commit.
+            db.rollback()
 
             pipe = SentimentPipeline(db)
 

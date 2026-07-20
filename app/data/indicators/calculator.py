@@ -291,6 +291,16 @@ def _drop_empty_indicator_rows(
     return kept
 
 
+# ETLLog job names per market, matching the scheduler job ids tracked by
+# the ops dashboard (app/api/v1/etl_status.py). Markets not listed here
+# (and unfiltered/manual runs) keep the legacy "indicator_calc" name.
+_ETL_JOB_NAMES = {
+    "A股": "indicator_calculation",
+    "US": "us_indicator_calculation",
+    "CRYPTO": "crypto_indicator_calculation",
+}
+
+
 def batch_calculate_indicators(
     db: Session,
     target_date: date | None = None,
@@ -332,6 +342,10 @@ def batch_calculate_indicators(
     updated_count = 0
     errors = []
 
+    # Resolve the ETLLog job name for the requested market (see
+    # _ETL_JOB_NAMES) so the ops dashboard can attribute this run.
+    job_name = _ETL_JOB_NAMES.get(market_filter, "indicator_calc")
+
     # Query all active ETFs, optionally filtering by market
     # Exclude delisted instruments (delist_date < target_date)
     stmt = select(
@@ -352,7 +366,7 @@ def batch_calculate_indicators(
 
     if not active_rows:
         # Log and return 0
-        _log_etl(db, "indicator_calc", "success", 0, start_time, None)
+        _log_etl(db, job_name, "success", 0, start_time, None)
         return 0
 
     # Group by market so each path (SQL/pandas) can use the correct
@@ -422,7 +436,7 @@ def batch_calculate_indicators(
 
         status = "success" if not errors else "partial"
         error_msg = "\n".join(errors) if errors else None
-        _log_etl(db, "indicator_calc", status, updated_count, start_time, error_msg)
+        _log_etl(db, job_name, status, updated_count, start_time, error_msg)
         return updated_count
 
     for market, market_rows in by_market.items():
@@ -461,7 +475,7 @@ def batch_calculate_indicators(
     # Record ETL log
     status = "success" if not errors else "partial"
     error_msg = "\n".join(errors) if errors else None
-    _log_etl(db, "indicator_calc", status, updated_count, start_time, error_msg)
+    _log_etl(db, job_name, status, updated_count, start_time, error_msg)
 
     return updated_count
 

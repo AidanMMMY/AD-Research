@@ -19,6 +19,7 @@ from app.data.providers.finnhub_provider import FinnhubProvider
 from app.models.etf import ETFInfo
 from app.models.research import SentimentData
 from app.services.llm import get_llm_provider, LLMService
+from app.services.symbol_mapper import internal_code
 
 logger = logging.getLogger(__name__)
 
@@ -61,6 +62,21 @@ class SentimentService:
         to_date = date.today()
         from_date = to_date - timedelta(days=lookback_days)
 
+        # Normalize to the internal code convention and refuse instruments
+        # that are not in etf_info: inserting them would violate the
+        # sentiment_data -> etf_info FK at commit time.
+        try:
+            code = internal_code(instrument_code)[:20]
+        except ValueError:
+            code = (instrument_code or "")[:20]
+        if not self.db.query(ETFInfo.code).filter(ETFInfo.code == code).first():
+            logger.warning(
+                "Skipping Finnhub news ingest: %r (internal %r) not in etf_info",
+                instrument_code,
+                code,
+            )
+            return 0
+
         try:
             articles = self.finnhub.fetch_company_news(
                 instrument_code, from_date, to_date
@@ -78,7 +94,7 @@ class SentimentService:
             # Skip if already exists
             existing = (
                 self.db.query(SentimentData)
-                .filter(SentimentData.instrument_code == instrument_code)
+                .filter(SentimentData.instrument_code == code)
                 .filter(SentimentData.url == article.get("url", ""))
                 .filter(SentimentData.source == "finnhub_news")
                 .first()
@@ -93,7 +109,7 @@ class SentimentService:
             sentiment = self._classify_sentiment(headline, summary)
 
             record = SentimentData(
-                instrument_code=instrument_code,
+                instrument_code=code,
                 source="finnhub_news",
                 title=headline,
                 content=summary,
@@ -108,7 +124,7 @@ class SentimentService:
 
         if count:
             self.db.commit()
-            logger.info("Ingested %d Finnhub news for %s", count, instrument_code)
+            logger.info("Ingested %d Finnhub news for %s", count, code)
 
         return count
 

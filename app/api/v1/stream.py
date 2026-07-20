@@ -214,6 +214,36 @@ def _fetch_snapshot(db: Session, code: str) -> Optional[dict]:
     }
 
 
+def _collect_payload(codes: list[str]) -> Optional[dict]:
+    """Fetch all snapshots in one short-lived session.
+
+    The session is fully closed (returning its pooled connection)
+    BEFORE this function returns, so the SSE generator never holds a
+    database connection while suspended at a ``yield`` waiting on the
+    client. Previously the connection stayed checked out across the
+    ``yield`` and the network flush, which piled up under slow or
+    zombie SSE clients and contributed to pool exhaustion.
+    """
+    db = SessionLocal()
+    try:
+        snapshots = []
+        unknown: list[str] = []
+        seen_codes: set[str] = set()
+        for code in codes:
+            snap = _fetch_snapshot(db, code)
+            if snap and snap["code"] not in seen_codes:
+                snapshots.append(snap)
+                seen_codes.add(snap["code"])
+            elif snap is None:
+                unknown.append(code)
+
+        if snapshots or unknown:
+            return {"data": snapshots, "unknown": unknown}
+        return None
+    finally:
+        db.close()
+
+
 async def _price_stream(
     codes: list[str],
 ) -> AsyncGenerator[str, None]:
@@ -221,28 +251,14 @@ async def _price_stream(
     deadline = asyncio.get_event_loop().time() + STREAM_TIMEOUT
 
     while asyncio.get_event_loop().time() < deadline:
-        db = SessionLocal()
         try:
-            snapshots = []
-            unknown: list[str] = []
-            seen_codes: set[str] = set()
-            for code in codes:
-                snap = _fetch_snapshot(db, code)
-                if snap and snap["code"] not in seen_codes:
-                    snapshots.append(snap)
-                    seen_codes.add(snap["code"])
-                elif snap is None:
-                    unknown.append(code)
-
-            if snapshots or unknown:
-                payload = {"data": snapshots, "unknown": unknown}
-                yield f"data: {json.dumps(payload, ensure_ascii=False)}\n\n"
-
+            payload = _collect_payload(codes)
         except Exception as e:
             logger.error(f"SSE stream error: {e}")
             yield f"event: error\ndata: {json.dumps({'error': str(e)})}\n\n"
-        finally:
-            db.close()
+        else:
+            if payload is not None:
+                yield f"data: {json.dumps(payload, ensure_ascii=False)}\n\n"
 
         await asyncio.sleep(STREAM_INTERVAL)
 

@@ -12,6 +12,7 @@ Endpoint reference: https://fred.stlouisfed.org/docs/api/fred/
 """
 
 import logging
+import re
 import time
 from typing import Any
 from urllib.parse import urlencode
@@ -35,6 +36,15 @@ _MIN_INTERVAL_SECONDS = 0.6  # ~100 req/min — leaves headroom
 # Retry policy on 429 (rate limit) or 5xx.
 _MAX_RETRIES = 3
 _RETRY_BACKOFF_SECONDS = 2.0
+
+
+def _redact_api_key(message: object) -> str:
+    """Mask API-key query params in URLs embedded in error messages.
+
+    ``requests`` exceptions include the full request URL, and the FRED key
+    travels as an ``api_key=`` query param — never log or propagate it raw.
+    """
+    return re.sub(r"(?i)(token|apikey|api_key)=[^&\s]+", r"\1=***", str(message))
 
 
 class FredProvider:
@@ -182,7 +192,7 @@ class FredProvider:
                 last_error = exc
                 logger.warning(
                     "FRED request failed (attempt %d/%d): %s",
-                    attempt + 1, _MAX_RETRIES, exc,
+                    attempt + 1, _MAX_RETRIES, _redact_api_key(exc),
                 )
                 time.sleep(_RETRY_BACKOFF_SECONDS * (attempt + 1))
                 continue
@@ -219,7 +229,8 @@ class FredProvider:
                 ) from exc
 
         raise DataProviderError(
-            f"FRED request failed after {_MAX_RETRIES} attempts: {last_error}"
+            f"FRED request failed after {_MAX_RETRIES} attempts: "
+            f"{_redact_api_key(last_error)}"
         )
 
     def rate_limit_sleep(self) -> None:

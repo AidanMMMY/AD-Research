@@ -185,13 +185,17 @@ class ResearchReportService:
         kept = [r for r in raw_rows if r["publish_date"] and r["publish_date"] >= cutoff]
         return self._upsert(kept)
 
-    def fetch_recent_reports(self, limit: int = 200) -> int:
+    def fetch_recent_report_rows(self, limit: int = 200) -> list[dict[str, Any]]:
         """Fetch a small batch of recent reports for active A-share stocks.
 
         Rotates through the active A-share ``etf_info`` list based on
         today's day-of-year so each daily run sees a different subset
         — over time this converges on full coverage.  ``limit`` caps
         the total number of upstream stock lookups per call.
+
+        Fetch-only: returns the normalized provider rows without
+        persisting them, so callers (e.g. the ETL pipeline) can decide
+        when to upsert.
         """
         from app.models.etf import ETFInfo  # local import to avoid cycle
 
@@ -204,7 +208,7 @@ class ResearchReportService:
             .all()
         )
         if not stocks:
-            return 0
+            return []
 
         codes = [s.code for s in stocks]
         # rotate so each run sees a different window
@@ -213,7 +217,15 @@ class ResearchReportService:
         target_codes = rotated[: max(limit, 1)]
 
         plain_codes = [self._ts_to_symbol(c) for c in target_codes]
-        raw_rows = self.provider.fetch_for_codes(plain_codes)
+        return self.provider.fetch_for_codes(plain_codes) or []
+
+    def fetch_recent_reports(self, limit: int = 200) -> int:
+        """Fetch recent reports for active A-share stocks and upsert them.
+
+        Returns the number of rows upserted.  See
+        :meth:`fetch_recent_report_rows` for the rotation strategy.
+        """
+        raw_rows = self.fetch_recent_report_rows(limit=limit)
         if not raw_rows:
             return 0
         return self._upsert(raw_rows)

@@ -8,6 +8,7 @@ Requests are throttled with 2-second delays between individual calls.
 Batch download via yf.download() is more efficient for multi-ticker pulls.
 """
 
+import logging
 import time
 from datetime import date
 
@@ -16,6 +17,8 @@ import yfinance as yf
 
 from app.core.exceptions import DataProviderError
 from app.data.providers.base import DataProvider, ETFInfo, MarketHours
+
+logger = logging.getLogger(__name__)
 
 # Safe rate limit for yfinance: 1 request per 2 seconds
 _SAFE_DELAY = 2.0
@@ -124,10 +127,18 @@ class YFinanceProvider(DataProvider):
                     auto_adjust=False,
                 )
                 batch_success = not data.empty
+                if not batch_success:
+                    logger.warning(
+                        "[YFinanceProvider] Batch download returned no rows for "
+                        "%d tickers (likely rate limited). Falling back to "
+                        "single-ticker.",
+                        len(chunk_codes),
+                    )
             except Exception as exc:
-                print(
-                    f"[YFinanceProvider] Batch download failed for "
-                    f"{len(chunk_codes)} tickers: {exc}. Falling back to single-ticker."
+                logger.warning(
+                    "[YFinanceProvider] Batch download failed for %d tickers: "
+                    "%s. Falling back to single-ticker.",
+                    len(chunk_codes), exc,
                 )
 
             if batch_success:
@@ -176,13 +187,18 @@ class YFinanceProvider(DataProvider):
                             start=start_date, end=end_date, auto_adjust=False, actions=True
                         )
                     except Exception as exc:
-                        print(
-                            f"[YFinanceProvider] Failed to fetch {code} "
-                            f"({ticker}): {exc}"
+                        logger.warning(
+                            "[YFinanceProvider] Failed to fetch %s (%s): %s",
+                            code, ticker, exc,
                         )
                         continue
 
                     if hist.empty:
+                        logger.warning(
+                            "[YFinanceProvider] No history for %s (%s) "
+                            "%s~%s (delisted or rate limited)",
+                            code, ticker, start_date, end_date,
+                        )
                         continue
 
                     adj_factors = self._compute_adj_factors(hist)

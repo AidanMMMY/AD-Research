@@ -115,6 +115,7 @@ def _fetch_tiingo_bars(
 ) -> dict[str, list[dict]]:
     """Fetch bars from Tiingo. Returns {code: [bar_dict, ...]}."""
     import os
+    import re
     import requests
     from urllib.parse import urlencode
 
@@ -140,7 +141,9 @@ def _fetch_tiingo_bars(
             resp.raise_for_status()
             data = resp.json()
         except Exception as exc:
-            logger.warning("Tiingo failed for %s: %s", code, exc)
+            # ``requests`` exceptions embed the full URL incl. token= — mask it.
+            safe_exc = re.sub(r"(?i)token=[^&\s]+", "token=***", str(exc))
+            logger.warning("Tiingo failed for %s: %s", code, safe_exc)
             results[code] = []  # empty = caller should retry with yfinance
             continue
 

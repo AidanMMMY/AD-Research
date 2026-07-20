@@ -55,7 +55,7 @@ class PaperTradingService:
     Usage::
 
         service = PaperTradingService(db)
-        account = service.create_account("My Account", Decimal("10000"))
+        account = service.create_account("My Account", Decimal("10000"), user_id=1)
         order = service.place_order(account.id, "BTC.US", "BUY", Decimal("0.01"))
         pnl = service.get_pnl_summary(account.id)
     """
@@ -128,9 +128,13 @@ class PaperTradingService:
     # ------------------------------------------------------------------
 
     def create_account(
-        self, name: str, initial_balance: Decimal = Decimal("10000"), user_id: int | None = None
+        self, name: str, initial_balance: Decimal = Decimal("10000"), *, user_id: int
     ) -> PaperTradeAccount:
-        """Create a new paper-trade account."""
+        """Create a new paper-trade account.
+
+        ``user_id`` is required: the model column is NOT NULL
+        (multi-tenant ownership).
+        """
         account = PaperTradeAccount(
             user_id=user_id,
             name=name,

@@ -16,6 +16,7 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
 from app.core.cache import cache_invalidate_pattern
+from app.core.exceptions import DataProviderError
 from app.data.pipelines.base import ETLPipeline
 from app.data.providers.binance_provider import BinanceProvider, _DEFAULT_CRYPTO
 from app.models.etf import InstrumentDailyBar, ETFInfo
@@ -131,13 +132,21 @@ class CryptoDailyPipeline(ETLPipeline):
         df = self.provider.fetch_daily_bars(codes, start_date, end_date)
 
         if df.empty:
-            logger.warning(
-                "CryptoDailyPipeline: Binance returned empty DataFrame"
+            # Zero rows with active instruments means the feed is broken
+            # (geo-block, API outage). Fail loudly so the ETL log records
+            # "failed" instead of a fake "success" that masks the outage.
+            raise DataProviderError(
+                f"Binance returned empty DataFrame for {len(codes)} "
+                f"active crypto instruments ({start_date}..{end_date})"
             )
-            return df
 
         # Keep only the target date
         df = df[df["trade_date"] == target_date].copy()
+        if df.empty:
+            raise DataProviderError(
+                f"Binance returned no rows for target date {target_date} "
+                f"across {len(codes)} active crypto instruments"
+            )
         logger.info(
             "CryptoDailyPipeline: Extracted %d rows for target date %s",
             len(df),

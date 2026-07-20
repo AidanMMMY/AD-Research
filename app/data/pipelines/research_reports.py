@@ -12,23 +12,22 @@ Scheduled daily at 18:00 Asia/Shanghai (after both A-share and US
 market data has been ingested for the day).
 
 Incrementality:
-  * ``extract()`` looks up the latest ``publish_date`` in the DB and
-    fetches with a 7-day safety buffer (re-runs are idempotent thanks
-    to the unique constraint, so a too-wide window is safe).
-  * If the table is empty, fall back to the last 30 days.
+  * ``extract()`` fetches a rotating window of the active A-share
+    universe (day-of-year rotation inside the service), so
+    consecutive runs converge on full coverage.
+  * Re-runs are idempotent thanks to the unique constraint on
+    ``(ts_code, title, publish_date)``, so a too-wide window is safe.
 """
 
 from __future__ import annotations
 
 import logging
-from datetime import date, timedelta
 from typing import Any
 
 from sqlalchemy.orm import Session
 
 from app.data.pipelines.base import ETLPipeline, ETLResult
 from app.data.providers.eastmoney_research_provider import EastMoneyResearchProvider
-from app.models.research_report import ResearchReport
 from app.services.research_report_service import ResearchReportService
 
 logger = logging.getLogger(__name__)
@@ -75,22 +74,16 @@ class ResearchReportsPipeline(ETLPipeline):
     # ----- ETL stages -----------------------------------------------------
 
     def extract(self) -> list[dict[str, Any]]:
-        """Look up the last successful run and fetch a small batch.
+        """Fetch a small batch of recent reports from the provider.
 
-        Returns the raw normalized records straight from the provider.
-        The actual "incremental" filter is enforced inside the service
-        (it skips records older than the lookback window), so this
-        function focuses on *which* stocks to query.
+        Returns the raw normalized records straight from the provider
+        (fetch-only — persistence happens in :meth:`load`).  The
+        service rotates through the active A-share universe by
+        day-of-year, so consecutive daily runs converge on full
+        coverage and re-runs stay idempotent via the unique
+        constraint.
         """
-        last = self.service.latest_publish_date()
-        if last is None:
-            days = 30
-        else:
-            # Re-fetch with a 7-day safety buffer to catch any late
-            # additions or upstream backfills.
-            days = max((date.today() - last).days + 7, 7)
-
-        return self.service.fetch_recent_reports(limit=200) or []
+        return self.service.fetch_recent_report_rows(limit=200)
 
     def transform(self, records: list[dict[str, Any]]) -> list[dict[str, Any]]:
         """Identity transform — service already normalized the rows.

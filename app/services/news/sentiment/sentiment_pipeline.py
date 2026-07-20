@@ -47,11 +47,13 @@ from typing import Any
 from sqlalchemy.orm import Session
 
 from app.core.exceptions import DataProviderError
+from app.models.etf import ETFInfo
 from app.models.research import SentimentData
 from app.services.llm import DeepSeekProvider, LLMService
 from app.services.news.sentiment import prompts
 from app.services.news.sentiment.cache import SentimentCache
 from app.services.news.sentiment.monitor import LLMPipelineMonitor
+from app.services.symbol_mapper import internal_code
 
 logger = logging.getLogger(__name__)
 
@@ -388,16 +390,59 @@ class SentimentPipeline:
             "published_at": rec.published_at,
         }
 
+    @staticmethod
+    def _to_internal_code(symbol: str) -> str:
+        """Map an LLM-extracted raw symbol to the internal code convention."""
+        try:
+            return internal_code(symbol)[:20]
+        except ValueError:
+            return symbol[:20]
+
+    def _valid_instrument_codes(self, codes: list[str]) -> set[str]:
+        """Return the subset of ``codes`` present in ``etf_info``.
+
+        Fails open (returns every code) when the lookup itself breaks —
+        the FK constraint at commit time is still the last line of
+        defence, and the existing commit guard logs and rolls back.
+        """
+        unique = list(dict.fromkeys(codes))
+        if not unique:
+            return set()
+        try:
+            rows = self.db.query(ETFInfo.code).filter(ETFInfo.code.in_(unique)).all()
+            return {r[0] for r in rows}
+        except Exception as exc:  # pragma: no cover - defensive
+            logger.warning("instrument code validation query failed: %s", exc)
+            return set(unique)
+
     def _persist(self, article: dict, result: PipelineResult) -> None:
         """Write per-symbol rows into ``sentiment_data``.
 
         We attach the full LLM payload via ``content`` (a denormalised
         copy of the per-symbol row + the article-level metadata) so
         nothing is lost even if the cache expires.
+
+        LLM-extracted symbols are raw tickers (``BA``, ``600519``); they
+        are mapped to internal codes (``BA.US``, ``600519.SH``) and
+        validated against ``etf_info`` before insert. Unknown codes are
+        skipped with a warning instead of aborting the whole batch with
+        an FK violation at commit time.
         """
-        for sym_payload in result.sentiment or []:
-            sym = sym_payload.get("symbol") if isinstance(sym_payload, dict) else None
-            if not sym:
+        payloads = [p for p in (result.sentiment or []) if isinstance(p, dict) and p.get("symbol")]
+        valid_codes = self._valid_instrument_codes(
+            [self._to_internal_code(str(p["symbol"])) for p in payloads]
+        )
+
+        records: list[SentimentData] = []
+        for sym_payload in payloads:
+            sym = self._to_internal_code(str(sym_payload["symbol"]))
+            if sym not in valid_codes:
+                logger.warning(
+                    "sentiment_data skip: %r (raw %r) not in etf_info, url=%s",
+                    sym,
+                    sym_payload.get("symbol"),
+                    article.get("url"),
+                )
                 continue
             score = sym_payload.get("score", 0.0)
             label = sym_payload.get("label", "neutral")
@@ -416,18 +461,19 @@ class SentimentPipeline:
             except Exception:
                 drivers_text = ""
 
-            rec = SentimentData(
-                instrument_code=str(sym)[:20],
-                source="llm_pipeline",
-                title=(article.get("title") or "")[:500],
-                content=drivers_text or (article.get("body") or "")[:1000],
-                url=(article.get("url") or "")[:1000],
-                sentiment_score=score_dec,
-                sentiment_label=str(label)[:20],
-                confidence=conf_dec,
-                published_at=article.get("published_at") or datetime.utcnow(),
+            records.append(
+                SentimentData(
+                    instrument_code=sym,
+                    source="llm_pipeline",
+                    title=(article.get("title") or "")[:500],
+                    content=drivers_text or (article.get("body") or "")[:1000],
+                    url=(article.get("url") or "")[:1000],
+                    sentiment_score=score_dec,
+                    sentiment_label=str(label)[:20],
+                    confidence=conf_dec,
+                    published_at=article.get("published_at") or datetime.utcnow(),
+                )
             )
-            self.db.add(rec)
 
         # Backfill the article-level sentiment onto ``news_article`` when the
         # article dict carries its DB id (crawler path). This gives the
@@ -447,6 +493,8 @@ class SentimentPipeline:
         # Then commit the per-symbol sentiment_data rows separately. These
         # may fail when the LLM extracts a symbol not yet in etf_info; the
         # failure is logged but does not roll back the news_article update.
+        for rec in records:
+            self.db.add(rec)
         try:
             self.db.commit()
         except Exception as exc:
