@@ -189,12 +189,14 @@ def _normalize(
     out["weight"] = (
         table[weight_col].map(_parse_pct) if weight_col is not None else None
     )
+    # Eastmoney's jjcc feed reports 持股数 in 万股 and 持仓市值 in 万元;
+    # normalize to raw shares / yuan so rows match the Tushare source unit.
     out["shares"] = (
-        pd.to_numeric(table[shares_col], errors="coerce")
+        pd.to_numeric(table[shares_col], errors="coerce") * 1e4
         if shares_col is not None
         else None
     )
-    out["market_value"] = pd.to_numeric(table[mv_col], errors="coerce")
+    out["market_value"] = pd.to_numeric(table[mv_col], errors="coerce") * 1e4
 
     out = out[out["holding_code"].notna() & (out["holding_code"] != "")]
     out = out.dropna(subset=["market_value"])

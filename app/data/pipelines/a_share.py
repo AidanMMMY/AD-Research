@@ -125,6 +125,22 @@ class AShareETLPipeline(ETLPipeline):
             and any(record.get(col) is not None for record in records)
         ]
 
+        # All-NULL columns are also dropped from the INSERT payload
+        # (uniformly across rows, keeping the key set homogeneous): an
+        # explicit NULL would violate NOT NULL columns such as adj_factor,
+        # while omitting the column lets its default (1.0) apply on new
+        # rows. The real factor is supplied by the weekly Tushare backfill.
+        all_null_cols = [
+            col
+            for col in present_cols
+            if col not in ("etf_code", "trade_date") and col not in cols_with_data
+        ]
+        if all_null_cols:
+            records = [
+                {k: v for k, v in record.items() if k not in all_null_cols}
+                for record in records
+            ]
+
         stmt = insert(InstrumentDailyBar).values(records)
         set_clause: dict[str, Any] = {}
         for col in cols_with_data:

@@ -7,7 +7,6 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import date
 
 import akshare as ak
-import numpy as np
 import pandas as pd
 
 from app.core.exceptions import DataProviderError
@@ -163,12 +162,14 @@ class AkshareProvider(DataProvider):
     def _fetch_daily_bars_em(
         self, code: str, pure_code: str, start_date: date, end_date: date
     ) -> pd.DataFrame:
-        """使用东方财富接口获取 ETF 日线数据（原始价 + 前复权价）.
+        """使用东方财富接口获取 ETF 日线数据（原始价）.
 
-        同时拉取未复权行情（adjust=""）与前复权行情（adjust="qfq"），
-        计算 ``adj_factor = adj_close / raw_close``。返回的 DataFrame
-        使用原始 OHLCV（真实交易价）并附加 ``adj_factor`` 列，以兼容
-        下游指标计算与现有 API 契约。
+        只拉取未复权行情（adjust=""），返回原始 OHLCV（真实交易价）。
+        ``adj_factor`` 统一置空：窗口内 qfq/raw 推导的因子在窗口末日恒
+        约等于 1.0，会在 daily 增量写入时与已入库的 Tushare 真实累计因子
+        形成接缝（生产事故：237 只 ETF 收益失真）。真实复权因子由回填脚本
+        （scripts/backfill_etf_adj_factor.py）/周期任务供给，pipeline
+        upsert 的 CASE 逻辑会保留已有因子不被 NULL 覆盖。
         """
         start_str = start_date.strftime("%Y%m%d")
         end_str = end_date.strftime("%Y%m%d")
@@ -211,38 +212,11 @@ class AkshareProvider(DataProvider):
             if col in df_raw.columns:
                 df_raw[col] = pd.to_numeric(df_raw[col], errors="coerce")
 
-        # 2) 前复权行情：用于推导复权因子
-        time.sleep(_API_DELAY)
-        df_adj = ak.fund_etf_hist_em(
-            symbol=pure_code,
-            period="daily",
-            start_date=start_str,
-            end_date=end_str,
-            adjust="qfq",
-        )
-        if df_adj.empty or "收盘" not in df_adj.columns:
-            # 前复权缺失时保持原始行情，adj_factor 保持为空，由调用方决定缺省值
-            df_raw["adj_factor"] = pd.NA
-            return df_raw
+        # adj_factor is intentionally left empty here — see the docstring.
+        # The pipeline upsert preserves any existing factor on conflict.
+        df_raw["adj_factor"] = pd.NA
 
-        df_adj = df_adj.rename(columns={"日期": "trade_date", "收盘": "adj_close"})
-        if "trade_date" in df_adj.columns:
-            df_adj["trade_date"] = pd.to_datetime(df_adj["trade_date"]).dt.date
-        df_adj["adj_close"] = pd.to_numeric(df_adj["adj_close"], errors="coerce")
-        df_adj = df_adj[["trade_date", "adj_close"]]
-
-        df = df_raw.merge(df_adj, on="trade_date", how="left")
-        raw_close = pd.to_numeric(df["close"], errors="coerce")
-        adj_close = pd.to_numeric(df["adj_close"], errors="coerce")
-        with np.errstate(invalid="ignore", divide="ignore"):
-            df["adj_factor"] = np.where(
-                (raw_close.notna()) & (raw_close != 0) & (adj_close.notna()),
-                adj_close / raw_close,
-                pd.NA,
-            )
-        df = df.drop(columns=["adj_close"])
-
-        return df
+        return df_raw
 
     def _fetch_daily_bars_sina(
         self, code: str, pure_code: str, start_date: date, end_date: date
@@ -267,7 +241,10 @@ class AkshareProvider(DataProvider):
         else:
             df["change_pct"] = pd.NA
         df["turnover_rate"] = pd.NA
-        df["adj_factor"] = 1.0
+        # Sina has no adjustment factor — leave it NULL so the pipeline
+        # upsert preserves the existing factor instead of writing a 1.0
+        # baseline seam (production incident: 237 ETFs with broken returns).
+        df["adj_factor"] = pd.NA
 
         # 过滤日期范围
         df = df[(df["trade_date"] >= start_date) & (df["trade_date"] <= end_date)].copy()
@@ -485,6 +462,12 @@ class AkshareProvider(DataProvider):
         for col in ("weight_pct", "shares", "market_value"):
             if col in latest.columns:
                 latest[col] = pd.to_numeric(latest[col], errors="coerce")
+
+        # fund_portfolio_hold_em reports 持股数 in 万股 and 持仓市值 in 万元;
+        # normalize to raw shares / yuan to match the Tushare source unit.
+        for col in ("shares", "market_value"):
+            if col in latest.columns:
+                latest[col] = latest[col] * 1e4
 
         if "weight_pct" in latest.columns:
             latest["weight"] = latest["weight_pct"] / 100.0

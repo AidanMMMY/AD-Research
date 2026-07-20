@@ -156,6 +156,10 @@ class AStockDailyPipeline(ETLPipeline):
         self.db.execute(stmt)
         self.db.commit()
 
+        # Non-blocking guardrail: flag adj_factor baseline seams (e.g. a
+        # new bar resetting the factor to 1.0 against stored history).
+        self._check_adj_factor_continuity(data)
+
         # Also persist the target-date adj_factor into the authoritative
         # AdjFactorHistory table (full history is backfilled weekly).
         self._load_adj_factor_history(data)
@@ -169,6 +173,87 @@ class AStockDailyPipeline(ETLPipeline):
             logger.exception("Failed to invalidate caches after A-stock daily ETL")
 
         return len(records)
+
+    def _check_adj_factor_continuity(self, data: pd.DataFrame) -> None:
+        """ERROR-log adj_factor discontinuities against the previous stored bar.
+
+        Non-blocking guardrail. A new bar whose factor deviates by more than
+        5% from the previous bar's factor is only legitimate when a matching
+        price gap exists — for a genuine corporate action the raw price moves
+        inversely to the factor (``factor_ratio * price_ratio ~= 1``). A
+        factor jump without that gap means a baseline seam (e.g. the factor
+        reset to 1.0 against a stored Tushare cumulative factor like
+        600653.SH = 10055.64), which silently corrupts adjusted returns.
+        """
+        if data.empty or "adj_factor" not in data.columns:
+            return
+        try:
+            new_bars = [
+                (
+                    str(row["etf_code"]),
+                    row["trade_date"],
+                    float(row["adj_factor"]),
+                    float(row["close"]) if pd.notna(row.get("close")) else None,
+                    float(row["pre_close"]) if pd.notna(row.get("pre_close")) else None,
+                )
+                for _, row in data.iterrows()
+                if pd.notna(row.get("adj_factor")) and float(row["adj_factor"]) > 0
+            ]
+            if not new_bars:
+                return
+
+            codes = [bar[0] for bar in new_bars]
+            cutoff = min(bar[1] for bar in new_bars)
+            prev_dates = (
+                self.db.query(
+                    InstrumentDailyBar.etf_code,
+                    func.max(InstrumentDailyBar.trade_date).label("prev_date"),
+                )
+                .filter(InstrumentDailyBar.etf_code.in_(codes))
+                .filter(InstrumentDailyBar.trade_date < cutoff)
+                .group_by(InstrumentDailyBar.etf_code)
+                .subquery()
+            )
+            prev_rows = (
+                self.db.query(
+                    InstrumentDailyBar.etf_code,
+                    InstrumentDailyBar.adj_factor,
+                )
+                .join(
+                    prev_dates,
+                    (InstrumentDailyBar.etf_code == prev_dates.c.etf_code)
+                    & (InstrumentDailyBar.trade_date == prev_dates.c.prev_date),
+                )
+                .all()
+            )
+            prev_factor = {code: float(af) for code, af in prev_rows if af is not None and af > 0}
+
+            for code, trade_date, new_af, close, pre_close in new_bars:
+                prev_af = prev_factor.get(code)
+                if prev_af is None:
+                    continue
+                factor_ratio = new_af / prev_af
+                if abs(factor_ratio - 1.0) <= 0.05:
+                    continue
+                price_ratio = close / pre_close if close is not None and pre_close else None
+                # A genuine split/dividend moves the raw price inversely to
+                # the factor, so factor_ratio * price_ratio stays ~1.
+                if price_ratio and abs(factor_ratio * price_ratio - 1.0) <= 0.05:
+                    continue
+                logger.error(
+                    "AStockDailyPipeline: adj_factor discontinuity for %s on %s: "
+                    "prev=%.6f new=%.6f (ratio %.4f) without a matching price gap "
+                    "(close/pre_close = %s) — possible baseline seam, check the "
+                    "adj_factor source before trusting adjusted returns",
+                    code,
+                    trade_date,
+                    prev_af,
+                    new_af,
+                    factor_ratio,
+                    f"{price_ratio:.4f}" if price_ratio else "N/A",
+                )
+        except Exception:
+            logger.exception("AStockDailyPipeline: adj_factor continuity check failed")
 
     def _load_adj_factor_history(self, data: pd.DataFrame) -> int:
         """Upsert target-date adj_factor rows into ``adj_factor_history``."""

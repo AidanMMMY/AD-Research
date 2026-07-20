@@ -89,11 +89,41 @@ def test_upsert_compiles_with_mixed_null_rows():
 
 
 def test_upsert_compiles_when_column_all_null():
-    """A column that is NULL in every row stays in VALUES but is left out of SET,
-    so existing values are preserved on conflict reruns."""
+    """An all-NULL column is dropped from both VALUES and SET.
+
+    Omitting it from the INSERT lets column defaults apply on new rows
+    (``adj_factor`` is NOT NULL DEFAULT 1.0 — an explicit NULL would raise
+    IntegrityError) while the DO UPDATE SET leaves stored values untouched.
+    """
     sql = _load_and_compile(_mixed_nulls_df().assign(change_pct=np.nan))
-    assert "change_pct" in sql  # still inserted (as NULL)
-    assert "change_pct = CASE" not in sql  # but never overwritten with NULL
+    assert "change_pct" not in sql  # neither inserted nor overwritten
+
+
+def test_upsert_all_null_adj_factor_uses_default_and_preserves_stored(db_session):
+    """The akshare daily paths now emit adj_factor=NA (real factors come from
+    the weekly Tushare backfill). End-to-end against SQLite:
+
+    * a fresh bar with adj_factor=NA must insert the column DEFAULT 1.0
+      (an explicit NULL would violate the NOT NULL constraint), and
+    * a conflict re-run must not overwrite a stored true factor.
+    """
+    from app.models.etf import InstrumentDailyBar
+
+    pipeline = AShareETLPipeline.__new__(AShareETLPipeline)
+    pipeline.db = db_session
+
+    df = _mixed_nulls_df().assign(adj_factor=pd.NA)
+    assert pipeline.load(df) == 2
+    bar = db_session.get(InstrumentDailyBar, ("510300.SH", _TRADE_DATE))
+    assert float(bar.adj_factor) == 1.0  # column default, not NULL
+
+    # Simulate the backfill writing the true cumulative factor, then a
+    # daily re-run: the stored factor must survive the conflict.
+    bar.adj_factor = 1.2671
+    db_session.commit()
+    pipeline.load(df)
+    bar = db_session.get(InstrumentDailyBar, ("510300.SH", _TRADE_DATE))
+    assert float(bar.adj_factor) == 1.2671
 
 
 def test_upsert_compiles_when_column_absent_from_frame():
