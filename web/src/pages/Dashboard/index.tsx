@@ -741,7 +741,7 @@ export default function Dashboard() {
                     <div>
                       <div className="cc-brief__title">{article.title}</div>
                       <div className="cc-brief__desc">
-                        {article.source} · {article.symbols.slice(0, 3).map((s) => s.symbol).join(', ')}
+                        {article.source} · {(article.symbols ?? []).slice(0, 3).map((s) => s.symbol).join(', ')}
                       </div>
                     </div>
                     <span className="cc-brief__time">{formatRelative(article.published_at)}</span>

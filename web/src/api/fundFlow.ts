@@ -121,6 +121,16 @@ export interface SignalListParams {
   limit?: number;
 }
 
+/** Backend list endpoints wrap rows in an envelope `{items, total, ...}`. */
+export type ListEnvelope<T> = T[] | { items: T[] };
+
+/** Unwrap a list endpoint body into a plain row array, tolerating both shapes. */
+function unwrapList<T>(data: ListEnvelope<T> | null | undefined): T[] {
+  if (Array.isArray(data)) return data;
+  if (data && Array.isArray(data.items)) return data.items;
+  return [];
+}
+
 export const fundFlowApi = {
   /**
    * Aggregated exchange-level main-fund net inflow for a given trade date.
@@ -136,13 +146,13 @@ export const fundFlowApi = {
    * to SH / SZ / STAR / ChiNext / BSE — caller decides which subset to
    * surface (the backend is permissive about the value).
    */
-  individualList(params: IndividualListParams = {}): Promise<{ data: IndividualFundFlow[] }> {
-    return client.get<IndividualFundFlow[]>('/fund-flow/individual', { params });
+  individualList(params: IndividualListParams = {}): Promise<{ data: ListEnvelope<IndividualFundFlow> }> {
+    return client.get<ListEnvelope<IndividualFundFlow>>('/fund-flow/individual', { params });
   },
 
   /** Per-stock daily flow history for the trailing N trading days. */
-  individualHistory(tsCode: string, days = 60): Promise<{ data: IndividualFundFlow[] }> {
-    return client.get<IndividualFundFlow[]>(
+  individualHistory(tsCode: string, days = 60): Promise<{ data: ListEnvelope<IndividualFundFlow> }> {
+    return client.get<ListEnvelope<IndividualFundFlow>>(
       `/fund-flow/individual/${encodeURIComponent(tsCode)}`,
       { params: { days } },
     );
@@ -153,25 +163,25 @@ export const fundFlowApi = {
    * the backend stores as-is ("行业" / "概念" / "地域") so we keep the
    * same casing when round-tripping.
    */
-  sectorList(params: SectorListParams = {}): Promise<{ data: SectorFundFlow[] }> {
-    return client.get<SectorFundFlow[]>('/fund-flow/sector', { params });
+  sectorList(params: SectorListParams = {}): Promise<{ data: ListEnvelope<SectorFundFlow> }> {
+    return client.get<ListEnvelope<SectorFundFlow>>('/fund-flow/sector', { params });
   },
 
   /** Per-ETF inferred flow (shares-change × price) and premium/discount. */
-  etfList(params: EtfListParams = {}): Promise<{ data: EtfFundFlow[] }> {
-    return client.get<EtfFundFlow[]>('/fund-flow/etf', { params });
+  etfList(params: EtfListParams = {}): Promise<{ data: ListEnvelope<EtfFundFlow> }> {
+    return client.get<ListEnvelope<EtfFundFlow>>('/fund-flow/etf', { params });
   },
 
   /**
    * Composite flow signals — cross-source score in `[-100, +100]` plus a
    * breakdown of contributing drivers. Higher = more inflow conviction.
    */
-  signalsList(params: SignalListParams = {}): Promise<{ data: FlowSignal[] }> {
-    return client.get<FlowSignal[]>('/fund-flow/signals', { params });
+  signalsList(params: SignalListParams = {}): Promise<{ data: ListEnvelope<FlowSignal> }> {
+    return client.get<ListEnvelope<FlowSignal>>('/fund-flow/signals', { params });
   },
 
-  signalsHistory(tsCode: string, days = 30): Promise<{ data: FlowSignal[] }> {
-    return client.get<FlowSignal[]>(
+  signalsHistory(tsCode: string, days = 30): Promise<{ data: ListEnvelope<FlowSignal> }> {
+    return client.get<ListEnvelope<FlowSignal>>(
       `/fund-flow/signals/${encodeURIComponent(tsCode)}`,
       { params: { days } },
     );
@@ -200,7 +210,7 @@ export function useFundFlowMarket(trade_date?: string) {
 export function useFundFlowIndividual(params: IndividualListParams) {
   return useQuery({
     queryKey: ['fund-flow', 'individual', params],
-    queryFn: () => fundFlowApi.individualList(params).then((r) => r.data ?? []),
+    queryFn: () => fundFlowApi.individualList(params).then((r) => unwrapList(r.data)),
     ...SHARED_OPTIONS,
   });
 }
@@ -211,7 +221,7 @@ export function useFundFlowIndividualHistory(tsCode: string | null, days = 60) {
     queryKey: ['fund-flow', 'individual-history', tsCode, days],
     queryFn: () =>
       tsCode
-        ? fundFlowApi.individualHistory(tsCode, days).then((r) => r.data ?? [])
+        ? fundFlowApi.individualHistory(tsCode, days).then((r) => unwrapList(r.data))
         : Promise.resolve([]),
     enabled: !!tsCode,
     staleTime: 5 * 60_000,
@@ -222,7 +232,7 @@ export function useFundFlowIndividualHistory(tsCode: string | null, days = 60) {
 export function useFundFlowSector(params: SectorListParams) {
   return useQuery({
     queryKey: ['fund-flow', 'sector', params],
-    queryFn: () => fundFlowApi.sectorList(params).then((r) => r.data ?? []),
+    queryFn: () => fundFlowApi.sectorList(params).then((r) => unwrapList(r.data)),
     ...SHARED_OPTIONS,
   });
 }
@@ -230,7 +240,7 @@ export function useFundFlowSector(params: SectorListParams) {
 export function useFundFlowEtf(params: EtfListParams) {
   return useQuery({
     queryKey: ['fund-flow', 'etf', params],
-    queryFn: () => fundFlowApi.etfList(params).then((r) => r.data ?? []),
+    queryFn: () => fundFlowApi.etfList(params).then((r) => unwrapList(r.data)),
     ...SHARED_OPTIONS,
   });
 }
@@ -238,7 +248,7 @@ export function useFundFlowEtf(params: EtfListParams) {
 export function useFundFlowSignals(params: SignalListParams) {
   return useQuery({
     queryKey: ['fund-flow', 'signals', params],
-    queryFn: () => fundFlowApi.signalsList(params).then((r) => r.data ?? []),
+    queryFn: () => fundFlowApi.signalsList(params).then((r) => unwrapList(r.data)),
     ...SHARED_OPTIONS,
   });
 }
