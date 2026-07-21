@@ -49,3 +49,10 @@
 .microstructure__filter-select {
   width: 90px;
 }
+
+/* Statistic suffix (e.g. trade date) should read as meta text, not as part
+   of the big KPI number. */
+.microstructure .ant-statistic-content-suffix {
+  font-size: var(--text-small-size);
+  color: var(--text-tertiary);
+}

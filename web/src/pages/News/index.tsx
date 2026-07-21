@@ -212,6 +212,17 @@ const SOURCE_LABELS: Record<string, { emoji: string; label: string }> = {
   cointelegraph: { emoji: '🪙', label: 'Cointelegraph' },
   bloomberg: { emoji: '🏛', label: 'Bloomberg' },
   reuters: { emoji: '🏛', label: '路透' },
+  marketwatch: { emoji: '📈', label: 'MarketWatch' },
+  zerohedge: { emoji: '📉', label: 'ZeroHedge' },
+  seekingalpha: { emoji: '🔍', label: 'Seeking Alpha' },
+  ft: { emoji: '📰', label: '金融时报' },
+  investing: { emoji: '💹', label: 'Investing.com' },
+  decrypt: { emoji: '🪙', label: 'Decrypt' },
+  federal_reserve: { emoji: '🏛', label: '美联储' },
+  ecb: { emoji: '🏛', label: '欧洲央行' },
+  bankofengland: { emoji: '🏛', label: '英格兰银行' },
+  bbc_business: { emoji: '📺', label: 'BBC 商业' },
+  arxiv_qfin: { emoji: '📐', label: 'arXiv 量化金融' },
 };
 
 const IMPORTANCE_COLOR = 'var(--color-warning-bright)';

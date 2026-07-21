@@ -48,10 +48,10 @@
 }
 
 .learning-scenario-card {
-  /* Equal-height grid cards: column flex so the CTA can pin to the bottom. */
+  /* Equal-height grid cards: column flex so the CTA can pin to the bottom.
+     No height:100% — it defeats the grid's default stretch on auto rows. */
   display: flex;
   flex-direction: column;
-  height: 100%;
 }
 
 .learning-scenario-card .ad-panel__body {

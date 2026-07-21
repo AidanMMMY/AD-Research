@@ -367,6 +367,7 @@ export default function TradingPanel() {
             <Skeleton.Input active size="small" />
           ) : configs.length === 0 ? (
             <EmptyState
+              className="empty-state--in-card"
               title="还没有交易配置"
               description="请先创建至少一个交易配置，再开始下单"
               action={

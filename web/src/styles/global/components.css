@@ -58,6 +58,12 @@
   flex-shrink: 0;
 }
 
+/* Titleless panels: keep the extra actions right-aligned instead of
+   floating to the far left of the header row. */
+.ad-panel__extra:first-child {
+  margin-left: auto;
+}
+
 .ad-panel__body {
   flex: 1 1 auto;
 }
@@ -137,6 +143,14 @@
 /* ---- Panel stacking — space between adjacent panels and common followers ---- */
 .ad-panel + .ad-panel {
   margin-top: var(--space-panel-gap);
+}
+
+/* Grid containers handle their own gaps — the stacking rule must not leak
+   into them (it pushed every non-first panel down by --space-panel-gap,
+   breaking top alignment in ResponsiveGrid rows). */
+.responsive-grid > .ad-panel + .ad-panel,
+.learning-scenarios > .ad-panel + .ad-panel {
+  margin-top: 0;
 }
 
 .ad-panel + .ad-section-heading,
@@ -581,13 +595,23 @@
 /* ---- FilterToolbar ---- */
 .filter-toolbar {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   flex-wrap: wrap;
   gap: var(--space-filter-gap);
   padding-bottom: var(--space-block);
   margin-bottom: var(--space-block);
   border-bottom: 1px solid var(--border-default);
+}
+
+/* Tabs inside a toolbar already get spacing from the toolbar itself. */
+.filter-toolbar .ant-tabs-nav {
+  margin-bottom: 0;
+}
+
+/* Form-style labels carry their own margin in filter rows. */
+.filter-toolbar .ad-filter-label {
+  margin-bottom: 0;
 }
 
 .filter-toolbar--headed {
@@ -619,6 +643,9 @@
   gap: var(--space-inline);
   margin-left: auto;
   flex-shrink: 0;
+  /* Align the meta line with the first 36px control row even when the
+     filters block wraps to multiple rows (was floating mid-gap). */
+  min-height: 36px;
 }
 
 .filter-toolbar__total {
@@ -632,6 +659,7 @@
   align-items: center;
   flex-wrap: wrap;
   gap: var(--space-filter-gap);
+  flex: 1 1 auto;
 }
 
 .filter-toolbar--headed .filter-toolbar__filters {
@@ -821,6 +849,7 @@
   margin: 0;
   max-width: 360px;
   line-height: 1.55;
+  text-wrap: pretty;
 }
 
 .empty-state__action {

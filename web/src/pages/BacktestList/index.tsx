@@ -7,7 +7,6 @@ import PageShell from '@/components/PageShell';
 import PageHeader from '@/components/PageHeader';
 import FilterToolbar from '@/components/FilterToolbar';
 import Panel from '@/components/Panel';
-import SectionHeading from '@/components/SectionHeading';
 import EmptyState from '@/components/EmptyState';
 import { useBacktests } from '@/hooks/useBacktests';
 import { useStrategies } from '@/hooks/useStrategies';
@@ -172,15 +171,15 @@ export default function BacktestList() {
         }
       />
 
-      <FilterToolbar total={`共 ${displayedBacktests.length} 个`} />
+      <FilterToolbar title="回测列表" total={`共 ${displayedBacktests.length} 个`} />
 
-      <SectionHeading title="回测列表" />
 
       <Panel variant="default" padding="none">
         {!isLoading && displayedBacktests.length === 0 ? (
           // No rows: skip the empty 10-column header and show a direct CTA.
           <div className="ad-p-5">
             <EmptyState
+            className="empty-state--in-card"
               title="暂无回测"
               description="点击「新建回测」创建第一个回测任务"
               action={

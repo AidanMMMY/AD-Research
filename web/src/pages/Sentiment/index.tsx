@@ -642,6 +642,7 @@ export default function SentimentOverview() {
 
       <FilterToolbar>
         <Segmented
+          size="large"
           value={view}
           onChange={(v) => setView(v as ViewMode)}
           options={VIEW_OPTIONS.map((o) => ({
@@ -655,6 +656,7 @@ export default function SentimentOverview() {
           }))}
         />
         <Segmented
+          size="large"
           value={market}
           onChange={(v) => setMarket(v as NewsMarket | 'all')}
           options={MARKET_OPTIONS}

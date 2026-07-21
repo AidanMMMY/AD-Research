@@ -264,7 +264,7 @@ export default function CninfoReportsPage() {
         return (
           <Space size={4} direction="vertical">
             <Tag color={color}>{EXTRACTION_LABEL[v] ?? v}</Tag>
-            {record.extracted_at ? (
+            {record.extracted_at && record.file_size ? (
               <span className="last-updated">{formatBytes(record.file_size)}</span>
             ) : null}
           </Space>

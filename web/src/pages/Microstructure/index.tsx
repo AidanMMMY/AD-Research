@@ -201,7 +201,7 @@ export default function MicrostructurePage() {
 
   return (
     <AdxShell>
-      <PageShell maxWidth="wide">
+      <PageShell maxWidth="wide" className="microstructure">
         <PageHeader
           title="微结构数据"
         description="A 股龙虎榜 / 沪深港通 / 融资融券 / 限售解禁 4 类微结构信号。每交易日 18:30 Asia/Shanghai 自动刷新。"
@@ -258,7 +258,7 @@ export default function MicrostructurePage() {
           placeholder="证券代码 (000001.SZ)"
           value={ticker ?? ''}
           onChange={(e) => setTicker(e.target.value.toUpperCase() || undefined)}
-          className="ad-input--md"
+          className="microstructure__filter-input"
           prefix={<SearchOutlined />}
           allowClear
         />
@@ -268,7 +268,7 @@ export default function MicrostructurePage() {
           onChange={(v) => setMarginExchange(v)}
           allowClear
           disabled={tab !== 'margin'}
-          className="ad-select--xxs"
+          className="microstructure__filter-select"
           options={[
             { value: 'SSE', label: 'SSE 上交所' },
             { value: 'SZSE', label: 'SZSE 深交所' },

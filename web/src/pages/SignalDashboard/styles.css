@@ -11,6 +11,7 @@
 
 /* ── View link cell (table action column) ── */
 .signal-dashboard__view-link {
+  white-space: nowrap;
   /* Clickable link to the instrument detail page. */
   color: var(--accent);
   cursor: pointer;

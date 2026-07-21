@@ -285,7 +285,7 @@ export default function Futures() {
               topGainer && topLoser ? (
                 <span className="ad-flex ad-gap-2 ad-items-center">
                   <InstrumentCodeTag code={topGainer.code} name={topGainer.name} />
-                  <span>/</span>
+                  <span className="ad-text-tertiary ad-text-small">/</span>
                   <InstrumentCodeTag code={topLoser.code} name={topLoser.name} />
                 </span>
               ) : topGainer ? (

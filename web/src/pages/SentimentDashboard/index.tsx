@@ -168,7 +168,6 @@ export default function SentimentDashboard() {
           <Slider
             min={1}
             max={30}
-            marks={{ 1: '1天', 30: '30天' }}
             value={daysDraft}
             onChange={setDaysDraft}
             onChangeComplete={(v) => {

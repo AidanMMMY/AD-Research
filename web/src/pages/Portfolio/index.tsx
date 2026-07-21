@@ -264,6 +264,7 @@ export default function Portfolio() {
           <LoadingBlock size="md" />
         ) : accounts.length === 0 ? (
           <EmptyState
+            className="empty-state--in-card"
             title="尚未创建模拟账户"
             description="前往模拟交易页面创建一个模拟账户即可在此查看权益与持仓。"
             action={
@@ -309,6 +310,7 @@ export default function Portfolio() {
           <LoadingBlock size="md" />
         ) : liveRows.length === 0 ? (
           <EmptyState
+            className="empty-state--in-card"
             title="尚未配置真实交易账户"
             description="前往真实交易页面创建 Binance 配置即可在此查看实际持仓与盈亏。"
             action={

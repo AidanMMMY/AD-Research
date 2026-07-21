@@ -159,9 +159,7 @@ function ScoreBreakdown({ breakdown }: { breakdown: Record<string, number> }) {
 /** Pct chip next to a money value (used inside a StatCard's `suffix` slot). */
 function PctChip({ value }: { value: number | null | undefined }) {
   if (value === null || value === undefined || Number.isNaN(value)) {
-    return (
-      <span className="fund-flow__kpi-pct fund-flow__kpi-pct--flat">—</span>
-    );
+    return null; // the StatCard value already renders the '—' placeholder
   }
   const cls = value > 0 ? 'rise' : value < 0 ? 'fall' : 'flat';
   return (

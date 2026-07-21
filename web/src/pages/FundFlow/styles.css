@@ -301,10 +301,10 @@
 }
 
 @media (min-width: 1200px) {
-  /* Desktop ≥1200px — let the KPI strip breathe with a 4-up row. The
-     first 3 cards are the exchange KPIs; the 4th is the trend card. */
+  /* Desktop ≥1200px — 3 exchange KPI cards share the row evenly (the
+     trend card no longer exists, a 4th track would read as a hole). */
   .fund-flow__kpi-grid {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 
