@@ -148,7 +148,7 @@ _SEC_EDGAR_TICKER_TO_CIK: dict[str, str | int] = {
     "GOOGL": "1652044",
     "META": "1326801",
     "TSLA": "1318605",
-    "NVDA": "1013480",
+    "NVDA": "1045810",
     "AMD": "2488",
     "INTC": "50863",
     "BABA": "1577552",

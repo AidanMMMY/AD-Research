@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import json
 from datetime import datetime, timezone
+from pathlib import Path
 
 import httpx
 import pytest
@@ -277,6 +278,24 @@ async def test_sec_fetch_uses_correct_url_and_ua(no_rate_limit, monkeypatch):
     req = captured[0]
     assert "data.sec.gov/submissions/CIK0000320193.json" in str(req.url)
     assert req.headers.get("user-agent") == "TestAgent tester@example.com"
+
+
+def test_sec_edgar_default_cik_map_matches_static_reference():
+    """The hardcoded crawler CIK map must agree with the SEC-sourced
+    static reference (``app/data/static/sec_tickers.json``) for every
+    ticker present in both — guards against typos like NVDA -> 1013480
+    (the real NVDA CIK is 1045810), which 404 on data.sec.gov."""
+    from app.services.news.scheduler_jobs import _SEC_EDGAR_TICKER_TO_CIK
+
+    static_path = (
+        Path(__file__).resolve().parents[2] / "data" / "static" / "sec_tickers.json"
+    )
+    reference = json.loads(static_path.read_text())["tickers"]
+    for ticker, cik in _SEC_EDGAR_TICKER_TO_CIK.items():
+        if ticker in reference:
+            assert str(cik).zfill(10) == reference[ticker]["cik"], (
+                f"CIK mismatch for {ticker}"
+            )
 
 
 # ---------------------------------------------------------------------------
