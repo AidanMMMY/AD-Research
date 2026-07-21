@@ -36,6 +36,9 @@ from app.services.news.content_fetcher import (
     CACHE_TTL,
     JINA_READER_URL,
     ContentFetcher,
+    _extract_with_llm,
+    _html_to_text,
+    _JinaError,
 )
 from app.services.news.crawler.types import RawArticle
 from app.services.news.normalizer import NewsNormalizer
@@ -58,8 +61,8 @@ def db_session():
         poolclass=StaticPool,
     )
     Base.metadata.create_all(engine)
-    SessionLocal = sessionmaker(bind=engine)
-    session = SessionLocal()
+    session_local = sessionmaker(bind=engine)
+    session = session_local()
     try:
         yield session
     finally:
@@ -84,6 +87,19 @@ def seeded_article(db_session):
 
 def _fake_response(text: str, status_code: int = 200) -> SimpleNamespace:
     return SimpleNamespace(status_code=status_code, text=text)
+
+
+@pytest.fixture(autouse=True)
+def _no_html_tier():
+    """Skip the direct-HTML (trafilatura) tier by default.
+
+    The legacy tests in this module mock ``httpx.get`` for the Jina
+    call only; the tiered fetcher would otherwise hit the mock with the
+    raw page URL first. Tests that exercise the local / LLM tiers patch
+    ``_fetch_html`` themselves and therefore override this fixture.
+    """
+    with patch.object(ContentFetcher, "_fetch_html", return_value=None):
+        yield
 
 
 # ---------------------------------------------------------------------------
@@ -506,3 +522,197 @@ def test_health_endpoint_includes_ai_cleanup_24h(fastapi_client) -> None:
     assert block["cleaned_pct"] == 0.0
     assert block["alert_threshold_pct"] == 70.0
     assert block["alert"] is False
+
+
+# ---------------------------------------------------------------------------
+# Tiered extraction (2026-07-21): local trafilatura → Jina → LLM fallback
+# ---------------------------------------------------------------------------
+
+
+def _article_html(title: str, paragraphs: list[str]) -> str:
+    body = "".join(f"<p>{p}</p>" for p in paragraphs)
+    return (
+        "<html><head><title>t</title></head><body>"
+        "<nav><a href='/'>首页</a><a href='/nav'>导航菜单</a></nav>"
+        f"<article><h1>{title}</h1>{body}</article>"
+        "<footer><p>相关阅读</p><p>免责声明</p></footer>"
+        "</body></html>"
+    )
+
+
+def test_fetch_prefers_local_trafilatura(db_session) -> None:
+    """When the local tier extracts a body, Jina is never called."""
+    article = _seed_full_text_article(db_session)
+    paras = [
+        "本地抽取的第一段正文内容，写得足够长，用来确保 trafilatura 能把这部分识别为文章主体。"
+        "再多补一句，保证段落饱满，抽取结果稳定可靠，不会因为太短而被判定为噪音。" * 2,
+        "第二段正文同样包含足够多的内容，确保确定性清洗之后依然可以通过最小正文长度阈值的检查。"
+        "同样再补充一句，让段落看起来更自然，也更接近真实的财经资讯正文。" * 2,
+    ]
+    html = _article_html(article.title, paras)
+
+    with (
+        patch.object(ContentFetcher, "_fetch_html", return_value=html),
+        patch("app.services.news.content_fetcher.httpx.get") as mocked_get,
+    ):
+        result = ContentFetcher(db_session).fetch(article.id, force=True)
+
+    assert result.success is True
+    assert result.ai_cleanup_status == "cleaned"
+    mocked_get.assert_not_called()  # Jina fallback never fired
+    assert result.content is not None
+    assert "第一段正文" in result.content
+    assert "相关阅读" not in result.content
+    assert "免责声明" not in result.content
+    assert "导航菜单" not in result.content
+
+
+def test_fetch_falls_back_to_jina_when_local_fails(db_session) -> None:
+    """Trafilatura finds nothing → the Jina tier takes over."""
+    article = _seed_full_text_article(db_session)
+    fake_md = (
+        "# jina body\n\n"
+        "Jina 兜底拿到的正文内容，长度足够通过最小正文阈值检查，"
+        "用于验证本地抽取失败时会回退到 Jina Reader 抓取。"
+        "这里再补充一句更长的正文，确保确定性清洗之后依然稳定超过阈值。"
+    )
+    with (
+        patch.object(ContentFetcher, "_fetch_html", return_value="<html></html>"),
+        patch(
+            "app.services.news.content_fetcher._extract_with_trafilatura",
+            return_value=None,
+        ),
+        patch(
+            "app.services.news.content_fetcher.httpx.get",
+            return_value=_fake_response(fake_md),
+        ) as mocked_get,
+    ):
+        result = ContentFetcher(db_session).fetch(article.id, force=True)
+
+    assert result.success is True
+    mocked_get.assert_called_once()
+    assert "Jina 兜底拿到的正文" in (result.content or "")
+
+
+def test_fetch_llm_fallback_when_deterministic_tiers_fail(db_session) -> None:
+    """Both deterministic tiers fail → the LLM tier isolates the body."""
+    article = _seed_full_text_article(db_session)
+    llm_body = "这是 LLM 从原始网页中抽取出的正文内容。" * 10
+
+    with (
+        patch.object(ContentFetcher, "_fetch_html", return_value="<html>noise</html>"),
+        patch(
+            "app.services.news.content_fetcher._extract_with_trafilatura",
+            return_value=None,
+        ),
+        patch.object(
+            ContentFetcher, "_call_jina", side_effect=_JinaError("jina down")
+        ),
+        patch(
+            "app.services.news.content_fetcher._extract_with_llm",
+            return_value=llm_body,
+        ) as llm_mock,
+    ):
+        result = ContentFetcher(db_session).fetch(article.id, force=True)
+
+    assert result.success is True
+    llm_mock.assert_called_once()
+    assert "LLM 从原始网页中抽取出" in (result.content or "")
+
+
+def test_fetch_fails_when_all_tiers_fail(db_session) -> None:
+    article = _seed_full_text_article(db_session)
+    with (
+        patch.object(ContentFetcher, "_fetch_html", return_value="<html>noise</html>"),
+        patch(
+            "app.services.news.content_fetcher._extract_with_trafilatura",
+            return_value=None,
+        ),
+        patch.object(
+            ContentFetcher, "_call_jina", side_effect=_JinaError("jina down")
+        ),
+        patch(
+            "app.services.news.content_fetcher._extract_with_llm",
+            return_value=None,
+        ),
+    ):
+        result = ContentFetcher(db_session).fetch(article.id, force=True)
+
+    assert result.success is False
+    assert "jina down" in (result.error or "")
+
+
+class _FakeProvider:
+    """Minimal stand-in for ``LLMProvider`` used by the LLM tier tests."""
+
+    def __init__(self, output: str, available: bool = True) -> None:
+        self._output = output
+        self.is_available = available
+
+    def complete(self, prompt, system=None, max_tokens=1024, temperature=0.7):
+        return self._output
+
+
+def test_llm_extract_strips_think_tags_and_code_fences() -> None:
+    page_text = "导航 广告 " + "正文句子。" * 200
+    output = "```markdown\n<think>reasoning</think>\n" + "正文句子。" * 100 + "\n```"
+    with patch(
+        "app.services.llm.get_llm_provider",
+        return_value=_FakeProvider(output),
+    ):
+        result = _extract_with_llm(page_text, "标题")
+    assert result is not None
+    assert "<think>" not in result
+    assert not result.startswith("```")
+    assert "正文句子" in result
+
+
+def test_llm_extract_rejects_too_short_output() -> None:
+    with patch(
+        "app.services.llm.get_llm_provider",
+        return_value=_FakeProvider("太短"),
+    ):
+        assert _extract_with_llm("很长的页面内容" * 500, "标题") is None
+
+
+def test_llm_extract_skips_when_provider_unavailable() -> None:
+    with patch(
+        "app.services.llm.get_llm_provider",
+        return_value=_FakeProvider("x" * 500, available=False),
+    ):
+        assert _extract_with_llm("页面内容" * 500, "标题") is None
+
+
+def test_html_to_text_strips_scripts_and_tags() -> None:
+    html = (
+        "<html><head><style>.a{color:red}</style>"
+        "<script>var tracker = 1;</script></head>"
+        "<body><h1>标题</h1><p>正文段落</p><!-- comment --></body></html>"
+    )
+    text = _html_to_text(html)
+    assert "正文段落" in text
+    assert "tracker" not in text
+    assert "color:red" not in text
+    assert "<p>" not in text
+
+
+def test_clean_strips_sina_style_trailing_promo() -> None:
+    """Real-world residue seen on finance.sina.com.cn (2026-07-22): the
+    editor-credit line and the VIP/APP/QR-code promo block must go."""
+    from app.services.news.content_fetcher import _clean_jina_body
+
+    raw = (
+        "真正的正文第一段，内容足够长，确保清洗之后可以通过最小正文长度阈值检查。\n\n"
+        "真正的正文第二段，同样写得足够长，保证整个清洗流程结束后仍然有正文剩下。\n\n"
+        "责任编辑：李桐\n\n"
+        "## VIP课程推荐\n\n"
+        "## APP专享直播\n\n"
+        "## 热门推荐\n\n"
+        "*收起*\n\n"
+        "24小时滚动播报最新的财经资讯和视频，更多粉丝福利扫描二维码关注（sinafinance）"
+    )
+    cleaned = _clean_jina_body(raw, "标题")
+    assert "真正的正文第一段" in cleaned
+    assert "真正的正文第二段" in cleaned
+    for noise in ("责任编辑", "VIP课程", "APP专享", "热门推荐", "收起", "粉丝福利"):
+        assert noise not in cleaned

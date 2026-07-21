@@ -171,21 +171,34 @@ def _write_to_db(articles: list) -> int:
     try:
         normalizer = NewsNormalizer(db)
         written = 0
+        new_ids: list[int] = []
         for raw in articles:
             try:
                 article = normalizer.normalize(raw)
                 if article is not None:
                     written += 1
+                    new_ids.append(article.id)
             except Exception as exc:  # pragma: no cover
                 logger.warning("normalizer failed for %s: %s", raw.url, exc)
         db.commit()
-        return written
     except Exception as exc:
         db.rollback()
         logger.exception("DB commit failed: %s", exc)
         return 0
     finally:
         db.close()
+
+    # Ingest-time full-content fetch (2026-07-21): grab the cleaned body
+    # right away so the detail page renders it immediately. Bounded by
+    # ``news_content_ingest_time_budget_sec`` and fully fail-safe — the
+    # 10-minute scheduler job drains whatever is left.
+    if new_ids:
+        from app.services.news.scheduler_fetch_full_content import (
+            fetch_full_content_for_ids,
+        )
+
+        fetch_full_content_for_ids(new_ids)
+    return written
 
 
 # ── A-share ──

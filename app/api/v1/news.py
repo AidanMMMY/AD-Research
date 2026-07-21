@@ -277,14 +277,14 @@ def list_news(
                     or_(
                         NewsArticle.title.ilike(pattern),
                         NewsArticle.summary.ilike(pattern),
-                        NewsArticle.content.ilike(pattern),
+                        NewsArticle.full_content.ilike(pattern),
                     )
                 )
                 count_stmt = count_stmt.where(
                     or_(
                         NewsArticle.title.ilike(pattern),
                         NewsArticle.summary.ilike(pattern),
-                        NewsArticle.content.ilike(pattern),
+                        NewsArticle.full_content.ilike(pattern),
                     )
                 )
     if symbol:

@@ -131,10 +131,21 @@ def _make_write_posts():
             if not articles:
                 return 0
             written = 0
+            new_ids: list[int] = []
             for art in articles:
-                if normalizer.normalize(art) is not None:
+                article = normalizer.normalize(art)
+                if article is not None:
                     written += 1
+                    new_ids.append(article.id)
             db.commit()
+            if new_ids:
+                # Ingest-time full-content fetch (bounded, fail-safe);
+                # the 10-minute scheduler job drains any remainder.
+                from app.services.news.scheduler_fetch_full_content import (
+                    fetch_full_content_for_ids,
+                )
+
+                fetch_full_content_for_ids(new_ids)
             return written
         except Exception as exc:  # pragma: no cover - defensive
             logger.warning("xueqiu write_posts raised: %s", exc)

@@ -42,6 +42,7 @@ import FilterToolbar from '@/components/FilterToolbar';
 import Panel from '@/components/Panel';
 import EmptyState from '@/components/EmptyState';
 import DetailDrawer from '@/components/DetailDrawer';
+import Markdown from '@/components/Markdown';
 import LoadingBlock from '@/components/LoadingBlock';
 import InstrumentCodeTag from '@/components/InstrumentCodeTag';
 import ThemeTag from '@/components/ThemeTag';
@@ -417,8 +418,10 @@ function formatBigNumber(n: number): string {
  * navigation so reading a story no longer loses the feed's scroll
  * position, matching the Modal/drawer pattern used by 研报/公告.
  * Renders only the fields the list payload already carries (no extra
- * request); the deep-link route stays for full-text fetch / AI
- * translation, reachable via the "打开完整页面" footer button.
+ * request). The cleaned full text (``full_content``) is fetched and
+ * stored at ingestion time, so the body is usually already here; the
+ * deep-link route stays for on-demand re-fetch / AI translation,
+ * reachable via the "打开完整页面" footer button.
  */
 function NewsDetailDrawer({
   article,
@@ -582,10 +585,17 @@ function NewsDetailDrawer({
             </div>
           )}
 
-          {/* Body — the card clamps this same field; the drawer shows it
-              in full. */}
-          {shown.body ? (
-            <div className="news-drawer-body ad-mt-4">{shown.body}</div>
+          {/* Body — prefer the cleaned full text stored locally at
+              ingestion time (``full_content``); fall back to the
+              crawler's intro body when no fetch has landed yet. */}
+          {shown.full_content ? (
+            <div className="news-drawer-body ad-mt-4">
+              <Markdown source={shown.full_content} />
+            </div>
+          ) : shown.body || shown.summary ? (
+            <div className="news-drawer-body ad-mt-4">
+              {shown.body ?? shown.summary}
+            </div>
           ) : (
             <EmptyState
               className="ad-mt-4"

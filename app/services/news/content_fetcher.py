@@ -1,22 +1,29 @@
-"""Fetch full article body via Jina Reader (``r.jina.ai``).
+"""Fetch full article body with a tiered extraction pipeline.
 
-Jina Reader is a free, no-auth-required service that takes any URL and
-returns Markdown. We use it on-demand when a user clicks the
-"load-full-text" button on the news detail page — never automatically,
-because the service enforces a public rate limit and we don't want to
-burn cycles on articles nobody ever opens.
+The fetcher turns a ``news_article.url`` into a clean, boilerplate-free
+body stored in ``news_article.full_content`` so the detail page renders
+immediately. Extraction tiers, in order:
+
+1. **Local trafilatura** — download the page with httpx and extract the
+   main content locally. Free, fast, no external rate limit, and
+   purpose-built for stripping navigation/ads/related-links.
+2. **Jina Reader** (``r.jina.ai``) — external fallback when the local
+   extraction finds nothing (JS-heavy pages, anti-bot HTML).
+3. **LLM-from-HTML** — when both deterministic tiers fail, hand the
+   stripped page text to the configured LLM provider and ask for the
+   article body only. Controlled by
+   ``settings.news_content_llm_fallback``.
 
 Flow
 ----
 1. Check ``news_article.full_content`` + ``full_content_fetched_at``.
    If the cache is fresh (< 24h) return it as-is.
-2. Otherwise call ``https://r.jina.ai/{article.url}`` with a 30 s
-   timeout. On success, extract the Markdown body from the structured
-   Jina response, strip repeated titles / metadata / navigation noise,
-   and store the cleaned body back to the DB.
-3. On any HTTP error / timeout / unexpected exception, log it and
-   return ``None`` — the caller then falls back to the original
-   ``body`` (the RSS summary already available).
+2. Run the tiers above until one yields a body, then clean the result
+   deterministically (strip repeated titles / metadata / navigation
+   noise) and store it back to the DB.
+3. On any failure at every tier, log it and return ``None`` — the
+   caller then falls back to the original ``body`` (the RSS summary
+   already available).
 
 The 24-hour TTL is enforced by the caller; the fetcher itself just
 re-fetches whenever invoked. That keeps the service unit-testable and
@@ -34,6 +41,7 @@ from typing import Final
 import httpx
 from sqlalchemy.orm import Session
 
+from app.config import get_settings
 from app.services.news._model_loader import NewsArticle
 
 logger = logging.getLogger(__name__)
@@ -43,6 +51,26 @@ JINA_READER_URL: Final[str] = "https://r.jina.ai"
 
 # 30-second timeout per request — Jina can be slow on large pages.
 REQUEST_TIMEOUT: Final[float] = 30.0
+
+# Direct HTML download (tier 1) uses a shorter timeout — origin servers
+# are usually fast, and a slow one just means we fall through to Jina.
+HTML_REQUEST_TIMEOUT: Final[float] = 20.0
+
+# Browser-like UA for direct page downloads; several CN finance sites
+# 403 generic HTTP-client agents.
+_HTML_USER_AGENT: Final[str] = (
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+    "AppleWebKit/537.36 (KHTML, like Gecko) "
+    "Chrome/126.0.0.0 Safari/537.36"
+)
+
+# Cap on the stripped page text handed to the LLM fallback tier.
+_LLM_MAX_INPUT_CHARS: Final[int] = 8000
+
+# The LLM fallback must return at least this fraction of its input
+# (before cleaning) — a much shorter answer usually means the model
+# summarised instead of extracting.
+_LLM_MIN_OUTPUT_RATIO: Final[float] = 0.15
 
 # Minimum meaningful body length after deterministic cleanup. If the
 # cleaned body is shorter than this, we fall back to the raw Jina
@@ -95,15 +123,26 @@ _METADATA_RE: Final[re.Pattern[str]] = re.compile(
 # Navigation / footer / boilerplate lines that are not article body.
 _BOILERPLATE_RE: Final[re.Pattern[str]] = re.compile(
     r"^("
-    r"更多阅读|相关阅读|推荐阅读|延伸阅读|相关文章|热门文章"
+    r"更多阅读|相关阅读|推荐阅读|延伸阅读|相关文章|热门文章|热门推荐"
     r"|返回首页|返回列表|返回顶部|上一篇|下一篇|文章分类"
     r"|分享到[:：]?.*|收藏|打印|字号|相关稿件|我要纠错|扫一扫"
     r"|免责声明|版权所有|备案|京ICP备|京公网安备|网站标识码"
     r"|原文链接|查看原文|点击阅读|阅读全文|展开全文"
+    r"|责任编辑[:：]?.*|值班编辑[:：]?.*|审核[:：]?.*"
+    r"|VIP课程推荐|APP专享.*|收起"
     r"|https?://\S+"
     r")$",
     re.IGNORECASE,
 )
+
+# Short promo / call-to-action lines (follow-us, QR-code, fan perks).
+# Only matched on standalone short lines so a legitimate in-body
+# sentence mentioning 扫码 is not nuked.
+_PROMO_LINE_RE: Final[re.Pattern[str]] = re.compile(
+    r"扫描二维码|扫码关注|粉丝福利|关注公众号|关注我们|微信扫码|"
+    r"扫码下载|下载客户端|打开APP|打开App"
+)
+_PROMO_LINE_MAX_LEN: Final[int] = 60
 
 # Some DeepSeek-style models leak reasoning blocks wrapped in <think>.
 _THINK_TAG_RE: Final[re.Pattern[str]] = re.compile(r"<think>.*?</think>", re.DOTALL)
@@ -192,7 +231,15 @@ def _strip_boilerplate_lines(text: str) -> str:
             lines_out.append("")
             continue
 
-        if _BOILERPLATE_RE.match(stripped):
+        # Match boilerplate on the de-marked form: "## 热门推荐" and
+        # "*收起*" are the same noise as their plain-text variants.
+        probe = re.sub(r"^#+\s*", "", stripped).strip("* ").strip()
+
+        if _BOILERPLATE_RE.match(stripped) or (probe and _BOILERPLATE_RE.match(probe)):
+            continue
+
+        # Short promo / call-to-action lines (QR-code, follow-us).
+        if len(stripped) <= _PROMO_LINE_MAX_LEN and _PROMO_LINE_RE.search(stripped):
             continue
 
         # Standalone markdown link (likely a nav button).
@@ -221,11 +268,12 @@ def _normalize_text(text: str) -> str:
 
 
 def _clean_jina_body(raw: str, title: str) -> str:
-    """Deterministic cleanup of the Jina Reader Markdown body.
+    """Deterministic cleanup of an extracted Markdown body.
 
-    Extracts the Markdown section, strips repeated titles and metadata,
-    removes navigation/footer lines, and de-duplicates paragraphs. The
-    result is the real article body without calling an LLM.
+    Handles output from any extraction tier (trafilatura, Jina Reader,
+    LLM): strips repeated titles and metadata, removes navigation /
+    footer lines, and de-duplicates paragraphs. The result is the real
+    article body without calling an LLM.
     """
     text = _strip_think_tags(raw)
     text = _extract_markdown_section(text)
@@ -248,6 +296,113 @@ def _clean_jina_body(raw: str, title: str) -> str:
         paragraphs.append(para)
 
     return "\n\n".join(paragraphs).strip()
+
+
+# ---------------------------------------------------------------------------
+# Tier 1 / 3 helpers — local extraction and LLM fallback
+# ---------------------------------------------------------------------------
+
+_SCRIPT_STYLE_RE: Final[re.Pattern[str]] = re.compile(
+    r"<(script|style|noscript)[^>]*>.*?</\1>",
+    re.DOTALL | re.IGNORECASE,
+)
+_HTML_COMMENT_RE: Final[re.Pattern[str]] = re.compile(r"<!--.*?-->", re.DOTALL)
+_HTML_TAG_RE2: Final[re.Pattern[str]] = re.compile(r"<[^>]+>")
+_WS_RE: Final[re.Pattern[str]] = re.compile(r"[ \t]+")
+
+
+def _html_to_text(html: str) -> str:
+    """Strip raw HTML down to readable text for the LLM fallback tier."""
+    text = _SCRIPT_STYLE_RE.sub(" ", html)
+    text = _HTML_COMMENT_RE.sub(" ", text)
+    text = _HTML_TAG_RE2.sub("\n", text)
+    lines = [_WS_RE.sub(" ", ln).strip() for ln in text.splitlines()]
+    return "\n".join(ln for ln in lines if ln)
+
+
+def _extract_with_trafilatura(html: str, url: str) -> str | None:
+    """Tier 1: extract the main article body locally via trafilatura.
+
+    Returns Markdown-ish text, or ``None`` when trafilatura cannot find
+    a real body (JS shells, anti-bot pages, non-article HTML).
+    """
+    try:
+        import trafilatura
+    except ImportError:  # pragma: no cover - dependency is declared
+        logger.warning("ContentFetcher: trafilatura not installed, skipping local tier")
+        return None
+    try:
+        return trafilatura.extract(
+            html,
+            url=url,
+            output_format="markdown",
+            include_comments=False,
+            include_tables=False,
+            include_links=False,
+            include_images=False,
+            favor_precision=True,
+            deduplicate=True,
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.debug("ContentFetcher: trafilatura failed for %s: %s", url, exc)
+        return None
+
+
+_LLM_EXTRACT_SYSTEM: Final[str] = (
+    "你是一个网页正文抽取器。输入是一篇新闻网页去掉 HTML 标签后的全文"
+    "（可能混有导航、广告、推荐链接、版权信息等噪音）。"
+    "你的任务：只输出新闻正文本身，剔除所有与正文无关的内容"
+    "（导航、页眉页脚、相关阅读、推广、免责声明、按钮文字等）。"
+    "要求：保留正文原始措辞，禁止总结、改写、翻译或添加任何评论；"
+    "保留自然段落结构；不要输出 ``` 代码块或任何前后缀说明。"
+)
+
+
+def _extract_with_llm(page_text: str, title: str) -> str | None:
+    """Tier 3: ask the configured LLM provider to isolate the body.
+
+    The output is validated (length floor, think-tag strip) and still
+    goes through the deterministic cleaner afterwards, so a hallucinated
+    or truncated answer degrades to a plain fetch failure instead of
+    poisoning the cache.
+    """
+    try:
+        from app.services.llm import get_llm_provider
+
+        provider = get_llm_provider()
+        if not provider.is_available:
+            return None
+        prompt = (
+            f"文章标题：{title}\n\n"
+            f"网页全文（已去标签，可能含噪音）：\n{page_text[:_LLM_MAX_INPUT_CHARS]}\n\n"
+            "请只输出该新闻的正文内容。"
+        )
+        output = provider.complete(
+            prompt,
+            system=_LLM_EXTRACT_SYSTEM,
+            max_tokens=4096,
+            temperature=0.0,
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("ContentFetcher: llm extraction failed: %s", exc)
+        return None
+
+    if not output:
+        return None
+    output = _strip_think_tags(output).strip()
+    # Strip a markdown code fence if the model wrapped the answer anyway.
+    if output.startswith("```"):
+        output = re.sub(r"^```[a-zA-Z]*\n?", "", output)
+        output = re.sub(r"\n?```$", "", output).strip()
+    if len(output) < MIN_BODY_LENGTH:
+        return None
+    if len(output) < len(page_text[:_LLM_MAX_INPUT_CHARS]) * _LLM_MIN_OUTPUT_RATIO:
+        logger.info(
+            "ContentFetcher: llm output too short relative to input (%d vs %d), rejected",
+            len(output), len(page_text),
+        )
+        return None
+    return output
 
 
 # ---------------------------------------------------------------------------
@@ -318,22 +473,50 @@ class ContentFetcher:
                 ai_cleanup_status=article.ai_cleanup_status,
             )
 
-        # 2) Fetch from Jina Reader.
-        try:
-            md = self._call_jina(article.url)
-        except _JinaError as exc:
-            logger.warning(
-                "ContentFetcher: jina failed for article %s url=%s: %s",
-                article_id, article.url, exc,
-            )
-            return FetchResult(success=False, content=None, cached=False,
-                               error=str(exc))
+        # 2) Tiered extraction: local trafilatura → Jina Reader → LLM.
+        md: str | None = None
+        method: str | None = None
+        last_error = "all extraction tiers failed"
+
+        html = self._fetch_html(article.url)
+        if html:
+            md = _extract_with_trafilatura(html, article.url)
+            if md:
+                method = "trafilatura"
 
         if not md:
-            return FetchResult(success=False, content=None, cached=False,
-                               error="empty response from Jina Reader")
+            try:
+                md = self._call_jina(article.url)
+                if md:
+                    method = "jina"
+                else:
+                    last_error = "empty response from Jina Reader"
+            except _JinaError as exc:
+                last_error = str(exc)
+                logger.warning(
+                    "ContentFetcher: jina failed for article %s url=%s: %s",
+                    article_id, article.url, exc,
+                )
 
-        # 3) Clean the Jina Markdown deterministically (no LLM). This
+        if not md and html and get_settings().news_content_llm_fallback:
+            md = _extract_with_llm(_html_to_text(html), article.title)
+            if md:
+                method = "llm"
+
+        if not md:
+            logger.warning(
+                "ContentFetcher: no body extracted for article %s url=%s: %s",
+                article_id, article.url, last_error,
+            )
+            return FetchResult(success=False, content=None, cached=False,
+                               error=last_error)
+
+        logger.info(
+            "ContentFetcher: extracted body for article %s via %s",
+            article_id, method,
+        )
+
+        # 3) Clean the extracted Markdown deterministically (no LLM). This
         # avoids the <think> / duplicate-title / no-body problems we saw
         # with the DeepSeek extraction prompt.
         cleaned = _clean_jina_body(md, article.title)
@@ -440,6 +623,30 @@ class ContentFetcher:
         if fetched_at.tzinfo is None:
             fetched_at = fetched_at.replace(tzinfo=UTC)
         return datetime.now(tz=UTC) - fetched_at < CACHE_TTL
+
+    def _fetch_html(self, url: str) -> str | None:
+        """Download the raw page HTML for the local / LLM tiers.
+
+        Returns ``None`` on any network or HTTP failure — the caller
+        simply falls through to the next tier.
+        """
+        try:
+            response = httpx.get(
+                url,
+                headers={"User-Agent": _HTML_USER_AGENT},
+                timeout=HTML_REQUEST_TIMEOUT,
+                follow_redirects=True,
+            )
+        except httpx.HTTPError as exc:
+            logger.debug("ContentFetcher: html download failed for %s: %s", url, exc)
+            return None
+        if response.status_code >= 400:
+            logger.debug(
+                "ContentFetcher: html download http %s for %s",
+                response.status_code, url,
+            )
+            return None
+        return response.text or None
 
     def _call_jina(self, url: str) -> str:
         """Call Jina Reader and return the Markdown body.

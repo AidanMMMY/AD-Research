@@ -51,7 +51,10 @@ export interface NewsArticle {
   market: NewsMarket;
   language: string;
   title: string;
+  /** Intro/excerpt handed over by the crawler (RSS blurb, selftext…). */
   body: string | null;
+  /** RSS summary; currently the same text as ``body`` in the API payload. */
+  summary: string | null;
   author: string | null;
   published_at: string;
   fetched_at: string;
@@ -66,9 +69,13 @@ export interface NewsArticle {
   event_category: string | null;
   importance: ImportanceLevel | null;
   symbols: NewsSymbol[];
-  /** Lazily-fetched full body (Jina Reader cache). ``null`` when never loaded. */
+  /**
+   * Cleaned full body stored locally. Fetched at ingestion time
+   * (trafilatura → Jina Reader → LLM fallback) and re-fetched on demand
+   * via the ``fetch-content`` endpoint. ``null`` when never loaded.
+   */
   full_content: string | null;
-  /** ISO timestamp of the last successful Jina fetch (cache TTL anchor). */
+  /** ISO timestamp of the last successful body fetch (cache TTL anchor). */
   full_content_fetched_at: string | null;
   /** Cached Chinese translation (DeepSeek). Populated only for English articles. */
   translated_zh: string | null;

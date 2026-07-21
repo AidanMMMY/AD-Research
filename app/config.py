@@ -104,6 +104,20 @@ class Settings(BaseSettings):
     # entirely-off environment does not page anyone.
     news_ai_cleanup_alert_pct: float = 70.0
 
+    # News full-content pipeline (2026-07-21). Articles get their body
+    # fetched at ingestion time (local trafilatura extraction → Jina
+    # Reader → LLM-from-HTML fallback) so the detail page can render the
+    # cleaned body immediately instead of waiting for the lazy fetch.
+    # ``news_content_fetch_on_ingest`` toggles the inline fetch right
+    # after a crawler persists new rows; ``news_content_ingest_time_budget_sec``
+    # bounds how long a single crawl tick may spend on it (the 10-minute
+    # scheduler job drains whatever is left). ``news_content_llm_fallback``
+    # enables the LLM extraction tier used when both deterministic
+    # extractors fail to find a real body.
+    news_content_fetch_on_ingest: bool = True
+    news_content_ingest_time_budget_sec: int = 120
+    news_content_llm_fallback: bool = True
+
     # Xueqiu (雪球) cookie — raw "Cookie:" header value from a logged-in
     # browser session. Must include xq_a_token=...; u=...; device_id=...
     # The crawler is read-only and never attempts to log in.
