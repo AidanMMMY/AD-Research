@@ -1,9 +1,10 @@
 import './styles.css';
 import { useEffect, useMemo, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Statistic, Table, Spin, Tabs, Alert, Button } from 'antd';
+import { Statistic, Table, Tabs, Alert, Button } from 'antd';
 import { ArrowUpOutlined, ArrowDownOutlined, ExperimentOutlined } from '@ant-design/icons';
 import Panel from '@/components/Panel';
+import LoadingBlock from '@/components/LoadingBlock';
 import PageHeader from '@/components/PageHeader';
 import PageShell from '@/components/PageShell';
 import ResponsiveGrid from '@/components/ResponsiveGrid';
@@ -49,7 +50,7 @@ export default function BacktestDetail() {
     return (
       <PageShell maxWidth="wide">
         <div role="status" aria-live="polite" className="empty-state detail-loading-wrapper">
-          <Spin size="large" />
+          <LoadingBlock size="lg" />
           <div className="detail-loading-message">
             正在加载回测结果…
           </div>
@@ -282,7 +283,7 @@ export default function BacktestDetail() {
 
       <Panel title="归因明细" padding="md">
         {attributionLoading ? (
-          <Spin />
+          <LoadingBlock size="sm" />
         ) : (
           <Table
             dataSource={(attribution?.effects || []).map((e: AttributionEffect, i: number) => ({ ...e, key: e.sector || `${i}` }))}

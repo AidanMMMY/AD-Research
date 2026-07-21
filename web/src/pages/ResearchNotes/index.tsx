@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { CSSProperties } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Select, Button, Skeleton, Modal, Empty, message, Popconfirm } from 'antd';
+import { Select, Button, Modal, message, Popconfirm } from 'antd';
 import { RobotOutlined, SearchOutlined, DeleteOutlined } from '@ant-design/icons';
 import './styles.css';
 import { researchApi, ResearchNote } from '@/api/research';
@@ -14,6 +14,8 @@ import Panel from '@/components/Panel';
 import ThemeTag, { ThemeTagVariant } from '@/components/ThemeTag';
 import InstrumentCodeTag from '@/components/InstrumentCodeTag';
 import HelpPopover from '@/components/HelpPopover';
+import EmptyState from '@/components/EmptyState';
+import LoadingBlock from '@/components/LoadingBlock';
 import { useSettingsStore } from '@/stores/settings';
 import { SENTIMENT_LABELS } from '@/utils/sentiment';
 import { formatDateTime } from '@/utils/datetime';
@@ -223,11 +225,11 @@ export default function ResearchNotes() {
 
       <div className="ad-section">
         {isLoading ? (
-          <Skeleton active paragraph={{ rows: 8 }} />
+          <LoadingBlock size="lg" />
         ) : !notes?.length ? (
           <div className="ad-empty">
-            <Empty
-              description="暂无研报历史，输入或选择标的代码后点击「生成研报」开始 AI 分析"
+            <EmptyState
+              title="暂无研报历史，输入或选择标的代码后点击「生成研报」开始 AI 分析"
             />
           </div>
         ) : (

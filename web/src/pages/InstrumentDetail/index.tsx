@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import './styles.css';
-import { Row, Col, Statistic, Spin, Descriptions, Radio, Checkbox, Space, Alert, Button, message, Skeleton } from 'antd';
+import { Row, Col, Statistic, Descriptions, Radio, Checkbox, Space, Alert, Button, message } from 'antd';
 import { StarOutlined, StarFilled, RobotOutlined, ReadOutlined, SmileOutlined, ArrowLeftOutlined, SearchOutlined } from '@ant-design/icons';
 import { useInstrumentDetail } from '@/hooks/useInstrumentList';
 import { useInstrumentScore } from '@/hooks/useScores';
@@ -456,7 +456,7 @@ export default function InstrumentDetail() {
             </Space>
           </Space>
         </div>
-        {historyLoading && safeHistoryItems.length === 0 ? <Spin /> : (
+        {historyLoading && safeHistoryItems.length === 0 ? <LoadingBlock size="sm" /> : (
           safeHistoryItems.length ? (
             <div className="detail-chart-stack">
               <KLineChart data={safeHistoryItems} overlays={overlays} adjusted={adjusted} />
@@ -571,7 +571,7 @@ export default function InstrumentDetail() {
       <div className="detail-tab-panel detail-section">
         {notesLoading || sentimentLoading ? (
           <Panel title="AI分析" padding="md">
-            <Skeleton active paragraph={{ rows: 8 }} />
+            <LoadingBlock size="lg" />
           </Panel>
         ) : (
           <Row gutter={[16, 16]}>

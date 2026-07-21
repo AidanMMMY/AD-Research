@@ -5,4 +5,9 @@
    dashboard-section, etc.) are defined in global.css.
    ============================================================ */
 
-/* ── Future page-specific overrides go here ── */
+/* ── Top-3 rank numbers read as strong primary text, not accent links.
+   Double-class selector outranks the .score-rank-cell--top3 rule in
+   global.css without touching the shared file. ── */
+.score-rank-cell.score-rank-cell--top3 {
+  color: var(--text-primary);
+}

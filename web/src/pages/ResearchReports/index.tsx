@@ -1,8 +1,8 @@
 import { useMemo, useState } from 'react';
 import type { CSSProperties } from 'react';
 import {
-  Table, Input, Select, Button, Space, Tag, Skeleton, message, Modal,
-  Descriptions, Typography, Spin,
+  Table, Input, Select, Button, Space, Tag, message, Modal,
+  Descriptions, Typography,
 } from 'antd';
 import { SearchOutlined, ReloadOutlined, ThunderboltOutlined, FileTextOutlined } from '@ant-design/icons';
 import PageShell from '@/components/PageShell';
@@ -11,6 +11,7 @@ import PageHeader from '@/components/PageHeader';
 import FilterToolbar from '@/components/FilterToolbar';
 import EmptyState from '@/components/EmptyState';
 import LastUpdated from '@/components/LastUpdated';
+import LoadingBlock from '@/components/LoadingBlock';
 import {
   useResearchReportList,
   useResearchReportFacets,
@@ -363,7 +364,7 @@ export default function ResearchReports() {
 
       <Panel variant="default" padding="none">
         {isLoading ? (
-          <Skeleton active paragraph={{ rows: 10 }} />
+          <LoadingBlock size="lg" />
         ) : filteredByRating.length === 0 && items.length === 0 ? (
           <EmptyState
             icon={<FileTextOutlined />}
@@ -430,7 +431,7 @@ export default function ResearchReports() {
         ].filter(Boolean)}
       >
         {detailLoading || !detail ? (
-          <Spin />
+          <LoadingBlock size="sm" />
         ) : (
           <>
             <Descriptions column={2} bordered size="small">

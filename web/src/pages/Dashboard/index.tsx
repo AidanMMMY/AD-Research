@@ -2,7 +2,6 @@ import './command-center.css';
 
 import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Skeleton } from 'antd';
 import { GlobalOutlined } from '@ant-design/icons';
 import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { useScores } from '@/hooks/useScores';
@@ -17,6 +16,7 @@ import { newsApi } from '@/api/news';
 import { useMacroLatest, macroApi } from '@/api/macro';
 import { codeToRegion } from '../../utils/macroRegion';
 import EmptyState from '@/components/EmptyState';
+import LoadingBlock from '@/components/LoadingBlock';
 import ReturnTag from '@/components/ReturnTag';
 import { usePriceStream } from '@/hooks/usePriceStream';
 import { useMarketStream } from '@/hooks/useMarketStream';
@@ -612,7 +612,7 @@ export default function Dashboard() {
                 <span>评分</span>
               </div>
               {favLoading ? (
-                <Skeleton active paragraph={{ rows: 4 }} />
+                <LoadingBlock size="md" />
               ) : favCount === 0 ? (
                 <EmptyState title="暂无自选股" description="在详情页点击 ★ 加入自选" />
               ) : (

@@ -1,0 +1,317 @@
+/* ============================================================
+   Inline-style cleanup — tool/report pages
+   ============================================================ */
+
+/* Page header row with title + actions. */
+.ad-page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-2);
+}
+
+.ad-page-header__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.ad-page-header__title {
+  margin: 0;
+}
+
+/* Small meta / timestamp text. */
+.ad-timestamp,
+.ad-meta-text {
+  font-size: var(--text-small-size);
+  color: var(--text-tertiary);
+}
+
+/* Extra-small text (11px). */
+.ad-text-xs {
+  font-size: 11px;
+}
+
+.ad-text-sm {
+  font-size: 13px;
+}
+
+.ad-letter-spacing {
+  letter-spacing: 1px;
+}
+
+/* Pre-formatted text blocks. */
+.ad-pre-wrap {
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* Detail drawer title — long Chinese announcement titles must wrap. */
+.ad-detail-title-break {
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+/* Detail tags (symbol / category chips). */
+.ad-detail-tag {
+  margin: 0;
+  font-size: var(--text-small-size);
+}
+
+/* Sentiment label rendered inside Badge text. */
+.ad-sentiment-label {
+  font-size: var(--text-small-size);
+  font-weight: 500;
+}
+
+.ad-sentiment-label--detail {
+  font-size: 13px;
+}
+
+/* Change / delta cell with inline arrow icon. */
+.ad-change-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-weight: 600;
+}
+
+.ad-change-cell--rise { color: var(--color-rise); }
+.ad-change-cell--fall { color: var(--color-fall); }
+
+/* Clickable chip tags. */
+.ad-chip-tag {
+  cursor: pointer;
+}
+
+@media (max-width: 767px) {
+  .ad-chip-tag {
+    display: inline-flex;
+    align-items: center;
+    min-height: 32px;
+    padding: 4px 8px;
+  }
+}
+
+/* Inline statistic suffix colored with the value. */
+.ad-statistic-suffix {
+  margin-left: 6px;
+  font-size: 14px;
+}
+
+/* Error helper with truncation. */
+.ad-error-ellipsis {
+  color: var(--color-error);
+  font-size: var(--text-small-size);
+  max-width: 320px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Centered loading indicator. */
+.ad-spin-center {
+  display: block;
+  margin: var(--space-8) auto;
+}
+
+/* Full-width flex stack (Space direction="vertical"). */
+.ad-stack-full {
+  width: 100%;
+}
+
+/* Tight 4px vertical stack for two-line cells (title + subline). */
+.ad-stack-xs {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  line-height: 1.25;
+}
+
+/* Inline scope / disclaimer banner — kept calm (no Ant Alert chrome). */
+.ad-info-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+}
+
+.ad-info-banner__icon {
+  color: var(--accent);
+  margin-top: 2px;
+  font-size: 14px;
+}
+
+.ad-info-banner__body {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px 8px;
+  flex: 1;
+  min-width: 0;
+}
+
+.ad-info-banner__title {
+  font-weight: 600;
+  color: var(--text-primary);
+  letter-spacing: 0.04em;
+}
+
+.ad-info-banner__text {
+  color: var(--text-secondary);
+  font-size: var(--text-small-size);
+  line-height: 1.5;
+}
+
+.ad-info-banner code {
+  background: var(--bg-input);
+  padding: 1px 4px;
+  border-radius: 3px;
+  font-size: var(--text-small-size);
+}
+
+/* Icon decorators. */
+.ad-icon-accent {
+  color: var(--accent);
+  margin-right: 6px;
+}
+
+.ad-icon-mr {
+  margin-right: 6px;
+}
+
+.ad-icon-warning {
+  color: var(--color-warning-bright);
+}
+
+.ad-icon-xs {
+  font-size: 10px;
+}
+
+/* Typography helpers. */
+.ad-text-left {
+  text-align: left;
+}
+
+.ad-leading-normal {
+  line-height: 1.5;
+}
+
+/* Table cell text presets. */
+.ad-table-mono {
+  font-family: var(--font-mono);
+  color: var(--text-secondary);
+}
+
+.ad-table-mono--tertiary {
+  font-family: var(--font-mono);
+  color: var(--text-tertiary);
+}
+
+.ad-table-accent {
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.ad-table-text-primary {
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.ad-table-text-secondary {
+  font-size: var(--text-small-size);
+  color: var(--text-secondary);
+}
+
+/* Single-line truncation. */
+.ad-truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Extra spacing utilities.
+   NOTE: .ad-gap-4 / .ad-gap-5 / .ad-ml-2 / .ad-mb-1 are declared identically
+   in pages-ai-admin-cleanup.css (imported later); the duplicate copies that
+   used to sit here were removed in the 2026-07-21 split. */
+.ad-mt-1 {
+  margin-top: var(--space-1);
+}
+
+.ad-mb-0 {
+  margin-bottom: 0 !important;
+}
+
+.ad-inline-flex {
+  display: inline-flex;
+}
+
+.ad-items-baseline {
+  align-items: baseline;
+}
+
+.ad-font-bold {
+  font-weight: 700;
+}
+
+.ad-p-0 {
+  padding: 0 !important;
+}
+
+/* Responsive adjustments for Phase 5b layouts. */
+@media (max-width: 991px) {
+  .ad-news-layout,
+  .ad-detail-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .ad-metric-strip,
+  .ad-metric-strip--cols-4,
+  .ad-metric-strip--cols-5,
+  .ad-metric-strip--cols-6 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .ad-metric-item {
+    border-right: none;
+    border-bottom: 1px solid var(--border-default);
+  }
+
+  .ad-metric-item:nth-child(2n):not(:last-child) {
+    border-right: 1px solid var(--border-default);
+  }
+
+  /* Stack the side-by-side translation view on tablet/mobile so each
+     column gets a comfortable line length. The 70vh cap stays — it
+     keeps long articles from forcing infinite scroll within the card. */
+  .news-translation-pair {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 767px) {
+  .ad-metric-strip,
+  .ad-metric-strip--cols-4 {
+    grid-template-columns: 1fr;
+  }
+
+  .ad-metric-item,
+  .ad-metric-item:nth-child(2n):not(:last-child) {
+    border-right: none;
+  }
+
+  .ad-detail-article {
+    padding: var(--space-4);
+  }
+
+  .news-translation-pair__body {
+    max-height: none;
+    overflow-y: visible;
+  }
+
+  .ad-preview-frame {
+    height: 400px;
+  }
+}
+

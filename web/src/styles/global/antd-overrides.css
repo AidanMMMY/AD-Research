@@ -1,0 +1,529 @@
+/* ============================================================
+   Global Ant Design Overrides — Light/Clean + Dark Terminal
+   ============================================================ */
+
+/* Reset: remove default browser margins so the app shell fills viewport. */
+html,
+body {
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+}
+
+/* Utility: stable-width numbers in tables and stat cells
+   Use className="tabular-nums" on any element that renders numeric data
+   so columns don't jiggle when values change width. */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+}
+
+/* Utility: font families — prefer className over inline style={{ fontFamily }} */
+.font-mono {
+  font-family: var(--font-mono);
+}
+
+.font-sans {
+  font-family: var(--font-sans);
+}
+
+/* Display heading — used in masthead, hero titles. */
+.display-heading {
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+
+.ant-layout {
+  background: var(--bg-base) !important;
+}
+
+.ant-layout-content {
+  background: var(--bg-base) !important;
+  position: relative;
+  z-index: 2;
+}
+
+/* Card — clean surface */
+.ant-card {
+  background: var(--card-bg) !important;
+  border: 1px solid var(--card-border) !important;
+  border-radius: var(--card-radius) !important;
+  box-shadow: var(--shadow-card) !important;
+}
+
+.ant-card-head {
+  background: transparent !important;
+  border-bottom: 1px solid var(--border-default) !important;
+  color: var(--text-secondary) !important;
+  font-weight: 500;
+  font-size: var(--text-small-size);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  padding: var(--space-4) !important;
+}
+
+.ant-card-body {
+  padding: var(--space-4) !important;
+}
+
+.ant-card-small .ant-card-head {
+  padding: var(--space-3) var(--space-4) !important;
+  font-size: var(--text-small-size);
+}
+
+.ant-card-small .ant-card-body {
+  padding: var(--space-3) var(--space-4) !important;
+}
+
+/* Table — minimal hairlines, no card wrapping */
+.ant-table {
+  background: transparent !important;
+  color: var(--text-primary);
+}
+
+.ant-table-thead > tr > th {
+  background: transparent !important;
+  color: var(--text-tertiary) !important;
+  font-weight: 500;
+  font-size: var(--text-label-size);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  border-bottom: 1px solid var(--border-default) !important;
+  padding: var(--density-cell-py) var(--density-cell-px) !important;
+}
+
+.ant-table-tbody > tr > td {
+  border-bottom: 1px solid var(--border-default) !important;
+  color: var(--text-secondary);
+  padding: var(--density-cell-py) var(--density-cell-px) !important;
+  transition: color var(--transition-fast), background var(--transition-fast);
+  /* P0-2: 全局强制等宽数字，防止数值列排序/比较时抖动 */
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+}
+
+.ant-table-tbody > tr:hover > td {
+  background: var(--bg-hover) !important;
+  color: var(--text-primary) !important;
+}
+
+.ant-table-row {
+  cursor: pointer;
+  min-height: var(--density-row-height);
+}
+
+.ant-table-tbody > tr.ant-table-row-selected > td,
+.ant-table-tbody > tr[aria-selected="true"] > td {
+  background: var(--accent-dim) !important;
+}
+
+/* Pagination */
+.ant-pagination {
+  color: var(--text-secondary);
+}
+
+.ant-pagination-item {
+  background: transparent !important;
+  border-color: var(--border-default) !important;
+  border-radius: var(--radius-md) !important;
+}
+
+.ant-pagination-item a {
+  color: var(--text-secondary) !important;
+}
+
+.ant-pagination-item-active {
+  background: var(--accent-dim) !important;
+  border-color: var(--accent-border) !important;
+}
+
+.ant-pagination-item-active a {
+  color: var(--accent) !important;
+}
+
+/* Tabs */
+.ant-tabs-nav {
+  margin-bottom: var(--space-block);
+}
+
+.ant-tabs-tab {
+  color: var(--text-tertiary) !important;
+  font-size: var(--text-body-size);
+  transition: color var(--transition-fast);
+}
+
+.ant-tabs-tab:hover {
+  color: var(--text-secondary) !important;
+}
+
+.ant-tabs-tab-active .ant-tabs-tab-btn {
+  color: var(--text-primary) !important;
+  font-weight: 500;
+}
+
+.ant-tabs-ink-bar {
+  background: var(--accent) !important;
+  height: 2px !important;
+  border-radius: 1px;
+}
+
+/* Input, Select, InputNumber */
+.ant-input,
+.ant-select-selector,
+.ant-input-number {
+  background: var(--bg-input) !important;
+  border-color: var(--border-default) !important;
+  color: var(--text-primary) !important;
+  border-radius: var(--radius-md) !important;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.ant-input:hover,
+.ant-select-selector:hover,
+.ant-input-number:hover {
+  border-color: var(--border-hover) !important;
+}
+
+.ant-input:focus,
+.ant-input-focused,
+.ant-select-focused .ant-select-selector,
+.ant-input-number-focused {
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 0 2px var(--accent-dim) !important;
+}
+
+.ant-select-dropdown {
+  background: var(--bg-elevated) !important;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg) !important;
+  box-shadow: var(--shadow-md);
+}
+
+.ant-select-item {
+  color: var(--text-primary) !important;
+  transition: background var(--transition-fast);
+}
+
+.ant-select-item-option-active {
+  background: var(--bg-hover) !important;
+}
+
+.ant-select-item-option-selected {
+  background: var(--accent-dim) !important;
+  color: var(--accent) !important;
+}
+
+/* Button */
+.ant-btn {
+  border-radius: var(--radius-md);
+  transition: background var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast), box-shadow var(--transition-fast), transform var(--transition-fast);
+  font-weight: 500;
+}
+
+.ant-btn-default {
+  background: transparent;
+  border-color: var(--border-default);
+  color: var(--text-secondary);
+}
+
+.ant-btn-default:hover {
+  border-color: var(--text-secondary);
+  color: var(--text-primary);
+  background: var(--bg-hover);
+}
+
+.ant-btn-default:active {
+  border-color: var(--text-secondary);
+  color: var(--text-primary);
+  background: var(--bg-active);
+  transform: scale(var(--press-scale));
+}
+
+.ant-btn-default:focus-visible,
+.ant-btn-primary:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.ant-btn-primary {
+  background: var(--accent);
+  border: none;
+  color: var(--text-on-accent);
+  box-shadow: none;
+}
+
+.ant-btn-primary:hover {
+  background: var(--accent-hover);
+  box-shadow: 0 0 16px var(--accent-glow);
+}
+
+.ant-btn-primary:active {
+  background: var(--accent-active);
+  box-shadow: 0 0 8px var(--accent-glow);
+  transform: scale(var(--press-scale));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ant-btn {
+    transition: none;
+  }
+
+  .ant-btn-default:active,
+  .ant-btn-primary:active {
+    transform: none;
+  }
+}
+
+/* Form */
+.ant-form-item {
+  margin-bottom: var(--space-form-field);
+}
+
+.ant-form-item-label {
+  padding-bottom: var(--space-form-label);
+}
+
+.ant-form-horizontal .ant-form-item-label {
+  padding-bottom: 0;
+}
+
+.ant-form-item-label > label {
+  font-size: var(--text-small-size);
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.ant-form-item-explain,
+.ant-form-item-extra {
+  font-size: var(--text-small-size);
+  color: var(--text-tertiary);
+  margin-top: var(--space-1);
+  min-height: auto;
+}
+
+.ant-form-item-explain-error {
+  color: var(--color-error);
+}
+
+/* Tag */
+.ant-tag {
+  border-radius: var(--radius-sm);
+  font-size: var(--text-small-size);
+  padding: 2px 8px;
+  border: 1px solid var(--border-default);
+  background: transparent;
+  color: var(--text-secondary);
+}
+
+/* Statistic */
+.ant-statistic-title {
+  color: var(--text-tertiary) !important;
+  font-size: var(--text-small-size);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: var(--space-inline-sm) !important;
+}
+
+.ant-statistic-content {
+  color: var(--text-primary) !important;
+  font-weight: 400;
+  font-size: var(--text-data-lg-size);
+  font-family: var(--font-mono);
+  letter-spacing: -0.02em;
+}
+
+/* Progress */
+.ant-progress-bg {
+  border-radius: 2px !important;
+  background: var(--accent);
+}
+
+/* List */
+.ant-list {
+  background: transparent !important;
+}
+
+.ant-list-item {
+  border-bottom: 1px solid var(--border-default) !important;
+  padding: var(--space-3) 0 !important;
+  transition: color var(--transition-fast), background var(--transition-fast);
+}
+
+.ant-list-item:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.ant-list-item-meta-title {
+  color: var(--text-primary) !important;
+  font-weight: 500;
+}
+
+.ant-list-item-meta-description {
+  color: var(--text-tertiary) !important;
+}
+
+/* Spin */
+.ant-spin-dot-item {
+  background: var(--accent) !important;
+}
+
+/* Alert */
+.ant-alert {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+}
+
+.ant-alert-message {
+  color: var(--text-primary);
+}
+
+.ant-alert-description {
+  color: var(--text-secondary);
+}
+
+/* Popover */
+.ant-popover {
+  max-width: 360px;
+}
+
+.ant-popover-inner {
+  background: var(--card-bg) !important;
+  border: 1px solid var(--card-border) !important;
+  border-radius: var(--card-radius) !important;
+  box-shadow: var(--shadow-card) !important;
+}
+
+.ant-popover-title {
+  color: var(--text-primary) !important;
+  border-bottom: 1px solid var(--border-default) !important;
+}
+
+.ant-popover-inner-content {
+  color: var(--text-primary) !important;
+}
+
+.ant-popover-arrow::before {
+  background: var(--card-bg) !important;
+  border-color: var(--card-border) !important;
+}
+
+/* Tooltip */
+.ant-tooltip-inner {
+  background: var(--card-bg) !important;
+  border: 1px solid var(--card-border) !important;
+  border-radius: var(--radius-md) !important;
+  color: var(--text-primary) !important;
+  box-shadow: var(--shadow-card) !important;
+}
+
+.ant-tooltip-arrow::before {
+  background: var(--card-bg) !important;
+  border-color: var(--card-border) !important;
+}
+
+/* Modal / Drawer */
+.ant-modal-content,
+.ant-drawer-content {
+  background: var(--bg-elevated) !important;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-xl) !important;
+  box-shadow: var(--shadow-lg);
+}
+
+.ant-modal-header {
+  background: transparent !important;
+  border-bottom: 1px solid var(--border-default);
+}
+
+.ant-modal-title {
+  color: var(--text-primary) !important;
+}
+
+.ant-drawer-body {
+  background: var(--bg-base) !important;
+}
+
+/* Radio */
+.ant-radio-button-wrapper {
+  background: var(--bg-input);
+  border-color: var(--border-default);
+  color: var(--text-secondary);
+}
+
+.ant-radio-button-wrapper-checked {
+  background: var(--accent-dim) !important;
+  border-color: var(--accent-border) !important;
+  color: var(--accent) !important;
+}
+
+/* Checkbox */
+.ant-checkbox-wrapper {
+  color: var(--text-secondary);
+}
+
+.ant-checkbox-checked .ant-checkbox-inner {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.ant-checkbox-checked .ant-checkbox-inner::after {
+  border-color: var(--text-on-accent);
+}
+
+/* Slider */
+.ant-slider-rail {
+  background: var(--border-default);
+}
+
+.ant-slider-track {
+  background: var(--accent);
+}
+
+.ant-slider-handle {
+  border-color: var(--accent);
+}
+
+/* Dropdown Menu */
+.ant-dropdown-menu {
+  background: var(--bg-elevated) !important;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg) !important;
+  box-shadow: var(--shadow-md);
+}
+
+.ant-dropdown-menu-item {
+  color: var(--text-primary) !important;
+}
+
+.ant-dropdown-menu-item:hover {
+  background: var(--bg-hover) !important;
+}
+
+/* Descriptions */
+.ant-descriptions-item-label {
+  color: var(--text-tertiary);
+  font-size: var(--text-small-size);
+}
+
+.ant-descriptions-item-content {
+  color: var(--text-primary);
+}
+
+/* Skeleton */
+.ant-skeleton-active .ant-skeleton-paragraph > li,
+.ant-skeleton-active .ant-skeleton-title {
+  /* stylelint-disable-next-line ad-research/no-bare-color-values -- antd skeleton shimmer gradient, no matching token */
+  background: linear-gradient(90deg, rgba(0, 0, 0, 0.03) 25%, rgba(0, 0, 0, 0.08) 37%, rgba(0, 0, 0, 0.03) 63%);
+}
+
+:root[data-theme="dark"] .ant-skeleton-active .ant-skeleton-paragraph > li,
+:root[data-theme="dark"] .ant-skeleton-active .ant-skeleton-title {
+  /* stylelint-disable-next-line ad-research/no-bare-color-values -- antd skeleton shimmer gradient, no matching token */
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.03) 25%, rgba(255, 255, 255, 0.08) 37%, rgba(255, 255, 255, 0.03) 63%);
+}
+

@@ -1,0 +1,417 @@
+/* ============================================================== */
+/* K14 / K15 / K16 mobile responsive additions (375 / 768 viewports)
+   -- only styling hooks for newly added chips/cards/tour steps. */
+/* ============================================================== */
+
+/* Dashboard learning / portfolio chip rows (K14 + K16).  Wrap on narrow
+   widths so chips don't truncate. */
+.dashboard-learning-chips {
+  margin: var(--space-2, 8px) 0;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--accent-dim);
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.dashboard-learning-chips__label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.dashboard-learning-chip {
+  cursor: pointer;
+  transition: transform 0.1s ease, box-shadow 0.15s ease;
+}
+
+.dashboard-learning-chip:hover {
+  /* stylelint-disable-next-line ad-research/no-bare-color-values -- hover shadow alpha, no exact token match; kept for visual parity */
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+@media (max-width: 767px) {
+  .dashboard-learning-chips {
+    /* Small screens: allow chip overflow-x scroll instead of forcing wrap
+       when chips stack to 8 lines, which would dominate the page. */
+    padding: 6px 8px;
+    flex-wrap: nowrap;
+  }
+}
+
+/* Learning page (K14) — each card collapses to 1 col on narrow widths. */
+.learning-scenarios {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: var(--space-4, 16px);
+}
+
+.learning-scenario-card {
+  /* Equal-height grid cards: column flex so the CTA can pin to the bottom. */
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.learning-scenario-card .ad-panel__body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.learning-scenario-card__head {
+  display: flex;
+  align-items: flex-start;
+  /* Wrap so long titles never squeeze the meta tags into a vertical strip. */
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.learning-scenario-card__heading {
+  flex: 1;
+  min-width: 0;
+}
+
+.learning-scenario-card__meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  /* Own row under the title/tagline, spanning the card width. */
+  flex-basis: 100%;
+  margin-left: 0;
+}
+
+.learning-scenario-card__title {
+  font-size: var(--text-h3-size);
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.3;
+}
+
+.learning-scenario-card__tagline {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-top: 4px;
+}
+
+.learning-scenario-card__steps {
+  padding-left: 0;
+  margin: 0 0 16px;
+  list-style: none;
+  counter-reset: step;
+}
+
+.learning-scenario-card__step {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  margin-bottom: 8px;
+  color: var(--text-primary);
+  font-size: var(--text-body-size);
+  line-height: 1.6;
+}
+
+.learning-scenario-card__step-num {
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--accent-dim);
+  color: var(--accent);
+  font-weight: 600;
+  font-size: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.learning-scenario-card__cta {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  border-top: 1px dashed var(--border-default);
+  padding-top: 12px;
+  /* Pin to the card bottom so all three scenario cards align their CTAs. */
+  margin-top: auto;
+}
+
+.learning-scenario-card__cta-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.learning-scenario-card__initial-q {
+  font-size: 12.5px;
+  color: var(--text-tertiary);
+  line-height: 1.5;
+}
+
+.learning-scenario-card__initial-q-label {
+  color: var(--accent);
+  font-weight: 600;
+  margin-right: 4px;
+}
+
+/* M20: 术语速查面板 */
+.learning-terms-wrap {
+  /* simple wrapper, layout done inline */
+}
+
+.learning-terms__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 6px;
+}
+
+.learning-terms__item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border-default);
+  background: var(--bg-input);
+  transition: background 150ms, border-color 150ms;
+}
+
+.learning-terms__item:hover {
+  background: var(--accent-dim);
+  border-color: var(--accent-border);
+}
+
+.learning-terms__title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.learning-terms__desc {
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+@media (max-width: 767px) {
+  .learning-scenario-card__head {
+    flex-wrap: wrap;
+  }
+  .learning-scenario-card__meta {
+    margin-left: 0;
+    width: 100%;
+  }
+  .learning-scenario-card__cta-buttons .ant-btn {
+    flex: 1 1 auto;
+  }
+}
+
+/* News page — political / macro chip row (K12).  On narrow widths allow
+   horizontal scroll so the row doesn't push the page width. */
+.news-political-chips {
+  align-items: center;
+}
+
+.news-political-chips__label {
+  flex-shrink: 0;
+}
+
+.news-political-chip {
+  cursor: pointer;
+  user-select: none;
+}
+
+@media (max-width: 767px) {
+  .news-political-chips {
+    flex-wrap: wrap;
+    row-gap: 6px;
+  }
+  .news-political-chips__label {
+    width: 100%;
+    margin: 0 0 2px;
+  }
+}
+
+/* News detail page — category tag + actions row on 375px. */
+.ad-detail-tag--category {
+  text-transform: capitalize;
+  margin-right: 0;
+}
+
+@media (max-width: 767px) {
+  .ad-detail-actions {
+    align-items: stretch;
+  }
+  .ad-detail-actions__cta.ant-btn {
+    width: 100%;
+  }
+  .ad-detail-actions__symbols {
+    width: 100%;
+  }
+}
+
+/* DailyLesson (K15 + Phase 2) — narrow-screen tuning. The body is now
+   always a single column; this section tightens padding and trims title
+   font sizes for very small viewports. */
+.daily-lesson {
+  min-width: 0;
+}
+
+@media (max-width: 575px) {
+  .daily-lesson {
+    padding: var(--space-3);
+  }
+  .daily-lesson__heading-title {
+    font-size: 15px;
+  }
+  .daily-lesson__hint {
+    font-size: 11px;
+  }
+}
+
+/* StatCard / StatExplainer (K15) — explainer line must wrap gracefully
+   when StatCard columns collapse at 375px. */
+.stat-explainer {
+  white-space: normal;
+  font-size: 11.5px;
+  line-height: 1.45;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.stat-card__explainer {
+  margin-top: 6px;
+  padding-top: 2px;
+  /* stylelint-disable-next-line ad-research/no-bare-color-values -- faint dashed hairline, no matching token */
+  border-top: 1px dashed rgba(0, 0, 0, 0.04);
+}
+
+@media (max-width: 575px) {
+  .stat-card__value {
+    font-size: 22px;
+  }
+}
+
+/* HelpPopover (K14) — wider overlay on narrow screens is already capped
+   via overlayStyle={maxWidth: 'min(380px, 85vw)'}.  No further CSS needed. */
+
+/* ContextHint (K14) — anchor is a plain block so it never shrink-wraps or
+   squeezes wrapped controls (filter toolbars, selects); popover already
+   uses AntD defaults. */
+.context-hint__anchor {
+  display: block;
+}
+
+/* When a ContextHint wraps a FilterToolbar (e.g. Screen 详细筛选), the anchor
+   spans full width and the toolbar's default margin-bottom is redundant since
+   it sits at the end of the Panel body. */
+.context-hint__anchor:has(> .filter-toolbar) {
+  display: flex;
+  width: 100%;
+}
+
+.context-hint__anchor > .filter-toolbar {
+  margin-bottom: 0;
+  width: 100%;
+}
+
+/* OnboardingTour (K14) — let the AntD Tour modal handle most of the
+   responsive work, but ensure that on tiny viewports the indicator
+   row is still legible. */
+.onboarding-tour__step-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--accent-dim);
+  color: var(--accent);
+}
+
+.onboarding-tour__indicator {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  font-variant-numeric: tabular-nums;
+}
+
+.onboarding-tour__title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+}
+
+.onboarding-tour__desc {
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.55;
+}
+
+.onboarding-tour__go.ant-btn {
+  padding-left: 0;
+}
+
+@media (max-width: 575px) {
+  .onboarding-tour__title {
+    font-size: 15px;
+  }
+}
+
+/* GlobalMarkets — recent-24h events list (K12 addition). */
+.ad-news-events-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.ad-news-events-list__item {
+  padding: 10px 0;
+  border-bottom: 1px dashed var(--border-default);
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+
+.ad-news-events-list__item:hover {
+  background: var(--bg-hover);
+}
+
+.ad-news-events-list__item:last-child {
+  border-bottom: none;
+}
+
+.ad-news-events-list__meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+  flex-wrap: wrap;
+}
+
+.ad-news-events-list__time {
+  font-variant-numeric: tabular-nums;
+}
+
+.ad-news-events-list__title {
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--text-primary);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+@media (max-width: 575px) {
+  .ad-news-events-list__title {
+    font-size: 13px;
+  }
+}
+

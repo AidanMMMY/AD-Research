@@ -1,11 +1,12 @@
 import { useMemo, useState } from 'react';
 import {
-  Table, Input, Select, Button, Space, Tag, Skeleton, Row, Col, message, Spin,
+  Table, Input, Select, Button, Space, Tag, Row, Col, message, Spin,
 } from 'antd';
 import { ReloadOutlined, SearchOutlined, FileTextOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import PageShell from '@/components/PageShell';
 import PageHeader from '@/components/PageHeader';
+import LoadingBlock from '@/components/LoadingBlock';
 import Panel from '@/components/Panel';
 import FilterToolbar from '@/components/FilterToolbar';
 import EmptyState from '@/components/EmptyState';
@@ -340,7 +341,7 @@ export default function SECFilingsPage() {
         </FilterToolbar>
 
         {isLoading ? (
-          <Skeleton active />
+          <LoadingBlock size="md" />
         ) : !data || data.items.length === 0 ? (
           <EmptyState
             icon={<FileTextOutlined />}

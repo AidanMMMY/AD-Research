@@ -1,0 +1,109 @@
+/* Shared DetailDrawer (components/DetailDrawer.tsx).
+ *
+ * Layout primitives (fixed overlay, 560px panel, card background) live in
+ * the global `.ad-detail-drawer*` rules; this file carries the motion
+ * layer and the header/content/footer structure. The spring enter/exit
+ * pattern mirrors the CninfoReports page drawer:
+ *
+ * 1. Springs — the panel slides along the x axis using the global
+ *    critically-damped spring curve (--ease-spring, no bounce).
+ * 2. Materials & depth — the overlay gets a translucent material layer
+ *    (backdrop-filter blur + saturate) so the page stays visible
+ *    underneath; material weight encodes the drawer as a higher layer.
+ * 3. Spatial consistency — transform-origin is anchored to the right
+ *    edge (the side the drawer enters from), so exit mirrors entrance.
+ * 4. Reduced motion / transparency — slide degrades to a cross-fade,
+ *    material blur degrades to a solid scrim.
+ */
+
+.ad-detail-drawer-overlay {
+  backdrop-filter: saturate(180%) blur(8px);
+  -webkit-backdrop-filter: saturate(180%) blur(8px);
+  transition: opacity var(--transition-spring-fast, 200ms var(--ease-spring));
+  opacity: 1;
+}
+
+.ad-detail-drawer-overlay--leaving {
+  opacity: 0;
+}
+
+.ad-detail-drawer {
+  transform-origin: right center;
+  /* stylelint-disable-next-line ad-research/no-bare-color-values -- directional left-cast drawer shadow; --shadow-lg is downward-only */
+  box-shadow: -8px 0 32px rgba(0, 0, 0, 0.24);
+  /* Interruptible spring: animate from the live value rather than
+     playing a keyframe that restarts mid-flight. The drawer slides
+     in/out along x using the global critically-damped spring curve.
+     Entrance starts off-screen (translateX 100%); leaving state sets
+     the same translate so the transition reverses to identity.
+     'will-change' is only set during the active animation window
+     (entering/leaving modifier). */
+  transform: translateX(0);
+  transition: transform var(--transition-spring, 350ms var(--ease-spring)),
+    opacity var(--transition-spring-fast, 200ms var(--ease-spring));
+  opacity: 1;
+}
+
+.ad-detail-drawer--entering,
+.ad-detail-drawer--leaving {
+  will-change: transform, opacity;
+}
+
+.ad-detail-drawer--entering {
+  transform: translateX(100%);
+}
+
+.ad-detail-drawer--leaving {
+  transform: translateX(100%);
+  opacity: 0;
+}
+
+.ad-detail-drawer__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+}
+
+.ad-detail-drawer__title {
+  margin: 0;
+  font-size: var(--text-h3-size, 18px);
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--text-primary);
+  flex: 1;
+  min-width: 0;
+}
+
+.ad-detail-drawer__close {
+  flex-shrink: 0;
+}
+
+.ad-detail-drawer__footer {
+  margin-top: var(--space-5);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--border-default);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ad-detail-drawer {
+    transition: opacity 120ms ease;
+    transform: none !important;
+  }
+
+  .ad-detail-drawer-overlay {
+    transition: opacity 120ms ease;
+  }
+
+  .ad-detail-drawer--leaving {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .ad-detail-drawer-overlay {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+}

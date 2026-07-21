@@ -1,0 +1,301 @@
+/* ============================================================
+   Phase 5c — AI, strategy & trading pages
+   ============================================================ */
+
+/* Common section spacing for Phase 5c pages */
+.phase5c-section {
+  margin-bottom: var(--space-section);
+}
+
+/* Phase 5c icon title — used in Sentiment and other Phase 5c pages. */
+.phase5c-icon-title {
+  color: var(--accent);
+  margin-right: 6px;
+}
+
+/* Research notes */
+.phase5c-research-card {
+  cursor: pointer;
+  margin-bottom: var(--space-4);
+}
+
+.phase5c-research-card__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: var(--space-2);
+  gap: var(--space-3);
+}
+
+.phase5c-research-card__meta {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.phase5c-research-card__code {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--accent);
+  font-family: var(--font-mono);
+}
+
+.phase5c-research-card__date {
+  font-size: var(--text-small-size);
+  color: var(--text-tertiary);
+  white-space: nowrap;
+}
+
+.phase5c-research-card__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.phase5c-research-card__delete {
+  color: var(--text-tertiary);
+  font-size: 14px;
+  padding: 4px;
+  border-radius: 4px;
+  transition: color 0.2s ease, background-color 0.2s ease;
+}
+
+.phase5c-research-card__delete:hover {
+  color: var(--color-fall);
+  background-color: var(--bg-elevated);
+}
+
+.phase5c-research-card__summary {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-primary);
+  line-height: 1.6;
+}
+
+.phase5c-research-card__more {
+  margin-top: var(--space-2);
+  font-size: var(--text-small-size);
+  color: var(--text-tertiary);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* KPI / metric strips */
+.phase5c-kpi-strip {
+  display: grid;
+  border-top: 1px solid var(--border-default);
+  border-bottom: 1px solid var(--border-default);
+  margin-bottom: var(--space-5);
+}
+
+.phase5c-kpi-strip--cols-2 {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.phase5c-kpi-strip--cols-3 {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.phase5c-kpi-strip--cols-4 {
+  grid-template-columns: repeat(4, 1fr);
+}
+
+.phase5c-kpi-cell {
+  padding: var(--space-5) var(--space-4);
+  border-right: 1px solid var(--border-default);
+}
+
+.phase5c-kpi-cell:last-child {
+  border-right: none;
+}
+
+.phase5c-kpi-cell__label {
+  font-size: var(--text-label-size);
+  color: var(--text-tertiary);
+  font-weight: 500;
+  margin-bottom: 12px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.phase5c-kpi-cell__value {
+  font-size: var(--text-data-xl-size);
+  font-weight: 400;
+  font-family: var(--font-mono);
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+}
+
+.phase5c-kpi-cell__suffix {
+  font-size: var(--text-body-size);
+  color: var(--text-tertiary);
+  margin-left: 4px;
+  font-weight: 500;
+}
+
+@media (max-width: 767px) {
+  .phase5c-kpi-strip--cols-2,
+  .phase5c-kpi-strip--cols-3,
+  .phase5c-kpi-strip--cols-4 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .phase5c-kpi-cell:nth-child(2n) {
+    border-right: none;
+  }
+
+  .phase5c-kpi-cell {
+    padding: var(--space-4) var(--space-3);
+  }
+
+  .phase5c-kpi-cell__value {
+    font-size: var(--text-data-lg-size);
+  }
+}
+
+/* Trading / paper / live cards */
+.phase5c-trading-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: var(--space-4);
+  margin-bottom: var(--space-6);
+}
+
+.phase5c-trading-card .ant-statistic-content {
+  font-family: var(--font-mono);
+}
+
+.phase5c-trading-card__extra {
+  font-size: var(--text-small-size);
+}
+
+.phase5c-action-bar {
+  display: flex;
+  gap: var(--space-3);
+  margin-bottom: var(--space-6);
+  flex-wrap: wrap;
+}
+
+.phase5c-account-selector {
+  margin-bottom: var(--space-6);
+}
+
+.phase5c-balance-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: var(--space-3);
+}
+
+.phase5c-balance-card {
+  background: var(--bg-elevated);
+}
+
+.phase5c-balance-card__asset {
+  font-family: var(--font-mono);
+  font-weight: 600;
+}
+
+.phase5c-balance-card__row {
+  font-size: var(--text-small-size);
+  color: var(--text-tertiary);
+}
+
+/* Empty states */
+.phase5c-empty {
+  padding: var(--space-9) 0;
+}
+
+/* Table wrappers */
+.phase5c-table-wrap {
+  overflow-x: auto;
+}
+
+/* Density toggle spacing */
+.phase5c-density-row {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  margin-bottom: var(--space-3);
+}
+
+/* Form helpers */
+.phase5c-form-row {
+  display: flex;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.phase5c-form-input--full {
+  width: 100%;
+}
+
+.phase5c-error-hint {
+  color: var(--color-fall);
+  font-size: 12px;
+  margin-top: 4px;
+}
+
+.phase5c-detail-line {
+  font-size: var(--text-small-size);
+  color: var(--text-secondary);
+  margin-left: 8px;
+}
+
+.phase5c-tabs--padded {
+  margin-bottom: 24px;
+}
+
+/* Markdown modal body */
+.phase5c-markdown-body {
+  color: var(--text-primary);
+  font-size: 14px;
+  line-height: 1.8;
+}
+
+/* Trading pages */
+.phase5c-inline-code {
+  font-family: var(--font-mono);
+}
+
+.phase5c-inline-code--bold {
+  font-family: var(--font-mono);
+  font-weight: 600;
+}
+
+.phase5c-meta-label {
+  color: var(--text-tertiary);
+  font-size: 12px;
+  margin-bottom: 4px;
+}
+
+.phase5c-select-min {
+  min-width: 200px;
+}
+
+.phase5c-flex-center {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.phase5c-flex-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: center;
+}
+
+@media (max-width: 767px) {
+  /* Mobile: account-selector / live-trading header stacks vertically. */
+  .phase5c-flex-wrap {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .phase5c-flex-wrap > * {
+    width: 100%;
+  }
+}
+

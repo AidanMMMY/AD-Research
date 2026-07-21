@@ -114,6 +114,34 @@ export default [
     },
   },
   {
+    // Design-system gate (2026-07-21): pages must not import the raw
+    // antd Card / Empty / Skeleton — use the tokenized wrappers so the
+    // dual-theme tokens in theme.css stay the single source of truth.
+    // Migration guide:
+    //   Card     -> @/components/Panel
+    //   Empty    -> @/components/EmptyState
+    //   Skeleton -> @/components/LoadingBlock
+    // Genuine exceptions (e.g. Skeleton.Input / Skeleton.Button inline
+    // control-shaped placeholders that LoadingBlock does not cover) may
+    // keep the antd import with an eslint-disable comment stating why.
+    files: ['src/pages/**/*.{ts,tsx}'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            {
+              name: 'antd',
+              importNames: ['Card', 'Empty', 'Skeleton'],
+              message:
+                'pages 层请迁移到设计系统组件：Card → @/components/Panel，Empty → @/components/EmptyState，Skeleton → @/components/LoadingBlock。确属例外的场景用 eslint-disable 注释说明原因。',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
     // Test files deliberately attach onClick handlers to generic divs
     // to assert on the exact DOM shape of the production component.
     //

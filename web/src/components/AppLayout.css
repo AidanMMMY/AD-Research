@@ -6,8 +6,9 @@
    app shell:
 
      • Sidebar 240 / 72 (already correct in global.css)
-     • Header 60px sticky, var(--bg-base), bottom hairline,
-       NO backdrop blur / NO dark glass
+     • Header 60px sticky, var(--bg-base) at rest, bottom hairline;
+       switches to the frosted --material-regular surface once the
+       page scrolls (2026-07-21)
      • Page padding: 16px mobile, 32px desktop
      • Collapse toggle lives in the header (right side) on desktop
      • Theme + color-convention toggles live in the header
@@ -18,15 +19,64 @@
    the import order in AppLayout.tsx.
    ============================================================ */
 
-/* ---- Header: drop the backdrop-blur glass effect ---- */
+/* ---- Header: opaque at rest, frosted material once scrolled ---- */
 .app-layout__header {
   /* Override the global "header uses backdrop-filter: blur(12px)"
-     rule — Phase 3 spec says "no dark glass", so we keep the
-     surface fully opaque.  Background stays var(--bg-base). */
+     rule — at rest the surface stays fully opaque on var(--bg-base).
+     The --scrolled modifier below restores a material blur. */
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
   /* Keep the bottom hairline crisp in dark mode too. */
   border-bottom: 1px solid var(--border-default);
+  transition: background var(--transition-fast);
+}
+
+.app-layout__header--scrolled {
+  background: var(--material-regular-bg);
+  backdrop-filter: var(--material-regular-blur);
+  -webkit-backdrop-filter: var(--material-regular-blur);
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .app-layout__header--scrolled {
+    background: var(--bg-base);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+}
+
+/* ---- Header ⌘K search entry (desktop, 2026-07-21) ---- */
+.app-layout__header-search {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  height: 36px;
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-md);
+  background: transparent;
+  border: 1px solid var(--border-default);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast),
+    border-color var(--transition-fast);
+  flex-shrink: 0;
+}
+
+.app-layout__header-search:hover,
+.app-layout__header-search:focus-visible {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+  outline: none;
+}
+
+.app-layout__header-search-kbd {
+  font-family: inherit;
+  font-size: 11px;
+  color: var(--text-tertiary);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  padding: 1px 5px;
+  line-height: 1.4;
 }
 
 /* ---- Page content: bump desktop padding from 20 → 32 ---- */

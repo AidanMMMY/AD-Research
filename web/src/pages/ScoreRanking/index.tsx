@@ -2,7 +2,7 @@ import './styles.css';
 
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Table, Tabs } from 'antd';
+import { Table, Tabs, Segmented } from 'antd';
 import { useScores, useScoreTemplates } from '@/hooks/useScores';
 import { useAIHelp } from '@/hooks/useAIHelp';
 import { useSettingsStore } from '@/stores/settings';
@@ -38,6 +38,17 @@ export default function ScoreRanking() {
     templateId ? t.id === templateId : t.is_default,
   );
 
+  const activeTemplateKey = String(templateId || templates?.find((t) => t.is_default)?.id || '');
+  const templateOptions = templates?.map((t) => ({ value: String(t.id), label: t.name })) || [];
+
+  // Mean composite score of the visible slice — always has a value when
+  // items exist, unlike the old "榜首收益得分" card which could read 0.0.
+  const avgScore =
+    scoresData?.items && scoresData.items.length > 0
+      ? scoresData.items.reduce((sum: number, it: any) => sum + (it.composite_score ?? 0), 0) /
+        scoresData.items.length
+      : undefined;
+
   const handleOpenHelp = () => {
     open({
       pageType: 'score_ranking',
@@ -53,7 +64,8 @@ export default function ScoreRanking() {
     {
       title: <HelpPopover termKey="rank_overall" mode={mode}>全市场排名</HelpPopover>,
       dataIndex: 'rank_overall',
-      width: 90,
+      // Wide enough for 5-char title + sorter + help icon on one line.
+      width: 132,
       sorter: (a: any, b: any) => (a.rank_overall ?? Infinity) - (b.rank_overall ?? Infinity),
       render: (v: number) => (
         <span className={`tabular-nums score-rank-cell ${v <= 3 ? 'score-rank-cell--top3' : 'score-rank-cell--normal'}`}>
@@ -64,7 +76,8 @@ export default function ScoreRanking() {
     {
       title: <HelpPopover termKey="rank_category" mode={mode}>分类排名</HelpPopover>,
       dataIndex: 'rank_category',
-      width: 90,
+      // Wide enough for 4-char title + sorter + help icon on one line.
+      width: 116,
       responsive: ['md'] as ('md' | 'lg' | 'xl' | 'xxl')[],
       sorter: (a: any, b: any) => (a.rank_category ?? Infinity) - (b.rank_category ?? Infinity),
       render: (v: number) => <span className="tabular-nums font-mono ad-text-tertiary">{v}</span>,
@@ -91,11 +104,6 @@ export default function ScoreRanking() {
       render: (_: unknown, record: any) => <SparklineCell code={record.etf_code} days={7} />,
     },
   ];
-
-  const templateTabItems = templates?.map((t) => ({
-    key: String(t.id),
-    label: t.name,
-  })) || [];
 
   return (
     <PageShell maxWidth="wide">
@@ -165,28 +173,28 @@ export default function ScoreRanking() {
                 </Panel>
 
                 <Panel variant="default" className="score-summary-card">
-                  <div className="score-summary-card__label">榜首收益得分</div>
+                  <div className="score-summary-card__label">平均评分</div>
                   <div className="tabular-nums score-summary-card__value">
-                    {scoresData.items[0].score_return?.toFixed(1) ?? '—'}
+                    {avgScore?.toFixed(1) ?? '—'}
                   </div>
                   <div className="score-summary-card__sub">
-                    满分 100
+                    Top {scoresData.items.length} 均值 · 满分 100
                   </div>
                 </Panel>
               </ResponsiveGrid>
             </section>
           )}
 
-          <Panel variant="default" padding="none" className="ad-mb-5">
-            <Tabs
-              activeKey={String(templateId || templates?.find((t) => t.is_default)?.id || '')}
-              onChange={(key) => setTemplateId(Number(key))}
-              items={templateTabItems}
-              className="ad-mb-0"
-            />
-          </Panel>
-
-          <SectionHeading title={`综合评分 Top ${scoresData?.items.length || 0}`} />
+          <SectionHeading
+            title={`综合评分 Top ${scoresData?.items.length || 0}`}
+            action={
+              <Segmented
+                value={activeTemplateKey}
+                onChange={(key) => setTemplateId(Number(key))}
+                options={templateOptions}
+              />
+            }
+          />
 
           <Panel
             variant="default"

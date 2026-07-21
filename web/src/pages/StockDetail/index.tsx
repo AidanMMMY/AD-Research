@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import './styles.css';
-import { Tabs, Row, Col, Statistic, Spin, Descriptions, Radio, Checkbox, Space, Alert, Button, message, Skeleton } from 'antd';
+import { Tabs, Row, Col, Statistic, Descriptions, Radio, Checkbox, Space, Alert, Button, message } from 'antd';
 import { StarOutlined, StarFilled, RobotOutlined, ReadOutlined, SmileOutlined, StockOutlined, ArrowUpOutlined, ArrowDownOutlined, MinusOutlined, ArrowLeftOutlined, SearchOutlined } from '@ant-design/icons';
 import { useStockDetail } from '@/hooks/useStocks';
 import { useInstrumentScore } from '@/hooks/useScores';
@@ -10,6 +10,7 @@ import { useAIHelp } from '@/hooks/useAIHelp';
 import { marketApi, researchApi, stockFundamentalApi } from '@/api';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import KLineChart, { DEFAULT_OVERLAYS } from '@/components/KLineChart';
+import LoadingBlock from '@/components/LoadingBlock';
 import ScoreRadar from '@/components/ScoreRadar';
 import Panel from '@/components/Panel';
 import PageShell from '@/components/PageShell';
@@ -159,7 +160,7 @@ export default function StockDetail() {
   if (stockLoading) {
     return (
       <PageShell maxWidth="wide">
-        <Spin size="large" className="detail-loading" />
+        <LoadingBlock size="lg" className="detail-loading" />
       </PageShell>
     );
   }
@@ -302,7 +303,7 @@ export default function StockDetail() {
               </Space>
             </Space>
           </div>
-          {historyLoading ? <Spin /> : (
+          {historyLoading ? <LoadingBlock size="sm" /> : (
             safeHistoryItems.length ? (
               <KLineChart data={safeHistoryItems} overlays={overlays} adjusted={adjusted} />
             ) : (
@@ -382,7 +383,7 @@ export default function StockDetail() {
         <div className="detail-tab-panel">
           {notesLoading || sentimentLoading ? (
             <Panel title="AI分析" padding="md">
-              <Skeleton active paragraph={{ rows: 8 }} />
+              <LoadingBlock size="lg" />
             </Panel>
           ) : (
             <Row gutter={[16, 16]}>
@@ -554,7 +555,7 @@ export default function StockDetail() {
       children: (
         <Panel title="估值数据" padding="md">
           {!stockFund ? (
-            <Skeleton active paragraph={{ rows: 4 }} />
+            <LoadingBlock size="md" />
           ) : (
             <div>
               <div className="valuation-grid">

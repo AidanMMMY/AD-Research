@@ -35,7 +35,6 @@ import {
   DatePicker,
   Input,
   Segmented,
-  Skeleton,
   Space,
   Spin,
   Table,
@@ -95,6 +94,47 @@ function fmtShares(v: number | null | undefined): string {
   return v.toFixed(0);
 }
 
+/** Bare code without exchange suffix — grouping key for holdings dedupe. */
+function bareCodeKey(code: string): string {
+  return code.split('.')[0].toUpperCase();
+}
+
+/** A code is navigable to the instrument detail page only when suffixed. */
+function isNavigableCode(code: string): boolean {
+  return code.includes('.');
+}
+
+/**
+ * Dedupe holdings by normalised code: '300750' and '300750.SZ' are the same
+ * instrument, so collapse them into one row keyed on the suffixed standard
+ * code. On conflict prefer the row from the latest disclosure date, then
+ * back-fill null weight / shares / market value from the losing row.
+ */
+function mergeHoldings(items: ETFHoldingItem[]): ETFHoldingItem[] {
+  const byKey = new Map<string, ETFHoldingItem>();
+  for (const item of items) {
+    const key = bareCodeKey(item.holding_code);
+    const existing = byKey.get(key);
+    if (!existing) {
+      byKey.set(key, item);
+      continue;
+    }
+    const preferItem =
+      (isNavigableCode(item.holding_code) && !isNavigableCode(existing.holding_code)) ||
+      (item.holdings_as_of_date ?? '') > (existing.holdings_as_of_date ?? '');
+    const winner = preferItem ? item : existing;
+    const loser = preferItem ? existing : item;
+    byKey.set(key, {
+      ...winner,
+      holding_name: winner.holding_name ?? loser.holding_name,
+      weight: winner.weight ?? loser.weight,
+      shares: winner.shares ?? loser.shares,
+      market_value: winner.market_value ?? loser.market_value,
+    });
+  }
+  return Array.from(byKey.values());
+}
+
 /** Status → antd Tag variant + label, used in the diff table. */
 const STATUS_META: Record<
   string,
@@ -148,6 +188,12 @@ export default function EtfHoldingsHistoryPage() {
     enabled: !!code && !!selectedDate,
     retry: 1,
   });
+
+  // Holdings deduped by normalised code (bare + suffixed rows collapse).
+  const mergedHoldings = useMemo(
+    () => mergeHoldings(holdingsQ.data?.holdings ?? []),
+    [holdingsQ.data],
+  );
 
   // -- Diff (from / to) ----------------------------------------------------
   const [diffFrom, setDiffFrom] = useState<string | null>(null);
@@ -222,8 +268,16 @@ export default function EtfHoldingsHistoryPage() {
         dataIndex: 'holding_code',
         key: 'holding_code',
         width: 220,
-        render: (v: string, row) => (
-          <InstrumentCodeTag code={v} name={row.holding_name ?? ''} />
+        render: (v: string) => (
+          <Space size={4}>
+            {/* No `name` prop — the adjacent 名称 column already shows it. */}
+            <InstrumentCodeTag code={v} />
+            {!isNavigableCode(v) && (
+              <Tooltip title="代码缺少市场后缀，暂不支持跳转标的详情">
+                <ThemeTag variant="neutral">未标准化</ThemeTag>
+              </Tooltip>
+            )}
+          </Space>
         ),
       },
       {
@@ -285,8 +339,9 @@ export default function EtfHoldingsHistoryPage() {
         dataIndex: 'holding_code',
         key: 'holding_code',
         width: 220,
-        render: (v: string, row) => (
-          <InstrumentCodeTag code={v} name={row.holding_name ?? ''} />
+        render: (v: string) => (
+          // No `name` prop — the adjacent 名称 column already shows it.
+          <InstrumentCodeTag code={v} />
         ),
       },
       {
@@ -414,7 +469,7 @@ export default function EtfHoldingsHistoryPage() {
         }
       />
 
-      {/* KPI Row */}
+      {/* KPI Row — comparison cards only render with ≥2 disclosure periods. */}
       <div className="ehh-kpi-row">
         <StatCard
           title="最新期"
@@ -422,20 +477,24 @@ export default function EtfHoldingsHistoryPage() {
           icon={<StockOutlined />}
           loading={snapshotsQ.isLoading}
         />
-        <StatCard
-          title="上期"
-          value={previousDate ?? NULL_PLACEHOLDER}
-          loading={snapshotsQ.isLoading}
-        />
-        <StatCard
-          title="累计前10权重变化 (本期 vs 上期)"
-          value={
-            totalWeightDelta === null
-              ? NULL_PLACEHOLDER
-              : `${totalWeightDelta > 0 ? '+' : ''}${(totalWeightDelta * 100).toFixed(2)}%`
-          }
-          loading={holdingsQ.isLoading || snapshotsQ.isLoading}
-        />
+        {snapshots.length >= 2 && (
+          <>
+            <StatCard
+              title="上期"
+              value={previousDate ?? NULL_PLACEHOLDER}
+              loading={snapshotsQ.isLoading}
+            />
+            <StatCard
+              title="累计前10权重变化 (本期 vs 上期)"
+              value={
+                totalWeightDelta === null
+                  ? NULL_PLACEHOLDER
+                  : `${totalWeightDelta > 0 ? '+' : ''}${(totalWeightDelta * 100).toFixed(2)}%`
+              }
+              loading={holdingsQ.isLoading || snapshotsQ.isLoading}
+            />
+          </>
+        )}
         <StatCard
           title="可用期数"
           value={snapshots.length}
@@ -455,10 +514,18 @@ export default function EtfHoldingsHistoryPage() {
       >
         {snapshotsQ.isLoading ? (
           <div className="ehh-skeleton-full">
-            <Skeleton.Input active />
+            <LoadingBlock size="sm" />
           </div>
-        ) : sparklineData.length === 0 ? (
-          <EmptyState title="暂无权重走势数据" description="该 ETF 尚未披露任何季度的持仓。" />
+        ) : sparklineData.length < 2 ? (
+          // A single point would draw a meaningless flat line — compact empty state.
+          <EmptyState
+            title="暂无权重走势数据"
+            description={
+              sparklineData.length === 1
+                ? '仅有 1 期披露数据，需 ≥2 期才能绘制走势。'
+                : '该 ETF 尚未披露任何季度的持仓。'
+            }
+          />
         ) : (
           <div className="ehh-sparkline-row">
             <div className="ehh-sparkline-chart">
@@ -503,7 +570,7 @@ export default function EtfHoldingsHistoryPage() {
           {/* Timeline */}
           <Panel title="披露期">
             {snapshotsQ.isLoading ? (
-              <Skeleton active paragraph={{ rows: 4 }} />
+              <LoadingBlock size="md" />
             ) : snapshots.length === 0 ? (
               <EmptyState
                 title="尚无披露期"
@@ -569,13 +636,17 @@ export default function EtfHoldingsHistoryPage() {
               <div className="ad-table-scroll">
                 <Table
                   size="small"
-                  onRow={(row) => ({
-                    onClick: () => navigate(`/instruments/${row.holding_code}`),
-                    style: { cursor: 'pointer' },
-                  })}
-                  rowKey={(r) => `${r.holding_code}-${r.holdings_as_of_date ?? ''}`}
+                  onRow={(row) =>
+                    isNavigableCode(row.holding_code)
+                      ? {
+                          onClick: () => navigate(`/instruments/${row.holding_code}`),
+                          style: { cursor: 'pointer' },
+                        }
+                      : { title: '代码缺少市场后缀，暂不支持跳转标的详情' }
+                  }
+                  rowKey="holding_code"
                   columns={snapshotColumns}
-                  dataSource={holdingsQ.data.holdings}
+                  dataSource={mergedHoldings}
                   pagination={false}
                   scroll={{ x: 800 }}
                 />
@@ -664,10 +735,14 @@ export default function EtfHoldingsHistoryPage() {
               <div className="ad-table-scroll">
                 <Table
                   size="small"
-                  onRow={(row) => ({
-                    onClick: () => navigate(`/instruments/${row.holding_code}`),
-                    style: { cursor: 'pointer' },
-                  })}
+                  onRow={(row) =>
+                    isNavigableCode(row.holding_code)
+                      ? {
+                          onClick: () => navigate(`/instruments/${row.holding_code}`),
+                          style: { cursor: 'pointer' },
+                        }
+                      : { title: '代码缺少市场后缀，暂不支持跳转标的详情' }
+                  }
                   rowKey={(r) => r.holding_code}
                   columns={diffColumns}
                   dataSource={diffQ.data.entries}

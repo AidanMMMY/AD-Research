@@ -25,6 +25,8 @@ import './styles/global.css';
 // P3 (2026-07-16): also resolve `'system'` against `prefers-color-scheme`
 // so the very first paint already matches the OS — without this the user
 // would see a light flash before the React useEffect catches up.
+// Dark-first (2026-07-21): `getInitialTheme()` defaults to `'dark'` for
+// users without a stored preference, so the first paint is dark.
 const initialResolved: ResolvedTheme = resolveTheme(getInitialTheme());
 document.documentElement.setAttribute('data-theme', initialResolved);
 // Default color convention attribute is applied by AppLayout after mount
@@ -52,8 +54,8 @@ const useAntdTheme = () => {
   // holds the literal `'system'` because useTheme resolves before writing.
   const [mode, setMode] = useState<ResolvedTheme>(() =>
     typeof document !== 'undefined'
-      ? (document.documentElement.getAttribute('data-theme') as ResolvedTheme) || 'light'
-      : 'light',
+      ? (document.documentElement.getAttribute('data-theme') as ResolvedTheme) || 'dark'
+      : 'dark',
   );
 
   useEffect(() => {
@@ -71,22 +73,26 @@ const useAntdTheme = () => {
   return {
     algorithm: isDark ? theme.darkAlgorithm : theme.defaultAlgorithm,
     token: {
-      colorPrimary: css('--accent', '#2563EB'),
-      colorPrimaryHover: css('--accent-hover', '#1D4ED8'),
-      colorPrimaryActive: css('--accent-active', '#1E40AF'),
-      colorInfo: css('--color-info', '#2563EB'),
-      colorSuccess: css('--color-success', '#30A46C'),
-      colorWarning: css('--color-warning', '#F0B100'),
-      colorError: css('--color-error', '#E5484D'),
-      colorBgBase: css('--bg-base', '#FAFBFC'),
-      colorBgContainer: css('--card-bg', '#ffffff'),
-      colorBgElevated: css('--bg-elevated', '#F3F5F7'),
-      colorTextBase: css('--text-primary', '#0F1115'),
-      colorTextSecondary: css('--text-secondary', '#5B6778'),
-      colorTextTertiary: css('--text-tertiary', '#8894A4'),
-      colorTextLightSolid: css('--text-on-accent', '#ffffff'),
-      colorBorder: css('--border-default', '#e5e7eb'),
-      colorBorderSecondary: css('--bg-elevated', '#F3F5F7'),
+      // Fallbacks mirror the dark-theme defaults in theme.css (dark-first
+      // since 2026-07-21); in the browser `readCssVar` always returns the
+      // computed value for the active theme, so these only matter for
+      // SSR / no-DOM rendering.
+      colorPrimary: css('--accent', '#60A5FA'),
+      colorPrimaryHover: css('--accent-hover', '#93BBFD'),
+      colorPrimaryActive: css('--accent-active', '#3B82F6'),
+      colorInfo: css('--color-info', '#60A5FA'),
+      colorSuccess: css('--color-success', '#34D399'),
+      colorWarning: css('--color-warning', '#EAB308'),
+      colorError: css('--color-error', '#F87171'),
+      colorBgBase: css('--bg-base', '#0D1117'),
+      colorBgContainer: css('--card-bg', '#1C2128'),
+      colorBgElevated: css('--bg-elevated', '#161B22'),
+      colorTextBase: css('--text-primary', '#E6EDF3'),
+      colorTextSecondary: css('--text-secondary', '#A0A0A0'),
+      colorTextTertiary: css('--text-tertiary', '#9CA3AF'),
+      colorTextLightSolid: css('--text-on-accent', '#0D1117'),
+      colorBorder: css('--border-default', '#30363D'),
+      colorBorderSecondary: css('--bg-elevated', '#161B22'),
       borderRadius: parseInt(css('--radius-md', '8px'), 10),
       borderRadiusSM: parseInt(css('--radius-sm', '4px'), 10),
       borderRadiusLG: parseInt(css('--radius-xl', '12px'), 10),
@@ -106,10 +112,10 @@ const useAntdTheme = () => {
     components: {
       Table: {
         headerBg: 'transparent',
-        headerColor: css('--text-tertiary', '#8894A4'),
+        headerColor: css('--text-tertiary', '#9CA3AF'),
         headerSplitColor: 'transparent',
-        rowHoverBg: css('--bg-hover', 'rgba(0, 0, 0, 0.03)'),
-        borderColor: css('--border-default', '#e5e7eb'),
+        rowHoverBg: css('--bg-hover', 'rgba(255, 255, 255, 0.05)'),
+        borderColor: css('--border-default', '#30363D'),
         cellPaddingInline: 16,
         cellPaddingBlock: 14,
         headerBorderRadius: 0,
@@ -122,51 +128,51 @@ const useAntdTheme = () => {
       Card: {
         borderRadius: parseInt(css('--card-radius', '12px'), 10),
         borderRadiusLG: parseInt(css('--radius-2xl', '16px'), 10),
-        colorBgContainer: css('--card-bg', '#ffffff'),
+        colorBgContainer: css('--card-bg', '#1C2128'),
       },
       Modal: {
         borderRadiusLG: parseInt(css('--radius-xl', '12px'), 10),
-        colorBgElevated: css('--bg-elevated', '#F3F5F7'),
+        colorBgElevated: css('--bg-elevated', '#161B22'),
       },
       Drawer: {
-        colorBgElevated: css('--bg-elevated', '#F3F5F7'),
+        colorBgElevated: css('--bg-elevated', '#161B22'),
       },
       Tag: {
         borderRadiusSM: parseInt(css('--radius-sm', '4px'), 10),
-        defaultBg: css('--bg-surface', '#EDF0F3'),
-        defaultColor: css('--text-secondary', '#5B6778'),
+        defaultBg: css('--bg-surface', '#1C2128'),
+        defaultColor: css('--text-secondary', '#A0A0A0'),
       },
       Input: {
         borderRadius: parseInt(css('--radius-md', '8px'), 10),
-        colorBgContainer: css('--bg-input', '#ffffff'),
-        activeBorderColor: css('--accent', '#2563EB'),
-        activeShadow: `0 0 0 2px ${css('--accent-glow', 'rgba(37, 99, 235, 0.12)')}`,
+        colorBgContainer: css('--bg-input', 'rgba(255, 255, 255, 0.04)'),
+        activeBorderColor: css('--accent', '#60A5FA'),
+        activeShadow: `0 0 0 2px ${css('--accent-glow', 'rgba(96, 165, 250, 0.15)')}`,
       },
       Select: {
         borderRadius: parseInt(css('--radius-md', '8px'), 10),
-        colorBgContainer: css('--bg-input', '#ffffff'),
-        optionSelectedBg: css('--accent-dim', 'rgba(37, 99, 235, 0.08)'),
-        optionSelectedColor: css('--accent', '#2563EB'),
+        colorBgContainer: css('--bg-input', 'rgba(255, 255, 255, 0.04)'),
+        optionSelectedBg: css('--accent-dim', 'rgba(96, 165, 250, 0.12)'),
+        optionSelectedColor: css('--accent', '#60A5FA'),
       },
       Tabs: {
-        inkBarColor: css('--accent', '#2563EB'),
-        itemSelectedColor: css('--text-primary', '#0F1115'),
-        itemHoverColor: css('--text-secondary', '#5B6778'),
-        itemColor: css('--text-tertiary', '#8894A4'),
+        inkBarColor: css('--accent', '#60A5FA'),
+        itemSelectedColor: css('--text-primary', '#E6EDF3'),
+        itemHoverColor: css('--text-secondary', '#A0A0A0'),
+        itemColor: css('--text-tertiary', '#9CA3AF'),
       },
       Alert: {
-        colorError: css('--color-error', '#E5484D'),
-        colorErrorBg: css('--color-error-dim', 'rgba(229, 72, 77, 0.08)'),
-        colorErrorBorder: css('--color-error-border', 'rgba(229, 72, 77, 0.20)'),
-        colorWarning: css('--color-warning', '#F0B100'),
-        colorWarningBg: css('--color-warning-dim', 'rgba(240, 177, 0, 0.08)'),
-        colorWarningBorder: css('--color-warning-border', 'rgba(240, 177, 0, 0.20)'),
-        colorSuccess: css('--color-success', '#30A46C'),
-        colorSuccessBg: css('--color-success-dim', 'rgba(48, 164, 108, 0.08)'),
-        colorSuccessBorder: css('--color-success-border', 'rgba(48, 164, 108, 0.20)'),
-        colorInfo: css('--color-info', '#2563EB'),
-        colorInfoBg: css('--accent-dim', 'rgba(37, 99, 235, 0.08)'),
-        colorInfoBorder: css('--accent-border', 'rgba(37, 99, 235, 0.20)'),
+        colorError: css('--color-error', '#F87171'),
+        colorErrorBg: css('--color-error-dim', 'rgba(248, 113, 113, 0.14)'),
+        colorErrorBorder: css('--color-error-border', 'rgba(248, 113, 113, 0.30)'),
+        colorWarning: css('--color-warning', '#EAB308'),
+        colorWarningBg: css('--color-warning-dim', 'rgba(234, 179, 8, 0.12)'),
+        colorWarningBorder: css('--color-warning-border', 'rgba(234, 179, 8, 0.25)'),
+        colorSuccess: css('--color-success', '#34D399'),
+        colorSuccessBg: css('--color-success-dim', 'rgba(52, 211, 153, 0.14)'),
+        colorSuccessBorder: css('--color-success-border', 'rgba(52, 211, 153, 0.30)'),
+        colorInfo: css('--color-info', '#60A5FA'),
+        colorInfoBg: css('--accent-dim', 'rgba(96, 165, 250, 0.12)'),
+        colorInfoBorder: css('--accent-border', 'rgba(96, 165, 250, 0.25)'),
       },
     },
   };

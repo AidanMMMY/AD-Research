@@ -44,7 +44,7 @@ export function humanizeHeader(key: string): string {
   const spaced = key
     .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
     .replace(/([A-Z]+)([A-Z][a-z])/g, '$1 $2')
-    .replace(/[_\-]+/g, ' ')
+    .replace(/[_-]+/g, ' ')
     .trim();
   return spaced
     .split(/\s+/)
@@ -216,7 +216,7 @@ export function rowsToXlsxBytes(rows: ExportRow[], sheetName = 'Sheet1', headers
     `<sheetData>${rowsXml.join('')}</sheetData>` +
     `</worksheet>`;
 
-  const safeSheetName = sheetName.replace(/[\\/?*\[\]:]/g, '_').slice(0, 31) || 'Sheet1';
+  const safeSheetName = sheetName.replace(/[\\/?*[\]:]/g, '_').slice(0, 31) || 'Sheet1';
   const workbookXml =
     `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
     `<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" ` +

@@ -2,7 +2,7 @@ import { Statistic } from 'antd';
 import { ArrowUpOutlined, ArrowDownOutlined, MinusOutlined } from '@ant-design/icons';
 import { useSettingsStore } from '@/stores/settings';
 import { getReturnColor } from '@/utils/color';
-import GlassCard from './GlassCard';
+import Panel from './Panel';
 
 interface IndicatorCardProps {
   title: string;
@@ -20,7 +20,7 @@ function getDirectionIcon(value?: number | null) {
 export default function IndicatorCard({ title, value, suffix, precision = 2, prefix }: IndicatorCardProps) {
   const colorConvention = useSettingsStore((s) => s.colorConvention);
   return (
-    <GlassCard padding="sm">
+    <Panel variant="minimal" padding="sm" className="glass-card">
       <div className="tabular-nums">
         <Statistic
           title={title}
@@ -31,6 +31,6 @@ export default function IndicatorCard({ title, value, suffix, precision = 2, pre
           valueStyle={{ color: getReturnColor(value, colorConvention), fontSize: 20 }}
         />
       </div>
-    </GlassCard>
+    </Panel>
   );
 }

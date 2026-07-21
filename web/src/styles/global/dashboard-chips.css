@@ -1,0 +1,83 @@
+/* ============================================================
+   M26: Dashboard quick-actions consolidated chip bar
+   Replaces the previous three .dashboard-learning-chips rows with a
+   single grouped bar. Visual grouping via inline .__divider pipes
+   keeps the page top from feeling stacked.
+   ============================================================ */
+.dashboard-quick-actions {
+  margin: 0 0 var(--space-5);
+  padding: 10px 14px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  background: var(--bg-elevated);
+  box-shadow: var(--shadow-card);
+}
+
+.dashboard-quick-actions__row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.dashboard-quick-actions__group {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.dashboard-quick-actions__label {
+  font-size: var(--text-label-size);
+  font-weight: 500;
+  color: var(--text-tertiary);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-right: 4px;
+  white-space: nowrap;
+}
+
+.dashboard-quick-actions__divider {
+  width: 1px;
+  height: 18px;
+  background: var(--border-default);
+  margin: 0 4px;
+  flex-shrink: 0;
+}
+
+.dashboard-quick-actions__meta {
+  margin-left: auto;
+  font-size: var(--text-small-size);
+  color: var(--text-tertiary);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+@media (max-width: 767px) {
+  .dashboard-quick-actions {
+    padding: 8px 10px;
+  }
+
+  .dashboard-quick-actions__divider {
+    display: none;
+  }
+
+  .dashboard-quick-actions__group {
+    width: 100%;
+    margin-bottom: 4px;
+  }
+
+  .dashboard-quick-actions__meta {
+    margin-left: 0;
+    width: 100%;
+    text-align: right;
+  }
+}
+
+/* ============================================================
+   M26: Dashboard KPI strip (Phase 3, 2026-07-08 — DailyLesson now lives
+   in its own section below the KPI strip, so the old side-by-side
+   grid is no longer needed and was removed alongside the dead
+   "本周已学 N 个术语" badge.)
+   ============================================================ */
+

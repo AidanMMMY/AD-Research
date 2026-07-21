@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Alert, Segmented, Select, Spin, Table, Tabs, Tag, Tooltip } from 'antd';
+import { Alert, Segmented, Select, Table, Tabs, Tag, Tooltip } from 'antd';
 import { InfoCircleOutlined } from '@ant-design/icons';
 import ReactECharts from 'echarts-for-react';
 import type { EChartsOption } from 'echarts';
@@ -15,6 +15,7 @@ import ResponsiveGrid from '@/components/ResponsiveGrid';
 import EmptyState from '@/components/EmptyState';
 import HelpPopover from '@/components/HelpPopover';
 import LastUpdated from '@/components/LastUpdated';
+import LoadingBlock from '@/components/LoadingBlock';
 import ReturnTag from '@/components/ReturnTag';
 import ThemeTag from '@/components/ThemeTag';
 import { useSettingsStore } from '@/stores/settings';
@@ -713,7 +714,7 @@ export default function SectorRotation() {
             <div className="ad-chart-container sector-rotation__chart-container">
               {showSkeleton ? (
                 <div className="sector-rotation__chart-loader">
-                  <Spin />
+                  <LoadingBlock size="sm" />
                 </div>
               ) : sectors.length === 0 ? (
                 <EmptyState
@@ -738,7 +739,7 @@ export default function SectorRotation() {
             <div className="ad-chart-container sector-rotation__chart-container">
               {showSkeleton ? (
                 <div className="sector-rotation__chart-loader">
-                  <Spin />
+                  <LoadingBlock size="sm" />
                 </div>
               ) : sectors.length === 0 ? (
                 <EmptyState
@@ -765,7 +766,7 @@ export default function SectorRotation() {
           variant="default"
         >
           {showSkeleton ? (
-            <Spin />
+            <LoadingBlock size="sm" />
           ) : sectors.length === 0 ? (
             <EmptyState
               title="暂无板块数据"
@@ -1027,7 +1028,7 @@ function ConstituentsTab({
       </div>
 
       {isLoading && !data ? (
-        <Spin />
+        <LoadingBlock size="sm" />
       ) : !selectedSector ? (
         <EmptyState
           title="请选择板块"

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
-  Table, Input, Select, DatePicker, Button, Space, Tag, Skeleton, message,
+  Table, Input, Select, DatePicker, Button, Space, Tag, message,
 } from 'antd';
 import { SearchOutlined, ReloadOutlined, CalendarOutlined, FileTextOutlined } from '@ant-design/icons';
 import { type Dayjs } from 'dayjs';
@@ -12,6 +12,7 @@ import HelpTrigger from '@/components/HelpTrigger';
 import PageHeader from '@/components/PageHeader';
 import LastUpdated from '@/components/LastUpdated';
 import InstrumentCodeTag from '@/components/InstrumentCodeTag';
+import LoadingBlock from '@/components/LoadingBlock';
 import {
   useCninfoReportList,
   useCninfoReportCoverage,
@@ -378,7 +379,7 @@ export default function CninfoReportsPage() {
 
       <Panel variant="default" padding="none">
         {isLoading ? (
-          <Skeleton active paragraph={{ rows: 10 }} />
+          <LoadingBlock size="lg" />
         ) : items.length === 0 ? (
           <EmptyState
             icon={<FileTextOutlined />}
@@ -496,7 +497,7 @@ function CninfoReportDetailDrawer({
         onClick={(e) => e.stopPropagation()}
       >
         {loading || !report ? (
-          <Skeleton active paragraph={{ rows: 8 }} />
+          <LoadingBlock size="lg" />
         ) : (
           <>
             <h3>{report.announcement_title}</h3>

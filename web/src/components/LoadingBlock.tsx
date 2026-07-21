@@ -30,18 +30,25 @@ const skeletonConfig: Record<LoadingBlockSize, SkeletonConfig> = {
 export interface LoadingBlockProps {
   size?: LoadingBlockSize;
   label?: string;
+  className?: string;
   style?: CSSProperties;
 }
 
 export default function LoadingBlock({
   size = 'md',
   label,
+  className,
   style,
 }: LoadingBlockProps) {
   const config = skeletonConfig[size];
 
   return (
-    <div className="loading-block" aria-busy="true" aria-label="正在加载内容" style={style}>
+    <div
+      className={`loading-block ${className ?? ''}`.trim()}
+      aria-busy="true"
+      aria-label="正在加载内容"
+      style={style}
+    >
       <div className="loading-block__bars">
         {config.short.map((widthPct, i) => (
           <div

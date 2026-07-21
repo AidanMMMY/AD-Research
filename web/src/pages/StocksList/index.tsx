@@ -2,7 +2,7 @@ import './styles.css';
 
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Table, Input, Select, List, Skeleton } from 'antd';
+import { Table, Input, Select, List } from 'antd';
 import { SearchOutlined } from '@ant-design/icons';
 import { useStockList } from '@/hooks/useStocks';
 import { useInstrumentMarkets, useInstrumentCategories } from '@/hooks/useInstrumentList';
@@ -12,6 +12,7 @@ import PageShell from '@/components/PageShell';
 import PageHeader from '@/components/PageHeader';
 import FilterToolbar from '@/components/FilterToolbar';
 import Panel from '@/components/Panel';
+import LoadingBlock from '@/components/LoadingBlock';
 import EmptyState from '@/components/EmptyState';
 import InstrumentCodeTag from '@/components/InstrumentCodeTag';
 import ThemeTag from '@/components/ThemeTag';
@@ -133,7 +134,7 @@ export default function StocksList() {
 
         {isMobile ? (
           isLoading ? (
-            <Skeleton active paragraph={{ rows: 10 }} />
+            <LoadingBlock size="lg" />
           ) : (data?.items?.length || 0) === 0 ? (
             <EmptyState
               title="没有符合条件的个股"

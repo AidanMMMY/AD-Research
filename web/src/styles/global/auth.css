@@ -1,0 +1,25 @@
+/* ============================================================
+   Auth loading + global error boundary
+   ============================================================ */
+.auth-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  background: var(--bg-base);
+}
+
+.global-error-boundary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: var(--space-5);
+  background: var(--bg-base);
+}
+
+.global-error-boundary .ant-alert {
+  max-width: 560px;
+  width: 100%;
+}
+

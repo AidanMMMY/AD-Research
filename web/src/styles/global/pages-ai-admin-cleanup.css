@@ -1,0 +1,249 @@
+/* ============================================================
+   Inline-style cleanup — AI/trading/admin pages
+   ============================================================ */
+
+/* ---- Utility extensions ---- */
+.ad-gap-4 { gap: var(--space-4); }
+.ad-gap-5 { gap: var(--space-5); }
+.ad-ml-2 { margin-left: var(--space-2); }
+.ad-mt-6 { margin-top: var(--space-6); }
+.ad-mt-9 { margin-top: var(--space-9); }
+.ad-mb-1 { margin-bottom: var(--space-1); }
+.ad-mb-8 { margin-bottom: var(--space-8); }
+.ad-whitespace-nowrap { white-space: nowrap; }
+
+/* ---- Research notes ---- */
+.phase5c-markdown-modal .ant-modal-body {
+  max-height: 70vh;
+  overflow: auto;
+}
+
+/* ---- Backtest / trading shared ---- */
+.detail-return-cell--rise {
+  color: var(--color-rise);
+}
+.detail-return-cell--fall {
+  color: var(--color-fall);
+}
+
+.phase5c-order-side--buy {
+  font-weight: 600;
+  color: var(--color-rise);
+}
+.phase5c-order-side--sell {
+  font-weight: 600;
+  color: var(--color-fall);
+}
+
+.phase5c-status--filled {
+  color: var(--color-rise);
+}
+.phase5c-status--pending {
+  color: var(--accent);
+}
+.phase5c-status--cancelled {
+  color: var(--text-tertiary);
+}
+.phase5c-status--rejected {
+  color: var(--color-fall);
+}
+
+.phase5c-select--xs { width: 120px; }
+.phase5c-select--sm { width: 140px; }
+.phase5c-select--md { width: 160px; }
+.phase5c-select--lg { min-width: 260px; }
+
+.phase5c-input--sm { width: 100px; }
+
+@media (max-width: 767px) {
+  .phase5c-select--xs,
+  .phase5c-select--sm,
+  .phase5c-select--md,
+  .phase5c-select--lg,
+  .phase5c-input--sm,
+  .phase5c-input--md {
+    width: 100% !important;
+    min-width: 0;
+  }
+}
+
+.phase5c-skeleton-pad {
+  padding: var(--space-4);
+}
+
+.phase5c-pnl-stat--rise .ant-statistic-content,
+.phase5c-pnl-pct--rise {
+  font-weight: 600;
+  color: var(--color-rise);
+}
+.phase5c-pnl-stat--fall .ant-statistic-content,
+.phase5c-pnl-pct--fall {
+  font-weight: 600;
+  color: var(--color-fall);
+}
+.phase5c-pnl-stat--neutral .ant-statistic-content {
+  font-weight: 600;
+}
+.phase5c-pnl-pct--neutral {
+  font-weight: 600;
+  color: var(--text-tertiary);
+}
+
+/* ---- Signal dashboard ---- */
+.phase5c-kpi-cell__value--rise {
+  color: var(--color-rise);
+}
+.phase5c-kpi-cell__value--fall {
+  color: var(--color-fall);
+}
+.phase5c-kpi-cell__value--primary {
+  color: var(--text-primary);
+}
+
+/* ---- Sentiment overview ---- */
+.ad-tooltip-list {
+  font-size: 12px;
+}
+
+.ad-heatmap-cell__score--positive {
+  color: var(--color-rise);
+}
+.ad-heatmap-cell__score--negative {
+  color: var(--color-fall);
+}
+.ad-heatmap-cell__score--neutral {
+  color: var(--text-tertiary);
+}
+
+.ad-detail-score-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: var(--space-3);
+}
+
+.ad-detail-score-value {
+  font-size: 28px;
+  font-weight: 700;
+  font-family: var(--font-mono);
+}
+.ad-detail-score-value--positive {
+  color: var(--color-rise);
+}
+.ad-detail-score-value--negative {
+  color: var(--color-fall);
+}
+.ad-detail-score-value--neutral {
+  color: var(--text-primary);
+}
+
+.ad-mover-arrow--up {
+  font-size: 12px;
+  color: var(--color-rise);
+}
+.ad-mover-arrow--down {
+  font-size: 12px;
+  color: var(--color-fall);
+}
+
+.ad-mover-name {
+  font-size: 13px;
+  color: var(--text-primary);
+  flex: 1;
+}
+
+.ad-mover-score {
+  font-size: 13px;
+  font-weight: 500;
+  font-family: var(--font-mono);
+}
+.ad-mover-score--positive {
+  color: var(--color-rise);
+}
+.ad-mover-score--negative {
+  color: var(--color-fall);
+}
+.ad-mover-score--neutral {
+  color: var(--text-tertiary);
+}
+
+/* ---- Sentiment dashboard ---- */
+.sentiment-icon--positive {
+  color: var(--color-rise);
+  font-size: 24px;
+}
+.sentiment-icon--negative {
+  color: var(--color-fall);
+  font-size: 24px;
+}
+.sentiment-icon--neutral {
+  color: var(--text-tertiary);
+  font-size: 24px;
+}
+
+.sentiment-icon-wrapper {
+  font-size: var(--text-data-xl-size);
+  margin-top: var(--space-1);
+}
+
+.sentiment-score-value {
+  font-size: 40px;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  margin-top: var(--space-1);
+}
+.sentiment-score-value--positive {
+  color: var(--color-rise);
+}
+.sentiment-score-value--negative {
+  color: var(--color-fall);
+}
+.sentiment-score-value--neutral {
+  color: var(--text-tertiary);
+}
+
+.sentiment-count {
+  font-size: 14px;
+  font-weight: 600;
+}
+.sentiment-count--positive {
+  color: var(--color-rise);
+}
+.sentiment-count--negative {
+  color: var(--color-fall);
+}
+.sentiment-count--neutral {
+  color: var(--text-tertiary);
+}
+
+/* ---- Notification / admin ---- */
+.admin-deploy-status-tag {
+  background: transparent !important;
+}
+.admin-deploy-status-tag--success {
+  color: var(--accent) !important;
+  border-color: var(--accent) !important;
+}
+.admin-deploy-status-tag--failure {
+  color: var(--color-error) !important;
+  border-color: var(--color-error) !important;
+}
+.admin-deploy-status-tag--in_progress {
+  color: var(--color-warning) !important;
+  border-color: var(--color-warning) !important;
+}
+.admin-deploy-status-tag--queued {
+  color: var(--text-secondary) !important;
+  border-color: var(--text-secondary) !important;
+}
+
+.admin-server-card--stopped {
+  border-color: var(--color-error);
+}
+
+/* ---- Routes ---- */
+.route-suspense {
+  padding: 40px;
+  text-align: center;
+}
+

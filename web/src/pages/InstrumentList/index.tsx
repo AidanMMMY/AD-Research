@@ -8,7 +8,6 @@ import {
   Select,
   InputNumber,
   List,
-  Skeleton,
   Row,
   Col,
   Button,
@@ -37,6 +36,7 @@ import PageShell from '@/components/PageShell';
 import PageHeader from '@/components/PageHeader';
 import FilterToolbar from '@/components/FilterToolbar';
 import Panel from '@/components/Panel';
+import LoadingBlock from '@/components/LoadingBlock';
 import EmptyState from '@/components/EmptyState';
 import InstrumentCodeTag from '@/components/InstrumentCodeTag';
 import ThemeTag from '@/components/ThemeTag';
@@ -934,7 +934,7 @@ export default function InstrumentList() {
 
         {isMobile ? (
           isLoading ? (
-            <Skeleton active paragraph={{ rows: 10 }} />
+            <LoadingBlock size="lg" />
           ) : (data?.items?.length || 0) === 0 ? (
             <EmptyState
               title="没有符合条件的标的"

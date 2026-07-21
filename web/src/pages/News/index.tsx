@@ -10,9 +10,9 @@ import {
   DatePicker,
   Tag,
   Badge,
+  Button,
   Space,
   Spin,
-  Skeleton,
   Tooltip,
   message,
 } from 'antd';
@@ -41,6 +41,8 @@ import PageHeader from '@/components/PageHeader';
 import FilterToolbar from '@/components/FilterToolbar';
 import Panel from '@/components/Panel';
 import EmptyState from '@/components/EmptyState';
+import DetailDrawer from '@/components/DetailDrawer';
+import LoadingBlock from '@/components/LoadingBlock';
 import InstrumentCodeTag from '@/components/InstrumentCodeTag';
 import ThemeTag from '@/components/ThemeTag';
 import type { ThemeTagVariant } from '@/components/ThemeTag';
@@ -77,6 +79,13 @@ const NEWS_PAGE_STYLE = `
 .ad-news-card:active {
   background: var(--bg-active);
   transform: scale(var(--press-scale-subtle, 0.99));
+}
+/* Full body text inside the detail drawer — the card clamps the same
+   body field, the drawer shows it in full. */
+.news-drawer-body {
+  white-space: pre-wrap;
+  line-height: 1.7;
+  color: var(--text-secondary);
 }
 @media (prefers-reduced-motion: reduce) {
   .news-political-chip,
@@ -260,7 +269,10 @@ function NewsCard({
   const sentiment = article.sentiment_label;
 
   return (
-    <article
+    // Custom button: a semantic ``<article>`` cannot carry
+    // ``role="button"`` (jsx-a11y error), so the card is a plain div
+    // with the full button contract (role + tabIndex + Enter/Space).
+    <div
       className="ad-news-card"
       role="button"
       tabIndex={0}
@@ -390,7 +402,7 @@ function NewsCard({
           </a>
         </Tooltip>
       </div>
-    </article>
+    </div>
   );
 }
 
@@ -399,6 +411,194 @@ function formatBigNumber(n: number): string {
   if (n >= 1_000) return `${(n / 1_000).toFixed(1)}k`;
   return String(n);
 }
+
+/**
+ * Article detail drawer — opens in place of the old ``/news/:id``
+ * navigation so reading a story no longer loses the feed's scroll
+ * position, matching the Modal/drawer pattern used by 研报/公告.
+ * Renders only the fields the list payload already carries (no extra
+ * request); the deep-link route stays for full-text fetch / AI
+ * translation, reachable via the "打开完整页面" footer button.
+ */
+function NewsDetailDrawer({
+  article,
+  onClose,
+  onPickSymbol,
+}: {
+  article: NewsArticle | null;
+  onClose: () => void;
+  onPickSymbol: (sym: string) => void;
+}) {
+  const navigate = useNavigate();
+  // Keep the last non-null article so the exit animation still has
+  // content to render after ``onClose`` clears the selection.
+  const [lastArticle, setLastArticle] = useState<NewsArticle | null>(null);
+  useEffect(() => {
+    if (article) setLastArticle(article);
+  }, [article]);
+  const shown = article ?? lastArticle;
+
+  const source = shown
+    ? (SOURCE_LABELS[shown.source] ?? { emoji: '🔗', label: shown.source })
+    : null;
+  const market = shown ? MARKET_BADGE[shown.market] : null;
+  const sentiment = shown?.sentiment_label ?? null;
+  const engagement = shown?.engagement;
+  const hasEngagement =
+    engagement != null &&
+    (engagement.likes != null ||
+      engagement.comments != null ||
+      engagement.shares != null ||
+      engagement.views != null);
+
+  return (
+    <DetailDrawer
+      open={!!article}
+      onClose={onClose}
+      title={shown?.title}
+      ariaLabel="资讯详情"
+      footer={
+        shown ? (
+          <Space size={8} wrap>
+            <Button
+              type="primary"
+              icon={<LinkOutlined />}
+              onClick={() =>
+                window.open(shown.url, '_blank', 'noopener,noreferrer')
+              }
+            >
+              查看原文
+            </Button>
+            <Button onClick={() => navigate(`/news/${shown.id}`)}>
+              打开完整页面
+            </Button>
+          </Space>
+        ) : undefined
+      }
+    >
+      {shown && source && (
+        <>
+          {/* Meta row: source · market · category · importance */}
+          <div className="ad-flex ad-items-center ad-gap-2 ad-flex-wrap ad-text-small ad-text-tertiary">
+            <span>{source.emoji} {source.label}</span>
+            {market && (
+              <ThemeTag variant={market.variant} className="ad-detail-tag">
+                {market.label}
+              </ThemeTag>
+            )}
+            <EventCategoryTag value={shown.event_category} />
+            <ImportanceStars level={shown.importance} />
+          </div>
+          <div className="ad-text-small ad-text-tertiary ad-mt-2">
+            {formatDateTimeSeconds(shown.published_at)}
+            {shown.author ? ` · ${shown.author}` : ''}
+          </div>
+
+          {/* Related symbols — clicking pivots the feed filter, same as
+              the chip on the card. */}
+          {shown.symbols.length > 0 && (
+            <div className="ad-mt-4">
+              <div className="ad-text-small ad-text-tertiary ad-mb-2">
+                相关标的
+              </div>
+              <Space size={4} wrap>
+                {shown.symbols.map((s) => (
+                  <Tag
+                    key={`${s.symbol}-${s.match_type}`}
+                    color="default"
+                    className="ad-mr-1 ad-chip-tag"
+                    role="button"
+                    tabIndex={0}
+                    aria-label={`筛选 ${s.symbol}`}
+                    onClick={() => {
+                      onPickSymbol(s.symbol);
+                      onClose();
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        onPickSymbol(s.symbol);
+                        onClose();
+                      }
+                    }}
+                  >
+                    <InstrumentCodeTag
+                      code={s.symbol}
+                      name={s.name ?? undefined}
+                      name_zh={s.name_zh}
+                    />
+                  </Tag>
+                ))}
+              </Space>
+            </div>
+          )}
+
+          {/* Sentiment + engagement */}
+          {(sentiment || hasEngagement) && (
+            <div className="ad-flex ad-items-center ad-gap-3 ad-flex-wrap ad-mt-4">
+              {sentiment && (
+                <Tooltip
+                  title={
+                    shown.sentiment_score != null
+                      ? `分数 ${shown.sentiment_score.toFixed(2)} · 置信度 ${(
+                          (shown.sentiment_confidence ?? 0) * 100
+                        ).toFixed(0)}%`
+                      : SENTIMENT_LABELS[sentiment]
+                  }
+                >
+                  <Badge
+                    color={SENTIMENT_COLORS[sentiment]}
+                    text={
+                      <span
+                        className="ad-sentiment-label"
+                        style={{ color: SENTIMENT_COLORS[sentiment] }}
+                      >
+                        {SENTIMENT_LABELS[sentiment]}
+                      </span>
+                    }
+                  />
+                </Tooltip>
+              )}
+              {engagement?.likes != null && (
+                <span className="ad-news-card__engagement">
+                  <LikeOutlined /> {formatBigNumber(engagement.likes)}
+                </span>
+              )}
+              {engagement?.comments != null && (
+                <span className="ad-news-card__engagement">
+                  <MessageOutlined /> {formatBigNumber(engagement.comments)}
+                </span>
+              )}
+              {engagement?.shares != null && (
+                <span className="ad-news-card__engagement">
+                  <ShareAltOutlined /> {formatBigNumber(engagement.shares)}
+                </span>
+              )}
+              {engagement?.views != null && (
+                <span className="ad-news-card__engagement">
+                  <EyeOutlined /> {formatBigNumber(engagement.views)}
+                </span>
+              )}
+            </div>
+          )}
+
+          {/* Body — the card clamps this same field; the drawer shows it
+              in full. */}
+          {shown.body ? (
+            <div className="news-drawer-body ad-mt-4">{shown.body}</div>
+          ) : (
+            <EmptyState
+              className="ad-mt-4"
+              title="暂无正文"
+              description="可点击下方「查看原文」阅读完整内容"
+            />
+          )}
+        </>
+      )}
+    </DetailDrawer>
+  );
+}
+
 
 /** Right column: per-symbol retail sentiment ranking. */
 function HotSymbolSidebar({
@@ -429,7 +629,7 @@ function HotSymbolSidebar({
       padding="md"
     >
       {loading ? (
-        <Skeleton active paragraph={{ rows: 6 }} />
+        <LoadingBlock size="md" />
       ) : data.length === 0 ? (
         <EmptyState title="暂无情绪数据" description="当前没有可用的市场情绪聚合" />
       ) : (
@@ -486,10 +686,12 @@ function HotSymbolSidebar({
 }
 
 export default function NewsFeed() {
-  const navigate = useNavigate();
   // Color convention drives the sentiment-legend colour words: A-share
   // (china) is 红涨绿跌 → positive=红 / negative=绿; US convention inverts it.
   const colorConvention = useSettingsStore((s) => s.colorConvention);
+  // Article shown in the detail drawer (replaces the old ``/news/:id``
+  // navigation; the route stays for deep links — see NewsDetailDrawer).
+  const [selectedArticle, setSelectedArticle] = useState<NewsArticle | null>(null);
   const [searchParams, setSearchParams] = useSearchParams();
   const [market, setMarket] = useState<NewsMarket | 'all'>(
     (searchParams.get('market') as NewsMarket | 'all' | null) ?? 'all'
@@ -702,7 +904,7 @@ export default function NewsFeed() {
   }, [articles]);
 
   const handleOpen = (a: NewsArticle) => {
-    navigate(`/news/${a.id}`);
+    setSelectedArticle(a);
   };
 
   const handlePickSymbol = (sym: string) => {
@@ -825,7 +1027,7 @@ export default function NewsFeed() {
             />
           ) : isLoading ? (
             <div className="ad-p-5">
-              <Skeleton active paragraph={{ rows: 6 }} />
+              <LoadingBlock size="lg" />
             </div>
           ) : articles.length === 0 ? (
             <EmptyState
@@ -898,6 +1100,12 @@ export default function NewsFeed() {
           </Panel>
         </div>
       </div>
+
+      <NewsDetailDrawer
+        article={selectedArticle}
+        onClose={() => setSelectedArticle(null)}
+        onPickSymbol={handlePickSymbol}
+      />
     </PageShell>
   );
 }

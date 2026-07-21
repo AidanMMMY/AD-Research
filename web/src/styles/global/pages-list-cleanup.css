@@ -1,0 +1,95 @@
+/* ============================================================
+   Inline-style cleanup — list/detail pages
+   ============================================================ */
+
+/* Icon color/spacing helpers for Ant Design icons */
+.ad-icon-tertiary {
+  color: var(--text-tertiary);
+}
+
+.ad-icon-accent {
+  color: var(--accent);
+  margin-right: var(--space-1-5);
+  font-size: var(--text-body-size);
+}
+
+.ad-icon-leading {
+  margin-right: var(--space-1-5);
+}
+
+.ad-icon-rise {
+  color: var(--color-rise);
+  font-size: var(--text-body-size);
+}
+
+.ad-icon-fall {
+  color: var(--color-fall);
+  font-size: var(--text-body-size);
+}
+
+/* Spacing utilities */
+.ad-py-7 {
+  padding-top: var(--space-7);
+  padding-bottom: var(--space-7);
+}
+
+.ad-mb-0 {
+  margin-bottom: 0;
+}
+
+/* Live price cell in instrument lists */
+.live-price-cell {
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+  line-height: 1.2;
+}
+
+.live-price-cell__price {
+  font-size: var(--text-body-size);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-weight: 500;
+}
+
+/* Truncated index/fund-manager metadata cell */
+.instrument-index-cell {
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: inline-block;
+}
+
+/* Dashboard score table rank cells */
+.dashboard-rank-cell {
+  font-size: var(--text-body-size);
+  font-family: var(--font-mono);
+  font-weight: 500;
+}
+
+.dashboard-rank-cell--top3 {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.dashboard-rank-cell--normal {
+  color: var(--text-secondary);
+}
+
+/* Score ranking table rank cells */
+.score-rank-cell {
+  font-family: var(--font-mono);
+  font-weight: 500;
+}
+
+.score-rank-cell--top3 {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.score-rank-cell--normal {
+  color: var(--text-secondary);
+}
+
+

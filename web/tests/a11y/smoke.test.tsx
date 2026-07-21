@@ -89,9 +89,9 @@ vi.mock('@/stores/settings', () => ({
  * in matchMedia + DOM event listeners we don't exercise here. */
 vi.mock('@/hooks/useTheme', () => ({
   useTheme: () => ({
-    theme: 'light',
+    theme: 'dark',
     setTheme: vi.fn(),
-    effectiveTheme: 'light',
+    effectiveTheme: 'dark',
     systemPreference: 'light',
   }),
 }));

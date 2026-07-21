@@ -3,8 +3,8 @@
    2026-07-11: 蓝靛主色 + 暗色重塑 + 密度系统 + 字体提升
 
    主题切换:
-     - <html data-theme="light">  ← 默认浅色
-     - <html data-theme="dark">   ← 专业暗色（GitHub Dark 风格）
+     - <html data-theme="dark">   ← 默认暗色（GitHub Dark 风格，dark-first）
+     - <html data-theme="light">  ← 浅色（用户可手动切换）
    强调色切换:
      - <html data-accent="blue">       ← 默认蓝靛（v2 新主色）
      - <html data-accent="vermilion">  ← 旧朱红色（兼容保留）
@@ -20,7 +20,8 @@
    ============================================================ */
 
 /* ============================================================
-   Light Theme — 默认（Neo-minimal 专业 SaaS 风格）
+   Light Theme（Neo-minimal 专业 SaaS 风格）
+   — 2026-07-21 起暗色为默认，浅色为用户手动切换选项
    ============================================================ */
 :root {
   /* ---- Background Layers ---- */
@@ -84,23 +85,23 @@
   /* ---- News Category Colors (political / macro chips) ---- */
   --category-geopolitics: #FF5722;
   --category-geopolitics-dim: rgba(255, 87, 34, 0.12);
-  --category-geopolitics-border: rgba(255, 87, 34, 0.55);
+  --category-geopolitics-border: rgba(255, 87, 34, 0.25);
   --category-geopolitics-text: #D4380D;
   --category-central-bank: #1890FF;
   --category-central-bank-dim: rgba(24, 144, 255, 0.12);
-  --category-central-bank-border: rgba(24, 144, 255, 0.55);
+  --category-central-bank-border: rgba(24, 144, 255, 0.25);
   --category-central-bank-text: #096DD9;
   --category-election: #722ED1;
   --category-election-dim: rgba(114, 46, 209, 0.12);
-  --category-election-border: rgba(114, 46, 209, 0.55);
+  --category-election-border: rgba(114, 46, 209, 0.25);
   --category-election-text: #531DAB;
   --category-trade-war: #F5222D;
   --category-trade-war-dim: rgba(245, 34, 45, 0.12);
-  --category-trade-war-border: rgba(245, 34, 45, 0.55);
+  --category-trade-war-border: rgba(245, 34, 45, 0.25);
   --category-trade-war-text: #CF1322;
   --category-sanction: #EB2F96;
   --category-sanction-dim: rgba(235, 47, 150, 0.12);
-  --category-sanction-border: rgba(235, 47, 150, 0.55);
+  --category-sanction-border: rgba(235, 47, 150, 0.25);
   --category-sanction-text: #C41D7F;
 
   /* ---- Score Colors ---- */
@@ -297,29 +298,16 @@
   --glass-border: rgba(255, 255, 255, 0.10);
   --glass-blur: blur(12px);
 
-  /* ---- Sci-Fi Login (Aurora) ---- */
+  /* ---- Login (static deep-blue backdrop) ----
+     2026-07-21 收敛：删除流星/扫描线/星野动效，仅保留深蓝底 + 一层 accent
+     径向辉光的静态渐变；辉光直接复用 accent glow token。 */
   --login-bg: #05060a;
   --login-card-bg: rgba(17, 17, 17, 0.72);
-  --aurora-cyan: rgba(0, 229, 255, 0.26);
-  --aurora-blue: rgba(0, 180, 255, 0.20);
-  --aurora-violet: rgba(120, 80, 255, 0.16);
-  --aurora-teal: rgba(64, 220, 220, 0.18);
-  --aurora-lavender: rgba(180, 120, 255, 0.16);
-  --star-white: rgba(255, 255, 255, 0.6);
-  --star-glow-white: rgba(255, 255, 255, 0.35);
-  --star-cyan: rgba(0, 229, 255, 0.8);
-  --star-glow-cyan: rgba(0, 229, 255, 0.5);
-  --star-accent: rgba(120, 220, 255, 0.85);
-  --star-glow-accent: rgba(0, 229, 255, 0.55);
-  --meteor-fade: rgba(255, 255, 255, 0);
-  --meteor-cyan: rgba(180, 240, 255, 0.6);
-  --meteor-white: rgba(255, 255, 255, 0.95);
-  --meteor-glow: rgba(0, 229, 255, 0.35);
-  --scanline-cyan: rgba(0, 229, 255, 0.02);
+  --login-glow: var(--accent-glow);
   --vignette-dark: rgba(5, 6, 10, 0.6);
   --login-divider: rgba(255, 255, 255, 0.04);
   --login-input-bg: rgba(255, 255, 255, 0.03);
-  --login-input-border: rgba(255, 255, 255, 0.08);
+  --login-input-border: rgba(255, 255, 255, 0.16);
   --login-input-focus-bg: rgba(255, 255, 255, 0.05);
 
   /* ---- Legacy / compatibility aliases ---- */
@@ -379,6 +367,7 @@ html, body, #root {
 /* ============================================================
    Dark Theme — 专业投研工作站风格（GitHub Dark 基准）
    2026-07-11 重塑：从终端黑客绿 → 蓝靛专业暗色
+   2026-07-21 起为全站默认主题（dark-first）
    ============================================================ */
 :root[data-theme="dark"] {
   /* ---- Background Layers (提亮造深度) ---- */
@@ -442,23 +431,23 @@ html, body, #root {
   /* ---- News Category Colors (political / macro chips) ---- */
   --category-geopolitics: #FF7A45;
   --category-geopolitics-dim: rgba(255, 87, 34, 0.20);
-  --category-geopolitics-border: rgba(255, 87, 34, 0.55);
+  --category-geopolitics-border: rgba(255, 87, 34, 0.25);
   --category-geopolitics-text: #FFBB96;
   --category-central-bank: #69C0FF;
   --category-central-bank-dim: rgba(24, 144, 255, 0.20);
-  --category-central-bank-border: rgba(24, 144, 255, 0.55);
+  --category-central-bank-border: rgba(24, 144, 255, 0.25);
   --category-central-bank-text: #BAE7FF;
   --category-election: #B37FEB;
   --category-election-dim: rgba(114, 46, 209, 0.20);
-  --category-election-border: rgba(114, 46, 209, 0.55);
+  --category-election-border: rgba(114, 46, 209, 0.25);
   --category-election-text: #D3ADF7;
   --category-trade-war: #FF7875;
   --category-trade-war-dim: rgba(245, 34, 45, 0.20);
-  --category-trade-war-border: rgba(245, 34, 45, 0.55);
+  --category-trade-war-border: rgba(245, 34, 45, 0.25);
   --category-trade-war-text: #FFA39E;
   --category-sanction: #F759AB;
   --category-sanction-dim: rgba(235, 47, 150, 0.20);
-  --category-sanction-border: rgba(235, 47, 150, 0.55);
+  --category-sanction-border: rgba(235, 47, 150, 0.25);
   --category-sanction-text: #FFADD2;
 
   /* ---- Score Colors ---- */
@@ -522,29 +511,14 @@ html, body, #root {
   --material-thick-bg: rgba(22, 27, 34, 0.90);
   --material-thick-blur: blur(30px) saturate(170%);
 
-  /* ---- Sci-Fi Login (Aurora) ---- */
+  /* ---- Login (static deep-blue backdrop, 与 root 段一致) ---- */
   --login-bg: #05060a;
   --login-card-bg: rgba(17, 17, 17, 0.72);
-  --aurora-cyan: rgba(0, 229, 255, 0.26);
-  --aurora-blue: rgba(0, 180, 255, 0.20);
-  --aurora-violet: rgba(120, 80, 255, 0.16);
-  --aurora-teal: rgba(64, 220, 220, 0.18);
-  --aurora-lavender: rgba(180, 120, 255, 0.16);
-  --star-white: rgba(255, 255, 255, 0.6);
-  --star-glow-white: rgba(255, 255, 255, 0.35);
-  --star-cyan: rgba(0, 229, 255, 0.8);
-  --star-glow-cyan: rgba(0, 229, 255, 0.5);
-  --star-accent: rgba(120, 220, 255, 0.85);
-  --star-glow-accent: rgba(0, 229, 255, 0.55);
-  --meteor-fade: rgba(255, 255, 255, 0);
-  --meteor-cyan: rgba(180, 240, 255, 0.6);
-  --meteor-white: rgba(255, 255, 255, 0.95);
-  --meteor-glow: rgba(0, 229, 255, 0.35);
-  --scanline-cyan: rgba(0, 229, 255, 0.02);
+  --login-glow: var(--accent-glow);
   --vignette-dark: rgba(5, 6, 10, 0.6);
   --login-divider: rgba(255, 255, 255, 0.04);
   --login-input-bg: rgba(255, 255, 255, 0.03);
-  --login-input-border: rgba(255, 255, 255, 0.08);
+  --login-input-border: rgba(255, 255, 255, 0.16);
   --login-input-focus-bg: rgba(255, 255, 255, 0.05);
 
   /* ---- Radius ---- */

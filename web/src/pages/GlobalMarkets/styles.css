@@ -18,3 +18,37 @@
   margin-left: auto;
   white-space: nowrap;
 }
+
+/* ── Political / macro event category tags ──
+   Weak variant: dim background + coloured text, aligned with the News
+   filter chips. `!important` matches the News chip overrides so the
+   rules win over antd's injected Tag styles. */
+.gm-event-tag--geopolitics {
+  background: var(--category-geopolitics-dim) !important;
+  border-color: var(--category-geopolitics-border) !important;
+  color: var(--category-geopolitics-text) !important;
+}
+
+.gm-event-tag--central-bank {
+  background: var(--category-central-bank-dim) !important;
+  border-color: var(--category-central-bank-border) !important;
+  color: var(--category-central-bank-text) !important;
+}
+
+.gm-event-tag--election {
+  background: var(--category-election-dim) !important;
+  border-color: var(--category-election-border) !important;
+  color: var(--category-election-text) !important;
+}
+
+.gm-event-tag--trade-war {
+  background: var(--category-trade-war-dim) !important;
+  border-color: var(--category-trade-war-border) !important;
+  color: var(--category-trade-war-text) !important;
+}
+
+.gm-event-tag--sanction {
+  background: var(--category-sanction-dim) !important;
+  border-color: var(--category-sanction-border) !important;
+  color: var(--category-sanction-text) !important;
+}

@@ -1,0 +1,139 @@
+/* ============================================================
+   Mobile Responsive Overrides (< 768px)
+   ============================================================ */
+@media (max-width: 767px) {
+  /* Tables */
+  .ant-table-wrapper {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .ant-table {
+    min-width: 100%;
+  }
+
+  .ant-table-thead > tr > th {
+    font-size: var(--text-small-size);
+    padding: var(--space-2) var(--space-3) !important;
+    white-space: nowrap;
+  }
+
+  .ant-table-tbody > tr > td {
+    font-size: var(--text-body-size);
+    padding: var(--space-2) var(--space-3) !important;
+  }
+
+  .ant-table-row {
+    min-height: 48px;
+  }
+
+  /* Buttons */
+  .ant-btn {
+    min-height: 40px;
+    font-size: var(--text-body-size);
+  }
+
+  /* .ant-btn-sm min-height is declared identically in polish.css (imported
+     later); the duplicate here was removed in the 2026-07-21 split. */
+
+  /* Form controls */
+  .ant-input,
+  .ant-select-selector,
+  .ant-input-number,
+  .ant-input-number-input {
+    min-height: 40px !important;
+    font-size: 16px !important;
+  }
+
+  .ant-select-selector {
+    display: flex !important;
+    align-items: center !important;
+  }
+
+  /* Card */
+  .ant-card-head {
+    padding: var(--space-3) 0 !important;
+  }
+
+  .ant-card-body {
+    padding: var(--space-3) 0 !important;
+  }
+
+  /* Statistic */
+  .ant-statistic-content {
+    font-size: var(--text-data-md-size);
+  }
+
+  .ant-statistic-title {
+    font-size: var(--text-small-size);
+  }
+
+  /* Tabs */
+  .ant-tabs-nav {
+    margin-bottom: var(--space-block-sm) !important;
+  }
+
+  .ant-tabs-tab {
+    font-size: var(--text-body-size);
+    padding: var(--space-2) var(--space-3) !important;
+  }
+
+  /* Pagination */
+  .ant-pagination {
+    font-size: var(--text-body-size);
+  }
+
+  .ant-pagination-item {
+    min-width: 34px;
+    height: 34px;
+    line-height: 34px;
+    margin-right: 4px;
+  }
+
+  .ant-pagination-prev,
+  .ant-pagination-next {
+    min-width: 34px;
+    height: 34px;
+    line-height: 34px;
+  }
+
+  /* Select dropdown */
+  .ant-select-dropdown {
+    max-width: 92vw;
+  }
+
+  /* Popover / Tooltip */
+  .ant-popover,
+  .ant-tooltip {
+    max-width: 85vw;
+  }
+
+  /* Space */
+  .ant-space {
+    gap: var(--space-2) !important;
+  }
+
+  /* Float buttons */
+  .ant-float-btn {
+    right: 16px;
+    bottom: calc(80px + env(safe-area-inset-bottom, 0px));
+  }
+}
+
+/* ============================================================
+   Tablet Responsive Overrides (768px - 991px)
+   ============================================================ */
+@media (min-width: 768px) and (max-width: 991px) {
+  .ant-card-head {
+    padding: var(--space-3) 0 !important;
+  }
+
+  .ant-card-body {
+    padding: var(--space-3) 0 !important;
+  }
+
+  .ant-statistic-content {
+    font-size: var(--text-data-md-size);
+  }
+}
+

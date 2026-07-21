@@ -2,13 +2,11 @@ import { useEffect, useMemo, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  Spin,
   Alert,
   Tag,
   Badge,
   Space,
   Button,
-  Skeleton,
   List,
   Tooltip,
   Switch,
@@ -38,6 +36,7 @@ import PageShell from '@/components/PageShell';
 import Panel from '@/components/Panel';
 import Markdown from '@/components/Markdown';
 import EmptyState from '@/components/EmptyState';
+import LoadingBlock from '@/components/LoadingBlock';
 import ResponsiveGrid from '@/components/ResponsiveGrid';
 import StatCard from '@/components/StatCard';
 import InstrumentCodeTag from '@/components/InstrumentCodeTag';
@@ -121,7 +120,7 @@ function RetailSentimentPanel({ symbol }: { symbol: string }) {
       padding="md"
     >
       {isLoading ? (
-        <Skeleton active paragraph={{ rows: 2 }} />
+        <LoadingBlock size="sm" />
       ) : isError || !data ? (
         <EmptyState
           title="暂未采集到散户讨论"
@@ -295,7 +294,7 @@ export default function NewsDetail() {
     return (
       <PageShell maxWidth="full">
         <div className="ad-p-15 ad-text-center">
-          <Spin size="large" />
+          <LoadingBlock size="lg" />
         </div>
       </PageShell>
     );
@@ -511,7 +510,7 @@ export default function NewsDetail() {
                   <div className="news-translation-pair__body">
                     {translateArticle.isPending && !translationToShow ? (
                       <div className="ad-flex ad-flex-col ad-items-center ad-justify-center ad-py-8">
-                        <Spin />
+                        <LoadingBlock size="sm" />
                         <div className="ad-mt-3 ad-text-small ad-text-tertiary">
                           AI 正在翻译…
                         </div>
@@ -742,7 +741,7 @@ export default function NewsDetail() {
             padding="md"
           >
             {relatedLoading ? (
-              <Skeleton active paragraph={{ rows: 4 }} />
+              <LoadingBlock size="md" />
             ) : !related || related.length === 0 ? (
               <EmptyState title="暂无相关资讯" description="未找到与本文主题、标的或行业相关的其他资讯" />
             ) : (

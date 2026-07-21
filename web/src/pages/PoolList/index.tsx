@@ -2,18 +2,19 @@ import './styles.css';
 
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Table, Button, Modal, Form, Input, message, Popconfirm, Space, Tooltip } from 'antd';
-import { PlusOutlined } from '@ant-design/icons';
+import { Button, Modal, Form, Input, message, Popconfirm, Spin, Tooltip } from 'antd';
+import { PlusOutlined, SettingOutlined, DeleteOutlined } from '@ant-design/icons';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { usePoolList } from '@/hooks/usePoolDetail';
 import { poolApi } from '@/api';
 import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
-import { clickableRow } from '@/utils/a11y';
 import PageShell from '@/components/PageShell';
 import PageHeader from '@/components/PageHeader';
 import FilterToolbar from '@/components/FilterToolbar';
-import Panel from '@/components/Panel';
+import ResponsiveGrid from '@/components/ResponsiveGrid';
 import EmptyState from '@/components/EmptyState';
+import { formatDate } from '@/utils/format';
+import type { Pool } from '@/types/pool';
 
 export default function PoolList() {
   const navigate = useNavigate();
@@ -56,53 +57,73 @@ export default function PoolList() {
     createMutation.mutate(values);
   };
 
-  const tableWrapClass = 'ad-table-scroll ad-table-sticky';
+  // Cards are whole-surface links; keyboard activation mirrors the row
+  // pattern used on the old table (Enter/Space).
+  const openPool = (id: number) => navigate(`/pools/${id}`);
+  const handleCardKeyDown = (e: React.KeyboardEvent<HTMLElement>, id: number) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      openPool(id);
+    }
+  };
 
-  const columns = [
-    { title: '名称', dataIndex: 'name' },
-    {
-      title: '描述',
-      dataIndex: 'description',
-      ellipsis: true,
-      render: (v: string | null) =>
-        v ? (
-          <Tooltip title={v} placement="topLeft">
-            <span>{v}</span>
+  const renderCard = (pool: Pool) => (
+    <div
+      key={pool.id}
+      className="pool-card"
+      role="link"
+      tabIndex={0}
+      onClick={() => openPool(pool.id)}
+      onKeyDown={(e) => handleCardKeyDown(e, pool.id)}
+    >
+      <div className="pool-card__header">
+        <span className="pool-card__name">{pool.name}</span>
+        <span className="tabular-nums pool-card__count">{pool.members?.length || 0} 只</span>
+      </div>
+      <p className="pool-card__desc">{pool.description || '暂无描述'}</p>
+      <div className="pool-card__footer">
+        <span className="pool-card__date">创建于 {formatDate(pool.created_at)}</span>
+        {/* Action icon-buttons must not trigger card navigation — stop both
+            click and keydown from bubbling to the card's handlers. */}
+        <span className="pool-card__actions">
+          <Tooltip title="管理">
+            <Button
+              type="text"
+              size="small"
+              icon={<SettingOutlined />}
+              aria-label={`管理 ${pool.name}`}
+              onClick={(e) => {
+                e.stopPropagation();
+                openPool(pool.id);
+              }}
+              onKeyDown={(e) => e.stopPropagation()}
+            />
           </Tooltip>
-        ) : (
-          '-'
-        ),
-    },
-    {
-      title: '成员数',
-      dataIndex: 'members',
-      align: 'right' as const,
-      render: (m: any[]) => <span className="tabular-nums">{m?.length || 0}</span>,
-      width: 90,
-    },
-    {
-      title: '操作',
-      width: 160,
-      render: (_: unknown, record: any) => (
-        <Space onClick={(e) => e.stopPropagation()}>
-          <Button type="link" onClick={() => navigate(`/pools/${record.id}`)}>管理</Button>
           <Popconfirm
             title="删除标的池"
-            description={`确定要删除「${record.name}」吗？此操作不可恢复。`}
-            onConfirm={() => deleteMutation.mutate(record.id)}
+            description={`确定要删除「${pool.name}」吗？此操作不可恢复。`}
+            onConfirm={() => deleteMutation.mutate(pool.id)}
             okText="删除"
             cancelText="取消"
-            okButtonProps={{ danger: true, loading: deleteMutation.isPending && deleteMutation.variables === record.id }}
+            okButtonProps={{ danger: true, loading: deleteMutation.isPending && deleteMutation.variables === pool.id }}
           >
-            {/* Text-link pair: plain link + trailing danger action. */}
-            <Button type="link" danger loading={deleteMutation.isPending && deleteMutation.variables === record.id}>
-              删除
-            </Button>
+            <Tooltip title="删除">
+              <Button
+                type="text"
+                size="small"
+                danger
+                icon={<DeleteOutlined />}
+                aria-label={`删除 ${pool.name}`}
+                loading={deleteMutation.isPending && deleteMutation.variables === pool.id}
+                onClick={(e) => e.stopPropagation()}
+                onKeyDown={(e) => e.stopPropagation()}
+              />
+            </Tooltip>
           </Popconfirm>
-        </Space>
-      ),
-    },
-  ];
+        </span>
+      </div>
+    </div>
+  );
 
   return (
     <PageShell maxWidth="wide">
@@ -117,36 +138,27 @@ export default function PoolList() {
         }
       />
 
-      <Panel variant="default" padding="md">
-        <FilterToolbar total={`共 ${pools?.length || 0} 个`} />
+      <FilterToolbar total={`共 ${pools?.length || 0} 个`} className="ad-mb-4" />
 
-        <div className={tableWrapClass}>
-          <Table
-            dataSource={pools || []}
-            columns={columns}
-            rowKey="id"
-            size="small"
-            rowClassName="pool-list-row--pressable"
-            scroll={{ x: 'max-content' }}
-            loading={poolsLoading}
-            onRow={(record) => clickableRow(() => navigate(`/pools/${record.id}`))}
-            pagination={false}
-            locale={{
-              emptyText: poolsLoading ? '加载中...' : (
-                <EmptyState
-                  title="暂无标的池"
-                  description="点击右上角「新建池」创建第一个标的池"
-                  action={
-                    <Button type="primary" icon={<PlusOutlined />} onClick={() => setIsModalOpen(true)}>
-                      新建池
-                    </Button>
-                  }
-                />
-              ),
-            }}
-          />
+      {poolsLoading ? (
+        <div className="pool-list-loading">
+          <Spin />
         </div>
-      </Panel>
+      ) : (pools?.length ?? 0) === 0 ? (
+        <EmptyState
+          title="暂无标的池"
+          description="点击右上角「新建池」创建第一个标的池"
+          action={
+            <Button type="primary" icon={<PlusOutlined />} onClick={() => setIsModalOpen(true)}>
+              新建池
+            </Button>
+          }
+        />
+      ) : (
+        <ResponsiveGrid cols={3} gap="md" stretch>
+          {(pools || []).map(renderCard)}
+        </ResponsiveGrid>
+      )}
 
       <Modal
         title="新建标的池"

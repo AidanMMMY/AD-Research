@@ -1,0 +1,277 @@
+/* ============================================================
+ * K15: 学习模式 —— 每页都有教学
+ * ============================================================ */
+
+/* PageHeader tutorial slot — 页面级"怎么读这个页" */
+.page-header-tutorial {
+  margin-top: var(--space-2, 8px);
+  padding: var(--space-3, 12px) var(--space-4, 16px);
+  /* stylelint-disable-next-line ad-research/no-bare-color-values -- violet tint of the tutorial gradient, no matching token */
+  background: linear-gradient(135deg,
+    var(--accent-dim),
+    rgba(120, 109, 245, 0.06));
+  border-left: 3px solid var(--accent);
+  border-radius: 6px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text-secondary);
+  max-width: 880px;
+}
+
+.page-header-tutorial b {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+/* StatExplainer — 学习模式下，StatCard 下方的小字解释 */
+.stat-explainer {
+  margin-top: 6px;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--text-tertiary);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.stat-explainer--clickable {
+  cursor: help;
+  transition: color 0.15s ease;
+}
+
+.stat-explainer--clickable:hover {
+  color: var(--accent);
+}
+
+.stat-explainer__icon {
+  font-size: 11px;
+  opacity: 0.7;
+}
+
+.stat-explainer__popover {
+  font-size: 13px;
+  line-height: 1.6;
+  max-width: 300px;
+}
+
+.stat-card__explainer {
+  margin-top: 4px;
+}
+
+/* DailyLesson — Dashboard "今日一课".
+   Phase 2 (2026-07-05): lighter glass surface.
+   Phase 3 (2026-07-08): drop the inner header — the section heading
+   "今日一课" already lives on the outer SectionHeading, so the card
+   itself only carries body (category tag + lesson title + content +
+   tip) and footer (weekly progress hint + action buttons). */
+.daily-lesson {
+  margin: 0;
+  padding: var(--space-4) var(--space-5);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+  position: relative;
+}
+
+.daily-lesson__hint {
+  font-size: 12px;
+  color: var(--text-tertiary);
+}
+
+/* Body: single column content area. */
+.daily-lesson__body {
+  display: block;
+}
+
+/* Phase 2 (2026-07-07) — main column holds the body + tip. */
+.daily-lesson__col {
+  min-width: 0;
+}
+
+.daily-lesson__col--main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.daily-lesson__tag.ant-tag {
+  margin: 0;
+  padding: 0 8px;
+  font-size: 11px;
+  line-height: 18px;
+  border-radius: 999px;
+  color: var(--accent);
+  background: var(--accent-dim);
+  border: 1px solid var(--accent-border);
+}
+
+.daily-lesson__tag.ant-tag.ant-tag-success {
+  color: var(--color-success);
+  background: var(--color-success-dim);
+  border-color: var(--color-success-border);
+}
+
+.daily-lesson__tip {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 14px;
+  font-size: 13px;
+  line-height: 1.6;
+  font-weight: 500;
+  color: var(--text-primary);
+  background: var(--accent-dim);
+  border: 1px solid var(--accent-border);
+  border-left: 5px solid var(--accent);
+  border-radius: var(--radius-sm);
+  /* stylelint-disable-next-line ad-research/no-bare-color-values -- card shadow alpha, no exact token match; kept for visual parity */
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.daily-lesson__tip-icon {
+  color: var(--accent);
+  margin-top: 2px;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.daily-lesson__divider {
+  color: var(--text-muted);
+  opacity: 0.6;
+}
+
+.daily-lesson__hint-sub {
+  color: var(--text-tertiary);
+}
+
+.daily-lesson__heading {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-1);
+  flex-wrap: wrap;
+}
+
+.daily-lesson__heading-title {
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.3;
+  min-width: 0;
+}
+
+.daily-lesson__tag--learned {
+  margin-left: auto;
+}
+
+.daily-lesson__short {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--text-secondary);
+}
+
+.daily-lesson__full {
+  margin-top: var(--space-2);
+  padding-top: var(--space-2);
+  border-top: 1px dashed var(--border-default);
+}
+
+.daily-lesson__full p {
+  margin: 0 0 var(--space-2);
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--text-secondary);
+}
+
+.daily-lesson__formula,
+.daily-lesson__example {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+  margin-top: var(--space-2);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: baseline;
+}
+
+.daily-lesson__caption {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.daily-lesson__formula code {
+  background: var(--bg-surface);
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-primary);
+}
+
+/* Footer: hint on the left, actions on the right. */
+.daily-lesson__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--border-default);
+  flex-wrap: wrap;
+}
+
+.daily-lesson__actions {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.daily-lesson__hint {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+@media (max-width: 719px) {
+  .daily-lesson__footer {
+    align-items: flex-start;
+  }
+
+  .daily-lesson__actions {
+    width: 100%;
+  }
+
+  .daily-lesson__actions .ant-btn {
+    flex: 1 1 auto;
+  }
+}
+
+/* User menu entry for learningMode switch */
+.app-layout__user-menu-mode {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 4px 0;
+}
+
+.app-layout__user-menu-label {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+

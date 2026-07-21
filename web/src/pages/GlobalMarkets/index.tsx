@@ -22,13 +22,14 @@ import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useIsMobile } from '@/hooks/useBreakpoint';
 import { useChartMotion } from '@/hooks/useChartMotion';
-import { Skeleton, Table, Tag, Tooltip, Typography } from 'antd';
+import { Table, Tag, Tooltip, Typography } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import PageShell from '@/components/PageShell';
 import PageHeader from '@/components/PageHeader';
 import Panel from '@/components/Panel';
 import SectionHeading from '@/components/SectionHeading';
 import EmptyState from '@/components/EmptyState';
+import LoadingBlock from '@/components/LoadingBlock';
 import Sparkline from '@/components/Sparkline';
 import ReturnTagPct from '@/components/ReturnTagPct';
 import LastUpdated from '@/components/LastUpdated';
@@ -42,6 +43,7 @@ import {
   type NewsArticleSummary,
 } from '@/utils/helpContext';
 import { getQuickQuestions } from '@/utils/helpPrompts';
+import { clickableProps } from '@/utils/a11y';
 import {
   useMacroLatest,
   macroApi,
@@ -323,12 +325,17 @@ const POLITICAL_CATEGORY_LABEL: Record<string, string> = {
   sanction: '制裁',
 };
 
-const POLITICAL_CATEGORY_COLOR: Record<string, string> = {
-  geopolitics: 'volcano',
-  central_bank: 'geekblue',
-  election: 'purple',
-  trade_war: 'red',
-  sanction: 'magenta',
+/**
+ * Category -> weak-variant tag class (dim background + coloured text,
+ * defined in styles.css). Replaces the former antd preset colours
+ * (volcano / geekblue / …) which rendered as saturated solid tags.
+ */
+const POLITICAL_CATEGORY_TAG_CLASS: Record<string, string> = {
+  geopolitics: 'gm-event-tag--geopolitics',
+  central_bank: 'gm-event-tag--central-bank',
+  election: 'gm-event-tag--election',
+  trade_war: 'gm-event-tag--trade-war',
+  sanction: 'gm-event-tag--sanction',
 };
 
 /**
@@ -339,9 +346,10 @@ const POLITICAL_CATEGORY_COLOR: Record<string, string> = {
  * entry (and we only hit /news once per minute).
  */
 function useRecentPoliticalEvents() {
-  const since = useMemo(
+  // Lazy useState (not useMemo) so the impure Date.now() runs once at
+  // mount instead of during render — satisfies the react-hooks compiler.
+  const [since] = useState(
     () => new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
-    [],
   );
   return useQuery({
     queryKey: ['global-markets-recent-political', since],
@@ -374,7 +382,7 @@ function RecentWeekEvents(): JSX.Element | null {
   if (isLoading) {
     return (
       <Panel title="最近一周重大政治 / 地缘事件" padding="md">
-        <Skeleton active paragraph={{ rows: 3 }} />
+        <LoadingBlock size="md" />
       </Panel>
     );
   }
@@ -404,15 +412,20 @@ function RecentWeekEvents(): JSX.Element | null {
           <li
             key={a.id}
             className="ad-news-events-list__item"
-            onClick={() => navigate(`/news/${a.id}`)}
+            {...clickableProps(() => navigate(`/news/${a.id}`), { role: 'link' })}
           >
             <div className="ad-news-events-list__meta">
-              <Tag
-                color={POLITICAL_CATEGORY_COLOR[a.event_category ?? ''] ?? 'default'}
-                className="ad-mr-1"
-              >
-                {POLITICAL_CATEGORY_LABEL[a.event_category ?? ''] ?? a.event_category}
-              </Tag>
+              {POLITICAL_CATEGORY_TAG_CLASS[a.event_category ?? ''] ? (
+                <Tag
+                  className={`gm-event-tag ${POLITICAL_CATEGORY_TAG_CLASS[a.event_category ?? '']} ad-mr-1`}
+                >
+                  {POLITICAL_CATEGORY_LABEL[a.event_category ?? ''] ?? a.event_category}
+                </Tag>
+              ) : (
+                <ThemeTag variant="neutral" className="ad-mr-1">
+                  {POLITICAL_CATEGORY_LABEL[a.event_category ?? ''] ?? a.event_category}
+                </ThemeTag>
+              )}
               <Tooltip title={a.published_at}>
                 <span className="ad-text-small ad-text-tertiary ad-news-events-list__time">
                   {new Date(a.published_at).toLocaleString('zh-CN', {
@@ -614,7 +627,7 @@ export default function GlobalMarkets() {
       {isLoading && !hasAnyData && (
         <section className="ad-section">
           <Panel>
-            <Skeleton active paragraph={{ rows: 8 }} />
+            <LoadingBlock size="lg" />
           </Panel>
         </section>
       )}

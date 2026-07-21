@@ -1,13 +1,14 @@
 import { useMemo, type ReactNode } from 'react';
 import './styles.css';
 import {
-  Tabs, Table, Skeleton, Space, Statistic, Row, Col, Card,
+  Tabs, Table, Space, Statistic, Row, Col,
 } from 'antd';
 import {
   CaretUpOutlined, CaretDownOutlined, GoldOutlined, FireOutlined, SunOutlined, BarChartOutlined,
 } from '@ant-design/icons';
 import PageShell from '@/components/PageShell';
 import Panel from '@/components/Panel';
+import LoadingBlock from '@/components/LoadingBlock';
 import PageHeader from '@/components/PageHeader';
 import StatCard from '@/components/StatCard';
 import EmptyState from '@/components/EmptyState';
@@ -177,8 +178,8 @@ function ProductTab({ product, section }: TabContentProps) {
 
       <Row gutter={16} className="ad-mb-5">
         <Col xs={24} md={12}>
-          <Card
-            size="small"
+          <Panel
+            padding="sm"
             className="ad-table-card"
             title={
               <Space>
@@ -188,11 +189,11 @@ function ProductTab({ product, section }: TabContentProps) {
             }
           >
             {gainers.length === 0 ? <EmptyState title="暂无数据" /> : <BarTable bars={gainers} />}
-          </Card>
+          </Panel>
         </Col>
         <Col xs={24} md={12}>
-          <Card
-            size="small"
+          <Panel
+            padding="sm"
             className="ad-table-card"
             title={
               <Space>
@@ -202,7 +203,7 @@ function ProductTab({ product, section }: TabContentProps) {
             }
           >
             {losers.length === 0 ? <EmptyState title="暂无数据" /> : <BarTable bars={losers} />}
-          </Card>
+          </Panel>
         </Col>
       </Row>
 
@@ -242,7 +243,7 @@ export default function Futures() {
       </Space>
     ),
     children: dashLoading ? (
-      <Skeleton active paragraph={{ rows: 6 }} />
+      <LoadingBlock size="md" />
     ) : (
       <ProductTab product={p} section={sectionsByProduct[p]} />
     ),

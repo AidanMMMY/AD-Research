@@ -4,7 +4,6 @@ import { useQuery } from '@tanstack/react-query';
 import {
   Input,
   Segmented,
-  Skeleton,
   Tooltip,
   Select,
   message,
@@ -41,6 +40,7 @@ import EmptyState from '@/components/EmptyState';
 import Sparkline from '@/components/Sparkline';
 import InstrumentCodeTag from '@/components/InstrumentCodeTag';
 import HelpPopover from '@/components/HelpPopover';
+import LoadingBlock from '@/components/LoadingBlock';
 import ThemeTag, { type ThemeTagVariant } from '@/components/ThemeTag';
 import { useSettingsStore, type ColorConvention } from '@/stores/settings';
 
@@ -69,6 +69,13 @@ const POLL_SLICE_COLORS: Record<SentimentLabel, string> = {
   neutral: 'var(--text-tertiary)',
   negative: 'var(--color-fall)',
 };
+
+/** Legend rows for the heatmap score scale; thresholds mirror aggregateBySymbol. */
+const SENTIMENT_LEGEND: { label: SentimentLabel; example: string }[] = [
+  { label: 'positive', example: '分数 > +0.2，如 +0.45' },
+  { label: 'neutral', example: '介于 ±0.2 之间' },
+  { label: 'negative', example: '分数 < -0.2，如 -0.60' },
+];
 
 interface SymbolAggregate {
   symbol: string;
@@ -505,7 +512,7 @@ function SentimentAggregateTable({
       padding="md"
     >
       {loading ? (
-        <Skeleton active paragraph={{ rows: 8 }} />
+        <LoadingBlock size="lg" />
       ) : data.length === 0 ? (
         <EmptyState
           title="暂无情绪汇总数据"
@@ -531,7 +538,19 @@ export default function SentimentOverview() {
   const colorConvention = useSettingsStore((s) => s.colorConvention);
   const [view, setView] = useState<ViewMode>('news');
   const [days, setDays] = useState<number>(14);
-  const [market, setMarket] = useState<NewsMarket | 'all'>('all');
+  // Restore the last market filter via lazy init so the page resumes
+  // where the user left off (keeps setState out of effects).
+  const [market, setMarket] = useState<NewsMarket | 'all'>(() => {
+    try {
+      const saved = localStorage.getItem('sentiment-market');
+      if (saved && MARKET_OPTIONS.find((o) => o.value === saved)) {
+        return saved as NewsMarket | 'all';
+      }
+    } catch {
+      // ignore
+    }
+    return 'all';
+  });
   const [importanceMin, setImportanceMin] = useState<number>(1);
   const [search, setSearch] = useState('');
   const [selectedSymbol, setSelectedSymbol] = useState<string | null>(null);
@@ -606,16 +625,6 @@ export default function SentimentOverview() {
   );
 
   // Persist last market filter so the page resumes where the user left off.
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem('sentiment-market');
-      if (saved && (MARKET_OPTIONS.find((o) => o.value === saved))) {
-        setMarket(saved as NewsMarket | 'all');
-      }
-    } catch {
-      // ignore
-    }
-  }, []);
   useEffect(() => {
     try {
       localStorage.setItem('sentiment-market', market);
@@ -710,7 +719,7 @@ export default function SentimentOverview() {
           padding="md"
         >
           {isLoading ? (
-            <Skeleton active paragraph={{ rows: 8 }} />
+            <LoadingBlock size="lg" />
           ) : filtered.length === 0 ? (
             <EmptyState
               title="暂无符合条件的数据"
@@ -800,9 +809,8 @@ export default function SentimentOverview() {
           )}
         </Panel>
 
-        {/* Right column */}
+        {/* Right column — legend + detail + top movers in a single card. */}
         <div className="dashboard-side-stack">
-          {/* Selected symbol detail */}
           <Panel
             variant="default"
             title={
@@ -812,8 +820,29 @@ export default function SentimentOverview() {
             }
             padding="md"
           >
+            {/* Legend: mini colour dot + worked example so heatmap
+                scores read at a glance. */}
+            <div className="ad-sentiment-legend">
+              {SENTIMENT_LEGEND.map((row) => (
+                <div key={row.label} className="ad-sentiment-legend__row">
+                  <span
+                    className={`ad-sentiment-legend__dot ad-sentiment-legend__dot--${row.label}`}
+                  />
+                  <span className="ad-sentiment-legend__label">
+                    {SENTIMENT_LABELS[row.label]}
+                  </span>
+                  <span className="ad-sentiment-legend__example">
+                    {row.example}
+                  </span>
+                </div>
+              ))}
+            </div>
+
             {!selected ? (
-              <EmptyState title="在左侧热力图选择一个标的" />
+              <EmptyState
+                className="empty-state--in-card"
+                title="在左侧热力图选择一个标的"
+              />
             ) : (
               <div>
                 <div className="ad-detail-score-header">
@@ -879,24 +908,17 @@ export default function SentimentOverview() {
                 </div>
               </div>
             )}
-          </Panel>
-
-          {/* Top movers */}
-          <Panel
-            variant="default"
-            title={
-              <span>
+            {/* Top movers */}
+            <div className="ad-sentiment-movers">
+              <div className="ad-sentiment-movers__title">
                 <FireOutlined className="phase5c-icon-title" />
                 情绪最强烈
-              </span>
-            }
-            padding="md"
-          >
-            {isLoading ? (
-              <Skeleton active paragraph={{ rows: 4 }} />
-            ) : topMovers.length === 0 ? (
-              <EmptyState title="暂无数据" />
-            ) : (
+              </div>
+              {isLoading ? (
+                <LoadingBlock size="md" />
+              ) : topMovers.length === 0 ? (
+                <EmptyState className="empty-state--in-card" title="暂无数据" />
+              ) : (
               <Space direction="vertical" size={6} className="ad-w-full">
                 {topMovers.map((row) => (
                   <div
@@ -933,7 +955,8 @@ export default function SentimentOverview() {
                   </div>
                 ))}
               </Space>
-            )}
+              )}
+            </div>
           </Panel>
         </div>
       </div>

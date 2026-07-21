@@ -120,6 +120,12 @@
 
 /* ── Inline money cell ─────────────────────────────────────── */
 
+/* Null placeholder cell — de-emphasised vs real numbers. */
+.fund-flow__null-cell {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
 .fund-flow__money {
   font-variant-numeric: tabular-nums;
   font-family: var(--font-mono);

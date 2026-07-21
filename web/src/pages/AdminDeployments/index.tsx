@@ -13,7 +13,6 @@ import {
   Col,
   Badge,
   Progress,
-  Skeleton,
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import {
@@ -35,6 +34,7 @@ import Panel from '@/components/Panel';
 import SectionHeading from '@/components/SectionHeading';
 import ResponsiveGrid from '@/components/ResponsiveGrid';
 import EmptyState from '@/components/EmptyState';
+import LoadingBlock from '@/components/LoadingBlock';
 import { useDeployments, useLogStream } from '@/hooks/useDeployments';
 import type { DeploymentRun, ContainerStats, LogLine } from '@/types/deployment';
 import { formatDateTime, formatRelative } from '@/utils/datetime';
@@ -445,7 +445,7 @@ export default function AdminDeployments() {
         <SectionHeading title="服务器健康" />
         <Panel variant="default" padding="md">
           {isLoadingHealth ? (
-            <Skeleton active paragraph={{ rows: 3 }} />
+            <LoadingBlock size="md" />
           ) : containers.length === 0 ? (
             <EmptyState
               title="暂无容器数据"

@@ -8,7 +8,6 @@ import {
   Button,
   DatePicker,
   Space,
-  Skeleton,
   Collapse,
   Tooltip,
   Tag,
@@ -32,6 +31,7 @@ import SectionHeading from '@/components/SectionHeading';
 import StatCard from '@/components/StatCard';
 import Panel from '@/components/Panel';
 import EmptyState from '@/components/EmptyState';
+import LoadingBlock from '@/components/LoadingBlock';
 import InstrumentCodeTag from '@/components/InstrumentCodeTag';
 import Sparkline from '@/components/Sparkline';
 import ExportButton from '@/components/ExportButton';
@@ -107,7 +107,7 @@ function premiumClass(v: number | null | undefined): 'rise' | 'fall' | 'neutral'
 function FlowSparklineCell({ tsCode, days = 30 }: { tsCode: string; days?: number }) {
   const { data, isLoading } = useFundFlowIndividualHistory(tsCode, days);
   if (isLoading) {
-    return <Skeleton.Input size="small" active style={{ width: 80, height: 20 }} />;
+    return <LoadingBlock size="sm" style={{ width: 80, height: 20 }} />;
   }
   const series = (data ?? []).map((p) => p.main_net_inflow);
   if (!series.length) return <span className="ad-text-tertiary">—</span>;
@@ -168,6 +168,21 @@ function PctChip({ value }: { value: number | null | undefined }) {
     <span className={`fund-flow__kpi-pct fund-flow__kpi-pct--${cls}`}>
       {value > 0 ? '+' : ''}
       {value.toFixed(2)}%
+    </span>
+  );
+}
+
+/** Muted em-dash cell for null values — de-emphasised vs real numbers. */
+function NullCell() {
+  return <span className="fund-flow__null-cell">{NULL_PLACEHOLDER}</span>;
+}
+
+/** Money cell that falls back to the muted null dash. */
+function moneyCell(v: number | null | undefined) {
+  if (v === null || v === undefined || Number.isNaN(v)) return <NullCell />;
+  return (
+    <span className={`fund-flow__money fund-flow__money--${signClass(v)}`}>
+      {formatMoney(v)}
     </span>
   );
 }
@@ -263,7 +278,8 @@ export default function FundFlowPage() {
    * Columns
    * ============================================================ */
 
-  const signalColumns: ColumnsType<FlowSignal> = [
+  const signalColumns = useMemo<ColumnsType<FlowSignal>>(() => {
+    const all: ColumnsType<FlowSignal> = [
     {
       title: '代码',
       dataIndex: 'ts_code',
@@ -296,33 +312,21 @@ export default function FundFlowPage() {
       dataIndex: 'main_net_inflow',
       key: 'main_net_inflow',
       width: 130,
-      render: (v: number) => (
-        <span className={`fund-flow__money fund-flow__money--${signClass(v)}`}>
-          {formatMoney(v)}
-        </span>
-      ),
+      render: (v: number | null) => moneyCell(v),
     },
     {
       title: '融资变化',
       dataIndex: 'margin_net_change',
       key: 'margin_net_change',
       width: 120,
-      render: (v: number) => (
-        <span className={`fund-flow__money fund-flow__money--${signClass(v)}`}>
-          {formatMoney(v)}
-        </span>
-      ),
+      render: (v: number | null) => moneyCell(v),
     },
     {
       title: '龙虎榜净买',
       dataIndex: 'lhb_net_buy',
       key: 'lhb_net_buy',
       width: 120,
-      render: (v: number) => (
-        <span className={`fund-flow__money fund-flow__money--${signClass(v)}`}>
-          {formatMoney(v)}
-        </span>
-      ),
+      render: (v: number | null) => moneyCell(v),
     },
     {
       title: '股东户数变化',
@@ -330,29 +334,33 @@ export default function FundFlowPage() {
       key: 'shareholder_count_change',
       width: 130,
       // Fewer shareholders → more concentrated → bullish. Invert the colour cue.
-      render: (v: number) => (
-        <span className={`fund-flow__money fund-flow__money--${signClass(-v)}`}>
-          {formatNumber(v, 0)}
-        </span>
-      ),
+      render: (v: number | null) =>
+        v === null || v === undefined || Number.isNaN(v) ? (
+          <NullCell />
+        ) : (
+          <span className={`fund-flow__money fund-flow__money--${signClass(-v)}`}>
+            {formatNumber(v, 0)}
+          </span>
+        ),
     },
     {
       title: 'AH 溢价',
       dataIndex: 'ah_premium',
       key: 'ah_premium',
       width: 100,
-      render: (v: number) => <ReturnTagPct value={v} />,
+      render: (v: number | null) =>
+        v === null || v === undefined || Number.isNaN(v) ? (
+          <NullCell />
+        ) : (
+          <ReturnTagPct value={v} />
+        ),
     },
     {
       title: '大宗交易净买',
       dataIndex: 'block_trade_net',
       key: 'block_trade_net',
       width: 120,
-      render: (v: number) => (
-        <span className={`fund-flow__money fund-flow__money--${signClass(v)}`}>
-          {formatMoney(v)}
-        </span>
-      ),
+      render: (v: number | null) => moneyCell(v),
     },
     {
       title: '7日趋势',
@@ -360,7 +368,20 @@ export default function FundFlowPage() {
       width: 120,
       render: (_, record) => <FlowSparklineCell tsCode={record.ts_code} days={7} />,
     },
-  ];
+    ];
+    /* Hide disclosure-driven columns (融资变化 / 股东户数变化 / AH 溢价 /
+       大宗交易净买 …) when every row is null — a column of em-dashes is
+       noise. Columns reappear automatically once the feed has data. */
+    if (signalRows.length === 0) return all;
+    return all.filter((col) => {
+      const key = (col as { dataIndex?: string }).dataIndex;
+      if (!key) return true;
+      return signalRows.some((r) => {
+        const v = (r as unknown as Record<string, unknown>)[key];
+        return v !== null && v !== undefined;
+      });
+    });
+  }, [signalRows]);
 
   const individualColumns: ColumnsType<IndividualFundFlow> = [
     {
@@ -644,7 +665,7 @@ export default function FundFlowPage() {
         />
         <Panel padding="md">
           {marketLoading ? (
-            <Skeleton active paragraph={{ rows: 4 }} />
+            <LoadingBlock size="md" />
           ) : !market ? (
             <EmptyState
               title="暂无大盘资金流数据"

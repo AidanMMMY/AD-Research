@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import './styles.css';
-import { Row, Col, Select, Spin } from 'antd';
+import { Row, Col, Select } from 'antd';
 import { useQuery } from '@tanstack/react-query';
 import { analysisApi } from '@/api/analysis';
 import PageShell from '@/components/PageShell';
 import PageHeader from '@/components/PageHeader';
+import LoadingBlock from '@/components/LoadingBlock';
 import Panel from '@/components/Panel';
 import FilterToolbar from '@/components/FilterToolbar';
 import EmptyState from '@/components/EmptyState';
@@ -99,7 +100,7 @@ export default function CorrelationAnalysis() {
             description="请至少选择2只标的进行分析"
           />
         ) : isLoading ? (
-          <Spin size="large" className="ad-spin-center" />
+          <LoadingBlock size="lg" className="ad-spin-center" />
         ) : error ? (
           <EmptyState
             title="加载失败"

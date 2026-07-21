@@ -25,7 +25,8 @@ export default function CategoryPie({ data, mode = 'count' }: CategoryPieProps) 
   }));
 
   // Resolve all CSS-variable colors once per render. Fallbacks mirror the
-  // light-theme defaults in theme.css so SSR / no-DOM still renders correctly.
+  // dark-theme defaults in theme.css (the default theme) so SSR / no-DOM
+  // still renders correctly.
   const palette = useMemo(
     () =>
       resolveChartColors(
@@ -39,24 +40,24 @@ export default function CategoryPie({ data, mode = 'count' }: CategoryPieProps) 
           'var(--color-rise-dim)',
           'var(--color-fall-dim)',
         ],
-        ['#2563EB', '#dc2626', '#16a34a', '#8894A4', '#5B6778', 'rgba(37, 99, 235, 0.08)', 'rgba(220, 38, 38, 0.08)', 'rgba(22, 163, 74, 0.08)'],
+        ['#60A5FA', '#FF8585', '#7DCB99', '#9CA3AF', '#A0A0A0', 'rgba(96, 165, 250, 0.12)', 'rgba(255, 133, 133, 0.14)', 'rgba(125, 203, 153, 0.14)'],
       ),
     [],
   );
   const bgElevated = useMemo(
-    () => resolveChartColors(['var(--bg-elevated)'], ['#F3F5F7']),
+    () => resolveChartColors(['var(--bg-elevated)'], ['#161B22']),
     [],
   );
   const borderDefault = useMemo(
-    () => resolveChartColors(['var(--border-default)'], ['#e5e7eb']),
+    () => resolveChartColors(['var(--border-default)'], ['#30363D']),
     [],
   );
   const textPrimary = useMemo(
-    () => resolveChartColors(['var(--text-primary)'], ['#0F1115']),
+    () => resolveChartColors(['var(--text-primary)'], ['#E6EDF3']),
     [],
   );
   const textSecondary = useMemo(
-    () => resolveChartColors(['var(--text-secondary)'], ['#5B6778']),
+    () => resolveChartColors(['var(--text-secondary)'], ['#A0A0A0']),
     [],
   );
 

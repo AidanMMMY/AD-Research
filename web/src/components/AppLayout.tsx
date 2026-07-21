@@ -3,8 +3,8 @@
  * Goals for this rewrite:
  *   • Sidebar 240 / 72 (kept from Phase 2)
  *   • Header 60px sticky, var(--bg-base), hairline bottom border,
- *     NO dark-glass backdrop-filter (the M28 refresh added one — we
- *     strip it here; see AppLayout.css override)
+ *     opaque at rest; once the page scrolls it switches to the
+ *     frosted --material-regular surface (2026-07-21)
  *   • Collapse toggle moves from the bottom of the sidebar to the
  *     top-right of the header (Phase 3 spec)
  *   • Theme (light/dark) and color-convention (China/US) toggles
@@ -67,6 +67,7 @@ import {
   WalletOutlined,
   StarOutlined,
   SmileOutlined,
+  SearchOutlined,
 } from '@ant-design/icons';
 import { useAuthStore } from '@/stores/auth';
 import { useSettingsStore } from '@/stores/settings';
@@ -133,7 +134,7 @@ const SIDEBAR_EXPANDED_KEY = 'ad-research:sidebar:expanded';
  */
 function dispatchThemeChange() {
   if (typeof document === 'undefined') return;
-  const resolved = document.documentElement.getAttribute('data-theme') || 'light';
+  const resolved = document.documentElement.getAttribute('data-theme') || 'dark';
   document.dispatchEvent(new CustomEvent('themechange', { detail: resolved }));
 }
 
@@ -526,6 +527,7 @@ export default function AppLayout() {
   const [collapsed, setCollapsed] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
+  const [headerScrolled, setHeaderScrolled] = useState(false);
   const isMobile = useIsMobile();
   const navigate = useNavigate();
   const location = useLocation();
@@ -553,10 +555,24 @@ export default function AppLayout() {
     };
   }, []);
 
-  // First-login auto-trigger: pop the onboarding tour once per user.
+  // Header material: stay fully opaque at the top of the page, switch to
+  // the frosted --material-regular surface once the user scrolls so
+  // content passing underneath stays readable (2026-07-21).
+  useEffect(() => {
+    const onScroll = () => setHeaderScrolled(window.scrollY > 0);
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+
+  // First-login auto-trigger: pop the onboarding tour once per user, and
+  // only on the home page — on any other page it would cover the content
+  // the user actually came for. Users can still reopen it manually from
+  // the avatar menu ("重新触发新手引导") on any page.
   useEffect(() => {
     const userId = user?.id;
     if (!userId) return;
+    if (location.pathname !== '/' && location.pathname !== '/dashboard') return;
     try {
       const key = `ad:onboarding:${userId}:shown`;
       if (localStorage.getItem(key) === '1') return;
@@ -565,7 +581,7 @@ export default function AppLayout() {
     } catch {
       /* localStorage may be unavailable */
     }
-  }, [user?.id]);
+  }, [user?.id, location.pathname]);
 
   // Phase 1: 同步 colorConvention 到 <html data-color-convention>
   useEffect(() => {
@@ -685,8 +701,10 @@ export default function AppLayout() {
 
       {/* Main Content */}
       <main className={`app-layout__main ${isMobile ? 'app-layout__main--mobile' : ''}`}>
-        {/* Header — sticky, 60px, var(--bg-base), hairline border */}
-        <header className="app-layout__header">
+        {/* Header — sticky, 60px, opaque at rest / frosted material when scrolled */}
+        <header
+          className={`app-layout__header ${headerScrolled ? 'app-layout__header--scrolled' : ''}`}
+        >
           <div className="app-layout__header-left">
             {isMobile && (
               <div
@@ -750,13 +768,26 @@ export default function AppLayout() {
             )}
           </div>
 
-          {/* Header right cluster — collapse (desktop only), theme, color, user */}
+          {/* Header right cluster — collapse + ⌘K search + theme + avatar.
+              Density / color-convention moved into the avatar menu under
+              "显示偏好" (2026-07-21) to declutter the header. */}
           <div className="app-layout__header-controls">
             {!isMobile && (
               <>
                 <CollapseToggle collapsed={collapsed} onChange={setCollapsed} />
-                <DensityToggle />
-                <ColorConventionToggle />
+                <Tooltip title="全局搜索（⌘K / Ctrl+K）">
+                  <button
+                    type="button"
+                    className="app-layout__header-search"
+                    aria-label="全局搜索（⌘K / Ctrl+K）"
+                    onClick={() => setPaletteOpen(true)}
+                  >
+                    <SearchOutlined aria-hidden="true" />
+                    <kbd className="app-layout__header-search-kbd" aria-hidden="true">
+                      ⌘K
+                    </kbd>
+                  </button>
+                </Tooltip>
                 <ThemeToggle
                   theme={theme}
                   effectiveTheme={effectiveTheme}
@@ -889,6 +920,39 @@ export default function AppLayout() {
                         </div>
                       </div>
                     ),
+                  },
+                  {
+                    key: 'display-prefs',
+                    type: 'group',
+                    label: '显示偏好',
+                    children: [
+                      {
+                        key: 'pref-density',
+                        label: (
+                          <div
+                            role="presentation"
+                            onClick={(e) => e.stopPropagation()}
+                            className="app-layout__user-menu-mode"
+                          >
+                            <div className="app-layout__user-menu-label">信息密度</div>
+                            <DensityToggle />
+                          </div>
+                        ),
+                      },
+                      {
+                        key: 'pref-color-convention',
+                        label: (
+                          <div
+                            role="presentation"
+                            onClick={(e) => e.stopPropagation()}
+                            className="app-layout__user-menu-mode"
+                          >
+                            <div className="app-layout__user-menu-label">涨跌色约定</div>
+                            <ColorConventionToggle />
+                          </div>
+                        ),
+                      },
+                    ],
                   },
                   {
                     key: 'notifications',

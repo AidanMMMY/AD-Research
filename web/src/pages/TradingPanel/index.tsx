@@ -3,7 +3,6 @@ import { useState, useEffect } from 'react';
 import {
   Badge,
   Button,
-  Card,
   Form,
   Input,
   InputNumber,
@@ -11,6 +10,7 @@ import {
   Modal,
   Popconfirm,
   Select,
+  // eslint-disable-next-line no-restricted-imports -- Skeleton.Input/Button inline control placeholder not covered by LoadingBlock
   Skeleton,
   Space,
   Statistic,
@@ -20,6 +20,7 @@ import {
 import PageShell from '@/components/PageShell';
 import PageHeader from '@/components/PageHeader';
 import Panel from '@/components/Panel';
+import LoadingBlock from '@/components/LoadingBlock';
 import SectionHeading from '@/components/SectionHeading';
 import EmptyState from '@/components/EmptyState';
 import ResponsiveGrid from '@/components/ResponsiveGrid';
@@ -426,23 +427,23 @@ export default function TradingPanel() {
         <>
           <SectionHeading title="风控与限额" />
           <ResponsiveGrid cols={4} gap="md" className="phase5c-section">
-            <Card size="small" className="phase5c-trading-card">
+            <Panel padding="sm" className="phase5c-trading-card">
               <Statistic
                 title="今日订单"
                 value={risk?.orders_today ?? 0}
                 suffix={`/ ${selectedConfig.max_daily_orders}`}
                 loading={riskLoading}
               />
-            </Card>
-            <Card size="small" className="phase5c-trading-card">
+            </Panel>
+            <Panel padding="sm" className="phase5c-trading-card">
               <Statistic
                 title="单笔上限"
                 value={selectedConfig.max_order_value}
                 prefix="$"
                 loading={configsLoading}
               />
-            </Card>
-            <Card size="small" className="phase5c-trading-card">
+            </Panel>
+            <Panel padding="sm" className="phase5c-trading-card">
               <div className={risk && Number(risk.realized_pnl_today) > 0 ? 'phase5c-pnl-stat--rise' : risk && Number(risk.realized_pnl_today) < 0 ? 'phase5c-pnl-stat--fall' : 'phase5c-pnl-stat--neutral'}>
                 <Statistic
                   title="今日已实现"
@@ -452,8 +453,8 @@ export default function TradingPanel() {
                   loading={riskLoading}
                 />
               </div>
-            </Card>
-            <Card size="small" className="phase5c-trading-card">
+            </Panel>
+            <Panel padding="sm" className="phase5c-trading-card">
               <div className="phase5c-flex-center">
                 <div>
                   <div className="phase5c-meta-label">
@@ -479,17 +480,17 @@ export default function TradingPanel() {
                   </Popconfirm>
                 )}
               </div>
-            </Card>
+            </Panel>
           </ResponsiveGrid>
 
           <SectionHeading title="账户余额" />
           <Panel variant="default" className="phase5c-section">
             {accountLoading ? (
-              <Skeleton active paragraph={{ rows: 3 }} />
+              <LoadingBlock size="md" />
             ) : account && account.balances.length > 0 ? (
               <div className="phase5c-balance-grid">
                 {account.balances.map((b) => (
-                  <Card key={b.asset} size="small" className="phase5c-balance-card">
+                  <Panel key={b.asset} padding="sm" className="phase5c-balance-card">
                     <div className="phase5c-balance-card__asset">
                       {b.asset}
                     </div>
@@ -499,7 +500,7 @@ export default function TradingPanel() {
                     <div className="phase5c-balance-card__row">
                       冻结: {fmtNumberString(b.locked)}
                     </div>
-                  </Card>
+                  </Panel>
                 ))}
               </div>
             ) : (
@@ -525,7 +526,7 @@ export default function TradingPanel() {
           <Panel variant="default" className="phase5c-section">
             <div className="phase5c-table-wrap">
               {positionsLoading ? (
-                <Skeleton active paragraph={{ rows: 5 }} className="phase5c-skeleton-pad" />
+                <LoadingBlock size="md" className="phase5c-skeleton-pad" />
               ) : positions && positions.length > 0 ? (
                 <Table
                   columns={positionColumns}
@@ -547,7 +548,7 @@ export default function TradingPanel() {
           <Panel variant="default">
             <div className="phase5c-table-wrap">
               {ordersLoading ? (
-                <Skeleton active paragraph={{ rows: 5 }} className="phase5c-skeleton-pad" />
+                <LoadingBlock size="md" className="phase5c-skeleton-pad" />
               ) : orders && orders.length > 0 ? (
                 <Table
                   columns={orderColumns}

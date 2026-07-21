@@ -30,25 +30,26 @@ export default function CorrelationHeatmap({ codes, matrix }: CorrelationHeatmap
   const labelFontSize = isMobile ? 8 : 10;
 
   // Resolve all CSS-variable colors at render time. Fallbacks mirror the
-  // light-theme defaults in theme.css so SSR / no-DOM still renders correctly.
+  // dark-theme defaults in theme.css (the default theme) so SSR / no-DOM
+  // still renders correctly.
   const bgElevated = useMemo(
-    () => resolveChartColors(['var(--bg-elevated)'], ['#F3F5F7'])[0],
+    () => resolveChartColors(['var(--bg-elevated)'], ['#161B22'])[0],
     [themeTick, colorConvention],
   );
   const textPrimary = useMemo(
-    () => resolveChartColors(['var(--text-primary)'], ['#0F1115'])[0],
+    () => resolveChartColors(['var(--text-primary)'], ['#E6EDF3'])[0],
     [themeTick, colorConvention],
   );
   const textSecondary = useMemo(
-    () => resolveChartColors(['var(--text-secondary)'], ['#5B6778'])[0],
+    () => resolveChartColors(['var(--text-secondary)'], ['#A0A0A0'])[0],
     [themeTick, colorConvention],
   );
   const textTertiary = useMemo(
-    () => resolveChartColors(['var(--text-tertiary)'], ['#8894A4'])[0],
+    () => resolveChartColors(['var(--text-tertiary)'], ['#9CA3AF'])[0],
     [themeTick, colorConvention],
   );
   const borderDefault = useMemo(
-    () => resolveChartColors(['var(--border-default)'], ['#e5e7eb'])[0],
+    () => resolveChartColors(['var(--border-default)'], ['#30363D'])[0],
     [themeTick, colorConvention],
   );
 

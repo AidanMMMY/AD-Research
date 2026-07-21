@@ -2,7 +2,7 @@ import './styles.css';
 
 import { useMemo, useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Table, Input, Select, List, Skeleton } from 'antd';
+import { Table, Input, Select, List } from 'antd';
 import { SearchOutlined } from '@ant-design/icons';
 import { useCryptoList } from '@/hooks/useCrypto';
 import { useCryptoStore } from '@/stores/crypto';
@@ -13,6 +13,7 @@ import PageShell from '@/components/PageShell';
 import PageHeader from '@/components/PageHeader';
 import FilterToolbar from '@/components/FilterToolbar';
 import Panel from '@/components/Panel';
+import LoadingBlock from '@/components/LoadingBlock';
 import EmptyState from '@/components/EmptyState';
 import InstrumentCodeTag from '@/components/InstrumentCodeTag';
 import ReturnTagPct from '@/components/ReturnTagPct';
@@ -260,7 +261,7 @@ export default function CryptoList() {
 
         {isMobile ? (
           isLoading ? (
-            <Skeleton active paragraph={{ rows: 6 }} />
+            <LoadingBlock size="md" />
           ) : (data?.items?.length ?? 0) === 0 ? (
             <EmptyState
               title="没有符合条件的币种"

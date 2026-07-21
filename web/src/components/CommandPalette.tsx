@@ -224,7 +224,7 @@ export default function CommandPalette({ open, onClose }: CommandPaletteProps) {
       className="cmdk-modal"
       styles={{ body: { padding: 0 }, content: { padding: 0, overflow: 'hidden' } }}
     >
-      <div className="cmdk" role="combobox" aria-expanded aria-haspopup="listbox" onKeyDown={handleKeyDown}>
+      <div className="cmdk" onKeyDown={handleKeyDown}>
         <div className="cmdk__input-row">
           <SearchOutlined className="cmdk__input-icon" aria-hidden="true" />
           <Input
@@ -235,7 +235,13 @@ export default function CommandPalette({ open, onClose }: CommandPaletteProps) {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             aria-label="命令面板搜索"
+            role="combobox"
+            aria-expanded
+            aria-haspopup="listbox"
             aria-controls="cmdk-listbox"
+            aria-activedescendant={
+              activeIndex >= 0 && activeIndex < rows.length ? `cmdk-option-${activeIndex}` : undefined
+            }
           />
           <kbd className="cmdk__esc">Esc</kbd>
         </div>
@@ -257,6 +263,8 @@ export default function CommandPalette({ open, onClose }: CommandPaletteProps) {
                   )}
                   <div
                     role="option"
+                    id={`cmdk-option-${row.index}`}
+                    tabIndex={-1}
                     aria-selected={active}
                     className={`cmdk__item ${active ? 'is-active' : ''}`}
                     onMouseMove={() => setActiveIndex(row.index)}

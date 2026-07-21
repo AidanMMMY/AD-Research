@@ -1,7 +1,7 @@
 import { useState, useEffect, type ReactNode } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import './styles.css';
-import { Tabs, Spin, Alert, Table, List, Radio, Checkbox, Space, Button } from 'antd';
+import { Tabs, Alert, Table, List, Radio, Checkbox, Space, Button } from 'antd';
 import { RobotOutlined, ReadOutlined, ArrowLeftOutlined } from '@ant-design/icons';
 import {
   useCryptoDetail,
@@ -11,6 +11,7 @@ import {
   useCryptoResearch,
 } from '@/hooks/useCrypto';
 import KLineChart, { DEFAULT_OVERLAYS } from '@/components/KLineChart';
+import LoadingBlock from '@/components/LoadingBlock';
 import Panel from '@/components/Panel';
 import PageShell from '@/components/PageShell';
 import PageHeader from '@/components/PageHeader';
@@ -169,7 +170,7 @@ export default function CryptoDetail() {
     return (
       <AdxShell>
         <PageShell maxWidth="wide">
-          <Spin size="large" className="detail-loading" />
+          <LoadingBlock size="lg" className="detail-loading" />
         </PageShell>
       </AdxShell>
     );
@@ -282,7 +283,7 @@ export default function CryptoDetail() {
             </Space>
           </div>
           {historyLoading ? (
-            <Spin />
+            <LoadingBlock size="sm" />
           ) : ohlcv.length ? (
             <KLineChart data={ohlcv} overlays={overlays} />
           ) : (

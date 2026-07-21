@@ -11,7 +11,7 @@
    API differs from `cssVar.ts`:
      - `token` is the BARE var name (`'--text-tertiary'`),
        not the wrapped `'var(--text-tertiary)'` form.
-     - Built-in light-mode fallbacks mean callers usually
+     - Built-in dark-mode fallbacks mean callers usually
        only pass the token.
      - `subscribeChartThemeCache(fn)` provides a single
        invalidation channel shared across all chart pages.
@@ -36,26 +36,26 @@
 import { readCssVar } from './cssVar';
 
 /**
- * Built-in light-mode fallbacks. These mirror the defaults in
- * `theme.css` so SSR / no-DOM callers still get a sensible
- * value. Dark-theme callers get the actual computed value
- * via `readCssVar`.
+ * Built-in dark-mode fallbacks. These mirror the dark-theme defaults in
+ * `theme.css` so SSR / no-DOM callers still get a sensible value (dark is
+ * the default theme since 2026-07-21). In the browser, callers get the
+ * actual computed value for the active theme via `readCssVar`.
  */
 const DEFAULT_FALLBACKS: Record<string, string> = {
-  '--text-primary': '#0F1115',
-  '--text-secondary': '#5B6778',
-  '--text-tertiary': '#8894A4',
-  '--text-muted': '#C8CFD8',
-  '--border-default': '#e5e7eb',
-  '--border-strong': '#d1d5db',
-  '--bg-base': '#FAFBFC',
-  '--bg-elevated': '#F3F5F7',
-  '--bg-surface': '#EDF0F3',
-  '--accent': '#2563EB',
-  '--accent-dim': 'rgba(37, 99, 235, 0.08)',
-  '--color-rise': '#C0392B',
-  '--color-fall': '#1B7A3C',
-  '--color-neutral': '#9ca3af',
+  '--text-primary': '#E6EDF3',
+  '--text-secondary': '#A0A0A0',
+  '--text-tertiary': '#9CA3AF',
+  '--text-muted': '#7B828E',
+  '--border-default': '#30363D',
+  '--border-strong': '#484F58',
+  '--bg-base': '#0D1117',
+  '--bg-elevated': '#161B22',
+  '--bg-surface': '#1C2128',
+  '--accent': '#60A5FA',
+  '--accent-dim': 'rgba(96, 165, 250, 0.12)',
+  '--color-rise': '#FF8585',
+  '--color-fall': '#7DCB99',
+  '--color-neutral': '#888888',
 };
 
 /**

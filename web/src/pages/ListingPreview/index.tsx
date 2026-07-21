@@ -1,11 +1,12 @@
 import { useMemo, useState } from 'react';
 import {
-  Table, Input, Select, DatePicker, Button, Space, Tag, Skeleton, message, Row, Col,
+  Table, Input, Select, DatePicker, Button, Space, Tag, message, Row, Col,
 } from 'antd';
 import { SearchOutlined, ReloadOutlined, CalendarOutlined, FileTextOutlined } from '@ant-design/icons';
 import { type Dayjs } from 'dayjs';
 import PageShell from '@/components/PageShell';
 import Panel from '@/components/Panel';
+import LoadingBlock from '@/components/LoadingBlock';
 import FilterToolbar from '@/components/FilterToolbar';
 import PageHeader from '@/components/PageHeader';
 import SectionHeading from '@/components/SectionHeading';
@@ -460,7 +461,7 @@ export default function ListingPreview() {
 
       <Panel variant="default" padding="none">
         {isLoading ? (
-          <Skeleton active paragraph={{ rows: 10 }} />
+          <LoadingBlock size="lg" />
         ) : items.length === 0 ? (
           <div className="ad-p-5">
             <EmptyState

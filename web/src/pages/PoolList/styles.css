@@ -1,17 +1,95 @@
 /* ============================================================
    PoolList — page-specific style overrides
    Inherits CSS variables from theme.css.
-   Core classes (ad-table-scroll, ad-p-5, etc.) are defined
+   Core classes (responsive-grid, ad-mb-4, etc.) are defined
    in global.css.
    ============================================================ */
 
-/* ── Apple Design #1 Response / #10 Gesture details: clickable rows give
-   instant pointer-down feedback (tap-highlight equivalent). Background
-   only — no movement, so no reduced-motion concern. ── */
-.pool-list-row--pressable > td {
-  transition: background var(--transition-fast, 150ms ease);
+/* ── Bento pool cards: whole card is the link target. Hover lifts the
+   shadow only (no movement), so no reduced-motion concern beyond the
+   standard fast transition. ── */
+.pool-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-5);
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: var(--card-radius);
+  box-shadow: var(--shadow-card);
+  cursor: pointer;
+  transition: box-shadow var(--transition-fast, 150ms ease),
+    border-color var(--transition-fast, 150ms ease);
 }
 
-.pool-list-row--pressable:active > td {
-  background: var(--bg-active) !important;
+.pool-card:hover {
+  box-shadow: var(--shadow-card-hover);
+  border-color: var(--border-hover);
+}
+
+.pool-card:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.pool-card:active {
+  background: var(--bg-active);
+}
+
+.pool-card__header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.pool-card__name {
+  font-size: var(--text-body-size);
+  font-weight: 600;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pool-card__count {
+  flex-shrink: 0;
+  font-size: var(--text-small-size);
+  color: var(--text-secondary);
+}
+
+/* Description clamps to two lines so cards stay bento-uniform. */
+.pool-card__desc {
+  flex: 1;
+  margin: 0;
+  font-size: var(--text-small-size);
+  color: var(--text-tertiary);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.pool-card__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.pool-card__date {
+  font-size: var(--text-small-size);
+  color: var(--text-tertiary);
+}
+
+.pool-card__actions {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.pool-list-loading {
+  display: flex;
+  justify-content: center;
+  padding: var(--space-9) 0;
 }

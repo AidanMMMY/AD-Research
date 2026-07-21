@@ -11,6 +11,21 @@ import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
 import { ReloadOutlined } from '@ant-design/icons';
 import type { ScanResult } from '@/types/scanner';
 
+/**
+ * Neutral mono count cell for the scan-history table — the + / - / ~
+ * prefix carries the meaning (new / delisted / changed) so colour stays
+ * reserved for the status column.
+ */
+function ScanCount({ value, prefix }: { value: number; prefix: string }) {
+  return (
+    <span
+      className={`font-mono tabular-nums ${value > 0 ? 'ad-text-primary' : 'ad-text-tertiary'}`}
+    >
+      {value > 0 ? `${prefix}${value}` : value}
+    </span>
+  );
+}
+
 export default function MarketScanner() {
   const [lastScan, setLastScan] = useState<ScanResult | null>(null);
   const { logs, isLoading, scan, isScanning } = useScanner();
@@ -45,9 +60,9 @@ export default function MarketScanner() {
 
   const columns = [
     { title: '扫描日期', dataIndex: 'scan_date', width: 120 },
-    { title: '新增', dataIndex: 'new_count', width: 80, render: (v: number) => v > 0 ? <ThemeTag variant="rise">+{v}</ThemeTag> : <ThemeTag variant="default">{v}</ThemeTag> },
-    { title: '退市', dataIndex: 'delisted_count', width: 80, render: (v: number) => v > 0 ? <ThemeTag variant="fall">-{v}</ThemeTag> : <ThemeTag variant="default">{v}</ThemeTag> },
-    { title: '变更', dataIndex: 'changed_count', width: 80, render: (v: number) => v > 0 ? <ThemeTag variant="warning">~{v}</ThemeTag> : <ThemeTag variant="default">{v}</ThemeTag> },
+    { title: '新增', dataIndex: 'new_count', width: 80, render: (v: number) => <ScanCount value={v} prefix="+" /> },
+    { title: '退市', dataIndex: 'delisted_count', width: 80, render: (v: number) => <ScanCount value={v} prefix="-" /> },
+    { title: '变更', dataIndex: 'changed_count', width: 80, render: (v: number) => <ScanCount value={v} prefix="~" /> },
     { title: '状态', dataIndex: 'status', width: 100, render: (v: string) => v === 'success' ? <ThemeTag variant="success">成功</ThemeTag> : <ThemeTag variant="error">失败</ThemeTag> },
   ];
 

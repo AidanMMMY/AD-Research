@@ -1,0 +1,188 @@
+/* ============================================================
+   Page Header (S2) — standardized H1 + tagline block
+   ============================================================ */
+.page-header {
+  margin: 0 0 var(--space-section);
+}
+.page-header[data-compact] {
+  margin: 0 0 var(--space-block);
+}
+
+.page-header-breadcrumb {
+  font-size: var(--text-small-size);
+  color: var(--text-tertiary);
+  margin-bottom: var(--space-3);
+  letter-spacing: 0.04em;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.page-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--space-5);
+  flex-wrap: wrap;
+}
+
+.page-header-text {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.page-header-eyebrow {
+  font-size: var(--text-small-size);
+  color: var(--text-tertiary);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  margin-bottom: var(--space-2);
+  font-weight: 500;
+}
+
+.page-header-title {
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-h1-size);
+  font-weight: 500;
+  color: var(--text-primary);
+  letter-spacing: -0.03em;
+  line-height: 1.2;
+}
+
+.page-header-description {
+  margin: 0;
+  color: var(--text-tertiary);
+  font-size: var(--text-body-size);
+  line-height: 1.55;
+  max-width: 720px;
+}
+
+.page-header-extra {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-shrink: 0;
+  padding-top: var(--space-1);
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+/* Section heading — uppercase eyebrow used within a page. */
+.section-heading {
+  margin: 0 0 var(--space-block);
+  font-size: var(--text-small-size);
+  font-weight: 500;
+  color: var(--text-tertiary);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-inline);
+}
+
+.section-heading-meta {
+  font-size: var(--text-small-size);
+  color: var(--text-muted);
+  letter-spacing: 0;
+  text-transform: none;
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Ensure anchor jumps clear the sticky AppLayout header (64px). */
+main,
+[role="main"] {
+  scroll-margin-top: 80px;
+}
+
+/* ============================================================
+   Page padding utilities
+   ============================================================ */
+.page-padding {
+  padding: var(--space-page);
+}
+
+.page-padding-sm {
+  padding: var(--space-block-sm);
+}
+
+.page-padding-lg {
+  padding: var(--space-section);
+}
+
+@media (max-width: 767px) {
+  .page-padding-lg {
+    padding: var(--space-block);
+  }
+}
+
+/* ============================================================
+   Links & interactive elements
+   ============================================================ */
+
+a {
+  color: var(--accent);
+  transition: color var(--transition-fast);
+}
+
+a:hover {
+  color: var(--accent-hover);
+}
+
+/* ============================================================
+   Accessibility: Global focus indicator for keyboard users.
+   ============================================================ */
+
+*:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 3px;
+  box-shadow: 0 0 0 4px var(--accent-dim);
+}
+
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: none;
+}
+
+button:focus-visible,
+a:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Login.tsx input wrappers — keyboard users get the same accent ring. */
+.login-input-wrapper:focus-within {
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 0 2px var(--accent-dim);
+}
+
+/* ============================================================
+   Density (S1) — fixed 'spacious' table padding.
+   Density toggle was removed in 2026-07-09, so all tables use
+   this layout regardless of user preference.
+   ============================================================ */
+
+/* ============================================================
+   Accessibility: respect prefers-reduced-motion
+   ============================================================ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  /* Hide CRT scanline + vignette overlays for reduced-motion users. */
+  body::before,
+  body::after {
+    display: none;
+  }
+}
+

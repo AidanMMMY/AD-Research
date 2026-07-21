@@ -2,9 +2,9 @@ import { useState, useEffect } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { message } from 'antd';
 import { AxiosError } from 'axios';
-import { UserOutlined, LockOutlined, StockOutlined } from '@ant-design/icons';
+import { UserOutlined, LockOutlined } from '@ant-design/icons';
 import { useAuthStore } from '@/stores/auth';
-import AuroraBackground from '@/components/AuroraBackground';
+import LoginBackdrop from '@/components/LoginBackdrop';
 
 // Shape of the public /health readiness payload (see app/main.py
 // ``health_check``: db/redis are "ok" or "error: <detail>" strings and the
@@ -131,7 +131,7 @@ export default function Login() {
            - center brand content vertically so the panel doesn't feel top-heavy
            - tighten the gap between the form title and the inputs
            - keep the login page readable in light theme by forcing dark foreground tokens
-             (use the exact dark-theme values so contrast on the dark aurora/card
+             (use the exact dark-theme values so contrast on the dark backdrop/card
              background stays >= AA: text-tertiary #9CA3AF, text-muted #7B828E) */
         .login-brand-panel {
           justify-content: center;
@@ -141,6 +141,47 @@ export default function Login() {
         }
         .login-form-header {
           margin-bottom: 16px;
+        }
+        /* Login convergence (2026-07-21) — align card chrome with the in-app
+           design tokens instead of the old sci-fi one-offs:
+           - page background follows --login-bg (global.css base still
+             hard-codes the old aurora canvas color)
+           - solid --accent submit button (brighter than the old gradient)
+             with the shared radius scale
+           - input border lifted from 0.08 to the 0.16 token for a visible
+             affordance; bg/focus-bg from the same token family
+           - equal-height panels on desktop (the <992px media query in
+             global.css stacks them and lets content size each panel) */
+        .login-page--sci-fi {
+          background: var(--login-bg);
+        }
+        .login-page--sci-fi .login-submit {
+          background: var(--accent);
+          color: var(--text-on-accent);
+          border-radius: var(--radius-lg);
+        }
+        .login-page--sci-fi .login-input-wrapper {
+          background: var(--login-input-bg);
+          border-color: var(--login-input-border);
+          border-radius: var(--radius-lg);
+        }
+        .login-page--sci-fi .login-input-wrapper:focus-within {
+          background: var(--login-input-focus-bg);
+        }
+        .login-page--sci-fi .login-brand-icon-box {
+          border-radius: var(--radius-lg);
+        }
+        @media (min-width: 992px) {
+          .login-page--sci-fi .login-brand-panel,
+          .login-page--sci-fi .login-form-panel {
+            height: 480px;
+          }
+        }
+        /* Service status sits in the footer row now — drop the bottom
+           divider so only the top rule separates it from the brand copy. */
+        .login-brand-footer .login-source-status {
+          margin-top: 0;
+          border-bottom: none;
         }
         :root[data-theme="light"] .login-page--sci-fi {
           --text-primary: #E6EDF3;
@@ -154,24 +195,31 @@ export default function Login() {
           --accent-soft: rgba(96, 165, 250, 0.12);
           --accent-border: rgba(96, 165, 250, 0.25);
           --accent-glow: rgba(96, 165, 250, 0.15);
+          /* Re-declare so the glow resolves against the dark accent above
+             (var() binds where the custom property is declared). */
+          --login-glow: var(--accent-glow);
           --color-success-bright: #22c55e;
         }
       `}</style>
-      <AuroraBackground />
+      <LoginBackdrop />
 
       {/* ---- Brand Panel ---- */}
       <div className="login-glass login-brand-panel">
         <div className="login-brand-header">
           <div className="login-brand-logo">
-            <div className="login-brand-icon-box">
-              <StockOutlined />
+            {/* Unified logomark: same E-block as the sidebar
+                (.app-layout__logo-mark), sized up for the brand panel. */}
+            <div className="login-brand-icon-box login-brand-icon-box--logomark" aria-hidden="true">
+              E
             </div>
             <span className="login-brand-name">AD-Research</span>
           </div>
           <p className="login-brand-tagline">
             让每一次投资决策，都有数据可依
           </p>
+        </div>
 
+        <div className="login-brand-footer">
           {/* Live backend health from the public /health endpoint (no token).
               On request failure we show plain brand copy instead — never a
               fake "all good" status line. */}
@@ -192,10 +240,7 @@ export default function Login() {
               </span>
             )}
           </div>
-        </div>
-
-        <div className="login-brand-footer">
-          专业投资研究平台 &middot; 2026
+          <div>专业投资研究平台 &middot; 2026</div>
         </div>
       </div>
 

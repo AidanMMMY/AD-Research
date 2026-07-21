@@ -1,9 +1,9 @@
 import { useMemo, useState, type ReactNode } from 'react';
 import './styles.css';
 import {
-  Table, Input, Select, Button, Space, Tag, Skeleton, message, Tabs, Alert,
+  Table, Input, Select, Button, Space, Tag, message, Tabs, Alert,
 } from 'antd';
-import { ReloadOutlined, SearchOutlined, FireOutlined } from '@ant-design/icons';
+import { ReloadOutlined, SearchOutlined, FireOutlined, GoogleOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import ReactECharts from 'echarts-for-react';
 import type { EChartsOption } from 'echarts';
@@ -16,7 +16,9 @@ import EmptyState from '@/components/EmptyState';
 import StatCard from '@/components/StatCard';
 import LastUpdated from '@/components/LastUpdated';
 import ThemeTag from '@/components/ThemeTag';
+import LoadingBlock from '@/components/LoadingBlock';
 import { useDebounce } from '@/hooks/useDebounce';
+import { NULL_PLACEHOLDER } from '@/utils/format';
 import {
   useSearchTrendList,
   useSearchTrendDashboard,
@@ -102,6 +104,14 @@ const CATEGORIES = [
   { value: 'macro', label: '宏观' },
 ];
 
+/**
+ * Baidu caps its index at 9999 — values ≥ 9999 are sentinel placeholders
+ * for saturated rankings, not real heat, so render them as the null dash.
+ */
+function fmtTrendValue(v: number): string {
+  return v >= 9999 ? NULL_PLACEHOLDER : v.toLocaleString();
+}
+
 export default function SearchTrendsPage() {
   const [tab, setTab] = useState('dashboard');
   const [source, setSource] = useState<string | undefined>();
@@ -148,7 +158,7 @@ export default function SearchTrendsPage() {
     { title: '区域', dataIndex: 'region', key: 'region', width: 80 },
     { title: '关键词', dataIndex: 'keyword', key: 'keyword', render: (v: string) => <Tag>{v}</Tag> },
     { title: '分类', dataIndex: 'category', key: 'category', width: 80, render: (v: string | null) => v ? <ThemeTag variant="neutral">{v}</ThemeTag> : '-' },
-    { title: '指数值', dataIndex: 'value', key: 'value', render: (v: number) => v.toLocaleString() },
+    { title: '指数值', dataIndex: 'value', key: 'value', render: (v: number) => fmtTrendValue(v) },
     { title: '是否完整', dataIndex: 'is_partial', key: 'is_partial', width: 100, render: (v: boolean) => v ? <ThemeTag variant="warning">部分</ThemeTag> : <ThemeTag variant="success">完整</ThemeTag> },
   ];
 
@@ -156,7 +166,7 @@ export default function SearchTrendsPage() {
     { title: '日期', dataIndex: 'trade_date', key: 'trade_date', width: 110 },
     { title: '来源', dataIndex: 'source', key: 'source', width: 80, render: (v: string) => <ThemeTag variant={v === 'baidu' ? 'accent' : 'success'}>{v}</ThemeTag> },
     { title: '区域', dataIndex: 'region', key: 'region', width: 80 },
-    { title: '指数值', dataIndex: 'value', key: 'value', render: (v: number) => v.toLocaleString() },
+    { title: '指数值', dataIndex: 'value', key: 'value', render: (v: number) => fmtTrendValue(v) },
   ];
 
   /* Dual-source trend chart: one line per source (baidu / google) across the
@@ -231,6 +241,7 @@ export default function SearchTrendsPage() {
           <StatCard
             title="Google 当日条目"
             value={dashboard?.google?.count ?? 0}
+            icon={<GoogleOutlined />}
             loading={dashLoading}
           />
           <StatCard
@@ -250,7 +261,7 @@ export default function SearchTrendsPage() {
               key: 'dashboard',
               label: 'Top 关键词',
               children: dashLoading ? (
-                <Skeleton active />
+                <LoadingBlock size="md" />
               ) : (
                 <ResponsiveGrid cols={2} gap="md">
                   <Panel title="百度热搜 Top 10" padding="sm">
@@ -294,7 +305,7 @@ export default function SearchTrendsPage() {
                     />
                   </FilterToolbar>
                   {listLoading ? (
-                    <Skeleton active />
+                    <LoadingBlock size="md" />
                   ) : !listData || listData.items.length === 0 ? (
                     <EmptyState title="暂无搜索热度数据" />
                   ) : (
@@ -335,7 +346,7 @@ export default function SearchTrendsPage() {
                   {!compareKeyword ? (
                     <EmptyState title="请输入关键词以查看对比" />
                   ) : compareLoading ? (
-                    <Skeleton active />
+                    <LoadingBlock size="md" />
                   ) : !compareData || compareData.series.length === 0 ? (
                     <EmptyState title="暂无该关键词数据" />
                   ) : (
@@ -377,15 +388,16 @@ function TopKeywordList({ items }: { items: SearchTrend[] }) {
       {items.map((item, idx) => (
         <div
           key={item.id}
-          className="ad-list-row"
+          className={`ad-list-row search-trends__keyword-row--${item.source}`}
         >
           <Space>
-            <ThemeTag variant={item.source === 'baidu' ? 'accent' : 'success'}>#{idx + 1}</ThemeTag>
+            {/* Rank badge stays neutral; the source colour is the left bar. */}
+            <ThemeTag variant="neutral">#{idx + 1}</ThemeTag>
             <span className="ad-font-medium">{item.keyword}</span>
             {item.category && <ThemeTag variant="neutral">{item.category}</ThemeTag>}
           </Space>
           <span className="font-mono">
-            {item.value.toLocaleString()}
+            {fmtTrendValue(item.value)}
           </span>
         </div>
       ))}

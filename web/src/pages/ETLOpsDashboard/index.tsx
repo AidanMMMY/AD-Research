@@ -231,6 +231,7 @@ export default function ETLOpsDashboard() {
 
   return (
     <Spin spinning={isLoading}>
+      {/* Keep antd Spin: overlay loading wrapper not covered by LoadingBlock */}
       <PageShell maxWidth="wide">
         {/* Apple Design overrides (WWDC "Designing Fluid Interfaces").
             #1 Response — the refresh link is an <a>, so give it instant

@@ -11,7 +11,6 @@ import {
   Space,
   Typography,
   Button,
-  Skeleton,
   message,
   Tooltip,
 } from 'antd';
@@ -30,6 +29,7 @@ import SectionHeading from '@/components/SectionHeading';
 import EmptyState from '@/components/EmptyState';
 import FilterToolbar from '@/components/FilterToolbar';
 import LastUpdated from '@/components/LastUpdated';
+import LoadingBlock from '@/components/LoadingBlock';
 import HelpPopover from '@/components/HelpPopover';
 import { useSettingsStore } from '@/stores/settings';
 import { useChartMotion } from '@/hooks/useChartMotion';
@@ -400,7 +400,7 @@ export default function Macro() {
       {headlineLoading ? (
         <div className="macro__headline-grid ad-mb-5">
           {HEADLINE_CODES[region]?.map((code) => (
-            <Skeleton active paragraph={{ rows: 2 }} key={code} />
+            <LoadingBlock size="sm" key={code} />
           ))}
         </div>
       ) : headline.length > 0 ? (
@@ -441,6 +441,7 @@ export default function Macro() {
         {/* ── Indicator list ── */}
         <Col xs={24} lg={mountedCode ? 12 : 24}>
           <Panel title="全部指标">
+            {/* Keep antd Spin: overlay loading wrapper not covered by LoadingBlock */}
             <Spin spinning={isLoading}>
               <div className="ad-table-scroll ad-table-sticky">
                 <Table<MacroIndicatorItem>
@@ -492,6 +493,7 @@ export default function Macro() {
                 </Button>
               }
             >
+              {/* Keep antd Spin: overlay loading wrapper not covered by LoadingBlock */}
               <Spin spinning={seriesLoading}>
                 {chartOption ? (
                   <div className="ad-chart-container ad-chart-container--tall">

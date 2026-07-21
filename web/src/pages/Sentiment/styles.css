@@ -1,5 +1,67 @@
 /* Sentiment page overrides — scoped under .sentiment-page for specificity. */
 
+/* Legend rows: mini colour dot + label + worked example, separated from
+   the detail block by a dashed hairline. */
+.sentiment-page .ad-sentiment-legend {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding-bottom: var(--space-3);
+  margin-bottom: var(--space-3);
+  border-bottom: 1px dashed var(--border-default);
+}
+
+.sentiment-page .ad-sentiment-legend__row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2, 8px);
+}
+
+.sentiment-page .ad-sentiment-legend__dot {
+  flex-shrink: 0;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.sentiment-page .ad-sentiment-legend__dot--positive {
+  background: var(--color-rise);
+}
+
+.sentiment-page .ad-sentiment-legend__dot--neutral {
+  background: var(--text-tertiary);
+}
+
+.sentiment-page .ad-sentiment-legend__dot--negative {
+  background: var(--color-fall);
+}
+
+.sentiment-page .ad-sentiment-legend__label {
+  font-size: var(--text-small-size);
+  color: var(--text-secondary);
+}
+
+.sentiment-page .ad-sentiment-legend__example {
+  font-size: var(--text-small-size);
+  color: var(--text-tertiary);
+}
+
+/* Top-movers section inside the merged right-column card. */
+.sentiment-page .ad-sentiment-movers {
+  margin-top: var(--space-4, 16px);
+  padding-top: var(--space-3);
+  border-top: 1px dashed var(--border-default);
+}
+
+.sentiment-page .ad-sentiment-movers__title {
+  display: flex;
+  align-items: center;
+  font-size: var(--text-body-size);
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: var(--space-2, 8px);
+}
+
 /* Heatmap background now uses theme-aware color variables with dynamic alpha
    via color-mix. The inline JS supplies --heatmap-color and --heatmap-intensity. */
 .sentiment-page .ad-heatmap-cell {

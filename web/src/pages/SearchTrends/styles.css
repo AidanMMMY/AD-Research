@@ -38,3 +38,17 @@
   font-family: var(--font-mono);
   color: var(--text-secondary);
 }
+
+/* ── Source colour cue: 2px left bar on the top-keyword rows ──
+   (rank badge itself stays neutral). Specificity is doubled to beat the
+   shared `.ad-list-row` padding rule in global.css. */
+
+.ad-list-row.search-trends__keyword-row--baidu {
+  border-left: 2px solid var(--accent);
+  padding-left: var(--space-2);
+}
+
+.ad-list-row.search-trends__keyword-row--google {
+  border-left: 2px solid var(--color-success);
+  padding-left: var(--space-2);
+}

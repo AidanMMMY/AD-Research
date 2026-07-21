@@ -1,0 +1,276 @@
+/* ============================================================
+   Sidebar — 1-level group + 2-level collapsible items
+
+   NOTE (2026-07-21 split): sidebar-refresh.css (M30, imported later)
+   re-declares the group/header/icon/label/chevron/items/collapse-bar
+   rules that used to sit here; the fully-covered duplicates were removed,
+   and the two declarations M30 did not re-declare (header line-height,
+   chevron opacity) were merged into sidebar-refresh.css. What remains in
+   this file are the rules that are still live: first-child header margin,
+   collapsed-group item indents, collapsed-sidebar layout, icon buttons,
+   and the main/header/content/footer region styles.
+   ============================================================ */
+
+.app-layout__nav-group:first-child .app-layout__nav-group-header {
+  margin-top: var(--space-1);
+}
+
+.app-layout__nav-group.is-collapsed .app-layout__nav-item {
+  /* slight indent to differentiate from the group header */
+  padding-left: calc(12px + var(--space-3));
+}
+
+@media (max-width: 767px) {
+  .app-layout__nav-group.is-collapsed .app-layout__nav-item {
+    padding-left: calc(12px + var(--space-2));
+  }
+}
+
+/* In collapsed (icon-only) mode the group icon stands in for the header. */
+.app-layout__sidebar--collapsed .app-layout__nav-group {
+  display: flex;
+  justify-content: center;
+}
+
+.app-layout__sidebar--collapsed .app-layout__nav-group.is-collapsed .app-layout__nav-item {
+  padding-left: 0;
+}
+
+.app-layout__icon-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--text-secondary);
+  background: transparent;
+  border: none;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+@media (max-width: 767px) {
+  .app-layout__icon-btn {
+    width: 44px;
+    height: 44px;
+  }
+}
+
+.app-layout__icon-btn:hover,
+.app-layout__icon-btn:focus-visible {
+  background: var(--bg-active);
+  color: var(--text-primary);
+}
+
+.app-layout__main {
+  flex: 1;
+  margin-left: 240px;
+  transition: margin-left var(--transition-slow);
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.app-layout__sidebar--collapsed ~ .app-layout__main,
+.app-layout:has(.app-layout__sidebar--collapsed) .app-layout__main {
+  margin-left: 72px;
+}
+
+/* Mobile: collapse sidebar gutter so main content fills the viewport.
+   The collapsed-sidebar sibling selector above has higher specificity than
+   `.app-layout__main--mobile`, so we must reset margin-left with !important
+   inside the 767px media query to win the cascade. */
+@media (max-width: 767px) {
+  .app-layout__main,
+  .app-layout__main--mobile,
+  .app-layout__sidebar--collapsed ~ .app-layout__main,
+  .app-layout:has(.app-layout__sidebar--collapsed) .app-layout__main {
+    margin-left: 0 !important;
+  }
+}
+
+.app-layout__header {
+  height: 60px;
+  background: var(--bg-base);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border-default);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 var(--space-page);
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  gap: var(--space-inline);
+}
+
+@media (max-width: 767px) {
+  .app-layout__header {
+    padding: 0 var(--space-4);
+  }
+}
+
+.app-layout__header-left {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.app-layout__breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  flex: 1 1 auto;
+  font-size: var(--text-small-size);
+  color: var(--text-tertiary);
+  letter-spacing: 0.04em;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.app-layout__breadcrumb-link {
+  cursor: pointer;
+  color: var(--text-tertiary);
+  transition: color var(--transition-fast);
+}
+
+.app-layout__breadcrumb-link:hover,
+.app-layout__breadcrumb-link:focus-visible {
+  color: var(--text-primary);
+}
+
+.app-layout__breadcrumb-current {
+  color: var(--text-primary);
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.app-layout__header-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-shrink: 0;
+}
+
+@media (max-width: 767px) {
+  .app-layout__header {
+    flex-wrap: nowrap;
+    height: 60px;
+    min-height: 60px;
+    padding-top: 0;
+    padding-bottom: 0;
+    overflow: hidden;
+  }
+
+  .app-layout__header-controls {
+    flex-wrap: nowrap;
+    justify-content: flex-end;
+    max-width: 100%;
+    margin-left: auto;
+    flex-shrink: 0;
+  }
+
+  .app-layout__header-controls .ant-segmented {
+    max-width: 100%;
+  }
+}
+
+@media (max-width: 479px) {
+  .app-layout__header-controls {
+    width: auto;
+    justify-content: flex-end;
+    margin-left: auto;
+    padding-left: 0;
+  }
+}
+
+.app-layout__content {
+  flex: 1;
+  padding: var(--space-page);
+  overflow: auto;
+}
+
+.app-layout__content-wrap {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+}
+
+.app-layout__footer {
+  text-align: center;
+  padding: 24px 16px 32px;
+  font-size: 11px;
+  color: var(--text-muted);
+  border-top: 1px solid var(--border-default);
+  margin-top: var(--space-9);
+  margin-top: auto;
+}
+
+@media (max-width: 767px) {
+  .app-layout__content {
+    padding: var(--space-page);
+  }
+
+  .app-layout__header {
+    padding: 0 var(--space-page);
+  }
+}
+
+.app-layout__user {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  cursor: pointer;
+  padding: 6px 12px;
+  border-radius: var(--radius-lg);
+  transition: background var(--transition-fast);
+}
+
+.app-layout__user:hover,
+.app-layout__user:focus-visible {
+  background: var(--bg-hover);
+}
+
+.app-layout__avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--bg-input);
+  border: 1px solid var(--border-default);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.app-layout__username {
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+/* Mobile drawer overrides within AppLayout */
+.app-layout .ant-drawer-body {
+  padding: 0;
+  background: var(--bg-elevated);
+}
+
+.app-layout .ant-drawer-header {
+  display: none;
+}
+
+.app-layout .ant-drawer-mask {
+  /* stylelint-disable-next-line ad-research/no-bare-color-values -- drawer mask alpha, no exact token match; kept for visual parity */
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+}
+

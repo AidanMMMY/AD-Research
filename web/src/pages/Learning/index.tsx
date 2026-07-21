@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Tag, Space, Button, Collapse, Input, Empty } from 'antd';
+import { Tag, Space, Button, Collapse, Input } from 'antd';
 import {
   ReadOutlined,
   ExperimentOutlined,
@@ -12,6 +12,7 @@ import {
 import PageShell from '@/components/PageShell';
 import PageHeader from '@/components/PageHeader';
 import Panel from '@/components/Panel';
+import EmptyState from '@/components/EmptyState';
 import HelpPopover from '@/components/HelpPopover';
 import ThemeTag from '@/components/ThemeTag';
 import { useSettingsStore } from '@/stores/settings';
@@ -96,9 +97,14 @@ export default function Learning() {
     [location.search]
   );
   const [panelOpen, setPanelOpen] = useState(wantsTermsPanel);
-  useEffect(() => {
+  // Adjust state during render (React docs pattern) instead of a
+  // setState-in-effect: re-open the panel when the user re-arrives
+  // with ?panel=terms.
+  const [prevWantsTermsPanel, setPrevWantsTermsPanel] = useState(wantsTermsPanel);
+  if (wantsTermsPanel !== prevWantsTermsPanel) {
+    setPrevWantsTermsPanel(wantsTermsPanel);
     if (wantsTermsPanel) setPanelOpen(true);
-  }, [wantsTermsPanel]);
+  }
 
   return (
     <PageShell maxWidth="wide">
@@ -266,7 +272,7 @@ function TermQuickReference({
         P2 将升级为真正的图谱视图。
       </p>
       {totalShown === 0 ? (
-        <Empty description="没有匹配的术语" />
+        <EmptyState title="没有匹配的术语" />
       ) : (
         <Collapse
           defaultActiveKey={initialOpen ? [Array.from(grouped.keys())[0]] : []}

@@ -34,6 +34,60 @@ const MARKET_LABELS: Record<string, string> = {
   'JP': '日股',
 };
 
+interface MinMaxPairProps {
+  /** Metric label used for aria-label and placeholder, e.g. `1月收益`. */
+  label: string;
+  /** Unit suffix shown in parens, e.g. `%`. */
+  unit?: string;
+  step?: number;
+  min?: number;
+  max?: number;
+  valueMin?: number;
+  valueMax?: number;
+  onMinChange: (v: number | undefined) => void;
+  onMaxChange: (v: number | undefined) => void;
+}
+
+/** Paired min/max InputNumber rendered as one compact control — halves the
+ *  field count per filter group compared to two standalone inputs. */
+function MinMaxPair({
+  label,
+  unit,
+  step,
+  min,
+  max,
+  valueMin,
+  valueMax,
+  onMinChange,
+  onMaxChange,
+}: MinMaxPairProps) {
+  const suffix = unit ? ` (${unit})` : '';
+  return (
+    <Space.Compact className="ad-w-full">
+      <InputNumber
+        aria-label={`${label}最小${suffix}`}
+        placeholder={`${label} 最小${suffix}`}
+        style={{ width: '50%' }}
+        step={step}
+        min={min}
+        max={max}
+        value={valueMin}
+        onChange={(v) => onMinChange(v ?? undefined)}
+      />
+      <InputNumber
+        aria-label={`${label}最大${suffix}`}
+        placeholder={`${label} 最大${suffix}`}
+        style={{ width: '50%' }}
+        step={step}
+        min={min}
+        max={max}
+        value={valueMax}
+        onChange={(v) => onMaxChange(v ?? undefined)}
+      />
+    </Space.Compact>
+  );
+}
+
 
 export default function Screen() {
   const navigate = useNavigate();
@@ -288,184 +342,110 @@ export default function Screen() {
                 </Row>
               </div>
 
-              {/* Group 2 — 收益：1m / 3m / 1y 收益区间 (6 fields) */}
+              {/* Group 2 — 收益：1m / 3m / 1y 收益区间 (3 range pairs) */}
               <div className="screen-filter-group">
                 <div className="screen-filter-group__title">收益</div>
                 <Row gutter={[16, 12]}>
-                  <Col xs={12} sm={8} md={6}>
-                    <InputNumber
-                      aria-label="1月收益最小 (%)"
-                      placeholder="1月 最小 (%)"
-                      className="ad-w-full"
+                  <Col xs={24} sm={12} md={8}>
+                    <MinMaxPair
+                      label="1月收益"
+                      unit="%"
                       step={1}
-                      value={filters.return_1m_min}
-                      onChange={(v) => setFilter('return_1m_min', v ?? undefined)}
+                      valueMin={filters.return_1m_min}
+                      valueMax={filters.return_1m_max}
+                      onMinChange={(v) => setFilter('return_1m_min', v)}
+                      onMaxChange={(v) => setFilter('return_1m_max', v)}
                     />
                   </Col>
-                  <Col xs={12} sm={8} md={6}>
-                    <InputNumber
-                      aria-label="1月收益最大 (%)"
-                      placeholder="1月 最大 (%)"
-                      className="ad-w-full"
+                  <Col xs={24} sm={12} md={8}>
+                    <MinMaxPair
+                      label="3月收益"
+                      unit="%"
                       step={1}
-                      value={filters.return_1m_max}
-                      onChange={(v) => setFilter('return_1m_max', v ?? undefined)}
+                      valueMin={filters.return_3m_min}
+                      valueMax={filters.return_3m_max}
+                      onMinChange={(v) => setFilter('return_3m_min', v)}
+                      onMaxChange={(v) => setFilter('return_3m_max', v)}
                     />
                   </Col>
-                  <Col xs={12} sm={8} md={6}>
-                    <InputNumber
-                      aria-label="3月收益最小 (%)"
-                      placeholder="3月 最小 (%)"
-                      className="ad-w-full"
+                  <Col xs={24} sm={12} md={8}>
+                    <MinMaxPair
+                      label="1年收益"
+                      unit="%"
                       step={1}
-                      value={filters.return_3m_min}
-                      onChange={(v) => setFilter('return_3m_min', v ?? undefined)}
-                    />
-                  </Col>
-                  <Col xs={12} sm={8} md={6}>
-                    <InputNumber
-                      aria-label="3月收益最大 (%)"
-                      placeholder="3月 最大 (%)"
-                      className="ad-w-full"
-                      step={1}
-                      value={filters.return_3m_max}
-                      onChange={(v) => setFilter('return_3m_max', v ?? undefined)}
-                    />
-                  </Col>
-                  <Col xs={12} sm={8} md={6}>
-                    <InputNumber
-                      aria-label="1年收益最小 (%)"
-                      placeholder="1年 最小 (%)"
-                      className="ad-w-full"
-                      step={1}
-                      value={filters.return_1y_min}
-                      onChange={(v) => setFilter('return_1y_min', v ?? undefined)}
-                    />
-                  </Col>
-                  <Col xs={12} sm={8} md={6}>
-                    <InputNumber
-                      aria-label="1年收益最大 (%)"
-                      placeholder="1年 最大 (%)"
-                      className="ad-w-full"
-                      step={1}
-                      value={filters.return_1y_max}
-                      onChange={(v) => setFilter('return_1y_max', v ?? undefined)}
+                      valueMin={filters.return_1y_min}
+                      valueMax={filters.return_1y_max}
+                      onMinChange={(v) => setFilter('return_1y_min', v)}
+                      onMaxChange={(v) => setFilter('return_1y_max', v)}
                     />
                   </Col>
                 </Row>
               </div>
 
-              {/* Group 3 — 评分：评分 / RSI / 夏普 (6 fields) */}
+              {/* Group 3 — 评分：评分 / RSI / 夏普 (3 range pairs) */}
               <div className="screen-filter-group">
                 <div className="screen-filter-group__title">评分</div>
                 <Row gutter={[16, 12]}>
-                  <Col xs={12} sm={8} md={6}>
-                    <InputNumber
-                      aria-label="评分最小"
-                      placeholder="评分 最小"
-                      className="ad-w-full"
-                      min={0} max={100}
-                      value={filters.score_min}
-                      onChange={(v) => setFilter('score_min', v ?? undefined)}
+                  <Col xs={24} sm={12} md={8}>
+                    <MinMaxPair
+                      label="评分"
+                      min={0}
+                      max={100}
+                      valueMin={filters.score_min}
+                      valueMax={filters.score_max}
+                      onMinChange={(v) => setFilter('score_min', v)}
+                      onMaxChange={(v) => setFilter('score_max', v)}
                     />
                   </Col>
-                  <Col xs={12} sm={8} md={6}>
-                    <InputNumber
-                      aria-label="评分最大"
-                      placeholder="评分 最大"
-                      className="ad-w-full"
-                      min={0} max={100}
-                      value={filters.score_max}
-                      onChange={(v) => setFilter('score_max', v ?? undefined)}
+                  <Col xs={24} sm={12} md={8}>
+                    <MinMaxPair
+                      label="RSI"
+                      min={0}
+                      max={100}
+                      valueMin={filters.rsi_min}
+                      valueMax={filters.rsi_max}
+                      onMinChange={(v) => setFilter('rsi_min', v)}
+                      onMaxChange={(v) => setFilter('rsi_max', v)}
                     />
                   </Col>
-                  <Col xs={12} sm={8} md={6}>
-                    <InputNumber
-                      aria-label="RSI 最小"
-                      placeholder="RSI 最小"
-                      className="ad-w-full"
-                      min={0} max={100}
-                      value={filters.rsi_min}
-                      onChange={(v) => setFilter('rsi_min', v ?? undefined)}
-                    />
-                  </Col>
-                  <Col xs={12} sm={8} md={6}>
-                    <InputNumber
-                      aria-label="RSI 最大"
-                      placeholder="RSI 最大"
-                      className="ad-w-full"
-                      min={0} max={100}
-                      value={filters.rsi_max}
-                      onChange={(v) => setFilter('rsi_max', v ?? undefined)}
-                    />
-                  </Col>
-                  <Col xs={12} sm={8} md={6}>
-                    <InputNumber
-                      aria-label="夏普最小"
-                      placeholder="夏普 最小"
-                      className="ad-w-full"
+                  <Col xs={24} sm={12} md={8}>
+                    <MinMaxPair
+                      label="夏普"
                       step={0.1}
-                      value={filters.sharpe_min}
-                      onChange={(v) => setFilter('sharpe_min', v ?? undefined)}
-                    />
-                  </Col>
-                  <Col xs={12} sm={8} md={6}>
-                    <InputNumber
-                      aria-label="夏普最大"
-                      placeholder="夏普 最大"
-                      className="ad-w-full"
-                      step={0.1}
-                      value={filters.sharpe_max}
-                      onChange={(v) => setFilter('sharpe_max', v ?? undefined)}
+                      valueMin={filters.sharpe_min}
+                      valueMax={filters.sharpe_max}
+                      onMinChange={(v) => setFilter('sharpe_min', v)}
+                      onMaxChange={(v) => setFilter('sharpe_max', v)}
                     />
                   </Col>
                 </Row>
               </div>
 
-              {/* Group 4 — 风险：波动率 / 回撤 (4 fields) */}
+              {/* Group 4 — 风险：波动率 / 回撤 (2 range pairs) */}
               <div className="screen-filter-group">
                 <div className="screen-filter-group__title">风险</div>
                 <Row gutter={[16, 12]}>
-                  <Col xs={12} sm={8} md={6}>
-                    <InputNumber
-                      aria-label="波动率最小 (%)"
-                      placeholder="波动率 最小 (%)"
-                      className="ad-w-full"
+                  <Col xs={24} sm={12} md={8}>
+                    <MinMaxPair
+                      label="波动率"
+                      unit="%"
                       min={0}
                       step={0.1}
-                      value={filters.volatility_min}
-                      onChange={(v) => setFilter('volatility_min', v ?? undefined)}
+                      valueMin={filters.volatility_min}
+                      valueMax={filters.volatility_max}
+                      onMinChange={(v) => setFilter('volatility_min', v)}
+                      onMaxChange={(v) => setFilter('volatility_max', v)}
                     />
                   </Col>
-                  <Col xs={12} sm={8} md={6}>
-                    <InputNumber
-                      aria-label="波动率最大 (%)"
-                      placeholder="波动率 最大 (%)"
-                      className="ad-w-full"
-                      min={0}
-                      step={0.1}
-                      value={filters.volatility_max}
-                      onChange={(v) => setFilter('volatility_max', v ?? undefined)}
-                    />
-                  </Col>
-                  <Col xs={12} sm={8} md={6}>
-                    <InputNumber
-                      aria-label="回撤1年最小 (%)"
-                      placeholder="回撤1y 最小 (%)"
-                      className="ad-w-full"
+                  <Col xs={24} sm={12} md={8}>
+                    <MinMaxPair
+                      label="回撤1年"
+                      unit="%"
                       step={1}
-                      value={filters.max_drawdown_1y_min}
-                      onChange={(v) => setFilter('max_drawdown_1y_min', v ?? undefined)}
-                    />
-                  </Col>
-                  <Col xs={12} sm={8} md={6}>
-                    <InputNumber
-                      aria-label="回撤1年最大 (%)"
-                      placeholder="回撤1y 最大 (%)"
-                      className="ad-w-full"
-                      step={1}
-                      value={filters.max_drawdown_1y_max}
-                      onChange={(v) => setFilter('max_drawdown_1y_max', v ?? undefined)}
+                      valueMin={filters.max_drawdown_1y_min}
+                      valueMax={filters.max_drawdown_1y_max}
+                      onMinChange={(v) => setFilter('max_drawdown_1y_min', v)}
+                      onMaxChange={(v) => setFilter('max_drawdown_1y_max', v)}
                     />
                   </Col>
                 </Row>

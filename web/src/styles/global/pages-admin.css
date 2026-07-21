@@ -1,0 +1,153 @@
+/* ============================================================
+   Phase 6 — Admin pages
+   ============================================================ */
+
+.admin-section {
+  margin-bottom: var(--space-section);
+}
+
+.admin-section:last-child {
+  margin-bottom: 0;
+}
+
+/* Deployment page */
+.admin-deploy-commit {
+  color: var(--accent);
+}
+
+.admin-deploy-commit:hover {
+  color: var(--accent-hover);
+}
+
+/* Server health cards */
+.admin-server-card {
+  background: var(--bg-elevated);
+  border-radius: var(--card-radius);
+  border: 1px solid var(--border-default);
+  padding: var(--space-5) var(--space-6);
+  min-width: 200px;
+  transition: background var(--transition-fast), border-color var(--transition-fast);
+  display: flex;
+  flex-direction: column;
+}
+
+.admin-server-card__header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+.admin-server-card__name {
+  color: var(--text-primary);
+  font-size: 14px;
+}
+
+.admin-server-card__progress {
+  margin-top: var(--space-3);
+}
+
+.admin-server-card__footer {
+  margin-top: var(--space-3);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.admin-server-card__image {
+  font-size: 11px;
+  background: var(--bg-input) !important;
+  border: none !important;
+  color: var(--text-secondary) !important;
+}
+
+/* Live log viewer */
+.admin-log-section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-3);
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.admin-log-container-select {
+  width: 130px;
+}
+
+.admin-log-terminal {
+  background: var(--bg-base);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  height: 360px;
+  overflow: auto;
+  padding: var(--space-3) var(--space-4);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.8;
+  color: var(--text-secondary);
+}
+
+.admin-log-terminal__empty {
+  color: var(--text-secondary);
+  padding: var(--space-7) 0;
+  text-align: center;
+}
+
+.admin-log-line {
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.admin-log-line__timestamp {
+  color: var(--text-tertiary);
+  margin-right: var(--space-2);
+}
+
+/* ETL ops dashboard */
+.admin-task-label__name {
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.admin-task-label__id {
+  font-size: var(--text-small-size);
+  color: var(--text-tertiary);
+}
+
+.admin-text-error {
+  color: var(--color-loss);
+}
+
+.admin-text-muted {
+  color: var(--text-tertiary);
+}
+
+/* ETL status filters */
+.admin-filter-input {
+  width: 220px;
+}
+
+.admin-filter-select {
+  width: 140px;
+}
+
+/* Generic admin empty placeholder */
+.admin-empty-center {
+  padding: var(--space-5);
+  text-align: center;
+  color: var(--text-secondary);
+}
+
+@media (max-width: 767px) {
+  .admin-log-terminal {
+    height: 280px;
+  }
+
+  .admin-filter-input,
+  .admin-filter-select {
+    width: 100%;
+  }
+}
+

@@ -2,7 +2,6 @@ import './styles.css';
 import { useState, useEffect } from 'react';
 import {
   Button,
-  Card,
   Dropdown,
   Form,
   Input,
@@ -11,7 +10,6 @@ import {
   Modal,
   Popconfirm,
   Select,
-  Skeleton,
   Statistic,
   Table,
 } from 'antd';
@@ -25,6 +23,7 @@ import {
 import PageShell from '@/components/PageShell';
 import PageHeader from '@/components/PageHeader';
 import Panel from '@/components/Panel';
+import LoadingBlock from '@/components/LoadingBlock';
 import SectionHeading from '@/components/SectionHeading';
 import EmptyState from '@/components/EmptyState';
 import InstrumentCodeTag from '@/components/InstrumentCodeTag';
@@ -364,7 +363,7 @@ export default function PaperTrading() {
         >
           <div className="phase5c-account-selector" data-onboard="paper-account">
             {accountsLoading ? (
-              <Skeleton active paragraph={{ rows: 1 }} />
+              <LoadingBlock size="sm" />
             ) : (
               <Select
                 value={selectedAccountId}
@@ -392,7 +391,7 @@ export default function PaperTrading() {
         <>
           <SectionHeading title="账户概览" />
           <ResponsiveGrid cols={4} gap="md" className="phase5c-section">
-            <Card size="small" className="phase5c-trading-card">
+            <Panel padding="sm" className="phase5c-trading-card">
               <Statistic
                 title="总权益"
                 value={pnl?.total_equity ?? account?.total_value ?? account?.cash}
@@ -400,8 +399,8 @@ export default function PaperTrading() {
                 prefix="$"
                 loading={pnlLoading && accountLoading}
               />
-            </Card>
-            <Card size="small" className="phase5c-trading-card">
+            </Panel>
+            <Panel padding="sm" className="phase5c-trading-card">
               <Statistic
                 title="可用现金"
                 value={account?.cash}
@@ -409,8 +408,8 @@ export default function PaperTrading() {
                 prefix="$"
                 loading={accountLoading}
               />
-            </Card>
-            <Card size="small" className="phase5c-trading-card">
+            </Panel>
+            <Panel padding="sm" className="phase5c-trading-card">
               <Statistic
                 title="持仓市值"
                 value={pnl?.market_value}
@@ -418,8 +417,8 @@ export default function PaperTrading() {
                 prefix="$"
                 loading={pnlLoading}
               />
-            </Card>
-            <Card size="small" className="phase5c-trading-card">
+            </Panel>
+            <Panel padding="sm" className="phase5c-trading-card">
               <div className={pnl && pnl.total_pnl > 0 ? 'phase5c-pnl-stat--rise' : pnl && pnl.total_pnl < 0 ? 'phase5c-pnl-stat--fall' : 'phase5c-pnl-stat--neutral'}>
                 <Statistic
                   title="总盈亏"
@@ -435,8 +434,8 @@ export default function PaperTrading() {
                   {pnl.pnl_pct.toFixed(2)}%
                 </div>
               )}
-            </Card>
-            <Card size="small" className="phase5c-trading-card">
+            </Panel>
+            <Panel padding="sm" className="phase5c-trading-card">
               <Statistic
                 title="交易次数"
                 value={pnl?.trade_count ?? 0}
@@ -447,7 +446,7 @@ export default function PaperTrading() {
                   胜率: {(pnl.win_rate * 100).toFixed(0)}%
                 </div>
               )}
-            </Card>
+            </Panel>
           </ResponsiveGrid>
 
           <SectionHeading title="操作" />
@@ -547,7 +546,7 @@ export default function PaperTrading() {
           <Panel variant="default" className="phase5c-section">
             <div className="phase5c-table-wrap">
               {positionsLoading ? (
-                <Skeleton active paragraph={{ rows: 5 }} className="phase5c-skeleton-pad" />
+                <LoadingBlock size="md" className="phase5c-skeleton-pad" />
               ) : positions && positions.length > 0 ? (
                 <Table
                   columns={positionColumns}
@@ -569,7 +568,7 @@ export default function PaperTrading() {
           <Panel variant="default">
             <div className="phase5c-table-wrap">
               {ordersLoading ? (
-                <Skeleton active paragraph={{ rows: 5 }} className="phase5c-skeleton-pad" />
+                <LoadingBlock size="md" className="phase5c-skeleton-pad" />
               ) : orders && orders.items.length > 0 ? (
                 <Table
                   columns={orderColumns}

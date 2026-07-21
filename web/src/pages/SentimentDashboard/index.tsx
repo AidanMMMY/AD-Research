@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
-import { Input, Button, Slider, Tooltip, Skeleton, Tag } from 'antd';
+import { Input, Button, Slider, Tooltip, Tag } from 'antd';
 import { SmileOutlined, FrownOutlined, MehOutlined, SyncOutlined } from '@ant-design/icons';
 import { researchApi, SentimentAggregate } from '@/api/research';
 import AISetupBanner from "@/components/AISetupBanner";
@@ -8,7 +8,8 @@ import PageShell from '@/components/PageShell';
 import PageHeader from '@/components/PageHeader';
 import FilterToolbar from '@/components/FilterToolbar';
 import EmptyState from '@/components/EmptyState';
-import GlassCard from '@/components/GlassCard';
+import LoadingBlock from '@/components/LoadingBlock';
+import Panel from '@/components/Panel';
 import ThemeTag from '@/components/ThemeTag';
 import InstrumentCodeTag from '@/components/InstrumentCodeTag';
 import HelpPopover from '@/components/HelpPopover';
@@ -80,10 +81,11 @@ const ADX_STYLE = `
     transform: none;
   }
 }
-/* Accessibility: prefers-reduced-transparency. GlassCard / Panel surfaces
-   on this page should fall back to solid backgrounds when the user opts
-   out of translucent materials — covers any future backdrop-filter
-   layer as well as the current translucent variants. */
+/* Accessibility: prefers-reduced-transparency. Panel surfaces (including
+   the glass-card variant) on this page should fall back to solid
+   backgrounds when the user opts out of translucent materials — covers
+   any future backdrop-filter layer as well as the current translucent
+   variants. */
 @media (prefers-reduced-transparency: reduce) {
   .adx-sentiment-dashboard .glass-card,
   .adx-sentiment-dashboard .ad-panel {
@@ -188,7 +190,7 @@ export default function SentimentDashboard() {
 
       <div className="ad-mt-5">
         {isLoading ? (
-          <Skeleton active paragraph={{ rows: 8 }} />
+          <LoadingBlock size="lg" />
         ) : !selectedCode ? (
           <EmptyState
             className="ad-mt-9"
@@ -232,7 +234,7 @@ function SentimentCard({ sentiment }: { sentiment: SentimentAggregate }) {
     sentiment.label === 'negative' ? 'fall' : 'neutral';
 
   return (
-    <GlassCard>
+    <Panel variant="minimal" className="glass-card">
       <div className="ad-text-center">
         <div className="ad-text-small ad-text-tertiary ad-mb-1">
           <InstrumentCodeTag
@@ -288,6 +290,6 @@ function SentimentCard({ sentiment }: { sentiment: SentimentAggregate }) {
           共 {sentiment.total_articles} 篇文章 · 近 {sentiment.period_days} 天
         </div>
       </div>
-    </GlassCard>
+    </Panel>
   );
 }

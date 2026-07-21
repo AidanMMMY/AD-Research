@@ -1,10 +1,11 @@
 import { useMemo, useState } from 'react';
-import { Radio, Spin } from 'antd';
+import { Radio } from 'antd';
 import { useQuery } from '@tanstack/react-query';
 import { marketApi } from '@/api/market';
 import { useChartMotion } from '@/hooks/useChartMotion';
 import PageShell from '@/components/PageShell';
 import PageHeader from '@/components/PageHeader';
+import LoadingBlock from '@/components/LoadingBlock';
 import Panel from '@/components/Panel';
 import FilterToolbar from '@/components/FilterToolbar';
 import EmptyState from '@/components/EmptyState';
@@ -159,7 +160,7 @@ export default function ReturnComparison() {
             description="请至少选择1只标的"
           />
         ) : etfQueries.isLoading ? (
-          <Spin size="large" className="ad-spin-center" />
+          <LoadingBlock size="lg" className="ad-spin-center" />
         ) : visibleSeries.length > 0 ? (
           <div className="ad-chart-container" data-reduced-motion={reducedMotion ? 'true' : undefined}>
             <ReturnCurve series={visibleSeries} />

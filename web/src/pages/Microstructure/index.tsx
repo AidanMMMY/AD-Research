@@ -1,13 +1,14 @@
 import { useMemo, useState, type ReactNode } from 'react';
 import './styles.css';
 import {
-  Table, Input, Select, Button, Space, Tag, Skeleton, message, Statistic, Card, Tabs,
+  Table, Input, Select, Button, Space, Tag, message, Statistic, Tabs,
 } from 'antd';
 import { ReloadOutlined, SearchOutlined, FundOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import PageShell from '@/components/PageShell';
 import PageHeader from '@/components/PageHeader';
 import Panel from '@/components/Panel';
+import LoadingBlock from '@/components/LoadingBlock';
 import FilterToolbar from '@/components/FilterToolbar';
 import EmptyState from '@/components/EmptyState';
 import ResponsiveGrid from '@/components/ResponsiveGrid';
@@ -220,15 +221,15 @@ export default function MicrostructurePage() {
       />
 
       <ResponsiveGrid cols={4} gap="md" className="ad-mb-5">
-        <Card>
+        <Panel>
           <Statistic
             title="最新龙虎榜条数"
             value={summary?.lhb?.count ?? 0}
             prefix={<FundOutlined />}
             suffix={summary?.lhb?.trade_date ? ` (${summary.lhb.trade_date})` : ''}
           />
-        </Card>
-        <Card>
+        </Panel>
+        <Panel>
           <Statistic
             title="北向净流入"
             value={summary?.hsgt?.north_net ?? 0}
@@ -236,20 +237,20 @@ export default function MicrostructurePage() {
             valueStyle={{ color: getReturnColor(summary?.hsgt?.north_net) }}
             suffix="亿元"
           />
-        </Card>
-        <Card>
+        </Panel>
+        <Panel>
           <Statistic
             title="融资余额合计"
             value={formatMoney(summary?.margin?.total_financing_balance)}
           />
-        </Card>
-        <Card>
+        </Panel>
+        <Panel>
           <Statistic
             title="30 日内解禁"
             value={summary?.release?.upcoming_30d_count ?? 0}
             suffix="次"
           />
-        </Card>
+        </Panel>
       </ResponsiveGrid>
 
       <FilterToolbar total={`共 ${totalCount} 条`} className="ad-mb-5">
@@ -289,7 +290,7 @@ export default function MicrostructurePage() {
                 </span>
               ),
               children: lhbLoading ? (
-                <Skeleton active />
+                <LoadingBlock size="md" />
               ) : !lhbData || lhbData.items.length === 0 ? (
                 <EmptyState title="暂无龙虎榜数据" />
               ) : (
@@ -319,7 +320,7 @@ export default function MicrostructurePage() {
                 </span>
               ),
               children: hsgtLoading ? (
-                <Skeleton active />
+                <LoadingBlock size="md" />
               ) : !hsgtData || hsgtData.items.length === 0 ? (
                 <EmptyState title="暂无沪深港通数据" />
               ) : (
@@ -344,7 +345,7 @@ export default function MicrostructurePage() {
                 </span>
               ),
               children: marginLoading ? (
-                <Skeleton active />
+                <LoadingBlock size="md" />
               ) : !marginData || marginData.items.length === 0 ? (
                 <EmptyState title="暂无融资融券数据" />
               ) : (
@@ -369,7 +370,7 @@ export default function MicrostructurePage() {
                 </span>
               ),
               children: releaseLoading ? (
-                <Skeleton active />
+                <LoadingBlock size="md" />
               ) : !releaseData || releaseData.items.length === 0 ? (
                 <EmptyState title="暂无限售解禁数据" />
               ) : (

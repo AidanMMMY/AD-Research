@@ -2,9 +2,11 @@ import { useEffect, useState } from 'react';
 
 /**
  * Theme — P3 feature (2026-07-16): adds `'system'` option to track OS-level
- * `prefers-color-scheme` automatically.  New users default to `'system'` so
- * the app follows their OS without configuration; existing users keep
- * whatever they had stored (`'light'` / `'dark'`) and can opt into
+ * `prefers-color-scheme` automatically.
+ *
+ * Dark-first default (2026-07-21): new users land on `'dark'` out of the
+ * box; existing users keep whatever they had stored (`'light'` / `'dark'` /
+ * `'system'`) and can still switch back to `'light'` or opt into
  * `'system'` from the header toggle.
  *
  * Phase 1 (2026-07-05): theme 命名从 'clean' | 'dark' 改为 'light' | 'dark'.
@@ -36,7 +38,8 @@ const SYSTEM_DARK_MQ = '(prefers-color-scheme: dark)';
 
 function migrateLegacyTheme(stored: string | null): Theme {
   if (stored && stored in LEGACY_ALIAS) return LEGACY_ALIAS[stored];
-  return 'system';
+  // Dark-first: no stored value (or an unrecognized one) defaults to dark.
+  return 'dark';
 }
 
 /**
@@ -59,14 +62,14 @@ export function resolveTheme(theme: Theme): ResolvedTheme {
 }
 
 export function getInitialTheme(): Theme {
-  if (typeof window === 'undefined') return 'system';
+  if (typeof window === 'undefined') return 'dark';
   try {
     const stored = window.localStorage.getItem(STORAGE_KEY);
     return migrateLegacyTheme(stored);
   } catch {
     // ignore
   }
-  return 'system';
+  return 'dark';
 }
 
 export interface UseThemeReturn {

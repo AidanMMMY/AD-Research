@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Input, Button, List, Popconfirm, Skeleton, Tag } from 'antd';
+import { Input, Button, List, Popconfirm, Tag } from 'antd';
 import './styles.css';
 import {
   PlusOutlined,
@@ -16,6 +16,7 @@ import PageShell from '@/components/PageShell';
 import EmptyState from '@/components/EmptyState';
 import PageHeader from '@/components/PageHeader';
 import StepProgress from '@/components/StepProgress';
+import LoadingBlock from '@/components/LoadingBlock';
 import { useStepStream } from '@/hooks/useStepStream';
 import { useIsMobile } from '@/hooks/useBreakpoint';
 import ReactMarkdown from 'react-markdown';
@@ -186,7 +187,7 @@ export default function AIChat() {
 
       <div className="phase5c-chat-sidebar__list">
         {sessionsLoading ? (
-          <Skeleton active paragraph={{ rows: 4 }} />
+          <LoadingBlock size="md" />
         ) : !sessions?.length ? (
           <EmptyState title="暂无对话" description="点击「新建对话」开始你的第一次 AI 投研对话" />
         ) : (
@@ -258,7 +259,7 @@ export default function AIChat() {
             </div>
           </div>
         ) : messagesLoading ? (
-          <Skeleton active paragraph={{ rows: 6 }} />
+          <LoadingBlock size="md" />
         ) : (
           messages?.map((msg: ChatMessage) => (
             <div

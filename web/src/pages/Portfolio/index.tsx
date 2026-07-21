@@ -1,7 +1,7 @@
 import './styles.css';
 import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { Badge, Button, Skeleton, Table, Tag, Tooltip } from 'antd';
+import { Badge, Button, Table, Tag, Tooltip } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import {
   DollarOutlined,
@@ -13,6 +13,7 @@ import PageShell from '@/components/PageShell';
 import PageHeader from '@/components/PageHeader';
 import Panel from '@/components/Panel';
 import EmptyState from '@/components/EmptyState';
+import LoadingBlock from '@/components/LoadingBlock';
 import ResponsiveGrid from '@/components/ResponsiveGrid';
 import SectionHeading from '@/components/SectionHeading';
 import ThemeTag from '@/components/ThemeTag';
@@ -260,7 +261,7 @@ export default function Portfolio() {
           }
         />
         {accountsLoading ? (
-          <Skeleton active />
+          <LoadingBlock size="md" />
         ) : accounts.length === 0 ? (
           <EmptyState
             title="尚未创建模拟账户"
@@ -305,7 +306,7 @@ export default function Portfolio() {
           }
         />
         {liveLoading ? (
-          <Skeleton active />
+          <LoadingBlock size="md" />
         ) : liveRows.length === 0 ? (
           <EmptyState
             title="尚未配置真实交易账户"
@@ -362,7 +363,7 @@ export default function Portfolio() {
           }
         />
         {poolsLoading ? (
-          <Skeleton active />
+          <LoadingBlock size="md" />
         ) : !targetPool ? (
           <EmptyState
             title="尚未建立目标组合"
