@@ -23,7 +23,7 @@ call time so the operator can A/B test without a redeploy).
 import logging
 import os
 import time
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from typing import Iterable
 
 import pandas as pd
@@ -338,7 +338,7 @@ def batch_calculate_indicators(
     Returns:
         Number of indicator records updated/inserted.
     """
-    start_time = datetime.now()
+    start_time = datetime.now(timezone.utc)
     updated_count = 0
     errors = []
 
@@ -691,7 +691,7 @@ def _log_etl(
         job_name=job_name,
         status=status,
         start_time=start_time,
-        end_time=datetime.now(),
+        end_time=datetime.now(timezone.utc),
         records_count=records_count,
         error_msg=error_msg,
     )

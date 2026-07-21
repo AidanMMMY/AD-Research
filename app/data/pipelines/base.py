@@ -7,7 +7,7 @@ validation, and retry logic for all data ingestion pipelines.
 import time
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 
 import pandas as pd
 from sqlalchemy.orm import Session
@@ -71,7 +71,7 @@ class ETLPipeline(ABC):
             job_name=self.job_name,
             source=self.provider.name,
             status="running",
-            start_time=datetime.now(),
+            start_time=datetime.now(timezone.utc),
         )
         self.db.add(log)
         self.db.commit()
@@ -89,7 +89,7 @@ class ETLPipeline(ABC):
         if self._log is None:
             return
         self._log.status = status
-        self._log.end_time = datetime.now()
+        self._log.end_time = datetime.now(timezone.utc)
         self._log.records_count = records
         if error:
             self._log.error_msg = error
