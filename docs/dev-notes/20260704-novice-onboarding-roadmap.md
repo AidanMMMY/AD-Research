@@ -2,7 +2,9 @@
 
 > 目标受众：对「资本市场 / 政治 / 经济」知识不资深、不完备的用户。
 > 与 K6（术语字典 + AI Help 上下文）的关系：K6 偏「解释术语 / 上下文精准问答」；K14 偏「新手完整上手、情景化引导、个性化层级」。避免重叠。
-> 日期：2026-07-04 · 负责 agent：K14 · 状态：P0 已落地
+> 日期：2026-07-04 · 负责 agent：K14 · 状态：P0 已落地；P1 已落地 3/6 项（2026-07-21 核实，见 §3 内标注）
+
+> 最后核实更新：2026-07-21
 
 ---
 
@@ -62,11 +64,11 @@
 
 ### P1（后续 agent 接力）
 
-- **P1.1 把 mode 推广到所有 HelpPopover 调用点**：当前只接 demo 字段，未来从仓库内 grep `HelpPopover` 调用点统一接 `mode={mode}`。
-- **P1.2 把 mode 接到 AI Help Drawer**：novice 模式下追加「为什么要问 / 类比」Prompt 前缀。
-- **P1.3 给 TermEntry 补 `noviceDesc` 字段**：当前 P0 只展示更长的 fullDesc + example；若 K6 后续提供更结构化字段更好；否则 K14 自填 `noviceDesc`。
-- **P1.4 情景教程自动带 initialQuestion**：当前为静态卡片 + 跳转；后续由「情景卡片 → AI Help open({initialQuestion})」。
-- **P1.5 OnboardingTour 锚定真实 DOM**：当前用 Placeholder target（路由触发 + 高亮 overlay 指向 `<main>`）。后续给 Dashboard / Screen / SignalDashboard / ResearchNotes / PaperTrading 各加 `data-onboard="step-key"`，Tour 真实定位。
+- **P1.1 把 mode 推广到所有 HelpPopover 调用点** ✅ 已落地（2026-07-21 核实：全仓约 100+ 处 `mode={mode}` 调用，覆盖 20 个页面/组件）。
+- **P1.2 把 mode 接到 AI Help Drawer** ✅ 已落地：`AIHelpDrawer.tsx` 读 `useSettingsStore().mode` 并显示「新手 / 专业」tag。
+- **P1.3 给 TermEntry 补 `noviceDesc` 字段** ❌ 未做：`termDictionary.ts` 仍无 `noviceDesc`，novice 模式沿用 `fullDesc + example` 回退（`relatedTerms` 字段已由 K15 线补上）。
+- **P1.4 情景教程自动带 initialQuestion** ⚠️ 部分落地：`/learning` 情景卡已有 `initialQuestion` 字段并以「推荐先问 AI」展示，但点击仍是跳转页面，未自动 `open({ initialQuestion })`。
+- **P1.5 OnboardingTour 锚定真实 DOM** ✅ 已落地：步骤定义在 `web/src/hooks/useOnboardingSteps.ts`，通过 `data-onboard` 锚定（welcome-dashboard / filter-toolbar / signals-panel / research-notes / paper-account），找不到锚点时回退居中 modal；步数由 5 步扩为 **6 步**。
 - **P1.6 移动端适配**：Tour / ContextHint 在窄屏自动转底部 sheet。
 
 ### P2（远期）
@@ -120,8 +122,8 @@
 接手时建议：
 
 1. **从 `useSettingsStore` 入手**：mode 已就绪，只需 `import { useSettingsStore } from '@/stores/settings'`，然后 `const { mode } = useSettingsStore()`。
-2. **从 `HelpPopover` 入手**：在 K14 P0 基础上，给所有调用点传 `mode={mode}`，并配套给 `termDictionary.ts` 添加 `noviceDesc?: string`，novice 模式下优先使用 `noviceDesc`，缺失时回退到 `fullDesc + example`。
-3. **从 `OnboardingTour` 入手**：把每一步 `target: () => document.querySelector('[data-onboard="xxx"]')` 替换成真实 DOM 锚点。
+2. **从 `HelpPopover` 入手**：~~在 K14 P0 基础上，给所有调用点传 `mode={mode}`~~（已完成）。如需更结构化的新手文案，可给 `termDictionary.ts` 添加 `noviceDesc?: string`，novice 模式下优先使用 `noviceDesc`，缺失时回退到 `fullDesc + example`（此字段目前仍未添加）。
+3. **从 `OnboardingTour` 入手**：~~把每一步 `target: () => document.querySelector('[data-onboard="xxx"]')` 替换成真实 DOM 锚点~~（已完成，步骤定义见 `web/src/hooks/useOnboardingSteps.ts`；新增步骤时在目标页面加 `data-onboard="step-key"` 即可）。
 4. **ContextHint**：已经在三个页面埋点；新增页面时只需 `<ContextHint hintId="page-name-key">`，约定 `ad-research:hint:page-name-key:dismissed`。
 5. **情景教程**：K14 P0 已给 3 个静态卡片 + `/learning` 入口；扩展时只需往 `web/src/pages/Learning/scenarios.ts` 添加新条目。
 

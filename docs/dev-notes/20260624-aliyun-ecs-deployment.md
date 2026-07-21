@@ -1,5 +1,7 @@
 # 阿里云 ECS 部署手册（小白版）
 
+> 最后核实更新：2026-07-21
+
 本手册面向没有服务器运维经验的同学，一步一步教你把 **AD-Research** 平台部署到阿里云 ECS 云服务器上。
 
 只要照着做，一般 15～30 分钟就能完成。
@@ -98,6 +100,7 @@
 |------|----------|----------|------|
 | 自定义 TCP | 8000 | 0.0.0.0/0 | AD-Research 平台访问端口 |
 | 自定义 TCP | 22 | 你的本地 IP/32 | SSH 远程连接（更安全） |
+| 自定义 TCP | 80 / 443 | 0.0.0.0/0 | 可选：配置域名 + HTTPS 时放行（nginx 已监听 80/443） |
 
 > `0.0.0.0/0` 表示允许任何 IP 访问。如果你有自己的固定 IP，建议把授权对象改成你的 IP，更安全。
 
@@ -263,8 +266,14 @@ chmod +x deploy.sh
 5. **启动 PostgreSQL 和 Redis**
 6. **执行数据库迁移**（创建表结构）
 7. **初始化管理员账号**（在数据库中创建 `admin` 用户，仅首次执行）
-8. **启动后端服务**
+8. **启动后端服务和 Nginx 网关**
 9. **健康检查**（确认服务正常）
+
+> **注意：** `deploy.sh` 只启动 postgres / redis / backend / nginx 四个服务。指标计算、巨潮公告等后台队列由 Celery worker 承担，如需启动请额外执行：
+>
+> ```bash
+> docker compose up -d celery-worker-indicator celery-worker-cninfo
+> ```
 
 ### 6.5 过程中可能需要你输入
 
@@ -396,16 +405,20 @@ docker compose down -v
 
 ### 9.7 更新代码后重新部署
 
+推荐使用一键更新脚本（GitHub Actions 自动部署也走同一入口）：
+
 ```bash
 cd /opt/alloy-research
 git pull  # 如果用 Git
 cd deploy/aliyun-ecs
-docker compose down
-docker compose build --no-cache
-docker compose up -d
+./update.sh
 ```
 
-> **注意：** 更新后 `backend` 容器启动时会自动执行数据库迁移。如果更新涉及用户表变更，或你想重新初始化管理员账号，可以手动执行：
+`update.sh` 会自动完成：构建镜像（`--no-cache`）→ 停止旧容器并清理残留容器 → 重建 backend 与 Celery worker → 等待 backend `/health` 就绪（最多 300 秒）→ 启动 nginx → 校验数据库迁移状态。
+
+仓库根目录还有一个更轻量的 `redeploy.sh`（仅重建 backend 容器），适合只改了后端代码的快速场景。
+
+> **注意：** backend 容器启动时会自动执行数据库迁移（入口脚本 `scripts/docker-entrypoint.sh` 内 `alembic upgrade head`）。如果更新涉及用户表变更，或你想重新初始化管理员账号，可以手动执行：
 >
 > ```bash
 > docker compose run --rm backend python scripts/seed_users.py
@@ -444,7 +457,7 @@ docker compose up -d
 
 ### Q2：部署脚本提示 "源数据库 etf_research 不存在"
 
-这是正常的。说明你是全新部署，没有旧数据需要迁移。脚本会自动创建 `alloy_research` 数据库。
+这是正常的。说明你是全新部署，没有旧数据需要迁移。脚本会自动创建 `ad_research` 数据库（由 `.env` 中 `POSTGRES_DB` 决定，默认为 `ad_research`）。
 
 ### Q3：部署脚本提示 "未检测到 docker compose 插件"
 
@@ -523,7 +536,7 @@ docker compose up -d
 
 ```bash
 cd /opt/alloy-research/deploy/aliyun-ecs
-docker compose exec postgres pg_dump -U etf -d alloy_research > /opt/alloy-research-backup-$(date +%Y%m%d).sql
+docker compose exec postgres pg_dump -U etf -d ad_research > /opt/alloy-research-backup-$(date +%Y%m%d).sql
 ```
 
 ### 12.2 下载备份到本地
@@ -548,8 +561,11 @@ scp root@你的服务器公网IP:/opt/alloy-research-backup-20260623.sql ./
 deploy/aliyun-ecs/
 ├── docker-compose.yml   # 生产环境 Docker 编排配置
 ├── .env.example         # 环境变量模板
-├── deploy.sh            # 一键部署脚本
-└── README.md            # 本手册
+├── deploy.sh            # 一键部署脚本（首次部署）
+├── update.sh            # 一键更新脚本（日常更新，CI 也走它）
+├── nginx.conf           # Nginx 反代 / HTTPS 配置
+├── ssl/                 # SSL 证书目录（配置 HTTPS 时使用）
+└── README.md            # 部署说明
 ```
 
 如果你在任何一步卡住，把报错信息复制发给我，我会继续帮你解决。

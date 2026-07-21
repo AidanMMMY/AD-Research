@@ -34,56 +34,64 @@
   .toc { background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 20px 24px; margin: 24px 0; }
   .toc a { color: var(--accent); text-decoration: none; }
   .toc a:hover { text-decoration: underline; }
+  blockquote { border-left: 3px solid var(--accent); padding: 4px 16px; margin: 16px 0; color: var(--text-secondary); background: var(--bg-card); border-radius: 0 8px 8px 0; }
 </style>
 </head>
 <body>
-
-<h1>iOS APP UI/UX 原型设计文档</h1>
-<p class="date">2026-06-28 · 基于投研平台功能，原生 Swift 实现</p>
-
+<h1 id="ios-app-uiux-原型设计文档">iOS APP UI/UX 原型设计文档</h1>
+<p class="date">2026-06-28 | 基于投研平台功能，原生 Swift 实现</p>
+<blockquote>
+<p>最后核实更新：2026-07-21。注意：Web 端设计系统已于 2026-07-11 升级为 v2（蓝靛主色，暗色 GitHub Dark 风格），本文中 "Swiss Minimal + Neon Cyan" 及第 4.5 节色板为旧版 Web 配色，iOS 端 <code>Theme/Theme.swift</code> 当前仍是旧配色，后续需与 Web v2 同步（见 4.5 节标注）。</p>
+</blockquote>
+<hr>
 <div class="toc">
 <strong>目录</strong>
 <ol>
-<li><a href="#s1">设计原则</a></li>
-<li><a href="#s2">信息架构</a></li>
-<li><a href="#s3">页面设计详述</a></li>
-<li><a href="#s4">iOS 原生交互规范</a></li>
-<li><a href="#s5">页面过渡动画</a></li>
-<li><a href="#s6">Widget 与系统集成</a></li>
-<li><a href="#s7">无障碍设计</a></li>
-<li><a href="#s8">MVP 范围 vs 完整版</a></li>
+<li><a href="#一设计原则">一、设计原则</a></li>
+<li><a href="#二信息架构">二、信息架构</a></li>
+<li><a href="#三页面设计详述">三、页面设计详述</a></li>
+<li><a href="#四ios-原生交互规范">四、iOS 原生交互规范</a></li>
+<li><a href="#五页面过渡动画">五、页面过渡动画</a></li>
+<li><a href="#六widget-与系统集成">六、Widget 与系统集成</a></li>
+<li><a href="#七无障碍设计">七、无障碍设计</a></li>
+<li><a href="#八mvp-范围-vs-完整版">八、MVP 范围 vs 完整版</a></li>
+<li><a href="#九与-web-端的复用设计">九、与 Web 端的复用设计</a></li>
+<li><a href="#附录页面清单总览">附录：页面清单总览</a></li>
 </ol>
 </div>
-
-<h2 id="s1">一、设计原则</h2>
-
-<h3>核心原则</h3>
-
+<h2 id="一设计原则">一、设计原则</h2>
+<h3 id="11-核心原则">1.1 核心原则</h3>
 <table>
-  <tr><th>原则</th><th>说明</th></tr>
-  <tr><td><strong>本地优先</strong></td><td>打开即有数据，网络请求不阻塞 UI</td></tr>
-  <tr><td><strong>手势优先</strong></td><td>用原生手势替代 Web 端按钮操作</td></tr>
-  <tr><td><strong>信息分层</strong></td><td>重要信息前置，详情按需展开</td></tr>
-  <tr><td><strong>触控友好</strong></td><td>44pt 最小热区，不留死角</td></tr>
-  <tr><td><strong>统一主题</strong></td><td>与 Web 端 Swiss Minimal + Neon Cyan 对齐</td></tr>
-</table>
-
-<h3>与 Web 端的关键差异</h3>
-
+<thead><tr>
+<th>原则</th>
+<th>说明</th>
+</tr></thead>
+<tbody>
+<tr><td><strong>本地优先</strong></td><td>打开即有数据，网络请求不阻塞 UI</td></tr>
+<tr><td><strong>手势优先</strong></td><td>用原生手势替代 Web 端按钮操作</td></tr>
+<tr><td><strong>信息分层</strong></td><td>重要信息前置，详情按需展开</td></tr>
+<tr><td><strong>触控友好</strong></td><td>44pt 最小热区，不留死角</td></tr>
+<tr><td><strong>统一主题</strong></td><td>与 Web 端设计系统对齐（⚠️ Web 端 2026-07-11 起已升级为 v2：蓝靛主色 #2563EB、暗色 #0D1117/#60A5FA；本文写成时的 "Swiss Minimal + Neon Cyan" 已过时）</td></tr>
+</tbody></table>
+<h3 id="12-与-web-端的关键差异">1.2 与 Web 端的关键差异</h3>
 <table>
-  <tr><th>维度</th><th>Web 端</th><th>iOS App</th></tr>
-  <tr><td>导航</td><td>固定侧边栏 + 页面跳转</td><td>底部 TabBar + NavigationStack push</td></tr>
-  <tr><td>信息密度</td><td>大屏，表格为主</td><td>小屏，卡片 + 列表为主</td></tr>
-  <tr><td>交互</td><td>点击、hover、右键菜单</td><td>点击、长按、滑动、捏合</td></tr>
-  <tr><td>操作</td><td>多按钮并列</td><td>关键操作突出，次要收进更多菜单</td></tr>
-  <tr><td>刷新</td><td>页面加载</td><td>下拉刷新 / 自动刷新</td></tr>
-</table>
-
-<h2 id="s2">二、信息架构</h2>
-
-<h3>页面导航树</h3>
-
-<pre><code>App Launch
+<thead><tr>
+<th>维度</th>
+<th>Web 端</th>
+<th>iOS App</th>
+</tr></thead>
+<tbody>
+<tr><td>导航</td><td>固定侧边栏 + 页面跳转</td><td>底部 TabBar + NavigationStack push</td></tr>
+<tr><td>信息密度</td><td>大屏，表格为主</td><td>小屏，卡片 + 列表为主</td></tr>
+<tr><td>交互</td><td>点击、hover、右键菜单</td><td>点击、长按、滑动、捏合</td></tr>
+<tr><td>操作</td><td>多按钮并列</td><td>关键操作突出，次要收进更多菜单</td></tr>
+<tr><td>刷新</td><td>页面加载</td><td>下拉刷新 / 自动刷新</td></tr>
+<tr><td>状态提示</td><td>悬浮 tooltip</td><td>Haptic 震动 + Toast</td></tr>
+</tbody></table>
+<hr>
+<h2 id="二信息架构">二、信息架构</h2>
+<h3 id="21-页面导航树">2.1 页面导航树</h3>
+<div class="wireframe">App Launch
   ├── 已登录 → MainTabView
   │     ├── Tab 1: 首页 (Dashboard)
   │     │     ├── 统计卡片
@@ -92,31 +100,50 @@
   │     │     └── 我的池子 → push 池子详情
   │     │
   │     ├── Tab 2: 标的 (Instruments)
-  │     │     └── 标的列表 → push 标的详情
-  │     │           ├── K线 (默认)
-  │     │           ├── 指标
-  │     │           ├── AI 笔记
-  │     │           └── 收藏 / 加入池子
+  │     │     ├── 标的列表 (搜索 + 筛选)
+  │     │     │     └── push 标的详情
+  │     │     │           ├── K线 (默认)
+  │     │     │           ├── 指标 (segment切换)
+  │     │     │           ├── AI 笔记
+  │     │     │           ├── ⭐ 收藏 toggle
+  │     │     │           └── 加入池子 (sheet)
+  │     │     └── (顶部搜索框可搜索)
   │     │
   │     ├── Tab 3: 池子 (Pools)
-  │     │     └── 池子列表 → push 池子详情
-  │     │           ├── 成员与权重
-  │     │           ├── 持仓分布 (饼图)
-  │     │           └── 表现分析 (收益曲线)
+  │     │     ├── 池子列表
+  │     │     │     └── push 池子详情
+  │     │     │           ├── 成员与权重
+  │     │     │           ├── 持仓分布 (饼图)
+  │     │     │           └── 表现分析 (收益曲线)
+  │     │     └── (右上角 + 新建池)
   │     │
   │     └── Tab 4: 我的 (Profile)
-  │           ├── 账户 / 订阅
-  │           ├── 已登录设备
+  │           ├── 账户信息
+  │           ├── 订阅状态
   │           ├── 推送设置
+  │           ├── 已登录设备
   │           ├── AI 聊天 (独立入口)
+  │           ├── 关于 / 隐私政策
   │           └── 退出登录
   │
-  └── 未登录 → LoginView → MainTabView</code></pre>
-
-<h2 id="s3">三、页面设计详述</h2>
-
-<h3>3.1 登录页</h3>
-
+  └── 未登录 → LoginView
+         └── 登录成功 → MainTabView</div>
+<h3 id="22-交互模式">2.2 交互模式</h3>
+<table>
+<thead><tr>
+<th>页面类型</th>
+<th>交互模式</th>
+</tr></thead>
+<tbody>
+<tr><td>列表页</td><td>下拉刷新 + 上拉加载更多 + 长按快捷操作</td></tr>
+<tr><td>详情页</td><td>顶部大标题 + 滚动内容 + 底部固定操作栏</td></tr>
+<tr><td>表单/创建</td><td>Sheet 从底部弹出</td></tr>
+<tr><td>设置页</td><td>分组 List + NavigationLink</td></tr>
+<tr><td>图表页</td><td>左右滑动切换周期 + 捏合缩放</td></tr>
+</tbody></table>
+<hr>
+<h2 id="三页面设计详述">三、页面设计详述</h2>
+<h3 id="31-登录页">3.1 登录页</h3>
 <div class="wireframe">┌──────────────────────────────────┐
 │                                  │
 │            [App Logo]            │
@@ -136,15 +163,22 @@
 │     没有账号？联系管理员         │
 │                                  │
 └──────────────────────────────────┘</div>
-
-<h3>3.2 首页 (Dashboard)</h3>
-
+<p><strong>交互要点：</strong></p>
+<ul>
+<li>键盘弹出时页面自动上移</li>
+<li>登录按钮 Loading 状态</li>
+<li>登录失败：输入框抖动 + 错误提示</li>
+<li>登录成功：Haptic 反馈 + 过渡动画进入首页</li>
+<li>自动填充：系统 Keychain 密码管理器</li>
+</ul>
+<hr>
+<h3 id="32-首页-dashboard">3.2 首页 (Dashboard)</h3>
 <div class="wireframe">┌──────────────────────────────────┐
-│  首页看板           2026-06-28   │
+│  首页看板           2026-06-28   │  ← 小标题 + 日期
 ├──────────────────────────────────┤
 │  ┌────────┐ ┌────────┐          │
-│  │ 1,234  │ │  892   │          │
-│  │标的总数│ │评分覆盖│          │
+│  │ 1,234  │ │  892   │          │  ← 统计卡片行
+│  │标的总数│ │评分覆盖│          │     2x2 网格
 │  └────────┘ └────────┘          │
 │  ┌────────┐ ┌────────┐          │
 │  │   42   │ │   12   │          │
@@ -153,154 +187,503 @@
 ├──────────────────────────────────┤
 │  综合评分 Top 10         查看全部→│
 │  ┌──────────────────────────┐   │
-│  │ 1 510300 沪深300ETF  92.5│   │
-│  │ 2 159915  创业板ETF  89.3│   │
-│  │ 3 510050 上证50ETF  87.1 │   │
+│  │ 1  510300 沪深300ETF  92.5│   │  ← 简洁列表
+│  │ 2  159915  创业板ETF  89.3│   │     点击 push 详情
+│  │ 3  510050 上证50ETF  87.1 │   │
+│  │ 4  159919 沪深300ETF 85.6 │   │
+│  │ 5  510500 中证500ETF 84.2 │   │
 │  └──────────────────────────┘   │
 ├──────────────────────────────────┤
 │  ⭐ 我的收藏 (3)        查看全部→│
-│  510300 沪深300ETF              │
-│  159915 创业板ETF               │
-│  AAPL   Apple Inc.              │
+│  ┌──────────────────────────┐   │
+│  │ 510300 沪深300ETF        │   │
+│  │ 159915 创业板ETF         │   │
+│  │ AAPL   Apple Inc.        │   │
+│  └──────────────────────────┘   │
 ├──────────────────────────────────┤
-│  📂 我的标的池 (2)      查看全部→│
-│  📊 A股核心池  8只               │
-│  📊 美股成长池  5只              │
+│  📂 我的标的池 (2)        查看全部→│
+│  ┌──────────────────────────┐   │
+│  │ 📊 A股核心池  8只ETF     │   │
+│  │ 📊 美股成长池  5只       │   │
+│  └──────────────────────────┘   │
+└──────────────────────────────────┘
+       [🏠]   [📈]   [📂]   [👤]      ← TabBar</div>
+<p><strong>交互要点：</strong></p>
+<ul>
+<li>整个页面可滚动</li>
+<li>统计卡片点击跳转对应列表</li>
+<li>评分排行/收藏/池子：点击 push 详情</li>
+<li>右上角"查看全部"跳转完整列表</li>
+<li>下拉刷新全部数据</li>
+<li>首次打开：骨架屏占位（Skeleton Loading）</li>
+</ul>
+<hr>
+<h3 id="33-标的列表-instruments">3.3 标的列表 (Instruments)</h3>
+<div class="wireframe">┌──────────────────────────────────┐
+│  ┌────────────────────────────┐  │
+│  │ 🔍  搜索标的代码或名称     │  │  ← 搜索栏（吸顶）
+│  └────────────────────────────┘  │
+│  [全部] [A股] [港股] [美股] [ETF]  │  ← 市场/类型分段选择器
+│                                  │
+├──────────────────────────────────┤
+│  ┌──────────────────────────┐   │
+│  │ 510300  沪深300ETF       │   │
+│  │ A股 · ETF · 规模 320亿   │   │  ← 卡片式列表
+│  │ 跟踪：沪深300指数        │   │     每行可横滑显示更多
+│  └──────────────────────────┘   │
+│  ┌──────────────────────────┐   │
+│  │ 159915  创业板ETF        │   │
+│  │ A股 · ETF · 规模 180亿   │   │
+│  └──────────────────────────┘   │
+│  ┌──────────────────────────┐   │
+│  │ AAPL   Apple Inc.        │   │
+│  │ 美股 · STOCK · 市值 3.2T │   │
+│  └──────────────────────────┘   │
+│  ...                            │
+│                                  │
+│       共 1,234 只标的            │
 └──────────────────────────────────┘
        [🏠]   [📈]   [📂]   [👤]</div>
-
-<h3>3.3 标的详情 — 核心页面</h3>
-
+<p><strong>交互要点：</strong></p>
+<ul>
+<li>搜索栏吸顶</li>
+<li>Segment Control 切换市场/类型</li>
+<li>每行：代码 + 名称左对齐，规模右对齐，分类/市场 Tag 在下方</li>
+<li>点击 push 详情</li>
+<li>长按：弹出 Context Menu（加入收藏/加入池子/查看详情）</li>
+<li>下拉刷新</li>
+<li>滚动到底部自动加载下一页</li>
+</ul>
+<hr>
+<h3 id="34-标的详情-instrument-detail--核心页面">3.4 标的详情 (Instrument Detail) — 核心页面</h3>
 <div class="wireframe">┌──────────────────────────────────┐
-│  ← 返回          ⭐  ⋯          │
+│  ← 返回          ⭐  ⋯          │  ← 导航栏：收藏、更多
 ├──────────────────────────────────┤
 │  沪深300ETF                       │
 │  510300 · A股 · 规模 320亿        │
 │  ──────────────────────────────  │
-│  ¥3.845  +0.32%  ↑               │
+│  ¥3.845  +0.32%  ↑               │  ← 实时价格（大字号）
+│                                  │
 ├──────────────────────────────────┤
-│  [1日] [1周] [1月] [3月] [1年]   │
+│  [1日] [1周] [1月] [3月] [1年]   │  ← 时间周期选择器
 │                                  │
 │  ┌──────────────────────────┐   │
 │  │                          │   │
-│  │       K 线 图            │   │
-│  │     (DGCharts)           │   │
-│  │     捏合缩放·滑动·长按    │   │
+│  │       K 线 图            │   │  ← DGCharts K线
+│  │                          │   │     捏合缩放
+│  │                          │   │     左右滑动
+│  │                          │   │     长按十字光标
 │  │                          │   │
 │  └──────────────────────────┘   │
+│                                  │
 │  成交量 ▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁   │
+│                                  │
 ├──────────────────────────────────┤
-│  [K线] [指标] [笔记] [情绪]      │
+│  [K线] [指标] [笔记] [情绪]      │  ← 详情分段选择器
 ├──────────────────────────────────┤
+│                                  │
 │  关键指标                         │
-│  1月:+2.3%  3月:-1.2%  1年:+15.8% │
-│  夏普:1.25  波动率:18.3%  RSI:52.1│
+│  ┌──────┐ ┌──────┐ ┌──────┐     │
+│  │ 1月  │ │ 3月  │ │ 1年  │     │
+│  │+2.3% │ │-1.2% │ │+15.8%│     │
+│  └──────┘ └──────┘ └──────┘     │
+│  ┌──────┐ ┌──────┐ ┌──────┐     │
+│  │夏普  │ │波动率│ │ RSI  │     │
+│  │ 1.25 │ │ 18.3%│ │ 52.1 │     │
+│  └──────┘ └──────┘ └──────┘     │
 │                                  │
 │  评分雷达图                       │
-│         ┌───┐                    │
-│        ╱ 收益╲                   │
-│       ╱  80   ╲                  │
-│      ╱         ╲                 │
-│     ╱趋势    风险╲                │
-│    ╱  75      70 ╲               │
-│   ╱               ╲              │
-│  ╱流动性  85   夏普╲             │
-│   ╲     90      ╱               │
-│    ╲           ╱                 │
-│     ╲         ╱                  │
-│      ╲       ╱                   │
-│       ╲     ╱                    │
-│        └───┘                     │
+│        ┌───┐                     │
+│       ╱ 收益╲                    │
+│      ╱  80   ╲                   │
+│     ╱         ╲                  │
+│    ╱趋势    风险╲                 │
+│   ╱  75      70 ╲                │
+│  ╱               ╲               │
+│ ╱流动性  85   夏普╲              │
+│  ╲     90      ╱                │
+│   ╲           ╱                  │
+│    ╲         ╱                   │
+│     ╲       ╱                    │
+│      ╲     ╱                     │
+│       └───┘                      │
+│                                  │
+│  AI 研究笔记                      │
+│  ┌──────────────────────────┐   │
+│  │ 2026-06-27               │   │
+│  │ 该标的近期呈现震荡上行...  │   │
+│  │ AI 生成，仅供参考         │   │
+│  └──────────────────────────┘   │
+│                                  │
 ├──────────────────────────────────┤
-│  AI 研究笔记 (AI生成·仅供参考)    │
-│  该标的近期呈现震荡上行...        │
-├──────────────────────────────────┤
-│  [+ 加入标的池]                   │
+│  [+ 加入标的池]                   │  ← 底部操作栏
 └──────────────────────────────────┘</div>
-
-<h3>3.4 其他页面</h3>
-
-<p>详见 Markdown 原文档，包含：</p>
+<p><strong>交互要点：</strong></p>
 <ul>
-  <li>标的列表 — 搜索栏吸顶 + Segment Control + 卡片列表</li>
-  <li>池子列表/详情 — 成员权重可视化 + 饼图 + 收益</li>
-  <li>我的页面 — Grouped List 设置页</li>
-  <li>AI 聊天 — 流式输出 + 历史会话</li>
+<li>顶部大标题 + 价格实时更新</li>
+<li>K线：捏合缩放、左右滑动、长按十字光标、双指选择区域</li>
+<li>时间周期：点选 + 左右滑动切换</li>
+<li>指标卡片：横向滚动</li>
+<li>雷达图：不可交互（展示用）</li>
+<li>AI 笔记：点击展开全文</li>
+<li>底部操作栏：加入池子、分享</li>
+<li>导航栏：⭐一键收藏、⋯更多（分享/报告/对比）</li>
+<li>整个页面可滚动，K线区域固定高度</li>
 </ul>
-
-<h2 id="s4">四、iOS 原生交互规范</h2>
-
-<h3>导航手势</h3>
-<table>
-  <tr><th>手势</th><th>场景</th><th>反馈</th></tr>
-  <tr><td>右滑返回</td><td>所有 push 页面</td><td>跟随手指动画</td></tr>
-  <tr><td>下拉</td><td>列表刷新</td><td>RefreshControl 旋转</td></tr>
-  <tr><td>捏合</td><td>K线缩放</td><td>实时缩放</td></tr>
-  <tr><td>长按</td><td>列表/图表</td><td>Context Menu + Haptic</td></tr>
-  <tr><td>左滑</td><td>列表项</td><td>操作按钮（删除/收藏）</td></tr>
-</table>
-
-<h3>Haptic 触觉反馈</h3>
-<table>
-  <tr><th>场景</th><th>反馈类型</th></tr>
-  <tr><td>登录成功</td><td><code>.notification(.success)</code></td></tr>
-  <tr><td>收藏/取消</td><td><code>.impact(.light)</code></td></tr>
-  <tr><td>下拉刷新完成</td><td><code>.impact(.medium)</code></td></tr>
-  <tr><td>删除确认</td><td><code>.notification(.warning)</code></td></tr>
-</table>
-
-<h3>字体系统（与 Web theme.css 对齐）</h3>
-<table>
-  <tr><th>用途</th><th>Web 变量</th><th>iOS Dynamic Type</th></tr>
-  <tr><td>大标题</td><td><code>26px</code></td><td><code>.largeTitle</code></td></tr>
-  <tr><td>页面标题</td><td><code>20px</code></td><td><code>.title3</code></td></tr>
-  <tr><td>正文</td><td><code>13px</code></td><td><code>.body</code></td></tr>
-  <tr><td>辅助文字</td><td><code>11px</code></td><td><code>.caption</code></td></tr>
-  <tr><td>价格数字</td><td><code>24px</code></td><td><code>.system(24, mono)</code></td></tr>
-</table>
-
-<h2 id="s5">五、页面过渡动画</h2>
-<table>
-  <tr><th>转场</th><th>动画</th><th>时长</th></tr>
-  <tr><td>Push 详情</td><td>从右滑入</td><td>300ms</td></tr>
-  <tr><td>Sheet 弹出</td><td>从底部升入</td><td>400ms spring</td></tr>
-  <tr><td>Tab 切换</td><td>淡入淡出</td><td>200ms</td></tr>
-  <tr><td>登录→首页</td><td>溶解 + 缩放</td><td>500ms</td></tr>
-</table>
-
-<h2 id="s6">六、Widget 与系统集成</h2>
+<h3 id="35-池子列表-pools">3.5 池子列表 (Pools)</h3>
+<div class="wireframe">┌──────────────────────────────────┐
+│  标的池                           │  ← 大标题
+│  自定义标的组合，跟踪整体表现       │
+│                         [+ 新建]  │
+├──────────────────────────────────┤
+│  ┌──────────────────────────┐   │
+│  │ 📊 A股核心池              │   │
+│  │ 8只标的 · 创建于 2026-06  │   │  ← 卡片列表
+│  │ 1月收益: +3.2%            │   │
+│  └──────────────────────────┘   │
+│  ┌──────────────────────────┐   │
+│  │ 📊 美股成长池              │   │
+│  │ 5只标的 · 创建于 2026-05  │   │
+│  │ 1月收益: +5.8%            │   │
+│  └──────────────────────────┘   │
+│  ┌──────────────────────────┐   │
+│  │ 📊 防守型组合              │   │
+│  │ 6只标的 · 创建于 2026-04  │   │
+│  │ 1月收益: +1.1%            │   │
+│  └──────────────────────────┘   │
+│                                  │
+│     (空状态: 还没有标的池)       │
+│     [创建第一个池子]              │
+└──────────────────────────────────┘
+       [🏠]   [📈]   [📂]   [👤]</div>
+<hr>
+<h3 id="36-池子详情-pool-detail">3.6 池子详情 (Pool Detail)</h3>
+<div class="wireframe">┌──────────────────────────────────┐
+│  ← 返回                         │
+├──────────────────────────────────┤
+│  A股核心池                        │
+│  8只标的 · 均衡配置               │
+├──────────────────────────────────┤
+│  [成员] [分布] [表现]             │  ← 分段选择器
+├──────────────────────────────────┤
+│  (成员 Tab 选中)                  │
+│                                  │
+│  总权重: 100%                     │
+│  ┌──────────────────────────┐   │
+│  │ 510300 沪深300ETF   30%  │   │
+│  │ ████████████████░░░░░░░░ │   │  ← 权重可视化
+│  │                          │   │
+│  │ 159915 创业板ETF    25%  │   │
+│  │ █████████████░░░░░░░░░░░ │   │
+│  │                          │   │
+│  │ AAPL   Apple Inc.   15%  │   │
+│  │ ████████░░░░░░░░░░░░░░░░ │   │
+│  └──────────────────────────┘   │
+│                                  │
+│  (分布 Tab...)                   │
+│  ┌──────────────────────────┐   │
+│  │      分类分布饼图         │   │
+│  │                          │   │
+│  └──────────────────────────┘   │
+│                                  │
+│  (表现 Tab...)                   │
+│  ┌──────────────────────────┐   │
+│  │      收益曲线             │   │
+│  │                          │   │
+│  └──────────────────────────┘   │
+│  1月: +3.2%  3月: +8.1%         │
+│  夏普: 1.42  回撤: -5.3%        │
+└──────────────────────────────────┘</div>
+<hr>
+<h3 id="37-我的页面-profile">3.7 我的页面 (Profile)</h3>
+<div class="wireframe">┌──────────────────────────────────┐
+│  我的                             │
+├──────────────────────────────────┤
+│  ┌────────────────┐              │
+│  │  👤  username  │              │  ← 用户信息卡片
+│  │  普通用户       │              │
+│  │  订阅: 免费版   │              │
+│  └────────────────┘              │
+├──────────────────────────────────┤
+│  账户                            │  ← Grouped List
+│    &gt; 订阅管理                    │
+│    &gt; 已登录设备 (3台)            │
+├──────────────────────────────────┤
+│  功能                            │
+│    &gt; AI 投研助手                 │
+│    &gt; 推送通知设置               │
+│    &gt; 外观设置                    │
+├──────────────────────────────────┤
+│  其他                            │
+│    &gt; 隐私政策                    │
+│    &gt; 用户协议                    │
+│    &gt; 关于                        │
+│    &gt; 退出登录                    │
+└──────────────────────────────────┘
+       [🏠]   [📈]   [📂]   [👤]</div>
+<p><strong>交互要点：</strong></p>
 <ul>
-  <li><strong>桌面 Widget</strong>：Small/Medium 尺寸，显示自选标的价格</li>
-  <li><strong>Live Activity</strong>：灵动岛实时价格（5秒更新）</li>
-  <li><strong>Siri 捷径</strong>："打开我的标的池"</li>
-  <li><strong>Apple Watch</strong>：complications 显示自选</li>
+<li>Grouped List，iOS 原生风格</li>
+<li>NavigationLink 箭头指示</li>
+<li>退出登录：底部红色按钮 + 确认 Alert</li>
+<li>设备列表：右滑删除（swipe to delete）</li>
 </ul>
-
-<h2 id="s7">七、无障碍设计</h2>
+<hr>
+<h3 id="38-ai-聊天-chat">3.8 AI 聊天 (Chat)</h3>
+<div class="wireframe">┌──────────────────────────────────┐
+│  ← 返回    AI 投研助手     📋    │
+├──────────────────────────────────┤
+│                                  │
+│  ┌──────────────────────────┐   │
+│  │ 🤖 您好！我可以帮您分析  │   │
+│  │ 标的，解读信号，生成笔记  │   │
+│  │ 请问有什么需要？         │   │
+│  └──────────────────────────┘   │
+│                                  │
+│       ┌────────────────────┐     │
+│       │ 帮我分析510300     │     │
+│       └────────────────────┘     │
+│                                  │
+│  ┌──────────────────────────┐   │
+│  │ 🤖 沪深300ETF 近期表现:  │   │
+│  │ • 当前价格 3.845        │   │
+│  │ • 近1月收益 +2.3%       │   │
+│  │ • 评分 92.5/100         │   │
+│  └──────────────────────────┘   │
+│                                  │
+├──────────────────────────────────┤
+│  ┌────────────────────────────┐  │
+│  │  输入问题...            📎  │  │  ← 底部输入栏
+│  └────────────────────────────┘  │
+└──────────────────────────────────┘</div>
+<p><strong>交互要点：</strong></p>
 <ul>
-  <li>VoiceOver：所有按钮、标签、图表有 <code>accessibilityLabel</code></li>
-  <li>动态字体：支持系统 Dynamic Type</li>
-  <li>减少动效：尊重系统设置</li>
-  <li>色彩对比：Dark Mode 下 ≥ 4.5:1</li>
-  <li>触控区域：最小 44x44pt</li>
+<li>流式输出（逐字显示）</li>
+<li>键盘自适应</li>
+<li>新消息自动滚动到底部</li>
+<li>长按消息可复制</li>
+<li>右上角：历史会话列表</li>
 </ul>
-
-<h2 id="s8">八、MVP 范围</h2>
-
+<hr>
+<h2 id="四ios-原生交互规范">四、iOS 原生交互规范</h2>
+<h3 id="41-导航手势">4.1 导航手势</h3>
 <table>
-  <tr><th>页面</th><th>导航方式</th><th>MVP</th></tr>
-  <tr><td>登录页</td><td>Root</td><td>✅</td></tr>
-  <tr><td>首页</td><td>Tab 1</td><td>✅</td></tr>
-  <tr><td>标的列表</td><td>Tab 2</td><td>✅</td></tr>
-  <tr><td>标的详情</td><td>Push</td><td>✅</td></tr>
-  <tr><td>池子列表</td><td>Tab 3</td><td>✅</td></tr>
-  <tr><td>池子详情</td><td>Push</td><td>✅</td></tr>
-  <tr><td>AI 聊天</td><td>Tab 4 / Push</td><td>✅</td></tr>
-  <tr><td>我的/设置</td><td>Tab 4</td><td>✅</td></tr>
-  <tr><td>全市场筛选器</td><td>Push</td><td>❌</td></tr>
-  <tr><td>回测列表</td><td>Push</td><td>❌</td></tr>
-  <tr><td>板块轮动</td><td>Push</td><td>❌</td></tr>
-</table>
-
+<thead><tr>
+<th>手势</th>
+<th>场景</th>
+<th>反馈</th>
+</tr></thead>
+<tbody>
+<tr><td>右滑返回</td><td>所有 push 页面</td><td>跟随手指动画</td></tr>
+<tr><td>下拉</td><td>列表刷新</td><td>RefreshControl 旋转</td></tr>
+<tr><td>上拉</td><td>加载更多</td><td>底部 Loading 指示器</td></tr>
+<tr><td>捏合</td><td>K线缩放</td><td>实时缩放</td></tr>
+<tr><td>长按</td><td>列表项/图表</td><td>Context Menu + Haptic</td></tr>
+<tr><td>左滑</td><td>列表项</td><td>操作按钮（删除/收藏）</td></tr>
+<tr><td>双指</td><td>K线区域选择</td><td>选中放大</td></tr>
+</tbody></table>
+<h3 id="42-haptic-触觉反馈">4.2 Haptic 触觉反馈</h3>
+<table>
+<thead><tr>
+<th>场景</th>
+<th>反馈类型</th>
+</tr></thead>
+<tbody>
+<tr><td>登录成功</td><td><code>.notification(.success)</code></td></tr>
+<tr><td>收藏/取消收藏</td><td><code>.impact(.light)</code></td></tr>
+<tr><td>下拉刷新完成</td><td><code>.impact(.medium)</code></td></tr>
+<tr><td>删除确认</td><td><code>.notification(.warning)</code></td></tr>
+<tr><td>价格预警触发</td><td><code>.notification(.error)</code></td></tr>
+<tr><td>开关切换</td><td><code>.selection</code></td></tr>
+</tbody></table>
+<h3 id="43-加载状态">4.3 加载状态</h3>
+<table>
+<thead><tr>
+<th>状态</th>
+<th>展示</th>
+</tr></thead>
+<tbody>
+<tr><td>首次加载</td><td>骨架屏（Skeleton — 灰色闪烁块）</td></tr>
+<tr><td>刷新</td><td>下拉 RefreshControl</td></tr>
+<tr><td>局部更新</td><td>半透明 overlay + 小 spinner</td></tr>
+<tr><td>网络错误</td><td>内联错误卡片 + 重试按钮</td></tr>
+<tr><td>空数据</td><td>居中插画 + 引导文字</td></tr>
+<tr><td>离线</td><td>顶部横幅 "离线模式 · 数据可能有延迟"</td></tr>
+</tbody></table>
+<h3 id="44-字体系统">4.4 字体系统</h3>
+<table>
+<thead><tr>
+<th>用途</th>
+<th>字体</th>
+<th>iOS 实现</th>
+</tr></thead>
+<tbody>
+<tr><td>大标题</td><td>26pt Medium</td><td><code>.largeTitle</code></td></tr>
+<tr><td>页面标题</td><td>20pt Medium</td><td><code>.title</code></td></tr>
+<tr><td>段落标题</td><td>16pt Medium</td><td><code>.title3</code></td></tr>
+<tr><td>正文</td><td>13pt Regular</td><td><code>.body</code></td></tr>
+<tr><td>辅助文字</td><td>11pt Regular</td><td><code>.caption</code></td></tr>
+<tr><td>价格数字</td><td>24pt Mono</td><td>自定义 <code>.system(size: 24, design: .monospaced)</code></td></tr>
+<tr><td>K线标签</td><td>10pt Mono</td><td>自定义</td></tr>
+</tbody></table>
+<p><strong>与 Web 端 theme.css 对齐：</strong></p>
+<pre><code>--text-h1-size: 26px  → .largeTitle
+--text-h2-size: 20px  → .title3
+--text-body-size: 13px → .body
+--text-small-size: 11px → .caption
+</code></pre>
+<h3 id="45-色彩系统与-web-端对齐">4.5 色彩系统（与 Web 端对齐）</h3>
+<blockquote>
+<p>⚠️ 2026-07-21 核实：以下为旧版 Web 配色（Neon Cyan 时代）。Web 端 <code>web/src/styles/theme.css</code> 已升级为设计系统 v2——暗色默认：<code>--bg-base: #0D1117</code>、<code>--bg-elevated: #161B22</code>、<code>--accent: #60A5FA</code>（蓝）、<code>--color-rise: #FF8585</code>、<code>--color-fall: #7DCB99</code>；浅色可选：<code>--accent: #2563EB</code>。iOS <code>ios/ADResearch/Theme/Theme.swift</code> 当前仍是下方旧配色，后续应按 v2 同步。红涨绿跌的 A 股约定不变。</p>
+</blockquote>
+<pre><code class="language-swift">extension Color {
+    // Background
+    static let bgBase     = Color(hex: "#0a0a0a")
+    static let bgElevated = Color(hex: "#111111")
+    static let bgInput    = Color(hex: "rgba(255,255,255,0.02)")
+    
+    // Accent
+    static let accent     = Color(hex: "#22d3ee")  // Neon Cyan
+    static let accentDim  = Color(hex: "rgba(34,211,238,0.08)")
+    
+    // Text
+    static let textPrimary   = Color(hex: "#f5f5f5")
+    static let textSecondary = Color(hex: "#aaaaaa")
+    static let textTertiary  = Color(hex: "#555555")
+    
+    // Market (A股红涨绿跌)
+    static let colorRise = Color(hex: "#ef4444")
+    static let colorFall = Color(hex: "#22c55e")
+    
+    // Score
+    static let scoreExcellent = Color(hex: "#22c55e")
+    static let scoreGood      = Color(hex: "#84cc16")
+    static let scoreAverage   = Color(hex: "#eab308")
+    static let scorePoor      = Color(hex: "#f97316")
+    static let scoreBad       = Color(hex: "#ef4444")
+}
+</code></pre>
+<hr>
+<h2 id="五页面过渡动画">五、页面过渡动画</h2>
+<table>
+<thead><tr>
+<th>转场</th>
+<th>动画</th>
+<th>时长</th>
+</tr></thead>
+<tbody>
+<tr><td>Push 详情</td><td>从右滑入</td><td>300ms</td></tr>
+<tr><td>Pop 返回</td><td>从左滑出 / 手势跟随</td><td>300ms</td></tr>
+<tr><td>Sheet 弹出</td><td>从底部升入</td><td>400ms spring</td></tr>
+<tr><td>Tab 切换</td><td>淡入淡出</td><td>200ms</td></tr>
+<tr><td>Modal 弹窗</td><td>缩放 + 淡入</td><td>300ms</td></tr>
+<tr><td>登录→首页</td><td>溶解 + 缩放</td><td>500ms</td></tr>
+</tbody></table>
+<h3 id="数字变化动画">数字变化动画</h3>
+<p>价格跳动时：</p>
+<pre><code class="language-swift">Text(price, format: .number.precision(.fractionLength(3)))
+    .contentTransition(.numericText(value: price))
+    .animation(.default, value: price)
+</code></pre>
+<hr>
+<h2 id="六widget-与系统集成">六、Widget 与系统集成</h2>
+<h3 id="61-桌面-widget小组件">6.1 桌面 Widget（小组件）</h3>
+<div class="wireframe">┌────────────────────┐
+│  📈 自选标的        │
+│                    │
+│  510300  ¥3.845    │
+│          +0.32% ↑  │
+│                    │
+│  159915  ¥4.210    │
+│          -0.15% ↓  │
+│                    │
+│  AAPL    $198.50   │
+│          +1.23% ↑  │
+└────────────────────┘
+   (Small Widget)</div>
+<h3 id="62-live-activity灵动岛">6.2 Live Activity（灵动岛）</h3>
+<p>当用户在详情页查看标的时，退到后台可启用：</p>
+<div class="wireframe">┌──────────────────────────┐
+│ 510300  3.845  +0.32% ↑  │  ← 灵动岛
+└──────────────────────────┘</div>
+<p>更新频率：5 秒（通过 APNs 静默推送或 Background Activity）</p>
+<hr>
+<h2 id="七无障碍设计">七、无障碍设计</h2>
+<table>
+<thead><tr>
+<th>功能</th>
+<th>实现</th>
+</tr></thead>
+<tbody>
+<tr><td>VoiceOver</td><td>所有按钮、标签、图表有 <code>accessibilityLabel</code></td></tr>
+<tr><td>动态字体</td><td>支持系统 Dynamic Type（最小 .caption, 最大 .largeTitle）</td></tr>
+<tr><td>减少动效</td><td>尊重系统"减少动态效果"设置</td></tr>
+<tr><td>色彩对比</td><td>Dark Mode 下文字对比度 ≥ 4.5:1</td></tr>
+<tr><td>触控区域</td><td>最小 44x44pt</td></tr>
+</tbody></table>
+<hr>
+<h2 id="八mvp-范围-vs-完整版">八、MVP 范围 vs 完整版</h2>
+<h3 id="mvp8周实现">MVP（8周实现）</h3>
+<ul>
+<li>✅ 4 个 Tab + K线详情 + AI 聊天 + 池子</li>
+<li>✅ 登录/登出/个人页面</li>
+<li>❌ Widget / Live Activity</li>
+<li>❌ 全市场筛选器</li>
+<li>❌ 回测创建</li>
+<li>❌ 策略管理</li>
+<li>❌ 相关性分析（受小屏限制）</li>
+</ul>
+<h3 id="完整版mvp-后追加">完整版（MVP 后追加）</h3>
+<ul>
+<li>Widget + Live Activity + 后台刷新</li>
+<li>全市场筛选器（简化版）</li>
+<li>回测管理（只展示，输入放 Web 端）</li>
+<li>板块轮动卡片</li>
+<li>Apple Watch complications</li>
+<li>Siri 捷径</li>
+<li>多语言（英文/简体中文）</li>
+</ul>
+<hr>
+<h2 id="九与-web-端的复用设计">九、与 Web 端的复用设计</h2>
+<table>
+<thead><tr>
+<th>设计资产</th>
+<th>复用方式</th>
+</tr></thead>
+<tbody>
+<tr><td>色彩变量</td><td>Swift <code>Color</code> 扩展与 <code>theme.css</code> 对齐</td></tr>
+<tr><td>字体系统</td><td>iOS Dynamic Type 映射 Web 端字号</td></tr>
+<tr><td>图表配色</td><td>涨跌颜色、评分色阶统一</td></tr>
+<tr><td>API 接口</td><td>同一套 REST 端点</td></tr>
+<tr><td>错误提示文案</td><td>统一文案</td></tr>
+<tr><td>主题切换</td><td>Dark Mode only 首发（Web 端已有）</td></tr>
+</tbody></table>
+<hr>
+<h2 id="附录页面清单总览">附录：页面清单总览</h2>
+<table>
+<thead><tr>
+<th>#</th>
+<th>页面</th>
+<th>导航方式</th>
+<th>MVP</th>
+</tr></thead>
+<tbody>
+<tr><td>1</td><td>登录页</td><td>Root</td><td>✅</td></tr>
+<tr><td>2</td><td>首页</td><td>Tab 1</td><td>✅</td></tr>
+<tr><td>3</td><td>标的列表</td><td>Tab 2</td><td>✅</td></tr>
+<tr><td>4</td><td>标的详情</td><td>Push from 2/3</td><td>✅</td></tr>
+<tr><td>5</td><td>池子列表</td><td>Tab 3</td><td>✅</td></tr>
+<tr><td>6</td><td>池子详情</td><td>Push from 5</td><td>✅</td></tr>
+<tr><td>7</td><td>AI 聊天</td><td>Tab 4 / Push</td><td>✅</td></tr>
+<tr><td>8</td><td>我的/设置</td><td>Tab 4</td><td>✅</td></tr>
+<tr><td>9</td><td>设备管理</td><td>Push from 8</td><td>✅</td></tr>
+<tr><td>10</td><td>推送设置</td><td>Push from 8</td><td>✅</td></tr>
+<tr><td>11</td><td>订阅管理</td><td>Push from 8</td><td>✅</td></tr>
+<tr><td>12</td><td>加入池子 Sheet</td><td>Sheet</td><td>✅</td></tr>
+<tr><td>13</td><td>全市场筛选器</td><td>Push from Tab 2</td><td>❌</td></tr>
+<tr><td>14</td><td>回测列表</td><td>Push from Tab 4</td><td>❌</td></tr>
+<tr><td>15</td><td>回测详情</td><td>Push from 14</td><td>❌</td></tr>
+<tr><td>16</td><td>板块轮动</td><td>Push from Tab 2</td><td>❌</td></tr>
+</tbody></table>
 </body>
 </html>

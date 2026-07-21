@@ -4,6 +4,10 @@
 > 初始密码时的应急重置流程。**旧密码不可恢复**（bcrypt 哈希单向），
 > 一旦重置，原密码即作废。
 
+> 最后核实更新：2026-07-21（服务器项目路径已更正为 `/opt/ad-research`、
+> 生产数据库名更正为 `ad_research`；ssh 别名 `alloy-research` 按本地
+> `~/.ssh/config` 实际配置为准）
+
 ## 一、什么场景需要走这条流程
 
 满足任一条件，即应使用本 runbook 重置密码而不是排查原密码：
@@ -30,7 +34,7 @@
 
 ```bash
 # Docker Compose 部署
-ssh alloy-research "cd /opt/alloy-research && docker compose ps"
+ssh alloy-research "cd /opt/ad-research && docker compose ps"
 ```
 
 应看到 `alloyresearch-postgres`（healthy）和 `alloyresearch-backend`（up）。
@@ -38,7 +42,7 @@ ssh alloy-research "cd /opt/alloy-research && docker compose ps"
 ### 2.2 确认目标用户存在
 
 ```bash
-ssh alloy-research "docker exec alloyresearch-postgres psql -U etf -d alloy_research \
+ssh alloy-research "docker exec alloyresearch-postgres psql -U etf -d ad_research \
   -c \"SELECT id, username, role, is_active, created_at FROM users ORDER BY id;\""
 ```
 
@@ -101,7 +105,7 @@ print(''.join(secrets.choice(string.ascii_letters + string.digits + '!@#%^*_-') 
 
 ```bash
 # 方法 1：检查哈希是否被更新
-ssh alloy-research "docker exec alloyresearch-postgres psql -U etf -d alloy_research \
+ssh alloy-research "docker exec alloyresearch-postgres psql -U etf -d ad_research \
   -c \"SELECT username, length(password_hash), left(password_hash, 7), updated_at FROM users WHERE username IN ('admin','Aidan');\""
 ```
 
@@ -227,7 +231,7 @@ ssh alloy-research "docker logs --tail=200 alloyresearch-backend 2>&1 \
 git add -A && git commit -m "..." && git push origin main
 
 # 2. 服务器
-cd /opt/alloy-research
+cd /opt/ad-research
 git pull --ff-only origin main   # 或 fetch + reset --hard origin/main
 bash redeploy.sh                  # rebuild image + recreate container
 ```
@@ -235,7 +239,7 @@ bash redeploy.sh                  # rebuild image + recreate container
 `redeploy.sh` 实际做的事（看 `cat redeploy.sh`）：
 
 ```bash
-cd /opt/alloy-research/deploy/aliyun-ecs
+cd /opt/ad-research/deploy/aliyun-ecs
 docker compose up -d --build --no-deps backend
 ```
 

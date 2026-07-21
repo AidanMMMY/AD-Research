@@ -96,6 +96,9 @@
       font-size: 13px;
     }
 
+    .main a { color: var(--primary); text-decoration: none; }
+    .main a:hover { text-decoration: underline; }
+
     .badge {
       display: inline-block; padding: 2px 10px; border-radius: 6px;
       font-size: 12px; font-weight: 600; margin-right: 6px;
@@ -213,15 +216,20 @@
     <a href="#notifications">推送配置</a>
 
     <div class="nav-group">📖 附录</div>
-    <a href="#indicators">技术指标说明</a>
+    <a href="#indicators">技术指标详解</a>
     <a href="#faq">常见问题</a>
-    <a href="#glossary">术语表</a>
     <a href="#shortcuts">快捷键速查</a>
+    <a href="#glossary">术语表</a>
   </nav>
 </nav>
 
 <!-- ========== 主内容区 ========== -->
 <main class="main">
+
+<div class="tip">
+  <strong>📌 版本说明：</strong>版本 2.0 | 2026年6月 | 适用于平台 v2.x ｜ <strong>最后核实更新：2026-07-21</strong><br>
+  <strong>注：</strong>平台此后已从 ETF 单市场工具演进为多市场投研平台（AlloyResearch，覆盖 A 股 / 美股 / 港股 / 日股 / 加密货币 / 期货 / 宏观）。本手册描述的页面名称与路由部分已变更（如「ETF列表」现为「标的列表」<code>/instruments</code>，<code>/etfs</code> 会自动重定向），最新功能全貌见 <a href="./20260707-系统平台功能逻辑说明手册.html">20260707-系统平台功能逻辑说明手册</a>。以下内容中已核实更正 2026-07-21 时点的关键事实，其余 UI 细节以线上实际页面为准。
+</div>
 
 <!-- ============================================ -->
 <!-- 平台概览 -->
@@ -264,10 +272,10 @@
   <h4>🖥️ 技术架构（供运维参考）</h4>
   <table>
     <tr><td>后端框架</td><td>Python 3.11+ / FastAPI (异步) / Uvicorn</td></tr>
-    <tr><td>数据库</td><td>PostgreSQL 15 + SQLAlchemy ORM + Alembic迁移</td></tr>
+    <tr><td>数据库</td><td>PostgreSQL 16 + SQLAlchemy ORM + Alembic迁移</td></tr>
     <tr><td>前端框架</td><td>React 18 + TypeScript + Vite + Ant Design 5 (暗色主题)</td></tr>
     <tr><td>图表库</td><td>Lightweight Charts (K线) + ECharts (散点图/雷达图/热力图)</td></tr>
-    <tr><td>数据源</td><td>Akshare (主) / yfinance / OKX / CCXT (多源自动回退)</td></tr>
+    <tr><td>数据源</td><td>Akshare / Tushare (A股) / yfinance (海外) / Binance (加密货币) (多源自动回退)</td></tr>
     <tr><td>状态管理</td><td>TanStack Query (服务端) + Zustand (客户端状态持久化)</td></tr>
     <tr><td>认证授权</td><td>JWT Bearer Token + bcrypt 密码哈希</td></tr>
   </table>
@@ -452,10 +460,10 @@
   <h4>快速筛选预设</h4>
   <p>页面顶部提供一键预设标签，点击即筛选：</p>
   <ul>
-    <li><span class="badge badge-cyan">高分高流动性</span> — 综合评分高 + 换手率充足</li>
-    <li><span class="badge badge-green">低波动稳健</span> — 波动率低 + 夏普比率高</li>
-    <li><span class="badge badge-purple">强势趋势</span> — 趋势得分高 + 近期动量强</li>
-    <li><span class="badge badge-orange">超跌反弹关注</span> — RSI偏低 + 存在均值回归可能</li>
+    <li><span class="badge badge-cyan">高夏普低波动</span> — 夏普比率 &gt; 1.0 且波动率低于 20%</li>
+    <li><span class="badge badge-green">趋势强势</span> — RSI 50-80 且 1 月收益率为正，趋势向上</li>
+    <li><span class="badge badge-purple">价值洼地</span> — 1 年回撤较大但夏普尚可，寻找反弹机会</li>
+    <li><span class="badge badge-orange">流动性充足</span> — 波动率与近期收益满足流动性门槛</li>
   </ul>
   <p>再次点击已选中的标签可以取消该预设（恢复该维度为不限）。</p>
 </div>
@@ -470,7 +478,7 @@
     <tr><td>RSI ≥</td><td>14日RSI下限</td><td>30 ~ 50（避开超买区）</td></tr>
     <tr><td>夏普 ≥</td><td>1年夏普比率下限</td><td>0.5 ~ 1.0</td></tr>
     <tr><td>波动率 ≤</td><td>20日年化波动率上限</td><td>0.2 ~ 0.3（稳健型）</td></tr>
-  </ul>
+  </table>
 </div>
 
 <div class="card">
@@ -493,9 +501,9 @@
   <h4>评分模板切换</h4>
   <p>顶部Tab栏可切换不同的评分维度组合：</p>
   <ul>
-    <li><span class="badge badge-purple">均衡型</span> — 五维度等权重（各20%）</li>
-    <li><span class="badge badge-cyan">收益优先</span> — 收益维度权重更高（40%）</li>
-    <li><span class="badge badge-green">稳健型</span> — 风险和夏普权重更高</li>
+    <li><span class="badge badge-green">保守型</span> — 风险权重更高，收益权重更低</li>
+    <li><span class="badge badge-purple">均衡型</span> — 收益、风险、夏普均衡</li>
+    <li><span class="badge badge-orange">进取型</span> — 收益权重更高，风险容忍更高</li>
   </ul>
   <p>管理员可在模板管理界面创建、编辑、删除评分模板，自定义各维度的权重分配。</p>
 </div>
@@ -643,7 +651,8 @@
 <p>管理量化策略配置，每个策略基于一个预设模板，可自定义关键参数。</p>
 
 <div class="card">
-  <h4>3种预设策略模板</h4>
+  <h4>内置策略模板</h4>
+  <p>策略库现有 20 个内置模板（见「策略库」页面），覆盖动量、均值回归、趋势跟随、波动率、成交量、事件驱动等类别。最常见的三类：</p>
   <table>
     <tr><th>模板</th><th>核心逻辑</th><th>关键参数</th></tr>
     <tr>
@@ -662,6 +671,7 @@
       <td>rsi_period (14), overbought (70), oversold (30)</td>
     </tr>
   </table>
+  <p style="margin-top:12px">另有均线交叉、MACD信号、唐奇安通道突破、三重滤网、动量排名（横截面）等模板可在策略库中查看。</p>
 </div>
 
 <div class="card">
@@ -702,7 +712,7 @@
 </div>
 
 <div class="warning">
-  <strong>⚠️ 重要提示：</strong> 回测基于历史数据，存在过拟合风险。未来表现可能与历史回测结果存在显著差异。回测结果仅供参考，不构成投资建议。实盘前建议结合样本外验证。
+  <strong>⚠️ 重要提示：</strong> 回测基于历史数据，存在<strong>过拟合、幸存者偏差、未来函数、交易成本未计入</strong>等固有限制。回测表现好的策略在实盘中可能显著走弱。建议：①样本外验证 ②使用多ETF交叉验证 ③关注夏普比率和最大回撤而非仅有总收益 ④不要仅凭回测结果做出投资决策。
 </div>
 
 <!-- ============================================ -->
@@ -905,7 +915,7 @@
 
 <div class="card"><h4>Q: 为什么收益率是红涨绿跌？</h4><p>平台遵循中国A股市场惯例：<strong>红色表示上涨/正收益，绿色表示下跌/负收益</strong>。这与中国投资者的视觉习惯一致，与欧美市场颜色惯例相反。</p></div>
 
-<div class="card"><h4>Q: 综合评分是怎么计算的？</h4><p>综合评分基于五个维度：收益能力、风险控制、夏普比率、流动性、趋势强度。每个维度先做全市场百分位排名（0-100），再按评分模板的权重加权求和。不同模板（均衡型/收益优先/稳健型）的权重分配不同。最终得分是相对排名分，而非绝对指标值。</p></div>
+<div class="card"><h4>Q: 综合评分是怎么计算的？</h4><p>综合评分基于五个维度：收益能力、风险控制、夏普比率、流动性、趋势强度。每个维度先做全市场百分位排名（0-100），再按评分模板的权重加权求和。不同模板（保守型/均衡型/进取型）的权重分配不同。最终得分是相对排名分，而非绝对指标值。</p></div>
 
 <div class="card"><h4>Q: 为什么我只看到50条数据？怎么看到全部ETF？</h4><p>全市场筛选器和ETF列表都支持分页。顶部状态栏显示"共 X 只ETF"，使用分页控件可以浏览全部数据。可在右下角切换每页显示条数：20/50/100/200。</p></div>
 
@@ -913,13 +923,13 @@
 
 <div class="card"><h4>Q: 回测结果可信吗？</h4><p>回测基于历史数据模拟，存在<strong>过拟合、幸存者偏差、未来函数、交易成本未计入</strong>等固有限制。回测表现好的策略在实盘中可能显著走弱。建议：①样本外验证 ②使用多ETF交叉验证 ③关注夏普比率和最大回撤而非仅有总收益 ④不要仅凭回测结果做出投资决策。</p></div>
 
-<div class="card"><h4>Q: 平台支持哪些ETF市场？</h4><p>目前主要覆盖中国A股市场ETF（上海证券交易所 + 深圳证券交易所），总计1,500+只。港股、美股ETF数据可通过yfinance数据源获取，加密货币通过OKX/CCXT获取。</p></div>
+<div class="card"><h4>Q: 平台支持哪些ETF市场？</h4><p>平台起步于 A 股市场 ETF（上海证券交易所 + 深圳证券交易所），现已扩展为多市场平台：A 股个股、美股、港股、日股（经 Tushare/Tiingo/Finnhub/FMP/yfinance）、加密货币（Binance）、商品期货及宏观数据。本手册主要覆盖 ETF 相关功能，其他市场功能见新版系统手册。</p></div>
 
 <div class="card"><h4>Q: 布林带和RSI同时显示，K线图会不会很乱？</h4><p>不会。所有技术指标通过复选框独立控制，你可以只勾选需要查看的指标。MA均线叠加在主图上；布林带也用半透明色叠加在主图；RSI和MACD有独立的副图区域。推荐同时开启MA20 + 布林带 + MACD，关闭其他以保持图面清晰。</p></div>
 
 <div class="card"><h4>Q: 如何获取各平台机器人的Webhook地址？</h4><p>①企业微信：群设置 → 群机器人 → 添加 → 复制Webhook地址。②飞书：群设置 → 群机器人 → 添加自定义机器人 → 复制Webhook地址。③钉钉：群设置 → 智能群助手 → 添加机器人 → 自定义 → 复制Webhook地址（可选择加签验证）。</p></div>
 
-<div class="card"><h4>Q: 忘记密码怎么办？</h4><p>目前平台使用简单的用户名/密码认证。如忘记密码，请联系系统管理员在数据库中重置。后续版本将增加密码找回功能。</p></div>
+<div class="card"><h4>Q: 忘记密码怎么办？</h4><p>请联系系统管理员重置——管理员可在「用户管理」页面（<code>/admin/users</code>）直接重置任意用户密码，也可在服务器上运行 <code>scripts/reset_user_password.py</code>。</p></div>
 
 <!-- ============================================ -->
 <!-- 快捷键速查 -->
@@ -929,7 +939,7 @@
 <div class="card">
   <table>
     <tr><th style="width:160px">操作</th><th>快捷键</th></tr>
-    <tr><td>部署到阿里云</td><td><code>Ctrl+Shift+P</code> → <code>Run Task</code> → 🚀 Deploy</td></tr>
+    <tr><td>部署到阿里云</td><td><code>git push origin main</code> 自动触发部署，或服务器执行 <code>bash redeploy.sh</code></td></tr>
     <tr><td>打开命令面板</td><td><code>Ctrl+Shift+P</code></td></tr>
     <tr><td>快速打开文件</td><td><code>Ctrl+P</code></td></tr>
     <tr><td>K线图：缩放</td><td>鼠标滚轮</td></tr>
@@ -976,7 +986,7 @@
 <!-- ============================================ -->
 <footer>
   <p>ETF投研平台 — 用户操作手册</p>
-  <p>版本 2.0 | 2026年6月 | 适用于平台 v2.x</p>
+  <p>版本 2.0 | 2026年6月 | 适用于平台 v2.x | 最后核实更新：2026-07-21</p>
   <p style="margin-top:8px">
     本手册中所有数据、信号、回测结果仅供参考研究，不构成任何形式的投资建议。<br>
     投资有风险，入市需谨慎。过往业绩不代表未来表现。

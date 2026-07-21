@@ -130,6 +130,10 @@
       日期：2026-06-27 · 分支：<code>fix/etf-list-type-filter</code>
     </div>
 
+    <div class="warning-box">
+      <strong>注</strong>：本文为 2026-06-27 的时点记录，部分内容可能已过时（后续演进见 <code>20260628-us-equity-seed-and-continuous-backfill.md</code>）。
+    </div>
+
     <h2>执行摘要</h2>
     <p>
       已完成美股标的批量灌入本地数据库，平台现可浏览、筛选、查看
@@ -175,7 +179,7 @@ US 日线数据: 294 条（覆盖 14 只核心 ETF/个股）</pre>
       <li><strong>数据库为空</strong>：<code>etf_info</code> 中仅存在 1514 只 A 股 ETF，无美股记录。</li>
       <li><strong>缺少 API Key</strong>：<code>.env</code> 中仅配置了 <code>DEEPSEEK_API_KEY</code>，未配置美股数据源 Key。</li>
       <li><strong>未执行初始化脚本</strong>：<code>scripts/init_us_etfs.py</code> 与 <code>USStockDiscoveryPipeline</code> 从未运行。</li>
-      <li><strong>FMP 旧接口已下线</strong>：2025-08-31 后新注册的 FMP 免费 Key 访问 <code>/sp500_constituent</code> 等 legacy endpoint 会返回 403。</li>
+      <li><strong>FMP 旧接口已下线</strong>：2025-08-31 后新注册的 FMP 免费 Key 访问 <code>/sp500_constituent</code> 等 legacy endpoint 会返回 403，导致原有个股发现逻辑失效。</li>
     </ol>
 
     <h2>本次代码修复</h2>
@@ -189,15 +193,15 @@ US 日线数据: 294 条（覆盖 14 只核心 ETF/个股）</pre>
       <tbody>
         <tr>
           <td><code>app/data/providers/fmp_provider.py</code></td>
-          <td>FMP 旧接口 403 时自动 fallback 到公开 S&P 500 CSV（datasets/s-and-p-500-companies）</td>
+          <td>FMP 旧接口 403 时自动 fallback 到公开 S&P 500 CSV（<code>datasets/s-and-p-500-companies</code>）</td>
         </tr>
         <tr>
           <td><code>app/data/pipelines/us_stock_discovery.py</code></td>
-          <td>重写 run()，跳过针对 OHLCV 的四层校验，正确写入 instrument 元数据</td>
+          <td>重写 <code>run()</code>，跳过针对 OHLCV 的四层校验，正确写入 instrument 元数据</td>
         </tr>
         <tr>
           <td><code>app/data/providers/tiingo_provider.py</code></td>
-          <td>修复 Tiingo 返回 ISO 日期时间字符串（如 2026-06-22T00:00:00.000Z）的解析错误</td>
+          <td>修复 Tiingo 返回 ISO 日期时间字符串（如 <code>2026-06-22T00:00:00.000Z</code>）的解析错误</td>
         </tr>
       </tbody>
     </table>
@@ -210,35 +214,39 @@ US 日线数据: 294 条（覆盖 14 只核心 ETF/个股）</pre>
 
     <h3>1. 标的列表 /etfs</h3>
     <ul>
-      <li>市场列显示 <span class="status-good">US</span></li>
-      <li>类型列显示 ETF 或 个股</li>
+      <li>市场列显示 <code>US</code></li>
+      <li>类型列显示 <code>ETF</code> 或 <code>个股</code></li>
       <li>支持搜索 <code>SPY.US</code>、<code>AAPL.US</code> 等代码</li>
     </ul>
 
     <h3>2. 全市场筛选器 /screen</h3>
     <ul>
-      <li>市场选择器可选择「美股」</li>
-      <li>类型选择器可选择「ETF」/「个股」</li>
+      <li>市场选择器可选择 <code>美股</code></li>
+      <li>类型选择器可选择 <code>ETF</code> / <code>个股</code></li>
     </ul>
 
     <h3>3. 标的详情页 /etfs/:code</h3>
     <ul>
       <li>查看 K 线行情、技术指标、综合评分、AI 分析 Tab</li>
-      <li>仅上述 14 只核心标的有价格数据，其余会显示「暂无历史行情数据」</li>
+      <li><strong>提示</strong>：仅上述 14 只核心标的有价格数据，其余会显示“暂无历史行情数据”</li>
     </ul>
 
     <h3>4. AI 功能</h3>
     <ul>
-      <li><strong>AI 研究笔记 /research</strong>：输入美股代码生成研报</li>
-      <li><strong>情绪分析 /sentiment</strong>：输入美股代码查看市场情绪</li>
-      <li><strong>AI 助手 /chat</strong>：向 AI 询问关于美股标的的分析</li>
+      <li><code>/research</code>：输入美股代码生成研报</li>
+      <li><code>/sentiment</code>：输入美股代码查看市场情绪</li>
+      <li><code>/chat</code>：向 AI 询问关于美股标的的分析</li>
     </ul>
 
     <h2>环境配置</h2>
     <p>已写入 <code>.env</code>（git 不追踪）：</p>
-    <pre>FINNHUB_API_KEY=d8vpuu1r01qgrv4q83p0d8vpuu1r01qgrv4q83pg
-TIINGO_API_KEY=86b255545bbb149eccec830e11f8261d821f3984
-FMP_API_KEY=pQpEqdBaKeAC7Fo5klihDLZKm6iv4MJI</pre>
+    <pre>FINNHUB_API_KEY=&lt;已脱敏，原 key 曾明文入库，视为已泄露，需轮换&gt;
+TIINGO_API_KEY=&lt;已脱敏，原 key 曾明文入库，视为已泄露，需轮换&gt;
+FMP_API_KEY=&lt;已脱敏，原 key 曾明文入库，视为已泄露，需轮换&gt;</pre>
+
+    <div class="warning-box">
+      ⚠️ 2026-07-21 文档审查时发现此处三个 API key 为明文且已进 git 历史，已脱敏。请到 Finnhub / Tiingo / FMP 后台重新生成 key 并更新 <code>.env</code>。
+    </div>
 
     <h2>后续工作</h2>
 

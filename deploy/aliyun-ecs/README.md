@@ -1,5 +1,7 @@
 # 阿里云 ECS 部署手册（小白版）
 
+> 最后核实更新：2026-07-21
+
 本手册面向没有服务器运维经验的同学，一步一步教你把 **Alloy-Research** 平台部署到阿里云 ECS 云服务器上。
 
 只要照着做，一般 15～30 分钟就能完成。
@@ -265,7 +267,8 @@ chmod +x deploy.sh
 6. **执行数据库迁移**（创建表结构）
 7. **初始化管理员账号**（在数据库中创建 `admin` 用户，仅首次执行）
 8. **启动后端服务**
-9. **健康检查**（确认服务正常）
+9. **启动 Nginx 网关**（对外提供 8000/80/443 端口）
+10. **健康检查**（确认服务正常）
 
 ### 6.5 过程中可能需要你输入
 
@@ -397,10 +400,20 @@ docker compose down -v
 
 ### 9.7 更新代码后重新部署
 
+推荐使用仓库自带的更新脚本（含迁移校验、健康检查，GitHub Actions 自动部署也走它）：
+
 ```bash
 cd /opt/alloy-research
 git pull  # 如果用 Git
-cd deploy/aliyun-ecs
+bash deploy/aliyun-ecs/update.sh
+```
+
+如果只想快速重建 backend（跳过迁移校验），也可以用仓库根目录的 `redeploy.sh`。
+
+手动全量重建的方式（较慢，一般不需要）：
+
+```bash
+cd /opt/alloy-research/deploy/aliyun-ecs
 docker compose down
 docker compose build --no-cache
 docker compose up -d
@@ -443,9 +456,9 @@ docker compose up -d
    ```
    在服务器上执行，应该返回 `{"status":"ok"...}`。
 
-### Q2：部署脚本提示 "源数据库 etf_research 不存在"
+### Q2：数据库叫什么名字？早期文档里的 `etf_research` / `alloy_research` 呢？
 
-这是正常的。说明你是全新部署，没有旧数据需要迁移。脚本会自动创建 `alloy_research` 数据库。
+当前版本默认数据库名为 **`ad_research`**（见 `docker-compose.yml` 的 `POSTGRES_DB` 与 `.env.example`），数据库用户为 `etf`。早期版本曾使用 `etf_research` / `alloy_research` 等库名，相关迁移检查逻辑已从 `deploy.sh` 移除——全新部署时脚本通过 `alembic upgrade head` 自动建表，无需手工建库。
 
 ### Q3：部署脚本提示 "未检测到 docker compose 插件"
 
@@ -522,7 +535,7 @@ docker compose up -d
 
 ```bash
 cd /opt/alloy-research/deploy/aliyun-ecs
-docker compose exec postgres pg_dump -U etf -d alloy_research > /opt/alloy-research-backup-$(date +%Y%m%d).sql
+docker compose exec postgres pg_dump -U etf -d ad_research > /opt/alloy-research-backup-$(date +%Y%m%d).sql
 ```
 
 ### 12.2 下载备份到本地
@@ -639,7 +652,8 @@ deploy/aliyun-ecs/
 ├── nginx.conf           # Nginx 反向代理 / HTTPS / 重定向配置
 ├── ssl/                 # SSL 证书目录（.key 不要提交到 Git）
 ├── .env.example         # 环境变量模板
-├── deploy.sh            # 一键部署脚本
+├── deploy.sh            # 一键部署脚本（首次部署）
+├── update.sh            # 热更新脚本（日常更新，含迁移校验与健康检查）
 └── README.md            # 本手册
 ```
 

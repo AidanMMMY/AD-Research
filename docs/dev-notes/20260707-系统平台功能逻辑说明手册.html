@@ -6,6 +6,7 @@
 <title>AD-Research 系统平台功能逻辑说明手册</title>
 <meta name="author" content="AD-Research 开发组">
 <meta name="last-updated" content="2026-07-07">
+<meta name="last-verified" content="2026-07-21">
 <style>
 :root {
   --bg: #ffffff;
@@ -269,6 +270,7 @@ hr {
 <blockquote>
 <p>本手册是 AD-Research 投研平台的<strong>功能与业务逻辑总纲</strong>，覆盖数据流、模块清单、关键决策、部署架构与维护流程。</p>
 <p><strong>最后更新：2026-07-07</strong></p>
+<p>最后核实更新：2026-07-21</p>
 <p>适用版本：基于 2026-07-02 阶段性 sprint（Phase 2 宏观接入 + Phase 4-9 数据源扩展）之后的当前 main。</p>
 </blockquote>
 <hr>
@@ -311,7 +313,7 @@ hr {
 </tr>
 <tr>
 <td><strong>AI 增强</strong></td>
-<td>DeepSeek 用于研报摘要、雪球内容深度抓取、聊天助手；Anthropic Claude 备用</td>
+<td>MiniMax（默认）用于研报摘要、雪球内容深度抓取、聊天助手；DeepSeek（legacy）与 Anthropic Claude 备用</td>
 </tr>
 <tr>
 <td><strong>回测 / 实盘</strong></td>
@@ -344,7 +346,7 @@ hr {
 </tr>
 <tr>
 <td>数据库</td>
-<td>PostgreSQL 16（数据）+ Redis 7（缓存 + 分布式锁 + Celery 替代）</td>
+<td>PostgreSQL 16（数据）+ Redis 7（缓存 + 分布式锁 + Celery broker）</td>
 </tr>
 <tr>
 <td>前端</td>
@@ -360,7 +362,7 @@ hr {
 </tr>
 <tr>
 <td>LLM</td>
-<td>DeepSeek（主）+ Anthropic（备），统一 <code>app/services/llm/</code></td>
+<td>MiniMax（默认，OpenAI 兼容）+ DeepSeek（legacy）/ Anthropic（备），统一 <code>app/services/llm/</code></td>
 </tr>
 <tr>
 <td>抓取</td>
@@ -386,12 +388,12 @@ hr {
 <tr>
 <td>ETF 列表</td>
 <td>A 股 + 美股 ETF 主数据 + 行情</td>
-<td><code>/etfs</code> → <code>GET /api/v1/etfs</code></td>
+<td><code>/instruments</code>（<code>/etfs</code> 重定向至此）→ <code>GET /api/v1/etfs</code></td>
 </tr>
 <tr>
 <td>个股列表</td>
 <td>A 股 / 美股个股，含估值 / 财务</td>
-<td><code>/stocks</code> <code>/us-stocks</code> → <code>GET /api/v1/stocks</code></td>
+<td><code>/stocks</code> → <code>GET /api/v1/stocks</code></td>
 </tr>
 <tr>
 <td>加密货币</td>
@@ -414,18 +416,18 @@ hr {
 <pre><code>app/services/etf_service.py
 app/services/market_data_service.py
 app/services/futures_service.py
-app/services/crypto.py (API)
+app/api/v1/crypto.py (API)
 </code></pre>
 <h3 id="22-market-data-indicators">2.2 行情与指标（Market Data / Indicators）</h3>
 <ul>
 <li><strong>K 线 / 复权</strong>：所有市场统一 <code>daily_bars</code> 存 <code>raw close</code>，<code>adj_factor</code> 单独列；行情接口 <code>market-data</code> 支持 <code>adj=qfq/hfq/none</code>。</li>
 <li><strong>技术指标</strong>：MA / EMA / MACD / RSI / BOLL / KDJ / ATR 由 <code>app/data/indicators/calculator.py</code> 批算，按 <code>market_filter</code> 切片。</li>
 </ul>
-<p>页面：<code>/dashboard</code>（综合行情）、<code>/return-comparison</code>（收益对比）、<code>/microstructure</code>（微结构）。</p>
+<p>页面：<code>/dashboard</code>（综合行情）、<code>/comparison</code>（收益对比）、<code>/microstructure</code>（微结构）。</p>
 <h3 id="23-screen-score">2.3 筛选器 / 评分（Screen / Score）</h3>
 <ul>
-<li>预置筛选器：<code>/screen</code> <code>/etf-scanner</code>，底层 <code>screening_service.py</code></li>
-<li>评分排行：<code>/score-ranking</code>，基于多因子（动量 / 估值 / 质量 / 资金流），<code>scoring_service.py</code></li>
+<li>预置筛选器：<code>/screen</code> <code>/scanner</code>，底层 <code>screening_service.py</code></li>
+<li>评分排行：<code>/scores</code>，基于多因子（动量 / 估值 / 质量 / 资金流），<code>scoring_service.py</code></li>
 <li>板块轮动：<code>/sector-rotation</code></li>
 </ul>
 <h3 id="24-pool-portfolio-paper-trading">2.4 组合管理（Pool / Portfolio / Paper Trading）</h3>
@@ -454,7 +456,7 @@ app/services/crypto.py (API)
 <td>真实持仓视角（用户自填）</td>
 </tr>
 <tr>
-<td><code>/trading-panel</code></td>
+<td><code>/trading-panel</code>（现路由 <code>/live-trading</code>）</td>
 <td>下单面板（监控信号 → 触发 paper 交易）</td>
 </tr>
 </tbody>
@@ -479,7 +481,7 @@ app/services/crypto.py (API)
 <tr>
 <td><code>/research-reports</code></td>
 <td><code>/api/v1/research-reports</code></td>
-<td>东方财富 + DeepSeek 摘要</td>
+<td>东方财富 + LLM 摘要</td>
 </tr>
 <tr>
 <td><code>/cninfo-reports</code></td>
@@ -492,13 +494,13 @@ app/services/crypto.py (API)
 <td>SEC EDGAR 10-K/10-Q</td>
 </tr>
 <tr>
-<td><code>/report-browser</code></td>
+<td><code>/reports</code></td>
 <td>内置研报浏览器</td>
 <td></td>
 </tr>
 <tr>
-<td><code>/ai-chat</code></td>
-<td>DeepSeek 对话式研究助手</td>
+<td><code>/chat</code></td>
+<td>LLM 对话式研究助手</td>
 <td></td>
 </tr>
 </tbody>
@@ -517,12 +519,12 @@ app/services/crypto.py (API)
 <td>聚合 8 路（新浪 / Yahoo / CNBC / Reddit / CoinDesk 等）</td>
 </tr>
 <tr>
-<td><code>/news-health</code></td>
+<td><code>/news/health</code></td>
 <td>数据源健康监控</td>
 </tr>
 <tr>
-<td><code>/sentiment</code> <code>/sentiment-dashboard</code></td>
-<td>DeepSeek / 关键词情绪打分</td>
+<td><code>/sentiment</code> <code>/instrument-sentiment</code></td>
+<td>LLM / 关键词情绪打分</td>
 </tr>
 <tr>
 <td><code>/search-trends</code></td>
@@ -534,8 +536,8 @@ app/services/crypto.py (API)
 <h3 id="28-macro-global">2.8 宏观 / 全球市场（Macro / Global）</h3>
 <ul>
 <li><code>/macro</code> — FRED + BEA + China macro（akshare <code>macro_china_*</code>）</li>
-<li><code>/global-markets</code> — 全球主要指数（yfinance + akshare）</li>
-<li><code>/signal-dashboard</code> — 集成宏观因子的事件驱动信号</li>
+<li><code>/global</code> — 全球主要指数（yfinance + akshare）</li>
+<li><code>/signals</code> — 集成宏观因子的事件驱动信号</li>
 </ul>
 <h3 id="29-auth-admin">2.9 用户 / 权限（Auth / Admin）</h3>
 <table>
@@ -559,12 +561,12 @@ app/services/crypto.py (API)
 <td>部署追踪（GitHub Actions 状态回读）</td>
 </tr>
 <tr>
-<td><code>/notification-config</code> <code>/notification-logs</code></td>
+<td><code>/notification-config</code>（现路由 <code>/notifications</code>） <code>/notification-logs</code></td>
 <td>推送渠道配置</td>
 </tr>
 </tbody>
 </table>
-<p>实现：<code>auth.py</code> <code>/</code>user.py<code>模型，</code>notification_service.py`</p>
+<p>实现：<code>auth.py</code> / <code>user.py</code> 模型，<code>notification_service.py</code></p>
 <h3 id="210-ai">2.10 AI 助手 / 学习</h3>
 <table>
 <thead>
@@ -575,8 +577,8 @@ app/services/crypto.py (API)
 </thead>
 <tbody>
 <tr>
-<td><code>/ai-chat</code></td>
-<td>DeepSeek 对话，支持流式 (SSE <code>stream.py</code>)</td>
+<td><code>/chat</code></td>
+<td>LLM 对话，支持流式 (SSE <code>stream.py</code>)</td>
 </tr>
 <tr>
 <td><code>/learning</code></td>
@@ -617,12 +619,12 @@ app/services/crypto.py (API)
          ▼
 ┌──────────────────┐
 │  REST API Layer  │  app/api/v1/*
-│  + JWT auth      │  33 endpoints
+│  + JWT auth      │  约 40 个 router
 └────────┬─────────┘
          │ fetch / react-query
          ▼
 ┌──────────────────┐
-│  React Frontend  │  60+ pages, 25+ components
+│  React Frontend  │  50+ pages, 25+ components
 │  (SPA + AntD v5) │
 └──────────────────┘
 </code></pre>
@@ -646,7 +648,7 @@ app/services/crypto.py (API)
 <hr>
 <h2 id="4">4. 数据源全景</h2>
 <blockquote>
-<p>摘自 <code>docs/20260702-data-source-map.md</code>，仅摘要。</p>
+<p>摘自 <code>docs/dev-notes/20260702-data-source-map.md</code>，仅摘要。</p>
 </blockquote>
 <table>
 <thead>
@@ -855,12 +857,22 @@ app/services/crypto.py (API)
 <td>巨潮 PDF</td>
 </tr>
 <tr>
+<td>17:30</td>
+<td><code>fund_flow_daily</code></td>
+<td>个股/板块资金流</td>
+</tr>
+<tr>
 <td>18:00</td>
 <td><code>research_reports_daily</code></td>
 <td>研报抓取</td>
 </tr>
 <tr>
-<td>18:30</td>
+<td>18:35</td>
+<td><code>market_fund_flow_daily</code></td>
+<td>大盘资金流</td>
+</tr>
+<tr>
+<td>19:30</td>
 <td><code>microstructure_daily</code></td>
 <td>龙虎榜/沪港通/融资融券</td>
 </tr>
@@ -936,16 +948,24 @@ app/services/crypto.py (API)
 <td><code>news_xueqiu_5m</code>（需 XUEQIU_COOKIE）</td>
 </tr>
 <tr>
+<td>5 min</td>
+<td><code>news_reddit_5m</code> / <code>news_coindesk_5m</code> / <code>news_cointelegraph_5m</code> / <code>news_wallstreetcn_5m</code></td>
+</tr>
+<tr>
 <td>10 min</td>
 <td><code>news_cninfo_10m</code>（巨潮公告流）</td>
 </tr>
 <tr>
+<td>10 min</td>
+<td><code>news_36kr_10m</code> / <code>news_huxiu_10m</code> / <code>news_jiemian_10m</code> / <code>news_caixin_10m</code></td>
+</tr>
+<tr>
 <td>15 min</td>
-<td><code>news_wechat_zeping_15m</code></td>
+<td><code>news_wechat_zeping_15m</code> / <code>news_chinanews_finance_15m</code></td>
 </tr>
 <tr>
 <td>30 min</td>
-<td><code>coindesk</code> / <code>cointelegraph</code></td>
+<td><code>news_sec_edgar_30m</code> / <code>news_stats_gov_30m</code></td>
 </tr>
 </tbody>
 </table>
@@ -985,11 +1005,10 @@ Scheduler 调度 + redis_lock 互斥 + etl_logs 入库
     chat(messages, stream=False) → str | AsyncIterator
     summarize(text, max_tokens=200) → str
 </code></pre>
-<p>实现 <code>anthropic_provider.py</code> 与 <code>deepseek_provider.py</code>，由 <code>LLM_PROVIDER</code> 配置切换。<br>
-<strong>禁止凭印象判断模型真假</strong>——模型目录详见 <code>memory/deepseek-model-catalog.md</code>。</p>
+<p>实现 <code>minimax_provider.py</code>（默认）、<code>deepseek_provider.py</code>（legacy）与 <code>anthropic_provider.py</code>，由 <code>LLM_PROVIDER</code> 配置切换。</p>
 <h3 id="65">6.5 数据库迁移</h3>
 <ul>
-<li><strong>Alembic</strong> 作主迁移工具，迁移文件 <code>migrations/versions/</code></li>
+<li><strong>Alembic</strong> 作主迁移工具，迁移文件 <code>alembic/versions/</code></li>
 <li>每个 phase 自带 migration，回滚顺序记录在 <code>docs/dev-notes/</code></li>
 <li>部署时容器启动自动 <code>alembic upgrade head</code></li>
 </ul>
@@ -1006,7 +1025,7 @@ Scheduler 调度 + redis_lock 互斥 + etl_logs 入库
 </ul>
 <hr>
 <h2 id="7">7. 部署与运维</h2>
-<h3 id="71-5">7.1 容器架构（5 个服务）</h3>
+<h3 id="71-6">7.1 容器架构（6 个服务）</h3>
 <pre><code>┌──────────────────────────────────────────────┐
 │ Nginx (80/443 → 8000 反代, 静态资源)         │
 │   ├─ /api  → backend:8000                     │
@@ -1027,7 +1046,7 @@ Scheduler 调度 + redis_lock 互斥 + etl_logs 入库
 └──────────────┘         └─────────────────────┘
 </code></pre>
 <blockquote>
-<p>共 5 个容器：postgres / redis / backend / nginx + （可选 worker）。</p>
+<p>共 6 个容器：postgres / redis / backend / celery-worker-indicator / celery-worker-cninfo / nginx（见 <code>deploy/aliyun-ecs/docker-compose.yml</code>）。</p>
 </blockquote>
 <h3 id="72">7.2 关键路径</h3>
 <table>
@@ -1073,9 +1092,9 @@ Scheduler 调度 + redis_lock 互斥 + etl_logs 入库
 <h3 id="74">7.4 观测 / 告警</h3>
 <ul>
 <li><code>GET /api/v1/etl/status</code> — 最近 100 条 ETL 日志</li>
-<li><code>GET /api/v1/scheduler/jobs</code> — 列出注册的 cron job 及 next_run_time</li>
+<li><code>GET /api/v1/etl/scheduler/jobs</code> — 列出注册的 cron job 及 next_run_time</li>
 <li><code>GET /api/v1/news/health</code> — 新闻源连接健康</li>
-<li>前端 <code>/etl-ops-dashboard</code> 图形化</li>
+<li>前端 <code>/admin/etl-status</code>（ETL 运维看板）与 <code>/etl-status</code> 图形化</li>
 </ul>
 <h3 id="75">7.5 常用运维命令</h3>
 <pre><code class="language-bash"># 重启后端（不重建）
@@ -1086,7 +1105,7 @@ docker exec alloyresearch-backend python -c \
   &quot;from app.core.scheduler import run_a_share_etl; run_a_share_etl()&quot;
 
 # 查看 APScheduler 当前注册的 job
-docker exec alloyresearch-backend curl -s http://localhost:8000/api/v1/scheduler/jobs | jq
+docker exec alloyresearch-backend curl -s http://localhost:8000/api/v1/etl/scheduler/jobs | jq
 
 # 漂移检查（哪几个 job 已超时）
 bash scripts/check_scheduler_drift.sh
@@ -1177,13 +1196,13 @@ bash redeploy.sh
 <li>写 service 层 <code>app/services/&lt;name&gt;_service.py</code></li>
 <li>写 API router <code>app/api/v1/&lt;name&gt;.py</code></li>
 <li>前端新增 page + service fetch</li>
-<li>更新本文档 §4 + <code>docs/20260702-data-source-map.md</code></li>
+<li>更新本文档 §4 + <code>docs/dev-notes/20260702-data-source-map.md</code></li>
 </ol>
 <h3 id="92">9.2 新增前端页面</h3>
 <pre><code>web/src/pages/&lt;Name&gt;/index.tsx
 web/src/pages/&lt;Name&gt;/&lt;Name&gt;.css   (可选)
-web/src/services/&lt;name&gt;.ts         (API 调用)
-web/src/router.tsx                 (注册路由)
+web/src/api/&lt;name&gt;.ts              (API 调用)
+web/src/routes.tsx                 (注册路由)
 </code></pre>
 <h3 id="93-api">9.3 新增 API 端点</h3>
 <pre><code>app/api/v1/&lt;name&gt;.py    路由定义
@@ -1194,7 +1213,7 @@ app/schemas/&lt;name&gt;.py   Pydantic schema
 <ol>
 <li>写 <code>run_&lt;job&gt;()</code> 函数 + redis_lock 包裹</li>
 <li><code>init_scheduler()</code> 加 <code>scheduler.add_job(...)</code></li>
-<li>重启 backend；<code>/api/v1/scheduler/jobs</code> 应出现</li>
+<li>重启 backend；<code>/api/v1/etl/scheduler/jobs</code> 应出现</li>
 </ol>
 <h3 id="95">9.5 数据库迁移 / 回填</h3>
 <pre><code class="language-bash"># 生成迁移
@@ -1216,7 +1235,7 @@ docker exec alloyresearch-backend python scripts/backfill_xxx.py --batch 500
 </thead>
 <tbody>
 <tr>
-<td><code>/api/v1/scheduler/jobs</code> 返回空</td>
+<td><code>/api/v1/etl/scheduler/jobs</code> 返回空</td>
 <td><code>ENABLE_SCHEDULER=true</code> 是否注入？</td>
 </tr>
 <tr>
@@ -1364,8 +1383,8 @@ c9c456c docs(security): add 3-provider secret rotate runbook
 
 文档
   - 本手册     /app/docs/dev-notes/20260707-系统平台功能逻辑说明手册.md
-  - 数据源     /app/docs/20260702-data-source-map.md
-  - Changelog  /app/docs/20260702-changelog.md
+  - 数据源     /app/docs/dev-notes/20260702-data-source-map.md
+  - Changelog  /app/docs/dev-notes/20260702-changelog.md
   - ROADMAP    /app/docs/dev-notes/20260628-ROADMAP.md
   - dev-notes  /app/docs/dev-notes/
   - 运行手册   /app/docs/dev-notes/20260627-scheduled-task-recovery-guide.md
@@ -1381,25 +1400,18 @@ c9c456c docs(security): add 3-provider secret rotate runbook
 </thead>
 <tbody>
 <tr>
-<td>guest</td>
-<td>仅 Dashboard / 公开 Market 数据</td>
-</tr>
-<tr>
 <td>user</td>
-<td>全功能（除 admin）</td>
+<td>全功能（默认角色，<code>users.role</code> 默认值）</td>
 </tr>
 <tr>
 <td>admin</td>
-<td>+ <code>/admin/users</code> + <code>/admin/deployments</code></td>
-</tr>
-<tr>
-<td>superuser</td>
-<td>+ 数据库直查、调度器手动触发、Token 管理</td>
+<td>+ <code>/admin/users</code> + <code>/admin/deployments</code> + 真实交易、ETL 运维看板等 admin-only 端点</td>
 </tr>
 </tbody>
 </table>
 <blockquote>
-<p>JWT 过期默认 480 分钟（8h），refresh token 30 天。</p>
+<p>代码中只有 <code>user</code> / <code>admin</code> 两种角色（<code>app/api/deps.py</code> 以 <code>role == &quot;admin&quot;</code> 判定）；未登录请求一律被 JWT 拦截，无 guest 角色。</p>
+<p>JWT access token 过期默认 1440 分钟（24h，<code>ACCESS_TOKEN_EXPIRE_MINUTES = 60*24</code>），refresh token 30 天。</p>
 </blockquote>
 <h2 id="c">附录 C：术语表</h2>
 <table>

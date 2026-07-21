@@ -1,5 +1,7 @@
 # A 股指标每日完整性 Runbook
 
+> 最后核实更新：2026-07-21
+
 ## 1. 问题
 
 `etf_indicator` 表同一日期的记录数差异巨大：有时 1500 条（全 ETF），有时 5500 条（全 STOCK），看上去「完整」但其实各缺一半。
@@ -88,9 +90,9 @@ FROM etf_indicator WHERE trade_date='2026-07-14' GROUP BY 1 ORDER BY 2 DESC LIMI
 
 ## 5. 建议的后续防御（下一轮 sprint）
 
-1. **bar 数据齐整性告警**：在 `run_a_share_indicator_fallback` 加前置检查，比较 `instrument_daily_bar` 当日条数 vs `etf_info where market='A股' and status='active'` 条数，差距 >5% 时发 Slack/钉钉告警
-2. **pipeline extract 层字段容错**：`a_share_daily_etl` 失败原因多为 `change_pct` / `turnover_rate` 字段缺失（provider 返回 None），需在 extract 层做字段容错避免整条失败
-3. **monitor 看板**：在 `/admin/etl-health` 显示每日 bar / indicator 覆盖率
+1. **bar 数据齐整性告警**（未实现）：在 `run_a_share_indicator_fallback` 加前置检查，比较 `instrument_daily_bar` 当日条数 vs `etf_info where market='A股' and status='active'` 条数，差距 >5% 时发 Slack/钉钉告警
+2. **pipeline 字段容错**（已落地）：`a_share.py` 与 `a_share_stock_daily.py` 的 `load()` 均已做字段容错——全 NULL 列从 upsert 中剔除、单字段 NULL 由 upsert CASE 保留旧值（`turnover_rate`/`adj_factor` 等兜底源缺字段不再污染已写入数据）
+3. **monitor 看板**（已部分落地）：ETL 运维看板已存在（`/admin/etl-status`，ETL 任务状态与调度总览），但每日 bar / indicator 覆盖率展示仍未实现，待补
 
 ## 6. 已知陷阱
 

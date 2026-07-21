@@ -4,6 +4,8 @@
 > **审计维度**：分组/分类、图标位置、卡片对齐、图表对齐、表格对齐、雷达图/分布图可读性、响应式 + 跨页面一致性。
 > **审计日期**：2026-07-12
 > **本报告仅记录问题，不修改代码。**
+>
+> **注**：本文为时点审计。2026-07-21 核实，P0 项已基本修复：Sentiment 热力图/详情/箭头颜色已统一走 `--color-rise/fall` 并响应 `colorConvention`（新增 `Sentiment/styles.css`）；SentimentDashboard 已补 PageShell/PageHeader/FilterToolbar/EmptyState（GlassCard 组件已删除）；Microstructure KPI 不再引用 `detail-kpi-*` 跨页类（改用 `getReturnColor`），Tab 已带 badge；Futures Tab 图标已由 emoji 换为 Ant Design 图标、`changeCell` 已带正负号；CorrelationAnalysis `styles.css` 已非空并修复图表容器高度（热力图配色改为蓝-灰-红）。遗留：`phase5c-*` 工具类仍与 `ad-*` 混用（如 Sentiment 页）；Microstructure `styles.css` 中 `microstructure__kpi-rise/fall` 等仍为未引用的死代码。
 
 ---
 

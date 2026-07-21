@@ -80,190 +80,190 @@
 </style>
 </head>
 <body>
-
-<h1>iOS 原生 APP 可行性评估报告</h1>
-<p class="date">2026-06-28 · 基于当前投研平台代码架构</p>
-
-<h2>一、结论总览</h2>
-
+<h1 id="ios-原生-app-可行性评估报告">iOS 原生 APP 可行性评估报告</h1>
+<p class="date">2026-06-28 | 基于当前投研平台代码架构</p>
+<blockquote>
+<p>最后核实更新：2026-07-21（后端认证/SSE/APNs/CORS 等"需改造"项多数已落地，见正文标注；iOS 工程已开工，位于 <code>ios/ADResearch/</code>，目前完成登录脚手架）</p>
+</blockquote>
+<h2 id="一结论总览">一、结论总览</h2>
 <table>
-  <tr><th>问题</th><th>结论</th></tr>
-  <tr><td>是否可行？</td><td><span class="success">✅ 完全可行</span></td></tr>
-  <tr><td>能否共用底座？</td><td><span class="success">✅ 可以，iOS APP 直接调用现有 FastAPI REST API</span></td></tr>
-  <tr><td>功能能否同步？</td><td><span class="success">✅ 后端功能天然同步；UI/交互需要两端分别实现</span></td></tr>
-  <tr><td>工作量？</td><td>iOS 原生开发 ≈ 重写整个前端；后端仅需小改</td></tr>
-</table>
-
-<h2>二、当前架构对 iOS APP 的友好度</h2>
-
-<h3>后端（FastAPI）—— 很适合做底座</h3>
-
+<thead><tr>
+<th>问题</th>
+<th>结论</th>
+</tr></thead>
+<tbody>
+<tr><td>是否可行？</td><td>✅ 完全可行</td></tr>
+<tr><td>能否共用底座？</td><td>✅ 可以，iOS APP 直接调用现有 FastAPI REST API</td></tr>
+<tr><td>功能能否同步？</td><td>✅ 后端功能天然同步；UI/交互需要两端分别实现</td></tr>
+<tr><td>工作量？</td><td>iOS 原生开发 ≈ 重写整个前端；后端仅需小改</td></tr>
+</tbody></table>
+<h2 id="二当前架构对-ios-app-的友好度">二、当前架构对 iOS APP 的友好度</h2>
+<h3 id="后端fastapi-很适合做底座">后端（FastAPI）—— 很适合做底座</h3>
 <table>
-  <tr><th>维度</th><th>现状</th><th>iOS 适配度</th></tr>
-  <tr><td>API 组织</td><td><code>/api/v1/</code> 下 22 个模块，RESTful</td><td>⭐⭐⭐⭐⭐</td></tr>
-  <tr><td>数据模型</td><td>SQLAlchemy + Pydantic Schema 完整</td><td>⭐⭐⭐⭐⭐</td></tr>
-  <tr><td>认证</td><td>JWT Bearer，但无 Refresh Token</td><td>⚠️ 需增强</td></tr>
-  <tr><td>实时通信</td><td>无 WebSocket/SSE</td><td>⚠️ 行情推送需新增</td></tr>
-  <tr><td>移动端推送</td><td>无 APNs/FCM</td><td>❌ 需新建</td></tr>
-  <tr><td>报告导出</td><td>HTML/Markdown 下载成熟</td><td>⭐⭐⭐⭐ 可扩展 PDF</td></tr>
-</table>
-
-<h3>前端（React）—— 无法直接复用</h3>
-
+<thead><tr>
+<th>维度</th>
+<th>现状</th>
+<th>iOS 适配度</th>
+</tr></thead>
+<tbody>
+<tr><td>API 组织</td><td><code>/api/v1/</code> 下 40+ 个模块，RESTful</td><td>⭐⭐⭐⭐⭐</td></tr>
+<tr><td>数据模型</td><td>SQLAlchemy + Pydantic Schema 完整</td><td>⭐⭐⭐⭐⭐</td></tr>
+<tr><td>认证</td><td>JWT Bearer + Refresh Token（30 天，rotation）+ 登出黑名单 + 设备管理（<code>app/api/v1/auth.py</code>，2026-07 已实现）</td><td>⭐⭐⭐⭐ 已增强</td></tr>
+<tr><td>实时通信</td><td>SSE 已上线：<code>GET /api/v1/stream/prices?codes=...</code>（<code>app/api/v1/stream.py</code>，3s 推送）</td><td>⭐⭐⭐⭐ 已实现</td></tr>
+<tr><td>移动端推送</td><td>APNs 已集成（<code>app/services/push_service.py</code>，需配置 <code>APNS_*</code> 环境变量）</td><td>⭐⭐⭐ 已具备基础</td></tr>
+<tr><td>报告导出</td><td>HTML/Markdown 下载成熟</td><td>⭐⭐⭐⭐ 可扩展 PDF</td></tr>
+</tbody></table>
+<h3 id="前端react-无法直接复用">前端（React）—— 无法直接复用</h3>
 <table>
-  <tr><th>维度</th><th>现状</th><th>iOS 适配度</th></tr>
-  <tr><td>业务 API 封装</td><td><code>web/src/api/*.ts</code> 20 个模块集中</td><td>⭐⭐⭐⭐⭐ 可作为 Swift 接口参考</td></tr>
-  <tr><td>状态管理</td><td>zustand + localStorage</td><td>❌ 需改为 Swift Observable + Keychain</td></tr>
-  <tr><td>数据获取</td><td>React Query 79 处调用</td><td>❌ 需全部重写为 Combine/AsyncAwait</td></tr>
-  <tr><td>图表</td><td>ECharts + LightweightCharts</td><td>❌ 需用 Swift Charts / DGCharts / TradingView</td></tr>
-  <tr><td>响应式</td><td>刚做完移动端适配</td><td>✅ 设计稿可直接参考</td></tr>
-</table>
-
-<h2>三、三个实现方案对比</h2>
-
-<h3>方案 A：原生 SwiftUI/UIKit iOS APP（体验最好，成本最高）</h3>
-
+<thead><tr>
+<th>维度</th>
+<th>现状</th>
+<th>iOS 适配度</th>
+</tr></thead>
+<tbody>
+<tr><td>业务 API 封装</td><td><code>web/src/api/*.ts</code> 20 个模块集中</td><td>⭐⭐⭐⭐⭐ 可作为 Swift 接口参考</td></tr>
+<tr><td>状态管理</td><td>zustand + localStorage</td><td>❌ 需改为 Swift Observable + Keychain</td></tr>
+<tr><td>数据获取</td><td>React Query 79 处调用</td><td>❌ 需全部重写为 Combine/AsyncAwait</td></tr>
+<tr><td>图表</td><td>ECharts + LightweightCharts</td><td>❌ 需用 Swift Charts / DGCharts / TradingView</td></tr>
+<tr><td>响应式</td><td>刚做完移动端适配</td><td>✅ 设计稿可直接参考</td></tr>
+</tbody></table>
+<h2 id="三三个实现方案对比">三、三个实现方案对比</h2>
+<h3 id="方案-a原生-swiftuiuikit-ios-app体验最好成本最高">方案 A：原生 SwiftUI/UIKit iOS APP（体验最好，成本最高）</h3>
 <p><strong>改造内容：</strong></p>
 <ul>
-  <li>iOS 端：完全重写，约 <strong>22 个页面 × 平均 2-3 天 = 2-3 个月</strong></li>
-  <li>后端：认证增强（Refresh Token）、APNs 推送、实时行情 SSE/WebSocket</li>
-  <li>图表：Swift Charts（系统）+ DGCharts / TradingView Lightweight Charts</li>
+<li>iOS 端：完全重写，约 <strong>22 个页面 × 平均 2-3 天 = 2-3 个月</strong></li>
+<li>后端：认证增强（Refresh Token）、APNs 推送、实时行情 SSE/WebSocket</li>
+<li>图表：Swift Charts（系统）+ DGCharts / TradingView Lightweight Charts</li>
 </ul>
-
 <p><strong>适合：</strong> 追求极致体验、有独立 iOS 团队、预算充足</p>
-
+<p><strong>工作量估算：</strong></p>
 <table>
-  <tr><th>模块</th><th>人天</th></tr>
-  <tr><td>iOS 工程搭建 + 网络层 + Keychain</td><td>5-7</td></tr>
-  <tr><td>登录/认证/用户体系</td><td>3-5</td></tr>
-  <tr><td>首页 Dashboard + 统计卡片</td><td>5-7</td></tr>
-  <tr><td>标的列表/详情/K线</td><td>10-14</td></tr>
-  <tr><td>标的池管理（最复杂）</td><td>10-12</td></tr>
-  <tr><td>筛选器/评分/报告</td><td>8-10</td></tr>
-  <tr><td>回测/策略/信号</td><td>8-10</td></tr>
-  <tr><td>AI 聊天/研究笔记/情绪</td><td>8-10</td></tr>
-  <tr><td>推送/实时行情</td><td>5-7</td></tr>
-  <tr><td>测试/打磨</td><td>7-10</td></tr>
-  <tr><td><strong>总计</strong></td><td><strong>~70-100 人天</strong></td></tr>
-</table>
-
-<h3>方案 B：React Native / Flutter（成本中等，推荐）</h3>
-
+<thead><tr>
+<th>模块</th>
+<th>人天</th>
+</tr></thead>
+<tbody>
+<tr><td>iOS 工程搭建 + 网络层 + Keychain</td><td>5-7</td></tr>
+<tr><td>登录/认证/用户体系</td><td>3-5</td></tr>
+<tr><td>首页 Dashboard + 统计卡片</td><td>5-7</td></tr>
+<tr><td>标的列表/详情/K线</td><td>10-14</td></tr>
+<tr><td>标的池管理（最复杂）</td><td>10-12</td></tr>
+<tr><td>筛选器/评分/报告</td><td>8-10</td></tr>
+<tr><td>回测/策略/信号</td><td>8-10</td></tr>
+<tr><td>AI 聊天/研究笔记/情绪</td><td>8-10</td></tr>
+<tr><td>推送/实时行情</td><td>5-7</td></tr>
+<tr><td>测试/打磨</td><td>7-10</td></tr>
+<tr><td><strong>总计</strong></td><td><strong>~70-100 人天</strong></td></tr>
+</tbody></table>
+<h3 id="方案-breact-native--flutter成本中等推荐">方案 B：React Native / Flutter（成本中等，推荐）</h3>
 <p><strong>优势：</strong></p>
 <ul>
-  <li>复用现有前端团队的 React/TypeScript 能力（RN）</li>
-  <li>一套代码可同时覆盖 iOS + Android</li>
-  <li>业务逻辑（API 调用、状态管理）可高度复用</li>
-  <li>图表可用 WebView 嵌套 ECharts，或 native 图表库</li>
+<li>复用现有前端团队的 React/TypeScript 能力（RN）</li>
+<li>一套代码可同时覆盖 iOS + Android</li>
+<li>业务逻辑（API 调用、状态管理）可高度复用</li>
+<li>图表可用 WebView 嵌套 ECharts，或 native 图表库</li>
 </ul>
-
 <p><strong>改造内容：</strong></p>
 <ul>
-  <li>将 <code>web/src/api/*.ts</code> 迁移为 RN 的 API 层</li>
-  <li>复用 zustand 状态管理</li>
-  <li>React Navigation 替代 react-router</li>
-  <li>图表：ECharts 可用 <code>react-native-echarts-pro</code>，K线可用 <code>react-native-wagmi-charts</code></li>
+<li>将 <code>web/src/api/*.ts</code> 迁移为 RN 的 API 层</li>
+<li>复用 zustand 状态管理</li>
+<li>React Navigation 替代 react-router</li>
+<li>图表：ECharts 可用 <code>react-native-echarts-pro</code>，K线可用 <code>react-native-wagmi-charts</code></li>
 </ul>
-
 <p><strong>工作量估算：</strong> 约 <strong>40-60 人天</strong>（比纯原生少 40-50%）</p>
-
-<h3>方案 C：PWA / 继续优化 Web（成本最低）</h3>
-
+<h3 id="方案-cpwa--继续优化-web成本最低">方案 C：PWA / 继续优化 Web（成本最低）</h3>
 <p><strong>做法：</strong></p>
 <ul>
-  <li>不需要 iOS 原生开发</li>
-  <li>把当前 React 站点包装成 PWA，支持添加到主屏幕</li>
-  <li>继续优化移动端交互和性能</li>
-  <li>必要时用 Capacitor / Cordova 调用少量原生能力</li>
+<li>不需要 iOS 原生开发</li>
+<li>把当前 React 站点包装成 PWA，支持添加到主屏幕</li>
+<li>继续优化移动端交互和性能</li>
+<li>必要时用 Capacitor / Cordova 调用少量原生能力</li>
 </ul>
-
 <p><strong>工作量估算：</strong> 5-10 人天</p>
-
 <p><strong>适合：</strong> 快速验证、预算有限、用户粘性尚未证明</p>
-
-<h2>四、如果做原生 iOS，后端需要改造什么</h2>
-
-<h3>必须做（MVP）</h3>
-
+<h2 id="四如果做原生-ios后端需要改造什么">四、如果做原生 iOS，后端需要改造什么</h2>
+<h3 id="必须做mvp">必须做（MVP）</h3>
+<blockquote>
+<p>2026-07-21 核实：以下 5 项在后端均已落地（详见逐项标注）。</p>
+</blockquote>
 <table>
-  <tr><th>改造项</th><th>工作量</th><th>说明</th></tr>
-  <tr><td><strong>Refresh Token 机制</strong></td><td>3-5 天</td><td>当前 JWT 1 天过期，移动端需要长期登录</td></tr>
-  <tr><td><strong>Token 黑名单/登出</strong></td><td>1-2 天</td><td>Redis 存失效 token</td></tr>
-  <tr><td><strong>设备绑定表</strong></td><td>2-3 天</td><td>支持多端登录管理、设备解绑</td></tr>
-  <tr><td><strong>APNs 推送集成</strong></td><td>3-5 天</td><td>新信号、价格预警、报告生成完成通知</td></tr>
-  <tr><td><strong>收紧 CORS</strong></td><td>0.5 天</td><td>生产环境 <code>allow_origins=["*"]</code> 需改为域名白名单</td></tr>
-</table>
-
-<h3>建议做（体验提升）</h3>
-
+<thead><tr>
+<th>改造项</th>
+<th>工作量</th>
+<th>说明</th>
+</tr></thead>
+<tbody>
+<tr><td><strong>Refresh Token 机制</strong></td><td>✅ 已完成</td><td><code>POST /api/v1/auth/refresh</code>，30 天 opaque token（DB 存 SHA-256，rotation）；access token 仍为 1 天（<code>ACCESS_TOKEN_EXPIRE_MINUTES=1440</code>）</td></tr>
+<tr><td><strong>Token 黑名单/登出</strong></td><td>✅ 已完成</td><td><code>POST /api/v1/auth/logout</code>，Redis 存失效 jti</td></tr>
+<tr><td><strong>设备绑定表</strong></td><td>✅ 已完成</td><td><code>UserDevice</code> 模型 + <code>POST/GET/DELETE /api/v1/auth/devices</code></td></tr>
+<tr><td><strong>APNs 推送集成</strong></td><td>✅ 已完成</td><td><code>app/services/push_service.py</code>（HTTP/2 API，sandbox/prod 切换）</td></tr>
+<tr><td><strong>收紧 CORS</strong></td><td>✅ 已完成</td><td>非 development 环境自动丢弃 <code>*</code>；未配置 <code>CORS_ORIGINS</code> 时不允许跨域（<code>app/config.py</code>）</td></tr>
+</tbody></table>
+<h3 id="建议做体验提升">建议做（体验提升）</h3>
 <table>
-  <tr><th>改造项</th><th>工作量</th><th>说明</th></tr>
-  <tr><td><strong>SSE/WebSocket 行情推送</strong></td><td>5-7 天</td><td>实时价格、K线更新</td></tr>
-  <tr><td><strong>API 分页统一</strong></td><td>2-3 天</td><td>部分接口用 <code>limit</code>，部分用 <code>page/page_size</code></td></tr>
-  <tr><td><strong>PDF 报告导出</strong></td><td>2-3 天</td><td>移动端更适合 PDF 而不是 HTML</td></tr>
-  <tr><td><strong>图片/缩略图 API</strong></td><td>2 天</td><td>iOS 列表页性能优化</td></tr>
-</table>
-
-<h2>五、功能同步策略</h2>
-
-<h3>可以天然同步的（只做后端）</h3>
-
+<thead><tr>
+<th>改造项</th>
+<th>工作量</th>
+<th>说明</th>
+</tr></thead>
+<tbody>
+<tr><td><strong>SSE/WebSocket 行情推送</strong></td><td>✅ 已完成（SSE）</td><td><code>GET /api/v1/stream/prices?codes=...</code>，3s 间隔，5 分钟连接上限</td></tr>
+<tr><td><strong>API 分页统一</strong></td><td>2-3 天</td><td>部分接口用 <code>limit</code>，部分用 <code>page/page_size</code></td></tr>
+<tr><td><strong>PDF 报告导出</strong></td><td>2-3 天</td><td>移动端更适合 PDF 而不是 HTML</td></tr>
+<tr><td><strong>图片/缩略图 API</strong></td><td>2 天</td><td>iOS 列表页性能优化</td></tr>
+</tbody></table>
+<h2 id="五功能同步策略">五、功能同步策略</h2>
+<h3 id="可以天然同步的只做后端">可以天然同步的（只做后端）</h3>
 <p>只要新增功能通过 API 暴露，iOS 和 Web 共用：</p>
-
 <ul>
-  <li>数据模型变更（新字段、新表）</li>
-  <li>评分算法更新</li>
-  <li>筛选条件增加</li>
-  <li>报告模板</li>
-  <li>回测/策略逻辑</li>
-  <li>AI 研究笔记生成逻辑</li>
-  <li>通知规则</li>
+<li>数据模型变更（新字段、新表）</li>
+<li>评分算法更新</li>
+<li>筛选条件增加</li>
+<li>报告模板</li>
+<li>回测/策略逻辑</li>
+<li>AI 研究笔记生成逻辑</li>
+<li>通知规则</li>
 </ul>
-
-<h3>需要两端分别实现的（UI/交互层）</h3>
-
+<h3 id="需要两端分别实现的ui交互层">需要两端分别实现的（UI/交互层）</h3>
 <table>
-  <tr><th>功能</th><th>Web 实现</th><th>iOS 实现</th></tr>
-  <tr><td>K 线图</td><td>ECharts / LightweightCharts</td><td>Swift Charts / DGCharts / TradingView</td></tr>
-  <tr><td>相关性热力图</td><td>ECharts Heatmap</td><td>Swift 原生或 WebView</td></tr>
-  <tr><td>复杂表单</td><td>Ant Design Form</td><td>SwiftUI Form / UIKit</td></tr>
-  <tr><td>拖拽排序</td><td>react-dnd</td><td>UIKit 拖拽</td></tr>
-  <tr><td>手势交互</td><td>鼠标 hover</td><td>长按、滑动、捏合</td></tr>
-  <tr><td>推送通知</td><td>Web Push</td><td>APNs</td></tr>
-</table>
-
-<h3>推荐的同步流程</h3>
-
+<thead><tr>
+<th>功能</th>
+<th>Web 实现</th>
+<th>iOS 实现</th>
+</tr></thead>
+<tbody>
+<tr><td>K 线图</td><td>ECharts / LightweightCharts</td><td>Swift Charts / DGCharts / TradingView</td></tr>
+<tr><td>相关性热力图</td><td>ECharts Heatmap</td><td>Swift 原生或 WebView</td></tr>
+<tr><td>复杂表单</td><td>Ant Design Form</td><td>SwiftUI Form / UIKit</td></tr>
+<tr><td>拖拽排序</td><td>react-dnd</td><td>UIKit 拖拽</td></tr>
+<tr><td>手势交互</td><td>鼠标 hover</td><td>长按、滑动、捏合</td></tr>
+<tr><td>推送通知</td><td>Web Push</td><td>APNs</td></tr>
+</tbody></table>
+<h3 id="推荐的同步流程">推荐的同步流程</h3>
 <pre><code>新增功能
   ├── 后端 API（共用） ← 一次开发
   ├── Web 前端实现
-  └── iOS 端实现</code></pre>
-
-<blockquote><strong>关键建议：</strong> 把后端作为 <strong>Single Source of Truth</strong>，所有业务逻辑下沉到后端。前端和 iOS 只做展示和交互。</blockquote>
-
-<h2>六、推荐方案</h2>
-
+  └── iOS 端实现
+</code></pre>
+<p><strong>关键建议：</strong> 把后端作为 <strong>Single Source of Truth</strong>，所有业务逻辑下沉到后端。前端和 iOS 只做展示和交互。</p>
+<h2 id="六推荐方案">六、推荐方案</h2>
 <p>如果你希望<strong>长期维护、体验最好、用户愿意付费</strong>，推荐：</p>
-
-<blockquote class="recommend">React Native（方案 B）> 原生 Swift（方案 A）> PWA（方案 C）</blockquote>
-
+<blockquote>
+<p><strong>React Native（方案 B）&gt; 原生 Swift（方案 A）&gt; PWA（方案 C）</strong></p>
+</blockquote>
 <p><strong>理由：</strong></p>
-
 <ol>
-  <li>你们前端已经是 React，RN 学习曲线低</li>
-  <li>一套代码覆盖 iOS + Android</li>
-  <li>API 层、状态管理、业务逻辑高度复用</li>
-  <li>图表问题可用 WebView 临时解决，后续逐步替换为原生图表</li>
-  <li>功能同步效率最高</li>
+<li>你们前端已经是 React，RN 学习曲线低</li>
+<li>一套代码覆盖 iOS + Android</li>
+<li>API 层、状态管理、业务逻辑高度复用</li>
+<li>图表问题可用 WebView 临时解决，后续逐步替换为原生图表</li>
+<li>功能同步效率最高</li>
 </ol>
-
 <p><strong>如果一定要原生 iOS</strong>，建议先做一个 <strong>MVP</strong>：</p>
-
 <ul>
-  <li>只做：登录、标的列表、标的详情（含 K线）、收藏、首页 Dashboard</li>
-  <li>大约 4-6 周可上线</li>
-  <li>验证用户价值后再补全其他模块</li>
+<li>只做：登录、标的列表、标的详情（含 K线）、收藏、首页 Dashboard</li>
+<li>大约 4-6 周可上线</li>
+<li>验证用户价值后再补全其他模块</li>
 </ul>
-
 </body>
 </html>

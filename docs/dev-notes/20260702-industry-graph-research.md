@@ -5,6 +5,8 @@
 **范围**: AD-Research 平台 (A 股 / 美股 / 港股 / 加密货币 / 商品期货) 产业图谱与价值链功能可行性研究
 **状态**: 战略调研 - 不含代码实现
 
+> 最后核实更新：2026-07-21（对平台现状的描述已与代码库核对并修正——如前端为 React+Vite 而非 Next.js、无 `equity_basic` 表；路线图建议本身未变）
+
 ---
 
 ## TL;DR
@@ -133,7 +135,7 @@
 ### A. 行业 → 公司双向筛选表 (Sector-Company Table)
 
 - **价值**: 最低, 但**立刻能用**, 是后面所有图谱的"列表视图"。
-- **数据源**: 申万分类 (公开) + akshare `stock_zyjs_ths` (同花顺) + 我们已有的 `equity_basic` 表。
+- **数据源**: 申万分类 (一级已落库: `etf_info.sw_l1/sw_l1_code` + `sw_industry_index_return`，二/三级未落库) + akshare `stock_zyjs_ths` (同花顺, 目前未接入) + 已有股票主数据 (`etf_info` 中 `instrument_type="STOCK"` 的记录；代码库中无 `equity_basic` 表)。
 - **可视化**: 简单的**可筛选**表格 + 树形 sidebar (GICS 风格)。
 - **实现 effort**: **S** (1 周)。
 - **查询示例**: "申万一级 = 电力设备, 三级 = 锂电池, 市值 > 100 亿, 2025 营收增速 > 30%" → 10 行结果。
@@ -223,7 +225,7 @@
 ### H. 跨市场对标 (Cross-Listing Peers)
 
 - **价值**: 中, A/H/A+US 双重上市越来越普遍。
-- **数据源**: HKEX listing + SEC ADR list + 我们的 equity_basic。
+- **数据源**: HKEX listing + SEC ADR list + 我们的股票主数据 (`etf_info`，无 `equity_basic` 表)。
 - **实现 effort**: **S** (1 周, 加个 cross_listing 表)。
 - **查询示例**: "比亚迪 A vs 比亚迪 H 估值差异, 历史分位"。
 
@@ -235,10 +237,10 @@
 
 | 数据源 | 数据类型 | 抓取状态 | 接入成本 | 备注 |
 |---|---|---|---|---|
-| **申万行业分类 (SW Index)** | 一/二/三级行业 | 公开下载, 已落库 | ¥0 | 必须做事实标准 |
+| **申万行业分类 (SW Index)** | 一/二/三级行业 | 一级已落库 (etf_info.sw_l1；Tushare index_classify + 静态 CSRC→SW 映射)，二/三级未落库 | ¥0 | 必须做事实标准 |
 | **中信行业分类** | 一/二级 | 公开下载 | ¥0 | 与申万互转表要自己维护 |
 | **GICS / SIC / NAICS** | 全球统一 | 公开 | ¥0 | MSCI / S&P 维护 |
-| **akshare `stock_zyjs_ths`** | 行业归属 + 主营业务 | 公开 API | ¥0, 已用 | 字段非标, 需清洗 |
+| **akshare `stock_zyjs_ths`** | 行业归属 + 主营业务 | 公开 API | ¥0, 未接入 | 字段非标, 需清洗 |
 | **akshare `stock_zyjs_ths` 上下游** | 行业上下游关系 | 公开 API | ¥0 | 粒度粗, 仅到行业 |
 | **巨潮 (cninfo) 招股书** | 主要客户/供应商 | **已爬 (Phase 5)** | ¥0, 解析要 LLM | 一手数据, 价值最高 |
 | **巨潮 (cninfo) 年报** | 主要客户/供应商 + 业务概要 | **已爬 (Phase 5)** | ¥0, 解析要 LLM | 同上 |
@@ -306,7 +308,7 @@
 **目标**: 拿到 A 股 5000+ 公司的近 3 年"主要客户/供应商"数据。
 
 - [ ] PDF / HTML 段落定位 (规则 + LLM 兜底)
-- [ ] 客户/供应商名称 → ticker 别名匹配 (用工商库 + 现有 equity_basic)
+- [ ] 客户/供应商名称 → ticker 别名匹配 (用工商库 + 现有 `etf_info` 股票主数据)
 - [ ] 写入 `supply_edge` 表
 - [ ] 客户集中度计算 (HHI + top-N 占比)
 - [ ] 公司详情页加"主要客户/供应商" tab
@@ -364,14 +366,14 @@
 
 ## Section 8: 与现有 AD-Research 能力的整合点
 
-AD-Research 已有: A 股 + 美股行情数据、akshare 行业数据、巨潮公告、SEC EDGAR、后端 FastAPI、前端 Next.js + ECharts + (推测) 可扩展组件。
+AD-Research 已有: A 股 + 美股行情数据、申万一级行业映射 (Tushare index_classify + 静态 CSRC→SW 映射)、巨潮公告、SEC EDGAR、后端 FastAPI、前端 React 18 + Vite + ECharts（注意: 不是 Next.js）。
 
 **最小可行 v1 集成** (从已有能力出发):
 
 1. **后端**: 新增 `industry`, `supply_edge` 两张表 (Postgres JSONB 即可, 不上 Neo4j)。
 2. **后端 API**: `/api/v1/industry/tree` `/api/v1/industry/{code}/members` `/api/v1/company/{ticker}/customers` `/api/v1/company/{ticker}/suppliers`。
-3. **前端**: 在 `companies/[ticker]/page.tsx` 加 `<SupplyChainTab />` 组件; 新增 `/industry/[code]/page.tsx` 行业详情。
-4. **可视化**: react-flow 加进 `package.json`; Sankey 用现有 ECharts; 两者组件放 `components/industry/`。
+3. **前端**: 在个股详情页 (`web/src/pages/StockDetail/`，路由 `/stocks/:code`) 加 `<SupplyChainTab />` 组件; 新增行业详情页并在 `web/src/routes.tsx` 注册路由（前端为 React Router SPA，非 Next.js 文件路由）。
+4. **可视化**: react-flow 加进 `web/package.json`; Sankey 用现有 ECharts; 两者组件放 `web/src/components/industry/`。
 5. **离线任务**: 每周日跑一次招股书/10-K 抽取, 写 diff 进 `supply_edge`。
 
 **估算**: 后端 2 周 + 前端 2 周 + LLM 抽取 pipeline 2 周 = **6 周, 1 个全栈 + 1 个数据工程师**。

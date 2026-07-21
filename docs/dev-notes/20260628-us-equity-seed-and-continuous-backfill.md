@@ -1,6 +1,7 @@
 # 美股数据种子落地与持续回填方案
 
 > 日期：2026-06-28
+> 最后核实更新：2026-07-21（「当前数据状态」一节为当日时点快照，非实时数值）
 > 分支：fix/etf-list-type-filter
 > 相关文件：
 > - `app/data/pipelines/us_etf.py`
@@ -99,15 +100,16 @@ TUSHARE_TOKEN=...
 |--------|-----------|---------|
 | Tiingo | 50 req/hour，500 symbols/month，1,000 req/day | 主要回填与日常日线源 |
 | yfinance | 云服务器批量下载易限流，单只请求可用 | Tiingo 失败/404 时的同批补漏 |
-| FMP | `historical-price-full` 对新 Key 403 | 生产环境不再使用 |
-| Finnhub | candle endpoint 对新 Key 403 | 生产环境不再使用 |
+| 新浪财经（akshare `stock_us_daily`） | 免费，无需 Key | 日终采集的最终兜底（`SinaUSProvider`） |
+| FMP | `historical-price-full` 对新 Key 403 | K 线已弃用；仍用于 S&P 500 列表发现与基本面（`us_stock_discovery` / company profile） |
+| Finnhub | candle endpoint 对新 Key 403 | K 线不再使用 |
 
 ### 调度策略
 
 1. **美股日终采集 `us_daily_etl`**
    - 时间：每天北京时间 05:00（美股收盘后 1 小时）
-   - 数据源：Tiingo primary → yfinance fallback
-   - 仅覆盖已有历史数据的标的，最多 30 只/次，避免 Tiingo 月限额浪费在不可用标的上
+   - 数据源：Tiingo（轮换批次）→ yfinance → 新浪美股（`SinaUSProvider`）最终兜底
+   - 仅覆盖已有历史数据的标的，每轮 Tiingo 批次有上限（`_TIINGO_DAILY_LIMIT`），避免 Tiingo 月限额浪费在不可用标的上
    - 新标的由 `us_historical_backfill` 负责
 
 2. **美股历史回填 `us_historical_backfill`**（新增）
@@ -116,6 +118,7 @@ TUSHARE_TOKEN=...
    - 每批 15 只标的，优先回填尚无价格数据的标的；全部有数据后按 Redis 偏移轮询
    - 每次拉取最近 90 天历史，补全缺失日线
    - 通过 Redis 记录轮换偏移量，保证断点续跑
+   - 连续 3 次取不到数据的标的进入 7 天冷却（Redis `us_backfill:cooldown:*`），冷却结束后自动回到优先队列
 
 3. **指标与评分计算**
    - `us_indicator_calculation`：每天 05:30，在日线任务完成后执行
@@ -150,10 +153,10 @@ curl -s http://localhost:8000/api/v1/etl/status?job_name=us_historical_backfill 
 docker exec -it alloyresearch-backend python -c "
 from app.core.database import SessionLocal
 from sqlalchemy import func
-from app.models.etf import ETFInfo, ETFDailyBar
+from app.models.etf import ETFInfo, InstrumentDailyBar
 db = SessionLocal()
 total = db.query(ETFInfo).filter(ETFInfo.market == 'US').count()
-with_price = db.query(ETFDailyBar.etf_code).distinct().filter(ETFDailyBar.etf_code.like('%.US')).count()
+with_price = db.query(InstrumentDailyBar.etf_code).distinct().filter(InstrumentDailyBar.etf_code.like('%.US')).count()
 print(f'US total: {total}, with price: {with_price}')
 db.close()
 "
@@ -161,7 +164,7 @@ db.close()
 
 ## 已知限制
 
-- FMP `historical-price-full` 对新注册免费 Key 返回 403，生产环境已弃用。
+- FMP `historical-price-full` 对新注册免费 Key 返回 403，K 线用途已弃用（FMP 仍用于 S&P 500 列表发现与基本面）。
 - Tiingo 免费档 500 symbols/month，569 只标的中最多 500 只能通过 Tiingo 稳定回填，剩余标的依赖 yfinance。
 - yfinance 对云服务器批量下载限流严重，单只请求可用但不稳定，仅作为补漏手段。
 - 历史回填速度受免费档限制，无法一次性补全，需持续运行数天到数周。

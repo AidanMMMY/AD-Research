@@ -2,6 +2,7 @@
 
 > 状态：✅ 代码已合入 main，待用户在 ECS 上部署 wewe-rss 容器即可联调。
 > 适用范围：A 股宏观 / 政策类公众号订阅（默认适配「泽平宏观」）。
+> 最后核实更新：2026-07-21（修正：生产 compose 的 backend 服务名、LLM provider 说明）
 
 ## 1. 为什么选 wewe-rss
 
@@ -103,11 +104,12 @@ WECHAT_MARKETING_FILTER_LLM_ENABLED=true
 
 ### 3.2 验证
 
-重启 backend，让新的 cron job 注册：
+重启 backend，让新的 cron job 注册（生产 compose 里 backend 的
+service 名是 `backend`，容器名 `alloyresearch-backend`）：
 
 ```bash
-docker compose restart etf-backend
-docker compose exec etf-backend python -c "
+docker compose restart backend
+docker compose exec backend python -c "
 from app.config import get_settings
 s = get_settings()
 print('base:', s.wechat_rss_base_url)
@@ -140,8 +142,9 @@ classify(title, body) -> MarketingVerdict
    - 扫码加入 / 席位预定 / 早鸟价 / 限时优惠 / 邀请函
    - 知识星球 / 私享会 / 闭门会 / 内部活动
    - 免费领取 / 限时免费 / 发布会 / 新品发布
-2. **DeepSeek 二次判定**：未命中关键词的边角案例 → 调用 DeepSeek
-   （`deepseek-v4-flash`）让 LLM 输出
+2. **LLM 二次判定**：未命中关键词的边角案例 → 调用平台统一 LLM
+   Provider（`app.services.llm.get_llm_provider()`；由 `LLM_PROVIDER`
+   环境变量选择，默认 **MiniMax**，`deepseek` 为 legacy 选项）让 LLM 输出
    `{"knowledge": true|false, "confidence": 0.0-1.0}`。
    - 解析失败 / 超时 / API 未配置 → **fail-open**
      (`is_knowledge=True`)，保留文章避免误杀。
@@ -152,7 +155,7 @@ classify(title, body) -> MarketingVerdict
 ### 调试
 
 ```bash
-docker compose exec etf-backend python -c "
+docker compose exec backend python -c "
 from app.services.news.filters.wechat_marketing_filter import WechatMarketingFilter
 f = WechatMarketingFilter()
 print(f.classify('泽平宏观研学计划开启报名', '扫码加入'))

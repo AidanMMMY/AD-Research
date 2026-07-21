@@ -1,6 +1,7 @@
 # AD-Research 运维 Runbook
 
 > 创建日期：2026-07-04
+> 最后核实更新：2026-07-21
 > 适用范围：阿里云 ECS 生产环境（`/opt/ad-research`）+ 本地 Docker Compose
 > 关联脚本：`deploy/aliyun-ecs/*.sh`、`scripts/*.sh`、`.github/workflows/deploy.yml`
 
@@ -13,8 +14,8 @@
 | 文件 | 用途 | 调用时机 |
 | --- | --- | --- |
 | `deploy.sh` | 首次一键部署（装 Docker + 初始化 .env + 构建 + 迁移 + 启动） | 新服务器首装 |
-| `update.sh` | 日常更新（git pull → 重构后端 → 健康检查 → 可选 alembic upgrade） | 每次 push 后 / 手动 |
-| `docker-compose.yml` | 生产 compose（postgres / redis / backend / nginx） | 由 deploy / update / rollback 隐式调用 |
+| `update.sh` | 日常更新（git pull → 重构后端 + celery worker → 健康检查 → alembic 迁移校验） | 每次 push 后 / 手动 |
+| `docker-compose.yml` | 生产 compose（postgres / redis / backend / celery-worker-indicator / celery-worker-cninfo / nginx） | 由 deploy / update / rollback 隐式调用 |
 | `nginx.conf` | 反向代理 + 静态资源服务 | 容器启动时挂载 |
 | `.env` / `.env.example` | 运行时配置（数据库密码、API key 等） | 必填 |
 | `ssl/` | TLS 证书目录 | 容器启动时挂载 |
@@ -33,7 +34,7 @@
 ### 0.3 GitHub Actions（`.github/workflows/deploy.yml`）
 
 - 触发：`push` to `main` + `workflow_dispatch`
-- 流程：备份 head → `git reset --hard origin/main` → 调 `update.sh` → `check_migrations.sh` → health probe
+- 流程：备份 head → `git reset --hard origin/main` → 部署前 baseline `/health` → 调 `update.sh`（失败自动重试 1 次）→ `/health` + `/openapi.json` 探测 → `check_migrations.sh` 迁移校验
 - 失败：写 `/var/log/ad-research/deploy-failures.log`（webhook 待接入）
 
 ---
@@ -45,19 +46,21 @@
 ```bash
 ssh ad-research
 cd /opt/ad-research/deploy/aliyun-ecs
-./update.sh                     # 完整更新（拉代码 + 重建 + 健康检查 + alembic upgrade）
+./update.sh                     # 完整更新（拉代码 + 重建 + 健康检查 + alembic 迁移校验）
 ./update.sh --frontend-only     # 仅前端热更（30s 内完成）
-./update.sh --no-db             # 跳过迁移（默认 update.sh 会自动 alembic upgrade head）
+./update.sh --no-db             # 跳过迁移校验（迁移本身始终由 backend 容器入口自动执行）
 FORCE=1 ./update.sh             # 即使没新 commit 也强制重编
 ```
 
 **update.sh 内部步骤**：
 1. 校验 `.env`、记录 `before` / `after` git hash
-2. `docker compose build backend`
-3. `docker compose stop backend nginx` → `docker compose up -d backend`
-4. 60s `/health` 探测循环
-5. `docker compose exec backend alembic upgrade head`（默认开启）
+2. `docker compose build backend`（失败自动重试一次）
+3. `docker compose stop backend nginx celery-worker-indicator celery-worker-cninfo` → 清理残留容器 → `docker compose up -d --force-recreate backend celery-worker-indicator celery-worker-cninfo`
+4. `/health` 探测循环（最多 300s，需 `status=ok`；窗口已加大以覆盖 alembic 大表迁移）
+5. 启动 nginx，然后**只读校验** alembic `current == heads`
 6. 输出 release notes（`git log before..after`）
+
+> 注意：`alembic upgrade head` 的唯一执行点是 **backend 容器启动入口**（`scripts/docker-entrypoint.sh`），`update.sh` 不再直接执行迁移，只做事后校验；校验不一致时会报错提示查 backend 日志。
 
 > **不要直接 `docker compose restart`** —— 那会丢失代码更新。
 
@@ -82,9 +85,15 @@ bash scripts/rollback.sh a5384a4
 1. 校验 `<target>` commit 存在（`git rev-parse --verify`）
 2. 备份当前 HEAD → `/var/log/ad-research/rollback-latest.log`
 3. `git reset --hard <target>`
-4. `docker compose up -d --build backend`
-5. 60s `/health` 探测循环
+4. `docker compose build backend` → `stop` / `rm` / `up -d --force-recreate` 重建容器
+5. 60s `/health` 探测循环（30 次 × 2s，要求 `status=ok`）
 6. 输出 release notes（`git log PREV..TARGET`）
+
+> ⚠️ 已知问题（2026-07-21 核实）：`rollback.sh` 第 171-173 行引用的 service 名仍是旧的
+> `celery-worker`，而当前 compose 里已拆分为 `celery-worker-indicator` /
+> `celery-worker-cninfo`，`docker compose stop ... celery-worker ...` 可能报
+> "no such service" 导致回滚中断。遇到该报错时按下面「手动回滚」执行，或先把
+> 脚本中的 `celery-worker` 改为两个新 service 名。
 
 **失败兜底**：
 - 任意阶段出错 → 打印「回滚失败」并提示跑 `update.sh` 重新同步到 main
@@ -123,11 +132,14 @@ bash scripts/check_migrations.sh deploy/aliyun-ecs/docker-compose.yml
 
 **CI 行为**（`.github/workflows/deploy.yml`）：退出 10 时自动跑 `alembic upgrade head` 并再次校验；其他情况报错并置 `rollback=true`。
 
-### 3.2 升级（update.sh 内置）
+### 3.2 升级（backend 容器入口自动执行）
 
-`update.sh` 默认会执行 `docker compose exec backend alembic upgrade head`。如果迁移失败：
+`alembic upgrade head` 由 backend 容器启动入口（`scripts/docker-entrypoint.sh`）在每次容器启动时自动执行；`update.sh` 只做 `current == heads` 的只读校验。如果迁移失败或校验不一致：
 ```bash
 cd /opt/ad-research/deploy/aliyun-ecs
+# 先看 backend 启动日志里的 alembic 报错
+docker compose logs backend --tail 100
+# 需要时手动补跑
 docker compose exec backend alembic upgrade head
 # 查看 alembic 版本
 docker compose exec backend alembic current

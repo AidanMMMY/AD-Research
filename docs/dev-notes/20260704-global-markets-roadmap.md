@@ -1,5 +1,10 @@
 # 全球资本市场覆盖补齐方案（2026-07-04 · Sub-agent K11）
 
+> 最后核实更新：2026-07-21。P0 已落地（原文 §3）；P1 中的「yfinance
+> 跨市场指数 fallback」与「新闻 market=global UI 过滤」也已落地（见
+> §2.4 / §4.1 内标注），「财经日历」仍未做。另外 Dashboard 后经 v8 重构，
+> 全球区块现为「全球资产脉搏」section，不再是 §3.2 描述的 4 张 StatCard。
+
 > 输出人：子 agent K11（Phase 1 调研 + Phase 2 设计 + Phase 3 P0 实现）
 > 范围：海外指数 / 美债收益率 / 外汇 / 跨境大宗 / 全球市场情绪
 
@@ -68,8 +73,8 @@
 
 | 优先级 | 内容 | 落地形式 |
 | --- | --- | --- |
-| **P0** ✅ 已在 PR | FRED 新增 DGS30/DTWEXBGS/DCOILBRENTEU/DCOILWTICO/GOLDAMGBD228NLBM/SP500/DEXJPUS 共 7 个 series；前端新增 `/global` 页 + dashboard section + 路由 | 本次提交 |
-| P1 | yfinance fallback 拉指数（恒生、日经、DAX、FTSE）；财经日历（FOMC / ECB / CPI 公布）；ETF 资金流；新闻 `market=global` UI 过滤 | 后续 sprint |
+| **P0** ✅ 已上线 | FRED 新增 DGS30/DTWEXBGS/DCOILBRENTEU/DCOILWTICO/GOLDAMGBD228NLBM/SP500/DEXJPUS 共 7 个 series；前端新增 `/global` 页 + dashboard section + 路由 | 本次提交 |
+| P1 | ~~yfinance fallback 拉指数（恒生、日经、DAX、FTSE）~~ ✅ 已落地（`app/services/macro/global_indices_fetcher.py`，Phase 5d/6a，scheduler 每日 16:00；另有 `/macro/indices/global` 端点）；财经日历（FOMC / ECB / CPI 公布）❌ 未做；ETF 资金流 ✅ 已有 `FundFlow` 页 + `market_fund_flow` 表；~~新闻 `market=global` UI 过滤~~ ✅ 已落地 | 部分完成（2026-07-21 核实） |
 | P2 | L1/L2 行情、衍生品、跨境资金流明细（北向 / QDII / 持仓）、AI 助手「全球宏观日报」 | 远期 |
 
 ## 3. P0 实施（已落地）
@@ -102,6 +107,8 @@
 **`web/src/pages/Dashboard/index.tsx`**
 
 - 在 `实时行情` 之上新增「全球速览」section，4 张 StatCard，点击跳 `/global`
+- （2026-07-21 注：Dashboard 后经多次重构，v8 市场指挥中心里全球区块现为
+  「全球资产脉搏」section，不再是 4 张 StatCard 的原始形态。）
 
 **`web/src/routes.tsx`**
 
@@ -121,11 +128,20 @@
    - ticker 列表：`^GSPC, ^IXIC, ^DJI, ^HSI, ^N225, ^GDAXI, ^FTSE, ^STOXX, GC=F, CL=F, BZ=F, SI=F`
    - 写入 `macro_indicator` region='global' source='yfinance'
    - scheduler：`app/core/scheduler.py` 注册 09:00 北京时间 + 16:30 美东收盘两个 cron
+   - ✅ **已落地**（2026-07-21 核实）：实现于
+     `app/services/macro/global_indices_fetcher.py`（Phase 5d 指数 +
+     Phase 6a FX/利率/大宗，akshare 补 A 股指数），scheduler 每日 16:00
+     Asia/Shanghai 拉取；另有 `/macro/indices/global` 端点（yfinance+akshare
+     并行 fan-out，2026-07-09 上线）。
 2. **财经日历**：
    - 新表 `macro_calendar_event(id, region, event_code, name_zh, event_at_utc, importance, actual, forecast, previous)`
    - 数据源：investing.com（页面抓取，注意 robots）/ ForexFactory RSS / 自维护 iCal
    - 新端点 `GET /api/v1/calendar?region=global&from=...&to=...`
-3. **新闻 market=global 过滤**：`app/api/v1/news.py:151,216` 已支持 `market='GLOBAL'`（DB 已有标签），前端 `web/src/pages/News/index.tsx:40-46` 的 `MARKET_OPTIONS` 加一项即可
+   - ❌ 仍未做（2026-07-21 核实：无日历表与端点）。
+3. **新闻 market=global 过滤**：~~`app/api/v1/news.py:151,216` 已支持 `market='GLOBAL'`（DB 已有标签），前端 `web/src/pages/News/index.tsx:40-46` 的 `MARKET_OPTIONS` 加一项即可~~
+   - ✅ **已落地**（2026-07-21 核实）：News 页已有「全球」选项
+     （`value: 'global'`），切到 global 时自动预选政治/宏观类目
+     （`GLOBAL_DEFAULT_CATEGORIES`）。
 
 ### 4.2 P2 — 跨境资金流 + 衍生品
 

@@ -1,5 +1,7 @@
 # 商品期货数据补跑指南（2026-07-04）
 
+> 最后核实更新：2026-07-21
+
 ## 背景
 
 `futures_contracts` 和 `futures_daily_bars` 表在 2026-07-04 之前为空。根因是
@@ -31,13 +33,13 @@ python3 scripts/backfill_futures_history.py
 # 指定历史窗口
 python3 scripts/backfill_futures_history.py --history-days 5000
 
-# 指定目标日期（默认昨日）
+# 指定目标日期（默认为当天）
 python3 scripts/backfill_futures_history.py --target-date 2026-07-03
 
 # 跳过合约发现，只补日 K
 python3 scripts/backfill_futures_history.py --skip-discovery
 
-# 单合约手动重试次数（默认 3）
+# 单合约手动重试次数（默认 2）
 python3 scripts/backfill_futures_history.py --max-attempts 5
 ```
 
@@ -57,6 +59,6 @@ python3 scripts/backfill_futures_history.py --max-attempts 5
 
 ## 后续调度
 
-调度器中的 `run_futures_daily`、`run_futures_contract_refresh` 现在可以正常工作，
+调度器中的 `run_futures_daily`（每日 16:30 Asia/Shanghai）、`run_futures_contract_refresh`（每月 1 日 03:00）现在可以正常工作，
 日常跑批会自动保留最近 30 天数据。如需重新补更久远的历史，按上面命令调
 `--history-days` 即可。

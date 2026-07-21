@@ -1,5 +1,7 @@
 # 美股数据初始化报告
 
+> **注**：本文为 2026-06-27 的时点记录，部分内容可能已过时（后续演进见 `20260628-us-equity-seed-and-continuous-backfill.md`）。
+
 > 日期：2026-06-27
 > 分支：`fix/etf-list-type-filter`
 
@@ -64,10 +66,12 @@ US 日线数据: 294 条（覆盖 14 只核心 ETF/个股）
 已写入 `.env`（git 不追踪）：
 
 ```env
-FINNHUB_API_KEY=d8vpuu1r01qgrv4q83p0d8vpuu1r01qgrv4q83pg
-TIINGO_API_KEY=86b255545bbb149eccec830e11f8261d821f3984
-FMP_API_KEY=pQpEqdBaKeAC7Fo5klihDLZKm6iv4MJI
+FINNHUB_API_KEY=<已脱敏，原 key 曾明文入库，视为已泄露，需轮换>
+TIINGO_API_KEY=<已脱敏，原 key 曾明文入库，视为已泄露，需轮换>
+FMP_API_KEY=<已脱敏，原 key 曾明文入库，视为已泄露，需轮换>
 ```
+
+> ⚠️ 2026-07-21 文档审查时发现此处三个 API key 为明文且已进 git 历史，已脱敏。请到 Finnhub / Tiingo / FMP 后台重新生成 key 并更新 `.env`。
 
 ## 后续工作
 

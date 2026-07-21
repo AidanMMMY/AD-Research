@@ -15,254 +15,236 @@ th { background: #f4f6f8; font-weight: 600; }
 code { background: #f4f6f8; padding: .15rem .35rem; border-radius: 4px; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace; font-size: .9em; }
 pre { background: #f4f6f8; padding: 1rem; border-radius: 6px; overflow-x: auto; }
 ul li { margin: .4rem 0; }
+blockquote { border-left: 4px solid #2c3e50; margin: 0 0 1rem; padding: .25rem .75rem; color: #555; background: #f4f6f8; border-radius: 0 4px 4px 0; }
+blockquote { border-left: 4px solid #2c3e50; margin: 0 0 1rem; padding: .25rem .75rem; color: #555; background: #f4f6f8; border-radius: 0 4px 4px 0; }
 </style>
 </head>
 <body>
-<h1>平台指标底层数据完整性与时效性审计报告</h1>
-<p><strong>审计日期：</strong> 2026-07-18<br />
-<strong>审计对象：</strong> Investment-Research-Platform（A 股 / 美股 / Crypto / 指标计算 / 调度）<br />
-<strong>审计范围：</strong> 日线/指标 ETL pipeline、调度与任务入口、交易日历、监控脚本<br />
-<strong>执笔：</strong> Claude Code 审计子 agent  </p>
-<hr />
-<h2>一、审计范围</h2>
+<h1 id="平台指标底层数据完整性与时效性审计报告">平台指标底层数据完整性与时效性审计报告</h1>
+<blockquote>
+<p><strong>注</strong>：本文为 2026-07-18 的时点记录，部分内容可能已过时。</p>
+</blockquote>
+<p><strong>审计日期：</strong> 2026-07-18<br>
+<strong>审计对象：</strong> Investment-Research-Platform（A 股 / 美股 / Crypto / 指标计算 / 调度）<br>
+<strong>审计范围：</strong> 日线/指标 ETL pipeline、调度与任务入口、交易日历、监控脚本<br>
+<strong>执笔：</strong> Claude Code 审计子 agent</p>
+<hr>
+<h2 id="一审计范围">一、审计范围</h2>
 <ol>
-<li><strong>ETL pipeline 代码</strong></li>
+<li><strong>ETL pipeline 代码</strong>
+<ul>
 <li>A 股 ETF：<code>app/data/pipelines/a_share.py</code>（<code>AShareETLPipeline</code>）</li>
 <li>A 股个股：<code>app/data/pipelines/a_share_stock_daily.py</code>（<code>AStockDailyPipeline</code>）</li>
 <li>美股日终：<code>app/data/pipelines/us_etf.py</code>（<code>USDailyPipeline</code>）</li>
 <li>美股历史回填：<code>app/data/pipelines/us_backfill.py</code>（<code>USHistoricalBackfillPipeline</code>）</li>
 <li>数字货币：<code>app/data/pipelines/crypto_daily.py</code>（<code>CryptoDailyPipeline</code>）</li>
 <li>基类：<code>app/data/pipelines/base.py</code>（<code>ETLPipeline</code>）</li>
-<li>
-<p>数据源：Tushare / Akshare / Tiingo / yfinance / Binance 相关 provider</p>
-</li>
-<li>
-<p><strong>调度与指标入口</strong></p>
-</li>
+<li>数据源：Tushare / Akshare / Tiingo / yfinance / Binance 相关 provider</li>
+</ul></li>
+</ol>
+<ol start="2">
+<li><strong>调度与指标入口</strong>
+<ul>
 <li><code>app/core/scheduler.py</code>（APScheduler 任务注册与编排）</li>
 <li><code>app/tasks/indicator.py</code>（Celery 指标任务入口）</li>
 <li><code>app/core/celery_app.py</code>（Celery 配置与队列）</li>
 <li><code>app/core/calendar.py</code>（A 股交易日历）</li>
 <li><code>app/data/indicators/calculator.py</code>（pandas / SQL 双后端指标计算器）</li>
-<li>
-<p><code>app/data/indicators/sql_calculator.py</code>（SQL 窗口函数指标计算）</p>
-</li>
-<li>
-<p><strong>监控/告警/修复脚本</strong></p>
-</li>
+<li><code>app/data/indicators/sql_calculator.py</code>（SQL 窗口函数指标计算）</li>
+</ul></li>
+</ol>
+<ol start="3">
+<li><strong>监控/告警/修复脚本</strong>
+<ul>
 <li><code>scripts/audit_indicator_completeness.py</code></li>
 <li><code>scripts/data_completeness_check.py</code></li>
 <li><code>app/scripts/backfill_a_share_adj_factor.py</code></li>
-<li>
-<p><code>scripts/backfill_indicators_full_history.py</code></p>
-</li>
-<li>
-<p><strong>数据库现状抽样</strong>（本地连接 <code>postgresql+psycopg2://etf:etf_research_password@localhost:5432/ad_research</code>）</p>
-</li>
+<li><code>scripts/backfill_indicators_full_history.py</code></li>
+</ul></li>
+</ol>
+<ol start="4">
+<li><strong>数据库现状抽样</strong>（本地连接 <code>postgresql+psycopg2://etf:etf_research_password@localhost:5432/ad_research</code>）
+<ul>
 <li><code>instrument_daily_bar</code> 最新交易日：2026-06-26（美股），A 股 ETF 最新 2026-06-22，A 股个股无日线数据，Crypto 无日线数据。</li>
 <li><code>etf_log</code> 显示 <code>a_share_daily_etl</code>、<code>a_stock_daily_etl</code> 长期处于 <code>running</code> 状态且未结束。</li>
+</ul></li>
 </ol>
-<hr />
-<h2>二、关键发现（按严重程度排序）</h2>
-<h3>P0-1：A 股 ETL pipeline 被卡在 <code>running</code> 状态，日线数据已停滞</h3>
+<hr>
+<h2 id="二关键发现按严重程度排序">二、关键发现（按严重程度排序）</h2>
+<h3 id="p0-1a-股-etl-pipeline-被卡在-running-状态日线数据已停滞">P0-1：A 股 ETL pipeline 被卡在 <code>running</code> 状态，日线数据已停滞</h3>
 <ul>
 <li><strong>现状</strong>：<code>a_share_daily_etl</code> 自 <strong>2026-06-27 01:26</strong> 起、<code>a_stock_daily_etl</code> 自 <strong>2026-06-28 04:28</strong> 起均处于 <code>running</code> 状态，且 <code>end_time</code> 为 <code>NULL</code>。此后 A 股 ETF 日线停留在 2026-06-22，A 股个股日线完全没有数据。</li>
-<li><strong>影响</strong>：</li>
+<li><strong>影响</strong>：
+<ul>
 <li>下游 <code>etf_indicator</code> 只能基于旧数据重算，评分/信号/回测全部建立在过期行情上。</li>
 <li>Redis 分布式锁 <code>daily_pipeline</code> / <code>a_stock_daily_pipeline</code> 可能因任务未正常释放而长期被占用，进一步阻塞后续调度。</li>
+</ul></li>
 </ul>
-<h3>P0-2：美股日终 ETL 已 21 天未产生成功记录，Crypto 从未写入 ETL 日志</h3>
+<h3 id="p0-2美股日终-etl-已-21-天未产生成功记录crypto-从未写入-etl-日志">P0-2：美股日终 ETL 已 21 天未产生成功记录，Crypto 从未写入 ETL 日志</h3>
 <ul>
 <li><strong>现状</strong>：<code>us_daily_etl</code> 最近成功记录为 <strong>2026-06-27 18:40</strong>，之后无日志。<code>crypto_daily_etl</code> 在 <code>etl_log</code> 中完全没有记录。</li>
 <li><strong>影响</strong>：美股、Crypto 日线数据均严重滞后；依赖这些市场的指标/信号/池快照均不可用或失真。</li>
 </ul>
-<h3>P1-3：指标计算目标日期无法发现数据落后</h3>
+<h3 id="p1-3指标计算目标日期无法发现数据落后">P1-3：指标计算目标日期无法发现数据落后</h3>
 <ul>
 <li><strong>现状</strong>：<code>run_indicator_calculation</code> 通过 <code>_resolve_a_share_target_date()</code> 从 <code>instrument_daily_bar</code> 中“最新 A 股 bar 日期”推断目标日期。当 A 股 ETL 长期失败时，指标计算会反复重算旧日期，而不是告警。</li>
 <li><strong>影响</strong>：系统不会主动暴露“日线已停止更新”这一事实，审计/监控难以发现。</li>
 </ul>
-<h3>P1-4：不同市场的交易日历处理不一致，周末/假日容易空跑</h3>
+<h3 id="p1-4不同市场的交易日历处理不一致周末假日容易空跑">P1-4：不同市场的交易日历处理不一致，周末/假日容易空跑</h3>
 <ul>
-<li><strong>现状</strong>：</li>
+<li><strong>现状</strong>：
+<ul>
 <li>A 股使用 <code>app/core/calendar.py</code> 基于 akshare 的 <code>calendar.json</code> 判断交易日。</li>
 <li>美股、Crypto 的 pipeline 直接使用 <code>date.today() - timedelta(days=1)</code>，没有过滤各自市场的节假日。美股 05:00 CST 运行时若美国昨天是周末，会请求上周五数据，但代码没有显式检查是否为上个交易日。</li>
 <li>Crypto 虽然 24/7，但 <code>target_date</code> 在容器 <code>Asia/Shanghai</code> 时区下是“昨天”，而 Binance 日 K 以 UTC 00:00 收盘，二者在跨 UTC 日界时可能产生偏差。</li>
+</ul></li>
 <li><strong>影响</strong>：非交易日会空跑并记录 <code>records=0</code>，浪费 API 配额并增加日志噪音。</li>
 </ul>
-<h3>P1-5：美股日终覆盖策略依赖 yfinance 兜底，存在大面积缺失风险</h3>
+<h3 id="p1-5美股日终覆盖策略依赖-yfinance-兜底存在大面积缺失风险">P1-5：美股日终覆盖策略依赖 yfinance 兜底，存在大面积缺失风险</h3>
 <ul>
 <li><strong>现状</strong>：<code>USDailyPipeline.extract()</code> 每天只通过 Tiingo 请求最多 50 个 symbol，其余 symbol 依赖 yfinance。yfinance 被注释说明“在服务器 IP 上被严重限流”。</li>
 <li><strong>影响</strong>：Tiingo 免费层 50 req/hour、500 symbols/month 的配额下，每天 50 个 symbol 意味着约 20 天才能轮询完全部 ~500 只美股；其余靠 yfinance，若 yfinance 被封禁，则大量美股缺失。</li>
 </ul>
-<h3>P1-6：监控脚本只覆盖 A 股 ETF，且不检查数据新鲜度</h3>
+<h3 id="p1-6监控脚本只覆盖-a-股-etf且不检查数据新鲜度">P1-6：监控脚本只覆盖 A 股 ETF，且不检查数据新鲜度</h3>
 <ul>
-<li><strong>现状</strong>：<code>scripts/audit_indicator_completeness.py</code> 仅审计 A 股 ETF 的 <code>etf_indicator</code> 对 <code>instrument_daily_bar</code> 的覆盖率，且目标日期取“最新 A 股交易日”。它不检查：</li>
+<li><strong>现状</strong>：<code>scripts/audit_indicator_completeness.py</code> 仅审计 A 股 ETF 的 <code>etf_indicator</code> 对 <code>instrument_daily_bar</code> 的覆盖率，且目标日期取“最新 A 股交易日”。它不检查：
+<ul>
 <li>A 股个股、美股、Crypto；</li>
 <li><code>instrument_daily_bar</code> 最新日期是否严重落后于今天；</li>
 <li>ETL 任务是否 stuck 在 <code>running</code>。</li>
+</ul></li>
 <li><strong>影响</strong>：无法通过现有监控脚本发现 P0-1/P0-2 的问题。</li>
 </ul>
-<h3>P2-7：A 股个股 ETL 的 bulk 接口对 adj_factor 的拉取存在单点失败</h3>
+<h3 id="p2-7a-股个股-etl-的-bulk-接口对-adj_factor-的拉取存在单点失败">P2-7：A 股个股 ETL 的 bulk 接口对 adj_factor 的拉取存在单点失败</h3>
 <ul>
 <li><strong>现状</strong>：<code>AStockDailyPipeline.extract()</code> 使用 <code>fetch_daily_all_market()</code> 一次拉取全市场，然后合并 <code>fetch_adj_factor(trade_date=target_date)</code>。若后者失败，所有股票的 <code>adj_factor</code> 被默认填充为 1.0。</li>
 <li><strong>影响</strong>：除权除息日会导致风险/收益指标失真。</li>
 </ul>
-<h3>P2-8：yfinance batch 模式复权因子恒为 1.0</h3>
+<h3 id="p2-8yfinance-batch-模式复权因子恒为-10">P2-8：yfinance batch 模式复权因子恒为 1.0</h3>
 <ul>
 <li><strong>现状</strong>：<code>yfinance_provider.py</code> 在批量下载时 <code>adj_factor = 1.0</code>，仅对单 code 下载才通过 <code>_compute_adj_factors</code> 计算。</li>
 <li><strong>影响</strong>：若美股日终大量走 yfinance 批量路径，长周期收益/回撤指标未经过复权调整，精度下降。</li>
 </ul>
-<h3>P2-9：SQL 指标后端 <code>max_bars</code> 可能截断长历史窗口</h3>
+<h3 id="p2-9sql-指标后端-max_bars-可能截断长历史窗口">P2-9：SQL 指标后端 <code>max_bars</code> 可能截断长历史窗口</h3>
 <ul>
 <li><strong>现状</strong>：<code>sql_calculator.py</code> 默认 <code>INDICATOR_SQL_MAX_BARS=300</code>，对 252 日窗口是够的，但代码允许用户配置更小值。若配置低于 252，则 1 年指标精度受损；虽然代码会打印 warning，但不会阻止执行。</li>
 <li><strong>影响</strong>：配置不当可能导致 1 年风险指标失真。</li>
 </ul>
-<hr />
-<h2>三、根因与代码位置</h2>
+<hr>
+<h2 id="三根因与代码位置">三、根因与代码位置</h2>
 <table>
-<thead>
-<tr>
+<thead><tr>
 <th>发现</th>
 <th>根因</th>
 <th>关键代码位置</th>
-</tr>
-</thead>
+</tr></thead>
 <tbody>
-<tr>
-<td>P0-1 ETL stuck</td>
-<td><code>ETLPipeline.run()</code> 在 <code>extract()</code> 之前 <code>_create_log()</code> 写入 <code>running</code>，但进程异常退出或容器重启时不会更新为 <code>failed</code>；无 watchdog 或 lease 续约机制。</td>
-<td><code>app/data/pipelines/base.py:68-79</code>, <code>123-200</code></td>
-</tr>
-<tr>
-<td>P0-2 美股/Crypto 停滞</td>
-<td><code>us_daily_etl</code> 在 2026-06-27 后无日志，<code>crypto_daily_etl</code> 从未写入 <code>etl_log</code>，说明调度未触发或任务未被消费。</td>
-<td>数据库 <code>etl_log</code> 采样</td>
-</tr>
-<tr>
-<td>P1-3 目标日期落后</td>
-<td><code>_resolve_a_share_target_date()</code> 返回数据库中 A 股最新 bar 日期，而非 <code>today/previous_trading_day</code>。</td>
-<td><code>app/core/scheduler.py:63-84</code></td>
-</tr>
-<tr>
-<td>P1-4 日历不一致</td>
-<td>美股、Crypto 直接 <code>target_date = self.target_date or (date.today() - timedelta(days=1))</code>，无日历过滤。</td>
-<td><code>app/data/pipelines/us_etf.py:120-122</code>, <code>crypto_daily.py:124-127</code></td>
-</tr>
-<tr>
-<td>P1-5 美股覆盖不足</td>
-<td><code>USDailyPipeline</code> 每天 Tiingo 轮询 50 个 symbol，其余走 yfinance。</td>
-<td><code>app/data/pipelines/us_etf.py:124-134</code>, <code>160-181</code></td>
-</tr>
-<tr>
-<td>P1-6 监控缺失</td>
-<td><code>audit_indicator_completeness.py</code> 仅统计 A 股 ETF 覆盖率，且 <code>target_date</code> 取最新 bar 日期。</td>
-<td><code>scripts/audit_indicator_completeness.py:41-57</code>, <code>59-150</code></td>
-</tr>
-<tr>
-<td>P2-7 A 股个股 af 单点失败</td>
-<td><code>fetch_daily_all_market()</code> 中 adj_factor 合并失败时整个批次降级为 1.0。</td>
-<td><code>app/data/providers/tushare_provider.py:748-757</code></td>
-</tr>
-<tr>
-<td>P2-8 yfinance batch af=1.0</td>
-<td><code>YFinanceProvider.fetch_daily_bars()</code> 批量分支直接设 <code>adj_factor=1.0</code>。</td>
-<td><code>app/data/providers/yfinance_provider.py:157</code></td>
-</tr>
-<tr>
-<td>P2-9 SQL max_bars</td>
-<td><code>INDICATOR_SQL_MAX_BARS</code> 可配置低于 252，仅 warning 不阻止。</td>
-<td><code>app/data/indicators/sql_calculator.py:101-108</code>, <code>289-299</code></td>
-</tr>
-</tbody>
-</table>
-<hr />
-<h2>四、修复建议与监控建议</h2>
-<h3>4.1 P0 级修复（立即执行）</h3>
+<tr><td>P0-1 ETL stuck</td><td><code>ETLPipeline.run()</code> 在 <code>extract()</code> 之前 <code>_create_log()</code> 写入 <code>running</code>，但进程异常退出或容器重启时不会更新为 <code>failed</code>；无 watchdog 或 lease 续约机制。</td><td><code>app/data/pipelines/base.py:68-79</code>, <code>123-200</code></td></tr>
+<tr><td>P0-2 美股/Crypto 停滞</td><td><code>us_daily_etl</code> 在 2026-06-27 后无日志，<code>crypto_daily_etl</code> 从未写入 <code>etl_log</code>，说明调度未触发或任务未被消费。</td><td>数据库 <code>etl_log</code> 采样</td></tr>
+<tr><td>P1-3 目标日期落后</td><td><code>_resolve_a_share_target_date()</code> 返回数据库中 A 股最新 bar 日期，而非 <code>today/previous_trading_day</code>。</td><td><code>app/core/scheduler.py:63-84</code></td></tr>
+<tr><td>P1-4 日历不一致</td><td>美股、Crypto 直接 <code>target_date = self.target_date or (date.today() - timedelta(days=1))</code>，无日历过滤。</td><td><code>app/data/pipelines/us_etf.py:120-122</code>, <code>crypto_daily.py:124-127</code></td></tr>
+<tr><td>P1-5 美股覆盖不足</td><td><code>USDailyPipeline</code> 每天 Tiingo 轮询 50 个 symbol，其余走 yfinance。</td><td><code>app/data/pipelines/us_etf.py:124-134</code>, <code>160-181</code></td></tr>
+<tr><td>P1-6 监控缺失</td><td><code>audit_indicator_completeness.py</code> 仅统计 A 股 ETF 覆盖率，且 <code>target_date</code> 取最新 bar 日期。</td><td><code>scripts/audit_indicator_completeness.py:41-57</code>, <code>59-150</code></td></tr>
+<tr><td>P2-7 A 股个股 af 单点失败</td><td><code>fetch_daily_all_market()</code> 中 adj_factor 合并失败时整个批次降级为 1.0。</td><td><code>app/data/providers/tushare_provider.py:748-757</code></td></tr>
+<tr><td>P2-8 yfinance batch af=1.0</td><td><code>YFinanceProvider.fetch_daily_bars()</code> 批量分支直接设 <code>adj_factor=1.0</code>。</td><td><code>app/data/providers/yfinance_provider.py:157</code></td></tr>
+<tr><td>P2-9 SQL max_bars</td><td><code>INDICATOR_SQL_MAX_BARS</code> 可配置低于 252，仅 warning 不阻止。</td><td><code>app/data/indicators/sql_calculator.py:101-108</code>, <code>289-299</code></td></tr>
+</tbody></table>
+<hr>
+<h2 id="四修复建议与监控建议">四、修复建议与监控建议</h2>
+<h3 id="41-p0-级修复立即执行">4.1 P0 级修复（立即执行）</h3>
 <ol>
-<li><strong>清理 stuck 的 running ETL 日志并重启 pipeline</strong></li>
+<li><strong>清理 stuck 的 running ETL 日志并重启 pipeline</strong>
+<ul>
 <li>将 <code>a_share_daily_etl</code>（id=42、id=23）和 <code>a_stock_daily_etl</code>（id=50）的 <code>status</code> 置为 <code>failed</code>，并补充 <code>error_msg = "process terminated / lease expired"</code>。</li>
 <li>释放 Redis 锁 <code>daily_pipeline</code> 和 <code>a_stock_daily_pipeline</code>。</li>
-<li>
-<p>手动触发一次 A 股 ETF + 个股 ETL，确认日线恢复写入到最新交易日。</p>
-</li>
-<li>
-<p><strong>为 ETL 引入 lease/heartbeat 机制</strong></p>
-</li>
+<li>手动触发一次 A 股 ETF + 个股 ETL，确认日线恢复写入到最新交易日。</li>
+</ul></li>
+</ol>
+<ol start="2">
+<li><strong>为 ETL 引入 lease/heartbeat 机制</strong>
+<ul>
 <li>在 <code>ETLPipeline.run()</code> 或基类中增加心跳：每 60 秒更新 <code>etl_log.heartbeat_at</code>；调度器/健康检查若发现 <code>heartbeat_at &gt; 5 分钟未更新</code> 且 <code>status=running</code>，则自动标记为 <code>failed</code> 并释放锁。</li>
-<li>
-<p>或者使用 Redis 锁的 <code>expire_seconds</code> 作为粗粒度保护，但当前已经配置（3600/7200 秒），问题在于进程挂起后没有续租也没有自动清理日志。</p>
-</li>
-<li>
-<p><strong>启动美股、Crypto pipeline 的排查</strong></p>
-</li>
+<li>或者使用 Redis 锁的 <code>expire_seconds</code> 作为粗粒度保护，但当前已经配置（3600/7200 秒），问题在于进程挂起后没有续租也没有自动清理日志。</li>
+</ul></li>
+</ol>
+<ol start="3">
+<li><strong>启动美股、Crypto pipeline 的排查</strong>
+<ul>
 <li>检查 APScheduler 是否在运行，对应 job 是否被注册（<code>scheduler.get_jobs()</code>）。</li>
 <li>检查 Celery worker 是否监听 <code>celery</code>/<code>indicator</code>/<code>cninfo</code> 队列。</li>
 <li>检查 <code>crypto_daily_etl</code> 是否因 import 失败或 job 未注册而从未执行。</li>
+</ul></li>
 </ol>
-<h3>4.2 P1 级修复（1-2 周内）</h3>
-<ol>
-<li><strong>指标计算目标日期增加新鲜度检查</strong></li>
+<h3 id="42-p1-级修复1-2-周内">4.2 P1 级修复（1-2 周内）</h3>
+<ol start="4">
+<li><strong>指标计算目标日期增加新鲜度检查</strong>
+<ul>
 <li>在 <code>run_indicator_calculation()</code> 中，若 <code>_resolve_a_share_target_date()</code> 返回的日期 &lt; 当前 A 股上一个交易日超过 N 天（如 2 天），直接打印告警、写入 <code>etl_log</code> 并退出，而不是继续计算旧日期。</li>
-<li>
-<p>新增 <code>run_indicator_calculation</code> 的 <code>full_history</code> 路径外，增加 <code>target_date</code> 参数显式化，避免静默回退。</p>
-</li>
-<li>
-<p><strong>统一市场交易日历</strong></p>
-</li>
+<li>新增 <code>run_indicator_calculation</code> 的 <code>full_history</code> 路径外，增加 <code>target_date</code> 参数显式化，避免静默回退。</li>
+</ul></li>
+</ol>
+<ol start="5">
+<li><strong>统一市场交易日历</strong>
+<ul>
 <li>美股：引入 <code>pandas_market_calendars</code> 或维护 <code>trading_calendars</code> 判断美股交易日；非交易日跳过 ETL。</li>
-<li>
-<p>Crypto：明确以 UTC 日界计算 <code>target_date</code>，避免 <code>Asia/Shanghai</code> 时区漂移。</p>
-</li>
-<li>
-<p><strong>改进美股覆盖策略</strong></p>
-</li>
+<li>Crypto：明确以 UTC 日界计算 <code>target_date</code>，避免 <code>Asia/Shanghai</code> 时区漂移。</li>
+</ul></li>
+</ol>
+<ol start="6">
+<li><strong>改进美股覆盖策略</strong>
+<ul>
 <li>方案 A：付费 Tiingo / 改用可覆盖全市场的 FMP/Polygon 付费方案。</li>
-<li>
-<p>方案 B：保留轮询但增大 <code>us_historical_backfill</code> 频率/批次，同时给 yfinance 增加失败重试和失败 symbol 持久化到 <code>etf_holding_failed</code> 类似表，便于后续补录。</p>
-</li>
-<li>
-<p><strong>扩展监控脚本</strong></p>
-</li>
-<li>修改 <code>scripts/audit_indicator_completeness.py</code>：<ul>
+<li>方案 B：保留轮询但增大 <code>us_historical_backfill</code> 频率/批次，同时给 yfinance 增加失败重试和失败 symbol 持久化到 <code>etf_holding_failed</code> 类似表，便于后续补录。</li>
+</ul></li>
+</ol>
+<ol start="7">
+<li><strong>扩展监控脚本</strong>
+<ul>
+<li>修改 <code>scripts/audit_indicator_completeness.py</code>：
+<ul>
 <li>增加 <code>--market A股/US/CRYPTO</code> 参数；</li>
 <li>增加 <code>--max-lag-days</code> 检查：若最新 bar 日期 &lt; 今天 - max_lag，直接 <code>CRITICAL</code>；</li>
 <li>检查 ETL 日志中最近 N 小时内是否存在 <code>running</code> 超过阈值的任务。</li>
-</ul>
-</li>
+</ul></li>
 <li>新建 <code>scripts/audit_etl_freshness.py</code>：按 job 检查 <code>latest_success_end_time</code> 与当前时间差距，输出 <code>OK/WARN/CRITICAL</code>。</li>
+</ul></li>
 </ol>
-<h3>4.3 P2 级修复（后续迭代）</h3>
-<ol>
-<li><strong>A 股个股 adj_factor 失败降级为逐只补录</strong></li>
-<li>
-<p>当 <code>fetch_daily_all_market()</code> 的 market-wide adj_factor 失败时，改为逐只调用 <code>fetch_adj_factor(ts_code)</code> 或至少记录失败日期，后续通过 <code>app/scripts/backfill_a_share_adj_factor.py</code> 补录。</p>
-</li>
-<li>
-<p><strong>yfinance 批量下载增加复权因子计算</strong></p>
-</li>
-<li>
-<p>对 yfinance 批量路径也调用 <code>_compute_adj_factors()</code>，或至少统一使用单 code 路径获取 adj_factor。</p>
-</li>
-<li>
-<p><strong>SQL 指标后端强制最低 max_bars</strong></p>
+<h3 id="43-p2-级修复后续迭代">4.3 P2 级修复（后续迭代）</h3>
+<ol start="8">
+<li><strong>A 股个股 adj_factor 失败降级为逐只补录</strong>
+<ul>
+<li>当 <code>fetch_daily_all_market()</code> 的 market-wide adj_factor 失败时，改为逐只调用 <code>fetch_adj_factor(ts_code)</code> 或至少记录失败日期，后续通过 <code>app/scripts/backfill_a_share_adj_factor.py</code> 补录。</li>
+</ul></li>
+</ol>
+<ol start="9">
+<li><strong>yfinance 批量下载增加复权因子计算</strong>
+<ul>
+<li>对 yfinance 批量路径也调用 <code>_compute_adj_factors()</code>，或至少统一使用单 code 路径获取 adj_factor。</li>
+</ul></li>
+</ol>
+<ol start="10">
+<li><strong>SQL 指标后端强制最低 max_bars</strong>
 <ul>
 <li>在 <code>build_indicator_query_sql()</code> 中，若 <code>max_bars &lt; 252</code> 则抛出 <code>ValueError</code> 或使用 252 作为硬下限，避免误配置导致指标失真。</li>
-</ul>
-</li>
+</ul></li>
 </ol>
-<h3>4.4 监控告警建议</h3>
+<h3 id="44-监控告警建议">4.4 监控告警建议</h3>
 <ul>
-<li>在 <code>/health</code> 或 <code>/health/etl</code> 端点中暴露：</li>
+<li>在 <code>/health</code> 或 <code>/health/etl</code> 端点中暴露：
+<ul>
 <li>各市场最新 <code>instrument_daily_bar.trade_date</code>；</li>
 <li>各 ETL job 最近一次 <code>success</code> 的 <code>end_time</code>；</li>
 <li>当前 <code>status=running</code> 且持续超过 1 小时的任务列表。</li>
-<li>将上述指标接入 Prometheus/Grafana 或企业微信/钉钉告警，设置阈值：</li>
+</ul></li>
+<li>将上述指标接入 Prometheus/Grafana 或企业微信/钉钉告警，设置阈值：
+<ul>
 <li>A 股日线滞后 &gt; 1 个交易日 → P0 告警；</li>
 <li>美股日线滞后 &gt; 1 个交易日 → P1 告警；</li>
 <li>任何 ETL job <code>running</code> 超过 2 小时 → P1 告警。</li>
+</ul></li>
 </ul>
-<hr />
-<h2>五、结论</h2>
+<hr>
+<h2 id="五结论">五、结论</h2>
 <p>当前平台的数据完整性存在<strong>多项 P0/P1 风险</strong>，核心原因是：</p>
 <ol>
 <li><strong>ETL 任务没有 stuck 检测与自动清理机制</strong>，导致 A 股 pipeline 长期处于 <code>running</code> 而无人发现。</li>
@@ -272,9 +254,11 @@ ul li { margin: .4rem 0; }
 <li><strong>交易日历处理不统一</strong>，美股/Crypto 没有节假日过滤，易空跑并浪费配额。</li>
 </ol>
 <p>建议立即执行 P0 修复（清理 stuck 任务、恢复 A 股/美股/Crypto 数据流），随后 1-2 周内落地 lease/heartbeat、新鲜度监控、市场日历和监控脚本扩展。</p>
-<hr />
-<p><em>报告文件：</em>
-- Markdown: <code>docs/dev-notes/20260718-data-integrity-audit.md</code>
-- HTML: <code>docs/dev-notes/20260718-data-integrity-audit.html</code></p>
+<hr>
+<p><em>报告文件：</em></p>
+<ul>
+<li>Markdown: <code>docs/dev-notes/20260718-data-integrity-audit.md</code></li>
+<li>HTML: <code>docs/dev-notes/20260718-data-integrity-audit.html</code></li>
+</ul>
 </body>
 </html>

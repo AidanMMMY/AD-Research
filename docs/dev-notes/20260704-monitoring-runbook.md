@@ -6,6 +6,7 @@
 > 那篇是「数据已经落后了怎么办」；本篇是「在数据落后之前怎么发现」。
 
 最后更新：2026-07-04
+最后核实更新：2026-07-21
 
 ---
 
@@ -30,9 +31,9 @@
 ### 1.1 `/health` 状态 + 响应耗时
 
 ```bash
-# 必须 200 且耗时 < 1.5s
+# 必须 200 且耗时 < 1.5s（健康端点挂在根路径 /health，不在 /api/v1 下）
 time curl -fsS -o /dev/null -w 'http=%{http_code} time=%{time_total}s\n' \
-  http://localhost:8000/api/v1/health
+  http://localhost:8000/health
 ```
 
 判定阈值：
@@ -141,7 +142,7 @@ echo "{ \"ts\": \"${TS}\"" > "${OUT}"
 
 # 1.1 /health
 H="$(curl -fsS -o /dev/null -w '%{http_code}|%{time_total}' \
-      "${BASE_URL}/api/v1/health" 2>/dev/null || echo '000|0')"
+      "${BASE_URL}/health" 2>/dev/null || echo '000|0')"
 echo ", \"health\": \"${H}\"" >> "${OUT}"
 
 # 1.2 backend container state
@@ -195,7 +196,7 @@ docker compose -f docker-compose.yml restart backend
 sleep 30
 
 # 3. 再次 health
-curl -fsS http://localhost:8000/api/v1/health
+curl -fsS http://localhost:8000/health
 
 # 4. 若仍失败，回看 backend 日志
 docker logs --since 5m alloyresearch-backend | tail -100

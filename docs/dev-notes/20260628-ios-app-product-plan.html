@@ -37,241 +37,844 @@
 </style>
 </head>
 <body>
-
-<h1>iOS 原生 APP 产品规划文档</h1>
-<p class="date">2026-06-28 · 基于投研平台现有架构的完整规划</p>
-
-<p>前置阅读：<a href="./20260628-ios-app-feasibility-report.html" style="color:var(--accent)">iOS APP 可行性评估报告</a></p>
-
+<h1 id="ios-原生-app-产品规划文档">iOS 原生 APP 产品规划文档</h1>
+<p class="date">2026-06-28 | 基于投研平台现有架构的完整规划</p>
+<blockquote>
+<p>前置阅读：<a href="./20260628-ios-app-feasibility-report.html">iOS APP 可行性评估报告</a></p>
+<p>最后核实更新：2026-07-21。实施现状：后端 P0 改造（Refresh Token / 登出黑名单 / 设备管理）与 SSE 价格流、APNs 推送服务均已落地（见第十章标注）；iOS 工程 <code>ios/ADResearch/</code> 已开工，目前仅完成登录脚手架（App 入口、LoginView/ViewModel、AuthManager、KeychainStore、APIClient、AuthService、Theme），目录结构与本文第三章设计一致，其余模块尚未实现。</p>
+</blockquote>
 <div class="toc">
 <strong>目录</strong>
 <ol>
-<li><a href="#s1">总体决策</a></li>
-<li><a href="#s2">技术选型</a></li>
-<li><a href="#s3">Swift 工程结构</a></li>
-<li><a href="#s4">认证与安全</a></li>
-<li><a href="#s5">图表方案</a></li>
-<li><a href="#s6">实时行情与离线缓存</a></li>
-<li><a href="#s7">数据同步策略</a></li>
-<li><a href="#s8">商业化与 App Store</a></li>
-<li><a href="#s9">开发排期</a></li>
-<li><a href="#s10">后端改造清单</a></li>
+<li><a href="#一总体决策">总体决策</a></li>
+<li><a href="#二技术选型">技术选型</a></li>
+<li><a href="#三swift-工程结构">Swift 工程结构</a></li>
+<li><a href="#四认证与安全">认证与安全</a></li>
+<li><a href="#五图表方案">图表方案</a></li>
+<li><a href="#六实时行情与离线缓存">实时行情与离线缓存</a></li>
+<li><a href="#七数据同步策略">数据同步策略</a></li>
+<li><a href="#八商业化与-app-store">商业化与 App Store</a></li>
+<li><a href="#九开发排期">开发排期</a></li>
+<li><a href="#十后端改造清单">后端改造清单</a></li>
+
+<li><a href="#附录-a与-web-端的功能对照">附录 A：与 Web 端的功能对照</a></li>
+<li><a href="#附录-bweb-端-api-到-ios-service-映射">附录 B：Web 端 API 到 iOS Service 映射</a></li>
 </ol>
 </div>
-
-<h2 id="s1">一、总体决策</h2>
-
+<hr>
+<h2 id="一总体决策">一、总体决策</h2>
 <table>
-  <tr><th>决策</th><th>结论</th></tr>
-  <tr><td>平台</td><td><strong>iOS 原生</strong>（Swift + SwiftUI/UIKit 混合）</td></tr>
-  <tr><td>底座</td><td><strong>复用现有 FastAPI 后端</strong>，API 直接调用</td></tr>
-  <tr><td>开发模式</td><td><strong>MVVM + Combine + async/await</strong></td></tr>
-  <tr><td>图表</td><td><strong>DGCharts（K线）+ Swift Charts（辅助）</strong> — 免费</td></tr>
-  <tr><td>实时行情</td><td><strong>SSE 推送</strong> — 1-5秒刷新</td></tr>
-  <tr><td>本地数据库</td><td><strong>GRDB</strong> — SQL 友好、高性能</td></tr>
-  <tr><td>离线策略</td><td><strong>本地优先展示 + 后台静默刷新</strong></td></tr>
-  <tr><td>商业化</td><td><strong>免费 + 内购订阅</strong>（Pro 版 ¥18-38/月）</td></tr>
-  <tr><td>首发市场</td><td><strong>香港区或美国区 App Store</strong></td></tr>
-</table>
-
-<h2 id="s2">二、技术选型</h2>
-
+<thead><tr>
+<th>决策</th>
+<th>结论</th>
+</tr></thead>
+<tbody>
+<tr><td>平台</td><td><strong>iOS 原生</strong>（Swift + SwiftUI/UIKit 混合）</td></tr>
+<tr><td>底座</td><td><strong>复用现有 FastAPI 后端</strong>，API 直接调用</td></tr>
+<tr><td>开发模式</td><td><strong>MVVM + Combine + async/await</strong></td></tr>
+<tr><td>图表</td><td><strong>DGCharts（K线）+ Swift Charts（辅助）</strong> — 免费</td></tr>
+<tr><td>实时行情</td><td><strong>SSE 推送</strong> — 1-5秒刷新</td></tr>
+<tr><td>本地数据库</td><td><strong>GRDB</strong> — SQL 友好、高性能</td></tr>
+<tr><td>离线策略</td><td><strong>本地优先展示 + 后台静默刷新</strong></td></tr>
+<tr><td>商业化</td><td><strong>免费 + 内购订阅（Pro 版 ¥18-38/月）</strong></td></tr>
+<tr><td>首发市场</td><td><strong>香港区或美国区 App Store</strong></td></tr>
+</tbody></table>
+<p><strong>决策依据：</strong></p>
+<ul>
+<li>团队前端是 React，但 K线/金融体验原生 Swift 最优</li>
+<li>预算不包含额外库授权费 → DGCharts（Apache 2.0 免费）</li>
+<li>散户级用户 → 1-5秒刷新足够，不需要 tick 级实时</li>
+<li>不提供具体投资建议 → 产品定位为"数据分析工具"</li>
+</ul>
+<hr>
+<h2 id="二技术选型">二、技术选型</h2>
 <table>
-  <tr><th>层级</th><th>推荐方案</th><th>选型理由</th></tr>
-  <tr><td>UI 框架</td><td>SwiftUI 主体 + UIKitRepresentable 包裹图表</td><td>新页面 SwiftUI 开发快；图表需 UIKit 性能</td></tr>
-  <tr><td>架构模式</td><td>MVVM + Combine</td><td>Combine 适合响应式数据流</td></tr>
-  <tr><td>网络层</td><td>Alamofire + Codable</td><td>拦截器、重试机制成熟</td></tr>
-  <tr><td>本地缓存</td><td>GRDB</td><td>金融查询复杂，SQL 更直接</td></tr>
-  <tr><td>认证存储</td><td>Keychain</td><td>JWT 必须安全存储</td></tr>
-  <tr><td>K线图表</td><td>DGCharts</td><td>Apache 2.0 免费、散户级够用</td></tr>
-  <tr><td>辅助图表</td><td>Swift Charts</td><td>系统原生，收益曲线/饼图</td></tr>
-  <tr><td>图片加载</td><td>Kingfisher</td><td>列表缩略图缓存</td></tr>
-  <tr><td>推送</td><td>APNs 原生</td><td>系统级推送</td></tr>
-</table>
-
-<h2 id="s3">三、Swift 工程结构</h2>
-
+<thead><tr>
+<th>层级</th>
+<th>推荐方案</th>
+<th>备选</th>
+<th>选型理由</th>
+</tr></thead>
+<tbody>
+<tr><td><strong>UI 框架</strong></td><td>SwiftUI 主体 + UIKitRepresentable 包裹图表</td><td>纯 UIKit</td><td>新页面 SwiftUI 开发快；图表用 UIKit 性能更好</td></tr>
+<tr><td><strong>架构模式</strong></td><td>MVVM + Combine</td><td>MVVM + async/await</td><td>Combine 适合响应式数据流</td></tr>
+<tr><td><strong>网络层</strong></td><td>Alamofire + Codable</td><td>原生 URLSession</td><td>拦截器成熟，上传下载方便</td></tr>
+<tr><td><strong>本地缓存</strong></td><td>GRDB</td><td>SwiftData / Core Data</td><td>金融查询复杂，SQL 更直接</td></tr>
+<tr><td><strong>认证存储</strong></td><td>Keychain</td><td>—</td><td>JWT 必须安全存储</td></tr>
+<tr><td><strong>K线图表</strong></td><td>DGCharts</td><td>TradingView（付费）</td><td>免费、开源、散户级够用</td></tr>
+<tr><td><strong>辅助图表</strong></td><td>Swift Charts</td><td>DGCharts</td><td>系统原生，收益曲线/饼图</td></tr>
+<tr><td><strong>图片加载</strong></td><td>Kingfisher</td><td>SDWebImage</td><td>列表缩略图缓存</td></tr>
+<tr><td><strong>推送</strong></td><td>APNs 原生</td><td>—</td><td>系统级推送</td></tr>
+<tr><td><strong>路由</strong></td><td>NavigationStack</td><td>UIKit Coordinator</td><td>iOS 16+ 标准方案</td></tr>
+</tbody></table>
+<hr>
+<h2 id="三swift-工程结构">三、Swift 工程结构</h2>
+<h3 id="31-项目目录">3.1 项目目录</h3>
 <pre><code>ADResearch/
-├── App/                    # 入口 + 生命周期
-│   ├── ADResearchApp.swift
-│   ├── AppDelegate.swift   # APNs / Background Fetch
-│   └── Info.plist
+├── App/
+│   ├── ADResearchApp.swift          # @main 入口
+│   ├── AppDelegate.swift            # APNs / Background Fetch
+│   ├── SceneDelegate.swift          # 多窗口（iPad 可选）
+│   └── Info.plist                   # 权限声明
 ├── Models/
-│   ├── Domain/             # 业务模型（纯 struct）
-│   ├── DTO/                # API 传输对象（Codable）
-│   └── Local/              # GRDB 持久化模型
+│   ├── Domain/                      # 业务模型（纯 struct）
+│   │   ├── Instrument.swift
+│   │   ├── Candle.swift
+│   │   ├── Pool.swift
+│   │   ├── Score.swift
+│   │   ├── Signal.swift
+│   │   └── User.swift
+│   ├── DTO/                         # API 传输对象（Codable）
+│   │   ├── AuthDTO.swift
+│   │   ├── ETFListDTO.swift
+│   │   └── ...（按模块分拆）
+│   └── Local/                       # GRDB 持久化模型（Record）
+│       ├── InstrumentRecord.swift
+│       ├── CandleRecord.swift
+│       └── ...
 ├── Services/
-│   ├── Network/            # Alamofire + 拦截器
-│   ├── API/                # 按后端 api/*.ts 一对一翻译（17个 Service）
-│   ├── Local/              # Repository（GRDB CRUD）
-│   ├── Stream/             # SSE 实时行情
-│   ├── Sync/               # 数据同步 + 冲突解决
-│   ├── Auth/               # 登录/登出/refresh/Keychain
-│   └── Push/               # APNs 注册/接收
-├── ViewModels/             # MVVM ViewModel
-│   ├── Dashboard/          # 首页
-│   ├── Instruments/        # 标的列表
-│   ├── InstrumentDetail/   # 标的详情（K线）
-│   ├── Pools/              # 池子
-│   ├── AI/                 # 聊天 + 研究笔记
-│   └── Settings/           # 设置
-├── Views/                  # SwiftUI View
-│   ├── Common/             # 通用组件
-│   │   ├── KLineChartView.swift   # DGCharts UIViewRepresentable
-│   │   ├── SimpleChartView.swift  # Swift Charts 封装
-│   │   └── OfflineBanner.swift
-│   ├── Tab/MainTabView.swift
+│   ├── Network/
+│   │   ├── APIClient.swift          # Alamofire 配置 + 拦截器
+│   │   ├── AuthInterceptor.swift    # Token 自动注入 / 401 处理
+│   │   └── APIError.swift           # 统一错误模型
+│   ├── API/                         # 按后端 api/*.ts 一对一翻译
+│   │   ├── AuthService.swift
+│   │   ├── ETFService.swift
+│   │   ├── PoolService.swift
+│   │   ├── MarketDataService.swift
+│   │   ├── ScoreService.swift
+│   │   ├── ScreenService.swift
+│   │   ├── BacktestService.swift
+│   │   ├── SignalService.swift
+│   │   ├── StrategyService.swift
+│   │   ├── NotificationService.swift
+│   │   ├── FavoriteService.swift
+│   │   ├── ReportService.swift
+│   │   ├── AnalysisService.swift
+│   │   ├── ScannerService.swift
+│   │   ├── ResearchService.swift
+│   │   ├── ChatService.swift
+│   │   └── AdminService.swift
+│   ├── Local/                       # 本地数据库
+│   │   ├── LocalStore.swift         # GRDB 初始化 + 迁移
+│   │   ├── InstrumentRepository.swift
+│   │   ├── CandleRepository.swift
+│   │   ├── FavoriteRepository.swift
+│   │   └── ...
+│   ├── Stream/                      # 实时行情
+│   │   ├── PriceStream.swift        # SSE 客户端
+│   │   └── SubscriptionManager.swift
+│   ├── Sync/                        # 数据同步
+│   │   ├── SyncManager.swift
+│   │   ├── ConflictResolver.swift
+│   │   └── BackgroundSyncService.swift
+│   ├── Auth/
+│   │   ├── AuthManager.swift        # 登录/登出/refresh
+│   │   └── KeychainStore.swift
+│   └── Push/
+│       └── PushManager.swift        # APNs 注册/接收
+├── ViewModels/                      # MVVM ViewModel
+│   ├── Auth/
 │   ├── Dashboard/
 │   ├── Instruments/
+│   ├── InstrumentDetail/
 │   ├── Pools/
 │   ├── AI/
 │   └── Settings/
-├── Theme/                  # 色彩/字体（与 Web theme.css 对齐）
-├── Utilities/              # 格式化/扩展
-└── Resources/              # 图标/多语言</code></pre>
-
-<h2 id="s4">四、认证与安全</h2>
-
-<h3>改造后的认证接口</h3>
-
+├── Views/                           # SwiftUI View
+│   ├── Common/                      # 通用组件
+│   │   ├── KLineChartView.swift     # DGCharts UIKitRepresentable
+│   │   ├── SimpleChartView.swift    # Swift Charts 封装
+│   │   ├── OfflineBanner.swift
+│   │   ├── LoadingView.swift
+│   │   └── ErrorView.swift
+│   ├── Tab/                         # TabBar 主结构
+│   │   └── MainTabView.swift
+│   ├── Dashboard/
+│   ├── Instruments/
+│   ├── InstrumentDetail/
+│   ├── Pools/
+│   ├── AI/
+│   └── Settings/
+├── Theme/
+│   ├── Theme.swift                  # 色彩/字体常量（与 Web theme.css 对齐）
+│   └── ChartTheme.swift            # 图表配色常量
+├── Utilities/
+│   ├── Formatters.swift             # 数字/日期格式化
+│   ├── Extensions.swift             # Swift 扩展
+│   └── Constants.swift              # API URL / 超时配置
+└── Resources/
+    ├── Assets.xcassets/             # 图标/图片
+    └── Localizable.xcstrings        # 多语言
+</code></pre>
+<h3 id="32-设计模式">3.2 设计模式</h3>
+<ul>
+<li><strong>Service 层</strong>：调用 API，返回 <code>Result&lt;DTO, APIError&gt;</code></li>
+<li><strong>Repository 层</strong>：封装 GRDB CRUD，返回领域模型</li>
+<li><strong>ViewModel 层</strong>：组合 Service + Repository，暴露 <code>@Published</code> 状态</li>
+<li><strong>View 层</strong>：纯 SwiftUI，通过 <code>@StateObject</code> / <code>@ObservedObject</code> 绑定 ViewModel</li>
+</ul>
+<pre><code class="language-swift">// ViewModel 典型结构
+@MainActor
+final class InstrumentListViewModel: ObservableObject {
+    @Published var state: LoadingState&lt;[Instrument]&gt; = .idle
+    @Published var searchText = ""
+    @Published var selectedMarket: String?
+    
+    private let service = ETFService.shared
+    private let repo = InstrumentRepository.shared
+    
+    func load() async {
+        // 1. 先展示本地
+        let cached = try? await repo.all()
+        if let cached { state = .loaded(cached) }
+        
+        // 2. 后台刷新
+        do {
+            let dtos = try await service.fetchList()
+            let list = dtos.map { $0.toDomain() }
+            try await repo.saveAll(list)
+            state = .loaded(list)
+        } catch {
+            if cached != nil { return } // 有缓存不报错
+            state = .error(error)
+        }
+    }
+}
+</code></pre>
+<hr>
+<h2 id="四认证与安全">四、认证与安全</h2>
+<h3 id="41-当前认证2026-07-21-核实改造已落地">4.1 当前认证（2026-07-21 核实：改造已落地）</h3>
+<pre><code>POST /api/v1/auth/login    → access_token (JWT, 1天) + refresh_token (30天, opaque)
+POST /api/v1/auth/refresh  → 新 access_token + 新 refresh_token（rotation）
+POST /api/v1/auth/logout   → Redis 黑名单失效当前 jti
+POST /api/v1/auth/devices  → 注册设备
+GET  /api/v1/auth/devices  → 查看已登录设备
+DELETE /api/v1/auth/devices/:id → 踢掉设备
+GET  /api/v1/auth/me       → 用户信息
+Authorization: Bearer &lt;token&gt;
+</code></pre>
+<p>实现要点：refresh token 为不透明随机串，DB 存 SHA-256 hash（<code>app/models/refresh_token.py</code>），有效期 30 天；access token 有效期由 <code>ACCESS_TOKEN_EXPIRE_MINUTES</code> 控制（默认 1440 分钟 = 1 天）。4.2 节为原推荐设计，与实际实现基本一致，差异仅为 access token 有效期（设计 15 分钟，实际 1 天）。</p>
+<h3 id="42-改造后认证原推荐设计已按此实现">4.2 改造后认证（原推荐设计，已按此实现）</h3>
+<pre><code>POST /api/v1/auth/login       → access_token (短期) + refresh_token (长期)
+POST /api/v1/auth/refresh     → 新 access_token
+POST /api/v1/auth/logout      → 置失效 token
+POST /api/v1/auth/device      → 注册设备
+GET  /api/v1/auth/devices     → 查看已登录设备
+DELETE /api/v1/auth/devices/:id → 踢掉设备
+</code></pre>
+<p><strong>Token 设计（实际实现）：</strong></p>
 <table>
-  <tr><th>端点</th><th>说明</th></tr>
-  <tr><td><code>POST /auth/login</code></td><td>返回 access_token（15min）+ refresh_token（30天）</td></tr>
-  <tr><td><code>POST /auth/refresh</code></td><td>刷新短期 token</td></tr>
-  <tr><td><code>POST /auth/logout</code></td><td>置失效 token（Redis 黑名单）</td></tr>
-  <tr><td><code>POST /auth/device</code></td><td>注册设备</td></tr>
-  <tr><td><code>GET /auth/devices</code></td><td>查看已登录设备</td></tr>
-</table>
-
-<h3>Token 安全</h3>
-<ul>
-  <li>access_token 存内存，refresh_token 存 Keychain</li>
-  <li>AuthInterceptor 自动注入 Bearer Token，401 自动刷新</li>
-  <li>支持多端登录、设备解绑</li>
-</ul>
-
-<h2 id="s5">五、图表方案</h2>
-
-<h3>K线：DGCharts</h3>
-<ul>
-  <li>Apache 2.0 免费许可</li>
-  <li>GitHub 27k+ stars</li>
-  <li>支持捏合缩放、滑动、十字光标</li>
-  <li>内置 MA/EMA/MACD/RSI/Bollinger</li>
-  <li>需用 UIViewRepresentable 包进 SwiftUI</li>
-</ul>
-
-<h3>辅助图表：Swift Charts</h3>
-<ul>
-  <li>收益曲线、饼图用系统原生</li>
-  <li>声明式 API，与 SwiftUI 配合佳</li>
-  <li>热力图/雷达图用 DGCharts 补充</li>
-</ul>
-
-<h2 id="s6">六、实时行情与离线缓存</h2>
-
-<h3>数据层架构</h3>
-<pre><code>
-┌──────────────┐    SSE（实时价格）     ┌──────────────┐
+<thead><tr>
+<th>Token</th>
+<th>有效期</th>
+<th>存储位置</th>
+</tr></thead>
+<tbody>
+<tr><td>access_token</td><td>1 天（<code>ACCESS_TOKEN_EXPIRE_MINUTES=1440</code>；原设计 15 分钟，如需缩短改配置即可）</td><td>内存</td></tr>
+<tr><td>refresh_token</td><td>30 天（不透明随机串，DB 存 SHA-256 hash，refresh 时 rotation）</td><td>Keychain</td></tr>
+</tbody></table>
+<h3 id="43-ios-端认证流">4.3 iOS 端认证流</h3>
+<pre><code class="language-swift">final class AuthManager: ObservableObject {
+    @Published var isAuthenticated = false
+    @Published var currentUser: User?
+    
+    private let keychain = KeychainStore.shared
+    private let service = AuthService.shared
+    
+    // 启动时检查
+    func restoreSession() async {
+        if let refreshToken = keychain.refreshToken {
+            do {
+                let result = try await service.refresh(refreshToken)
+                keychain.save(accessToken: result.accessToken, refreshToken: result.refreshToken)
+                currentUser = result.user
+                isAuthenticated = true
+            } catch {
+                keychain.clear()
+                isAuthenticated = false
+            }
+        }
+    }
+    
+    // 登录
+    func login(username: String, password: String) async throws {
+        let result = try await service.login(username: username, password: password)
+        keychain.save(accessToken: result.accessToken, refreshToken: result.refreshToken)
+        currentUser = result.user
+        isAuthenticated = true
+        
+        // 注册设备
+        try? await service.registerDevice(deviceToken: await getDeviceToken())
+    }
+    
+    // 自动刷新
+    func ensureValidToken() async throws -&gt; String {
+        guard let accessToken = keychain.accessToken else {
+            throw AuthError.notAuthenticated
+        }
+        
+        if JWTDecoder.willExpireSoon(accessToken) {
+            guard let refreshToken = keychain.refreshToken else {
+                throw AuthError.notAuthenticated
+            }
+            let result = try await service.refresh(refreshToken)
+            keychain.save(accessToken: result.accessToken, refreshToken: result.refreshToken)
+            return result.accessToken
+        }
+        
+        return accessToken
+    }
+    
+    // 登出
+    func logout() async {
+        _ = try? await service.logout()
+        keychain.clear()
+        currentUser = nil
+        isAuthenticated = false
+    }
+}
+</code></pre>
+<h3 id="44-api-拦截器自动注入-token">4.4 API 拦截器自动注入 Token</h3>
+<pre><code class="language-swift">final class AuthInterceptor: RequestInterceptor {
+    func adapt(_ urlRequest: URLRequest, completion: @escaping (Result&lt;URLRequest, Error&gt;) -&gt; Void) {
+        var request = urlRequest
+        Task {
+            if let token = try? await AuthManager.shared.ensureValidToken() {
+                request.addValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+            }
+            completion(.success(request))
+        }
+    }
+    
+    func retry(_ request: Request, dueTo error: Error, completion: @escaping (RetryResult) -&gt; Void) {
+        if let afError = error.asAFError, afError.responseCode == 401 {
+            Task {
+                // 尝试刷新 token 后重试
+                if let _ = try? await AuthManager.shared.ensureValidToken() {
+                    completion(.retry)
+                } else {
+                    await AuthManager.shared.logout()
+                    completion(.doNotRetry)
+                }
+            }
+        } else {
+            completion(.doNotRetry)
+        }
+    }
+}
+</code></pre>
+<h3 id="45-keychain-封装">4.5 Keychain 封装</h3>
+<pre><code class="language-swift">final class KeychainStore {
+    static let shared = KeychainStore()
+    
+    var accessToken: String? { get { get("access_token") } set { set("access_token", value: newValue) } }
+    var refreshToken: String? { get { get("refresh_token") } set { set("refresh_token", value: newValue) } }
+    
+    func clear() {
+        accessToken = nil
+        refreshToken = nil
+    }
+    
+    private func get(_ key: String) -&gt; String? {
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrAccount as String: key,
+            kSecReturnData as String: true,
+            kSecMatchLimit as String: kSecMatchLimitOne
+        ]
+        var result: AnyObject?
+        SecItemCopyMatching(query as CFDictionary, &amp;result)
+        guard let data = result as? Data else { return nil }
+        return String(data: data, encoding: .utf8)
+    }
+    
+    private func set(_ key: String, value: String?) {
+        guard let value, let data = value.data(using: .utf8) else {
+            SecItemDelete([kSecClass: kSecClassGenericPassword, kSecAttrAccount: key] as CFDictionary)
+            return
+        }
+        SecItemDelete([kSecClass: kSecClassGenericPassword, kSecAttrAccount: key] as CFDictionary)
+        SecItemAdd([
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrAccount as String: key,
+            kSecValueData as String: data,
+            kSecAttrAccessible as String: kSecAttrAccessibleWhenUnlockedThisDeviceOnly
+        ] as CFDictionary, nil)
+    }
+}
+</code></pre>
+<hr>
+<h2 id="五图表方案">五、图表方案</h2>
+<h3 id="51-选型结论">5.1 选型结论</h3>
+<table>
+<thead><tr>
+<th>图表类型</th>
+<th>库</th>
+<th>原因</th>
+</tr></thead>
+<tbody>
+<tr><td><strong>K线主图</strong></td><td><strong>DGCharts</strong>（原 ios-charts）</td><td>免费开源、Apache 2.0、散户级够用</td></tr>
+<tr><td><strong>收益曲线</strong></td><td>Swift Charts</td><td>系统原生、声明式、与 SwiftUI 配合好</td></tr>
+<tr><td><strong>分类饼图</strong></td><td>Swift Charts</td><td>简单、原生</td></tr>
+<tr><td><strong>相关性热力图</strong></td><td>DGCharts 或自研 Canvas</td><td>Swift Charts 无热力图</td></tr>
+<tr><td><strong>评分雷达图</strong></td><td>DGCharts</td><td>原生支持 RadarChart</td></tr>
+</tbody></table>
+<p><strong>为什么不选 TradingView iOS：</strong> 需要商业授权付费，预算不允许。DGCharts GitHub 27k+ stars，社区成熟。</p>
+<h3 id="52-k线图表关键配置">5.2 K线图表关键配置</h3>
+<pre><code class="language-swift">struct KLineChartView: UIViewRepresentable {
+    let candles: [Candle]
+    @Binding var crosshairDate: Date?
+    
+    func makeUIView(context: Context) -&gt; CandleChartView {
+        let view = CandleChartView()
+        view.delegate = context.coordinator
+        
+        // 主题
+        view.backgroundColor = UIColor(hex: "#0a0a0a")
+        view.gridBackgroundColor = .clear
+        view.borderColor = UIColor(hex: "#1f1f1f")
+        
+        // A股红涨绿跌
+        view.candleData?.increasingColor = UIColor(hex: "#ef4444")
+        view.candleData?.decreasingColor = UIColor(hex: "#22c55e")
+        view.candleData?.shadowColorSameAsCandle = true
+        
+        // 手势
+        view.pinchZoomEnabled = true
+        view.doubleTapToZoomEnabled = true
+        view.dragEnabled = true
+        
+        // 时间周期选择器
+        view.timeframes = [.day, .week, .month]
+        
+        return view
+    }
+    
+    func updateUIView(_ uiView: CandleChartView, context: Context) {
+        let dataSet = candles.toCandleChartDataSet()
+        uiView.data = CombinedChartData.combinedData(from: dataSet)
+        uiView.notifyDataSetChanged()
+    }
+}
+</code></pre>
+<h3 id="53-dgcharts-性能调优">5.3 DGCharts 性能调优</h3>
+<table>
+<thead><tr>
+<th>场景</th>
+<th>优化</th>
+</tr></thead>
+<tbody>
+<tr><td>日线 &gt; 1000 根</td><td>页面加载限制 252 根（1年），按需加载更早数据</td></tr>
+<tr><td>缩小时</td><td>合并数据点（OHLC 聚合）</td></tr>
+<tr><td>滑动时</td><td>只绘制可见区域</td></tr>
+<tr><td>多指标叠加</td><td>主图最多 3 条 MA，副图最多 2 个指标</td></tr>
+</tbody></table>
+<h3 id="54-辅助图表swift-charts">5.4 辅助图表（Swift Charts）</h3>
+<p>收益曲线示例：</p>
+<pre><code class="language-swift">struct ReturnCurveChart: View {
+    let series: [ReturnSeries]
+    
+    var body: some View {
+        Chart {
+            ForEach(series) { s in
+                ForEach(s.dataPoints) { point in
+                    LineMark(
+                        x: .value("日期", point.date),
+                        y: .value("收益", point.value)
+                    )
+                    .foregroundStyle(by: .value("标的", s.name))
+                }
+            }
+        }
+        .chartForegroundStyleScale([
+            "标的A": Color(hex: "#22d3ee"),
+            "标的B": Color(hex: "#555555")
+        ])
+        .chartXAxis { AxisMarks(values: .automatic(desiredCount: 6)) }
+    }
+}
+</code></pre>
+<hr>
+<h2 id="六实时行情与离线缓存">六、实时行情与离线缓存</h2>
+<h3 id="61-架构概览">6.1 架构概览</h3>
+<pre><code>┌──────────────┐    SSE（实时价格）     ┌──────────────┐
 │   iOS App    │ ◄──────────────────►   │   FastAPI    │
 │              │    REST（历史K线）       │   Backend    │
 │ ┌──────────┐ │                        │              │
-│ │  GRDB    │ │◄── 后台定时同步 ──────► │  Market      │
-│ │ (本地DB) │ │                        │  Service     │
-│ └────┬─────┘ │                        │              │
-│      │ read  │                        │  SSE Stream  │
-│ ┌────┴─────┐ │                        └──────────────┘
-│ │ SwiftUI  │ │
-│ │   View   │ │
-│ └──────────┘ │
-└──────────────┘</code></pre>
-
-<h3>数据分层与同步</h3>
+│ │  GRDB    │ │◄── 后台定时同步 ──────► │  ┌─────────┐ │
+│ │ (本地DB) │ │                        │  │ Market   │ │
+│ └────┬─────┘ │                        │  │ Service  │ │
+│      │ read  │                        │  └─────────┘ │
+│ ┌────┴─────┐ │                        │              │
+│ │ SwiftUI  │ │                        │  ┌─────────┐ │
+│ │   View   │ │                        │  │ SSE      │ │
+│ └──────────┘ │                        │  │ Stream   │ │
+└──────────────┘                        └──────────────┘
+</code></pre>
+<h3 id="62-数据分层">6.2 数据分层</h3>
 <table>
-  <tr><th>数据</th><th>存储</th><th>更新频率</th><th>离线可用</th></tr>
-  <tr><td>历史 K线</td><td>GRDB</td><td>每天 1 次</td><td>✅</td></tr>
-  <tr><td>当日分时</td><td>GRDB + 内存</td><td>1-5s</td><td>⚠️ 有限</td></tr>
-  <tr><td>最新快照</td><td>内存</td><td>1-5s</td><td>❌</td></tr>
-  <tr><td>标的元数据</td><td>GRDB</td><td>每天 1 次</td><td>✅</td></tr>
-  <tr><td>收藏/池子</td><td>GRDB</td><td>即时</td><td>✅</td></tr>
-  <tr><td>评分/指标</td><td>GRDB</td><td>每天 1 次</td><td>✅</td></tr>
-  <tr><td>AI 笔记</td><td>GRDB</td><td>打开时刷新</td><td>✅</td></tr>
-</table>
+<thead><tr>
+<th>数据类型</th>
+<th>存储位置</th>
+<th>更新频率</th>
+<th>离线可用</th>
+</tr></thead>
+<tbody>
+<tr><td>历史 K线（日/周/月）</td><td>GRDB</td><td>每天 1 次</td><td>✅</td></tr>
+<tr><td>当日分时</td><td>GRDB + 内存</td><td>交易时段 1-5s</td><td>⚠️ 有限</td></tr>
+<tr><td>最新快照</td><td>内存</td><td>交易时段 1-5s</td><td>❌</td></tr>
+<tr><td>标的元数据</td><td>GRDB</td><td>每天 1 次</td><td>✅</td></tr>
+<tr><td>用户收藏</td><td>GRDB</td><td>即时</td><td>✅</td></tr>
+<tr><td>标的池</td><td>GRDB</td><td>即时</td><td>✅</td></tr>
+<tr><td>评分/指标</td><td>GRDB</td><td>每天 1 次</td><td>✅</td></tr>
+<tr><td>AI 研究笔记</td><td>GRDB</td><td>打开时刷新</td><td>✅</td></tr>
+<tr><td>聊天消息</td><td>GRDB</td><td>实时</td><td>✅</td></tr>
+</tbody></table>
+<h3 id="63-grdb-表结构">6.3 GRDB 表结构</h3>
+<pre><code class="language-sql">CREATE TABLE instruments (
+    code TEXT PRIMARY KEY,
+    market TEXT NOT NULL,
+    name TEXT NOT NULL,
+    category TEXT,
+    instrumentType TEXT,
+    fundManager TEXT,
+    underlyingIndex TEXT,
+    fundSize REAL,
+    marketCap REAL,
+    updatedAt INTEGER NOT NULL,
+    syncStatus INTEGER NOT NULL DEFAULT 0
+);
 
-<h3>SSE 推送协议</h3>
-<pre><code>GET /api/v1/stream/prices?codes=510300,159915
+CREATE TABLE candles (
+    code TEXT NOT NULL,
+    market TEXT NOT NULL,
+    timeframe TEXT NOT NULL,
+    timestamp INTEGER NOT NULL,
+    open REAL NOT NULL,
+    high REAL NOT NULL,
+    low REAL NOT NULL,
+    close REAL NOT NULL,
+    volume REAL NOT NULL,
+    PRIMARY KEY (code, market, timeframe, timestamp)
+) WITHOUT ROWID;
 
-data: {"code":"510300","price":3.845,"change_pct":0.32,"volume":123456789}
-data: {"code":"159915","price":4.210,"change_pct":-0.15,"volume":98765432}</code></pre>
+CREATE TABLE snapshots (
+    code TEXT PRIMARY KEY,
+    market TEXT NOT NULL,
+    price REAL NOT NULL,
+    changePct REAL NOT NULL,
+    volume REAL NOT NULL,
+    updatedAt INTEGER NOT NULL
+);
 
-<h2 id="s7">七、数据同步策略</h2>
+CREATE TABLE favorites (
+    code TEXT PRIMARY KEY,
+    createdAt INTEGER NOT NULL,
+    syncStatus INTEGER NOT NULL DEFAULT 0
+);
 
-<h3>核心原则</h3>
+CREATE TABLE pools (
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL,
+    description TEXT,
+    memberCount INTEGER NOT NULL,
+    updatedAt INTEGER NOT NULL,
+    syncStatus INTEGER NOT NULL DEFAULT 0
+);
+</code></pre>
+<h3 id="64-sse-实时推送">6.4 SSE 实时推送</h3>
+<pre><code>GET /api/v1/stream/prices?codes=510300,159915,510050
+Content-Type: text/event-stream
+
+data: {"type":"price_update","code":"510300","price":3.845,"change_pct":0.32,"volume":123456789,"timestamp":1762054200000}
+data: {"type":"price_update","code":"159915","price":4.210,"change_pct":-0.15,"volume":98765432,"timestamp":1762054201000}
+</code></pre>
+<p>iOS 端：</p>
+<pre><code class="language-swift">final class PriceStream {
+    static let shared = PriceStream()
+    private var urlSession: URLSession?
+    
+    func connect(codes: [String]) {
+        let url = URL(string: "\(Constants.apiBaseURL)/stream/prices?codes=\(codes.joined(separator: ","))")!
+        var request = URLRequest(url: url)
+        request.setValue("Bearer \(keychain.accessToken ?? "")", forHTTPHeaderField: "Authorization")
+        
+        // SSE 自动处理重连
+        urlSession = URLSession(configuration: .default, delegate: SSEDelegate(), delegateQueue: .main)
+        urlSession?.dataTask(with: request).resume()
+    }
+    
+    // 逐行解析 SSE
+    func onEvent(_ data: Data) {
+        guard let snapshot = try? JSONDecoder().decode(SnapshotDTO.self, from: data) else { return }
+        Task {
+            await PriceStore.shared.update(snapshot.toDomain())
+        }
+    }
+}
+</code></pre>
+<hr>
+<h2 id="七数据同步策略">七、数据同步策略</h2>
+<h3 id="71-核心原则">7.1 核心原则</h3>
 <ol>
-  <li><strong>本地优先展示</strong> — 打开 App 永远有数据</li>
-  <li><strong>后台静默刷新</strong> — 不阻塞用户操作</li>
-  <li><strong>乐观更新</strong> — 收藏/编辑等操作立即反馈</li>
-  <li><strong>自动重试</strong> — 网络恢复后自动同步 pending</li>
-  <li><strong>冲突用时间戳</strong> — 最后修改时间胜出</li>
-  <li><strong>定期清理</strong> — 防止数据库膨胀</li>
+<li><strong>本地优先展示</strong> — 打开 App 永远有数据看</li>
+<li><strong>后台静默刷新</strong> — 不阻塞用户操作</li>
+<li><strong>乐观更新</strong> — 收藏/编辑等操作立即反馈</li>
+<li><strong>自动重试</strong> — 网络恢复后自动同步 pending</li>
+<li><strong>冲突用时间戳解决</strong> — 简单可靠</li>
+<li><strong>定期清理</strong> — 防止数据库无限膨胀</li>
 </ol>
-
-<h2 id="s8">八、商业化与 App Store</h2>
-
-<h3>订阅策略</h3>
-<table>
-  <tr><th>等级</th><th>价格</th><th>功能</th></tr>
-  <tr><td>免费版</td><td>¥0</td><td>基础行情、标的列表、3条评分</td></tr>
-  <tr><td>Pro 版</td><td>¥18-38/月</td><td>全部评分、高级筛选、回测、AI 笔记</td></tr>
-  <tr><td>机构版</td><td>联系销售</td><td>API 接入、自定义策略、白标</td></tr>
-</table>
-
-<h3>审核关键</h3>
+<h3 id="72-同步状态">7.2 同步状态</h3>
+<pre><code class="language-swift">enum SyncStatus: Int {
+    case synced = 0      // 已同步
+    case pending = 1     // 本地修改，待推送
+    case conflict = 2    // 同步冲突
+}
+</code></pre>
+<h3 id="73-收藏同步示例">7.3 收藏同步示例</h3>
+<pre><code class="language-swift">func toggleFavorite(code: String) async throws {
+    // 1. 乐观更新本地
+    let isFav = try repo.isFavorite(code: code)
+    if isFav {
+        try repo.delete(code: code)
+    } else {
+        try repo.save(code: code, status: .pending)
+    }
+    
+    // 2. 通知 UI 立刻更新
+    await MainActor.run {
+        NotificationCenter.default.post(name: .favoritesDidChange, object: nil)
+    }
+    
+    // 3. 后台推送到服务器
+    Task.detached(priority: .background) {
+        do {
+            if isFav {
+                try await FavoriteService.shared.remove(code: code)
+            } else {
+                try await FavoriteService.shared.add(code: code)
+            }
+            try repo.markSynced(code: code)
+        } catch {
+            // 失败保持 pending，SyncManager 自动重试
+        }
+    }
+}
+</code></pre>
+<h3 id="74-冲突解决">7.4 冲突解决</h3>
 <ul>
-  <li>产品定位："数据分析工具"，不是"投资建议"</li>
-  <li>所有页面标注"仅供参考，不构成投资建议"</li>
-  <li>AI 生成内容标注"AI 生成，需人工复核"</li>
-  <li>不承诺任何收益率</li>
+<li><strong>收藏/关注：</strong> 以服务器为准，服务器是 Single Source of Truth</li>
+<li><strong>池子权重：</strong> 比较 <code>updatedAt</code>，最后修改时间胜出</li>
 </ul>
-
-<h3>上线路径</h3>
-<ol>
-  <li>TestFlight 内测（1-3 个月）</li>
-  <li>App Store 香港/美国区上架</li>
-  <li>增加内购订阅</li>
-  <li>中国大陆区上架（视备案进展）</li>
-</ol>
-
-<h2 id="s9">九、开发排期（8 周 MVP）</h2>
-
+<h3 id="75-后台刷新ios-background-fetch">7.5 后台刷新（iOS Background Fetch）</h3>
+<pre><code class="language-swift">// AppDelegate
+func application(_ application: UIApplication, performFetchWithCompletionHandler completionHandler: @escaping (UIBackgroundFetchResult) -&gt; Void) {
+    Task {
+        do {
+            try await SyncManager.shared.backgroundSync()
+            completionHandler(.newData)
+        } catch {
+            completionHandler(.failed)
+        }
+    }
+}
+</code></pre>
+<h3 id="76-锁屏组件widget">7.6 锁屏组件（Widget）</h3>
+<pre><code class="language-swift">// 自选标的桌面 Widget
+struct WatchlistWidget: Widget {
+    var body: some WidgetConfiguration {
+        StaticConfiguration(kind: "Watchlist", provider: WatchlistProvider()) { entry in
+            WatchlistView(entry: entry)
+        }
+        .configurationDisplayName("自选标的")
+        .description("快速查看关注标的最新价格")
+        .supportedFamilies([.systemSmall, .systemMedium, .systemLarge])
+    }
+}
+</code></pre>
+<hr>
+<h2 id="八商业化与-app-store">八、商业化与 App Store</h2>
+<h3 id="81-商业模式">8.1 商业模式</h3>
 <table>
-  <tr><th>周次</th><th>目标</th><th>产出</th></tr>
-  <tr><td>W1</td><td>工程搭建 + 网络层</td><td>Xcode 项目、Alamofire、AuthInterceptor、Keychain</td></tr>
-  <tr><td>W2</td><td>登录 + 首页</td><td>登录页、统计卡片、评分 Top10</td></tr>
-  <tr><td>W3</td><td>标的列表 + 筛选器</td><td>搜索、筛选、本地缓存</td></tr>
-  <tr><td>W4</td><td>标的详情 + K线</td><td>DGCharts K线、关键指标卡片</td></tr>
-  <tr><td>W5</td><td>池子列表 + 详情</td><td>池子成员、权重、收益分析</td></tr>
-  <tr><td>W6</td><td>AI 笔记 + 收藏</td><td>Research 页面、收藏 toggle</td></tr>
-  <tr><td>W7</td><td>推送 + 我的页面</td><td>APNs、设备注册、设置</td></tr>
-  <tr><td>W8</td><td>测试 + 优化</td><td>离线体验、UI 打磨、TestFlight</td></tr>
-</table>
-
-<p><strong>砍掉的功能（第二阶段）：</strong> 全市场筛选器、回测创建/管理、策略管理、相关性分析、板块轮动、管理员功能</p>
-
-<h2 id="s10">十、后端改造清单</h2>
-
+<thead><tr>
+<th>等级</th>
+<th>价格</th>
+<th>功能</th>
+</tr></thead>
+<tbody>
+<tr><td><strong>免费版</strong></td><td>¥0</td><td>查看基础行情、标的列表、3条评分</td></tr>
+<tr><td><strong>Pro 版</strong></td><td>¥18-38/月 或 ¥198-398/年</td><td>全部评分、高级筛选、回测、AI 笔记、无广告</td></tr>
+<tr><td><strong>机构版</strong></td><td>联系销售</td><td>API 接入、自定义策略、白标</td></tr>
+</tbody></table>
+<h3 id="82-storekit-2-实现">8.2 StoreKit 2 实现</h3>
+<pre><code class="language-swift">@MainActor
+class StoreManager: ObservableObject {
+    @Published var products: [Product] = []
+    @Published var isSubscribed = false
+    
+    init() { Task { await listenForTransactions() } }
+    
+    func loadProducts() async {
+        products = try? await Product.products(for: [
+            "com.alloyresearch.pro.monthly",
+            "com.alloyresearch.pro.yearly"
+        ])
+    }
+    
+    func purchase(_ product: Product) async throws {
+        let result = try await product.purchase()
+        if case .success(let verification) = result {
+            let transaction = try verification.payloadValue
+            // 传给后端验证
+            try await AuthService.shared.verifyPurchase(transactionID: String(transaction.id))
+            isSubscribed = true
+            await transaction.finish()
+        }
+    }
+}
+</code></pre>
+<h3 id="83-app-store-审核关键">8.3 App Store 审核关键</h3>
 <table>
-  <tr><th>优先级</th><th>改造项</th><th>估算</th></tr>
-  <tr><td>P0</td><td>Refresh Token + /auth/refresh</td><td>3-5 天</td></tr>
-  <tr><td>P0</td><td>Token 黑名单（Redis）</td><td>1-2 天</td></tr>
-  <tr><td>P0</td><td>设备绑定表 + API</td><td>2-3 天</td></tr>
-  <tr><td>P1</td><td>SSE 价格流端点</td><td>5-7 天</td></tr>
-  <tr><td>P1</td><td>批量快照接口</td><td>1-2 天</td></tr>
-  <tr><td>P1</td><td>API 分页统一</td><td>2-3 天</td></tr>
-  <tr><td>P2</td><td>APNs 推送集成</td><td>3-5 天</td></tr>
-  <tr><td>P2</td><td>增量接口（ETag/since）</td><td>2-3 天</td></tr>
-  <tr><td>P2</td><td>PDF 报告导出</td><td>2-3 天</td></tr>
-</table>
+<thead><tr>
+<th>风险点</th>
+<th>规避方法</th>
+</tr></thead>
+<tbody>
+<tr><td><strong>提供投资建议</strong></td><td>产品定位"数据分析工具"，所有页面标注"仅供参考，不构成投资建议"</td></tr>
+<tr><td><strong>AI 生成内容</strong></td><td>标注"AI 生成，需人工复核，不构成投资建议"</td></tr>
+<tr><td><strong>诱导付费</strong></td><td>不承诺收益率</td></tr>
+<tr><td><strong>数据合规</strong></td><td>提供隐私政策 URL、账号注销功能</td></tr>
+</tbody></table>
+<h3 id="84-需要准备的材料">8.4 需要准备的材料</h3>
+<ul>
+<li>[ ] 隐私政策（Privacy Policy）URL</li>
+<li>[ ] 用户协议（Terms of Service）URL</li>
+<li>[ ] 免责声明文案</li>
+<li>[ ] App 截图（6 张）</li>
+<li>[ ] 审核说明（测试账号、功能说明）</li>
+<li>[ ] App 备案（中国区）</li>
+<li>[ ] ICP 备案（如在中国大陆）</li>
+</ul>
+<h3 id="85-上线路径">8.5 上线路径</h3>
+<pre><code>阶段 1：TestFlight 内测（1-3 个月）
+  → 收集反馈、修复 bug、验证留存
 
+阶段 2：App Store 香港/美国区上架（3-6 个月）
+  → 免费下载、积累用户、验证付费意愿
+
+阶段 3：增加内购订阅（6-12 个月）
+  → StoreKit 2 集成、后端验证
+
+阶段 4：中国大陆区上架（视备案进展）
+  → 需要 App 备案 + 金融信息服务资质准备
+</code></pre>
+<hr>
+<h2 id="九开发排期">九、开发排期</h2>
+<h3 id="mvp-范围8-周">MVP 范围（8 周）</h3>
+<p><strong>四个 Tab：首页 / 标的 / 池子 / 我的</strong></p>
+<table>
+<thead><tr>
+<th>周次</th>
+<th>目标</th>
+<th>产出</th>
+</tr></thead>
+<tbody>
+<tr><td><strong>W1</strong></td><td>工程搭建 + 网络层</td><td>Xcode 项目、Alamofire 配置、AuthInterceptor、Keychain</td></tr>
+<tr><td><strong>W2</strong></td><td>登录 + 首页 Dashboard</td><td>登录页、统计卡片、评分 Top10 列表</td></tr>
+<tr><td><strong>W3</strong></td><td>标的列表 + 筛选器</td><td>搜索、市场/分类/类型筛选、本地缓存</td></tr>
+<tr><td><strong>W4</strong></td><td>标的详情 + K线</td><td>DGCharts 集成、K线图、关键指标卡片</td></tr>
+<tr><td><strong>W5</strong></td><td>池子列表 + 详情</td><td>池子成员、权重展示、收益分析</td></tr>
+<tr><td><strong>W6</strong></td><td>AI 研究笔记 + 收藏</td><td>Research 页面、收藏 toggle、收藏列表</td></tr>
+<tr><td><strong>W7</strong></td><td>推送 + 我的页面</td><td>APNs 集成、设备注册、设置页、关于页</td></tr>
+<tr><td><strong>W8</strong></td><td>测试 + 性能优化</td><td>离线体验、UI 打磨、TestFlight 上架准备</td></tr>
+</tbody></table>
+<h3 id="砍掉的功能第二阶段">砍掉的功能（第二阶段）</h3>
+<ul>
+<li>全市场筛选器（表单复杂，移动端场景待验证）</li>
+<li>回测创建/管理（参数多，输入体验差）</li>
+<li>策略管理（偏后台配置）</li>
+<li>相关性分析（需要大屏热力图）</li>
+<li>板块轮动（可后续卡片形式简化）</li>
+<li>管理员功能（APP 面向用户，非管理员）</li>
+</ul>
+<hr>
+<h2 id="十后端改造清单">十、后端改造清单</h2>
+<h3 id="101-mvp-必须做blocker">10.1 MVP 必须做（blocker）</h3>
+<blockquote>
+<p>2026-07-21 核实：P0 三项与 SSE 价格流、APNs 推送均已在后端落地。</p>
+</blockquote>
+<table>
+<thead><tr>
+<th>优先级</th>
+<th>改造项</th>
+<th>状态</th>
+<th>说明</th>
+</tr></thead>
+<tbody>
+<tr><td>P0</td><td><strong>Refresh Token + 刷新端点</strong></td><td>✅ 已完成</td><td><code>POST /api/v1/auth/refresh</code>（rotation）；<code>/auth/login</code> 返回 refresh_token</td></tr>
+<tr><td>P0</td><td><strong>Token 黑名单（登出用）</strong></td><td>✅ 已完成</td><td><code>POST /api/v1/auth/logout</code>，Redis 存失效 jti</td></tr>
+<tr><td>P0</td><td><strong>设备绑定表 + API</strong></td><td>✅ 已完成</td><td><code>UserDevice</code> 模型 + <code>/api/v1/auth/devices</code> CRUD</td></tr>
+<tr><td>P1</td><td><strong>SSE 价格流端点</strong></td><td>✅ 已完成</td><td><code>GET /api/v1/stream/prices?codes=...</code>（3s 推送，<code>app/api/v1/stream.py</code>）</td></tr>
+<tr><td>P1</td><td><strong>批量快照接口</strong></td><td>✅ 已完成</td><td><code>GET /api/v1/market-data/snapshot?codes=...</code>（支持多 code）</td></tr>
+<tr><td>P1</td><td><strong>API 分页统一</strong></td><td>待做（2-3 天）</td><td><code>page</code>/<code>page_size</code> 标准化</td></tr>
+<tr><td>P2</td><td><strong>APNs 推送集成</strong></td><td>✅ 已完成</td><td><code>app/services/push_service.py</code>；价格预警、信号通知、报告生成通知（需配置 <code>APNS_*</code> 环境变量）</td></tr>
+</tbody></table>
+<h3 id="102-建议做体验提升">10.2 建议做（体验提升）</h3>
+<table>
+<thead><tr>
+<th>改造项</th>
+<th>工作量</th>
+<th>说明</th>
+</tr></thead>
+<tbody>
+<tr><td><strong>增量接口</strong></td><td>2-3 天</td><td><code>GET /etfs?since=...</code> 用 <code>updated_at</code> 过滤</td></tr>
+<tr><td><strong>ETag 支持</strong></td><td>1-2 天</td><td>避免重复传输全量数据</td></tr>
+<tr><td><strong>PDF 报告导出</strong></td><td>2-3 天</td><td>WeasyPrint 或用 Playwright 截图</td></tr>
+<tr><td><strong>订阅验证 API</strong></td><td>1-2 天</td><td>Apple App Store Server API 对接</td></tr>
+</tbody></table>
+<hr>
+<h2 id="附录-a与-web-端的功能对照">附录 A：与 Web 端的功能对照</h2>
+<table>
+<thead><tr>
+<th>功能</th>
+<th>Web 实现</th>
+<th>iOS 实现</th>
+</tr></thead>
+<tbody>
+<tr><td>K线图</td><td><code>lightweight-charts</code></td><td>DGCharts</td></tr>
+<tr><td>收益曲线</td><td>ECharts</td><td>Swift Charts</td></tr>
+<tr><td>饼图</td><td>ECharts</td><td>Swift Charts</td></tr>
+<tr><td>热力图</td><td>ECharts</td><td>DGCharts / 自研</td></tr>
+<tr><td>雷达图</td><td>ECharts</td><td>DGCharts</td></tr>
+<tr><td>表格</td><td>Ant Design <code>Table</code></td><td>SwiftUI <code>List</code></td></tr>
+<tr><td>表单</td><td>Ant Design <code>Form</code></td><td>SwiftUI <code>Form</code></td></tr>
+<tr><td>导航</td><td><code>react-router-dom</code></td><td><code>NavigationStack</code></td></tr>
+<tr><td>状态管理</td><td>zustand</td><td><code>@Observable</code> / <code>@Published</code></td></tr>
+<tr><td>数据获取</td><td>React Query</td><td>async/await</td></tr>
+<tr><td>Token 存储</td><td>localStorage</td><td>Keychain</td></tr>
+<tr><td>推送</td><td>Webhook / SMTP</td><td>APNs</td></tr>
+</tbody></table>
+<h2 id="附录-bweb-端-api-到-ios-service-映射">附录 B：Web 端 API 到 iOS Service 映射</h2>
+<table>
+<thead><tr>
+<th>Web API 文件</th>
+<th>iOS Service 文件</th>
+<th>主要端点</th>
+</tr></thead>
+<tbody>
+<tr><td><code>web/src/api/auth.ts</code></td><td><code>Services/API/AuthService.swift</code></td><td>login, me, refresh, logout, device</td></tr>
+<tr><td><code>web/src/api/etf.ts</code></td><td><code>Services/API/ETFService.swift</code></td><td>list, detail, categories, markets</td></tr>
+<tr><td><code>web/src/api/market.ts</code></td><td><code>Services/API/MarketDataService.swift</code></td><td>history, snapshot, intraday</td></tr>
+<tr><td><code>web/src/api/pool.ts</code></td><td><code>Services/API/PoolService.swift</code></td><td>CRUD, members, weights, snapshots</td></tr>
+<tr><td><code>web/src/api/score.ts</code></td><td><code>Services/API/ScoreService.swift</code></td><td>scores, detail, templates</td></tr>
+<tr><td><code>web/src/api/screen.ts</code></td><td><code>Services/API/ScreenService.swift</code></td><td>screen, presets, categories</td></tr>
+<tr><td><code>web/src/api/favorite.ts</code></td><td><code>Services/API/FavoriteService.swift</code></td><td>list, toggle</td></tr>
+<tr><td><code>web/src/api/research.ts</code></td><td><code>Services/API/ResearchService.swift</code></td><td>notes, sentiment</td></tr>
+<tr><td><code>web/src/api/chat.ts</code></td><td><code>Services/API/ChatService.swift</code></td><td>sessions, messages</td></tr>
+<tr><td><code>web/src/api/backtest.ts</code></td><td><code>Services/API/BacktestService.swift</code></td><td>list, detail, create</td></tr>
+<tr><td><code>web/src/api/signal.ts</code></td><td><code>Services/API/SignalService.swift</code></td><td>list, latest, generate</td></tr>
+<tr><td><code>web/src/api/notification.ts</code></td><td><code>Services/API/NotificationService.swift</code></td><td>configs CRUD, logs</td></tr>
+</tbody></table>
 </body>
 </html>

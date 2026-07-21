@@ -118,7 +118,8 @@
   <div class="container">
     <h1>用户账号启用与登录方式说明</h1>
     <div class="meta">
-      记录当前 AD-Research 平台的账号体系、启用流程和登录校验逻辑。更新日期：2026-06-24
+      记录当前 AD-Research 平台的账号体系、启用流程和登录校验逻辑。<br>
+      更新日期：2026-06-24 · 最后核实更新：2026-07-21
     </div>
 
     <h2>1. 账号存储位置</h2>
@@ -164,53 +165,72 @@
     <pre><code>POST /api/v1/auth/login</code></pre>
     <p>后端逻辑（见 <code>app/api/v1/auth.py</code>）：</p>
     <ol>
+      <li><strong>登录限流</strong>（P0-5，2026-07-16 加入）：Redis 计数，5 次/IP/分钟 + 20 次/用户名/小时，超限返回 429（带 <code>Retry-After</code> 头）</li>
       <li>根据 <code>username</code> 查 <code>users</code> 表</li>
-      <li>用 bcrypt 校验密码</li>
+      <li>用 bcrypt 校验密码，失败返回 401 <code>Invalid credentials</code></li>
       <li>检查 <code>is_active</code>：
         <ul>
           <li><code>false</code> → 返回 401 <code>User is inactive</code></li>
-          <li><code>true</code> → 生成 JWT token 返回</li>
+          <li><code>true</code> → 签发<strong>双 token</strong>并返回</li>
         </ul>
       </li>
-      <li>前端把 token 存到 <code>localStorage</code>，后续请求带 <code>Authorization: Bearer &lt;token&gt;</code></li>
+      <li>前端把两个 token 存到 <code>localStorage</code>（<code>token</code> / <code>refresh_token</code>），后续请求带 <code>Authorization: Bearer &lt;access_token&gt;</code></li>
     </ol>
+    <p><strong>Token 模型</strong>（2026-07 改为双 token，此前是单 JWT）：</p>
+    <ul>
+      <li><code>access_token</code>：短寿命 JWT，<strong>15 分钟</strong>（<code>auth.py</code> 中 <code>ACCESS_TOKEN_MINUTES</code> 硬编码），payload 含 <code>jti</code> 用于注销吊销</li>
+      <li><code>refresh_token</code>：长寿命不透明随机串，<strong>30 天</strong>，数据库 <code>refresh_tokens</code> 表只存 SHA-256 哈希</li>
+      <li><code>POST /api/v1/auth/refresh</code>：用 refresh token 换新 access token，并<strong>轮换</strong> refresh token（旧的一次性作废）</li>
+      <li><code>POST /api/v1/auth/logout</code>：把当前 access token 的 <code>jti</code> 写入 Redis 黑名单（TTL = 剩余有效期），<code>get_current_user</code> 每次请求都查黑名单</li>
+      <li>前端 axios 拦截器（<code>web/src/api/client.ts</code>）在 401 时自动用 refresh token 换新 token 并重试，用户无感</li>
+    </ul>
     <p>JWT payload 包含：</p>
     <pre><code>{
   "sub": "username",
   "role": "admin|user",
+  "jti": "吊销用唯一 ID",
+  "iat": "签发时间",
   "exp": "过期时间"
 }</code></pre>
-    <p>Token 过期时间由 <code>AUTH_ACCESS_TOKEN_EXPIRE_MINUTES</code> 控制，默认 1 天。</p>
+    <div class="notice">
+      <strong>注意：</strong><code>AUTH_ACCESS_TOKEN_EXPIRE_MINUTES</code> 环境变量（<code>AuthSettings</code>，默认 1440）目前<strong>没有被登录链路使用</strong>——access token 的 15 分钟是 <code>auth.py</code> 里的常量。改这个 env 不会改变 token 有效期。
+    </div>
 
     <h2>5. 禁用账号的效果</h2>
-    <p>把用户的 <code>is_active</code> 改成 <code>false</code> 后：</p>
+    <p>把用户的 <code>is_active</code> 改成 <code>false</code> 后<strong>立即生效</strong>：</p>
     <ul>
-      <li>该用户<strong>下次登录</strong>会返回 401 <code>User is inactive</code></li>
-      <li>如果该用户<strong>已登录且 token 未过期</strong>，前端 <code>/me</code> 接口目前仍会返回用户信息（token 校验阶段未检查 <code>is_active</code>）</li>
+      <li>该用户<strong>下次登录</strong>返回 401 <code>User is inactive</code></li>
+      <li>该用户<strong>已持有的 access token 也会立刻失效</strong>：<code>app/api/deps.py</code> 的 <code>get_current_user</code> 在每次请求校验 JWT 后都会查库并检查 <code>is_active</code>（不满足返回 401 <code>Invalid or inactive user</code>）——2026-07 前这里不查库，旧文档中"token 校验阶段未检查 is_active"的说明已过时</li>
+      <li><code>POST /auth/refresh</code> 同样检查 <code>is_active</code>，被禁用用户无法续期</li>
     </ul>
     <div class="notice">
-      <strong>注意：</strong> 如需禁用立即生效（踢掉已登录用户），需要在 <code>app/api/deps.py</code> 的 <code>get_current_user</code> 依赖中增加 <code>is_active</code> 检查。
+      另：<code>admin_users</code> 写路径有"至少保留一个启用 admin"保护（<code>app/api/deps.py</code> 的 <code>assert_would_keep_at_least_one_admin</code>），降级/禁用最后一个 admin 会返回 409。
     </div>
 
     <h2>6. 相关文件</h2>
     <table>
       <tr><th>文件</th><th>说明</th></tr>
       <tr><td><code>app/models/user.py</code></td><td>User 表模型</td></tr>
-      <tr><td><code>app/api/v1/auth.py</code></td><td>登录、/me 接口</td></tr>
+      <tr><td><code>app/models/refresh_token.py</code></td><td>Refresh token 表（SHA-256 哈希存储，支持轮换/吊销）</td></tr>
+      <tr><td><code>app/models/user_device.py</code></td><td>用户设备表（登录后可登记设备，用于推送）</td></tr>
+      <tr><td><code>app/api/v1/auth.py</code></td><td>登录、/me、/refresh、/logout、/devices 接口</td></tr>
       <tr><td><code>app/api/v1/admin_users.py</code></td><td>管理员用户管理 CRUD</td></tr>
-      <tr><td><code>app/api/deps.py</code></td><td><code>get_current_user</code>、<code>require_admin</code> 依赖</td></tr>
-      <tr><td><code>app/schemas/user.py</code></td><td>用户管理相关 Pydantic Schema</td></tr>
-      <tr><td><code>app/config.py</code></td><td><code>AuthSettings</code>（<code>AUTH_ADMIN_USERNAME</code> / <code>AUTH_ADMIN_PASSWORD</code>）</td></tr>
-      <tr><td><code>scripts/seed_users.py</code></td><td>初始化管理员脚本</td></tr>
+      <tr><td><code>app/api/deps.py</code></td><td><code>get_current_user</code>（含 is_active 检查）、<code>require_admin</code> 依赖</td></tr>
+      <tr><td><code>app/core/rate_limit.py</code></td><td>登录限流（Redis）</td></tr>
+      <tr><td><code>app/schemas/user.py</code> / <code>app/schemas/auth.py</code></td><td>用户管理与认证相关 Pydantic Schema</td></tr>
+      <tr><td><code>app/config.py</code></td><td><code>AuthSettings</code>（<code>AUTH_ADMIN_USERNAME</code> / <code>AUTH_ADMIN_PASSWORD</code> / <code>AUTH_SECRET_KEY</code>）</td></tr>
+      <tr><td><code>scripts/seed_users.py</code></td><td>初始化管理员脚本（幂等，已存在则跳过）</td></tr>
       <tr><td><code>scripts/create_user.py</code></td><td>命令行创建用户脚本</td></tr>
+      <tr><td><code>scripts/reset_user_password.py</code></td><td>命令行重置密码脚本</td></tr>
       <tr><td><code>web/src/pages/AdminUsers/index.tsx</code></td><td>用户管理前端页面</td></tr>
-      <tr><td><code>web/src/App.tsx</code></td><td>管理员路由守卫</td></tr>
+      <tr><td><code>web/src/App.tsx</code> / <code>web/src/routes.tsx</code></td><td>管理员路由守卫（<code>AdminRouteGuard</code>，<code>/admin/users</code>）</td></tr>
+      <tr><td><code>web/src/api/client.ts</code></td><td>axios 拦截器：401 自动 refresh 重试</td></tr>
     </table>
 
     <h2>7. 安全建议</h2>
     <ul>
       <li>生产环境务必设置强密码的 <code>AUTH_ADMIN_PASSWORD</code></li>
-      <li><code>AUTH_SECRET_KEY</code> 必须替换默认值</li>
+      <li><code>AUTH_SECRET_KEY</code> 必须替换默认值——已有强制校验（P0-7，2026-07-16）：非 <code>development</code> 环境下，弱密钥（<code>secret</code>/<code>change-me</code>/历史占位符等）、未设置、或长度 &lt; 32 的 <code>AUTH_SECRET_KEY</code> 会在启动时直接拒绝运行（<code>app/config.py</code>）</li>
       <li>不要在代码或 Git 中提交 <code>.env</code> 文件</li>
       <li>普通用户应通过管理员后台创建，不保留任何硬编码账号</li>
     </ul>

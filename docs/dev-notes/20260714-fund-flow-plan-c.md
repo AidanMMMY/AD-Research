@@ -1,5 +1,7 @@
 # 资金流监控 (Plan C) 实施与运维 Runbook
 
+> 最后核实更新：2026-07-21
+
 ## 1. 背景
 
 调研确认：在**零付费**前提下，A 股主力资金流、板块资金流、ETF 申赎方向、综合资金情绪都可以通过 akshare + 东方财富 push2 直连 + 公开披露拼齐。Tushare 资金流接口在免费额度（120 积分）下全部不可用；akshare 与 Tushare 2000 积分档同源同质（都来自东方财富 push2his 接口）。
@@ -25,7 +27,7 @@
 
 ## 3. 数据模型
 
-迁移：`alembic/versions/2026_07_14_create_fund_flow_tables.py`
+迁移：`alembic/versions/2026_07_14_create_fund_flow_tables.py`（4 张基础表）+ `alembic/versions/2026_07_18_0001_add_market_fund_flow_table.py`（大盘资金流表）
 
 | 表 | 关键字段 | 唯一键 |
 |---|---|---|
@@ -34,6 +36,9 @@
 | `etf_fund_flow` | ts_code, trade_date, premium_rate, shares_change, inferred_net_inflow | (ts_code, trade_date) |
 | `flow_signal` | ts_code, trade_date, composite_score, score_breakdown JSONB | (ts_code, trade_date) |
 | | `ix_flow_signal_composite` 索引 `composite_score DESC` | 用于 Top N 查询 |
+| `market_fund_flow` | trade_date, market（ALL/SH/SZ）, main_net 等 | (trade_date, market) |
+
+> `market_fund_flow` 为 2026-07-18 新增：`ALL` 行来自 `ak.stock_market_fund_flow`，`SH`/`SZ` 行由 `individual_fund_flow` 按代码后缀派生（见 `app/data/pipelines/market_fund_flow.py`）。
 
 ## 4. `composite_score` 综合评分公式
 
@@ -55,8 +60,9 @@
 
 ## 5. Pipeline 调度
 
-- **cron**：`hour=17, minute=30, day_of_week=mon-fri, timezone="Asia/Shanghai"`
-- **为什么 17:30**：A 股 15:00 收盘，15:30 ETF ETL（akshare）+ 16:00 STOCK ETL（Tushare）+ 16:30 STOCK 估值 ETL 完成，17:00 microstructure 兜底补算后，17:30 再跑资金流；所有上游数据已落库
+- **cron**：`hour=17, minute=30, timezone="Asia/Shanghai"`（**每日**执行，无 `day_of_week` 限制；`app/core/scheduler.py` `fund_flow_daily`）
+- **后续任务**：`market_fund_flow_daily` 每日 18:35 执行，在 `fund_flow_daily` 落地 `individual_fund_flow` 后派生 SH/SZ 大盘净流入写入 `market_fund_flow`
+- **为什么 17:30**：A 股 15:00 收盘，15:30 ETF ETL（akshare）+ 16:00 STOCK ETL（Tushare）+ 16:30 STOCK 估值 ETL 完成，17:00 A 股指标兜底补算后，17:30 再跑资金流；所有上游数据已落库，且早于 19:30 的 microstructure 日刷
 - **总耗时**：~1-2 分钟（含失败重试 + DB 写入）
 - **失败容错**：每个子任务独立 `try/except`，单源失败不阻塞其他子任务
 
@@ -68,7 +74,7 @@ poetry run python -c "from datetime import date; from app.data.pipelines.fund_fl
 
 ## 6. API 路由
 
-9 个 GET 端点（`/api/v1/fund-flow/*`），全部要求登录：
+8 个 GET 端点 + 1 个 POST 端点（`/api/v1/fund-flow/*`），全部要求登录：
 
 | 路由 | 参数 | 用途 |
 |---|---|---|
@@ -76,7 +82,7 @@ poetry run python -c "from datetime import date; from app.data.pipelines.fund_fl
 | `/individual/{ts_code}` | days | 单只历史 |
 | `/sector` | date / sector_type / sort | 板块资金流 |
 | `/sector/{sector_name}` | days | 单板块历史 |
-| `/market` | date | 大盘整体（沪/深/合计） |
+| `/market` | date | 大盘整体（读 `market_fund_flow` 表：ALL 来自 akshare，SH/SZ 由个股资金流派生） |
 | `/etf` | date / sort / limit | ETF 折溢价 + 推算净流入 |
 | `/signals` | date / sort / limit | 综合信号 Top N（按 composite_score） |
 | `/signals/{ts_code}` | days | 单只信号历史 |
@@ -92,7 +98,7 @@ poetry run python -c "from datetime import date; from app.data.pipelines.fund_fl
 3. **Tabs**：[个股资金流] [板块资金流] [ETF 资金流]
 4. **数据来源说明**（折叠）：akshare / 东方财富 / 交易所公开披露
 
-Dashboard 首页末尾新增 `PulseFundFlowStrip`（3 个快速访问 tile）。
+> Dashboard 首页的 `PulseFundFlowStrip`（3 个快速访问 tile）已在后续前端重构中移除（2026-07-21 核实）；现 Dashboard 改为「资金流」卡片（净流入合计 + 涨跌幅，点击跳转 `/fund-flow`）与信号流中的资金流 Top3 条目。
 
 ## 8. 运维常见操作
 

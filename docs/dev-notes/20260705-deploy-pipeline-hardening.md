@@ -1,5 +1,7 @@
 # 部署流水线强化 — race condition & 可观测性修复
 
+> **注**：本文为 2026-07-05 的时点记录，部分内容可能已过时。其中 4.5 的 MANUAL_LOCK/AUTO_LOCK 双锁机制此后已被 `update.sh` 内基于 `flock` 的单锁（`/var/run/ad-research-deploy.lock`）取代，alembic 迁移也已移入 backend 容器入口脚本执行；当前行为以 `deploy/aliyun-ecs/update.sh` 和 `docs/dev-notes/20260704-deploy-verification.md` 为准。
+
 **日期**：2026-07-05
 **作用范围**：`scripts/check_migrations.sh` / `.github/workflows/deploy.yml` / `deploy/aliyun-ecs/update.sh`
 **类型**：DevOps 可靠性 / Observability

@@ -1,5 +1,7 @@
 # 真 secret rotate runbook（2026-07-04 起）
 
+> 最后核实更新：2026-07-21
+
 > 当 secret 泄露、团队成员离职、或定期轮换时，按本文档顺序执行。**只针对真
 > secret**（API key / cookie / token / 加密密钥），不是 admin 登录密码
 > —— 密码重置走 `20260701-admin-password-reset-runbook.md`。
@@ -40,15 +42,18 @@ Parameter Store / 1Password / 团队 vault）。
 
 | 厂商 | 操作 | 替换的 env key |
 |---|---|---|
-| **DeepSeek** | 控制台 → API Keys → revoke 旧 key → Create new secret key → 复制 | `DEEPSEEK_API_KEY` |
+| **MiniMax**（当前默认 LLM provider，`LLM_PROVIDER=minimax`） | 控制台 → API Keys → revoke 旧 key → 新建 → 复制；全球端点与中国端点 key 分开管理 | `MINIMAX_API_KEY` / `MINIMAX_CN_API_KEY` |
+| **DeepSeek**（legacy provider，仅 `LLM_PROVIDER=deepseek` 时生效） | 控制台 → API Keys → revoke 旧 key → Create new secret key → 复制 | `DEEPSEEK_API_KEY` |
+| **Anthropic** | Console → API Keys → revoke + Create | `ANTHROPIC_API_KEY` |
 | **雪球 Xueqiu** | 用任意子账号重新登录拿新 cookie → 让旧 cookie 失效（其他在用的账号也一起退出） | `XUEQIU_COOKIE` |
 | **Tushare** | 控制台 → 个人中心 → token 管理 → 重置 token | `TUSHARE_TOKEN` |
 | **Finnhub** | Dashboard → API key → Reset | `FINNHUB_API_KEY` |
 | **Tiingo** | Account → API token → Regenerate | `TIINGO_API_KEY` |
 | **FMP (Financial Modeling Prep)** | Dashboard → API Keys → Revoke + Create new | `FMP_API_KEY` |
-| **Polygon.io** | Dashboard → API Keys → Regenerate | `POLYGON_API_KEY` |
+| **FRED / BEA / BLS** | 各官网账号后台重新生成 | `FRED_API_KEY` / `BEA_API_KEY` / `BLS_API_KEY` |
+| **Polygon.io** | （已移除：代码与 `.env.example` 均已无 Polygon 接入，无需 rotate） | — |
 | **AkShare / BaoStock / Eastmoney** | 无 key 类数据源，跳过（但要确认调用频率没被风控） | — |
-| **Sentry DSN** | Project Settings → Client Keys (DSN) → Configure → Regenerate | `SENTRY_DSN` |
+| **Sentry DSN** | （已移除：当前代码无 Sentry 集成，`app/` 与 `.env.example` 均无 `SENTRY_DSN`） | — |
 | **Webhook Fernet 密钥** | 重新生成 `cryptography.fernet.Fernet.generate_key()` | `NOTIFICATION_ENCRYPTION_KEY` |
 
 每家 rotate 后**立刻**更新到 secret store，并同步通知所有持有旧 key 的成员
@@ -84,25 +89,28 @@ git push origin --force --tags
 
 ### 4. 部署侧 secret 注入
 
-阿里云 ECS 上 `/opt/ad-research/.env.production` 是 backend 容器 mount 的唯一
-真值来源（参考 `deploy/aliyun-ecs/docker-compose.yml`）。
+阿里云 ECS 上 `deploy/aliyun-ecs/.env` 是 backend 容器 env 的唯一真值来源：
+`deploy/aliyun-ecs/docker-compose.yml` 以 `${VAR:-}` 变量插值方式把其中的值注入
+容器（compose 没有 `env_file` / bind mount `.env`），所以改 `.env` 后必须
+recreate 容器才生效。
 
 ```bash
 ssh alloy-research
-cd /opt/ad-research
+cd /opt/ad-research/deploy/aliyun-ecs
 
-# 4.1 用 vault 里的新 key 覆盖 .env.production
+# 4.1 用 vault 里的新 key 覆盖 .env
 sops --set /path/to/vault/DEEPSEEK_API_KEY \
-     -i .env.production   # 或手 vi（确保 ssh session 加密）
+     -i .env   # 或手 vi（确保 ssh session 加密）
 
 # 4.2 重新生成 Fernet 加密密钥（仅在 § 2 轮换 NOTIFICATION_ENCRYPTION_KEY 时）
 python3 -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())" \
   >> /tmp/new-fernet.key
-# 把 new key 写入 .env.production 的 NOTIFICATION_ENCRYPTION_KEY=
+# 把 new key 写入 .env 的 NOTIFICATION_ENCRYPTION_KEY=
 # ⚠️ 旋转 Fernet key 会让所有旧 webhook payload 解密失败 —— 先通知再 rotate
+# 注：NOTIFICATION_ENCRYPTION_KEY 未设置时代码会回退用 AUTH_SECRET_KEY 做 Fernet 密钥
+# （app/services/notification_service.py），此时 rotate AUTH_SECRET_KEY 有同样影响。
 
 # 4.3 重启 backend 让新 env 生效
-cd /opt/ad-research/deploy/aliyun-ecs
 docker compose up -d --force-recreate --no-deps backend
 
 # 4.4 健康检查
@@ -128,28 +136,39 @@ ssh alloy-research "docker logs --tail=200 alloyresearch-backend 2>&1 \
 
 #### 5.2 LLM 流式输出
 
+平台没有 `/api/v1/llm/chat` 端点（已变更）；LLM 对话挂在 research 路由下。
+快速验证用 AI 状态接口，完整链路用 chat session 的流式端点：
+
 ```bash
-# 在前端或 curl 直接调一次
-curl -X POST http://localhost:8000/api/v1/llm/chat \
-  -H "Authorization: Bearer <TOKEN>" \
-  -H "Content-Type: application/json" \
-  -d '{"stream":true,"message":"ping"}'
+# 快速验证：provider 是否可用
+curl -sf http://localhost:8000/api/v1/research/ai/status \
+  -H "Authorization: Bearer <TOKEN>"
+
+# 完整链路：先建 session，再调流式端点（SSE，data: {...} 逐行）
+curl -X POST http://localhost:8000/api/v1/research/chat/sessions \
+  -H "Authorization: Bearer <TOKEN>" -H "Content-Type: application/json" \
+  -d '{"title":"rotate-check"}'
+curl -N -X POST http://localhost:8000/api/v1/research/chat/sessions/<SESSION_ID>/messages/stream \
+  -H "Authorization: Bearer <TOKEN>" -H "Content-Type: application/json" \
+  -d '{"content":"ping"}'
 ```
 
-应返回 SSE 流（`data: {...}` 逐行）而不是 401。
+应返回 SSE 流（`data: {...}` 逐行）而不是 401 / provider unavailable。
 
 #### 5.3 通知通道推送
 
+没有 `POST /api/v1/notifications/test` 端点（已变更）；测试发送挂在具体
+config 上，需先在后台（或 API）创建一条 webhook 配置：
+
 ```bash
-# 发一条测试 webhook，看 Fernet 加密 / 解密是否双通
-curl -X POST http://localhost:8000/api/v1/notifications/test \
-  -H "Authorization: Bearer <TOKEN>" \
-  -d '{"url":"https://webhook.site/<your-id>","payload":"hello"}'
+# 先发一条测试 webhook，看 Fernet 加密 / 解密是否双通
+curl -X POST http://localhost:8000/api/v1/notifications/configs/<CONFIG_ID>/test \
+  -H "Authorization: Bearer <TOKEN>"
 ```
 
-到 webhook.site 上看：
+到配置的 webhook 接收端（如 webhook.site）上看：
 
-- 解密 payload 出现 "hello" → ✅ 旧 + 新 Fernet key 都可用（rotate 兼容）。
+- 解密后的明文 payload 正常到达 → ✅ 旧 + 新 Fernet key 都可用（rotate 兼容）。
 - 出现 base64 密文 / 乱码 → ❌ Fernet key rotate 不兼容，需要考虑多 key 回退。
 
 如果做 Fernet 兼容轮换，参考 `cryptography.fernet.MultiFernet`：
@@ -184,9 +203,9 @@ new key 放前面、old key 放后面，验证通过后再下掉 old key。
 
 | 路径 | 作用 |
 |---|---|
-| `.env.production` | 阿里云 ECS 上 backend 容器 mount 的真值（**唯一来源**） |
+| `deploy/aliyun-ecs/.env` | 阿里云 ECS 上 backend 容器 env 的唯一真值来源（compose 变量插值注入） |
 | `.env.example` | 仓库内模板（**只写 key 名**，不写真值） |
-| `deploy/aliyun-ecs/docker-compose.yml` | backend 服务 env 注入声明 |
+| `deploy/aliyun-ecs/docker-compose.yml` | backend 服务 env 注入声明（`${VAR:-}` 插值，无 env_file / mount） |
 | `.github/workflows/secrets-scan.yml` | PR 触发 gitleaks，挡 secret 进 main |
 | `.github/workflows/deploy.yml` | push 触发部署（**不**做 secret 扫描） |
 | `app/services/notification_service.py` | Webhook Fernet 加解密入口 |

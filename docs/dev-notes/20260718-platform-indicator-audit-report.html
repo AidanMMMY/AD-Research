@@ -17,13 +17,16 @@
   blockquote { border-left: 4px solid #3b82f6; margin: 0; padding-left: 16px; color: #4b5563; }</style>
 </head>
 <body>
-<h1>平台指标正确性与数据完整性全面审计报告</h1>
-<p><strong>审计日期：</strong> 2026-07-18<br />
-<strong>审计范围：</strong> A 股个股/ETF、美股、数字货币、综合评分/排名、板块轮动/资金流向、数据 pipeline 与 ETL 稳定性<br />
-<strong>审计方式：</strong> 6 个独立子 agent 并行代码审查 + 权威数据源交叉验证<br />
+<h1 id="平台指标正确性与数据完整性全面审计报告">平台指标正确性与数据完整性全面审计报告</h1>
+<blockquote>
+<p><strong>注</strong>：本文为 2026-07-18 的时点记录，部分内容可能已过时。</p>
+</blockquote>
+<p><strong>审计日期：</strong> 2026-07-18<br>
+<strong>审计范围：</strong> A 股个股/ETF、美股、数字货币、综合评分/排名、板块轮动/资金流向、数据 pipeline 与 ETL 稳定性<br>
+<strong>审计方式：</strong> 6 个独立子 agent 并行代码审查 + 权威数据源交叉验证<br>
 <strong>执笔：</strong> Claude Code 审计团队</p>
-<hr />
-<h2>一、执行摘要</h2>
+<hr>
+<h2 id="一执行摘要">一、执行摘要</h2>
 <p>本次审计共发现 <strong>P0 级问题 9 项、P1 级问题 19 项、P2/P3 级问题若干</strong>。所有发现可归纳为 6 类根因：</p>
 <ol>
 <li><strong>前端显示单位错误</strong>：百分比指标未乘以 100，导致收益率等全部显示缩小 100 倍。</li>
@@ -51,268 +54,169 @@
 <li>板块轮动相对强弱（RS）改为超额收益差值，轮动信号窗口改为 5 个交易日（Phase 2.11）。</li>
 <li>Crypto 指标使用 365 天/年、自然日窗口 7/30/90/180/365，与 A 股/美股参数分离（Phase 2.6）。</li>
 </ul>
-<hr />
-<h2>二、各子系统关键发现</h2>
-<h3>2.1 A 股技术指标（含 600026.SH）</h3>
-<p><strong>P0</strong>
-- 前端 <code>formatPercent</code> 漏乘 100。</p>
-<p><strong>P1</strong>
-- <code>StockDetail</code> 无复权切换，默认 raw close。
-- <code>KLineChart</code> 布林带用总体标准差（N），后端用样本标准差（N-1）。
-- 日线 ETL 只回填当日 <code>adj_factor</code>，历史因子不更新。
-- 后端收益/MA/BB/RSI/MACD/ATR 基于 raw close；对高分红/高股价个股（600519、000001）MA 与权威前复权差异可达百倍。</p>
-<p><strong>P2</strong>
-- SQL 风险指标 <code>max_drawdown_1y</code> / <code>sharpe_1y</code> 门限 119 行，pandas 路径 60 行，不一致。
-- <code>volatility_20d/60d</code> SQL 无 <code>min_periods</code>，比 pandas 更早出值。
-- <code>InstrumentDetail</code> 复权 K 线与指标面板口径不一致。</p>
+<hr>
+<h2 id="二各子系统关键发现">二、各子系统关键发现</h2>
+<h3 id="21-a-股技术指标含-600026sh">2.1 A 股技术指标（含 600026.SH）</h3>
+<p><strong>P0</strong></p>
+<ul>
+<li>前端 <code>formatPercent</code> 漏乘 100。</li>
+</ul>
+<p><strong>P1</strong></p>
+<ul>
+<li><code>StockDetail</code> 无复权切换，默认 raw close。</li>
+<li><code>KLineChart</code> 布林带用总体标准差（N），后端用样本标准差（N-1）。</li>
+<li>日线 ETL 只回填当日 <code>adj_factor</code>，历史因子不更新。</li>
+<li>后端收益/MA/BB/RSI/MACD/ATR 基于 raw close；对高分红/高股价个股（600519、000001）MA 与权威前复权差异可达百倍。</li>
+</ul>
+<p><strong>P2</strong></p>
+<ul>
+<li>SQL 风险指标 <code>max_drawdown_1y</code> / <code>sharpe_1y</code> 门限 119 行，pandas 路径 60 行，不一致。</li>
+<li><code>volatility_20d/60d</code> SQL 无 <code>min_periods</code>，比 pandas 更早出值。</li>
+<li><code>InstrumentDetail</code> 复权 K 线与指标面板口径不一致。</li>
+</ul>
 <p><strong>样本偏差（2026-07-16）</strong></p>
 <table>
-<thead>
-<tr>
+<thead><tr>
 <th>代码</th>
 <th>指标</th>
 <th>平台当前（raw）</th>
 <th>权威前复权</th>
 <th>偏差</th>
-</tr>
-</thead>
+</tr></thead>
 <tbody>
-<tr>
-<td>600026.SH</td>
-<td>return_1y</td>
-<td>44.35%</td>
-<td>47.37%</td>
-<td>-3.02 pp</td>
-</tr>
-<tr>
-<td>600026.SH</td>
-<td>ma5</td>
-<td>15.44</td>
-<td>29.23</td>
-<td>-13.79</td>
-</tr>
-<tr>
-<td>600519.SH</td>
-<td>return_1y</td>
-<td>-10.68%</td>
-<td>-7.01%</td>
-<td>-3.67 pp</td>
-</tr>
-<tr>
-<td>600519.SH</td>
-<td>ma5</td>
-<td>1228.18</td>
-<td>10619.21</td>
-<td>-9391.03</td>
-</tr>
-<tr>
-<td>000001.SZ</td>
-<td>return_1y</td>
-<td>-12.58%</td>
-<td>-7.79%</td>
-<td>-4.79 pp</td>
-</tr>
-<tr>
-<td>000001.SZ</td>
-<td>ma5</td>
-<td>10.66</td>
-<td>1481.55</td>
-<td>-1470.89</td>
-</tr>
-</tbody>
-</table>
-<h3>2.2 美股指标</h3>
-<p><strong>P0</strong>
-- 569 只 active 美股仅 14 只有日线，最新只到 2026-06-26；调度器心跳为空，疑似未运行。</p>
-<p><strong>P1</strong>
-- ~~yfinance batch fallback 把 <code>adj_factor</code> 硬编码为 1.0，复权完全失效。~~ <strong>已修复</strong>：batch 路径从 <code>Adj Close/Close</code> 推导 <code>adj_factor</code>。
-- 收益指标用 raw close（price-return），未反映分红再投资（total-return）；待后端指标统一改为 <code>qfq_close</code> 后自然解决。</p>
-<p><strong>P2</strong>
-- <code>StockDetail</code> 无复权切换；前后端指标口径不一致。
-- <code>StocksList</code> 默认过滤 A 股，美股入口不友好。
-- 美股个股元数据缺失（list_date、sector、industry 等）。</p>
-<h3>2.3 数字货币指标</h3>
-<p><strong>P0</strong>
-- <code>BinanceProvider.fetch_daily_bars</code> 在上海时区容器内生成本地时间戳，导致目标日 UTC 日 K 线被排除，ETL 永远写不进数据。</p>
-<p><strong>P1</strong>
-- Crypto 沿用 A 股/美股的 252 天/年、21/63/126/252 交易日窗口；正确应为 365 天/年、30/90/180/365 自然日窗口。
-- 波动率因 <code>sqrt(252)</code> 被低估约 20.4%（<code>sqrt(365/252)=1.204</code>）。
-- <code>CryptoDailyPipeline</code> 只拉 7 天窗口，无法回补超过 7 天的缺失。</p>
-<p><strong>P2</strong>
-- 前端“24h 涨跌”与日线口径混用。
-- <code>change_pct</code> 按 <code>open → close</code> 计算，非 <code>(close - pre_close)/pre_close</code>。</p>
-<p><strong>P3</strong>
-- <code>CryptoDetail</code> 未展示 1m/3m/1y 收益、volatility、max_drawdown、sharpe 等核心指标。</p>
-<h3>2.4 综合评分 / 排名 / 股票池 / 筛选</h3>
-<p><strong>P0</strong>
-- <code>rank_category</code> 与 <code>rank_overall</code> 完全相同（旧逻辑写入，未启用分类桶）。
-- <code>formatPercent</code> 漏乘 100（已修复）。</p>
-<p><strong>P1</strong>
-- 已存 <code>composite_score</code> 与当前代码逻辑不一致（1505/1509 差异 &gt;0.01）。
-- 风险维度把正波动率与负回撤直接平均，语义错误（已修复）。
-- 美股/Crypto 无评分。</p>
-<p><strong>P2</strong>
-- 使用全局最新指标日，跨市场时可能漏算 A 股（已修复按市场取最新日）。
-- 评分数据滞后，前端无提示。</p>
-<h3>2.5 板块轮动 / 资金流向</h3>
-<p><strong>P0</strong>
-- 市场资金流大盘卡片已接入 <code>market_fund_flow</code> 真实表（沪深整体来自 akshare，SH/SZ 由 individual_fund_flow 派生）。
-- 资金流页面未指定日期时返回全历史，首屏不是当日。
-- 个股资金流“沪市/深市/创业板/科创板/北交所” tab 过滤不生效。</p>
-<p><strong>高</strong>
-- 相对强弱 RS 在下跌市中颜色/方向反转（Phase 2.11 已修复：改为超额收益差值）。
-- 轮动信号“一周内”文案实际只比较相邻交易日（Phase 2.11 已修复：改为 5 个交易日对比）。
-- 行业收益用成分股等权平均，不等于官方申万/中信行业指数。</p>
-<p><strong>中</strong>
-- GICS / 申万行业映射存在明显偏差。
-- 综合资金信号中 AH 溢价为空仍占 5% 权重；融资融券仅覆盖沪市。
-- ETF 净流入估算用市价而非 NAV，日期贴标可能错位。</p>
-<h3>2.6 数据完整性与 ETL 稳定性</h3>
-<p><strong>P0</strong>
-- A 股 ETL pipeline 可能卡在 <code>running</code> 状态，无心跳/lease 自动清理。
-- 美股日终 ETL 已 21 天无成功记录；Crypto 从未写入 ETL 日志（与 P0 时区 bug 一致）。</p>
-<p><strong>P1</strong>
-- 指标计算目标日期从数据库最新 bar 推导，数据停滞时不告警。
-- 美股、Crypto 无交易日历过滤，节假日空跑。
-- 美股日终覆盖策略依赖 yfinance 兜底，Tiingo 50 req/hour 轮询覆盖不足。
-- 监控脚本只覆盖 A 股 ETF，不检查数据新鲜度、不覆盖美股/Crypto、不检查 ETL stuck。</p>
-<hr />
-<h2>三、统一修复计划（按优先级）</h2>
-<h3>Phase 1：P0 级修复（立即实施）</h3>
+<tr><td>600026.SH</td><td>return_1y</td><td>44.35%</td><td>47.37%</td><td>-3.02 pp</td></tr>
+<tr><td>600026.SH</td><td>ma5</td><td>15.44</td><td>29.23</td><td>-13.79</td></tr>
+<tr><td>600519.SH</td><td>return_1y</td><td>-10.68%</td><td>-7.01%</td><td>-3.67 pp</td></tr>
+<tr><td>600519.SH</td><td>ma5</td><td>1228.18</td><td>10619.21</td><td>-9391.03</td></tr>
+<tr><td>000001.SZ</td><td>return_1y</td><td>-12.58%</td><td>-7.79%</td><td>-4.79 pp</td></tr>
+<tr><td>000001.SZ</td><td>ma5</td><td>10.66</td><td>1481.55</td><td>-1470.89</td></tr>
+</tbody></table>
+<h3 id="22-美股指标">2.2 美股指标</h3>
+<p><strong>P0</strong></p>
+<ul>
+<li>569 只 active 美股仅 14 只有日线，最新只到 2026-06-26；调度器心跳为空，疑似未运行。</li>
+</ul>
+<p><strong>P1</strong></p>
+<ul>
+<li><del>yfinance batch fallback 把 <code>adj_factor</code> 硬编码为 1.0，复权完全失效。</del> <strong>已修复</strong>：batch 路径从 <code>Adj Close/Close</code> 推导 <code>adj_factor</code>。</li>
+<li>收益指标用 raw close（price-return），未反映分红再投资（total-return）；待后端指标统一改为 <code>qfq_close</code> 后自然解决。</li>
+</ul>
+<p><strong>P2</strong></p>
+<ul>
+<li><code>StockDetail</code> 无复权切换；前后端指标口径不一致。</li>
+<li><code>StocksList</code> 默认过滤 A 股，美股入口不友好。</li>
+<li>美股个股元数据缺失（list_date、sector、industry 等）。</li>
+</ul>
+<h3 id="23-数字货币指标">2.3 数字货币指标</h3>
+<p><strong>P0</strong></p>
+<ul>
+<li><code>BinanceProvider.fetch_daily_bars</code> 在上海时区容器内生成本地时间戳，导致目标日 UTC 日 K 线被排除，ETL 永远写不进数据。</li>
+</ul>
+<p><strong>P1</strong></p>
+<ul>
+<li>Crypto 沿用 A 股/美股的 252 天/年、21/63/126/252 交易日窗口；正确应为 365 天/年、30/90/180/365 自然日窗口。</li>
+<li>波动率因 <code>sqrt(252)</code> 被低估约 20.4%（<code>sqrt(365/252)=1.204</code>）。</li>
+<li><code>CryptoDailyPipeline</code> 只拉 7 天窗口，无法回补超过 7 天的缺失。</li>
+</ul>
+<p><strong>P2</strong></p>
+<ul>
+<li>前端“24h 涨跌”与日线口径混用。</li>
+<li><code>change_pct</code> 按 <code>open → close</code> 计算，非 <code>(close - pre_close)/pre_close</code>。</li>
+</ul>
+<p><strong>P3</strong></p>
+<ul>
+<li><code>CryptoDetail</code> 未展示 1m/3m/1y 收益、volatility、max_drawdown、sharpe 等核心指标。</li>
+</ul>
+<h3 id="24-综合评分--排名--股票池--筛选">2.4 综合评分 / 排名 / 股票池 / 筛选</h3>
+<p><strong>P0</strong></p>
+<ul>
+<li><code>rank_category</code> 与 <code>rank_overall</code> 完全相同（旧逻辑写入，未启用分类桶）。</li>
+<li><code>formatPercent</code> 漏乘 100（已修复）。</li>
+</ul>
+<p><strong>P1</strong></p>
+<ul>
+<li>已存 <code>composite_score</code> 与当前代码逻辑不一致（1505/1509 差异 &gt;0.01）。</li>
+<li>风险维度把正波动率与负回撤直接平均，语义错误（已修复）。</li>
+<li>美股/Crypto 无评分。</li>
+</ul>
+<p><strong>P2</strong></p>
+<ul>
+<li>使用全局最新指标日，跨市场时可能漏算 A 股（已修复按市场取最新日）。</li>
+<li>评分数据滞后，前端无提示。</li>
+</ul>
+<h3 id="25-板块轮动--资金流向">2.5 板块轮动 / 资金流向</h3>
+<p><strong>P0</strong></p>
+<ul>
+<li>市场资金流大盘卡片已接入 <code>market_fund_flow</code> 真实表（沪深整体来自 akshare，SH/SZ 由 individual_fund_flow 派生）。</li>
+<li>资金流页面未指定日期时返回全历史，首屏不是当日。</li>
+<li>个股资金流“沪市/深市/创业板/科创板/北交所” tab 过滤不生效。</li>
+</ul>
+<p><strong>高</strong></p>
+<ul>
+<li>相对强弱 RS 在下跌市中颜色/方向反转（Phase 2.11 已修复：改为超额收益差值）。</li>
+<li>轮动信号“一周内”文案实际只比较相邻交易日（Phase 2.11 已修复：改为 5 个交易日对比）。</li>
+<li>行业收益用成分股等权平均，不等于官方申万/中信行业指数。</li>
+</ul>
+<p><strong>中</strong></p>
+<ul>
+<li>GICS / 申万行业映射存在明显偏差。</li>
+<li>综合资金信号中 AH 溢价为空仍占 5% 权重；融资融券仅覆盖沪市。</li>
+<li>ETF 净流入估算用市价而非 NAV，日期贴标可能错位。</li>
+</ul>
+<h3 id="26-数据完整性与-etl-稳定性">2.6 数据完整性与 ETL 稳定性</h3>
+<p><strong>P0</strong></p>
+<ul>
+<li>A 股 ETL pipeline 可能卡在 <code>running</code> 状态，无心跳/lease 自动清理。</li>
+<li>美股日终 ETL 已 21 天无成功记录；Crypto 从未写入 ETL 日志（与 P0 时区 bug 一致）。</li>
+</ul>
+<p><strong>P1</strong></p>
+<ul>
+<li>指标计算目标日期从数据库最新 bar 推导，数据停滞时不告警。</li>
+<li>美股、Crypto 无交易日历过滤，节假日空跑。</li>
+<li>美股日终覆盖策略依赖 yfinance 兜底，Tiingo 50 req/hour 轮询覆盖不足。</li>
+<li>监控脚本只覆盖 A 股 ETF，不检查数据新鲜度、不覆盖美股/Crypto、不检查 ETL stuck。</li>
+</ul>
+<hr>
+<h2 id="三统一修复计划按优先级">三、统一修复计划（按优先级）</h2>
+<h3 id="phase-1p0-级修复立即实施">Phase 1：P0 级修复（立即实施）</h3>
 <table>
-<thead>
-<tr>
+<thead><tr>
 <th>#</th>
 <th>任务</th>
 <th>关键文件</th>
 <th>说明</th>
-</tr>
-</thead>
+</tr></thead>
 <tbody>
-<tr>
-<td>1.1</td>
-<td>修复 Crypto ETL 时区 bug</td>
-<td><code>app/data/providers/binance_provider.py</code></td>
-<td>UTC 时间戳，或 <code>end_date + 1 day</code></td>
-</tr>
-<tr>
-<td>1.2</td>
-<td>修复 A 股前复权显示</td>
-<td><code>web/src/components/KLineChart.tsx</code>（已完成）</td>
-<td>已改为 <code>close × adj_factor / latest_factor</code></td>
-</tr>
-<tr>
-<td>1.3</td>
-<td>修复前端百分比显示</td>
-<td><code>web/src/utils/format.ts</code>（已完成）</td>
-<td>已乘以 100</td>
-</tr>
-<tr>
-<td>1.4</td>
-<td>修复评分风险维度符号</td>
-<td><code>app/data/indicators/scoring.py</code>（已完成）</td>
-<td>已对 max_drawdown 取绝对值</td>
-</tr>
-<tr>
-<td>1.5</td>
-<td>修复评分按市场取最新日</td>
-<td><code>app/services/scoring_service.py</code>（已完成）</td>
-<td>已按 market 分组</td>
-</tr>
-<tr>
-<td>1.6</td>
-<td>ETL stuck 清理与监控</td>
-<td><code>scripts/cleanup_stuck_etl_logs.py</code>、<code>app/core/scheduler.py</code></td>
-<td>脚本 + 启动/每小时自动清理</td>
-</tr>
-<tr>
-<td>1.7</td>
-<td>修复资金流日期默认与过滤</td>
-<td><code>app/services/fund_flow_service.py</code>、<code>app/api/v1/fund_flow.py</code></td>
-<td>默认最新日、支持 market 参数</td>
-</tr>
-</tbody>
-</table>
-<h3>Phase 2：P1 级修复（1-2 周内）</h3>
+<tr><td>1.1</td><td>修复 Crypto ETL 时区 bug</td><td><code>app/data/providers/binance_provider.py</code></td><td>UTC 时间戳，或 <code>end_date + 1 day</code></td></tr>
+<tr><td>1.2</td><td>修复 A 股前复权显示</td><td><code>web/src/components/KLineChart.tsx</code>（已完成）</td><td>已改为 <code>close × adj_factor / latest_factor</code></td></tr>
+<tr><td>1.3</td><td>修复前端百分比显示</td><td><code>web/src/utils/format.ts</code>（已完成）</td><td>已乘以 100</td></tr>
+<tr><td>1.4</td><td>修复评分风险维度符号</td><td><code>app/data/indicators/scoring.py</code>（已完成）</td><td>已对 max_drawdown 取绝对值</td></tr>
+<tr><td>1.5</td><td>修复评分按市场取最新日</td><td><code>app/services/scoring_service.py</code>（已完成）</td><td>已按 market 分组</td></tr>
+<tr><td>1.6</td><td>ETL stuck 清理与监控</td><td><code>scripts/cleanup_stuck_etl_logs.py</code>、<code>app/core/scheduler.py</code></td><td>脚本 + 启动/每小时自动清理</td></tr>
+<tr><td>1.7</td><td>修复资金流日期默认与过滤</td><td><code>app/services/fund_flow_service.py</code>、<code>app/api/v1/fund_flow.py</code></td><td>默认最新日、支持 market 参数</td></tr>
+</tbody></table>
+<h3 id="phase-2p1-级修复1-2-周内">Phase 2：P1 级修复（1-2 周内）</h3>
 <table>
-<thead>
-<tr>
+<thead><tr>
 <th>#</th>
 <th>任务</th>
 <th>关键文件</th>
 <th>说明</th>
-</tr>
-</thead>
+</tr></thead>
 <tbody>
-<tr>
-<td>2.1</td>
-<td>A 股 <code>adj_factor</code> 全历史回填</td>
-<td><code>app/data/pipelines/a_share_stock_daily.py</code>、<code>app/scripts/backfill_a_share_adj_factor.py</code>、<code>app/core/scheduler.py</code></td>
-<td>新增 <code>AdjFactorHistory</code> 表、日终同步、每周日 03:30 自动回填</td>
-</tr>
-<tr>
-<td>2.2</td>
-<td>后端指标统一基于前复权 close</td>
-<td><code>app/data/indicators/calculator.py</code>、<code>app/data/indicators/sql_calculator.py</code></td>
-<td>收益/MA/BB/RSI/MACD/ATR 用 <code>qfq_close</code>；<strong>已完成</strong></td>
-</tr>
-<tr>
-<td>2.3</td>
-<td>SQL 与 pandas 路径门限对齐</td>
-<td><code>app/data/indicators/sql_calculator.py</code>、<code>app/data/indicators/risk.py</code></td>
-<td>风险指标门限 60 行、volatility min_periods；<strong>已完成</strong></td>
-</tr>
-<tr>
-<td>2.4</td>
-<td>评分数据重跑</td>
-<td><code>scripts/recalculate_scores.py</code></td>
-<td>全量重跑所有模板评分，修复 <code>rank_category</code></td>
-</tr>
-<tr>
-<td>2.5</td>
-<td>美股/Crypto 收益与夏普补齐</td>
-<td><code>app/data/pipelines/us_etf.py</code>、<code>app/data/pipelines/crypto_daily.py</code></td>
-<td>恢复调度、补历史、复权因子、收益指标；yfinance batch <code>adj_factor</code> 已修</td>
-</tr>
-<tr>
-<td>2.6</td>
-<td>Crypto 指标窗口年化改造</td>
-<td><code>app/data/indicators/market_config.py</code>、<code>app/data/indicators/risk.py</code>、<code>app/data/indicators/technical.py</code>、<code>app/data/indicators/calculator.py</code>、<code>app/data/indicators/sql_calculator.py</code></td>
-<td>365 天/年、自然日窗口 7/30/90/180/365；配置模块已集成 <strong>（已完成）</strong></td>
-</tr>
-<tr>
-<td>2.7</td>
-<td>指标计算目标日期新鲜度检查</td>
-<td><code>app/core/scheduler.py</code></td>
-<td><code>_resolve_a_share_target_date</code> 已对滞后 &gt;2 天的 A 股日线打印告警</td>
-</tr>
-<tr>
-<td>2.8</td>
-<td>市场交易日历统一</td>
-<td><code>app/data/pipelines/us_etf.py</code>、<code>app/data/pipelines/crypto_daily.py</code></td>
-<td>美股节假日跳过、Crypto UTC 日界</td>
-</tr>
-<tr>
-<td>2.9</td>
-<td>监控脚本扩展</td>
-<td><code>scripts/audit_indicator_completeness.py</code>、<code>scripts/audit_etl_freshness.py</code></td>
-<td>覆盖多市场、检查新鲜度、检查 ETL stuck；freshness 脚本已建</td>
-</tr>
-<tr>
-<td>2.10</td>
-<td>资金流大盘数据接入</td>
-<td><code>app/data/pipelines/market_fund_flow.py</code>、<code>app/models/fund_flow.py</code>、<code>app/services/fund_flow_service.py</code>、<code>app/api/v1/fund_flow.py</code>、<code>app/core/scheduler.py</code>、<code>scripts/backfill_market_fund_flow.py</code></td>
-<td>已完成：新建 <code>market_fund_flow</code> 表，akshare 接入整体大盘资金流，派生 SH/SZ，每日 18:35 定时任务，支持 <code>--start-date/--end-date/--dry-run</code> 回补</td>
-</tr>
-<tr>
-<td>2.11</td>
-<td>板块轮动 RS 颜色/窗口修复</td>
-<td><code>app/services/sector_rotation_service.py</code>、<code>web/src/pages/SectorRotation/index.tsx</code>、<code>app/tests/services/test_sector_rotation_service.py</code></td>
-<td>差值替代比值、5 日排名对比 <strong>（已完成）</strong></td>
-</tr>
-</tbody>
-</table>
-<h3>Phase 3：P2/P3 级修复（后续迭代）</h3>
+<tr><td>2.1</td><td>A 股 <code>adj_factor</code> 全历史回填</td><td><code>app/data/pipelines/a_share_stock_daily.py</code>、<code>app/scripts/backfill_a_share_adj_factor.py</code>、<code>app/core/scheduler.py</code></td><td>新增 <code>AdjFactorHistory</code> 表、日终同步、每周日 03:30 自动回填</td></tr>
+<tr><td>2.2</td><td>后端指标统一基于前复权 close</td><td><code>app/data/indicators/calculator.py</code>、<code>app/data/indicators/sql_calculator.py</code></td><td>收益/MA/BB/RSI/MACD/ATR 用 <code>qfq_close</code>；<strong>已完成</strong></td></tr>
+<tr><td>2.3</td><td>SQL 与 pandas 路径门限对齐</td><td><code>app/data/indicators/sql_calculator.py</code>、<code>app/data/indicators/risk.py</code></td><td>风险指标门限 60 行、volatility min_periods；<strong>已完成</strong></td></tr>
+<tr><td>2.4</td><td>评分数据重跑</td><td><code>scripts/recalculate_scores.py</code></td><td>全量重跑所有模板评分，修复 <code>rank_category</code></td></tr>
+<tr><td>2.5</td><td>美股/Crypto 收益与夏普补齐</td><td><code>app/data/pipelines/us_etf.py</code>、<code>app/data/pipelines/crypto_daily.py</code></td><td>恢复调度、补历史、复权因子、收益指标；yfinance batch <code>adj_factor</code> 已修</td></tr>
+<tr><td>2.6</td><td>Crypto 指标窗口年化改造</td><td><code>app/data/indicators/market_config.py</code>、<code>app/data/indicators/risk.py</code>、<code>app/data/indicators/technical.py</code>、<code>app/data/indicators/calculator.py</code>、<code>app/data/indicators/sql_calculator.py</code></td><td>365 天/年、自然日窗口 7/30/90/180/365；配置模块已集成 <strong>（已完成）</strong></td></tr>
+<tr><td>2.7</td><td>指标计算目标日期新鲜度检查</td><td><code>app/core/scheduler.py</code></td><td><code>_resolve_a_share_target_date</code> 已对滞后 &gt;2 天的 A 股日线打印告警</td></tr>
+<tr><td>2.8</td><td>市场交易日历统一</td><td><code>app/data/pipelines/us_etf.py</code>、<code>app/data/pipelines/crypto_daily.py</code></td><td>美股节假日跳过、Crypto UTC 日界</td></tr>
+<tr><td>2.9</td><td>监控脚本扩展</td><td><code>scripts/audit_indicator_completeness.py</code>、<code>scripts/audit_etl_freshness.py</code></td><td>覆盖多市场、检查新鲜度、检查 ETL stuck；freshness 脚本已建</td></tr>
+<tr><td>2.10</td><td>资金流大盘数据接入</td><td><code>app/data/pipelines/market_fund_flow.py</code>、<code>app/models/fund_flow.py</code>、<code>app/services/fund_flow_service.py</code>、<code>app/api/v1/fund_flow.py</code>、<code>app/core/scheduler.py</code>、<code>scripts/backfill_market_fund_flow.py</code></td><td>已完成：新建 <code>market_fund_flow</code> 表，akshare 接入整体大盘资金流，派生 SH/SZ，每日 18:35 定时任务，支持 <code>--start-date/--end-date/--dry-run</code> 回补</td></tr>
+<tr><td>2.11</td><td>板块轮动 RS 颜色/窗口修复</td><td><code>app/services/sector_rotation_service.py</code>、<code>web/src/pages/SectorRotation/index.tsx</code>、<code>app/tests/services/test_sector_rotation_service.py</code></td><td>差值替代比值、5 日排名对比 <strong>（已完成）</strong></td></tr>
+</tbody></table>
+<h3 id="phase-3p2p3-级修复后续迭代">Phase 3：P2/P3 级修复（后续迭代）</h3>
 <ul>
 <li>行业映射校正（GICS/申万）与官方指数收益视图。</li>
 <li>综合资金信号补全（AH 溢价、深市融资、股东户数日期对齐）。</li>
@@ -320,8 +224,8 @@
 <li><code>CryptoDetail</code> 展示 1m/3m/1y 收益、volatility、max_drawdown、sharpe。</li>
 <li>术语文档与实际实现对齐。</li>
 </ul>
-<hr />
-<h2>四、数据回补与验证清单</h2>
+<hr>
+<h2 id="四数据回补与验证清单">四、数据回补与验证清单</h2>
 <ol>
 <li><strong>Alembic 迁移</strong>：执行 <code>alembic upgrade head</code> 生成 <code>adj_factor_history</code> 与 <code>market_fund_flow</code> 表。</li>
 <li><strong>A 股复权因子</strong>：跑 <code>python -m app.scripts.backfill_a_share_adj_factor.py</code>。</li>
@@ -330,14 +234,16 @@
 <li><strong>大盘资金流回补</strong>：跑 <code>python scripts/backfill_market_fund_flow.py --start-date 2026-06-01 --end-date 2026-07-18</code>。</li>
 <li><strong>美股历史</strong>：手动触发 <code>us_historical_backfill</code> / <code>scripts/backfill_us_deep_history.py</code>。</li>
 <li><strong>Crypto 历史</strong>：修复时区 bug 后，全量回补所有交易对日线。</li>
-<li><strong>验证</strong>：</li>
+<li><strong>验证</strong>：
+<ul>
 <li>600026.SH 前复权 K 线最新价 = 14.21， older bars 与 Tushare qfq 对齐。</li>
 <li>前端收益率显示为 <code>+3.00%</code> 而非 <code>+0.03%</code>。</li>
 <li><code>rank_category</code> 在股票型/货币型内分别为独立排名。</li>
 <li><code>/health/etl</code> 或监控脚本无 CRITICAL。</li>
+</ul></li>
 </ol>
-<hr />
-<h2>五、监控与告警建议</h2>
+<hr>
+<h2 id="五监控与告警建议">五、监控与告警建议</h2>
 <ul>
 <li><code>/health/etl</code> 暴露：各市场最新 bar 日期、各 ETL job 最近成功时间、当前 running &gt;1h 任务列表。</li>
 <li>A 股日线滞后 &gt;1 个交易日 → P0 告警。</li>
@@ -345,8 +251,8 @@
 <li>任何 ETL job <code>running</code> 超过 2 小时 → P1 告警。</li>
 <li>指标覆盖率脚本每天运行并输出 OK/WARN/CRITICAL。</li>
 </ul>
-<hr />
-<h2>六、结论</h2>
+<hr>
+<h2 id="六结论">六、结论</h2>
 <p>平台当前指标问题不是单一 bug，而是“显示层单位错误 + 复权语义混乱 + 指标计算基准不一致 + ETL/监控缺失”叠加的结果。600026.SH 的 K 线与收益 discrepancy 只是最显性的表现。建议按 Phase 1 → Phase 2 → Phase 3 顺序推进，每完成一个 Phase 做一次端到端验证，避免再次引入口径不一致。</p>
 </body>
 </html>

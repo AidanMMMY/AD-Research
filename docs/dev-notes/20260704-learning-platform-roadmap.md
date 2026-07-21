@@ -1,5 +1,10 @@
 # AD-Research 学习平台扩展 Roadmap
 
+> 最后核实更新：2026-07-21。P0 全部落地（逐项状态见 §2 内标注）；两处与
+> 原文有出入：`learningMode` 默认值后改为**开启**（非原文的"默认关闭"）；
+> `DailyLesson` 组件仍在仓库，但 Dashboard 经 v8 重构后当前未挂载该组件。
+> P1 已落地 2/4 项（知识图谱入口、relatedTerms），见 §2 P1 标注。
+
 > 作者：子 agent K15 · 起点：2026-07-04
 > 协作：K6（术语词典）、K14（新手教学 / novice-pro mode）
 > 范围：把 AD-Research 从"研报工具"扩展为"研报 + 学习平台"。
@@ -48,31 +53,48 @@
 
 ## 2. Roadmap
 
-### P0（本期必须）
+### P0（本期必须）—— 已全部落地（2026-07-21 核实）
 
-1. **Dashboard「今日学习 3 分钟」卡片**——顶部 Section `daily-lesson`，每天（按当前日期 hash）从 `termDictionary` 抽 1 个词条。包含：
+1. **Dashboard「今日学习 3 分钟」卡片** ✅（有保留事项）——顶部 Section `daily-lesson`，每天（按当前日期 hash）从 `termDictionary` 抽 1 个词条。包含：
    - 词条标题 + `shortDesc`
    - "展开看 fullDesc"按钮
    - "问 AI"按钮（直接调 `useAIHelp().open()`）
    - "我学会了"按钮（写入 `localStorage.ad-research:learned_terms` Set，今天不再显示）
-2. **每页学习模式开关**——`useSettingsStore` 新增 `learningMode: boolean`。**默认关闭**，与 `mode` 独立。开启后：
+   - 落地为 `web/src/components/DailyLesson.tsx`（2026-07-08 上线），
+     配合 `web/src/hooks/useLearnedTerms.ts`。**注意**：Dashboard 后经
+     v8 市场指挥中心重构，当前工作区中该组件已不被任何页面引用
+     （仅组件与样式残留），如需恢复需在 Dashboard 重新挂载。
+2. **每页学习模式开关** ✅——`useSettingsStore` 新增 `learningMode: boolean`。**默认关闭**，与 `mode` 独立。开启后：
    - 所有 `StatCard` 下方追加 `<StatExplainer term="..." />` 一行小字（短解释 + 反问/例子）
    - 通过 props 显式 opt-in：`StatCard` 增加 `term`/`explainer` prop，未传则不显示
-3. **统一组件 `<StatExplainer termKey="...">`**——`web/src/components/StatExplainer.tsx`。封装：
+   - ⚠️ 默认值后来改为**开启**（2026-07-04 UX 整改，见
+     `web/src/stores/settings.ts` 注释：减少新用户找不到开关而错失体验）。
+3. **统一组件 `<StatExplainer termKey="...">`** ✅——`web/src/components/StatExplainer.tsx`。封装：
    - term 不存在 → 静默不渲染
    - learningMode 关 → 不渲染
    - 渲染一行小字，用 `term.shortDesc`，可点击展开 `term.fullDesc`
-4. **AI Help quick questions 增强**——在 `helpPrompts.ts` 每页 quick questions 末尾追加一句：`能不能用更简单的语言再解释一遍？`，让 novice 用户可一级级追问（系统 prompt 不动，避免对所有 prompt 加 tokens）。
-5. **PageHeader 新增 `tutorial?: ReactNode` slot**——可选 1-3 句话的"怎么读这个页"。
+   - 已内置进 `StatCard`（`term` / `explainer` prop）。
+4. **AI Help quick questions 增强** ✅——在 `helpPrompts.ts` 每页 quick questions 末尾追加一句：`能不能用更简单的语言再解释一遍？`，让 novice 用户可一级级追问（系统 prompt 不动，避免对所有 prompt 加 tokens）。
+   - 见 `web/src/utils/helpPrompts.ts:156,264`（含去重逻辑）。
+5. **PageHeader 新增 `tutorial?: ReactNode` slot** ✅——可选 1-3 句话的"怎么读这个页"。
    - 优先在 `InstrumentDetail` / `BacktestDetail` / `TradingPanel` / `StrategyLibrary` 添加。
-6. **`learningMode` 在 AppLayout 用户菜单中暴露**——复用现有 Dropdown，加一个 Switch。
+   - 实现时加了行为约定：默认只在 `mode === 'novice'` 时显示，
+     可用 `tutorialForce` 覆盖（`web/src/components/PageHeader.tsx`）。
+6. **`learningMode` 在 AppLayout 用户菜单中暴露** ✅——复用现有 Dropdown，加一个 Switch。
+   - 见 `web/src/components/AppLayout.tsx`（「学习模式」菜单项）。
 
 ### P1（下一轮）
 
-1. **Knowledge Graph 入口**——`/learning` 加 chip「查看知识图谱」；新增轻量可视化（按 relatedPageType 分组）。
-2. **`TermEntry.relatedTerms: string[]`**——K6 落地时再补，K15 提供字段支持：在 `HelpPopover` 末尾显示「相关术语」链接（hover 跳转）。
-3. **Dashboard 增加「本周学习了 N 个术语」**——读 `localStorage.ad-research:learned_terms`，显示在本周开始至今的计数。
-4. **每页教学覆盖率统计**——开发期 devtools（学习模式开时右下角小窗，列出哪些字段还没教学）。
+1. **Knowledge Graph 入口** ✅——`/learning` 加 chip「查看知识图谱」；新增轻量可视化（按 relatedPageType 分组）。
+   - 已落地（M20）：`web/src/pages/Learning/index.tsx` 有「知识图谱入口」
+     折叠面板形式的术语速查；Dashboard 有 chip 跳转。真正的图谱视图仍是 P2。
+2. **`TermEntry.relatedTerms: string[]`** ✅——K6 落地时再补，K15 提供字段支持：在 `HelpPopover` 末尾显示「相关术语」链接（hover 跳转）。
+   - 已落地：`web/src/utils/termDictionary.ts` 的 `TermEntry` 已有
+     `relatedTerms?: string[]` 并填充了数据。
+3. **Dashboard 增加「本周学习了 N 个术语」** ⚠️ 曾实现后移除——读 `localStorage.ad-research:learned_terms`，显示在本周开始至今的计数。
+   - 该 badge 后来在 Dashboard 重构中被判定为 dead code 移除
+     （见 `web/src/styles/global/dashboard-chips.css` 注释）。
+4. **每页教学覆盖率统计** ❌ 未见落地——开发期 devtools（学习模式开时右下角小窗，列出哪些字段还没教学）。
 
 ### P2（远期）
 

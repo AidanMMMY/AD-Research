@@ -1,6 +1,8 @@
 # iOS APP UI/UX 原型设计文档
 
 > 2026-06-28 | 基于投研平台功能，原生 Swift 实现
+>
+> 最后核实更新：2026-07-21。注意：Web 端设计系统已于 2026-07-11 升级为 v2（蓝靛主色，暗色 GitHub Dark 风格），本文中 "Swiss Minimal + Neon Cyan" 及第 4.5 节色板为旧版 Web 配色，iOS 端 `Theme/Theme.swift` 当前仍是旧配色，后续需与 Web v2 同步（见 4.5 节标注）。
 
 ---
 
@@ -14,7 +16,7 @@
 | **手势优先** | 用原生手势替代 Web 端按钮操作 |
 | **信息分层** | 重要信息前置，详情按需展开 |
 | **触控友好** | 44pt 最小热区，不留死角 |
-| **统一主题** | 与 Web 端 Swiss Minimal + Neon Cyan 对齐 |
+| **统一主题** | 与 Web 端设计系统对齐（⚠️ Web 端 2026-07-11 起已升级为 v2：蓝靛主色 #2563EB、暗色 #0D1117/#60A5FA；本文写成时的 "Swiss Minimal + Neon Cyan" 已过时） |
 
 ### 1.2 与 Web 端的关键差异
 
@@ -499,6 +501,8 @@ App Launch
 ```
 
 ### 4.5 色彩系统（与 Web 端对齐）
+
+> ⚠️ 2026-07-21 核实：以下为旧版 Web 配色（Neon Cyan 时代）。Web 端 `web/src/styles/theme.css` 已升级为设计系统 v2——暗色默认：`--bg-base: #0D1117`、`--bg-elevated: #161B22`、`--accent: #60A5FA`（蓝）、`--color-rise: #FF8585`、`--color-fall: #7DCB99`；浅色可选：`--accent: #2563EB`。iOS `ios/ADResearch/Theme/Theme.swift` 当前仍是下方旧配色，后续应按 v2 同步。红涨绿跌的 A 股约定不变。
 
 ```swift
 extension Color {

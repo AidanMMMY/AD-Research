@@ -1,6 +1,10 @@
 # A 股披露公告全量获取方案
 
-> 状态：设计阶段 | 2026-07-11
+> 最后核实更新：2026-07-21
+>
+> **实施状态（2026-07-21 核实）**：Phase 0/1a/1b 与 Phase 3（日增量扩全量）已落地——`cninfo_org_ids.json` 已重建至 **5418 条**，`scripts/backfill_cninfo_reports.py` 与 `scripts/batch_download_extract.py` 已存在，日增量 pipeline（每天 17:00）已改用 `get_all_org_id_universe()` 读取全量 org_id 表；前端 `/cninfo-reports` 已挂入侧边栏（`web/src/routes.tsx`，research 组「巨潮定期报告」）。**未实施**：Phase 2 临时公告（`fetch_all_announcements` 不存在）、Phase 4 交易所补漏 scraper（`exchange_disclosure_provider.py` 不存在）、`/disclosures` 三 Tab 统一入口与 `app/api/v1/disclosure_routes.py`。
+
+> 状态：设计阶段（部分已实施，见上） | 2026-07-11
 
 ## 0. 现状摸底
 
@@ -8,15 +12,15 @@
 
 | 组件 | 现状 | 问题 |
 |---|---|---|
-| `cninfo_org_ids.json` | **40 条**（仅大市值测试用） | 脚本 `build_cninfo_org_id_map.py` 已写好，但从未在服务器执行 |
+| `cninfo_org_ids.json` | **5418 条**（已执行 `build_cninfo_org_id_map.py` 全量重建） | — |
 | `CninfoProvider` | 正常工作，2s pacing，~30 req/min | 单一 IP，无法并行加速 |
-| `CninfoReportService` | 支持任意 universe 参数 | 目前被 hardcode 的 `get_hs300_cs500_universe()` 限制 |
-| `CninfoReportsPipeline` | 每天 17:00 拉取 7 天窗口的定期报告 | 仅拉到 40 只有 org_id 的股票 |
+| `CninfoReportService` | 支持任意 universe 参数 | 日增量已改用 `get_all_org_id_universe()`（全量 org_id 表），不再限于 HS300+CS500 |
+| `CninfoReportsPipeline` | 每天 17:00 拉取 7 天窗口的定期报告 | 已覆盖全量 5418 只 |
 | PDF 下载 + 文本提取 | pdfplumber/pypdf/pdfminer 三引擎 | 正常 |
 | API 层 | list/coverage/detail/download/refresh | 正常 |
-| 前端 | `/cninfo-reports` 页面 | 未挂在侧边栏 |
+| 前端 | `/cninfo-reports` 页面 | 已挂侧边栏（research 组「巨潮定期报告」） |
 
-### 结论：已有基础设施完全可用，瓶颈在 org_id 覆盖 + 调度策略
+### 结论：org_id 覆盖与调度策略瓶颈已解决（见文首实施状态）；剩余缺口为临时公告、交易所补漏与 `/disclosures` 统一入口
 
 ---
 
@@ -229,7 +233,7 @@ Exchange scraper 使用 `requests` + `BeautifulSoup`，单独模块 `app/data/pr
 - 拉取最近 7 天新发布的定期报告
 
 ### 修改点
-- Universe 从 `get_hs300_cs500_universe()` 改为直接读取 `cninfo_org_ids.json` 的全部 5407 只
+- ~~Universe 从 `get_hs300_cs500_universe()` 改为直接读取 `cninfo_org_ids.json` 的全部 5407 只~~ **（已完成）**：pipeline 现经 `get_all_org_id_universe()` 读取 org_id 表全量 5418 只（`app/data/pipelines/cninfo_reports.py`）
 - 日增量只需拉 7 天窗口，每只股票可能只有 0-2 条新公告
 - 5407 × 平均 0.5 条 × 2s pacing ≈ 1.5 小时
 - 可接受，不需要并行
@@ -246,24 +250,24 @@ Exchange scraper 使用 `requests` + `BeautifulSoup`，单独模块 `app/data/pr
 
 ## 6. 实施路线图
 
-| Phase | 内容 | 预计时间 | 方式 |
-|---|---|---|---|
-| **Phase 0** | 服务器执行 `build_cninfo_org_id_map.py`，org_id 40→5407 | 5 分钟 | 单命令 |
-| **Phase 1a** | 全量定期报告回填（5 年 × 5407 只） | 8-12 小时（5 worker 并行） | 多 worker 脚本 |
-| **Phase 1b** | PDF 批量下载 + 文本提取 | 24-48 小时（取决于 PDF 下载带宽） | 单进程队列 |
-| **Phase 2** | 临时公告 API 拉取（最近 1 年） | 8-12 小时 | 多 worker |
-| **Phase 3** | 日增量 pipeline 扩展到全量 | 1 小时 | 修改 scheduler |
-| **Phase 4** | 交易所补漏 scraper（可选） | 2-3 天 | 单独开发 |
-| **Phase 5** | 前端 `/disclosures` 整合 | 1-2 天 | 前端开发 |
+| Phase | 内容 | 预计时间 | 方式 | 状态（2026-07-21） |
+|---|---|---|---|---|
+| **Phase 0** | 服务器执行 `build_cninfo_org_id_map.py`，org_id 40→5407 | 5 分钟 | 单命令 | ✅ 已完成（5418 条） |
+| **Phase 1a** | 全量定期报告回填（5 年 × 5407 只） | 8-12 小时（5 worker 并行） | 多 worker 脚本 | ✅ 脚本已落地（`scripts/backfill_cninfo_reports.py`） |
+| **Phase 1b** | PDF 批量下载 + 文本提取 | 24-48 小时（取决于 PDF 下载带宽） | 单进程队列 | ✅ 脚本已落地（`scripts/batch_download_extract.py`） |
+| **Phase 2** | 临时公告 API 拉取（最近 1 年） | 8-12 小时 | 多 worker | ❌ 未实施（无 `fetch_all_announcements`） |
+| **Phase 3** | 日增量 pipeline 扩展到全量 | 1 小时 | 修改 scheduler | ✅ 已完成（17:00 日刷走全量 universe） |
+| **Phase 4** | 交易所补漏 scraper（可选） | 2-3 天 | 单独开发 | ❌ 未实施 |
+| **Phase 5** | 前端 `/disclosures` 整合 | 1-2 天 | 前端开发 | ❌ 未实施（仅 `/cninfo-reports` 单页） |
 
 ## 7. 新增文件清单
 
-| 文件 | 用途 |
-|---|---|
-| `scripts/backfill_cninfo_reports.py` | 全量回填脚本（按 offset/limit 分片） |
-| `scripts/batch_download_extract.py` | 批量 PDF 下载 + 文本提取 |
-| `app/data/providers/exchange_disclosure_provider.py` | SSE/SZSE 公告页 scraper（Phase 4） |
-| `app/api/v1/disclosure_routes.py` | DisclosureRoute API |
+| 文件 | 用途 | 状态（2026-07-21） |
+|---|---|---|
+| `scripts/backfill_cninfo_reports.py` | 全量回填脚本（按 offset/limit 分片） | ✅ 已存在 |
+| `scripts/batch_download_extract.py` | 批量 PDF 下载 + 文本提取 | ✅ 已存在 |
+| `app/data/providers/exchange_disclosure_provider.py` | SSE/SZSE 公告页 scraper（Phase 4） | ❌ 未创建 |
+| `app/api/v1/disclosure_routes.py` | DisclosureRoute API | ❌ 未创建 |
 
 ## 8. 成本与风险
 

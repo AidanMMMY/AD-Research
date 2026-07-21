@@ -3,6 +3,8 @@
 > 2026-06-28 | 基于投研平台现有架构的完整规划
 >
 > 前置阅读：[iOS APP 可行性评估报告](./20260628-ios-app-feasibility-report.md)
+>
+> 最后核实更新：2026-07-21。实施现状：后端 P0 改造（Refresh Token / 登出黑名单 / 设备管理）与 SSE 价格流、APNs 推送服务均已落地（见第十章标注）；iOS 工程 `ios/ADResearch/` 已开工，目前仅完成登录脚手架（App 入口、LoginView/ViewModel、AuthManager、KeychainStore、APIClient、AuthService、Theme），目录结构与本文第三章设计一致，其余模块尚未实现。
 
 ## 目录
 
@@ -202,17 +204,22 @@ final class InstrumentListViewModel: ObservableObject {
 
 ## 四、认证与安全
 
-### 4.1 当前认证（需改造）
+### 4.1 当前认证（2026-07-21 核实：改造已落地）
 
 ```
-POST /api/v1/auth/login → JWT (1天过期)
-GET  /api/v1/auth/me    → 用户信息
+POST /api/v1/auth/login    → access_token (JWT, 1天) + refresh_token (30天, opaque)
+POST /api/v1/auth/refresh  → 新 access_token + 新 refresh_token（rotation）
+POST /api/v1/auth/logout   → Redis 黑名单失效当前 jti
+POST /api/v1/auth/devices  → 注册设备
+GET  /api/v1/auth/devices  → 查看已登录设备
+DELETE /api/v1/auth/devices/:id → 踢掉设备
+GET  /api/v1/auth/me       → 用户信息
 Authorization: Bearer <token>
 ```
 
-**缺失：** Refresh Token、登出、设备管理
+实现要点：refresh token 为不透明随机串，DB 存 SHA-256 hash（`app/models/refresh_token.py`），有效期 30 天；access token 有效期由 `ACCESS_TOKEN_EXPIRE_MINUTES` 控制（默认 1440 分钟 = 1 天）。4.2 节为原推荐设计，与实际实现基本一致，差异仅为 access token 有效期（设计 15 分钟，实际 1 天）。
 
-### 4.2 改造后认证（推荐）
+### 4.2 改造后认证（原推荐设计，已按此实现）
 
 ```
 POST /api/v1/auth/login       → access_token (短期) + refresh_token (长期)
@@ -223,12 +230,12 @@ GET  /api/v1/auth/devices     → 查看已登录设备
 DELETE /api/v1/auth/devices/:id → 踢掉设备
 ```
 
-**Token 设计：**
+**Token 设计（实际实现）：**
 
 | Token | 有效期 | 存储位置 |
 |---|---|---|
-| access_token | 15 分钟 | 内存 |
-| refresh_token | 30 天 | Keychain |
+| access_token | 1 天（`ACCESS_TOKEN_EXPIRE_MINUTES=1440`；原设计 15 分钟，如需缩短改配置即可） | 内存 |
+| refresh_token | 30 天（不透明随机串，DB 存 SHA-256 hash，refresh 时 rotation） | Keychain |
 
 ### 4.3 iOS 端认证流
 
@@ -795,15 +802,17 @@ class StoreManager: ObservableObject {
 
 ### 10.1 MVP 必须做（blocker）
 
-| 优先级 | 改造项 | 工作量 | 说明 |
+> 2026-07-21 核实：P0 三项与 SSE 价格流、APNs 推送均已在后端落地。
+
+| 优先级 | 改造项 | 状态 | 说明 |
 |---|---|---|---|
-| P0 | **Refresh Token + 刷新端点** | 3-5 天 | `POST /auth/refresh`；`/auth/login` 返回 refresh_token |
-| P0 | **Token 黑名单（登出用）** | 1-2 天 | Redis 存储失效 token |
-| P0 | **设备绑定表 + API** | 2-3 天 | 多端登录管理 |
-| P1 | **SSE 价格流端点** | 5-7 天 | `GET /stream/prices?codes=...` |
-| P1 | **批量快照接口** | 1-2 天 | `GET /market-data/snapshots?codes=...` |
-| P1 | **API 分页统一** | 2-3 天 | `page`/`page_size` 标准化 |
-| P2 | **APNs 推送集成** | 3-5 天 | 价格预警、信号通知、报告生成通知 |
+| P0 | **Refresh Token + 刷新端点** | ✅ 已完成 | `POST /api/v1/auth/refresh`（rotation）；`/auth/login` 返回 refresh_token |
+| P0 | **Token 黑名单（登出用）** | ✅ 已完成 | `POST /api/v1/auth/logout`，Redis 存失效 jti |
+| P0 | **设备绑定表 + API** | ✅ 已完成 | `UserDevice` 模型 + `/api/v1/auth/devices` CRUD |
+| P1 | **SSE 价格流端点** | ✅ 已完成 | `GET /api/v1/stream/prices?codes=...`（3s 推送，`app/api/v1/stream.py`） |
+| P1 | **批量快照接口** | ✅ 已完成 | `GET /api/v1/market-data/snapshot?codes=...`（支持多 code） |
+| P1 | **API 分页统一** | 待做（2-3 天） | `page`/`page_size` 标准化 |
+| P2 | **APNs 推送集成** | ✅ 已完成 | `app/services/push_service.py`；价格预警、信号通知、报告生成通知（需配置 `APNS_*` 环境变量） |
 
 ### 10.2 建议做（体验提升）
 

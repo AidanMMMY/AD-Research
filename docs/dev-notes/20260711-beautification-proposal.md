@@ -4,6 +4,8 @@
 
 > 编制日期：2026-07-11 | 基于 4 维度深度研究（前沿趋势 × Fintech 对标 × 视觉审计 × 信息密度）  
 > 方法论：3 个独立研究 agent 并行调研 50+ 来源，视觉审计 agent 逐文件标记 27 个具体问题
+>
+> **实现状态（2026-07-21 核实）**：P0 全部及 P1 主体已落地——主色已迁移蓝靛（`web/src/styles/theme.css` `--accent: #2563EB` / 暗色 `#60A5FA`，保留 `data-accent="vermilion"` 兼容旧朱红）；暗色重塑为 GitHub Dark 风格，CRT 扫描线改为 `data-crt="on"` 可选开关（默认关闭，设置项 `crtEffect`）；三档信息密度（`data-density`，默认 comfortable 42px）已实现；Inter/JetBrains Mono 经 `@fontsource` 自托管加载（`main.tsx`）；暗色文字对比度按 WCAG AA 修正。注意：2026-07-21 起默认主题为**暗色**（dark-first），与本方案编制时相反。P1-4 Bento Grid、P2（AI 面板融合、语义微动效、"数据之光"）未实现。
 
 ---
 

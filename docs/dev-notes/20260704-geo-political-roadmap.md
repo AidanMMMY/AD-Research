@@ -1,5 +1,9 @@
 # 2026-07-04 全球政治 / 地缘事件覆盖路线图
 
+> 最后核实更新：2026-07-21。P0 已落地（原文 §3），P1 两项（Global Markets
+> 事件小卡 + AI Help 上下文）也已落地，事件窗口 2026-07-12 起由 24h 扩为
+> 最近 7 天；P2（新增政治类 RSS 源、行业影响地图）仍未做。详见 §2/§4 内标注。
+
 > 调研背景：AD-Research 已启动「全球资本市场」板块（K11），但目前仅覆盖
 > 可量化指标（指数、收益率、商品、汇率）。影响 A 股开盘、外资流向、行业
 > 轮动的另一类关键软变量 —— **全球政治 / 地缘事件** —— 仍未成体系。本
@@ -89,8 +93,13 @@
   `event_category IN (geopolitics, central_bank, election, trade_war,
   sanction)` + `importance >= 4` + `published_at >= now-24h`，每条点
   击跳 `/news/{id}`。
+  - ✅ **已落地**（2026-07-21 核实）：`web/src/pages/GlobalMarkets/index.tsx`
+    的 `RecentWeekEvents` 面板即按此实现；2026-07-12 起窗口由 24h 扩为
+    **最近 7 天**（`importance >= 4`，每页 4 条），标题为「最近一周重大
+    政治 / 地缘事件」。
 - **未来 7 天日历小卡**：G7/G20/OPEC+/Fed/ECB/BOJ/CNPC 等静态 +
   可选 RSS（投资日历 wiki）。
+  - ❌ 仍未做（2026-07-21 核实：无 `macro_calendar` 表或日历端点）。
 
 ### P2（长期）
 
@@ -134,6 +143,8 @@
 
 ### P1：Global Markets "最近 24h 重大事件"小卡
 
+> ✅ 已落地（见 §2 标注；窗口现为 7 天，`useRecentPoliticalEvents()`）。
+
 1. K11 在 `web/src/pages/GlobalMarkets/index.tsx` 顶部加一个
    `<Panel>`，调用 `newsApi.list({ event_category:
    POLITICAL_CATEGORIES, importance_min: 4, from_date: now-24h,
@@ -143,6 +154,10 @@
 4. 增加空态文案 "暂无 24h 内重大政治事件"。
 
 ### P1：AI Help 上下文接入"最近 5 条地缘事件"
+
+> ✅ 已落地（2026-07-21 核实）：GlobalMarkets 页的 AI Help 按钮通过
+> `buildGlobalMarketsContext(flatRows, recentEvents)` 把同一批政治事件
+> （复用 `useRecentPoliticalEvents` 缓存）注入 `contextData`。
 
 1. `web/src/pages/GlobalMarkets/index.tsx`（或 News 详情）调
    `newsApi.list({ event_category: POLITICAL_CATEGORIES,

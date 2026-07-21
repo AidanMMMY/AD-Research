@@ -1,5 +1,7 @@
 # 2026-07-20 ECS 生产环境全面排查报告与优化落地记录
 
+> **注**：本文为 2026-07-20 的时点记录，部分内容可能已过时。
+
 > 方法：10 个只读排查 agent 并行上 ECS（ssh ad-research）覆盖 cron/Docker/backend/celery/采集 agent/PG+Redis/nginx/数据新鲜度/磁盘日志/APScheduler 十域；
 > 随后 11 个修复 agent 并行落地（9 个代码修复 + 2 个服务器操作）。本文记录排查结论、已落地修复与遗留事项。
 

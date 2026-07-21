@@ -1,6 +1,7 @@
 # A 股 ETF Holdings 全市场覆盖方案
 
-> 状态: 调研 + 实施计划  
+> 状态: 调研 + 实施计划（Phase 1 / 2 已落地，Phase 3 部分落地，Phase 4 / 5 未实施）
+> 最后核实更新：2026-07-21  
 > 起草: 2026-07-08  
 > 关联:
 > - `app/data/providers/tushare_provider.py::TushareProvider.fetch_etf_holdings`
@@ -216,7 +217,9 @@ source           (新增: 'em_f10' | 'tushare' | 'cninfo_pdf' | 'pcf')
 
 ## 4. 实施步骤（分阶段）
 
-### Phase 1: 东方财富 F10 Provider（**P0, 第 1 周**）
+### Phase 1: 东方财富 F10 Provider（**P0, 第 1 周**）✅ 已落地
+
+> 落地形态与本文设计略有差异：实际实现为函数式模块 `app/data/providers/eastmoney_f10_provider.py`（导出 `fetch_etf_holdings(code)` 与 `SOURCE` 常量），已接入 `app/data/pipelines/etf_holdings.py::extract`，顺序为 `em_f10 → tushare → akshare fallback`。另有每日 07:00 的 `etf_holdings` 调度任务（`app/core/scheduler.py`，"A股ETF前十大持仓采集"）。
 
 **目标**: Layer 1 跑通，覆盖 ~90% ETF
 
@@ -280,7 +283,9 @@ class EastMoneyF10Provider:
 - 全流程 < 15 分钟
 - 反爬触发时优雅降级到 Tushare
 
-### Phase 2: Tushare 补漏 + Pipeline 重排（**P0, 第 1 周**）
+### Phase 2: Tushare 补漏 + Pipeline 重排（**P0, 第 1 周**）✅ 已落地
+
+> `TushareProvider.fetch_etf_holdings_batch` 已实现并被 pipeline 调用；`etf_holding_failed` 表已建（`app/models/etf.py`，含 `idx_etf_holding_failed_last_attempt` 索引）。
 
 **目标**: Layer 1 + 2 组合覆盖 95%+
 
@@ -302,7 +307,9 @@ class EastMoneyF10Provider:
 - 0.5 天: Pipeline 重排 + failed log
 - 0.5 天: 全量 600 只 + 验证覆盖率 ≥ 570/600
 
-### Phase 3: cninfo ETF 季报 + orgId 扩表（**P1, 第 2~3 周**）
+### Phase 3: cninfo ETF 季报 + orgId 扩表（**P1, 第 2~3 周**）⚠️ 部分落地
+
+> orgId 批量写入脚本 `scripts/build_etf_org_ids.py` 已存在；但 `app/services/etf_quarterly_report_service.py`（cninfo ETF 季报解析服务）未实现，PDF「前十大重仓股」解析链路未建。
 
 **目标**: Layer 3 兜底，季报披露后 0 滞后覆盖剩余 5%
 
@@ -342,7 +349,9 @@ class EastMoneyF10Provider:
 - cninfo 季报 category 验证可能发现 ETF 不在那 4 个 category 里, 需要绕路
 - PDF 表格解析可能因不同基金模板差异大, 需要 rule 库积累
 
-### Phase 4: 东方财富 PCF (pingzhongdata) 实时校准（**P2, 第 4 周**）
+### Phase 4: 东方财富 PCF (pingzhongdata) 实时校准（**P2, 第 4 周**）❌ 未实施
+
+> 截至 2026-07-21，`app/data/providers/pcf_provider.py` 不存在，PCF 校准链路未建（与 §7 决策点 3「暂不做」的建议一致）。
 
 **目标**: Layer 4 每日盘前校准，当日覆盖率 ~100%
 
@@ -361,7 +370,9 @@ class EastMoneyF10Provider:
 - 0.5 天: 集成到现有 pipeline
 - 0.5 天: 全量 + 验证
 
-### Phase 5: 监控 + 告警（**P2, 持续**）
+### Phase 5: 监控 + 告警（**P2, 持续**）❌ 未实施
+
+> 截至 2026-07-21，`app/core/scheduler.py` 中无 `etf_holdings_diagnostic` 任务，`/admin/etf-holdings/coverage` 页面不存在。失败列表可直接查 `etf_holding_failed` 表。
 
 **新增**:
 - 调度任务 `etf_holdings_diagnostic_daily`: 每日 23:00 检查当日覆盖率

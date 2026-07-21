@@ -1,6 +1,8 @@
 # AlloyResearch
 
 > 多市场（A 股 / 美股 / 港股 / 日股 / 加密货币）的 Web 投研平台，集成数据采集、技术指标、综合评分、标的池管理、策略回测、交易信号、模拟/真实交易、AI 研报。
+>
+> 最后核实更新：2026-07-21
 
 ## ✨ 核心能力
 
@@ -11,7 +13,7 @@
 - **策略回测**：动量 / 均值回归 / RSI 策略模板 + 成本模型 + 绩效归因（Brinson）+ 多策略对比
 - **交易信号**：按策略生成 BUY / SELL / HOLD 信号及强度
 - **模拟/真实交易**：Paper trading 全流程模拟 + Binance live trading（admin only）
-- **AI 研报**：DeepSeek LLM，结构化输出池分析/标的研报
+- **AI 研报**：MiniMax（默认，OpenAI 兼容）/ DeepSeek（legacy）LLM，结构化输出池分析/标的研报
 - **板块轮动**：板块相对强弱、动量排名、轮动信号
 - **报告引擎**：HTML / Markdown / JSON 三种格式，Jinja2 模板
 - **ETL 看板 + 调度**：APScheduler（Asia/Shanghai）+ Redis 分布式锁 + 多 worker 安全
@@ -20,28 +22,27 @@
 
 - **后端**：FastAPI 0.115 + SQLAlchemy 2.0 + Pydantic + Alembic + PostgreSQL 16 + Redis 7
 - **前端**：React 18 + Vite + TypeScript + Ant Design 5 + ECharts + lightweight-charts + Zustand + TanStack React Query
-- **调度**：APScheduler（Asia/Shanghai 时区，单进程启动）
-- **鉴权**：JWT（python-jose + bcrypt），覆盖 13 个 router
+- **调度**：APScheduler（Asia/Shanghai 时区，FastAPI 进程内启动）+ Celery 5（队列 `indicator`、`celery,cninfo,industry`）
+- **鉴权**：JWT（python-jose + bcrypt），覆盖全部 router（40+ 个模块）
 - **部署**：Docker Compose（postgres / redis / backend）
 
 ## 🚀 快速启动
 
 ### 环境要求
 
-- Python 3.12+ / Node 20+
+- Python 3.11+ / Node 20+
 - PostgreSQL 16 + Redis 7
 - Docker Compose（推荐）或本地安装
 
 ### 后端
 
 ```bash
-cd app
-python -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
+# 在仓库根目录执行（Poetry 管理依赖，也可用已有 .venv）
+poetry install
 cp .env.example .env  # 编辑 DATABASE_URL / REDIS_URL / AUTH_SECRET_KEY
 alembic upgrade head
-python -m scripts.seed_users  # 初始化 admin / Aidan / Tee / Zack / Philip
-uvicorn main:app --reload --port 8000
+python scripts/seed_users.py  # 初始化 admin（读取 AUTH_ADMIN_USERNAME / AUTH_ADMIN_PASSWORD）
+uvicorn app.main:app --reload --port 8000
 ```
 
 ### 前端
@@ -63,9 +64,10 @@ python scripts/update_daily_data.py
 
 ```bash
 docker compose up -d
-# backend  http://localhost:8000
+# backend  http://localhost:8001（容器内 8000）
 # postgres :5432
 # redis    :6379
+# 另含 celery-worker-indicator / celery-worker-cninfo
 ```
 
 ## 📦 模块清单
@@ -75,18 +77,27 @@ docker compose up -d
 | 模块 | 路径前缀 | 功能 |
 |------|----------|------|
 | auth | `/api/v1/auth` | JWT 登录 / 当前用户信息 |
-| etfs | `/api/v1/etfs` | ETF 列表 / 详情 / 分类 / 扫描 |
+| etfs | `/api/v1/etfs` | ETF 列表 / 详情 / 分类 |
+| etf_scanner | `/api/v1/etfs` | 全市场 ETF 扫描触发与日志（挂在 etfs 前缀下） |
+| etf_holdings | `/api/v1/etf-holdings` | ETF 持仓刷新 / 覆盖率统计 |
 | stocks | `/api/v1/stocks` | 个股列表 / 详情 |
 | stock_fundamentals | `/api/v1/stock-fundamentals` | 个股基本面 |
 | crypto | `/api/v1/crypto` | 加密货币列表 / 详情 / 行情 |
-| etf_scanner | `/api/v1/etf-scanner` | 全市场 ETF 扫描触发与日志 |
+| futures | `/api/v1/futures` | 商品期货行情与合约 |
 | market_data | `/api/v1/market-data` | 历史日线 / 实时行情快照 |
 | indicators | `/api/v1/indicators` | 单只/批量最新指标 + 历史 |
 | scoring | `/api/v1/scores` | 综合评分 + 模板 CRUD |
 | screening | `/api/v1/screen` | 多条件筛选 + 预设 + 分类统计 |
 | analysis | `/api/v1/analysis` | 相关性矩阵 / 排名 / 板块轮动 |
-| sector_rotation | `/api/v1/analysis/sector-rotation` | 板块相对强弱与轮动信号 |
+| sector_rotation | `/api/v1/analysis/sector-rotation`（别名 `/api/v1/sector-rotation`） | 板块相对强弱与轮动信号 |
 | attribution | `/api/v1/analysis/attribution` | 绩效归因（Brinson 模型） |
+| macro | `/api/v1/macro` | 宏观经济指标 |
+| fund_flow | `/api/v1/fund-flow` | 个股 / 板块资金流 |
+| microstructure | `/api/v1/microstructure` | 龙虎榜 / 沪深港通等微结构数据 |
+| search_trends | `/api/v1/search-trends` | 搜索热度趋势 |
+| listing_events | `/api/v1/listing-events` | 新股发行 / 上市事件 |
+| news | `/api/v1/news` | 资讯聚合与健康度 |
+| sec_filings | `/api/v1/sec-filings` | SEC EDGAR 公告 |
 | pools | `/api/v1/pools` | 标的池 CRUD + 成员 + 权重 + 快照 + 分析 + 相关性 |
 | strategies | `/api/v1/strategies` | 策略 CRUD + 模板 |
 | backtests | `/api/v1/backtests` | 回测运行 / 列表 / 详情 |
@@ -94,15 +105,16 @@ docker compose up -d
 | paper_trading | `/api/v1/paper-trading` | 模拟交易账户与订单 |
 | live_trading | `/api/v1/live-trading` | Binance 真实交易（admin） |
 | reports | `/api/v1/reports` | 报告生成 / 列表 / 下载 |
+| research_reports | `/api/v1/research-reports` | 研报库（券商研报采集） |
+| cninfo_reports | `/api/v1/cninfo-reports` | 巨潮定期报告（PDF） |
 | notifications | `/api/v1/notifications` | 通知配置 / 测试 / 日志 |
 | favorites | `/api/v1/favorites` | 用户自选 |
 | stats | `/api/v1/stats` | 平台概览统计 |
-| etl | `/api/v1/etl` | ETL 状态 / 日志 |
+| etl / etl_status | `/api/v1/etl` | ETL 状态 / 日志 |
 | stream | `/api/v1/stream` | SSE 实时行情流 |
-| research | `/api/v1/research` | AI 研报（DeepSeek） |
-| chat | `/api/v1/chat` | AI 聊天 |
+| research | `/api/v1/research` | AI 研报（MiniMax 默认）与 AI 聊天（`/research/chat`） |
 | admin_users | `/api/v1/admin/users` | 用户管理（admin） |
-| deployments | `/api/v1/deployments` | 部署面板（admin） |
+| deployments | `/api/v1/admin` | 部署面板（admin） |
 
 ### 前端页面（web/src/pages/）
 
@@ -110,33 +122,53 @@ docker compose up -d
 |------|------|------|
 | Login | `/login` | JWT 登录 |
 | Dashboard | `/dashboard` | 平台概览、Top10 评分、自选、池列表 |
-| ETFList | `/etfs` | ETF 列表 + 筛选 + 搜索 |
-| ETFDetail | `/etfs/:code` | K 线、指标、综合评分雷达图、自选 |
+| GlobalMarkets | `/global` | 全球市场速览 |
+| Favorites | `/favorites` | 我的自选股 |
+| InstrumentList | `/instruments` | 标的列表（ETF/个股统一入口，旧 `/etfs` 重定向至此） |
+| InstrumentDetail | `/instruments/:code` | K 线、指标、综合评分雷达图、自选 |
+| EtfHoldingsHistory | `/etfs/holdings-history` | ETF 持仓历史 |
+| StocksList / StockDetail | `/stocks`、`/stocks/:code` | A 股个股列表与详情 |
+| SectorRotation | `/sector-rotation` | 板块表现与轮动信号 |
+| CorrelationAnalysis | `/correlation` | 相关性热力图 |
+| ReturnComparison | `/comparison` | 多只标的收益曲线叠加 |
+| Futures | `/futures` | 商品期货 |
 | Screen | `/screen` | 多条件筛选、预设、分页 |
+| MarketScanner | `/scanner` | 触发/查看全市场扫描 |
 | ScoreRanking | `/scores` | 按模板查看综合评分排名 |
 | PoolList | `/pools` | 创建/查看池 |
 | PoolDetail | `/pools/:id` | 成员权重、持仓分布、相关性、快照 |
-| ReturnComparison | `/comparison` | 多只 ETF 收益曲线叠加 |
-| CorrelationAnalysis | `/correlation` | 相关性热力图 |
-| SectorRotation | `/sector-rotation` | 板块表现与轮动信号 |
-| ETFScanner | `/scanner` | 触发/查看全市场扫描 |
-| SignalDashboard | `/signals` | 最新交易信号看板 |
+| News | `/news`、`/news/:id` | 资讯流与详情 |
+| ResearchNotes | `/research` | AI 研究笔记 |
+| ReportBrowser | `/reports` | 生成/下载/预览报告 |
+| ResearchReports | `/research-reports` | 券商研报库 |
+| CninfoReports | `/cninfo-reports` | 巨潮定期报告 |
+| SECFilings | `/sec-filings` | SEC 公告 |
+| ListingPreview | `/listing-preview` | 新股上市预告 |
+| Macro | `/macro` | 宏观经济指标 |
+| Sentiment | `/sentiment` | 市场情绪总览 |
+| SentimentDashboard | `/instrument-sentiment` | 单标情绪看板 |
+| SearchTrends | `/search-trends` | 搜索热度 |
+| FundFlow | `/fund-flow` | 资金流 |
 | StrategyList | `/strategies` | 策略模板、创建、删除 |
+| StrategyLibrary | `/strategy-library` | 策略库 |
 | BacktestList | `/backtests` | 创建/查看回测 |
 | BacktestDetail | `/backtests/:id` | NAV 曲线、交易记录 |
-| ReportBrowser | `/reports` | 生成/下载/预览报告 |
-| ResearchNotes | `/research` | AI 研报浏览 |
-| AIChat | `/chat` | AI 聊天界面 |
+| SignalDashboard | `/signals` | 最新交易信号看板 |
+| PaperTrading | `/paper-trading` | 模拟交易账户 |
+| TradingPanel | `/live-trading` | Binance 真实交易面板（admin） |
+| Portfolio | `/portfolio` | 我的组合 |
 | CryptoList | `/crypto` | 加密货币列表 |
 | CryptoDetail | `/crypto/:code` | 加密货币详情 |
-| PaperTrading | `/paper-trading` | 模拟交易账户 |
-| TradingPanel | `/trading` | Binance 真实交易面板（admin） |
+| Microstructure | `/microstructure` | 微结构数据（龙虎榜等） |
+| Learning | `/learning` | 教程中心 |
+| AIChat | `/chat` | AI 助手聊天界面 |
 | NotificationConfig | `/notifications` | Webhook/邮件配置与测试 |
-| NotificationLogs | `/notifications/logs` | 通知发送历史 |
-| ETLStatus | `/etl` | ETL 执行状态 |
-| SentimentDashboard | `/sentiment` | 情绪指标看板 |
-| AdminUsers | `/admin/users` | 用户管理 |
-| AdminDeployments | `/admin/deployments` | 部署管理 |
+| NotificationLogs | `/notification-logs` | 通知发送历史 |
+| ETLStatus | `/etl-status` | ETL 执行状态 |
+| ETLOpsDashboard | `/admin/etl-status` | ETL 运维看板（admin） |
+| NewsHealth | `/news/health` | 资讯健康度 |
+| AdminUsers | `/admin/users` | 用户管理（admin） |
+| AdminDeployments | `/admin/deployments` | 部署管理（admin） |
 
 ### 数据源（app/data/providers/）
 
@@ -144,11 +176,16 @@ docker compose up -d
 |----------|----------|----------|
 | AkshareProvider | A 股 ETF | 日线、实时行情 |
 | TushareProvider | A 股个股 | 日线、基本面、复权因子 |
+| EastMoneyZhProvider / eastmoney_f10_provider | A 股 | 日线、基金 F10 持仓 |
 | YFinanceProvider | 美股 / 港股 / 日股 / 外汇 | 日线、行情 |
+| SinaUSProvider | 美股 | 行情 |
 | TiingoProvider | 美股 | 日线、EOD 价格 |
 | FinnhubProvider | 美股 ETF | 基础信息 |
 | FMPProvider | 美股 | 基础信息、行情 |
 | BinanceProvider | 加密货币 | K 线、行情 |
+| CninfoProvider | A 股 | 巨潮公告 / 定期报告 |
+| SecEdgarProvider | 美股 | SEC 公告 |
+| FredProvider | 宏观 | FRED 经济指标 |
 
 ### 定时任务（app/core/scheduler.py）
 
@@ -159,16 +196,16 @@ docker compose up -d
 | `score_calculation` | 每天 08:30 | 评分日终计算 | 等待日终 ETL |
 | `signal_generation` | 每天 09:00 | 生成交易信号 | 等待日终 ETL |
 | `weekly_pool_reports` | 每周日 22:00 | 生成所有池周报 | 无 |
-| `etf_market_scan` | 每周日 03:00 | 全市场 ETF 扫描 | 无 |
+| `etf_market_scan` | 每周日 03:00 | 全市场 ETF 扫描 | `etf_scan` |
 
 ## 🧪 测试
 
 ```bash
-cd app && pytest tests/ -v
-cd web && npm run build && npx tsc --noEmit
+pytest                          # 仓库根目录执行（testpaths = app/tests）
+cd web && npm run check:ci      # stylelint + tsc --noEmit + vite build
 ```
 
-测试覆盖：scoring、screening、pool、data、api、us_etf_discovery、us_stock_enrichment 等模块。
+测试覆盖：scoring、screening、pool、data、api、us_etf_discovery、us_stock_enrichment、news、futures、sec_filings、search_trends 等模块。
 
 ## 📚 文档
 
@@ -180,7 +217,7 @@ cd web && npm run build && npx tsc --noEmit
 
 ## 🔒 安全
 
-- JWT 鉴权覆盖 13 个 router，未登录访问受限端点返回 401
+- JWT 鉴权覆盖全部 router，未登录访问受限端点返回 401
 - 真实交易、用户管理、部署面板等敏感端点仅 admin
 - CORS 默认本地开发，env 配置；生产环境必须收紧
 - `AUTH_SECRET_KEY` / `NOTIFICATION_ENCRYPTION_KEY` 通过 env 注入，禁止硬编码
@@ -190,8 +227,8 @@ cd web && npm run build && npx tsc --noEmit
 
 服务器上 `alloyresearch-backend` 容器的代码来源：
 
-- **`/app/app/...`** 来自镜像 `alloy-research:latest` 的 `COPY app/ ./app/` 层，**不是 host 的 bind mount**
-- host 上的 `/opt/alloy-research/app/` 修改 → 容器内**不会**自动更新
+- **`/app/app/...`** 来自镜像 `ad-research:${GIT_SHA}` 的 `COPY app/ ./app/` 层，**不是 host 的 bind mount**
+- host 上的 `/opt/ad-research/app/` 修改 → 容器内**不会**自动更新
 - 必须 rebuild image + recreate container 才生效
 
 ```bash
@@ -199,7 +236,7 @@ cd web && npm run build && npx tsc --noEmit
 git add -A && git commit -m "..." && git push origin main
 
 # 服务器：
-cd /opt/alloy-research
+cd /opt/ad-research
 git pull --ff-only origin main   # 或 fetch + reset --hard origin/main
 bash redeploy.sh                  # 触发 docker build + recreate
 ```
@@ -207,9 +244,11 @@ bash redeploy.sh                  # 触发 docker build + recreate
 `redeploy.sh` 做的事：
 
 ```bash
-cd /opt/alloy-research/deploy/aliyun-ecs
+cd /opt/ad-research/deploy/aliyun-ecs
 docker compose up -d --build --no-deps backend
 ```
+
+> 生产更完整的更新入口是 `deploy/aliyun-ecs/update.sh`（GitHub Actions `deploy.yml` 也走它），含 alembic 迁移校验、健康检查与失败回滚；`redeploy.sh` 是只重建 backend 的快捷方式。
 
 - `--build`：触发 Dockerfile 重 build（拷进新的 `app/`）
 - `--no-deps`：只重建 backend，不动 Postgres/Redis

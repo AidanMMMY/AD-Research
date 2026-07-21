@@ -1,6 +1,8 @@
 # 2025-2026 前沿 Web/UI 设计趋势研究报告
 
 > 研究日期：2026-07-11 | 面向：AD-Research 投资研究平台（React + Ant Design + TypeScript）
+>
+> **注**：本文为时点趋势调研。§7 建议中 `tabular-nums`、暗色"提亮造深度"层级、Okabe-Ito 图表色板（`--chart-series-*`）等已落地；Ant Design X 集成、View Transitions、流体间距（clamp）等未实施，请勿当作当前待办清单。
 
 ---
 

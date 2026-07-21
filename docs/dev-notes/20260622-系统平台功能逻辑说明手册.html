@@ -70,6 +70,15 @@ pre code { background: transparent; padding: 0; }
 ul, ol { margin: 12px 0; padding-left: 24px; }
 li { margin: 6px 0; }
 hr { border: none; border-top: 1px solid var(--border); margin: 24px 0; }
+blockquote {
+  margin: 16px 0;
+  padding: 12px 20px;
+  border-left: 4px solid var(--accent);
+  background: rgba(129,140,248,0.08);
+  border-radius: 4px;
+  color: var(--muted);
+}
+blockquote p { margin: 6px 0; }
 strong { color: #f472b6; }
 @media print {
   body { background: #fff; color: #000; }
@@ -80,6 +89,10 @@ strong { color: #f472b6; }
 <body>
 <div class="container">
 <h1>AD-Research — 系统功能逻辑说明手册</h1>
+
+<blockquote>
+<p><strong>注</strong>：本手册已被 <a href="./20260707-系统平台功能逻辑说明手册.html">20260707-系统平台功能逻辑说明手册</a> 取代。以下内容反映 2026-06-22 时点的系统状态（ETF 单市场阶段），页面路由、模块划分、调度任务等此后已有较大变化，仅供参考，请勿据此操作。</p>
+</blockquote>
 
 <p><strong>版本</strong>：v1.0  </p>
 <p><strong>更新日期</strong>：2026-06-22  </p>
@@ -111,7 +124,7 @@ strong { color: #f472b6; }
 
 <hr>
 
-<h2>一、项目概述</h2>
+<h2 id="一项目概述">一、项目概述</h2>
 
 <h3>1.1 目标</h3>
 
@@ -176,7 +189,7 @@ strong { color: #f472b6; }
 
 <hr>
 
-<h2>二、系统架构</h2>
+<h2 id="二系统架构">二、系统架构</h2>
 
 <h3>2.1 技术栈</h3>
 
@@ -234,7 +247,8 @@ strong { color: #f472b6; }
 
 <h3>2.2 数据流</h3>
 
-<pre><code>│  外部数据源                                                   │
+<pre><code>┌─────────────────────────────────────────────────────────────┐
+│  外部数据源                                                   │
 │  akshare (A 股)        yfinance (美股/港股/日股)              │
 └───────────────────────────┬─────────────────────────────────┘
                             ↓
@@ -294,7 +308,7 @@ strong { color: #f472b6; }
 
 <hr>
 
-<h2>三、数据模型与存储</h2>
+<h2 id="三数据模型与存储">三、数据模型与存储</h2>
 
 <h3>3.1 核心数据表</h3>
 
@@ -445,7 +459,7 @@ strong { color: #f472b6; }
 
 <hr>
 
-<h2>四、数据管道与 ETL</h2>
+<h2 id="四数据管道与-etl">四、数据管道与 ETL</h2>
 
 <h3>4.1 数据源抽象</h3>
 
@@ -497,10 +511,13 @@ strong { color: #f472b6; }
 
 <ul>
 <li><strong>支持市场</strong>：US、JP、HK。</li>
-<li><strong>代码映射</strong>：</li>
-<li><code>.US</code> → 去除后缀（如 <code>SPY.US</code> → <code>SPY</code>）</li>
-<li><code>.JP</code> → <code>.T</code>（如 <code>1321.JP</code> → <code>1321.T</code>）</li>
-<li><code>.HK</code> → 保留 <code>.HK</code></li>
+<li><strong>代码映射</strong>：
+  <ul>
+  <li><code>.US</code> → 去除后缀（如 <code>SPY.US</code> → <code>SPY</code>）</li>
+  <li><code>.JP</code> → <code>.T</code>（如 <code>1321.JP</code> → <code>1321.T</code>）</li>
+  <li><code>.HK</code> → 保留 <code>.HK</code></li>
+  </ul>
+</li>
 <li><strong>日线获取</strong>：逐个 ticker 调用 <code>yf.Ticker.history()</code>，<code>amount</code> 由 <code>volume * close</code> 估算。</li>
 <li><strong>实时行情</strong>：<code>yf.download(period=&quot;1d&quot;, interval=&quot;1d&quot;)</code>。</li>
 <li><strong>外汇</strong>：通过 <code>USDCNY=X</code> 等货币对获取汇率。</li>
@@ -510,7 +527,8 @@ strong { color: #f472b6; }
 
 <p><code>app/data/pipelines/base.py</code> 定义 <code>ETLPipeline</code> 抽象：</p>
 
-<pre><code>    ↓
+<pre><code>extract() 获取原始数据
+    ↓
 normalize() 列名/类型标准化
     ↓
 validate_all() 四层校验
@@ -566,7 +584,7 @@ post_process() 后处理/缓存失效</code></pre>
 <li>默认采集前一日数据，向前取 7 天窗口覆盖节假日。</li>
 <li>仅保留目标交易日数据。</li>
 <li>使用 PostgreSQL <code>INSERT ... ON CONFLICT DO UPDATE</code> 实现 upsert。</li>
-<li>完成后清除缓存：<code>indicator:<em></code>、<code>screen:</em></code>、<code>etf:list:*</code>。</li>
+<li>完成后清除缓存：<code>indicator:*</code>、<code>screen:*</code>、<code>etf:list:*</code>。</li>
 </ul>
 
 <h3>4.7 数据标准化</h3>
@@ -580,7 +598,7 @@ post_process() 后处理/缓存失效</code></pre>
 
 <hr>
 
-<h2>五、指标计算体系</h2>
+<h2 id="五指标计算体系">五、指标计算体系</h2>
 
 <h3>5.1 技术指标</h3>
 
@@ -628,7 +646,7 @@ post_process() 后处理/缓存失效</code></pre>
 <tr>
 <td><code>volatility_20d</code></td>
 <td>20 日</td>
-<td>年化波动率，<code>std(returns) <em> sqrt(252) </em> 100</code></td>
+<td>年化波动率，<code>std(returns) * sqrt(252) * 100</code></td>
 </tr>
 <tr>
 <td><code>volatility_60d</code></td>
@@ -643,7 +661,7 @@ post_process() 后处理/缓存失效</code></pre>
 <tr>
 <td><code>sharpe_1y</code></td>
 <td>252 日</td>
-<td><code>(mean(return)<em>252 - 2%) / (std</em>sqrt(252))</code></td>
+<td><code>(mean(return)*252 - 2%) / (std*sqrt(252))</code></td>
 </tr>
 <tr>
 <td><code>return_1w</code></td>
@@ -686,7 +704,7 @@ post_process() 后处理/缓存失效</code></pre>
 
 <hr>
 
-<h2>六、综合评分系统</h2>
+<h2 id="六综合评分系统">六、综合评分系统</h2>
 
 <h3>6.1 评分维度</h3>
 
@@ -775,7 +793,7 @@ post_process() 后处理/缓存失效</code></pre>
 
 <hr>
 
-<h2>七、筛选与排名</h2>
+<h2 id="七筛选与排名">七、筛选与排名</h2>
 
 <h3>7.1 全市场筛选</h3>
 
@@ -872,7 +890,7 @@ post_process() 后处理/缓存失效</code></pre>
 
 <hr>
 
-<h2>八、标的池管理</h2>
+<h2 id="八标的池管理">八、标的池管理</h2>
 
 <h3>8.1 池 CRUD</h3>
 
@@ -957,7 +975,7 @@ post_process() 后处理/缓存失效</code></pre>
 
 <hr>
 
-<h2>九、策略、回测与信号</h2>
+<h2 id="九策略回测与信号">九、策略、回测与信号</h2>
 
 <h3>9.1 策略模板</h3>
 
@@ -989,10 +1007,13 @@ post_process() 后处理/缓存失效</code></pre>
 
 <ul>
 <li>读取 <code>ETFDailyBar</code> 最近 60+ 日数据。</li>
-<li>根据策略类型计算信号：</li>
-<li><strong>动量</strong>：收益率超过阈值 → BUY；低于负阈值 → SELL。</li>
-<li><strong>均值回归</strong>：Z-score 超过正阈值 → SELL；低于负阈值 → BUY。</li>
-<li><strong>RSI</strong>：超买 → SELL；超卖 → BUY。</li>
+<li>根据策略类型计算信号：
+  <ul>
+  <li><strong>动量</strong>：收益率超过阈值 → BUY；低于负阈值 → SELL。</li>
+  <li><strong>均值回归</strong>：Z-score 超过正阈值 → SELL；低于负阈值 → BUY。</li>
+  <li><strong>RSI</strong>：超买 → SELL；超卖 → BUY。</li>
+  </ul>
+</li>
 <li>返回 <code>BUY / SELL / HOLD</code> 及信号强度。</li>
 </ul>
 
@@ -1055,7 +1076,7 @@ post_process() 后处理/缓存失效</code></pre>
 
 <hr>
 
-<h2>十、板块轮动分析</h2>
+<h2 id="十板块轮动分析">十、板块轮动分析</h2>
 
 <p><code>app/services/sector_rotation_service.py</code></p>
 
@@ -1078,7 +1099,7 @@ post_process() 后处理/缓存失效</code></pre>
 
 <hr>
 
-<h2>十一、报告生成引擎</h2>
+<h2 id="十一报告生成引擎">十一、报告生成引擎</h2>
 
 <p><code>app/services/report_service.py</code></p>
 
@@ -1132,7 +1153,7 @@ post_process() 后处理/缓存失效</code></pre>
 
 <hr>
 
-<h2>十二、Web 前端功能</h2>
+<h2 id="十二web-前端功能">十二、Web 前端功能</h2>
 
 <h3>12.1 技术架构</h3>
 
@@ -1336,7 +1357,7 @@ post_process() 后处理/缓存失效</code></pre>
 
 <hr>
 
-<h2>十三、API 接口清单</h2>
+<h2 id="十三api-接口清单">十三、API 接口清单</h2>
 
 <h3>13.1 认证</h3>
 
@@ -1710,7 +1731,7 @@ post_process() 后处理/缓存失效</code></pre>
 
 <hr>
 
-<h2>十四、定时任务与自动化</h2>
+<h2 id="十四定时任务与自动化">十四、定时任务与自动化</h2>
 
 <p><code>app/core/scheduler.py</code></p>
 
@@ -1764,7 +1785,7 @@ post_process() 后处理/缓存失效</code></pre>
 
 <hr>
 
-<h2>十五、部署与配置</h2>
+<h2 id="十五部署与配置">十五、部署与配置</h2>
 
 <h3>15.1 Docker Compose 服务</h3>
 
@@ -1865,7 +1886,7 @@ post_process() 后处理/缓存失效</code></pre>
 
 <hr>
 
-<h2>十六、运维脚本与测试</h2>
+<h2 id="十六运维脚本与测试">十六、运维脚本与测试</h2>
 
 <h3>16.1 核心运维脚本</h3>
 
@@ -1959,7 +1980,7 @@ post_process() 后处理/缓存失效</code></pre>
 
 <hr>
 
-<h2>十七、附录：目录结构</h2>
+<h2 id="十七附录目录结构">十七、附录：目录结构</h2>
 
 <pre><code>├── app/
 │   ├── main.py                  # FastAPI 入口

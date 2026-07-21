@@ -1,5 +1,7 @@
 # AD-Research 前端重构 Phase 1 — 设计 Token + 浅色默认 + 退役 Print 主题
 
+> **注**：本文为 2026-07-05 的时点记录，部分内容可能已过时（如默认主色已改为蓝靛 `#2563EB`、暗色已成默认主题、`global.css` 已拆分，以代码现状为准）。
+
 **日期**：2026-07-05
 **Phase**：1 / 7
 **依据 plan**：`/Users/aidanliu/.claude/plans/sequential-jingling-ripple.md`

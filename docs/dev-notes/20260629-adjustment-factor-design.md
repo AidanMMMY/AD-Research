@@ -1,7 +1,14 @@
 # 拆股/分红复权因子改造方案（方案 B）
 
 > 日期：2026-06-29
-> 状态：设计完成，待 backfill 结束后一次性部署
+> 状态：~~设计完成，待 backfill 结束后一次性部署~~ **已实施并部署**（最后核实更新：2026-07-21）
+>
+> **实施情况核实（2026-07-21）**：
+> - `instrument_daily_bar.adj_factor` 列与 `etf_corporate_action` 表均已入库（migration `a1b2c3d4e5f6_add_adj_factor_and_etf_corporate_action`）；
+> - 指标计算（`app/data/indicators/calculator.py`）与回测引擎（`app/services/backtest_engine.py`）均已切换到复权价格体系；
+> - A 股侧缺口也已补上：`TushareProvider.fetch_adj_factor()` + `app/scripts/backfill_a_share_adj_factor.py`；
+> - **后续演进**：在原方案基础上新增了 `adj_factor_history` 表（migration `i9j0k1l2m3n4`），完整保存 Tushare 原始累计复权因子，前复权价按 `close * adj_factor / latest_adj_factor` 计算，`instrument_daily_bar.adj_factor` 保持同步以兼容旧逻辑。正文中的伪代码（`adj_close = close * adj_factor`）对应的是最初的归一化方案，与现实现略有差异，以代码为准。
+>
 > 关联文件：
 > - `app/models/etf.py`
 > - `app/data/providers/yfinance_provider.py`
@@ -9,7 +16,7 @@
 > - `app/data/indicators/calculator.py`
 > - `app/services/backtest_engine.py`
 > - `app/scripts/backfill_us_deep_history.py`
-> - Alembic migration（未生成/未执行）
+> - Alembic migration（已生成并执行：`a1b2c3d4e5f6`、`i9j0k1l2m3n4`）
 
 ## 背景
 
@@ -180,7 +187,7 @@ if open_ > MAX_PRICE or high > MAX_PRICE or low > MAX_PRICE or close > MAX_PRICE
 
 防止数据源错误导致数据库溢出。
 
-## 部署步骤（待 backfill 完成后执行）
+## 部署步骤（已执行完毕，留档备查）
 
 1. 合并代码改动到 `main`
 2. 生成并执行 Alembic migration：

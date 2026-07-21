@@ -4,6 +4,8 @@
 > 每个失败原因都不同，但都"看似无关"。本文按时间线汇总 4 个隐藏 tripwire，
 > 每个的触发条件、根因、复现、和修复方案——下次踩到任何一个都能秒查。
 
+> 最后核实更新：2026-07-21（正文为事件记录；其中 Tripwire #4 的防御项已落地，见该节标注）
+
 ---
 
 ## 时间线速览
@@ -142,11 +144,12 @@ log_info "等待 backend 就绪 (最多 300s，需 /health status=ok)..."
 for i in $(seq 1 150); do  # 150 * 2s = 300s
 ```
 
-### 防御（建议但未实施）
-- docker-compose.yml backend healthcheck `start_period: 30s` 提到 `180s`
-  （让 docker compose 的 healthcheck 别在 alembic 期间误判 unhealthy）
+### 防御
+- ~~docker-compose.yml backend healthcheck `start_period: 30s` 提到 `180s`~~
+  **已落地（2026-07-21 核实）**：`start_period` 已提到 `240s`，注释里明确引用了本节
+  #280 的实测数据（6 列 numeric rewrite ~5min），留 2x headroom。
 - 大列迁移在 PR review 时**必须**手动估算耗时；超 1min 必须拆批或用
-  pg_repack / 在线 schema 工具
+  pg_repack / 在线 schema 工具（本条仍为约定，未工具化）
 
 ---
 
@@ -178,5 +181,5 @@ docker compose up -d celery-worker-indicator celery-worker-cninfo nginx
 
 # 4. 校验
 docker ps --filter "name=alloyresearch" --format "{{.Names}} {{.Status}}"
-curl http://localhost/health
+curl http://localhost:8000/health   # 经 nginx 8000 端口；80 端口会 301 到 HTTPS 域名
 ```

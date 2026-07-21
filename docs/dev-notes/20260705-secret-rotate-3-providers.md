@@ -1,5 +1,7 @@
 # 3 家外部服务 secret rotate 实操 Runbook（2026-07-05）
 
+> 最后核实更新：2026-07-21（§ 〇为当时生产快照，保留原样；代码入口 / 验证端点已按现状修正）
+
 > 本 runbook 是 `20260704-secret-rotate-runbook.md`（v1 通用清单）的
 > **深度执行版**，只覆盖用户决定本轮 sprint 要做的 **3 家**：
 >
@@ -38,7 +40,7 @@ alloyresearch-backend | Restarting (1) 10 seconds ago
 **说明**：
 
 - 雪球 cookie 不在 `.env` 里 = 生产 A 股社交舆情 / 散户情绪数据通道
-  **从部署至今就**没**生效过**（`docs/20260702-data-source-map.md` 第 61 行
+  **从部署至今就**没**生效过**（`docs/dev-notes/20260702-data-source-map.md`
   已标 ⏳ 待用户填入）。本 runbook 既覆盖"首次填入"也覆盖"后续 rotate"，
   操作步骤相同。
 - DeepSeek / Tushare 当前 `.env` 里的值与 git 历史里 commit 进仓库的明文
@@ -47,15 +49,20 @@ alloyresearch-backend | Restarting (1) 10 seconds ago
 
 ### 代码侧 key 注入入口（验证 rotate 后只改 env 即可）
 
+> 2026-07-21 核实：DeepSeek 已降为 legacy provider——`LLM_PROVIDER` 默认
+> `minimax`（`app/services/llm/__init__.py`），仅当生产 `LLM_PROVIDER=deepseek`
+> 时 DeepSeek key 才影响线上主链路；MiniMax 的 rotate 走
+> `20260704-secret-rotate-runbook.md` 通用清单。
+
 | Provider | 代码入口 | 读取方式 |
 |---|---|---|
 | DeepSeek | `app/services/llm/deepseek_provider.py:40` | `os.getenv("DEEPSEEK_API_KEY", "")` |
 | DeepSeek | `app/api/v1/research.py:41` | `os.getenv("DEEPSEEK_API_KEY", "")` |
-| DeepSeek | `app/services/news/translation_service.py:185` | `raise RuntimeError("DEEPSEEK_API_KEY is not configured...")` |
+| LLM 通用 | `app/services/news/translation_service.py`（约 :185） | 经 `get_llm_provider()` 取当前 provider，不可用时 `raise RuntimeError("LLM provider ... is not available...")`（报错文案已改为 provider 中性，不再写死 DEEPSEEK_API_KEY） |
 | Xueqiu | `app/services/news/sources/xueqiu_auth.py:66` | `os.getenv("XUEQIU_COOKIE", "")` |
-| Xueqiu | `deploy/aliyun-ecs/docker-compose.yml:82` | `${XUEQIU_COOKIE:-}` 注入容器 env |
-| Tushare | `app/data/providers/tushare_provider.py:180` | `get_settings().tushare_token` |
-| Tushare | `app/config.py:28` | `tushare_token: str = ""` (Pydantic Settings 自动读 env) |
+| Xueqiu | `deploy/aliyun-ecs/docker-compose.yml:28` | `${XUEQIU_COOKIE:-}` 注入容器 env |
+| Tushare | `app/data/providers/tushare_provider.py:223` | `get_settings().tushare_token` |
+| Tushare | `app/config.py:58` | `tushare_token: str = ""` (Pydantic Settings 自动读 env) |
 
 **结论**：rotate 只需改 `deploy/aliyun-ecs/.env`，**不需要改任何代码**。改完
 后 `update.sh --force-recreate` 让 backend 容器重启以清掉 Pydantic Settings
@@ -443,25 +450,30 @@ docker logs --tail=300 alloyresearch-backend 2>&1 \
   | tail -10
 # 应输出为空（或只有老的 stale error，无新错误）
 
-echo "=== 3. LLM 流式输出（DeepSeek） ==="
+echo "=== 3. LLM provider 状态 ==="
+# 注：/api/v1/llm/chat 端点已不存在；改用 research 路由下的 AI 状态接口。
+# 登录接口现返回 access_token（15 分钟）+ refresh_token，且有频率限制
+# （5 次/IP/分钟），脚本失败时先检查是否 429。
 TOKEN=$(curl -sS -X POST http://127.0.0.1:8000/api/v1/auth/login \
   -H "Content-Type: application/json" \
   -d '{"username":"admin","password":"'"$(grep ^AUTH_ADMIN_PASSWORD= .env | cut -d= -f2-)"'"}' \
   | python3 -c "import sys,json; print(json.load(sys.stdin)['access_token'])")
-curl -N -X POST http://127.0.0.1:8000/api/v1/llm/chat \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"stream":true,"message":"ping"}' \
-  | head -5
-# 应看到 data: {...} 流式输出
+curl -sS http://127.0.0.1:8000/api/v1/research/ai/status \
+  -H "Authorization: Bearer $TOKEN" | python3 -m json.tool
+# 应看到 provider 可用（available=true 之类）；完整流式链路见
+# 20260704-secret-rotate-runbook.md § 5.2（chat sessions .../messages/stream）
 
 echo "=== 4. Tushare A 股数据 ==="
-curl -sS http://127.0.0.1:8000/api/v1/a-stocks/health | python3 -m json.tool
-# 应输出 status: ok
+# 注：/api/v1/a-stocks/health 端点已不存在；改用 ETL 状态看 A 股日终 ETL 是否正常
+curl -sS http://127.0.0.1:8000/api/v1/etl/status \
+  -H "Authorization: Bearer $TOKEN" | python3 -m json.tool
+# 应能看到最近的 A 股 ETL 运行记录为成功
 
 echo "=== 5. 雪球舆情拉取 ==="
-curl -sS http://127.0.0.1:8000/api/v1/news/sources | python3 -m json.tool
-# 应看到 xueqiu: enabled / last_fetch_recent
+# 注：/api/v1/news/sources 端点已不存在；news 健康面板在 /api/v1/news/health
+curl -sS http://127.0.0.1:8000/api/v1/news/health \
+  -H "Authorization: Bearer $TOKEN" | python3 -m json.tool
+# 返回的 sources 数组里应看到 xueqiu 行且最近有抓取记录
 ```
 
 ### 3.2 不要做（再次强调）

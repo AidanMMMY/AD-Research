@@ -2,6 +2,7 @@
 
 > 适用场景：A 股日线（`instrument_daily_bar`）或指标（`etf_indicator`）缺失、重算中断、数据源切换、部署后需要手动回补。
 > 记录时间：2026-07-18
+> 最后核实更新：2026-07-21
 > 相关记忆：[[生产 /data 磁盘满事件]]、[[指标补齐临时切换 celery-worker 为 indicator-only]]、[[A 股 2026-07-15 指标补齐最终复盘报告]]
 
 ---
@@ -36,7 +37,7 @@ etf_indicator  (ON CONFLICT (etf_code, trade_date) DO UPDATE)
 - `app/data/indicators/calculator.py` — 指标计算，写入 `etf_indicator`。
 - `app/tasks/indicator.py` — Celery 任务 `calculate_indicators`。
 - `app/core/celery_app.py` — Celery 应用配置。
-- `deploy/aliyun-ecs/docker-compose.yml` — `celery-worker` 服务定义。
+- `deploy/aliyun-ecs/docker-compose.yml` — `celery-worker-indicator`（`-Q indicator`）与 `celery-worker-cninfo`（`-Q celery,cninfo,industry`）服务定义。
 
 ---
 
@@ -113,14 +114,14 @@ WHERE b.etf_code IS NULL;
 
 背景：重算任务原本在 `alloyresearch-backend` 容器内通过 `docker exec` 运行，backend 部署/重启会杀死它。
 
-当前状态：指标重算已改造为 Celery 任务，由独立的 `alloyresearch-celery-worker` 容器消费。backend 重启不会影响已入队任务。
+当前状态：指标重算已改造为 Celery 任务，由独立的 `alloyresearch-celery-worker-indicator` 容器消费。backend 重启不会影响已入队任务。
 
 验证 worker 是否在线：
 
 ```bash
 ssh ad-research
-docker top alloyresearch-celery-worker | grep celery
-docker exec alloyresearch-celery-worker celery -A app.core.celery_app inspect active
+docker top alloyresearch-celery-worker-indicator | grep celery
+docker exec alloyresearch-celery-worker-indicator celery -A app.core.celery_app inspect active
 ```
 
 ### 3.3 /data 磁盘满导致 Postgres PANIC
@@ -209,20 +210,23 @@ ERROR: could not fsync file ...: No space left on device
 
 根因：Redis broker 默认 `visibility_timeout=3600`（1 小时），而 A 股全量指标重算在数据量大时可能超过 1 小时。任务未及时确认，被 broker 重新投递。
 
-修复：在 `app/core/celery_app.py` 中显式配置：
+修复：在 `app/core/celery_app.py` 中显式配置（当前值 12 小时）：
 
 ```python
-app.conf.broker_transport_options = {
-    "visibility_timeout": 86400,  # 24h，避免长任务被重复投递
-    "queue_order_strategy": "priority",
-}
+celery_app.conf.update(
+    ...
+    broker_transport_options={"visibility_timeout": 43200},  # 12h，避免长任务被重复投递
+    task_acks_late=True,
+    worker_prefetch_multiplier=1,
+    ...
+)
 ```
 
-同时指标任务设置 `time_limit` 和 `soft_time_limit`：
+同时指标任务设置 `time_limit` 和 `soft_time_limit`（当前为软 4h / 硬 6h）：
 
 ```python
-@app.task(bind=True, time_limit=3600*4, soft_time_limit=3600*3)
-def calculate_indicators(self, target_date=None, market_filter=None):
+@celery_app.task(bind=True, soft_time_limit=4 * 3600, time_limit=6 * 3600, queue="indicator")
+def calculate_indicators(self, target_date=None, market_filter="A股", ...):
     ...
 ```
 
@@ -232,13 +236,12 @@ def calculate_indicators(self, target_date=None, market_filter=None):
 
 根因：旧部署中一个 `celery-worker` 容器同时监听 `celery`、`indicator`、`cninfo` 队列，`-c 4` 的并发被 cninfo_pdf 这类 I/O 长任务占满，指标任务无法及时执行。
 
-修复：
+修复（2026-07-21 核实后的现状）：
 
-- 拆分为独立 worker 服务：
-  - `celery-worker`：处理普通 `celery` 队列。
-  - `indicator-worker`：仅监听 `indicator` 队列，保证指标重算不被其他任务挤占。
-  - `cninfo-worker`：仅监听 `cninfo` 队列，避免 PDF 下载占用指标 worker 并发。
-- `docker-compose.yml` 中分别定义服务，并限制资源。
+- 生产 `deploy/aliyun-ecs/docker-compose.yml` 已拆分为两个独立 worker 服务：
+  - `celery-worker-indicator`（容器名 `alloyresearch-celery-worker-indicator`）：仅监听 `indicator` 队列，`-c 4`，保证指标重算不被其他任务挤占。
+  - `celery-worker-cninfo`（容器名 `alloyresearch-celery-worker-cninfo`）：监听 `celery,cninfo,industry` 队列，`-c 2`，PDF 下载等长任务在此消费。
+- 队列路由在 `app/core/celery_app.py` 的 `task_routes` 中配置（indicator → `indicator`，cninfo/cninfo_pdf → `cninfo`，sw_industry → `industry`）。
 
 ### 4.5 调度器使用 target_date=None，两次调度造成 latest-date 漂移和重复跑
 
@@ -248,18 +251,15 @@ def calculate_indicators(self, target_date=None, market_filter=None):
 
 修复：
 
-- 调度器始终显式传入 `target_date` 和 `market_filter`：
+- 调度器在投递前先把 `target_date` 解析为确定日期（`app/core/scheduler.py` 的 `_resolve_a_share_target_date()`：显式传入优先，否则从 A 股最新 bar 推断），再显式传入 `target_date` 和 `market_filter`：
 
 ```python
-from datetime import date, timedelta
-
-# 取上一交易日
-target = (date.today() - timedelta(days=1)).isoformat()
-calculate_indicators.delay(target_date=target, market_filter='A股')
+effective_date = _resolve_a_share_target_date(target_date, db)
+calculate_indicators.delay(target_date=effective_date.isoformat(), market_filter="A股")
 ```
 
-- 在任务入口增加防御性检查：若 `target_date` 为空则直接报错，拒绝“隐式今天”。
-- 调度器幂等：使用唯一调度键或 Redis 锁，同一日期 5 分钟内只触发一次。
+- 幂等保护：`_acquire_indicator_date_lock()` 用 Redis 锁保证同一日期同一时刻只有一个调度在跑；并新增 17:00 的 `a_share_indicator_fallback` 兜底补算任务（幂等 UPSERT，防止 08:00 跑在 ETL 之前导致当日缺行）。
+- 注意（2026-07-21 核实）：Celery 任务入口本身**没有**「`target_date` 为空则报错」的防御性检查——`target_date=None` 时任务仍会按全量最新日期执行，防护依赖调度器层始终显式传日期。
 
 ### 4.6 完整性巡检
 
@@ -301,7 +301,7 @@ PY
 
 ```bash
 ssh ad-research
-docker exec alloyresearch-celery-worker python -c "
+docker exec alloyresearch-celery-worker-indicator python -c "
 from app.tasks.indicator import calculate_indicators
 r = calculate_indicators.delay(target_date='2026-07-17', market_filter='A股')
 print(r.id)
@@ -311,14 +311,14 @@ print(r.id)
 查询任务状态：
 
 ```bash
-docker exec alloyresearch-celery-worker celery -A app.core.celery_app inspect active
+docker exec alloyresearch-celery-worker-indicator celery -A app.core.celery_app inspect active
 ```
 
 ### 5.3 批量回补最近 N 天
 
 ```bash
 ssh ad-research
-docker exec alloyresearch-celery-worker python -c "
+docker exec alloyresearch-celery-worker-indicator python -c "
 from datetime import date, timedelta
 from app.tasks.indicator import calculate_indicators
 for i in range(3):
@@ -348,7 +348,7 @@ WHERE trade_date >= '2026-07-15' GROUP BY trade_date ORDER BY trade_date;
 
 ```bash
 ssh ad-research
-docker logs --tail 100 alloyresearch-celery-worker
+docker logs --tail 100 alloyresearch-celery-worker-indicator
 ```
 
 常见原因：
@@ -374,14 +374,14 @@ docker logs --tail 100 alloyresearch-celery-worker
 
 ```bash
 # 查看当前活跃 Celery 任务
-docker exec alloyresearch-celery-worker celery -A app.core.celery_app inspect active
+docker exec alloyresearch-celery-worker-indicator celery -A app.core.celery_app inspect active
 
 # 查看指定队列任务数（scheduled / reserved）
-docker exec alloyresearch-celery-worker celery -A app.core.celery_app inspect scheduled
-docker exec alloyresearch-celery-worker celery -A app.core.celery_app inspect reserved
+docker exec alloyresearch-celery-worker-indicator celery -A app.core.celery_app inspect scheduled
+docker exec alloyresearch-celery-worker-indicator celery -A app.core.celery_app inspect reserved
 
 # 清空某个队列（危险，仅在确认需要时执行）
-docker exec alloyresearch-celery-worker celery -A app.core.celery_app control queue_purge indicator
+docker exec alloyresearch-celery-worker-indicator celery -A app.core.celery_app control queue_purge indicator
 
 # 运行指标完整性审计脚本（自动取 A 股最新交易日）
 DATABASE_URL=postgresql://user:pass@localhost:5432/ad_research \
@@ -406,8 +406,8 @@ GROUP BY source ORDER BY COUNT(*) DESC;
 
 ```bash
 # 查看 Redis 队列堆积
-docker exec alloyresearch-celery-worker celery -A app.core.celery_app inspect scheduled
-docker exec alloyresearch-celery-worker celery -A app.core.celery_app inspect reserved
+docker exec alloyresearch-celery-worker-indicator celery -A app.core.celery_app inspect scheduled
+docker exec alloyresearch-celery-worker-indicator celery -A app.core.celery_app inspect reserved
 
 # 清空 indicator 队列（危险，仅在需要时）
 docker exec alloyresearch-redis redis-cli -n 0 DEL celery:indicator

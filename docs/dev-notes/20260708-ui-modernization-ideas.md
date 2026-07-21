@@ -1,5 +1,9 @@
 # AD-Research UI/UX 现代化方案 — 现场诊断 + 点子库 + 实施计划
 
+> 最后核实更新：2026-07-21
+>
+> **实施状态（2026-07-21 核实）**：Top 3 点子中 Idea 1（卡片抬升 `translateY(-1px)`）、Idea 2（Sparkline 渐隐面积）、Idea 4（section hairline）已落地；Idea 5/6/7/8/10 未实施。另请注意两处前提已变化：① 默认主色已切换为蓝靛 `#2563EB`（朱红 `#E11D48` 仅作 `data-accent="vermilion"` 兼容保留），且暗色已成默认主题（dark-first）；② `global.css` 已拆分为 `web/src/styles/global/` 目录（22 个 chunk），本文所有 `global.css` 行号引用已失效。
+
 > 编制日期: 2026-07-08
 > 角色: UI/UX 顾问 (不出手改代码，只出方案)
 > 参考基准: Linear · Notion · Vercel · Stripe · Anthropic 网站

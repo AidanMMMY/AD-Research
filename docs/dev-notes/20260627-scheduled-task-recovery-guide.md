@@ -3,6 +3,8 @@
 > 本文档记录当服务端定时任务中断、数据落后时的完整恢复流程。
 > 适用场景：A 股 ETF 日线数据未自动更新、指标/评分/信号停滞。
 
+> 最后核实更新：2026-07-21
+
 ---
 
 ## 一、问题判断标准
@@ -40,7 +42,7 @@ apt update && apt install -y postgresql-client-common postgresql-client
 #### 方式 B：Docker Compose 部署
 
 ```bash
-cd /opt/alloy-research  # 或你的项目根目录
+cd /opt/ad-research/deploy/aliyun-ecs  # 生产 compose 所在目录
 docker compose ps
 ```
 
@@ -57,7 +59,7 @@ docker compose up -d postgres redis
 ### 3.1 本地 Python 启动
 
 ```bash
-cd /opt/alloy-research
+cd /opt/ad-research
 source .venv/bin/activate
 uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 1
 ```
@@ -76,7 +78,7 @@ INFO:     Application startup complete.
 ### 3.2 Docker Compose 启动
 
 ```bash
-cd /opt/alloy-research
+cd /opt/ad-research/deploy/aliyun-ecs
 docker compose up -d --build backend
 ```
 
@@ -92,7 +94,7 @@ SSH 会话断开后服务会被杀掉，建议挂到 tmux：
 
 ```bash
 tmux new -s alloyresearch-backend
-cd /opt/alloy-research
+cd /opt/ad-research
 source .venv/bin/activate
 uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 1
 
@@ -109,47 +111,29 @@ tmux attach -t alloyresearch-backend
 
 ## 四、补跑缺失数据
 
-### 4.1 创建不回测版本（推荐首次恢复使用）
+### 4.1 不回测版本（推荐首次恢复使用）
 
 `scripts/update_daily_data.py` 第 5 步会执行全量回测，数量级为 `3 策略 × 1511 ETF ≈ 4533` 个任务，耗时数小时。首次恢复数据时建议跳过回测，只补齐日线、指标、评分、信号。
 
+仓库里已有现成的 `scripts/update_daily_data_nobacktest.py`（内容与 `update_daily_data.py` 相同，仅注释掉了回测调用），直接执行即可：
+
 ```bash
-cd /opt/alloy-research
-cp scripts/update_daily_data.py scripts/update_daily_data_nobacktest.py
+cd /opt/ad-research
+source .venv/bin/activate
+python scripts/update_daily_data_nobacktest.py
 ```
 
-编辑 `scripts/update_daily_data_nobacktest.py`，注释掉 `main()` 中的回测调用：
+> ⚠️ 已知问题（2026-07-21 核实）：该文件第 1 行混入了一行误粘贴的文本
+> `406 /opt/ad-research/scripts/update_daily_data_nobacktest.py`（疑似 `wc -l`
+> 输出残留），会导致 Python 语法错误。执行前请先删掉这一行。
+
+如果脚本不存在或损坏，也可以手动重新生成：复制 `scripts/update_daily_data.py`，
+然后注释掉 `main()` 中的回测调用：
 
 ```python
-def main():
-    db = Session()
-    try:
-        end_date = date.today() - timedelta(days=1)
-        count = fetch_and_insert_daily_bars(db, end_date)
-        print(f"   Inserted/updated {count} daily bar records")
-
-        ind_count = run_indicator_calculation(db)
-        print(f"   已更新 {ind_count} 条指标记录")
-
-        score_count = run_score_calculation(db)
-        print(f"   已更新 {score_count} 条评分记录")
-
-        signal_count = run_signal_generation(db)
-        print(f"   已生成 {signal_count} 个信号")
-
         # 首次恢复时跳过回测，避免跑数小时
         # backtest_count = run_backtests(db)
         # print(f"   已完成 {backtest_count} 个回测")
-
-        verify_data(db)
-        print("\n🎉 All data updated successfully!")
-```
-
-执行：
-
-```bash
-source .venv/bin/activate
-python scripts/update_daily_data_nobacktest.py
 ```
 
 ### 4.2 预期输出
@@ -178,7 +162,7 @@ python scripts/update_daily_data_nobacktest.py
 ```bash
 # 挂到 tmux，因为可能跑数小时
 tmux new -s etf-backtest
-cd /opt/alloy-research
+cd /opt/ad-research
 source .venv/bin/activate
 python scripts/update_daily_data.py
 ```
@@ -194,10 +178,10 @@ source .venv/bin/activate
 python - <<'PY'
 from app.core.database import SessionLocal
 from sqlalchemy import func
-from app.models.etf import ETFDailyBar
+from app.models.etf import InstrumentDailyBar
 
 db = SessionLocal()
-latest = db.query(func.max(ETFDailyBar.trade_date)).scalar()
+latest = db.query(func.max(InstrumentDailyBar.trade_date)).scalar()
 print(f"最新日线日期: {latest}")
 db.close()
 PY
@@ -208,7 +192,7 @@ PY
 ### 5.2 完整数据健康检查
 
 ```bash
-cd /opt/alloy-research
+cd /opt/ad-research
 source .venv/bin/activate
 python scripts/data_completeness_check.py
 ```
@@ -271,7 +255,7 @@ PY
 
 ```bash
 # Docker
-cd /opt/alloy-research
+cd /opt/ad-research/deploy/aliyun-ecs
 docker compose logs -f backend
 
 # 本地（如果启动时重定向了日志）
@@ -314,9 +298,9 @@ After=network.target postgresql.service redis.service
 [Service]
 Type=simple
 User=aidanliu
-WorkingDirectory=/opt/alloy-research
-Environment=PATH=/opt/alloy-research/.venv/bin
-ExecStart=/opt/alloy-research/.venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 1
+WorkingDirectory=/opt/ad-research
+Environment=PATH=/opt/ad-research/.venv/bin
+ExecStart=/opt/ad-research/.venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 1
 Restart=always
 RestartSec=10
 
@@ -345,19 +329,39 @@ curl http://localhost:8000/api/v1/etl/status?limit=5
 
 ## 八、定时任务清单
 
-服务启动后，APScheduler 会自动按以下 cron 执行任务（见 [app/core/scheduler.py](../../app/core/scheduler.py)）：
+服务启动后，APScheduler 会自动按 cron 执行任务（完整清单见
+[app/core/scheduler.py](../../app/core/scheduler.py)，运行中实例可用
+`bash scripts/check_scheduler_drift.sh` 巡检）。与数据恢复直接相关的核心任务：
 
 | 时间（北京时间） | 任务 | 对应函数 |
 |------------------|------|----------|
 | 05:00 | 美股日终采集 | `run_us_etl` |
-| 05:30 | 美股指标计算 | `run_us_indicator_calculation` |
-| 08:00 | A 股指标计算 | `run_indicator_calculation` |
+| 05:30 | 美股指标计算（Celery） | `run_us_indicator_calculation` |
+| 07:00 | A 股 ETF 前十大持仓采集 | `run_etf_holdings` |
+| 08:00 | A 股指标计算（Celery） | `run_indicator_calculation` |
+| 08:05 | 加密货币日终采集 | `run_crypto_etl` |
 | 08:30 | 评分计算 | `run_score_calculation` |
+| 08:30 | 加密货币指标计算（Celery） | `run_crypto_indicator_calculation` |
 | 09:00 | 交易信号生成 | `run_signal_generation` |
 | 15:30 | **A 股 ETF 日终采集** | `run_a_share_etl` |
-| 周日 02:00 | 美股个股发现 | `run_us_stock_discovery` |
+| 16:00 | A 股个股日终采集 | `run_a_share_stock_etl` |
+| 16:30 | A 股个股估值数据 / 国内期货日线 | `run_a_share_stock_fundamental` / `run_futures_daily` |
+| 17:00 | A 股指标 17 点兜底补算 | `run_a_share_indicator_fallback` |
+| 17:00 | 巨潮定期报告日刷（Celery） | `run_cninfo_reports_daily` |
+| 17:30 | A 股资金流向刷新 | `run_fund_flow_daily` |
+| 18:00 | A 股研报日抓取 | `run_research_reports_daily` |
+| 19:30 | A 股微结构数据刷新 | `run_microstructure_daily` |
+| 每小时 :00 | 美股历史数据回填（小批量轮转） | `run_us_historical_backfill` |
+| 周一 01:00 / 02:00 | A 股个股发现 / 个股财报采集 | `run_a_share_stock_discovery` / `run_a_share_stock_financials` |
+| 周日 01:00 / 02:00 | 美股 ETF 发现 / 美股个股发现 | `run_us_etf_discovery` / `run_us_stock_discovery` |
 | 周日 03:00 | 全市场 ETF 扫描 | `run_etf_scan` |
+| 周日 03:30 / 04:00 | A 股复权因子全历史回填 / ETF 元数据补全 | `run_a_share_adj_factor_backfill` / `run_etf_metadata_enrichment` |
 | 周日 22:00 | 池周报生成 | `run_weekly_pool_reports` |
+
+> 注：指标计算、cninfo 回填等长任务由 scheduler 通过 `.delay()` 提交到 Celery
+> worker 执行（队列 `indicator` / `cninfo`），详见
+> `20260712-celery-worker-runbook.md`。此外 scheduler 还注册了新闻抓取
+> （5–30 分钟间隔）、宏观数据、模拟仓、磁盘巡检等任务，此处未一一列出。
 
 ---
 

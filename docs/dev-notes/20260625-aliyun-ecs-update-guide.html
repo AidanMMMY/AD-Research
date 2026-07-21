@@ -79,21 +79,23 @@
 <body>
 
 <h1>阿里云 ECS 更新部署指南</h1>
-<p class="date">2026-06-25 · 基于 <code>deploy/aliyun-ecs/</code> 部署套件</p>
+<p class="date">2026-06-25 · 基于 <code>deploy/aliyun-ecs/</code> 部署套件 · 最后核实更新：2026-07-21</p>
 
 <h2>部署架构</h2>
 
-<pre><code>Browser → Nginx(:8000) → /api/* → Backend(:8000)
-                       → /*     → 前端静态文件 (web_dist volume)
-                                    ↑
-                              Backend 启动时 cp dist-image → web_dist</code></pre>
+<pre><code>Browser → Nginx(:8000 / :443) → /api/* → Backend(:8000)
+                              → /*     → 前端静态文件 (web_dist volume)
+                                           ↑
+                                     Backend 启动时 rsync dist-image → web_dist</code></pre>
 
 <table>
   <tr><th>服务</th><th>镜像</th><th>端口</th><th>职责</th></tr>
   <tr><td>postgres</td><td><code>postgres:16-alpine</code></td><td>内部</td><td>数据库</td></tr>
   <tr><td>redis</td><td><code>redis:7-alpine</code></td><td>内部</td><td>缓存</td></tr>
-  <tr><td>backend</td><td><code>ad-research:latest</code> (自构建)</td><td>expose 8000</td><td>API + 前端文件复制</td></tr>
-  <tr><td>nginx</td><td><code>nginx:alpine</code></td><td>8000</td><td>反向代理 + 静态文件</td></tr>
+  <tr><td>backend</td><td><code>ad-research:&lt;git_sha&gt;</code> (自构建)</td><td>expose 8000</td><td>API + 前端文件复制 + alembic 迁移（入口脚本）</td></tr>
+  <tr><td>celery-worker-indicator</td><td><code>ad-research:latest</code></td><td>内部</td><td>Celery 队列 <code>indicator</code>（指标计算，concurrency=4）</td></tr>
+  <tr><td>celery-worker-cninfo</td><td><code>ad-research:latest</code></td><td>内部</td><td>Celery 队列 <code>celery,cninfo,industry</code>（巨潮公告等，concurrency=2）</td></tr>
+  <tr><td>nginx</td><td><code>nginx:alpine</code></td><td>8000 / 80 / 443</td><td>反向代理 + 静态文件 + HTTPS</td></tr>
 </table>
 
 <h2>快速更新（推荐）</h2>
@@ -111,11 +113,13 @@ cd /opt/ad-research/deploy/aliyun-ecs
 
 <h3>完整更新（代码 + 前端 + 后端）</h3>
 
+<p>日常更新一律走 <code>update.sh</code>（与 CI 同一入口）。以下为手动等价步骤，仅供排查时使用：</p>
+
 <pre><code>cd /opt/ad-research
 git pull origin main
 cd deploy/aliyun-ecs
 
-# 重新构建镜像（--no-cache 确保重新编译前端）
+# 重新构建镜像（update.sh 默认 --no-cache，确保重新编译前端）
 docker compose build backend --no-cache
 
 # 重启服务
@@ -137,9 +141,18 @@ docker compose restart backend nginx</code></pre>
 <table>
   <tr><th>选项</th><th>说明</th></tr>
   <tr><td><code>--frontend-only</code></td><td>仅更新前端 UI，约 30 秒</td></tr>
-  <tr><td><code>--no-db</code></td><td>跳过手动数据库迁移（backend 启动时自动执行）</td></tr>
-  <tr><td><code>FORCE=1</code></td><td>强制重编，即使代码无变更</td></tr>
+  <tr><td><code>--no-db</code></td><td>跳过迁移状态只读校验（backend 入口仍会执行 <code>alembic upgrade head</code>）</td></tr>
 </table>
+
+<p>其他机制：</p>
+<ul>
+  <li><strong>互斥锁</strong>：脚本启动时用 <code>flock</code> 抢 <code>/var/run/ad-research-deploy.lock</code> 排他锁，已有其他 deploy 在跑时立即退出让路（<code>LOCK_FILE</code> 环境变量可覆盖路径）。</li>
+  <li><strong>等就绪窗口</strong>：backend 重建后最多等 300 秒（150 次 × 2s），要求容器内 <code>/health</code> body 的 <code>status=ok</code>，超时则 exit 1（2026-07-19 起，覆盖 alembic 大列 ALTER 的耗时）。</li>
+  <li><strong>短 build 告警</strong>：全量 build 耗时 &lt; 30s 会打 WARN（可能 buildx cache 命中、镜像未真正重建）。</li>
+  <li><strong>失败重试</strong>：首次 <code>docker compose build</code> 失败会 sleep 5s 自动重试一次（应对阿里云 registry 抖动）。</li>
+  <li><strong>残留容器清理</strong>：启动前会 <code>rm -f -s</code> 本项目旧容器，并清理 compose 不识别的 orphan 容器（防止旧 worker 持表锁阻塞迁移）。</li>
+  <li><code>FORCE=1</code> 不再控制行为，仅作为元数据写入锁文件，供排查谁触发了部署。</li>
+</ul>
 
 <h2>关键机制</h2>
 
@@ -148,21 +161,21 @@ docker compose restart backend nginx</code></pre>
 <ol>
   <li>阶段 1（node:20-alpine）：<code>npm run build</code> → <code>/app/web/dist</code></li>
   <li>阶段 2（python:3.11-slim）：从阶段 1 复制产物到 <code>/app/web/dist-image</code></li>
-  <li>backend 容器启动命令：<code>cp -r /app/web/dist-image/* /app/web/dist/</code></li>
+  <li>backend 容器入口脚本（<code>scripts/docker-entrypoint.sh</code>）：<code>rsync -a --delete /app/web/dist-image/ /app/web/dist/</code></li>
   <li><code>web_dist</code> 是 backend 和 nginx 共享的 Docker Volume</li>
   <li>nginx 从 <code>/usr/share/nginx/html</code>（= <code>web_dist</code>）提供静态文件</li>
 </ol>
 
 <h3>数据库迁移</h3>
-<p>backend 启动命令中已包含 <code>alembic upgrade head</code>，容器启动时自动执行。</p>
+<p>backend 容器入口脚本在启动 uvicorn 前执行 <code>alembic upgrade head</code>，是<strong>唯一</strong>的迁移执行点。<code>update.sh</code> 在部署末尾只做 <code>current == head</code> 的只读校验，不一致则 exit 1。</p>
 
 <h3>Nginx 缓存策略</h3>
-<table>
-  <tr><th>路径</th><th>缓存策略</th></tr>
-  <tr><td><code>/index.html</code></td><td>禁止缓存（每次刷新拿到最新 SPA 入口）</td></tr>
-  <tr><td><code>/assets/</code></td><td>长期缓存 1 年（Vite 打包文件名带 hash）</td></tr>
-  <tr><td><code>/api/</code></td><td>反向代理到 backend</td></tr>
-</table>
+<ul>
+  <li><code>/index.html</code> — 禁止缓存（每次刷新拿到最新 SPA 入口）</li>
+  <li><code>/assets/</code> — 长期缓存 1 年（Vite 打包文件名带 hash，内容变更自动失效）</li>
+  <li><code>/api/</code> — 反向代理到 backend（限流 50r/s，SSE 端点 <code>*/stream</code> 长超时单独放行）</li>
+  <li>80 端口与裸域 443 — 301 重定向到 <code>https://www.alloyresearch.net</code>（证书在 <code>deploy/aliyun-ecs/ssl/</code>）</li>
+</ul>
 
 <h2>常用运维命令</h2>
 
@@ -170,6 +183,7 @@ docker compose restart backend nginx</code></pre>
   <tr><th>场景</th><th>命令</th></tr>
   <tr><td>查看所有容器状态</td><td><code>docker compose ps</code></td></tr>
   <tr><td>查看后端日志</td><td><code>docker compose logs -f backend --tail 100</code></td></tr>
+  <tr><td>查看 Celery worker 日志</td><td><code>docker compose logs -f celery-worker-indicator celery-worker-cninfo</code></td></tr>
   <tr><td>查看 nginx 日志</td><td><code>docker compose logs -f nginx</code></td></tr>
   <tr><td>数据库迁移（手动）</td><td><code>docker compose exec backend alembic upgrade head</code></td></tr>
   <tr><td>重启单个服务</td><td><code>docker compose restart backend</code></td></tr>
@@ -186,7 +200,7 @@ docker compose restart backend nginx</code></pre>
   <li>构建镜像并启动所有服务</li>
   <li>执行数据库初始化和种子用户创建</li>
 </ol>
-<blockquote>详见 <code>deploy/aliyun-ecs/README.md</code></blockquote>
+<blockquote>详见 <code>deploy/aliyun-ecs/README.md</code>。</blockquote>
 
 <h2>ECS 推荐配置</h2>
 

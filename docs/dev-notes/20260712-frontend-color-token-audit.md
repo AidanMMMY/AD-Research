@@ -1,5 +1,7 @@
 # AD-Research 前端颜色 Token 一致性审计报告
 
+> **注**：本文为 2026-07-12 的时点记录，部分内容可能已过时（文列 P0/P1 问题多数已在 2026-07-21 全站视觉统一重构中修复：`main.tsx` 已改为读取 CSS 变量、K15 区 `#4096ff` 已清除、`global.css` 已拆分为 `web/src/styles/global/` 目录且文中行号失效）。
+
 - **审计日期**：2026-07-12
 - **审计范围**：`web/src/**` 全量（styles/、components/、pages/、utils/、main.tsx）
 - **审计方式**：纯静态扫描，未修改任何代码

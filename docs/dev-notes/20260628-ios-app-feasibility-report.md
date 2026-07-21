@@ -1,6 +1,8 @@
 # iOS 原生 APP 可行性评估报告
 
 > 2026-06-28 | 基于当前投研平台代码架构
+>
+> 最后核实更新：2026-07-21（后端认证/SSE/APNs/CORS 等"需改造"项多数已落地，见正文标注；iOS 工程已开工，位于 `ios/ADResearch/`，目前完成登录脚手架）
 
 ## 一、结论总览
 
@@ -17,11 +19,11 @@
 
 | 维度 | 现状 | iOS 适配度 |
 |---|---|---|
-| API 组织 | `/api/v1/` 下 22 个模块，RESTful | ⭐⭐⭐⭐⭐ |
+| API 组织 | `/api/v1/` 下 40+ 个模块，RESTful | ⭐⭐⭐⭐⭐ |
 | 数据模型 | SQLAlchemy + Pydantic Schema 完整 | ⭐⭐⭐⭐⭐ |
-| 认证 | JWT Bearer，但无 Refresh Token | ⚠️ 需增强 |
-| 实时通信 | 无 WebSocket/SSE | ⚠️ 行情推送需新增 |
-| 移动端推送 | 无 APNs/FCM | ❌ 需新建 |
+| 认证 | JWT Bearer + Refresh Token（30 天，rotation）+ 登出黑名单 + 设备管理（`app/api/v1/auth.py`，2026-07 已实现） | ⭐⭐⭐⭐ 已增强 |
+| 实时通信 | SSE 已上线：`GET /api/v1/stream/prices?codes=...`（`app/api/v1/stream.py`，3s 推送） | ⭐⭐⭐⭐ 已实现 |
+| 移动端推送 | APNs 已集成（`app/services/push_service.py`，需配置 `APNS_*` 环境变量） | ⭐⭐⭐ 已具备基础 |
 | 报告导出 | HTML/Markdown 下载成熟 | ⭐⭐⭐⭐ 可扩展 PDF |
 
 ### 前端（React）—— 无法直接复用
@@ -93,19 +95,21 @@
 
 ### 必须做（MVP）
 
+> 2026-07-21 核实：以下 5 项在后端均已落地（详见逐项标注）。
+
 | 改造项 | 工作量 | 说明 |
 |---|---|---|
-| **Refresh Token 机制** | 3-5 天 | 当前 JWT 1 天过期，移动端需要长期登录 |
-| **Token 黑名单/登出** | 1-2 天 | Redis 存失效 token |
-| **设备绑定表** | 2-3 天 | 支持多端登录管理、设备解绑 |
-| **APNs 推送集成** | 3-5 天 | 新信号、价格预警、报告生成完成通知 |
-| **收紧 CORS** | 0.5 天 | 生产环境 `allow_origins=["*"]` 需改为域名白名单 |
+| **Refresh Token 机制** | ✅ 已完成 | `POST /api/v1/auth/refresh`，30 天 opaque token（DB 存 SHA-256，rotation）；access token 仍为 1 天（`ACCESS_TOKEN_EXPIRE_MINUTES=1440`） |
+| **Token 黑名单/登出** | ✅ 已完成 | `POST /api/v1/auth/logout`，Redis 存失效 jti |
+| **设备绑定表** | ✅ 已完成 | `UserDevice` 模型 + `POST/GET/DELETE /api/v1/auth/devices` |
+| **APNs 推送集成** | ✅ 已完成 | `app/services/push_service.py`（HTTP/2 API，sandbox/prod 切换） |
+| **收紧 CORS** | ✅ 已完成 | 非 development 环境自动丢弃 `*`；未配置 `CORS_ORIGINS` 时不允许跨域（`app/config.py`） |
 
 ### 建议做（体验提升）
 
 | 改造项 | 工作量 | 说明 |
 |---|---|---|
-| **SSE/WebSocket 行情推送** | 5-7 天 | 实时价格、K线更新 |
+| **SSE/WebSocket 行情推送** | ✅ 已完成（SSE） | `GET /api/v1/stream/prices?codes=...`，3s 间隔，5 分钟连接上限 |
 | **API 分页统一** | 2-3 天 | 部分接口用 `limit`，部分用 `page/page_size` |
 | **PDF 报告导出** | 2-3 天 | 移动端更适合 PDF 而不是 HTML |
 | **图片/缩略图 API** | 2 天 | iOS 列表页性能优化 |

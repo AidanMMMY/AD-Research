@@ -1,5 +1,7 @@
 # Changelog — 2026-07-02
 
+> 最后核实更新：2026-07-21（文末增补「2026-07 重大变更」一节）
+
 > 本日新增：宏观数据接入完成 + 5 类新数据源 pipeline 上线 + B-8 调度器激活 + 数据源地图。
 
 ---
@@ -120,3 +122,44 @@
 - Phase 7 (microstructure): 14 passed
 - Phase 9 (search_trends): 12 passed
 - **总计: 76 passed**
+
+---
+
+## 2026-07 重大变更（2026-07-21 补记，基于 git log 归纳）
+
+> 7 月共 260+ 提交，以下按主题归纳里程碑；详细过程见各 `docs/dev-notes/202607*.md`。
+
+### 全球市场与地缘事件（07-04 ~ 07-12）
+- K11 全球市场 P0：FRED 新增 7 个 global series（DXY/Brent/WTI/黄金/SP500/USDJPY/DGS30）、前端 `/global` 页（GlobalMarkets）+ Dashboard 全球区块
+- 地缘事件体系：`event_category` 扩展 `geopolitics/central_bank/election/trade_war/sanction`，`/news` 支持按类目过滤；GlobalMarkets 页落地「重大政治/地缘事件」小卡 + AI Help 上下文注入；07-12 事件窗口由 24h 扩为最近 7 天
+- 全球市场指数 yfinance + akshare 采集（`global_indices_fetcher.py`，Phase 5d/6a，每日 16:00）；`/macro/indices/global` 端点（07-09）
+
+### 新手教学系统（07-04 起，K6/K14/K15）
+- OnboardingTour（后扩为 6 步、`data-onboard` 真实 DOM 锚定、a11y Skip Tour + focus restore）、ContextHint、novice/pro mode、`learningMode`（默认开启）、StatExplainer、PageHeader `tutorial` slot、`/learning` 情景教程页、DailyLesson 组件、术语词典 `relatedTerms`
+
+### 数据与管线（07-07 ~ 07-21）
+- 微信公众号 wewe-rss 接入（`wechat_zeping` 源 + AI 营销过滤，每 15 分钟）
+- ETF 持仓三线采集（Eastmoney F10 + cninfo PDF + Tushare）+ 季度历史 + 覆盖度统计页
+- cninfo 覆盖从 HS300+CS500 扩至全量 A 股 3,209 只 + 全量回填；PDF 批量下载/文本提取 Celery 任务
+- 市场资金流（Plan C，`market_fund_flow` 表 + FundFlow 页）；复权因子历史（`adj_factor_history`）回填
+- Celery worker 引入（07-12，长任务剥离 API 进程），后拆为 `indicator` / `cninfo` / `celery` 三队列
+- 指标计算 SQL 后端（`INDICATOR_BACKEND=sql`）+ `code_prefix` 分片并行补齐；07-21 性能优化（bars CTE 改 LATERAL LIMIT，chunk 128s→<2s）
+- 板块轮动：GICS → 申万 2021 行业指数官方回报（Phase 3）+ 官方/等权对照
+- 指标正确性系统性修复（前复权、百分比口径、风险维度、RS、Crypto、年化；见 `20260718-*` 审计与 `20260721-*` 交叉核实报告）
+
+### 策略与回测（07-16）
+- 参数优化（`optimization_engine.py`）、横截面回测、通用组合策略
+
+### 前端与体验（07-05 ~ 07-21）
+- 视觉重构 Phase 4-7（inline style 清理 + 38 个页面级 CSS）→ 密度系统（compact/comfortable/spacious）→ **07-21 全站视觉统一重构（6915438）**；注意工作区仍有未提交的后续视觉改动（`AuroraBackground.tsx` / `GlassCard.tsx` 已删除）
+- Dashboard v8 市场指挥中心（07-20）；此前经历市场脉搏分组、自选股/标的池卡片化等多轮重构
+- ⌘K 命令面板 + 全局搜索、Core Web Vitals 监控（`/api/v1/stats/web-vitals`）、深色模式跟随系统、数据导出 CSV/Excel、K 线前复权切换、/favorites 自选股页
+
+### LLM 与 AI（07-11 ~ 07-19）
+- **LLM Provider 全平台从 DeepSeek 切换到 MiniMax**（`LLM_PROVIDER` env，DeepSeek 保留为 legacy；07-11）
+- overnight-research 20 小时连续研究 worker（`agent/`，07-18）+ 新闻爬虫扩展 + embedding + RAG（07-19）
+
+### 安全与运维（07-16 ~ 07-20）
+- refresh token 轮换透传、API 鉴权收敛、pools IDOR 修复（07-20）
+- ETL 监控 + stuck 清理 + 多市场 freshness + status_report staleness（07-19）；每小时磁盘检查任务
+- 部署加固：healthcheck start_period 覆盖 alembic 大列 ALTER、orphan 清理、4 个隐藏 tripwire runbook、nginx SSE 修复、compose 治理（07-19~20）

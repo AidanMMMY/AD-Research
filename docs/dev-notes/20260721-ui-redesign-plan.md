@@ -1,5 +1,9 @@
 # 2026-07-21 全站 UI 视觉评审与统一重构方案
 
+> 最后核实更新：2026-07-21
+>
+> **实施状态**：A–H 八个批次已由 commit `6915438`「全站视觉统一重构」落地（`getReturnColor` 零值/空值走 neutral、Dashboard cc-\* 全部映射 theme.css 语义 token、`FilterToolbar` total 统一「共 N 条」等）；后续又有 `10a3997`、`5d1531f` 两个修复 commit。「后续阶段」中的 global.css 拆分、GlassCard 下线、dark-first 默认也已在工作区完成（见末节更新）。
+
 > 方法：Playwright 真实截图 43 张（生产、admin 账号）→ 8 个评审 agent 分域核对截图+代码 → 100+ 条证据化发现。
 > 趋势参照（2026 联网调研）：dark-first、bento 克制使用、色彩功能化、数据密集但有呼吸感、AI-native、5 秒法则、微动效服务状态。
 
@@ -50,6 +54,7 @@
 | H AI/内容/学习 | AIChat、Learning、Sentiment、SentimentDashboard、Favorites | 空态改造、卡头 wrap、阈值、死代码 |
 
 ## 三、后续阶段（本方案不含）
-- global.css 拆分（8608 行地层沉积）、GlassCard/ContentCard 下线 + ESLint 守门
-- 登录页 Aurora 收敛、PoolList 卡片网格化、详情抽屉四模式统一
-- 深色主题设为默认（dark-first）
+- ~~global.css 拆分（8608 行地层沉积）~~ **（已完成，工作区未提交）**：`web/src/styles/global.css` 已变为 28 行 `@import` 清单，样式拆入 `web/src/styles/global/` 目录 22 个 chunk（base/components/login/learning/sidebar/pages-\* 等）
+- ~~GlassCard 下线~~ **（已完成，工作区未提交）**：`GlassCard.tsx` 已删除（`.glass-card` CSS 类仍保留在 `components.css`，个别页面如 SentimentDashboard 仍用类名）；ContentCard 仍在使用（如 NewsHealth），ESLint 守门未做
+- 登录页 Aurora 收敛、PoolList 卡片网格化、详情抽屉四模式统一 —— 部分推进：`AuroraBackground.tsx` 已删除，登录页改用 `LoginBackdrop.tsx`
+- ~~深色主题设为默认（dark-first）~~ **（已完成）**：`useTheme` 无存储值时默认 `'dark'`，并新增 `'system'` 跟随系统选项；默认主色为蓝靛 `#2563EB`（朱红 `#E11D48` 经 `data-accent="vermilion"` 兼容保留）

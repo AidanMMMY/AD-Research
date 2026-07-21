@@ -1,5 +1,7 @@
 # 前端视觉重构 Phase 2 — 共享组件改造 + 6 个新组件
 
+> **注**：本文为 2026-07-05 的时点记录，部分内容可能已过时（如 `global.css` 已拆分为 `web/src/styles/global/` 目录、文中行号引用已失效，以代码现状为准）。
+
 **日期**：2026-07-05
 **分支**：`main`
 **前置 commit**：`22034b9` (Phase 1 — design tokens + 朱色 #E11D48 + light clean 默认)
