@@ -417,6 +417,24 @@ class ETFHoldingsPipeline(ETLPipeline):
             missing = required_cols - set(df.columns)
             raise ValueError(f"Missing required columns: {missing}")
 
+        # FK guard: ``etf_holding.etf_code`` references ``etf_info.code``.
+        # The Tushare bulk pull returns the whole market for the period —
+        # including OTC ``.OF`` funds outside the requested whitelist —
+        # so rows whose etf_code is not in etf_info must be dropped here
+        # instead of letting one bad key fail the entire upsert batch.
+        valid_codes = {row.code for row in self.db.query(ETFInfo.code).all()}
+        total_rows = len(df)
+        df = df[df["etf_code"].astype(str).isin(valid_codes)]
+        dropped = total_rows - len(df)
+        if dropped:
+            logger.warning(
+                "[ETFHoldingsPipeline] Dropped %d/%d holdings rows whose "
+                "etf_code is not in etf_info (FK guard).",
+                dropped, total_rows,
+            )
+        if df.empty:
+            return 0
+
         # Build the upsert payload. ``snapshot_date`` is also mirrored
         # to ``holdings_as_of_date`` for backwards compatibility.
         records: list[dict] = []
