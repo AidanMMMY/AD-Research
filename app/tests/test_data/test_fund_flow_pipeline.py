@@ -18,6 +18,7 @@ import pandas as pd
 from app.data.pipelines.fund_flow import WEIGHTS, _compute_composite
 from app.data.pipelines.market_fund_flow import MarketFundFlowPipeline
 from app.data.providers.flow_signals_provider import FlowSignalsProvider
+from app.data.providers.fund_flow_provider import FundFlowProvider
 
 
 class TestComputeComposite:
@@ -146,3 +147,141 @@ class TestDeriveShSzRecords:
         monkeypatch.setattr(pipeline, "_aggregate_individual", lambda td, suffix: None)
         records = pipeline._derive_sh_sz_records({date(2026, 7, 17)}, {})
         assert records == []
+
+
+class _FakeResp:
+    """Minimal requests.Response stand-in for push2delay fallback tests."""
+
+    def __init__(self, payload: dict) -> None:
+        self._payload = payload
+
+    def raise_for_status(self) -> None:
+        return None
+
+    def json(self) -> dict:
+        return self._payload
+
+
+class TestPush2DelayFallback:
+    """东财 push2/push2his 主域名被 WAF 断连后，push2delay 直连降级路径。
+
+    回归 2026-07-21 生产事故：individual/sector/market 三个 akshare 接口
+    全部 ConnectionError，导致 fund_flow_daily / market_fund_flow_daily
+    partial。降级路径必须正确映射 f 字段语义。
+    """
+
+    def _provider(self) -> FundFlowProvider:
+        return FundFlowProvider(api_delay=0)
+
+    def test_individual_fallback_maps_f_fields(self, monkeypatch) -> None:
+        provider = self._provider()
+        monkeypatch.setattr(provider, "_fetch_individual_rank_akshare", lambda ind: [])
+        payload = {
+            "data": {
+                "total": 2,
+                "diff": [
+                    {
+                        "f12": "600519", "f14": "贵州茅台",
+                        "f62": 1.5e8, "f184": 4.2,
+                        "f66": 9e7, "f69": 2.5,
+                        "f72": 6e7, "f75": 1.7,
+                        "f78": -3e7, "f81": -1.0,
+                        "f84": -1.2e8, "f87": -4.0,
+                    },
+                    {"f12": "bad-code", "f14": "无效"},  # 应被 _code_to_ts_code 过滤
+                ],
+            }
+        }
+        monkeypatch.setattr("requests.get", lambda *a, **kw: _FakeResp(payload))
+        rows = provider.fetch_individual_rank(indicator="今日")
+        assert len(rows) == 1
+        row = rows[0]
+        assert row["ts_code"] == "600519.SH"
+        assert row["main_net_inflow"] == 1.5e8
+        assert row["main_net_pct"] == 4.2
+        assert row["super_large_net"] == 9e7
+        assert row["super_large_pct"] == 2.5
+        assert row["large_net"] == 6e7
+        assert row["large_pct"] == 1.7
+        assert row["medium_net"] == -3e7
+        assert row["medium_pct"] == -1.0
+        assert row["small_net"] == -1.2e8
+        assert row["small_pct"] == -4.0
+        assert row["source"] == "push2delay"
+
+    def test_sector_fallback_maps_leading_stock(self, monkeypatch) -> None:
+        provider = self._provider()
+        monkeypatch.setattr(
+            provider, "_fetch_sector_rank_akshare", lambda st, ind: []
+        )
+        payload = {
+            "data": {
+                "total": 1,
+                "diff": [
+                    {
+                        "f14": "航空机场", "f62": 59445632.0, "f184": 1.32,
+                        "f66": -37027008.0, "f72": 96472640.0,
+                        "f204": "中国东航", "f205": "600115",
+                    },
+                ],
+            }
+        }
+        monkeypatch.setattr("requests.get", lambda *a, **kw: _FakeResp(payload))
+        rows = provider.fetch_sector_rank(sector_type="行业资金流", indicator="今日")
+        assert len(rows) == 1
+        row = rows[0]
+        assert row["sector_name"] == "航空机场"
+        assert row["sector_type"] == "行业"
+        assert row["main_net_inflow"] == 59445632.0
+        assert row["super_large_net"] == -37027008.0
+        assert row["large_net"] == 96472640.0
+        assert row["leading_stock"] == "中国东航"
+        # SectorFundFlow 模型没有 source 列，行内不得携带该键
+        assert "source" not in row
+
+    def test_market_fallback_parses_latest_kline(self, monkeypatch) -> None:
+        provider = self._provider()
+        monkeypatch.setattr(provider, "_fetch_market_fund_flow_akshare", lambda days: [])
+        kline = (
+            "2026-07-21,32606683136.0,-1731227648.0,-30875451392.0,"
+            "-3078709248.0,35685392384.0,1.10,-0.06,-1.04,-0.10,1.21,"
+            "3864.37,1.32,12345.67,-0.45"
+        )
+        payload = {"data": {"klines": [kline]}}
+        monkeypatch.setattr("requests.get", lambda *a, **kw: _FakeResp(payload))
+        rows = provider.fetch_market_fund_flow(days=120)
+        assert len(rows) == 1
+        row = rows[0]
+        assert row["trade_date"] == date(2026, 7, 21)
+        assert row["main_net_inflow"] == 32606683136.0
+        assert row["small_net"] == -1731227648.0
+        assert row["medium_net"] == -30875451392.0
+        assert row["large_net"] == -3078709248.0
+        assert row["super_large_net"] == 35685392384.0
+        assert row["main_net_pct"] == 1.10
+        assert row["sh_close"] == 3864.37
+        assert row["sh_pct_change"] == 1.32
+        assert row["sz_close"] == 12345.67
+        assert row["sz_pct_change"] == -0.45
+
+    def test_akshare_primary_preferred_when_available(self, monkeypatch) -> None:
+        provider = self._provider()
+        good = [{"ts_code": "600519.SH", "trade_date": date(2026, 7, 21)}]
+        monkeypatch.setattr(provider, "_fetch_individual_rank_akshare", lambda ind: good)
+
+        def _boom(*a, **kw):  # 主路径成功时不应发起任何 HTTP 调用
+            raise AssertionError("requests.get should not be called")
+
+        monkeypatch.setattr("requests.get", _boom)
+        assert provider.fetch_individual_rank(indicator="今日") == good
+
+    def test_fallback_returns_empty_when_http_fails(self, monkeypatch) -> None:
+        provider = self._provider()
+        monkeypatch.setattr(provider, "_fetch_individual_rank_akshare", lambda ind: [])
+
+        def _fail(*a, **kw):
+            raise ConnectionError("Remote end closed connection")
+
+        monkeypatch.setattr("requests.get", _fail)
+        monkeypatch.setattr("time.sleep", lambda s: None)
+        assert provider.fetch_individual_rank(indicator="今日") == []

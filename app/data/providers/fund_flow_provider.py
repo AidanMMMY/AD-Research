@@ -38,6 +38,29 @@ _API_DELAY = 0.3
 _BATCH_DELAY = 1.5
 _MAX_RETRIES = 2
 
+# ---------------------------------------------------------------------------
+# EastMoney push2delay fallback (direct HTTP)
+# ---------------------------------------------------------------------------
+#
+# Since ~2026-07-17 eastmoney's edge drops API calls on the canonical
+# ``push2.eastmoney.com`` / ``push2his.eastmoney.com`` hosts used by akshare
+# (TLS handshake succeeds, then the connection is closed without response;
+# clist returns 502). The ``push2delay.eastmoney.com`` host serves the same
+# qt endpoints and stays reachable, so each akshare-based fetch below falls
+# back to a direct push2delay call when akshare fails. Caveat: push2delay's
+# fflow daykline only carries the latest trading day (no history), which is
+# still enough for the daily ETL.
+
+_EM_DELAY_BASE = "https://push2delay.eastmoney.com/api/qt"
+_EM_UT = "b2884a393a59ad64002292a3e90d46a5"
+_EM_UA = (
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+    "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
+)
+_EM_REFERER = "https://quote.eastmoney.com/"
+_EM_PAGE_SIZE = 100
+_EM_MAX_PAGES = 200
+
 
 class _RateLimiter:
     """线程安全的最小间隔限速器。"""
@@ -200,7 +223,15 @@ class FundFlowProvider:
 
         indicator: "今日" / "3日" / "5日" / "10日"
         返回 list[dict]，每条 dict 的字段与 ``IndividualFundFlow`` ORM 一致。
+        akshare 失败时降级 push2delay 直连 (仅支持 "今日")。
         """
+        rows = self._fetch_individual_rank_akshare(indicator)
+        if not rows:
+            rows = self._fetch_individual_rank_delay(indicator)
+        return rows
+
+    def _fetch_individual_rank_akshare(self, indicator: str) -> list[dict[str, Any]]:
+        """akshare 主路径：全市场个股资金流排行。"""
         import akshare as ak
 
         for attempt in range(_MAX_RETRIES):
@@ -328,7 +359,17 @@ class FundFlowProvider:
 
         sector_type: '行业资金流' / '概念资金流' / '地域资金流'
         返回 list[dict]，``sector_type`` 字段统一映射成 行业/概念/地域。
+        akshare 失败时降级 push2delay 直连 (仅支持 "今日")。
         """
+        rows = self._fetch_sector_rank_akshare(sector_type, indicator)
+        if not rows:
+            rows = self._fetch_sector_rank_delay(sector_type, indicator)
+        return rows
+
+    def _fetch_sector_rank_akshare(
+        self, sector_type: str, indicator: str
+    ) -> list[dict[str, Any]]:
+        """akshare 主路径：板块资金流排行。"""
         import akshare as ak
 
         type_map = {
@@ -381,7 +422,17 @@ class FundFlowProvider:
     # ---- 大盘 --------------------------------------------------------------
 
     def fetch_market_fund_flow(self, days: int = 60) -> list[dict[str, Any]]:
-        """大盘整体资金流 (ak.stock_market_fund_flow)。返回最近 ``days`` 日。"""
+        """大盘整体资金流 (ak.stock_market_fund_flow)。返回最近 ``days`` 日。
+
+        akshare 失败时降级 push2delay 直连 (只有最新一个交易日)。
+        """
+        rows = self._fetch_market_fund_flow_akshare(days)
+        if not rows:
+            rows = self._fetch_market_fund_flow_delay()
+        return rows
+
+    def _fetch_market_fund_flow_akshare(self, days: int) -> list[dict[str, Any]]:
+        """akshare 主路径：大盘整体资金流。"""
         import akshare as ak
 
         for attempt in range(_MAX_RETRIES):
@@ -425,3 +476,187 @@ class FundFlowProvider:
                 "small_net": _coerce_float(row.get("小单净流入-净额")),
             })
         return out
+
+
+    # ---- push2delay 直连 fallback ------------------------------------------
+
+    def _em_get(self, path: str, params: dict[str, Any]) -> dict[str, Any] | None:
+        """GET a push2delay qt endpoint; returns parsed JSON or None."""
+        import requests
+
+        for attempt in range(_MAX_RETRIES):
+            try:
+                self._limiter.acquire()
+                resp = requests.get(
+                    f"{_EM_DELAY_BASE}{path}",
+                    params=params,
+                    headers={"User-Agent": _EM_UA, "Referer": _EM_REFERER},
+                    timeout=15,
+                )
+                resp.raise_for_status()
+                return resp.json()
+            except Exception as exc:  # noqa: BLE001
+                logger.warning(
+                    "[FundFlowProvider] push2delay %s attempt %d failed: %s",
+                    path, attempt + 1, exc,
+                )
+                if attempt == _MAX_RETRIES - 1:
+                    return None
+                time.sleep(1.0)
+        return None
+
+    def _em_clist(self, params: dict[str, Any]) -> list[dict[str, Any]]:
+        """Paginated ``clist/get`` via push2delay; returns raw ``diff`` rows."""
+        out: list[dict[str, Any]] = []
+        total: int | None = None
+        for page in range(1, _EM_MAX_PAGES + 1):
+            payload = self._em_get(
+                "/clist/get",
+                {**params, "pn": str(page), "pz": str(_EM_PAGE_SIZE)},
+            )
+            data = payload.get("data") if isinstance(payload, dict) else None
+            if not isinstance(data, dict):
+                break
+            if total is None:
+                total = int(data.get("total") or 0)
+            diff = data.get("diff") or []
+            if not diff:
+                break
+            out.extend(diff)
+            if len(out) >= total:
+                break
+        return out
+
+    def _fetch_individual_rank_delay(self, indicator: str) -> list[dict[str, Any]]:
+        """push2delay fallback for ``fetch_individual_rank`` ("今日" only)."""
+        if indicator != "今日":
+            return []
+        rows = self._em_clist({
+            "fid": "f62",
+            "po": "1",
+            "np": "1",
+            "fltt": "2",
+            "invt": "2",
+            "ut": _EM_UT,
+            "fs": (
+                "m:0+t:6+f:!2,m:0+t:13+f:!2,m:0+t:80+f:!2,"
+                "m:1+t:2+f:!2,m:1+t:23+f:!2,m:0+t:7+f:!2,m:1+t:3+f:!2"
+            ),
+            "fields": "f12,f14,f2,f3,f62,f184,f66,f69,f72,f75,f78,f81,f84,f87",
+        })
+        out: list[dict[str, Any]] = []
+        for row in rows:
+            ts_code = _code_to_ts_code(row.get("f12"))
+            if not ts_code:
+                continue
+            out.append({
+                "ts_code": ts_code,
+                "trade_date": date.today(),
+                "main_net_inflow": _coerce_float(row.get("f62")),
+                "main_net_pct": _coerce_float(row.get("f184")),
+                "super_large_net": _coerce_float(row.get("f66")),
+                "super_large_pct": _coerce_float(row.get("f69")),
+                "large_net": _coerce_float(row.get("f72")),
+                "large_pct": _coerce_float(row.get("f75")),
+                "medium_net": _coerce_float(row.get("f78")),
+                "medium_pct": _coerce_float(row.get("f81")),
+                "small_net": _coerce_float(row.get("f84")),
+                "small_pct": _coerce_float(row.get("f87")),
+                "source": "push2delay",
+            })
+        if out:
+            logger.info(
+                "[FundFlowProvider] individual rank via push2delay fallback: %d rows",
+                len(out),
+            )
+        return out
+
+    def _fetch_sector_rank_delay(
+        self, sector_type: str, indicator: str
+    ) -> list[dict[str, Any]]:
+        """push2delay fallback for ``fetch_sector_rank`` ("今日" only)."""
+        if indicator != "今日":
+            return []
+        # fs 板块代码 + 统一映射类型 (与 akshare sector_type_map 一致)
+        type_map = {
+            "行业资金流": ("2", "行业"),
+            "概念资金流": ("3", "概念"),
+            "地域资金流": ("1", "地域"),
+        }
+        mapped = type_map.get(sector_type)
+        if not mapped:
+            return []
+        fs_code, mapped_type = mapped
+        rows = self._em_clist({
+            "fid0": "f62",
+            "po": "1",
+            "np": "1",
+            "fltt": "2",
+            "invt": "2",
+            "ut": _EM_UT,
+            "fs": f"m:90 t:{fs_code}",
+            "stat": "1",
+            "fields": "f12,f14,f2,f3,f62,f184,f66,f69,f72,f75,f78,f81,f84,f87,f204,f205,f124",
+            "rt": "52975239",
+        })
+        out: list[dict[str, Any]] = []
+        for row in rows:
+            name = str(row.get("f14") or "").strip()
+            if not name:
+                continue
+            out.append({
+                "sector_name": name,
+                "sector_type": mapped_type,
+                "trade_date": date.today(),
+                "main_net_inflow": _coerce_float(row.get("f62")),
+                "main_net_pct": _coerce_float(row.get("f184")),
+                "super_large_net": _coerce_float(row.get("f66")),
+                "large_net": _coerce_float(row.get("f72")),
+                "leading_stock": str(row.get("f204") or "").strip() or None,
+            })
+        if out:
+            logger.info(
+                "[FundFlowProvider] sector rank(%s) via push2delay fallback: %d rows",
+                sector_type, len(out),
+            )
+        return out
+
+    def _fetch_market_fund_flow_delay(self) -> list[dict[str, Any]]:
+        """push2delay fallback for ``fetch_market_fund_flow`` (latest day only)."""
+        payload = self._em_get(
+            "/stock/fflow/daykline/get",
+            {
+                "lmt": "0",
+                "klt": "101",
+                "secid": "1.000001",
+                "secid2": "0.399001",
+                "fields1": "f1,f2,f3,f7",
+                "fields2": "f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61,f62,f63,f64,f65",
+                "ut": _EM_UT,
+            },
+        )
+        data = payload.get("data") if isinstance(payload, dict) else None
+        klines = data.get("klines") if isinstance(data, dict) else None
+        if not klines:
+            return []
+        # kline 字段顺序与 akshare stock_market_fund_flow 的 15 列一致
+        parts = str(klines[-1]).split(",")
+        if len(parts) < 15:
+            return []
+        trade_date = _coerce_date(parts[0])
+        if not trade_date:
+            return []
+        logger.info("[FundFlowProvider] market fund flow via push2delay fallback")
+        return [{
+            "trade_date": trade_date,
+            "sh_close": _coerce_float(parts[11]),
+            "sh_pct_change": _coerce_float(parts[12]),
+            "sz_close": _coerce_float(parts[13]),
+            "sz_pct_change": _coerce_float(parts[14]),
+            "main_net_inflow": _coerce_float(parts[1]),
+            "main_net_pct": _coerce_float(parts[6]),
+            "super_large_net": _coerce_float(parts[5]),
+            "large_net": _coerce_float(parts[4]),
+            "medium_net": _coerce_float(parts[3]),
+            "small_net": _coerce_float(parts[2]),
+        }]
