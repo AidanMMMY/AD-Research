@@ -352,7 +352,7 @@ function useRecentPoliticalEvents() {
           importance_min: 4,
           from_date: since,
           page: 1,
-          page_size: 8,
+          page_size: 4,
         })
         .then((r) => r.data),
     staleTime: 60_000,
@@ -363,7 +363,7 @@ function useRecentPoliticalEvents() {
 /**
  * Compact "recent week political events" panel. Renders nothing while
  * loading (so the rest of the page is not blocked), then either a
- * 5-row clickable list or an empty-state message.  The query lives in
+ * 4-row clickable list or an empty-state message.  The query lives in
  * ``useRecentPoliticalEvents`` so the AI Help button can reuse the
  * same cache entry.
  */
@@ -423,6 +423,11 @@ function RecentWeekEvents(): JSX.Element | null {
                   })}
                 </span>
               </Tooltip>
+              {a.source && (
+                <span className="ad-text-small ad-text-tertiary global-markets__event-source">
+                  {a.source}
+                </span>
+              )}
             </div>
             <div className="ad-news-events-list__title">{a.title}</div>
           </li>
@@ -579,7 +584,7 @@ export default function GlobalMarkets() {
           eyebrow="海外资本市场"
         title="全球市场速览"
         description={
-          '汇总美债收益率曲线、美元指数、商品、外汇、主要指数与波动率（VIX）。数据来自 FRED (Federal Reserve Economic Data)，每个工作日 03:00 北京时间自动刷新；FRED API key 缺失时显示为空状态。'
+          '汇总美债收益率曲线、美元指数、商品、外汇、主要指数与波动率（VIX）。数据来自 FRED (Federal Reserve Economic Data)，每个工作日 03:00 北京时间自动刷新。'
         }
         extra={
           <>
@@ -599,7 +604,7 @@ export default function GlobalMarkets() {
             <EmptyState
               title="暂无全球市场数据"
               description={
-                'FRED 暂未拉取到任何全球指标。请确认服务器已配置 FRED_API_KEY，并等待下一次调度（默认每个工作日 03:00 北京时间）。'
+                '暂未拉取到任何全球指标，将在下一次自动刷新（每个工作日 03:00 北京时间）后展示。'
               }
             />
           </Panel>

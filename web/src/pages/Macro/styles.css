@@ -6,16 +6,29 @@
    in global.css and shared across the app.
    ============================================================ */
 
-/* ── Freshness badge (data delay indicator on KPI cards) ── */
+/* ── Headline KPI grid: auto-fit so any card count fills rows evenly
+      (replaces the antd Col span math that left holes with 5 cards) ── */
+
+.macro__headline-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--space-4);
+}
+
+.macro__kpi-period {
+  margin-left: var(--space-1-5);
+  font-size: var(--text-small-size);
+  font-weight: 400;
+  color: var(--text-tertiary);
+}
+
+/* ── Freshness badge (data delay indicator, inline in the card title) ── */
 
 .macro__freshness-badge {
-  position: absolute;
-  top: calc(var(--space-1) * -1);
-  right: calc(var(--space-1) * -1);
-  z-index: 2;
   display: inline-flex;
   align-items: center;
   gap: var(--space-1);
+  margin-left: var(--space-1-5);
   padding: 1px 6px;
   border-radius: 9999px;
   background: var(--color-warning-hover-dim);

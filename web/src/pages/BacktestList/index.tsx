@@ -91,6 +91,15 @@ export default function BacktestList() {
     }
   };
 
+  // Open the create modal, preselecting the strategy carried by deep-link params.
+  const openCreateModal = () => {
+    const presetStrategyId =
+      strategyIdParam ??
+      (strategies || []).find((s: any) => s.strategy_type === strategyTypeParam)?.id;
+    if (presetStrategyId) form.setFieldsValue({ strategy_id: presetStrategyId });
+    setIsModalOpen(true);
+  };
+
   const rowSize = 'small';
   const tableWrapClass = 'ad-table-scroll ad-table-sticky';
 
@@ -108,13 +117,22 @@ export default function BacktestList() {
     {
       title: '总收益',
       dataIndex: 'metrics',
-      render: (v: BacktestMetrics | undefined) => <span className="tabular-nums">{`${v?.total_return?.toFixed?.(2) ?? v?.total_return ?? 0}%`}</span>,
+      // Missing metrics must not masquerade as 0%; colour real values by sign.
+      render: (v: BacktestMetrics | undefined) => {
+        const r = v?.total_return;
+        if (r == null) return <span className="tabular-nums">-</span>;
+        const cls = r > 0 ? 'paper-pnl--rise' : r < 0 ? 'paper-pnl--fall' : 'paper-pnl--neutral';
+        return <span className={`tabular-nums ${cls}`}>{`${r.toFixed(2)}%`}</span>;
+      },
       width: 100,
     },
     {
       title: '最大回撤',
       dataIndex: 'metrics',
-      render: (v: BacktestMetrics | undefined) => <span className="tabular-nums">{`${v?.max_drawdown?.toFixed?.(2) ?? v?.max_drawdown ?? 0}%`}</span>,
+      render: (v: BacktestMetrics | undefined) => {
+        const d = v?.max_drawdown;
+        return <span className="tabular-nums">{d == null ? '-' : `${d.toFixed(2)}%`}</span>;
+      },
       width: 100,
     },
     {
@@ -147,14 +165,7 @@ export default function BacktestList() {
           <Button
             type="primary"
             icon={<PlusOutlined />}
-            onClick={() => {
-              // Preselect the strategy carried by the deep-link params, if any.
-              const presetStrategyId =
-                strategyIdParam ??
-                (strategies || []).find((s: any) => s.strategy_type === strategyTypeParam)?.id;
-              if (presetStrategyId) form.setFieldsValue({ strategy_id: presetStrategyId });
-              setIsModalOpen(true);
-            }}
+            onClick={openCreateModal}
           >
             新建回测
           </Button>
@@ -166,27 +177,32 @@ export default function BacktestList() {
       <SectionHeading title="回测列表" />
 
       <Panel variant="default" padding="none">
-        <div className={tableWrapClass}>
-          <Table
-            dataSource={displayedBacktests}
-            columns={columns}
-            rowKey="id"
-            size={rowSize as any}
-            loading={isLoading}
-            scroll={{ x: 'max-content' }}
-            pagination={{ pageSize: 20 }}
-            locale={{
-              emptyText: (
-                <div className="ad-p-5">
-                  <EmptyState
-                    title="暂无回测"
-                    description="点击右上角「新建回测」创建第一个回测任务"
-                  />
-                </div>
-              ),
-            }}
-          />
-        </div>
+        {!isLoading && displayedBacktests.length === 0 ? (
+          // No rows: skip the empty 10-column header and show a direct CTA.
+          <div className="ad-p-5">
+            <EmptyState
+              title="暂无回测"
+              description="点击「新建回测」创建第一个回测任务"
+              action={
+                <Button type="primary" icon={<PlusOutlined />} onClick={openCreateModal}>
+                  新建回测
+                </Button>
+              }
+            />
+          </div>
+        ) : (
+          <div className={tableWrapClass}>
+            <Table
+              dataSource={displayedBacktests}
+              columns={columns}
+              rowKey="id"
+              size={rowSize as any}
+              loading={isLoading}
+              scroll={{ x: 'max-content' }}
+              pagination={{ pageSize: 20 }}
+            />
+          </div>
+        )}
       </Panel>
 
       <Modal

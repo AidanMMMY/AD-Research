@@ -9,6 +9,7 @@ const STATUS_LABELS: Record<string, string> = {
   running: '运行中',
   failed: '失败',
   pending: '等待中',
+  skipped: '跳过',
 };
 
 export default function StatusTag({ status }: StatusTagProps) {

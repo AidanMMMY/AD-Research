@@ -28,6 +28,13 @@ const STATUS_COLORS: Record<string, string> = {
   success: 'green',
   failed: 'red',
   pending: 'gold',
+  downloaded: 'blue',
+};
+const STATUS_LABELS: Record<string, string> = {
+  success: '已提取',
+  failed: '失败',
+  pending: '待提取',
+  downloaded: '已下载',
 };
 
 export default function SECFilingsPage() {
@@ -118,7 +125,7 @@ export default function SECFilingsPage() {
 
   const columns: ColumnsType<SecFiling> = [
     {
-      title: 'Ticker',
+      title: '代码',
       dataIndex: 'ticker',
       key: 'ticker',
       width: 160,
@@ -136,20 +143,20 @@ export default function SECFilingsPage() {
       ellipsis: true,
     },
     {
-      title: 'Form',
+      title: '表单',
       dataIndex: 'form_type',
       key: 'form_type',
       width: 90,
       render: (v: string) => <Tag>{v}</Tag>,
     },
     {
-      title: 'Filing Date',
+      title: '申报日期',
       dataIndex: 'filing_date',
       key: 'filing_date',
       width: 120,
     },
     {
-      title: 'Report Period',
+      title: '报告期',
       dataIndex: 'report_period',
       key: 'report_period',
       width: 120,
@@ -160,11 +167,11 @@ export default function SECFilingsPage() {
       key: 'extraction_status',
       width: 90,
       render: (v: string) => (
-        <Tag color={STATUS_COLORS[v] ?? 'default'}>{v}</Tag>
+        <Tag color={STATUS_COLORS[v] ?? 'default'}>{STATUS_LABELS[v] ?? v}</Tag>
       ),
     },
     {
-      title: 'Accession',
+      title: '备案号',
       dataIndex: 'accession_number',
       key: 'accession_number',
       width: 220,
@@ -217,13 +224,13 @@ export default function SECFilingsPage() {
           title="覆盖 Ticker"
           value={coverage?.tracked_tickers ?? 0}
         />
-        <div className="detail-kpi-rise">
+        <div className="sec-filings-kpi-success">
           <StatCard
             title="XBRL 已提取"
             value={coverage?.extractions_completed ?? 0}
           />
         </div>
-        <div className="detail-kpi-accent">
+        <div className="sec-filings-kpi-warning">
           <StatCard
             title="XBRL 待提取"
             value={coverage?.extractions_pending ?? 0}

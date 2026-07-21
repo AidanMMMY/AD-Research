@@ -80,13 +80,20 @@ export default function AIChat() {
 
   const handleSend = async (override?: string) => {
     const content = override ?? input;
-    if (!content.trim() || !activeSession || sending) return;
+    if (!content.trim() || sending) return;
     if (override === undefined) {
       setInput('');
     }
     setSending(true);
     reset(STEP_DEFS);
     try {
+      // Empty-state first message: no session yet — create one on the fly
+      // before streaming, so the input bar works without a sidebar click.
+      let sessionId = activeSession;
+      if (!sessionId) {
+        const resp = await createMutation.mutateAsync();
+        sessionId = resp.data.id;
+      }
       start('fetch');
       await new Promise((r) => setTimeout(r, 120));
       finish('fetch', 'done');
@@ -94,7 +101,7 @@ export default function AIChat() {
       // Real SSE stream — parses meta/delta/done frames server-side.
       let receivedContent = false;
       await new Promise<void>((resolve, reject) => {
-        chatApi.streamMessage(activeSession, content, {
+        chatApi.streamMessage(sessionId!, content, {
           onDelta: (chunk) => {
             receivedContent = true;
             appendStreamed(chunk);
@@ -108,7 +115,7 @@ export default function AIChat() {
             finish('llm', 'error');
             // If no chunks arrived, fall back to the legacy POST.
             if (!receivedContent) {
-              chatApi.sendMessage(activeSession, content)
+              chatApi.sendMessage(sessionId!, content)
                 .then((res) => {
                   appendStreamed(res.data.content);
                   finish('stream', 'done');
@@ -121,7 +128,7 @@ export default function AIChat() {
           },
         }).catch(reject);
       });
-      queryClient.invalidateQueries({ queryKey: ['chat-messages', activeSession] });
+      queryClient.invalidateQueries({ queryKey: ['chat-messages', sessionId] });
     } catch {
       finish('llm', 'error');
     }
@@ -229,11 +236,27 @@ export default function AIChat() {
       {/* Messages */}
       <div className="phase5c-chat-messages">
         {!activeSession ? (
-          <EmptyState
-            icon={<RobotOutlined className="phase5c-empty-icon" />}
-            title="选择一个对话或创建新对话"
-            description="左侧选择已有对话，或点击「新建对话」开始 AI 投研"
-          />
+          <div className="phase5c-chat-empty">
+            <RobotOutlined className="phase5c-empty-icon" />
+            <div className="phase5c-chat-empty__title">开始你的 AI 投研对话</div>
+            <div className="phase5c-chat-empty__desc">
+              点下面的建议问题直接开始，或在底部输入框提问
+            </div>
+            <div className="phase5c-chat-empty__prompts">
+              {QUICK_PROMPTS.map((s) => (
+                <button
+                  key={s.label}
+                  type="button"
+                  className="phase5c-chat-empty__prompt-card"
+                  onClick={() => void handleSend(s.prompt)}
+                  disabled={sending}
+                >
+                  <span className="phase5c-chat-empty__prompt-label">{s.label}</span>
+                  <span className="phase5c-chat-empty__prompt-text">{s.prompt}</span>
+                </button>
+              ))}
+            </div>
+          </div>
         ) : messagesLoading ? (
           <Skeleton active paragraph={{ rows: 6 }} />
         ) : (
@@ -271,58 +294,57 @@ export default function AIChat() {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input */}
-      {activeSession && (
-        <div className="phase5c-input-bar">
-          {/* Sentiment quick-prompt hint. Tells the user the assistant has
-              access to news/sentiment data and surfaces a clickable tag to
-              jump to the sentiment dashboard. */}
-          <div className="phase5c-quick-prompts">
-            <HeartOutlined className="phase5c-icon-rise" />
-            <span>AI 可访问资讯与情绪数据：</span>
-            {QUICK_PROMPTS.map((s) => (
-              <Tag
-                key={s.label}
-                className="phase5c-quick-tag"
-                onClick={() => setInput(s.prompt)}
-              >
-                {s.label}
-              </Tag>
-            ))}
-            <span className="phase5c-quick-prompts__spacer" />
+      {/* Input — always rendered so the first message can be sent from the
+          empty state; handleSend creates the session on the fly. */}
+      <div className="phase5c-input-bar">
+        {/* Sentiment quick-prompt hint. Tells the user the assistant has
+            access to news/sentiment data and surfaces a clickable tag to
+            jump to the sentiment dashboard. */}
+        <div className="phase5c-quick-prompts">
+          <HeartOutlined className="phase5c-icon-rise" />
+          <span>AI 可访问资讯与情绪数据：</span>
+          {QUICK_PROMPTS.map((s) => (
             <Tag
-              icon={<HeartOutlined />}
-              color="default"
+              key={s.label}
               className="phase5c-quick-tag"
-              onClick={() => navigate('/sentiment')}
+              onClick={() => setInput(s.prompt)}
             >
-              打开情绪看板
+              {s.label}
             </Tag>
-          </div>
-          <div className="phase5c-input-row">
-            <Input.TextArea
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onPressEnter={(e) => {
-                if (!e.shiftKey) {
-                  e.preventDefault();
-                  handleSend();
-                }
-              }}
-              placeholder="输入问题... (Shift+Enter换行，Enter发送)"
-              autoSize={{ minRows: 1, maxRows: 4 }}
-              disabled={sending}
-            />
-            <Button
-              type="primary"
-              icon={<SendOutlined />}
-              onClick={() => handleSend()}
-              loading={sending}
-              disabled={sending || !input.trim()}
-            />
-          </div>
+          ))}
+          <span className="phase5c-quick-prompts__spacer" />
+          <Tag
+            icon={<HeartOutlined />}
+            color="default"
+            className="phase5c-quick-tag"
+            onClick={() => navigate('/sentiment')}
+          >
+            打开情绪看板
+          </Tag>
         </div>
-      )}
+        <div className="phase5c-input-row">
+          <Input.TextArea
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onPressEnter={(e) => {
+              if (!e.shiftKey) {
+                e.preventDefault();
+                handleSend();
+              }
+            }}
+            placeholder="输入问题... (Shift+Enter换行，Enter发送)"
+            autoSize={{ minRows: 1, maxRows: 4 }}
+            disabled={sending}
+          />
+          <Button
+            type="primary"
+            icon={<SendOutlined />}
+            onClick={() => handleSend()}
+            loading={sending}
+            disabled={sending || !input.trim()}
+          />
+        </div>
+      </div>
     </div>
   );
 

@@ -230,7 +230,17 @@ export default function SignalDashboard() {
       ),
       width: 80,
     },
-    { title: '强度', dataIndex: 'strength', width: 80, render: (v: any) => <span className="tabular-nums">{v}</span> },
+    {
+      title: '强度',
+      dataIndex: 'strength',
+      width: 80,
+      // Tiered tag mirrors the page hint: strength ≥ 70 counts as a strong signal.
+      render: (v: number) => (
+        <ThemeTag variant={v >= 70 ? 'accent' : 'neutral'}>
+          <span className="tabular-nums">{v}</span>
+        </ThemeTag>
+      ),
+    },
     {
       title: '',
       key: 'view-instrument',
@@ -429,15 +439,15 @@ export default function SignalDashboard() {
         extra={<DataFreshnessHint at={dataUpdatedAt} />}
       />
 
-      <div className="ad-kpi-strip ad-kpi-strip--cols-3 ad-section">
+      <div className="phase5c-kpi-strip phase5c-kpi-strip--cols-3">
         {[
           { title: '买入信号', value: buyCount, color: 'rise' },
           { title: '卖出信号', value: sellCount, color: 'fall' },
           { title: '持有信号', value: holdCount, color: 'primary' },
         ].map((m) => (
-          <div key={m.title} className="ad-kpi-cell">
-            <div className="ad-kpi-cell__label">{m.title}</div>
-            <div className={`ad-kpi-cell__value tabular-nums ad-kpi-cell__value--${m.color}`}>
+          <div key={m.title} className="phase5c-kpi-cell">
+            <div className="phase5c-kpi-cell__label">{m.title}</div>
+            <div className={`phase5c-kpi-cell__value tabular-nums phase5c-kpi-cell__value--${m.color}`}>
               {m.value}
             </div>
           </div>
@@ -468,6 +478,7 @@ export default function SignalDashboard() {
             hintId="signal-dashboard-table"
             title="信号怎么读"
             placement="top"
+            trigger="click"
             content={
               <>
                 每一行是一次「策略 → 标的」的判断。点击行可跳到策略说明，看为什么生成这条信号；强度 ≥ 70 通常视为强信号。
@@ -539,6 +550,7 @@ export default function SignalDashboard() {
             hintId="event-signals-table"
             title="事件信号怎么读"
             placement="top"
+            trigger="click"
             content={
               <>
                 事件信号从分类新闻中提炼，标注方向、重要性及受影响标的。每 60 秒自动刷新，点击标题可阅读原文，点击「生成」可为首个关联标的创建事件驱动策略信号。

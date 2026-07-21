@@ -398,45 +398,41 @@ export default function Macro() {
       {/* ── Headline KPI strip ── */}
       <SectionHeading title="头条指标" />
       {headlineLoading ? (
-        <Row gutter={[16, 16]} className="ad-mb-5">
+        <div className="macro__headline-grid ad-mb-5">
           {HEADLINE_CODES[region]?.map((code) => (
-            <Col xs={12} md={8} lg={4} key={code}>
-              <Skeleton active paragraph={{ rows: 2 }} />
-            </Col>
+            <Skeleton active paragraph={{ rows: 2 }} key={code} />
           ))}
-        </Row>
+        </div>
       ) : headline.length > 0 ? (
-        <Row gutter={[16, 16]} className="ad-mb-5">
+        <div className="macro__headline-grid ad-mb-5">
           {headline.map((item) => {
             const hint = freshnessHints.get(item.code) ?? null;
             return (
-              <Col xs={12} md={8} lg={Math.max(4, 24 / headline.length)} key={item.code}>
-                <div className="ad-relative">
-                  {hint ? (
-                    <Tooltip title={hint}>
-                      <span
-                        className="macro__freshness-badge"
-                        aria-label={hint}
-                      >
-                        <ExclamationCircleOutlined className="macro__freshness-badge__icon" />
-                        <span className="macro__freshness-badge__label">数据延迟</span>
-                      </span>
-                    </Tooltip>
-                  ) : null}
-                  <StatCard
-                    title={
-                      MACRO_TERM_KEY_MAP[item.code] ? (
-                        <HelpPopover termKey={MACRO_TERM_KEY_MAP[item.code]} mode={mode}>{item.name_zh}</HelpPopover>
-                      ) : item.name_zh
-                    }
-                    value={formatValue(item.value, item.unit)}
-                    suffix={item.period ? `${item.period}` : undefined}
-                  />
-                </div>
-              </Col>
+              <StatCard
+                key={item.code}
+                title={
+                  <span className="macro__kpi-title">
+                    {MACRO_TERM_KEY_MAP[item.code] ? (
+                      <HelpPopover termKey={MACRO_TERM_KEY_MAP[item.code]} mode={mode}>{item.name_zh}</HelpPopover>
+                    ) : (
+                      item.name_zh
+                    )}
+                    {item.period && <span className="macro__kpi-period">{item.period}</span>}
+                    {hint && (
+                      <Tooltip title={hint}>
+                        <span className="macro__freshness-badge" aria-label={hint}>
+                          <ExclamationCircleOutlined className="macro__freshness-badge__icon" />
+                          <span className="macro__freshness-badge__label">数据延迟</span>
+                        </span>
+                      </Tooltip>
+                    )}
+                  </span>
+                }
+                value={formatValue(item.value, item.unit)}
+              />
             );
           })}
-        </Row>
+        </div>
       ) : null}
 
       <FilterToolbar total={indicators?.length} />

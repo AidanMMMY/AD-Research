@@ -117,31 +117,25 @@ export function useMarketStream(codes: string[]): UseMarketStreamResult {
         if (cancelled) return;
         try {
           const parsed: unknown = JSON.parse(event.data);
-          const rows: Array<{
+          // The backend wraps snapshots in an envelope: {"data": [...rows],
+          // "unknown": [...]}. Unwrap it first; bare arrays / single-row
+          // objects are still accepted for backwards compatibility.
+          const envelope: unknown =
+            parsed && typeof parsed === 'object' && !Array.isArray(parsed) && 'data' in parsed
+              ? (parsed as { data?: unknown }).data
+              : parsed;
+          type Row = {
             code?: string;
             price?: number;
             change_pct?: number;
             timestamp?: number;
             name?: string;
             market?: string;
-          }> = Array.isArray(parsed)
-            ? (parsed as Array<{
-                code?: string;
-                price?: number;
-                change_pct?: number;
-                timestamp?: number;
-                name?: string;
-                market?: string;
-              }>)
-            : parsed && typeof parsed === 'object' && 'code' in parsed
-              ? [parsed as {
-                  code?: string;
-                  price?: number;
-                  change_pct?: number;
-                  timestamp?: number;
-                  name?: string;
-                  market?: string;
-                }]
+          };
+          const rows: Row[] = Array.isArray(envelope)
+            ? (envelope as Row[])
+            : envelope && typeof envelope === 'object' && 'code' in envelope
+              ? [envelope as Row]
               : [];
 
           if (rows.length === 0) return;

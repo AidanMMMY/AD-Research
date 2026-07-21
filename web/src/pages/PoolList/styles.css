@@ -5,4 +5,13 @@
    in global.css.
    ============================================================ */
 
-/* ── Future page-specific overrides go here ── */
+/* ── Apple Design #1 Response / #10 Gesture details: clickable rows give
+   instant pointer-down feedback (tap-highlight equivalent). Background
+   only — no movement, so no reduced-motion concern. ── */
+.pool-list-row--pressable > td {
+  transition: background var(--transition-fast, 150ms ease);
+}
+
+.pool-list-row--pressable:active > td {
+  background: var(--bg-active) !important;
+}

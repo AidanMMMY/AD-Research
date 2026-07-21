@@ -5,6 +5,8 @@ import {
 } from 'antd';
 import { ReloadOutlined, SearchOutlined, FireOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
+import ReactECharts from 'echarts-for-react';
+import type { EChartsOption } from 'echarts';
 import PageShell from '@/components/PageShell';
 import PageHeader from '@/components/PageHeader';
 import FilterToolbar from '@/components/FilterToolbar';
@@ -157,6 +159,38 @@ export default function SearchTrendsPage() {
     { title: '指数值', dataIndex: 'value', key: 'value', render: (v: number) => v.toLocaleString() },
   ];
 
+  /* Dual-source trend chart: one line per source (baidu / google) across the
+     compare window. The table below stays as the secondary detail view. */
+  const compareChartOption: EChartsOption | null = useMemo(() => {
+    if (!compareData || compareData.series.length === 0) return null;
+    const dates = Array.from(new Set(compareData.series.map((s) => s.trade_date))).sort();
+    const sources = Array.from(new Set(compareData.series.map((s) => s.source)));
+    return {
+      tooltip: { trigger: 'axis' },
+      legend: { data: sources },
+      grid: { left: 60, right: 20, top: 40, bottom: 50 },
+      xAxis: {
+        type: 'category',
+        data: dates,
+        axisLabel: { rotate: 45, fontSize: 10 },
+      },
+      yAxis: {
+        type: 'value',
+        name: '指数值',
+        axisLabel: { fontSize: 11 },
+      },
+      series: sources.map((src) => ({
+        name: src,
+        type: 'line',
+        smooth: true,
+        showSymbol: false,
+        data: dates.map(
+          (d) => compareData.series.find((s) => s.source === src && s.trade_date === d)?.value ?? null,
+        ),
+      })),
+    };
+  }, [compareData]);
+
   return (
     <AdxShell>
       <PageShell maxWidth="wide">
@@ -187,25 +221,18 @@ export default function SearchTrendsPage() {
       />
 
       <div className="ad-mb-4">
-        <ResponsiveGrid cols={2} gap="md">
+        <ResponsiveGrid cols={3} gap="md">
           <StatCard
             title="百度当日条目"
             value={dashboard?.baidu?.count ?? 0}
             icon={<FireOutlined />}
-            suffix={dashboard?.baidu?.trade_date ? ` (${dashboard.baidu.trade_date})` : ''}
             loading={dashLoading}
           />
           <StatCard
             title="Google 当日条目"
             value={dashboard?.google?.count ?? 0}
-            suffix={dashboard?.google?.trade_date ? ` (${dashboard.google.trade_date})` : ''}
             loading={dashLoading}
           />
-        </ResponsiveGrid>
-      </div>
-
-      <div className="ad-mb-4">
-        <ResponsiveGrid cols={1} gap="md">
           <StatCard
             title="最新观察日期"
             value={dashboard?.as_of ?? '-'}
@@ -312,16 +339,23 @@ export default function SearchTrendsPage() {
                   ) : !compareData || compareData.series.length === 0 ? (
                     <EmptyState title="暂无该关键词数据" />
                   ) : (
-                    <div className="ad-table-scroll ad-table-sticky">
-                      <Table
-                        rowKey="id"
-                        dataSource={compareData.series}
-                        columns={compareColumns}
-                        size="small"
-                        scroll={{ x: 'max-content' }}
-                        pagination={false}
-                      />
-                    </div>
+                    <>
+                      {compareChartOption && (
+                        <div className="ad-chart-container">
+                          <ReactECharts option={compareChartOption} notMerge />
+                        </div>
+                      )}
+                      <div className="ad-table-scroll ad-table-sticky">
+                        <Table
+                          rowKey="id"
+                          dataSource={compareData.series}
+                          columns={compareColumns}
+                          size="small"
+                          scroll={{ x: 'max-content' }}
+                          pagination={false}
+                        />
+                      </div>
+                    </>
                   )}
                 </Space>
               ),

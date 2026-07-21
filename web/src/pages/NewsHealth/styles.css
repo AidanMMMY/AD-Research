@@ -23,6 +23,19 @@
   min-width: 0;
 }
 
+/* ── Scheduler jobs compact list (task name + relative countdown) ── */
+.news-health-jobs__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-1) 0;
+}
+
+.news-health-jobs__row + .news-health-jobs__row {
+  border-top: 1px solid var(--border-default);
+}
+
 /* ── Multimodal feedback on polled refresh ──
    The page polls /news/health every 30s. When a value changes we
    briefly highlight the affected row so the user sees causality

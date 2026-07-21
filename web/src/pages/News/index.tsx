@@ -191,8 +191,11 @@ function EventCategoryTag({ value }: { value: string | null }) {
 const SOURCE_LABELS: Record<string, { emoji: string; label: string }> = {
   xinhua: { emoji: '📰', label: '新华' },
   sina: { emoji: '📰', label: '新浪财经' },
+  sina_finance: { emoji: '📰', label: '新浪财经' },
   eastmoney: { emoji: '📊', label: '东方财富' },
   cls: { emoji: '⚡', label: '财联社' },
+  wallstreetcn: { emoji: '📈', label: '华尔街见闻' },
+  chinanews_finance: { emoji: '📰', label: '中新网财经' },
   xueqiu: { emoji: '📈', label: '雪球' },
   reddit: { emoji: '🦍', label: 'Reddit' },
   coindesk: { emoji: '🪙', label: 'CoinDesk' },
@@ -241,16 +244,17 @@ function NewsCard({
   article,
   onOpen,
   onPickSymbol,
-  sourceOptions,
 }: {
   article: NewsArticle;
   onOpen: (a: NewsArticle) => void;
   onPickSymbol: (sym: string) => void;
-  sourceOptions: { value: string; label: string }[];
 }) {
+  // Fallback for unmapped sources shows the raw key only — the
+  // sourceOptions dropdown label carries a "(count)" suffix that must
+  // never leak into the card meta row.
   const source = SOURCE_LABELS[article.source] ?? {
     emoji: '🔗',
-    label: sourceOptions.find((s) => s.value === article.source)?.label ?? article.source,
+    label: article.source,
   };
   const market = MARKET_BADGE[article.market];
   const sentiment = article.sentiment_label;
@@ -836,7 +840,6 @@ export default function NewsFeed() {
                   article={a}
                   onOpen={handleOpen}
                   onPickSymbol={handlePickSymbol}
-                  sourceOptions={sourceOptions}
                 />
               ))}
               <div

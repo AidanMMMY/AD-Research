@@ -4,6 +4,8 @@ export interface FilterToolbarProps {
   /** Filters / controls rendered on the left. Optional — empty meta-only
    *  toolbars (e.g. PoolList total) are valid. */
   children?: React.ReactNode;
+  /** Numbers are auto-formatted as「共 N 条」; pass a string for custom units
+   *  (e.g. `共 12 只`). */
   total?: number | string;
   extra?: React.ReactNode;
   /** Optional title shown in the toolbar header row, left of the meta. */
@@ -37,7 +39,7 @@ export default function FilterToolbar({
             <div className="filter-toolbar__meta">
               {total !== undefined ? (
                 <span className="filter-toolbar__total">
-                  {typeof total === 'number' ? total.toLocaleString() : total}
+                  {typeof total === 'number' ? `共 ${total.toLocaleString()} 条` : total}
                 </span>
               ) : null}
               {extra}
@@ -52,7 +54,7 @@ export default function FilterToolbar({
         <div className="filter-toolbar__meta">
           {total !== undefined ? (
             <span className="filter-toolbar__total">
-              {typeof total === 'number' ? total.toLocaleString() : total}
+              {typeof total === 'number' ? `共 ${total.toLocaleString()} 条` : total}
             </span>
           ) : null}
           {extra}

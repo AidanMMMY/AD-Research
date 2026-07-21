@@ -79,7 +79,7 @@
 .ad-research-card__more {
   margin-top: var(--space-2);
   font-size: var(--text-small-size);
-  color: var(--text-tertiary);
+  color: var(--accent);
   cursor: pointer;
   text-decoration: underline;
   text-underline-offset: 2px;

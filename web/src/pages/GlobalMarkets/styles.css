@@ -12,54 +12,9 @@
   margin-bottom: var(--space-6);
 }
 
-/* ── Recent 24h political / macro event list ── */
+/* ── Event source label (right-aligned in the meta row) ── */
 
-.global-markets__news-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-
-.global-markets__news-item {
-  padding: var(--space-3) 0;
-  border-bottom: 1px solid var(--border-default);
-  cursor: pointer;
-  transition: background var(--transition-fast);
-}
-
-.global-markets__news-item:last-child {
-  border-bottom: none;
-}
-
-.global-markets__news-item:hover {
-  background: var(--bg-hover);
-  margin: 0 calc(var(--space-3) * -1);
-  padding-left: var(--space-3);
-  padding-right: var(--space-3);
-  border-radius: var(--radius-md);
-}
-
-.global-markets__news-meta {
-  display: flex;
-  align-items: center;
-  gap: var(--space-1);
-  margin-bottom: var(--space-1);
-}
-
-.global-markets__news-time {
-  font-size: var(--text-small-size);
-  color: var(--text-tertiary);
-}
-
-.global-markets__news-title {
-  font-size: var(--text-body-size);
-  color: var(--text-primary);
-  font-weight: 500;
-  line-height: 1.5;
-}
-
-@media (max-width: 767px) {
-  .global-markets__news-title {
-    font-size: var(--text-small-size);
-  }
+.global-markets__event-source {
+  margin-left: auto;
+  white-space: nowrap;
 }

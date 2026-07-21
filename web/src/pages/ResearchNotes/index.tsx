@@ -16,6 +16,7 @@ import InstrumentCodeTag from '@/components/InstrumentCodeTag';
 import HelpPopover from '@/components/HelpPopover';
 import { useSettingsStore } from '@/stores/settings';
 import { SENTIMENT_LABELS } from '@/utils/sentiment';
+import { formatDateTime } from '@/utils/datetime';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
@@ -78,6 +79,11 @@ const NOTE_TYPE_OPTIONS = [
   { label: '财报反应', value: 'earnings_reaction' },
   { label: '财报前瞻', value: 'earnings_preview' },
 ];
+
+/** Chinese labels for the raw note_type enum stored on each note. */
+const NOTE_TYPE_LABELS: Record<string, string> = Object.fromEntries(
+  NOTE_TYPE_OPTIONS.map((o) => [o.value, o.label]),
+);
 
 const SEARCH_DEBOUNCE_MS = 300;
 const SEARCH_PAGE_SIZE = 50;
@@ -273,7 +279,7 @@ export default function ResearchNotes() {
                       name_zh={note.name_zh}
                     />
                     <ThemeTag variant="default">
-                      <HelpPopover termKey="note_type" mode={mode}>{note.note_type}</HelpPopover>
+                      <HelpPopover termKey="note_type" mode={mode}>{NOTE_TYPE_LABELS[note.note_type] ?? note.note_type}</HelpPopover>
                     </ThemeTag>
                     {note.sentiment && (
                       <ThemeTag variant={SENTIMENT_VARIANTS[note.sentiment] || 'default'}>
@@ -288,7 +294,7 @@ export default function ResearchNotes() {
                   </div>
                   <div className="ad-research-card__actions">
                     <span className="ad-research-card__date">
-                      {note.generated_at?.slice(0, 16) || note.created_at?.slice(0, 16)}
+                      {formatDateTime(note.generated_at ?? note.created_at, 'YYYY-MM-DD HH:mm', '')}
                     </span>
                     <Popconfirm
                       title="删除此研报？"

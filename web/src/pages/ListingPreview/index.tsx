@@ -76,19 +76,19 @@ const STATUS_COLOR: Record<ListingStatus, string> = {
 const formatDate = (v: string | null | undefined): string => v ?? '-';
 
 const formatMoney = (v: number | null | undefined): string => {
-  if (v === null || v === undefined) return '-';
+  if (!v) return '-';
   // funds_raised is in 万元 → display in 亿元
   if (Math.abs(v) >= 1e4) return `${(v / 1e4).toFixed(2)} 亿`;
   return `${v.toFixed(2)} 万`;
 };
 
 const formatPrice = (v: number | null | undefined): string => {
-  if (v === null || v === undefined) return '-';
+  if (!v) return '-';
   return v.toFixed(2);
 };
 
 const formatPe = (v: number | null | undefined): string => {
-  if (v === null || v === undefined) return '-';
+  if (!v) return '-';
   return `${v.toFixed(2)} 倍`;
 };
 
@@ -275,7 +275,7 @@ export default function ListingPreview() {
     {
       title: '发行日期',
       dataIndex: 'issue_date',
-      width: 110,
+      width: 120,
       render: formatDate,
     },
     {
@@ -451,7 +451,7 @@ export default function ListingPreview() {
             />
           </Col>
           <Col xs={24} sm={12} md={4} lg={6}>
-            <Button onClick={handleReset} className="ad-w-full">重置</Button>
+            <Button onClick={handleReset}>重置</Button>
           </Col>
         </Row>
       </FilterToolbar>

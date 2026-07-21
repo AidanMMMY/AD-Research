@@ -3,22 +3,21 @@
    Dark-first, high-density financial dashboard.
    ============================================================ */
 
-/* stylelint-disable ad-research/no-bare-color-values -- local dark-first design tokens; these declarations ARE the token definitions, bare values are intentional */
+/* Command-center tokens are pure aliases of theme.css semantic tokens,
+   * so the dashboard follows the active light/dark theme. */
 .dashboard-command-center {
-  --cc-canvas: #080B11;
-  --cc-surface: #101621;
-  --cc-surface-hover: #161D2A;
-  --cc-border: #242F41;
-  --cc-border-glow: #364661;
-  --cc-text: #F4F6F9;
-  --cc-text2: #ADB9C9;
-  --cc-muted: #73899F;
-  --cc-accent: #588FF9;
-  --cc-accent-soft: rgba(88, 143, 249, 0.12);
-  --cc-rise: #FF5858;
-  --cc-fall: #38D182;
-  --cc-warn: #F6BD69;
-  /* stylelint-enable ad-research/no-bare-color-values */
+  --cc-canvas: var(--bg-base);
+  --cc-surface: var(--bg-elevated);
+  --cc-surface-hover: var(--bg-surface);
+  --cc-border: var(--border-default);
+  --cc-text: var(--text-primary);
+  --cc-text2: var(--text-secondary);
+  --cc-muted: var(--text-muted);
+  --cc-accent: var(--accent);
+  --cc-accent-soft: var(--accent-soft);
+  --cc-rise: var(--color-rise);
+  --cc-fall: var(--color-fall);
+  --cc-warn: var(--color-warning);
 
   min-height: 100%;
   background: var(--cc-canvas);
@@ -43,41 +42,6 @@
   position: sticky;
   top: 0;
   z-index: 100;
-}
-
-.cc-topbar__brand {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  flex-shrink: 0;
-}
-
-.cc-topbar__logo {
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
-  background: var(--cc-accent);
-  display: grid;
-  place-items: center;
-  font-weight: 700;
-  color: var(--cc-text);
-}
-
-.cc-topbar__title {
-  display: flex;
-  flex-direction: column;
-  line-height: 1.2;
-}
-
-.cc-topbar__name {
-  font-size: 15px;
-  font-weight: 600;
-  color: var(--cc-text);
-}
-
-.cc-topbar__subtitle {
-  font-size: 10px;
-  color: var(--cc-muted);
 }
 
 .cc-topbar__search {
@@ -108,43 +72,13 @@
   color: var(--cc-muted);
 }
 
-.cc-topbar__pulse {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  height: 28px;
-  padding: 0 var(--space-3);
-  background: var(--cc-canvas);
-  border: 1px solid var(--cc-border);
-  border-radius: 14px;
-  margin-left: auto;
-}
-
-.cc-topbar__pulse-label {
-  font-size: 10px;
-  font-weight: 500;
-  color: var(--cc-muted);
-  letter-spacing: 0.04em;
-  font-family: var(--font-mono);
-}
-
-.cc-pulse-bars {
-  display: flex;
-  align-items: center;
-  gap: 3px;
-}
-
-.cc-pulse-bar {
-  width: 12px;
-  border-radius: 2px;
-}
-
 .cc-topbar__status {
   display: flex;
   align-items: center;
   gap: var(--space-3);
   flex-shrink: 0;
   font-size: 12px;
+  margin-left: auto;
 }
 
 .cc-status-dot {
@@ -254,7 +188,7 @@
 
 .cc-pulse-groups {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: var(--space-3);
 }
 
@@ -343,7 +277,8 @@
 .cc-fund-flow__value {
   font-size: 40px;
   font-weight: 700;
-  color: var(--cc-rise);
+  /* Neutral default; index.tsx overrides with rise/fall per total sign. */
+  color: var(--cc-text2);
   font-family: var(--font-mono);
   letter-spacing: -0.02em;
 }
@@ -705,7 +640,7 @@
   }
 
   .cc-pulse-groups {
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(2, 1fr);
   }
 }
 
@@ -719,7 +654,6 @@
     grid-template-columns: repeat(2, 1fr);
   }
 
-  .cc-topbar__pulse,
   .cc-topbar__search {
     display: none;
   }

@@ -76,6 +76,24 @@
 .phase5c-chat-sidebar__item--active {
   background: var(--accent-dim);
   border-color: var(--card-border);
+  /* Accent rail on the leading edge marks the active conversation. */
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
+.phase5c-chat-sidebar__item-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.phase5c-chat-sidebar__time {
+  font-size: var(--text-label-size);
+  color: var(--text-tertiary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .phase5c-chat-sidebar__title {
@@ -263,6 +281,88 @@
   margin-top: 80px;
 }
 
+/* Welcome block shown when no conversation is selected. Sits inside the
+   scrollable message pane; the input bar below it is always visible. */
+.phase5c-chat-empty {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-5);
+  text-align: center;
+}
+
+.phase5c-chat-empty__title {
+  font-size: var(--text-h3-size);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.phase5c-chat-empty__desc {
+  font-size: var(--text-small-size);
+  color: var(--text-tertiary);
+}
+
+.phase5c-chat-empty__prompts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--space-3);
+  width: 100%;
+  max-width: 640px;
+  margin-top: var(--space-3);
+}
+
+.phase5c-chat-empty__prompt-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-default);
+  background: var(--bg-elevated);
+  cursor: pointer;
+  text-align: left;
+  appearance: none;
+  -webkit-appearance: none;
+  font: inherit;
+  color: inherit;
+  transition:
+    border-color var(--transition-fast),
+    background var(--transition-fast),
+    transform var(--transition-spring-fast);
+}
+
+.phase5c-chat-empty__prompt-card:hover,
+.phase5c-chat-empty__prompt-card:focus-visible {
+  border-color: var(--accent);
+  background: var(--accent-dim);
+}
+
+.phase5c-chat-empty__prompt-card:active {
+  transform: scale(0.98);
+}
+
+.phase5c-chat-empty__prompt-card:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.phase5c-chat-empty__prompt-label {
+  font-size: var(--text-body-size);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.phase5c-chat-empty__prompt-text {
+  font-size: var(--text-small-size);
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* ---- Mobile Back Button ---- */
 .phase5c-mobile-back {
   padding: var(--space-2) var(--space-3);
@@ -312,7 +412,8 @@
   }
 
   .phase5c-chat-sidebar__item,
-  .phase5c-quick-tag {
+  .phase5c-quick-tag,
+  .phase5c-chat-empty__prompt-card {
     transition:
       background var(--transition-fast),
       color var(--transition-fast),
@@ -321,7 +422,8 @@
   }
 
   .phase5c-chat-sidebar__item:active,
-  .phase5c-quick-tag:active {
+  .phase5c-quick-tag:active,
+  .phase5c-chat-empty__prompt-card:active {
     transform: none;
   }
 }

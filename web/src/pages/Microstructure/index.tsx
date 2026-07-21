@@ -13,7 +13,9 @@ import EmptyState from '@/components/EmptyState';
 import ResponsiveGrid from '@/components/ResponsiveGrid';
 import LastUpdated from '@/components/LastUpdated';
 import ThemeTag from '@/components/ThemeTag';
+import ReturnTagPct from '@/components/ReturnTagPct';
 import { NULL_PLACEHOLDER } from '@/utils/format';
+import { getReturnColor } from '@/utils/color';
 import { useDebounce } from '@/hooks/useDebounce';
 import {
   useMicrostructureLhb,
@@ -100,11 +102,6 @@ function formatMoney(v: number | null | undefined, digits = 2): string {
   return v.toFixed(digits);
 }
 
-function formatPct(v: number | null | undefined): string {
-  if (v === null || v === undefined) return NULL_PLACEHOLDER;
-  return `${v.toFixed(2)}%`;
-}
-
 // lift_ratio is stored as a decimal ratio (0.0281 = 2.81%), unlike
 // pct_change which is already a percent value.
 function formatRatioPct(v: number | null | undefined): string {
@@ -161,8 +158,8 @@ export default function MicrostructurePage() {
     { title: '日期', dataIndex: 'trade_date', key: 'trade_date', width: 110 },
     { title: '代码', dataIndex: 'ts_code', key: 'ts_code', width: 110, render: (v: string) => <ThemeTag variant="accent">{v}</ThemeTag> },
     { title: '名称', dataIndex: 'name', key: 'name', width: 100, ellipsis: true },
-    { title: '涨跌幅', dataIndex: 'pct_change', key: 'pct_change', width: 90, className: 'tabular-nums', render: formatPct },
-    { title: '净买额', dataIndex: 'lhb_net_amount', key: 'lhb_net_amount', width: 120, className: 'tabular-nums', render: (v: number | null) => formatMoney(v) },
+    { title: '涨跌幅', dataIndex: 'pct_change', key: 'pct_change', width: 90, className: 'tabular-nums', render: (v: number | null) => <ReturnTagPct value={v} /> },
+    { title: '净买额', dataIndex: 'lhb_net_amount', key: 'lhb_net_amount', width: 120, className: 'tabular-nums', render: (v: number | null) => <span style={{ color: getReturnColor(v) }}>{formatMoney(v)}</span> },
     { title: '原因', dataIndex: 'reason', key: 'reason', ellipsis: true },
   ];
 
@@ -236,16 +233,14 @@ export default function MicrostructurePage() {
             title="北向净流入"
             value={summary?.hsgt?.north_net ?? 0}
             precision={2}
-            className={(summary?.hsgt?.north_net ?? 0) >= 0 ? 'micro-kpi-rise' : 'micro-kpi-fall'}
+            valueStyle={{ color: getReturnColor(summary?.hsgt?.north_net) }}
             suffix="亿元"
           />
         </Card>
         <Card>
           <Statistic
             title="融资余额合计"
-            value={summary?.margin?.total_financing_balance ?? 0}
-            precision={0}
-            suffix="元"
+            value={formatMoney(summary?.margin?.total_financing_balance)}
           />
         </Card>
         <Card>

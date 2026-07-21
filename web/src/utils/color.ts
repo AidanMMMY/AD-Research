@@ -27,8 +27,8 @@ export function getDownColor(_convention: ColorConvention = 'china'): string {
 
 /** Get text color for return value */
 export function getReturnColor(value?: number | null, _convention: ColorConvention = 'china'): string {
-  if (value === undefined || value === null) return 'var(--text-tertiary)';
-  return value >= 0 ? getUpColor() : getDownColor();
+  if (value === undefined || value === null || value === 0) return 'var(--text-tertiary)';
+  return value > 0 ? getUpColor() : getDownColor();
 }
 
 /** Get background color for return tag */

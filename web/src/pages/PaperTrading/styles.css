@@ -23,6 +23,18 @@
 
 /* ── Page-specific overrides use ad-* classes from global.css ── */
 
+/* ContextHint's anchor is inline-flex and would shrink-wrap the account
+   selector (and any empty state inside it) to the left; stretch it full
+   width — same pattern global.css already uses for .filter-toolbar. */
+.context-hint__anchor:has(> .phase5c-account-selector) {
+  display: flex;
+  width: 100%;
+}
+
+.context-hint__anchor > .phase5c-account-selector {
+  width: 100%;
+}
+
 /* ── Apple Design: instant pointer-down feedback on stat cards ──
    Press feedback on pointer-down (not release); spring-eased so the
    release settles without bounce (critically damped). */

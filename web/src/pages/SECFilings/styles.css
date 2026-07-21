@@ -7,6 +7,15 @@
   width: 100%;
 }
 
+/* KPI semantic colors: extracted = success, pending = warning */
+.sec-filings-kpi-success .stat-card__value {
+  color: var(--color-success);
+}
+
+.sec-filings-kpi-warning .stat-card__value {
+  color: var(--color-warning);
+}
+
 /* Inline progress / success banner shown while the "全量刷新"
    mutation is running or has just resolved. Apple "Multimodal
    feedback" — without this, the only signal is the button's

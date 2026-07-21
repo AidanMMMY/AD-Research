@@ -10,6 +10,23 @@
 /* (paper-pnl--rise / paper-pnl--fall / paper-pnl--neutral are
    shared with PaperTrading and defined there.) */
 
+/* Real-money page: recolor the K15 tutorial banner from the default
+   info-violet accent to warning amber — every order risks real funds. */
+.trading-panel-page .page-header-tutorial {
+  background: var(--color-warning-dim);
+  border-left-color: var(--color-warning);
+}
+
+.trading-panel-page .page-header-tutorial b {
+  color: var(--color-warning);
+}
+
+/* The config selector row is a flex container; the empty state must span
+   it fully so its content centers instead of hugging the left edge. */
+.phase5c-flex-wrap > .empty-state {
+  width: 100%;
+}
+
 /* ── Apple Design: spring-eased modal motion ──
    Replace antd's default CSS zoom with a critically-damped spring
    that anchors its transform-origin to the page-top header — same

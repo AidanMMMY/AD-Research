@@ -336,50 +336,57 @@ export default function PaperTrading() {
         }
       />
 
-      <ContextHint
-        hintId="paper-trading-intro"
-        title="先开一个模拟账户"
-        placement="bottom"
-        content={
-          <>
-            平台不会动用真实资金。先创建账户，下一笔小单练手；熟练后再到「策略管理」开启自动交易，让平台按信号自动下单。
-          </>
-        }
-      >
+      {/* Skip the ContextHint when there are no accounts yet — the empty
+          state already tells the user to create one, and the hint's
+          inline-flex anchor would shrink-wrap the empty card to the left. */}
+      {!accountsLoading && accounts.length === 0 ? (
         <div className="phase5c-account-selector" data-onboard="paper-account">
-          {accountsLoading ? (
-            <Skeleton active paragraph={{ rows: 1 }} />
-          ) : accounts.length === 0 ? (
-            <EmptyState
-              title="还没有模拟账户"
-              description="创建第一个模拟账户，开始零风险交易验证"
-              action={
-                <Button type="primary" icon={<PlusOutlined />} onClick={() => setCreateModalOpen(true)}>
-                  创建第一个账户
-                </Button>
-              }
-            />
-          ) : (
-            <Select
-              value={selectedAccountId}
-              onChange={setSelectedAccountId}
-              className="phase5c-select--lg"
-              style={isMobile ? { width: '100%' } : undefined}
-              options={accounts.map((a) => ({
-                value: a.id,
-                label: (
-                  <span>
-                    {a.name}
-                    <span className="font-mono ad-ml-2 ad-text-tertiary">
-                      {fmtUSDT(a.total_value || a.cash)}
-                    </span>
-                  </span>
-                ),
-              }))}
-            />
-          )}
+          <EmptyState
+            title="还没有模拟账户"
+            description="创建第一个模拟账户，开始零风险交易验证"
+            action={
+              <Button type="primary" icon={<PlusOutlined />} onClick={() => setCreateModalOpen(true)}>
+                创建第一个账户
+              </Button>
+            }
+          />
         </div>
-      </ContextHint>
+      ) : (
+        <ContextHint
+          hintId="paper-trading-intro"
+          title="先开一个模拟账户"
+          placement="bottom"
+          content={
+            <>
+              平台不会动用真实资金。先创建账户，下一笔小单练手；熟练后再到「策略管理」开启自动交易，让平台按信号自动下单。
+            </>
+          }
+        >
+          <div className="phase5c-account-selector" data-onboard="paper-account">
+            {accountsLoading ? (
+              <Skeleton active paragraph={{ rows: 1 }} />
+            ) : (
+              <Select
+                value={selectedAccountId}
+                onChange={setSelectedAccountId}
+                className="phase5c-select--lg"
+                style={isMobile ? { width: '100%' } : undefined}
+                options={accounts.map((a) => ({
+                  value: a.id,
+                  label: (
+                    <span>
+                      {a.name}
+                      <span className="font-mono ad-ml-2 ad-text-tertiary">
+                        {fmtUSDT(a.total_value || a.cash)}
+                      </span>
+                    </span>
+                  ),
+                }))}
+              />
+            )}
+          </div>
+        </ContextHint>
+      )}
 
       {selectedAccountId && (
         <>

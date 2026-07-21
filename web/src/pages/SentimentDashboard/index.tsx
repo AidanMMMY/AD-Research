@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
-import { Input, Button, Slider, Tooltip, Skeleton } from 'antd';
+import { Input, Button, Slider, Tooltip, Skeleton, Tag } from 'antd';
 import { SmileOutlined, FrownOutlined, MehOutlined, SyncOutlined } from '@ant-design/icons';
 import { researchApi, SentimentAggregate } from '@/api/research';
 import AISetupBanner from "@/components/AISetupBanner";
@@ -50,6 +50,11 @@ const ADX_STYLE = `
   width: 100%;
   transform-origin: left center;
   transition: transform 480ms var(--adx-spring);
+}
+/* Hot-instrument quick-entry chips on the empty state. */
+.adx-sentiment-dashboard .sentiment-hot-chip {
+  cursor: pointer;
+  user-select: none;
 }
 .adx-sentiment-dashboard h1,
 .adx-sentiment-dashboard h2,
@@ -104,6 +109,9 @@ const SENTIMENT_ICONS: Record<string, React.ReactNode> = {
   neutral: <MehOutlined className="sentiment-icon--neutral" />,
 };
 
+/** Popular instruments offered as one-click entry points on the empty state. */
+const HOT_CODES = ['510300.SH', '159915.SZ', 'SPY.US', 'BTC.US'];
+
 export default function SentimentDashboard() {
   const [code, setCode] = useState('');
   const [selectedCode, setSelectedCode] = useState<string | null>(null);
@@ -126,9 +134,10 @@ export default function SentimentDashboard() {
     onSuccess: () => refetch(),
   });
 
-  const handleLookup = () => {
-    if (!code.trim()) return;
-    const c = code.trim().toUpperCase();
+  const handleLookup = (target?: string) => {
+    const c = (target ?? code).trim().toUpperCase();
+    if (!c) return;
+    setCode(c);
     setSelectedCode(c);
     ingestMutation.mutate(c);
   };
@@ -138,7 +147,7 @@ export default function SentimentDashboard() {
       <PageShell maxWidth="wide">
         <PageHeader
           eyebrow="市场情绪"
-          title="情绪看板"
+          title="单标情绪分析"
           description="基于新闻情绪分析，评估市场对特定标的的情绪倾向"
         />
       <AISetupBanner />
@@ -147,7 +156,7 @@ export default function SentimentDashboard() {
           placeholder="标的代码 (如 AAPL.US)"
           value={code}
           onChange={(e) => setCode(e.target.value)}
-          onPressEnter={handleLookup}
+          onPressEnter={() => handleLookup()}
           className="ad-form-row__grow"
         />
         <span className="ad-text-small ad-text-tertiary ad-whitespace-nowrap">
@@ -157,6 +166,7 @@ export default function SentimentDashboard() {
           <Slider
             min={1}
             max={30}
+            marks={{ 1: '1天', 30: '30天' }}
             value={daysDraft}
             onChange={setDaysDraft}
             onChangeComplete={(v) => {
@@ -170,7 +180,7 @@ export default function SentimentDashboard() {
           type="primary"
           icon={<SyncOutlined spin={ingestMutation.isPending} />}
           loading={ingestMutation.isPending}
-          onClick={handleLookup}
+          onClick={() => handleLookup()}
         >
           分析情绪
         </Button>
@@ -183,7 +193,20 @@ export default function SentimentDashboard() {
           <EmptyState
             className="ad-mt-9"
             title="开始情绪分析"
-            description="输入标的代码，选择回溯天数，点击分析按钮"
+            description="输入标的代码，选择回溯天数，点击分析按钮；或直接挑一个热门标的"
+            action={
+              <>
+                {HOT_CODES.map((c) => (
+                  <Tag
+                    key={c}
+                    className="sentiment-hot-chip"
+                    onClick={() => handleLookup(c)}
+                  >
+                    {c}
+                  </Tag>
+                ))}
+              </>
+            }
           />
         ) : !sentiment ? (
           <EmptyState

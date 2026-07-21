@@ -58,6 +58,7 @@ const PULSE_GROUPS: GroupDef[] = [
       { code: 'global_nasdaq', title: '纳斯达克', unit: '', type: 'macro' },
       { code: 'global_dow', title: '道琼斯', unit: '', type: 'macro' },
       { code: 'SPY.US', title: 'SPY', unit: '', type: 'realtime' },
+      { code: 'BTC.US', title: 'BTC', unit: '', type: 'realtime' },
     ],
   },
   {
@@ -90,13 +91,6 @@ const PULSE_GROUPS: GroupDef[] = [
       { code: 'global_ftse', title: 'FTSE 100', unit: '', type: 'macro' },
       { code: 'global_dax', title: 'DAX', unit: '', type: 'macro' },
       { code: 'global_cac', title: 'CAC 40', unit: '', type: 'macro' },
-    ],
-  },
-  {
-    key: 'crypto',
-    label: '加密',
-    tiles: [
-      { code: 'BTC.US', title: 'BTC', unit: '', type: 'realtime' },
     ],
   },
 ];
@@ -327,13 +321,6 @@ export default function Dashboard() {
   return (
     <div className="dashboard-command-center">
       <header className="cc-topbar">
-        <div className="cc-topbar__brand">
-          <div className="cc-topbar__logo">AD</div>
-          <div className="cc-topbar__title">
-            <span className="cc-topbar__name">AD-Research</span>
-            <span className="cc-topbar__subtitle">市场指挥中心</span>
-          </div>
-        </div>
         <div className="cc-topbar__search">
           <input
             className="cc-topbar__search-input"
@@ -347,18 +334,6 @@ export default function Dashboard() {
               }
             }}
           />
-        </div>
-        <div className="cc-topbar__pulse">
-          <span className="cc-topbar__pulse-label">PULSE</span>
-          <div className="cc-pulse-bars">
-            {[14, 22, 18, 28, 20, 24, 16].map((h, i) => (
-              <span
-                key={i}
-                className="cc-pulse-bar"
-                style={{ height: `${h}px`, background: i === 3 ? 'var(--cc-accent)' : 'var(--cc-border-glow)' }}
-              />
-            ))}
-          </div>
         </div>
         <div className="cc-topbar__status">
           <span className="cc-status-dot" />
@@ -440,7 +415,7 @@ export default function Dashboard() {
                 </span>
               </div>
               <div className="cc-fund-flow__total">
-                <span className="cc-fund-flow__value">
+                <span className="cc-fund-flow__value" style={{ color: changeColor(total) }}>
                   {ffLoading || total == null ? '—' : formatSignedMoney(total)}
                 </span>
                 <span className="cc-fund-flow__unit">元</span>
@@ -505,11 +480,12 @@ export default function Dashboard() {
                 <span>排名</span>
                 <span>标的</span>
                 <span>动量</span>
+                <span>涨跌</span>
                 <span>评分</span>
               </div>
               {momentum.map((s: any, idx: number) => {
                 const score = s.composite_score ?? 0;
-                const ret = s.return_1m ?? 0;
+                const ret: number | null = s.return_1m ?? null;
                 return (
                   <div
                     key={s.etf_code}
@@ -533,12 +509,17 @@ export default function Dashboard() {
                         className="cc-sector-row__bar-fill"
                         style={{
                           width: `${(score / maxScore) * 100}%`,
-                          background: ret >= 0 ? 'var(--cc-rise)' : 'var(--cc-fall)',
+                          background:
+                            ret == null
+                              ? 'var(--cc-text2)'
+                              : ret >= 0
+                                ? 'var(--cc-rise)'
+                                : 'var(--cc-fall)',
                         }}
                       />
                     </div>
                     <span className="cc-sector-row__mom">
-                      <ReturnTag value={s.return_1m} />
+                      {ret != null && <ReturnTag value={ret} />}
                     </span>
                     <span className="cc-sector-row__score">{score.toFixed(1)}</span>
                   </div>
@@ -571,10 +552,10 @@ export default function Dashboard() {
                     }
                   }}
                 >
-                  <span className="cc-signal__time">{sig.ts_code}</span>
+                  <span className="cc-signal__time">{sig.trade_date}</span>
                   <span className="cc-signal__badge" style={{ color: 'var(--cc-accent)' }}>资金</span>
                   <div>
-                    <div className="cc-signal__code">综合评分 {sig.composite_score?.toFixed(2) ?? '—'}</div>
+                    <div className="cc-signal__code">{sig.ts_code}</div>
                     <div className="cc-signal__desc">{sig.signal_name || '资金流综合信号'}</div>
                   </div>
                   <span className="cc-signal__score" style={{ color: 'var(--cc-accent)' }}>

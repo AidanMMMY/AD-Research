@@ -1,5 +1,5 @@
 import './styles.css';
-import { Alert, Badge, Button, Spin, Statistic, Table, Tag, Tooltip } from 'antd';
+import { Alert, Badge, Button, Spin, Statistic, Table, Tooltip } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
@@ -13,6 +13,7 @@ import DataFreshnessHint from '@/components/DataFreshnessHint';
 import StatCard from '@/components/StatCard';
 import ThemeTag, { type ThemeTagVariant } from '@/components/ThemeTag';
 import EmptyState from '@/components/EmptyState';
+import { formatDateTime, toLocal } from '@/utils/datetime';
 
 const REFRESH_MS = 30_000;
 
@@ -39,6 +40,30 @@ const STATUS_LABEL: Record<HealthTone, string> = {
   yellow: '偏慢',
   red: '异常',
 };
+
+/** HealthTone → ThemeTag variant (green/yellow/red → success/warning/error). */
+const TONE_VARIANT: Record<HealthTone, ThemeTagVariant> = {
+  green: 'success',
+  yellow: 'warning',
+  red: 'error',
+};
+
+/**
+ * "x 分钟后 / x 小时后 / x 天后" countdown for a scheduler job's next
+ * run time. Past timestamps (clock skew / paused job) read as 已过期.
+ */
+function formatCountdown(iso: string | null): string {
+  if (!iso) return '—';
+  const t = toLocal(iso);
+  if (!t.isValid()) return '—';
+  const diffMin = Math.round((t.valueOf() - Date.now()) / 60000);
+  if (diffMin < 0) return '已过期';
+  if (diffMin < 1) return '即将运行';
+  if (diffMin < 60) return `${diffMin} 分钟后`;
+  const h = Math.floor(diffMin / 60);
+  if (h < 24) return `${h} 小时后`;
+  return `${Math.floor(h / 24)} 天后`;
+}
 
 function fmtTime(iso: string | null): string {
   if (!iso) return '—';
@@ -158,7 +183,7 @@ export default function NewsHealth() {
       width: 110,
       render: (_v, row) => {
         const color = statusColor(row, schedulerRunning);
-        return <Tag color={color}>{STATUS_LABEL[color]}</Tag>;
+        return <ThemeTag variant={TONE_VARIANT[color]}>{STATUS_LABEL[color]}</ThemeTag>;
       },
     },
     {
@@ -174,7 +199,11 @@ export default function NewsHealth() {
       key: 'last_24h',
       width: 110,
       render: (v: number) =>
-        v > 0 ? <Tag color="blue">{v.toLocaleString()} 条</Tag> : <Tag>0</Tag>,
+        v > 0 ? (
+          <ThemeTag variant="accent">{v.toLocaleString()} 条</ThemeTag>
+        ) : (
+          <ThemeTag>0</ThemeTag>
+        ),
     },
     {
       title: '最新发布',
@@ -207,15 +236,15 @@ export default function NewsHealth() {
       render: (_v, row) => {
         const etl = row.latest_etl;
         if (!etl) return <span className="ad-text-tertiary">暂无记录</span>;
-        const color =
+        const variant: ThemeTagVariant =
           etl.status === 'success'
-            ? 'green'
+            ? 'success'
             : etl.status === 'failed'
-              ? 'red'
-              : 'gold';
+              ? 'error'
+              : 'warning';
         return (
           <div>
-            <Tag color={color}>{etl.status}</Tag>
+            <ThemeTag variant={variant}>{etl.status}</ThemeTag>
             <span className="ad-text-xs ad-ml-2">
               {etl.records != null ? `${etl.records} 条` : '-'}
             </span>
@@ -344,17 +373,40 @@ export default function NewsHealth() {
           <StatCard title="正常" value={workerHealthy} loading={isLoading} />
         </div>
         <div className="news-health-stat">
-          <StatCard title="异常" value={workerUnhealthy} loading={isLoading} />
+          <StatCard
+            title="异常"
+            value={
+              <span
+                style={
+                  workerUnhealthy > 0 ? { color: 'var(--color-error)' } : undefined
+                }
+              >
+                {workerUnhealthy}
+              </span>
+            }
+            loading={isLoading}
+          />
         </div>
       </div>
 
       <ContentCard title="Scheduler 任务" className="ad-mb-4">
         {jobs.length > 0 ? (
-          <div className="ad-flex ad-flex-wrap ad-gap-2">
+          <div className="news-health-jobs">
             {jobs.map((j) => (
-              <Tag key={j.id} color="blue">
-                {j.name} · 下次 {j.next_run_time ? new Date(j.next_run_time).toLocaleString() : '—'}
-              </Tag>
+              <div key={j.id} className="news-health-jobs__row">
+                <span className="ad-text-small">{j.name}</span>
+                <Tooltip
+                  title={
+                    j.next_run_time
+                      ? `下次运行 ${formatDateTime(j.next_run_time)}`
+                      : undefined
+                  }
+                >
+                  <span className="ad-text-xs ad-text-tertiary">
+                    {formatCountdown(j.next_run_time)}
+                  </span>
+                </Tooltip>
+              </div>
             ))}
           </div>
         ) : (

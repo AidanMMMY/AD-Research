@@ -18,6 +18,7 @@ import ResponsiveGrid from '@/components/ResponsiveGrid';
 import StatCard from '@/components/StatCard';
 import SectionHeading from '@/components/SectionHeading';
 import InstrumentCodeTag from '@/components/InstrumentCodeTag';
+import ReturnTag from '@/components/ReturnTag';
 import EmptyState from '@/components/EmptyState';
 import NewsListPanel from '@/components/NewsListPanel';
 import HelpTrigger from '@/components/HelpTrigger';
@@ -25,9 +26,9 @@ import HelpPopover from '@/components/HelpPopover';
 import ThemeTag from '@/components/ThemeTag';
 import LoadingBlock from '@/components/LoadingBlock';
 import TypeAwareModules from '@/components/TypeAwareModules';
-import { formatPercent } from '@/utils/format';
+import { formatNumber } from '@/utils/format';
 import { useSettingsStore } from '@/stores/settings';
-import { getReturnColor, getDownColor } from '@/utils/color';
+import { getReturnColor } from '@/utils/color';
 import { buildInstrumentDetailContext } from '@/utils/helpContext';
 import { getQuickQuestions } from '@/utils/helpPrompts';
 import { SENTIMENT_COLORS, SENTIMENT_LABELS } from '@/utils/sentiment';
@@ -268,6 +269,15 @@ export default function InstrumentDetail() {
 
   const latestNote: ResearchNote | null = researchNotes?.[0] || null;
 
+  /* Primary hero KPI: latest close + day-over-day change derived from the
+     history series (decimal semantics, matching ReturnTag). */
+  const latestBar = safeHistoryItems[safeHistoryItems.length - 1];
+  const prevBar = safeHistoryItems[safeHistoryItems.length - 2];
+  const dayChange =
+    latestBar && prevBar && prevBar.close !== 0
+      ? (latestBar.close - prevBar.close) / prevBar.close
+      : null;
+
   const metaParts = [
     instrument.category,
     instrument.sector,
@@ -327,15 +337,15 @@ export default function InstrumentDetail() {
             >
               查找类似标的
             </Button>
-            {indicator?.return_1m !== undefined && (
+            {latestBar && (
               <div className="detail-hero__kpi">
-                <div
-                  className="detail-hero__kpi-value tabular-nums"
-                  style={{ color: getReturnColor(indicator.return_1m, colorConvention) }}
-                >
-                  {formatPercent(indicator.return_1m)}
+                <div className="detail-hero__kpi-value tabular-nums">
+                  {formatNumber(latestBar.close)}
                 </div>
-                <div className="detail-hero__kpi-label">1月收益</div>
+                <div className="detail-hero__kpi-label">最新价（{latestBar.trade_date}）</div>
+                <div className="detail-hero__kpi-tag">
+                  <ReturnTag value={dayChange} />
+                </div>
               </div>
             )}
           </div>
@@ -343,7 +353,7 @@ export default function InstrumentDetail() {
       />
 
       <div className="detail-hero">
-        <InstrumentCodeTag code={instrument.code} name={instrument.name} name_zh={instrument.name_zh} />
+        <InstrumentCodeTag code={instrument.code} name_zh={instrument.name_zh} />
         {instrument.instrument_type && (
           <ThemeTag variant={instrument.instrument_type === 'ETF' ? 'default' : 'accent'}>
             {INSTRUMENT_TYPE_LABELS[instrument.instrument_type] || instrument.instrument_type}
@@ -499,12 +509,10 @@ export default function InstrumentDetail() {
         extra={<HelpTrigger tooltip="AI 解释技术指标" onClick={handleOpenHelp} />}
       >
         <div className="detail-indicator-grid">
+          {/* Incremental indicators only — 1月收益 / RSI14 / 波动率20日 /
+              最大回撤 already live in the StatCard strip above. */}
           {[
-            { title: <HelpPopover termKey="rsi14" mode={mode}>RSI14</HelpPopover>, value: indicator?.rsi14, precision: 1 },
             { title: <HelpPopover termKey="sharpe_1y" mode={mode}>夏普1年</HelpPopover>, value: indicator?.sharpe_1y, precision: 2 },
-            { title: <HelpPopover termKey="volatility_20d" mode={mode}>波动率20日</HelpPopover>, value: indicator?.volatility_20d != null ? indicator.volatility_20d * 100 : undefined, precision: 2, suffix: '%' },
-            { title: <HelpPopover termKey="max_drawdown_1y" mode={mode}>最大回撤</HelpPopover>, value: indicator?.max_drawdown_1y != null ? indicator.max_drawdown_1y * 100 : undefined, precision: 2, suffix: '%', color: getDownColor() },
-            { title: <HelpPopover termKey="return_1m" mode={mode}>1月收益</HelpPopover>, value: indicator?.return_1m != null ? indicator.return_1m * 100 : undefined, precision: 2, suffix: '%', color: getReturnColor(indicator?.return_1m, colorConvention) },
             { title: <HelpPopover termKey="return_3m" mode={mode}>3月收益</HelpPopover>, value: indicator?.return_3m != null ? indicator.return_3m * 100 : undefined, precision: 2, suffix: '%', color: getReturnColor(indicator?.return_3m, colorConvention) },
             { title: <HelpPopover termKey="return_1y" mode={mode}>1年收益</HelpPopover>, value: indicator?.return_1y != null ? indicator.return_1y * 100 : undefined, precision: 2, suffix: '%', color: getReturnColor(indicator?.return_1y, colorConvention) },
             { title: <HelpPopover termKey="ma5" mode={mode}>MA5</HelpPopover>, value: indicator?.ma5, precision: 2 },

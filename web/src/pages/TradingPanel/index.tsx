@@ -332,7 +332,7 @@ export default function TradingPanel() {
 
   // --- Render ---
   return (
-    <PageShell maxWidth="wide">
+    <PageShell maxWidth="wide" className="trading-panel-page">
       <PageHeader
         eyebrow="交易"
         title="真实交易"
@@ -368,6 +368,11 @@ export default function TradingPanel() {
             <EmptyState
               title="还没有交易配置"
               description="请先创建至少一个交易配置，再开始下单"
+              action={
+                <Button type="primary" icon={<PlusOutlined />} onClick={() => setCreateModalOpen(true)}>
+                  创建配置
+                </Button>
+              }
             />
           ) : (
             <Select
@@ -648,7 +653,7 @@ export default function TradingPanel() {
                   cancelText="再想想"
                   onConfirm={() => orderForm.submit()}
                 >
-                  <Button type="primary" loading={placeOrder.isPending}>
+                  <Button type="primary" danger loading={placeOrder.isPending}>
                     下单（真实资金）
                   </Button>
                 </Popconfirm>,

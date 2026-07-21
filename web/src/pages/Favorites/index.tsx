@@ -8,6 +8,7 @@ import {
   Collapse,
   Space,
   Tag,
+  Alert,
 } from 'antd';
 import {
   StarFilled,
@@ -30,7 +31,6 @@ import SectionHeading from '@/components/SectionHeading';
 import InstrumentCodeTag from '@/components/InstrumentCodeTag';
 import ThemeTag from '@/components/ThemeTag';
 import ReturnTagPct from '@/components/ReturnTagPct';
-import FavoriteToggleButton from '@/components/FavoriteToggleButton';
 import { clickableRow } from '@/utils/a11y';
 import { formatDateTime, formatDateTimeCompact } from '@/utils/datetime';
 import { NULL_PLACEHOLDER } from '@/utils/format';
@@ -448,24 +448,20 @@ export default function Favorites() {
         </>
       )}
 
-      {/* 已移除标的提示横幅（占位：保持与 Dashboard 风格一致） */}
-      <Panel variant="default" padding="md" className="ad-mt-5">
-        <EmptyState
-          title="自选股跟踪说明"
-          description={
-            <span>
-              自选股是 <b>轻量级跟踪清单</b>，区别于「标的池」（中长期目标组合）和「模拟 / 真实交易」中的实际持仓。
-              如需给自选股配置权重 / 算法跟踪，请到{' '}
-              <a onClick={() => navigate('/pools')}>标的池管理</a>。
-            </span>
-          }
-        />
-      </Panel>
-
-      {/* 收藏开关的隐藏语义元素：在每个分类面板标题栏内嵌一颗星，便于将来扩展 */}
-      <div className="favorites__hidden-util" aria-hidden>
-        <FavoriteToggleButton code="" />
-      </div>
+      {/* 自选股定位说明（轻量提示条，替代原先的卡片式空态横幅） */}
+      <Alert
+        type="info"
+        showIcon
+        className="ad-mt-5"
+        message="自选股跟踪说明"
+        description={
+          <span>
+            自选股是 <b>轻量级跟踪清单</b>，区别于「标的池」（中长期目标组合）和「模拟 / 真实交易」中的实际持仓。
+            如需给自选股配置权重 / 算法跟踪，请到{' '}
+            <a onClick={() => navigate('/pools')}>标的池管理</a>。
+          </span>
+        }
+      />
     </PageShell>
   );
 }

@@ -653,6 +653,10 @@ export default function AppLayout() {
     return items;
   }, [location.pathname]);
 
+  // The AI chat page manages its own full-height layout (sticky input bar);
+  // the global footer would shove the composer below the fold.
+  const hideFooter = location.pathname === '/chat';
+
   return (
     <div className="app-layout">
       {/* Mobile Drawer (left edge, same nav as desktop sidebar) */}
@@ -934,9 +938,11 @@ export default function AppLayout() {
         <div className="app-layout__content">
           <div className="app-layout__content-wrap">
             <Outlet />
-            <footer className="app-layout__footer">
-              数据来源：Tushare / FRED / 新浪财经 · 数据每日凌晨更新 · 本平台所有内容仅供参考，不构成投资建议 · © 2026 AD-Research
-            </footer>
+            {!hideFooter && (
+              <footer className="app-layout__footer">
+                数据来源：Tushare / FRED / 新浪财经 · 数据每日凌晨更新 · 本平台所有内容仅供参考，不构成投资建议 · © 2026 AD-Research
+              </footer>
+            )}
           </div>
         </div>
       </main>

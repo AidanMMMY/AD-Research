@@ -532,7 +532,7 @@ export default function SentimentOverview() {
   const [view, setView] = useState<ViewMode>('news');
   const [days, setDays] = useState<number>(14);
   const [market, setMarket] = useState<NewsMarket | 'all'>('all');
-  const [importanceMin, setImportanceMin] = useState<number>(3);
+  const [importanceMin, setImportanceMin] = useState<number>(1);
   const [search, setSearch] = useState('');
   const [selectedSymbol, setSelectedSymbol] = useState<string | null>(null);
 
@@ -631,13 +631,7 @@ export default function SentimentOverview() {
         description="按市场聚合的新闻情绪分布 · 重要性与看多/看空比"
       />
 
-      <FilterToolbar
-        total={
-          view === 'news'
-            ? `${filtered.length} 个标的 · ${data?.length ?? 0} 条资讯`
-            : `${filteredAgg.length} 个标的 · ${aggData?.length ?? 0} 条汇总`
-        }
-      >
+      <FilterToolbar>
         <Segmented
           value={view}
           onChange={(v) => setView(v as ViewMode)}
@@ -685,6 +679,12 @@ export default function SentimentOverview() {
           onChange={(e) => setSearch(e.target.value)}
           className="phase5c-input--md"
         />
+        {/* Result count sits inline, right after the filter controls. */}
+        <span className="filter-toolbar__total">
+          {view === 'news'
+            ? `${filtered.length} 个标的 · ${data?.length ?? 0} 条资讯`
+            : `${filteredAgg.length} 个标的 · ${aggData?.length ?? 0} 条汇总`}
+        </span>
       </FilterToolbar>
 
       {isError || aggError ? (
@@ -712,7 +712,20 @@ export default function SentimentOverview() {
           {isLoading ? (
             <Skeleton active paragraph={{ rows: 8 }} />
           ) : filtered.length === 0 ? (
-            <EmptyState title="暂无符合条件的数据" />
+            <EmptyState
+              title="暂无符合条件的数据"
+              description="当前筛选条件下没有结果，可以放宽条件试试"
+              action={
+                <Button
+                  onClick={() => {
+                    setImportanceMin(1);
+                    setSearch('');
+                  }}
+                >
+                  放宽筛选
+                </Button>
+              }
+            />
           ) : (
             <div className="ad-heatmap-grid">
               {filtered.map((row) => {

@@ -21,6 +21,7 @@ import {
 import type { CninfoReport, CninfoAdjunctType, CninfoReportDetail } from '@/types/cninfoReport';
 import { useDebounce } from '@/hooks/useDebounce';
 import { clickableRow } from '@/utils/a11y';
+import { formatDateTime } from '@/utils/datetime';
 
 const ADJUNCT_LABEL: Record<string, string> = {
   annual: '年报',
@@ -102,6 +103,14 @@ const CNINFO_PAGE_STYLE = `
 .cninfo-report-row:active {
   background: var(--bg-active) !important;
 }
+/* Coverage strip already sits inside a bordered Panel — drop its own frame
+   so it doesn't read as a card nested in a card. */
+.cninfo-coverage .ad-metric-strip {
+  border: none;
+}
+.cninfo-coverage .ad-metric-item {
+  border-right: none;
+}
 @media (prefers-reduced-motion: reduce) {
   .ad-detail-drawer {
     transition: opacity 120ms ease;
@@ -121,7 +130,14 @@ const CNINFO_PAGE_STYLE = `
 }
 `;
 
-const formatDate = (v: string | null | undefined): string => v ?? '-';
+const formatDate = (v: string | null | undefined): string => formatDateTime(v);
+
+const EXTRACTION_LABEL: Record<string, string> = {
+  pending: '待提取',
+  extracted: '已提取',
+  failed: '失败',
+  downloaded: '已下载',
+};
 
 const formatBytes = (v: number | null | undefined): string => {
   if (v === null || v === undefined) return '-';
@@ -246,7 +262,7 @@ export default function CninfoReportsPage() {
           v === 'extracted' ? 'green' : v === 'failed' ? 'red' : v === 'downloaded' ? 'blue' : 'default';
         return (
           <Space size={4} direction="vertical">
-            <Tag color={color}>{v}</Tag>
+            <Tag color={color}>{EXTRACTION_LABEL[v] ?? v}</Tag>
             {record.extracted_at ? (
               <span className="last-updated">{formatBytes(record.file_size)}</span>
             ) : null}
@@ -285,7 +301,7 @@ export default function CninfoReportsPage() {
       />
 
       {coverage ? (
-        <Panel variant="default" title="覆盖度">
+        <Panel variant="default" title="覆盖度" className="cninfo-coverage">
           <div className="ad-metric-strip">
             <div className="ad-metric-item">
               <div className="ad-metric-item__label">报告总数</div>
@@ -313,12 +329,11 @@ export default function CninfoReportsPage() {
             setSearch(e.target.value);
             setPage(1);
           }}
-          className="ad-w-full"
+          style={{ width: 240 }}
         />
         <Select
           placeholder="报告类型"
           allowClear
-          className="ad-w-full"
           value={adjunctType}
           onChange={(v) => {
             setAdjunctType(v);
@@ -329,7 +344,6 @@ export default function CninfoReportsPage() {
         <Select
           placeholder="财年"
           allowClear
-          className="ad-w-full"
           value={fiscalYear}
           onChange={(v) => {
             setFiscalYear(v);
@@ -340,7 +354,6 @@ export default function CninfoReportsPage() {
         <Select
           placeholder="文本提取"
           allowClear
-          className="ad-w-full"
           value={hasText}
           onChange={(v) => {
             setHasText(v);

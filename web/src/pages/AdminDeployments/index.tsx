@@ -13,6 +13,7 @@ import {
   Col,
   Badge,
   Progress,
+  Skeleton,
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import {
@@ -36,10 +37,7 @@ import ResponsiveGrid from '@/components/ResponsiveGrid';
 import EmptyState from '@/components/EmptyState';
 import { useDeployments, useLogStream } from '@/hooks/useDeployments';
 import type { DeploymentRun, ContainerStats, LogLine } from '@/types/deployment';
-import dayjs from 'dayjs';
-import relativeTime from 'dayjs/plugin/relativeTime';
-import { formatDateTime, toLocal } from '@/utils/datetime';
-dayjs.extend(relativeTime);
+import { formatDateTime, formatRelative } from '@/utils/datetime';
 
 const { Text } = Typography;
 const { Option } = Select;
@@ -134,14 +132,11 @@ function DeploymentsTable({ data, loading }: { data: DeploymentRun[]; loading: b
       dataIndex: 'created_at',
       key: 'created',
       width: 140,
-      render: (ts: string) => {
-        const d = toLocal(ts);
-        return (
-          <Tooltip title={formatDateTime(ts, 'YYYY-MM-DD HH:mm:ss')}>
-            <Text className="ad-text-small ad-text-secondary">{d.fromNow()}</Text>
-          </Tooltip>
-        );
-      },
+      render: (ts: string) => (
+        <Tooltip title={formatDateTime(ts, 'YYYY-MM-DD HH:mm:ss')}>
+          <Text className="ad-text-small ad-text-secondary">{formatRelative(ts)}</Text>
+        </Tooltip>
+      ),
     },
   ];
 
@@ -410,7 +405,7 @@ export default function AdminDeployments() {
       `}</style>
       <PageHeader
         title="部署管理"
-        description="Vercel 风格部署仪表盘 — 查看部署历史、服务器状态和实时日志"
+        description="部署仪表盘 — 查看部署历史、服务器状态和实时日志"
         extra={
           <Space>
             <Button
@@ -449,10 +444,12 @@ export default function AdminDeployments() {
       <div className="admin-section">
         <SectionHeading title="服务器健康" />
         <Panel variant="default" padding="md">
-          {containers.length === 0 ? (
+          {isLoadingHealth ? (
+            <Skeleton active paragraph={{ rows: 3 }} />
+          ) : containers.length === 0 ? (
             <EmptyState
-              title={isLoadingHealth ? '加载中...' : '暂无容器数据'}
-              description={isLoadingHealth ? undefined : '需要 Docker socket 访问权限'}
+              title="暂无容器数据"
+              description="需要 Docker socket 访问权限"
             />
           ) : (
             <ResponsiveGrid cols={4} gap="md">

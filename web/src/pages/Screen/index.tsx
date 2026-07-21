@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Table, Space, Select, InputNumber, Button, Row, Col } from 'antd';
+import { InfoCircleOutlined } from '@ant-design/icons';
 import type { ColumnsType, TableProps } from 'antd/es/table';
 import { useScreenResults, useScreenPresets, useScreenCategories } from '@/hooks/useScreenResults';
 import { useScoreTemplates } from '@/hooks/useScores';
@@ -203,17 +204,31 @@ export default function Screen() {
           </div>
         </section>
 
-        {/* 第二层：详细筛选条件 */}
-        <ContextHint
-          hintId="screen-filter"
-          title="先选条件再查询"
-          placement="bottom"
-          content={
-            <>
-              选好市场 / 分类 / 评分阈值等条件后再点查询，比空着全部条件直接查能显著减少响应时间。结果表会用选股条件快速收敛到关注的几只标的。
-            </>
-          }
-        >
+        {/* 第二层：详细筛选条件 — ContextHint anchors on the ⓘ icon next to
+            the section title (click-triggered) so it never auto-pops over
+            the 评分模板 select below. */}
+        <section className="screen-filter-section" aria-label="详细筛选">
+          <div className="screen-filter-section__header">
+            <span className="screen-filter-section__title">详细筛选</span>
+            <ContextHint
+              hintId="screen-filter"
+              title="先选条件再查询"
+              placement="bottom"
+              trigger="click"
+              content={
+                <>
+                  选好市场 / 分类 / 评分阈值等条件后再点查询，比空着全部条件直接查能显著减少响应时间。结果表会用选股条件快速收敛到关注的几只标的。
+                </>
+              }
+            >
+              <Button
+                type="text"
+                size="small"
+                icon={<InfoCircleOutlined />}
+                aria-label="查看筛选说明"
+              />
+            </ContextHint>
+          </div>
           <FilterToolbar
             data-onboard="filter-toolbar"
             total={`共 ${results?.count || 0} 只`}
@@ -457,7 +472,7 @@ export default function Screen() {
               </div>
             </div>
           </FilterToolbar>
-        </ContextHint>
+        </section>
       </Panel>
 
       <div className="ad-mt-5">
@@ -473,16 +488,19 @@ export default function Screen() {
           />
         ) : (
           <>
-            <div className="ad-flex ad-justify-end ad-mb-2">
-              <ExportButton
-                rows={(results?.items || []) as unknown as Record<string, unknown>[]}
-                filename={`screen-${
-                  [filters.market, filters.category, preset].filter(Boolean).join('-') || 'all'
-                }`}
-                headers={['code', 'name', 'category', 'composite_score', 'rsi14', 'sharpe_1y', 'return_1m', 'return_3m', 'return_1y', 'volatility_20d']}
-                successPrefix="已导出筛选结果"
-              />
-            </div>
+            {/* Hide export when the result set is empty — nothing to export. */}
+            {(results?.items?.length ?? 0) > 0 && (
+              <div className="ad-flex ad-justify-end ad-mb-2">
+                <ExportButton
+                  rows={(results?.items || []) as unknown as Record<string, unknown>[]}
+                  filename={`screen-${
+                    [filters.market, filters.category, preset].filter(Boolean).join('-') || 'all'
+                  }`}
+                  headers={['code', 'name', 'category', 'composite_score', 'rsi14', 'sharpe_1y', 'return_1m', 'return_3m', 'return_1y', 'volatility_20d']}
+                  successPrefix="已导出筛选结果"
+                />
+              </div>
+            )}
           <div className="ad-table-scroll ad-table-sticky">
             <Table
               dataSource={results?.items || []}

@@ -5694,7 +5694,9 @@ main {
 
 .score-bar__track {
   flex: 1;
-  background: var(--bg-input);
+  /* --bg-hover stays visible on light themes; --bg-input blended into the
+     card background and made the track invisible. */
+  background: var(--bg-hover);
   overflow: hidden;
   position: relative;
 }
@@ -5768,6 +5770,12 @@ main {
 }
 
 .status-tag--pending {
+  color: var(--text-tertiary);
+  background: var(--bg-hover);
+  border-color: var(--border-default);
+}
+
+.status-tag--skipped {
   color: var(--text-tertiary);
   background: var(--bg-hover);
   border-color: var(--border-default);
@@ -7675,9 +7683,24 @@ input[type="password"]::-webkit-strong-password-auto-fill-button {
   gap: var(--space-4, 16px);
 }
 
+.learning-scenario-card {
+  /* Equal-height grid cards: column flex so the CTA can pin to the bottom. */
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.learning-scenario-card .ad-panel__body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
 .learning-scenario-card__head {
   display: flex;
   align-items: flex-start;
+  /* Wrap so long titles never squeeze the meta tags into a vertical strip. */
+  flex-wrap: wrap;
   gap: 12px;
   margin-bottom: 12px;
 }
@@ -7692,11 +7715,13 @@ input[type="password"]::-webkit-strong-password-auto-fill-button {
   align-items: center;
   gap: 6px;
   flex-wrap: wrap;
-  margin-left: auto;
+  /* Own row under the title/tagline, spanning the card width. */
+  flex-basis: 100%;
+  margin-left: 0;
 }
 
 .learning-scenario-card__title {
-  font-size: 17px;
+  font-size: var(--text-h3-size);
   font-weight: 600;
   color: var(--text-primary);
   line-height: 1.3;
@@ -7722,9 +7747,7 @@ input[type="password"]::-webkit-strong-password-auto-fill-button {
   margin-bottom: 8px;
   color: var(--text-primary);
   font-size: var(--text-body-size);
-  font-size: 13.5px;
   line-height: 1.6;
-  color: var(--text-primary);
 }
 
 .learning-scenario-card__step-num {
@@ -7747,6 +7770,8 @@ input[type="password"]::-webkit-strong-password-auto-fill-button {
   gap: 10px;
   border-top: 1px dashed var(--border-default);
   padding-top: 12px;
+  /* Pin to the card bottom so all three scenario cards align their CTAs. */
+  margin-top: auto;
 }
 
 .learning-scenario-card__cta-buttons {
@@ -7913,12 +7938,11 @@ input[type="password"]::-webkit-strong-password-auto-fill-button {
 /* HelpPopover (K14) — wider overlay on narrow screens is already capped
    via overlayStyle={maxWidth: 'min(380px, 85vw)'}.  No further CSS needed. */
 
-/* ContextHint (K14) — anchor span should not stretch, and popover
-   already uses AntD defaults; below ensures click-area is clickable. */
+/* ContextHint (K14) — anchor is a plain block so it never shrink-wraps or
+   squeezes wrapped controls (filter toolbars, selects); popover already
+   uses AntD defaults. */
 .context-hint__anchor {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
+  display: block;
 }
 
 /* When a ContextHint wraps a FilterToolbar (e.g. Screen 详细筛选), the anchor

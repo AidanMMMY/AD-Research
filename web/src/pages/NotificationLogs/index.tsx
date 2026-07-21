@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Table, InputNumber, Space } from 'antd';
+import { Table } from 'antd';
 import { useQuery } from '@tanstack/react-query';
 import PageShell from '@/components/PageShell';
 import PageHeader from '@/components/PageHeader';
@@ -9,6 +9,7 @@ import FilterToolbar from '@/components/FilterToolbar';
 import EmptyState from '@/components/EmptyState';
 import { notificationApi } from '@/api/notification';
 import StatusTag from '@/components/StatusTag';
+import { formatDateTime } from '@/utils/datetime';
 
 export default function NotificationLogs() {
   const [page, setPage] = useState(1);
@@ -55,13 +56,13 @@ export default function NotificationLogs() {
       title: '发送时间',
       dataIndex: 'sent_at',
       width: 170,
-      render: (v?: string) => (v ? new Date(v).toLocaleString() : '-'),
+      render: (v?: string) => formatDateTime(v),
     },
     {
       title: '创建时间',
       dataIndex: 'created_at',
       width: 170,
-      render: (v?: string) => (v ? new Date(v).toLocaleString() : '-'),
+      render: (v?: string) => formatDateTime(v),
     },
   ];
 
@@ -75,21 +76,7 @@ export default function NotificationLogs() {
 
       <SectionHeading title="通知发送日志" />
       <Panel variant="default" padding="md">
-        <FilterToolbar total={data?.total ?? 0}>
-          <Space>
-            <span className="ad-text-secondary">每页条数：</span>
-            <InputNumber
-              min={1}
-              max={200}
-              value={pageSize}
-              onChange={(v) => {
-                setPage(1);
-                setPageSize(v || 20);
-              }}
-              className="ad-input--sm"
-            />
-          </Space>
-        </FilterToolbar>
+        <FilterToolbar total={data?.total ?? 0} />
 
         <div className="ad-table-scroll">
           <Table

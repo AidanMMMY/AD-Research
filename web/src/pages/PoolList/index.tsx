@@ -2,8 +2,8 @@ import './styles.css';
 
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Table, Button, Modal, Form, Input, message, Popconfirm, Space } from 'antd';
-import { PlusOutlined, DeleteOutlined } from '@ant-design/icons';
+import { Table, Button, Modal, Form, Input, message, Popconfirm, Space, Tooltip } from 'antd';
+import { PlusOutlined } from '@ant-design/icons';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { usePoolList } from '@/hooks/usePoolDetail';
 import { poolApi } from '@/api';
@@ -60,8 +60,26 @@ export default function PoolList() {
 
   const columns = [
     { title: '名称', dataIndex: 'name' },
-    { title: '描述', dataIndex: 'description' },
-    { title: '成员数', dataIndex: 'members', render: (m: any[]) => m?.length || 0, width: 90 },
+    {
+      title: '描述',
+      dataIndex: 'description',
+      ellipsis: true,
+      render: (v: string | null) =>
+        v ? (
+          <Tooltip title={v} placement="topLeft">
+            <span>{v}</span>
+          </Tooltip>
+        ) : (
+          '-'
+        ),
+    },
+    {
+      title: '成员数',
+      dataIndex: 'members',
+      align: 'right' as const,
+      render: (m: any[]) => <span className="tabular-nums">{m?.length || 0}</span>,
+      width: 90,
+    },
     {
       title: '操作',
       width: 160,
@@ -76,7 +94,8 @@ export default function PoolList() {
             cancelText="取消"
             okButtonProps={{ danger: true, loading: deleteMutation.isPending && deleteMutation.variables === record.id }}
           >
-            <Button type="link" danger icon={<DeleteOutlined />} loading={deleteMutation.isPending && deleteMutation.variables === record.id}>
+            {/* Text-link pair: plain link + trailing danger action. */}
+            <Button type="link" danger loading={deleteMutation.isPending && deleteMutation.variables === record.id}>
               删除
             </Button>
           </Popconfirm>
@@ -87,13 +106,6 @@ export default function PoolList() {
 
   return (
     <PageShell maxWidth="wide">
-      {/* Apple Design #1 Response / #10 Gesture details: clickable rows give
-          instant pointer-down feedback (tap-highlight equivalent). Background
-          only — no movement, so no reduced-motion concern. */}
-      <style>{`
-        .pool-list-row--pressable > td { transition: background var(--transition-fast, 150ms ease); }
-        .pool-list-row--pressable:active > td { background: var(--bg-active) !important; }
-      `}</style>
       <PageHeader
         eyebrow="组合"
         title="标的池管理"

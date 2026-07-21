@@ -1,7 +1,7 @@
 import './styles.css';
 import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { Badge, Skeleton, Table, Tag, Tooltip } from 'antd';
+import { Badge, Button, Skeleton, Table, Tag, Tooltip } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import {
   DollarOutlined,
@@ -267,9 +267,9 @@ export default function Portfolio() {
             description="前往模拟交易页面创建一个模拟账户即可在此查看权益与持仓。"
             action={
               <Link to="/paper-trading">
-                <Tag color="gold" className="ad-cursor-pointer">
+                <Button type="primary" size="small">
                   新建模拟账户
-                </Tag>
+                </Button>
               </Link>
             }
           />
@@ -312,9 +312,9 @@ export default function Portfolio() {
             description="前往真实交易页面创建 Binance 配置即可在此查看实际持仓与盈亏。"
             action={
               <Link to="/live-trading">
-                <Tag color="magenta" className="ad-cursor-pointer">
+                <Button type="primary" size="small">
                   新建真实配置
-                </Tag>
+                </Button>
               </Link>
             }
           />
@@ -369,9 +369,9 @@ export default function Portfolio() {
             description="在「标的池管理」中创建一个目标池（例如：核心 ETF、卫星 ETF），组合中心会按目标权重与实际持仓做偏离度对比。"
             action={
               <Link to="/pools">
-                <Tag color="default" className="ad-cursor-pointer">
+                <Button type="primary" size="small">
                   创建目标池
-                </Tag>
+                </Button>
               </Link>
             }
           />
@@ -390,7 +390,8 @@ export default function Portfolio() {
                   padding="sm"
                   title={
                     <span>
-                      <WarningOutlined className="ad-mr-1" />
+                      {/* Only flag meaningful drift; ±2% within tolerance. */}
+                      {Math.abs(d.drift) > 2 && <WarningOutlined className="ad-mr-1" />}
                       {d.code}
                     </span>
                   }

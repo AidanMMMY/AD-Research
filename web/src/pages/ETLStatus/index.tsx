@@ -10,6 +10,7 @@ import FilterToolbar from '@/components/FilterToolbar';
 import './styles.css';
 import StatusTag from '@/components/StatusTag';
 import { useDebounce } from '@/hooks/useDebounce';
+import { formatDateTime } from '@/utils/datetime';
 
 const STATUS_OPTIONS = [
   { label: '全部', value: '' },
@@ -17,6 +18,7 @@ const STATUS_OPTIONS = [
   { label: '运行中', value: 'running' },
   { label: '失败', value: 'failed' },
   { label: '等待中', value: 'pending' },
+  { label: '跳过', value: 'skipped' },
 ];
 
 export default function ETLStatus() {
@@ -60,17 +62,17 @@ export default function ETLStatus() {
     {
       title: '开始时间',
       dataIndex: 'start_time',
-      render: (v?: string) => (v ? new Date(v).toLocaleString() : '-'),
+      render: (v?: string) => formatDateTime(v),
     },
     {
       title: '结束时间',
       dataIndex: 'end_time',
-      render: (v?: string) => (v ? new Date(v).toLocaleString() : '-'),
+      render: (v?: string) => formatDateTime(v),
     },
     {
       title: '创建时间',
       dataIndex: 'created_at',
-      render: (v?: string) => (v ? new Date(v).toLocaleString() : '-'),
+      render: (v?: string) => formatDateTime(v),
     },
   ];
 

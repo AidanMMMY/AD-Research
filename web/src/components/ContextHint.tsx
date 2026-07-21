@@ -13,7 +13,8 @@ interface ContextHintProps {
   placement?: 'top' | 'bottom' | 'left' | 'right' | 'topLeft' | 'topRight' | 'bottomLeft' | 'bottomRight';
   /** When false, never auto-show even if not yet dismissed. */
   enabled?: boolean;
-  /** Override trigger (default 'hover'). */
+  /** Override trigger (default 'hover'). 'click' also disables the
+   *  first-visit auto-open so the bubble never covers nearby controls. */
   trigger?: 'hover' | 'click';
   /** What to wrap (an inline marker; popover anchors to it). */
   children: React.ReactNode;
@@ -63,10 +64,12 @@ export default function ContextHint({
   const [dismissed, setDismissed] = useState<boolean>(() => readDismissed(hintId));
   const [autoOpen, setAutoOpen] = useState(false);
 
-  // Auto-open once on mount if not yet dismissed.
+  // Auto-open once on mount if not yet dismissed. Click-triggered hints
+  // never auto-open — they wait for an explicit click on the anchor.
   useEffect(() => {
     if (!enabled) return;
     if (dismissed) return;
+    if (trigger === 'click') return;
     // Wait one frame so the wrapped element is rendered.
     const t = window.setTimeout(() => setAutoOpen(true), 350);
     return () => window.clearTimeout(t);
