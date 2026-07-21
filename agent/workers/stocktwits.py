@@ -11,11 +11,16 @@ Optimization history:
   - 2026-07: ``curl_cffi`` with ``chrome124`` impersonate reliably
     bypasses Cloudflare on the *direct* Stocktwits API (api.stocktwits.com)
     and on stocktwits.com HTML. This is now the primary path.
+  - 2026-07-22: Cloudflare started challenging the chrome124 JA3 (403 on
+    every API endpoint) while other profiles (chrome110/136/142,
+    firefox135, safari18_0) still pass. The worker now walks
+    ``IMPERSONATE_PROFILES`` until one gets through instead of hardcoding
+    a single profile.
   - 2026-07: TradingView "Ideas" feed (200 with bare requests) is added
     as a sentiment side-channel that always returns content.
 
 Current strategy (zero-cost, public):
-  1. Primary: curl_cffi + chrome124 impersonate against
+  1. Primary: curl_cffi browser impersonation (profile fallback list) against
        - https://api.stocktwits.com/api/2/streams/trending.json
        - https://api.stocktwits.com/api/2/streams/symbol/<SYM>.json
        - https://api.stocktwits.com/api/2/discover.json
@@ -79,6 +84,26 @@ from common import (  # noqa: E402
 )
 
 SOURCE = "stocktwits"
+
+# Cloudflare rotates which TLS fingerprints it challenges: on 2026-07-22
+# chrome120/123/124/131 and safari260 were 403'd while the profiles below
+# still passed. Ordered by preference; _curl_cffi_get walks this list and
+# moves to the next profile on 403.
+IMPERSONATE_PROFILES = [
+    "chrome136",
+    "chrome142",
+    "chrome133a",
+    "chrome110",
+    "chrome116",
+    "chrome145",
+    "chrome146",
+    "firefox133",
+    "firefox135",
+    "safari18_0",
+    # Legacy default; blocked 2026-07-22, kept last in case the challenge
+    # set rotates back.
+    "chrome124",
+]
 
 # Direct API (primary via curl_cffi, last-resort probe via plain requests)
 TRENDING_URL = "https://api.stocktwits.com/api/2/streams/trending.json"
@@ -173,35 +198,50 @@ def _relative_to_dt(ago: str) -> Any:
     return datetime.now(tz=timezone.utc) - delta
 
 
-def _curl_cffi_get(url: str, logger, timeout: int = 20, retries: int = 2) -> Any:
-    """GET via curl_cffi chrome124 impersonate. Returns the response
+def _curl_cffi_get(url: str, logger, timeout: int = 20, retries: int = 1) -> Any:
+    """GET via curl_cffi browser impersonation. Returns the response
     object (with .status_code, .json(), .text) or None on hard failure.
 
-    ``retries`` covers the common "Recv failure: Connection reset by
-    peer" we see intermittently from Cloudflare edge nodes - first call
-    is sometimes torn down, second call goes through cleanly.
+    Cloudflare challenges specific TLS fingerprints and the challenged set
+    rotates over time, so we walk ``IMPERSONATE_PROFILES`` and move on to
+    the next profile on 403. ``retries`` covers the common "Recv failure:
+    Connection reset by peer" we see intermittently from Cloudflare edge
+    nodes - first call is sometimes torn down, second call goes through
+    cleanly.
     """
     if not _HAS_CURL_CFFI:
         return None
     last_exc: Exception | None = None
-    for attempt in range(retries + 1):
-        try:
-            resp = creq.get(url, impersonate="chrome124", timeout=timeout)
-            return resp
-        except Exception as exc:  # noqa: BLE001
-            last_exc = exc
+    for profile in IMPERSONATE_PROFILES:
+        for attempt in range(retries + 1):
+            try:
+                resp = creq.get(url, impersonate=profile, timeout=timeout)
+            except Exception as exc:  # noqa: BLE001
+                last_exc = exc
+                logger.debug(
+                    "curl_cffi GET %s profile=%s failed (attempt %d/%d): %s",
+                    url, profile, attempt + 1, retries + 1, exc,
+                )
+                time.sleep(0.5 * (attempt + 1))
+                continue
+            if resp.status_code == 403:
+                logger.debug(
+                    "curl_cffi GET %s profile=%s -> 403 (fingerprint challenged), "
+                    "trying next profile",
+                    url, profile,
+                )
+                break
             logger.debug(
-                "curl_cffi GET %s failed (attempt %d/%d): %s",
-                url, attempt + 1, retries + 1, exc,
+                "curl_cffi GET %s profile=%s -> %d", url, profile, resp.status_code
             )
-            time.sleep(0.5 * (attempt + 1))
+            return resp
     logger.debug("curl_cffi GET %s gave up: %s", url, last_exc)
     return None
 
 
 # ---------- direct API path (PRIMARY via curl_cffi) ----------
 def fetch_api_trending_cc(curl_logger, session: requests.Session, logger) -> list[dict]:
-    """Pull trending symbols via curl_cffi chrome124 impersonate.
+    """Pull trending symbols via curl_cffi browser impersonation.
 
     On success returns the full symbol list (watchlist_count, message_count).
     Falls back to plain-requests probe (likely 403) on failure.
@@ -213,7 +253,7 @@ def fetch_api_trending_cc(curl_logger, session: requests.Session, logger) -> lis
     methods: list[str] = []
     out: list[dict] = []
 
-    # Path 1: curl_cffi chrome124
+    # Path 1: curl_cffi impersonation (walks IMPERSONATE_PROFILES)
     resp = _curl_cffi_get(TRENDING_URL, logger)
     if resp is not None and resp.status_code == 200:
         methods.append("curl_cffi_trending")
@@ -301,7 +341,7 @@ def fetch_api_symbol_cc(
     data: dict | None = None
     src: str = ""
 
-    # Path 1: curl_cffi chrome124 (bypasses 403)
+    # Path 1: curl_cffi impersonation (bypasses 403)
     resp = _curl_cffi_get(url, logger)
     if resp is not None and resp.status_code == 200:
         methods.append("curl_cffi_symbol")
