@@ -58,7 +58,7 @@ export default function CorrelationAnalysis() {
             <Col xs={24} md={6}>
               <div className="correlation-analysis__filter-group">
                 <div className="correlation-analysis__filter-label">
-                  <HelpPopover termKey="time_range" mode={mode}>窗口期</HelpPopover>：
+                  <HelpPopover termKey="time_range" mode={mode}>窗口期</HelpPopover>
                 </div>
                 <Select
                   value={window}
@@ -71,7 +71,7 @@ export default function CorrelationAnalysis() {
             <Col xs={24} md={6}>
               <div className="correlation-analysis__filter-group">
                 <div className="correlation-analysis__filter-label">
-                  <HelpPopover termKey="correlation_method" mode={mode}>计算方法</HelpPopover>：
+                  <HelpPopover termKey="correlation_method" mode={mode}>计算方法</HelpPopover>
                 </div>
                 <Select
                   value={method}

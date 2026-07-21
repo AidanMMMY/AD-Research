@@ -6,25 +6,27 @@
    in global.css and shared across the app.
    ============================================================ */
 
-/* ---- Config grid: label + control row on desktop, stacked on mobile ---- */
+/* ---- Config grid: label on top + control below (matches the shared
+   analysis-config pattern used by ReturnComparison) ---- */
 .correlation-analysis__filter-group {
   display: flex;
-  align-items: center;
-  gap: var(--space-3);
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-2);
   width: 100%;
 }
 
 .correlation-analysis__filter-label {
-  flex: 0 0 80px;
-  width: 80px;
-  text-align: left;
+  flex: 0 0 auto;
+  width: auto;
+  white-space: nowrap;
   font-size: var(--text-body-size);
   color: var(--text-secondary);
   line-height: 1.5;
 }
 
 .correlation-analysis__filter-select {
-  flex: 1 1 auto;
+  width: 100%;
   min-width: 0;
 }
 
@@ -43,23 +45,8 @@
   height: 100% !important;
 }
 
-/* ---- Mobile fallback: restore stacked label + select ---- */
+/* ---- Mobile fallback: same stacked layout, tighter heatmap ---- */
 @media (max-width: 768px) {
-  .correlation-analysis__filter-group {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: var(--space-2);
-  }
-
-  .correlation-analysis__filter-label {
-    flex: 0 0 auto;
-    width: auto;
-  }
-
-  .correlation-analysis__filter-select {
-    width: 100%;
-  }
-
   .correlation-analysis__heatmap-container {
     height: 300px;
   }

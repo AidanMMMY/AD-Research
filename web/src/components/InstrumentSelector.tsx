@@ -178,7 +178,7 @@ export default function InstrumentSelector({
               />
             )}
             {showClear && (
-              <Button size="small" danger onClick={() => onChange([])}>
+              <Button size="small" type="text" onClick={() => onChange([])}>
                 清空
               </Button>
             )}
