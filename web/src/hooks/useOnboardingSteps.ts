@@ -47,7 +47,7 @@ export function useOnboardingSteps(): OnboardingStep[] {
         key: 'welcome',
         title: '欢迎来到 AD-RESEARCH',
         description:
-          '这是一个面向 A 股、美股、港股、加密货币等市场的量化研究平台。我们会用 5 步带你了解核心功能。',
+          '这是一个面向 A 股、美股、港股、加密货币等市场的量化研究平台。我们会用 6 步带你了解核心功能。',
         icon: createElement(RocketOutlined),
         // Default anchor: Dashboard's PageHeader. Falls back to centered modal
         // if user lands on a non-dashboard page first.

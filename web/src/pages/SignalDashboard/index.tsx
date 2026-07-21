@@ -493,6 +493,7 @@ export default function SignalDashboard() {
                     onChange={setTypeFilter}
                     options={typeOptions}
                     className="ad-w-full"
+                    style={{ minWidth: 160 }}
                   />
                 </Col>
                 <Col xs={12} sm={8} md={6}>
@@ -502,6 +503,7 @@ export default function SignalDashboard() {
                     options={familyOptions}
                     placeholder="按策略家族筛选"
                     className="ad-w-full"
+                    style={{ minWidth: 180 }}
                   />
                 </Col>
               </Row>
