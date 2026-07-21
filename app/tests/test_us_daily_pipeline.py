@@ -255,6 +255,82 @@ class TestSinaUSProvider:
 
 
 # ---------------------------------------------------------------------------
+# USDailyPipeline dirty-row sanitization
+# ---------------------------------------------------------------------------
+
+
+class TestUSDailyDirtyRows:
+    def _seed_two_instruments(self, db) -> None:
+        for code in ("IEX.US", "SPY.US"):
+            db.add(
+                ETFInfo(
+                    code=code,
+                    name=code,
+                    market="US",
+                    status="active",
+                    instrument_type="ETF",
+                )
+            )
+            db.add(
+                InstrumentDailyBar(
+                    etf_code=code,
+                    trade_date=date(2026, 6, 30),
+                    open=1,
+                    high=1,
+                    low=1,
+                    close=1,
+                )
+            )
+        db.commit()
+
+    def test_drops_rows_with_open_outside_low_high(self, db_session, monkeypatch):
+        """Vendor feeds (Yahoo) occasionally report an official open outside
+        the daily [low, high] range; such rows must be dropped instead of
+        failing L2 validation for the whole batch."""
+        self._seed_two_instruments(db_session)
+        monkeypatch.setattr("app.data.pipelines.us_etf.get_redis_client", _no_redis)
+        pipeline = _make_pipeline(db_session)
+        pipeline.provider.fetch_daily_bars.return_value = pd.DataFrame()
+
+        good = _sina_bar("SPY.US")
+        dirty = _sina_bar("IEX.US")
+        dirty.loc[0, "open"] = 999.0  # open above high
+        yf_df = pd.concat([good, dirty], ignore_index=True)
+
+        with (
+            patch("app.data.pipelines.us_etf.YFinanceProvider") as mock_yf,
+            patch("app.data.pipelines.us_etf.SinaUSProvider") as mock_sina,
+        ):
+            mock_yf.return_value.fetch_daily_bars.return_value = yf_df
+            mock_sina.return_value.fetch_daily_bars.return_value = pd.DataFrame()
+            df = pipeline.extract()
+
+        assert list(df["etf_code"]) == ["SPY.US"]
+        assert df.iloc[0]["close"] == 754.0
+
+    def test_drops_rows_with_high_below_low(self, db_session, monkeypatch):
+        self._seed_two_instruments(db_session)
+        monkeypatch.setattr("app.data.pipelines.us_etf.get_redis_client", _no_redis)
+        pipeline = _make_pipeline(db_session)
+        pipeline.provider.fetch_daily_bars.return_value = pd.DataFrame()
+
+        good = _sina_bar("SPY.US")
+        dirty = _sina_bar("IEX.US")
+        dirty.loc[0, "high"] = 700.0  # high below low
+        yf_df = pd.concat([good, dirty], ignore_index=True)
+
+        with (
+            patch("app.data.pipelines.us_etf.YFinanceProvider") as mock_yf,
+            patch("app.data.pipelines.us_etf.SinaUSProvider") as mock_sina,
+        ):
+            mock_yf.return_value.fetch_daily_bars.return_value = yf_df
+            mock_sina.return_value.fetch_daily_bars.return_value = pd.DataFrame()
+            df = pipeline.extract()
+
+        assert list(df["etf_code"]) == ["SPY.US"]
+
+
+# ---------------------------------------------------------------------------
 # USDailyPipeline three-source fallback chain
 # ---------------------------------------------------------------------------
 

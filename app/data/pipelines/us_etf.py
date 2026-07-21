@@ -259,6 +259,28 @@ class USDailyPipeline(ETLPipeline):
                 dropped,
             )
 
+        # Drop rows with inconsistent OHLC from noisy vendor feeds. Yahoo
+        # occasionally reports an official open outside its own daily
+        # [low, high] range (~2% of symbols); without this guard a handful
+        # of bad rows fails L2 validation and aborts the whole batch.
+        # Mirrors the 0.1% tolerance used by the validator.
+        tol = 0.001
+        consistent = (
+            (df["high"] >= df["low"])
+            & (df["open"] >= df["low"] * (1 - tol))
+            & (df["open"] <= df["high"] * (1 + tol))
+            & (df["close"] >= df["low"] * (1 - tol))
+            & (df["close"] <= df["high"] * (1 + tol))
+        )
+        bad_rows = df[~consistent]
+        if not bad_rows.empty:
+            logger.warning(
+                "USDailyPipeline: Dropped %d rows with inconsistent OHLC: %s",
+                len(bad_rows),
+                sorted(bad_rows["etf_code"].unique().tolist()),
+            )
+            df = df[consistent]
+
         logger.info(
             "USDailyPipeline: Extracted %d rows for target date %s",
             len(df), target_date,
