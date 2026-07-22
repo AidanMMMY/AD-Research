@@ -257,6 +257,10 @@ class MacroDataService:
         stmt = stmt.order_by(MacroIndicator.period.asc()).limit(limit)
 
         rows = self.db.execute(stmt).scalars().all()
+        # Keep the MOST RECENT `limit` points (callers render the tail and
+        # compute day-over-day change from it), not the oldest ones.
+        if limit and len(rows) > limit:
+            rows = rows[-limit:]
         return {
             "code": first_row.code,
             "region": first_row.region,

@@ -259,6 +259,11 @@ class FredService:
         stmt = stmt.order_by(MacroIndicator.period.asc()).limit(limit)
 
         rows = self.db.execute(stmt).scalars().all()
+        # ``limit`` must select the MOST RECENT N points (callers render the
+        # tail of the series and compute day-over-day change from it), not
+        # the oldest N — so keep only the newest `limit` ascending rows.
+        if limit and len(rows) > limit:
+            rows = rows[-limit:]
         return {
             "code": meta.code,
             "region": region_tag,

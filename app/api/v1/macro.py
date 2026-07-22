@@ -97,11 +97,15 @@ def get_indicator_series(
     global-indices job get a chart endpoint without being added to
     the FRED registry.
     """
-    series = service.get_series(
+    # Prefer the DB-driven path: it pins the series to the SAME source as
+    # the latest observation (e.g. yfinance when that is fresher), so the
+    # day-over-day change the frontend computes never mixes two sources'
+    # value bases (FRED's broad-dollar 120.x vs yfinance DXY 101.x).
+    series = macro_service.get_series(
         code=code, start_date=start_date, end_date=end_date, limit=limit
     )
     if series is None:
-        series = macro_service.get_series(
+        series = service.get_series(
             code=code, start_date=start_date, end_date=end_date, limit=limit
         )
     if series is None:

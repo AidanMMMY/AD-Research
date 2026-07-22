@@ -23,6 +23,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useIsMobile } from '@/hooks/useBreakpoint';
 import { useChartMotion } from '@/hooks/useChartMotion';
 import { Table, Tag, Tooltip, Typography } from 'antd';
+import { ArrowUpOutlined, ArrowDownOutlined, MinusOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import PageShell from '@/components/PageShell';
 import PageHeader from '@/components/PageHeader';
@@ -166,8 +167,29 @@ interface RowVm {
   latest: number | null;
   previous: number | null;
   changePct: number | null;
+  /** Day-over-day delta in basis points — used for rate/spread series
+     where a percent change is meaningless (explodes near zero). */
+  changeBp: number | null;
   asOf: string | null;
   sparkline: number[];
+}
+
+/** Render a basis-point delta with rise/fall semantics (rate series). */
+function BpTag({ value }: { value: number }) {
+  const bp = value * 100; // pp → bp
+  const cls = bp > 0 ? 'return-tag--rise' : bp < 0 ? 'return-tag--fall' : 'return-tag--flat';
+  return (
+    <span className={`return-tag tabular-nums ${cls}`}>
+      {bp > 0 ? (
+        <ArrowUpOutlined className="return-tag__arrow" aria-label="up" />
+      ) : bp < 0 ? (
+        <ArrowDownOutlined className="return-tag__arrow" aria-label="down" />
+      ) : (
+        <MinusOutlined className="return-tag__arrow" aria-label="flat" />
+      )}
+      {`${bp > 0 ? '+' : ''}${bp.toFixed(1)}bp`}
+    </span>
+  );
 }
 
 function formatValue(value: number | null, unit: string): string {
@@ -245,8 +267,22 @@ function CategoryBlock({ title, rows, isMobile }: { title: string; rows: RowVm[]
       key: 'changePct',
       width: isMobile ? 70 : 110,
       align: 'right',
-      render: (v: number | null) =>
-        v == null ? <Text type="secondary">—</Text> : <ReturnTagPct value={v} />,
+      render: (_: number | null, row: RowVm) => {
+        // Rate / yield-spread series: percent change is meaningless (it
+        // explodes when the base crosses zero) — show basis points instead.
+        if (inferCategoryKey(row.code) === 'rate') {
+          return row.changeBp == null ? (
+            <Text type="secondary">—</Text>
+          ) : (
+            <BpTag value={row.changeBp} />
+          );
+        }
+        return row.changePct == null ? (
+          <Text type="secondary">—</Text>
+        ) : (
+          <ReturnTagPct value={row.changePct} />
+        );
+      },
     },
     {
       title: '近30日',
@@ -533,6 +569,8 @@ export default function GlobalMarkets() {
             latest?.value != null && prev != null && prev !== 0
               ? ((latest.value - prev) / prev) * 100
               : null,
+          changeBp:
+            latest?.value != null && prev != null ? latest.value - prev : null,
           asOf: lastPeriod,
           sparkline: lastN,
         };
