@@ -254,13 +254,11 @@ class MacroDataService:
             stmt = stmt.where(MacroIndicator.period >= start_date)
         if end_date:
             stmt = stmt.where(MacroIndicator.period <= end_date)
-        stmt = stmt.order_by(MacroIndicator.period.asc()).limit(limit)
+        stmt = stmt.order_by(MacroIndicator.period.desc()).limit(limit)
 
-        rows = self.db.execute(stmt).scalars().all()
-        # Keep the MOST RECENT `limit` points (callers render the tail and
-        # compute day-over-day change from it), not the oldest ones.
-        if limit and len(rows) > limit:
-            rows = rows[-limit:]
+        # Fetch the MOST RECENT `limit` points (callers render the tail and
+        # compute day-over-day change from it), then present ascending.
+        rows = list(reversed(self.db.execute(stmt).scalars().all()))
         return {
             "code": first_row.code,
             "region": first_row.region,
