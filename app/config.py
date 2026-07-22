@@ -144,6 +144,15 @@ class Settings(BaseSettings):
     # WeChat public account); see docs/dev-notes/20260704-wechat-rss-integration.md.
     wechat_rss_base_url: str = "http://localhost:4000"
     wechat_rss_feed_id: str = ""          # e.g. "MP_WXS_1234567890" (泽平宏观)
+    # Optional per-feed identity map so posts from different WeChat
+    # accounts get distinct ``source`` names instead of the shared
+    # "wechat_zeping". Format: "feed_id:slug:display_name,..." — the
+    # display name may contain Chinese but no ':' or ','. Feeds listed
+    # here are crawled in addition to ``wechat_rss_feed_id``; mapped
+    # feeds emit source "wechat_{slug}" with the display name as author
+    # fallback and extra["account_name"].
+    # Example: "MP_WXS_111:zeping:泽平宏观,MP_WXS_222:macrowatch:宏观瞭望"
+    wechat_rss_feed_map: str = ""
     wechat_rss_timeout_seconds: float = 10.0
     # AI marketing filter — set to False to disable the LLM re-classify
     # pass (the heuristic blocklist is always applied).

@@ -563,6 +563,18 @@ _WORKER_KEYWORDS: tuple[str, ...] = (
     "categorization",
     "retail",
     "full_content",
+    "cls",
+    "marketwatch",
+    "zerohedge",
+    "seekingalpha",
+    "ft_",
+    "investing",
+    "decrypt",
+    "federal_reserve",
+    "ecb",
+    "bankofengland",
+    "bbc_business",
+    "arxiv",
 )
 
 _WORKER_META: dict[str, dict[str, str]] = {
@@ -575,6 +587,18 @@ _WORKER_META: dict[str, dict[str, str]] = {
     "sentiment_low_latency_5m": {"label": "情绪低延迟处理", "schedule": "每 5 分钟"},
     "news_article_categorization_1m": {"label": "新闻事件分类", "schedule": "每 1 分钟"},
     "sentiment_retail_agg_30m": {"label": "散户讨论聚合", "schedule": "每 30 分钟"},
+    "news_cls_5m": {"label": "财联社电报", "schedule": "每 5 分钟"},
+    "news_marketwatch_10m": {"label": "MarketWatch RSS", "schedule": "每 10 分钟"},
+    "news_zerohedge_15m": {"label": "ZeroHedge RSS", "schedule": "每 15 分钟"},
+    "news_seekingalpha_10m": {"label": "Seeking Alpha RSS", "schedule": "每 10 分钟"},
+    "news_ft_15m": {"label": "Financial Times RSS", "schedule": "每 15 分钟"},
+    "news_investing_15m": {"label": "Investing.com RSS", "schedule": "每 15 分钟"},
+    "news_decrypt_15m": {"label": "Decrypt RSS", "schedule": "每 15 分钟"},
+    "news_federal_reserve_60m": {"label": "美联储新闻稿", "schedule": "每 60 分钟"},
+    "news_ecb_60m": {"label": "欧洲央行新闻稿", "schedule": "每 60 分钟"},
+    "news_bankofengland_60m": {"label": "英格兰银行新闻", "schedule": "每 60 分钟"},
+    "news_bbc_business_15m": {"label": "BBC 商业 RSS", "schedule": "每 15 分钟"},
+    "news_arxiv_qfin_360m": {"label": "arXiv 量化金融", "schedule": "每 6 小时"},
 }
 
 # Map a worker job id to the ``news_article.source`` it writes.  Only
@@ -584,6 +608,18 @@ _WORKER_JOB_TO_SOURCE: dict[str, str] = {
     "news_coindesk_5m": "coindesk",
     "news_cointelegraph_5m": "cointelegraph",
     "news_xueqiu_5m": "xueqiu",
+    "news_cls_5m": "cls",
+    "news_marketwatch_10m": "marketwatch",
+    "news_zerohedge_15m": "zerohedge",
+    "news_seekingalpha_10m": "seekingalpha",
+    "news_ft_15m": "ft",
+    "news_investing_15m": "investing",
+    "news_decrypt_15m": "decrypt",
+    "news_federal_reserve_60m": "federal_reserve",
+    "news_ecb_60m": "ecb",
+    "news_bankofengland_60m": "bankofengland",
+    "news_bbc_business_15m": "bbc_business",
+    "news_arxiv_qfin_360m": "arxiv_qfin",
 }
 
 
@@ -662,6 +698,18 @@ _NEWS_SOURCES: list[str] = [
     "xueqiu",
     "coindesk",
     "cointelegraph",
+    "cls",
+    "marketwatch",
+    "zerohedge",
+    "seekingalpha",
+    "ft",
+    "investing",
+    "decrypt",
+    "federal_reserve",
+    "ecb",
+    "bankofengland",
+    "bbc_business",
+    "arxiv_qfin",
 ]
 
 # Map each NewsArticle source to the scheduler job_id (defined in
@@ -678,6 +726,18 @@ _SOURCE_TO_JOB: dict[str, str] = {
     "xueqiu": "news_xueqiu_5m",
     "coindesk": "news_coindesk_5m",
     "cointelegraph": "news_cointelegraph_5m",
+    "cls": "news_cls_5m",
+    "marketwatch": "news_marketwatch_10m",
+    "zerohedge": "news_zerohedge_15m",
+    "seekingalpha": "news_seekingalpha_10m",
+    "ft": "news_ft_15m",
+    "investing": "news_investing_15m",
+    "decrypt": "news_decrypt_15m",
+    "federal_reserve": "news_federal_reserve_60m",
+    "ecb": "news_ecb_60m",
+    "bankofengland": "news_bankofengland_60m",
+    "bbc_business": "news_bbc_business_15m",
+    "arxiv_qfin": "news_arxiv_qfin_360m",
 }
 
 

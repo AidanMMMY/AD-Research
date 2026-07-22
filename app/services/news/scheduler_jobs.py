@@ -261,6 +261,56 @@ def run_sina_crawl() -> dict[str, int]:
 
 # ── WeChat (wewe-rss) ──
 
+def _build_marketing_filter(source: str, *, english: bool = False) -> Any | None:
+    """Build a :class:`MarketingContentFilter`, fail-open to ``None``.
+
+    A construction failure must never block the crawl — ``None`` tells
+    :func:`_apply_marketing_filter` to pass every article through.
+    ``english=True`` selects the English system-prompt variant for
+    English-language self-media sources (zerohedge, decrypt).
+    """
+    try:
+        from app.services.news.filters.marketing_filter import (
+            DEFAULT_SYSTEM_PROMPT_EN,
+            MarketingContentFilter,
+        )
+
+        return MarketingContentFilter(
+            source=source,
+            system_prompt=DEFAULT_SYSTEM_PROMPT_EN if english else None,
+        )
+    except Exception as exc:  # pragma: no cover - defensive
+        logger.warning(
+            "%s marketing filter init failed, passing through: %s", source, exc
+        )
+        return None
+
+
+def _apply_marketing_filter(articles: list, marketing_filter: Any | None) -> tuple[list, int]:
+    """Run the two-step marketing filter over a batch of articles.
+
+    Returns ``(kept, rejected_count)``. The verdict is stashed in
+    ``extra["marketing_verdict"]`` / ``extra["marketing_confidence"]``
+    for downstream debugging / health-page telemetry. A ``None`` filter
+    (construction failed) passes everything through.
+    """
+    kept: list = []
+    rejected = 0
+    for art in articles:
+        if marketing_filter is None:
+            kept.append(art)
+            continue
+        verdict = marketing_filter.classify(art.title, art.body)
+        if verdict.is_knowledge:
+            art.extra = dict(art.extra or {})
+            art.extra["marketing_verdict"] = verdict.reason
+            art.extra["marketing_confidence"] = verdict.confidence
+            kept.append(art)
+        else:
+            rejected += 1
+    return kept, rejected
+
+
 @_record_etl("news_wechat_zeping_15m")
 def run_wechat_zeping_crawl() -> dict[str, int]:
     """Poll wewe-rss for the configured WeChat accounts.
@@ -269,11 +319,13 @@ def run_wechat_zeping_crawl() -> dict[str, int]:
     ``fetched=0, written=0``); the ``_record_etl`` wrapper still
     records the run so the health page shows the failure mode. The
     marketing filter runs synchronously inside this tick — it caches
-    DeepSeek verdicts for 24h so a 15-minute poll doesn't repeatedly
-    bill the LLM for the same posts.
+    LLM verdicts for 24h so a 15-minute poll doesn't repeatedly bill
+    the LLM for the same posts. The filter classifies per article, so
+    posts from multiple feeds (``wechat_rss_feed_map``) with distinct
+    per-feed source names are all covered.
     """
+    from app.services.news.filters import WechatMarketingFilter
     from app.services.news.sources.wechat_zeping import WechatZepingCrawler
-    from app.services.news.filters.wechat_marketing_filter import WechatMarketingFilter
 
     async def _go():
         crawler = WechatZepingCrawler()
@@ -302,22 +354,7 @@ def run_wechat_zeping_crawl() -> dict[str, int]:
         logger.warning("wechat marketing filter init failed, passing through: %s", exc)
         marketing_filter = None
 
-    filtered: list = []
-    rejected = 0
-    for art in articles:
-        if marketing_filter is None:
-            filtered.append(art)
-            continue
-        verdict = marketing_filter.classify(art.title, art.body)
-        if verdict.is_knowledge:
-            # Stash the verdict in extra for downstream debugging /
-            # health-page telemetry.
-            art.extra = dict(art.extra or {})
-            art.extra["marketing_verdict"] = verdict.reason
-            art.extra["marketing_confidence"] = verdict.confidence
-            filtered.append(art)
-        else:
-            rejected += 1
+    filtered, rejected = _apply_marketing_filter(articles, marketing_filter)
 
     written = _write_to_db(filtered)
     return {
@@ -454,6 +491,230 @@ def run_stats_gov_crawl() -> dict[str, int]:
         # here recorded a fake success and hid source outages.
         logger.exception("stats_gov crawl failed")
         raise
+
+
+# ── International & official sources (added 2026-07-21) ──
+
+@_record_etl("news_cls_5m")
+def run_cls_crawl() -> dict[str, int]:
+    from app.services.news.sources.cls import ClsCrawler
+
+    async def _go():
+        async with ClsCrawler() as c:
+            return await c.crawl()
+
+    try:
+        articles = _run_async(_go())
+        written = _write_to_db(articles)
+        return {"fetched": len(articles), "written": written}
+    except Exception as exc:
+        logger.exception("cls crawl failed: %s", exc)
+        return {"fetched": 0, "written": 0}
+
+
+@_record_etl("news_marketwatch_10m")
+def run_marketwatch_crawl() -> dict[str, int]:
+    from app.services.news.sources.rss_simple import MarketWatchCrawler
+
+    async def _go():
+        async with MarketWatchCrawler() as c:
+            return await c.crawl()
+
+    try:
+        articles = _run_async(_go())
+        written = _write_to_db(articles)
+        return {"fetched": len(articles), "written": written}
+    except Exception as exc:
+        logger.exception("marketwatch crawl failed: %s", exc)
+        return {"fetched": 0, "written": 0}
+
+
+@_record_etl("news_zerohedge_15m")
+def run_zerohedge_crawl() -> dict[str, int]:
+    from app.services.news.sources.rss_simple import ZeroHedgeCrawler
+
+    async def _go():
+        async with ZeroHedgeCrawler() as c:
+            return await c.crawl()
+
+    try:
+        articles = _run_async(_go())
+    except Exception as exc:
+        logger.exception("zerohedge crawl failed: %s", exc)
+        return {"fetched": 0, "written": 0}
+
+    # ZeroHedge is blog-style self-media — run the same marketing
+    # filter as the WeChat job, with the English prompt variant.
+    marketing_filter = _build_marketing_filter("zerohedge", english=True)
+    filtered, rejected = _apply_marketing_filter(articles, marketing_filter)
+    written = _write_to_db(filtered)
+    return {
+        "fetched": len(articles),
+        "written": written,
+        "rejected_marketing": rejected,
+    }
+
+
+@_record_etl("news_seekingalpha_10m")
+def run_seekingalpha_crawl() -> dict[str, int]:
+    from app.services.news.sources.rss_simple import SeekingAlphaCrawler
+
+    async def _go():
+        async with SeekingAlphaCrawler() as c:
+            return await c.crawl()
+
+    try:
+        articles = _run_async(_go())
+        written = _write_to_db(articles)
+        return {"fetched": len(articles), "written": written}
+    except Exception as exc:
+        logger.exception("seekingalpha crawl failed: %s", exc)
+        return {"fetched": 0, "written": 0}
+
+
+@_record_etl("news_ft_15m")
+def run_ft_crawl() -> dict[str, int]:
+    from app.services.news.sources.rss_simple import FtCrawler
+
+    async def _go():
+        async with FtCrawler() as c:
+            return await c.crawl()
+
+    try:
+        articles = _run_async(_go())
+        written = _write_to_db(articles)
+        return {"fetched": len(articles), "written": written}
+    except Exception as exc:
+        logger.exception("ft crawl failed: %s", exc)
+        return {"fetched": 0, "written": 0}
+
+
+@_record_etl("news_investing_15m")
+def run_investing_crawl() -> dict[str, int]:
+    from app.services.news.sources.rss_simple import InvestingCrawler
+
+    async def _go():
+        async with InvestingCrawler() as c:
+            return await c.crawl()
+
+    try:
+        articles = _run_async(_go())
+        written = _write_to_db(articles)
+        return {"fetched": len(articles), "written": written}
+    except Exception as exc:
+        logger.exception("investing crawl failed: %s", exc)
+        return {"fetched": 0, "written": 0}
+
+
+@_record_etl("news_decrypt_15m")
+def run_decrypt_crawl() -> dict[str, int]:
+    from app.services.news.sources.rss_simple import DecryptCrawler
+
+    async def _go():
+        async with DecryptCrawler() as c:
+            return await c.crawl()
+
+    try:
+        articles = _run_async(_go())
+    except Exception as exc:
+        logger.exception("decrypt crawl failed: %s", exc)
+        return {"fetched": 0, "written": 0}
+
+    # Decrypt is blog-style crypto media — run the same marketing
+    # filter as the WeChat job, with the English prompt variant.
+    marketing_filter = _build_marketing_filter("decrypt", english=True)
+    filtered, rejected = _apply_marketing_filter(articles, marketing_filter)
+    written = _write_to_db(filtered)
+    return {
+        "fetched": len(articles),
+        "written": written,
+        "rejected_marketing": rejected,
+    }
+
+
+@_record_etl("news_federal_reserve_60m")
+def run_federal_reserve_crawl() -> dict[str, int]:
+    from app.services.news.sources.rss_simple import FederalReserveCrawler
+
+    async def _go():
+        async with FederalReserveCrawler() as c:
+            return await c.crawl()
+
+    try:
+        articles = _run_async(_go())
+        written = _write_to_db(articles)
+        return {"fetched": len(articles), "written": written}
+    except Exception as exc:
+        logger.exception("federal_reserve crawl failed: %s", exc)
+        return {"fetched": 0, "written": 0}
+
+
+@_record_etl("news_ecb_60m")
+def run_ecb_crawl() -> dict[str, int]:
+    from app.services.news.sources.rss_simple import EcbCrawler
+
+    async def _go():
+        async with EcbCrawler() as c:
+            return await c.crawl()
+
+    try:
+        articles = _run_async(_go())
+        written = _write_to_db(articles)
+        return {"fetched": len(articles), "written": written}
+    except Exception as exc:
+        logger.exception("ecb crawl failed: %s", exc)
+        return {"fetched": 0, "written": 0}
+
+
+@_record_etl("news_bankofengland_60m")
+def run_bankofengland_crawl() -> dict[str, int]:
+    from app.services.news.sources.rss_simple import BankOfEnglandCrawler
+
+    async def _go():
+        async with BankOfEnglandCrawler() as c:
+            return await c.crawl()
+
+    try:
+        articles = _run_async(_go())
+        written = _write_to_db(articles)
+        return {"fetched": len(articles), "written": written}
+    except Exception as exc:
+        logger.exception("bankofengland crawl failed: %s", exc)
+        return {"fetched": 0, "written": 0}
+
+
+@_record_etl("news_bbc_business_15m")
+def run_bbc_business_crawl() -> dict[str, int]:
+    from app.services.news.sources.rss_simple import BbcBusinessCrawler
+
+    async def _go():
+        async with BbcBusinessCrawler() as c:
+            return await c.crawl()
+
+    try:
+        articles = _run_async(_go())
+        written = _write_to_db(articles)
+        return {"fetched": len(articles), "written": written}
+    except Exception as exc:
+        logger.exception("bbc_business crawl failed: %s", exc)
+        return {"fetched": 0, "written": 0}
+
+
+@_record_etl("news_arxiv_qfin_360m")
+def run_arxiv_qfin_crawl() -> dict[str, int]:
+    from app.services.news.sources.rss_simple import ArxivQfinCrawler
+
+    async def _go():
+        async with ArxivQfinCrawler() as c:
+            return await c.crawl()
+
+    try:
+        articles = _run_async(_go())
+        written = _write_to_db(articles)
+        return {"fetched": len(articles), "written": written}
+    except Exception as exc:
+        logger.exception("arxiv_qfin crawl failed: %s", exc)
+        return {"fetched": 0, "written": 0}
 
 
 # ── US ──

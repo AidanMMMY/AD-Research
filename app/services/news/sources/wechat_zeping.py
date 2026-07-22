@@ -49,6 +49,7 @@ from __future__ import annotations
 
 import logging
 import re
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any, Iterable
 
@@ -62,6 +63,45 @@ logger = logging.getLogger(__name__)
 
 # wewe-rss response is RSS-JSON-ish: ``items`` holds the post array.
 _DEFAULT_FEED_PATH = "/feeds/{feed_id}.json"
+
+
+@dataclass(frozen=True)
+class FeedAccount:
+    """Display identity for a mapped wewe-rss feed.
+
+    ``slug`` becomes the ``wechat_{slug}`` source name; ``display_name``
+    is the human-readable account name used as author fallback and
+    ``extra["account_name"]``.
+    """
+
+    slug: str
+    display_name: str
+
+
+def parse_feed_map(value: str | None) -> dict[str, FeedAccount]:
+    """Parse the ``feed_id:slug:display_name,...`` feed-map setting.
+
+    Malformed entries (wrong field count, empty fields) are skipped
+    with a WARNING so a config typo never breaks the whole crawl.
+    """
+    out: dict[str, FeedAccount] = {}
+    if not value:
+        return out
+    for entry in value.split(","):
+        entry = entry.strip()
+        if not entry:
+            continue
+        parts = [p.strip() for p in entry.split(":")]
+        if len(parts) != 3 or not all(parts):
+            logger.warning(
+                "WeChat feed map: skipping malformed entry %r "
+                "(expected feed_id:slug:display_name)",
+                entry,
+            )
+            continue
+        feed_id, slug, display_name = parts
+        out[feed_id] = FeedAccount(slug=slug, display_name=display_name)
+    return out
 
 
 def _build_feed_url(base_url: str, feed_id: str, limit: int) -> str:
@@ -86,6 +126,12 @@ class WechatZepingCrawler:
         Override the ``WECHAT_RSS_FEED_ID`` setting. Multiple feed ids
         (one per WeChat account) can be passed either as a comma-
         separated string or an iterable.
+    feed_map:
+        Override the ``WECHAT_RSS_FEED_MAP`` setting — either the raw
+        ``"feed_id:slug:display_name,..."`` string or an already-parsed
+        ``dict[str, FeedAccount]``. Mapped feeds are crawled in
+        addition to ``feed_id`` and emit per-feed source names
+        (``wechat_{slug}``) instead of the shared ``wechat_zeping``.
     timeout_seconds:
         Override the per-request timeout. Default uses the setting.
     client:
@@ -102,14 +148,24 @@ class WechatZepingCrawler:
         *,
         base_url: str | None = None,
         feed_id: str | Iterable[str] | None = None,
+        feed_map: str | dict[str, FeedAccount] | None = None,
         timeout_seconds: float | None = None,
         client: httpx.AsyncClient | None = None,
     ) -> None:
         settings = get_settings()
         self._base_url = (base_url or settings.wechat_rss_base_url or "").rstrip("/")
-        self._feed_ids: list[str] = self._normalize_feed_ids(
+        if feed_map is None:
+            self._feed_map = parse_feed_map(settings.wechat_rss_feed_map)
+        elif isinstance(feed_map, str):
+            self._feed_map = parse_feed_map(feed_map)
+        else:
+            self._feed_map = dict(feed_map)
+        # Feed list = configured feed ids ∪ feed-map keys (order:
+        # explicit feed ids first, then mapped-only feeds).
+        feed_ids = self._normalize_feed_ids(
             feed_id if feed_id is not None else settings.wechat_rss_feed_id
         )
+        self._feed_ids: list[str] = list(dict.fromkeys([*feed_ids, *self._feed_map.keys()]))
         self._timeout = float(
             timeout_seconds if timeout_seconds is not None
             else settings.wechat_rss_timeout_seconds
@@ -137,8 +193,9 @@ class WechatZepingCrawler:
             return []
         if not self._feed_ids:
             logger.debug(
-                "WeChat crawler: WECHAT_RSS_FEED_ID is empty; "
-                "subscribe to an account in wewe-rss to enable."
+                "WeChat crawler: neither WECHAT_RSS_FEED_ID nor "
+                "WECHAT_RSS_FEED_MAP is configured; subscribe to an "
+                "account in wewe-rss to enable."
             )
             return []
 
@@ -218,11 +275,12 @@ class WechatZepingCrawler:
         items = payload.get("items")
         if not isinstance(items, list):
             return []
+        account = self._feed_map.get(feed_id)
         out: list[RawArticle] = []
         for item in items:
             if not isinstance(item, dict):
                 continue
-            art = _item_to_raw_article(item, feed_id=feed_id)
+            art = _item_to_raw_article(item, feed_id=feed_id, account=account)
             if art is not None:
                 out.append(art)
         return out
@@ -326,13 +384,21 @@ def _pick_body(item: dict[str, Any]) -> tuple[str | None, str | None]:
 
 
 def _item_to_raw_article(
-    item: dict[str, Any], *, feed_id: str
+    item: dict[str, Any],
+    *,
+    feed_id: str,
+    account: FeedAccount | None = None,
 ) -> RawArticle | None:
     """Map a wewe-rss item dict into a :class:`RawArticle`.
 
     Returns ``None`` when the item is missing the required fields
     (title / url). ``date_published`` falls back to
     ``date_modified``, then to ``datetime.now(UTC)``.
+
+    When ``account`` (from the feed map) is given, the article gets a
+    per-feed source name ``wechat_{slug}``, the display name as author
+    fallback, and ``extra["account_name"]``. Unmapped feeds keep the
+    historical ``wechat_zeping`` source untouched.
     """
     title = (item.get("title") or "").strip()
     url = (item.get("url") or "").strip()
@@ -353,17 +419,26 @@ def _item_to_raw_article(
     body_text, body_html = _pick_body(item)
     author = _coerce_authors(item.get("authors"))
 
+    if account is not None:
+        source = f"wechat_{account.slug}"
+        if not author:
+            author = account.display_name
+    else:
+        source = "wechat_zeping"
+
     extra: dict[str, Any] = {
         "feed_id": feed_id,
         "image": item.get("image"),
     }
+    if account is not None:
+        extra["account_name"] = account.display_name
     # If description is empty but content_html is rich, surface the html
     # so the normalizer can build a non-empty summary.
     if not body_text and body_html:
         body_text = _first_paragraph_from_html(body_html)
 
     return RawArticle(
-        source="wechat_zeping",
+        source=source,
         source_id=source_id[:512],  # column is String(512) on NewsArticle
         url=url[:1000],
         title=title[:1000],

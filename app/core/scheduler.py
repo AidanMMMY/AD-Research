@@ -1724,6 +1724,11 @@ def init_scheduler():
             run_yahoo_crawl, run_cnbc_crawl, run_sec_edgar_crawl,
             run_reddit_crawl,
             run_coindesk_crawl, run_cointelegraph_crawl,
+            run_cls_crawl, run_marketwatch_crawl, run_zerohedge_crawl,
+            run_seekingalpha_crawl, run_ft_crawl, run_investing_crawl,
+            run_decrypt_crawl, run_federal_reserve_crawl, run_ecb_crawl,
+            run_bankofengland_crawl, run_bbc_business_crawl,
+            run_arxiv_qfin_crawl,
         )
         scheduler.add_job(
             run_cninfo_crawl,
@@ -1866,6 +1871,115 @@ def init_scheduler():
             trigger=IntervalTrigger(minutes=30),
             id="news_stats_gov_30m",
             name="国家统计局数据发布",
+            replace_existing=True,
+            max_instances=1,
+            coalesce=True,
+        )
+        # International & official sources (added 2026-07-21)
+        scheduler.add_job(
+            run_cls_crawl,
+            trigger=IntervalTrigger(minutes=5),
+            id="news_cls_5m",
+            name="财联社电报",
+            replace_existing=True,
+            max_instances=1,
+            coalesce=True,
+        )
+        scheduler.add_job(
+            run_marketwatch_crawl,
+            trigger=IntervalTrigger(minutes=10),
+            id="news_marketwatch_10m",
+            name="MarketWatch RSS",
+            replace_existing=True,
+            max_instances=1,
+            coalesce=True,
+        )
+        scheduler.add_job(
+            run_zerohedge_crawl,
+            trigger=IntervalTrigger(minutes=15),
+            id="news_zerohedge_15m",
+            name="ZeroHedge RSS",
+            replace_existing=True,
+            max_instances=1,
+            coalesce=True,
+        )
+        scheduler.add_job(
+            run_seekingalpha_crawl,
+            trigger=IntervalTrigger(minutes=10),
+            id="news_seekingalpha_10m",
+            name="Seeking Alpha RSS",
+            replace_existing=True,
+            max_instances=1,
+            coalesce=True,
+        )
+        scheduler.add_job(
+            run_ft_crawl,
+            trigger=IntervalTrigger(minutes=15),
+            id="news_ft_15m",
+            name="Financial Times RSS",
+            replace_existing=True,
+            max_instances=1,
+            coalesce=True,
+        )
+        scheduler.add_job(
+            run_investing_crawl,
+            trigger=IntervalTrigger(minutes=15),
+            id="news_investing_15m",
+            name="Investing.com RSS",
+            replace_existing=True,
+            max_instances=1,
+            coalesce=True,
+        )
+        scheduler.add_job(
+            run_decrypt_crawl,
+            trigger=IntervalTrigger(minutes=15),
+            id="news_decrypt_15m",
+            name="Decrypt RSS",
+            replace_existing=True,
+            max_instances=1,
+            coalesce=True,
+        )
+        scheduler.add_job(
+            run_federal_reserve_crawl,
+            trigger=IntervalTrigger(minutes=60),
+            id="news_federal_reserve_60m",
+            name="美联储新闻稿",
+            replace_existing=True,
+            max_instances=1,
+            coalesce=True,
+        )
+        scheduler.add_job(
+            run_ecb_crawl,
+            trigger=IntervalTrigger(minutes=60),
+            id="news_ecb_60m",
+            name="欧洲央行新闻稿",
+            replace_existing=True,
+            max_instances=1,
+            coalesce=True,
+        )
+        scheduler.add_job(
+            run_bankofengland_crawl,
+            trigger=IntervalTrigger(minutes=60),
+            id="news_bankofengland_60m",
+            name="英格兰银行新闻",
+            replace_existing=True,
+            max_instances=1,
+            coalesce=True,
+        )
+        scheduler.add_job(
+            run_bbc_business_crawl,
+            trigger=IntervalTrigger(minutes=15),
+            id="news_bbc_business_15m",
+            name="BBC 商业 RSS",
+            replace_existing=True,
+            max_instances=1,
+            coalesce=True,
+        )
+        scheduler.add_job(
+            run_arxiv_qfin_crawl,
+            trigger=IntervalTrigger(minutes=360),
+            id="news_arxiv_qfin_360m",
+            name="arXiv 量化金融",
             replace_existing=True,
             max_instances=1,
             coalesce=True,

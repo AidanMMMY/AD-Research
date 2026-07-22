@@ -561,6 +561,18 @@ class TestNewsApi:
             "xueqiu",
             "coindesk",
             "cointelegraph",
+            "cls",
+            "marketwatch",
+            "zerohedge",
+            "seekingalpha",
+            "ft",
+            "investing",
+            "decrypt",
+            "federal_reserve",
+            "ecb",
+            "bankofengland",
+            "bbc_business",
+            "arxiv_qfin",
         }
         cninfo_row = next(s for s in payload["sources"] if s["source"] == "cninfo")
         assert cninfo_row["total"] == 1
