@@ -55,7 +55,11 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+          # 2026-07-23 fix: setup-python@v5 在 cache='poetry' 但缺少
+          # cache-dependency-path 时会 fast-fail（step 0s 完成 conclusion=failure）。
+          # 显式指向 poetry.lock 让 cache key 可计算。
           cache: 'poetry'
+          cache-dependency-path: 'poetry.lock'
 
       - name: Install poetry
         run: |

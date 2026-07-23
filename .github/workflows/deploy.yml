@@ -104,6 +104,12 @@ jobs:
         if: ${{ inputs.dry_run != 'true' }}
         env:
           FORCE: 1
+        # 2026-07-23 fix：加 timeout-minutes: 15 —— 否则 GitHub Actions 默认 step 无
+        # 超时只能等 job-level 45min 截断；#316/#317 都是 step 5 跑 > 20 min 才结束，
+        # 与 job-level timeout 一起切掉的是 runner host（不是 update.sh）的真实故障。
+        # 这是 deploy.yml 三个连续失败 run 的最低成本修复；后续若 step 5 需要 > 15 min
+        # 应该改成 background + cancel mechanism 而不是放宽超时。
+        timeout-minutes: 15
         # 第一次失败不立刻终止 workflow，让 retry step 有机会触发
         continue-on-error: true
         run: |
@@ -123,6 +129,7 @@ jobs:
         if: ${{ inputs.dry_run != 'true' && steps.update_sh.outcome == 'failure' }}
         env:
           FORCE: 1
+        timeout-minutes: 15
         # 最终重试：失败硬退出，不再继续后续 step（健康检查、迁移、通知）
         continue-on-error: false
         run: |
@@ -132,7 +139,7 @@ jobs:
           cd "${PROJECT_ROOT}/deploy/aliyun-ecs"
 
           EXTRA_ARGS=""
-          if [ "${{ inputs.skip_migrations }}" = "true" ]; then
+          if [ "${{ inputs.skip_migrations }}" = "true" ]]; then
             EXTRA_ARGS="--no-db"
           fi
 
