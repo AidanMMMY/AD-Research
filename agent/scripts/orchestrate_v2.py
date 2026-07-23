@@ -121,12 +121,41 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Print the planned worker sequence + exit without running.",
     )
+    # 2026-07-23: silent-failure watchdog hook. If the failed-worker count
+    # is >= this threshold we POST an aggregate to the backend so it shows
+    # up in NotificationLog + /admin/etl-status. See:
+    #   docs/dev-notes/20260720-ecs-ops-audit-and-fixes.md (P1 "采集故障无告警通道")
+    # Default 2 — any single-worker outage isn't worth alerting on, but
+    # 2+ in the same tick is the canary we've been missing for 16h+ incidents.
+    p.add_argument(
+        "--alert-threshold",
+        type=int,
+        default=2,
+        help="Min number of failed workers in a single run that triggers the watchdog alert (default: 2).",
+    )
+    p.add_argument(
+        "--alert-backend-url",
+        default=os.getenv("ORCHESTRATE_ALERT_URL", "http://alloyresearch-backend:8000/api/v1/internal/orchestrate-alert"),
+        help="Backend endpoint the watchdog posts to. Default reads ORCHESTRATE_ALERT_URL.",
+    )
+    p.add_argument(
+        "--alert-token",
+        default=os.getenv("ORCHESTRATE_ALERT_TOKEN", "") or os.getenv("INTERNAL_API_TOKEN", ""),
+        help="Bearer token for the watchdog endpoint. Reads ORCHESTRATE_ALERT_TOKEN first, then INTERNAL_API_TOKEN.",
+    )
+    p.add_argument(
+        "--alert-disable",
+        action="store_true",
+        help="Skip the watchdog POST even if the threshold is exceeded (useful for local debugging).",
+    )
     args = p.parse_args()
 
     if args.schedule and args.workers:
         p.error("--schedule and --workers are mutually exclusive.")
     if args.stagger_min < 0 or args.stagger_max < args.stagger_min:
         p.error("--stagger-min must be >= 0 and --stagger-max must be >= --stagger-min.")
+    if args.alert_threshold < 1:
+        p.error("--alert-threshold must be >= 1.")
 
     return args
 
@@ -352,7 +381,96 @@ def main() -> int:
     logger.info("=== aggregate written to %s ===", out_path)
     logger.info("totals.items=%s  totals.exit_codes=%s  duration=%ss",
                 totals_items, exit_codes, duration_total)
+
+    # ---------------------------------------------------------------- #
+    # 2026-07-23: silent-failure watchdog (P1 from 20260720 ECS audit).
+    # ---------------------------------------------------------------- #
+    failed_workers = _failed_workers(results)
+    if failed_workers:
+        logger.warning(
+            "watchdog: %d workers failed (threshold=%d) — considering alert",
+            len(failed_workers), args.alert_threshold,
+        )
+    if not args.alert_disable:
+        try:
+            _post_watchdog_alert(
+                logger=logger,
+                url=args.alert_backend_url,
+                token=args.alert_token,
+                threshold=args.alert_threshold,
+                schedule=args.schedule or "explicit",
+                duration_seconds=duration_total,
+                failed=failed_workers,
+            )
+        except Exception as exc:  # noqa: BLE001 — watchdog must never break the cron
+            logger.error("watchdog POST failed (cron continues): %s", exc)
+    else:
+        logger.info("watchdog: disabled by --alert-disable")
+
     return 0
+
+
+def _failed_workers(results: dict[str, dict[str, Any]]) -> list[dict[str, Any]]:
+    """Return worker result dicts whose exit was non-zero or contained an error."""
+    out: list[dict[str, Any]] = []
+    for name, r in results.items():
+        if not isinstance(r, dict):
+            continue
+        rc = int(r.get("exit_code", 0))
+        if rc != 0 or r.get("error"):
+            out.append({
+                "name": name,
+                "exit_code": rc,
+                "items": int(r.get("items", 0) or 0),
+                "duration": float(r.get("duration", 0.0) or 0.0),
+                "error": str(r.get("error") or "")[:300] or None,
+            })
+    return out
+
+
+def _post_watchdog_alert(
+    logger: logging.Logger,
+    url: str,
+    token: str,
+    threshold: int,
+    schedule: str,
+    duration_seconds: float,
+    failed: list[dict[str, Any]],
+) -> None:
+    """POST aggregate to backend; never raises."""
+    import socket
+    payload: dict[str, Any] = {
+        "failed_workers": failed,
+        "schedule": schedule,
+        "total_duration_seconds": duration_seconds,
+        "host": socket.gethostname(),
+        "threshold": threshold,
+    }
+    headers = {"Content-Type": "application/json"}
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
+    else:
+        # Without a token we'd either fail with 403 (saving nothing) or
+        # skip entirely (silent). Skip with a clear log line.
+        logger.warning(
+            "watchdog: INTERNAL_API_TOKEN unset — skipping backend POST. "
+            "Set the env var on the cron host to enable alerts."
+        )
+        return
+    try:
+        resp = requests.post(url, json=payload, headers=headers, timeout=10)
+    except requests.RequestException as exc:
+        logger.error("watchdog: transport error to %s: %s", url, exc)
+        return
+    if 200 <= resp.status_code < 300:
+        logger.info(
+            "watchdog: alert accepted  status=%s  failed=%d  body=%s",
+            resp.status_code, len(failed), resp.text[:200],
+        )
+        return
+    logger.error(
+        "watchdog: alert rejected  status=%s  body=%s", resp.status_code, resp.text[:300]
+    )
 
 
 if __name__ == "__main__":

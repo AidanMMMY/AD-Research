@@ -32,6 +32,7 @@ from app.api.v1 import (
     fund_flow,
     futures,
     indicators,
+    internal,
     live_trading,
     listing_events,
     macro,
@@ -329,6 +330,13 @@ app.include_router(
     news.router,
     prefix=f"{settings.api_v1_prefix}/news",
     tags=["News"],
+)
+# Internal/trusted-cron endpoints (machine-to-machine; not for user-auth).
+# These live under /api/v1/internal/* and require INTERNAL_API_TOKEN.
+app.include_router(
+    internal.router,
+    prefix=f"{settings.api_v1_prefix}/internal",
+    tags=["Internal"],
 )
 
 # Serve frontend static files with cache-control headers

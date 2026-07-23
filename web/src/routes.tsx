@@ -5,8 +5,7 @@ const Login = lazy(() => import('./pages/Login'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const InstrumentList = lazy(() => import('./pages/InstrumentList'));
 const InstrumentDetail = lazy(() => import('./pages/InstrumentDetail'));
-const StocksList = lazy(() => import('./pages/StocksList'));
-const StockDetail = lazy(() => import('./pages/StockDetail'));
+// 2026-07-23: /stocks 永久重定向到 /instruments；保留文件但路由不再挂载。
 const Screen = lazy(() => import('./pages/Screen'));
 const PoolList = lazy(() => import('./pages/PoolList'));
 const PoolDetail = lazy(() => import('./pages/PoolDetail'));
@@ -109,8 +108,9 @@ export const routes: RouteConfig[] = [
   { path: '/etfs/holdings-history', element: wrap(EtfHoldingsHistory), auth: true, menu: { name: 'ETF 持仓', icon: 'FundOutlined', group: 'research' } },
   { path: '/etfs/:code/holdings-history', element: wrap(EtfHoldingsHistory), auth: true },
   // ---- 个股（合并到标的列表，通过 instrument_type=STOCK 筛选） ----
-  { path: '/stocks', element: wrap(StocksList), auth: true },
-  { path: '/stocks/:code', element: wrap(StockDetail), auth: true },
+  // 2026-07-23: 永久重定向到 /instruments，保留 :code 形态
+  { path: '/stocks', element: <Navigate to="/instruments?type=stock" replace />, auth: true },
+  { path: '/stocks/:code', element: <Navigate to="/instruments/:code" replace />, auth: true },
   // === 行情与市场 ===
   { path: '/sector-rotation', element: wrap(SectorRotation), auth: true, menu: { name: '板块轮动', icon: 'BarChartOutlined', group: 'market' } },
   { path: '/correlation', element: wrap(CorrelationAnalysis), auth: true, menu: { name: '相关性分析', icon: 'ApartmentOutlined', group: 'market' } },

@@ -767,39 +767,6 @@
   }
 }
 
-/* ---- ContentCard ---- */
-.content-card {
-  border-radius: var(--card-radius) !important;
-  background: var(--card-bg) !important;
-  border-color: var(--card-border) !important;
-  box-shadow: var(--shadow-card) !important;
-  transition: box-shadow var(--transition-fast);
-}
-
-.content-card:hover {
-  box-shadow: var(--shadow-card-hover) !important;
-}
-
-.content-card .ant-card-head {
-  padding: var(--space-4) var(--space-5) !important;
-  border-bottom-color: var(--border-default) !important;
-}
-
-.content-card .ant-card-body {
-  padding: var(--space-4) var(--space-5) !important;
-}
-
-.content-card + .content-card {
-  margin-top: var(--space-card-gap);
-}
-
-@media (max-width: 767px) {
-  .content-card .ant-card-head,
-  .content-card .ant-card-body {
-    padding: var(--space-3) var(--space-4) !important;
-  }
-}
-
 /* ---- EmptyState ---- */
 .empty-state {
   display: flex;

@@ -1,0 +1,91 @@
+name: Backend CI
+
+# Backend pytest workflow (added 2026-07-23).
+#
+# Goal
+# ----
+# The 14-day audit logs flagged that the repo has 923 pytest cases but
+# *no CI gate* — the next deployment was always at risk of re-breaking
+# tests because they were never validated against the trunk.  This workflow
+# runs the fast unit + service-tier suite on every push to main and on
+# every PR targeting app/**, alembic/**, scripts/** or pyproject / poetry
+# lockfiles.  ~3 minutes today; we cap it at 15 min for headroom.
+#
+# Scope
+# -----
+# * in-process service tests under app/tests/** — uses SQLite in-memory
+#   per conftest.py, no Postgres dependency.
+# * excludes app/tests/e2e/** (those require the live API + DB).
+# * does NOT lint (ruff is local-precommit-only today); that stays
+#   out of CI until we add a ruff workflow.
+
+on:
+  pull_request:
+    paths:
+      - 'app/**'
+      - 'alembic/**'
+      - 'scripts/**'
+      - 'pyproject.toml'
+      - 'poetry.lock'
+      - '.github/workflows/backend-ci.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'app/**'
+      - 'alembic/**'
+      - 'scripts/**'
+      - 'pyproject.toml'
+      - 'poetry.lock'
+      - '.github/workflows/backend-ci.yml'
+
+jobs:
+  pytest:
+    name: Backend pytest
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: ./
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'poetry'
+
+      - name: Install poetry
+        run: |
+          python -m pip install --upgrade pip
+          pip install "poetry==1.8.4"
+
+      - name: Install dependencies
+        # Use the dev group only — keeping the runtime image tight is
+        # not in scope for CI; we just need pytest + sqlalchemy + the
+        # full transitive dependency tree that app/* import chain uses.
+        run: poetry install --with dev
+
+      - name: Run pytest
+        env:
+          # Force UTC for any test touching now(); keeps CI logs deterministic.
+          TZ: UTC
+          PYTHONHASHSEED: '0'
+        run: |
+          poetry run pytest -q \
+            --deselect 'app/tests/e2e' \
+            --no-header --tb=short \
+            --maxfail=20
+
+      - name: Upload failure tracebacks
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pytest-traces
+          path: |
+            .pytest_cache/
+            **/__pycache__/
+          if-no-files-found: ignore
+          retention-days: 3

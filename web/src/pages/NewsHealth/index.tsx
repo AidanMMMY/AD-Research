@@ -8,7 +8,7 @@ import type { NewsHealthResponse, NewsSourceHealth, NewsWorkerStatus } from '@/t
 import PageShell from '@/components/PageShell';
 import PageHeader from '@/components/PageHeader';
 import FilterToolbar from '@/components/FilterToolbar';
-import ContentCard from '@/components/ContentCard';
+import Panel from '@/components/Panel';
 import DataFreshnessHint from '@/components/DataFreshnessHint';
 import StatCard from '@/components/StatCard';
 import ThemeTag, { type ThemeTagVariant } from '@/components/ThemeTag';
@@ -389,7 +389,7 @@ export default function NewsHealth() {
         </div>
       </div>
 
-      <ContentCard title="Scheduler 任务" className="ad-mb-4">
+      <Panel title="Scheduler 任务" padding="md" className="ad-mb-4">
         {jobs.length > 0 ? (
           <div className="news-health-jobs">
             {jobs.map((j) => (
@@ -412,14 +412,14 @@ export default function NewsHealth() {
         ) : (
           <span className="ad-text-tertiary">暂无 news_* 任务</span>
         )}
-      </ContentCard>
+      </Panel>
 
       {/* AI cleanup observability (M22-3, 2026-07-05).
           Surfaces the silent-degradation case in ContentFetcher:
           rows that Jina fetched but DeepSeek refused to clean.
           The four-statistics strip mirrors the
           /api/v1/news/health `ai_cleanup_24h` block. */}
-      <ContentCard title="AI 清理 (近 24h)" className="ad-mb-4">
+      <Panel title="AI 清理 (近 24h)" padding="md" className="ad-mb-4">
         {data?.ai_cleanup_24h ? (
           <>
             {data.ai_cleanup_24h.alert && (
@@ -481,10 +481,10 @@ export default function NewsHealth() {
         ) : (
           <span className="ad-text-tertiary">尚未抓取任何正文</span>
         )}
-      </ContentCard>
+      </Panel>
 
       <Spin spinning={isLoading}>
-        <ContentCard title="数据源健康度" className="ad-mb-4">
+        <Panel title="数据源健康度" padding="md" className="ad-mb-4">
           <Table
             dataSource={sources}
             columns={columns}
@@ -499,9 +499,9 @@ export default function NewsHealth() {
               return classes.join(' ');
             }}
           />
-        </ContentCard>
+        </Panel>
 
-        <ContentCard title="Worker 健康度">
+        <Panel title="Worker 健康度" padding="md">
           {workers.length > 0 ? (
             <Table
               dataSource={workers}
@@ -520,7 +520,7 @@ export default function NewsHealth() {
               description="等待后端接口返回…"
             />
           )}
-        </ContentCard>
+        </Panel>
       </Spin>
     </PageShell>
   );
