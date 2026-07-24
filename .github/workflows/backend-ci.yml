@@ -78,8 +78,10 @@ jobs:
           TZ: UTC
           PYTHONHASHSEED: '0'
         run: |
+          # 2026-07-23: e2e 实测 3.3s + 无外部依赖（SQLite in-memory + TestClient），
+          # 之前 --deselect app/tests/e2e 是过度保守。直接并入。
+          # 实际 ~930 tests in ~3-4 min，仍在 15min budget 内。
           poetry run pytest -q \
-            --deselect 'app/tests/e2e' \
             --no-header --tb=short \
             --maxfail=20
 
