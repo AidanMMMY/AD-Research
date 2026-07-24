@@ -137,6 +137,16 @@ jobs:
           fi
 
           bash update.sh ${EXTRA_ARGS}
+          rc=$?
+          echo "::notice::update.sh exit code: ${rc}"
+          # 退出非零时输出 backend 健康信息以便排查
+          if [ "${rc}" -ne 0 ]; then
+            echo "::warning::update.sh exit ${rc}, dumping backend diagnostics"
+            docker compose ps backend 2>&1 || true
+            docker compose logs backend --tail 100 2>&1 || true
+            bash "${PROJECT_ROOT}/scripts/dump_backend_health.sh" 2>&1 || true
+          fi
+          exit "${rc}"
 
       - name: Retry Run update.sh (unified entrypoint) [attempt 2/2]
         id: update_sh_retry
