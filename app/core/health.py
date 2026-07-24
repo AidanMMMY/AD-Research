@@ -156,6 +156,43 @@ def _check_scheduler() -> dict[str, Any]:
         return {"status": "warn", "detail": exc.__class__.__name__}
 
 
+def _check_llm_keys() -> dict[str, Any]:
+    """Probe whether LLM provider keys are configured.
+
+    2026-07-24 add: 调研发现生产 .env 三 secret 全空（DeepSeek/MiniMax/雪球/Tushare），
+    但 LLM 调用没告警通道。接入 /health probe 后：
+      - frontend 可看到"LLM 不可用"
+      - on-call 通过 /health 监控告警
+      - secret rotate 不再是静默缺口
+    非关键 probe：空 key 是 warn，不让 /health 整体 degraded（避免 page）。
+    """
+    try:
+        from app.services.llm import check_llm_health
+
+        info = check_llm_health()
+        minimax_ok = bool(info.get("minimax_available"))
+        deepseek_ok = bool(info.get("deepseek_available"))
+        active = info.get("active_provider", "auto")
+        if minimax_ok or deepseek_ok:
+            return {
+                "status": "ok",
+                "active_provider": active,
+                "minimax_configured": minimax_ok,
+                "deepseek_configured": deepseek_ok,
+            }
+        return {
+            "status": "warn",
+            "detail": "no_llm_keys_configured",
+            "active_provider": active,
+            "minimax_configured": False,
+            "deepseek_configured": False,
+        }
+    except FutureTimeoutError:
+        return {"status": "warn", "detail": "probe_timeout"}
+    except Exception as exc:  # noqa: BLE001
+        return {"status": "warn", "detail": exc.__class__.__name__}
+
+
 def _check_data_staleness() -> dict[str, Any]:
     """Freshness of the most recent daily bar in ``instrument_daily_bar``.
 
@@ -199,13 +236,14 @@ def _check_data_staleness() -> dict[str, Any]:
 
 
 def _run_probes() -> dict[str, Any]:
-    """Run all four probes concurrently and return their results."""
+    """Run all five probes concurrently and return their results."""
     executor = _get_executor()
     probes = {
         "db": _check_db,
         "redis": _check_redis,
         "scheduler": _check_scheduler,
         "data": _check_data_staleness,
+        "llm": _check_llm_keys,
     }
     futures = {name: executor.submit(fn) for name, fn in probes.items()}
     components: dict[str, Any] = {}

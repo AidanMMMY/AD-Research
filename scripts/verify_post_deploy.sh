@@ -112,9 +112,29 @@ if [[ -z "$ALEMBIC" ]]; then
 fi
 
 echo ""
+echo "=== 7. /health llm probe (2026-07-24 add: 暴露 LLM key 是否配置) ==="
+LLM=$(echo "$HEALTH" | python3 -c "
+import json, sys
+h = json.load(sys.stdin)
+llm = h.get('components', {}).get('llm', {})
+print(json.dumps(llm, ensure_ascii=False))
+")
+echo "  $LLM"
+LLM_STATUS=$(echo "$LLM" | python3 -c "import json,sys; print(json.load(sys.stdin).get('status', 'unknown'))")
+if [[ "$LLM_STATUS" == "ok" ]]; then
+  echo "  ✓ llm probe: ok"
+elif [[ "$LLM_STATUS" == "warn" ]]; then
+  echo "  ! llm probe: warn — secret rotate 待办 (生产 LLM key 未配)"
+  echo "    详见 docs/dev-notes/20260704-secret-rotate-runbook.md"
+else
+  echo "  ? llm probe: $LLM_STATUS (跳过 — 非关键)"
+fi
+
+echo ""
 echo "=== ALL PASS ==="
 echo "  /health: ok"
 echo "  internal routes: $ROUTE_COUNT (含 orchestrate-alert)"
 echo "  token auth: 403 + 200 双向都通"
 echo "  NotificationLog row id=$LOG_ID 写入成功"
 echo "  alembic: at head"
+echo "  llm probe: $LLM_STATUS"
