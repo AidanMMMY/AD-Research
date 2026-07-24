@@ -96,6 +96,21 @@ jobs:
           echo "[INFO] 部署前 baseline /health status: ${BASELINE_STATUS}"
           echo "baseline_status=${BASELINE_STATUS}" >> $GITHUB_ENV
 
+      # ── 2.7 runner 自愈（best-effort） ──
+      # 2026-07-24: Deploy #316/#317/#318/#319 4 次连续 cascade failure，
+      # 都是 step 5 update.sh 完成后 ~20s runner 整体失联。runner_healthcheck.sh
+      # 会主动修复 runner daemon / 磁盘满 / stale lock 等问题。
+      # 这里 best-effort 跑（continue-on-error），自愈失败也不阻塞 deploy。
+      # 如果 host 已死导致 step 卡住，前面的 timeout-minutes: 15 会拦下。
+      - name: Self-heal runner host (best-effort)
+        if: ${{ inputs.dry_run != 'true' }}
+        continue-on-error: true
+        timeout-minutes: 2
+        run: |
+          if [[ -f "${PROJECT_ROOT}/scripts/runner_healthcheck.sh" ]]; then
+            bash "${PROJECT_ROOT}/scripts/runner_healthcheck.sh" || true
+          fi
+
       # ── 3. 调用统一入口：deploy/aliyun-ecs/update.sh ──
       # 近期 4/10 失败多为阿里云 HTTP/2 registry 抖动；外层包一次 retry step
       # （最多 2 次，间隔 30s），第二次失败则硬退出。
