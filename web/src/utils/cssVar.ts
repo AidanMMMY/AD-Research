@@ -21,6 +21,31 @@ export function readCssVar(name: string, fallback: string): string {
 }
 
 /**
+ * Strict CSS var reader — returns the computed value or '' when missing.
+ * Use this when the caller MUST know whether the token is defined (e.g.
+ * AntD theme configuration), so silent dark-fallback doesn't masquerade
+ * as a valid value when the token is absent in the active theme.
+ *
+ * Emits a one-time console.warn per missing token so silent failure
+ * becomes visible at dev time.
+ */
+const _warnedMissingTokens = new Set<string>();
+export function readCssVarStrict(name: string): string {
+  if (typeof window === 'undefined') return '';
+  const value = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  if (!value && !_warnedMissingTokens.has(name)) {
+    _warnedMissingTokens.add(name);
+    // eslint-disable-next-line no-console
+    console.warn(
+      `[cssVar] Token ${name} is not defined on :root for the active theme. ` +
+      'Check theme.css — both :root (light base) and :root[data-theme="dark"] ' +
+      'must declare this token, otherwise consumers fall back to defaults.'
+    );
+  }
+  return value;
+}
+
+/**
  * Resolve a color string, converting `var(--name)` references to
  * their concrete computed value. Non-CSS-var inputs pass through
  * unchanged.

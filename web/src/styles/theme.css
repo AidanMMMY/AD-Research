@@ -82,6 +82,12 @@
   --color-warning-hover-dim: rgba(251, 191, 36, 0.18);
   --color-info: var(--accent);
 
+  /* ---- Web Vitals Rating Colors (dev badge, light-first AA) ----
+     Light bg needs stronger hue than --color-success-bright etc. */
+  --vital-good: #16A34A;       /* green-600, AA on #FAFBFC */
+  --vital-warn: #D97706;       /* amber-600, AA on #FAFBFC */
+  --vital-poor: #DC2626;       /* red-600, AA on #FAFBFC */
+
   /* ---- News Category Colors (political / macro chips) ---- */
   --category-geopolitics: #FF5722;
   --category-geopolitics-dim: rgba(255, 87, 34, 0.12);

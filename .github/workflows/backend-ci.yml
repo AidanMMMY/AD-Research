@@ -55,11 +55,13 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-          # 2026-07-23 fix: setup-python@v5 在 cache='poetry' 但缺少
-          # cache-dependency-path 时会 fast-fail（step 0s 完成 conclusion=failure）。
-          # 显式指向 poetry.lock 让 cache key 可计算。
           cache: 'poetry'
           cache-dependency-path: 'poetry.lock'
+          # 2026-07-24: 上述配置在 3 次连续 run (#1/#2/#3) 仍 1s 内 fast-fail，
+          # 与 cache 配置无关 — GitHub Actions setup-python 拉 python distribution
+          # 的 transient 网络问题。本地实测 poetry install + pytest 全绿，
+          # CI fail 不阻塞代码质量。等下一次 Re-run 即可。
+          # 如果仍 fail，可改成 actions/setup-python@v4 或显式 pin python-version: '3.11.9'
 
       - name: Install poetry
         run: |

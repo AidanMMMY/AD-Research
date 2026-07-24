@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import ReactDOM from 'react-dom/client';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ConfigProvider, theme } from 'antd';
@@ -9,7 +9,7 @@ import {
   resolveTheme,
   type ResolvedTheme,
 } from '@/hooks/useTheme';
-import { readCssVar } from '@/utils/cssVar';
+import { readCssVarStrict } from '@/utils/cssVar';
 import { reportWebVitals } from '@/utils/webVitals';
 // 自托管字体（Inter + JetBrains Mono），统一跨平台字体体验
 import '@fontsource/inter/400.css';
@@ -67,44 +67,44 @@ const useAntdTheme = () => {
     return () => document.removeEventListener('themechange', handler);
   }, []);
 
-  const css = (name: string, fallback: string) => readCssVar(name, fallback);
+  // 2026-07-24: 改用 readCssVarStrict + useMemo。
+  // 旧实现给每个 token 配 dark 字面值 fallback —— 但 light base 在 :root
+  // 已声明所有 token，浏览器里 getComputedStyle 永远拿到非空，fallback
+  // 是误导性死代码（且 dark-first 字面值让新人以为 light 主题没生效）。
+  // Strict 模式在 token 缺失时 console.warn，把 silent failure 显形。
+  // useMemo 防止 themechange 触发整个 AntD 子树 re-render。
+  const css = (name: string) => readCssVarStrict(name);
   const isDark = mode === 'dark';
 
-  return {
+  return useMemo(() => ({
     algorithm: isDark ? theme.darkAlgorithm : theme.defaultAlgorithm,
     token: {
-      // Fallbacks mirror the dark-theme defaults in theme.css (dark-first
-      // since 2026-07-21); in the browser `readCssVar` always returns the
-      // computed value for the active theme, so these only matter for
-      // SSR / no-DOM rendering.
-      colorPrimary: css('--accent', '#60A5FA'),
-      colorPrimaryHover: css('--accent-hover', '#93BBFD'),
-      colorPrimaryActive: css('--accent-active', '#3B82F6'),
-      colorInfo: css('--color-info', '#60A5FA'),
-      colorSuccess: css('--color-success', '#34D399'),
-      colorWarning: css('--color-warning', '#EAB308'),
-      colorError: css('--color-error', '#F87171'),
-      colorBgBase: css('--bg-base', '#0D1117'),
-      colorBgContainer: css('--card-bg', '#1C2128'),
-      colorBgElevated: css('--bg-elevated', '#161B22'),
-      colorTextBase: css('--text-primary', '#E6EDF3'),
-      colorTextSecondary: css('--text-secondary', '#A0A0A0'),
-      colorTextTertiary: css('--text-tertiary', '#9CA3AF'),
-      colorTextLightSolid: css('--text-on-accent', '#0D1117'),
-      colorBorder: css('--border-default', '#30363D'),
-      colorBorderSecondary: css('--bg-elevated', '#161B22'),
-      borderRadius: parseInt(css('--radius-md', '8px'), 10),
-      borderRadiusSM: parseInt(css('--radius-sm', '4px'), 10),
-      borderRadiusLG: parseInt(css('--radius-xl', '12px'), 10),
+      colorPrimary: css('--accent'),
+      colorPrimaryHover: css('--accent-hover'),
+      colorPrimaryActive: css('--accent-active'),
+      colorInfo: css('--color-info'),
+      colorSuccess: css('--color-success'),
+      colorWarning: css('--color-warning'),
+      colorError: css('--color-error'),
+      colorBgBase: css('--bg-base'),
+      colorBgContainer: css('--card-bg'),
+      colorBgElevated: css('--bg-elevated'),
+      colorTextBase: css('--text-primary'),
+      colorTextSecondary: css('--text-secondary'),
+      colorTextTertiary: css('--text-tertiary'),
+      colorTextLightSolid: css('--text-on-accent'),
+      colorBorder: css('--border-default'),
+      colorBorderSecondary: css('--bg-elevated'),
+      borderRadius: parseInt(css('--radius-md') || '8', 10),
+      borderRadiusSM: parseInt(css('--radius-sm') || '4', 10),
+      borderRadiusLG: parseInt(css('--radius-xl') || '12', 10),
       borderRadiusXS: 2,
-      fontFamily: css(
-        '--font-sans',
+      fontFamily:
+        css('--font-sans') ||
         'Inter, "SF Pro Display", -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", "Helvetica Neue", Arial, sans-serif',
-      ),
-      fontFamilyCode: css(
-        '--font-mono',
+      fontFamilyCode:
+        css('--font-mono') ||
         '"JetBrains Mono", "SF Mono", "Fira Code", "Cascadia Code", monospace',
-      ),
       controlHeight: 36,
       controlHeightSM: 30,
       controlHeightLG: 44,
@@ -112,70 +112,70 @@ const useAntdTheme = () => {
     components: {
       Table: {
         headerBg: 'transparent',
-        headerColor: css('--text-tertiary', '#9CA3AF'),
+        headerColor: css('--text-tertiary'),
         headerSplitColor: 'transparent',
-        rowHoverBg: css('--bg-hover', 'rgba(255, 255, 255, 0.05)'),
-        borderColor: css('--border-default', '#30363D'),
+        rowHoverBg: css('--bg-hover'),
+        borderColor: css('--border-default'),
         cellPaddingInline: 16,
         cellPaddingBlock: 14,
         headerBorderRadius: 0,
       },
       Button: {
-        borderRadius: parseInt(css('--radius-md', '8px'), 10),
-        borderRadiusSM: parseInt(css('--radius-sm', '4px'), 10),
+        borderRadius: parseInt(css('--radius-md') || '8', 10),
+        borderRadiusSM: parseInt(css('--radius-sm') || '4', 10),
         primaryShadow: 'none',
       },
       Card: {
-        borderRadius: parseInt(css('--card-radius', '12px'), 10),
-        borderRadiusLG: parseInt(css('--radius-2xl', '16px'), 10),
-        colorBgContainer: css('--card-bg', '#1C2128'),
+        borderRadius: parseInt(css('--card-radius') || '12', 10),
+        borderRadiusLG: parseInt(css('--radius-2xl') || '16', 10),
+        colorBgContainer: css('--card-bg'),
       },
       Modal: {
-        borderRadiusLG: parseInt(css('--radius-xl', '12px'), 10),
-        colorBgElevated: css('--bg-elevated', '#161B22'),
+        borderRadiusLG: parseInt(css('--radius-xl') || '12', 10),
+        colorBgElevated: css('--bg-elevated'),
       },
       Drawer: {
-        colorBgElevated: css('--bg-elevated', '#161B22'),
+        colorBgElevated: css('--bg-elevated'),
       },
       Tag: {
-        borderRadiusSM: parseInt(css('--radius-sm', '4px'), 10),
-        defaultBg: css('--bg-surface', '#1C2128'),
-        defaultColor: css('--text-secondary', '#A0A0A0'),
+        borderRadiusSM: parseInt(css('--radius-sm') || '4', 10),
+        defaultBg: css('--bg-surface'),
+        defaultColor: css('--text-secondary'),
       },
       Input: {
-        borderRadius: parseInt(css('--radius-md', '8px'), 10),
-        colorBgContainer: css('--bg-input', 'rgba(255, 255, 255, 0.04)'),
-        activeBorderColor: css('--accent', '#60A5FA'),
-        activeShadow: `0 0 0 2px ${css('--accent-glow', 'rgba(96, 165, 250, 0.15)')}`,
+        borderRadius: parseInt(css('--radius-md') || '8', 10),
+        colorBgContainer: css('--bg-input'),
+        activeBorderColor: css('--accent'),
+        activeShadow: `0 0 0 2px ${css('--accent-glow')}`,
       },
       Select: {
-        borderRadius: parseInt(css('--radius-md', '8px'), 10),
-        colorBgContainer: css('--bg-input', 'rgba(255, 255, 255, 0.04)'),
-        optionSelectedBg: css('--accent-dim', 'rgba(96, 165, 250, 0.12)'),
-        optionSelectedColor: css('--accent', '#60A5FA'),
+        borderRadius: parseInt(css('--radius-md') || '8', 10),
+        colorBgContainer: css('--bg-input'),
+        optionSelectedBg: css('--accent-dim'),
+        optionSelectedColor: css('--accent'),
       },
       Tabs: {
-        inkBarColor: css('--accent', '#60A5FA'),
-        itemSelectedColor: css('--text-primary', '#E6EDF3'),
-        itemHoverColor: css('--text-secondary', '#A0A0A0'),
-        itemColor: css('--text-tertiary', '#9CA3AF'),
+        inkBarColor: css('--accent'),
+        itemSelectedColor: css('--text-primary'),
+        itemHoverColor: css('--text-secondary'),
+        itemColor: css('--text-tertiary'),
       },
       Alert: {
-        colorError: css('--color-error', '#F87171'),
-        colorErrorBg: css('--color-error-dim', 'rgba(248, 113, 113, 0.14)'),
-        colorErrorBorder: css('--color-error-border', 'rgba(248, 113, 113, 0.30)'),
-        colorWarning: css('--color-warning', '#EAB308'),
-        colorWarningBg: css('--color-warning-dim', 'rgba(234, 179, 8, 0.12)'),
-        colorWarningBorder: css('--color-warning-border', 'rgba(234, 179, 8, 0.25)'),
-        colorSuccess: css('--color-success', '#34D399'),
-        colorSuccessBg: css('--color-success-dim', 'rgba(52, 211, 153, 0.14)'),
-        colorSuccessBorder: css('--color-success-border', 'rgba(52, 211, 153, 0.30)'),
-        colorInfo: css('--color-info', '#60A5FA'),
-        colorInfoBg: css('--accent-dim', 'rgba(96, 165, 250, 0.12)'),
-        colorInfoBorder: css('--accent-border', 'rgba(96, 165, 250, 0.25)'),
+        colorError: css('--color-error'),
+        colorErrorBg: css('--color-error-dim'),
+        colorErrorBorder: css('--color-error-border'),
+        colorWarning: css('--color-warning'),
+        colorWarningBg: css('--color-warning-dim'),
+        colorWarningBorder: css('--color-warning-border'),
+        colorSuccess: css('--color-success'),
+        colorSuccessBg: css('--color-success-dim'),
+        colorSuccessBorder: css('--color-success-border'),
+        colorInfo: css('--color-info'),
+        colorInfoBg: css('--accent-dim'),
+        colorInfoBorder: css('--accent-border'),
       },
     },
-  };
+  }), [isDark]);
 };
 
 function ThemedApp() {

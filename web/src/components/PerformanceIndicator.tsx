@@ -16,11 +16,14 @@ import {
   type WebVitalsSample,
 } from '@/utils/webVitals';
 
-/** Rating → swatch color. Mirrors the web-vitals thresholds. */
+/** Rating → swatch color. Uses vital-* tokens so dark/light theme switch
+ *  follows the active palette (light needs higher-contrast hues than
+ *  --color-success-bright etc. provide against the white panel).
+ *  Inline `var()` references are resolved by the browser at render time. */
 const RATING_COLOR: Record<WebVitalsSample['rating'], string> = {
-  good: '#30A46C',
-  'needs-improvement': '#F0B100',
-  poor: '#E5484D',
+  good: 'var(--vital-good, #16A34A)',
+  'needs-improvement': 'var(--vital-warn, #D97706)',
+  poor: 'var(--vital-poor, #DC2626)',
 };
 
 /** Human-friendly unit per metric (CLS is unitless). */
