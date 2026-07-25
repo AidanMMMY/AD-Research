@@ -27,6 +27,7 @@ x-backend-env: &backend-env
   BLS_API_KEY: ${BLS_API_KEY:-}
   XUEQIU_COOKIE: ${XUEQIU_COOKIE:-}
   CORS_ORIGINS: ${CORS_ORIGINS:-}
+  INTERNAL_API_TOKEN: ${INTERNAL_API_TOKEN:-}
   CNINFO_PDF_DIR: ${CNINFO_PDF_DIR:-/data/alloy-research/cninfo_pdfs}
   INDICATOR_BACKEND: ${INDICATOR_BACKEND:-sql}
 
