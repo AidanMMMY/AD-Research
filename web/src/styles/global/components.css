@@ -748,6 +748,11 @@
 .responsive-grid--stretch > * {
   height: 100%;
 }
+/* Let StatCard inherit full height from stretched grid cells so
+   all cards in a row share the same height (KPI strip alignment). */
+.responsive-grid--stretch .stat-card {
+  height: 100%;
+}
 
 @media (min-width: 576px) {
   .responsive-grid--cols-2,

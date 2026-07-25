@@ -480,7 +480,7 @@ export default function InstrumentDetail() {
 
       {/* ─── 2) Key statistics (directly below K-line) ──────────────── */}
       <SectionHeading title="关键数据" />
-      <ResponsiveGrid cols={4} gap="md" className="detail-section">
+      <ResponsiveGrid cols={4} gap="md" className="detail-section" stretch>
         {heroStats.map((stat) => (
           <div key={stat.title} className={stat.color}>
             <StatCard
