@@ -744,14 +744,16 @@
 .responsive-grid--gap-md { gap: var(--space-4); }
 .responsive-grid--gap-lg { gap: var(--space-5); }
 
-/* Stretch: each direct child fills the tallest row item. */
+/* Stretch: each direct child fills the tallest row item.
+   Uses flex (not height:100%) to avoid circular sizing — the grid row
+   height is set by the tallest card's content, and shorter cards stretch
+   to match via flex:1. */
 .responsive-grid--stretch > * {
-  height: 100%;
+  display: flex;
+  flex-direction: column;
 }
-/* Let StatCard inherit full height from stretched grid cells so
-   all cards in a row share the same height (KPI strip alignment). */
 .responsive-grid--stretch .stat-card {
-  height: 100%;
+  flex: 1;
 }
 
 @media (min-width: 576px) {
