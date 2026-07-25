@@ -58,9 +58,19 @@ def backfill_adj_factor(
     """
     provider = TushareProvider()
 
+    # 2026-07-25 fix: only backfill adj_factor for STOCK instruments.
+    # ETFs get their price data from Akshare (EastMoney), which returns raw
+    # market prices that are already continuous across dividend/split events.
+    # Tushare's adj_factor is designed for individual stocks (which have
+    # capital events that cause raw price discontinuities). Applying it to
+    # ETF bars sourced from Akshare creates phantom ~50% jumps/drops because
+    # the raw close is continuous while the adj_factor is not.
+    # See: 159246.SZ — adj_factor 1.9991→1.0 across 2026-07-17, raw close
+    # 1.132→1.133 (nearly identical). The adjusted K-line shows a 50% gap.
     query = (
         db.query(ETFInfo.code)
         .filter(ETFInfo.market == "A股")
+        .filter(ETFInfo.instrument_type == "STOCK")
         .filter(ETFInfo.status == "active")
     )
     if codes:
