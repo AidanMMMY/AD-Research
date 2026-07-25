@@ -56,7 +56,7 @@ fi
 # ---------------------------------------------------------------------- #
 
 RUNNER_SVC=$(systemctl list-units --type=service --no-legend 2>/dev/null | \
-  awk '{print $1}' | grep -E '^actions\.runner' | head -1 || echo "")
+  awk '{print $1}' | grep -iE '(runner|actions)' | head -1 || echo "")
 
 if [[ -n "$RUNNER_SVC" ]]; then
   SVC_ACTIVE=$(systemctl is-active "$RUNNER_SVC" 2>/dev/null || echo "unknown")
@@ -75,7 +75,7 @@ if [[ -n "$RUNNER_SVC" ]]; then
     fi
   fi
 else
-  err "no actions.runner.* service found on host — install runner first"
+  err "no runner/github-runner service found on host — install runner first"
 fi
 
 # ---------------------------------------------------------------------- #
