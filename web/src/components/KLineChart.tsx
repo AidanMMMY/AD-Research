@@ -117,17 +117,7 @@ function calcMACD(data: { close: number }[], fast: number = 12, slow: number = 2
 
 function adjustOHLC(data: OHLCV[]): OHLCV[] {
   // Forward adjustment (前复权): scale historical bars so that the
-  // latest bar's close equals its raw market price.  This is the
-  // convention used by mainstream Chinese broker apps and matches the
-  // "前复权" label in the UI toggle.
-  //
-  // Tushare's adj_factor is cumulative backward-looking.  To obtain a
-  // forward-adjusted price we divide by the latest factor:
-  //   qfq_close = close * adj_factor / latest_adj_factor
-  //
-  // Verified against 600026.SH (2026-07-17 latest_factor=1.9428):
-  //   2026-07-17 close=14.21 -> qfq=14.21 (unchanged)
-  //   2026-06-26 close=19.96 -> qfq=19.96*1.8934/1.9428=19.45
+  // latest bar's close equals its raw market price.
   if (data.length === 0) return data;
   const latestFactor = data[data.length - 1].adj_factor ?? 1;
   if (!latestFactor || latestFactor === 1) return data;
