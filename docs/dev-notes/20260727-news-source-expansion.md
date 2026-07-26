@@ -106,20 +106,48 @@ docker exec alloyresearch-backend tail -3 /tmp/translate_bulk_drain.log
 
 ---
 
-## 3. 微信公众号接入步骤（待用户一次性操作）
+## 3. 微信公众号接入（双通道）
 
-wewe-rss 原理：微信读书 App 扫码登录 → 把公众号"上架"为 feed → RSS 输出。
+### 3.1 通道 A：wechat2rss 公共镜像（已上线，无需扫码）✅
+
+排查发现候选 10 个独立号中有 2 个已被公共索引服务
+[wechat2rss](https://wechat2rss.xlab.app)（免费列表 ~300 个号）收录，
+直接以标准 RSS 接入（commit `b31fc0c`）：
+
+| 公众号 | source | feed | 调度 |
+|---|---|---|---|
+| 猫笔刀 | `wechat_maobidao` | `wechat2rss.xlab.app/feed/33d986…81.xml` | 60m |
+| 思想钢印 | `wechat_sixianggangyin` | `wechat2rss.xlab.app/feed/a55006…2ea.xml` | 60m |
+
+特点：`description` 为空、全文在 `content:encoded`，
+`parse_rss_items` 原生优先取 `content:encoded`，无需特殊处理；
+中文内容直接进库，不走翻译管线。2026-07-27 部署冒烟：
+两源各 20 篇落库，正文 1600-4500 字全文。
+
+**风险**：公共服务，可用性不受我们控制；失效时 etl_log 会出现
+连续 failed，届时把对应 job 下掉或迁移到通道 B。
+
+### 3.2 通道 B：自建 wewe-rss（等用户一次性扫码）
+
+其余 8 个候选号（智谷趋势 / 远川研究所 / 沧海一土狗 / 付鹏的财经世界 /
+李迅雷金融与投资 / 聪明的投资者 / 宁南山 / 晚点LatePost）**不在**
+wechat2rss 免费列表，必须走自建 wewe-rss：
 
 1. 用户本地开隧道：`ssh -L 4000:localhost:4000 ad-research`
 2. 浏览器打开 `http://localhost:4000/dash`，用微信扫二维码登录微信读书
-3. 在管理页添加公众号（候选 10 个独立号，见下），记录每个号的 `feed_id`
+3. 在管理页添加公众号，记录每个号的 `feed_id`
 4. 在 ECS `/data/ad-research/deploy/aliyun-ecs/.env` 追加：
    ```
    WECHAT_RSS_FEED_MAP="feed_id_1:wechat_zhigu:智谷趋势,feed_id_2:wechat_yuanchuan:远川研究所,..."
    ```
-5. `docker restart alloyresearch-backend`，验证 `etl_log` 出现 `news_wechat_*` 记录
+5. `docker restart alloyresearch-backend`，验证 `etl_log` 出现
+   `news_wechat_zeping_15m` 成功记录且 `wechat_{slug}` 源落库
 
-**候选独立公众号（非官方机构号）**：智谷趋势、远川研究所、沧海一土狗、猫笔刀、思想钢印、付鹏的财经世界、李迅雷金融与投资、聪明的投资者、宁南山、晚点LatePost。
+后端采集代码（`wechat_zeping.py` + feed_map 逐 feed 分发）已就绪，
+扫码后纯配置接入，无需改代码。
+
+> feeddd 已于 2023 年关闭，不要再用；wechat2rss 付费版可自定义订阅，
+> 是通道 B 之外的备选（要花钱，优先自建）。
 
 ---
 
