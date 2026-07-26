@@ -408,6 +408,20 @@ class ETFHoldingsPipeline(ETLPipeline):
         legacy ``holdings_as_of_date`` column are populated from the
         same source value so consumers reading either column see the
         same date.
+
+        Background — duplicate-code issue (2026-07-26)
+        -----------------------------------------------
+        Eastmoney F10 returns holding codes WITHOUT an exchange suffix
+        (e.g. ``"300502"``), while Tushare returns codes WITH the
+        suffix (``"300502.SZ"``). Because the upsert identity is
+        ``(etf_code, snapshot_date, holding_code)``, the same real-world
+        stock appears twice under different string keys.
+
+        The load step normalises all codes to the **Eastmoney convention**
+        (no suffix) before upsert. When Tushare provides the richer
+        weight AND Eastmoney already contributed an entry for the same
+        base code, the weight from the better source wins; when only
+        one source covers a stock that entry is preserved untouched.
         """
         if df is None or df.empty:
             return 0
@@ -416,6 +430,17 @@ class ETFHoldingsPipeline(ETLPipeline):
         if not required_cols.issubset(df.columns):
             missing = required_cols - set(df.columns)
             raise ValueError(f"Missing required columns: {missing}")
+
+        # 2026-07-26: normalise holding_code to the Eastmoney convention
+        # (no exchange suffix). Tushare codes carry a ".SZ"/".SH" suffix
+        # that Eastmoney codes do not have. Stripping it makes the
+        # upsert identity consistent across sources and prevents the
+        # same real-world stock from becoming two rows.
+        df = df.copy()
+        df["_raw_holding_code"] = df["holding_code"]
+        df["holding_code"] = df["holding_code"].astype(str).str.replace(
+            r"\.(SZ|SH|BJ|US|HK)$", "", regex=True
+        )
 
         # FK guard: ``etf_holding.etf_code`` references ``etf_info.code``.
         # The Tushare bulk pull returns the whole market for the period —
@@ -434,6 +459,26 @@ class ETFHoldingsPipeline(ETLPipeline):
             )
         if df.empty:
             return 0
+
+        # 2026-07-26 (cont'd): after normalisation the same stock may
+        # appear twice within a single extract batch (Eastmoney entry
+        # + Tushare entry for the same base code). Keep the row with
+        # the higher weight; when weights are equal, prefer the source
+        # that carries a name (Eastmoney → tushare → akshare → cninfo).
+        SOURCE_PRIORITY = {"eastmoney_f10": 0, "tushare": 1, "akshare": 2, "cninfo": 3}
+        df = df.sort_values(
+            by=["weight", "source"],
+            ascending=[False, True],
+            key=lambda col: (
+                col.fillna(0)
+                if col.name == "weight"
+                else col.astype(str).map(SOURCE_PRIORITY).fillna(99)
+            ),
+        )
+        df = df.drop_duplicates(
+            subset=["etf_code", "snapshot_date", "holding_code"],
+            keep="first",
+        )
 
         # Build the upsert payload. ``snapshot_date`` is also mirrored
         # to ``holdings_as_of_date`` for backwards compatibility.
