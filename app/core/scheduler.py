@@ -2052,6 +2052,20 @@ def init_scheduler():
                 max_instances=1,
                 coalesce=True,
             )
+
+        # wechat2rss public-mirror batches (2026-07-27) — generated in
+        # ``scheduler_jobs.WECHAT2RSS_BATCH_JOBS``, all hourly.
+        for job_id, label, batch in _news_jobs.WECHAT2RSS_BATCH_JOBS:
+            fn = getattr(_news_jobs, f"run_wechat2rss_{batch}_crawl")
+            scheduler.add_job(
+                fn,
+                trigger=IntervalTrigger(minutes=60),
+                id=job_id,
+                name=label,
+                replace_existing=True,
+                max_instances=1,
+                coalesce=True,
+            )
     except ImportError:
         pass
 

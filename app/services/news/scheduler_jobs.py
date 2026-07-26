@@ -375,6 +375,71 @@ def run_wechat_zeping_crawl() -> dict[str, int]:
     }
 
 
+# ── wechat2rss public-mirror batches (added 2026-07-27) ──
+#
+# 41 hand-picked independent WeChat accounts served by the public
+# wechat2rss mirror, split into 4 batch jobs (~10 feeds each) so the
+# scheduler gains only 4 jobs instead of 41. See
+# app/services/news/sources/wechat2rss_batch.py for the selection rule.
+
+
+def _wechat2rss_batch_job(job_id: str, batch_key: str):
+    """Build a ``run_*`` function crawling one wechat2rss batch."""
+
+    @_record_etl(job_id)
+    def _run() -> dict[str, int]:
+        from app.services.news.filters import WechatMarketingFilter
+        from app.services.news.sources.wechat2rss_batch import (
+            Wechat2RssBatchCrawler,
+        )
+
+        async def _go():
+            crawler = Wechat2RssBatchCrawler(batch_key)
+            return await crawler.fetch_recent()
+
+        try:
+            articles = _run_async(_go())
+        except Exception as exc:
+            logger.exception("wechat2rss batch %s crawl failed: %s", batch_key, exc)
+            return {
+                "fetched": 0,
+                "written": 0,
+                "skipped": True,
+                "skip_reason": f"crawl_error: {exc}",
+            }
+
+        if not articles:
+            return {"fetched": 0, "written": 0, "skipped": True, "skip_reason": "no_articles"}
+
+        try:
+            marketing_filter = WechatMarketingFilter()
+        except Exception as exc:  # pragma: no cover - defensive
+            logger.warning("wechat marketing filter init failed, passing through: %s", exc)
+            marketing_filter = None
+
+        filtered, rejected = _apply_marketing_filter(articles, marketing_filter)
+        written = _write_to_db(filtered)
+        return {
+            "fetched": len(articles),
+            "written": written,
+            "rejected_marketing": rejected,
+        }
+
+    _run.__name__ = f"run_wechat2rss_{batch_key}_crawl"
+    return _run
+
+
+WECHAT2RSS_BATCH_JOBS: list[tuple[str, str, str]] = [
+    # (job_id, label, batch_key) — all run every 60 minutes.
+    ("news_wechat2rss_a_60m", "公众号镜像 A 组", "a"),
+    ("news_wechat2rss_b_60m", "公众号镜像 B 组", "b"),
+    ("news_wechat2rss_c_60m", "公众号镜像 C 组", "c"),
+    ("news_wechat2rss_d_60m", "公众号镜像 D 组", "d"),
+]
+for _job_id, _label, _batch in WECHAT2RSS_BATCH_JOBS:
+    globals()[f"run_wechat2rss_{_batch}_crawl"] = _wechat2rss_batch_job(_job_id, _batch)
+
+
 # ── New Chinese news sources (added 2026-07-18) ──
 
 @_record_etl("news_wallstreetcn_5m")
