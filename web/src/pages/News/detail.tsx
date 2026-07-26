@@ -396,7 +396,7 @@ export default function NewsDetail() {
 
         <div className="ad-detail-actions">
           {symbols.length > 0 && (
-            <Space size={4} wrap className="ad-detail-actions__symbols">
+            <Space size="small" wrap className="ad-detail-actions__symbols">
               {symbols.map((s) => (
                 <Link
                   key={`${s.symbol}-${s.match_type ?? 'symbol'}`}

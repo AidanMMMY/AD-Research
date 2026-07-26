@@ -324,7 +324,7 @@ function NewsCard({
 
       {/* Row 3: symbols + sentiment + engagement */}
       <div className="ad-news-card__footer">
-        <Space size={4} wrap>
+        <Space size={8} wrap>
           {article.symbols.slice(0, 6).map((s) => (
             <Tag
               key={`${s.symbol}-${s.match_type}`}
