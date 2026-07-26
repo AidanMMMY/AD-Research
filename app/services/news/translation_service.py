@@ -101,6 +101,17 @@ _MAX_INPUT_CHARS = 12_000
 # can distinguish a real response from the missing-config no-op.
 _NO_KEY_HINT = "AI 功能未配置"
 
+# MiniMax / DeepSeek-style models leak reasoning blocks wrapped in
+# ``<think>`` into the content field. Strip them before persisting —
+# mirrors ``content_fetcher._strip_think_tags`` (kept as a local copy
+# to avoid importing the heavy content_fetcher module here).
+_THINK_TAG_RE = re.compile(r"<think>.*?</think>", re.DOTALL | re.IGNORECASE)
+
+
+def _strip_think_tags(text: str) -> str:
+    """Remove ``<think>...</think>`` reasoning blocks from LLM output."""
+    return _THINK_TAG_RE.sub("", text).strip()
+
 
 def _truncate(text: str) -> str:
     """Cap a long article body to ``_MAX_INPUT_CHARS`` for the prompt."""
@@ -364,6 +375,14 @@ class NewsTranslationService:
                     )
                     return None, None
                 if not content:
+                    return None, None
+                # Strip reasoning blocks before anything else — a
+                # response that is *only* a think block (model spent
+                # its whole budget reasoning) reduces to empty and is
+                # treated as a failed call, not persisted.
+                content = _strip_think_tags(content)
+                if not content:
+                    logger.info("News translation LLM returned only a think block; skipping")
                     return None, None
                 # Strip the no-key placeholder — it's not a real
                 # translation and we should already have raised above

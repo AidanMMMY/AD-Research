@@ -479,3 +479,34 @@ class TestAutoTranslate:
         assert result["title_zh"] == "仅标题"
         # Body skipped (no source text) → only the title call happened.
         assert fake_provider.chat.call_count == 1
+
+    def test_think_tags_stripped_before_persist(self, news_db):
+        """MiniMax/DeepSeek leak <think> blocks; they must never reach the DB."""
+        from app.services.news.translation_service import NewsTranslationService
+
+        article = _make_english_article(news_db)
+        ctx, fake_provider = _patch_provider(
+            "<think>reasoning about the translation…</think>中文译文"
+        )
+        with ctx:
+            result = NewsTranslationService(news_db).auto_translate(article.id)
+
+        news_db.refresh(article)
+        assert article.title_zh == "中文译文"
+        assert article.translated_zh == "中文译文"
+        assert "<think>" not in (article.title_zh or "")
+        assert result["translated"] is True
+
+    def test_think_only_response_treated_as_failure(self, news_db):
+        """A response that is only a think block must not be persisted."""
+        from app.services.news.translation_service import NewsTranslationService
+
+        article = _make_english_article(news_db)
+        ctx, fake_provider = _patch_provider("<think>only reasoning, no output</think>")
+        with ctx:
+            result = NewsTranslationService(news_db).auto_translate(article.id)
+
+        news_db.refresh(article)
+        assert article.title_zh is None
+        assert article.translated_zh is None
+        assert result["translated"] is False
