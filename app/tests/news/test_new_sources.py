@@ -45,6 +45,8 @@ from app.services.news.sources.rss_simple import (
     SimpleRssCrawler,
     TheOvershootCrawler,
     WealthCommonSenseCrawler,
+    WechatMaobidaoCrawler,
+    WechatSixianggangyinCrawler,
     WolfStreetCrawler,
     ZeroHedgeCrawler,
 )
@@ -122,6 +124,52 @@ class TestSimpleRssSources:
         (TheOvershootCrawler, "theovershoot", "us", "Matt Klein"),
         (QuantpediaCrawler, "quantpedia", "us", "Quantpedia"),
     ]
+
+    # WeChat OA mirrors (wechat2rss) — Chinese content, cn_a market.
+    WECHAT_CRAWLERS = [
+        (WechatMaobidaoCrawler, "wechat_maobidao", "cn_a", "猫笔刀"),
+        (WechatSixianggangyinCrawler, "wechat_sixianggangyin", "cn_a", "思想钢印"),
+    ]
+
+    @pytest.mark.parametrize(
+        "crawler_cls,source_name,market,author",
+        WECHAT_CRAWLERS,
+        ids=lambda v: v if isinstance(v, str) else None,
+    )
+    def test_wechat_mirror_crawler_attrs(self, crawler_cls, source_name, market, author):
+        crawler = crawler_cls()
+        assert crawler.source_name == source_name
+        assert crawler.market == market
+        assert crawler.language == "zh"
+        assert crawler.default_author == author
+        assert crawler.feed_url.startswith("https://wechat2rss.xlab.app/feed/")
+
+    _WECHAT2RSS_SAMPLE = """<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:content="http://purl.org/rss/1.0/modules/content/">
+  <channel>
+    <title>猫笔刀</title>
+    <item>
+      <title>市场周评：波动加剧</title>
+      <link>https://mp.weixin.qq.com/s?__biz=ABC&amp;mid=1&amp;idx=1&amp;sn=xyz</link>
+      <description></description>
+      <content:encoded><![CDATA[<p>原创 moomoocat</p><p>正文第一段，讲市场。</p><p>正文第二段，讲操作。</p>]]></content:encoded>
+      <pubDate>Sun, 26 Jul 2026 22:47:18 +0800</pubDate>
+    </item>
+  </channel>
+</rss>"""
+
+    def test_wechat2rss_content_encoded_becomes_body(self):
+        """wechat2rss feeds put the full post in content:encoded with an
+        EMPTY description — the parser must surface it as body/body_html."""
+        crawler = WechatMaobidaoCrawler()
+        articles = asyncio.run(crawler.parse(_fake_response(self._WECHAT2RSS_SAMPLE)))
+        assert len(articles) == 1
+        a = articles[0]
+        assert a.source == "wechat_maobidao"
+        assert a.market == "cn_a"
+        assert a.language == "zh"
+        assert "正文第一段" in (a.body or "")
+        assert "<p>" in (a.body_html or "")
 
     @pytest.mark.parametrize(
         "crawler_cls,source_name,market,author",

@@ -593,6 +593,8 @@ _WORKER_KEYWORDS: tuple[str, ...] = (
     "econbrowser",
     "theovershoot",
     "quantpedia",
+    "wechat_maobidao",
+    "wechat_sixianggangyin",
 )
 
 _WORKER_META: dict[str, dict[str, str]] = {
@@ -632,6 +634,9 @@ _WORKER_META: dict[str, dict[str, str]] = {
     "news_econbrowser_60m": {"label": "Econbrowser 学术宏观", "schedule": "每 60 分钟"},
     "news_theovershoot_60m": {"label": "The Overshoot 宏观研究", "schedule": "每 60 分钟"},
     "news_quantpedia_120m": {"label": "Quantpedia 量化研究", "schedule": "每 2 小时"},
+    # WeChat OA via public wechat2rss mirror (2026-07-27)
+    "news_wechat_maobidao_60m": {"label": "猫笔刀 (公众号镜像)", "schedule": "每 60 分钟"},
+    "news_wechat_sixianggangyin_60m": {"label": "思想钢印 (公众号镜像)", "schedule": "每 60 分钟"},
 }
 
 # Map a worker job id to the ``news_article.source`` it writes.  Only
@@ -666,6 +671,8 @@ _WORKER_JOB_TO_SOURCE: dict[str, str] = {
     "news_econbrowser_60m": "econbrowser",
     "news_theovershoot_60m": "theovershoot",
     "news_quantpedia_120m": "quantpedia",
+    "news_wechat_maobidao_60m": "wechat_maobidao",
+    "news_wechat_sixianggangyin_60m": "wechat_sixianggangyin",
 }
 
 

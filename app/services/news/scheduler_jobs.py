@@ -904,6 +904,11 @@ INDEPENDENT_RSS_JOBS: list[tuple[str, str, int, str]] = [
     ("news_econbrowser_60m", "Econbrowser 学术宏观", 60, f"{_RSS_SIMPLE}.EconbrowserCrawler"),
     ("news_theovershoot_60m", "The Overshoot 宏观研究", 60, f"{_RSS_SIMPLE}.TheOvershootCrawler"),
     ("news_quantpedia_120m", "Quantpedia 量化研究", 120, f"{_RSS_SIMPLE}.QuantpediaCrawler"),
+    # WeChat OA via the public wechat2rss mirror (no wewe-rss login
+    # required). Full body arrives in content:encoded. 60m cadence —
+    # these accounts post at most a few times a day.
+    ("news_wechat_maobidao_60m", "猫笔刀 (公众号镜像)", 60, f"{_RSS_SIMPLE}.WechatMaobidaoCrawler"),
+    ("news_wechat_sixianggangyin_60m", "思想钢印 (公众号镜像)", 60, f"{_RSS_SIMPLE}.WechatSixianggangyinCrawler"),
 ]
 
 # Materialise one module-level job function per entry so APScheduler can

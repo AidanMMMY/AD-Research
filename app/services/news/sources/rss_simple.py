@@ -276,3 +276,42 @@ class QuantpediaCrawler(SimpleRssCrawler):
     feed_url = "https://quantpedia.com/feed/"
     default_author = "Quantpedia"
     max_items = 20
+
+
+# ── WeChat OA mirrors (added 2026-07-27) ──
+#
+# These two independent WeChat Official Accounts are indexed by the
+# public wechat2rss service (https://wechat2rss.xlab.app), so they need
+# no self-hosted wewe-rss login. The feeds carry the FULL post body in
+# ``content:encoded`` (``description`` is empty), which
+# ``parse_rss_items`` already prefers — no extra work needed.
+# The remaining independent accounts (智谷趋势 / 远川研究所 / …) are NOT
+# on the wechat2rss free list and must go through the self-hosted
+# wewe-rss bridge once the operator completes the one-time 微信读书 QR
+# login — see docs/dev-notes/20260727-news-source-expansion.md §3.
+
+
+class WechatMaobidaoCrawler(SimpleRssCrawler):
+    """猫笔刀 (moomoocat) — independent macro/market commentary, via wechat2rss."""
+
+    source_name = "wechat_maobidao"
+    feed_url = (
+        "https://wechat2rss.xlab.app/feed/"
+        "33d986064f59be5263de2ca822fb3e0bdd59eb81.xml"
+    )
+    market = "cn_a"
+    language = "zh"
+    default_author = "猫笔刀"
+
+
+class WechatSixianggangyinCrawler(SimpleRssCrawler):
+    """思想钢印 — independent fund-manager essays, via wechat2rss."""
+
+    source_name = "wechat_sixianggangyin"
+    feed_url = (
+        "https://wechat2rss.xlab.app/feed/"
+        "a55006fab25a17c43a412246fda317822609f2ea.xml"
+    )
+    market = "cn_a"
+    language = "zh"
+    default_author = "思想钢印"
