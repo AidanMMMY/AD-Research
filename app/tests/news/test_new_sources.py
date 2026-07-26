@@ -22,17 +22,30 @@ from app.services.news.crawler.base import _Response
 from app.services.news.normalizer import NewsNormalizer
 from app.services.news.sources.cls import ClsCrawler
 from app.services.news.sources.rss_simple import (
+    ApricitasCrawler,
     ArxivQfinCrawler,
     BankOfEnglandCrawler,
     BbcBusinessCrawler,
+    CalculatedRiskCrawler,
     DecryptCrawler,
+    DoombergCrawler,
     EcbCrawler,
+    EconbrowserCrawler,
     FederalReserveCrawler,
     FtCrawler,
     InvestingCrawler,
+    MarginalRevolutionCrawler,
     MarketWatchCrawler,
+    NetInterestCrawler,
+    NoahpinionCrawler,
+    OfDollarsAndDataCrawler,
+    QuantpediaCrawler,
+    RitholtzCrawler,
     SeekingAlphaCrawler,
     SimpleRssCrawler,
+    TheOvershootCrawler,
+    WealthCommonSenseCrawler,
+    WolfStreetCrawler,
     ZeroHedgeCrawler,
 )
 
@@ -94,6 +107,20 @@ class TestSimpleRssSources:
         (EcbCrawler, "ecb", "us", "ECB"),
         (BankOfEnglandCrawler, "bankofengland", "us", "Bank of England"),
         (BbcBusinessCrawler, "bbc_business", "us", "BBC"),
+        # Independent blog / Substack sources (2026-07-27)
+        (WolfStreetCrawler, "wolfstreet", "us", "Wolf Richter"),
+        (CalculatedRiskCrawler, "calculatedrisk", "us", "Bill McBride"),
+        (WealthCommonSenseCrawler, "awealthofcommonsense", "us", "Ben Carlson"),
+        (OfDollarsAndDataCrawler, "ofdollarsanddata", "us", "Nick Maggiulli"),
+        (MarginalRevolutionCrawler, "marginalrevolution", "us", "Marginal Revolution"),
+        (RitholtzCrawler, "ritholtz", "us", "Barry Ritholtz"),
+        (NetInterestCrawler, "netinterest", "us", "Marc Rubinstein"),
+        (DoombergCrawler, "doomberg", "us", "Doomberg"),
+        (ApricitasCrawler, "apricitas", "us", "Joey Politano"),
+        (NoahpinionCrawler, "noahpinion", "us", "Noah Smith"),
+        (EconbrowserCrawler, "econbrowser", "us", "Econbrowser"),
+        (TheOvershootCrawler, "theovershoot", "us", "Matt Klein"),
+        (QuantpediaCrawler, "quantpedia", "us", "Quantpedia"),
     ]
 
     @pytest.mark.parametrize(
@@ -211,6 +238,9 @@ class TestNewSourcesPersistence:
             (DecryptCrawler, "decrypt"),
             (FederalReserveCrawler, "federal_reserve"),
             (ArxivQfinCrawler, "arxiv_qfin"),
+            (WolfStreetCrawler, "wolfstreet"),
+            (NetInterestCrawler, "netinterest"),
+            (QuantpediaCrawler, "quantpedia"),
         ],
         ids=lambda v: v if isinstance(v, str) else None,
     )

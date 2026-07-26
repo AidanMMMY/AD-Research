@@ -152,3 +152,127 @@ class ArxivQfinCrawler(SimpleRssCrawler):
     default_author = "arXiv"
     max_items = 30
     rate_limit_per_min = 10
+
+
+# ---------------------------------------------------------------------------
+# Independent blog / Substack sources (added 2026-07-27)
+#
+# Curated for original, independent analysis — no wire copy, no official
+# PR channels. All are single-author or small-team publications with a
+# distinct voice, and every feed URL was verified live from the
+# production ECS before being added. Low publishing volume (1-5 posts a
+# day), so a 30-minute cadence keeps them fresh without hammering.
+# ---------------------------------------------------------------------------
+
+
+class WolfStreetCrawler(SimpleRssCrawler):
+    """Wolf Street — Wolf Richter's independent finance/economy blog."""
+
+    source_name = "wolfstreet"
+    feed_url = "https://wolfstreet.com/feed/"
+    default_author = "Wolf Richter"
+
+
+class CalculatedRiskCrawler(SimpleRssCrawler):
+    """Calculated Risk — Bill McBride's legendary housing/macro blog."""
+
+    source_name = "calculatedrisk"
+    feed_url = "https://www.calculatedriskblog.com/feeds/posts/default?alt=rss"
+    default_author = "Bill McBride"
+
+
+class WealthCommonSenseCrawler(SimpleRssCrawler):
+    """A Wealth of Common Sense — Ben Carlson on markets & asset mgmt."""
+
+    source_name = "awealthofcommonsense"
+    feed_url = "https://awealthofcommonsense.com/feed/"
+    default_author = "Ben Carlson"
+
+
+class OfDollarsAndDataCrawler(SimpleRssCrawler):
+    """Of Dollars and Data — Nick Maggiulli's data-driven investing essays."""
+
+    source_name = "ofdollarsanddata"
+    feed_url = "https://ofdollarsanddata.com/feed/"
+    default_author = "Nick Maggiulli"
+
+
+class MarginalRevolutionCrawler(SimpleRssCrawler):
+    """Marginal Revolution — Tyler Cowen & Alex Tabarrok econ blog."""
+
+    source_name = "marginalrevolution"
+    feed_url = "https://marginalrevolution.com/feed"
+    default_author = "Marginal Revolution"
+
+
+class RitholtzCrawler(SimpleRssCrawler):
+    """The Big Picture — Barry Ritholtz on markets & investing behavior."""
+
+    source_name = "ritholtz"
+    feed_url = "https://ritholtz.com/feed/"
+    default_author = "Barry Ritholtz"
+
+
+class NetInterestCrawler(SimpleRssCrawler):
+    """Net Interest — Marc Rubinstein's deep dives on financial firms.
+
+    Custom Substack domain (netinterest.substack.com 301s here).
+    """
+
+    source_name = "netinterest"
+    feed_url = "https://www.netinterest.co/feed"
+    default_author = "Marc Rubinstein"
+    max_items = 10  # weekly newsletter — a small window is plenty
+
+
+class DoombergCrawler(SimpleRssCrawler):
+    """Doomberg — independent industrial/energy analysis (custom domain)."""
+
+    source_name = "doomberg"
+    feed_url = "https://newsletter.doomberg.com/feed"
+    default_author = "Doomberg"
+    max_items = 10
+
+
+class ApricitasCrawler(SimpleRssCrawler):
+    """Apricitas Economics — Joey Politano's data-driven econ analysis."""
+
+    source_name = "apricitas"
+    feed_url = "https://www.apricitas.io/feed"
+    default_author = "Joey Politano"
+    max_items = 10
+
+
+class NoahpinionCrawler(SimpleRssCrawler):
+    """Noahpinion — Noah Smith on economics, tech and geopolitics."""
+
+    source_name = "noahpinion"
+    feed_url = "https://www.noahpinion.blog/feed"
+    default_author = "Noah Smith"
+    max_items = 10
+
+
+class EconbrowserCrawler(SimpleRssCrawler):
+    """Econbrowser — James Hamilton & Menzie Chinn, academic macro."""
+
+    source_name = "econbrowser"
+    feed_url = "https://econbrowser.com/feed"
+    default_author = "Econbrowser"
+
+
+class TheOvershootCrawler(SimpleRssCrawler):
+    """The Overshoot — Matt Klein's macro/finance research letters."""
+
+    source_name = "theovershoot"
+    feed_url = "https://theovershoot.co/feed"
+    default_author = "Matt Klein"
+    max_items = 10
+
+
+class QuantpediaCrawler(SimpleRssCrawler):
+    """Quantpedia blog — quantitative strategy research digest."""
+
+    source_name = "quantpedia"
+    feed_url = "https://quantpedia.com/feed/"
+    default_author = "Quantpedia"
+    max_items = 20

@@ -580,6 +580,19 @@ _WORKER_KEYWORDS: tuple[str, ...] = (
     "bankofengland",
     "bbc_business",
     "arxiv",
+    "wolfstreet",
+    "calculatedrisk",
+    "awealthofcommonsense",
+    "ofdollarsanddata",
+    "marginalrevolution",
+    "ritholtz",
+    "netinterest",
+    "doomberg",
+    "apricitas",
+    "noahpinion",
+    "econbrowser",
+    "theovershoot",
+    "quantpedia",
 )
 
 _WORKER_META: dict[str, dict[str, str]] = {
@@ -605,6 +618,20 @@ _WORKER_META: dict[str, dict[str, str]] = {
     "news_bankofengland_60m": {"label": "英格兰银行新闻", "schedule": "每 60 分钟"},
     "news_bbc_business_15m": {"label": "BBC 商业 RSS", "schedule": "每 15 分钟"},
     "news_arxiv_qfin_360m": {"label": "arXiv 量化金融", "schedule": "每 6 小时"},
+    # Independent blog / Substack sources (2026-07-27)
+    "news_wolfstreet_30m": {"label": "Wolf Street 博客", "schedule": "每 30 分钟"},
+    "news_calculatedrisk_30m": {"label": "Calculated Risk 宏观博客", "schedule": "每 30 分钟"},
+    "news_awealthofcommonsense_30m": {"label": "A Wealth of Common Sense", "schedule": "每 30 分钟"},
+    "news_ofdollarsanddata_30m": {"label": "Of Dollars and Data", "schedule": "每 30 分钟"},
+    "news_marginalrevolution_30m": {"label": "Marginal Revolution", "schedule": "每 30 分钟"},
+    "news_ritholtz_30m": {"label": "The Big Picture (Ritholtz)", "schedule": "每 30 分钟"},
+    "news_netinterest_60m": {"label": "Net Interest 金融深度", "schedule": "每 60 分钟"},
+    "news_doomberg_60m": {"label": "Doomberg 产业能源", "schedule": "每 60 分钟"},
+    "news_apricitas_60m": {"label": "Apricitas Economics", "schedule": "每 60 分钟"},
+    "news_noahpinion_60m": {"label": "Noahpinion", "schedule": "每 60 分钟"},
+    "news_econbrowser_60m": {"label": "Econbrowser 学术宏观", "schedule": "每 60 分钟"},
+    "news_theovershoot_60m": {"label": "The Overshoot 宏观研究", "schedule": "每 60 分钟"},
+    "news_quantpedia_120m": {"label": "Quantpedia 量化研究", "schedule": "每 2 小时"},
 }
 
 # Map a worker job id to the ``news_article.source`` it writes.  Only
@@ -626,6 +653,19 @@ _WORKER_JOB_TO_SOURCE: dict[str, str] = {
     "news_bankofengland_60m": "bankofengland",
     "news_bbc_business_15m": "bbc_business",
     "news_arxiv_qfin_360m": "arxiv_qfin",
+    "news_wolfstreet_30m": "wolfstreet",
+    "news_calculatedrisk_30m": "calculatedrisk",
+    "news_awealthofcommonsense_30m": "awealthofcommonsense",
+    "news_ofdollarsanddata_30m": "ofdollarsanddata",
+    "news_marginalrevolution_30m": "marginalrevolution",
+    "news_ritholtz_30m": "ritholtz",
+    "news_netinterest_60m": "netinterest",
+    "news_doomberg_60m": "doomberg",
+    "news_apricitas_60m": "apricitas",
+    "news_noahpinion_60m": "noahpinion",
+    "news_econbrowser_60m": "econbrowser",
+    "news_theovershoot_60m": "theovershoot",
+    "news_quantpedia_120m": "quantpedia",
 }
 
 

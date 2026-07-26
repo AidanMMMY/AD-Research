@@ -855,6 +855,63 @@ def run_cointelegraph_crawl() -> dict[str, int]:
         return {"fetched": 0, "written": 0}
 
 
+# ── Independent blog / Substack sources (added 2026-07-27) ──
+
+def _simple_rss_job(job_id: str, crawler_class_path: str) -> Callable[[], dict[str, int]]:
+    """Build an ETL-logged crawl job for a :class:`SimpleRssCrawler` subclass.
+
+    The 13 independent blog/Substack sources differ only in crawler
+    class — generating the wrappers avoids 13 copies of the same
+    fetch→persist→log skeleton. Failure semantics match the hand-written
+    wrappers: log + return zeros, never crash the scheduler.
+    """
+    @_record_etl(job_id)
+    def _run() -> dict[str, int]:
+        import importlib
+
+        module_name, class_name = crawler_class_path.rsplit(".", 1)
+        crawler_cls = getattr(importlib.import_module(module_name), class_name)
+
+        async def _go():
+            async with crawler_cls() as c:
+                return await c.crawl()
+
+        try:
+            articles = _run_async(_go())
+            written = _write_to_db(articles)
+            return {"fetched": len(articles), "written": written}
+        except Exception as exc:
+            logger.exception("%s crawl failed: %s", job_id, exc)
+            return {"fetched": 0, "written": 0}
+
+    return _run
+
+
+_RSS_SIMPLE = "app.services.news.sources.rss_simple"
+
+# (job_id, display name for the health panel, interval minutes, crawler class)
+INDEPENDENT_RSS_JOBS: list[tuple[str, str, int, str]] = [
+    ("news_wolfstreet_30m", "Wolf Street 博客", 30, f"{_RSS_SIMPLE}.WolfStreetCrawler"),
+    ("news_calculatedrisk_30m", "Calculated Risk 宏观博客", 30, f"{_RSS_SIMPLE}.CalculatedRiskCrawler"),
+    ("news_awealthofcommonsense_30m", "A Wealth of Common Sense", 30, f"{_RSS_SIMPLE}.WealthCommonSenseCrawler"),
+    ("news_ofdollarsanddata_30m", "Of Dollars and Data", 30, f"{_RSS_SIMPLE}.OfDollarsAndDataCrawler"),
+    ("news_marginalrevolution_30m", "Marginal Revolution", 30, f"{_RSS_SIMPLE}.MarginalRevolutionCrawler"),
+    ("news_ritholtz_30m", "The Big Picture (Ritholtz)", 30, f"{_RSS_SIMPLE}.RitholtzCrawler"),
+    ("news_netinterest_60m", "Net Interest 金融深度", 60, f"{_RSS_SIMPLE}.NetInterestCrawler"),
+    ("news_doomberg_60m", "Doomberg 产业能源", 60, f"{_RSS_SIMPLE}.DoombergCrawler"),
+    ("news_apricitas_60m", "Apricitas Economics", 60, f"{_RSS_SIMPLE}.ApricitasCrawler"),
+    ("news_noahpinion_60m", "Noahpinion", 60, f"{_RSS_SIMPLE}.NoahpinionCrawler"),
+    ("news_econbrowser_60m", "Econbrowser 学术宏观", 60, f"{_RSS_SIMPLE}.EconbrowserCrawler"),
+    ("news_theovershoot_60m", "The Overshoot 宏观研究", 60, f"{_RSS_SIMPLE}.TheOvershootCrawler"),
+    ("news_quantpedia_120m", "Quantpedia 量化研究", 120, f"{_RSS_SIMPLE}.QuantpediaCrawler"),
+]
+
+# Materialise one module-level job function per entry so APScheduler can
+# import them by name (and so ``dir()`` shows them for tests).
+for _job_id, _label, _minutes, _path in INDEPENDENT_RSS_JOBS:
+    globals()[f"run_{_job_id.removeprefix('news_').rsplit('_', 1)[0]}_crawl"] = _simple_rss_job(_job_id, _path)
+
+
 # ── Translation drain (added 2026-07-26) ──
 
 @_record_etl("news_translate_10m")

@@ -26,6 +26,8 @@ x-backend-env: &backend-env
   BEA_API_KEY: ${BEA_API_KEY:-}
   BLS_API_KEY: ${BLS_API_KEY:-}
   XUEQIU_COOKIE: ${XUEQIU_COOKIE:-}
+  WECHAT_RSS_BASE_URL: ${WECHAT_RSS_BASE_URL:-http://wewe-rss:4000}
+  WECHAT_RSS_FEED_MAP: ${WECHAT_RSS_FEED_MAP:-}
   CORS_ORIGINS: ${CORS_ORIGINS:-}
   INTERNAL_API_TOKEN: ${INTERNAL_API_TOKEN:-}
   CNINFO_PDF_DIR: ${CNINFO_PDF_DIR:-/data/alloy-research/cninfo_pdfs}
@@ -222,6 +224,41 @@ services:
           cpus: "0.25"
           memory: 256M
 
+  # wewe-rss (2026-07-27): self-hosted WeChat Official-Account → RSS
+  # bridge for the independent-WeChat news sources. SQLite variant — no
+  # extra DB container. The admin UI binds to localhost only; reach it
+  # via `ssh -L 4000:localhost:4000 ad-research` then
+  # http://localhost:4000/dash (one-time 微信读书 QR login + adding
+  # accounts, see docs/dev-notes/20260727-news-source-expansion.md).
+  wewe-rss:
+    image: cooderl/wewe-rss-sqlite:latest
+    container_name: alloyresearch-wewe-rss
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:4000:4000"
+    volumes:
+      - wewe_rss_data:/app/data
+    environment:
+      - DATABASE_TYPE=sqlite
+      - AUTH_CODE=${WEWE_RSS_AUTH_CODE:-}
+      - CRON_EXPRESSION=${WEWE_RSS_CRON:-35 */1 * * *}
+      - MAX_REQUEST_PER_MINUTE=200
+    networks:
+      - alloyresearch-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "3"
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 512M
+        reservations:
+          cpus: "0.1"
+          memory: 128M
+
   nginx:
     image: nginx:alpine
     container_name: alloyresearch-nginx
@@ -258,6 +295,7 @@ volumes:
   redis_data:
   web_dist:
   cninfo_pdfs:
+  wewe_rss_data:
 
 networks:
   alloyresearch-network:

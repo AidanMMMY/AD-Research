@@ -2017,6 +2017,30 @@ def init_scheduler():
     except ImportError:
         pass
 
+    # Independent blog / Substack sources (added 2026-07-27): curated
+    # single-author / small-team analysis — Wolf Street, Calculated
+    # Risk, Ritholtz, Net Interest, Doomberg, Noahpinion, … The job
+    # functions are generated in ``scheduler_jobs.INDEPENDENT_RSS_JOBS``.
+    try:
+        from app.services.news import scheduler_jobs as _news_jobs
+
+        for job_id, label, minutes, _path in _news_jobs.INDEPENDENT_RSS_JOBS:
+            fn = getattr(
+                _news_jobs,
+                f"run_{job_id.removeprefix('news_').rsplit('_', 1)[0]}_crawl",
+            )
+            scheduler.add_job(
+                fn,
+                trigger=IntervalTrigger(minutes=minutes),
+                id=job_id,
+                name=label,
+                replace_existing=True,
+                max_instances=1,
+                coalesce=True,
+            )
+    except ImportError:
+        pass
+
     # News auto translation (2026-07-26): drain non-Chinese articles that
     # still lack a Chinese title/body translation; also backfills older
     # rows newest-first. The ingest-time pass in ``_write_to_db`` handles
