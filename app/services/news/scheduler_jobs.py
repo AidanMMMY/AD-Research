@@ -435,6 +435,11 @@ WECHAT2RSS_BATCH_JOBS: list[tuple[str, str, str]] = [
     ("news_wechat2rss_b_60m", "公众号镜像 B 组", "b"),
     ("news_wechat2rss_c_60m", "公众号镜像 C 组", "c"),
     ("news_wechat2rss_d_60m", "公众号镜像 D 组", "d"),
+    ("news_wechat2rss_e_60m", "公众号镜像 E 组", "e"),
+    ("news_wechat2rss_f_60m", "公众号镜像 F 组", "f"),
+    ("news_wechat2rss_g_60m", "公众号镜像 G 组", "g"),
+    ("news_wechat2rss_h_60m", "公众号镜像 H 组", "h"),
+    ("news_wechat2rss_i_60m", "公众号镜像 I 组", "i"),
 ]
 for _job_id, _label, _batch in WECHAT2RSS_BATCH_JOBS:
     globals()[f"run_wechat2rss_{_batch}_crawl"] = _wechat2rss_batch_job(_job_id, _batch)

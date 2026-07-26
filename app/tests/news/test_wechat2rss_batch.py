@@ -106,7 +106,7 @@ class TestSchedulerWiring:
             assert callable(fn)
             assert fn.__name__ == f"run_wechat2rss_{batch}_crawl"
 
-    @pytest.mark.parametrize("batch", ["a", "b", "c", "d"])
+    @pytest.mark.parametrize("batch", ["a", "b", "c", "d", "e", "f", "g", "h", "i"])
     def test_health_meta_exists(self, batch):
         from app.api.v1.news import _WORKER_META
 

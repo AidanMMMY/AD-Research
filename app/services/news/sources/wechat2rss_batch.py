@@ -6,8 +6,8 @@ The self-hosted wewe-rss bridge covers accounts we explicitly subscribe
 (one article link + one ``feed.add`` call each, rate-limited by 微信读书).
 The public `wechat2rss <https://wechat2rss.xlab.app>`_ service already
 indexes ~400 accounts as plain RSS — no login, no rate-limit coupling to
-our own 微信读书 account. We hand-picked the independent finance /
-business / tech-commentary accounts from its free list (see
+our own 微信读书 account. We hand-picked independent finance / business /
+tech / geopolitics / essay accounts from its free list (see
 ``WECHAT2RSS_FEEDS``) and crawl them here.
 
 Design notes
@@ -86,6 +86,55 @@ WECHAT2RSS_FEEDS: list[tuple[str, str, str]] = [
     ("qiuzhenwei", "邱贞玮", "6451f06f5dffd44946bbdc407cf9605396f83437"),
     ("qingbaofanzi", "二道情报贩子", "86512202e74d01447788f355c4a4171a3c86740a"),
     ("janky", "连续创业的Janky", "66f13ba7620a53ca279f679a8a956f43255fb579"),
+    ("qingbaogongjvxiang", "丁爸情报分析师的工具箱", "4fad165589ac854de97e576a6dbcfbd8b9f75320"),
+    ("qingbaofenxishi", "情报分析师", "f50063f977eea0ce26836189fb7c3034f7e3d4f8"),
+    ("qingbaomifeng", "情报小蜜蜂", "78f3da7a79babd1ab1a2831f37718630f41b77b5"),
+    ("weixielengjing", "威胁棱镜", "63688861efb2362716368e36b7f8b8b61d0394a9"),
+    ("aptguancha", "APT观察", "01cfcd4441ecc8f68af1df0d3669b9233133932a"),
+    ("heiniao", "黑鸟", "f22e132bbbc4e8070cd51c0a84802f940e131a20"),
+    ("kongtianfangyu", "空天防务观察", "b3da5de3b7697f10c0e22ce8909063ea84c44bbd"),
+    ("wengehuayu", "温哥华的鱼", "51ed4848e5bfbf298b0d2b2becdc3a7d067ff5be"),
+    ("hangkongxiaozhu", "方方的航空小筑", "b146ee0c6a719d7d3d86c93f4fdd4ca27b91baa2"),
+    ("daoge", "道哥的黑板报", "980128c3a0c9ff852a06dd4a2bc3391338e05760"),
+    ("heiqishi", "黑奇士", "47cf1260cf37d1de55b263afbf47e6cb6cae7d29"),
+    ("lanrensikao", "懒人在思考", "773908acbc527a9a8637862bc6fad7fc8a916090"),
+    ("economistjingdu", "经济学人双语精读", "3db1babbdeeb84327cf6b5315e98d5f40925ae13"),
+    ("mlchuxuezhe", "机器学习初学者", "c5f385197ef56f9345db0daf1e46419af8c7d664"),
+    ("cvai", "我爱计算机视觉", "b81ffcfff1107b5265cd7e39de610dc7ca72caf4"),
+    ("gumingdi", "古明地觉的编程教室", "9e21dbf7a7cca45762bbed43f86cf04f82b23e1a"),
+    ("aspirin42195", "阿司匹林42195米", "644f104d713e906e00ad1c5a0f91db5374cb5fb1"),
+    ("dbaplus", "dbaplus社群", "3b9cc8887fccb80d3f083cd6eb8c344628d101b6"),
+    ("weiwencode", "未闻Code", "a148ed0a542de4be305ffa1b93e8663ad252e22c"),
+    ("hanyantalk", "寒雁Talk", "bbbe847b63f498801792fb7a08d67d0fbf167a04"),
+    ("jishumaowu", "技术猫屋", "c48bba56bd4329af4db5c7b0eacf3d2f1c43c8df"),
+    ("zhaowu", "赵武的自留地", "1bbf7fc5fac024226f86a1851c682253a7eae63f"),
+    ("saibohuiyilu", "赛博回忆录", "b2fd128a6c259f160f380ffe90c17ce05bdc780f"),
+    ("nieshangchongsheng", "逆熵重生", "95efa9e55cc1f8b14fb09b246bfacb6b9cd0c1e8"),
+    ("neican", "互联网安全内参", "d5eb8577bf93aacdd7481ad0c3364939096b99a1"),
+    ("luorijian", "落日间", "9c4b3d62a24fdf1863421984ad23e0c63e317614"),
+    ("paohui", "有价值炮灰", "ca9e6f3e905e64301c6f00a21f2e3f135df1e691"),
+    ("pixiang", "皮相", "41a459a80e37e15d9706465eee48ff491911a36f"),
+    ("wangzhiyi", "网安志异", "e8caa9248c7b6a8d8d462a4ab3d7ab9181abeefb"),
+    ("xiaoheiwu", "漕河泾小黑屋", "f38c9a9f230e19f49918faefc5d0d0fc71e52d29"),
+    ("djzhaji", "DJ的札记", "d34c4b291ce2c15655ac1e7d54aa316902ef8968"),
+    ("xiaodisuibi", "小迪随笔", "5086d647f212ae93f39db2da1973dc3f446b0d95"),
+    ("tanjiti", "碳基体", "4bc6a2ecb1feb2bd2961a898905147c9f76a4c3a"),
+    ("sushiba", "俗世吧", "892464522627f503ae525d1df3c2690bca98b424"),
+    ("quanxianhua", "全闲话", "a36d83e725f688bd999b039c259940f72d3514b3"),
+    ("digejiangshi", "迪哥讲事", "6fbc842cdb8fd52f341af76f6aaf6cba21a23f7c"),
+    ("hangxingbiji", "航行笔记", "4a76fbd471f0952829df9c488986bbcc67ff8790"),
+    ("fangzhi", "放之", "672af7872ddae7ee20df9a3f2560224fb16babc3"),
+    ("biaotu", "表图", "657873c2f534ea1c50875c8657bc405270ce7cd0"),
+    ("tianwenjishibu", "天问记事簿", "a6b4c4531776fa4f4e837ca1fd56e5acd1df8f54"),
+    ("wangxiaoming", "王小明的事", "4d5625268306f53fca5c6e8cb59daf73ca57d5e0"),
+    ("sunmaojianghu", "榫卯江湖", "d1988b840deaf6a79edd32e83a1b152038f1b6a1"),
+    ("juexueshe", "觉学社", "238759eb3e9d042d4e1ef515cfc3686c977c6ddd"),
+    ("songzhao", "宋钊的小站", "667c03c3823e7c2c9da0c197b7b40f5b3ee94f8e"),
+    ("axutongxue", "阿虚同学", "808d3625c2b1915142f09e2d4bb2acd636aa956d"),
+    ("jungetili", "君哥的体历", "947b46dba9754e10360d267a5ee9a87597e0bafe"),
+    ("tianheishuoheihua", "天黑说嘿话", "d5a661c1beccdff18ba1ae018514e4d702feac74"),
+    ("anquanpenzi", "安全喷子", "158efac9a94e62404af4bc804a6d6dcd55caa44f"),
+    ("loudongzhanzheng", "漏洞战争", "a884cb33e3393db2f683c48d82012836295ec005"),
 ]
 
 _BATCH_SIZE = 11
