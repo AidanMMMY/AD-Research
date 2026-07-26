@@ -83,7 +83,7 @@ def _pending_translation_ids(db, limit: int) -> list[int]:
     Newest first so recent headlines get Chinese titles quickly; the
     drain job then walks backwards into the archive one batch per tick.
     """
-    from app.models.news import NewsArticle
+    from app.services.news._model_loader import NewsArticle
     from app.services.news.translation_service import _CHINESE_LANGUAGE_CODES
 
     stmt = (
