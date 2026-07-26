@@ -91,11 +91,13 @@ def is_chinese_language(language: str | None) -> bool:
     """
     return (language or "").strip().lower() in _CHINESE_LANGUAGE_CODES
 
-# Soft cap: 12,000 chars ≈ 3-4k tokens of input. DeepSeek handles
-# 16k easily; we leave headroom for system prompt + output. Long articles
-# get truncated with an explicit "(以下省略)" marker so the user can
-# see we cut something.
-_MAX_INPUT_CHARS = 12_000
+# Soft cap: 30,000 chars ≈ 8-10k tokens of input. MiniMax / DeepSeek
+# both handle this easily; we leave headroom for system prompt +
+# output. The rare longer article gets truncated with an explicit
+# marker so the reader can see we cut something. Raised from 12k on
+# 2026-07-27 — the product requirement is FULL-body translation, and
+# 12k was clipping longer Substack / blog essays.
+_MAX_INPUT_CHARS = 30_000
 
 # Detect the DeepSeek "no API key configured" placeholder so callers
 # can distinguish a real response from the missing-config no-op.
@@ -133,6 +135,28 @@ def _pick_source(article: NewsArticle) -> str | None:
     return None
 
 
+def translation_is_stale(article: NewsArticle) -> bool:
+    """True when the cached translation was made from a SHORTER source
+    than what we have now.
+
+    The classic case (2026-07-27): ingest-time translation ran before
+    the full-content fetch finished, so ``translated_zh`` covers only
+    the RSS excerpt. When ``full_content`` lands later (10-minute drain
+    job or manual fetch), the translation must be redone — the product
+    requirement is full-body Chinese, not a translated teaser.
+    """
+    if not article.translated_zh:
+        return False
+    if not (article.full_content and article.full_content.strip()):
+        return False
+    fetched_at = article.full_content_fetched_at
+    generated_at = article.translation_generated_at
+    if fetched_at and generated_at:
+        return fetched_at > generated_at
+    # Missing timestamps — can't order the events, assume not stale.
+    return False
+
+
 # ---------------------------------------------------------------------------
 # Service
 # ---------------------------------------------------------------------------
@@ -163,8 +187,15 @@ class NewsTranslationService:
             return None
         return article.translated_zh
 
-    def translate(self, article_id: int, *, target_language: str = "zh") -> dict[str, Any]:
+    def translate(
+        self, article_id: int, *, target_language: str = "zh", force: bool = False
+    ) -> dict[str, Any]:
         """Translate one article; persist the result on the row.
+
+        ``force=True`` bypasses the translation cache — used by the
+        drain job when :func:`translation_is_stale` says the cached
+        translation was made from a shorter source (e.g. the RSS
+        excerpt before the full body arrived).
 
         Returns
         -------
@@ -210,7 +241,7 @@ class NewsTranslationService:
                 logger.info("title translation skipped for %s: %s", article_id, exc)
                 self.db.rollback()
 
-        if article.translated_zh:
+        if article.translated_zh and not force:
             # Cache hit — return immediately, do NOT burn LLM tokens.
             return {
                 "translation": article.translated_zh,
@@ -331,11 +362,12 @@ class NewsTranslationService:
             self.db.rollback()
 
         body_status: dict[str, Any] = {"cached": False, "translated": False}
-        if article.translated_zh:
+        stale = translation_is_stale(article)
+        if article.translated_zh and not stale:
             body_status = {"cached": True, "translated": True}
         elif _pick_source(article):
             try:
-                result = self.translate(article_id)
+                result = self.translate(article_id, force=stale)
                 body_status = {"cached": result.get("cached", False), "translated": True}
             except Exception as exc:
                 logger.info("auto body translation failed for %s: %s", article_id, exc)

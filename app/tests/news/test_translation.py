@@ -510,3 +510,59 @@ class TestAutoTranslate:
         assert article.title_zh is None
         assert article.translated_zh is None
         assert result["translated"] is False
+
+    def test_stale_excerpt_translation_is_redone(self, news_db):
+        """Full body arriving AFTER an excerpt translation must retrigger.
+
+        Regression test for 2026-07-27: ingest-time translation ran on
+        the RSS excerpt; when the full-content drain later filled
+        ``full_content``, the reader was stuck with a translated teaser.
+        """
+        from datetime import timedelta
+        from app.services.news.translation_service import NewsTranslationService
+
+        article = _make_english_article(news_db)
+        article.title_zh = "已有标题"
+        article.translated_zh = "摘要的旧译文"
+        article.translation_generated_at = datetime.now(tz=timezone.utc).replace(tzinfo=None)
+        # Full body lands 10 minutes AFTER the excerpt translation.
+        article.full_content = "The complete full body of the article."
+        article.full_content_fetched_at = (
+            article.translation_generated_at + timedelta(minutes=10)
+        )
+        news_db.commit()
+
+        ctx, fake_provider = _patch_provider("全文的新译文")
+        with ctx:
+            result = NewsTranslationService(news_db).auto_translate(article.id)
+
+        news_db.refresh(article)
+        assert article.translated_zh == "全文的新译文"
+        assert result["translated"] is True
+        assert result["cached"] is False
+        # Body re-translated (title cached) → exactly one LLM call.
+        assert fake_provider.chat.call_count == 1
+
+    def test_fresh_translation_not_redone(self, news_db):
+        """A translation made AFTER the full body arrived is kept."""
+        from datetime import timedelta
+        from app.services.news.translation_service import NewsTranslationService
+
+        article = _make_english_article(news_db)
+        article.title_zh = "已有标题"
+        article.full_content = "Full body."
+        article.full_content_fetched_at = datetime.now(tz=timezone.utc).replace(tzinfo=None)
+        article.translated_zh = "新鲜译文"
+        article.translation_generated_at = (
+            article.full_content_fetched_at + timedelta(minutes=1)
+        )
+        news_db.commit()
+
+        ctx, fake_provider = _patch_provider("不应被调用")
+        with ctx:
+            result = NewsTranslationService(news_db).auto_translate(article.id)
+
+        news_db.refresh(article)
+        assert article.translated_zh == "新鲜译文"
+        assert result["cached"] is True
+        assert fake_provider.chat.call_count == 0

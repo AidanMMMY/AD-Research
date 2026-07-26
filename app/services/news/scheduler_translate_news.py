@@ -93,7 +93,21 @@ def _pending_translation_ids(db, limit: int) -> list[int]:
             # sources; the ``~in_`` guard keeps every Chinese variant out.
             NewsArticle.language.isnot(None),
             NewsArticle.language.notin_(sorted(_CHINESE_LANGUAGE_CODES)),
-            (NewsArticle.title_zh.is_(None)) | (NewsArticle.translated_zh.is_(None)),
+            (NewsArticle.title_zh.is_(None))
+            | (NewsArticle.translated_zh.is_(None))
+            # Stale re-translation (2026-07-27): the cached translation
+            # was made from the RSS excerpt and the full body arrived
+            # afterwards — redo it so the reader gets the FULL Chinese
+            # text, not a translated teaser.
+            | (
+                NewsArticle.translated_zh.isnot(None)
+                & NewsArticle.full_content_fetched_at.isnot(None)
+                & NewsArticle.translation_generated_at.isnot(None)
+                & (
+                    NewsArticle.full_content_fetched_at
+                    > NewsArticle.translation_generated_at
+                )
+            ),
         )
         .order_by(NewsArticle.published_at.desc())
         .limit(limit)
