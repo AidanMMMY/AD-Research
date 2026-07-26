@@ -12,7 +12,7 @@
 
 ## 方案总览
 
-```
+```text
 crawler tick → _write_to_db()
     → normalizer.normalize()        （落库，原文 title/body 不动）
     → fetch_full_content_for_ids()  （已有：抓全文，120s 预算）
@@ -68,9 +68,10 @@ APScheduler news_translate_10m（每 10 分钟）
 
 ## 运维要点
 
-- ** drain 任务即回填**：部署后 `news_translate_10m` 每 10 分钟自动按最新优先回填历史未翻译英文文章（每批 15 篇），无需手工脚本。想加速可临时调大 `news_translation_batch_size` 或手动执行：
+- **drain 任务即回填**：部署后 `news_translate_10m` 每 10 分钟自动按最新优先回填历史未翻译英文文章（每批 15 篇），无需手工脚本。想加速可临时调大 `news_translation_batch_size` 或手动执行：
+
   ```bash
-  docker exec etf-backend python -c \
+  docker exec alloyresearch-backend python -c \
     "from app.services.news.scheduler_translate_news import run_translate_pending; print(run_translate_pending(50))"
   ```
 - **健康页**：NewsHealth worker 网格新增「资讯自动翻译」行；ETLLog job_name=`news_translate_10m`
@@ -82,13 +83,32 @@ APScheduler news_translate_10m（每 10 分钟）
 ## 部署步骤
 
 1. `git push` 后 ECS `git pull`
-2. `docker exec etf-backend alembic upgrade head`（应用 `r4s6t8u0v2w4`）
+2. `docker exec alloyresearch-backend alembic upgrade head`（应用 `r4s6t8u0v2w4`）
 3. 重建 backend 镜像 + 前端 dist（dist 需 `npm run build` 后 docker cp 或镜像重 build）
 4. 重启 backend（APScheduler 注册新 job）
 5. 验证：找一篇新英文文章 → 详情页默认中文；`/news/health` worker 网格出现「资讯自动翻译」
 
 ## 测试
 
-- `app/tests/news/test_translation.py`：22 个测试全绿（含新增 `TestAutoTranslate` 5 个：标题+正文填充 / 中文跳过 / 缺失文章 / LLM 失败不留残态 / 无正文仅标题）
+- `app/tests/news/test_translation.py`：24 个测试全绿（含新增 `TestAutoTranslate` 7 个：标题+正文填充 / 中文跳过 / 缺失文章 / LLM 失败不留残态 / 无正文仅标题 / think 块剥离 / 仅 think 块视为失败）
 - 2 个旧测试断言从 `call_count == 1` 更新为 `== 2`（标题+正文两次调用，行为变更有意为之）
 - 前端 `tsc --noEmit` + `npm run build` 通过
+
+## 部署实录（2026-07-26 手动部署）
+
+未走 GitHub Actions（deploy runner 仍不稳定），手动部署路径：
+
+1. `rsync app/ + alembic/versions/ → /data/ad-research/`（ECS 仓库作为 source of truth）
+2. `rsync web/dist/ → /data/docker/volumes/aliyun-ecs_web_dist/_data/`（nginx 只读挂载，即时生效）
+3. `docker cp` 8 个后端文件进 `alloyresearch-backend`
+4. `docker exec alloyresearch-backend alembic upgrade head` → `q3r5s7t9u1v2 → r4s6t8u0v2w4`
+5. `docker restart alloyresearch-backend` → 调度注册 `news_translate_10m` ✅
+6. E2E：`auto_translate(5209024)` 真实 yahoo 文章 → 标题「韩国KOSPI走势如模因股…」✅
+7. drain 手动批次：`run_translate_pending(5)` → `{'fetched': 5, 'written': 5}` ✅
+8. 存量英文待翻译 ≈13.9k 篇，按 15 篇/10min 最新优先回填（约 6 天清完，新入库文章分钟级覆盖）
+
+### 部署中发现的两个坑（已修）
+
+1. **MiniMax `<think>` 推理块泄漏**（commit 后 hotfix）：MiniMax 把思考过程内联在 content 字段，标题译文被推理文本污染。修复：`_call_llm_with_retry` 统一 `_strip_think_tags`（镜像 `content_fetcher` 的既有实现）；仅含 think 块的响应视为失败不落库。**教训：任何 MiniMax 文本落库前都要过 think 块剥离。**
+2. **`app/models/news` 包遮蔽陷阱**（第二次 hotfix）：`app/models/news/`（xueqiu 包）遮蔽 `app/models/news.py`（主新闻模型），`from app.models.news import NewsArticle` 拿到的是包。必须用 `app.services.news._model_loader`。**教训：news 域所有新代码一律走 `_model_loader`，禁止直接 `from app.models.news import ...`。**
+

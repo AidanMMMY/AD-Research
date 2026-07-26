@@ -18,7 +18,7 @@ h1,h2,h3{line-height:1.3} h1{border-bottom:2px solid #eee;padding-bottom:.3em}
 <li>并排双栏在移动端体验差。</li>
 </ol>
 <h2>方案总览</h2>
-<pre><code>crawler tick → _write_to_db()
+<pre><code class="language-text">crawler tick → _write_to_db()
     → normalizer.normalize()        （落库，原文 title/body 不动）
     → fetch_full_content_for_ids()  （已有：抓全文，120s 预算）
     → auto_translate_for_ids()      （新增：标题+正文翻译，90s 预算）
@@ -115,27 +115,44 @@ APScheduler news_translate_10m（每 10 分钟）
 </ul>
 <h2>运维要点</h2>
 <ul>
-<li>** drain 任务即回填**：部署后 <code>news_translate_10m</code> 每 10 分钟自动按最新优先回填历史未翻译英文文章（每批 15 篇），无需手工脚本。想加速可临时调大 <code>news_translation_batch_size</code> 或手动执行：
-  <code>bash
-  docker exec etf-backend python -c \
-    "from app.services.news.scheduler_translate_news import run_translate_pending; print(run_translate_pending(50))"</code></li>
-<li><strong>健康页</strong>：NewsHealth worker 网格新增「资讯自动翻译」行；ETLLog job_name=<code>news_translate_10m</code></li>
-<li><strong>失败重试</strong>：翻译失败不写字段（保持 NULL），下一 tick 自动重试，天然幂等</li>
-<li><strong>关闭开关</strong>：<code>NEWS_TRANSLATION_ON_INGEST=false</code> 关闭入库即翻（drain 仍在跑）；drain 批量由 <code>NEWS_TRANSLATION_BATCH_SIZE</code> 控制</li>
-<li><strong>LLM</strong>：走 <code>get_llm_provider()</code>（生产 MiniMax）。标题与正文各一次调用，标题 prompt 要求单行输出（服务端再兜底取第一行）</li>
-<li><strong>手动端点保留</strong>：<code>POST /news/{id}/translate</code> 行为不变（现在顺带补 title_zh），作为老文章/失败的兜底；429/409/502 语义不变</li>
+<li><strong>drain 任务即回填</strong>：部署后 <code>news_translate_10m</code> 每 10 分钟自动按最新优先回填历史未翻译英文文章（每批 15 篇），无需手工脚本。想加速可临时调大 <code>news_translation_batch_size</code> 或手动执行：</li>
 </ul>
+<p><code>bash
+  docker exec alloyresearch-backend python -c \
+    "from app.services.news.scheduler_translate_news import run_translate_pending; print(run_translate_pending(50))"</code>
+- <strong>健康页</strong>：NewsHealth worker 网格新增「资讯自动翻译」行；ETLLog job_name=<code>news_translate_10m</code>
+- <strong>失败重试</strong>：翻译失败不写字段（保持 NULL），下一 tick 自动重试，天然幂等
+- <strong>关闭开关</strong>：<code>NEWS_TRANSLATION_ON_INGEST=false</code> 关闭入库即翻（drain 仍在跑）；drain 批量由 <code>NEWS_TRANSLATION_BATCH_SIZE</code> 控制
+- <strong>LLM</strong>：走 <code>get_llm_provider()</code>（生产 MiniMax）。标题与正文各一次调用，标题 prompt 要求单行输出（服务端再兜底取第一行）
+- <strong>手动端点保留</strong>：<code>POST /news/{id}/translate</code> 行为不变（现在顺带补 title_zh），作为老文章/失败的兜底；429/409/502 语义不变</p>
 <h2>部署步骤</h2>
 <ol>
 <li><code>git push</code> 后 ECS <code>git pull</code></li>
-<li><code>docker exec etf-backend alembic upgrade head</code>（应用 <code>r4s6t8u0v2w4</code>）</li>
+<li><code>docker exec alloyresearch-backend alembic upgrade head</code>（应用 <code>r4s6t8u0v2w4</code>）</li>
 <li>重建 backend 镜像 + 前端 dist（dist 需 <code>npm run build</code> 后 docker cp 或镜像重 build）</li>
 <li>重启 backend（APScheduler 注册新 job）</li>
 <li>验证：找一篇新英文文章 → 详情页默认中文；<code>/news/health</code> worker 网格出现「资讯自动翻译」</li>
 </ol>
 <h2>测试</h2>
 <ul>
-<li><code>app/tests/news/test_translation.py</code>：22 个测试全绿（含新增 <code>TestAutoTranslate</code> 5 个：标题+正文填充 / 中文跳过 / 缺失文章 / LLM 失败不留残态 / 无正文仅标题）</li>
+<li><code>app/tests/news/test_translation.py</code>：24 个测试全绿（含新增 <code>TestAutoTranslate</code> 7 个：标题+正文填充 / 中文跳过 / 缺失文章 / LLM 失败不留残态 / 无正文仅标题 / think 块剥离 / 仅 think 块视为失败）</li>
 <li>2 个旧测试断言从 <code>call_count == 1</code> 更新为 <code>== 2</code>（标题+正文两次调用，行为变更有意为之）</li>
 <li>前端 <code>tsc --noEmit</code> + <code>npm run build</code> 通过</li>
-</ul></body></html>
+</ul>
+<h2>部署实录（2026-07-26 手动部署）</h2>
+<p>未走 GitHub Actions（deploy runner 仍不稳定），手动部署路径：</p>
+<ol>
+<li><code>rsync app/ + alembic/versions/ → /data/ad-research/</code>（ECS 仓库作为 source of truth）</li>
+<li><code>rsync web/dist/ → /data/docker/volumes/aliyun-ecs_web_dist/_data/</code>（nginx 只读挂载，即时生效）</li>
+<li><code>docker cp</code> 8 个后端文件进 <code>alloyresearch-backend</code></li>
+<li><code>docker exec alloyresearch-backend alembic upgrade head</code> → <code>q3r5s7t9u1v2 → r4s6t8u0v2w4</code></li>
+<li><code>docker restart alloyresearch-backend</code> → 调度注册 <code>news_translate_10m</code> ✅</li>
+<li>E2E：<code>auto_translate(5209024)</code> 真实 yahoo 文章 → 标题「韩国KOSPI走势如模因股…」✅</li>
+<li>drain 手动批次：<code>run_translate_pending(5)</code> → <code>{'fetched': 5, 'written': 5}</code> ✅</li>
+<li>存量英文待翻译 ≈13.9k 篇，按 15 篇/10min 最新优先回填（约 6 天清完，新入库文章分钟级覆盖）</li>
+</ol>
+<h3>部署中发现的两个坑（已修）</h3>
+<ol>
+<li><strong>MiniMax <code>&lt;think&gt;</code> 推理块泄漏</strong>（commit 后 hotfix）：MiniMax 把思考过程内联在 content 字段，标题译文被推理文本污染。修复：<code>_call_llm_with_retry</code> 统一 <code>_strip_think_tags</code>（镜像 <code>content_fetcher</code> 的既有实现）；仅含 think 块的响应视为失败不落库。<strong>教训：任何 MiniMax 文本落库前都要过 think 块剥离。</strong></li>
+<li><strong><code>app/models/news</code> 包遮蔽陷阱</strong>（第二次 hotfix）：<code>app/models/news/</code>（xueqiu 包）遮蔽 <code>app/models/news.py</code>（主新闻模型），<code>from app.models.news import NewsArticle</code> 拿到的是包。必须用 <code>app.services.news._model_loader</code>。<strong>教训：news 域所有新代码一律走 <code>_model_loader</code>，禁止直接 <code>from app.models.news import ...</code>。</strong></li>
+</ol></body></html>
