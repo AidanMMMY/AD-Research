@@ -55,7 +55,21 @@ from app.strategies.base import StrategyRegistry
 # launch too many long-running DB-holding jobs concurrently and exhaust the
 # backend connection pool (Action-253 follow-up). 5 concurrent scheduler
 # jobs is enough for our nightly batch while leaving headroom for the API.
-scheduler = BackgroundScheduler(executors={"default": ThreadPoolExecutor(max_workers=5)})
+#
+# ``job_defaults`` (2026-07-27, P0): APScheduler 3.x defaults
+# ``misfire_grace_time`` to **1 second**. With ~45 interval jobs aligned
+# on the same second (every 5/10-minute boundary), the scheduler thread
+# processes due jobs in registration order and any job reached >1s late
+# was silently DROPPED — ``news_translate_10m``, ``news_full_content_10m``,
+# sentiment batch, event categorization and a dozen RSS sources had
+# literally never run a single tick (0 rows in etl_log). 300s grace lets
+# a crowded tick run late instead of never; ``coalesce`` collapses the
+# backlog to one run per job. See
+# docs/dev-notes/20260727-news-source-expansion.md for the full autopsy.
+scheduler = BackgroundScheduler(
+    executors={"default": ThreadPoolExecutor(max_workers=5)},
+    job_defaults={"misfire_grace_time": 300, "coalesce": True},
+)
 
 # Names for distributed locks used by scheduled jobs.
 _LOCK_ETL = "daily_etl"
