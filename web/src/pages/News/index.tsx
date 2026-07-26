@@ -288,7 +288,7 @@ function NewsCard({
       className="ad-news-card"
       role="button"
       tabIndex={0}
-      aria-label={article.title}
+      aria-label={article.title_zh ?? article.title}
       onClick={() => onOpen(article)}
       onKeyDown={(e) => {
         if (e.key === 'Enter' || e.key === ' ') {
@@ -310,9 +310,17 @@ function NewsCard({
         <ImportanceStars level={article.importance} />
       </div>
 
-      {/* Title */}
+      {/* Title — Chinese-first: the ingestion pipeline auto-translates
+          non-Chinese articles into ``title_zh``; when present we render
+          it with a small 「译」 badge and keep the original title one
+          hover away (Tooltip). */}
       <div className="ad-news-card__title">
-        {article.title}
+        {article.title_zh ?? article.title}
+        {article.title_zh && (
+          <Tooltip title={`原标题：${article.title}`}>
+            <span className="ad-news-card__translated-badge">译</span>
+          </Tooltip>
+        )}
       </div>
 
       {/* Body preview */}

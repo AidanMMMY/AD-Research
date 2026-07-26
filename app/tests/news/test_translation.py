@@ -177,8 +177,10 @@ class TestNewsTranslationService:
         news_db.refresh(article)
         assert article.translated_zh == "你好，世界。"
         assert article.translation_generated_at is not None
-        # LLM called exactly once.
-        assert fake_provider.chat.call_count == 1
+        # LLM called twice: once for the title (title_zh bonus fill,
+        # 2026-07-26) and once for the body.
+        assert fake_provider.chat.call_count == 2
+        assert article.title_zh == "你好，世界。"
 
     def test_cache_hit_skips_llm(self, news_db):
         from app.services.news.translation_service import NewsTranslationService
@@ -318,7 +320,8 @@ class TestTranslateEndpoint:
             first = api_client.post(f"/api/v1/news/{article.id}/translate")
         assert first.status_code == 200
         assert first.json()["cached"] is False
-        assert fake_provider.chat.call_count == 1
+        # Title + body = two LLM calls on the first (uncached) request.
+        assert fake_provider.chat.call_count == 2
 
         ctx2, fake_provider2 = _patch_provider("翻译 B（不应被调用）")
         with ctx2:
@@ -396,3 +399,83 @@ class TestTranslateEndpoint:
         body = resp.json()
         assert body["translated_zh"] == "示例译文"
         assert body["translation_generated_at"] is not None
+
+# ---------------------------------------------------------------------------
+# Auto-translation pipeline (2026-07-26, ingestion-time title + body)
+# ---------------------------------------------------------------------------
+
+
+class TestAutoTranslate:
+    """``NewsTranslationService.auto_translate`` — the ingestion-time path.
+
+    Unlike ``translate()`` it must never raise (it runs inside the
+    crawler write path), and it fills both ``title_zh`` and
+    ``translated_zh`` for any non-Chinese article.
+    """
+
+    def test_fills_title_and_body(self, news_db):
+        from app.services.news.translation_service import NewsTranslationService
+
+        article = _make_english_article(news_db)
+        ctx, fake_provider = _patch_provider("中文文本")
+        with ctx:
+            result = NewsTranslationService(news_db).auto_translate(article.id)
+
+        assert result["skipped"] is False
+        assert result["translated"] is True
+        news_db.refresh(article)
+        assert article.title_zh == "中文文本"
+        assert article.translated_zh == "中文文本"
+        # Two LLM calls: title + body.
+        assert fake_provider.chat.call_count == 2
+
+    def test_skips_chinese_without_llm(self, news_db):
+        from app.services.news.translation_service import NewsTranslationService
+
+        article = _make_chinese_article(news_db)
+        ctx, fake_provider = _patch_provider()
+        with ctx:
+            result = NewsTranslationService(news_db).auto_translate(article.id)
+
+        assert result["skipped"] is True
+        assert result["reason"] == "chinese"
+        assert fake_provider.chat.call_count == 0
+
+    def test_missing_article_returns_skipped(self, news_db):
+        from app.services.news.translation_service import NewsTranslationService
+
+        result = NewsTranslationService(news_db).auto_translate(999999)
+        assert result == {"article_id": 999999, "skipped": True, "reason": "not_found"}
+
+    def test_llm_failure_leaves_row_untouched(self, news_db):
+        """A provider exception must not propagate or write partial state."""
+        from app.services.news.translation_service import NewsTranslationService
+
+        article = _make_english_article(news_db)
+        ctx, fake_provider = _patch_provider()
+        fake_provider.chat.side_effect = RuntimeError("boom")
+        with ctx:
+            result = NewsTranslationService(news_db).auto_translate(article.id)
+
+        news_db.refresh(article)
+        assert article.title_zh is None
+        assert article.translated_zh is None
+        assert result["translated"] is False
+
+    def test_title_cached_when_body_missing(self, news_db):
+        """Title translation still lands when the article has no body text."""
+        from app.services.news.translation_service import NewsTranslationService
+
+        article = _make_english_article(news_db, body=None)
+        article.summary = None
+        news_db.commit()
+        ctx, fake_provider = _patch_provider("仅标题")
+        with ctx:
+            result = NewsTranslationService(news_db).auto_translate(article.id)
+
+        news_db.refresh(article)
+        assert article.title_zh == "仅标题"
+        assert article.translated_zh is None
+        assert result["title_zh"] == "仅标题"
+        # Body skipped (no source text) → only the title call happened.
+        assert fake_provider.chat.call_count == 1

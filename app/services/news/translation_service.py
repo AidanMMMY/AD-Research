@@ -58,6 +58,39 @@ _TRANSLATION_SYSTEM = (
     "5. 如果原文极短或为空，直接返回空字符串。"
 )
 
+# Title translation uses a separate, shorter prompt: the output must be
+# a single line of Chinese with no Markdown decoration so it can drop
+# straight into the list-page headline slot.
+_TITLE_TRANSLATION_SYSTEM = (
+    "你是一名严谨的中英双语金融翻译。请将用户提供的英文资讯标题翻译为中文。\n"
+    "要求：\n"
+    "1. 只输出一行中文标题，不要书名号以外的任何标点装饰、不要解释。\n"
+    "2. 保留公司名、产品名、人名等专有名词的英文原名（可在括号内附中文译名）。\n"
+    "3. 保留所有数字、货币符号、百分比、股票代码。\n"
+    "4. 如果原文为空，直接返回空字符串。"
+)
+
+# Language codes we treat as Chinese (no translation needed). Crawlers
+# currently only emit "en" / "zh", but the gate is deliberately
+# inclusive so a future ``zh-tw`` / ``cn`` source doesn't get
+# double-translated.
+_CHINESE_LANGUAGE_CODES: frozenset[str] = frozenset(
+    {"zh", "cn", "zh-cn", "zh-hans", "zh-hant", "zh-tw", "zh-hk"}
+)
+
+
+def is_chinese_language(language: str | None) -> bool:
+    """True when the article language is a Chinese variant.
+
+    ``None`` / unknown codes are treated as *non-Chinese* — the common
+    case is English RSS feeds that never set the field, and translating
+    an already-Chinese title is only harmful, while translating an
+    English one is the whole point. A wrong guess on a genuinely
+    non-Chinese, non-English source (rare) still yields a useful Chinese
+    rendering.
+    """
+    return (language or "").strip().lower() in _CHINESE_LANGUAGE_CODES
+
 # Soft cap: 12,000 chars ≈ 3-4k tokens of input. DeepSeek handles
 # 16k easily; we leave headroom for system prompt + output. Long articles
 # get truncated with an explicit "(以下省略)" marker so the user can
@@ -149,11 +182,22 @@ class NewsTranslationService:
         if article is None:
             raise ValueError(f"NewsArticle {article_id} not found")
 
-        if (article.language or "").lower() != "en":
+        if is_chinese_language(article.language):
             raise ValueError(
                 f"Article {article_id} language is {article.language!r}; "
-                "translation is only enabled for English content"
+                "translation is only enabled for non-Chinese content"
             )
+
+        # Opportunistically fill the Chinese title too — the detail page
+        # renders ``title_zh`` as the headline, so a manual translate of
+        # an older article should upgrade the title in the same click.
+        # Failures here must not block the body translation.
+        if not article.title_zh:
+            try:
+                self.translate_title_if_needed(article)
+            except Exception as exc:  # pragma: no cover - defensive
+                logger.info("title translation skipped for %s: %s", article_id, exc)
+                self.db.rollback()
 
         if article.translated_zh:
             # Cache hit — return immediately, do NOT burn LLM tokens.
@@ -212,6 +256,85 @@ class NewsTranslationService:
             "generated_at": now.isoformat(),
             "source_language": article.language or "en",
             "target_language": target_language,
+        }
+
+    # ---- Ingestion-time auto translation ---------------------------------
+
+    def translate_title_if_needed(self, article: NewsArticle) -> str | None:
+        """Translate ``article.title`` into ``article.title_zh``.
+
+        No-op (returns the cached value) when ``title_zh`` is already
+        set or the article is Chinese. Commits on success; returns
+        ``None`` when the LLM call failed — the row is left untouched so
+        the next drain tick retries.
+        """
+        if article.title_zh:
+            return article.title_zh
+        if is_chinese_language(article.language):
+            return None
+        if not article.title or not article.title.strip():
+            return None
+
+        from app.services.llm import get_llm_provider
+
+        provider = get_llm_provider()
+        if not provider.is_available:
+            return None
+
+        content, _tokens = self._call_llm_with_retry(
+            provider, _TITLE_TRANSLATION_SYSTEM, article.title.strip()
+        )
+        if not content:
+            return None
+        # Defensive: titles must stay one line for the list page.
+        title_zh = content.strip().splitlines()[0].strip() if content.strip() else ""
+        if not title_zh:
+            return None
+        article.title_zh = title_zh[:1000]
+        self.db.commit()
+        return article.title_zh
+
+    def auto_translate(self, article_id: int) -> dict[str, Any]:
+        """Best-effort full translation for the ingestion pipeline.
+
+        Unlike :meth:`translate` this **never raises** — it is called
+        from the crawler write path where a translation failure must not
+        break persistence. Translates the title (when missing) and the
+        body (when missing) for any non-Chinese article.
+
+        Returns ``{"article_id", "skipped", "title_zh", "translated",
+        "cached", "reason"}`` — ``skipped=True`` (with ``reason``) for
+        Chinese articles, missing rows, or articles with no source text.
+        """
+        article = self.db.get(NewsArticle, article_id)
+        if article is None:
+            return {"article_id": article_id, "skipped": True, "reason": "not_found"}
+        if is_chinese_language(article.language):
+            return {"article_id": article_id, "skipped": True, "reason": "chinese"}
+
+        title_zh = None
+        try:
+            title_zh = self.translate_title_if_needed(article)
+        except Exception as exc:  # pragma: no cover - defensive
+            logger.warning("auto title translation failed for %s: %s", article_id, exc)
+            self.db.rollback()
+
+        body_status: dict[str, Any] = {"cached": False, "translated": False}
+        if article.translated_zh:
+            body_status = {"cached": True, "translated": True}
+        elif _pick_source(article):
+            try:
+                result = self.translate(article_id)
+                body_status = {"cached": result.get("cached", False), "translated": True}
+            except Exception as exc:
+                logger.info("auto body translation failed for %s: %s", article_id, exc)
+                self.db.rollback()
+
+        return {
+            "article_id": article_id,
+            "skipped": False,
+            "title_zh": title_zh,
+            **body_status,
         }
 
     # ---- LLM helpers ----------------------------------------------------

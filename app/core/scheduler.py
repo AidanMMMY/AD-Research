@@ -2017,6 +2017,24 @@ def init_scheduler():
     except ImportError:
         pass
 
+    # News auto translation (2026-07-26): drain non-Chinese articles that
+    # still lack a Chinese title/body translation; also backfills older
+    # rows newest-first. The ingest-time pass in ``_write_to_db`` handles
+    # fresh articles inline; this job is the safety net.
+    try:
+        from app.services.news.scheduler_jobs import run_translate_pending_job
+        scheduler.add_job(
+            run_translate_pending_job,
+            trigger=IntervalTrigger(minutes=10),
+            id="news_translate_10m",
+            name="资讯自动翻译",
+            replace_existing=True,
+            max_instances=1,
+            coalesce=True,
+        )
+    except ImportError:
+        pass
+
     # LLM sentiment pipeline (Agent E)
     try:
         from app.services.news.sentiment.scheduler_sentiment import init_sentiment_jobs

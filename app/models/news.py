@@ -94,11 +94,19 @@ class NewsArticle(Base):
     embedding = Column(_JSON_TYPE, comment="Embedding vector as a JSON list")
     embedding_model = Column(String(50), comment="Model that produced the embedding")
     embedded_at = Column(DateTime, comment="When the embedding was persisted")
-    # Chinese translation cache, filled on demand by the
-    # ``/news/{id}/translate`` endpoint. Populated only for English
-    # articles (the API enforces ``language == 'en'`` before writing).
+    # Chinese translation cache. ``translated_zh`` (body) was originally
+    # filled on demand by the ``/news/{id}/translate`` endpoint; since
+    # 2026-07-26 both ``title_zh`` and ``translated_zh`` are also
+    # auto-filled at ingestion time for non-Chinese articles by
+    # ``scheduler_translate_news`` (see runbook
+    # ``docs/dev-notes/20260726-news-auto-translate.md``). The original
+    # English text always stays in ``title`` / ``body`` / ``full_content``.
+    title_zh = Column(
+        String(1000),
+        comment="AI-generated Chinese translation of title (auto-filled at ingestion)",
+    )
     translated_zh = Column(
-        Text, comment="DeepSeek-generated Chinese translation of body / full_content"
+        Text, comment="LLM-generated Chinese translation of body / full_content"
     )
     translation_generated_at = Column(
         DateTime, comment="When the LLM translation was last produced"

@@ -51,6 +51,14 @@ export interface NewsArticle {
   market: NewsMarket;
   language: string;
   title: string;
+  /**
+   * AI-generated Chinese title translation. Auto-filled at ingestion
+   * for non-Chinese sources (``null`` until the pipeline reaches the
+   * row, and always ``null`` for Chinese sources). Render
+   * ``title_zh ?? title``; when ``title_zh`` exists, surface the
+   * original ``title`` as a subtitle / tooltip.
+   */
+  title_zh?: string | null;
   /** Intro/excerpt handed over by the crawler (RSS blurb, selftext…). */
   body: string | null;
   /** RSS summary; currently the same text as ``body`` in the API payload. */
@@ -270,6 +278,8 @@ export interface NewsHealthResponse {
 export interface EventSignal {
   id: number;
   title: string;
+  /** AI Chinese title translation (auto-filled at ingestion; null for Chinese sources). */
+  title_zh?: string | null;
   source: string;
   url: string;
   market: NewsMarket;

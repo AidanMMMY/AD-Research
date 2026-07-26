@@ -9,7 +9,7 @@ import {
   Button,
   List,
   Tooltip,
-  Switch,
+  Segmented,
 } from 'antd';
 import {
   ArrowLeftOutlined,
@@ -232,19 +232,26 @@ export default function NewsDetail() {
     },
   });
 
-  // AI translation toggle. Only enabled for English articles; the
-  // server enforces ``language == 'en'`` and we mirror that here so
-  // non-English articles never show the toggle at all.
-  const [showTranslation, setShowTranslation] = useState(false);
+  // AI translation view (reworked 2026-07-26). Non-Chinese articles are
+  // auto-translated at ingestion (title → ``title_zh``, body →
+  // ``translated_zh``); the detail page defaults to the Chinese
+  // rendering and offers a full-article 中文/原文 switch. The manual
+  // translate mutation remains as a fallback for rows the pipeline
+  // hasn't reached yet (older articles, LLM hiccups).
+  const [viewMode, setViewMode] = useState<'zh' | 'original'>('zh');
   const [translationOverride, setTranslationOverride] = useState<string | null>(
     null,
   );
-  const isEnglish = (data?.language || '').toLowerCase() === 'en';
+  const CHINESE_LANGS = useMemo(
+    () => new Set(['zh', 'cn', 'zh-cn', 'zh-hans', 'zh-hant', 'zh-tw', 'zh-hk']),
+    [],
+  );
+  const isNonChinese = !CHINESE_LANGS.has((data?.language || '').toLowerCase());
 
-  // Reset the toggle + override when navigating between articles so a
+  // Reset the view + override when navigating between articles so a
   // fresh article doesn't inherit the previous one's translation.
   useEffect(() => {
-    setShowTranslation(false);
+    setViewMode('zh');
     setTranslationOverride(null);
   }, [articleId]);
 
@@ -253,32 +260,31 @@ export default function NewsDetail() {
       newsApi.translate(articleId).then((r) => r.data),
     onSuccess: (resp) => {
       setTranslationOverride(resp.translation);
+      setViewMode('zh');
       // Refresh the article detail so a subsequent mount picks up the
-      // cached translation without an extra round-trip.
+      // cached translation (and the freshly-filled title_zh) without an
+      // extra round-trip.
       queryClient.invalidateQueries({ queryKey: ['news-detail', articleId] });
     },
   });
 
-  // When the toggle flips on, kick off the translation if we don't
-  // already have one cached on the article (or in local state).
   const translationFromServer = data?.translated_zh ?? null;
   const translationToShow = translationOverride ?? translationFromServer;
-  const handleTranslationToggle = (checked: boolean) => {
-    setShowTranslation(checked);
-    if (checked && !translationToShow && !translateArticle.isPending) {
-      translateArticle.mutate();
-    }
-  };
+  // Chinese view needs BOTH intent (viewMode) and content. When the
+  // pipeline hasn't translated this row yet we keep showing the
+  // original body with a slim "翻译进行中" notice — never an empty pane.
+  const showChinese = viewMode === 'zh' && !!translationToShow;
 
-  // Update document title for nicer browser tab.
+  // Update document title for nicer browser tab (Chinese-first).
   useEffect(() => {
-    if (data?.title) {
-      document.title = `${data.title} - 资讯`;
+    const tabTitle = data?.title_zh ?? data?.title;
+    if (tabTitle) {
+      document.title = `${tabTitle} - 资讯`;
     }
     return () => {
       document.title = '投研平台';
     };
-  }, [data?.title]);
+  }, [data?.title, data?.title_zh]);
 
   // Defence-layer cleanup: strip DeepSeek-style  thinking blocks and
   // repeated title lines before we render the Markdown body.
@@ -391,8 +397,14 @@ export default function NewsDetail() {
         </div>
 
         <h1 className="ad-detail-title">
-          {data.title}
+          {showChinese ? (data.title_zh ?? data.title) : data.title}
         </h1>
+        {/* Original-title subtitle: when the Chinese rendering leads,
+            keep the source title one glance away — quieter, smaller,
+            so it reads as provenance rather than a second headline. */}
+        {showChinese && data.title_zh && data.title_zh !== data.title && (
+          <div className="ad-detail-title__original">{data.title}</div>
+        )}
 
         <div className="ad-detail-actions">
           {symbols.length > 0 && (
@@ -476,53 +488,61 @@ export default function NewsDetail() {
                 description={aiBanner.description}
               />
             )}
-            {showTranslation ? (
-              // Side-by-side view: original (left) + Chinese (right).
-              // We render the original body using the same Markdown
-              // pipeline as the single-column view; on the right we
-              // render the LLM translation, falling back to a
-              // loading/empty state while the mutation is in flight.
-              <div className="news-translation-pair">
-                <div className="news-translation-pair__col">
-                  <div className="news-translation-pair__header">
-                    <span>原文</span>
-                    <span className="ad-text-small ad-text-tertiary">
-                      {data.language?.toUpperCase() || 'EN'}
-                    </span>
-                  </div>
-                  <div className="news-translation-pair__body">
-                    {cleanedFullContent ? (
-                      <Markdown source={cleanedFullContent} />
-                    ) : data.body ? (
-                      <div className="ad-detail-article__body">{data.body}</div>
-                    ) : (
-                      <EmptyState title="暂无原文" description="尚未抓到原文，可点击下方「加载完整正文」或前往原文链接" />
-                    )}
-                  </div>
-                </div>
-                <div className="news-translation-pair__col">
-                  <div className="news-translation-pair__header">
-                    <span>中文翻译</span>
-                    <span className="ad-text-small ad-text-tertiary">
-                      ZH · DeepSeek
-                    </span>
-                  </div>
-                  <div className="news-translation-pair__body">
-                    {translateArticle.isPending && !translationToShow ? (
-                      <div className="ad-flex ad-flex-col ad-items-center ad-justify-center ad-py-8">
-                        <LoadingBlock size="sm" />
-                        <div className="ad-mt-3 ad-text-small ad-text-tertiary">
-                          AI 正在翻译…
-                        </div>
-                      </div>
-                    ) : translationToShow ? (
-                      <Markdown source={translationToShow} />
-                    ) : (
-                      <EmptyState title="翻译暂不可用" description="翻译服务暂未启用或该文章类型不支持翻译" />
-                    )}
-                  </div>
-                </div>
+            {/* Language toolbar (2026-07-26): full-article 中文/原文
+                switch for non-Chinese sources. The body defaults to the
+                AI translation produced at ingestion; 原文 is always one
+                tap away. Sits directly above the body it controls. */}
+            {isNonChinese && (
+              <div className="news-lang-toolbar">
+                <Segmented
+                  value={viewMode}
+                  onChange={(v) => setViewMode(v as 'zh' | 'original')}
+                  options={[
+                    { label: '中文译文', value: 'zh' },
+                    { label: `${(data.language || 'en').toUpperCase()} 原文`, value: 'original' },
+                  ]}
+                />
+                <span className="news-lang-toolbar__meta">
+                  <TranslationOutlined />
+                  {data.translation_generated_at
+                    ? `AI 翻译 · ${formatDateTimeCompact(data.translation_generated_at)}`
+                    : 'AI 翻译'}
+                </span>
               </div>
+            )}
+
+            {/* Translation-pending notice: the user asked for Chinese
+                (default) but the pipeline hasn't produced one yet. Keep
+                the original body visible underneath — never an empty
+                pane — and offer a manual trigger as the escape hatch. */}
+            {isNonChinese && viewMode === 'zh' && !translationToShow && (
+              <div className="news-translation-notice">
+                {translateArticle.isPending ? (
+                  <>
+                    <LoadingBlock size="sm" />
+                    <span>AI 正在翻译，请稍候…</span>
+                  </>
+                ) : (
+                  <>
+                    <span className="news-translation-notice__text">
+                      中文译文尚未就绪，后台翻译中（通常入库后几分钟内完成）
+                    </span>
+                    <Button
+                      size="small"
+                      type="link"
+                      onClick={() => translateArticle.mutate()}
+                    >
+                      立即翻译
+                    </Button>
+                  </>
+                )}
+              </div>
+            )}
+
+            {showChinese ? (
+              // Chinese rendering: the ingestion-time AI translation
+              // (Markdown, same pipeline as the original body).
+              <Markdown source={translationToShow!} />
             ) : cleanedFullContent ? (
               // Cache hit (from a previous click) OR we just finished
               // fetching — render the cleaned Markdown body inline.
@@ -538,8 +558,9 @@ export default function NewsDetail() {
             {/* Load-full-text control: only when we don't already have
                 a rendered full body. The summary that the crawler gave
                 us is usually just an excerpt, so users need an explicit
-                way to see the whole article. */}
-            {!fullContentToRender && !showTranslation && (
+                way to see the whole article. Irrelevant in the Chinese
+                view — the translation already covers the body. */}
+            {!fullContentToRender && !showChinese && (
               <div className="ad-mt-5 ad-text-center">
                 <Button
                   type="default"
@@ -558,7 +579,7 @@ export default function NewsDetail() {
               </div>
             )}
 
-            {fetchedAt && !showTranslation && (
+            {fetchedAt && !showChinese && (
               <div className="ad-mt-3 ad-text-small ad-text-muted">
                 全文缓存于 {formatDateTime(fetchedAt)}
                 {fullContentCached ? ' · 已缓存' : ''}
@@ -577,33 +598,6 @@ export default function NewsDetail() {
                     : fetchFullContent.data?.error
                 }
               />
-            )}
-
-            {/* Translation toggle — only for English articles where the
-                backend will accept the request. Non-English content
-                never shows this control. */}
-            {isEnglish && (
-              <div className="ad-mt-4 ad-flex ad-items-center ad-gap-3 ad-flex-wrap">
-                <Tooltip title="调用 DeepSeek 将正文翻译为中文（仅英文文章可用），首次调用约 5-15 秒，结果会缓存">
-                  <Switch
-                    checked={showTranslation}
-                    onChange={handleTranslationToggle}
-                    loading={translateArticle.isPending}
-                    checkedChildren="译本开启"
-                    unCheckedChildren="原文"
-                  />
-                </Tooltip>
-                <span className="ad-text-small ad-text-tertiary ad-flex ad-items-center ad-gap-1">
-                  <TranslationOutlined />
-                  AI 译本并排显示
-                </span>
-                {data.translation_generated_at && (
-                  <span className="ad-text-small ad-text-muted">
-                    已翻译于 {formatDateTimeCompact(data.translation_generated_at)}
-                    {translateArticle.data?.cached ? ' · 命中缓存' : ''}
-                  </span>
-                )}
-              </div>
             )}
 
             {translateArticle.isError && (

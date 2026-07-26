@@ -281,13 +281,6 @@
   .ad-metric-item:nth-child(2n):not(:last-child) {
     border-right: 1px solid var(--border-default);
   }
-
-  /* Stack the side-by-side translation view on tablet/mobile so each
-     column gets a comfortable line length. The 70vh cap stays — it
-     keeps long articles from forcing infinite scroll within the card. */
-  .news-translation-pair {
-    grid-template-columns: 1fr;
-  }
 }
 
 @media (max-width: 767px) {
@@ -303,11 +296,6 @@
 
   .ad-detail-article {
     padding: var(--space-4);
-  }
-
-  .news-translation-pair__body {
-    max-height: none;
-    overflow-y: visible;
   }
 
   .ad-preview-frame {

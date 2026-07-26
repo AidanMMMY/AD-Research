@@ -149,6 +149,11 @@ def _article_to_dict(
         "source_id": article.source_id,
         "url": article.url,
         "title": article.title,
+        # AI Chinese title translation (auto-filled at ingestion for
+        # non-Chinese sources; ``None`` until the pipeline reaches the
+        # row). The frontend renders ``title_zh ?? title`` and shows the
+        # original as a subtitle / tooltip when a translation exists.
+        "title_zh": article.title_zh,
         "summary": article.summary,
         "author": article.author,
         "language": article.language,
@@ -583,6 +588,7 @@ _WORKER_META: dict[str, dict[str, str]] = {
     "news_cointelegraph_5m": {"label": "Cointelegraph RSS", "schedule": "每 5 分钟"},
     "news_xueqiu_5m": {"label": "雪球 散户讨论", "schedule": "每 5 分钟"},
     "news_full_content_10m": {"label": "资讯全文抓取", "schedule": "每 10 分钟"},
+    "news_translate_10m": {"label": "资讯自动翻译", "schedule": "每 10 分钟"},
     "sentiment_batch_30s": {"label": "情绪批量处理", "schedule": "每 30 秒"},
     "sentiment_low_latency_5m": {"label": "情绪低延迟处理", "schedule": "每 5 分钟"},
     "news_article_categorization_1m": {"label": "新闻事件分类", "schedule": "每 1 分钟"},
@@ -1271,6 +1277,7 @@ def event_signals(
             {
                 "id": article.id,
                 "title": article.title,
+                "title_zh": article.title_zh,
                 "source": article.source,
                 "url": article.url,
                 "market": article.market,

@@ -118,6 +118,18 @@ class Settings(BaseSettings):
     news_content_ingest_time_budget_sec: int = 120
     news_content_llm_fallback: bool = True
 
+    # News auto-translation pipeline (2026-07-26). Non-Chinese articles
+    # get their title + body translated to Chinese at ingestion time so
+    # the list/detail pages can render Chinese-first without waiting for
+    # the on-demand ``/translate`` button. The ingest-time pass runs
+    # inline in the crawl tick, bounded by
+    # ``news_translation_ingest_time_budget_sec``; whatever is left
+    # (plus backfill of older rows) is drained by the 10-minute
+    # scheduler job, ``news_translation_batch_size`` articles per tick.
+    news_translation_on_ingest: bool = True
+    news_translation_ingest_time_budget_sec: int = 90
+    news_translation_batch_size: int = 15
+
     # Xueqiu (雪球) cookie — raw "Cookie:" header value from a logged-in
     # browser session. Must include xq_a_token=...; u=...; device_id=...
     # The crawler is read-only and never attempts to log in.

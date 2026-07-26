@@ -198,6 +198,17 @@ def _write_to_db(articles: list) -> int:
         )
 
         fetch_full_content_for_ids(new_ids)
+
+        # Ingest-time auto translation (2026-07-26): translate title +
+        # body of non-Chinese articles to Chinese right after the body
+        # is available, so list/detail pages render Chinese-first.
+        # Bounded by ``news_translation_ingest_time_budget_sec``; the
+        # 10-minute ``news_translate_10m`` drain job covers the rest.
+        from app.services.news.scheduler_translate_news import (
+            auto_translate_for_ids,
+        )
+
+        auto_translate_for_ids(new_ids)
     return written
 
 
@@ -841,6 +852,25 @@ def run_cointelegraph_crawl() -> dict[str, int]:
         return {"fetched": len(articles), "written": written}
     except Exception as exc:
         logger.exception("cointelegraph crawl failed: %s", exc)
+        return {"fetched": 0, "written": 0}
+
+
+# ── Translation drain (added 2026-07-26) ──
+
+@_record_etl("news_translate_10m")
+def run_translate_pending_job() -> dict[str, int]:
+    """Drain non-Chinese articles that still lack a Chinese translation.
+
+    Covers both the rows the ingest-time pass skipped (time budget) and
+    the historical backfill, newest first. Fully fail-safe — an LLM
+    outage records a failed run instead of crashing the scheduler.
+    """
+    from app.services.news.scheduler_translate_news import run_translate_pending
+
+    try:
+        return run_translate_pending()
+    except Exception as exc:
+        logger.exception("translate pending failed: %s", exc)
         return {"fetched": 0, "written": 0}
 
 
