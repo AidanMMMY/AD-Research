@@ -149,7 +149,7 @@ class NewsNormalizer:
                 # clicks "load full text" sees an instant render rather
                 # than waiting for the lazy Jina Reader fetch.
                 body=full_body,
-                full_content=full_body if _looks_full_article(full_body) else None,
+                full_content=full_body if _looks_full_article(full_body, source=raw.source) else None,
                 content_hash=_simhash_text(full_body),
                 author=raw.author,
                 language=raw.language or "zh",
@@ -256,11 +256,23 @@ def _strip_html_to_text(value: str | None) -> str | None:
 # article is likely complete and we can short-circuit.
 _FULL_BODY_MIN_CHARS = 400
 
+# 2026-07-26: sources where the API already returns the complete article
+# body. Their content should never be re-fetched via HTTP because their
+# article pages are SPAs (trafilatura would extract nav/ads instead of
+# the article text). For these sources, even short bodies count as
+# "full" — 快讯 / flash headlines are naturally short and the API text
+# is already the whole thing.
+_SOURCES_WITH_API_FULL_CONTENT: frozenset[str] = frozenset({
+    "wallstreetcn",  # 华尔街见闻 7×24 快讯 — SPA page, API has full text
+})
 
-def _looks_full_article(value: str | None) -> bool:
+
+def _looks_full_article(value: str | None, source: str | None = None) -> bool:
     """Heuristic: is this body likely the full article (not just a teaser)?"""
     if not value:
         return False
+    if source and source in _SOURCES_WITH_API_FULL_CONTENT:
+        return True
     return len(value) >= _FULL_BODY_MIN_CHARS
 
 
