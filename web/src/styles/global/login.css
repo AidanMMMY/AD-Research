@@ -2,6 +2,7 @@
 /* ---- Login ---- */
 .login-page {
   height: 100vh;
+  height: -webkit-fill-available; /* iOS Safari accounts for URL bar */
   display: flex;
   align-items: center;
   justify-content: center;

@@ -415,3 +415,41 @@
   }
 }
 
+
+/* ============================================================
+   2026-07-26: Mobile audit fixes — global overrides
+   ============================================================ */
+
+/* 1. Touch targets: Radio.Button pills ≥ 44px on mobile */
+@media (max-width: 767px) {
+  .detail-toolbar .ant-radio-button-wrapper {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+  }
+
+  /* 2. Select dropdowns: remove fixed min-width on mobile */
+  .signal-dashboard__panel .ant-select {
+    min-width: auto !important;
+    width: 100%;
+  }
+
+  /* 3. Sidebar safe-area for notched phones */
+  .app-layout__sidebar {
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+}
+
+/* 4. Tables without scroll — ensure horizontal scroll on narrow screens */
+.ad-table-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* 5. Prevent iOS zoom on DatePicker focus */
+@media (max-width: 767px) {
+  .ant-picker-input > input {
+    font-size: 16px !important; /* prevents iOS auto-zoom */
+  }
+}
