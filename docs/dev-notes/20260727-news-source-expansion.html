@@ -1,0 +1,225 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>2026-07-27 资讯源扩容 + APScheduler misfire P0</title>
+<style>
+body{font-family:-apple-system,'PingFang SC',sans-serif;max-width:900px;margin:2rem auto;padding:0 1rem;line-height:1.7;color:#222}
+code{background:#f4f4f4;padding:2px 5px;border-radius:4px;font-size:.9em}
+pre{background:#f7f7f7;padding:1rem;border-radius:8px;overflow-x:auto}
+pre code{background:none;padding:0}
+table{border-collapse:collapse;width:100%}td,th{border:1px solid #ddd;padding:6px 10px;text-align:left}
+h1,h2,h3{line-height:1.3} h1{border-bottom:2px solid #eee;padding-bottom:.3em}
+blockquote{border-left:4px solid #ddd;margin:0;padding-left:1rem;color:#555}
+</style></head><body><h1>2026-07-27 资讯源扩容 +13 独立英文源 / wewe-rss 公众号设施 / APScheduler misfire P0</h1>
+<blockquote>
+<p>关联：<code>docs/dev-notes/20260726-news-auto-translate.md</code>（AI 翻译部署与两个生产坑）
+提交：<code>17aea40</code>（13 源 + wewe-rss）、<code>076452a</code>（misfire P0）、<code>930d3b9</code>（stale 重翻）</p>
+</blockquote>
+<hr />
+<h2>1. 本次交付内容</h2>
+<h3>1.1 新增 13 个独立英文资讯源</h3>
+<p>全部走 <code>SimpleRssCrawler</code> 子类（<code>app/services/news/sources/rss_simple.py</code>），统一 <code>market="us"</code>、<code>language="en"</code>，落库后自动进入全文抓取 + AI 翻译管线。</p>
+<table>
+<thead>
+<tr>
+<th>源</th>
+<th>作者/定位</th>
+<th>slug</th>
+<th>调度</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Wolf Street</td>
+<td>Wolf Richter，金融/地产/央行</td>
+<td><code>wolfstreet</code></td>
+<td>30m</td>
+</tr>
+<tr>
+<td>Calculated Risk</td>
+<td>Bill McBride，宏观/地产数据</td>
+<td><code>calculatedrisk</code></td>
+<td>30m</td>
+</tr>
+<tr>
+<td>A Wealth of Common Sense</td>
+<td>Ben Carlson，资管/行为金融</td>
+<td><code>awealthofcommonsense</code></td>
+<td>30m</td>
+</tr>
+<tr>
+<td>Of Dollars and Data</td>
+<td>Nick Maggiulli，数据化个人理财</td>
+<td><code>ofdollarsanddata</code></td>
+<td>30m</td>
+</tr>
+<tr>
+<td>Marginal Revolution</td>
+<td>Tyler Cowen，经济学博客</td>
+<td><code>marginalrevolution</code></td>
+<td>30m</td>
+</tr>
+<tr>
+<td>The Big Picture</td>
+<td>Barry Ritholtz，市场评论</td>
+<td><code>ritholtz</code></td>
+<td>30m</td>
+</tr>
+<tr>
+<td>Net Interest</td>
+<td>Marc Rubinstein，金融机构深度</td>
+<td><code>netinterest</code></td>
+<td>60m</td>
+</tr>
+<tr>
+<td>Doomberg</td>
+<td>能源/工业匿名深度</td>
+<td><code>doomberg</code></td>
+<td>60m</td>
+</tr>
+<tr>
+<td>Apricitas</td>
+<td>Joey Politano，美国经济数据</td>
+<td><code>apricitas</code></td>
+<td>60m</td>
+</tr>
+<tr>
+<td>Noahpinion</td>
+<td>Noah Smith，经济/科技评论</td>
+<td><code>noahpinion</code></td>
+<td>60m</td>
+</tr>
+<tr>
+<td>Econbrowser</td>
+<td>James Hamilton，宏观计量</td>
+<td><code>econbrowser</code></td>
+<td>60m</td>
+</tr>
+<tr>
+<td>The Overshoot</td>
+<td>Matt Klein，全球宏观</td>
+<td><code>theovershoot</code></td>
+<td>60m</td>
+</tr>
+<tr>
+<td>Quantpedia</td>
+<td>量化策略研究聚合</td>
+<td><code>quantpedia</code></td>
+<td>120m</td>
+</tr>
+</tbody>
+</table>
+<p><strong>注意</strong>：Substack 自定义域名会 301（<code>xxx.substack.com/feed</code> → <code>netinterest.co</code>、<code>newsletter.doomberg.com</code>、<code>apricitas.io</code>、<code>noahpinion.blog</code>），feed URL 直接写最终域名。<code>BaseCrawler</code> 已 <code>follow_redirects=True</code>，但写最终 URL 省一跳。</p>
+<h3>1.2 工厂模式注册调度</h3>
+<p><code>app/services/news/scheduler_jobs.py</code>：</p>
+<ul>
+<li><code>INDEPENDENT_RSS_JOBS</code> 表（job_id → crawler 类路径）</li>
+<li><code>_simple_rss_job(job_id, crawler_class_path)</code> 工厂生成模块级函数并 <code>globals()</code> 物化——<code>app/core/scheduler.py</code> 循环注册，<strong>加新源只需往表里加一行</strong></li>
+<li>health worker 网格（<code>app/api/v1/news.py</code>）同步加了 13 个 <code>_WORKER_META</code> + <code>_WORKER_JOB_TO_SOURCE</code> 映射</li>
+</ul>
+<h3>1.3 wewe-rss 公众号基础设施</h3>
+<p><code>deploy/aliyun-ecs/docker-compose.yml</code> 新增 <code>wewe-rss</code> 服务（<code>cooderl/wewe-rss-sqlite:latest</code>）：</p>
+<ul>
+<li>容器名 <code>alloyresearch-wewe-rss</code>，SQLite 存储，无需额外 DB 容器</li>
+<li>管理 UI 只绑 <code>127.0.0.1:4000</code>（不暴露公网）</li>
+<li>backend 通过 <code>WECHAT_RSS_BASE_URL</code>（默认 <code>http://wewe-rss:4000</code>）+ <code>WECHAT_RSS_FEED_MAP</code>（<code>feed_id:slug:display_name,...</code>）对接</li>
+<li>当前已用 <code>docker run</code> 手动起了一个同名容器，下次 deploy 时 compose 会直接 adopt</li>
+</ul>
+<hr />
+<h2>2. P0：APScheduler misfire_grace_time 默认值导致全站定时任务静默丢 tick</h2>
+<h3>2.1 现象</h3>
+<p>用户反馈"翻译已部署但前端看不到中文"。排查发现：</p>
+<ul>
+<li><code>news_translate_10m</code>、<code>news_full_content_10m</code>、<code>sentiment_batch_30s</code>、<code>news_article_categorization_1m</code> 以及 7-21 上线的十余个 RSS 源，<strong>在 <code>etl_log</code> 里一行记录都没有</strong>——从未执行过一次</li>
+<li>仅 ingest 内联路径翻译了 13 篇（非中文文章覆盖 0.09%）</li>
+<li>backend 日志里有大量 <code>Run time of job ... was missed by</code> misfire 记录</li>
+</ul>
+<h3>2.2 根因</h3>
+<p>APScheduler 3.x <code>misfire_grace_time</code> <strong>默认 1 秒</strong>。平台 ~45 个 interval job 全部对齐 5/10 分钟边界（同一秒触发），调度线程按注册顺序逐个处理 due job，排到 1 秒以后的 job 被判定 misfire <strong>静默丢弃</strong>——每个 tick 都如此，永远轮不到后注册的 job。</p>
+<h3>2.3 修复</h3>
+<p><code>app/core/scheduler.py</code>：</p>
+<pre><code class="language-python">scheduler = BackgroundScheduler(
+    executors={&quot;default&quot;: ThreadPoolExecutor(max_workers=5)},
+    job_defaults={&quot;misfire_grace_time&quot;: 300, &quot;coalesce&quot;: True},
+)
+</code></pre>
+<ul>
+<li><code>misfire_grace_time=300</code>：拥挤 tick 允许迟到 5 分钟执行，而不是永久丢弃</li>
+<li><code>coalesce=True</code>：多次错过合并为一次执行，防积压雪崩</li>
+</ul>
+<h3>2.4 部署后验证（ECS）</h3>
+<ul>
+<li><code>news_translate_10m</code> 首次 etl_log 记录：17:04:48 UTC，<code>success</code>，15 条/批</li>
+<li>翻译计数从 21/17 涨到 56/42 并持续增长</li>
+<li>因积压 ~1.39 万非中文文章，按 15 条/10 分钟需 ~6 天消化；已用 <code>docker exec -d</code> 起了一个 6 小时批量 drain（日志 <code>/tmp/translate_bulk_drain.log</code>，在容器内）加速</li>
+</ul>
+<h3>2.5 批量 drain 手动操作（备查）</h3>
+<pre><code class="language-bash">ssh ad-research
+docker exec -d alloyresearch-backend python -c &quot;
+import time, json
+from app.services.news.scheduler_translate_news import run_translate_pending
+deadline = time.time() + 6*3600
+total = 0; rounds = 0
+with open('/tmp/translate_bulk_drain.log', 'w') as f:
+    while time.time() &lt; deadline:
+        r = run_translate_pending(batch_size=15)
+        rounds += 1; total += r.get('written', 0)
+        f.write(json.dumps({'round': rounds, 'result': r, 'total_written': total}) + '\n')
+        f.flush()
+        if r.get('fetched', 0) == 0: break
+        time.sleep(20)
+&quot;
+# 查看进度
+docker exec alloyresearch-backend tail -3 /tmp/translate_bulk_drain.log
+</code></pre>
+<hr />
+<h2>3. 微信公众号接入步骤（待用户一次性操作）</h2>
+<p>wewe-rss 原理：微信读书 App 扫码登录 → 把公众号"上架"为 feed → RSS 输出。</p>
+<ol>
+<li>用户本地开隧道：<code>ssh -L 4000:localhost:4000 ad-research</code></li>
+<li>浏览器打开 <code>http://localhost:4000/dash</code>，用微信扫二维码登录微信读书</li>
+<li>在管理页添加公众号（候选 10 个独立号，见下），记录每个号的 <code>feed_id</code></li>
+<li>在 ECS <code>/data/ad-research/deploy/aliyun-ecs/.env</code> 追加：
+   <code>WECHAT_RSS_FEED_MAP="feed_id_1:wechat_zhigu:智谷趋势,feed_id_2:wechat_yuanchuan:远川研究所,..."</code></li>
+<li><code>docker restart alloyresearch-backend</code>，验证 <code>etl_log</code> 出现 <code>news_wechat_*</code> 记录</li>
+</ol>
+<p><strong>候选独立公众号（非官方机构号）</strong>：智谷趋势、远川研究所、沧海一土狗、猫笔刀、思想钢印、付鹏的财经世界、李迅雷金融与投资、聪明的投资者、宁南山、晚点LatePost。</p>
+<hr />
+<h2>4. 排障速查</h2>
+<table>
+<thead>
+<tr>
+<th>症状</th>
+<th>查法</th>
+<th>处理</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>新源不落库</td>
+<td><code>SELECT * FROM etl_log WHERE job_name='news_xxx_30m' ORDER BY start_time DESC;</code></td>
+<td>无记录→检查 scheduler 注册；有 error→看 error_msg</td>
+</tr>
+<tr>
+<td>翻译不涨</td>
+<td><code>etl_log</code> 里 <code>news_translate_10m</code> 是否每 10 分钟一条 success</td>
+<td>无记录→misfire 复发（检查 <code>misfire_grace_time</code>）；有记录但 written=0→查 MiniMax key/余额</td>
+</tr>
+<tr>
+<td>译文是旧摘要</td>
+<td><code>full_content_fetched_at &gt; translation_generated_at</code></td>
+<td>stale 检测会自动 force 重翻，drain 一轮即修复</td>
+</tr>
+<tr>
+<td>前端看不到中文</td>
+<td>文章 <code>title_zh</code>/<code>translated_zh</code> 是否有值</td>
+<td>有值→前端缓存/nginx；无值→翻译管线问题，往上查</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2>5. 决策日志</h2>
+<ul>
+<li><strong>工厂模式注册 RSS job</strong>：13 个源若各写一段 <code>def run_xxx():</code> 会让 scheduler_jobs.py 膨胀且极易漏注册；表驱动 + <code>globals()</code> 物化保证"加表即注册"。</li>
+<li><strong>misfire 300s 而非更长</strong>：5 分钟足够消化最坏情况的对齐抖动；给太长会在 backend 重启前把大量过期 job 补跑，拖慢启动。</li>
+<li><strong>手动 docker run 起 wewe-rss 而不等 deploy</strong>：compose 文件已含服务定义，容器名一致，下次 deploy compose 会直接接管，无需手动迁移。</li>
+</ul></body></html>
