@@ -403,6 +403,9 @@ class ETFService:
     def get_holdings(self, code: str) -> dict:
         """Return the latest holdings snapshot for an ETF.
 
+        Only returns rows belonging to the most recent reporting period
+        so callers never see mixed snapshots from different quarters.
+
         Response shape::
 
             {
@@ -429,13 +432,45 @@ class ETFService:
         Backwards-compat: the call is purely additive — callers that
         ignore the new field keep working unchanged.
         """
-        rows = (
-            self.db.query(ETFHolding)
+        # 2026-07-26: only return the latest snapshot period. Before this
+        # fix the method returned ALL rows across every historical period,
+        # causing duplicate holding_code entries when the ETF had data from
+        # multiple reporting quarters.
+        latest_date = (
+            self.db.query(func.max(ETFHolding.holdings_as_of_date))
             .filter(ETFHolding.etf_code == code)
-            .order_by(ETFHolding.weight.desc().nullslast())
-            .all()
+            .scalar()
         )
+        if latest_date is None:
+            rows = (
+                self.db.query(ETFHolding)
+                .filter(ETFHolding.etf_code == code)
+                .order_by(ETFHolding.weight.desc().nullslast())
+                .all()
+            )
+        else:
+            rows = (
+                self.db.query(ETFHolding)
+                .filter(
+                    ETFHolding.etf_code == code,
+                    ETFHolding.holdings_as_of_date == latest_date,
+                )
+                .order_by(ETFHolding.weight.desc().nullslast())
+                .all()
+            )
         name_map = self._holding_name_map([h.holding_code for h in rows])
+        # 2026-07-26: deduplicate by base stock code (strip ".SZ"/".SH").
+        # The raw data source sometimes returns the same holding twice —
+        # once with exchange suffix (300502.SZ) and once without (300502),
+        # with nearly identical weights. Keep the row with the higher weight.
+        deduped: dict[str, dict] = {}
+        for h in rows:
+            base_code = h.holding_code.split(".")[0] if "." in h.holding_code else h.holding_code
+            w = float(h.weight) if h.weight is not None else 0
+            existing = deduped.get(base_code)
+            existing_w = float(existing.weight) if existing and existing.weight is not None else 0
+            if existing is None or w > existing_w:
+                deduped[base_code] = h
         holdings = [
             {
                 "etf_code": h.etf_code,
@@ -448,7 +483,7 @@ class ETFService:
                 else None,
                 "holdings_as_of_date": h.holdings_as_of_date,
             }
-            for h in rows
+            for h in deduped.values()
         ]
         as_of = max(
             (h.holdings_as_of_date for h in rows if h.holdings_as_of_date),

@@ -169,7 +169,7 @@ function EtfHoldingsModule({ instrument }: { instrument: InstrumentInfo }) {
       ) : (
         <div>
           <Table
-            dataSource={holdingsData.holdings.map((h, idx) => ({ ...h, key: idx }))}
+            dataSource={holdingsData.holdings.slice(0, 10).map((h, idx) => ({ ...h, key: idx }))}
             pagination={false}
             size="small"
             scroll={{ x: 'max-content' }}
