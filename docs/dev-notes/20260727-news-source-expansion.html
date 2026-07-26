@@ -207,25 +207,77 @@ docker exec alloyresearch-backend tail -3 /tmp/translate_bulk_drain.log
 两源各 20 篇落库，正文 1600-4500 字全文。</p>
 <p><strong>风险</strong>：公共服务，可用性不受我们控制；失效时 etl_log 会出现
 连续 failed，届时把对应 job 下掉或迁移到通道 B。</p>
-<h3>3.2 通道 B：自建 wewe-rss（等用户一次性扫码）</h3>
-<p>其余 8 个候选号（智谷趋势 / 远川研究所 / 沧海一土狗 / 付鹏的财经世界 /
-李迅雷金融与投资 / 聪明的投资者 / 宁南山 / 晚点LatePost）<strong>不在</strong>
-wechat2rss 免费列表，必须走自建 wewe-rss：</p>
+<h3>3.3 公众号规模化：100 个源达成（2026-07-27 晚）</h3>
+<p>/goal「公众号扩充不少于 100 个，大半独立」的执行记录。最终 <strong>100 个公众号源</strong>：</p>
+<table>
+<thead>
+<tr>
+<th>通道</th>
+<th>数量</th>
+<th>内容</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>wewe-rss 自建（用户扫码）</td>
+<td>8</td>
+<td>智谷趋势/远川研究所/沧海一土狗/付鹏的财经世界/李迅雷金融与投资/聪明投资者/北纬的日常/晚点LatePost</td>
+</tr>
+<tr>
+<td>wechat2rss 单 feed</td>
+<td>2</td>
+<td>猫笔刀、思想钢印</td>
+</tr>
+<tr>
+<td>wechat2rss 批量表</td>
+<td>90</td>
+<td>财经/商业/科技/地缘/独立随笔，见 <code>wechat2rss_batch.py</code> 的 <code>WECHAT2RSS_FEEDS</code></td>
+</tr>
+</tbody>
+</table>
+<p><strong>wewe-rss 8 个号的接入流程</strong>（实际执行版）：</p>
 <ol>
-<li>用户本地开隧道：<code>ssh -L 4000:localhost:4000 ad-research</code></li>
-<li>浏览器打开 <code>http://localhost:4000/dash</code>，用微信扫二维码登录微信读书</li>
-<li>在管理页添加公众号，记录每个号的 <code>feed_id</code></li>
-<li>在 ECS <code>/data/ad-research/deploy/aliyun-ecs/.env</code> 追加：
-   <code>WECHAT_RSS_FEED_MAP="feed_id_1:wechat_zhigu:智谷趋势,feed_id_2:wechat_yuanchuan:远川研究所,..."</code></li>
-<li><code>docker restart alloyresearch-backend</code>，验证 <code>etl_log</code> 出现
-   <code>news_wechat_zeping_15m</code> 成功记录且 <code>wechat_{slug}</code> 源落库</li>
+<li>AuthCode：wewe-rss 未显式设置时为默认 <code>123567</code>（官方文档未写，实测）。</li>
+<li>tRPC API（dash 前端走的协议，可直接 curl）：</li>
+<li><code>POST /trpc/platform.getMpInfo?batch=1</code>，body <code>{"0":{"wxsLink":"&lt;文章URL&gt;"}}</code>，
+     header <code>Authorization: 123567</code> → 返回 <code>{id: MP_WXS_*, name, cover, intro, updateTime}</code></li>
+<li><code>POST /trpc/feed.add?batch=1</code>，body <code>{"0":{id,mpName,mpCover,mpIntro,updateTime,status:1}}</code></li>
+<li><code>POST /trpc/feed.refreshArticles?batch=1</code>，body <code>{"0":{"mpId":"MP_WXS_*"}}</code></li>
+<li><strong>wewe-rss 代理（weread.111965.xyz）会抖动</strong>：同一 MP 的文章接口
+   时而有数据时而 <code>[]</code>（微信读书限流），刷新要多轮重试，容器自带
+   CRON <code>35 */1 * * *</code> 会兜底。</li>
+<li>feed.add 需间隔 10s+（README 明确警告添加过频会被封控 24h）。</li>
+<li>后端接入：<code>.env</code> 写 <code>WECHAT_RSS_FEED_MAP="feed_id:slug:显示名,..."</code>，
+   <strong>改 env 必须 <code>docker compose up -d backend</code> 重建容器</strong>（restart 不重读 env）。</li>
+<li>手动 docker run 起的 wewe-rss 容器，compose 默认 URL 是
+   <code>http://wewe-rss:4000</code>（服务名），需
+   <code>docker network connect --alias wewe-rss &lt;network&gt; alloyresearch-wewe-rss</code>
+   加别名；已处理，compose 文件含服务定义后下次 deploy 自动 adopt。</li>
 </ol>
-<p>后端采集代码（<code>wechat_zeping.py</code> + feed_map 逐 feed 分发）已就绪，
-扫码后纯配置接入，无需改代码。</p>
-<blockquote>
-<p>feeddd 已于 2023 年关闭，不要再用；wechat2rss 付费版可自定义订阅，
-是通道 B 之外的备选（要花钱，优先自建）。</p>
-</blockquote>
+<p><strong>事故记录（改 env 重建 backend 引发）</strong>：<code>docker compose up -d backend</code>
+同时重建了 postgres 连接配置，新容器 DB 认证失败
+（DB 密码是数据卷初始化时的旧值，与当前 .env 的占位密码不一致）。
+修复：进 postgres 容器执行
+<code>ALTER USER etf WITH PASSWORD '&lt;.env 里的 POSTGRES_PASSWORD&gt;'</code> 对齐。
+<strong>教训：ecs 上 .env 密码与 DB 实际密码可能漂移，改容器前先看
+<code>docker inspect alloyresearch-postgres</code> 的创建时间与 .env 修改时间。</strong></p>
+<p><strong>wechat2rss 批量（90 号）设计</strong>：
+- 表驱动 <code>WECHAT2RSS_FEEDS</code>（slug/显示名/feed_hash），9 个批次 job
+  （a-i，每批 ~11 号）而非 90 个 job——避免重蹈 misfire P0 的对齐拥挤。
+- 选号规则：独立发声（无官媒/政府/企业 PR），财经/商业/科技/地缘优先，
+  安全类仅保留地缘价值号（威胁棱镜/APT观察等）。
+- 复用营销过滤器（<code>WechatMarketingFilter</code>）。</p>
+<p><strong>挖掘失败记录</strong>：曾尝试从已入库公众号正文中正则提取出链
+（<code>mp.weixin.qq.com/s</code>）做图谱发现——微信公众号文章不允许外链，
+正文里几乎没有出链，0 命中，此路不通。搜狗/百度/Bing/DDG 对 curl
+全反爬，WebFetch 也被 antispider 拦，文章 URL 只能人工提供。</p>
+<p><strong>死源处理（同日二次修订）</strong>：首跑冒烟发现 90 号里 2 个死源——
+卢瑟经济学安生杂谈（列表里两个 hash 均 404，号已注销）和
+碳基体（RSS 有效但 0 条目，号已停更）。已原位替换为
+全频带阻塞干扰 / 回忆飘如雪（均为活跃独立个人号，20 条/feed）。
+其余 13 个首跑未落库的源 feed 健康（各 20 条），系首跑批次内
+单 feed 失败容错跳过，下个整点 tick 自愈。</p>
+
 <hr />
 <h2>4. 排障速查</h2>
 <table>

@@ -127,27 +127,61 @@ docker exec alloyresearch-backend tail -3 /tmp/translate_bulk_drain.log
 **风险**：公共服务，可用性不受我们控制；失效时 etl_log 会出现
 连续 failed，届时把对应 job 下掉或迁移到通道 B。
 
-### 3.2 通道 B：自建 wewe-rss（等用户一次性扫码）
+### 3.3 公众号规模化：100 个源达成（2026-07-27 晚）
 
-其余 8 个候选号（智谷趋势 / 远川研究所 / 沧海一土狗 / 付鹏的财经世界 /
-李迅雷金融与投资 / 聪明的投资者 / 宁南山 / 晚点LatePost）**不在**
-wechat2rss 免费列表，必须走自建 wewe-rss：
+/goal「公众号扩充不少于 100 个，大半独立」的执行记录。最终 **100 个公众号源**：
 
-1. 用户本地开隧道：`ssh -L 4000:localhost:4000 ad-research`
-2. 浏览器打开 `http://localhost:4000/dash`，用微信扫二维码登录微信读书
-3. 在管理页添加公众号，记录每个号的 `feed_id`
-4. 在 ECS `/data/ad-research/deploy/aliyun-ecs/.env` 追加：
-   ```
-   WECHAT_RSS_FEED_MAP="feed_id_1:wechat_zhigu:智谷趋势,feed_id_2:wechat_yuanchuan:远川研究所,..."
-   ```
-5. `docker restart alloyresearch-backend`，验证 `etl_log` 出现
-   `news_wechat_zeping_15m` 成功记录且 `wechat_{slug}` 源落库
+| 通道 | 数量 | 内容 |
+|---|---|---|
+| wewe-rss 自建（用户扫码） | 8 | 智谷趋势/远川研究所/沧海一土狗/付鹏的财经世界/李迅雷金融与投资/聪明投资者/北纬的日常/晚点LatePost |
+| wechat2rss 单 feed | 2 | 猫笔刀、思想钢印 |
+| wechat2rss 批量表 | 90 | 财经/商业/科技/地缘/独立随笔，见 `wechat2rss_batch.py` 的 `WECHAT2RSS_FEEDS` |
 
-后端采集代码（`wechat_zeping.py` + feed_map 逐 feed 分发）已就绪，
-扫码后纯配置接入，无需改代码。
+**wewe-rss 8 个号的接入流程**（实际执行版）：
 
-> feeddd 已于 2023 年关闭，不要再用；wechat2rss 付费版可自定义订阅，
-> 是通道 B 之外的备选（要花钱，优先自建）。
+1. AuthCode：wewe-rss 未显式设置时为默认 `123567`（官方文档未写，实测）。
+2. tRPC API（dash 前端走的协议，可直接 curl）：
+   - `POST /trpc/platform.getMpInfo?batch=1`，body `{"0":{"wxsLink":"<文章URL>"}}`，
+     header `Authorization: 123567` → 返回 `{id: MP_WXS_*, name, cover, intro, updateTime}`
+   - `POST /trpc/feed.add?batch=1`，body `{"0":{id,mpName,mpCover,mpIntro,updateTime,status:1}}`
+   - `POST /trpc/feed.refreshArticles?batch=1`，body `{"0":{"mpId":"MP_WXS_*"}}`
+3. **wewe-rss 代理（weread.111965.xyz）会抖动**：同一 MP 的文章接口
+   时而有数据时而 `[]`（微信读书限流），刷新要多轮重试，容器自带
+   CRON `35 */1 * * *` 会兜底。
+4. feed.add 需间隔 10s+（README 明确警告添加过频会被封控 24h）。
+5. 后端接入：`.env` 写 `WECHAT_RSS_FEED_MAP="feed_id:slug:显示名,..."`，
+   **改 env 必须 `docker compose up -d backend` 重建容器**（restart 不重读 env）。
+6. 手动 docker run 起的 wewe-rss 容器，compose 默认 URL 是
+   `http://wewe-rss:4000`（服务名），需
+   `docker network connect --alias wewe-rss <network> alloyresearch-wewe-rss`
+   加别名；已处理，compose 文件含服务定义后下次 deploy 自动 adopt。
+
+**事故记录（改 env 重建 backend 引发）**：`docker compose up -d backend`
+同时重建了 postgres 连接配置，新容器 DB 认证失败
+（DB 密码是数据卷初始化时的旧值，与当前 .env 的占位密码不一致）。
+修复：进 postgres 容器执行
+`ALTER USER etf WITH PASSWORD '<.env 里的 POSTGRES_PASSWORD>'` 对齐。
+**教训：ecs 上 .env 密码与 DB 实际密码可能漂移，改容器前先看
+`docker inspect alloyresearch-postgres` 的创建时间与 .env 修改时间。**
+
+**wechat2rss 批量（90 号）设计**：
+- 表驱动 `WECHAT2RSS_FEEDS`（slug/显示名/feed_hash），9 个批次 job
+  （a-i，每批 ~11 号）而非 90 个 job——避免重蹈 misfire P0 的对齐拥挤。
+- 选号规则：独立发声（无官媒/政府/企业 PR），财经/商业/科技/地缘优先，
+  安全类仅保留地缘价值号（威胁棱镜/APT观察等）。
+- 复用营销过滤器（`WechatMarketingFilter`）。
+
+**挖掘失败记录**：曾尝试从已入库公众号正文中正则提取出链
+（`mp.weixin.qq.com/s`）做图谱发现——微信公众号文章不允许外链，
+正文里几乎没有出链，0 命中，此路不通。搜狗/百度/Bing/DDG 对 curl
+全反爬，WebFetch 也被 antispider 拦，文章 URL 只能人工提供。
+
+**死源处理（同日二次修订）**：首跑冒烟发现 90 号里 2 个死源——
+卢瑟经济学安生杂谈（列表里两个 hash 均 404，号已注销）和
+碳基体（RSS 有效但 0 条目，号已停更）。已原位替换为
+全频带阻塞干扰 / 回忆飘如雪（均为活跃独立个人号，20 条/feed）。
+其余 13 个首跑未落库的源 feed 健康（各 20 条），系首跑批次内
+单 feed 失败容错跳过，下个整点 tick 自愈。
 
 ---
 
