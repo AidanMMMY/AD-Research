@@ -51,7 +51,7 @@ class NewsArticle(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     source = Column(String(50), nullable=False, comment="yahoo_finance | cnbc | sec_edgar | reddit | ...")
-    source_id = Column(String(200), nullable=False, comment="Source-native id (guid, sec accession, reddit id)")
+    source_id = Column(String(500), nullable=False, comment="Source-native id (guid, sec accession, reddit id)")
     url = Column(String(1000), nullable=False)
     url_hash = Column(String(32), nullable=False, unique=True, index=True, comment="MD5(url) for dedup")
     content_hash = Column(String(32), index=True, comment="simhash for near-duplicate detection")

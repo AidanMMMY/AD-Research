@@ -180,8 +180,27 @@ docker exec alloyresearch-backend tail -3 /tmp/translate_bulk_drain.log
 卢瑟经济学安生杂谈（列表里两个 hash 均 404，号已注销）和
 碳基体（RSS 有效但 0 条目，号已停更）。已原位替换为
 全频带阻塞干扰 / 回忆飘如雪（均为活跃独立个人号，20 条/feed）。
-其余 13 个首跑未落库的源 feed 健康（各 20 条），系首跑批次内
-单 feed 失败容错跳过，下个整点 tick 自愈。
+
+**P0 根因（同日三次修订）：source_id varchar(200) 截断**。
+首跑后 13 个 feed 健康的源始终不落库，查日志发现
+`StringDataRightTruncation: value too long for type character varying(200)`：
+wechat2rss 镜像的 item link 是**查询串完整形态**的 mp 链接
+（`/s?__biz=...&mid=...&idx=1&sn=...&chksm=...&scene=...`，~250 字符），
+批量爬虫把它当 `source_id` 写入，而 `news_article.source_id` 是
+varchar(200)（`url` 已是 1000，没炸）。能否落库纯粹取决于该号
+URL 参数长度是否恰好 <200——这就是"13 源自愈失败"的真因，
+与超时/限流无关。修复：迁移 `s5t7u9v1w3x5` 把 source_id 加宽到
+500（PG varchar 加宽是元数据操作，不重写表），模型同步。
+重跑 a/e/g 批次后 **100/100 源全部落库，共 1120 篇**。
+教训：**新增源接入时，若 source_id 用的是上游 URL/长 guid，
+先核对列宽**；normalize 阶段的 SQL 错误目前是 WARNING 级日志，
+容易被 job 整体 success 掩盖——健康网格只看 etl_log status，
+今后排查"源缺文"要先 grep normalize SQL error。
+
+**终验（2026-07-27 20:1x UTC）**：100 个 `wechat_*` 源全部有文，
+合计 1120 篇；9 个批次 job 每 60 分钟调度，etl_log 全 success。
+mp 链接禁 Jina 全文抓取（near-empty 回退保留 RSS 全文），
+不影响阅读——镜像 `content:encoded` 本就是全文。
 
 ---
 
