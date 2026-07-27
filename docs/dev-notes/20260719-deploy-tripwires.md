@@ -153,6 +153,53 @@ for i in $(seq 1 150); do  # 150 * 2s = 300s
 
 ---
 
+## Tripwire #5：手动热部署污染 /opt 工作树 → Sync 步骤拒部署（2026-07-27）
+
+### 触发条件
+
+紧急修复时绕过流水线，直接 `rsync`/`docker cp` 把本地文件推进 ECS
+（如 7-26/7-27 的翻译管线、misfire、公众号批量源三次热部署），
+下次 push 触发的 Deploy 在 **14 秒内**挂在 "Sync to origin/main"。
+
+### 根因
+
+deploy.yml 的 Sync 步骤（Action-253 引入的防御）检测到
+`git status --porcelain` 非空就 `exit 1`：
+"工作树有未提交变更，请先 commit + push 再部署"。
+/opt/ad-research 的 HEAD 停在最后一次流水线部署的 commit，
+而工作树里是手动拷进去的新文件——这正是该防御设计要拦的场景，
+只不过这次"未提交的工作"其实**已经全部 commit + push**了。
+
+### 修复（2026-07-27，无代码变更）
+
+```bash
+ssh ad-research
+cd /opt/ad-research && git fetch origin
+# 1) 先证明工作树内容 ⊆ origin/main（逐文件 diff，防误杀真本地改动）
+git diff origin/main --stat            # 只应出现"缺新文件/旧版 docs"
+git show origin/main:<f> | diff - <f>  # 抽样比对内容一致
+# 2) 确认无本地独有内容后 reset
+git reset --hard origin/main
+# 3) gh run rerun <failed-run-id>
+```
+
+Deploy #342 rerun 5m21s 成功，/health git_sha=965ae36。
+
+### 防御
+
+- **手动热部署后，一旦对应改动 commit + push，立刻在 /opt 做一次
+  `git fetch && git reset --hard origin/main`**（前提是已验证内容一致）——
+  别把脏树留给下一次流水线。
+- 或者热部署就只 `docker cp` 进容器、不碰 /opt 工作树（容器重建后
+  自然失效，/opt 保持干净）——本次起默认采用这条。
+- Backend CI 同类教训（2026-07-27 三连败）：测试套件对环境有隐式依赖
+  （localhost redis、.env 里的 token、lru_cache 的 get_settings），
+  CI 无 .env 无 redis 才暴露。修法：workflow 加 `services: redis` +
+  dummy `TUSHARE_TOKEN`/`FINNHUB_API_KEY`，测试内 `monkeypatch.setenv`
+  后必须 `get_settings.cache_clear()`（commit fdc92da）。
+
+---
+
 ## 验证清单（下次 deploy 完成后核对）
 
 - [ ] `docker exec alloyresearch-backend curl http://localhost:8000/health` body 含 `git_sha=<新 commit>`
