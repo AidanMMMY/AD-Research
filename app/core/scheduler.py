@@ -2081,6 +2081,21 @@ def init_scheduler():
                 coalesce=True,
             )
 
+        # Global English indie batches (2026-07-28) — 104 independent
+        # English blogs / newsletters / research outlets, batches o-x,
+        # generated in ``scheduler_jobs.GLOBAL_INDIE_BATCH_JOBS``, all hourly.
+        for job_id, label, batch in _news_jobs.GLOBAL_INDIE_BATCH_JOBS:
+            fn = getattr(_news_jobs, f"run_global_indie_{batch}_crawl")
+            scheduler.add_job(
+                fn,
+                trigger=IntervalTrigger(minutes=60),
+                id=job_id,
+                name=label,
+                replace_existing=True,
+                max_instances=1,
+                coalesce=True,
+            )
+
         # Independent non-WeChat batches (2026-07-28) — blogs /
         # newsletters / podcasts, generated in
         # ``scheduler_jobs.INDEPENDENT_BATCH_JOBS``, all hourly.
@@ -2102,6 +2117,23 @@ def init_scheduler():
         # ``scheduler_jobs.GLOBAL_RSS_BATCH_JOBS``, all hourly.
         for job_id, label, batch in _news_jobs.GLOBAL_RSS_BATCH_JOBS:
             fn = getattr(_news_jobs, f"run_global_rss_{batch}_crawl")
+            scheduler.add_job(
+                fn,
+                trigger=IntervalTrigger(minutes=60),
+                id=job_id,
+                name=label,
+                replace_existing=True,
+                max_instances=1,
+                coalesce=True,
+            )
+
+        # Asia-focused English RSS batches (2026-07-28) — Asian
+        # English financial media + international section feeds +
+        # industry verticals + investor blogs, generated in
+        # ``scheduler_jobs.ASIA_EN_BATCH_JOBS`` (re-exported from
+        # ``sources/asia_en_batch.py``), all hourly.
+        for job_id, label, batch in _news_jobs.ASIA_EN_BATCH_JOBS:
+            fn = getattr(_news_jobs, f"run_asia_en_{batch}_crawl")
             scheduler.add_job(
                 fn,
                 trigger=IntervalTrigger(minutes=60),

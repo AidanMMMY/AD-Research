@@ -1,0 +1,5252 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>亚洲英文 RSS 批次（asia_en）Runbook — 2026-07-28</title>
+<style>
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;max-width:1100px;margin:0 auto;padding:24px;line-height:1.65;color:#1f2328;background:#fff}
+h1,h2,h3{line-height:1.3} h1{border-bottom:2px solid #d1d9e0;padding-bottom:8px}
+h2{border-bottom:1px solid #d1d9e0;padding-bottom:6px;margin-top:36px}
+table{border-collapse:collapse;width:100%;font-size:13px;margin:12px 0}
+th,td{border:1px solid #d1d9e0;padding:6px 9px;text-align:left;vertical-align:top}
+th{background:#f6f8fa;position:sticky;top:0}
+tr:nth-child(even){background:#fafbfc}
+code{background:#eff1f3;padding:1px 5px;border-radius:4px;font-size:12.5px}
+pre{background:#f6f8fa;padding:12px;border-radius:6px;overflow-x:auto}
+pre code{background:none;padding:0}
+a{color:#0969da}
+blockquote{border-left:4px solid #d1d9e0;margin:0;padding:4px 14px;color:#59636e}
+td:last-child{word-break:break-all}
+</style>
+</head>
+<body>
+<h1 id="rss-asia_enrunbook">亚洲英文 RSS 批次（asia_en）Runbook</h1>
+<p>日期：2026-07-28 ｜ 执行：子 agent C（资讯源扩充第三轮）｜ 状态：<strong>待主会话集成</strong>（集成代码块见 <a href="20260728-asia-en-batch-integration.md">20260728-asia-en-batch-integration.md</a>）</p>
+<h2 id="1">1. 结论</h2>
+<ul>
+<li><strong>交付 176 个英文 RSS 源</strong>，全部从生产 ECS（中国大陆网络）实测通过，分两批 16 组（a–p，每组 ≤11 个），每小时一轮。</li>
+<li>候选 <strong>664 个</strong>，两轮实测通过 185 个；剔除 9 个（6 个编辑判断 + 3 个美源按主会话裁决归并行 <code>global_indie_batch</code> 波次）后定稿 <strong>176</strong> 个。</li>
+<li><strong>主会话裁决（2026-07-28）</strong>：与 <code>gind_</code> 波次重叠的 9 个 URL 中，6 个亚洲源（Pandaily、e27、DollarsAndSense、Fifth Person、Safal Niveshak、Strong Money Australia）归本批次，3 个美源（Krebs on Security、Wallet Hacks、Yet Another Value Blog）归 <code>gind_</code> 批次。</li>
+<li>淘汰 <strong>479 个</strong>（HTTP 403/404/超时/非 RSS/正文过短/停更），全部原因逐条记录在第 5 节。</li>
+<li>与现有全部源（<code>sources/</code> 目录所有模块 + <code>scheduler_jobs.py</code> + 并行的 <code>global_indie_batch</code> / <code>wechat2rss_batch2</code>）<strong>URL 零重叠</strong>（测试内有回归守卫）。</li>
+</ul>
+<h3 id="11">1.1 与前三波的关系</h3>
+<table>
+<thead>
+<tr>
+<th>波次</th>
+<th>模块</th>
+<th>规模</th>
+<th>定位</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td><code>independent_batch</code></td>
+<td>144</td>
+<td>中英独立博客/播客</td>
+</tr>
+<tr>
+<td>2</td>
+<td><code>global_rss_batch</code></td>
+<td>125</td>
+<td>多语种媒体（日德法韩西）+ 英文央行/智库/工程博客</td>
+</tr>
+<tr>
+<td>2b</td>
+<td><code>wechat2rss_batch2</code> / <code>global_indie_batch</code>（并行）</td>
+<td>—</td>
+<td>公众号镜像补波 / 英文独立声音（自定义域 newsletter 等）</td>
+</tr>
+<tr>
+<td><strong>3（本波）</strong></td>
+<td><strong><code>asia_en_batch</code></strong></td>
+<td><strong>176</strong></td>
+<td><strong>亚洲英文财经媒体 + 国际栏目 feed + 行业垂直 + 投资者博客</strong></td>
+</tr>
+</tbody>
+</table>
+<h3 id="12">1.2 分布</h3>
+<table>
+<thead>
+<tr>
+<th>类别</th>
+<th>数量</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>亚洲英文财经媒体</td>
+<td>45</td>
+</tr>
+<tr>
+<td>国际媒体栏目 feed</td>
+<td>20</td>
+</tr>
+<tr>
+<td>半导体/硬件</td>
+<td>7</td>
+</tr>
+<tr>
+<td>新能源/油气</td>
+<td>12</td>
+</tr>
+<tr>
+<td>生物医药</td>
+<td>7</td>
+</tr>
+<tr>
+<td>汽车</td>
+<td>5</td>
+</tr>
+<tr>
+<td>航运物流</td>
+<td>9</td>
+</tr>
+<tr>
+<td>大宗商品/矿业/农业</td>
+<td>10</td>
+</tr>
+<tr>
+<td>其他行业垂直（航天/防务/金融科技/零售/地产/监管等）</td>
+<td>18</td>
+</tr>
+<tr>
+<td>智库/机构/地缘</td>
+<td>7</td>
+</tr>
+<tr>
+<td>个人投资者博客（自建站）</td>
+<td>36</td>
+</tr>
+<tr>
+<td><strong>合计</strong></td>
+<td><strong>176</strong></td>
+</tr>
+</tbody>
+</table>
+<h2 id="2">2. 验证方法（可复跑）</h2>
+<p>从本机 <code>scp</code> 上传候选清单与验证脚本到 ECS，全部实测在生产网络完成：</p>
+<pre><code class="language-bash">scp check_feeds.py candidates.txt ad-research:/tmp/
+ssh ad-research 'python3 /tmp/check_feeds.py /tmp/candidates.txt'
+</code></pre>
+<p><code>check_feeds.py</code>（stdlib only，16 并发 curl）对每个候选执行：</p>
+<ol>
+<li><code>curl -sS -L --max-time 15</code> + 浏览器 UA → 必须 HTTP 200；</li>
+<li>前 2KB 含 <code>&lt;rss</code> / <code>&lt;feed</code> / <code>&lt;rdf</code> 标记；</li>
+<li><code>&lt;item&gt;</code> / <code>&lt;entry&gt;</code> ≥ 1；</li>
+<li>前 10 条目的 <code>content:encoded|content|description|summary</code> 去标签后<strong>平均 ≥150 字符</strong>（保证翻译管线有实质正文）；</li>
+<li>可解析日期时，最新条目距今 <strong>≤60 天</strong>。</li>
+</ol>
+<p>脚本与本报告同源保存于 ECS <code>/tmp/check_feeds.py</code>（临时路径，重跑需从本机重新上传）。</p>
+<h3 id="21-664-479">2.1 淘汰原因统计（两轮合计 664 候选 → 479 淘汰）</h3>
+<table>
+<thead>
+<tr>
+<th>原因</th>
+<th>数量</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>HTTP 403（Cloudflare/WAF 拦中国大陆 IP）</td>
+<td>170</td>
+<td>Livemint、Business Standard、CleanTechnica、The Diplomat、FreightWaves 等</td>
+</tr>
+<tr>
+<td>HTTP 404（feed 已下线/改版）</td>
+<td>107</td>
+<td>Nikkei Asia、NHK World、FT/WSJ 栏目、Automotive News 等</td>
+</tr>
+<tr>
+<td>连接超时/GFW 重置</td>
+<td>35</td>
+<td>CNA、Taipei Times、Focus Taiwan、Bangkok Post、SCMP 其他版等</td>
+</tr>
+<tr>
+<td>HTTP 406</td>
+<td>2</td>
+<td>内容协商被拒（个别印度媒体）</td>
+</tr>
+<tr>
+<td>返回非 RSS（HTML）</td>
+<td>46</td>
+<td>AP hub、NPR 个别、Yonhap 等</td>
+</tr>
+<tr>
+<td>XML 无条目</td>
+<td>7</td>
+<td>—</td>
+</tr>
+<tr>
+<td>正文过短（&lt;150 字符）</td>
+<td>75</td>
+<td>只发标题/一句话摘要的 feed</td>
+</tr>
+<tr>
+<td>停更（最新条目 &gt;60 天）</td>
+<td>26</td>
+<td>Cheerful Egg、Fundoo Professor 等休眠博客</td>
+</tr>
+<tr>
+<td>其他 HTTP 错误</td>
+<td>11</td>
+<td>5xx/3xx 异常等</td>
+</tr>
+<tr>
+<td><strong>合计</strong></td>
+<td><strong>479</strong></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<h2 id="3-176">3. 收录源清单（176，按类别）</h2>
+<blockquote>
+<p>avg_body = 前 10 条目平均正文字符数；latest = 最新条目日期（验证日 2026-07-28，空值表示日期字段解析失败但其余检查全过）。</p>
+</blockquote>
+<h3 id="31-45">3.1 亚洲英文财经媒体（45）</h3>
+<table>
+<thead>
+<tr>
+<th>slug</th>
+<th>名称</th>
+<th>market</th>
+<th>avg_body</th>
+<th>最新条目</th>
+<th>feed</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>asen_abc_au_business</td>
+<td>ABC News Business (AU)</td>
+<td>us</td>
+<td>152</td>
+<td>2026-07-27</td>
+<td>https://www.abc.net.au/news/feed/51120/rss.xml</td>
+</tr>
+<tr>
+<td>asen_chinadaily_biz</td>
+<td>China Daily Business</td>
+<td>cn_a</td>
+<td>1381</td>
+<td></td>
+<td>https://www.chinadaily.com.cn/rss/bizchina_rss.xml</td>
+</tr>
+<tr>
+<td>asen_cnbctv18</td>
+<td>CNBC-TV18</td>
+<td>us</td>
+<td>279</td>
+<td>2026-07-27</td>
+<td>https://www.cnbctv18.com/commonfeeds/v1/cne/rss/latest.xml</td>
+</tr>
+<tr>
+<td>asen_dailystar_bd</td>
+<td>The Daily Star Business (BD)</td>
+<td>us</td>
+<td>171</td>
+<td>2026-07-28</td>
+<td>https://www.thedailystar.net/business/rss.xml</td>
+</tr>
+<tr>
+<td>asen_dawn_business</td>
+<td>Dawn Business (PK)</td>
+<td>us</td>
+<td>4294</td>
+<td>2026-07-27</td>
+<td>https://www.dawn.com/feeds/business/</td>
+</tr>
+<tr>
+<td>asen_dhakatribune_biz</td>
+<td>Dhaka Tribune Business</td>
+<td>us</td>
+<td>409</td>
+<td>2026-07-27</td>
+<td>https://www.dhakatribune.com/feed/business</td>
+</tr>
+<tr>
+<td>asen_et_economy</td>
+<td>Economic Times Economy</td>
+<td>us</td>
+<td>368</td>
+<td>2026-07-27</td>
+<td>https://economictimes.indiatimes.com/news/economy/rssfeeds/1373380680.cms</td>
+</tr>
+<tr>
+<td>asen_et_industry</td>
+<td>Economic Times Industry</td>
+<td>us</td>
+<td>294</td>
+<td>2026-07-27</td>
+<td>https://economictimes.indiatimes.com/industry/rssfeeds/13352306.cms</td>
+</tr>
+<tr>
+<td>asen_et_markets</td>
+<td>Economic Times Markets</td>
+<td>us</td>
+<td>347</td>
+<td>2026-07-27</td>
+<td>https://economictimes.indiatimes.com/markets/rssfeeds/1977021501.cms</td>
+</tr>
+<tr>
+<td>asen_gizmochina</td>
+<td>Gizmochina</td>
+<td>cn_a</td>
+<td>1388</td>
+<td>2026-07-27</td>
+<td>https://www.gizmochina.com/feed/</td>
+</tr>
+<tr>
+<td>asen_japan_forward</td>
+<td>Japan Forward</td>
+<td>us</td>
+<td>272</td>
+<td>2026-07-27</td>
+<td>https://japan-forward.com/feed/</td>
+</tr>
+<tr>
+<td>asen_lbo_lk</td>
+<td>Lanka Business Online</td>
+<td>us</td>
+<td>1340</td>
+<td>2026-07-27</td>
+<td>https://www.lankabusinessonline.com/feed/</td>
+</tr>
+<tr>
+<td>asen_malay_mail_biz</td>
+<td>Malay Mail Business</td>
+<td>us</td>
+<td>1000</td>
+<td>2026-07-28</td>
+<td>https://www.malaymail.com/feed/rss/money</td>
+</tr>
+<tr>
+<td>asen_ndtv_profit</td>
+<td>NDTV Profit</td>
+<td>us</td>
+<td>160</td>
+<td>2026-07-27</td>
+<td>https://feeds.feedburner.com/ndtvprofit-latest</td>
+</tr>
+<tr>
+<td>asen_pandaily</td>
+<td>Pandaily</td>
+<td>cn_a</td>
+<td>1048</td>
+<td>2026-07-27</td>
+<td>https://pandaily.com/feed/</td>
+</tr>
+<tr>
+<td>asen_straits_asia</td>
+<td>The Straits Times Asia</td>
+<td>us</td>
+<td>175</td>
+<td>2026-07-28</td>
+<td>https://www.straitstimes.com/news/asia/rss.xml</td>
+</tr>
+<tr>
+<td>asen_swarajya</td>
+<td>Swarajya</td>
+<td>us</td>
+<td>2130</td>
+<td>2026-07-27</td>
+<td>https://swarajyamag.com/feed</td>
+</tr>
+<tr>
+<td>asen_thaiger</td>
+<td>The Thaiger</td>
+<td>us</td>
+<td>1324</td>
+<td>2026-07-27</td>
+<td>https://thethaiger.com/feed</td>
+</tr>
+<tr>
+<td>asen_thenational_ae</td>
+<td>The National (UAE)</td>
+<td>us</td>
+<td>2592</td>
+<td>2026-07-27</td>
+<td>https://www.thenationalnews.com/arc/outboundfeeds/rss/?outputType=xml</td>
+</tr>
+<tr>
+<td>asen_vnexpress_biz</td>
+<td>VnExpress Business</td>
+<td>us</td>
+<td>152</td>
+<td>2026-07-28</td>
+<td>https://e.vnexpress.net/rss/business.rss</td>
+</tr>
+<tr>
+<td>asen_almonitor</td>
+<td>Al-Monitor</td>
+<td>us</td>
+<td>388</td>
+<td>2026-07-27</td>
+<td>https://www.al-monitor.com/rss</td>
+</tr>
+<tr>
+<td>asen_asiafinancial</td>
+<td>Asia Financial</td>
+<td>us</td>
+<td>3365</td>
+<td>2026-07-27</td>
+<td>https://www.asiafinancial.com/rss</td>
+</tr>
+<tr>
+<td>asen_astanatimes</td>
+<td>The Astana Times</td>
+<td>us</td>
+<td>2820</td>
+<td>2026-07-27</td>
+<td>https://astanatimes.com/feed/</td>
+</tr>
+<tr>
+<td>asen_businesstoday_my</td>
+<td>BusinessToday Malaysia</td>
+<td>us</td>
+<td>333</td>
+<td>2026-07-27</td>
+<td>https://www.businesstoday.com.my/feed/</td>
+</tr>
+<tr>
+<td>asen_bworldonline</td>
+<td>BusinessWorld (PH)</td>
+<td>us</td>
+<td>2523</td>
+<td>2026-07-27</td>
+<td>https://www.bworldonline.com/feed/</td>
+</tr>
+<tr>
+<td>asen_cabar_asia</td>
+<td>CABAR.asia</td>
+<td>us</td>
+<td>1954</td>
+<td>2026-06-01</td>
+<td>https://cabar.asia/en/feed</td>
+</tr>
+<tr>
+<td>asen_cgtn_business</td>
+<td>CGTN Business</td>
+<td>cn_a</td>
+<td>1563</td>
+<td>2026-07-27</td>
+<td>https://www.cgtn.com/subscribe/rss/section/business.xml</td>
+</tr>
+<tr>
+<td>asen_conversation_au_biz</td>
+<td>The Conversation AU Business</td>
+<td>us</td>
+<td>5958</td>
+<td>2026-07-27</td>
+<td>https://theconversation.com/au/business/articles.atom</td>
+</tr>
+<tr>
+<td>asen_devpolicy</td>
+<td>DevPolicy Blog (ANU)</td>
+<td>us</td>
+<td>3423</td>
+<td>2026-07-26</td>
+<td>https://devpolicy.org/feed/</td>
+</tr>
+<tr>
+<td>asen_e27</td>
+<td>e27 (SG Startups)</td>
+<td>us</td>
+<td>3850</td>
+<td>2026-07-27</td>
+<td>https://e27.co/feed/</td>
+</tr>
+<tr>
+<td>asen_economynext</td>
+<td>EconomyNext (LK)</td>
+<td>us</td>
+<td>637</td>
+<td>2026-07-27</td>
+<td>https://economynext.com/feed/</td>
+</tr>
+<tr>
+<td>asen_insideretailasia</td>
+<td>Inside Retail Asia</td>
+<td>us</td>
+<td>1181</td>
+<td>2026-07-27</td>
+<td>https://insideretail.asia/feed/</td>
+</tr>
+<tr>
+<td>asen_khaosod_en</td>
+<td>Khaosod English</td>
+<td>us</td>
+<td>1009</td>
+<td>2026-07-27</td>
+<td>https://www.khaosodenglish.com/feed/</td>
+</tr>
+<tr>
+<td>asen_mothership</td>
+<td>Mothership (SG)</td>
+<td>us</td>
+<td>1239</td>
+<td>2026-07-27</td>
+<td>https://mothership.sg/feed/</td>
+</tr>
+<tr>
+<td>asen_pakobserver</td>
+<td>Pakistan Observer</td>
+<td>us</td>
+<td>845</td>
+<td>2026-07-27</td>
+<td>https://pakobserver.net/feed/</td>
+</tr>
+<tr>
+<td>asen_propakistani</td>
+<td>ProPakistani (PK)</td>
+<td>us</td>
+<td>637</td>
+<td>2026-07-27</td>
+<td>https://propakistani.pk/feed/</td>
+</tr>
+<tr>
+<td>asen_rakyatpost</td>
+<td>The Rakyat Post (MY)</td>
+<td>us</td>
+<td>1305</td>
+<td>2026-07-27</td>
+<td>https://www.therakyatpost.com/feed/</td>
+</tr>
+<tr>
+<td>asen_smartcompany</td>
+<td>SmartCompany (AU)</td>
+<td>us</td>
+<td>239</td>
+<td>2026-07-27</td>
+<td>https://www.smartcompany.com.au/feed/</td>
+</tr>
+<tr>
+<td>asen_stackedhomes</td>
+<td>Stacked Homes (SG Property)</td>
+<td>us</td>
+<td>5567</td>
+<td>2026-07-27</td>
+<td>https://stackedhomes.com/feed/</td>
+</tr>
+<tr>
+<td>asen_techjuice</td>
+<td>TechJuice (PK)</td>
+<td>us</td>
+<td>457</td>
+<td>2026-07-27</td>
+<td>https://www.techjuice.pk/feed/</td>
+</tr>
+<tr>
+<td>asen_thaienquirer</td>
+<td>Thai Enquirer</td>
+<td>us</td>
+<td>5232</td>
+<td>2026-07-27</td>
+<td>https://www.thaienquirer.com/feed/</td>
+</tr>
+<tr>
+<td>asen_toi_business</td>
+<td>Times of India Business</td>
+<td>us</td>
+<td>376</td>
+<td>2026-07-27</td>
+<td>https://timesofindia.indiatimes.com/rssfeeds/1898055.cms</td>
+</tr>
+<tr>
+<td>asen_vnexpress_news</td>
+<td>VnExpress News</td>
+<td>us</td>
+<td>157</td>
+<td>2026-07-28</td>
+<td>https://e.vnexpress.net/rss/news.rss</td>
+</tr>
+<tr>
+<td>asen_vulcanpost</td>
+<td>Vulcan Post</td>
+<td>us</td>
+<td>3894</td>
+<td>2026-07-24</td>
+<td>https://vulcanpost.com/feed/</td>
+</tr>
+<tr>
+<td>asen_yourstory</td>
+<td>YourStory (IN)</td>
+<td>us</td>
+<td>2015</td>
+<td>2026-07-27</td>
+<td>https://yourstory.com/feed</td>
+</tr>
+</tbody>
+</table>
+<h3 id="32-feed20">3.2 国际媒体栏目 feed（20）</h3>
+<table>
+<thead>
+<tr>
+<th>slug</th>
+<th>名称</th>
+<th>market</th>
+<th>avg_body</th>
+<th>最新条目</th>
+<th>feed</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>asen_dw_business</td>
+<td>DW Business</td>
+<td>us</td>
+<td>164</td>
+<td>2026-07-27</td>
+<td>https://rss.dw.com/rdf/rss-en-bus</td>
+</tr>
+<tr>
+<td>asen_dw_world</td>
+<td>DW World</td>
+<td>us</td>
+<td>184</td>
+<td>2026-07-27</td>
+<td>https://rss.dw.com/rdf/rss-en-world</td>
+</tr>
+<tr>
+<td>asen_fastcompany</td>
+<td>Fast Company</td>
+<td>us</td>
+<td>6101</td>
+<td>2026-07-27</td>
+<td>https://www.fastcompany.com/rss</td>
+</tr>
+<tr>
+<td>asen_france24_en</td>
+<td>France 24 English</td>
+<td>us</td>
+<td>358</td>
+<td>2026-07-27</td>
+<td>https://www.france24.com/en/rss</td>
+</tr>
+<tr>
+<td>asen_guardian_comment</td>
+<td>The Guardian Opinion</td>
+<td>us</td>
+<td>1555</td>
+<td>2026-07-27</td>
+<td>https://www.theguardian.com/commentisfree/rss</td>
+</tr>
+<tr>
+<td>asen_guardian_economics</td>
+<td>The Guardian Economics</td>
+<td>us</td>
+<td>919</td>
+<td>2026-07-27</td>
+<td>https://www.theguardian.com/business/economics/rss</td>
+</tr>
+<tr>
+<td>asen_guardian_env</td>
+<td>The Guardian Environment</td>
+<td>us</td>
+<td>894</td>
+<td>2026-07-27</td>
+<td>https://www.theguardian.com/environment/rss</td>
+</tr>
+<tr>
+<td>asen_guardian_money</td>
+<td>The Guardian Money</td>
+<td>us</td>
+<td>748</td>
+<td>2026-07-27</td>
+<td>https://www.theguardian.com/uk/money/rss</td>
+</tr>
+<tr>
+<td>asen_guardian_world</td>
+<td>The Guardian World</td>
+<td>us</td>
+<td>731</td>
+<td>2026-07-27</td>
+<td>https://www.theguardian.com/world/rss</td>
+</tr>
+<tr>
+<td>asen_irishtimes_biz</td>
+<td>Irish Times Business</td>
+<td>us</td>
+<td>2366</td>
+<td>2026-07-27</td>
+<td>https://www.irishtimes.com/arc/outboundfeeds/rss/?outputType=xml</td>
+</tr>
+<tr>
+<td>asen_moneyweek</td>
+<td>MoneyWeek</td>
+<td>us</td>
+<td>3174</td>
+<td>2026-07-27</td>
+<td>https://moneyweek.com/feed/all</td>
+</tr>
+<tr>
+<td>asen_nationalpost</td>
+<td>National Post</td>
+<td>us</td>
+<td>182</td>
+<td>2026-07-27</td>
+<td>https://nationalpost.com/feed</td>
+</tr>
+<tr>
+<td>asen_npr_business</td>
+<td>NPR Business</td>
+<td>us</td>
+<td>189</td>
+<td>2026-07-27</td>
+<td>https://feeds.npr.org/1006/rss.xml</td>
+</tr>
+<tr>
+<td>asen_npr_world</td>
+<td>NPR World</td>
+<td>us</td>
+<td>188</td>
+<td>2026-07-27</td>
+<td>https://feeds.npr.org/1004/rss.xml</td>
+</tr>
+<tr>
+<td>asen_nyt_world</td>
+<td>NYT World</td>
+<td>us</td>
+<td>165</td>
+<td>2026-07-27</td>
+<td>https://rss.nytimes.com/services/xml/rss/nyt/World.xml</td>
+</tr>
+<tr>
+<td>asen_eureporter</td>
+<td>EU Reporter</td>
+<td>us</td>
+<td>2858</td>
+<td>2026-07-27</td>
+<td>https://www.eureporter.co/feed/</td>
+</tr>
+<tr>
+<td>asen_guardian_inequality</td>
+<td>The Guardian Inequality</td>
+<td>us</td>
+<td>1048</td>
+<td>2026-07-27</td>
+<td>https://www.theguardian.com/inequality/rss</td>
+</tr>
+<tr>
+<td>asen_guardian_tech</td>
+<td>The Guardian Technology</td>
+<td>us</td>
+<td>1236</td>
+<td>2026-07-27</td>
+<td>https://www.theguardian.com/uk/technology/rss</td>
+</tr>
+<tr>
+<td>asen_politico_eu</td>
+<td>Politico Europe</td>
+<td>us</td>
+<td>1030</td>
+<td>2026-07-27</td>
+<td>https://www.politico.eu/feed/</td>
+</tr>
+<tr>
+<td>asen_cityam</td>
+<td>City A.M.</td>
+<td>us</td>
+<td>1716</td>
+<td>2026-07-27</td>
+<td>https://www.cityam.com/feed/</td>
+</tr>
+</tbody>
+</table>
+<h3 id="33-7">3.3 半导体/硬件（7）</h3>
+<table>
+<thead>
+<tr>
+<th>slug</th>
+<th>名称</th>
+<th>market</th>
+<th>avg_body</th>
+<th>最新条目</th>
+<th>feed</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>asen_eetimes</td>
+<td>EE Times</td>
+<td>us</td>
+<td>185</td>
+<td>2026-07-27</td>
+<td>https://www.eetimes.com/feed/</td>
+</tr>
+<tr>
+<td>asen_semiengineering</td>
+<td>Semiconductor Engineering</td>
+<td>us</td>
+<td>4253</td>
+<td>2026-07-27</td>
+<td>https://semiengineering.com/feed/</td>
+</tr>
+<tr>
+<td>asen_semiwiki</td>
+<td>SemiWiki</td>
+<td>us</td>
+<td>382</td>
+<td>2026-07-27</td>
+<td>https://semiwiki.com/feed/</td>
+</tr>
+<tr>
+<td>asen_servethehome</td>
+<td>ServeTheHome</td>
+<td>us</td>
+<td>215</td>
+<td>2026-07-27</td>
+<td>https://www.servethehome.com/feed/</td>
+</tr>
+<tr>
+<td>asen_tomshardware</td>
+<td>Tom's Hardware</td>
+<td>us</td>
+<td>1781</td>
+<td>2026-07-27</td>
+<td>https://www.tomshardware.com/feeds/all</td>
+</tr>
+<tr>
+<td>asen_techpowerup</td>
+<td>TechPowerUp</td>
+<td>us</td>
+<td>980</td>
+<td>2026-07-27</td>
+<td>https://www.techpowerup.com/rss/news</td>
+</tr>
+<tr>
+<td>asen_wccftech</td>
+<td>Wccftech</td>
+<td>us</td>
+<td>633</td>
+<td>2026-07-27</td>
+<td>https://wccftech.com/feed/</td>
+</tr>
+</tbody>
+</table>
+<h3 id="34-12">3.4 新能源/油气（12）</h3>
+<table>
+<thead>
+<tr>
+<th>slug</th>
+<th>名称</th>
+<th>market</th>
+<th>avg_body</th>
+<th>最新条目</th>
+<th>feed</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>asen_canarymedia</td>
+<td>Canary Media</td>
+<td>us</td>
+<td>305</td>
+<td>2026-07-27</td>
+<td>https://www.canarymedia.com/rss</td>
+</tr>
+<tr>
+<td>asen_electrek</td>
+<td>Electrek</td>
+<td>us</td>
+<td>273</td>
+<td>2026-07-27</td>
+<td>https://electrek.co/feed/</td>
+</tr>
+<tr>
+<td>asen_oilprice</td>
+<td>OilPrice.com</td>
+<td>us</td>
+<td>492</td>
+<td>2026-07-27</td>
+<td>https://oilprice.com/rss/main</td>
+</tr>
+<tr>
+<td>asen_utilitydive</td>
+<td>Utility Dive</td>
+<td>us</td>
+<td>362</td>
+<td>2026-07-27</td>
+<td>https://www.utilitydive.com/feeds/news/</td>
+</tr>
+<tr>
+<td>asen_windpower_monthly</td>
+<td>Windpower Monthly</td>
+<td>us</td>
+<td>166</td>
+<td>2026-07-27</td>
+<td>https://www.windpowermonthly.com/rss</td>
+</tr>
+<tr>
+<td>asen_drillingcontractor</td>
+<td>Drilling Contractor</td>
+<td>us</td>
+<td>453</td>
+<td>2026-07-24</td>
+<td>https://www.drillingcontractor.org/feed/</td>
+</tr>
+<tr>
+<td>asen_marinetech</td>
+<td>Marine Technology News</td>
+<td>us</td>
+<td>275</td>
+<td>2026-07-26</td>
+<td>https://www.marinetechnologynews.com/rss</td>
+</tr>
+<tr>
+<td>asen_mercomindia</td>
+<td>Mercom India</td>
+<td>us</td>
+<td>280</td>
+<td>2026-07-27</td>
+<td>https://www.mercomindia.com/feed/</td>
+</tr>
+<tr>
+<td>asen_oedigital</td>
+<td>Offshore Engineer</td>
+<td>us</td>
+<td>150</td>
+<td>2026-07-27</td>
+<td>https://www.oedigital.com/rss</td>
+</tr>
+<tr>
+<td>asen_powereng</td>
+<td>Power Engineering</td>
+<td>us</td>
+<td>5566</td>
+<td>2026-07-24</td>
+<td>https://www.power-eng.com/feed/</td>
+</tr>
+<tr>
+<td>asen_powermag</td>
+<td>POWER Magazine</td>
+<td>us</td>
+<td>440</td>
+<td>2026-07-24</td>
+<td>https://www.powermag.com/feed/</td>
+</tr>
+<tr>
+<td>asen_sustainabilitytimes</td>
+<td>Sustainability Times</td>
+<td>us</td>
+<td>361</td>
+<td>2026-07-21</td>
+<td>https://www.sustainability-times.com/feed/</td>
+</tr>
+</tbody>
+</table>
+<h3 id="35-7">3.5 生物医药（7）</h3>
+<table>
+<thead>
+<tr>
+<th>slug</th>
+<th>名称</th>
+<th>market</th>
+<th>avg_body</th>
+<th>最新条目</th>
+<th>feed</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>asen_biopharmadive</td>
+<td>BioPharma Dive</td>
+<td>us</td>
+<td>334</td>
+<td>2026-07-27</td>
+<td>https://www.biopharmadive.com/feeds/news/</td>
+</tr>
+<tr>
+<td>asen_endpoints</td>
+<td>Endpoints News</td>
+<td>us</td>
+<td>200</td>
+<td>2026-07-27</td>
+<td>https://endpts.com/feed/</td>
+</tr>
+<tr>
+<td>asen_fiercebiotech</td>
+<td>Fierce Biotech</td>
+<td>us</td>
+<td>158</td>
+<td></td>
+<td>https://www.fiercebiotech.com/rss/xml</td>
+</tr>
+<tr>
+<td>asen_fiercepharma</td>
+<td>Fierce Pharma</td>
+<td>us</td>
+<td>210</td>
+<td></td>
+<td>https://www.fiercepharma.com/rss/xml</td>
+</tr>
+<tr>
+<td>asen_healthcaredive</td>
+<td>Healthcare Dive</td>
+<td>us</td>
+<td>353</td>
+<td>2026-07-27</td>
+<td>https://www.healthcaredive.com/feeds/news/</td>
+</tr>
+<tr>
+<td>asen_medcitynews</td>
+<td>MedCity News</td>
+<td>us</td>
+<td>305</td>
+<td>2026-07-27</td>
+<td>https://medcitynews.com/feed/</td>
+</tr>
+<tr>
+<td>asen_statnews</td>
+<td>STAT News</td>
+<td>us</td>
+<td>464</td>
+<td>2026-07-27</td>
+<td>https://www.statnews.com/feed/</td>
+</tr>
+</tbody>
+</table>
+<h3 id="36-5">3.6 汽车（5）</h3>
+<table>
+<thead>
+<tr>
+<th>slug</th>
+<th>名称</th>
+<th>market</th>
+<th>avg_body</th>
+<th>最新条目</th>
+<th>feed</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>asen_autocar</td>
+<td>Autocar</td>
+<td>us</td>
+<td>8188</td>
+<td>2026-07-27</td>
+<td>https://www.autocar.co.uk/rss</td>
+</tr>
+<tr>
+<td>asen_driving_ca</td>
+<td>Driving.ca</td>
+<td>us</td>
+<td>260</td>
+<td>2026-07-27</td>
+<td>https://driving.ca/feed</td>
+</tr>
+<tr>
+<td>asen_gaadiwaadi</td>
+<td>GaadiWaadi (IN)</td>
+<td>us</td>
+<td>1495</td>
+<td>2026-07-27</td>
+<td>https://gaadiwaadi.com/feed/</td>
+</tr>
+<tr>
+<td>asen_paultan</td>
+<td>Paul Tan Automotive News</td>
+<td>us</td>
+<td>1680</td>
+<td>2026-07-27</td>
+<td>https://paultan.org/rss/</td>
+</tr>
+<tr>
+<td>asen_rushlane</td>
+<td>RushLane (IN)</td>
+<td>us</td>
+<td>227</td>
+<td>2026-07-27</td>
+<td>https://www.rushlane.com/feed/</td>
+</tr>
+</tbody>
+</table>
+<h3 id="37-9">3.7 航运物流（9）</h3>
+<table>
+<thead>
+<tr>
+<th>slug</th>
+<th>名称</th>
+<th>market</th>
+<th>avg_body</th>
+<th>最新条目</th>
+<th>feed</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>asen_container_news</td>
+<td>Container News</td>
+<td>us</td>
+<td>863</td>
+<td>2026-07-27</td>
+<td>https://container-news.com/feed/</td>
+</tr>
+<tr>
+<td>asen_gcaptain</td>
+<td>gCaptain</td>
+<td>us</td>
+<td>182</td>
+<td>2026-07-27</td>
+<td>https://gcaptain.com/feed/</td>
+</tr>
+<tr>
+<td>asen_loadstar</td>
+<td>The Loadstar</td>
+<td>us</td>
+<td>530</td>
+<td>2026-07-27</td>
+<td>https://theloadstar.com/feed/</td>
+</tr>
+<tr>
+<td>asen_marinelink</td>
+<td>MarineLink</td>
+<td>us</td>
+<td>246</td>
+<td>2026-07-27</td>
+<td>https://www.marinelink.com/rss</td>
+</tr>
+<tr>
+<td>asen_porttechnology</td>
+<td>Port Technology</td>
+<td>us</td>
+<td>489</td>
+<td>2026-07-27</td>
+<td>https://www.porttechnology.org/feed/</td>
+</tr>
+<tr>
+<td>asen_splash247</td>
+<td>Splash247</td>
+<td>us</td>
+<td>310</td>
+<td>2026-07-27</td>
+<td>https://splash247.com/feed/</td>
+</tr>
+<tr>
+<td>asen_supplychaindive</td>
+<td>Supply Chain Dive</td>
+<td>us</td>
+<td>298</td>
+<td>2026-07-27</td>
+<td>https://www.supplychaindive.com/feeds/news/</td>
+</tr>
+<tr>
+<td>asen_cimsec</td>
+<td>CIMSEC</td>
+<td>us</td>
+<td>415</td>
+<td>2026-07-27</td>
+<td>https://cimsec.org/feed/</td>
+</tr>
+<tr>
+<td>asen_navalnews</td>
+<td>Naval News</td>
+<td>us</td>
+<td>2346</td>
+<td>2026-07-27</td>
+<td>https://www.navalnews.com/feed/</td>
+</tr>
+</tbody>
+</table>
+<h3 id="38-10">3.8 大宗商品/矿业/农业（10）</h3>
+<table>
+<thead>
+<tr>
+<th>slug</th>
+<th>名称</th>
+<th>market</th>
+<th>avg_body</th>
+<th>最新条目</th>
+<th>feed</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>asen_beefcentral</td>
+<td>Beef Central (AU)</td>
+<td>us</td>
+<td>224</td>
+<td>2026-07-27</td>
+<td>https://www.beefcentral.com/feed/</td>
+</tr>
+<tr>
+<td>asen_chinimandi</td>
+<td>ChiniMandi (Sugar)</td>
+<td>us</td>
+<td>1192</td>
+<td>2026-07-27</td>
+<td>https://www.chinimandi.com/feed/</td>
+</tr>
+<tr>
+<td>asen_dailycoffeenews</td>
+<td>Daily Coffee News</td>
+<td>us</td>
+<td>195</td>
+<td>2026-07-27</td>
+<td>https://dailycoffeenews.com/feed/</td>
+</tr>
+<tr>
+<td>asen_gmk_center</td>
+<td>GMK Center</td>
+<td>us</td>
+<td>437</td>
+<td>2026-07-27</td>
+<td>https://gmk.center/en/feed/</td>
+</tr>
+<tr>
+<td>asen_investingnews</td>
+<td>Investing News Network</td>
+<td>us</td>
+<td>6779</td>
+<td>2026-07-27</td>
+<td>https://investingnews.com/feed/</td>
+</tr>
+<tr>
+<td>asen_marketherald</td>
+<td>The Market Herald (AU)</td>
+<td>us</td>
+<td>1300</td>
+<td>2026-07-27</td>
+<td>https://themarketherald.com.au/feed/</td>
+</tr>
+<tr>
+<td>asen_naturalgasintel</td>
+<td>Natural Gas Intel</td>
+<td>us</td>
+<td>175</td>
+<td>2026-07-27</td>
+<td>https://www.naturalgasintel.com/feed/</td>
+</tr>
+<tr>
+<td>asen_northernminer</td>
+<td>The Northern Miner</td>
+<td>us</td>
+<td>296</td>
+<td>2026-07-27</td>
+<td>https://www.northernminer.com/feed/</td>
+</tr>
+<tr>
+<td>asen_srsrocco</td>
+<td>SRSrocco Report</td>
+<td>us</td>
+<td>301</td>
+<td>2026-07-26</td>
+<td>https://srsroccoreport.com/feed/</td>
+</tr>
+<tr>
+<td>asen_wastedive</td>
+<td>Waste Dive</td>
+<td>us</td>
+<td>390</td>
+<td>2026-07-27</td>
+<td>https://www.wastedive.com/feeds/news/</td>
+</tr>
+</tbody>
+</table>
+<h3 id="39-18">3.9 其他行业垂直（航天/防务/金融科技/零售/地产/监管等）（18）</h3>
+<table>
+<thead>
+<tr>
+<th>slug</th>
+<th>名称</th>
+<th>market</th>
+<th>avg_body</th>
+<th>最新条目</th>
+<th>feed</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>asen_bankingdive</td>
+<td>Banking Dive</td>
+<td>us</td>
+<td>421</td>
+<td>2026-07-27</td>
+<td>https://www.bankingdive.com/feeds/news/</td>
+</tr>
+<tr>
+<td>asen_defensenews</td>
+<td>Defense News</td>
+<td>us</td>
+<td>1689</td>
+<td>2026-07-27</td>
+<td>https://www.defensenews.com/arc/outboundfeeds/rss/?outputType=xml</td>
+</tr>
+<tr>
+<td>asen_fooddive</td>
+<td>Food Dive</td>
+<td>us</td>
+<td>279</td>
+<td>2026-07-27</td>
+<td>https://www.fooddive.com/feeds/news/</td>
+</tr>
+<tr>
+<td>asen_frontofficesports</td>
+<td>Front Office Sports</td>
+<td>us</td>
+<td>1062</td>
+<td>2026-07-27</td>
+<td>https://frontofficesports.com/feed/</td>
+</tr>
+<tr>
+<td>asen_housedive</td>
+<td>Construction Dive</td>
+<td>us</td>
+<td>370</td>
+<td>2026-07-27</td>
+<td>https://www.constructiondive.com/feeds/news/</td>
+</tr>
+<tr>
+<td>asen_housingwire</td>
+<td>HousingWire</td>
+<td>us</td>
+<td>1891</td>
+<td>2026-07-27</td>
+<td>https://www.housingwire.com/feed/</td>
+</tr>
+<tr>
+<td>asen_hrdive</td>
+<td>HR Dive</td>
+<td>us</td>
+<td>330</td>
+<td>2026-07-27</td>
+<td>https://www.hrdive.com/feeds/news/</td>
+</tr>
+<tr>
+<td>asen_marketingdive</td>
+<td>Marketing Dive</td>
+<td>us</td>
+<td>356</td>
+<td>2026-07-27</td>
+<td>https://www.marketingdive.com/feeds/news/</td>
+</tr>
+<tr>
+<td>asen_marktechpost</td>
+<td>MarkTechPost</td>
+<td>us</td>
+<td>4421</td>
+<td>2026-07-27</td>
+<td>https://www.marktechpost.com/feed/</td>
+</tr>
+<tr>
+<td>asen_retaildive</td>
+<td>Retail Dive</td>
+<td>us</td>
+<td>315</td>
+<td>2026-07-27</td>
+<td>https://www.retaildive.com/feeds/news/</td>
+</tr>
+<tr>
+<td>asen_sportico</td>
+<td>Sportico</td>
+<td>us</td>
+<td>321</td>
+<td>2026-07-27</td>
+<td>https://www.sportico.com/feed/</td>
+</tr>
+<tr>
+<td>asen_thedecoder</td>
+<td>The Decoder</td>
+<td>us</td>
+<td>432</td>
+<td>2026-07-27</td>
+<td>https://the-decoder.com/feed/</td>
+</tr>
+<tr>
+<td>asen_theregreview</td>
+<td>The Regulatory Review</td>
+<td>us</td>
+<td>4305</td>
+<td>2026-07-27</td>
+<td>https://www.theregreview.org/feed/</td>
+</tr>
+<tr>
+<td>asen_variety</td>
+<td>Variety</td>
+<td>us</td>
+<td>337</td>
+<td>2026-07-27</td>
+<td>https://variety.com/feed/</td>
+</tr>
+<tr>
+<td>asen_venturebeat</td>
+<td>VentureBeat</td>
+<td>us</td>
+<td>7922</td>
+<td>2026-07-27</td>
+<td>https://venturebeat.com/feed/</td>
+</tr>
+<tr>
+<td>asen_spacecom</td>
+<td>Space.com</td>
+<td>us</td>
+<td>1728</td>
+<td>2026-07-27</td>
+<td>https://www.space.com/feeds/all</td>
+</tr>
+<tr>
+<td>asen_spacepolicyonline</td>
+<td>SpacePolicyOnline</td>
+<td>us</td>
+<td>1532</td>
+<td>2026-07-26</td>
+<td>https://spacepolicyonline.com/feed/</td>
+</tr>
+<tr>
+<td>asen_twz</td>
+<td>The War Zone</td>
+<td>us</td>
+<td>3409</td>
+<td>2026-07-26</td>
+<td>https://www.twz.com/feed</td>
+</tr>
+</tbody>
+</table>
+<h3 id="310-7">3.10 智库/机构/地缘（7）</h3>
+<table>
+<thead>
+<tr>
+<th>slug</th>
+<th>名称</th>
+<th>market</th>
+<th>avg_body</th>
+<th>最新条目</th>
+<th>feed</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>asen_atlanticcouncil</td>
+<td>Atlantic Council</td>
+<td>us</td>
+<td>208</td>
+<td>2026-07-27</td>
+<td>https://www.atlanticcouncil.org/feed/</td>
+</tr>
+<tr>
+<td>asen_fred_blog</td>
+<td>FRED Blog (St. Louis Fed)</td>
+<td>us</td>
+<td>994</td>
+<td>2026-07-27</td>
+<td>https://fredblog.stlouisfed.org/feed/</td>
+</tr>
+<tr>
+<td>asen_aspistrategist</td>
+<td>The Strategist (ASPI)</td>
+<td>us</td>
+<td>210</td>
+<td>2026-07-27</td>
+<td>https://www.aspistrategist.org.au/feed/</td>
+</tr>
+<tr>
+<td>asen_conversation_global_biz</td>
+<td>The Conversation Business</td>
+<td>us</td>
+<td>5934</td>
+<td>2026-07-20</td>
+<td>https://theconversation.com/global/business/articles.atom</td>
+</tr>
+<tr>
+<td>asen_coppolacomment</td>
+<td>Coppola Comment</td>
+<td>us</td>
+<td>4820</td>
+<td>2026-07-26</td>
+<td>https://www.coppolacomment.com/feeds/posts/default</td>
+</tr>
+<tr>
+<td>asen_defenseone</td>
+<td>Defense One</td>
+<td>us</td>
+<td>3458</td>
+<td>2026-07-25</td>
+<td>https://www.defenseone.com/rss/all/</td>
+</tr>
+<tr>
+<td>asen_geopoliticalfutures</td>
+<td>Geopolitical Futures</td>
+<td>us</td>
+<td>451</td>
+<td>2026-07-27</td>
+<td>https://geopoliticalfutures.com/feed/</td>
+</tr>
+</tbody>
+</table>
+<h3 id="311-36">3.11 个人投资者博客（自建站）（36）</h3>
+<table>
+<thead>
+<tr>
+<th>slug</th>
+<th>名称</th>
+<th>market</th>
+<th>avg_body</th>
+<th>最新条目</th>
+<th>feed</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>asen_assi_sg</td>
+<td>A Singaporean Stock Investor (ASSI)</td>
+<td>us</td>
+<td>400</td>
+<td>2026-07-21</td>
+<td>https://singaporeanstocksinvestor.blogspot.com/feeds/posts/default</td>
+</tr>
+<tr>
+<td>asen_boringinvestor</td>
+<td>The Boring Investor (SG)</td>
+<td>us</td>
+<td>13745</td>
+<td>2026-07-18</td>
+<td>https://boringinvestor.blogspot.com/feeds/posts/default</td>
+</tr>
+<tr>
+<td>asen_dividendgrowth</td>
+<td>Dividend Growth Investor</td>
+<td>us</td>
+<td>117116</td>
+<td>2026-07-25</td>
+<td>https://www.dividendgrowthinvestor.com/feeds/posts/default</td>
+</tr>
+<tr>
+<td>asen_dollarsandsense</td>
+<td>DollarsAndSense (SG)</td>
+<td>us</td>
+<td>2169</td>
+<td>2026-07-27</td>
+<td>https://dollarsandsense.sg/feed/</td>
+</tr>
+<tr>
+<td>asen_econbrowser2</td>
+<td>Macro Musings (David Beckworth)</td>
+<td>us</td>
+<td>1134</td>
+<td>2026-07-27</td>
+<td>https://macromusings.libsyn.com/rss</td>
+</tr>
+<tr>
+<td>asen_econompic</td>
+<td>EconomPic</td>
+<td>us</td>
+<td>13389</td>
+<td>2026-07-26</td>
+<td>https://econompicdata.blogspot.com/feeds/posts/default</td>
+</tr>
+<tr>
+<td>asen_epchan</td>
+<td>Quantitative Trading (Ernie Chan)</td>
+<td>us</td>
+<td>31522</td>
+<td>2026-07-25</td>
+<td>https://epchan.blogspot.com/feeds/posts/default</td>
+</tr>
+<tr>
+<td>asen_europeandgi</td>
+<td>European DGI</td>
+<td>us</td>
+<td>284</td>
+<td>2026-07-11</td>
+<td>https://europeandgi.com/feed/</td>
+</tr>
+<tr>
+<td>asen_fifthperson</td>
+<td>The Fifth Person (SG)</td>
+<td>us</td>
+<td>3869</td>
+<td>2026-07-23</td>
+<td>https://fifthperson.com/feed/</td>
+</tr>
+<tr>
+<td>asen_forexlive</td>
+<td>InvestingLive (ex-ForexLive)</td>
+<td>us</td>
+<td>1521</td>
+<td>2026-07-27</td>
+<td>https://investinglive.com/feed</td>
+</tr>
+<tr>
+<td>asen_freefincal</td>
+<td>freefincal</td>
+<td>us</td>
+<td>434</td>
+<td>2026-07-25</td>
+<td>https://freefincal.com/feed/</td>
+</tr>
+<tr>
+<td>asen_lt3000</td>
+<td>LT3000 (Lyall Taylor)</td>
+<td>us</td>
+<td>24931</td>
+<td>2026-07-05</td>
+<td>https://lt3000.blogspot.com/feeds/posts/default</td>
+</tr>
+<tr>
+<td>asen_mebfaber</td>
+<td>Meb Faber Research</td>
+<td>us</td>
+<td>246</td>
+<td>2026-07-02</td>
+<td>https://mebfaber.com/feed/</td>
+</tr>
+<tr>
+<td>asen_musings_markets</td>
+<td>Musings on Markets (Damodaran)</td>
+<td>us</td>
+<td>45703</td>
+<td>2026-07-27</td>
+<td>https://aswathdamodaran.blogspot.com/feeds/posts/default</td>
+</tr>
+<tr>
+<td>asen_myownadvisor</td>
+<td>My Own Advisor</td>
+<td>us</td>
+<td>498</td>
+<td>2026-07-27</td>
+<td>https://www.myownadvisor.ca/feed/</td>
+</tr>
+<tr>
+<td>asen_providend</td>
+<td>Providend (SG)</td>
+<td>us</td>
+<td>3712</td>
+<td>2026-07-22</td>
+<td>https://providend.com/feed/</td>
+</tr>
+<tr>
+<td>asen_quantstart</td>
+<td>QuantStart</td>
+<td>us</td>
+<td>501</td>
+<td></td>
+<td>https://www.quantstart.com/feed/</td>
+</tr>
+<tr>
+<td>asen_retirementinvestingtoday</td>
+<td>Retirement Investing Today</td>
+<td>us</td>
+<td>404</td>
+<td>2026-07-25</td>
+<td>https://www.retirementinvestingtoday.com/feeds/posts/default</td>
+</tr>
+<tr>
+<td>asen_robotwealth</td>
+<td>Robot Wealth</td>
+<td>us</td>
+<td>400</td>
+<td>2026-06-08</td>
+<td>https://robotwealth.com/feed/</td>
+</tr>
+<tr>
+<td>asen_routetoretire</td>
+<td>Route to Retire</td>
+<td>us</td>
+<td>430</td>
+<td>2026-06-09</td>
+<td>https://www.routetoretire.com/feed/</td>
+</tr>
+<tr>
+<td>asen_safalniveshak</td>
+<td>Safal Niveshak</td>
+<td>us</td>
+<td>4140</td>
+<td>2026-07-27</td>
+<td>https://www.safalniveshak.com/feed/</td>
+</tr>
+<tr>
+<td>asen_strongmoneyau</td>
+<td>Strong Money Australia</td>
+<td>us</td>
+<td>3468</td>
+<td>2026-07-18</td>
+<td>https://strongmoneyaustralia.com/feed/</td>
+</tr>
+<tr>
+<td>asen_tawcan</td>
+<td>Tawcan</td>
+<td>us</td>
+<td>207</td>
+<td>2026-07-27</td>
+<td>https://www.tawcan.com/feed/</td>
+</tr>
+<tr>
+<td>asen_thepoorswiss</td>
+<td>The Poor Swiss</td>
+<td>us</td>
+<td>5057</td>
+<td>2026-07-21</td>
+<td>https://thepoorswiss.com/feed/</td>
+</tr>
+<tr>
+<td>asen_valuewalk</td>
+<td>ValueWalk</td>
+<td>us</td>
+<td>570</td>
+<td>2026-06-29</td>
+<td>https://www.valuewalk.com/feed/</td>
+</tr>
+<tr>
+<td>asen_boomerandecho</td>
+<td>Boomer &amp; Echo (CA)</td>
+<td>us</td>
+<td>295</td>
+<td>2026-07-05</td>
+<td>https://www.boomerandecho.com/feed/</td>
+</tr>
+<tr>
+<td>asen_capitalspectator</td>
+<td>The Capital Spectator</td>
+<td>us</td>
+<td>1767</td>
+<td>2026-07-27</td>
+<td>https://www.capitalspectator.com/feed/</td>
+</tr>
+<tr>
+<td>asen_dividendguy</td>
+<td>The Dividend Guy Blog</td>
+<td>us</td>
+<td>3073</td>
+<td>2026-07-23</td>
+<td>https://www.thedividendguyblog.com/feed/</td>
+</tr>
+<tr>
+<td>asen_etftrends</td>
+<td>ETF Trends</td>
+<td>us</td>
+<td>442</td>
+<td>2026-07-27</td>
+<td>https://www.etftrends.com/feed/</td>
+</tr>
+<tr>
+<td>asen_investinghaven</td>
+<td>Investing Haven</td>
+<td>us</td>
+<td>330</td>
+<td>2026-07-24</td>
+<td>https://investinghaven.com/feed/</td>
+</tr>
+<tr>
+<td>asen_jagoinvestor</td>
+<td>JagoInvestor (IN)</td>
+<td>us</td>
+<td>384</td>
+<td>2026-07-06</td>
+<td>https://www.jagoinvestor.com/feed/</td>
+</tr>
+<tr>
+<td>asen_looniedoctor</td>
+<td>The Loonie Doctor (CA)</td>
+<td>us</td>
+<td>2701</td>
+<td>2026-06-30</td>
+<td>https://www.looniedoctor.ca/feed/</td>
+</tr>
+<tr>
+<td>asen_moneywehave</td>
+<td>Money We Have (CA)</td>
+<td>us</td>
+<td>3371</td>
+<td>2026-06-16</td>
+<td>https://www.moneywehave.com/feed/</td>
+</tr>
+<tr>
+<td>asen_retirebeforedad</td>
+<td>Retire Before Dad</td>
+<td>us</td>
+<td>429</td>
+<td>2026-07-23</td>
+<td>https://www.retirebeforedad.com/feed/</td>
+</tr>
+<tr>
+<td>asen_tradebrains</td>
+<td>Trade Brains (IN)</td>
+<td>us</td>
+<td>2516</td>
+<td>2026-07-27</td>
+<td>https://tradebrains.in/feed/</td>
+</tr>
+<tr>
+<td>asen_treeofprosperity</td>
+<td>Tree of Prosperity (SG)</td>
+<td>us</td>
+<td>5313</td>
+<td>2026-07-27</td>
+<td>https://treeofprosperity.blogspot.com/feeds/posts/default</td>
+</tr>
+</tbody>
+</table>
+<h2 id="4-9">4. 实测通过但未收录（9）</h2>
+<h3 id="41-global_indie_batch-3">4.1 按主会话裁决归并行 <code>global_indie_batch</code> 波次（3）</h3>
+<p>这 3 个美源 URL 实测通过，但主题上不属于亚洲，按 2026-07-28 主会话裁决由 <code>gind_</code> 批次收录，本批次让出避免双写：</p>
+<table>
+<thead>
+<tr>
+<th>slug</th>
+<th>名称</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>krebsonsecurity</td>
+<td>Krebs on Security</td>
+</tr>
+<tr>
+<td>wallethacks</td>
+<td>Wallet Hacks</td>
+</tr>
+<tr>
+<td>yetanothervalue</td>
+<td>Yet Another Value Blog</td>
+</tr>
+</tbody>
+</table>
+<h3 id="42-6">4.2 编辑判断剔除（6）</h3>
+<table>
+<thead>
+<tr>
+<th>slug</th>
+<th>名称</th>
+<th>原因</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>paultan2</td>
+<td>Paul Tan (feed)</td>
+<td>与 paultan 同站重复 URL，保留 /rss/</td>
+</tr>
+<tr>
+<td>xinhua_en</td>
+<td>Xinhua English Business</td>
+<td>平均正文 157 字符偏标题党，且已有 xinhua 中文源</td>
+</tr>
+<tr>
+<td>krebson</td>
+<td>Hackmanac</td>
+<td>探测残留项，非财经向</td>
+</tr>
+<tr>
+<td>eurogamer</td>
+<td>Eurogamer</td>
+<td>消费向游戏媒体，超出财经/行业范围</td>
+</tr>
+<tr>
+<td>chinadaily_world</td>
+<td>China Daily World</td>
+<td>综合世界新闻，财经信号弱（保留 chinadaily_biz/cgtn_business）</td>
+</tr>
+<tr>
+<td>thehill</td>
+<td>The Hill</td>
+<td>美国政治赛马新闻，财经信号弱</td>
+</tr>
+</tbody>
+</table>
+<h2 id="5-479">5. 淘汰记录（479，按原因分组）</h2>
+<h3 id="51-352">5.1 第一轮（352 候选）淘汰明细</h3>
+<table>
+<thead>
+<tr>
+<th>slug</th>
+<th>名称</th>
+<th>HTTP</th>
+<th>原因</th>
+<th>feed</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>afr</td>
+<td>Australian Financial Review</td>
+<td>404</td>
+<td>http 404</td>
+<td>https://www.afr.com/rss</td>
+</tr>
+<tr>
+<td>aju_press</td>
+<td>Aju Korea Daily</td>
+<td>200</td>
+<td>not rss/atom</td>
+<td>https://www.ajudaily.com/rss/allArticle.xml</td>
+</tr>
+<tr>
+<td>akipress</td>
+<td>AKIpress</td>
+<td>404</td>
+<td>http 404</td>
+<td>https://en.akipress.com/rss.php</td>
+</tr>
+<tr>
+<td>antara_biz</td>
+<td>Antara News Business</td>
+<td>404</td>
+<td>http 404</td>
+<td>https://en.antaranews.com/rss/business.xml</td>
+</tr>
+<tr>
+<td>arabian_business</td>
+<td>Arabian Business</td>
+<td>405</td>
+<td>http 405</td>
+<td>https://www.arabianbusiness.com/feed</td>
+</tr>
+<tr>
+<td>arabnews_econ</td>
+<td>Arab News Economy</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://www.arabnews.com/cat/3/feed</td>
+</tr>
+<tr>
+<td>bangkok_post_biz</td>
+<td>Bangkok Post Business</td>
+<td>451</td>
+<td>http 451</td>
+<td>https://www.bangkokpost.com/rss/data/business.xml</td>
+</tr>
+<tr>
+<td>brecorder</td>
+<td>Business Recorder (PK)</td>
+<td>404</td>
+<td>http 404</td>
+<td>https://www.brecorder.com/rss</td>
+</tr>
+<tr>
+<td>bs_economy</td>
+<td>Business Standard Economy</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://www.business-standard.com/rss/economy-102.rss</td>
+</tr>
+<tr>
+<td>bs_markets</td>
+<td>Business Standard Markets</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://www.business-standard.com/rss/markets-106.rss</td>
+</tr>
+<tr>
+<td>business_standard</td>
+<td>Business Standard</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://www.business-standard.com/rss/home_page_top_stories.rss</td>
+</tr>
+<tr>
+<td>businesstimes_sg</td>
+<td>The Business Times (SG)</td>
+<td>200</td>
+<td>not rss/atom</td>
+<td>https://www.businesstimes.com.sg/rss</td>
+</tr>
+<tr>
+<td>cna_asia</td>
+<td>CNA Asia</td>
+<td>200</td>
+<td>thin body avg=127</td>
+<td>https://www.channelnewsasia.com/api/v1/rss-outbound-feed?_format=xml&amp;category=6311</td>
+</tr>
+<tr>
+<td>cna_business</td>
+<td>CNA Business</td>
+<td>200</td>
+<td>thin body avg=142</td>
+<td>https://www.channelnewsasia.com/api/v1/rss-outbound-feed?_format=xml&amp;category=6511</td>
+</tr>
+<tr>
+<td>dailyft_lk</td>
+<td>Daily FT (LK)</td>
+<td>200</td>
+<td>not rss/atom</td>
+<td>https://www.ft.lk/rss</td>
+</tr>
+<tr>
+<td>edge_malaysia</td>
+<td>The Edge Malaysia</td>
+<td>404</td>
+<td>http 404</td>
+<td>https://theedgemalaysia.com/rss</td>
+</tr>
+<tr>
+<td>edge_sg</td>
+<td>The Edge Singapore</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://www.theedgesingapore.com/rss</td>
+</tr>
+<tr>
+<td>equalocean</td>
+<td>EqualOcean</td>
+<td>404</td>
+<td>http 404</td>
+<td>https://equalocean.com/rss</td>
+</tr>
+<tr>
+<td>fe_economy</td>
+<td>Financial Express Economy</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://www.financialexpress.com/economy/feed/</td>
+</tr>
+<tr>
+<td>financial_express</td>
+<td>Financial Express</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://www.financialexpress.com/feed/</td>
+</tr>
+<tr>
+<td>focus_taiwan_biz</td>
+<td>Focus Taiwan Business</td>
+<td>404</td>
+<td>http 404</td>
+<td>https://focustaiwan.tw/RSS/business.xml</td>
+</tr>
+<tr>
+<td>gulfnews_biz</td>
+<td>Gulf News Business</td>
+<td>404</td>
+<td>http 404</td>
+<td>https://gulfnews.com/rss/business</td>
+</tr>
+<tr>
+<td>hindu_bl</td>
+<td>The Hindu BusinessLine</td>
+<td>200</td>
+<td>thin body avg=125</td>
+<td>https://www.thehindubusinessline.com/feeder/default.rss</td>
+</tr>
+<tr>
+<td>hindu_bl_economy</td>
+<td>BusinessLine Economy</td>
+<td>200</td>
+<td>thin body avg=125</td>
+<td>https://www.thehindubusinessline.com/economy/feeder/default.rss</td>
+</tr>
+<tr>
+<td>hindu_bl_markets</td>
+<td>BusinessLine Markets</td>
+<td>200</td>
+<td>thin body avg=113</td>
+<td>https://www.thehindubusinessline.com/markets/feeder/default.rss</td>
+</tr>
+<tr>
+<td>hkfp</td>
+<td>Hong Kong Free Press</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://hongkongfp.com/feed/</td>
+</tr>
+<tr>
+<td>inquirer_biz</td>
+<td>Inquirer Business (PH)</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://business.inquirer.net/feed</td>
+</tr>
+<tr>
+<td>interest_nz</td>
+<td>Interest.co.nz</td>
+<td>410</td>
+<td>http 410</td>
+<td>https://www.interest.co.nz/rss.xml</td>
+</tr>
+<tr>
+<td>jakartaglobe_biz</td>
+<td>Jakarta Globe Business</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://jakartaglobe.id/rss/business</td>
+</tr>
+<tr>
+<td>jakartapost_biz</td>
+<td>The Jakarta Post Business</td>
+<td>404</td>
+<td>http 404</td>
+<td>https://www.thejakartapost.com/rss/business</td>
+</tr>
+<tr>
+<td>japan_today</td>
+<td>Japan Today</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://japantoday.com/feed</td>
+</tr>
+<tr>
+<td>khaleej_biz</td>
+<td>Khaleej Times Business</td>
+<td>200</td>
+<td>not rss/atom</td>
+<td>https://www.khaleejtimes.com/rss/business</td>
+</tr>
+<tr>
+<td>korea_bizwire</td>
+<td>The Korea Bizwire</td>
+<td>000</td>
+<td>http 000</td>
+<td>https://koreabizwire.com/feed</td>
+</tr>
+<tr>
+<td>korea_herald_biz</td>
+<td>The Korea Herald Business</td>
+<td>200</td>
+<td>no items</td>
+<td>https://www.koreaherald.com/rss/020100000000.xml</td>
+</tr>
+<tr>
+<td>korea_herald_nat</td>
+<td>The Korea Herald National</td>
+<td>200</td>
+<td>no items</td>
+<td>https://www.koreaherald.com/rss/020200000000.xml</td>
+</tr>
+<tr>
+<td>korea_joongang</td>
+<td>Korea JoongAng Daily</td>
+<td>404</td>
+<td>http 404</td>
+<td>https://koreajoongangdaily.joins.com/news/rss/</td>
+</tr>
+<tr>
+<td>kr_asia</td>
+<td>KrASIA</td>
+<td>200</td>
+<td>not rss/atom</td>
+<td>https://kr-asia.com/feed</td>
+</tr>
+<tr>
+<td>livemint_companies</td>
+<td>Mint Companies</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://www.livemint.com/rss/companies</td>
+</tr>
+<tr>
+<td>livemint_markets</td>
+<td>Mint Markets</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://www.livemint.com/rss/markets</td>
+</tr>
+<tr>
+<td>livemint_news</td>
+<td>Mint News</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://www.livemint.com/rss/news</td>
+</tr>
+<tr>
+<td>livemint_opinion</td>
+<td>Mint Opinion</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://www.livemint.com/rss/opinion</td>
+</tr>
+<tr>
+<td>mainichi_en</td>
+<td>The Mainichi (English)</td>
+<td>200</td>
+<td>not rss/atom</td>
+<td>https://mainichi.jp/english/rss/etc/english.rss</td>
+</tr>
+<tr>
+<td>manila_bulletin_biz</td>
+<td>Manila Bulletin Business</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://mb.com.ph/rss/business</td>
+</tr>
+<tr>
+<td>moneycontrol_economy</td>
+<td>Moneycontrol Economy</td>
+<td>200</td>
+<td>stale latest=2024-04-23</td>
+<td>https://www.moneycontrol.com/rss/economy.xml</td>
+</tr>
+<tr>
+<td>moneycontrol_markets</td>
+<td>Moneycontrol Markets</td>
+<td>200</td>
+<td>stale latest=2024-04-23</td>
+<td>https://www.moneycontrol.com/rss/marketreports.xml</td>
+</tr>
+<tr>
+<td>moneycontrol_news</td>
+<td>Moneycontrol Latest</td>
+<td>200</td>
+<td>stale latest=2024-04-23</td>
+<td>https://www.moneycontrol.com/rss/latestnews.xml</td>
+</tr>
+<tr>
+<td>montsame</td>
+<td>Montsame (MN)</td>
+<td>000</td>
+<td>http 000</td>
+<td>https://en.montsame.mn/rss</td>
+</tr>
+<tr>
+<td>nation_thailand</td>
+<td>The Nation Thailand Business</td>
+<td>200</td>
+<td>not rss/atom</td>
+<td>https://www.nationthailand.com/rss/business</td>
+</tr>
+<tr>
+<td>newscomau_finance</td>
+<td>news.com.au Finance</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://www.news.com.au/finance/feed</td>
+</tr>
+<tr>
+<td>nhk_world</td>
+<td>NHK World-Japan</td>
+<td>404</td>
+<td>http 404</td>
+<td>https://www3.nhk.or.jp/nhkworld/en/news/rss/</td>
+</tr>
+<tr>
+<td>nikkei_asia</td>
+<td>Nikkei Asia</td>
+<td>200</td>
+<td>thin body avg=0</td>
+<td>https://asia.nikkei.com/rss/feed/nar</td>
+</tr>
+<tr>
+<td>nst_biz</td>
+<td>New Straits Times Business</td>
+<td>404</td>
+<td>http 404</td>
+<td>https://www.nst.com.my/rss/business</td>
+</tr>
+<tr>
+<td>nzherald_business</td>
+<td>NZ Herald Business</td>
+<td>200</td>
+<td>thin body avg=58</td>
+<td>https://www.nzherald.co.nz/arc/outboundfeeds/rss/section/business/?outputType=xml</td>
+</tr>
+<tr>
+<td>philstar_biz</td>
+<td>Philstar Business</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://www.philstar.com/rss/business</td>
+</tr>
+<tr>
+<td>rappler_biz</td>
+<td>Rappler Business</td>
+<td>200</td>
+<td>not rss/atom</td>
+<td>https://www.rappler.com/topic-rss/business/</td>
+</tr>
+<tr>
+<td>saigon_times</td>
+<td>The Saigon Times</td>
+<td>200</td>
+<td>not rss/atom</td>
+<td>https://english.thesaigontimes.vn/rss/Home/Business.rss</td>
+</tr>
+<tr>
+<td>scoop_biz</td>
+<td>Scoop Business (NZ)</td>
+<td>404</td>
+<td>http 404</td>
+<td>https://www.scoop.co.nz/newsbyrss/business.xml</td>
+</tr>
+<tr>
+<td>sixth_tone</td>
+<td>Sixth Tone</td>
+<td>200</td>
+<td>thin body avg=140</td>
+<td>https://www.sixthtone.com/rss</td>
+</tr>
+<tr>
+<td>smh_business</td>
+<td>SMH Business</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://www.smh.com.au/rss/business.xml</td>
+</tr>
+<tr>
+<td>standard_hk</td>
+<td>The Standard (HK)</td>
+<td>200</td>
+<td>not rss/atom</td>
+<td>https://www.thestandard.com.hk/rss/</td>
+</tr>
+<tr>
+<td>star_biz</td>
+<td>The Star Business (MY)</td>
+<td>404</td>
+<td>http 404</td>
+<td>https://www.thestar.com.my/rss/business</td>
+</tr>
+<tr>
+<td>straits_business</td>
+<td>The Straits Times Business</td>
+<td>200</td>
+<td>thin body avg=147</td>
+<td>https://www.straitstimes.com/news/business/rss.xml</td>
+</tr>
+<tr>
+<td>taipei_times_biz</td>
+<td>Taipei Times Business</td>
+<td>404</td>
+<td>http 404</td>
+<td>https://www.taipeitimes.com/rss/business</td>
+</tr>
+<tr>
+<td>taiwan_news</td>
+<td>Taiwan News</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://www.taiwannews.com.tw/rss/business</td>
+</tr>
+<tr>
+<td>technode</td>
+<td>TechNode</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://technode.com/feed/</td>
+</tr>
+<tr>
+<td>tempo_biz</td>
+<td>Tempo Business</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://en.tempo.co/rss/business</td>
+</tr>
+<tr>
+<td>theage_business</td>
+<td>The Age Business</td>
+<td>200</td>
+<td>thin body avg=144</td>
+<td>https://www.theage.com.au/rss/business.xml</td>
+</tr>
+<tr>
+<td>theweek_in</td>
+<td>The Week (India)</td>
+<td>404</td>
+<td>http 404</td>
+<td>https://www.theweek.in/rss-feeds/business.html</td>
+</tr>
+<tr>
+<td>timesca</td>
+<td>The Times of Central Asia</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://timesca.com/feed/</td>
+</tr>
+<tr>
+<td>todayonline</td>
+<td>TODAY (SG)</td>
+<td>000</td>
+<td>http 000</td>
+<td>https://www.todayonline.com/feed</td>
+</tr>
+<tr>
+<td>tribune_biz</td>
+<td>Express Tribune Business</td>
+<td>200</td>
+<td>not rss/atom</td>
+<td>https://tribune.com.pk/rss/business</td>
+</tr>
+<tr>
+<td>vietnamnews</td>
+<td>Vietnam News</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://vietnamnews.vn/rss/economy.rss</td>
+</tr>
+<tr>
+<td>vir_vietnam</td>
+<td>Vietnam Investment Review</td>
+<td>404</td>
+<td>http 404</td>
+<td>https://vir.com.vn/rss/business.rss</td>
+</tr>
+<tr>
+<td>yicai_global</td>
+<td>Yicai Global</td>
+<td>404</td>
+<td>http 404</td>
+<td>https://www.yicaiglobal.com/rss/news</td>
+</tr>
+<tr>
+<td>yonhap_biz</td>
+<td>Yonhap News Business</td>
+<td>000</td>
+<td>http 000</td>
+<td>https://en.yna.co.kr/RSS/business.xml</td>
+</tr>
+<tr>
+<td>yonhap_economy</td>
+<td>Yonhap Economy</td>
+<td>000</td>
+<td>http 000</td>
+<td>https://www.yna.co.kr/rss/economy.xml</td>
+</tr>
+<tr>
+<td>autoblog</td>
+<td>Autoblog</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://www.autoblog.com/rss.xml</td>
+</tr>
+<tr>
+<td>autonews</td>
+<td>Automotive News</td>
+<td>404</td>
+<td>http 404</td>
+<td>https://www.autonews.com/rss.xml</td>
+</tr>
+<tr>
+<td>caranddriver</td>
+<td>Car and Driver</td>
+<td>200</td>
+<td>thin body avg=105</td>
+<td>https://www.caranddriver.com/rss/all.xml/</td>
+</tr>
+<tr>
+<td>chargedevs</td>
+<td>Charged EVs</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://chargedevs.com/feed/</td>
+</tr>
+<tr>
+<td>fleetowner</td>
+<td>FleetOwner</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://www.fleetowner.com/rss.xml</td>
+</tr>
+<tr>
+<td>greencarreports</td>
+<td>Green Car Reports</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://www.greencarreports.com/rss/all</td>
+</tr>
+<tr>
+<td>motor1</td>
+<td>Motor1.com</td>
+<td>200</td>
+<td>thin body avg=81</td>
+<td>https://www.motor1.com/rss/news/all/</td>
+</tr>
+<tr>
+<td>ttac</td>
+<td>The Truth About Cars</td>
+<td>406</td>
+<td>http 406</td>
+<td>https://www.thetruthaboutcars.com/feed/</td>
+</tr>
+<tr>
+<td>ttnews</td>
+<td>Transport Topics</td>
+<td>200</td>
+<td>thin body avg=145</td>
+<td>https://www.ttnews.com/rss.xml</td>
+</tr>
+<tr>
+<td>wardsauto</td>
+<td>WardsAuto</td>
+<td>404</td>
+<td>http 404</td>
+<td>https://www.wardsauto.com/rss.xml</td>
+</tr>
+<tr>
+<td>genengnews</td>
+<td>GEN News</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://www.genengnews.com/feed/</td>
+</tr>
+<tr>
+<td>mobihealthnews</td>
+<td>MobiHealthNews</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://www.mobihealthnews.com/rss.xml</td>
+</tr>
+<tr>
+<td>pharmatimes</td>
+<td>PharmaTimes</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://www.pharmatimes.com/rss</td>
+</tr>
+<tr>
+<td>adventuresincap</td>
+<td>Adventures in Capitalism</td>
+<td>000</td>
+<td>http 000</td>
+<td>https://adventuresincapitalism.com/feed/</td>
+</tr>
+<tr>
+<td>allstarcharts</td>
+<td>All Star Charts</td>
+<td>200</td>
+<td>not rss/atom</td>
+<td>https://allstarcharts.com/feed/</td>
+</tr>
+<tr>
+<td>alvarezquant</td>
+<td>Alvarez Quant Trading</td>
+<td>200</td>
+<td>stale latest=2026-05-12</td>
+<td>https://alvarezquanttrading.com/blog/feed/</td>
+</tr>
+<tr>
+<td>bankeronfire</td>
+<td>Banker on FIRE</td>
+<td>404</td>
+<td>http 404</td>
+<td>https://bankeronfire.com/feed/</td>
+</tr>
+<tr>
+<td>barelkarsan</td>
+<td>Barel Karsan</td>
+<td>404</td>
+<td>http 404</td>
+<td>https://www.barelkarsan.com/feeds/posts/default</td>
+</tr>
+<tr>
+<td>basunivesh</td>
+<td>BasuNivesh</td>
+<td>200</td>
+<td>thin body avg=118</td>
+<td>https://www.basunivesh.com/feed/</td>
+</tr>
+<tr>
+<td>behindthebalancesheet</td>
+<td>Behind the Balance Sheet</td>
+<td>000</td>
+<td>http 000</td>
+<td>https://behindthebalancesheet.com/feed/</td>
+</tr>
+<tr>
+<td>bitsaboutmoney</td>
+<td>Bits about Money</td>
+<td>404</td>
+<td>http 404</td>
+<td>https://www.bitsaboutmoney.com/feed/</td>
+</tr>
+<tr>
+<td>brooklyninvestor</td>
+<td>Brooklyn Investor</td>
+<td>200</td>
+<td>stale latest=2026-04-03</td>
+<td>https://brooklyninvestor.blogspot.com/feeds/posts/default</td>
+</tr>
+<tr>
+<td>budgetbabe</td>
+<td>Budget Babe (SG)</td>
+<td>000</td>
+<td>http 000</td>
+<td>https://budgetbabe.com.sg/feed/</td>
+</tr>
+<tr>
+<td>canadiancouchpotato</td>
+<td>Canadian Couch Potato</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://canadiancouchpotato.com/feed/</td>
+</tr>
+<tr>
+<td>cheerfulegg</td>
+<td>Cheerful Egg (SG)</td>
+<td>200</td>
+<td>stale latest=2026-05-10</td>
+<td>https://cheerfulegg.com/feed/</td>
+</tr>
+<tr>
+<td>contrarianedge</td>
+<td>Contrarian Edge (Katsenelson)</td>
+<td>000</td>
+<td>http 000</td>
+<td>https://contrarianedge.com/feed/</td>
+</tr>
+<tr>
+<td>divhut</td>
+<td>DivHut</td>
+<td>200</td>
+<td>stale latest=2026-05-26</td>
+<td>https://www.divhut.com/feed/</td>
+</tr>
+<tr>
+<td>drwealth</td>
+<td>Dr Wealth (SG)</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://drwealth.com/feed/</td>
+</tr>
+<tr>
+<td>epsilontheory</td>
+<td>Epsilon Theory</td>
+<td>404</td>
+<td>http 404</td>
+<td>https://www.epsilontheory.com/feed/</td>
+</tr>
+<tr>
+<td>felderreport</td>
+<td>The Felder Report</td>
+<td>000</td>
+<td>http 000</td>
+<td>https://felderreport.com/feed/</td>
+</tr>
+<tr>
+<td>fifteenhourworkweek</td>
+<td>My 15 Hour Work Week (SG)</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://my15hw.wordpress.com/feed/</td>
+</tr>
+<tr>
+<td>fundooprofessor</td>
+<td>Fundoo Professor</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://fundooprofessor.wordpress.com/feed/</td>
+</tr>
+<tr>
+<td>fxstreet</td>
+<td>FXStreet News</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://www.fxstreet.com/rss/news</td>
+</tr>
+<tr>
+<td>genymoney</td>
+<td>Gennymoney.ca</td>
+<td>000</td>
+<td>http 000</td>
+<td>https://genymoney.ca/feed/</td>
+</tr>
+<tr>
+<td>greenbackd</td>
+<td>Greenbackd</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://greenbackd.com/feed/</td>
+</tr>
+<tr>
+<td>heartlandboy</td>
+<td>Heartland Boy (SG)</td>
+<td>000</td>
+<td>http 000</td>
+<td>https://heartlandboy.com/feed/</td>
+</tr>
+<tr>
+<td>humblestudent</td>
+<td>Humble Student of the Markets</td>
+<td>200</td>
+<td>stale latest=2026-03-29</td>
+<td>https://humblestudentofthemarkets.com/feed/</td>
+</tr>
+<tr>
+<td>investingcaffeine</td>
+<td>Investing Caffeine</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://investingcaffeine.com/feed/</td>
+</tr>
+<tr>
+<td>investmentstab</td>
+<td>Investment Stab (SG)</td>
+<td>000</td>
+<td>http 000</td>
+<td>https://www.investmentstab.com/feed</td>
+</tr>
+<tr>
+<td>investquest</td>
+<td>The InvestQuest (SG)</td>
+<td>000</td>
+<td>http 000</td>
+<td>https://www.investquest.com.sg/feed/</td>
+</tr>
+<tr>
+<td>investresolve</td>
+<td>Resolve Asset Management</td>
+<td>000</td>
+<td>http 000</td>
+<td>https://investresolve.com/feed/</td>
+</tr>
+<tr>
+<td>itinvestor</td>
+<td>IT Investor</td>
+<td>000</td>
+<td>http 000</td>
+<td>https://www.itinvestor.co.uk/feed/</td>
+</tr>
+<tr>
+<td>macroops</td>
+<td>Macro Ops</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://macro-ops.com/feed/</td>
+</tr>
+<tr>
+<td>macrotourist</td>
+<td>The Macro Tourist</td>
+<td>000</td>
+<td>http 000</td>
+<td>https://themacrotourist.com/feed/</td>
+</tr>
+<tr>
+<td>milliondollarjourney</td>
+<td>Million Dollar Journey</td>
+<td>404</td>
+<td>http 404</td>
+<td>https://www.milliondollarjourney.com/rss.htm</td>
+</tr>
+<tr>
+<td>mrtako</td>
+<td>Mr. Tako Escapes</td>
+<td>404</td>
+<td>http 404</td>
+<td>https://mrtakoescapes.com/feed/</td>
+</tr>
+<tr>
+<td>mysweetretirement</td>
+<td>My Sweet Retirement (SG)</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://mysweetretirement.com/feed/</td>
+</tr>
+<tr>
+<td>novelinvestor</td>
+<td>Novel Investor</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://novelinvestor.com/feed/</td>
+</tr>
+<tr>
+<td>oddballstocks</td>
+<td>Oddball Stocks</td>
+<td>000</td>
+<td>http 000</td>
+<td>https://oddballstocks.com/feed/</td>
+</tr>
+<tr>
+<td>oldschoolvalue</td>
+<td>Old School Value</td>
+<td>200</td>
+<td>stale latest=2026-02-10</td>
+<td>https://www.oldschoolvalue.com/feed/</td>
+</tr>
+<tr>
+<td>passiveincomepursuit</td>
+<td>Passive Income Pursuit</td>
+<td>000</td>
+<td>http 000</td>
+<td>https://www.passiveincomepursuit.com/feeds/posts/default</td>
+</tr>
+<tr>
+<td>philosophicalecon</td>
+<td>Philosophical Economics</td>
+<td>200</td>
+<td>stale latest=2020-09-09</td>
+<td>https://philosophicaleconomics.com/feed/</td>
+</tr>
+<tr>
+<td>seeitmarket</td>
+<td>See It Market</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://www.seeitmarket.com/feed/</td>
+</tr>
+<tr>
+<td>sgtti</td>
+<td>SG TTI</td>
+<td>200</td>
+<td>stale latest=2024-12-18</td>
+<td>https://sgtti.blogspot.com/feeds/posts/default</td>
+</tr>
+<tr>
+<td>simplelivingsomerset</td>
+<td>Simple Living in Somerset</td>
+<td>000</td>
+<td>http 000</td>
+<td>https://simplelivinginsomerset.co.uk/feed/</td>
+</tr>
+<tr>
+<td>stableinvestor</td>
+<td>Stable Investor</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://stableinvestor.com/feed/</td>
+</tr>
+<tr>
+<td>subramoney</td>
+<td>Subramoney</td>
+<td>000</td>
+<td>http 000</td>
+<td>https://subramoney.com/feed/</td>
+</tr>
+<tr>
+<td>ukvalueinvestor</td>
+<td>UK Value Investor</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://www.ukvalueinvestor.com/feed/</td>
+</tr>
+<tr>
+<td>valueopportunity</td>
+<td>Value And Opportunity</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://valueandopportunity.com/feed/</td>
+</tr>
+<tr>
+<td>verdadcap</td>
+<td>Verdad Advisers</td>
+<td>404</td>
+<td>http 404</td>
+<td>https://verdadcap.com/feed/</td>
+</tr>
+<tr>
+<td>vintagevalue</td>
+<td>Vintage Value Investing</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://www.vintagevalueinvesting.com/feed/</td>
+</tr>
+<tr>
+<td>slug</td>
+<td>name</td>
+<td>000</td>
+<td>http 000</td>
+<td>url</td>
+</tr>
+<tr>
+<td>agfunder</td>
+<td>AgFunder News</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://agfundernews.com/feed</td>
+</tr>
+<tr>
+<td>agweb</td>
+<td>AgWeb</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://www.agweb.com/rss.xml</td>
+</tr>
+<tr>
+<td>brownfieldag</td>
+<td>Brownfield Ag News</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://brownfieldagnews.com/feed/</td>
+</tr>
+<tr>
+<td>dailyfx</td>
+<td>DailyFX</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://www.dailyfx.com/feeds/market-news</td>
+</tr>
+<tr>
+<td>farmprogress</td>
+<td>Farm Progress</td>
+<td>200</td>
+<td>thin body avg=148</td>
+<td>https://www.farmprogress.com/rss.xml</td>
+</tr>
+<tr>
+<td>fxempire</td>
+<td>FX Empire</td>
+<td>404</td>
+<td>http 404</td>
+<td>https://www.fxempire.com/news/feed</td>
+</tr>
+<tr>
+<td>kitco</td>
+<td>Kitco News</td>
+<td>404</td>
+<td>http 404</td>
+<td>https://www.kitco.com/rss/gold.xml</td>
+</tr>
+<tr>
+<td>mining_com</td>
+<td>MINING.COM</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://www.mining.com/feed/</td>
+</tr>
+<tr>
+<td>recyclingtoday</td>
+<td>Recycling Today</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://www.recyclingtoday.com/rss/</td>
+</tr>
+<tr>
+<td>worldgrain</td>
+<td>World Grain</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://www.world-grain.com/rss</td>
+</tr>
+<tr>
+<td>cleantechnica</td>
+<td>CleanTechnica</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://cleantechnica.com/feed/</td>
+</tr>
+<tr>
+<td>energystorage</td>
+<td>Energy Storage News</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://www.energy-storage.news/feed/</td>
+</tr>
+<tr>
+<td>energyvoice</td>
+<td>Energy Voice</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://www.energyvoice.com/feed/</td>
+</tr>
+<tr>
+<td>hydroreview</td>
+<td>Hydro Review</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://www.hydroreview.com/feed/</td>
+</tr>
+<tr>
+<td>insideevs</td>
+<td>InsideEVs</td>
+<td>200</td>
+<td>thin body avg=101</td>
+<td>https://insideevs.com/rss/news/all/</td>
+</tr>
+<tr>
+<td>offshorewind</td>
+<td>OffshoreWIND.biz</td>
+<td>200</td>
+<td>thin body avg=105</td>
+<td>https://www.offshorewind.biz/feed/</td>
+</tr>
+<tr>
+<td>pv_magazine</td>
+<td>pv magazine</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://www.pv-magazine.com/feed/</td>
+</tr>
+<tr>
+<td>pvtech</td>
+<td>PV Tech</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://www.pv-tech.org/feed/</td>
+</tr>
+<tr>
+<td>reneweconomy</td>
+<td>RenewEconomy</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://reneweconomy.com.au/feed/</td>
+</tr>
+<tr>
+<td>rigzone</td>
+<td>Rigzone</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://www.rigzone.com/news/rss/rigzone_latest.aspx</td>
+</tr>
+<tr>
+<td>aljazeera</td>
+<td>Al Jazeera English</td>
+<td>200</td>
+<td>thin body avg=96</td>
+<td>https://www.aljazeera.com/xml/rss/all.xml</td>
+</tr>
+<tr>
+<td>atlantic_all</td>
+<td>The Atlantic</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://www.theatlantic.com/feed/all/</td>
+</tr>
+<tr>
+<td>bbc_science</td>
+<td>BBC Science &amp; Environment</td>
+<td>200</td>
+<td>thin body avg=98</td>
+<td>https://feeds.bbci.co.uk/news/science_and_environment/rss.xml</td>
+</tr>
+<tr>
+<td>bbc_tech</td>
+<td>BBC Technology</td>
+<td>200</td>
+<td>thin body avg=94</td>
+<td>https://feeds.bbci.co.uk/news/technology/rss.xml</td>
+</tr>
+<tr>
+<td>bbc_world</td>
+<td>BBC World</td>
+<td>200</td>
+<td>thin body avg=111</td>
+<td>https://feeds.bbci.co.uk/news/world/rss.xml</td>
+</tr>
+<tr>
+<td>cbc_business</td>
+<td>CBC Business</td>
+<td>000</td>
+<td>http 000</td>
+<td>https://www.cbc.ca/webfeed/rss/rss-business</td>
+</tr>
+<tr>
+<td>economist_asia</td>
+<td>The Economist Asia</td>
+<td>200</td>
+<td>thin body avg=77</td>
+<td>https://www.economist.com/asia/rss.xml</td>
+</tr>
+<tr>
+<td>economist_business</td>
+<td>The Economist Business</td>
+<td>200</td>
+<td>thin body avg=76</td>
+<td>https://www.economist.com/business/rss.xml</td>
+</tr>
+<tr>
+<td>economist_china</td>
+<td>The Economist China</td>
+<td>200</td>
+<td>thin body avg=85</td>
+<td>https://www.economist.com/china/rss.xml</td>
+</tr>
+<tr>
+<td>economist_finance</td>
+<td>The Economist Finance &amp; Economics</td>
+<td>200</td>
+<td>thin body avg=80</td>
+<td>https://www.economist.com/finance-and-economics/rss.xml</td>
+</tr>
+<tr>
+<td>economist_intl</td>
+<td>The Economist International</td>
+<td>200</td>
+<td>thin body avg=88</td>
+<td>https://www.economist.com/international/rss.xml</td>
+</tr>
+<tr>
+<td>economist_leaders</td>
+<td>The Economist Leaders</td>
+<td>200</td>
+<td>thin body avg=82</td>
+<td>https://www.economist.com/leaders/rss.xml</td>
+</tr>
+<tr>
+<td>euronews_economy</td>
+<td>Euronews Economy</td>
+<td>406</td>
+<td>http 406</td>
+<td>https://www.euronews.com/rss?level=theme&amp;name=economy</td>
+</tr>
+<tr>
+<td>forbes_money</td>
+<td>Forbes Money</td>
+<td>404</td>
+<td>http 404</td>
+<td>https://www.forbes.com/money/feed/</td>
+</tr>
+<tr>
+<td>forbes_realestate</td>
+<td>Forbes Real Estate</td>
+<td>404</td>
+<td>http 404</td>
+<td>https://www.forbes.com/real-estate/feed/</td>
+</tr>
+<tr>
+<td>foreignaffairs</td>
+<td>Foreign Affairs</td>
+<td>200</td>
+<td>thin body avg=63</td>
+<td>https://www.foreignaffairs.com/rss.xml</td>
+</tr>
+<tr>
+<td>foreignpolicy</td>
+<td>Foreign Policy</td>
+<td>200</td>
+<td>thin body avg=65</td>
+<td>https://foreignpolicy.com/feed/</td>
+</tr>
+<tr>
+<td>ft_asia</td>
+<td>FT Asia-Pacific</td>
+<td>200</td>
+<td>thin body avg=77</td>
+<td>https://www.ft.com/asia-pacific?format=rss</td>
+</tr>
+<tr>
+<td>ft_comment</td>
+<td>FT Opinion</td>
+<td>200</td>
+<td>thin body avg=78</td>
+<td>https://www.ft.com/comment?format=rss</td>
+</tr>
+<tr>
+<td>ft_companies</td>
+<td>FT Companies</td>
+<td>200</td>
+<td>thin body avg=83</td>
+<td>https://www.ft.com/companies?format=rss</td>
+</tr>
+<tr>
+<td>ft_globalecon</td>
+<td>FT Global Economy</td>
+<td>200</td>
+<td>thin body avg=64</td>
+<td>https://www.ft.com/global-economy?format=rss</td>
+</tr>
+<tr>
+<td>ft_markets</td>
+<td>FT Markets</td>
+<td>200</td>
+<td>thin body avg=76</td>
+<td>https://www.ft.com/markets?format=rss</td>
+</tr>
+<tr>
+<td>ft_world</td>
+<td>FT World</td>
+<td>200</td>
+<td>thin body avg=86</td>
+<td>https://www.ft.com/world?format=rss</td>
+</tr>
+<tr>
+<td>globeandmail_biz</td>
+<td>Globe and Mail Business</td>
+<td>200</td>
+<td>thin body avg=122</td>
+<td>https://www.theglobeandmail.com/arc/outboundfeeds/rss/category/business/?outputType=xml</td>
+</tr>
+<tr>
+<td>inc</td>
+<td>Inc.</td>
+<td>200</td>
+<td>thin body avg=101</td>
+<td>https://www.inc.com/rss</td>
+</tr>
+<tr>
+<td>npr_economy</td>
+<td>NPR Economy</td>
+<td>200</td>
+<td>thin body avg=149</td>
+<td>https://feeds.npr.org/1017/rss.xml</td>
+</tr>
+<tr>
+<td>nyt_business</td>
+<td>NYT Business</td>
+<td>200</td>
+<td>thin body avg=142</td>
+<td>https://rss.nytimes.com/services/xml/rss/nyt/Business.xml</td>
+</tr>
+<tr>
+<td>nyt_economy</td>
+<td>NYT Economy</td>
+<td>200</td>
+<td>thin body avg=147</td>
+<td>https://rss.nytimes.com/services/xml/rss/nyt/Economy.xml</td>
+</tr>
+<tr>
+<td>politico_economy</td>
+<td>Politico Economy</td>
+<td>404</td>
+<td>http 404</td>
+<td>https://rss.politico.com/economy.xml</td>
+</tr>
+<tr>
+<td>quartz</td>
+<td>Quartz</td>
+<td>200</td>
+<td>thin body avg=131</td>
+<td>https://qz.com/rss</td>
+</tr>
+<tr>
+<td>telegraph_finance</td>
+<td>The Telegraph Finance</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://www.telegraph.co.uk/finance/rss.xml</td>
+</tr>
+<tr>
+<td>thisismoney</td>
+<td>This is Money</td>
+<td>404</td>
+<td>http 404</td>
+<td>https://www.thisismoney.co.uk/money/rss.html</td>
+</tr>
+<tr>
+<td>trtworld</td>
+<td>TRT World</td>
+<td>404</td>
+<td>http 404</td>
+<td>https://www.trtworld.com/rss</td>
+</tr>
+<tr>
+<td>wapo_business</td>
+<td>Washington Post Business</td>
+<td>200</td>
+<td>no items</td>
+<td>https://feeds.washingtonpost.com/rss/business</td>
+</tr>
+<tr>
+<td>wapo_economy</td>
+<td>Washington Post Economy</td>
+<td>200</td>
+<td>no items</td>
+<td>https://feeds.washingtonpost.com/rss/business/economy</td>
+</tr>
+<tr>
+<td>wired</td>
+<td>Wired</td>
+<td>200</td>
+<td>thin body avg=137</td>
+<td>https://www.wired.com/feed/rss</td>
+</tr>
+<tr>
+<td>wsj_economy</td>
+<td>WSJ Economy</td>
+<td>200</td>
+<td>stale latest=2025-01-24</td>
+<td>https://feeds.a.dj.com/rss/WSJcomUSBusiness.xml</td>
+</tr>
+<tr>
+<td>wsj_markets</td>
+<td>WSJ Markets</td>
+<td>200</td>
+<td>stale latest=2025-01-27</td>
+<td>https://feeds.a.dj.com/rss/RSSMarketsMain.xml</td>
+</tr>
+<tr>
+<td>wsj_world</td>
+<td>WSJ World News</td>
+<td>200</td>
+<td>stale latest=2025-01-27</td>
+<td>https://feeds.a.dj.com/rss/RSSWorldNews.xml</td>
+</tr>
+<tr>
+<td>blocksandfiles</td>
+<td>Blocks &amp; Files</td>
+<td>200</td>
+<td>thin body avg=65</td>
+<td>https://blocksandfiles.com/feed</td>
+</tr>
+<tr>
+<td>digitimes</td>
+<td>DigiTimes</td>
+<td>200</td>
+<td>not rss/atom</td>
+<td>https://www.digitimes.com/rss/dailyNews.xml</td>
+</tr>
+<tr>
+<td>hpcwire</td>
+<td>HPCwire</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://www.hpcwire.com/feed/</td>
+</tr>
+<tr>
+<td>aircargonews</td>
+<td>Air Cargo News</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://www.aircargonews.net/feed/</td>
+</tr>
+<tr>
+<td>freightwaves</td>
+<td>FreightWaves</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://www.freightwaves.com/feed</td>
+</tr>
+<tr>
+<td>hellenicshipping</td>
+<td>Hellenic Shipping News</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://www.hellenicshippingnews.com/feed/</td>
+</tr>
+<tr>
+<td>logisticsmgmt</td>
+<td>Logistics Management</td>
+<td>200</td>
+<td>not rss/atom</td>
+<td>https://www.logisticsmgmt.com/rss</td>
+</tr>
+<tr>
+<td>seatrade</td>
+<td>Seatrade Maritime News</td>
+<td>200</td>
+<td>thin body avg=116</td>
+<td>https://www.seatrade-maritime.com/rss.xml</td>
+</tr>
+<tr>
+<td>bis</td>
+<td>BIS Publications</td>
+<td>404</td>
+<td>http 404</td>
+<td>https://www.bis.org/rss/pub.xml</td>
+</tr>
+<tr>
+<td>brookings</td>
+<td>Brookings Institution</td>
+<td>200</td>
+<td>not rss/atom</td>
+<td>https://www.brookings.edu/feed/</td>
+</tr>
+<tr>
+<td>bruegel</td>
+<td>Bruegel</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://www.bruegel.org/rss.xml</td>
+</tr>
+<tr>
+<td>carnegie</td>
+<td>Carnegie Endowment</td>
+<td>404</td>
+<td>http 404</td>
+<td>https://carnegieendowment.org/rss/channel/207.xml</td>
+</tr>
+<tr>
+<td>cfr_setser</td>
+<td>Brad Setser (CFR)</td>
+<td>404</td>
+<td>http 404</td>
+<td>https://www.cfr.org/rss/experts/brad-w-setser.xml</td>
+</tr>
+<tr>
+<td>chathamhouse</td>
+<td>Chatham House</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://www.chathamhouse.org/rss</td>
+</tr>
+<tr>
+<td>csis</td>
+<td>CSIS</td>
+<td>200</td>
+<td>stale latest=2016-03-03</td>
+<td>https://www.csis.org/rss.xml</td>
+</tr>
+<tr>
+<td>eurointelligence</td>
+<td>Eurointelligence</td>
+<td>200</td>
+<td>not rss/atom</td>
+<td>https://www.eurointelligence.com/rss.xml</td>
+</tr>
+<tr>
+<td>geopoliticalmonitor</td>
+<td>Geopolitical Monitor</td>
+<td>200</td>
+<td>not rss/atom</td>
+<td>https://www.geopoliticalmonitor.com/feed/</td>
+</tr>
+<tr>
+<td>imf_blog</td>
+<td>IMF Blog</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://www.imf.org/en/Blogs/rss</td>
+</tr>
+<tr>
+<td>macroblog</td>
+<td>Atlanta Fed Macroblog</td>
+<td>404</td>
+<td>http 404</td>
+<td>https://www.atlantafed.org/blogs/macroblog/rss.aspx</td>
+</tr>
+<tr>
+<td>moderndiplomacy</td>
+<td>Modern Diplomacy</td>
+<td>000</td>
+<td>http 000</td>
+<td>https://moderndiplomacy.eu/feed/</td>
+</tr>
+<tr>
+<td>piie</td>
+<td>Peterson Institute</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://www.piie.com/rss.xml</td>
+</tr>
+<tr>
+<td>rand</td>
+<td>RAND Corporation</td>
+<td>404</td>
+<td>http 404</td>
+<td>https://www.rand.org/pubs/rss.xml</td>
+</tr>
+<tr>
+<td>stlouisfed_ote</td>
+<td>St. Louis Fed On the Economy</td>
+<td>000</td>
+<td>http 000</td>
+<td>https://www.stlouisfed.org/on-the-economy/rss</td>
+</tr>
+<tr>
+<td>voxeu</td>
+<td>VoxEU (CEPR)</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://cepr.org/voxeu/rss</td>
+</tr>
+<tr>
+<td>worldbank_blogs</td>
+<td>World Bank Blogs</td>
+<td>404</td>
+<td>http 404</td>
+<td>https://blogs.worldbank.org/en/rss</td>
+</tr>
+<tr>
+<td>adbi</td>
+<td>ADB Institute</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://www.adb.org/adbi/rss</td>
+</tr>
+<tr>
+<td>asiatimes</td>
+<td>Asia Times</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://asiatimes.com/feed/</td>
+</tr>
+<tr>
+<td>chinafile</td>
+<td>ChinaFile</td>
+<td>404</td>
+<td>http 404</td>
+<td>https://www.chinafile.com/rss</td>
+</tr>
+<tr>
+<td>eastasiaforum</td>
+<td>East Asia Forum</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://eastasiaforum.org/feed/</td>
+</tr>
+<tr>
+<td>lowy_interpreter</td>
+<td>Lowy Interpreter</td>
+<td>200</td>
+<td>thin body avg=107</td>
+<td>https://www.lowyinstitute.org/the-interpreter/rss.xml</td>
+</tr>
+<tr>
+<td>macropolo</td>
+<td>MacroPolo</td>
+<td>200</td>
+<td>stale latest=2024-12-10</td>
+<td>https://macropolo.org/feed/</td>
+</tr>
+<tr>
+<td>thediplomat</td>
+<td>The Diplomat</td>
+<td>200</td>
+<td>thin body avg=130</td>
+<td>https://thediplomat.com/feed/</td>
+</tr>
+<tr>
+<td>thinkchina</td>
+<td>ThinkChina</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://www.thinkchina.sg/feed</td>
+</tr>
+<tr>
+<td>bleepingcomputer</td>
+<td>BleepingComputer</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://www.bleepingcomputer.com/feed/</td>
+</tr>
+<tr>
+<td>breakingdefense</td>
+<td>Breaking Defense</td>
+<td>200</td>
+<td>thin body avg=125</td>
+<td>https://breakingdefense.com/feed/</td>
+</tr>
+<tr>
+<td>crunchbase_news</td>
+<td>Crunchbase News</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://news.crunchbase.com/feed/</td>
+</tr>
+<tr>
+<td>darkreading</td>
+<td>Dark Reading</td>
+<td>200</td>
+<td>thin body avg=145</td>
+<td>https://www.darkreading.com/rss.xml</td>
+</tr>
+<tr>
+<td>datanami</td>
+<td>Datanami</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://www.datanami.com/feed/</td>
+</tr>
+<tr>
+<td>finextra</td>
+<td>Finextra</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://www.finextra.com/rss/headlines.aspx</td>
+</tr>
+<tr>
+<td>flightglobal</td>
+<td>FlightGlobal</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://www.flightglobal.com/rss/rss.aspx</td>
+</tr>
+<tr>
+<td>gamesindustry</td>
+<td>GamesIndustry.biz</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://www.gamesindustry.biz/rss/gamesindustry.biz</td>
+</tr>
+<tr>
+<td>pymnts</td>
+<td>PYMNTS</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://www.pymnts.com/feed/</td>
+</tr>
+<tr>
+<td>securityweek</td>
+<td>SecurityWeek</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://www.securityweek.com/feed/</td>
+</tr>
+<tr>
+<td>spacenews</td>
+<td>SpaceNews</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://spacenews.com/feed/</td>
+</tr>
+<tr>
+<td>thepaypers</td>
+<td>The Paypers</td>
+<td>200</td>
+<td>not rss/atom</td>
+<td>https://thepaypers.com/rss</td>
+</tr>
+<tr>
+<td>therealdeal</td>
+<td>The Real Deal</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://therealdeal.com/feed/</td>
+</tr>
+<tr>
+<td>therecord</td>
+<td>The Record</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://therecord.media/feed</td>
+</tr>
+<tr>
+<td>threetdprint</td>
+<td>3DPrint.com</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://3dprint.com/feed/</td>
+</tr>
+</tbody>
+</table>
+<h3 id="52-312">5.2 第二轮（312 候选）淘汰明细</h3>
+<table>
+<thead>
+<tr>
+<th>slug</th>
+<th>名称</th>
+<th>HTTP</th>
+<th>原因</th>
+<th>feed</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>abscbn_business</td>
+<td>ABS-CBN Business (PH)</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://news.abs-cbn.com/rss/business</td>
+</tr>
+<tr>
+<td>adaderana_biz</td>
+<td>Ada Derana Biz (LK)</td>
+<td>404</td>
+<td>http 404</td>
+<td>http://bizenglish.adaderana.lk/rss.php</td>
+</tr>
+<tr>
+<td>agbi</td>
+<td>AGBI (Gulf Business)</td>
+<td>202</td>
+<td>http 202</td>
+<td>https://www.agbi.com/feed/</td>
+</tr>
+<tr>
+<td>aseanbriefing</td>
+<td>ASEAN Briefing</td>
+<td>200</td>
+<td>not rss/atom</td>
+<td>https://www.aseanbriefing.com/news/feed/</td>
+</tr>
+<tr>
+<td>asianbankingfinance</td>
+<td>Asian Banking &amp; Finance</td>
+<td>404</td>
+<td>http 404</td>
+<td>https://asianbankingandfinance.net/rss</td>
+</tr>
+<tr>
+<td>asianinvestor</td>
+<td>AsianInvestor</td>
+<td>404</td>
+<td>http 404</td>
+<td>https://www.asianinvestor.net/feed</td>
+</tr>
+<tr>
+<td>asiaone</td>
+<td>AsiaOne</td>
+<td>404</td>
+<td>http 404</td>
+<td>https://www.asiaone.com/rss</td>
+</tr>
+<tr>
+<td>asiatechdaily</td>
+<td>AsiaTechDaily</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://www.asiatechdaily.com/feed/</td>
+</tr>
+<tr>
+<td>bne_intellinews</td>
+<td>bne IntelliNews</td>
+<td>404</td>
+<td>http 404</td>
+<td>https://www.intellinews.com/rss</td>
+</tr>
+<tr>
+<td>businesskorea</td>
+<td>BusinessKorea</td>
+<td>403</td>
+<td>http 403</td>
+<td>http://www.businesskorea.co.kr/rss/allArticle.xml</td>
+</tr>
+<tr>
+<td>businesstoday_in</td>
+<td>Business Today (IN)</td>
+<td>200</td>
+<td>no items</td>
+<td>https://www.businesstoday.in/rssfeeds/?id=4</td>
+</tr>
+<tr>
+<td>chinabriefing</td>
+<td>China Briefing</td>
+<td>200</td>
+<td>not rss/atom</td>
+<td>https://www.china-briefing.com/news/feed/</td>
+</tr>
+<tr>
+<td>chinamoneynetwork</td>
+<td>China Money Network</td>
+<td>200</td>
+<td>not rss/atom</td>
+<td>https://www.chinamoneynetwork.com/feed/</td>
+</tr>
+<tr>
+<td>daryo</td>
+<td>Daryo (UZ)</td>
+<td>200</td>
+<td>not rss/atom</td>
+<td>https://daryo.uz/en/rss</td>
+</tr>
+<tr>
+<td>dealstreetasia</td>
+<td>DealStreetAsia</td>
+<td>503</td>
+<td>http 503</td>
+<td>https://www.dealstreetasia.com/feed</td>
+</tr>
+<tr>
+<td>deccanherald_biz</td>
+<td>Deccan Herald Business</td>
+<td>200</td>
+<td>not rss/atom</td>
+<td>https://www.deccanherald.com/rss/business</td>
+</tr>
+<tr>
+<td>ecns</td>
+<td>ECNS (China News EN)</td>
+<td>404</td>
+<td>http 404</td>
+<td>https://www.ecns.cn/rss/business.xml</td>
+</tr>
+<tr>
+<td>ecobusiness</td>
+<td>Eco-Business (SG)</td>
+<td>404</td>
+<td>http 404</td>
+<td>https://www.eco-business.com/rss/news/</td>
+</tr>
+<tr>
+<td>edgeprop_sg</td>
+<td>EdgeProp Singapore</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://www.edgeprop.sg/rss</td>
+</tr>
+<tr>
+<td>entrackr</td>
+<td>Entrackr (IN)</td>
+<td>404</td>
+<td>http 404</td>
+<td>https://entrackr.com/feed</td>
+</tr>
+<tr>
+<td>eurasianet</td>
+<td>Eurasianet</td>
+<td>404</td>
+<td>http 404</td>
+<td>https://eurasianet.org/rss.xml</td>
+</tr>
+<tr>
+<td>fe_bd</td>
+<td>Financial Express (BD)</td>
+<td>200</td>
+<td>not rss/atom</td>
+<td>https://thefinancialexpress.com.bd/rss/business</td>
+</tr>
+<tr>
+<td>financeasia</td>
+<td>FinanceAsia</td>
+<td>500</td>
+<td>http 500</td>
+<td>https://www.financeasia.com/rss</td>
+</tr>
+<tr>
+<td>fmt_business</td>
+<td>Free Malaysia Today Business</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://www.freemalaysiatoday.com/category/business/feed</td>
+</tr>
+<tr>
+<td>fortuneindia</td>
+<td>Fortune India</td>
+<td>404</td>
+<td>http 404</td>
+<td>https://www.fortuneindia.com/rss</td>
+</tr>
+<tr>
+<td>fpj_biz</td>
+<td>Free Press Journal Business</td>
+<td>200</td>
+<td>not rss/atom</td>
+<td>https://www.freepressjournal.in/business/feed</td>
+</tr>
+<tr>
+<td>globaltimes</td>
+<td>Global Times</td>
+<td>404</td>
+<td>http 404</td>
+<td>https://www.globaltimes.cn/rss/outbound.xml</td>
+</tr>
+<tr>
+<td>gma_money</td>
+<td>GMA News Money (PH)</td>
+<td>404</td>
+<td>http 404</td>
+<td>https://www.gmanetwork.com/news/rss/money</td>
+</tr>
+<tr>
+<td>greenqueen</td>
+<td>Green Queen (HK)</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://www.greenqueen.com.hk/feed/</td>
+</tr>
+<tr>
+<td>gulfbusiness</td>
+<td>Gulf Business</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://gulfbusiness.com/feed/</td>
+</tr>
+<tr>
+<td>healthcareasia</td>
+<td>Healthcare Asia</td>
+<td>404</td>
+<td>http 404</td>
+<td>https://healthcareasiamagazine.com/rss</td>
+</tr>
+<tr>
+<td>hindu_business</td>
+<td>The Hindu Business</td>
+<td>200</td>
+<td>thin body avg=128</td>
+<td>https://www.thehindu.com/business/feeder/default.rss</td>
+</tr>
+<tr>
+<td>hkbusiness</td>
+<td>Hong Kong Business</td>
+<td>404</td>
+<td>http 404</td>
+<td>https://hongkongbusiness.hk/rss</td>
+</tr>
+<tr>
+<td>ht_business</td>
+<td>Hindustan Times Business</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://www.hindustantimes.com/feeds/rss/business/rssfeed.xml</td>
+</tr>
+<tr>
+<td>idbusinesspost</td>
+<td>Indonesia Business Post</td>
+<td>404</td>
+<td>http 404</td>
+<td>https://indonesiabusinesspost.com/feed/</td>
+</tr>
+<tr>
+<td>inc42</td>
+<td>Inc42 (IN)</td>
+<td>404</td>
+<td>http 404</td>
+<td>https://inc42.com/feed/</td>
+</tr>
+<tr>
+<td>indiabriefing</td>
+<td>India Briefing</td>
+<td>200</td>
+<td>not rss/atom</td>
+<td>https://www.india-briefing.com/news/feed/</td>
+</tr>
+<tr>
+<td>insiderstories</td>
+<td>The Insider Stories (ID)</td>
+<td>404</td>
+<td>http 404</td>
+<td>https://theinsiderstories.com/feed/</td>
+</tr>
+<tr>
+<td>insuranceasia</td>
+<td>Insurance Asia</td>
+<td>404</td>
+<td>http 404</td>
+<td>https://insuranceasia.com/rss</td>
+</tr>
+<tr>
+<td>interaksyon</td>
+<td>Interaksyon (PH)</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://interaksyon.philstar.com/feed</td>
+</tr>
+<tr>
+<td>japannews_yomiuri</td>
+<td>The Japan News</td>
+<td>000</td>
+<td>http 000</td>
+<td>https://japan-news.yomiuri.co.jp/feed/</td>
+</tr>
+<tr>
+<td>jingdaily</td>
+<td>Jing Daily</td>
+<td>429</td>
+<td>http 429</td>
+<td>https://jingdaily.com/feed/</td>
+</tr>
+<tr>
+<td>koreabiomed</td>
+<td>Korea Biomedical Review</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://www.koreabiomed.com/feed/</td>
+</tr>
+<tr>
+<td>koreaittimes</td>
+<td>Korea IT Times</td>
+<td>403</td>
+<td>http 403</td>
+<td>http://www.koreaittimes.com/rss/allArticle.xml</td>
+</tr>
+<tr>
+<td>koreatechdesk</td>
+<td>KoreaTechDesk</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://www.koreatechdesk.com/feed/</td>
+</tr>
+<tr>
+<td>kun_uz</td>
+<td>Kun.uz</td>
+<td>200</td>
+<td>not rss/atom</td>
+<td>https://kun.uz/en/rss</td>
+</tr>
+<tr>
+<td>kyodo</td>
+<td>Kyodo News English</td>
+<td>404</td>
+<td>http 404</td>
+<td>https://english.kyodonews.net/rss/news.xml</td>
+</tr>
+<tr>
+<td>macaubusiness</td>
+<td>Macau Business</td>
+<td>404</td>
+<td>http 404</td>
+<td>https://www.macaubusiness.com/feed/</td>
+</tr>
+<tr>
+<td>malaysianreserve</td>
+<td>The Malaysian Reserve</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://themalaysianreserve.com/feed/</td>
+</tr>
+<tr>
+<td>manilastandard</td>
+<td>Manila Standard</td>
+<td>202</td>
+<td>http 202</td>
+<td>https://manilastandard.net/feed/</td>
+</tr>
+<tr>
+<td>mingtiandi</td>
+<td>Mingtiandi (Asia Real Estate)</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://www.mingtiandi.com/feed/</td>
+</tr>
+<tr>
+<td>moneylife</td>
+<td>Moneylife (IN)</td>
+<td>404</td>
+<td>http 404</td>
+<td>https://www.moneylife.in/feed</td>
+</tr>
+<tr>
+<td>newindian_biz</td>
+<td>New Indian Express Business</td>
+<td>404</td>
+<td>http 404</td>
+<td>https://www.newindianexpress.com/Business/rssfeed/?id=171&amp;getXmlFeed=true</td>
+</tr>
+<tr>
+<td>news18_business</td>
+<td>News18 Business</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://www.news18.com/commonfeeds/v1/eng/rss/business.xml</td>
+</tr>
+<tr>
+<td>newsroom_nz</td>
+<td>Newsroom (NZ)</td>
+<td>200</td>
+<td>thin body avg=147</td>
+<td>https://www.newsroom.co.nz/feed</td>
+</tr>
+<tr>
+<td>onestepoffgrid</td>
+<td>One Step Off The Grid (AU)</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://onestepoffthegrid.com.au/feed/</td>
+</tr>
+<tr>
+<td>peopledaily_en</td>
+<td>People's Daily Online Business</td>
+<td>404</td>
+<td>http 404</td>
+<td>http://en.people.cn/rss/business.xml</td>
+</tr>
+<tr>
+<td>pna_business</td>
+<td>Philippine News Agency Business</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://www.pna.gov.ph/business/rss</td>
+</tr>
+<tr>
+<td>profit_pk</td>
+<td>Profit by Pakistan Today</td>
+<td>404</td>
+<td>http 404</td>
+<td>https://profit.pakistantoday.com.pk/feed/</td>
+</tr>
+<tr>
+<td>retailasia</td>
+<td>Retail Asia</td>
+<td>404</td>
+<td>http 404</td>
+<td>https://retailasia.com/rss</td>
+</tr>
+<tr>
+<td>rnz_business</td>
+<td>RNZ Business (NZ)</td>
+<td>200</td>
+<td>thin body avg=108</td>
+<td>https://www.rnz.co.nz/rss/business.xml</td>
+</tr>
+<tr>
+<td>sbr_sg</td>
+<td>Singapore Business Review</td>
+<td>404</td>
+<td>http 404</td>
+<td>https://sbr.com.sg/rss</td>
+</tr>
+<tr>
+<td>shine_biz</td>
+<td>SHINE Business (Shanghai Daily)</td>
+<td>200</td>
+<td>not rss/atom</td>
+<td>https://www.shine.cn/rss/biz</td>
+</tr>
+<tr>
+<td>startupdaily_au</td>
+<td>Startup Daily (AU)</td>
+<td>200</td>
+<td>thin body avg=120</td>
+<td>https://www.startupdaily.net/feed/</td>
+</tr>
+<tr>
+<td>stuff_business</td>
+<td>Stuff Business (NZ)</td>
+<td>404</td>
+<td>http 404</td>
+<td>https://www.stuff.co.nz/rss/business</td>
+</tr>
+<tr>
+<td>taiwanbusiness</td>
+<td>Taiwan Business Topics</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://topics.amcham.com.tw/feed/</td>
+</tr>
+<tr>
+<td>tbsnews</td>
+<td>The Business Standard (BD)</td>
+<td>404</td>
+<td>http 404</td>
+<td>https://www.tbsnews.net/rss</td>
+</tr>
+<tr>
+<td>techinasia</td>
+<td>Tech in Asia</td>
+<td>200</td>
+<td>thin body avg=106</td>
+<td>https://www.techinasia.com/feed</td>
+</tr>
+<tr>
+<td>technodeglobal</td>
+<td>TechNode Global</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://technode.global/feed/</td>
+</tr>
+<tr>
+<td>theasset</td>
+<td>The Asset</td>
+<td>200</td>
+<td>thin body avg=85</td>
+<td>https://www.theasset.com/rss</td>
+</tr>
+<tr>
+<td>thenews_biz</td>
+<td>The News Business (PK)</td>
+<td>404</td>
+<td>http 404</td>
+<td>https://www.thenews.com.pk/rss/business</td>
+</tr>
+<tr>
+<td>theprint</td>
+<td>ThePrint (IN)</td>
+<td>200</td>
+<td>not rss/atom</td>
+<td>https://theprint.in/feed/</td>
+</tr>
+<tr>
+<td>thewire_econ</td>
+<td>The Wire Economy (IN)</td>
+<td>200</td>
+<td>not rss/atom</td>
+<td>https://thewire.in/economy/feed</td>
+</tr>
+<tr>
+<td>tradearabia</td>
+<td>TradeArabia</td>
+<td>404</td>
+<td>http 404</td>
+<td>https://www.tradearabia.com/rss</td>
+</tr>
+<tr>
+<td>trend_az</td>
+<td>Trend News Agency</td>
+<td>404</td>
+<td>http 404</td>
+<td>https://en.trend.az/rss/business</td>
+</tr>
+<tr>
+<td>tuoitre_biz</td>
+<td>Tuoi Tre News Business</td>
+<td>000</td>
+<td>http 000</td>
+<td>https://tuoitrenews.vn/rss/business.rss</td>
+</tr>
+<tr>
+<td>ubpost</td>
+<td>The UB Post</td>
+<td>000</td>
+<td>http 000</td>
+<td>https://ubpost.mongolnews.mn/?feed=rss2</td>
+</tr>
+<tr>
+<td>vietnambriefing</td>
+<td>Vietnam Briefing</td>
+<td>200</td>
+<td>not rss/atom</td>
+<td>https://www.vietnam-briefing.com/news/feed/</td>
+</tr>
+<tr>
+<td>vietnaminsider</td>
+<td>Vietnam Insider</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://vietnaminsider.vn/feed/</td>
+</tr>
+<tr>
+<td>vietnamnet_biz</td>
+<td>VietnamNet Business</td>
+<td>404</td>
+<td>http 404</td>
+<td>https://vietnamnet.vn/en/rss/business.rss</td>
+</tr>
+<tr>
+<td>zawya</td>
+<td>Zawya</td>
+<td>200</td>
+<td>not rss/atom</td>
+<td>https://www.zawya.com/rss</td>
+</tr>
+<tr>
+<td>autoevolution</td>
+<td>autoevolution</td>
+<td>200</td>
+<td>not rss/atom</td>
+<td>https://www.autoevolution.com/rss/news/</td>
+</tr>
+<tr>
+<td>autoexpress</td>
+<td>Auto Express</td>
+<td>200</td>
+<td>thin body avg=84</td>
+<td>https://www.autoexpress.co.uk/rss</td>
+</tr>
+<tr>
+<td>autoindustriya</td>
+<td>AutoIndustriya (PH)</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://www.autoindustriya.com/rss</td>
+</tr>
+<tr>
+<td>automotivelogistics</td>
+<td>Automotive Logistics</td>
+<td>404</td>
+<td>http 404</td>
+<td>https://www.automotivelogistics.media/feed</td>
+</tr>
+<tr>
+<td>drive_au</td>
+<td>Drive (AU)</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://www.drive.com.au/feed/</td>
+</tr>
+<tr>
+<td>etauto</td>
+<td>ETAuto</td>
+<td>200</td>
+<td>not rss/atom</td>
+<td>https://auto.economictimes.indiatimes.com/rss</td>
+</tr>
+<tr>
+<td>fleetnews</td>
+<td>Fleet News (UK)</td>
+<td>410</td>
+<td>http 410</td>
+<td>https://www.fleetnews.co.uk/rss</td>
+</tr>
+<tr>
+<td>greencarcongress</td>
+<td>Green Car Congress</td>
+<td>000</td>
+<td>http 000</td>
+<td>https://www.greencarcongress.com/index.xml</td>
+</tr>
+<tr>
+<td>motortrend</td>
+<td>MotorTrend</td>
+<td>200</td>
+<td>not rss/atom</td>
+<td>https://www.motortrend.com/feed/</td>
+</tr>
+<tr>
+<td>thedriven</td>
+<td>The Driven (AU EV)</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://thedriven.io/feed/</td>
+</tr>
+<tr>
+<td>torquenews</td>
+<td>Torque News</td>
+<td>200</td>
+<td>stale latest=2020-10-22</td>
+<td>https://www.torquenews.com/rss.xml</td>
+</tr>
+<tr>
+<td>7circles</td>
+<td>7 Circles (UK)</td>
+<td>000</td>
+<td>http 000</td>
+<td>https://7circles.uk/feed/</td>
+</tr>
+<tr>
+<td>advisorperspectives</td>
+<td>Advisor Perspectives</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://www.advisorperspectives.com/rss</td>
+</tr>
+<tr>
+<td>affordanything</td>
+<td>Afford Anything</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://affordanything.com/feed/</td>
+</tr>
+<tr>
+<td>aussiefirebug</td>
+<td>Aussie Firebug</td>
+<td>200</td>
+<td>stale latest=2025-12-14</td>
+<td>https://www.aussiefirebug.com/feed/</td>
+</tr>
+<tr>
+<td>basehitinvesting</td>
+<td>Base Hit Investing</td>
+<td>404</td>
+<td>http 404</td>
+<td>https://basehitinvesting.com/feed/</td>
+</tr>
+<tr>
+<td>canadianpm</td>
+<td>Canadian Portfolio Manager</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://www.canadianportfoliomanagerblog.com/feed/</td>
+</tr>
+<tr>
+<td>collegeinvestor</td>
+<td>The College Investor</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://thecollegeinvestor.com/feed/</td>
+</tr>
+<tr>
+<td>dividenddiplomats</td>
+<td>Dividend Diplomats</td>
+<td>200</td>
+<td>stale latest=2026-05-20</td>
+<td>https://www.dividenddiplomats.com/feed/</td>
+</tr>
+<tr>
+<td>dividendwarrior</td>
+<td>Dividend Warrior (SG)</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://dividendwarrior.wordpress.com/feed/</td>
+</tr>
+<tr>
+<td>diyinvestoruk</td>
+<td>DIY Investor (UK)</td>
+<td>404</td>
+<td>http 404</td>
+<td>https://diyinvestoruk.blogspot.com/feeds/posts/default</td>
+</tr>
+<tr>
+<td>drvijaymalik</td>
+<td>Dr. Vijay Malik (IN)</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://www.drvijaymalik.com/feed/</td>
+</tr>
+<tr>
+<td>escapeartist</td>
+<td>The Escape Artist (UK)</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://theescapeartist.me/feed/</td>
+</tr>
+<tr>
+<td>etfstream</td>
+<td>ETF Stream</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://www.etfstream.com/feed/</td>
+</tr>
+<tr>
+<td>fff_sg</td>
+<td>A Path to Forever Financial Freedom (SG)</td>
+<td>000</td>
+<td>http 000</td>
+<td>https://foreverfinancialfreedom.com/feed/</td>
+</tr>
+<tr>
+<td>financialmentor</td>
+<td>Financial Mentor</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://financialmentor.com/feed</td>
+</tr>
+<tr>
+<td>financialpanther</td>
+<td>Financial Panther</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://financialpanther.com/feed/</td>
+</tr>
+<tr>
+<td>finumus</td>
+<td>Finumus</td>
+<td>200</td>
+<td>not rss/atom</td>
+<td>https://finumus.com/feed/</td>
+</tr>
+<tr>
+<td>getrichslowly</td>
+<td>Get Rich Slowly</td>
+<td>200</td>
+<td>stale latest=2022-12-02</td>
+<td>https://www.getrichslowly.org/feed/</td>
+</tr>
+<tr>
+<td>indexology</td>
+<td>Indexology (S&amp;P DJI)</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://www.indexologyblog.com/feed/</td>
+</tr>
+<tr>
+<td>irrelevantinvestor</td>
+<td>The Irrelevant Investor</td>
+<td>200</td>
+<td>not rss/atom</td>
+<td>https://theirrelevantinvestor.com/feed/</td>
+</tr>
+<tr>
+<td>maplemoney</td>
+<td>Maple Money (CA)</td>
+<td>200</td>
+<td>stale latest=2024-04-02</td>
+<td>https://maplemoney.com/feed/</td>
+</tr>
+<tr>
+<td>mrmoneymustache</td>
+<td>Mr. Money Mustache</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://www.mrmoneymustache.com/feed/</td>
+</tr>
+<tr>
+<td>myinvestmentideas</td>
+<td>My Investment Ideas (IN)</td>
+<td>200</td>
+<td>not rss/atom</td>
+<td>https://myinvestmentideas.com/feed/</td>
+</tr>
+<tr>
+<td>passiveincomemd</td>
+<td>Passive Income MD</td>
+<td>520</td>
+<td>http 520</td>
+<td>https://passiveincomemd.com/feed/</td>
+</tr>
+<tr>
+<td>pragcap</td>
+<td>Pragmatic Capitalism</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://www.pragcap.com/feed/</td>
+</tr>
+<tr>
+<td>reformedbroker</td>
+<td>The Reformed Broker</td>
+<td>200</td>
+<td>stale latest=2023-11-29</td>
+<td>https://thereformedbroker.com/feed/</td>
+</tr>
+<tr>
+<td>suredividend</td>
+<td>Sure Dividend</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://www.suredividend.com/feed/</td>
+</tr>
+<tr>
+<td>topdowncharts</td>
+<td>Topdown Charts</td>
+<td>404</td>
+<td>http 404</td>
+<td>https://www.topdowncharts.com/feed/</td>
+</tr>
+<tr>
+<td>ukdividendstocks</td>
+<td>UK Dividend Stocks</td>
+<td>404</td>
+<td>http 404</td>
+<td>https://www.ukdividendstocks.com/feed/</td>
+</tr>
+<tr>
+<td>yourmoneyblueprint</td>
+<td>Your Money Blueprint (NZ)</td>
+<td>404</td>
+<td>http 404</td>
+<td>https://yourmoneyblueprint.co.nz/feed/</td>
+</tr>
+<tr>
+<td>slug</td>
+<td>name</td>
+<td>000</td>
+<td>http 000</td>
+<td>url</td>
+</tr>
+<tr>
+<td>agriculture_com</td>
+<td>Successful Farming</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://www.agriculture.com/rss.xml</td>
+</tr>
+<tr>
+<td>australianmining</td>
+<td>Australian Mining</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://www.australianmining.com.au/feed/</td>
+</tr>
+<tr>
+<td>bullionstar</td>
+<td>BullionStar Blog (SG)</td>
+<td>200</td>
+<td>not rss/atom</td>
+<td>https://www.bullionstar.com/blogs/bullionstar/feed/</td>
+</tr>
+<tr>
+<td>commodity_com</td>
+<td>Commodity.com</td>
+<td>200</td>
+<td>stale latest=2022-05-03</td>
+<td>https://commodity.com/feed/</td>
+</tr>
+<tr>
+<td>dairyglobal</td>
+<td>Dairy Global</td>
+<td>404</td>
+<td>http 404</td>
+<td>https://www.dairyglobal.net/feed/</td>
+</tr>
+<tr>
+<td>farms_com</td>
+<td>Farms.com News</td>
+<td>000</td>
+<td>http 000</td>
+<td>https://www.farms.com/rss/news.xml</td>
+</tr>
+<tr>
+<td>goldcore</td>
+<td>GoldCore</td>
+<td>404</td>
+<td>http 404</td>
+<td>https://www.goldcore.com/us/feed/</td>
+</tr>
+<tr>
+<td>goldsilver_com</td>
+<td>GoldSilver</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://goldsilver.com/blog/feed/</td>
+</tr>
+<tr>
+<td>graincentral</td>
+<td>Grain Central (AU)</td>
+<td>200</td>
+<td>thin body avg=115</td>
+<td>https://www.graincentral.com/feed/</td>
+</tr>
+<tr>
+<td>im_mining</td>
+<td>International Mining</td>
+<td>000</td>
+<td>http 000</td>
+<td>https://im-mining.com/feed/</td>
+</tr>
+<tr>
+<td>juniormining</td>
+<td>Junior Mining Network</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://www.juniorminingnetwork.com/rss</td>
+</tr>
+<tr>
+<td>metalminer</td>
+<td>MetalMiner</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://agmetalminer.com/feed/</td>
+</tr>
+<tr>
+<td>miningweekly</td>
+<td>Mining Weekly (SA)</td>
+<td>404</td>
+<td>http 404</td>
+<td>https://www.miningweekly.com/rss/all</td>
+</tr>
+<tr>
+<td>moneymetals</td>
+<td>Money Metals</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://www.moneymetals.com/news/rss</td>
+</tr>
+<tr>
+<td>poultryworld</td>
+<td>Poultry World</td>
+<td>404</td>
+<td>http 404</td>
+<td>https://www.poultryworld.net/feed/</td>
+</tr>
+<tr>
+<td>proactiveinvestors</td>
+<td>Proactive Investors</td>
+<td>404</td>
+<td>http 404</td>
+<td>https://www.proactiveinvestors.com/rss</td>
+</tr>
+<tr>
+<td>schiffgold</td>
+<td>SchiffGold</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://schiffgold.com/feed/</td>
+</tr>
+<tr>
+<td>seafoodsource</td>
+<td>SeafoodSource</td>
+<td>404</td>
+<td>http 404</td>
+<td>https://www.seafoodsource.com/feed</td>
+</tr>
+<tr>
+<td>smallcaps_au</td>
+<td>Small Caps (AU)</td>
+<td>200</td>
+<td>thin body avg=148</td>
+<td>https://smallcaps.com.au/feed/</td>
+</tr>
+<tr>
+<td>sprudge</td>
+<td>Sprudge (Coffee)</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://sprudge.com/feed</td>
+</tr>
+<tr>
+<td>steeltimesint</td>
+<td>Steel Times International</td>
+<td>404</td>
+<td>http 404</td>
+<td>https://www.steeltimesint.com/rss</td>
+</tr>
+<tr>
+<td>stockhead</td>
+<td>Stockhead (AU)</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://stockhead.com.au/feed/</td>
+</tr>
+<tr>
+<td>thepigsite</td>
+<td>The Pig Site</td>
+<td>404</td>
+<td>http 404</td>
+<td>https://www.thepigsite.com/rss.php</td>
+</tr>
+<tr>
+<td>worldgrain2</td>
+<td>World Grain</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://www.world-grain.com/rss/rssfeed</td>
+</tr>
+<tr>
+<td>carbonbrief</td>
+<td>Carbon Brief</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://www.carbonbrief.org/feed/</td>
+</tr>
+<tr>
+<td>cleanenergywire</td>
+<td>Clean Energy Wire</td>
+<td>404</td>
+<td>http 404</td>
+<td>https://www.cleanenergywire.org/feed</td>
+</tr>
+<tr>
+<td>climatehome</td>
+<td>Climate Home News</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://www.climatechangenews.com/feed/</td>
+</tr>
+<tr>
+<td>currentnews_uk</td>
+<td>Current± (UK)</td>
+<td>200</td>
+<td>not rss/atom</td>
+<td>https://www.current-news.co.uk/feed/</td>
+</tr>
+<tr>
+<td>drybulk</td>
+<td>Dry Bulk</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://www.drybulkmagazine.com/rss</td>
+</tr>
+<tr>
+<td>energylivenews</td>
+<td>Energy Live News (UK)</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://www.energylivenews.com/feed/</td>
+</tr>
+<tr>
+<td>etenergyworld</td>
+<td>ETEnergyWorld</td>
+<td>200</td>
+<td>not rss/atom</td>
+<td>https://energy.economictimes.indiatimes.com/rss</td>
+</tr>
+<tr>
+<td>fuelcellsworks</td>
+<td>Fuel Cells Works</td>
+<td>200</td>
+<td>thin body avg=141</td>
+<td>https://fuelcellsworks.com/feed/</td>
+</tr>
+<tr>
+<td>globalminingreview</td>
+<td>Global Mining Review</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://www.globalminingreview.com/rss</td>
+</tr>
+<tr>
+<td>h2view</td>
+<td>H2 View</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://www.h2-view.com/feed</td>
+</tr>
+<tr>
+<td>naturalgasworld</td>
+<td>Natural Gas World</td>
+<td>200</td>
+<td>not rss/atom</td>
+<td>https://naturalgasworld.com/feed/</td>
+</tr>
+<tr>
+<td>renews</td>
+<td>reNEWS (Renewables)</td>
+<td>200</td>
+<td>thin body avg=52</td>
+<td>https://renews.biz/feed/</td>
+</tr>
+<tr>
+<td>saurenergy</td>
+<td>Saur Energy (IN)</td>
+<td>404</td>
+<td>http 404</td>
+<td>https://www.saurenergy.com/rss-feeds</td>
+</tr>
+<tr>
+<td>solarpowerportal</td>
+<td>Solar Power Portal (UK)</td>
+<td>404</td>
+<td>http 404</td>
+<td>https://www.solarpowerportal.co.uk/feed/</td>
+</tr>
+<tr>
+<td>worldcoal</td>
+<td>World Coal</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://www.worldcoal.com/rss</td>
+</tr>
+<tr>
+<td>worldfertilizer</td>
+<td>World Fertilizer</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://www.worldfertilizer.com/rss</td>
+</tr>
+<tr>
+<td>worldmaritimenews</td>
+<td>World Maritime News</td>
+<td>200</td>
+<td>no items</td>
+<td>https://worldmaritimenews.com/feed/</td>
+</tr>
+<tr>
+<td>worldpipelines</td>
+<td>World Pipelines</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://www.worldpipelines.com/rss</td>
+</tr>
+<tr>
+<td>ap_business</td>
+<td>AP Business (via hub)</td>
+<td>200</td>
+<td>not rss/atom</td>
+<td>https://apnews.com/hub/business?output=1</td>
+</tr>
+<tr>
+<td>bbc_health</td>
+<td>BBC Health</td>
+<td>200</td>
+<td>thin body avg=99</td>
+<td>https://feeds.bbci.co.uk/news/health/rss.xml</td>
+</tr>
+<tr>
+<td>belfasttelegraph_biz</td>
+<td>Belfast Telegraph Business</td>
+<td>200</td>
+<td>thin body avg=111</td>
+<td>https://www.belfasttelegraph.co.uk/business/rss</td>
+</tr>
+<tr>
+<td>brusselstimes</td>
+<td>The Brussels Times</td>
+<td>404</td>
+<td>http 404</td>
+<td>https://www.brusselstimes.com/rss.xml</td>
+</tr>
+<tr>
+<td>cnbc_economy</td>
+<td>CNBC Economy</td>
+<td>200</td>
+<td>thin body avg=141</td>
+<td>https://www.cnbc.com/id/20910258/device/rss/rss.html</td>
+</tr>
+<tr>
+<td>cnbc_finance</td>
+<td>CNBC Finance</td>
+<td>200</td>
+<td>thin body avg=131</td>
+<td>https://www.cnbc.com/id/10000664/device/rss/rss.html</td>
+</tr>
+<tr>
+<td>euractiv</td>
+<td>Euractiv</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://www.euractiv.com/feed/</td>
+</tr>
+<tr>
+<td>express_finance</td>
+<td>Express Finance</td>
+<td>404</td>
+<td>http 404</td>
+<td>https://www.express.co.uk/finance/rss</td>
+</tr>
+<tr>
+<td>independent_biz</td>
+<td>The Independent Business</td>
+<td>200</td>
+<td>thin body avg=92</td>
+<td>https://www.independent.co.uk/news/business/rss</td>
+</tr>
+<tr>
+<td>marketwatch_realestate</td>
+<td>MarketWatch Real Estate</td>
+<td>200</td>
+<td>thin body avg=145</td>
+<td>https://feeds.marketwatch.com/marketwatch/realtimeheadlines/</td>
+</tr>
+<tr>
+<td>mirror_money</td>
+<td>Mirror Money</td>
+<td>200</td>
+<td>thin body avg=120</td>
+<td>https://www.mirror.co.uk/money/?service=rss</td>
+</tr>
+<tr>
+<td>nyt_dealbook</td>
+<td>NYT DealBook</td>
+<td>200</td>
+<td>thin body avg=137</td>
+<td>https://rss.nytimes.com/services/xml/rss/nyt/Dealbook.xml</td>
+</tr>
+<tr>
+<td>nyt_energy</td>
+<td>NYT Energy &amp; Environment</td>
+<td>200</td>
+<td>thin body avg=144</td>
+<td>https://rss.nytimes.com/services/xml/rss/nyt/EnergyEnvironment.xml</td>
+</tr>
+<tr>
+<td>nyt_tech</td>
+<td>NYT Technology</td>
+<td>200</td>
+<td>thin body avg=133</td>
+<td>https://rss.nytimes.com/services/xml/rss/nyt/Technology.xml</td>
+</tr>
+<tr>
+<td>politico_business</td>
+<td>Politico Business</td>
+<td>404</td>
+<td>http 404</td>
+<td>https://rss.politico.com/business.xml</td>
+</tr>
+<tr>
+<td>rnz_world</td>
+<td>RNZ World (NZ)</td>
+<td>200</td>
+<td>no items</td>
+<td>https://www.rnz.co.nz/rss/world.xml</td>
+</tr>
+<tr>
+<td>scotsman_biz</td>
+<td>The Scotsman Business</td>
+<td>200</td>
+<td>thin body avg=111</td>
+<td>https://www.scotsman.com/business/rss</td>
+</tr>
+<tr>
+<td>thelocal_de</td>
+<td>The Local Germany</td>
+<td>404</td>
+<td>http 404</td>
+<td>https://www.thelocal.de/feed/</td>
+</tr>
+<tr>
+<td>thelocal_eu</td>
+<td>The Local Europe</td>
+<td>404</td>
+<td>http 404</td>
+<td>https://www.thelocal.com/feed/</td>
+</tr>
+<tr>
+<td>ukipnews</td>
+<td>The Standard (UK)</td>
+<td>200</td>
+<td>thin body avg=92</td>
+<td>https://www.standard.co.uk/rss</td>
+</tr>
+<tr>
+<td>walesonline_biz</td>
+<td>WalesOnline Business</td>
+<td>200</td>
+<td>thin body avg=58</td>
+<td>https://www.walesonline.co.uk/business/?service=rss</td>
+</tr>
+<tr>
+<td>wapo_climate</td>
+<td>Washington Post Climate</td>
+<td>301</td>
+<td>http 301</td>
+<td>https://feeds.washingtonpost.com/rss/business/climate-environment</td>
+</tr>
+<tr>
+<td>wsj_tech</td>
+<td>WSJ Tech</td>
+<td>200</td>
+<td>stale latest=2025-01-27</td>
+<td>https://feeds.a.dj.com/rss/RSSWSJD.xml</td>
+</tr>
+<tr>
+<td>chipestimate</td>
+<td>Chip Estimate</td>
+<td>404</td>
+<td>http 404</td>
+<td>https://www.chipestimate.com/rss.php</td>
+</tr>
+<tr>
+<td>notebookcheck</td>
+<td>Notebookcheck</td>
+<td>404</td>
+<td>http 404</td>
+<td>https://www.notebookcheck.net/RSS-Feed.138.0.html</td>
+</tr>
+<tr>
+<td>videocardz</td>
+<td>VideoCardz</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://videocardz.com/rss</td>
+</tr>
+<tr>
+<td>maritimeexecutive</td>
+<td>The Maritime Executive</td>
+<td>404</td>
+<td>http 404</td>
+<td>https://maritime-executive.com/feed</td>
+</tr>
+<tr>
+<td>shipandbunker</td>
+<td>Ship &amp; Bunker</td>
+<td>200</td>
+<td>thin body avg=104</td>
+<td>https://shipandbunker.com/rss</td>
+</tr>
+<tr>
+<td>usni_news</td>
+<td>USNI News</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://news.usni.org/feed/</td>
+</tr>
+<tr>
+<td>38north</td>
+<td>38 North</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://www.38north.org/feed/</td>
+</tr>
+<tr>
+<td>adb_news</td>
+<td>ADB News</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://www.adb.org/rss/news</td>
+</tr>
+<tr>
+<td>aei</td>
+<td>American Enterprise Institute</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://www.aei.org/feed/</td>
+</tr>
+<tr>
+<td>amro</td>
+<td>AMRO (ASEAN+3)</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://www.amro-asia.org/feed/</td>
+</tr>
+<tr>
+<td>asiasociety</td>
+<td>Asia Society</td>
+<td>404</td>
+<td>http 404</td>
+<td>https://asiasociety.org/rss.xml</td>
+</tr>
+<tr>
+<td>booth_review</td>
+<td>Chicago Booth Review</td>
+<td>404</td>
+<td>http 404</td>
+<td>https://review.chicagobooth.edu/rss</td>
+</tr>
+<tr>
+<td>cato</td>
+<td>Cato Institute</td>
+<td>404</td>
+<td>http 404</td>
+<td>https://www.cato.org/rss</td>
+</tr>
+<tr>
+<td>cfainstitute_blog</td>
+<td>Enterprising Investor (CFA)</td>
+<td>200</td>
+<td>not rss/atom</td>
+<td>https://blogs.cfainstitute.org/investor/feed/</td>
+</tr>
+<tr>
+<td>epi</td>
+<td>Economic Policy Institute</td>
+<td>200</td>
+<td>thin body avg=138</td>
+<td>https://www.epi.org/feed/</td>
+</tr>
+<tr>
+<td>gatewayhouse</td>
+<td>Gateway House (IN)</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://www.gatewayhouse.in/feed/</td>
+</tr>
+<tr>
+<td>hbr</td>
+<td>Harvard Business Review</td>
+<td>000</td>
+<td>http 000</td>
+<td>https://feeds.hbr.org/harvardbusiness</td>
+</tr>
+<tr>
+<td>hinrich</td>
+<td>Hinrich Foundation</td>
+<td>404</td>
+<td>http 404</td>
+<td>https://www.hinrichfoundation.com/feed/</td>
+</tr>
+<tr>
+<td>iiss</td>
+<td>IISS</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://www.iiss.org/rss.xml</td>
+</tr>
+<tr>
+<td>ineteconomics</td>
+<td>INET Economics</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://www.ineteconomics.org/rss</td>
+</tr>
+<tr>
+<td>insead_knowledge</td>
+<td>INSEAD Knowledge</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://knowledge.insead.edu/rss</td>
+</tr>
+<tr>
+<td>iseas</td>
+<td>ISEAS (SG)</td>
+<td>200</td>
+<td>not rss/atom</td>
+<td>https://www.iseas.edu.sg/feed/</td>
+</tr>
+<tr>
+<td>larssyll</td>
+<td>Lars P. Syll</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://larspsyll.wordpress.com/feed/</td>
+</tr>
+<tr>
+<td>macrohive</td>
+<td>Macro Hive</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://macrohive.com/feed/</td>
+</tr>
+<tr>
+<td>mainlymacro</td>
+<td>Mainly Macro (Wren-Lewis)</td>
+<td>200</td>
+<td>not rss/atom</td>
+<td>https://mainlymacro.blogspot.com/feeds/posts/default</td>
+</tr>
+<tr>
+<td>mckinsey_insights</td>
+<td>McKinsey Insights</td>
+<td>200</td>
+<td>stale latest=2015-09-01</td>
+<td>https://www.mckinsey.com/insights/rss</td>
+</tr>
+<tr>
+<td>mercatus</td>
+<td>Mercatus Center</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://www.mercatus.org/rss</td>
+</tr>
+<tr>
+<td>mishtalk</td>
+<td>MishTalk (Shedlock)</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://mishtalk.com/feed</td>
+</tr>
+<tr>
+<td>mitsloan</td>
+<td>MIT Sloan Management Review</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://sloanreview.mit.edu/feed/</td>
+</tr>
+<tr>
+<td>ninedashline</td>
+<td>9DashLine</td>
+<td>404</td>
+<td>http 404</td>
+<td>https://www.9dashline.com/feed/</td>
+</tr>
+<tr>
+<td>oecdecoscope</td>
+<td>OECD Ecoscope</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://oecdecoscope.blog/feed/</td>
+</tr>
+<tr>
+<td>orfonline</td>
+<td>Observer Research Foundation (IN)</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://www.orfonline.org/rss</td>
+</tr>
+<tr>
+<td>pacforum</td>
+<td>Pacific Forum</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://pacforum.org/feed/</td>
+</tr>
+<tr>
+<td>rusi</td>
+<td>RUSI</td>
+<td>404</td>
+<td>http 404</td>
+<td>https://rusi.org/rss.xml</td>
+</tr>
+<tr>
+<td>rwer</td>
+<td>Real-World Economics Review</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://rwer.wordpress.com/feed/</td>
+</tr>
+<tr>
+<td>stanford_gsb</td>
+<td>Stanford GSB Insights</td>
+<td>404</td>
+<td>http 404</td>
+<td>https://www.gsb.stanford.edu/insights/rss</td>
+</tr>
+<tr>
+<td>stumblingmumbling</td>
+<td>Stumbling and Mumbling</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://stumblingandmumbling.typepad.com/stumbling_and_mumbling/atom.xml</td>
+</tr>
+<tr>
+<td>themarketear</td>
+<td>The Market Ear</td>
+<td>404</td>
+<td>http 404</td>
+<td>https://themarketear.com/rss</td>
+</tr>
+<tr>
+<td>unescap</td>
+<td>UNESCAP</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://www.unescap.org/rss.xml</td>
+</tr>
+<tr>
+<td>urban_institute</td>
+<td>Urban Institute</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://www.urban.org/rss.xml</td>
+</tr>
+<tr>
+<td>voxdev</td>
+<td>VoxDev</td>
+<td>404</td>
+<td>http 404</td>
+<td>https://voxdev.org/rss</td>
+</tr>
+<tr>
+<td>weforum_agenda</td>
+<td>WEF Agenda</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://www.weforum.org/agenda/feed</td>
+</tr>
+<tr>
+<td>wharton_knowledge</td>
+<td>Knowledge at Wharton</td>
+<td>200</td>
+<td>thin body avg=124</td>
+<td>https://knowledge.wharton.upenn.edu/feed/</td>
+</tr>
+<tr>
+<td>aviationweek</td>
+<td>Aviation Week</td>
+<td>200</td>
+<td>stale latest=2026-03-31</td>
+<td>https://aviationweek.com/rss.xml</td>
+</tr>
+<tr>
+<td>nasaspaceflight</td>
+<td>NASASpaceflight.com</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://www.nasaspaceflight.com/feed/</td>
+</tr>
+<tr>
+<td>spacenews2</td>
+<td>SpaceNews</td>
+<td>403</td>
+<td>http 403</td>
+<td>https://spacenews.com/feed/</td>
+</tr>
+</tbody>
+</table>
+<h2 id="6">6. 运维要点</h2>
+<ol>
+<li><strong>集成</strong>：按 <code>20260728-asia-en-batch-integration.md</code> 三个代码块粘贴（scheduler_jobs / scheduler / news.py），本波任务未改动任何共享文件。</li>
+<li><strong>job 形态</strong>：16 个 <code>news_asia_en_{a..p}_60m</code>，IntervalTrigger 60 分钟，<code>max_instances=1, coalesce=True</code>，沿用 2026-07-27 misfire 修复后的全局 <code>misfire_grace_time=300</code>。</li>
+<li><strong>失败容忍</strong>：单 feed 失败只记 warning，不影响同批其余 feed；未知 batch key 返回空列表（防御式）。</li>
+<li><strong>正文兜底</strong>：部分媒体（ABC、VnExpress、NDTV 等）RSS 只给 1–2 句摘要，现有 <code>news_full_content_10m</code> 全文抓取 job 会补正文；摘要 ≥150 字符已满足翻译管线最低输入。</li>
+<li><strong>翻译</strong>：全部 <code>language="en"</code>，<code>news_translate_10m</code> drain 自动处理；<code>market</code> 只写 <code>us</code>/<code>cn_a</code>，前端默认 "global" 筛选可见（<code>_GLOBAL_MARKETS = (cn_a, us, crypto)</code>）。</li>
+<li><strong>健康面板</strong>：<code>_WORKER_META</code> 16 条标签需同步（集成块 3b）；<code>_WORKER_KEYWORDS</code> 加 <code>asia_en</code> / <code>asen_</code>。</li>
+<li><strong>降载</strong>：如健康网格拥挤，可在 <code>asia_en_batch.py</code> 把 <code>_BATCH_SIZE</code> 调到 14（→13 批）并重跑集成块生成器，无需改 crawler。</li>
+<li><strong>复验</strong>：上线 2–4 周后用同一脚本对 176 个 URL 复跑（候选清单可从模块表直接导出），失败 ≥3 次的 feed 应从表中剔除并更新本 runbook。</li>
+</ol>
+<h2 id="7">7. 已知限制</h2>
+<ul>
+<li><strong>Nikkei Asia、CNA、Bangkok Post、SCMP 其余栏目、WSJ/FT 栏目</strong> 在中国大陆网络不可达或已下线 RSS——这是网络现实，非清单遗漏；如未来部署海外采集节点可复活（见 5.1 淘汰表）。</li>
+<li>博客类源更新频率天然不均（周更/月更），health grid 的 <code>written=0</code> 不等于故障；建议以 7 天窗口观察。</li>
+<li><code>asen_swarajya</code>（印度右翼立场杂志）、<code>asen_almonitor</code>（中东地缘）等带有编辑立场，AI 摘要/翻译会保留其观点色彩；展示层如需立场标注属后续产品决策。</li>
+</ul>
+<hr>
+<p style="color:#59636e;font-size:12px">自包含 HTML 镜像，与同名 .md 内容一致。生成于 2026-07-28。</p>
+</body>
+</html>

@@ -599,6 +599,9 @@ _WORKER_KEYWORDS: tuple[str, ...] = (
     "wechat2b",
     "indie_",
     "global_rss",
+    "gind_",
+    "asia_en",
+    "asen_",
 )
 
 _WORKER_META: dict[str, dict[str, str]] = {
@@ -690,6 +693,34 @@ _WORKER_META: dict[str, dict[str, str]] = {
     "news_global_rss_j_60m": {"label": "全球多语 RSS J 组 (11 源)", "schedule": "每 60 分钟"},
     "news_global_rss_k_60m": {"label": "全球多语 RSS K 组 (11 源)", "schedule": "每 60 分钟"},
     "news_global_rss_l_60m": {"label": "全球多语 RSS L 组 (4 源)", "schedule": "每 60 分钟"},
+    # Global English indie batches (2026-07-28, 104 sources)
+    "news_gind_o_60m": {"label": "全球独立源 O 组 (11 源)", "schedule": "每 60 分钟"},
+    "news_gind_p_60m": {"label": "全球独立源 P 组 (11 源)", "schedule": "每 60 分钟"},
+    "news_gind_q_60m": {"label": "全球独立源 Q 组 (11 源)", "schedule": "每 60 分钟"},
+    "news_gind_r_60m": {"label": "全球独立源 R 组 (11 源)", "schedule": "每 60 分钟"},
+    "news_gind_s_60m": {"label": "全球独立源 S 组 (11 源)", "schedule": "每 60 分钟"},
+    "news_gind_t_60m": {"label": "全球独立源 T 组 (11 源)", "schedule": "每 60 分钟"},
+    "news_gind_u_60m": {"label": "全球独立源 U 组 (11 源)", "schedule": "每 60 分钟"},
+    "news_gind_v_60m": {"label": "全球独立源 V 组 (11 源)", "schedule": "每 60 分钟"},
+    "news_gind_w_60m": {"label": "全球独立源 W 组 (11 源)", "schedule": "每 60 分钟"},
+    "news_gind_x_60m": {"label": "全球独立源 X 组 (5 源)", "schedule": "每 60 分钟"},
+    # Asia-focused English RSS batches (2026-07-28, 176 sources)
+    "news_asia_en_a_60m": {"label": "亚洲英文财经 RSS A 组 (11 源)", "schedule": "每 60 分钟"},
+    "news_asia_en_b_60m": {"label": "亚洲英文财经 RSS B 组 (11 源)", "schedule": "每 60 分钟"},
+    "news_asia_en_c_60m": {"label": "亚洲英文财经 RSS C 组 (11 源)", "schedule": "每 60 分钟"},
+    "news_asia_en_d_60m": {"label": "亚洲英文财经 RSS D 组 (11 源)", "schedule": "每 60 分钟"},
+    "news_asia_en_e_60m": {"label": "亚洲英文财经 RSS E 组 (11 源)", "schedule": "每 60 分钟"},
+    "news_asia_en_f_60m": {"label": "亚洲英文财经 RSS F 组 (11 源)", "schedule": "每 60 分钟"},
+    "news_asia_en_g_60m": {"label": "亚洲英文财经 RSS G 组 (11 源)", "schedule": "每 60 分钟"},
+    "news_asia_en_h_60m": {"label": "亚洲英文财经 RSS H 组 (11 源)", "schedule": "每 60 分钟"},
+    "news_asia_en_i_60m": {"label": "亚洲英文财经 RSS I 组 (11 源)", "schedule": "每 60 分钟"},
+    "news_asia_en_j_60m": {"label": "亚洲英文财经 RSS J 组 (11 源)", "schedule": "每 60 分钟"},
+    "news_asia_en_k_60m": {"label": "亚洲英文财经 RSS K 组 (11 源)", "schedule": "每 60 分钟"},
+    "news_asia_en_l_60m": {"label": "亚洲英文财经 RSS L 组 (11 源)", "schedule": "每 60 分钟"},
+    "news_asia_en_m_60m": {"label": "亚洲英文财经 RSS M 组 (11 源)", "schedule": "每 60 分钟"},
+    "news_asia_en_n_60m": {"label": "亚洲英文财经 RSS N 组 (11 源)", "schedule": "每 60 分钟"},
+    "news_asia_en_o_60m": {"label": "亚洲英文财经 RSS O 组 (11 源)", "schedule": "每 60 分钟"},
+    "news_asia_en_p_60m": {"label": "亚洲英文财经 RSS P 组 (11 源)", "schedule": "每 60 分钟"},
 }
 
 # Map a worker job id to the ``news_article.source`` it writes.  Only

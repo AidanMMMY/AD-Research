@@ -588,6 +588,65 @@ for _job_id, _label, _batch in GLOBAL_RSS_BATCH_JOBS:
     globals()[f"run_global_rss_{_batch}_crawl"] = _global_rss_batch_job(_job_id, _batch)
 
 
+# ── Asia-focused English RSS batches (added 2026-07-28) ──
+#
+# 176 live-verified English feeds — Asian English financial media
+# (India/SEA/South Asia/Gulf/Central Asia/China-EN/AU-NZ),
+# international media section feeds beyond the front page, industry
+# verticals (semiconductors, new energy, biopharma, automotive,
+# shipping & logistics, commodities & mining, aerospace/defense/
+# fintech trades) and self-hosted investor blogs — split into 16
+# batch jobs (11 feeds each) so the scheduler gains 16 jobs instead
+# of 176. See app/services/news/sources/asia_en_batch.py for the
+# selection rule and docs/dev-notes/20260728-asia-en-batch.md for the
+# two-round ECS verification evidence.
+
+from app.services.news.sources.asia_en_batch import (  # noqa: E402
+    ASIA_EN_BATCH_JOBS,
+)
+
+
+def _asia_en_batch_job(job_id: str, batch_key: str):
+    """Build a ``run_*`` function crawling one Asia-EN batch."""
+
+    @_record_etl(job_id)
+    def _run() -> dict[str, int]:
+        from app.services.news.sources.asia_en_batch import (
+            AsiaEnBatchCrawler,
+        )
+
+        async def _go():
+            crawler = AsiaEnBatchCrawler(batch_key)
+            return await crawler.fetch_recent()
+
+        try:
+            articles = _run_async(_go())
+        except Exception as exc:
+            logger.exception("asia-en batch %s crawl failed: %s", batch_key, exc)
+            return {
+                "fetched": 0,
+                "written": 0,
+                "skipped": True,
+                "skip_reason": f"crawl_error: {exc}",
+            }
+
+        if not articles:
+            return {"fetched": 0, "written": 0, "skipped": True, "skip_reason": "no_articles"}
+
+        # No marketing filter: professional publications and curated
+        # blogs, same precedent as ``_global_rss_batch_job``.
+        written = _write_to_db(articles)
+        return {"fetched": len(articles), "written": written}
+
+    _run.__name__ = f"run_asia_en_{batch_key}_crawl"
+    return _run
+
+
+for _job_id, _label, _batch in ASIA_EN_BATCH_JOBS:
+    globals()[f"run_asia_en_{_batch}_crawl"] = _asia_en_batch_job(_job_id, _batch)
+
+
+
 # ── Independent non-WeChat batches (added 2026-07-28) ──
 #
 # 144 verified independent blogs / newsletters / podcasts (English +
@@ -651,6 +710,57 @@ INDEPENDENT_BATCH_JOBS: list[tuple[str, str, str]] = [
 ]
 for _job_id, _label, _batch in INDEPENDENT_BATCH_JOBS:
     globals()[f"run_independent_{_batch}_crawl"] = _independent_batch_job(_job_id, _batch)
+
+
+# ── Global English indie batches (added 2026-07-28) ──
+#
+# 104 live-verified English independent blogs / newsletters / research
+# outlets (custom-domain Substacks, Ghost, dev.to/Hashnode authors,
+# nonprofit newsrooms). Table and selection rule live in
+# app/services/news/sources/global_indie_batch.py; batch keys o-x keep
+# clear of the a-n keys owned by INDEPENDENT_BATCH_JOBS. Same no-LLM
+# rationale as the independent batches (curated editorial voices).
+
+def _global_indie_batch_job(job_id: str, batch_key: str):
+    """Build a ``run_*`` function crawling one global-indie batch."""
+
+    @_record_etl(job_id)
+    def _run() -> dict[str, int]:
+        from app.services.news.sources.global_indie_batch import (
+            GlobalIndieBatchCrawler,
+        )
+
+        async def _go():
+            crawler = GlobalIndieBatchCrawler(batch_key)
+            return await crawler.fetch_recent()
+
+        try:
+            articles = _run_async(_go())
+        except Exception as exc:
+            logger.exception("global indie batch %s crawl failed: %s", batch_key, exc)
+            return {
+                "fetched": 0,
+                "written": 0,
+                "skipped": True,
+                "skip_reason": f"crawl_error: {exc}",
+            }
+
+        if not articles:
+            return {"fetched": 0, "written": 0, "skipped": True, "skip_reason": "no_articles"}
+
+        written = _write_to_db(articles)
+        return {"fetched": len(articles), "written": written}
+
+    _run.__name__ = f"run_global_indie_{batch_key}_crawl"
+    return _run
+
+
+from app.services.news.sources.global_indie_batch import (  # noqa: E402
+    GLOBAL_INDIE_BATCH_JOBS,
+)
+
+for _job_id, _label, _batch in GLOBAL_INDIE_BATCH_JOBS:
+    globals()[f"run_global_indie_{_batch}_crawl"] = _global_indie_batch_job(_job_id, _batch)
 
 
 # ── New Chinese news sources (added 2026-07-18) ──
