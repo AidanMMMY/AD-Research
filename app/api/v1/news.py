@@ -596,6 +596,7 @@ _WORKER_KEYWORDS: tuple[str, ...] = (
     "wechat_maobidao",
     "wechat_sixianggangyin",
     "wechat2rss",
+    "wechat2b",
     "indie_",
     "global_rss",
 )
@@ -650,6 +651,17 @@ _WORKER_META: dict[str, dict[str, str]] = {
     "news_wechat2rss_g_60m": {"label": "公众号镜像 G 组 (11 号)", "schedule": "每 60 分钟"},
     "news_wechat2rss_h_60m": {"label": "公众号镜像 H 组 (11 号)", "schedule": "每 60 分钟"},
     "news_wechat2rss_i_60m": {"label": "公众号镜像 I 组 (2 号)", "schedule": "每 60 分钟"},
+    # wechat2rss second-wave batches (2026-07-28, 103 accounts)
+    "news_wechat2b_w2a_60m": {"label": "公众号二批 A 组 (11 号)", "schedule": "每 60 分钟"},
+    "news_wechat2b_w2b_60m": {"label": "公众号二批 B 组 (11 号)", "schedule": "每 60 分钟"},
+    "news_wechat2b_w2c_60m": {"label": "公众号二批 C 组 (11 号)", "schedule": "每 60 分钟"},
+    "news_wechat2b_w2d_60m": {"label": "公众号二批 D 组 (11 号)", "schedule": "每 60 分钟"},
+    "news_wechat2b_w2e_60m": {"label": "公众号二批 E 组 (11 号)", "schedule": "每 60 分钟"},
+    "news_wechat2b_w2f_60m": {"label": "公众号二批 F 组 (11 号)", "schedule": "每 60 分钟"},
+    "news_wechat2b_w2g_60m": {"label": "公众号二批 G 组 (11 号)", "schedule": "每 60 分钟"},
+    "news_wechat2b_w2h_60m": {"label": "公众号二批 H 组 (11 号)", "schedule": "每 60 分钟"},
+    "news_wechat2b_w2i_60m": {"label": "公众号二批 I 组 (11 号)", "schedule": "每 60 分钟"},
+    "news_wechat2b_w2j_60m": {"label": "公众号二批 J 组 (4 号)", "schedule": "每 60 分钟"},
     # Independent non-WeChat batches (2026-07-28, 144 sources)
     "news_indie_a_60m": {"label": "独立源 A 组 (11 源)", "schedule": "每 60 分钟"},
     "news_indie_b_60m": {"label": "独立源 B 组 (11 源)", "schedule": "每 60 分钟"},

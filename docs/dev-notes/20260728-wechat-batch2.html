@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>2026-07-28 公众号二批（103 源）runbook</title>
+<style>
+body{font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;max-width:1080px;margin:0 auto;padding:24px;color:#222;line-height:1.65}
+h1{font-size:1.5rem;border-bottom:2px solid #0366d6;padding-bottom:8px}
+h2{font-size:1.2rem;margin-top:2em;color:#0366d6}
+table{border-collapse:collapse;width:100%;font-size:.85rem;margin:12px 0}
+th,td{border:1px solid #ddd;padding:5px 8px;text-align:left}
+th{background:#f3f6fa}
+tr:nth-child(even){background:#fafbfc}
+code{background:#f0f3f6;padding:1px 5px;border-radius:3px;font-size:.82rem}
+.ok{color:#1a7f37}
+blockquote{border-left:3px solid #0366d6;margin:12px 0;padding:4px 14px;background:#f6f9fc;color:#444}
+.warn{color:#b35900}
+</style></head><body>
+<h1>2026-07-28 微信公众号资讯源二批（103 源）runbook</h1>
+<blockquote>
+交付 <code>app/services/news/sources/wechat2rss_batch2.py</code> ｜ 测试
+<code>app/tests/news/test_wechat2rss_batch2.py</code>（14 通过 + 13 xfail，集成后 27 全绿）｜ 集成补丁
+<code>docs/dev-notes/20260728-wechat-batch2-integration.md</code><br>
+新增 <b>103</b> 源：宏观经济 26 / 投资策略 22 / 行业研究 14 / 科技评论 29 / 商业深度 12
+</blockquote>
+
+<h2>1. 通道调研结论（ECS 实测）</h2>
+<table><tr><th>通道</th><th>状态</th><th>结论</th></tr>
+<tr><td><code>wechat2rss.xlab.app</code>（一批同款）</td><td class="ok">活</td><td>仅 395 号、326 安全类；一批已用 92，剩余合格 ≤5，不够</td></tr>
+<tr><td><code>wechat2rss.bestblogs.dev</code>（BestBlogs 自建）</td><td class="ok">活</td><td><b>375 号，财经/商业/科技为主，本批主通道（102 源）</b></td></tr>
+<tr><td>ECS wewe-rss 自建</td><td class="warn">暂死</td><td>微信读书 token 失效（WeReadError401/-2041），需用户重扫码，本批未用</td></tr>
+<tr><td>feeddd.org</td><td>死</td><td>域名停靠</td></tr>
+<tr><td>werss.app</td><td>死</td><td>SPA 壳，无 API</td></tr>
+<tr><td>CareerEngine</td><td>死</td><td>已改版，/author/*/rss 404</td></tr>
+<tr><td>瓦斯阅读 qnmlgb.tech</td><td class="warn">活</td><td>无公开 RSS、不暴露 mp 链接</td></tr>
+<tr><td>今天看啥 jintiankansha.me</td><td class="warn">活</td><td>RSS 需登录账号</td></tr></table>
+<p>feed id = HMAC(公众号ID, 服务端 secret)，不可本地构造；OPML（github.com/ginobefun/BestBlogs）即权威清单。
+feed 格式与 xlab 一致（RSS 2.0 + content:encoded 全文），单 feed 最大约 3.8MB。</p>
+
+<h2>2. 筛选与实测流程</h2>
+<p>BestBlogs OPML(375) ∪ xlab 快照(395) → 排除已覆盖（一批 90 + 3 单源 + wewe 8）→ 排除直连源重复
+（华尔街见闻/财新/界面/36氪/虎嗅/财联社/雪球）→ 排除官媒/企业PR/体育/文学/设计/纯开发 → 人工标题样本
+审查 → ECS 逐个实测（200 + 有正文 + 30 天内有更新）。112 候选全 200，淘汰 9，最终 <b>103</b>。</p>
+
+<h2>3. 103 源清单</h2>
+<table><tr><th>source</th><th>名称</th><th>分类</th><th>镜像</th><th>实测（2026-07-28）</th></tr>
+<tr><td><code>wechat_zepinghongguan</code></td><td>泽平宏观</td><td>宏观经济</td><td>bestblogs</td><td class='ok'>200 / 10 条 / 27 Jul 2026</td></tr>
+<tr><td><code>wechat_xiangshuai</code></td><td>香帅的金融江湖</td><td>宏观经济</td><td>bestblogs</td><td class='ok'>200 / 10 条 / 27 Jul 2026</td></tr>
+<tr><td><code>wechat_zhongjin</code></td><td>中金点睛</td><td>宏观经济</td><td>bestblogs</td><td class='ok'>200 / 10 条 / 27 Jul 2026</td></tr>
+<tr><td><code>wechat_cf40</code></td><td>中国金融四十人论坛</td><td>宏观经济</td><td>bestblogs</td><td class='ok'>200 / 10 条 / 27 Jul 2026</td></tr>
+<tr><td><code>wechat_worldbank</code></td><td>世界银行</td><td>宏观经济</td><td>bestblogs</td><td class='ok'>200 / 10 条 / 27 Jul 2026</td></tr>
+<tr><td><code>wechat_eeo</code></td><td>经济观察报</td><td>宏观经济</td><td>bestblogs</td><td class='ok'>200 / 10 条 / 27 Jul 2026</td></tr>
+<tr><td><code>wechat_yetan</code></td><td>叶檀财经</td><td>宏观经济</td><td>bestblogs</td><td class='ok'>200 / 10 条 / 27 Jul 2026</td></tr>
+<tr><td><code>wechat_zhangyong</code></td><td>张湧说财经</td><td>宏观经济</td><td>bestblogs</td><td class='ok'>200 / 10 条 / 27 Jul 2026</td></tr>
+<tr><td><code>wechat_gongfucaijing</code></td><td>功夫财经</td><td>宏观经济</td><td>bestblogs</td><td class='ok'>200 / 10 条 / 27 Jul 2026</td></tr>
+<tr><td><code>wechat_cjzaocan</code></td><td>财经早餐</td><td>宏观经济</td><td>bestblogs</td><td class='ok'>200 / 10 条 / 27 Jul 2026</td></tr>
+<tr><td><code>wechat_econdaily</code></td><td>一天一篇经济学人</td><td>宏观经济</td><td>bestblogs</td><td class='ok'>200 / 10 条 / 27 Jul 2026</td></tr>
+<tr><td><code>wechat_caijing</code></td><td>财经杂志</td><td>宏观经济</td><td>bestblogs</td><td class='ok'>200 / 10 条 / 26 Jul 2026</td></tr>
+<tr><td><code>wechat_yicai</code></td><td>第一财经</td><td>宏观经济</td><td>bestblogs</td><td class='ok'>200 / 10 条 / 27 Jul 2026</td></tr>
+<tr><td><code>wechat_herald21</code></td><td>21世纪经济报道</td><td>宏观经济</td><td>bestblogs</td><td class='ok'>200 / 10 条 / 27 Jul 2026</td></tr>
+<tr><td><code>wechat_nbd</code></td><td>每日经济新闻</td><td>宏观经济</td><td>bestblogs</td><td class='ok'>200 / 10 条 / 27 Jul 2026</td></tr>
+<tr><td><code>wechat_qszg</code></td><td>券商中国</td><td>宏观经济</td><td>bestblogs</td><td class='ok'>200 / 10 条 / 27 Jul 2026</td></tr>
+<tr><td><code>wechat_lengjing</code></td><td>棱镜</td><td>宏观经济</td><td>bestblogs</td><td class='ok'>200 / 10 条 / 27 Jul 2026</td></tr>
+<tr><td><code>wechat_shenwang</code></td><td>深网腾讯新闻</td><td>宏观经济</td><td>bestblogs</td><td class='ok'>200 / 10 条 / 27 Jul 2026</td></tr>
+<tr><td><code>wechat_ifengcj</code></td><td>凤凰网财经</td><td>宏观经济</td><td>bestblogs</td><td class='ok'>200 / 10 条 / 27 Jul 2026</td></tr>
+<tr><td><code>wechat_gelonghui</code></td><td>格隆汇APP</td><td>宏观经济</td><td>bestblogs</td><td class='ok'>200 / 10 条 / 27 Jul 2026</td></tr>
+<tr><td><code>wechat_eastmoney</code></td><td>东方财富网</td><td>宏观经济</td><td>bestblogs</td><td class='ok'>200 / 10 条 / 27 Jul 2026</td></tr>
+<tr><td><code>wechat_wind</code></td><td>Wind万得</td><td>宏观经济</td><td>bestblogs</td><td class='ok'>200 / 10 条 / 27 Jul 2026</td></tr>
+<tr><td><code>wechat_barrons</code></td><td>Barrons巴伦</td><td>宏观经济</td><td>bestblogs</td><td class='ok'>200 / 10 条 / 27 Jul 2026</td></tr>
+<tr><td><code>wechat_txcaijing</code></td><td>腾讯财经</td><td>宏观经济</td><td>bestblogs</td><td class='ok'>200 / 10 条 / 27 Jul 2026</td></tr>
+<tr><td><code>wechat_xiaolinshuo</code></td><td>小Lin说的公众号</td><td>宏观经济</td><td>bestblogs</td><td class='ok'>200 / 10 条 / 02 Jul 2026</td></tr>
+<tr><td><code>wechat_dashuilai</code></td><td>大水来</td><td>宏观经济</td><td>xlab</td><td class='ok'>200 / 20 条 / 14 Jul 2026</td></tr>
+<tr><td><code>wechat_dianshi</code></td><td>点拾投资</td><td>投资策略</td><td>bestblogs</td><td class='ok'>200 / 10 条 / 25 Jul 2026</td></tr>
+<tr><td><code>wechat_luosiding</code></td><td>银行螺丝钉</td><td>投资策略</td><td>bestblogs</td><td class='ok'>200 / 10 条 / 27 Jul 2026</td></tr>
+<tr><td><code>wechat_laoqian</code></td><td>老钱日日谈</td><td>投资策略</td><td>bestblogs</td><td class='ok'>200 / 10 条 / 27 Jul 2026</td></tr>
+<tr><td><code>wechat_tzshixi</code></td><td>投资实习所</td><td>投资策略</td><td>bestblogs</td><td class='ok'>200 / 10 条 / 08 Jul 2026</td></tr>
+<tr><td><code>wechat_gududanao</code></td><td>孤独大脑</td><td>投资策略</td><td>bestblogs</td><td class='ok'>200 / 10 条 / 27 Jul 2026</td></tr>
+<tr><td><code>wechat_sanzhe</code></td><td>三折人生</td><td>投资策略</td><td>bestblogs</td><td class='ok'>200 / 10 条 / 20 Jul 2026</td></tr>
+<tr><td><code>wechat_gelan</code></td><td>格兰投研</td><td>投资策略</td><td>bestblogs</td><td class='ok'>200 / 10 条 / 27 Jul 2026</td></tr>
+<tr><td><code>wechat_laozhang</code></td><td>老张投研</td><td>投资策略</td><td>bestblogs</td><td class='ok'>200 / 10 条 / 27 Jul 2026</td></tr>
+<tr><td><code>wechat_investguru</code></td><td>investguru</td><td>投资策略</td><td>bestblogs</td><td class='ok'>200 / 10 条 / 03 Jul 2026</td></tr>
+<tr><td><code>wechat_haitun</code></td><td>海豚研究</td><td>投资策略</td><td>bestblogs</td><td class='ok'>200 / 10 条 / 27 Jul 2026</td></tr>
+<tr><td><code>wechat_fengrui</code></td><td>峰瑞资本</td><td>投资策略</td><td>bestblogs</td><td class='ok'>200 / 10 条 / 22 Jul 2026</td></tr>
+<tr><td><code>wechat_gaoling</code></td><td>高瓴创投</td><td>投资策略</td><td>bestblogs</td><td class='ok'>200 / 10 条 / 19 Jul 2026</td></tr>
+<tr><td><code>wechat_jingwei</code></td><td>经纬创投</td><td>投资策略</td><td>bestblogs</td><td class='ok'>200 / 10 条 / 27 Jul 2026</td></tr>
+<tr><td><code>wechat_zhenge</code></td><td>真格基金</td><td>投资策略</td><td>bestblogs</td><td class='ok'>200 / 10 条 / 24 Jul 2026</td></tr>
+<tr><td><code>wechat_hongshan</code></td><td>红杉汇</td><td>投资策略</td><td>bestblogs</td><td class='ok'>200 / 10 条 / 27 Jul 2026</td></tr>
+<tr><td><code>wechat_shanxing</code></td><td>山行资本</td><td>投资策略</td><td>bestblogs</td><td class='ok'>200 / 10 条 / 22 Jul 2026</td></tr>
+<tr><td><code>wechat_etfjinhua</code></td><td>ETF进化论</td><td>投资策略</td><td>bestblogs</td><td class='ok'>200 / 10 条 / 27 Jul 2026</td></tr>
+<tr><td><code>wechat_liubei</code></td><td>刘备教授</td><td>投资策略</td><td>bestblogs</td><td class='ok'>200 / 10 条 / 11 Jul 2026</td></tr>
+<tr><td><code>wechat_zhenglitao</code></td><td>郑立涛</td><td>投资策略</td><td>bestblogs</td><td class='ok'>200 / 10 条 / 14 Jul 2026</td></tr>
+<tr><td><code>wechat_xieyin</code></td><td>携隐Melody</td><td>投资策略</td><td>bestblogs</td><td class='ok'>200 / 10 条 / 27 Jul 2026</td></tr>
+<tr><td><code>wechat_sjfendui</code></td><td>随机小分队</td><td>投资策略</td><td>bestblogs</td><td class='ok'>200 / 10 条 / 27 Jul 2026</td></tr>
+<tr><td><code>wechat_taiyang</code></td><td>太阳照常升起</td><td>投资策略</td><td>bestblogs</td><td class='ok'>200 / 10 条 / 24 Jul 2026</td></tr>
+<tr><td><code>wechat_bandaoti</code></td><td>半导体行业观察</td><td>行业研究</td><td>bestblogs</td><td class='ok'>200 / 10 条 / 27 Jul 2026</td></tr>
+<tr><td><code>wechat_zhidongxi</code></td><td>智东西</td><td>行业研究</td><td>bestblogs</td><td class='ok'>200 / 10 条 / 27 Jul 2026</td></tr>
+<tr><td><code>wechat_jiazi</code></td><td>甲子光年</td><td>行业研究</td><td>bestblogs</td><td class='ok'>200 / 10 条 / 24 Jul 2026</td></tr>
+<tr><td><code>wechat_daofa</code></td><td>刀法研究所</td><td>行业研究</td><td>bestblogs</td><td class='ok'>200 / 10 条 / 26 Jul 2026</td></tr>
+<tr><td><code>wechat_zhaibo</code></td><td>窄播</td><td>行业研究</td><td>bestblogs</td><td class='ok'>200 / 10 条 / 27 Jul 2026</td></tr>
+<tr><td><code>wechat_xinbang</code></td><td>新榜</td><td>行业研究</td><td>bestblogs</td><td class='ok'>200 / 10 条 / 25 Jul 2026</td></tr>
+<tr><td><code>wechat_yunying</code></td><td>运营研究社</td><td>行业研究</td><td>bestblogs</td><td class='ok'>200 / 10 条 / 27 Jul 2026</td></tr>
+<tr><td><code>wechat_jianshi</code></td><td>见实</td><td>行业研究</td><td>bestblogs</td><td class='ok'>200 / 10 条 / 27 Jul 2026</td></tr>
+<tr><td><code>wechat_medsci</code></td><td>梅斯医学</td><td>行业研究</td><td>bestblogs</td><td class='ok'>200 / 10 条 / 27 Jul 2026</td></tr>
+<tr><td><code>wechat_deeptech</code></td><td>DeepTech深科技</td><td>行业研究</td><td>bestblogs</td><td class='ok'>200 / 10 条 / 27 Jul 2026</td></tr>
+<tr><td><code>wechat_naojiti</code></td><td>脑极体</td><td>行业研究</td><td>bestblogs</td><td class='ok'>200 / 10 条 / 27 Jul 2026</td></tr>
+<tr><td><code>wechat_langchao</code></td><td>浪潮工作室</td><td>行业研究</td><td>bestblogs</td><td class='ok'>200 / 10 条 / 27 Jul 2026</td></tr>
+<tr><td><code>wechat_saasbyx</code></td><td>SaaS白夜行</td><td>行业研究</td><td>bestblogs</td><td class='ok'>200 / 10 条 / 26 Jul 2026</td></tr>
+<tr><td><code>wechat_fangwei</code></td><td>方伟看十年</td><td>行业研究</td><td>bestblogs</td><td class='ok'>200 / 10 条 / 26 Jul 2026</td></tr>
+<tr><td><code>wechat_sota</code></td><td>机器之心SOTA模型</td><td>科技评论</td><td>bestblogs</td><td class='ok'>200 / 10 条 / 27 Jul 2026</td></tr>
+<tr><td><code>wechat_infoq</code></td><td>InfoQ</td><td>科技评论</td><td>bestblogs</td><td class='ok'>200 / 10 条 / 27 Jul 2026</td></tr>
+<tr><td><code>wechat_sspai</code></td><td>少数派</td><td>科技评论</td><td>bestblogs</td><td class='ok'>200 / 10 条 / 27 Jul 2026</td></tr>
+<tr><td><code>wechat_appso</code></td><td>APPSO</td><td>科技评论</td><td>bestblogs</td><td class='ok'>200 / 10 条 / 27 Jul 2026</td></tr>
+<tr><td><code>wechat_leifeng</code></td><td>雷峰网</td><td>科技评论</td><td>bestblogs</td><td class='ok'>200 / 10 条 / 27 Jul 2026</td></tr>
+<tr><td><code>wechat_taimeiti</code></td><td>钛媒体</td><td>科技评论</td><td>bestblogs</td><td class='ok'>200 / 10 条 / 27 Jul 2026</td></tr>
+<tr><td><code>wechat_guixingren</code></td><td>硅星人Pro</td><td>科技评论</td><td>bestblogs</td><td class='ok'>200 / 10 条 / 27 Jul 2026</td></tr>
+<tr><td><code>wechat_lanxi</code></td><td>阑夕</td><td>科技评论</td><td>bestblogs</td><td class='ok'>200 / 10 条 / 23 Jul 2026</td></tr>
+<tr><td><code>wechat_caoz</code></td><td>caoz的梦呓</td><td>科技评论</td><td>bestblogs</td><td class='ok'>200 / 10 条 / 23 Jul 2026</td></tr>
+<tr><td><code>wechat_guaidao</code></td><td>互联网怪盗团</td><td>科技评论</td><td>bestblogs</td><td class='ok'>200 / 10 条 / 27 Jul 2026</td></tr>
+<tr><td><code>wechat_mactalk</code></td><td>MacTalk</td><td>科技评论</td><td>bestblogs</td><td class='ok'>200 / 10 条 / 27 Jul 2026</td></tr>
+<tr><td><code>wechat_wangjianshuo</code></td><td>王建硕</td><td>科技评论</td><td>bestblogs</td><td class='ok'>200 / 10 条 / 22 Jul 2026</td></tr>
+<tr><td><code>wechat_mitreview</code></td><td>麻省理工科技评论APP</td><td>科技评论</td><td>bestblogs</td><td class='ok'>200 / 10 条 / 27 Jul 2026</td></tr>
+<tr><td><code>wechat_znyx</code></td><td>智能涌现</td><td>科技评论</td><td>bestblogs</td><td class='ok'>200 / 10 条 / 27 Jul 2026</td></tr>
+<tr><td><code>wechat_txkeji</code></td><td>腾讯科技</td><td>科技评论</td><td>bestblogs</td><td class='ok'>200 / 10 条 / 27 Jul 2026</td></tr>
+<tr><td><code>wechat_wangyikeji</code></td><td>网易科技</td><td>科技评论</td><td>bestblogs</td><td class='ok'>200 / 10 条 / 27 Jul 2026</td></tr>
+<tr><td><code>wechat_baijing</code></td><td>白鲸出海</td><td>科技评论</td><td>bestblogs</td><td class='ok'>200 / 10 条 / 27 Jul 2026</td></tr>
+<tr><td><code>wechat_woshipm</code></td><td>人人都是产品经理</td><td>科技评论</td><td>bestblogs</td><td class='ok'>200 / 10 条 / 27 Jul 2026</td></tr>
+<tr><td><code>wechat_founderpark</code></td><td>Founder Park</td><td>科技评论</td><td>bestblogs</td><td class='ok'>200 / 10 条 / 27 Jul 2026</td></tr>
+<tr><td><code>wechat_kazike</code></td><td>数字生命卡兹克</td><td>科技评论</td><td>bestblogs</td><td class='ok'>200 / 10 条 / 27 Jul 2026</td></tr>
+<tr><td><code>wechat_guicang</code></td><td>歸藏的AI工具箱</td><td>科技评论</td><td>bestblogs</td><td class='ok'>200 / 10 条 / 17 Jul 2026</td></tr>
+<tr><td><code>wechat_saibo</code></td><td>赛博禅心</td><td>科技评论</td><td>bestblogs</td><td class='ok'>200 / 10 条 / 27 Jul 2026</td></tr>
+<tr><td><code>wechat_crossing</code></td><td>十字路口Crossing</td><td>科技评论</td><td>bestblogs</td><td class='ok'>200 / 10 条 / 27 Jul 2026</td></tr>
+<tr><td><code>wechat_newin</code></td><td>有新Newin</td><td>科技评论</td><td>bestblogs</td><td class='ok'>200 / 10 条 / 25 Jul 2026</td></tr>
+<tr><td><code>wechat_hwunicorn</code></td><td>海外独角兽</td><td>科技评论</td><td>bestblogs</td><td class='ok'>200 / 10 条 / 22 Jul 2026</td></tr>
+<tr><td><code>wechat_shensiquan</code></td><td>深思圈</td><td>科技评论</td><td>bestblogs</td><td class='ok'>200 / 10 条 / 27 Jul 2026</td></tr>
+<tr><td><code>wechat_guigu</code></td><td>硅谷科技评论</td><td>科技评论</td><td>bestblogs</td><td class='ok'>200 / 10 条 / 25 Jul 2026</td></tr>
+<tr><td><code>wechat_thoughtworks</code></td><td>思特沃克洞见</td><td>科技评论</td><td>bestblogs</td><td class='ok'>200 / 10 条 / 22 Jul 2026</td></tr>
+<tr><td><code>wechat_wadianai</code></td><td>晚点AI</td><td>科技评论</td><td>bestblogs</td><td class='ok'>200 / 10 条 / 16 Jul 2026</td></tr>
+<tr><td><code>wechat_dailaoban</code></td><td>饭统戴老板</td><td>商业深度</td><td>bestblogs</td><td class='ok'>200 / 10 条 / 27 Jul 2026</td></tr>
+<tr><td><code>wechat_wuxiaobo</code></td><td>吴晓波频道</td><td>商业深度</td><td>bestblogs</td><td class='ok'>200 / 10 条 / 27 Jul 2026</td></tr>
+<tr><td><code>wechat_liurun</code></td><td>刘润</td><td>商业深度</td><td>bestblogs</td><td class='ok'>200 / 10 条 / 27 Jul 2026</td></tr>
+<tr><td><code>wechat_bijixia</code></td><td>笔记侠</td><td>商业深度</td><td>bestblogs</td><td class='ok'>200 / 10 条 / 27 Jul 2026</td></tr>
+<tr><td><code>wechat_lishi</code></td><td>砺石商业评论</td><td>商业深度</td><td>bestblogs</td><td class='ok'>200 / 10 条 / 24 Jul 2026</td></tr>
+<tr><td><code>wechat_hbr</code></td><td>哈佛商业评论</td><td>商业深度</td><td>bestblogs</td><td class='ok'>200 / 10 条 / 27 Jul 2026</td></tr>
+<tr><td><code>wechat_zhenghedao</code></td><td>正和岛</td><td>商业深度</td><td>bestblogs</td><td class='ok'>200 / 10 条 / 27 Jul 2026</td></tr>
+<tr><td><code>wechat_chuangyebang</code></td><td>创业邦</td><td>商业深度</td><td>bestblogs</td><td class='ok'>200 / 10 条 / 27 Jul 2026</td></tr>
+<tr><td><code>wechat_pedaily</code></td><td>投资界</td><td>商业深度</td><td>bestblogs</td><td class='ok'>200 / 10 条 / 27 Jul 2026</td></tr>
+<tr><td><code>wechat_anyong</code></td><td>暗涌Waves</td><td>商业深度</td><td>bestblogs</td><td class='ok'>200 / 10 条 / 24 Jul 2026</td></tr>
+<tr><td><code>wechat_jiubian</code></td><td>九边</td><td>商业深度</td><td>bestblogs</td><td class='ok'>200 / 10 条 / 22 Jul 2026</td></tr>
+<tr><td><code>wechat_caobian</code></td><td>槽边往事</td><td>商业深度</td><td>bestblogs</td><td class='ok'>200 / 10 条 / 27 Jul 2026</td></tr>
+</table>
+
+<h2>4. 剔除记录</h2>
+<table><tr><th>名称</th><th>拟分类</th><th>镜像</th><th>原因</th></tr>
+<tr><td>老钱说钱</td><td>投资策略</td><td>bestblogs</td><td>停更：最新文 2022-07-01</td></tr>
+<tr><td>孟岩</td><td>投资策略</td><td>bestblogs</td><td>停更：最新文 2026-03-27（&gt;120 天）</td></tr>
+<tr><td>刘言飞语</td><td>科技评论</td><td>bestblogs</td><td>停更：最新文 2026-06-25（&gt;30 天）</td></tr>
+<tr><td>43 Talks</td><td>科技评论</td><td>bestblogs</td><td>停更：最新文 2026-06-14（&gt;40 天）</td></tr>
+<tr><td>晚点对话</td><td>商业深度</td><td>bestblogs</td><td>停更：最新文 2025-05-19</td></tr>
+<tr><td>Delphi研习社</td><td>宏观经济</td><td>xlab</td><td>停更：最新文 2026-05-31（&gt;55 天）</td></tr>
+<tr><td>金色钱江</td><td>宏观经济</td><td>xlab</td><td>停更：最新文 2025-04-10</td></tr>
+<tr><td>科技美学</td><td>科技评论</td><td>bestblogs</td><td>内容质量：近期全为新品官宣软文流，营销属性重</td></tr>
+<tr><td>毛有话说</td><td>宏观经济</td><td>bestblogs</td><td>内容质量：标题党化（“今天的瓜太猛了！”），剔除</td></tr>
+<tr><td>卢瑟经济学之安生杂谈</td><td>宏观经济</td><td>xlab</td><td>2026-07-27 一批已验证 404 死号（不在本次候选）</td></tr>
+<tr><td>卢瑟经济学安生杂谈</td><td>宏观经济</td><td>xlab</td><td>同上</td></tr>
+<tr><td>碳基体</td><td>科技评论</td><td>xlab</td><td>2026-07-27 一批已验证 0 条目停更（不在本次候选）</td></tr>
+</table>
+
+<h2>5. 运维要点</h2>
+<ul>
+<li>10 个 job：<code>news_wechat2b_w2[a-j]_60m</code>，每小时；健康面板"公众号二批 X 组"。</li>
+<li>缺文排查先看 etl_log + normalize SQL error（7-27 截断 P0 教训）；source_id 已加宽 500。</li>
+<li>bestblogs 是公益实例：整域失效时按 runbook §5.2 删行/下 job；禁止运行时放大重试。</li>
+<li>wewe-rss 通道 B 恢复需用户重新扫码（AuthCode 123567，SSH 隧道到 4000 端口）；feed.add 间隔 ≥10s。</li>
+<li>已知问题：wewe-rss 现有 8 号 body 为空（缺 mode=fulltext），属既有源改进，本批未动。</li>
+<li>本批保留 WechatMarketingFilter（门户号偶发软文由 LLM 拦截，rejected_marketing 入 etl_log）。</li>
+</ul>
+
+<h2>6. 决策日志</h2>
+<table><tr><th>决策</th><th>理由</th></tr>
+<tr><td>主通道 bestblogs 镜像</td><td>xlab 合格池枯竭；bestblogs 375 号正对财经/科技</td></tr>
+<tr><td>每行存完整 URL</td><td>双镜像并存，URL 自带镜像归属</td></tr>
+<tr><td>批次键 w2a-w2j / job 前缀 wechat2b</td><td>与一批/indie/global 命名空间隔离</td></tr>
+<tr><td>保留营销过滤器</td><td>门户媒体/评测号软文概率高于一批独立号</td></tr>
+<tr><td>本批不走 wewe-rss</td><td>token 失效需用户扫码；恢复后作为三批通道</td></tr></table>
+</body></html>

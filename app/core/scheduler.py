@@ -2067,6 +2067,20 @@ def init_scheduler():
                 coalesce=True,
             )
 
+        # wechat2rss second-wave batches (2026-07-28) — generated in
+        # ``scheduler_jobs.WECHAT2B_BATCH_JOBS``, all hourly.
+        for job_id, label, batch in _news_jobs.WECHAT2B_BATCH_JOBS:
+            fn = getattr(_news_jobs, f"run_wechat2b_{batch}_crawl")
+            scheduler.add_job(
+                fn,
+                trigger=IntervalTrigger(minutes=60),
+                id=job_id,
+                name=label,
+                replace_existing=True,
+                max_instances=1,
+                coalesce=True,
+            )
+
         # Independent non-WeChat batches (2026-07-28) — blogs /
         # newsletters / podcasts, generated in
         # ``scheduler_jobs.INDEPENDENT_BATCH_JOBS``, all hourly.

@@ -445,7 +445,84 @@ for _job_id, _label, _batch in WECHAT2RSS_BATCH_JOBS:
     globals()[f"run_wechat2rss_{_batch}_crawl"] = _wechat2rss_batch_job(_job_id, _batch)
 
 
+# ── wechat2rss second-wave batches (added 2026-07-28) ──
+#
+# 103 more WeChat accounts — macro / strategy / industry / tech /
+# business — served by TWO public wechat2rss mirrors (bestblogs.dev
+# self-hosted instance + the original xlab.app free list). Table and
+# selection rule live in
+# app/services/news/sources/wechat2rss_batch2.py; evidence table in
+# docs/dev-notes/20260728-wechat-batch2.md. Same batching rationale
+# as the first wave (10 jobs for 103 feeds, keys w2a-w2j). The
+# marketing filter stays on: this wave includes portal-media and
+# review accounts where soft-ad posts do appear.
+
+
+def _wechat2b_batch_job(job_id: str, batch_key: str):
+    """Build a ``run_*`` function crawling one second-wave wechat2rss batch."""
+
+    @_record_etl(job_id)
+    def _run() -> dict[str, int]:
+        from app.services.news.filters import WechatMarketingFilter
+        from app.services.news.sources.wechat2rss_batch2 import (
+            Wechat2RssBatch2Crawler,
+        )
+
+        async def _go():
+            crawler = Wechat2RssBatch2Crawler(batch_key)
+            return await crawler.fetch_recent()
+
+        try:
+            articles = _run_async(_go())
+        except Exception as exc:
+            logger.exception("wechat2rss batch2 %s crawl failed: %s", batch_key, exc)
+            return {
+                "fetched": 0,
+                "written": 0,
+                "skipped": True,
+                "skip_reason": f"crawl_error: {exc}",
+            }
+
+        if not articles:
+            return {"fetched": 0, "written": 0, "skipped": True, "skip_reason": "no_articles"}
+
+        try:
+            marketing_filter = WechatMarketingFilter()
+        except Exception as exc:  # pragma: no cover - defensive
+            logger.warning("wechat marketing filter init failed, passing through: %s", exc)
+            marketing_filter = None
+
+        filtered, rejected = _apply_marketing_filter(articles, marketing_filter)
+        written = _write_to_db(filtered)
+        return {
+            "fetched": len(articles),
+            "written": written,
+            "rejected_marketing": rejected,
+        }
+
+    _run.__name__ = f"run_wechat2b_{batch_key}_crawl"
+    return _run
+
+
+WECHAT2B_BATCH_JOBS: list[tuple[str, str, str]] = [
+    # (job_id, label, batch_key) — all run every 60 minutes.
+    ("news_wechat2b_w2a_60m", "公众号二批 A 组", "w2a"),
+    ("news_wechat2b_w2b_60m", "公众号二批 B 组", "w2b"),
+    ("news_wechat2b_w2c_60m", "公众号二批 C 组", "w2c"),
+    ("news_wechat2b_w2d_60m", "公众号二批 D 组", "w2d"),
+    ("news_wechat2b_w2e_60m", "公众号二批 E 组", "w2e"),
+    ("news_wechat2b_w2f_60m", "公众号二批 F 组", "w2f"),
+    ("news_wechat2b_w2g_60m", "公众号二批 G 组", "w2g"),
+    ("news_wechat2b_w2h_60m", "公众号二批 H 组", "w2h"),
+    ("news_wechat2b_w2i_60m", "公众号二批 I 组", "w2i"),
+    ("news_wechat2b_w2j_60m", "公众号二批 J 组", "w2j"),
+]
+for _job_id, _label, _batch in WECHAT2B_BATCH_JOBS:
+    globals()[f"run_wechat2b_{_batch}_crawl"] = _wechat2b_batch_job(_job_id, _batch)
+
+
 # ── Global multi-language RSS batches (added 2026-07-27) ──
+
 #
 # 125 live-verified feeds — Japanese / German / French / Korean /
 # Spanish publications, a second wave of English central-bank /
