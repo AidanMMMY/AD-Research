@@ -15,11 +15,56 @@
   gap: var(--space-4);
 }
 
+/* ── Headline KPI card internals ────────────────────────────────
+   The global .stat-card__title is tuned for short Latin labels
+   (uppercase + 0.12em tracking). Macro cards carry Chinese names,
+   an inline period and sometimes a freshness badge, so they get a
+   two-row header: name row (single line, truncates) + period row.
+   This keeps every card's value on the same baseline. */
+
+.macro__headline-grid .stat-card__title {
+  letter-spacing: normal;
+  text-transform: none;
+  line-height: 1.35;
+  margin-bottom: var(--space-2);
+}
+
+.macro__kpi-title {
+  display: block;
+  min-width: 0;
+}
+
+.macro__kpi-name-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1-5);
+  min-width: 0;
+}
+
+.macro__kpi-name {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+/* HelpPopover renders an inline-flex trigger (name + info icon);
+   clip instead of wrapping when space runs out. */
+.macro__kpi-name .help-popover__trigger {
+  max-width: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
 .macro__kpi-period {
-  margin-left: var(--space-1-5);
-  font-size: var(--text-small-size);
+  display: block;
+  margin-top: 2px;
+  /* same size as the name but lighter color/weight -> clear hierarchy */
+  font-size: var(--text-label-size);
   font-weight: 400;
+  font-family: var(--font-mono);
+  letter-spacing: 0;
   color: var(--text-tertiary);
+  white-space: nowrap;
 }
 
 /* ── Freshness badge (data delay indicator, inline in the card title) ── */
@@ -28,7 +73,7 @@
   display: inline-flex;
   align-items: center;
   gap: var(--space-1);
-  margin-left: var(--space-1-5);
+  flex-shrink: 0;
   padding: 1px 6px;
   border-radius: 9999px;
   background: var(--color-warning-hover-dim);

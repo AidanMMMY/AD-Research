@@ -412,20 +412,28 @@ export default function Macro() {
                 key={item.code}
                 title={
                   <span className="macro__kpi-title">
-                    {MACRO_TERM_KEY_MAP[item.code] ? (
-                      <HelpPopover termKey={MACRO_TERM_KEY_MAP[item.code]} mode={mode}>{item.name_zh}</HelpPopover>
-                    ) : (
-                      item.name_zh
-                    )}
+                    {/* Row 1: indicator name (+ optional freshness badge).
+                        Row 2: latest period on its own line so it never
+                        breaks mid-string and values stay aligned across
+                        cards regardless of name length. */}
+                    <span className="macro__kpi-name-row">
+                      <span className="macro__kpi-name">
+                        {MACRO_TERM_KEY_MAP[item.code] ? (
+                          <HelpPopover termKey={MACRO_TERM_KEY_MAP[item.code]} mode={mode}>{item.name_zh}</HelpPopover>
+                        ) : (
+                          item.name_zh
+                        )}
+                      </span>
+                      {hint && (
+                        <Tooltip title={hint}>
+                          <span className="macro__freshness-badge" aria-label={hint}>
+                            <ExclamationCircleOutlined className="macro__freshness-badge__icon" />
+                            <span className="macro__freshness-badge__label">数据延迟</span>
+                          </span>
+                        </Tooltip>
+                      )}
+                    </span>
                     {item.period && <span className="macro__kpi-period">{item.period}</span>}
-                    {hint && (
-                      <Tooltip title={hint}>
-                        <span className="macro__freshness-badge" aria-label={hint}>
-                          <ExclamationCircleOutlined className="macro__freshness-badge__icon" />
-                          <span className="macro__freshness-badge__label">数据延迟</span>
-                        </span>
-                      </Tooltip>
-                    )}
                   </span>
                 }
                 value={formatValue(item.value, item.unit)}
