@@ -445,6 +445,71 @@ for _job_id, _label, _batch in WECHAT2RSS_BATCH_JOBS:
     globals()[f"run_wechat2rss_{_batch}_crawl"] = _wechat2rss_batch_job(_job_id, _batch)
 
 
+# ── Independent non-WeChat batches (added 2026-07-28) ──
+#
+# 144 verified independent blogs / newsletters / podcasts (English +
+# Chinese) — no official media, no corporate PR. Table and selection
+# rule live in app/services/news/sources/independent_batch.py. Same
+# batching rationale as the wechat2rss mirror above (~11 feeds per
+# hourly job). Unlike the WeChat batches these jobs skip the LLM
+# marketing filter — the sources are curated editorial voices (same
+# precedent as INDEPENDENT_RSS_JOBS), and skipping keeps LLM cost flat.
+
+def _independent_batch_job(job_id: str, batch_key: str):
+    """Build a ``run_*`` function crawling one independent-source batch."""
+
+    @_record_etl(job_id)
+    def _run() -> dict[str, int]:
+        from app.services.news.sources.independent_batch import (
+            IndependentBatchCrawler,
+        )
+
+        async def _go():
+            crawler = IndependentBatchCrawler(batch_key)
+            return await crawler.fetch_recent()
+
+        try:
+            articles = _run_async(_go())
+        except Exception as exc:
+            logger.exception("independent batch %s crawl failed: %s", batch_key, exc)
+            return {
+                "fetched": 0,
+                "written": 0,
+                "skipped": True,
+                "skip_reason": f"crawl_error: {exc}",
+            }
+
+        if not articles:
+            return {"fetched": 0, "written": 0, "skipped": True, "skip_reason": "no_articles"}
+
+        written = _write_to_db(articles)
+        return {"fetched": len(articles), "written": written}
+
+    _run.__name__ = f"run_independent_{batch_key}_crawl"
+    return _run
+
+
+INDEPENDENT_BATCH_JOBS: list[tuple[str, str, str]] = [
+    # (job_id, label, batch_key) — all run every 60 minutes.
+    ("news_indie_a_60m", "独立源 A 组", "a"),
+    ("news_indie_b_60m", "独立源 B 组", "b"),
+    ("news_indie_c_60m", "独立源 C 组", "c"),
+    ("news_indie_d_60m", "独立源 D 组", "d"),
+    ("news_indie_e_60m", "独立源 E 组", "e"),
+    ("news_indie_f_60m", "独立源 F 组", "f"),
+    ("news_indie_g_60m", "独立源 G 组", "g"),
+    ("news_indie_h_60m", "独立源 H 组", "h"),
+    ("news_indie_i_60m", "独立源 I 组", "i"),
+    ("news_indie_j_60m", "独立源 J 组", "j"),
+    ("news_indie_k_60m", "独立源 K 组", "k"),
+    ("news_indie_l_60m", "独立源 L 组", "l"),
+    ("news_indie_m_60m", "独立源 M 组", "m"),
+    ("news_indie_n_60m", "独立源 N 组", "n"),
+]
+for _job_id, _label, _batch in INDEPENDENT_BATCH_JOBS:
+    globals()[f"run_independent_{_batch}_crawl"] = _independent_batch_job(_job_id, _batch)
+
+
 # ── New Chinese news sources (added 2026-07-18) ──
 
 @_record_etl("news_wallstreetcn_5m")

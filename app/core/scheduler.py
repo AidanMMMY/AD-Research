@@ -2066,6 +2066,21 @@ def init_scheduler():
                 max_instances=1,
                 coalesce=True,
             )
+
+        # Independent non-WeChat batches (2026-07-28) — blogs /
+        # newsletters / podcasts, generated in
+        # ``scheduler_jobs.INDEPENDENT_BATCH_JOBS``, all hourly.
+        for job_id, label, batch in _news_jobs.INDEPENDENT_BATCH_JOBS:
+            fn = getattr(_news_jobs, f"run_independent_{batch}_crawl")
+            scheduler.add_job(
+                fn,
+                trigger=IntervalTrigger(minutes=60),
+                id=job_id,
+                name=label,
+                replace_existing=True,
+                max_instances=1,
+                coalesce=True,
+            )
     except ImportError:
         pass
 

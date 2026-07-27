@@ -596,6 +596,7 @@ _WORKER_KEYWORDS: tuple[str, ...] = (
     "wechat_maobidao",
     "wechat_sixianggangyin",
     "wechat2rss",
+    "indie_",
 )
 
 _WORKER_META: dict[str, dict[str, str]] = {
@@ -648,6 +649,21 @@ _WORKER_META: dict[str, dict[str, str]] = {
     "news_wechat2rss_g_60m": {"label": "公众号镜像 G 组 (11 号)", "schedule": "每 60 分钟"},
     "news_wechat2rss_h_60m": {"label": "公众号镜像 H 组 (11 号)", "schedule": "每 60 分钟"},
     "news_wechat2rss_i_60m": {"label": "公众号镜像 I 组 (2 号)", "schedule": "每 60 分钟"},
+    # Independent non-WeChat batches (2026-07-28, 144 sources)
+    "news_indie_a_60m": {"label": "独立源 A 组 (11 源)", "schedule": "每 60 分钟"},
+    "news_indie_b_60m": {"label": "独立源 B 组 (11 源)", "schedule": "每 60 分钟"},
+    "news_indie_c_60m": {"label": "独立源 C 组 (11 源)", "schedule": "每 60 分钟"},
+    "news_indie_d_60m": {"label": "独立源 D 组 (11 源)", "schedule": "每 60 分钟"},
+    "news_indie_e_60m": {"label": "独立源 E 组 (11 源)", "schedule": "每 60 分钟"},
+    "news_indie_f_60m": {"label": "独立源 F 组 (11 源)", "schedule": "每 60 分钟"},
+    "news_indie_g_60m": {"label": "独立源 G 组 (11 源)", "schedule": "每 60 分钟"},
+    "news_indie_h_60m": {"label": "独立源 H 组 (11 源)", "schedule": "每 60 分钟"},
+    "news_indie_i_60m": {"label": "独立源 I 组 (11 源)", "schedule": "每 60 分钟"},
+    "news_indie_j_60m": {"label": "独立源 J 组 (11 源)", "schedule": "每 60 分钟"},
+    "news_indie_k_60m": {"label": "独立源 K 组 (11 源)", "schedule": "每 60 分钟"},
+    "news_indie_l_60m": {"label": "独立源 L 组 (11 源)", "schedule": "每 60 分钟"},
+    "news_indie_m_60m": {"label": "独立源 M 组 (11 源)", "schedule": "每 60 分钟"},
+    "news_indie_n_60m": {"label": "独立源 N 组 (1 源)", "schedule": "每 60 分钟"},
 }
 
 # Map a worker job id to the ``news_article.source`` it writes.  Only

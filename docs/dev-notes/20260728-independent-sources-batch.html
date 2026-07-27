@@ -1,0 +1,199 @@
+<!DOCTYPE html><html lang="zh"><head><meta charset="utf-8">
+<title>2026-07-28 独立资讯源扩充第二波</title>
+<style>body{font-family:-apple-system,"PingFang SC",sans-serif;max-width:1100px;margin:2em auto;padding:0 1em;line-height:1.7}
+table{border-collapse:collapse;font-size:13px}th{background:#f0f0f0}td,th{padding:4px 8px}
+h1,h2{border-bottom:1px solid #ddd;padding-bottom:.2em}blockquote{color:#555;border-left:4px solid #ccc;margin-left:0;padding-left:1em}</style>
+</head><body>
+<h1>2026-07-28 资讯源扩充第二波：144 个独立非公众号源</h1>
+<blockquote>背景：继 2026-07-27 公众号 100 源（90 wechat2rss 批量 + 8 wewe-rss + 2 单 feed）与 13 个英文独立源之后，再扩充 <strong>144 个实测存活</strong>的独立源，全部为非官方消息渠道（无官媒/政府/企业 PR，个人或小型独立团队），覆盖财经/商业/科技/地缘/人文。</blockquote>
+<p>&gt;</p>
+<blockquote>选源标准与第一波一致：独立发言精神优先；官方媒体旗下 newsletter 不算独立（剔除《商业就是这样》=第一财经）；企业出品播客（知行小酒馆/无人知晓=有知有行、八分/没理想=看理想、跳岛=中信、谐星聊天会=单立人）一律不收。</blockquote>
+<h2>1. 渠道构成</h2>
+<table border="1" cellspacing="0" cellpadding="4">
+<tr><th>渠道</th><th>数量</th><th>说明</th></tr>
+<tr><td>英文独立博客/Newsletter</td><td>42</td><td>macro/markets/tech/地缘/认知；Substack 自定义域名 + 自托管博客</td></tr>
+<tr><td>英文独立播客</td><td>5</td><td>投资/商业类公开 RSS（libsyn/megaphone/art19）</td></tr>
+<tr><td>中文知名独立博客</td><td>7</td><td>阮一峰/月光/张鑫旭/唐巧/云风/虹线/王登科</td></tr>
+<tr><td>中文独立播客</td><td>32</td><td>小宇宙 xyzfm CDN / Fireside / 喜马拉雅 / 荔枝 / 自托管</td></tr>
+<tr><td>中文独立博客（chinese-independent-blogs 列表精选）</td><td>58</td><td>按 tag 精选：创业/产品/投资/读书/认知/人文/生活方式，剔除纯技术博客</td></tr>
+<tr><td><strong>合计</strong></td><td><strong>144</strong></td><td>全部实测存活（HTTP 200 + 有效 RSS/Atom + items&gt;0 + 最新条目 30 天内）</td></tr>
+</table>
+<h2>2. 渠道探测结论（为什么不含这些渠道）</h2>
+<ul>
+<li><strong>RSSHub 公共实例（rsshub.app）</strong>：本地与生产网络均连接超时（被墙/限流），放弃该渠道；知乎专栏/微博/B站 UP 主因此未纳入。</li>
+<li><strong>`*.substack.com` 裸域名</strong>：全部连接超时（ACX、Krugman、Tooze、Kyla Scanlon、Marginal Revolution 式的 substack 域名均不可达）——所以第一批 13 源全部用自定义域名，本批同样只保留自定义域名 Substack（Slow Boring / BIG / Not Boring / The Defiant 等）。</li>
+<li><strong>blogspot / medium / typepad</strong>：连接超时，对应源（Grumpy Economist、Mainly Macro、Arthur Hayes 等）放弃。</li>
+<li><strong>wechat2rss 剩余 ~300 号</strong>：绝大多数为安全研究类，偏离平台主题；本次已凑够 144，未回补。</li>
+<li><strong>Cloudflare 403 挡掉</strong>（The Racket、The Rebooting、The Irrelevant Investor、The Finance Buff 等）：UA 伪装后仍 403，放弃。</li>
+<li><strong>实测不新鲜/已停更</strong>（&gt;30 天无更新）：Fed Guy、Newfound Research、JL Collins、The Diff、老talk消息、电丸科技、商业WHY酱、泡腾VC、迟早更新、一天世界 等，未收录。</li>
+</ul>
+<h2>3. 144 源清单（含实测存活证据，实测时间 2026-07-27 23:5x 本地）</h2>
+<table border="1" cellspacing="0" cellpadding="4">
+<tr><th>#</th><th>slug</th><th>名称</th><th>语言</th><th>feed URL</th><th>items</th><th>最新条目</th></tr>
+<tr><td>1</td><td>collabfund</td><td>Collaborative Fund (Morgan Housel)</td><td>en</td><td>https://collabfund.com/feed</td><td>14</td><td>2026-07-27</td></tr>
+<tr><td>2</td><td>slowboring</td><td>Slow Boring</td><td>en</td><td>https://www.slowboring.com/feed</td><td>20</td><td>2026-07-27</td></tr>
+<tr><td>3</td><td>stratechery</td><td>Stratechery</td><td>en</td><td>https://stratechery.com/feed</td><td>10</td><td>2026-07-27</td></tr>
+<tr><td>4</td><td>notboring</td><td>Not Boring</td><td>en</td><td>https://www.notboring.co/feed</td><td>20</td><td>2026-07-25</td></tr>
+<tr><td>5</td><td>generalist</td><td>The Generalist</td><td>en</td><td>https://www.generalist.com/feed</td><td>20</td><td>2026-07-10</td></tr>
+<tr><td>6</td><td>platformer</td><td>Platformer</td><td>en</td><td>https://www.platformer.news/rss/</td><td>15</td><td>2026-07-24</td></tr>
+<tr><td>7</td><td>bigtechnology</td><td>Big Technology</td><td>en</td><td>https://www.bigtechnology.com/feed</td><td>20</td><td>2026-07-20</td></tr>
+<tr><td>8</td><td>oneusefulthing</td><td>One Useful Thing</td><td>en</td><td>https://www.oneusefulthing.org/feed</td><td>20</td><td>2026-07-23</td></tr>
+<tr><td>9</td><td>importai</td><td>Import AI</td><td>en</td><td>https://jack-clark.net/feed/</td><td>10</td><td>2026-07-27</td></tr>
+<tr><td>10</td><td>aisnakeoil</td><td>AI Snake Oil</td><td>en</td><td>https://www.normaltech.ai/feed</td><td>20</td><td>2026-07-13</td></tr>
+<tr><td>11</td><td>bigstoller</td><td>BIG by Matt Stoller</td><td>en</td><td>https://www.thebignewsletter.com/feed</td><td>20</td><td>2026-07-27</td></tr>
+<tr><td>12</td><td>lynalden</td><td>Lyn Alden</td><td>en</td><td>https://www.lynalden.com/feed/</td><td>10</td><td>2026-07-15</td></tr>
+<tr><td>13</td><td>alphaarchitect</td><td>Alpha Architect</td><td>en</td><td>https://alphaarchitect.com/feed/</td><td>5</td><td>2026-07-21</td></tr>
+<tr><td>14</td><td>priceactionlab</td><td>Price Action Lab</td><td>en</td><td>https://www.priceactionlab.com/Blog/feed</td><td>20</td><td>2026-07-26</td></tr>
+<tr><td>15</td><td>abnormalreturns</td><td>Abnormal Returns</td><td>en</td><td>https://abnormalreturns.com/feed/</td><td>14</td><td>2026-07-27</td></tr>
+<tr><td>16</td><td>financialsamurai</td><td>Financial Samurai</td><td>en</td><td>https://www.financialsamurai.com/feed/</td><td>7</td><td>2026-07-27</td></tr>
+<tr><td>17</td><td>earlyretirementnow</td><td>Early Retirement Now</td><td>en</td><td>https://earlyretirementnow.com/feed/</td><td>10</td><td>2026-07-27</td></tr>
+<tr><td>18</td><td>farnamstreet</td><td>Farnam Street</td><td>en</td><td>https://fs.blog/feed/</td><td>20</td><td>2026-07-23</td></tr>
+<tr><td>19</td><td>intrinsicperspective</td><td>The Intrinsic Perspective</td><td>en</td><td>https://www.theintrinsicperspective.com/feed</td><td>20</td><td>2026-07-24</td></tr>
+<tr><td>20</td><td>asteriskmag</td><td>Asterisk Magazine</td><td>en</td><td>https://asteriskmag.com/feed</td><td>20</td><td>2026-07-21</td></tr>
+<tr><td>21</td><td>interconnected</td><td>Interconnected (Matt Webb)</td><td>en</td><td>https://interconnected.org/home/feed</td><td>8</td><td>2026-07-24</td></tr>
+<tr><td>22</td><td>simonwillison</td><td>Simon Willison</td><td>en</td><td>https://simonwillison.net/atom/everything/</td><td>30</td><td>2026-07-26</td></tr>
+<tr><td>23</td><td>juliaevans</td><td>Julia Evans</td><td>en</td><td>https://jvns.ca/atom.xml</td><td>20</td><td>2026-07-21</td></tr>
+<tr><td>24</td><td>danluu</td><td>Dan Luu</td><td>en</td><td>https://danluu.com/atom.xml</td><td>128</td><td>2026-07-03</td></tr>
+<tr><td>25</td><td>thedefiant</td><td>The Defiant</td><td>en</td><td>https://thedefiant.io/feed</td><td>100</td><td>2026-07-27</td></tr>
+<tr><td>26</td><td>popularinfo</td><td>Popular Information</td><td>en</td><td>https://popular.info/feed</td><td>20</td><td>2026-07-27</td></tr>
+<tr><td>27</td><td>investmentmoats</td><td>Investment Moats</td><td>en</td><td>https://investmentmoats.com/feed</td><td>10</td><td>2026-07-26</td></tr>
+<tr><td>28</td><td>financialhorse</td><td>Financial Horse</td><td>en</td><td>https://financialhorse.com/feed/</td><td>15</td><td>2026-07-26</td></tr>
+<tr><td>29</td><td>madfientist</td><td>Mad Fientist</td><td>en</td><td>https://www.madfientist.com/feed/</td><td>20</td><td>2026-06-29</td></tr>
+<tr><td>30</td><td>physicianonfire</td><td>Physician on FIRE</td><td>en</td><td>https://www.physicianonfire.com/feed/</td><td>20</td><td>2026-07-26</td></tr>
+<tr><td>31</td><td>whitecoatinvestor</td><td>The White Coat Investor</td><td>en</td><td>https://www.whitecoatinvestor.com/feed/</td><td>7</td><td>2026-07-27</td></tr>
+<tr><td>32</td><td>obliviousinvestor</td><td>Oblivious Investor</td><td>en</td><td>https://obliviousinvestor.com/feed/</td><td>10</td><td>2026-07-27</td></tr>
+<tr><td>33</td><td>retirementmanifesto</td><td>The Retirement Manifesto</td><td>en</td><td>https://www.theretirementmanifesto.com/feed/</td><td>10</td><td>2026-07-21</td></tr>
+<tr><td>34</td><td>millennialrevolution</td><td>Millennial Revolution</td><td>en</td><td>https://www.millennial-revolution.com/feed/</td><td>1</td><td>2026-07-21</td></tr>
+<tr><td>35</td><td>coachcarson</td><td>Coach Carson</td><td>en</td><td>https://www.coachcarson.com/feed/</td><td>10</td><td>2026-07-27</td></tr>
+<tr><td>36</td><td>heisenbergreport</td><td>Heisenberg Report</td><td>en</td><td>https://heisenbergreport.com/feed/</td><td>10</td><td>2026-07-27</td></tr>
+<tr><td>37</td><td>constructionphysics</td><td>Construction Physics</td><td>en</td><td>https://www.construction-physics.com/feed</td><td>20</td><td>2026-07-25</td></tr>
+<tr><td>38</td><td>nintil</td><td>Nintil</td><td>en</td><td>https://nintil.com/rss.xml</td><td>30</td><td>2026-07-11</td></tr>
+<tr><td>39</td><td>teachablemoment</td><td>A Teachable Moment</td><td>en</td><td>https://tonyisola.com/feed/</td><td>10</td><td>2026-07-25</td></tr>
+<tr><td>40</td><td>bellecurve</td><td>The Belle Curve</td><td>en</td><td>https://blairbellecurve.com/feed/</td><td>20</td><td>2026-07-24</td></tr>
+<tr><td>41</td><td>monevator</td><td>Monevator</td><td>en</td><td>https://monevator.com/feed/</td><td>12</td><td>2026-07-25</td></tr>
+<tr><td>42</td><td>firevlondon</td><td>FIRE v London</td><td>en</td><td>https://firevlondon.com/feed/</td><td>5</td><td>2026-07-19</td></tr>
+<tr><td>43</td><td>rationalreminder</td><td>Rational Reminder</td><td>en</td><td>https://rationalreminder.libsyn.com/rss</td><td>441</td><td>2026-07-23</td></tr>
+<tr><td>44</td><td>investlikethebest</td><td>Invest Like the Best</td><td>en</td><td>https://feeds.megaphone.fm/investlikethebest</td><td>589</td><td>2026-07-21</td></tr>
+<tr><td>45</td><td>chatwithtraders</td><td>Chat With Traders</td><td>en</td><td>https://chatwithtraders.libsyn.com/rss</td><td>332</td><td>2026-07-22</td></tr>
+<tr><td>46</td><td>lexfridman</td><td>Lex Fridman Podcast</td><td>en</td><td>https://lexfridman.com/feed/podcast/</td><td>499</td><td>2026-06-30</td></tr>
+<tr><td>47</td><td>timferriss</td><td>The Tim Ferriss Show</td><td>en</td><td>https://rss.art19.com/tim-ferriss-show</td><td>880</td><td>2026-07-22</td></tr>
+<tr><td>48</td><td>ruanyifeng</td><td>阮一峰的网络日志</td><td>zh</td><td>https://www.ruanyifeng.com/blog/atom.xml</td><td>3</td><td>2026-07-27</td></tr>
+<tr><td>49</td><td>williamlong</td><td>月光博客</td><td>zh</td><td>https://www.williamlong.info/rss.xml</td><td>10</td><td>2026-07-20</td></tr>
+<tr><td>50</td><td>zhangxinxu</td><td>张鑫旭-鑫空间</td><td>zh</td><td>https://www.zhangxinxu.com/wordpress/feed/</td><td>5</td><td>2026-07-23</td></tr>
+<tr><td>51</td><td>devtang</td><td>唐巧的博客</td><td>zh</td><td>https://blog.devtang.com/atom.xml</td><td>20</td><td>2026-07-27</td></tr>
+<tr><td>52</td><td>codingnow</td><td>云风的 BLOG</td><td>zh</td><td>https://blog.codingnow.com/atom.xml</td><td>15</td><td>2026-07-24</td></tr>
+<tr><td>53</td><td>hongxian</td><td>虹线</td><td>zh</td><td>https://1q43.blog/feed</td><td>10</td><td>2026-07-17</td></tr>
+<tr><td>54</td><td>greatdk</td><td>王登科-DK博客</td><td>zh</td><td>https://greatdk.com/feed</td><td>10</td><td>2026-07-02</td></tr>
+<tr><td>55</td><td>mianji</td><td>面基</td><td>zh</td><td>https://feed.xyzfm.space/6hpdgggtxpxb</td><td>164</td><td>2026-07-27</td></tr>
+<tr><td>56</td><td>qizhulou</td><td>起朱楼宴宾客</td><td>zh</td><td>https://feed.xyzfm.space/ahng8d9qlywl</td><td>171</td><td>2026-07-21</td></tr>
+<tr><td>57</td><td>bannatie</td><td>半拿铁</td><td>商业沉浮录</td><td>zh</td><td>https://proxy.wavpub.com/caffebreve.xml</td><td>226</td><td>2026-07-22</td></tr>
+<tr><td>58</td><td>sanwuhuan</td><td>三五环</td><td>zh</td><td>https://proxy.wavpub.com/35huan.xml</td><td>224</td><td>2026-07-21</td></tr>
+<tr><td>59</td><td>luanfanshu</td><td>乱翻书</td><td>zh</td><td>https://feed.xyzfm.space/yxuruh3f9mc4</td><td>277</td><td>2026-07-09</td></tr>
+<tr><td>60</td><td>zhangxiaojun</td><td>张小珺Jùn｜商业访谈录</td><td>zh</td><td>https://feed.xyzfm.space/dk4yh3pkpjp3</td><td>150</td><td>2026-07-22</td></tr>
+<tr><td>61</td><td>taoban</td><td>逃班｜Talking Band</td><td>zh</td><td>https://feed.xyzfm.space/yeuabxxl7ylm</td><td>162</td><td>2026-07-12</td></tr>
+<tr><td>62</td><td>sv101</td><td>硅谷101</td><td>zh</td><td>https://feeds.fireside.fm/sv101/rss</td><td>254</td><td>2026-07-24</td></tr>
+<tr><td>63</td><td>kejizaozhidao</td><td>What&#x27;s Next｜科技早知道</td><td>zh</td><td>https://feeds.fireside.fm/guiguzaozhidao/rss</td><td>424</td><td>2026-07-27</td></tr>
+<tr><td>64</td><td>shengdongjixi</td><td>声东击西</td><td>zh</td><td>https://feeds.fireside.fm/shengdongjixi/rss</td><td>424</td><td>2026-07-16</td></tr>
+<tr><td>65</td><td>beiwanglu</td><td>贝望录</td><td>zh</td><td>http://www.ximalaya.com/album/42715423.xml</td><td>266</td><td>2026-07-22</td></tr>
+<tr><td>66</td><td>storyfm</td><td>故事FM</td><td>zh</td><td>https://feeds.storyfm.cn/storyfm.xml</td><td>980</td><td>2026-07-24</td></tr>
+<tr><td>67</td><td>huzuohuyou</td><td>忽左忽右</td><td>zh</td><td>https://feed.xyzfm.space/cv4bkgpuglwp</td><td>625</td><td>2026-07-24</td></tr>
+<tr><td>68</td><td>wenhuayouxian</td><td>文化有限</td><td>zh</td><td>https://s1.proxy.wavpub.com/weknownothing.xml</td><td>351</td><td>2026-07-20</td></tr>
+<tr><td>69</td><td>daneimitan</td><td>大内密谈</td><td>zh</td><td>http://rss.lizhi.fm/rss/14275.xml</td><td>1336</td><td>2026-07-26</td></tr>
+<tr><td>70</td><td>ritangongyuan</td><td>日谈公园</td><td>zh</td><td>http://www.ximalaya.com/album/5574153.xml</td><td>843</td><td>2026-07-26</td></tr>
+<tr><td>71</td><td>genyuzhoujiehun</td><td>跟宇宙结婚</td><td>zh</td><td>http://rss.lizhi.fm/rss/1307862.xml</td><td>526</td><td>2026-07-20</td></tr>
+<tr><td>72</td><td>mihuanchishu</td><td>蜜獾吃书</td><td>zh</td><td>https://www.ximalaya.com/album/64689453.xml</td><td>206</td><td>2026-07-11</td></tr>
+<tr><td>73</td><td>penti</td><td>喷嚏</td><td>zh</td><td>https://feed.xyzfm.space/9unxvjbetgyu</td><td>109</td><td>2026-07-25</td></tr>
+<tr><td>74</td><td>dongqiangxidiao</td><td>东腔西调</td><td>zh</td><td>https://www.ximalaya.com/album/41153937.xml</td><td>321</td><td>2026-07-24</td></tr>
+<tr><td>75</td><td>wuliaozhai</td><td>无聊斋</td><td>zh</td><td>https://feed.xyzfm.space/njwyhpcjqn9t</td><td>601</td><td>2026-07-26</td></tr>
+<tr><td>76</td><td>buheshiyi</td><td>不合时宜</td><td>zh</td><td>https://feed.xyzfm.space/ww7cqnybekty</td><td>284</td><td>2026-07-24</td></tr>
+<tr><td>77</td><td>waidazhengzhao</td><td>洪晃播客｜歪打正着</td><td>zh</td><td>https://feed.xyzfm.space/tewruhycd3hp</td><td>177</td><td>2026-07-22</td></tr>
+<tr><td>78</td><td>zonghengsihai</td><td>纵横四海</td><td>zh</td><td>https://www.ximalaya.com/album/67531569.xml</td><td>86</td><td>2026-07-25</td></tr>
+<tr><td>79</td><td>laidoulai</td><td>来都来了</td><td>zh</td><td>http://www.ximalaya.com/album/31677988.xml</td><td>284</td><td>2026-07-25</td></tr>
+<tr><td>80</td><td>heshiqitan</td><td>核市奇谭</td><td>zh</td><td>https://alioss.gcores.com/feeds/heshi.xml</td><td>169</td><td>2026-07-17</td></tr>
+<tr><td>81</td><td>shenjiao</td><td>深焦DeepFocus Radio</td><td>zh</td><td>https://www.ximalaya.com/album/37990930.xml</td><td>320</td><td>2026-07-08</td></tr>
+<tr><td>82</td><td>tianzhen</td><td>天真不天真</td><td>zh</td><td>https://feed.xyzfm.space/mcklbwxjdvfu</td><td>55</td><td>2026-07-27</td></tr>
+<tr><td>83</td><td>zitanzichang</td><td>字谈字畅</td><td>zh</td><td>https://www.thetype.com/typechat/feed/</td><td>285</td><td>2026-07-14</td></tr>
+<tr><td>84</td><td>bianjiaoliao</td><td>边角聊</td><td>zh</td><td>https://feed.xyzfm.space/ug6camnfa6bu</td><td>219</td><td>2026-07-22</td></tr>
+<tr><td>85</td><td>jinjinledao</td><td>津津乐道</td><td>zh</td><td>http://www.ximalaya.com/album/3785430.xml</td><td>601</td><td>2026-07-21</td></tr>
+<tr><td>86</td><td>zhankaijiangjiang</td><td>展开讲讲</td><td>zh</td><td>http://www.ximalaya.com/album/24672021.xml</td><td>164</td><td>2026-07-10</td></tr>
+<tr><td>87</td><td>forecho</td><td>forecho 的独立博客</td><td>zh</td><td>https://blog.forecho.com/atom.xml</td><td>20</td><td>2026-07-24</td></tr>
+<tr><td>88</td><td>debuginn</td><td>Debug客栈</td><td>zh</td><td>https://blog.debuginn.com/index.xml</td><td>201</td><td>2026-07-13</td></tr>
+<tr><td>89</td><td>susheng</td><td>素生</td><td>zh</td><td>https://z.arlmy.me/atom.xml</td><td>200</td><td>2026-07-26</td></tr>
+<tr><td>90</td><td>tumutanzi</td><td>土木坛子</td><td>zh</td><td>https://tumutanzi.com/feed</td><td>5</td><td>2026-07-19</td></tr>
+<tr><td>91</td><td>life61</td><td>61&#x27;s life</td><td>zh</td><td>https://61.life/feed.xml</td><td>50</td><td>2026-07-03</td></tr>
+<tr><td>92</td><td>lenciel</td><td>Lenciel</td><td>zh</td><td>https://lenciel.com/feed.xml</td><td>10</td><td>2026-07-08</td></tr>
+<tr><td>93</td><td>numb</td><td>双绞麻痹</td><td>zh</td><td>https://numb.tech/atom.xml</td><td>20</td><td>2026-07-16</td></tr>
+<tr><td>94</td><td>maxos</td><td>maxOS</td><td>zh</td><td>https://maxoxo.me/rss/</td><td>15</td><td>2026-06-28</td></tr>
+<tr><td>95</td><td>ioerr</td><td>读写错误</td><td>zh</td><td>https://ioerr.github.io/index.xml</td><td>12</td><td>2026-07-20</td></tr>
+<tr><td>96</td><td>gtdstudy</td><td>学无止境@一点一滴</td><td>zh</td><td>http://www.gtdstudy.com/index.xml</td><td>4</td><td>2026-07-11</td></tr>
+<tr><td>97</td><td>skyue</td><td>SKYue&#x27;s Home</td><td>zh</td><td>https://www.skyue.com/feed/</td><td>10</td><td>2026-07-12</td></tr>
+<tr><td>98</td><td>yinji</td><td>印记</td><td>zh</td><td>https://yinji.org/feed</td><td>10</td><td>2026-07-03</td></tr>
+<tr><td>99</td><td>conge</td><td>conge</td><td>zh</td><td>https://conge.livingwithfcs.org/feed.xml</td><td>10</td><td>2026-07-21</td></tr>
+<tr><td>100</td><td>leonhe</td><td>远飞闲记</td><td>zh</td><td>https://leonhe.cn/index.xml</td><td>188</td><td>2026-07-09</td></tr>
+<tr><td>101</td><td>owenyoung</td><td>Owen的博客</td><td>zh</td><td>https://www.owenyoung.com/feed</td><td>50</td><td>2026-07-27</td></tr>
+<tr><td>102</td><td>lhcy</td><td>林海草原</td><td>zh</td><td>https://lhcy.org/feed</td><td>10</td><td>2026-07-07</td></tr>
+<tr><td>103</td><td>kqh</td><td>赫赫文王</td><td>zh</td><td>https://kqh.me/index.xml</td><td>10</td><td>2026-06-30</td></tr>
+<tr><td>104</td><td>macin</td><td>Macin</td><td>zh</td><td>https://macin.org/atom.xml</td><td>20</td><td>2026-07-25</td></tr>
+<tr><td>105</td><td>jfsay</td><td>静风说</td><td>zh</td><td>https://www.jfsay.com/feed</td><td>10</td><td>2026-07-22</td></tr>
+<tr><td>106</td><td>xianrenlife</td><td>闲人Life</td><td>zh</td><td>https://www.xianrenlife.com/feeds/posts/default</td><td>25</td><td>2026-07-11</td></tr>
+<tr><td>107</td><td>dongjunke</td><td>东评西就</td><td>zh</td><td>https://dongjunke.cn/atom.xml</td><td>20</td><td>2026-07-23</td></tr>
+<tr><td>108</td><td>demochen</td><td>特立独行的异类</td><td>zh</td><td>https://demochen.com/atom.xml</td><td>10</td><td>2026-07-22</td></tr>
+<tr><td>109</td><td>raymondhouch</td><td>雷蒙三十</td><td>zh</td><td>https://raymondhouch.com/feed/</td><td>10</td><td>2026-07-12</td></tr>
+<tr><td>110</td><td>chaoniulian</td><td>骑行超过牛</td><td>zh</td><td>https://www.chaoniulian.com/rss/</td><td>30</td><td>2026-07-26</td></tr>
+<tr><td>111</td><td>bluehe</td><td>云心怀鹤</td><td>zh</td><td>https://bluehe.cn/feed/</td><td>10</td><td>2026-07-04</td></tr>
+<tr><td>112</td><td>cosmopolite</td><td>Cosmos的博客</td><td>zh</td><td>https://cosmo-polite.com/feed/</td><td>10</td><td>2026-07-26</td></tr>
+<tr><td>113</td><td>sehnsucht</td><td>Sehnsucht</td><td>zh</td><td>https://blog.sehnsucht.top/rss.xml</td><td>102</td><td>2026-07-05</td></tr>
+<tr><td>114</td><td>kangaroogao</td><td>Maohang Gao&#x27;s Blog</td><td>zh</td><td>https://kangaroogao.com/atom.xml</td><td>20</td><td>2026-07-27</td></tr>
+<tr><td>115</td><td>jiangcl</td><td>蒙需</td><td>zh</td><td>https://jiangcl.com/feed</td><td>5</td><td>2026-07-27</td></tr>
+<tr><td>116</td><td>citydatum</td><td>橙树志</td><td>zh</td><td>https://citydatum.cn/feed</td><td>10</td><td>2026-07-27</td></tr>
+<tr><td>117</td><td>mingnify</td><td>明立非 Mingnify</td><td>zh</td><td>https://mingnify.com/zh/blog/atom.xml</td><td>20</td><td>2026-07-20</td></tr>
+<tr><td>118</td><td>whyya</td><td>小陶持续精进</td><td>zh</td><td>https://whyya.xyz/rss.xml</td><td>97</td><td>2026-07-16</td></tr>
+<tr><td>119</td><td>jaketao</td><td>Jake Blog</td><td>zh</td><td>https://jaketao.com/feed/</td><td>20</td><td>2026-07-16</td></tr>
+<tr><td>120</td><td>giveanornot</td><td>資工小廢物 JN</td><td>zh</td><td>https://blog.giveanornot.com/index.xml</td><td>264</td><td>2026-07-22</td></tr>
+<tr><td>121</td><td>qingccl</td><td>QingCCL</td><td>zh</td><td>https://qingccl.com/rss.xml</td><td>7</td><td>2026-07-01</td></tr>
+<tr><td>122</td><td>fengcan</td><td>创见思考</td><td>zh</td><td>https://www.fengcan.net/feed/</td><td>55</td><td>2026-07-26</td></tr>
+<tr><td>123</td><td>leesaitool</td><td>Arthur&#x27;s Review</td><td>zh</td><td>https://blog.leesaitool.com/feed.xml</td><td>27</td><td>2026-07-21</td></tr>
+<tr><td>124</td><td>wjd</td><td>王佳冬中文博客</td><td>zh</td><td>http://wjd.name/feed/</td><td>10</td><td>2026-07-18</td></tr>
+<tr><td>125</td><td>baicai</td><td>白菜</td><td>zh</td><td>https://blog.baicai.me/index.xml</td><td>89</td><td>2026-07-01</td></tr>
+<tr><td>126</td><td>hutusi</td><td>胡涂说</td><td>zh</td><td>https://hutusi.com/feed.xml</td><td>20</td><td>2026-07-11</td></tr>
+<tr><td>127</td><td>kanchuan</td><td>陈看川博客</td><td>zh</td><td>https://kanchuan.com/feed.xml</td><td>20</td><td>2026-06-30</td></tr>
+<tr><td>128</td><td>wocai</td><td>kok的笔记本</td><td>zh</td><td>https://wocai.de/index.xml/</td><td>82</td><td>2026-07-14</td></tr>
+<tr><td>129</td><td>xiaket</td><td>年华转瞬</td><td>zh</td><td>https://blog.xiaket.org/feed.xml</td><td>10</td><td>2026-07-26</td></tr>
+<tr><td>130</td><td>wangjiezhe</td><td>如鱼饮水</td><td>zh</td><td>https://wangjiezhe.com/atom.xml</td><td>20</td><td>2026-07-21</td></tr>
+<tr><td>131</td><td>mecll</td><td>流浪天下</td><td>zh</td><td>https://mecll.com/feed</td><td>3</td><td>2026-07-15</td></tr>
+<tr><td>132</td><td>styunlen</td><td>九仞之行</td><td>zh</td><td>https://styunlen.cn/feed</td><td>10</td><td>2026-07-08</td></tr>
+<tr><td>133</td><td>sion</td><td>子虚栈</td><td>zh</td><td>https://blog.si-on.top/atom.xml</td><td>30</td><td>2026-07-21</td></tr>
+<tr><td>134</td><td>trumandu</td><td>TrumanDu 博客</td><td>zh</td><td>http://blog.trumandu.top/atom.xml</td><td>20</td><td>2026-07-01</td></tr>
+<tr><td>135</td><td>domon</td><td>Domon</td><td>zh</td><td>https://www.domon.cn/rss/</td><td>15</td><td>2026-07-04</td></tr>
+<tr><td>136</td><td>zhheo</td><td>张洪Heo</td><td>zh</td><td>https://blog.zhheo.com/rss.xml</td><td>20</td><td>2026-07-23</td></tr>
+<tr><td>137</td><td>taoshu</td><td>涛叔</td><td>zh</td><td>https://tao.zz.ac/feed.xml</td><td>9</td><td>2026-07-22</td></tr>
+<tr><td>138</td><td>chegva</td><td>安志合的学习博客</td><td>zh</td><td>https://chegva.com/feed/</td><td>5</td><td>2026-07-25</td></tr>
+<tr><td>139</td><td>tianheg</td><td>一大加贝</td><td>zh</td><td>https://tianheg.co/index.xml</td><td>20</td><td>2026-07-06</td></tr>
+<tr><td>140</td><td>ourai</td><td>欧雷流</td><td>zh</td><td>https://ourai.ws/atom.xml</td><td>10</td><td>2026-07-01</td></tr>
+<tr><td>141</td><td>cyrusyip</td><td>叶寻的博客</td><td>zh</td><td>https://cyrusyip.org/zh-cn/index.xml</td><td>161</td><td>2026-07-20</td></tr>
+<tr><td>142</td><td>lyunvy</td><td>Lyunvy&#x27;s Blog</td><td>zh</td><td>https://blog.lyunvy.top/atom.xml</td><td>54</td><td>2026-07-11</td></tr>
+<tr><td>143</td><td>cheshirex</td><td>柴郡猫</td><td>zh</td><td>https://www.cheshirex.com/feed</td><td>10</td><td>2026-07-17</td></tr>
+<tr><td>144</td><td>hehysh</td><td>十贰的小窝</td><td>zh</td><td>https://hehysh.github.io/atom.xml</td><td>20</td><td>2026-07-09</td></tr>
+</table>
+<h2>4. 改动文件</h2>
+<table border="1" cellspacing="0" cellpadding="4">
+<tr><th>文件</th><th>改动</th></tr>
+<tr><td>`app/services/news/sources/independent_batch.py`</td><td>新建：144 行源表 `INDEPENDENT_FEEDS`（slug/名称/URL/market/语言）+ `INDEPENDENT_BATCHES`（11 源/批 × 14 批 a–n）+ `IndependentBatchCrawler`（仿 Wechat2RssBatchCrawler，market/语言随行）</td></tr>
+<tr><td>`app/services/news/scheduler_jobs.py`</td><td>新增 `_independent_batch_job` 工厂 + `INDEPENDENT_BATCH_JOBS`（14 个 60m job，`news_indie_a_60m` … `news_indie_n_60m`）；<strong>不走 LLM 营销过滤</strong>（curated 编辑型源，与 13 个 INDEPENDENT_RSS_JOBS 同一先例，避免 LLM 成本随源数膨胀）</td></tr>
+<tr><td>`app/core/scheduler.py`</td><td>在 wechat2rss 注册循环后新增 INDEPENDENT_BATCH_JOBS 注册循环（60m 间隔）</td></tr>
+<tr><td>`app/api/v1/news.py`</td><td>`_WORKER_KEYWORDS` 加 `indie_`；`_WORKER_META` 加 14 条健康网格标签</td></tr>
+<tr><td>`app/tests/news/test_independent_batch.py`</td><td>新建：表完整性（唯一 slug/URL、格式、禁词、market/lang 白名单、http 白名单）、批次分区、≥100 源、与 wechat2rss 表无重叠、mock 抓取（per-feed source/market/lang 映射、失败隔离、未知批次）、调度接线（job 函数物化、批次覆盖、健康 meta、关键字）共 28 个用例</td></tr>
+</table>
+<h2>5. 测试结果</h2>
+<ul>
+<li>`python -m pytest app/tests/news/test_independent_batch.py` → <strong>28 passed</strong></li>
+<li>`python -m pytest app/tests/news/` → <strong>387 passed</strong>（无回归）</li>
+<li>端到端直播抽样：batch a（英文博客）10/11 源取到 20 篇（Stratechery 429 限流瞬态，失败隔离生效）；batch f（中文播客）11/11 源取到 33 篇，market=cn_a / language=zh 正确，标题为真实单集标题。</li>
+</ul>
+<h2>6. 部署建议</h2>
+<p>1. 无需迁移/新环境变量，常规 deploy 即可；APScheduler 启动后 14 个新 job 自动注册。</p>
+<p>2. 新 job 首次运行后，`/api/v1/news/health` 网格应出现&quot;独立源 A–N 组&quot;14 行；可用 `_WORKER_META` 标签核对。</p>
+<p>3. 播客源单 feed 最大 ~1MB（故事FM 980 条），`max_items_per_feed=10` 截断后内存无压力；每批 11 源 × 2s 礼貌延迟，单批约 40–60s，60m 间隔不叠加（max_instances=1 + coalesce）。</p>
+<p>4. 播客正文为 shownotes（含单集摘要），进入全文抓取管线时 enclosure 音频链接会被忽略，无需特殊处理。</p>
+<p>5. 若后续想接 RSSHub 渠道，需自建 RSSHub 实例（公共实例不可达），再按本批同构模式加表即可。</p>
+</body></html>
