@@ -798,6 +798,48 @@ class TestCrawlerParsing:
         # Title is HTML-stripped.
         assert "<em>" not in a.title
 
+    def test_cninfo_clamps_future_announcement_date(self):
+        import asyncio
+        from datetime import datetime, timedelta, timezone
+
+        # cninfo stamps evening filings at midnight Beijing of the NEXT
+        # disclosure day — a future instant at crawl time. The crawler
+        # must clamp published_at to "now" so the feed never shows
+        # future-dated articles.
+        future = datetime.now(tz=timezone.utc) + timedelta(days=1)
+        future_ms = int(future.timestamp() * 1000)
+        payload = {
+            "announcements": [
+                {
+                    "announcementId": 99901,
+                    "announcementTitle": "未来日期的半年度报告",
+                    "adjunctUrl": "/finalpage/2026-07-28/99901.PDF",
+                    "announcementTime": future_ms,
+                    "secCode": "600519",
+                    "secName": "贵州茅台",
+                },
+                {
+                    "announcementId": 99902,
+                    "announcementTitle": "正常历史公告",
+                    "adjunctUrl": "/finalpage/2024-07-04/99902.PDF",
+                    "announcementTime": 1720051200000,  # 2024-07-04T00:00:00Z (past)
+                    "secCode": "600519",
+                    "secName": "贵州茅台",
+                },
+            ]
+        }
+        before = datetime.now(tz=timezone.utc)
+        crawler = CninfoCrawler()
+        articles = asyncio.run(crawler.parse(payload))
+        after = datetime.now(tz=timezone.utc)
+        assert len(articles) == 2
+        future_art = next(a for a in articles if a.extra["announcement_id"] == "99901")
+        past_art = next(a for a in articles if a.extra["announcement_id"] == "99902")
+        # Future stamp is clamped into the [before, after] window.
+        assert before <= future_art.published_at <= after
+        # Past stamp is preserved as-is.
+        assert past_art.published_at == datetime(2024, 7, 4, tzinfo=timezone.utc)
+
     def test_sina_parses_roll_payload(self):
         import asyncio
         payload = {

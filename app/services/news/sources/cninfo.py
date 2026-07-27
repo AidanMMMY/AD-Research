@@ -161,7 +161,15 @@ class CninfoCrawler(BaseCrawler):
             # Cninfo's adjunctUrl is a path under static.cninfo.com.cn.
             url = f"http://static.cninfo.com.cn/{adj_url.lstrip('/')}"
             ann_time_ms = item.get("announcementTime")
-            published_at = _ms_to_dt(ann_time_ms) or datetime.now(tz=timezone.utc)
+            parsed_at = _ms_to_dt(ann_time_ms)
+            # 2026-07-27: cninfo's ``announcementTime`` is *date-granular* —
+            # filings submitted in the evening are stamped at midnight
+            # Beijing of the NEXT disclosure day (e.g. crawled 7-27 22:00
+            # Beijing, stamped 7-28 00:00 Beijing). Storing that raw value
+            # makes the news feed show future-dated articles. Clamp to the
+            # crawl time so ``published_at`` is never in the future.
+            now = datetime.now(tz=timezone.utc)
+            published_at = min(parsed_at, now) if parsed_at is not None else now
             stock_code = (item.get("secCode") or "").strip()
             stock_name = (item.get("secName") or "").strip()
             ann_id = item.get("announcementId")

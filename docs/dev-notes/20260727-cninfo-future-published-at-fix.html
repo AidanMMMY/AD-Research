@@ -1,0 +1,45 @@
+<!DOCTYPE html><html lang="zh"><head><meta charset="utf-8">
+<title>cninfo 未来时间修复 2026-07-27</title>
+<style>body{max-width:860px;margin:2rem auto;padding:0 1rem;font-family:-apple-system,"PingFang SC",sans-serif;line-height:1.7;color:#222}
+pre{background:#f5f5f5;padding:1rem;overflow:auto;border-radius:6px}code{background:#f0f0f0;padding:0 .3em;border-radius:3px}pre code{background:none;padding:0}
+table{border-collapse:collapse}td,th{border:1px solid #ccc;padding:.3em .8em}</style></head>
+<body><h1>cninfo 资讯出现"未来时间"（7-28 0点）根因与修复</h1>
+<p>日期：2026-07-27
+状态：代码已修（未 commit）；存量数据修复 SQL 待审批执行；需重新部署 backend</p>
+<h2>现象</h2>
+<p>资讯版块 cninfo 来源的上市公司报告显示"7月28日 0点"，而当天才 7 月 27 日——未来时间。</p>
+<h2>根因</h2>
+<p><strong>不是时区转换 bug，也不是 epoch 秒/毫秒单位错误。</strong></p>
+<p>巨潮 <code>announcementTime</code> 字段是<strong>日期粒度</strong>的：晚间挂网的公告会被盖成<strong>下一披露日北京时间 0 点</strong>的 epoch 毫秒。</p>
+<p>实测（2026-07-27 22:34 北京）POST <code>hisAnnouncement/query</code> 返回：</p>
+<pre><code>announcementTime = 1785168000000 = 2026-07-27T16:00:00Z = 2026-07-28 00:00:00 +08:00
+</code></pre>
+<p>爬虫 <code>app/services/news/sources/cninfo.py</code> 的 <code>_ms_to_dt()</code> 转换完全正确（16:00Z 正是北京午夜），前端 UTC→Asia/Shanghai 显示也正确——问题是<strong>源数据本身就是一个"未来时刻"</strong>，原样入库后资讯流出现未来日期。</p>
+<h2>修复</h2>
+<p><code>app/services/news/sources/cninfo.py</code> <code>_parse_payload()</code>（约 163-172 行）：
+未来时间戳钳制（clamp）到抓取时刻 <code>now</code>：</p>
+<pre><code class="language-python">parsed_at = _ms_to_dt(ann_time_ms)
+now = datetime.now(tz=timezone.utc)
+published_at = min(parsed_at, now) if parsed_at is not None else now
+</code></pre>
+<p>测试：<code>app/tests/news/test_news.py::test_cninfo_clamps_future_announcement_date</code>
+（未来 ms → 钳到 now 窗口内；历史 ms → 原样保留）。<code>app/tests/news/</code> 全套 359 passed。</p>
+<h2>存量数据（ECS 实测）</h2>
+<ul>
+<li><code>news_article</code> cninfo 共 192 行；其中 167 行是北京午夜戳（<code>16:00:00Z</code>）</li>
+<li><strong>14 行当前在未来</strong>（全部 = 2026-07-27 16:00:00Z）</li>
+<li><strong>57 行 <code>published_at &gt; fetched_at</code></strong>（物理上不可能：抓取时公告尚未"发布"）</li>
+</ul>
+<p>修复 SQL（<strong>未执行</strong>，待总管/用户审批）：</p>
+<pre><code class="language-sql">-- 推荐：把所有&quot;晚于抓取时间&quot;的 cninfo 行钳到抓取时刻（57 行）
+UPDATE news_article
+SET published_at = fetched_at
+WHERE source = 'cninfo' AND published_at &gt; fetched_at;
+
+-- 若只想最小修当前未来的 14 行：
+UPDATE news_article
+SET published_at = fetched_at
+WHERE source = 'cninfo' AND published_at &gt; now();
+</code></pre>
+<h2>部署</h2>
+<p>改动在 crawler 代码路径（<code>run_cninfo_crawl</code> 每 10 分钟跑），需重新部署 backend 后生效；不部署则每晚 16:00Z 后仍会产生新的未来时间行。</p></body></html>
