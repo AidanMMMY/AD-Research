@@ -2,8 +2,11 @@ import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Alert,
+  Button,
+  Segmented,
   Skeleton,
   Select,
+  Space,
   Table,
   Tag,
 } from 'antd';
@@ -15,6 +18,12 @@ import {
 } from '@/api';
 import Panel from '@/components/Panel';
 import EmptyState from '@/components/EmptyState';
+import {
+  EtfHoldingsDiffView,
+  EtfHoldingsKpiRow,
+  EtfHoldingsWeightTrend,
+} from '@/components/EtfHoldingsAnalytics';
+import { mergeHoldings } from '@/utils/etfHoldings';
 import { formatRelative } from '@/utils/datetime';
 import './TypeAwareModules.css';
 import type { ETFHoldingSnapshot } from '@/types/instrument';
@@ -117,10 +126,18 @@ function HoldingsSnapshotPicker({
 
 /**
  * ETF branch — top-10 holdings with snapshot picker.
+ *
+ * 2026-07-27 合并独立「ETF 持仓」页后的增强版：
+ *   - 「明细 / 对比」Segmented：明细 = 单期快照表；对比 = 两期 diff
+ *     （新增/减少/加仓/减仓，复用 EtfHoldingsAnalytics）
+ *   - KPI 行（最新期/上期/累计权重变化/期数）+ 累计前10权重 sparkline
+ *   - 明细表走 mergeHoldings 防御性去重（bare vs suffixed 代码）
+ *   - 「持仓历史对比 →」深链到 /etfs/:code/holdings-history 完整页
  */
 function EtfHoldingsModule({ instrument }: { instrument: InstrumentInfo }) {
   const navigate = useNavigate();
   const [selectedSnapshotDate, setSelectedSnapshotDate] = useState<string | null>(null);
+  const [view, setView] = useState<'snapshot' | 'diff'>('snapshot');
 
   const { data: holdingsData, isLoading: holdingsLoading, error: holdingsError } = useQuery({
     queryKey: ['instrument-holdings', instrument.code, selectedSnapshotDate],
@@ -140,104 +157,154 @@ function EtfHoldingsModule({ instrument }: { instrument: InstrumentInfo }) {
     retry: 1,
   });
 
+  const snapshots = holdingsSnapshotsData?.items;
+
+  // 防御性去重：'300750' 与 '300750.SZ' 是同一只票（与深链页共用实现）
+  const mergedHoldings = useMemo(
+    () => mergeHoldings(holdingsData?.holdings ?? []).slice(0, 10),
+    [holdingsData],
+  );
+
+  // KPI 的最新期权重直接取快照元数据，避免为 KPI 多发一次 holdings 请求
+  const latestTotalWeight = snapshots?.[0]?.total_weight ?? null;
+
   return (
     <Panel
       title="前十大持仓"
       padding="md"
       extra={
-        <HoldingsSnapshotPicker
-          snapshots={holdingsSnapshotsData?.items}
-          snapshotsLoading={snapshotsLoading}
-          value={selectedSnapshotDate}
-          onChange={setSelectedSnapshotDate}
-        />
-      }
-    >
-      {holdingsLoading ? (
-        <Skeleton active paragraph={{ rows: 6 }} />
-      ) : holdingsError ? (
-        <Alert type="error" message="加载持仓数据失败" />
-      ) : !holdingsData?.holdings?.length ? (
-        <EmptyState
-          title="暂无持仓数据"
-          description={
-            selectedSnapshotDate
-              ? `该报告期 (${selectedSnapshotDate}) 暂无持仓数据`
-              : '该标的暂无持仓数据'
-          }
-        />
-      ) : (
-        <div>
-          <Table
-            dataSource={holdingsData.holdings.slice(0, 10).map((h, idx) => ({ ...h, key: idx }))}
-            pagination={false}
+        <Space size={8} wrap>
+          <Segmented
             size="small"
-            scroll={{ x: 'max-content' }}
-            onRow={(row) => ({
-              onClick: () => navigate(`/instruments/${row.holding_code}`),
-              onKeyDown: (e: React.KeyboardEvent<HTMLTableRowElement>) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault();
-                  navigate(`/instruments/${row.holding_code}`);
-                }
-              },
-              tabIndex: 0,
-              role: 'link',
-              'aria-label': `${row.holding_name ?? row.holding_code} — 查看持仓详情`,
-              style: { cursor: 'pointer' },
-            })}
-            columns={[
-              { title: '股票代码', dataIndex: 'holding_code', key: 'holding_code' },
-              {
-                title: '股票名称',
-                dataIndex: 'holding_name',
-                key: 'holding_name',
-                render: (v: string | null) => v ?? '—',
-              },
-              {
-                title: '持仓权重',
-                dataIndex: 'weight',
-                key: 'weight',
-                align: 'right',
-                render: (v: number | null) => (v != null ? `${(v * 100).toFixed(2)}%` : '—'),
-              },
-              {
-                title: '持股数',
-                dataIndex: 'shares',
-                key: 'shares',
-                align: 'right',
-                render: (v: number | null) => (v != null ? v.toLocaleString() : '—'),
-              },
-              {
-                title: '持仓市值',
-                dataIndex: 'market_value',
-                key: 'market_value',
-                align: 'right',
-                render: (v: number | null) => (v != null ? v.toLocaleString() : '—'),
-              },
-              {
-                title: '报告期',
-                dataIndex: 'holdings_as_of_date',
-                key: 'holdings_as_of_date',
-                render: (v: string | null) => v ?? '—',
-              },
+            value={view}
+            onChange={(v) => setView(v as 'snapshot' | 'diff')}
+            options={[
+              { label: '明细', value: 'snapshot' },
+              { label: '对比', value: 'diff' },
             ]}
           />
-          {holdingsData.holdings_as_of_date && (
-            <div className="type-aware-footer">
-              <span>报告期：{holdingsData.holdings_as_of_date}</span>
-              {selectedSnapshotDate && holdingsData.holdings_as_of_date !== selectedSnapshotDate && (
-                <Tag color="processing">非默认快照</Tag>
-              )}
-              {holdingsData.holdings_as_of_date && (
-                <span className="type-aware-footer-sub">
-                  ({formatRelative(`${holdingsData.holdings_as_of_date}T00:00:00`) || '刚刚'})
-                </span>
-              )}
-            </div>
+          {view === 'snapshot' && (
+            <HoldingsSnapshotPicker
+              snapshots={snapshots}
+              snapshotsLoading={snapshotsLoading}
+              value={selectedSnapshotDate}
+              onChange={setSelectedSnapshotDate}
+            />
           )}
-        </div>
-      )}
+          <Button
+            type="link"
+            size="small"
+            onClick={() => navigate(`/etfs/${instrument.code}/holdings-history`)}
+          >
+            持仓历史对比 →
+          </Button>
+        </Space>
+      }
+    >
+      <EtfHoldingsKpiRow
+        snapshots={snapshots}
+        latestTotalWeight={latestTotalWeight}
+        loading={snapshotsLoading}
+      />
+      <div key={view} className="ehh-mode-fade">
+        {view === 'snapshot' ? (
+          <>
+            <div className="type-aware-weight-trend">
+              <div className="ad-text-small ad-text-tertiary type-aware-weight-trend__label">
+                累计前 10 权重走势
+              </div>
+              <EtfHoldingsWeightTrend snapshots={snapshots} loading={snapshotsLoading} />
+            </div>
+            {holdingsLoading ? (
+              <Skeleton active paragraph={{ rows: 6 }} />
+            ) : holdingsError ? (
+              <Alert type="error" message="加载持仓数据失败" />
+            ) : !mergedHoldings.length ? (
+              <EmptyState
+                title="暂无持仓数据"
+                description={
+                  selectedSnapshotDate
+                    ? `该报告期 (${selectedSnapshotDate}) 暂无持仓数据`
+                    : '该标的暂无持仓数据'
+                }
+              />
+            ) : (
+              <div>
+                <Table
+                  dataSource={mergedHoldings.map((h, idx) => ({ ...h, key: idx }))}
+                  pagination={false}
+                  size="small"
+                  scroll={{ x: 'max-content' }}
+                  onRow={(row) => ({
+                    onClick: () => navigate(`/instruments/${row.holding_code}`),
+                    onKeyDown: (e: React.KeyboardEvent<HTMLTableRowElement>) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        navigate(`/instruments/${row.holding_code}`);
+                      }
+                    },
+                    tabIndex: 0,
+                    role: 'link',
+                    'aria-label': `${row.holding_name ?? row.holding_code} — 查看持仓详情`,
+                    style: { cursor: 'pointer' },
+                  })}
+                  columns={[
+                    { title: '股票代码', dataIndex: 'holding_code', key: 'holding_code' },
+                    {
+                      title: '股票名称',
+                      dataIndex: 'holding_name',
+                      key: 'holding_name',
+                      render: (v: string | null) => v ?? '—',
+                    },
+                    {
+                      title: '持仓权重',
+                      dataIndex: 'weight',
+                      key: 'weight',
+                      align: 'right',
+                      render: (v: number | null) => (v != null ? `${(v * 100).toFixed(2)}%` : '—'),
+                    },
+                    {
+                      title: '持股数',
+                      dataIndex: 'shares',
+                      key: 'shares',
+                      align: 'right',
+                      render: (v: number | null) => (v != null ? v.toLocaleString() : '—'),
+                    },
+                    {
+                      title: '持仓市值',
+                      dataIndex: 'market_value',
+                      key: 'market_value',
+                      align: 'right',
+                      render: (v: number | null) => (v != null ? v.toLocaleString() : '—'),
+                    },
+                    {
+                      title: '报告期',
+                      dataIndex: 'holdings_as_of_date',
+                      key: 'holdings_as_of_date',
+                      render: (v: string | null) => v ?? '—',
+                    },
+                  ]}
+                />
+                {holdingsData?.holdings_as_of_date && (
+                  <div className="type-aware-footer">
+                    <span>报告期：{holdingsData.holdings_as_of_date}</span>
+                    {selectedSnapshotDate && holdingsData.holdings_as_of_date !== selectedSnapshotDate && (
+                      <Tag color="processing">非默认快照</Tag>
+                    )}
+                    {holdingsData.holdings_as_of_date && (
+                      <span className="type-aware-footer-sub">
+                        ({formatRelative(`${holdingsData.holdings_as_of_date}T00:00:00`) || '刚刚'})
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+          </>
+        ) : (
+          <EtfHoldingsDiffView code={instrument.code} snapshots={snapshots} />
+        )}
+      </div>
     </Panel>
   );
 }

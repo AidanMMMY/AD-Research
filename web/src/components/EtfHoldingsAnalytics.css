@@ -1,0 +1,68 @@
+/* ============================================================
+   EtfHoldingsAnalytics — 详情页/深链页共用的持仓分析样式
+   (2026-07-27 从 pages/EtfHoldingsHistory/styles.css 迁入)
+   ============================================================ */
+
+/* KPI grid row */
+.ehh-kpi-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--space-3);
+  margin-bottom: var(--space-5);
+}
+
+/* Sparkline row (flex, centered) */
+.ehh-sparkline-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+/* Sparkline chart flexes to fill remaining width */
+.ehh-sparkline-chart {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* Sparkline stats column */
+.ehh-sparkline-stats {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+/* Diff view layout */
+.ehh-diff-layout {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+/* Full-width skeleton wrapper */
+.ehh-skeleton-full .ant-skeleton {
+  width: 100%;
+  height: 40px;
+}
+
+/* Spatial consistency: cross-fade the mode-switch panel (snapshot ↔ diff)
+   instead of a hard swap. The `key={view}` on the JSX forces a fresh mount,
+   so we fade the wrapper in with an opacity-only animation. */
+.ehh-mode-fade {
+  animation: ehh-mode-fade-in 240ms var(--transition-spring-fast, ease-out) both;
+  will-change: opacity;
+}
+
+@keyframes ehh-mode-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ehh-mode-fade {
+    animation: none;
+  }
+}

@@ -33,3 +33,15 @@
 .detail-kpi-fall .valuation-cell__value {
   color: var(--color-fall);
 }
+
+/* 累计前 10 权重走势（EtfHoldingsModule 内嵌 sparkline 区，2026-07-27） */
+.type-aware-weight-trend {
+  margin-bottom: var(--space-4);
+  padding: var(--space-3);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+}
+
+.type-aware-weight-trend__label {
+  margin-bottom: var(--space-2);
+}
