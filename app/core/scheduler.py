@@ -66,8 +66,18 @@ from app.strategies.base import StrategyRegistry
 # a crowded tick run late instead of never; ``coalesce`` collapses the
 # backlog to one run per job. See
 # docs/dev-notes/20260727-news-source-expansion.md for the full autopsy.
+# 2026-07-28 (health-audit follow-up): 5 workers + 107 hourly jobs all
+# firing on the same second starved the pool — LLM marketing-filter /
+# jina fetches held slots past the 300s misfire grace, so 16 hourly
+# jobs were silently coalesce-discarded for ~5h (audit:
+# docs/dev-notes/20260728-source-health-audit.md). Fixes applied:
+#   * max_workers 5 -> 10 (still bounded vs the DB connection pool;
+#     the Action-253 concern above stands, just rebalanced for the
+#     652-source fleet)
+#   * jitter=600 on every hourly trigger below, spreading each wave
+#     across a 10-minute window instead of one second
 scheduler = BackgroundScheduler(
-    executors={"default": ThreadPoolExecutor(max_workers=5)},
+    executors={"default": ThreadPoolExecutor(max_workers=10)},
     job_defaults={"misfire_grace_time": 300, "coalesce": True},
 )
 
@@ -1955,7 +1965,7 @@ def init_scheduler():
         )
         scheduler.add_job(
             run_federal_reserve_crawl,
-            trigger=IntervalTrigger(minutes=60),
+            trigger=IntervalTrigger(minutes=60, jitter=600),
             id="news_federal_reserve_60m",
             name="美联储新闻稿",
             replace_existing=True,
@@ -1964,7 +1974,7 @@ def init_scheduler():
         )
         scheduler.add_job(
             run_ecb_crawl,
-            trigger=IntervalTrigger(minutes=60),
+            trigger=IntervalTrigger(minutes=60, jitter=600),
             id="news_ecb_60m",
             name="欧洲央行新闻稿",
             replace_existing=True,
@@ -1973,7 +1983,7 @@ def init_scheduler():
         )
         scheduler.add_job(
             run_bankofengland_crawl,
-            trigger=IntervalTrigger(minutes=60),
+            trigger=IntervalTrigger(minutes=60, jitter=600),
             id="news_bankofengland_60m",
             name="英格兰银行新闻",
             replace_existing=True,
@@ -2059,7 +2069,7 @@ def init_scheduler():
             fn = getattr(_news_jobs, f"run_wechat2rss_{batch}_crawl")
             scheduler.add_job(
                 fn,
-                trigger=IntervalTrigger(minutes=60),
+                trigger=IntervalTrigger(minutes=60, jitter=600),
                 id=job_id,
                 name=label,
                 replace_existing=True,
@@ -2073,7 +2083,7 @@ def init_scheduler():
             fn = getattr(_news_jobs, f"run_wechat2b_{batch}_crawl")
             scheduler.add_job(
                 fn,
-                trigger=IntervalTrigger(minutes=60),
+                trigger=IntervalTrigger(minutes=60, jitter=600),
                 id=job_id,
                 name=label,
                 replace_existing=True,
@@ -2088,7 +2098,7 @@ def init_scheduler():
             fn = getattr(_news_jobs, f"run_global_indie_{batch}_crawl")
             scheduler.add_job(
                 fn,
-                trigger=IntervalTrigger(minutes=60),
+                trigger=IntervalTrigger(minutes=60, jitter=600),
                 id=job_id,
                 name=label,
                 replace_existing=True,
@@ -2103,7 +2113,7 @@ def init_scheduler():
             fn = getattr(_news_jobs, f"run_independent_{batch}_crawl")
             scheduler.add_job(
                 fn,
-                trigger=IntervalTrigger(minutes=60),
+                trigger=IntervalTrigger(minutes=60, jitter=600),
                 id=job_id,
                 name=label,
                 replace_existing=True,
@@ -2119,7 +2129,7 @@ def init_scheduler():
             fn = getattr(_news_jobs, f"run_global_rss_{batch}_crawl")
             scheduler.add_job(
                 fn,
-                trigger=IntervalTrigger(minutes=60),
+                trigger=IntervalTrigger(minutes=60, jitter=600),
                 id=job_id,
                 name=label,
                 replace_existing=True,
@@ -2136,7 +2146,7 @@ def init_scheduler():
             fn = getattr(_news_jobs, f"run_asia_en_{batch}_crawl")
             scheduler.add_job(
                 fn,
-                trigger=IntervalTrigger(minutes=60),
+                trigger=IntervalTrigger(minutes=60, jitter=600),
                 id=job_id,
                 name=label,
                 replace_existing=True,
