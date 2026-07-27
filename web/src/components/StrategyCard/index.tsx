@@ -1,4 +1,4 @@
-import { Button, Descriptions, Tag } from 'antd';
+import { Button } from 'antd';
 import { ExperimentOutlined, PlayCircleOutlined, ThunderboltOutlined } from '@ant-design/icons';
 import ThemeTag from '@/components/ThemeTag';
 import type { StrategyCatalogItem } from '@/types/strategy';
@@ -14,6 +14,9 @@ const FAMILY_LABELS: Record<string, string> = {
   event: '事件驱动',
 };
 
+/** 卡片上最多展示的参数数，超出折叠为 "+N" */
+const MAX_VISIBLE_PARAMS = 4;
+
 interface StrategyCardProps {
   strategy: StrategyCatalogItem;
   onCreateConfig: (strategy: StrategyCatalogItem) => void;
@@ -28,31 +31,37 @@ export default function StrategyCard({
   onBacktest,
 }: StrategyCardProps) {
   const paramEntries = Object.entries(strategy.param_specs);
+  const visibleParams = paramEntries.slice(0, MAX_VISIBLE_PARAMS);
+  const hiddenCount = paramEntries.length - visibleParams.length;
 
   return (
     <div className="strategy-card">
       <div className="strategy-card__body">
         <div className="strategy-card__header">
-          <h3 className="strategy-card__title">{strategy.name}</h3>
-          <ThemeTag variant="accent">{FAMILY_LABELS[strategy.family] || strategy.family}</ThemeTag>
+          <h3 className="strategy-card__title" title={strategy.name}>
+            {strategy.name}
+          </h3>
+          <ThemeTag variant="accent" className="strategy-card__family">
+            {FAMILY_LABELS[strategy.family] || strategy.family}
+          </ThemeTag>
         </div>
         <p className="strategy-card__description">{strategy.description}</p>
-        <div className="strategy-card__params">
-          {paramEntries.length > 0 && (
-            <Descriptions size="small" column={2} className="strategy-card__params-list">
-              {paramEntries.slice(0, 4).map(([key, spec]) => (
-                <Descriptions.Item key={key} label={spec.label}>
-                  <Tag className="strategy-card__param-tag">
-                    {String(spec.default)}
-                  </Tag>
-                </Descriptions.Item>
-              ))}
-            </Descriptions>
-          )}
-          {paramEntries.length > 4 && (
-            <p className="strategy-card__more">等 {paramEntries.length} 个参数</p>
-          )}
-        </div>
+        {paramEntries.length > 0 && (
+          <dl className="strategy-card__params">
+            {visibleParams.map(([key, spec]) => (
+              <div key={key} className="strategy-card__param">
+                <dt className="strategy-card__param-label">{spec.label}</dt>
+                <dd className="strategy-card__param-value">{String(spec.default)}</dd>
+              </div>
+            ))}
+            {hiddenCount > 0 && (
+              <div className="strategy-card__param strategy-card__param--more">
+                <dt className="strategy-card__param-label">更多</dt>
+                <dd className="strategy-card__param-value">+{hiddenCount}</dd>
+              </div>
+            )}
+          </dl>
+        )}
       </div>
       <div className="strategy-card__actions">
         <Button

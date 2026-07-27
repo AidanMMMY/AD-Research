@@ -997,76 +997,127 @@
   color: var(--color-warning);
 }
 
-/* ---- StrategyCard ---- */
+/* ---- StrategyCard ----
+   2026-07-27 视觉改版：对齐全站 canonical card（stat-card）token —
+   --card-bg / --card-border / --card-radius / --shadow-card；
+   hover 从“整卡 accent 描边”收敛为 border-hover + shadow-card-hover；
+   参数区从 N 个描边 Tag 收敛为一个内嵌面板 + mono 数字。 */
 .strategy-card {
-  background: var(--surface-elevated);
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius-md);
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: var(--card-radius);
+  box-shadow: var(--shadow-card);
   height: 100%;
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+  transition:
+    border-color var(--transition-fast),
+    background var(--transition-fast),
+    box-shadow var(--transition-fast);
 }
 
 .strategy-card:hover {
-  border-color: var(--accent);
-  /* stylelint-disable-next-line ad-research/no-bare-color-values -- hover shadow alpha, no exact token match; kept for visual parity */
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  border-color: var(--border-hover);
+  background: var(--bg-elevated);
+  box-shadow: var(--shadow-card-hover);
 }
 
 .strategy-card__body {
-  padding: var(--space-3);
+  padding: var(--space-5);
+  padding-bottom: var(--space-4);
   display: flex;
   flex-direction: column;
   flex: 1;
-  gap: var(--space-2);
 }
 
 .strategy-card__header {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
+  gap: var(--space-3);
+  margin-bottom: var(--space-2);
 }
 
 .strategy-card__title {
   margin: 0;
-  font-size: var(--text-h3-size);
-  font-weight: 500;
+  font-size: var(--text-data-md-size);
+  font-weight: 600;
+  line-height: 1.4;
   color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.strategy-card__family {
+  flex-shrink: 0;
+  margin-inline-end: 0;
 }
 
 .strategy-card__description {
-  margin: 0;
+  margin: 0 0 var(--space-3);
   color: var(--text-secondary);
-  font-size: var(--text-body-size);
+  font-size: var(--text-small-size);
+  line-height: 1.6;
+  /* 两行截断 + 固定两行高度：描述长短不一也能对齐卡片栅格 */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  min-height: calc(var(--text-small-size) * 1.6 * 2);
 }
 
+/* 参数面板：一个内嵌容器承载所有参数，避免 N 个描边 Tag 的“盒中盒”噪音 */
 .strategy-card__params {
-  flex: 1;
-  min-height: 0;
+  margin: auto 0 0;
+  padding: var(--space-3) var(--space-4);
+  background: var(--bg-elevated);
+  border-radius: var(--radius-md);
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  row-gap: var(--space-2);
+  column-gap: var(--space-4);
 }
 
-.strategy-card__params-list {
-  margin-bottom: 0;
+/* hover 时卡片底色变为 bg-elevated，参数面板反相回卡片底色保持层次 */
+.strategy-card:hover .strategy-card__params {
+  background: var(--card-bg);
+  transition: background var(--transition-fast);
 }
 
-.strategy-card__param-tag {
-  background: var(--surface-default);
-  border-color: var(--border-default);
+.strategy-card__param {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  min-width: 0;
 }
 
-.strategy-card__more {
-  margin: 8px 0 0;
+.strategy-card__param-label {
   color: var(--text-tertiary);
-  font-size: 12px;
+  font-size: var(--text-label-size);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.strategy-card__param-value {
+  margin: 0;
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: var(--text-code-size);
+  font-variant-numeric: tabular-nums;
+}
+
+.strategy-card__param--more .strategy-card__param-value {
+  color: var(--text-tertiary);
 }
 
 .strategy-card__actions {
   display: flex;
   justify-content: space-around;
   align-items: center;
-  padding: var(--space-2) var(--space-md);
+  padding: var(--space-1) var(--space-3);
   border-top: 1px solid var(--border-default);
   background: var(--surface-default);
 }

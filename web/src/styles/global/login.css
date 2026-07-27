@@ -524,10 +524,6 @@ input[type="password"]::-webkit-strong-password-auto-fill-button {
   font-size: 10px !important;
 }
 
-.strategy-card__params-list {
-  margin-bottom: 0 !important;
-}
-
 .ad-justify-center { justify-content: center; }
 .ad-slider--sm { width: 120px; }
 
