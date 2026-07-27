@@ -64,6 +64,27 @@ jobs:
           --health-interval 5s
           --health-timeout 3s
           --health-retries 10
+      # 2026-07-27 (second round): app/tests/test_sql_indicators.py
+      # parity tests skip unless the session engine is PostgreSQL —
+      # and Settings.database_url defaults to
+      # postgresql+psycopg2://etf:etf_research_password@localhost:5432/ad_research,
+      # so on CI the dialect check passed but nothing listened on 5432
+      # (7 tests died with connection refused). Spin up a throwaway
+      # Postgres matching those defaults so the parity tests actually
+      # run (they create their own synthetic tables/rows).
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: etf
+          POSTGRES_PASSWORD: etf_research_password
+          POSTGRES_DB: ad_research
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U etf -d ad_research"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
     defaults:
       run:
         working-directory: ./
@@ -92,6 +113,18 @@ jobs:
         # not in scope for CI; we just need pytest + sqlalchemy + the
         # full transitive dependency tree that app/* import chain uses.
         run: poetry install --with dev
+
+      - name: Prepare Postgres schema for parity tests
+        # test_sql_indicators.py inserts synthetic rows into etf_info /
+        # instrument_daily_bar on the default engine — the service
+        # container starts empty, so create the schema first.
+        run: |
+          poetry run python -c "
+          import app.models  # noqa: F401 — register all tables on Base.metadata
+          from app.core.database import Base, engine
+          Base.metadata.create_all(engine)
+          print('schema ready:', len(Base.metadata.tables), 'tables')
+          "
 
       - name: Run pytest
         env:
