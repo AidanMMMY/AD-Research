@@ -16,8 +16,6 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-import os
-
 from app.api.deps import get_current_user, get_db
 from app.models.etf import ETFInfo
 from app.models.research import SentimentData
@@ -36,12 +34,36 @@ router = APIRouter()
 
 _AI_AVAILABLE: bool | None = None
 
+# Provider display metadata for /ai/status. Keyed by lowercase provider
+# class name (sans "Provider"). Keep in sync with app.services.llm.
+_PROVIDER_META = {
+    "minimax": ("minimax", "https://platform.minimax.io/", "低 (MiniMax 按量计费)"),
+    "deepseek": ("deepseek", "https://platform.deepseek.com/", "极低 (¥2/百万token)"),
+}
+
+
+def _active_llm_provider():
+    """Return the currently selected LLM provider (MiniMax/DeepSeek/...)."""
+    from app.services.llm import get_llm_provider
+
+    return get_llm_provider()
+
 
 def _ai_is_available() -> bool:
-    """Check if AI features are available (cached per process)."""
+    """Check if AI features are available (cached per process).
+
+    Must mirror ``get_llm_provider()`` selection: the platform's primary
+    chain is MiniMax (``LLM_PROVIDER=minimax``), so checking only
+    ``DEEPSEEK_API_KEY`` would report "not configured" while MiniMax is
+    actually serving (and vice versa).
+    """
     global _AI_AVAILABLE
     if _AI_AVAILABLE is None:
-        _AI_AVAILABLE = bool(os.getenv("DEEPSEEK_API_KEY", ""))
+        try:
+            _AI_AVAILABLE = _active_llm_provider().is_available
+        except Exception:
+            logger.exception("LLM provider availability check failed")
+            _AI_AVAILABLE = False
     return _AI_AVAILABLE
 
 
@@ -50,8 +72,9 @@ def _require_ai():
     if not _ai_is_available():
         raise HTTPException(
             status_code=503,
-            detail="AI 功能未配置。请在 .env 中设置 DEEPSEEK_API_KEY。"
-                   "获取 Key: https://platform.deepseek.com/",
+            detail="AI 功能未配置。请在 .env 中设置当前 LLM_PROVIDER 对应的 API Key"
+                   "（MiniMax: MINIMAX_API_KEY / MINIMAX_CN_API_KEY；"
+                   "DeepSeek: DEEPSEEK_API_KEY）后重启服务。",
         )
 
 
@@ -61,10 +84,10 @@ def _require_ai():
 
 class AIStatusResponse(BaseModel):
     available: bool
-    provider: str = "deepseek"
-    model: str = "deepseek-v4-flash"
-    setup_url: str = "https://platform.deepseek.com/"
-    monthly_cost_estimate: str = "极低 (¥2/百万token)"
+    provider: str = "unknown"
+    model: str = ""
+    setup_url: str = ""
+    monthly_cost_estimate: str = ""
 
 
 class GenerateNoteRequest(BaseModel):
@@ -163,8 +186,26 @@ class ChatMessageResponse(BaseModel):
 
 @router.get("/ai/status", response_model=AIStatusResponse)
 def get_ai_status():
-    """Check whether AI features are available."""
-    return AIStatusResponse(available=_ai_is_available())
+    """Check whether AI features are available.
+
+    Reports the actually-selected provider (MiniMax by default) so the
+    frontend banner points at the right key, not a hardcoded DeepSeek one.
+    """
+    try:
+        provider = _active_llm_provider()
+        name = type(provider).__name__.replace("Provider", "").lower()
+        display, url, cost = _PROVIDER_META.get(name, (name, "", ""))
+        model = getattr(provider, "model", "") or ""
+    except Exception:
+        logger.exception("Failed to resolve active LLM provider")
+        display, url, cost, model = "unknown", "", "", ""
+    return AIStatusResponse(
+        available=_ai_is_available(),
+        provider=display,
+        model=model,
+        setup_url=url,
+        monthly_cost_estimate=cost,
+    )
 
 
 # ------------------------------------------------------------------

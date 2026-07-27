@@ -149,7 +149,7 @@ export default function AIHelpDrawer() {
             type="warning"
             showIcon
             message="AI 功能未配置"
-            description="当前无法使用 AI 帮助。请在服务端配置 DEEPSEEK_API_KEY 后重启服务。"
+            description={`当前无法使用 AI 帮助。请在服务端配置 ${aiStatus?.provider === 'minimax' ? 'MINIMAX_API_KEY' : 'DEEPSEEK_API_KEY'} 后重启服务。`}
             className="ai-drawer__alert"
           />
         )}

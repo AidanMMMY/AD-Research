@@ -43,7 +43,7 @@ function friendlyErrorMessage(err: unknown): string {
     if (axiosErr.response) {
       const status = axiosErr.response.status;
       if (status === 503) {
-        return 'AI 服务未配置。请在服务端设置 DEEPSEEK_API_KEY 后重启服务。';
+        return 'AI 服务未配置。请在服务端设置 LLM API Key（MINIMAX_API_KEY 或 DEEPSEEK_API_KEY）后重启服务。';
       }
       if (status >= 500) {
         return `服务器错误（${status}），请稍后重试或联系管理员。`;

@@ -54,7 +54,7 @@ export default function AISetupBanner({ onlyWhenUnavailable = true }: AISetupBan
         }
         description={
           <span className="ai-setup-banner__description">
-            在 <code>.env</code> 中设置 <code>DEEPSEEK_API_KEY=sk-REMOVED-...</code> 后重启服务即可激活。
+            在 <code>.env</code> 中设置 <code>{status.provider === 'minimax' ? 'MINIMAX_API_KEY' : 'DEEPSEEK_API_KEY'}=sk-REMOVED-...</code> 后重启服务即可激活。
           </span>
         }
       />
