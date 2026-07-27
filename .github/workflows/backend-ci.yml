@@ -43,6 +43,27 @@ jobs:
     name: Backend pytest
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    # 2026-07-27: the suite grew env-dependent tests since this workflow
+    # was added (1064 tests now vs 933 then):
+    #   * app/tests/e2e/test_screening_e2e.py + parts of
+    #     app/tests/test_etf_service.py hit the app's cache layer on
+    #     localhost:6379 — locally dev machines run redis-server so they
+    #     pass; on CI they died with `redis.exceptions.ConnectionError`.
+    #   * app/tests/test_etf_a_share_enrichment.py constructs
+    #     TushareProvider, which raises unless TUSHARE_TOKEN is set
+    #     (HTTP is mocked; a dummy token is enough — tushare only
+    #     validates it on a real API call).
+    # Provide both here instead of skip-markers so the coverage stays.
+    services:
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
     defaults:
       run:
         working-directory: ./
@@ -77,6 +98,11 @@ jobs:
           # Force UTC for any test touching now(); keeps CI logs deterministic.
           TZ: UTC
           PYTHONHASHSEED: '0'
+          # Dummy tokens — see the `services:` comment above. HTTP is
+          # mocked in these tests; the providers only require a non-empty
+          # token at construction time.
+          TUSHARE_TOKEN: ci-dummy-token
+          FINNHUB_API_KEY: ci-dummy-key
         run: |
           # 2026-07-23: e2e 实测 3.3s + 无外部依赖（SQLite in-memory + TestClient），
           # 之前 --deselect app/tests/e2e 是过度保守。直接并入。

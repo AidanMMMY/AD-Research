@@ -97,7 +97,14 @@ def _sample_finnhub_article(
 async def test_yahoo_429_falls_back_to_finnhub(
     no_rate_limit, monkeypatch
 ):
+    # get_settings() is lru_cached — clear it so the monkeypatched env
+    # var is actually picked up (CI has no .env, so a settings instance
+    # cached by an earlier test would have no key and silently skip the
+    # fallback; locally .env masks this).
+    from app.config import get_settings
+
     monkeypatch.setenv("FINNHUB_API_KEY", "test-key")
+    get_settings.cache_clear()
 
     yahoo_calls: list[str] = []
     provider = FakeFinnhubProvider(
@@ -131,6 +138,7 @@ async def test_yahoo_429_falls_back_to_finnhub(
         arts = await crawler.fetch("AAPL")
     finally:
         await client.aclose()
+        get_settings.cache_clear()  # don't leak the env-derived settings
 
     # Yahoo was called exactly once for AAPL.
     assert len(yahoo_calls) == 1
@@ -174,7 +182,12 @@ async def test_yahoo_429_falls_back_to_finnhub(
 
 @pytest.mark.asyncio
 async def test_yahoo_403_falls_back_to_finnhub(no_rate_limit, monkeypatch):
+    # See test_yahoo_429_falls_back_to_finnhub for why the cache clear
+    # is required (lru_cached settings + no .env on CI).
+    from app.config import get_settings
+
     monkeypatch.setenv("FINNHUB_API_KEY", "test-key")
+    get_settings.cache_clear()
     provider = FakeFinnhubProvider(
         articles=[
             _sample_finnhub_article(
@@ -199,6 +212,7 @@ async def test_yahoo_403_falls_back_to_finnhub(no_rate_limit, monkeypatch):
         arts = await crawler.fetch(["TSLA"])
     finally:
         await client.aclose()
+        get_settings.cache_clear()  # don't leak the env-derived settings
 
     assert len(provider.calls) == 1
     assert provider.calls[0][0] == "TSLA"
