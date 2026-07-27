@@ -445,6 +445,72 @@ for _job_id, _label, _batch in WECHAT2RSS_BATCH_JOBS:
     globals()[f"run_wechat2rss_{_batch}_crawl"] = _wechat2rss_batch_job(_job_id, _batch)
 
 
+# ── Global multi-language RSS batches (added 2026-07-27) ──
+#
+# 125 live-verified feeds — Japanese / German / French / Korean /
+# Spanish publications, a second wave of English central-bank /
+# think-tank / university / engineering blogs, and Chinese non-blog
+# industry press — split into 12 batch jobs (11 feeds each) so the
+# scheduler gains 12 jobs instead of 125. See
+# app/services/news/sources/global_rss_batch.py for the selection rule.
+
+
+def _global_rss_batch_job(job_id: str, batch_key: str):
+    """Build a ``run_*`` function crawling one global-RSS batch."""
+
+    @_record_etl(job_id)
+    def _run() -> dict[str, int]:
+        from app.services.news.sources.global_rss_batch import (
+            GlobalRssBatchCrawler,
+        )
+
+        async def _go():
+            crawler = GlobalRssBatchCrawler(batch_key)
+            return await crawler.fetch_recent()
+
+        try:
+            articles = _run_async(_go())
+        except Exception as exc:
+            logger.exception("global rss batch %s crawl failed: %s", batch_key, exc)
+            return {
+                "fetched": 0,
+                "written": 0,
+                "skipped": True,
+                "skip_reason": f"crawl_error: {exc}",
+            }
+
+        if not articles:
+            return {"fetched": 0, "written": 0, "skipped": True, "skip_reason": "no_articles"}
+
+        # No marketing filter: these are professional publications and
+        # research/engineering blogs, not ad-driven self-media (unlike
+        # the WeChat accounts). Mirrors ``_simple_rss_job``.
+        written = _write_to_db(articles)
+        return {"fetched": len(articles), "written": written}
+
+    _run.__name__ = f"run_global_rss_{batch_key}_crawl"
+    return _run
+
+
+GLOBAL_RSS_BATCH_JOBS: list[tuple[str, str, str]] = [
+    # (job_id, label, batch_key) — all run every 60 minutes.
+    ("news_global_rss_a_60m", "全球多语 RSS A 组", "a"),
+    ("news_global_rss_b_60m", "全球多语 RSS B 组", "b"),
+    ("news_global_rss_c_60m", "全球多语 RSS C 组", "c"),
+    ("news_global_rss_d_60m", "全球多语 RSS D 组", "d"),
+    ("news_global_rss_e_60m", "全球多语 RSS E 组", "e"),
+    ("news_global_rss_f_60m", "全球多语 RSS F 组", "f"),
+    ("news_global_rss_g_60m", "全球多语 RSS G 组", "g"),
+    ("news_global_rss_h_60m", "全球多语 RSS H 组", "h"),
+    ("news_global_rss_i_60m", "全球多语 RSS I 组", "i"),
+    ("news_global_rss_j_60m", "全球多语 RSS J 组", "j"),
+    ("news_global_rss_k_60m", "全球多语 RSS K 组", "k"),
+    ("news_global_rss_l_60m", "全球多语 RSS L 组", "l"),
+]
+for _job_id, _label, _batch in GLOBAL_RSS_BATCH_JOBS:
+    globals()[f"run_global_rss_{_batch}_crawl"] = _global_rss_batch_job(_job_id, _batch)
+
+
 # ── Independent non-WeChat batches (added 2026-07-28) ──
 #
 # 144 verified independent blogs / newsletters / podcasts (English +

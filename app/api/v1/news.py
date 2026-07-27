@@ -597,6 +597,7 @@ _WORKER_KEYWORDS: tuple[str, ...] = (
     "wechat_sixianggangyin",
     "wechat2rss",
     "indie_",
+    "global_rss",
 )
 
 _WORKER_META: dict[str, dict[str, str]] = {
@@ -664,6 +665,19 @@ _WORKER_META: dict[str, dict[str, str]] = {
     "news_indie_l_60m": {"label": "独立源 L 组 (11 源)", "schedule": "每 60 分钟"},
     "news_indie_m_60m": {"label": "独立源 M 组 (11 源)", "schedule": "每 60 分钟"},
     "news_indie_n_60m": {"label": "独立源 N 组 (1 源)", "schedule": "每 60 分钟"},
+    # Global multi-language RSS batches (2026-07-28, 125 sources)
+    "news_global_rss_a_60m": {"label": "全球多语 RSS A 组 (11 源)", "schedule": "每 60 分钟"},
+    "news_global_rss_b_60m": {"label": "全球多语 RSS B 组 (11 源)", "schedule": "每 60 分钟"},
+    "news_global_rss_c_60m": {"label": "全球多语 RSS C 组 (11 源)", "schedule": "每 60 分钟"},
+    "news_global_rss_d_60m": {"label": "全球多语 RSS D 组 (11 源)", "schedule": "每 60 分钟"},
+    "news_global_rss_e_60m": {"label": "全球多语 RSS E 组 (11 源)", "schedule": "每 60 分钟"},
+    "news_global_rss_f_60m": {"label": "全球多语 RSS F 组 (11 源)", "schedule": "每 60 分钟"},
+    "news_global_rss_g_60m": {"label": "全球多语 RSS G 组 (11 源)", "schedule": "每 60 分钟"},
+    "news_global_rss_h_60m": {"label": "全球多语 RSS H 组 (11 源)", "schedule": "每 60 分钟"},
+    "news_global_rss_i_60m": {"label": "全球多语 RSS I 组 (11 源)", "schedule": "每 60 分钟"},
+    "news_global_rss_j_60m": {"label": "全球多语 RSS J 组 (11 源)", "schedule": "每 60 分钟"},
+    "news_global_rss_k_60m": {"label": "全球多语 RSS K 组 (11 源)", "schedule": "每 60 分钟"},
+    "news_global_rss_l_60m": {"label": "全球多语 RSS L 组 (4 源)", "schedule": "每 60 分钟"},
 }
 
 # Map a worker job id to the ``news_article.source`` it writes.  Only

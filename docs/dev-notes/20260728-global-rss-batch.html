@@ -1,0 +1,242 @@
+<!doctype html><html lang=zh><head><meta charset=utf-8><title>20260728-global-rss-batch</title>
+<style>body{font-family:-apple-system,'PingFang SC',sans-serif;max-width:1100px;margin:24px auto;padding:0 16px;line-height:1.6}
+table{border-collapse:collapse;font-size:13px}th{background:#f2f2f2}td,th{padding:4px 8px}h1{font-size:22px}h2{margin-top:28px}</style></head>
+<body><h1>全球多语 RSS 源批次（第二波，agent B）— 125 源实测收录</h1>
+
+<p>日期：2026-07-28 ｜ 模块：app/services/news/sources/global_rss_batch.py ｜ Job：news_global_rss_[a-l]_60m（12 个批次，60m 间隔，每批 ≤11 源）</p>
+
+<h2>1. 语言构成</h2>
+
+<table border='1' cellspacing='0' cellpadding='4'>
+<tr><th>语言</th><th>源数</th><th>渠道构成</th></tr>
+<tr><td>日语 (ja)</td><td>7</td><td>财经媒体(ZUU online/ハフポスト日本版/Sirabee) + IT(Publickey) + 企业工程博客(ZOZO/freee/Money Forward)</td></tr>
+<tr><td>德语 (de)</td><td>7</td><td>财经博客(Der Bank Blog/Finanzrocker) + 科技媒体(netzpolitik/t3n/Computerwoche/MobileGeeks/neunetz)</td></tr>
+<tr><td>法语 (fr)</td><td>12</td><td>全国媒体(France24/BFMTV×2/Ouest-France/Valeurs/La Libre/Challenges/Courrier International) + 科技(next.ink/Clubic/Les Numériques/Developpez)</td></tr>
+<tr><td>韩语 (ko)</td><td>8</td><td>综合媒体(조선일보/동아일보/오마이뉴스/노컷뉴스/SBS/전자신문) + 加密(토큰포스트/코인데스크코리아)</td></tr>
+<tr><td>西班牙语 (es)</td><td>12</td><td>西语美洲+西班牙(La Nación/El Financiero/La Tercera/Expansión/eldiario/20minutos) + 科技博客(Xataka/El Blog Salmón/Microsiervos/Hipertextual/WWWhatsnew/Hiperderecho)</td></tr>
+<tr><td>中文 (zh)</td><td>8</td><td>行业媒体(东方财富/爱范儿/钛媒体/雷峰网/创业邦/IT之家/Solidot/SegmentFault)</td></tr>
+<tr><td>英语 (en)</td><td>71</td><td>央行研究(NY Fed/BoE/Atlanta Fed/NBER) + 智库(Bruegel 落选→Heritage/Tax Foundation/Pew/AEI 系) + 高校(LSE/Promarket/Wharton 落选) + 独立分析师(Grumpy Economist/Conversable Economist 等) + 工程团队博客(Cloudflare/Netflix/AWS/GitHub 等)</td></tr>
+<tr><td>**合计**</td><td>**125**</td><td></td></tr>
+</table>
+
+<h2>2. 验收标准与实测方法</h2>
+
+<ul>
+<li>每源实测：httpx GET（Mozilla UA，30s 超时，失败重试 1 次）→ HTTP 200 → `parse_rss_items` 解析出 ≥1 条 → 前 10 条正文（content:encoded/description/atom:content 去 HTML）平均 &gt;200 字符 → 最新一条发布时间在 30 天内。</li>
+<li>3 波共测 573 个候选 URL：第一波 227、第二波 306、第三波 40（含备选 URL 与解析修复后复测）。</li>
+<li>主要淘汰原因：本机网络对欧洲/日本大量站点 TCP 不可达（约占淘汰 40%）、正文仅标题/一句话摘要（约 30%，日本媒体尤其普遍）、404/403（约 25%）、停更（约 5%）。</li>
+<li>与并行 agent 去重：其 `independent_batch.py`（144 源，已 commit 689acbc）有 7 个 URL 与本表重叠（abnormal_returns/alpha_architect/financial_samurai/jvns/lynalden/oblivious_investor/simonwillison），已从本表剔除，本表 132→125。</li>
+<li>解析器修复（`rss_common.py`）：补齐 Atom 命名空间 title/summary/content 与 RSS 1.0 (RDF) item 解析——日本媒体（Impress Watch 系、ZDNet Japan 系）与工程博客（Go/Rust/Qiita/Publickey）依赖此修复。</li>
+</ul>
+
+<h2>3. 全量源清单（含实测证据）</h2>
+
+<h3>日语（7）</h3>
+
+<table border='1' cellspacing='0' cellpadding='4'>
+<tr><th>slug</th><th>名称</th><th>feed_url</th><th>items</th><th>平均正文(字符)</th><th>最新日期</th></tr>
+<tr><td>freee_dev</td><td>freee Developers Blog</td><td>https://developers.freee.co.jp/feed</td><td>30</td><td>4337</td><td>2026-07-24</td></tr>
+<tr><td>huffpost_jp</td><td>ハフポスト日本版</td><td>https://www.huffingtonpost.jp/feeds/index.xml</td><td>30</td><td>1112</td><td>2026-07-27</td></tr>
+<tr><td>moneyforward_dev</td><td>Money Forward Developers</td><td>https://moneyforward-dev.jp/feed</td><td>30</td><td>301</td><td>2026-07-23</td></tr>
+<tr><td>publickey</td><td>Publickey</td><td>https://www.publickey1.jp/atom.xml</td><td>15</td><td>236</td><td>2026-07-27</td></tr>
+<tr><td>sirabee</td><td>Sirabee</td><td>https://sirabee.com/feed/</td><td>10</td><td>1277</td><td>2026-07-27</td></tr>
+<tr><td>zozo_tech</td><td>ZOZO Tech Blog</td><td>https://techblog.zozo.com/feed</td><td>30</td><td>8736</td><td>2026-07-27</td></tr>
+<tr><td>zuuonline</td><td>ZUU online</td><td>https://zuuonline.com/feed</td><td>30</td><td>1976</td><td>2026-07-27</td></tr>
+</table>
+
+<h3>德语（7）</h3>
+
+<table border='1' cellspacing='0' cellpadding='4'>
+<tr><th>slug</th><th>名称</th><th>feed_url</th><th>items</th><th>平均正文(字符)</th><th>最新日期</th></tr>
+<tr><td>computerwoche</td><td>Computerwoche</td><td>https://www.computerwoche.de/rss/</td><td>20</td><td>7893</td><td>2026-07-27</td></tr>
+<tr><td>der_bank_blog</td><td>Der Bank Blog</td><td>https://www.der-bank-blog.de/feed/</td><td>50</td><td>244</td><td>2026-07-26</td></tr>
+<tr><td>finanzrocker</td><td>Finanzrocker</td><td>https://www.finanzrocker.net/feed/</td><td>10</td><td>520</td><td>2026-07-23</td></tr>
+<tr><td>mobilegeeks_de</td><td>MobileGeeks</td><td>https://www.mobilegeeks.de/feed/</td><td>10</td><td>7126</td><td>2026-07-27</td></tr>
+<tr><td>netzpolitik</td><td>netzpolitik.org</td><td>https://netzpolitik.org/feed/</td><td>25</td><td>8048</td><td>2026-07-27</td></tr>
+<tr><td>neunetz</td><td>neunetz</td><td>https://neunetz.com/feed/</td><td>15</td><td>10765</td><td>2026-07-10</td></tr>
+<tr><td>t3n</td><td>t3n Magazin</td><td>https://t3n.de/rss.xml</td><td>20</td><td>233</td><td>2026-07-27</td></tr>
+</table>
+
+<h3>法语（12）</h3>
+
+<table border='1' cellspacing='0' cellpadding='4'>
+<tr><th>slug</th><th>名称</th><th>feed_url</th><th>items</th><th>平均正文(字符)</th><th>最新日期</th></tr>
+<tr><td>bfm_eco</td><td>BFM Économie</td><td>https://www.bfmtv.com/rss/economie/</td><td>30</td><td>284</td><td>2026-07-27</td></tr>
+<tr><td>bfmtv</td><td>BFM TV</td><td>https://www.bfmtv.com/rss/news-24-7/</td><td>30</td><td>300</td><td>2026-07-27</td></tr>
+<tr><td>challenges</td><td>Challenges</td><td>https://www.challenges.fr/rss.xml</td><td>50</td><td>278</td><td>2026-07-27</td></tr>
+<tr><td>clubic</td><td>Clubic</td><td>https://www.clubic.com/feed/rss</td><td>50</td><td>224</td><td>2026-07-27</td></tr>
+<tr><td>courrierinter</td><td>Courrier International</td><td>https://www.courrierinternational.com/feed/all/rss.xml</td><td>20</td><td>308</td><td>2026-07-27</td></tr>
+<tr><td>developpez</td><td>Developpez.com</td><td>https://www.developpez.com/rss.php</td><td>20</td><td>457</td><td>2026-07-27</td></tr>
+<tr><td>france24</td><td>France 24</td><td>https://www.france24.com/fr/rss</td><td>24</td><td>274</td><td>2026-07-27</td></tr>
+<tr><td>lalibre</td><td>La Libre Belgique</td><td>https://www.lalibre.be/rss</td><td>100</td><td>208</td><td>2026-07-27</td></tr>
+<tr><td>lesnumeriques</td><td>Les Numériques</td><td>https://www.lesnumeriques.com/rss.xml</td><td>40</td><td>354</td><td>2026-07-27</td></tr>
+<tr><td>next_ink</td><td>next.ink (ex-Next INpact)</td><td>https://next.ink/feed/</td><td>50</td><td>3183</td><td>2026-07-27</td></tr>
+<tr><td>ouestfrance</td><td>Ouest-France</td><td>https://www.ouest-france.fr/rss/une</td><td>10</td><td>275</td><td>2026-07-27</td></tr>
+<tr><td>valeurs</td><td>Valeurs Actuelles</td><td>https://www.valeursactuelles.com/rss</td><td>10</td><td>354</td><td>2026-07-27</td></tr>
+</table>
+
+<h3>韩语（8）</h3>
+
+<table border='1' cellspacing='0' cellpadding='4'>
+<tr><th>slug</th><th>名称</th><th>feed_url</th><th>items</th><th>平均正文(字符)</th><th>最新日期</th></tr>
+<tr><td>chosun</td><td>조선일보</td><td>https://www.chosun.com/arc/outboundfeeds/rss/?outputType=xml</td><td>100</td><td>224</td><td>2026-07-27</td></tr>
+<tr><td>coindeskkorea</td><td>코인데스크코리아</td><td>https://www.coindeskkorea.com/rss</td><td>50</td><td>2926</td><td>2026-07-03</td></tr>
+<tr><td>donga</td><td>동아일보</td><td>https://rss.donga.com/total.xml</td><td>50</td><td>451</td><td>2026-07-27</td></tr>
+<tr><td>etnews</td><td>전자신문</td><td>https://rss.etnews.com/Section901.xml</td><td>30</td><td>249</td><td>2026-07-27</td></tr>
+<tr><td>nocutnews</td><td>노컷뉴스</td><td>https://rss.nocutnews.co.kr/nocutnews.xml</td><td>21</td><td>1216</td><td>2026-07-27</td></tr>
+<tr><td>ohmynews</td><td>오마이뉴스</td><td>https://rss.ohmynews.com/rss/ohmynews.xml</td><td>20</td><td>842</td><td>2026-07-27</td></tr>
+<tr><td>sbs_news</td><td>SBS 뉴스</td><td>https://news.sbs.co.kr/news/TopicRssFeed.do?plink=RSSREADER</td><td>11</td><td>1202</td><td>2026-07-27</td></tr>
+<tr><td>tokenpost</td><td>토큰포스트</td><td>https://www.tokenpost.kr/rss</td><td>50</td><td>376</td><td>2026-07-27</td></tr>
+</table>
+
+<h3>西班牙语（12）</h3>
+
+<table border='1' cellspacing='0' cellpadding='4'>
+<tr><th>slug</th><th>名称</th><th>feed_url</th><th>items</th><th>平均正文(字符)</th><th>最新日期</th></tr>
+<tr><td>20minutos_es</td><td>20minutos</td><td>https://www.20minutos.es/rss/</td><td>205</td><td>4348</td><td>2026-07-27</td></tr>
+<tr><td>elblogsalmon</td><td>El Blog Salmón</td><td>https://www.elblogsalmon.com/index.xml</td><td>20</td><td>7241</td><td>2026-07-27</td></tr>
+<tr><td>eldiario</td><td>eldiario.es</td><td>https://www.eldiario.es/rss/</td><td>101</td><td>5892</td><td>2026-07-27</td></tr>
+<tr><td>elfinanciero_mx</td><td>El Financiero (MX)</td><td>https://www.elfinanciero.com.mx/rss/</td><td>100</td><td>3452</td><td>2026-07-27</td></tr>
+<tr><td>expansion</td><td>Expansión</td><td>https://e00-expansion.uecdn.es/rss/portada.xml</td><td>66</td><td>211</td><td>2026-07-27</td></tr>
+<tr><td>hiperderecho</td><td>Derecho Digital</td><td>https://hiperderecho.org/feed/</td><td>100</td><td>9587</td><td>2026-07-21</td></tr>
+<tr><td>hipertextual</td><td>Hipertextual</td><td>https://hipertextual.com/feed</td><td>15</td><td>4489</td><td>2026-07-27</td></tr>
+<tr><td>lanacion</td><td>La Nación (AR)</td><td>https://www.lanacion.com.ar/arc/outboundfeeds/rss/?outputType=xml</td><td>96</td><td>3895</td><td>2026-07-27</td></tr>
+<tr><td>latercera</td><td>La Tercera</td><td>https://www.latercera.com/arc/outboundfeeds/rss/?outputType=xml</td><td>100</td><td>2918</td><td>2026-07-27</td></tr>
+<tr><td>microsiervos</td><td>Microsiervos</td><td>https://microsiervos.com/index.xml</td><td>15</td><td>2286</td><td>2026-07-27</td></tr>
+<tr><td>wwwhatsnew</td><td>WWWhatsnew</td><td>https://wwwhatsnew.com/feed/</td><td>10</td><td>7039</td><td>2026-07-27</td></tr>
+<tr><td>xataka</td><td>Xataka</td><td>https://www.xataka.com/index.xml</td><td>26</td><td>5529</td><td>2026-07-27</td></tr>
+</table>
+
+<h3>中文（8）</h3>
+
+<table border='1' cellspacing='0' cellpadding='4'>
+<tr><th>slug</th><th>名称</th><th>feed_url</th><th>items</th><th>平均正文(字符)</th><th>最新日期</th></tr>
+<tr><td>cyzone</td><td>创业邦</td><td>https://www.cyzone.cn/rss/</td><td>30</td><td>287</td><td>2026-07-27</td></tr>
+<tr><td>eastmoney_rss</td><td>东方财富网</td><td>https://rss.eastmoney.com/rss_partener.xml</td><td>93</td><td>2927</td><td>2026-07-27</td></tr>
+<tr><td>ifanr</td><td>爱范儿</td><td>https://www.ifanr.com/feed</td><td>20</td><td>5018</td><td>2026-07-27</td></tr>
+<tr><td>ithome_cn</td><td>IT之家</td><td>https://www.ithome.com/rss/</td><td>60</td><td>829</td><td>2026-07-27</td></tr>
+<tr><td>leiphone</td><td>雷峰网</td><td>https://www.leiphone.com/feed</td><td>20</td><td>5282</td><td>2026-07-27</td></tr>
+<tr><td>segmentfault</td><td>SegmentFault</td><td>https://segmentfault.com/feeds</td><td>50</td><td>237</td><td>2026-07-24</td></tr>
+<tr><td>solidot</td><td>Solidot 奇客</td><td>https://www.solidot.org/index.rss</td><td>20</td><td>348</td><td>2026-07-27</td></tr>
+<tr><td>tmtpost</td><td>钛媒体</td><td>https://www.tmtpost.com/rss.xml</td><td>19</td><td>3366</td><td>2026-07-27</td></tr>
+</table>
+
+<h3>英语（71）</h3>
+
+<table border='1' cellspacing='0' cellpadding='4'>
+<tr><th>slug</th><th>名称</th><th>feed_url</th><th>items</th><th>平均正文(字符)</th><th>最新日期</th></tr>
+<tr><td>acquirers_multiple</td><td>The Acquirer&#x27;s Multiple</td><td>https://acquirersmultiple.com/feed/</td><td>20</td><td>8885</td><td>2026-07-27</td></tr>
+<tr><td>american_compass</td><td>American Compass</td><td>https://americancompass.org/feed/</td><td>10</td><td>5340</td><td>2026-07-16</td></tr>
+<tr><td>android_dev</td><td>Android Developers Blog</td><td>https://android-developers.googleblog.com/feeds/posts/default</td><td>25</td><td>7110</td><td>2026-07-27</td></tr>
+<tr><td>apple_ml</td><td>Apple Machine Learning Research</td><td>https://machinelearning.apple.com/rss.xml</td><td>10</td><td>593</td><td>2026-07-27</td></tr>
+<tr><td>arstechnica</td><td>Ars Technica</td><td>https://feeds.arstechnica.com/arstechnica/index</td><td>20</td><td>1096</td><td>2026-07-27</td></tr>
+<tr><td>automatic_earth</td><td>The Automatic Earth</td><td>https://www.theautomaticearth.com/feed</td><td>10</td><td>420</td><td>2026-07-27</td></tr>
+<tr><td>aws_blog</td><td>AWS News Blog</td><td>https://aws.amazon.com/blogs/aws/feed/</td><td>20</td><td>6501</td><td>2026-07-27</td></tr>
+<tr><td>axios</td><td>Axios</td><td>https://api.axios.com/feed/top/</td><td>100</td><td>3462</td><td>2026-07-27</td></tr>
+<tr><td>bankunderground</td><td>Bank Underground (BoE)</td><td>https://bankunderground.co.uk/feed/</td><td>10</td><td>10173</td><td>2026-07-16</td></tr>
+<tr><td>brooker</td><td>Marc Brooker&#x27;s Blog</td><td>https://brooker.co.za/blog/rss.xml</td><td>162</td><td>4980</td><td>2026-07-19</td></tr>
+<tr><td>business_insider</td><td>Business Insider</td><td>https://www.businessinsider.com/rss</td><td>20</td><td>5247</td><td>2026-07-27</td></tr>
+<tr><td>chainalysis_blog</td><td>Chainalysis Blog</td><td>https://www.chainalysis.com/blog/feed/</td><td>10</td><td>282</td><td>2026-07-24</td></tr>
+<tr><td>cloudflare_blog</td><td>Cloudflare Blog</td><td>https://blog.cloudflare.com/rss/</td><td>20</td><td>12965</td><td>2026-07-27</td></tr>
+<tr><td>cncf_blog</td><td>CNCF Blog</td><td>https://www.cncf.io/feed/</td><td>10</td><td>10309</td><td>2026-07-27</td></tr>
+<tr><td>contra_corner</td><td>David Stockman&#x27;s Contra Corner</td><td>https://davidstockmanscontracorner.com/feed/</td><td>12</td><td>559</td><td>2026-07-24</td></tr>
+<tr><td>conversable_economist</td><td>Conversable Economist (Timothy Taylor)</td><td>https://conversableeconomist.com/feed/</td><td>10</td><td>5100</td><td>2026-07-24</td></tr>
+<tr><td>dropbox_tech</td><td>Dropbox.Tech</td><td>https://dropbox.tech/feed</td><td>10</td><td>14939</td><td>2026-07-20</td></tr>
+<tr><td>econlib</td><td>EconLog / Econlib</td><td>https://www.econlib.org/feed/</td><td>10</td><td>10246</td><td>2026-07-24</td></tr>
+<tr><td>financial_post</td><td>Financial Post</td><td>https://financialpost.com/feed/</td><td>10</td><td>257</td><td>2026-07-27</td></tr>
+<tr><td>flyio_blog</td><td>Fly.io Blog</td><td>https://fly.io/blog/feed.xml</td><td>40</td><td>10802</td><td>2026-07-24</td></tr>
+<tr><td>fortune</td><td>Fortune</td><td>https://fortune.com/feed/</td><td>10</td><td>6302</td><td>2026-07-27</td></tr>
+<tr><td>github_blog</td><td>The GitHub Blog</td><td>https://github.blog/feed/</td><td>10</td><td>8602</td><td>2026-07-23</td></tr>
+<tr><td>grumpy_economist</td><td>The Grumpy Economist (John Cochrane)</td><td>https://www.grumpy-economist.com/feed</td><td>20</td><td>9708</td><td>2026-07-22</td></tr>
+<tr><td>guardian_business</td><td>The Guardian Business</td><td>https://www.theguardian.com/uk/business/rss</td><td>40</td><td>543</td><td>2026-07-27</td></tr>
+<tr><td>hashicorp_blog</td><td>HashiCorp Blog</td><td>https://www.hashicorp.com/blog/feed.xml</td><td>20</td><td>9569</td><td>2026-07-22</td></tr>
+<tr><td>heritage</td><td>Heritage Foundation</td><td>https://www.heritage.org/rss</td><td>20</td><td>7884</td><td>2026-07-24</td></tr>
+<tr><td>heroku_blog</td><td>Heroku Blog</td><td>https://blog.heroku.com/feed</td><td>150</td><td>5329</td><td>2026-07-16</td></tr>
+<tr><td>honeycomb_blog</td><td>Honeycomb Blog</td><td>https://www.honeycomb.io/feed/</td><td>50</td><td>260</td><td>2026-07-22</td></tr>
+<tr><td>incrementum</td><td>Incrementum</td><td>https://www.incrementum.li/en/feed/</td><td>10</td><td>3453</td><td>2026-07-27</td></tr>
+<tr><td>infoq_en</td><td>InfoQ</td><td>https://feed.infoq.com/</td><td>15</td><td>368</td><td>2026-07-27</td></tr>
+<tr><td>international_man</td><td>International Man (Doug Casey)</td><td>https://internationalman.com/feed/</td><td>10</td><td>7498</td><td>2026-07-24</td></tr>
+<tr><td>jamestown</td><td>Jamestown Foundation</td><td>https://jamestown.org/feed/</td><td>10</td><td>10493</td><td>2026-07-25</td></tr>
+<tr><td>jetbrains_blog</td><td>JetBrains Blog</td><td>https://blog.jetbrains.com/feed/</td><td>12</td><td>7448</td><td>2026-07-27</td></tr>
+<tr><td>koreatimes</td><td>The Korea Times</td><td>https://www.koreatimes.co.kr/www/rss/rss.xml</td><td>5</td><td>888</td><td>2026-07-27</td></tr>
+<tr><td>kubernetes_blog</td><td>Kubernetes Blog</td><td>https://kubernetes.io/feed.xml</td><td>50</td><td>10660</td><td>2026-07-14</td></tr>
+<tr><td>liberty_street</td><td>Liberty Street Economics (NY Fed)</td><td>https://libertystreeteconomics.newyorkfed.org/feed/</td><td>100</td><td>13454</td><td>2026-07-17</td></tr>
+<tr><td>lse_business</td><td>LSE Business Review</td><td>https://blogs.lse.ac.uk/businessreview/feed/</td><td>10</td><td>9026</td><td>2026-07-23</td></tr>
+<tr><td>martinfowler</td><td>Martin Fowler</td><td>https://martinfowler.com/feed.atom</td><td>30</td><td>5847</td><td>2026-07-21</td></tr>
+<tr><td>meta_engineering</td><td>Engineering at Meta</td><td>https://engineering.fb.com/feed/</td><td>9</td><td>16080</td><td>2026-07-15</td></tr>
+<tr><td>mozilla_blog</td><td>Mozilla Blog</td><td>https://blog.mozilla.org/en/feed/</td><td>20</td><td>3244</td><td>2026-07-21</td></tr>
+<tr><td>msft_blog</td><td>Microsoft Blog</td><td>https://blogs.microsoft.com/feed/</td><td>10</td><td>9484</td><td>2026-07-22</td></tr>
+<tr><td>msft_research</td><td>Microsoft Research Blog</td><td>https://www.microsoft.com/en-us/research/feed/</td><td>10</td><td>9480</td><td>2026-07-13</td></tr>
+<tr><td>nber</td><td>NBER</td><td>https://back.nber.org/rss/new.xml</td><td>31</td><td>1028</td><td>2026-07-27</td></tr>
+<tr><td>netflix_tech</td><td>Netflix TechBlog</td><td>https://netflixtechblog.com/feed</td><td>10</td><td>17176</td><td>2026-07-17</td></tr>
+<tr><td>niskanen</td><td>Niskanen Center</td><td>https://www.niskanencenter.org/feed/</td><td>10</td><td>57995</td><td>2026-07-23</td></tr>
+<tr><td>nvidia_blog</td><td>NVIDIA Blog</td><td>https://blogs.nvidia.com/feed/</td><td>18</td><td>6085</td><td>2026-07-27</td></tr>
+<tr><td>nvidia_dev</td><td>NVIDIA Technical Blog</td><td>https://developer.nvidia.com/blog/feed/</td><td>100</td><td>559</td><td>2026-07-27</td></tr>
+<tr><td>pewresearch</td><td>Pew Research Center</td><td>https://www.pewresearch.org/feed/</td><td>100</td><td>280</td><td>2026-07-27</td></tr>
+<tr><td>postman_blog</td><td>Postman Blog</td><td>https://blog.postman.com/feed/</td><td>12</td><td>14474</td><td>2026-07-27</td></tr>
+<tr><td>project_syndicate</td><td>Project Syndicate</td><td>https://www.project-syndicate.org/rss</td><td>20</td><td>304</td><td>2026-07-27</td></tr>
+<tr><td>promarket</td><td>ProMarket (Chicago Booth)</td><td>https://www.promarket.org/feed/</td><td>10</td><td>411</td><td>2026-07-27</td></tr>
+<tr><td>prometheus_blog</td><td>Prometheus Blog</td><td>https://prometheus.io/blog/feed.xml</td><td>59</td><td>6131</td><td>2026-06-30</td></tr>
+<tr><td>quantocracy</td><td>Quantocracy</td><td>https://quantocracy.com/feed/</td><td>10</td><td>2054</td><td>2026-07-26</td></tr>
+<tr><td>realinvestmentadvice</td><td>Real Investment Advice (Lance Roberts)</td><td>https://realinvestmentadvice.com/feed/</td><td>20</td><td>9694</td><td>2026-07-27</td></tr>
+<tr><td>reason</td><td>Reason</td><td>https://reason.com/feed/</td><td>48</td><td>6222</td><td>2026-07-27</td></tr>
+<tr><td>rust_blog</td><td>Rust Blog</td><td>https://blog.rust-lang.org/feed.xml</td><td>10</td><td>13148</td><td>2026-07-16</td></tr>
+<tr><td>scmp_business</td><td>SCMP Business</td><td>https://www.scmp.com/rss/4/feed</td><td>50</td><td>498</td><td>2026-07-27</td></tr>
+<tr><td>slack_eng</td><td>Slack Engineering</td><td>https://slack.engineering/feed/</td><td>8</td><td>16353</td><td>2026-07-14</td></tr>
+<tr><td>sovereign_man</td><td>Sovereign Man (Simon Black)</td><td>https://www.sovereignman.com/feed/</td><td>50</td><td>5889</td><td>2026-07-27</td></tr>
+<tr><td>spectrum_ieee</td><td>IEEE Spectrum</td><td>https://spectrum.ieee.org/feeds/feed.rss</td><td>30</td><td>9774</td><td>2026-07-25</td></tr>
+<tr><td>spotify_eng</td><td>Spotify Engineering</td><td>https://engineering.atspotify.com/feed/</td><td>5</td><td>231</td><td>2026-07-20</td></tr>
+<tr><td>stackoverflow_blog</td><td>The Stack Overflow Blog</td><td>https://stackoverflow.blog/feed/</td><td>40</td><td>1492</td><td>2026-07-24</td></tr>
+<tr><td>stripe_blog</td><td>Stripe Blog</td><td>https://stripe.com/blog/feed.rss</td><td>10</td><td>208</td><td>2026-07-21</td></tr>
+<tr><td>taxfoundation</td><td>Tax Foundation</td><td>https://taxfoundation.org/feed/</td><td>20</td><td>232</td><td>2026-07-27</td></tr>
+<tr><td>technologyreview</td><td>MIT Technology Review</td><td>https://www.technologyreview.com/feed/</td><td>10</td><td>6786</td><td>2026-07-27</td></tr>
+<tr><td>thenewstack</td><td>The New Stack</td><td>https://thenewstack.io/feed/</td><td>26</td><td>6451</td><td>2026-07-27</td></tr>
+<tr><td>theverge</td><td>The Verge</td><td>https://www.theverge.com/rss/index.xml</td><td>10</td><td>6975</td><td>2026-07-27</td></tr>
+<tr><td>vercel_blog</td><td>Vercel Blog</td><td>https://vercel.com/atom</td><td>1380</td><td>1143</td><td>2026-07-27</td></tr>
+<tr><td>vox</td><td>Vox</td><td>https://www.vox.com/rss/index.xml</td><td>10</td><td>10038</td><td>2026-07-27</td></tr>
+<tr><td>war_on_the_rocks</td><td>War on the Rocks</td><td>https://warontherocks.com/feed/</td><td>100</td><td>773</td><td>2026-07-27</td></tr>
+<tr><td>webkit_blog</td><td>WebKit Blog</td><td>https://webkit.org/feed/</td><td>10</td><td>16402</td><td>2026-07-22</td></tr>
+</table>
+
+<h2>4. 翻译管线多语言验证</h2>
+
+<p>语言门：translation_service.is_chinese_language 只排除中文变体，ja/de/fr/ko/es 全部进入翻译队列；scheduler_translate_news._pending_translation_ids 同样只排除中文——无需改管线逻辑。</p>
+
+<p>已改动：系统 prompt 从&quot;中英双语&quot;扩展为多语言（&quot;精通英语、日语、德语、法语、韩语、西班牙语等多种语言…原文可能是上述任意一种非中文语言&quot;），正文/标题两个 prompt 同步；模块 docstring 同步更新。新增测试 TestTranslationMultilingual 锁定该行为。</p>
+
+<p>MiniMax 真实 smoke（2026-07-28，本地 .env MiniMax key，取各源首条 title+body 走生产 provider.chat + 生产 prompt）：</p>
+
+<table border='1' cellspacing='0' cellpadding='4'>
+<tr><th>语言</th><th>源</th><th>原文标题</th><th>中文标题</th><th>正文样例</th></tr>
+<tr><td>ja</td><td>ZUU online</td><td>日々是相場［夕刊］―― 2026年7月27日（月）</td><td>《日々是相場》晚刊 2026年7月27日（周一）</td><td>&quot;日经平均 64,931.19日元 △320.04日元 汇率 1美元＝163.56日元…受原油价格下跌等因素影响，整体表现坚挺，但半导体股走弱…&quot; —— 通顺中文，数字/代码保留，无 think 块</td></tr>
+<tr><td>de</td><td>netzpolitik.org</td><td>Forderungen nach CSD-Anschlag: Schamlose Heuchelei</td><td>CSD恐袭后的诉求：恬不知耻的虚伪</td><td>&quot;柏林克里斯托弗街日游行遭遇袭击后，人们深感震惊。然而，基民盟主要政客的反应很容易被揭穿不过是虚伪的表演而已…&quot; —— 无乱码/无 think 块</td></tr>
+<tr><td>fr</td><td>next.ink</td><td>☕️ OpenAI aurait mis une semaine à s&#x27;apercevoir que son agent avait attaqué Hugging Face</td><td>OpenAI 据称花了一周才察觉其智能体攻击了 Hugging Face</td><td>&quot;7月21日，OpenAI发布了一份令人惊讶的公告：其旗下一个人工智能系统对Hugging Face策划发起了攻击…&quot; —— 专名保留英文，无 think 块</td></tr>
+</table>
+
+<h2>5. 改动文件清单</h2>
+
+<table border='1' cellspacing='0' cellpadding='4'>
+<tr><th>文件</th><th>改动</th></tr>
+<tr><td>`app/services/news/sources/global_rss_batch.py`</td><td>新增：125 源表 + 12 批次 + `GlobalRssBatchCrawler`（per-feed language/market，`source=global_{slug}`，10 items/feed，2s 礼让延迟）</td></tr>
+<tr><td>`app/services/news/scheduler_jobs.py`</td><td>新增 `_global_rss_batch_job` 工厂 + `GLOBAL_RSS_BATCH_JOBS`（12 job，不带营销过滤——专业媒体非营销自媒体，对齐 `_simple_rss_job`）</td></tr>
+<tr><td>`app/core/scheduler.py`</td><td>注册 12 个 `news_global_rss_*_60m` job（60m、max_instances=1、coalesce=True）</td></tr>
+<tr><td>`app/api/v1/news.py`</td><td>`_WORKER_KEYWORDS` 加 `global_rss`；`_WORKER_META` 加 12 条健康网格 meta</td></tr>
+<tr><td>`app/services/news/sources/rss_common.py`</td><td>修复：Atom 命名空间 title/summary/content/updated 解析 + RSS 1.0 (RDF) item 解析（日本媒体/工程博客必需）</td></tr>
+<tr><td>`app/services/news/translation_service.py`</td><td>正文+标题 prompt 从&quot;中英双语&quot;扩展为多语言；docstring 同步</td></tr>
+<tr><td>`app/tests/news/test_global_rss_batch.py`</td><td>新增 27 个测试：表完整性（唯一性/语言/市场/≥100/五语言覆盖/不与 wechat2rss 重叠）、批次分区、mock 抓取（per-feed source/language/market 映射、失败容错、未知批次）、解析器扩展（Atom/RDF）、调度接线、健康 meta、翻译多语言门</td></tr>
+</table>
+
+<h2>6. 测试结果</h2>
+
+<ul>
+<li>`python -m pytest app/tests/news/` → **414 passed**（含新增 27）</li>
+<li>调度接线自检：12 job 物化、函数名正确、health meta 齐全、`global_rss` 关键字命中</li>
+</ul>
+
+<h2>7. 部署建议</h2>
+
+<p>1. 常规 deploy 即可：12 个 job 随 APScheduler 启动自动注册；首小时各批次陆续入库，/news/health 网格可见 全球多语 RSS A-L 组。</p>
+<p>2. 翻译负载预警：125 源 × 每批 10 条 × 每小时 → 日增量峰值理论 ~3 万条（实际远低于此，多数博客日更 &lt;5 条）；非中文约 117 源全部进翻译队列。news_translate_10m 每 10 分钟一批（news_translation_batch_size），建议部署后 24h 观察 MiniMax 用量与队列积压（title_zh IS NULL 计数）；若积压可临时调大 batch_size 或缩短间隔。</p>
+<p>3. ECS 网络：本机（家宽）对 heise/spiegel/lemonde/elpais 等欧洲站点 TCP 不可达导致落选；ECS（阿里云）国际出口通常更优，若后续想补这些源，可在 ECS 上复测 /tmp/feeds_check 风格脚本再扩表。</p>
+<p>4. 日语全文源稀缺：日本媒体 RSS 普遍只给一句话摘要（实测淘汰主因），本批仅 7 个日语源达标；后续可评估&quot;摘要入库 + Jina 全文抓取补齐&quot;策略放宽正文门槛（平台已有 news_full_content_10m 管线，摘要源正文会由 Jina 补齐后再触发重翻——translation_is_stale 机制已覆盖）。</p>
+<p>5. 监控：批次 job 失败会记 etl_log（_record_etl），健康页可见；单源挂掉不影响同批其他源（per-feed try/except + warning 日志）。建议每周扫一次 news_article 中 global_* 源 24h 零产出的源，淘汰/换 URL。</p></body></html>

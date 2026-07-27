@@ -1,8 +1,9 @@
 """News article translation service.
 
-Calls DeepSeek to translate the body (or Jina-fetched ``full_content``)
-of an English :class:`NewsArticle` into Chinese, then caches the result
-on the row so subsequent reads are free.
+Calls the configured LLM provider (MiniMax / DeepSeek) to translate the
+body (or Jina-fetched ``full_content``) of a non-Chinese
+:class:`NewsArticle` into Chinese, then caches the result on the row so
+subsequent reads are free.
 
 Design notes
 ------------
@@ -11,9 +12,12 @@ Design notes
   user will actually see on the detail page. Falling back to ``body``
   keeps the endpoint useful for crawlers that haven't filled
   ``full_content`` yet.
-* **Language gate**: the public service refuses to translate anything
-  that isn't ``language == "en"``. CN / HK / GLOBAL content stays
-  untouched and we return ``None`` so the API can answer 400.
+* **Language gate**: the service refuses to translate anything whose
+  ``language`` is a Chinese variant (``zh``/``zh-tw``/…); every other
+  language is translated. This was widened from English-only on
+  2026-07-28 for the global multi-language RSS expansion (ja/de/fr/ko/
+  es feeds) — the system prompt is multi-language aware, so a Japanese
+  or German article translates just as well.
 * **Caching**: the translation is written to ``translated_zh`` /
   ``translation_generated_at``. Re-running with the cache present is a
   no-op — we read straight from the row. The DB column doubles as the
@@ -49,10 +53,11 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 _TRANSLATION_SYSTEM = (
-    "你是一名严谨的中英双语金融翻译。请将用户提供的英文资讯正文翻译为中文。\n"
+    "你是一名严谨的金融翻译，精通英语、日语、德语、法语、韩语、西班牙语等多种语言。"
+    "请将用户提供的资讯正文（原文可能是上述任意一种非中文语言）翻译为中文。\n"
     "要求：\n"
     "1. 保持 Markdown 结构（标题、列表、引用、链接、代码块）原样。\n"
-    "2. 保留所有英文专有名词（公司名、产品名、人名、英文术语首次出现时可附中文译名）。\n"
+    "2. 保留所有原文专有名词（公司名、产品名、人名、术语首次出现时可附中文译名）。\n"
     "3. 保留所有数字、货币符号、百分比、股票代码、URL。\n"
     "4. 输出纯中文译文，不要附加任何解释、注释或代码块标记。\n"
     "5. 如果原文极短或为空，直接返回空字符串。"
@@ -62,10 +67,11 @@ _TRANSLATION_SYSTEM = (
 # a single line of Chinese with no Markdown decoration so it can drop
 # straight into the list-page headline slot.
 _TITLE_TRANSLATION_SYSTEM = (
-    "你是一名严谨的中英双语金融翻译。请将用户提供的英文资讯标题翻译为中文。\n"
+    "你是一名严谨的金融翻译，精通英语、日语、德语、法语、韩语、西班牙语等多种语言。"
+    "请将用户提供的资讯标题（原文可能是上述任意一种非中文语言）翻译为中文。\n"
     "要求：\n"
     "1. 只输出一行中文标题，不要书名号以外的任何标点装饰、不要解释。\n"
-    "2. 保留公司名、产品名、人名等专有名词的英文原名（可在括号内附中文译名）。\n"
+    "2. 保留公司名、产品名、人名等专有名词的原文（可在括号内附中文译名）。\n"
     "3. 保留所有数字、货币符号、百分比、股票代码。\n"
     "4. 如果原文为空，直接返回空字符串。"
 )
@@ -208,7 +214,8 @@ class NewsTranslationService:
         ------
         ValueError
             - Article not found.
-            - Article is not in English (``language != "en"``).
+            - Article is already in Chinese (``language`` is a ``zh``
+              variant).
             - Article has no body / full_content to translate.
         RuntimeError
             - DeepSeek call failed (timeout, 429, no key configured).

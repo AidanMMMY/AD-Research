@@ -2081,6 +2081,22 @@ def init_scheduler():
                 max_instances=1,
                 coalesce=True,
             )
+
+        # Global multi-language RSS batches (2026-07-28) — ja/de/fr/
+        # ko/es publications + English central-bank / think-tank /
+        # engineering blogs + Chinese industry press, generated in
+        # ``scheduler_jobs.GLOBAL_RSS_BATCH_JOBS``, all hourly.
+        for job_id, label, batch in _news_jobs.GLOBAL_RSS_BATCH_JOBS:
+            fn = getattr(_news_jobs, f"run_global_rss_{batch}_crawl")
+            scheduler.add_job(
+                fn,
+                trigger=IntervalTrigger(minutes=60),
+                id=job_id,
+                name=label,
+                replace_existing=True,
+                max_instances=1,
+                coalesce=True,
+            )
     except ImportError:
         pass
 
