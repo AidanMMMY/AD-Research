@@ -554,7 +554,7 @@ export default function Dashboard() {
                 >
                   <span className="cc-signal__time">{sig.trade_date}</span>
                   <span className="cc-signal__badge" style={{ color: 'var(--cc-accent)' }}>资金</span>
-                  <div>
+                  <div className="cc-signal__body">
                     <div className="cc-signal__code">{sig.ts_code}</div>
                     <div className="cc-signal__desc">{sig.signal_name || '资金流综合信号'}</div>
                   </div>
@@ -579,9 +579,9 @@ export default function Dashboard() {
                 >
                   <span className="cc-signal__time">{formatRelative(article.published_at)}</span>
                   <span className="cc-signal__badge" style={{ color: 'var(--cc-warn)' }}>事件</span>
-                  <div>
+                  <div className="cc-signal__body">
                     <div className="cc-signal__code" style={{ fontWeight: 500 }}>
-                      {article.title}
+                      {article.title_zh ?? article.title}
                     </div>
                     <div className="cc-signal__desc">{article.source}</div>
                   </div>
@@ -681,8 +681,8 @@ export default function Dashboard() {
                     }}
                   >
                     <span className="cc-brief__rank">{idx + 1}</span>
-                    <div>
-                      <div className="cc-brief__title">{article.title}</div>
+                    <div className="cc-brief__body">
+                      <div className="cc-brief__title">{article.title_zh ?? article.title}</div>
                       <div className="cc-brief__desc">
                         {article.source} · {(article.symbols ?? []).slice(0, 3).map((s) => s.symbol).join(', ')}
                       </div>
