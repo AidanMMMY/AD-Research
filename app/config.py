@@ -128,7 +128,12 @@ class Settings(BaseSettings):
     # scheduler job, ``news_translation_batch_size`` articles per tick.
     news_translation_on_ingest: bool = True
     news_translation_ingest_time_budget_sec: int = 90
-    news_translation_batch_size: int = 15
+    # 2026-07-28: 15 -> 50 per tick (~7,200/day). The 652-source
+    # expansion pushed non-Chinese inflow to ~4,400/day, beyond the old
+    # ~2,160/day drain capacity — the backlog was growing unboundedly.
+    # Title translation is a short, cheap LLM call; MiniMax rate limits
+    # have ample headroom at this cadence.
+    news_translation_batch_size: int = 50
 
     # Xueqiu (雪球) cookie — raw "Cookie:" header value from a logged-in
     # browser session. Must include xq_a_token=...; u=...; device_id=...
