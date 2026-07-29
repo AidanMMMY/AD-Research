@@ -1,0 +1,98 @@
+<!DOCTYPE html><html lang="zh"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>2026-07-29 JINA+公众号接入</title><style>body{max-width:52rem;margin:2rem auto;padding:0 1rem;font:16px/1.75 -apple-system,"PingFang SC",sans-serif;color:#1f2328}table{border-collapse:collapse;width:100%}td,th{border:1px solid #d0d7de;padding:6px 10px}code,pre{background:#f6f8fa;border-radius:6px}code{padding:2px 5px}pre{padding:12px;overflow-x:auto}h1,h2,h3{line-height:1.3}</style></head><body><h1>2026-07-29 JINA_API_KEY 配置 + 7 个公众号 wewe-rss 接入记录</h1>
+<blockquote>
+<p>背景：晨报遗留 3 项用户配合待办全部闭环。用户提供 JINA key + 完成 wewe-rss 重扫码 + 提供 7 个公众号文章链接。</p>
+</blockquote>
+<hr />
+<h2>1. JINA_API_KEY 配置（解锁 investing.com 全文）</h2>
+<h3>生效路径（两个坑）</h3>
+<ol>
+<li><strong>env 注入方式</strong>：生产 compose（<code>deploy/aliyun-ecs/docker-compose.yml</code>）的环境变量是<strong>显式清单</strong>
+   （<code>x-backend-env</code> anchor），<strong>没有 env_file 指令</strong>——.env 只用于 <code>${VAR}</code> 插值。
+   新 key 必须同时在 ① <code>.env</code> 写值 ② compose 清单登记 <code>JINA_API_KEY: ${JINA_API_KEY:-}</code>（commit <code>342e8eb</code>）。</li>
+<li><strong>compose 目录</strong>：生产 compose 在 <code>/opt/ad-research/deploy/aliyun-ecs/</code>，
+   <code>/opt/ad-research/docker-compose.yml</code> 是 <strong>dev 版</strong>（backend-dev/postgres-dev/redis-dev）。
+   在根目录跑 <code>docker compose up -d</code> 会拉起 dev 容器组（本次误启已全部清理，生产零影响）。
+   <strong>铁律：生产操作一律 <code>cd /opt/ad-research/deploy/aliyun-ecs</code>。</strong></li>
+</ol>
+<h3>验证</h3>
+<ul>
+<li>容器内 <code>printenv JINA_API_KEY</code> ✓</li>
+<li>实测 investing.com 经 r.jina.ai：200 / 63KB（此前匿名 AbuseAlleviationError 封域）</li>
+<li>624 篇纯标题 investing 文章由 full-content drain 自动补抓，无需手动回填</li>
+</ul>
+<h2>2. wewe-rss 重扫码（用户操作，已验证）</h2>
+<ul>
+<li>用户完成微信读书重扫码；近 2h 容器日志 <code>暂无可用读书账号</code> 0 次（此前 24h 内 16 次）</li>
+<li>8 个老公众号（智谷/远川/沧海/付鹏/李迅雷/聪明投资者/北纬/晚点）恢复抓取</li>
+</ul>
+<h2>3. 7 个公众号接入（wewe-rss tRPC 全自动）</h2>
+<p>流程：<code>platform.getMpInfo</code>（文章链接→MP_WXS id）→ <code>feed.add</code> → <code>feed.refreshArticles</code>，
+slug 写入 <code>WECHAT_RSS_FEED_MAP</code>（backend 重建加载）。<strong>注意 backend 重建时机</strong>：
+CI deploy 与手动改 .env 的先后顺序决定配置何时生效，改完 .env 必须
+<code>cd /opt/ad-research/deploy/aliyun-ecs &amp;&amp; docker compose up -d backend</code> 才加载。</p>
+<table>
+<thead>
+<tr>
+<th>公众号</th>
+<th>MP_WXS id</th>
+<th>source slug</th>
+<th>feed</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>杨国英观察</td>
+<td>3016597504</td>
+<td>wechat_yangguoying</td>
+<td>✅ 30 篇</td>
+</tr>
+<tr>
+<td>叫小宋别叫总</td>
+<td>3943649816</td>
+<td>wechat_xiaosong</td>
+<td>✅ 30 篇</td>
+</tr>
+<tr>
+<td>投资界</td>
+<td>3298956650</td>
+<td>wechat_touzijie</td>
+<td>⏳ 代理持续返回 0（见下）</td>
+</tr>
+<tr>
+<td>墨子连山</td>
+<td>3276873487</td>
+<td>wechat_mozilianshan</td>
+<td>✅ 30 篇（首次 0 重试后恢复）</td>
+</tr>
+<tr>
+<td>半导体行业圈</td>
+<td>3598840296</td>
+<td>wechat_bandaoti</td>
+<td>✅ 30 篇</td>
+</tr>
+<tr>
+<td>金融时报</td>
+<td>3292158393</td>
+<td>wechat_jinrongshibao</td>
+<td>✅ 30 篇</td>
+</tr>
+<tr>
+<td>泽平宏观</td>
+<td>3877603551</td>
+<td>wechat_zepingmacro</td>
+<td>✅ 30 篇（原 0 产出遗留源复活）</td>
+</tr>
+</tbody>
+</table>
+<p><strong>feed URL 格式</strong>：爬虫走 <code>/feeds/{feed_id}.json?limit=30</code>（JSON API），
+<code>/feed/{id}</code> 是 404——排障时别用错。</p>
+<p><strong>投资界待办</strong>：<code>getMpArticles(MP_WXS_3298956650)</code> 多次返回 0（无报错，空列表）——
+7-27 runbook 记载的 weread 代理抖动同症。容器每小时 <code>:35</code> CRON 会兜底重试；
+若 24h 后仍 0，考虑删 feed 重新 onboarding 或换源。</p>
+<h2>4. 当日 CI 失败排查结论（子 agent 复核）</h2>
+<ul>
+<li>全天仅 2 个失败 run：Web CI #37/#38（71154f3/f338a9e），同为 stylelint 裸色
+  <code>#dc2626</code> fallback（<code>ad-research/no-bare-color-values</code>），当天下午已由 <code>da073c5</code> 修复</li>
+<li>Deploy 全天全绿；当前 main（342e8eb）全部 workflow 绿，本地 check:ci 复现通过</li>
+<li>流程教训：UI commit 推送前本地先跑 <code>npm run check:ci</code>（30 秒可拦截）</li>
+</ul></body></html>
