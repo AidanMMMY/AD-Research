@@ -197,9 +197,16 @@ class NewsSummaryService:
                     system=system,
                 )
                 elapsed = time.monotonic() - start
-                if elapsed > 30.0:
+                # 2026-07-29: 30s -> 120s, mirroring translation_service's
+                # _MAX_LLM_CALL_SEC. Under concurrent drain load MiniMax
+                # legitimately takes 30-160s per call; with the old 30s
+                # guard every batch was fully discarded AFTER the tokens
+                # were spent (etl_log all-"skipped", summaries stalled at
+                # ~110 rows while 5k+ queued). The 600s tick budget in
+                # run_summarize_pending still bounds total work per tick.
+                if elapsed > 120.0:
                     logger.warning(
-                        "News summary LLM call took %.2fs (>30s); skipping",
+                        "News summary LLM call took %.2fs (>120s); skipping",
                         elapsed,
                     )
                     return None, None
