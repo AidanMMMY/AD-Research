@@ -30,7 +30,7 @@
     color: var(--text-tertiary);
   }
   .notification-mrow__error {
-    color: var(--color-error, #dc2626);
+    color: var(--color-error);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
