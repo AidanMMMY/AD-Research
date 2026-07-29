@@ -25,6 +25,9 @@ x-backend-env: &backend-env
   FRED_API_KEY: ${FRED_API_KEY:-}
   BEA_API_KEY: ${BEA_API_KEY:-}
   BLS_API_KEY: ${BLS_API_KEY:-}
+  # Jina Reader key — lifts the anonymous-tier domain block (investing.com)
+  # and raises rate limits for the news full-content pipeline (2026-07-29).
+  JINA_API_KEY: ${JINA_API_KEY:-}
   XUEQIU_COOKIE: ${XUEQIU_COOKIE:-}
   WECHAT_RSS_BASE_URL: ${WECHAT_RSS_BASE_URL:-http://wewe-rss:4000}
   WECHAT_RSS_FEED_MAP: ${WECHAT_RSS_FEED_MAP:-}
