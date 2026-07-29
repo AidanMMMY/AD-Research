@@ -2136,6 +2136,21 @@ def init_scheduler():
                 coalesce=True,
             )
 
+        # Chinese blog batches (2026-07-30) — 38 verified Chinese blogs
+        # / commentary sites / community feeds, batches a-d, generated
+        # in ``scheduler_jobs.ZH_BLOG_BATCH_JOBS``, all hourly.
+        for job_id, label, batch in _news_jobs.ZH_BLOG_BATCH_JOBS:
+            fn = getattr(_news_jobs, f"run_zh_blog_{batch}_crawl")
+            scheduler.add_job(
+                fn,
+                trigger=IntervalTrigger(minutes=60, jitter=600),
+                id=job_id,
+                name=label,
+                replace_existing=True,
+                max_instances=1,
+                coalesce=True,
+            )
+
         # Independent non-WeChat batches (2026-07-28) — blogs /
         # newsletters / podcasts, generated in
         # ``scheduler_jobs.INDEPENDENT_BATCH_JOBS``, all hourly.

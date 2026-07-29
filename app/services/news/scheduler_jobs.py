@@ -885,6 +885,58 @@ for _job_id, _label, _batch in ZH_MULTI_BATCH_JOBS:
     globals()[f"run_zh_multi_{_batch}_crawl"] = _zhx_batch_job(_job_id, _batch)
 
 
+# ── Chinese blog batches (added 2026-07-30) ──
+#
+# 38 live-verified Chinese-language blogs / independent commentary
+# sites / Chinese international media / curated community feeds — the
+# final wave (D1) of the ">=100 中文圈独立思考资讯源" push. Table and
+# selection rule live in app/services/news/sources/zh_blog_batch.py;
+# batch keys a-d sit in their own job namespace (news_zhb_*). Same
+# no-LLM rationale as the other batch waves (curated editorial
+# voices) — no marketing filter.
+
+def _zhb_batch_job(job_id: str, batch_key: str):
+    """Build a ``run_*`` function crawling one Chinese blog batch."""
+
+    @_record_etl(job_id)
+    def _run() -> dict[str, int]:
+        from app.services.news.sources.zh_blog_batch import (
+            ZhBlogBatchCrawler,
+        )
+
+        async def _go():
+            crawler = ZhBlogBatchCrawler(batch_key)
+            return await crawler.fetch_recent()
+
+        try:
+            articles = _run_async(_go())
+        except Exception as exc:
+            logger.exception("zh blog batch %s crawl failed: %s", batch_key, exc)
+            return {
+                "fetched": 0,
+                "written": 0,
+                "skipped": True,
+                "skip_reason": f"crawl_error: {exc}",
+            }
+
+        if not articles:
+            return {"fetched": 0, "written": 0, "skipped": True, "skip_reason": "no_articles"}
+
+        written = _write_to_db(articles)
+        return {"fetched": len(articles), "written": written}
+
+    _run.__name__ = f"run_zh_blog_{batch_key}_crawl"
+    return _run
+
+
+from app.services.news.sources.zh_blog_batch import (  # noqa: E402
+    ZH_BLOG_BATCH_JOBS,
+)
+
+for _job_id, _label, _batch in ZH_BLOG_BATCH_JOBS:
+    globals()[f"run_zh_blog_{_batch}_crawl"] = _zhb_batch_job(_job_id, _batch)
+
+
 # ── New Chinese news sources (added 2026-07-18) ──
 
 @_record_etl("news_wallstreetcn_5m")

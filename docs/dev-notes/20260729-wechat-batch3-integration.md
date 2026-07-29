@@ -170,3 +170,17 @@ print(len(arts), 'articles'); print(arts[0].source, arts[0].title[:30] if arts e
   连续 failed，届时按 runbook §5 处理（下掉对应批次或替换镜像域名）。本批对 xlab 零依赖。
 - `news_article.source_id` 已在迁移 `s5t7u9v1w3x5` 加宽到 500，镜像长 mp 链接安全。
 - 本批只加 3 个每小时 job（jitter 600s 错峰），对 APScheduler 压力可忽略。
+
+---
+
+## 6. 集成执行记录（主会话，2026-07-29 23:10-23:20）
+
+- ✅ §1-§3 三处补丁已全部应用（scheduler_jobs.py / scheduler.py / news.py `_WORKER_KEYWORDS` + `_WORKER_META`）
+- ✅ `pytest test_wechat2rss_batch3.py`：23 项全绿（17 + 6 个原 xfail 转通过）
+- ✅ `init_scheduler()` 实际运行验证：3 个 `news_wechat3_w3{a,b,c}_60m` job 注册成功
+- ✅ commit `30b10dd` 已 push；Deploy run 30464645931 success（约 23:19 完成）
+- ✅ ECS backend 容器内确认 3 job 已注册，首轮触发时间 2026-07-30 00:19~00:27（+08:00）
+- ✅ ECS 冒烟 `w3a` 实抓 **80 篇 / 8 号全活**（每号 10 篇：地球知识局/南风窗/L先生/新牧尾笔/大李如山/星球研究所/非凡产研/游戏葡萄）
+- ⏳ 首轮整点 etl_log 记录 + 健康面板 3 卡片待 00:30 后复核
+- ⚠️ 注意：本机 SSH 用 `ssh ad-research`（~/.ssh/config 别名，root@47.239.13.111），
+  直接 `ssh root@IP` 会 Permission denied；postgres 容器用户是 `etf` / 库 `ad_research`

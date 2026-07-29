@@ -607,6 +607,7 @@ _WORKER_KEYWORDS: tuple[str, ...] = (
     "global_rss",
     "gind_",
     "zhx_",
+    "zhb_",
     "asia_en",
     "asen_",
     "summarize",
@@ -722,6 +723,10 @@ _WORKER_META: dict[str, dict[str, str]] = {
     "news_zhx_b_60m": {"label": "中文播客 B 组 (10 源)", "schedule": "每 60 分钟"},
     "news_zhx_c_60m": {"label": "中文播客 C 组 (10 源)", "schedule": "每 60 分钟"},
     "news_zhx_d_60m": {"label": "中文播客 D 组 (10 源)", "schedule": "每 60 分钟"},
+    "news_zhb_a_60m": {"label": "中文博客 A 组 (10 源)", "schedule": "每 60 分钟"},
+    "news_zhb_b_60m": {"label": "中文博客 B 组 (10 源)", "schedule": "每 60 分钟"},
+    "news_zhb_c_60m": {"label": "中文博客 C 组 (10 源)", "schedule": "每 60 分钟"},
+    "news_zhb_d_60m": {"label": "中文博客 D 组 (8 源)", "schedule": "每 60 分钟"},
     # Asia-focused English RSS batches (2026-07-28, 176 sources)
     "news_asia_en_a_60m": {"label": "亚洲英文财经 RSS A 组 (11 源)", "schedule": "每 60 分钟"},
     "news_asia_en_b_60m": {"label": "亚洲英文财经 RSS B 组 (11 源)", "schedule": "每 60 分钟"},
