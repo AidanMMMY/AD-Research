@@ -248,14 +248,24 @@
   transition: transform var(--transition-base), opacity var(--transition-base);
 }
 
-.stat-card:hover,
+/* 2026-07-29: hover 守卫 — 触屏设备 (hover: none) 不应用 hover 态，
+   避免点按后样式粘滞；focus-visible 保留（键盘可达性）。 */
+@media (hover: hover) {
+  .stat-card:hover {
+    border-color: var(--border-hover);
+    background: var(--bg-elevated);
+    box-shadow: var(--shadow-card-hover);
+  }
+
+  .stat-card--clickable:hover {
+    transform: translateY(-1px);
+  }
+}
 .stat-card:focus-visible {
   border-color: var(--border-hover);
   background: var(--bg-elevated);
   box-shadow: var(--shadow-card-hover);
 }
-
-.stat-card--clickable:hover,
 .stat-card--clickable:focus-visible {
   transform: translateY(-1px);
 }

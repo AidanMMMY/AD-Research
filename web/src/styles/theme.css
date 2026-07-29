@@ -758,3 +758,58 @@ html, body, #root {
     --space-panel-gap: var(--space-4);
   }
 }
+
+/* ============================================================
+   Density System (added 2026-07-29, mobile-first list-first)
+   Foundation for the de-card migration: hairline-separated
+   rows replace card chrome on data-dense screens. Direction
+   and rationale: docs/dev-notes/20260729-mobile-ui-redesign-research.md
+   ============================================================ */
+:root {
+  /* Row geometry — 48px keeps the >=44px touch target while
+     fitting ~30% more rows per screen than card rows. */
+  --density-row-h: 48px;
+  --density-row-h-compact: 40px;   /* dense data rows (tables/ticker) */
+  --density-row-pad-x: var(--space-3);
+  --density-gap: var(--space-2);
+
+  /* 1px row separator — the card border's replacement. */
+  --hairline: var(--border-default);
+
+  /* Tabular numerals for prices/pct/weights — prevents column
+     jitter when values update. Use via .tnum utility. */
+  --num-font: "SF Mono", "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+/* Density utilities (global, reusable across pages) */
+.tnum {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+}
+
+/* A hairline-separated list row: the card-row replacement.
+   Compose inside a .row-list container (first row gets no top
+   line; rows get bottom lines). */
+.row-list {
+  display: flex;
+  flex-direction: column;
+}
+.row-list > .hairline-row {
+  display: flex;
+  align-items: center;
+  gap: var(--density-gap);
+  min-height: var(--density-row-h);
+  padding: var(--space-1-5) var(--density-row-pad-x);
+  border-bottom: 1px solid var(--hairline);
+}
+.row-list > .hairline-row:last-child {
+  border-bottom: none;
+}
+@media (hover: hover) {
+  .row-list > .hairline-row--clickable:hover {
+    background: var(--hover-overlay);
+  }
+}
+.row-list > .hairline-row--clickable {
+  cursor: pointer;
+}

@@ -137,3 +137,21 @@
   }
 }
 
+
+/* ============================================================
+   Touch hardening (added 2026-07-29) — kill the 300ms tap
+   delay on every interactive element; pairs with the hover
+   guards (hover:hover) being rolled out per component.
+   ============================================================ */
+a,
+button,
+[role="button"],
+input,
+select,
+textarea,
+.ant-btn,
+.ant-select-selector,
+.ant-tabs-tab,
+.ant-pagination-item {
+  touch-action: manipulation;
+}
