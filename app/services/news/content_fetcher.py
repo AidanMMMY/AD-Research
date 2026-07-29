@@ -379,6 +379,77 @@ def _normalize_text(text: str) -> str:
     return re.sub(r"\s+", "", text.strip().lower())
 
 
+# Lines that mark the start of the comment / market-quote / promo /
+# disclaimer section at the END of an extracted body (investing.com,
+# Reuters syndication, ...). Everything from the first such line is
+# site chrome, not article body, so the body is truncated there.
+_SECTION_CUT_RE: Final[re.Pattern[str]] = re.compile(
+    r"^(#{1,6}\s*)?(latest comments|comment guidelines|most popular( articles)?"
+    r"|most active|propicks|comments|risk disclosure|disclaimer|show more"
+    r"|indices commodities|related articles|recommended)",
+    re.IGNORECASE,
+)
+
+# Bare market-quote lines (``51,928.60`` / ``-818.9`` / ``-1.55%``)
+# that investing.com dumps as a quotes table after the body.
+_QUOTE_NUM_RE: Final[re.Pattern[str]] = re.compile(r"^[+\-]?[\d,.\s]+%?$")
+
+# investing.com page-header navigation lines that survive the
+# per-line boilerplate pass because they are plain words, not links.
+_HEAD_NAV_RE: Final[re.Pattern[str]] = re.compile(
+    r"^(#{1,6}\s*)?(popular searches|please try another search|financial news"
+    r"|more in .+|analysis|real time charts|tools|brokers|calendars"
+    r"|investment tools|education hub|in this article:?)$",
+    re.IGNORECASE,
+)
+_SIGNIN_LINE_RE: Final[re.Pattern[str]] = re.compile(
+    r"^\*\s*(sign in|free sign up)$", re.IGNORECASE
+)
+_AUTHOR_BYLINE_RE: Final[re.Pattern[str]] = re.compile(
+    r"^(author|editor|by)\s*\[", re.IGNORECASE
+)
+_PUBLISHED_LINE_RE: Final[re.Pattern[str]] = re.compile(
+    r"^published\s+\d{2}/\d{2}/\d{4}", re.IGNORECASE
+)
+
+
+def _strip_section_tail(lines: list[str]) -> list[str]:
+    """Truncate the body at the first comment / quote-table / promo /
+    disclaimer section heading. investing.com appends ``## Latest
+    comments``, a bare market-quote table and a risk-disclosure footer
+    after the real body — none of which the per-line boilerplate pass
+    can recognise because they are headings and bare numbers."""
+    for i, ln in enumerate(lines):
+        s = ln.strip()
+        if not s:
+            continue
+        if _SECTION_CUT_RE.match(s) or s.startswith("|") or _QUOTE_NUM_RE.match(s):
+            return lines[:i]
+    return lines
+
+
+def _strip_head_nav_lines(lines: list[str]) -> list[str]:
+    """Drop investing.com-style page-header navigation lines
+    (``Popular Searches`` / ``Sign In`` / ``Financial News`` / byline
+    and publish-date stubs) that the generic per-line pass misses."""
+    out: list[str] = []
+    for ln in lines:
+        s = ln.strip()
+        if not s:
+            out.append(ln)
+            continue
+        if (
+            _HEAD_NAV_RE.match(s)
+            or _SIGNIN_LINE_RE.match(s)
+            or _AUTHOR_BYLINE_RE.match(s)
+            or _PUBLISHED_LINE_RE.match(s)
+            or s.startswith("©")
+        ):
+            continue
+        out.append(ln)
+    return out
+
+
 def _clean_jina_body(raw: str, title: str) -> str:
     """Deterministic cleanup of an extracted Markdown body.
 
@@ -392,6 +463,13 @@ def _clean_jina_body(raw: str, title: str) -> str:
     text = _strip_leading_title_and_metadata(text, title)
     text = _remove_duplicate_title(text, title)
     text = _strip_boilerplate_lines(text)
+
+    # 2026-07-30: drop the page-header navigation and the
+    # comment/quote-table/promo/disclaimer tail that investing.com
+    # (and Reuters syndication) leave around the real body.
+    lines = _strip_head_nav_lines(text.splitlines())
+    lines = _strip_section_tail(lines)
+    text = re.sub(r"\n{3,}", "\n\n", "\n".join(lines)).strip()
 
     # De-duplicate exact paragraphs that sometimes appear twice (e.g.
     # gov.cn / 21st Century Business Herald renders).

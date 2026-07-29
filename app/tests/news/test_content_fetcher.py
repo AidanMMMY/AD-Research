@@ -1031,3 +1031,64 @@ def test_normalizer_still_refetches_sina_teaser(db_session) -> None:
     db_session.commit()
     assert article is not None
     assert article.full_content is None
+
+
+def test_clean_strips_investing_style_page_chrome() -> None:
+    """investing.com bodies arrive wrapped in page-header navigation
+    (Popular Searches / Sign In / Financial News / byline stubs) and a
+    comment + market-quote + disclaimer tail. The cleaner must keep
+    only the real article body."""
+    from app.services.news.content_fetcher import _clean_jina_body
+
+    raw = "\n".join([
+        "#### Popular Searches",
+        "",
+        "##### Please try another search",
+        "",
+        "*   Sign In",
+        "*   Free Sign Up",
+        "",
+        "Financial News",
+        "",
+        "More In News",
+        "",
+        "Analysis",
+        "",
+        "Real Time Charts",
+        "",
+        "Author[Vlad Schepkov](https://www.investing.com/members/1)",
+        "",
+        "Published 07/29/2026, 12:41 PM",
+        "",
+        "© Reuters",
+        "",
+        "In this article:",
+        "",
+        "Investing.com -- Telecom Italia posted second-quarter core "
+        "earnings on Wednesday that matched analyst expectations, with "
+        "growth in its Brazilian unit and enterprise division.",
+        "",
+        "The company's EBITDA after leases reached €998 million, "
+        "compared with analyst consensus of €995 million.",
+        "",
+        "## Latest comments",
+        "",
+        "51,928.60",
+        "",
+        "-818.9",
+        "",
+        "| Name | Last | Chg. % |",
+        "",
+        "Risk Disclosure: Trading in financial instruments involves risk.",
+    ])
+    cleaned = _clean_jina_body(raw, "Telecom Italia earnings")
+    assert "Popular Searches" not in cleaned
+    assert "Sign In" not in cleaned
+    assert "Financial News" not in cleaned
+    assert "Vlad Schepkov" not in cleaned
+    assert "Published 07/29" not in cleaned
+    assert "Latest comments" not in cleaned
+    assert "51,928.60" not in cleaned
+    assert "Risk Disclosure" not in cleaned
+    assert "Telecom Italia posted second-quarter" in cleaned
+    assert "EBITDA after leases reached" in cleaned
