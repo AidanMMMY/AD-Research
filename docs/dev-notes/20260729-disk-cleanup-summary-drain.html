@@ -1,0 +1,85 @@
+<!DOCTYPE html><html lang="zh"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>2026-07-29 磁盘清理+摘要drain修复</title><style>body{max-width:52rem;margin:2rem auto;padding:0 1rem;font:16px/1.75 -apple-system,"PingFang SC",sans-serif;color:#1f2328}table{border-collapse:collapse;width:100%}td,th{border:1px solid #d0d7de;padding:6px 10px}code,pre{background:#f6f8fa;border-radius:6px}code{padding:2px 5px}pre{padding:12px;overflow-x:auto}h1,h2,h3{line-height:1.3}</style></head><body><h1>2026-07-29 磁盘清理 + 摘要 drain 全灭修复 + 回填执行记录</h1>
+<blockquote>
+<p>背景：晨报遗留 5 项待办，用户「全部做」指令下由主会话执行的部分。
+同场并行：子 agent A 排查三页面对齐问题、子 agent B 排查非中文正文翻译（各自结论见对应 runbook）。</p>
+</blockquote>
+<hr />
+<h2>1. /data 磁盘清理：85% → 48%（释放 ~42GB）</h2>
+<p>清理前：<code>/dev/vdb 118G 已用 96G (85%)</code>。
+构成：containerd 43G + docker 28G + backups 24G。</p>
+<p>执行动作：</p>
+<table>
+<thead>
+<tr>
+<th>动作</th>
+<th>释放</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>bash /root/docker-cleanup.sh</code>（手动触发周日清理）</td>
+<td>~18G</td>
+<td>删除 ad-research:<sha> 旧镜像，保留容器引用 + previous_head 回滚指针 + 最新 3 个 tag（脚本 7-20 版策略）</td>
+</tr>
+<tr>
+<td><code>docker builder prune -af</code></td>
+<td>26.39G</td>
+<td>构建缓存全量清（0 active）；下次构建变慢但安全</td>
+</tr>
+<tr>
+<td>删除 &gt;5 天的 postgres 备份</td>
+<td>~7G</td>
+<td>9 份 → 6 份（7-24..7-29）</td>
+</tr>
+</tbody>
+</table>
+<p><strong>cron 变更</strong>：备份保留天数 7 → 5：</p>
+<pre><code>30 2 * * * RETENTION_DAYS=5 /opt/ad-research/scripts/backup_postgres.sh &gt;&gt; /var/log/ad-research/backup.log 2&gt;&amp;1
+</code></pre>
+<p>注意：</p>
+<ul>
+<li><code>alloyresearch-agent:latest</code> 当前不存在于 ECS（7-19 事件后靠 run_worker.sh 按需构建），cleanup 脚本白名单机制对它天然无副作用。</li>
+<li>docker 使用 containerd 镜像存储（moby namespace），清 docker 镜像会同步释放 /data/containerd。</li>
+<li>备份体积增速快（一周 2.3G→3.1G，652 源入库后 news_article 膨胀），RETENTION_DAYS=5 把备份上限锁在 ~15G。</li>
+</ul>
+<h2>2. 存量回填 SQL（extraction fix §5.4，已批准并执行）</h2>
+<pre><code class="language-sql">UPDATE news_article
+SET full_content = NULL, full_content_fetched_at = NULL, ai_cleanup_status = NULL
+WHERE fetched_at &gt;= now() - interval '14 days'
+  AND full_content ~* '(Live TV|Scan to Download|Get App|Read Time:|Sign up for)'
+  AND length(full_content) &gt; 2000;
+</code></pre>
+<p><strong>结果：UPDATE 314</strong>。这些被导航垃圾污染的正文已由 drain job 用 7-29 新清洗器重抓。</p>
+<h2>3. 摘要 drain 全灭根因与修复（commit 16f6f1e）</h2>
+<h3>现象</h3>
+<p><code>news_summarize_10m</code> 上线 ~14h：etl_log 全 "skipped"（reason=skipped，时长 100-470s）+ 2 failed，
+<code>summary_zh</code> 只有 110 行，而 <code>summary_zh IS NULL AND importance &gt;= 3</code> 排队 5,179 篇。</p>
+<h3>根因链</h3>
+<ol>
+<li><code>summary_service.py</code> 慢调用守卫：<code>elapsed &gt; 30s</code> → 丢弃结果（<strong>tokens 已消耗</strong>）。</li>
+<li>MiniMax（minimax-m3，minimaxi.com CN 端点）空闲时单次 2.2s，但多 drain 并发时实测 30-160s/次（服务端排队）。</li>
+<li>→ 并发高峰每个 tick 的 20 篇全部在 tokens 烧完后被丢弃，零进展且纯浪费。</li>
+<li>m3 默认开 think（<code>reasoning_tokens</code>），进一步拉长单次延迟。</li>
+</ol>
+<h3>修复</h3>
+<p>守卫 30s → 120s（对齐 <code>translation_service._MAX_LLM_CALL_SEC=120</code>），600s tick budget 仍兜底。
+测试 16/16 通过。慢但成功的响应现在会被接受。</p>
+<h3>翻译 drain 同场实测（12:15Z）</h3>
+<ul>
+<li>近 6h：18 success / 811 篇 ≈ <strong>3,240/天</strong>；近 24h <code>translation_generated_at</code> 共 2,847。</li>
+<li>近 48h 非中文无 <code>title_zh</code> 积压 <strong>5,577 且仍在涨</strong>（流入 ~4,400/天 &gt; 消化）。</li>
+<li>同样的 &gt;120s 丢弃在翻译侧也存在，吞吐受 MiniMax 并发排队限制。</li>
+<li>后续方向（已转交子 agent B 评估）：tick 内并发 3-5 路调用 / 关闭 think / 正文翻译按 importance 分级。</li>
+</ul>
+<h2>4. 当日其他已办</h2>
+<ul>
+<li>晨报 5 项待办中由主会话执行的部分全部完成（本文件 1-3）。</li>
+<li>用户配合项（JINA_API_KEY / wewe-rss 扫码 / 7 公众号链接）已在会话中给出逐步指引。</li>
+</ul>
+<h2>5. 待观察</h2>
+<ul>
+<li>[ ] 摘要 drain 修复部署后 24h：<code>summary_zh</code> 行数应稳定增长（容量 ~800-2,880/天 vs 排队 5,179）。</li>
+<li>[ ] 翻译积压是否随子 agent B 的修复收敛。</li>
+<li>[ ] /data 增速： backups 5 天上限 ~15G + docker 周日清理，预期长期 &lt;70%。</li>
+</ul></body></html>
