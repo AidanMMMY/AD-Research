@@ -9,6 +9,7 @@ fields, and never raises — malformed items are skipped with a warning.
 from __future__ import annotations
 
 import logging
+import re
 import xml.etree.ElementTree as ET
 from datetime import datetime, timezone
 from email.utils import parsedate_to_datetime
@@ -17,6 +18,23 @@ from typing import Iterable
 from app.services.news.crawler.types import RawArticle
 
 logger = logging.getLogger(__name__)
+
+# XML 1.0 forbids most C0 control characters; some feeds (cache plugins,
+# hand-rolled templates) leak them and break strict parsing.
+_ILLEGAL_XML_CHARS_RE = re.compile("[\x00-\x08\x0b\x0c\x0e-\x1f\ufffe\uffff]")
+# `<!--comment--->` (3+ dashes before `>`) is invalid XML — a comment
+# close must be exactly `-->`. WordPress cache plugins (e.g. iplaysoft's
+# `<!--Cached ...--->`) emit this. Only applied as a recovery fallback
+# after strict parsing already failed, so the downside of touching a
+# `--->` inside CDATA is strictly better than dropping the whole feed.
+_EXCESS_COMMENT_DASHES_RE = re.compile(r"-{3,}>")
+
+
+def _recover_xml(xml_text: str) -> str:
+    """Best-effort repair of common real-world feed malformations."""
+    repaired = _ILLEGAL_XML_CHARS_RE.sub("", xml_text)
+    repaired = _EXCESS_COMMENT_DASHES_RE.sub("-->", repaired)
+    return repaired
 
 
 _RSS_NAMESPACES = {
@@ -176,9 +194,13 @@ def parse_rss_items(
     """
     try:
         root = ET.fromstring(xml_text)
-    except ET.ParseError as exc:
-        logger.warning("%s RSS parse error: %s", source, exc)
-        return []
+    except ET.ParseError:
+        try:
+            root = ET.fromstring(_recover_xml(xml_text))
+        except ET.ParseError as exc:
+            logger.warning("%s RSS parse error: %s", source, exc)
+            return []
+        logger.info("%s RSS parsed after malformed-XML recovery", source)
 
     channel = root.find("channel")
     if channel is not None:

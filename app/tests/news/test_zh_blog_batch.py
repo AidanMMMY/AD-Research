@@ -162,6 +162,44 @@ class TestBatchCrawler:
         assert asyncio.run(crawler.fetch_recent()) == []
 
 
+class TestMalformedFeedRecovery:
+    """rss_common recovery: real-world malformations must not drop feeds."""
+
+    def test_excess_comment_dashes_recovered(self):
+        # iplaysoft's cache plugin emits <!--Cached ...---> which is
+        # invalid XML (comment close must be exactly -->).
+        from app.services.news.sources.rss_common import parse_rss_items
+
+        xml = (
+            '<?xml version="1.0"?><rss version="2.0"><channel>'
+            "<title>t</title><!--Cached 1785347478--->"
+            "<item><title>标题</title><link>https://example.com/1</link>"
+            "<description>正文</description></item>"
+            "</channel></rss>"
+        )
+        articles = parse_rss_items(xml, source="zhb_test")
+        assert len(articles) == 1
+        assert articles[0].title == "标题"
+
+    def test_illegal_control_chars_recovered(self):
+        from app.services.news.sources.rss_common import parse_rss_items
+
+        xml = (
+            '<?xml version="1.0"?><rss version="2.0"><channel>'
+            "<title>t\x0b</title>"
+            "<item><title>标题</title><link>https://example.com/1</link>"
+            "<description>正文</description></item>"
+            "</channel></rss>"
+        )
+        articles = parse_rss_items(xml, source="zhb_test")
+        assert len(articles) == 1
+
+    def test_unrecoverable_still_returns_empty(self):
+        from app.services.news.sources.rss_common import parse_rss_items
+
+        assert parse_rss_items("<rss><channel><item>", source="zhb_test") == []
+
+
 class TestSchedulerWiring:
     def test_batch_jobs_materialized(self):
         from app.services.news import scheduler_jobs as sj
