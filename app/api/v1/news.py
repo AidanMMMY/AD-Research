@@ -602,6 +602,7 @@ _WORKER_KEYWORDS: tuple[str, ...] = (
     "wechat_sixianggangyin",
     "wechat2rss",
     "wechat2b",
+    "wechat3_",
     "indie_",
     "global_rss",
     "gind_",
@@ -672,6 +673,10 @@ _WORKER_META: dict[str, dict[str, str]] = {
     "news_wechat2b_w2h_60m": {"label": "公众号二批 H 组 (11 号)", "schedule": "每 60 分钟"},
     "news_wechat2b_w2i_60m": {"label": "公众号二批 I 组 (11 号)", "schedule": "每 60 分钟"},
     "news_wechat2b_w2j_60m": {"label": "公众号二批 J 组 (4 号)", "schedule": "每 60 分钟"},
+    # wechat2rss third-wave batches (2026-07-29, 22 accounts)
+    "news_wechat3_w3a_60m": {"label": "公众号三批 A 组 (8 号)", "schedule": "每 60 分钟"},
+    "news_wechat3_w3b_60m": {"label": "公众号三批 B 组 (8 号)", "schedule": "每 60 分钟"},
+    "news_wechat3_w3c_60m": {"label": "公众号三批 C 组 (6 号)", "schedule": "每 60 分钟"},
     # Independent non-WeChat batches (2026-07-28, 144 sources)
     "news_indie_a_60m": {"label": "独立源 A 组 (11 源)", "schedule": "每 60 分钟"},
     "news_indie_b_60m": {"label": "独立源 B 组 (11 源)", "schedule": "每 60 分钟"},

@@ -2091,6 +2091,21 @@ def init_scheduler():
                 coalesce=True,
             )
 
+        # wechat2rss third-wave batches (2026-07-29) — generated in
+        # ``scheduler_jobs.WECHAT3_BATCH_JOBS``, all hourly. jitter
+        # spreads the three jobs away from the waves 1/2 ticks.
+        for job_id, label, batch in _news_jobs.WECHAT3_BATCH_JOBS:
+            fn = getattr(_news_jobs, f"run_wechat3_{batch}_crawl")
+            scheduler.add_job(
+                fn,
+                trigger=IntervalTrigger(minutes=60, jitter=600),
+                id=job_id,
+                name=label,
+                replace_existing=True,
+                max_instances=1,
+                coalesce=True,
+            )
+
         # Global English indie batches (2026-07-28) — 104 independent
         # English blogs / newsletters / research outlets, batches o-x,
         # generated in ``scheduler_jobs.GLOBAL_INDIE_BATCH_JOBS``, all hourly.

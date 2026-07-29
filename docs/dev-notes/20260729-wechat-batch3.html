@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>2026-07-29 公众号三批（22 源，实报）runbook</title>
+<style>
+body{font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;max-width:1080px;margin:0 auto;padding:24px;color:#222;line-height:1.65}
+h1{font-size:1.5rem;border-bottom:2px solid #0366d6;padding-bottom:8px}
+h2{font-size:1.2rem;margin-top:2em;color:#0366d6}
+h3{font-size:1.02rem;margin-top:1.4em}
+table{border-collapse:collapse;width:100%;font-size:.85rem;margin:12px 0}
+th,td{border:1px solid #ddd;padding:5px 8px;text-align:left}
+th{background:#f3f6fa}
+tr:nth-child(even){background:#fafbfc}
+code{background:#f0f3f6;padding:1px 5px;border-radius:3px;font-size:.82rem}
+.ok{color:#1a7f37}
+blockquote{border-left:3px solid #0366d6;margin:12px 0;padding:4px 14px;background:#f6f9fc;color:#444}
+.warn{color:#b35900}
+.bad{color:#b00020}
+</style></head><body>
+<h1>2026-07-29 微信公众号资讯源三批（22 源，实报）runbook</h1>
+<blockquote>
+交付 <code>app/services/news/sources/wechat2rss_batch3.py</code> ｜ 测试
+<code>app/tests/news/test_wechat2rss_batch3.py</code>（17 通过 + 6 xfail，集成后 23 全绿）｜ 集成补丁
+<code>docs/dev-notes/20260729-wechat-batch3-integration.md</code><br>
+新增 <b>22</b> 源：宏观/地缘 2 / 投资策略 2 / 行业研究 5 / 科技评论 6 / 商业深度 7<br>
+<span class="warn">目标 ≥40，实收 22</span>——两个公共镜像经三波开采后合格池枯竭，按纪律实报不凑数。
+</blockquote>
+
+<h2>1. 背景与通道调研（为什么只有 22）</h2>
+<p>任务要求 ≥40 个新公众号源（中文圈扩展第三批，"有独立思考精神的内容"）。公众号无官方 RSS，只能走公共 wechat2rss 镜像。2026-07-29 全通道复查：</p>
+<table><tr><th>通道</th><th>状态</th><th>结论</th></tr>
+<tr><td><code>wechat2rss.bestblogs.dev</code>（BestBlogs 自建，375 号 OPML）</td><td class="ok">活</td><td>一/二批已用 102；剩余 260 中 ~240 为企业开发/AI 厂商 PR/体育/生活/设计/课程营销/搬运号。<b>本批主通道，实收 22</b></td></tr>
+<tr><td><code>wechat2rss.xlab.app</code>（官方公共实例，395 号）</td><td class="ok">活</td><td><b>7-29 重新抓取全量列表，与 7-27 快照逐 hash 比对：零新增</b>；剩余 304 号≈290 安全研究 + 企业开发 + 死号/文学。合格池 = 0</td></tr>
+<tr><td>其他公共 wechat2rss 实例</td><td class="bad">不存在</td><td>web + GitHub 检索确认：生态为"官方实例 + 各自自建"，无第三个公开收录列表的实例</td></tr>
+<tr><td>feeddd.org / werss.app / CareerEngine</td><td class="bad">死</td><td>同二批调研结论</td></tr>
+<tr><td>瓦斯阅读 / 今天看啥</td><td class="warn">无公开 RSS</td><td>同二批调研结论（后者登录墙）</td></tr>
+<tr><td>wechatrss.waytomaster.com（2026 新服务）</td><td class="warn">登录墙</td><td>免费限 2 号，无公开源目录，feed 为用户私有</td></tr>
+<tr><td>RSSHub <code>/newrank/wechat</code></td><td class="warn">不稳定</td><td>公共实例常年报错（RSSHub#14049），且非任务指定通道</td></tr>
+<tr><td>ECS wewe-rss 自建（通道 B）</td><td class="bad">仍死</td><td>微信读书 token 失效，需用户重新扫码（见二批 runbook §5.3），本批未使用</td></tr>
+</table>
+<p><b>结论</b>：镜像支持的合格号就这么多。"未被镜像收录的号不要硬塞"——22 是诚实上限。缺口 18 个的补齐路径：① wewe-rss 通道 B 恢复（用户扫码）后增补；② 向 xlab 提交收录请求；③ 等待 BestBlogs OPML 扩列后复查。详见 §5.3。</p>
+
+<h2>2. 筛选与实测流程</h2>
+<ol>
+<li>BestBlogs OPML（375，7-29 重新下载）+ xlab 全量列表（395，7-29 抓取 <code>/list/all.html</code>）取并集。</li>
+<li>排除已覆盖：一批 90（slug/名称/hash）、二批 103（slug/名称/URL/hash）、<code>wechat_maobidao</code>/<code>wechat_sixianggangyin</code>/<code>wechat_zeping</code>、wewe-rss 15 号。</li>
+<li>排除与平台直连源重复的号（华尔街见闻/财新/界面/36氪/虎嗅/财联社/雪球…）。</li>
+<li>排除官媒党政、企业官方 PR（含 AI 厂商号与企业研究院）、体育、文学生活、设计、纯开发、AI 工具教程/搬运号（本轮新增排除大类，~100 个）。</li>
+<li>对候选与"名称未知"号共 45 个从 ECS 实际抓 feed 看标题样本 + pubDate + content:encoded。</li>
+<li>达标线：HTTP 200 + items&gt;0 + 有正文 + 最新条目 ≤30 天 + 非标题党/软文密度低/非同机构重复。28 个进入终验，6 个淘汰（§4），最终 <b>22 源</b>。</li>
+</ol>
+
+<h2>3. 22 源清单</h2>
+<p>实测时间 2026-07-29（ECS 发起 <code>curl --max-time 20</code>）；全部 HTTP 200、10 条 item、<code>content:encoded</code> 全文、30 天内有更新。镜像全部 = bestblogs。</p>
+<table><tr><th>source</th><th>名称</th><th>分类</th><th>最新文章</th><th>备注</th></tr>
+<tr><td><code>wechat_diqiuzhishiju</code></td><td>地球知识局</td><td>宏观/地缘</td><td>28 Jul 2026</td><td>地缘经济、资源产业地理</td></tr>
+<tr><td><code>wechat_nanfengchuang</code></td><td>南风窗</td><td>宏观/政经</td><td>29 Jul 2026</td><td>政经评论深度媒体</td></tr>
+<tr><td><code>wechat_lxiansheng</code></td><td>L先生说</td><td>投资策略</td><td>23 Jul 2026</td><td>思维方法、认知升级</td></tr>
+<tr><td><code>wechat_xinmuweibi</code></td><td>心木微笔</td><td>投资策略</td><td>23 Jul 2026</td><td>A股/港股投资随笔（CXO、科技板块判断）</td></tr>
+<tr><td><code>wechat_dalirushan</code></td><td>大力如山</td><td>行业研究</td><td>27 Jul 2026</td><td>投行/金融职场行业内幕</td></tr>
+<tr><td><code>wechat_xingqiuyanjiusuo</code></td><td>星球研究所</td><td>行业研究</td><td>25 Jul 2026</td><td>能源/基建/城市产业地理（补新能源覆盖）</td></tr>
+<tr><td><code>wechat_feifanchanyan</code></td><td>非凡产研</td><td>行业研究</td><td>29 Jul 2026</td><td>AI 产业研究（VC 研究系，同峰瑞/高瓴先例）</td></tr>
+<tr><td><code>wechat_youxiputao</code></td><td>游戏葡萄</td><td>行业研究</td><td>28 Jul 2026</td><td>游戏产业分析（A股传媒板块相关）</td></tr>
+<tr><td><code>wechat_houlang</code></td><td>后浪研究所</td><td>行业研究</td><td>28 Jul 2026</td><td>年轻人消费趋势（补消费覆盖，如老铺黄金重估）</td></tr>
+<tr><td><code>wechat_xiaozhongxiaoxi</code></td><td>小众消息</td><td>科技评论</td><td>27 Jul 2026</td><td>互联网/产品独立评论</td></tr>
+<tr><td><code>wechat_zpotentials</code></td><td>Z Potentials</td><td>科技评论</td><td>29 Jul 2026</td><td>AI 创业者深度访谈</td></tr>
+<tr><td><code>wechat_wangjiwei</code></td><td>王吉伟</td><td>科技评论</td><td>29 Jul 2026</td><td>Agentic AI / 企业智能化行业观察</td></tr>
+<tr><td><code>wechat_kuaidaoqingyi</code></td><td>快刀青衣</td><td>科技评论</td><td>29 Jul 2026</td><td>AI 落地独立观察（WAIC 笔记等）</td></tr>
+<tr><td><code>wechat_zhishifenzi</code></td><td>知识分子</td><td>科技评论</td><td>29 Jul 2026</td><td>科学政策/AI 产业评论（饶毅系，独立声音）</td></tr>
+<tr><td><code>wechat_ailianjinshu</code></td><td>AI炼金术</td><td>科技评论</td><td>17 Jul 2026</td><td>AI 行业随笔思考</td></tr>
+<tr><td><code>wechat_guigu101</code></td><td>硅谷101</td><td>商业深度</td><td>29 Jul 2026</td><td>硅谷科技商业深度报道</td></tr>
+<tr><td><code>wechat_luanfanshu</code></td><td>乱翻书</td><td>商业深度</td><td>16 Jul 2026</td><td>互联网公司商业分析（潘乱）</td></tr>
+<tr><td><code>wechat_nanfangzhoumo</code></td><td>南方周末</td><td>商业深度</td><td>29 Jul 2026</td><td>深度调查报道</td></tr>
+<tr><td><code>wechat_sanlian</code></td><td>三联生活周刊</td><td>商业深度</td><td>29 Jul 2026</td><td>社会/商业深度报道</td></tr>
+<tr><td><code>wechat_xinwenzhoukan</code></td><td>中国新闻周刊</td><td>商业深度</td><td>29 Jul 2026</td><td>新闻深度报道</td></tr>
+<tr><td><code>wechat_sixiangshichang</code></td><td>澎湃思想市场</td><td>商业深度</td><td>29 Jul 2026</td><td>思想/社会经济评论</td></tr>
+<tr><td><code>wechat_ssircn</code></td><td>斯坦福社会创新评论</td><td>商业深度</td><td>28 Jul 2026</td><td>SSIR 中文版，社会创新/ESG</td></tr>
+</table>
+<p>批次划分（<code>_BATCH_SIZE = 8</code>）：<code>w3a</code> = 前 8（宏观 2 + 策略 2 + 行业 4），<code>w3b</code> = 次 8（行业 1 + 科技 6 + 商业 1），<code>w3c</code> = 末 6（商业 6）。job：<code>news_wechat3_w3[a-c]_60m</code>，每小时一批，<code>IntervalTrigger(minutes=60, jitter=600)</code> 错峰。</p>
+
+<h2>4. 淘汰记录</h2>
+<h3>4.1 进入终验但淘汰（6）</h3>
+<table><tr><th>名称</th><th>拟分类</th><th>镜像</th><th>淘汰原因</th></tr>
+<tr><td>心智工具箱</td><td>投资策略</td><td>bestblogs</td><td>停更：最新文 2026-06-02（57 天）</td></tr>
+<tr><td>iamsujie</td><td>商业深度</td><td>bestblogs</td><td>停更：最新文 2026-06-26（33 天）</td></tr>
+<tr><td>语言即世界</td><td>科技评论</td><td>bestblogs</td><td>停更：最新文 2026-05-11（79 天）；内容本是优质 AI 人物访谈，可惜</td></tr>
+<tr><td>AI科技评论</td><td>科技评论</td><td>bestblogs</td><td>同机构重复（雷峰网子品牌，二批已收雷峰网）+ 招聘/会议软文混入</td></tr>
+<tr><td>硅基观察Pro</td><td>行业研究</td><td>bestblogs</td><td>标题党化（"一年暴涨100倍""美国有钱人已经先跑了"），触碰营销号红线</td></tr>
+<tr><td>丁香医生</td><td>行业研究(医药)</td><td>bestblogs</td><td>软文密度高（洗发水带货文等），且为消费健康科普而非医药行业研究</td></tr>
+</table>
+<h3>4.2 探针后候选阶段淘汰（22，采样标题判定）</h3>
+<p>浮之静/土猛的员外/花叔/沃垠AI/袋鼠帝AI客栈/卡尔的AI沃茨/阿真Irene/秋芝2046/小互AI/艾逗笔（AI 工具教程或实测号，搬运/营销属性）、AGENT橘（个人杂记）、强少来了（开发周刊）、言午（AI 创业杂谈，偏工程）、AI闲谈（AI Infra 纯技术）、罗西的思考（RL 源码笔记）、新周刊（生活方式）、利维坦（文化随笔）。另有 5 个探针后进入终验（AI炼金术/心木微笔/后浪研究所/知识分子 收录，语言即世界 停更淘汰）。</p>
+<h3>4.3 xlab 未知号探针（10，全军覆没）</h3>
+<p>记月/灾难控制局/securitainment/Medi0cr1ty/小陈的Life/分类乐色桶/凌晨一点零三分（安全研究，off-topic 或停更）、我需要的是坚持（个人博客，停更 2025-01）、biao（诗歌）、At The End（文学）。</p>
+<h3>4.4 候选阶段即排除的大类（~200）</h3>
+<p>安全研究号 ~290（xlab）、企业开发号（阿里技术/腾讯技术工程/字节技术…）、AI 厂商官方号（DeepSeek/Kimi/智谱/通义/文心/混元/MiniMax/阶跃/字节Seed/Xiaomi MiMo/Dify/Jina AI/魔搭…）、企业研究院 PR（腾讯研究院/阿里研究院/麦肯锡）、官媒党政（人民日报/新华社/央视/环球时报/南京发布/网信中国/公安部网安局…）、平台直连重复（华尔街见闻/财新/界面/36氪/虎嗅/财联社/雪球/凤凰网/澎湃新闻/界面新闻）、同机构重复（高瓴时间-高瓴创投、山行AI-山行资本、晚点再听LaterCast-晚点LatePost）、体育（苏群/杨毅/体坛周报…）、文学生活（莫言/十点读书/看理想/一条/每日豆瓣…）、设计（优设/设计癖…）、课程营销（罗辑思维/得到/帆书/混沌学园/洞见）、聚合搬运（知乎日报/AIBase基地/AI寒武纪/大模型智能/Web3天空之城/区块链头条/水木人工智能学堂/通往AGI之路）、心理学（武志红/KnowYourself/NOV心理）、二批已淘汰复核（老钱说钱/孟岩/刘言飞语/43 Talks/晚点对话/科技美学/毛有话说——维持原判，未复收）。</p>
+
+<h2>5. 运维手册</h2>
+<h3>5.1 日常健康</h3>
+<ul>
+<li>3 个 job：<code>news_wechat3_w3[a-c]_60m</code>，每小时一批（jitter 600s），健康面板"公众号三批 X 组"。</li>
+<li>单源缺文排查：<code>SELECT * FROM etl_log WHERE job_name='news_wechat3_w3a_60m' ORDER BY start_time DESC;</code></li>
+</ul>
+<h3>5.2 镜像失效</h3>
+<ul>
+<li>本批 22 源全部挂在 bestblogs 单镜像上——<b>单点风险高于一/二批</b>。整域失效时本批 3 个 job 会同时 failed；处置顺序：
+<ol>
+<li><code>curl -s -o /dev/null -w "%{http_code}" https://wechat2rss.bestblogs.dev/feed/&lt;hash&gt;.xml</code> 确认单 feed 还是整域；</li>
+<li>单 feed 失效 → 从 <code>WECHAT3_FEEDS</code> 删行（批次自动收缩）；</li>
+<li>整域失效 → 一二三四批同时受影响，按二批 runbook §5.2 统一处置。</li>
+</ol></li>
+<li>爬虫失败即 WARNING + 跳过，禁止运行时重试放大。</li>
+</ul>
+<h3>5.3 缺口补齐路径（≥40 未达成的后续）</h3>
+<ol>
+<li><b>wewe-rss 通道 B 恢复</b>（用户操作，见二批 runbook §5.3）：恢复后可增补镜像未收录的号（宏观私募/量化/FICC 类独立号多在镜像外）。</li>
+<li><b>向 xlab 提交收录</b>：<code>github.com/ttttmr/wechat2rss</code> issue 推荐，收录标准见其站 /list/new。</li>
+<li><b>BestBlogs OPML 扩列复查</b>：<code>github.com/ginobefun/BestBlogs</code> watch opml 目录。</li>
+<li>下轮若重启，先用本 runbook §1 的通道表快速复核，别重复调研。</li>
+</ol>
+<h3>5.4 营销过滤器</h3>
+<p>本批 job 复用 <code>WechatMarketingFilter</code>（LLM 24h 缓存）。周刊媒体号（三联/南周/新闻周刊/澎湃）偶有推广文会被 LLM 判 <code>not is_knowledge</code> 拒掉，<code>rejected_marketing</code> 计数体现在 etl_log。心木微笔/乱翻书等个人号误杀率应接近零；若某源误杀严重，记录后可考虑挪独立白名单 job（暂未实现）。</p>
+
+<h2>6. 决策日志</h2>
+<table><tr><th>决策</th><th>理由</th></tr>
+<tr><td>实报 22 不凑数</td><td>任务纪律明确；两个镜像合格池确实枯竭（§1 证据）</td></tr>
+<tr><td>收录深度媒体周刊（南周/三联/新闻周刊/南风窗/澎湃思想市场）</td><td>商业/时政深度报道符合"独立思考"；非党政喉舌类官媒；先例：二批已收财经杂志/经济观察报/第一财经</td></tr>
+<tr><td>收录 VC/产研号（非凡产研）</td><td>先例：二批已收峰瑞/高瓴/经纬/真格/红杉/山行</td></tr>
+<tr><td>收录游戏葡萄/后浪研究所</td><td>本轮任务点名补消费/此前覆盖少的领域；游戏=传媒板块、后浪=消费趋势</td></tr>
+<tr><td>排除 AI 工具教程号（~20 个）</td><td>搬运/教程/营销属性，非"独立思考的宏观/行业/商业内容"；二批已收够 AI 评论头部号</td></tr>
+<tr><td>排除丁香医生</td><td>医药是本轮目标领域，但其为消费健康科普+软文密度高，非行业研究</td></tr>
+<tr><td>批次 <code>_BATCH_SIZE=8</code>（3 批）</td><td>22 源 ÷ ≤10/批 → 3 批；键 <code>w3a-w3c</code>，job 前缀 <code>wechat3_</code>，与一/二批命名空间隔离</td></tr>
+<tr><td><code>WECHAT3_BATCH_JOBS</code> 定义在模块内</td><td>表与 job 元数据同源，scheduler_jobs 只 import 物化，避免两处维护漂移</td></tr>
+<tr><td>scheduler 用 <code>jitter=600</code></td><td>任务要求；也给镜像错峰减压（一/二批不 retroactive 改）</td></tr>
+<tr><td>保留营销过滤器</td><td>本批含周刊媒体号，软文概率高于独立号</td></tr>
+</table>
+
+<h2>7. 文件清单</h2>
+<table><tr><th>文件</th><th>说明</th></tr>
+<tr><td><code>app/services/news/sources/wechat2rss_batch3.py</code></td><td>22 源表 + 3 批次 + WECHAT3_BATCH_JOBS + <code>Wechat2RssBatch3Crawler</code></td></tr>
+<tr><td><code>app/tests/news/test_wechat2rss_batch3.py</code></td><td>表完整性/格式/零重叠（含二批）/爬虫 mock/集成接线（xfail 待集成）</td></tr>
+<tr><td><code>docs/dev-notes/20260729-wechat-batch3-integration.md</code></td><td>三文件精确补丁（scheduler_jobs/scheduler/news）</td></tr>
+<tr><td><code>docs/dev-notes/20260729-wechat-batch3.md</code>(+<code>.html</code>)</td><td>本 runbook</td></tr>
+</table>
+</body></html>
