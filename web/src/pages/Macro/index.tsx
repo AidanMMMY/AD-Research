@@ -270,7 +270,9 @@ export default function Macro() {
       align: 'right',
       sorter: (a, b) => (a.value ?? -Infinity) - (b.value ?? -Infinity),
       render: (v: number | null, row) => (
-        <Text strong>{formatValue(v, row.unit)}</Text>
+        <Text strong className="tnum">
+          {formatValue(v, row.unit)}
+        </Text>
       ),
     },
     {
@@ -279,7 +281,11 @@ export default function Macro() {
       key: 'period',
       width: 120,
       render: (p?: string | null) =>
-        p ? <Text>{p}</Text> : <Text type="secondary">未采集</Text>,
+        p ? (
+          <Text className="tnum">{p}</Text>
+        ) : (
+          <Text type="secondary">未采集</Text>
+        ),
     },
     {
       title: '更新时间',
@@ -288,7 +294,7 @@ export default function Macro() {
       width: 180,
       render: (t?: string | null) =>
         t ? (
-          <Text type="secondary" className="ad-text-xs">
+          <Text type="secondary" className="ad-text-xs tnum">
             {new Date(t).toLocaleString('zh-CN')}
           </Text>
         ) : (

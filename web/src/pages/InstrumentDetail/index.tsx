@@ -309,7 +309,7 @@ export default function InstrumentDetail() {
   };
 
   return (
-    <PageShell maxWidth="wide">
+    <PageShell maxWidth="wide" className="instrument-detail">
       <Button
         type="text"
         icon={<ArrowLeftOutlined />}
@@ -480,7 +480,7 @@ export default function InstrumentDetail() {
 
       {/* ─── 2) Key statistics (directly below K-line) ──────────────── */}
       <SectionHeading title="关键数据" />
-      <ResponsiveGrid cols={4} gap="md" className="detail-section" stretch>
+      <ResponsiveGrid cols={4} gap="md" className="detail-section instrument-detail__kpi-strip" stretch>
         {heroStats.map((stat) => (
           <div key={stat.title} className={stat.color}>
             <StatCard

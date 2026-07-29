@@ -58,13 +58,28 @@
 .macro__kpi-period {
   display: block;
   margin-top: 2px;
-  /* same size as the name but lighter color/weight -> clear hierarchy */
-  font-size: var(--text-label-size);
+  /* P4 数据轨 label 规范：--data-label 字号 + 字距（期次为拉丁/数字）*/
+  font-size: var(--data-label-size);
   font-weight: 400;
   font-family: var(--font-mono);
-  letter-spacing: 0;
+  letter-spacing: var(--data-label-tracking);
   color: var(--text-tertiary);
   white-space: nowrap;
+}
+
+/* ── P4 双轨排版（方向 B 数据轨，2026-07-29）─────────────────────
+   头条 KPI 数值走数字阶梯：lg 档（KPI 主数值），tabular-nums 防抖动。
+   全局 .stat-card__value 桌面为 xl(36px) —— 终端风收敛为 lg(24px)。 */
+.macro__headline-grid .stat-card__value {
+  font-size: var(--data-num-lg);
+  letter-spacing: var(--data-num-tracking);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+}
+
+/* 指标名行走 label 规范字号（大写/字距对 CJK 无副作用，不强制） */
+.macro__headline-grid .stat-card__title {
+  font-size: var(--data-label-size);
 }
 
 /* ── Freshness badge (data delay indicator, inline in the card title) ── */
@@ -100,12 +115,10 @@
 @media (max-width: 767px) {
   .macro__headline-grid {
     grid-template-columns: repeat(2, 1fr);
-    gap: var(--space-2);
+    gap: var(--density-gap);
   }
 
-  .macro__kpi-period {
-    font-size: 10px;
-  }
+  /* 期次字号已由 --data-label token 统一（原 10px 覆盖移除） */
 
   .macro-page .page-header-description {
     display: -webkit-box;

@@ -813,3 +813,164 @@ html, body, #root {
 .row-list > .hairline-row--clickable {
   cursor: pointer;
 }
+
+/* ============================================================
+   P4 Dual-track typography (2026-07-29, Direction B)
+   数据轨：终端风排版尺度 — 数字字号阶梯 / label 规范 / hairline 网格
+   内容轨：editorial 阅读尺度 — 阅读字号 / 行高 / 段距 / 标题阶梯 / 栏宽
+   依据 docs/dev-notes/20260729-mobile-ui-redesign-research.md §四方向 B。
+   字号/字距属排版尺度，与 --text-* 既有约定一致地跨主题保持不变，
+   故在 :root 定义一次、暗色主题自动继承；颜色一律引用语义 token。
+   ============================================================ */
+:root {
+  /* ── 数据轨：数字字号阶梯 ──
+     xl = 标的详情 hero 价格；lg = KPI 主数值；
+     md = 表格/指标数值；sm = 次要数值 */
+  --data-num-xl: 32px;
+  --data-num-lg: 24px;
+  --data-num-md: 16px;
+  --data-num-sm: 13px;
+  --data-num-tracking: -0.02em;
+  --data-num-lh: 1.1;
+
+  /* ── 数据轨：label 规范（指标名 / 期次 / eyebrow）──
+     遵守 P0-4「最小字号 ≥12px」约束；uppercase 仅作用于拉丁，CJK 无副作用。 */
+  --data-label-size: 12px;
+  --data-label-lh: 1.3;
+  --data-label-tracking: 0.08em;
+  --data-label-weight: 600;
+
+  /* ── 数据轨：终端风 hairline 网格 ── */
+  --hairline-grid: 1px solid var(--hairline);
+  --hairline-grid-strong: 1px solid var(--border-strong);
+  --hairline-grid-dashed: 1px dashed var(--hairline);
+
+  /* ── 内容轨：editorial 阅读尺度 ── */
+  --reading-size: 17px;
+  --reading-lh: 1.75;
+  --reading-para-gap: 1em;
+  /* 栏宽 ≈ 38 个全角中文字/行（≈608px），长文最优行长区间 */
+  --reading-width: 38rem;
+  --reading-h1: 34px;
+  --reading-h2: 22px;
+  --reading-h3: 18px;
+  --reading-title-lh: 1.35;
+  /* 中文谨慎：仅轻微收紧，不做拉丁式大负字距 */
+  --reading-title-tracking: -0.01em;
+  --reading-caption-size: 13px;
+}
+
+@media (max-width: 767px) {
+  :root {
+    --data-num-xl: 28px;
+    --data-num-lg: 22px;
+    --reading-size: 16px;
+    --reading-h1: 26px;
+    --reading-h2: 20px;
+    --reading-h3: 17px;
+  }
+}
+
+/* ── 数据轨 utility：数字阶梯（mono + tabular-nums + 负字距）── */
+.data-num {
+  font-family: var(--num-font);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+  letter-spacing: var(--data-num-tracking);
+  line-height: var(--data-num-lh);
+}
+.data-num--xl { font-size: var(--data-num-xl); }
+.data-num--lg { font-size: var(--data-num-lg); }
+.data-num--md { font-size: var(--data-num-md); }
+.data-num--sm { font-size: var(--data-num-sm); }
+
+/* ── 数据轨 utility：label ── */
+.data-label {
+  font-size: var(--data-label-size);
+  font-weight: var(--data-label-weight);
+  letter-spacing: var(--data-label-tracking);
+  line-height: var(--data-label-lh);
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+
+/* ── 内容轨 utility：editorial 阅读容器 ──
+   挂在长文正文容器上（资讯详情 / 研究笔记全文）：
+   标题阶梯 + 宽松行距 + 段距 + 链接 / 引用 / 列表样式。 */
+.prose-reading {
+  font-size: var(--reading-size);
+  line-height: var(--reading-lh);
+  color: var(--text-primary);
+  word-break: break-word;
+}
+.prose-reading > *:first-child { margin-top: 0; }
+.prose-reading > *:last-child { margin-bottom: 0; }
+.prose-reading p,
+.prose-reading ul,
+.prose-reading ol {
+  margin: 0 0 var(--reading-para-gap);
+}
+.prose-reading h1,
+.prose-reading h2,
+.prose-reading h3,
+.prose-reading h4 {
+  color: var(--text-primary);
+  line-height: var(--reading-title-lh);
+  letter-spacing: var(--reading-title-tracking);
+  margin: 1.6em 0 0.6em;
+}
+.prose-reading h1 { font-size: var(--reading-h1); font-weight: 600; }
+.prose-reading h2 { font-size: var(--reading-h2); font-weight: 600; }
+.prose-reading h3 { font-size: var(--reading-h3); font-weight: 600; }
+.prose-reading h4 { font-size: var(--reading-size); font-weight: 600; }
+.prose-reading ul,
+.prose-reading ol {
+  padding-left: 1.4em;
+}
+.prose-reading li { margin-bottom: 0.25em; }
+.prose-reading a {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-color: var(--accent-border);
+}
+.prose-reading a:hover {
+  color: var(--accent-hover);
+  text-decoration-color: var(--accent-hover);
+}
+.prose-reading blockquote {
+  margin: 0 0 var(--reading-para-gap);
+  padding: var(--space-1) var(--space-4);
+  border-left: 3px solid var(--accent-border);
+  color: var(--text-secondary);
+}
+.prose-reading hr {
+  border: none;
+  border-top: var(--hairline-grid);
+  margin: var(--space-6) 0;
+}
+.prose-reading img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  border-radius: var(--radius-md);
+}
+.prose-reading code {
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+  background: var(--bg-elevated);
+  border-radius: var(--radius-sm);
+  padding: 0.1em 0.35em;
+}
+.prose-reading pre {
+  background: var(--bg-elevated);
+  border: var(--hairline-grid);
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4);
+  overflow-x: auto;
+  margin: 0 0 var(--reading-para-gap);
+}
+.prose-reading pre code {
+  background: none;
+  padding: 0;
+}

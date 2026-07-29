@@ -370,7 +370,7 @@ export default function NewsDetail() {
             };
 
   return (
-    <PageShell maxWidth="full">
+    <PageShell maxWidth="full" className="news-detail">
       {/* Header */}
       <header className="ad-detail-header">
         <Button
@@ -542,13 +542,18 @@ export default function NewsDetail() {
             {showChinese ? (
               // Chinese rendering: the ingestion-time AI translation
               // (Markdown, same pipeline as the original body).
-              <Markdown source={translationToShow!} />
+              // P4 内容轨：prose-reading 承载 editorial 阅读尺度（theme.css）。
+              <div className="prose-reading news-detail__reading">
+                <Markdown source={translationToShow!} />
+              </div>
             ) : cleanedFullContent ? (
               // Cache hit (from a previous click) OR we just finished
               // fetching — render the cleaned Markdown body inline.
-              <Markdown source={cleanedFullContent} />
+              <div className="prose-reading news-detail__reading">
+                <Markdown source={cleanedFullContent} />
+              </div>
             ) : data.body ? (
-              <div className="ad-detail-article__body">
+              <div className="ad-detail-article__body prose-reading news-detail__reading">
                 {data.body}
               </div>
             ) : (

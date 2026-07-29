@@ -55,3 +55,41 @@
     display: none;
   }
 }
+
+/* ============================================================
+   P4 双轨排版（方向 B 数据轨，2026-07-29）
+   价格 hero 与 KPI 数值应用数字阶梯；label 走 label 规范。
+   仅字号/字距级调整，布局不动。token 定义见 theme.css 尾部。
+   ============================================================ */
+
+/* 价格 hero：最新价走 xl 档（全局 detail-hero__kpi-value 为 lg 档） */
+.instrument-detail .detail-hero__kpi-value {
+  font-size: var(--data-num-xl);
+  letter-spacing: var(--data-num-tracking);
+}
+
+/* hero 期次 label（最新价（2026-07-28））走 label 规范字号 */
+.instrument-detail .detail-hero__kpi-label {
+  font-size: var(--data-label-size);
+}
+
+/* 关键数据 KPI strip：数值走 lg 档 + tabular-nums；标题走 label 规范 */
+.instrument-detail__kpi-strip .stat-card__value {
+  font-size: var(--data-num-lg);
+  letter-spacing: var(--data-num-tracking);
+}
+.instrument-detail__kpi-strip .stat-card__title {
+  font-size: var(--data-label-size);
+  letter-spacing: var(--data-label-tracking);
+}
+
+/* 技术指标面板数值：token 化 lg 档 + tabular-nums（列对齐防抖动） */
+.instrument-detail .detail-indicator-item .ant-statistic-content {
+  font-size: var(--data-num-lg);
+  letter-spacing: var(--data-num-tracking);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+}
+.instrument-detail .detail-indicator-item .ant-statistic-title {
+  font-size: var(--data-label-size);
+}

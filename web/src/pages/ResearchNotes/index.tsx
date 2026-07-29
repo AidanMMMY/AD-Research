@@ -357,7 +357,8 @@ export default function ResearchNotes() {
         }
       >
         {modalNote && (
-          <div className="markdown-body ad-markdown-body">
+          /* P4 内容轨：prose-reading 承载 editorial 阅读尺度（theme.css）。 */
+          <div className="markdown-body ad-markdown-body prose-reading ad-research-note-modal__reading">
             <ReactMarkdown remarkPlugins={[remarkGfm]}>
               {modalNote.content}
             </ReactMarkdown>

@@ -104,6 +104,17 @@
   line-height: 1.8;
 }
 
+/* P4 双轨排版（方向 B 内容轨，2026-07-29）：研报全文走 editorial 阅读尺度。
+   字号/行高/段距/标题阶梯由 --reading-* token + .prose-reading 提供；
+   栏宽限制 38rem 居中（720px modal 内）。 */
+.ad-research-note-modal__reading {
+  font-size: var(--reading-size);
+  line-height: var(--reading-lh);
+  max-width: var(--reading-width);
+  margin-left: auto;
+  margin-right: auto;
+}
+
 .ad-markdown-modal .ant-modal-body {
   max-height: 70vh;
   overflow: auto;

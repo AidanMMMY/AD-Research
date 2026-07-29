@@ -6,3 +6,53 @@
 .news-importance-star {
   margin-right: 1px;
 }
+
+/* ==========================================================================
+   P4 双轨排版（方向 B 内容轨，2026-07-29）— editorial 阅读尺度
+   正文走 --reading-* token：标题大一号 + 紧凑字距、17px/1.75 正文、
+   段距、链接/引用/列表样式、38rem 栏宽居中。
+   覆盖对象为全局 .ad-detail-*（pages-tools.css），此处仅做页面级覆写，
+   不改共享 css。token 定义见 theme.css 尾部。
+   ========================================================================== */
+
+/* 标题：editorial 阶梯（大一号 + 轻负字距；CJK 仅 -0.01em） */
+.news-detail .ad-detail-title {
+  font-size: var(--reading-h1);
+  letter-spacing: var(--reading-title-tracking);
+  line-height: var(--reading-title-lh);
+}
+
+/* 译名原文副标题随阅读 caption 尺度 */
+.news-detail .ad-detail-title__original {
+  font-size: var(--reading-caption-size);
+}
+
+/* 正文容器：Markdown (ad-markdown) 与纯文本 body 统一阅读字号/行高。
+   内层 .ad-markdown 自带 15px/1.7，须提权覆盖以继承 prose-reading。 */
+.news-detail .news-detail__reading,
+.news-detail .news-detail__reading .ad-markdown {
+  font-size: var(--reading-size);
+  line-height: var(--reading-lh);
+}
+
+/* 栏宽限制 + 居中：长文最优行长（移动端栏宽天然 < 38rem，无影响） */
+.news-detail .news-detail__reading {
+  max-width: var(--reading-width);
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* 阅读容器内的链接 / 引用 / 列表 / 标题样式由 theme.css .prose-reading
+   统一提供；这里只处理与全局 .ad-markdown 冲突的继承。 */
+.news-detail .news-detail__reading .ad-markdown > *:first-child {
+  margin-top: 0;
+}
+.news-detail .news-detail__reading .ad-markdown > *:last-child {
+  margin-bottom: 0;
+}
+
+/* 段落间距：Markdown 渲染的 p 走 reading 段距（prose-reading 已覆盖，
+   此处兜底全局 reset 可能引入的 margin 冲突） */
+.news-detail .news-detail__reading p {
+  margin: 0 0 var(--reading-para-gap);
+}
