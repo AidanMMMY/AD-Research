@@ -387,10 +387,10 @@ export default function Dashboard() {
                           }}
                         >
                           <span className="cc-pulse-item__code">{tile.title}</span>
-                          <span className="cc-pulse-item__value">
+                          <span className="cc-pulse-item__value tnum">
                             {pulseLoading && !tile.value ? '—' : formatTileValue(tile.value, tile.unit)}
                           </span>
-                          <span className="cc-pulse-item__change" style={{ color: changeColor(change) }}>
+                          <span className="cc-pulse-item__change tnum" style={{ color: changeColor(change) }}>
                             {formatChange(change)}
                           </span>
                         </div>
@@ -415,12 +415,12 @@ export default function Dashboard() {
                 </span>
               </div>
               <div className="cc-fund-flow__total">
-                <span className="cc-fund-flow__value" style={{ color: changeColor(total) }}>
+                <span className="cc-fund-flow__value tnum" style={{ color: changeColor(total) }}>
                   {ffLoading || total == null ? '—' : formatSignedMoney(total)}
                 </span>
                 <span className="cc-fund-flow__unit">元</span>
               </div>
-              <div className="cc-fund-flow__pct" style={{ color: changeColor(totalPct) }}>
+              <div className="cc-fund-flow__pct tnum" style={{ color: changeColor(totalPct) }}>
                 {formatChange(totalPct)}
               </div>
 
@@ -428,7 +428,7 @@ export default function Dashboard() {
                 <div className="cc-flow-item">
                   <div className="cc-flow-item__header">
                     <span className="cc-flow-item__label">综合信号 Top1 · {topSignal.ts_code}</span>
-                    <span className="cc-flow-item__value" style={{ color: 'var(--cc-accent)' }}>
+                    <span className="cc-flow-item__value tnum" style={{ color: 'var(--cc-accent)' }}>
                       {topSignal.composite_score?.toFixed(2) ?? '—'}
                     </span>
                   </div>
@@ -448,7 +448,7 @@ export default function Dashboard() {
                 <div className="cc-flow-item">
                   <div className="cc-flow-item__header">
                     <span className="cc-flow-item__label">ETF 折溢价 Top1 · {topEtf.ts_code}</span>
-                    <span className="cc-flow-item__value" style={{ color: changeColor(topEtf.premium_rate) }}>
+                    <span className="cc-flow-item__value tnum" style={{ color: changeColor(topEtf.premium_rate) }}>
                       {formatChange(topEtf.premium_rate)}
                     </span>
                   </div>
@@ -483,7 +483,8 @@ export default function Dashboard() {
                 <span>涨跌</span>
                 <span>评分</span>
               </div>
-              {momentum.map((s: any, idx: number) => {
+              <div className="row-list">
+                {momentum.map((s: any, idx: number) => {
                 const score = s.composite_score ?? 0;
                 const ret: number | null = s.return_1m ?? null;
                 return (
@@ -521,10 +522,11 @@ export default function Dashboard() {
                     <span className="cc-sector-row__mom">
                       {ret != null && <ReturnTag value={ret} />}
                     </span>
-                    <span className="cc-sector-row__score">{score.toFixed(1)}</span>
+                    <span className="cc-sector-row__score tnum">{score.toFixed(1)}</span>
                   </div>
                 );
               })}
+              </div>
             </section>
 
             {/* Signal Stream */}
@@ -538,7 +540,8 @@ export default function Dashboard() {
                   全部 →
                 </span>
               </div>
-              {signals.slice(0, 3).map((sig: any, i: number) => (
+              <div className="row-list">
+                {signals.slice(0, 3).map((sig: any, i: number) => (
                 <div
                   key={sig.ts_code || i}
                   className="cc-signal"
@@ -558,7 +561,7 @@ export default function Dashboard() {
                     <div className="cc-signal__code">{sig.ts_code}</div>
                     <div className="cc-signal__desc">{sig.signal_name || '资金流综合信号'}</div>
                   </div>
-                  <span className="cc-signal__score" style={{ color: 'var(--cc-accent)' }}>
+                  <span className="cc-signal__score tnum" style={{ color: 'var(--cc-accent)' }}>
                     {sig.composite_score?.toFixed(1) ?? '—'}
                   </span>
                 </div>
@@ -585,11 +588,12 @@ export default function Dashboard() {
                     </div>
                     <div className="cc-signal__desc">{article.source}</div>
                   </div>
-                  <span className="cc-signal__score" style={{ color: 'var(--cc-warn)', fontSize: 11 }}>
+                  <span className="cc-signal__score tnum" style={{ color: 'var(--cc-warn)', fontSize: 11 }}>
                     {article.importance ?? '—'}
                   </span>
                 </div>
               ))}
+              </div>
             </section>
           </div>
 
@@ -616,7 +620,8 @@ export default function Dashboard() {
               ) : favCount === 0 ? (
                 <EmptyState title="暂无自选股" description="在详情页点击 ★ 加入自选" />
               ) : (
-                favorites.slice(0, 6).map((item: any) => {
+                <div className="row-list">
+                  {favorites.slice(0, 6).map((item: any) => {
                   const tick = favMarketLatest[item.etf_code] ?? favPrices[item.etf_code];
                   const price = tick?.price;
                   const change = tick?.change_pct;
@@ -639,16 +644,17 @@ export default function Dashboard() {
                         <div className="cc-watch-row__code">{item.etf_code}</div>
                         <div className="cc-watch-row__name">{item.etf_name}</div>
                       </div>
-                      <span className="cc-watch-row__price">
+                      <span className="cc-watch-row__price tnum">
                         {price != null ? price.toFixed(price >= 100 ? 2 : 3) : '—'}
                       </span>
-                      <span className="cc-watch-row__change" style={{ color: changeColor(change) }}>
+                      <span className="cc-watch-row__change tnum" style={{ color: changeColor(change) }}>
                         {formatChange(change)}
                       </span>
-                      <span className="cc-watch-row__score">{score ? Math.round(score) : '—'}</span>
+                      <span className="cc-watch-row__score tnum">{score ? Math.round(score) : '—'}</span>
                     </div>
                   );
-                })
+                })}
+                </div>
               )}
             </section>
 
@@ -666,7 +672,8 @@ export default function Dashboard() {
               {!hotNews || hotNews.length === 0 ? (
                 <EmptyState title="暂无重要资讯" />
               ) : (
-                hotNews.slice(0, 4).map((article: NewsArticle, idx: number) => (
+                <div className="row-list">
+                  {hotNews.slice(0, 4).map((article: NewsArticle, idx: number) => (
                   <div
                     key={article.id}
                     className="cc-brief"
@@ -689,7 +696,8 @@ export default function Dashboard() {
                     </div>
                     <span className="cc-brief__time">{formatRelative(article.published_at)}</span>
                   </div>
-                ))
+                ))}
+                </div>
               )}
             </section>
 
@@ -701,25 +709,27 @@ export default function Dashboard() {
                   <div className="cc-card__subtitle">平台数据与覆盖概览</div>
                 </div>
               </div>
-              <div className="cc-decision">
-                <span className="cc-decision__label">标的总数</span>
-                <span className="cc-decision__value">{statsKpis.etf.toLocaleString()}</span>
-              </div>
-              <div className="cc-decision">
-                <span className="cc-decision__label">评分覆盖</span>
-                <span className="cc-decision__value" style={{ color: 'var(--cc-accent)' }}>
-                  {statsKpis.score.toLocaleString()}
-                </span>
-              </div>
-              <div className="cc-decision">
-                <span className="cc-decision__label">分类数</span>
-                <span className="cc-decision__value">{statsKpis.category.toLocaleString()}</span>
-              </div>
-              <div className="cc-decision">
-                <span className="cc-decision__label">标的池</span>
-                <span className="cc-decision__value" style={{ color: 'var(--cc-warn)' }}>
-                  {pools?.length ?? 0}
-                </span>
+              <div className="row-list">
+                <div className="cc-decision">
+                  <span className="cc-decision__label">标的总数</span>
+                  <span className="cc-decision__value tnum">{statsKpis.etf.toLocaleString()}</span>
+                </div>
+                <div className="cc-decision">
+                  <span className="cc-decision__label">评分覆盖</span>
+                  <span className="cc-decision__value tnum" style={{ color: 'var(--cc-accent)' }}>
+                    {statsKpis.score.toLocaleString()}
+                  </span>
+                </div>
+                <div className="cc-decision">
+                  <span className="cc-decision__label">分类数</span>
+                  <span className="cc-decision__value tnum">{statsKpis.category.toLocaleString()}</span>
+                </div>
+                <div className="cc-decision">
+                  <span className="cc-decision__label">标的池</span>
+                  <span className="cc-decision__value tnum" style={{ color: 'var(--cc-warn)' }}>
+                    {pools?.length ?? 0}
+                  </span>
+                </div>
               </div>
             </section>
           </div>

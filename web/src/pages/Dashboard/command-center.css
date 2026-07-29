@@ -725,3 +725,170 @@
     font-size: 24px;
   }
 }
+
+/* ============================================================
+   Mobile de-card (<=767px) — Direction A list-first migration.
+   Research: docs/dev-notes/20260729-mobile-ui-redesign-research.md
+   Cards lose their chrome (border/shadow/radius) and become
+   hairline-separated sections; pulse tiles flatten into a
+   horizontally scrollable ticker tape; data rows go full-bleed
+   with >=48px touch targets and tabular numerals (.tnum).
+   Everything in this block is mobile-only — desktop (>767px)
+   rendering is pixel-identical to before.
+   ============================================================ */
+@media (max-width: 767px) {
+  /* Slimmer top chrome. */
+  .cc-topbar {
+    height: 56px;
+    padding: 0 var(--density-row-pad-x);
+  }
+
+  .cc-layout {
+    min-height: calc(100vh - 56px);
+  }
+
+  /* Page gutter moves from the container onto the rows themselves so
+     hairlines span the full viewport width. */
+  .cc-main {
+    padding: var(--space-3) 0;
+  }
+
+  .cc-header {
+    margin-bottom: var(--space-3);
+    padding: 0 var(--density-row-pad-x);
+  }
+
+  /* Cards -> hairline-separated sections. */
+  .cc-card {
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid var(--hairline);
+    border-radius: 0;
+    padding: var(--space-3) 0;
+  }
+
+  .cc-grid {
+    gap: 0;
+    margin-bottom: 0;
+  }
+
+  .cc-card__header {
+    padding: 0 var(--density-row-pad-x);
+    margin-bottom: var(--space-2);
+  }
+
+  /* Non-row card content keeps the page gutter. */
+  .cc-fund-flow__total,
+  .cc-fund-flow__pct,
+  .cc-flow-item,
+  .cc-sector-header,
+  .cc-watch-header {
+    padding-left: var(--density-row-pad-x);
+    padding-right: var(--density-row-pad-x);
+  }
+
+  .cc-fund-flow__value {
+    font-size: 32px;
+  }
+
+  /* Full-bleed data rows with >=48px touch targets (density tokens). */
+  .cc-watch-row,
+  .cc-signal,
+  .cc-brief,
+  .cc-sector-row,
+  .cc-decision {
+    min-height: var(--density-row-h);
+    padding-left: var(--density-row-pad-x);
+    padding-right: var(--density-row-pad-x);
+  }
+
+  .cc-watch-row:hover,
+  .cc-signal:hover,
+  .cc-brief:hover,
+  .cc-sector-row:hover {
+    border-radius: 0;
+  }
+
+  /* Decision queue rows join the hairline list. */
+  .cc-decision {
+    border-bottom: 1px solid var(--hairline);
+  }
+
+  .cc-decision:last-child {
+    border-bottom: none;
+  }
+
+  .cc-footer {
+    padding: var(--space-3) var(--density-row-pad-x);
+    flex-wrap: wrap;
+    row-gap: var(--space-1);
+  }
+
+  /* ---- Global pulse -> compact ticker tape ----
+     Each item stays a one-line quote (name + price + change); the
+     2-column tile grid collapses into a single horizontal strip. */
+  .cc-pulse-grid {
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid var(--hairline);
+    border-radius: 0;
+    padding: var(--space-2) 0 var(--space-1);
+    margin-bottom: 0;
+  }
+
+  .cc-pulse-grid__header {
+    padding: 0 var(--density-row-pad-x);
+    margin-bottom: var(--space-1);
+  }
+
+  .cc-pulse-groups {
+    display: flex;
+    gap: 0;
+    overflow-x: auto;
+    padding: 0 var(--density-row-pad-x);
+    scrollbar-width: none;
+    touch-action: pan-x;
+  }
+
+  .cc-pulse-groups::-webkit-scrollbar {
+    display: none;
+  }
+
+  .cc-pulse-group {
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+  }
+
+  .cc-pulse-group__label {
+    display: flex;
+    align-items: center;
+    margin-bottom: 0;
+    padding-right: var(--density-gap);
+    flex-shrink: 0;
+  }
+
+  .cc-pulse-group__tiles {
+    flex-direction: row;
+    gap: 0;
+  }
+
+  .cc-pulse-item {
+    background: transparent;
+    border-radius: 0;
+    border-right: 1px solid var(--hairline);
+    padding: var(--space-1) var(--density-gap);
+    min-height: var(--density-row-h-compact);
+    gap: var(--space-2);
+    flex-shrink: 0;
+  }
+
+  .cc-pulse-item:hover {
+    background: transparent;
+  }
+
+  .cc-pulse-item__value {
+    overflow: visible;
+    text-overflow: clip;
+  }
+}
