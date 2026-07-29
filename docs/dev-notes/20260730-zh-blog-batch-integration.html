@@ -1,0 +1,94 @@
+<!DOCTYPE html><html lang=zh><head><meta charset=utf-8><title>20260730 中文博客批次集成记录</title><style>body{max-width:860px;margin:40px auto;font-family:-apple-system,sans-serif;line-height:1.7;padding:0 16px}table{border-collapse:collapse}td,th{border:1px solid #ccc;padding:4px 10px}code{background:#f4f4f4;padding:1px 4px}</style></head><body><h1>2026-07-30 中文博客批次（D1 / zhb）集成记录</h1>
+<h2>背景</h2>
+<p>「中文圈 ≥100 独立思考资讯源」goal 的最后一波（D1）。前两波已落地：</p>
+<ul>
+<li>D2 公众号三批 22 源（<code>wechat3_*</code>，commit 30b10dd）</li>
+<li>D3 中文播客 40 源（<code>zhx_*</code>，commit c463b38）</li>
+</ul>
+<p>本波 D1 补 <strong>38 个中文博客/独立评论站/中文国际媒体/社区精选 feed</strong>，
+62 + 38 = <strong>100</strong>，达成"不少于 100 个"目标（投资界 wewe-rss 重加后将成第 101 个）。</p>
+<h2>实测过程（2026-07-29/30，全部从生产 ECS 用浏览器 UA 验证）</h2>
+<p>约 280 个候选，验证项：HTTP 200、有效 RSS/Atom、最新条目 ≤14 天（喵神月更明确保留）。</p>
+<h3>淘汰记录（防止下次重踩）</h3>
+<ul>
+<li><strong>停更</strong>：kenengba 可能吧（2026-04）、xbeta 善用佳软（2025-05）、t9t（2025-11）、
+  frankcui（2025-10）、apprcn 反斗限免（2026-04）、v2fy（2026-06）</li>
+<li><strong>已被既有表覆盖</strong>：IT之家、Solidot（<code>global_rss_batch.py</code> 174/177 行）——实测鲜活但剔除保零重叠</li>
+<li><strong>无原生 RSS（ECS 实测返回 HTML/403/空）</strong>：煎蛋、极客公园、品玩、果壳、一财、
+  华尔街见闻、智通财经、联合早报、HK01、东森、中央社、ForesightNews、Odaily、
+  优设、T客邦、数位时代、天下杂志（Cloudflare）</li>
+<li><strong>BBC 中文只有 simp 主索引新鲜</strong>；world/china/business/science 子频道 2011-2014 年停更，勿加</li>
+<li>新浪博客 RSS 全灭（16/16 FAIL，D1 agent 已验证）</li>
+</ul>
+<h3>38 源清单（slug → feed）</h3>
+<table>
+<thead>
+<tr>
+<th>分组</th>
+<th>源</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>独立博客</td>
+<td>coolshell 酷壳、macshuo MacTalk、iplaysoft 异次元、appinn 小众软件、biaodianfu 标点符、techug、aisixiang 爱思想、xueqiuhots 雪球热帖、onevcat 喵神（月更）</td>
+</tr>
+<tr>
+<td>聚合/垂直</td>
+<td>cnblogs 博客园、gcores 机核、cnbeta、digitaling 数英、oschina 开源中国、qbitai 量子位、it199 199IT、yunyingpai 运营派</td>
+</tr>
+<tr>
+<td>中文国际媒体</td>
+<td>ftchinese、rfichinese、dwchinese、bbcchinese（仅 simp 索引）、theinitium 端传媒</td>
+</tr>
+<tr>
+<td>台湾/英文视角</td>
+<td>technews 科技新报、ithometw iThome、sixthtone（en）、whatsonweibo（en）</td>
+</tr>
+<tr>
+<td>中文加密</td>
+<td>blocktempo 動區動趨、zombit 桑幣區識（market=crypto）</td>
+</tr>
+<tr>
+<td>科学</td>
+<td>pansci 泛科学</td>
+</tr>
+<tr>
+<td>V2EX</td>
+<td>9 个官方 tab feed（all/tech/creative/play/apple/jobs/deals/city/qna）</td>
+</tr>
+</tbody>
+</table>
+<h2>集成改动（与 zhx 波同模式）</h2>
+<ol>
+<li><code>app/services/news/sources/zh_blog_batch.py</code> — ZH_BLOG_FEEDS(38) / ZH_BLOG_BATCHES(a-d, ≤10) /
+   ZH_BLOG_BATCH_JOBS(<code>news_zhb_{a-d}_60m</code>) / ZhBlogBatchCrawler（复用 rss_common + 浏览器 UA）</li>
+<li><code>app/services/news/scheduler_jobs.py</code> — <code>_zhb_batch_job</code> 工厂（无营销过滤）+ globals() 物化</li>
+<li><code>app/core/scheduler.py</code> — ZH_BLOG_BATCH_JOBS 注册循环（60m + jitter 600）</li>
+<li><code>app/api/v1/news.py</code> — <code>_WORKER_KEYWORDS</code> 加 <code>"zhb_"</code> + 4 条 <code>_WORKER_META</code></li>
+<li><code>app/tests/news/test_zh_blog_batch.py</code> — 21 测试（零重叠 vs 全部 7 张既有表、分批、
+   爬虫 mock、crypto market 保留、调度接线）</li>
+</ol>
+<h2>验证</h2>
+<ul>
+<li>本地 <code>pytest app/tests/news/</code> 575 passed</li>
+<li>本地 <code>init_scheduler()</code> 后 4 个 <code>news_zhb_*</code> job 注册成功</li>
+<li>ECS 部署 + 冒烟见本文件末尾执行记录（部署后补）</li>
+</ul>
+<h2>执行记录（2026-07-30 03:35-03:50 +08）</h2>
+<ol>
+<li><strong>f9a255a</strong> 主集成 commit：CI + Deploy 全绿（3m38s）。ECS scheduler 确认 4 个
+   <code>news_zhb_{a-d}_60m</code> job 注册。</li>
+<li><strong>冒烟 batch a 发现 iplaysoft 解析失败</strong>：其缓存插件输出 <code>&lt;!--Cached 1785347478---&gt;</code>，
+   <code>---&gt;</code> 违反 XML 注释规范（闭合必须恰好 <code>--&gt;</code>），严格 <code>ET.fromstring</code> 整源丢弃。</li>
+<li><strong>48605ee</strong> rss_common 容错恢复 commit：严格解析失败后重试修复版
+   （剥非法控制字符 + 折叠 <code>-{3,}&gt;</code> → <code>--&gt;</code>），全站 652 源受益；
+   3 条恢复测试，本地 578 passed，CI + Deploy 全绿。</li>
+<li><strong>ECS 全量冒烟（4 批）</strong>：a=95 篇/10 源，b=100/10，c=90/10，d=80/8，
+   <strong>合计 365 篇 / 38 源全活</strong>（iplaysoft 已恢复，单源 30 条）。</li>
+<li><strong>wechat3/zhx "无 etl 记录" 虚惊闭环</strong>：实为调度器冻结窗口所致，restart 后
+   02:29-02:40 +08 全部 7 个 job 成功执行；zhx 300 篇/30 源、wechat3 22/22 源全有文
+   （源名是 <code>wechat_{slug}</code> 不是 <code>wechat3_*</code>，SQL 用错前缀才显示 0）。</li>
+<li><strong>目标达成</strong>：公众号 22 + 播客 40 + 博客 38 = <strong>100 个中文圈独立思考资讯源</strong>。
+   投资界 wewe-rss 重加（等用户文章链接）后将成为第 101 个。</li>
+</ol></body></html>
