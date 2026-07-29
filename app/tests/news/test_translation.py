@@ -566,3 +566,93 @@ class TestAutoTranslate:
         assert article.translated_zh == "新鲜译文"
         assert result["cached"] is True
         assert fake_provider.chat.call_count == 0
+
+
+class TestAutoTranslateForIds:
+    """``scheduler_translate_news.auto_translate_for_ids`` — the concurrent
+    batch helper shared by the ingest path and the 10-minute drain job
+    (reworked 2026-07-29 to fan out over worker threads)."""
+
+    def test_aggregates_worker_stats(self, monkeypatch):
+        from app.config import get_settings
+        from app.services.news import scheduler_translate_news as mod
+
+        outcomes = {
+            1: {"article_id": 1, "skipped": False, "translated": True},
+            2: {"article_id": 2, "skipped": True, "reason": "chinese"},
+            3: {"article_id": 3, "skipped": False, "title_zh": "标题", "translated": False},
+        }
+        monkeypatch.setattr(mod, "_translate_one", lambda aid: outcomes[aid])
+        get_settings.cache_clear()
+        try:
+            stats = mod.auto_translate_for_ids([1, 2, 3], time_budget_sec=60)
+        finally:
+            get_settings.cache_clear()
+        assert stats == {
+            "attempted": 3,
+            "translated": 2,
+            "skipped": 1,
+            "budget_exhausted": 0,
+        }
+
+    def test_budget_exhaustion_leaves_remainder(self, monkeypatch):
+        from app.config import get_settings
+        from app.services.news import scheduler_translate_news as mod
+
+        monkeypatch.setattr(
+            mod,
+            "_translate_one",
+            lambda aid: {"article_id": aid, "skipped": False, "translated": True},
+        )
+        # Swap the module's ``time`` reference (NOT the global time
+        # module — ThreadPoolExecutor internals need the real one).
+        # Tick 1: ``started``; ticks 2-3: in-budget checks (submit 2
+        # tasks); tick 4 onwards: way past budget so submission stops.
+        ticks = iter([0.0, 0.0, 0.0] + [10_000.0] * 10)
+        monkeypatch.setattr(
+            mod, "time", SimpleNamespace(monotonic=lambda: next(ticks))
+        )
+        get_settings.cache_clear()
+        try:
+            stats = mod.auto_translate_for_ids([1, 2, 3, 4, 5], time_budget_sec=1)
+        finally:
+            get_settings.cache_clear()
+        assert stats["attempted"] == 2
+        assert stats["budget_exhausted"] == 3
+
+    def test_worker_exception_does_not_break_batch(self, monkeypatch):
+        from app.config import get_settings
+        from app.services.news import scheduler_translate_news as mod
+
+        def _boom(aid):
+            raise RuntimeError("db down")
+
+        monkeypatch.setattr(mod, "_translate_one", _boom)
+        get_settings.cache_clear()
+        try:
+            stats = mod.auto_translate_for_ids([1, 2], time_budget_sec=60)
+        finally:
+            get_settings.cache_clear()
+        assert stats["attempted"] == 2
+        assert stats["translated"] == 0
+
+    def test_empty_and_disabled_short_circuit(self, monkeypatch):
+        from app.config import get_settings
+        from app.services.news import scheduler_translate_news as mod
+
+        assert mod.auto_translate_for_ids([]) == {
+            "attempted": 0,
+            "translated": 0,
+            "skipped": 0,
+            "budget_exhausted": 0,
+        }
+        get_settings.cache_clear()
+        settings = get_settings()
+        original = settings.news_translation_on_ingest
+        settings.news_translation_on_ingest = False
+        try:
+            stats = mod.auto_translate_for_ids([1, 2, 3])
+        finally:
+            settings.news_translation_on_ingest = original
+            get_settings.cache_clear()
+        assert stats["attempted"] == 0

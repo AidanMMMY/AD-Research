@@ -105,6 +105,17 @@ def is_chinese_language(language: str | None) -> bool:
 # 12k was clipping longer Substack / blog essays.
 _MAX_INPUT_CHARS = 30_000
 
+# Slow-call budget for a single LLM translation request. Raised from
+# 30s on 2026-07-29: full-body translations of long articles legitimately
+# take 30-90s, and the old 30s cut-off *discarded the finished response*
+# — tokens already spent, row left untranslated, retried and discarded
+# again every tick. Long articles were permanently stuck (26% coverage
+# for 10k+ vs 53% for <2k). Set to 240s (not 120s) because concurrent
+# drain jobs make MiniMax queue server-side: measured single-call
+# latency under load is 30-160s (2026-07-29), and anything we discard
+# is money already spent. The SDK client timeout is the real backstop.
+_MAX_LLM_CALL_SEC = 240.0
+
 # Detect the DeepSeek "no API key configured" placeholder so callers
 # can distinguish a real response from the missing-config no-op.
 _NO_KEY_HINT = "AI 功能未配置"
@@ -407,10 +418,11 @@ class NewsTranslationService:
                     system=system,
                 )
                 elapsed = time.monotonic() - start
-                if elapsed > 30.0:
+                if elapsed > _MAX_LLM_CALL_SEC:
                     logger.warning(
-                        "News translation LLM call took %.2fs (>30s); skipping",
+                        "News translation LLM call took %.2fs (>%.0fs); skipping",
                         elapsed,
+                        _MAX_LLM_CALL_SEC,
                     )
                     return None, None
                 if not content:

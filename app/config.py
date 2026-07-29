@@ -135,12 +135,25 @@ class Settings(BaseSettings):
     # scheduler job, ``news_translation_batch_size`` articles per tick.
     news_translation_on_ingest: bool = True
     news_translation_ingest_time_budget_sec: int = 90
-    # 2026-07-28: 15 -> 50 per tick (~7,200/day). The 652-source
-    # expansion pushed non-Chinese inflow to ~4,400/day, beyond the old
-    # ~2,160/day drain capacity — the backlog was growing unboundedly.
-    # Title translation is a short, cheap LLM call; MiniMax rate limits
-    # have ample headroom at this cadence.
-    news_translation_batch_size: int = 50
+    # 2026-07-29: 50 -> 200 per tick + 4 worker threads. The serial
+    # drain managed ~285 articles/hour (12.6s/article for title+body)
+    # against a ~240/hour non-Chinese inflow, so the backlog never
+    # shrank — ~20k all-time rows untranslated and unlucky rows pushed
+    # out of the newest-first window starved for days (the 2026-07-30
+    # Korean-article incident). With 4x concurrency a 200-row batch
+    # fits the 600s drain budget at idle-latency; under MiniMax
+    # server-side queueing (measured 30-160s/call when several drain
+    # jobs run concurrently) the budget simply caps the batch early —
+    # either way throughput is a multiple of the old serial loop.
+    # Cost: the body call is the expensive one (~2-4k tokens in/out per
+    # article on MiniMax); the ~20k-row backfill is a one-off ~80M-token
+    # spend, steady-state is just the daily inflow.
+    news_translation_batch_size: int = 200
+    # Worker threads for the translation batch loop (ingest + drain).
+    # LLM calls are pure I/O wait; each worker uses its own DB session.
+    # Keep modest so we don't trip MiniMax rate limits alongside the
+    # summary/sentiment jobs sharing the same provider.
+    news_translation_concurrency: int = 4
 
     # News AI one-sentence summary pipeline (方向 D, 2026-07-29). The
     # 10-minute ``news_summarize_10m`` drain job generates a ≤80-char
