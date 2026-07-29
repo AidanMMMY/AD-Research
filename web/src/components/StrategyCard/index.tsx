@@ -1,6 +1,7 @@
 import { Button } from 'antd';
 import { ExperimentOutlined, PlayCircleOutlined, ThunderboltOutlined } from '@ant-design/icons';
 import ThemeTag from '@/components/ThemeTag';
+import { useIsMobile } from '@/hooks/useBreakpoint';
 import type { StrategyCatalogItem } from '@/types/strategy';
 
 const FAMILY_LABELS: Record<string, string> = {
@@ -16,6 +17,8 @@ const FAMILY_LABELS: Record<string, string> = {
 
 /** 卡片上最多展示的参数数，超出折叠为 "+N" */
 const MAX_VISIBLE_PARAMS = 4;
+/** 移动端行式变体只内联 ≤2 个参数摘要（参数面板不常驻，详见 components-cleanup.css 移动端段） */
+const MAX_VISIBLE_PARAMS_MOBILE = 2;
 
 interface StrategyCardProps {
   strategy: StrategyCatalogItem;
@@ -30,8 +33,12 @@ export default function StrategyCard({
   onRunStrategy,
   onBacktest,
 }: StrategyCardProps) {
+  const isMobile = useIsMobile();
   const paramEntries = Object.entries(strategy.param_specs);
-  const visibleParams = paramEntries.slice(0, MAX_VISIBLE_PARAMS);
+  const visibleParams = paramEntries.slice(
+    0,
+    isMobile ? MAX_VISIBLE_PARAMS_MOBILE : MAX_VISIBLE_PARAMS,
+  );
   const hiddenCount = paramEntries.length - visibleParams.length;
 
   return (

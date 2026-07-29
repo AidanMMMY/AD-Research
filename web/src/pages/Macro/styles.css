@@ -90,3 +90,27 @@
 .macro__freshness-badge__label {
   font-weight: 500;
 }
+
+/* ── 2026-07-29 移动端（方向 A）────────────────────────────
+   1. 头条 KPI：auto-fit minmax(180px) 在 390px 屏塌成 1 列全宽长条，
+      改为 2 列紧凑格；卡片 chrome 已由全局 .stat-card 移动端段去除。
+   2. 页头收紧：描述 2 行截断，缩短与 KPI 区的距离。
+   指标表保持 scroll-x（组件内 isMobile scroll.x=800，不动）。
+   桌面视觉不变。 */
+@media (max-width: 767px) {
+  .macro__headline-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--space-2);
+  }
+
+  .macro__kpi-period {
+    font-size: 10px;
+  }
+
+  .macro-page .page-header-description {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+}

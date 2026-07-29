@@ -344,13 +344,30 @@
   50% { opacity: 0.4; }
 }
 
+/* 2026-07-29 移动端去 chrome（方向 A，实测 StatCard chrome 占比 ~43%）：
+   去边框/阴影、padding 16→8、数值 tabular-nums、icon 44→36。
+   桌面视觉不变。依据 docs/dev-notes/20260729-mobile-ui-redesign-research.md */
 @media (max-width: 767px) {
   .stat-card {
-    padding: var(--space-4);
+    padding: var(--space-2);
+    border-color: transparent;
+    box-shadow: none;
+  }
+
+  .stat-card__title {
+    margin-bottom: var(--space-1-5);
   }
 
   .stat-card__value {
     font-size: var(--text-data-lg-size);
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum" 1;
+  }
+
+  .stat-card__icon {
+    width: 36px;
+    height: 36px;
+    font-size: 17px;
   }
 }
 

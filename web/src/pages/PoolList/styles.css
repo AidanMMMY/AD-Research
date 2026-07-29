@@ -93,3 +93,33 @@
   justify-content: center;
   padding: var(--space-9) 0;
 }
+
+/* 2026-07-29 移动端（方向 A）：3 列卡片塌成 1 列长条太浪费，
+   改为紧凑 2 列格；卡片去边框/阴影、padding 收紧、描述 1 行。
+   桌面视觉不变。 */
+@media (max-width: 767px) {
+  .pool-list__grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--space-2);
+  }
+
+  .pool-card {
+    padding: var(--space-2) var(--space-3);
+    gap: var(--space-1-5);
+    border-color: transparent;
+    box-shadow: none;
+  }
+
+  .pool-card:hover {
+    box-shadow: none;
+    border-color: transparent;
+  }
+
+  .pool-card__desc {
+    -webkit-line-clamp: 1;
+  }
+
+  .pool-card__date {
+    display: none;
+  }
+}

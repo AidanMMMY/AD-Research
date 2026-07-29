@@ -345,7 +345,7 @@ export default function Macro() {
   const headlineLoading = region === 'cn' ? latestFetching && !latestData : isLoading;
 
   return (
-    <div className="adx-motion">
+    <div className="adx-motion macro-page">
       <PageShell maxWidth="wide">
         <PageHeader
           eyebrow="宏观指标"

@@ -28,3 +28,15 @@
   text-transform: uppercase;
   margin-bottom: var(--space-4);
 }
+
+/* 2026-07-29 移动端：策略卡已改为 hairline 行式变体
+   （components-cleanup.css），行与行之间不再留卡片间隙。 */
+@media (max-width: 767px) {
+  .strategy-library__section .responsive-grid {
+    gap: 0;
+  }
+
+  .strategy-library__count {
+    margin-bottom: var(--space-2);
+  }
+}

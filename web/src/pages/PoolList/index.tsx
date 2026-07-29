@@ -155,7 +155,7 @@ export default function PoolList() {
           }
         />
       ) : (
-        <ResponsiveGrid cols={3} gap="md" stretch>
+        <ResponsiveGrid cols={3} gap="md" stretch className="pool-list__grid">
           {(pools || []).map(renderCard)}
         </ResponsiveGrid>
       )}

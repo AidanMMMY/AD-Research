@@ -1122,6 +1122,68 @@
   background: var(--surface-default);
 }
 
+/* 2026-07-29 移动端：卡片 → 紧凑行式变体（方向 A）。
+   去卡片 chrome（边框/阴影/圆角），行与行之间用 hairline 分隔；
+   描述 2 行 → 1 行；参数面板不再常驻，改为 ≤2 个内联摘要
+   （完整参数在「创建配置 / 运行」弹窗中编辑）；
+   操作行去分隔条、右对齐紧凑化。桌面视觉不变。 */
+@media (max-width: 767px) {
+  .strategy-card {
+    border: none;
+    border-bottom: 1px solid var(--hairline);
+    border-radius: 0;
+    box-shadow: none;
+    background: transparent;
+  }
+
+  .strategy-card:hover {
+    border-color: transparent;
+    border-bottom-color: var(--hairline);
+    background: var(--hover-overlay);
+    box-shadow: none;
+  }
+
+  .strategy-card__body {
+    padding: var(--space-2) var(--density-row-pad-x);
+  }
+
+  .strategy-card__header {
+    margin-bottom: var(--space-1);
+  }
+
+  .strategy-card__title {
+    font-size: var(--text-body-size);
+  }
+
+  .strategy-card__description {
+    -webkit-line-clamp: 1;
+    min-height: 0;
+    margin-bottom: var(--space-1-5);
+  }
+
+  /* 参数摘要内联化：去面板底色，单行排列（组件侧移动端只渲染 ≤2 个） */
+  .strategy-card__params {
+    display: flex;
+    gap: var(--space-4);
+    padding: 0;
+    background: transparent;
+    border-radius: 0;
+    margin-top: 0;
+  }
+
+  .strategy-card:hover .strategy-card__params {
+    background: transparent;
+  }
+
+  .strategy-card__actions {
+    justify-content: flex-end;
+    gap: var(--space-2);
+    padding: 0 var(--density-row-pad-x) var(--space-1-5);
+    border-top: none;
+    background: transparent;
+  }
+}
+
 /* ---- TemplateManagement ---- */
 .template-mgmt__name {
   color: var(--text-primary);
