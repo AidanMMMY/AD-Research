@@ -483,14 +483,62 @@
   font-weight: 500;
 }
 
-/* ---- List pages mobile list items ---- */
+/* ---- List pages mobile list items ----
+   Geometry converged on the density system (theme.css
+   .row-list/.hairline-row): shared 48px row height, 1px hairline
+   separator, density padding — no per-page ad-hoc row heights.
+   NOTE: __meta / __value are also reused inside DESKTOP table cells
+   (InstrumentList / StocksList / CryptoList columns), so their
+   typography must not change; only the mobile-only container and its
+   layout parts are converged here. */
 .mobile-list-item {
-  border-bottom: 1px solid var(--border-default);
-  padding: var(--space-3) 0;
+  border-bottom: 1px solid var(--hairline);
+  padding: var(--space-1-5) var(--density-row-pad-x);
+  min-height: var(--density-row-h);
   cursor: pointer;
   display: flex;
   flex-direction: column;
+  justify-content: center;
   gap: var(--space-1);
+}
+
+/* Non-navigable rows (scan history, sector flows): no pointer affordance. */
+.mobile-list-item--static {
+  cursor: default;
+}
+
+/* Container variant — drop the last row's hairline (mirrors .row-list).
+   Antd List renders items as direct children of .ant-list-items, so a
+   descendant :last-child selector covers both plain and List-mounted rows. */
+.mobile-list .mobile-list-item:last-child {
+  border-bottom: none;
+}
+
+/* Shared press/hover feedback for tappable rows (static rows opt out).
+   Page-scoped rules (InstrumentList styles.css, CryptoList adx shell)
+   layer on top unchanged. */
+@media (hover: hover) {
+  .mobile-list-item:not(.mobile-list-item--static):hover {
+    background: var(--hover-overlay);
+  }
+}
+.mobile-list-item:not(.mobile-list-item--static):active {
+  background: var(--bg-active);
+}
+
+/* Stacked metric (label over value), right-aligned — for flow/score
+   figures that need a caption inside the metrics column. */
+.mobile-list-item__metric {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+
+.mobile-list-item__metric-label {
+  font-size: 10px;
+  color: var(--text-tertiary);
+  line-height: 1.2;
 }
 
 .mobile-list-item__row {

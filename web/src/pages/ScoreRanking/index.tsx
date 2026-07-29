@@ -2,9 +2,10 @@ import './styles.css';
 
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Table, Tabs, Segmented } from 'antd';
+import { Table, List, Tabs, Segmented } from 'antd';
 import { useScores, useScoreTemplates } from '@/hooks/useScores';
 import { useAIHelp } from '@/hooks/useAIHelp';
+import { useIsMobile } from '@/hooks/useBreakpoint';
 import { useSettingsStore } from '@/stores/settings';
 import SparklineCell from '@/components/SparklineCell';
 import PageShell from '@/components/PageShell';
@@ -28,6 +29,7 @@ type TopTab = 'ranking' | 'templates';
 export default function ScoreRanking() {
   const navigate = useNavigate();
   const { open } = useAIHelp();
+  const isMobile = useIsMobile();
   const mode = useSettingsStore((s) => s.mode);
   const [topTab, setTopTab] = useState<TopTab>('ranking');
   const [templateId, setTemplateId] = useState<number | undefined>();
@@ -206,6 +208,91 @@ export default function ScoreRanking() {
               />
             }
           >
+            {isMobile ? (
+              /* 移动端：hairline 行式列表（density token 几何）。
+                 主信息 = 排名 + 代码/名称，右侧 = 近7日 sparkline +
+                 综合评分；次行 = 收益/风险/夏普 次级分。整行可点进详情。 */
+              <List
+                className="ad-list-compact mobile-list"
+                dataSource={scoresData?.items || []}
+                renderItem={(record: any) => (
+                  <div
+                    role="button"
+                    tabIndex={0}
+                    aria-label={`查看 ${record.etf_name || record.etf_code} 详情`}
+                    className="mobile-list-item"
+                    onClick={() => navigate(`/instruments/${record.etf_code}`)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        navigate(`/instruments/${record.etf_code}`);
+                      }
+                    }}
+                  >
+                    <div className="mobile-list-item__row">
+                      <div className="mobile-list-item__main ad-flex ad-items-center ad-gap-2">
+                        <span
+                          className={`tabular-nums score-rank-cell ${
+                            record.rank_overall <= 3
+                              ? 'score-rank-cell--top3'
+                              : 'score-rank-cell--normal'
+                          }`}
+                        >
+                          {record.rank_overall}
+                        </span>
+                        <InstrumentCodeTag
+                          code={record.etf_code}
+                          name={record.etf_name}
+                          name_zh={record.name_zh}
+                        />
+                      </div>
+                      <div className="mobile-list-item__metrics">
+                        <SparklineCell code={record.etf_code} days={7} />
+                        <span className="tnum mobile-list-item__value ad-text-accent">
+                          {record.composite_score?.toFixed(1) ?? '—'}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="mobile-list-item__tags">
+                      {record.score_return != null && (
+                        <span className="tnum mobile-list-item__meta">
+                          收益 {record.score_return.toFixed(1)}
+                        </span>
+                      )}
+                      {record.score_risk != null && (
+                        <span className="tnum mobile-list-item__meta">
+                          风险 {record.score_risk.toFixed(1)}
+                        </span>
+                      )}
+                      {record.score_sharpe != null && (
+                        <span className="tnum mobile-list-item__meta">
+                          夏普 {record.score_sharpe.toFixed(1)}
+                        </span>
+                      )}
+                      {record.score_liquidity != null && (
+                        <span className="tnum mobile-list-item__meta">
+                          流动性 {record.score_liquidity.toFixed(1)}
+                        </span>
+                      )}
+                      {record.score_trend != null && (
+                        <span className="tnum mobile-list-item__meta">
+                          趋势 {record.score_trend.toFixed(1)}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )}
+                pagination={{
+                  pageSize: 20,
+                  size: 'small',
+                  showSizeChanger: false,
+                  className: 'mobile-list-pagination',
+                }}
+                locale={{
+                  emptyText: <EmptyState title="暂无数据" />,
+                }}
+              />
+            ) : (
             <div className={tableWrapClass}>
               <Table
                 dataSource={scoresData?.items || []}
@@ -221,6 +308,7 @@ export default function ScoreRanking() {
                 onRow={(record) => clickableRow(() => navigate(`/instruments/${record.etf_code}`))}
               />
             </div>
+            )}
           </Panel>
         </>
       )}

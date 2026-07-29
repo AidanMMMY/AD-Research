@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Table, Button, Alert, Descriptions } from 'antd';
+import { Table, List, Button, Alert, Descriptions } from 'antd';
 import PageShell from '@/components/PageShell';
 import PageHeader from '@/components/PageHeader';
 import Panel from '@/components/Panel';
@@ -7,6 +7,7 @@ import FilterToolbar from '@/components/FilterToolbar';
 import EmptyState from '@/components/EmptyState';
 import ThemeTag from '@/components/ThemeTag';
 import { useScanner } from '@/hooks/useScanner';
+import { useIsMobile } from '@/hooks/useBreakpoint';
 import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
 import { ReloadOutlined } from '@ant-design/icons';
 import type { ScanResult } from '@/types/scanner';
@@ -29,6 +30,7 @@ function ScanCount({ value, prefix }: { value: number; prefix: string }) {
 export default function MarketScanner() {
   const [lastScan, setLastScan] = useState<ScanResult | null>(null);
   const { logs, isLoading, scan, isScanning } = useScanner();
+  const isMobile = useIsMobile();
   // Apple Design #14: drop intro animation entirely when the user prefers
   // reduced motion (and #12 always removes will-change after animationend).
   const prefersReducedMotion = usePrefersReducedMotion();
@@ -152,6 +154,36 @@ export default function MarketScanner() {
 
       <Panel title="扫描历史">
         <FilterToolbar total={logs.length}>{null}</FilterToolbar>
+        {isMobile ? (
+          /* 移动端：hairline 行式列表（无详情页，静态行）。
+             主信息 = 扫描日期，右侧 = 新增/退市/变更计数 + 状态。 */
+          <List
+            className="ad-list-compact mobile-list"
+            dataSource={logs}
+            loading={isLoading}
+            renderItem={(log: any) => (
+              <div className="mobile-list-item mobile-list-item--static">
+                <div className="mobile-list-item__row">
+                  <div className="mobile-list-item__main">
+                    <span className="tnum mobile-list-item__value">{log.scan_date}</span>
+                  </div>
+                  <div className="mobile-list-item__metrics">
+                    <ScanCount value={log.new_count} prefix="+" />
+                    <ScanCount value={log.delisted_count} prefix="-" />
+                    <ScanCount value={log.changed_count} prefix="~" />
+                    {log.status === 'success' ? (
+                      <ThemeTag variant="success">成功</ThemeTag>
+                    ) : (
+                      <ThemeTag variant="error">失败</ThemeTag>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+            pagination={{ pageSize: 10, size: 'small', className: 'mobile-list-pagination' }}
+            locale={{ emptyText: <EmptyState title="暂无扫描历史" /> }}
+          />
+        ) : (
         <div className="ad-table-scroll ad-table-sticky">
           <Table
             dataSource={logs}
@@ -164,6 +196,7 @@ export default function MarketScanner() {
             locale={{ emptyText: <EmptyState title="暂无扫描历史" /> }}
           />
         </div>
+        )}
       </Panel>
     </PageShell>
   );

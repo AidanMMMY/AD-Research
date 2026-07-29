@@ -269,7 +269,7 @@ export default function CryptoList() {
             />
           ) : (
             <List
-              className="ad-list-compact"
+              className="ad-list-compact mobile-list"
               dataSource={visibleItems}
               renderItem={(item: any) => (
                 <div
@@ -290,7 +290,7 @@ export default function CryptoList() {
                       <InstrumentCodeTag code={item.code} name={item.name} name_zh={item.name_zh} />
                     </div>
                     <div className="mobile-list-item__metrics">
-                      <span className="tabular-nums mobile-list-item__value">
+                      <span className="tnum mobile-list-item__value">
                         {item.price != null ? `$${item.price < 0.01 ? item.price.toFixed(6) : item.price < 1 ? item.price.toFixed(4) : item.price.toFixed(2)}` : '-'}
                       </span>
                       <ReturnTagPct value={item.change_pct ?? item.change_24h} />

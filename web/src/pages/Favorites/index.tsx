@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Table,
+  List,
   Button,
   Popconfirm,
   Tooltip,
@@ -32,6 +33,7 @@ import InstrumentCodeTag from '@/components/InstrumentCodeTag';
 import ThemeTag from '@/components/ThemeTag';
 import ReturnTagPct from '@/components/ReturnTagPct';
 import { clickableRow } from '@/utils/a11y';
+import { useIsMobile } from '@/hooks/useBreakpoint';
 import { formatDateTime, formatDateTimeCompact } from '@/utils/datetime';
 import { NULL_PLACEHOLDER } from '@/utils/format';
 import { getReturnColor } from '@/utils/color';
@@ -53,6 +55,7 @@ import { getReturnColor } from '@/utils/color';
 export default function Favorites() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const isMobile = useIsMobile();
   const [removing, setRemoving] = useState<string | null>(null);
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
   const [bulkRemoving, setBulkRemoving] = useState(false);
@@ -254,21 +257,97 @@ export default function Favorites() {
     },
   ];
 
-  /** 单分类表格（用于折叠面板内） */
-  const renderGroupTable = (items: any[]) => (
-    <Table
-      dataSource={items}
-      columns={columns}
-      rowKey="etf_code"
-      size="middle"
-      pagination={false}
-      scroll={{ x: 720 }}
-      onRow={(record: any) => ({
-        ...clickableRow(() => navigate(`/instruments/${record.etf_code}`)),
-        style: { cursor: 'pointer' },
-      })}
-    />
-  );
+  /** 移动端 hairline 行（density token 几何，见 pages-dashboard.css
+   *  .mobile-list-item）：主信息 = 代码+名称，右侧 = 实时价/涨跌幅，
+   *  次行 = 分类/市场/添加时间 + 移除按钮。整行可点进详情。 */
+  const renderMobileRow = (record: any) => {
+    const tick = getLiveTick(record.etf_code);
+    return (
+      <div
+        key={record.etf_code}
+        role="button"
+        tabIndex={0}
+        aria-label={`查看 ${record.etf_name || record.etf_code} 详情`}
+        className="mobile-list-item"
+        onClick={() => navigate(`/instruments/${record.etf_code}`)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            navigate(`/instruments/${record.etf_code}`);
+          }
+        }}
+      >
+        <div className="mobile-list-item__row">
+          <div className="mobile-list-item__main">
+            <InstrumentCodeTag code={record.etf_code} name={record.etf_name} />
+          </div>
+          <div className="mobile-list-item__metrics">
+            {tick ? (
+              <>
+                <span
+                  className="tnum mobile-list-item__value"
+                  style={{ color: getReturnColor(tick.change_pct) }}
+                >
+                  {tick.price.toFixed(2)}
+                </span>
+                <ReturnTagPct value={tick.change_pct} />
+              </>
+            ) : (
+              <span className="mobile-list-item__meta">{NULL_PLACEHOLDER}</span>
+            )}
+          </div>
+        </div>
+        <div className="mobile-list-item__tags">
+          {record.category && <ThemeTag>{record.category}</ThemeTag>}
+          {record.market && (
+            <span className="mobile-list-item__meta">{record.market}</span>
+          )}
+          {record.created_at && (
+            <span className="tnum mobile-list-item__meta">
+              {formatDateTimeCompact(record.created_at)}
+            </span>
+          )}
+          <Popconfirm
+            title="确认移除自选？"
+            description={`将从自选股中移除 ${record.etf_name || record.etf_code}`}
+            okText="移除"
+            cancelText="取消"
+            okButtonProps={{ danger: true }}
+            onConfirm={() => handleRemove(record.etf_code)}
+          >
+            <Button
+              size="small"
+              type="text"
+              danger
+              loading={removing === record.etf_code}
+              icon={<DeleteOutlined />}
+              aria-label="移除自选"
+              onClick={(e) => e.stopPropagation()}
+            />
+          </Popconfirm>
+        </div>
+      </div>
+    );
+  };
+
+  /** 单分类内容（用于折叠面板内）：移动端行式列表 / 桌面表格 */
+  const renderGroupContent = (items: any[]) =>
+    isMobile ? (
+      <div className="mobile-list">{items.map(renderMobileRow)}</div>
+    ) : (
+      <Table
+        dataSource={items}
+        columns={columns}
+        rowKey="etf_code"
+        size="middle"
+        pagination={false}
+        scroll={{ x: 720 }}
+        onRow={(record: any) => ({
+          ...clickableRow(() => navigate(`/instruments/${record.etf_code}`)),
+          style: { cursor: 'pointer' },
+        })}
+      />
+    );
 
   // ─────────────────────────────────────────────────────────────
   // 加载中
@@ -384,39 +463,54 @@ export default function Favorites() {
         title="全部自选股"
         action={
           <span className="ad-text-muted favorites__hint-text">
-            点击行进入详情；勾选后可批量移除
+            {isMobile ? '点击行进入详情' : '点击行进入详情；勾选后可批量移除'}
           </span>
         }
       />
       <Panel variant="default" padding="none">
-        <Table
-          dataSource={favorites}
-          columns={columns}
-          rowKey="etf_code"
-          size="middle"
-          pagination={{ pageSize: 20, showSizeChanger: false }}
-          scroll={{ x: 720 }}
-          rowSelection={{
-            selectedRowKeys,
-            onChange: (keys) => setSelectedRowKeys(keys),
-            preserveSelectedRowKeys: true,
-          }}
-          onRow={(record: any) => ({
-            ...clickableRow((e) => {
-              // 选中复选框 / 操作列时不要跳转
-              const target = e.target as HTMLElement;
-              if (
-                target.closest('.ant-checkbox-wrapper') ||
-                target.closest('button') ||
-                target.closest('a')
-              ) {
-                return;
-              }
-              navigate(`/instruments/${record.etf_code}`);
-            }),
-            style: { cursor: 'pointer' },
-          })}
-        />
+        {isMobile ? (
+          /* 移动端：hairline 行式列表，整行可点进详情 */
+          <List
+            className="ad-list-compact mobile-list"
+            dataSource={favorites}
+            renderItem={renderMobileRow}
+            pagination={{
+              pageSize: 20,
+              showSizeChanger: false,
+              className: 'mobile-list-pagination',
+            }}
+          />
+        ) : (
+          /* 桌面端：完整表格（不变） */
+          <Table
+            dataSource={favorites}
+            columns={columns}
+            rowKey="etf_code"
+            size="middle"
+            pagination={{ pageSize: 20, showSizeChanger: false }}
+            scroll={{ x: 720 }}
+            rowSelection={{
+              selectedRowKeys,
+              onChange: (keys) => setSelectedRowKeys(keys),
+              preserveSelectedRowKeys: true,
+            }}
+            onRow={(record: any) => ({
+              ...clickableRow((e) => {
+                // 选中复选框 / 操作列时不要跳转
+                const target = e.target as HTMLElement;
+                if (
+                  target.closest('.ant-checkbox-wrapper') ||
+                  target.closest('button') ||
+                  target.closest('a')
+                ) {
+                  return;
+                }
+                navigate(`/instruments/${record.etf_code}`);
+              }),
+              style: { cursor: 'pointer' },
+            })}
+          />
+        )}
       </Panel>
 
       {/* 按分类分组（折叠面板） */}
@@ -441,7 +535,7 @@ export default function Favorites() {
                     <span className="ad-text-muted">{g.items.length} 只</span>
                   </Space>
                 ),
-                children: renderGroupTable(g.items),
+                children: renderGroupContent(g.items),
               }))}
             />
           </Panel>

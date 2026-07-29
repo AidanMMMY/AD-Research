@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Table, Space, Select, InputNumber, Button, Row, Col } from 'antd';
+import { Table, List, Space, Select, InputNumber, Button, Row, Col } from 'antd';
 import { InfoCircleOutlined } from '@ant-design/icons';
 import type { ColumnsType, TableProps } from 'antd/es/table';
 import { useScreenResults, useScreenPresets, useScreenCategories } from '@/hooks/useScreenResults';
@@ -481,6 +481,72 @@ export default function Screen() {
                 />
               </div>
             )}
+          {isMobile ? (
+            /* 移动端：hairline 行式列表（density token 几何）。
+               主信息 = 代码+名称，右侧 = 综合评分 + 1月收益；次行放
+               分类 / RSI / 夏普等次级指标。整行可点进详情。 */
+            <List
+              className="ad-list-compact mobile-list"
+              dataSource={results?.items || []}
+              loading={isLoading}
+              renderItem={(record: any) => (
+                <div
+                  role="button"
+                  tabIndex={0}
+                  aria-label={`查看 ${record.name || record.code} 详情`}
+                  className="mobile-list-item"
+                  onClick={() => navigate(`/instruments/${record.code}`)}
+                  onKeyDown={(e: React.KeyboardEvent<HTMLElement>) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      navigate(`/instruments/${record.code}`);
+                    }
+                  }}
+                >
+                  <div className="mobile-list-item__row">
+                    <div className="mobile-list-item__main">
+                      <InstrumentCodeTag code={record.code} name={record.name} name_zh={record.name_zh} />
+                    </div>
+                    <div className="mobile-list-item__metrics">
+                      <span className="tnum mobile-list-item__value ad-text-accent">
+                        {record.composite_score?.toFixed(1) ?? '-'}
+                      </span>
+                      <ReturnTag value={record.return_1m} />
+                    </div>
+                  </div>
+                  <div className="mobile-list-item__tags">
+                    {record.category && (
+                      <span className="mobile-list-item__meta">{record.category}</span>
+                    )}
+                    {record.rsi14 != null && (
+                      <span className="tnum mobile-list-item__meta">
+                        RSI {record.rsi14.toFixed(1)}
+                      </span>
+                    )}
+                    {record.sharpe_1y != null && (
+                      <span className="tnum mobile-list-item__meta">
+                        夏普 {record.sharpe_1y.toFixed(2)}
+                      </span>
+                    )}
+                    {record.return_3m != null && (
+                      <span className="mobile-list-item__meta ad-flex ad-items-center ad-gap-1">
+                        3月 <ReturnTag value={record.return_3m} />
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )}
+              pagination={{
+                current: page,
+                pageSize,
+                total: results?.count || 0,
+                showSizeChanger: false,
+                showTotal: (total) => `共 ${total} 只`,
+                onChange: (newPage) => setPage(newPage),
+                className: 'mobile-list-pagination',
+              }}
+            />
+          ) : (
           <div className="ad-table-scroll ad-table-sticky">
             <Table
               dataSource={results?.items || []}
@@ -519,6 +585,7 @@ export default function Screen() {
               })}
             />
           </div>
+          )}
           </>
         )}
       </div>

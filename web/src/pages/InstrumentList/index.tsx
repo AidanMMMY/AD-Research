@@ -941,9 +941,10 @@ export default function InstrumentList() {
               description="尝试调整上方筛选条件，或清空搜索关键词查看全部标的"
             />
           ) : (
-          /* Mobile: card-style list */
+          /* Mobile: hairline row list (geometry via density tokens —
+             .mobile-list/.mobile-list-item, pages-dashboard.css) */
           <List
-            className="ad-list-compact"
+            className="ad-list-compact mobile-list"
             dataSource={data?.items || []}
             renderItem={(item: any) => (
               <div

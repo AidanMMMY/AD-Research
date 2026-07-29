@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 import dayjs, { type Dayjs } from 'dayjs';
 import {
   Table,
+  List,
   Tabs,
   Button,
   DatePicker,
@@ -38,6 +39,7 @@ import ExportButton from '@/components/ExportButton';
 import ThemeTag from '@/components/ThemeTag';
 import ReturnTagPct from '@/components/ReturnTagPct';
 import { useChartMotion } from '@/hooks/useChartMotion';
+import { useIsMobile } from '@/hooks/useBreakpoint';
 import { clickableRow } from '@/utils/a11y';
 import { NULL_PLACEHOLDER, formatNumber } from '@/utils/format';
 import {
@@ -193,6 +195,7 @@ export default function FundFlowPage() {
   const navigate = useNavigate();
   // Injects the shared `.adx-motion` stylesheet (Apple-pattern press/hover).
   useChartMotion();
+  const isMobile = useIsMobile();
 
   // Single shared date — drives market, individual, sector, etf, signals tables.
   const [date, setDate] = useState<Dayjs | null>(null);
@@ -616,6 +619,208 @@ export default function FundFlowPage() {
   };
 
   /* ============================================================
+   * Mobile row renderers (≤767px) — hairline 行式降级。
+   * 几何由 .mobile-list-item（density token）提供；每行主信息 +
+   * 右对齐关键数值（.tnum），整行可点进标的详情。桌面 Table 不变。
+   * ============================================================ */
+
+  /** Click-to-detail props shared by all navigable mobile rows. */
+  const mobileNavRowProps = (code: string, name?: string | null) => ({
+    role: 'button' as const,
+    tabIndex: 0,
+    'aria-label': `查看 ${name ?? code} 详情`,
+    className: 'mobile-list-item',
+    onClick: () => navigate(`/instruments/${code}`),
+    onKeyDown: (e: React.KeyboardEvent<HTMLElement>) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        navigate(`/instruments/${code}`);
+      }
+    },
+  });
+
+  /** Label-over-value stacked metric for the right-aligned column. */
+  const mobileMetric = (label: string, value: React.ReactNode) => (
+    <span className="mobile-list-item__metric">
+      <span className="mobile-list-item__metric-label">{label}</span>
+      {value}
+    </span>
+  );
+
+  const renderSignalMobileRow = (record: FlowSignal) => (
+    <div key={record.ts_code} {...mobileNavRowProps(record.ts_code, record.name)}>
+      <div className="mobile-list-item__row">
+        <div className="mobile-list-item__main">
+          <InstrumentCodeTag code={record.ts_code} name={record.name ?? undefined} />
+        </div>
+        <div className="mobile-list-item__metrics">
+          {mobileMetric(
+            '综合得分',
+            <span
+              className={`fund-flow__score-cell__chip fund-flow__score-cell__chip--${scoreClass(record.composite_score)}`}
+            >
+              {record.composite_score > 0 ? '+' : ''}
+              {record.composite_score.toFixed(1)}
+            </span>,
+          )}
+          {mobileMetric('主力净流入', moneyCell(record.main_net_inflow))}
+        </div>
+      </div>
+      <div className="mobile-list-item__tags">
+        {record.margin_net_change != null && (
+          <span className="mobile-list-item__meta">
+            融资 {moneyCell(record.margin_net_change)}
+          </span>
+        )}
+        {record.lhb_net_buy != null && (
+          <span className="mobile-list-item__meta">
+            龙虎榜 {moneyCell(record.lhb_net_buy)}
+          </span>
+        )}
+        {record.shareholder_count_change != null && (
+          <span className="mobile-list-item__meta">
+            股东户数{' '}
+            <span
+              className={`tnum fund-flow__money fund-flow__money--${signClass(-record.shareholder_count_change)}`}
+            >
+              {formatNumber(record.shareholder_count_change, 0)}
+            </span>
+          </span>
+        )}
+        {record.ah_premium != null && (
+          <span className="mobile-list-item__meta">
+            AH <ReturnTagPct value={record.ah_premium} />
+          </span>
+        )}
+        {record.block_trade_net != null && (
+          <span className="mobile-list-item__meta">
+            大宗 {moneyCell(record.block_trade_net)}
+          </span>
+        )}
+      </div>
+    </div>
+  );
+
+  const renderIndividualMobileRow = (record: IndividualFundFlow) => (
+    <div
+      key={`${record.trade_date}-${record.ts_code}`}
+      {...mobileNavRowProps(record.ts_code, record.name)}
+    >
+      <div className="mobile-list-item__row">
+        <div className="mobile-list-item__main">
+          <InstrumentCodeTag code={record.ts_code} name={record.name ?? undefined} />
+        </div>
+        <div className="mobile-list-item__metrics">
+          {mobileMetric(
+            '主力净流入',
+            <span
+              className={`tnum fund-flow__money fund-flow__money--${signClass(record.main_net_inflow)}`}
+            >
+              {formatMoney(record.main_net_inflow)}
+            </span>,
+          )}
+          <ReturnTagPct value={record.main_net_pct} />
+        </div>
+      </div>
+      <div className="mobile-list-item__tags">
+        <span className="mobile-list-item__meta">
+          超大单 {moneyCell(record.super_large_net)}
+        </span>
+        <span className="mobile-list-item__meta">
+          大单 {moneyCell(record.large_net)}
+        </span>
+        {record.source && (
+          <Tag color={record.source === 'akshare' ? 'geekblue' : 'gold'}>
+            {record.source}
+          </Tag>
+        )}
+      </div>
+    </div>
+  );
+
+  const renderSectorMobileRow = (record: SectorFundFlow) => (
+    <div
+      key={`${record.trade_date}-${record.sector_name}`}
+      className="mobile-list-item mobile-list-item--static"
+    >
+      <div className="mobile-list-item__row">
+        <div className="mobile-list-item__main ad-flex ad-items-center ad-gap-2">
+          <span className="mobile-list-item__value">{record.sector_name}</span>
+          <ThemeTag
+            variant={
+              record.sector_type === '行业'
+                ? 'accent'
+                : record.sector_type === '概念'
+                  ? 'default'
+                  : 'warning'
+            }
+          >
+            {record.sector_type}
+          </ThemeTag>
+        </div>
+        <div className="mobile-list-item__metrics">
+          {mobileMetric(
+            '主力净流入',
+            <span
+              className={`tnum fund-flow__money fund-flow__money--${signClass(record.main_net_inflow)}`}
+            >
+              {formatMoney(record.main_net_inflow)}
+            </span>,
+          )}
+          <ReturnTagPct value={record.main_net_pct} />
+        </div>
+      </div>
+      <div className="mobile-list-item__tags">
+        <span className="mobile-list-item__meta">
+          超大单 {moneyCell(record.super_large_net)}
+        </span>
+        <span className="mobile-list-item__meta">
+          大单 {moneyCell(record.large_net)}
+        </span>
+        {record.leading_stock && (
+          <span className="mobile-list-item__meta">领涨 {record.leading_stock}</span>
+        )}
+      </div>
+    </div>
+  );
+
+  const renderEtfMobileRow = (record: EtfFundFlow) => (
+    <div
+      key={`${record.trade_date}-${record.ts_code}`}
+      {...mobileNavRowProps(record.ts_code, record.name)}
+    >
+      <div className="mobile-list-item__row">
+        <div className="mobile-list-item__main">
+          <InstrumentCodeTag code={record.ts_code} name={record.name ?? undefined} />
+        </div>
+        <div className="mobile-list-item__metrics">
+          {mobileMetric(
+            '估算净流入',
+            <span
+              className={`tnum fund-flow__money fund-flow__money--${signClass(record.inferred_net_inflow)}`}
+            >
+              {formatMoney(record.inferred_net_inflow)}
+            </span>,
+          )}
+          <span
+            className={`tnum fund-flow__premium fund-flow__premium--${premiumClass(record.premium_rate)}`}
+          >
+            {formatPct(record.premium_rate)}
+          </span>
+        </div>
+      </div>
+      <div className="mobile-list-item__tags">
+        <span className="tnum mobile-list-item__meta">
+          现价 {record.price != null ? record.price.toFixed(3) : NULL_PLACEHOLDER}
+        </span>
+        <span className="tnum mobile-list-item__meta">
+          IOPV {record.net_value != null ? record.net_value.toFixed(3) : NULL_PLACEHOLDER}
+        </span>
+      </div>
+    </div>
+  );
+
+  /* ============================================================
    * Render
    * ============================================================ */
 
@@ -675,7 +880,7 @@ export default function FundFlowPage() {
                 title="沪市主力净流入"
                 value={
                   <>
-                    {formatMoney(market.sh_main_net_inflow)}
+                    <span className="tnum">{formatMoney(market.sh_main_net_inflow)}</span>
                     <PctChip value={market.sh_main_net_pct} />
                   </>
                 }
@@ -684,7 +889,7 @@ export default function FundFlowPage() {
                 title="深市主力净流入"
                 value={
                   <>
-                    {formatMoney(market.sz_main_net_inflow)}
+                    <span className="tnum">{formatMoney(market.sz_main_net_inflow)}</span>
                     <PctChip value={market.sz_main_net_pct} />
                   </>
                 }
@@ -693,12 +898,14 @@ export default function FundFlowPage() {
                 title="沪深合计净流入"
                 value={
                   <>
-                    {formatMoney(
-                      market.total_main_net_inflow ??
-                        (market.sh_main_net_inflow != null && market.sz_main_net_inflow != null
-                          ? market.sh_main_net_inflow + market.sz_main_net_inflow
-                          : null),
-                    )}
+                    <span className="tnum">
+                      {formatMoney(
+                        market.total_main_net_inflow ??
+                          (market.sh_main_net_inflow != null && market.sz_main_net_inflow != null
+                            ? market.sh_main_net_inflow + market.sz_main_net_inflow
+                            : null),
+                      )}
+                    </span>
                     <PctChip
                       value={
                         market.total_main_net_pct ??
@@ -738,6 +945,25 @@ export default function FundFlowPage() {
             />
           }
         >
+          {isMobile ? (
+            /* 移动端：hairline 行式列表，整行可点进详情 */
+            <List
+              className="ad-list-compact mobile-list"
+              dataSource={signalRows}
+              loading={signalLoading}
+              renderItem={renderSignalMobileRow}
+              locale={{
+                emptyText: (
+                  <EmptyState
+                    title="暂无综合信号数据"
+                    description={`${
+                      dateParam ? `日期：${dateParam} · ` : ''
+                    }请等待后台刷新或换个日期`}
+                  />
+                ),
+              }}
+            />
+          ) : (
           <Table<FlowSignal>
             rowKey="ts_code"
             size="middle"
@@ -778,6 +1004,7 @@ export default function FundFlowPage() {
               ),
             }}
           />
+          )}
         </Panel>
 
         {/* ─────────────────────────────────────────────────────────
@@ -824,6 +1051,28 @@ export default function FundFlowPage() {
                         successPrefix="已导出个股资金流"
                       />
                     </div>
+                    {isMobile ? (
+                      /* 移动端：hairline 行式列表，整行可点进详情 */
+                      <List
+                        className="ad-list-compact mobile-list"
+                        dataSource={individualRows}
+                        loading={individualLoading}
+                        renderItem={renderIndividualMobileRow}
+                        pagination={{
+                          pageSize: 20,
+                          showSizeChanger: false,
+                          className: 'mobile-list-pagination',
+                        }}
+                        locale={{
+                          emptyText: (
+                            <EmptyState
+                              title={`${board} 个股暂无资金流数据`}
+                              description="请尝试切换板块或日期"
+                            />
+                          ),
+                        }}
+                      />
+                    ) : (
                     <Table<IndividualFundFlow>
                       rowKey={(r) => `${r.trade_date}-${r.ts_code}`}
                       size="middle"
@@ -848,6 +1097,7 @@ export default function FundFlowPage() {
                         ),
                       }}
                     />
+                    )}
                   </div>
                 ),
               },
@@ -881,6 +1131,28 @@ export default function FundFlowPage() {
                         successPrefix="已导出板块资金流"
                       />
                     </div>
+                    {isMobile ? (
+                      /* 移动端：hairline 行式列表（板块无详情页，静态行） */
+                      <List
+                        className="ad-list-compact mobile-list"
+                        dataSource={sectorRows}
+                        loading={sectorLoading}
+                        renderItem={renderSectorMobileRow}
+                        pagination={{
+                          pageSize: 20,
+                          showSizeChanger: false,
+                          className: 'mobile-list-pagination',
+                        }}
+                        locale={{
+                          emptyText: (
+                            <EmptyState
+                              title={`${sectorType} 板块暂无资金流数据`}
+                              description="请切换板块类型或日期重试"
+                            />
+                          ),
+                        }}
+                      />
+                    ) : (
                     <Table<SectorFundFlow>
                       rowKey={(r) => `${r.trade_date}-${r.sector_name}`}
                       size="middle"
@@ -898,6 +1170,7 @@ export default function FundFlowPage() {
                         ),
                       }}
                     />
+                    )}
                   </div>
                 ),
               },
@@ -921,6 +1194,28 @@ export default function FundFlowPage() {
                         successPrefix="已导出 ETF 资金流"
                       />
                     </div>
+                    {isMobile ? (
+                      /* 移动端：hairline 行式列表，整行可点进详情 */
+                      <List
+                        className="ad-list-compact mobile-list"
+                        dataSource={etfRows}
+                        loading={etfLoading}
+                        renderItem={renderEtfMobileRow}
+                        pagination={{
+                          pageSize: 20,
+                          showSizeChanger: false,
+                          className: 'mobile-list-pagination',
+                        }}
+                        locale={{
+                          emptyText: (
+                            <EmptyState
+                              title="ETF 暂无资金流数据"
+                              description="折溢价率基于 IOPV 与现价估算"
+                            />
+                          ),
+                        }}
+                      />
+                    ) : (
                     <Table<EtfFundFlow>
                       rowKey={(r) => `${r.trade_date}-${r.ts_code}`}
                       size="middle"
@@ -943,6 +1238,7 @@ export default function FundFlowPage() {
                         ),
                       }}
                     />
+                    )}
                   </div>
                 ),
               },
