@@ -118,6 +118,13 @@ class Settings(BaseSettings):
     news_content_ingest_time_budget_sec: int = 120
     news_content_llm_fallback: bool = True
 
+    # Jina Reader API key (2026-07-29). Optional. Jina blocks anonymous
+    # access to abuse-heavy domains (e.g. investing.com answers HTTP 403
+    # "AbuseAlleviationError" without a key); a key lifts the block and
+    # raises the rate limit. Empty = free anonymous tier. Env:
+    # ``JINA_API_KEY``.
+    jina_api_key: str = ""
+
     # News auto-translation pipeline (2026-07-26). Non-Chinese articles
     # get their title + body translated to Chinese at ingestion time so
     # the list/detail pages can render Chinese-first without waiting for

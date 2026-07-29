@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>2026-07-29 资讯正文提取问题修复 Runbook</title>
+<style>
+body{font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;max-width:1080px;margin:0 auto;padding:24px;color:#222;line-height:1.65}
+h1{font-size:1.5rem;border-bottom:2px solid #0366d6;padding-bottom:8px}
+h2{font-size:1.2rem;margin-top:2em;color:#0366d6}
+h3{font-size:1.05rem;margin-top:1.4em}
+table{border-collapse:collapse;width:100%;font-size:.85rem;margin:12px 0}
+th,td{border:1px solid #ddd;padding:5px 8px;text-align:left}
+th{background:#f3f6fa}
+tr:nth-child(even){background:#fafbfc}
+code{background:#f0f3f6;padding:1px 5px;border-radius:3px;font-size:.82rem}
+pre{background:#f6f8fa;padding:12px;border-radius:6px;overflow-x:auto;font-size:.8rem}
+pre code{background:none;padding:0}
+blockquote{border-left:3px solid #0366d6;margin:12px 0;padding:4px 14px;background:#f6f9fc;color:#444}
+.ok{color:#1a7f37}
+.warn{color:#b35900}
+.bad{color:#c0392b}
+</style></head><body>
+<h1>2026-07-29 资讯正文提取问题修复 Runbook</h1>
+<blockquote>
+触发：2026-07-27 用户截图报告两类正文问题 —— (1) 正文提取成导航/推荐链接垃圾；(2) 正文完全为空。<br>
+代码修复全部在本地完成（未 commit），ECS 只做只读排查。pytest 1208 全绿。
+</blockquote>
+
+<h2>1. 现状摸底（ECS 只读，2026-07-29，最近 7 天 news_article）</h2>
+<h3>1.1 body 与 full_content 均缺失（&lt;100 字符）的 Top 源</h3>
+<table>
+<tr><th>source</th><th>7天总量</th><th>完全无内容</th><th>根因分类</th></tr>
+<tr><td>cls</td><td>1630</td><td>665 (41%)</td><td>快讯本身短（API 即全文），ingestion 未 seed full_content</td></tr>
+<tr><td class="bad">investing</td><td>624</td><td class="bad"><b>624 (100%)</b></td><td>feed 无 description + 直连 403 + Jina 匿名封域</td></tr>
+<tr><td>jiemian</td><td>1791</td><td>339</td><td>快讯被误判 failed + 部分提取失败</td></tr>
+<tr><td>wallstreetcn</td><td>1323</td><td>298（误报）</td><td>7-27 后已修，短快讯即全文，非问题</td></tr>
+<tr><td>sina_finance</td><td>2343</td><td>184</td><td>trafilatura 抽到侧栏垃圾阻断 Jina 兜底</td></tr>
+<tr><td>36kr</td><td>772</td><td>88</td><td>SPA 页面，提取不稳定</td></tr>
+<tr><td class="bad">wechat_canghai 等 8 个 wewe-rss 源</td><td>各 30</td><td class="bad"><b>各 30 (100%)</b></td><td>wewe-rss 会话过期，feed 本身 content_html 为空</td></tr>
+<tr><td>huxiu / chinanews_finance / marketwatch / caixin</td><td>—</td><td>11–23</td><td>同 sina 类提取失败</td></tr>
+</table>
+<p>注：<code>cls</code>/<code>wallstreetcn</code> 快讯 30–160 字符是<b>完整内容</b>，不是 bug；真正的问题是 ingestion 没把 API 全文 seed 进 full_content，导致反复回源抓取。</p>
+
+<h3>1.2 正文含导航垃圾的 Top 源（特征词命中）</h3>
+<table>
+<tr><th>source</th><th>命中数</th><th>典型</th></tr>
+<tr><td class="bad">asen_ndtv_profit</td><td>159</td><td>Jina 输出整页导航（<code>* [Live TV](url)</code> 等）穿透清洗器</td></tr>
+<tr><td>jiemian</td><td>142</td><td>多为误命中（正文提及 read more）；少量快讯 nav 残留</td></tr>
+<tr><td>yahoo_finance</td><td>103</td><td>多为正文内合法提及，少量推广行残留</td></tr>
+<tr><td>global_ithome_cn / wechat_* / asen_*</td><td>各 10–40</td><td>同类 Jina nav 泄漏</td></tr>
+</table>
+<p>典型样本（id=5241959, asen_ndtv_profit）：存储的 full_content 10000 字符中前 ~5000 字符是网站导航（链接占比 0.59），正文从第 5000 字符才开始。</p>
+
+<h2>2. 根因定位（实跑验证）</h2>
+<h3>2.1 investing.com —— 三重死路（100% 空正文）</h3>
+<ol>
+<li><b>Feed 本身无 <code>&lt;description&gt;</code></b>：只有 title/pubDate/author/link/enclosure（ECS 实拉确认）。</li>
+<li><b>直连反爬 403</b>：文章页 UA 伪装直连仍 403（3 字节响应体）。</li>
+<li><b>Jina Reader 匿名封域</b>：<code>AbuseAlleviationError: Anonymous access to domain www.investing.com blocked ... DDoS attack suspected</code> —— 带 API key 可解。</li>
+</ol>
+<p>三层全挂时旧代码<b>什么都不写</b>（full_content_fetched_at / ai_cleanup_status 全 NULL），624 条文章每 10 分钟被 drain job 不可见地重试。</p>
+
+<h3>2.2 asen_ndtv_profit —— 清洗器漏 link-only 行</h3>
+<p>Jina 对 NDTV Profit 返回整页 markdown（含完整导航）。旧 <code>_strip_boilerplate_lines</code> 只删"单行单链接"，漏掉：</p>
+<ul>
+<li><code>*   [Live TV](https://... "Live TV")</code> —— bullet + 链接</li>
+<li><code>[facebook](x)[twitter](y)[instagram](z)</code> —— 一行多链接</li>
+<li><code>[](url)</code> —— 空锚文本链接</li>
+<li><code>[![Image](img)](url)</code> —— 图片链接</li>
+<li><code>*   #### [标题 ![Image](img)](url)</code> —— 相关推荐卡片（链接文本里嵌图片）</li>
+<li><code>Advertisement</code> / <code>Scan to Download</code> / <code>Read Time: 2 mins</code> —— 英文 boilerplate</li>
+</ul>
+
+<h3>2.3 sina_finance —— trafilatura 垃圾阻断 Jina 兜底</h3>
+<p>新浪文章页 trafilatura（favor_precision）抽中的是<b>侧栏推广块</b>（VIP课程推荐/APP专享/热门推荐/公众号二维码，~200 字符），非 None，旧逻辑直接接受 → 清洗后 &lt;80 字符 → 标记 failed，<b>Jina 兜底从未被调用</b>。实测同 URL Jina 可返回 36KB 完整正文。</p>
+
+<h3>2.4 jiemian 快讯 —— 真快讯被误判 failed</h3>
+<p>界面快讯全文就是一句话（如 "7月29日下午，长鑫科技成交额达300亿元，现涨6.6%。"，29 字符）。trafilatura 正确抽出 29 字符 &lt; MIN_BODY_LENGTH(80) → 标记 failed → 详情页红色 Alert，且 full_content 永远为 NULL。是真快讯，不是提取失败。</p>
+
+<h3>2.5 wewe-rss 8 个公众号源 —— 数据源会话过期（运维项，非代码）</h3>
+<p>zhigu/yuanchuan/canghai/fupeng/lixunlei/congming/beiwei/latepost 8 个 wewe-rss feed <b>items 全部 content_html 为空</b>（ECS 容器内实查）。wewe-rss 的微信读书会话过期，需重新扫码登录（AuthCode 默认 123567）。mp.weixin.qq.com 直连与 Jina 均返回"环境异常"验证码页，回填无解。<b>代码层无法修，需运维重新登录 wewe-rss。</b></p>
+
+<h3>2.6 cls —— API 即全文但 ingestion 不 seed</h3>
+<p>财联社电报 API 的 <code>content</code> 字段就是完整快讯；cls.cn 详情页是 Next.js SPA。旧 <code>_looks_full_article(min=400)</code> 把快讯判为摘要 → full_content=NULL → 每 10 分钟回源 SPA 页做无用功。与 7-26 wallstreetcn 完全同构。</p>
+
+<h2>3. 修复内容（本地代码，未 commit）</h2>
+<h3>3.1 <code>app/services/news/content_fetcher.py</code></h3>
+<ol>
+<li><b>link-only 行清洗</b>：新增 <code>_is_link_only_line()</code> —— 剥掉行内所有 markdown 链接原子（含嵌套图片、<code>javascript:void(0)</code> 嵌套括号、空锚文本）后，残余仅为 bullet/分隔符/井号即整行删除。覆盖 2.2 全部六种漏网形态。</li>
+<li><b>英文 boilerplate</b>：新增 <code>_EN_BOILERPLATE_LINE_RE</code>（Advertisement / Scan to Download / Read Time / Published On / Sign up / Trending / Also Read / Download the App / author: / photo credit / 英文裸日期行），仅对 ≤120 字符的独立行 <b>fullmatch</b>，且同时匹配"去链接后的残余"（<code>*   Author: [Name](url)</code> 也算 byline），正文句子不误伤。</li>
+<li><b>面包屑+标题行去重</b>：<code>_remove_duplicate_title</code> 新增第二模式，删除 <code>[home](x)[Markets](y)标题原文</code> 这类面包屑标题行。</li>
+<li><b>tier-1 垃圾闸</b>：<code>_extraction_is_junk()</code> —— 对清洗后的候选判空/判薄(&lt;80)/判 nav 行占比(&gt;50%)。trafilatura 抽中垃圾时 <b>fall through 到 Jina</b>（修 2.3）。注意：刻意<b>不用链接字符占比</b>做闸 —— 新浪正文每家公司名都是超链接（实测合法正文链接字符占比 0.83），会误杀；用行级特征才对。</li>
+<li><b>快讯确认</b>：<code>_is_confirmed_flash()</code> —— 清洗结果 20–80 字符且与 RSS/API body（≤300 字符）归一化后互相包含或 difflib 相似度 ≥0.6，判定为真快讯：存 full_content 并标 cleaned（修 2.4）。</li>
+<li><b>失败留痕</b>：三层全挂时写入 <code>ai_cleanup_status='failed'</code> + <code>ai_cleaned_at</code>（不动 full_content/fetched_at，drain 继续重试），让"从未尝试"与"永久失败"可区分（修 2.1 观测盲区）。</li>
+<li><b>Jina API key</b>：<code>_call_jina</code> 在 <code>settings.jina_api_key</code> 非空时加 <code>Authorization: Bearer</code> 头 —— 解 investing.com 匿名封域的钥匙（2.1）。</li>
+</ol>
+<h3>3.2 <code>app/services/news/normalizer.py</code></h3>
+<p><code>_SOURCES_WITH_API_FULL_CONTENT</code> 增加 <code>"cls"</code>：电报 API content 即全文，ingestion 直接 seed full_content，不再回源 SPA 页（修 2.6）。</p>
+<h3>3.3 <code>app/config.py</code></h3>
+<p>新增 <code>jina_api_key: str = ""</code>（env <code>JINA_API_KEY</code>，无前缀，自动映射）。</p>
+<h3>3.4 测试 <code>app/tests/news/test_content_fetcher.py</code>（+12 个）</h3>
+<p>link-only 六形态、英文 boilerplate 保留正文句、junk 闸三态、sina 垃圾→Jina 兜底、jiemian 快讯确认、不匹配短文仍 failed、全挂留痕、nav-only Jina 不缓存、API key 头、cls seed、sina 不 seed 回归。</p>
+
+<h2>4. 验证</h2>
+<h3>4.1 pytest</h3>
+<ul>
+<li><code>app/tests/news/</code> + <code>test_news_dedup.py</code>：<b class="ok">502 passed</b></li>
+<li><code>app/tests</code> 其余：<b class="ok">706 passed</b>（合计 1208 全绿）</li>
+</ul>
+<h3>4.2 真实数据前后对比</h3>
+<table>
+<tr><th>案例</th><th>修复前</th><th>修复后</th></tr>
+<tr><td>NDTV id=5241959（真实库存内容重跑清洗器）</td><td class="bad">10000 字符，链接占比 0.59，前 5000 字符全是导航</td><td class="ok">2963 字符纯正文，导航全灭，junk=False</td></tr>
+<tr><td>sina id=5242354（真实 HTML + 真实 Jina 输出模拟）</td><td class="bad">tier-1 抽侧栏 → 清洗后 15 字符 → failed，full_content NULL</td><td class="ok">闸拒绝 tier-1 → Jina → 8385 字符完整正文，junk=False</td></tr>
+<tr><td>jiemian id=5242854（真实 Jina 输出模拟）</td><td class="bad">29 字符 &lt; 80 → failed 红 Alert</td><td class="ok">flash_confirmed=True → 存全文标 cleaned</td></tr>
+<tr><td>investing</td><td class="bad">624 条全 NULL 且无留痕</td><td class="ok">三层全挂写 failed 可观测；配 <code>JINA_API_KEY</code> 后 Jina 层可通</td></tr>
+</table>
+<h3>4.3 部署后回填 SQL（参考）</h3>
+<pre><code>-- 清掉被导航垃圾污染的 full_content，让 drain job 用新清洗器重抓
+UPDATE news_article
+SET full_content = NULL, full_content_fetched_at = NULL, ai_cleanup_status = NULL
+WHERE fetched_at &gt;= now() - interval '14 days'
+  AND full_content ~* '(Live TV|Scan to Download|Get App|Read Time:|Sign up for)'
+  AND length(full_content) &gt; 2000;</code></pre>
+
+<h2>5. 运维后续（代码外）</h2>
+<ol>
+<li><b>wewe-rss 重新登录</b>（2.5）：8 个公众号 feed content_html 全空，需在 wewe-rss Web 端重新扫码（AuthCode 123567），恢复后新文章自动带全文；存量 240 条空 body 文章在 feed 恢复后无法自动回补（feed 只推新），如需要可删除让 crawler 重拉。</li>
+<li><b>配置 JINA_API_KEY</b>（2.1）：申请 jina.ai key 后写入 ECS <code>.env</code>，investing.com 全文即可恢复；不配则 investing 保持"纯标题源"，建议在产品上接受（其内容多为 Reuters 通稿，其它源有覆盖）。</li>
+<li><b>seekingalpha</b>（摘要 feed + 付费墙）与 <b>investing</b> 同属"源层面无解"，保持现状即可，失败留痕后监控可见。</li>
+<li><b>scheduler 补丁说明</b>：本修复未动 scheduler_jobs.py / scheduler.py / news.py（纪律要求）。若后续要给 drain job 加"按源熔断"（如 investing 连续失败 N 次暂停重试），改 <code>run_fetch_full_content</code> 的 SELECT 加 <code>AND ai_cleanup_status IS DISTINCT FROM 'failed'</code> 或加 per-source cooldown —— 留待下一轮。</li>
+</ol>
+
+<h2>6. 文件清单</h2>
+<ul>
+<li><code>app/services/news/content_fetcher.py</code> — 清洗器/闸/快讯/留痕/Jina key</li>
+<li><code>app/services/news/normalizer.py</code> — cls 加入 API 全文源白名单</li>
+<li><code>app/config.py</code> — <code>jina_api_key</code> 设置项</li>
+<li><code>app/tests/news/test_content_fetcher.py</code> — +12 测试</li>
+</ul>
+</body></html>

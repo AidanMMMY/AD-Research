@@ -144,6 +144,66 @@ _PROMO_LINE_RE: Final[re.Pattern[str]] = re.compile(
 )
 _PROMO_LINE_MAX_LEN: Final[int] = 60
 
+# English boilerplate lines commonly left behind by Jina Reader on
+# ad-heavy sites (NDTV Profit, jiemian EN, Yahoo syndication, ...).
+# ``fullmatch`` against the de-marked probe only — anchored so a legit
+# in-body sentence ("Advertisement revenue grew 20%") survives.
+_EN_BOILERPLATE_LINE_RE: Final[re.Pattern[str]] = re.compile(
+    r"("
+    r"advertisements?"
+    r"|scan to download( the app)?"
+    r"|get (the )?app"
+    r"|get it on google play"
+    r"|download on the app store"
+    r"|read time\s*:.*"
+    r"|published on.*"
+    r"|last updated on.*"
+    r"|listen to this article.*"
+    r"|sign up( for.*)?"
+    r"|subscribe( to.*)?"
+    r"|follow us.*"
+    r"|share this( article)?.*"
+    r"|copy (the )?link.*"
+    r"|click here.*"
+    r"|trending( now)?"
+    r"|most (popular|read|viewed)"
+    r"|related (stories|articles|news)"
+    r"|recommended( for you)?"
+    r"|also read:?.*"
+    r"|more from .*"
+    r"|download the app.*"
+    r"|for a clutter-free.*"
+    r"|author\s*:.*"
+    r"|\(?(photo|image) (source|credit)[^)]*\)?"
+    # "Jul 29, 2026 09:47 IST" — a bare English date (+ optional time /
+    # timezone) with no prose around it is a metadata line, not body.
+    r"|[A-Z][a-z]{2}\.? \d{1,2}, \d{4}( \d{1,2}:\d{2}(:\d{2})? ?[A-Z]{2,4})?"
+    r")",
+    re.IGNORECASE,
+)
+_EN_BOILERPLATE_MAX_LEN: Final[int] = 120
+
+# Markdown link atoms used to detect link-only navigation lines:
+#   [text](url)                        plain link (text may be empty)
+#   ![alt](img)                        image
+#   [![alt](img)](url)                 linked image
+#   [Headline ![alt](img)](url)        related-story card (thumbnail
+#                                      embedded in the link text)
+# The URL group tolerates one level of nested parens so javascript
+# hrefs like ``(javascript:void(0))`` still count as links.
+_MD_IMG_ALT: Final[str] = r"!\[[^\]]*\]\((?:[^)(]|\([^)]*\))*\)"
+_MD_IMG_LINK_RE: Final[re.Pattern[str]] = re.compile(
+    r"\[" + _MD_IMG_ALT + r"\]\((?:[^)(]|\([^)]*\))*\)"
+)
+_MD_LINK_ATOM_RE: Final[re.Pattern[str]] = re.compile(
+    r"!?\[(?:[^\[\]]|" + _MD_IMG_ALT + r")*\]\((?:[^)(]|\([^)]*\))*\)"
+)
+# What may remain on a line once every link atom is removed for the
+# line to still count as "nothing but links": bullets, heading marks
+# and separators. (``*   #### [Headline](url)`` — a related-stories
+# heading — is as much navigation as ``* [Headline](url)``.)
+_LINK_ONLY_RESIDUE_CHARS: Final[str] = " \t-*•|>—/·~+#_"
+
 # Some DeepSeek-style models leak reasoning blocks wrapped in <think>.
 _THINK_TAG_RE: Final[re.Pattern[str]] = re.compile(r"<think>.*?</think>", re.DOTALL)
 
@@ -215,8 +275,46 @@ def _remove_duplicate_title(text: str, title: str) -> str:
     # Match title as a plain line or as a markdown heading.
     pattern = re.compile(r"^\s*#?\s*" + escaped + r"\s*$", re.MULTILINE | re.IGNORECASE)
     text = pattern.sub("", text)
+    # Also match breadcrumb-prefixed title lines — Jina keeps the
+    # "home > section > title" trail as a run of links immediately
+    # followed by the raw title text
+    # (``[home](x)[Markets](y)The Title Itself``).
+    link_run = r"(?:!?\[[^\]]*\]\((?:[^)(]|\([^)]*\))*\)\s*)+"
+    pattern2 = re.compile(
+        r"^\s*" + link_run + r"#?\s*" + escaped + r"\s*$",
+        re.MULTILINE | re.IGNORECASE,
+    )
+    text = pattern2.sub("", text)
     # Collapse the blank lines left behind.
     return re.sub(r"\n{3,}", "\n\n", text)
+
+
+def _is_link_only_line(stripped: str) -> bool:
+    """Return True when a line consists solely of markdown links.
+
+    Catches the navigation blocks Jina Reader leaves behind on ad-heavy
+    templates — bulleted link lists (``*   [Live TV](url)``), social
+    button rows (``[facebook](x)[twitter](y)``), linked images
+    (``[![alt](img)](url)``) and empty anchors (``[](url)``). A body
+    sentence that merely *contains* a link keeps its text residue and
+    is preserved.
+    """
+    probe = _MD_IMG_LINK_RE.sub("", stripped)
+    probe = _MD_LINK_ATOM_RE.sub("", probe)
+    return not probe.strip(_LINK_ONLY_RESIDUE_CHARS)
+
+
+def _link_char_ratio(text: str) -> float:
+    """Fraction of ``text`` characters that live inside markdown links."""
+    if not text:
+        return 0.0
+    removed = 0
+    for m in _MD_IMG_LINK_RE.finditer(text):
+        removed += m.end() - m.start()
+    remainder = _MD_IMG_LINK_RE.sub("", text)
+    for m in _MD_LINK_ATOM_RE.finditer(remainder):
+        removed += m.end() - m.start()
+    return removed / max(len(text), 1)
 
 
 def _strip_boilerplate_lines(text: str) -> str:
@@ -242,8 +340,22 @@ def _strip_boilerplate_lines(text: str) -> str:
         if len(stripped) <= _PROMO_LINE_MAX_LEN and _PROMO_LINE_RE.search(stripped):
             continue
 
-        # Standalone markdown link (likely a nav button).
-        if re.match(r"^!?\[[^\]]+\]\([^)]+\)$", stripped):
+        # English boilerplate (Advertisement / Scan to Download /
+        # Read Time: … / Published On …) — fullmatch on the probe AND
+        # on its de-linked form (so "*   Author: [Name](url)" counts
+        # as an ``author: …`` byline, not body) so in-body sentences
+        # that merely start with these words survive.
+        if probe and len(probe) <= _EN_BOILERPLATE_MAX_LEN:
+            delinked = _MD_LINK_ATOM_RE.sub("", probe).strip()
+            if _EN_BOILERPLATE_LINE_RE.fullmatch(probe) or (
+                delinked and _EN_BOILERPLATE_LINE_RE.fullmatch(delinked)
+            ):
+                continue
+
+        # Lines made entirely of markdown links (nav lists, social
+        # buttons, linked images, empty anchors) — with or without a
+        # leading bullet.
+        if _is_link_only_line(stripped):
             continue
 
         # Breadcrumb lines made of links separated by > / | / -.
@@ -296,6 +408,82 @@ def _clean_jina_body(raw: str, title: str) -> str:
         paragraphs.append(para)
 
     return "\n\n".join(paragraphs).strip()
+
+
+# ---------------------------------------------------------------------------
+# Extraction-quality gates (2026-07-29)
+# ---------------------------------------------------------------------------
+
+# A cleaned candidate where more than this share of non-empty lines are
+# link-only or boilerplate is navigation junk. (A raw link-CHARACTER
+# ratio was tried and rejected: sina article bodies legitimately
+# hyperlink every company/index mention, which reads as ~80% link
+# characters while being perfectly good body text.)
+_JUNK_LINE_RATIO: Final[float] = 0.50
+
+# Minimum length for a cleaned extraction to be accepted without
+# further confirmation. Shorter candidates are only kept when they
+# match the RSS/API body (flash-news confirmation).
+_FLASH_MIN_CHARS: Final[int] = 20
+
+# The RSS/API blurb of a genuine flash news item is never longer than
+# this; a longer reference body means the page extraction genuinely
+# failed (the site has a real, longer article).
+_FLASH_MAX_REF_CHARS: Final[int] = 300
+
+
+def _extraction_is_junk(cleaned: str) -> bool:
+    """Heuristic: is a cleaned extraction boilerplate rather than a body?
+
+    Applied to the *cleaned* candidate of each tier. An extraction is
+    junk when it is empty, thinner than :data:`MIN_BODY_LENGTH`, or
+    mostly link-only / boilerplate lines. Thin candidates are treated
+    as junk here so the next tier (Jina) gets a chance at the real body
+    — a genuine flash news item is rescued later by
+    :func:`_is_confirmed_flash`.
+    """
+    if not cleaned or not cleaned.strip():
+        return True
+    if len(cleaned) < MIN_BODY_LENGTH:
+        return True
+    lines = [ln.strip() for ln in cleaned.splitlines() if ln.strip()]
+    if lines:
+        nav = sum(
+            1
+            for ln in lines
+            if _is_link_only_line(ln) or _BOILERPLATE_RE.match(ln)
+        )
+        if nav / len(lines) > _JUNK_LINE_RATIO:
+            return True
+    return False
+
+
+def _is_confirmed_flash(cleaned: str, ref: str | None) -> bool:
+    """Return True when a thin extraction matches the RSS/API body.
+
+    快讯 / flash items (财联社电报, 界面快讯, jiemian EN flashes) are
+    legitimately 20-80 characters — both the feed body and the article
+    page carry the same one-liner. When the cleaned extraction and the
+    stored body/summary agree, the extraction is complete and must not
+    be marked ``failed`` (which previously hid the body and showed a
+    red alert on the detail page).
+    """
+    if not cleaned or len(cleaned.strip()) < _FLASH_MIN_CHARS:
+        return False
+    if not ref:
+        return False
+    ref = ref.strip()
+    if not ref or len(ref) > _FLASH_MAX_REF_CHARS:
+        return False
+    a = _normalize_text(cleaned)
+    b = _normalize_text(ref)
+    if not a or not b:
+        return False
+    if a in b or b in a:
+        return True
+    import difflib
+
+    return difflib.SequenceMatcher(None, a, b).ratio() >= 0.6
 
 
 # ---------------------------------------------------------------------------
@@ -479,10 +667,29 @@ class ContentFetcher:
         last_error = "all extraction tiers failed"
 
         html = self._fetch_html(article.url)
+        tier1_md: str | None = None
         if html:
-            md = _extract_with_trafilatura(html, article.url)
-            if md:
-                method = "trafilatura"
+            tier1_md = _extract_with_trafilatura(html, article.url)
+            if tier1_md:
+                # 2026-07-29: validate the local extraction before
+                # accepting it. Trafilatura sometimes returns the
+                # sidebar/promo block instead of the article (sina) or
+                # an anti-bot interstitial stub (mp.weixin CAPTCHA
+                # page); accepting that output used to block the Jina
+                # tier entirely and poisoned ``full_content`` with
+                # navigation junk. Junk candidates fall through, but
+                # are kept as a last resort so a thin-but-legit flash
+                # body still reaches the flash check below when every
+                # other tier fails.
+                if not _extraction_is_junk(_clean_jina_body(tier1_md, article.title)):
+                    md = tier1_md
+                    method = "trafilatura"
+                else:
+                    logger.info(
+                        "ContentFetcher: tier-1 extraction for article %s "
+                        "looks like boilerplate, falling through to Jina",
+                        article_id,
+                    )
 
         if not md:
             try:
@@ -503,13 +710,36 @@ class ContentFetcher:
             if md:
                 method = "llm"
 
+        if not md and tier1_md:
+            # Every stronger tier failed — reuse the junky/thin local
+            # extraction so the flash confirmation / failure bookkeeping
+            # below still sees the best available candidate.
+            md = tier1_md
+            method = "trafilatura"
+
         if not md:
             logger.warning(
                 "ContentFetcher: no body extracted for article %s url=%s: %s",
                 article_id, article.url, last_error,
             )
+            # 2026-07-29: record the failed attempt. Previously total
+            # extraction failures wrote nothing, so ops could not tell
+            # "never attempted" apart from "permanently failing" — 624
+            # investing.com rows were invisible retries. The row stays
+            # ``full_content IS NULL`` so the 10-minute drain keeps
+            # retrying; only the observability fields are set.
+            article.ai_cleaned_at = datetime.now(tz=UTC)
+            article.ai_cleanup_status = "failed"
+            try:
+                self.db.commit()
+            except Exception as exc:  # noqa: BLE001
+                logger.warning(
+                    "ContentFetcher: db commit failed for article %s: %s",
+                    article_id, exc,
+                )
+                self.db.rollback()
             return FetchResult(success=False, content=None, cached=False,
-                               error=last_error)
+                               error=last_error, ai_cleanup_status="failed")
 
         logger.info(
             "ContentFetcher: extracted body for article %s via %s",
@@ -521,15 +751,42 @@ class ContentFetcher:
         # with the DeepSeek extraction prompt.
         cleaned = _clean_jina_body(md, article.title)
 
-        # 4) Validate the cleaned body. If it is too short, treat the
-        # fetch as a soft failure: report it back, record the status for
+        # 4) Validate the cleaned body.
+        # 4a) Flash-news confirmation (2026-07-29): 快讯 items are
+        # legitimately 20-80 chars. When the cleaned extraction agrees
+        # with the RSS/API body, store it as the full content instead of
+        # failing — the red "extraction failed" alert on flash items was
+        # a false positive (e.g. jiemian / cls one-liners).
+        ref_body = article.body or article.summary
+        if len(cleaned) < MIN_BODY_LENGTH and _is_confirmed_flash(cleaned, ref_body):
+            article.full_content = cleaned
+            article.full_content_fetched_at = datetime.now(tz=UTC)
+            article.ai_cleaned_at = datetime.now(tz=UTC)
+            article.ai_cleanup_status = "cleaned"
+            try:
+                self.db.commit()
+            except Exception as exc:  # noqa: BLE001
+                logger.warning(
+                    "ContentFetcher: db commit failed for article %s: %s",
+                    article_id, exc,
+                )
+                self.db.rollback()
+            return FetchResult(
+                success=True,
+                content=cleaned,
+                cached=False,
+                ai_cleanup_status="cleaned",
+            )
+
+        # 4b) Too short, or still navigation junk after cleaning: treat
+        # the fetch as a soft failure — report it, record the status for
         # the ops dashboard, and DO NOT cache the useless raw Jina
         # Markdown (it would just show the title + date and no body).
         # The API layer will fall back to ``article.summary`` / ``body``.
-        if len(cleaned) < MIN_BODY_LENGTH:
+        if len(cleaned) < MIN_BODY_LENGTH or _extraction_is_junk(cleaned):
             logger.warning(
-                "ContentFetcher: cleaned body too short for article %s (len=%d), "
-                "treating as extraction failure",
+                "ContentFetcher: cleaned body unusable for article %s "
+                "(len=%d), treating as extraction failure",
                 article_id, len(cleaned),
             )
             article.ai_cleaned_at = datetime.now(tz=UTC)
@@ -665,6 +922,14 @@ class ContentFetcher:
             "Accept": "text/plain",
             "User-Agent": "AD-Research/1.0 (+https://r.jina.ai)",
         }
+        # 2026-07-29: optional API key. Jina blocks *anonymous* access
+        # to abuse-heavy domains (investing.com returns HTTP 403
+        # "AbuseAlleviationError" without a key); an authenticated key
+        # lifts that block and raises the rate limit. Leave empty to
+        # keep the free anonymous tier.
+        api_key = (get_settings().jina_api_key or "").strip()
+        if api_key:
+            headers["Authorization"] = f"Bearer {api_key}"
         try:
             response = httpx.get(
                 endpoint,

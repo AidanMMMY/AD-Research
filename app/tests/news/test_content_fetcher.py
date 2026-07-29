@@ -716,3 +716,318 @@ def test_clean_strips_sina_style_trailing_promo() -> None:
     assert "真正的正文第二段" in cleaned
     for noise in ("责任编辑", "VIP课程", "APP专享", "热门推荐", "收起", "粉丝福利"):
         assert noise not in cleaned
+
+
+# ---------------------------------------------------------------------------
+# 2026-07-29: nav-junk cleanup + tier validation + flash confirmation
+# ---------------------------------------------------------------------------
+
+
+def test_strip_boilerplate_drops_link_only_lines() -> None:
+    """NDTV Profit / jiemian EN leak their whole nav through Jina as
+    bulleted link lists, social-button rows and empty anchors. All of
+    these line shapes must be stripped."""
+    from app.services.news.content_fetcher import _clean_jina_body
+
+    nav_block = "\n".join([
+        "[](https://example.com/article/1)",
+        "[Get App](javascript:void(0))",
+        "*   [Live TV](https://example.com/live-tv \"Live TV\")",
+        "*   [Latest](https://example.com/latest \"Latest\")",
+        "    *   [India](https://example.com/india)",
+        "[facebook](https://fb.com/x)[twitter](https://x.com/y)[instagram](https://ig.com/z)",
+        "[![Image 4: Add Us As Preferred](https://example.com/i.png)](https://example.com/pref)",
+        "*   [Email](mailto:?subject=Hello)",
+    ])
+    body = (
+        "Asian stock markets swung lower on Wednesday after an early "
+        "advance lost momentum, with heavy selling in South Korea and "
+        "Japan dragging regional sentiment lower through the session."
+    )
+    cleaned = _clean_jina_body(nav_block + "\n\n" + body, "Markets today")
+    assert body in cleaned
+    for noise in ("Live TV", "Latest", "facebook", "Get App", "mailto", "Image 4"):
+        assert noise not in cleaned
+
+
+def test_strip_boilerplate_keeps_body_sentence_containing_link() -> None:
+    """A real body sentence that merely *contains* an inline link must
+    survive — only lines made of nothing but links are nav."""
+    from app.services.news.content_fetcher import _clean_jina_body
+
+    body = (
+        "According to [Tilleke & Gibbins](https://example.com/firm), the "
+        "appeals court ordered the cancellation of the defendant's "
+        "trademark registrations and awarded damages, a ruling lawyers "
+        "described as the largest of its kind in the country."
+    )
+    cleaned = _clean_jina_body(body, "Title")
+    assert "appeals court ordered" in cleaned
+
+
+def test_strip_boilerplate_drops_english_promo_lines() -> None:
+    """Standalone English boilerplate (Advertisement / Scan to Download /
+    Read Time / Published On) is dropped; an in-body sentence starting
+    with the same words is kept."""
+    from app.services.news.content_fetcher import _clean_jina_body
+
+    raw = "\n".join([
+        "Advertisement",
+        "Scan to Download",
+        "Read Time: 2 mins",
+        "Published On Jul 29, 2026 09:13 IST",
+        "",
+        "Advertisement revenue grew 20% year on year, the company said "
+        "in its quarterly filing, beating analyst expectations for the "
+        "third consecutive quarter.",
+    ])
+    cleaned = _clean_jina_body(raw, "Earnings")
+    assert "Read Time" not in cleaned
+    assert "Published On" not in cleaned
+    assert "\nAdvertisement\n" not in f"\n{cleaned}\n"
+    assert "Advertisement revenue grew 20%" in cleaned
+
+
+def test_extraction_is_junk_detects_nav_dump() -> None:
+    from app.services.news.content_fetcher import _extraction_is_junk
+
+    nav = "\n".join(
+        f"*   [Section {i}](https://example.com/s{i})" for i in range(12)
+    )
+    assert _extraction_is_junk(nav) is True
+    assert _extraction_is_junk("") is True
+    assert _extraction_is_junk("too short") is True
+    real_body = (
+        "真正的正文段落，包含足够长的内容，可以通过最小长度阈值检查，"
+        "并且几乎没有链接字符，导航行占比也为零，所以不应被判为垃圾。"
+        "再补充一句，让总长度稳定超过八十个字符的阈值。"
+    )
+    assert _extraction_is_junk(real_body) is False
+
+
+def test_tier1_boilerplate_falls_through_to_jina(db_session) -> None:
+    """Sina case (2026-07-29): trafilatura returns the sidebar promo
+    block instead of the article. The gate must reject it and let the
+    Jina tier deliver the real body."""
+    article = _seed_full_text_article(db_session)
+    sina_sidebar = (
+        "## VIP课程推荐\n\n加载中...\n\n## APP专享直播\n\n## 热门推荐\n\n"
+        "*收起*\n\n新浪财经公众号\n\n"
+        "24小时滚动播报最新的财经资讯和视频，更多粉丝福利扫描二维码关注"
+    )
+    jina_body = (
+        "# 多家机构上调可口可乐目标价\n\n"
+        "多家投行在最新研报中上调了可口可乐的目标价，认为其二季度业绩"
+        "展现了定价能力和成本控制的韧性，正文内容足够长，可以通过最小"
+        "正文长度阈值的检查，确保被识别为真实正文而不是导航垃圾。"
+    )
+    with (
+        patch.object(ContentFetcher, "_fetch_html", return_value="<html>page</html>"),
+        patch(
+            "app.services.news.content_fetcher._extract_with_trafilatura",
+            return_value=sina_sidebar,
+        ),
+        patch(
+            "app.services.news.content_fetcher.httpx.get",
+            return_value=_fake_response(jina_body),
+        ) as mocked_get,
+    ):
+        result = ContentFetcher(db_session).fetch(article.id, force=True)
+
+    assert result.success is True
+    assert result.ai_cleanup_status == "cleaned"
+    mocked_get.assert_called_once()  # Jina tier was consulted
+    assert "上调了可口可乐的目标价" in (result.content or "")
+    assert "VIP课程" not in (result.content or "")
+
+
+def test_thin_tier1_falls_through_and_flash_is_confirmed(db_session) -> None:
+    """Jiemian flash (2026-07-29): both tiers return the same 30-char
+    one-liner (the article genuinely IS a flash). It must be stored as
+    full content with status ``cleaned`` instead of failing."""
+    normalizer = NewsNormalizer(db_session)
+    flash = "7月29日下午，长鑫科技成交额达300亿元，现涨6.6%。"
+    raw = RawArticle(
+        source="jiemian",
+        url="https://www.jiemian.com/article/14843296.html",
+        title="长鑫科技成交额达300亿元",
+        published_at=datetime.now(tz=UTC),
+        body=flash,
+    )
+    article = normalizer.normalize(raw)
+    db_session.commit()
+    assert article is not None and article.full_content is None
+
+    jina_md = (
+        "[![Image 1: logo](https://example.com/logo.svg)](https://example.com/)\n\n"
+        "*   [首页](https://example.com/)\n\n"
+        "*   [科技](https://example.com/tech)\n\n"
+        f"{flash}\n"
+    )
+    with (
+        patch.object(ContentFetcher, "_fetch_html", return_value="<html>page</html>"),
+        patch(
+            "app.services.news.content_fetcher._extract_with_trafilatura",
+            return_value=flash,
+        ),
+        patch(
+            "app.services.news.content_fetcher.httpx.get",
+            return_value=_fake_response(jina_md),
+        ),
+    ):
+        result = ContentFetcher(db_session).fetch(article.id, force=True)
+
+    assert result.success is True
+    assert result.ai_cleanup_status == "cleaned"
+    assert result.content is not None and "长鑫科技成交额达300亿元" in result.content
+    db_session.refresh(article)
+    assert article.full_content is not None
+    assert "长鑫科技成交额达300亿元" in article.full_content
+    assert article.ai_cleanup_status == "cleaned"
+
+
+def test_short_extraction_mismatching_body_still_fails(db_session) -> None:
+    """A thin extraction that does NOT match the RSS body is a genuine
+    extraction failure (the site has a longer article) — must stay
+    ``failed`` and cache nothing."""
+    normalizer = NewsNormalizer(db_session)
+    raw = RawArticle(
+        source="jiemian",
+        url="https://www.jiemian.com/article/long-form.html",
+        title="深度长文",
+        published_at=datetime.now(tz=UTC),
+        body="这是一篇深度长文的摘要，正文其实有两千字，页面抓取只拿到了一句无关的话。",
+    )
+    article = normalizer.normalize(raw)
+    db_session.commit()
+
+    with (
+        patch.object(ContentFetcher, "_fetch_html", return_value="<html>page</html>"),
+        patch(
+            "app.services.news.content_fetcher._extract_with_trafilatura",
+            return_value="本网站使用Cookie以提供更佳体验。",
+        ),
+        patch.object(
+            ContentFetcher, "_call_jina", side_effect=_JinaError("jina down")
+        ),
+        patch(
+            "app.services.news.content_fetcher._extract_with_llm",
+            return_value=None,
+        ),
+    ):
+        result = ContentFetcher(db_session).fetch(article.id, force=True)
+
+    assert result.success is False
+    assert result.ai_cleanup_status == "failed"
+    db_session.refresh(article)
+    assert article.full_content is None
+    assert article.ai_cleanup_status == "failed"
+
+
+def test_total_failure_records_failed_status(db_session) -> None:
+    """2026-07-29: when every tier fails the attempt is now recorded
+    (``ai_cleanup_status='failed'``) so ops can tell permanent failures
+    apart from never-attempted rows. ``full_content`` stays NULL so the
+    drain keeps retrying."""
+    article = _seed_full_text_article(db_session)
+    with (
+        patch.object(ContentFetcher, "_fetch_html", return_value=None),
+        patch.object(
+            ContentFetcher, "_call_jina", side_effect=_JinaError("jina 403")
+        ),
+    ):
+        result = ContentFetcher(db_session).fetch(article.id, force=True)
+
+    assert result.success is False
+    db_session.refresh(article)
+    assert article.full_content is None
+    assert article.full_content_fetched_at is None
+    assert article.ai_cleanup_status == "failed"
+    assert article.ai_cleaned_at is not None
+
+
+def test_jina_nav_only_response_is_not_cached(db_session) -> None:
+    """When Jina returns nothing but the site menu (no article text at
+    all), the cleaned junk must be rejected instead of cached."""
+    article = _seed_full_text_article(db_session)
+    nav_only = "\n".join(
+        ["# Site Menu", ""]
+        + [f"*   [Section {i}](https://example.com/s{i})" for i in range(15)]
+        + ["", "Advertisement"]
+    )
+    with patch(
+        "app.services.news.content_fetcher.httpx.get",
+        return_value=_fake_response(nav_only),
+    ):
+        result = ContentFetcher(db_session).fetch(article.id, force=True)
+
+    assert result.success is False
+    db_session.refresh(article)
+    assert article.full_content is None
+    assert article.ai_cleanup_status == "failed"
+
+
+def test_jina_api_key_adds_authorization_header(db_session) -> None:
+    """``settings.jina_api_key`` is forwarded as a Bearer token so
+    abuse-blocked domains (investing.com) can be unlocked."""
+    article = _seed_full_text_article(db_session)
+    fake_settings = SimpleNamespace(jina_api_key="test-key-123")
+    captured: dict = {}
+
+    def _spy_get(url, **kwargs):
+        captured.update(kwargs)
+        return _fake_response(
+            "# body\n\n"
+            + "正文内容，长度足够通过最小正文长度阈值检查，清洗之后依然是完整的段落。" * 4
+        )
+
+    with (
+        patch(
+            "app.services.news.content_fetcher.get_settings",
+            return_value=fake_settings,
+        ),
+        patch(
+            "app.services.news.content_fetcher.httpx.get",
+            side_effect=_spy_get,
+        ),
+    ):
+        result = ContentFetcher(db_session).fetch(article.id, force=True)
+
+    assert result.success is True
+    headers = captured.get("headers") or {}
+    assert headers.get("Authorization") == "Bearer test-key-123"
+
+
+def test_normalizer_seeds_full_content_for_cls_flash(db_session) -> None:
+    """2026-07-29: 财联社电报 API content IS the complete flash — seed
+    ``full_content`` at ingestion so the SPA detail page is never
+    re-fetched (and short flashes stop showing as missing content)."""
+    normalizer = NewsNormalizer(db_session)
+    raw = RawArticle(
+        source="cls",
+        url="https://www.cls.cn/detail/2439980",
+        title="加拿大皇家银行下调波音目标价",
+        published_at=datetime.now(tz=UTC),
+        body="财联社7月29日电，加拿大皇家银行将波音目标价从275美元下调至265美元。",
+    )
+    article = normalizer.normalize(raw)
+    db_session.commit()
+    assert article is not None
+    assert article.full_content == raw.body
+
+
+def test_normalizer_still_refetches_sina_teaser(db_session) -> None:
+    """Sina's ``intro`` is a teaser, not the full article — it must NOT
+    be seeded as full content (regression guard for the allowlist)."""
+    normalizer = NewsNormalizer(db_session)
+    raw = RawArticle(
+        source="sina_finance",
+        url="https://finance.sina.com.cn/stock/x.shtml",
+        title="某深度报道",
+        published_at=datetime.now(tz=UTC),
+        body="摘要：这是一篇深度报道的简介，正文远长于此。",
+    )
+    article = normalizer.normalize(raw)
+    db_session.commit()
+    assert article is not None
+    assert article.full_content is None

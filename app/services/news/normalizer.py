@@ -264,6 +264,11 @@ _FULL_BODY_MIN_CHARS = 400
 # is already the whole thing.
 _SOURCES_WITH_API_FULL_CONTENT: frozenset[str] = frozenset({
     "wallstreetcn",  # 华尔街见闻 7×24 快讯 — SPA page, API has full text
+    # 2026-07-29: 财联社电报 — the telegraph API ``content`` field IS the
+    # complete flash (typically 30-300 chars); cls.cn detail pages are
+    # Next.js SPAs so an HTTP re-fetch adds nothing but risk. Fixes ~40%
+    # of cls rows sitting at full_content=NULL with endless refetch.
+    "cls",
 })
 
 
