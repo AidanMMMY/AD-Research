@@ -2,7 +2,7 @@ import './styles.css';
 
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Table, List, Tabs, Segmented } from 'antd';
+import { Table, List, Tabs, Segmented, Select } from 'antd';
 import { useScores, useScoreTemplates } from '@/hooks/useScores';
 import { useAIHelp } from '@/hooks/useAIHelp';
 import { useIsMobile } from '@/hooks/useBreakpoint';
@@ -16,6 +16,7 @@ import EmptyState from '@/components/EmptyState';
 import HelpTrigger from '@/components/HelpTrigger';
 import HelpPopover from '@/components/HelpPopover';
 import InstrumentCodeTag from '@/components/InstrumentCodeTag';
+import { FilterSheetButton } from '@/components/BottomSheet';
 import ScoreBar from '@/components/ScoreBar';
 import TemplateManagement from '@/components/TemplateManagement';
 import PageHeader from '@/components/PageHeader';
@@ -190,11 +191,35 @@ export default function ScoreRanking() {
           <SectionHeading
             title={`综合评分 Top ${scoresData?.items.length || 0}`}
             action={
-              <Segmented
-                value={activeTemplateKey}
-                onChange={(key) => setTemplateId(Number(key))}
-                options={templateOptions}
-              />
+              isMobile ? (
+                /* P3 (方向 C): the template picker moves into a sheet on
+                   mobile so the Segmented can never wrap/overflow. */
+                <FilterSheetButton
+                  title="评分模板"
+                  buttonText="模板"
+                  activeCount={templateId ? 1 : 0}
+                  snaps={['peek', 'half']}
+                >
+                  <Select
+                    aria-label="评分模板"
+                    className="ad-w-full"
+                    value={activeTemplateKey}
+                    onChange={(key) => setTemplateId(Number(key))}
+                    options={templateOptions}
+                  />
+                  {activeTemplate && (
+                    <div className="ad-text-small ad-text-tertiary">
+                      {Object.keys(activeTemplate.weights ?? {}).length} 个维度
+                    </div>
+                  )}
+                </FilterSheetButton>
+              ) : (
+                <Segmented
+                  value={activeTemplateKey}
+                  onChange={(key) => setTemplateId(Number(key))}
+                  options={templateOptions}
+                />
+              )
             }
           />
 

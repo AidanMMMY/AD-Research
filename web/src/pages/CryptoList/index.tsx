@@ -12,6 +12,7 @@ import { clickableRow } from '@/utils/a11y';
 import PageShell from '@/components/PageShell';
 import PageHeader from '@/components/PageHeader';
 import FilterToolbar from '@/components/FilterToolbar';
+import { FilterSheetButton, InstrumentQuickSheet } from '@/components/BottomSheet';
 import Panel from '@/components/Panel';
 import LoadingBlock from '@/components/LoadingBlock';
 import EmptyState from '@/components/EmptyState';
@@ -110,11 +111,29 @@ function formatUtc(iso: string): string {
   }
 }
 
+/** Crypto price precision: sub-cent tokens need 6 decimals. */
+function formatCryptoPrice(v: number): string {
+  return `$${v < 0.01 ? v.toFixed(6) : v < 1 ? v.toFixed(4) : v.toFixed(2)}`;
+}
+
 export default function CryptoList() {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const filters = useCryptoStore();
   const [page, setPage] = useState(1);
+  // P3 (2026-07-29): mobile row taps open the quick-look half-sheet
+  // instead of navigating — list scroll position and filters survive.
+  const [quickSel, setQuickSel] = useState<{
+    code: string;
+    name?: string | null;
+    name_zh?: string | null;
+    price?: number | null;
+    change_pct?: number | null;
+    change_24h?: number | null;
+    volume_24h?: number | null;
+    category?: string | null;
+    exchange?: string | null;
+  } | null>(null);
   const pageLoadedAt = useMemo(() => new Date().toISOString(), []);
   // Shorter debounce: 150ms is below the "feels laggy" threshold while
   // still coalescing burst keystrokes into one network request.
@@ -208,6 +227,59 @@ export default function CryptoList() {
     },
   ];
 
+  // Active filter count for the mobile 筛选 badge (a non-default sort
+  // counts as one active filter).
+  const activeFilterCount =
+    (filters.search ? 1 : 0) +
+    (filters.category ? 1 : 0) +
+    (filters.sortBy !== 'name' || filters.sortOrder !== 'asc' ? 1 : 0);
+
+  // Shared filter form — inside FilterToolbar on desktop, inside the
+  // BottomSheet on mobile. Kept as a JSX element so focus survives
+  // re-renders.
+  const filterControls = (
+    <>
+      <Input
+        placeholder="搜索币种代码或名称"
+        allowClear
+        prefix={<SearchOutlined className="ad-icon-tertiary" />}
+        value={filters.search}
+        onChange={(e) => {
+          filters.setSearch(e.target.value);
+          setPage(1);
+        }}
+        style={{ flex: '1 240px' }}
+      />
+      <Select
+        placeholder="分类"
+        allowClear
+        style={{ width: 160 }}
+        value={filters.category}
+        onChange={(v) => {
+          filters.setCategory(v);
+          setPage(1);
+        }}
+        options={CATEGORIES.map((c) => ({ label: c, value: c }))}
+      />
+      <Select
+        placeholder="排序"
+        style={{ width: 160 }}
+        value={filters.sortBy}
+        onChange={(v) => filters.setSort(v, filters.sortOrder)}
+        options={SORT_OPTIONS}
+      />
+      <Select
+        style={{ width: 160 }}
+        value={filters.sortOrder}
+        onChange={(v) => filters.setSort(filters.sortBy, v)}
+        options={[
+          { label: '升序', value: 'asc' },
+          { label: '降序', value: 'desc' },
+        ]}
+      />
+    </>
+  );
+
   return (
     <AdxShell>
       <PageShell maxWidth="wide">
@@ -218,46 +290,27 @@ export default function CryptoList() {
         />
 
       <Panel variant="default" padding="md">
-        <FilterToolbar total={`共 ${data?.total ?? 0} 只`}>
-          <Input
-            placeholder="搜索币种代码或名称"
-            allowClear
-            prefix={<SearchOutlined className="ad-icon-tertiary" />}
-            value={filters.search}
-            onChange={(e) => {
-              filters.setSearch(e.target.value);
-              setPage(1);
-            }}
-            style={{ flex: '1 240px' }}
-          />
-          <Select
-            placeholder="分类"
-            allowClear
-            style={{ width: 160 }}
-            value={filters.category}
-            onChange={(v) => {
-              filters.setCategory(v);
-              setPage(1);
-            }}
-            options={CATEGORIES.map((c) => ({ label: c, value: c }))}
-          />
-          <Select
-            placeholder="排序"
-            style={{ width: 160 }}
-            value={filters.sortBy}
-            onChange={(v) => filters.setSort(v, filters.sortOrder)}
-            options={SORT_OPTIONS}
-          />
-          <Select
-            style={{ width: 160 }}
-            value={filters.sortOrder}
-            onChange={(v) => filters.setSort(filters.sortBy, v)}
-            options={[
-              { label: '升序', value: 'asc' },
-              { label: '降序', value: 'desc' },
-            ]}
-          />
-        </FilterToolbar>
+        {isMobile ? (
+          /* P3 (方向 C): mobile first screen carries zero filter chrome. */
+          <div className="mobile-filter-bar">
+            <FilterSheetButton
+              activeCount={activeFilterCount}
+              onReset={() => {
+                filters.resetFilters();
+                setPage(1);
+              }}
+            >
+              {filterControls}
+            </FilterSheetButton>
+            <span className="mobile-filter-bar__meta">
+              共 {data?.total ?? 0} 只
+            </span>
+          </div>
+        ) : (
+          <FilterToolbar total={`共 ${data?.total ?? 0} 只`}>
+            {filterControls}
+          </FilterToolbar>
+        )}
 
         {isMobile ? (
           isLoading ? (
@@ -275,12 +328,12 @@ export default function CryptoList() {
                 <div
                   role="button"
                   tabIndex={0}
-                  aria-label={`查看 ${item.name ?? item.code} 详情`}
-                  onClick={() => navigate(`/crypto/${item.code}`)}
+                  aria-label={`速览 ${item.name ?? item.code}`}
+                  onClick={() => setQuickSel(item)}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' || e.key === ' ') {
                       e.preventDefault();
-                      navigate(`/crypto/${item.code}`);
+                      setQuickSel(item);
                     }
                   }}
                   className="mobile-list-item"
@@ -347,6 +400,50 @@ export default function CryptoList() {
           <div>24h 涨跌 = (当前价 - 24小时前价格) / 24小时前价格</div>
         </div>
       </Panel>
+
+      {/* Mobile quick-look (P3): the list payload already carries the
+          price snapshot, so the sheet renders with zero extra requests
+          (the /etfs detail endpoint does not cover this universe —
+          withFundamentals stays off and metrics come from the row). */}
+      <InstrumentQuickSheet
+        open={isMobile && !!quickSel}
+        onClose={() => setQuickSel(null)}
+        code={quickSel?.code ?? null}
+        name={quickSel?.name}
+        nameZh={quickSel?.name_zh}
+        price={quickSel?.price ?? null}
+        changePct={quickSel ? (quickSel.change_pct ?? quickSel.change_24h ?? null) : null}
+        formatPrice={formatCryptoPrice}
+        detailPath={quickSel ? `/crypto/${quickSel.code}` : undefined}
+        withFundamentals={false}
+        metrics={
+          quickSel
+            ? [
+                ...(quickSel.category
+                  ? [{ label: '分类', value: quickSel.category }]
+                  : []),
+                ...(quickSel.exchange
+                  ? [{ label: '交易所', value: quickSel.exchange }]
+                  : []),
+                ...(quickSel.volume_24h != null
+                  ? [
+                      {
+                        label: '24h 成交量',
+                        value:
+                          quickSel.volume_24h >= 1e9
+                            ? `${(quickSel.volume_24h / 1e9).toFixed(1)}B`
+                            : quickSel.volume_24h >= 1e6
+                              ? `${(quickSel.volume_24h / 1e6).toFixed(1)}M`
+                              : quickSel.volume_24h >= 1e3
+                                ? `${(quickSel.volume_24h / 1e3).toFixed(1)}K`
+                                : quickSel.volume_24h.toFixed(0),
+                      },
+                    ]
+                  : []),
+              ]
+            : undefined
+        }
+      />
       </PageShell>
     </AdxShell>
   );

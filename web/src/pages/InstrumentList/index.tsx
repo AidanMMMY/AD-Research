@@ -35,6 +35,7 @@ import { useDebounce } from '@/hooks/useDebounce';
 import PageShell from '@/components/PageShell';
 import PageHeader from '@/components/PageHeader';
 import FilterToolbar from '@/components/FilterToolbar';
+import { FilterSheetButton, InstrumentQuickSheet } from '@/components/BottomSheet';
 import Panel from '@/components/Panel';
 import LoadingBlock from '@/components/LoadingBlock';
 import EmptyState from '@/components/EmptyState';
@@ -132,6 +133,16 @@ export default function InstrumentList() {
   });
 
   const debouncedSearch = useDebounce(search, 300);
+
+  // P3 (2026-07-29): mobile row taps open the quick-look half-sheet
+  // instead of navigating — list scroll position and filters survive.
+  // The selection carries the list-payload name so the sheet renders
+  // instantly while the detail query warms up.
+  const [quickSel, setQuickSel] = useState<{
+    code: string;
+    name?: string | null;
+    name_zh?: string | null;
+  } | null>(null);
 
   // Sync URL params when filters change.
   useEffect(() => {
@@ -478,46 +489,21 @@ export default function InstrumentList() {
     },
   ];
 
-  return (
-    <PageShell maxWidth="wide">
-      <PageHeader
-        eyebrow="全市场"
-        title="标的列表"
-        description="浏览和搜索全市场标的，按市场、分类、类型筛选"
-        extra={<LastUpdated at={dataUpdatedAt} loading={isFetching && !data} />}
-      />
+  // Active filter count for the mobile 筛选 badge.
+  const activeFilterCount = [
+    search, market, category, instrumentType, subCategory, sector, industry,
+    country, manager, underlyingIndex, currency, status, listingMarket, board,
+    exchange,
+  ].filter(Boolean).length
+    + (isQdii != null ? 1 : 0)
+    + (minFundSize != null ? 1 : 0)
+    + (maxFundSize != null ? 1 : 0);
 
-      <Panel
-        variant="default"
-        padding="md"
-        extra={
-          <ExportButton
-            rows={(data?.items || []) as unknown as Record<string, unknown>[]}
-            filename={`instruments-${[
-              market,
-              instrumentType,
-              category,
-              sector,
-              industry,
-              stage2Summary,
-            ]
-              .filter(Boolean)
-              .join('-') || 'all'}`}
-            headers={['code', 'name', 'category', 'market', 'listing_market', 'board', 'instrument_type', 'status', 'fund_manager', 'underlying_index', 'fund_size', 'market_cap']}
-            successPrefix="已导出标的列表"
-          />
-        }
-      >
-        <FilterToolbar
-          title="筛选条件"
-          total={`共 ${data?.total || 0} 只`}
-          extra={
-          <Button icon={<ReloadOutlined />} onClick={handleReset}>
-            重置条件
-          </Button>
-        }
-      >
-        <div className="instrument-filter-groups">
+  // Shared filter form — rendered inside FilterToolbar on desktop and
+  // inside the BottomSheet on mobile. Must stay a JSX element (not a
+  // closure component) so input focus survives re-renders.
+  const filterGroups = (
+    <div className="instrument-filter-groups">
           {/* Stage 1 — coarse filters (always visible).
               Picking 市场 + 类型 narrows the universe and decides which
               stage-2 (advanced) filters get exposed below. */}
@@ -930,7 +916,65 @@ export default function InstrumentList() {
             />
           )}
         </div>
-        </FilterToolbar>
+  );
+
+  return (
+    <PageShell maxWidth="wide">
+      <PageHeader
+        eyebrow="全市场"
+        title="标的列表"
+        description="浏览和搜索全市场标的，按市场、分类、类型筛选"
+        extra={<LastUpdated at={dataUpdatedAt} loading={isFetching && !data} />}
+      />
+
+      <Panel
+        variant="default"
+        padding="md"
+        extra={
+          <ExportButton
+            rows={(data?.items || []) as unknown as Record<string, unknown>[]}
+            filename={`instruments-${[
+              market,
+              instrumentType,
+              category,
+              sector,
+              industry,
+              stage2Summary,
+            ]
+              .filter(Boolean)
+              .join('-') || 'all'}`}
+            headers={['code', 'name', 'category', 'market', 'listing_market', 'board', 'instrument_type', 'status', 'fund_manager', 'underlying_index', 'fund_size', 'market_cap']}
+            successPrefix="已导出标的列表"
+          />
+        }
+      >
+        {isMobile ? (
+          /* P3 (方向 C): mobile first screen carries zero filter chrome —
+             the full form lives in the half sheet behind 筛选. */
+          <div className="mobile-filter-bar">
+            <FilterSheetButton
+              activeCount={activeFilterCount}
+              onReset={handleReset}
+            >
+              {filterGroups}
+            </FilterSheetButton>
+            <span className="mobile-filter-bar__meta">
+              共 {(data?.total || 0).toLocaleString()} 只
+            </span>
+          </div>
+        ) : (
+          <FilterToolbar
+            title="筛选条件"
+            total={`共 ${data?.total || 0} 只`}
+            extra={
+              <Button icon={<ReloadOutlined />} onClick={handleReset}>
+                重置条件
+              </Button>
+            }
+          >
+            {filterGroups}
+          </FilterToolbar>
+        )}
 
         {isMobile ? (
           isLoading ? (
@@ -950,11 +994,14 @@ export default function InstrumentList() {
               <div
                 role="button"
                 tabIndex={0}
-                onClick={() => navigate(`/instruments/${item.code}`)}
+                aria-label={`速览 ${item.name || item.code}`}
+                onClick={() =>
+                  setQuickSel({ code: item.code, name: item.name, name_zh: item.name_zh })
+                }
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' || e.key === ' ') {
                     e.preventDefault();
-                    navigate(`/instruments/${item.code}`);
+                    setQuickSel({ code: item.code, name: item.name, name_zh: item.name_zh });
                   }
                 }}
                 className="mobile-list-item"
@@ -1037,6 +1084,18 @@ export default function InstrumentList() {
           </div>
         )}
       </Panel>
+
+      {/* Mobile quick-look (P3): price snapshot comes from the same
+          MarketStream map the rows read — no extra connection. */}
+      <InstrumentQuickSheet
+        open={isMobile && !!quickSel}
+        onClose={() => setQuickSel(null)}
+        code={quickSel?.code ?? null}
+        name={quickSel?.name}
+        nameZh={quickSel?.name_zh}
+        price={quickSel ? (liveLatest[quickSel.code]?.price ?? null) : null}
+        changePct={quickSel ? (liveLatest[quickSel.code]?.change_pct ?? null) : null}
+      />
     </PageShell>
   );
 }

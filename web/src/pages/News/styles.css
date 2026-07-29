@@ -217,4 +217,15 @@
     margin: 0;
     white-space: nowrap;
   }
+
+  /* P3: inside the filter BottomSheet the chips row gets vertical
+     room, so undo the single-row-scroll transitional form and let
+     the chips wrap. */
+  .bottom-sheet .news-political-chips {
+    flex-wrap: wrap !important;
+    overflow-x: visible;
+  }
+  .bottom-sheet .news-political-chips > * {
+    flex: 0 1 auto;
+  }
 }

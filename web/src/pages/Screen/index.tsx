@@ -14,6 +14,7 @@ import PageShell from '@/components/PageShell';
 import Panel from '@/components/Panel';
 import PageHeader from '@/components/PageHeader';
 import FilterToolbar from '@/components/FilterToolbar';
+import { FilterSheetButton } from '@/components/BottomSheet';
 import EmptyState from '@/components/EmptyState';
 import HelpTrigger from '@/components/HelpTrigger';
 import HelpPopover from '@/components/HelpPopover';
@@ -188,53 +189,19 @@ export default function Screen() {
     { title: <HelpPopover termKey="volatility_20d" mode={mode}>波动率</HelpPopover>, dataIndex: 'volatility_20d', width: 90, responsive: ['md'], render: (v: number) => v != null ? <span className="font-mono ad-table-mono">{(v * 100).toFixed(1)}%</span> : '-' },
   ];
 
-  return (
-    <PageShell maxWidth="wide">
-      {/* Apple Design fixes:
-          #1/#10 Response — clickable result rows give instant pointer-down
-          feedback (background only, no movement).
-          #4 Springs + #10 — preset chips keep the existing critically-damped
-          (--ease-spring) curve for color/border feedback and rely on the
-          global background active state; we deliberately drop the scale
-          transform that was labelled "spring" but is in fact a one-shot
-          cubic-bezier (no real spring solver running on every frame).
-          #14 Reduced motion — chips keep color feedback, drop motion. */}
-      <style>{`
-        .screen-row--pressable > td { transition: background var(--transition-fast, 150ms ease); }
-        .screen-row--pressable:active > td { background: var(--bg-active) !important; }
-        .screen-presets .ad-status-chip {
-          transition: background var(--transition-spring-fast),
-            border-color var(--transition-fast, 150ms ease),
-            color var(--transition-fast, 150ms ease);
-        }
-        @media (prefers-reduced-motion: reduce) {
-          .screen-presets .ad-status-chip {
-            transition: background var(--transition-fast, 150ms ease),
-              border-color var(--transition-fast, 150ms ease),
-              color var(--transition-fast, 150ms ease);
-          }
-        }
-      `}</style>
-      <PageHeader
-        eyebrow="全市场"
-        title="全市场筛选器"
-        description="按评分、风险、收益、夏普等多维条件筛选全市场标的"
-        extra={
-          <Space size="middle">
-            <LastUpdated at={resultsUpdatedAt} loading={resultsFetching && !results} />
-            <HelpTrigger tooltip="AI 解释筛选逻辑" onClick={handleOpenHelp} />
-          </Space>
-        }
-      />
-      <Panel
-        title="筛选条件"
-        variant="default"
-        extra={
-          <Button onClick={() => { resetFilters(); setPage(1); }}>
-            重置条件
-          </Button>
-        }
-      >
+  // Active filter count for the mobile 筛选 badge (P3): every set
+  // filter except sort keys, plus an applied preset.
+  const activeFilterCount =
+    Object.entries(filters).filter(
+      ([k, v]) =>
+        v !== undefined && v !== '' && k !== 'sort_by' && k !== 'sort_order' && k !== 'limit',
+    ).length + (preset ? 1 : 0);
+
+  // Shared filter sections (presets + detailed groups) — inside the
+  // 筛选条件 Panel on desktop, inside the BottomSheet on mobile. Kept as
+  // a JSX element (not a closure component) so focus survives re-renders.
+  const filterSections = (
+    <>
         {/* 第一层：快速筛选 */}
         <section className="screen-filter-section" aria-label="快速筛选">
           <div className="screen-filter-section__header">
@@ -453,7 +420,74 @@ export default function Screen() {
             </div>
           </FilterToolbar>
         </section>
-      </Panel>
+    </>
+  );
+
+  return (
+    <PageShell maxWidth="wide">
+      {/* Apple Design fixes:
+          #1/#10 Response — clickable result rows give instant pointer-down
+          feedback (background only, no movement).
+          #4 Springs + #10 — preset chips keep the existing critically-damped
+          (--ease-spring) curve for color/border feedback and rely on the
+          global background active state; we deliberately drop the scale
+          transform that was labelled "spring" but is in fact a one-shot
+          cubic-bezier (no real spring solver running on every frame).
+          #14 Reduced motion — chips keep color feedback, drop motion. */}
+      <style>{`
+        .screen-row--pressable > td { transition: background var(--transition-fast, 150ms ease); }
+        .screen-row--pressable:active > td { background: var(--bg-active) !important; }
+        .screen-presets .ad-status-chip {
+          transition: background var(--transition-spring-fast),
+            border-color var(--transition-fast, 150ms ease),
+            color var(--transition-fast, 150ms ease);
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .screen-presets .ad-status-chip {
+            transition: background var(--transition-fast, 150ms ease),
+              border-color var(--transition-fast, 150ms ease),
+              color var(--transition-fast, 150ms ease);
+          }
+        }
+      `}</style>
+      <PageHeader
+        eyebrow="全市场"
+        title="全市场筛选器"
+        description="按评分、风险、收益、夏普等多维条件筛选全市场标的"
+        extra={
+          <Space size="middle">
+            <LastUpdated at={resultsUpdatedAt} loading={resultsFetching && !results} />
+            <HelpTrigger tooltip="AI 解释筛选逻辑" onClick={handleOpenHelp} />
+          </Space>
+        }
+      />
+      {isMobile ? (
+        /* P3 (方向 C): mobile first screen carries zero filter chrome —
+           presets + detailed filters live in the half sheet behind 筛选. */
+        <div className="mobile-filter-bar">
+          <FilterSheetButton
+            activeCount={activeFilterCount}
+            onReset={() => { resetFilters(); setPage(1); }}
+          >
+            {filterSections}
+          </FilterSheetButton>
+          <span className="mobile-filter-bar__meta">
+            共 {(results?.count || 0).toLocaleString()} 只
+          </span>
+        </div>
+      ) : (
+        <Panel
+          title="筛选条件"
+          variant="default"
+          extra={
+            <Button onClick={() => { resetFilters(); setPage(1); }}>
+              重置条件
+            </Button>
+          }
+        >
+          {filterSections}
+        </Panel>
+      )}
 
       <div className="ad-mt-5">
         {results?.items && results.items.length === 0 && !isLoading ? (

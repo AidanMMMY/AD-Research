@@ -39,6 +39,7 @@ import type {
 import PageShell from '@/components/PageShell';
 import PageHeader from '@/components/PageHeader';
 import FilterToolbar from '@/components/FilterToolbar';
+import { FilterSheetButton } from '@/components/BottomSheet';
 import Panel from '@/components/Panel';
 import EmptyState from '@/components/EmptyState';
 import DetailDrawer from '@/components/DetailDrawer';
@@ -52,6 +53,7 @@ import {
   formatRelative as formatRelativeTz,
 } from '@/utils/datetime';
 import { useDebounce } from '@/hooks/useDebounce';
+import { useIsMobile } from '@/hooks/useBreakpoint';
 import { useSettingsStore } from '@/stores/settings';
 
 /**
@@ -715,6 +717,7 @@ function HotSymbolSidebar({
 }
 
 export default function NewsFeed() {
+  const isMobile = useIsMobile();
   // Color convention drives the sentiment-legend colour words: A-share
   // (china) is 红涨绿跌 → positive=红 / negative=绿; US convention inverts it.
   const colorConvention = useSettingsStore((s) => s.colorConvention);
@@ -945,15 +948,31 @@ export default function NewsFeed() {
     ? `自选标的 ${watchlistMeta.symbols.length} 个 · 相关资讯 ${watchlistMeta.total_articles} 条`
     : `共 ${data?.pages?.[0]?.total ?? 0} 条`;
 
-  return (
-    <PageShell maxWidth="wide">
-      <style>{NEWS_PAGE_STYLE}</style>
-      <PageHeader
-        title="资讯"
-        description="多市场新闻聚合 · 情绪与重要性实时标注"
-      />
+  // Active filter count for the mobile 筛选 badge (P3).
+  const activeFilterCount =
+    (market !== 'all' ? 1 : 0) +
+    (source ? 1 : 0) +
+    (activeSymbol ? 1 : 0) +
+    (debouncedSearchInput ? 1 : 0) +
+    (watchlistMode ? 1 : 0) +
+    (dateRange?.[0] || dateRange?.[1] ? 1 : 0) +
+    eventCategories.length;
 
-      <FilterToolbar total={totalLabel} className="news-feed-toolbar">
+  const handleResetFilters = () => {
+    setMarket('all');
+    setSource(undefined);
+    setSearchInput('');
+    setActiveSymbol(undefined);
+    setWatchlistMode(false);
+    setEventCategories([]);
+    setDateRange(null);
+  };
+
+  // Shared filter controls — inside FilterToolbar on desktop, inside
+  // the BottomSheet on mobile. Kept as JSX elements (not closure
+  // components) so input focus survives re-renders.
+  const filterControls = (
+    <>
         <Tag.CheckableTag
           checked={watchlistMode}
           onChange={(checked) => {
@@ -1006,8 +1025,11 @@ export default function NewsFeed() {
             标的: {activeSymbol}
           </Tag>
         )}
-      </FilterToolbar>
+    </>
+  );
 
+  const politicalChips = (
+    <>
       {/* Political / macro event category chips (K12 addition).
           Multi-select: clicking toggles a category in/out of the
           filter set. The active set is persisted into the URL so
@@ -1045,6 +1067,39 @@ export default function NewsFeed() {
           </Tag.CheckableTag>
         )}
       </div>
+    </>
+  );
+
+  return (
+    <PageShell maxWidth="wide">
+      <style>{NEWS_PAGE_STYLE}</style>
+      <PageHeader
+        title="资讯"
+        description="多市场新闻聚合 · 情绪与重要性实时标注"
+      />
+
+      {isMobile ? (
+        /* P3 (方向 C): mobile first screen carries zero filter chrome —
+           the full filter form (market / source / date / event chips)
+           lives in the half sheet behind 筛选. */
+        <div className="mobile-filter-bar">
+          <FilterSheetButton
+            activeCount={activeFilterCount}
+            onReset={handleResetFilters}
+          >
+            {filterControls}
+            {politicalChips}
+          </FilterSheetButton>
+          <span className="mobile-filter-bar__meta">{totalLabel}</span>
+        </div>
+      ) : (
+        <>
+          <FilterToolbar total={totalLabel} className="news-feed-toolbar">
+            {filterControls}
+          </FilterToolbar>
+          {politicalChips}
+        </>
+      )}
 
       <div className="ad-news-layout">
         {/* Feed */}

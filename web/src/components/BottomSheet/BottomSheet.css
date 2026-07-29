@@ -1,0 +1,298 @@
+/* BottomSheet — mobile (≤767px) three-detent bottom sheet.
+ *
+ * Design notes (P3 / 方向 C, 2026-07-29):
+ * 1. Springs — all motion uses the global critically-damped spring curve
+ *    (--ease-spring); during a pointer drag the transition is disabled
+ *    (.bottom-sheet--dragging) so the sheet tracks the finger 1:1.
+ * 2. Layering — translucent scrim (backdrop-filter material, like
+ *    DetailDrawer) keeps the list visible underneath; the sheet itself
+ *    sits at z-index 1001, above the global drawer overlay (1000).
+ * 3. Safe area — the sheet bottom padding absorbs the home-indicator
+ *    inset so the grabber/content never collides with it.
+ * 4. Reduced motion — slide degrades to a cross-fade; drag still works
+ *    (it is direct manipulation, not decoration).
+ * 5. Desktop safety — callers gate rendering with useIsMobile(); the
+ *    ≥768px display:none below is a belt-and-suspenders guard so a
+ *    forgotten gate can never cover desktop content.
+ */
+
+.bottom-sheet-root {
+  position: fixed;
+  inset: 0;
+  z-index: 1001;
+}
+
+.bottom-sheet-scrim {
+  position: absolute;
+  inset: 0;
+  background: var(--scrim);
+  backdrop-filter: saturate(180%) blur(4px);
+  -webkit-backdrop-filter: saturate(180%) blur(4px);
+  opacity: 1;
+  transition: opacity var(--transition-spring-fast, 200ms var(--ease-spring));
+}
+
+.bottom-sheet-scrim--leaving {
+  opacity: 0;
+}
+
+.bottom-sheet {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  /* Taller than the tallest detent would ever need; the translateY
+     offset (inline style) decides how much is visible. 92dvh = full. */
+  height: 92dvh;
+  background: var(--bg-card, var(--bg-elevated));
+  border-top-left-radius: var(--card-radius);
+  border-top-right-radius: var(--card-radius);
+  border-top: 1px solid var(--border-default);
+  /* stylelint-disable-next-line ad-research/no-bare-color-values -- upward-cast sheet shadow; --shadow-lg is downward-only */
+  box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.24);
+  transition: transform var(--transition-spring, 350ms var(--ease-spring));
+  /* Never let the sheet itself scroll the page behind it. */
+  overscroll-behavior: contain;
+}
+
+/*
+ * Content column — exactly one detent tall (inline height), hugging the
+ * sheet top. The outer sheet is 92dvh; at half/peek detents only the top
+ * part of the sheet is revealed, so the header/body/footer must live in
+ * that top region or the footer would sit below the fold. Detent changes
+ * animate this height in lockstep with the outer translateY.
+ */
+.bottom-sheet__content {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+  transition: height var(--transition-spring, 350ms var(--ease-spring));
+}
+
+.bottom-sheet--dragging {
+  transition: none;
+  will-change: transform;
+}
+
+.bottom-sheet--dragging .bottom-sheet__content {
+  transition: none;
+}
+
+/* ---- Drag zone (grabber + header) ---- */
+
+.bottom-sheet__dragzone {
+  flex-shrink: 0;
+  /* The drag gesture owns vertical movement here; without this the
+     browser hijacks pointermove for page scroll mid-gesture. */
+  touch-action: none;
+  cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.bottom-sheet--dragging .bottom-sheet__dragzone {
+  cursor: grabbing;
+}
+
+.bottom-sheet__grabber {
+  /* Real button so keyboard users can change detents (ArrowUp/Down)
+     and screen readers announce the affordance. Visual = iOS-style pill. */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: var(--space-2) 0 var(--space-1);
+  background: none;
+  border: none;
+  cursor: grab;
+  touch-action: none;
+}
+
+.bottom-sheet__grabber::before {
+  content: '';
+  width: 36px;
+  height: 5px;
+  border-radius: 3px;
+  background: var(--text-muted);
+  opacity: 0.45;
+  transition: opacity var(--transition-fast, 150ms ease);
+}
+
+.bottom-sheet__grabber:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: -2px;
+  border-radius: var(--row-radius);
+}
+
+@media (hover: hover) {
+  .bottom-sheet__grabber:hover::before {
+    opacity: 0.8;
+  }
+}
+
+.bottom-sheet__header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-4) var(--space-2);
+}
+
+.bottom-sheet__title {
+  margin: 0;
+  flex: 1;
+  min-width: 0;
+  font-size: var(--text-h3-size, 18px);
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--text-primary);
+}
+
+.bottom-sheet__header-meta {
+  flex-shrink: 0;
+  font-size: var(--text-small-size, 12px);
+  color: var(--text-tertiary);
+}
+
+.bottom-sheet__close {
+  flex-shrink: 0;
+}
+
+/* ---- Body / footer ---- */
+
+.bottom-sheet__body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  padding: var(--space-2) var(--space-4) var(--space-4);
+}
+
+.bottom-sheet__footer {
+  flex-shrink: 0;
+  padding: var(--space-3) var(--space-4);
+  /* Home-indicator inset lives here so the footer action clears it. */
+  padding-bottom: calc(var(--space-3) + env(safe-area-inset-bottom, 0px));
+  border-top: 1px solid var(--border-default);
+}
+
+/* When there is no footer the body absorbs the safe-area inset. */
+.bottom-sheet__body--last {
+  padding-bottom: calc(var(--space-4) + env(safe-area-inset-bottom, 0px));
+}
+
+/* ---- Filter sheet form layout ---- */
+
+.filter-sheet-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-form-field, var(--space-3));
+}
+
+.filter-sheet-body > .ant-input,
+.filter-sheet-body > .ant-select,
+.filter-sheet-body > .ant-picker,
+.filter-sheet-body > .ant-input-affix-wrapper {
+  width: 100% !important;
+}
+
+.filter-sheet-body > .ant-segmented {
+  width: 100%;
+  overflow-x: auto;
+}
+
+/* Compact bar that replaces the inline filter toolbar on mobile:
+   [筛选(2)]                共 1,234 只 */
+.mobile-filter-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-block-sm, var(--space-3));
+}
+
+.mobile-filter-bar__meta {
+  margin-left: auto;
+  font-size: var(--text-small-size, 12px);
+  color: var(--text-tertiary);
+  white-space: nowrap;
+}
+
+/* ---- Quick-look sheet ---- */
+
+.quick-sheet__price-row {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+  margin: var(--space-2) 0 var(--space-3);
+}
+
+.quick-sheet__price {
+  font-size: 28px;
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--text-primary);
+  letter-spacing: var(--tracking-data, -0.02em);
+}
+
+.quick-sheet__sparkline {
+  margin-bottom: var(--space-4);
+}
+
+.quick-sheet__metrics {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3) var(--space-4);
+}
+
+.quick-sheet__metric-label {
+  font-size: var(--text-small-size, 12px);
+  color: var(--text-tertiary);
+  margin-bottom: 2px;
+}
+
+.quick-sheet__metric-value {
+  font-size: var(--text-body-size, 14px);
+  color: var(--text-primary);
+}
+
+.quick-sheet__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+}
+
+/* ---- Degradations ---- */
+
+@media (prefers-reduced-motion: reduce) {
+  .bottom-sheet {
+    transition: opacity 120ms ease;
+  }
+
+  .bottom-sheet__content {
+    transition: none;
+  }
+
+  .bottom-sheet-scrim {
+    transition: opacity 120ms ease;
+  }
+
+  .bottom-sheet--dragging {
+    transition: none;
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .bottom-sheet-scrim {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+}
+
+/* Desktop guard: the sheet is a mobile-only surface (P3 / 方向 C). */
+@media (min-width: 768px) {
+  .bottom-sheet-root {
+    display: none;
+  }
+}
