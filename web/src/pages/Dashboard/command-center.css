@@ -38,7 +38,7 @@
   height: 72px;
   padding: 0 var(--space-5);
   background: var(--cc-surface);
-  border-bottom: 1px solid var(--cc-border);
+  border-bottom: 1px solid var(--hairline);
   position: sticky;
   top: 0;
   z-index: 100;
@@ -127,12 +127,15 @@
   margin-top: var(--space-1);
 }
 
-/* Cards */
+/* Cards — 2026-07-29 桌面去 chrome（方向 A 延伸到桌面）：边框/圆角/底色
+   退场，section 之间靠 whitespace + header 下缘 hairline 分层；水平
+   padding 归零让数据行 flush 到列缘（hairline 通栏）。移动端段在文件
+   末尾，规则随后覆盖，不受影响。 */
 .cc-card {
-  background: var(--cc-surface);
-  border: 1px solid var(--cc-border);
-  border-radius: 12px;
-  padding: var(--space-4);
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  padding: var(--space-4) 0;
   /* Grid item: allow shrinking below content min-width so fixed-width
      inner grids (watchlist rows) never blow the card past the viewport. */
   min-width: 0;
@@ -143,6 +146,15 @@
   align-items: center;
   justify-content: space-between;
   margin-bottom: var(--space-3);
+}
+
+/* 桌面端 section 锚点：标题下缘 hairline（移动端整条卡片下缘已有
+   hairline，不再叠加，故仅 >=768px 启用）。 */
+@media (min-width: 768px) {
+  .cc-card__header {
+    padding-bottom: var(--space-2);
+    border-bottom: 1px solid var(--hairline);
+  }
 }
 
 .cc-card__title {
@@ -165,12 +177,15 @@
   cursor: pointer;
 }
 
-/* Global pulse */
+/* Global pulse — 桌面保留多列网格结构，tile 去厚重 chrome 改 hairline 格：
+   容器去边框/圆角/底色改底部通栏 hairline；组间左侧 hairline 分隔；
+   tile 去底色/圆角改行内下缘 hairline。 */
 .cc-pulse-grid {
-  background: var(--cc-surface);
-  border: 1px solid var(--cc-border);
-  border-radius: 12px;
-  padding: var(--space-4);
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--hairline);
+  border-radius: 0;
+  padding: var(--space-4) 0;
   margin-bottom: var(--space-5);
 }
 
@@ -197,6 +212,13 @@
 
 .cc-pulse-group {
   min-width: 0;
+  border-left: 1px solid var(--hairline);
+  padding-left: var(--space-3);
+}
+
+.cc-pulse-group:first-child {
+  border-left: none;
+  padding-left: 0;
 }
 
 .cc-pulse-group__label {
@@ -211,23 +233,28 @@
 .cc-pulse-group__tiles {
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
+  gap: 0;
 }
 
 .cc-pulse-item {
   display: flex;
   align-items: center;
   gap: var(--space-3);
-  padding: var(--space-2) var(--space-3);
-  background: var(--cc-surface-hover);
-  border-radius: 8px;
+  padding: var(--space-2) var(--space-2) var(--space-2) 0;
+  background: transparent;
+  border-bottom: 1px solid var(--hairline);
+  border-radius: 0;
   min-width: 0;
   cursor: pointer;
   transition: background 120ms ease;
 }
 
+.cc-pulse-item:last-child {
+  border-bottom: none;
+}
+
 .cc-pulse-item:hover {
-  background: var(--cc-border);
+  background: var(--cc-surface-hover);
 }
 
 .cc-pulse-item__code {
@@ -351,7 +378,8 @@
   align-items: center;
   gap: var(--space-2);
   padding: var(--space-2) 0;
-  border-bottom: 1px solid var(--cc-border);
+  min-height: var(--density-row-h-compact);
+  border-bottom: 1px solid var(--hairline);
   cursor: pointer;
   transition: background 120ms ease;
 }
@@ -362,7 +390,6 @@
 
 .cc-sector-row:hover {
   background: var(--cc-surface-hover);
-  border-radius: 6px;
 }
 
 .cc-sector-row__rank {
@@ -412,14 +439,14 @@
   align-items: start;
   gap: var(--space-3);
   padding: var(--space-2) 0;
-  border-bottom: 1px solid var(--cc-border);
+  min-height: var(--density-row-h-compact);
+  border-bottom: 1px solid var(--hairline);
   cursor: pointer;
   transition: background 120ms ease;
 }
 
 .cc-signal:hover {
   background: var(--cc-surface-hover);
-  border-radius: 6px;
 }
 
 .cc-signal:last-child {
@@ -495,7 +522,8 @@
   align-items: center;
   gap: var(--space-2);
   padding: var(--space-2) 0;
-  border-bottom: 1px solid var(--cc-border);
+  min-height: var(--density-row-h-compact);
+  border-bottom: 1px solid var(--hairline);
   cursor: pointer;
   transition: background 120ms ease;
 }
@@ -506,7 +534,6 @@
 
 .cc-watch-row:hover {
   background: var(--cc-surface-hover);
-  border-radius: 6px;
 }
 
 .cc-watch-row__code {
@@ -561,14 +588,14 @@
   grid-template-columns: 30px minmax(0, 1fr) auto;
   gap: var(--space-3);
   padding: var(--space-3) 0;
-  border-bottom: 1px solid var(--cc-border);
+  min-height: var(--density-row-h-compact);
+  border-bottom: 1px solid var(--hairline);
   cursor: pointer;
   transition: background 120ms ease;
 }
 
 .cc-brief:hover {
   background: var(--cc-surface-hover);
-  border-radius: 6px;
 }
 
 .cc-brief:last-child {
@@ -619,12 +646,18 @@
   white-space: nowrap;
 }
 
-/* Decision queue */
+/* Decision queue — 桌面端同样并入 hairline 行列表（与移动端段一致）。 */
 .cc-decision {
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: var(--space-3) 0;
+  min-height: var(--density-row-h-compact);
+  border-bottom: 1px solid var(--hairline);
+}
+
+.cc-decision:last-child {
+  border-bottom: none;
 }
 
 .cc-decision__label {
@@ -858,6 +891,9 @@
     display: flex;
     align-items: center;
     flex-shrink: 0;
+    /* 桌面基类的组间左侧 hairline 在磁带形态下不适用。 */
+    border-left: none;
+    padding-left: 0;
   }
 
   .cc-pulse-group__label {
@@ -876,6 +912,8 @@
   .cc-pulse-item {
     background: transparent;
     border-radius: 0;
+    /* 桌面基类的行内下缘 hairline 在磁带形态下改为右侧分隔。 */
+    border-bottom: none;
     border-right: 1px solid var(--hairline);
     padding: var(--space-1) var(--density-gap);
     min-height: var(--density-row-h-compact);
