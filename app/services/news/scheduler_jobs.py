@@ -831,6 +831,60 @@ for _job_id, _label, _batch in GLOBAL_INDIE_BATCH_JOBS:
     globals()[f"run_global_indie_{_batch}_crawl"] = _global_indie_batch_job(_job_id, _batch)
 
 
+# ── Chinese podcast batches (added 2026-07-29) ──
+#
+# 40 live-verified Chinese-language podcasts (investing / macro /
+# business analysis / industry depth / tech commentary) on 小宇宙 /
+# 喜马拉雅 / SoundOn / Firstory / Fireside / Acast / SoundCloud /
+# self-hosted feeds. Table and selection rule live in
+# app/services/news/sources/zh_multi_batch.py; batch keys a-d sit in
+# their own job namespace (news_zhx_*), so they do not collide with
+# the a-n (independent) / o-x (global indie) key ranges. Same no-LLM
+# rationale as the independent batches (curated editorial voices) —
+# no marketing filter.
+
+def _zhx_batch_job(job_id: str, batch_key: str):
+    """Build a ``run_*`` function crawling one Chinese podcast batch."""
+
+    @_record_etl(job_id)
+    def _run() -> dict[str, int]:
+        from app.services.news.sources.zh_multi_batch import (
+            ZhMultiBatchCrawler,
+        )
+
+        async def _go():
+            crawler = ZhMultiBatchCrawler(batch_key)
+            return await crawler.fetch_recent()
+
+        try:
+            articles = _run_async(_go())
+        except Exception as exc:
+            logger.exception("zh podcast batch %s crawl failed: %s", batch_key, exc)
+            return {
+                "fetched": 0,
+                "written": 0,
+                "skipped": True,
+                "skip_reason": f"crawl_error: {exc}",
+            }
+
+        if not articles:
+            return {"fetched": 0, "written": 0, "skipped": True, "skip_reason": "no_articles"}
+
+        written = _write_to_db(articles)
+        return {"fetched": len(articles), "written": written}
+
+    _run.__name__ = f"run_zh_multi_{batch_key}_crawl"
+    return _run
+
+
+from app.services.news.sources.zh_multi_batch import (  # noqa: E402
+    ZH_MULTI_BATCH_JOBS,
+)
+
+for _job_id, _label, _batch in ZH_MULTI_BATCH_JOBS:
+    globals()[f"run_zh_multi_{_batch}_crawl"] = _zhx_batch_job(_job_id, _batch)
+
+
 # ── New Chinese news sources (added 2026-07-18) ──
 
 @_record_etl("news_wallstreetcn_5m")
