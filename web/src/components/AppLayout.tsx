@@ -686,8 +686,11 @@ export default function AppLayout() {
           placement="left"
           open={drawerOpen}
           onClose={() => setDrawerOpen(false)}
-          width={240}
+          width={288}
           closable={false}
+          /* Lets polish.css exempt this drawer from the global
+             "fill the viewport" mobile rule so the mask stays tappable. */
+          rootClassName="app-nav-drawer"
         >
           <div className="app-layout__mobile-drawer">
             <SidebarContent collapsed={false} onItemClick={() => setDrawerOpen(false)} />

@@ -43,11 +43,19 @@
    declare their own responsive width.
    ============================================================ */
 @media (max-width: 767px) {
-  /* Modal & Drawer — fill the viewport with a small gutter */
+  /* Modal & Drawer — fill the viewport with a small gutter.
+     The app nav drawer (.app-nav-drawer) is exempt: it must stay narrow
+     so the mask remains a large, tappable dismiss area. */
   .ant-modal,
-  .ant-drawer-content-wrapper {
+  .ant-drawer:not(.app-nav-drawer) .ant-drawer-content-wrapper {
     max-width: calc(100vw - 16px) !important;
     width: calc(100vw - 16px) !important;
+  }
+
+  /* Nav drawer: cap at 80vw so ≥20% of the screen stays mask.
+     Width itself comes from the Drawer's inline `width` prop (288px). */
+  .app-nav-drawer .ant-drawer-content-wrapper {
+    max-width: 80vw !important;
   }
 
   .ant-modal-body {
