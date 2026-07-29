@@ -102,6 +102,29 @@
 
 /* ── Importance stars are rendered inline (dynamic colour). ── */
 
+/* ── AI one-sentence Chinese digest (方向 D, 2026-07-29) ──
+   Single-line, secondary colour, sits between title and body preview.
+   Unlike ``.ad-news-card__body`` this line stays visible on mobile —
+   it is the feed's main scanning aid there (the mobile rules in
+   pages-tools.css only hide ``__body``). No-summary rows render
+   nothing, so no placeholder gap appears. */
+.ad-news-card__ai-summary {
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  margin-bottom: var(--space-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (max-width: 767px) {
+  .ad-news-card__ai-summary {
+    font-size: 12px;
+    margin-bottom: var(--space-1);
+  }
+}
+
 /* ── Sentiment labels are rendered inline (dynamic colour). ── */
 
 /* ── News card original-link icon ── */

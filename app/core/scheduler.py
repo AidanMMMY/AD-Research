@@ -2174,6 +2174,24 @@ def init_scheduler():
     except ImportError:
         pass
 
+    # News AI one-sentence summary (方向 D, 2026-07-29): drain
+    # ≥3-importance articles that still lack ``summary_zh``, highest
+    # importance / newest first. Jittered so it does not fire in
+    # lockstep with ``news_translate_10m``.
+    try:
+        from app.services.news.scheduler_jobs import run_summarize_pending_job
+        scheduler.add_job(
+            run_summarize_pending_job,
+            trigger=IntervalTrigger(minutes=10, jitter=60),
+            id="news_summarize_10m",
+            name="资讯AI摘要",
+            replace_existing=True,
+            max_instances=1,
+            coalesce=True,
+        )
+    except ImportError:
+        pass
+
     # LLM sentiment pipeline (Agent E)
     try:
         from app.services.news.sentiment.scheduler_sentiment import init_sentiment_jobs

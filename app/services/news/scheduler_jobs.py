@@ -1324,6 +1324,24 @@ def run_translate_pending_job() -> dict[str, int]:
         return {"fetched": 0, "written": 0}
 
 
+# ── AI summary drain (added 2026-07-29, 方向 D) ──
+
+@_record_etl("news_summarize_10m")
+def run_summarize_pending_job() -> dict[str, int]:
+    """Drain ≥3-importance articles that still lack a Chinese AI summary.
+
+    Fully fail-safe — an LLM outage records a skipped/failed run instead
+    of crashing the scheduler; untouched rows retry on the next tick.
+    """
+    from app.services.news.scheduler_summarize_news import run_summarize_pending
+
+    try:
+        return run_summarize_pending()
+    except Exception as exc:
+        logger.exception("summarize pending failed: %s", exc)
+        return {"fetched": 0, "written": 0}
+
+
 # ── Macro (FRED) ──
 
 @record_etl("fred_macro_daily", source="fred")

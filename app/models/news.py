@@ -111,6 +111,16 @@ class NewsArticle(Base):
     translation_generated_at = Column(
         DateTime, comment="When the LLM translation was last produced"
     )
+    # AI one-sentence Chinese summary (方向 D, 2026-07-29). Filled by
+    # the ``news_summarize_10m`` drain job for articles with
+    # ``importance >= 3`` — ALL languages, because a summary is not a
+    # title restated: even a Chinese headline gets a digest line. The
+    # feed renders it under the title when present; NULL = job hasn't
+    # reached the row (or the article is below the importance gate).
+    summary_zh = Column(
+        String(500),
+        comment="AI-generated one-sentence Chinese summary (<=80 chars, drain job news_summarize_10m)",
+    )
 
     # AI-cleanup observability (M22-3, 2026-07-05). Until now the
     # DeepSeek call in ``ContentFetcher._clean_with_ai`` was a silent

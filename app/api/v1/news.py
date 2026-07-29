@@ -154,6 +154,11 @@ def _article_to_dict(
         # row). The frontend renders ``title_zh ?? title`` and shows the
         # original as a subtitle / tooltip when a translation exists.
         "title_zh": article.title_zh,
+        # AI one-sentence Chinese summary (方向 D, 2026-07-29,
+        # ``news_summarize_10m`` drain job; ≥3-importance rows, all
+        # languages). ``None`` until the job reaches the row. The feed
+        # renders it as a single digest line under the title when present.
+        "summary_zh": article.summary_zh,
         "summary": article.summary,
         "author": article.author,
         "language": article.language,
@@ -602,6 +607,7 @@ _WORKER_KEYWORDS: tuple[str, ...] = (
     "gind_",
     "asia_en",
     "asen_",
+    "summarize",
 )
 
 _WORKER_META: dict[str, dict[str, str]] = {
@@ -611,6 +617,7 @@ _WORKER_META: dict[str, dict[str, str]] = {
     "news_xueqiu_5m": {"label": "雪球 散户讨论", "schedule": "每 5 分钟"},
     "news_full_content_10m": {"label": "资讯全文抓取", "schedule": "每 10 分钟"},
     "news_translate_10m": {"label": "资讯自动翻译", "schedule": "每 10 分钟"},
+    "news_summarize_10m": {"label": "资讯AI摘要", "schedule": "每 10 分钟"},
     "sentiment_batch_30s": {"label": "情绪批量处理", "schedule": "每 30 秒"},
     "sentiment_low_latency_5m": {"label": "情绪低延迟处理", "schedule": "每 5 分钟"},
     "news_article_categorization_1m": {"label": "新闻事件分类", "schedule": "每 1 分钟"},

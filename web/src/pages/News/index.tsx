@@ -325,6 +325,14 @@ function NewsCard({
         )}
       </div>
 
+      {/* AI one-sentence Chinese digest (方向 D) — rendered on mobile
+          AND desktop (the body preview drops out on mobile, but this
+          line stays: it is the feed's main scanning aid). Renders
+          nothing when the drain job hasn't summarized the row yet. */}
+      {article.summary_zh && (
+        <div className="ad-news-card__ai-summary">{article.summary_zh}</div>
+      )}
+
       {/* Body preview */}
       {article.body && (
         <div className="ad-news-card__body">

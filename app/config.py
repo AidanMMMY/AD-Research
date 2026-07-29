@@ -142,6 +142,17 @@ class Settings(BaseSettings):
     # have ample headroom at this cadence.
     news_translation_batch_size: int = 50
 
+    # News AI one-sentence summary pipeline (方向 D, 2026-07-29). The
+    # 10-minute ``news_summarize_10m`` drain job generates a ≤80-char
+    # Chinese digest for articles with ``importance >= 3`` that still
+    # lack ``summary_zh``. 20/tick = ~2,880/day capacity; each call is
+    # ~1.5-2k input tokens (title + ≤4k chars of body) + <100 output
+    # tokens, so a full day at capacity costs roughly 4-6M input tokens
+    # on MiniMax — kept deliberately below the translation batch (50)
+    # because only ≥3-importance rows qualify and the gate already
+    # filters most of the ~1k/day inflow down to a few hundred.
+    news_summary_batch_size: int = 20
+
     # Xueqiu (雪球) cookie — raw "Cookie:" header value from a logged-in
     # browser session. Must include xq_a_token=...; u=...; device_id=...
     # The crawler is read-only and never attempts to log in.

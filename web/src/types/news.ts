@@ -59,6 +59,13 @@ export interface NewsArticle {
    * original ``title`` as a subtitle / tooltip.
    */
   title_zh?: string | null;
+  /**
+   * AI one-sentence Chinese summary (方向 D, 2026-07-29). Filled by the
+   * ``news_summarize_10m`` drain job for ≥3-importance articles, all
+   * languages; ``null`` until the job reaches the row. Render as a
+   * single-line digest under the title when present.
+   */
+  summary_zh?: string | null;
   /** Intro/excerpt handed over by the crawler (RSS blurb, selftext…). */
   body: string | null;
   /** RSS summary; currently the same text as ``body`` in the API payload. */
