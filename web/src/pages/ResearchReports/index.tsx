@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import type { CSSProperties } from 'react';
 import {
   Table, Input, Select, Button, Space, Tag, message, Modal,
-  Descriptions, Typography,
+  Descriptions, Typography, Pagination,
 } from 'antd';
 import { SearchOutlined, ReloadOutlined, ThunderboltOutlined, FileTextOutlined } from '@ant-design/icons';
 import PageShell from '@/components/PageShell';
@@ -56,6 +56,71 @@ const RESEARCH_REPORTS_PAGE_STYLE = `
   .ant-modal.research-reports-detail-modal .ant-modal-content {
     animation: none;
     transform: none;
+  }
+}
+
+/* ---- Mobile (≤767px): table → hairline row-list (direction A) ---- */
+@media (max-width: 767px) {
+  .research-reports__filters .filter-toolbar__filters {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    width: 100%;
+  }
+  .research-reports__filters .filter-toolbar__filters::-webkit-scrollbar {
+    display: none;
+  }
+  .research-reports__filters .filter-toolbar__filters > * {
+    flex: 0 0 auto;
+  }
+  .research-reports__filters .ant-select { min-width: 140px; }
+  .research-reports__filters .ant-input-affix-wrapper { min-width: 200px; }
+
+  .research-reports-mrow:active {
+    background: var(--bg-active);
+  }
+  .research-reports-mrow__main {
+    flex: 1 1 auto;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .research-reports-mrow__title {
+    font-size: var(--text-body-size);
+    font-weight: 500;
+    color: var(--text-primary);
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .research-reports-mrow__meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-1) var(--space-2);
+    font-size: var(--text-small-size);
+    color: var(--text-tertiary);
+  }
+  .research-reports-mrow__side {
+    flex-shrink: 0;
+    margin-left: auto;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 2px;
+  }
+  .research-reports-mrow__price {
+    font-family: var(--num-font);
+    font-size: var(--text-small-size);
+    color: var(--text-secondary);
+  }
+  .research-reports__pagination {
+    display: flex;
+    justify-content: center;
+    margin-top: var(--space-3);
   }
 }
 `;
@@ -305,7 +370,7 @@ export default function ResearchReports() {
         }
       />
 
-      <FilterToolbar total={filteredByRating.length}>
+      <FilterToolbar total={filteredByRating.length} className="research-reports__filters">
         <Input
           placeholder="搜索证券代码"
           allowClear
@@ -371,6 +436,52 @@ export default function ResearchReports() {
             title="暂无符合条件的研报"
             description="尝试调整筛选条件或刷新数据"
           />
+        ) : isMobile ? (
+          /* Mobile: hairline row-list; row click opens the same detail
+             modal (with the row-anchored spring) as desktop rows. */
+          <>
+            <div className="row-list">
+              {filteredByRating.map((it) => (
+                <div
+                  key={it.id}
+                  className="hairline-row hairline-row--clickable research-reports-mrow"
+                  {...clickableRow(
+                    (e) =>
+                      handleOpenDetail(
+                        it.id,
+                        (e.currentTarget as HTMLElement | null) ?? null,
+                      ),
+                    { role: 'button' },
+                  )}
+                >
+                  <div className="research-reports-mrow__main">
+                    <div className="research-reports-mrow__title">{it.title}</div>
+                    <div className="research-reports-mrow__meta">
+                      <span className="tnum">{it.ts_code}</span>
+                      <span>{it.name}</span>
+                      <span>{it.org_name}</span>
+                      <span className="tnum">{it.publish_date ?? NULL_PLACEHOLDER}</span>
+                    </div>
+                  </div>
+                  <div className="research-reports-mrow__side">
+                    {it.rating ? <Tag color={ratingColor(it.rating)}>{it.rating}</Tag> : null}
+                    <span className="research-reports-mrow__price tnum">
+                      {formatPrice(it.target_price)}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <Pagination
+              current={page}
+              pageSize={pageSize}
+              total={total}
+              onChange={setPage}
+              size="small"
+              showSizeChanger={false}
+              className="research-reports__pagination"
+            />
+          </>
         ) : (
           <div className="ad-table-scroll ad-table-sticky">
             <Table

@@ -19,6 +19,8 @@ import { useQuery } from '@tanstack/react-query';
 import type { Dayjs } from 'dayjs';
 import { reportApi, poolApi } from '@/api';
 import { useReports } from '@/hooks/useReportStatus';
+import { useIsMobile } from '@/hooks/useBreakpoint';
+import { clickableRow } from '@/utils/a11y';
 import type { ReportMetadata } from '@/types/report';
 
 /**
@@ -67,6 +69,59 @@ const REPORT_BROWSER_PAGE_STYLE = `
     to { opacity: 1; }
   }
 }
+
+/* ---- Mobile (≤767px): table → hairline row-list (direction A) ----
+   Desktop rules above are untouched; everything below only applies
+   under the mobile breakpoint. Rows compose theme.css utilities
+   (.row-list / .hairline-row / .tnum) with page-local parts. */
+@media (max-width: 767px) {
+  .report-browser__filters .filter-toolbar__filters,
+  .report-browser__chips .filter-toolbar__filters {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    width: 100%;
+  }
+  .report-browser__filters .filter-toolbar__filters::-webkit-scrollbar,
+  .report-browser__chips .filter-toolbar__filters::-webkit-scrollbar {
+    display: none;
+  }
+  .report-browser__filters .filter-toolbar__filters > * {
+    flex: 0 0 auto;
+  }
+  .report-browser__filters .ant-select { min-width: 140px; }
+  .report-browser__filters .ant-picker { min-width: 240px; }
+  .report-browser__filters .ant-input-affix-wrapper { min-width: 180px; }
+
+  .report-browser-mrow:active {
+    background: var(--bg-active);
+  }
+  .report-browser-mrow__main {
+    flex: 1 1 auto;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .report-browser-mrow__title {
+    font-size: var(--text-body-size);
+    font-weight: 500;
+    color: var(--text-primary);
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .report-browser-mrow__meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-1) var(--space-2);
+    font-size: var(--text-small-size);
+    color: var(--text-tertiary);
+  }
+}
 `;
 
 type ReportStatusFilter = 'all' | ReportMetadata['status'];
@@ -86,6 +141,7 @@ const TYPE_FILTERS: { value: 'all' | string; label: string }[] = [
 ];
 
 export default function ReportBrowser() {
+  const isMobile = useIsMobile();
   const [selectedReport, setSelectedReport] = useState<ReportMetadata | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [form] = Form.useForm();
@@ -157,6 +213,9 @@ export default function ReportBrowser() {
     done: 'success',
     failed: 'error',
   };
+
+  const typeLabel = (v: string): string =>
+    TYPE_FILTERS.find((t) => t.value === v)?.label ?? v;
 
   const columns = [
     { title: '类型', dataIndex: 'report_type', width: 120 },
@@ -233,6 +292,7 @@ export default function ReportBrowser() {
       />
 
       <FilterToolbar
+        className="report-browser__chips"
         extra={
           <Button type="primary" icon={<PlusOutlined />} onClick={() => setIsModalOpen(true)}>
             生成报告
@@ -253,7 +313,7 @@ export default function ReportBrowser() {
         ))}
       </FilterToolbar>
 
-      <FilterToolbar total={`共 ${filteredReports.length} 条`}>
+      <FilterToolbar total={`共 ${filteredReports.length} 条`} className="report-browser__filters">
         <Select
           className="ad-w-full"
           value={typeFilter}
@@ -297,6 +357,36 @@ export default function ReportBrowser() {
             </Button>
           }
         />
+      ) : isMobile ? (
+        /* Mobile: hairline row-list. Row click opens the same preview
+           panel as the desktop 预览 button; 下载 stays an inline link. */
+        <div className="row-list">
+          {filteredReports.map((r) => (
+            <div
+              key={r.id}
+              className="hairline-row hairline-row--clickable report-browser-mrow"
+              {...clickableRow(() => setSelectedReport(r), { role: 'button' })}
+            >
+              <div className="report-browser-mrow__main">
+                <div className="report-browser-mrow__title">
+                  {typeLabel(r.report_type)} · {r.report_date}
+                </div>
+                <div className="report-browser-mrow__meta">
+                  <ThemeTag variant={statusVariants[r.status] || 'default'}>{r.status}</ThemeTag>
+                  <span>{r.format}</span>
+                  {r.status === 'done' && (
+                    <a
+                      href={reportApi.downloadUrl(r.id)}
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      下载
+                    </a>
+                  )}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
       ) : (
         <div className="ad-table-scroll ad-table-sticky">
           <Table

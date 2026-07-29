@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
-  Table, Input, Select, DatePicker, Button, Space, Tag, message,
+  Table, Input, Select, DatePicker, Button, Space, Tag, message, Pagination,
 } from 'antd';
 import { SearchOutlined, ReloadOutlined, CalendarOutlined, FileTextOutlined } from '@ant-design/icons';
 import { type Dayjs } from 'dayjs';
@@ -21,6 +21,7 @@ import {
 } from '@/api/cninfoReportApi';
 import type { CninfoReport, CninfoAdjunctType, CninfoReportDetail } from '@/types/cninfoReport';
 import { useDebounce } from '@/hooks/useDebounce';
+import { useIsMobile } from '@/hooks/useBreakpoint';
 import { clickableRow } from '@/utils/a11y';
 import { formatDateTime } from '@/utils/datetime';
 
@@ -129,9 +130,69 @@ const CNINFO_PAGE_STYLE = `
     -webkit-backdrop-filter: none;
   }
 }
+
+/* ---- Mobile (≤767px): table → hairline row-list (direction A) ---- */
+@media (max-width: 767px) {
+  .cninfo-reports__filters .filter-toolbar__filters {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    width: 100%;
+  }
+  .cninfo-reports__filters .filter-toolbar__filters::-webkit-scrollbar {
+    display: none;
+  }
+  .cninfo-reports__filters .filter-toolbar__filters > * {
+    flex: 0 0 auto;
+  }
+  .cninfo-reports__filters .ant-select { min-width: 130px; }
+  .cninfo-reports__filters .ant-picker { min-width: 230px; }
+  .cninfo-reports__filters .ant-input-affix-wrapper { min-width: 200px; }
+
+  .cninfo-mrow:active {
+    background: var(--bg-active);
+  }
+  .cninfo-mrow__main {
+    flex: 1 1 auto;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .cninfo-mrow__title {
+    font-size: var(--text-body-size);
+    font-weight: 500;
+    color: var(--text-primary);
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .cninfo-mrow__meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-1) var(--space-2);
+    font-size: var(--text-small-size);
+    color: var(--text-tertiary);
+  }
+  .cninfo-mrow__side {
+    flex-shrink: 0;
+    margin-left: auto;
+  }
+  .cninfo-reports__pagination {
+    display: flex;
+    justify-content: center;
+    margin-top: var(--space-3);
+  }
+}
 `;
 
 const formatDate = (v: string | null | undefined): string => formatDateTime(v);
+
+const extractionColor = (v: string): string =>
+  v === 'extracted' ? 'green' : v === 'failed' ? 'red' : v === 'downloaded' ? 'blue' : 'default';
 
 const EXTRACTION_LABEL: Record<string, string> = {
   pending: '待提取',
@@ -148,6 +209,7 @@ const formatBytes = (v: number | null | undefined): string => {
 };
 
 export default function CninfoReportsPage() {
+  const isMobile = useIsMobile();
   const [search, setSearch] = useState('');
   const [adjunctType, setAdjunctType] = useState<CninfoAdjunctType | undefined>();
   const [fiscalYear, setFiscalYear] = useState<number | undefined>();
@@ -259,8 +321,7 @@ export default function CninfoReportsPage() {
       dataIndex: 'extraction_status',
       width: 100,
       render: (v: string, record: CninfoReport) => {
-        const color =
-          v === 'extracted' ? 'green' : v === 'failed' ? 'red' : v === 'downloaded' ? 'blue' : 'default';
+        const color = extractionColor(v);
         return (
           <Space size={4} direction="vertical">
             <Tag color={color}>{EXTRACTION_LABEL[v] ?? v}</Tag>
@@ -320,7 +381,7 @@ export default function CninfoReportsPage() {
         </Panel>
       ) : null}
 
-      <FilterToolbar total={total}>
+      <FilterToolbar total={total} className="cninfo-reports__filters">
         <Input
           placeholder="搜索 ts_code (如 600519.SH)"
           allowClear
@@ -386,6 +447,46 @@ export default function CninfoReportsPage() {
             title="暂无符合条件的巨潮报告"
             description="尝试调整筛选条件或刷新数据"
           />
+        ) : isMobile ? (
+          /* Mobile: hairline row-list; row click opens the same detail
+             drawer as desktop rows. */
+          <>
+            <div className="row-list">
+              {items.map((r) => (
+                <div
+                  key={r.id}
+                  className="hairline-row hairline-row--clickable cninfo-mrow"
+                  {...clickableRow(() => handleOpenDetail(r.id), { role: 'button' })}
+                >
+                  <div className="cninfo-mrow__main">
+                    <div className="cninfo-mrow__title">{r.announcement_title}</div>
+                    <div className="cninfo-mrow__meta">
+                      <span className="tnum">{r.ts_code}</span>
+                      <Tag color={ADJUNCT_COLOR[r.adjunct_type] ?? 'default'}>
+                        {ADJUNCT_LABEL[r.adjunct_type] ?? r.adjunct_type}
+                      </Tag>
+                      {r.fiscal_year != null && <span className="tnum">{r.fiscal_year}</span>}
+                      <span>{formatDate(r.announcement_time)}</span>
+                    </div>
+                  </div>
+                  <div className="cninfo-mrow__side">
+                    <Tag color={extractionColor(r.extraction_status)}>
+                      {EXTRACTION_LABEL[r.extraction_status] ?? r.extraction_status}
+                    </Tag>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <Pagination
+              current={page}
+              pageSize={pageSize}
+              total={total}
+              onChange={setPage}
+              size="small"
+              showSizeChanger={false}
+              className="cninfo-reports__pagination"
+            />
+          </>
         ) : (
           <div className="ad-table-scroll ad-table-sticky">
             <Table

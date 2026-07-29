@@ -259,3 +259,86 @@
     transform: none;
   }
 }
+
+/* ── Mobile (≤767px): tables → hairline row-lists (direction A) ──
+   Desktop rules above are untouched; everything here only applies
+   under the mobile breakpoint. The signal detail drawer interaction
+   is preserved (row click opens the same drawer as desktop). */
+@media (max-width: 767px) {
+  /* Filter controls become a single-row horizontal scroller. */
+  .signal-dashboard__toolbar .filter-toolbar__filters {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    width: 100%;
+  }
+  .signal-dashboard__toolbar .filter-toolbar__filters::-webkit-scrollbar {
+    display: none;
+  }
+  .signal-dashboard__toolbar .filter-toolbar__filters > .ant-row {
+    flex-wrap: nowrap;
+    width: max-content;
+  }
+  .signal-dashboard__toolbar .filter-toolbar__filters .ant-col {
+    flex: 0 0 auto;
+    width: auto;
+    max-width: none;
+  }
+  .signal-dashboard__toolbar .ant-select {
+    min-width: 150px;
+  }
+  .signal-dashboard__toolbar .signal-dashboard__importance-filter {
+    width: 200px;
+  }
+
+  .signal-dashboard-mrow:active {
+    background: var(--bg-active);
+  }
+  .signal-dashboard-mrow__main {
+    flex: 1 1 auto;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .signal-dashboard-mrow__title {
+    font-size: var(--text-body-size);
+    font-weight: 500;
+    color: var(--text-primary);
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .signal-dashboard-mrow__meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-1) var(--space-2);
+    font-size: var(--text-small-size);
+    color: var(--text-tertiary);
+  }
+  .signal-dashboard-mrow__side {
+    flex-shrink: 0;
+    margin-left: auto;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 2px;
+  }
+  .signal-dashboard-mrow__strength {
+    font-family: var(--num-font);
+    font-size: var(--text-small-size);
+    color: var(--text-secondary);
+  }
+  .signal-dashboard-mrow__stars {
+    font-size: 10px;
+    line-height: 1;
+  }
+  .signal-dashboard__pagination {
+    display: flex;
+    justify-content: center;
+    margin-top: var(--space-3);
+  }
+}

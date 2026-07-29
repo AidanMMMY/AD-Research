@@ -12,11 +12,13 @@ import ThemeTag from '@/components/ThemeTag';
 import HelpTrigger from '@/components/HelpTrigger';
 import HelpPopover from '@/components/HelpPopover';
 import EmptyState from '@/components/EmptyState';
+import LoadingBlock from '@/components/LoadingBlock';
 import { useSettingsStore } from '@/stores/settings';
 import { useStrategies } from '@/hooks/useStrategies';
 import { useStrategyCatalog } from '@/hooks/useStrategyCatalog';
 import { useAIHelp } from '@/hooks/useAIHelp';
 import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
+import { useIsMobile } from '@/hooks/useBreakpoint';
 import { PlusOutlined, PlayCircleOutlined, DeleteOutlined, BookOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { buildStrategyListContext } from '@/utils/helpContext';
@@ -45,6 +47,7 @@ const FAMILY_LABELS: Record<string, string> = {
 
 export default function StrategyList() {
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
   const { open } = useAIHelp();
   const mode = useSettingsStore((s) => s.mode);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -222,6 +225,65 @@ export default function StrategyList() {
       />
 
       <Panel variant="default" padding="none">
+        {isMobile ? (
+          /* Mobile: hairline row-list with compact 回测/删除 actions
+             (the desktop table's two action buttons, row-sized). */
+          isLoading ? (
+            <LoadingBlock size="md" />
+          ) : (strategies || []).length === 0 ? (
+            <div className="ad-p-5">
+              <EmptyState
+                title="暂无自定义策略"
+                description="可点击右上角「新建策略」从模板创建第一个策略"
+              />
+            </div>
+          ) : (
+            <div className="row-list">
+              {(strategies || []).map((record: any) => {
+                const catalogEntry = catalogByType[record.strategy_type];
+                const label = catalogEntry?.name || record.strategy_type;
+                const family = catalogEntry?.family;
+                return (
+                  <div key={record.id} className="hairline-row strategy-mrow">
+                    <div className="strategy-mrow__main">
+                      <div className="strategy-mrow__title">{record.name}</div>
+                      <div className="strategy-mrow__meta">
+                        <ThemeTag variant="accent">{label}</ThemeTag>
+                        {family && family in FAMILY_LABELS && (
+                          <ThemeTag variant="default">{FAMILY_LABELS[family]}</ThemeTag>
+                        )}
+                        {record.is_active ? (
+                          <ThemeTag variant="success">启用</ThemeTag>
+                        ) : (
+                          <ThemeTag variant="default">禁用</ThemeTag>
+                        )}
+                      </div>
+                    </div>
+                    <div className="strategy-mrow__side">
+                      <Button
+                        size="small"
+                        icon={<PlayCircleOutlined />}
+                        onClick={() => navigate(`/backtests?strategy_id=${record.id}`)}
+                      >
+                        回测
+                      </Button>
+                      <Popconfirm
+                        title="删除策略将丢失全部历史回测与信号，确认删除？"
+                        okText="删除"
+                        cancelText="取消"
+                        okButtonProps={{ danger: true }}
+                        onConfirm={() => handleDelete(record.id)}
+                        {...antMotionProps}
+                      >
+                        <Button size="small" danger icon={<DeleteOutlined />} />
+                      </Popconfirm>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )
+        ) : (
         <div className={tableWrapClass}>
           <Table
             dataSource={strategies}
@@ -243,6 +305,7 @@ export default function StrategyList() {
             }}
           />
         </div>
+        )}
       </Panel>
 
       <Modal

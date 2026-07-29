@@ -3,3 +3,74 @@
    ETLStatus Page Styles — page uses shared components and utility classes;
    this file serves as the page-scoped stylesheet for future additions.
    ========================================================================== */
+
+/* ---- Mobile (≤767px): table → hairline row-list (direction A) ---- */
+@media (max-width: 767px) {
+  /* Filter controls become a single-row horizontal scroller. */
+  .etl-status__filters .filter-toolbar__filters {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    width: 100%;
+  }
+  .etl-status__filters .filter-toolbar__filters::-webkit-scrollbar {
+    display: none;
+  }
+  .etl-status__filters .filter-toolbar__filters > * {
+    flex: 0 0 auto;
+  }
+  .etl-status__filters .ant-input-affix-wrapper,
+  .etl-status__filters .admin-filter-input {
+    min-width: 180px;
+  }
+  .etl-status__filters .ant-select,
+  .etl-status__filters .admin-filter-select {
+    min-width: 130px;
+  }
+
+  .etl-mrow__main {
+    flex: 1 1 auto;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .etl-mrow__title {
+    font-size: var(--text-body-size);
+    font-weight: 500;
+    color: var(--text-primary);
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .etl-mrow__meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-1) var(--space-2);
+    font-size: var(--text-small-size);
+    color: var(--text-tertiary);
+  }
+  .etl-mrow__error {
+    color: var(--color-error, #dc2626);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 100%;
+  }
+  .etl-mrow__side {
+    flex-shrink: 0;
+    margin-left: auto;
+    font-family: var(--num-font);
+    font-size: var(--text-body-size);
+    font-weight: 600;
+    color: var(--text-secondary);
+  }
+  .etl-status__pagination {
+    display: flex;
+    justify-content: center;
+    margin-top: var(--space-3);
+  }
+}

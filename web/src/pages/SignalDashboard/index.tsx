@@ -2,7 +2,7 @@ import './styles.css';
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Table, Select, Row, Col, Space, Slider, Tooltip, message } from 'antd';
+import { Table, Select, Row, Col, Space, Slider, Tooltip, message, Pagination } from 'antd';
 import {
   CaretUpOutlined,
   CaretDownOutlined,
@@ -25,6 +25,7 @@ import SignalDetailDrawer from '@/components/SignalDetailDrawer';
 import ExportButton from '@/components/ExportButton';
 import { useSignals } from '@/hooks/useSignals';
 import { useAIHelp } from '@/hooks/useAIHelp';
+import { useIsMobile } from '@/hooks/useBreakpoint';
 import { clickableRow, clickableProps } from '@/utils/a11y';
 import { buildSignalDashboardContext } from '@/utils/helpContext';
 import { getQuickQuestions } from '@/utils/helpPrompts';
@@ -123,13 +124,35 @@ function formatSummary(value: string | null, max = 120): string {
   return trimmed.length > max ? `${trimmed.slice(0, max)}…` : trimmed;
 }
 
+/** 5-star importance indicator, shared by the desktop column and the
+ *  mobile row-list side column. */
+function ImportanceStars({ value }: { value: number | null }) {
+  const filled = value ? Math.max(0, Math.min(5, value)) : 0;
+  return (
+    <span className="signal-dashboard__importance" aria-label={`重要性 ${filled} / 5`}>
+      {Array.from({ length: 5 }).map((_, i) => (
+        <StarFilled
+          key={i}
+          className={`signal-dashboard__star ${i < filled ? 'signal-dashboard__star--filled' : 'signal-dashboard__star--empty'}`}
+          aria-hidden="true"
+        />
+      ))}
+    </span>
+  );
+}
+
 export default function SignalDashboard() {
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
   const { data: signals, isLoading, dataUpdatedAt } = useSignals();
   const { open } = useAIHelp();
   const [familyFilter, setFamilyFilter] = useState<string>('all');
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [selectedSignal, setSelectedSignal] = useState<Signal | null>(null);
+  // Client-side pagination state for the mobile row-lists (desktop
+  // tables keep their own built-in pagination).
+  const [signalPage, setSignalPage] = useState(1);
+  const [eventPage, setEventPage] = useState(1);
 
   // Event signals state and filters
   const [eventCategoryFilter, setEventCategoryFilter] = useState<string>('all');
@@ -194,6 +217,26 @@ export default function SignalDashboard() {
   const buyCount = filteredItems.filter((s) => s.signal_type === 'BUY').length;
   const sellCount = filteredItems.filter((s) => s.signal_type === 'SELL').length;
   const holdCount = filteredItems.filter((s) => s.signal_type === 'HOLD').length;
+
+  // Mobile row-lists paginate client-side (desktop tables paginate
+  // internally). Clamp the page so filtering can't leave an empty view.
+  const MOBILE_PAGE_SIZE = 20;
+  const safeSignalPage = Math.min(
+    signalPage,
+    Math.max(1, Math.ceil(filteredItems.length / MOBILE_PAGE_SIZE)),
+  );
+  const pagedSignals = filteredItems.slice(
+    (safeSignalPage - 1) * MOBILE_PAGE_SIZE,
+    safeSignalPage * MOBILE_PAGE_SIZE,
+  );
+  const safeEventPage = Math.min(
+    eventPage,
+    Math.max(1, Math.ceil(filteredEventSignals.length / MOBILE_PAGE_SIZE)),
+  );
+  const pagedEventSignals = filteredEventSignals.slice(
+    (safeEventPage - 1) * MOBILE_PAGE_SIZE,
+    safeEventPage * MOBILE_PAGE_SIZE,
+  );
 
   const handleGenerateSignal = async (signal: EventSignal, symbol: string) => {
     try {
@@ -314,20 +357,7 @@ export default function SignalDashboard() {
       title: '重要性',
       dataIndex: 'importance',
       width: 110,
-      render: (v: number | null) => {
-        const filled = v ? Math.max(0, Math.min(5, v)) : 0;
-        return (
-          <span className="signal-dashboard__importance" aria-label={`重要性 ${filled} / 5`}>
-            {Array.from({ length: 5 }).map((_, i) => (
-              <StarFilled
-                key={i}
-                className={`signal-dashboard__star ${i < filled ? 'signal-dashboard__star--filled' : 'signal-dashboard__star--empty'}`}
-                aria-hidden="true"
-              />
-            ))}
-          </span>
-        );
-      },
+      render: (v: number | null) => <ImportanceStars value={v} />,
     },
     {
       title: '信号方向',
@@ -485,7 +515,7 @@ export default function SignalDashboard() {
               </>
             }
           >
-            <FilterToolbar total={filteredItems.length}>
+            <FilterToolbar total={filteredItems.length} className="signal-dashboard__toolbar">
               <Row gutter={[12, 12]}>
                 <Col xs={12} sm={8} md={6}>
                   <Select
@@ -510,6 +540,58 @@ export default function SignalDashboard() {
             </FilterToolbar>
           </ContextHint>
 
+          {isMobile ? (
+            /* Mobile: hairline row-list. Row click opens the same
+               SignalDetailDrawer as desktop rows. */
+            <>
+              <div className="row-list">
+                {pagedSignals.map((record) => (
+                  <div
+                    key={record.id}
+                    className="hairline-row hairline-row--clickable signal-dashboard-mrow"
+                    {...clickableRow(() => setSelectedSignal(record), { role: 'button' })}
+                  >
+                    <div className="signal-dashboard-mrow__main">
+                      <div className="signal-dashboard-mrow__title">
+                        <InstrumentCodeTag
+                          code={record.etf_code}
+                          name={record.etf_name}
+                          name_zh={record.name_zh}
+                        />
+                      </div>
+                      <div className="signal-dashboard-mrow__meta">
+                        <span className="tnum">{record.trade_date}</span>
+                        {record.strategy_type && (
+                          <span>{FAMILY_LABELS[record.strategy_type] ?? record.strategy_type}</span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="signal-dashboard-mrow__side">
+                      <ThemeTag variant={SIGNAL_VARIANTS[record.signal_type]}>
+                        {SIGNAL_ICONS[record.signal_type]}
+                        <span>{SIGNAL_LABELS[record.signal_type] || record.signal_type}</span>
+                      </ThemeTag>
+                      <span className="signal-dashboard-mrow__strength tnum">
+                        强度 {record.strength}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+                {filteredItems.length === 0 && !isLoading && (
+                  <EmptyState title="暂无信号" description="当前没有符合条件的交易信号" />
+                )}
+              </div>
+              <Pagination
+                current={safeSignalPage}
+                pageSize={MOBILE_PAGE_SIZE}
+                total={filteredItems.length}
+                onChange={setSignalPage}
+                size="small"
+                showSizeChanger={false}
+                className="signal-dashboard__pagination"
+              />
+            </>
+          ) : (
           <div className="ad-table-scroll">
             <Table
               dataSource={filteredItems}
@@ -528,6 +610,7 @@ export default function SignalDashboard() {
               onRow={(record) => clickableRow(() => setSelectedSignal(record))}
             />
           </div>
+          )}
         </Panel>
       </div>
 
@@ -559,7 +642,7 @@ export default function SignalDashboard() {
               </>
             }
           >
-            <FilterToolbar total={filteredEventSignals.length}>
+            <FilterToolbar total={filteredEventSignals.length} className="signal-dashboard__toolbar">
               <Row gutter={[12, 12]} align="middle">
                 <Col xs={12} sm={8} md={5}>
                   <Select
@@ -596,6 +679,84 @@ export default function SignalDashboard() {
             </FilterToolbar>
           </ContextHint>
 
+          {isMobile ? (
+            /* Mobile: hairline row-list. Row click opens the original
+               article (same as desktop row click); 生成 stays as an
+               inline action in the meta line. */
+            <>
+              <div className="row-list">
+                {pagedEventSignals.map((record) => {
+                  const firstSymbol = record.symbols[0]?.symbol;
+                  return (
+                    <div
+                      key={record.id}
+                      className="hairline-row hairline-row--clickable signal-dashboard-mrow"
+                      {...clickableRow(
+                        () => {
+                          if (record.url) {
+                            window.open(record.url, '_blank', 'noopener,noreferrer');
+                          }
+                        },
+                        { role: 'link' },
+                      )}
+                    >
+                      <div className="signal-dashboard-mrow__main">
+                        <div className="signal-dashboard-mrow__title">{record.title}</div>
+                        <div className="signal-dashboard-mrow__meta">
+                          <ThemeTag variant="accent">
+                            {record.event_category
+                              ? EVENT_CATEGORY_LABELS[record.event_category] || record.event_category
+                              : '未分类'}
+                          </ThemeTag>
+                          <span>{record.source}</span>
+                          <span>{formatRelative(record.published_at)}</span>
+                          <span
+                            role="button"
+                            tabIndex={0}
+                            className="signal-dashboard__generate-link"
+                            {...clickableProps((e) => {
+                              e.stopPropagation();
+                              if (firstSymbol) {
+                                handleGenerateSignal(record, firstSymbol);
+                              } else {
+                                message.warning('该事件未关联标的');
+                              }
+                            })}
+                          >
+                            <ThunderboltOutlined /> 生成
+                          </span>
+                        </div>
+                      </div>
+                      <div className="signal-dashboard-mrow__side">
+                        <ThemeTag variant={DIRECTION_VARIANTS[record.signal_direction]}>
+                          {DIRECTION_ICONS[record.signal_direction]}
+                          <span>{DIRECTION_LABELS[record.signal_direction]}</span>
+                        </ThemeTag>
+                        <span className="signal-dashboard-mrow__stars">
+                          <ImportanceStars value={record.importance} />
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+                {filteredEventSignals.length === 0 && !eventSignalsLoading && (
+                  <EmptyState
+                    title="暂无事件信号"
+                    description="当前没有符合条件的事件驱动信号，请调整筛选或稍后重试"
+                  />
+                )}
+              </div>
+              <Pagination
+                current={safeEventPage}
+                pageSize={MOBILE_PAGE_SIZE}
+                total={filteredEventSignals.length}
+                onChange={setEventPage}
+                size="small"
+                showSizeChanger={false}
+                className="signal-dashboard__pagination"
+              />
+            </>
+          ) : (
           <div className="ad-table-scroll">
             <Table
               dataSource={filteredEventSignals}
@@ -622,6 +783,7 @@ export default function SignalDashboard() {
               }
             />
           </div>
+          )}
         </Panel>
       </div>
 

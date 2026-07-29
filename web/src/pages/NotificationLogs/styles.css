@@ -1,26 +1,18 @@
 /* ============================================================
-   BacktestList Page Styles
-   Co-located CSS for the Backtest Management list page.
+   NotificationLogs Page Styles
+   Co-located CSS for the notification send-log page.
    ============================================================ */
-
-/* ---- Full-width Form Input ---- */
-.ad-form-input--full {
-  width: 100%;
-}
 
 /* ---- Mobile (≤767px): table → hairline row-list (direction A) ---- */
 @media (max-width: 767px) {
-  .backtest-mrow:active {
-    background: var(--bg-active);
-  }
-  .backtest-mrow__main {
+  .notification-mrow__main {
     flex: 1 1 auto;
     min-width: 0;
     display: flex;
     flex-direction: column;
     gap: 2px;
   }
-  .backtest-mrow__title {
+  .notification-mrow__title {
     font-size: var(--text-body-size);
     font-weight: 500;
     color: var(--text-primary);
@@ -29,7 +21,7 @@
     -webkit-box-orient: vertical;
     overflow: hidden;
   }
-  .backtest-mrow__meta {
+  .notification-mrow__meta {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
@@ -37,26 +29,23 @@
     font-size: var(--text-small-size);
     color: var(--text-tertiary);
   }
-  .backtest-mrow__side {
+  .notification-mrow__error {
+    color: var(--color-error, #dc2626);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 100%;
+  }
+  .notification-mrow__side {
     flex-shrink: 0;
     margin-left: auto;
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    gap: 2px;
-  }
-  .backtest-mrow__return {
-    font-size: var(--text-body-size);
-    font-weight: 600;
-  }
-  .backtest-mrow__dd {
+    font-family: var(--num-font);
     font-size: var(--text-small-size);
     color: var(--text-tertiary);
   }
-  .backtest-list__pagination {
+  .notification-logs__pagination {
     display: flex;
     justify-content: center;
     margin-top: var(--space-3);
   }
 }
-

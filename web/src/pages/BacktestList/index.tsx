@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import {
-  Table, Button, Modal, Form, Select, DatePicker, InputNumber, Space, message,
+  Table, Button, Modal, Form, Select, DatePicker, InputNumber, Space, message, Pagination,
 } from 'antd';
 import './styles.css';
 import PageShell from '@/components/PageShell';
@@ -8,10 +8,13 @@ import PageHeader from '@/components/PageHeader';
 import FilterToolbar from '@/components/FilterToolbar';
 import Panel from '@/components/Panel';
 import EmptyState from '@/components/EmptyState';
+import LoadingBlock from '@/components/LoadingBlock';
 import { useBacktests } from '@/hooks/useBacktests';
 import { useStrategies } from '@/hooks/useStrategies';
 import { useInstrumentList } from '@/hooks/useInstrumentList';
 import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
+import { useIsMobile } from '@/hooks/useBreakpoint';
+import { clickableRow } from '@/utils/a11y';
 import { PlusOutlined, EyeOutlined } from '@ant-design/icons';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import dayjs from 'dayjs';
@@ -20,8 +23,10 @@ import type { InstrumentInfo } from '@/types/instrument';
 
 export default function BacktestList() {
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
   const [searchParams] = useSearchParams();
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [btPage, setBtPage] = useState(1);
   const [form] = Form.useForm();
   // Apple Design #14: under reduced motion, suppress antd's default zoom
   // keyframe so the modal opens/closes with an instant cut instead.
@@ -58,6 +63,18 @@ export default function BacktestList() {
     label: `${item.code} ${item.name}`,
     value: item.code,
   }));
+
+  // Mobile row-list paginates client-side (desktop table paginates
+  // internally). Clamp the page so a shrinking list can't strand the view.
+  const MOBILE_PAGE_SIZE = 20;
+  const safeBtPage = Math.min(
+    btPage,
+    Math.max(1, Math.ceil(displayedBacktests.length / MOBILE_PAGE_SIZE)),
+  );
+  const pagedBacktests = displayedBacktests.slice(
+    (safeBtPage - 1) * MOBILE_PAGE_SIZE,
+    safeBtPage * MOBILE_PAGE_SIZE,
+  );
 
   interface BacktestCreateFormValues {
     strategy_id: number;
@@ -189,6 +206,65 @@ export default function BacktestList() {
               }
             />
           </div>
+        ) : isMobile ? (
+          /* Mobile: hairline row-list; row click navigates to the same
+             backtest detail page as the desktop 详情 button. */
+          <>
+            {isLoading ? (
+              <LoadingBlock size="md" />
+            ) : (
+              <div className="row-list">
+                {pagedBacktests.map((record) => {
+                  const r = record.metrics?.total_return;
+                  const returnCls =
+                    r == null
+                      ? 'paper-pnl--neutral'
+                      : r > 0
+                        ? 'paper-pnl--rise'
+                        : r < 0
+                          ? 'paper-pnl--fall'
+                          : 'paper-pnl--neutral';
+                  const dd = record.metrics?.max_drawdown;
+                  return (
+                    <div
+                      key={record.id}
+                      className="hairline-row hairline-row--clickable backtest-mrow"
+                      {...clickableRow(() => navigate(`/backtests/${record.id}`), { role: 'link' })}
+                    >
+                      <div className="backtest-mrow__main">
+                        <div className="backtest-mrow__title">
+                          {strategyNameById.get(record.strategy_id) || `#${record.strategy_id}`}
+                        </div>
+                        <div className="backtest-mrow__meta">
+                          <span className="tnum">{record.etf_code || '-'}</span>
+                          <span className="tnum">
+                            {record.start_date} ~ {record.end_date}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="backtest-mrow__side">
+                        <span className={`tnum backtest-mrow__return ${returnCls}`}>
+                          {r == null ? '-' : `${r.toFixed(2)}%`}
+                        </span>
+                        <span className="tnum backtest-mrow__dd">
+                          回撤 {dd == null ? '-' : `${dd.toFixed(2)}%`}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+            <Pagination
+              current={safeBtPage}
+              pageSize={MOBILE_PAGE_SIZE}
+              total={displayedBacktests.length}
+              onChange={setBtPage}
+              size="small"
+              showSizeChanger={false}
+              className="backtest-list__pagination"
+            />
+          </>
         ) : (
           <div className={tableWrapClass}>
             <Table

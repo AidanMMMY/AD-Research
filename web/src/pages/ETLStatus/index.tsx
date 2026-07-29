@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Table, Select, Input } from 'antd';
+import { Table, Select, Input, Pagination } from 'antd';
 import { useQuery } from '@tanstack/react-query';
 import { etlApi } from '@/api/etl';
 import PageShell from '@/components/PageShell';
@@ -7,9 +7,12 @@ import PageHeader from '@/components/PageHeader';
 import Panel from '@/components/Panel';
 import SectionHeading from '@/components/SectionHeading';
 import FilterToolbar from '@/components/FilterToolbar';
+import EmptyState from '@/components/EmptyState';
+import LoadingBlock from '@/components/LoadingBlock';
 import './styles.css';
 import StatusTag from '@/components/StatusTag';
 import { useDebounce } from '@/hooks/useDebounce';
+import { useIsMobile } from '@/hooks/useBreakpoint';
 import { formatDateTime } from '@/utils/datetime';
 
 const STATUS_OPTIONS = [
@@ -22,8 +25,12 @@ const STATUS_OPTIONS = [
 ];
 
 export default function ETLStatus() {
+  const isMobile = useIsMobile();
   const [status, setStatus] = useState('');
   const [jobName, setJobName] = useState('');
+  // Mobile row-list paginates client-side (desktop table paginates
+  // internally over the same ≤50-item payload).
+  const [etlPage, setEtlPage] = useState(1);
   // Apple Design #1 Response — debounce the query so each keystroke doesn't
   // fire a request; only the settled value (after 300 ms of idle) hits the
   // network, keeping the input feel instant while saving the backend.
@@ -85,7 +92,7 @@ export default function ETLStatus() {
 
       <SectionHeading title="近期 ETL 日志" />
       <Panel variant="default" padding="md">
-        <FilterToolbar>
+        <FilterToolbar className="etl-status__filters">
           <Input
             placeholder="任务名称"
             value={jobName}
@@ -103,6 +110,50 @@ export default function ETLStatus() {
           />
         </FilterToolbar>
 
+        {isMobile ? (
+          /* Mobile: hairline row-list (read-only log rows, matching
+             desktop's non-clickable rows). */
+          isLoading ? (
+            <LoadingBlock size="md" />
+          ) : (data?.items || []).length === 0 ? (
+            <EmptyState title="暂无 ETL 日志" description="当前没有符合条件的管道运行记录" />
+          ) : (
+            <>
+              <div className="row-list">
+                {(data?.items || [])
+                  .slice((etlPage - 1) * 20, etlPage * 20)
+                  .map((r: any) => (
+                    <div key={r.id} className="hairline-row etl-mrow">
+                      <div className="etl-mrow__main">
+                        <div className="etl-mrow__title">{r.job_name}</div>
+                        <div className="etl-mrow__meta">
+                          <StatusTag status={r.status} />
+                          <span>{formatDateTime(r.start_time)}</span>
+                          {r.error_msg && (
+                            <span className="etl-mrow__error" title={r.error_msg}>
+                              {r.error_msg}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <div className="etl-mrow__side tnum">
+                        {r.records_count == null ? '-' : r.records_count.toLocaleString()}
+                      </div>
+                    </div>
+                  ))}
+              </div>
+              <Pagination
+                current={etlPage}
+                pageSize={20}
+                total={data?.items?.length ?? 0}
+                onChange={setEtlPage}
+                size="small"
+                showSizeChanger={false}
+                className="etl-status__pagination"
+              />
+            </>
+          )
+        ) : (
         <Table
           dataSource={data?.items || []}
           columns={columns}
@@ -111,6 +162,7 @@ export default function ETLStatus() {
           pagination={{ pageSize: 20 }}
           scroll={{ x: 'max-content' }}
         />
+        )}
       </Panel>
     </PageShell>
   );

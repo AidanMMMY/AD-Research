@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import {
-  Table, Input, Select, Button, Space, Tag, Row, Col, message, Spin,
+  Table, Input, Select, Button, Space, Tag, Row, Col, message, Spin, Pagination,
 } from 'antd';
 import { ReloadOutlined, SearchOutlined, FileTextOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
@@ -22,6 +22,8 @@ import {
 } from '@/api/secFilings';
 import type { SecFiling } from '@/api/secFilings';
 import { useDebounce } from '@/hooks/useDebounce';
+import { useIsMobile } from '@/hooks/useBreakpoint';
+import { clickableRow } from '@/utils/a11y';
 import './styles.css';
 
 const FORM_TYPES = ['10-K', '10-Q', '20-F', '20-F/A', '10-K/A', '10-Q/A'];
@@ -39,6 +41,7 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 export default function SECFilingsPage() {
+  const isMobile = useIsMobile();
   const [ticker, setTicker] = useState<string | undefined>();
   const [formType, setFormType] = useState<string | undefined>();
   const [searchText, setSearchText] = useState<string>('');
@@ -269,7 +272,7 @@ export default function SECFilingsPage() {
       )}
 
       <Panel variant="default" title="公告列表" className="ad-mt-5">
-        <div className="ad-mb-3 ad-flex ad-flex-wrap ad-gap-2">
+        <div className="ad-mb-3 ad-flex ad-flex-wrap ad-gap-2 sec-filings__chips">
           {(['all', 'pending', 'success', 'failed'] as const).map((key) => {
             const label =
               key === 'all' ? '全部' : key === 'pending' ? '待提取' : key === 'success' ? '已提取' : '失败';
@@ -293,6 +296,7 @@ export default function SECFilingsPage() {
 
         <FilterToolbar
           total={data?.total}
+          className="sec-filings__toolbar"
           extra={
             <Space>
               <Button onClick={handleReset}>重置</Button>
@@ -348,6 +352,55 @@ export default function SECFilingsPage() {
             title="暂无 SEC 公告"
             description="尝试调整筛选条件或同步 Ticker"
           />
+        ) : isMobile ? (
+          /* Mobile: hairline row-list; row click opens the filing on
+             SEC EDGAR (same target as the desktop 备案号 link). */
+          <>
+            <div className="row-list">
+              {visibleItems.map((row) => (
+                <div
+                  key={row.id}
+                  className="hairline-row hairline-row--clickable sec-filings-mrow"
+                  {...clickableRow(
+                    () => {
+                      if (row.filing_url) {
+                        window.open(row.filing_url, '_blank', 'noopener,noreferrer');
+                      }
+                    },
+                    { role: 'link' },
+                  )}
+                >
+                  <div className="sec-filings-mrow__main">
+                    <div className="sec-filings-mrow__title">
+                      {row.company_name ?? row.ticker}
+                    </div>
+                    <div className="sec-filings-mrow__meta">
+                      <span className="tnum">{row.ticker}</span>
+                      <Tag>{row.form_type}</Tag>
+                      <span className="tnum">{row.filing_date}</span>
+                    </div>
+                  </div>
+                  <div className="sec-filings-mrow__side">
+                    <Tag color={STATUS_COLORS[row.extraction_status] ?? 'default'}>
+                      {STATUS_LABELS[row.extraction_status] ?? row.extraction_status}
+                    </Tag>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <Pagination
+              current={page}
+              pageSize={pageSize}
+              total={data.total}
+              onChange={(p, ps) => {
+                setPage(p);
+                setPageSize(ps);
+              }}
+              size="small"
+              showSizeChanger={false}
+              className="sec-filings__pagination"
+            />
+          </>
         ) : (
           <div className="ad-table-scroll ad-table-sticky">
             <Table
