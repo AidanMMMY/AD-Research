@@ -377,3 +377,70 @@
     padding-top: var(--space-3);
   }
 }
+
+/* ============================================================
+   Mobile AI assistant FAB (方向 D, 2026-07-29)
+   ------------------------------------------------------------
+   Floating trigger for the global AI chat BottomSheet. Mobile
+   only (render-gated by useIsMobile; the ≥768px display:none is
+   the belt-and-suspenders guard, same pattern as BottomSheet).
+   z-index 1000 keeps it under the BottomSheet scrim (1001) so an
+   open sheet — chat or help — always covers it.
+   ============================================================ */
+
+.app-layout__ai-fab {
+  position: fixed;
+  right: var(--space-4);
+  bottom: calc(var(--space-4) + env(safe-area-inset-bottom, 0px));
+  z-index: 1000;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  border: none;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--accent);
+  color: var(--text-on-accent);
+  font-size: 22px;
+  cursor: pointer;
+  box-shadow: var(--shadow-lg);
+  touch-action: manipulation;
+  transition:
+    transform var(--transition-spring-fast),
+    box-shadow var(--transition-fast);
+}
+
+/* Pointer-down instant feedback — press, not release. */
+.app-layout__ai-fab:active {
+  transform: scale(0.94);
+}
+
+.app-layout__ai-fab:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+@media (hover: hover) {
+  .app-layout__ai-fab:hover {
+    transform: translateY(-2px);
+  }
+}
+
+@media (min-width: 768px) {
+  .app-layout__ai-fab {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-layout__ai-fab {
+    transition: none;
+  }
+
+  .app-layout__ai-fab:active,
+  .app-layout__ai-fab:hover {
+    transform: none;
+  }
+}

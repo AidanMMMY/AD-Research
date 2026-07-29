@@ -1,0 +1,70 @@
+/* AIHelpDrawer — mobile BottomSheet variant (方向 D, 2026-07-29).
+ *
+ * Only the sheet-specific overrides live here; the shared conversation
+ * styles (bubbles, markdown, tags, input) stay with the rest of the
+ * `.ai-drawer` block in styles/global/components-cleanup.css. Desktop
+ * rendering (right Drawer) does not touch any of these rules — every
+ * selector below is scoped to `--sheet` modifiers or the BottomSheet
+ * containers.
+ */
+
+/* Compact avatar/title inside the BottomSheet header (the sheet chrome
+   already provides grabber + close, so the header must stay slim). */
+.ai-drawer__title-row--sheet {
+  display: inline-flex;
+  gap: var(--space-2);
+}
+
+.ai-drawer__avatar--sheet {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--row-radius);
+  font-size: var(--text-body-size);
+}
+
+.ai-drawer__title--sheet {
+  font-size: var(--text-body-size);
+  line-height: 20px;
+}
+
+/* Mode/context tags move from the drawer header into the body top. */
+.ai-drawer__sheet-tags {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+
+/* Inside the sheet the body is the scroll container — the message list
+   must not create a nested scroll pane. */
+.ai-drawer__messages--sheet {
+  flex: none;
+  overflow: visible;
+  padding: 0;
+}
+
+.ai-drawer__messages--sheet .ai-drawer__empty {
+  margin-top: var(--space-6, 32px);
+}
+
+/* Quick-question block sits in the scrolled flow; the sheet body owns
+   the horizontal padding. */
+.ai-drawer__quick--sheet {
+  padding: var(--space-3) 0 0;
+}
+
+/* The alert's own margin would double up with the body padding. */
+.bottom-sheet__body .ai-drawer__alert {
+  margin: 0 0 var(--space-3);
+}
+
+/* Composer in the pinned sheet footer. The BottomSheet footer already
+   provides the top border, padding and safe-area inset; the global
+   mobile rule (`position: sticky` on .ai-drawer__input-row ≤767px) must
+   be neutralised — the footer is pinned by the sheet itself. */
+.bottom-sheet__footer .ai-drawer__input-row--sheet {
+  position: static;
+  padding: 0;
+  border-top: none;
+  background: transparent;
+}

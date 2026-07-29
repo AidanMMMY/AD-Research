@@ -404,6 +404,83 @@
   }
 }
 
+/* ---- Global sheet variant (方向 D, 2026-07-29) ----
+   Inside the BottomSheet the sheet body is the scroll container: the
+   message list flows naturally and the composer is a sticky footer
+   (last child + bottom: 0). No card chrome — the sheet is the surface. */
+.phase5c-chat-messages--sheet {
+  flex: none;
+  overflow: visible;
+  padding: 0;
+}
+
+.phase5c-chat-messages--sheet .phase5c-chat-empty {
+  /* The sheet body (not the messages pane) owns the height here. */
+  height: auto;
+  min-height: 40vh;
+  padding: var(--space-4) var(--space-2);
+}
+
+.phase5c-input-bar--sheet {
+  /* Sticky against the BottomSheet body scrollport; own safe-area
+     padding because it overlays the body's bottom padding when stuck. */
+  margin: var(--space-3) calc(-1 * var(--space-2)) 0;
+  padding: var(--space-3) var(--space-2)
+    calc(var(--space-3) + env(safe-area-inset-bottom, 0px));
+  border-radius: var(--card-radius) var(--card-radius) 0 0;
+}
+
+.phase5c-sheet-title {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.phase5c-sheet-title__icon {
+  color: var(--accent);
+}
+
+.phase5c-sheet-title__session {
+  font-size: var(--text-small-size);
+  font-weight: 400;
+  color: var(--text-tertiary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 40vw;
+}
+
+.phase5c-sheet-toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+
+.phase5c-sheet-toolbar > :last-child {
+  margin-left: auto;
+}
+
+/* One-tap bridge from the /chat page into the global sheet (mobile). */
+.phase5c-sheet-entry {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  margin-bottom: var(--space-3);
+  border: 1px solid var(--border-default);
+  border-radius: var(--card-radius);
+  background: var(--bg-elevated);
+}
+
+.phase5c-sheet-entry__hint {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--text-small-size);
+  color: var(--text-tertiary);
+}
+
 /* ---- Accessibility: reduced motion / reduced transparency ---- */
 @media (prefers-reduced-motion: reduce) {
   /* Cross-fade only: drop the entrance motion and all transforms. */

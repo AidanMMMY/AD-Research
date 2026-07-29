@@ -78,6 +78,8 @@ import { useFocusRestore } from '@/hooks/useFocusRestore';
 import OnboardingTour from '@/components/OnboardingTour';
 import PerformanceIndicator from '@/components/PerformanceIndicator';
 import CommandPalette from '@/components/CommandPalette';
+import AIChatSheet from '@/pages/AIChat/AIChatSheet';
+import { useAIChatSheetStore } from '@/pages/AIChat/aiChatSheetStore';
 import './AppLayout.css';
 
 const iconMap: Record<string, React.ComponentType> = {
@@ -531,6 +533,9 @@ export default function AppLayout() {
   const isMobile = useIsMobile();
   const navigate = useNavigate();
   const location = useLocation();
+  // 方向 D: global AI assistant sheet (mobile only) — the floating
+  // button below summons it from any page without leaving context.
+  const openAISheet = useAIChatSheetStore((s) => s.openSheet);
 
   // WCAG 2.4.3: when the mobile nav drawer closes (either via the scrim
   // tap, the Esc key, or by selecting a nav item), return focus to the
@@ -1013,6 +1018,24 @@ export default function AppLayout() {
 
       {/* K14: global onboarding tour, mounts only when not completed. */}
       <OnboardingTour />
+
+      {/* 方向 D (2026-07-29): mobile global AI assistant. The FAB sits
+          above the safe-area and below the BottomSheet scrim (z-index
+          1000 < 1001); hidden on /chat where the page itself is the
+          assistant and its own "浮层打开" entry takes over. The sheet is
+          mounted here so the conversation survives route changes. */}
+      {isMobile && location.pathname !== '/chat' && (
+        <button
+          type="button"
+          className="app-layout__ai-fab"
+          aria-label="打开 AI 助手对话"
+          aria-haspopup="dialog"
+          onClick={openAISheet}
+        >
+          <RobotOutlined aria-hidden="true" />
+        </button>
+      )}
+      {isMobile && <AIChatSheet />}
 
       {/* ⌘K command palette + global search (2026-07-16). */}
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />

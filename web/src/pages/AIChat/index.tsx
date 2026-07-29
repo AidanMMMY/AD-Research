@@ -1,140 +1,48 @@
-import { useState, useRef, useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Input, Button, List, Popconfirm, Tag } from 'antd';
-import './styles.css';
+import { useEffect, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { Button, List, Popconfirm } from 'antd';
 import {
   PlusOutlined,
   DeleteOutlined,
   RobotOutlined,
-  SendOutlined,
-  HeartOutlined,
 } from '@ant-design/icons';
-import { chatApi, ChatSession, ChatMessage } from '@/api/chat';
+import type { ChatSession } from '@/api/chat';
 import AISetupBanner from '@/components/AISetupBanner';
 import PageShell from '@/components/PageShell';
 import EmptyState from '@/components/EmptyState';
 import PageHeader from '@/components/PageHeader';
-import StepProgress from '@/components/StepProgress';
 import LoadingBlock from '@/components/LoadingBlock';
-import { useStepStream } from '@/hooks/useStepStream';
 import { useIsMobile } from '@/hooks/useBreakpoint';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
+import AIChatConversation from './AIChatConversation';
+import { useAIChatController } from './useAIChatController';
+import { useAIChatSheetStore } from './aiChatSheetStore';
 
-const QUICK_PROMPTS = [
-  { label: '分析 AAPL 的散户情绪', prompt: '请分析 AAPL 最近 7 日的散户情绪与多空比' },
-  { label: '今日热点解读', prompt: '请总结今日 importance ≥ 4 的热点资讯' },
-  { label: '自选股舆情', prompt: '我自选股的最新舆情和情绪如何？' },
-];
-
+/**
+ * /chat — the AI assistant full page.
+ *
+ * Desktop: sessions sidebar + conversation (unchanged). Mobile: the page
+ * stays for deep links (/chat?symbol=…) and session management, while
+ * day-to-day chatting moves to the global BottomSheet (方向 D) — the
+ * banner below offers one tap into that sheet mode. Both surfaces share
+ * one controller state (active session + draft via useAIChatSheetStore,
+ * messages via react-query), so switching between them is seamless.
+ */
 export default function AIChat() {
   const isMobile = useIsMobile();
-  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const symbolFromUrl = searchParams.get('symbol');
-  const [activeSession, setActiveSession] = useState<number | null>(null);
-  const [input, setInput] = useState('');
-  const [sending, setSending] = useState(false);
   const [firstMessageSent, setFirstMessageSent] = useState(false);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-  const queryClient = useQueryClient();
-
-  const STEP_DEFS = [
-    { id: 'fetch', label: '准备上下文' },
-    { id: 'llm', label: '调用大模型' },
-    { id: 'stream', label: '生成回答' },
-  ];
-  const { steps, streamedText, start, finish, reset, appendStreamed } = useStepStream(STEP_DEFS);
-
-  const { data: sessions, isLoading: sessionsLoading } = useQuery({
-    queryKey: ['chat-sessions'],
-    queryFn: () => chatApi.listSessions().then((r) => r.data),
-  });
-
-  const { data: messages, isLoading: messagesLoading } = useQuery({
-    queryKey: ['chat-messages', activeSession],
-    queryFn: () =>
-      activeSession
-        ? chatApi.getMessages(activeSession).then((r) => r.data)
-        : Promise.resolve([]),
-    enabled: !!activeSession,
-  });
-
-  const createMutation = useMutation({
-    mutationFn: () => chatApi.createSession('新对话'),
-    onSuccess: (resp) => {
-      queryClient.invalidateQueries({ queryKey: ['chat-sessions'] });
-      setActiveSession(resp.data.id);
-    },
-  });
-
-  const deleteMutation = useMutation({
-    mutationFn: (id: number) => chatApi.deleteSession(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['chat-sessions'] });
-      if (activeSession) {
-        setActiveSession(null);
-      }
-    },
-  });
-
-  const handleSend = async (override?: string) => {
-    const content = override ?? input;
-    if (!content.trim() || sending) return;
-    if (override === undefined) {
-      setInput('');
-    }
-    setSending(true);
-    reset(STEP_DEFS);
-    try {
-      // Empty-state first message: no session yet — create one on the fly
-      // before streaming, so the input bar works without a sidebar click.
-      let sessionId = activeSession;
-      if (!sessionId) {
-        const resp = await createMutation.mutateAsync();
-        sessionId = resp.data.id;
-      }
-      start('fetch');
-      await new Promise((r) => setTimeout(r, 120));
-      finish('fetch', 'done');
-      start('llm');
-      // Real SSE stream — parses meta/delta/done frames server-side.
-      let receivedContent = false;
-      await new Promise<void>((resolve, reject) => {
-        chatApi.streamMessage(sessionId!, content, {
-          onDelta: (chunk) => {
-            receivedContent = true;
-            appendStreamed(chunk);
-          },
-          onDone: () => {
-            finish('llm', 'done');
-            finish('stream', 'done');
-            resolve();
-          },
-          onError: (err) => {
-            finish('llm', 'error');
-            // If no chunks arrived, fall back to the legacy POST.
-            if (!receivedContent) {
-              chatApi.sendMessage(sessionId!, content)
-                .then((res) => {
-                  appendStreamed(res.data.content);
-                  finish('stream', 'done');
-                  resolve();
-                })
-                .catch(() => reject(new Error(err.error)));
-              return;
-            }
-            resolve();
-          },
-        }).catch(reject);
-      });
-      queryClient.invalidateQueries({ queryKey: ['chat-messages', sessionId] });
-    } catch {
-      finish('llm', 'error');
-    }
-    setSending(false);
-  };
+  const openSheet = useAIChatSheetStore((s) => s.openSheet);
+  const controller = useAIChatController();
+  const {
+    sessions,
+    sessionsLoading,
+    activeSession,
+    setActiveSession,
+    createMutation,
+    deleteMutation,
+    handleSend,
+  } = controller;
 
   // ── Auto-trigger first message when arriving via ?symbol=... ──────────
   // Flow:
@@ -142,6 +50,10 @@ export default function AIChat() {
   //   2. If we don't yet have a session, create one (and wait for its id).
   //   3. Once a session is active, push `帮我看看 <symbol>` automatically.
   // `firstMessageSent` is a per-mount latch so we only fire once per arrival.
+  const handleSendRef = useRef(handleSend);
+  useEffect(() => {
+    handleSendRef.current = handleSend;
+  });
   useEffect(() => {
     if (!symbolFromUrl) return;
     if (firstMessageSent) return;
@@ -153,22 +65,11 @@ export default function AIChat() {
       return;
     }
     setFirstMessageSent(true);
-    void handleSend(`帮我看看 ${symbolFromUrl}`);
-    // We intentionally exclude `handleSend` from deps to avoid re-firing;
-    // `activeSession` is the stable signal we care about.
+    void handleSendRef.current(`帮我看看 ${symbolFromUrl}`);
+    // `activeSession` is the stable signal we care about; handleSend goes
+    // through a ref so a re-created closure never re-fires the effect.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeSession, symbolFromUrl]);
-
-  // Auto-scroll to bottom on new messages
-  useEffect(() => {
-    const reducedMotion =
-      typeof window !== 'undefined' &&
-      typeof window.matchMedia === 'function' &&
-      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    messagesEndRef.current?.scrollIntoView({
-      behavior: reducedMotion ? 'auto' : 'smooth',
-    });
-  }, [messages]);
 
   // Show session sidebar on desktop; toggle on mobile
   const showSidebar = !isMobile || !activeSession;
@@ -223,132 +124,6 @@ export default function AIChat() {
     </div>
   );
 
-  const chatArea = (
-    <div className="phase5c-chat-area">
-      {/* Mobile back button */}
-      {isMobile && activeSession && (
-        <div className="phase5c-mobile-back">
-          <Button type="text" onClick={() => setActiveSession(null)}>
-            ← 返回列表
-          </Button>
-        </div>
-      )}
-
-      {/* Messages */}
-      <div className="phase5c-chat-messages">
-        {!activeSession ? (
-          <div className="phase5c-chat-empty">
-            <RobotOutlined className="phase5c-empty-icon" />
-            <div className="phase5c-chat-empty__title">开始你的 AI 投研对话</div>
-            <div className="phase5c-chat-empty__desc">
-              点下面的建议问题直接开始，或在底部输入框提问
-            </div>
-            <div className="phase5c-chat-empty__prompts">
-              {QUICK_PROMPTS.map((s) => (
-                <button
-                  key={s.label}
-                  type="button"
-                  className="phase5c-chat-empty__prompt-card"
-                  onClick={() => void handleSend(s.prompt)}
-                  disabled={sending}
-                >
-                  <span className="phase5c-chat-empty__prompt-label">{s.label}</span>
-                  <span className="phase5c-chat-empty__prompt-text">{s.prompt}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-        ) : messagesLoading ? (
-          <LoadingBlock size="md" />
-        ) : (
-          messages?.map((msg: ChatMessage) => (
-            <div
-              key={msg.id}
-              className={`phase5c-message-row ${msg.role === 'user' ? 'phase5c-message-row--user' : 'phase5c-message-row--assistant'}`}
-            >
-              <div className={`phase5c-message-bubble ${msg.role === 'user' ? 'phase5c-message-bubble--user' : 'phase5c-message-bubble--assistant'}`}>
-                {msg.role === 'assistant' ? (
-                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                    {msg.content}
-                  </ReactMarkdown>
-                ) : (
-                  msg.content
-                )}
-              </div>
-            </div>
-          ))
-        )}
-        {sending && (
-          <div className="phase5c-message-row phase5c-message-row--assistant">
-            <div className="phase5c-message-bubble phase5c-message-bubble--streaming">
-              <StepProgress steps={steps} compact />
-              {streamedText && (
-                <div className="phase5c-streaming-divider">
-                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                    {streamedText}
-                  </ReactMarkdown>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-        <div ref={messagesEndRef} />
-      </div>
-
-      {/* Input — always rendered so the first message can be sent from the
-          empty state; handleSend creates the session on the fly. */}
-      <div className="phase5c-input-bar">
-        {/* Sentiment quick-prompt hint. Tells the user the assistant has
-            access to news/sentiment data and surfaces a clickable tag to
-            jump to the sentiment dashboard. */}
-        <div className="phase5c-quick-prompts">
-          <HeartOutlined className="phase5c-icon-rise" />
-          <span>AI 可访问资讯与情绪数据：</span>
-          {QUICK_PROMPTS.map((s) => (
-            <Tag
-              key={s.label}
-              className="phase5c-quick-tag"
-              onClick={() => setInput(s.prompt)}
-            >
-              {s.label}
-            </Tag>
-          ))}
-          <span className="phase5c-quick-prompts__spacer" />
-          <Tag
-            icon={<HeartOutlined />}
-            color="default"
-            className="phase5c-quick-tag"
-            onClick={() => navigate('/sentiment')}
-          >
-            打开情绪看板
-          </Tag>
-        </div>
-        <div className="phase5c-input-row">
-          <Input.TextArea
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onPressEnter={(e) => {
-              if (!e.shiftKey) {
-                e.preventDefault();
-                handleSend();
-              }
-            }}
-            placeholder="输入问题... (Shift+Enter换行，Enter发送)"
-            autoSize={{ minRows: 1, maxRows: 4 }}
-            disabled={sending}
-          />
-          <Button
-            type="primary"
-            icon={<SendOutlined />}
-            onClick={() => handleSend()}
-            loading={sending}
-            disabled={sending || !input.trim()}
-          />
-        </div>
-      </div>
-    </div>
-  );
-
   return (
     <PageShell maxWidth="wide">
       <AISetupBanner />
@@ -357,9 +132,36 @@ export default function AIChat() {
         title="AI 助手"
         description="多会话 AI 对话，支持 Markdown 与代码高亮"
       />
+      {/* 方向 D: on mobile the assistant primarily lives in the global
+          BottomSheet (reachable from any page via the floating button).
+          This entry opens it from /chat too — the conversation is shared,
+          so the user picks up right where the page left off. */}
+      {isMobile && (
+        <div className="phase5c-sheet-entry">
+          <span className="phase5c-sheet-entry__hint">
+            AI 助手已支持全局浮层 — 任意页面右下角一键唤起，不打断当前浏览
+          </span>
+          <Button
+            size="small"
+            type="primary"
+            ghost
+            icon={<RobotOutlined />}
+            onClick={openSheet}
+          >
+            浮层打开
+          </Button>
+        </div>
+      )}
       <div className="phase5c-chat-layout">
         {(showSidebar || !isMobile) && sidebar}
-        {(!showSidebar || !isMobile) && chatArea}
+        {(!showSidebar || !isMobile) && (
+          <AIChatConversation
+            controller={controller}
+            variant="page"
+            showBack={isMobile}
+            onBack={() => setActiveSession(null)}
+          />
+        )}
       </div>
     </PageShell>
   );

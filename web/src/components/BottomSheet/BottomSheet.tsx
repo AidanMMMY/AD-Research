@@ -62,6 +62,13 @@ export interface BottomSheetProps {
   onSnapChange?: (snap: SheetSnap) => void;
   /** Optional pinned footer (e.g. primary action row). */
   footer?: ReactNode;
+  /**
+   * Chat/keyboard surfaces (方向 D): track ``window.visualViewport`` so
+   * the content column shrinks when the on-screen keyboard opens — the
+   * footer/input rides just above the keyboard instead of disappearing
+   * behind it. Off by default; only enable for input-bearing sheets.
+   */
+  avoidKeyboard?: boolean;
   children: ReactNode;
 }
 
@@ -99,6 +106,7 @@ export default function BottomSheet({
   initialSnap,
   onSnapChange,
   footer,
+  avoidKeyboard = false,
   children,
 }: BottomSheetProps) {
   const titleId = useId();
@@ -154,12 +162,32 @@ export default function BottomSheet({
     if (el) el.style.height = `${px}px`;
   }, []);
 
+  /**
+   * Visible height of a detent. With ``avoidKeyboard`` the visual
+   * viewport is the reference: when the on-screen keyboard opens, iOS /
+   * Android shrink ``visualViewport.height`` while the layout viewport
+   * (and thus the parked sheet + translate math) stays put — so only the
+   * content column contracts and the footer/input lands just above the
+   * keyboard. Without the flag this is exactly ``innerHeight`` (the P3
+   * behaviour, unchanged for filter/quick sheets).
+   */
+  const visibleHeightFor = useCallback(
+    (snap: SheetSnap) => {
+      const vh =
+        avoidKeyboard && window.visualViewport
+          ? window.visualViewport.height
+          : window.innerHeight;
+      return vh * SNAP_FRACTION[snap];
+    },
+    [avoidKeyboard],
+  );
+
   const applyDetent = useCallback(
     (snap: SheetSnap) => {
       setTranslate(translateFor(snap));
-      setContentHeight(window.innerHeight * SNAP_FRACTION[snap]);
+      setContentHeight(visibleHeightFor(snap));
     },
-    [setTranslate, setContentHeight, translateFor],
+    [setTranslate, setContentHeight, translateFor, visibleHeightFor],
   );
 
   // ---- Open / close lifecycle (same enter/exit pattern as DetailDrawer) ----
@@ -202,7 +230,7 @@ export default function BottomSheet({
     if (!open) return;
     el.style.transition = 'none';
     setTranslate(sheetHeight() + 24);
-    setContentHeight(window.innerHeight * SNAP_FRACTION[detents[snapIndex] ?? detents[0]]);
+    setContentHeight(visibleHeightFor(detents[snapIndex] ?? detents[0]));
     let inner = 0;
     const outer = requestAnimationFrame(() => {
       inner = requestAnimationFrame(() => {
@@ -228,6 +256,22 @@ export default function BottomSheet({
     window.addEventListener('resize', onResize);
     return () => window.removeEventListener('resize', onResize);
   }, [mounted, leaving, snapIndex, detents, applyDetent]);
+
+  // Keyboard avoidance (方向 D): the on-screen keyboard shrinks the
+  // *visual* viewport without firing a window resize — re-apply the
+  // detent so the content column (and its pinned footer/input) hugs the
+  // keyboard instead of sliding behind it.
+  useEffect(() => {
+    if (!avoidKeyboard || !mounted || leaving) return;
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const onViewportResize = () => {
+      if (dragRef.current) return;
+      applyDetent(detents[snapIndex] ?? detents[0]);
+    };
+    vv.addEventListener('resize', onViewportResize);
+    return () => vv.removeEventListener('resize', onViewportResize);
+  }, [avoidKeyboard, mounted, leaving, snapIndex, detents, applyDetent]);
 
   // ESC closes the sheet while it is open.
   useEffect(() => {
