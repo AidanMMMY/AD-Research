@@ -7,7 +7,6 @@ import PageShell from '@/components/PageShell';
 import PageHeader from '@/components/PageHeader';
 import LoadingBlock from '@/components/LoadingBlock';
 import Panel from '@/components/Panel';
-import FilterToolbar from '@/components/FilterToolbar';
 import EmptyState from '@/components/EmptyState';
 import InstrumentSelector from '@/components/InstrumentSelector';
 import CorrelationHeatmap from '@/components/CorrelationHeatmap';
@@ -47,50 +46,51 @@ export default function CorrelationAnalysis() {
         description="分析多只标的之间的价格相关性，支持多种计算方法和时间窗口"
       />
       <Panel title="相关性分析配置" variant="default">
-        <FilterToolbar>
-          <Row gutter={[16, 16]}>
-            <Col xs={24} md={12}>
-              <InstrumentSelector
-                value={selectedCodes}
-                onChange={setSelectedCodes}
-                maxCount={20}
+        {/* No FilterToolbar here: the config grid has no toolbar meta, and
+            the toolbar's border-bottom would dangle at the panel bottom
+            (the heatmap lives in the next Panel). */}
+        <Row gutter={[16, 16]}>
+          <Col xs={24} md={12}>
+            <InstrumentSelector
+              value={selectedCodes}
+              onChange={setSelectedCodes}
+              maxCount={20}
+            />
+          </Col>
+          <Col xs={24} md={6}>
+            <div className="correlation-analysis__filter-group">
+              <div className="correlation-analysis__filter-label">
+                <HelpPopover termKey="time_range" mode={mode}>窗口期</HelpPopover>
+              </div>
+              <Select
+                value={window}
+                onChange={setWindow}
+                options={WINDOW_OPTIONS}
+                className="correlation-analysis__filter-select ad-w-full"
               />
-            </Col>
-            <Col xs={24} md={6}>
-              <div className="correlation-analysis__filter-group">
-                <div className="correlation-analysis__filter-label">
-                  <HelpPopover termKey="time_range" mode={mode}>窗口期</HelpPopover>
-                </div>
-                <Select
-                  value={window}
-                  onChange={setWindow}
-                  options={WINDOW_OPTIONS}
-                  className="correlation-analysis__filter-select ad-w-full"
-                />
+            </div>
+          </Col>
+          <Col xs={24} md={6}>
+            <div className="correlation-analysis__filter-group">
+              <div className="correlation-analysis__filter-label">
+                <HelpPopover termKey="correlation_method" mode={mode}>计算方法</HelpPopover>
               </div>
-            </Col>
-            <Col xs={24} md={6}>
-              <div className="correlation-analysis__filter-group">
-                <div className="correlation-analysis__filter-label">
-                  <HelpPopover termKey="correlation_method" mode={mode}>计算方法</HelpPopover>
-                </div>
-                <Select
-                  value={method}
-                  onChange={setMethod}
-                  options={METHOD_OPTIONS.map((opt) => ({
-                    ...opt,
-                    label: (
-                      <HelpPopover termKey={opt.value === 'pearson' ? 'pearson' : 'spearman'} mode={mode}>
-                        {opt.label}
-                      </HelpPopover>
-                    ),
-                  }))}
-                  className="correlation-analysis__filter-select ad-w-full"
-                />
-              </div>
-            </Col>
-          </Row>
-        </FilterToolbar>
+              <Select
+                value={method}
+                onChange={setMethod}
+                options={METHOD_OPTIONS.map((opt) => ({
+                  ...opt,
+                  label: (
+                    <HelpPopover termKey={opt.value === 'pearson' ? 'pearson' : 'spearman'} mode={mode}>
+                      {opt.label}
+                    </HelpPopover>
+                  ),
+                }))}
+                className="correlation-analysis__filter-select ad-w-full"
+              />
+            </div>
+          </Col>
+        </Row>
       </Panel>
 
       <Panel title="相关性热力图" variant="default">

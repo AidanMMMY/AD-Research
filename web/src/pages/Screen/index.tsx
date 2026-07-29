@@ -13,7 +13,6 @@ import { useDebounce } from '@/hooks/useDebounce';
 import PageShell from '@/components/PageShell';
 import Panel from '@/components/Panel';
 import PageHeader from '@/components/PageHeader';
-import FilterToolbar from '@/components/FilterToolbar';
 import { FilterSheetButton } from '@/components/BottomSheet';
 import EmptyState from '@/components/EmptyState';
 import HelpTrigger from '@/components/HelpTrigger';
@@ -205,9 +204,11 @@ export default function Screen() {
         {/* 第一层：快速筛选 */}
         <section className="screen-filter-section" aria-label="快速筛选">
           <div className="screen-filter-section__header">
-            <span className="screen-filter-section__title">
-              <HelpPopover termKey="screen_presets" mode={mode}>快速筛选</HelpPopover>
-            </span>
+            <div className="screen-filter-section__title-group">
+              <span className="screen-filter-section__title">
+                <HelpPopover termKey="screen_presets" mode={mode}>快速筛选</HelpPopover>
+              </span>
+            </div>
             <span className="screen-filter-section__hint">点击常用预设一键应用条件</span>
           </div>
           <div className="screen-presets">
@@ -227,38 +228,47 @@ export default function Screen() {
 
         {/* 第二层：详细筛选条件 — ContextHint anchors on the ⓘ icon next to
             the section title (click-triggered) so it never auto-pops over
-            the 评分模板 select below. */}
+            the 评分模板 select below. The result count lives on the right
+            side of this header row (was FilterToolbar's floating meta, which
+            wrapped onto the 基础 group row and looked like it belonged to
+            that group). */}
         <section className="screen-filter-section" aria-label="详细筛选">
           <div className="screen-filter-section__header">
-            <span className="screen-filter-section__title">详细筛选</span>
-            <ContextHint
-              hintId="screen-filter"
-              title="先选条件再查询"
-              placement="bottom"
-              trigger="click"
-              content={
-                <>
-                  选好市场 / 分类 / 评分阈值等条件后再点查询，比空着全部条件直接查能显著减少响应时间。结果表会用选股条件快速收敛到关注的几只标的。
-                </>
-              }
-            >
-              <Button
-                type="text"
-                size="small"
-                icon={<InfoCircleOutlined />}
-                aria-label="查看筛选说明"
-              />
-            </ContextHint>
+            <div className="screen-filter-section__title-group">
+              <span className="screen-filter-section__title">详细筛选</span>
+              <ContextHint
+                hintId="screen-filter"
+                title="先选条件再查询"
+                placement="bottom"
+                trigger="click"
+                content={
+                  <>
+                    选好市场 / 分类 / 评分阈值等条件后再点查询，比空着全部条件直接查能显著减少响应时间。结果表会用选股条件快速收敛到关注的几只标的。
+                  </>
+                }
+              >
+                <Button
+                  type="text"
+                  size="small"
+                  icon={<InfoCircleOutlined />}
+                  aria-label="查看筛选说明"
+                />
+              </ContextHint>
+            </div>
+            <span className="screen-filter-section__hint">
+              共 {(results?.count || 0).toLocaleString()} 只
+            </span>
           </div>
-          <FilterToolbar
-            data-onboard="filter-toolbar"
-            total={`共 ${results?.count || 0} 只`}
-          >
-            <div className="screen-filter-groups">
+          {/* Plain wrapper, not FilterToolbar: the toolbar's flex meta row
+              shrink-wraps the groups block and drops a dangling divider at
+              the panel bottom (the result table lives outside this Panel),
+              which read as inconsistent spacing above the table header.
+              data-onboard is kept for the onboarding tour target. */}
+          <div className="screen-filter-groups" data-onboard="filter-toolbar">
               {/* Group 1 — 基础：基础识别 (3 fields) */}
               <div className="screen-filter-group">
                 <div className="screen-filter-group__title">基础</div>
-                <Row gutter={[16, 12]}>
+                <Row gutter={[12, 12]}>
                   <Col xs={12} sm={8} md={6}>
                     <Select
                       aria-label="市场"
@@ -312,7 +322,7 @@ export default function Screen() {
               {/* Group 2 — 收益：1m / 3m / 1y 收益区间 (3 range pairs) */}
               <div className="screen-filter-group">
                 <div className="screen-filter-group__title">收益</div>
-                <Row gutter={[16, 12]}>
+                <Row gutter={[12, 12]}>
                   <Col xs={24} sm={12} md={8}>
                     <MinMaxPair
                       label="1月收益"
@@ -352,7 +362,7 @@ export default function Screen() {
               {/* Group 3 — 评分：评分 / RSI / 夏普 (3 range pairs) */}
               <div className="screen-filter-group">
                 <div className="screen-filter-group__title">评分</div>
-                <Row gutter={[16, 12]}>
+                <Row gutter={[12, 12]}>
                   <Col xs={24} sm={12} md={8}>
                     <MinMaxPair
                       label="评分"
@@ -391,7 +401,7 @@ export default function Screen() {
               {/* Group 4 — 风险：波动率 / 回撤 (2 range pairs) */}
               <div className="screen-filter-group">
                 <div className="screen-filter-group__title">风险</div>
-                <Row gutter={[16, 12]}>
+                <Row gutter={[12, 12]}>
                   <Col xs={24} sm={12} md={8}>
                     <MinMaxPair
                       label="波动率"
@@ -418,7 +428,6 @@ export default function Screen() {
                 </Row>
               </div>
             </div>
-          </FilterToolbar>
         </section>
     </>
   );

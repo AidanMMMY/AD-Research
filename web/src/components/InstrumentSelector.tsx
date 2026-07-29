@@ -111,7 +111,7 @@ export default function InstrumentSelector({
   return (
     <div>
       <div className="instrument-selector__label">
-        选择标的（{value.length}/{maxCount}）：
+        选择标的（{value.length}/{maxCount}）
       </div>
       <Select
         mode="multiple"
@@ -149,7 +149,7 @@ export default function InstrumentSelector({
 
       {(showPresets || showPoolImport || showClear) && (
         <div className="instrument-selector__presets">
-          <span className="instrument-selector__presets-label">快速选择：</span>
+          <span className="instrument-selector__presets-label">快速选择</span>
           <Space size={[8, 8]} wrap>
             {showPresets &&
               visiblePresetGroups.map((group) => (

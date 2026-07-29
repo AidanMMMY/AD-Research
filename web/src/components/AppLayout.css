@@ -247,13 +247,29 @@
   margin-bottom: var(--space-4);
 }
 
+.screen-filter-section:last-child {
+  margin-bottom: 0;
+}
+
 .screen-filter-section__header {
   display: flex;
-  align-items: baseline;
+  /* center (not baseline): the title may wrap HelpPopover's inline-flex
+     trigger whose 12px ⓘ icon shifts the text baseline, so baseline
+     alignment visibly offsets the title vs. the right-side hint. */
+  align-items: center;
   justify-content: space-between;
   gap: var(--space-3);
   flex-wrap: wrap;
   margin-bottom: var(--space-3);
+}
+
+/* Title + trailing ⓘ/help icon stay glued together on the left; only the
+   hint/count is pushed to the right edge. */
+.screen-filter-section__title-group {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
 }
 
 .screen-filter-section__title {
@@ -285,6 +301,10 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
+  /* Fill the panel so every group's Row spans the same width and the
+     min/max pairs line up on one grid (was shrink-wrapped inside
+     FilterToolbar's flex row, letting the meta float next to 基础). */
+  width: 100%;
 }
 
 .screen-filter-group + .screen-filter-group {

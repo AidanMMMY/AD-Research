@@ -7,7 +7,6 @@ import PageShell from '@/components/PageShell';
 import PageHeader from '@/components/PageHeader';
 import LoadingBlock from '@/components/LoadingBlock';
 import Panel from '@/components/Panel';
-import FilterToolbar from '@/components/FilterToolbar';
 import EmptyState from '@/components/EmptyState';
 import InstrumentSelector from '@/components/InstrumentSelector';
 import ReturnCurve from '@/components/ReturnCurve';
@@ -109,8 +108,9 @@ export default function ReturnComparison() {
         description="对比多只标的的历史收益曲线，支持归一化和日收益率两种模式"
       />
       <Panel title="收益曲线对比配置" variant="default">
-        <FilterToolbar className="return-comparison__config">
-          <div className="return-comparison__config-grid">
+        {/* No FilterToolbar wrapper: the grid owns its own layout, and the
+            toolbar's border-bottom would dangle at the panel bottom. */}
+        <div className="return-comparison__config-grid">
             <div className="return-comparison__config-cell return-comparison__config-cell--instruments">
               <InstrumentSelector
                 value={selectedCodes}
@@ -119,7 +119,7 @@ export default function ReturnComparison() {
               />
             </div>
             <div className="return-comparison__config-cell return-comparison__config-cell--time-range">
-              <div className="ad-filter-label">时间范围：</div>
+              <div className="ad-filter-label">时间范围</div>
               <Radio.Group
                 value={timeRange}
                 onChange={(e) => setTimeRange(e.target.value)}
@@ -134,7 +134,7 @@ export default function ReturnComparison() {
               </Radio.Group>
             </div>
             <div className="return-comparison__config-cell return-comparison__config-cell--display-mode">
-              <div className="ad-filter-label">显示模式：</div>
+              <div className="ad-filter-label">显示模式</div>
               <Radio.Group
                 value={mode}
                 onChange={(e) => setMode(e.target.value)}
@@ -150,7 +150,6 @@ export default function ReturnComparison() {
               </Radio.Group>
             </div>
           </div>
-        </FilterToolbar>
       </Panel>
 
       <Panel title={mode === 'normalized' ? '归一化收益曲线' : '日收益率'} variant="default">

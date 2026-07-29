@@ -199,6 +199,26 @@ body {
   box-shadow: 0 0 0 2px var(--accent-dim) !important;
 }
 
+/* Space.Compact pairs (Screen MinMaxPair): the blanket
+   `.ant-input-number { border-radius: ... !important }` above beats antd's
+   compact-item radius resets, visually un-joining min/max inputs into two
+   detached boxes. Re-assert the compact junction geometry here. Only
+   matches inside Space.Compact — standalone InputNumbers keep the global
+   radius. The -1px border-collapse margin is antd's own (never overridden). */
+.ant-input-number-compact-item.ant-input-number-compact-first-item {
+  border-start-end-radius: 0 !important;
+  border-end-end-radius: 0 !important;
+}
+
+.ant-input-number-compact-item.ant-input-number-compact-last-item {
+  border-start-start-radius: 0 !important;
+  border-end-start-radius: 0 !important;
+}
+
+.ant-input-number-compact-item:not(.ant-input-number-compact-first-item):not(.ant-input-number-compact-last-item) {
+  border-radius: 0 !important;
+}
+
 .ant-select-dropdown {
   background: var(--bg-elevated) !important;
   border: 1px solid var(--border-default);
