@@ -120,3 +120,50 @@
     min-width: 0;
   }
 }
+
+/* ============================================================
+   Mobile (≤767px) feed-ification (2026-07-29)
+   Per docs/dev-notes/20260729-mobile-ui-redesign-research.md
+   (Direction A): note panels lose card chrome and become
+   hairline-separated feed rows; the generate form collapses into
+   a single compact row so the list owns the first screen.
+   Desktop rules above are untouched.
+   ============================================================ */
+@media (max-width: 767px) {
+  /* Generate-form: one compact row instead of stacked controls. */
+  .ad-form-row {
+    flex-wrap: nowrap;
+    gap: var(--density-gap);
+  }
+  .ad-form-row__grow {
+    min-width: 0;
+  }
+  .ad-form-row .ad-select--sm {
+    width: 112px !important;
+    min-width: 0;
+    flex: 0 0 auto;
+  }
+
+  /* Note list: hairline feed rows replace cards (雪球 feed 范式). */
+  .ad-research-card.ad-panel {
+    background: transparent;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+    border-bottom: 1px solid var(--hairline);
+    margin-bottom: 0;
+  }
+  .ad-research-card.ad-panel .ad-panel__body,
+  .ad-research-card.ad-panel .ad-panel__body:only-child {
+    padding: var(--space-3) 0;
+  }
+  .ad-research-card__summary {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .ad-research-card__more {
+    margin-top: var(--space-1);
+  }
+}

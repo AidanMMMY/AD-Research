@@ -134,3 +134,87 @@
     height: 28px;
   }
 }
+
+/* ============================================================
+   Mobile (≤767px) feed-first compaction (2026-07-29)
+   Per docs/dev-notes/20260729-mobile-ui-redesign-research.md the
+   stacked filter controls used to eat ~180px of the first screen;
+   they now collapse into a single horizontally-scrollable control
+   strip (~48px), and the event chips do the same. Desktop rules
+   are untouched.
+   ============================================================ */
+@media (max-width: 767px) {
+  .news-feed-toolbar {
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: var(--density-gap);
+    padding-bottom: var(--space-2);
+    margin-bottom: var(--space-2);
+    overflow-x: auto;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+  .news-feed-toolbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .news-feed-toolbar .filter-toolbar__filters {
+    flex-wrap: nowrap;
+    width: auto;
+    flex: 0 0 auto;
+    gap: var(--density-gap);
+  }
+  .news-feed-toolbar .filter-toolbar__filters > * {
+    flex: 0 0 auto;
+    min-width: 0;
+  }
+  .news-feed-toolbar .filter-toolbar__filters > .ant-input {
+    width: 180px !important;
+  }
+  .news-feed-toolbar .filter-toolbar__filters > .ant-select {
+    width: 140px !important;
+  }
+  .news-feed-toolbar .filter-toolbar__filters > .ant-picker {
+    width: 240px !important;
+  }
+  .news-feed-toolbar .filter-toolbar__meta {
+    width: auto;
+    flex: 0 0 auto;
+    min-height: 0;
+    margin-left: 0;
+    white-space: nowrap;
+  }
+
+  /* The Segmented control's full-width mobile rule (pages-tools.css)
+     assumes a stacked layout; inside the scroll strip it keeps its
+     intrinsic size. */
+  .news-feed-toolbar .news-market-segmented {
+    display: inline-flex;
+    width: auto;
+  }
+  .news-feed-toolbar .news-market-segmented .ant-segmented-item {
+    flex: 0 0 auto;
+  }
+
+  /* Event-category chips: one scrollable row, no wrap. The
+     mobile.css stacked-layout rules (label gets width:100%) are
+     scoped to the old wrap layout and must be undone here. */
+  .news-political-chips {
+    flex-wrap: nowrap !important;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+    margin-bottom: var(--space-2) !important;
+  }
+  .news-political-chips::-webkit-scrollbar {
+    display: none;
+  }
+  .news-political-chips > * {
+    flex: 0 0 auto;
+  }
+  .news-political-chips .news-political-chips__label {
+    width: auto;
+    margin: 0;
+    white-space: nowrap;
+  }
+}

@@ -953,7 +953,7 @@ export default function NewsFeed() {
         description="多市场新闻聚合 · 情绪与重要性实时标注"
       />
 
-      <FilterToolbar total={totalLabel}>
+      <FilterToolbar total={totalLabel} className="news-feed-toolbar">
         <Tag.CheckableTag
           checked={watchlistMode}
           onChange={(checked) => {

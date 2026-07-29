@@ -4,3 +4,80 @@
    classes; this file serves as the page-scoped stylesheet for future
    additions.
    ========================================================================== */
+
+/* ============================================================
+   Mobile (≤767px) feed-ification (2026-07-29)
+   Per docs/dev-notes/20260729-mobile-ui-redesign-research.md
+   (Direction A): the wide table swaps to hairline feed rows
+   (rendered via useIsMobile + mobile-list-item in index.tsx),
+   and the filter grid collapses into a single horizontally
+   scrollable strip so the list owns the first screen.
+   Desktop rules are untouched.
+   ============================================================ */
+@media (max-width: 767px) {
+  /* FilterToolbar: chips row + control grid each become one
+     scrollable line (no wrap, hidden scrollbar). */
+  .listing-filter-toolbar .listing-status-chips {
+    flex-wrap: nowrap !important;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+    margin-bottom: var(--space-2) !important;
+  }
+  .listing-filter-toolbar .listing-status-chips::-webkit-scrollbar {
+    display: none;
+  }
+  .listing-filter-toolbar .listing-status-chips > * {
+    flex: 0 0 auto;
+  }
+
+  .listing-filter-toolbar .ant-row {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+    row-gap: 0;
+  }
+  .listing-filter-toolbar .ant-row::-webkit-scrollbar {
+    display: none;
+  }
+  .listing-filter-toolbar .ant-row > .ant-col {
+    flex: 0 0 auto;
+    width: auto;
+    max-width: none;
+    padding-left: var(--space-1) !important;
+    padding-right: var(--space-1) !important;
+  }
+  .listing-filter-toolbar .ant-row .ant-input-affix-wrapper {
+    width: 180px !important;
+  }
+  .listing-filter-toolbar .ant-row .ant-select {
+    width: 150px !important;
+    min-width: 0;
+  }
+  .listing-filter-toolbar .ant-row .ant-picker {
+    width: 250px !important;
+  }
+  .listing-filter-toolbar .ant-row .ant-btn {
+    width: auto;
+  }
+
+  /* Feed rows: the panel card shell drops out; hairlines carry the
+     separation (mobile-list-item rows already draw their own). */
+  .listing-table-panel.ad-panel {
+    background: transparent;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  .listing-mobile-feed__name {
+    font-size: var(--text-body-size);
+    font-weight: 500;
+    color: var(--text-primary);
+    margin-right: var(--space-2);
+  }
+  .listing-mobile-feed__date {
+    font-weight: 500;
+  }
+}

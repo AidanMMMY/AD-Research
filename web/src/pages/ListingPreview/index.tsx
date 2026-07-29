@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import {
-  Table, Input, Select, DatePicker, Button, Space, Tag, message, Row, Col,
+  Table, Input, Select, DatePicker, Button, Space, Tag, message, Row, Col, List,
 } from 'antd';
 import { SearchOutlined, ReloadOutlined, CalendarOutlined, FileTextOutlined } from '@ant-design/icons';
 import { type Dayjs } from 'dayjs';
@@ -21,6 +21,7 @@ import {
   useRefreshListingEvents,
 } from '@/api/listingEvents';
 import { useAIHelp } from '@/hooks/useAIHelp';
+import { useIsMobile } from '@/hooks/useBreakpoint';
 import { clickableRow } from '@/utils/a11y';
 import { buildListingPreviewContext } from '@/utils/helpContext';
 import { getQuickQuestions } from '@/utils/helpPrompts';
@@ -117,6 +118,9 @@ function StatusChip({ status, count, active, onClick }: StatusChipProps) {
 
 export default function ListingPreview() {
   const { open } = useAIHelp();
+  /* 2026-07-29 mobile feed-ification: ≤767px swaps the wide table for
+     hairline feed rows (Direction A, same pattern as InstrumentList). */
+  const isMobile = useIsMobile();
   const [search, setSearch] = useState('');
   const [statuses, setStatuses] = useState<ListingStatus[]>([]);
   const [boards, setBoards] = useState<string[]>([]);
@@ -349,9 +353,9 @@ export default function ListingPreview() {
         }
       />
 
-      <FilterToolbar total={total}>
+      <FilterToolbar total={total} className="listing-filter-toolbar">
         {/* Section 1: Status quick chips - all on one line */}
-        <div className="ad-flex ad-flex-wrap ad-gap-2 ad-mb-3 ad-w-full">
+        <div className="ad-flex ad-flex-wrap ad-gap-2 ad-mb-3 ad-w-full listing-status-chips">
           {(['upcoming', 'subscribing', 'listed'] as ListingStatus[]).map((s) => (
             <StatusChip
               key={s}
@@ -459,7 +463,7 @@ export default function ListingPreview() {
 
       <SectionHeading title="上市预告列表" />
 
-      <Panel variant="default" padding="none">
+      <Panel variant="default" padding="none" className="listing-table-panel">
         {isLoading ? (
           <LoadingBlock size="lg" />
         ) : items.length === 0 ? (
@@ -470,6 +474,76 @@ export default function ListingPreview() {
               description="尝试调整筛选条件或刷新数据"
             />
           </div>
+        ) : isMobile ? (
+          /* Mobile (≤767px): hairline feed rows — name+code / board·industry /
+             date+status. The full field set stays one tap away in the
+             detail modal. */
+          <List
+            className="ad-list-compact listing-mobile-feed"
+            dataSource={items}
+            renderItem={(item: ListingEvent) => (
+              <div
+                role="button"
+                tabIndex={0}
+                aria-label={`查看 ${item.name} 上市详情`}
+                onClick={(e) =>
+                  handleOpenDetail(
+                    item.id,
+                    (e.currentTarget as HTMLElement | null) ?? null,
+                  )
+                }
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    handleOpenDetail(
+                      item.id,
+                      (e.currentTarget as HTMLElement | null) ?? null,
+                    );
+                  }
+                }}
+                className="mobile-list-item"
+              >
+                <div className="mobile-list-item__row">
+                  <div className="mobile-list-item__main">
+                    <span className="listing-mobile-feed__name">{item.name}</span>
+                    <span className="mobile-list-item__meta tnum listing-mobile-feed__code">
+                      {item.ts_code}
+                    </span>
+                  </div>
+                  <div className="mobile-list-item__metrics">
+                    <span className="tabular-nums mobile-list-item__value listing-mobile-feed__date">
+                      {formatDate(item.list_date)}
+                    </span>
+                    <Tag color={STATUS_COLOR[item.status]}>{STATUS_LABEL[item.status]}</Tag>
+                  </div>
+                </div>
+                <div className="mobile-list-item__tags">
+                  {item.board && <ThemeTag>{item.board}</ThemeTag>}
+                  {item.industry && (
+                    <span className="mobile-list-item__meta">{item.industry}</span>
+                  )}
+                  {item.issue_price != null && (
+                    <span className="mobile-list-item__meta tnum">
+                      发行价 {formatPrice(item.issue_price)}
+                    </span>
+                  )}
+                  {item.funds_raised != null && (
+                    <span className="mobile-list-item__meta tnum">
+                      募资 {formatMoney(item.funds_raised)}
+                    </span>
+                  )}
+                </div>
+              </div>
+            )}
+            pagination={{
+              current: page,
+              pageSize,
+              total,
+              onChange: setPage,
+              showSizeChanger: false,
+              className: 'mobile-list-pagination',
+            }}
+          />
         ) : (
           <div className={tableWrapClass}>
             <Table
