@@ -434,6 +434,25 @@ class ScoringService:
     # Score queries
     # ------------------------------------------------------------------
 
+    def _latest_dates_by_market_subquery(self, template_id: int):
+        """Subquery of the latest scored trade_date per market.
+
+        Mirrors the per-market date resolution in
+        :meth:`calculate_daily_scores` so a lagging market (e.g. A股)
+        is not filtered out when another market (e.g. US) has already
+        advanced to a newer date.
+        """
+        return (
+            self.db.query(
+                ETFInfo.market.label("market"),
+                func.max(ETFScore.trade_date).label("max_date"),
+            )
+            .join(ETFInfo, ETFScore.etf_code == ETFInfo.code)
+            .filter(ETFScore.template_id == template_id)
+            .group_by(ETFInfo.market)
+            .subquery()
+        )
+
     def get_scores(
         self,
         template_id: int | None = None,
@@ -446,7 +465,9 @@ class ScoringService:
 
         Args:
             template_id: Filter by template. Defaults to the default template.
-            trade_date: Filter by date. Defaults to the latest scored date.
+            trade_date: Filter by date. Defaults to the latest scored date
+                per market (so markets on different trading calendars all
+                appear with their own most recent scores).
             limit: Maximum number of results.
             market: Filter by market (e.g. 'SH', 'SZ').
             category: Filter by ETF category.
@@ -457,11 +478,6 @@ class ScoringService:
         if template_id is None:
             default = self.get_default_template()
             template_id = default.id if default else 1
-
-        if trade_date is None:
-            trade_date = self.db.query(func.max(ETFScore.trade_date)).filter(
-                ETFScore.template_id == template_id
-            ).scalar()
 
         query = (
             self.db.query(ETFScore, ETFInfo, ETFIndicator)
@@ -476,6 +492,13 @@ class ScoringService:
 
         if trade_date is not None:
             query = query.filter(ETFScore.trade_date == trade_date)
+        else:
+            latest_sq = self._latest_dates_by_market_subquery(template_id)
+            query = query.join(
+                latest_sq,
+                (ETFInfo.market == latest_sq.c.market)
+                & (ETFScore.trade_date == latest_sq.c.max_date),
+            )
 
         if market:
             query = query.filter(ETFInfo.market == market)
@@ -493,6 +516,7 @@ class ScoringService:
                 "name_zh": info.name_zh,
                 "market": info.market,
                 "category": info.category,
+                "trade_date": score.trade_date,
                 "composite_score": float(score.composite_score) if score.composite_score is not None else None,
                 "score_return": float(score.score_return) if score.score_return is not None else None,
                 "score_risk": float(score.score_risk) if score.score_risk is not None else None,
@@ -525,11 +549,6 @@ class ScoringService:
             default = self.get_default_template()
             template_id = default.id if default else 1
 
-        if trade_date is None:
-            trade_date = self.db.query(func.max(ETFScore.trade_date)).filter(
-                ETFScore.template_id == template_id
-            ).scalar()
-
         query = (
             self.db.query(func.count(ETFScore.id))
             .join(ETFInfo, ETFScore.etf_code == ETFInfo.code)
@@ -538,6 +557,13 @@ class ScoringService:
 
         if trade_date is not None:
             query = query.filter(ETFScore.trade_date == trade_date)
+        else:
+            latest_sq = self._latest_dates_by_market_subquery(template_id)
+            query = query.join(
+                latest_sq,
+                (ETFInfo.market == latest_sq.c.market)
+                & (ETFScore.trade_date == latest_sq.c.max_date),
+            )
         if market:
             query = query.filter(ETFInfo.market == market)
         if category:

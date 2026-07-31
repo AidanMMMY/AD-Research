@@ -125,17 +125,13 @@ def list_scores(
         default = service.get_default_template()
         effective_template_id = default.id if default else 0
 
-    # Resolve effective trade_date for the response
+    # Resolve effective trade_date for the response. Scores are resolved
+    # per market (lagging markets keep their own latest date), so report
+    # the newest date actually present in the returned items.
     effective_trade_date = trade_date
-    if effective_trade_date is None:
-        from sqlalchemy import func
-
-        from app.models.scoring import ETFScore
-
-        effective_trade_date = (
-            service.db.query(func.max(ETFScore.trade_date))
-            .filter(ETFScore.template_id == effective_template_id)
-            .scalar()
+    if effective_trade_date is None and scores:
+        effective_trade_date = max(
+            s["trade_date"] for s in scores if s.get("trade_date") is not None
         )
 
     total = service.count_scores(

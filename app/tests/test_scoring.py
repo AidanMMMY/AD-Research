@@ -484,3 +484,69 @@ def test_scoring_service_get_scores_empty(db_session):
 
     scores = service.get_scores()
     assert scores == []
+
+
+def test_get_scores_uses_latest_date_per_market(db_session):
+    """Lagging markets must still appear when another market advanced.
+
+    Regression test: get_scores previously resolved a single global
+    max(trade_date), so once US scores moved to a newer date the A股
+    rows (one trading day behind) disappeared from the ranking.
+    """
+    from app.services.scoring_service import ScoringService
+
+    service = ScoringService(db_session)
+
+    template = service.create_template(
+        name="Per-Market Latest",
+        description="regression",
+        weights={"return": 0.3, "risk": 0.3, "sharpe": 0.4},
+    )
+
+    db_session.add_all(
+        [
+            ETFInfo(code="TST_A1", name="A Share Fund", market="A股", category="Equity"),
+            ETFInfo(code="TST_US1", name="US Stock", market="US", category="Equity"),
+        ]
+    )
+    db_session.commit()
+
+    db_session.add_all(
+        [
+            ETFScore(
+                etf_code="TST_A1",
+                trade_date=date(2024, 7, 29),
+                template_id=template.id,
+                composite_score=60,
+                rank_overall=1,
+            ),
+            ETFScore(
+                etf_code="TST_US1",
+                trade_date=date(2024, 7, 29),
+                template_id=template.id,
+                composite_score=50,
+                rank_overall=2,
+            ),
+            # US advances one day; A股 has no score for the newer date yet.
+            ETFScore(
+                etf_code="TST_US1",
+                trade_date=date(2024, 7, 30),
+                template_id=template.id,
+                composite_score=70,
+                rank_overall=1,
+            ),
+        ]
+    )
+    db_session.commit()
+
+    scores = service.get_scores(template_id=template.id)
+    by_code = {s["etf_code"]: s for s in scores}
+    assert set(by_code) == {"TST_A1", "TST_US1"}
+    assert by_code["TST_A1"]["trade_date"] == date(2024, 7, 29)
+    assert by_code["TST_US1"]["trade_date"] == date(2024, 7, 30)
+    assert service.count_scores(template_id=template.id) == 2
+
+    # Explicit date filtering still narrows to a single date.
+    only_us = service.get_scores(template_id=template.id, trade_date=date(2024, 7, 30))
+    assert {s["etf_code"] for s in only_us} == {"TST_US1"}
+    assert service.count_scores(template_id=template.id, trade_date=date(2024, 7, 30)) == 1
