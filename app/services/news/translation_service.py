@@ -84,6 +84,27 @@ _CHINESE_LANGUAGE_CODES: frozenset[str] = frozenset(
     {"zh", "cn", "zh-cn", "zh-hans", "zh-hant", "zh-tw", "zh-hk"}
 )
 
+# Retry budget for the auto-translation drain (2026-07-31). A row whose
+# translation keeps failing increments ``translation_attempts`` on every
+# failed ``auto_translate``; once it reaches this cap the drain stops
+# selecting it. Without the cap, ~200 permanently-failing rows
+# (paywalled sources with no body text, MiniMax 422 "sensitive"
+# rejections) occupied the newest-first batch window indefinitely and
+# the 18.7k-row real backlog behind them was never touched — the drain
+# reported ``written=200`` per tick while translating nothing.
+_MAX_TRANSLATION_ATTEMPTS = 5
+
+
+class TranslationSensitiveError(RuntimeError):
+    """The LLM provider rejected the content as sensitive (HTTP 422).
+
+    MiniMax returns ``input new_sensitive (1026)`` /
+    ``output new_sensitive (1027)`` for such requests. The rejection is
+    deterministic for a given text, so the caller marks the row as
+    permanently skipped (attempts := ``_MAX_TRANSLATION_ATTEMPTS``)
+    instead of burning tokens on every drain tick.
+    """
+
 
 def is_chinese_language(language: str | None) -> bool:
     """True when the article language is a Chinese variant.
@@ -362,9 +383,26 @@ class NewsTranslationService:
         break persistence. Translates the title (when missing) and the
         body (when missing) for any non-Chinese article.
 
-        Returns ``{"article_id", "skipped", "title_zh", "translated",
-        "cached", "reason"}`` — ``skipped=True`` (with ``reason``) for
-        Chinese articles, missing rows, or articles with no source text.
+        Returns ``{"article_id", "skipped", "reason", "title_zh",
+        "title_new", "translated", "cached"}``:
+
+        * ``skipped=True`` (with ``reason``) for Chinese articles,
+          missing rows, and rows with nothing left to translate
+          (``reason="nothing_to_do"`` — title already cached and no
+          source text for the body).
+        * ``translated=True`` only when the BODY was **newly**
+          translated this call; ``title_new=True`` only when the TITLE
+          was newly translated. Callers must aggregate on these two
+          flags — counting a cached title as fresh work is what made
+          the drain report ``written=200`` per tick while spinning on
+          untranslatable rows (2026-07-31 poison-queue incident, see
+          ``docs/dev-notes/20260731-translation-drain-poison-queue.md``).
+
+        Failure bookkeeping: when the row still needed work and nothing
+        succeeded, ``translation_attempts`` is incremented (jumping
+        straight to ``_MAX_TRANSLATION_ATTEMPTS`` for deterministic
+        sensitive-content rejections); the drain stops selecting rows
+        at the cap.
         """
         article = self.db.get(NewsArticle, article_id)
         if article is None:
@@ -372,31 +410,98 @@ class NewsTranslationService:
         if is_chinese_language(article.language):
             return {"article_id": article_id, "skipped": True, "reason": "chinese"}
 
+        had_title = bool(article.title_zh)
+        stale = translation_is_stale(article)
+        has_text = _pick_source(article) is not None
+        work_to_do = (not had_title) or (
+            has_text and (not article.translated_zh or stale)
+        )
+        if not work_to_do:
+            # E.g. title already translated but the source has no body
+            # text (paywalled excerpt-only feeds). Reported as skipped
+            # so the batch stats only count real new translations.
+            return {
+                "article_id": article_id,
+                "skipped": True,
+                "reason": "nothing_to_do",
+                "title_zh": None,
+                "title_new": False,
+                "translated": False,
+                "cached": True,
+            }
+
+        sensitive = False
         title_zh = None
         try:
             title_zh = self.translate_title_if_needed(article)
+        except TranslationSensitiveError as exc:
+            sensitive = True
+            logger.warning(
+                "auto title translation blocked for %s: %s", article_id, exc
+            )
+            self.db.rollback()
         except Exception as exc:  # pragma: no cover - defensive
             logger.warning("auto title translation failed for %s: %s", article_id, exc)
             self.db.rollback()
 
         body_status: dict[str, Any] = {"cached": False, "translated": False}
-        stale = translation_is_stale(article)
         if article.translated_zh and not stale:
-            body_status = {"cached": True, "translated": True}
-        elif _pick_source(article):
+            # Body already done — the row was only here for the title.
+            body_status = {"cached": True, "translated": False}
+        elif has_text:
             try:
-                result = self.translate(article_id, force=stale)
-                body_status = {"cached": result.get("cached", False), "translated": True}
+                self.translate(article_id, force=stale)
+                body_status = {"cached": False, "translated": True}
+            except TranslationSensitiveError as exc:
+                sensitive = True
+                logger.warning(
+                    "auto body translation blocked for %s: %s", article_id, exc
+                )
+                self.db.rollback()
             except Exception as exc:
                 logger.info("auto body translation failed for %s: %s", article_id, exc)
                 self.db.rollback()
+
+        title_new = bool(title_zh) and not had_title
+        succeeded = title_new or body_status["translated"]
+        self._record_attempt_outcome(article, succeeded=succeeded, sensitive=sensitive)
 
         return {
             "article_id": article_id,
             "skipped": False,
             "title_zh": title_zh,
+            "title_new": title_new,
             **body_status,
         }
+
+    def _record_attempt_outcome(
+        self, article: NewsArticle, *, succeeded: bool, sensitive: bool
+    ) -> None:
+        """Update ``translation_attempts`` after an auto-translate pass.
+
+        Best-effort, never raises. On success the counter resets so a
+        future stale re-translation gets a fresh budget; on failure it
+        increments, and deterministic sensitive-content rejections jump
+        straight to the cap so the drain never selects the row again.
+        """
+        try:
+            if succeeded:
+                if article.translation_attempts:
+                    article.translation_attempts = 0
+                    self.db.commit()
+            else:
+                if sensitive:
+                    article.translation_attempts = _MAX_TRANSLATION_ATTEMPTS
+                else:
+                    article.translation_attempts = (
+                        article.translation_attempts or 0
+                    ) + 1
+                self.db.commit()
+        except Exception as exc:  # pragma: no cover - defensive
+            logger.info(
+                "translation_attempts update failed for %s: %s", article.id, exc
+            )
+            self.db.rollback()
 
     # ---- LLM helpers ----------------------------------------------------
 
@@ -446,6 +551,16 @@ class NewsTranslationService:
                 return content.strip(), None
             except Exception as exc:
                 msg = str(exc).lower()
+                if "sensitive" in msg:
+                    # Deterministic rejection (MiniMax 422) — retrying
+                    # the same text can never succeed, so surface it as
+                    # a dedicated error instead of a silent None: the
+                    # auto pipeline marks the row permanently skipped.
+                    logger.warning(
+                        "News translation blocked by sensitive-content filter: %s",
+                        exc,
+                    )
+                    raise TranslationSensitiveError(str(exc)) from exc
                 is_429 = "429" in msg or "rate" in msg
                 if is_429 and attempt == 0:
                     logger.warning(

@@ -1,0 +1,56 @@
+<!DOCTYPE html><html lang=zh><head><meta charset=utf-8><title>20260731 翻译 drain 毒丸队列修复</title><style>body{max-width:860px;margin:40px auto;font-family:-apple-system,sans-serif;line-height:1.7;padding:0 16px}table{border-collapse:collapse}td,th{border:1px solid #ccc;padding:4px 10px}code{background:#f4f4f4;padding:1px 4px}pre{background:#f4f4f4;padding:10px;overflow-x:auto}</style></head><body><h1>2026-07-31 资讯翻译 drain 假死 — 毒丸行堵队列 + written 统计虚报</h1>
+<h2>症状</h2>
+<p>用户报「为什么资讯还是没有中文翻译？」—— 详情页一篇韩文文章（source=global_nocutnews）标题和正文全是韩文，没有中文翻译。预期非中文文章自动获得中文翻译（至少 title_zh）。</p>
+<h2>根因（两个 bug 叠加，drain 假死多天）</h2>
+<h3>数据证据</h3>
+<ul>
+<li><code>news_translate_10m</code> etl_log 每 tick <code>success / records_count=200</code>，看似健康。</li>
+<li>但 <code>translation_generated_at</code> 实际新增翻译只有 ~200 篇/小时 ≈ 刚好覆盖新入库流量（~240/小时，且主要由 ingest 内联路径完成），<strong>drain 对积压的贡献≈0</strong>。</li>
+<li>每 tick 耗时仅 15~68s —— 200 行 × 4 并发真翻译需要 ~600s，说明 tick 内几乎没有真实 LLM 调用。</li>
+<li>复现 drain 的选取查询（<code>published_at DESC LIMIT 200</code>）：top-200 pending 里 <strong>174 行 investing + 22 行 seekingalpha 是无正文行</strong>（<code>body</code> 和 <code>full_content</code> 全空，title_zh 已有）——这些行永远不可能翻译正文。</li>
+<li>积压：title_zh 缺失共 <strong>18,710 行</strong>（3-7 天 5,606 + &gt;7 天 13,040），最近 24h 只有 17 行缺失（新文章由 ingest 路径即时翻译，掩盖了 drain 假死）。</li>
+</ul>
+<h3>Bug 1：选取逻辑没有排除"永远翻译不了"的行（毒丸堵队列）</h3>
+<p><code>scheduler_translate_news._pending_translation_ids</code> 只按 <code>title_zh IS NULL OR translated_zh IS NULL</code> 选取，<code>published_at DESC LIMIT 200</code>。无正文行（付费墙源 investing/seekingalpha 只入库标题）每 tick 稳定占据窗口顶部，<strong>同一个 200 行批次被反复选中</strong>，窗口后的 18.7k 真实积压永远进不了批次。drain 处于假死状态。</p>
+<h3>Bug 2：written 统计把"缓存命中"计成"新翻译"（掩盖 Bug 1）</h3>
+<p><code>auto_translate_for_ids</code> 旧逻辑 <code>result.get("translated") or result.get("title_zh")</code> 中，<code>title_zh</code> 键返回的是<strong>缓存值</strong>（<code>translate_title_if_needed</code> 对已翻译标题直接返回现值）——毒丸行每 tick 都被计为 translated=1，于是 etl_log 漂亮地显示 <code>written=200 success</code>，实际一篇没翻。监控完全失效。</p>
+<h3>次要：MiniMax 422 sensitive 无标记机制</h3>
+<p>后端日志 24h 内仅 6 次 <code>output new_sensitive (1027)</code> 错误，量小，但旧代码对这类<strong>确定性失败</strong>没有任何跳过机制 —— 同类毒丸日积月累会再次堵满窗口（6/天 → 约 33 天填满 200 窗口）。</p>
+<h2>修复（本地 commit，未 push）</h2>
+<ol>
+<li><strong><code>app/services/news/scheduler_translate_news.py</code></strong></li>
+<li><code>_pending_translation_ids</code>：新增两个守卫 —— (a) 正文翻译分支要求 <code>body</code>/<code>full_content</code> 至少一个非空（仅缺标题的行仍保留，标题总能翻）；(b) <code>translation_attempts &lt; _MAX_TRANSLATION_ATTEMPTS(5)</code>。</li>
+<li><code>auto_translate_for_ids</code> 统计口径：只有 <code>translated</code>（新正文）或 <code>title_new</code>（新标题）才计入 <code>translated</code>。</li>
+<li><code>run_translate_pending</code> 返回键 <code>skipped</code> → <code>skip_count</code>：<code>_record_etl</code> 把真值 <code>skipped</code> 视为"整轮跳过"并清零 records_count，会再次隐藏真实进度。</li>
+<li><strong><code>app/services/news/translation_service.py</code></strong></li>
+<li>新增 <code>_MAX_TRANSLATION_ATTEMPTS = 5</code> 和 <code>TranslationSensitiveError(RuntimeError)</code>；<code>_call_llm_with_retry</code> 检测错误消息含 <code>sensitive</code> 时抛该异常（确定性拒绝，不再静默返回 None）。</li>
+<li><code>auto_translate</code> 重写返回值契约：<code>translated</code>/<code>title_new</code> 只表示<strong>本次新产出</strong>；无事可做的行返回 <code>skipped=True, reason="nothing_to_do"</code>。</li>
+<li>新增 <code>_record_attempt_outcome</code>：失败 +1（sensitive 直接置 MAX），成功清零（给未来 stale 重翻留预算）。</li>
+<li><strong><code>app/models/news.py</code> + 迁移 <code>u7v9w1x3y5z7</code></strong>：<code>news_article.translation_attempts INTEGER NOT NULL DEFAULT 0</code>。</li>
+<li><strong>测试</strong> <code>app/tests/news/test_translation.py</code>：+9 个用例（选取守卫 ×5、计数器 ×3、返回值契约 ×2、sensitive 分类 ×2，其中聚合统计的旧用例按新契约更新）。</li>
+</ol>
+<h2>验证</h2>
+<ul>
+<li>翻译 42 测试全绿；news 目录 590 全绿；全量后端见 commit message。</li>
+<li>ECS 只读 SQL 模拟新 WHERE：pending 19,917 → 18,911（排除 ~1,006 无正文行）；新 top-200 窗口 <strong>145/200 下一 tick 即可获得新中文标题</strong>（修复前 0/200）。</li>
+<li>预计 drain 速度 ~960 篇/小时（1200 产能 − 240 新流量），<strong>18.7k 标题积压约 20 小时清完</strong>，无需手动回填。</li>
+</ul>
+<h2>部署清单（push 后）</h2>
+<ol>
+<li>部署会自动跑 <code>alembic upgrade head</code>（迁移 <code>u7v9w1x3y5z7</code>）——确认 backend 启动日志无迁移报错。</li>
+<li>观察 etl_log：<code>news_translate_10m</code> 的 <code>records_count</code> 应从恒 200 变为真实值（初期 100~200，随积压清空逐渐降到新流量水平 ~40/tick），<code>start_time</code> 间隔保持 10 分钟。</li>
+<li>验证 SQL：
+   <code>sql
+   SELECT count(*) FROM news_article
+   WHERE language NOT IN ('zh','cn','zh-cn','zh-hans','zh-hant','zh-tw','zh-hk')
+     AND title_zh IS NULL;</code>
+   应每小时下降 ~960。一天后仍不降 → 查 backend 日志 <code>auto body translation failed</code>。</li>
+<li>被 sensitive 永久跳过的行：<code>SELECT source, count(*) FROM news_article WHERE translation_attempts &gt;= 5 GROUP BY source</code> —— 量级小则接受，大则考虑换非敏感词供应商重翻（手动 <code>UPDATE ... SET translation_attempts=0</code> 复位）。</li>
+</ol>
+<h2>排障要点（下次类似问题）</h2>
+<ol>
+<li><strong>etl_log 的 records_count 是 job 自报的</strong> —— 统计口径 bug 会让监控完全失真。排障第一步永远是拿独立数据源对账（这里是 <code>translation_generated_at</code> 的 hourly count）。</li>
+<li>newest-first + LIMIT 的 drain 队列必须保证"选出来的都能被处理掉"，否则头部毒丸行会让整个队列假死。任何 drain 都要问：失败 N 次后怎么办？</li>
+<li>tick 耗时是最便宜的健全性信号：200 行真翻译 ~600s vs 实际 15s，一眼假。</li>
+<li><code>_record_etl</code> 对返回 dict 的 <code>skipped</code> 键有特殊语义（整轮跳过、records 清零），job 返回dict 时不要用它装"跳过条数"。</li>
+</ol></body></html>

@@ -111,6 +111,21 @@ class NewsArticle(Base):
     translation_generated_at = Column(
         DateTime, comment="When the LLM translation was last produced"
     )
+    # Translation retry bookkeeping (2026-07-31). The 10-minute drain
+    # re-selects pending rows newest-first, so a row whose translation
+    # keeps failing (paywalled source with no body text, MiniMax 422
+    # "sensitive" rejection) would otherwise occupy the batch window
+    # forever and starve the real backlog behind it. Each failed
+    # auto-translate increments this counter; rows that reach
+    # ``_MAX_TRANSLATION_ATTEMPTS`` are excluded from the drain
+    # selection (see ``scheduler_translate_news._pending_translation_ids``
+    # and runbook ``docs/dev-notes/20260731-translation-drain-poison-queue.md``).
+    translation_attempts = Column(
+        Integer,
+        nullable=False,
+        server_default="0",
+        comment="Failed auto-translation attempts; drain skips rows at the cap",
+    )
     # AI one-sentence Chinese summary (方向 D, 2026-07-29). Filled by
     # the ``news_summarize_10m`` drain job for articles with
     # ``importance >= 3`` — ALL languages, because a summary is not a

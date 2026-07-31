@@ -580,7 +580,7 @@ class TestAutoTranslateForIds:
         outcomes = {
             1: {"article_id": 1, "skipped": False, "translated": True},
             2: {"article_id": 2, "skipped": True, "reason": "chinese"},
-            3: {"article_id": 3, "skipped": False, "title_zh": "标题", "translated": False},
+            3: {"article_id": 3, "skipped": False, "title_zh": "标题", "title_new": True, "translated": False},
         }
         monkeypatch.setattr(mod, "_translate_one", lambda aid: outcomes[aid])
         get_settings.cache_clear()
@@ -656,3 +656,196 @@ class TestAutoTranslateForIds:
             settings.news_translation_on_ingest = original
             get_settings.cache_clear()
         assert stats["attempted"] == 0
+
+
+# ---------------------------------------------------------------------------
+# Poison-queue guards (2026-07-31): no-text rows + retry cap + sensitive 422
+# ---------------------------------------------------------------------------
+
+
+class TestPendingTranslationSelection:
+    """``_pending_translation_ids`` must not select rows that can never
+    be translated — otherwise they occupy the newest-first batch window
+    forever and starve the real backlog (2026-07-31 incident: ~200
+    excerpt-only ``investing``/``seekingalpha`` rows froze the drain for
+    days while etl_log reported ``written=200`` per tick)."""
+
+    def test_no_text_row_with_cached_title_excluded(self, news_db):
+        from app.services.news.scheduler_translate_news import (
+            _pending_translation_ids,
+        )
+
+        article = _make_english_article(news_db, body=None)
+        article.full_content = None
+        article.title_zh = "标题已翻译"  # title done, body impossible
+        news_db.commit()
+
+        assert _pending_translation_ids(news_db, 100) == []
+
+    def test_no_text_row_missing_title_kept(self, news_db):
+        """Title translation only needs ``title`` — keep the row."""
+        from app.services.news.scheduler_translate_news import (
+            _pending_translation_ids,
+        )
+
+        article = _make_english_article(news_db, body=None)
+        article.full_content = None
+        news_db.commit()
+
+        assert _pending_translation_ids(news_db, 100) == [article.id]
+
+    def test_row_with_body_kept(self, news_db):
+        from app.services.news.scheduler_translate_news import (
+            _pending_translation_ids,
+        )
+
+        article = _make_english_article(news_db, body="Some real body text.")
+        news_db.commit()
+
+        assert _pending_translation_ids(news_db, 100) == [article.id]
+
+    def test_row_at_retry_cap_excluded(self, news_db):
+        from app.services.news.scheduler_translate_news import (
+            _pending_translation_ids,
+        )
+        from app.services.news.translation_service import _MAX_TRANSLATION_ATTEMPTS
+
+        article = _make_english_article(news_db)
+        article.translation_attempts = _MAX_TRANSLATION_ATTEMPTS
+        news_db.commit()
+
+        assert _pending_translation_ids(news_db, 100) == []
+
+    def test_row_below_retry_cap_kept(self, news_db):
+        from app.services.news.scheduler_translate_news import (
+            _pending_translation_ids,
+        )
+        from app.services.news.translation_service import _MAX_TRANSLATION_ATTEMPTS
+
+        article = _make_english_article(news_db)
+        article.translation_attempts = _MAX_TRANSLATION_ATTEMPTS - 1
+        news_db.commit()
+
+        assert _pending_translation_ids(news_db, 100) == [article.id]
+
+
+class TestTranslationAttemptBookkeeping:
+    """``auto_translate`` increments ``translation_attempts`` on failure,
+    resets it on success, and jumps straight to the cap for
+    deterministic sensitive-content rejections."""
+
+    def test_generic_failure_increments_attempts(self, news_db):
+        from app.services.news.translation_service import NewsTranslationService
+
+        article = _make_english_article(news_db)
+        ctx, fake_provider = _patch_provider()
+        fake_provider.chat.side_effect = RuntimeError("boom")
+        with ctx:
+            for _ in range(2):
+                NewsTranslationService(news_db).auto_translate(article.id)
+
+        news_db.refresh(article)
+        assert article.translation_attempts == 2
+        assert article.title_zh is None
+        assert article.translated_zh is None
+
+    def test_success_resets_attempts(self, news_db):
+        from app.services.news.translation_service import NewsTranslationService
+
+        article = _make_english_article(news_db)
+        article.translation_attempts = 3
+        news_db.commit()
+
+        ctx, _ = _patch_provider("译文")
+        with ctx:
+            NewsTranslationService(news_db).auto_translate(article.id)
+
+        news_db.refresh(article)
+        assert article.translation_attempts == 0
+
+    def test_sensitive_error_marks_permanently_skipped(self, news_db):
+        from app.services.news.translation_service import (
+            _MAX_TRANSLATION_ATTEMPTS,
+            NewsTranslationService,
+        )
+
+        article = _make_english_article(news_db)
+        ctx, fake_provider = _patch_provider()
+        fake_provider.chat.side_effect = RuntimeError(
+            "Error code: 422 - {'message': 'output new_sensitive (1027)'}"
+        )
+        with ctx:
+            NewsTranslationService(news_db).auto_translate(article.id)
+
+        news_db.refresh(article)
+        assert article.translation_attempts == _MAX_TRANSLATION_ATTEMPTS
+        assert article.title_zh is None
+
+    def test_nothing_to_do_rows_report_skipped(self, news_db):
+        """Cached title + no body text must NOT count as a fresh
+        translation — the inflated ``written=200`` hid the 2026-07-31
+        drain stall for days."""
+        from app.services.news.translation_service import NewsTranslationService
+
+        article = _make_english_article(news_db, body=None)
+        article.full_content = None
+        article.title_zh = "已有标题"
+        news_db.commit()
+
+        ctx, fake_provider = _patch_provider("不应被调用")
+        with ctx:
+            result = NewsTranslationService(news_db).auto_translate(article.id)
+
+        assert result["skipped"] is True
+        assert result["reason"] == "nothing_to_do"
+        assert result["translated"] is False
+        assert result["title_new"] is False
+        assert fake_provider.chat.call_count == 0
+
+    def test_new_title_sets_title_new_flag(self, news_db):
+        from app.services.news.translation_service import NewsTranslationService
+
+        article = _make_english_article(news_db, body=None)
+        article.full_content = None
+        news_db.commit()
+
+        ctx, _ = _patch_provider("仅标题")
+        with ctx:
+            result = NewsTranslationService(news_db).auto_translate(article.id)
+
+        assert result["title_new"] is True
+        assert result["translated"] is False
+
+
+class TestSensitiveErrorClassification:
+    """``_call_llm_with_retry`` raises ``TranslationSensitiveError`` for
+    MiniMax 422 sensitive-content rejections instead of returning None."""
+
+    def test_sensitive_raises_dedicated_error(self, news_db):
+        from app.services.news.translation_service import (
+            NewsTranslationService,
+            TranslationSensitiveError,
+        )
+
+        provider = MagicMock()
+        provider.is_available = True
+        provider.chat.side_effect = RuntimeError(
+            "Error code: 422 - {'message': 'input new_sensitive (1026)'}"
+        )
+        service = NewsTranslationService(news_db)
+        with pytest.raises(TranslationSensitiveError):
+            service._call_llm_with_retry(provider, "sys", "user text")
+        # No retry on a deterministic rejection.
+        assert provider.chat.call_count == 1
+
+    def test_429_still_retries_once_then_returns_none(self, news_db):
+        from app.services.news.translation_service import NewsTranslationService
+
+        provider = MagicMock()
+        provider.is_available = True
+        provider.chat.side_effect = RuntimeError("Error code: 429 - rate limit")
+        service = NewsTranslationService(news_db)
+        with patch("app.services.news.translation_service.time.sleep"):
+            content, tokens = service._call_llm_with_retry(provider, "sys", "user")
+        assert content is None
+        assert provider.chat.call_count == 2

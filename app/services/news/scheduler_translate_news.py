@@ -11,9 +11,11 @@ Two entry points, mirroring ``scheduler_fetch_full_content``:
   hiccup) and gradually backfills older untranslated rows, newest
   first.
 
-Both are fully fail-safe: a translation failure leaves the row
-untouched (``title_zh`` / ``translated_zh`` stay ``NULL``) so the next
-tick retries, and Chinese articles are skipped by the service layer.
+Both are fully fail-safe: a translation failure increments the row's
+``translation_attempts`` counter (rows leave the retry set at
+``_MAX_TRANSLATION_ATTEMPTS``, or immediately for deterministic
+sensitive-content rejections) and Chinese articles are skipped by the
+service layer.
 """
 
 from __future__ import annotations
@@ -23,7 +25,7 @@ import time
 from concurrent.futures import ThreadPoolExecutor
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import and_, or_, select
 
 logger = logging.getLogger(__name__)
 
@@ -106,7 +108,12 @@ def auto_translate_for_ids(
                 continue
             if result.get("skipped"):
                 stats["skipped"] += 1
-            elif result.get("translated") or result.get("title_zh"):
+            elif result.get("translated") or result.get("title_new"):
+                # Only NEW work counts: ``translated`` = fresh body
+                # translation, ``title_new`` = fresh title translation.
+                # A cached title/body must not inflate ``written`` —
+                # that is how the drain reported 200/tick while making
+                # zero progress (2026-07-31 poison-queue incident).
                 stats["translated"] += 1
 
     if stats["translated"] or stats["budget_exhausted"]:
@@ -119,31 +126,61 @@ def _pending_translation_ids(db, limit: int) -> list[int]:
 
     Newest first so recent headlines get Chinese titles quickly; the
     drain job then walks backwards into the archive one batch per tick.
+
+    Poison-queue guards (2026-07-31):
+
+    * **No-source-text rows are excluded.** ~200 excerpt-only rows
+      (paywalled ``investing`` / ``seekingalpha`` items whose ``body``
+      and ``full_content`` are both empty) can never get a body
+      translation. Before this guard they sat permanently at the top
+      of the newest-first window, consumed the whole batch every tick,
+      and the 18.7k-row real backlog behind them was never touched.
+      A row that still lacks ``title_zh`` is always kept — the title
+      is translatable even without a body.
+    * **Retry-capped rows are excluded.** Rows whose translation keeps
+      failing increment ``translation_attempts``; at
+      ``_MAX_TRANSLATION_ATTEMPTS`` (or immediately for deterministic
+      MiniMax 422 "sensitive" rejections) they leave the window.
     """
     from app.services.news._model_loader import NewsArticle
-    from app.services.news.translation_service import _CHINESE_LANGUAGE_CODES
+    from app.services.news.translation_service import (
+        _CHINESE_LANGUAGE_CODES,
+        _MAX_TRANSLATION_ATTEMPTS,
+    )
+
+    has_source_text = or_(
+        and_(NewsArticle.body.isnot(None), NewsArticle.body != ""),
+        and_(
+            NewsArticle.full_content.isnot(None),
+            NewsArticle.full_content != "",
+        ),
+    )
 
     stmt = (
         select(NewsArticle.id)
         .where(
             # ``language`` is NOT NULL with default 'en' for the English
-            # sources; the ``~in_`` guard keeps every Chinese variant out.
+            # sources; the ``notin_`` guard keeps every Chinese variant out.
             NewsArticle.language.isnot(None),
             NewsArticle.language.notin_(sorted(_CHINESE_LANGUAGE_CODES)),
-            (NewsArticle.title_zh.is_(None))
-            | (NewsArticle.translated_zh.is_(None))
-            # Stale re-translation (2026-07-27): the cached translation
-            # was made from the RSS excerpt and the full body arrived
-            # afterwards — redo it so the reader gets the FULL Chinese
-            # text, not a translated teaser.
-            | (
-                NewsArticle.translated_zh.isnot(None)
-                & NewsArticle.full_content_fetched_at.isnot(None)
-                & NewsArticle.translation_generated_at.isnot(None)
-                & (
+            NewsArticle.translation_attempts < _MAX_TRANSLATION_ATTEMPTS,
+            or_(
+                NewsArticle.title_zh.is_(None),
+                and_(
+                    NewsArticle.translated_zh.is_(None),
+                    has_source_text,
+                ),
+                # Stale re-translation (2026-07-27): the cached translation
+                # was made from the RSS excerpt and the full body arrived
+                # afterwards — redo it so the reader gets the FULL Chinese
+                # text, not a translated teaser.
+                and_(
+                    NewsArticle.translated_zh.isnot(None),
+                    NewsArticle.full_content_fetched_at.isnot(None),
+                    NewsArticle.translation_generated_at.isnot(None),
                     NewsArticle.full_content_fetched_at
-                    > NewsArticle.translation_generated_at
-                )
+                    > NewsArticle.translation_generated_at,
+                ),
             ),
         )
         .order_by(NewsArticle.published_at.desc())
@@ -181,5 +218,8 @@ def run_translate_pending(batch_size: int | None = None) -> dict[str, Any]:
     return {
         "fetched": len(ids),
         "written": stats["translated"],
-        "skipped": stats["skipped"],
+        # NOTE: the key must NOT be ``skipped`` — ``_record_etl`` treats
+        # a truthy ``skipped`` as "whole run skipped" and zeroes
+        # ``records_count``, hiding real progress from the health page.
+        "skip_count": stats["skipped"],
     }
