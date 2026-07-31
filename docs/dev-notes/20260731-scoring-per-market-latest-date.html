@@ -1,0 +1,28 @@
+<!DOCTYPE html><html lang=zh><head><meta charset=utf-8><title>20260731 评分排名按市场最新日期修复</title><style>body{max-width:860px;margin:40px auto;font-family:-apple-system,sans-serif;line-height:1.7;padding:0 16px}table{border-collapse:collapse}td,th{border:1px solid #ccc;padding:4px 10px}code{background:#f4f4f4;padding:1px 4px}</style></head><body><h1>2026-07-31 评分排名只剩美股 — 全局 max 日期 vs 按市场日期不匹配</h1>
+<h2>症状</h2>
+<p>用户报「评分排名只有美股个股，A股个股、ETF 去哪了？」——页面只剩 US 行，A股/CRYPTO 全消失。</p>
+<h2>根因（查询层 bug，每日复发的窗口期）</h2>
+<ul>
+<li>前端 <code>ScoreRanking</code> 调 <code>GET /api/v1/scores</code> 不带 <code>trade_date</code>。</li>
+<li>后端 <code>ScoringService.get_scores</code>/<code>count_scores</code> 在未指定日期时取<strong>全局</strong> <code>max(trade_date)</code>。</li>
+<li>写入侧 <code>calculate_daily_scores</code> 却是<strong>按市场</strong>各取最新指标日期计算：美股每晚收盘后推进，A股指标管道滞后约一天（7-30 的 A股指标实际 7-31 17:21 CST 才落库）。</li>
+<li>于是每天美股日期超前（如 US=7-30、A股=7-29）到次日 A股指标补上前，全局 max=美股日期 → 查询只剩美股。<strong>这是结构性每日窗口，不是一次性事故。</strong></li>
+</ul>
+<h2>修复（commit fb12896）</h2>
+<ol>
+<li><code>app/services/scoring_service.py</code> 新增 <code>_latest_dates_by_market_subquery()</code>：按市场分组取各自最新评分日期；<code>get_scores</code>/<code>count_scores</code> 在 <code>trade_date is None</code> 时 join 该子查询（与写入侧对齐），输出补 <code>trade_date</code> 字段。</li>
+<li><code>app/api/v1/scoring.py</code> 响应级 <code>trade_date</code> 改为条目实际最新日期（多市场混合日期不再虚报全局 max）。</li>
+<li>回归测试 <code>test_get_scores_uses_latest_date_per_market</code>：A股 7-29 + 美股 7-30 场景两市场都必须出现。</li>
+</ol>
+<h2>验证</h2>
+<ul>
+<li>评分 36 测试全绿；全量后端 1194 passed（test_futures_pipeline 6 失败为既有问题，干净树复现，与本次无关）。</li>
+<li>ECS 等价 SQL 验证：修复后 A股 1550 + CRYPTO 22 + US 547（修复前仅 US 547）。</li>
+<li>已在 ECS 手动触发一次 <code>run_score_calculation()</code>（幂等 UPSERT + redis 锁）：三市场评分全部推进到 2026-07-30，<strong>线上即时恢复</strong>；部署 fb12896 后窗口期不再复发。</li>
+</ul>
+<h2>排障要点（下次类似问题）</h2>
+<ol>
+<li>先看写入侧和查询侧的"最新日期"语义是否一致——按市场写入 + 全局 max 查询是本类 bug 的温床。</li>
+<li>A股指标管道天然滞后美股约一天，任何跨市场"取最新"的查询都要考虑这个时序差。</li>
+<li>验证手法：生产库直接 <code>SELECT market, max(trade_date), count(*) FROM etf_score GROUP BY market</code> 对比 API 返回。</li>
+</ol></body></html>
