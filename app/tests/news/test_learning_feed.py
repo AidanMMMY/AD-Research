@@ -186,6 +186,7 @@ class TestSeed:
 
         import app.services.news.sources.rss_simple as rs
         from app.services.news.sources.asia_en_batch import ASIA_EN_FEEDS
+        from app.services.news.sources.edu_batch import EDU_FEEDS
         from app.services.news.sources.global_indie_batch import GLOBAL_INDIE_FEEDS
         from app.services.news.sources.global_rss_batch import GLOBAL_RSS_FEEDS
         from app.services.news.sources.independent_batch import INDEPENDENT_FEEDS
@@ -206,6 +207,8 @@ class TestSeed:
         known |= {f"global_{r[0]}" for r in GLOBAL_RSS_FEEDS}
         # asen 批次 slug 自带 asen_ 前缀
         known |= {r[0] for r in ASIA_EN_FEEDS}
+        # edu 科普批次（2026-08-02）：source = edu_{slug}
+        known |= {f"edu_{r[0]}" for r in EDU_FEEDS}
         for _, cls in inspect.getmembers(rs, inspect.isclass):
             sn = getattr(cls, "source_name", None)
             if sn and cls.__module__ == rs.__name__:

@@ -613,6 +613,7 @@ _WORKER_KEYWORDS: tuple[str, ...] = (
     "enf_",
     "ofc_",
     "zhm_",
+    "edu_",
     "summarize",
 )
 
@@ -768,6 +769,9 @@ _WORKER_META: dict[str, dict[str, str]] = {
     "news_zhm_d_60m": {"label": "韩·东南亚 D 组 (10 源)", "schedule": "每 60 分钟"},
     "news_zhm_e_60m": {"label": "加密媒体 E 组 (10 源)", "schedule": "每 60 分钟"},
     "news_zhm_f_60m": {"label": "加密媒体 F 组 (8 源)", "schedule": "每 60 分钟"},
+    # Investment education batches (2026-08-02, 17 sources, a-b)
+    "news_edu_a_60m": {"label": "投资科普 A 组 (10 源)", "schedule": "每 60 分钟"},
+    "news_edu_b_60m": {"label": "投资科普 B 组 (7 源)", "schedule": "每 60 分钟"},
 }
 
 # Map a worker job id to the ``news_article.source`` it writes.  Only

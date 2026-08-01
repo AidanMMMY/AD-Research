@@ -84,3 +84,38 @@ def test_job_id_namespaces_are_unique():
     assert not (enf_ids & zhm_ids)
     assert all(j.startswith("news_enf_") for j in enf_ids)
     assert all(j.startswith("news_zhm_") for j in zhm_ids)
+
+
+class TestEduWiring:
+    """Education wave (edu_*) scheduler/health wiring (added 2026-08-02)."""
+
+    def test_batch_jobs_materialized(self):
+        from app.services.news import scheduler_jobs as sj
+
+        from app.services.news.sources.edu_batch import EDU_BATCHES
+
+        for _job_id, _label, batch in sj.EDU_BATCH_JOBS:
+            fn = getattr(sj, f"run_edu_{batch}_crawl")
+            assert callable(fn)
+            assert fn.__name__ == f"run_edu_{batch}_crawl"
+        assert {b for _, _, b in sj.EDU_BATCH_JOBS} == set(EDU_BATCHES)
+
+    @pytest.mark.parametrize("batch", ["a", "b"])
+    def test_health_meta_exists(self, batch):
+        from app.api.v1.news import _WORKER_META
+
+        assert f"news_edu_{batch}_60m" in _WORKER_META
+
+    def test_health_keyword_covers_job_ids(self):
+        from app.api.v1.news import _WORKER_KEYWORDS
+
+        assert any(k in "news_edu_a_60m" for k in _WORKER_KEYWORDS)
+
+    def test_edu_sources_tagged_in_learning_seed(self):
+        """All 17 edu feeds must appear in the learning-center seed."""
+        from app.services.news.source_meta_seed import SOURCE_META_SEED
+        from app.services.news.sources.edu_batch import EDU_FEEDS
+
+        tagged = {row["source"] for row in SOURCE_META_SEED}
+        missing = {f"edu_{slug}" for slug, *_ in EDU_FEEDS} - tagged
+        assert not missing, f"edu feeds missing from learning seed: {missing}"

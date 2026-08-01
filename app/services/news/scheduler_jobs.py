@@ -1102,6 +1102,58 @@ for _job_id, _label, _batch in ZH_MEDIA_BATCH_JOBS:
     globals()[f"run_zh_media_{_batch}_crawl"] = _zhm_batch_job(_job_id, _batch)
 
 
+# ── Investment education / explainer batches (added 2026-08-02) ──
+#
+# 17 curated knowledge feeds for the 学习中心 — EN blogs/Substacks
+# (Humble Dollar, Klement, Macro Compass…), 10 YouTube education
+# channels (Ben Felix, Damodaran, Patrick Boyle…) and 股感 StockFeel.
+# Table and ECS verification evidence live in
+# app/services/news/sources/edu_batch.py. Same no-LLM rationale as the
+# other batch waves.
+
+from app.services.news.sources.edu_batch import (  # noqa: E402
+    EDU_BATCH_JOBS,
+)
+
+
+def _edu_batch_job(job_id: str, batch_key: str):
+    """Build a ``run_*`` function crawling one education batch."""
+
+    @_record_etl(job_id)
+    def _run() -> dict[str, int]:
+        from app.services.news.sources.edu_batch import (
+            EduBatchCrawler,
+        )
+
+        async def _go():
+            crawler = EduBatchCrawler(batch_key)
+            return await crawler.fetch_recent()
+
+        try:
+            articles = _run_async(_go())
+        except Exception as exc:
+            logger.exception("edu batch %s crawl failed: %s", batch_key, exc)
+            return {
+                "fetched": 0,
+                "written": 0,
+                "skipped": True,
+                "skip_reason": f"crawl_error: {exc}",
+            }
+
+        if not articles:
+            return {"fetched": 0, "written": 0, "skipped": True, "skip_reason": "no_articles"}
+
+        written = _write_to_db(articles)
+        return {"fetched": len(articles), "written": written}
+
+    _run.__name__ = f"run_edu_{batch_key}_crawl"
+    return _run
+
+
+for _job_id, _label, _batch in EDU_BATCH_JOBS:
+    globals()[f"run_edu_{_batch}_crawl"] = _edu_batch_job(_job_id, _batch)
+
+
 # ── New Chinese news sources (added 2026-07-18) ──
 
 @_record_etl("news_wallstreetcn_5m")

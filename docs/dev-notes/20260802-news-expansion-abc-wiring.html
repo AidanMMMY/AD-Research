@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="zh-CN"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>2026-08-02 资讯源三波扩容 runbook</title>
+<title>2026-08-02 资讯源扩容 runbook</title>
 <style>
 body{font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;max-width:960px;margin:2rem auto;padding:0 1.25rem;line-height:1.7;color:#1a1a1a}
 h1,h2,h3{line-height:1.3} h1{border-bottom:2px solid #ddd;padding-bottom:.4rem}
@@ -83,4 +83,13 @@ th{background:#f0f0f0} blockquote{border-left:4px solid #ccc;margin-left:0;paddi
 </ul>
 <h2>淘汰清单（三波合计 ECS 实测 ~650 候选）</h2>
 <p>完整清单在各模块 docstring（<code>en_fin_batch.py</code> / <code>official_batch.py</code> / <code>zh_media_batch.py</code>），按原因归类：Cloudflare/Akamai 403（IMF/OECD/Investopedia/Benzinga/The Block…）、无原生 RSS（WSJ/Bloomberg/Reuters/BOJ 除外的多家央行…）、死 feed/停更（Forbes 全系/CNN Business/Blockworks…）、超 30 天不新鲜、feed 内含未来日期毒数据（BIS 研究论文/Bank of Canada/Richmond Fed——<strong>验证时务必检查最新条目不能在未来</strong>）、标题党拒收（Coinpedia/CryptoNewsZ 等）。</p>
+<h2>第四波：edu 科普批次（2026-08-02 晚，学习中心专设）</h2>
+<ul>
+<li><code>edu_batch.py</code>：<strong>17 源 / 2 批</strong>（a=10, b=7），命名空间 <code>news_edu_{a,b}_60m</code>，source=<code>edu_{slug}</code></li>
+<li>构成：英文博客/Substack ×6（Humble Dollar、ChooseFI、Behavioral Scientist、Klement、Macro Compass、Napkin Finance）+ <strong>YouTube 教育频道 ×10</strong>（Ben Felix、Damodaran、Patrick Boyle、PensionCraft、Money &amp; Macro 等，频道 ID 逐个 ECS 核对）+ 股感 StockFeel（繁中 cn_a）</li>
+<li><strong>YouTube 正文链路</strong>：feed 只有 <code>media:description</code>，crawler <code>_youtube_descriptions_to_summary</code> 注入 Atom summary → 标准 parse_rss_items 路径 → 翻译 drain 自动接力，零共享库改动</li>
+<li><strong>学习中心打标同步</strong>：17 源全部加入 <code>source_meta_seed.py</code>（接线时必做，测试 <code>test_edu_sources_tagged_in_learning_seed</code> 守护）；ECS 重跑 <code>scripts/seed_news_source_meta.py</code> 幂等补 17 行</li>
+<li>淘汰：Investopedia 403 坐实（Aliyun IP 信誉墙，与 en_fin 波同因）、JL Collins/MMM/Kitces 等 14 个 WordPress 博客 403、Bogleheads 停更、My Money Blog 导购拒收、中文候选仅 StockFeel 过（綠角 feed 被 follow.it 劫持、市場先生 403 等）</li>
+<li>接线三步同前三波（scheduler_jobs factory + scheduler 注册 + news.py <code>edu_</code> KEYWORDS/META），种子防手滑测试 <code>test_seed_sources_exist_in_batch_tables</code> 需同步把新批次表纳入 known 宇宙</li>
+</ul>
 </body></html>

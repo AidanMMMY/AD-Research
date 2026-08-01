@@ -2251,6 +2251,21 @@ def init_scheduler():
                 max_instances=1,
                 coalesce=True,
             )
+
+        # Investment education batches (2026-08-02) — 17 curated
+        # knowledge/explainer feeds, generated in
+        # ``scheduler_jobs.EDU_BATCH_JOBS``, all hourly.
+        for job_id, label, batch in _news_jobs.EDU_BATCH_JOBS:
+            fn = getattr(_news_jobs, f"run_edu_{batch}_crawl")
+            scheduler.add_job(
+                fn,
+                trigger=IntervalTrigger(minutes=60, jitter=600),
+                id=job_id,
+                name=label,
+                replace_existing=True,
+                max_instances=1,
+                coalesce=True,
+            )
     except ImportError:
         pass
 

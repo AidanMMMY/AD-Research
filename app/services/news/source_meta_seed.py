@@ -318,6 +318,26 @@ _SEED_ROWS: list[tuple[str, str, str, str | None, str, str]] = [
     ("quantpedia", "deep", "research", "advanced", "RSS单源", "Quantpedia（量化策略研究）"),
     ("wechat_maobidao", "deep", "macro", None, "公众号", "猫笔刀（市场评论）"),
     ("wechat_sixianggangyin", "deep", "valuation", None, "公众号", "思想钢印（基金经理随笔）"),
+    # ────────────────────────────────────────────────────────────────
+    # edu 科普批次（edu_batch.py，2026-08-02）——学习中心专设知识源
+    # ────────────────────────────────────────────────────────────────
+    ("edu_humbledollar", "edu", "allocation", "beginner", "科普批次", "Humble Dollar"),
+    ("edu_choosefi", "edu", "allocation", "beginner", "科普批次", "ChooseFI"),
+    ("edu_behavioralsci", "edu", "psychology", None, "科普批次", "Behavioral Scientist"),
+    ("edu_klement", "deep", "research", "advanced", "科普批次", "Klement on Investing"),
+    ("edu_macrocompass", "deep", "macro", "advanced", "科普批次", "The Macro Compass"),
+    ("edu_napkinfinance", "edu", "allocation", "beginner", "科普批次", "Napkin Finance"),
+    ("edu_ytbenfelix", "edu", "allocation", None, "科普批次", "Ben Felix (YouTube)"),
+    ("edu_ytplainbagel", "edu", "allocation", "beginner", "科普批次", "The Plain Bagel (YouTube)"),
+    ("edu_yttwocents", "edu", "allocation", "beginner", "科普批次", "Two Cents - PBS (YouTube)"),
+    ("edu_ytdamodaran", "edu", "valuation", "advanced", "科普批次", "Aswath Damodaran (YouTube)"),
+    ("edu_ytpboyle", "edu", "macro", None, "科普批次", "Patrick Boyle (YouTube)"),
+    ("edu_ytpensioncraft", "edu", "allocation", None, "科普批次", "PensionCraft (YouTube)"),
+    ("edu_ytmoneyguy", "edu", "allocation", "beginner", "科普批次", "The Money Guy Show (YouTube)"),
+    ("edu_ytdamien", "edu", "allocation", "beginner", "科普批次", "Damien Talks Money (YouTube)"),
+    ("edu_ytjamesshack", "edu", "allocation", None, "科普批次", "James Shack (YouTube)"),
+    ("edu_ytmoneymacro", "edu", "macro", "beginner", "科普批次", "Money & Macro (YouTube)"),
+    ("edu_stockfeel", "edu", "allocation", "beginner", "科普批次", "股感 StockFeel"),
 ]
 
 #: 种子表（list[dict]），键与 NewsSourceMeta 列一一对应。

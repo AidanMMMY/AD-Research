@@ -44,3 +44,12 @@
 ## 淘汰清单（三波合计 ECS 实测 ~650 候选）
 
 完整清单在各模块 docstring（`en_fin_batch.py` / `official_batch.py` / `zh_media_batch.py`），按原因归类：Cloudflare/Akamai 403（IMF/OECD/Investopedia/Benzinga/The Block…）、无原生 RSS（WSJ/Bloomberg/Reuters/BOJ 除外的多家央行…）、死 feed/停更（Forbes 全系/CNN Business/Blockworks…）、超 30 天不新鲜、feed 内含未来日期毒数据（BIS 研究论文/Bank of Canada/Richmond Fed——**验证时务必检查最新条目不能在未来**）、标题党拒收（Coinpedia/CryptoNewsZ 等）。
+
+## 第四波：edu 科普批次（2026-08-02 晚，学习中心专设）
+
+- `edu_batch.py`：**17 源 / 2 批**（a=10, b=7），命名空间 `news_edu_{a,b}_60m`，source=`edu_{slug}`
+- 构成：英文博客/Substack ×6（Humble Dollar、ChooseFI、Behavioral Scientist、Klement、Macro Compass、Napkin Finance）+ **YouTube 教育频道 ×10**（Ben Felix、Damodaran、Patrick Boyle、PensionCraft、Money & Macro 等，频道 ID 逐个 ECS 核对）+ 股感 StockFeel（繁中 cn_a）
+- **YouTube 正文链路**：feed 只有 `media:description`，crawler `_youtube_descriptions_to_summary` 注入 Atom summary → 标准 parse_rss_items 路径 → 翻译 drain 自动接力，零共享库改动
+- **学习中心打标同步**：17 源全部加入 `source_meta_seed.py`（接线时必做，测试 `test_edu_sources_tagged_in_learning_seed` 守护）；ECS 重跑 `scripts/seed_news_source_meta.py` 幂等补 17 行
+- 淘汰：Investopedia 403 坐实（Aliyun IP 信誉墙，与 en_fin 波同因）、JL Collins/MMM/Kitces 等 14 个 WordPress 博客 403、Bogleheads 停更、My Money Blog 导购拒收、中文候选仅 StockFeel 过（綠角 feed 被 follow.it 劫持、市場先生 403 等）
+- 接线三步同前三波（scheduler_jobs factory + scheduler 注册 + news.py `edu_` KEYWORDS/META），种子防手滑测试 `test_seed_sources_exist_in_batch_tables` 需同步把新批次表纳入 known 宇宙
