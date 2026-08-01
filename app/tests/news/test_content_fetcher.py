@@ -598,9 +598,17 @@ def test_fetch_llm_fallback_when_deterministic_tiers_fail(db_session) -> None:
     """Both deterministic tiers fail → the LLM tier isolates the body."""
     article = _seed_full_text_article(db_session)
     llm_body = "这是 LLM 从原始网页中抽取出的正文内容。" * 10
+    # 2026-08-01: tier-3 新增真页面门（可见文本 ≥1500 才送 LLM），
+    # 这里的直连 HTML 必须是一页真文章页，不能再是 "<html>noise</html>"。
+    paras = [
+        "这是一段足够长的正文内容，用来模拟真实文章页面的可见文本，"
+        "确保 tier-3 的真页面判定能够通过并把页面送进 LLM 提取层。" * 5
+        for _ in range(6)
+    ]
+    real_html = _article_html(article.title, paras)
 
     with (
-        patch.object(ContentFetcher, "_fetch_html", return_value="<html>noise</html>"),
+        patch.object(ContentFetcher, "_fetch_html", return_value=real_html),
         patch(
             "app.services.news.content_fetcher._extract_with_trafilatura",
             return_value=None,

@@ -9,10 +9,14 @@ immediately. Extraction tiers, in order:
    purpose-built for stripping navigation/ads/related-links.
 2. **Jina Reader** (``r.jina.ai``) — external fallback when the local
    extraction finds nothing (JS-heavy pages, anti-bot HTML).
-3. **LLM-from-HTML** — when both deterministic tiers fail, hand the
-   stripped page text to the configured LLM provider and ask for the
-   article body only. Controlled by
-   ``settings.news_content_llm_fallback``.
+3. **LLM-from-HTML** — when both deterministic tiers fail (in
+   particular when the Jina circuit breaker is open, e.g. balance
+   exhausted), hand the stripped page text to the configured LLM
+   provider and ask for the article body only. Only fires on a *real*
+   page (direct download returned an actual article page, not an
+   anti-bot captcha shell); controlled by
+   ``settings.news_content_llm_fallback`` and the env switch
+   ``LLM_EXTRACT_ENABLED`` (default on, ``0``/``false`` disables).
 
 Flow
 ----
@@ -33,6 +37,7 @@ avoids time-of-day decisions inside the module.
 from __future__ import annotations
 
 import logging
+import os
 import re
 import time
 from dataclasses import dataclass
@@ -66,8 +71,13 @@ _HTML_USER_AGENT: Final[str] = (
     "Chrome/126.0.0.0 Safari/537.36"
 )
 
-# Cap on the stripped page text handed to the LLM fallback tier.
-_LLM_MAX_INPUT_CHARS: Final[int] = 8000
+# Cap on the stripped page text handed to the LLM fallback tier
+# (~12k 字符 ≈ 3-6k tokens，保留头部，超长截尾，控制 token 成本).
+_LLM_MAX_INPUT_CHARS: Final[int] = 12_000
+
+# LLM 输出低于这个长度一律判负：真正文几乎不可能不足 200 字，
+# 短输出基本是拒答/摘要/截断幻觉。
+_LLM_MIN_OUTPUT_CHARS: Final[int] = 200
 
 # The LLM fallback must return at least this fraction of its input
 # (before cleaning) — a much shorter answer usually means the model
@@ -706,59 +716,171 @@ def _extract_with_trafilatura(html: str, url: str) -> str | None:
 
 
 _LLM_EXTRACT_SYSTEM: Final[str] = (
-    "你是一个网页正文抽取器。输入是一篇新闻网页去掉 HTML 标签后的全文"
+    "你是一个网页正文提取器。输入是一篇新闻网页去掉 HTML 标签后的全文"
     "（可能混有导航、广告、推荐链接、版权信息等噪音）。"
-    "你的任务：只输出新闻正文本身，剔除所有与正文无关的内容"
-    "（导航、页眉页脚、相关阅读、推广、免责声明、按钮文字等）。"
-    "要求：保留正文原始措辞，禁止总结、改写、翻译或添加任何评论；"
-    "保留自然段落结构；不要输出 ``` 代码块或任何前后缀说明。"
+    "你的任务：只输出文章正文纯文本，保留原始语言与段落结构"
+    "（段落之间用空行分隔）。"
+    "禁止总结、翻译、改写或添加任何评论；除正文外不要输出任何元信息"
+    "（不要标题、日期、作者、来源，除非它们本就是正文句子）；"
+    "不要输出 ``` 代码块或任何前后缀说明。"
+    "如果无法从输入中识别出文章正文，只输出 exactly：NO_CONTENT"
 )
 
+# 反爬拦截壳特征（小写匹配）。实测 marketwatch/investing/ft/
+# ouestfrance/ndtv_profit 直连返回的 datadome/captcha 页面必含以下
+# 特征之一；LLM 对这种壳提取只会浪费 token，必须在送 LLM 前拦掉。
+_ANTI_BOT_MARKERS: Final[tuple[str, ...]] = (
+    "captcha",
+    "datadome",
+    "just a moment",
+    "access denied",
+    "请完成安全验证",
+)
 
-def _extract_with_llm(page_text: str, title: str) -> str | None:
+# 剥标签后可见文本低于这个长度，不可能是真文章页（拦截壳 / JS 空壳 /
+# 短错误页），不送 LLM。
+_REAL_PAGE_MIN_TEXT_CHARS: Final[int] = 1500
+
+# tier-3 预处理：在 script/style/noscript 之外整块剔除的噪音标签
+# （svg 可能极长；header/footer/nav/form 是纯导航与交互噪音）。
+_LLM_STRIP_BLOCK_RE: Final[re.Pattern[str]] = re.compile(
+    r"<(script|style|noscript|svg|header|footer|nav|form)\b[^>]*>.*?</\1>",
+    re.DOTALL | re.IGNORECASE,
+)
+# 正文候选块：<article>/<main> 优先，退化到含最多文本的 <div>。
+_LLM_ARTICLE_BLOCK_RE: Final[re.Pattern[str]] = re.compile(
+    r"<(article|main)\b[^>]*>(.*?)</\1>",
+    re.DOTALL | re.IGNORECASE,
+)
+_LLM_DIV_BLOCK_RE: Final[re.Pattern[str]] = re.compile(
+    r"<div\b[^>]*>(.*?)</div>",
+    re.DOTALL | re.IGNORECASE,
+)
+# 候选块可见文本太薄（< 400）时不可信，兜底用整页文本。
+_LLM_CANDIDATE_MIN_CHARS: Final[int] = 400
+
+
+def _llm_extract_enabled() -> bool:
+    """tier-3 总开关：``settings.news_content_llm_fallback`` 且环境变量
+    ``LLM_EXTRACT_ENABLED`` 未显式关闭（默认开，"0"/"false" 关停，
+    便于生产在 LLM 额度紧张时快速止血）。"""
+    if not get_settings().news_content_llm_fallback:
+        return False
+    flag = os.environ.get("LLM_EXTRACT_ENABLED", "").strip().lower()
+    return flag not in ("0", "false")
+
+
+def _looks_like_real_page(html: str | None) -> bool:
+    """判定直连拿到的是真文章页还是反爬拦截壳（独立可测）。
+
+    HTTP 状态码由 :meth:`ContentFetcher._fetch_html` 保证（>=400 根本
+    不会到这里）；这里要求 HTML 文本不含 captcha/datadome 等拦截特征，
+    且剥标签后的可见文本达到 1500 字符——真文章页几乎必然满足，
+    拦截壳 / JS 空壳 / 短错误页不满足。
+    """
+    if not html:
+        return False
+    lowered = html.lower()
+    if any(marker in lowered for marker in _ANTI_BOT_MARKERS):
+        return False
+    return len(_html_to_text(html)) >= _REAL_PAGE_MIN_TEXT_CHARS
+
+
+def _preprocess_html_for_llm(html: str) -> str:
+    """HTML → 送进 LLM 的纯文本（控制 token 成本）。
+
+    先整块剔除 script/style/noscript/svg/header/footer/nav/form，再
+    优先取 ``<article>``/``<main>`` 候选块（多个取可见文本最多者），
+    都没有时取含文本最多的 ``<div>``，候选块太薄则兜底整页；最后
+    纯文本化并截断到 ~12000 字符（保留头部，超长截尾）。
+    """
+    cleaned = _LLM_STRIP_BLOCK_RE.sub(" ", html)
+    candidates = [m.group(2) for m in _LLM_ARTICLE_BLOCK_RE.finditer(cleaned)]
+    if not candidates:
+        candidates = [m.group(1) for m in _LLM_DIV_BLOCK_RE.finditer(cleaned)]
+    best_text = ""
+    for cand in candidates:
+        cand_text = _html_to_text(cand)
+        if len(cand_text) > len(best_text):
+            best_text = cand_text
+    if len(best_text) >= _LLM_CANDIDATE_MIN_CHARS:
+        text = best_text
+    else:
+        text = _html_to_text(cleaned)
+    return text[:_LLM_MAX_INPUT_CHARS]
+
+
+def _extract_with_llm(
+    page_text: str, title: str, *, article_id: int | None = None
+) -> str | None:
     """Tier 3: ask the configured LLM provider to isolate the body.
 
-    The output is validated (length floor, think-tag strip) and still
-    goes through the deterministic cleaner afterwards, so a hallucinated
-    or truncated answer degrades to a plain fetch failure instead of
-    poisoning the cache.
+    The output is validated (NO_CONTENT 哨兵 / 长度下限 / 拒答话术 /
+    输入输出长度比 / think-tag strip) and still goes through the
+    deterministic cleaner afterwards, so a hallucinated or truncated
+    answer degrades to a plain fetch failure instead of poisoning the
+    cache. LLM 调用整体包 try/except，绝不向上抛。
     """
     try:
         from app.services.llm import get_llm_provider
 
         provider = get_llm_provider()
         if not provider.is_available:
+            logger.info(
+                "ContentFetcher: llm_extract skip article=%s — provider 不可用",
+                article_id,
+            )
             return None
         prompt = (
             f"文章标题：{title}\n\n"
             f"网页全文（已去标签，可能含噪音）：\n{page_text[:_LLM_MAX_INPUT_CHARS]}\n\n"
-            "请只输出该新闻的正文内容。"
+            "请只输出该文章的正文纯文本；若无法识别正文，只输出 NO_CONTENT。"
         )
         output = provider.complete(
             prompt,
             system=_LLM_EXTRACT_SYSTEM,
             max_tokens=4096,
-            temperature=0.0,
+            temperature=0.1,
         )
     except Exception as exc:  # noqa: BLE001
-        logger.warning("ContentFetcher: llm extraction failed: %s", exc)
+        logger.warning(
+            "ContentFetcher: llm_extract fail article=%s error=%s",
+            article_id, exc,
+        )
         return None
 
+    def _reject(reason: str, chars: int = 0) -> None:
+        logger.info(
+            "ContentFetcher: llm_extract fail article=%s reason=%s chars=%d",
+            article_id, reason, chars,
+        )
+
     if not output:
+        _reject("empty")
         return None
     output = _strip_think_tags(output).strip()
     # Strip a markdown code fence if the model wrapped the answer anyway.
     if output.startswith("```"):
         output = re.sub(r"^```[a-zA-Z]*\n?", "", output)
         output = re.sub(r"\n?```$", "", output).strip()
-    if len(output) < MIN_BODY_LENGTH:
+    # 模型按约定在无法识别正文时只回 NO_CONTENT —— 直接判负。
+    if output.upper().startswith("NO_CONTENT"):
+        _reject("no_content")
+        return None
+    # 拒答/道歉话术不是正文，写进缓存就是毒数据。
+    if output.startswith(("抱歉", "无法")):
+        _reject("refusal", len(output))
+        return None
+    if len(output) < _LLM_MIN_OUTPUT_CHARS:
+        _reject("too_short", len(output))
         return None
     if len(output) < len(page_text[:_LLM_MAX_INPUT_CHARS]) * _LLM_MIN_OUTPUT_RATIO:
-        logger.info(
-            "ContentFetcher: llm output too short relative to input (%d vs %d), rejected",
-            len(output), len(page_text),
-        )
+        _reject("output_input_ratio", len(output))
         return None
+    logger.info(
+        "ContentFetcher: llm_extract success article=%s chars=%d",
+        article_id, len(output),
+    )
     return output
 
 
@@ -888,9 +1010,14 @@ class ContentFetcher:
                     article_id, article.url, exc,
                 )
 
-        if not md and html and get_settings().news_content_llm_fallback:
-            md = _extract_with_llm(_html_to_text(html), article.title)
-            if md:
+        # Tier 3 — LLM 提取冗余层（2026-08-01）：tier-1 失败且 Jina
+        # 不可用（断路器开 / 调用失败 / 402 余额耗尽）时，对直连拿到的
+        # 真页面做 LLM 正文提取。反爬拦截壳在真页面门内被拦掉，不烧
+        # token。
+        if not md:
+            llm_md = self._extract_with_llm_tier(article, html)
+            if llm_md:
+                md = llm_md
                 method = "llm"
 
         if not md and tier1_md:
@@ -1064,6 +1191,31 @@ class ContentFetcher:
     # ------------------------------------------------------------------
     # Internals
     # ------------------------------------------------------------------
+    def _extract_with_llm_tier(
+        self, article: NewsArticle, html: str | None
+    ) -> str | None:
+        """Tier 3 — LLM 提取冗余层（2026-08-01）。
+
+        触发时机：tier-1 失败且 Jina 不可用。Jina 余额耗尽期间这是唯一
+        的全文来源，但 LLM 救不了反爬拦截壳（marketwatch 等 captcha
+        页），因此只对"直连拿到真页面"生效；tier-1 未拿到 HTML
+        （``html is None``，比如某些源直连被跳过 / 直连失败）时由本层
+        自己补发一次直连请求（复用同一 headers/超时配置）。
+        """
+        if not _llm_extract_enabled():
+            return None
+        if html is None:
+            html = self._fetch_html(article.url)
+        if not _looks_like_real_page(html):
+            logger.info(
+                "ContentFetcher: llm_extract skip article=%s — 直连页面非真页面"
+                "（反爬拦截壳或可见文本不足）",
+                article.id,
+            )
+            return None
+        page_text = _preprocess_html_for_llm(html)
+        return _extract_with_llm(page_text, article.title, article_id=article.id)
+
     def _is_cache_fresh(self, article: NewsArticle) -> bool:
         if not article.full_content or not article.full_content_fetched_at:
             return False
