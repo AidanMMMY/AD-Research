@@ -23,12 +23,12 @@
 - **10 年回填已完成**：`docker cp scripts/backfill_global_index_ohlcv.py <backend>:/tmp/ && docker exec <backend> bash -c "PYTHONPATH=/app python3 /tmp/backfill_global_index_ohlcv.py --period 10y"` → **71,009 行 / 22 个代码**（yfinance 10y + akshare A股全历史，上证综指 8,694 行最深）
 - 生产验证：global_hsi 蜡烛+52周高低 ✅、us_dgs10 折线 ✅、usd_eur 反转值 ~1.15 且 high>low ✅、bad_code 404 ✅
 
-## 2. FRED_API_KEY 生产缺失（待用户提供 key）
+## 2. FRED_API_KEY 生产缺失（✅ 已修复，2026-08-01 晚）
 
-- **发现过程**：详情页 us_dgs2/t10y2y/t10y3m/vix 折线数据停在 2026-07-21；admin `POST /macro/refresh?lookback_days=3650` 37 系列全部瞬间失败
-- **根因**：生产 `.env` `FRED_API_KEY=` 为空。us_dgs2 等 4 个 FRED-only 系列 fetched_at 显示 07-05→07-22 每天有 key 在工作，之后 key 丢失（疑似 7-22 前后某次 .env 重写丢行）；`/root/.env.bak-20260801` 里已为空，无法找回
-- **为什么速览页看不出**：us_dgs10/us_dgs30/global_dxy/sp500/nasdaq/dow 有 yfinance 后备源（^TNX/^TYX/DX-Y.NYB 等）每天 17:00 照常更新，掩盖了 FRED 链路断裂
-- **修复**：用户提供 FRED key（免费申请 https://fred.stlouisfed.org/docs/api/api_key.html）→ 写入 ECS `.env` → recreate backend → `POST /api/v1/macro/refresh?lookback_days=3650` 回填 10 年
+- **根因**：生产 `.env` `FRED_API_KEY=` 为空。us_dgs2/t10y2y/t10y3m/vix 四个 FRED-only 系列 07-05→07-22 有 key 在工作，之后 key 丢失（疑似某次 .env 重写丢行，备份无法找回）
+- **为什么速览页看不出**：us_dgs10/us_dgs30/global_dxy/sp500/nasdaq/dow 有 yfinance 后备源每天照常更新，掩盖了 FRED 链路断裂
+- **修复（已执行）**：用户提供新 key → 写入 ECS `.env`（值不入库本文档）→ `docker compose up -d backend` recreate → 容器内 `FredService(db).refresh(lookback_days=3650)` 后台回填
+- **结果**：**46,930 行写入，36/37 系列成功**，四冻结系列恢复 10 年深度（2016-08-03 → 2026-07-31）。2 个失败是 FRED 侧系列 id 失效：`NAPM`（us_ism_pmi，FRED 已停更该 id）和 `CPALTT01EZM657N`（eu_cpi）——**后续待办：更新 fred_service.py SERIES_REGISTRY 里这两个 id**
 
 ## 3. 资讯时区错位根治（"未来时间"文章）
 
