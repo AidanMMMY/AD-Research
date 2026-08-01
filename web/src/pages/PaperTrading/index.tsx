@@ -24,10 +24,8 @@ import PageShell from '@/components/PageShell';
 import PageHeader from '@/components/PageHeader';
 import Panel from '@/components/Panel';
 import LoadingBlock from '@/components/LoadingBlock';
-import SectionHeading from '@/components/SectionHeading';
 import EmptyState from '@/components/EmptyState';
 import InstrumentCodeTag from '@/components/InstrumentCodeTag';
-import ResponsiveGrid from '@/components/ResponsiveGrid';
 import HelpPopover from '@/components/HelpPopover';
 import { useSettingsStore } from '@/stores/settings';
 import { useIsMobile } from '@/hooks/useBreakpoint';
@@ -361,27 +359,124 @@ export default function PaperTrading() {
             </>
           }
         >
-          <div className="phase5c-account-selector" data-onboard="paper-account">
+          {/* 桌面去卡片化（2026-07-29）：账户选择与下单/同步/自动交易/
+              归档操作合并为一行工具栏，原「操作」小节整段退场。 */}
+          <div className="phase5c-account-selector paper-account-bar" data-onboard="paper-account">
             {accountsLoading ? (
               <LoadingBlock size="sm" />
             ) : (
-              <Select
-                value={selectedAccountId}
-                onChange={setSelectedAccountId}
-                className="phase5c-select--lg"
-                style={isMobile ? { width: '100%' } : undefined}
-                options={accounts.map((a) => ({
-                  value: a.id,
-                  label: (
-                    <span>
-                      {a.name}
-                      <span className="font-mono ad-ml-2 ad-text-tertiary">
-                        {fmtUSDT(a.total_value || a.cash)}
+              <>
+                <Select
+                  value={selectedAccountId}
+                  onChange={setSelectedAccountId}
+                  className="phase5c-select--lg"
+                  style={isMobile ? { width: '100%' } : undefined}
+                  options={accounts.map((a) => ({
+                    value: a.id,
+                    label: (
+                      <span>
+                        {a.name}
+                        <span className="font-mono ad-ml-2 ad-text-tertiary">
+                          {fmtUSDT(a.total_value || a.cash)}
+                        </span>
                       </span>
-                    </span>
-                  ),
-                }))}
-              />
+                    ),
+                  }))}
+                />
+                {selectedAccountId && (
+                  <div className="paper-account-bar__actions">
+                    {isMobile ? (
+                      <>
+                        <Button
+                          icon={<PlusOutlined />}
+                          onClick={() => setOrderModalOpen(true)}
+                          type="primary"
+                        >
+                          下单
+                        </Button>
+                        <Button
+                          icon={<SyncOutlined />}
+                          onClick={handleSync}
+                          loading={syncMarket.isPending}
+                          aria-label="刷新市值"
+                        />
+                        <Button
+                          icon={<ThunderboltOutlined />}
+                          onClick={handleAutoTrade}
+                          loading={autoTrade.isPending}
+                          aria-label="信号自动交易"
+                        />
+                        <Dropdown
+                          trigger={['click']}
+                          menu={{
+                            items: [
+                              {
+                                key: 'archive',
+                                icon: <DeleteOutlined />,
+                                label: '归档账户',
+                                danger: true,
+                                disabled: deleteAccount.isPending,
+                                onClick: () => {
+                                  Modal.confirm({
+                                    title: '确认归档该账户？',
+                                    content:
+                                      '归档后账户将不可见，相关持仓与订单记录仍保留。',
+                                    okText: '确认归档',
+                                    cancelText: '取消',
+                                    okButtonProps: { danger: true },
+                                    onOk: () => handleDeleteAccount(selectedAccountId),
+                                  });
+                                },
+                              },
+                            ],
+                          }}
+                        >
+                          <Button icon={<MoreOutlined />} aria-label="更多操作" />
+                        </Dropdown>
+                      </>
+                    ) : (
+                      <>
+                        <Button
+                          icon={<PlusOutlined />}
+                          onClick={() => setOrderModalOpen(true)}
+                          type="primary"
+                        >
+                          手动下单
+                        </Button>
+                        <Button
+                          icon={<SyncOutlined />}
+                          onClick={handleSync}
+                          loading={syncMarket.isPending}
+                        >
+                          刷新市值
+                        </Button>
+                        <Button
+                          icon={<ThunderboltOutlined />}
+                          onClick={handleAutoTrade}
+                          loading={autoTrade.isPending}
+                        >
+                          信号自动交易
+                        </Button>
+                        <Popconfirm
+                          title="确认归档该账户？"
+                          description="归档后账户将不可见，相关持仓与订单记录仍保留。"
+                          onConfirm={() => handleDeleteAccount(selectedAccountId)}
+                          okText="确认归档"
+                          cancelText="取消"
+                        >
+                          <Button
+                            icon={<DeleteOutlined />}
+                            danger
+                            loading={deleteAccount.isPending}
+                          >
+                            归档账户
+                          </Button>
+                        </Popconfirm>
+                      </>
+                    )}
+                  </div>
+                )}
+              </>
             )}
           </div>
         </ContextHint>
@@ -389,161 +484,71 @@ export default function PaperTrading() {
 
       {selectedAccountId && (
         <>
-          <SectionHeading title="账户概览" />
-          <ResponsiveGrid cols={4} gap="md" className="phase5c-section">
-            <Panel padding="sm" className="phase5c-trading-card">
-              <Statistic
-                title="总权益"
-                value={pnl?.total_equity ?? account?.total_value ?? account?.cash}
-                precision={2}
-                prefix="$"
-                loading={pnlLoading && accountLoading}
-              />
-            </Panel>
-            <Panel padding="sm" className="phase5c-trading-card">
-              <Statistic
-                title="可用现金"
-                value={account?.cash}
-                precision={2}
-                prefix="$"
-                loading={accountLoading}
-              />
-            </Panel>
-            <Panel padding="sm" className="phase5c-trading-card">
-              <Statistic
-                title="持仓市值"
-                value={pnl?.market_value}
-                precision={2}
-                prefix="$"
-                loading={pnlLoading}
-              />
-            </Panel>
-            <Panel padding="sm" className="phase5c-trading-card">
-              <div className={pnl && pnl.total_pnl > 0 ? 'phase5c-pnl-stat--rise' : pnl && pnl.total_pnl < 0 ? 'phase5c-pnl-stat--fall' : 'phase5c-pnl-stat--neutral'}>
+          {/* 桌面去卡片化（2026-07-29）：5 张统计卡合并为一个 KPI strip
+              Panel — hairline 分隔的指标行，tabular-nums 大数字，
+              卡片容器退场。 */}
+          <Panel title="账户概览" className="phase5c-section">
+            <div className="paper-kpi-strip">
+              <div className="paper-kpi-cell">
                 <Statistic
-                  title="总盈亏"
-                  value={pnl ? Math.abs(pnl.total_pnl) : 0}
+                  title="总权益"
+                  value={pnl?.total_equity ?? account?.total_value ?? account?.cash}
                   precision={2}
-                  prefix={pnl && pnl.total_pnl >= 0 ? '+$' : '-$'}
+                  prefix="$"
+                  loading={pnlLoading && accountLoading}
+                />
+              </div>
+              <div className="paper-kpi-cell">
+                <Statistic
+                  title="可用现金"
+                  value={account?.cash}
+                  precision={2}
+                  prefix="$"
+                  loading={accountLoading}
+                />
+              </div>
+              <div className="paper-kpi-cell">
+                <Statistic
+                  title="持仓市值"
+                  value={pnl?.market_value}
+                  precision={2}
+                  prefix="$"
                   loading={pnlLoading}
                 />
               </div>
-              {pnl?.pnl_pct != null && (
-                <div className={pnl.pnl_pct > 0 ? 'phase5c-pnl-pct--rise' : pnl.pnl_pct < 0 ? 'phase5c-pnl-pct--fall' : 'phase5c-pnl-pct--neutral'}>
-                  {pnl.pnl_pct >= 0 ? '+' : ''}
-                  {pnl.pnl_pct.toFixed(2)}%
+              <div className="paper-kpi-cell">
+                <div className={pnl && pnl.total_pnl > 0 ? 'phase5c-pnl-stat--rise' : pnl && pnl.total_pnl < 0 ? 'phase5c-pnl-stat--fall' : 'phase5c-pnl-stat--neutral'}>
+                  <Statistic
+                    title="总盈亏"
+                    value={pnl ? Math.abs(pnl.total_pnl) : 0}
+                    precision={2}
+                    prefix={pnl && pnl.total_pnl >= 0 ? '+$' : '-$'}
+                    loading={pnlLoading}
+                  />
                 </div>
-              )}
-            </Panel>
-            <Panel padding="sm" className="phase5c-trading-card">
-              <Statistic
-                title="交易次数"
-                value={pnl?.trade_count ?? 0}
-                loading={pnlLoading}
-              />
-              {pnl?.win_rate != null && (
-                <div className="ad-text-small ad-text-tertiary">
-                  胜率: {(pnl.win_rate * 100).toFixed(0)}%
-                </div>
-              )}
-            </Panel>
-          </ResponsiveGrid>
-
-          <SectionHeading title="操作" />
-          <div className="phase5c-action-bar phase5c-section">
-            {isMobile ? (
-              <>
-                <Button
-                  icon={<PlusOutlined />}
-                  onClick={() => setOrderModalOpen(true)}
-                  type="primary"
-                >
-                  下单
-                </Button>
-                <Button
-                  icon={<SyncOutlined />}
-                  onClick={handleSync}
-                  loading={syncMarket.isPending}
-                  aria-label="刷新市值"
+                {pnl?.pnl_pct != null && (
+                  <div className={pnl.pnl_pct > 0 ? 'phase5c-pnl-pct--rise' : pnl.pnl_pct < 0 ? 'phase5c-pnl-pct--fall' : 'phase5c-pnl-pct--neutral'}>
+                    {pnl.pnl_pct >= 0 ? '+' : ''}
+                    {pnl.pnl_pct.toFixed(2)}%
+                  </div>
+                )}
+              </div>
+              <div className="paper-kpi-cell">
+                <Statistic
+                  title="交易次数"
+                  value={pnl?.trade_count ?? 0}
+                  loading={pnlLoading}
                 />
-                <Button
-                  icon={<ThunderboltOutlined />}
-                  onClick={handleAutoTrade}
-                  loading={autoTrade.isPending}
-                  aria-label="信号自动交易"
-                />
-                <Dropdown
-                  trigger={['click']}
-                  menu={{
-                    items: [
-                      {
-                        key: 'archive',
-                        icon: <DeleteOutlined />,
-                        label: '归档账户',
-                        danger: true,
-                        disabled: deleteAccount.isPending,
-                        onClick: () => {
-                          Modal.confirm({
-                            title: '确认归档该账户？',
-                            content:
-                              '归档后账户将不可见，相关持仓与订单记录仍保留。',
-                            okText: '确认归档',
-                            cancelText: '取消',
-                            okButtonProps: { danger: true },
-                            onOk: () => handleDeleteAccount(selectedAccountId),
-                          });
-                        },
-                      },
-                    ],
-                  }}
-                >
-                  <Button icon={<MoreOutlined />} aria-label="更多操作" />
-                </Dropdown>
-              </>
-            ) : (
-              <>
-                <Button
-                  icon={<PlusOutlined />}
-                  onClick={() => setOrderModalOpen(true)}
-                  type="primary"
-                >
-                  手动下单
-                </Button>
-                <Button
-                  icon={<SyncOutlined />}
-                  onClick={handleSync}
-                  loading={syncMarket.isPending}
-                >
-                  刷新市值
-                </Button>
-                <Button
-                  icon={<ThunderboltOutlined />}
-                  onClick={handleAutoTrade}
-                  loading={autoTrade.isPending}
-                >
-                  信号自动交易
-                </Button>
-                <Popconfirm
-                  title="确认归档该账户？"
-                  description="归档后账户将不可见，相关持仓与订单记录仍保留。"
-                  onConfirm={() => handleDeleteAccount(selectedAccountId)}
-                  okText="确认归档"
-                  cancelText="取消"
-                >
-                  <Button
-                    icon={<DeleteOutlined />}
-                    danger
-                    loading={deleteAccount.isPending}
-                  >
-                    归档账户
-                  </Button>
-                </Popconfirm>
-              </>
-            )}
-          </div>
+                {pnl?.win_rate != null && (
+                  <div className="ad-text-small ad-text-tertiary">
+                    胜率: {(pnl.win_rate * 100).toFixed(0)}%
+                  </div>
+                )}
+              </div>
+            </div>
+          </Panel>
 
-          <SectionHeading title="当前持仓" />
-          <Panel variant="default" className="phase5c-section">
+          <Panel title="当前持仓" variant="default" className="phase5c-section">
             <div className="phase5c-table-wrap">
               {positionsLoading ? (
                 <LoadingBlock size="md" className="phase5c-skeleton-pad" />
@@ -564,8 +569,7 @@ export default function PaperTrading() {
             </div>
           </Panel>
 
-          <SectionHeading title="最近订单" />
-          <Panel variant="default">
+          <Panel title="最近订单" variant="default">
             <div className="phase5c-table-wrap">
               {ordersLoading ? (
                 <LoadingBlock size="md" className="phase5c-skeleton-pad" />

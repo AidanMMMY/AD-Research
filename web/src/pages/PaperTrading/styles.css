@@ -21,6 +21,72 @@
   color: var(--text-tertiary);
 }
 
+/* ── 2026-07-29 桌面去卡片化：账户工具栏 + KPI strip ──
+   账户选择 Select 与下单/同步/自动交易/归档合并为一行；
+   5 张统计卡合并为 hairline 分隔的指标行（方向 A：用排版代替容器）。 */
+
+.paper-account-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.paper-account-bar__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  margin-left: auto;
+}
+
+.paper-kpi-strip {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.paper-kpi-cell {
+  min-width: 0;
+  padding: 0 var(--space-4);
+  border-left: 1px solid var(--hairline);
+}
+
+.paper-kpi-cell:first-child {
+  border-left: none;
+  padding-left: 0;
+}
+
+/* 延续原 phase5c-trading-card 的等宽数字传统 */
+.paper-kpi-cell .ant-statistic-content {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 767px) {
+  .paper-account-bar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .paper-account-bar__actions {
+    margin-left: 0;
+  }
+
+  .paper-kpi-strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    row-gap: var(--space-4);
+  }
+
+  .paper-kpi-cell {
+    padding: 0 var(--space-3);
+  }
+
+  .paper-kpi-cell:nth-child(odd) {
+    border-left: none;
+    padding-left: 0;
+  }
+}
+
 /* ── Page-specific overrides use ad-* classes from global.css ── */
 
 /* ContextHint's anchor is inline-flex and would shrink-wrap the account

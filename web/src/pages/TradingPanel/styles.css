@@ -109,6 +109,72 @@
   color: var(--text-tertiary);
 }
 
+/* ── 2026-07-29 桌面去卡片化：风控 KPI strip + 余额排版单元格 ──
+   4 张风控统计卡合并为 hairline 分隔的指标行；余额小卡拆除嵌套
+   Panel（卡中卡），改为 hairline 顶线的纯排版单元格。 */
+
+.tp-kpi-strip {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.tp-kpi-cell {
+  min-width: 0;
+  padding: 0 var(--space-4);
+  border-left: 1px solid var(--hairline);
+}
+
+.tp-kpi-cell:first-child {
+  border-left: none;
+  padding-left: 0;
+}
+
+/* 延续原 phase5c-trading-card 的等宽数字传统 */
+.tp-kpi-cell .ant-statistic-content {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.tp-balance-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: var(--space-4) var(--space-5);
+}
+
+.tp-balance-cell {
+  min-width: 0;
+  border-top: 1px solid var(--hairline);
+  padding-top: var(--space-2);
+}
+
+.tp-balance-cell__asset {
+  font-family: var(--font-mono);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.tp-balance-cell__row {
+  font-size: var(--text-small-size);
+  color: var(--text-tertiary);
+  letter-spacing: 0.01em;
+}
+
+@media (max-width: 767px) {
+  .tp-kpi-strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    row-gap: var(--space-4);
+  }
+
+  .tp-kpi-cell {
+    padding: 0 var(--space-3);
+  }
+
+  .tp-kpi-cell:nth-child(odd) {
+    border-left: none;
+    padding-left: 0;
+  }
+}
+
 /* ── Apple Design: instant pointer-down feedback on actionable cards ──
    Response principle — feedback fires on :active (pointer-down), using the
    critically-damped spring ease so the press/release feels physical. */

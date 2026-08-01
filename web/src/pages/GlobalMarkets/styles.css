@@ -52,3 +52,47 @@
   border-color: var(--category-sanction-border) !important;
   color: var(--category-sanction-text) !important;
 }
+
+/* ── 2026-07-29 桌面去卡片化：类目合并 Panel ──
+   原 5 个 SectionHeading+Panel 堆叠 → 1 个「主要指数」整表 Panel +
+   1 个利率/外汇/商品/波动合并 Panel。类目层级用排版（小字 label）
+   代替容器，桌面 2×2 栅格、移动端纵向堆叠。 */
+
+.gm-merged__label {
+  font-size: var(--text-label-size);
+  font-weight: 500;
+  color: var(--text-tertiary);
+  letter-spacing: 0.12em;
+  margin-bottom: var(--space-2);
+}
+
+.gm-merged__cell {
+  min-width: 0;
+}
+
+@media (max-width: 1023px) {
+  .gm-merged__cell + .gm-merged__cell {
+    margin-top: var(--space-5);
+  }
+}
+
+@media (min-width: 1024px) {
+  .gm-merged__grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-6) var(--space-8);
+    align-items: start;
+  }
+
+  /* 事件流桌面双列：4 条事件两行摆完；末行保留 dashed hairline，
+     与上方行保持一致的 ledger 观感。 */
+  .gm-motion .ad-news-events-list {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: var(--space-6);
+  }
+
+  .gm-motion .ad-news-events-list__item:last-child {
+    border-bottom: 1px dashed var(--border-default);
+  }
+}

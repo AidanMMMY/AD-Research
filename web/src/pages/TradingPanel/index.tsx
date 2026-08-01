@@ -21,9 +21,7 @@ import PageShell from '@/components/PageShell';
 import PageHeader from '@/components/PageHeader';
 import Panel from '@/components/Panel';
 import LoadingBlock from '@/components/LoadingBlock';
-import SectionHeading from '@/components/SectionHeading';
 import EmptyState from '@/components/EmptyState';
-import ResponsiveGrid from '@/components/ResponsiveGrid';
 import ThemeTag from '@/components/ThemeTag';
 import InstrumentCodeTag from '@/components/InstrumentCodeTag';
 import { useIsMobile } from '@/hooks/useBreakpoint';
@@ -361,7 +359,26 @@ export default function TradingPanel() {
         }
       />
 
-      <Panel variant="default" className="phase5c-account-selector">
+      {/* 桌面去卡片化（2026-07-29）：配置选择 Panel 增加标题，原「操作」
+          小节的下单按钮并入 Panel header extra — 下单是与当前配置强绑定
+          的主操作，不再独占一个段落。禁用逻辑一行未动。 */}
+      <Panel
+        variant="default"
+        className="phase5c-account-selector"
+        title="交易配置"
+        extra={
+          selectedConfig ? (
+            <Button
+              icon={<PlusOutlined />}
+              type="primary"
+              onClick={() => setOrderModalOpen(true)}
+              disabled={!selectedConfig.is_enabled || risk?.circuit_breaker_active}
+            >
+              下单
+            </Button>
+          ) : null
+        }
+      >
         <div className="phase5c-flex-wrap">
           {configsLoading ? (
             <Skeleton.Input active size="small" />
@@ -426,82 +443,86 @@ export default function TradingPanel() {
 
       {selectedConfig && (
         <>
-          <SectionHeading title="风控与限额" />
-          <ResponsiveGrid cols={4} gap="md" className="phase5c-section">
-            <Panel padding="sm" className="phase5c-trading-card">
-              <Statistic
-                title="今日订单"
-                value={risk?.orders_today ?? 0}
-                suffix={`/ ${selectedConfig.max_daily_orders}`}
-                loading={riskLoading}
-              />
-            </Panel>
-            <Panel padding="sm" className="phase5c-trading-card">
-              <Statistic
-                title="单笔上限"
-                value={selectedConfig.max_order_value}
-                prefix="$"
-                loading={configsLoading}
-              />
-            </Panel>
-            <Panel padding="sm" className="phase5c-trading-card">
-              <div className={risk && Number(risk.realized_pnl_today) > 0 ? 'phase5c-pnl-stat--rise' : risk && Number(risk.realized_pnl_today) < 0 ? 'phase5c-pnl-stat--fall' : 'phase5c-pnl-stat--neutral'}>
+          {/* 桌面去卡片化（2026-07-29）：4 张风控统计卡合并为一个 KPI
+              strip Panel — hairline 分隔的指标行，卡片容器退场。 */}
+          <Panel title="风控与限额" className="phase5c-section">
+            <div className="tp-kpi-strip">
+              <div className="tp-kpi-cell">
                 <Statistic
-                  title="今日已实现"
-                  value={Number.isFinite(Number(risk?.realized_pnl_today)) ? Number(risk?.realized_pnl_today) : 0}
-                  precision={2}
-                  prefix="$"
+                  title="今日订单"
+                  value={risk?.orders_today ?? 0}
+                  suffix={`/ ${selectedConfig.max_daily_orders}`}
                   loading={riskLoading}
                 />
               </div>
-            </Panel>
-            <Panel padding="sm" className="phase5c-trading-card">
-              <div className="phase5c-flex-center">
-                <div>
-                  <div className="phase5c-meta-label">
-                    熔断状态
-                  </div>
-                  <RiskBadge risk={risk} />
-                </div>
-                {risk?.circuit_breaker_active && (
-                  <Popconfirm
-                    title="确认重置熔断？"
-                    description="重置后将恢复下单能力，请确认风险已解除。"
-                    onConfirm={handleResetBreaker}
-                    okText="确认重置"
-                    cancelText="取消"
-                  >
-                    <Button
-                      size="small"
-                      icon={<ReloadOutlined />}
-                      loading={resetBreaker.isPending}
-                    >
-                      重置
-                    </Button>
-                  </Popconfirm>
-                )}
+              <div className="tp-kpi-cell">
+                <Statistic
+                  title="单笔上限"
+                  value={selectedConfig.max_order_value}
+                  prefix="$"
+                  loading={configsLoading}
+                />
               </div>
-            </Panel>
-          </ResponsiveGrid>
+              <div className="tp-kpi-cell">
+                <div className={risk && Number(risk.realized_pnl_today) > 0 ? 'phase5c-pnl-stat--rise' : risk && Number(risk.realized_pnl_today) < 0 ? 'phase5c-pnl-stat--fall' : 'phase5c-pnl-stat--neutral'}>
+                  <Statistic
+                    title="今日已实现"
+                    value={Number.isFinite(Number(risk?.realized_pnl_today)) ? Number(risk?.realized_pnl_today) : 0}
+                    precision={2}
+                    prefix="$"
+                    loading={riskLoading}
+                  />
+                </div>
+              </div>
+              <div className="tp-kpi-cell">
+                <div className="phase5c-flex-center">
+                  <div>
+                    <div className="phase5c-meta-label">
+                      熔断状态
+                    </div>
+                    <RiskBadge risk={risk} />
+                  </div>
+                  {risk?.circuit_breaker_active && (
+                    <Popconfirm
+                      title="确认重置熔断？"
+                      description="重置后将恢复下单能力，请确认风险已解除。"
+                      onConfirm={handleResetBreaker}
+                      okText="确认重置"
+                      cancelText="取消"
+                    >
+                      <Button
+                        size="small"
+                        icon={<ReloadOutlined />}
+                        loading={resetBreaker.isPending}
+                      >
+                        重置
+                      </Button>
+                    </Popconfirm>
+                  )}
+                </div>
+              </div>
+            </div>
+          </Panel>
 
-          <SectionHeading title="账户余额" />
-          <Panel variant="default" className="phase5c-section">
+          {/* 桌面去卡片化（2026-07-29）：拆除卡中卡 — 余额小卡从嵌套
+              Panel 改为 hairline 分隔的纯排版单元格。 */}
+          <Panel title="账户余额" variant="default" className="phase5c-section">
             {accountLoading ? (
               <LoadingBlock size="md" />
             ) : account && account.balances.length > 0 ? (
-              <div className="phase5c-balance-grid">
+              <div className="tp-balance-grid">
                 {account.balances.map((b) => (
-                  <Panel key={b.asset} padding="sm" className="phase5c-balance-card">
-                    <div className="phase5c-balance-card__asset">
+                  <div key={b.asset} className="tp-balance-cell">
+                    <div className="tp-balance-cell__asset">
                       {b.asset}
                     </div>
-                    <div className="phase5c-balance-card__row">
+                    <div className="tp-balance-cell__row">
                       可用: {fmtNumberString(b.free)}
                     </div>
-                    <div className="phase5c-balance-card__row">
+                    <div className="tp-balance-cell__row">
                       冻结: {fmtNumberString(b.locked)}
                     </div>
-                  </Panel>
+                  </div>
                 ))}
               </div>
             ) : (
@@ -511,20 +532,7 @@ export default function TradingPanel() {
             )}
           </Panel>
 
-          <SectionHeading title="操作" />
-          <div className="phase5c-action-bar phase5c-section">
-            <Button
-              icon={<PlusOutlined />}
-              type="primary"
-              onClick={() => setOrderModalOpen(true)}
-              disabled={!selectedConfig.is_enabled || risk?.circuit_breaker_active}
-            >
-              下单
-            </Button>
-          </div>
-
-          <SectionHeading title="当前持仓" />
-          <Panel variant="default" className="phase5c-section">
+          <Panel title="当前持仓" variant="default" className="phase5c-section">
             <div className="phase5c-table-wrap">
               {positionsLoading ? (
                 <LoadingBlock size="md" className="phase5c-skeleton-pad" />
@@ -545,8 +553,7 @@ export default function TradingPanel() {
             </div>
           </Panel>
 
-          <SectionHeading title="最近订单" />
-          <Panel variant="default">
+          <Panel title="最近订单" variant="default">
             <div className="phase5c-table-wrap">
               {ordersLoading ? (
                 <LoadingBlock size="md" className="phase5c-skeleton-pad" />

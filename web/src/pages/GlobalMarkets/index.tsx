@@ -28,7 +28,6 @@ import type { ColumnsType } from 'antd/es/table';
 import PageShell from '@/components/PageShell';
 import PageHeader from '@/components/PageHeader';
 import Panel from '@/components/Panel';
-import SectionHeading from '@/components/SectionHeading';
 import EmptyState from '@/components/EmptyState';
 import LoadingBlock from '@/components/LoadingBlock';
 import Sparkline from '@/components/Sparkline';
@@ -230,14 +229,26 @@ function inferCategoryKey(code: string): string {
   return 'index';
 }
 
-function CategoryBlock({ title, rows, isMobile }: { title: string; rows: RowVm[]; isMobile: boolean }): JSX.Element | null {
-  if (rows.length === 0) return null;
+/**
+ * Single category table (no surrounding section/panel chrome).
+ *
+ * 2026-07-29 桌面去卡片化：原 ``CategoryBlock``（SectionHeading + Panel
+ * 双重标题）拆成纯表格，由外层合并后的 Panel 统一承载标题 —
+ * 见下方 ``GlobalMarkets`` 的「主要指数」整表 Panel 与
+ * 「利率/外汇/商品/波动」2×2 合并 Panel。
+ *
+ * ``compact`` 变体（合并 Panel 内的小类目）省略「数据日期 / 区域」两列并
+ * 收窄列宽，让两张表能并排落在桌面半栅格里； freshness 由页头
+ * LastUpdated 与指数整表的日期列覆盖。移动端两种变体渲染完全一致
+ * （日期/区域本来就随 ``ad-hidden-mobile`` 隐藏）。
+ */
+function CategoryTable({ rows, isMobile, compact = false }: { rows: RowVm[]; isMobile: boolean; compact?: boolean }): JSX.Element {
   const columns: ColumnsType<RowVm> = [
     {
       title: '指标',
       dataIndex: 'name',
       key: 'name',
-      width: isMobile ? 120 : 220,
+      width: isMobile ? 120 : compact ? undefined : 220,
       render: (n: string, row) => (
         <div>
           <Text strong>{n}</Text>
@@ -253,7 +264,7 @@ function CategoryBlock({ title, rows, isMobile }: { title: string; rows: RowVm[]
       title: '最新值',
       dataIndex: 'latest',
       key: 'latest',
-      width: isMobile ? 80 : 140,
+      width: isMobile ? 80 : compact ? 110 : 140,
       align: 'right',
       render: (v: number | null, row) => (
         <Text strong className="tabular-nums">
@@ -265,7 +276,7 @@ function CategoryBlock({ title, rows, isMobile }: { title: string; rows: RowVm[]
       title: '日涨跌',
       dataIndex: 'changePct',
       key: 'changePct',
-      width: isMobile ? 70 : 110,
+      width: isMobile ? 70 : compact ? 100 : 110,
       align: 'right',
       render: (_: number | null, row: RowVm) => {
         // Rate / yield-spread series: percent change is meaningless (it
@@ -288,50 +299,53 @@ function CategoryBlock({ title, rows, isMobile }: { title: string; rows: RowVm[]
       title: '近30日',
       dataIndex: 'sparkline',
       key: 'sparkline',
-      width: isMobile ? 80 : 160,
+      width: isMobile ? 80 : compact ? 110 : 160,
       render: (s: number[]) =>
         s.length >= 2 ? (
-          <Sparkline data={s} width={isMobile ? 70 : 140} height={isMobile ? 20 : 26} />
+          <Sparkline
+            data={s}
+            width={isMobile ? 70 : compact ? 100 : 140}
+            height={isMobile ? 20 : 26}
+          />
         ) : (
           <Text type="secondary">—</Text>
         ),
     },
-    {
-      title: '数据日期',
-      dataIndex: 'asOf',
-      key: 'asOf',
-      width: isMobile ? 0 : 130,
-      className: isMobile ? 'ad-hidden-mobile' : undefined,
-      render: (p: string | null) =>
-        p ? <Text type="secondary">{p}</Text> : <Text type="secondary">未采集</Text>,
-    },
-    {
-      title: '区域',
-      dataIndex: 'region',
-      key: 'region',
-      width: isMobile ? 0 : 90,
-      className: isMobile ? 'ad-hidden-mobile' : undefined,
-      render: (r: string) =>
-        r === 'global' ? <ThemeTag variant="neutral">全球</ThemeTag> : <ThemeTag variant="accent">美国</ThemeTag>,
-    },
+    ...(!compact
+      ? ([
+          {
+            title: '数据日期',
+            dataIndex: 'asOf',
+            key: 'asOf',
+            width: isMobile ? 0 : 130,
+            className: isMobile ? 'ad-hidden-mobile' : undefined,
+            render: (p: string | null) =>
+              p ? <Text type="secondary">{p}</Text> : <Text type="secondary">未采集</Text>,
+          },
+          {
+            title: '区域',
+            dataIndex: 'region',
+            key: 'region',
+            width: isMobile ? 0 : 90,
+            className: isMobile ? 'ad-hidden-mobile' : undefined,
+            render: (r: string) =>
+              r === 'global' ? <ThemeTag variant="neutral">全球</ThemeTag> : <ThemeTag variant="accent">美国</ThemeTag>,
+          },
+        ] as ColumnsType<RowVm>)
+      : []),
   ];
   return (
-    <section className="ad-section">
-      <SectionHeading title={title} />
-      <Panel>
-        <div className="ad-table-scroll">
-          <Table<RowVm>
-            rowKey="code"
-            size="small"
-            dataSource={rows}
-            columns={columns}
-            pagination={false}
-            showHeader
-            scroll={{ x: 'max-content' }}
-          />
-        </div>
-      </Panel>
-    </section>
+    <div className="ad-table-scroll">
+      <Table<RowVm>
+        rowKey="code"
+        size="small"
+        dataSource={rows}
+        columns={columns}
+        pagination={false}
+        showHeader
+        scroll={{ x: 'max-content' }}
+      />
+    </div>
   );
 }
 
@@ -597,6 +611,12 @@ export default function GlobalMarkets() {
     (r) => r.latest != null || (r.sparkline && r.sparkline.length > 0),
   );
 
+  // 桌面去卡片化（2026-07-29）：16 行的「主要指数」独占一个整表 Panel；
+  // 利率/外汇/商品/波动四个小类目（合计 12 行）合并进一个 Panel，桌面
+  // 2×2 栅格、移动端纵向堆叠，类目层级改用排版（小字 label）表达。
+  const indexGroup = grouped.find((g) => g.key === 'index');
+  const compactGroups = grouped.filter((g) => g.key !== 'index');
+
   const handleOpenHelp = () => {
     // Build the indicator rows summary for the LLM context. Flatten
     // the grouped table into one row per code with its category so
@@ -670,8 +690,27 @@ export default function GlobalMarkets() {
         </section>
       )}
 
-      {hasAnyData &&
-        grouped.map((g) => <CategoryBlock key={g.key} title={g.label} rows={g.rows} isMobile={isMobile} />)}
+      {hasAnyData && indexGroup && (
+        <Panel title={indexGroup.label}>
+          <CategoryTable rows={indexGroup.rows} isMobile={isMobile} />
+        </Panel>
+      )}
+
+      {hasAnyData && compactGroups.length > 0 && (
+        <Panel
+          title={compactGroups.map((g) => g.label).join(' · ')}
+          className="gm-merged"
+        >
+          <div className="gm-merged__grid">
+            {compactGroups.map((g) => (
+              <div key={g.key} className="gm-merged__cell">
+                <div className="gm-merged__label">{g.label}</div>
+                <CategoryTable rows={g.rows} isMobile={isMobile} compact />
+              </div>
+            ))}
+          </div>
+        </Panel>
+      )}
     </PageShell>
     </div>
   );
