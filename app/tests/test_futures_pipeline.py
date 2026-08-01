@@ -495,6 +495,16 @@ def test_discovery_pipeline_run_succeeds_without_ohlcv_validation(db_session):
 # ---------------------------------------------------------------------------
 
 
+# The daily pipeline's default window is anchored at ``date.today()``
+# (``history_days=30``, strict ``>`` cutoff), while the SAMPLE_* fixtures
+# below use fixed dates around 2026-07-01/2026-07-02. Without an explicit
+# ``target_date`` the fixtures silently age out of the window ~30 days
+# after they were written and every daily-pipeline test starts returning
+# 0 rows. Pin ``target_date`` to the fixture's latest day so the tests are
+# deterministic regardless of when they run.
+FIXTURE_TARGET_DATE = date(2026, 7, 2)
+
+
 def _seed_main_contract(db, code="CU0", exchange="SHFE", product="金属"):
     db.add(
         FuturesContract(
@@ -514,7 +524,7 @@ def test_daily_pipeline_extract_picks_highest_oi_per_day(db_session):
     db_session.commit()
 
     with _patch_fetch_all_markets({"SHFE": SAMPLE_SHFE}):
-        pipeline = FuturesDailyPipeline(db_session)
+        pipeline = FuturesDailyPipeline(db_session, target_date=FIXTURE_TARGET_DATE)
         out = pipeline.extract()
 
     # Two varieties × two days = 4 rows
@@ -533,7 +543,7 @@ def test_daily_pipeline_pre_settle_inherited_when_symbol_unchanged(db_session):
     db_session.commit()
 
     with _patch_fetch_all_markets({"SHFE": SAMPLE_SHFE}):
-        pipeline = FuturesDailyPipeline(db_session)
+        pipeline = FuturesDailyPipeline(db_session, target_date=FIXTURE_TARGET_DATE)
         out = pipeline.extract()
 
     # CU2608 leads on both days: day2 pre_settle must equal day1 settle (102.5).
@@ -576,7 +586,7 @@ def test_daily_pipeline_pre_settle_none_on_main_contract_roll(db_session):
     )
 
     with _patch_fetch_all_markets({"SHFE": rolled}):
-        pipeline = FuturesDailyPipeline(db_session)
+        pipeline = FuturesDailyPipeline(db_session, target_date=FIXTURE_TARGET_DATE)
         out = pipeline.extract()
 
     day2 = out[out["trade_date"] == date(2026, 7, 2)]
@@ -628,7 +638,7 @@ def test_daily_pipeline_load_writes_and_invalidates_cache(db_session):
     with _patch_fetch_all_markets({"SHFE": SAMPLE_SHFE}), patch(
         "app.data.pipelines.futures.cache_invalidate_pattern", return_value=0
     ) as mock_invalidate:
-        pipeline = FuturesDailyPipeline(db_session)
+        pipeline = FuturesDailyPipeline(db_session, target_date=FIXTURE_TARGET_DATE)
         extracted = pipeline.extract()
         n = pipeline.load(extracted)
 
@@ -650,13 +660,13 @@ def test_daily_pipeline_load_is_upsert(db_session):
     with _patch_fetch_all_markets({"SHFE": SAMPLE_SHFE}), patch(
         "app.data.pipelines.futures.cache_invalidate_pattern", return_value=0
     ):
-        pipeline = FuturesDailyPipeline(db_session)
+        pipeline = FuturesDailyPipeline(db_session, target_date=FIXTURE_TARGET_DATE)
         pipeline.load(pipeline.extract())
 
     with _patch_fetch_all_markets({"SHFE": SAMPLE_SHFE}), patch(
         "app.data.pipelines.futures.cache_invalidate_pattern", return_value=0
     ):
-        pipeline = FuturesDailyPipeline(db_session)
+        pipeline = FuturesDailyPipeline(db_session, target_date=FIXTURE_TARGET_DATE)
         pipeline.load(pipeline.extract())
 
     # 2 varieties × 2 days = 4 distinct (code, date) rows
@@ -697,7 +707,7 @@ def test_daily_pipeline_run_succeeds_with_light_validation(db_session):
     with _patch_fetch_all_markets({"SHFE": SAMPLE_SHFE}), patch(
         "app.data.pipelines.futures.cache_invalidate_pattern", return_value=0
     ):
-        pipeline = FuturesDailyPipeline(db_session)
+        pipeline = FuturesDailyPipeline(db_session, target_date=FIXTURE_TARGET_DATE)
         result = pipeline.run()
 
     assert result.success is True
@@ -726,7 +736,7 @@ def test_daily_pipeline_run_drops_rows_with_invalid_high_low(db_session):
     with _patch_fetch_all_markets({"SHFE": shfe_bad}), patch(
         "app.data.pipelines.futures.cache_invalidate_pattern", return_value=0
     ):
-        pipeline = FuturesDailyPipeline(db_session)
+        pipeline = FuturesDailyPipeline(db_session, target_date=FIXTURE_TARGET_DATE)
         result = pipeline.run()
 
     assert result.success is True
