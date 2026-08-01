@@ -12,6 +12,61 @@
    - Sentiment bar width/background: computed from avg_score
    ========================================================================== */
 
+/* ============================================================
+   去卡片化 B 组（2026-08-01）：行情核心区双列 + 分区合并
+   - K线提出 Tabs 常驻，与核心指标 Panel（主卡 + 增量指标合并）
+     组成桌面 ≥1200px 双列：K线 主列 + 360px 指标右栏，
+     首屏同时见到行情与核心指标。
+   - 窄屏回落单列，顺序保持旧移动端：核心指标 → K线 → Tabs。
+   - 综合评分 tab 内的「评分详情」卡中卡拍平为小标题 + hairline。
+   ============================================================ */
+
+.stock-detail__market-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-panel-gap);
+  align-items: start;
+  grid-template-areas:
+    "kpi"
+    "kline";
+}
+
+.stock-detail__market-kpi {
+  grid-area: kpi;
+}
+
+.stock-detail__market-kline {
+  grid-area: kline;
+}
+
+@media (min-width: 1200px) {
+  .stock-detail__market-row {
+    grid-template-columns: minmax(0, 1fr) 360px;
+    grid-template-areas: "kline kpi";
+  }
+
+  /* 右栏收窄：4 列网格回落 2 列，避免单元格过窄 */
+  .stock-detail__market-kpi .responsive-grid--cols-4,
+  .stock-detail__market-kpi .detail-indicator-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* 合并分区：StatCard 行与增量指标行同属一个 Panel，行间留白 */
+.stock-detail__indicator-grid {
+  margin-top: var(--space-4);
+}
+
+/* 评分详情：标题层级代替容器层级（原 minimal Panel 卡中卡） */
+.stock-detail__score-detail-title {
+  margin: 0 0 var(--space-3);
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--border-default);
+  font-size: var(--text-h3-size);
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
 /* ---- Valuation alert spacing ---- */
 .stock-detail__valuation {
   position: relative;

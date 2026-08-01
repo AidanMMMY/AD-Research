@@ -17,7 +17,6 @@ import PageShell from '@/components/PageShell';
 import PageHeader from '@/components/PageHeader';
 import ResponsiveGrid from '@/components/ResponsiveGrid';
 import StatCard from '@/components/StatCard';
-import SectionHeading from '@/components/SectionHeading';
 import InstrumentCodeTag from '@/components/InstrumentCodeTag';
 import EmptyState from '@/components/EmptyState';
 import NewsListPanel from '@/components/NewsListPanel';
@@ -26,7 +25,7 @@ import HelpPopover from '@/components/HelpPopover';
 import ThemeTag from '@/components/ThemeTag';
 import { formatPercent } from '@/utils/format';
 import { useSettingsStore } from '@/stores/settings';
-import { getReturnColor, getDownColor } from '@/utils/color';
+import { getReturnColor } from '@/utils/color';
 import { buildInstrumentDetailContext } from '@/utils/helpContext';
 import { getQuickQuestions } from '@/utils/helpPrompts';
 import { SENTIMENT_COLORS, SENTIMENT_LABELS } from '@/utils/sentiment';
@@ -243,12 +242,15 @@ export default function StockDetail() {
     return `${pct >= 0 ? '+' : ''}${pct.toFixed(2)}`;
   };
 
-  const tabItems = [
-    {
-      key: 'kline',
-      label: 'K线行情',
-      children: (
-        <Panel title="K线行情" padding="md" extra={<HelpTrigger tooltip="AI 解释K线" onClick={handleOpenHelp} />}>
+  /* 去卡片化 B 组（2026-08-01）：K线提出 Tabs 常驻行情核心区，与核心指标
+     组成桌面双列（窄屏回落单列，顺序：核心指标 → K线，与旧移动端一致）。 */
+  const klinePanel = (
+    <Panel
+      className="stock-detail__market-kline"
+      title="K线行情"
+      padding="md"
+      extra={<HelpTrigger tooltip="AI 解释K线" onClick={handleOpenHelp} />}
+    >
           <div className="detail-toolbar">
             <Space size="large" wrap>
               <Space>
@@ -310,33 +312,54 @@ export default function StockDetail() {
               <Alert className="detail-chart__empty" message="暂无历史行情数据" type="info" showIcon />
             )
           )}
-        </Panel>
-      ),
-    },
-    {
-      key: 'indicators',
-      label: '指标数据',
-      children: (
-        <Panel title="指标数据" padding="md" extra={<HelpTrigger tooltip="AI 解释技术指标" onClick={handleOpenHelp} />}>
-          <div className="detail-indicator-grid">
-            {[
-              { title: <HelpPopover termKey="rsi14" mode={mode}>RSI14</HelpPopover>, value: indicator?.rsi14, precision: 1 },
-              { title: <HelpPopover termKey="sharpe_1y" mode={mode}>夏普1年</HelpPopover>, value: indicator?.sharpe_1y, precision: 2 },
-              { title: <HelpPopover termKey="volatility_20d" mode={mode}>波动率20日</HelpPopover>, value: indicator?.volatility_20d != null ? indicator.volatility_20d * 100 : undefined, precision: 2, suffix: '%' },
-              { title: <HelpPopover termKey="max_drawdown_1y" mode={mode}>最大回撤</HelpPopover>, value: indicator?.max_drawdown_1y != null ? indicator.max_drawdown_1y * 100 : undefined, precision: 2, suffix: '%', color: getDownColor() },
-              { title: <HelpPopover termKey="return_1m" mode={mode}>1月收益</HelpPopover>, value: indicator?.return_1m != null ? indicator.return_1m * 100 : undefined, precision: 2, suffix: '%', color: getReturnColor(indicator?.return_1m, colorConvention) },
-              { title: <HelpPopover termKey="return_3m" mode={mode}>3月收益</HelpPopover>, value: indicator?.return_3m != null ? indicator.return_3m * 100 : undefined, precision: 2, suffix: '%', color: getReturnColor(indicator?.return_3m, colorConvention) },
-              { title: <HelpPopover termKey="return_1y" mode={mode}>1年收益</HelpPopover>, value: indicator?.return_1y != null ? indicator.return_1y * 100 : undefined, precision: 2, suffix: '%', color: getReturnColor(indicator?.return_1y, colorConvention) },
-              { title: <HelpPopover termKey="ma5" mode={mode}>MA5</HelpPopover>, value: indicator?.ma5, precision: 2 },
-            ].map((m, i) => (
-              <div key={i} className="detail-indicator-item">
-                <Statistic title={m.title} value={m.value} precision={m.precision} suffix={m.suffix} valueStyle={{ color: m.color }} />
-              </div>
-            ))}
+    </Panel>
+  );
+
+  /* 合并分区：原「核心指标 SectionHeading + 4 卡」与「指标数据 tab」合并为
+     一个核心指标 Panel —— 4 张主卡（1月收益/RSI14/波动率/最大回撤）+ 4 个
+     增量指标（夏普1年/3月收益/1年收益/MA5），重复项只保留主卡，
+     标题层级代替容器层级。 */
+  const coreMetricsPanel = (
+    <Panel
+      className="stock-detail__market-kpi"
+      title="核心指标"
+      padding="md"
+      extra={<HelpTrigger tooltip="AI 解释技术指标" onClick={handleOpenHelp} />}
+    >
+      <ResponsiveGrid cols={4} gap="md">
+        {heroStats.map((stat) => (
+          <div key={stat.title} className={stat.color}>
+            <StatCard
+              title={stat.title}
+              value={
+                stat.value != null
+                  ? // RSI14 is an absolute indicator value, not a decimal percentage.
+                    stat.suffix === '%'
+                    ? formatSigned(stat.value)
+                    : stat.value.toFixed(1)
+                  : '—'
+              }
+              suffix={stat.suffix}
+            />
           </div>
-        </Panel>
-      ),
-    },
+        ))}
+      </ResponsiveGrid>
+      <div className="detail-indicator-grid stock-detail__indicator-grid">
+        {[
+          { title: <HelpPopover termKey="sharpe_1y" mode={mode}>夏普1年</HelpPopover>, value: indicator?.sharpe_1y, precision: 2 },
+          { title: <HelpPopover termKey="return_3m" mode={mode}>3月收益</HelpPopover>, value: indicator?.return_3m != null ? indicator.return_3m * 100 : undefined, precision: 2, suffix: '%', color: getReturnColor(indicator?.return_3m, colorConvention) },
+          { title: <HelpPopover termKey="return_1y" mode={mode}>1年收益</HelpPopover>, value: indicator?.return_1y != null ? indicator.return_1y * 100 : undefined, precision: 2, suffix: '%', color: getReturnColor(indicator?.return_1y, colorConvention) },
+          { title: <HelpPopover termKey="ma5" mode={mode}>MA5</HelpPopover>, value: indicator?.ma5, precision: 2 },
+        ].map((m, i) => (
+          <div key={i} className="detail-indicator-item">
+            <Statistic title={m.title} value={m.value} precision={m.precision} suffix={m.suffix} valueStyle={{ color: m.color }} />
+          </div>
+        ))}
+      </div>
+    </Panel>
+  );
+
+  const tabItems = [
     {
       key: 'score',
       label: '综合评分',
@@ -347,7 +370,10 @@ export default function StockDetail() {
               <ScoreRadar data={score} />
             </Col>
             <Col xs={24} md={12}>
-              <Panel variant="minimal" title="评分详情" padding="md">
+              {/* 去卡片化：原 Panel variant="minimal" 卡中卡，改为小标题 +
+                  hairline 分隔（标题层级代替容器层级）。 */}
+              <div className="stock-detail__score-detail">
+                <h3 className="stock-detail__score-detail-title">评分详情</h3>
                 <Descriptions column={1}>
                   <Descriptions.Item label={<HelpPopover termKey="composite_score" mode={mode}>综合评分</HelpPopover>}>{score.composite_score}</Descriptions.Item>
                   <Descriptions.Item label={<HelpPopover termKey="rank_overall" mode={mode}>全市场排名</HelpPopover>}>{score.rank_overall}</Descriptions.Item>
@@ -358,7 +384,7 @@ export default function StockDetail() {
                   <Descriptions.Item label={<HelpPopover termKey="score_liquidity" mode={mode}>流动性得分</HelpPopover>}>{score.score_liquidity}</Descriptions.Item>
                   <Descriptions.Item label={<HelpPopover termKey="score_trend" mode={mode}>趋势得分</HelpPopover>}>{score.score_trend}</Descriptions.Item>
                 </Descriptions>
-              </Panel>
+              </div>
             </Col>
           </Row>
         </Panel>
@@ -664,27 +690,14 @@ export default function StockDetail() {
         {stock.exchange && <ThemeTag>{stock.exchange}</ThemeTag>}
       </div>
 
-      <SectionHeading title="核心指标" />
-      <ResponsiveGrid cols={4} gap="md" className="detail-section">
-        {heroStats.map((stat) => (
-          <div key={stat.title} className={stat.color}>
-            <StatCard
-              title={stat.title}
-              value={
-                stat.value != null
-                  ? // RSI14 is an absolute indicator value, not a decimal percentage.
-                    stat.suffix === '%'
-                    ? formatSigned(stat.value)
-                    : stat.value.toFixed(1)
-                  : '—'
-              }
-              suffix={stat.suffix}
-            />
-          </div>
-        ))}
-      </ResponsiveGrid>
+      {/* 行情核心区：核心指标 + K线 双列（桌面 ≥1200px），窄屏单列。
+          二级内容（评分/AI/新闻/估值）仍走 Tabs。 */}
+      <div className="detail-section stock-detail__market-row">
+        {coreMetricsPanel}
+        {klinePanel}
+      </div>
 
-      <Tabs className="stock-detail__tabs" items={tabItems} defaultActiveKey="kline" />
+      <Tabs className="stock-detail__tabs" items={tabItems} defaultActiveKey="score" />
     </PageShell>
   );
 }
