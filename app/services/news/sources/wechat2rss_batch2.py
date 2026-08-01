@@ -35,8 +35,10 @@ Design notes
   ``wechat_{slug}`` — the same namespace as batch 1 and the wewe-rss
   feeds, so the News page / health grid treat every WeChat account
   uniformly. ``category`` is one of ``macro`` / ``strategy`` /
-  ``industry`` / ``tech`` / ``business`` (documentation + tests only;
-  it is not persisted).
+  ``industry`` / ``tech`` / ``business``; since 2026-08-02 it is also
+  persisted to ``news_article.category`` via
+  ``parse_rss_items(default_category=...)`` → ``extra["category"]`` →
+  ``normalizer._derive_category`` (学习中心打标接通).
 * **Batched jobs**: 103 feeds as 103 scheduler jobs would drown the
   health grid and amplify the APScheduler misfire problem (see the
   20260727 runbook §2). The table is sliced into
@@ -364,6 +366,11 @@ class Wechat2RssBatch2Crawler:
                             language=self.language,
                             default_author=feed.display_name,
                             max_items=self._max_items,
+                            # 行内 category（macro/strategy/industry/tech/
+                            # business）落进 extra["category"]，
+                            # normalizer._derive_category 会写入
+                            # news_article.category（2026-08-02 接通）。
+                            default_category=feed.category,
                         )
                     )
                 except Exception as exc:  # noqa: BLE001

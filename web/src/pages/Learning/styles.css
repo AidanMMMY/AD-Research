@@ -8,6 +8,25 @@
   width: 220px;
 }
 
+/* ── 知识库 feed (2026-08-02) ──
+   主题 chip 行复用全局 .ad-status-chip；这里只补计数数字与
+   「加载更多」脚的局部样式。文章卡片样式是全局 .ad-news-card*。 */
+.learning-topic-chips__count {
+  color: var(--text-tertiary);
+  font-variant-numeric: tabular-nums;
+}
+
+.ad-status-chip--active .learning-topic-chips__count {
+  color: inherit;
+  opacity: 0.75;
+}
+
+.learning-knowledge__more {
+  display: flex;
+  justify-content: center;
+  padding: var(--space-4) 0 var(--space-2);
+}
+
 /* ── Scenario card icon: 44px accent-dim rounded block ──
    Upgrades the bare 16px text-level icon to a visual anchor. */
 .learning-scenario-card__icon {

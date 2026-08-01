@@ -33,6 +33,7 @@ from app.api.v1 import (
     futures,
     indicators,
     internal,
+    learning,
     live_trading,
     listing_events,
     macro,
@@ -330,6 +331,12 @@ app.include_router(
     news.router,
     prefix=f"{settings.api_v1_prefix}/news",
     tags=["News"],
+)
+# 学习中心（方案 B MVP，2026-08-02）：知识 feed 按主题/内容类型过滤
+app.include_router(
+    learning.router,
+    prefix=f"{settings.api_v1_prefix}/learning",
+    tags=["Learning"],
 )
 # Internal/trusted-cron endpoints (machine-to-machine; not for user-auth).
 # These live under /api/v1/internal/* and require INTERNAL_API_TOKEN.

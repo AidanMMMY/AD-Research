@@ -27,6 +27,7 @@ from app.models.pool import *
 from app.models.research import *
 from app.models.scoring import *
 from app.models.audit_log import *
+from app.models.news_source_meta import *
 
 target_metadata = Base.metadata
 

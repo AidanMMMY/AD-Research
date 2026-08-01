@@ -32,6 +32,7 @@ from app.models.microstructure import (
 )
 from app.models.research_report import ResearchReport
 from app.models.news import XueqiuFetchState, XueqiuUserCache
+from app.models.news_source_meta import NewsSourceMeta
 from app.models.pool import ETFPools, PoolMember, PoolSnapshot, PoolWeight
 from app.models.scoring import ETFScore, ReportMetadata, ScoreTemplate
 from app.models.sw_industry_index import SWIndustryIndexReturn
@@ -71,6 +72,8 @@ __all__ = [
     "User",
     # Audit log
     "AuditLog",
+    # 资讯源内容性质元数据（学习中心）
+    "NewsSourceMeta",
     # Frontend performance telemetry (Core Web Vitals)
     "WebVitalsLog",
     # ETL / Strategy models

@@ -1,7 +1,7 @@
 import './styles.css';
 import { SENTIMENT_COLORS, SENTIMENT_LABELS } from '@/utils/sentiment';
 import { useState, useMemo, useEffect, useRef } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import {
   Input,
@@ -10,10 +10,8 @@ import {
   DatePicker,
   Tag,
   Badge,
-  Button,
   Space,
   Spin,
-  Tooltip,
   message,
 } from 'antd';
 import {
@@ -21,10 +19,6 @@ import {
   StarFilled,
   StarOutlined,
   LinkOutlined,
-  LikeOutlined,
-  MessageOutlined,
-  ShareAltOutlined,
-  EyeOutlined,
   FireOutlined,
 } from '@ant-design/icons';
 import { type Dayjs } from 'dayjs';
@@ -34,7 +28,6 @@ import type {
   NewsMarket,
   NewsWatchlistResponse,
   SentimentLabel,
-  ImportanceLevel,
 } from '@/types/news';
 import PageShell from '@/components/PageShell';
 import PageHeader from '@/components/PageHeader';
@@ -42,16 +35,10 @@ import FilterToolbar from '@/components/FilterToolbar';
 import { FilterSheetButton } from '@/components/BottomSheet';
 import Panel from '@/components/Panel';
 import EmptyState from '@/components/EmptyState';
-import DetailDrawer from '@/components/DetailDrawer';
-import Markdown from '@/components/Markdown';
+import NewsCard, { SOURCE_LABELS } from '@/components/NewsCard';
+import NewsDetailDrawer from '@/components/NewsDetailDrawer';
 import LoadingBlock from '@/components/LoadingBlock';
 import InstrumentCodeTag from '@/components/InstrumentCodeTag';
-import ThemeTag from '@/components/ThemeTag';
-import type { ThemeTagVariant } from '@/components/ThemeTag';
-import {
-  formatDateTimeSeconds,
-  formatRelative as formatRelativeTz,
-} from '@/utils/datetime';
 import { useDebounce } from '@/hooks/useDebounce';
 import { useIsMobile } from '@/hooks/useBreakpoint';
 import { useSettingsStore } from '@/stores/settings';
@@ -64,6 +51,10 @@ import { useSettingsStore } from '@/stores/settings';
  *    `.ad-status-chip:active` press rule; they now press (subtle
  *    scale) on touch-down, per Apple's Response principle.
  * 2. Reduced-motion users get no transform/transition at all.
+ *
+ * The article-card press rule and the drawer body rule moved with the
+ * extracted shared components (``components/NewsCard.css`` /
+ * ``components/NewsDetailDrawer.css``, 2026-08-02).
  */
 const NEWS_PAGE_STYLE = `
 /* Pointer-down press for the political / macro filter chips
@@ -77,22 +68,8 @@ const NEWS_PAGE_STYLE = `
 .news-political-chip:active {
   transform: scale(var(--press-scale, 0.97));
 }
-/* Pointer-down press for the article card (Response principle) —
-   bg-active + subtle scale. global.css adds :hover but not :active. */
-.ad-news-card:active {
-  background: var(--bg-active);
-  transform: scale(var(--press-scale-subtle, 0.99));
-}
-/* Full body text inside the detail drawer — the card clamps the same
-   body field, the drawer shows it in full. */
-.news-drawer-body {
-  white-space: pre-wrap;
-  line-height: 1.7;
-  color: var(--text-secondary);
-}
 @media (prefers-reduced-motion: reduce) {
-  .news-political-chip,
-  .ad-news-card {
+  .news-political-chip {
     transition: none;
     transform: none;
   }
@@ -115,13 +92,6 @@ const MARKET_OPTIONS: { label: string; value: NewsMarket | 'all' }[] = [
   // ``GLOBAL_DEFAULT_CATEGORIES``.
   { label: '全球', value: 'global' },
 ];
-
-const MARKET_BADGE: Record<NewsMarket, { variant: ThemeTagVariant; label: string }> = {
-  cn_a: { variant: 'neutral', label: 'A 股' },
-  us: { variant: 'accent', label: '美股' },
-  crypto: { variant: 'warning', label: '加密' },
-  global: { variant: 'accent', label: '全球' },
-};
 
 /**
  * Categories the ``global`` market sentinel defaults the chip strip
@@ -153,489 +123,10 @@ const POLITICAL_CATEGORIES: { value: string; label: string; color: string }[] = 
   { value: 'sanction', label: '制裁', color: 'magenta' },
 ];
 
-/**
- * Map an ``event_category`` value to a visual tag variant. Political /
- * macro categories get a coloured Tag so the eye lands on them
- * immediately in a feed dominated by earnings headlines; the legacy
- * categories stay neutral grey.
- */
-const EVENT_CATEGORY_VARIANT: Record<string, ThemeTagVariant> = {
-  geopolitics: 'warning',
-  central_bank: 'neutral',
-  election: 'neutral',
-  trade_war: 'error',
-  sanction: 'neutral',
-  earnings: 'default',
-  regulation: 'default',
-  macro: 'default',
-};
-
-const EVENT_CATEGORY_LABELS: Record<string, string> = {
-  geopolitics: '地缘',
-  central_bank: '央行',
-  election: '选举',
-  trade_war: '贸易战',
-  sanction: '制裁',
-  earnings: '财报',
-  'm&a': '并购',
-  product: '产品',
-  macro: '宏观',
-  regulation: '监管',
-  guidance: '指引',
-  analyst: '分析师',
-  legal: '法律',
-  rumor: '传闻',
-  other: '其他',
-};
-
-/** Render an event_category as a coloured Tag (with Chinese label). */
-function EventCategoryTag({ value }: { value: string | null }) {
-  if (!value) return null;
-  const variant = EVENT_CATEGORY_VARIANT[value] ?? 'default';
-  const label = EVENT_CATEGORY_LABELS[value] ?? value;
-  return (
-    <ThemeTag variant={variant} className="ad-event-tag">
-      {label}
-    </ThemeTag>
-  );
-}
-
-const SOURCE_LABELS: Record<string, { emoji: string; label: string }> = {
-  xinhua: { emoji: '📰', label: '新华' },
-  sina: { emoji: '📰', label: '新浪财经' },
-  sina_finance: { emoji: '📰', label: '新浪财经' },
-  eastmoney: { emoji: '📊', label: '东方财富' },
-  cls: { emoji: '⚡', label: '财联社' },
-  wallstreetcn: { emoji: '📈', label: '华尔街见闻' },
-  chinanews_finance: { emoji: '📰', label: '中新网财经' },
-  xueqiu: { emoji: '📈', label: '雪球' },
-  reddit: { emoji: '🦍', label: 'Reddit' },
-  coindesk: { emoji: '🪙', label: 'CoinDesk' },
-  cointelegraph: { emoji: '🪙', label: 'Cointelegraph' },
-  bloomberg: { emoji: '🏛', label: 'Bloomberg' },
-  reuters: { emoji: '🏛', label: '路透' },
-  marketwatch: { emoji: '📈', label: 'MarketWatch' },
-  zerohedge: { emoji: '📉', label: 'ZeroHedge' },
-  seekingalpha: { emoji: '🔍', label: 'Seeking Alpha' },
-  ft: { emoji: '📰', label: '金融时报' },
-  investing: { emoji: '💹', label: 'Investing.com' },
-  decrypt: { emoji: '🪙', label: 'Decrypt' },
-  federal_reserve: { emoji: '🏛', label: '美联储' },
-  ecb: { emoji: '🏛', label: '欧洲央行' },
-  bankofengland: { emoji: '🏛', label: '英格兰银行' },
-  bbc_business: { emoji: '📺', label: 'BBC 商业' },
-  arxiv_qfin: { emoji: '📐', label: 'arXiv 量化金融' },
-};
-
-const IMPORTANCE_COLOR = 'var(--color-warning-bright)';
-
 /** Build ISO date for `dayjs()` value. */
 function toIso(d: Dayjs | null | undefined, endOfDay = false): string | undefined {
   if (!d) return undefined;
   return (endOfDay ? d.endOf('day') : d.startOf('day')).toISOString();
-}
-
-/** Approximate "x 分钟前" / "x 小时前" formatter. UTC-safe — see ``utils/datetime``. */
-function formatRelative(iso: string): string {
-  return formatRelativeTz(iso);
-}
-
-/** Render a 1..5 star row. */
-function ImportanceStars({ level }: { level: ImportanceLevel | null }) {
-  if (!level) return null;
-  const filled = Math.max(0, Math.min(5, level));
-  return (
-    <Tooltip title={`重要性 ${level}/5`}>
-      <span className="ad-text-small ad-text-tertiary ad-letter-spacing">
-        {Array.from({ length: 5 }).map((_, i) => (
-          <StarFilled
-            key={i}
-            className="ad-text-xs ad-mr-1"
-            style={{
-              color: i < filled ? IMPORTANCE_COLOR : 'var(--text-muted)',
-              opacity: i < filled ? 1 : 0.4,
-            }}
-          />
-        ))}
-      </span>
-    </Tooltip>
-  );
-}
-
-/** Single article card in the feed. */
-function NewsCard({
-  article,
-  onOpen,
-  onPickSymbol,
-}: {
-  article: NewsArticle;
-  onOpen: (a: NewsArticle) => void;
-  onPickSymbol: (sym: string) => void;
-}) {
-  // Fallback for unmapped sources shows the raw key only — the
-  // sourceOptions dropdown label carries a "(count)" suffix that must
-  // never leak into the card meta row.
-  const source = SOURCE_LABELS[article.source] ?? {
-    emoji: '🔗',
-    label: article.source,
-  };
-  const market = MARKET_BADGE[article.market];
-  const sentiment = article.sentiment_label;
-
-  return (
-    // Custom button: a semantic ``<article>`` cannot carry
-    // ``role="button"`` (jsx-a11y error), so the card is a plain div
-    // with the full button contract (role + tabIndex + Enter/Space).
-    <div
-      className="ad-news-card"
-      role="button"
-      tabIndex={0}
-      aria-label={article.title_zh ?? article.title}
-      onClick={() => onOpen(article)}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          onOpen(article);
-        }
-      }}
-    >
-      {/* Row 1: source · market · time · importance */}
-      <div className="ad-news-card__meta">
-        <span>{source.emoji} {source.label}</span>
-        <span className="ad-text-muted">·</span>
-        {market && <ThemeTag variant={market.variant} className="ad-detail-tag">{market.label}</ThemeTag>}
-        <EventCategoryTag value={article.event_category} />
-        <span className="ad-flex-1" />
-        <Tooltip title={formatDateTimeSeconds(article.published_at)}>
-          <span>{formatRelative(article.published_at)}</span>
-        </Tooltip>
-        <ImportanceStars level={article.importance} />
-      </div>
-
-      {/* Title — Chinese-first: the ingestion pipeline auto-translates
-          non-Chinese articles into ``title_zh``; when present we render
-          it with a small 「译」 badge and keep the original title one
-          hover away (Tooltip). */}
-      <div className="ad-news-card__title">
-        {article.title_zh ?? article.title}
-        {article.title_zh && (
-          <Tooltip title={`原标题：${article.title}`}>
-            <span className="ad-news-card__translated-badge">译</span>
-          </Tooltip>
-        )}
-      </div>
-
-      {/* AI one-sentence Chinese digest (方向 D) — rendered on mobile
-          AND desktop (the body preview drops out on mobile, but this
-          line stays: it is the feed's main scanning aid). Renders
-          nothing when the drain job hasn't summarized the row yet. */}
-      {article.summary_zh && (
-        <div className="ad-news-card__ai-summary">{article.summary_zh}</div>
-      )}
-
-      {/* Body preview */}
-      {article.body && (
-        <div className="ad-news-card__body">
-          {article.body}
-        </div>
-      )}
-
-      {/* Row 3: symbols + sentiment + engagement */}
-      <div className="ad-news-card__footer">
-        <Space size={8} wrap>
-          {article.symbols.slice(0, 6).map((s) => (
-            <Tag
-              key={`${s.symbol}-${s.match_type}`}
-              color="default"
-              className="ad-mr-1 ad-chip-tag"
-              role="button"
-              tabIndex={0}
-              aria-label={`筛选 ${s.symbol}`}
-              onClick={(e) => {
-                e.stopPropagation();
-                onPickSymbol(s.symbol);
-              }}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  onPickSymbol(s.symbol);
-                }
-              }}
-            >
-              <InstrumentCodeTag
-                code={s.symbol}
-                name={s.name ?? undefined}
-                name_zh={s.name_zh}
-              />
-            </Tag>
-          ))}
-        </Space>
-
-        <span className="ad-flex-1" />
-
-        {sentiment && (
-          <Tooltip
-            title={
-              article.sentiment_score != null
-                ? `分数 ${article.sentiment_score.toFixed(2)} · 置信度 ${(
-                    (article.sentiment_confidence ?? 0) * 100
-                  ).toFixed(0)}%`
-                : SENTIMENT_LABELS[sentiment]
-            }
-          >
-            <Badge
-              color={SENTIMENT_COLORS[sentiment]}
-              text={
-                <span
-                  className="ad-sentiment-label"
-                  style={{ color: SENTIMENT_COLORS[sentiment] }}
-                >
-                  {SENTIMENT_LABELS[sentiment]}
-                </span>
-              }
-            />
-          </Tooltip>
-        )}
-
-        {article.engagement?.likes != null && (
-          <span className="ad-news-card__engagement">
-            <LikeOutlined /> {formatBigNumber(article.engagement.likes)}
-          </span>
-        )}
-        {article.engagement?.comments != null && (
-          <span className="ad-news-card__engagement">
-            <MessageOutlined /> {formatBigNumber(article.engagement.comments)}
-          </span>
-        )}
-        {article.engagement?.shares != null && (
-          <span className="ad-news-card__engagement">
-            <ShareAltOutlined /> {formatBigNumber(article.engagement.shares)}
-          </span>
-        )}
-        {article.engagement?.views != null && (
-          <span className="ad-news-card__engagement">
-            <EyeOutlined /> {formatBigNumber(article.engagement.views)}
-          </span>
-        )}
-        <Tooltip title="查看原文">
-          <a
-            href={article.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="ad-news-card__link"
-            aria-label={`原文链接: ${article.title}`}
-            onClick={(e) => e.stopPropagation()}
-            onKeyDown={(e) => e.stopPropagation()}
-          >
-            <LinkOutlined />
-          </a>
-        </Tooltip>
-      </div>
-    </div>
-  );
-}
-
-function formatBigNumber(n: number): string {
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
-  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}k`;
-  return String(n);
-}
-
-/**
- * Article detail drawer — opens in place of the old ``/news/:id``
- * navigation so reading a story no longer loses the feed's scroll
- * position, matching the Modal/drawer pattern used by 研报/公告.
- * Renders only the fields the list payload already carries (no extra
- * request). The cleaned full text (``full_content``) is fetched and
- * stored at ingestion time, so the body is usually already here; the
- * deep-link route stays for on-demand re-fetch / AI translation,
- * reachable via the "打开完整页面" footer button.
- */
-function NewsDetailDrawer({
-  article,
-  onClose,
-  onPickSymbol,
-}: {
-  article: NewsArticle | null;
-  onClose: () => void;
-  onPickSymbol: (sym: string) => void;
-}) {
-  const navigate = useNavigate();
-  // Keep the last non-null article so the exit animation still has
-  // content to render after ``onClose`` clears the selection.
-  const [lastArticle, setLastArticle] = useState<NewsArticle | null>(null);
-  useEffect(() => {
-    if (article) setLastArticle(article);
-  }, [article]);
-  const shown = article ?? lastArticle;
-
-  const source = shown
-    ? (SOURCE_LABELS[shown.source] ?? { emoji: '🔗', label: shown.source })
-    : null;
-  const market = shown ? MARKET_BADGE[shown.market] : null;
-  const sentiment = shown?.sentiment_label ?? null;
-  const engagement = shown?.engagement;
-  const hasEngagement =
-    engagement != null &&
-    (engagement.likes != null ||
-      engagement.comments != null ||
-      engagement.shares != null ||
-      engagement.views != null);
-
-  return (
-    <DetailDrawer
-      open={!!article}
-      onClose={onClose}
-      title={shown?.title}
-      ariaLabel="资讯详情"
-      footer={
-        shown ? (
-          <Space size={8} wrap>
-            <Button
-              type="primary"
-              icon={<LinkOutlined />}
-              onClick={() =>
-                window.open(shown.url, '_blank', 'noopener,noreferrer')
-              }
-            >
-              查看原文
-            </Button>
-            <Button onClick={() => navigate(`/news/${shown.id}`)}>
-              打开完整页面
-            </Button>
-          </Space>
-        ) : undefined
-      }
-    >
-      {shown && source && (
-        <>
-          {/* Meta row: source · market · category · importance */}
-          <div className="ad-flex ad-items-center ad-gap-2 ad-flex-wrap ad-text-small ad-text-tertiary">
-            <span>{source.emoji} {source.label}</span>
-            {market && (
-              <ThemeTag variant={market.variant} className="ad-detail-tag">
-                {market.label}
-              </ThemeTag>
-            )}
-            <EventCategoryTag value={shown.event_category} />
-            <ImportanceStars level={shown.importance} />
-          </div>
-          <div className="ad-text-small ad-text-tertiary ad-mt-2">
-            {formatDateTimeSeconds(shown.published_at)}
-            {shown.author ? ` · ${shown.author}` : ''}
-          </div>
-
-          {/* Related symbols — clicking pivots the feed filter, same as
-              the chip on the card. */}
-          {shown.symbols.length > 0 && (
-            <div className="ad-mt-4">
-              <div className="ad-text-small ad-text-tertiary ad-mb-2">
-                相关标的
-              </div>
-              <Space size={4} wrap>
-                {shown.symbols.map((s) => (
-                  <Tag
-                    key={`${s.symbol}-${s.match_type}`}
-                    color="default"
-                    className="ad-mr-1 ad-chip-tag"
-                    role="button"
-                    tabIndex={0}
-                    aria-label={`筛选 ${s.symbol}`}
-                    onClick={() => {
-                      onPickSymbol(s.symbol);
-                      onClose();
-                    }}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault();
-                        onPickSymbol(s.symbol);
-                        onClose();
-                      }
-                    }}
-                  >
-                    <InstrumentCodeTag
-                      code={s.symbol}
-                      name={s.name ?? undefined}
-                      name_zh={s.name_zh}
-                    />
-                  </Tag>
-                ))}
-              </Space>
-            </div>
-          )}
-
-          {/* Sentiment + engagement */}
-          {(sentiment || hasEngagement) && (
-            <div className="ad-flex ad-items-center ad-gap-3 ad-flex-wrap ad-mt-4">
-              {sentiment && (
-                <Tooltip
-                  title={
-                    shown.sentiment_score != null
-                      ? `分数 ${shown.sentiment_score.toFixed(2)} · 置信度 ${(
-                          (shown.sentiment_confidence ?? 0) * 100
-                        ).toFixed(0)}%`
-                      : SENTIMENT_LABELS[sentiment]
-                  }
-                >
-                  <Badge
-                    color={SENTIMENT_COLORS[sentiment]}
-                    text={
-                      <span
-                        className="ad-sentiment-label"
-                        style={{ color: SENTIMENT_COLORS[sentiment] }}
-                      >
-                        {SENTIMENT_LABELS[sentiment]}
-                      </span>
-                    }
-                  />
-                </Tooltip>
-              )}
-              {engagement?.likes != null && (
-                <span className="ad-news-card__engagement">
-                  <LikeOutlined /> {formatBigNumber(engagement.likes)}
-                </span>
-              )}
-              {engagement?.comments != null && (
-                <span className="ad-news-card__engagement">
-                  <MessageOutlined /> {formatBigNumber(engagement.comments)}
-                </span>
-              )}
-              {engagement?.shares != null && (
-                <span className="ad-news-card__engagement">
-                  <ShareAltOutlined /> {formatBigNumber(engagement.shares)}
-                </span>
-              )}
-              {engagement?.views != null && (
-                <span className="ad-news-card__engagement">
-                  <EyeOutlined /> {formatBigNumber(engagement.views)}
-                </span>
-              )}
-            </div>
-          )}
-
-          {/* Body — prefer the cleaned full text stored locally at
-              ingestion time (``full_content``); fall back to the
-              crawler's intro body when no fetch has landed yet. */}
-          {shown.full_content ? (
-            <div className="news-drawer-body ad-mt-4">
-              <Markdown source={shown.full_content} />
-            </div>
-          ) : shown.body || shown.summary ? (
-            <div className="news-drawer-body ad-mt-4">
-              {shown.body ?? shown.summary}
-            </div>
-          ) : (
-            <EmptyState
-              className="ad-mt-4"
-              title="暂无正文"
-              description="可点击下方「查看原文」阅读完整内容"
-            />
-          )}
-        </>
-      )}
-    </DetailDrawer>
-  );
 }
 
 
@@ -748,6 +239,15 @@ export default function NewsFeed() {
   const [watchlistMode, setWatchlistMode] = useState<boolean>(
     searchParams.get('watchlist') === '1'
   );
+  // ``important=1`` turns on the "只看重要 ★4+" filter — wires the
+  // backend ``importance_min`` query parameter (already supported by
+  // ``GET /news``, see ``app/api/v1/news.py``) into the filter bar so
+  // the LLM importance rating becomes a noise-reduction switch.
+  // Only applies to the plain list feed: ``/news/watchlist`` has no
+  // importance filter server-side, so the chip hides in watchlist mode.
+  const [importantOnly, setImportantOnly] = useState<boolean>(
+    searchParams.get('important') === '1'
+  );
   // Selected political / macro event categories (multi-select).
   // Empty array = no filter (show all categories).
   const [eventCategories, setEventCategories] = useState<string[]>(() => {
@@ -786,9 +286,10 @@ export default function NewsFeed() {
     if (activeSymbol) next.symbol = activeSymbol;
     if (debouncedSearchInput) next.q = debouncedSearchInput;
     if (watchlistMode) next.watchlist = '1';
+    if (importantOnly && !watchlistMode) next.important = '1';
     if (eventCategories.length > 0) next.event_category = eventCategories.join(',');
     setSearchParams(next, { replace: true });
-  }, [market, source, activeSymbol, debouncedSearchInput, watchlistMode, eventCategories, setSearchParams]);
+  }, [market, source, activeSymbol, debouncedSearchInput, watchlistMode, importantOnly, eventCategories, setSearchParams]);
 
   // Source list for the dropdown.
   const { data: sourceStats, isLoading: sourceStatsLoading } = useQuery({
@@ -819,7 +320,7 @@ export default function NewsFeed() {
     // moment the user adds/removes a favorite.
     queryKey: watchlistMode
       ? ['news-watchlist', market, source, dateRange, eventCategories]
-      : ['news-list', market, source, dateRange, activeSymbol, debouncedSearchInput, eventCategories],
+      : ['news-list', market, source, dateRange, activeSymbol, debouncedSearchInput, importantOnly, eventCategories],
     initialPageParam: 1,
     queryFn: ({ pageParam }) =>
       watchlistMode
@@ -842,6 +343,7 @@ export default function NewsFeed() {
               from_date: toIso(dateRange?.[0] ?? null, false),
               to_date: toIso(dateRange?.[1] ?? null, true),
               q: debouncedSearchInput || undefined,
+              importance_min: importantOnly ? 4 : undefined,
               event_category: eventCategories.length > 0 ? eventCategories : undefined,
               page: pageParam,
               page_size: PAGE_SIZE,
@@ -963,6 +465,7 @@ export default function NewsFeed() {
     (activeSymbol ? 1 : 0) +
     (debouncedSearchInput ? 1 : 0) +
     (watchlistMode ? 1 : 0) +
+    (importantOnly && !watchlistMode ? 1 : 0) +
     (dateRange?.[0] || dateRange?.[1] ? 1 : 0) +
     eventCategories.length;
 
@@ -972,6 +475,7 @@ export default function NewsFeed() {
     setSearchInput('');
     setActiveSymbol(undefined);
     setWatchlistMode(false);
+    setImportantOnly(false);
     setEventCategories([]);
     setDateRange(null);
   };
@@ -991,6 +495,9 @@ export default function NewsFeed() {
               // user does not see a chip pinned to a symbol that is
               // no longer in scope.
               setActiveSymbol(undefined);
+              // The watchlist endpoint has no importance filter —
+              // drop the chip so it does not silently stop applying.
+              setImportantOnly(false);
             }
           }}
           className={`ad-status-chip ${watchlistMode ? 'ad-status-chip--active' : ''}`}
@@ -998,6 +505,20 @@ export default function NewsFeed() {
           <StarFilled className="ad-mr-1 ad-text-xs" />
           我的自选
         </Tag.CheckableTag>
+        {!watchlistMode && (
+          /* "只看重要 ★4+" — the LLM already rates every article 1-5;
+             this wires the backend ``importance_min=4`` parameter into
+             a one-tap noise filter. Hidden in watchlist mode because
+             ``/news/watchlist`` has no importance filter server-side. */
+          <Tag.CheckableTag
+            checked={importantOnly}
+            onChange={(checked) => setImportantOnly(checked)}
+            className={`ad-status-chip ${importantOnly ? 'ad-status-chip--active' : ''}`}
+          >
+            <StarFilled className="ad-mr-1 ad-text-xs" />
+            只看重要 ★4+
+          </Tag.CheckableTag>
+        )}
         <Segmented
           value={market}
           onChange={(v) => handleSetMarket(v as NewsMarket | 'all')}

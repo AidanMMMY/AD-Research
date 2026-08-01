@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Tag, Space, Button, Collapse, Input } from 'antd';
+import { Tag, Space, Button, Collapse, Input, Tabs } from 'antd';
 import {
   ReadOutlined,
   ExperimentOutlined,
@@ -8,6 +8,7 @@ import {
   ArrowRightOutlined,
   PartitionOutlined,
   SearchOutlined,
+  BulbOutlined,
 } from '@ant-design/icons';
 import PageShell from '@/components/PageShell';
 import PageHeader from '@/components/PageHeader';
@@ -15,6 +16,8 @@ import Panel from '@/components/Panel';
 import EmptyState from '@/components/EmptyState';
 import HelpPopover from '@/components/HelpPopover';
 import ThemeTag from '@/components/ThemeTag';
+import DailyLesson from '@/components/DailyLesson';
+import KnowledgeFeed from './KnowledgeFeed';
 import { useSettingsStore } from '@/stores/settings';
 import './styles.css';
 import { getAllTerms, type TermEntry } from '@/utils/termDictionary';
@@ -97,58 +100,105 @@ export default function Learning() {
     [location.search]
   );
   const [panelOpen, setPanelOpen] = useState(wantsTermsPanel);
+
+  // 2026-08-02 学习中心: 顶部 Tab —「知识库」(主题文章流, 默认) /
+  // 「学习路径」(今日一课 + 场景教程 + 术语速查)。术语速查 deep link
+  // (?panel=terms) 落在「学习路径」里，所以带参到达时强制切到该 Tab。
+  const [activeTab, setActiveTab] = useState<'feed' | 'path'>(
+    wantsTermsPanel ? 'path' : 'feed'
+  );
+
   // Adjust state during render (React docs pattern) instead of a
   // setState-in-effect: re-open the panel when the user re-arrives
   // with ?panel=terms.
   const [prevWantsTermsPanel, setPrevWantsTermsPanel] = useState(wantsTermsPanel);
   if (wantsTermsPanel !== prevWantsTermsPanel) {
     setPrevWantsTermsPanel(wantsTermsPanel);
-    if (wantsTermsPanel) setPanelOpen(true);
+    if (wantsTermsPanel) {
+      setPanelOpen(true);
+      setActiveTab('path');
+    }
   }
 
   return (
     <PageShell maxWidth="wide">
       <PageHeader
         eyebrow="教学"
-        title="新手教程"
-        description="围绕几个真实场景，把平台的关键页面串起来。挑一个最关心的开始。"
+        title="学习中心"
+        description="每日一课、场景教程、术语速查，外加按主题组织的投研知识库。挑一个最关心的开始。"
       />
 
-      <div className="learning-scenarios">
-        {SCENARIOS.map((s) => (
-          <ScenarioCard key={s.id} scenario={s} onJump={navigate} />
-        ))}
-      </div>
+      <Tabs
+        activeKey={activeTab}
+        onChange={(k) => setActiveTab(k as 'feed' | 'path')}
+        className="ad-mb-5"
+        items={[
+          {
+            key: 'feed',
+            label: '知识库',
+            children: <KnowledgeFeed />,
+          },
+          {
+            key: 'path',
+            label: '学习路径',
+            children: (
+              <>
+                {/* 今日一课 — K15 手写课程组件，此前是孤儿组件
+                    (无任何页面引用)，2026-08-02 在学习中心复活。
+                    组件自身不带边框，需托管在 Panel 内。 */}
+                <Panel
+                  variant="default"
+                  padding="md"
+                  className="ad-mb-5"
+                  title={
+                    <span>
+                      <BulbOutlined className="ad-icon-accent" /> 今日一课
+                    </span>
+                  }
+                >
+                  <DailyLesson />
+                </Panel>
 
-      {/* M20: 知识图谱入口 — 折叠面板形式的术语速查。
-          P2 将升级为真正的图谱视图。 */}
-      <div className="learning-terms-wrap ad-mt-5">
-        <Space className="ad-mb-2">
-          <Button
-            type={panelOpen ? 'primary' : 'default'}
-            icon={<PartitionOutlined />}
-            onClick={() => setPanelOpen((v) => !v)}
-            aria-expanded={panelOpen}
-            aria-controls="learning-terms-region"
-          >
-            {panelOpen ? '收起术语速查' : '展开术语速查'}
-          </Button>
-          <span className="ad-text-small ad-text-tertiary">
-            知识图谱入口（M20）
-          </span>
-        </Space>
+                <div className="learning-scenarios">
+                  {SCENARIOS.map((s) => (
+                    <ScenarioCard key={s.id} scenario={s} onJump={navigate} />
+                  ))}
+                </div>
 
-        {/* Spatial consistency: the panel stays mounted so height/opacity
-            animate from the live size on close — no jump, no reflow. The
-            `aria-hidden` mirror communicates the closed state to AT. */}
-        <div
-          id="learning-terms-region"
-          className={`learning-terms-region ${panelOpen ? 'learning-terms-region--open' : 'learning-terms-region--closed'}`}
-          aria-hidden={!panelOpen}
-        >
-          <TermQuickReference initialOpen={wantsTermsPanel} />
-        </div>
-      </div>
+                {/* M20: 知识图谱入口 — 折叠面板形式的术语速查。
+                    P2 将升级为真正的图谱视图。 */}
+                <div className="learning-terms-wrap ad-mt-5">
+                  <Space className="ad-mb-2">
+                    <Button
+                      type={panelOpen ? 'primary' : 'default'}
+                      icon={<PartitionOutlined />}
+                      onClick={() => setPanelOpen((v) => !v)}
+                      aria-expanded={panelOpen}
+                      aria-controls="learning-terms-region"
+                    >
+                      {panelOpen ? '收起术语速查' : '展开术语速查'}
+                    </Button>
+                    <span className="ad-text-small ad-text-tertiary">
+                      知识图谱入口（M20）
+                    </span>
+                  </Space>
+
+                  {/* Spatial consistency: the panel stays mounted so height/opacity
+                      animate from the live size on close — no jump, no reflow. The
+                      `aria-hidden` mirror communicates the closed state to AT. */}
+                  <div
+                    id="learning-terms-region"
+                    className={`learning-terms-region ${panelOpen ? 'learning-terms-region--open' : 'learning-terms-region--closed'}`}
+                    aria-hidden={!panelOpen}
+                  >
+                    <TermQuickReference initialOpen={wantsTermsPanel} />
+                  </div>
+                </div>
+              </>
+            ),
+          },
+        ]}
+      />
     </PageShell>
   );
 }

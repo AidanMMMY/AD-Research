@@ -48,7 +48,10 @@ Design notes
   ``(slug, display_name, category, feed_url)``; ``source`` becomes
   ``wechat_{slug}`` — the same namespace as waves 1/2 and the
   wewe-rss feeds. ``category`` is one of ``macro`` / ``strategy`` /
-  ``industry`` / ``tech`` / ``business`` (documentation + tests only).
+  ``industry`` / ``tech`` / ``business``; since 2026-08-02 it is also
+  persisted to ``news_article.category`` via
+  ``parse_rss_items(default_category=...)`` → ``extra["category"]`` →
+  ``normalizer._derive_category`` (学习中心打标接通).
 * **Batched jobs**: the table is sliced into
   :data:`WECHAT3_BATCHES` groups of <=8 feeds (keys ``w3a`` …);
   :data:`WECHAT3_BATCH_JOBS` carries the scheduler metadata
@@ -217,6 +220,10 @@ class Wechat2RssBatch3Crawler:
                             language=self.language,
                             default_author=feed.display_name,
                             max_items=self._max_items,
+                            # 行内 category 落进 extra["category"]，
+                            # normalizer._derive_category 会写入
+                            # news_article.category（2026-08-02 接通）。
+                            default_category=feed.category,
                         )
                     )
                 except Exception as exc:  # noqa: BLE001

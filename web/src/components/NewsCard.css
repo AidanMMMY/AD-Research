@@ -1,0 +1,19 @@
+/* Shared NewsCard styles — extracted from pages/News/index.tsx
+   (2026-08-02 learning-center sprint) so the /news feed and the
+   /learning 知识库 feed render the card with identical feedback.
+   The base ``.ad-news-card*`` layout rules stay in the global
+   stylesheet (styles/global/pages-tools.css). */
+
+/* Pointer-down press for the article card (Response principle) —
+   bg-active + subtle scale. global.css adds :hover but not :active. */
+.ad-news-card:active {
+  background: var(--bg-active);
+  transform: scale(var(--press-scale-subtle, 0.99));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ad-news-card {
+    transition: none;
+    transform: none;
+  }
+}

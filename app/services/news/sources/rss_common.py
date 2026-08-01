@@ -210,6 +210,7 @@ def parse_rss_items(
     max_items: int | None = None,
     default_tz: timezone = timezone.utc,
     tz_override: tzinfo | None = None,
+    default_category: str | None = None,
 ) -> list[RawArticle]:
     """Parse an RSS/Atom feed and return a list of :class:`RawArticle`.
 
@@ -225,6 +226,12 @@ def parse_rss_items(
             as wrong and every parsed timestamp's wall time is
             re-interpreted in this timezone instead (see
             :func:`_extract_pub_date`).
+        default_category: Fallback ``extra["category"]`` when the item
+            itself carries no ``<category>``/``dc:subject`` tag. Used by
+            the wechat batch2/3 crawlers to persist the row-level
+            taxonomy (macro/strategy/industry/tech/business) that
+            ``normalizer._derive_category`` already understands
+            (2026-08-02, 学习中心打标接通).
     """
     try:
         root = ET.fromstring(xml_text)
@@ -310,6 +317,10 @@ def parse_rss_items(
         )
 
         category = _find_text(item, "category", f"{{{_RSS_NAMESPACES['dc']}}}subject")
+        # 条目自身没有 <category> 时回落到调用方给的源级分类
+        # （如 wechat batch2/3 行内的 macro/strategy/industry/...）。
+        if not category:
+            category = default_category
 
         out.append(
             RawArticle(

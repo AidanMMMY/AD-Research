@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="utf-8">
+<title>学习中心后端落地 2026-08-02</title>
+<style>
+body{font-family:-apple-system,"PingFang SC",sans-serif;max-width:900px;margin:2rem auto;padding:0 1rem;line-height:1.7;color:#222}
+code{background:#f4f4f4;padding:2px 5px;border-radius:3px;font-size:.9em}
+pre{background:#f7f7f7;padding:1rem;border-radius:6px;overflow-x:auto}
+pre code{background:none;padding:0}
+table{border-collapse:collapse}td,th{border:1px solid #ddd;padding:6px 12px}
+h1,h2{border-bottom:1px solid #eee;padding-bottom:.3rem}
+blockquote{border-left:4px solid #ddd;margin:0;padding-left:1rem;color:#555}
+</style></head><body>
+<h1>学习中心后端（方案 B MVP）落地 — 2026-08-02</h1>
+<blockquote>
+<p>背景：分析文档（learning-section-analysis，2026-08-01）推荐方案 B——把 <code>/learning</code> 扩建为学习中心。本 runbook 记录<strong>后端部分</strong>的落地：news_source_meta 表 + 239 源打标种子 + wechat category 接通 + <code>/learning/feed</code> &amp; <code>/learning/topics</code> API。前端知识 feed 区另案。
+未 commit / 未 push（等用户确认）。</p>
+</blockquote>
+<h2>1. 数据层：news_source_meta 表</h2>
+<ul>
+<li>模型：<code>app/models/news_source_meta.py</code>（<code>NewsSourceMeta</code>）</li>
+<li><code>source</code> String(200) PK —— 与 <code>news_article.source</code> 对齐</li>
+<li><code>content_type</code> String(20) —— <code>deep</code>（深度分析/研究）| <code>edu</code>（科普教育）；快讯源不打标、不入库</li>
+<li><code>topic</code> String(40) 可空 —— <code>allocation</code> / <code>valuation</code> / <code>macro</code> / <code>industry</code> / <code>psychology</code> / <code>tools</code> / <code>research</code>（兜底深度类）</li>
+<li><code>difficulty_default</code> String(10) 可空 —— <code>beginner</code> / <code>advanced</code>；NULL=混合/不确定</li>
+<li><code>display_group</code> String(60)、<code>note</code> String(200) 可空（运营维护用，note 统一放源显示名）</li>
+<li>迁移：<code>alembic/versions/w4x6y8z0a2b4_add_news_source_meta.py</code>，down_revision=<code>v3w5x7y9z1a3</code>，upgrade/downgrade 往返已验证（dev Postgres）。<strong>迁移只建表不灌数据</strong>。</li>
+<li>已登记：<code>app/models/__init__.py</code> re-export + <code>alembic/env.py</code> import。</li>
+<li>设计约束：不改 <code>news_article</code> 结构、不回填历史数据——API 层 join（feed 只看近 N 天）。</li>
+</ul>
+<h2>2. 种子数据：239 源打标</h2>
+<ul>
+<li>文件：<code>app/services/news/source_meta_seed.py</code>（<code>SOURCE_META_SEED</code> list[dict] + <code>seed_source_meta(db)</code> 幂等函数——先查已有主键再插缺失行，等价 ON CONFLICT DO NOTHING，Postgres/SQLite 通吃，不覆盖运营手改）。</li>
+<li>手动入口：<code>scripts/seed_news_source_meta.py</code>（<code>--dry-run</code> 只打印分布）。</li>
+<li>打标规则：<strong>宁可保守</strong>，拿不准不打标；打标基于批次表源名/备注的常识判断。wechat batch2/3 行内 category 映射：macro→macro、strategy→valuation、industry→industry、tech/business→research/industry 酌定。</li>
+<li>分布：</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>维度</th>
+<th>分布</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>content_type</td>
+<td>deep 167 / edu 72</td>
+</tr>
+<tr>
+<td>topic</td>
+<td>allocation 63 / macro 55 / research 49 / industry 47 / valuation 20 / psychology 5 / tools 0</td>
+</tr>
+<tr>
+<td>difficulty</td>
+<td>beginner 73 / advanced 56 / NULL 110</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li>覆盖：wechat×3 批次 + wewe-rss 8 账号（zhigu/yuanchuan/canghai/fupeng/lixunlei/congming/latepost，beiwei 性质不明跳过）+ zhx 播客 26 + zhb 3 + indie 34 + gind 33 + global 18 + asen 35 + rss_simple 16。独立爬虫（新华/财联社/华尔街见闻/SEC/cninfo…）全快讯不打标；en_fin/official/zh_media 三批（扩源冲刺在跑）本次未纳入，后续可补。</li>
+<li><strong>防手滑</strong>：测试 <code>test_seed_sources_exist_in_batch_tables</code> 断言每个种子 slug 都能在批次表/rss_simple/wewe-rss 已知账号里找到——新增种子必须先过此测试（打错 source 则 join 永远为空）。</li>
+</ul>
+<h2>3. wechat category 接通落库</h2>
+<ul>
+<li>此前 batch2/3 行内 category 只在表里做文档用途（"not persisted"）。本次接通：<code>rss_common.parse_rss_items</code> 新增 <code>default_category</code> 参数（条目自带 <code>&lt;category&gt;</code> 优先，否则回落源级分类），batch2/3 crawler 传 <code>default_category=feed.category</code> → <code>RawArticle.extra["category"]</code> → <code>normalizer._derive_category</code> 已认 → <code>news_article.category</code>。两个 crawler 的 docstring 已同步。</li>
+<li>新文章入库即带 macro/strategy/industry/tech/business 标签；历史数据不回填。</li>
+</ul>
+<h2>4. API</h2>
+<ul>
+<li>路由：<code>app/api/v1/learning.py</code>，注册于 <code>app/main.py</code>（prefix <code>/api/v1/learning</code>，JWT 必填）。</li>
+<li><code>GET /learning/feed</code>：参数 <code>topic</code> / <code>content_type</code> / <code>days</code>(默认90,≤365) / <code>page</code> / <code>page_size</code>；<code>news_article</code> JOIN <code>news_source_meta</code>，只返回打标源近 N 天文章；排序 <code>importance DESC NULLS LAST, published_at DESC</code>；响应结构与 <code>/news</code> 列表一致（items/page/page_size/total/total_pages + days），列表项复用 <code>_article_to_dict</code> 并附加 <code>importance</code> / <code>content_type</code> / <code>topic</code> / <code>difficulty_default</code>。非法 topic/content_type 返回 400。</li>
+<li><code>GET /learning/topics</code>：各主题近 <code>days</code> 天计数；返回全部 7 主题（零计数也返回，Tab 列表稳定）+ total。</li>
+</ul>
+<p>示例（<code>GET /api/v1/learning/feed?topic=macro&amp;page_size=2</code>）：</p>
+<pre><code class="language-json">{
+  &quot;items&quot;: [
+    {
+      &quot;id&quot;: 12345, &quot;source&quot;: &quot;wechat_zepinghongguan&quot;, &quot;source_id&quot;: &quot;...&quot;,
+      &quot;url&quot;: &quot;https://mp.weixin.qq.com/s/...&quot;, &quot;title&quot;: &quot;...&quot;,
+      &quot;title_zh&quot;: null, &quot;summary_zh&quot;: &quot;……&quot;, &quot;importance&quot;: 4,
+      &quot;content_type&quot;: &quot;deep&quot;, &quot;topic&quot;: &quot;macro&quot;, &quot;difficulty_default&quot;: null,
+      &quot;published_at&quot;: &quot;2026-08-01T12:00:00+00:00&quot;, &quot;market&quot;: &quot;cn_a&quot;,
+      &quot;symbols&quot;: [], &quot;...&quot;: &quot;（其余字段与 /news 列表项一致）&quot;
+    }
+  ],
+  &quot;page&quot;: 1, &quot;page_size&quot;: 2, &quot;total&quot;: 137, &quot;total_pages&quot;: 69, &quot;days&quot;: 90
+}
+</code></pre>
+<p><code>GET /api/v1/learning/topics</code> →</p>
+<pre><code class="language-json">{
+  &quot;days&quot;: 90,
+  &quot;topics&quot;: [
+    {&quot;topic&quot;: &quot;allocation&quot;, &quot;count&quot;: 812},
+    {&quot;topic&quot;: &quot;valuation&quot;, &quot;count&quot;: 153},
+    {&quot;topic&quot;: &quot;macro&quot;, &quot;count&quot;: 137},
+    {&quot;topic&quot;: &quot;industry&quot;, &quot;count&quot;: 220},
+    {&quot;topic&quot;: &quot;psychology&quot;, &quot;count&quot;: 18},
+    {&quot;topic&quot;: &quot;tools&quot;, &quot;count&quot;: 0},
+    {&quot;topic&quot;: &quot;research&quot;, &quot;count&quot;: 305}
+  ],
+  &quot;total&quot;: 1645
+}
+</code></pre>
+<h2>5. 测试</h2>
+<ul>
+<li><code>app/tests/news/test_learning_feed.py</code>（23 个）：模型 CRUD、种子合法性/唯一性/slug 存在性/幂等、feed 过滤（未打标源不出现、90 天窗口、topic/content_type、非法参数 400）、importance 优先排序、分页、topics 计数（含零计数主题）、wechat category 链路（parse_rss_items default_category 回落/条目优先/crawler 传参/_derive_category 末端）。</li>
+<li><code>poetry run pytest app/tests/news/ -q</code> → <strong>776 passed</strong>（含既有 753，无回归）。</li>
+</ul>
+<h2>6. 部署 / 后续 TODO</h2>
+<ol>
+<li>ECS 部署后：<code>alembic upgrade head</code> 建表 → <code>python3 scripts/seed_news_source_meta.py</code> 灌种子（幂等，可重复跑）。</li>
+<li>前端 <code>/learning</code> 知识 feed 区（主题 Tab + 复用 NewsCard 模式）另案，是前端主要工作量。</li>
+<li>运营调整归类：直接 SQL UPDATE <code>news_source_meta</code> 即可，种子函数不会覆盖已有行。</li>
+<li>en_fin（enf_<em>）/ official（ofc_</em>）/ zh_media（zhm_*）三批新源后续可补打标（多为快讯/行业新闻，预计增量小）。</li>
+</ol>
+</body></html>

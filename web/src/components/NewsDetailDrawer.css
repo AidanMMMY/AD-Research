@@ -1,0 +1,10 @@
+/* Shared NewsDetailDrawer styles — extracted from pages/News/index.tsx
+   (2026-08-02 learning-center sprint). */
+
+/* Full body text inside the detail drawer — the card clamps the same
+   body field, the drawer shows it in full. */
+.news-drawer-body {
+  white-space: pre-wrap;
+  line-height: 1.7;
+  color: var(--text-secondary);
+}
