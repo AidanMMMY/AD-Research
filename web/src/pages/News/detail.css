@@ -51,8 +51,11 @@
   margin-bottom: 0;
 }
 
-/* 段落间距：Markdown 渲染的 p 走 reading 段距（prose-reading 已覆盖，
-   此处兜底全局 reset 可能引入的 margin 冲突） */
+/* 段落间距：收敛到 0.75em（2026-08-01 间距修复）。
+   资讯正文（公众号 / AI 精校稿 / AI 译文）普遍短句成段，几乎每句一个 p；
+   --reading-para-gap(1em) + 1.75 行高的半行距叠加后，段间距 ≈ 一整行空白，
+   通篇显得过于稀疏。0.75em 时段间距 ≈ 2× 行内换行间距，段落仍清晰可辨。
+   仅覆写本页，不动 theme.css 共享 token（研究笔记沿用 editorial 尺度）。 */
 .news-detail .news-detail__reading p {
-  margin: 0 0 var(--reading-para-gap);
+  margin: 0 0 0.75em;
 }

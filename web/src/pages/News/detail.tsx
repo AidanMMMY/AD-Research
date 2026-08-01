@@ -48,6 +48,17 @@ import { useSettingsStore } from '@/stores/settings';
 
 const SOCIAL_SOURCES = new Set(['xueqiu', 'reddit', 'weibo']);
 
+/**
+ * Render-layer newline guard (2026-08-01 间距修复).
+ * 抓取 / AI 清理 / 译文管线偶尔会在正文里留下 3+ 连续换行（HTML→文本时
+ * <p>/<br> 双重换行）。Markdown 渲染器会把多余空行折叠掉，但纯文本
+ * pre-wrap 兜底路径不会 —— 每个多余换行都是一整行空白。统一在渲染前
+ * 把 3+ 连换行折叠成一个空行；只动渲染输入，不回写数据。
+ */
+function collapseBlankRuns(text: string): string {
+  return text.replace(/\n{3,}/g, '\n\n');
+}
+
 const IMPORTANCE_COLOR = 'var(--color-warning-bright)';
 
 function ImportanceStars({ level }: { level: ImportanceLevel | null }) {
@@ -292,7 +303,7 @@ export default function NewsDetail() {
   // hook count is identical across loading and loaded renders.
   const fullContentToRender = renderedFullContent ?? data?.full_content;
   const cleanedFullContent = useMemo(
-    () => (fullContentToRender && data?.title ? cleanNewsFullContent(fullContentToRender, data.title) : null),
+    () => (fullContentToRender && data?.title ? collapseBlankRuns(cleanNewsFullContent(fullContentToRender, data.title)) : null),
     [fullContentToRender, data?.title],
   );
 
@@ -544,7 +555,7 @@ export default function NewsDetail() {
               // (Markdown, same pipeline as the original body).
               // P4 内容轨：prose-reading 承载 editorial 阅读尺度（theme.css）。
               <div className="prose-reading news-detail__reading">
-                <Markdown source={translationToShow!} />
+                <Markdown source={collapseBlankRuns(translationToShow!)} />
               </div>
             ) : cleanedFullContent ? (
               // Cache hit (from a previous click) OR we just finished
@@ -554,7 +565,7 @@ export default function NewsDetail() {
               </div>
             ) : data.body ? (
               <div className="ad-detail-article__body prose-reading news-detail__reading">
-                {data.body}
+                {collapseBlankRuns(data.body)}
               </div>
             ) : (
               <EmptyState title="暂无正文，请前往原文查看完整内容" description="可点击「加载完整正文」尝试抓取，或前往原文链接阅读" />
