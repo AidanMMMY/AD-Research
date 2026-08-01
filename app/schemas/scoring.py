@@ -72,6 +72,10 @@ class ETFScoreResponse(BaseModel):
     score_trend: float | None = None
     rank_overall: int | None = None
     rank_category: int | None = None
+    # Stored whole-market (crypto included) rank. Only populated by the
+    # ranking list endpoint, which re-numbers ``rank_overall`` into a
+    # continuous display sequence after crypto exclusion.
+    rank_overall_original: int | None = None
     return_1m: float | None = None
     return_3m: float | None = None
     return_1y: float | None = None

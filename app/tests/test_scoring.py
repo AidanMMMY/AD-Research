@@ -759,3 +759,154 @@ def test_get_scores_per_market_latest_unaffected_by_crypto(db_session):
     assert {s["etf_code"] for s in scores} == {"FLT2_US"}
     assert scores[0]["trade_date"] == date(2024, 8, 1)
     assert service.count_scores(template_id=template.id) == 1
+
+
+def _seed_display_rank_fixture(db_session, service):
+    """Seed scores whose stored ranks interleave crypto rows.
+
+    Stored ``rank_overall`` is whole-market (crypto included), so after
+    the ranking query excludes crypto the raw sequence has holes:
+    1, 3, 5. Codes use the ``RNK_`` prefix and the seeding is idempotent
+    (module-scoped session).
+    """
+    existing = (
+        db_session.query(ScoreTemplate)
+        .filter(ScoreTemplate.name == "Display Rank Renumber")
+        .first()
+    )
+    if existing is not None:
+        return existing
+
+    template = service.create_template(
+        name="Display Rank Renumber",
+        description="display rank tests",
+        weights={"return": 0.3, "risk": 0.3, "sharpe": 0.4},
+    )
+    trade_date = date(2024, 8, 1)
+
+    db_session.add_all(
+        [
+            ETFInfo(
+                code="RNK_CN_A",
+                name="CN A",
+                market="A股",
+                category="Equity",
+                instrument_type="ETF",
+            ),
+            ETFInfo(
+                code="RNK_US",
+                name="US ETF",
+                market="US",
+                category="Equity",
+                instrument_type="ETF",
+            ),
+            ETFInfo(
+                code="RNK_CN_B",
+                name="CN B",
+                market="A股",
+                category="Equity",
+                instrument_type="ETF",
+            ),
+            ETFInfo(
+                code="RNK_CRYPTO_A",
+                name="Crypto A",
+                market="CRYPTO",
+                category="Crypto",
+                instrument_type="CRYPTO",
+            ),
+            ETFInfo(
+                code="RNK_CRYPTO_B",
+                name="Crypto B",
+                market="CRYPTO",
+                category="Crypto",
+                instrument_type="CRYPTO",
+            ),
+        ]
+    )
+    db_session.commit()
+
+    db_session.add_all(
+        [
+            ETFScore(
+                etf_code=code,
+                trade_date=trade_date,
+                template_id=template.id,
+                composite_score=score,
+                rank_overall=rank,
+            )
+            for rank, (code, score) in enumerate(
+                [
+                    ("RNK_CN_A", 90),
+                    ("RNK_CRYPTO_A", 85),
+                    ("RNK_US", 80),
+                    ("RNK_CRYPTO_B", 75),
+                    ("RNK_CN_B", 70),
+                ],
+                start=1,
+            )
+        ]
+    )
+    db_session.commit()
+    return template
+
+
+def test_get_scores_display_rank_continuous_after_crypto_exclusion(db_session):
+    """rank_overall is re-numbered 1..N; the stored rank is preserved."""
+    from app.services.scoring_service import ScoringService
+
+    service = ScoringService(db_session)
+    template = _seed_display_rank_fixture(db_session, service)
+
+    scores = service.get_scores(template_id=template.id)
+    codes = [s["etf_code"] for s in scores]
+    # Stored ranks were 1/3/5 (crypto held 2 and 4) — order is kept,
+    # display ranks become continuous.
+    assert codes == ["RNK_CN_A", "RNK_US", "RNK_CN_B"]
+    assert [s["rank_overall"] for s in scores] == [1, 2, 3]
+    assert [s["rank_overall_original"] for s in scores] == [1, 3, 5]
+
+
+def test_get_scores_display_rank_continuous_with_market_filter(db_session):
+    """Market / instrument filters also yield a continuous 1..N display rank."""
+    from app.services.scoring_service import ScoringService
+
+    service = ScoringService(db_session)
+    template = _seed_display_rank_fixture(db_session, service)
+
+    cn = service.get_scores(template_id=template.id, market="cn_a")
+    assert [s["etf_code"] for s in cn] == ["RNK_CN_A", "RNK_CN_B"]
+    assert [s["rank_overall"] for s in cn] == [1, 2]
+    assert [s["rank_overall_original"] for s in cn] == [1, 5]
+
+    us = service.get_scores(template_id=template.id, market="us")
+    assert [s["etf_code"] for s in us] == ["RNK_US"]
+    assert [s["rank_overall"] for s in us] == [1]
+    assert us[0]["rank_overall_original"] == 3
+
+    etfs = service.get_scores(template_id=template.id, instrument_type="ETF")
+    assert [s["rank_overall"] for s in etfs] == list(range(1, len(etfs) + 1))
+
+
+def test_get_scores_display_rank_continuous_with_limit(db_session):
+    """A truncated page still gets a continuous 1..limit display rank."""
+    from app.services.scoring_service import ScoringService
+
+    service = ScoringService(db_session)
+    template = _seed_display_rank_fixture(db_session, service)
+
+    top2 = service.get_scores(template_id=template.id, limit=2)
+    assert [s["etf_code"] for s in top2] == ["RNK_CN_A", "RNK_US"]
+    assert [s["rank_overall"] for s in top2] == [1, 2]
+    assert [s["rank_overall_original"] for s in top2] == [1, 3]
+
+
+def test_get_scores_ranking_filters_fixture_display_rank(db_session):
+    """Existing FLT_ fixture (crypto ranked last) stays 1..N with originals."""
+    from app.services.scoring_service import ScoringService
+
+    service = ScoringService(db_session)
+    template = _seed_ranking_filter_fixture(db_session, service)
+
+    scores = service.get_scores(template_id=template.id)
+    assert [s["rank_overall"] for s in scores] == [1, 2, 3, 4]
+    assert [s["rank_overall_original"] for s in scores] == [1, 2, 3, 4]

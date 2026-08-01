@@ -535,7 +535,10 @@ class ScoringService:
             instrument_type: Filter by instrument type ("ETF" / "STOCK").
 
         Returns:
-            List of score dicts with ETF metadata.
+            List of score dicts with ETF metadata, ordered best-first.
+            ``rank_overall`` is re-numbered as a continuous 1..N display
+            rank within the filtered result set; the stored whole-market
+            rank is preserved under ``rank_overall_original``.
         """
         if template_id is None:
             default = self.get_default_template()
@@ -591,6 +594,17 @@ class ScoringService:
                 "return_3m": float(indicator.return_3m) if indicator and indicator.return_3m is not None else None,
                 "return_1y": float(indicator.return_1y) if indicator and indicator.return_1y is not None else None,
             })
+
+        # Re-number the display rank. The persisted ``rank_overall`` is a
+        # whole-market (crypto included) sequence assigned at scoring time,
+        # so excluding crypto at query time leaves gaps (1, 2, 5, ...).
+        # Overwrite it with a continuous 1..N sequence within the current
+        # filtered result set (the list is already ordered best-first by
+        # the query above) and keep the stored value under
+        # ``rank_overall_original`` for provenance.
+        for display_rank, item in enumerate(output, 1):
+            item["rank_overall_original"] = item["rank_overall"]
+            item["rank_overall"] = display_rank
 
         return output
 

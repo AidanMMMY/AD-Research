@@ -32,8 +32,15 @@ export interface InstrumentScore {
   score_sharpe: number;
   score_liquidity: number;
   score_trend: number;
+  /**
+   * Display rank: continuous 1..N within the current filtered result set
+   * (re-numbered server-side after crypto exclusion). The stored
+   * whole-market rank is available as `rank_overall_original`.
+   */
   rank_overall: number;
   rank_category: number;
+  /** Stored whole-market (crypto included) rank, for provenance. */
+  rank_overall_original?: number | null;
   return_1m?: number;
   return_3m?: number;
   return_1y?: number;
