@@ -27,6 +27,23 @@ import { getQuickQuestions } from '@/utils/helpPrompts';
 
 type TopTab = 'ranking' | 'templates';
 
+/** 市场筛选：'all' 不传参；cn_a / us 由后端映射为 A股 / US。数字币暂不纳入排名。 */
+type MarketFilter = 'all' | 'cn_a' | 'us';
+/** 类型筛选：'all' 不传参；STOCK=个股 / ETF。 */
+type TypeFilter = 'all' | 'STOCK' | 'ETF';
+
+const MARKET_OPTIONS: { value: MarketFilter; label: string }[] = [
+  { value: 'all', label: '全部' },
+  { value: 'cn_a', label: 'A股' },
+  { value: 'us', label: '美股' },
+];
+
+const TYPE_OPTIONS: { value: TypeFilter; label: string }[] = [
+  { value: 'all', label: '全部' },
+  { value: 'STOCK', label: '个股' },
+  { value: 'ETF', label: 'ETF' },
+];
+
 export default function ScoreRanking() {
   const navigate = useNavigate();
   const { open } = useAIHelp();
@@ -34,7 +51,14 @@ export default function ScoreRanking() {
   const mode = useSettingsStore((s) => s.mode);
   const [topTab, setTopTab] = useState<TopTab>('ranking');
   const [templateId, setTemplateId] = useState<number | undefined>();
-  const { data: scoresData, dataUpdatedAt: scoresUpdatedAt, isFetching } = useScores({ template_id: templateId, limit: 50 });
+  const [marketFilter, setMarketFilter] = useState<MarketFilter>('all');
+  const [typeFilter, setTypeFilter] = useState<TypeFilter>('all');
+  const { data: scoresData, dataUpdatedAt: scoresUpdatedAt, isFetching } = useScores({
+    template_id: templateId,
+    market: marketFilter === 'all' ? undefined : marketFilter,
+    instrument_type: typeFilter === 'all' ? undefined : typeFilter,
+    limit: 50,
+  });
   const { data: templates } = useScoreTemplates();
 
   const activeTemplate = templates?.find((t) =>
@@ -193,13 +217,35 @@ export default function ScoreRanking() {
             action={
               isMobile ? (
                 /* P3 (方向 C): the template picker moves into a sheet on
-                   mobile so the Segmented can never wrap/overflow. */
+                   mobile so the Segmented can never wrap/overflow. The
+                   market / type filters live in the same sheet. */
                 <FilterSheetButton
-                  title="评分模板"
-                  buttonText="模板"
-                  activeCount={templateId ? 1 : 0}
+                  title="筛选与模板"
+                  buttonText="筛选"
+                  activeCount={
+                    (marketFilter !== 'all' ? 1 : 0) +
+                    (typeFilter !== 'all' ? 1 : 0) +
+                    (templateId ? 1 : 0)
+                  }
                   snaps={['peek', 'half']}
                 >
+                  <div className="ad-text-small ad-text-tertiary">市场</div>
+                  <Select
+                    aria-label="市场"
+                    className="ad-w-full"
+                    value={marketFilter}
+                    onChange={(v) => setMarketFilter(v as MarketFilter)}
+                    options={MARKET_OPTIONS}
+                  />
+                  <div className="ad-text-small ad-text-tertiary">类型</div>
+                  <Select
+                    aria-label="类型"
+                    className="ad-w-full"
+                    value={typeFilter}
+                    onChange={(v) => setTypeFilter(v as TypeFilter)}
+                    options={TYPE_OPTIONS}
+                  />
+                  <div className="ad-text-small ad-text-tertiary">评分模板</div>
                   <Select
                     aria-label="评分模板"
                     className="ad-w-full"
@@ -214,11 +260,29 @@ export default function ScoreRanking() {
                   )}
                 </FilterSheetButton>
               ) : (
-                <Segmented
-                  value={activeTemplateKey}
-                  onChange={(key) => setTemplateId(Number(key))}
-                  options={templateOptions}
-                />
+                <div className="ad-flex ad-items-center ad-gap-2 score-ranking-filters">
+                  <span className="ad-text-small ad-text-tertiary">市场</span>
+                  <Segmented
+                    aria-label="市场"
+                    value={marketFilter}
+                    onChange={(v) => setMarketFilter(v as MarketFilter)}
+                    options={MARKET_OPTIONS}
+                  />
+                  <span className="ad-text-small ad-text-tertiary">类型</span>
+                  <Segmented
+                    aria-label="类型"
+                    value={typeFilter}
+                    onChange={(v) => setTypeFilter(v as TypeFilter)}
+                    options={TYPE_OPTIONS}
+                  />
+                  <span className="ad-text-small ad-text-tertiary">模板</span>
+                  <Segmented
+                    aria-label="评分模板"
+                    value={activeTemplateKey}
+                    onChange={(key) => setTemplateId(Number(key))}
+                    options={templateOptions}
+                  />
+                </div>
               )
             }
           />

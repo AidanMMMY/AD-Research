@@ -8,7 +8,7 @@ import type {
 } from '@/types/score';
 
 export const scoreApi = {
-  list: (params?: { template_id?: number; market?: string; category?: string; trade_date?: string; limit?: number }) =>
+  list: (params?: { template_id?: number; market?: string; category?: string; instrument_type?: string; trade_date?: string; limit?: number }) =>
     client.get<ETFScoreListResponse>('/scores', { params }),
   get: (code: string, params?: { template_id?: number; trade_date?: string }) =>
     client.get<InstrumentScore>(`/scores/${code}`, { params }),

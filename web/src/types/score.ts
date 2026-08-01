@@ -23,6 +23,7 @@ export interface InstrumentScore {
   name_zh?: string | null;
   market?: string;
   category?: string;
+  instrument_type?: string;
   trade_date: string;
   template_id: number;
   composite_score: number;

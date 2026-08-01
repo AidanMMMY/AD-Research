@@ -101,15 +101,22 @@ def delete_template(
 @router.get("", response_model=ETFScoreListResponse)
 def list_scores(
     template_id: int | None = Query(None, description="Filter by template ID"),
-    market: str | None = Query(None, description="Filter by market (e.g. SH, SZ)"),
+    market: str | None = Query(
+        None,
+        description="Filter by market: cn_a (A股) / us (美股), or raw DB values. Crypto is always excluded.",
+    ),
     category: str | None = Query(None, description="Filter by ETF category"),
+    instrument_type: str | None = Query(
+        None, description="Filter by instrument type: ETF / STOCK"
+    ),
     trade_date: date | None = Query(None, description="Filter by trade date"),
     limit: int = Query(50, ge=1, le=500, description="Maximum number of results"),
     service: ScoringService = Depends(get_scoring_service),
 ):
     """List ETF composite scores with optional filtering.
 
-    Results are ordered by overall rank (best first).
+    Results are ordered by overall rank (best first). Crypto instruments
+    are excluded from the ranking (暂不纳入数字币).
     """
     scores = service.get_scores(
         template_id=template_id,
@@ -117,6 +124,7 @@ def list_scores(
         limit=limit,
         market=market,
         category=category,
+        instrument_type=instrument_type,
     )
 
     # Resolve effective template_id for the response
@@ -139,6 +147,7 @@ def list_scores(
         trade_date=trade_date,
         market=market,
         category=category,
+        instrument_type=instrument_type,
     )
 
     return ETFScoreListResponse(

@@ -11,3 +11,10 @@
 .score-rank-cell.score-rank-cell--top3 {
   color: var(--text-primary);
 }
+
+/* ── Filter row (市场/类型/模板 Segmented groups) — allow wrap on narrow
+   desktop widths so the three groups never overflow the heading row. ── */
+.score-ranking-filters {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}

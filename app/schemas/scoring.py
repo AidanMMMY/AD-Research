@@ -62,6 +62,7 @@ class ETFScoreResponse(BaseModel):
     name_zh: str | None = None
     market: str | None = None
     category: str | None = None
+    instrument_type: str | None = None
     trade_date: date | None = None
     composite_score: float | None = None
     score_return: float | None = None

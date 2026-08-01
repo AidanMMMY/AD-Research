@@ -29,6 +29,38 @@ def _safe_float(value: Any) -> float | None:
         return None
 
 
+# Short market codes accepted by the score-ranking API, mapped to the
+# display values stored in ``etf_info.market`` ("A股" / "US"). Raw DB
+# values keep working because unknown inputs pass through unchanged.
+MARKET_ALIASES = {
+    "cn_a": "A股",
+    "a股": "A股",
+    "us": "US",
+    "美股": "US",
+}
+
+# Crypto instruments (etf_info.market / instrument_type == "CRYPTO") are
+# excluded from the score ranking module for now (暂不纳入数字币). They
+# still flow through ``calculate_daily_scores`` and remain queryable via
+# the crypto detail endpoints — only the ranking query filters them out.
+CRYPTO_MARKET = "CRYPTO"
+CRYPTO_INSTRUMENT_TYPE = "CRYPTO"
+
+
+def _normalize_market(market: str | None) -> str | None:
+    """Map short market codes (cn_a / us) to ``etf_info.market`` values."""
+    if market is None:
+        return None
+    return MARKET_ALIASES.get(market.strip().lower(), market)
+
+
+def _normalize_instrument_type(instrument_type: str | None) -> str | None:
+    """Normalize instrument type filter to the DB convention (ETF/STOCK)."""
+    if instrument_type is None:
+        return None
+    return instrument_type.strip().upper()
+
+
 class ScoringService:
     """Service for ETF scoring operations."""
 
@@ -434,6 +466,30 @@ class ScoringService:
     # Score queries
     # ------------------------------------------------------------------
 
+    @staticmethod
+    def _apply_ranking_filters(query, market: str | None, instrument_type: str | None):
+        """Apply the shared ranking filters to a score query.
+
+        Always excludes crypto rows (暂不纳入数字币) and optionally narrows
+        by market / instrument type. ``instrument_type`` NULLs are treated
+        as "ETF" (the column default) so legacy rows are not dropped.
+        """
+        query = query.filter(
+            ETFInfo.market != CRYPTO_MARKET,
+            func.coalesce(ETFInfo.instrument_type, "ETF") != CRYPTO_INSTRUMENT_TYPE,
+        )
+        market = _normalize_market(market)
+        instrument_type = _normalize_instrument_type(instrument_type)
+        if market:
+            query = query.filter(ETFInfo.market == market)
+        if instrument_type == "ETF":
+            query = query.filter(
+                func.coalesce(ETFInfo.instrument_type, "ETF") == "ETF"
+            )
+        elif instrument_type:
+            query = query.filter(ETFInfo.instrument_type == instrument_type)
+        return query
+
     def _latest_dates_by_market_subquery(self, template_id: int):
         """Subquery of the latest scored trade_date per market.
 
@@ -460,8 +516,12 @@ class ScoringService:
         limit: int = 50,
         market: str | None = None,
         category: str | None = None,
+        instrument_type: str | None = None,
     ) -> list[dict[str, Any]]:
         """Query ETF scores with optional filtering.
+
+        Crypto instruments are always excluded from the ranking (暂不纳入
+        数字币).
 
         Args:
             template_id: Filter by template. Defaults to the default template.
@@ -469,8 +529,10 @@ class ScoringService:
                 per market (so markets on different trading calendars all
                 appear with their own most recent scores).
             limit: Maximum number of results.
-            market: Filter by market (e.g. 'SH', 'SZ').
+            market: Filter by market. Accepts short codes ("cn_a", "us")
+                or the raw DB values ("A股", "US").
             category: Filter by ETF category.
+            instrument_type: Filter by instrument type ("ETF" / "STOCK").
 
         Returns:
             List of score dicts with ETF metadata.
@@ -500,8 +562,7 @@ class ScoringService:
                 & (ETFScore.trade_date == latest_sq.c.max_date),
             )
 
-        if market:
-            query = query.filter(ETFInfo.market == market)
+        query = self._apply_ranking_filters(query, market, instrument_type)
         if category:
             query = query.filter(ETFInfo.category == category)
 
@@ -516,6 +577,7 @@ class ScoringService:
                 "name_zh": info.name_zh,
                 "market": info.market,
                 "category": info.category,
+                "instrument_type": info.instrument_type,
                 "trade_date": score.trade_date,
                 "composite_score": float(score.composite_score) if score.composite_score is not None else None,
                 "score_return": float(score.score_return) if score.score_return is not None else None,
@@ -538,12 +600,14 @@ class ScoringService:
         trade_date: date | None = None,
         market: str | None = None,
         category: str | None = None,
+        instrument_type: str | None = None,
     ) -> int:
         """Return the total number of scores matching the filters.
 
         Mirrors :meth:`get_scores` (including default template / latest
-        trade date resolution) so list endpoints can report the real total
-        for pagination instead of the truncated page size.
+        trade date resolution / crypto exclusion) so list endpoints can
+        report the real total for pagination instead of the truncated
+        page size.
         """
         if template_id is None:
             default = self.get_default_template()
@@ -564,8 +628,7 @@ class ScoringService:
                 (ETFInfo.market == latest_sq.c.market)
                 & (ETFScore.trade_date == latest_sq.c.max_date),
             )
-        if market:
-            query = query.filter(ETFInfo.market == market)
+        query = self._apply_ranking_filters(query, market, instrument_type)
         if category:
             query = query.filter(ETFInfo.category == category)
 

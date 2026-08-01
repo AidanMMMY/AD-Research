@@ -550,3 +550,212 @@ def test_get_scores_uses_latest_date_per_market(db_session):
     only_us = service.get_scores(template_id=template.id, trade_date=date(2024, 7, 30))
     assert {s["etf_code"] for s in only_us} == {"TST_US1"}
     assert service.count_scores(template_id=template.id, trade_date=date(2024, 7, 30)) == 1
+
+
+def _seed_ranking_filter_fixture(db_session, service):
+    """Seed one A股 ETF, one US stock, one US ETF and one crypto score row.
+
+    Returns the template. Codes use the ``FLT_`` prefix so they never
+    collide with other tests sharing the module-scoped session, and the
+    seeding is idempotent because that session persists across tests in
+    this module.
+    """
+    existing = (
+        db_session.query(ScoreTemplate)
+        .filter(ScoreTemplate.name == "Ranking Filters")
+        .first()
+    )
+    if existing is not None:
+        return existing
+
+    template = service.create_template(
+        name="Ranking Filters",
+        description="filter tests",
+        weights={"return": 0.3, "risk": 0.3, "sharpe": 0.4},
+    )
+    trade_date = date(2024, 8, 1)
+
+    db_session.add_all(
+        [
+            ETFInfo(
+                code="FLT_CN_ETF",
+                name="CN ETF",
+                market="A股",
+                category="Equity",
+                instrument_type="ETF",
+            ),
+            ETFInfo(
+                code="FLT_US_STOCK",
+                name="US Stock",
+                market="US",
+                category="Equity",
+                instrument_type="STOCK",
+            ),
+            ETFInfo(
+                code="FLT_US_ETF",
+                name="US ETF",
+                market="US",
+                category="Equity",
+                instrument_type="ETF",
+            ),
+            # Legacy-style row: NULL instrument_type counts as ETF.
+            ETFInfo(
+                code="FLT_CN_LEGACY",
+                name="CN Legacy ETF",
+                market="A股",
+                category="Equity",
+                instrument_type=None,
+            ),
+            ETFInfo(
+                code="FLT_CRYPTO",
+                name="Crypto Pair",
+                market="CRYPTO",
+                category="Crypto",
+                instrument_type="CRYPTO",
+            ),
+        ]
+    )
+    db_session.commit()
+
+    db_session.add_all(
+        [
+            ETFScore(
+                etf_code=code,
+                trade_date=trade_date,
+                template_id=template.id,
+                composite_score=score,
+                rank_overall=rank,
+            )
+            for rank, (code, score) in enumerate(
+                [
+                    ("FLT_CN_ETF", 90),
+                    ("FLT_US_STOCK", 80),
+                    ("FLT_US_ETF", 70),
+                    ("FLT_CN_LEGACY", 60),
+                    ("FLT_CRYPTO", 50),
+                ],
+                start=1,
+            )
+        ]
+    )
+    db_session.commit()
+    return template
+
+
+def test_get_scores_excludes_crypto_by_default(db_session):
+    """Crypto rows (暂不纳入数字币) never appear in the ranking query."""
+    from app.services.scoring_service import ScoringService
+
+    service = ScoringService(db_session)
+    template = _seed_ranking_filter_fixture(db_session, service)
+
+    scores = service.get_scores(template_id=template.id)
+    codes = {s["etf_code"] for s in scores}
+    assert "FLT_CRYPTO" not in codes
+    assert codes == {"FLT_CN_ETF", "FLT_US_STOCK", "FLT_US_ETF", "FLT_CN_LEGACY"}
+    assert service.count_scores(template_id=template.id) == 4
+
+    # Explicit trade_date keeps the crypto exclusion too.
+    dated = service.get_scores(template_id=template.id, trade_date=date(2024, 8, 1))
+    assert "FLT_CRYPTO" not in {s["etf_code"] for s in dated}
+    assert service.count_scores(template_id=template.id, trade_date=date(2024, 8, 1)) == 4
+
+
+def test_get_scores_market_alias_filters(db_session):
+    """Short market codes cn_a / us map to the DB values A股 / US."""
+    from app.services.scoring_service import ScoringService
+
+    service = ScoringService(db_session)
+    template = _seed_ranking_filter_fixture(db_session, service)
+
+    cn = service.get_scores(template_id=template.id, market="cn_a")
+    assert {s["etf_code"] for s in cn} == {"FLT_CN_ETF", "FLT_CN_LEGACY"}
+    assert service.count_scores(template_id=template.id, market="cn_a") == 2
+
+    us = service.get_scores(template_id=template.id, market="us")
+    assert {s["etf_code"] for s in us} == {"FLT_US_STOCK", "FLT_US_ETF"}
+    assert service.count_scores(template_id=template.id, market="us") == 2
+
+    # Raw DB values keep working (back-compat).
+    raw = service.get_scores(template_id=template.id, market="A股")
+    assert {s["etf_code"] for s in raw} == {"FLT_CN_ETF", "FLT_CN_LEGACY"}
+
+
+def test_get_scores_instrument_type_filters(db_session):
+    """instrument_type=ETF/STOCK narrows the ranking; NULL counts as ETF."""
+    from app.services.scoring_service import ScoringService
+
+    service = ScoringService(db_session)
+    template = _seed_ranking_filter_fixture(db_session, service)
+
+    etfs = service.get_scores(template_id=template.id, instrument_type="ETF")
+    assert {s["etf_code"] for s in etfs} == {"FLT_CN_ETF", "FLT_US_ETF", "FLT_CN_LEGACY"}
+    assert service.count_scores(template_id=template.id, instrument_type="ETF") == 3
+
+    stocks = service.get_scores(template_id=template.id, instrument_type="stock")
+    assert {s["etf_code"] for s in stocks} == {"FLT_US_STOCK"}
+    assert service.count_scores(template_id=template.id, instrument_type="STOCK") == 1
+
+    # Combined market + type filter.
+    us_etfs = service.get_scores(
+        template_id=template.id, market="us", instrument_type="ETF"
+    )
+    assert {s["etf_code"] for s in us_etfs} == {"FLT_US_ETF"}
+
+
+def test_get_scores_per_market_latest_unaffected_by_crypto(db_session):
+    """A crypto market bucket must not shift per-market latest-date joins."""
+    from app.services.scoring_service import ScoringService
+
+    service = ScoringService(db_session)
+    template = service.create_template(
+        name="Crypto Latest Date",
+        description="regression",
+        weights={"return": 0.3, "risk": 0.3, "sharpe": 0.4},
+    )
+
+    db_session.add_all(
+        [
+            ETFInfo(
+                code="FLT2_US",
+                name="US ETF 2",
+                market="US",
+                category="Equity",
+                instrument_type="ETF",
+            ),
+            ETFInfo(
+                code="FLT2_CRYPTO",
+                name="Crypto 2",
+                market="CRYPTO",
+                category="Crypto",
+                instrument_type="CRYPTO",
+            ),
+        ]
+    )
+    db_session.commit()
+    db_session.add_all(
+        [
+            ETFScore(
+                etf_code="FLT2_US",
+                trade_date=date(2024, 8, 1),
+                template_id=template.id,
+                composite_score=70,
+                rank_overall=1,
+            ),
+            # Crypto has a NEWER scored date than US — the ranking must
+            # still return the US row at its own latest date.
+            ETFScore(
+                etf_code="FLT2_CRYPTO",
+                trade_date=date(2024, 8, 2),
+                template_id=template.id,
+                composite_score=99,
+                rank_overall=1,
+            ),
+        ]
+    )
+    db_session.commit()
+
+    scores = service.get_scores(template_id=template.id)
+    assert {s["etf_code"] for s in scores} == {"FLT2_US"}
+    assert scores[0]["trade_date"] == date(2024, 8, 1)
+    assert service.count_scores(template_id=template.id) == 1

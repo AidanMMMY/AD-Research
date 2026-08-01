@@ -3,7 +3,7 @@ import { message } from 'antd';
 import { scoreApi } from '@/api';
 import type { ScoreTemplateCreate, ScoreTemplateUpdate } from '@/types/score';
 
-export function useScores(params?: { template_id?: number; market?: string; category?: string; limit?: number }) {
+export function useScores(params?: { template_id?: number; market?: string; category?: string; instrument_type?: string; limit?: number }) {
   return useQuery({
     queryKey: ['scores', params],
     queryFn: () => scoreApi.list(params).then((r) => r.data),
