@@ -451,3 +451,56 @@ def test_list_pools_admin_sees_everything(owner_scoped_db, db_session):
     assert seeded["p_alice"].id in visible_ids
     assert seeded["p_bob"].id in visible_ids
     assert seeded["p_shared"].id in visible_ids
+
+
+# ---------------------------------------------------------------------------
+# Weekly pool reports scheduler job (2026-08: preset-pool deletion follow-up)
+# ---------------------------------------------------------------------------
+
+
+def test_weekly_pool_reports_skips_deleted_and_survives_failure(db_session):
+    """``run_weekly_pool_reports`` must not generate reports for soft-deleted
+    pools, and one failing pool must not abort the whole job."""
+    from datetime import UTC
+    from unittest.mock import patch
+
+    from app.core import scheduler as core_scheduler
+
+    active = ETFPools(name="Active Pool", user_id=None)
+    deleted = ETFPools(
+        name="Deleted Pool", user_id=None, deleted_at=datetime.now(UTC)
+    )
+    failing = ETFPools(name="Failing Pool", user_id=None)
+    db_session.add_all([active, deleted, failing])
+    db_session.commit()
+    # Capture ids up-front: the job uses ``with SessionLocal()`` blocks which
+    # close the (patched) session and detach these ORM objects.
+    active_id, deleted_id, failing_id = active.id, deleted.id, failing.id
+
+    seen: list[int] = []
+
+    class _StubMetadata:
+        status = "done"
+
+    class _StubReportService:
+        def __init__(self, db):
+            pass
+
+        def generate_pool_report(self, pool_id, report_type, format):
+            seen.append(pool_id)
+            if pool_id == failing_id:
+                raise RuntimeError("boom")
+            return _StubMetadata()
+
+    with (
+        patch.object(core_scheduler, "SessionLocal", return_value=db_session),
+        patch.object(core_scheduler, "ReportService", _StubReportService),
+        patch.object(core_scheduler, "redis_lock") as mock_lock,
+    ):
+        mock_lock.return_value.__enter__.return_value = True
+        core_scheduler.run_weekly_pool_reports()
+
+    # Soft-deleted pool was never picked up; the failing pool raised but the
+    # job caught it and still processed the healthy pool.
+    assert deleted_id not in seen
+    assert set(seen) == {active_id, failing_id}

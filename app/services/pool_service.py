@@ -157,11 +157,22 @@ class PoolService:
         """Soft-delete a pool, respecting owner-scoping (M21-3).
 
         Behaviour matrix:
-          - admin                → can delete any active pool.
+          - admin                → can delete any active pool (incl. NULL-owner
+                                   shared/preset pools).
           - regular user, owned  → can delete (returns True, sets deleted_at).
-          - regular user, NULL   → cannot delete (raises PermissionError("system_pool")).
+          - regular user, NULL   → cannot delete: NULL-owner pools are GLOBAL
+                                   shared pools visible to every user (e.g. the
+                                   seeded 宽基指数池/科技成长池/稳健防御池/行业轮动池),
+                                   so one regular user must not destroy data the
+                                   other users still see. Raises
+                                   PermissionError("system_pool").
           - regular user, other  → cannot delete (raises PermissionError("not_owner")).
           - already deleted/missing → returns False (caller maps to 404).
+
+        Deletion cascades softly: active members (``PoolMember.removed_at``)
+        and weight rows (``PoolWeight.removed_at``) are soft-deleted along
+        with the pool so they stop leaking into analytics/UI, while history
+        stays recoverable. Historical reports (``report_metadata``) are kept.
 
         Previously (review-pool-bug) the ownership filter excluded
         ``user_id IS NULL`` rows so non-admins silently hit a 404
@@ -184,7 +195,19 @@ class PoolService:
         if not is_admin and pool.user_id != current_user.id:
             raise PermissionError("not_owner")
 
-        pool.deleted_at = datetime.now(UTC)
+        now = datetime.now(UTC)
+        pool.deleted_at = now
+        # Cascade soft-delete: members + weights follow the pool so they no
+        # longer count as active anywhere (analytics, weight suggestion,
+        # weekly reports), but remain recoverable like the pool itself.
+        self.db.query(PoolMember).filter(
+            PoolMember.pool_id == pool_id,
+            PoolMember.removed_at.is_(None),
+        ).update({"removed_at": now})
+        self.db.query(PoolWeight).filter(
+            PoolWeight.pool_id == pool_id,
+            PoolWeight.removed_at.is_(None),
+        ).update({"removed_at": now})
         self.db.commit()
         return True
 

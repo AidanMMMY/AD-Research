@@ -1,0 +1,84 @@
+<!DOCTYPE html><html lang="zh"><head><meta charset="utf-8"><title>20260801 预置标的池删除守卫修复</title>
+<style>body{max-width:900px;margin:2rem auto;padding:0 1rem;font-family:-apple-system,sans-serif;line-height:1.7}table{border-collapse:collapse}td,th{border:1px solid #ccc;padding:4px 10px}code{background:#f4f4f4;padding:1px 4px;border-radius:3px}</style>
+</head><body><h1>2026-08-01 预置标的池删除守卫修复 runbook</h1>
+<h2>背景</h2>
+<p>用户（Aidan，role=user）在标的池页删除「行业轮动池」(id=4) 被 403：
+"系统预置标的池（id=4）不可删除，请新建一个自定义池代替"。</p>
+<h2>现状结论</h2>
+<ul>
+<li><strong>守卫位置</strong>：<code>app/services/pool_service.py</code> <code>delete_pool</code> /
+  <code>_assert_write_access</code> —— <code>pool.user_id IS NULL</code> 且非 admin →
+  <code>PermissionError("system_pool")</code>；<code>app/api/v1/pools.py</code> 映射为 403 中文文案。</li>
+<li><strong>预置池模型</strong>：没有 <code>is_preset</code> 字段。<code>user_id IS NULL</code> 即"系统预置/全局共享池"，
+  由 <code>scripts/seed_all_demo_data.py</code> 一次性种入（宽基指数池/科技成长池/稳健防御池/行业轮动池），
+  <strong>不是</strong>每用户一份。生产库实测 8 个用户（admin + 7 个普通用户），池 1-5 全部 NULL-owner 共享。</li>
+<li><strong>守卫意图（M21-3 防 IDOR）</strong>：普通用户不能改/删别人和全局共享的数据——合理，保留。</li>
+</ul>
+<h2>依赖方审计（删除影响面）</h2>
+<table>
+<thead>
+<tr>
+<th>引用方</th>
+<th>位置</th>
+<th>依赖类型</th>
+<th>处理</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>周报 job <code>run_weekly_pool_reports</code></td>
+<td><code>app/core/scheduler.py</code></td>
+<td><strong>硬依赖（有 bug）</strong>：原查询未过滤 <code>deleted_at</code>，软删池每周日仍生成孤儿周报</td>
+<td>已修：查询加 <code>deleted_at.is_(None)</code></td>
+</tr>
+<tr>
+<td><code>ReportService.generate_pool_report</code></td>
+<td><code>app/services/report_service.py</code></td>
+<td>软依赖：池不存在抛 ValueError，job 内 per-pool try/except 吞掉</td>
+<td>无需改</td>
+</tr>
+<tr>
+<td><code>report_metadata.pool_id</code> FK CASCADE</td>
+<td><code>app/models/scoring.py</code></td>
+<td>仅硬删除触发；软删除保留历史报告</td>
+<td>无需改（历史报告有意保留）</td>
+</tr>
+<tr>
+<td>板块轮动 / 评分模板 / 筛选</td>
+<td>—</td>
+<td>均不引用 pool id，无 is_preset 查询</td>
+<td>无依赖</td>
+</tr>
+</tbody>
+</table>
+<h2>修复方案</h2>
+<p>全局共享池 → <strong>仅管理员可删</strong>（平台 8 个真实用户，普通用户删共享池会破坏他人数据）。
+管理员删除路径原本就通，本次补的是删除的正确性与 UX：</p>
+<ol>
+<li><code>pool_service.delete_pool</code>：删除时级联软删 <code>PoolMember.removed_at</code> +
+   <code>PoolWeight.removed_at</code>（历史报告保留）。</li>
+<li>周报 job 过滤 <code>deleted_at</code>，已删池不再产生孤儿周报。</li>
+<li>403 文案改准：全局共享池仅管理员可删（不再说"请新建自定义池代替"这种误导话）。</li>
+<li>前端 <code>PoolList</code>：<code>Pool.user_id == null</code> 判定预置共享池——
+   普通用户看到禁用的删除按钮 + tooltip 说明；管理员看到二次确认
+   "删除后对所有用户不可见且不可恢复"。</li>
+</ol>
+<p><strong>用户操作</strong>：用 admin 账号登录即可删除 4 个预置池；删除是软删除（<code>deleted_at</code>），
+误删可 SQL 恢复（<code>UPDATE etf_pools SET deleted_at=NULL WHERE id=4</code>，
+成员/权重同理清 <code>removed_at</code>）。</p>
+<h2>改动文件</h2>
+<ul>
+<li><code>app/services/pool_service.py</code> — 级联软删 + 权限矩阵 docstring</li>
+<li><code>app/api/v1/pools.py</code> — 删除 403 文案</li>
+<li><code>app/core/scheduler.py</code> — 周报 job 过滤已删池</li>
+<li><code>app/tests/services/test_pool_service.py</code> — 级联/权限矩阵 4 个新用例</li>
+<li><code>app/tests/test_pool.py</code> — 周报 job 跳过已删池 + 单池失败不炸</li>
+<li><code>web/src/types/pool.ts</code> — <code>Pool.user_id?: number | null</code></li>
+<li><code>web/src/pages/PoolList/index.tsx</code> — 预置池删除 UX 区分</li>
+</ul>
+<h2>测试</h2>
+<ul>
+<li>后端 <code>pytest app/tests</code>：1316 passed；7 个 <code>test_futures_pipeline.py</code> 失败为
+  <strong>既有失败</strong>（stash 验证干净树上同样 7 连败，与本次无关）。</li>
+<li>前端 <code>npm run check:ci</code>（lint:css + tsc + vite build）全绿。</li>
+</ul></body></html>

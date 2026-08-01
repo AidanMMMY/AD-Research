@@ -7,6 +7,7 @@ import { PlusOutlined, SettingOutlined, DeleteOutlined } from '@ant-design/icons
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { usePoolList } from '@/hooks/usePoolDetail';
 import { poolApi } from '@/api';
+import { useAuthStore } from '@/stores/auth';
 import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
 import PageShell from '@/components/PageShell';
 import PageHeader from '@/components/PageHeader';
@@ -19,6 +20,7 @@ export default function PoolList() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { data: pools, isLoading: poolsLoading } = usePoolList();
+  const isAdmin = useAuthStore((s) => s.user?.role === 'admin');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [form] = Form.useForm();
   // Apple Design #14: under reduced motion, drop the modal's spring/zoom
@@ -66,7 +68,16 @@ export default function PoolList() {
     }
   };
 
-  const renderCard = (pool: Pool) => (
+  const renderCard = (pool: Pool) => {
+    // NULL-owner pools are 系统预置的全局共享池 (visible to every user):
+    // only admins may delete them; regular users get a disabled button with
+    // an explaining tooltip instead of a delete action that is doomed to 403.
+    const isSharedPreset = pool.user_id == null;
+    const deleteDisabled = isSharedPreset && !isAdmin;
+    const confirmDescription = isSharedPreset
+      ? `「${pool.name}」是系统预置的全局共享池，删除后对所有用户不可见且不可恢复。确定要删除吗？`
+      : `确定要删除「${pool.name}」吗？此操作不可恢复。`;
+    return (
     <div
       key={pool.id}
       className="pool-card"
@@ -98,9 +109,22 @@ export default function PoolList() {
               onKeyDown={(e) => e.stopPropagation()}
             />
           </Tooltip>
+          {deleteDisabled ? (
+            <Tooltip title="系统预置的全局共享池，仅管理员可删除">
+              <Button
+                type="text"
+                size="small"
+                disabled
+                icon={<DeleteOutlined />}
+                aria-label={`删除 ${pool.name}（仅管理员可删除）`}
+                onClick={(e) => e.stopPropagation()}
+                onKeyDown={(e) => e.stopPropagation()}
+              />
+            </Tooltip>
+          ) : (
           <Popconfirm
             title="删除标的池"
-            description={`确定要删除「${pool.name}」吗？此操作不可恢复。`}
+            description={confirmDescription}
             onConfirm={() => deleteMutation.mutate(pool.id)}
             okText="删除"
             cancelText="取消"
@@ -119,10 +143,12 @@ export default function PoolList() {
               />
             </Tooltip>
           </Popconfirm>
+          )}
         </span>
       </div>
     </div>
-  );
+    );
+  };
 
   return (
     <PageShell maxWidth="wide">

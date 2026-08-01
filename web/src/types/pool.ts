@@ -5,6 +5,8 @@ export interface Pool {
   created_at: string;
   updated_at: string;
   members: PoolMember[];
+  /** Owner user id. NULL/undefined = 系统预置的全局共享池（仅管理员可删改）。 */
+  user_id?: number | null;
 }
 
 export interface PoolMember {

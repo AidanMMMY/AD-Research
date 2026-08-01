@@ -128,7 +128,10 @@ def delete_pool(
         if str(e) == "system_pool":
             raise HTTPException(
                 status_code=403,
-                detail=f"系统预置标的池（id={pool_id}）不可删除，请新建一个自定义池代替",
+                detail=(
+                    f"系统预置标的池（id={pool_id}）是全局共享池，对所有用户可见，"
+                    "仅管理员可删除；如需个性化请新建自定义池"
+                ),
             )
         raise HTTPException(status_code=403, detail="无权删除该标的池")
     if not deleted:

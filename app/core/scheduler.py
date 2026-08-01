@@ -723,9 +723,16 @@ def run_weekly_pool_reports():
             return
         # Fetch the pool list in a short session; each report gets its own
         # session so a long-running report does not hold a connection while
-        # other reports are being generated.
+        # other reports are being generated. Soft-deleted pools are excluded
+        # so deleting a pool also stops its weekly reports (previously the
+        # unfiltered query kept generating orphan reports for deleted pools).
         with SessionLocal() as db:
-            pool_ids = [p.id for p in db.query(ETFPools).all()]
+            pool_ids = [
+                p.id
+                for p in db.query(ETFPools)
+                .filter(ETFPools.deleted_at.is_(None))
+                .all()
+            ]
 
         for pool_id in pool_ids:
             try:
