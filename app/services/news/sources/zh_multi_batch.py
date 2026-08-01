@@ -61,6 +61,7 @@ from __future__ import annotations
 import asyncio
 import logging
 from dataclasses import dataclass
+from zoneinfo import ZoneInfo
 
 import httpx
 
@@ -203,6 +204,10 @@ class ZhMultiBatchCrawler:
                             language=feed.language,
                             default_author=feed.display_name,
                             max_items=self._max_items,
+                            # 中文播客 shownotes feed 的 naive 时间戳一律按
+                            # 本地墙钟时间 UTC+8 解释（与 zh_blog_batch 同
+                            # 理，见该文件 2026-08-01 注释）。
+                            default_tz=ZoneInfo("Asia/Shanghai"),
                         )
                     )
                 except Exception as exc:  # noqa: BLE001

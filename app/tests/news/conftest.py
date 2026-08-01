@@ -141,3 +141,18 @@ def event_loop() -> Iterator[asyncio.AbstractEventLoop]:
     loop = asyncio.new_event_loop()
     yield loop
     loop.close()
+
+
+@pytest.fixture(autouse=True)
+def _reset_jina_breaker_between_tests() -> Iterator[None]:
+    """Reset the content-fetcher Jina circuit breaker around every test.
+
+    The breaker (2026-08-01) is module-level state: one test mocking a
+    429/402/403 Jina response would otherwise poison every later test in
+    the session with a stuck-open breaker.
+    """
+    from app.services.news.content_fetcher import _reset_jina_breaker
+
+    _reset_jina_breaker()
+    yield
+    _reset_jina_breaker()

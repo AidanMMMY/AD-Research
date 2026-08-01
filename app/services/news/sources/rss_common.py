@@ -11,7 +11,7 @@ from __future__ import annotations
 import logging
 import re
 import xml.etree.ElementTree as ET
-from datetime import datetime, timezone
+from datetime import datetime, timezone, tzinfo
 from email.utils import parsedate_to_datetime
 from typing import Iterable
 
@@ -58,7 +58,17 @@ def _find_text(parent: ET.Element, *paths: str) -> str | None:
 
 
 def _parse_date(value: str | None) -> datetime | None:
-    """Best-effort date parsing for RSS/Atom timestamps."""
+    """Best-effort date parsing for RSS/Atom timestamps.
+
+    Returns the datetime **as parsed** — naive when the feed omits a
+    timezone, aware in the feed's own offset when it supplies one. All
+    timezone normalization (``default_tz`` for naive values,
+    ``tz_override`` for mislabeled feeds, final UTC conversion) happens
+    in :func:`_extract_pub_date`, which is the only caller. (Previously
+    this function forced naive values to UTC right here, which made the
+    ``default_tz`` parameter of ``_extract_pub_date`` dead code — the
+    latent bug behind the 2026-08-01 iThome 台湾 +8h incident.)
+    """
     if not value:
         return None
     value = value.strip()
@@ -66,9 +76,7 @@ def _parse_date(value: str | None) -> datetime | None:
     try:
         dt = parsedate_to_datetime(value)
         if dt is not None:
-            if dt.tzinfo is None:
-                dt = dt.replace(tzinfo=timezone.utc)
-            return dt.astimezone(timezone.utc)
+            return dt
     except (TypeError, ValueError):
         pass
     # ISO 8601 variants (e.g. "2026-07-18T17:30:23+08:00")
@@ -80,28 +88,36 @@ def _parse_date(value: str | None) -> datetime | None:
         "%Y-%m-%d %H:%M:%S",
     ):
         try:
-            dt = datetime.strptime(value, fmt)
-            if dt.tzinfo is None:
-                dt = dt.replace(tzinfo=timezone.utc)
-            return dt.astimezone(timezone.utc)
+            return datetime.strptime(value, fmt)
         except ValueError:
             continue
     # 36kr style: "2026-07-18 17:30:23  +0800" (two spaces before tz)
     try:
-        dt = datetime.strptime(value.replace("  +", " +"), "%Y-%m-%d %H:%M:%S %z")
-        return dt.astimezone(timezone.utc)
+        return datetime.strptime(value.replace("  +", " +"), "%Y-%m-%d %H:%M:%S %z")
     except ValueError:
         pass
     return None
 
 
+# 块级元素边界 → 段落换行（2026-08-01 huxiu 段落粘连根治）：剥标签前
+# 先把块级边界显式转成 \n\n（<br> 为段内单换行），否则整篇 RSS 全文
+# 会被折叠成一段。
+_BLOCK_BOUNDARY_RE = re.compile(
+    r"</(?:p|div|li|h[1-6]|blockquote|tr|section|article)\s*>",
+    re.IGNORECASE,
+)
+_BR_RE = re.compile(r"<br\s*/?>", re.IGNORECASE)
+
+
 def _strip_html(text: str | None) -> str | None:
-    """Drop HTML tags and collapse whitespace."""
+    """Drop HTML tags, preserving block-level paragraph breaks as ``\\n\\n``."""
     if not text:
         return None
     import re
 
-    no_tags = re.sub(r"<[^>]+>", " ", text)
+    marked = _BR_RE.sub("\n", text)
+    marked = _BLOCK_BOUNDARY_RE.sub("\n\n", marked)
+    no_tags = re.sub(r"<[^>]+>", " ", marked)
     no_tags = (
         no_tags.replace("&amp;", "&")
         .replace("&lt;", "<")
@@ -110,8 +126,10 @@ def _strip_html(text: str | None) -> str | None:
         .replace("&#39;", "'")
         .replace("&nbsp;", " ")
     )
-    collapsed = re.sub(r"\s+", " ", no_tags).strip()
-    return collapsed or None
+    # 行内空白折叠但保留段落换行；3+ 连续换行收敛为恰好 \n\n
+    lines = [re.sub(r"[ \t]+", " ", line).strip() for line in no_tags.split("\n")]
+    collapsed = re.sub(r"\n{3,}", "\n\n", "\n".join(lines)).strip("\n")
+    return collapsed.strip() or None
 
 
 def _extract_link(item: ET.Element) -> str | None:
@@ -151,7 +169,12 @@ def _extract_guid(item: ET.Element) -> str | None:
     return _extract_link(item)
 
 
-def _extract_pub_date(item: ET.Element, *, default_tz: timezone = timezone.utc) -> datetime | None:
+def _extract_pub_date(
+    item: ET.Element,
+    *,
+    default_tz: timezone = timezone.utc,
+    tz_override: tzinfo | None = None,
+) -> datetime | None:
     """Extract and normalize the item's publication timestamp."""
     value = _find_text(
         item,
@@ -166,6 +189,12 @@ def _extract_pub_date(item: ET.Element, *, default_tz: timezone = timezone.utc) 
     dt = _parse_date(value)
     if dt is None:
         return None
+    if tz_override is not None:
+        # 部分 feed 的时区标注本身就是错的（2026-08-01 生产事故：
+        # nocutnews 的 dc:date 是韩国本地墙钟时间 KST 却标注 "GMT"，
+        # 入库后前端 +8 显示成"未来时间"）。对这类 feed 忽略其自带的
+        # 时区标注，按发行方本地时区重新解释墙钟时间。
+        return dt.replace(tzinfo=None).replace(tzinfo=tz_override).astimezone(timezone.utc)
     if dt.tzinfo is None:
         dt = dt.replace(tzinfo=default_tz)
     return dt.astimezone(timezone.utc)
@@ -180,6 +209,7 @@ def parse_rss_items(
     default_author: str | None = None,
     max_items: int | None = None,
     default_tz: timezone = timezone.utc,
+    tz_override: tzinfo | None = None,
 ) -> list[RawArticle]:
     """Parse an RSS/Atom feed and return a list of :class:`RawArticle`.
 
@@ -191,6 +221,10 @@ def parse_rss_items(
         default_author: Author name when the feed does not supply one.
         max_items: If set, only parse the first ``max_items`` items.
         default_tz: Timezone for naive timestamps (defaults to UTC).
+        tz_override: When set, the feed's own timezone label is treated
+            as wrong and every parsed timestamp's wall time is
+            re-interpreted in this timezone instead (see
+            :func:`_extract_pub_date`).
     """
     try:
         root = ET.fromstring(xml_text)
@@ -269,7 +303,9 @@ def parse_rss_items(
             or _find_text(item, f"{{{_RSS_NAMESPACES['atom']}}}author/{{{_RSS_NAMESPACES['atom']}}}name")
             or default_author
         )
-        published_at = _extract_pub_date(item, default_tz=default_tz) or datetime.now(
+        published_at = _extract_pub_date(
+            item, default_tz=default_tz, tz_override=tz_override
+        ) or datetime.now(
             tz=timezone.utc
         )
 

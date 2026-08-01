@@ -22,6 +22,7 @@ import hashlib
 import json
 import logging
 import re
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from simhash import Simhash
@@ -43,6 +44,32 @@ def _hash_text(value: str | None) -> str | None:
     if not value:
         return None
     return hashlib.md5(value.encode("utf-8", errors="ignore")).hexdigest()
+
+
+# 未来时间钳制（2026-08-01 生产事故加固）：部分 feed 的时间戳标注错误
+# （如 nocutnews 把韩国本地墙钟时间标成 GMT，入库后比真实 UTC 快 9 小时，
+# 前端 +8 显示成"未来时间"），也有 CMS 定时发布/时钟漂移导致 pubDate
+# 略超当前时间的情况。源层修复（rss_common tz_override）只能覆盖已知
+# 坏 feed，这里是新闻写入的唯一汇合点，统一把超过 now+15min 的
+# published_at 钳到 now —— 15 分钟容忍窗口覆盖合理的时钟漂移与定时
+# 发布，超出即视为脏数据。钳制会打 warning 日志，便于发现新的坏 feed。
+_FUTURE_TOLERANCE = timedelta(minutes=15)
+
+
+def _clamp_future_published_at(ts: datetime, *, source: str) -> datetime:
+    """Clamp future ``published_at`` to now (with a 15-minute tolerance)."""
+    if ts.tzinfo is None:
+        ts = ts.replace(tzinfo=timezone.utc)
+    now = datetime.now(tz=timezone.utc)
+    if ts > now + _FUTURE_TOLERANCE:
+        logger.warning(
+            "normalize: %s published_at %s 超前当前时间超过 %s，已钳制到 now",
+            source,
+            ts.isoformat(),
+            _FUTURE_TOLERANCE,
+        )
+        return now
+    return ts
 
 
 def _simhash_text(value: str | None) -> str | None:
@@ -166,7 +193,7 @@ class NewsNormalizer:
                 author=raw.author,
                 language=language,
                 market=raw.market or "cn_a",
-                published_at=raw.published_at,
+                published_at=_clamp_future_published_at(raw.published_at, source=raw.source),
                 # ``category`` doubles as a free-form tag for source-specific
                 # taxonomy (e.g. cninfo's filing category).
                 category=_derive_category(raw),
@@ -249,14 +276,28 @@ class NewsNormalizer:
 
 _HTML_TAG_RE = re.compile(r"<[^>]+>")
 _WHITESPACE_RE = re.compile(r"\s+")
+# 块级元素边界 → 段落换行（2026-08-01 huxiu 段落粘连根治，与
+# rss_common._strip_html 同一规则）：剥标签前先把块级边界转成 \n\n
+#（<br> 为段内单换行）。
+_BLOCK_BOUNDARY_RE = re.compile(
+    r"</(?:p|div|li|h[1-6]|blockquote|tr|section|article)\s*>",
+    re.IGNORECASE,
+)
+_BR_RE = re.compile(r"<br\s*/?>", re.IGNORECASE)
+_INLINE_WS_RE = re.compile(r"[ \t]+")
+_EXCESS_NL_RE = re.compile(r"\n{3,}")
 
 
 def _strip_html_to_text(value: str | None) -> str | None:
-    """Best-effort HTML → text for the ``summary`` column."""
+    """Best-effort HTML → text, preserving block-level breaks as ``\\n\\n``."""
     if not value:
         return None
-    text = _HTML_TAG_RE.sub(" ", value)
-    text = _WHITESPACE_RE.sub(" ", text).strip()
+    marked = _BR_RE.sub("\n", value)
+    marked = _BLOCK_BOUNDARY_RE.sub("\n\n", marked)
+    text = _HTML_TAG_RE.sub(" ", marked)
+    # 行内空白折叠但保留段落换行；3+ 连续换行收敛为恰好 \n\n
+    lines = [_INLINE_WS_RE.sub(" ", line).strip() for line in text.split("\n")]
+    text = _EXCESS_NL_RE.sub("\n\n", "\n".join(lines)).strip()
     if not text:
         return None
     return text[:8000]

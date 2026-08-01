@@ -61,6 +61,7 @@ from __future__ import annotations
 import asyncio
 import logging
 from dataclasses import dataclass
+from zoneinfo import ZoneInfo
 
 import httpx
 
@@ -204,6 +205,12 @@ class ZhBlogBatchCrawler:
                             language=feed.language,
                             default_author=feed.display_name,
                             max_items=self._max_items,
+                            # 中文（含台湾/香港）博客的 naive 时间戳一律是
+                            # 本地墙钟时间 UTC+8（2026-08-01：iThome 台湾
+                            # 的 pubDate "2026-08-01  10:08:56" 无时区，
+                            # 默认按 UTC 入库快了 8 小时）。带时区标注的
+                            # 时间不受此参数影响。
+                            default_tz=ZoneInfo("Asia/Shanghai"),
                         )
                     )
                 except Exception as exc:  # noqa: BLE001

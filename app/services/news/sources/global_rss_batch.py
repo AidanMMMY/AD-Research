@@ -41,6 +41,7 @@ from __future__ import annotations
 import asyncio
 import logging
 from dataclasses import dataclass
+from zoneinfo import ZoneInfo
 
 import httpx
 
@@ -184,6 +185,16 @@ GLOBAL_RSS_BATCHES: dict[str, list[tuple[str, str, str, str, str]]] = {
     for i in range((len(GLOBAL_RSS_FEEDS) + _BATCH_SIZE - 1) // _BATCH_SIZE)
 }
 
+# 已知时区标注错误的 feed（2026-08-01 生产事故排查结论）：
+# nocutnews 的 <dc:date> 是韩国本地墙钟时间（KST, UTC+9）却标注 "GMT"，
+# 解析器按字面信任 GMT 后入库即比真实 UTC 快 9 小时，前端 +8 显示成
+# "未来时间"。对命中此映射的 feed，解析时忽略其自带时区标注，按此处
+# 指定的发行方本地时区重新解释墙钟时间。新增条目前务必先 curl 该
+# feed 对比实时 UTC 确认是"标注错误"而非"定时发布"。
+GLOBAL_RSS_TZ_OVERRIDE: dict[str, str] = {
+    "nocutnews": "Asia/Seoul",
+}
+
 
 @dataclass(frozen=True)
 class _Feed:
@@ -250,6 +261,13 @@ class GlobalRssBatchCrawler:
                 try:
                     resp = await client.get(feed.url)
                     resp.raise_for_status()
+                    # 时区标注错误的 feed（见 GLOBAL_RSS_TZ_OVERRIDE）按
+                    # 发行方本地时区重新解释墙钟时间。
+                    tz_override = (
+                        ZoneInfo(GLOBAL_RSS_TZ_OVERRIDE[feed.slug])
+                        if feed.slug in GLOBAL_RSS_TZ_OVERRIDE
+                        else None
+                    )
                     out.extend(
                         parse_rss_items(
                             resp.text,
@@ -258,6 +276,7 @@ class GlobalRssBatchCrawler:
                             language=feed.language,
                             default_author=feed.display_name,
                             max_items=self._max_items,
+                            tz_override=tz_override,
                         )
                     )
                 except Exception as exc:  # noqa: BLE001

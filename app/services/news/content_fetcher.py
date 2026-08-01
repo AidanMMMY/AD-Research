@@ -34,6 +34,7 @@ from __future__ import annotations
 
 import logging
 import re
+import time
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from typing import Final
@@ -86,6 +87,95 @@ MAX_CONTENT_CHARS: Final[int] = 10_000
 
 # Cache TTL applied by callers when deciding whether to re-fetch.
 CACHE_TTL: Final[timedelta] = timedelta(hours=24)
+
+# ---------------------------------------------------------------------------
+# Flattened-body detection (2026-08-01, huxiu 段落粘连)
+# ---------------------------------------------------------------------------
+
+# A stored body at least this long that contains not a single newline is
+# a flattened RSS dump: the ingest path stripped every block-level tag
+# (</p>, <br>, </div>, …) down to a space, so the paragraph structure of
+# the original article is lost (虎嗅 huxiu 全文 RSS 是典型案例，正文
+# 全部粘成一段）。Such a cache entry must not be treated as "done" —
+# re-extracting from the article page (trafilatura) recovers the real
+# ``\n\n`` paragraph structure the detail page renders.
+_FLATTENED_MIN_CHARS: Final[int] = 400
+
+
+def _looks_flattened(text: str | None) -> bool:
+    """Return True when a stored body lost its paragraph structure.
+
+    合法的短快讯（< 400 字）不受影响；真正的长文几乎不可能连一个
+    换行都没有，因此"长文 + 零换行"基本可以断定是 HTML 块级标签被
+    打平成空格的产物。
+    """
+    return bool(text) and len(text) >= _FLATTENED_MIN_CHARS and "\n" not in text
+
+
+# ---------------------------------------------------------------------------
+# Jina Reader circuit breaker (2026-08-01, Jina 余额耗尽故障)
+# ---------------------------------------------------------------------------
+
+# Jina answers 402 when the paid balance is exhausted and 429 when the
+# account is rate-limited. Without a breaker, the 10-minute full-content
+# drain keeps calling Jina for every backlog row even though each call
+# is guaranteed to fail until a human recharges the account (402) or the
+# rate window resets (429). The breaker trips on those statuses and
+# short-circuits subsequent calls for a cooldown, so the drain fails
+# fast and the log line tells ops exactly what to do.
+_JINA_BREAKER_COOLDOWN_SEC: Final[dict[int, float]] = {
+    402: 3600.0,  # 余额耗尽只能人工充值，冷却 1 小时再探
+    429: 300.0,  # 速率限制几分钟内自愈
+    403: 600.0,  # AbuseAlleviation / 域名封锁，冷却 10 分钟
+}
+
+# Module-level breaker state (monotonic deadline + human-readable
+# reason). Per-process by design: the drain and the API workers each
+# keep their own, and a restart resets it — a recharged account starts
+# working again at the latest on the next deploy / cooldown expiry.
+_jina_breaker_until: float = 0.0
+_jina_breaker_reason: str = ""
+
+
+def _jina_breaker_open() -> str | None:
+    """Return the breaker reason while the breaker is open, else None."""
+    if _jina_breaker_reason and time.monotonic() < _jina_breaker_until:
+        return _jina_breaker_reason
+    return None
+
+
+def _trip_jina_breaker(status_code: int, body: str) -> str:
+    """Open the Jina breaker for ``status_code``; return the reason."""
+    global _jina_breaker_until, _jina_breaker_reason
+    cooldown = _JINA_BREAKER_COOLDOWN_SEC.get(status_code, 300.0)
+    _jina_breaker_until = time.monotonic() + cooldown
+    if status_code == 402:
+        # 生产实例 2026-07-30 起全量 402（InsufficientBalanceError）：
+        # investing/marketwatch/ft 等依赖 Jina 的源整体失败，需充值。
+        _jina_breaker_reason = (
+            "jina balance exhausted (http 402) — recharge the Jina "
+            "account; skipping Jina calls for "
+            f"{int(cooldown)}s"
+        )
+    elif status_code == 429:
+        _jina_breaker_reason = (
+            f"jina rate-limited (http 429); backing off for {int(cooldown)}s"
+        )
+    else:
+        snippet = (body or "")[:120].strip()
+        _jina_breaker_reason = (
+            f"jina returned http {status_code} ({snippet}); "
+            f"backing off for {int(cooldown)}s"
+        )
+    logger.warning("ContentFetcher: %s", _jina_breaker_reason)
+    return _jina_breaker_reason
+
+
+def _reset_jina_breaker() -> None:
+    """Reset the breaker — exposed for tests."""
+    global _jina_breaker_until, _jina_breaker_reason
+    _jina_breaker_until = 0.0
+    _jina_breaker_reason = ""
 
 # ---------------------------------------------------------------------------
 # Deterministic Jina-body cleaners
@@ -731,13 +821,27 @@ class ContentFetcher:
             return FetchResult(success=False, content=None, cached=False,
                                error="article has no url")
 
-        # 1) Cache hit: still fresh and not empty.
-        if not force and self._is_cache_fresh(article):
+        # 1) Cache hit: still fresh and not empty. A flattened cache
+        # entry (long body, zero newlines — RSS ingest stripped the
+        # block-level tags, e.g. huxiu) does NOT count as a hit: the
+        # paragraph structure is gone, so we fall through and let the
+        # extraction tiers rebuild it from the article page.
+        if (
+            not force
+            and self._is_cache_fresh(article)
+            and not _looks_flattened(article.full_content)
+        ):
             return FetchResult(
                 success=True,
                 content=article.full_content,
                 cached=True,
                 ai_cleanup_status=article.ai_cleanup_status,
+            )
+        if not force and _looks_flattened(article.full_content):
+            logger.info(
+                "ContentFetcher: cached body for article %s is flattened "
+                "(no paragraph breaks), re-extracting",
+                article_id,
             )
 
         # 2) Tiered extraction: local trafilatura → Jina Reader → LLM.
@@ -1002,6 +1106,12 @@ class ContentFetcher:
 
         Raises :class:`_JinaError` on any non-success outcome.
         """
+        # Circuit breaker: a tripped breaker (balance exhausted / rate
+        # limited / domain blocked) fails fast instead of burning a
+        # network call per backlog row.
+        if reason := _jina_breaker_open():
+            raise _JinaError(reason)
+
         endpoint = f"{JINA_READER_URL}/{url}"
         headers = {
             # Ask Jina for plain text with the structured header block.
@@ -1030,6 +1140,11 @@ class ContentFetcher:
             raise _JinaError(f"http error: {exc}") from exc
 
         if response.status_code >= 400:
+            # 402 / 429 / 403 trip the circuit breaker so subsequent
+            # calls fail fast with an actionable reason.
+            if response.status_code in _JINA_BREAKER_COOLDOWN_SEC:
+                reason = _trip_jina_breaker(response.status_code, response.text)
+                raise _JinaError(reason)
             raise _JinaError(
                 f"jina returned http {response.status_code}"
             )
