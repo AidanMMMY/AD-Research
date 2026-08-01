@@ -1,0 +1,67 @@
+<!DOCTYPE html><html lang=zh><head><meta charset=utf-8><title>20260801 指数详情页+资讯修复 runbook</title><style>body{max-width:860px;margin:40px auto;font-family:-apple-system,sans-serif;line-height:1.7;padding:0 16px}code{background:#f4f4f4;padding:1px 4px}h1,h2{line-height:1.3}</style></head><body>
+<h1>2026-08-01 全球指数详情页 + 资讯三修复 综合 runbook</h1>
+<p>涉及提交：<code>5999f5e</code>（后端）/ <code>04a09ef</code>（前端）/ <code>4e034e6</code>（news 双根治）/ <code>f413835</code>（段距），全部已部署（生产 git_sha <code>f413835</code>），Backend CI / Web CI / Deploy 全绿。</p>
+<h2>1. 全球速览 28 个宏观代码详情页</h2>
+<p>### 架构</p>
+<ul>
+<li><strong>新表 <code>global_index_daily_bar</code></strong>（迁移 <code>v3w5x7y9z1a3</code>）：复合 PK <code>(code, trade_date, source)</code>，O/H/L 可空、close 非空、volume 可空。不带 region/name——元数据从 <code>macro_indicator</code> 取，避免双写不一致</li>
+<li><strong>双写管线</strong>：<code>run_global_indices_refresh</code>（每工作日 17:00）原有三段 <code>macro_indicator</code> upsert 不动，末尾追加 OHLC 旁路段（yfinance 3mo 增量 + akshare 40 天），per_source 摘要新增 <code>yfinance_ohlcv</code>/<code>akshare_ohlcv</code> 计数；旁路段整体 try/except 不阻断主流程</li>
+<li><strong>聚合端点</strong> <code>GET /api/v1/macro/indicators/{code}/detail</code>：返回 <code>has_ohlc</code> 驱动前端选蜡烛/折线；<code>latest</code>/<code>stats</code>（52 周高低）在 OHLC 分支由 bars 计算，折线分支来自 <code>get_series</code> 窗口</li>
+<li><strong>前端</strong> <code>/global/:code</code>（GlobalIndexDetail）：KPI strip 5 列 + 时间范围 Radio + KLineChart（has_ohlc=true）/ MacroLineChart（AreaSeries，新组件）；速览页 CategoryTable 行点击跳转</li>
+</ul>
+<p>### 关键陷阱（下次别再踩）</p>
+<p>1. <strong>EUR=X 类 <code>invert_value=True</code> 源</strong>：存 OHLC 时四个价格全取倒数<strong>且 high/low 互换</strong>（new_high=1/low, new_low=1/high），否则 K 线实体颠倒</p>
+<p>2. <strong>覆盖率漂移</strong>：<code>global_sp500</code>/<code>global_dow</code> 被 FRED+yfinance 双覆盖、<code>global_ndx</code> 在 registry 但不在速览——前后端都不硬编码清单，<code>has_ohlc</code> 由数据驱动</p>
+<p>3. <strong>yfinance RATES registry（^TNX/^TYX）不抓 OHLC</strong>——利率走折线，与 FRED 8 个 line 代码保持一致</p>
+<p>### 运维记录</p>
+<ul>
+<li>迁移随部署自动执行（deploy 跑 alembic upgrade head）</li>
+<li><strong>10 年回填已完成</strong>：<code>docker cp scripts/backfill_global_index_ohlcv.py &lt;backend&gt;:/tmp/ &amp;&amp; docker exec &lt;backend&gt; bash -c "PYTHONPATH=/app python3 /tmp/backfill_global_index_ohlcv.py --period 10y"</code> → <strong>71,009 行 / 22 个代码</strong>（yfinance 10y + akshare A股全历史，上证综指 8,694 行最深）</li>
+<li>生产验证：global_hsi 蜡烛+52周高低 ✅、us_dgs10 折线 ✅、usd_eur 反转值 ~1.15 且 high&gt;low ✅、bad_code 404 ✅</li>
+</ul>
+<h2>2. FRED_API_KEY 生产缺失（待用户提供 key）</h2>
+<ul>
+<li><strong>发现过程</strong>：详情页 us_dgs2/t10y2y/t10y3m/vix 折线数据停在 2026-07-21；admin <code>POST /macro/refresh?lookback_days=3650</code> 37 系列全部瞬间失败</li>
+<li><strong>根因</strong>：生产 <code>.env</code> <code>FRED_API_KEY=</code> 为空。us_dgs2 等 4 个 FRED-only 系列 fetched_at 显示 07-05→07-22 每天有 key 在工作，之后 key 丢失（疑似 7-22 前后某次 .env 重写丢行）；<code>/root/.env.bak-20260801</code> 里已为空，无法找回</li>
+<li><strong>为什么速览页看不出</strong>：us_dgs10/us_dgs30/global_dxy/sp500/nasdaq/dow 有 yfinance 后备源（^TNX/^TYX/DX-Y.NYB 等）每天 17:00 照常更新，掩盖了 FRED 链路断裂</li>
+<li><strong>修复</strong>：用户提供 FRED key（免费申请 https://fred.stlouisfed.org/docs/api/api_key.html）→ 写入 ECS <code>.env</code> → recreate backend → <code>POST /api/v1/macro/refresh?lookback_days=3650</code> 回填 10 年</li>
+</ul>
+<h2>3. 资讯时区错位根治（"未来时间"文章）</h2>
+<ul>
+<li><strong>根因①</strong>：<code>global_nocutnews</code>（韩国）RSS 的 <code>&lt;dc:date&gt;</code> 是 KST 墙钟却标注 <code>GMT</code> → 入库比真实 UTC 快 9h，前端 +8 后变成"明天"</li>
+<li><strong>根因②（连带发现）</strong>：<code>rss_common._parse_date</code> 内部把 naive 时间强转 UTC，导致 <code>_extract_pub_date</code> 的 <code>default_tz</code> 参数成死代码——<code>zhb_ithometw</code>（naive 台湾时间）和 <code>stats_gov</code> 受害</li>
+<li><strong>修复</strong>：<code>_parse_date</code> 不再内部强转；新增 <code>GLOBAL_RSS_TZ_OVERRIDE = {"nocutnews": "Asia/Seoul"}</code>（feed 时区标注错误时按发行方本地时区重解释）；zh 批次源加 <code>default_tz=Asia/Shanghai</code>；入库汇合点 <code>published_at &gt; now+15min</code> 钳到 <code>now</code></li>
+<li><strong>存量已修（生产已执行）</strong>：nocutnews 256 行 -9h、ithometw 60 行 -8h、stats_gov 55 行 -8h；剩余未来行 0</li>
+<li><strong>新增坏 feed 怎么办</strong>：curl 该 feed 对比 <code>&lt;dc:date&gt;</code> 墙钟与真实时区，确认误标后往 <code>GLOBAL_RSS_TZ_OVERRIDE</code> 加条目</li>
+</ul>
+<h2>4. 正文提取：打平守卫 + Jina 断路器 + 段落保留</h2>
+<ul>
+<li><strong>huxiu 段落粘连根因</strong>：<code>rss_common._strip_html</code> / <code>normalizer._strip_html_to_text</code> 把 <code>&lt;p&gt;</code> 等块级标签替换成空格再 <code>\s+</code> 折叠 → 全文一段。修复：块级边界（<code>&lt;/p&gt;|&lt;/div&gt;|&lt;/li&gt;|&lt;/h1-6&gt;|&lt;/blockquote&gt;|&lt;/tr&gt;|&lt;/section&gt;|&lt;/article&gt;</code> → <code>\n\n</code>，<code>&lt;br&gt;</code> → <code>\n</code>）先转换行再剥标签</li>
+<li><strong>打平缓存守卫</strong>（content_fetcher）："≥400 字且零换行"的缓存视为结构丢失，自动从原页面重抓重建段落</li>
+<li><strong>Jina 断路器</strong>：402/429/403 拉闸（冷却 1h/5min/10min）fail-fast，消除 drain 每轮白打必败请求；402 错误信息明示 "recharge the Jina account"</li>
+<li><strong>段距修复</strong>（前端）：<code>--reading-para-gap</code> 页面级覆写 1em→0.75em + 渲染层 3+ 连换行折叠</li>
+<li><strong>huxiu 存量重抓</strong>：387 篇打平行，首批 255 篇 tier-1 成功修复；~132 篇中部分是源站已 404 的失效文章（直连 404 → 落 Jina → 402），<strong>等 Jina 充值后重跑 <code>/tmp/refetch_huxiu.py</code>（幂等，脚本在 backend 容器 /tmp，源码见下）</strong></li>
+</ul>
+<pre style="background:#f6f6f6;padding:12px;overflow:auto"><code>
+# /tmp/refetch_huxiu.py（PYTHONPATH=/app python3 运行）
+from sqlalchemy import select
+from app.core.database import SessionLocal
+from app.services.news._model_loader import NewsArticle
+from app.services.news.content_fetcher import ContentFetcher
+db = SessionLocal()
+ids = db.execute(select(NewsArticle.id).where(
+    NewsArticle.source == &quot;huxiu&quot;, NewsArticle.full_content.isnot(None))).scalars().all()
+flat = [i for i in ids if &quot;\n&quot; not in (db.get(NewsArticle, i).full_content or &quot;&quot;)]
+print(&quot;flattened:&quot;, len(flat), flush=True)
+f = ContentFetcher(db)
+for i in flat:
+    f.fetch(i, force=True)
+db.close()
+</code></pre>
+<h2>5. Jina 余额耗尽（P0，待用户充值）</h2>
+<ul>
+<li>生产 <code>JINA_API_KEY</code> 在，但 r.jina.ai 返回 <strong>402 InsufficientBalanceError</strong>（7-30 起）</li>
+<li>影响：marketwatch/investing/ft/ouestfrance/ndtv_profit/businesstoday_my 等 10+ 英文源全文提取全灭（7-30 以来 failed 累计 2000+）</li>
+<li>充值后无需任何代码操作：断路器 1h 冷却自动恢复探测，drain 自动重试 failed 行；huxiu 剩余 ~110 篇重跑一次上面的脚本即可</li>
+</ul>
+</body></html>
