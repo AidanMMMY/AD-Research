@@ -6,7 +6,6 @@ import { BookOutlined, ExperimentOutlined, ThunderboltOutlined } from '@ant-desi
 import './styles.css';
 import PageShell from '@/components/PageShell';
 import PageHeader from '@/components/PageHeader';
-import ResponsiveGrid from '@/components/ResponsiveGrid';
 import EmptyState from '@/components/EmptyState';
 import StrategyCard from '@/components/StrategyCard';
 import StrategyParamForm from '@/components/StrategyParamForm';
@@ -154,7 +153,7 @@ export default function StrategyLibrary() {
             description="策略模板由后端初始化，请稍后刷新页面或检查网络连接"
           />
         ) : (
-          <ResponsiveGrid cols={3} gap="md">
+          <div className="strategy-library__list">
             {strategies.map((strategy) => (
               <StrategyCard
                 key={strategy.strategy_type}
@@ -164,7 +163,7 @@ export default function StrategyLibrary() {
                 onBacktest={handleBacktest}
               />
             ))}
-          </ResponsiveGrid>
+          </div>
         )}
       </div>
 

@@ -81,13 +81,11 @@ const ADX_STYLE = `
     transform: none;
   }
 }
-/* Accessibility: prefers-reduced-transparency. Panel surfaces (including
-   the glass-card variant) on this page should fall back to solid
-   backgrounds when the user opts out of translucent materials — covers
-   any future backdrop-filter layer as well as the current translucent
-   variants. */
+/* Accessibility: prefers-reduced-transparency. Panel surfaces on this
+   page should fall back to solid backgrounds when the user opts out of
+   translucent materials — covers any future backdrop-filter layer as
+   well as the current translucent variants. */
 @media (prefers-reduced-transparency: reduce) {
-  .adx-sentiment-dashboard .glass-card,
   .adx-sentiment-dashboard .ad-panel {
     background: var(--card-bg) !important;
     backdrop-filter: none !important;
@@ -233,7 +231,7 @@ function SentimentCard({ sentiment }: { sentiment: SentimentAggregate }) {
     sentiment.label === 'negative' ? 'fall' : 'neutral';
 
   return (
-    <Panel variant="minimal" className="glass-card">
+    <Panel variant="minimal">
       <div className="ad-text-center">
         <div className="ad-text-small ad-text-tertiary ad-mb-1">
           <InstrumentCodeTag

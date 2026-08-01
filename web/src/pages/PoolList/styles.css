@@ -5,9 +5,11 @@
    in global.css.
    ============================================================ */
 
-/* ── Bento pool cards: whole card is the link target. Hover lifts the
-   shadow only (no movement), so no reduced-motion concern beyond the
-   standard fast transition. ── */
+/* ── Pool rows: whole row is the link target. Base styles below describe
+   the shared structure; desktop (min-width 768px) overrides further down
+   flatten cards into hairline list rows. Hover lifts shadow only on
+   mobile (desktop hover is a background tint), no movement, so no
+   reduced-motion concern beyond the standard fast transition. ── */
 .pool-card {
   display: flex;
   flex-direction: column;
@@ -94,11 +96,70 @@
   padding: var(--space-9) 0;
 }
 
+/* 2026-08-01 桌面去卡片化（方向 A 列表优先）：bento 三列卡片网格改为
+   hairline 行式列表 —— 池名/只数/描述/日期/操作一行，去卡片底色/边框/
+   圆角/阴影，hover 仅留底色反馈。交互（整行点击/Enter/Space/管理/删除）不变。
+   仅桌面覆写；移动端紧凑 2 列变体（下方 media query）不受影响。 */
+@media (min-width: 768px) {
+  .pool-list {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .pool-card {
+    flex-direction: row;
+    align-items: center;
+    gap: var(--space-4);
+    min-height: var(--density-row-h);
+    padding: var(--space-1-5) var(--density-row-pad-x);
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid var(--hairline);
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  .pool-card:last-child {
+    border-bottom: none;
+  }
+
+  .pool-card:hover {
+    background: var(--hover-overlay);
+    border-color: transparent;
+    border-bottom-color: var(--hairline);
+    box-shadow: none;
+  }
+
+  /* header 收缩为「名称 + 只数」行首块；描述弹性吸收剩余空间 */
+  .pool-card__header {
+    flex: 0 1 240px;
+    min-width: 0;
+    justify-content: flex-start;
+    gap: var(--space-2);
+  }
+
+  .pool-card__name {
+    min-width: 0;
+  }
+
+  .pool-card__desc {
+    flex: 1 1 auto;
+    min-width: 0;
+    -webkit-line-clamp: 1;
+  }
+
+  .pool-card__footer {
+    flex: 0 0 auto;
+    gap: var(--space-3);
+  }
+}
+
 /* 2026-07-29 移动端（方向 A）：3 列卡片塌成 1 列长条太浪费，
    改为紧凑 2 列格；卡片去边框/阴影、padding 收紧、描述 1 行。
    桌面视觉不变。 */
 @media (max-width: 767px) {
-  .pool-list__grid {
+  .pool-list {
+    display: grid;
     grid-template-columns: repeat(2, 1fr);
     gap: var(--space-2);
   }

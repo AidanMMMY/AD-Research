@@ -11,7 +11,6 @@ import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
 import PageShell from '@/components/PageShell';
 import PageHeader from '@/components/PageHeader';
 import FilterToolbar from '@/components/FilterToolbar';
-import ResponsiveGrid from '@/components/ResponsiveGrid';
 import EmptyState from '@/components/EmptyState';
 import { formatDate } from '@/utils/format';
 import type { Pool } from '@/types/pool';
@@ -155,9 +154,9 @@ export default function PoolList() {
           }
         />
       ) : (
-        <ResponsiveGrid cols={3} gap="md" stretch className="pool-list__grid">
+        <div className="pool-list">
           {(pools || []).map(renderCard)}
-        </ResponsiveGrid>
+        </div>
       )}
 
       <Modal
