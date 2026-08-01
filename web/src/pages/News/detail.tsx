@@ -688,25 +688,21 @@ export default function NewsDetail() {
                 title="点赞"
                 value={formatBigNumber(data.engagement?.likes)}
                 icon={<LikeOutlined />}
-                bordered={false}
               />
               <StatCard
                 title="评论"
                 value={formatBigNumber(data.engagement?.comments)}
                 icon={<MessageOutlined />}
-                bordered={false}
               />
               <StatCard
                 title="转发"
                 value={formatBigNumber(data.engagement?.shares)}
                 icon={<ShareAltOutlined />}
-                bordered={false}
               />
               <StatCard
                 title="阅读"
                 value={formatBigNumber(data.engagement?.views)}
                 icon={<EyeOutlined />}
-                bordered={false}
               />
             </ResponsiveGrid>
           </Panel>

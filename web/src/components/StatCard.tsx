@@ -8,7 +8,6 @@ interface StatCardProps {
   icon?: React.ReactNode;
   loading?: boolean;
   onClick?: () => void;
-  bordered?: boolean;
   /**
    * K15: 学习模式下挂的"一句话解释"term key。
    * 与 <StatExplainer termKey> 等价，仅挂在 StatCard 内置位置上。
@@ -22,6 +21,9 @@ interface StatCardProps {
  * KPI 数字卡 — Phase 2 (2026-07-05) 起 hover 改用 CSS (`.stat-card:hover`)，
  * 不再走 inline `onMouseEnter/Leave` DOM 操作。颜色 / 间距 / 圆角 / 字号
  * 全部走 token，dark 主题下边框 / 阴影自动切换。
+ *
+ * 2026-08-01：`bordered` prop 已删除 — a36fe23 起 `.stat-card` 默认就是
+ * hairline 无 chrome，`stat-card--borderless` 成为无效果的死代码。
  */
 export default function StatCard({
   title,
@@ -30,7 +32,6 @@ export default function StatCard({
   icon,
   loading = false,
   onClick,
-  bordered = true,
   term,
   explainer,
 }: StatCardProps) {
@@ -46,7 +47,7 @@ export default function StatCard({
   };
   return (
     <div
-      className={`stat-card ${isClickable ? 'stat-card--clickable' : ''} ${bordered ? '' : 'stat-card--borderless'}`}
+      className={`stat-card ${isClickable ? 'stat-card--clickable' : ''}`}
       onClick={onClick}
       role={isClickable ? 'button' : undefined}
       tabIndex={isClickable ? 0 : undefined}

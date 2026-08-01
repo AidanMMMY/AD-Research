@@ -113,26 +113,10 @@
    4 张风控统计卡合并为 hairline 分隔的指标行；余额小卡拆除嵌套
    Panel（卡中卡），改为 hairline 顶线的纯排版单元格。 */
 
+/* 2026-08-01：strip/cell 的 grid + hairline 规则提炼为全局共享类
+   .kpi-strip / .kpi-cell（components-cleanup.css），本页只声明列数。 */
 .tp-kpi-strip {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-}
-
-.tp-kpi-cell {
-  min-width: 0;
-  padding: 0 var(--space-4);
-  border-left: 1px solid var(--hairline);
-}
-
-.tp-kpi-cell:first-child {
-  border-left: none;
-  padding-left: 0;
-}
-
-/* 延续原 phase5c-trading-card 的等宽数字传统 */
-.tp-kpi-cell .ant-statistic-content {
-  font-family: var(--font-mono);
-  font-variant-numeric: tabular-nums;
+  --kpi-cols: 4;
 }
 
 .tp-balance-grid {
@@ -157,22 +141,6 @@
   font-size: var(--text-small-size);
   color: var(--text-tertiary);
   letter-spacing: 0.01em;
-}
-
-@media (max-width: 767px) {
-  .tp-kpi-strip {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    row-gap: var(--space-4);
-  }
-
-  .tp-kpi-cell {
-    padding: 0 var(--space-3);
-  }
-
-  .tp-kpi-cell:nth-child(odd) {
-    border-left: none;
-    padding-left: 0;
-  }
 }
 
 /* ── Apple Design: instant pointer-down feedback on actionable cards ──

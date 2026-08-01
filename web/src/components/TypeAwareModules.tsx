@@ -302,7 +302,7 @@ function EtfHoldingsModule({ instrument }: { instrument: InstrumentInfo }) {
             )}
           </>
         ) : (
-          <EtfHoldingsDiffView code={instrument.code} snapshots={snapshots} />
+          <EtfHoldingsDiffView code={instrument.code} snapshots={snapshots} bare />
         )}
       </div>
     </Panel>

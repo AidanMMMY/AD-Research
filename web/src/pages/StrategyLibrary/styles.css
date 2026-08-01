@@ -17,7 +17,7 @@
 
 /* ---- Grid Section ---- */
 .strategy-library__section {
-  /* no card wrapper — strategies are already self-contained cards */
+  /* no card wrapper — 策略行自带 hairline 分隔（见下方说明） */
 }
 
 .strategy-library__count {
@@ -37,95 +37,6 @@
   }
 }
 
-/* 2026-08-01 桌面去卡片化（方向 A 列表优先）：策略库与移动端对齐为
-   hairline 行式列表 —— 名称 + 家族 + 描述 + 关键参数 + 操作一行，
-   去卡片底色/边框/圆角/阴影，排版层级代替容器层级。
-   视觉语言与 components-cleanup.css 移动端行式变体一致；
-   仅桌面覆写，移动端走共享组件样式不受影响。 */
-@media (min-width: 768px) {
-  .strategy-library__list {
-    display: flex;
-    flex-direction: column;
-  }
-
-  .strategy-library__list .strategy-card {
-    flex-direction: row;
-    align-items: center;
-    gap: var(--space-4);
-    height: auto;
-    padding: var(--space-2) var(--density-row-pad-x);
-    background: transparent;
-    border: none;
-    border-bottom: 1px solid var(--hairline);
-    border-radius: 0;
-    box-shadow: none;
-  }
-
-  .strategy-library__list .strategy-card:last-child {
-    border-bottom: none;
-  }
-
-  .strategy-library__list .strategy-card:hover {
-    background: var(--hover-overlay);
-    border-color: transparent;
-    border-bottom-color: var(--hairline);
-    box-shadow: none;
-  }
-
-  /* body 摊平为行内三组：标题块（名称+家族）、描述（弹性吸收空间）、参数摘要 */
-  .strategy-library__list .strategy-card__body {
-    flex: 1 1 auto;
-    min-width: 0;
-    flex-direction: row;
-    align-items: baseline;
-    gap: var(--space-4);
-    padding: 0;
-  }
-
-  .strategy-library__list .strategy-card__header {
-    flex: 0 1 260px;
-    min-width: 0;
-    align-items: baseline;
-    justify-content: flex-start;
-    gap: var(--space-2);
-    margin-bottom: 0;
-  }
-
-  .strategy-library__list .strategy-card__title {
-    min-width: 0;
-  }
-
-  .strategy-library__list .strategy-card__description {
-    flex: 1 1 auto;
-    min-width: 0;
-    margin: 0;
-    -webkit-line-clamp: 1;
-    min-height: 0;
-  }
-
-  /* 参数面板内联化：去底色/圆角，单行摘要（完整参数在弹窗中编辑） */
-  .strategy-library__list .strategy-card__params {
-    display: flex;
-    flex: 0 1 auto;
-    min-width: 0;
-    overflow: hidden;
-    gap: var(--space-4);
-    margin: 0;
-    padding: 0;
-    background: transparent;
-    border-radius: 0;
-  }
-
-  .strategy-library__list .strategy-card:hover .strategy-card__params {
-    background: transparent;
-  }
-
-  .strategy-library__list .strategy-card__actions {
-    flex: 0 0 auto;
-    justify-content: flex-end;
-    gap: var(--space-1);
-    padding: 0;
-    border-top: none;
-    background: transparent;
-  }
-}
+/* 2026-08-01 去卡片化下沉：策略卡的 hairline 行式样式（桌面 + 移动端）
+   已下沉为 components-cleanup.css 中 .strategy-card 的组件基础样式，
+   此前的桌面覆写（min-width: 768px 一段）已删除，本页不再覆写卡片。 */

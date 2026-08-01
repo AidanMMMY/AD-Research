@@ -38,6 +38,31 @@
   gap: var(--space-3);
 }
 
+/* 2026-08-01 去卡片化：bare 变体（嵌在外层 Panel 内时使用）—
+   两节拍平为标题层级 + hairline 分隔，不再嵌套 Panel（卡中卡）。 */
+.ehh-diff-layout--bare {
+  gap: var(--space-4);
+}
+
+.ehh-diff-section + .ehh-diff-section {
+  border-top: 1px solid var(--hairline);
+  padding-top: var(--space-4);
+}
+
+.ehh-diff-section__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  margin-bottom: var(--space-3);
+}
+
+.ehh-diff-section__title {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
 /* Full-width skeleton wrapper */
 .ehh-skeleton-full .ant-skeleton {
   width: 100%;

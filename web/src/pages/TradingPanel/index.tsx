@@ -446,8 +446,8 @@ export default function TradingPanel() {
           {/* 桌面去卡片化（2026-07-29）：4 张风控统计卡合并为一个 KPI
               strip Panel — hairline 分隔的指标行，卡片容器退场。 */}
           <Panel title="风控与限额" className="phase5c-section">
-            <div className="tp-kpi-strip">
-              <div className="tp-kpi-cell">
+            <div className="kpi-strip tp-kpi-strip">
+              <div className="kpi-cell">
                 <Statistic
                   title="今日订单"
                   value={risk?.orders_today ?? 0}
@@ -455,7 +455,7 @@ export default function TradingPanel() {
                   loading={riskLoading}
                 />
               </div>
-              <div className="tp-kpi-cell">
+              <div className="kpi-cell">
                 <Statistic
                   title="单笔上限"
                   value={selectedConfig.max_order_value}
@@ -463,7 +463,7 @@ export default function TradingPanel() {
                   loading={configsLoading}
                 />
               </div>
-              <div className="tp-kpi-cell">
+              <div className="kpi-cell">
                 <div className={risk && Number(risk.realized_pnl_today) > 0 ? 'phase5c-pnl-stat--rise' : risk && Number(risk.realized_pnl_today) < 0 ? 'phase5c-pnl-stat--fall' : 'phase5c-pnl-stat--neutral'}>
                   <Statistic
                     title="今日已实现"
@@ -474,7 +474,7 @@ export default function TradingPanel() {
                   />
                 </div>
               </div>
-              <div className="tp-kpi-cell">
+              <div className="kpi-cell">
                 <div className="phase5c-flex-center">
                   <div>
                     <div className="phase5c-meta-label">

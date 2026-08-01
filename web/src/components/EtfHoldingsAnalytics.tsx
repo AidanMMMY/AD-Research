@@ -168,9 +168,15 @@ export interface EtfHoldingsDiffViewProps {
   code: string;
   /** Snapshot list (newest first) — used to seed the default from/to. */
   snapshots: ETFHoldingSnapshot[] | undefined;
+  /**
+   * 2026-08-01 去卡片化：调用方已把本视图嵌在另一个 Panel 里时传 true，
+   * 两节改为「标题层级 + hairline」代替嵌套 Panel（卡中卡拍平）。
+   * 顶层使用（EtfHoldingsHistory 深链页）保持默认 false。
+   */
+  bare?: boolean;
 }
 
-export function EtfHoldingsDiffView({ code, snapshots }: EtfHoldingsDiffViewProps) {
+export function EtfHoldingsDiffView({ code, snapshots, bare = false }: EtfHoldingsDiffViewProps) {
   const navigate = useNavigate();
   const colorConvention = useSettingsStore((s) => s.colorConvention);
 
@@ -283,98 +289,126 @@ export function EtfHoldingsDiffView({ code, snapshots }: EtfHoldingsDiffViewProp
     [colorConvention],
   );
 
+  const pickerTitle = (
+    <Space>
+      <DiffOutlined />
+      <span>选择对比期</span>
+    </Space>
+  );
+
+  const pickerBody = (
+    <Space size="middle" wrap>
+      <span className="ad-text-small ad-text-tertiary">From</span>
+      <DatePicker
+        value={diffFrom ? dayjs(diffFrom) : null}
+        onChange={(d) => setDiffFrom(d ? d.format('YYYY-MM-DD') : null)}
+        format="YYYY-MM-DD"
+        placeholder="较早披露期"
+        disabledDate={(d) => (diffTo ? d.isAfter(dayjs(diffTo)) : false)}
+      />
+      <ArrowRightOutlined className="ad-text-tertiary" />
+      <span className="ad-text-small ad-text-tertiary">To</span>
+      <DatePicker
+        value={diffTo ? dayjs(diffTo) : null}
+        onChange={(d) => setDiffTo(d ? d.format('YYYY-MM-DD') : null)}
+        format="YYYY-MM-DD"
+        placeholder="较晚披露期"
+        disabledDate={(d) => (diffFrom ? d.isBefore(dayjs(diffFrom)) : false)}
+      />
+    </Space>
+  );
+
+  const resultTitle = (
+    <Space>
+      <span>对比结果</span>
+      {diffQ.data && (
+        <ThemeTag variant="accent">
+          {diffQ.data.from_date} → {diffQ.data.to_date}
+        </ThemeTag>
+      )}
+    </Space>
+  );
+
+  const resultExtra = diffQ.data ? (
+    <Space>
+      <Tooltip title="新增的持仓">
+        <ThemeTag variant="success">+{diffQ.data.added_count} 新增</ThemeTag>
+      </Tooltip>
+      <Tooltip title="被剔除的持仓">
+        <ThemeTag variant="error">-{diffQ.data.removed_count} 减少</ThemeTag>
+      </Tooltip>
+      <Tooltip title="合计权重差 (to_total − from_total)">
+        <ThemeTag variant="accent">
+          权重{' '}
+          {diffQ.data.total_weight_change === null
+            ? NULL_PLACEHOLDER
+            : `${diffQ.data.total_weight_change > 0 ? '+' : ''}${(
+                diffQ.data.total_weight_change * 100
+              ).toFixed(2)}%`}
+        </ThemeTag>
+      </Tooltip>
+    </Space>
+  ) : undefined;
+
+  const resultBody = diffQ.isLoading ? (
+    <LoadingBlock size="md" label="计算 diff 中…" />
+  ) : !diffQ.data || diffQ.data.entries.length === 0 ? (
+    <EmptyState
+      title="无 diff 数据"
+      description="请选择两个不同的披露期进行对比"
+    />
+  ) : (
+    <div className="ad-table-scroll">
+      <Table
+        size="small"
+        onRow={(row) =>
+          isNavigableCode(row.holding_code)
+            ? {
+                onClick: () => navigate(`/instruments/${row.holding_code}`),
+                style: { cursor: 'pointer' },
+              }
+            : { title: '代码缺少市场后缀，暂不支持跳转标的详情' }
+        }
+        rowKey={(r) => r.holding_code}
+        columns={diffColumns}
+        dataSource={diffQ.data.entries}
+        pagination={false}
+        scroll={{ x: 900 }}
+      />
+    </div>
+  );
+
+  /* bare：嵌套在外层 Panel 内时的拍平形态 — 标题层级 + hairline 分节 */
+  if (bare) {
+    return (
+      <div className="ehh-diff-layout ehh-diff-layout--bare">
+        <section className="ehh-diff-section">
+          <div className="ehh-diff-section__header">
+            <span className="ehh-diff-section__title">{pickerTitle}</span>
+          </div>
+          {pickerBody}
+        </section>
+        <section className="ehh-diff-section">
+          <div className="ehh-diff-section__header">
+            <span className="ehh-diff-section__title">{resultTitle}</span>
+            {resultExtra ? (
+              <div className="ehh-diff-section__extra">{resultExtra}</div>
+            ) : null}
+          </div>
+          {resultBody}
+        </section>
+      </div>
+    );
+  }
+
   return (
     <div className="ehh-diff-layout">
-      <Panel
-        title={
-          <Space>
-            <DiffOutlined />
-            <span>选择对比期</span>
-          </Space>
-        }
-      >
-        <Space size="middle" wrap>
-          <span className="ad-text-small ad-text-tertiary">From</span>
-          <DatePicker
-            value={diffFrom ? dayjs(diffFrom) : null}
-            onChange={(d) => setDiffFrom(d ? d.format('YYYY-MM-DD') : null)}
-            format="YYYY-MM-DD"
-            placeholder="较早披露期"
-            disabledDate={(d) => (diffTo ? d.isAfter(dayjs(diffTo)) : false)}
-          />
-          <ArrowRightOutlined className="ad-text-tertiary" />
-          <span className="ad-text-small ad-text-tertiary">To</span>
-          <DatePicker
-            value={diffTo ? dayjs(diffTo) : null}
-            onChange={(d) => setDiffTo(d ? d.format('YYYY-MM-DD') : null)}
-            format="YYYY-MM-DD"
-            placeholder="较晚披露期"
-            disabledDate={(d) => (diffFrom ? d.isBefore(dayjs(diffFrom)) : false)}
-          />
-        </Space>
+      <Panel title={pickerTitle}>
+        {pickerBody}
       </Panel>
 
-      <Panel
-        title={
-          <Space>
-            <span>对比结果</span>
-            {diffQ.data && (
-              <ThemeTag variant="accent">
-                {diffQ.data.from_date} → {diffQ.data.to_date}
-              </ThemeTag>
-            )}
-          </Space>
-        }
-        extra={
-          diffQ.data ? (
-            <Space>
-              <Tooltip title="新增的持仓">
-                <ThemeTag variant="success">+{diffQ.data.added_count} 新增</ThemeTag>
-              </Tooltip>
-              <Tooltip title="被剔除的持仓">
-                <ThemeTag variant="error">-{diffQ.data.removed_count} 减少</ThemeTag>
-              </Tooltip>
-              <Tooltip title="合计权重差 (to_total − from_total)">
-                <ThemeTag variant="accent">
-                  权重{' '}
-                  {diffQ.data.total_weight_change === null
-                    ? NULL_PLACEHOLDER
-                    : `${diffQ.data.total_weight_change > 0 ? '+' : ''}${(
-                        diffQ.data.total_weight_change * 100
-                      ).toFixed(2)}%`}
-                </ThemeTag>
-              </Tooltip>
-            </Space>
-          ) : undefined
-        }
-      >
-        {diffQ.isLoading ? (
-          <LoadingBlock size="md" label="计算 diff 中…" />
-        ) : !diffQ.data || diffQ.data.entries.length === 0 ? (
-          <EmptyState
-            title="无 diff 数据"
-            description="请选择两个不同的披露期进行对比"
-          />
-        ) : (
-          <div className="ad-table-scroll">
-            <Table
-              size="small"
-              onRow={(row) =>
-                isNavigableCode(row.holding_code)
-                  ? {
-                      onClick: () => navigate(`/instruments/${row.holding_code}`),
-                      style: { cursor: 'pointer' },
-                    }
-                  : { title: '代码缺少市场后缀，暂不支持跳转标的详情' }
-              }
-              rowKey={(r) => r.holding_code}
-              columns={diffColumns}
-              dataSource={diffQ.data.entries}
-              pagination={false}
-              scroll={{ x: 900 }}
-            />
-          </div>
-        )}
+      <Panel title={resultTitle} extra={resultExtra}>
+        {resultBody}
       </Panel>
     </div>
   );

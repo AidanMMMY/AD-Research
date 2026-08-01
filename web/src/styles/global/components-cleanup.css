@@ -874,9 +874,6 @@
   display: inline-block;
   vertical-align: middle;
 }
-.stat-card--borderless {
-  border: none;
-}
 
 /* ---- StatusTag ---- */
 .status-tag {
@@ -1002,19 +999,22 @@
 }
 
 /* ---- StrategyCard ----
-   2026-07-27 视觉改版：对齐全站 canonical card（stat-card）token —
-   --card-bg / --card-border / --card-radius / --shadow-card；
-   hover 从“整卡 accent 描边”收敛为 border-hover + shadow-card-hover；
-   参数区从 N 个描边 Tag 收敛为一个内嵌面板 + mono 数字。 */
+   2026-08-01 去卡片化下沉：StrategyCard 全站仅 StrategyLibrary 一处使用
+   （grep 确认），此前桌面行式靠 StrategyLibrary 页面级 media query 覆写
+   抵消这里的卡片基础样式；现将 hairline 行式直接下沉为组件基础样式，
+   页面覆写删除。排版层级代替容器层级：
+   名称 + 家族 + 描述（弹性吸收空间）+ 参数摘要 + 操作 一行。 */
 .strategy-card {
-  background: var(--card-bg);
-  border: 1px solid var(--card-border);
-  border-radius: var(--card-radius);
-  box-shadow: var(--shadow-card);
-  height: 100%;
   display: flex;
-  flex-direction: column;
-  overflow: hidden;
+  flex-direction: row;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-2) var(--density-row-pad-x);
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--hairline);
+  border-radius: 0;
+  box-shadow: none;
   transition:
     border-color var(--transition-fast),
     background var(--transition-fast),
@@ -1022,29 +1022,42 @@
 }
 
 .strategy-card:hover {
-  border-color: var(--border-hover);
-  background: var(--bg-elevated);
-  box-shadow: var(--shadow-card-hover);
+  background: var(--hover-overlay);
+  border-color: transparent;
+  border-bottom-color: var(--hairline);
 }
 
+/* 桌面：最后一行不出 hairline（移动端保留末行 hairline，见下方移动段） */
+@media (min-width: 768px) {
+  .strategy-card:last-child {
+    border-bottom: none;
+  }
+}
+
+/* body 摊平为行内三组：标题块（名称+家族）、描述（弹性吸收空间）、参数摘要 */
 .strategy-card__body {
-  padding: var(--space-5);
-  padding-bottom: var(--space-4);
+  flex: 1 1 auto;
+  min-width: 0;
   display: flex;
-  flex-direction: column;
-  flex: 1;
+  flex-direction: row;
+  align-items: baseline;
+  gap: var(--space-4);
+  padding: 0;
 }
 
 .strategy-card__header {
+  flex: 0 1 260px;
+  min-width: 0;
   display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: var(--space-3);
-  margin-bottom: var(--space-2);
+  align-items: baseline;
+  justify-content: flex-start;
+  gap: var(--space-2);
+  margin-bottom: 0;
 }
 
 .strategy-card__title {
   margin: 0;
+  min-width: 0;
   font-size: var(--text-data-md-size);
   font-weight: 600;
   line-height: 1.4;
@@ -1060,34 +1073,29 @@
 }
 
 .strategy-card__description {
-  margin: 0 0 var(--space-3);
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
   color: var(--text-secondary);
   font-size: var(--text-small-size);
   line-height: 1.6;
-  /* 两行截断 + 固定两行高度：描述长短不一也能对齐卡片栅格 */
   display: -webkit-box;
-  -webkit-line-clamp: 2;
+  -webkit-line-clamp: 1;
   -webkit-box-orient: vertical;
   overflow: hidden;
-  min-height: calc(var(--text-small-size) * 1.6 * 2);
 }
 
-/* 参数面板：一个内嵌容器承载所有参数，避免 N 个描边 Tag 的“盒中盒”噪音 */
+/* 参数摘要内联化：去面板底色/圆角，单行排列（完整参数在弹窗中编辑） */
 .strategy-card__params {
-  margin: auto 0 0;
-  padding: var(--space-3) var(--space-4);
-  background: var(--bg-elevated);
-  border-radius: var(--radius-md);
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  row-gap: var(--space-2);
-  column-gap: var(--space-4);
-}
-
-/* hover 时卡片底色变为 bg-elevated，参数面板反相回卡片底色保持层次 */
-.strategy-card:hover .strategy-card__params {
-  background: var(--card-bg);
-  transition: background var(--transition-fast);
+  display: flex;
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  gap: var(--space-4);
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  border-radius: 0;
 }
 
 .strategy-card__param {
@@ -1118,40 +1126,39 @@
 }
 
 .strategy-card__actions {
+  flex: 0 0 auto;
   display: flex;
-  justify-content: space-around;
+  justify-content: flex-end;
   align-items: center;
-  padding: var(--space-1) var(--space-3);
-  border-top: 1px solid var(--border-default);
-  background: var(--surface-default);
+  gap: var(--space-1);
+  padding: 0;
+  border-top: none;
+  background: transparent;
 }
 
-/* 2026-07-29 移动端：卡片 → 紧凑行式变体（方向 A）。
-   去卡片 chrome（边框/阴影/圆角），行与行之间用 hairline 分隔；
-   描述 2 行 → 1 行；参数面板不再常驻，改为 ≤2 个内联摘要
-   （完整参数在「创建配置 / 运行」弹窗中编辑）；
-   操作行去分隔条、右对齐紧凑化。桌面视觉不变。 */
+/* 移动端：紧凑行式变体（纵向堆叠，与桌面共享去 chrome 语言）。
+   描述 1 行截断；参数摘要 ≤2 个内联（组件侧控制）；
+   操作行右对齐紧凑化；末行保留 hairline 下缘。 */
 @media (max-width: 767px) {
   .strategy-card {
-    border: none;
-    border-bottom: 1px solid var(--hairline);
-    border-radius: 0;
-    box-shadow: none;
-    background: transparent;
-  }
-
-  .strategy-card:hover {
-    border-color: transparent;
-    border-bottom-color: var(--hairline);
-    background: var(--hover-overlay);
-    box-shadow: none;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
+    padding: 0;
   }
 
   .strategy-card__body {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
     padding: var(--space-2) var(--density-row-pad-x);
   }
 
   .strategy-card__header {
+    flex: none;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--space-3);
     margin-bottom: var(--space-1);
   }
 
@@ -1160,31 +1167,12 @@
   }
 
   .strategy-card__description {
-    -webkit-line-clamp: 1;
-    min-height: 0;
     margin-bottom: var(--space-1-5);
   }
 
-  /* 参数摘要内联化：去面板底色，单行排列（组件侧移动端只渲染 ≤2 个） */
-  .strategy-card__params {
-    display: flex;
-    gap: var(--space-4);
-    padding: 0;
-    background: transparent;
-    border-radius: 0;
-    margin-top: 0;
-  }
-
-  .strategy-card:hover .strategy-card__params {
-    background: transparent;
-  }
-
   .strategy-card__actions {
-    justify-content: flex-end;
     gap: var(--space-2);
     padding: 0 var(--density-row-pad-x) var(--space-1-5);
-    border-top: none;
-    background: transparent;
   }
 }
 
@@ -1251,3 +1239,45 @@
   font-size: 10px;
 }
 
+
+/* ---- KPI strip（PaperTrading / TradingPanel 共享）----
+   2026-08-01 提炼：两页各写了一份高度相似的 hairline 指标行 CSS
+   （paper-kpi-strip 5 格 / tp-kpi-strip 4 格），收敛为共享工具类。
+   列数走 --kpi-cols（默认 4），页面只在自己的 strip 类上声明列数。 */
+.kpi-strip {
+  display: grid;
+  grid-template-columns: repeat(var(--kpi-cols, 4), minmax(0, 1fr));
+}
+
+.kpi-cell {
+  min-width: 0;
+  padding: 0 var(--space-4);
+  border-left: 1px solid var(--hairline);
+}
+
+.kpi-cell:first-child {
+  border-left: none;
+  padding-left: 0;
+}
+
+/* 延续原 phase5c-trading-card 的等宽数字传统 */
+.kpi-cell .ant-statistic-content {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 767px) {
+  .kpi-strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    row-gap: var(--space-4);
+  }
+
+  .kpi-cell {
+    padding: 0 var(--space-3);
+  }
+
+  .kpi-cell:nth-child(odd) {
+    border-left: none;
+    padding-left: 0;
+  }
+}

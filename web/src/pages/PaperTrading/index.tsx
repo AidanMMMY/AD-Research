@@ -488,8 +488,8 @@ export default function PaperTrading() {
               Panel — hairline 分隔的指标行，tabular-nums 大数字，
               卡片容器退场。 */}
           <Panel title="账户概览" className="phase5c-section">
-            <div className="paper-kpi-strip">
-              <div className="paper-kpi-cell">
+            <div className="kpi-strip paper-kpi-strip">
+              <div className="kpi-cell">
                 <Statistic
                   title="总权益"
                   value={pnl?.total_equity ?? account?.total_value ?? account?.cash}
@@ -498,7 +498,7 @@ export default function PaperTrading() {
                   loading={pnlLoading && accountLoading}
                 />
               </div>
-              <div className="paper-kpi-cell">
+              <div className="kpi-cell">
                 <Statistic
                   title="可用现金"
                   value={account?.cash}
@@ -507,7 +507,7 @@ export default function PaperTrading() {
                   loading={accountLoading}
                 />
               </div>
-              <div className="paper-kpi-cell">
+              <div className="kpi-cell">
                 <Statistic
                   title="持仓市值"
                   value={pnl?.market_value}
@@ -516,7 +516,7 @@ export default function PaperTrading() {
                   loading={pnlLoading}
                 />
               </div>
-              <div className="paper-kpi-cell">
+              <div className="kpi-cell">
                 <div className={pnl && pnl.total_pnl > 0 ? 'phase5c-pnl-stat--rise' : pnl && pnl.total_pnl < 0 ? 'phase5c-pnl-stat--fall' : 'phase5c-pnl-stat--neutral'}>
                   <Statistic
                     title="总盈亏"
@@ -533,7 +533,7 @@ export default function PaperTrading() {
                   </div>
                 )}
               </div>
-              <div className="paper-kpi-cell">
+              <div className="kpi-cell">
                 <Statistic
                   title="交易次数"
                   value={pnl?.trade_count ?? 0}

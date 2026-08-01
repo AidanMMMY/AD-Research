@@ -40,26 +40,10 @@
   margin-left: auto;
 }
 
+/* 2026-08-01：strip/cell 的 grid + hairline 规则提炼为全局共享类
+   .kpi-strip / .kpi-cell（components-cleanup.css），本页只声明列数。 */
 .paper-kpi-strip {
-  display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-}
-
-.paper-kpi-cell {
-  min-width: 0;
-  padding: 0 var(--space-4);
-  border-left: 1px solid var(--hairline);
-}
-
-.paper-kpi-cell:first-child {
-  border-left: none;
-  padding-left: 0;
-}
-
-/* 延续原 phase5c-trading-card 的等宽数字传统 */
-.paper-kpi-cell .ant-statistic-content {
-  font-family: var(--font-mono);
-  font-variant-numeric: tabular-nums;
+  --kpi-cols: 5;
 }
 
 @media (max-width: 767px) {
@@ -70,20 +54,6 @@
 
   .paper-account-bar__actions {
     margin-left: 0;
-  }
-
-  .paper-kpi-strip {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    row-gap: var(--space-4);
-  }
-
-  .paper-kpi-cell {
-    padding: 0 var(--space-3);
-  }
-
-  .paper-kpi-cell:nth-child(odd) {
-    border-left: none;
-    padding-left: 0;
   }
 }
 
