@@ -10,7 +10,9 @@
 | B | InstrumentDetail / StockDetail | 9/11 段堆叠 → 双列核心区（K线 + 关键数据右栏 360px）+ 分区合并；StockDetail 6 tab → 4 tab，K线常驻 |
 | C | GlobalMarkets / PaperTrading / TradingPanel | 7/7/9 Panel → 3/3/5；统计卡合成 KPI strip；下单按钮并入 Panel header |
 
-**遗留（下轮）**：`.strategy-card` 基础样式下沉清理（components-cleanup.css）、TypeAwareModules 卡中卡、StatCard `bordered` 死参数、KPI strip 提炼共享类。
+**遗留（当日已闭环，ef75810）**：① `.strategy-card` 桌面行式样式合并下沉为 `components-cleanup.css` 新基类，StrategyLibrary 页面层 ~90 行覆写删除；② TypeAwareModules 卡中卡拍平——`EtfHoldingsDiffView` 新增 `bare?: boolean`（hairline 分节），权重走势描边盒改 hairline 顶线；③ KPI strip 提炼共享类 `.kpi-strip`/`.kpi-cell`（列数走 `--kpi-cols`，默认 4）；④ StatCard `bordered` 死参数及 `.stat-card--borderless` 空效规则全清。12 文件 +292/−357，check:ci + vitest 11/11 全绿，已部署（git_sha ef75810）。
+
+**同日后续修复**：fe506aa 钉死 futures 管线测试 `target_date`（夹具日期老化滑出 30 天窗口致 CI 7 连红的根治）；4ce5c4b 评分排名查询层重编号展示 rank（排除 crypto 后序号连续 1..N，`rank_overall_original` 保留原值）。两者均已部署，Backend CI 恢复全绿。
 
 ## 2. 繁体资讯自动转简体（219fa8a）
 
@@ -29,7 +31,7 @@
 ## 4. 部署事故与 tripwire（新增 #6）
 
 - **Deploy 首次失败 13s**：DeepSeek 子 agent 在 `/opt/ad-research/deploy/aliyun-ecs/` 留了 `.env.bak-20260801`，Sync 步骤的脏树检查**把未跟踪文件也算脏**。修复：`mv` 到 `/root/` 后 rerun 即过。**教训：ECS 上任何临时文件（备份/脚本/日志）都不要留在 git 仓库目录内，放 /root 或 /tmp。**
-- **Backend CI 红（futures_pipeline 7 个失败）**：干净树复现的**既有问题**（与今日所有改动无关），但导致 main 上 CI 持续红色，掩盖真实回归——建议下轮优先修。
+- **Backend CI 红（futures_pipeline 7 个失败）**：干净树复现的**既有问题**——**当日已根治（fe506aa）**：夹具日期（2026-07-01/02）随时间滑出管线 30 天 `date.today()` 窗口，钉死 `target_date=FIXTURE_TARGET_DATE` 后 CI 全绿。
 
 ## 5. 当日全量验证
 
