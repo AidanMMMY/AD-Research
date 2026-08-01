@@ -1,8 +1,8 @@
 """LLM services package.
 
 Provider selection is controlled by the ``LLM_PROVIDER`` env var in .env:
-  - ``LLM_PROVIDER=minimax``  → MiniMax (default, global or China endpoint)
-  - ``LLM_PROVIDER=deepseek`` → DeepSeek (legacy)
+  - ``LLM_PROVIDER=deepseek`` → DeepSeek (production main chain since 2026-08)
+  - ``LLM_PROVIDER=minimax``  → MiniMax (backup / rollback target)
 
 When unset, we probe MiniMax first and fall back to DeepSeek.
 """

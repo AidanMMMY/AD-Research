@@ -139,6 +139,49 @@ def _make_pipeline(db_session, fake_redis, responses=None, model="deepseek-v4-fl
     )
 
 
+def test_pipeline_routes_through_provider_factory(monkeypatch, db_session, fake_redis):
+    """Default LLM wiring must go through ``get_llm_provider`` so the
+    ``LLM_PROVIDER`` env switch (MiniMax ↔ DeepSeek) reaches sentiment too.
+
+    Regression test: the pipeline used to hard-wire ``DeepSeekProvider`` and
+    silently ignore the env var every other consumer honors.
+    """
+    import app.services.news.sentiment.sentiment_pipeline as sp
+
+    sentinel = StubProvider()
+    captured: dict = {}
+
+    def fake_factory(model=None):
+        captured["model"] = model
+        return sentinel
+
+    monkeypatch.setattr(sp, "get_llm_provider", fake_factory)
+
+    cache = SentimentCache(redis_client=fake_redis)
+    pipe = SentimentPipeline(
+        db=db_session,
+        cache=cache,
+        monitor=LLMPipelineMonitor(cache=cache),
+        max_concurrency=2,
+    )
+    assert pipe.llm.provider is sentinel
+    assert captured["model"] is None
+    # No explicit model and stub exposes none → cost tag falls back to the
+    # platform default so monitor pricing keeps working.
+    assert pipe.model == "deepseek-v4-flash"
+
+    # An explicit model override is forwarded to the factory verbatim.
+    pipe2 = SentimentPipeline(
+        db=db_session,
+        cache=SentimentCache(redis_client=fake_redis),
+        monitor=LLMPipelineMonitor(cache=cache),
+        model="deepseek-v4-pro",
+        max_concurrency=2,
+    )
+    assert captured["model"] == "deepseek-v4-pro"
+    assert pipe2.model == "deepseek-v4-pro"
+
+
 # ---------------------------------------------------------------------------
 # 1. Prompt templates
 # ---------------------------------------------------------------------------

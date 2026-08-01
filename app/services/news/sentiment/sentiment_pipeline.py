@@ -49,7 +49,7 @@ from sqlalchemy.orm import Session
 from app.core.exceptions import DataProviderError
 from app.models.etf import ETFInfo
 from app.models.research import SentimentData
-from app.services.llm import DeepSeekProvider, LLMService
+from app.services.llm import LLMService, get_llm_provider
 from app.services.news.sentiment import prompts
 from app.services.news.sentiment.cache import SentimentCache
 from app.services.news.sentiment.monitor import LLMPipelineMonitor
@@ -88,7 +88,12 @@ class PipelineResult:
 
 
 class SentimentPipeline:
-    """Async DeepSeek-backed sentiment pipeline."""
+    """Async LLM-backed sentiment pipeline.
+
+    The provider comes from ``get_llm_provider`` (i.e. the ``LLM_PROVIDER``
+    env var), same as every other LLM consumer on the platform — this class
+    used to hard-wire ``DeepSeekProvider`` and ignore the env switch.
+    """
 
     def __init__(
         self,
@@ -97,14 +102,21 @@ class SentimentPipeline:
         cache: SentimentCache | None = None,
         monitor: LLMPipelineMonitor | None = None,
         max_concurrency: int = 20,
-        model: str = "deepseek-v4-flash",
+        model: str | None = None,
     ) -> None:
         self.db = db
-        self.llm = llm or LLMService(DeepSeekProvider(model=model))
+        self.llm = llm or LLMService(get_llm_provider(model=model))
         self.cache = cache or SentimentCache()
         self.monitor = monitor or LLMPipelineMonitor(cache=self.cache)
         self.semaphore = asyncio.Semaphore(max_concurrency)
-        self.model = model
+        # Cost-accounting tag: explicit override wins, else whatever the
+        # provider resolved to. Unknown names fall back to v4-flash rates
+        # inside LLMPipelineMonitor, so this stays an approximation only.
+        self.model = (
+            model
+            or getattr(self.llm.provider, "model", None)
+            or "deepseek-v4-flash"
+        )
 
     # ------------------------------------------------------------------
     # JSON parsing
