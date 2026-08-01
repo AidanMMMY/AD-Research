@@ -12,6 +12,13 @@
   margin-bottom: var(--space-6);
 }
 
+/* ── 行点击跳转详情页（2026-08-01）：hover hairline 行高亮 ──
+   与全站表格 hover 惯例一致（antd-overrides.css 的 --bg-hover 规则），
+   此处在本页作用域内再声明一次，保证行可点击的视觉 affordance 明确。 */
+.gm-motion .ant-table-tbody > tr:hover > td {
+  background: var(--bg-hover);
+}
+
 /* ── Event source label (right-aligned in the meta row) ── */
 
 .global-markets__event-source {

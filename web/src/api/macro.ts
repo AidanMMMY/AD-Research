@@ -2,12 +2,14 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import client from './client';
 import type {
   MacroCodeListResponse,
+  MacroIndicatorDetail,
   MacroIndicatorListResponse,
   MacroLatestItem,
   MacroLatestResponse,
   MacroListParams,
   MacroRefreshResult,
 } from '@/types/macro';
+import { rangeToStartDate } from '@/utils/macroDetail';
 
 export type { MacroLatestItem };
 
@@ -94,6 +96,18 @@ export const macroApi = {
   refreshGlobalIndices(): Promise<{ data: MacroRefreshResult }> {
     return client.post('/macro/refresh-global-indices');
   },
+
+  /**
+   * 全球速览指数详情（/global/:code 页面）。
+   * GET /macro/indicators/{code}/detail —— 契约见 types/macro.ts 的
+   * MacroIndicatorDetail；404 表示该 code 完全无数据。
+   */
+  getIndicatorDetail(
+    code: string,
+    params: { start_date?: string; end_date?: string; limit?: number } = {},
+  ): Promise<{ data: MacroIndicatorDetail }> {
+    return client.get(`/macro/indicators/${encodeURIComponent(code)}/detail`, { params });
+  },
 };
 
 export function useMacroList(params?: MacroListParams) {
@@ -115,6 +129,28 @@ export function useMacroLatest(region?: string) {
       return res.data;
     },
     staleTime: 60_000,
+  });
+}
+
+/**
+ * 全球速览指数详情查询（/global/:code）。
+ *
+ * `range` 是详情页时间范围 key（'1M' | '3M' | '6M' | '1Y' | '3Y' | '5Y' | 'ALL'），
+ * 内部经 rangeToStartDate 换算为 start_date；'ALL' 不传起点。
+ */
+export function useMacroIndicatorDetail(code: string | undefined, range: string) {
+  return useQuery({
+    queryKey: ['macro', 'detail', code, range],
+    queryFn: async () => {
+      const res = await macroApi.getIndicatorDetail(code as string, {
+        start_date: rangeToStartDate(range),
+        limit: 1500,
+      });
+      return res.data;
+    },
+    staleTime: 60_000,
+    enabled: !!code,
+    retry: 1,
   });
 }
 

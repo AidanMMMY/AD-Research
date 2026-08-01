@@ -46,6 +46,7 @@ const ResearchReports = lazy(() => import('./pages/ResearchReports'));
 const Futures = lazy(() => import('./pages/Futures'));
 const CninfoReports = lazy(() => import('./pages/CninfoReports'));
 const GlobalMarkets = lazy(() => import('./pages/GlobalMarkets'));
+const GlobalIndexDetail = lazy(() => import('./pages/GlobalIndexDetail'));
 const Learning = lazy(() => import('./pages/Learning'));
 const Favorites = lazy(() => import('./pages/Favorites'));
 const EtfHoldingsHistory = lazy(() => import('./pages/EtfHoldingsHistory'));
@@ -97,6 +98,8 @@ export const routes: RouteConfig[] = [
   // === 首页 ===
   { path: '/dashboard', element: wrap(Dashboard), auth: true, menu: { name: '首页看板', icon: 'HomeOutlined', group: 'home' } },
   { path: '/global', element: wrap(GlobalMarkets), auth: true, menu: { name: '全球速览', label: '全球速览', icon: 'CompassOutlined', group: 'home' } },
+  // 全球速览指数详情（Batch C/D, 2026-08-01）：无菜单，从速览页行点击进入
+  { path: '/global/:code', element: wrap(GlobalIndexDetail), auth: true },
   // 自选股（K-watchlist, 2026-07-08）：轻量级关注清单，集中管理入口
   { path: '/favorites', element: wrap(Favorites), auth: true, menu: { name: '我的自选股', label: '我的自选股', icon: 'StarOutlined', group: 'home' } },
   { path: '/instruments', element: wrap(InstrumentList), auth: true, menu: { name: '标的列表', icon: 'OrderedListOutlined', group: 'market' } },

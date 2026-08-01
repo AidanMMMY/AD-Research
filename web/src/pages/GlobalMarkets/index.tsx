@@ -243,6 +243,8 @@ function inferCategoryKey(code: string): string {
  * （日期/区域本来就随 ``ad-hidden-mobile`` 隐藏）。
  */
 function CategoryTable({ rows, isMobile, compact = false }: { rows: RowVm[]; isMobile: boolean; compact?: boolean }): JSX.Element {
+  // 行点击 → /global/:code 指数详情页（2026-08-01 Batch C/D）
+  const navigate = useNavigate();
   const columns: ColumnsType<RowVm> = [
     {
       title: '指标',
@@ -344,6 +346,10 @@ function CategoryTable({ rows, isMobile, compact = false }: { rows: RowVm[]; isM
         pagination={false}
         showHeader
         scroll={{ x: 'max-content' }}
+        onRow={(row) => ({
+          onClick: () => navigate(`/global/${encodeURIComponent(row.code)}`),
+          style: { cursor: 'pointer' },
+        })}
       />
     </div>
   );

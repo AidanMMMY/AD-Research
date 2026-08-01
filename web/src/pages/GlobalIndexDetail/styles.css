@@ -1,0 +1,55 @@
+/* ============================================================
+   GlobalIndexDetail — 全球速览指数详情页（/global/:code）
+   去卡片化：hairline KPI strip + 排版优先；颜色/间距全走 token。
+   共享 .kpi-strip/.kpi-cell 定义见 styles/global/components-cleanup.css，
+   移动端自动回落 2 列；本页只声明列数与 label/value 排版。
+   ============================================================ */
+
+/* KPI strip：5 列（移动端共享类自带 2 列回落） */
+.gid-kpi-strip {
+  --kpi-cols: 5;
+  margin-bottom: var(--space-5);
+}
+
+.gid-kpi__label {
+  font-size: var(--text-label-size);
+  color: var(--text-tertiary);
+  margin-bottom: var(--space-1);
+}
+
+.gid-kpi__value {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--text-h3-size);
+  color: var(--text-primary);
+}
+
+/* 涨跌标签（return-tag）在 KPI 格内保持正文基线尺寸 */
+.gid-kpi__value .return-tag {
+  font-size: var(--text-body-size);
+}
+
+/* 头部元信息行：code Tag 与文字基线对齐 */
+.gid-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.gid-meta__code {
+  margin-inline-end: 0;
+  font-family: var(--font-mono);
+}
+
+/* 页头右侧数据日期 */
+.gid-asof {
+  white-space: nowrap;
+}
+
+/* 时间范围 Radio：移动端可横向滚动，不挤压图表 */
+.gid-range-scroll {
+  max-width: 100%;
+  overflow-x: auto;
+  white-space: nowrap;
+}
