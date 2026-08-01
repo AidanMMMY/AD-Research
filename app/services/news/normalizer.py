@@ -33,6 +33,7 @@ from app.models.etf import ETFInfo
 from app.services.news._model_loader import NewsArticle, NewsArticleSymbol
 from app.services.news.crawler.types import RawArticle
 from app.services.news.symbol_extractor import SymbolExtractor
+from app.services.news.zh_convert import convert_article_text_fields
 
 logger = logging.getLogger(__name__)
 
@@ -135,12 +136,23 @@ class NewsNormalizer:
 
             # 2) Build the article row.
             full_body = raw.body or _strip_html_to_text(raw.body_html)
+            language = raw.language or "zh"
+            # 繁→简转换（2026-08-01）：台湾/香港中文源（zhb_/zhx_/部分
+            # wechat_）正文是繁体；入库时统一转简体，避免读路径/前端
+            # 逐条转换。仅对中文文章且检出繁体特征时生效，已是简体的
+            # 文本原样通过。截断在转换之后做，避免把转换后的字符切半。
+            converted = convert_article_text_fields(
+                {"title": raw.title, "body": full_body},
+                language=language,
+            )
+            title = (converted["title"] or raw.title)[:1000]
+            full_body = converted["body"]
             article = NewsArticle(
                 source=raw.source,
                 source_id=source_id,
                 url=raw.url[:1000],  # column is String(1000) in current schema
                 url_hash=_hash_text(raw.url) or "",
-                title=raw.title[:1000],  # column is String(1000)
+                title=title,  # column is String(1000)
                 summary=full_body,
                 # The ``body`` column is the persisted intro/full body for
                 # crawlers that hand us the whole article up-front (RSS,
@@ -152,7 +164,7 @@ class NewsNormalizer:
                 full_content=full_body if _looks_full_article(full_body, source=raw.source) else None,
                 content_hash=_simhash_text(full_body),
                 author=raw.author,
-                language=raw.language or "zh",
+                language=language,
                 market=raw.market or "cn_a",
                 published_at=raw.published_at,
                 # ``category`` doubles as a free-form tag for source-specific

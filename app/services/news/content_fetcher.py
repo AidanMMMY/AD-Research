@@ -43,6 +43,7 @@ from sqlalchemy.orm import Session
 
 from app.config import get_settings
 from app.services.news._model_loader import NewsArticle
+from app.services.news.zh_convert import convert_article_text_fields
 
 logger = logging.getLogger(__name__)
 
@@ -828,6 +829,14 @@ class ContentFetcher:
         # avoids the <think> / duplicate-title / no-body problems we saw
         # with the DeepSeek extraction prompt.
         cleaned = _clean_jina_body(md, article.title)
+
+        # 3b) 繁→简转换（2026-08-01）：台湾/香港 zh 源（zhb_/zhx_ 等）
+        # 补抓回来的正文是繁体。放在入库前的唯一汇合点，快讯确认
+        # （4a）和正常存储（6）两条路径都能覆盖。仅当中文文章且检出
+        # 繁体特征时生效；已是简体 / 非中文文章原样通过。
+        cleaned = convert_article_text_fields(
+            {"full_content": cleaned}, language=article.language
+        )["full_content"]
 
         # 4) Validate the cleaned body.
         # 4a) Flash-news confirmation (2026-07-29): 快讯 items are
