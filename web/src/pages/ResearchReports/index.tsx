@@ -354,8 +354,8 @@ export default function ResearchReports() {
       <style>{RESEARCH_REPORTS_PAGE_STYLE}</style>
       <PageHeader
         eyebrow="研究"
-        title="研报库"
-        description="A股分析师研报聚合，覆盖个股研报、机构、评级、行业；可选 DeepSeek 自动摘要"
+        title="券商研报"
+        description="A股券商分析师研报聚合，覆盖个股研报、机构、评级、行业；可选 DeepSeek 自动摘要"
         extra={
           <Space size="middle">
             <LastUpdated at={dataUpdatedAt} loading={isFetching && !data} />

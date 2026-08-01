@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Table, List, Space, Select, InputNumber, Button, Row, Col } from 'antd';
 import { InfoCircleOutlined } from '@ant-design/icons';
 import type { ColumnsType, TableProps } from 'antd/es/table';
@@ -470,6 +470,10 @@ export default function Screen() {
           </Space>
         }
       />
+      {/* P1-2 互跳引导（2026-08-02 IA 调整）：筛选器 ↔ 评分排名 */}
+      <div className="ad-mb-3" style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+        想看现成榜单？<Link to="/scores">评分排名 →</Link>
+      </div>
       {isMobile ? (
         /* P3 (方向 C): mobile first screen carries zero filter chrome —
            presets + detailed filters live in the half sheet behind 筛选. */

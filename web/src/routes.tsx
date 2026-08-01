@@ -116,22 +116,28 @@ export const routes: RouteConfig[] = [
   { path: '/stocks', element: <Navigate to="/instruments?type=stock" replace />, auth: true },
   { path: '/stocks/:code', element: <Navigate to="/instruments/:code" replace />, auth: true },
   // === 行情与市场 ===
+  // 2026-08-02 IA 调整：加密货币自「交易」组移入（行情品类而非交易动作）
+  { path: '/crypto', element: wrap(CryptoList), auth: true, menu: { name: '加密货币', icon: 'GoldOutlined', group: 'market' } },
+  { path: '/crypto/:code', element: wrap(CryptoDetail), auth: true },
   { path: '/sector-rotation', element: wrap(SectorRotation), auth: true, menu: { name: '板块轮动', icon: 'BarChartOutlined', group: 'market' } },
-  { path: '/correlation', element: wrap(CorrelationAnalysis), auth: true, menu: { name: '相关性分析', icon: 'ApartmentOutlined', group: 'market' } },
-  { path: '/comparison', element: wrap(ReturnComparison), auth: true, menu: { name: '收益对比', icon: 'LineChartOutlined', group: 'market' } },
+  // 资金流监控（fund-flow, 2026-07-14）：大盘 / 个股 / 板块 / ETF + 综合信号
+  { path: '/fund-flow', element: wrap(FundFlow), auth: true, menu: { name: '资金流', label: '资金流', icon: 'ExperimentOutlined', group: 'market' } },
+  // 2026-08-02 IA 调整：微结构数据（龙虎榜/北向/两融/解禁）自 learn 组移入，紧邻资金流
+  { path: '/microstructure', element: wrap(Microstructure), auth: true, menu: { name: '微结构数据', icon: 'FundOutlined', group: 'market' } },
   { path: '/futures', element: wrap(Futures), auth: true, menu: { name: '商品期货', icon: 'BlockOutlined', group: 'market' } },
-  // === 选股工具 ===
+  // === 选股与分析（原「选股工具」，2026-08-02 改名；相关性/收益对比自行情组并入） ===
   { path: '/screen', element: wrap(Screen), auth: true, menu: { name: '全市场筛选器', icon: 'FilterOutlined', group: 'screen' } },
-  { path: '/scanner', element: wrap(MarketScanner), auth: true, menu: { name: '全市场扫描', icon: 'ScanOutlined', group: 'screen' } },
   { path: '/scores', element: wrap(ScoreRanking), auth: true, menu: { name: '评分排名', icon: 'TrophyOutlined', group: 'screen' } },
+  { path: '/correlation', element: wrap(CorrelationAnalysis), auth: true, menu: { name: '相关性分析', icon: 'ApartmentOutlined', group: 'screen' } },
+  { path: '/comparison', element: wrap(ReturnComparison), auth: true, menu: { name: '收益对比', icon: 'LineChartOutlined', group: 'screen' } },
   { path: '/pools', element: wrap(PoolList), auth: true, menu: { name: '标的池管理', icon: 'AppstoreOutlined', group: 'screen' } },
   { path: '/pools/:id', element: wrap(PoolDetail), auth: true },
   // === 资讯与研究 ===
   { path: '/news', element: wrap(NewsFeed), auth: true, menu: { name: '资讯', icon: 'ReadOutlined', group: 'research' } },
   { path: '/news/:id', element: wrap(NewsDetail), auth: true },
   { path: '/research', element: wrap(ResearchNotes), auth: true, menu: { name: 'AI 研究笔记', label: 'AI 研究笔记', icon: 'BulbOutlined', group: 'research' } },
-  { path: '/reports', element: wrap(ReportBrowser), auth: true, menu: { name: '投研报告', icon: 'FileTextOutlined', group: 'research' } },
-  { path: '/research-reports', element: wrap(ResearchReports), auth: true, menu: { name: '研报库', icon: 'FilePdfOutlined', group: 'research' } },
+  { path: '/reports', element: wrap(ReportBrowser), auth: true, menu: { name: '组合报告', icon: 'FileTextOutlined', group: 'research' } },
+  { path: '/research-reports', element: wrap(ResearchReports), auth: true, menu: { name: '券商研报', icon: 'FilePdfOutlined', group: 'research' } },
   { path: '/cninfo-reports', element: wrap(CninfoReports), auth: true, menu: { name: '巨潮定期报告', icon: 'FileTextOutlined', group: 'research' } },
   { path: '/sec-filings', element: wrap(SECFilings), auth: true, menu: { name: 'SEC 公告', icon: 'BankOutlined', group: 'research' } },
   { path: '/listing-preview', element: wrap(ListingPreview), auth: true, menu: { name: '上市预告', icon: 'CalendarOutlined', group: 'research' } },
@@ -140,8 +146,6 @@ export const routes: RouteConfig[] = [
   { path: '/sentiment', element: wrap(SentimentOverview), auth: true, menu: { name: '市场情绪', icon: 'HeartOutlined', group: 'macro' } },
   { path: '/instrument-sentiment', element: wrap(SentimentDashboard), auth: true, menu: { name: '单标情绪看板', icon: 'SmileOutlined', group: 'macro' } },
   { path: '/search-trends', element: wrap(SearchTrends), auth: true, menu: { name: '搜索热度', icon: 'FireOutlined', group: 'macro' } },
-  // 资金流监控（fund-flow, 2026-07-14）：大盘 / 个股 / 板块 / ETF + 综合信号
-  { path: '/fund-flow', element: wrap(FundFlow), auth: true, menu: { name: '资金流', label: '资金流', icon: 'ExperimentOutlined', group: 'market' } },
   // === 量化与回测 ===
   { path: '/strategies', element: wrap(StrategyList), auth: true, menu: { name: '策略管理', icon: 'SettingOutlined', group: 'quant' } },
   { path: '/strategy-library', element: wrap(StrategyLibrary), auth: true, menu: { name: '策略库', icon: 'BookOutlined', group: 'quant' } },
@@ -149,15 +153,13 @@ export const routes: RouteConfig[] = [
   { path: '/backtests/:id', element: wrap(BacktestDetail), auth: true },
   { path: '/signals', element: wrap(SignalDashboard), auth: true, menu: { name: '交易信号', icon: 'ThunderboltOutlined', group: 'quant' } },
   // === 交易 ===
-  { path: '/paper-trading', element: wrap(PaperTrading), auth: true, menu: { name: '模拟交易', icon: 'DollarOutlined', group: 'trade' } },
+  // 2026-08-02 IA 调整：模拟交易仅支持 USDT 加密合约，菜单 label 明示范围
+  { path: '/paper-trading', element: wrap(PaperTrading), auth: true, menu: { name: '模拟交易', label: '模拟交易（加密）', icon: 'DollarOutlined', group: 'trade' } },
   { path: '/live-trading', element: wrap(TradingPanel), auth: true, menu: { name: '真实交易', icon: 'ThunderboltOutlined', group: 'trade' } },
   // Portfolio Center (P1) — aggregation page reachable from the Dashboard
   // "组合中心" chip row AND from the sidebar (trade group).
   { path: '/portfolio', element: wrap(Portfolio), auth: true, menu: { name: '我的组合', icon: 'WalletOutlined', group: 'trade' } },
-  { path: '/crypto', element: wrap(CryptoList), auth: true, menu: { name: '加密货币', icon: 'GoldOutlined', group: 'trade' } },
-  { path: '/crypto/:code', element: wrap(CryptoDetail), auth: true },
-  // === 学习 & 另类数据 ===
-  { path: '/microstructure', element: wrap(Microstructure), auth: true, menu: { name: '微结构数据', icon: 'FundOutlined', group: 'learn' } },
+  // === 学习与助手（原「学习 & 另类数据」，2026-08-02 改名；微结构数据移入行情组） ===
   { path: '/learning', element: wrap(Learning), auth: true, menu: { name: '教程中心', label: '教程中心', icon: 'BookOutlined', group: 'learn' } },
   { path: '/chat', element: wrap(AIChat), auth: true, menu: { name: 'AI 助手', label: 'AI 助手', icon: 'RobotOutlined', group: 'learn' } },
   // === 通知 ===
@@ -167,6 +169,9 @@ export const routes: RouteConfig[] = [
   { path: '/etl-status', element: wrap(ETLStatus), auth: true, menu: { name: 'ETL 状态', label: 'ETL 状态', icon: 'ClockCircleOutlined', group: 'ops' } },
   { path: '/admin/etl-status', element: wrap(ETLOpsDashboard), auth: true, admin: true, menu: { name: 'ETL 运维看板', icon: 'MonitorOutlined', group: 'ops' } },
   { path: '/news/health', element: wrap(NewsHealth), auth: true, menu: { name: '资讯健康度', icon: 'MonitorOutlined', group: 'ops' } },
+  // 2026-08-02 IA 调整：原「全市场扫描」（选股组）改名「标的库同步」移入运维组——
+  // 其实质是 akshare vs DB 标的库对账运维页，非选股工具
+  { path: '/scanner', element: wrap(MarketScanner), auth: true, menu: { name: '标的库同步', icon: 'ScanOutlined', group: 'ops' } },
   // === 管理 ===
   { path: '/admin/users', element: wrap(AdminUsers), auth: true, admin: true, menu: { name: '用户管理', icon: 'TeamOutlined', group: 'admin' } },
   { path: '/admin/deployments', element: wrap(AdminDeployments), auth: true, admin: true, menu: { name: '部署管理', icon: 'CloudServerOutlined', group: 'admin' } },
@@ -191,12 +196,12 @@ export interface SidebarGroup {
 export const sidebarGroups: SidebarGroup[] = [
   { key: 'home',     label: '首页',             icon: 'HomeOutlined' },
   { key: 'market',   label: '行情与市场',       icon: 'LineChartOutlined' },
-  { key: 'screen',   label: '选股工具',         icon: 'FilterOutlined' },
+  { key: 'screen',   label: '选股与分析',       icon: 'FilterOutlined' },
   { key: 'research', label: '资讯与研究',       icon: 'ReadOutlined' },
   { key: 'macro',    label: '宏观与情绪',       icon: 'FundProjectionScreenOutlined' },
   { key: 'quant',    label: '量化与回测',       icon: 'ExperimentOutlined' },
   { key: 'trade',    label: '交易',             icon: 'DollarOutlined' },
-  { key: 'learn',    label: '学习 & 另类数据',  icon: 'BookOutlined' },
+  { key: 'learn',    label: '学习与助手',       icon: 'BookOutlined' },
   { key: 'ops',      label: '运维',             icon: 'ToolOutlined' },
   { key: 'admin',    label: '管理',             icon: 'SafetyCertificateOutlined' },
 ];

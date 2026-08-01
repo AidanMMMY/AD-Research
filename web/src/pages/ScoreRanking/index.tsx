@@ -1,7 +1,7 @@
 import './styles.css';
 
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Table, List, Tabs, Segmented, Select } from 'antd';
 import { useScores, useScoreTemplates } from '@/hooks/useScores';
 import { useAIHelp } from '@/hooks/useAIHelp';
@@ -154,6 +154,10 @@ export default function ScoreRanking() {
         description="查看全市场标的综合评分排名，对比不同模板下的多维评估结果"
         extra={<LastUpdated at={scoresUpdatedAt} loading={isFetching && !scoresData} />}
       />
+      {/* P1-2 互跳引导（2026-08-02 IA 调整）：评分排名 ↔ 全市场筛选器 */}
+      <div className="ad-mb-3" style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+        想自定义区间？<Link to="/screen">全市场筛选器 →</Link>
+      </div>
 
       <Tabs
         activeKey={topTab}

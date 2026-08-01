@@ -93,13 +93,13 @@ export default function MarketScanner() {
         }
       `}</style>
       <PageHeader
-        title="全市场扫描"
+        title="标的库同步"
         description="自动发现新增、退市、变更的标的，保持数据库与市场同步"
       />
 
       <Panel
         className="ad-mb-5"
-        title="全市场扫描"
+        title="标的库同步"
         extra={
           <Button type="primary" icon={<ReloadOutlined />} onClick={handleScan} loading={isScanning}>
             立即扫描

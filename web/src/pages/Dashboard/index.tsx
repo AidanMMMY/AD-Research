@@ -354,6 +354,21 @@ export default function Dashboard() {
             <div className="cc-pulse-grid__header">
               <GlobalOutlined style={{ color: 'var(--cc-muted)', fontSize: 12 }} />
               <span className="cc-pulse-grid__title">全球资产脉搏</span>
+              <span
+                className="cc-card__extra"
+                style={{ marginLeft: 'auto' }}
+                onClick={() => navigate('/global')}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    navigate('/global');
+                  }
+                }}
+                role="button"
+                tabIndex={0}
+              >
+                查看全部 →
+              </span>
             </div>
             <div className="cc-pulse-groups">
               {pulseGroups.map((group) => (

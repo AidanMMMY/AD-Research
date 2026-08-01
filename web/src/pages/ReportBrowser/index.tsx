@@ -287,8 +287,8 @@ export default function ReportBrowser() {
       <style>{REPORT_BROWSER_PAGE_STYLE}</style>
       <PageHeader
         eyebrow="研究"
-        title="报告浏览"
-        description="浏览和下载已生成的投研报告，支持按标的池定制报告"
+        title="组合报告"
+        description="浏览和下载已生成的组合报告，支持按标的池定制报告"
       />
 
       <FilterToolbar
