@@ -462,11 +462,43 @@ class BaseCrawler(ABC):
     # ------------------------------------------------------------------
     @staticmethod
     def strip_html(text: str) -> str:
-        """Drop HTML tags / entities so output is plain text."""
+        """Drop HTML tags / entities so output is plain text.
+
+        Collapses ALL whitespace (including newlines) to single spaces —
+        use for single-line contexts (titles, briefs). For article bodies
+        use :meth:`strip_html_preserve_paragraphs` so paragraph breaks
+        survive (2026-08-02 cls 段落粘连根治: the cls telegraph API
+        returns plain text with ``\\n\\n`` paragraph separators and this
+        method was destroying them).
+        """
         if not text:
             return ""
         no_tags = re.sub(r"<[^>]+>", "", text)
         return re.sub(r"\s+", " ", no_tags).strip()
+
+    # 与 normalizer._strip_html_to_text / rss_common._strip_html 同一规则：
+    # 块级闭合标签 → \n\n，<br> → \n，其余标签剥掉；行内空白折叠但保留
+    # 段落换行。对「纯文本但带 \n\n」（cls API content/brief）同样安全——
+    # 无标签时只是保留原有换行并折叠行内空格。
+    _BLOCK_BOUNDARY_RE: ClassVar[re.Pattern[str]] = re.compile(
+        r"</(?:p|div|li|h[1-6]|blockquote|tr|section|article)\s*>",
+        re.IGNORECASE,
+    )
+    _BR_RE: ClassVar[re.Pattern[str]] = re.compile(r"<br\s*/?>", re.IGNORECASE)
+    _HTML_TAG_RE: ClassVar[re.Pattern[str]] = re.compile(r"<[^>]+>")
+    _INLINE_WS_RE: ClassVar[re.Pattern[str]] = re.compile(r"[ \t]+")
+    _EXCESS_NL_RE: ClassVar[re.Pattern[str]] = re.compile(r"\n{3,}")
+
+    @classmethod
+    def strip_html_preserve_paragraphs(cls, text: str) -> str:
+        """HTML/纯文本 → 保留段落的纯文本（块级边界 ``\\n\\n``、``<br>`` ``\\n``）。"""
+        if not text:
+            return ""
+        marked = cls._BR_RE.sub("\n", text)
+        marked = cls._BLOCK_BOUNDARY_RE.sub("\n\n", marked)
+        stripped = cls._HTML_TAG_RE.sub(" ", marked)
+        lines = [cls._INLINE_WS_RE.sub(" ", line).strip() for line in stripped.split("\n")]
+        return cls._EXCESS_NL_RE.sub("\n\n", "\n".join(lines)).strip()
 
     def _ensure_client(self) -> httpx.AsyncClient:
         if self._client is None:

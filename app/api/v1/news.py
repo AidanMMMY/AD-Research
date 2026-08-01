@@ -610,6 +610,9 @@ _WORKER_KEYWORDS: tuple[str, ...] = (
     "zhb_",
     "asia_en",
     "asen_",
+    "enf_",
+    "ofc_",
+    "zhm_",
     "summarize",
 )
 
@@ -744,6 +747,27 @@ _WORKER_META: dict[str, dict[str, str]] = {
     "news_asia_en_n_60m": {"label": "亚洲英文财经 RSS N 组 (11 源)", "schedule": "每 60 分钟"},
     "news_asia_en_o_60m": {"label": "亚洲英文财经 RSS O 组 (11 源)", "schedule": "每 60 分钟"},
     "news_asia_en_p_60m": {"label": "亚洲英文财经 RSS P 组 (11 源)", "schedule": "每 60 分钟"},
+    # English finance batches (2026-08-02, 57 sources, a-f)
+    "news_enf_a_60m": {"label": "英文财经 A 组 (10 源)", "schedule": "每 60 分钟"},
+    "news_enf_b_60m": {"label": "英文财经 B 组 (10 源)", "schedule": "每 60 分钟"},
+    "news_enf_c_60m": {"label": "英文财经 C 组 (10 源)", "schedule": "每 60 分钟"},
+    "news_enf_d_60m": {"label": "英文财经 D 组 (10 源)", "schedule": "每 60 分钟"},
+    "news_enf_e_60m": {"label": "英文财经 E 组 (10 源)", "schedule": "每 60 分钟"},
+    "news_enf_f_60m": {"label": "英文财经 F 组 (6 源)", "schedule": "每 60 分钟"},
+    # Official institution + industry vertical batches (2026-08-02, 56 sources, a-f)
+    "news_ofc_a_60m": {"label": "官方机构 A 组 (10 源)", "schedule": "每 60 分钟"},
+    "news_ofc_b_60m": {"label": "官方机构 B 组 (10 源)", "schedule": "每 60 分钟"},
+    "news_ofc_c_60m": {"label": "官方机构+智库 C 组 (10 源)", "schedule": "每 60 分钟"},
+    "news_ofc_d_60m": {"label": "行业垂直 D 组 (10 源)", "schedule": "每 60 分钟"},
+    "news_ofc_e_60m": {"label": "行业垂直 E 组 (10 源)", "schedule": "每 60 分钟"},
+    "news_ofc_f_60m": {"label": "行业垂直 F 组 (6 源)", "schedule": "每 60 分钟"},
+    # Chinese media / Asia / crypto increment batches (2026-08-02, 58 sources, a-f)
+    "news_zhm_a_60m": {"label": "中文媒体·港台 A 组 (10 源)", "schedule": "每 60 分钟"},
+    "news_zhm_b_60m": {"label": "中文媒体·日本 B 组 (10 源)", "schedule": "每 60 分钟"},
+    "news_zhm_c_60m": {"label": "日韩媒体 C 组 (10 源)", "schedule": "每 60 分钟"},
+    "news_zhm_d_60m": {"label": "韩·东南亚 D 组 (10 源)", "schedule": "每 60 分钟"},
+    "news_zhm_e_60m": {"label": "加密媒体 E 组 (10 源)", "schedule": "每 60 分钟"},
+    "news_zhm_f_60m": {"label": "加密媒体 F 组 (8 源)", "schedule": "每 60 分钟"},
 }
 
 # Map a worker job id to the ``news_article.source`` it writes.  Only

@@ -40,6 +40,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 from datetime import datetime, timezone
 from typing import Any
 
@@ -136,13 +137,17 @@ class ClsCrawler(BaseCrawler):
         url = CLS_DETAIL_URL.format(id=item_id)
 
         title = (item.get("title") or "").strip()
-        brief = self.strip_html(item.get("brief") or "")
+        # 2026-08-02 段落粘连根治：cls API 的 brief/content 是「纯文本 +
+        # \n\n 分段」（部分条目带少量 HTML 标签），必须用保留段落的剥离，
+        # 否则 \s+ 折叠把整篇快讯压成一段。
+        brief = self.strip_html_preserve_paragraphs(item.get("brief") or "")
         content_html = (item.get("content") or "").strip() or None
-        content_text = self.strip_html(item.get("content") or "")
+        content_text = self.strip_html_preserve_paragraphs(item.get("content") or "")
         if not title:
             # Telegraph flashes often have no headline; fall back to the
             # brief so the normalizer's required-title check passes.
-            title = (brief or content_text)[:50].strip()
+            # 标题必须是单行——brief/content 现在保留 \n\n，先折叠空白再截断。
+            title = re.sub(r"\s+", " ", brief or content_text)[:50].strip()
         if not title:
             return None
 

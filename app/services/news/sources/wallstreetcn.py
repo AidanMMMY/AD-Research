@@ -103,13 +103,17 @@ class WallstreetcnCrawler(BaseCrawler):
             author = ((item.get("author") or {}).get("display_name") or "").strip()
             source_id = str(item.get("id") or url)
             channels = item.get("channels")
+            # content_text 是 API 给的纯文本（多段落条目自带 \n\n，已验证）；
+            # 缺失时回退剥 content HTML——必须保留段落（2026-08-02 与 cls 同款
+            # 粘连问题，BaseCrawler.strip_html 会把 \s+ 全折叠成一段）。
+            body = content_text or self.strip_html_preserve_paragraphs(body_html)
             out.append(
                 RawArticle(
                     source=self.source_name,
                     source_id=source_id,
                     url=url,
                     title=title,
-                    body=content_text or self.strip_html(body_html),
+                    body=body,
                     body_html=body_html or None,
                     author=author or None,
                     published_at=published_at,

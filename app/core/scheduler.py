@@ -2205,6 +2205,52 @@ def init_scheduler():
                 max_instances=1,
                 coalesce=True,
             )
+
+        # English finance batches (2026-08-02) — 57 verified English
+        # finance media / macro blogs / official feeds, generated in
+        # ``scheduler_jobs.EN_FIN_BATCH_JOBS``, all hourly.
+        for job_id, label, batch in _news_jobs.EN_FIN_BATCH_JOBS:
+            fn = getattr(_news_jobs, f"run_en_fin_{batch}_crawl")
+            scheduler.add_job(
+                fn,
+                trigger=IntervalTrigger(minutes=60, jitter=600),
+                id=job_id,
+                name=label,
+                replace_existing=True,
+                max_instances=1,
+                coalesce=True,
+            )
+
+        # Official institution + industry vertical batches (2026-08-02)
+        # — 56 verified central-bank / regulator / think-tank /
+        # industry-trade feeds, generated in
+        # ``scheduler_jobs.OFFICIAL_BATCH_JOBS``, all hourly.
+        for job_id, label, batch in _news_jobs.OFFICIAL_BATCH_JOBS:
+            fn = getattr(_news_jobs, f"run_official_{batch}_crawl")
+            scheduler.add_job(
+                fn,
+                trigger=IntervalTrigger(minutes=60, jitter=600),
+                id=job_id,
+                name=label,
+                replace_existing=True,
+                max_instances=1,
+                coalesce=True,
+            )
+
+        # Chinese media / Asia / crypto increment batches (2026-08-02)
+        # — 58 verified HK/TW/JP/KR/SEA media + crypto feeds, generated
+        # in ``scheduler_jobs.ZH_MEDIA_BATCH_JOBS``, all hourly.
+        for job_id, label, batch in _news_jobs.ZH_MEDIA_BATCH_JOBS:
+            fn = getattr(_news_jobs, f"run_zh_media_{batch}_crawl")
+            scheduler.add_job(
+                fn,
+                trigger=IntervalTrigger(minutes=60, jitter=600),
+                id=job_id,
+                name=label,
+                replace_existing=True,
+                max_instances=1,
+                coalesce=True,
+            )
     except ImportError:
         pass
 

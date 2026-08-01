@@ -937,6 +937,171 @@ for _job_id, _label, _batch in ZH_BLOG_BATCH_JOBS:
     globals()[f"run_zh_blog_{_batch}_crawl"] = _zhb_batch_job(_job_id, _batch)
 
 
+# ── English finance media / macro blog batches (added 2026-08-02) ──
+#
+# 57 live-verified English feeds — US/UK broadcast & print finance
+# desks (CNBC desks, NYT, Economist, FT Alphaville…), investment
+# industry & alternatives trades, international English outlets,
+# emerging-market English media, macro/analysis Substacks & blogs and
+# a handful of official-sector feeds (Fed testimony, BOJ). Table and
+# ECS verification evidence live in
+# app/services/news/sources/en_fin_batch.py. 6 feeds (fedspeeches /
+# fedmonetary / cbo / cato / cfodive / paymentsdive) were collected by
+# both this wave and the official wave — they live in
+# official_batch.py only. Same no-LLM rationale as the other batch
+# waves.
+
+from app.services.news.sources.en_fin_batch import (  # noqa: E402
+    EN_FIN_BATCH_JOBS,
+)
+
+
+def _enf_batch_job(job_id: str, batch_key: str):
+    """Build a ``run_*`` function crawling one English finance batch."""
+
+    @_record_etl(job_id)
+    def _run() -> dict[str, int]:
+        from app.services.news.sources.en_fin_batch import (
+            EnFinBatchCrawler,
+        )
+
+        async def _go():
+            crawler = EnFinBatchCrawler(batch_key)
+            return await crawler.fetch_recent()
+
+        try:
+            articles = _run_async(_go())
+        except Exception as exc:
+            logger.exception("en fin batch %s crawl failed: %s", batch_key, exc)
+            return {
+                "fetched": 0,
+                "written": 0,
+                "skipped": True,
+                "skip_reason": f"crawl_error: {exc}",
+            }
+
+        if not articles:
+            return {"fetched": 0, "written": 0, "skipped": True, "skip_reason": "no_articles"}
+
+        written = _write_to_db(articles)
+        return {"fetched": len(articles), "written": written}
+
+    _run.__name__ = f"run_en_fin_{batch_key}_crawl"
+    return _run
+
+
+for _job_id, _label, _batch in EN_FIN_BATCH_JOBS:
+    globals()[f"run_en_fin_{_batch}_crawl"] = _enf_batch_job(_job_id, _batch)
+
+
+# ── Official institution + industry vertical batches (added 2026-08-02) ──
+#
+# 56 live-verified feeds — central banks (Fed speeches/monetary, BIS,
+# Riksbank, Dallas Fed), US regulators & official statistics (SEC,
+# CFTC, Treasury, FDIC, FTC, White House, BEA, EIA, DOE, CBO), UK FCA,
+# think tanks (CFR, Cato, Hoover, McKinsey) and industry verticals
+# (Industry Dive family, medtech, tech, EV/auto, semiconductors,
+# mining/shipping/aero/defense, real estate). Table and ECS
+# verification evidence live in
+# app/services/news/sources/official_batch.py. Same no-LLM rationale
+# as the other batch waves.
+
+from app.services.news.sources.official_batch import (  # noqa: E402
+    OFFICIAL_BATCH_JOBS,
+)
+
+
+def _ofc_batch_job(job_id: str, batch_key: str):
+    """Build a ``run_*`` function crawling one official/industry batch."""
+
+    @_record_etl(job_id)
+    def _run() -> dict[str, int]:
+        from app.services.news.sources.official_batch import (
+            OfficialBatchCrawler,
+        )
+
+        async def _go():
+            crawler = OfficialBatchCrawler(batch_key)
+            return await crawler.fetch_recent()
+
+        try:
+            articles = _run_async(_go())
+        except Exception as exc:
+            logger.exception("official batch %s crawl failed: %s", batch_key, exc)
+            return {
+                "fetched": 0,
+                "written": 0,
+                "skipped": True,
+                "skip_reason": f"crawl_error: {exc}",
+            }
+
+        if not articles:
+            return {"fetched": 0, "written": 0, "skipped": True, "skip_reason": "no_articles"}
+
+        written = _write_to_db(articles)
+        return {"fetched": len(articles), "written": written}
+
+    _run.__name__ = f"run_official_{batch_key}_crawl"
+    return _run
+
+
+for _job_id, _label, _batch in OFFICIAL_BATCH_JOBS:
+    globals()[f"run_official_{_batch}_crawl"] = _ofc_batch_job(_job_id, _batch)
+
+
+# ── Chinese media / Asia / crypto increment batches (added 2026-08-02) ──
+#
+# 58 live-verified feeds — HK/TW Chinese media (RTHK, 星岛, 报导者,
+# 关键评论网…), mainland weeklies, JP media & tech (NHK, 东洋经济,
+# 朝日/每日/产经, ITmedia…), KR (韩联社, 京乡, Money Today), SEA
+# English and 19 crypto outlets (EN/JA/KO). Table and ECS verification
+# evidence live in app/services/news/sources/zh_media_batch.py. 14
+# verified-but-colliding feeds were dropped (see module docstring).
+# Same no-LLM rationale as the other batch waves.
+
+from app.services.news.sources.zh_media_batch import (  # noqa: E402
+    ZH_MEDIA_BATCH_JOBS,
+)
+
+
+def _zhm_batch_job(job_id: str, batch_key: str):
+    """Build a ``run_*`` function crawling one zh-media batch."""
+
+    @_record_etl(job_id)
+    def _run() -> dict[str, int]:
+        from app.services.news.sources.zh_media_batch import (
+            ZhMediaBatchCrawler,
+        )
+
+        async def _go():
+            crawler = ZhMediaBatchCrawler(batch_key)
+            return await crawler.fetch_recent()
+
+        try:
+            articles = _run_async(_go())
+        except Exception as exc:
+            logger.exception("zh media batch %s crawl failed: %s", batch_key, exc)
+            return {
+                "fetched": 0,
+                "written": 0,
+                "skipped": True,
+                "skip_reason": f"crawl_error: {exc}",
+            }
+
+        if not articles:
+            return {"fetched": 0, "written": 0, "skipped": True, "skip_reason": "no_articles"}
+
+        written = _write_to_db(articles)
+        return {"fetched": len(articles), "written": written}
+
+    _run.__name__ = f"run_zh_media_{batch_key}_crawl"
+    return _run
+
+
+for _job_id, _label, _batch in ZH_MEDIA_BATCH_JOBS:
+    globals()[f"run_zh_media_{_batch}_crawl"] = _zhm_batch_job(_job_id, _batch)
+
+
 # ── New Chinese news sources (added 2026-07-18) ──
 
 @_record_etl("news_wallstreetcn_5m")
