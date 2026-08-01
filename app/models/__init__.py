@@ -23,6 +23,7 @@ from app.models.fund_flow import (
 from app.models.etl import BacktestResult, DataSourceConfig, ETLLog, Signal, StrategyConfig
 from app.models.listing import ListingEvent
 from app.models.macro import MacroIndicator
+from app.models.global_index_bar import GlobalIndexDailyBar
 from app.models.microstructure import (
     HsgtFlow,
     LhbRecord,
@@ -93,6 +94,8 @@ __all__ = [
     "ListingEvent",
     # Macro indicators
     "MacroIndicator",
+    # 全球速览指数日线 OHLCV（详情页 K 线）
+    "GlobalIndexDailyBar",
     # Micro-structure (LHB / HSGT / margin / restricted-release)
     "LhbRecord",
     "HsgtFlow",

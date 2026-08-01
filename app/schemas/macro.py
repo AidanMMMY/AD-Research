@@ -1,6 +1,7 @@
 """Pydantic schemas for the macro indicators API."""
 
 from datetime import date, datetime
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -131,3 +132,61 @@ class MacroLatestResponse(BaseModel):
 
     items: list[MacroLatestItem] = Field(default_factory=list)
     region: str | None = None
+
+
+# ---------------------------------------------------------------------------
+# 全球速览指数详情页（Batch B API 契约）
+# ---------------------------------------------------------------------------
+
+
+class MacroOhlcBar(BaseModel):
+    """一根日线 OHLCV K 线（open/high/low/volume 可为空）."""
+
+    date: date
+    open: float | None = None
+    high: float | None = None
+    low: float | None = None
+    close: float
+    volume: int | None = None
+
+
+class MacroIndicatorLatest(BaseModel):
+    """详情页头部卡片的最新值与前值/涨跌."""
+
+    period: date
+    value: float
+    prev_value: float | None = None
+    change_pct: float | None = None
+    change_abs: float | None = None
+
+
+class MacroIndicatorStats(BaseModel):
+    """详情页统计块：序列范围 + 52 周高低."""
+
+    first_period: date | None = None
+    last_period: date | None = None
+    count: int = 0
+    high_52w: float | None = None
+    low_52w: float | None = None
+
+
+class MacroIndicatorDetail(BaseModel):
+    """详情页聚合响应.
+
+    ``has_ohlc=True`` 时 ``ohlc`` 非空、``points`` 可为空数组；
+    ``has_ohlc=False`` 时 ``ohlc=None``、``points`` 来自
+    macro_indicator 折线序列（FRED 代码走这里）。
+    """
+
+    code: str
+    region: str
+    name_zh: str
+    name_en: str | None = None
+    unit: str = ""
+    source: str = ""
+    category: Literal["rate", "fx", "commodity", "index", "vol"]
+    has_ohlc: bool
+    latest: MacroIndicatorLatest | None = None
+    stats: MacroIndicatorStats
+    ohlc: list[MacroOhlcBar] | None = None
+    points: list[MacroIndicatorPoint] = Field(default_factory=list)

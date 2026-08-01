@@ -243,21 +243,185 @@ def _history_frame_to_rows(h, meta: IndexMeta) -> list[dict]:
     return out
 
 
-def _fetch_history(meta: IndexMeta, **history_kwargs) -> list[dict]:
-    """Internal helper: call ``yf.Ticker.history`` and convert to rows.
+def _fetch_frame(meta: IndexMeta, **history_kwargs) -> pd.DataFrame | None:
+    """Internal helper: call ``yf.Ticker.history`` and return the raw frame.
 
     Any exception (network blip, rate limit, schema change) is logged
-    and swallowed — the batch never raises.
+    and swallowed — the batch never raises.  Returns ``None`` on
+    failure so callers can distinguish "fetch failed" from "empty
+    frame" without duplicating the warning.
     """
     try:
-        h = yf.Ticker(meta.ticker).history(**history_kwargs)
+        return yf.Ticker(meta.ticker).history(**history_kwargs)
     except Exception as exc:
         logger.warning(
             "yfinance fetch failed for %s (%s): %s",
             meta.ticker, meta.code, exc,
         )
+        return None
+
+
+def _fetch_history(meta: IndexMeta, **history_kwargs) -> list[dict]:
+    """Internal helper: fetch one ticker's history as observation rows.
+
+    Thin composition of ``_fetch_frame`` + ``_history_frame_to_rows``;
+    the public signature and behaviour are unchanged (the realtime
+    endpoint ``/macro/indices/global`` depends on them).
+    """
+    h = _fetch_frame(meta, **history_kwargs)
+    if h is None:
         return []
     return _history_frame_to_rows(h, meta)
+
+
+# ---------------------------------------------------------------------------
+# OHLCV bars (全球速览指数详情页 — Batch A 数据层)
+#
+# 与上面的 closes-only 路径并行：``_history_frame_to_rows`` 产
+# macro_indicator 观测（只有收盘价），``_frame_to_bars`` 产
+# ``global_index_daily_bar`` 行（开高低收量），供详情页蜡烛图使用。
+# 两条路径共用 ``_fetch_frame``，互不干扰。
+# ---------------------------------------------------------------------------
+
+
+def _frame_to_bars(h, meta: IndexMeta) -> list[dict]:
+    """Convert a yfinance ``history()`` DataFrame into OHLCV bar dicts.
+
+    Emits one ``{code, trade_date, open, high, low, close, volume,
+    source}`` dict per trading day.  Rows with an unparseable date or
+    a missing close are dropped (close is the not-null anchor of the
+    storage table).
+
+    FX inversion (``meta.invert_value``, e.g. ``EUR=X``) is applied to
+    ALL four price fields, and because 1/x is monotonically decreasing
+    the inverted high/low swap places::
+
+        new_high = 1 / old_low
+        new_low  = 1 / old_high
+
+    ``volume`` of 0 / NaN (FX spot, some index feeds) becomes ``None``;
+    a missing open (NaN) also becomes ``None`` — both columns are
+    nullable in ``global_index_daily_bar``.
+    """
+    if h is None:
+        return []
+    if h.empty:
+        logger.warning(
+            "yfinance returned empty frame for %s (%s)",
+            meta.ticker, meta.code,
+        )
+        return []
+
+    # Drop timezone so downstream pd.Timestamp is consistent.
+    try:
+        idx = h.index.tz_localize(None)
+    except (TypeError, AttributeError):
+        idx = h.index
+    h = h.copy()
+    h.index = idx
+
+    def _col(name: str) -> list:
+        if name in h.columns:
+            return h[name].tolist()
+        return [None] * len(h)
+
+    opens = _col("Open")
+    highs = _col("High")
+    lows = _col("Low")
+    closes = _col("Close")
+    volumes = _col("Volume")
+    invert = bool(getattr(meta, "invert_value", False))
+
+    out: list[dict] = []
+    for dt, o, hi, lo, c, v in zip(
+        idx, opens, highs, lows, closes, volumes, strict=False
+    ):
+        period = _coerce_date(dt)
+        close = _coerce_float(c)
+        if period is None or close is None:
+            continue
+        open_v = _coerce_float(o)
+        high_v = _coerce_float(hi)
+        low_v = _coerce_float(lo)
+        if invert:
+            # 全字段取倒数；1/x 单调递减 → high/low 互换
+            close = _maybe_invert(close, True)
+            open_v = _maybe_invert(open_v, True)
+            high_v, low_v = (
+                _maybe_invert(low_v, True),
+                _maybe_invert(high_v, True),
+            )
+            # 原 close 为 0 的脏数据（_maybe_invert 对 0 原样返回），丢弃
+            if close is None or close == 0:
+                continue
+        vol_f = _coerce_float(v)
+        volume = int(vol_f) if (vol_f is not None and vol_f > 0) else None
+        out.append({
+            "code": meta.code,
+            "trade_date": period,
+            "open": open_v,
+            "high": high_v,
+            "low": low_v,
+            "close": close,
+            "volume": volume,
+            "source": "yfinance",
+        })
+    return out
+
+
+def fetch_yfinance_ohlcv_bars(
+    period: str = _HISTORY_PERIOD,
+    start: str | None = None,
+    end: str | None = None,
+    codes: list[str] | None = None,
+) -> list[dict]:
+    """Fetch OHLCV daily bars for every yfinance-covered global code.
+
+    Walks ``GLOBAL_INDEX_REGISTRY`` + ``GLOBAL_FOREX_REGISTRY`` +
+    ``GLOBAL_COMMODITY_REGISTRY`` — the RATES registry (^TNX/^TYX) is
+    deliberately excluded: those codes are charted as FRED line series
+    on the detail page, not as candles.
+
+    ``period`` / ``start`` / ``end`` are forwarded to
+    ``yf.Ticker.history`` (start/end take precedence when given, so the
+    backfill script can pull a precise multi-year window).  ``codes``
+    optionally restricts the batch to a subset of internal codes.
+
+    Keeps the ``_PER_TICKER_SLEEP`` rate-limit guard; per-ticker
+    failures are logged and skipped — the batch never raises.
+    """
+    if start or end:
+        kwargs: dict[str, str] = {}
+        if start:
+            kwargs["start"] = start
+        if end:
+            kwargs["end"] = end
+    else:
+        kwargs = {"period": period}
+
+    code_filter = set(codes) if codes else None
+    registries: tuple[list[IndexMeta], ...] = (
+        GLOBAL_INDEX_REGISTRY,
+        GLOBAL_FOREX_REGISTRY,
+        GLOBAL_COMMODITY_REGISTRY,
+    )
+
+    out: list[dict] = []
+    tickers = 0
+    for registry in registries:
+        for meta in registry:
+            if code_filter is not None and meta.code not in code_filter:
+                continue
+            bars = _frame_to_bars(_fetch_frame(meta, **kwargs), meta)
+            out.extend(bars)
+            tickers += 1
+            time.sleep(_PER_TICKER_SLEEP)
+
+    logger.info(
+        "yfinance OHLCV fetch done: %d bars across %d tickers",
+        len(out), tickers,
+    )
+    return out
 
 
 def fetch_yfinance_index(meta: IndexMeta, period: str = _HISTORY_PERIOD) -> list[dict]:

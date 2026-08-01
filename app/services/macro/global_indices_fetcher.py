@@ -85,6 +85,37 @@ def fetch_a_share_indices(lookback_days: int = 30) -> list[dict]:
     return out
 
 
+def fetch_a_share_ohlcv(lookback_days: int = 40) -> list[dict]:
+    """Fetch A-share index daily OHLCV bars from akshare（详情页 K 线）.
+
+    Returns bar dicts shaped as ``{code, trade_date, open, high, low,
+    close, volume, source="akshare"}`` — one row per index-day, ready
+    for ``GlobalIndexBarService.upsert_bars``.  Per-symbol failures are
+    logged and skipped; the batch never raises.
+
+    ``lookback_days=None`` pulls full history (backfill script); the
+    daily refresh uses the default 40-day window.
+    """
+    from app.data.providers.akshare_provider import AkshareProvider
+
+    provider = AkshareProvider()
+    out: list[dict] = []
+    for entry in A_SHARE_INDEX_REGISTRY:
+        try:
+            rows = provider.fetch_a_share_index_daily_ohlcv(
+                symbol=entry["symbol"],
+                code=entry["code"],
+                lookback_days=lookback_days,
+            )
+            out.extend(rows)
+        except Exception as exc:  # noqa: BLE001 - defensive
+            logger.warning(
+                "[global_indices] akshare OHLCV fetch failed for %s: %s",
+                entry["symbol"], exc,
+            )
+    return out
+
+
 def fetch_international_indices() -> list[dict]:
     """Fetch international indices via yfinance.
 
@@ -253,6 +284,40 @@ def run_global_indices_refresh() -> dict[str, Any]:
                 )
                 failed.extend({o["code"] for o in obs})
                 per_source[key] = {"fetched": len(obs), "written": 0}
+
+        # ── OHLCV bars（全球速览详情页 K 线）──
+        # 独立的旁路写入 global_index_daily_bar，与上面的
+        # macro_indicator 三段 upsert 完全隔离：整段 try/except，
+        # 任何失败只记日志/摘要，绝不影响主流程返回值结构。
+        try:
+            from app.data.providers.yfinance_indices_provider import (
+                fetch_yfinance_ohlcv_bars,
+            )
+            from app.services.macro.global_index_bar_service import (
+                GlobalIndexBarService,
+            )
+
+            bar_service = GlobalIndexBarService(db)
+
+            yf_bars = fetch_yfinance_ohlcv_bars(period="3mo")
+            per_source["yfinance_ohlcv"] = {
+                "fetched": len(yf_bars),
+                "written": bar_service.upsert_bars(yf_bars),
+            }
+
+            ak_bars = fetch_a_share_ohlcv(lookback_days=40)
+            per_source["akshare_ohlcv"] = {
+                "fetched": len(ak_bars),
+                "written": bar_service.upsert_bars(ak_bars),
+            }
+        except Exception as exc:  # noqa: BLE001 - defensive
+            logger.exception("[global_indices] OHLCV bars segment failed: %s", exc)
+            per_source.setdefault(
+                "yfinance_ohlcv", {"fetched": 0, "written": 0}
+            )
+            per_source.setdefault(
+                "akshare_ohlcv", {"fetched": 0, "written": 0}
+            )
 
         finished = datetime.now(timezone.utc)
         macro_fetched = sum(len(v) for v in macro_by_region.values())

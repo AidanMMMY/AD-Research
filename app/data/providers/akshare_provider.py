@@ -725,6 +725,55 @@ class AkshareProvider(DataProvider):
             })
         return out
 
+    def fetch_a_share_index_daily_ohlcv(
+        self, symbol: str, code: str, lookback_days: int | None = 40
+    ) -> list[dict]:
+        """A 股指数日线 OHLCV bars（全球速览详情页 K 线用）.
+
+        复用与 ``fetch_a_share_index_daily`` 相同的
+        ``ak.stock_zh_index_daily`` 调用（返回干净的英文列名 OHLCV
+        frame），但保留 open/high/low/volume 全字段，产出
+        ``global_index_daily_bar`` 行格式的 dict：
+        ``{code, trade_date, open, high, low, close, volume,
+        source="akshare"}``。
+
+        ``lookback_days=None`` 时不截断（回填脚本拉全历史用）；
+        日常刷新默认 40 天。失败（网络/限流/schema 变更）返回 []
+        不 raise，与批量抓取的容错约定一致。
+        """
+        try:
+            df = ak.stock_zh_index_daily(symbol=symbol)
+        except Exception as exc:
+            print(
+                f"[AkshareProvider] fetch_a_share_index_daily_ohlcv({symbol}) failed: {exc}"
+            )
+            return []
+
+        if df is None or df.empty:
+            return []
+
+        if lookback_days is not None and len(df) > lookback_days:
+            df = df.tail(lookback_days)
+
+        out: list[dict] = []
+        for _, row in df.iterrows():
+            period = _coerce_date(row.get("date"))
+            close = _coerce_float(row.get("close"))
+            if period is None or close is None:
+                continue
+            vol_f = _coerce_float(row.get("volume"))
+            out.append({
+                "code": code,
+                "trade_date": period,
+                "open": _coerce_float(row.get("open")),
+                "high": _coerce_float(row.get("high")),
+                "low": _coerce_float(row.get("low")),
+                "close": close,
+                "volume": int(vol_f) if (vol_f is not None and vol_f > 0) else None,
+                "source": "akshare",
+            })
+        return out
+
     def fetch_hk_index_daily_sina(
         self, symbol: str, code: str, name_zh: str, lookback_days: int = 30
     ) -> list[dict]:

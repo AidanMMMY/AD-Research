@@ -25,6 +25,7 @@ from app.core.redis_client import redis_lock
 from app.schemas.auth import UserResponse
 from app.schemas.macro import (
     MacroCodeListResponse,
+    MacroIndicatorDetail,
     MacroIndicatorLatestItem,
     MacroIndicatorListResponse,
     MacroIndicatorSeries,
@@ -32,6 +33,7 @@ from app.schemas.macro import (
     MacroRefreshResponse,
 )
 from app.services.macro.fred_service import FredService
+from app.services.macro.global_index_bar_service import GlobalIndexBarService
 from app.services.macro_service import MacroDataService
 
 logger = logging.getLogger(__name__)
@@ -57,6 +59,15 @@ def _macro_service() -> MacroDataService:
     db = SessionLocal()
     try:
         yield MacroDataService(db)
+    finally:
+        db.close()
+
+
+def _bar_service() -> GlobalIndexBarService:
+    """Yield a ``GlobalIndexBarService`` bound to a short-lived session."""
+    db = SessionLocal()
+    try:
+        yield GlobalIndexBarService(db)
     finally:
         db.close()
 
@@ -111,6 +122,29 @@ def get_indicator_series(
     if series is None:
         raise HTTPException(status_code=404, detail=f"Unknown indicator code: {code}")
     return MacroIndicatorSeries(**series)
+
+
+@router.get("/indicators/{code}/detail", response_model=MacroIndicatorDetail)
+def get_indicator_detail(
+    code: str,
+    start_date: date | None = Query(None, description="ISO date inclusive"),
+    end_date: date | None = Query(None, description="ISO date inclusive"),
+    limit: int = Query(1500, ge=1, le=10000),
+    bar_service: GlobalIndexBarService = Depends(_bar_service),
+) -> MacroIndicatorDetail:
+    """全球速览指数详情页聚合数据.
+
+    yfinance/akshare 覆盖的代码（有 ``global_index_daily_bar`` 行）
+    返回 OHLC K 线 + 由 bars 计算的 latest/stats；FRED 序列回退
+    macro_indicator 折线（``has_ohlc=False``、``ohlc=None``）。
+    两路皆无数据时返回 404，语义与 ``get_indicator_series`` 一致。
+    """
+    detail = bar_service.get_detail(
+        code=code, start_date=start_date, end_date=end_date, limit=limit
+    )
+    if detail is None:
+        raise HTTPException(status_code=404, detail=f"Unknown indicator code: {code}")
+    return MacroIndicatorDetail(**detail)
 
 
 @router.post(
