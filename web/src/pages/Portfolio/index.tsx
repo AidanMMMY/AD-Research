@@ -1,4 +1,3 @@
-import './styles.css';
 import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { Button, Table, Tag } from 'antd';

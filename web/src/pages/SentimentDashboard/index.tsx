@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { Input, Button, Slider, Tooltip, Tag } from 'antd';
 import { SmileOutlined, FrownOutlined, MehOutlined, SyncOutlined } from '@ant-design/icons';
@@ -124,6 +125,23 @@ export default function InstrumentSentimentPanel({ initialCode }: { initialCode?
   // only commits to the query-driving `days` on release (velocity-free snap).
   const [daysDraft, setDaysDraft] = useState(7);
 
+  // 分析成功后把当前标的回写 ?code=（replace，不污染历史栈），让地址栏可分享。
+  // 与宿主 /sentiment 页共用同一个 useSearchParams 实例（react-router v6 同一份），
+  // 保留 tab=instrument 及其余既有参数。
+  const [searchParams, setSearchParams] = useSearchParams();
+  const syncCodeToUrl = (c: string) => {
+    if (searchParams.get('code') === c) return; // 已同步（含带 code 跳入的自动分析）
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        next.set('tab', 'instrument');
+        next.set('code', c);
+        return next;
+      },
+      { replace: true },
+    );
+  };
+
   const { data: sentiment, isLoading, refetch } = useQuery({
     queryKey: ['sentiment', selectedCode, days],
     queryFn: () =>
@@ -135,7 +153,10 @@ export default function InstrumentSentimentPanel({ initialCode }: { initialCode?
 
   const ingestMutation = useMutation({
     mutationFn: (code: string) => researchApi.ingestSentiment(code, days),
-    onSuccess: () => refetch(),
+    onSuccess: (_res, ingestedCode) => {
+      syncCodeToUrl(ingestedCode);
+      refetch();
+    },
   });
 
   const handleLookup = (target?: string) => {
