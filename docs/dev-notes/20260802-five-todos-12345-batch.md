@@ -100,6 +100,8 @@
 - **处置**：`UPDATE news_article SET translation_attempts=0 WHERE 非中文 AND title_zh IS NULL AND translation_attempts>=5` → 351 行回池。真敏感文（如新疆强迫劳动指控报道）下一次失败会确定性 422 立刻再封顶，自动分诊，无需人工区分。
 - **教训**：**重试封顶无自愈机制**——瞬时 LLM 故障窗口过后，撞顶行永远沉底，必须手动 reset。排查路径：先看"缺译是否全是旧文"（新文缺=管线坏，旧文缺=封顶），再查 attempts 分布，最后手动重试单篇定性。
 - **改进建议（未实施）**：drain job 加个周期性 attempts 自动回零（如对 attempts>=5 且 updated_at 超过 24h 的行每日 reset 一次），让瞬时故障自愈；敏感行反正会确定性再封顶，成本只是每天多几轮无效调用。
+- **后续反转（3375448）**：reset 清完后用户截图反馈"还是看不到翻译"——查库发现该文 title_zh/translated_zh **齐全**（入库 2 分钟即译），且近 3 天全语言 100% 已译。真凶是**详情抽屉 `NewsDetailDrawer` 从头到尾只渲染原文**（title=shown.title、正文 full_content/body，translated_zh 从未引用）——列表卡片早已中文优先，抽屉是翻译盲区。修复：抽屉镜像 detail.tsx 双语模式（中文标题优先+原文标题次行+中文译文默认+中文/原文 Segmented 切换+未就绪 slim 提示），列表载荷已带 title_zh/translated_zh/language，零后端改动；测试 `web/tests/news-drawer-bilingual.test.tsx` 4 用例。
+- **教训升级**：用户报"翻译没有"时分三层查——①库里有没有（drain/封顶）②API 给不给（序列化）③前端渲不渲（组件盲区）。本次 §8 查了①，用户截图才暴露③。
 
 ## 部署与运维备忘（本批新增）
 
