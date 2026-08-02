@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Badge, Button, Space, Tag, Tooltip } from 'antd';
+import { Badge, Button, Segmented, Space, Tag, Tooltip } from 'antd';
 import {
   LinkOutlined,
   LikeOutlined,
   MessageOutlined,
   ShareAltOutlined,
+  TranslationOutlined,
   EyeOutlined,
 } from '@ant-design/icons';
 import { SENTIMENT_COLORS, SENTIMENT_LABELS } from '@/utils/sentiment';
@@ -38,6 +39,14 @@ import './NewsDetailDrawer.css';
  * body is usually already here; the deep-link route stays for on-demand
  * re-fetch / AI translation, reachable via the "打开完整页面" footer
  * button.
+ *
+ * Bilingual rendering (2026-08-02): non-Chinese articles are
+ * auto-translated at ingestion (``title_zh`` / ``translated_zh``), so
+ * the drawer is Chinese-first like the cards — Chinese title with the
+ * original as a secondary line, translated body by default with a
+ * 中文/原文 switch. While the pipeline hasn't reached a row yet, the
+ * original body stays visible under a slim "翻译进行中" notice (never
+ * an empty pane), mirroring ``pages/News/detail.tsx``.
  */
 export default function NewsDetailDrawer({
   article,
@@ -70,6 +79,19 @@ export default function NewsDetailDrawer({
   }, [article, onRead]);
   const shown = article ?? lastArticle;
 
+  // Bilingual state (mirrors pages/News/detail.tsx, 2026-07-26 pattern).
+  const [viewMode, setViewMode] = useState<'zh' | 'original'>('zh');
+  // Reset to the Chinese view whenever a different article is opened.
+  useEffect(() => {
+    setViewMode('zh');
+  }, [shown?.id]);
+  const CHINESE_LANGS = ['zh', 'cn', 'zh-cn', 'zh-hans', 'zh-hant', 'zh-tw', 'zh-hk'];
+  const isNonChinese = shown
+    ? !CHINESE_LANGS.includes((shown.language || '').toLowerCase())
+    : false;
+  const hasTranslation = !!shown?.translated_zh;
+  const showChineseBody = viewMode === 'zh' && hasTranslation;
+
   const source = shown
     ? (SOURCE_LABELS[shown.source] ?? { emoji: '🔗', label: shown.source })
     : null;
@@ -87,7 +109,7 @@ export default function NewsDetailDrawer({
     <DetailDrawer
       open={!!article}
       onClose={onClose}
-      title={shown?.title}
+      title={shown ? (shown.title_zh ?? shown.title) : undefined}
       ariaLabel="资讯详情"
       footer={
         shown ? (
@@ -125,6 +147,14 @@ export default function NewsDetailDrawer({
             {formatDateTimeSeconds(shown.published_at)}
             {shown.author ? ` · ${shown.author}` : ''}
           </div>
+
+          {/* Original title as secondary line (Chinese-first header,
+              same as the cards). */}
+          {shown.title_zh && shown.title_zh !== shown.title && (
+            <div className="ad-text-small ad-text-tertiary ad-mt-2">
+              原文标题：{shown.title}
+            </div>
+          )}
 
           {/* Related symbols — clicking pivots the feed filter, same as
               the chip on the card. */}
@@ -214,10 +244,46 @@ export default function NewsDetailDrawer({
             </div>
           )}
 
-          {/* Body — prefer the cleaned full text stored locally at
-              ingestion time (``full_content``); fall back to the
-              crawler's intro body when no fetch has landed yet. */}
-          {shown.full_content ? (
+          {/* Language toolbar: full-article 中文/原文 switch for
+              non-Chinese sources (mirrors pages/News/detail.tsx). Sits
+              directly above the body it controls. */}
+          {isNonChinese && (
+            <div className="news-lang-toolbar ad-mt-4">
+              <Segmented
+                value={viewMode}
+                onChange={(v) => setViewMode(v as 'zh' | 'original')}
+                options={[
+                  { label: '中文译文', value: 'zh' },
+                  { label: `${(shown.language || 'en').toUpperCase()} 原文`, value: 'original' },
+                ]}
+              />
+              <span className="news-lang-toolbar__meta">
+                <TranslationOutlined />
+                AI 翻译
+              </span>
+            </div>
+          )}
+
+          {/* Translation-pending notice: Chinese was asked for (default)
+              but the pipeline hasn't produced one yet. Keep the original
+              body visible underneath — never an empty pane. */}
+          {isNonChinese && viewMode === 'zh' && !hasTranslation && (
+            <div className="news-translation-notice">
+              <span className="news-translation-notice__text">
+                中文译文尚未就绪，后台翻译中（通常入库后几分钟内完成）
+              </span>
+            </div>
+          )}
+
+          {/* Body — Chinese view renders the ingestion-time AI
+              translation; 原文 view prefers the cleaned full text stored
+              locally (``full_content``), falling back to the crawler's
+              intro body when no fetch has landed yet. */}
+          {showChineseBody ? (
+            <div className="news-drawer-body ad-mt-4">
+              <Markdown source={shown.translated_zh!} />
+            </div>
+          ) : shown.full_content ? (
             <div className="news-drawer-body ad-mt-4">
               <Markdown source={shown.full_content} />
             </div>
