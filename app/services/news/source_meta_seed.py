@@ -338,6 +338,59 @@ _SEED_ROWS: list[tuple[str, str, str, str | None, str, str]] = [
     ("edu_ytjamesshack", "edu", "allocation", None, "科普批次", "James Shack (YouTube)"),
     ("edu_ytmoneymacro", "edu", "macro", "beginner", "科普批次", "Money & Macro (YouTube)"),
     ("edu_stockfeel", "edu", "allocation", "beginner", "科普批次", "股感 StockFeel"),
+    # ────────────────────────────────────────────────────────────────
+    # 英文财经波 enf_*（en_fin_batch.py，2026-08-02 三波扩源 A 组）——
+    # CNBC/NYT/CBS/PBS/各大众媒体快讯线与 fool/marketbeat 等荐股营销
+    # 源一律不打标；只收央行/智库/宏观 Substack/深度分析媒体。
+    # ────────────────────────────────────────────────────────────────
+    ("enf_economistfinance", "deep", "macro", None, "英文财经波", "The Economist Finance & Economics"),
+    ("enf_economistbusiness", "deep", "industry", None, "英文财经波", "The Economist Business"),
+    ("enf_ftalphaville", "deep", "research", "advanced", "英文财经波", "FT Alphaville（市场/金融分析）"),
+    ("enf_bespoke", "deep", "research", None, "英文财经波", "Bespoke Investment Group（数据驱动市场分析）"),
+    ("enf_macrobusiness", "deep", "macro", None, "英文财经波", "MacroBusiness（澳洲宏观/地产分析）"),
+    ("enf_moneymagau", "edu", "allocation", "beginner", "英文财经波", "Money Magazine Australia（理财科普）"),
+    ("enf_finshots", "edu", "macro", "beginner", "英文财经波", "Finshots（印度财经科普）"),
+    ("enf_krugman", "deep", "macro", "advanced", "英文财经波", "Paul Krugman"),
+    ("enf_chartbook", "deep", "macro", "advanced", "英文财经波", "Chartbook (Adam Tooze)"),
+    ("enf_sumner", "deep", "macro", "advanced", "英文财经波", "Scott Sumner（货币经济学）"),
+    ("enf_braddelong", "deep", "macro", "advanced", "英文财经波", "Brad DeLong（经济史/政策）"),
+    ("enf_bonddad", "deep", "macro", None, "英文财经波", "Bonddad Blog（经济/市场分析）"),
+    ("enf_nakedcapitalism", "deep", "macro", None, "英文财经波", "Naked Capitalism（金融/经济评论）"),
+    ("enf_pensionpulse", "deep", "research", None, "英文财经波", "Pension Pulse（养老金/机构投资）"),
+    ("enf_epi", "deep", "macro", None, "英文财经波", "Economic Policy Institute（劳动/经济政策）"),
+    ("enf_fedtestimony", "deep", "macro", "advanced", "英文财经波", "Federal Reserve Testimony（联储证词）"),
+    ("enf_boj", "deep", "macro", "advanced", "英文财经波", "Bank of Japan（日本央行官方）"),
+    # ────────────────────────────────────────────────────────────────
+    # 官方机构波 ofc_*（official_batch.py，2026-08-02 三波扩源 B 组）——
+    # 监管执法/机构新闻稿（SEC/CFTC/FTC/FDIC/BEA…）、Dive 家族行业
+    # 快讯、techcrunch/engadget 等科技快讯、汽车媒体一律不打标；
+    # 只收央行讲话/货币政策、智库研究、行业深度与官方数据分析。
+    # ────────────────────────────────────────────────────────────────
+    ("ofc_fedspeeches", "deep", "macro", "advanced", "官方机构波", "Federal Reserve Speeches（联储讲话）"),
+    ("ofc_fedmonetary", "deep", "macro", "advanced", "官方机构波", "Fed Monetary Policy Press（货币政策声明）"),
+    ("ofc_bisspeeches", "deep", "macro", "advanced", "官方机构波", "BIS Central Bank Speeches（央行行长讲话）"),
+    ("ofc_riksbank", "deep", "macro", "advanced", "官方机构波", "Riksbank（瑞典央行）"),
+    ("ofc_eia", "deep", "industry", None, "官方机构波", "EIA Today in Energy（能源数据分析）"),
+    ("ofc_cbo", "deep", "macro", "advanced", "官方机构波", "CBO Publications（财政研究）"),
+    ("ofc_dallasfed", "deep", "macro", "advanced", "官方机构波", "Dallas Fed News"),
+    ("ofc_dallasfedrel", "deep", "macro", "advanced", "官方机构波", "Dallas Fed Releases"),
+    ("ofc_dallasspeeches", "deep", "macro", "advanced", "官方机构波", "Dallas Fed Speeches"),
+    ("ofc_cfr", "deep", "research", "advanced", "官方机构波", "Council on Foreign Relations（外交/地缘智库）"),
+    ("ofc_cato", "deep", "macro", None, "官方机构波", "Cato Institute（经济政策评论）"),
+    ("ofc_hoover", "deep", "research", "advanced", "官方机构波", "Hoover Institution（政策研究智库）"),
+    ("ofc_mckinsey", "deep", "research", None, "官方机构波", "McKinsey Insights（管理/产业研究）"),
+    ("ofc_semianalysis", "deep", "industry", "advanced", "官方机构波", "SemiAnalysis（半导体产业深度）"),
+    ("ofc_miningcom", "deep", "industry", None, "官方机构波", "MINING.COM（矿业产业）"),
+    ("ofc_aerotime", "deep", "industry", None, "官方机构波", "AeroTime（航空产业深度）"),
+    ("ofc_breakingdefense", "deep", "industry", None, "官方机构波", "Breaking Defense（国防产业深度）"),
+    # ────────────────────────────────────────────────────────────────
+    # 中文媒体波 zhm_*（zh_media_batch.py，2026-08-02 三波扩源 C 组）——
+    # 港台/日韩大众媒体快讯、IT 科技线、东南亚英文快讯、crypto 价格
+    # 快讯一律不打标；只收深度调查/评论媒体。
+    # ────────────────────────────────────────────────────────────────
+    ("zhm_twreporter", "deep", "research", None, "中文媒体波", "报导者（深度调查报道）"),
+    ("zhm_thenewslens", "deep", "research", None, "中文媒体波", "关键评论网（评论/深度）"),
+    ("zhm_toyokeizai", "deep", "industry", None, "中文媒体波", "东洋经济（日本商业/产业分析）"),
 ]
 
 #: 种子表（list[dict]），键与 NewsSourceMeta 列一一对应。

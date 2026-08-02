@@ -105,6 +105,7 @@ def _add_meta(
 class _FakeUser:
     """A stand-in for the JWT-auth user."""
 
+    id = 1  # P1 起 feed 用 user.id LEFT JOIN user_article_state
     username = "tester"
     role = "user"
 
@@ -187,13 +188,16 @@ class TestSeed:
         import app.services.news.sources.rss_simple as rs
         from app.services.news.sources.asia_en_batch import ASIA_EN_FEEDS
         from app.services.news.sources.edu_batch import EDU_FEEDS
+        from app.services.news.sources.en_fin_batch import EN_FIN_FEEDS
         from app.services.news.sources.global_indie_batch import GLOBAL_INDIE_FEEDS
         from app.services.news.sources.global_rss_batch import GLOBAL_RSS_FEEDS
         from app.services.news.sources.independent_batch import INDEPENDENT_FEEDS
+        from app.services.news.sources.official_batch import OFFICIAL_FEEDS
         from app.services.news.sources.wechat2rss_batch import WECHAT2RSS_FEEDS
         from app.services.news.sources.wechat2rss_batch2 import WECHAT2B_FEEDS
         from app.services.news.sources.wechat2rss_batch3 import WECHAT3_FEEDS
         from app.services.news.sources.zh_blog_batch import ZH_BLOG_FEEDS
+        from app.services.news.sources.zh_media_batch import ZH_MEDIA_FEEDS
         from app.services.news.sources.zh_multi_batch import ZH_MULTI_FEEDS
 
         known: set[str] = set()
@@ -209,6 +213,10 @@ class TestSeed:
         known |= {r[0] for r in ASIA_EN_FEEDS}
         # edu 科普批次（2026-08-02）：source = edu_{slug}
         known |= {f"edu_{r[0]}" for r in EDU_FEEDS}
+        # 2026-08-02 三波扩源批次表：source = {enf,ofc,zhm}_{slug}
+        known |= {f"enf_{r[0]}" for r in EN_FIN_FEEDS}
+        known |= {f"ofc_{r[0]}" for r in OFFICIAL_FEEDS}
+        known |= {f"zhm_{r[0]}" for r in ZH_MEDIA_FEEDS}
         for _, cls in inspect.getmembers(rs, inspect.isclass):
             sn = getattr(cls, "source_name", None)
             if sn and cls.__module__ == rs.__name__:
