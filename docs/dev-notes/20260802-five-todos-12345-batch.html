@@ -108,6 +108,26 @@
 <li><strong>前端</strong>：NewsCard 可选 <code>showDifficulty</code>（默认 false，/news 零变化；KnowledgeFeed/MyBookmarks 传 true），「入门」绿系/「进阶」橙琥珀系，颜色全走 theme.css token（<code>--color-success*</code>/<code>--color-warning*</code>，亮暗自适应）；KnowledgeFeed 主题 chips 下加难度筛选 chips（全部/入门/进阶），进 queryKey。</li>
 <li><strong>测试坑</strong>：vitest.config <code>globals: false</code> 时 @testing-library 自动 cleanup 不生效，跨用例 DOM 残留会假阳性——测试文件需显式 <code>afterEach(cleanup)</code>。</li>
 </ul>
+<h2>7. 下轮候选闭环（837640c + 290443d，同日晚）</h2>
+<h3>7a. eu_gdp 换 id / eu_unrate 退役</h3>
+<ul>
+<li>旧 id 停更实证：<code>NAEXKP01EZQ661S</code> 停 2023-01（且值 ~110 实为 OECD 季度<strong>指数</strong>，旧标签"百万欧元"本来错）、<code>LRHUTTTTEZQ156S</code> 停 2022-10。</li>
+<li><strong>FRED 上 Eurostat（source_id=61）共 7,924 条序列：HICP 7,598 条 + GDP 族，失业率 0 条</strong>——这就是 eu_unrate 找不到替代的原因。</li>
+<li>eu_gdp → <code>CLVMEURSCAB1GQEA19</code>（Eurostat Real GDP EA19，季度 SA，百万链式 2010 欧元；最新 2026-04-01=2,896,609.2，选 EA19 与 eu_cpi 的 EZ19 保持一致）。</li>
+<li>eu_unrate → 退役：月度同胞 LRHUTTTTEZM156S 同死；唯一活跃的欧元区失业序列是世行<strong>青年</strong>失业率（年度/15-24 岁/ILO modeled，~16% vs 总体 ~6.5%）口径不可比。历史 26 行保留不刷新。前端 <code>HEADLINE_CODES.eu</code> + <code>MACRO_TERM_KEY_MAP</code> 同步摘掉（否则静默 4→3 卡降级）。</li>
+<li>生产热修回填 47,019 行/34 序列/零失败；eu_gdp 40 行（2016-07→2026-04），重叠期 ON CONFLICT 覆盖无混单位。</li>
+</ul>
+<h3>7b. 孤儿码清理（裁决记录）</h3>
+<ul>
+<li><code>global_djt</code>：全仓零引用，<strong>删 121 行</strong>（停刷根因：4da9aca 把 FRED 海外指数移出 registry，yfinance 为唯一真源）。</li>
+<li><code>global_n225</code>：前端 Dashboard/GlobalMarkets/Macro/termDictionary 四处引用且 yfinance 是活写入方（78 行新鲜到 7-31）——<strong>只删 <code>source='fred'</code> 的 120 行 stale</strong>（被 period 排名天然遮蔽，前端无感），保留 yfinance 行。</li>
+<li><strong>教训</strong>：孤儿码先 grep 引用再动手；同一 code 可多 source 并存，删除要精确到 source。</li>
+</ul>
+<h3>7c. 前端死代码 + 体验小项</h3>
+<ul>
+<li><code>DetailAIAnalysis.tsx</code> 零引用删除（其 CSS 类仍被 InstrumentDetail 用，定义在 global/pages-detail.css，未动）；<code>Portfolio/styles.css</code> 整文件只剩 3 个 diff 死类，整文件删除 + 移除 import。</li>
+<li>单标情绪 ingest 成功后 <code>?code=</code> 回写地址栏：<code>setSearchParams</code> 函数式构造（保留 tab 等既有参数，<code>replace: true</code>），守卫已相同则跳过（深链自动分析不多余触发），失败不回写。4 测试覆盖手动/深链/换标的/失败。</li>
+</ul>
 <h2>部署与运维备忘（本批新增）</h2>
 <ul>
 <li><strong><code>git rm</code> 会预暂存删除</strong>——分批 commit 前先 <code>git status</code> 看暂存区，否则删除会混入下一个 commit（本批 FRED commit 踩到，已 reset 重做）。</li>

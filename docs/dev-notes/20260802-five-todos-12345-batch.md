@@ -75,6 +75,24 @@
 - **前端**：NewsCard 可选 `showDifficulty`（默认 false，/news 零变化；KnowledgeFeed/MyBookmarks 传 true），「入门」绿系/「进阶」橙琥珀系，颜色全走 theme.css token（`--color-success*`/`--color-warning*`，亮暗自适应）；KnowledgeFeed 主题 chips 下加难度筛选 chips（全部/入门/进阶），进 queryKey。
 - **测试坑**：vitest.config `globals: false` 时 @testing-library 自动 cleanup 不生效，跨用例 DOM 残留会假阳性——测试文件需显式 `afterEach(cleanup)`。
 
+## 7. 下轮候选闭环（837640c + 290443d，同日晚）
+
+### 7a. eu_gdp 换 id / eu_unrate 退役
+- 旧 id 停更实证：`NAEXKP01EZQ661S` 停 2023-01（且值 ~110 实为 OECD 季度**指数**，旧标签"百万欧元"本来错）、`LRHUTTTTEZQ156S` 停 2022-10。
+- **FRED 上 Eurostat（source_id=61）共 7,924 条序列：HICP 7,598 条 + GDP 族，失业率 0 条**——这就是 eu_unrate 找不到替代的原因。
+- eu_gdp → `CLVMEURSCAB1GQEA19`（Eurostat Real GDP EA19，季度 SA，百万链式 2010 欧元；最新 2026-04-01=2,896,609.2，选 EA19 与 eu_cpi 的 EZ19 保持一致）。
+- eu_unrate → 退役：月度同胞 LRHUTTTTEZM156S 同死；唯一活跃的欧元区失业序列是世行**青年**失业率（年度/15-24 岁/ILO modeled，~16% vs 总体 ~6.5%）口径不可比。历史 26 行保留不刷新。前端 `HEADLINE_CODES.eu` + `MACRO_TERM_KEY_MAP` 同步摘掉（否则静默 4→3 卡降级）。
+- 生产热修回填 47,019 行/34 序列/零失败；eu_gdp 40 行（2016-07→2026-04），重叠期 ON CONFLICT 覆盖无混单位。
+
+### 7b. 孤儿码清理（裁决记录）
+- `global_djt`：全仓零引用，**删 121 行**（停刷根因：4da9aca 把 FRED 海外指数移出 registry，yfinance 为唯一真源）。
+- `global_n225`：前端 Dashboard/GlobalMarkets/Macro/termDictionary 四处引用且 yfinance 是活写入方（78 行新鲜到 7-31）——**只删 `source='fred'` 的 120 行 stale**（被 period 排名天然遮蔽，前端无感），保留 yfinance 行。
+- **教训**：孤儿码先 grep 引用再动手；同一 code 可多 source 并存，删除要精确到 source。
+
+### 7c. 前端死代码 + 体验小项
+- `DetailAIAnalysis.tsx` 零引用删除（其 CSS 类仍被 InstrumentDetail 用，定义在 global/pages-detail.css，未动）；`Portfolio/styles.css` 整文件只剩 3 个 diff 死类，整文件删除 + 移除 import。
+- 单标情绪 ingest 成功后 `?code=` 回写地址栏：`setSearchParams` 函数式构造（保留 tab 等既有参数，`replace: true`），守卫已相同则跳过（深链自动分析不多余触发），失败不回写。4 测试覆盖手动/深链/换标的/失败。
+
 ## 部署与运维备忘（本批新增）
 
 - **`git rm` 会预暂存删除**——分批 commit 前先 `git status` 看暂存区，否则删除会混入下一个 commit（本批 FRED commit 踩到，已 reset 重做）。
