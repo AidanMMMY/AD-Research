@@ -102,6 +102,12 @@
 - API：POST bookmark（切换语义）/ POST read（幂等）/ GET bookmarks（分页，bookmarked_at DESC）；feed 每项追加 bookmarked/read 布尔（LEFT JOIN 当前用户，跨用户不泄漏）。
 - 前端：NewsCard 可选 showBookmark（只知识库语境传）、已读标题 opacity 0.55、我的收藏 Tab、乐观更新集中 <code>useArticleState.ts</code>。
 - <strong>ECS 验证</strong>：deploy 自动迁移 head=x5y7z9a1b3c5 ✅、news_source_meta=293 ✅、eu_cpi=103 ✅、learning 端点未登录 403 ✅。</p>
+<h2>6. 学习 P2 难度标签（00e65b7，P1 合并后接力）</h2>
+<ul>
+<li><strong>后端</strong>：<code>GET /learning/feed</code> 加可选 <code>difficulty=beginner|advanced</code>（feed 本就 JOIN meta 表，只加一个 where + 400 校验；注意 NULL 难度源会被过滤排除）；测试 +3 用例（含 difficulty×topic 组合）。</li>
+<li><strong>前端</strong>：NewsCard 可选 <code>showDifficulty</code>（默认 false，/news 零变化；KnowledgeFeed/MyBookmarks 传 true），「入门」绿系/「进阶」橙琥珀系，颜色全走 theme.css token（<code>--color-success*</code>/<code>--color-warning*</code>，亮暗自适应）；KnowledgeFeed 主题 chips 下加难度筛选 chips（全部/入门/进阶），进 queryKey。</li>
+<li><strong>测试坑</strong>：vitest.config <code>globals: false</code> 时 @testing-library 自动 cleanup 不生效，跨用例 DOM 残留会假阳性——测试文件需显式 <code>afterEach(cleanup)</code>。</li>
+</ul>
 <h2>部署与运维备忘（本批新增）</h2>
 <ul>
 <li><strong><code>git rm</code> 会预暂存删除</strong>——分批 commit 前先 <code>git status</code> 看暂存区，否则删除会混入下一个 commit（本批 FRED commit 踩到，已 reset 重做）。</li>

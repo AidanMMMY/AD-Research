@@ -69,6 +69,12 @@
 - 前端：NewsCard 可选 showBookmark（只知识库语境传）、已读标题 opacity 0.55、我的收藏 Tab、乐观更新集中 `useArticleState.ts`。
 - **ECS 验证**：deploy 自动迁移 head=x5y7z9a1b3c5 ✅、news_source_meta=293 ✅、eu_cpi=103 ✅、learning 端点未登录 403 ✅。
 
+## 6. 学习 P2 难度标签（00e65b7，P1 合并后接力）
+
+- **后端**：`GET /learning/feed` 加可选 `difficulty=beginner|advanced`（feed 本就 JOIN meta 表，只加一个 where + 400 校验；注意 NULL 难度源会被过滤排除）；测试 +3 用例（含 difficulty×topic 组合）。
+- **前端**：NewsCard 可选 `showDifficulty`（默认 false，/news 零变化；KnowledgeFeed/MyBookmarks 传 true），「入门」绿系/「进阶」橙琥珀系，颜色全走 theme.css token（`--color-success*`/`--color-warning*`，亮暗自适应）；KnowledgeFeed 主题 chips 下加难度筛选 chips（全部/入门/进阶），进 queryKey。
+- **测试坑**：vitest.config `globals: false` 时 @testing-library 自动 cleanup 不生效，跨用例 DOM 残留会假阳性——测试文件需显式 `afterEach(cleanup)`。
+
 ## 部署与运维备忘（本批新增）
 
 - **`git rm` 会预暂存删除**——分批 commit 前先 `git status` 看暂存区，否则删除会混入下一个 commit（本批 FRED commit 踩到，已 reset 重做）。
