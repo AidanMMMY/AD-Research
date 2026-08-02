@@ -349,3 +349,73 @@ def test_email_pool_report_unchanged(db_session, monkeypatch):
     # 不得误入 digest 全文模板
     assert "每日综合研报" not in subject
     assert "/digest" not in html_body
+
+
+# ── 渠道别名（2026-08-03）：wechat_work/feishu/dingtalk → webhook ──
+
+
+def test_wechat_work_alias_dispatches_as_wechat(db_session, monkeypatch):
+    """存量 channel_type=wechat_work 配置此前全部 Unsupported 静默失败，
+    别名映射后应走 wechat 载荷格式（{"msgtype": "text"}）。"""
+    svc = NotificationService(db_session)
+    _, metadata = _make_digest(db_session, "正文")
+    cfg = svc.create_config(
+        name="wx",
+        channel_type="wechat_work",
+        config_json={"webhook_url": "https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=k"},
+        user_id=1,
+    )
+    calls: list[dict] = []
+    monkeypatch.setattr(
+        ns.requests, "post",
+        lambda url, json=None, **kw: calls.append({"url": url, "json": json}) or FakeResponse(),
+    )
+
+    result = svc.send_notification(config_id=cfg["id"], report_id=metadata.id)
+    assert result["success"] is True
+    assert len(calls) == 1
+    assert calls[0]["json"]["msgtype"] == "text"
+    assert "content" in calls[0]["json"]["text"]
+
+
+def test_feishu_alias_dispatches_as_feishu(db_session, monkeypatch):
+    """feishu 别名 → 飞书载荷（{"msg_type": "text"}）。"""
+    svc = NotificationService(db_session)
+    _, metadata = _make_digest(db_session, "正文")
+    cfg = svc.create_config(
+        name="fs",
+        channel_type="feishu",
+        config_json={"webhook_url": "https://open.feishu.cn/open-apis/bot/v2/hook/x"},
+        user_id=1,
+    )
+    calls: list[dict] = []
+    monkeypatch.setattr(
+        ns.requests, "post",
+        lambda url, json=None, **kw: calls.append({"url": url, "json": json}) or FakeResponse(),
+    )
+
+    result = svc.send_notification(config_id=cfg["id"], report_id=metadata.id)
+    assert result["success"] is True
+    assert calls[0]["json"]["msg_type"] == "text"
+    assert "text" in calls[0]["json"]["content"]
+
+
+def test_dingtalk_alias_maps_platform(db_session, monkeypatch):
+    """dingtalk 别名 → wechat 同款载荷但 platform=dingtalk（_send_webhook 分支）。"""
+    svc = NotificationService(db_session)
+    _, metadata = _make_digest(db_session, "正文")
+    cfg = svc.create_config(
+        name="dt",
+        channel_type="dingtalk",
+        config_json={"webhook_url": "https://oapi.dingtalk.com/robot/send?access_token=t"},
+        user_id=1,
+    )
+    calls: list[dict] = []
+    monkeypatch.setattr(
+        ns.requests, "post",
+        lambda url, json=None, **kw: calls.append({"url": url, "json": json}) or FakeResponse(),
+    )
+
+    result = svc.send_notification(config_id=cfg["id"], report_id=metadata.id)
+    assert result["success"] is True
+    assert calls[0]["json"]["msgtype"] == "text"

@@ -34,6 +34,26 @@ from app.models.scoring import ReportMetadata
 
 logger = logging.getLogger(__name__)
 
+# 前端渠道类型别名（2026-08-03）：生产存量配置的 channel_type 是
+# wechat_work/feishu/dingtalk，而发送层只认 webhook/email/telegram，
+# 导致存量配置推送全部 "Unsupported channel type" 静默失败（digest
+# 首跑实测）。映射到 webhook 分发并补齐 platform 字段（企微/飞书/钉钉
+# 各自的载荷格式 _send_webhook 本就支持）。
+_WEBHOOK_CHANNEL_ALIASES = {
+    "wechat_work": "wechat",
+    "feishu": "feishu",
+    "dingtalk": "dingtalk",
+}
+
+
+def _normalize_channel_type(channel_type: str, exposed_config: dict) -> str:
+    """把前端渠道别名归一到发送层分发类型，顺手补 platform 默认值。"""
+    platform = _WEBHOOK_CHANNEL_ALIASES.get(channel_type or "")
+    if platform:
+        exposed_config.setdefault("platform", platform)
+        return "webhook"
+    return channel_type
+
 
 # ── B7 (2026-08-03): Daily Digest 推送用的最小 markdown 转换 ──
 # 平台没有引入 markdown 库（grep 全仓无 markdown2/mistune），这里手写
@@ -353,11 +373,12 @@ class NotificationService:
             webhook_url = self._resolve_webhook_url(config)
             if webhook_url:
                 exposed_config["webhook_url"] = webhook_url
-            if config.channel_type == "webhook":
+            channel_type = _normalize_channel_type(config.channel_type, exposed_config)
+            if channel_type == "webhook":
                 result = self._send_webhook(exposed_config, report_id, test)
-            elif config.channel_type == "email":
+            elif channel_type == "email":
                 result = self._send_email(exposed_config, report_id, test)
-            elif config.channel_type == "telegram":
+            elif channel_type == "telegram":
                 result = self._send_telegram(exposed_config, report_id, test)
             else:
                 result = {"success": False, "error": f"Unsupported channel type: {config.channel_type}"}
@@ -679,7 +700,7 @@ class NotificationService:
             if webhook_url:
                 exposed_config["webhook_url"] = webhook_url
 
-            if config.channel_type == "webhook":
+            if _normalize_channel_type(config.channel_type, exposed_config) == "webhook":
                 # Webhook path uses platform-specific payload shape;
                 # bypass the report-shape branch by calling _send_webhook
                 # with a synthetic ``content`` via config_json override.
@@ -740,7 +761,7 @@ class NotificationService:
             if webhook_url:
                 exposed_config["webhook_url"] = webhook_url
 
-            if config.channel_type == "webhook":
+            if _normalize_channel_type(config.channel_type, exposed_config) == "webhook":
                 if not exposed_config.get("webhook_url"):
                     return False
                 platform = exposed_config.get("platform", "wechat")
