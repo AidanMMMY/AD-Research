@@ -539,6 +539,14 @@ export default function NewsFeed() {
           value={source}
           onChange={(v) => setSource(v)}
           options={sourceOptions}
+          // 2026-08-03：来源标签形如「华尔街日报 (1,234)」，原先 Select
+          // 无宽度约束收缩到占位符宽度，下拉项全部截断成「新…/yah…」。
+          // minWidth 撑开输入框 + popupMatchSelectWidth=false 让下拉面板
+          // 按内容自适应；800+ 源加 showSearch 直接输入过滤。
+          style={{ minWidth: 220 }}
+          popupMatchSelectWidth={false}
+          showSearch
+          optionFilterProp="label"
         />
         <RangePicker
           value={dateRange}
