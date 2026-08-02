@@ -1,27 +1,21 @@
 import './styles.css';
 import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { Badge, Button, Table, Tag, Tooltip } from 'antd';
+import { Button, Table, Tag } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import {
   DollarOutlined,
   ThunderboltOutlined,
-  AppstoreOutlined,
-  WarningOutlined,
 } from '@ant-design/icons';
 import PageShell from '@/components/PageShell';
 import PageHeader from '@/components/PageHeader';
 import Panel from '@/components/Panel';
 import EmptyState from '@/components/EmptyState';
 import LoadingBlock from '@/components/LoadingBlock';
-import ResponsiveGrid from '@/components/ResponsiveGrid';
 import SectionHeading from '@/components/SectionHeading';
-import ThemeTag from '@/components/ThemeTag';
 import { usePaperAccounts } from '@/hooks/usePaperTrading';
 import { useLiveConfigs } from '@/hooks/useLiveTrading';
-import { usePoolList } from '@/hooks/usePoolDetail';
 import type { PaperAccount, LiveConfig } from '@/types/trading';
-import type { Pool } from '@/types/pool';
 
 interface PaperAccountRow {
   key: string;
@@ -38,14 +32,6 @@ interface LiveAccountRow {
   name: string;
   isTestnet: boolean;
   isEnabled: boolean;
-}
-
-interface DiffItem {
-  code: string;
-  targetWeight: number;
-  actualWeight: number;
-  drift: number;
-  reason: string;
 }
 
 /** Format a number as USDT with appropriate precision. */
@@ -70,43 +56,9 @@ function fmtPct(v: number | null | undefined): { text: string; color: string } {
   };
 }
 
-/** Build a small set of "target vs actual" diff items from a pool + mock data.
- *
- * The diff surface is intentionally mocked when actual holding data is not
- * wired up yet: we surface the *target* weights from the chosen pool and
- * invent a plausible "actual" weight so the user can see drift. If no pool
- * exists yet, we return an empty array and the UI shows an EmptyState.
- */
-function buildMockDiff(pool: Pool | undefined): DiffItem[] {
-  if (!pool || !pool.members || pool.members.length === 0) return [];
-  // Equal-weight as the baseline target (this matches the default
-  // PoolEnhancementService.suggest_weights("equal") behaviour).
-  const targetPerMember = 100 / pool.members.length;
-  // Plausible "actual" weights derived deterministically from the etf_code
-  // length so the diff is stable across renders but still varies by member.
-  return pool.members.slice(0, 2).map((m) => {
-    const code = m.etf_code;
-    const drift = (code.length % 7) - 3; // -3 .. +3 percentage points
-    const actual = Math.max(0, targetPerMember + drift);
-    return {
-      code,
-      targetWeight: targetPerMember,
-      actualWeight: actual,
-      drift: actual - targetPerMember,
-      reason:
-        drift === 0
-          ? '与目标权重一致'
-          : drift > 0
-            ? '当前超配（可能因近期上涨或近期买入未再平衡）'
-            : '当前欠配（可能因近期下跌或卖出后未补回）',
-    };
-  });
-}
-
 export default function Portfolio() {
   const { data: accountsData, isLoading: accountsLoading } = usePaperAccounts();
   const { data: liveConfigs, isLoading: liveLoading } = useLiveConfigs();
-  const { data: pools, isLoading: poolsLoading } = usePoolList();
 
   const accounts: PaperAccountRow[] = useMemo(() => {
     const items: PaperAccount[] = accountsData?.items || [];
@@ -130,10 +82,6 @@ export default function Portfolio() {
       isEnabled: c.is_enabled,
     }));
   }, [liveConfigs]);
-
-  // Pick the first pool as the "target pool" for the diff demo.
-  const targetPool: Pool | undefined = pools && pools.length > 0 ? pools[0] : undefined;
-  const diffItems = buildMockDiff(targetPool);
 
   const accountColumns: ColumnsType<PaperAccountRow> = [
     { title: '账户 ID', dataIndex: 'id', width: 90, responsive: ['md'] },
@@ -192,57 +140,13 @@ export default function Portfolio() {
     },
   ];
 
-  const diffColumns: ColumnsType<DiffItem> = [
-    { title: '代码', dataIndex: 'code', width: 110 },
-    {
-      title: '目标权重',
-      dataIndex: 'targetWeight',
-      width: 110,
-      align: 'right' as const,
-      render: (v: number) => `${v.toFixed(2)}%`,
-    },
-    {
-      title: '实际权重',
-      dataIndex: 'actualWeight',
-      width: 110,
-      align: 'right' as const,
-      render: (v: number) => `${v.toFixed(2)}%`,
-    },
-    {
-      title: '漂移',
-      dataIndex: 'drift',
-      width: 110,
-      align: 'right' as const,
-      render: (v: number) => {
-        const sign = v >= 0 ? '+' : '';
-        return (
-          <span style={{ color: v > 0 ? 'var(--color-rise)' : v < 0 ? 'var(--color-fall)' : 'var(--text-tertiary)' }}>
-            {sign}
-            {v.toFixed(2)}%
-          </span>
-        );
-      },
-    },
-    {
-      title: '原因',
-      dataIndex: 'reason',
-      width: 220,
-      ellipsis: true,
-      render: (v: string) => (
-        <Tooltip title={v} placement="topLeft">
-          <span>{v}</span>
-        </Tooltip>
-      ),
-    },
-  ];
-
   return (
     <PageShell maxWidth="wide">
       <PageHeader
         eyebrow="投资组合"
         title="投资组合中心"
-        description="跨模拟与真实账户聚合查看你的实际持仓与目标组合的偏离度。"
-        tutorial="组合中心把模拟账户、真实账户与目标池三类资产放在同一视图，方便做再平衡决策。"
+        description="跨模拟与真实账户聚合查看你的账户权益与持仓概况。"
+        tutorial="组合中心把模拟账户与真实账户放在同一视图，方便统一跟踪权益与盈亏。"
       />
 
       {/* 区块 1：模拟账户列表 */}
@@ -335,100 +239,12 @@ export default function Portfolio() {
         )}
       </Panel>
 
-      <div className="ad-mb-4" />
-
-      {/* 区块 3：目标 Pool vs 实际持仓 diff */}
-      <Panel variant="default" padding="md">
-        <SectionHeading
-          title={
-            <span>
-              <AppstoreOutlined className="ad-mr-2" />
-              目标 Pool vs 实际持仓
-              <Badge
-                count="演示数据"
-                color="#faad14"
-                className="ad-ml-2"
-                title="实际权重/漂移/原因当前为前端 mock 数据，仅供演示"
-              />
-            </span>
-          }
-          action={
-            targetPool ? (
-              <Link to={`/pools/${targetPool.id}`} className="ad-text-small">
-                管理目标池 ({targetPool.name}) →
-              </Link>
-            ) : (
-              <Link to="/pools" className="ad-text-small">
-                新建目标池 →
-              </Link>
-            )
-          }
-        />
-        {poolsLoading ? (
-          <LoadingBlock size="md" />
-        ) : !targetPool ? (
-          <EmptyState
-            title="尚未建立目标组合"
-            description="在「标的池管理」中创建一个目标池（例如：核心 ETF、卫星 ETF），组合中心会按目标权重与实际持仓做偏离度对比。"
-            action={
-              <Link to="/pools">
-                <Button type="primary" size="small">
-                  创建目标池
-                </Button>
-              </Link>
-            }
-          />
-        ) : diffItems.length === 0 ? (
-          <EmptyState
-            title="目标池暂无成员"
-            description={`目标池「${targetPool.name}」还没有添加任何成员，无法计算偏离度。`}
-          />
-        ) : (
-          <>
-            <ResponsiveGrid cols={2} gap="sm" className="portfolio-diff-summary" stretch>
-              {diffItems.map((d) => (
-                <Panel
-                  key={d.code}
-                  variant="default"
-                  padding="sm"
-                  title={
-                    <span>
-                      {/* Only flag meaningful drift; ±2% within tolerance. */}
-                      {Math.abs(d.drift) > 2 && <WarningOutlined className="ad-mr-1" />}
-                      {d.code}
-                    </span>
-                  }
-                  extra={
-                    <ThemeTag variant={d.drift > 0 ? 'rise' : d.drift < 0 ? 'fall' : 'neutral'}>
-                      漂移 {d.drift >= 0 ? '+' : ''}
-                      {d.drift.toFixed(2)}%
-                    </ThemeTag>
-                  }
-                >
-                  <div className="ad-text-small ad-text-secondary">
-                    目标 {d.targetWeight.toFixed(2)}% · 实际 {d.actualWeight.toFixed(2)}%
-                  </div>
-                  <div className="ad-text-small ad-mt-2">{d.reason}</div>
-                </Panel>
-              ))}
-            </ResponsiveGrid>
-            <div className="ad-mb-3" />
-            <div className="ad-table-scroll">
-              <Table<DiffItem>
-                rowKey="code"
-                size="small"
-                columns={diffColumns}
-                dataSource={diffItems}
-                pagination={false}
-                scroll={{ x: 'max-content' }}
-              />
-            </div>
-            <div className="ad-mt-2 ad-text-small ad-text-tertiary">
-              注：实际权重当前为前端 mock（用于演示 diff 视图），待真实账户持仓聚合接口稳定后将切换为后端实时计算。
-            </div>
-          </>
-        )}
-      </Panel>
+      {/*
+        TODO(审计 P0-2)：「目标 Pool vs 实际持仓」偏离度区块已下线。
+        原实现为前端 mock（buildMockDiff：目标权重取池子等权、实际权重/漂移/原因均为编造），
+        决策类假数据仅有小 Badge 提示，风险过高，故在真实账户持仓聚合接口就绪前直接不渲染。
+        恢复时请改为后端实时 diff 数据（并同步恢复 usePoolList / DiffItem / diffColumns）。
+      */}
     </PageShell>
   );
 }

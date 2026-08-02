@@ -17,6 +17,11 @@
   margin-bottom: var(--space-5);
 }
 
+/* ---- Tab 容器（2026-08-02 审计 P1-6：纵向 Panel 堆叠改 tab 结构） ---- */
+.instrument-detail__tabs {
+  margin-top: var(--space-5);
+}
+
 /* ---- Sentiment conditional label ---- */
 .instrument-detail__sentiment-tag {
   margin-top: var(--space-3);

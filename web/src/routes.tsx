@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react';
-import { Navigate, useParams } from 'react-router-dom';
+import { Navigate, useParams, useSearchParams } from 'react-router-dom';
 
 const Login = lazy(() => import('./pages/Login'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
@@ -27,7 +27,6 @@ const AdminDeployments = lazy(() => import('./pages/AdminDeployments'));
 const ResearchNotes = lazy(() => import('./pages/ResearchNotes'));
 const AIChat = lazy(() => import('./pages/AIChat'));
 const CryptoList = lazy(() => import('./pages/CryptoList'));
-const CryptoDetail = lazy(() => import('./pages/CryptoDetail'));
 const ETLStatus = lazy(() => import('./pages/ETLStatus'));
 const ETLOpsDashboard = lazy(() => import('./pages/ETLOpsDashboard'));
 const NotificationLogs = lazy(() => import('./pages/NotificationLogs'));
@@ -51,7 +50,6 @@ const Learning = lazy(() => import('./pages/Learning'));
 const Favorites = lazy(() => import('./pages/Favorites'));
 const EtfHoldingsHistory = lazy(() => import('./pages/EtfHoldingsHistory'));
 const FundFlow = lazy(() => import('./pages/FundFlow'));
-const SentimentDashboard = lazy(() => import('./pages/SentimentDashboard'));
 const NotFound = lazy(() => import('./pages/NotFound'));
 
 export type SidebarGroupKey =
@@ -93,6 +91,24 @@ const LegacyEtfRedirect = () => {
   return <Navigate to={`/instruments/${code}`} replace />;
 };
 
+// 2026-08-02 IA 调整（审计 P1-5）：单标情绪看板并入 /sentiment 页内 Tab，
+// 旧深链 301 到 /sentiment?tab=instrument，保留 code 参数预填
+const InstrumentSentimentRedirect = () => {
+  const [searchParams] = useSearchParams();
+  const code = searchParams.get('code');
+  const target = code
+    ? `/sentiment?tab=instrument&code=${encodeURIComponent(code)}`
+    : '/sentiment?tab=instrument';
+  return <Navigate to={target} replace />;
+};
+
+// 2026-08-02 IA 合并（审计 P0-3）：加密详情页并入统一标的详情页 /instruments/:code
+//（交易信号 tab 已移植为 CRYPTO TypeAwareModule），旧路由 301 重定向
+const LegacyCryptoRedirect = () => {
+  const { code } = useParams<{ code: string }>();
+  return <Navigate to={`/instruments/${code}`} replace />;
+};
+
 export const routes: RouteConfig[] = [
   { path: '/login', element: wrap(Login), auth: false },
   // === 首页 ===
@@ -118,7 +134,8 @@ export const routes: RouteConfig[] = [
   // === 行情与市场 ===
   // 2026-08-02 IA 调整：加密货币自「交易」组移入（行情品类而非交易动作）
   { path: '/crypto', element: wrap(CryptoList), auth: true, menu: { name: '加密货币', icon: 'GoldOutlined', group: 'market' } },
-  { path: '/crypto/:code', element: wrap(CryptoDetail), auth: true },
+  // 2026-08-02 IA 合并（审计 P0-3）：详情统一到 /instruments/:code，本路由仅作深链重定向
+  { path: '/crypto/:code', element: <LegacyCryptoRedirect />, auth: true },
   { path: '/sector-rotation', element: wrap(SectorRotation), auth: true, menu: { name: '板块轮动', icon: 'BarChartOutlined', group: 'market' } },
   // 资金流监控（fund-flow, 2026-07-14）：大盘 / 个股 / 板块 / ETF + 综合信号
   { path: '/fund-flow', element: wrap(FundFlow), auth: true, menu: { name: '资金流', label: '资金流', icon: 'ExperimentOutlined', group: 'market' } },
@@ -144,7 +161,8 @@ export const routes: RouteConfig[] = [
   // === 宏观与情绪 ===
   { path: '/macro', element: wrap(Macro), auth: true, menu: { name: '宏观经济', icon: 'FundProjectionScreenOutlined', group: 'macro' } },
   { path: '/sentiment', element: wrap(SentimentOverview), auth: true, menu: { name: '市场情绪', icon: 'HeartOutlined', group: 'macro' } },
-  { path: '/instrument-sentiment', element: wrap(SentimentDashboard), auth: true, menu: { name: '单标情绪看板', icon: 'SmileOutlined', group: 'macro' } },
+  // 2026-08-02 IA 调整（审计 P1-5）：单标情绪并入 /sentiment 页内 Tab，本路由仅作深链重定向，不再上菜单
+  { path: '/instrument-sentiment', element: <InstrumentSentimentRedirect />, auth: true },
   { path: '/search-trends', element: wrap(SearchTrends), auth: true, menu: { name: '搜索热度', icon: 'FireOutlined', group: 'macro' } },
   // === 量化与回测 ===
   { path: '/strategies', element: wrap(StrategyList), auth: true, menu: { name: '策略管理', icon: 'SettingOutlined', group: 'quant' } },

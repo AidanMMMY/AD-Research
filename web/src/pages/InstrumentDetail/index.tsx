@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import './styles.css';
-import { Row, Col, Statistic, Descriptions, Radio, Checkbox, Space, Alert, Button, message } from 'antd';
+import { Row, Col, Statistic, Descriptions, Radio, Checkbox, Space, Alert, Button, message, Tabs } from 'antd';
 import { StarOutlined, StarFilled, RobotOutlined, ReadOutlined, SmileOutlined, ArrowLeftOutlined, SearchOutlined } from '@ant-design/icons';
 import { useInstrumentDetail } from '@/hooks/useInstrumentList';
 import { useInstrumentScore } from '@/hooks/useScores';
@@ -67,6 +67,19 @@ const INSTRUMENT_TYPE_LABELS: Record<string, string> = {
 };
 
 /**
+ * 2026-08-02 IA 调整（审计 P1-6）：原 8 个纵向 Panel 改为 4 个 tab。
+ * key 同时作为 URL query `?tab=` 的合法取值，用于深链校验
+ * （如 /instruments/BTC?tab=ai 直达「AI 与情绪」）。
+ */
+const DETAIL_TABS = [
+  { key: 'market', label: '行情与指标' },
+  { key: 'score', label: '评分' },
+  { key: 'ai', label: 'AI 与情绪' },
+  { key: 'news', label: '新闻' },
+] as const;
+type DetailTabKey = (typeof DETAIL_TABS)[number]['key'];
+
+/**
  * Map A-share board names to a ThemeTag variant so the badge colour
  * reflects the board's risk profile (科创板/创业板/北交所 are highlighted).
  */
@@ -110,6 +123,25 @@ export default function InstrumentDetail() {
   const isFavorite = optimisticFav ?? serverIsFavorite;
   const [timeRange, setTimeRange] = useState(120);
   const [adjusted, setAdjusted] = useState(true);
+
+  /* Tab 状态入 URL query 支持深链（P1-6）；非法值回落默认 market。
+     默认 tab 不写 query，保持旧链接 /instruments/:code 语义不变。 */
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tabParam = searchParams.get('tab');
+  const activeTab: DetailTabKey = DETAIL_TABS.some((t) => t.key === tabParam)
+    ? (tabParam as DetailTabKey)
+    : 'market';
+  const handleTabChange = (key: string) => {
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        if (key === 'market') next.delete('tab');
+        else next.set('tab', key);
+        return next;
+      },
+      { replace: true },
+    );
+  };
 
   const [overlays, setOverlays] = useState(() => {
     try {
@@ -394,6 +426,18 @@ export default function InstrumentDetail() {
         )}
       </div>
 
+      {/* 2026-08-02 IA 调整（审计 P1-6）：纵向堆叠改为 tab 容器——
+          行情与指标 / 评分 / AI 与情绪 / 新闻，tab 状态入 ?tab= 深链。 */}
+      <Tabs
+        className="instrument-detail__tabs"
+        activeKey={activeTab}
+        onChange={handleTabChange}
+        items={[
+          {
+            key: 'market',
+            label: '行情与指标',
+            children: (
+              <>
       {/* ─── 1) 行情核心区：K线 + 关键数据右栏（桌面双列，窄屏回落单列） ───
            2026-07-29 去卡片化 B 组：原「K线 Panel → 关键数据 SectionHeading+4卡
            → 技术指标 SectionHeading+Panel」三段纵向堆叠，合并为 K线 + 一个
@@ -531,8 +575,14 @@ export default function InstrumentDetail() {
       <div className="detail-section">
         <TypeAwareModules instrument={instrument} />
       </div>
-
-      {/* ─── 3) 综合评分 ──────────────────────────────────────────── */}
+              </>
+            ),
+          },
+          {
+            key: 'score',
+            label: '评分',
+            // ─── 原 3) 综合评分（雷达图 + 评分详情） ───
+            children: (
       <Panel
         className="detail-section"
         title="综合评分"
@@ -569,8 +619,13 @@ export default function InstrumentDetail() {
           />
         )}
       </Panel>
-
-      {/* ─── 4) AI 分析 ────────────────────────────────────────────── */}
+            ),
+          },
+          {
+            key: 'ai',
+            label: 'AI 与情绪',
+            // ─── 原 4) AI 分析（研报 / 情绪 / AI 助手 CTA） ───
+            children: (
       <div className="detail-tab-panel detail-section">
         {notesLoading || sentimentLoading ? (
           <Panel title="AI分析" padding="md">
@@ -710,7 +765,18 @@ export default function InstrumentDetail() {
                   <div className="ai-empty">
                     <SmileOutlined className="ai-empty__icon" />
                     <p>暂无情绪数据</p>
-                    <p className="ai-empty__hint">访问情绪仪表盘页面采集数据</p>
+                    <p className="ai-empty__hint">尚未采集该标的的情绪数据，可前往情绪页分析</p>
+                    {/* 审计 P1-5：空态不再踢用户去找页面，直接带 code 跳单标情绪 Tab */}
+                    <Button
+                      type="primary"
+                      size="small"
+                      icon={<SmileOutlined />}
+                      onClick={() =>
+                        navigate(`/sentiment?tab=instrument&code=${encodeURIComponent(code || '')}`)
+                      }
+                    >
+                      前往分析
+                    </Button>
                   </div>
                 )}
               </Panel>
@@ -730,11 +796,20 @@ export default function InstrumentDetail() {
           </Button>
         </Panel>
       </div>
-
-      {/* ─── 5) 相关新闻 ───────────────────────────────────────────── */}
+            ),
+          },
+          {
+            key: 'news',
+            label: '新闻',
+            // ─── 原 5) 相关新闻 ───
+            children: (
       <Panel className="detail-section" title="相关新闻" padding="md">
         <NewsListPanel symbol={code || ''} limit={15} bare />
       </Panel>
+            ),
+          },
+        ]}
+      />
     </PageShell>
   );
 }

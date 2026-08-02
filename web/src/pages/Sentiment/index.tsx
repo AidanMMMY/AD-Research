@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, type ReactNode } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
   Input,
@@ -11,6 +11,7 @@ import {
   Alert,
   Button,
   Table,
+  Tabs,
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import {
@@ -20,6 +21,7 @@ import {
   ArrowDownOutlined,
   FireOutlined,
   BarChartOutlined,
+  SmileOutlined,
 } from '@ant-design/icons';
 import { newsApi } from '@/api/news';
 import { researchApi } from '@/api/research';
@@ -43,6 +45,8 @@ import HelpPopover from '@/components/HelpPopover';
 import LoadingBlock from '@/components/LoadingBlock';
 import ThemeTag, { type ThemeTagVariant } from '@/components/ThemeTag';
 import { useSettingsStore, type ColorConvention } from '@/stores/settings';
+// 单标情绪面板（审计 P1-5，2026-08-02）：原 /instrument-sentiment 独立页并入本页 Tab
+import InstrumentSentimentPanel from '@/pages/SentimentDashboard';
 
 const MARKET_OPTIONS: { label: string; value: NewsMarket | 'all' }[] = [
   { label: '全部', value: 'all' },
@@ -536,6 +540,10 @@ export default function SentimentOverview() {
   const navigate = useNavigate();
   const mode = useSettingsStore((s) => s.mode);
   const colorConvention = useSettingsStore((s) => s.colorConvention);
+  // Tab 状态入 URL query（审计 P1-5）：?tab=market|instrument，?code= 预填单标
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tab = searchParams.get('tab') === 'instrument' ? 'instrument' : 'market';
+  const codeParam = searchParams.get('code') ?? undefined;
   const [view, setView] = useState<ViewMode>('news');
   const [days, setDays] = useState<number>(14);
   // Restore the last market filter via lazy init so the page resumes
@@ -568,7 +576,7 @@ export default function SentimentOverview() {
         })
         .then((r) => r.data.items),
     staleTime: 60_000,
-    enabled: view === 'news',
+    enabled: view === 'news' && tab === 'market',
   });
 
   const {
@@ -586,7 +594,7 @@ export default function SentimentOverview() {
         .then((r) => r.data),
     staleTime: 60_000,
     refetchInterval: 60_000,
-    enabled: view === 'aggregate',
+    enabled: view === 'aggregate' && tab === 'market',
   });
 
   const aggregates = useMemo(() => aggregateBySymbol(data ?? []), [data]);
@@ -633,12 +641,57 @@ export default function SentimentOverview() {
     }
   }, [market]);
 
+  const pageHeader = (
+    <PageHeader
+      title="市场情绪"
+      description="全市场情绪横截面 + 单标情绪深挖 · 按市场聚合的新闻情绪分布"
+    />
+  );
+
+  const tabBar = (
+    <Tabs
+      activeKey={tab}
+      onChange={(k) =>
+        setSearchParams(k === 'instrument' ? { tab: 'instrument' } : {})
+      }
+      items={[
+        {
+          key: 'market',
+          label: (
+            <span className="ad-segmented-with-icon">
+              <HeartOutlined />
+              全市场情绪
+            </span>
+          ),
+        },
+        {
+          key: 'instrument',
+          label: (
+            <span className="ad-segmented-with-icon">
+              <SmileOutlined />
+              单标情绪
+            </span>
+          ),
+        },
+      ]}
+    />
+  );
+
+  // 单标情绪 Tab：内嵌原 /instrument-sentiment 面板，支持 ?code= 预填自动分析
+  if (tab === 'instrument') {
+    return (
+      <PageShell maxWidth="wide" className="sentiment-page">
+        {pageHeader}
+        {tabBar}
+        <InstrumentSentimentPanel initialCode={codeParam} />
+      </PageShell>
+    );
+  }
+
   return (
     <PageShell maxWidth="wide" className="sentiment-page">
-      <PageHeader
-        title="散户情绪看板"
-        description="按市场聚合的新闻情绪分布 · 重要性与看多/看空比"
-      />
+      {pageHeader}
+      {tabBar}
 
       <FilterToolbar>
         <Segmented

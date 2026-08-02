@@ -375,7 +375,8 @@ export default function CryptoList() {
               size="small"
               scroll={{ x: 'max-content' }}
               onRow={(record) => ({
-                ...clickableRow(() => navigate(`/crypto/${record.code}`)),
+                // 2026-08-02 IA 合并（P0-3）：加密详情统一到标的详情页
+                ...clickableRow(() => navigate(`/instruments/${record.code}`)),
                 'aria-label': `查看 ${record.name ?? record.code} 详情`,
               })}
               pagination={{
@@ -414,7 +415,7 @@ export default function CryptoList() {
         price={quickSel?.price ?? null}
         changePct={quickSel ? (quickSel.change_pct ?? quickSel.change_24h ?? null) : null}
         formatPrice={formatCryptoPrice}
-        detailPath={quickSel ? `/crypto/${quickSel.code}` : undefined}
+        detailPath={quickSel ? `/instruments/${quickSel.code}` : undefined}
         withFundamentals={false}
         metrics={
           quickSel

@@ -1,11 +1,9 @@
-import { useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { Input, Button, Slider, Tooltip, Tag } from 'antd';
 import { SmileOutlined, FrownOutlined, MehOutlined, SyncOutlined } from '@ant-design/icons';
 import { researchApi, SentimentAggregate } from '@/api/research';
 import AISetupBanner from "@/components/AISetupBanner";
-import PageShell from '@/components/PageShell';
-import PageHeader from '@/components/PageHeader';
 import FilterToolbar from '@/components/FilterToolbar';
 import EmptyState from '@/components/EmptyState';
 import LoadingBlock from '@/components/LoadingBlock';
@@ -112,8 +110,14 @@ const SENTIMENT_ICONS: Record<string, React.ReactNode> = {
 /** Popular instruments offered as one-click entry points on the empty state. */
 const HOT_CODES = ['510300.SH', '159915.SZ', 'SPY.US', 'BTC.US'];
 
-export default function SentimentDashboard() {
-  const [code, setCode] = useState('');
+/**
+ * 单标情绪分析面板（审计 P1-5，2026-08-02）：
+ * 原 /instrument-sentiment 独立页并入 /sentiment 页内「单标情绪」Tab，
+ * 本组件作为内嵌面板使用（PageShell/PageHeader 由宿主页提供）。
+ * initialCode 用于从标的详情页等入口带 code 跳入时预填并自动分析一次。
+ */
+export default function InstrumentSentimentPanel({ initialCode }: { initialCode?: string }) {
+  const [code, setCode] = useState(initialCode ?? '');
   const [selectedCode, setSelectedCode] = useState<string | null>(null);
   const [days, setDays] = useState(7);
   // Slider draft value: the thumb tracks the pointer 1:1 via local state and
@@ -142,14 +146,18 @@ export default function SentimentDashboard() {
     ingestMutation.mutate(c);
   };
 
+  // 带 code 参数跳入时（如详情页空态「前往分析」）自动跑一次分析，仅首次
+  const autoRanRef = useRef(false);
+  useEffect(() => {
+    if (!autoRanRef.current && initialCode) {
+      autoRanRef.current = true;
+      handleLookup(initialCode);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialCode]);
+
   return (
     <AdxShell>
-      <PageShell maxWidth="wide">
-        <PageHeader
-          eyebrow="市场情绪"
-          title="单标情绪分析"
-          description="基于新闻情绪分析，评估市场对特定标的的情绪倾向"
-        />
       <AISetupBanner />
       <FilterToolbar>
         <Input
@@ -217,7 +225,6 @@ export default function SentimentDashboard() {
           <SentimentCard sentiment={sentiment} />
         )}
       </div>
-      </PageShell>
     </AdxShell>
   );
 }

@@ -18,6 +18,9 @@ import {
 } from '@/api';
 import Panel from '@/components/Panel';
 import EmptyState from '@/components/EmptyState';
+import HelpPopover from '@/components/HelpPopover';
+import { useSettingsStore } from '@/stores/settings';
+import { useCryptoSignals } from '@/hooks/useCrypto';
 import {
   EtfHoldingsDiffView,
   EtfHoldingsKpiRow,
@@ -559,6 +562,69 @@ function CryptoMarketDataModule({ instrument }: { instrument: InstrumentInfo }) 
 }
 
 /**
+ * CRYPTO branch — 交易信号表。
+ *
+ * 2026-08-02 IA 合并（P0-3）：自原 CryptoDetail 页「交易信号」tab 移植，
+ * 数据源不变（cryptoApi.signals → SignalService.get_signals_for_etf）。
+ */
+function CryptoSignalsModule({ instrument }: { instrument: InstrumentInfo }) {
+  const mode = useSettingsStore((s) => s.mode);
+  const { data: signals, isLoading, error } = useCryptoSignals(
+    instrument.instrument_type === 'CRYPTO' ? instrument.code : '',
+    20,
+  );
+
+  if (isLoading) {
+    return (
+      <Panel title="交易信号" padding="md">
+        <Skeleton active paragraph={{ rows: 4 }} />
+      </Panel>
+    );
+  }
+  if (error) {
+    return (
+      <Panel title="交易信号" padding="md">
+        <EmptyState
+          title="交易信号获取失败"
+          description="无法加载该标的的最近交易信号，请稍后重试"
+        />
+      </Panel>
+    );
+  }
+
+  return (
+    <Panel title="交易信号" padding="md">
+      {!signals || signals.length === 0 ? (
+        <EmptyState
+          title="暂无交易信号"
+          description="该标的近期未产生策略信号，可稍后再来查看"
+        />
+      ) : (
+        <Table
+          dataSource={signals}
+          rowKey="id"
+          size="small"
+          pagination={{ pageSize: 10 }}
+          scroll={{ x: 'max-content' }}
+          columns={[
+            { title: '日期', dataIndex: 'trade_date' },
+            {
+              title: <HelpPopover termKey="signal_type" mode={mode}>信号</HelpPopover>,
+              dataIndex: 'signal_type',
+            },
+            {
+              title: <HelpPopover termKey="strength" mode={mode}>强度</HelpPopover>,
+              dataIndex: 'strength',
+              render: (v: number) => <span className="tabular-nums">{v}</span>,
+            },
+          ]}
+        />
+      )}
+    </Panel>
+  );
+}
+
+/**
  * Generic fallback — render whatever descriptive fields the instrument
  * exposes. Used when ``instrument_type`` is unknown / missing so we
  * never accidentally show an ETF-specific holdings table on, say, a
@@ -624,6 +690,7 @@ function BasicInfoModule({ instrument }: { instrument: InstrumentInfo }) {
  *   - ``STOCK`` → basic financial highlights (placeholder until the
  *                  API exposes per-instrument fundamentals)
  *   - ``CRYPTO``→ market data card (price / 24h volume / 24h change)
+ *                 + 交易信号表（2026-08-02 自 CryptoDetail 移植）
  *
  * The component is fully self-contained — it owns its own data
  * fetching and snapshot picker state — so the parent page can drop it
@@ -638,7 +705,13 @@ export default function TypeAwareModules({ instrument }: TypeAwareModulesProps) 
     case 'fundamentals':
       return <StockFundamentalsModule instrument={instrument} />;
     case 'market-data':
-      return <CryptoMarketDataModule instrument={instrument} />;
+      // CRYPTO：实时市场数据卡 + 交易信号（原 CryptoDetail「交易信号」tab）
+      return (
+        <>
+          <CryptoMarketDataModule instrument={instrument} />
+          <CryptoSignalsModule instrument={instrument} />
+        </>
+      );
     case 'basic-info':
     default:
       return <BasicInfoModule instrument={instrument} />;
