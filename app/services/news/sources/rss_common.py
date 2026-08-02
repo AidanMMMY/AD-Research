@@ -96,6 +96,21 @@ def _parse_date(value: str | None) -> datetime | None:
         return datetime.strptime(value.replace("  +", " +"), "%Y-%m-%d %H:%M:%S %z")
     except ValueError:
         pass
+    # Date-only非标准格式（2026-08-02 official 波实测：hoover/mckinsey 用
+    # "July 31, 2026"，fca/fiercehealth 用 "Fri, 31 Jul 2026"——之前解析
+    # 失败回退抓取时间，每小时抓的新闻稿源影响约 1 小时误差）。新闻稿类
+    # 源日期粒度到天即可，按 naive 返回交给 _extract_pub_date 套 default_tz。
+    for fmt in (
+        "%B %d, %Y",      # July 31, 2026
+        "%a, %d %b %Y",   # Fri, 31 Jul 2026
+        "%d %b %Y",       # 31 Jul 2026
+        "%d %B %Y",       # 31 July 2026
+        "%Y-%m-%d",       # 2026-07-31
+    ):
+        try:
+            return datetime.strptime(value, fmt)
+        except ValueError:
+            continue
     return None
 
 

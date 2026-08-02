@@ -230,3 +230,55 @@ class TestFutureClamp:
         assert article is not None
         stored = article.published_at.replace(tzinfo=timezone.utc)
         assert stored == ts
+
+
+_RSS_HOOVER_DATEONLY = """<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0"><channel>
+<title>Hoover</title>
+<item>
+  <title>Test Article</title>
+  <link>https://example.com/a1</link>
+  <pubDate>July 31, 2026</pubDate>
+</item>
+</channel></rss>"""
+
+_RSS_FCA_DATEONLY = """<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0"><channel>
+<title>FCA</title>
+<item>
+  <title>Test Article</title>
+  <link>https://example.com/a2</link>
+  <pubDate>Fri, 31 Jul 2026</pubDate>
+</item>
+</channel></rss>"""
+
+
+class TestNonStandardDateOnlyFormats:
+    """非标准日期格式（2026-08-02 official 波实测）：hoover/mckinsey 用
+    "July 31, 2026"，fca/fiercehealth 用 "Fri, 31 Jul 2026"。修复前解析
+    失败回退抓取时间入库；修复后按 naive 日期解析、由 default_tz 套时区。"""
+
+    def test_full_month_name_date(self):
+        arts = parse_rss_items(_RSS_HOOVER_DATEONLY, source="t", language="en")
+        assert len(arts) == 1
+        # naive 按 UTC 解释：2026-07-31 00:00 UTC（不再是抓取时间）
+        assert arts[0].published_at == datetime(2026, 7, 31, 0, 0, tzinfo=timezone.utc)
+
+    def test_rfc2822_style_date_without_time(self):
+        arts = parse_rss_items(_RSS_FCA_DATEONLY, source="t", language="en")
+        assert len(arts) == 1
+        assert arts[0].published_at == datetime(2026, 7, 31, 0, 0, tzinfo=timezone.utc)
+
+    def test_dateonly_with_default_tz(self):
+        arts = parse_rss_items(
+            _RSS_HOOVER_DATEONLY, source="t", language="en", default_tz=CST
+        )
+        # 墙钟 2026-07-31 00:00 +0800 == 2026-07-30 16:00 UTC
+        assert arts[0].published_at == datetime(2026, 7, 30, 16, 0, tzinfo=timezone.utc)
+
+    def test_garbage_still_returns_none_fallback(self):
+        bad = _RSS_HOOVER_DATEONLY.replace("July 31, 2026", "not a date")
+        arts = parse_rss_items(bad, source="t", language="en")
+        # 解析失败仍回退抓取时间（近似 now），不得 crash
+        assert len(arts) == 1
+        assert arts[0].published_at is not None
