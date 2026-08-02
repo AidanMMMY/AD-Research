@@ -39,9 +39,11 @@ _RETRY_BACKOFF_SECONDS = (2.0, 5.0)
 # 单节 max_tokens：中文 1200 字 ≈ 1800+ tokens，留足余量
 _SECTION_MAX_TOKENS = 3000
 _SUMMARY_MAX_TOKENS = 600
-# 落库前校验阈值
+# 落库前校验阈值。上限是给"失控超长"的保险丝，不是目标篇幅：
+# 首跑实测 7.3k/8.6k（用户要 3000-5000 字，LLM 自然输出偏长属正常），
+# 8000 会误杀 → 放宽到 12000。
 MIN_TOTAL_CHARS = 2000
-MAX_TOTAL_CHARS = 8000
+MAX_TOTAL_CHARS = 12000
 
 # provider 无 key 时返回的中文占位串特征（不抛错，必须按内容识别）
 _PLACEHOLDER_MARKERS = ("AI 功能未配置", "DEEPSEEK_API_KEY", "MINIMAX_API_KEY")

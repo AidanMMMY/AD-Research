@@ -118,7 +118,12 @@ class DailyDigestService:
 
         configs = (
             self.db.execute(
-                select(NotificationConfig).where(NotificationConfig.is_active.is_(True))
+                select(NotificationConfig).where(
+                    NotificationConfig.is_active.is_(True),
+                    # system_alert 是 watchdog 内部 sink（auto_created），
+                    # 不是真实外发渠道，推送只会记一条 failed 噪音日志。
+                    NotificationConfig.channel_type != "system_alert",
+                )
             )
             .scalars()
             .all()
