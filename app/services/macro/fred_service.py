@@ -96,7 +96,20 @@ SERIES_REGISTRY: list[FredSeriesMeta] = [
     FredSeriesMeta("RSAFS",    "us_retail",     "美国零售销售",   "Retail Sales",                      "百万美元", "消费"),
 
     # ── Sentiment / Surveys ──
-    FredSeriesMeta("NAPM",     "us_ism_pmi",    "美国ISM制造业PMI", "ISM Manufacturing PMI",           "指数",     "景气"),
+    # NOTE (2026-08-02): ``NAPM`` (ISM Manufacturing PMI) was removed from
+    # FRED — ISM revoked redistribution rights and the API returns
+    # 400 "series does not exist" (production stale since 2026-07-21).
+    # Exhaustive FRED search found no same-source replacement: S&P Global
+    # PMI is not on FRED; the OECD US CLI (USALOLITONOSTSAM) is itself
+    # discontinued (ends 2024-01); only *regional* Fed manufacturing
+    # diffusion indexes remain (Philly GACDFSA066MSFRBPHI / NY
+    # GACDISA066MSFRBNY / Dallas BACTSAMFRBDAL), whose methodology
+    # (regional survey, 0-centred) is NOT comparable to the national ISM
+    # PMI (50 = breakeven), so we deliberately do NOT swap the indicator
+    # under the same code.  ``us_ism_pmi`` is retired from the registry;
+    # historical rows stay in macro_indicator but are no longer refreshed
+    # or listed.  Revisit if ISM data returns to FRED or a licensed
+    # source is integrated.
     FredSeriesMeta("UMCSENT",  "us_umich",      "密歇根大学消费者信心指数", "UMich Consumer Sentiment", "指数",   "景气"),
 ]
 
@@ -139,7 +152,17 @@ _EU_SERIES: list[FredSeriesMeta] = [
     # ── Output ──
     FredSeriesMeta("NAEXKP01EZQ661S", "eu_gdp", "欧元区实际GDP", "Euro Area Real GDP", "百万欧元", "产出"),
     # ── Prices ──
-    FredSeriesMeta("CPALTT01EZM657N", "eu_cpi", "欧元区CPI", "Euro Area Consumer Price Index", "指数", "价格"),
+    # NOTE (2026-08-02): replaced ``CPALTT01EZM657N`` — FRED removed the
+    # entire OECD CPALTT01 euro-area family (400 "series does not exist",
+    # production stale since 2026-07-21).  The 657N id was actually a
+    # *growth rate previous period* (MoM) series, so the registry's old
+    # unit label "指数" was wrong anyway.  Replacement is Eurostat's
+    # Harmonised Index of Consumer Prices (HICP) Total for the Euro Area
+    # (19 countries), monthly index (2025=100), history from 1996-12 and
+    # still updating — this matches the displayed label/unit ("欧元区CPI"
+    # / "指数") exactly, so the change is a label-correction rather than
+    # a methodology swap.  YoY readers should derive from the index.
+    FredSeriesMeta("CP0000EZ19M086NEST", "eu_cpi", "欧元区CPI", "Euro Area HICP (Harmonised CPI, Total)", "指数", "价格"),
     # ── Labour ──
     FredSeriesMeta("LRHUTTTTEZQ156S", "eu_unrate", "欧元区失业率", "Euro Area Unemployment Rate", "%", "就业"),
     # ── Money / Rates ──

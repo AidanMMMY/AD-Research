@@ -80,6 +80,27 @@ def test_registry_includes_key_indicators():
     assert not missing, f"Missing key indicators: {missing}"
 
 
+def test_discontinued_napm_retired_from_registry():
+    """2026-08-02: FRED removed NAPM (ISM Mfg PMI, 400 series-does-not-exist)
+    with no same-source replacement — it must not be refreshed anymore."""
+    assert "NAPM" not in {m.series_id for m in SERIES_REGISTRY}
+    assert "us_ism_pmi" not in {m.code for m in SERIES_REGISTRY}
+    # And it must not sneak back in via the merged view either.
+    assert "us_ism_pmi" not in {m.code for m, _ in _SERIES_ALL}
+
+
+def test_eu_cpi_uses_eurostat_hicp_replacement():
+    """2026-08-02: CPALTT01EZM657N was pulled by FRED (whole OECD CPALTT01
+    euro-area family gone).  eu_cpi now maps to Eurostat's HICP total
+    index (CP0000EZ19M086NEST), monthly, 2025=100, still updating."""
+    eu = {m.code: m for m in _EU_SERIES}
+    assert "eu_cpi" in eu
+    assert eu["eu_cpi"].series_id == "CP0000EZ19M086NEST"
+    # The dead OECD id must be gone from every registry.
+    all_ids = {m.series_id for m, _ in _SERIES_ALL}
+    assert "CPALTT01EZM657N" not in all_ids
+
+
 # ---------------------------------------------------------------------------
 # Refresh path (uses the stub provider — never hits the network)
 # ---------------------------------------------------------------------------
