@@ -13,6 +13,7 @@ import NewsCard from '@/components/NewsCard';
 import NewsDetailDrawer from '@/components/NewsDetailDrawer';
 import EmptyState from '@/components/EmptyState';
 import LoadingBlock from '@/components/LoadingBlock';
+import { useArticleStateActions } from './useArticleState';
 
 const PAGE_SIZE = 20;
 
@@ -107,6 +108,9 @@ export default function KnowledgeFeed() {
     navigate(`/news?symbol=${encodeURIComponent(sym)}`);
   };
 
+  // P1：收藏切换 + 打开详情自动已读（乐观更新，见 useArticleState）。
+  const { toggleBookmark, markRead } = useArticleStateActions();
+
   return (
     <div className="learning-knowledge">
       {/* Topic chip strip — same visual language as the /news filter
@@ -164,6 +168,8 @@ export default function KnowledgeFeed() {
                 article={a}
                 onOpen={setSelectedArticle}
                 onPickSymbol={handlePickSymbol}
+                showBookmark
+                onToggleBookmark={toggleBookmark}
               />
             ))}
           </div>
@@ -183,6 +189,7 @@ export default function KnowledgeFeed() {
         article={selectedArticle}
         onClose={() => setSelectedArticle(null)}
         onPickSymbol={handlePickSymbol}
+        onRead={markRead}
       />
     </div>
   );

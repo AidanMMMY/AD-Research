@@ -18,6 +18,7 @@ import HelpPopover from '@/components/HelpPopover';
 import ThemeTag from '@/components/ThemeTag';
 import DailyLesson from '@/components/DailyLesson';
 import KnowledgeFeed from './KnowledgeFeed';
+import MyBookmarks from './MyBookmarks';
 import { useSettingsStore } from '@/stores/settings';
 import './styles.css';
 import { getAllTerms, type TermEntry } from '@/utils/termDictionary';
@@ -102,9 +103,10 @@ export default function Learning() {
   const [panelOpen, setPanelOpen] = useState(wantsTermsPanel);
 
   // 2026-08-02 学习中心: 顶部 Tab —「知识库」(主题文章流, 默认) /
-  // 「学习路径」(今日一课 + 场景教程 + 术语速查)。术语速查 deep link
-  // (?panel=terms) 落在「学习路径」里，所以带参到达时强制切到该 Tab。
-  const [activeTab, setActiveTab] = useState<'feed' | 'path'>(
+  // 「我的收藏」(P1 稍后读列表) /「学习路径」(今日一课 + 场景教程 +
+  // 术语速查)。术语速查 deep link (?panel=terms) 落在「学习路径」里，
+  // 所以带参到达时强制切到该 Tab。
+  const [activeTab, setActiveTab] = useState<'feed' | 'bookmarks' | 'path'>(
     wantsTermsPanel ? 'path' : 'feed'
   );
 
@@ -130,13 +132,18 @@ export default function Learning() {
 
       <Tabs
         activeKey={activeTab}
-        onChange={(k) => setActiveTab(k as 'feed' | 'path')}
+        onChange={(k) => setActiveTab(k as 'feed' | 'bookmarks' | 'path')}
         className="ad-mb-5"
         items={[
           {
             key: 'feed',
             label: '知识库',
             children: <KnowledgeFeed />,
+          },
+          {
+            key: 'bookmarks',
+            label: '我的收藏',
+            children: <MyBookmarks />,
           },
           {
             key: 'path',

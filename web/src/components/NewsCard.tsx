@@ -6,6 +6,8 @@ import {
   MessageOutlined,
   ShareAltOutlined,
   EyeOutlined,
+  BookFilled,
+  BookOutlined,
 } from '@ant-design/icons';
 import { SENTIMENT_COLORS, SENTIMENT_LABELS } from '@/utils/sentiment';
 import type {
@@ -157,10 +159,21 @@ export default function NewsCard({
   article,
   onOpen,
   onPickSymbol,
+  showBookmark = false,
+  onToggleBookmark,
 }: {
   article: NewsArticle;
   onOpen: (a: NewsArticle) => void;
   onPickSymbol: (sym: string) => void;
+  /**
+   * 学习中心 P1（2026-08-02）：是否渲染收藏（稍后读）按钮。
+   * 只在知识库语境传 true——/news 页不传，卡片保持原样。
+   * 状态来自 ``article.bookmarked``（/learning/feed LEFT JOIN
+   * user_article_state 返回），点击通过 ``onToggleBookmark`` 上抛，
+   * 由父组件调 API + 乐观更新（卡片自身不持有 API client）。
+   */
+  showBookmark?: boolean;
+  onToggleBookmark?: (a: NewsArticle) => void;
 }) {
   // Fallback for unmapped sources shows the raw key only — the
   // sourceOptions dropdown label carries a "(count)" suffix that must
@@ -171,6 +184,10 @@ export default function NewsCard({
   };
   const market = MARKET_BADGE[article.market];
   const sentiment = article.sentiment_label;
+  // 收藏/已读布尔只在 /learning 端点里返回（/news 没有这两个字段），
+  // 缺省视为 false。
+  const bookmarked = article.bookmarked ?? false;
+  const isRead = article.read ?? false;
 
   return (
     // Custom button: a semantic ``<article>`` cannot carry
@@ -200,13 +217,35 @@ export default function NewsCard({
           <span>{formatRelative(article.published_at)}</span>
         </Tooltip>
         <ImportanceStars level={article.importance} />
+        {/* 收藏（稍后读）按钮——只在知识库语境渲染（showBookmark）。
+            已收藏用实心高亮；点击 stopPropagation 避免触发卡片打开。 */}
+        {showBookmark && (
+          <Tooltip title={bookmarked ? '取消收藏' : '收藏（稍后读）'}>
+            <button
+              type="button"
+              className={`ad-news-card__bookmark ${bookmarked ? 'ad-news-card__bookmark--active' : ''}`}
+              aria-label={bookmarked ? '取消收藏' : '收藏（稍后读）'}
+              aria-pressed={bookmarked}
+              onClick={(e) => {
+                e.stopPropagation();
+                onToggleBookmark?.(article);
+              }}
+              onKeyDown={(e) => e.stopPropagation()}
+            >
+              {bookmarked ? <BookFilled /> : <BookOutlined />}
+            </button>
+          </Tooltip>
+        )}
       </div>
 
       {/* Title — Chinese-first: the ingestion pipeline auto-translates
           non-Chinese articles into ``title_zh``; when present we render
           it with a small 「译」 badge and keep the original title one
-          hover away (Tooltip). */}
-      <div className="ad-news-card__title">
+          hover away (Tooltip). 已读文章（/learning feed 的 read 布尔）
+          标题降透明度，视觉上退到背景层。 */}
+      <div
+        className={`ad-news-card__title ${isRead ? 'ad-news-card__title--read' : ''}`}
+      >
         {article.title_zh ?? article.title}
         {article.title_zh && (
           <Tooltip title={`原标题：${article.title}`}>

@@ -109,6 +109,17 @@ export interface NewsArticle {
   ai_cleanup_status: 'cleaned' | 'skipped' | 'failed' | 'not_attempted' | null;
   /** ISO timestamp of the last AI-cleanup attempt (``null`` if never tried). */
   ai_cleaned_at: string | null;
+  /**
+   * 当前用户的收藏状态（学习中心 P1, 2026-08-02）。只有挂了
+   * ``user_article_state`` LEFT JOIN 的端点（``/learning/feed``、
+   * ``/learning/bookmarks``）会返回；``/news`` 端点不含此字段，
+   * 所以是 optional——消费方用 ``?? false``。
+   */
+  bookmarked?: boolean;
+  /**
+   * 当前用户的已读状态（同上）。已读文章在知识库语境下标题降透明度。
+   */
+  read?: boolean;
 }
 
 /** Response shape for ``POST /news/{id}/fetch-content``. */

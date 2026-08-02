@@ -43,10 +43,17 @@ export default function NewsDetailDrawer({
   article,
   onClose,
   onPickSymbol,
+  onRead,
 }: {
   article: NewsArticle | null;
   onClose: () => void;
   onPickSymbol: (sym: string) => void;
+  /**
+   * 学习中心 P1（2026-08-02）：抽屉打开（article 由 null 变为非空）
+   * 时触发一次，供父组件标记已读。只在知识库语境传——/news 页不传，
+   * 不产生任何额外请求。父组件需自行做幂等/乐观更新。
+   */
+  onRead?: (a: NewsArticle) => void;
 }) {
   const navigate = useNavigate();
   // Keep the last non-null article so the exit animation still has
@@ -55,6 +62,12 @@ export default function NewsDetailDrawer({
   useEffect(() => {
     if (article) setLastArticle(article);
   }, [article]);
+  // 打开即视为已读：article 由 null → 非空时回调一次（父组件幂等，
+  // 重复打开同一篇不会刷新后端首次时间戳）。
+  useEffect(() => {
+    if (article) onRead?.(article);
+    // 只关心"打开"这一刻；onRead 由父组件 useCallback 稳定化。
+  }, [article, onRead]);
   const shown = article ?? lastArticle;
 
   const source = shown

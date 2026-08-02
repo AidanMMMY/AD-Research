@@ -17,3 +17,31 @@
     transform: none;
   }
 }
+
+/* 学习中心 P1（2026-08-02）：收藏（稍后读）按钮 + 已读标题降透明度。
+   只在知识库语境渲染（NewsCard showBookmark prop）；/news 页不出现。 */
+.ad-news-card__bookmark {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 4px;
+  border: none;
+  background: transparent;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  line-height: 1;
+  transition: color 0.15s ease;
+}
+
+.ad-news-card__bookmark:hover {
+  color: var(--color-accent);
+}
+
+.ad-news-card__bookmark--active {
+  color: var(--color-warning-bright);
+}
+
+.ad-news-card__title--read {
+  opacity: 0.55;
+}

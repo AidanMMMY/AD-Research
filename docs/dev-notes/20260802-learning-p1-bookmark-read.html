@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>学习中心 P1：收藏 + 已读（2026-08-02）</title>
+<style>
+body{max-width:860px;margin:2rem auto;padding:0 1rem;font-family:-apple-system,"PingFang SC",sans-serif;line-height:1.7;color:#1f2329}
+table{border-collapse:collapse;width:100%}td,th{border:1px solid #d0d7de;padding:6px 10px;text-align:left}
+code{background:#f6f8fa;padding:2px 5px;border-radius:4px}
+h1,h2{border-bottom:1px solid #eaecef;padding-bottom:.3em}
+</style></head><body><h1>学习中心 P1：文章级收藏（稍后读）+ 已读标记（2026-08-02）</h1>
+<h2>背景</h2>
+<p>学习中心 8-02 上线知识库 Tab 后，分析文档 §2.3 把"收藏/已读"列为 P1。
+本次实现文章级、用户级两种状态：收藏（稍后读）+ 已读。</p>
+<h2>表结构：<code>user_article_state</code></h2>
+<p>迁移 <code>x5y7z9a1b3c5</code>（down_revision = <code>w4x6y8z0a2b4</code>），模型
+<code>app/models/user_article_state.py</code>：</p>
+<table>
+<thead>
+<tr>
+<th>列</th>
+<th>类型</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>user_id</td>
+<td>int FK → users.id CASCADE</td>
+<td>复合 PK 之一</td>
+</tr>
+<tr>
+<td>article_id</td>
+<td>int FK → news_article.id CASCADE</td>
+<td>复合 PK 之一</td>
+</tr>
+<tr>
+<td>bookmarked_at</td>
+<td>timestamptz NULL</td>
+<td>NULL=未收藏；取消收藏置 NULL 不删行（保留已读）</td>
+</tr>
+<tr>
+<td>read_at</td>
+<td>timestamptz NULL</td>
+<td>首次已读时间；重复标记不刷新</td>
+</tr>
+<tr>
+<td>created_at / updated_at</td>
+<td>timestamptz</td>
+<td>server_default now()</td>
+</tr>
+</tbody>
+</table>
+<p>索引：复合 PK (user_id, article_id) + <code>ix_user_article_state_article_id</code>
+（feed 按 article_id 等值 LEFT JOIN 用）。</p>
+<p>设计决策：
+- 状态不写进 <code>news_article</code>（全局共享爬虫表，行跨用户复用）。
+- 用时间戳而非布尔位：收藏列表按 bookmarked_at DESC 排序，read_at
+  保留"首次阅读时间"供后续行为分析。
+- 取消收藏置 NULL 不删行，已读标记不被冲掉。
+- 迁移往返已在本地 postgres 验证（upgrade → \d → downgrade →
+  to_regclass NULL → 再 upgrade，单 head x5y7z9a1b3c5）。</p>
+<h2>API 契约（均挂 /api/v1/learning，JWT 必登录）</h2>
+<ul>
+<li><code>POST /learning/articles/{id}/bookmark</code> → <code>{article_id, bookmarked, bookmarked_at}</code>
+  切换语义；幂等性在"状态"上——响应 bookmarked 恒等于调用后真实状态。
+  文章不存在 404。</li>
+<li><code>POST /learning/articles/{id}/read</code> → <code>{article_id, read: true, read_at}</code>
+  幂等；重复调用不改写首次时间戳。文章不存在 404。</li>
+<li><code>GET /learning/bookmarks?page=&amp;page_size=</code> → 与 feed 同构
+  <code>{items, page, page_size, total, total_pages}</code>，只含当前用户
+  bookmarked_at 非空的文章，bookmarked_at DESC；meta 用 OUTER JOIN，
+  未打标源文章 content_type/topic 为 null（收藏不限于打标源）。</li>
+<li><code>GET /learning/feed</code> 每项追加 <code>bookmarked</code> / <code>read</code> 布尔
+  （LEFT JOIN user_article_state，无状态行为 false；别的用户的状态
+  不泄漏）。</li>
+</ul>
+<h2>前端交互</h2>
+<ul>
+<li><code>NewsCard</code> 新增可选 props：<code>showBookmark</code>（只在知识库语境传 true，
+  /news 页不传不渲染）、<code>onToggleBookmark</code>。书签按钮在 meta 行右侧，
+  已收藏实心高亮（--color-warning-bright），click stopPropagation
+  不触发卡片打开。<code>read=true</code> 时标题降透明度
+  （<code>.ad-news-card__title--read</code>, opacity 0.55）。</li>
+<li><code>NewsDetailDrawer</code> 新增可选 <code>onRead</code>：article 由 null → 非空时
+  回调一次；/news 页不传，无额外请求。</li>
+<li><code>/learning</code> 新增第三个 Tab「我的收藏」（<code>MyBookmarks.tsx</code>）：
+  收藏列表 + 点书签=取消收藏（乐观移除）+ 打开详情自动已读。</li>
+<li>乐观更新集中在 <code>pages/Learning/useArticleState.ts</code>
+  （<code>useArticleStateActions</code>）：直接改 react-query 缓存
+  （<code>['learning-feed']</code> 全部 topic 变体 + <code>['learning-bookmarks']</code>），
+  API 失败 invalidate 回滚。已读短路：已 read 不再发请求。</li>
+</ul>
+<h2>改动文件</h2>
+<p>后端：
+- <code>app/models/user_article_state.py</code>（新）
+- <code>alembic/versions/x5y7z9a1b3c5_add_user_article_state.py</code>（新）
+- <code>alembic/env.py</code>（import 新模型）
+- <code>app/api/v1/learning.py</code>（feed 加状态布尔 + 3 个新端点）
+- <code>app/tests/news/test_learning_article_state.py</code>（新，26 测试）
+- <code>app/tests/news/test_learning_feed.py</code>（_FakeUser 补 id=1）</p>
+<p>前端：
+- <code>web/src/types/news.ts</code>（NewsArticle 加可选 bookmarked/read）
+- <code>web/src/api/learning.ts</code>（3 个新 API + 响应类型）
+- <code>web/src/components/NewsCard.tsx</code> / <code>NewsCard.css</code>
+- <code>web/src/components/NewsDetailDrawer.tsx</code>（onRead）
+- <code>web/src/pages/Learning/KnowledgeFeed.tsx</code>（接线）
+- <code>web/src/pages/Learning/MyBookmarks.tsx</code>（新）
+- <code>web/src/pages/Learning/useArticleState.ts</code>（新）
+- <code>web/src/pages/Learning/index.tsx</code>（第三个 Tab）
+- <code>web/tests/news-card-bookmark.test.tsx</code>（新，5 测试）</p>
+<h2>测试结果</h2>
+<ul>
+<li>后端全量 <code>pytest app/tests</code>：1572 passed（含新增 26 项：模型 CRUD、
+  迁移链/表结构防漂移、bookmark 切换幂等、read 幂等不刷新时间戳、
+  feed 布尔标注 + 跨用户不泄漏、bookmarks 只含自己/排序/取消消失/
+  未打标源可收藏/分页、未登录 401/403）。</li>
+<li>前端 <code>npm run test</code>（vitest）：35 passed（含 NewsCard 5 项新测试）。</li>
+<li><code>npm run check:ci</code>（stylelint + tsc + vite build）：全绿。</li>
+</ul></body></html>

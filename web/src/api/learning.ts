@@ -26,8 +26,8 @@ export type LearningContentType = 'flash' | 'deep' | 'edu';
 
 /** A feed item: the ``/news`` list row plus learning metadata. */
 export interface LearningArticle extends NewsArticle {
-  content_type: LearningContentType;
-  topic: LearningTopic | string;
+  content_type: LearningContentType | null;
+  topic: LearningTopic | string | null;
 }
 
 export interface LearningFeedParams {
@@ -50,6 +50,22 @@ export interface LearningFeedResponse {
 export interface LearningTopicStat {
   topic: LearningTopic | string;
   count: number;
+}
+
+/** ``POST /learning/articles/{id}/bookmark`` 响应。 */
+export interface LearningBookmarkToggleResponse {
+  article_id: number;
+  /** 调用后的真实收藏状态（幂等语义在状态而非调用次数上）。 */
+  bookmarked: boolean;
+  bookmarked_at: string | null;
+}
+
+/** ``POST /learning/articles/{id}/read`` 响应。 */
+export interface LearningReadResponse {
+  article_id: number;
+  read: boolean;
+  /** 首次已读时间戳（重复标记不刷新）。 */
+  read_at: string | null;
 }
 
 export interface LearningTopicsResponse {
@@ -87,5 +103,31 @@ export const learningApi = {
   /** Per-topic article counts for the chip strip. */
   topics(): Promise<{ data: LearningTopicsResponse }> {
     return client.get<LearningTopicsResponse>('/learning/topics');
+  },
+
+  /**
+   * 收藏切换（P1, 2026-08-02）：未收藏→收藏，已收藏→取消。
+   * 响应的 ``bookmarked`` 是调用后的真实状态（幂等语义在状态上）。
+   */
+  toggleBookmark(
+    articleId: number
+  ): Promise<{ data: LearningBookmarkToggleResponse }> {
+    return client.post<LearningBookmarkToggleResponse>(
+      `/learning/articles/${articleId}/bookmark`
+    );
+  },
+
+  /** 标记已读（幂等；重复调用不改写首次时间戳）。 */
+  markRead(articleId: number): Promise<{ data: LearningReadResponse }> {
+    return client.post<LearningReadResponse>(
+      `/learning/articles/${articleId}/read`
+    );
+  },
+
+  /** 我的收藏列表（稍后读），bookmarked_at DESC。 */
+  bookmarks(
+    params: { page?: number; page_size?: number } = {}
+  ): Promise<{ data: LearningFeedResponse }> {
+    return client.get<LearningFeedResponse>('/learning/bookmarks', { params });
   },
 };
