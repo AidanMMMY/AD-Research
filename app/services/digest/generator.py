@@ -47,6 +47,20 @@ MAX_TOTAL_CHARS = 8000
 _PLACEHOLDER_MARKERS = ("AI 功能未配置", "DEEPSEEK_API_KEY", "MINIMAX_API_KEY")
 
 
+def _strip_leading_heading(text: str) -> str:
+    """剥掉正文开头复读的标题行（``#``/``##`` 开头），章节标题由拼装层统一加。
+
+    LLM 经常把 prompt 里的章节标题原样写在正文第一行；连续空行一并吃掉。
+    正文中间出现的子标题不受影响。
+    """
+    lines = text.lstrip().splitlines()
+    while lines and lines[0].lstrip().startswith("#"):
+        lines.pop(0)
+        while lines and not lines[0].strip():
+            lines.pop(0)
+    return "\n".join(lines).strip()
+
+
 @dataclass
 class DigestResult:
     """生成层产出（service 落库用）。"""
@@ -126,6 +140,10 @@ class DigestGenerator:
             content = self._call_llm(user_prompt, _SECTION_MAX_TOKENS)
             ok = content is not None
             text = content if ok else SECTION_FALLBACK_TEXT
+            # LLM 有时会在正文开头复读章节标题（首跑实测第 2/5 节各重复
+            # 一次），拼装前剥掉开头的标题行，避免页面上出现双标题。
+            if ok:
+                text = _strip_leading_heading(text)
             bodies.append((spec, text, ok))
             section_records.append(
                 {
@@ -159,11 +177,13 @@ class DigestGenerator:
         status = "success"
         if failed_count >= 2:
             status = "partial"
+        # 标题校验：6 个章节标题由上方拼装保证必含；LLM 正文可能自带
+        # ## 子标题（首跑实测 8 个），所以只查下限不查精确相等。
         heading_count = content_md.count("\n## ")
         total_chars = len(content_md)
-        if heading_count != len(SECTIONS):
+        if heading_count < len(SECTIONS):
             logger.warning(
-                "digest heading check failed: %d != %d", heading_count, len(SECTIONS)
+                "digest heading check failed: %d < %d", heading_count, len(SECTIONS)
             )
             status = "partial"
         if not (MIN_TOTAL_CHARS <= total_chars <= MAX_TOTAL_CHARS):

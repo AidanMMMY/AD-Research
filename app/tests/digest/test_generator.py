@@ -162,3 +162,42 @@ def test_total_length_out_of_range_partial(ctx, no_sleep):
 
     result = DigestGenerator(provider=TinyProvider()).generate(ctx)
     assert result.status == "partial"
+
+
+def test_leading_duplicate_heading_stripped(ctx, no_sleep):
+    """LLM 在正文开头复读章节标题 → 拼装前剥掉，页面不出现双标题。
+
+    （2026-08-03 ECS 首跑实测：第 2/5 节各重复一次 `## 标题`，
+    且导致 heading 计数 8 != 6 误判 partial。）
+    """
+
+    class EchoProvider(FakeProvider):
+        def chat(self, messages, system=None, max_tokens=1024, temperature=0.7):
+            user = messages[0]["content"]
+            self.calls.append(user)
+            if "【研报全文】" in user:
+                return _SUMMARY_TEXT
+            return f"## 某章节标题\n\n{_SECTION_BODY}"
+
+    result = DigestGenerator(provider=EchoProvider()).generate(ctx)
+
+    assert result.status == "success"
+    # 6 个章节标题各恰好出现一次（拼装层加的），无复读残留
+    for spec in SECTIONS:
+        assert result.content_md.count(f"## {spec.title}") == 1
+
+
+def test_extra_llm_subheadings_do_not_fail_heading_check(ctx, no_sleep):
+    """正文自带 ## 子标题属合法输出，heading 校验只查下限（≥6）。"""
+
+    class SubProvider(FakeProvider):
+        def chat(self, messages, system=None, max_tokens=1024, temperature=0.7):
+            user = messages[0]["content"]
+            self.calls.append(user)
+            if "【研报全文】" in user:
+                return _SUMMARY_TEXT
+            return f"{_SECTION_BODY}\n\n## 深入分析\n\n{_SECTION_BODY}"
+
+    result = DigestGenerator(provider=SubProvider()).generate(ctx)
+    assert result.status == "success"
+    assert result.content_md.count("\n## ") == 12
