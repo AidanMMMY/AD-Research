@@ -45,3 +45,30 @@
 .ad-news-card__title--read {
   opacity: 0.55;
 }
+
+/* 学习中心 P2（2026-08-02）：难度标签（入门/进阶）。
+   只在知识库语境渲染（NewsCard showDifficulty prop）；/news 页不出现。
+   颜色全部走 styles/theme.css 的 token（亮/暗主题各自适配）：
+   入门=success 绿系，进阶=warning 橙/琥珀系。 */
+.ad-news-card__difficulty {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 6px;
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  font-size: 11px;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
+.ad-news-card__difficulty--beginner {
+  color: var(--color-success);
+  background: var(--color-success-dim);
+  border-color: var(--color-success-border);
+}
+
+.ad-news-card__difficulty--advanced {
+  color: var(--color-warning);
+  background: var(--color-warning-dim);
+  border-color: var(--color-warning-border);
+}

@@ -120,6 +120,12 @@ export interface NewsArticle {
    * 当前用户的已读状态（同上）。已读文章在知识库语境下标题降透明度。
    */
   read?: boolean;
+  /**
+   * 源级默认难度（学习中心 P2, 2026-08-02）。来自 ``news_source_meta``
+   * JOIN，只有 ``/learning/*`` 端点返回；``null`` = 混合/不确定，
+   * 消费方不渲染标签。
+   */
+  difficulty_default?: 'beginner' | 'advanced' | null;
 }
 
 /** Response shape for ``POST /news/{id}/fetch-content``. */

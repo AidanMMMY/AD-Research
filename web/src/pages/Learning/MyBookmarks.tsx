@@ -88,6 +88,7 @@ export default function MyBookmarks() {
                 onPickSymbol={handlePickSymbol}
                 showBookmark
                 onToggleBookmark={toggleBookmark}
+                showDifficulty
               />
             ))}
           </div>

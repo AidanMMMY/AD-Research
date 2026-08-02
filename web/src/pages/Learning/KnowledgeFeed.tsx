@@ -7,6 +7,7 @@ import {
   LEARNING_TOPIC_LABELS,
   LEARNING_TOPIC_ORDER,
   type LearningArticle,
+  type LearningDifficulty,
 } from '@/api/learning';
 import type { NewsArticle } from '@/types/news';
 import NewsCard from '@/components/NewsCard';
@@ -16,6 +17,13 @@ import LoadingBlock from '@/components/LoadingBlock';
 import { useArticleStateActions } from './useArticleState';
 
 const PAGE_SIZE = 20;
+
+/** P2 难度筛选 chips（全部/入门/进阶）——'' 表示不过滤。 */
+const DIFFICULTY_OPTIONS: { key: '' | LearningDifficulty; label: string }[] = [
+  { key: '', label: '全部' },
+  { key: 'beginner', label: '入门' },
+  { key: 'advanced', label: '进阶' },
+];
 
 /**
  * 学习中心「知识库」feed (2026-08-02).
@@ -32,6 +40,7 @@ const PAGE_SIZE = 20;
 export default function KnowledgeFeed() {
   const navigate = useNavigate();
   const [topic, setTopic] = useState<string>('');
+  const [difficulty, setDifficulty] = useState<'' | LearningDifficulty>('');
   const [selectedArticle, setSelectedArticle] = useState<NewsArticle | null>(null);
 
   // Per-topic counts for the chip strip. On failure we fall back to the
@@ -70,12 +79,13 @@ export default function KnowledgeFeed() {
     isLoading,
     isError,
   } = useInfiniteQuery({
-    queryKey: ['learning-feed', topic],
+    queryKey: ['learning-feed', topic, difficulty],
     initialPageParam: 1,
     queryFn: ({ pageParam }) =>
       learningApi
         .feed({
           topic: topic || undefined,
+          difficulty: difficulty || undefined,
           page: pageParam,
           page_size: PAGE_SIZE,
           days: 90,
@@ -141,6 +151,24 @@ export default function KnowledgeFeed() {
         })}
       </div>
 
+      {/* 难度筛选（P2）——后端按 news_source_meta.difficulty_default
+          过滤，与主题筛选叠加生效。 */}
+      <div className="learning-topic-chips ad-flex ad-flex-wrap ad-gap-2 ad-mb-4">
+        {DIFFICULTY_OPTIONS.map((d) => {
+          const checked = difficulty === d.key;
+          return (
+            <Tag.CheckableTag
+              key={d.key || 'all'}
+              checked={checked}
+              onChange={() => setDifficulty(d.key)}
+              className={`ad-status-chip ${checked ? 'ad-status-chip--active' : ''}`}
+            >
+              {d.label}
+            </Tag.CheckableTag>
+          );
+        })}
+      </div>
+
       {isError ? (
         /* API still rolling out (404) or backend down — stay calm. */
         <EmptyState
@@ -170,6 +198,7 @@ export default function KnowledgeFeed() {
                 onPickSymbol={handlePickSymbol}
                 showBookmark
                 onToggleBookmark={toggleBookmark}
+                showDifficulty
               />
             ))}
           </div>

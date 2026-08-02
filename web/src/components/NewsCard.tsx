@@ -154,6 +154,12 @@ export function formatBigNumber(n: number): string {
   return String(n);
 }
 
+/** 学习中心 P2：难度标签（入门/进阶）——只在知识库语境渲染。 */
+const DIFFICULTY_LABELS: Record<string, string> = {
+  beginner: '入门',
+  advanced: '进阶',
+};
+
 /** Single article card in the feed. */
 export default function NewsCard({
   article,
@@ -161,6 +167,7 @@ export default function NewsCard({
   onPickSymbol,
   showBookmark = false,
   onToggleBookmark,
+  showDifficulty = false,
 }: {
   article: NewsArticle;
   onOpen: (a: NewsArticle) => void;
@@ -174,6 +181,13 @@ export default function NewsCard({
    */
   showBookmark?: boolean;
   onToggleBookmark?: (a: NewsArticle) => void;
+  /**
+   * 学习中心 P2（2026-08-02）：是否渲染难度标签（入门/进阶）。
+   * 数据来自 ``article.difficulty_default``（源级打标，/learning
+   * 端点 JOIN news_source_meta 返回）；null 时不渲染。与
+   * showBookmark 同模式——/news 页不传，默认零变化。
+   */
+  showDifficulty?: boolean;
 }) {
   // Fallback for unmapped sources shows the raw key only — the
   // sourceOptions dropdown label carries a "(count)" suffix that must
@@ -188,6 +202,11 @@ export default function NewsCard({
   // 缺省视为 false。
   const bookmarked = article.bookmarked ?? false;
   const isRead = article.read ?? false;
+  // 难度标签：仅 showDifficulty 且源已打标（beginner/advanced）时渲染。
+  const difficulty =
+    showDifficulty && article.difficulty_default
+      ? article.difficulty_default
+      : null;
 
   return (
     // Custom button: a semantic ``<article>`` cannot carry
@@ -212,6 +231,15 @@ export default function NewsCard({
         <span className="ad-text-muted">·</span>
         {market && <ThemeTag variant={market.variant} className="ad-detail-tag">{market.label}</ThemeTag>}
         <EventCategoryTag value={article.event_category} />
+        {/* 难度标签（P2）——入门绿 / 进阶橙，颜色走 theme.css token
+            （NewsCard.css .ad-news-card__difficulty--*）。 */}
+        {difficulty && (
+          <span
+            className={`ad-news-card__difficulty ad-news-card__difficulty--${difficulty}`}
+          >
+            {DIFFICULTY_LABELS[difficulty] ?? difficulty}
+          </span>
+        )}
         <span className="ad-flex-1" />
         <Tooltip title={formatDateTimeSeconds(article.published_at)}>
           <span>{formatRelative(article.published_at)}</span>

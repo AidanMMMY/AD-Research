@@ -24,6 +24,9 @@ export type LearningTopic =
 /** Coarse content nature assigned per source. */
 export type LearningContentType = 'flash' | 'deep' | 'edu';
 
+/** 源级默认难度（P2, 2026-08-02）；null = 混合/不确定。 */
+export type LearningDifficulty = 'beginner' | 'advanced';
+
 /** A feed item: the ``/news`` list row plus learning metadata. */
 export interface LearningArticle extends NewsArticle {
   content_type: LearningContentType | null;
@@ -33,6 +36,8 @@ export interface LearningArticle extends NewsArticle {
 export interface LearningFeedParams {
   topic?: LearningTopic | string;
   content_type?: LearningContentType;
+  /** 难度筛选（P2）：beginner=入门 / advanced=进阶；不传=全部。 */
+  difficulty?: LearningDifficulty;
   page?: number;
   page_size?: number;
   /** Lookback window in days (server default 90). */

@@ -38,7 +38,12 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user, get_db
 from app.api.v1.news import _article_to_dict, _iso_utc
-from app.models.news_source_meta import CONTENT_TYPES, TOPICS, NewsSourceMeta
+from app.models.news_source_meta import (
+    CONTENT_TYPES,
+    DIFFICULTIES,
+    TOPICS,
+    NewsSourceMeta,
+)
 from app.models.user_article_state import UserArticleState
 from app.schemas.auth import UserResponse
 from app.services.news._model_loader import NewsArticle
@@ -88,6 +93,13 @@ def learning_feed(
     content_type: str | None = Query(
         None, description="按内容类型过滤。Allowed: deep | edu"
     ),
+    difficulty: str | None = Query(
+        None,
+        description=(
+            "按源级默认难度过滤（P2, 2026-08-02）。"
+            "Allowed: beginner | advanced"
+        ),
+    ),
     days: int = Query(
         90, ge=1, le=_MAX_DAYS, description="回看窗口（天），默认 90"
     ),
@@ -112,6 +124,11 @@ def learning_feed(
         raise HTTPException(
             status_code=400,
             detail=f"content_type must be one of {', '.join(CONTENT_TYPES)}",
+        )
+    if difficulty is not None and difficulty not in DIFFICULTIES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"difficulty must be one of {', '.join(DIFFICULTIES)}",
         )
 
     cutoff = datetime.now(tz=timezone.utc) - timedelta(days=days)
@@ -144,6 +161,11 @@ def learning_feed(
     if content_type is not None:
         stmt = stmt.where(NewsSourceMeta.content_type == content_type)
         count_stmt = count_stmt.where(NewsSourceMeta.content_type == content_type)
+    if difficulty is not None:
+        stmt = stmt.where(NewsSourceMeta.difficulty_default == difficulty)
+        count_stmt = count_stmt.where(
+            NewsSourceMeta.difficulty_default == difficulty
+        )
 
     total = db.execute(count_stmt).scalar() or 0
     rows = db.execute(

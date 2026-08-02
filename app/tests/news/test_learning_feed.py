@@ -338,6 +338,40 @@ class TestLearningFeed:
         )
         assert resp.status_code == 400
 
+    def test_difficulty_filter(self, api_client, seeded_db):
+        """P2：difficulty=beginner 只留 beginner 源的文章；NULL 难度源被排除。"""
+        data = api_client.get(
+            "/api/v1/learning/feed", params={"difficulty": "beginner"}
+        ).json()
+        assert data["total"] == 1
+        assert data["items"][0]["source"] == "edu_alloc"
+        assert data["items"][0]["difficulty_default"] == "beginner"
+        # seeded_db 没有 advanced 源 → 空列表而不是报错
+        data = api_client.get(
+            "/api/v1/learning/feed", params={"difficulty": "advanced"}
+        ).json()
+        assert data["total"] == 0
+        assert data["items"] == []
+
+    def test_difficulty_combines_with_topic(self, api_client, seeded_db):
+        data = api_client.get(
+            "/api/v1/learning/feed",
+            params={"topic": "allocation", "difficulty": "beginner"},
+        ).json()
+        assert data["total"] == 1
+        # 组合条件不匹配时为空
+        data = api_client.get(
+            "/api/v1/learning/feed",
+            params={"topic": "macro", "difficulty": "beginner"},
+        ).json()
+        assert data["total"] == 0
+
+    def test_invalid_difficulty_rejected(self, api_client, seeded_db):
+        resp = api_client.get(
+            "/api/v1/learning/feed", params={"difficulty": "expert"}
+        )
+        assert resp.status_code == 400
+
 
 # ---------------------------------------------------------------------------
 # GET /learning/topics
