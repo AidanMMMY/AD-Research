@@ -223,6 +223,10 @@ class Settings(BaseSettings):
     # AuthSettings because it is not an authentication concern.
     notification_encryption_key: str = ""
 
+    # 每日夜间 AI 综合研报（Daily Digest, 2026-08-03）。全局一份报告，
+    # 自选/持仓透视取"主用户"的 UserFavorite ∪ PaperTradePosition。
+    digest_primary_username: str = "aidan"
+
     # Deployment dashboard (Vercel-like admin page)
     github_token: str = ""          # GitHub personal access token for Actions API
     github_repo: str = ""           # e.g. "owner/repo-name"

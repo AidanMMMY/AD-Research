@@ -1,0 +1,49 @@
+/* ============================================================
+   DigestSummaryCard — Dashboard「每日研报」摘要卡内部布局。
+   骨架复用 command-center 的 cc-card（表面/圆角/边框与周边一致），
+   这里只负责内容区排版；颜色全部走 design token。
+   ============================================================ */
+
+.digest-summary-card__icon {
+  font-size: 13px;
+  color: var(--accent);
+  margin-right: 2px;
+}
+
+.digest-summary-card__body {
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition: background-color var(--transition-base) ease;
+}
+
+.digest-summary-card__body:hover .digest-summary-card__headline {
+  color: var(--accent);
+}
+
+.digest-summary-card__headline {
+  font-size: var(--text-body-size);
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.4;
+  margin-bottom: var(--space-2);
+  transition: color var(--transition-base) ease;
+}
+
+/* 摘要前 3 行，超出省略 */
+.digest-summary-card__excerpt {
+  margin: 0;
+  font-size: var(--text-code-size);
+  color: var(--text-secondary);
+  line-height: 1.7;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.digest-summary-card__pending {
+  font-size: var(--text-code-size);
+  color: var(--text-tertiary);
+  line-height: 1.7;
+  padding: var(--space-2) 0;
+}

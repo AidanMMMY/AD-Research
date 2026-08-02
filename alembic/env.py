@@ -29,6 +29,7 @@ from app.models.scoring import *
 from app.models.audit_log import *
 from app.models.news_source_meta import *
 from app.models.user_article_state import *
+from app.models.digest import *
 
 target_metadata = Base.metadata
 

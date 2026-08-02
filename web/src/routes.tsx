@@ -36,6 +36,7 @@ const Portfolio = lazy(() => import('./pages/Portfolio'));
 const NewsFeed = lazy(() => import('./pages/News'));
 const NewsDetail = lazy(() => import('./pages/News/detail'));
 const NewsHealth = lazy(() => import('./pages/NewsHealth'));
+const Digest = lazy(() => import('./pages/Digest'));
 const SentimentOverview = lazy(() => import('./pages/Sentiment'));
 const ListingPreview = lazy(() => import('./pages/ListingPreview'));
 const SECFilings = lazy(() => import('./pages/SECFilings'));
@@ -152,6 +153,8 @@ export const routes: RouteConfig[] = [
   // === 资讯与研究 ===
   { path: '/news', element: wrap(NewsFeed), auth: true, menu: { name: '资讯', icon: 'ReadOutlined', group: 'research' } },
   { path: '/news/:id', element: wrap(NewsDetail), auth: true },
+  // 每日夜间 AI 综合研报（B6, 2026-08-02）：晨读主入口，支持 ?date=YYYY-MM-DD 直达
+  { path: '/digest', element: wrap(Digest), auth: true, menu: { name: '每日研报', icon: 'ReadOutlined', group: 'research' } },
   { path: '/research', element: wrap(ResearchNotes), auth: true, menu: { name: 'AI 研究笔记', label: 'AI 研究笔记', icon: 'BulbOutlined', group: 'research' } },
   { path: '/reports', element: wrap(ReportBrowser), auth: true, menu: { name: '组合报告', icon: 'FileTextOutlined', group: 'research' } },
   { path: '/research-reports', element: wrap(ResearchReports), auth: true, menu: { name: '券商研报', icon: 'FilePdfOutlined', group: 'research' } },

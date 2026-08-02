@@ -17,6 +17,7 @@ from apscheduler.triggers.interval import IntervalTrigger
 
 from app.core.celery_app import celery_app
 from app.core.database import SessionLocal
+from app.core.etl_log_helper import record_etl
 from app.core.redis_client import get_redis_client, redis_lock
 from app.tasks.cninfo import refresh_cninfo_reports_daily
 from app.tasks.indicator import calculate_indicators
@@ -132,6 +133,7 @@ _ETL_JOB_LOCK_MAP: dict[str, str | list[str]] = {
     "china_macro_daily": "china_macro_daily",
     "global_indices_daily": "global_indices_daily",
     "cninfo_reports_daily": "cninfo_reports_daily",
+    "daily_digest": "daily_digest",
 }
 
 
@@ -748,6 +750,61 @@ def run_weekly_pool_reports():
                 )
             except Exception as e:
                 print(f"[Scheduler] Failed to generate report for pool {pool_id}: {e}")
+
+
+def run_daily_digest(target_date: date | None = None):
+    """每日 06:30 (Asia/Shanghai) 生成 AI 综合研报（Daily Digest，B4）。
+
+    骨架对齐 ``run_weekly_pool_reports``：``redis_lock("daily_digest")``
+    防并发双写（同日重生成是 upsert，锁保证不会交错写），独立
+    SessionLocal，异常捕获不炸调度器。ETLLog 由
+    :func:`_run_daily_digest_locked` 上的 ``@record_etl`` 记录。
+
+    通知说明：``DailyDigestService.generate()`` 的成功路径内部已调用
+    ``notify()``（其内部 try/except，通知失败只记日志），所以这里
+    **不重复调用 notify**——否则邮件 / Telegram 会双发。
+    """
+    with redis_lock("daily_digest", expire_seconds=3600) as acquired:
+        if not acquired:
+            print("⚠️ [SCHEDULER_WARN] Daily digest skipped: lock in use")
+            return
+        return _run_daily_digest_locked(target_date)
+
+
+@record_etl("daily_digest")
+def _run_daily_digest_locked(target_date: date | None = None) -> dict[str, Any]:
+    """在 ``daily_digest`` 锁内执行生成，并落一行 ETLLog。
+
+    ETLLog 状态语义（对齐 ``record_etl`` 的 dict 约定）：
+    - ``generate()`` 整体异常（其内部已落 status=failed 并 re-raise）
+      → 捕获后返回 ``{"error": ...}``，ETLLog 记 failed，异常不再
+      外抛（调度器不炸）；
+    - digest status=partial → ``failed`` 列表带失败章节 key，ETLLog
+      记 partial；
+    - 否则 success，records_count=1（全局一份报告）。
+    """
+    from app.services.digest.service import DailyDigestService
+
+    with SessionLocal() as db:
+        try:
+            digest = DailyDigestService(db).generate(target_date)
+            status = digest.status
+            failed_sections = [
+                s.get("key", "?")
+                for s in (digest.sections_json or [])
+                if s.get("status") == "failed"
+            ]
+        except Exception as exc:
+            logging.getLogger(__name__).exception(
+                "Daily digest generation failed: %s", exc
+            )
+            return {"written": 0, "error": str(exc)[:500]}
+
+    result: dict[str, Any] = {"written": 1}
+    if status == "partial":
+        result["failed"] = failed_sections or ["unknown_sections"]
+    print(f"[Scheduler] Daily digest generated: status={status}")
+    return result
 
 
 def run_us_etf_discovery():
@@ -1477,6 +1534,17 @@ def init_scheduler():
         trigger=CronTrigger(day_of_week="sun", hour=22, minute=0, timezone="Asia/Shanghai"),
         id="weekly_pool_reports",
         name="池周报生成",
+        replace_existing=True,
+        max_instances=1,
+    )
+    # 每日 AI 综合研报（Daily Digest，B4）：06:30 收口
+    # [前一日 06:30, 当日 06:30) 数据窗口，全局 job_defaults 已含
+    # misfire_grace_time=300 + coalesce，无需重复声明。
+    scheduler.add_job(
+        run_daily_digest,
+        trigger=CronTrigger(hour=6, minute=30, timezone="Asia/Shanghai"),
+        id="daily_digest",
+        name="每日AI综合研报",
         replace_existing=True,
         max_instances=1,
     )

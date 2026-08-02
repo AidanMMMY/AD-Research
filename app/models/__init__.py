@@ -4,6 +4,7 @@ Re-exports all model classes for convenient imports.
 """
 
 from app.models.cninfo_report import CninfoReport
+from app.models.digest import DailyDigest
 from app.models.disclosure_route import CompanyDisclosureRoute
 from app.models.etf import (
     InstrumentDailyBar,
@@ -108,6 +109,8 @@ __all__ = [
     "ResearchReport",
     # Cninfo (巨潮资讯) periodic reports
     "CninfoReport",
+    # 每日夜间 AI 综合研报（Daily Digest）
+    "DailyDigest",
     # Company disclosure route knowledge base
     "CompanyDisclosureRoute",
     # Fund-flow (免费资金流 - 方案 C)

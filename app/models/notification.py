@@ -16,7 +16,7 @@ class NotificationConfig(Base):
     channel_type = Column(
         String(20),
         nullable=False,
-        comment="Channel type: webhook/email",
+        comment="Channel type: webhook/email/telegram",
     )
     config_json = Column(JSON, nullable=False, comment="Channel-specific config")
     # P0-3: webhook URLs are sensitive (they carry the bot's auth token in

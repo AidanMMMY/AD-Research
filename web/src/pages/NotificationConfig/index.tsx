@@ -17,6 +17,7 @@ import { PlusOutlined, DeleteOutlined, SendOutlined, MailOutlined, LinkOutlined 
 const CHANNEL_OPTIONS = [
   { label: 'Webhook 机器人', value: 'webhook' },
   { label: '邮件 SMTP', value: 'email' },
+  { label: 'Telegram 机器人', value: 'telegram' },
 ];
 
 const PLATFORM_OPTIONS = [
@@ -41,6 +42,9 @@ export default function NotificationConfigPage() {
       if (values.channel_type === 'webhook') {
         config_json.platform = values.platform;
         config_json.webhook_url = values.webhook_url;
+      } else if (values.channel_type === 'telegram') {
+        config_json.bot_token = values.bot_token;
+        config_json.chat_id = values.chat_id;
       } else {
         config_json.to_emails = values.to_emails;
         config_json.subject_prefix = values.subject_prefix || '投研平台';
@@ -102,6 +106,7 @@ export default function NotificationConfigPage() {
       render: (v: string) => {
         if (v === 'webhook') return <ThemeTag variant="accent"><LinkOutlined /> Webhook</ThemeTag>;
         if (v === 'email') return <ThemeTag variant="success"><MailOutlined /> 邮件</ThemeTag>;
+        if (v === 'telegram') return <ThemeTag variant="accent"><SendOutlined /> Telegram</ThemeTag>;
         return <ThemeTag variant="default">{v}</ThemeTag>;
       },
     },
@@ -126,6 +131,16 @@ export default function NotificationConfigPage() {
               <ThemeTag variant="success">{v?.to_emails}</ThemeTag>
               <span className="ad-text-small ad-text-secondary ad-ml-2">
                 {v?.subject_prefix ? `主题: ${v.subject_prefix}` : ''}
+              </span>
+            </span>
+          );
+        }
+        if (record.channel_type === 'telegram') {
+          return (
+            <span>
+              <ThemeTag variant="accent">chat_id: {v?.chat_id}</ThemeTag>
+              <span className="ad-text-small ad-text-secondary ad-ml-2">
+                {v?.bot_token ? 'token 已配置（加密存储）' : 'token 未配置'}
               </span>
             </span>
           );
@@ -169,7 +184,7 @@ export default function NotificationConfigPage() {
       <PageHeader
         eyebrow="系统"
         title="推送配置"
-        description="配置消息推送渠道，支持企业微信、飞书、钉钉 Webhook 和邮件通知"
+        description="配置消息推送渠道，支持企业微信、飞书、钉钉 Webhook、邮件通知和 Telegram 机器人"
         extra={
           <Button type="primary" icon={<PlusOutlined />} onClick={() => setIsModalOpen(true)}>
             新增配置
@@ -185,6 +200,7 @@ export default function NotificationConfigPage() {
             <div>
               <p><strong>Webhook 机器人</strong>：支持企业微信、飞书、钉钉的机器人推送，配置 Webhook 地址即可。</p>
               <p><strong>邮件 SMTP</strong>：支持通过 SMTP 发送邮件通知。SMTP 服务器地址、用户名和密码建议通过环境变量全局配置，每个配置只需设置收件人邮箱。</p>
+              <p><strong>Telegram 机器人</strong>：通过 Telegram Bot 推送，每日综合研报会分段发送全文。需提供 Bot Token 和 Chat ID。</p>
             </div>
           }
           type="info"
@@ -200,6 +216,7 @@ export default function NotificationConfigPage() {
               { key: 'all', label: `全部 (${configs.length})` },
               { key: 'webhook', label: `Webhook (${configs.filter((c: any) => c.channel_type === 'webhook').length})` },
               { key: 'email', label: `邮件 (${configs.filter((c: any) => c.channel_type === 'email').length})` },
+              { key: 'telegram', label: `Telegram (${configs.filter((c: any) => c.channel_type === 'telegram').length})` },
             ]}
           />
         </FilterToolbar>
@@ -254,6 +271,8 @@ export default function NotificationConfigPage() {
                   smtp_port: undefined,
                   smtp_user: undefined,
                   smtp_password: undefined,
+                  bot_token: undefined,
+                  chat_id: undefined,
                 });
               }}
             />
@@ -313,6 +332,30 @@ export default function NotificationConfigPage() {
               </Form.Item>
               <Form.Item name="smtp_password" label="SMTP 密码">
                 <Input.Password placeholder="（可选）" />
+              </Form.Item>
+            </>
+          )}
+
+          {channelType === 'telegram' && (
+            <>
+              <Alert
+                message="Telegram 配置说明"
+                description={
+                  <span>
+                    在 Telegram 找 <strong>@BotFather</strong> 发送 /newbot 创建机器人，拿到 Bot Token；
+                    然后给你的 bot 发一条消息，访问 <code>https://api.telegram.org/bot&lt;TOKEN&gt;/getUpdates</code>
+                    从返回 JSON 中取 <code>chat.id</code> 作为 Chat ID（群聊为负数）。Bot Token 将加密存储。
+                  </span>
+                }
+                type="info"
+                showIcon
+                className="ad-mb-4"
+              />
+              <Form.Item name="bot_token" label="Bot Token" rules={[{ required: true, message: '请输入 Bot Token' }]}>
+                <Input.Password placeholder="123456789:AAE...（BotFather 提供）" autoComplete="off" />
+              </Form.Item>
+              <Form.Item name="chat_id" label="Chat ID" rules={[{ required: true, message: '请输入 Chat ID' }]}>
+                <Input placeholder="如 123456789，群聊为 -100 开头的负数" />
               </Form.Item>
             </>
           )}

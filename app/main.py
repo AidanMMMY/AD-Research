@@ -22,6 +22,7 @@ from app.api.v1 import (
     cninfo_reports,
     crypto,
     deployments,
+    digest,
     etf_holdings,
     etf_holdings_stats,
     etf_scanner,
@@ -198,6 +199,9 @@ app.include_router(
 )
 app.include_router(
     reports.router, prefix=f"{settings.api_v1_prefix}/reports", tags=["Reports"]
+)
+app.include_router(
+    digest.router, prefix=f"{settings.api_v1_prefix}/digest", tags=["Digest"]
 )
 app.include_router(
     research_reports.router,

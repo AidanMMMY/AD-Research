@@ -17,6 +17,7 @@ import { useMacroLatest, macroApi } from '@/api/macro';
 import { codeToRegion } from '../../utils/macroRegion';
 import EmptyState from '@/components/EmptyState';
 import LoadingBlock from '@/components/LoadingBlock';
+import DigestSummaryCard from '@/components/DigestSummaryCard';
 import ReturnTag from '@/components/ReturnTag';
 import { usePriceStream } from '@/hooks/usePriceStream';
 import { useMarketStream } from '@/hooks/useMarketStream';
@@ -416,6 +417,9 @@ export default function Dashboard() {
               ))}
             </div>
           </section>
+
+          {/* 每日研报摘要卡（B6, 2026-08-02）：整宽条，晨读第一入口 */}
+          <DigestSummaryCard />
 
           <div className="cc-grid">
             {/* Fund Flow */}

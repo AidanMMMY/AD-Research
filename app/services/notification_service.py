@@ -1,6 +1,7 @@
-"""Notification service with webhook and email support.
+"""Notification service with webhook, email and telegram support.
 
-Supports WeChat Work, Feishu, DingTalk webhooks, and SMTP email.
+Supports WeChat Work, Feishu, DingTalk webhooks, SMTP email, and
+Telegram Bot API (B7, 2026-08-03 — Daily Digest 全文推送).
 Sensitive credentials stored in config_json are encrypted at rest.
 
 P0-3 (2026-07-16): ``webhook_url`` is now stored in a dedicated
@@ -13,10 +14,13 @@ invalidates both stores consistently.
 
 import base64
 import logging
+import re
 import smtplib
+import time
 from datetime import datetime
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+from html import escape
 from typing import Any
 
 import requests
@@ -29,6 +33,91 @@ from app.models.notification import NotificationConfig, NotificationLog
 from app.models.scoring import ReportMetadata
 
 logger = logging.getLogger(__name__)
+
+
+# ── B7 (2026-08-03): Daily Digest 推送用的最小 markdown 转换 ──
+# 平台没有引入 markdown 库（grep 全仓无 markdown2/mistune），这里手写
+# 最小转换集：标题 / 段落 / 无序列表 / **粗体**，其余原样保留并 HTML
+# 转义。邮件与 Telegram 各一套输出（Telegram 只支持极小 HTML 子集）。
+
+# Telegram Bot API 单条消息上限 4096 字符；转 HTML 后标签有额外开销，
+# 分段按 3800 字符（markdown 源文本）预留余量。
+_TELEGRAM_CHUNK_LIMIT = 3800
+
+
+def _md_inline_html(text: str) -> str:
+    """最小内联转换：先 HTML 转义，再把 **粗体** 转成 <b>。"""
+    escaped = escape(text)
+    return re.sub(r"\*\*(.+?)\*\*", r"<b>\1</b>", escaped)
+
+
+def md_to_email_html(md: str) -> str:
+    """markdown → 简化邮件 HTML（h1/h2/h3、p、ul/li、粗体）。"""
+    blocks: list[str] = []
+    for block in re.split(r"\n{2,}", md.strip()):
+        block = block.strip("\n")
+        if not block.strip():
+            continue
+        lines = block.split("\n")
+        first = lines[0]
+        heading = re.match(r"^(#{1,3})\s+(.*)$", first)
+        if heading and len(lines) == 1:
+            level = len(heading.group(1))
+            blocks.append(f"<h{level}>{_md_inline_html(heading.group(2).strip())}</h{level}>")
+        elif all(re.match(r"^\s*[-*]\s+", line) for line in lines if line.strip()):
+            item_texts = [
+                re.sub(r"^\s*[-*]\s+", "", line).strip()
+                for line in lines
+                if line.strip()
+            ]
+            items = "".join(f"<li>{_md_inline_html(text)}</li>" for text in item_texts)
+            blocks.append(f"<ul>{items}</ul>")
+        else:
+            inner = "<br>\n".join(_md_inline_html(line) for line in lines)
+            blocks.append(f"<p>{inner}</p>")
+    return "\n".join(blocks)
+
+
+def md_to_telegram_html(md: str) -> str:
+    """markdown → Telegram HTML 最小集（parse_mode=HTML 只认 b/i/a/code 等）。
+
+    标题行降级为 <b> 粗体行，无序列表保留 "• " 文本前缀，其余按行
+    转义输出，避免 MarkdownV2 的转义地狱。
+    """
+    out_lines: list[str] = []
+    for line in md.split("\n"):
+        stripped = line.strip()
+        heading = re.match(r"^(#{1,6})\s+(.*)$", stripped)
+        if heading:
+            out_lines.append(f"<b>{_md_inline_html(heading.group(2).strip())}</b>")
+        elif re.match(r"^[-*]\s+", stripped):
+            body = re.sub(r"^[-*]\s+", "", stripped)
+            out_lines.append(f"• {_md_inline_html(body)}")
+        else:
+            out_lines.append(_md_inline_html(line) if stripped else "")
+    return "\n".join(out_lines)
+
+
+def split_telegram_chunks(text: str, limit: int = _TELEGRAM_CHUNK_LIMIT) -> list[str]:
+    """按段落边界（\\n\\n）把长文切成 ≤limit 的段；单段超长再硬切。"""
+    paragraphs = text.split("\n\n")
+    chunks: list[str] = []
+    current = ""
+    for para in paragraphs:
+        candidate = para if not current else f"{current}\n\n{para}"
+        if len(candidate) <= limit:
+            current = candidate
+            continue
+        if current:
+            chunks.append(current)
+        # 单个段落自身超限：硬切，保证每条消息都不越限
+        while len(para) > limit:
+            chunks.append(para[:limit])
+            para = para[limit:]
+        current = para
+    if current:
+        chunks.append(current)
+    return chunks
 
 
 class NotificationService:
@@ -76,7 +165,8 @@ class NotificationService:
     def _protect_config_json(self, config_json: dict[str, Any]) -> dict[str, Any]:
         """Encrypt sensitive values before persisting config_json."""
         protected = dict(config_json)
-        for key in ("smtp_password", "webhook_secret"):
+        # B7: telegram 的 bot_token 与 smtp_password 同级敏感，照抄 Fernet 惯例
+        for key in ("smtp_password", "webhook_secret", "bot_token"):
             if key in protected and protected[key]:
                 protected[key] = self._encrypt_value(str(protected[key]))
         return protected
@@ -84,7 +174,7 @@ class NotificationService:
     def _expose_config_json(self, config_json: dict[str, Any]) -> dict[str, Any]:
         """Decrypt sensitive values when returning config_json to callers."""
         exposed = dict(config_json)
-        for key in ("smtp_password", "webhook_secret"):
+        for key in ("smtp_password", "webhook_secret", "bot_token"):
             if key in exposed and exposed[key]:
                 exposed[key] = self._decrypt_value(str(exposed[key]))
         return exposed
@@ -267,6 +357,8 @@ class NotificationService:
                 result = self._send_webhook(exposed_config, report_id, test)
             elif config.channel_type == "email":
                 result = self._send_email(exposed_config, report_id, test)
+            elif config.channel_type == "telegram":
+                result = self._send_telegram(exposed_config, report_id, test)
             else:
                 result = {"success": False, "error": f"Unsupported channel type: {config.channel_type}"}
 
@@ -381,7 +473,14 @@ class NotificationService:
             """
         else:
             report = self.db.query(ReportMetadata).filter(ReportMetadata.id == report_id).first() if report_id else None
-            if report:
+            # B7: Daily Digest 走全文邮件（summary + content 全量），
+            # 其余 pool 报告维持原有简短通知，行为零变化。
+            digest_email = (
+                self._build_digest_email(report) if report is not None else None
+            )
+            if digest_email is not None:
+                subject, body_text, body_html = digest_email
+            elif report:
                 subject = f"[{subject_prefix}] {report.report_type} 报告"
                 body_text = f"""ETF投研平台报告通知
 
@@ -429,6 +528,136 @@ class NotificationService:
             return {"success": False, "error": f"SMTP连接失败: {e}"}
         except Exception as e:
             return {"success": False, "error": f"邮件发送失败: {e}"}
+
+    # ── B7 (2026-08-03): Daily Digest 全文邮件 / Telegram 通道 ──
+
+    def _load_digest(self, report: ReportMetadata):
+        """按 report_metadata 伴随行反查 DailyDigest（report_metadata_id 优先，
+        report_date 兜底——伴随行被清理后仍可取到当日报告）。"""
+        from app.models.digest import DailyDigest
+
+        digest = (
+            self.db.query(DailyDigest)
+            .filter(DailyDigest.report_metadata_id == report.id)
+            .first()
+        )
+        if digest is None:
+            digest = (
+                self.db.query(DailyDigest)
+                .filter(DailyDigest.report_date == report.report_date)
+                .first()
+            )
+        return digest
+
+    def _build_digest_email(self, report: ReportMetadata) -> tuple[str, str, str] | None:
+        """构造 Daily Digest 全文邮件（subject, body_text, body_html）。
+
+        仅当 report_type=="daily_digest" 且能取到 digest 行时返回；
+        否则返回 None，调用方回退到既有通用通知模板。
+        """
+        if report.report_type != "daily_digest":
+            return None
+        digest = self._load_digest(report)
+        if digest is None:
+            return None
+
+        mmdd = report.report_date.strftime("%m-%d")
+        # 标题缺失时退化为 summary 首句，再退化为固定文案
+        fallback_title = (digest.summary_md or "").strip().split("\n")[0].strip() or "全球市场一日纵览"
+        title = (digest.title or "").strip() or fallback_title
+        subject = f"{mmdd} 每日综合研报：{title}"
+
+        summary = (digest.summary_md or "").strip()
+        content = (digest.content_md or "").strip()
+        full_md = f"{summary}\n\n{content}".strip()
+
+        # 平台暂无前端 base url 配置项，文案用相对路径提示
+        link_hint = "请登录平台查看完整排版：/digest"
+        body_text = f"{full_md}\n\n——\n{link_hint}\nETF投研平台 · 自动发送"
+
+        body_html = f"""
+        <html><body style="font-family: -apple-system, BlinkMacSystemFont, sans-serif; color: #333; line-height: 1.7;">
+        <h2 style="color: #818cf8;">{escape(title)}</h2>
+        <p style="color: #64748b; font-size: 13px;">{mmdd} 每日综合研报 · AI 自动生成</p>
+        <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 16px 0;">
+        {md_to_email_html(full_md)}
+        <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 24px 0;">
+        <p style="color: #94a3b8; font-size: 12px;">{escape(link_hint)}<br>ETF投研平台 · 自动发送</p>
+        </body></html>
+        """
+        return subject, body_text, body_html
+
+    def _send_telegram(self, config: dict[str, Any], report_id: int | None, test: bool) -> dict[str, Any]:
+        """通过 Telegram Bot API 推送（parse_mode=HTML）。
+
+        config_json = {"bot_token": ..., "chat_id": ...}；bot_token 在
+        落库时已被 _protect_config_json Fernet 加密，此处拿到的是解密值。
+        Daily Digest 场景：首条 = 标题 + summary，content 全文按段落
+        边界切 ≤3800 字符分段发送，每条间隔 0.5s 防限流。
+        """
+        bot_token = (config.get("bot_token") or "").strip()
+        chat_id = (config.get("chat_id") or "").strip()
+        if not bot_token:
+            return {"success": False, "error": "Telegram bot_token 未配置"}
+        if not chat_id:
+            return {"success": False, "error": "Telegram chat_id 未配置"}
+
+        if test:
+            messages = [
+                "<b>ETF投研平台 - 测试消息</b>\n\n"
+                "这是一条测试推送消息，如果您收到此消息，说明 Telegram 推送配置正确。"
+            ]
+        else:
+            report = self.db.query(ReportMetadata).filter(ReportMetadata.id == report_id).first() if report_id else None
+            digest = self._load_digest(report) if report is not None and report.report_type == "daily_digest" else None
+            if digest is not None:
+                title = (digest.title or "").strip() or "每日综合研报"
+                summary_html = md_to_telegram_html((digest.summary_md or "").strip())
+                first = f"<b>{escape(title)}</b>\n\n{summary_html}".strip()
+                messages = [first]
+                content = (digest.content_md or "").strip()
+                if content:
+                    for chunk in split_telegram_chunks(content):
+                        messages.append(md_to_telegram_html(chunk))
+            elif report:
+                messages = [
+                    f"<b>ETF投研平台报告通知</b>\n"
+                    f"报告类型: {escape(str(report.report_type))}\n"
+                    f"报告日期: {escape(str(report.report_date))}\n"
+                    f"状态: {escape(str(report.status))}"
+                ]
+            else:
+                messages = ["ETF投研平台 - 新报告已生成\n\n请登录平台查看详细内容。"]
+
+        api_url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
+        for idx, text in enumerate(messages):
+            if idx > 0:
+                time.sleep(0.5)  # 防 Telegram 限流
+            try:
+                response = requests.post(
+                    api_url,
+                    json={
+                        "chat_id": chat_id,
+                        "text": text,
+                        "parse_mode": "HTML",
+                        "disable_web_page_preview": True,
+                    },
+                    timeout=30,
+                )
+            except Exception as e:
+                return {"success": False, "error": f"Telegram 发送失败（第{idx + 1}条）: {e}"}
+            # Telegram 返回 {"ok": true, ...}；非 JSON 响应按状态码兜底
+            ok = False
+            try:
+                ok = response.status_code == 200 and bool(response.json().get("ok"))
+            except Exception:
+                ok = response.status_code == 200
+            if not ok:
+                return {
+                    "success": False,
+                    "error": f"Telegram 第{idx + 1}条发送失败: HTTP {response.status_code}: {response.text[:200]}",
+                }
+        return {"success": True}
 
     # ── P0-6: ETL failure alerting ──
     # Only active admin NotificationConfigs receive the alert. Failures
