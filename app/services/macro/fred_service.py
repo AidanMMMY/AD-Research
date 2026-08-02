@@ -150,7 +150,17 @@ _GLOBAL_SERIES: list[FredSeriesMeta] = [
 # ---------------------------------------------------------------------------
 _EU_SERIES: list[FredSeriesMeta] = [
     # ── Output ──
-    FredSeriesMeta("NAEXKP01EZQ661S", "eu_gdp", "欧元区实际GDP", "Euro Area Real GDP", "百万欧元", "产出"),
+    # NOTE (2026-08-02): replaced ``NAEXKP01EZQ661S`` — the OECD quarterly
+    # volume-INDEX series stopped publishing (latest obs 2023-01-01, same
+    # wave of removals as CPALTT01), and its values were an index (~110)
+    # so the old "百万欧元" unit label was wrong anyway.  Replacement is
+    # Eurostat's Real GDP for the Euro Area (19 countries), quarterly,
+    # seasonally adjusted, millions of chained 2010 euros — still
+    # updating (verified 2026-08-02: latest obs 2026-04-01 =
+    # 2,896,609.2 M EUR, series updated 2026-07-30).  This matches the
+    # displayed label/unit ("欧元区实际GDP" / "百万欧元") exactly, so the
+    # change is a label-correction rather than a methodology swap.
+    FredSeriesMeta("CLVMEURSCAB1GQEA19", "eu_gdp", "欧元区实际GDP", "Euro Area Real GDP (EA19, SA)", "百万欧元", "产出"),
     # ── Prices ──
     # NOTE (2026-08-02): replaced ``CPALTT01EZM657N`` — FRED removed the
     # entire OECD CPALTT01 euro-area family (400 "series does not exist",
@@ -164,7 +174,19 @@ _EU_SERIES: list[FredSeriesMeta] = [
     # a methodology swap.  YoY readers should derive from the index.
     FredSeriesMeta("CP0000EZ19M086NEST", "eu_cpi", "欧元区CPI", "Euro Area HICP (Harmonised CPI, Total)", "指数", "价格"),
     # ── Labour ──
-    FredSeriesMeta("LRHUTTTTEZQ156S", "eu_unrate", "欧元区失业率", "Euro Area Unemployment Rate", "%", "就业"),
+    # NOTE (2026-08-02): ``LRHUTTTTEZQ156S`` (OECD harmonised unemployment,
+    # quarterly) stopped at 2022-10-01; the monthly sibling
+    # LRHUTTTTEZM156S also died (latest obs 2023-01-01) — FRED pulled the
+    # whole OECD LFS euro-area family in the same wave as CPALTT01/
+    # NAEXKP01.  Eurostat publishes NO unemployment series on FRED
+    # (scanned all 7,924 eurostat-tagged series: 0 matches), and the only
+    # still-updating euro-area unemployment series is the World Bank
+    # *youth* rate (SLUEM1524ZSEMU, annual, ages 15-24, ILO modeled,
+    # ~16% vs ~6.5% total) — a different calibre, so per the
+    # retire-don't-swap rule (see us_ism_pmi above) ``eu_unrate`` is
+    # retired from the registry.  Historical rows stay in
+    # macro_indicator but are no longer refreshed or listed.  Revisit if
+    # Eurostat's une_rt_m ever lands on FRED.
     # ── Money / Rates ──
     FredSeriesMeta("ECBDFR", "eu_ecb_deposit_rate", "欧央行存款便利利率", "ECB Deposit Facility Rate", "%", "利率"),
 ]

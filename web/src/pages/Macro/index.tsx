@@ -56,7 +56,6 @@ const MACRO_TERM_KEY_MAP: Record<string, string> = {
   cpi_yoy: 'cpi',
   eu_cpi: 'cpi',
   us_unrate: 'unemployment_rate',
-  eu_unrate: 'unemployment_rate',
   us_fed_funds: 'fed_funds',
   us_dgs10: 'treasury_yield',
   us_vix: 'vix',
@@ -84,7 +83,8 @@ function formatValue(v: number | null | undefined, unit: string): string {
 // Headline KPIs per region. Order = display order in the strip.
 const HEADLINE_CODES: Record<string, string[]> = {
   us: ['us_cpi', 'us_unrate', 'us_fed_funds', 'us_dgs10', 'us_vix'],
-  eu: ['eu_cpi', 'eu_unrate', 'eu_ecb_deposit_rate', 'eu_gdp'],
+  // eu_unrate 已于 2026-08-02 退役（FRED 下架 OECD 失业率族且无 Eurostat 替代）
+  eu: ['eu_cpi', 'eu_ecb_deposit_rate', 'eu_gdp'],
   cn: ['gdp_yoy', 'cpi_yoy', 'ppi_yoy', 'm2_yoy', 'pmi_manufacturing', 'shibor_3m'],
   global: [
     'global_sp500', 'global_nasdaq', 'global_dow', 'global_dxy',

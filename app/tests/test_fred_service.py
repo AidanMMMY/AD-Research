@@ -101,6 +101,35 @@ def test_eu_cpi_uses_eurostat_hicp_replacement():
     assert "CPALTT01EZM657N" not in all_ids
 
 
+def test_eu_gdp_uses_eurostat_real_gdp_replacement():
+    """2026-08-02: NAEXKP01EZQ661S (OECD quarterly volume *index*) stopped
+    at 2023-01-01 in the same removal wave as CPALTT01.  eu_gdp now maps
+    to Eurostat's Real GDP for the Euro Area (19 countries)
+    (CLVMEURSCAB1GQEA19), quarterly, SA, millions of chained 2010 euros,
+    still updating (latest obs 2026-04-01 at verification time)."""
+    eu = {m.code: m for m in _EU_SERIES}
+    assert "eu_gdp" in eu
+    assert eu["eu_gdp"].series_id == "CLVMEURSCAB1GQEA19"
+    assert eu["eu_gdp"].unit == "百万欧元"
+    # The dead OECD id must be gone from every registry.
+    all_ids = {m.series_id for m, _ in _SERIES_ALL}
+    assert "NAEXKP01EZQ661S" not in all_ids
+
+
+def test_discontinued_eu_unrate_retired_from_registry():
+    """2026-08-02: FRED pulled the whole OECD LFS euro-area family
+    (LRHUTTTTEZQ156S stale since 2022-10; monthly sibling LRHUTTTTEZM156S
+    since 2023-01).  Eurostat has no unemployment series on FRED and the
+    only still-updating alternative (World Bank youth rate, annual) is a
+    different calibre, so eu_unrate is retired — it must not be
+    refreshed anymore."""
+    assert "LRHUTTTTEZQ156S" not in {m.series_id for m, _ in _SERIES_ALL}
+    assert "LRHUTTTTEZM156S" not in {m.series_id for m, _ in _SERIES_ALL}
+    assert "eu_unrate" not in {m.code for m in _EU_SERIES}
+    # And it must not sneak back in via the merged view either.
+    assert "eu_unrate" not in {m.code for m, _ in _SERIES_ALL}
+
+
 # ---------------------------------------------------------------------------
 # Refresh path (uses the stub provider — never hits the network)
 # ---------------------------------------------------------------------------
