@@ -1,0 +1,150 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>每日AI综合研报上线 runbook</title>
+<style>body{font-family:-apple-system,system-ui,sans-serif;max-width:860px;margin:2rem auto;padding:0 1rem;line-height:1.7;color:#222}
+pre{background:#f6f8fa;padding:1rem;overflow-x:auto;border-radius:6px}code{background:#f0f0f0;padding:.1em .3em;border-radius:3px}
+pre code{background:none;padding:0}table{border-collapse:collapse}td,th{border:1px solid #ddd;padding:.4em .8em}
+h1,h2,h3{line-height:1.3}</style></head><body><h1>每日 AI 综合研报（Daily Digest）上线 runbook</h1>
+<blockquote>
+<p>2026-08-03 全栈上线（commit <code>0288a3f</code>）。每天北京时间 06:30 自动生成 3000-5000 字中文综合研报，
+触达四渠道：平台 <code>/digest</code> 页面、Dashboard 摘要卡、邮件（全文）、Telegram。</p>
+</blockquote>
+<h2>1. 需求与决策记录</h2>
+<table>
+<thead>
+<tr>
+<th>决策点</th>
+<th>用户拍板</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>触达渠道</td>
+<td>平台页面 + 邮件 + 首页摘要卡 + Telegram 机器人（全要）</td>
+</tr>
+<tr>
+<td>覆盖范围</td>
+<td>A股/美股/加密 + 自选/组合为重点 + 宏观政策 + 行业轮动（全要）</td>
+</tr>
+<tr>
+<td>深度</td>
+<td>3000-5000 字深度综合</td>
+</tr>
+<tr>
+<td>生成时间</td>
+<td>北京时间 06:30（接受美股指标偶尔晚到；06:45 为回退预案）</td>
+</tr>
+<tr>
+<td>邮件形态</td>
+<td>全文进邮件</td>
+</tr>
+<tr>
+<td>加密部分</td>
+<td>简报级</td>
+</tr>
+<tr>
+<td>报告归属</td>
+<td>全局一份；自选/持仓取主用户（config <code>digest_primary_username="aidan"</code>）</td>
+</tr>
+<tr>
+<td>历史报告</td>
+<td>不清理</td>
+</tr>
+<tr>
+<td>写作风格（后补）</td>
+<td>凡"某因素影响市场"的判断，必须 1-3 句人话拆解因果传导链（A→B→C），解释链路上普通读者不懂的机制/术语，禁止只抛结论</td>
+</tr>
+</tbody>
+</table>
+<h2>2. 架构</h2>
+<pre><code>APScheduler 06:30 Asia/Shanghai (job id=daily_digest)
+  → run_daily_digest(target_date=None)         # app/core/scheduler.py
+    redis_lock(&quot;daily_digest&quot;, expire=3600) + @record_etl(&quot;daily_digest&quot;)
+    → DailyDigestService(db).generate(date)    # app/services/digest/service.py
+      → DigestDataCollector：8 数据包，单包失败 → degraded 不阻塞
+      → DigestGenerator：6 章节×独立 LLM 调用 + 1 次摘要
+      → daily_digest 表 upsert（report_date unique）
+      → report_metadata 伴随行（report_type=&quot;daily_digest&quot;, pool_id=NULL）
+      → 内部调 notify()（仅此一处，scheduler/API 不再重复调，防双发）
+        → 遍历 is_active NotificationConfig → send_notification
+</code></pre>
+<p><strong>通知只由 <code>service.generate()</code> 内部触发一次</strong>（service.py:95）。regenerate API 后台线程复用
+<code>run_daily_digest</code>（同一把 redis_lock + ETLLog，撞锁静默跳过）。</p>
+<h2>3. 各批次交付</h2>
+<ul>
+<li><strong>B1</strong> <code>app/models/digest.py</code>（14 列）+ 迁移 <code>b7d9f1h3j5l7</code>（down=x5y7z9a1b3c5）+ config <code>digest_primary_username</code></li>
+<li><strong>B2</strong> <code>app/services/digest/collector.py</code>：窗口 [前日 06:30, 当日 06:30) Asia/Shanghai 半开；8 包=macro/sector/scores/fund_flow/news/watchlist/sentiment/sellside；<code>data_snapshot_json</code> 记录边界/行数/degraded</li>
+<li><strong>B3</strong> <code>generator.py</code>：6 节独立调用（1+2 重试，退避 2s/5s），单节失败写占位段，≥2 节失败或校验不过 → partial 仍出报仍推送；中文占位串特判（"AI 功能未配置" 立即判败不重试）；摘要失败兜底第 1 节前 200 字；落库前校验总字数 2000-8000 + 6 个 <code>##</code></li>
+<li><strong>B4</strong> scheduler：CronTrigger(6:30 Asia/Shanghai) + replace_existing + max_instances=1 + <code>_ETL_JOB_LOCK_MAP["daily_digest"]</code>；ETLLog success records_count=1 / partial 带失败章节 key / failed 带 error_msg</li>
+<li><strong>B5</strong> <code>app/api/v1/digest.py</code>：GET 列表(无content)/latest/latest/summary/{id}/by-date/{date}（404=空态语义；非法日期 400）+ POST /digest/regenerate（admin，202 后台线程）</li>
+<li><strong>B6</strong> 前端：<code>/digest</code> 移动优先阅读页（摘要卡+partial 徽章+章节锚点目录+?date=直达+前后篇导航+404 空态）；Dashboard <code>DigestSummaryCard</code>；菜单「资讯与研究」组「每日研报」</li>
+<li><strong>B7</strong> 通知：email 渠道 <code>_build_digest_email</code> 全文模板（pool 报告零影响）；新 channel_type=telegram（config_json={bot_token, chat_id}，bot_token 走 Fernet <code>enc:</code> 前缀加密，沿用 NOTIFICATION_ENCRYPTION_KEY→AUTH_SECRET_KEY 回退；HTML parse_mode；3800 字段落边界切分；0.5s 防限流；失败只记 NotificationLog）</li>
+</ul>
+<h2>4. 运维手册</h2>
+<h3>手动重出当天报告</h3>
+<pre><code class="language-bash">ssh ad-research
+docker exec -d alloyresearch-backend bash -c 'python -c &quot;
+from app.core.scheduler import run_daily_digest
+print(run_daily_digest())
+&quot; &gt; /tmp/digest_manual_run.log 2&gt;&amp;1'
+# 5-15 分钟后查：
+docker exec alloyresearch-postgres psql -U etf -d ad_research \
+  -c &quot;SELECT report_date,status,length(content_md) FROM daily_digest ORDER BY id DESC LIMIT 1;&quot;
+</code></pre>
+<p>或前端/admin 调 <code>POST /api/v1/digest/regenerate</code>（同日 upsert 不产生重复行）。</p>
+<h3>Telegram 配置步骤（需用户操作）</h3>
+<ol>
+<li>Telegram 找 @BotFather → <code>/newbot</code> → 拿到 bot_token</li>
+<li>给 bot 发任意消息 → 浏览器开 <code>https://api.telegram.org/bot&lt;TOKEN&gt;/getUpdates</code> → 取 <code>chat.id</code>（群聊为 -100 开头负数）</li>
+<li>平台「推送配置」新增：channel_type=telegram，填 bot_token + chat_id → 点「测试」验证</li>
+<li>ECS 出口到 api.telegram.org 已实测可达（2026-08-03）</li>
+</ol>
+<h3>邮件通道（尚未启用 ⚠️）</h3>
+<p>生产 .env <strong>从未配置 SMTP_</strong>*。启用步骤：
+1. <code>/opt/ad-research/deploy/aliyun-ecs/.env</code> 加 <code>SMTP_HOST/SMTP_PORT/SMTP_USER/SMTP_PASSWORD/SMTP_FROM</code>（参数名以 app/config.py 为准）
+2. <code>docker compose -f /opt/ad-research/deploy/aliyun-ecs/docker-compose.yml up -d backend</code> 重建
+3. 「推送配置」新增 email 配置
+未配期间邮件渠道静默缺失，不影响其他渠道。</p>
+<h3>故障排查</h3>
+<ul>
+<li><strong>没出报</strong>：先看 etl_log <code>job_name='daily_digest'</code> 最近一行 status/error_msg；再查 daily_digest 表该行 status</li>
+<li><strong>partial</strong>：sections_json 里失败章节 key；data_snapshot_json 的 degraded 列表看哪个数据包挂了</li>
+<li><strong>LLM 故障窗口</strong>：单节重试 2 次后写占位段，整体 partial 仍推送——次日自愈，无需干预</li>
+<li><strong>06:30 美股数据晚到</strong>：3/4 节新鲜度受损可接受；若常态发生，把 cron 改 06:45（预案）</li>
+<li><strong>重复推送</strong>：notify 只走 generate() 内部一路，若发现双发查是否有人手动调了 notify()</li>
+</ul>
+<h2>5. 实施中踩到的坑（另案/备忘）</h2>
+<ol>
+<li><code>app/models/news.py</code> 被同名包 <code>app/models/news/</code> 遮蔽（历史坑）——NewsArticle 必须经 <code>app.services.news._model_loader</code> 导入</li>
+<li><strong>疑似存量 bug（未修）</strong>：<code>fund_flow_service.list_sector</code> 的 <code>_parse_sort("main_net_inflow")</code> 固定返回 IndividualFundFlow 的列，在板块表查询产生跨表 ORDER BY（SQLite 实测报错）。collector 已绕开（直查 SectorFundFlow），公共 service 另案修</li>
+<li><code>by-date/2026/08/02</code> 带斜杠的非法日期在路由层 404（路径段不匹配），不进 handler 400 分支——预期行为</li>
+<li>webhook 渠道（企微/飞书/钉钉）digest 走原有简短通知，未做全文（webhook 不适合长文，邮件/TG 承载全文）</li>
+</ol>
+<h2>5.1 上线当日三轮热修复（f42573a / 7e2156f / 6aabbd3）</h2>
+<p>首跑（partial）与二跑（partial）暴露三个真问题，均当日修复并验证：</p>
+<ol>
+<li><strong>heading 校验过严</strong>：校验 <code>content_md.count("\n## ") != 6</code> → 判 partial。实测 LLM 在第 2/5 节
+   正文开头复读章节标题（出现 8 个 <code>##</code>）。修复：①校验改为 <code>&lt; 6</code> 才判 partial（正文自带子标题合法）；
+   ②<code>_strip_leading_heading</code> 剥掉正文开头复读的标题行。</li>
+<li><strong>字数上限误杀</strong>：MAX_TOTAL_CHARS=8000，实测自然输出 7.3k/8.6k/8.75k。上限是"防失控保险丝"
+   不是目标篇幅，放宽到 12000。</li>
+<li><strong>存量通知配置静默失败（重要存量 bug）</strong>：生产 3 个配置 channel_type=wechat_work/feishu/dingtalk，
+   但 <code>send_notification</code> 只认 webhook/email/telegram → 此前<strong>所有</strong>推送全部
+   "Unsupported channel type" 静默失败（notification_log id 17-19 实证，意味着这些配置从未成功推送过）。
+   修复：<code>_normalize_channel_type</code> 别名映射到 webhook 分发 + 补 platform 默认值（<code>_send_webhook</code>
+   本就支持三平台载荷）；ETL 告警两处分发点同步修。另：notify 查询过滤 system_alert（watchdog
+   内部 sink，非外发渠道，只产生 failed 噪音）。</li>
+<li><strong>测试备忘</strong>：<code>by-date/2026/08/02</code> 带斜杠在路由层 404，不进 handler 400 分支——预期行为。</li>
+</ol>
+<h2>6. 验证记录</h2>
+<ul>
+<li>本地：pytest 1633 passed / web check:ci 绿 / vitest 52 passed</li>
+<li>CI/Deploy（4 commit 全绿）：0288a3f / f42573a / 7e2156f / 6aabbd3，Deploy 均 success</li>
+<li>ECS：alembic head=b7d9f1h3j5l7 ✅ / daily_digest 表 ✅ / lock map ✅ / 路由 6 条 ✅ / api.telegram.org 可达 ✅</li>
+<li>E2E 三轮手动 regenerate（2026-08-03）：</li>
+<li>第 1 轮 partial（heading 8!=6 误判 + 第 2/5 节双标题）→ f42573a 修</li>
+<li>第 2 轮 partial（8562 字超 8000 上限误杀）→ 6aabbd3 修；通知企微/飞书 success（别名修复生效）</li>
+<li>第 3 轮 <strong>success，8750 字</strong>，企微/飞书推送 success，无 system_alert 噪音；摘要质量抽查：
+    因果传导人话解释规则生效（如"原油风险溢价回落→输入性通胀压力减轻→央行降息空间打开"）</li>
+<li>首日 06:30 定时跑：待 2026-08-04 晨观察 etl_log job_name='daily_digest'</li>
+</ul></body></html>
