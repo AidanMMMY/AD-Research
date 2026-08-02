@@ -93,6 +93,14 @@
 - `DetailAIAnalysis.tsx` 零引用删除（其 CSS 类仍被 InstrumentDetail 用，定义在 global/pages-detail.css，未动）；`Portfolio/styles.css` 整文件只剩 3 个 diff 死类，整文件删除 + 移除 import。
 - 单标情绪 ingest 成功后 `?code=` 回写地址栏：`setSearchParams` 函数式构造（保留 tab 等既有参数，`replace: true`），守卫已相同则跳过（深链自动分析不多余触发），失败不回写。4 测试覆盖手动/深链/换标的/失败。
 
+## 8. 翻译重试封顶排查（2026-08-02 晚，用户问"翻译为什么还没有"）
+
+- **现象**：资讯页 ~103 篇英文文章无中文标题，全部 ≥24h 旧；近 24h 新文章 0 篇缺译——drain 管线本身健康（每轮 ~195 篇 success）。
+- **根因**：这 103 篇（全库共 351 篇）`translation_attempts=5` 撞 `_MAX_TRANSLATION_ATTEMPTS` 上限被 drain 永久排除。失败发生在 7-31~8-01 MiniMax 过载/排队窗口（正值 18.7k 积压清仓期），属瞬时故障，并非内容敏感——手动重试 Assam 洪水文（id=5259179）标题+正文**一把成功**。
+- **处置**：`UPDATE news_article SET translation_attempts=0 WHERE 非中文 AND title_zh IS NULL AND translation_attempts>=5` → 351 行回池。真敏感文（如新疆强迫劳动指控报道）下一次失败会确定性 422 立刻再封顶，自动分诊，无需人工区分。
+- **教训**：**重试封顶无自愈机制**——瞬时 LLM 故障窗口过后，撞顶行永远沉底，必须手动 reset。排查路径：先看"缺译是否全是旧文"（新文缺=管线坏，旧文缺=封顶），再查 attempts 分布，最后手动重试单篇定性。
+- **改进建议（未实施）**：drain job 加个周期性 attempts 自动回零（如对 attempts>=5 且 updated_at 超过 24h 的行每日 reset 一次），让瞬时故障自愈；敏感行反正会确定性再封顶，成本只是每天多几轮无效调用。
+
 ## 部署与运维备忘（本批新增）
 
 - **`git rm` 会预暂存删除**——分批 commit 前先 `git status` 看暂存区，否则删除会混入下一个 commit（本批 FRED commit 踩到，已 reset 重做）。
