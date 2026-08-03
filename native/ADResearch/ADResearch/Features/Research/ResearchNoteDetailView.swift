@@ -18,8 +18,8 @@ struct ResearchNoteDetailView: View {
                 }
                 .padding(.horizontal, AppTheme.Spacing.lg)
                 .padding(.vertical, AppTheme.Spacing.md)
-                .frame(maxWidth: 760, alignment: .leading) // 桌面行长控制
-                .frame(maxWidth: .infinity, alignment: .leading)
+                .frame(maxWidth: 720, alignment: .leading) // 行长控制
+                .frame(maxWidth: .infinity) // 宽屏下内容居中
             }
             .background(AppTheme.Colors.background)
             .navigationTitle(note.displayName)
@@ -101,11 +101,7 @@ struct ResearchNoteDetailView: View {
     // MARK: - 全文
 
     private var content: some View {
-        Text(MarkdownRenderer.attributed(note.content))
-            .font(AppTheme.Typography.body)
-            .foregroundStyle(AppTheme.Colors.textPrimary)
-            .lineSpacing(6)
-            .textSelection(.enabled)
+        MarkdownBlockView(text: note.content)
     }
 
     // MARK: - 尾注

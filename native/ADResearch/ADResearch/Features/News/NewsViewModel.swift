@@ -32,7 +32,36 @@ final class NewsViewModel {
     private(set) var page = 1
     private(set) var totalPages = 1
 
+    /// 收藏状态（会话内记忆；POST /learning/articles/{id}/bookmark 幂等切换，
+    /// 响应的 bookmarked 是调用后真实状态）
+    private(set) var bookmarkedIDs: Set<Int> = []
+    private var bookmarkingIDs: Set<Int> = []
+
     var canLoadMore: Bool { page < totalPages }
+
+    func isBookmarked(_ article: NewsArticle) -> Bool {
+        bookmarkedIDs.contains(article.id)
+    }
+
+    /// 切换收藏（走 learning bookmark 端点；失败不打断浏览，保持原状态）
+    func toggleBookmark(_ article: NewsArticle) async {
+        let id = article.id
+        guard !bookmarkingIDs.contains(id) else { return }
+        bookmarkingIDs.insert(id)
+        defer { bookmarkingIDs.remove(id) }
+        do {
+            let response: LearningBookmarkToggleResponse = try await APIClient.shared.send(
+                .learningToggleBookmark(id)
+            )
+            if response.bookmarked {
+                bookmarkedIDs.insert(id)
+            } else {
+                bookmarkedIDs.remove(id)
+            }
+        } catch {
+            // 操作失败不打断浏览，状态保持原样
+        }
+    }
 
     func loadIfNeeded() async {
         guard state == .idle else { return }

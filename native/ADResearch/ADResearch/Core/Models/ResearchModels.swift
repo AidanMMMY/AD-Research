@@ -5,7 +5,7 @@ import Foundation
 
 /// AI 研究笔记（GET /research/notes 列表项，响应为数组、无分页包装）。
 /// ``content`` 为 Markdown 正文，详情页用 ``MarkdownRenderer`` 原生渲染。
-struct ResearchNote: Decodable, Sendable, Identifiable, Equatable {
+struct ResearchNote: Decodable, Sendable, Identifiable, Equatable, Hashable {
     let id: Int
     let instrumentCode: String
     let name: String?

@@ -1,8 +1,10 @@
 import SwiftUI
 
-/// 首页（Dashboard）：全球资产脉搏 + 每日研报摘要卡。
+/// 首页（Dashboard）：全球资产脉搏 + 每日研报摘要卡 + 平台概览（真数据）+ 自选异动横条。
 ///
-/// 布局：iOS 卡片堆叠（refreshable 下拉刷新）；macOS 三栏网格。
+/// 布局：iOS 卡片堆叠（refreshable 下拉刷新）；
+/// macOS 三栏——脉搏 3fr / 研报 2fr / 平台概览固定宽（stats/overview 真数据，
+/// 取代原「将在后续迭代接入」占位卡）。
 /// 数据见 ``DashboardViewModel``（契约对齐 web Dashboard）。
 struct DashboardView: View {
     @Environment(AppState.self) private var appState
@@ -36,6 +38,7 @@ struct DashboardView: View {
     private var iosLayout: some View {
         LazyVStack(spacing: AppTheme.Spacing.lg) {
             statusHeader
+            moversStrip
             pulseCard
             digestCard
         }
@@ -44,42 +47,77 @@ struct DashboardView: View {
     }
     #endif
 
-    // MARK: - macOS：三栏网格（对齐 web cc-grid 的信息层级）
+    // MARK: - macOS：三栏（脉搏 3fr + 研报 2fr + 平台概览固定宽）
 
     #if os(macOS)
     private var macLayout: some View {
-        VStack(alignment: .leading, spacing: AppTheme.Spacing.lg) {
+        // 脉搏 3fr : 研报 2fr（剩余宽度六四开），平台概览固定 260pt
+        let spacing = AppTheme.Spacing.lg
+        let statsWidth: CGFloat = 260
+        return VStack(alignment: .leading, spacing: AppTheme.Spacing.lg) {
             statusHeader
-            HStack(alignment: .top, spacing: AppTheme.Spacing.lg) {
+            moversStrip
+            HStack(alignment: .top, spacing: spacing) {
                 pulseCard
-                    .frame(maxWidth: .infinity)
+                    .containerRelativeFrame(.horizontal, alignment: .topLeading) { width, _ in
+                        max((width - statsWidth - spacing * 2) * 0.6, 0)
+                    }
                 digestCard
-                    .frame(maxWidth: .infinity)
-                sideInfoCard
-                    .frame(maxWidth: .infinity)
+                    .containerRelativeFrame(.horizontal, alignment: .topLeading) { width, _ in
+                        max((width - statsWidth - spacing * 2) * 0.4, 0)
+                    }
+                statsOverviewCard
+                    .frame(width: statsWidth, alignment: .topLeading)
             }
         }
         .padding(AppTheme.Spacing.xl)
     }
     #endif
 
-    // MARK: - 顶部状态条（对齐 web cc-topbar：日期 + 连接状态）
+    // MARK: - 顶部状态条（真实数据状态圆点 + 上次更新时间）
 
     private var statusHeader: some View {
-        HStack(spacing: AppTheme.Spacing.sm) {
-            Circle()
-                .fill(AppTheme.Colors.success)
-                .frame(width: 8, height: 8)
-            Text(DateFormatting.nowWithWeekday())
-                .font(AppTheme.Typography.caption)
-                .foregroundStyle(AppTheme.Colors.textMuted)
-            if viewModel.staleCount > 0 {
-                Text("· \(viewModel.staleCount) 项数据陈旧")
+        // 30s 周期刷新，让「x 分钟前」随时间推进
+        TimelineView(.periodic(from: .now, by: 30)) { context in
+            HStack(spacing: AppTheme.Spacing.sm) {
+                Circle()
+                    .fill(statusColor)
+                    .frame(width: 8, height: 8)
+                Text(DateFormatting.nowWithWeekday())
                     .font(AppTheme.Typography.caption)
-                    .foregroundStyle(AppTheme.Colors.warning)
+                    .foregroundStyle(AppTheme.Colors.textMuted)
+                Text("·")
+                    .font(AppTheme.Typography.caption)
+                    .foregroundStyle(AppTheme.Colors.textMuted)
+                Text(lastUpdatedText(at: context.date))
+                    .font(AppTheme.Typography.caption)
+                    .foregroundStyle(AppTheme.Colors.textMuted)
+                if viewModel.staleCount > 0 {
+                    Text("· \(viewModel.staleCount) 项数据陈旧")
+                        .font(AppTheme.Typography.caption)
+                        .foregroundStyle(AppTheme.Colors.warning)
+                }
+                Spacer()
             }
-            Spacer()
         }
+    }
+
+    /// 加载中灰 / 失败红 / 陈旧黄 / 正常绿
+    private var statusColor: Color {
+        switch viewModel.dataStatus {
+        case .loading: return AppTheme.Colors.textMuted
+        case .ok: return AppTheme.Colors.success
+        case .stale: return AppTheme.Colors.warning
+        case .failed: return AppTheme.Colors.error
+        }
+    }
+
+    private func lastUpdatedText(at now: Date) -> String {
+        guard let last = viewModel.lastUpdated else { return "数据加载中" }
+        let interval = max(now.timeIntervalSince(last), 0)
+        if interval < 60 { return "上次更新 刚刚" }
+        if interval < 3600 { return "上次更新 \(Int(interval / 60)) 分钟前" }
+        return "上次更新 \(Int(interval / 3600)) 小时前"
     }
 
     // MARK: - 全球资产脉搏
@@ -257,17 +295,131 @@ struct DashboardView: View {
         .transition(.opacity.combined(with: .move(edge: .bottom)))
     }
 
-    // MARK: - macOS 侧栏补充卡（平台信息占位，后续模块接 KPI）
+    // MARK: - 自选异动横条（favorites × snapshot，|涨跌幅| 前 5；无自选隐藏）
+
+    @ViewBuilder
+    private var moversStrip: some View {
+        if viewModel.isLoadingMovers && viewModel.favoriteMovers.isEmpty {
+            ADCard(padding: AppTheme.Spacing.md) {
+                HStack(spacing: AppTheme.Spacing.sm) {
+                    SkeletonBlock(height: 12).frame(width: 64)
+                    SkeletonBlock(height: 12)
+                }
+            }
+        } else if !viewModel.favoriteMovers.isEmpty {
+            ADCard(padding: AppTheme.Spacing.md) {
+                VStack(alignment: .leading, spacing: AppTheme.Spacing.sm) {
+                    ADCardHeader(title: "自选异动", systemImage: "bolt.horizontal") {
+                        Button {
+                            Haptics.selection()
+                            appState.navigate(to: .portfolio, route: .section(.portfolio))
+                        } label: {
+                            Text("我的自选")
+                                .font(AppTheme.Typography.caption)
+                                .foregroundStyle(AppTheme.Colors.accent)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    #if os(iOS)
+                    // iOS 屏宽窄：横向滑动条，单块固定宽保证可读
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: AppTheme.Spacing.sm) {
+                            ForEach(viewModel.favoriteMovers) { mover in
+                                moverCell(mover)
+                                    .frame(width: 156)
+                            }
+                        }
+                    }
+                    #else
+                    HStack(spacing: AppTheme.Spacing.sm) {
+                        ForEach(viewModel.favoriteMovers) { mover in
+                            moverCell(mover)
+                        }
+                    }
+                    #endif
+                }
+            }
+        }
+    }
+
+    /// 紧凑异动块：涨跌色块 + 名称 + 现价 + 涨跌幅，点击进标的详情
+    private func moverCell(_ mover: DashboardViewModel.FavoriteMover) -> some View {
+        Button {
+            Haptics.selection()
+            appState.navigate(to: .instruments, route: .instrumentDetail(mover.code))
+        } label: {
+            HStack(spacing: AppTheme.Spacing.sm) {
+                RoundedRectangle(cornerRadius: 2, style: .continuous)
+                    .fill(AppTheme.Colors.changeColor(mover.changePct))
+                    .frame(width: 4, height: 32)
+                VStack(alignment: .leading, spacing: AppTheme.Spacing.xxs) {
+                    Text(mover.name)
+                        .font(AppTheme.Typography.caption)
+                        .foregroundStyle(AppTheme.Colors.textPrimary)
+                        .lineLimit(1)
+                    HStack(spacing: AppTheme.Spacing.xs) {
+                        Text(NumberFormatting.tileValue(mover.close))
+                            .font(AppTheme.Typography.caption.monospacedDigit())
+                            .foregroundStyle(AppTheme.Colors.textSecondary)
+                        ChangeText(value: mover.changePct, font: AppTheme.Typography.caption.monospacedDigit())
+                    }
+                }
+                Spacer(minLength: 0)
+            }
+            .padding(AppTheme.Spacing.sm)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(
+                RoundedRectangle(cornerRadius: AppTheme.Radius.control, style: .continuous)
+                    .fill(AppTheme.Colors.surface)
+            )
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+
+    // MARK: - macOS 平台概览卡（GET /stats/overview 真数据）
 
     #if os(macOS)
-    private var sideInfoCard: some View {
+    private var statsOverviewCard: some View {
         ADCard {
             VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
                 ADCardHeader(title: "平台概览", subtitle: "数据覆盖情况", systemImage: "chart.bar.doc.horizontal")
-                Text("平台 KPI（标的总数 / 评分覆盖 / 分类数 / 标的池）将在后续迭代接入。")
-                    .font(AppTheme.Typography.callout)
-                    .foregroundStyle(AppTheme.Colors.textSecondary)
+                if viewModel.isLoadingOverview && viewModel.overview == nil {
+                    VStack(alignment: .leading, spacing: AppTheme.Spacing.sm) {
+                        ForEach(0..<4, id: \.self) { _ in
+                            SkeletonBlock(height: 12)
+                        }
+                    }
+                } else if let overview = viewModel.overview {
+                    VStack(alignment: .leading, spacing: AppTheme.Spacing.sm) {
+                        statRow("标的总数", value: NumberFormatting.count(overview.etfCount))
+                        statRow("评分记录", value: NumberFormatting.count(overview.scoreCount))
+                        statRow("指标记录", value: NumberFormatting.count(overview.indicatorCount))
+                        statRow("分类 / 市场", value: "\(overview.categoryCount) / \(overview.marketCount)")
+                        statRow("评分模板", value: NumberFormatting.count(overview.templateCount))
+                        Divider().overlay(AppTheme.Colors.border)
+                        statRow("指标最新", value: overview.latestIndicatorDate ?? "—")
+                        statRow("评分最新", value: overview.latestScoreDate ?? "—")
+                    }
+                } else {
+                    Text("统计数据暂不可用")
+                        .font(AppTheme.Typography.callout)
+                        .foregroundStyle(AppTheme.Colors.textMuted)
+                }
             }
+        }
+    }
+
+    private func statRow(_ label: String, value: String) -> some View {
+        HStack {
+            Text(label)
+                .font(AppTheme.Typography.caption)
+                .foregroundStyle(AppTheme.Colors.textMuted)
+            Spacer()
+            Text(value)
+                .font(AppTheme.Typography.numericCallout)
+                .foregroundStyle(AppTheme.Colors.textPrimary)
+                .lineLimit(1)
         }
     }
     #endif

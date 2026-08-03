@@ -50,14 +50,16 @@ enum AppTheme {
         /// --border-default（深色用 GitHub 系 hairline，与 bg 体系同源）
         static let border = dynamic(light: 0xE5E7EB, dark: 0x30363D)
 
-        /// 涨跌幅语义色：nil → 次级文本；>=0 → 涨色；<0 → 跌色
+        /// 涨跌幅语义色：nil → 次级文本；|v| < 0.0005（视同为 0，含精度噪声）→ 次级文本；
+        /// >0 → 涨色；<0 → 跌色。修正点：旧实现把 0 判为涨色，平盘被染红。
         static func changeColor(_ value: Double?) -> Color {
             guard let value else { return textSecondary }
-            return value >= 0 ? rise : fall
+            if abs(value) < 0.0005 { return textSecondary }
+            return value > 0 ? rise : fall
         }
     }
 
-    // MARK: - 间距（4pt 网格，密度宁松勿挤）
+    // MARK: - 间距（4pt 网格；iOS 触屏密度宁松勿挤，macOS 指针端可紧凑）
 
     enum Spacing {
         static let xxs: CGFloat = 2
@@ -68,13 +70,28 @@ enum AppTheme {
         static let xl: CGFloat = 20
         static let xxl: CGFloat = 24
         static let section: CGFloat = 32
+
+        /// macOS 紧凑档：桌面投资工具信息密度优先（原则修正——触屏端"宁松勿挤"，
+        /// 指针端"宁挤勿松"：无触控目标约束，密度换一屏信息量）。iOS 不使用本组。
+        enum Compact {
+            /// 紧凑卡片内边距（默认 lg=16 → 12）
+            static let cardPadding: CGFloat = 12
+            /// 紧凑列表/瓦片行距（默认 md=12 → 8）
+            static let row: CGFloat = 8
+        }
     }
 
     // MARK: - 圆角（连续圆角）
 
     enum Radius {
-        /// 卡片
-        static let card: CGFloat = 14
+        /// 卡片。macOS 窗口内容密度高，圆角收小（10）更利落；iOS 保持 14。
+        static let card: CGFloat = {
+            #if os(macOS)
+            return 10
+            #else
+            return 14
+            #endif
+        }()
         /// 控件（按钮/输入框）
         static let control: CGFloat = 10
         /// 小元素（chip/badge）
@@ -94,6 +111,12 @@ enum AppTheme {
         /// 数字等宽（行情/评分数值统一用，避免跳动）
         static let numericBody = Font.body.monospacedDigit()
         static let numericCallout = Font.callout.monospacedDigit()
+        /// 展示大数字（hero 价格/关键指标），34pt 半粗 + 等宽数字
+        static let display = Font.system(size: 34, weight: .semibold).monospacedDigit()
+        /// 展示中数字（次级 hero / 瓦片主值），28pt 同风格
+        static let displaySmall = Font.system(size: 28, weight: .semibold).monospacedDigit()
+        /// 区块三级标题（20pt 半粗，介于 pageTitle 与 cardTitle 之间）
+        static let title3 = Font.system(size: 20, weight: .semibold)
     }
 
     // MARK: - 动画（统一弹性曲线，禁止生硬无动画切换）

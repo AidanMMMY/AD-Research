@@ -116,7 +116,36 @@ struct SentimentView: View {
                     overviewCell("中性", stats.neutral, color: AppTheme.Colors.textMuted)
                     overviewCell("偏空", stats.negative, color: AppTheme.Colors.fall)
                 }
+                sentimentRatioBar(positive: stats.positive, neutral: stats.neutral, negative: stats.negative)
             }
+        }
+    }
+
+    /// 多/中/空比例横条：多=rise / 空=fall / 中=muted，宽度按计数占比，8pt 胶囊
+    @ViewBuilder
+    private func sentimentRatioBar(positive: Int, neutral: Int, negative: Int) -> some View {
+        let total = positive + neutral + negative
+        if total > 0 {
+            GeometryReader { geo in
+                HStack(spacing: 1) {
+                    ratioSegment(count: positive, total: total, width: geo.size.width, color: AppTheme.Colors.rise)
+                    ratioSegment(count: neutral, total: total, width: geo.size.width, color: AppTheme.Colors.textMuted.opacity(0.35))
+                    ratioSegment(count: negative, total: total, width: geo.size.width, color: AppTheme.Colors.fall)
+                }
+            }
+            .frame(height: 8)
+            .background(Capsule(style: .continuous).fill(AppTheme.Colors.surface))
+            .clipShape(Capsule(style: .continuous))
+            .accessibilityLabel("偏多 \(positive) 中性 \(neutral) 偏空 \(negative)")
+        }
+    }
+
+    @ViewBuilder
+    private func ratioSegment(count: Int, total: Int, width: CGFloat, color: Color) -> some View {
+        if count > 0 {
+            Rectangle()
+                .fill(color)
+                .frame(width: max(width * CGFloat(count) / CGFloat(total) - 1, 1))
         }
     }
 
@@ -196,30 +225,36 @@ struct SentimentView: View {
         .font(AppTheme.Typography.caption)
     }
 
-    /// 14 日情绪分迷你走势
+    /// 14 日情绪分迷你走势（含 0 轴参考线）
     private func sparkline(_ item: SentimentAggregateItem) -> some View {
         let color = NewsLabels.sentimentColor(item.label)
-        return Chart(Array(item.sparkline.enumerated()), id: \.offset) { index, value in
-            LineMark(
-                x: .value("日", index),
-                y: .value("分", value)
-            )
-            .foregroundStyle(color)
-            .interpolationMethod(.catmullRom)
+        return Chart {
+            RuleMark(y: .value("零", 0))
+                .foregroundStyle(AppTheme.Colors.textMuted.opacity(0.5))
+                .lineStyle(StrokeStyle(lineWidth: 0.5, dash: [2, 2]))
 
-            AreaMark(
-                x: .value("日", index),
-                yStart: .value("零", 0),
-                yEnd: .value("分", value)
-            )
-            .foregroundStyle(
-                .linearGradient(
-                    colors: [color.opacity(0.20), color.opacity(0.02)],
-                    startPoint: .top,
-                    endPoint: .bottom
+            ForEach(Array(item.sparkline.enumerated()), id: \.offset) { index, value in
+                LineMark(
+                    x: .value("日", index),
+                    y: .value("分", value)
                 )
-            )
-            .interpolationMethod(.catmullRom)
+                .foregroundStyle(color)
+                .interpolationMethod(.catmullRom)
+
+                AreaMark(
+                    x: .value("日", index),
+                    yStart: .value("零", 0),
+                    yEnd: .value("分", value)
+                )
+                .foregroundStyle(
+                    .linearGradient(
+                        colors: [color.opacity(0.20), color.opacity(0.02)],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                )
+                .interpolationMethod(.catmullRom)
+            }
         }
         .chartXAxis(.hidden)
         .chartYAxis(.hidden)

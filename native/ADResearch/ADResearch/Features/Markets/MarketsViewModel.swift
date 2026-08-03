@@ -18,6 +18,7 @@ final class MarketsViewModel {
     enum SortOption: String, CaseIterable, Identifiable {
         case change
         case price
+        case volume
         case name
 
         var id: String { rawValue }
@@ -26,6 +27,7 @@ final class MarketsViewModel {
             switch self {
             case .change: return "24h 涨跌"
             case .price: return "价格"
+            case .volume: return "24h 成交量"
             case .name: return "名称"
             }
         }
@@ -45,6 +47,8 @@ final class MarketsViewModel {
             return items.sorted { ($0.changePct ?? -.infinity) > ($1.changePct ?? -.infinity) }
         case .price:
             return items.sorted { ($0.price ?? -.infinity) > ($1.price ?? -.infinity) }
+        case .volume:
+            return items.sorted { ($0.volume24h ?? -.infinity) > ($1.volume24h ?? -.infinity) }
         case .name:
             return items.sorted { $0.displayName.localizedCompare($1.displayName) == .orderedAscending }
         }
@@ -67,6 +71,23 @@ final class MarketsViewModel {
             state = .loaded
         } catch {
             state = .failed(DigestViewModel.describe(error))
+        }
+    }
+
+    /// 静默刷新（30s 自动轮询用）：已加载时不回退骨架态、不打断滚动位置；
+    /// 失败保留旧数据（仅未加载过时落错误态）。
+    func refreshQuietly() async {
+        do {
+            let response: CryptoListResponse = try await APIClient.shared.send(
+                .cryptoList(page: 1, pageSize: 200)
+            )
+            items = response.items
+            lastUpdated = response.items.compactMap(\.lastUpdated).max()
+            state = .loaded
+        } catch {
+            if state != .loaded {
+                state = .failed(DigestViewModel.describe(error))
+            }
         }
     }
 }

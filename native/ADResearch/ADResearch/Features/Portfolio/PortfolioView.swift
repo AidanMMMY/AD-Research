@@ -1,11 +1,16 @@
 import SwiftUI
 
-/// 组合：自选标的（最新价/涨跌幅）+ 标的池。
+/// 组合：自选标的（最新价/涨跌幅/30 日 sparkline）+ 标的池。
 ///
-/// iOS：列表左滑移除自选；macOS：右键菜单移除。点按行进标的详情
-/// （AppRoute.instrumentDetail）。空态引导去标的模块添加。
+/// iOS：列表左滑移除自选；双端长按/右键菜单（查看详情/复制代码/移除自选）。
+/// 点按行进标的详情（AppRoute.instrumentDetail）。空态引导去标的模块添加。
+/// sparkline 为 View 层 @State 缓存（懒加载，VM 不动）。
 struct PortfolioView: View {
+    @Environment(AppState.self) private var appState
     @State private var viewModel = PortfolioViewModel()
+    /// code → 30 日收盘序列（懒加载；空数组 = 失败/无数据，不再重试）
+    @State private var sparklines: [String: [Double]] = [:]
+    @State private var loadingSparklines: Set<String> = []
 
     var body: some View {
         content
@@ -133,6 +138,13 @@ struct PortfolioView: View {
                         }
                     }
                     Spacer(minLength: AppTheme.Spacing.sm)
+                    // sparkline：固定位宽避免加载完成后布局跳动；未加载/无数据留空
+                    Group {
+                        if let points = sparklines[item.etfCode], points.count > 1 {
+                            MiniSparklineView(points: points)
+                        }
+                    }
+                    .frame(width: 60, height: 24)
                     VStack(alignment: .trailing, spacing: AppTheme.Spacing.xs) {
                         Text(NumberFormatting.tileValue(snapshot?.close))
                             .font(AppTheme.Typography.numericBody)
@@ -146,6 +158,9 @@ struct PortfolioView: View {
         .simultaneousGesture(TapGesture().onEnded {
             Haptics.selection()
         })
+        .onAppear {
+            loadSparklineIfNeeded(for: item.etfCode)
+        }
         #if os(iOS)
         .swipeActions(edge: .trailing) {
             Button(role: .destructive) {
@@ -155,15 +170,51 @@ struct PortfolioView: View {
             }
         }
         #endif
-        #if os(macOS)
         .contextMenu {
+            Button {
+                openDetail(item.etfCode)
+            } label: {
+                Label("查看详情", systemImage: "arrow.right.circle")
+            }
+            Button {
+                PasteboardCopy.copy(item.etfCode)
+            } label: {
+                Label("复制代码", systemImage: "doc.on.doc")
+            }
+            Divider()
             Button(role: .destructive) {
                 Task { await viewModel.removeFavorite(item) }
             } label: {
                 Label("移除自选", systemImage: "star.slash")
             }
         }
+    }
+
+    /// 详情跳转：macOS 写 detailPath；iOS 组合页经「更多」tab 的栈进入，
+    /// 详情推回该 tab 栈（tabPaths[.settings]）。
+    private func openDetail(_ code: String) {
+        #if os(macOS)
+        appState.navigate(to: .portfolio, route: .instrumentDetail(code))
+        #else
+        appState.tabPaths[.settings, default: []].append(.instrumentDetail(code))
         #endif
+    }
+
+    /// 行内 sparkline 懒加载（可见行触发一次，结果含失败态都缓存）
+    private func loadSparklineIfNeeded(for code: String) {
+        guard sparklines[code] == nil, !loadingSparklines.contains(code) else { return }
+        loadingSparklines.insert(code)
+        Task {
+            do {
+                let response: InstrumentSparklineResponse = try await APIClient.shared.send(
+                    .instrumentSparkline(code, days: 30)
+                )
+                sparklines[code] = response.points
+            } catch {
+                sparklines[code] = []
+            }
+            loadingSparklines.remove(code)
+        }
     }
 
     private var favoritesEmpty: some View {
@@ -269,5 +320,6 @@ struct PortfolioView: View {
 #Preview {
     NavigationStack {
         PortfolioView()
+            .environment(AppState())
     }
 }

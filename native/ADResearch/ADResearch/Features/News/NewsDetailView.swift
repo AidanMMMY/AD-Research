@@ -108,6 +108,7 @@ struct NewsDetailView: View {
                     Text("英文原文").tag(false)
                 }
                 .pickerStyle(.segmented)
+                .frame(maxWidth: 220) // 双语切换限宽，避免撑满行长
             }
 
             bodyContent(article)
@@ -130,8 +131,8 @@ struct NewsDetailView: View {
                 }
             }
         }
-        .frame(maxWidth: 760, alignment: .leading)
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(maxWidth: 720, alignment: .leading) // 行长控制
+        .frame(maxWidth: .infinity) // 宽屏下内容居中，iPhone 自然全宽
         .animation(AppTheme.Motion.fade, value: viewModel.state)
     }
 
@@ -142,17 +143,9 @@ struct NewsDetailView: View {
         let useTranslation = article.language == "en" && showTranslation && viewModel.translation != nil
 
         if useTranslation, let translation = viewModel.translation {
-            Text(MarkdownRenderer.attributed(translation))
-                .font(AppTheme.Typography.body)
-                .foregroundStyle(AppTheme.Colors.textPrimary)
-                .lineSpacing(6)
-                .textSelection(.enabled)
+            MarkdownBlockView(text: translation)
         } else if let original, !original.isEmpty {
-            Text(MarkdownRenderer.attributed(original))
-                .font(AppTheme.Typography.body)
-                .foregroundStyle(AppTheme.Colors.textPrimary)
-                .lineSpacing(6)
-                .textSelection(.enabled)
+            MarkdownBlockView(text: original)
         } else if viewModel.fetchingContent {
             VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
                 Text("正在抓取全文…")

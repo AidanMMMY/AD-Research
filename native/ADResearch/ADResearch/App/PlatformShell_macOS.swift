@@ -3,8 +3,9 @@ import SwiftUI
 
 /// macOS 平台外壳：NavigationSplitView 侧栏 + 详情列。
 ///
-/// - 侧栏两组：主导航（⌘1-5，见 ``NavigationCommands``）+ 功能模块
-/// - 详情列共享一条 NavigationStack 路径
+/// - 侧栏两组：主导航（⌘1-5）+ 功能模块（⌥⌘1-7，见 ``NavigationCommands``）
+/// - 详情列共享一条 NavigationStack 路径（detailPath），⌘[ 返回上一层
+/// - 切换分区时经 ``AppState/selectSection(_:)`` 清空 detailPath，避免详情栈残留
 /// - 多窗口就绪：WindowGroup 原生支持 ⌘N 新窗口，各窗口状态相互独立
 struct PlatformShell: View {
     @Environment(AppState.self) private var appState
@@ -12,7 +13,7 @@ struct PlatformShell: View {
     var body: some View {
         @Bindable var state = appState
         NavigationSplitView {
-            List(selection: $state.selectedSection) {
+            List(selection: sectionBinding) {
                 Section("主导航") {
                     ForEach(AppSection.primary) { section in
                         Label(section.title, systemImage: section.systemImage)
@@ -40,6 +41,7 @@ struct PlatformShell: View {
         }
         .navigationSplitViewStyle(.balanced)
         .frame(minWidth: 960, minHeight: 600)
+        .background(backShortcutButton)
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Button {
@@ -51,6 +53,31 @@ struct PlatformShell: View {
                 .help("刷新当前页面数据（⌘R）")
             }
         }
+    }
+
+    /// 侧栏选择绑定：写入时走 selectSection，切换分区自动清空 detailPath 残留
+    private var sectionBinding: Binding<AppSection> {
+        Binding(
+            get: { appState.selectedSection },
+            set: { appState.selectSection($0) }
+        )
+    }
+
+    /// ⌘[ 返回上一层详情。隐藏按钮承载快捷键（opacity(0) 保留在视图树中，
+    /// 快捷键仍然生效；.hidden() 会把节点移出视图树导致快捷键失效，不能用）。
+    /// 详情栈为空时 disable，避免吞掉其他场景的 ⌘[。
+    private var backShortcutButton: some View {
+        Button {
+            if !appState.detailPath.isEmpty {
+                appState.detailPath.removeLast()
+            }
+        } label: {
+            EmptyView()
+        }
+        .keyboardShortcut("[", modifiers: .command)
+        .disabled(appState.detailPath.isEmpty)
+        .opacity(0)
+        .accessibilityHidden(true)
     }
 }
 

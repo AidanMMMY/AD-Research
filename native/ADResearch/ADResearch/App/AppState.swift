@@ -148,17 +148,35 @@ final class AppState {
         )
     }
 
+    /// 仅切换顶层分区（不携带路由）。
+    /// macOS 下切换时同步清空 detailPath，避免上一分区的详情栈残留串到新分区；
+    /// iOS 各 tab 路径互相独立（tabPaths），无需处理。
+    func selectSection(_ section: AppSection) {
+        #if os(macOS)
+        if section != selectedSection {
+            detailPath.removeAll()
+        }
+        #endif
+        selectedSection = section
+    }
+
     /// 跳转到某分区并可选地携带一条路由（跨 tab 导航入口）
     func navigate(to section: AppSection, route: AppRoute? = nil) {
         withAnimation(AppTheme.Motion.standard) {
-            selectedSection = section
+            selectSection(section)
         }
         if let route {
+            #if os(macOS)
+            // macOS 外壳（PlatformShell_macOS）详情列只绑定 detailPath：
+            // 主导航分区的详情推送也必须写 detailPath，否则点击资讯/研报无任何反应。
+            detailPath.append(route)
+            #else
             if AppSection.primary.contains(section) {
                 tabPaths[section, default: []].append(route)
             } else {
                 detailPath.append(route)
             }
+            #endif
         }
     }
 }

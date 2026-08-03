@@ -1,8 +1,11 @@
 import Foundation
 
-/// 标的库 ViewModel：market 筛选 + 搜索（View 层防抖）+ 分页。
+/// 标的库 ViewModel：market 筛选 + 搜索（View 层防抖）+ 分页
+/// + 行情快照 enrich（GET /market-data/snapshot 批量报价）
+/// + 行内 sparkline 懒加载缓存（GET /etfs/{code}/sparkline）。
 ///
-/// 契约：GET /etfs（InstrumentListResponse）。
+/// 契约：GET /etfs（InstrumentListResponse）；
+/// 快照 change_pct 已是百分数单位（1.23 = 1.23%），直接喂 ``ChangeText``。
 @MainActor
 @Observable
 final class InstrumentsViewModel {
@@ -13,6 +16,25 @@ final class InstrumentsViewModel {
         case failed(String)
     }
 
+    /// 客户端排序档（涨/跌幅依赖快照 enrich；无报价的标的排最后）
+    enum SortOption: String, CaseIterable, Identifiable {
+        case `default`
+        case gainers
+        case losers
+        case code
+
+        var id: String { rawValue }
+
+        var label: String {
+            switch self {
+            case .default: return "默认"
+            case .gainers: return "涨幅"
+            case .losers: return "跌幅"
+            case .code: return "代码"
+            }
+        }
+    }
+
     /// 市场筛选（DB 值：A股 / US / HK / CRYPTO；nil = 全部）
     var market: String? = nil {
         didSet { Task { await reload() } }
@@ -21,6 +43,8 @@ final class InstrumentsViewModel {
     var query: String = "" {
         didSet { Task { await reload() } }
     }
+    /// 排序档（无需重新请求，纯客户端重排）
+    var sort: SortOption = .default
 
     private(set) var items: [InstrumentInfo] = []
     private(set) var state: LoadState = .idle
@@ -28,7 +52,36 @@ final class InstrumentsViewModel {
     private(set) var totalPages = 1
     private(set) var total = 0
 
+    /// code → 最新行情快照（缺失报价的标的渲染「—」）
+    private(set) var snapshots: [String: MarketSnapshotItem] = [:]
+    /// 快照批量 enrich 进行中（行内价格区据此渲染骨架）
+    private(set) var isEnriching = false
+    /// 已请求过快照的 code（避免翻页/刷新时重复请求同一批）
+    private var enrichedCodes: Set<String> = []
+
+    /// code → 30 日收盘序列（懒加载；空数组 = 加载失败/无数据，不再重试）
+    private(set) var sparklines: [String: [Double]] = [:]
+    private var loadingSparklineCodes: Set<String> = []
+
     var canLoadMore: Bool { page < totalPages }
+
+    /// 客户端排序后的展示序列
+    var displayItems: [InstrumentInfo] {
+        switch sort {
+        case .default:
+            return items
+        case .gainers:
+            return items.sorted { change(of: $0) > change(of: $1) }
+        case .losers:
+            return items.sorted { change(of: $0, fallback: .infinity) < change(of: $1, fallback: .infinity) }
+        case .code:
+            return items.sorted { $0.code.localizedStandardCompare($1.code) == .orderedAscending }
+        }
+    }
+
+    private func change(of item: InstrumentInfo, fallback: Double = -.infinity) -> Double {
+        snapshots[item.code]?.changePct ?? fallback
+    }
 
     func loadIfNeeded() async {
         guard state == .idle else { return }
@@ -44,6 +97,8 @@ final class InstrumentsViewModel {
             total = response.total
             totalPages = response.totalPages
             state = .loaded
+            // 列表先出，报价后台 enrich（行内骨架 → 现价/涨跌幅）
+            await enrichSnapshots(for: response.items.map(\.code))
         } catch {
             state = .failed(DigestViewModel.describe(error))
         }
@@ -58,8 +113,48 @@ final class InstrumentsViewModel {
             page = response.page
             totalPages = response.totalPages
             total = response.total
+            await enrichSnapshots(for: response.items.map(\.code))
         } catch {
             // 分页失败保留已加载内容，滚动到底会重试
+        }
+    }
+
+    /// 行内 sparkline 懒加载（可见行触发一次，结果含失败态都缓存）
+    func loadSparklineIfNeeded(for code: String) {
+        guard sparklines[code] == nil, !loadingSparklineCodes.contains(code) else { return }
+        loadingSparklineCodes.insert(code)
+        Task {
+            do {
+                let response: InstrumentSparklineResponse = try await APIClient.shared.send(
+                    .instrumentSparkline(code, days: 30)
+                )
+                sparklines[code] = response.points
+            } catch {
+                sparklines[code] = []
+            }
+            loadingSparklineCodes.remove(code)
+        }
+    }
+
+    // MARK: - 私有
+
+    /// 批量报价 enrich（GET /market-data/snapshot）；失败不阻断列表，
+    /// 从 enrichedCodes 回滚以便下次翻页/刷新重试。
+    private func enrichSnapshots(for codes: [String]) async {
+        let pending = codes.filter { !enrichedCodes.contains($0) }
+        guard !pending.isEmpty else { return }
+        enrichedCodes.formUnion(pending)
+        isEnriching = true
+        defer { isEnriching = false }
+        do {
+            let response: MarketSnapshotResponse = try await APIClient.shared.send(
+                .marketSnapshot(codes: pending)
+            )
+            for item in response.items {
+                snapshots[item.etfCode] = item
+            }
+        } catch {
+            enrichedCodes.subtract(pending)
         }
     }
 

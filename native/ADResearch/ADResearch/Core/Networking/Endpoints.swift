@@ -393,4 +393,77 @@ extension Endpoint {
         }
         return Endpoint(method: .get, path: "/research/sentiment-data/aggregate", queryItems: items)
     }
+
+    // MARK: 评分（app/api/v1/scoring.py + app/schemas/scoring.py ETFScoreResponse）
+
+    /// GET /scores/{code} — 单标的最新评分（总分+分项+排名+区间收益）
+    static func instrumentScore(_ code: String) -> Endpoint {
+        Endpoint(method: .get, path: "/scores/\(code)")
+    }
+
+    /// GET /scores?template_id=&limit= — 评分榜（不传 template_id 用默认模板）
+    static func scoresList(templateID: Int? = nil, limit: Int = 50) -> Endpoint {
+        var items = [URLQueryItem(name: "limit", value: String(limit))]
+        if let templateID {
+            items.append(URLQueryItem(name: "template_id", value: String(templateID)))
+        }
+        return Endpoint(method: .get, path: "/scores", queryItems: items)
+    }
+
+    // MARK: 自选写操作（app/api/v1/favorites.py）
+
+    /// POST /favorites/{code}/toggle — 切换自选（响应 FavoriteToggleResponse: is_favorite）
+    static func favoriteToggle(_ code: String) -> Endpoint {
+        Endpoint(method: .post, path: "/favorites/\(code)/toggle")
+    }
+
+    /// GET /favorites/{code}/status — 单标的自选状态（响应 FavoriteStatusResponse: is_favorite）
+    static func favoriteStatus(_ code: String) -> Endpoint {
+        Endpoint(method: .get, path: "/favorites/\(code)/status")
+    }
+
+    // MARK: 平台统计（app/api/v1/stats.py）
+
+    /// GET /stats/overview — 平台 KPI 总览
+    static var statsOverview: Endpoint {
+        Endpoint(method: .get, path: "/stats/overview")
+    }
+
+    // MARK: 资金流（app/api/v1/fund_flow.py，2026-08-04 审计补齐）
+
+    /// GET /fund-flow/market — 大盘资金流（响应 MarketFundFlowOut）
+    static func fundFlowMarket(tradeDate: String? = nil) -> Endpoint {
+        var items: [URLQueryItem] = []
+        if let tradeDate, !tradeDate.isEmpty {
+            items.append(URLQueryItem(name: "trade_date", value: tradeDate))
+        }
+        return Endpoint(method: .get, path: "/fund-flow/market", queryItems: items)
+    }
+
+    /// GET /fund-flow/sector — 板块资金流（响应 SectorFundFlowListResponse: items/total）
+    static func fundFlowSector(tradeDate: String? = nil, limit: Int = 50) -> Endpoint {
+        var items = [URLQueryItem(name: "limit", value: String(limit))]
+        if let tradeDate, !tradeDate.isEmpty {
+            items.append(URLQueryItem(name: "trade_date", value: tradeDate))
+        }
+        return Endpoint(method: .get, path: "/fund-flow/sector", queryItems: items)
+    }
+
+    /// GET /fund-flow/etf — ETF 资金流（响应 EtfFundFlowListResponse: items/total）
+    static func fundFlowETF(tradeDate: String? = nil, limit: Int = 50) -> Endpoint {
+        var items = [URLQueryItem(name: "limit", value: String(limit))]
+        if let tradeDate, !tradeDate.isEmpty {
+            items.append(URLQueryItem(name: "trade_date", value: tradeDate))
+        }
+        return Endpoint(method: .get, path: "/fund-flow/etf", queryItems: items)
+    }
+
+    /// GET /fund-flow/signals — 资金流信号（响应 FlowSignalListResponse: items/total）
+    static func fundFlowSignals(limit: Int = 50) -> Endpoint {
+        Endpoint(
+            method: .get,
+            path: "/fund-flow/signals",
+            queryItems: [URLQueryItem(name: "limit", value: String(limit))]
+        )
+    }
 }

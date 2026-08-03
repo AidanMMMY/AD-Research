@@ -164,9 +164,11 @@ struct LearningView: View {
             if canLoadMoreCurrent {
                 HStack {
                     Spacer()
-                    SkeletonBlock(height: 10).frame(width: 120)
+                    ProgressView()
+                        .controlSize(.small)
                     Spacer()
                 }
+                .padding(.vertical, AppTheme.Spacing.sm)
                 .listRowSeparator(.hidden)
                 .listRowBackground(Color.clear)
             }
@@ -214,10 +216,17 @@ struct LearningView: View {
                                 .font(AppTheme.Typography.caption)
                                 .foregroundStyle(AppTheme.Colors.accent)
                         }
-                        NewsImportanceStars(importance: item.article.importance)
+                        importanceBadge(item.article.importance)
                     }
-                    // 标题（中文优先；已读降权）
+                    // 标题（中文优先；已读 = 标题降色 + 前置 2pt 色条，
+                    // 不再整卡降透明度，收藏图标与标签保持全强度）
                     HStack(alignment: .firstTextBaseline, spacing: AppTheme.Spacing.sm) {
+                        if read {
+                            Capsule(style: .continuous)
+                                .fill(AppTheme.Colors.textMuted)
+                                .frame(width: 2, height: 15)
+                                .alignmentGuide(.firstTextBaseline) { d in d[.bottom] - 2 }
+                        }
                         Text(item.article.displayTitle)
                             .font(AppTheme.Typography.cardTitle)
                             .foregroundStyle(read ? AppTheme.Colors.textSecondary : AppTheme.Colors.textPrimary)
@@ -257,7 +266,6 @@ struct LearningView: View {
                     }
                 }
             }
-            .opacity(read ? 0.62 : 1)
         }
         .buttonStyle(.plain)
         .simultaneousGesture(TapGesture().onEnded {
@@ -289,6 +297,21 @@ struct LearningView: View {
             }
         }
         #endif
+    }
+
+    /// 重要性数字徽章（★ + 数字，与 NewsView 全页统一；替代 8pt 小星星）
+    @ViewBuilder
+    private func importanceBadge(_ importance: Int?) -> some View {
+        if let importance, importance >= 3 {
+            HStack(spacing: 2) {
+                Image(systemName: "star.fill")
+                    .font(.system(size: 11))
+                Text("\(importance)")
+                    .font(AppTheme.Typography.caption.monospacedDigit())
+            }
+            .foregroundStyle(AppTheme.Colors.warning)
+            .accessibilityLabel("重要性 \(importance) 星")
+        }
     }
 
     private func metaChip(_ text: String, color: Color) -> some View {

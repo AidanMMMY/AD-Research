@@ -8,6 +8,8 @@ import Observation
 /// - ``GET /macro/latest?region=global`` + ``region=us``：宏观脉搏底数
 /// - ``GET /macro/indices/global``：实时快照覆盖（内部 code 与 macro 一致，
 ///   如 global_sp500；单项失败后端跳过，响应恒 200）
+/// - ``GET /stats/overview``：平台 KPI 卡（macOS 第三栏）
+/// - ``GET /favorites`` + ``GET /market-data/snapshot``：自选异动横条（|涨跌幅| 前 5）
 ///
 /// 与 web 差异：web 的 SPY.US/BTC.US/510300.SH/159915.SZ 四个 realtime tile
 /// 走 websocket 行情流（usePriceStream），原生地基暂不含该流，
@@ -37,7 +39,47 @@ final class DashboardViewModel {
     /// 实时快照陈旧条数（stale_count 来自后端单一事实来源）
     private(set) var staleCount: Int = 0
 
+    /// 平台 KPI（GET /stats/overview；失败静默，卡片回落为空态）
+    private(set) var overview: StatsOverview?
+    private(set) var isLoadingOverview = false
+
+    /// 自选异动（自选快照按 |涨跌幅| 排序前 5）
+    private(set) var favoriteMovers: [FavoriteMover] = []
+    private(set) var isLoadingMovers = false
+
+    /// 最近一次全量加载成功时间（状态条「上次更新 x 分钟前」）
+    private(set) var lastUpdated: Date?
+
     private var hasLoadedOnce = false
+
+    /// 自选异动行（favorites × market-data/snapshot 合并）
+    struct FavoriteMover: Identifiable, Equatable {
+        var id: String { code }
+        let code: String
+        let name: String
+        let close: Double?
+        /// 百分数（1.23 = +1.23%），直接喂 ChangeText
+        let changePct: Double?
+    }
+
+    /// 顶部状态条圆点的真实状态（替代原假绿点）
+    enum DataStatus: Equatable {
+        /// 首屏加载中（灰）
+        case loading
+        /// 全部就绪（绿）
+        case ok
+        /// 有陈旧数据（黄）
+        case stale
+        /// 加载失败且无旧数据（红）
+        case failed
+    }
+
+    var dataStatus: DataStatus {
+        if pulseError != nil && pulseGroups.isEmpty { return .failed }
+        if isLoadingPulse && pulseGroups.isEmpty { return .loading }
+        if staleCount > 0 { return .stale }
+        return .ok
+    }
 
     // MARK: - 脉搏分组定义（镜像 web PULSE_GROUPS 的 macro tile）
 
@@ -93,11 +135,16 @@ final class DashboardViewModel {
         await load()
     }
 
-    /// 全量加载：研报摘要 + 脉搏数据并行
+    /// 全量加载：研报摘要 + 脉搏数据 + 平台 KPI + 自选异动 并行
     func load() async {
         async let digestTask: () = loadDigestSummary()
         async let pulseTask: () = loadPulse()
-        _ = await (digestTask, pulseTask)
+        async let overviewTask: () = loadOverview()
+        async let moversTask: () = loadFavoriteMovers()
+        _ = await (digestTask, pulseTask, overviewTask, moversTask)
+        if pulseError == nil {
+            lastUpdated = Date()
+        }
     }
 
     private func loadDigestSummary() async {
@@ -172,5 +219,50 @@ final class DashboardViewModel {
             pulseError = "加载失败，请稍后重试"
         }
         isLoadingPulse = false
+    }
+
+    /// GET /stats/overview — 平台 KPI 总览（失败静默，保留旧数据）
+    private func loadOverview() async {
+        if overview == nil { isLoadingOverview = true }
+        if let result = try? await APIClient.shared.send(.statsOverview, as: StatsOverview.self) {
+            overview = result
+        }
+        isLoadingOverview = false
+    }
+
+    /// 自选异动：favoritesList 取 codes → marketSnapshot 批量快照 →
+    /// 按 |changePct| 降序前 5。无自选或全链路失败 → 空数组（横条隐藏）。
+    private func loadFavoriteMovers() async {
+        if favoriteMovers.isEmpty { isLoadingMovers = true }
+        defer { isLoadingMovers = false }
+        do {
+            let favorites = try await APIClient.shared.send(.favoritesList(), as: FavoriteListResponse.self)
+            let codes = favorites.items.map(\.etfCode)
+            guard !codes.isEmpty else {
+                favoriteMovers = []
+                return
+            }
+            let snapshot = try await APIClient.shared.send(.marketSnapshot(codes: codes), as: MarketSnapshotResponse.self)
+            let nameLookup = Dictionary(
+                favorites.items.compactMap { fav -> (String, String)? in
+                    guard let name = fav.etfName else { return nil }
+                    return (fav.etfCode, name)
+                },
+                uniquingKeysWith: { first, _ in first }
+            )
+            favoriteMovers = snapshot.items
+                .sorted { abs($0.changePct ?? 0) > abs($1.changePct ?? 0) }
+                .prefix(5)
+                .map { item in
+                    FavoriteMover(
+                        code: item.etfCode,
+                        name: item.etfName ?? nameLookup[item.etfCode] ?? item.etfCode,
+                        close: item.close,
+                        changePct: item.changePct
+                    )
+                }
+        } catch {
+            // 失败保留旧数据；首次失败则隐藏横条
+        }
     }
 }

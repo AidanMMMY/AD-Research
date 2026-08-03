@@ -1,7 +1,9 @@
 import SwiftUI
 
-/// 研究笔记：AI 研究笔记列表（类型 tag + 日期 + 情绪），
-/// 点按弹详情（原生 Markdown 渲染，对齐 web ResearchNotes 的 Modal 交互）。
+/// 研究笔记：AI 研究笔记列表（类型 tag + 日期 + 情绪）。
+///
+/// 详情交互分平台：iOS 弹 sheet（对齐 web ResearchNotes 的 Modal），
+/// macOS 在外层 NavigationStack 上 push（桌面端不盖模态，可回退）。
 struct ResearchView: View {
     @State private var viewModel = ResearchViewModel()
     @State private var selectedNote: ResearchNote?
@@ -13,12 +15,18 @@ struct ResearchView: View {
             .task {
                 await viewModel.loadIfNeeded()
             }
-            .sheet(item: $selectedNote) { note in
+            #if os(macOS)
+            // macOS：push 进详情列的 NavigationStack（ResearchNote 为 Identifiable，
+            // 用 item 目标注册，无需新增 AppRoute case）
+            .navigationDestination(item: $selectedNote) { note in
                 ResearchNoteDetailView(note: note)
             }
-            #if os(macOS)
             .onReceive(NotificationCenter.default.publisher(for: .adRefreshRequested)) { _ in
                 Task { await viewModel.load() }
+            }
+            #else
+            .sheet(item: $selectedNote) { note in
+                ResearchNoteDetailView(note: note)
             }
             #endif
     }

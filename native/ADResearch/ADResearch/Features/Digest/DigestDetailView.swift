@@ -105,13 +105,9 @@ struct DigestDetailView: View {
                 }
             }
 
-            // 全文
+            // 全文（块级 Markdown 渲染）
             if let content = report.contentMd, !content.isEmpty {
-                Text(MarkdownRenderer.attributed(content))
-                    .font(AppTheme.Typography.body)
-                    .foregroundStyle(AppTheme.Colors.textPrimary)
-                    .lineSpacing(6)
-                    .textSelection(.enabled)
+                MarkdownBlockView(text: content)
             } else {
                 EmptyStateView(
                     systemImage: "doc.plaintext",
@@ -126,8 +122,8 @@ struct DigestDetailView: View {
                     .foregroundStyle(AppTheme.Colors.textMuted)
             }
         }
-        .frame(maxWidth: 760, alignment: .leading) // 桌面行长控制，对齐 web 阅读页 720px
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(maxWidth: 720, alignment: .leading) // 行长控制，对齐 web 阅读页 720px
+        .frame(maxWidth: .infinity) // 宽屏下内容居中，iPhone 自然全宽
         .animation(AppTheme.Motion.fade, value: viewModel.state)
     }
 

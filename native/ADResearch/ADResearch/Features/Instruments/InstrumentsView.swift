@@ -1,14 +1,80 @@
+#if canImport(AppKit)
+import AppKit
+#elseif canImport(UIKit)
+import UIKit
+#endif
 import SwiftUI
 
-/// 标的库：全平台标的搜索 + 市场筛选 + 分页滚动加载。
+// MARK: - 列表共用小组件（标的/组合/Markets 复用）
+
+/// 迷你走势图（60×24，无坐标轴）：首尾定涨跌色（红涨绿跌）。
+/// 可见行懒加载 ``Endpoint.instrumentSparkline`` 后传入 points。
+struct MiniSparklineView: View {
+    let points: [Double]
+
+    var body: some View {
+        let rising = (points.last ?? 0) >= (points.first ?? 0)
+        let lineColor = points.count > 1
+            ? (rising ? AppTheme.Colors.rise : AppTheme.Colors.fall)
+            : AppTheme.Colors.textMuted
+
+        Canvas { context, size in
+            guard !points.isEmpty else { return }
+            let minValue = points.min() ?? 0
+            let maxValue = points.max() ?? 0
+            var path = Path()
+            if points.count < 2 || maxValue <= minValue {
+                // 平盘/单点：中线一条直线
+                let y = size.height / 2
+                path.move(to: CGPoint(x: 0, y: y))
+                path.addLine(to: CGPoint(x: size.width, y: y))
+            } else {
+                let stepX = size.width / CGFloat(points.count - 1)
+                for (index, value) in points.enumerated() {
+                    let x = CGFloat(index) * stepX
+                    let ratio = (value - minValue) / (maxValue - minValue)
+                    let y = size.height - CGFloat(ratio) * size.height
+                    if index == 0 {
+                        path.move(to: CGPoint(x: x, y: y))
+                    } else {
+                        path.addLine(to: CGPoint(x: x, y: y))
+                    }
+                }
+            }
+            context.stroke(path, with: .color(lineColor), lineWidth: 1.5)
+        }
+        .frame(width: 60, height: 24)
+        .accessibilityHidden(true)
+    }
+}
+
+/// 跨平台复制到剪贴板（macOS NSPasteboard / iOS UIPasteboard）
+enum PasteboardCopy {
+    static func copy(_ string: String) {
+        #if canImport(AppKit)
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(string, forType: .string)
+        #elseif canImport(UIKit)
+        UIPasteboard.general.string = string
+        #endif
+    }
+}
+
+// MARK: - 标的库
+
+/// 标的库：全平台标的搜索 + 市场筛选 + 分页滚动加载 + 行情快照报价。
 ///
-/// iOS：单列卡片流（refreshable + 搜索防抖）；macOS：同构。
-/// 点击进 ``InstrumentDetailView``（路由 AppRoute.instrumentDetail(code)）。
+/// 搜索走 ``.searchable``（macOS 自动进 toolbar，白得 ⌘F），防抖保留
+/// 300ms Task.sleep 模式。iOS：单列卡片流；macOS：紧凑行式（hairline 分隔，
+/// 行高 ~44pt），排序控件进 toolbar。点击进 ``InstrumentDetailView``
+/// （路由 AppRoute.instrumentDetail(code)）。
 struct InstrumentsView: View {
     @Environment(AppState.self) private var appState
     @State private var viewModel = InstrumentsViewModel()
     @State private var searchText = ""
     @State private var searchTask: Task<Void, Never>?
+    /// 自选切换结果提示（右键「切换自选」的反馈）
+    @State private var favoriteNotice: String?
 
     /// 市场筛选档（DB 值；nil = 全部）
     private static let marketOptions: [(title: String, value: String?)] = [
@@ -30,6 +96,7 @@ struct InstrumentsView: View {
         }
         .background(AppTheme.Colors.background)
         .navigationTitle("标的")
+        .searchable(text: $searchText, prompt: "搜索代码 / 名称")
         .refreshable {
             await viewModel.reload()
         }
@@ -46,46 +113,42 @@ struct InstrumentsView: View {
             }
         }
         #if os(macOS)
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                sortMenu
+            }
+        }
         .onReceive(NotificationCenter.default.publisher(for: .adRefreshRequested)) { _ in
             Task { await viewModel.reload() }
         }
         #endif
+        .alert("自选", isPresented: noticePresented, presenting: favoriteNotice) { _ in
+            Button("好的", role: .cancel) {}
+        } message: { notice in
+            Text(notice)
+        }
+    }
+
+    private var noticePresented: Binding<Bool> {
+        Binding(
+            get: { favoriteNotice != nil },
+            set: { if !$0 { favoriteNotice = nil } }
+        )
     }
 
     // MARK: - 筛选条
 
     private var filterBar: some View {
-        VStack(alignment: .leading, spacing: AppTheme.Spacing.sm) {
-            HStack(spacing: AppTheme.Spacing.sm) {
-                Image(systemName: "magnifyingglass")
+        HStack(spacing: AppTheme.Spacing.sm) {
+            marketMenu
+            #if os(iOS)
+            sortMenu
+            #endif
+            Spacer()
+            if viewModel.total > 0 {
+                Text("共 \(NumberFormatting.count(viewModel.total)) 只")
+                    .font(AppTheme.Typography.caption)
                     .foregroundStyle(AppTheme.Colors.textMuted)
-                TextField("搜索代码 / 名称", text: $searchText)
-                    .textFieldStyle(.plain)
-                if !searchText.isEmpty {
-                    Button {
-                        searchText = ""
-                    } label: {
-                        Image(systemName: "xmark.circle.fill")
-                            .foregroundStyle(AppTheme.Colors.textMuted)
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-            .padding(.horizontal, AppTheme.Spacing.md)
-            .padding(.vertical, AppTheme.Spacing.sm)
-            .background(
-                RoundedRectangle(cornerRadius: AppTheme.Radius.control, style: .continuous)
-                    .fill(AppTheme.Colors.surface)
-            )
-
-            HStack(spacing: AppTheme.Spacing.sm) {
-                marketMenu
-                Spacer()
-                if viewModel.total > 0 {
-                    Text("共 \(NumberFormatting.count(viewModel.total)) 只")
-                        .font(AppTheme.Typography.caption)
-                        .foregroundStyle(AppTheme.Colors.textMuted)
-                }
             }
         }
     }
@@ -108,6 +171,37 @@ struct InstrumentsView: View {
         }
     }
 
+    /// 排序控件：macOS 进 toolbar（纯 Label），iOS 内联胶囊 Menu
+    private var sortMenu: some View {
+        Menu {
+            ForEach(InstrumentsViewModel.SortOption.allCases) { option in
+                Button {
+                    Haptics.selection()
+                    viewModel.sort = option
+                } label: {
+                    if viewModel.sort == option {
+                        Label(option.label, systemImage: "checkmark")
+                    } else {
+                        Text(option.label)
+                    }
+                }
+            }
+        } label: {
+            #if os(macOS)
+            Label("排序", systemImage: "arrow.up.arrow.down")
+            #else
+            HStack(spacing: AppTheme.Spacing.xs) {
+                Text(viewModel.sort.label).font(AppTheme.Typography.caption)
+                Image(systemName: "arrow.up.arrow.down").font(.system(size: 9))
+            }
+            .foregroundStyle(AppTheme.Colors.textSecondary)
+            .padding(.horizontal, AppTheme.Spacing.md)
+            .padding(.vertical, AppTheme.Spacing.xs)
+            .background(Capsule(style: .continuous).fill(AppTheme.Colors.surface))
+            #endif
+        }
+    }
+
     // MARK: - 列表
 
     @ViewBuilder
@@ -127,9 +221,21 @@ struct InstrumentsView: View {
                     description: "换个市场或搜索词试试"
                 )
             } else {
-                ForEach(viewModel.items) { item in
-                    instrumentCell(item)
+                #if os(macOS)
+                // macOS：行式紧凑列表（hairline 分隔，垂直 padding 减半）
+                VStack(alignment: .leading, spacing: 0) {
+                    ForEach(Array(viewModel.displayItems.enumerated()), id: \.element.id) { index, item in
+                        instrumentRow(item)
+                        if index < viewModel.displayItems.count - 1 {
+                            Divider()
+                        }
+                    }
                 }
+                #else
+                ForEach(viewModel.displayItems) { item in
+                    instrumentCard(item)
+                }
+                #endif
                 if viewModel.canLoadMore {
                     HStack {
                         Spacer()
@@ -141,39 +247,130 @@ struct InstrumentsView: View {
         }
     }
 
-    private func instrumentCell(_ item: InstrumentInfo) -> some View {
+    /// iOS 卡片行
+    private func instrumentCard(_ item: InstrumentInfo) -> some View {
         Button {
-            Haptics.selection()
-            appState.navigate(to: .instruments, route: .instrumentDetail(item.code))
+            openDetail(item)
         } label: {
             ADCard(padding: AppTheme.Spacing.md) {
-                HStack(spacing: AppTheme.Spacing.md) {
-                    VStack(alignment: .leading, spacing: AppTheme.Spacing.xs) {
-                        Text(item.displayName)
-                            .font(AppTheme.Typography.cardTitle)
-                            .foregroundStyle(AppTheme.Colors.textPrimary)
-                            .lineLimit(1)
-                        Text(item.code)
-                            .font(AppTheme.Typography.numericCallout)
-                            .foregroundStyle(AppTheme.Colors.textSecondary)
-                    }
-                    Spacer(minLength: AppTheme.Spacing.sm)
-                    VStack(alignment: .trailing, spacing: AppTheme.Spacing.xs) {
-                        tagChip(item.marketLabel, color: AppTheme.Colors.accent, background: AppTheme.Colors.accentSoft)
-                        if let category = item.category, !category.isEmpty {
-                            Text(category)
-                                .font(AppTheme.Typography.caption)
-                                .foregroundStyle(AppTheme.Colors.textMuted)
-                                .lineLimit(1)
-                        }
-                    }
-                }
+                instrumentRowContent(item)
             }
         }
         .buttonStyle(.plain)
-        .onAppear {
-            if item.id == viewModel.items.last?.id {
-                Task { await viewModel.loadMore() }
+        .contextMenu { instrumentContextMenu(item) }
+        .onAppear { rowDidAppear(item) }
+    }
+
+    /// macOS 紧凑行（无卡片，行高约 44pt）
+    private func instrumentRow(_ item: InstrumentInfo) -> some View {
+        Button {
+            openDetail(item)
+        } label: {
+            instrumentRowContent(item)
+                .padding(.vertical, AppTheme.Spacing.xs)
+                .padding(.horizontal, AppTheme.Spacing.xs)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .contextMenu { instrumentContextMenu(item) }
+        .onAppear { rowDidAppear(item) }
+    }
+
+    /// 行内容（双端共用）：名称+代码 | sparkline | 现价+涨跌幅
+    private func instrumentRowContent(_ item: InstrumentInfo) -> some View {
+        let snapshot = viewModel.snapshots[item.code]
+        return HStack(spacing: AppTheme.Spacing.md) {
+            VStack(alignment: .leading, spacing: AppTheme.Spacing.xxs) {
+                Text(item.displayName)
+                    .font(AppTheme.Typography.cardTitle)
+                    .foregroundStyle(AppTheme.Colors.textPrimary)
+                    .lineLimit(1)
+                HStack(spacing: AppTheme.Spacing.sm) {
+                    Text(item.code)
+                        .font(AppTheme.Typography.caption.monospacedDigit())
+                        .foregroundStyle(AppTheme.Colors.textMuted)
+                    tagChip(item.marketLabel, color: AppTheme.Colors.accent, background: AppTheme.Colors.accentSoft)
+                    if let category = item.category, !category.isEmpty {
+                        Text(category)
+                            .font(AppTheme.Typography.caption)
+                            .foregroundStyle(AppTheme.Colors.textMuted)
+                            .lineLimit(1)
+                    }
+                }
+            }
+            .layoutPriority(1)
+            Spacer(minLength: AppTheme.Spacing.sm)
+            // sparkline：固定位宽避免加载完成后布局跳动；未加载/无数据留空
+            Group {
+                if let points = viewModel.sparklines[item.code], points.count > 1 {
+                    MiniSparklineView(points: points)
+                }
+            }
+            .frame(width: 60, height: 24)
+            quoteArea(snapshot: snapshot)
+        }
+    }
+
+    /// 现价 + 涨跌幅；enrich 进行中渲染骨架
+    private func quoteArea(snapshot: MarketSnapshotItem?) -> some View {
+        VStack(alignment: .trailing, spacing: AppTheme.Spacing.xxs) {
+            if snapshot == nil, viewModel.isEnriching {
+                SkeletonBlock(height: 12).frame(width: 56)
+                SkeletonBlock(height: 10).frame(width: 44)
+            } else {
+                Text(NumberFormatting.tileValue(snapshot?.close))
+                    .font(AppTheme.Typography.numericCallout.weight(.medium))
+                    .foregroundStyle(AppTheme.Colors.textPrimary)
+                ChangeText(value: snapshot?.changePct)
+            }
+        }
+        .frame(minWidth: 72, alignment: .trailing)
+    }
+
+    @ViewBuilder
+    private func instrumentContextMenu(_ item: InstrumentInfo) -> some View {
+        Button {
+            openDetail(item)
+        } label: {
+            Label("查看详情", systemImage: "arrow.right.circle")
+        }
+        Button {
+            PasteboardCopy.copy(item.code)
+        } label: {
+            Label("复制代码", systemImage: "doc.on.doc")
+        }
+        Divider()
+        Button {
+            toggleFavorite(item.code)
+        } label: {
+            Label("切换自选", systemImage: "star")
+        }
+    }
+
+    // MARK: - 动作
+
+    private func openDetail(_ item: InstrumentInfo) {
+        Haptics.selection()
+        appState.navigate(to: .instruments, route: .instrumentDetail(item.code))
+    }
+
+    private func rowDidAppear(_ item: InstrumentInfo) {
+        viewModel.loadSparklineIfNeeded(for: item.code)
+        if item.id == viewModel.items.last?.id {
+            Task { await viewModel.loadMore() }
+        }
+    }
+
+    /// 加/撤自选（POST /favorites/{code}/toggle），结果用 alert 反馈
+    private func toggleFavorite(_ code: String) {
+        Task {
+            do {
+                let response: FavoriteToggleResponse = try await APIClient.shared.send(
+                    .favoriteToggle(code)
+                )
+                favoriteNotice = response.isFavorite ? "已加入自选：\(code)" : "已移出自选：\(code)"
+            } catch {
+                favoriteNotice = "自选操作失败，请稍后重试"
             }
         }
     }
@@ -191,9 +388,16 @@ struct InstrumentsView: View {
         VStack(spacing: AppTheme.Spacing.md) {
             ForEach(0..<6, id: \.self) { _ in
                 ADCard(padding: AppTheme.Spacing.md) {
-                    VStack(alignment: .leading, spacing: AppTheme.Spacing.sm) {
-                        SkeletonBlock(height: 16).frame(maxWidth: 220)
-                        SkeletonBlock(height: 12).frame(width: 120)
+                    HStack {
+                        VStack(alignment: .leading, spacing: AppTheme.Spacing.sm) {
+                            SkeletonBlock(height: 16).frame(maxWidth: 220)
+                            SkeletonBlock(height: 12).frame(width: 120)
+                        }
+                        Spacer()
+                        VStack(alignment: .trailing, spacing: AppTheme.Spacing.sm) {
+                            SkeletonBlock(height: 12).frame(width: 56)
+                            SkeletonBlock(height: 10).frame(width: 44)
+                        }
                     }
                 }
             }

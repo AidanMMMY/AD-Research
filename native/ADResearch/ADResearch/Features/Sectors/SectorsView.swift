@@ -32,7 +32,21 @@ struct SectorsView: View {
 
     // MARK: - 分类切换
 
+    @ViewBuilder
     private var classificationPicker: some View {
+        #if os(macOS)
+        // 桌面端 segmented 不拉满：限宽 320 右对齐
+        HStack {
+            Spacer()
+            picker
+                .frame(maxWidth: 320)
+        }
+        #else
+        picker
+        #endif
+    }
+
+    private var picker: some View {
         Picker("分类体系", selection: $viewModel.classification) {
             ForEach(SectorsViewModel.Classification.allCases) { option in
                 Text(option.label).tag(option)
@@ -150,8 +164,39 @@ struct SectorsView: View {
                     returnCell("3月", sector.return3m)
                     rsCell(sector.relativeStrength1m)
                 }
+                returnBar(sector.return1m)
             }
         }
+    }
+
+    /// 当期板块 1月收益绝对值最大者（板块间归一分母；极小值兜底防除零）
+    private var maxAbsReturn1m: Double {
+        max(viewModel.rankedSectors.map { abs($0.return1m) }.max() ?? 0, 0.000_001)
+    }
+
+    /// 1月收益横向条形：0 轴居中，正值右伸（rise）/ 负值左伸（fall），
+    /// 板块间按当期最大绝对收益归一，方便横向比较强弱
+    private func returnBar(_ value: Double) -> some View {
+        let fraction = min(abs(value) / maxAbsReturn1m, 1)
+        return GeometryReader { geo in
+            let half = (geo.size.width - 1) / 2
+            let barWidth = max(half * fraction, 2)
+            ZStack(alignment: .leading) {
+                Capsule(style: .continuous)
+                    .fill(AppTheme.Colors.surface)
+                // 0 轴
+                Rectangle()
+                    .fill(AppTheme.Colors.textMuted.opacity(0.4))
+                    .frame(width: 1)
+                    .offset(x: half)
+                Capsule(style: .continuous)
+                    .fill(value >= 0 ? AppTheme.Colors.rise : AppTheme.Colors.fall)
+                    .frame(width: barWidth)
+                    .offset(x: value >= 0 ? half + 1 : half + 1 - barWidth)
+            }
+        }
+        .frame(height: 8)
+        .accessibilityLabel("1月收益 \(NumberFormatting.percent(value * 100))")
     }
 
     private func rankBadge(_ rank: Int) -> some View {
