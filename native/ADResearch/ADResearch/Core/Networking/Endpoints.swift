@@ -401,11 +401,24 @@ extension Endpoint {
         Endpoint(method: .get, path: "/scores/\(code)")
     }
 
-    /// GET /scores?template_id=&limit= — 评分榜（不传 template_id 用默认模板）
-    static func scoresList(templateID: Int? = nil, limit: Int = 50) -> Endpoint {
+    /// GET /scores?template_id=&market=&instrument_type=&limit=
+    /// 评分榜（market: cn_a/us；instrument_type: ETF/STOCK；不传 template_id 用默认模板；
+    /// Crypto 后端恒排除，按 rank_overall 升序）
+    static func scoresList(
+        templateID: Int? = nil,
+        market: String? = nil,
+        instrumentType: String? = nil,
+        limit: Int = 50
+    ) -> Endpoint {
         var items = [URLQueryItem(name: "limit", value: String(limit))]
         if let templateID {
             items.append(URLQueryItem(name: "template_id", value: String(templateID)))
+        }
+        if let market, !market.isEmpty {
+            items.append(URLQueryItem(name: "market", value: market))
+        }
+        if let instrumentType, !instrumentType.isEmpty {
+            items.append(URLQueryItem(name: "instrument_type", value: instrumentType))
         }
         return Endpoint(method: .get, path: "/scores", queryItems: items)
     }

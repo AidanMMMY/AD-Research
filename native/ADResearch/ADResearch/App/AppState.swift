@@ -17,6 +17,7 @@ enum AppSection: String, CaseIterable, Identifiable, Hashable, Sendable {
     case sentiment
     case sectors
     case fundFlow
+    case ranking
     case portfolio
     case research
     case learning
@@ -41,6 +42,7 @@ enum AppSection: String, CaseIterable, Identifiable, Hashable, Sendable {
         case .sentiment: return "情绪"
         case .sectors: return "板块"
         case .fundFlow: return "资金流"
+        case .ranking: return "评分榜"
         case .portfolio: return "组合"
         case .research: return "研究笔记"
         case .learning: return "学习"
@@ -59,6 +61,7 @@ enum AppSection: String, CaseIterable, Identifiable, Hashable, Sendable {
         case .sentiment: return "waveform.path.ecg"
         case .sectors: return "square.grid.2x2"
         case .fundFlow: return "arrow.left.arrow.right"
+        case .ranking: return "list.number"
         case .portfolio: return "briefcase"
         case .research: return "book.closed"
         case .learning: return "graduationcap"
@@ -112,6 +115,8 @@ enum FeatureRouter {
             SectorsView()
         case .fundFlow:
             FundFlowView()
+        case .ranking:
+            ScoreRankingView()
         case .portfolio:
             PortfolioView()
         case .research:
