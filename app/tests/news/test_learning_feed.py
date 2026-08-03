@@ -46,6 +46,10 @@ def learning_db():
         connect_args={"check_same_thread": False},
         poolclass=StaticPool,
     )
+    # 显式注册 UserArticleState：单独跑本文件时没有别的模块 import 它，
+    # create_all 只会建已注册进 Base.metadata 的表（全量跑时靠测试顺序侥幸通过）。
+    from app.models.user_article_state import UserArticleState  # noqa: F401
+
     Base.metadata.create_all(engine)
     SessionLocal = sessionmaker(bind=engine)
     session = SessionLocal()
@@ -186,6 +190,8 @@ class TestSeed:
         import inspect
 
         import app.services.news.sources.rss_simple as rs
+        from app.services.news.sources.ai_cn_batch import AI_CN_FEEDS
+        from app.services.news.sources.ai_us_batch import AI_US_FEEDS
         from app.services.news.sources.asia_en_batch import ASIA_EN_FEEDS
         from app.services.news.sources.edu_batch import EDU_FEEDS
         from app.services.news.sources.en_fin_batch import EN_FIN_FEEDS
@@ -217,6 +223,9 @@ class TestSeed:
         known |= {f"enf_{r[0]}" for r in EN_FIN_FEEDS}
         known |= {f"ofc_{r[0]}" for r in OFFICIAL_FEEDS}
         known |= {f"zhm_{r[0]}" for r in ZH_MEDIA_FEEDS}
+        # AI 产业链批次（2026-08-04）：slug 自带完整前缀（wechat_/gind_/pod_ 等）
+        known |= {r[0] for r in AI_CN_FEEDS}
+        known |= {r[0] for r in AI_US_FEEDS}
         for _, cls in inspect.getmembers(rs, inspect.isclass):
             sn = getattr(cls, "source_name", None)
             if sn and cls.__module__ == rs.__name__:

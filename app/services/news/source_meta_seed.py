@@ -391,6 +391,102 @@ _SEED_ROWS: list[tuple[str, str, str, str | None, str, str]] = [
     ("zhm_twreporter", "deep", "research", None, "中文媒体波", "报导者（深度调查报道）"),
     ("zhm_thenewslens", "deep", "research", None, "中文媒体波", "关键评论网（评论/深度）"),
     ("zhm_toyokeizai", "deep", "industry", None, "中文媒体波", "东洋经济（日本商业/产业分析）"),
+    # ────────────────────────────────────────────────────────────────
+    # AI链-中文波（ai_cn_batch.py，2026-08-04）——厂商技术工程号
+    # （阿里云/阿里技术/字节/腾讯/美团/AWS中国/掘金/电子发烧友）沿用
+    # zhb 批次"技术博客跳过"先例不打标；人民网/c114/zol/yesky/光纤在线/
+    # 存储在线/电子信息产业网/HelloGitHub/V2EX 为快讯或聚合不打标；
+    # 实验室/产品官方博客（ofc_qwen_blog/global_openmmlab/
+    # global_huggingface/global_producthunt）沿用存量 global_apple_ml /
+    # global_nvidia_blog 未打标先例跳过；集微网快讯占比高不打标；
+    # 声动早咖啡为日更新闻播客不打标。
+    # ────────────────────────────────────────────────────────────────
+    ("wechat_tanjiti", "deep", "industry", None, "公众号", "碳基体（AI 深度分析）"),
+    # arXiv 四栏目与存量 arxiv_qfin 同值同组（RSS单源）
+    ("asen_arxiv_cscl", "deep", "research", "advanced", "RSS单源", "arXiv cs.CL（计算与语言）"),
+    ("asen_arxiv_csai", "deep", "research", "advanced", "RSS单源", "arXiv cs.AI（人工智能）"),
+    ("asen_arxiv_csro", "deep", "research", "advanced", "RSS单源", "arXiv cs.RO（机器人学）"),
+    ("asen_arxiv_csma", "deep", "research", "advanced", "RSS单源", "arXiv cs.MA（多智能体系统）"),
+    # 集邦咨询=研究机构出品（非快讯门户），三栏目均打标
+    ("cn_trendforce_semi", "deep", "industry", None, "产业研究", "集邦咨询-半导体"),
+    ("cn_trendforce_emerging", "deep", "industry", None, "产业研究", "集邦咨询-新兴科技"),
+    ("cn_trendforce_energy", "deep", "industry", None, "产业研究", "集邦咨询-新能源"),
+    ("pod_shangyejushi", "deep", "industry", None, "中文播客", "商业就是这样（商业案例深聊）"),
+    # 与存量 wechat_hwunicorn（公众号）同一团队、同值打标
+    ("pod_haiwaidujiaoshou", "deep", "research", None, "中文播客", "海外独角兽（播客，科技公司/创投研究）"),
+    # 李宏毅 ML 课程（大学课程级，同 edu_ytdamodaran 定级）
+    ("yt_hungyilee", "edu", "research", "advanced", "YouTube", "Hung-yi Lee 李宏毅（ML 课程）"),
+    # ────────────────────────────────────────────────────────────────
+    # AI链-英文波（ai_us_batch.py，2026-08-04）——不打标：TLDR/
+    # bensbites/techcrunch/theverge/arstechnica AI 栏目等日更快讯；
+    # 实验室与公司官方博客（OpenAI/Google AI/DeepMind/Google Research/
+    # MSR/Amazon Science/EleutherAI/Databricks/HuggingFace）沿用存量
+    # global_apple_ml/global_nvidia_blog/gind_bairblog 未打标先例；
+    # 厂商 PR 新闻室（micron/lamresearch/intel/arm）与半导体/数据中心/
+    # 能源/网络行业快讯媒体（digitimes/semiconductor_digest/phoronix/
+    # igorslab/eejournal/3dincites/DCK/uptime/fierce/capacity/rcr/
+    # datacenterpost/siliconangle/networkworld/heatmap/latitude/
+    # rtoinsider/energystorage/pvmagazine/berkeley_lab/nist）不打标；
+    # 云厂商工程博客（aws_hpc/azure/google_cloud/lambda/cloudflare）不打标；
+    # 日更/评论播客（allin/aibreakdown/hardfork）与 AI 快讯 YouTube
+    # 频道（aiexplained/matthewberman/wesroth/theaigrid/mattvidpro/
+    # mooreslawisdead/bloombergtech）不打标；cerebralvalley/mitnews/
+    # mittr_ai 拿不准不打标。
+    # ────────────────────────────────────────────────────────────────
+    # 英文 Newsletter（深度分析/研究类）
+    ("gind_thegradient", "deep", "research", None, "Newsletter", "The Gradient（AI 研究评论）"),
+    # 与存量 indie_stratechery 同站不同 source，沿用同值
+    ("gind_stratechery", "deep", "industry", "advanced", "Newsletter", "Stratechery (Ben Thompson，科技战略分析)"),
+    ("gind_aisupremacy", "deep", "industry", None, "Newsletter", "AI Supremacy（AI 产业分析）"),
+    ("gind_importai", "deep", "research", None, "Newsletter", "Import AI (Jack Clark，AI 政策/研究)"),
+    ("gind_thesequence", "deep", "research", None, "Newsletter", "The Sequence（ML 研究解读）"),
+    ("gind_latentspace", "deep", "research", None, "Newsletter", "Latent Space (swyx，AI 工程)"),
+    # 与存量 gind_chinatalk 同类（中国 AI 研究/翻译）
+    ("gind_chinai", "deep", "research", None, "Newsletter", "ChinAI (Jeff Ding，中国 AI 研究)"),
+    ("gind_garymarcus", "deep", "research", None, "Newsletter", "Marcus on AI (Gary Marcus，AI 评论)"),
+    ("ai_swyx", "deep", "research", None, "Newsletter", "swyx (Shawn Wang，AI 工程)"),
+    ("ai_thezvi", "deep", "research", None, "Newsletter", "Don't Worry About the Vase (Zvi，AI 深度评论)"),
+    ("ai_chiphuyen", "deep", "research", None, "Newsletter", "Chip Huyen Blog（ML 系统）"),
+    ("ai_lilianweng", "deep", "research", "advanced", "Newsletter", "Lil'Log (Lilian Weng，ML 研究笔记)"),
+    # VC 研究博客（同存量 gind_eladgil 先例）
+    ("ai_sequoia", "deep", "research", None, "Newsletter", "Sequoia Capital（创投研究）"),
+    ("ai_epoch_ai", "deep", "research", "advanced", "Newsletter", "Epoch AI（AI 趋势量化研究）"),
+    # 与存量 gind_exponentialview 同站不同 source，沿用同值
+    ("ai_exponentialview", "deep", "research", None, "Newsletter", "Exponential View (Azeem Azhar，技术/宏观趋势)"),
+    ("ai_usv", "deep", "research", None, "Newsletter", "Union Square Ventures（创投研究）"),
+    # arXiv 两栏目与存量 arxiv_qfin 同值同组
+    ("ai_arxiv_cslg", "deep", "research", "advanced", "RSS单源", "arXiv cs.LG (Machine Learning)"),
+    ("ai_arxiv_cscv", "deep", "research", "advanced", "RSS单源", "arXiv cs.CV (Computer Vision)"),
+    # 深度报道媒体（同存量 wechat_latepost 先例）
+    ("ai_theinformation", "deep", "industry", None, "全球媒体", "The Information（科技商业深度报道）"),
+    # TrendForce 英文站=研究机构（同中文三栏目）
+    ("trendforce", "deep", "industry", None, "产业研究", "TrendForce（半导体/科技研究）"),
+    # 半导体深度分析 Substack（同存量 gind_chipsandcheese 先例）
+    ("morethanmoore", "deep", "industry", "advanced", "Newsletter", "More than Moore (Ian Cutress，半导体深度)"),
+    ("thechipletter", "deep", "industry", None, "Newsletter", "The Chip Letter（半导体史/产业分析）"),
+    # 政策智库（同存量 ofc_cfr/ofc_hoover/gind_merics 先例）
+    ("csis", "deep", "research", None, "智库", "CSIS（战略与国际研究中心）"),
+    ("cset", "deep", "research", "advanced", "智库", "Georgetown CSET（AI 政策研究）"),
+    ("rhodium", "deep", "research", "advanced", "智库", "Rhodium Group（中国/能源研究）"),
+    ("itif", "deep", "research", None, "智库", "ITIF（科技政策智库）"),
+    # 英文播客（深度访谈/研究类；日更快讯类已剔除）
+    ("pod_dwarkesh", "deep", "research", None, "播客", "Dwarkesh Podcast（AI/历史长访谈）"),
+    ("pod_bg2", "deep", "industry", None, "播客", "BG2Pod (Gerstner & Gurley，科技投资)"),
+    ("pod_acquired", "deep", "industry", None, "播客", "Acquired（公司深度拆解）"),
+    ("pod_a16z", "deep", "industry", None, "播客", "The a16z Show（科技/创投）"),
+    ("pod_nopriors", "deep", "industry", None, "播客", "No Priors (Conviction，AI 创投访谈)"),
+    ("pod_trainingdata", "deep", "industry", None, "播客", "Training Data (Sequoia，AI 访谈)"),
+    ("pod_20vc", "deep", "industry", None, "播客", "The Twenty Minute VC（创投访谈）"),
+    ("pod_eyeonai", "deep", "industry", None, "播客", "Eye On A.I. (Craig Smith，AI 访谈)"),
+    ("pod_mlstreettalk", "deep", "research", "advanced", "播客", "Machine Learning Street Talk（ML 研究访谈）"),
+    ("pod_cognitiverev", "deep", "research", None, "播客", "The Cognitive Revolution（AI 研究者访谈）"),
+    ("pod_sharptech", "deep", "industry", None, "播客", "Sharp Tech (Ben Thompson，科技分析)"),
+    ("pod_twimlai", "deep", "research", None, "播客", "TWIML AI Podcast（ML 从业者访谈）"),
+    # 英文 YouTube（深度/教育类；快讯评论频道已剔除）
+    ("yt_asianometry", "deep", "industry", None, "YouTube", "Asianometry（半导体/科技史深度）"),
+    ("yt_twominutepapers", "edu", "research", None, "YouTube", "Two Minute Papers（论文科普）"),
+    ("yt_yannickilcher", "deep", "research", "advanced", "YouTube", "Yannic Kilcher（论文深度解读）"),
+    ("yt_coldfusion", "deep", "industry", None, "YouTube", "ColdFusion（科技公司/产业纪录片）"),
 ]
 
 #: 种子表（list[dict]），键与 NewsSourceMeta 列一一对应。

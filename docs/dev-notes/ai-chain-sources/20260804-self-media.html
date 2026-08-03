@@ -1,0 +1,919 @@
+<!DOCTYPE html><html lang="zh"><head><meta charset="utf-8"><title>中美AI全产业链自媒体资讯源搜罗 20260804</title>
+<style>body{font-family:-apple-system,"PingFang SC",sans-serif;max-width:1200px;margin:2em auto;padding:0 1em;line-height:1.6}table{border-collapse:collapse;width:100%;font-size:13px}td,th{border:1px solid #ccc;padding:4px 8px;vertical-align:top}th{background:#f4f4f4}h1,h2{border-bottom:2px solid #ddd;padding-bottom:4px}code{background:#f4f4f4;padding:1px 4px}</style></head><body><h1>中美 AI 全产业链自媒体资讯源搜罗（2026-08-04）</h1>
+<ul>
+<li>目标：为用户关注的中美 AI 投资机会补充自媒体深度分析源（公众号/Newsletter/播客/YouTube/知乎）</li>
+<li>排重基准：<code>/tmp/adresearch-build/existing_sources.txt</code>（1012 个存量源，已逐一 grep 排重）</li>
+<li>实测标准：<code>curl -sL --max-time 15~25</code>，HTTP 200 且前 500 字符含 <code>&lt;rss</code>/<code>&lt;feed</code>/<code>&lt;?xml</code></li>
+<li>实测概况：RSS 类共实测约 50 个 URL，最终 38 个通过（通过率约 76%）；YouTube 18 个频道全部解析并验证通过（收录 12 个）；公众号走存量 wechat2rss 镜像通道，免测</li>
+<li>已排除的存量重复（示例）：机器之心/量子位/新智元/雷峰网/智东西/甲子光年/远川/饭统戴老板/晚点LatePost/极客公园/硅星人/半导体行业观察/钛媒体/腾讯科技/网易科技/深网/脑极体/暗涌Waves/PaperWeekly/歸藏、ChinaTalk/Sinocism/Sinification/ByteByteGo/OneUsefulThing/Not Boring/Platformer/BigTechnology/Simon Willison/Ahead of AI/LastWeekinAI/Interconnects/Newcomer/AI Snake Oil、Lex Fridman/InvestLikeTheBest、晚点聊/硅谷101/张小珺/乱翻书/大小马聊科技/科技早知道/声东击西/半拿铁/面基/知行小酒馆/十字路口 等均已接入，不在本清单</li>
+</ul>
+<h2>一、英文 Newsletter / Substack（9 个，RSS 直连，全部实测✅）</h2>
+<table>
+<thead>
+<tr>
+<th>source_slug</th>
+<th>显示名</th>
+<th>类型</th>
+<th>接入通道</th>
+<th>Feed URL（实测）</th>
+<th>语言</th>
+<th>环节</th>
+<th>投资相关性</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>gind_thegradient</td>
+<td>The Gradient</td>
+<td>Newsletter</td>
+<td>RSS直连</td>
+<td>https://thegradient.pub/rss/ ✅</td>
+<td>en</td>
+<td>模型/研究</td>
+<td>斯坦福背景 AI 研究评论，长文判断技术趋势拐点</td>
+</tr>
+<tr>
+<td>gind_stratechery</td>
+<td>Stratechery (Ben Thompson)</td>
+<td>Newsletter</td>
+<td>RSS直连</td>
+<td>https://stratechery.com/feed/ ✅（首次429限流，复测200）</td>
+<td>en</td>
+<td>综合/商业</td>
+<td>科技战略分析标杆，AI 商业模式与巨头竞争格局</td>
+</tr>
+<tr>
+<td>gind_aisupremacy</td>
+<td>AI Supremacy</td>
+<td>Newsletter</td>
+<td>RSS直连</td>
+<td>https://aisupremacy.substack.com/feed ✅</td>
+<td>en</td>
+<td>综合/创投</td>
+<td>AI 产业全景+投融资动态聚合，早期信号扫描</td>
+</tr>
+<tr>
+<td>gind_importai</td>
+<td>Import AI (Jack Clark)</td>
+<td>Newsletter</td>
+<td>RSS直连</td>
+<td>https://jack-clark.net/feed/ ✅</td>
+<td>en</td>
+<td>模型/政策</td>
+<td>Anthropic 联创周报，前沿模型能力+监管政策信号</td>
+</tr>
+<tr>
+<td>gind_thesequence</td>
+<td>The Sequence</td>
+<td>Newsletter</td>
+<td>RSS直连</td>
+<td>https://thesequence.substack.com/feed ✅</td>
+<td>en</td>
+<td>模型/研究</td>
+<td>ML 研究进展通俗化，技术路线风向标</td>
+</tr>
+<tr>
+<td>gind_latentspace</td>
+<td>Latent Space (swyx)</td>
+<td>Newsletter</td>
+<td>RSS直连</td>
+<td>https://latent.space/feed ✅</td>
+<td>en</td>
+<td>应用/工程</td>
+<td>AI 工程师生态核心媒体，Agent/工具链一手动态</td>
+</tr>
+<tr>
+<td>gind_chinai</td>
+<td>ChinAI (Jeff Ding)</td>
+<td>Newsletter</td>
+<td>RSS直连</td>
+<td>https://chinai.substack.com/feed ✅</td>
+<td>en</td>
+<td>中国AI</td>
+<td>中国 AI 生态英译解读，中美 AI 对比稀缺一手源</td>
+</tr>
+<tr>
+<td>gind_garymarcus</td>
+<td>Marcus on AI (Gary Marcus)</td>
+<td>Newsletter</td>
+<td>RSS直连</td>
+<td>https://garymarcus.substack.com/feed ✅</td>
+<td>en</td>
+<td>模型/评论</td>
+<td>空头视角对冲 hype，泡沫与风险评估</td>
+</tr>
+<tr>
+<td>gind_bensbites</td>
+<td>Ben's Bites</td>
+<td>Newsletter</td>
+<td>RSS直连</td>
+<td>https://bensbites.substack.com/feed ✅（lastBuildDate 2026-08-03 仍活跃）</td>
+<td>en</td>
+<td>应用/产品</td>
+<td>AI 产品/创业每日扫描，早期项目发现</td>
+</tr>
+</tbody>
+</table>
+<h2>二、AI 实验室官方博客（3 个，非自媒体但为一手信号，顺带接入，全部实测✅）</h2>
+<table>
+<thead>
+<tr>
+<th>source_slug</th>
+<th>显示名</th>
+<th>类型</th>
+<th>接入通道</th>
+<th>Feed URL（实测）</th>
+<th>语言</th>
+<th>环节</th>
+<th>投资相关性</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>ofc_openai_blog</td>
+<td>OpenAI Blog</td>
+<td>官方博客</td>
+<td>RSS直连</td>
+<td>https://openai.com/blog/rss.xml ✅</td>
+<td>en</td>
+<td>模型</td>
+<td>模型发布一手源，直接驱动产业链行情</td>
+</tr>
+<tr>
+<td>ofc_google_ai_blog</td>
+<td>Google AI Blog</td>
+<td>官方博客</td>
+<td>RSS直连</td>
+<td>https://blog.google/technology/ai/rss/ ✅</td>
+<td>en</td>
+<td>模型</td>
+<td>Google 全系 AI 发布与商业化动态</td>
+</tr>
+<tr>
+<td>ofc_deepmind_blog</td>
+<td>Google DeepMind Blog</td>
+<td>官方博客</td>
+<td>RSS直连</td>
+<td>https://deepmind.google/blog/rss.xml ✅</td>
+<td>en</td>
+<td>模型/研究</td>
+<td>前沿研究→应用转化信号</td>
+</tr>
+</tbody>
+</table>
+<h2>三、英文播客（15 个，全部经 iTunes API 确认官方 feed 后实测✅）</h2>
+<table>
+<thead>
+<tr>
+<th>source_slug</th>
+<th>显示名</th>
+<th>类型</th>
+<th>接入通道</th>
+<th>Feed URL（实测）</th>
+<th>语言</th>
+<th>环节</th>
+<th>投资相关性</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>pod_dwarkesh</td>
+<td>Dwarkesh Podcast</td>
+<td>播客</td>
+<td>RSS直连</td>
+<td>https://apple.dwarkesh-podcast.workers.dev/feed.rss ✅</td>
+<td>en</td>
+<td>模型/思想</td>
+<td>深度访谈 AI 实验室领袖，判断 AGI 路线必听</td>
+</tr>
+<tr>
+<td>pod_bg2</td>
+<td>BG2Pod (Gerstner &amp; Gurley)</td>
+<td>播客</td>
+<td>RSS直连</td>
+<td>https://anchor.fm/s/f06c2370/podcast/rss ✅</td>
+<td>en</td>
+<td>创投</td>
+<td>顶级投资人谈 AI 资本开支/估值，投资信号直接</td>
+</tr>
+<tr>
+<td>pod_acquired</td>
+<td>Acquired</td>
+<td>播客</td>
+<td>RSS直连</td>
+<td>https://feeds.transistor.fm/acquired ✅</td>
+<td>en</td>
+<td>综合/商业</td>
+<td>科技公司深度商业史，AI 公司个案研究扎实</td>
+</tr>
+<tr>
+<td>pod_a16z</td>
+<td>The a16z Show</td>
+<td>播客</td>
+<td>RSS直连</td>
+<td>https://feeds.simplecast.com/JGE3yC0V ✅</td>
+<td>en</td>
+<td>创投</td>
+<td>a16z 官方，AI 投资主题覆盖密度高</td>
+</tr>
+<tr>
+<td>pod_nopriors</td>
+<td>No Priors (Conviction)</td>
+<td>播客</td>
+<td>RSS直连</td>
+<td>https://feeds.megaphone.fm/nopriors ✅</td>
+<td>en</td>
+<td>创投/模型</td>
+<td>Sarah Guo 主持，AI 创始人/研究员访谈</td>
+</tr>
+<tr>
+<td>pod_trainingdata</td>
+<td>Training Data (Sequoia)</td>
+<td>播客</td>
+<td>RSS直连</td>
+<td>https://feeds.megaphone.fm/trainingdata ✅</td>
+<td>en</td>
+<td>创投</td>
+<td>红杉官方，AI 投资逻辑与 portfolio 动态</td>
+</tr>
+<tr>
+<td>pod_allin</td>
+<td>All-In Podcast</td>
+<td>播客</td>
+<td>RSS直连</td>
+<td>https://rss.libsyn.com/shows/254861/destinations/1928300.xml ✅</td>
+<td>en</td>
+<td>宏观/创投</td>
+<td>投资人视角宏观+AI 热点，情绪与仓位风向标</td>
+</tr>
+<tr>
+<td>pod_20vc</td>
+<td>The Twenty Minute VC</td>
+<td>播客</td>
+<td>RSS直连</td>
+<td>https://rss.libsyn.com/shows/61840/destinations/240976.xml ✅</td>
+<td>en</td>
+<td>创投</td>
+<td>VC 访谈高频，AI 赛道融资动向</td>
+</tr>
+<tr>
+<td>pod_eyeonai</td>
+<td>Eye On A.I. (Craig Smith)</td>
+<td>播客</td>
+<td>RSS直连</td>
+<td>https://rss.libsyn.com/shows/123267/destinations/727317.xml ✅</td>
+<td>en</td>
+<td>模型/产业</td>
+<td>NYT 前记者主持，产业链高管访谈</td>
+</tr>
+<tr>
+<td>pod_aibreakdown</td>
+<td>AI Breakdown (NLW)</td>
+<td>播客</td>
+<td>RSS直连</td>
+<td>https://media.rss.com/ai-breakdown/feed.xml ✅</td>
+<td>en</td>
+<td>综合</td>
+<td>每日 AI 新闻+分析，信息密度高</td>
+</tr>
+<tr>
+<td>pod_mlstreettalk</td>
+<td>Machine Learning Street Talk</td>
+<td>播客</td>
+<td>RSS直连</td>
+<td>https://anchor.fm/s/1e4a0eac/podcast/rss ✅</td>
+<td>en</td>
+<td>模型/研究</td>
+<td>技术向长访谈，研究前沿信号</td>
+</tr>
+<tr>
+<td>pod_cognitiverev</td>
+<td>The Cognitive Revolution</td>
+<td>播客</td>
+<td>RSS直连</td>
+<td>https://feeds.megaphone.fm/RINTP3108857801 ✅</td>
+<td>en</td>
+<td>应用/创投</td>
+<td>AI builder 访谈，应用层落地动态</td>
+</tr>
+<tr>
+<td>pod_hardfork</td>
+<td>Hard Fork (NYT)</td>
+<td>播客</td>
+<td>RSS直连</td>
+<td>https://feeds.simplecast.com/6HKOhNgS ✅</td>
+<td>en</td>
+<td>综合/监管</td>
+<td>主流媒体视角 AI 新闻+监管动态</td>
+</tr>
+<tr>
+<td>pod_sharptech</td>
+<td>Sharp Tech (Ben Thompson)</td>
+<td>播客</td>
+<td>RSS直连</td>
+<td>https://sharptech.fm/feed/podcast ✅</td>
+<td>en</td>
+<td>综合/商业</td>
+<td>Stratechery 播客版，科技商业周评</td>
+</tr>
+<tr>
+<td>pod_twimlai</td>
+<td>TWIML AI Podcast</td>
+<td>播客</td>
+<td>RSS直连</td>
+<td>https://twimlai.com/feed/podcast/ ✅</td>
+<td>en</td>
+<td>模型/工程</td>
+<td>ML 工程实践长访谈，企业落地信号</td>
+</tr>
+</tbody>
+</table>
+<h2>四、中文播客（3 个，全部实测✅）</h2>
+<table>
+<thead>
+<tr>
+<th>source_slug</th>
+<th>显示名</th>
+<th>类型</th>
+<th>接入通道</th>
+<th>Feed URL（实测）</th>
+<th>语言</th>
+<th>环节</th>
+<th>投资相关性</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>pod_sdzaokafei</td>
+<td>声动早咖啡</td>
+<td>播客</td>
+<td>RSS直连（喜马拉雅官方）</td>
+<td>https://www.ximalaya.com/album/51076156.xml ✅</td>
+<td>zh</td>
+<td>综合</td>
+<td>每日商业科技快讯，AI 行业动态日更覆盖</td>
+</tr>
+<tr>
+<td>pod_shangyejushi</td>
+<td>商业就是这样</td>
+<td>播客</td>
+<td>RSS直连（喜马拉雅官方）</td>
+<td>http://www.ximalaya.com/album/46587439.xml ✅</td>
+<td>zh</td>
+<td>综合/产业</td>
+<td>一财出品商业深度，常覆盖 AI 公司商业模式</td>
+</tr>
+<tr>
+<td>pod_haiwaidujiaoshou</td>
+<td>海外独角兽</td>
+<td>播客</td>
+<td>RSS直连（小宇宙官方 feed）</td>
+<td>https://feed.xyzfm.space/ym6ug8jctfp8 ✅</td>
+<td>zh</td>
+<td>应用/创投</td>
+<td>全球 AI 产品与创投访谈，出海+应用层信号</td>
+</tr>
+</tbody>
+</table>
+<h2>五、YouTube 频道（12 个，channel_id 全部解析并实测 feed 200✅）</h2>
+<table>
+<thead>
+<tr>
+<th>source_slug</th>
+<th>显示名</th>
+<th>类型</th>
+<th>接入通道</th>
+<th>Feed URL（实测）</th>
+<th>语言</th>
+<th>环节</th>
+<th>投资相关性</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>yt_asianometry</td>
+<td>Asianometry</td>
+<td>YouTube</td>
+<td>RSS直连</td>
+<td>https://www.youtube.com/feeds/videos.xml?channel_id=UC1LpsuAUaKoMzzJSEt5WImw ✅</td>
+<td>en</td>
+<td>半导体/算力</td>
+<td>半导体产业史与制程分析，算力链投研上游</td>
+</tr>
+<tr>
+<td>yt_mooreslawisdead</td>
+<td>Moore's Law Is Dead</td>
+<td>YouTube</td>
+<td>RSS直连</td>
+<td>https://www.youtube.com/feeds/videos.xml?channel_id=UCRPdsCVuH53rcbTcEkuY4uQ ✅</td>
+<td>en</td>
+<td>半导体/算力</td>
+<td>GPU/晶圆代工供应链爆料，抢跑公开数据</td>
+</tr>
+<tr>
+<td>yt_twominutepapers</td>
+<td>Two Minute Papers</td>
+<td>YouTube</td>
+<td>RSS直连</td>
+<td>https://www.youtube.com/feeds/videos.xml?channel_id=UCbfYPyITQ-7l4upoX8nvctg ✅</td>
+<td>en</td>
+<td>模型/研究</td>
+<td>论文速览，研究突破早期感知</td>
+</tr>
+<tr>
+<td>yt_yannickilcher</td>
+<td>Yannic Kilcher</td>
+<td>YouTube</td>
+<td>RSS直连</td>
+<td>https://www.youtube.com/feeds/videos.xml?channel_id=UCZHmQk67mSJgfCCTn7xBfew ✅</td>
+<td>en</td>
+<td>模型/研究</td>
+<td>论文深读+行业评论，技术社区情绪指标</td>
+</tr>
+<tr>
+<td>yt_aiexplained</td>
+<td>AI Explained</td>
+<td>YouTube</td>
+<td>RSS直连</td>
+<td>https://www.youtube.com/feeds/videos.xml?channel_id=UCNJ1Ymd5yFuUPtn21xtRbbw ✅</td>
+<td>en</td>
+<td>模型</td>
+<td>模型能力测评与发布解读，冷静派</td>
+</tr>
+<tr>
+<td>yt_matthewberman</td>
+<td>Matthew Berman</td>
+<td>YouTube</td>
+<td>RSS直连</td>
+<td>https://www.youtube.com/feeds/videos.xml?channel_id=UCawZsQWqfGSbCI5yjkdVkTA ✅</td>
+<td>en</td>
+<td>应用/模型</td>
+<td>新模型/产品实测，发布节奏跟踪</td>
+</tr>
+<tr>
+<td>yt_wesroth</td>
+<td>Wes Roth</td>
+<td>YouTube</td>
+<td>RSS直连</td>
+<td>https://www.youtube.com/feeds/videos.xml?channel_id=UCqcbQf6yw5KzRoDDcZ_wBSw ✅</td>
+<td>en</td>
+<td>综合</td>
+<td>AI 新闻周度整合，覆盖广</td>
+</tr>
+<tr>
+<td>yt_theaigrid</td>
+<td>TheAIGRID</td>
+<td>YouTube</td>
+<td>RSS直连</td>
+<td>https://www.youtube.com/feeds/videos.xml?channel_id=UCbY9xX3_jW5c2fjlZVBI4cg ✅</td>
+<td>en</td>
+<td>应用</td>
+<td>AI 工具/发布快讯，热度指标（注意 hype 过滤）</td>
+</tr>
+<tr>
+<td>yt_mattvidpro</td>
+<td>MattVidPro AI</td>
+<td>YouTube</td>
+<td>RSS直连</td>
+<td>https://www.youtube.com/feeds/videos.xml?channel_id=UCXD9sGdcD3-l12dPo_PhTZQ ✅</td>
+<td>en</td>
+<td>应用</td>
+<td>生成式 AI 工具实测，应用层落地信号</td>
+</tr>
+<tr>
+<td>yt_coldfusion</td>
+<td>ColdFusion</td>
+<td>YouTube</td>
+<td>RSS直连</td>
+<td>https://www.youtube.com/feeds/videos.xml?channel_id=UC4QZ_LsYcvcq7qOsOhpAX4A ✅</td>
+<td>en</td>
+<td>综合/商业</td>
+<td>科技公司纪录片式分析，叙事与风险识别</td>
+</tr>
+<tr>
+<td>yt_bloombergtech</td>
+<td>Bloomberg Technology</td>
+<td>YouTube</td>
+<td>RSS直连</td>
+<td>https://www.youtube.com/feeds/videos.xml?channel_id=UCrM7B7SL_g1edFOnmj-SDKg ✅</td>
+<td>en</td>
+<td>综合/财经</td>
+<td>主流财经媒体科技线，巨头与资本市场动态</td>
+</tr>
+<tr>
+<td>yt_hungyilee</td>
+<td>Hung-yi Lee 李宏毅</td>
+<td>YouTube</td>
+<td>RSS直连</td>
+<td>https://www.youtube.com/feeds/videos.xml?channel_id=UC2ggjtuuWvxrHHHiaDH1dlQ ✅</td>
+<td>zh</td>
+<td>模型/教学</td>
+<td>台大李宏毅，中文圈生成式 AI 技术科普权威</td>
+</tr>
+</tbody>
+</table>
+<p>未收录但已验证可用的备选 YT：Dwarkesh Patel（UCXl4i9dYBrFOabk0xGmbkRA，与播客重复）、ML Street Talk YT（UCMLtBahI5DMrt0NPvDSoIRQ，与播客重复）、All-In YT（UCESLZhusAkFfsNsApnjF_Cg，与播客重复）、DeepLearningAI（UCcIXc5mJsHVYTZR1maL5l9w，课程推广偏多）、Robert Miles AI Safety（UCLB7AzTwc6VFZrBsO2ucBMg，安全向）、Computerphile（UC9-y-6csu5WGm29I7JiwpnA，泛 CS）。</p>
+<h2>六、中文公众号（16 个，走存量 wechat2rss 镜像通道，免测；slug 为建议命名）</h2>
+<table>
+<thead>
+<tr>
+<th>source_slug</th>
+<th>显示名</th>
+<th>类型</th>
+<th>接入通道</th>
+<th>Feed URL 或公众号名</th>
+<th>语言</th>
+<th>环节</th>
+<th>投资相关性</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>wechat_zimubang</td>
+<td>字母榜</td>
+<td>公众号</td>
+<td>wechat2rss镜像</td>
+<td>公众号「字母榜」（免测）</td>
+<td>zh</td>
+<td>综合/产业</td>
+<td>AI 公司深度调查与巨头动态，中文 AI 叙事头部</td>
+</tr>
+<tr>
+<td>wechat_ailanmeihui</td>
+<td>AI蓝媒汇</td>
+<td>公众号</td>
+<td>wechat2rss镜像</td>
+<td>公众号「AI蓝媒汇」（免测）</td>
+<td>zh</td>
+<td>综合</td>
+<td>AI 行业媒体观察，舆情与风向</td>
+</tr>
+<tr>
+<td>wechat_pingwest</td>
+<td>品玩</td>
+<td>公众号</td>
+<td>wechat2rss镜像</td>
+<td>公众号「品玩」（免测）</td>
+<td>zh</td>
+<td>综合/出海</td>
+<td>全球化科技报道，中美 AI 公司双边覆盖</td>
+</tr>
+<tr>
+<td>wechat_zhinengyongxian</td>
+<td>智能涌现</td>
+<td>公众号</td>
+<td>wechat2rss镜像</td>
+<td>公众号「智能涌现」（免测）</td>
+<td>zh</td>
+<td>应用/创投</td>
+<td>36氪 AI 垂直号，创业公司+融资动态</td>
+</tr>
+<tr>
+<td>wechat_guangzhui</td>
+<td>光锥智能</td>
+<td>公众号</td>
+<td>wechat2rss镜像</td>
+<td>公众号「光锥智能」（免测）</td>
+<td>zh</td>
+<td>应用/产业</td>
+<td>AI 落地与商业化深度分析</td>
+</tr>
+<tr>
+<td>wechat_shuzhiqianxian</td>
+<td>数智前线</td>
+<td>公众号</td>
+<td>wechat2rss镜像</td>
+<td>公众号「数智前线」（免测）</td>
+<td>zh</td>
+<td>应用/产业</td>
+<td>企业数字化+AI 落地案例，B 端需求信号</td>
+</tr>
+<tr>
+<td>wechat_dianchang</td>
+<td>电厂</td>
+<td>公众号</td>
+<td>wechat2rss镜像</td>
+<td>公众号「电厂」（免测）</td>
+<td>zh</td>
+<td>综合/产业</td>
+<td>科技产业深度报道，AI 公司调查</td>
+</tr>
+<tr>
+<td>wechat_jiqizhineng</td>
+<td>机器之能</td>
+<td>公众号</td>
+<td>wechat2rss镜像</td>
+<td>公众号「机器之能」（免测）</td>
+<td>zh</td>
+<td>模型/研究</td>
+<td>老牌 AI 媒体，研究解读与产业分析</td>
+</tr>
+<tr>
+<td>wechat_xinsixiang</td>
+<td>芯思想</td>
+<td>公众号</td>
+<td>wechat2rss镜像</td>
+<td>公众号「芯思想」（免测）</td>
+<td>zh</td>
+<td>半导体</td>
+<td>半导体产业深度，国产替代+供应链信号</td>
+</tr>
+<tr>
+<td>wechat_xinshiye</td>
+<td>芯师爷</td>
+<td>公众号</td>
+<td>wechat2rss镜像</td>
+<td>公众号「芯师爷」（免测）</td>
+<td>zh</td>
+<td>半导体</td>
+<td>芯片产业链公司动态，标的挖掘上游</td>
+</tr>
+<tr>
+<td>wechat_jiweinet</td>
+<td>集微网</td>
+<td>公众号</td>
+<td>wechat2rss镜像</td>
+<td>公众号「集微网」（免测）</td>
+<td>zh</td>
+<td>半导体</td>
+<td>半导体行业新闻全覆盖，政策+产能数据</td>
+</tr>
+<tr>
+<td>wechat_bdctzongheng</td>
+<td>半导体产业纵横</td>
+<td>公众号</td>
+<td>wechat2rss镜像</td>
+<td>公众号「半导体产业纵横」（免测）</td>
+<td>zh</td>
+<td>半导体</td>
+<td>产业趋势长文，算力链景气度跟踪</td>
+</tr>
+<tr>
+<td>wechat_touzhongwang</td>
+<td>投中网</td>
+<td>公众号</td>
+<td>wechat2rss镜像</td>
+<td>公众号「投中网」（免测）</td>
+<td>zh</td>
+<td>创投</td>
+<td>PE/VC 行业报道，AI 融资与退出动态</td>
+</tr>
+<tr>
+<td>wechat_dsstziben</td>
+<td>东四十条资本</td>
+<td>公众号</td>
+<td>wechat2rss镜像</td>
+<td>公众号「东四十条资本」（免测）</td>
+<td>zh</td>
+<td>创投</td>
+<td>一级市场深度，AI 独角兽个案研究</td>
+</tr>
+<tr>
+<td>wechat_alphagongchang</td>
+<td>阿尔法工场</td>
+<td>公众号</td>
+<td>wechat2rss镜像</td>
+<td>公众号「阿尔法工场」（免测）</td>
+<td>zh</td>
+<td>投资/二级</td>
+<td>二级市场研究，AI 标的深度覆盖</td>
+</tr>
+<tr>
+<td>wechat_jinduan</td>
+<td>锦缎</td>
+<td>公众号</td>
+<td>wechat2rss镜像</td>
+<td>公众号「锦缎」（免测）</td>
+<td>zh</td>
+<td>投资/产业</td>
+<td>产业与公司研究，AI 相关标的分析</td>
+</tr>
+</tbody>
+</table>
+<h2>七、知乎专栏（2 个，备选-需镜像）</h2>
+<p>公共 RSSHub（rsshub.app）实测 403（官方已限制生产使用），需自建 RSSHub 或等效镜像后方可接入：</p>
+<table>
+<thead>
+<tr>
+<th>source_slug</th>
+<th>显示名</th>
+<th>类型</th>
+<th>接入通道</th>
+<th>Feed URL 或专栏名</th>
+<th>语言</th>
+<th>环节</th>
+<th>投资相关性</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>zhihu_jizhiplatform</td>
+<td>极市平台</td>
+<td>知乎专栏</td>
+<td>RSSHub自建（/zhihu/zhuanlan/）</td>
+<td>备选-需镜像</td>
+<td>zh</td>
+<td>模型/应用</td>
+<td>CV/AI 工程实践内容，技术落地信号</td>
+</tr>
+<tr>
+<td>zhihu_cvlife</td>
+<td>计算机视觉life</td>
+<td>知乎专栏</td>
+<td>RSSHub自建（/zhihu/zhuanlan/）</td>
+<td>备选-需镜像</td>
+<td>zh</td>
+<td>模型/应用</td>
+<td>视觉+多模态技术社区，人才与技术风向</td>
+</tr>
+</tbody>
+</table>
+<p>X(Twitter) 说明：无可靠公共镜像通道；如自建 RSSHub+token 可建「AI 研究员/AI 投资人」列表（/twitter/list/ 路由），列为后续备选，本批不计入。</p>
+<h2>实测未通过（❌，不收录）</h2>
+<table>
+<thead>
+<tr>
+<th>名称</th>
+<th>URL</th>
+<th>结果</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>The Batch (DeepLearning.AI)</td>
+<td>https://www.deeplearning.ai/the-batch/feed/ + /rss.xml</td>
+<td>404 ❌</td>
+</tr>
+<tr>
+<td>AlphaSignal</td>
+<td>alphasignal.ai/feed + alphasignal.beehiiv.com/feed</td>
+<td>404 ❌</td>
+</tr>
+<tr>
+<td>The Rundown AI</td>
+<td>therundown.beehiiv.com/feed + therundownai.beehiiv.com/feed + therundown.ai/feed</td>
+<td>404 ❌</td>
+</tr>
+<tr>
+<td>Superhuman / Mindstream</td>
+<td>*.beehiiv.com/feed</td>
+<td>404 ❌（子域不对，未深究）</td>
+</tr>
+<tr>
+<td>TLDR AI</td>
+<td>https://tldr.tech/ai/feed</td>
+<td>404 ❌</td>
+</tr>
+<tr>
+<td>Anthropic Blog</td>
+<td>anthropic.com/rss.xml + /news/rss.xml</td>
+<td>404 ❌（官方未提供 RSS）</td>
+</tr>
+<tr>
+<td>Stratechery（首测）</td>
+<td>stratechery.com/feed/</td>
+<td>429 限流，复测 200 ✅ 已收录</td>
+</tr>
+</tbody>
+</table>
+<h2>Top 20 必接（优先级排序）</h2>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>source_slug</th>
+<th>显示名</th>
+<th>理由一句话</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>gind_stratechery</td>
+<td>Stratechery</td>
+<td>AI 商业模式与巨头竞争的全球基准分析</td>
+</tr>
+<tr>
+<td>2</td>
+<td>gind_chinai</td>
+<td>ChinAI</td>
+<td>中美 AI 对比稀缺一手源，直接服务双边投资主题</td>
+</tr>
+<tr>
+<td>3</td>
+<td>pod_bg2</td>
+<td>BG2Pod</td>
+<td>顶级买方视角谈 AI 资本开支与估值，信号最直接</td>
+</tr>
+<tr>
+<td>4</td>
+<td>pod_dwarkesh</td>
+<td>Dwarkesh Podcast</td>
+<td>实验室领袖长访谈，AGI 路线判断基准</td>
+</tr>
+<tr>
+<td>5</td>
+<td>pod_acquired</td>
+<td>Acquired</td>
+<td>AI 公司深度个案研究，研究质量堪比卖方</td>
+</tr>
+<tr>
+<td>6</td>
+<td>gind_importai</td>
+<td>Import AI</td>
+<td>Anthropic 联创视角，模型能力+政策双信号</td>
+</tr>
+<tr>
+<td>7</td>
+<td>gind_latentspace</td>
+<td>Latent Space</td>
+<td>Agent/工具链一手动态，应用层投资上游</td>
+</tr>
+<tr>
+<td>8</td>
+<td>pod_nopriors</td>
+<td>No Priors</td>
+<td>AI 创始人/研究员高密度访谈</td>
+</tr>
+<tr>
+<td>9</td>
+<td>pod_trainingdata</td>
+<td>Training Data (Sequoia)</td>
+<td>红杉 AI 投资逻辑与赛道判断</td>
+</tr>
+<tr>
+<td>10</td>
+<td>pod_a16z</td>
+<td>The a16z Show</td>
+<td>a16z 官方，AI 主题覆盖密度最高的大所</td>
+</tr>
+<tr>
+<td>11</td>
+<td>yt_asianometry</td>
+<td>Asianometry</td>
+<td>半导体/算力链深度，中文创作者英文输出稀缺视角</td>
+</tr>
+<tr>
+<td>12</td>
+<td>yt_mooreslawisdead</td>
+<td>Moore's Law Is Dead</td>
+<td>GPU/代工供应链爆料，抢跑公开披露</td>
+</tr>
+<tr>
+<td>13</td>
+<td>wechat_xinsixiang</td>
+<td>芯思想</td>
+<td>国产半导体深度，替代逻辑上游信号</td>
+</tr>
+<tr>
+<td>14</td>
+<td>wechat_jiweinet</td>
+<td>集微网</td>
+<td>半导体全行业新闻覆盖，景气度数据</td>
+</tr>
+<tr>
+<td>15</td>
+<td>wechat_zimubang</td>
+<td>字母榜</td>
+<td>中文 AI 公司调查报道头部</td>
+</tr>
+<tr>
+<td>16</td>
+<td>wechat_zhinengyongxian</td>
+<td>智能涌现</td>
+<td>36氪 AI 垂直，创业+融资动态</td>
+</tr>
+<tr>
+<td>17</td>
+<td>wechat_touzhongwang</td>
+<td>投中网</td>
+<td>AI 一级市场融资与退出</td>
+</tr>
+<tr>
+<td>18</td>
+<td>wechat_dsstziben</td>
+<td>东四十条资本</td>
+<td>AI 独角兽个案深度</td>
+</tr>
+<tr>
+<td>19</td>
+<td>pod_sdzaokafei</td>
+<td>声动早咖啡</td>
+<td>中文日更商业科技快讯，低成本日频覆盖</td>
+</tr>
+<tr>
+<td>20</td>
+<td>gind_garymarcus</td>
+<td>Marcus on AI</td>
+<td>空头视角对冲，泡沫风险预警</td>
+</tr>
+</tbody>
+</table>
+<p>备选梯队：gind_thegradient、yt_aiexplained、wechat_pingwest、wechat_alphagongchang、wechat_jinduan、pod_eyeonai、pod_cognitiverev、ofc_openai_blog。</p>
+<h2>接入备注</h2>
+<ol>
+<li>公众号 16 个走现有 wechat2rss 镜像批次流程（同前三批），slug 建议命名如上，接入前先按「接号前先 grep 查重」口诀复核 wechat2rss 后台已有号。</li>
+<li>RSS 直连 41 个（newsletter 9 + 官方博客 3 + 播客 18 + YouTube 12，其中 Dwarkesh/MLST/All-In 播客与 YT 重复内容只接播客版）直接进 RSS 采集队列。</li>
+<li>知乎/X 类需自建 RSSHub，暂缓，列后续批次。</li>
+<li>采集端注意：podcast feed 正文是 shownotes（信息量低），建议这类源只取标题+链接入库，正文走摘要即可；YouTube feed 同理（description 在 entry 内）。</li>
+</ol></body></html>

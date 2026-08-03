@@ -2289,6 +2289,34 @@ def init_scheduler():
                 coalesce=True,
             )
 
+        # AI 产业链批次 (2026-08-04) — 中文 37 + 英文 99 个实测验证
+        # feeds（中美 AI 模型/应用/上游半导体/自媒体/播客），生成于
+        # ``scheduler_jobs.AI_CN_BATCH_JOBS`` / ``AI_US_BATCH_JOBS``，
+        # 全部每小时。候选与排重证据见
+        # ``docs/dev-notes/ai-chain-sources/`` 五份搜罗报告。
+        for job_id, label, batch in _news_jobs.AI_CN_BATCH_JOBS:
+            fn = getattr(_news_jobs, f"run_ai_cn_{batch}_crawl")
+            scheduler.add_job(
+                fn,
+                trigger=IntervalTrigger(minutes=60, jitter=600),
+                id=job_id,
+                name=label,
+                replace_existing=True,
+                max_instances=1,
+                coalesce=True,
+            )
+        for job_id, label, batch in _news_jobs.AI_US_BATCH_JOBS:
+            fn = getattr(_news_jobs, f"run_ai_us_{batch}_crawl")
+            scheduler.add_job(
+                fn,
+                trigger=IntervalTrigger(minutes=60, jitter=600),
+                id=job_id,
+                name=label,
+                replace_existing=True,
+                max_instances=1,
+                coalesce=True,
+            )
+
         # Official institution + industry vertical batches (2026-08-02)
         # — 56 verified central-bank / regulator / think-tank /
         # industry-trade feeds, generated in

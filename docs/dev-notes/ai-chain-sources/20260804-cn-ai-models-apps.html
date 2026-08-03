@@ -1,0 +1,781 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>中国 AI 产业链资讯源扩充候选 20260804</title>
+<style>
+body{font-family:-apple-system,"PingFang SC","Helvetica Neue",sans-serif;max-width:1280px;margin:0 auto;padding:24px;color:#222;line-height:1.6}
+table{border-collapse:collapse;width:100%;font-size:13px;margin:16px 0}
+th,td{border:1px solid #ccc;padding:6px 8px;text-align:left;vertical-align:top}
+th{background:#f4f4f4}
+tr:nth-child(even){background:#fafafa}
+h1{font-size:22px}h2{font-size:18px;border-bottom:2px solid #ddd;padding-bottom:4px;margin-top:32px}
+code{background:#f0f0f0;padding:1px 4px;border-radius:3px;font-size:12px}
+blockquote{border-left:3px solid #ccc;margin:0;padding-left:12px;color:#555}
+a{color:#06c;word-break:break-all}
+</style></head><body>
+<h1>中国 AI 产业链资讯源扩充候选（模型层 / 应用层 / 行业媒体）</h1>
+<ul>
+<li>日期：2026-08-04</li>
+<li>目标：为关注中美 AI 全产业链投资机会的用户补上游信号 —— AI 垂直媒体、大模型厂商官方、AI 应用/Agent 社区、AI 创投媒体</li>
+<li>排重依据：<code>/tmp/adresearch-build/existing_sources.txt</code>（1012 存量 slug）+ <code>app/services/news/sources/</code> 已有模块</li>
+<li>实测方法：每个 RSS URL 均用 <code>curl -sL -o /dev/null -w "%{http_code}" --max-time 15~25</code> 实测，并校验返回体前 500 字符含 <code>&lt;rss</code>/<code>&lt;feed</code>/<code>&lt;?xml</code>。测试环境为本地（中国大陆网络），与 Aliyun ECS 同网络类别；境外站点（github.io / medium.com / huggingface.co）间歇性不可达，已在备注标明。</li>
+<li>存量已覆盖（<strong>勿重复接入</strong>）：机器之心、量子位、新智元、智东西、甲子光年、雷峰网、极客公园、钛媒体、爱范儿、IT之家（中/台）、cnBeta、博客园、开源中国、InfoQ（中/英）、SegmentFault、少数派、晚点LatePost、DeepTech、MIT科技评论、智能涌现、Founder Park、Z Potentials、机器之心SOTA、PaperWeekly、Datawhale、非凡产研、有新Newin、深思圈、十字路口、海外独角兽、白鲸出海、硅星人、脑极体、AI炼金术、数字生命卡兹克、歸藏的AI工具箱、硅谷101、半导体行业观察、42章经、傅盛、集智俱乐部、我爱计算机视觉、机器学习初学者、小众软件、网易科技、腾讯科技、创业邦、投资界、36氪、虎嗅、界面、财新、真格/红杉/高瓴/经纬 等</li>
+<li>历史评估记录（<code>wechat2rss_batch3.py</code> 注释）：<strong>AI科技评论</strong>（与雷峰网同组织重复+软文多）、<strong>硅基观察Pro</strong>（标题党）已于 2026-07-29 评估后丢弃，本轮不再提议。</li>
+</ul>
+<hr />
+<h2>表 1：实测通过 ✅（17 个）</h2>
+<table>
+<thead>
+<tr>
+<th>source_slug（建议）</th>
+<th>显示名</th>
+<th>站点 URL</th>
+<th>RSS URL（已实测）</th>
+<th>语言</th>
+<th>产业链环节</th>
+<th>内容类型</th>
+<th>投资相关性</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>wechat_xixiaoyao</td>
+<td>夕小瑶科技说</td>
+<td>https://weixin.qq.com（公众号）</td>
+<td>https://wechat2rss.xlab.app/feed/a1cd365aa14ed7d64cabfc8aa086da40ecaba34d.xml ✅（镜像）</td>
+<td>中文</td>
+<td>媒体</td>
+<td>深度</td>
+<td>AI 自媒体头部，大模型解读+论文拆解信噪比高，模型层叙事一线信号</td>
+</tr>
+<tr>
+<td>wechat_tanjiti</td>
+<td>碳基体</td>
+<td>https://weixin.qq.com（公众号）</td>
+<td>https://wechat2rss.xlab.app/feed/4bc6a2ecb1feb2bd2961a898905147c9f76a4c3a.xml ✅（镜像）</td>
+<td>中文</td>
+<td>媒体</td>
+<td>深度</td>
+<td>大模型产业观察，厂商动态与商业化分析，跟踪独角兽估值/融资叙事</td>
+</tr>
+<tr>
+<td>wechat_aliyun_dev</td>
+<td>阿里云开发者</td>
+<td>https://developer.aliyun.com</td>
+<td>https://wechat2rss.xlab.app/feed/c74ed6db00cfbf16f2a048a165b4453f982681f0.xml ✅（镜像）</td>
+<td>中文</td>
+<td>模型/云</td>
+<td>官方</td>
+<td>通义/百炼平台一手发布，阿里云 AI 收入是阿里核心估值变量</td>
+</tr>
+<tr>
+<td>wechat_alitech</td>
+<td>阿里技术</td>
+<td>https://weixin.qq.com（公众号）</td>
+<td>https://wechat2rss.xlab.app/feed/6e1f9b775f7a5841ac1a94310f0478b45a02ec01.xml ✅（镜像）</td>
+<td>中文</td>
+<td>模型/云</td>
+<td>官方</td>
+<td>阿里 AI 工程能力信号（Qwen 训练基建/推理优化），佐证云+模型叙事</td>
+</tr>
+<tr>
+<td>wechat_bytedance_tech</td>
+<td>字节跳动技术团队</td>
+<td>https://weixin.qq.com（公众号）</td>
+<td>https://wechat2rss.xlab.app/feed/4025ea55575daf8bfd8227e68b28d9638b073267.xml ✅（镜像）</td>
+<td>中文</td>
+<td>模型/应用</td>
+<td>官方</td>
+<td>豆包/扣子工程一手信号，字节 AI 投入影响算力产业链需求预期</td>
+</tr>
+<tr>
+<td>wechat_tencent_tech</td>
+<td>腾讯技术工程</td>
+<td>https://weixin.qq.com（公众号）</td>
+<td>https://wechat2rss.xlab.app/feed/9685937b45fe9c7a526dbc32e4f24ba879a65b9a.xml ✅（镜像）</td>
+<td>中文</td>
+<td>模型/应用</td>
+<td>官方</td>
+<td>混元/元宝工程信号，腾讯 AI capex 与产品化进度跟踪</td>
+</tr>
+<tr>
+<td>zhb_meituan_tech</td>
+<td>美团技术团队</td>
+<td>https://tech.meituan.com</td>
+<td>https://tech.meituan.com/feed/ ✅（原生）</td>
+<td>中文</td>
+<td>应用</td>
+<td>官方</td>
+<td>美团 AI 落地（无人配送/调度/LongCat 大模型），港股 AI 应用层标的</td>
+</tr>
+<tr>
+<td>ofc_qwen_blog</td>
+<td>Qwen 官方博客（阿里通义）</td>
+<td>https://qwenlm.github.io/blog/</td>
+<td>https://qwenlm.github.io/blog/index.xml ✅（原生，本地网络间歇不可达，ECS 需验证）</td>
+<td>英文</td>
+<td>模型</td>
+<td>官方</td>
+<td>全球开源模型影响力第一梯队，每次发版直接驱动阿里 AI 叙事与算力需求</td>
+</tr>
+<tr>
+<td>global_openmmlab</td>
+<td>OpenMMLab（商汤系开源社区）</td>
+<td>https://openmmlab.medium.com</td>
+<td>https://openmmlab.medium.com/feed ✅（Medium 镜像，本地网络间歇不可达）</td>
+<td>英文</td>
+<td>模型</td>
+<td>官方</td>
+<td>商汤开源生态信号，计算机视觉/多模态技术趋势上游</td>
+</tr>
+<tr>
+<td>global_huggingface</td>
+<td>Hugging Face Blog</td>
+<td>https://huggingface.co/blog</td>
+<td>https://huggingface.co/blog/feed.xml ✅（原生，本地网络间歇不可达）</td>
+<td>英文</td>
+<td>模型/社区</td>
+<td>官方</td>
+<td>全球开源模型风向标，国产模型上榜/下载量是出海认可度硬指标</td>
+</tr>
+<tr>
+<td>global_producthunt</td>
+<td>Product Hunt</td>
+<td>https://www.producthunt.com</td>
+<td>https://www.producthunt.com/feed ✅（原生）</td>
+<td>英文</td>
+<td>应用</td>
+<td>快讯</td>
+<td>AI 应用层新品首发阵地，国产 AI 出海产品（Agent/工具类）早期信号</td>
+</tr>
+<tr>
+<td>ofc_hellogithub</td>
+<td>HelloGitHub 月刊</td>
+<td>https://hellogithub.com</td>
+<td>https://hellogithub.com/rss ✅（原生）</td>
+<td>中文</td>
+<td>应用/开源</td>
+<td>深度</td>
+<td>中文开源项目精选，AI 工具/Agent 项目早期曝光，开发者采用度信号</td>
+</tr>
+<tr>
+<td>zhb_v2ex_create</td>
+<td>V2EX 分享创造节点</td>
+<td>https://www.v2ex.com/go/create</td>
+<td>https://www.v2ex.com/feed/create.xml ✅（原生 Atom）</td>
+<td>中文</td>
+<td>应用/社区</td>
+<td>快讯</td>
+<td>独立开发者 AI 产品发布一线，C 端 AI 应用萌芽期信号</td>
+</tr>
+<tr>
+<td>asen_arxiv_cscl</td>
+<td>arXiv cs.CL（计算与语言）</td>
+<td>https://arxiv.org/list/cs.CL/recent</td>
+<td>https://arxiv.org/rss/cs.CL ✅（原生）</td>
+<td>英文</td>
+<td>模型/上游论文</td>
+<td>快讯</td>
+<td>大模型 NLP 论文日更，跟踪国内团队（清华/智谱/阿里等）技术路线</td>
+</tr>
+<tr>
+<td>asen_arxiv_csai</td>
+<td>arXiv cs.AI（人工智能）</td>
+<td>https://arxiv.org/list/cs.AI/recent</td>
+<td>https://arxiv.org/rss/cs.AI ✅（原生）</td>
+<td>英文</td>
+<td>模型/上游论文</td>
+<td>快讯</td>
+<td>AI 基础理论/推理/规划论文，技术拐点早期信号</td>
+</tr>
+<tr>
+<td>asen_arxiv_csro</td>
+<td>arXiv cs.RO（机器人学）</td>
+<td>https://arxiv.org/list/cs.RO/recent</td>
+<td>https://arxiv.org/rss/cs.RO ✅（原生）</td>
+<td>英文</td>
+<td>应用/具身智能</td>
+<td>快讯</td>
+<td>具身智能/人形机器人论文上游，映射机器人板块行情催化</td>
+</tr>
+<tr>
+<td>asen_arxiv_csma</td>
+<td>arXiv cs.MA（多智能体系统）</td>
+<td>https://arxiv.org/list/cs.MA/recent</td>
+<td>https://arxiv.org/rss/cs.MA ✅（原生）</td>
+<td>英文</td>
+<td>应用/Agent</td>
+<td>快讯</td>
+<td>多 Agent 协作方向论文，Agent 赛道技术成熟度信号</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>备注：<code>wechat2rss.xlab.app</code> 镜像 feed 与存量 wechat2rss_batch 系列同一通道，集成时直接复用表驱动模式（slug/display_name/hash + batch 分组定时任务），无需新写解析器。境外源（qwen blog/medium/hf/producthunt）建议部署后先用 <code>verify_post_deploy</code> 在 ECS 上复测连通性再启用。</p>
+</blockquote>
+<h2>表 2：实测失败 ❌（17 个，附原因与替代建议）</h2>
+<table>
+<thead>
+<tr>
+<th>source_slug（建议）</th>
+<th>显示名</th>
+<th>站点 URL</th>
+<th>实测 RSS URL 与结果</th>
+<th>语言</th>
+<th>产业链环节</th>
+<th>内容类型</th>
+<th>投资相关性与替代建议</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>—</td>
+<td>品玩 PingWest</td>
+<td>https://www.pingwest.com</td>
+<td>https://www.pingwest.com/feed → 200 但返回 HTML；/rss → 404 ❌（无官方 RSS）</td>
+<td>中文</td>
+<td>媒体</td>
+<td>深度</td>
+<td>硅星人母公司，AI 出海报道强；建议走公众号镜像（品玩/品玩Global）</td>
+</tr>
+<tr>
+<td>—</td>
+<td>果壳</td>
+<td>https://www.guokr.com</td>
+<td>/rss → 404；/feed → 200 但 HTML ❌（无官方 RSS）</td>
+<td>中文</td>
+<td>媒体</td>
+<td>深度</td>
+<td>科学传播，AI 科普占比低，放弃</td>
+</tr>
+<tr>
+<td>—</td>
+<td>智源社区（BAAI）</td>
+<td>https://hub.baai.ac.cn</td>
+<td>/rss、/feed → 均 404 ❌（无官方 RSS）</td>
+<td>中文</td>
+<td>模型/研究</td>
+<td>深度</td>
+<td>智源研究院一手内容；建议走公众号镜像（智源研究院/智源社区）</td>
+</tr>
+<tr>
+<td>—</td>
+<td>机器之心（官网）</td>
+<td>https://www.jiqizhixin.com</td>
+<td>/rss → 200 但 HTML ❌（无原生 RSS）；存量 wechat_jiqizhixin 已覆盖，仅记录</td>
+<td>中文</td>
+<td>媒体</td>
+<td>快讯</td>
+<td>已覆盖，无需动作</td>
+</tr>
+<tr>
+<td>—</td>
+<td>猎云网</td>
+<td>https://www.lieyunwang.com</td>
+<td>https/http /feed → 000 连接失败 ❌（站点不可达/无 RSS）</td>
+<td>中文</td>
+<td>创投</td>
+<td>快讯</td>
+<td>创投快讯，放弃（36氪/投资界/创业邦已覆盖）</td>
+</tr>
+<tr>
+<td>—</td>
+<td>亿欧</td>
+<td>https://www.iyiou.com</td>
+<td>/rss → 202 + JS 反爬挑战 ❌（WAF 拦截）</td>
+<td>中文</td>
+<td>创投</td>
+<td>深度</td>
+<td>产业数字化报道；如需可评公众号镜像（亿欧）</td>
+</tr>
+<tr>
+<td>—</td>
+<td>凤凰网科技</td>
+<td>https://tech.ifeng.com</td>
+<td>/rss/index.xml → 200 但内容为重定向残桩；/feed.shtml → HTML ❌（无 RSS）</td>
+<td>中文</td>
+<td>媒体</td>
+<td>快讯</td>
+<td>综合科技快讯，信噪比一般，放弃</td>
+</tr>
+<tr>
+<td>—</td>
+<td>快科技 MyDrivers</td>
+<td>https://www.mydrivers.com</td>
+<td>/rss.aspx → 404 ❌（原生 RSS 已下线）</td>
+<td>中文</td>
+<td>媒体</td>
+<td>快讯</td>
+<td>硬件快讯（GPU/算力新品），如需可评 RSSHub 自建路由</td>
+</tr>
+<tr>
+<td>—</td>
+<td>芯智讯 ICSmart</td>
+<td>https://www.icsmart.cn</td>
+<td>/feed、/rss → 403 宝塔 WAF ❌</td>
+<td>中文</td>
+<td>模型/算力</td>
+<td>快讯</td>
+<td>半导体/算力快讯质量不错；建议走公众号镜像（芯智讯）</td>
+</tr>
+<tr>
+<td>—</td>
+<td>集微网（爱集微）</td>
+<td>https://www.laoyaoba.com</td>
+<td>/rss → 200 但 HTML ❌（无 RSS）</td>
+<td>中文</td>
+<td>模型/算力</td>
+<td>快讯</td>
+<td>半导体产业头部媒体（国产算力链关键）；建议公众号镜像（爱集微/集微网）</td>
+</tr>
+<tr>
+<td>—</td>
+<td>EET-China 电子工程专辑</td>
+<td>https://www.eet-china.com</td>
+<td>/rss → 000 连接失败 ❌</td>
+<td>中文</td>
+<td>模型/算力</td>
+<td>深度</td>
+<td>英文版 asen_eetimes 已在库，中文版放弃</td>
+</tr>
+<tr>
+<td>—</td>
+<td>Donews</td>
+<td>https://www.donews.com</td>
+<td>/rss → 404 ❌</td>
+<td>中文</td>
+<td>媒体</td>
+<td>快讯</td>
+<td>站点衰落，放弃</td>
+</tr>
+<tr>
+<td>—</td>
+<td>TechWeb</td>
+<td>https://www.techweb.com.cn</td>
+<td>/rss → 000 ❌</td>
+<td>中文</td>
+<td>媒体</td>
+<td>快讯</td>
+<td>放弃</td>
+</tr>
+<tr>
+<td>—</td>
+<td>AIbase</td>
+<td>https://www.aibase.com</td>
+<td>/rss、/feed → 404 ❌（无 RSS）</td>
+<td>中文</td>
+<td>媒体/聚合</td>
+<td>快讯</td>
+<td>AI 资讯聚合站，转载为主原创少，放弃</td>
+</tr>
+<tr>
+<td>—</td>
+<td>V2EX「AI」节点</td>
+<td>https://www.v2ex.com/go/ai</td>
+<td>/feed/ai.xml → 200 但 body 为空 ❌（节点 feed 未生成内容）</td>
+<td>中文</td>
+<td>应用/社区</td>
+<td>快讯</td>
+<td>用「分享创造」节点（已✅）替代</td>
+</tr>
+<tr>
+<td>—</td>
+<td>RSSHub 公共实例（rsshub.app / rssforever / pseudoyu）</td>
+<td>https://rsshub.app</td>
+<td>/mydrivers、/pingwest 等路由 → 403 Cloudflare / 000 / 522 ❌（公共实例均不可用）</td>
+<td>—</td>
+<td>—</td>
+<td>—</td>
+<td>结论：依赖公共 RSSHub 的候选一律不可接；要么 RSSHub 自建，要么走公众号镜像</td>
+</tr>
+<tr>
+<td>—</td>
+<td>Gitee 官方博客</td>
+<td>https://gitee.com</td>
+<td>/blog.rss → 404 ❌</td>
+<td>中文</td>
+<td>应用/开源</td>
+<td>官方</td>
+<td>放弃（开源中国 zhb_oschina 已覆盖同集团内容）</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>另有 Hugging Face Papers（https://huggingface.co/papers/rss → 401 无官方 RSS），如需论文热度信号建议后续用第三方镜像或 API，本轮不接。</p>
+</blockquote>
+<h2>无 RSS 但建议镜像接入（公众号 wewe-rss / wechat2rss 通道）</h2>
+<p>以下均为无官方 RSS 的知名源，建议通过自建 wewe-rss（<strong>注意：wewe-rss token 已于 2026-07-29 失效，需用户重新扫码后方可接入</strong>）或后续 wechat2rss 镜像收录后接入。按投资相关性排序。</p>
+<h3>大模型厂商官方公众号（模型层一手发布）</h3>
+<table>
+<thead>
+<tr>
+<th>显示名</th>
+<th>环节</th>
+<th>投资相关性</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>通义千问</td>
+<td>模型</td>
+<td>阿里 AI 叙事核心，发版/降价直接影响云计算板块预期</td>
+</tr>
+<tr>
+<td>DeepSeek</td>
+<td>模型</td>
+<td>国产模型价格屠夫，每次发版引发算力/应用板块重估</td>
+</tr>
+<tr>
+<td>智谱AI</td>
+<td>模型</td>
+<td>IPO 进程中的大模型第一股候选，融资/发版均为事件催化</td>
+</tr>
+<tr>
+<td>月之暗面 Moonshot</td>
+<td>模型</td>
+<td>Kimi 用户数据与融资是 AI 应用层估值锚</td>
+</tr>
+<tr>
+<td>腾讯混元</td>
+<td>模型</td>
+<td>腾讯 AI capex 与 3D/视频生成进展</td>
+</tr>
+<tr>
+<td>文心一言（百度）</td>
+<td>模型</td>
+<td>百度估值修复核心变量，云+模型双线信号</td>
+</tr>
+<tr>
+<td>豆包（字节）</td>
+<td>模型/应用</td>
+<td>DAU 国内第一的 C 端 AI 应用，算力需求风向标</td>
+</tr>
+<tr>
+<td>MiniMax 稀宇科技</td>
+<td>模型/出海</td>
+<td>出海收入标杆，已递表港股，IPO 事件密集</td>
+</tr>
+<tr>
+<td>阶跃星辰</td>
+<td>模型</td>
+<td>多模态+终端 Agent 路线，融资与车企合作催化</td>
+</tr>
+<tr>
+<td>百川智能</td>
+<td>模型</td>
+<td>医疗垂直落地代表</td>
+</tr>
+<tr>
+<td>商汤科技 SenseTime</td>
+<td>模型</td>
+<td>港股 AI 第一股，日日新发版+生成式 AI 收入披露</td>
+</tr>
+<tr>
+<td>科大讯飞 / 讯飞星火</td>
+<td>模型</td>
+<td>A 股 AI 龙头，星火发版与教育/医疗订单信号</td>
+</tr>
+<tr>
+<td>零一万物 01.AI</td>
+<td>模型</td>
+<td>李开复系，ToB 转型与海外发布信号</td>
+</tr>
+<tr>
+<td>面壁智能</td>
+<td>模型</td>
+<td>端侧小模型代表（MiniCPM），映射端侧 AI 硬件链</td>
+</tr>
+<tr>
+<td>上海人工智能实验室</td>
+<td>模型/研究</td>
+<td>书生·浦语开源，国家队技术风向</td>
+</tr>
+<tr>
+<td>华为云（盘古）</td>
+<td>模型/云</td>
+<td>昇腾+盘古，国产算力自主化核心叙事</td>
+</tr>
+<tr>
+<td>智源研究院</td>
+<td>模型/研究</td>
+<td>BAAI 官方号，替代 hub.baai.ac.cn 无 RSS 的缺口</td>
+</tr>
+<tr>
+<td>魔搭社区 ModelScope</td>
+<td>模型/社区</td>
+<td>阿里系开源模型社区，国产模型生态活跃度指标</td>
+</tr>
+</tbody>
+</table>
+<h3>AI 媒体 / 创投 / 应用社区公众号</h3>
+<table>
+<thead>
+<tr>
+<th>显示名</th>
+<th>环节</th>
+<th>投资相关性</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>光锥智能</td>
+<td>媒体/创投</td>
+<td>AI 创投报道头部，独角兽融资与商业化案例密集</td>
+</tr>
+<tr>
+<td>拾象</td>
+<td>创投/研究</td>
+<td>AI 投研质量天花板（海外独角兽姊妹号），一级市场定价参考</td>
+</tr>
+<tr>
+<td>暗涌Waves（36氪旗下）</td>
+<td>创投</td>
+<td>投资人与创业者深访，一级市场情绪与赛道轮动信号</td>
+</tr>
+<tr>
+<td>数智前线</td>
+<td>媒体</td>
+<td>前 36kr 团队创立，AI 产业落地与企业级订单信号</td>
+</tr>
+<tr>
+<td>机器之能</td>
+<td>媒体</td>
+<td>AI 深度报道，技术产业化视角</td>
+</tr>
+<tr>
+<td>芯东西</td>
+<td>媒体/算力</td>
+<td>智东西同门，AI 芯片/国产算力链核心媒体</td>
+</tr>
+<tr>
+<td>智猩猩</td>
+<td>媒体/算力</td>
+<td>芯东西同门，算力公开课+芯片公司动态</td>
+</tr>
+<tr>
+<td>爱集微 / 集微网</td>
+<td>媒体/算力</td>
+<td>半导体产业权威，国产替代/先进制程/存储行情上游</td>
+</tr>
+<tr>
+<td>芯智讯</td>
+<td>媒体/算力</td>
+<td>半导体快讯，替代其 403 WAF 站点</td>
+</tr>
+<tr>
+<td>投中网</td>
+<td>创投</td>
+<td>PE/VC 行业报道，AI 赛道融资数据</td>
+</tr>
+<tr>
+<td>线性资本</td>
+<td>创投</td>
+<td>AI 早期基金，被投组合与技术趋势判断</td>
+</tr>
+<tr>
+<td>奇绩创坛</td>
+<td>创投/孵化</td>
+<td>陆奇系，AI 早期项目批量曝光（Demo Day 信号）</td>
+</tr>
+<tr>
+<td>将门创投</td>
+<td>创投</td>
+<td>AI 早期投资+技术社区</td>
+</tr>
+<tr>
+<td>AI产品榜</td>
+<td>应用</td>
+<td>AI 应用流量榜单（aicpb），C 端产品景气度量化信号</td>
+</tr>
+<tr>
+<td>CVer</td>
+<td>应用/社区</td>
+<td>CV/算法求职与技术社区，大模型人才流动信号</td>
+</tr>
+<tr>
+<td>自动驾驶之心</td>
+<td>应用/智驾</td>
+<td>智驾技术社区头部，NOA/端到端渗透信号</td>
+</tr>
+<tr>
+<td>机器人大讲堂</td>
+<td>应用/具身</td>
+<td>机器人产业媒体，人形机器人产业链信号</td>
+</tr>
+<tr>
+<td>具身智能之心</td>
+<td>应用/具身</td>
+<td>具身智能技术社区，VLA 路线进展</td>
+</tr>
+<tr>
+<td>硅兔赛跑</td>
+<td>应用/出海</td>
+<td>AI 出海创业观察</td>
+</tr>
+<tr>
+<td>字母榜</td>
+<td>媒体</td>
+<td>大厂战略观察，AI 业务组织变动信号</td>
+</tr>
+<tr>
+<td>中国信通院CAICT</td>
+<td>政策/智库</td>
+<td>AI 政策/标准/白皮书一手来源，监管节奏信号</td>
+</tr>
+<tr>
+<td>未尽研究</td>
+<td>研究</td>
+<td>周健工主持 AI 研究 newsletter，中美 AI 对比深度分析</td>
+</tr>
+<tr>
+<td>飞桨PaddlePaddle</td>
+<td>模型/开源</td>
+<td>百度开源框架生态信号</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2>Top 20 必接优先级清单</h2>
+<p>排序依据：信噪比 + 更新频率 + 投资相关性；标注 ✅ 的 17 个为已实测可直接接入，标注【镜像】的 3 个为 wewe-rss 恢复后第一优先。</p>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>源</th>
+<th>接入状态</th>
+<th>理由</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>DeepSeek（公众号）</td>
+<td>【镜像】</td>
+<td>国产模型最大变量，发版即行情催化，必须一手</td>
+</tr>
+<tr>
+<td>2</td>
+<td>智谱AI（公众号）</td>
+<td>【镜像】</td>
+<td>大模型 IPO 第一股候选，事件密集</td>
+</tr>
+<tr>
+<td>3</td>
+<td>光锥智能（公众号）</td>
+<td>【镜像】</td>
+<td>AI 创投报道头部，补一级市场盲区</td>
+</tr>
+<tr>
+<td>4</td>
+<td>夕小瑶科技说</td>
+<td>✅ wechat2rss</td>
+<td>AI 自媒体信噪比天花板，模型解读+产业分析</td>
+</tr>
+<tr>
+<td>5</td>
+<td>Qwen 官方博客</td>
+<td>✅ 原生</td>
+<td>全球开源模型第一梯队，发版驱动阿里叙事</td>
+</tr>
+<tr>
+<td>6</td>
+<td>通义千问（公众号，见镜像节）</td>
+<td>镜像待 wewe-rss</td>
+<td>与 Qwen blog 互补的中文一手发布（若只接一个取本项）</td>
+</tr>
+<tr>
+<td>7</td>
+<td>阿里云开发者</td>
+<td>✅ wechat2rss</td>
+<td>百炼/通义平台官方，阿里 AI 收入叙事</td>
+</tr>
+<tr>
+<td>8</td>
+<td>字节跳动技术团队</td>
+<td>✅ wechat2rss</td>
+<td>豆包/扣子工程信号，算力需求预期</td>
+</tr>
+<tr>
+<td>9</td>
+<td>碳基体</td>
+<td>✅ wechat2rss</td>
+<td>大模型产业观察，商业化与估值叙事</td>
+</tr>
+<tr>
+<td>10</td>
+<td>Hugging Face Blog</td>
+<td>✅ 原生</td>
+<td>开源模型全球风向标，国产模型出海认可度</td>
+</tr>
+<tr>
+<td>11</td>
+<td>Product Hunt</td>
+<td>✅ 原生</td>
+<td>AI 应用层新品首发，出海产品早期信号</td>
+</tr>
+<tr>
+<td>12</td>
+<td>arXiv cs.CL</td>
+<td>✅ 原生</td>
+<td>大模型论文日更，技术拐点上游</td>
+</tr>
+<tr>
+<td>13</td>
+<td>arXiv cs.RO</td>
+<td>✅ 原生</td>
+<td>具身智能/人形机器人行情上游</td>
+</tr>
+<tr>
+<td>14</td>
+<td>arXiv cs.MA</td>
+<td>✅ 原生</td>
+<td>Agent 技术成熟度信号</td>
+</tr>
+<tr>
+<td>15</td>
+<td>arXiv cs.AI</td>
+<td>✅ 原生</td>
+<td>AI 基础研究方向信号</td>
+</tr>
+<tr>
+<td>16</td>
+<td>美团技术团队</td>
+<td>✅ 原生</td>
+<td>港股 AI 应用层标的（LongCat/无人配送）</td>
+</tr>
+<tr>
+<td>17</td>
+<td>腾讯技术工程</td>
+<td>✅ wechat2rss</td>
+<td>混元/元宝工程信号</td>
+</tr>
+<tr>
+<td>18</td>
+<td>阿里技术</td>
+<td>✅ wechat2rss</td>
+<td>Qwen 训练基建佐证</td>
+</tr>
+<tr>
+<td>19</td>
+<td>OpenMMLab</td>
+<td>✅ Medium</td>
+<td>商汤开源生态，多模态/CV 趋势</td>
+</tr>
+<tr>
+<td>20</td>
+<td>HelloGitHub</td>
+<td>✅ 原生</td>
+<td>中文开源 AI 项目采用度信号</td>
+</tr>
+</tbody>
+</table>
+<p>备选（未进 Top20 但已✅）：V2EX 分享创造（#21，独立开发者产品信号，噪声略高）。</p>
+<h2>集成建议</h2>
+<ol>
+<li><strong>6 个 wechat2rss 镜像源</strong>：按 <code>wechat2rss_batch.py</code> 表驱动模式新增 batch4（slug/display_name/hash），单 job 串行抓取+礼貌延迟，category 打 <code>tech</code>（夕小瑶/碳基体）与 <code>tech</code>（四个厂商技术号）。</li>
+<li><strong>原生 RSS 源</strong>：复用 <code>zh_blog_batch.py</code> / <code>global_rss_batch.py</code> 模式；arXiv 四个走 <code>asen_</code> 命名空间（英文源批次），qwen/medium/hf/producthunt 走 <code>global_</code>/<code>ofc_</code> 批次。</li>
+<li><strong>境外源连通性</strong>：qwenlm.github.io / medium.com / huggingface.co 在中国大陆间歇不可达，部署后必须先在 ECS 复测（<code>curl</code> 同法），不可达则改走 GitHub release/镜像或暂缓启用；producthunt.com 本次实测稳定 200。</li>
+<li><strong>wewe-rss token 失效</strong>是镜像节 22 个公众号（尤其 Top3：DeepSeek/智谱/光锥智能）的前置阻塞项，需用户重新扫码后接入。</li>
+<li>RSSHub 公共实例已全灭（403/522/000），后续凡需 RSSHub 路由的源一律走自建实例或放弃。</li>
+</ol>
+</body></html>

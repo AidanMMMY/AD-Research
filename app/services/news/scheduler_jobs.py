@@ -1760,3 +1760,96 @@ def run_fred_refresh(lookback_days: int = 180) -> dict[str, Any]:
         return {"written": 0, "series_count": 0, "failed": -1}
     finally:
         db.close()
+
+
+# ── AI 产业链批次（added 2026-08-04）──
+#
+# 中美 AI 全产业链资讯扩容：中文 37 feeds（ai_cn_batch，a-d 四批）
+# + 英文 99 feeds（ai_us_batch，a-j 十批）。候选来自五路搜罗报告
+# （docs/dev-notes/ai-chain-sources/20260804-*.md），全部实测通过
+# 且与存量 1012 源零重叠（模块内测试断言）。market 规则同
+# en_fin_batch：中文=cn_a、英文=us，绝不写 global（_GLOBAL_MARKETS
+# 白名单只有 cn_a/us/crypto）。
+
+from app.services.news.sources.ai_cn_batch import (  # noqa: E402
+    AI_CN_BATCH_JOBS,
+)
+from app.services.news.sources.ai_us_batch import (  # noqa: E402
+    AI_US_BATCH_JOBS,
+)
+
+
+def _aicn_batch_job(job_id: str, batch_key: str):
+    """Build a ``run_*`` function crawling one AI-chain CN batch."""
+
+    @_record_etl(job_id)
+    def _run() -> dict[str, int]:
+        from app.services.news.sources.ai_cn_batch import (
+            AiCnBatchCrawler,
+        )
+
+        async def _go():
+            crawler = AiCnBatchCrawler(batch_key)
+            return await crawler.fetch_recent()
+
+        try:
+            articles = _run_async(_go())
+        except Exception as exc:
+            logger.exception("ai cn batch %s crawl failed: %s", batch_key, exc)
+            return {
+                "fetched": 0,
+                "written": 0,
+                "skipped": True,
+                "skip_reason": f"crawl_error: {exc}",
+            }
+
+        if not articles:
+            return {"fetched": 0, "written": 0, "skipped": True, "skip_reason": "no_articles"}
+
+        written = _write_to_db(articles)
+        return {"fetched": len(articles), "written": written}
+
+    _run.__name__ = f"run_ai_cn_{batch_key}_crawl"
+    return _run
+
+
+for _job_id, _label, _batch in AI_CN_BATCH_JOBS:
+    globals()[f"run_ai_cn_{_batch}_crawl"] = _aicn_batch_job(_job_id, _batch)
+
+
+def _aius_batch_job(job_id: str, batch_key: str):
+    """Build a ``run_*`` function crawling one AI-chain US batch."""
+
+    @_record_etl(job_id)
+    def _run() -> dict[str, int]:
+        from app.services.news.sources.ai_us_batch import (
+            AiUsBatchCrawler,
+        )
+
+        async def _go():
+            crawler = AiUsBatchCrawler(batch_key)
+            return await crawler.fetch_recent()
+
+        try:
+            articles = _run_async(_go())
+        except Exception as exc:
+            logger.exception("ai us batch %s crawl failed: %s", batch_key, exc)
+            return {
+                "fetched": 0,
+                "written": 0,
+                "skipped": True,
+                "skip_reason": f"crawl_error: {exc}",
+            }
+
+        if not articles:
+            return {"fetched": 0, "written": 0, "skipped": True, "skip_reason": "no_articles"}
+
+        written = _write_to_db(articles)
+        return {"fetched": len(articles), "written": written}
+
+    _run.__name__ = f"run_ai_us_{batch_key}_crawl"
+    return _run
+
+
+for _job_id, _label, _batch in AI_US_BATCH_JOBS:
+    globals()[f"run_ai_us_{_batch}_crawl"] = _aius_batch_job(_job_id, _batch)

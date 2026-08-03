@@ -614,6 +614,8 @@ _WORKER_KEYWORDS: tuple[str, ...] = (
     "ofc_",
     "zhm_",
     "edu_",
+    "aicn_",
+    "aius_",
     "summarize",
 )
 
@@ -772,6 +774,21 @@ _WORKER_META: dict[str, dict[str, str]] = {
     # Investment education batches (2026-08-02, 17 sources, a-b)
     "news_edu_a_60m": {"label": "投资科普 A 组 (10 源)", "schedule": "每 60 分钟"},
     "news_edu_b_60m": {"label": "投资科普 B 组 (7 源)", "schedule": "每 60 分钟"},
+    # AI 产业链批次 (2026-08-04)：中文 37 源 a-d + 英文 99 源 a-j
+    "news_aicn_a_60m": {"label": "AI链-中文 A 组 (9 源)", "schedule": "每 60 分钟"},
+    "news_aicn_b_60m": {"label": "AI链-中文 B 组 (10 源)", "schedule": "每 60 分钟"},
+    "news_aicn_c_60m": {"label": "AI链-中文 C 组 (10 源)", "schedule": "每 60 分钟"},
+    "news_aicn_d_60m": {"label": "AI链-中文 D 组 (7 源)", "schedule": "每 60 分钟"},
+    "news_aius_a_60m": {"label": "AI链-英文 A 组 (10 源)", "schedule": "每 60 分钟"},
+    "news_aius_b_60m": {"label": "AI链-英文 B 组 (10 源)", "schedule": "每 60 分钟"},
+    "news_aius_c_60m": {"label": "AI链-英文 C 组 (10 源)", "schedule": "每 60 分钟"},
+    "news_aius_d_60m": {"label": "AI链-英文 D 组 (10 源)", "schedule": "每 60 分钟"},
+    "news_aius_e_60m": {"label": "AI链-英文 E 组 (10 源)", "schedule": "每 60 分钟"},
+    "news_aius_f_60m": {"label": "AI链-英文 F 组 (10 源)", "schedule": "每 60 分钟"},
+    "news_aius_g_60m": {"label": "AI链-英文 G 组 (10 源)", "schedule": "每 60 分钟"},
+    "news_aius_h_60m": {"label": "AI链-英文 H 组 (10 源)", "schedule": "每 60 分钟"},
+    "news_aius_i_60m": {"label": "AI链-英文 I 组 (10 源)", "schedule": "每 60 分钟"},
+    "news_aius_j_60m": {"label": "AI链-英文 J 组 (9 源)", "schedule": "每 60 分钟"},
 }
 
 # Map a worker job id to the ``news_article.source`` it writes.  Only
