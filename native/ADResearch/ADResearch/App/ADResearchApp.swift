@@ -41,6 +41,11 @@ struct NavigationCommands: Commands {
 
     var body: some Commands {
         CommandMenu("导航") {
+            Button("全局搜索") {
+                appState.showGlobalSearch = true
+            }
+            .keyboardShortcut("k", modifiers: .command)
+            Divider()
             ForEach(Array(AppSection.primary.enumerated()), id: \.element) { index, section in
                 Button(section.title) {
                     appState.selectSection(section)

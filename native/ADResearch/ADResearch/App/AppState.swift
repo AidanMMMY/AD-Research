@@ -16,6 +16,7 @@ enum AppSection: String, CaseIterable, Identifiable, Hashable, Sendable {
     case macro
     case sentiment
     case sectors
+    case fundFlow
     case portfolio
     case research
     case learning
@@ -39,6 +40,7 @@ enum AppSection: String, CaseIterable, Identifiable, Hashable, Sendable {
         case .macro: return "宏观"
         case .sentiment: return "情绪"
         case .sectors: return "板块"
+        case .fundFlow: return "资金流"
         case .portfolio: return "组合"
         case .research: return "研究笔记"
         case .learning: return "学习"
@@ -56,6 +58,7 @@ enum AppSection: String, CaseIterable, Identifiable, Hashable, Sendable {
         case .macro: return "globe.asia.australia"
         case .sentiment: return "waveform.path.ecg"
         case .sectors: return "square.grid.2x2"
+        case .fundFlow: return "arrow.left.arrow.right"
         case .portfolio: return "briefcase"
         case .research: return "book.closed"
         case .learning: return "graduationcap"
@@ -105,6 +108,8 @@ enum FeatureRouter {
             SentimentView()
         case .sectors:
             SectorsView()
+        case .fundFlow:
+            FundFlowView()
         case .portfolio:
             PortfolioView()
         case .research:
@@ -136,6 +141,9 @@ enum FeatureRouter {
 final class AppState {
     /// 当前选中的顶层分区（iOS tab / macOS 侧栏共用）
     var selectedSection: AppSection = .dashboard
+
+    /// ⌘K 全局搜索面板开关（macOS sheet；见 NavigationCommands / PlatformShell）
+    var showGlobalSearch = false
 
     /// 各 tab 独立的 NavigationStack 路径（iOS）；macOS 用 detailPath
     var tabPaths: [AppSection: [AppRoute]] = [:]

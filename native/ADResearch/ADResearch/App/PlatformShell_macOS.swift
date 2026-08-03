@@ -42,6 +42,10 @@ struct PlatformShell: View {
         .navigationSplitViewStyle(.balanced)
         .frame(minWidth: 960, minHeight: 600)
         .background(backShortcutButton)
+        .sheet(isPresented: $state.showGlobalSearch) {
+            GlobalSearchView()
+                .environment(appState)
+        }
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Button {
