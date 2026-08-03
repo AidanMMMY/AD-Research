@@ -6,15 +6,42 @@ import SwiftUI
 struct ScoreRankingView: View {
     @State private var viewModel = ScoreRankingViewModel()
     @Environment(AppState.self) private var appState
+    #if os(macOS)
+    @State private var highlightedIndex: Int?
+    #endif
 
     var body: some View {
-        ScrollView {
-            LazyVStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
-                filterBar
-                content
+        ScrollViewReader { proxy in
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
+                    filterBar
+                    content
+                }
+                .padding(.horizontal, AppTheme.Spacing.lg)
+                .padding(.vertical, AppTheme.Spacing.md)
             }
-            .padding(.horizontal, AppTheme.Spacing.lg)
-            .padding(.vertical, AppTheme.Spacing.md)
+            #if os(macOS)
+            .background(
+                ADKeyboardNavButtons(
+                    count: viewModel.items.count,
+                    highlighted: $highlightedIndex
+                ) { index in
+                    guard viewModel.items.indices.contains(index) else { return }
+                    appState.navigate(to: .instruments, route: .instrumentDetail(viewModel.items[index].etfCode))
+                }
+            )
+            .onChange(of: highlightedIndex) { _, newValue in
+                guard let newValue, viewModel.items.indices.contains(newValue) else { return }
+                withAnimation(AppTheme.Motion.fade) {
+                    proxy.scrollTo(viewModel.items[newValue].etfCode, anchor: .center)
+                }
+            }
+            .onChange(of: viewModel.items.count) { _, newCount in
+                if let highlightedIndex, highlightedIndex >= newCount {
+                    self.highlightedIndex = nil
+                }
+            }
+            #endif
         }
         .background(AppTheme.Colors.background)
         .navigationTitle("评分榜")
@@ -129,7 +156,11 @@ struct ScoreRankingView: View {
                         rankingRow(index: index, item: item)
                     }
                     .buttonStyle(.plain)
+                    #if os(macOS)
+                    .adKeyboardHighlight(highlightedIndex == index)
+                    #endif
                     .adHoverRow()
+                    .id(item.etfCode)
                     if item.etfCode != viewModel.items.last?.etfCode {
                         Divider().opacity(0.5)
                     }

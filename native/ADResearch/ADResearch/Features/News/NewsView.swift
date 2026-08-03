@@ -16,21 +16,50 @@ struct NewsView: View {
     @State private var viewModel = NewsViewModel()
     @State private var searchText = ""
     @State private var searchTask: Task<Void, Never>?
+    #if os(macOS)
+    /// 键盘导航高亮下标（↑↓/jk 移动，Return 打开，见 ADKeyboardNavButtons）
+    @State private var highlightedIndex: Int?
+    #endif
 
     var body: some View {
-        ScrollView {
-            LazyVStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
-                #if os(iOS)
-                filterBar
+        ScrollViewReader { proxy in
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
+                    #if os(iOS)
+                    filterBar
+                    #endif
+                    contentList
+                }
+                .padding(.horizontal, AppTheme.Spacing.lg)
+                .padding(.vertical, AppTheme.Spacing.md)
+                #if os(macOS)
+                // 桌面端全宽卡片行长难读：限宽 860 并居中
+                .frame(maxWidth: 860)
+                .frame(maxWidth: .infinity)
                 #endif
-                contentList
             }
-            .padding(.horizontal, AppTheme.Spacing.lg)
-            .padding(.vertical, AppTheme.Spacing.md)
             #if os(macOS)
-            // 桌面端全宽卡片行长难读：限宽 860 并居中
-            .frame(maxWidth: 860)
-            .frame(maxWidth: .infinity)
+            .background(
+                ADKeyboardNavButtons(
+                    count: viewModel.items.count,
+                    highlighted: $highlightedIndex
+                ) { index in
+                    guard viewModel.items.indices.contains(index) else { return }
+                    appState.navigate(to: .news, route: .newsDetail(viewModel.items[index].id))
+                }
+            )
+            .onChange(of: highlightedIndex) { _, newValue in
+                guard let newValue, viewModel.items.indices.contains(newValue) else { return }
+                withAnimation(AppTheme.Motion.fade) {
+                    proxy.scrollTo(viewModel.items[newValue].id, anchor: .center)
+                }
+            }
+            // 列表内容变化（刷新/翻页/过滤）后高亮越界即清空
+            .onChange(of: viewModel.items.count) { _, newCount in
+                if let highlightedIndex, highlightedIndex >= newCount {
+                    self.highlightedIndex = nil
+                }
+            }
             #endif
         }
         .background(AppTheme.Colors.background)
@@ -155,8 +184,9 @@ struct NewsView: View {
                     description: "换个筛选条件或搜索词试试"
                 )
             } else {
-                ForEach(viewModel.items) { article in
-                    newsCell(article)
+                ForEach(Array(viewModel.items.enumerated()), id: \.element.id) { index, article in
+                    newsCell(article, index: index)
+                        .id(article.id)
                 }
                 if viewModel.canLoadMore {
                     HStack {
@@ -171,7 +201,7 @@ struct NewsView: View {
         }
     }
 
-    private func newsCell(_ article: NewsArticle) -> some View {
+    private func newsCell(_ article: NewsArticle, index: Int) -> some View {
         Button {
             Haptics.selection()
             appState.navigate(to: .news, route: .newsDetail(article.id))
@@ -222,6 +252,9 @@ struct NewsView: View {
             }
         }
         .buttonStyle(.plain)
+        #if os(macOS)
+        .adKeyboardHighlight(highlightedIndex == index)
+        #endif
         .contextMenu { cellContextMenu(article) }
         .onAppear {
             if article.id == viewModel.items.last?.id {

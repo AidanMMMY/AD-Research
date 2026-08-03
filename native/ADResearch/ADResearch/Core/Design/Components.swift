@@ -252,6 +252,70 @@ extension ButtonStyle where Self == ADCardButtonStyle {
     static var adCard: ADCardButtonStyle { ADCardButtonStyle() }
 }
 
+// MARK: - macOS 列表键盘导航
+
+#if os(macOS)
+/// 看不见的快捷键按钮组：↑/k 上移、↓/j 下移、Return 打开高亮项。
+///
+/// 挂在列表容器 `.background(...)` 上（opacity(0) 保留在视图树中快捷键仍生效，
+/// 与 ⌘[ 返回同一个技巧；.hidden() 会移出视图树导致快捷键失效）。
+/// 字母键不带修饰符：文本框聚焦时按键归文本框，不会误触发。
+struct ADKeyboardNavButtons: View {
+    /// 列表条目总数（0 时全部禁用）
+    let count: Int
+    /// 当前高亮下标（nil = 未高亮，↓ 从 0 开始）
+    @Binding var highlighted: Int?
+    /// Return 打开回调（仅在已有高亮时触发）
+    let onOpen: (Int) -> Void
+
+    private func move(_ delta: Int) {
+        guard count > 0 else { return }
+        let current = highlighted ?? (delta > 0 ? -1 : 0)
+        highlighted = min(max(current + delta, 0), count - 1)
+    }
+
+    var body: some View {
+        VStack {
+            Button { move(-1) } label: { EmptyView() }
+                .keyboardShortcut(.upArrow, modifiers: [])
+            Button { move(1) } label: { EmptyView() }
+                .keyboardShortcut(.downArrow, modifiers: [])
+            Button { move(-1) } label: { EmptyView() }
+                .keyboardShortcut("k", modifiers: [])
+            Button { move(1) } label: { EmptyView() }
+                .keyboardShortcut("j", modifiers: [])
+            Button {
+                if let highlighted { onOpen(highlighted) }
+            } label: { EmptyView() }
+            .keyboardShortcut(.return, modifiers: [])
+        }
+        .disabled(count == 0)
+        .opacity(0)
+        .accessibilityHidden(true)
+    }
+}
+#endif
+
+extension View {
+    /// 高亮行染色（macOS 键盘导航的可见反馈）：
+    /// accent 8% 底 + 0.5pt accent 描边，圆角与 ADCard 一致。
+    @ViewBuilder
+    func adKeyboardHighlight(_ active: Bool) -> some View {
+        if active {
+            overlay(
+                RoundedRectangle(cornerRadius: AppTheme.Radius.card, style: .continuous)
+                    .fill(AppTheme.Colors.accentSoft)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: AppTheme.Radius.card, style: .continuous)
+                    .strokeBorder(AppTheme.Colors.accent.opacity(0.4), lineWidth: 0.5)
+            )
+        } else {
+            self
+        }
+    }
+}
+
 /// 列表行 hover 高亮：圆角背景在指针悬停时浮现（macOS 主战场，iOS 触控无感编译兼容）。
 ///
 /// 用法：`rowContent.adHoverRow()`；自定义圆角 `.adHoverRow(cornerRadius: AppTheme.Radius.control)`。
