@@ -51,6 +51,9 @@ struct PlatformShell: View {
             GlobalSearchView()
                 .environment(appState)
         }
+        .sheet(isPresented: $state.showShortcutsCheatSheet) {
+            ShortcutsCheatSheetView()
+        }
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Button {

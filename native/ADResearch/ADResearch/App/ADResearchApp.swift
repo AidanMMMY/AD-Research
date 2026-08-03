@@ -71,6 +71,76 @@ struct NavigationCommands: Commands {
                 .keyboardShortcut(KeyEquivalent(Character("\(index + 1)")), modifiers: [.option, .command])
             }
         }
+
+        // 视图菜单：刷新 + 侧栏/详情列显隐（与系统快捷键一致）
+        CommandMenu("视图") {
+            Button("刷新") {
+                NotificationCenter.default.post(name: .adRefreshRequested, object: nil)
+            }
+            .keyboardShortcut("r", modifiers: .command)
+            Divider()
+            Button("切换侧栏") {
+                NSApp.keyWindow?.firstResponder?.tryToPerform(
+                    #selector(NSSplitViewController.toggleSidebar(_:)), with: nil
+                )
+            }
+            .keyboardShortcut("s", modifiers: [.command, .control])
+        }
+
+        // 帮助菜单：快捷键速览（菜单栏帮助搜索可索引到）
+        CommandMenu("帮助") {
+            Button("快捷键速览") {
+                appState.showShortcutsCheatSheet = true
+            }
+        }
+    }
+}
+
+/// 快捷键速览弹窗（帮助菜单唤起）
+struct ShortcutsCheatSheetView: View {
+    @Environment(\.dismiss) private var dismiss
+
+    private static let rows: [(String, String)] = [
+        ("⌘K", "全局搜索"),
+        ("⌘R", "刷新当前页"),
+        ("⌘[", "返回上一层详情"),
+        ("⌘1 – ⌘5", "主导航切换"),
+        ("⌥⌘1 – ⌥⌘8", "功能模块切换"),
+        ("⌃⌘S", "切换侧栏"),
+        ("⌘,", "设置"),
+        ("⌘N", "新窗口"),
+    ]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
+            Text("快捷键速览")
+                .font(AppTheme.Typography.title3)
+                .foregroundStyle(AppTheme.Colors.textPrimary)
+            VStack(spacing: 0) {
+                ForEach(Self.rows, id: \.0) { keys, action in
+                    HStack {
+                        Text(keys)
+                            .font(AppTheme.Typography.numericCallout)
+                            .foregroundStyle(AppTheme.Colors.textSecondary)
+                            .frame(width: 110, alignment: .leading)
+                        Text(action)
+                            .font(AppTheme.Typography.callout)
+                            .foregroundStyle(AppTheme.Colors.textPrimary)
+                        Spacer()
+                    }
+                    .padding(.vertical, AppTheme.Spacing.xs)
+                    if keys != Self.rows.last?.0 {
+                        Divider().opacity(0.5)
+                    }
+                }
+            }
+            Button("关闭") { dismiss() }
+                .keyboardShortcut(.defaultAction)
+                .frame(maxWidth: .infinity, alignment: .trailing)
+        }
+        .padding(AppTheme.Spacing.lg)
+        .frame(width: 340)
+        .background(AppTheme.Colors.background)
     }
 }
 #endif

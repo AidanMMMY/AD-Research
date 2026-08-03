@@ -149,6 +149,9 @@ final class AppState {
     /// ⌘K 全局搜索面板开关（macOS sheet；见 NavigationCommands / PlatformShell）
     var showGlobalSearch = false
 
+    /// 快捷键速览弹窗开关（macOS 帮助菜单）
+    var showShortcutsCheatSheet = false
+
     /// 各 tab 独立的 NavigationStack 路径（iOS）；macOS 用 detailPath
     var tabPaths: [AppSection: [AppRoute]] = [:]
     var detailPath: [AppRoute] = []
