@@ -3,6 +3,7 @@ import SwiftUI
 /// 根视图：启动态 → 已登录 Shell / 登录页。
 struct RootView: View {
     @Environment(AuthStore.self) private var authStore
+    @Environment(AppState.self) private var appState
 
     var body: some View {
         Group {
@@ -20,6 +21,9 @@ struct RootView: View {
         .animation(AppTheme.Motion.fade, value: authStore.hasRestoredSession)
         .task {
             await authStore.bootstrapSessionIfNeeded()
+        }
+        .onOpenURL { url in
+            DeepLink.handle(url, appState: appState)
         }
     }
 

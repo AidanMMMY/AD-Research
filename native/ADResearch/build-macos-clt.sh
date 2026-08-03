@@ -31,6 +31,14 @@ cat > "$1" <<EOF
 	<key>CFBundleInfoDictionaryVersion</key><string>6.0</string>
 	<key>CFBundleName</key><string>${APP_NAME}</string>
 	<key>CFBundlePackageType</key><string>APPL</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key><string>${BUNDLE_ID}</string>
+			<key>CFBundleURLSchemes</key>
+			<array><string>alloyresearch</string></array>
+		</dict>
+	</array>
 	<key>CFBundleShortVersionString</key><string>${VERSION}</string>
 	<key>CFBundleVersion</key><string>1</string>
 	<key>LSMinimumSystemVersion</key><string>14.0</string>
