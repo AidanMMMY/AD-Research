@@ -212,7 +212,7 @@ export default function Login() {
             <div className="login-brand-icon-box login-brand-icon-box--logomark" aria-hidden="true">
               E
             </div>
-            <span className="login-brand-name">AD-Research</span>
+            <span className="login-brand-name">AlloyResearch</span>
           </div>
           <p className="login-brand-tagline">
             让每一次投资决策，都有数据可依

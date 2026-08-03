@@ -30,7 +30,7 @@ struct RootView: View {
                 .font(.system(size: 64))
                 .foregroundStyle(AppTheme.Colors.accent)
                 .symbolRenderingMode(.hierarchical)
-            Text("AD 研究")
+            Text("AlloyResearch")
                 .font(AppTheme.Typography.pageTitle)
                 .foregroundStyle(AppTheme.Colors.textPrimary)
             ProgressView()

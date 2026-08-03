@@ -241,7 +241,7 @@ function SidebarContent({ collapsed, onItemClick }: SidebarContentProps) {
       {/* Logo */}
       <div className="app-layout__logo">
         <div className="app-layout__logo-mark" aria-hidden="true">E</div>
-        {!collapsed && <span className="app-layout__logo-text">投研平台</span>}
+        {!collapsed && <span className="app-layout__logo-text">AlloyResearch</span>}
       </div>
 
       {/* Menu Items — grouped 1-level + 2-level collapsible */}
@@ -1023,7 +1023,7 @@ export default function AppLayout() {
             <Outlet />
             {!hideFooter && (
               <footer className="app-layout__footer">
-                数据来源：Tushare / FRED / 新浪财经 · 数据每日凌晨更新 · 本平台所有内容仅供参考，不构成投资建议 · © 2026 AD-Research
+                数据来源：Tushare / FRED / 新浪财经 · 数据每日凌晨更新 · 本平台所有内容仅供参考，不构成投资建议 · © 2026 AlloyResearch
               </footer>
             )}
           </div>

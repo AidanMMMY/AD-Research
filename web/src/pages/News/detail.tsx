@@ -269,7 +269,7 @@ export default function NewsDetail() {
       document.title = `${tabTitle} - 资讯`;
     }
     return () => {
-      document.title = '投研平台';
+      document.title = 'AlloyResearch';
     };
   }, [data?.title, data?.title_zh]);
 

@@ -1,7 +1,7 @@
 /**
  * ETF Holdings History — frontend API client.
  *
- * Backs the new ``/etfs/:code/holdings-history`` AD-Research page that
+ * Backs the new ``/etfs/:code/holdings-history`` AlloyResearch page that
  * lets users browse, compare, and diff the quarterly top-10 holdings
  * disclosed by ETF issuers.
  *

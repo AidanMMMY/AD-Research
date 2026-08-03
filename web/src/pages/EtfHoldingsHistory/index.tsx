@@ -1,5 +1,5 @@
 /**
- * ETF 持仓历史（ETFs Holdings History）— AD-Research Phase 1.
+ * ETF 持仓历史（ETFs Holdings History）— AlloyResearch Phase 1.
  *
  * Route: ``/etfs/:code/holdings-history``（深链保留）
  *

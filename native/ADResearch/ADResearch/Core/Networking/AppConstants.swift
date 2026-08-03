@@ -3,8 +3,10 @@ import Foundation
 /// 全局常量。
 enum AppConstants {
     /// 生产后端 base URL（对齐 web 端 ``VITE_API_BASE_URL || '/api/v1'``）。
+    /// 必须用 www 子域：裸域 alloyresearch.net 会 301 → www，URLSession 跟随
+    /// 重定向时 POST 会转 GET/丢 body，登录等写请求直接 404（2026-08-04 实测）。
     /// 调试时可在 Settings 里切换，或通过环境变量 ``AD_API_BASE_URL`` 覆盖。
-    static let defaultAPIBaseURL = URL(string: "https://alloyresearch.net/api/v1")!
+    static let defaultAPIBaseURL = URL(string: "https://www.alloyresearch.net/api/v1")!
 
     /// 当前生效的 base URL：环境变量 > UserDefaults 覆盖 > 生产默认。
     static var apiBaseURL: URL {

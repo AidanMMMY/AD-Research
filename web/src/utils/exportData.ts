@@ -1,7 +1,7 @@
 /**
  * 浏览器端导出工具 — 把数组对象序列化为 CSV / XLSX 并触发下载。
  *
- * 设计取舍 (per AD-Research P1 export feature):
+ * 设计取舍 (per AlloyResearch P1 export feature):
  * 1. 默认走 CSV — 大多数分析师的工作流（Excel / Pandas / 复制粘贴到 BI）都先入 CSV，
  *    且体积最小、最易 diff。如果用户要 .xlsx 再走 XLSX 分支。
  * 2. XLSX 走"无依赖最小实现"路线 —— 我们手写一个 zip (STORE 压缩) + 单 sheet 的

@@ -124,7 +124,7 @@ export const routes: RouteConfig[] = [
   // Backward-compatible redirects
   { path: '/etfs', element: <Navigate to="/instruments" replace />, auth: true },
   { path: '/etfs/:code', element: <LegacyEtfRedirect />, auth: true },
-  // ETF 持仓历史（AD-Research, 2026-07-08）：季度披露的 top-10 持仓 + diff
+  // ETF 持仓历史（AlloyResearch, 2026-07-08）：季度披露的 top-10 持仓 + diff
   // 2026-07-27：独立「ETF 持仓」菜单合并进标的详情页持仓模块；本路由仅作深链保留，
   // 无 code 的 picker 版 (/etfs/holdings-history) 已随菜单一并移除。
   { path: '/etfs/:code/holdings-history', element: wrap(EtfHoldingsHistory), auth: true },
