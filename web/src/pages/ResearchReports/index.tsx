@@ -1,17 +1,21 @@
 import { useMemo, useState } from 'react';
 import type { CSSProperties } from 'react';
 import {
-  Table, Input, Select, Button, Space, Tag, message, Modal,
+  Table, Input, Select, Button, Space, message, Modal,
   Descriptions, Typography, Pagination,
 } from 'antd';
+import type { TableProps } from 'antd/es/table';
 import { SearchOutlined, ReloadOutlined, ThunderboltOutlined, FileTextOutlined } from '@ant-design/icons';
 import PageShell from '@/components/PageShell';
 import Panel from '@/components/Panel';
 import PageHeader from '@/components/PageHeader';
 import FilterToolbar from '@/components/FilterToolbar';
 import EmptyState from '@/components/EmptyState';
+import ErrorState from '@/components/ErrorState';
+import ThemeTag from '@/components/ThemeTag';
 import LastUpdated from '@/components/LastUpdated';
 import LoadingBlock from '@/components/LoadingBlock';
+import { FilterSheetButton } from '@/components/BottomSheet';
 import {
   useResearchReportList,
   useResearchReportFacets,
@@ -59,24 +63,10 @@ const RESEARCH_REPORTS_PAGE_STYLE = `
   }
 }
 
-/* ---- Mobile (≤767px): table → hairline row-list (direction A) ---- */
+/* ---- Mobile (≤767px): table → hairline row-list (direction A) ----
+   C4（2026-08-03）：筛选条已迁 FilterSheetButton，原横向滚动筛选条
+   CSS（.research-reports__filters .filter-toolbar__filters …）随之下线。 */
 @media (max-width: 767px) {
-  .research-reports__filters .filter-toolbar__filters {
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
-    width: 100%;
-  }
-  .research-reports__filters .filter-toolbar__filters::-webkit-scrollbar {
-    display: none;
-  }
-  .research-reports__filters .filter-toolbar__filters > * {
-    flex: 0 0 auto;
-  }
-  .research-reports__filters .ant-select { min-width: 140px; }
-  .research-reports__filters .ant-input-affix-wrapper { min-width: 200px; }
-
   .research-reports-mrow:active {
     background: var(--bg-active);
   }
@@ -127,17 +117,17 @@ const RESEARCH_REPORTS_PAGE_STYLE = `
 
 const { Title, Paragraph } = Typography;
 
-const RATING_COLOR: Record<string, string> = {
-  买入: 'red',
-  增持: 'orange',
-  中性: 'default',
-  减持: 'blue',
-  卖出: 'green',
+/** 评级 → ThemeTag variant（审计 P1：弃用 antd 预设色 Tag，全部走 token） */
+const RATING_VARIANT: Record<string, 'rise' | 'warning' | 'neutral' | 'accent' | 'fall'> = {
+  买入: 'rise',
+  增持: 'warning',
+  中性: 'neutral',
+  减持: 'accent',
+  卖出: 'fall',
 };
 
-function ratingColor(r: string | null | undefined): string {
-  if (!r) return 'default';
-  return RATING_COLOR[r] ?? 'default';
+function ratingVariant(r: string | null | undefined) {
+  return (r && RATING_VARIANT[r]) || 'neutral';
 }
 
 function formatPrice(v: number | null | undefined): string {
@@ -154,6 +144,10 @@ export default function ResearchReports() {
   const [hasSummary, setHasSummary] = useState<'all' | 'yes' | 'no'>('all');
   const [page, setPage] = useState(1);
   const [pageSize] = useState(20);
+  // 受控排序（审计 P1）：API 已支持 sort_by/sort_dir，表头 sorter 直接
+  // 驱动服务端排序，避免客户端只排当前页的假象。
+  const [sortBy, setSortBy] = useState<'publish_date' | 'target_price'>('publish_date');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
   const [detailId, setDetailId] = useState<number | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
   /* Apple "Spatial consistency": capture the row position so the
@@ -169,14 +163,15 @@ export default function ResearchReports() {
       industry,
       org_name: orgName,
       rating,
-      sort_by: 'publish_date' as const,
-      sort_dir: 'desc' as const,
+      sort_by: sortBy,
+      sort_dir: sortDir,
       has_summary: hasSummary === 'all' ? undefined : hasSummary === 'yes',
     }),
-    [page, pageSize, debouncedSearch, industry, orgName, rating, hasSummary],
+    [page, pageSize, debouncedSearch, industry, orgName, rating, sortBy, sortDir, hasSummary],
   );
 
-  const { data, isLoading, refetch, dataUpdatedAt, isFetching } = useResearchReportList(listParams);
+  // 解构 isError：接口失败时显示错误态（带重试），不能落入假空态（审计 P1）。
+  const { data, isLoading, isError, refetch, dataUpdatedAt, isFetching } = useResearchReportList(listParams);
   const { data: facets } = useResearchReportFacets();
   const { data: detail, isLoading: detailLoading } = useResearchReportDetail(detailId);
   const refreshMutation = useRefreshResearchReports();
@@ -236,6 +231,25 @@ export default function ResearchReports() {
     }
   };
 
+  // 受控服务端排序：表头点击 → sortBy/sortDir → 重新查询（整表排序，
+  // 非当前页客户端重排）。onChange 在分页变化时也会触发，需守卫 no-op。
+  const handleTableChange: TableProps<ResearchReportOut>['onChange'] = (
+    _pagination,
+    _filters,
+    sorter,
+  ) => {
+    const s = Array.isArray(sorter) ? sorter[0] : sorter;
+    const field = s?.field === 'target_price' ? 'target_price' : 'publish_date';
+    const dir = s?.order === 'ascend' ? 'asc' : 'desc';
+    if (field === sortBy && dir === sortDir) return;
+    setSortBy(field);
+    setSortDir(dir);
+    setPage(1);
+  };
+
+  const sortOrderFor = (field: 'publish_date' | 'target_price') =>
+    sortBy === field ? (sortDir === 'asc' ? ('ascend' as const) : ('descend' as const)) : null;
+
   const columns = [
     {
       title: '证券代码',
@@ -279,6 +293,8 @@ export default function ResearchReports() {
       title: '发布日期',
       dataIndex: 'publish_date',
       width: 120,
+      sorter: true,
+      sortOrder: sortOrderFor('publish_date'),
       render: (v: string) => (
         <span className="tabular-nums">{v ?? NULL_PLACEHOLDER}</span>
       ),
@@ -287,12 +303,16 @@ export default function ResearchReports() {
       title: '评级',
       dataIndex: 'rating',
       width: 80,
-      render: (v: string | null) => (v ? <Tag color={ratingColor(v)}>{v}</Tag> : NULL_PLACEHOLDER),
+      render: (v: string | null) =>
+        v ? <ThemeTag variant={ratingVariant(v)}>{v}</ThemeTag> : NULL_PLACEHOLDER,
     },
     {
       title: '目标价',
       dataIndex: 'target_price',
-      width: 80,
+      width: 90,
+      align: 'right' as const,
+      sorter: true,
+      sortOrder: sortOrderFor('target_price'),
       render: (v: number | null) => (
         <span className="tabular-nums">{formatPrice(v)}</span>
       ),
@@ -345,9 +365,79 @@ export default function ResearchReports() {
 
   const items = data?.items ?? [];
   const total = data?.total ?? 0;
-  const filteredByRating = rating
-    ? items.filter((it) => it.rating === rating)
-    : items;
+
+  // 筛选控件（桌面 FilterToolbar / 移动端 FilterSheetButton 共用，
+  // 保持 JSX 元素形式以保住焦点 — 模板参照 News/index.tsx）。
+  const filterControls = (
+    <>
+      <Input
+        placeholder="搜索证券代码"
+        allowClear
+        prefix={<SearchOutlined />}
+        value={search}
+        onChange={(e) => {
+          setSearch(e.target.value);
+          setPage(1);
+        }}
+        style={{ width: 240 }}
+        className="ad-w-full"
+      />
+      <Select
+        placeholder="行业"
+        allowClear
+        value={industry}
+        onChange={(v) => {
+          setIndustry(v);
+          setPage(1);
+        }}
+        options={(facets?.industries ?? []).map((i) => ({ label: i, value: i }))}
+        className="ad-w-full"
+      />
+      <Select
+        placeholder="机构"
+        allowClear
+        value={orgName}
+        onChange={(v) => {
+          setOrgName(v);
+          setPage(1);
+        }}
+        options={(facets?.orgs ?? []).map((o) => ({ label: o, value: o }))}
+        className="ad-w-full"
+      />
+      <Select
+        placeholder="评级"
+        allowClear
+        value={rating}
+        onChange={(v) => {
+          setRating(v);
+          setPage(1);
+        }}
+        options={(facets?.ratings ?? []).map((r) => ({ label: r, value: r }))}
+        className="ad-w-full"
+      />
+      <Select
+        value={hasSummary}
+        onChange={(v) => {
+          setHasSummary(v);
+          setPage(1);
+        }}
+        options={[
+          { label: '全部', value: 'all' },
+          { label: '已有摘要', value: 'yes' },
+          { label: '未生成', value: 'no' },
+        ]}
+        className="ad-w-full"
+      />
+    </>
+  );
+
+  // 移动端「筛选」按钮角标：非默认筛选条件个数。
+  const activeFilterCount =
+    (search.trim() ? 1 : 0) +
+    (industry ? 1 : 0) +
+    (orgName ? 1 : 0) +
+    (rating ? 1 : 0) +
+    (hasSummary !== 'all' ? 1 : 0);
 
   return (
     <PageShell maxWidth="wide">
@@ -370,67 +460,38 @@ export default function ResearchReports() {
         }
       />
 
-      <FilterToolbar total={filteredByRating.length} className="research-reports__filters">
-        <Input
-          placeholder="搜索证券代码"
-          allowClear
-          prefix={<SearchOutlined />}
-          value={search}
-          onChange={(e) => {
-            setSearch(e.target.value);
-            setPage(1);
-          }}
-          style={{ width: 240 }}
-        />
-        <Select
-          placeholder="行业"
-          allowClear
-          value={industry}
-          onChange={(v) => {
-            setIndustry(v);
-            setPage(1);
-          }}
-          options={(facets?.industries ?? []).map((i) => ({ label: i, value: i }))}
-        />
-        <Select
-          placeholder="机构"
-          allowClear
-          value={orgName}
-          onChange={(v) => {
-            setOrgName(v);
-            setPage(1);
-          }}
-          options={(facets?.orgs ?? []).map((o) => ({ label: o, value: o }))}
-        />
-        <Select
-          placeholder="评级"
-          allowClear
-          value={rating}
-          onChange={(v) => {
-            setRating(v);
-            setPage(1);
-          }}
-          options={(facets?.ratings ?? []).map((r) => ({ label: r, value: r }))}
-        />
-        <Select
-          value={hasSummary}
-          onChange={(v) => {
-            setHasSummary(v);
-            setPage(1);
-          }}
-          options={[
-            { label: '全部', value: 'all' },
-            { label: '已有摘要', value: 'yes' },
-            { label: '未生成', value: 'no' },
-          ]}
-        />
-        <Button onClick={handleReset}>重置</Button>
-      </FilterToolbar>
+      {isMobile ? (
+        /* C4（2026-08-03）：移动端筛选条迁 FilterSheetButton，原横向滚动
+           迷你条下线（双月 RangePicker / 多 Select 在窄屏超视口）。 */
+        <div className="mobile-filter-bar">
+          <FilterSheetButton
+            activeCount={activeFilterCount}
+            onReset={handleReset}
+          >
+            {filterControls}
+          </FilterSheetButton>
+          <span className="mobile-filter-bar__meta">
+            共 {total.toLocaleString()} 条
+          </span>
+        </div>
+      ) : (
+        /* 审计 P1：total 用服务端 total，而非当前页 items.length（翻页后
+           计数不再跳变）；rating 筛选已服务端化，原恒等死过滤同步删除。 */
+        <FilterToolbar total={total} className="research-reports__filters">
+          {filterControls}
+          <Button onClick={handleReset}>重置</Button>
+        </FilterToolbar>
+      )}
 
       <Panel variant="default" padding="none">
         {isLoading ? (
           <LoadingBlock size="lg" />
-        ) : filteredByRating.length === 0 && items.length === 0 ? (
+        ) : isError ? (
+          <ErrorState
+            description="研报列表加载失败，请稍后重试"
+            onRetry={() => refetch()}
+          />
+        ) : items.length === 0 ? (
           <EmptyState
             icon={<FileTextOutlined />}
             title="暂无符合条件的研报"
@@ -441,7 +502,7 @@ export default function ResearchReports() {
              modal (with the row-anchored spring) as desktop rows. */
           <>
             <div className="row-list">
-              {filteredByRating.map((it) => (
+              {items.map((it) => (
                 <div
                   key={it.id}
                   className="hairline-row hairline-row--clickable research-reports-mrow"
@@ -457,15 +518,15 @@ export default function ResearchReports() {
                   <div className="research-reports-mrow__main">
                     <div className="research-reports-mrow__title">{it.title}</div>
                     <div className="research-reports-mrow__meta">
-                      <span className="tnum">{it.ts_code}</span>
+                      <span className="tabular-nums">{it.ts_code}</span>
                       <span>{it.name}</span>
                       <span>{it.org_name}</span>
-                      <span className="tnum">{it.publish_date ?? NULL_PLACEHOLDER}</span>
+                      <span className="tabular-nums">{it.publish_date ?? NULL_PLACEHOLDER}</span>
                     </div>
                   </div>
                   <div className="research-reports-mrow__side">
-                    {it.rating ? <Tag color={ratingColor(it.rating)}>{it.rating}</Tag> : null}
-                    <span className="research-reports-mrow__price tnum">
+                    {it.rating ? <ThemeTag variant={ratingVariant(it.rating)}>{it.rating}</ThemeTag> : null}
+                    <span className="research-reports-mrow__price tabular-nums">
                       {formatPrice(it.target_price)}
                     </span>
                   </div>
@@ -485,10 +546,11 @@ export default function ResearchReports() {
         ) : (
           <div className="ad-table-scroll ad-table-sticky">
             <Table
-              dataSource={filteredByRating}
+              dataSource={items}
               columns={columns}
               rowKey="id"
               rowClassName={() => 'research-reports-row'}
+              onChange={handleTableChange}
               pagination={{
                 current: page,
                 pageSize,
@@ -552,7 +614,7 @@ export default function ResearchReports() {
               <Descriptions.Item label="行业">{detail.industry ?? NULL_PLACEHOLDER}</Descriptions.Item>
               <Descriptions.Item label="发布日期">{detail.publish_date}</Descriptions.Item>
               <Descriptions.Item label="评级">
-                {detail.rating ? <Tag color={ratingColor(detail.rating)}>{detail.rating}</Tag> : NULL_PLACEHOLDER}
+                {detail.rating ? <ThemeTag variant={ratingVariant(detail.rating)}>{detail.rating}</ThemeTag> : NULL_PLACEHOLDER}
               </Descriptions.Item>
               <Descriptions.Item label="目标价">{formatPrice(detail.target_price)}</Descriptions.Item>
               <Descriptions.Item label="发布时价格">

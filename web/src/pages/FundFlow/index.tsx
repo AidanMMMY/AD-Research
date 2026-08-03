@@ -34,6 +34,7 @@ import Panel from '@/components/Panel';
 import EmptyState from '@/components/EmptyState';
 import LoadingBlock from '@/components/LoadingBlock';
 import InstrumentCodeTag from '@/components/InstrumentCodeTag';
+import InstrumentQuickSheet, { type QuickMetric } from '@/components/BottomSheet/InstrumentQuickSheet';
 import Sparkline from '@/components/Sparkline';
 import ExportButton from '@/components/ExportButton';
 import ThemeTag from '@/components/ThemeTag';
@@ -218,6 +219,11 @@ export default function FundFlowPage() {
   );
   const { data: signalRows = [], isLoading: signalLoading } =
     useFundFlowSignals(signalParams);
+
+  // 移动端信号行点击 → 速览 BottomSheet（细分在移动端原本不可达：
+  // 桌面靠 expandable 行展开 ScoreBreakdown，移动列表没有展开交互，
+  // 改为把综合得分 + 细分前几项塞进 QuickSheet 的 metrics）
+  const [quickSignal, setQuickSignal] = useState<FlowSignal | null>(null);
 
   /* --- Tab state (个股 / 板块 / ETF) --- */
   const [tab, setTab] = useState<'individual' | 'sector' | 'etf'>('individual');
@@ -621,7 +627,7 @@ export default function FundFlowPage() {
   /* ============================================================
    * Mobile row renderers (≤767px) — hairline 行式降级。
    * 几何由 .mobile-list-item（density token）提供；每行主信息 +
-   * 右对齐关键数值（.tnum），整行可点进标的详情。桌面 Table 不变。
+   * 右对齐关键数值（.tabular-nums），整行可点进标的详情。桌面 Table 不变。
    * ============================================================ */
 
   /** Click-to-detail props shared by all navigable mobile rows. */
@@ -639,6 +645,55 @@ export default function FundFlowPage() {
     },
   });
 
+  /** 移动端信号行：开速览 Sheet 而非直接跳详情（保住列表滚动位置 + 暴露细分） */
+  const mobileSignalRowProps = (record: FlowSignal) => ({
+    role: 'button' as const,
+    tabIndex: 0,
+    'aria-label': `查看 ${record.name ?? record.ts_code} 信号速览`,
+    className: 'mobile-list-item',
+    onClick: () => setQuickSignal(record),
+    onKeyDown: (e: React.KeyboardEvent<HTMLElement>) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        setQuickSignal(record);
+      }
+    },
+  });
+
+  /** QuickSheet metrics：综合得分 + score_breakdown 按绝对值排序的前 4 项 */
+  const quickSignalMetrics = useMemo<QuickMetric[]>(() => {
+    if (!quickSignal) return [];
+    const cells: QuickMetric[] = [
+      {
+        label: '综合得分',
+        value: (
+          <span
+            className={`fund-flow__score-cell__chip fund-flow__score-cell__chip--${scoreClass(quickSignal.composite_score)}`}
+          >
+            {quickSignal.composite_score > 0 ? '+' : ''}
+            {quickSignal.composite_score.toFixed(1)}
+          </span>
+        ),
+      },
+      { label: '主力净流入', value: moneyCell(quickSignal.main_net_inflow) },
+    ];
+    const breakdown = Object.entries(quickSignal.score_breakdown ?? {})
+      .sort((a, b) => Math.abs(b[1]) - Math.abs(a[1]))
+      .slice(0, 4);
+    for (const [k, v] of breakdown) {
+      cells.push({
+        label: k,
+        value: (
+          <span className={`tabular-nums fund-flow__money fund-flow__money--${signClass(v)}`}>
+            {v > 0 ? '+' : ''}
+            {v.toFixed(1)}
+          </span>
+        ),
+      });
+    }
+    return cells;
+  }, [quickSignal]);
+
   /** Label-over-value stacked metric for the right-aligned column. */
   const mobileMetric = (label: string, value: React.ReactNode) => (
     <span className="mobile-list-item__metric">
@@ -648,7 +703,7 @@ export default function FundFlowPage() {
   );
 
   const renderSignalMobileRow = (record: FlowSignal) => (
-    <div key={record.ts_code} {...mobileNavRowProps(record.ts_code, record.name)}>
+    <div key={record.ts_code} {...mobileSignalRowProps(record)}>
       <div className="mobile-list-item__row">
         <div className="mobile-list-item__main">
           <InstrumentCodeTag code={record.ts_code} name={record.name ?? undefined} />
@@ -681,7 +736,7 @@ export default function FundFlowPage() {
           <span className="mobile-list-item__meta">
             股东户数{' '}
             <span
-              className={`tnum fund-flow__money fund-flow__money--${signClass(-record.shareholder_count_change)}`}
+              className={`tabular-nums fund-flow__money fund-flow__money--${signClass(-record.shareholder_count_change)}`}
             >
               {formatNumber(record.shareholder_count_change, 0)}
             </span>
@@ -714,7 +769,7 @@ export default function FundFlowPage() {
           {mobileMetric(
             '主力净流入',
             <span
-              className={`tnum fund-flow__money fund-flow__money--${signClass(record.main_net_inflow)}`}
+              className={`tabular-nums fund-flow__money fund-flow__money--${signClass(record.main_net_inflow)}`}
             >
               {formatMoney(record.main_net_inflow)}
             </span>,
@@ -762,7 +817,7 @@ export default function FundFlowPage() {
           {mobileMetric(
             '主力净流入',
             <span
-              className={`tnum fund-flow__money fund-flow__money--${signClass(record.main_net_inflow)}`}
+              className={`tabular-nums fund-flow__money fund-flow__money--${signClass(record.main_net_inflow)}`}
             >
               {formatMoney(record.main_net_inflow)}
             </span>,
@@ -797,23 +852,23 @@ export default function FundFlowPage() {
           {mobileMetric(
             '估算净流入',
             <span
-              className={`tnum fund-flow__money fund-flow__money--${signClass(record.inferred_net_inflow)}`}
+              className={`tabular-nums fund-flow__money fund-flow__money--${signClass(record.inferred_net_inflow)}`}
             >
               {formatMoney(record.inferred_net_inflow)}
             </span>,
           )}
           <span
-            className={`tnum fund-flow__premium fund-flow__premium--${premiumClass(record.premium_rate)}`}
+            className={`tabular-nums fund-flow__premium fund-flow__premium--${premiumClass(record.premium_rate)}`}
           >
             {formatPct(record.premium_rate)}
           </span>
         </div>
       </div>
       <div className="mobile-list-item__tags">
-        <span className="tnum mobile-list-item__meta">
+        <span className="tabular-nums mobile-list-item__meta">
           现价 {record.price != null ? record.price.toFixed(3) : NULL_PLACEHOLDER}
         </span>
-        <span className="tnum mobile-list-item__meta">
+        <span className="tabular-nums mobile-list-item__meta">
           IOPV {record.net_value != null ? record.net_value.toFixed(3) : NULL_PLACEHOLDER}
         </span>
       </div>
@@ -880,7 +935,7 @@ export default function FundFlowPage() {
                 title="沪市主力净流入"
                 value={
                   <>
-                    <span className="tnum">{formatMoney(market.sh_main_net_inflow)}</span>
+                    <span className="tabular-nums">{formatMoney(market.sh_main_net_inflow)}</span>
                     <PctChip value={market.sh_main_net_pct} />
                   </>
                 }
@@ -889,7 +944,7 @@ export default function FundFlowPage() {
                 title="深市主力净流入"
                 value={
                   <>
-                    <span className="tnum">{formatMoney(market.sz_main_net_inflow)}</span>
+                    <span className="tabular-nums">{formatMoney(market.sz_main_net_inflow)}</span>
                     <PctChip value={market.sz_main_net_pct} />
                   </>
                 }
@@ -898,7 +953,7 @@ export default function FundFlowPage() {
                 title="沪深合计净流入"
                 value={
                   <>
-                    <span className="tnum">
+                    <span className="tabular-nums">
                       {formatMoney(
                         market.total_main_net_inflow ??
                           (market.sh_main_net_inflow != null && market.sz_main_net_inflow != null
@@ -1304,6 +1359,16 @@ export default function FundFlowPage() {
             ]}
           />
         </Panel>
+
+        {/* 移动端信号速览 Sheet：行点击打开，附综合得分细分前几项；
+            「查看详情」再跳完整标的页 */}
+        <InstrumentQuickSheet
+          open={!!quickSignal}
+          onClose={() => setQuickSignal(null)}
+          code={quickSignal?.ts_code ?? null}
+          name={quickSignal?.name ?? undefined}
+          metrics={quickSignalMetrics}
+        />
       </PageShell>
     </div>
   );

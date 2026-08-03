@@ -1,4 +1,4 @@
-import { useEffect, useId, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { Button } from 'antd';
 import { CloseOutlined } from '@ant-design/icons';
@@ -115,6 +115,74 @@ export default function DetailDrawer({
   // WCAG 2.4.3: return keyboard focus to the triggering element on close.
   useFocusRestore(open);
 
+  // DR2（2026-08-03）焦点管理三件套：
+  // 1) 打开时焦点移入抽屉（优先关闭按钮，退化为面板本身）；
+  // 2) Tab / Shift+Tab 在抽屉内循环（简易 focus trap，见面板 onKeyDown）；
+  // 3) 背景兄弟容器 inert（移出 Tab 序 + 命中测试），配合上面的
+  //    useFocusRestore 在关闭后把焦点还给触发元素。
+  const overlayRef = useRef<HTMLDivElement | null>(null);
+  const panelRef = useRef<HTMLDivElement | null>(null);
+
+  // (1) Focus into the drawer on open. Wait one frame so the panel is
+  // painted (it mounts with the --entering transform).
+  useEffect(() => {
+    if (!open || !mounted) return;
+    const raf = requestAnimationFrame(() => {
+      const panel = panelRef.current;
+      if (!panel) return;
+      const closeBtn = panel.querySelector<HTMLElement>(
+        '.ad-detail-drawer__close',
+      );
+      (closeBtn ?? panel).focus();
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [open, mounted]);
+
+  // (3) Mark the drawer's sibling containers inert while open so keyboard
+  // / pointer interaction stays inside the dialog (aria-modal 的行为补全）。
+  // The overlay is rendered in place (inside the page tree), so its parent
+  // chain's other children are the background content.
+  useEffect(() => {
+    if (!open) return;
+    const overlay = overlayRef.current;
+    const parent = overlay?.parentElement;
+    if (!parent) return;
+    const siblings = Array.from(parent.children).filter(
+      (el): el is HTMLElement => el instanceof HTMLElement && el !== overlay,
+    );
+    siblings.forEach((el) => el.setAttribute('inert', ''));
+    return () => {
+      siblings.forEach((el) => el.removeAttribute('inert'));
+    };
+  }, [open]);
+
+  // (2) Simple focus trap: Tab on the last focusable wraps to the first,
+  // Shift+Tab on the first wraps to the last.
+  const handlePanelKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key !== 'Tab') return;
+    const panel = panelRef.current;
+    if (!panel) return;
+    const focusables = Array.from(
+      panel.querySelectorAll<HTMLElement>(
+        'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+      ),
+    );
+    if (focusables.length === 0) return;
+    const first = focusables[0];
+    const last = focusables[focusables.length - 1];
+    const active = document.activeElement as HTMLElement | null;
+    const focusInside = active != null && panel.contains(active);
+    if (e.shiftKey) {
+      if (!focusInside || active === first) {
+        e.preventDefault();
+        last.focus();
+      }
+    } else if (!focusInside || active === last) {
+      e.preventDefault();
+      first.focus();
+    }
+  };
+
   if (!mounted) return null;
 
   const drawerClasses = [
@@ -135,17 +203,21 @@ export default function DetailDrawer({
     // overlay); clicks inside the panel bubble up with a different
     // target and are ignored — no stopPropagation needed on the panel.
     <div
+      ref={overlayRef}
       className={overlayClasses}
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
       <div
+        ref={panelRef}
         className={drawerClasses}
         role="dialog"
         aria-modal="true"
         aria-labelledby={title ? titleId : undefined}
         aria-label={title ? undefined : ariaLabel}
+        tabIndex={-1}
+        onKeyDown={handlePanelKeyDown}
       >
         <div className="ad-detail-drawer__header">
           {title ? (

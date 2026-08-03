@@ -1,5 +1,5 @@
 import './styles.css';
-import { Alert, Badge, Button, Spin, Statistic, Table, Tooltip } from 'antd';
+import { Alert, Badge, Button, List, Spin, Statistic, Table, Tooltip } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
@@ -13,6 +13,7 @@ import DataFreshnessHint from '@/components/DataFreshnessHint';
 import StatCard from '@/components/StatCard';
 import ThemeTag, { type ThemeTagVariant } from '@/components/ThemeTag';
 import EmptyState from '@/components/EmptyState';
+import { useIsMobile } from '@/hooks/useBreakpoint';
 import { formatDateTime, toLocal } from '@/utils/datetime';
 
 const REFRESH_MS = 30_000;
@@ -100,6 +101,7 @@ export default function NewsHealth() {
     queryFn: () => newsApi.health().then((r) => r.data),
     refetchInterval: REFRESH_MS,
   });
+  const isMobile = useIsMobile();
 
   const schedulerRunning = data?.scheduler_running ?? false;
   const jobs = data?.scheduler_jobs ?? [];
@@ -485,6 +487,49 @@ export default function NewsHealth() {
 
       <Spin spinning={isLoading}>
         <Panel title="数据源健康度" padding="md" className="ad-mb-4">
+          {isMobile ? (
+            /* 移动端行式降级（2026-08-03 移动端审计）：7 列宽表 → 行卡片，
+               只保留 源名 + 状态 + 24h 条数 + 最近发布 四个关键信息 */
+            <List
+              className="ad-list-compact mobile-list"
+              dataSource={sources}
+              renderItem={(row) => {
+                const color = statusColor(row, schedulerRunning);
+                const minutes = ageMinutes(row.last_published_at);
+                return (
+                  <div
+                    key={row.source}
+                    className={`mobile-list-item mobile-list-item--static${
+                      color === 'red' ? ' news-health-row-red' : ''
+                    }${isSourceChanged(row.source) ? ' news-health-row-changed' : ''}`}
+                  >
+                    <div className="mobile-list-item__row">
+                      <div className="mobile-list-item__main">
+                        <span className="mobile-list-item__value">{row.source}</span>
+                      </div>
+                      <div className="mobile-list-item__metrics">
+                        <ThemeTag variant={TONE_VARIANT[color]}>{STATUS_LABEL[color]}</ThemeTag>
+                        {row.last_24h > 0 ? (
+                          <ThemeTag variant="accent">{row.last_24h.toLocaleString()} 条</ThemeTag>
+                        ) : (
+                          <ThemeTag>0</ThemeTag>
+                        )}
+                      </div>
+                    </div>
+                    <div className="mobile-list-item__tags">
+                      <span
+                        className="mobile-list-item__meta news-health-age"
+                        style={{ color: ageTone(minutes) }}
+                      >
+                        最近发布 {fmtTime(row.last_published_at)}
+                        {minutes !== null && ` (${minutes}m 前)`}
+                      </span>
+                    </div>
+                  </div>
+                );
+              }}
+            />
+          ) : (
           <Table
             dataSource={sources}
             columns={columns}
@@ -499,10 +544,51 @@ export default function NewsHealth() {
               return classes.join(' ');
             }}
           />
+          )}
         </Panel>
 
         <Panel title="Worker 健康度" padding="md">
           {workers.length > 0 ? (
+            isMobile ? (
+              /* 移动端行式降级：6 列宽表 → 行卡片（名称+状态+24h 条数+最近运行） */
+              <List
+                className="ad-list-compact mobile-list"
+                dataSource={workers}
+                renderItem={(row) => {
+                  const { variant, label } = workerStatusProps(row.last_status);
+                  const minutes = ageMinutes(row.last_run);
+                  return (
+                    <div
+                      key={row.name}
+                      className={`mobile-list-item mobile-list-item--static${
+                        isWorkerChanged(row.name) ? ' news-health-row-changed' : ''
+                      }`}
+                    >
+                      <div className="mobile-list-item__row">
+                        <div className="mobile-list-item__main">
+                          <span className="mobile-list-item__value">{row.label}</span>
+                        </div>
+                        <div className="mobile-list-item__metrics">
+                          <ThemeTag variant={variant}>{label}</ThemeTag>
+                          <span className="tabular-nums mobile-list-item__meta">
+                            24h {row.articles_24h.toLocaleString()} 条
+                          </span>
+                        </div>
+                      </div>
+                      <div className="mobile-list-item__tags">
+                        <span
+                          className="mobile-list-item__meta news-health-age"
+                          style={{ color: ageTone(minutes) }}
+                        >
+                          最近运行 {fmtTime(row.last_run)}
+                          {minutes !== null && ` (${minutes}m 前)`}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                }}
+              />
+            ) : (
             <Table
               dataSource={workers}
               columns={workerColumns}
@@ -514,6 +600,7 @@ export default function NewsHealth() {
                 isWorkerChanged(row.name) ? 'news-health-row-changed' : ''
               }
             />
+            )
           ) : (
             <EmptyState
               title="暂无 worker 数据"

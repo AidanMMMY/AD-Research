@@ -80,9 +80,13 @@ body {
 /* Table — minimal hairlines, no card wrapping
    2026-07-29 桌面收敛：分隔线引用 --hairline（= --border-default 的语义别名，
    颜色不变、token 统一）；行高 floor 换引新密度体系的 --density-row-h-compact
-   (40px)。说明：tr 的 min-height 在 Blink/WebKit 表格布局中不生效，实际行高
-   仍由 --density-cell-py 驱动（comfortable 10px ≈ 40px 行高，正好对齐
-   compact 档），data-density 三档设置不受影响。 */
+   (40px)。
+   2026-08-03 波 1：第一代密度 token（--density-cell-py/--density-cell-px，
+   随 data-density 三档切换）已退役删除，单元格 padding 改用现行语义
+   spacing/密度 token：纵向 --space-2 (8px) + 正文行高 ≈ 38px，与
+   --density-row-h-compact (40px) floor 基本持平；横向对齐新密度系统的
+   --density-row-pad-x。说明：tr 的 min-height 在 Blink/WebKit 表格布局中
+   不生效，实际行高由该 padding 驱动。 */
 .ant-table {
   background: transparent !important;
   color: var(--text-primary);
@@ -96,13 +100,13 @@ body {
   text-transform: uppercase;
   letter-spacing: 0.12em;
   border-bottom: 1px solid var(--hairline) !important;
-  padding: var(--density-cell-py) var(--density-cell-px) !important;
+  padding: var(--space-2) var(--density-row-pad-x) !important;
 }
 
 .ant-table-tbody > tr > td {
   border-bottom: 1px solid var(--hairline) !important;
   color: var(--text-secondary);
-  padding: var(--density-cell-py) var(--density-cell-px) !important;
+  padding: var(--space-2) var(--density-row-pad-x) !important;
   transition: color var(--transition-fast), background var(--transition-fast);
   /* P0-2: 全局强制等宽数字，防止数值列排序/比较时抖动 */
   font-variant-numeric: tabular-nums;

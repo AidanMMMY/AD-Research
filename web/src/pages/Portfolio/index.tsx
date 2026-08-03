@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { Button, Table, Tag } from 'antd';
+import { Button, Table } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import {
   DollarOutlined,
@@ -10,8 +10,11 @@ import PageShell from '@/components/PageShell';
 import PageHeader from '@/components/PageHeader';
 import Panel from '@/components/Panel';
 import EmptyState from '@/components/EmptyState';
+import ErrorState from '@/components/ErrorState';
 import LoadingBlock from '@/components/LoadingBlock';
 import SectionHeading from '@/components/SectionHeading';
+import ThemeTag from '@/components/ThemeTag';
+import ReturnTag from '@/components/ReturnTag';
 import { usePaperAccounts } from '@/hooks/usePaperTrading';
 import { useLiveConfigs } from '@/hooks/useLiveTrading';
 import type { PaperAccount, LiveConfig } from '@/types/trading';
@@ -41,23 +44,27 @@ function fmtUSD(v: number | null | undefined): string {
   return `$${v.toFixed(2)}`;
 }
 
-function fmtPct(v: number | null | undefined): { text: string; color: string } {
-  if (v == null) return { text: '-', color: 'var(--text-tertiary)' };
-  const sign = v >= 0 ? '+' : '';
-  return {
-    text: `${sign}${v.toFixed(2)}%`,
-    color:
-      v > 0
-        ? 'var(--color-rise)'
-        : v < 0
-          ? 'var(--color-fall)'
-          : 'var(--text-tertiary)',
-  };
-}
+/** 模拟账户状态枚举 → 中文 + ThemeTag variant（审计 P1：不再裸英文） */
+const PAPER_STATUS_MAP: Record<string, { label: string; variant: 'success' | 'neutral' }> = {
+  active: { label: '运行中', variant: 'success' },
+  archived: { label: '已归档', variant: 'neutral' },
+};
 
 export default function Portfolio() {
-  const { data: accountsData, isLoading: accountsLoading } = usePaperAccounts();
-  const { data: liveConfigs, isLoading: liveLoading } = useLiveConfigs();
+  // 解构 isError / refetch：接口失败时显示错误态（带重试），不能落入
+  // 「尚未创建账户」假空态（审计 P1，2026-08-03）。
+  const {
+    data: accountsData,
+    isLoading: accountsLoading,
+    isError: accountsError,
+    refetch: refetchAccounts,
+  } = usePaperAccounts();
+  const {
+    data: liveConfigs,
+    isLoading: liveLoading,
+    isError: liveError,
+    refetch: refetchLive,
+  } = useLiveConfigs();
 
   const accounts: PaperAccountRow[] = useMemo(() => {
     const items: PaperAccount[] = accountsData?.items || [];
@@ -90,13 +97,18 @@ export default function Portfolio() {
       dataIndex: 'status',
       width: 100,
       responsive: ['md'],
-      render: (s: string) => <Tag color={s === 'active' ? 'green' : 'default'}>{s}</Tag>,
+      // 审计 P1：状态枚举中文化 + ThemeTag（不再裸英文 antd 预设色）
+      render: (s: string) => {
+        const meta = PAPER_STATUS_MAP[s] ?? { label: s, variant: 'neutral' as const };
+        return <ThemeTag variant={meta.variant}>{meta.label}</ThemeTag>;
+      },
     },
     {
       title: '当前权益',
       dataIndex: 'equity',
       width: 140,
       align: 'right' as const,
+      sorter: (a, b) => a.equity - b.equity,
       render: (v: number) => fmtUSD(v),
     },
     {
@@ -104,10 +116,12 @@ export default function Portfolio() {
       dataIndex: 'pnlPct',
       width: 110,
       align: 'right' as const,
-      render: (_: unknown, row: PaperAccountRow) => {
-        const r = fmtPct(row.pnlPct);
-        return <span style={{ color: r.color }}>{r.text}</span>;
-      },
+      sorter: (a, b) => (a.pnlPct ?? -Infinity) - (b.pnlPct ?? -Infinity),
+      // 后端 pnl_pct 是百分比语义（5.2 = 5.2%），ReturnTag 走小数语义
+      // （×100），传入前需 /100 换算（审计 P1：复用 ReturnTag 统一涨跌样式）。
+      render: (_: unknown, row: PaperAccountRow) => (
+        <ReturnTag value={row.pnlPct != null ? row.pnlPct / 100 : null} />
+      ),
     },
     {
       title: '持仓',
@@ -124,9 +138,9 @@ export default function Portfolio() {
     {
       title: '环境',
       dataIndex: 'isTestnet',
-      width: 90,
+      width: 100,
       render: (t: boolean) => (
-        <Tag color={t ? 'orange' : 'red'}>{t ? 'testnet' : 'mainnet'}</Tag>
+        <ThemeTag variant={t ? 'warning' : 'error'}>{t ? '测试网' : '主网'}</ThemeTag>
       ),
     },
     {
@@ -134,7 +148,7 @@ export default function Portfolio() {
       dataIndex: 'isEnabled',
       width: 90,
       render: (e: boolean) => (
-        <Tag color={e ? 'green' : 'default'}>{e ? 'enabled' : 'disabled'}</Tag>
+        <ThemeTag variant={e ? 'success' : 'neutral'}>{e ? '已启用' : '已停用'}</ThemeTag>
       ),
     },
   ];
@@ -165,6 +179,12 @@ export default function Portfolio() {
         />
         {accountsLoading ? (
           <LoadingBlock size="md" />
+        ) : accountsError ? (
+          <ErrorState
+            className="empty-state--in-card"
+            description="模拟账户加载失败，请稍后重试"
+            onRetry={() => refetchAccounts()}
+          />
         ) : accounts.length === 0 ? (
           <EmptyState
             className="empty-state--in-card"
@@ -211,6 +231,12 @@ export default function Portfolio() {
         />
         {liveLoading ? (
           <LoadingBlock size="md" />
+        ) : liveError ? (
+          <ErrorState
+            className="empty-state--in-card"
+            description="真实账户配置加载失败，请稍后重试"
+            onRetry={() => refetchLive()}
+          />
         ) : liveRows.length === 0 ? (
           <EmptyState
             className="empty-state--in-card"

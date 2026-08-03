@@ -9,7 +9,7 @@ import {
   BookFilled,
   BookOutlined,
 } from '@ant-design/icons';
-import { SENTIMENT_COLORS, SENTIMENT_LABELS } from '@/utils/sentiment';
+import { SENTIMENT_COLORS, SENTIMENT_LABELS, formatSentimentScore } from '@/utils/sentiment';
 import type {
   NewsArticle,
   NewsMarket,
@@ -335,7 +335,9 @@ export default function NewsCard({
           <Tooltip
             title={
               article.sentiment_score != null
-                ? `分数 ${article.sentiment_score.toFixed(2)} · 置信度 ${(
+                ? // N2（2026-08-03）：分数走统一归一化（-100..100 与
+                  // -1..1 双标度），与 detail 页 / 抽屉同源。
+                  `分数 ${formatSentimentScore(article.sentiment_score)} · 置信度 ${(
                     (article.sentiment_confidence ?? 0) * 100
                   ).toFixed(0)}%`
                 : SENTIMENT_LABELS[sentiment]

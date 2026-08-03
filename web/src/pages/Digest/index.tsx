@@ -207,7 +207,7 @@ export default function Digest() {
             >
               上一篇
             </Button>
-            <span className="digest-nav__date tnum">{currentDate}</span>
+            <span className="digest-nav__date tabular-nums">{currentDate}</span>
             <Button
               size="small"
               onClick={() => shiftDate(1)}
@@ -230,7 +230,7 @@ export default function Digest() {
               {statusMeta && (
                 <ThemeTag variant={statusMeta.variant}>{statusMeta.label}</ThemeTag>
               )}
-              <span className="digest-hero__date tnum">{report.report_date}</span>
+              <span className="digest-hero__date tabular-nums">{report.report_date}</span>
             </div>
             <h2 className="digest-hero__title">{report.title}</h2>
             {report.summary_md && (

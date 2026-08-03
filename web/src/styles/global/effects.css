@@ -67,6 +67,13 @@ main {
   animation-play-state: paused;
 }
 
+/* 触屏无 hover：按压（:active）时暂停滚动，松手恢复 */
+@media (hover: none) {
+  .ticker-tape:active .ticker-track {
+    animation-play-state: paused;
+  }
+}
+
 .ticker-cell {
   display: inline-flex;
   align-items: center;

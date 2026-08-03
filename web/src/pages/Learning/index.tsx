@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Tag, Space, Button, Collapse, Input, Tabs } from 'antd';
 import {
@@ -122,6 +122,16 @@ export default function Learning() {
     }
   }
 
+  // L3（2026-08-03）：术语面板关闭时把子树移出 Tab 序。React 18 类型
+  // 还不认识 inert 属性，走 DOM API；打开时移除。
+  const termsRegionRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    const el = termsRegionRef.current;
+    if (!el) return;
+    if (panelOpen) el.removeAttribute('inert');
+    else el.setAttribute('inert', '');
+  }, [panelOpen]);
+
   return (
     <PageShell maxWidth="wide">
       <PageHeader
@@ -172,7 +182,7 @@ export default function Learning() {
                   ))}
                 </div>
 
-                {/* M20: 知识图谱入口 — 折叠面板形式的术语速查。
+                {/* 术语速查 — 折叠面板形式。
                     P2 将升级为真正的图谱视图。 */}
                 <div className="learning-terms-wrap ad-mt-5">
                   <Space className="ad-mb-2">
@@ -185,16 +195,21 @@ export default function Learning() {
                     >
                       {panelOpen ? '收起术语速查' : '展开术语速查'}
                     </Button>
+                    {/* L2（2026-08-03）：内部里程碑代号（M20/P1/P2）不
+                        暴露给用户。 */}
                     <span className="ad-text-small ad-text-tertiary">
-                      知识图谱入口（M20）
+                      常用投研术语一屏速查
                     </span>
                   </Space>
 
                   {/* Spatial consistency: the panel stays mounted so height/opacity
                       animate from the live size on close — no jump, no reflow. The
-                      `aria-hidden` mirror communicates the closed state to AT. */}
+                      `aria-hidden` mirror communicates the closed state to AT.
+                      L3（2026-08-03）：关闭态 inert —— 面板内链接/输入框
+                      移出 Tab 序（aria-hidden 只挡读屏，不挡键盘）。 */}
                   <div
                     id="learning-terms-region"
+                    ref={termsRegionRef}
                     className={`learning-terms-region ${panelOpen ? 'learning-terms-region--open' : 'learning-terms-region--closed'}`}
                     aria-hidden={!panelOpen}
                   >
@@ -309,7 +324,6 @@ function TermQuickReference({
         <Space>
           <PartitionOutlined className="ad-text-accent" />
           <span>术语速查</span>
-          <ThemeTag variant="warning">M20 P1</ThemeTag>
         </Space>
       }
       extra={
@@ -326,7 +340,6 @@ function TermQuickReference({
     >
       <p className="ad-text-small ad-text-tertiary ad-mt-0">
         共 {all.length} 个术语，当前显示 {totalShown} 个。鼠标悬停或点击标题可看「问 AI」浮层。
-        P2 将升级为真正的图谱视图。
       </p>
       {totalShown === 0 ? (
         <EmptyState title="没有匹配的术语" />

@@ -107,7 +107,7 @@ describe('NewsDetailDrawer 双语渲染', () => {
     const { getByText } = renderDrawer(
       makeArticle({ translated_zh: null, title_zh: null }),
     );
-    expect(getByText(/中文译文尚未就绪，后台翻译中/)).toBeTruthy();
+    expect(getByText(/中文译文尚未就绪，翻译进行中/)).toBeTruthy();
     // 原文标题与原文正文仍然可见
     expect(getByText(/코미디언 김숙이 과거/)).toBeTruthy();
   });

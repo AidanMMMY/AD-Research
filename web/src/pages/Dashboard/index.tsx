@@ -19,6 +19,7 @@ import EmptyState from '@/components/EmptyState';
 import LoadingBlock from '@/components/LoadingBlock';
 import DigestSummaryCard from '@/components/DigestSummaryCard';
 import ReturnTag from '@/components/ReturnTag';
+import { clickableProps } from '@/utils/a11y';
 import { usePriceStream } from '@/hooks/usePriceStream';
 import { useMarketStream } from '@/hooks/useMarketStream';
 import type { NewsArticle } from '@/types/news';
@@ -429,7 +430,9 @@ export default function Dashboard() {
                   <div className="cc-card__title">资金流</div>
                   <div className="cc-card__subtitle">A股 大盘主力净流入</div>
                 </div>
-                <span className="cc-card__extra" onClick={() => navigate('/fund-flow')} role="button" tabIndex={0}>
+                {/* D1（2026-08-03）：卡片头「→」链接键盘可达 ——
+                    clickableProps 统一补 role/tabIndex/Enter/Space。 */}
+                <span className="cc-card__extra" {...clickableProps(() => navigate('/fund-flow'), { role: 'link' })}>
                   监控 →
                 </span>
               </div>
@@ -491,7 +494,7 @@ export default function Dashboard() {
                   <div className="cc-card__title">动量聚焦</div>
                   <div className="cc-card__subtitle">综合评分最高的标的</div>
                 </div>
-                <span className="cc-card__extra" onClick={() => navigate('/scores')} role="button" tabIndex={0}>
+                <span className="cc-card__extra" {...clickableProps(() => navigate('/scores'), { role: 'link' })}>
                   评分 →
                 </span>
               </div>
@@ -555,7 +558,7 @@ export default function Dashboard() {
                   <div className="cc-card__title">信号流</div>
                   <div className="cc-card__subtitle">实时资金与事件信号</div>
                 </div>
-                <span className="cc-card__extra" onClick={() => navigate('/fund-flow')} role="button" tabIndex={0}>
+                <span className="cc-card__extra" {...clickableProps(() => navigate('/fund-flow'), { role: 'link' })}>
                   全部 →
                 </span>
               </div>
@@ -607,7 +610,7 @@ export default function Dashboard() {
                     </div>
                     <div className="cc-signal__desc">{article.source}</div>
                   </div>
-                  <span className="cc-signal__score tnum" style={{ color: 'var(--cc-warn)', fontSize: 11 }}>
+                  <span className="cc-signal__score tnum" style={{ color: 'var(--cc-warn)', fontSize: 12 }}>
                     {article.importance ?? '—'}
                   </span>
                 </div>
@@ -624,7 +627,7 @@ export default function Dashboard() {
                   <div className="cc-card__title">自选股</div>
                   <div className="cc-card__subtitle">{favCount} 只关注标的</div>
                 </div>
-                <span className="cc-card__extra" onClick={() => navigate('/favorites')} role="button" tabIndex={0}>
+                <span className="cc-card__extra" {...clickableProps(() => navigate('/favorites'), { role: 'link' })}>
                   管理 →
                 </span>
               </div>
@@ -684,7 +687,7 @@ export default function Dashboard() {
                   <div className="cc-card__title">要闻速递</div>
                   <div className="cc-card__subtitle">今日重要资讯</div>
                 </div>
-                <span className="cc-card__extra" onClick={() => navigate('/news')} role="button" tabIndex={0}>
+                <span className="cc-card__extra" {...clickableProps(() => navigate('/news'), { role: 'link' })}>
                   新闻 →
                 </span>
               </div>

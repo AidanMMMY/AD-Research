@@ -236,17 +236,17 @@ export default function BacktestList() {
                           {strategyNameById.get(record.strategy_id) || `#${record.strategy_id}`}
                         </div>
                         <div className="backtest-mrow__meta">
-                          <span className="tnum">{record.etf_code || '-'}</span>
-                          <span className="tnum">
+                          <span className="tabular-nums">{record.etf_code || '-'}</span>
+                          <span className="tabular-nums">
                             {record.start_date} ~ {record.end_date}
                           </span>
                         </div>
                       </div>
                       <div className="backtest-mrow__side">
-                        <span className={`tnum backtest-mrow__return ${returnCls}`}>
+                        <span className={`tabular-nums backtest-mrow__return ${returnCls}`}>
                           {r == null ? '-' : `${r.toFixed(2)}%`}
                         </span>
-                        <span className="tnum backtest-mrow__dd">
+                        <span className="tabular-nums backtest-mrow__dd">
                           回撤 {dd == null ? '-' : `${dd.toFixed(2)}%`}
                         </span>
                       </div>

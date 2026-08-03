@@ -402,6 +402,20 @@
   .phase5c-quick-prompts {
     font-size: var(--text-label-size);
   }
+
+  /* 触达热区 ≥44px：quick-tag 默认仅 ~22px 高，删除 icon 仅字形大小。
+     quick-tag 用 min-height 真实撑高；删除 icon 用 padding+负 margin
+     扩热区但不改变视觉布局。 */
+  .phase5c-quick-tag {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+  }
+
+  .phase5c-chat-sidebar__delete {
+    padding: 12px;
+    margin: -12px;
+  }
 }
 
 /* ---- Global sheet variant (方向 D, 2026-07-29) ----

@@ -42,8 +42,10 @@
   color: var(--color-warning-bright);
 }
 
+/* N4（2026-08-03）：已读降透明度 0.55 在浅/深主题下对比度都不可控，
+   改用三级文字色 token——颜色退让而非透明度退让。 */
 .ad-news-card__title--read {
-  opacity: 0.55;
+  color: var(--text-tertiary);
 }
 
 /* 学习中心 P2（2026-08-02）：难度标签（入门/进阶）。
@@ -56,7 +58,8 @@
   padding: 1px 6px;
   border-radius: var(--radius-sm);
   border: 1px solid transparent;
-  font-size: 11px;
+  /* N5（2026-08-03）：11px 低于可读性下限，抬到 12px。 */
+  font-size: 12px;
   line-height: 1.4;
   white-space: nowrap;
 }

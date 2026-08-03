@@ -81,11 +81,12 @@
   margin-left: auto;
 }
 
+/* D2（2026-08-03）：「实时连接」是正常状态，不应使用下跌红。 */
 .cc-status-dot {
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: var(--cc-fall);
+  background: var(--color-success);
 }
 
 .cc-status-time {
@@ -112,7 +113,7 @@
 }
 
 .cc-header__eyebrow {
-  font-size: 11px;
+  font-size: var(--text-label-size);
   font-weight: 500;
   color: var(--cc-muted);
   letter-spacing: 0.04em;
@@ -164,13 +165,13 @@
 }
 
 .cc-card__subtitle {
-  font-size: 11px;
+  font-size: var(--text-label-size);
   color: var(--cc-muted);
   margin-top: 2px;
 }
 
 .cc-card__extra {
-  font-size: 11px;
+  font-size: var(--text-label-size);
   font-weight: 500;
   color: var(--cc-accent);
   font-family: var(--font-mono);
@@ -197,7 +198,7 @@
 }
 
 .cc-pulse-grid__title {
-  font-size: 11px;
+  font-size: var(--text-label-size);
   font-weight: 500;
   color: var(--cc-muted);
   letter-spacing: 0.04em;
@@ -222,7 +223,7 @@
 }
 
 .cc-pulse-group__label {
-  font-size: 10px;
+  font-size: var(--text-label-size);
   font-weight: 500;
   color: var(--cc-muted);
   letter-spacing: 0.04em;
@@ -258,7 +259,7 @@
 }
 
 .cc-pulse-item__code {
-  font-size: 10px;
+  font-size: var(--text-label-size);
   font-weight: 500;
   color: var(--cc-muted);
   font-family: var(--font-mono);
@@ -277,7 +278,7 @@
 }
 
 .cc-pulse-item__change {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 500;
   font-family: var(--font-mono);
   margin-left: auto;
@@ -365,7 +366,7 @@
   grid-template-columns: 40px 80px minmax(0, 1fr) 72px 50px;
   gap: var(--space-2);
   padding: 0 var(--space-2) var(--space-2);
-  font-size: 9px;
+  font-size: var(--data-label-size);
   font-weight: 500;
   color: var(--cc-muted);
   letter-spacing: 0.04em;
@@ -393,7 +394,7 @@
 }
 
 .cc-sector-row__rank {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--cc-muted);
   font-family: var(--font-mono);
 }
@@ -419,7 +420,7 @@
 }
 
 .cc-sector-row__mom {
-  font-size: 11px;
+  font-size: 12px;
   font-family: var(--font-mono);
   text-align: right;
 }
@@ -454,7 +455,7 @@
 }
 
 .cc-signal__time {
-  font-size: 10px;
+  font-size: 12px;
   color: var(--cc-muted);
   font-family: var(--font-mono);
 }
@@ -467,7 +468,7 @@
   padding: 0 6px;
   border-radius: 4px;
   background: var(--cc-surface-hover);
-  font-size: 9px;
+  font-size: var(--text-label-size);
   font-weight: 700;
   font-family: var(--font-mono);
 }
@@ -488,7 +489,7 @@
 }
 
 .cc-signal__desc {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--cc-muted);
   margin-top: 2px;
   overflow: hidden;
@@ -510,7 +511,7 @@
   grid-template-columns: 120px 80px 70px 50px;
   gap: var(--space-2);
   padding: 0 var(--space-2) var(--space-2);
-  font-size: 9px;
+  font-size: var(--data-label-size);
   font-weight: 500;
   color: var(--cc-muted);
   font-family: var(--font-mono);
@@ -546,7 +547,7 @@
 }
 
 .cc-watch-row__name {
-  font-size: 10px;
+  font-size: 12px;
   color: var(--cc-muted);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -574,7 +575,7 @@
   height: 22px;
   border-radius: 6px;
   background: var(--cc-accent-soft);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   color: var(--cc-accent);
   font-family: var(--font-mono);
@@ -609,7 +610,7 @@
   background: var(--cc-accent-soft);
   display: grid;
   place-items: center;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   color: var(--cc-accent);
   font-family: var(--font-mono);
@@ -630,7 +631,7 @@
 }
 
 .cc-brief__desc {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--cc-text2);
   margin-top: 4px;
   overflow: hidden;
@@ -639,7 +640,7 @@
 }
 
 .cc-brief__time {
-  font-size: 10px;
+  font-size: 12px;
   color: var(--cc-muted);
   font-family: var(--font-mono);
   text-align: right;
@@ -689,15 +690,16 @@
   color: var(--cc-text2);
 }
 
+/* D2（2026-08-03）：「系统运行正常」同样是正常态，用成功绿。 */
 .cc-footer__dot {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: var(--cc-fall);
+  background: var(--color-success);
 }
 
 .cc-footer__meta {
-  font-size: 10px;
+  font-size: 12px;
   color: var(--cc-muted);
   font-family: var(--font-mono);
 }

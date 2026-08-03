@@ -76,9 +76,10 @@
     margin: 8px auto !important;
   }
 
-  /* Action buttons must remain tappable (>= 32px height) */
+  /* Action buttons must remain tappable (>= 36px height)；
+     全站唯一定义点（antd-responsive.css 的重复已于 2026-08-03 移除） */
   .ant-btn-sm {
-    min-height: 32px;
+    min-height: 36px;
   }
 
   /* Pagination touch targets >= 36px to satisfy the 44px guideline loosely

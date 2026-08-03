@@ -165,7 +165,7 @@ export default function MarketScanner() {
               <div className="mobile-list-item mobile-list-item--static">
                 <div className="mobile-list-item__row">
                   <div className="mobile-list-item__main">
-                    <span className="tnum mobile-list-item__value">{log.scan_date}</span>
+                    <span className="tabular-nums mobile-list-item__value">{log.scan_date}</span>
                   </div>
                   <div className="mobile-list-item__metrics">
                     <ScanCount value={log.new_count} prefix="+" />

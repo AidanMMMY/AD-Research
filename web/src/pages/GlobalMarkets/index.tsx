@@ -29,6 +29,7 @@ import PageShell from '@/components/PageShell';
 import PageHeader from '@/components/PageHeader';
 import Panel from '@/components/Panel';
 import EmptyState from '@/components/EmptyState';
+import ErrorState from '@/components/ErrorState';
 import LoadingBlock from '@/components/LoadingBlock';
 import Sparkline from '@/components/Sparkline';
 import ReturnTagPct from '@/components/ReturnTagPct';
@@ -240,7 +241,7 @@ function inferCategoryKey(code: string): string {
  * ``compact`` 变体（合并 Panel 内的小类目）省略「数据日期 / 区域」两列并
  * 收窄列宽，让两张表能并排落在桌面半栅格里； freshness 由页头
  * LastUpdated 与指数整表的日期列覆盖。移动端两种变体渲染完全一致
- * （日期/区域本来就随 ``ad-hidden-mobile`` 隐藏）。
+ * （日期/区域两列按 isMobile 直接从 columns 剔除）。
  */
 function CategoryTable({ rows, isMobile, compact = false }: { rows: RowVm[]; isMobile: boolean; compact?: boolean }): JSX.Element {
   // 行点击 → /global/:code 指数详情页（2026-08-01 Batch C/D）
@@ -313,14 +314,16 @@ function CategoryTable({ rows, isMobile, compact = false }: { rows: RowVm[]; isM
           <Text type="secondary">—</Text>
         ),
     },
-    ...(!compact
+    // 移动端 P0（2026-08-03）：原 `ad-hidden-mobile` 死类（全项目无定义）
+    // 导致「数据日期/区域」两列在移动端仍占位渲染；改为按 isMobile 直接从
+    // columns 数组剔除，移动端不再出现 0 宽幽灵列。
+    ...(!compact && !isMobile
       ? ([
           {
             title: '数据日期',
             dataIndex: 'asOf',
             key: 'asOf',
-            width: isMobile ? 0 : 130,
-            className: isMobile ? 'ad-hidden-mobile' : undefined,
+            width: 130,
             render: (p: string | null) =>
               p ? <Text type="secondary">{p}</Text> : <Text type="secondary">未采集</Text>,
           },
@@ -328,8 +331,7 @@ function CategoryTable({ rows, isMobile, compact = false }: { rows: RowVm[]; isM
             title: '区域',
             dataIndex: 'region',
             key: 'region',
-            width: isMobile ? 0 : 90,
-            className: isMobile ? 'ad-hidden-mobile' : undefined,
+            width: 90,
             render: (r: string) =>
               r === 'global' ? <ThemeTag variant="neutral">全球</ThemeTag> : <ThemeTag variant="accent">美国</ThemeTag>,
           },
@@ -433,7 +435,7 @@ function useRecentPoliticalEvents() {
  */
 function RecentWeekEvents(): JSX.Element | null {
   const navigate = useNavigate();
-  const { data, isLoading, isError } = useRecentPoliticalEvents();
+  const { data, isLoading, isError, refetch } = useRecentPoliticalEvents();
 
   if (isLoading) {
     return (
@@ -445,7 +447,7 @@ function RecentWeekEvents(): JSX.Element | null {
   if (isError) {
     return (
       <Panel title="最近一周重大政治 / 地缘事件" padding="md">
-        <EmptyState title="事件流加载失败" />
+        <ErrorState title="事件流加载失败" onRetry={() => refetch()} />
       </Panel>
     );
   }
@@ -519,12 +521,29 @@ export default function GlobalMarkets() {
   // Fetch latest for both 'global' and 'us' so we can cover DXY,
   // USDJPY, Brent, WTI, Gold, SP500 *and* the legacy US series
   // (VIX, UST yields, Treasury spreads).
-  const { data: latestGlobal, isLoading: gLoading, dataUpdatedAt: gUpdatedAt } =
-    useMacroLatest('global');
-  const { data: latestUs, isLoading: uLoading, dataUpdatedAt: uUpdatedAt } =
-    useMacroLatest('us');
+  // 解构 isError / refetch：接口失败时必须显示错误态（带重试），
+  // 不能落入「暂无全球市场数据」假空态（审计 P1，2026-08-03）。
+  const {
+    data: latestGlobal,
+    isLoading: gLoading,
+    isError: gError,
+    refetch: gRefetch,
+    dataUpdatedAt: gUpdatedAt,
+  } = useMacroLatest('global');
+  const {
+    data: latestUs,
+    isLoading: uLoading,
+    isError: uError,
+    refetch: uRefetch,
+    dataUpdatedAt: uUpdatedAt,
+  } = useMacroLatest('us');
 
   const isLoading = gLoading || uLoading;
+  const isError = gError || uError;
+  const handleRetry = () => {
+    if (gError) gRefetch();
+    if (uError) uRefetch();
+  };
   // Show the fresher of the two query timestamps in the header.
   const dataUpdatedAt = Math.max(gUpdatedAt, uUpdatedAt) || undefined;
   const allLatest: MacroLatestItem[] = useMemo(
@@ -675,7 +694,18 @@ export default function GlobalMarkets() {
         <RecentWeekEvents />
       </section>
 
-      {!hasAnyData && !isLoading && (
+      {isError && !hasAnyData && (
+        <section className="ad-section">
+          <Panel>
+            <ErrorState
+              description="全球市场数据加载失败，请检查网络后重试"
+              onRetry={handleRetry}
+            />
+          </Panel>
+        </section>
+      )}
+
+      {!isError && !hasAnyData && !isLoading && (
         <section className="ad-section">
           <Panel>
             <EmptyState

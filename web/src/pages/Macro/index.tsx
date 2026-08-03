@@ -270,7 +270,7 @@ export default function Macro() {
       align: 'right',
       sorter: (a, b) => (a.value ?? -Infinity) - (b.value ?? -Infinity),
       render: (v: number | null, row) => (
-        <Text strong className="tnum">
+        <Text strong className="tabular-nums">
           {formatValue(v, row.unit)}
         </Text>
       ),
@@ -282,7 +282,7 @@ export default function Macro() {
       width: 120,
       render: (p?: string | null) =>
         p ? (
-          <Text className="tnum">{p}</Text>
+          <Text className="tabular-nums">{p}</Text>
         ) : (
           <Text type="secondary">未采集</Text>
         ),
@@ -294,7 +294,7 @@ export default function Macro() {
       width: 180,
       render: (t?: string | null) =>
         t ? (
-          <Text type="secondary" className="ad-text-xs tnum">
+          <Text type="secondary" className="ad-text-xs tabular-nums">
             {new Date(t).toLocaleString('zh-CN')}
           </Text>
         ) : (

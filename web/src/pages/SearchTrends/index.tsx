@@ -1,7 +1,7 @@
 import { useMemo, useState, type ReactNode } from 'react';
 import './styles.css';
 import {
-  Table, Input, Select, Button, Space, Tag, message, Tabs, Alert,
+  Table, List, Input, Select, Button, Space, Tag, message, Tabs, Alert,
 } from 'antd';
 import { ReloadOutlined, SearchOutlined, FireOutlined, GoogleOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
@@ -18,6 +18,7 @@ import LastUpdated from '@/components/LastUpdated';
 import ThemeTag from '@/components/ThemeTag';
 import LoadingBlock from '@/components/LoadingBlock';
 import { useDebounce } from '@/hooks/useDebounce';
+import { useIsMobile } from '@/hooks/useBreakpoint';
 import { NULL_PLACEHOLDER } from '@/utils/format';
 import {
   useSearchTrendList,
@@ -119,6 +120,7 @@ export default function SearchTrendsPage() {
   const [searchText, setSearchText] = useState<string>('');
   const [page, setPage] = useState(1);
   const [compareKeyword, setCompareKeyword] = useState<string | null>(null);
+  const isMobile = useIsMobile();
 
   // Debounce the text inputs that flow into React Query keys. Each input
   // fires a fresh request on every keystroke otherwise — coalescing into
@@ -168,6 +170,37 @@ export default function SearchTrendsPage() {
     { title: '区域', dataIndex: 'region', key: 'region', width: 80 },
     { title: '指数值', dataIndex: 'value', key: 'value', render: (v: number) => fmtTrendValue(v) },
   ];
+
+  /* 移动端历史明细行式降级（2026-08-03 移动端审计）：7 列宽表 → 行卡片。
+     无跳转目标，静态行；「是否完整」并入 tags 行。 */
+  const renderTrendMobileRow = (r: SearchTrend) => (
+    <div key={r.id} className="mobile-list-item mobile-list-item--static">
+      <div className="mobile-list-item__row">
+        <div className="mobile-list-item__main ad-flex ad-items-center ad-gap-2">
+          <span className="mobile-list-item__value search-trends__keyword-ellipsis">
+            {r.keyword}
+          </span>
+          <ThemeTag variant={r.source === 'baidu' ? 'accent' : 'success'}>{r.source}</ThemeTag>
+        </div>
+        <div className="mobile-list-item__metrics">
+          <span className="mobile-list-item__metric">
+            <span className="mobile-list-item__metric-label">指数值</span>
+            <span className="tabular-nums">{fmtTrendValue(r.value)}</span>
+          </span>
+        </div>
+      </div>
+      <div className="mobile-list-item__tags">
+        <span className="mobile-list-item__meta tabular-nums">{r.trade_date}</span>
+        <span className="mobile-list-item__meta">{r.region}</span>
+        {r.category && <ThemeTag variant="neutral">{r.category}</ThemeTag>}
+        {r.is_partial ? (
+          <ThemeTag variant="warning">部分</ThemeTag>
+        ) : (
+          <ThemeTag variant="success">完整</ThemeTag>
+        )}
+      </div>
+    </div>
+  );
 
   /* Dual-source trend chart: one line per source (baidu / google) across the
      compare window. The table below stays as the secondary detail view. */
@@ -284,7 +317,6 @@ export default function SearchTrendsPage() {
                       value={source}
                       onChange={setSource}
                       allowClear
-                      className="ad-select--xxs"
                       options={SOURCES}
                     />
                     <Select
@@ -292,14 +324,12 @@ export default function SearchTrendsPage() {
                       value={category}
                       onChange={setCategory}
                       allowClear
-                      className="ad-select--xxs"
                       options={CATEGORIES}
                     />
                     <Input
                       placeholder="搜索关键词"
                       value={searchText}
                       onChange={(e) => setSearchText(e.target.value)}
-                      className="ad-input--md"
                       prefix={<SearchOutlined />}
                       allowClear
                     />
@@ -308,6 +338,21 @@ export default function SearchTrendsPage() {
                     <LoadingBlock size="md" />
                   ) : !listData || listData.items.length === 0 ? (
                     <EmptyState title="暂无搜索热度数据" />
+                  ) : isMobile ? (
+                    /* 移动端：行式列表（静态行，分页走服务端） */
+                    <List
+                      className="ad-list-compact mobile-list"
+                      dataSource={listData.items}
+                      renderItem={renderTrendMobileRow}
+                      pagination={{
+                        current: page,
+                        pageSize: 20,
+                        total: listData.total,
+                        onChange: setPage,
+                        showSizeChanger: false,
+                        className: 'mobile-list-pagination',
+                      }}
+                    />
                   ) : (
                     <div className="ad-table-scroll ad-table-sticky">
                       <Table
@@ -338,7 +383,6 @@ export default function SearchTrendsPage() {
                       placeholder="输入关键词 (如 上证指数)"
                       value={compareKeyword ?? ''}
                       onChange={(e) => setCompareKeyword(e.target.value || null)}
-                      className="ad-input--lg"
                       prefix={<SearchOutlined />}
                       allowClear
                     />

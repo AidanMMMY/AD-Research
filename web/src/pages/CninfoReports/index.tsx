@@ -461,11 +461,11 @@ export default function CninfoReportsPage() {
                   <div className="cninfo-mrow__main">
                     <div className="cninfo-mrow__title">{r.announcement_title}</div>
                     <div className="cninfo-mrow__meta">
-                      <span className="tnum">{r.ts_code}</span>
+                      <span className="tabular-nums">{r.ts_code}</span>
                       <Tag color={ADJUNCT_COLOR[r.adjunct_type] ?? 'default'}>
                         {ADJUNCT_LABEL[r.adjunct_type] ?? r.adjunct_type}
                       </Tag>
-                      {r.fiscal_year != null && <span className="tnum">{r.fiscal_year}</span>}
+                      {r.fiscal_year != null && <span className="tabular-nums">{r.fiscal_year}</span>}
                       <span>{formatDate(r.announcement_time)}</span>
                     </div>
                   </div>

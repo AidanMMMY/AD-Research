@@ -285,7 +285,7 @@ export default function Favorites() {
             {tick ? (
               <>
                 <span
-                  className="tnum mobile-list-item__value"
+                  className="tabular-nums mobile-list-item__value"
                   style={{ color: getReturnColor(tick.change_pct) }}
                 >
                   {tick.price.toFixed(2)}
@@ -303,7 +303,7 @@ export default function Favorites() {
             <span className="mobile-list-item__meta">{record.market}</span>
           )}
           {record.created_at && (
-            <span className="tnum mobile-list-item__meta">
+            <span className="tabular-nums mobile-list-item__meta">
               {formatDateTimeCompact(record.created_at)}
             </span>
           )}

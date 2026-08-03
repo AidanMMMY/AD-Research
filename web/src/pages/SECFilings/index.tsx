@@ -375,9 +375,9 @@ export default function SECFilingsPage() {
                       {row.company_name ?? row.ticker}
                     </div>
                     <div className="sec-filings-mrow__meta">
-                      <span className="tnum">{row.ticker}</span>
+                      <span className="tabular-nums">{row.ticker}</span>
                       <Tag>{row.form_type}</Tag>
-                      <span className="tnum">{row.filing_date}</span>
+                      <span className="tabular-nums">{row.filing_date}</span>
                     </div>
                   </div>
                   <div className="sec-filings-mrow__side">

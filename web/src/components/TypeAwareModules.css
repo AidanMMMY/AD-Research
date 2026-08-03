@@ -8,6 +8,14 @@
   min-width: 220px;
 }
 
+/* 移动端：选择器占满整行，去掉固定 min-width 防溢出 */
+@media (max-width: 767px) {
+  .type-aware-picker {
+    min-width: 0;
+    width: 100%;
+  }
+}
+
 .type-aware-footer {
   margin-top: var(--space-3);
   color: var(--text-secondary);

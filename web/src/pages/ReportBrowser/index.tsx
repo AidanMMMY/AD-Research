@@ -73,7 +73,7 @@ const REPORT_BROWSER_PAGE_STYLE = `
 /* ---- Mobile (≤767px): table → hairline row-list (direction A) ----
    Desktop rules above are untouched; everything below only applies
    under the mobile breakpoint. Rows compose theme.css utilities
-   (.row-list / .hairline-row / .tnum) with page-local parts. */
+   (.row-list / .hairline-row / .tabular-nums) with page-local parts. */
 @media (max-width: 767px) {
   .report-browser__filters .filter-toolbar__filters,
   .report-browser__chips .filter-toolbar__filters {

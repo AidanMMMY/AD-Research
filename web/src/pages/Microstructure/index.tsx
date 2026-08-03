@@ -1,10 +1,11 @@
 import { useMemo, useState, type ReactNode } from 'react';
 import './styles.css';
 import {
-  Table, Input, Select, Button, Space, Tag, message, Statistic, Tabs,
+  Table, List, Input, Select, Button, Space, Tag, message, Statistic, Tabs,
 } from 'antd';
 import { ReloadOutlined, SearchOutlined, FundOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
+import { useNavigate } from 'react-router-dom';
 import PageShell from '@/components/PageShell';
 import PageHeader from '@/components/PageHeader';
 import Panel from '@/components/Panel';
@@ -15,9 +16,11 @@ import ResponsiveGrid from '@/components/ResponsiveGrid';
 import LastUpdated from '@/components/LastUpdated';
 import ThemeTag from '@/components/ThemeTag';
 import ReturnTagPct from '@/components/ReturnTagPct';
+import InstrumentCodeTag from '@/components/InstrumentCodeTag';
 import { NULL_PLACEHOLDER } from '@/utils/format';
 import { getReturnColor } from '@/utils/color';
 import { useDebounce } from '@/hooks/useDebounce';
+import { useIsMobile } from '@/hooks/useBreakpoint';
 import {
   useMicrostructureLhb,
   useMicrostructureHsgt,
@@ -112,6 +115,8 @@ function formatRatioPct(v: number | null | undefined): string {
 
 export default function MicrostructurePage() {
   const [tab, setTab] = useState('lhb');
+  const navigate = useNavigate();
+  const isMobile = useIsMobile();
 
   // Filters
   const [ticker, setTicker] = useState<string | undefined>();
@@ -197,6 +202,112 @@ export default function MicrostructurePage() {
       (marginData?.items.length ?? 0) +
       (releaseData?.total ?? 0),
     [lhbData, hsgtData, marginData, releaseData],
+  );
+
+  /* ============================================================
+   * 移动端行式降级（2026-08-03 移动端审计）：4 个 tab 的宽表在 375px
+   * 视口全部挤成横向滚动条，改为 .mobile-list-item 行式卡片；
+   * 有 ts_code 的行整行可点进标的详情，沪深港通为大盘聚合数据，静态行。
+   * ============================================================ */
+
+  /** 整行可点进标的详情的通用 props */
+  const mobileNavRowProps = (code: string, name?: string | null) => ({
+    role: 'button' as const,
+    tabIndex: 0,
+    'aria-label': `查看 ${name ?? code} 详情`,
+    className: 'mobile-list-item',
+    onClick: () => navigate(`/instruments/${code}`),
+    onKeyDown: (e: React.KeyboardEvent<HTMLElement>) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        navigate(`/instruments/${code}`);
+      }
+    },
+  });
+
+  /** 右侧 label-over-value 堆叠指标 */
+  const mobileMetric = (label: string, value: ReactNode) => (
+    <span className="mobile-list-item__metric">
+      <span className="mobile-list-item__metric-label">{label}</span>
+      {value}
+    </span>
+  );
+
+  const renderLhbMobileRow = (r: LhbRecord) => (
+    <div key={r.id} {...mobileNavRowProps(r.ts_code, r.name)}>
+      <div className="mobile-list-item__row">
+        <div className="mobile-list-item__main">
+          <InstrumentCodeTag code={r.ts_code} name={r.name ?? undefined} />
+        </div>
+        <div className="mobile-list-item__metrics">
+          {mobileMetric(
+            '净买额',
+            <span className="tabular-nums" style={{ color: getReturnColor(r.lhb_net_amount) }}>
+              {formatMoney(r.lhb_net_amount)}
+            </span>,
+          )}
+          <ReturnTagPct value={r.pct_change} />
+        </div>
+      </div>
+      <div className="mobile-list-item__tags">
+        <span className="mobile-list-item__meta tabular-nums">{r.trade_date}</span>
+        {r.reason && <span className="mobile-list-item__meta">{r.reason}</span>}
+      </div>
+    </div>
+  );
+
+  const renderHsgtMobileRow = (r: HsgtFlow) => (
+    <div key={r.id} className="mobile-list-item mobile-list-item--static">
+      <div className="mobile-list-item__row">
+        <div className="mobile-list-item__main ad-flex ad-items-center ad-gap-2">
+          <span className="mobile-list-item__value tabular-nums">{r.trade_date}</span>
+          <Tag>{r.type}</Tag>
+        </div>
+        <div className="mobile-list-item__metrics">
+          {mobileMetric('净流入', <span className="tabular-nums">{formatMoney(r.net_amount)}</span>)}
+          {mobileMetric('当日余额', <span className="tabular-nums">{formatMoney(r.balance)}</span>)}
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderMarginMobileRow = (r: MarginBalance) => (
+    <div key={r.id} {...mobileNavRowProps(r.ts_code, r.name)}>
+      <div className="mobile-list-item__row">
+        <div className="mobile-list-item__main">
+          <InstrumentCodeTag code={r.ts_code} name={r.name ?? undefined} />
+        </div>
+        <div className="mobile-list-item__metrics">
+          {mobileMetric('融资余额', <span className="tabular-nums">{formatMoney(r.financing_balance)}</span>)}
+          {mobileMetric('融券余额', <span className="tabular-nums">{formatMoney(r.securities_balance)}</span>)}
+        </div>
+      </div>
+      <div className="mobile-list-item__tags">
+        <span className="mobile-list-item__meta tabular-nums">{r.trade_date}</span>
+        <Tag>{r.exchange}</Tag>
+      </div>
+    </div>
+  );
+
+  const renderReleaseMobileRow = (r: RestrictedRelease) => (
+    <div key={r.id} {...mobileNavRowProps(r.ts_code, r.name)}>
+      <div className="mobile-list-item__row">
+        <div className="mobile-list-item__main">
+          <InstrumentCodeTag code={r.ts_code} name={r.name ?? undefined} />
+        </div>
+        <div className="mobile-list-item__metrics">
+          {mobileMetric('解禁市值', <span className="tabular-nums">{formatMoney(r.restricted_amount)}</span>)}
+          {mobileMetric('占比', <span className="tabular-nums">{formatRatioPct(r.lift_ratio)}</span>)}
+        </div>
+      </div>
+      <div className="mobile-list-item__tags">
+        <span className="mobile-list-item__meta tabular-nums">解禁日 {r.restricted_date}</span>
+        {r.restricted_type && <span className="mobile-list-item__meta">{r.restricted_type}</span>}
+        <span className="mobile-list-item__meta tabular-nums">
+          数量 {r.restricted_number?.toLocaleString() ?? NULL_PLACEHOLDER}
+        </span>
+      </div>
+    </div>
   );
 
   return (
@@ -293,6 +404,21 @@ export default function MicrostructurePage() {
                 <LoadingBlock size="md" />
               ) : !lhbData || lhbData.items.length === 0 ? (
                 <EmptyState title="暂无龙虎榜数据" />
+              ) : isMobile ? (
+                /* 移动端：行式列表，整行可点进详情；分页走服务端 */
+                <List
+                  className="ad-list-compact mobile-list"
+                  dataSource={lhbData.items}
+                  renderItem={renderLhbMobileRow}
+                  pagination={{
+                    current: lhbPage,
+                    pageSize: 20,
+                    total: lhbData.total,
+                    onChange: setLhbPage,
+                    showSizeChanger: false,
+                    className: 'mobile-list-pagination',
+                  }}
+                />
               ) : (
                 <div className="ad-table-scroll ad-table-sticky ad-scroll-hint">
                   <Table
@@ -323,6 +449,13 @@ export default function MicrostructurePage() {
                 <LoadingBlock size="md" />
               ) : !hsgtData || hsgtData.items.length === 0 ? (
                 <EmptyState title="暂无沪深港通数据" />
+              ) : isMobile ? (
+                /* 移动端：行式列表（大盘聚合数据，无标的详情，静态行） */
+                <List
+                  className="ad-list-compact mobile-list"
+                  dataSource={hsgtData.items}
+                  renderItem={renderHsgtMobileRow}
+                />
               ) : (
                 <div className="ad-table-scroll ad-table-sticky ad-scroll-hint">
                   <Table
@@ -348,6 +481,13 @@ export default function MicrostructurePage() {
                 <LoadingBlock size="md" />
               ) : !marginData || marginData.items.length === 0 ? (
                 <EmptyState title="暂无融资融券数据" />
+              ) : isMobile ? (
+                /* 移动端：行式列表，整行可点进详情 */
+                <List
+                  className="ad-list-compact mobile-list"
+                  dataSource={marginData.items}
+                  renderItem={renderMarginMobileRow}
+                />
               ) : (
                 <div className="ad-table-scroll ad-table-sticky ad-scroll-hint">
                   <Table
@@ -373,6 +513,21 @@ export default function MicrostructurePage() {
                 <LoadingBlock size="md" />
               ) : !releaseData || releaseData.items.length === 0 ? (
                 <EmptyState title="暂无限售解禁数据" />
+              ) : isMobile ? (
+                /* 移动端：行式列表，整行可点进详情；分页走服务端 */
+                <List
+                  className="ad-list-compact mobile-list"
+                  dataSource={releaseData.items}
+                  renderItem={renderReleaseMobileRow}
+                  pagination={{
+                    current: releasePage,
+                    pageSize: 20,
+                    total: releaseData.total,
+                    onChange: setReleasePage,
+                    showSizeChanger: false,
+                    className: 'mobile-list-pagination',
+                  }}
+                />
               ) : (
                 <div className="ad-table-scroll ad-table-sticky ad-scroll-hint">
                   <Table

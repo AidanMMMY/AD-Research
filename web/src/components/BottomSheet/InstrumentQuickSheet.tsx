@@ -130,7 +130,7 @@ export default function InstrumentQuickSheet({
           </div>
 
           <div className="quick-sheet__price-row">
-            <span className="tnum quick-sheet__price">
+            <span className="tabular-nums quick-sheet__price">
               {price != null
                 ? (formatPrice ? formatPrice(price) : price.toFixed(2))
                 : NULL_PLACEHOLDER}

@@ -271,6 +271,8 @@ function EtfHoldingsModule({ instrument }: { instrument: InstrumentInfo }) {
                       dataIndex: 'shares',
                       key: 'shares',
                       align: 'right',
+                      // 移动端只留 代码/名称/权重 3 列（2026-08-03 移动端审计）
+                      responsive: ['md'],
                       render: (v: number | null) => (v != null ? v.toLocaleString() : '—'),
                     },
                     {
@@ -278,12 +280,14 @@ function EtfHoldingsModule({ instrument }: { instrument: InstrumentInfo }) {
                       dataIndex: 'market_value',
                       key: 'market_value',
                       align: 'right',
+                      responsive: ['md'],
                       render: (v: number | null) => (v != null ? v.toLocaleString() : '—'),
                     },
                     {
                       title: '报告期',
                       dataIndex: 'holdings_as_of_date',
                       key: 'holdings_as_of_date',
+                      responsive: ['md'],
                       render: (v: string | null) => v ?? '—',
                     },
                   ]}

@@ -45,7 +45,7 @@ export interface ResearchReportListParams {
   start_date?: string;
   end_date?: string;
   has_summary?: boolean;
-  sort_by?: 'publish_date' | 'fetched_at' | 'updated_at';
+  sort_by?: 'publish_date' | 'fetched_at' | 'updated_at' | 'target_price';
   sort_dir?: 'asc' | 'desc';
 }
 

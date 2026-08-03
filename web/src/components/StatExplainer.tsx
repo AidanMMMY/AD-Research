@@ -3,6 +3,7 @@ import { Popover } from 'antd';
 import { InfoCircleOutlined } from '@ant-design/icons';
 import { getTerm } from '@/utils/termDictionary';
 import { useSettingsStore } from '@/stores/settings';
+import { useIsMobile } from '@/hooks/useBreakpoint';
 
 interface StatExplainerProps {
   /** termDictionary 中的 key；找不到则不渲染 */
@@ -11,7 +12,7 @@ interface StatExplainerProps {
   text?: string;
   /** 自定义展开内容；优先级高于 term.fullDesc */
   expanded?: string;
-  /** 触发方式（默认 hover） */
+  /** 触发方式（默认 hover；移动端自动追加 click，触屏无 hover） */
   trigger?: 'hover' | 'click';
   /** 是否禁用：当 settings.learningMode 为关时强制不渲染 */
   respectLearningMode?: boolean;
@@ -34,6 +35,7 @@ export default function StatExplainer({
   className,
 }: StatExplainerProps) {
   const learningMode = useSettingsStore((s) => s.learningMode);
+  const isMobile = useIsMobile();
 
   const term = useMemo(() => (termKey ? getTerm(termKey) : undefined), [termKey]);
   const summary = text ?? term?.shortDesc;
@@ -64,10 +66,15 @@ export default function StatExplainer({
     }
   };
 
+  // 触屏没有 hover：移动端把触发方式扩为 hover+click，点按即可展开
+  const effectiveTrigger: Array<'hover' | 'click'> = isMobile
+    ? ['hover', 'click']
+    : [trigger];
+
   return (
     <Popover
       content={<div className="stat-explainer__popover">{detail}</div>}
-      trigger={trigger}
+      trigger={effectiveTrigger}
       placement="top"
       overlayStyle={{ maxWidth: 'min(320px, 88vw)' }}
     >

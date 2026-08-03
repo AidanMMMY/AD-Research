@@ -74,6 +74,28 @@ export default function AIChat() {
   // Show session sidebar on desktop; toggle on mobile
   const showSidebar = !isMobile || !activeSession;
 
+  // ── 页内键盘避让（2026-08-03 移动端审计）────────────────────────────
+  // iOS/Android 弹出键盘只缩 visualViewport、不触发 window resize，
+  // calc(100dvh - 220px) 的布局高度不变 → 输入栏被键盘遮住。
+  // 参照 BottomSheet 的 avoidKeyboard：监听 visualViewport.resize，
+  // 把聊天布局高度钉进可视区域（220px 与 styles.css 的占位经验值对齐）。
+  const layoutRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!isMobile) return;
+    const vv = window.visualViewport;
+    const el = layoutRef.current;
+    if (!vv || !el) return;
+    const apply = () => {
+      el.style.height = `${Math.max(280, vv.height - 220)}px`;
+    };
+    apply();
+    vv.addEventListener('resize', apply);
+    return () => {
+      vv.removeEventListener('resize', apply);
+      el.style.height = '';
+    };
+  }, [isMobile]);
+
   const sidebar = (
     <div className="phase5c-chat-sidebar">
       <Button
@@ -152,7 +174,7 @@ export default function AIChat() {
           </Button>
         </div>
       )}
-      <div className="phase5c-chat-layout">
+      <div className="phase5c-chat-layout" ref={layoutRef}>
         {(showSidebar || !isMobile) && sidebar}
         {(!showSidebar || !isMobile) && (
           <AIChatConversation

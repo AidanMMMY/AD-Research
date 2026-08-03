@@ -12,6 +12,7 @@ import {
   Badge,
   Space,
   Spin,
+  Button,
   message,
 } from 'antd';
 import {
@@ -314,6 +315,7 @@ export default function NewsFeed() {
     isFetchingNextPage,
     isLoading,
     isError,
+    refetch,
   } = useInfiniteQuery({
     // Distinct query keys so the watchlist and global feeds do not
     // share a cache entry — the watchlist result set changes the
@@ -642,9 +644,16 @@ export default function NewsFeed() {
         {/* Feed */}
         <div className="ad-news-feed">
           {isError ? (
+            /* N1（2026-08-03）：加载失败给出明确的重试出口，
+               不再只能整页刷新。 */
             <EmptyState
               title="加载失败，请稍后重试"
               description="网络异常或服务暂不可用，请稍后再试"
+              action={
+                <Button type="primary" onClick={() => refetch()}>
+                  重试
+                </Button>
+              }
             />
           ) : isLoading ? (
             <div className="ad-p-5">

@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation } from '@tanstack/react-query';
-import { Input, Button, Slider, Tooltip, Tag } from 'antd';
+import { Input, Button, Slider, Tooltip, Tag, message } from 'antd';
 import { SmileOutlined, FrownOutlined, MehOutlined, SyncOutlined } from '@ant-design/icons';
 import { researchApi, SentimentAggregate } from '@/api/research';
 import AISetupBanner from "@/components/AISetupBanner";
 import FilterToolbar from '@/components/FilterToolbar';
 import EmptyState from '@/components/EmptyState';
+import ErrorState from '@/components/ErrorState';
 import LoadingBlock from '@/components/LoadingBlock';
 import Panel from '@/components/Panel';
 import ThemeTag from '@/components/ThemeTag';
@@ -142,7 +143,9 @@ export default function InstrumentSentimentPanel({ initialCode }: { initialCode?
     );
   };
 
-  const { data: sentiment, isLoading, refetch } = useQuery({
+  // 审计 P1（2026-08-03）：查询与 mutation 都要显式承接错误 ——
+  // 失败时 message.error 提示 + 错误态重试出口，不能静默落入空态。
+  const { data: sentiment, isLoading, isError, refetch } = useQuery({
     queryKey: ['sentiment', selectedCode, days],
     queryFn: () =>
       selectedCode
@@ -156,6 +159,9 @@ export default function InstrumentSentimentPanel({ initialCode }: { initialCode?
     onSuccess: (_res, ingestedCode) => {
       syncCodeToUrl(ingestedCode);
       refetch();
+    },
+    onError: (err: any) => {
+      message.error(err?.response?.data?.detail ?? '情绪分析失败，请稍后重试');
     },
   });
 
@@ -235,6 +241,12 @@ export default function InstrumentSentimentPanel({ initialCode }: { initialCode?
                 ))}
               </>
             }
+          />
+        ) : isError ? (
+          <ErrorState
+            className="ad-mt-9"
+            description={`${selectedCode} 的情绪数据加载失败，请稍后重试`}
+            onRetry={() => refetch()}
           />
         ) : !sentiment ? (
           <EmptyState

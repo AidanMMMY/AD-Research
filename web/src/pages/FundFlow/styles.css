@@ -30,7 +30,8 @@
   height: 18px;
   padding: 0 6px;
   border-radius: 9999px;
-  font-size: 10px;
+  /* 可读性审计 2026-08-03：10px → 12px */
+  font-size: 12px;
   font-weight: 500;
   letter-spacing: 0.04em;
   line-height: 1;
@@ -156,7 +157,8 @@
   min-width: 18px;
   height: 16px;
   padding: 0 5px;
-  font-size: 10px;
+  /* 可读性审计 2026-08-03：10px → 12px */
+  font-size: 12px;
   font-weight: 500;
   line-height: 1;
   color: var(--text-secondary);
@@ -184,7 +186,8 @@
 }
 
 .fund-flow__breakdown-label {
-  font-size: 10px;
+  /* 可读性审计 2026-08-03：10px → 12px */
+  font-size: 12px;
   font-weight: 500;
   color: var(--text-tertiary);
   text-transform: uppercase;
@@ -266,7 +269,8 @@
 
 .fund-flow__source-desc {
   color: var(--text-tertiary);
-  font-size: 11px;
+  /* 可读性审计 2026-08-03：11px → 12px */
+  font-size: 12px;
   line-height: 1.5;
 }
 

@@ -136,7 +136,7 @@ export default function ETLStatus() {
                           )}
                         </div>
                       </div>
-                      <div className="etl-mrow__side tnum">
+                      <div className="etl-mrow__side tabular-nums">
                         {r.records_count == null ? '-' : r.records_count.toLocaleString()}
                       </div>
                     </div>

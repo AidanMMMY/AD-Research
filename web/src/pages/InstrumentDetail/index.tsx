@@ -30,7 +30,8 @@ import { useSettingsStore } from '@/stores/settings';
 import { getReturnColor } from '@/utils/color';
 import { buildInstrumentDetailContext } from '@/utils/helpContext';
 import { getQuickQuestions } from '@/utils/helpPrompts';
-import { SENTIMENT_COLORS, SENTIMENT_LABELS } from '@/utils/sentiment';
+import { SENTIMENT_COLORS, SENTIMENT_LABELS, formatSentimentScore, normalizeSentimentScore } from '@/utils/sentiment';
+import { formatDateTime } from '@/utils/datetime';
 import type { ResearchNote } from '@/api/research';
 
 const TIME_RANGE_OPTIONS = [
@@ -62,7 +63,7 @@ const INDICATOR_OPTION_TERMS: Record<string, string> = {
 
 const INSTRUMENT_TYPE_LABELS: Record<string, string> = {
   STOCK: '个股',
-  CRYPTO: '数字货币',
+  CRYPTO: '加密',
   ETF: 'ETF',
 };
 
@@ -204,7 +205,15 @@ export default function InstrumentDetail() {
     mutationFn: () => researchApi.generateNote(code || ''),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['research-notes', code] });
-      message.success('研报生成中，请稍后刷新');
+      // I2（2026-08-03）：生成是异步任务——15s / 30s 各轮询一次
+      // invalidate，研报就绪后自动刷新，不再让用户手动刷新页面。
+      message.success('研报生成中，完成后将自动展示（通常 1 分钟内）');
+      window.setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ['research-notes', code] });
+      }, 15_000);
+      window.setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ['research-notes', code] });
+      }, 30_000);
     },
     onError: (err: any) => {
       message.error(err?.response?.data?.detail || '生成失败');
@@ -679,7 +688,9 @@ export default function InstrumentDetail() {
                         </span>
                       )}
                       <span className="ai-note-time">
-                        {latestNote.generated_at?.slice(0, 16) || latestNote.created_at?.slice(0, 16)}
+                        {/* I1（2026-08-03）：slice(0,16) → 统一时区安全的
+                            formatDateTime（naive UTC 会按本地时区渲染）。 */}
+                        {formatDateTime(latestNote.generated_at ?? latestNote.created_at, 'YYYY-MM-DD HH:mm', '')}
                       </span>
                     </div>
                     <p className="ai-note-summary">{latestNote.summary}</p>
@@ -720,7 +731,9 @@ export default function InstrumentDetail() {
                       className="sentiment-score"
                       style={{ color: SENTIMENT_COLORS[sentiment.label] || 'var(--text-secondary)' }}
                     >
-                      {sentiment.avg_score?.toFixed(2) ?? '—'}
+                      {/* I3（2026-08-03）：avg_score 双标度（-100..100
+                          或 -1..1）先归一化再展示。 */}
+                      {sentiment.avg_score != null ? formatSentimentScore(sentiment.avg_score) : '—'}
                     </div>
                     <ThemeTag
                       variant={
@@ -743,7 +756,9 @@ export default function InstrumentDetail() {
                              score and animates via the critically-damped spring
                              curve (frame smoothness: no layout-affecting width). */
                           width: '100%',
-                          transform: `scaleX(${Math.max(0, Math.min(1, (sentiment.avg_score + 1) / 2))})`,
+                          /* I3（2026-08-03）：scaleX 前先走统一归一化，
+                             -100..+100 标度的分数不会再顶满整条。 */
+                          transform: `scaleX(${Math.max(0, Math.min(1, (normalizeSentimentScore(sentiment.avg_score ?? 0) + 1) / 2))})`,
                           transformOrigin: 'left center',
                           transition: 'transform var(--transition-spring-fast)',
                           willChange: 'transform',

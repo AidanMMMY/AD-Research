@@ -9,10 +9,10 @@ import {
   TranslationOutlined,
   EyeOutlined,
 } from '@ant-design/icons';
-import { SENTIMENT_COLORS, SENTIMENT_LABELS } from '@/utils/sentiment';
+import { SENTIMENT_COLORS, SENTIMENT_LABELS, formatSentimentScore } from '@/utils/sentiment';
 import type { NewsArticle } from '@/types/news';
 import DetailDrawer from '@/components/DetailDrawer';
-import Markdown from '@/components/Markdown';
+import { NewsMarkdown } from '@/components/Markdown';
 import EmptyState from '@/components/EmptyState';
 import InstrumentCodeTag from '@/components/InstrumentCodeTag';
 import ThemeTag from '@/components/ThemeTag';
@@ -202,7 +202,9 @@ export default function NewsDetailDrawer({
                 <Tooltip
                   title={
                     shown.sentiment_score != null
-                      ? `分数 ${shown.sentiment_score.toFixed(2)} · 置信度 ${(
+                      ? // N2（2026-08-03）：分数走统一归一化（双标度），
+                        // 与 detail 页徽标同源。
+                        `分数 ${formatSentimentScore(shown.sentiment_score)} · 置信度 ${(
                           (shown.sentiment_confidence ?? 0) * 100
                         ).toFixed(0)}%`
                       : SENTIMENT_LABELS[sentiment]
@@ -270,7 +272,7 @@ export default function NewsDetailDrawer({
           {isNonChinese && viewMode === 'zh' && !hasTranslation && (
             <div className="news-translation-notice">
               <span className="news-translation-notice__text">
-                中文译文尚未就绪，后台翻译中（通常入库后几分钟内完成）
+                中文译文尚未就绪，翻译进行中（通常几分钟内完成）
               </span>
             </div>
           )}
@@ -278,15 +280,22 @@ export default function NewsDetailDrawer({
           {/* Body — Chinese view renders the ingestion-time AI
               translation; 原文 view prefers the cleaned full text stored
               locally (``full_content``), falling back to the crawler's
-              intro body when no fetch has landed yet. */}
+              intro body when no fetch has landed yet.
+              DR1（2026-08-03）：中文译文 / 原文都过共享 NewsMarkdown
+              管线（think 块 / 重复标题行 / 连换行清理 + prose-reading），
+              与 detail 页完全一致。 */}
           {showChineseBody ? (
-            <div className="news-drawer-body ad-mt-4">
-              <Markdown source={shown.translated_zh!} />
-            </div>
+            <NewsMarkdown
+              source={shown.translated_zh!}
+              title={shown.title_zh ?? shown.title}
+              className="news-drawer-body ad-mt-4"
+            />
           ) : shown.full_content ? (
-            <div className="news-drawer-body ad-mt-4">
-              <Markdown source={shown.full_content} />
-            </div>
+            <NewsMarkdown
+              source={shown.full_content}
+              title={shown.title}
+              className="news-drawer-body ad-mt-4"
+            />
           ) : shown.body || shown.summary ? (
             <div className="news-drawer-body ad-mt-4">
               {shown.body ?? shown.summary}

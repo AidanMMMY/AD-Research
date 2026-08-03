@@ -52,3 +52,11 @@
   border-left: 2px solid var(--color-success);
   padding-left: var(--space-2);
 }
+
+/* 移动端历史明细：关键词过长时省略号收缩，不挤掉右侧指数值 */
+.search-trends__keyword-ellipsis {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

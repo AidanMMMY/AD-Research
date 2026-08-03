@@ -34,30 +34,20 @@ import type {
 import './detail.css';
 import PageShell from '@/components/PageShell';
 import Panel from '@/components/Panel';
-import Markdown from '@/components/Markdown';
 import EmptyState from '@/components/EmptyState';
 import LoadingBlock from '@/components/LoadingBlock';
 import ResponsiveGrid from '@/components/ResponsiveGrid';
 import StatCard from '@/components/StatCard';
 import InstrumentCodeTag from '@/components/InstrumentCodeTag';
+import { NewsMarkdown } from '@/components/Markdown';
+import { EventCategoryTag, SOURCE_LABELS } from '@/components/NewsCard';
 import { formatDateTime, formatDateTimeCompact } from '@/utils/datetime';
-import { SENTIMENT_COLORS, SENTIMENT_LABELS } from '@/utils/sentiment';
-import { cleanNewsFullContent } from '@/utils/text';
+import { SENTIMENT_COLORS, SENTIMENT_LABELS, formatSentimentScore } from '@/utils/sentiment';
+import { collapseBlankRuns } from '@/utils/text';
 import HelpPopover from '@/components/HelpPopover';
 import { useSettingsStore } from '@/stores/settings';
 
 const SOCIAL_SOURCES = new Set(['xueqiu', 'reddit', 'weibo']);
-
-/**
- * Render-layer newline guard (2026-08-01 间距修复).
- * 抓取 / AI 清理 / 译文管线偶尔会在正文里留下 3+ 连续换行（HTML→文本时
- * <p>/<br> 双重换行）。Markdown 渲染器会把多余空行折叠掉，但纯文本
- * pre-wrap 兜底路径不会 —— 每个多余换行都是一整行空白。统一在渲染前
- * 把 3+ 连换行折叠成一个空行；只动渲染输入，不回写数据。
- */
-function collapseBlankRuns(text: string): string {
-  return text.replace(/\n{3,}/g, '\n\n');
-}
 
 const IMPORTANCE_COLOR = 'var(--color-warning-bright)';
 
@@ -87,20 +77,6 @@ function formatBigNumber(n: number | undefined): string {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
   if (n >= 1_000) return `${(n / 1_000).toFixed(1)}k`;
   return String(n);
-}
-
-/**
- * Normalize sentiment_score regardless of backend convention.
- * Backend stores either the `-100..+100` integer range (legacy pipeline)
- * or the `-1..+1` float range (newer pipeline). Detect by magnitude and
- * surface a uniform "-0.78" style number to the UI.
- * (review-news-analyst P0-6)
- */
-function formatSentimentScore(score: number): string {
-  if (!Number.isFinite(score)) return '—';
-  // |x| > 2 → treat as -100..+100 scale.
-  const normalized = Math.abs(score) > 2 ? score / 100 : score;
-  return normalized.toFixed(2);
 }
 
 /**
@@ -297,15 +273,10 @@ export default function NewsDetail() {
     };
   }, [data?.title, data?.title_zh]);
 
-  // Defence-layer cleanup: strip DeepSeek-style  thinking blocks and
-  // repeated title lines before we render the Markdown body.
-  // NOTE: this useMemo must be declared before any early return so the
-  // hook count is identical across loading and loaded renders.
+  // DR1（2026-08-03）：正文清理管线（think 块 / 重复标题行 / 连换行
+  // 折叠）已上提为共享 NewsMarkdown（components/Markdown.tsx），这里只
+  // 决定渲染哪一份源文本。
   const fullContentToRender = renderedFullContent ?? data?.full_content;
-  const cleanedFullContent = useMemo(
-    () => (fullContentToRender && data?.title ? collapseBlankRuns(cleanNewsFullContent(fullContentToRender, data.title)) : null),
-    [fullContentToRender, data?.title],
-  );
 
   if (isLoading) {
     return (
@@ -344,7 +315,8 @@ export default function NewsDetail() {
     fetchFullContent.isError ||
     (fetchFullContent.data && !fetchFullContent.data.success);
 
-  // AI-cleanup observability banner (M22-3, 2026-07-05).
+  // AI-cleanup observability banner (M22-3, 2026-07-05；ND6 2026-08-03
+  // 运维文案改用户文案，不再出现 Jina/DeepSeek/配置类术语).
   //
   // Until now the DeepSeek call in ContentFetcher._clean_with_ai
   // could silently fail and the row would happily show the raw Jina
@@ -352,7 +324,7 @@ export default function NewsDetail() {
   // render one of three banners above the body:
   //   * cleaned       → no banner (default).
   //   * skipped       → grey "AI 暂不可用, 已保留原始抓取".
-  //   * failed        → red "AI 清理失败, 已保留原始抓取".
+  //   * failed        → red "原文提取失败, 已保留摘要".
   //   * null / not_attempted → yellow "该篇尚未抓取正文".
   const aiStatus = data.ai_cleanup_status ?? null;
   const aiBanner =
@@ -361,14 +333,14 @@ export default function NewsDetail() {
           type: 'error' as const,
           message: '原文提取失败',
           description:
-            'Jina Reader 未能从该页提取出可用的正文（通常因网站正文为空或被反爬拦截），已保留文章摘要。可点击「加载完整正文」重新触发。',
+            '暂时无法从原网站提取出正文（可能因正文为空或网站拦截），已保留文章摘要。可点击下方「加载完整正文」重试。',
         }
       : aiStatus === 'skipped'
         ? {
             type: 'info' as const,
-            message: '该篇未经 AI 清理',
+            message: '该篇正文未经优化',
             description:
-              'DeepSeek 当前不可用（未配置 API Key 或账户余额不足），已保留 Jina 原始抓取内容。',
+              'AI 服务暂时不可用，已保留原始抓取内容，不影响阅读。',
           }
         : aiStatus === 'cleaned'
           ? null
@@ -377,7 +349,7 @@ export default function NewsDetail() {
               type: 'warning' as const,
               message: '该篇尚未抓取正文',
               description:
-                '后台调度暂未抓取本篇的完整正文，可点击下方「加载完整正文」手动触发。',
+                '完整正文尚未抓取，可点击下方「加载完整正文」手动加载。',
             };
 
   return (
@@ -393,7 +365,8 @@ export default function NewsDetail() {
           返回资讯
         </Button>
         <div className="ad-detail-meta">
-          <span>{data.source}</span>
+          {/* ND2（2026-08-03）：来源裸 key → SOURCE_LABELS 中文名。 */}
+          <span>{SOURCE_LABELS[data.source]?.label ?? data.source}</span>
           <span className="ad-detail-meta__divider">·</span>
           <span>{formatDateTime(data.published_at)}</span>
           <span className="ad-detail-meta__divider">·</span>
@@ -434,27 +407,10 @@ export default function NewsDetail() {
               ))}
             </Space>
           )}
+          {/* ND1（2026-08-03）：事件类别复用卡片的 EventCategoryTag
+              （中文标签 + 统一配色），不再渲染裸英文 key。 */}
           {data.event_category && (
-            <Tag
-              color={
-                data.event_category === 'geopolitics' ||
-                data.event_category === 'central_bank' ||
-                data.event_category === 'election' ||
-                data.event_category === 'trade_war' ||
-                data.event_category === 'sanction'
-                  ? ({
-                      geopolitics: 'volcano',
-                      central_bank: 'geekblue',
-                      election: 'purple',
-                      trade_war: 'red',
-                      sanction: 'magenta',
-                    } as const)[data.event_category]
-                  : 'geekblue'
-              }
-              className="ad-detail-tag ad-detail-tag--category"
-            >
-              {data.event_category}
-            </Tag>
+            <EventCategoryTag value={data.event_category} />
           )}
           {sentiment && (
             <Badge
@@ -536,7 +492,7 @@ export default function NewsDetail() {
                 ) : (
                   <>
                     <span className="news-translation-notice__text">
-                      中文译文尚未就绪，后台翻译中（通常入库后几分钟内完成）
+                      中文译文尚未就绪，翻译进行中（通常几分钟内完成）
                     </span>
                     <Button
                       size="small"
@@ -553,16 +509,20 @@ export default function NewsDetail() {
             {showChinese ? (
               // Chinese rendering: the ingestion-time AI translation
               // (Markdown, same pipeline as the original body).
-              // P4 内容轨：prose-reading 承载 editorial 阅读尺度（theme.css）。
-              <div className="prose-reading news-detail__reading">
-                <Markdown source={collapseBlankRuns(translationToShow!)} />
-              </div>
-            ) : cleanedFullContent ? (
+              // DR1：统一走共享 NewsMarkdown 管线（清理 + prose-reading）。
+              <NewsMarkdown
+                source={translationToShow!}
+                title={data.title_zh ?? data.title}
+                className="news-detail__reading"
+              />
+            ) : fullContentToRender ? (
               // Cache hit (from a previous click) OR we just finished
               // fetching — render the cleaned Markdown body inline.
-              <div className="prose-reading news-detail__reading">
-                <Markdown source={cleanedFullContent} />
-              </div>
+              <NewsMarkdown
+                source={fullContentToRender}
+                title={data.title}
+                className="news-detail__reading"
+              />
             ) : data.body ? (
               <div className="ad-detail-article__body prose-reading news-detail__reading">
                 {collapseBlankRuns(data.body)}
@@ -587,10 +547,10 @@ export default function NewsDetail() {
                 >
                   {fetchFullContent.isPending
                     ? '正在抓取全文…'
-                    : '📖 加载完整正文'}
+                    : '加载完整正文'}
                 </Button>
                 <div className="ad-mt-2 ad-text-small ad-text-tertiary">
-                  通过 Jina Reader 在线抓取，通常 5-15 秒
+                  在线抓取原文，通常需要 5-15 秒
                 </div>
               </div>
             )}
@@ -762,13 +722,14 @@ export default function NewsDetail() {
                     <List.Item.Meta
                       title={
                         <div className="ad-line-clamp-2 ad-text-sm ad-text-primary ad-leading-normal">
-                          {item.title}
+                          {/* ND4（2026-08-03）：相关资讯同样中文标题优先。 */}
+                          {item.title_zh ?? item.title}
                         </div>
                       }
                       description={
                         <div className="ad-flex ad-items-center ad-gap-2 ad-mt-2">
                           <span className="ad-text-small ad-text-tertiary">
-                            {item.source}
+                            {SOURCE_LABELS[item.source]?.label ?? item.source}
                           </span>
                           <span className="ad-text-small ad-text-muted">·</span>
                           <span className="ad-text-small ad-text-tertiary">

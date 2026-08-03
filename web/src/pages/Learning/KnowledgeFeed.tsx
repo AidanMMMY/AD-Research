@@ -124,8 +124,12 @@ export default function KnowledgeFeed() {
   return (
     <div className="learning-knowledge">
       {/* Topic chip strip — same visual language as the /news filter
-          chips (global ``ad-status-chip`` styles). */}
+          chips (global ``ad-status-chip`` styles).
+          L1（2026-08-03）：行首加「主题：」前缀，与下方「难度：」对齐。 */}
       <div className="learning-topic-chips ad-flex ad-flex-wrap ad-gap-2 ad-mb-4">
+        <span className="ad-text-small ad-text-tertiary ad-self-center ad-mr-1">
+          主题：
+        </span>
         <Tag.CheckableTag
           checked={topic === ''}
           onChange={() => setTopic('')}
@@ -152,8 +156,12 @@ export default function KnowledgeFeed() {
       </div>
 
       {/* 难度筛选（P2）——后端按 news_source_meta.difficulty_default
-          过滤，与主题筛选叠加生效。 */}
+          过滤，与主题筛选叠加生效。
+          L1（2026-08-03）：行首加「难度：」前缀标签。 */}
       <div className="learning-topic-chips ad-flex ad-flex-wrap ad-gap-2 ad-mb-4">
+        <span className="ad-text-small ad-text-tertiary ad-self-center ad-mr-1">
+          难度：
+        </span>
         {DIFFICULTY_OPTIONS.map((d) => {
           const checked = difficulty === d.key;
           return (

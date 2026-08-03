@@ -560,7 +560,7 @@ export default function SignalDashboard() {
                         />
                       </div>
                       <div className="signal-dashboard-mrow__meta">
-                        <span className="tnum">{record.trade_date}</span>
+                        <span className="tabular-nums">{record.trade_date}</span>
                         {record.strategy_type && (
                           <span>{FAMILY_LABELS[record.strategy_type] ?? record.strategy_type}</span>
                         )}
@@ -571,7 +571,7 @@ export default function SignalDashboard() {
                         {SIGNAL_ICONS[record.signal_type]}
                         <span>{SIGNAL_LABELS[record.signal_type] || record.signal_type}</span>
                       </ThemeTag>
-                      <span className="signal-dashboard-mrow__strength tnum">
+                      <span className="signal-dashboard-mrow__strength tabular-nums">
                         强度 {record.strength}
                       </span>
                     </div>

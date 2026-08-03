@@ -174,19 +174,14 @@
     max-width: 100%;
     margin-left: auto;
     flex-shrink: 0;
+    /* 原 479px 孤儿断点的两条规则并入 767px（width:auto / padding-left:0
+       在整个移动区间均安全，统一断点便于维护） */
+    width: auto;
+    padding-left: 0;
   }
 
   .app-layout__header-controls .ant-segmented {
     max-width: 100%;
-  }
-}
-
-@media (max-width: 479px) {
-  .app-layout__header-controls {
-    width: auto;
-    justify-content: flex-end;
-    margin-left: auto;
-    padding-left: 0;
   }
 }
 
@@ -212,15 +207,10 @@
   margin-top: auto;
 }
 
-@media (max-width: 767px) {
-  .app-layout__content {
-    padding: var(--space-page);
-  }
-
-  .app-layout__header {
-    padding: 0 var(--space-page);
-  }
-}
+/* 2026-08-03 移动端审计：此处原有一段 @media (max-width:767px) 死代码块已删除。
+   .app-layout__content 重复声明与基础规则完全相同的 padding: var(--space-page)；
+   .app-layout__header 的 padding: 0 var(--space-page) 与上文 767px 块中的
+   0 var(--space-4) 等价（theme.css 移动端 --space-page = --space-4）。 */
 
 .app-layout__user {
   display: flex;

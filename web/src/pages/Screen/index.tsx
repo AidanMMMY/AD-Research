@@ -555,7 +555,7 @@ export default function Screen() {
                       <InstrumentCodeTag code={record.code} name={record.name} name_zh={record.name_zh} />
                     </div>
                     <div className="mobile-list-item__metrics">
-                      <span className="tnum mobile-list-item__value ad-text-accent">
+                      <span className="tabular-nums mobile-list-item__value ad-text-accent">
                         {record.composite_score?.toFixed(1) ?? '-'}
                       </span>
                       <ReturnTag value={record.return_1m} />
@@ -566,12 +566,12 @@ export default function Screen() {
                       <span className="mobile-list-item__meta">{record.category}</span>
                     )}
                     {record.rsi14 != null && (
-                      <span className="tnum mobile-list-item__meta">
+                      <span className="tabular-nums mobile-list-item__meta">
                         RSI {record.rsi14.toFixed(1)}
                       </span>
                     )}
                     {record.sharpe_1y != null && (
-                      <span className="tnum mobile-list-item__meta">
+                      <span className="tabular-nums mobile-list-item__meta">
                         夏普 {record.sharpe_1y.toFixed(2)}
                       </span>
                     )}

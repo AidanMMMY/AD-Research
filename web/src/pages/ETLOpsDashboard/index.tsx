@@ -297,8 +297,9 @@ export default function ETLOpsDashboard() {
         <div className="admin-section">
           <SectionHeading title="总体健康" />
           <Panel variant="default" padding="md">
+            {/* 移动端单列（xs），≥576px 恢复双列 */}
             {data ? (
-              <Descriptions column={2} size="small" bordered>
+              <Descriptions column={{ xs: 1, sm: 2 }} size="small" bordered>
                 <Descriptions.Item label="最近一次运行">
                   {data?.last_run_at
                     ? new Date(data.last_run_at).toLocaleString()

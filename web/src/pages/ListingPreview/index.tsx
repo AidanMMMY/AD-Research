@@ -506,7 +506,7 @@ export default function ListingPreview() {
                 <div className="mobile-list-item__row">
                   <div className="mobile-list-item__main">
                     <span className="listing-mobile-feed__name">{item.name}</span>
-                    <span className="mobile-list-item__meta tnum listing-mobile-feed__code">
+                    <span className="mobile-list-item__meta tabular-nums listing-mobile-feed__code">
                       {item.ts_code}
                     </span>
                   </div>
@@ -523,12 +523,12 @@ export default function ListingPreview() {
                     <span className="mobile-list-item__meta">{item.industry}</span>
                   )}
                   {item.issue_price != null && (
-                    <span className="mobile-list-item__meta tnum">
+                    <span className="mobile-list-item__meta tabular-nums">
                       发行价 {formatPrice(item.issue_price)}
                     </span>
                   )}
                   {item.funds_raised != null && (
-                    <span className="mobile-list-item__meta tnum">
+                    <span className="mobile-list-item__meta tabular-nums">
                       募资 {formatMoney(item.funds_raised)}
                     </span>
                   )}

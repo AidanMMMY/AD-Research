@@ -110,7 +110,9 @@
    height even though only one has an action button in the extra slot. */
 @media (min-width: 768px) {
   .ai-analysis-panel .ad-panel__header {
-    min-height: var(--row-height-spacious);
+    /* 2026-08-03 波 1：--row-height-spacious（第一代密度别名，已删）
+       迁移到现行密度 token --density-row-h (48px)。 */
+    min-height: var(--density-row-h);
     box-sizing: border-box;
   }
 }

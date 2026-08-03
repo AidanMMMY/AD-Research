@@ -341,34 +341,34 @@ export default function ScoreRanking() {
                       </div>
                       <div className="mobile-list-item__metrics">
                         <SparklineCell code={record.etf_code} days={7} />
-                        <span className="tnum mobile-list-item__value ad-text-accent">
+                        <span className="tabular-nums mobile-list-item__value ad-text-accent">
                           {record.composite_score?.toFixed(1) ?? '—'}
                         </span>
                       </div>
                     </div>
                     <div className="mobile-list-item__tags">
                       {record.score_return != null && (
-                        <span className="tnum mobile-list-item__meta">
+                        <span className="tabular-nums mobile-list-item__meta">
                           收益 {record.score_return.toFixed(1)}
                         </span>
                       )}
                       {record.score_risk != null && (
-                        <span className="tnum mobile-list-item__meta">
+                        <span className="tabular-nums mobile-list-item__meta">
                           风险 {record.score_risk.toFixed(1)}
                         </span>
                       )}
                       {record.score_sharpe != null && (
-                        <span className="tnum mobile-list-item__meta">
+                        <span className="tabular-nums mobile-list-item__meta">
                           夏普 {record.score_sharpe.toFixed(1)}
                         </span>
                       )}
                       {record.score_liquidity != null && (
-                        <span className="tnum mobile-list-item__meta">
+                        <span className="tabular-nums mobile-list-item__meta">
                           流动性 {record.score_liquidity.toFixed(1)}
                         </span>
                       )}
                       {record.score_trend != null && (
-                        <span className="tnum mobile-list-item__meta">
+                        <span className="tabular-nums mobile-list-item__meta">
                           趋势 {record.score_trend.toFixed(1)}
                         </span>
                       )}

@@ -16,6 +16,7 @@ import { FilterSheetButton, InstrumentQuickSheet } from '@/components/BottomShee
 import Panel from '@/components/Panel';
 import LoadingBlock from '@/components/LoadingBlock';
 import EmptyState from '@/components/EmptyState';
+import ErrorState from '@/components/ErrorState';
 import InstrumentCodeTag from '@/components/InstrumentCodeTag';
 import ReturnTagPct from '@/components/ReturnTagPct';
 import ThemeTag from '@/components/ThemeTag';
@@ -121,6 +122,9 @@ export default function CryptoList() {
   const isMobile = useIsMobile();
   const filters = useCryptoStore();
   const [page, setPage] = useState(1);
+  // C10（2026-08-03）：pageSize 状态化 — 原写死 50 且分页器 showSizeChanger
+  // 可点但无效（假死），现在切换页大小会真正驱动查询。
+  const [pageSize, setPageSize] = useState(50);
   // P3 (2026-07-29): mobile row taps open the quick-look half-sheet
   // instead of navigating — list scroll position and filters survive.
   const [quickSel, setQuickSel] = useState<{
@@ -139,13 +143,15 @@ export default function CryptoList() {
   // still coalescing burst keystrokes into one network request.
   const debouncedSearch = useDebounce(filters.search, 150);
 
-  const { data, isLoading } = useCryptoList({
+  // 解构 isError / refetch：接口失败时显示错误态（带重试），不能落入
+  // 「没有符合条件的币种」假空态（审计 P1，2026-08-03）。
+  const { data, isLoading, isError, refetch } = useCryptoList({
     search: debouncedSearch || undefined,
     category: filters.category,
     sort_by: filters.sortBy,
     sort_order: filters.sortOrder,
     page,
-    page_size: 50,
+    page_size: pageSize,
   });
 
   // Client-side optimistic filter: when the user types faster than the
@@ -187,10 +193,12 @@ export default function CryptoList() {
       title: '价格 (USDT)',
       dataIndex: 'price',
       width: 140,
+      // C10（2026-08-03）：桌面价格列复用 formatCryptoPrice（带 $ 前缀，
+      // 与移动端行及 InstrumentQuickSheet 口径一致）。
       render: (v: number) =>
         v != null ? (
           <span className="tabular-nums mobile-list-item__value">
-            {v < 0.01 ? v.toFixed(6) : v < 1 ? v.toFixed(4) : v.toFixed(2)}
+            {formatCryptoPrice(v)}
           </span>
         ) : (
           '-'
@@ -315,6 +323,11 @@ export default function CryptoList() {
         {isMobile ? (
           isLoading ? (
             <LoadingBlock size="md" />
+          ) : isError ? (
+            <ErrorState
+              description="行情数据加载失败，请稍后重试"
+              onRetry={() => refetch()}
+            />
           ) : (data?.items?.length ?? 0) === 0 ? (
             <EmptyState
               title="没有符合条件的币种"
@@ -343,7 +356,7 @@ export default function CryptoList() {
                       <InstrumentCodeTag code={item.code} name={item.name} name_zh={item.name_zh} />
                     </div>
                     <div className="mobile-list-item__metrics">
-                      <span className="tnum mobile-list-item__value">
+                      <span className="tabular-nums mobile-list-item__value">
                         {item.price != null ? `$${item.price < 0.01 ? item.price.toFixed(6) : item.price < 1 ? item.price.toFixed(4) : item.price.toFixed(2)}` : '-'}
                       </span>
                       <ReturnTagPct value={item.change_pct ?? item.change_24h} />
@@ -357,7 +370,7 @@ export default function CryptoList() {
               )}
               pagination={{
                 current: page,
-                pageSize: 50,
+                pageSize,
                 total: data?.total ?? 0,
                 onChange: setPage,
                 size: 'small',
@@ -381,13 +394,26 @@ export default function CryptoList() {
               })}
               pagination={{
                 current: page,
-                pageSize: 50,
+                pageSize,
                 total: data?.total ?? 0,
-                onChange: setPage,
+                onChange: (p, ps) => {
+                  setPage(p);
+                  if (ps !== pageSize) {
+                    setPageSize(ps);
+                    setPage(1);
+                  }
+                },
                 showSizeChanger: true,
               }}
               locale={{
-                emptyText: <EmptyState title="暂无数据" />,
+                emptyText: isError ? (
+                  <ErrorState
+                    description="行情数据加载失败，请稍后重试"
+                    onRetry={() => refetch()}
+                  />
+                ) : (
+                  <EmptyState title="暂无数据" />
+                ),
               }}
             />
           </div>

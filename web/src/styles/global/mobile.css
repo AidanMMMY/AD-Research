@@ -43,7 +43,7 @@
 /* Learning page (K14) — each card collapses to 1 col on narrow widths. */
 .learning-scenarios {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr));
   gap: var(--space-4, 16px);
 }
 
@@ -270,7 +270,8 @@
     font-size: 15px;
   }
   .daily-lesson__hint {
-    font-size: 11px;
+    /* 移动端字号下限 12px（可读性审计 2026-08-03） */
+    font-size: 12px;
   }
 }
 
@@ -278,7 +279,8 @@
    when StatCard columns collapse at 375px. */
 .stat-explainer {
   white-space: normal;
-  font-size: 11.5px;
+  /* 12px 下限：11.5px 在移动端低分屏上难以辨认 */
+  font-size: 12px;
   line-height: 1.45;
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -451,5 +453,14 @@
 @media (max-width: 767px) {
   .ant-picker-input > input {
     font-size: 16px !important; /* prevents iOS auto-zoom */
+  }
+}
+
+/* 6. Onboarding Tour：移动端气泡默认 360px 宽会溢出 375px 视口，
+   强制贴边（左右各留 12px 安全距）。这是多数用户首屏看到的第一个界面。 */
+@media (max-width: 767px) {
+  .ant-tour {
+    width: calc(100vw - 24px) !important;
+    max-width: calc(100vw - 24px) !important;
   }
 }

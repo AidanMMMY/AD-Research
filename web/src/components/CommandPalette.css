@@ -176,6 +176,14 @@
   }
 }
 
+/* 触屏设备没有键盘：隐藏 esc 徽标与底部快捷键提示条 */
+@media (hover: none) {
+  .cmdk__footer,
+  .cmdk__esc {
+    display: none;
+  }
+}
+
 /* ── PageHeader ⌘K search trigger ──────────────────────────────────────────
  * Styled here (not global.css) so the whole feature stays self-contained;
  * CommandPalette is always mounted in AppLayout, so this stylesheet always
@@ -226,6 +234,10 @@
 @media (max-width: 767px) {
   .page-header-search-hint {
     display: none;
+  }
+  /* ⌘K 触发按钮触达热区 ≥44px */
+  .page-header-search {
+    height: 44px;
   }
 }
 

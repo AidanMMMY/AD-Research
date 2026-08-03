@@ -27,14 +27,14 @@
     min-height: 48px;
   }
 
-  /* Buttons */
+  /* Buttons — 触达热区 ≥44px（2026-08-03 移动端审计上调 40→44） */
   .ant-btn {
-    min-height: 40px;
+    min-height: 44px;
     font-size: var(--text-body-size);
   }
 
-  /* .ant-btn-sm min-height is declared identically in polish.css (imported
-     later); the duplicate here was removed in the 2026-07-21 split. */
+  /* .ant-btn-sm min-height(36px) 统一在 polish.css 声明（引入顺序更靠后），
+     此处不再重复，避免双处定义漂移。 */
 
   /* Form controls */
   .ant-input,
@@ -83,19 +83,8 @@
     font-size: var(--text-body-size);
   }
 
-  .ant-pagination-item {
-    min-width: 34px;
-    height: 34px;
-    line-height: 34px;
-    margin-right: 4px;
-  }
-
-  .ant-pagination-prev,
-  .ant-pagination-next {
-    min-width: 34px;
-    height: 34px;
-    line-height: 34px;
-  }
+  /* 分页触控尺寸（item/prev/next ≥36px）统一由 polish.css 声明（带 !important，
+     引入更靠后），2026-08-03 收敛掉此处 34px 的重复定义，避免两处漂移。 */
 
   /* Select dropdown */
   .ant-select-dropdown {

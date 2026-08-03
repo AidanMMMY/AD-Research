@@ -703,7 +703,9 @@
   }
 
   .filter-toolbar__filters > .ant-input,
+  .filter-toolbar__filters > .ant-input-affix-wrapper,
   .filter-toolbar__filters > .ant-select,
+  .filter-toolbar__filters > .ant-segmented,
   .filter-toolbar__filters > .ant-picker,
   .filter-toolbar__filters > .ant-btn {
     width: 100% !important;

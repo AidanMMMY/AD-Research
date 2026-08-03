@@ -431,7 +431,7 @@ class ResearchReportService:
             page_size = 20
         sort_dir_norm = sort_dir.lower() if sort_dir.lower() in ("asc", "desc") else "desc"
 
-        sortable = {"publish_date", "fetched_at", "updated_at"}
+        sortable = {"publish_date", "fetched_at", "updated_at", "target_price"}
         if sort_by not in sortable:
             sort_by = "publish_date"
 
