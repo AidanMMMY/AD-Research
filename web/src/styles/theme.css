@@ -12,9 +12,11 @@
      - <html data-color-convention="china">  ← 红涨绿跌（默认）
      - <html data-color-convention="us">     ← 绿涨红跌
    信息密度:
-     - <html data-density="comfortable">  ← 默认 42px 行高
-     - <html data-density="compact">      ← 32px 行高（高密度）
-     - <html data-density="spacious">     ← 56px 行高（宽松）
+     - <html data-density="comfortable">  ← 默认
+     - <html data-density="compact">      ← 高密度
+     - <html data-density="spacious">     ← 宽松
+     （2026-08-03 起第一代 density token 已退役，属性保留兼容，
+       视觉密度由下方 Density System 的 --density-row-h 族接管）
    CRT 效果:
      - <html data-crt="on">  ← 暗色模式下启用 CRT 扫描线（默认关闭）
    ============================================================ */
@@ -634,55 +636,17 @@ html, body, #root {
 }
 
 /* ============================================================
-   信息密度系统 — data-density 驱动
+   信息密度系统 — 第一代 token 已退役（2026-08-03 波 1）
+
+   以下 token 已删除，全站引用已迁移或确认无引用：
+     --density-row-height / --density-cell-py / --density-cell-px
+     --density-card-padding / --density-section-gap / --density-stat-value-size
+     --row-height-dense / --row-height-comfortable / --row-height-spacious
+   现行密度体系见下方「Density System (added 2026-07-29)」：
+   --density-row-h / --density-row-h-compact / --density-row-pad-x /
+   --density-gap / --hairline。data-density 属性仍保留（设置面板
+   三档切换），但不再驱动任何 token，视觉密度由新体系统一接管。
    ============================================================ */
-
-/* Comfortable（默认，42px 行高）*/
-:root, :root[data-density="comfortable"] {
-  --density-row-height: 42px;
-  --density-cell-py: 10px;
-  --density-cell-px: var(--space-4);
-  --density-card-padding: var(--space-4);
-  --density-section-gap: var(--space-5);
-  --density-stat-value-size: var(--text-data-lg-size);
-}
-
-/* Compact（高密度，32px 行高）*/
-:root[data-density="compact"] {
-  --density-row-height: 32px;
-  --density-cell-py: 6px;
-  --density-cell-px: 10px;
-  --density-card-padding: var(--space-3);
-  --density-section-gap: var(--space-3);
-  --density-stat-value-size: var(--text-data-md-size);
-}
-
-/* Spacious（宽松，56px 行高）*/
-:root[data-density="spacious"] {
-  --density-row-height: 56px;
-  --density-cell-py: 14px;
-  --density-cell-px: var(--space-5);
-  --density-card-padding: var(--space-5);
-  --density-section-gap: var(--space-6);
-  --density-stat-value-size: var(--text-data-xl-size);
-}
-
-/* Row height aliases (兼容旧代码) */
-:root, :root[data-density="comfortable"] {
-  --row-height-dense: 42px;
-  --row-height-comfortable: 52px;
-  --row-height-spacious: 64px;
-}
-:root[data-density="compact"] {
-  --row-height-dense: 32px;
-  --row-height-comfortable: 40px;
-  --row-height-spacious: 52px;
-}
-:root[data-density="spacious"] {
-  --row-height-dense: 56px;
-  --row-height-comfortable: 64px;
-  --row-height-spacious: 80px;
-}
 
 /* ============================================================
    Mobile Responsive Overrides
@@ -781,7 +745,11 @@ html, body, #root {
   --num-font: "SF Mono", "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
 
-/* Density utilities (global, reusable across pages) */
+/* Density utilities (global, reusable across pages)
+   2026-08-03 波 1：.tnum 已收敛为 .tabular-nums（antd-overrides.css）
+   的兼容别名 —— 全站引用已批量迁移，仅剩 pages/Dashboard（另一并行
+   任务负责）仍在使用；待其迁移后本定义应删除。新代码请用
+   className="tabular-nums"。 */
 .tnum {
   font-variant-numeric: tabular-nums;
   font-feature-settings: "tnum" 1;

@@ -23,8 +23,7 @@ import { useIsMobile } from '@/hooks/useBreakpoint';
 import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
 import { useChartMotion } from '@/hooks/useChartMotion';
 import { getReturnColor } from '@/utils/color';
-import { readCssVar, resolveChartColors } from '@/utils/cssVar';
-import { subscribeChartThemeCache } from '@/utils/chartColors';
+import { resolveChartColor, subscribeChartThemeCache } from '@/utils/chartColors';
 import type {
   SectorClassification,
   SectorConstituent,
@@ -79,7 +78,9 @@ function Phase3ReturnTag({
         {eqValue != null && (
           <div>
             等权 ETF+STOCK 回报对照：
-            <strong style={{ color: eqValue >= 0 ? 'var(--color-rise, #ef232a)' : 'var(--color-fall, #14b143)' }}>
+            {/* 2026-08-03 波 1：fallback 对齐 theme.css 现行暗色默认
+                （--color-rise #FF8585 / --color-fall #7DCB99，dark-first） */}
+            <strong style={{ color: eqValue >= 0 ? 'var(--color-rise, #FF8585)' : 'var(--color-fall, #7DCB99)' }}>
               {' '}
               {formatPct(eqValue)}
             </strong>
@@ -105,16 +106,6 @@ const PERIOD_RETURN_KEY: Record<SectorReturnPeriod, keyof SectorPerformance> = {
   '6m': 'return_6m',
   '1y': 'return_1y',
 };
-
-/**
- * Normalise a CSS variable colour ("var(--color-rise)") to its terminal
- * hex fallback for ECharts (which can't resolve CSS vars inside dynamic
- * style props). Falls back to the chart palette utility.
- */
-function toEChartsColor(cssVarRef: string, fallback: string): string {
-  const [resolved] = resolveChartColors([cssVarRef], [fallback]);
-  return resolved;
-}
 
 /**
  * Compute a dynamic visualMap domain for the multi-period return heatmap.
@@ -207,14 +198,18 @@ export default function SectorRotation() {
   const scope = data?.scope;
 
   // Pre-resolve palette for heatmap once per render.
+  // 2026-08-03 波 1：改为运行时经统一解析器读 token，不再写字面量
+  // fallback（旧值 '#c96b6b'/'#5fa87a'/'#ef232a'/'#14b143'/'#666666'/
+  // '#1f1f1f' 均为 AA 修复前的过时色）；resolveChartColor 的内置
+  // DEFAULT_FALLBACKS 已对齐 theme.css 暗色默认（dark-first）。
   const palette = useMemo(() => {
-    const upHex = readCssVar('--color-rise', '#c96b6b');
-    const downHex = readCssVar('--color-fall', '#5fa87a');
-    const textPrimary = toEChartsColor('var(--text-primary)', '#1f1f1f');
-    const textSecondary = toEChartsColor('var(--text-secondary)', '#666666');
-    const border = toEChartsColor('var(--border-default)', 'rgba(0,0,0,0.08)');
-    const bgBase = toEChartsColor('var(--bg-elevated)', '#ffffff');
-    const midHex = toEChartsColor('var(--bg-elevated)', '#f4f4f0');
+    const upHex = resolveChartColor('--color-rise');
+    const downHex = resolveChartColor('--color-fall');
+    const textPrimary = resolveChartColor('--text-primary');
+    const textSecondary = resolveChartColor('--text-secondary');
+    const border = resolveChartColor('--border-default');
+    const bgBase = resolveChartColor('--bg-elevated');
+    const midHex = resolveChartColor('--bg-elevated');
     return { upHex, downHex, textPrimary, textSecondary, border, bgBase, midHex };
   }, [themeTick]);
 
@@ -595,7 +590,11 @@ export default function SectorRotation() {
         </div>
       </Panel>
 
-      {/* Phase 3 数据源分布 — 仅 SW 分类下展示 */}
+      {/* Phase 3 数据源分布 — 仅 SW 分类下展示。
+          波 1：--color-surface-soft / --color-text-secondary /
+          --color-text-tertiary 均为不存在的幽灵 token，已改用现行的
+          --bg-elevated / --text-secondary / --text-tertiary，fallback
+          对齐暗色默认（dark-first）。 */}
       {classification === 'SW' && sectors.length > 0 && (
         <div
           className="ad-callout ad-mb-3"
@@ -606,17 +605,17 @@ export default function SectorRotation() {
             flexWrap: 'wrap',
             padding: '10px 14px',
             borderRadius: 8,
-            background: 'var(--color-surface-soft, rgba(0,0,0,0.03))',
+            background: 'var(--bg-elevated, #161B22)',
             fontSize: 12,
           }}
         >
-          <span style={{ color: 'var(--color-text-secondary, #666)' }}>
+          <span style={{ color: 'var(--text-secondary, #A0A0A0)' }}>
             <strong>Phase 3 官方指数回报：</strong>
             {sectors.filter((s) => s.return_source === 'official_index').length}
             {' '}/ {sectors.length} 行业
           </span>
           {sectors.some((s) => s.return_source === 'official_index') && (
-            <span style={{ color: 'var(--color-text-tertiary, #999)' }}>
+            <span style={{ color: 'var(--text-tertiary, #9CA3AF)' }}>
               · 鼠标悬停 1周/1月/3月/6月/1年 回报格查看等权 ETF+STOCK 对照
             </span>
           )}

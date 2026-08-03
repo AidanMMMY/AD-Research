@@ -1,16 +1,13 @@
 /* ============================================================
    CSS Variable Utilities
 
-   Echarts and other canvas-based renderers cannot parse CSS
-   custom properties like `var(--accent)` — they expect literal
-   color strings. Use these helpers to resolve a CSS variable
-   reference at render time so charts re-theme when the
-   `data-theme` attribute on <html> changes.
+   Low-level readers for CSS custom properties on :root.
 
-   Callers should pass the FULL `var(--name)` form to
-   resolveChartColor(), which extracts the variable name and
-   looks it up on :root via getComputedStyle. Falls back to
-   the supplied default if the variable is unset (SSR or no DOM).
+   注意（2026-08-03 设计系统波 1）：图表取色解析器已收敛为单一事实源
+   —— `chartColors.ts` 的 `resolveChartColor` / `resolveChartColors`
+   （裸 token 名 API + 内置暗色 DEFAULT_FALLBACKS）。本文件只保留
+   readCssVar / readCssVarStrict 两个底层读取器，新代码不要再在这里
+   添加 resolve* 封装，避免出现第二套解析逻辑。
    ============================================================ */
 
 /** Read a CSS custom property value from :root. */
@@ -43,25 +40,4 @@ export function readCssVarStrict(name: string): string {
     );
   }
   return value;
-}
-
-/**
- * Resolve a color string, converting `var(--name)` references to
- * their concrete computed value. Non-CSS-var inputs pass through
- * unchanged.
- */
-export function resolveChartColor(color: string, fallback: string): string {
-  if (color.startsWith('var(')) {
-    const varName = color.slice(4, -1).trim();
-    return readCssVar(varName, fallback);
-  }
-  return color;
-}
-
-/**
- * Resolve a list of color strings. Convenience helper for series
- * palettes and split-area color arrays passed to echarts.
- */
-export function resolveChartColors(colors: string[], fallback: string[]): string[] {
-  return colors.map((c, i) => resolveChartColor(c, fallback[i] ?? fallback[0] ?? readCssVar('--text-primary', '#000')));
 }

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import ReactECharts from 'echarts-for-react';
 import type { EChartsOption } from 'echarts';
 import { useIsMobile } from '@/hooks/useBreakpoint';
-import { resolveChartColors } from '@/utils/cssVar';
+import { resolveChartColors } from '@/utils/chartColors';
 
 interface SeriesData {
   name: string;
@@ -44,7 +44,7 @@ export default function ReturnCurve({ series }: ReturnCurveProps) {
   const palette = useMemo(
     () =>
       resolveChartColors(
-        Array.from({ length: 10 }, (_, i) => `var(--chart-series-${i + 1})`),
+        Array.from({ length: 10 }, (_, i) => `--chart-series-${i + 1}`),
         [
           '#0072B2', '#E69F00', '#009E73', '#CC79A7', '#56B4E9',
           '#F0E442', '#D55E00', '#000000', '#4f46e5', '#65a30d',
@@ -53,29 +53,29 @@ export default function ReturnCurve({ series }: ReturnCurveProps) {
     [themeTick],
   );
   const bgElevated = useMemo(
-    () => resolveChartColors(['var(--bg-elevated)'], ['#F3F5F7']),
+    () => resolveChartColors(['--bg-elevated'], ['#F3F5F7']),
     [],
   );
   const borderDefault = useMemo(
-    () => resolveChartColors(['var(--border-default)'], ['#e5e7eb']),
+    () => resolveChartColors(['--border-default'], ['#e5e7eb']),
     [],
   );
   const textPrimary = useMemo(
-    () => resolveChartColors(['var(--text-primary)'], ['#0F1115']),
+    () => resolveChartColors(['--text-primary'], ['#0F1115']),
     [],
   );
   const textSecondary = useMemo(
-    () => resolveChartColors(['var(--text-secondary)'], ['#5B6778']),
+    () => resolveChartColors(['--text-secondary'], ['#5B6778']),
     [],
   );
   const textTertiary = useMemo(
-    () => resolveChartColors(['var(--text-tertiary)'], ['#8894A4']),
+    () => resolveChartColors(['--text-tertiary'], ['#8894A4']),
     [],
   );
 
   const option: EChartsOption = {
     backgroundColor: 'transparent',
-    textStyle: { fontFamily: 'var(--font-sans)' },
+    textStyle: { fontFamily: '--font-sans' },
     tooltip: {
       trigger: 'axis',
       backgroundColor: bgElevated[0],

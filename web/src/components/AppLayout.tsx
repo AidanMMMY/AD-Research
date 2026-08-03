@@ -680,6 +680,12 @@ export default function AppLayout() {
 
   return (
     <div className="app-layout">
+      {/* a11y: keyboard/screen-reader users can skip the nav straight to
+          the main content. Visually hidden until :focus-visible (styles
+          in components-cleanup.css, token-based). */}
+      <a href="#main-content" className="skip-to-content">
+        跳到主内容
+      </a>
       {/* Mobile Drawer (left edge, same nav as desktop sidebar) */}
       {isMobile && (
         <Drawer
@@ -707,8 +713,13 @@ export default function AppLayout() {
         </aside>
       )}
 
-      {/* Main Content */}
-      <main className={`app-layout__main ${isMobile ? 'app-layout__main--mobile' : ''}`}>
+      {/* Main Content — id is the skip-to-content anchor target;
+          tabIndex=-1 lets it receive programmatic focus on jump. */}
+      <main
+        id="main-content"
+        tabIndex={-1}
+        className={`app-layout__main ${isMobile ? 'app-layout__main--mobile' : ''}`}
+      >
         {/* Header — sticky, 60px, opaque at rest / frosted material when scrolled */}
         <header
           className={`app-layout__header ${headerScrolled ? 'app-layout__header--scrolled' : ''}`}

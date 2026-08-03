@@ -1,5 +1,6 @@
 /* ============================================================
-   Chart Color Resolver (dataviz P0-1 / P0-2 / P0-3)
+   Chart Color Resolver — 图表取色的单一事实源
+   (dataviz P0-1 / P0-2 / P0-3；2026-08-03 设计系统波 1 收敛)
 
    ECharts and other canvas-based renderers cannot parse CSS
    custom properties like `var(--accent)` — they expect literal
@@ -8,9 +9,14 @@
    active theme when `data-theme` (or `data-accent` /
    `data-color-convention`) on <html> changes.
 
-   API differs from `cssVar.ts`:
-     - `token` is the BARE var name (`'--text-tertiary'`),
-       not the wrapped `'var(--text-tertiary)'` form.
+   历史上 `cssVar.ts` 还有第二套 resolveChartColor（var() 包裹
+   形式 API），已删除并全部迁移到本文件。任何图表/Canvas 取色
+   都必须走这里，不要再发明新的解析器。
+
+   API:
+     - `token` 是裸 var 名 (`'--text-tertiary'`)，不是包裹形式
+       `'var(--text-tertiary)'`；非 token 输入（字面量 hex/rgb）
+       原样透传。
      - Built-in dark-mode fallbacks mean callers usually
        only pass the token.
      - `subscribeChartThemeCache(fn)` provides a single

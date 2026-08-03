@@ -2,8 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import ReactECharts from 'echarts-for-react';
 import type { EChartsOption } from 'echarts';
 import { useIsMobile } from '@/hooks/useBreakpoint';
-import { resolveChartColors } from '@/utils/cssVar';
-import { subscribeChartThemeCache } from '@/utils/chartColors';
+import { resolveChartColor, subscribeChartThemeCache } from '@/utils/chartColors';
 import { useSettingsStore } from '@/stores/settings';
 
 interface CorrelationHeatmapProps {
@@ -29,27 +28,28 @@ export default function CorrelationHeatmap({ codes, matrix }: CorrelationHeatmap
 
   const labelFontSize = isMobile ? 8 : 10;
 
-  // Resolve all CSS-variable colors at render time. Fallbacks mirror the
-  // dark-theme defaults in theme.css (the default theme) so SSR / no-DOM
-  // still renders correctly.
+  // Resolve all CSS-variable colors at render time via the single chart
+  // color resolver (chartColors.ts, bare token names). Its built-in
+  // fallbacks mirror the dark-theme defaults in theme.css (the default
+  // theme) so SSR / no-DOM still renders correctly.
   const bgElevated = useMemo(
-    () => resolveChartColors(['var(--bg-elevated)'], ['#161B22'])[0],
+    () => resolveChartColor('--bg-elevated'),
     [themeTick, colorConvention],
   );
   const textPrimary = useMemo(
-    () => resolveChartColors(['var(--text-primary)'], ['#E6EDF3'])[0],
+    () => resolveChartColor('--text-primary'),
     [themeTick, colorConvention],
   );
   const textSecondary = useMemo(
-    () => resolveChartColors(['var(--text-secondary)'], ['#A0A0A0'])[0],
+    () => resolveChartColor('--text-secondary'),
     [themeTick, colorConvention],
   );
   const textTertiary = useMemo(
-    () => resolveChartColors(['var(--text-tertiary)'], ['#9CA3AF'])[0],
+    () => resolveChartColor('--text-tertiary'),
     [themeTick, colorConvention],
   );
   const borderDefault = useMemo(
-    () => resolveChartColors(['var(--border-default)'], ['#30363D'])[0],
+    () => resolveChartColor('--border-default'),
     [themeTick, colorConvention],
   );
 
@@ -59,6 +59,20 @@ export default function CorrelationHeatmap({ codes, matrix }: CorrelationHeatmap
     const base = bgElevated;
     return [base, base];
   }, [bgElevated]);
+
+  // 设计系统波 1（原 dataviz P0-2 修正）：inRange 曾用绕过 token 的红蓝
+  // 字面量，且在红涨绿跌约定下语义颠倒（正相关显示冷蓝）。相关性虽不是
+  // 收益，但「正/负」语义应与全站涨跌色约定一致：正相关用 --color-rise、
+  // 负相关用 --color-fall、零相关用 --color-neutral，通过统一解析器读取，
+  // 跟随主题与 data-color-convention 切换（中国约定：正相关 = 红）。
+  const inRangeColors = useMemo(
+    () => [
+      resolveChartColor('--color-fall'),
+      resolveChartColor('--color-neutral'),
+      resolveChartColor('--color-rise'),
+    ],
+    [themeTick, colorConvention],
+  );
 
   const option: EChartsOption = {
     backgroundColor: 'transparent',
@@ -114,13 +128,8 @@ export default function CorrelationHeatmap({ codes, matrix }: CorrelationHeatmap
       left: 'center',
       bottom: 0,
       textStyle: { color: textSecondary, fontSize: isMobile ? 10 : 12 },
-      // dataviz P0-2: correlation is a statistical measure, NOT a return,
-      // so the rise/fall color convention doesn't apply. Use a fixed
-      // diverging blue→gray→red gradient: cool blue for negative
-      // correlation, neutral gray for zero, warm red for positive.
-      // Literal hex (no CSS vars) — visualMap gradients look the same
-      // in light & dark themes and aren't tied to market semantics.
-      inRange: { color: ['#3b82f6', '#9ca3af', '#ef4444'] },
+      // 负相关 → 零 → 正相关：跌色 / 中性色 / 涨色（见上方注释）。
+      inRange: { color: inRangeColors },
     },
     series: [{
       type: 'heatmap',

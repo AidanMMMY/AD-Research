@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import ReactECharts from 'echarts-for-react';
 import type { EChartsOption } from 'echarts';
 import { useIsMobile } from '@/hooks/useBreakpoint';
-import { resolveChartColors } from '@/utils/cssVar';
+import { resolveChartColors } from '@/utils/chartColors';
 
 interface ScoreRadarProps {
   data: {
@@ -24,37 +24,37 @@ export default function ScoreRadar({ data }: ScoreRadarProps) {
   }, []);
 
   const accent = useMemo(
-    () => resolveChartColors(['var(--accent)'], ['#2563EB'])[0],
+    () => resolveChartColors(['--accent'], ['#2563EB'])[0],
     [],
   );
   const accentDim = useMemo(
-    () => resolveChartColors(['var(--accent-dim)'], ['rgba(37, 99, 235, 0.08)'])[0],
+    () => resolveChartColors(['--accent-dim'], ['rgba(37, 99, 235, 0.08)'])[0],
     [],
   );
   const textTertiary = useMemo(
-    () => resolveChartColors(['var(--text-tertiary)'], ['#8894A4'])[0],
+    () => resolveChartColors(['--text-tertiary'], ['#8894A4'])[0],
     [],
   );
   const textSecondary = useMemo(
-    () => resolveChartColors(['var(--text-secondary)'], ['#5B6778'])[0],
+    () => resolveChartColors(['--text-secondary'], ['#5B6778'])[0],
     [],
   );
   const borderDefault = useMemo(
-    () => resolveChartColors(['var(--border-default)'], ['#e5e7eb'])[0],
+    () => resolveChartColors(['--border-default'], ['#e5e7eb'])[0],
     [],
   );
   const bgElevated = useMemo(
-    () => resolveChartColors(['var(--bg-elevated)'], ['#F3F5F7'])[0],
+    () => resolveChartColors(['--bg-elevated'], ['#F3F5F7'])[0],
     [],
   );
   const textPrimary = useMemo(
-    () => resolveChartColors(['var(--text-primary)'], ['#0F1115'])[0],
+    () => resolveChartColors(['--text-primary'], ['#0F1115'])[0],
     [],
   );
 
   const option: EChartsOption = {
     backgroundColor: 'transparent',
-    textStyle: { fontFamily: 'var(--font-sans)' },
+    textStyle: { fontFamily: '--font-sans' },
     radar: {
       indicator: [
         { name: '收益能力', max: 100 },

@@ -346,6 +346,31 @@
 }
 
 /* ---- AppLayout ---- */
+/* a11y skip-to-content（2026-08-03 波 1）：视觉隐藏，键盘 :focus-visible
+   时显示在左上角；配色/间距/圆角/字号全走 token，焦点环沿用 base.css
+   的 :focus-visible 全局惯例（accent outline + accent-dim 光晕）。 */
+.skip-to-content {
+  position: absolute;
+  top: -64px;
+  left: var(--space-3);
+  z-index: 1200;
+  padding: var(--space-2) var(--space-3);
+  background: var(--accent);
+  color: var(--text-on-accent);
+  border-radius: var(--radius-md);
+  font-size: var(--text-body-size);
+  font-weight: 500;
+  text-decoration: none;
+  transition: top var(--transition-fast);
+}
+.skip-to-content:focus-visible {
+  top: var(--space-3);
+}
+/* 锚点跳转后 main 获得程序化焦点，不显示焦点环（焦点环留给交互元素）。 */
+.app-layout__main:focus {
+  outline: none;
+}
+
 .app-layout__mobile-drawer {
   display: flex;
   flex-direction: column;
@@ -362,7 +387,7 @@
 }
 
 .app-layout__breadcrumb-chevron {
-  font-size: 9px;
+  font-size: 12px;
   opacity: 0.4;
 }
 
@@ -425,7 +450,7 @@
 }
 
 .help-popover__label {
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 500;
   color: var(--text-tertiary);
   text-transform: uppercase;
@@ -514,7 +539,7 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 600;
   color: var(--text-tertiary);
   text-transform: uppercase;
@@ -529,7 +554,7 @@
 
 .help-popover__related-chip {
   display: inline-block;
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1;
   color: var(--accent);
   background: var(--accent-dim);
@@ -745,7 +770,7 @@
 }
 
 .news-list-panel__badge-text {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 500;
 }
 
@@ -758,22 +783,22 @@
 }
 
 .news-list-panel__meta-text {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--text-tertiary);
 }
 
 .news-list-panel__meta-dot {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--text-muted);
 }
 
 .news-list-panel__importance {
-  font-size: 10px;
+  font-size: 12px;
   color: var(--text-tertiary);
 }
 
 .news-list-panel__star {
-  font-size: 9px;
+  font-size: 12px;
   margin-right: 1px;
 }
 
@@ -788,7 +813,7 @@
 
 .news-list-panel__category {
   margin: 0;
-  font-size: 10px;
+  font-size: 12px;
 }
 
 .news-list-panel__spacer {
@@ -866,7 +891,7 @@
   width: 100%;
   min-width: 40px;
   color: var(--text-tertiary);
-  font-size: 11px;
+  font-size: 12px;
   text-align: center;
 }
 
@@ -1236,7 +1261,7 @@
 
 /* ---- TickerTape ---- */
 .ticker-arrow {
-  font-size: 10px;
+  font-size: 12px;
 }
 
 

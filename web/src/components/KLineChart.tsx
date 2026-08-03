@@ -3,8 +3,7 @@ import { createChart, IChartApi, ISeriesApi, CandlestickData, HistogramData, Lin
 import type { OHLCV } from '@/types/instrument';
 import { useIsMobile } from '@/hooks/useBreakpoint';
 import { useSettingsStore } from '@/stores/settings';
-import { getUpColor, getDownColor } from '@/utils/color';
-import { resolveChartColor, readCssVar } from '@/utils/cssVar';
+import { resolveChartColor } from '@/utils/chartColors';
 import { chartA11yProps } from '@/utils/a11y';
 
 interface IndicatorOverlay {
@@ -145,15 +144,6 @@ export const DEFAULT_OVERLAYS: IndicatorOverlay = {
   macd: false,
 };
 
-/**
- * Resolve a CSS custom property to an actual color value.
- * lightweight-charts cannot parse CSS variables like `var(--text-secondary)`,
- * so we read the computed value from :root before passing it to the chart.
- */
-function getCssColor(name: string, fallback: string): string {
-  return readCssVar(name, fallback);
-}
-
 export default function KLineChart({ data, overlays = DEFAULT_OVERLAYS, adjusted = false }: KLineChartProps) {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
@@ -172,15 +162,16 @@ export default function KLineChart({ data, overlays = DEFAULT_OVERLAYS, adjusted
 
   const isMobile = useIsMobile();
   const colorConvention = useSettingsStore((s) => s.colorConvention);
-  const upColor = getUpColor(colorConvention);
-  const downColor = getDownColor(colorConvention);
+  // 涨跌色直接读 token：getUpColor/getDownColor 恒返回 var(--color-rise/fall)
+  // （约定切换由 CSS 层 data-color-convention 完成），这里经统一解析器
+  // resolveChartColor 取计算值；colorConvention 入 deps 以便切换约定时重取。
   const resolvedUpColor = useMemo(
-    () => resolveChartColor(upColor, '#FF8585'),
-    [upColor, colorConvention]
+    () => resolveChartColor('--color-rise'),
+    [colorConvention]
   );
   const resolvedDownColor = useMemo(
-    () => resolveChartColor(downColor, '#7DCB99'),
-    [downColor, colorConvention]
+    () => resolveChartColor('--color-fall'),
+    [colorConvention]
   );
   const containerHeight = isMobile ? 350 : 500;
   const [initError, setInitError] = useState<string | null>(null);
@@ -191,13 +182,15 @@ export default function KLineChart({ data, overlays = DEFAULT_OVERLAYS, adjusted
     if (!chartContainerRef.current) return;
 
     try {
+      // 统一解析器（chartColors.ts）；显式 fallback 为浅色默认值，
+      // 仅在 SSR / no-DOM 时生效，浏览器内总是读到当前主题计算值。
       const c = {
-        bgBase: getCssColor('--bg-base', '#FAFBFC'),
-        textSecondary: getCssColor('--text-secondary', '#5B6778'),
-        textTertiary: getCssColor('--text-tertiary', '#8894A4'),
-        borderDefault: getCssColor('--border-default', '#e5e7eb'),
-        accent: getCssColor('--accent', '#2563EB'),
-        accentDim: getCssColor('--accent-dim', 'rgba(37, 99, 235, 0.08)'),
+        bgBase: resolveChartColor('--bg-base', '#FAFBFC'),
+        textSecondary: resolveChartColor('--text-secondary', '#5B6778'),
+        textTertiary: resolveChartColor('--text-tertiary', '#8894A4'),
+        borderDefault: resolveChartColor('--border-default', '#e5e7eb'),
+        accent: resolveChartColor('--accent', '#2563EB'),
+        accentDim: resolveChartColor('--accent-dim', 'rgba(37, 99, 235, 0.08)'),
       };
 
       const chart = createChart(chartContainerRef.current, {
