@@ -36,9 +36,17 @@ ADResearch/
 │   └── Utils/                  DateFormatting / NumberFormatting / MarkdownRenderer / Haptics
 └── Features/
     ├── Dashboard/              实装：全球资产脉搏 + 每日研报摘要卡（iOS 卡片堆叠 / macOS 三栏）
-    ├── News Digest Markets Settings Instruments Macro Sentiment Sectors Portfolio Research
-    │                           占位 View + 路由登记（News/Digest/Instruments/Macro 含详情占位）
-    └── ...
+    ├── Digest/                 实装：今日研报卡 + 历史列表 + 阅读页（原生 Markdown）
+    ├── News/                   实装：双语资讯流（筛选/搜索）+ 详情（译文切换/抓取）
+    ├── Macro/                  实装：四区快照 + 指数墙 + Swift Charts 历史详情
+    ├── Instruments/            实装：标的列表（搜索/筛选）+ 详情（sparkline 区间切换）
+    ├── Markets/                实装：行情总览（加密实时列表 + 二级模块入口）
+    ├── Sectors/                实装：板块轮动（GICS/申万 + 相对强弱 + 动量）
+    ├── Sentiment/              实装：情绪面板（多空总览 + 标的情绪 + 14 日走势）
+    ├── Learning/               实装：学习中心（推荐/收藏 + 难度标签 + 左滑收藏）
+    ├── Portfolio/              实装：自选 + 标的池（左滑移除，乐观更新）
+    ├── Research/               实装：研究笔记（列表 + sheet 详情）
+    └── Settings/               实装：账户信息 + 关于 + 登出
 ```
 
 ### 数据流约定
