@@ -226,7 +226,9 @@ services:
       resources:
         limits:
           cpus: "2.0"
-          memory: 2G
+          # 2026-08-04: 2G → 4G。pymupdf4llm 重提巨型年报 PDF 时子进程
+          # RSS ~2GB 撞 memcg OOM（SIGKILL），reextract 任务反复被杀。
+          memory: 4G
         reservations:
           cpus: "0.25"
           memory: 256M
