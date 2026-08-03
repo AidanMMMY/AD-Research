@@ -215,6 +215,49 @@ extension Endpoint {
         )
     }
 
+    // MARK: 组合/自选（web/src/api/favorite.ts + pool.ts + market.ts）
+
+    /// GET /favorites?limit=
+    static func favoritesList(limit: Int = 200) -> Endpoint {
+        Endpoint(
+            method: .get,
+            path: "/favorites",
+            queryItems: [URLQueryItem(name: "limit", value: String(limit))]
+        )
+    }
+
+    /// DELETE /favorites/{code}（移除自选）
+    static func favoriteRemove(_ code: String) -> Endpoint {
+        Endpoint(method: .delete, path: "/favorites/\(code)")
+    }
+
+    /// GET /pools（标的池列表，含成员）
+    static var poolsList: Endpoint {
+        Endpoint(method: .get, path: "/pools")
+    }
+
+    /// GET /market-data/snapshot?codes=a&codes=b（重复查询参数，对齐 web axios
+    /// paramsSerializer indexes:null 的序列化）
+    static func marketSnapshot(codes: [String]) -> Endpoint {
+        Endpoint(
+            method: .get,
+            path: "/market-data/snapshot",
+            queryItems: codes.map { URLQueryItem(name: "codes", value: $0) }
+        )
+    }
+
+    // MARK: 研究笔记（web/src/api/research.ts）
+
+    /// GET /research/notes?note_type=&limit=（响应为数组，无分页包装；
+    /// AI 未配置时后端 503，消费方按错误态处理）
+    static func researchNotes(noteType: String? = nil, limit: Int = 50) -> Endpoint {
+        var items = [URLQueryItem(name: "limit", value: String(limit))]
+        if let noteType, !noteType.isEmpty {
+            items.append(URLQueryItem(name: "note_type", value: noteType))
+        }
+        return Endpoint(method: .get, path: "/research/notes", queryItems: items)
+    }
+
     // MARK: 宏观（web/src/api/macro.ts）
 
     /// GET /macro/latest?region=
@@ -242,5 +285,112 @@ extension Endpoint {
             path: "/macro/indicators/\(code)",
             queryItems: items
         )
+    }
+
+    // MARK: 标的（web/src/api/instrument.ts）
+
+    /// GET /etfs?market=&search=&page=&page_size=
+    /// market 取值对齐 DB：A股 / US / HK / CRYPTO（nil = 全部）
+    static func instrumentList(
+        market: String? = nil,
+        search: String? = nil,
+        page: Int = 1,
+        pageSize: Int = 20
+    ) -> Endpoint {
+        var items: [URLQueryItem] = [
+            URLQueryItem(name: "page", value: String(page)),
+            URLQueryItem(name: "page_size", value: String(pageSize)),
+        ]
+        if let market, !market.isEmpty {
+            items.append(URLQueryItem(name: "market", value: market))
+        }
+        if let search, !search.isEmpty {
+            items.append(URLQueryItem(name: "search", value: search))
+        }
+        return Endpoint(method: .get, path: "/etfs", queryItems: items)
+    }
+
+    /// GET /etfs/{code}
+    static func instrumentDetail(_ code: String) -> Endpoint {
+        Endpoint(method: .get, path: "/etfs/\(code)")
+    }
+
+    /// GET /etfs/{code}/sparkline?days=（days 上限 365，oldest → newest）
+    static func instrumentSparkline(_ code: String, days: Int = 30) -> Endpoint {
+        Endpoint(
+            method: .get,
+            path: "/etfs/\(code)/sparkline",
+            queryItems: [URLQueryItem(name: "days", value: String(days))]
+        )
+    }
+
+    /// GET /etfs/markets/list
+    static var instrumentMarkets: Endpoint {
+        Endpoint(method: .get, path: "/etfs/markets/list")
+    }
+
+    // MARK: 加密行情（web/src/api/crypto.ts）
+
+    /// GET /crypto?search=&sort_by=&sort_order=&page=&page_size=
+    static func cryptoList(
+        search: String? = nil,
+        sortBy: String = "name",
+        sortOrder: String = "asc",
+        page: Int = 1,
+        pageSize: Int = 50
+    ) -> Endpoint {
+        var items: [URLQueryItem] = [
+            URLQueryItem(name: "sort_by", value: sortBy),
+            URLQueryItem(name: "sort_order", value: sortOrder),
+            URLQueryItem(name: "page", value: String(page)),
+            URLQueryItem(name: "page_size", value: String(pageSize)),
+        ]
+        if let search, !search.isEmpty {
+            items.append(URLQueryItem(name: "search", value: search))
+        }
+        return Endpoint(method: .get, path: "/crypto", queryItems: items)
+    }
+
+    /// GET /crypto/{code}
+    static func cryptoDetail(_ code: String) -> Endpoint {
+        Endpoint(method: .get, path: "/crypto/\(code)")
+    }
+
+    // MARK: 板块轮动（web/src/api/sectorRotation.ts）
+
+    /// GET /sector-rotation?trade_date=&window_weeks=&classification=
+    /// classification：GICS（全球，默认）/ SW（申万2021一级，A股）
+    static func sectorRotation(
+        tradeDate: String? = nil,
+        windowWeeks: Int = 4,
+        classification: String = "GICS"
+    ) -> Endpoint {
+        var items: [URLQueryItem] = [
+            URLQueryItem(name: "window_weeks", value: String(windowWeeks)),
+            URLQueryItem(name: "classification", value: classification),
+        ]
+        if let tradeDate, !tradeDate.isEmpty {
+            items.append(URLQueryItem(name: "trade_date", value: tradeDate))
+        }
+        return Endpoint(method: .get, path: "/sector-rotation", queryItems: items)
+    }
+
+    // MARK: 情绪（web/src/api/research.ts + app/api/v1/research.py）
+
+    /// GET /research/sentiment-data/aggregate?market=&days=&limit=
+    /// 注意 market 取值是 a_share / us / crypto / all（与资讯的 cn_a 不同）
+    static func sentimentAggregate(
+        market: String? = nil,
+        days: Int = 14,
+        limit: Int = 100
+    ) -> Endpoint {
+        var items: [URLQueryItem] = [
+            URLQueryItem(name: "days", value: String(days)),
+            URLQueryItem(name: "limit", value: String(limit)),
+        ]
+        if let market, !market.isEmpty, market != "all" {
+            items.append(URLQueryItem(name: "market", value: market))
+        }
+        return Endpoint(method: .get, path: "/research/sentiment-data/aggregate", queryItems: items)
     }
 }

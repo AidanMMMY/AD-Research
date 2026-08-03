@@ -18,6 +18,7 @@ enum AppSection: String, CaseIterable, Identifiable, Hashable, Sendable {
     case sectors
     case portfolio
     case research
+    case learning
 
     var id: String { rawValue }
 
@@ -40,6 +41,7 @@ enum AppSection: String, CaseIterable, Identifiable, Hashable, Sendable {
         case .sectors: return "板块"
         case .portfolio: return "组合"
         case .research: return "研究笔记"
+        case .learning: return "学习"
         }
     }
 
@@ -56,6 +58,7 @@ enum AppSection: String, CaseIterable, Identifiable, Hashable, Sendable {
         case .sectors: return "square.grid.2x2"
         case .portfolio: return "briefcase"
         case .research: return "book.closed"
+        case .learning: return "graduationcap"
         }
     }
 }
@@ -106,6 +109,8 @@ enum FeatureRouter {
             PortfolioView()
         case .research:
             ResearchView()
+        case .learning:
+            LearningView()
         }
     }
 
@@ -117,7 +122,7 @@ enum FeatureRouter {
         case .digestDetail(let date):
             DigestDetailView(reportDate: date)
         case .instrumentDetail(let code):
-            InstrumentDetailPlaceholderView(code: code)
+            InstrumentDetailView(code: code)
         case .macroDetail(let code):
             MacroDetailView(code: code)
         case .section(let section):

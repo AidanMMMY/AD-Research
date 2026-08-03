@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// 我的（设置）：账户信息 + API 配置 + 登出。
+/// 我的（设置）：用户信息卡 + API 配置 + 关于（版本）+ 登出（带确认）。
 struct SettingsView: View {
     @Environment(AuthStore.self) private var authStore
     @State private var showLogoutConfirmation = false
@@ -18,6 +18,7 @@ struct SettingsView: View {
         Form {
             accountSection
             apiSection
+            aboutSection
             logoutSection
         }
         .confirmationDialog("确认退出登录？", isPresented: $showLogoutConfirmation, titleVisibility: .visible) {
@@ -25,6 +26,8 @@ struct SettingsView: View {
                 Task { await authStore.logout() }
             }
             Button("取消", role: .cancel) {}
+        } message: {
+            Text("退出后需要重新登录才能继续使用")
         }
     }
     #endif
@@ -34,6 +37,7 @@ struct SettingsView: View {
         Form {
             accountSection
             apiSection
+            aboutSection
             logoutSection
         }
         .formStyle(.grouped)
@@ -44,17 +48,36 @@ struct SettingsView: View {
                 Task { await authStore.logout() }
             }
             Button("取消", role: .cancel) {}
+        } message: {
+            Text("退出后需要重新登录才能继续使用")
         }
     }
     #endif
 
+    /// 用户信息卡：头像 + 用户名 + 角色徽标
     private var accountSection: some View {
         Section("账户") {
-            LabeledContent("用户名", value: authStore.currentUser?.username ?? "—")
-            LabeledContent("角色") {
-                Text(roleLabel(authStore.currentUser?.role))
-                    .foregroundStyle(AppTheme.Colors.textSecondary)
+            HStack(spacing: AppTheme.Spacing.md) {
+                Image(systemName: "person.circle.fill")
+                    .font(.system(size: 44))
+                    .foregroundStyle(AppTheme.Colors.accent)
+                    .symbolRenderingMode(.hierarchical)
+                VStack(alignment: .leading, spacing: AppTheme.Spacing.xs) {
+                    Text(authStore.currentUser?.username ?? "未同步")
+                        .font(AppTheme.Typography.cardTitle)
+                        .foregroundStyle(AppTheme.Colors.textPrimary)
+                    Text(roleLabel(authStore.currentUser?.role))
+                        .font(AppTheme.Typography.caption)
+                        .foregroundStyle(AppTheme.Colors.accent)
+                        .padding(.horizontal, AppTheme.Spacing.sm)
+                        .padding(.vertical, AppTheme.Spacing.xxs)
+                        .background(
+                            Capsule(style: .continuous).fill(AppTheme.Colors.accentSoft)
+                        )
+                }
+                Spacer()
             }
+            .padding(.vertical, AppTheme.Spacing.xs)
         }
     }
 
@@ -65,6 +88,15 @@ struct SettingsView: View {
                     .font(AppTheme.Typography.caption.monospaced())
                     .foregroundStyle(AppTheme.Colors.textSecondary)
             }
+        }
+    }
+
+    /// 关于：版本号 + 构建号（读 Bundle，缺失时显示占位）
+    private var aboutSection: some View {
+        Section("关于") {
+            LabeledContent("应用", value: "AD Research")
+            LabeledContent("版本", value: Self.appVersion)
+            LabeledContent("构建号", value: Self.buildNumber)
         }
     }
 
@@ -84,6 +116,14 @@ struct SettingsView: View {
                 #endif
             }
         }
+    }
+
+    private static var appVersion: String {
+        Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "—"
+    }
+
+    private static var buildNumber: String {
+        Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "—"
     }
 
     private func roleLabel(_ role: String?) -> String {
