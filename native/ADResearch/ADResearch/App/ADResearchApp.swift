@@ -7,6 +7,7 @@ struct ADResearchApp: App {
     @State private var authStore = AuthStore.shared
     #if os(macOS)
     @State private var menuBarModel = MenuBarViewModel()
+    @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     #endif
 
     var body: some Scene {

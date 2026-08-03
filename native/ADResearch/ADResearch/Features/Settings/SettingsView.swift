@@ -37,6 +37,7 @@ struct SettingsView: View {
         Form {
             accountSection
             apiSection
+            notificationSection
             aboutSection
             logoutSection
         }
@@ -94,11 +95,31 @@ struct SettingsView: View {
     /// 关于：版本号 + 构建号（读 Bundle，缺失时显示占位）
     private var aboutSection: some View {
         Section("关于") {
-            LabeledContent("应用", value: "AD Research")
+            LabeledContent("应用", value: "AlloyResearch")
             LabeledContent("版本", value: Self.appVersion)
             LabeledContent("构建号", value: Self.buildNumber)
         }
     }
+
+    #if os(macOS)
+    /// 提醒：每日研报本地通知（07:00，平台 06:30 出报后的阅读提醒）
+    private var notificationSection: some View {
+        Section("提醒") {
+            Toggle(
+                "每日研报提醒（07:00）",
+                isOn: Binding(
+                    get: { NotificationManager.shared.isEnabled },
+                    set: { NotificationManager.shared.isEnabled = $0 }
+                )
+            )
+            if NotificationManager.shared.authorizationDenied {
+                Text("通知权限被拒：请在 系统设置 › 通知 › AlloyResearch 中开启")
+                    .font(AppTheme.Typography.caption)
+                    .foregroundStyle(AppTheme.Colors.textMuted)
+            }
+        }
+    }
+    #endif
 
     private var logoutSection: some View {
         Section {

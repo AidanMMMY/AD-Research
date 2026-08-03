@@ -58,10 +58,11 @@ final class GlobalSearchViewModel {
             .instrumentList(search: term, page: 1, pageSize: 8),
             as: InstrumentListResponse.self
         )
-        var params = NewsListParams()
-        params.q = term
-        params.page = 1
-        params.pageSize = 8
+        var built = NewsListParams()
+        built.q = term
+        built.page = 1
+        built.pageSize = 8
+        let params = built
         async let newsResult = try? APIClient.shared.send(
             .newsList(params), as: NewsListResponse.self
         )

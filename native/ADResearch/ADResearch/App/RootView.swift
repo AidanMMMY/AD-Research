@@ -25,6 +25,14 @@ struct RootView: View {
         .onOpenURL { url in
             DeepLink.handle(url, appState: appState)
         }
+        #if os(macOS)
+        // 每日研报通知点击 → 直达研报分区
+        .onReceive(NotificationCenter.default.publisher(
+            for: NotificationManager.openDigestNotification
+        )) { _ in
+            appState.navigate(to: .digest)
+        }
+        #endif
     }
 
     /// 会话恢复中的启动态（品牌图标 + 呼吸，不用裸 spinner）
