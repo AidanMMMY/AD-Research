@@ -1,11 +1,13 @@
-<!DOCTYPE html><html lang="zh"><head><meta charset="utf-8">
+<!DOCTYPE html><html lang="zh-CN"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>cninfo PDF→MD 管线升级 runbook</title>
-<style>body{max-width:900px;margin:2rem auto;padding:0 1rem;font:16px/1.7 -apple-system,"PingFang SC",sans-serif;color:#222}
-pre{background:#f6f8fa;padding:1rem;overflow-x:auto;border-radius:6px}code{background:#f0f0f0;padding:.1em .3em;border-radius:3px}
-pre code{background:none;padding:0}table{border-collapse:collapse}td,th{border:1px solid #ddd;padding:.4em .8em}
-blockquote{border-left:4px solid #d0d7de;margin:0;padding-left:1em;color:#57606a}</style></head>
-<body><h1>cninfo PDF → Markdown 提取管线升级 runbook（B2）</h1>
+<title>20260803 cninfo PDF→MD 管线 runbook</title>
+<style>body{font-family:-apple-system,system-ui,sans-serif;max-width:860px;margin:2rem auto;padding:0 1rem;line-height:1.7;color:#222}
+h1,h2,h3{line-height:1.3} code{background:#f4f4f4;padding:.1em .35em;border-radius:4px;font-size:.92em}
+pre{background:#f6f8fa;padding:1rem;border-radius:8px;overflow-x:auto} pre code{background:none;padding:0}
+table{border-collapse:collapse;width:100%} th,td{border:1px solid #ddd;padding:.45em .7em;text-align:left}
+th{background:#f6f8fa} blockquote{border-left:4px solid #ddd;margin-left:0;padding-left:1rem;color:#555}</style>
+</head><body>
+<h1>cninfo PDF → Markdown 提取管线升级 runbook（B2）</h1>
 <blockquote>
 <p>2026-08-03 上线。背景：cninfo 定期报告 PDF 共 11,663 个 / 14.0GB（/data 88% 已用的 14%）。
 旧提取链（pdfplumber 级联）文本层覆盖 99.9%，但表格列结构全丢、图表全丢、12.7% 撞 200k 字符截断，
@@ -103,7 +105,16 @@ docker exec -d alloyresearch-celery-worker-cninfo bash -c \
   修复：<code>chown -R 999:999 /data/docker/volumes/aliyun-ecs_cninfo_md/_data</code>。
   <strong>新加 volume 必须对齐属主</strong>（对照 cninfo_pdfs volume 的子目录属主 999）。
   踩坑窗口内 4 行（id 2/5/17/20）已标 md 但文件未写盘，已 reset extracted_format='text' 回池重提。</li>
+<li>2026-08-04 凌晨踩坑②：<strong>巨型 PDF 撞容器内存上限 OOM</strong>。cninfo worker compose 限 2G，
+  pymupdf4llm 处理超大年报时子进程 RSS ~2GB → memcg OOM SIGKILL（dmesg 实证
+  "Memory cgroup out of memory Killed process (celery) rss 1.97GB"），重提任务反复被杀。
+  修复：compose <code>memory: 2G→4G</code>（commit 717619f）。<strong>重提任务 health-check 口诀：
+  inspect active 无任务 + docker stats 内存贴近上限 + dmesg 有 memcg OOM = 内存不够，不是代码 bug</strong>。
+  升 4G 后实测峰值 3.4GiB 稳定通过。</li>
 <li>B3 全量重提：2026-08-03 21:26 启动（<code>reextract_cninfo_md[0,20000]</code>，预计 ~47h @ -c 2）；
-  探针 200 行验证通过（md 文件落盘、DB extracted_format='md'、md_path 正确）。</li>
+  探针 200 行验证通过（md 文件落盘、DB extracted_format='md'、md_path 正确）。
+  期间被 8f41fff/2c3a4d1 两次 deploy 重建容器杀掉 + OOM 杀掉，2026-08-04 00:27 第三次复跑
+  （任务幂等，已提 md 的行自动跳过）。<strong>Deploy 会杀长任务——deploy 后必须重 fire（见 MEMORY）。</strong></li>
 <li>B4 结果：待补（重提完成后回填本节）</li>
-</ul></body></html>
+</ul>
+</body></html>

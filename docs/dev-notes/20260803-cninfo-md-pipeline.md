@@ -82,6 +82,14 @@ docker exec -d alloyresearch-celery-worker-cninfo bash -c \
   修复：`chown -R 999:999 /data/docker/volumes/aliyun-ecs_cninfo_md/_data`。
   **新加 volume 必须对齐属主**（对照 cninfo_pdfs volume 的子目录属主 999）。
   踩坑窗口内 4 行（id 2/5/17/20）已标 md 但文件未写盘，已 reset extracted_format='text' 回池重提。
+- 2026-08-04 凌晨踩坑②：**巨型 PDF 撞容器内存上限 OOM**。cninfo worker compose 限 2G，
+  pymupdf4llm 处理超大年报时子进程 RSS ~2GB → memcg OOM SIGKILL（dmesg 实证
+  "Memory cgroup out of memory Killed process (celery) rss 1.97GB"），重提任务反复被杀。
+  修复：compose `memory: 2G→4G`（commit 717619f）。**重提任务 health-check 口诀：
+  inspect active 无任务 + docker stats 内存贴近上限 + dmesg 有 memcg OOM = 内存不够，不是代码 bug**。
+  升 4G 后实测峰值 3.4GiB 稳定通过。
 - B3 全量重提：2026-08-03 21:26 启动（`reextract_cninfo_md[0,20000]`，预计 ~47h @ -c 2）；
   探针 200 行验证通过（md 文件落盘、DB extracted_format='md'、md_path 正确）。
+  期间被 8f41fff/2c3a4d1 两次 deploy 重建容器杀掉 + OOM 杀掉，2026-08-04 00:27 第三次复跑
+  （任务幂等，已提 md 的行自动跳过）。**Deploy 会杀长任务——deploy 后必须重 fire（见 MEMORY）。**
 - B4 结果：待补（重提完成后回填本节）
