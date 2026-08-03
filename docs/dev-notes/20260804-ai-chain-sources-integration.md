@@ -1,0 +1,66 @@
+# 2026-08-04 中美 AI 全产业链资讯源扩容（136 源）接入 Runbook
+
+- 日期：2026-08-04
+- 提交：`feat(news): 中美AI全产业链 136 源上线`（本地 commit，未 push）
+- 触发：用户指令「关注中美AI全产业链投资机会，搜罗尽可能多的资讯源，不限投资类网站，还要加自媒体」
+
+## 链路总览
+
+```
+五路搜罗 agent（并行） → 5 份候选报告（313 候选）
+  → 两个批次构建 agent（三重排重） → ai_cn_batch (36) + ai_us_batch (99+1撞车裁决)
+  → 主会话接线：scheduler_jobs 生成 14 run_* + scheduler 注册 + news.py 健康面板
+  → meta 打标 agent：source_meta_seed +53 行
+  → 1791 测试全绿（news 976 + 其余 815）
+```
+
+## 搜罗报告（docs/dev-notes/ai-chain-sources/）
+
+| 报告 | 候选 | 实测✅ | 亮点 |
+|---|---|---|---|
+| 20260804-cn-ai-models-apps | 34 | 17 | 厂商技术号×6、Qwen 博客、arXiv×4 |
+| 20260804-cn-ai-upstream | 74 | 15站/18feed | 集微隐藏 API、TrendForce×8、GB2312×4 |
+| 20260804-us-ai-models-research | 52 | 39 | OpenAI/DeepMind/Google AI/MSR 官方 |
+| 20260804-self-media | 60 | ~76% | Stratechery/ChinAI/Dwarkesh/BG2/Acquired |
+| 20260804-us-ai-upstream | 93 | 43 | digitimes/micron_pr/rtoinsider/heatmap |
+
+公共结论：**RSSHub 公共实例全灭**（rsshub.app 403/rssforever 000/pseudoyu 522），依赖公共 RSSHub 的候选一律不可接；wewe-rss token 2026-07-29 已过期需用户重新扫码。
+
+## 接入批次
+
+### ai_cn_batch.py（36 源，news_aicn_{a-d}_60m）
+- a(9)：wechat2rss 镜像×5（碳基体/阿里云/阿里技术/字节/腾讯）+ 美团 + Qwen/OpenMMLab/ProductHunt（境外源 ECS 需复测）
+- b(10)：HelloGitHub/V2EX/arXiv cs.CL·AI·RO·MA/集微网/集邦×3
+- c(10)：算力通信硬件（**5 个 GB2312/GBK 源**：c114×2、zol、yesky、c-fol——模块内 `_decode_feed_body` 按 XML prolog 解码）
+- d(7)：人民网×3 + 声动早咖啡/商业就是这样/海外独角兽 + 李宏毅 YT
+
+### ai_us_batch.py（99 源，news_aius_{a-j}_60m）
+- self-media 38（newsletter 9 + 实验室官方 3 + 播客 15 + YT 11）
+- us-models 独有 24、upstream 独有 37（TrendForce/DigiTimes/Micron PR/Lam Research/数据中心能源线等）
+- arXiv 只收 cs.LG/cs.CV（其余四栏目在中文波）
+
+## 关键决策与裁决
+
+1. **market 铁律**：英文=us、中文=cn_a，**绝不写 global**（_GLOBAL_MARKETS 白名单只有 cn_a/us/crypto，global 会在默认视图隐形）
+2. **跨波撞车**：HuggingFace blog 两波都收 → 归英文波（huggingface_blog），中文波移除
+3. **报告间重复 13 处**：OpenAI/ImportAI/Ben's Bites/Stratechery 等统一用自媒体波 gind_/ofc_ slug
+4. **栏目精确版 vs 存量全站 feed**：ai_techcrunch_ai/ai_theverge_ai 等与存量全站 feed 内容重叠但 slug/URL 不同，按 AI 栏目精确版收录（docstring 已记录）——若嫌噪音可后续下线存量全站 feed
+5. **meta 打标保守原则**：53/135 打标；实验室/公司官方博客一律不打标（沿用 global_apple_ml/global_nvidia_blog 存量先例）；arXiv 与存量 arxiv_qfin 同值（deep/research/advanced）
+
+## 未接清单（待用户决策）
+
+1. **公众号镜像 ~19 个**：DeepSeek/智谱/光锥智能/芯智讯/集微(公众号版)/品玩 等——需 wewe-rss 重新扫码（token 过期）或 wechat2rss 镜像收录 hash 后另批接入
+2. **反爬高价值源 ~45 个**：datacenterdynamics/nextplatform/hpcwire/TSMC/ASML/AMD 官方等——需 Jina/浏览器通道（记于 ai_us_batch docstring）
+3. **gov 403 源**：需 ECS 网络复测后定夺
+
+## 排障口诀
+
+- 新源不出文：先看 etl_log `news_aicn_*`/`news_aius_*` 首败时间与错误原文（403=反爬、乱码=GB 编码兜底失效、000=境外源 ECS 不可达）
+- GB 系 5 源乱码：模块 `_decode_feed_body` 已按 prolog 解码；若仍乱码加 charset_normalizer 嗅探（docstring 有 WARNING）
+- 境外源（qwen/medium/producthunt）：ECS 复测连通性再启用，不可用就在批次表注释掉
+
+## 关联
+
+- 搜罗方法论与排重基准：报告内「排重依据」节（existing_sources.txt 1012 slug）
+- 打标规则：source_meta_seed.py 头部 docstring
+- 接线范式：en_fin_batch / test_expansion_wave_wiring（本波镜像同构）
