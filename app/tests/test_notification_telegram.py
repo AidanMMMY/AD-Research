@@ -344,7 +344,7 @@ def test_email_pool_report_unchanged(db_session, monkeypatch):
 
     # 旧模板特征：表格化报告通知 + "请登录平台查看详细内容"
     assert "weekly" in subject
-    assert "ETF投研平台报告通知" in html_body
+    assert "AlloyResearch报告通知" in html_body
     assert "请登录平台查看详细内容" in text_body
     # 不得误入 digest 全文模板
     assert "每日综合研报" not in subject

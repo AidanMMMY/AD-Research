@@ -411,13 +411,13 @@ class NotificationService:
 
         # Build message
         if test:
-            content = "ETF投研平台 - 测试消息\n这是一条测试推送消息，如果您的系统收到此消息，说明推送配置正确。"
+            content = "AlloyResearch - 测试消息\n这是一条测试推送消息，如果您的系统收到此消息，说明推送配置正确。"
         else:
             report = self.db.query(ReportMetadata).filter(ReportMetadata.id == report_id).first() if report_id else None
             if report:
-                content = f"ETF投研平台报告通知\n报告类型: {report.report_type}\n报告日期: {report.report_date}\n状态: {report.status}"
+                content = f"AlloyResearch报告通知\n报告类型: {report.report_type}\n报告日期: {report.report_date}\n状态: {report.status}"
             else:
-                content = "ETF投研平台 - 新报告已生成"
+                content = "AlloyResearch - 新报告已生成"
 
         # Platform-specific payload
         if platform == "wechat":
@@ -454,7 +454,7 @@ class NotificationService:
         """Send notification via SMTP email."""
         settings = get_settings()
         to_emails = config.get("to_emails", "")
-        subject_prefix = config.get("subject_prefix", "ETF投研平台")
+        subject_prefix = config.get("subject_prefix", "AlloyResearch")
 
         if not to_emails:
             return {"success": False, "error": "收件人邮箱未配置"}
@@ -482,14 +482,14 @@ class NotificationService:
         # Build message content
         if test:
             subject = f"[{subject_prefix}] 测试邮件"
-            body_text = "这是一封测试邮件。\n\n如果您的邮箱收到此邮件，说明邮件推送配置正确。\n\n—— ETF投研平台"
+            body_text = "这是一封测试邮件。\n\n如果您的邮箱收到此邮件，说明邮件推送配置正确。\n\n—— AlloyResearch"
             body_html = """
             <html><body style="font-family: -apple-system, BlinkMacSystemFont, sans-serif; color: #333;">
             <h2 style="color: #818cf8;">测试邮件</h2>
             <p>这是一封测试邮件。</p>
             <p>如果您的邮箱收到此邮件，说明邮件推送配置正确。</p>
             <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 24px 0;">
-            <p style="color: #94a3b8; font-size: 12px;">ETF投研平台 · 自动发送</p>
+            <p style="color: #94a3b8; font-size: 12px;">AlloyResearch · 自动发送</p>
             </body></html>
             """
         else:
@@ -503,7 +503,7 @@ class NotificationService:
                 subject, body_text, body_html = digest_email
             elif report:
                 subject = f"[{subject_prefix}] {report.report_type} 报告"
-                body_text = f"""ETF投研平台报告通知
+                body_text = f"""AlloyResearch报告通知
 
 报告类型: {report.report_type}
 报告日期: {report.report_date}
@@ -512,19 +512,19 @@ class NotificationService:
 请登录平台查看详细内容。"""
                 body_html = f"""
                 <html><body style="font-family: -apple-system, BlinkMacSystemFont, sans-serif; color: #333;">
-                <h2 style="color: #818cf8;">📊 ETF投研平台报告通知</h2>
+                <h2 style="color: #818cf8;">📊 AlloyResearch报告通知</h2>
                 <table style="border-collapse: collapse; margin: 16px 0;">
                 <tr><td style="padding: 8px 16px 8px 0; color: #64748b;">报告类型</td><td style="padding: 8px 0; font-weight: 500;">{report.report_type}</td></tr>
                 <tr><td style="padding: 8px 16px 8px 0; color: #64748b;">报告日期</td><td style="padding: 8px 0; font-weight: 500;">{report.report_date}</td></tr>
                 <tr><td style="padding: 8px 16px 8px 0; color: #64748b;">状态</td><td style="padding: 8px 0; font-weight: 500;">{report.status}</td></tr>
                 </table>
                 <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 24px 0;">
-                <p style="color: #94a3b8; font-size: 12px;">ETF投研平台 · 自动发送</p>
+                <p style="color: #94a3b8; font-size: 12px;">AlloyResearch · 自动发送</p>
                 </body></html>
                 """
             else:
                 subject = f"[{subject_prefix}] 新报告已生成"
-                body_text = "ETF投研平台 - 新报告已生成\n\n请登录平台查看详细内容。"
+                body_text = "AlloyResearch - 新报告已生成\n\n请登录平台查看详细内容。"
                 body_html = "<html><body><h2>新报告已生成</h2><p>请登录平台查看详细内容。</p></body></html>"
 
         try:
@@ -600,7 +600,7 @@ class NotificationService:
 
         # 平台暂无前端 base url 配置项，文案用相对路径提示
         link_hint = "请登录平台查看完整排版：/digest"
-        body_text = f"{full_md}\n\n——\n{link_hint}\nETF投研平台 · 自动发送"
+        body_text = f"{full_md}\n\n——\n{link_hint}\nAlloyResearch · 自动发送"
 
         body_html = f"""
         <html><body style="font-family: -apple-system, BlinkMacSystemFont, sans-serif; color: #333; line-height: 1.7;">
@@ -609,7 +609,7 @@ class NotificationService:
         <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 16px 0;">
         {md_to_email_html(full_md)}
         <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 24px 0;">
-        <p style="color: #94a3b8; font-size: 12px;">{escape(link_hint)}<br>ETF投研平台 · 自动发送</p>
+        <p style="color: #94a3b8; font-size: 12px;">{escape(link_hint)}<br>AlloyResearch · 自动发送</p>
         </body></html>
         """
         return subject, body_text, body_html
@@ -631,7 +631,7 @@ class NotificationService:
 
         if test:
             messages = [
-                "<b>ETF投研平台 - 测试消息</b>\n\n"
+                "<b>AlloyResearch - 测试消息</b>\n\n"
                 "这是一条测试推送消息，如果您收到此消息，说明 Telegram 推送配置正确。"
             ]
         else:
@@ -648,13 +648,13 @@ class NotificationService:
                         messages.append(md_to_telegram_html(chunk))
             elif report:
                 messages = [
-                    f"<b>ETF投研平台报告通知</b>\n"
+                    f"<b>AlloyResearch报告通知</b>\n"
                     f"报告类型: {escape(str(report.report_type))}\n"
                     f"报告日期: {escape(str(report.report_date))}\n"
                     f"状态: {escape(str(report.status))}"
                 ]
             else:
-                messages = ["ETF投研平台 - 新报告已生成\n\n请登录平台查看详细内容。"]
+                messages = ["AlloyResearch - 新报告已生成\n\n请登录平台查看详细内容。"]
 
         api_url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
         for idx, text in enumerate(messages):
@@ -714,7 +714,7 @@ class NotificationService:
                     return False
                 platform = exposed_config.get("platform", "wechat")
                 content = (
-                    f"[ETF投研平台] ETL 任务失败告警\n"
+                    f"[AlloyResearch] ETL 任务失败告警\n"
                     f"任务: {job_name}\n"
                     f"错误: {error_msg[:500]}"
                 )
@@ -734,7 +734,7 @@ class NotificationService:
             if config.channel_type == "email":
                 # Reuse the email path with a synthesised test-like body.
                 exposed_config["_etl_alert_subject"] = (
-                    f"[ETF投研平台] ETL 失败: {job_name}"
+                    f"[AlloyResearch] ETL 失败: {job_name}"
                 )
                 exposed_config["_etl_alert_body"] = (
                     f"ETL 任务 {job_name} 执行失败。\n\n错误信息:\n{error_msg[:1500]}"
@@ -828,9 +828,9 @@ class NotificationService:
         if not configs:
             return 0
 
-        subject = f"[ETF投研平台] ETL 任务完成: {job_name}"
+        subject = f"[AlloyResearch] ETL 任务完成: {job_name}"
         content = (
-            f"[ETF投研平台] ETL 任务完成通知\n"
+            f"[AlloyResearch] ETL 任务完成通知\n"
             f"任务: {job_name}\n"
             f"状态: {status}\n"
             f"备注: {detail or '—'}"
