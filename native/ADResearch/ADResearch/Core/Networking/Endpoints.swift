@@ -230,4 +230,17 @@ extension Endpoint {
     static var macroIndicesGlobal: Endpoint {
         Endpoint(method: .get, path: "/macro/indices/global")
     }
+
+    /// GET /macro/indicators/{code}?start_date=&limit=（单指标历史序列）
+    static func macroIndicatorSeries(code: String, startDate: String? = nil, limit: Int = 1500) -> Endpoint {
+        var items = [URLQueryItem(name: "limit", value: String(limit))]
+        if let startDate, !startDate.isEmpty {
+            items.append(URLQueryItem(name: "start_date", value: startDate))
+        }
+        return Endpoint(
+            method: .get,
+            path: "/macro/indicators/\(code)",
+            queryItems: items
+        )
+    }
 }

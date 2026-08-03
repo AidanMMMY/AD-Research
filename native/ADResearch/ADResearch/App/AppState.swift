@@ -113,13 +113,13 @@ enum FeatureRouter {
     static func destination(for route: AppRoute) -> some View {
         switch route {
         case .newsDetail(let id):
-            NewsDetailPlaceholderView(articleID: id)
+            NewsDetailView(articleID: id)
         case .digestDetail(let date):
-            DigestDetailPlaceholderView(reportDate: date)
+            DigestDetailView(reportDate: date)
         case .instrumentDetail(let code):
             InstrumentDetailPlaceholderView(code: code)
         case .macroDetail(let code):
-            MacroDetailPlaceholderView(code: code)
+            MacroDetailView(code: code)
         case .section(let section):
             rootView(for: section)
         }

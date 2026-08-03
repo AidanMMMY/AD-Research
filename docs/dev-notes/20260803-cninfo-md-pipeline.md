@@ -77,4 +77,11 @@ docker exec -d alloyresearch-celery-worker-cninfo bash -c \
 ## 5. 验收记录
 
 - 本地：pytest 1643 passed（含 test_cninfo_markdown 10 条）
-- B3/B4 结果：待补（重提完成后回填本节）
+- 2026-08-03 部署后踩坑：**新 volume 默认 root:root 而 celery 进程跑 uid 999** → md 写盘
+  EACCES（DB 不受影响，日志有 "md archive write failed … Permission denied"）。
+  修复：`chown -R 999:999 /data/docker/volumes/aliyun-ecs_cninfo_md/_data`。
+  **新加 volume 必须对齐属主**（对照 cninfo_pdfs volume 的子目录属主 999）。
+  踩坑窗口内 4 行（id 2/5/17/20）已标 md 但文件未写盘，已 reset extracted_format='text' 回池重提。
+- B3 全量重提：2026-08-03 21:26 启动（`reextract_cninfo_md[0,20000]`，预计 ~47h @ -c 2）；
+  探针 200 行验证通过（md 文件落盘、DB extracted_format='md'、md_path 正确）。
+- B4 结果：待补（重提完成后回填本节）

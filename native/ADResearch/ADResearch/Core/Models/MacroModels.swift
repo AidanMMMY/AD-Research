@@ -61,3 +61,21 @@ struct GlobalIndicesRealtimeResponse: Decodable, Sendable {
     /// as_of 超过 24h 的条目数（后端单一事实来源）
     let staleCount: Int?
 }
+
+/// GET /macro/indicators/{code} 单点（period=YYYY-MM-DD）
+struct MacroSeriesPoint: Codable, Sendable, Identifiable {
+    var id: String { period }
+    let period: String
+    let value: Double
+}
+
+/// GET /macro/indicators/{code} 时间序列（对齐 MacroIndicatorSeries）
+struct MacroIndicatorSeries: Decodable, Sendable {
+    let code: String
+    let region: String
+    let nameZh: String
+    let nameEn: String?
+    let unit: String
+    let source: String
+    let points: [MacroSeriesPoint]
+}
