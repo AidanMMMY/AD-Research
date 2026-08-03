@@ -7,6 +7,7 @@ import SwiftUI
 struct ResearchView: View {
     @State private var viewModel = ResearchViewModel()
     @State private var selectedNote: ResearchNote?
+    @Environment(AppState.self) private var appState
 
     var body: some View {
         content
@@ -16,11 +17,7 @@ struct ResearchView: View {
                 await viewModel.loadIfNeeded()
             }
             #if os(macOS)
-            // macOS：push 进详情列的 NavigationStack（ResearchNote 为 Identifiable，
-            // 用 item 目标注册，无需新增 AppRoute case）
-            .navigationDestination(item: $selectedNote) { note in
-                ResearchNoteDetailView(note: note)
-            }
+            // macOS 三栏：点击经 AppRoute.researchNote 进详情列（见 PlatformShell_macOS）
             .onReceive(NotificationCenter.default.publisher(for: .adRefreshRequested)) { _ in
                 Task { await viewModel.load() }
             }
@@ -125,7 +122,11 @@ struct ResearchView: View {
     private func noteRow(_ note: ResearchNote) -> some View {
         Button {
             Haptics.selection()
+            #if os(macOS)
+            appState.navigate(to: .research, route: .researchNote(note))
+            #else
             selectedNote = note
+            #endif
         } label: {
             ADCard(padding: AppTheme.Spacing.md) {
                 VStack(alignment: .leading, spacing: AppTheme.Spacing.sm) {

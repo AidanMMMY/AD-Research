@@ -14,7 +14,7 @@ RES="$REPO_ROOT/native/ADResearch/Resources"
 BUILD=/tmp/adresearch-build
 APP_NAME="AlloyResearch"
 BUNDLE_ID="net.alloyresearch.ADResearch"
-VERSION="0.3.0"
+VERSION="0.4.0"
 DMG="$HOME/Desktop/${APP_NAME}-${VERSION}-macOS-arm64.dmg"
 
 make_plist() {  # $1 = 输出路径

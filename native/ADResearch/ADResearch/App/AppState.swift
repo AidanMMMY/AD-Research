@@ -79,6 +79,8 @@ enum AppRoute: Hashable, Sendable {
     case instrumentDetail(String)
     /// 宏观指标详情（如 global_sp500）
     case macroDetail(String)
+    /// 研究笔记详情（macOS 三栏布局详情列；iOS 仍走 sheet 不用此路由）
+    case researchNote(ResearchNote)
     /// 进入某个二级功能模块（iOS 端从首页等入口 push）
     case section(AppSection)
 }
@@ -130,6 +132,8 @@ enum FeatureRouter {
             InstrumentDetailView(code: code)
         case .macroDetail(let code):
             MacroDetailView(code: code)
+        case .researchNote(let note):
+            ResearchNoteDetailView(note: note)
         case .section(let section):
             rootView(for: section)
         }

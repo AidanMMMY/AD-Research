@@ -1,11 +1,13 @@
 #if os(macOS)
 import SwiftUI
 
-/// macOS 平台外壳：NavigationSplitView 侧栏 + 详情列。
+/// macOS 平台外壳：**三栏** NavigationSplitView（侧栏 + 列表 + 详情）。
 ///
-/// - 侧栏两组：主导航（⌘1-5）+ 功能模块（⌥⌘1-7，见 ``NavigationCommands``）
-/// - 详情列共享一条 NavigationStack 路径（detailPath），⌘[ 返回上一层
-/// - 切换分区时经 ``AppState/selectSection(_:)`` 清空 detailPath，避免详情栈残留
+/// - 侧栏两组：主导航（⌘1-5）+ 功能模块（⌥⌘，见 ``NavigationCommands``）
+/// - 内容列：当前分区的根视图（列表），切换分区经 ``AppState/selectSection(_:)``
+///   清空 detailPath，避免详情栈残留
+/// - 详情列：独立 NavigationStack（detailPath），空栈时显示占位页；
+///   列表点击经 ``AppState/navigate(to:route:)`` 推入，⌘[ 返回上一层
 /// - 多窗口就绪：WindowGroup 原生支持 ⌘N 新窗口，各窗口状态相互独立
 struct PlatformShell: View {
     @Environment(AppState.self) private var appState
@@ -29,18 +31,21 @@ struct PlatformShell: View {
             }
             .listStyle(.sidebar)
             .navigationSplitViewColumnWidth(min: 200, ideal: 220, max: 260)
+        } content: {
+            FeatureRouter.rootView(for: appState.selectedSection)
+                .id(appState.selectedSection) // 切换分区时重建列表视图
+                .navigationTitle(appState.selectedSection.title)
+                .navigationSplitViewColumnWidth(min: 340, ideal: 400, max: 520)
         } detail: {
             NavigationStack(path: $state.detailPath) {
-                FeatureRouter.rootView(for: appState.selectedSection)
-                    .id(appState.selectedSection) // 切换分区时重建详情视图
-                    .navigationTitle(appState.selectedSection.title)
+                detailPlaceholder
                     .navigationDestination(for: AppRoute.self) { route in
                         FeatureRouter.destination(for: route)
                     }
             }
         }
         .navigationSplitViewStyle(.balanced)
-        .frame(minWidth: 960, minHeight: 600)
+        .frame(minWidth: 1120, minHeight: 640)
         .background(backShortcutButton)
         .sheet(isPresented: $state.showGlobalSearch) {
             GlobalSearchView()
@@ -57,6 +62,24 @@ struct PlatformShell: View {
                 .help("刷新当前页面数据（⌘R）")
             }
         }
+    }
+
+    /// 详情列空态：引导从内容列选择（分区图标随当前分区变化）
+    private var detailPlaceholder: some View {
+        VStack(spacing: AppTheme.Spacing.md) {
+            Image(systemName: appState.selectedSection.systemImage)
+                .font(.system(size: 44))
+                .foregroundStyle(AppTheme.Colors.textMuted.opacity(0.6))
+                .symbolRenderingMode(.hierarchical)
+            Text("从列表选择一项查看详情")
+                .font(AppTheme.Typography.callout)
+                .foregroundStyle(AppTheme.Colors.textSecondary)
+            Text("⌘K 全局搜索 · ⌘[ 返回")
+                .font(AppTheme.Typography.caption)
+                .foregroundStyle(AppTheme.Colors.textMuted)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(AppTheme.Colors.background)
     }
 
     /// 侧栏选择绑定：写入时走 selectSection，切换分区自动清空 detailPath 残留
