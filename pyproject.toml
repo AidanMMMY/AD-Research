@@ -34,6 +34,11 @@ cryptography = "^43.0"
 scipy = "^1.14"
 jinja2 = "^3.1"
 pdfplumber = "^0.11"
+# pymupdf4llm：cninfo 定期报告 PDF→Markdown 提取主引擎（B2，2026-08-03）。
+# 注意：它会拖入 pymupdf_layout + onnxruntime（镜像体积约 +271MB，
+# 内存峰值约 1.1GB/进程）。PyMuPDF 本体是 AGPL-3.0——本仓库源码在
+# GitHub 公开，满足 AGPL §13 的源码提供义务。
+pymupdf4llm = "^1.28"
 simhash = "^2.1"
 trafilatura = "^2.1.0"
 opencc-python-reimplemented = "^0.1.7"

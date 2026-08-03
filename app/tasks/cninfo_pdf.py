@@ -286,3 +286,134 @@ def download_cninfo_pdfs(
         "bytes": total_bytes,
         "fallback_used": fallback_used,
     }
+
+
+@celery_app.task(bind=True, max_retries=3, default_retry_delay=30, acks_late=True, queue="cninfo")
+def reextract_cninfo_md(
+    self,
+    offset: int,
+    limit: int,
+    batch_sleep: float = 0,
+) -> dict:
+    """全量重提：把已下载 PDF 的提取产物升级为 markdown（B2，2026-08-03）。
+
+    选取 ``file_path NOT NULL AND (extracted_format IS NULL OR
+    extracted_format='text')`` 的行（按 id 排序分片，offset/limit 控制
+    单任务处理量，防止单任务超长）。本地 CPU 任务，默认不 sleep；
+    ``batch_sleep`` 仅用于想限速时。
+
+    Returns:
+        Dict with counters: ``scanned`` / ``extracted`` / ``skipped`` /
+        ``failed`` / ``bytes_md``（本次写出的 md 字符数）。
+    """
+    from sqlalchemy import or_, select
+
+    from app.models.cninfo_report import CninfoReport
+
+    db = SessionLocal()
+    try:
+        service = CninfoReportService(db)
+
+        stmt = (
+            select(CninfoReport)
+            .where(
+                CninfoReport.file_path.isnot(None),
+                or_(
+                    CninfoReport.extracted_format.is_(None),
+                    CninfoReport.extracted_format == "text",
+                ),
+            )
+            .order_by(CninfoReport.id)
+            .offset(offset)
+            .limit(limit)
+        )
+        rows = list(db.execute(stmt).scalars().all())
+        if not rows:
+            log.info("reextract_cninfo_md: empty shard offset=%d limit=%d", offset, limit)
+            return {
+                "scanned": 0,
+                "extracted": 0,
+                "skipped": 0,
+                "failed": 0,
+                "bytes_md": 0,
+            }
+
+        scanned = 0
+        extracted = 0
+        skipped = 0
+        failed = 0
+        bytes_md = 0
+        t0 = time.time()
+
+        log.info(
+            "reextract_cninfo_md START shard=[%d:%d] rows=%d",
+            offset,
+            offset + limit,
+            len(rows),
+        )
+
+        for idx, row in enumerate(rows):
+            scanned += 1
+            try:
+                # 防御：文件已不在盘上（例如删除脚本已清）则跳过。
+                if not row.file_path or not Path(row.file_path).exists():
+                    skipped += 1
+                    continue
+                ok = service.extract_text_for_report(row.id, fmt="md")
+                if ok:
+                    extracted += 1
+                    bytes_md += len(row.extracted_text or "")
+                else:
+                    # service 已把行标记 failed，这里只计数。
+                    failed += 1
+            except Exception as exc:
+                # 最后一道防线：绝不让单行错误杀掉整个分片。
+                log.warning("reextract raised for id=%s: %s", row.id, exc)
+                failed += 1
+                try:
+                    db.rollback()
+                except Exception:  # pragma: no cover - defensive
+                    pass
+
+            if batch_sleep:
+                time.sleep(batch_sleep)
+
+            if (idx + 1) % _ETA_INTERVAL == 0:
+                done = idx + 1
+                avg = (time.time() - t0) / max(done, 1)
+                eta_min = (len(rows) - done) * avg / 60
+                log.info(
+                    "[%d/%d] progress — extracted=%d skipped=%d failed=%d "
+                    "bytes_md=%.1fMB avg=%.2fs/report eta=%.0fmin",
+                    done,
+                    len(rows),
+                    extracted,
+                    skipped,
+                    failed,
+                    bytes_md / (1024 * 1024),
+                    avg,
+                    eta_min,
+                )
+
+        total_time = time.time() - t0
+        log.info(
+            "reextract_cninfo_md DONE shard=[%d:%d] — scanned=%d extracted=%d "
+            "skipped=%d failed=%d bytes_md=%.1fMB %.0fs",
+            offset,
+            offset + limit,
+            scanned,
+            extracted,
+            skipped,
+            failed,
+            bytes_md / (1024 * 1024),
+            total_time,
+        )
+        return {
+            "scanned": scanned,
+            "extracted": extracted,
+            "skipped": skipped,
+            "failed": failed,
+            "bytes_md": bytes_md,
+        }
+    finally:
+        db.close()

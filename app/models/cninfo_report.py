@@ -64,6 +64,12 @@ class CninfoReport(Base):
         Integer, nullable=True, comment="财季: 1=Q1, 2=半年报, 3=Q3, 4=年报"
     )
     extracted_text = Column(Text, nullable=True, comment="PDF 提取出的文本 (截断)")
+    extracted_format = Column(
+        String(16), nullable=True, comment="提取格式: text/md，NULL=旧数据"
+    )
+    md_path = Column(
+        String(1024), nullable=True, comment="Markdown 存档路径（相对 MD_DIR）"
+    )
     extraction_status = Column(
         String(16),
         nullable=False,

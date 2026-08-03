@@ -12,6 +12,7 @@ errors should not be allowed to wipe out the rest of the run.
 
 import logging
 import os
+import re
 from datetime import date, datetime
 from pathlib import Path
 from typing import Any
@@ -37,9 +38,19 @@ _DEFAULT_PDF_DIR = Path(
     os.environ.get("CNINFO_PDF_DIR") or "/data/alloy-research/cninfo_pdfs"
 )
 
+# Markdown 存档目录（B2，2026-08-03）。对齐 PDF 目录的写法：
+# 生产 compose 挂 named volume，本地可用 CNINFO_MD_DIR 覆盖。
+_DEFAULT_MD_DIR = Path(
+    os.environ.get("CNINFO_MD_DIR") or "/data/alloy-research/cninfo_md"
+)
+
 # Cap on text length stored in ``extracted_text``.  We don't need the full
 # 200-page PDF — 200k chars covers the management discussion + key tables.
 _MAX_TEXT_LEN = 200_000
+
+# Markdown 产物的入库上限。保险丝：实测最大年报 md ~31 万字符，
+# 200 万只防失控（异常 PDF 输出爆量时保护 DB 行）。
+_MAX_MD_LEN = 2_000_000
 
 # Text preview length returned in the detail endpoint (500 chars).
 _PREVIEW_LEN = 500
@@ -123,6 +134,50 @@ def extract_text(file_path: Path) -> str:
         raise RuntimeError(
             "No PDF text extractor available — install pdfplumber / pypdf / pdfminer.six"
         ) from exc
+
+
+# ---------------------------------------------------------------------------
+# Markdown extraction (pymupdf4llm, B2 2026-08-03)
+# ---------------------------------------------------------------------------
+
+# pymupdf4llm 偶发输出少量行内 HTML 标签（高亮 <mark>、下划线 <u>、
+# 换行 <br>）。保守替换：<mark>/<u> 成对剥掉，<br> 转换行符。
+_HTML_TAG_RE = re.compile(r"</?(mark|u)>", re.IGNORECASE)
+_HTML_BR_RE = re.compile(r"<br\s*/?>", re.IGNORECASE)
+
+
+def _strip_html_tags(md: str) -> str:
+    """剥掉 markdown 产物中偶发的 <mark>/<u>/<br> 标签。"""
+    md = _HTML_BR_RE.sub("\n", md)
+    return _HTML_TAG_RE.sub("", md)
+
+
+def extract_markdown(file_path: Path) -> str:
+    """Best-effort PDF → Markdown 提取（B2 主路径）。
+
+    主引擎 pymupdf4llm.to_markdown（表格保真、标题层级、阅读顺序）；
+    任何异常（含 ImportError，例如镜像未装依赖）都回退到现有
+    ``extract_text`` 纯文本级联——此时产物退化为无格式纯文本
+    （格式降级，但内容仍可用）。实测 3 个 pymupdf 打不开的 PDF
+    （0.026%）即自然走这条回退路径。
+    """
+    try:
+        import pymupdf4llm
+
+        md = pymupdf4llm.to_markdown(str(file_path))
+        return _strip_html_tags(md or "")
+    except ImportError:
+        logger.warning(
+            "pymupdf4llm not installed — falling back to plain text for %s",
+            file_path,
+        )
+    except Exception as exc:
+        logger.warning(
+            "pymupdf4llm failed for %s: %s — falling back to plain text",
+            file_path,
+            exc,
+        )
+    return _strip_html_tags(extract_text(file_path) or "")
 
 
 # ---------------------------------------------------------------------------
@@ -505,8 +560,17 @@ class CninfoReportService:
     # PDF text extraction
     # ------------------------------------------------------------------
 
-    def extract_text_for_report(self, report_id: int) -> bool:
-        """Extract text from the downloaded PDF and store on the ORM row.
+    def extract_text_for_report(self, report_id: int, fmt: str = "md") -> bool:
+        """Extract content from the downloaded PDF and store on the ORM row.
+
+        Args:
+            report_id: ``cninfo_reports`` 主键。
+            fmt: ``"md"``（默认，B2 起）走 ``extract_markdown``——
+                markdown 写盘到 ``{MD_DIR}/{stock_code}/{announcement_id}.md``
+                存档，``extracted_text`` 存 md 内容（截到 _MAX_MD_LEN），
+                ``extracted_format='md'``、``md_path`` 落库；
+                ``"text"`` 保持旧行为完全不变（pdfplumber 纯文本级联，
+                截到 _MAX_TEXT_LEN）。
 
         Returns True if the row's ``extracted_text`` was populated.  The
         caller is expected to have run ``download_pdf`` first.
@@ -528,10 +592,15 @@ class CninfoReportService:
             return False
 
         try:
-            text = extract_text(pdf_path)
+            if fmt == "md":
+                content = extract_markdown(pdf_path)
+                cap = _MAX_MD_LEN
+            else:
+                content = extract_text(pdf_path)
+                cap = _MAX_TEXT_LEN
         except Exception as exc:
             logger.warning(
-                "cninfo text extraction failed for %s: %s", report_id, exc
+                "cninfo %s extraction failed for %s: %s", fmt, report_id, exc
             )
             report.extraction_status = "failed"
             self.db.add(report)
@@ -539,10 +608,32 @@ class CninfoReportService:
             return False
 
         # Cap to avoid blowing up the column on huge reports.
-        text = (text or "")[:_MAX_TEXT_LEN]
-        report.extracted_text = text
+        content = (content or "")[:cap]
+        report.extracted_text = content
         report.extraction_status = "extracted"
         report.extracted_at = datetime.utcnow()
+
+        if fmt == "md":
+            report.extracted_format = "md"
+            # 写盘失败只记 warning 不判失败：DB（extracted_text）是主存储，
+            # 文件只是存档副本，丢了不影响下游读取。
+            rel_path = f"{report.stock_code}/{report.announcement_id}.md"
+            try:
+                md_file = _DEFAULT_MD_DIR / rel_path
+                md_file.parent.mkdir(parents=True, exist_ok=True)
+                md_file.write_text(content, encoding="utf-8")
+                report.md_path = rel_path
+            except OSError as exc:
+                logger.warning(
+                    "cninfo: md archive write failed for %s (%s): %s — "
+                    "DB row is still the source of truth",
+                    report_id,
+                    rel_path,
+                    exc,
+                )
+        else:
+            report.extracted_format = "text"
+
         self.db.add(report)
         self.db.commit()
         return True

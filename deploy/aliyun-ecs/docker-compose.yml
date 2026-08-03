@@ -34,6 +34,9 @@ x-backend-env: &backend-env
   CORS_ORIGINS: ${CORS_ORIGINS:-}
   INTERNAL_API_TOKEN: ${INTERNAL_API_TOKEN:-}
   CNINFO_PDF_DIR: ${CNINFO_PDF_DIR:-/data/alloy-research/cninfo_pdfs}
+  # cninfo PDF→Markdown 存档目录（B2，2026-08-03）：md 写盘存档用，
+  # DB 的 extracted_text 仍是主存储。
+  CNINFO_MD_DIR: ${CNINFO_MD_DIR:-/data/alloy-research/cninfo_md}
   INDICATOR_BACKEND: ${INDICATOR_BACKEND:-sql}
 
 services:
@@ -209,6 +212,7 @@ services:
     volumes:
       - web_dist:/app/web/dist
       - cninfo_pdfs:/data/alloy-research/cninfo_pdfs
+      - cninfo_md:/data/alloy-research/cninfo_md
       - /var/run/docker.sock:/var/run/docker.sock:ro
     command: celery -A app.core.celery_app worker -E -l info -c 2 -Q celery,cninfo,industry
     networks:
@@ -298,6 +302,7 @@ volumes:
   redis_data:
   web_dist:
   cninfo_pdfs:
+  cninfo_md:
   wewe_rss_data:
 
 networks:

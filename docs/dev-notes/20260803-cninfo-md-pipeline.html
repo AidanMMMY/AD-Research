@@ -1,0 +1,102 @@
+<!DOCTYPE html><html lang="zh"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>cninfo PDF→MD 管线升级 runbook</title>
+<style>body{max-width:900px;margin:2rem auto;padding:0 1rem;font:16px/1.7 -apple-system,"PingFang SC",sans-serif;color:#222}
+pre{background:#f6f8fa;padding:1rem;overflow-x:auto;border-radius:6px}code{background:#f0f0f0;padding:.1em .3em;border-radius:3px}
+pre code{background:none;padding:0}table{border-collapse:collapse}td,th{border:1px solid #ddd;padding:.4em .8em}
+blockquote{border-left:4px solid #d0d7de;margin:0;padding-left:1em;color:#57606a}</style></head>
+<body><h1>cninfo PDF → Markdown 提取管线升级 runbook（B2）</h1>
+<blockquote>
+<p>2026-08-03 上线。背景：cninfo 定期报告 PDF 共 11,663 个 / 14.0GB（/data 88% 已用的 14%）。
+旧提取链（pdfplumber 级联）文本层覆盖 99.9%，但表格列结构全丢、图表全丢、12.7% 撞 200k 字符截断，
+「准确完整 md」信心低。用户拍板方案 A：<strong>先升级管线 → 全量重提 → 验收 → 再删 PDF</strong>（净省 ~13.5GB）。</p>
+</blockquote>
+<h2>1. 引擎选型（B1 benchmark 实证）</h2>
+<p>在 ECS 真实语料上对比 pdfplumber（现状）vs pymupdf4llm：</p>
+<table>
+<thead>
+<tr>
+<th>指标</th>
+<th>pdfplumber 级联（旧）</th>
+<th>pymupdf4llm（新）</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>无边框财务报表 → md 表格</td>
+<td>列结构全丢</td>
+<td><strong>完美还原</strong>（实证）</td>
+</tr>
+<tr>
+<td>速度</td>
+<td>—</td>
+<td>0.344s/页</td>
+</tr>
+<tr>
+<td>图表</td>
+<td>全丢</td>
+<td>全丢（PDF 图表是矢量图，无文本层方案可解）</td>
+</tr>
+<tr>
+<td>截断</td>
+<td>200k 字符保险丝</td>
+<td><strong>无截断</strong>（2M 上限，仅防失控）</td>
+</tr>
+</tbody>
+</table>
+<p>全量规模：1,010,721 页 → <code>-c 2</code> 约 47h，<code>-c 4</code> 约 24h。
+代价：+271MB 依赖（onnxruntime ML 版面分析），单进程峰值 ~1.1GB RAM。
+3/11,660 PDF 打不开（损坏），fallback 到旧链提取。
+已知噪音：<code>&lt;mark&gt;/&lt;u&gt;/&lt;br&gt;</code> HTML 标签（已在 service 层剥除）；跨页表格会被切成两段 md 表（可接受）。</p>
+<p><strong>许可证</strong>：PyMuPDF 系 AGPL-3.0。本仓库在 GitHub 公开，满足 §13 源码提供义务（pyproject 已注记）。</p>
+<h2>2. 变更清单</h2>
+<ul>
+<li><code>pyproject.toml</code> / <code>poetry.lock</code>：<code>pymupdf4llm = "^1.28"</code></li>
+<li>迁移 <code>c4d6e8f0a2b4</code>（down=<code>b7d9f1h3j5l7</code>）：<code>cninfo_reports</code> +<code>extracted_format</code> String(16)（text/md，NULL=旧数据）、+<code>md_path</code> String(1024)（相对 MD_DIR）</li>
+<li><code>app/services/cninfo_report_service.py</code>：</li>
+<li><code>_DEFAULT_MD_DIR</code> = env <code>CNINFO_MD_DIR</code>，默认 <code>/data/alloy-research/cninfo_md</code></li>
+<li><code>extract_markdown()</code>：pymupdf4llm 主链 + 旧链 fallback + HTML 噪音剥除</li>
+<li><code>extract_text_for_report(report_id, fmt="md")</code>：写 <code>{MD_DIR}/{stock_code}/{announcement_id}.md</code>，DB <code>extracted_text</code> 仍是主存储（<code>_MAX_MD_LEN=2_000_000</code> 保险丝）</li>
+<li><code>app/tasks/cninfo_pdf.py</code>：+<code>reextract_cninfo_md(offset, limit, batch_sleep=0)</code> 分片任务</li>
+<li>选取 <code>file_path NOT NULL AND (extracted_format IS NULL OR ='text')</code>，按 id 排序</li>
+<li>文件已不在盘上 → skipped；单行异常不杀分片</li>
+<li><code>deploy/aliyun-ecs/docker-compose.yml</code>：<code>CNINFO_MD_DIR</code> env + <code>cninfo_md</code> volume（仅 celery-worker-cninfo）</li>
+<li><code>scripts/delete_extracted_cninfo_pdfs.py</code>：删除脚本（默认 dry-run，<code>--execute</code> 才真删；置 NULL file_path/file_size，保留 adjunct_url；500 行一批 commit）</li>
+<li><code>app/tests/test_cninfo_markdown.py</code>：10 测试</li>
+</ul>
+<h2>3. 执行手册（B3 全量重提）</h2>
+<pre><code class="language-bash">ssh ad-research
+# 先跑 1 个 5000 行分片验证计数器与落盘：
+docker exec -d alloyresearch-celery-worker-cninfo bash -c \
+  'celery -A app.core.celery_app call app.tasks.cninfo_pdf.reextract_cninfo_md \
+   --args=&quot;[0, 5000]&quot; &gt; /tmp/reextract_shard0.log 2&gt;&amp;1'
+# 观察 /tmp/reextract_shard0.log 与 etl_log，确认 extracted/skipped/failed 合理后，
+# 全量（11,643 行有 file_path）：offset 5000 起剩余分片，或直接一个 20000 limit：
+docker exec -d alloyresearch-celery-worker-cninfo bash -c \
+  'celery -A app.core.celery_app call app.tasks.cninfo_pdf.reextract_cninfo_md \
+   --args=&quot;[5000, 20000]&quot; &gt; /tmp/reextract_rest.log 2&gt;&amp;1'
+</code></pre>
+<ul>
+<li>预计 24-47h（<code>-c 2</code> 与下载任务共享 worker；想加速可临时把 celery-worker-cninfo 调 <code>-c 4</code>，内存上限要同步放宽）</li>
+<li>进度：<code>docker exec alloyresearch-celery-worker-cninfo tail -f /tmp/reextract_rest.log</code>（每 50 行打 ETA）</li>
+<li>抽查：<code>docker exec alloyresearch-celery-worker-cninfo head -50 /data/alloy-research/cninfo_md/600519/&lt;announcement_id&gt;.md</code></li>
+</ul>
+<h2>4. 删除 PDF（B4，重提验收后）</h2>
+<pre><code class="language-bash"># 验收：md 覆盖率
+docker exec alloyresearch-postgres psql -U etf -d ad_research -c \
+  &quot;SELECT extracted_format, count(*) FROM cninfo_reports WHERE file_path IS NOT NULL GROUP BY 1;&quot;
+# dry-run 先看会删哪些：
+docker exec alloyresearch-celery-worker-cninfo python scripts/delete_extracted_cninfo_pdfs.py
+# 真删：
+docker exec -d alloyresearch-celery-worker-cninfo bash -c \
+  'python scripts/delete_extracted_cninfo_pdfs.py --execute &gt; /tmp/delete_pdfs.log 2&gt;&amp;1'
+</code></pre>
+<p><strong>警告（两条铁律）</strong>：
+1. 删除后 <code>file_path=NULL</code> 的行会命中下载任务 <code>only_pending</code> 查询——<strong>绝不能再跑旧 start_date 的
+   download_cninfo_pdfs 分片</strong>，否则会把 14GB 全部重新下载回来。如需补新报告，只用近日期窗口。
+2. 删除脚本必须在 <strong>celery-worker-cninfo 容器</strong>内跑（唯一挂 cninfo_pdfs volume 的容器）。</p>
+<h2>5. 验收记录</h2>
+<ul>
+<li>本地：pytest 1643 passed（含 test_cninfo_markdown 10 条）</li>
+<li>B3/B4 结果：待补（重提完成后回填本节）</li>
+</ul></body></html>
