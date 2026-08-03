@@ -66,12 +66,22 @@ docker exec alloyresearch-postgres psql -U etf -d ad_research \
 3. 平台「推送配置」新增：channel_type=telegram，填 bot_token + chat_id → 点「测试」验证
 4. ECS 出口到 api.telegram.org 已实测可达（2026-08-03）
 
-### 邮件通道（尚未启用 ⚠️）
-生产 .env **从未配置 SMTP_***。启用步骤：
-1. `/opt/ad-research/deploy/aliyun-ecs/.env` 加 `SMTP_HOST/SMTP_PORT/SMTP_USER/SMTP_PASSWORD/SMTP_FROM`（参数名以 app/config.py 为准）
-2. `docker compose -f /opt/ad-research/deploy/aliyun-ecs/docker-compose.yml up -d backend` 重建
-3. 「推送配置」新增 email 配置
-未配期间邮件渠道静默缺失，不影响其他渠道。
+### 邮件通道（2026-08-03 已解锁 ✅，待用户配 163 授权码）
+
+**2026-08-03 commit 8f41fff**：`_send_email` 支持 465 隐式 SSL（SMTP_SSL 直连），
+此前仅 SMTP+STARTTLS 会在 163/QQ 的 465 端口握手挂起——**这是邮件通道的最后一个代码阻塞点，已修**。
+新增 3 测试（465→SSL / 587→STARTTLS / use_ssl 覆盖）。
+启用**无需改 .env、无需重建**——`_send_email` 支持 config_json 级 SMTP 覆盖（Fernet 加密存储），
+平台「推送配置」页自助完成：
+1. 163 网页版 → 设置 → POP3/SMTP/IMAP → 开启 SMTP 服务 → 按提示生成**客户端授权码**（不是登录密码）
+2. 「推送配置」新增：channel_type=email
+   - 收件人邮箱：接收研报的邮箱（可多个逗号分隔）
+   - SMTP 服务器：`smtp.163.com`，SMTP 端口：`465`
+   - SMTP 用户名：163 邮箱地址（完整，含 @163.com）
+   - SMTP 密码：第 1 步的**授权码**
+3. 点「测试」验证送达 → 次日 06:30 研报自动全文推送
+
+（备选：也可在 .env 配 SMTP_* 全局共享，但 per-config 已够用）
 
 ### 故障排查
 - **没出报**：先看 etl_log `job_name='daily_digest'` 最近一行 status/error_msg；再查 daily_digest 表该行 status
