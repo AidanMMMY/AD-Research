@@ -535,9 +535,15 @@ class NotificationService:
             msg.attach(MIMEText(body_text, "plain", "utf-8"))
             msg.attach(MIMEText(body_html, "html", "utf-8"))
 
-            server = smtplib.SMTP(smtp_host, smtp_port, timeout=30)
-            if use_tls:
-                server.starttls()
+            # 465 = 隐式 SSL（163/QQ 邮箱默认端口），必须 SMTP_SSL 直连，
+            # 先明文再 STARTTLS 会在握手阶段挂起；其余端口走 STARTTLS。
+            use_ssl = bool(config.get("use_ssl", smtp_port == 465))
+            if use_ssl:
+                server = smtplib.SMTP_SSL(smtp_host, smtp_port, timeout=30)
+            else:
+                server = smtplib.SMTP(smtp_host, smtp_port, timeout=30)
+                if use_tls:
+                    server.starttls()
             server.login(smtp_user, smtp_password)
             server.sendmail(smtp_from, recipients, msg.as_string())
             server.quit()
