@@ -5,9 +5,12 @@ import SwiftUI
 struct ADResearchApp: App {
     @State private var appState = AppState()
     @State private var authStore = AuthStore.shared
+    #if os(macOS)
+    @State private var menuBarModel = MenuBarViewModel()
+    #endif
 
     var body: some Scene {
-        WindowGroup {
+        WindowGroup(id: "main") {
             RootView()
                 .environment(appState)
                 .environment(authStore)
@@ -29,6 +32,14 @@ struct ADResearchApp: App {
             SettingsView()
                 .environment(authStore)
         }
+
+        // 菜单栏行情 widget：label 常驻（图标+标普涨跌幅），点开五大指数+快捷操作
+        MenuBarExtra {
+            MenuBarView(viewModel: menuBarModel)
+        } label: {
+            MenuBarLabel(model: menuBarModel)
+        }
+        .menuBarExtraStyle(.window)
         #endif
     }
 }
