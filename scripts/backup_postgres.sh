@@ -41,23 +41,38 @@ BACKUP_FILE="${BACKUP_DIR}/${POSTGRES_DB}_${TIMESTAMP}.sql.gz"
 
 log_info "开始备份 ${POSTGRES_DB} → ${BACKUP_FILE}"
 
-# 优先通过 backend 容器内的 pg_dump 执行，确保版本一致
+# 优先通过 backend 容器内的 pg_dump 执行，确保版本一致。
+# 2026-08-04 事故修复（两处）：
+#   a) 探针从「完整跑一次 pg_dump > /dev/null」改为 `pg_dump --version`
+#      —— 旧探针每凌晨白跑 1-2 次全库导出（数分钟/3.3G IO），且在容器
+#      重启窗口内探针失败会直接跌进本地 pg_dump 分支。
+#   b) 产物加 MIN_BACKUP_BYTES 底线校验：pipefail 下 pg_dump 失败只留
+#      20B 空 gzip，旧 `-s` 判据把它当成功；且失败残留文件必须删除，
+#      否则占用 retention 槽位让人误以为当天有备份。
+MIN_BACKUP_BYTES="${MIN_BACKUP_BYTES:-104857600}"  # 100MB；当前全量 ~3.2G
+
+dump_ok=1
 if [ -n "$COMPOSE_FILE" ] && [ -f "$COMPOSE_FILE" ]; then
-    docker compose -f "$COMPOSE_FILE" exec -T postgres pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" | gzip > "$BACKUP_FILE"
-elif docker exec "$BACKEND_CONTAINER" pg_dump -h "$POSTGRES_HOST" -p "$POSTGRES_PORT" -U "$POSTGRES_USER" -d "$POSTGRES_DB" >/dev/null 2>&1; then
-    docker exec "$BACKEND_CONTAINER" pg_dump -h "$POSTGRES_HOST" -p "$POSTGRES_PORT" -U "$POSTGRES_USER" -d "$POSTGRES_DB" | gzip > "$BACKUP_FILE"
-elif docker exec alloyresearch-postgres pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" >/dev/null 2>&1; then
-    docker exec alloyresearch-postgres pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" | gzip > "$BACKUP_FILE"
+    docker compose -f "$COMPOSE_FILE" exec -T postgres pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" | gzip > "$BACKUP_FILE" || dump_ok=0
+elif docker exec "$BACKEND_CONTAINER" pg_dump --version >/dev/null 2>&1; then
+    docker exec "$BACKEND_CONTAINER" pg_dump -h "$POSTGRES_HOST" -p "$POSTGRES_PORT" -U "$POSTGRES_USER" -d "$POSTGRES_DB" | gzip > "$BACKUP_FILE" || dump_ok=0
+elif docker exec alloyresearch-postgres pg_dump --version >/dev/null 2>&1; then
+    docker exec alloyresearch-postgres pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" | gzip > "$BACKUP_FILE" || dump_ok=0
+elif command -v pg_dump >/dev/null 2>&1; then
+    log_warn "容器内 pg_dump 均不可用，回退本地 pg_dump"
+    pg_dump -h "$POSTGRES_HOST" -p "$POSTGRES_PORT" -U "$POSTGRES_USER" -d "$POSTGRES_DB" | gzip > "$BACKUP_FILE" || dump_ok=0
 else
-    log_warn "未找到 compose 文件或容器内无 pg_dump，尝试本地 pg_dump"
-    pg_dump -h "$POSTGRES_HOST" -p "$POSTGRES_PORT" -U "$POSTGRES_USER" -d "$POSTGRES_DB" | gzip > "$BACKUP_FILE"
+    log_error "所有 pg_dump 通道均不可用（backend/postgres 容器无 pg_dump，本地未安装）"
+    dump_ok=0
 fi
 
-if [ -f "$BACKUP_FILE" ] && [ -s "$BACKUP_FILE" ]; then
+ACTUAL_BYTES=$(stat -c %s "$BACKUP_FILE" 2>/dev/null || echo 0)
+if [ "$dump_ok" -eq 1 ] && [ "$ACTUAL_BYTES" -ge "$MIN_BACKUP_BYTES" ]; then
     SIZE=$(du -h "$BACKUP_FILE" | cut -f1)
     log_info "备份完成: ${BACKUP_FILE} (${SIZE})"
 else
-    log_error "备份文件未生成或为空"
+    log_error "备份失败（导出中断或大小 ${ACTUAL_BYTES}B < 底线 ${MIN_BACKUP_BYTES}B）— 已删除残缺文件"
+    rm -f "$BACKUP_FILE"
     exit 1
 fi
 

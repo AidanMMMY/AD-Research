@@ -10,11 +10,21 @@
 #   */5 * * * * root bash /opt/ad-research/scripts/runner_healthcheck.sh >> /var/log/runner-health.log 2>&1
 #
 # 修复策略（按顺序）：
-#   1. 磁盘 /data > 90% 或 /var/lib/docker > 95% → docker system prune 清理
+#   1. 磁盘 /data > 95% → 受控 prune（见下方注释，绝不裸 -af）
 #   2. runner daemon inactive/failed → systemctl restart
 #   3. 仍有 STEP 5 cascade 痕迹 → 通知 on-call（写到 /tmp/runner-needs-attention）
 #
 # 设计原则：仅做低风险操作（prune/restart）；不动工作树数据；不动 docker compose up。
+#
+# 2026-08-04 事故教训（站点断访 20h）：
+#   旧逻辑 /data ≥90% 就每 5min `docker system prune -af`。
+#   当 nginx 处于崩溃-重启循环时，容器一旦被 prune 删掉 → 网站直接黑掉，
+#   且 web_dist 命名卷在容器消失后变成 unreferenced，若叠加 --volumes
+#   深 prune 连前端构建产物都会被删。因此：
+#   - 阈值 90% → 95%（120G 盘的 90% 还剩 12G，够人工介入窗口）
+#   - 停止容器只清 72h+ 且不带 compose 项目标签的（栈内容器留尸排查）
+#   - 镜像只清悬空层；未引用镜像要 168h+ 才清（崩溃循环中的容器镜像受保护）
+#   - 永不带 --volumes（命名卷 = pg 数据/前端产物，命名卷必须人工删）
 set -uo pipefail
 
 LOG_PREFIX="[runner-health $(date -u +%Y-%m-%dT%H:%M:%SZ)]"
@@ -31,16 +41,28 @@ err()  { echo "$LOG_PREFIX ERROR: $*"; NEEDS_ATTENTION+="$*\n"; }
 DISK_PCT=$(df /data 2>/dev/null | awk 'NR==2 {print $5}' | tr -d '%' || echo "0")
 DOCKER_PCT=$(df /var/lib/docker 2>/dev/null | awk 'NR==2 {print $5}' | tr -d '%' || echo "0")
 
-if [[ "$DISK_PCT" -ge 90 ]]; then
-  warn "disk /data ${DISK_PCT}% — running docker system prune -f"
-  docker system prune -af --filter "until=24h" 2>&1 | tail -3
-  err "/data was ${DISK_PCT}% — pruned 24h+ unused images"
+# 受控 prune：只动「与运行栈无关」的资源。compose 项目标签保护栈内容器/卷。
+# （label!= 过滤对 container/volume prune 有效；compose v2 自动打
+#   com.docker.compose.project=aliyun-ecs 标签）
+COMPOSE_PROJECT="aliyun-ecs"
+
+if [[ "$DISK_PCT" -ge 95 ]]; then
+  warn "disk /data ${DISK_PCT}% — running GUARDED prune (no -a, no --volumes, compose stack protected)"
+  docker container prune -f --filter "until=72h" \
+    --filter "label!=com.docker.compose.project=${COMPOSE_PROJECT}" 2>&1 | tail -2
+  docker image prune -f 2>&1 | tail -2
+  docker image prune -af --filter "until=168h" 2>&1 | tail -2
+  err "/data was ${DISK_PCT}% — guarded prune done (stack containers/volumes untouched)"
 fi
 
-if [[ "$DOCKER_PCT" -ge 95 ]]; then
-  warn "disk /var/lib/docker ${DOCKER_PCT}% — deep prune"
-  docker system prune -af --volumes --filter "until=72h" 2>&1 | tail -3
-  err "/var/lib/docker was ${DOCKER_PCT}% — deep pruned 72h+"
+if [[ "$DOCKER_PCT" -ge 97 ]]; then
+  warn "disk /var/lib/docker ${DOCKER_PCT}% — deep prune (still no named volumes)"
+  docker container prune -f --filter "until=72h" \
+    --filter "label!=com.docker.compose.project=${COMPOSE_PROJECT}" 2>&1 | tail -2
+  docker image prune -af --filter "until=72h" 2>&1 | tail -2
+  docker volume prune -f \
+    --filter "label!=com.docker.compose.project=${COMPOSE_PROJECT}" 2>&1 | tail -2
+  err "/var/lib/docker was ${DOCKER_PCT}% — deep pruned (named stack volumes protected)"
 fi
 
 # Buildx cache 单独清（容易把 /opt/ad-research 撑爆）
