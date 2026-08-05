@@ -278,6 +278,20 @@ else
     log_info "跳过数据库迁移状态校验"
 fi
 
+# ── 5. 旧镜像清理（2026-08-06 事故加固）──
+# 每次 push 构建 2.67GB 新镜像，旧 sha tag 从不清理 —— 2026-08-05 一天
+# 6 次部署 = 16GB 镜像 + 49GB build cache 把 /data 顶到 100%，postgres
+# PANIC「No space left on device」全栈停摆。此后每次成功部署后保留
+# 当前 sha + latest，其余 ad-research:* 旧镜像全部删除；build cache
+# 只清 72h+。best-effort：清理失败绝不阻塞部署（|| true 兜底）。
+log_step "5/5 旧镜像与构建缓存清理"
+docker images --format '{{.Repository}}:{{.Tag}}' \
+    | grep '^ad-research:' \
+    | grep -vE "ad-research:(${GIT_SHA}|latest)$" \
+    | xargs -r docker rmi >/dev/null 2>&1 || true
+docker builder prune -f --filter until=72h >/dev/null 2>&1 || true
+log_info "旧镜像/缓存清理完成（保留 ${GIT_SHA} + latest）"
+
 # ── 完成 ──
 log_step "更新完成"
 public_ip=$(curl -sf http://100.100.100.200/latest/meta-data/eipv4 2>/dev/null || \
