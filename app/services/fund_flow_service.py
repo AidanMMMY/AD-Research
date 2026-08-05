@@ -52,7 +52,7 @@ def list_individual(
     """
     page = max(1, page)
     page_size = max(1, min(100, page_size))
-    sort_col, sort_dir = _parse_sort(sort, default_col="main_net_inflow")
+    sort_col, sort_dir = _parse_sort(sort, default_col="main_net_inflow", model=IndividualFundFlow)
 
     # 未指定日期/个股时，默认使用最新交易日（避免首屏返回全历史）
     if not trade_date and not start_date and not end_date and not ts_code:
@@ -125,7 +125,7 @@ def list_sector(
     """分页查询板块资金流。``sector_type`` = 行业/概念/地域。"""
     page = max(1, page)
     page_size = max(1, min(100, page_size))
-    sort_col, sort_dir = _parse_sort(sort, default_col="main_net_inflow")
+    sort_col, sort_dir = _parse_sort(sort, default_col="main_net_inflow", model=SectorFundFlow)
 
     # 未指定交易日时，默认取板块资金流最新交易日
     if not trade_date:
@@ -308,7 +308,7 @@ def list_etf(
 ) -> dict[str, Any]:
     page = max(1, page)
     page_size = max(1, min(100, page_size))
-    sort_col, sort_dir = _parse_sort(sort, default_col="inferred_net_inflow")
+    sort_col, sort_dir = _parse_sort(sort, default_col="inferred_net_inflow", model=EtfFundFlow)
 
     # 未指定日期/ETF 时，默认取 ETF 资金流最新交易日
     if not trade_date and not ts_code:
@@ -359,7 +359,7 @@ def list_signals(
 ) -> dict[str, Any]:
     page = max(1, page)
     page_size = max(1, min(100, page_size))
-    sort_col, sort_dir = _parse_sort(sort, default_col="composite_score")
+    sort_col, sort_dir = _parse_sort(sort, default_col="composite_score", model=FlowSignal)
 
     # 未指定日期/个股时，默认取综合信号最新交易日
     if not trade_date and not ts_code:
@@ -453,8 +453,16 @@ def _market_filter_for(model: type[IndividualFundFlow], market: str) -> Any | No
     return None
 
 
-def _parse_sort(sort: str, default_col: str) -> tuple[Any, str]:
-    """解析 ``-main_net_inflow`` / ``main_net_inflow`` 风格的 sort 参数。"""
+def _parse_sort(sort: str, default_col: str, model: Any) -> tuple[Any, str]:
+    """解析 ``-main_net_inflow`` / ``main_net_inflow`` 风格的 sort 参数。
+
+    必须传 ``model``（当前查询的 ORM 类）：列名到多张表的映射里取
+    属于本表的那一列。2026-08-05 P0：旧实现取字典第一个非空列，
+    ``main_net_inflow`` 永远返回 ``IndividualFundFlow`` 的列，导致
+    /fund-flow/sector 默认排序必 500（missing FROM-clause entry for
+    table "individual_fund_flow"）；``ts_code`` / 兜底 ``trade_date``
+    同样踩坑。
+    """
     from app.models.fund_flow import (
         EtfFundFlow as _Etf,
         FlowSignal as _Fs,
@@ -500,13 +508,11 @@ def _parse_sort(sort: str, default_col: str) -> tuple[Any, str]:
         "price": {EtfFundFlow: EtfFundFlow.price},
         "turnover": {EtfFundFlow: EtfFundFlow.turnover},
     }
-    for prefix, table_map in col_map.items():
-        if col_name == prefix:
-            # 选择第一个非空的 ORM 列 (此处只用于返回列对象，调用方会进一步限定表)
-            for _cls, col in table_map.items():
-                return col, sort_dir
-    # fallback: trade_date
-    return IndividualFundFlow.trade_date, "desc"
+    table_map = col_map.get(col_name)
+    if table_map and model in table_map:
+        return table_map[model], sort_dir
+    # 列名不存在或不属于当前表：兜底本表 trade_date 降序（绝不跨表取列）
+    return model.trade_date, "desc"
 
 
 def _to_float(v: Any) -> float | None:

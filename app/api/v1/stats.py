@@ -1,6 +1,8 @@
 """Statistics API routes for dashboard overview."""
 
 import logging
+import threading
+import time
 from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, Request, Response, status
@@ -18,39 +20,70 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
+# ---------------------------------------------------------------------------
+# 60s 进程内 TTL 缓存（2026-08-05 P0 修复）。
+#
+# 事故背景：Dashboard 4 张 KPI 卡并行打 /overview/{metric}，旧实现每个
+# metric 端点都跑 _collect_overview 全量 8 条 COUNT/MAX（含 etf_score
+# 115 万行、etf_indicator 1613 万行的全表 COUNT），4 路并行 = 32 条重
+# 查询互抢 DB，单请求 12-13s，浏览器/原生端全部超时 → 首页 KPI 永久
+# 转圈。修复双管齐下：per-metric 只跑自己那一条 + 60s 缓存折叠并发。
+# ---------------------------------------------------------------------------
+
+_OVERVIEW_TTL_SECONDS = 60.0
+_overview_cache: dict[str, tuple[float, object]] = {}
+_overview_lock = threading.Lock()
+
+
+def _cached(key: str, compute):
+    now = time.monotonic()
+    with _overview_lock:
+        hit = _overview_cache.get(key)
+        if hit is not None and now - hit[0] < _OVERVIEW_TTL_SECONDS:
+            return hit[1]
+    value = compute()
+    with _overview_lock:
+        _overview_cache[key] = (now, value)
+    return value
+
 
 def _collect_overview(db: Session) -> dict:
-    """Compute all overview counters in one pass.
+    """Compute all overview counters in one pass (60s cached).
 
     Frontend either hits ``/overview`` (single round-trip) or the
     per-metric ``/overview/{metric}`` endpoints so the 4 KPI cards can
     load in parallel and stream into the page as each becomes ready.
     """
-    etf_count = db.query(ETFInfo).count()
-    category_count = (
-        db.query(ETFInfo.category)
-        .filter(ETFInfo.category.isnot(None))
-        .distinct()
-        .count()
-    )
-    market_count = db.query(ETFInfo.market).distinct().count()
-    indicator_count = db.query(ETFIndicator).count()
-    score_count = db.query(ETFScore).count()
-    template_count = db.query(ScoreTemplate).count()
+    def _compute() -> dict:
+        etf_count = db.query(func.count(ETFInfo.id)).scalar() or 0
+        category_count = (
+            db.query(func.count(func.distinct(ETFInfo.category)))
+            .filter(ETFInfo.category.isnot(None))
+            .scalar()
+            or 0
+        )
+        market_count = (
+            db.query(func.count(func.distinct(ETFInfo.market))).scalar() or 0
+        )
+        indicator_count = db.query(func.count(ETFIndicator.id)).scalar() or 0
+        score_count = db.query(func.count(ETFScore.id)).scalar() or 0
+        template_count = db.query(func.count(ScoreTemplate.id)).scalar() or 0
 
-    latest_date = db.query(func.max(ETFIndicator.trade_date)).scalar()
-    latest_score_date = db.query(func.max(ETFScore.trade_date)).scalar()
+        latest_date = db.query(func.max(ETFIndicator.trade_date)).scalar()
+        latest_score_date = db.query(func.max(ETFScore.trade_date)).scalar()
 
-    return {
-        "etf_count": etf_count,
-        "category_count": category_count,
-        "market_count": market_count,
-        "indicator_count": indicator_count,
-        "score_count": score_count,
-        "template_count": template_count,
-        "latest_indicator_date": latest_date.isoformat() if latest_date else None,
-        "latest_score_date": latest_score_date.isoformat() if latest_score_date else None,
-    }
+        return {
+            "etf_count": etf_count,
+            "category_count": category_count,
+            "market_count": market_count,
+            "indicator_count": indicator_count,
+            "score_count": score_count,
+            "template_count": template_count,
+            "latest_indicator_date": latest_date.isoformat() if latest_date else None,
+            "latest_score_date": latest_score_date.isoformat() if latest_score_date else None,
+        }
+
+    return _cached("overview", _compute)
 
 
 @router.get("/overview")
@@ -64,17 +97,37 @@ def get_overview(
 
 # ---------------------------------------------------------------------------
 # Per-metric endpoints (Dashboard 4-card parallel loading, 2026-07-07).
-# Each route runs the same COUNT / MAX query as the bundled /overview
-# endpoint but only returns a single field. The frontend fires all 4
-# queries in parallel and renders each card as soon as its data lands,
-# so the first paint isn't blocked by the slowest count.
+# 2026-08-05 P0：每个端点只跑自己那一条 COUNT（旧版全部跑全量 8 条，
+# 见顶部缓存注释），各带独立 60s 缓存键，4 路并发折叠为 4 条单查。
 # ---------------------------------------------------------------------------
 
-_METRIC_FIELDS = {
-    "etf-count": ("etf_count",),
-    "score-count": ("score_count",),
-    "category-count": ("category_count",),
-    "template-count": ("template_count",),
+
+def _count_etf(db: Session) -> int:
+    return db.query(func.count(ETFInfo.id)).scalar() or 0
+
+
+def _count_score(db: Session) -> int:
+    return db.query(func.count(ETFScore.id)).scalar() or 0
+
+
+def _count_category(db: Session) -> int:
+    return (
+        db.query(func.count(func.distinct(ETFInfo.category)))
+        .filter(ETFInfo.category.isnot(None))
+        .scalar()
+        or 0
+    )
+
+
+def _count_template(db: Session) -> int:
+    return db.query(func.count(ScoreTemplate.id)).scalar() or 0
+
+
+_METRIC_QUERIES = {
+    "etf-count": _count_etf,
+    "score-count": _count_score,
+    "category-count": _count_category,
+    "template-count": _count_template,
 }
 
 
@@ -93,13 +146,13 @@ def get_overview_metric(
     ``{"value": <number>}`` so the frontend can read a single key
     regardless of which metric was requested.
     """
-    fields = _METRIC_FIELDS.get(metric)
-    if not fields:
+    query_fn = _METRIC_QUERIES.get(metric)
+    if query_fn is None:
         from fastapi import HTTPException
 
         raise HTTPException(status_code=404, detail=f"Unknown metric '{metric}'")
-    overview = _collect_overview(db)
-    return {"value": overview[fields[0]], "metric": metric}
+    value = _cached(f"metric:{metric}", lambda: query_fn(db))
+    return {"value": value, "metric": metric}
 
 
 # ---------------------------------------------------------------------------
