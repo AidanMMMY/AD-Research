@@ -47,6 +47,24 @@ def _cached(key: str, compute):
     return value
 
 
+def _estimate_table_rows(db: Session, table: str) -> int | None:
+    """``pg_class.reltuples`` 行数估算（PostgreSQL only）。
+
+    etf_indicator 1600 万+ 行的精确 COUNT 冷查询 ~15-20s，对 KPI 卡片
+    无意义（展示「1613 万条」量级即可），改用 planner 统计估算（即时）。
+    非 PostgreSQL（测试 SQLite）返回 None，调用方回退精确 COUNT。
+    """
+    if db.get_bind().dialect.name != "postgresql":
+        return None
+    from sqlalchemy import text
+
+    estimate = db.execute(
+        text("SELECT GREATEST(reltuples, 0)::bigint FROM pg_class WHERE relname = :t"),
+        {"t": table},
+    ).scalar()
+    return int(estimate) if estimate is not None else None
+
+
 def _collect_overview(db: Session) -> dict:
     """Compute all overview counters in one pass (60s cached).
 
@@ -65,7 +83,10 @@ def _collect_overview(db: Session) -> dict:
         market_count = (
             db.query(func.count(func.distinct(ETFInfo.market))).scalar() or 0
         )
-        indicator_count = db.query(func.count(ETFIndicator.id)).scalar() or 0
+        # 1600 万行巨表：估算优先（冷查询 15-20s → 即时），非 PG 回退精确
+        indicator_count = _estimate_table_rows(db, "etf_indicator")
+        if indicator_count is None:
+            indicator_count = db.query(func.count(ETFIndicator.id)).scalar() or 0
         score_count = db.query(func.count(ETFScore.id)).scalar() or 0
         template_count = db.query(func.count(ScoreTemplate.id)).scalar() or 0
 
