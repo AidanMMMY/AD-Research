@@ -12,8 +12,11 @@ enum DigestStatus: String, Codable, Sendable {
 }
 
 /// 单章节采集/生成状态
+/// 2026-08-05：后端实际还会返回 "success"（与 ok 同义），旧枚举没有
+/// 该 case → DigestSection 整体解码失败 → 研报全文页必崩（P0）。
 enum DigestSectionStatus: String, Codable, Sendable {
     case ok
+    case success
     case degraded
     case failed
 }
@@ -39,12 +42,14 @@ struct DigestListResponse: Decodable, Sendable {
 }
 
 /// 章节元信息
+/// 2026-08-05：后端 sections_json 实际不下发 retries 字段（与 web 契约
+/// 文档有出入，以后端为准），必须可选否则整篇 DigestReport 解码失败。
 struct DigestSection: Codable, Sendable {
     let key: String
     let title: String
     let status: DigestSectionStatus
     let chars: Int
-    let retries: Int
+    let retries: Int?
 }
 
 /// 完整报告（/latest 与 /by-date 返回结构）

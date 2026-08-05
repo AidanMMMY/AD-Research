@@ -89,7 +89,9 @@ struct DigestDetailView: View {
             }
 
             // 章节降级提示（仅当有非 ok 章节时）
-            let degraded = report.sectionsJson.filter { $0.status != .ok }
+            let degraded = report.sectionsJson.filter {
+                $0.status == .degraded || $0.status == .failed
+            }
             if !degraded.isEmpty {
                 ADCard(padding: AppTheme.Spacing.md) {
                     VStack(alignment: .leading, spacing: AppTheme.Spacing.xs) {
