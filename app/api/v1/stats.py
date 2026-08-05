@@ -55,7 +55,7 @@ def _collect_overview(db: Session) -> dict:
     load in parallel and stream into the page as each becomes ready.
     """
     def _compute() -> dict:
-        etf_count = db.query(func.count(ETFInfo.id)).scalar() or 0
+        etf_count = db.query(func.count(ETFInfo.code)).scalar() or 0
         category_count = (
             db.query(func.count(func.distinct(ETFInfo.category)))
             .filter(ETFInfo.category.isnot(None))
@@ -103,7 +103,8 @@ def get_overview(
 
 
 def _count_etf(db: Session) -> int:
-    return db.query(func.count(ETFInfo.id)).scalar() or 0
+    # ETFInfo 主键是 code（String），没有 id 列 —— 2026-08-05 热修
+    return db.query(func.count(ETFInfo.code)).scalar() or 0
 
 
 def _count_score(db: Session) -> int:
