@@ -1,0 +1,84 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>2026-08-05 首页/研报故障复盘</title><style>body{max-width:900px;margin:40px auto;padding:0 20px;font-family:-apple-system,"PingFang SC",sans-serif;line-height:1.7;color:#1a1a2e}h1{border-bottom:2px solid #e94560;padding-bottom:8px}h2{margin-top:32px;color:#0f3460}table{border-collapse:collapse;width:100%;font-size:.93em}th,td{border:1px solid #ccc;padding:6px 10px;text-align:left}th{background:#f5f5fa}code{background:#f0f0f5;padding:2px 6px;border-radius:4px;font-size:.92em}blockquote{border-left:4px solid #e94560;margin:0;padding:4px 16px;background:#fdf3f5}</style></head><body><h1>2026-08-05 首页/研报故障全面排查 + /data 满盘全栈停摆复盘</h1>
+<blockquote>
+<p>一晚三连：两个存量 P0、一个契约漂移、一个我引入的热修 bug、一次磁盘满盘全栈停摆。
+全部修复并部署，最终验证全绿。修复人 Claude（Aidan 报告「首页无法显示、研报无法加载全文」触发）。</p>
+</blockquote>
+<h2>TL;DR</h2>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>问题</th>
+<th>根因</th>
+<th>修复</th>
+<th>commit</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>首页 KPI 永久转圈</td>
+<td><code>/stats/overview/{metric}</code> 每个端点跑全量 8 条 COUNT（etf_score 115 万行 / etf_indicator 1613 万行），4 卡并行=32 条重查询互抢，单请求 12-13s</td>
+<td>per-metric 单查 + 60s 进程内 TTL 缓存 + indicator_count 改 reltuples 估算</td>
+<td><code>2040b86</code> <code>5fdbb6a</code></td>
+</tr>
+<tr>
+<td>2</td>
+<td><code>/fund-flow/sector</code> 必 500</td>
+<td><code>_parse_sort</code> 从列名映射取「字典首列」，<code>main_net_inflow</code> 恒返回 IndividualFundFlow 的列 → missing FROM-clause</td>
+<td>按调用方 model 解析列，未知列兜底本表 trade_date；+6 回归测试</td>
+<td><code>2040b86</code></td>
+</tr>
+<tr>
+<td>3</td>
+<td>原生 App 研报全文加载失败</td>
+<td>后端 <code>sections_json</code> 不下发 <code>retries</code> 且 status 值为 <code>"success"</code>（不在 Swift 枚举内）→ 严格解码整篇失败</td>
+<td>retries 改可选 + 枚举补 success + 降级角标判定显式化；DMG 重打</td>
+<td><code>b9d43d2</code></td>
+</tr>
+<tr>
+<td>4</td>
+<td><code>/stats/overview/etf-count</code> 500（热修当天引入）</td>
+<td>我误用 <code>ETFInfo.id</code>——主键是 <code>code</code>(String)，该端点此前零测试覆盖</td>
+<td>改 <code>ETFInfo.code</code> + 7 条 overview 回归测试</td>
+<td><code>3296d2e</code></td>
+</tr>
+<tr>
+<td>5</td>
+<td><strong>全栈停摆 ~10 分钟</strong></td>
+<td>一天 6 次部署 = 16GB 旧镜像 + 49GB build cache 顶满 /data（100%）→ postgres PANIC <code>No space left on device</code> 崩溃循环，4 容器 Created 起不来</td>
+<td>急救清 35GB（旧镜像 21G + build cache 14G）；update.sh 加部署后自动清理（保留 current+latest，best-effort）</td>
+<td><code>de17fe5</code></td>
+</tr>
+</tbody>
+</table>
+<h2>关键时间线（CST）</h2>
+<ul>
+<li>22:0x 用户报告：首页无法显示 + 研报无法加载全文（恰逢 11 commits 部署窗口，症状被放大）</li>
+<li>22:3x 探测定位 #1 #2；23:0x 定位 #3（sections_json 契约漂移）</li>
+<li>23:2x push <code>2040b86</code> 后引入 #4，30 分钟内热修 <code>3296d2e</code></li>
+<li>23:5x push <code>5fdbb6a</code> 部署中 <strong>/data 顶满 100%</strong> → postgres PANIC 崩溃循环，全栈 4 容器 Created</li>
+<li>00:0x 清 35GB → postgres 重启恢复 → compose 拉起四服务 → 外网 200</li>
+<li>00:1x reextract_cninfo_md 重 fire（任务在混乱中丢失）→ push <code>de17fe5</code>（update.sh 自动清理）</li>
+</ul>
+<h2>排障口诀（这次验证有效的路径）</h2>
+<ol>
+<li><strong>"首页无法显示"先打 API 不看页面</strong>：<code>curl -w '%{http_code} %{time_total}s'</code> 逐端点过一遍，慢/500 立现</li>
+<li><strong>Swift 端「加载失败」优先怀疑契约漂移</strong>：后端 JSON 与 Codable 模型逐字段对（缺字段/枚举值超出都是整体解码失败，不是字段级降级）；契约以后端实际返回为准，不看 web ts 类型</li>
+<li><strong>docker ps 只剩 infra 容器 = 应用层全灭</strong>：<code>docker ps -a</code> 看 Created 态 + <code>docker logs postgres --tail</code> 找 PANIC；<code>No space left</code> → 先清镜像再 restart postgres（它会自己跑完 recovery）</li>
+<li><strong>磁盘占用三兄弟</strong>：<code>docker system df</code>（Images/Build Cache/Volumes）+ <code>df -h /data</code>；每天多次 push 时旧镜像是第一嫌犯（每个 2.67GB）</li>
+</ol>
+<h2>加固清单（本次落地）</h2>
+<ul>
+<li>[x] stats overview：per-metric 单查 + 60s 缓存 + 巨表 reltuples 估算（冷启 19.9s → 1.4s）</li>
+<li>[x] <code>_parse_sort</code> model 感知 + 6 回归测试；stats overview 7 回归测试（原零覆盖）</li>
+<li>[x] 原生 DigestModels 契约对齐后端实际（retries 可选 / success 枚举）</li>
+<li>[x] update.sh 部署后自动清旧镜像 + 72h build cache（<code>de17fe5</code>）</li>
+<li>[x] 新 DMG 已重打（含 #3 修复）：<code>~/Desktop/AlloyResearch-0.4.0-macOS-arm64.dmg</code></li>
+</ul>
+<h2>遗留</h2>
+<ul>
+<li>[ ] <code>/stats/overview</code> 多 uvicorn worker 下进程内缓存命中率有限（二刷 2.4s），可改 Redis 共享缓存（低优）</li>
+<li>[ ] 用户需重装 DMG 验证研报全文；web 端 DigestSection status 类型与后端 <code>"success"</code> 不一致（仅角标语义，非致命，下轮对齐）</li>
+<li>[ ] 昨日 push 的 5 个 commit 触发 5 次部署，reextract_cninfo_md 每次被 redeliver 从头跑——长任务与高频部署的冲突需要调度层面解（如 reextract 支持断点 offset 持久化）</li>
+</ul></body></html>
