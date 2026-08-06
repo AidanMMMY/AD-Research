@@ -258,17 +258,24 @@ class PoolEnhancementService:
         else:
             suggestions = self._suggest_by_equal(codes)
 
-        # Store suggestions in the database (only for active weight records)
-        for suggestion in suggestions:
-            weight = (
+        # Store suggestions in the database (only for active weight records).
+        # Batch the PoolWeight lookup into one IN query (perf audit
+        # 2026-08-07) — previously one SELECT per suggestion.
+        suggestion_codes = [s["etf_code"] for s in suggestions]
+        existing_weights = {
+            w.etf_code: w
+            for w in (
                 self.db.query(PoolWeight)
                 .filter(
                     PoolWeight.pool_id == pool_id,
-                    PoolWeight.etf_code == suggestion["etf_code"],
+                    PoolWeight.etf_code.in_(suggestion_codes),
                     PoolWeight.removed_at.is_(None),
                 )
-                .first()
+                .all()
             )
+        }
+        for suggestion in suggestions:
+            weight = existing_weights.get(suggestion["etf_code"])
             if weight:
                 weight.suggested_weight = suggestion["suggested_weight"]
                 weight.weight_source = algorithm
@@ -540,21 +547,31 @@ class PoolEnhancementService:
                 "matrix": [[1.0]] if codes else [],
             }
 
-        # Get daily returns for the last 60 trading days
+        # Get daily returns for the last 60 trading days.
+        # Batched (perf audit 2026-08-07): one IN query for all codes, then
+        # take the latest 60 bars per code in Python — previously one SELECT
+        # per code (N queries).
         from app.models.etf import InstrumentDailyBar
 
-        returns_data = {}
-        for code in codes:
-            bars = (
-                self.db.query(InstrumentDailyBar)
-                .filter(InstrumentDailyBar.etf_code == code)
-                .filter(InstrumentDailyBar.change_pct.isnot(None))
-                .order_by(InstrumentDailyBar.trade_date.desc())
-                .limit(60)
-                .all()
+        all_bars = (
+            self.db.query(InstrumentDailyBar)
+            .filter(
+                InstrumentDailyBar.etf_code.in_(codes),
+                InstrumentDailyBar.change_pct.isnot(None),
             )
-            if bars:
-                returns_data[code] = [float(b.change_pct) for b in reversed(bars)]
+            .order_by(
+                InstrumentDailyBar.etf_code,
+                InstrumentDailyBar.trade_date.desc(),
+            )
+            .all()
+        )
+        returns_data: dict[str, list[float]] = {}
+        for code in codes:
+            code_bars = [b for b in all_bars if b.etf_code == code][:60]
+            if code_bars:
+                returns_data[code] = [
+                    float(b.change_pct) for b in reversed(code_bars)
+                ]
 
         # Only include codes with sufficient data
         valid_codes = [c for c in codes if c in returns_data and len(returns_data[c]) >= 20]

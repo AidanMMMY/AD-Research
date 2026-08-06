@@ -28,9 +28,14 @@ def _compute_adj_close(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def _bars_to_dataframe(bars: list[InstrumentDailyBar], adjusted: bool) -> pd.DataFrame:
-    """Convert ORM rows to a standard DataFrame."""
+    """Convert ORM rows to a standard DataFrame.
+
+    Always includes an ``etf_code`` column so callers can distinguish bars
+    from multiple instruments (relevant for ``get_bars_for_codes``).
+    """
     if not bars:
         columns = [
+            "etf_code",
             "trade_date", "open", "high", "low", "close", "volume",
             "amount", "change_pct", "turnover_rate", "adj_factor",
         ]
@@ -42,6 +47,7 @@ def _bars_to_dataframe(bars: list[InstrumentDailyBar], adjusted: bool) -> pd.Dat
     for bar in bars:
         records.append(
             {
+                "etf_code": bar.etf_code,
                 "trade_date": bar.trade_date,
                 "open": float(bar.open) if bar.open is not None else None,
                 "high": float(bar.high) if bar.high is not None else None,

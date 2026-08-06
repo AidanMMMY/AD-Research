@@ -45,20 +45,30 @@ class AnalysisService:
                 "method": method,
             }
 
-        # Fetch adjusted close prices from the local price repository
+        # Fetch adjusted close prices from the local price repository.
+        # Batched (perf audit 2026-08-07): one query for all codes via
+        # get_bars_for_codes instead of one get_bars call per code.
+        # get_bars_for_codes returns all bars; we trim to the last
+        # window*2 per code in Python to match the previous per-code limit.
         from app.data.repositories import price_repository
 
+        all_df = price_repository.get_bars_for_codes(
+            self.db, codes, adjusted=True
+        )
+
         data = {}
-        for code in codes:
-            df = price_repository.get_bars(
-                self.db, code, adjusted=True, limit=window * 2
-            )
-            if df.empty or len(df) < 2:
-                continue
-            df = df.sort_values("trade_date").reset_index(drop=True)
-            prices = df["adj_close"].astype(float).to_numpy()
-            returns = np.diff(prices) / prices[:-1]
-            data[code] = returns[-window:]
+        if not all_df.empty:
+            for code in codes:
+                df = all_df[all_df["etf_code"] == code].copy()
+                if df.empty or len(df) < 2:
+                    continue
+                df = df.sort_values("trade_date").reset_index(drop=True)
+                # Keep only the last window*2 bars (matches the previous
+                # per-code limit=window*2 behaviour).
+                df = df.tail(window * 2)
+                prices = df["adj_close"].astype(float).to_numpy()
+                returns = np.diff(prices) / prices[:-1]
+                data[code] = returns[-window:]
 
         # Only keep codes with sufficient data
         valid_codes = [c for c in codes if c in data and len(data[c]) >= 2]

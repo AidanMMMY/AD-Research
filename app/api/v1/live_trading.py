@@ -70,18 +70,25 @@ def _get_config_for_user(
     config_id: int,
     current_user: UserResponse,
 ) -> LiveTradeConfig | None:
-    """Get a config by ID, enforcing owner-scope.
+    """Get a config by ID, enforcing owner-scope at the SQL layer.
 
-    - If config.user_id is NULL (legacy), allow any authenticated user.
-    - If config.user_id is set, require config.user_id == current_user.id.
-    Returns None if not found or access denied (caller should return 404).
+    - Legacy configs (``user_id IS NULL``) are treated as not found — they
+      predate per-user ownership and may carry API keys that should not be
+      exposed to any authenticated user. They must be re-owned (set
+      ``user_id``) via an admin migration before they become usable again.
+    - Otherwise require ``config.user_id == current_user.id``.
+
+    Returns None if not found or access denied (caller should return 404
+    so existence is not leaked — 403 would confirm the config exists).
     """
-    config = db.query(LiveTradeConfig).filter(LiveTradeConfig.id == config_id).first()
-    if not config:
-        return None
-    # Legacy configs (user_id=NULL) are accessible to all authenticated users
-    if config.user_id is not None and config.user_id != current_user.id:
-        return None
+    config = (
+        db.query(LiveTradeConfig)
+        .filter(
+            LiveTradeConfig.id == config_id,
+            LiveTradeConfig.user_id == current_user.id,
+        )
+        .first()
+    )
     return config
 
 
@@ -466,7 +473,10 @@ def cancel_order(
 
     local_order = (
         db.query(LiveTradeOrder)
-        .filter(LiveTradeOrder.id == order_id, LiveTradeOrder.config_id == config_id)
+        .filter(
+            LiveTradeOrder.id == order_id,
+            LiveTradeOrder.config_id == config.id,
+        )
         .first()
     )
     if not local_order:

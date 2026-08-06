@@ -30,20 +30,27 @@ class RiskAnalysisService:
         window: int = 252,
         end_date: date | None = None,
     ) -> pd.DataFrame:
-        """Load daily returns for a list of codes over a lookback window."""
+        """Load daily returns for a list of codes over a lookback window.
+
+        Batched (perf audit 2026-08-07): one query for all codes via
+        get_bars_for_codes instead of one get_bars call per code.
+        """
         end_date = end_date or date.today()
         start_date = end_date - timedelta(days=window * 2)
 
+        all_df = price_repository.get_bars_for_codes(
+            self.db, codes, start_date, end_date, adjusted=True
+        )
+
         frames: list[pd.DataFrame] = []
-        for code in codes:
-            df = price_repository.get_bars(
-                self.db, code, start_date, end_date, adjusted=True
-            )
-            if df.empty or len(df) < 2:
-                continue
-            df = df.sort_values("trade_date").reset_index(drop=True)
-            df["return"] = df["adj_close"].pct_change()
-            frames.append(df[["trade_date", "return"]].rename(columns={"return": code}))
+        if not all_df.empty:
+            for code in codes:
+                df = all_df[all_df["etf_code"] == code].copy()
+                if df.empty or len(df) < 2:
+                    continue
+                df = df.sort_values("trade_date").reset_index(drop=True)
+                df["return"] = df["adj_close"].pct_change()
+                frames.append(df[["trade_date", "return"]].rename(columns={"return": code}))
 
         if not frames:
             return pd.DataFrame()

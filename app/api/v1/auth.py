@@ -223,11 +223,19 @@ def refresh(request: RefreshRequest, db: Session = Depends(_get_db)):
     jti = _generate_jti()
     access_token = create_access_token(user.username, user.role, jti)
 
-    # Update device last_active
+    # Update device last_active.
+    # Scope the UPDATE by user_id as well as device_id so a tampered or
+    # stolen refresh token cannot update another user's device row (defence
+    # in depth — stored.device_id already belongs to this user in normal
+    # flow, but the extra predicate prevents cross-user writes if the
+    # device_id is ever leaked/reused).
     if stored.device_id:
         (
             db.query(UserDevice)
-            .filter(UserDevice.id == stored.device_id)
+            .filter(
+                UserDevice.id == stored.device_id,
+                UserDevice.user_id == user.id,
+            )
             .update({"last_active_at": datetime.now(timezone.utc)})
         )
         db.commit()
