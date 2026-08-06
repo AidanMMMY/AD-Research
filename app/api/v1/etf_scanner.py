@@ -4,11 +4,13 @@ from typing import Any
 
 from fastapi import APIRouter, Depends
 
-from app.api.deps import get_etf_scanner_service, require_admin
+from app.api.deps import get_current_user, get_etf_scanner_service, require_admin
 from app.schemas.auth import UserResponse
 from app.services.etf_scanner_service import ETFScannerService
 
-router = APIRouter()
+# Auth for every route: scan trigger is admin-only, scan logs require any
+# authenticated user (they were previously public — security audit 2026-08-06).
+router = APIRouter(dependencies=[Depends(get_current_user)])
 
 
 @router.post("/scan", response_model=dict[str, Any])

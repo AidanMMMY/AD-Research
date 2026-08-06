@@ -5,19 +5,33 @@ and report listing operations.
 """
 
 from datetime import date, datetime
+from typing import Literal
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 # ------------------------------------------------------------------
 # Report generation request
 # ------------------------------------------------------------------
 
+# ``report_type`` and ``format`` are interpolated into the output filename
+# (report_service.generate_pool_report). They are allowlisted here so a
+# malicious value such as ``../../tmp/pwn`` can never escape the reports
+# directory (path-traversal fix, 2026-08-06). Extend the pattern when new
+# report types ship — keep it restricted to word chars / dash / underscore.
+_REPORT_TYPE_PATTERN = r"^[A-Za-z0-9_-]{1,50}$"
+_REPORT_FORMATS = ("html", "markdown")
+
+
 class ReportGenerateRequest(BaseModel):
     """Request model for triggering report generation."""
 
-    report_type: str = "pool_weekly"
+    report_type: str = Field(
+        default="pool_weekly",
+        pattern=_REPORT_TYPE_PATTERN,
+        description="Report type; allowlisted to [A-Za-z0-9_-] to prevent path traversal",
+    )
     pool_id: int | None = None
-    format: str = "html"
+    format: Literal["html", "markdown"] = "html"
     template_id: int | None = None
 
 

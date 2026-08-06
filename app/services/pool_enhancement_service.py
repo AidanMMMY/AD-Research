@@ -56,20 +56,54 @@ class PoolEnhancementService:
             raise PermissionError("not_owner")
         return pool
 
+    def _get_pool_for_read(
+        self, pool_id: int, current_user: UserResponse | None
+    ) -> ETFPools | None:
+        """Fetch the active pool and enforce owner-scoped *read* access.
+
+        Returns ``None`` when the pool does not exist, is deleted, or is not
+        visible to the caller (callers map that to 404 so pool existence is
+        not leaked). Admins see every pool; NULL-owner legacy shared pools are
+        visible to all authenticated users; other pools are visible only to
+        their owner. ``current_user=None`` (internal caller) skips the check.
+        """
+        pool = (
+            self.db.query(ETFPools)
+            .filter(ETFPools.id == pool_id)
+            .filter(ETFPools.deleted_at.is_(None))
+            .first()
+        )
+        if pool is None or current_user is None:
+            return pool
+        if current_user.role == "admin":
+            return pool
+        if pool.user_id is None:
+            return pool
+        if pool.user_id != current_user.id:
+            return None
+        return pool
+
     # ------------------------------------------------------------------
     # Weight management
     # ------------------------------------------------------------------
 
-    def get_weights(self, pool_id: int) -> list[dict[str, Any]]:
+    def get_weights(
+        self, pool_id: int, current_user: UserResponse | None = None
+    ) -> list[dict[str, Any]] | None:
         """Get all weight configurations for active members of a pool.
 
         Returns a list of weight dicts with ETF metadata, including
         both target_weight and suggested_weight. Removed members are excluded.
+        Returns ``None`` when the pool does not exist or is not visible to the
+        caller (owner-scoped read access).
 
         Uses an outer join from PoolMember so active members that do not yet
         have a PoolWeight row (e.g. members added before the auto-weight
         creation fix) still appear in the table with default zero weights.
         """
+        if self._get_pool_for_read(pool_id, current_user) is None:
+            return None
+
         rows = (
             self.db.query(PoolMember, PoolWeight, ETFInfo.name, ETFInfo.name_zh)
             .outerjoin(
@@ -392,18 +426,16 @@ class PoolEnhancementService:
     # Analytics
     # ------------------------------------------------------------------
 
-    def get_analytics(self, pool_id: int) -> dict[str, Any] | None:
+    def get_analytics(
+        self, pool_id: int, current_user: UserResponse | None = None
+    ) -> dict[str, Any] | None:
         """Get comprehensive analytics for a pool.
 
         Returns members, category distribution, weighted performance,
-        and rebalance alerts.
+        and rebalance alerts. ``None`` when the pool does not exist or is
+        not visible to the caller (owner-scoped read access).
         """
-        pool = (
-            self.db.query(ETFPools)
-            .filter(ETFPools.id == pool_id)
-            .filter(ETFPools.deleted_at.is_(None))
-            .first()
-        )
+        pool = self._get_pool_for_read(pool_id, current_user)
         if not pool:
             return None
 
@@ -486,11 +518,17 @@ class PoolEnhancementService:
             "rebalance_alerts": rebalance_alerts,
         }
 
-    def get_correlation_matrix(self, pool_id: int) -> dict[str, Any] | None:
+    def get_correlation_matrix(
+        self, pool_id: int, current_user: UserResponse | None = None
+    ) -> dict[str, Any] | None:
         """Get correlation matrix for pool members based on daily returns.
 
-        Returns a dict with codes list and correlation matrix.
+        Returns a dict with codes list and correlation matrix. ``None`` when
+        the pool does not exist or is not visible to the caller.
         """
+        if self._get_pool_for_read(pool_id, current_user) is None:
+            return None
+
         members = self._get_active_members(pool_id)
         if not members:
             return None
@@ -674,9 +712,19 @@ class PoolEnhancementService:
         }
 
     def get_snapshots(
-        self, pool_id: int, limit: int = 10
-    ) -> list[dict[str, Any]]:
-        """Get recent snapshots for a pool."""
+        self,
+        pool_id: int,
+        limit: int = 10,
+        current_user: UserResponse | None = None,
+    ) -> list[dict[str, Any]] | None:
+        """Get recent snapshots for a pool.
+
+        Returns ``None`` when the pool does not exist or is not visible to
+        the caller (owner-scoped read access).
+        """
+        if self._get_pool_for_read(pool_id, current_user) is None:
+            return None
+
         snapshots = (
             self.db.query(PoolSnapshot)
             .filter(PoolSnapshot.pool_id == pool_id)

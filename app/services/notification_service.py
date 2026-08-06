@@ -13,15 +13,18 @@ invalidates both stores consistently.
 """
 
 import base64
+import ipaddress
 import logging
 import re
 import smtplib
+import socket
 import time
 from datetime import datetime
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from html import escape
 from typing import Any
+from urllib.parse import urlparse
 
 import requests
 from cryptography.fernet import Fernet
@@ -53,6 +56,57 @@ def _normalize_channel_type(channel_type: str, exposed_config: dict) -> str:
         exposed_config.setdefault("platform", platform)
         return "webhook"
     return channel_type
+
+
+# SSRF guard for webhook URLs (2026-08-06 security audit). Webhook URLs are
+# user-supplied (``NotificationConfigCreate.config_json``) and are POSTed by
+# the server, so an attacker could otherwise point them at internal services
+# or cloud metadata (169.254.169.254 / Aliyun 100.100.100.200) and read the
+# response. We reject non-http(s) schemes, localhost/.local hosts, and any
+# hostname that resolves to a private/reserved address.
+_PRIVATE_NETWORKS = (
+    ipaddress.ip_network("0.0.0.0/8"),
+    ipaddress.ip_network("10.0.0.0/8"),
+    ipaddress.ip_network("100.64.0.0/10"),  # CGNAT; includes Aliyun metadata 100.100.100.200
+    ipaddress.ip_network("127.0.0.0/8"),
+    ipaddress.ip_network("169.254.0.0/16"),  # link-local / cloud metadata
+    ipaddress.ip_network("172.16.0.0/12"),
+    ipaddress.ip_network("192.168.0.0/16"),
+    ipaddress.ip_network("198.18.0.0/15"),  # benchmarking range
+    ipaddress.ip_network("::1/128"),
+    ipaddress.ip_network("fc00::/7"),  # IPv6 unique-local
+    ipaddress.ip_network("fe80::/10"),  # IPv6 link-local
+)
+
+
+def _validate_webhook_url(url: str) -> None:
+    """Raise ``ValueError`` when ``url`` may target an internal/metadata host."""
+    if not url or len(url) > 2048:
+        raise ValueError("Webhook URL 无效")
+    parsed = urlparse(url)
+    if parsed.scheme not in ("http", "https"):
+        raise ValueError("Webhook URL 仅支持 http/https")
+    host = parsed.hostname
+    if not host:
+        raise ValueError("Webhook URL 缺少主机名")
+    lowered = host.lower()
+    if lowered == "localhost" or lowered.endswith(".local"):
+        raise ValueError("Webhook URL 不能指向本机或内网地址")
+
+    try:
+        candidates = [ipaddress.ip_address(host)]
+    except ValueError:
+        try:
+            candidates = [
+                ipaddress.ip_address(item[4][0])
+                for item in socket.getaddrinfo(host, None)
+            ]
+        except OSError as exc:
+            raise ValueError("Webhook URL 域名无法解析") from exc
+
+    for ip in candidates:
+        if any(ip in net for net in _PRIVATE_NETWORKS):
+            raise ValueError("Webhook URL 不能指向内网或保留地址")
 
 
 # ── B7 (2026-08-03): Daily Digest 推送用的最小 markdown 转换 ──
@@ -274,6 +328,8 @@ class NotificationService:
         """
         protected = self._protect_config_json(config_json)
         webhook_url = protected.pop("webhook_url", None)
+        if webhook_url:
+            _validate_webhook_url(str(webhook_url))
         encrypted_url = self._encrypt_webhook_url(webhook_url) if webhook_url else None
 
         config = NotificationConfig(
@@ -318,6 +374,9 @@ class NotificationService:
                 protected = self._protect_config_json(value)
                 new_webhook_url = protected.pop("webhook_url", None)
                 if new_webhook_url is not None:
+                    # Skip validation for already-encrypted round-trips.
+                    if not str(new_webhook_url).startswith(self._ENCRYPTED_PREFIX):
+                        _validate_webhook_url(str(new_webhook_url))
                     config.webhook_url_encrypted = self._encrypt_webhook_url(new_webhook_url)
                 setattr(config, key, protected)
             else:
@@ -408,6 +467,10 @@ class NotificationService:
 
         if not webhook_url:
             return {"success": False, "error": "Webhook URL not configured"}
+        try:
+            _validate_webhook_url(str(webhook_url))
+        except ValueError as exc:
+            return {"success": False, "error": str(exc)}
 
         # Build message
         if test:
@@ -443,6 +506,9 @@ class NotificationService:
             json=payload,
             headers={"Content-Type": "application/json"},
             timeout=30,
+            # Redirects could bounce a public URL to an internal host (SSRF
+            # bypass). Legitimate webhook endpoints do not redirect.
+            allow_redirects=False,
         )
 
         if response.status_code == 200:

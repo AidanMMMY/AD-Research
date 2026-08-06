@@ -185,8 +185,10 @@ class ChatMessageResponse(BaseModel):
 # ------------------------------------------------------------------
 
 @router.get("/ai/status", response_model=AIStatusResponse)
-def get_ai_status():
-    """Check whether AI features are available.
+def get_ai_status(
+    current_user: User = Depends(get_current_user),
+):
+    """Check whether AI features are available (authenticated).
 
     Reports the actually-selected provider (MiniMax by default) so the
     frontend banner points at the right key, not a hardcoded DeepSeek one.
@@ -528,7 +530,7 @@ def delete_chat_session(
     """Delete a chat session."""
     _require_ai()
     service = ChatService(db)
-    ok = service.delete_session(session_id)
+    ok = service.delete_session(session_id, user_id=current_user.id)
     if not ok:
         raise HTTPException(status_code=404, detail="Session not found")
     return {"deleted": True}
@@ -545,7 +547,7 @@ def send_chat_message(
     _require_ai()
     service = ChatService(db)
     try:
-        msg = service.send_message(session_id, req.content)
+        msg = service.send_message(session_id, req.content, user_id=current_user.id)
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e)) from e
     return _message_to_response(msg)
@@ -560,7 +562,7 @@ def get_chat_messages(
     """Get all messages in a chat session."""
     _require_ai()
     service = ChatService(db)
-    messages = service.get_messages(session_id)
+    messages = service.get_messages(session_id, user_id=current_user.id)
     return [_message_to_response(m) for m in messages]
 
 
@@ -584,6 +586,7 @@ async def _chat_stream(
     session_id: int,
     content: str,
     db: Session,
+    user_id: int,
 ) -> AsyncGenerator[str, None]:
     """Yield SSE frames carrying the assistant reply in chunks.
 
@@ -605,7 +608,7 @@ async def _chat_stream(
         # doesn't block the event loop while we stream chunks out.
         def _call() -> "AIChatMessage":
             svc = ChatService(db)
-            return svc.send_message(session_id, content)
+            return svc.send_message(session_id, content, user_id=user_id)
 
         msg = await asyncio.get_running_loop().run_in_executor(None, _call)
         text = msg.content or ""
@@ -672,7 +675,7 @@ async def stream_chat_message(
     _require_ai()
 
     return StreamingResponse(
-        _chat_stream(session_id, req.content, db),
+        _chat_stream(session_id, req.content, db, current_user.id),
         media_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache",

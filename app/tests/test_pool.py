@@ -504,3 +504,74 @@ def test_weekly_pool_reports_skips_deleted_and_survives_failure(db_session):
     # job caught it and still processed the healthy pool.
     assert deleted_id not in seen
     assert set(seen) == {active_id, failing_id}
+
+
+# ---------------------------------------------------------------------------
+# Pool READ endpoints owner-scoping (2026-08-06 security audit)
+# ---------------------------------------------------------------------------
+# Write endpoints already enforced owner scope (M21-3); the read endpoints
+# (weights / analytics / correlation / snapshots) used to skip the check,
+# letting any authenticated user read another user's private pool by id
+# enumeration. These tests pin the read-scoping behaviour.
+
+
+def _user(user_id: int, role: str = "user") -> UserResponse:
+    """Build a UserResponse with a synthetic id/username (service shape)."""
+    return UserResponse(id=user_id, username=f"user{user_id}", role=role)
+
+
+def test_read_weights_other_users_pool_hidden(owner_scoped_db, db_session):
+    """A regular user must not read another user's pool weights (None → 404)."""
+    seeded = owner_scoped_db
+    service = PoolEnhancementService(db_session)
+    bob = _user_resp(seeded["bob"])
+
+    assert service.get_weights(seeded["p_alice"].id, current_user=bob) is None
+
+
+def test_read_weights_owner_and_shared_visible(owner_scoped_db, db_session):
+    """Own pools and NULL-owner shared pools stay readable."""
+    seeded = owner_scoped_db
+    service = PoolEnhancementService(db_session)
+    alice = _user_resp(seeded["alice"])
+
+    assert service.get_weights(seeded["p_alice"].id, current_user=alice) == []
+    assert service.get_weights(seeded["p_shared"].id, current_user=alice) == []
+
+
+def test_read_analytics_other_users_pool_hidden(owner_scoped_db, db_session):
+    """A regular user must not read another user's pool analytics."""
+    seeded = owner_scoped_db
+    service = PoolEnhancementService(db_session)
+    bob = _user_resp(seeded["bob"])
+
+    assert service.get_analytics(seeded["p_alice"].id, current_user=bob) is None
+
+
+def test_read_analytics_admin_sees_any_pool(owner_scoped_db, db_session):
+    """Admins keep read access to every pool."""
+    seeded = owner_scoped_db
+    service = PoolEnhancementService(db_session)
+    admin = _user_resp(seeded["admin"])
+
+    result = service.get_analytics(seeded["p_alice"].id, current_user=admin)
+    assert result is not None
+    assert result["pool_id"] == seeded["p_alice"].id
+
+
+def test_read_correlation_other_users_pool_hidden(owner_scoped_db, db_session):
+    """A regular user must not read another user's correlation matrix."""
+    seeded = owner_scoped_db
+    service = PoolEnhancementService(db_session)
+    bob = _user_resp(seeded["bob"])
+
+    assert service.get_correlation_matrix(seeded["p_alice"].id, current_user=bob) is None
+
+
+def test_read_snapshots_other_users_pool_hidden(owner_scoped_db, db_session):
+    """A regular user must not read another user's pool snapshots."""
+    seeded = owner_scoped_db
+    service = PoolEnhancementService(db_session)
+    bob = _user_resp(seeded["bob"])
+
+    assert service.get_snapshots(seeded["p_alice"].id, current_user=bob) is None

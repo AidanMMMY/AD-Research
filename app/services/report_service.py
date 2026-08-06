@@ -5,6 +5,7 @@ aggregation from indicators, scores, and pool metadata.
 """
 
 import os
+import re
 from datetime import date, datetime
 from typing import Any
 
@@ -15,6 +16,7 @@ from sqlalchemy.orm import Session
 from app.models.etf import ETFIndicator, ETFInfo
 from app.models.pool import ETFPools, PoolMember
 from app.models.scoring import ETFScore, ReportMetadata, ScoreTemplate
+from app.schemas.auth import UserResponse
 
 
 class ReportService:
@@ -47,27 +49,70 @@ class ReportService:
     # Main generation entry point
     # ------------------------------------------------------------------
 
+    # Allowlist shared with the API schema (schemas/report.py). Kept in the
+    # service too so scheduler / script callers get the same protection.
+    _REPORT_TYPE_PATTERN = r"^[A-Za-z0-9_-]{1,50}$"
+    _REPORT_FORMATS = ("html", "markdown")
+
+    def _validate_report_params(self, report_type: str, format: str) -> None:
+        """Reject report_type / format values that could escape the reports dir."""
+        if not re.match(self._REPORT_TYPE_PATTERN, report_type):
+            raise ValueError(f"Invalid report_type: {report_type!r}")
+        if format not in self._REPORT_FORMATS:
+            raise ValueError(f"Invalid format: {format!r}")
+
+    def _get_pool_for_read(
+        self, pool_id: int, current_user: UserResponse | None
+    ) -> ETFPools | None:
+        """Fetch a pool that the caller may read, or None (no existence leak)."""
+        pool = (
+            self.db.query(ETFPools)
+            .filter(ETFPools.id == pool_id, ETFPools.deleted_at.is_(None))
+            .first()
+        )
+        if pool is None or current_user is None:
+            return pool
+        if current_user.role == "admin":
+            return pool
+        if pool.user_id is None:
+            return pool
+        if pool.user_id != current_user.id:
+            return None
+        return pool
+
     def generate_pool_report(
         self,
         pool_id: int,
         report_type: str = "pool_weekly",
         format: str = "html",
         template_id: int | None = None,
+        current_user: UserResponse | None = None,
     ) -> ReportMetadata:
         """Generate a report for an ETF pool.
 
         Creates a ReportMetadata record, generates the report content,
         saves it to disk, and updates the record with the file path.
 
+        Security (2026-08-06 audit):
+          - ``report_type`` / ``format`` are allowlisted so they cannot
+            escape the reports directory (path traversal).
+          - Pool ownership is enforced (``current_user``); another user's
+            pool is treated as not-found (404) so existence is not leaked.
+
         Args:
             pool_id: The ETF pool ID.
             report_type: Type of report (e.g. "pool_weekly").
             format: Output format ("html" or "markdown").
             template_id: Score template ID for scoring data.
+            current_user: The authenticated caller (None = internal caller).
 
         Returns:
             The ReportMetadata record.
         """
+        self._validate_report_params(report_type, format)
+        if self._get_pool_for_read(pool_id, current_user) is None:
+            raise ValueError(f"Pool {pool_id} not found")
+
         report_date = date.today()
 
         # Create metadata record
@@ -92,9 +137,14 @@ class ReportService:
             else:
                 content = self._generate_pool_html(pool_id, template_id)
 
-            # Save to file
+            # Save to file — resolved-path containment guard (defense in
+            # depth on top of the allowlist above).
             filename = f"report_{report_type}_{pool_id}_{report_date.isoformat()}.{format}"
             file_path = os.path.join(self.reports_dir, filename)
+            if os.path.commonpath(
+                [os.path.realpath(file_path), os.path.realpath(self.reports_dir)]
+            ) != os.path.realpath(self.reports_dir):
+                raise ValueError("Report path escapes the reports directory")
 
             with open(file_path, "w", encoding="utf-8") as f:
                 f.write(content)
@@ -528,8 +578,9 @@ class ReportService:
         report_type: str | None = None,
         pool_id: int | None = None,
         limit: int = 50,
+        current_user: UserResponse | None = None,
     ) -> list[ReportMetadata]:
-        """Get a list of generated reports with optional filtering."""
+        """Get a list of generated reports, scoped to pools the user can read."""
         query = self.db.query(ReportMetadata)
 
         if report_type:
@@ -537,16 +588,29 @@ class ReportService:
         if pool_id is not None:
             query = query.filter(ReportMetadata.pool_id == pool_id)
 
-        return (
-            query.order_by(ReportMetadata.created_at.desc())
-            .limit(limit)
-            .all()
-        )
+        reports = query.order_by(ReportMetadata.created_at.desc()).limit(limit).all()
+        if current_user is None or current_user.role == "admin":
+            return reports
+        return [
+            r
+            for r in reports
+            if r.pool_id is None
+            or self._get_pool_for_read(r.pool_id, current_user) is not None
+        ]
 
-    def get_report_status(self, report_id: int) -> ReportMetadata | None:
-        """Get the status of a report generation job."""
-        return (
+    def get_report_status(
+        self, report_id: int, current_user: UserResponse | None = None
+    ) -> ReportMetadata | None:
+        """Get the status of a report, scoped to pools the user can read."""
+        report = (
             self.db.query(ReportMetadata)
             .filter(ReportMetadata.id == report_id)
             .first()
         )
+        if report is None or current_user is None or current_user.role == "admin":
+            return report
+        if report.pool_id is not None and self._get_pool_for_read(
+            report.pool_id, current_user
+        ) is None:
+            return None
+        return report

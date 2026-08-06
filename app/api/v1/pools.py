@@ -184,10 +184,14 @@ def remove_member(
 @router.get("/{pool_id}/weights", response_model=list[PoolWeightResponse])
 def get_pool_weights(
     pool_id: int,
+    current_user: UserResponse = Depends(get_current_user),
     service: PoolEnhancementService = Depends(get_pool_enhancement_service),
 ):
-    """Get all weight configurations for a pool."""
-    return service.get_weights(pool_id)
+    """Get all weight configurations for a pool (owner-scoped read)."""
+    weights = service.get_weights(pool_id, current_user=current_user)
+    if weights is None:
+        raise HTTPException(status_code=404, detail=f"Pool {pool_id} not found")
+    return weights
 
 
 @router.put("/{pool_id}/weights/{etf_code}", response_model=PoolWeightResponse)
@@ -240,10 +244,11 @@ def suggest_pool_weights(
 @router.get("/{pool_id}/analytics", response_model=PoolAnalyticsResponse)
 def get_pool_analytics(
     pool_id: int,
+    current_user: UserResponse = Depends(get_current_user),
     service: PoolEnhancementService = Depends(get_pool_enhancement_service),
 ):
-    """Get comprehensive analytics for a pool."""
-    analytics = service.get_analytics(pool_id)
+    """Get comprehensive analytics for a pool (owner-scoped read)."""
+    analytics = service.get_analytics(pool_id, current_user=current_user)
     if not analytics:
         raise HTTPException(status_code=404, detail=f"Pool {pool_id} not found")
     return analytics
@@ -252,10 +257,11 @@ def get_pool_analytics(
 @router.get("/{pool_id}/correlation", response_model=PoolCorrelationResponse)
 def get_pool_correlation(
     pool_id: int,
+    current_user: UserResponse = Depends(get_current_user),
     service: PoolEnhancementService = Depends(get_pool_enhancement_service),
 ):
-    """Get correlation matrix for pool members based on daily returns."""
-    result = service.get_correlation_matrix(pool_id)
+    """Get correlation matrix for pool members (owner-scoped read)."""
+    result = service.get_correlation_matrix(pool_id, current_user=current_user)
     if result is None:
         raise HTTPException(status_code=404, detail=f"Pool {pool_id} not found or empty")
     return result
@@ -269,10 +275,14 @@ def get_pool_correlation(
 def get_pool_snapshots(
     pool_id: int,
     limit: int = 10,
+    current_user: UserResponse = Depends(get_current_user),
     service: PoolEnhancementService = Depends(get_pool_enhancement_service),
 ):
-    """Get recent snapshots for a pool."""
-    return service.get_snapshots(pool_id, limit=limit)
+    """Get recent snapshots for a pool (owner-scoped read)."""
+    snapshots = service.get_snapshots(pool_id, limit=limit, current_user=current_user)
+    if snapshots is None:
+        raise HTTPException(status_code=404, detail=f"Pool {pool_id} not found")
+    return snapshots
 
 
 @router.post("/{pool_id}/snapshots", response_model=PoolSnapshotResponse)

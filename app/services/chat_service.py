@@ -64,11 +64,22 @@ class ChatService:
             .all()
         )
 
-    def get_session(self, session_id: int) -> AIChatSession | None:
-        return self.db.query(AIChatSession).filter(AIChatSession.id == session_id).first()
+    def get_session(
+        self, session_id: int, user_id: int | None = None
+    ) -> AIChatSession | None:
+        """Fetch a chat session, optionally scoped to a user.
 
-    def delete_session(self, session_id: int) -> bool:
-        session = self.get_session(session_id)
+        When ``user_id`` is given, sessions owned by another user are treated
+        as not found (404 semantics) so pool existence/ownership is not leaked
+        (IDOR fix, 2026-08-06).
+        """
+        query = self.db.query(AIChatSession).filter(AIChatSession.id == session_id)
+        if user_id is not None:
+            query = query.filter(AIChatSession.user_id == user_id)
+        return query.first()
+
+    def delete_session(self, session_id: int, user_id: int | None = None) -> bool:
+        session = self.get_session(session_id, user_id=user_id)
         if not session:
             return False
         self.db.delete(session)
@@ -79,8 +90,13 @@ class ChatService:
     # Messaging
     # ------------------------------------------------------------------
 
-    def send_message(self, session_id: int, content: str) -> AIChatMessage:
+    def send_message(
+        self, session_id: int, content: str, user_id: int | None = None
+    ) -> AIChatMessage:
         """Send a user message and get AI response.
+
+        ``user_id`` scopes the operation to the session owner (IDOR fix) —
+        a message sent into another user's session raises ``ValueError``.
 
         1. Save user message
         2. Detect instrument codes in message
@@ -89,7 +105,7 @@ class ChatService:
         5. Get LLM response
         6. Save and return AI message
         """
-        session = self.get_session(session_id)
+        session = self.get_session(session_id, user_id=user_id)
         if not session:
             raise ValueError(f"Session {session_id} not found")
 
@@ -147,7 +163,12 @@ class ChatService:
         self.db.refresh(ai_msg)
         return ai_msg
 
-    def get_messages(self, session_id: int) -> list[AIChatMessage]:
+    def get_messages(
+        self, session_id: int, user_id: int | None = None
+    ) -> list[AIChatMessage]:
+        """Return messages for a session, scoped to the owner (IDOR fix)."""
+        if self.get_session(session_id, user_id=user_id) is None:
+            return []
         return (
             self.db.query(AIChatMessage)
             .filter(AIChatMessage.session_id == session_id)
@@ -216,8 +237,12 @@ class ChatService:
 
         return "\n\n".join(parts)
 
-    def _get_history(self, session_id: int) -> list[dict[str, str]]:
-        """Get recent chat history for context."""
+    def _get_history(
+        self, session_id: int, user_id: int | None = None
+    ) -> list[dict[str, str]]:
+        """Get recent chat history for context (owner-scoped)."""
+        if self.get_session(session_id, user_id=user_id) is None:
+            return []
         messages = (
             self.db.query(AIChatMessage)
             .filter(AIChatMessage.session_id == session_id)
