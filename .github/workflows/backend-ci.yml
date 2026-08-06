@@ -154,3 +154,27 @@ jobs:
             **/__pycache__/
           if-no-files-found: ignore
           retention-days: 3
+
+  ruff:
+    name: Ruff lint
+    # 2026-08-06 deploy audit: CI 此前没有 lint gate，ruff 债一度累积到
+    # 1371 项。加为 PR + push main 的强制检查，防止回潮。
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: ./
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install ruff
+        run: pip install ruff==0.8
+
+      - name: Run ruff check
+        run: ruff check app agent research scripts alembic

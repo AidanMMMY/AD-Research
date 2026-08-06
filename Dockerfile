@@ -47,13 +47,20 @@ COPY pyproject.toml poetry.lock ./
 RUN pip install poetry -i ${PIP_INDEX_URL} && \
     poetry config virtualenvs.create false && \
     poetry config repositories.pypi ${POETRY_REPOSITORIES_PYPI_URL} && \
-    poetry install --without dev --no-root
+    poetry install --without dev --no-root && \
+    # Poetry is only needed at build time — drop it plus the pip cache to
+    # shrink the runtime image (was ~2.67 GB, a disk-full outage driver).
+    pip uninstall -y poetry && pip cache purge
 
 # Copy backend code
 COPY app/ ./app/
 COPY alembic/ ./alembic/
 COPY alembic.ini ./
 COPY scripts/docker-entrypoint.sh ./scripts/docker-entrypoint.sh
+# seed_users.py is invoked by deploy.sh inside the container to create the
+# initial admin — without this COPY a fresh production install failed after
+# the DB migration (deploy audit 2026-08-06).
+COPY scripts/seed_users.py ./scripts/seed_users.py
 RUN chmod +x /app/scripts/docker-entrypoint.sh
 
 # Copy frontend build output to a staging directory; it is copied into the

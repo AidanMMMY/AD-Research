@@ -178,7 +178,9 @@ services:
     volumes:
       - web_dist:/app/web/dist
       - cninfo_pdfs:/data/alloy-research/cninfo_pdfs
-      - /var/run/docker.sock:/var/run/docker.sock:ro
+    # docker.sock deliberately NOT mounted here (removed 2026-08-06): the
+    # cninfo worker parses untrusted PDFs and only the backend deploy panel
+    # needs Docker access. Removing it cuts host-root-from-worker-RCE.
     command: celery -A app.core.celery_app worker -E -l info -c 4 -Q indicator
     networks:
       - alloyresearch-network
@@ -213,7 +215,8 @@ services:
       - web_dist:/app/web/dist
       - cninfo_pdfs:/data/alloy-research/cninfo_pdfs
       - cninfo_md:/data/alloy-research/cninfo_md
-      - /var/run/docker.sock:/var/run/docker.sock:ro
+    # docker.sock deliberately NOT mounted here (removed 2026-08-06) — see
+    # celery-worker-indicator note.
     command: celery -A app.core.celery_app worker -E -l info -c 2 -Q celery,cninfo,industry
     networks:
       - alloyresearch-network

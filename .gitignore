@@ -207,3 +207,10 @@ fed_intl/
 overnight_*/
 overnight_test*/
 agent/overnight_hermes.env
+
+# ── 密钥与凭据（2026-08-06 安全审计）──
+# 生产 TLS 私钥/证书、APNs .p8 私钥、明文凭据汇总禁止入库。
+*.key
+*.pem
+*.p8
+reports/credentials.md

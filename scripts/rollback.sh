@@ -168,9 +168,12 @@ fi
 
 export GIT_SHA="${TARGET_SHA}"
 
-if ! (cd "$COMPOSE_DIR" && docker compose stop backend celery-worker nginx && \
-      docker compose rm -f backend celery-worker nginx && \
-      docker compose up -d --force-recreate backend celery-worker nginx) 2>&1 | tee -a "$ROLLBACK_LOG"; then
+# Worker 已在 2026-07 拆分为 indicator / cninfo 两个服务（rollback 曾引用
+# 不存在的 celery-worker 导致自动回滚永远失败——deploy audit 2026-08-06）。
+_WORKERS="celery-worker-indicator celery-worker-cninfo"
+if ! (cd "$COMPOSE_DIR" && docker compose stop backend $_WORKERS nginx && \
+      docker compose rm -f backend $_WORKERS nginx && \
+      docker compose up -d --force-recreate backend $_WORKERS nginx) 2>&1 | tee -a "$ROLLBACK_LOG"; then
     log_error "docker compose 重启失败"
     log_error "回滚失败：请人工检查后跑 update.sh 重新同步到 main"
     exit 1

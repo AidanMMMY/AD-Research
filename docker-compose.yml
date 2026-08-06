@@ -40,6 +40,11 @@ services:
       dockerfile: Dockerfile
       args:
         GIT_SHA: ${GIT_SHA:-unknown}
+    # Tag the built image so the celery workers below can reference it —
+    # previously they used `image: ad-research:latest` which was never
+    # produced, so `docker compose up` tried to pull it from a registry
+    # (deploy audit 2026-08-06).
+    image: ad-research:latest
     container_name: alloyresearch-backend-dev
     # Note: backend is reached via the docker internal network only.
     # alloyresearch-nginx (host-network) proxies /api/ → http://backend:8000.
