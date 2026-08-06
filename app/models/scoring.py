@@ -102,6 +102,14 @@ class ETFScore(Base):
         Index("idx_etf_score_date", "trade_date"),
         Index("idx_etf_score_template", "template_id"),
         Index("idx_etf_score_composite", "composite_score"),
+        # Hot path: GET /scoring + report generation sort by rank_overall
+        # within a template/trade_date (perf audit 2026-08-06).
+        Index(
+            "idx_etf_score_template_date_rank",
+            "template_id",
+            "trade_date",
+            "rank_overall",
+        ),
     )
 
 

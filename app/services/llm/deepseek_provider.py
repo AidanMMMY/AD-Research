@@ -14,6 +14,8 @@ requested explicitly by callers that need them.
 
 import os
 
+import httpx
+
 from openai import OpenAI
 
 from app.services.llm.base import LLMProvider
@@ -41,9 +43,14 @@ class DeepSeekProvider(LLMProvider):
         self._available = bool(api_key)
         self._client: OpenAI | None = None
         if self._available:
+            # Bounded timeout (perf audit 2026-08-06): the openai SDK default
+            # (~600 s) let a slow upstream hang request-path LLM calls for
+            # minutes. 60 s read is generous for long generations while still
+            # failing fast.
             self._client = OpenAI(
                 api_key=api_key,
                 base_url=_BASE_URL,
+                timeout=httpx.Timeout(60.0, connect=10.0),
             )
         self.model = model or _DEFAULT_MODEL
 

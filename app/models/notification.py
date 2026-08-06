@@ -1,6 +1,6 @@
 """Notification configuration and log models."""
 
-from sqlalchemy import JSON, Boolean, Column, DateTime, ForeignKey, Integer, String, Text, func
+from sqlalchemy import JSON, Boolean, Column, DateTime, ForeignKey, Index, Integer, String, Text, func
 
 from app.core.database import Base
 
@@ -72,4 +72,8 @@ class NotificationLog(Base):
         DateTime(timezone=True),
         server_default=func.now(),
         comment="Creation time",
+    )
+
+    __table_args__ = (
+        Index("ix_notification_log_config_created", "config_id", "created_at"),
     )

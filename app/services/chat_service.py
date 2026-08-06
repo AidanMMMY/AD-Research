@@ -12,6 +12,7 @@ import logging
 from datetime import datetime
 from typing import Any
 
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.models.etf import ETFIndicator, ETFInfo
@@ -124,10 +125,13 @@ class ChatService:
         # 3. Fetch context data
         context = self._build_data_context(codes) if codes else ""
 
-        # 4. Build conversation history
-        history = self._get_history(session_id)
-
-        messages = history + [{"role": "user", "content": content}]
+        # 4. Build conversation history.
+        # NOTE: history already includes the user message persisted in
+        # step 1 (we committed before calling _get_history), so we use it
+        # directly as the LLM message list — appending another user message
+        # here would duplicate it (previously did so, wasting tokens and
+        # confusing the model).
+        messages = self._get_history(session_id)
 
         # 5. Build system prompt with context
         system = CHAT_SYSTEM_PROMPT
@@ -195,27 +199,48 @@ class ChatService:
         if not codes:
             return ""
 
-        parts = []
-        for code in codes[:5]:  # Limit to 5 instruments
-            instrument = (
-                self.db.query(ETFInfo).filter(ETFInfo.code == code).first()
+        codes = codes[:5]  # Limit to 5 instruments
+
+        # Batch all lookups into 3 IN queries (perf audit 2026-08-06) —
+        # previously this issued 3 SELECTs per code on every chat message.
+        instruments = {
+            i.code: i
+            for i in (
+                self.db.query(ETFInfo).filter(ETFInfo.code.in_(codes)).all()
             )
+        }
+
+        def _latest_by_code(model) -> dict[str, Any]:
+            latest_subq = (
+                self.db.query(
+                    model.etf_code,
+                    func.max(model.trade_date).label("latest_date"),
+                )
+                .filter(model.etf_code.in_(codes))
+                .group_by(model.etf_code)
+                .subquery()
+            )
+            rows = (
+                self.db.query(model)
+                .join(
+                    latest_subq,
+                    (model.etf_code == latest_subq.c.etf_code)
+                    & (model.trade_date == latest_subq.c.latest_date),
+                )
+                .all()
+            )
+            return {r.etf_code: r for r in rows}
+
+        indicators = _latest_by_code(ETFIndicator)
+        scores = _latest_by_code(ETFScore)
+
+        parts = []
+        for code in codes:
+            instrument = instruments.get(code)
             if not instrument:
                 continue
-
-            indicator = (
-                self.db.query(ETFIndicator)
-                .filter(ETFIndicator.etf_code == code)
-                .order_by(ETFIndicator.trade_date.desc())
-                .first()
-            )
-
-            score = (
-                self.db.query(ETFScore)
-                .filter(ETFScore.etf_code == code)
-                .order_by(ETFScore.trade_date.desc())
-                .first()
-            )
+            indicator = indicators.get(code)
+            score = scores.get(code)
 
             info_lines = [f"**{code}** ({instrument.name})"]
             if indicator:

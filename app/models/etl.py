@@ -92,12 +92,20 @@ class StrategyConfig(Base):
     __tablename__ = "strategy_config"
 
     id = Column(Integer, primary_key=True, autoincrement=True, comment="ID")
+    # user_id index (ix_strategy_config_user_id) and strategy_type index
+    # (idx_strategy_config_type) are created by dedicated migrations
+    # 2026_07_05_add_user_id_to_8_business_tables.py and
+    # 997c17ed0dfd_add_strategy_type_index.py respectively. Declaring them
+    # again here (via index= / __table_args__) would make SQLAlchemy emit
+    # duplicate CREATE INDEX on fresh `Base.metadata.create_all()` runs
+    # (e.g. the in-memory SQLite test fixture).
     user_id = Column(Integer, nullable=False, comment="Owner user ID")
     name = Column(String(100), nullable=False, comment="Strategy name")
     description = Column(Text, comment="Strategy description")
     strategy_type = Column(String(50), comment="Strategy type")
     params = Column(JSON, comment="Strategy parameters as JSON")
     is_active = Column(Boolean, default=True, comment="Is active")
+
     created_at = Column(
         DateTime(timezone=True),
         server_default=func.now(),
@@ -145,6 +153,9 @@ class Signal(Base):
     user_id = Column(
         Integer,
         nullable=True,
+        # Index ix_signal_user_id is created by migration
+        # 2026_07_05_add_user_id_to_8_business_tables.py — redeclaring it
+        # here would duplicate the index on fresh metadata.create_all().
         comment="Owner user ID (NULL for system-generated signals)",
     )
     strategy_id = Column(
@@ -178,4 +189,6 @@ class Signal(Base):
             "strategy_id", "etf_code", "trade_date",
             name="uq_signal_strategy_etf_date",
         ),
+        Index("ix_signal_created_at_desc", created_at.desc()),
+        Index("ix_signal_etf_code_trade_date", "etf_code", "trade_date"),
     )

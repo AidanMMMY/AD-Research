@@ -90,16 +90,20 @@ class SentimentService:
             ) from exc
 
         count = 0
-        for article in articles[:20]:  # Limit per run to manage LLM costs
-            # Skip if already exists
-            existing = (
-                self.db.query(SentimentData)
+        # Batch the dedup check into one query (perf audit 2026-08-06) —
+        # previously this issued one SELECT per article.
+        existing_urls = {
+            r[0]
+            for r in (
+                self.db.query(SentimentData.url)
                 .filter(SentimentData.instrument_code == code)
-                .filter(SentimentData.url == article.get("url", ""))
                 .filter(SentimentData.source == "finnhub_news")
-                .first()
+                .all()
             )
-            if existing:
+        }
+        for article in articles[:20]:  # Limit per run to manage LLM costs
+            url = article.get("url", "")
+            if url in existing_urls:
                 continue
 
             headline = article.get("headline", "")
@@ -222,12 +226,78 @@ class SentimentService:
     def get_market_sentiment(
         self, instrument_codes: list[str], lookback_days: int = 7
     ) -> list[dict[str, Any]]:
-        """Get aggregate sentiment for multiple instruments."""
-        results = []
+        """Get aggregate sentiment for multiple instruments.
+
+        Batched (perf audit 2026-08-07): the previous implementation called
+        ``get_aggregate_sentiment`` per code, which issued one
+        ``sentiment_data`` SELECT *plus* one ``etf_info`` SELECT per
+        instrument (2N queries for N codes). This implementation does it
+        in 2 queries total.
+        """
+        if not instrument_codes:
+            return []
+
+        since = datetime.now() - timedelta(days=lookback_days)
+
+        # 1) Batch all sentiment rows for the requested codes in one query.
+        sentiment_rows = (
+            self.db.query(SentimentData)
+            .filter(
+                SentimentData.instrument_code.in_(instrument_codes),
+                SentimentData.ingested_at >= since,
+            )
+            .all()
+        )
+        by_code: dict[str, list[SentimentData]] = {}
+        for r in sentiment_rows:
+            by_code.setdefault(r.instrument_code, []).append(r)
+
+        # 2) Batch all instrument info in one query.
+        instruments = {
+            i.code: i
+            for i in (
+                self.db.query(ETFInfo)
+                .filter(ETFInfo.code.in_(instrument_codes))
+                .all()
+            )
+        }
+
+        results: list[dict[str, Any]] = []
         for code in instrument_codes:
-            agg = self.get_aggregate_sentiment(code, lookback_days)
-            if agg:
-                results.append(agg)
+            records = by_code.get(code, [])
+            scores = [
+                float(r.sentiment_score)
+                for r in records
+                if r.sentiment_score is not None
+            ]
+            if not scores:
+                continue
+
+            avg_score = sum(scores) / len(scores)
+            positive = sum(1 for s in scores if s > 0.1)
+            negative = sum(1 for s in scores if s < -0.1)
+            neutral = len(scores) - positive - negative
+
+            if avg_score > 0.15:
+                label = "positive"
+            elif avg_score < -0.15:
+                label = "negative"
+            else:
+                label = "neutral"
+
+            instrument = instruments.get(code)
+            results.append({
+                "instrument_code": code,
+                "name": instrument.name if instrument else None,
+                "name_zh": instrument.name_zh if instrument else None,
+                "avg_score": round(avg_score, 4),
+                "label": label,
+                "positive_count": positive,
+                "negative_count": negative,
+                "neutral_count": neutral,
+                "total_articles": len(scores),
+                "period_days": lookback_days,
+            })
         return results
 
     # ------------------------------------------------------------------

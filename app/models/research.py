@@ -9,6 +9,7 @@ from sqlalchemy import (
     Column,
     DateTime,
     ForeignKey,
+    Index,
     Integer,
     JSON,
     String,
@@ -46,6 +47,10 @@ class ResearchNote(Base):
     generated_at = Column(DateTime, comment="When this note was generated")
     created_at = Column(DateTime, server_default=func.now(), comment="Creation time")
 
+    __table_args__ = (
+        Index("ix_research_note_instrument_created", "instrument_code", "created_at"),
+    )
+
     instrument = relationship("ETFInfo", backref="research_notes")
 
 
@@ -80,6 +85,15 @@ class SentimentData(Base):
         DateTime, server_default=func.now(), comment="Ingestion time"
     )
 
+    __table_args__ = (
+        Index(
+            "ix_sentiment_data_instrument_ingested",
+            "instrument_code",
+            "ingested_at",
+        ),
+        Index("ix_sentiment_data_published_at", "published_at"),
+    )
+
     instrument = relationship("ETFInfo", backref="sentiment_data")
 
 
@@ -93,6 +107,10 @@ class AIChatSession(Base):
         Integer,
         ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False,
+        # Index ix_ai_chat_session_user_id is created by migration
+        # e8f0a2c4d6e8_add_perf_indexes.py — redeclaring index=True here
+        # would make SQLAlchemy emit a duplicate CREATE INDEX on fresh
+        # metadata.create_all() (e.g. the in-memory SQLite test fixture).
         comment="User ID",
     )
     title = Column(String(200), comment="Auto-generated session title")
@@ -123,5 +141,9 @@ class AIChatMessage(Base):
     )
     content = Column(Text, nullable=False, comment="Message content (markdown)")
     created_at = Column(DateTime, server_default=func.now(), comment="Creation time")
+
+    __table_args__ = (
+        Index("ix_ai_chat_message_session_created", "session_id", "created_at"),
+    )
 
     session = relationship("AIChatSession", back_populates="messages")

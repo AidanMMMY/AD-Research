@@ -9,6 +9,8 @@ API docs: https://platform.minimax.io/docs
 
 import os
 
+import httpx
+
 from openai import OpenAI
 
 from app.services.llm.base import LLMProvider
@@ -48,9 +50,14 @@ class MiniMaxProvider(LLMProvider):
 
         self._client: OpenAI | None = None
         if self._available:
+            # Bounded timeout (perf audit 2026-08-06): the openai SDK default
+            # (~600 s) let a slow upstream hang request-path LLM calls for
+            # minutes. 60 s read is generous for long generations while still
+            # failing fast.
             self._client = OpenAI(
                 api_key=api_key,
                 base_url=base_url,
+                timeout=httpx.Timeout(60.0, connect=10.0),
             )
         self.model = model or os.getenv("MINIMAX_MODEL", "") or _DEFAULT_MODEL
 

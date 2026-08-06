@@ -389,8 +389,9 @@ class SectorRotationService:
         code_to_info = {m.code: m for m in members}
 
         # Step 2: pull the most-recent ``stock_fundamental`` per member
-        # code (for STOCKs only). One sub-query per code is fine — the
-        # total universe here is bounded by the sector size.
+        # code (for STOCKs only). Batched into ONE ``IN`` query and reduced
+        # in Python — previously this issued one SELECT per member (~200
+        # round trips per request, perf audit 2026-08-06).
         latest_mv: dict[str, float] = {}
         if trade_date is not None:
             # Window the lookup to ±7 days of the trade date so a stock
@@ -398,21 +399,27 @@ class SectorRotationService:
             # suspension, new listing) still gets a weight.
             window_lo = trade_date - timedelta(days=7)
             window_hi = trade_date
-            for code in member_codes:
-                row = (
-                    self.db.query(StockFundamental.total_mv)
-                    .filter(
-                        StockFundamental.stock_code == code,
-                        StockFundamental.trade_date <= window_hi,
-                        StockFundamental.trade_date >= window_lo,
-                        StockFundamental.total_mv.isnot(None),
-                    )
-                    .order_by(StockFundamental.trade_date.desc())
-                    .first()
+            mv_rows = (
+                self.db.query(
+                    StockFundamental.stock_code,
+                    StockFundamental.trade_date,
+                    StockFundamental.total_mv,
                 )
-                if row and row[0] is not None:
-                    # total_mv is in 万元 (10,000 CNY) → convert to 元.
-                    latest_mv[code] = float(row[0]) * 10_000.0
+                .filter(
+                    StockFundamental.stock_code.in_(member_codes),
+                    StockFundamental.trade_date <= window_hi,
+                    StockFundamental.trade_date >= window_lo,
+                    StockFundamental.total_mv.isnot(None),
+                )
+                .all()
+            )
+            best: dict[str, tuple[date, float]] = {}
+            for code, mv_date, mv in mv_rows:
+                if code in best and mv_date <= best[code][0]:
+                    continue
+                # total_mv is in 万元 (10,000 CNY) → convert to 元.
+                best[code] = (mv_date, float(mv) * 10_000.0)
+            latest_mv = {code: val for code, (_, val) in best.items()}
 
         # Step 3: pull the indicator snapshot for the trade_date — covers
         # BOTH STOCK and ETF (ETFIndicator is the unified table).
