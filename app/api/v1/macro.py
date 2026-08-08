@@ -20,6 +20,7 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.api.deps import get_current_user, require_admin
+from app.core.cache import cache_get, cache_set
 from app.core.database import SessionLocal
 from app.core.redis_client import redis_lock
 from app.schemas.auth import UserResponse
@@ -251,6 +252,10 @@ def refresh_china_macro(
 # ---------------------------------------------------------------------------
 
 
+_GLOBAL_INDICES_CACHE_KEY = "macro:indices:global:v1"
+_GLOBAL_INDICES_CACHE_TTL = 90  # 秒——限流时避免每次首页加载都打 21 个并行 yfinance
+
+
 @router.get("/indices/global")
 def get_global_indices_realtime() -> dict[str, Any]:
     """Return the latest global macro snapshot (live) without going through the DB.
@@ -292,6 +297,12 @@ def get_global_indices_realtime() -> dict[str, Any]:
     response always returns 200 even when some tickers fail.
     """
     from datetime import datetime, timedelta
+
+    # 2026-08-08：yfinance 限流时仍用 90s 内的上次成功结果，避免每次
+    # 首页/全球页加载都触发 21 个并行请求（限流主因之一）。
+    cached = cache_get(_GLOBAL_INDICES_CACHE_KEY)
+    if cached is not None:
+        return cached
 
     started = datetime.now(UTC)
 
@@ -401,13 +412,15 @@ def get_global_indices_realtime() -> dict[str, Any]:
         if as_of_dt < stale_cutoff:
             stale_count += 1
 
-    return {
+    payload = {
         "items": out,
         "region": "global",
         "as_of": started.isoformat(),
         "count": len(out),
         "stale_count": stale_count,
     }
+    cache_set(_GLOBAL_INDICES_CACHE_KEY, payload, ttl=_GLOBAL_INDICES_CACHE_TTL)
+    return payload
 
 
 def _infer_asset_class(code: str) -> str:

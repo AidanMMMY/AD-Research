@@ -154,7 +154,9 @@ GLOBAL_COMMODITY_REGISTRY: list[IndexMeta] = [
 # single IP.  Empirically 1.5s between Ticker.history() calls keeps
 # the 10-ticker batch well under Yahoo's hourly quota even when
 # re-run several times per day.
-_PER_TICKER_SLEEP = 1.5
+# 2026-08-08（yfinance 限流排查）：Yahoo 非官方 chart API 对匿名突发请求
+# 限流（HTTP 429），大陆出口 IP 尤甚。间隔从 1.5s 提到 2.5s 以降低触发概率。
+_PER_TICKER_SLEEP = 2.5
 _HISTORY_PERIOD = "3mo"   # ~63 trading days, covers a month of weekends/holidays
 
 
@@ -243,6 +245,18 @@ def _history_frame_to_rows(h, meta: IndexMeta) -> list[dict]:
     return out
 
 
+# 429 重试退避（秒）。Yahoo 匿名限流是当前"美股指数显示 -"的主因
+# （2026-08-08 排查：代码静默吞掉 429，无重试；生产大陆 IP 更易触发）。
+_RATE_LIMIT_BACKOFF_SECONDS = (5, 15, 30)
+_RATE_LIMIT_MARKERS = ("too many requests", "rate limit", "429")
+
+
+def _is_rate_limited(exc: Exception) -> bool:
+    """判断异常是否 Yahoo 限流（YFRateLimitError 或消息特征）。"""
+    msg = str(exc).lower()
+    return any(m in msg for m in _RATE_LIMIT_MARKERS)
+
+
 def _fetch_frame(meta: IndexMeta, **history_kwargs) -> pd.DataFrame | None:
     """Internal helper: call ``yf.Ticker.history`` and return the raw frame.
 
@@ -250,15 +264,32 @@ def _fetch_frame(meta: IndexMeta, **history_kwargs) -> pd.DataFrame | None:
     and swallowed — the batch never raises.  Returns ``None`` on
     failure so callers can distinguish "fetch failed" from "empty
     frame" without duplicating the warning.
+
+    2026-08-08：对限流（429 / YFRateLimitError）增加指数退避重试
+    （5/15/30s），限流窗口内不再静默产出 0 行；仍失败则照旧吞掉。
     """
-    try:
-        return yf.Ticker(meta.ticker).history(**history_kwargs)
-    except Exception as exc:
+    last_exc: Exception | None = None
+    for attempt in range(1 + len(_RATE_LIMIT_BACKOFF_SECONDS)):
+        try:
+            return yf.Ticker(meta.ticker).history(**history_kwargs)
+        except Exception as exc:  # noqa: BLE001 - defensive, see docstring
+            last_exc = exc
+            if not _is_rate_limited(exc):
+                break
+            if attempt < len(_RATE_LIMIT_BACKOFF_SECONDS):
+                delay = _RATE_LIMIT_BACKOFF_SECONDS[attempt]
+                logger.warning(
+                    "yfinance rate-limited for %s (%s), attempt %d/3, "
+                    "retrying in %ds",
+                    meta.ticker, meta.code, attempt + 1, delay,
+                )
+                time.sleep(delay)
+    if last_exc is not None:
         logger.warning(
             "yfinance fetch failed for %s (%s): %s",
-            meta.ticker, meta.code, exc,
+            meta.ticker, meta.code, last_exc,
         )
-        return None
+    return None
 
 
 def _fetch_history(meta: IndexMeta, **history_kwargs) -> list[dict]:
@@ -553,7 +584,8 @@ def fetch_yfinance_commodity_latest(period: str = "2d") -> list[dict]:
 # is ~2,000 req/hour per IP; with 21 tickers × 1 batch / min we'd
 # exhaust it in ~95 minutes, so we cap at 6 concurrent calls per
 # registry as a safety margin against bursts.
-_PARALLEL_WORKERS_PER_REGISTRY = 6
+# 并行度 6→3：进一步压住单 registry 的瞬时并发，减少 429 触发（2026-08-08）。
+_PARALLEL_WORKERS_PER_REGISTRY = 3
 
 
 def _fetch_one_latest(meta: IndexMeta, period: str) -> list[dict]:
