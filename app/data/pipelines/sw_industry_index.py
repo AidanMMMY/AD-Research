@@ -29,7 +29,7 @@ fetch + upsert（不是「拉一张大表 → 全量 load」），自定义 run 
 """
 
 import logging
-from datetime import date, datetime, timezone
+from datetime import UTC, datetime
 
 import pandas as pd
 from sqlalchemy import text
@@ -157,7 +157,7 @@ class SWIndustryIndexPipeline:
                 returns_per_row = _rolling_returns(close_series)
 
                 rows = []
-                for b, ret in zip(bars_sorted, returns_per_row):
+                for b, ret in zip(bars_sorted, returns_per_row, strict=False):
                     # 转纯 python float / None — psycopg2 不认 numpy.float64
                     rows.append(
                         {
@@ -233,7 +233,7 @@ class SWIndustryIndexPipeline:
             logger.exception("sw_industry_index_refresh failed: %s", exc)
             log.status = "failed"
             log.error_msg = str(exc)[:500]
-            log.end_time = datetime.now(timezone.utc)
+            log.end_time = datetime.now(UTC)
             self.db.commit()
             result.errors.append(f"global: {exc}")
         return result
@@ -244,7 +244,7 @@ class SWIndustryIndexPipeline:
             job_name=self.job_name,
             source=self.provider.name,
             status="running",
-            start_time=datetime.now(timezone.utc),
+            start_time=datetime.now(UTC),
         )
         self.db.add(log)
         self.db.commit()
@@ -252,7 +252,7 @@ class SWIndustryIndexPipeline:
         return log
 
     def _finalise_log(self, log: ETLLog, result: _Phase3Result) -> None:
-        log.end_time = datetime.now(timezone.utc)
+        log.end_time = datetime.now(UTC)
         log.status = "success" if not result.errors else "partial"
         log.records_count = result.records_processed
         if result.errors:

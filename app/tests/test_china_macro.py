@@ -34,7 +34,6 @@ from app.main import app
 from app.models.macro import MacroIndicator
 from app.services.macro_service import MacroDataService
 
-
 # ---------------------------------------------------------------------------
 # Provider tests — mock akshare
 # ---------------------------------------------------------------------------

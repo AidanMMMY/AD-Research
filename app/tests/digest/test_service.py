@@ -20,10 +20,9 @@ from sqlalchemy import create_engine, select
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
-from app.core.database import Base
-
 # 注册全部 ORM 模型（create_all 需要）
 import app.models  # noqa: F401
+from app.core.database import Base
 from app.models import (  # noqa: F401
     etf_scan_log,
     etl,

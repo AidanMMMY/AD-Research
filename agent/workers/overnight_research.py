@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """
 overnight_research.py — 20 小时连续自主研究 worker。
 
@@ -29,11 +28,10 @@ import signal
 import sqlite3
 import sys
 import time
-import traceback
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
 
 import requests
 from anthropic import Anthropic
@@ -92,12 +90,12 @@ def setup_logging(output_dir: Path) -> None:
 # --------------------------------------------------------------------------- #
 
 class ResearchRecord(BaseModel):
-    id: str = Field(default_factory=lambda: f"rec-{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}-{os.urandom(4).hex()}")
+    id: str = Field(default_factory=lambda: f"rec-{datetime.now(UTC).strftime('%Y%m%d%H%M%S')}-{os.urandom(4).hex()}")
     title: str
     source: str = ""
     url: str = ""
     date: str = ""
-    accessed_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).strftime("%Y-%m-%d"))
+    accessed_at: str = Field(default_factory=lambda: datetime.now(UTC).strftime("%Y-%m-%d"))
     category: str
     tags: list[str] = Field(default_factory=list)
     summary: str = ""
@@ -471,7 +469,7 @@ class AgentDB:
                     rec.impact, rec.original_language, 1 if rec.translated else 0,
                     self._hash(rec.url + rec.title + rec.summary[:200]),
                     json.dumps(rec.extra, ensure_ascii=False),
-                    datetime.now(timezone.utc).isoformat(),
+                    datetime.now(UTC).isoformat(),
                 ),
             )
             conn.commit()
@@ -492,7 +490,7 @@ class AgentDB:
                     reflection.gaps,
                     json.dumps(reflection.new_queries, ensure_ascii=False),
                     reflection.notes,
-                    datetime.now(timezone.utc).isoformat(),
+                    datetime.now(UTC).isoformat(),
                 ),
             )
             conn.commit()
@@ -628,8 +626,8 @@ class ThemeAgent:
         self.query_history: set[str] = set()
 
     def run(self) -> None:
-        logger.info("[%s] ThemeAgent.run starting, deadline=%s", self.theme, datetime.fromtimestamp(self.deadline, tz=timezone.utc))
-        self.db.set_meta("started_at", datetime.now(timezone.utc).isoformat())
+        logger.info("[%s] ThemeAgent.run starting, deadline=%s", self.theme, datetime.fromtimestamp(self.deadline, tz=UTC))
+        self.db.set_meta("started_at", datetime.now(UTC).isoformat())
         self.db.set_meta("theme", self.theme)
 
         while time.time() < self.deadline - 300 and self.queries:
@@ -653,7 +651,7 @@ class ThemeAgent:
 
         # 最终反思
         self._reflect()
-        self.db.set_meta("finished_at", datetime.now(timezone.utc).isoformat())
+        self.db.set_meta("finished_at", datetime.now(UTC).isoformat())
         logger.info("[%s] agent finished, records=%d", self.theme, self.db.count_records())
 
     def _process_results(self, results: list[dict[str, str]], query: str) -> None:
@@ -770,7 +768,7 @@ class Orchestrator:
                         return planned_end
             except Exception as exc:
                 logger.warning("failed to read state: %s", exc)
-        started_at = datetime.now(timezone.utc).isoformat()
+        started_at = datetime.now(UTC).isoformat()
         self.state_path.write_text(
             json.dumps({"started_at": started_at, "runtime_hours": RUNTIME_HOURS}, ensure_ascii=False, indent=2),
             encoding="utf-8",
@@ -778,7 +776,7 @@ class Orchestrator:
         return now + RUNTIME_HOURS * 3600
 
     def run(self) -> None:
-        logger.info("orchestrator started, runtime=%.1fh, deadline=%s", RUNTIME_HOURS, datetime.fromtimestamp(self.deadline, tz=timezone.utc))
+        logger.info("orchestrator started, runtime=%.1fh, deadline=%s", RUNTIME_HOURS, datetime.fromtimestamp(self.deadline, tz=UTC))
 
         ctx = multiprocessing.get_context("spawn")
         for theme in CATEGORIES:
@@ -869,7 +867,7 @@ class Orchestrator:
             cols = [d[0] for d in cur.description]
             rows = cur.fetchall()
             for row in rows:
-                rec = dict(zip(cols, row))
+                rec = dict(zip(cols, row, strict=False))
                 rec["theme"] = theme
                 conn.execute(
                     """
@@ -943,10 +941,10 @@ class ReportBuilder:
 
     def _render_md(self) -> str:
         lines = [
-            f"# 20 小时 Overnight 研究报告（ECS agent worker）",
+            "# 20 小时 Overnight 研究报告（ECS agent worker）",
             "",
-            f"- **生成时间**：{datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')} UTC",
-            f"- **数据来源**：公开网络搜索 + LLM 结构化提取",
+            f"- **生成时间**：{datetime.now(UTC).strftime('%Y-%m-%d %H:%M:%S')} UTC",
+            "- **数据来源**：公开网络搜索 + LLM 结构化提取",
             f"- **记录总数**：{self.total}",
             "",
             "## 主题分布",

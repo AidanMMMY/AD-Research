@@ -386,7 +386,7 @@ class SectorRotationService:
             }
 
         member_codes = [m.code for m in members]
-        code_to_info = {m.code: m for m in members}
+        {m.code: m for m in members}
 
         # Step 2: pull the most-recent ``stock_fundamental`` per member
         # code (for STOCKs only). Batched into ONE ``IN`` query and reduced

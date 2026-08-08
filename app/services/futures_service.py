@@ -7,7 +7,7 @@ on-demand lookups used by the API.
 """
 
 import logging
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 from typing import Any
 
 from sqlalchemy import and_, desc, func, or_, select
@@ -177,7 +177,7 @@ class FuturesService:
                     "list_date": r.get("list_date"),
                     "delist_date": r.get("delist_date"),
                     "source": r.get("source", "akshare"),
-                    "last_seen_at": datetime.now(timezone.utc),
+                    "last_seen_at": datetime.now(UTC),
                 }
             )
 

@@ -7,8 +7,7 @@ from __future__ import annotations
 
 import json
 import subprocess
-import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -52,9 +51,9 @@ def parse_datetime(value: Any) -> datetime | None:
     """Best-effort parse a variety of timestamp strings."""
     if value is None or value == "":
         return None
-    if isinstance(value, (int, float)):
+    if isinstance(value, int | float):
         try:
-            return datetime.fromtimestamp(value, tz=timezone.utc)
+            return datetime.fromtimestamp(value, tz=UTC)
         except (OSError, ValueError, OverflowError):
             return None
 
@@ -75,7 +74,7 @@ def parse_datetime(value: Any) -> datetime | None:
     ]
     for fmt in formats:
         try:
-            return datetime.strptime(s, fmt).replace(tzinfo=timezone.utc)
+            return datetime.strptime(s, fmt).replace(tzinfo=UTC)
         except ValueError:
             continue
 
@@ -115,7 +114,7 @@ def sort_key(item: dict[str, Any], time_field: str) -> datetime:
     dt = parse_datetime(item.get(time_field)) or parse_datetime(item.get("published_at")) or parse_datetime(item.get("created_at")) or parse_datetime(item.get("timestamp"))
     if dt is None:
         # Push undated items to the end so they don't block dated items.
-        return datetime.min.replace(tzinfo=timezone.utc)
+        return datetime.min.replace(tzinfo=UTC)
     return dt
 
 
@@ -136,7 +135,7 @@ def build_html(data_sources: list[tuple[str, str, str, dict[str, Any]]]) -> str:
         len(s[3].get("items", [])) if isinstance(s[3].get("items"), list) else 0
         for s in data_sources
     )
-    generated = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+    generated = datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S UTC")
 
     # Header / summary
     header = f"""
@@ -339,7 +338,7 @@ def main() -> int:
 
     print(f"Report written to: {output_path}")
     print("\nSource counts:")
-    for slug, label, _time_field, data in loaded:
+    for _slug, label, _time_field, data in loaded:
         items = data.get("items", []) if isinstance(data.get("items"), list) else []
         error = data.get("error")
         if error:

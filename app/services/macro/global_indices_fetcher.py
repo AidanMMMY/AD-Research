@@ -37,7 +37,7 @@ never crashes the scheduler.
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from app.core.database import SessionLocal
@@ -203,7 +203,7 @@ def run_global_indices_refresh() -> dict[str, Any]:
     Never raises — failures inside any single provider are logged and
     skipped so the scheduler keeps running.
     """
-    started = datetime.now(timezone.utc)
+    started = datetime.now(UTC)
     a_share = fetch_a_share_indices()
     international = fetch_international_indices()
     macro_by_region = fetch_macro_fx_rates_commodities()
@@ -319,7 +319,7 @@ def run_global_indices_refresh() -> dict[str, Any]:
                 "akshare_ohlcv", {"fetched": 0, "written": 0}
             )
 
-        finished = datetime.now(timezone.utc)
+        finished = datetime.now(UTC)
         macro_fetched = sum(len(v) for v in macro_by_region.values())
         total_fetched = len(a_share) + len(international) + macro_fetched
         total_written = sum(s.get("written", 0) for s in per_source.values())
@@ -347,7 +347,7 @@ def run_global_indices_refresh() -> dict[str, Any]:
             "failed": ["__job__"],
             "error": str(exc),
             "started_at": started,
-            "finished_at": datetime.now(timezone.utc),
+            "finished_at": datetime.now(UTC),
         }
     finally:
         db.close()

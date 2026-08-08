@@ -19,14 +19,11 @@ from dataclasses import dataclass
 from datetime import date, timedelta
 from typing import Any
 
-import pandas as pd
-
 from app.data.providers.fund_flow_provider import (
-    _MAX_RETRIES,
-    _RateLimiter,
+    _code_to_ts_code,
     _coerce_date,
     _coerce_float,
-    _code_to_ts_code,
+    _RateLimiter,
 )
 
 logger = logging.getLogger(__name__)
@@ -282,10 +279,7 @@ class FlowSignalsProvider:
             # 大宗交易本身没有明确的"买方/卖方"方向；约定：
             # 折价成交 (premium < 0) 视为卖方主导，net = -amount
             # 平价或溢价成交视为买方主导，net = +amount
-            if premium is not None and premium < 0:
-                net = -abs(amount)
-            else:
-                net = abs(amount)
+            net = -abs(amount) if premium is not None and premium < 0 else abs(amount)
             out.append({
                 "ts_code": ts_code,
                 "trade_date": trade_date,

@@ -21,8 +21,8 @@ daily refresh is safe to re-run.
 from __future__ import annotations
 
 import sqlalchemy as sa
-from alembic import op
 
+from alembic import op
 
 revision = "2026_07_14_create_fund_flow_tables"
 down_revision = "2026_07_14_create_company_disclosure_route"

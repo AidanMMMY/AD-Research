@@ -22,7 +22,7 @@ from app.core.scheduler import (
     run_weekly_pool_reports,
 )
 from app.data.providers.akshare_provider import AkshareProvider
-from app.models.etf import InstrumentDailyBar, ETFInfo
+from app.models.etf import ETFInfo, InstrumentDailyBar
 
 
 def _clean_value(v):

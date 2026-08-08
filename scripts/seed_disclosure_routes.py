@@ -25,7 +25,6 @@ from __future__ import annotations
 import logging
 import os
 import sys
-from typing import Any
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -34,7 +33,6 @@ from sqlalchemy import create_engine, text
 from app.config import get_settings
 from app.core.database import SessionLocal
 from app.data.disclosure_routes import build_seed_routes
-
 
 logging.basicConfig(
     level=logging.INFO,

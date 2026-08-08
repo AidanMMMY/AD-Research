@@ -1,5 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy.orm import Session
+from fastapi import APIRouter, Depends, HTTPException
 
 from app.api.deps import get_current_user, get_stock_fundamental_service
 from app.schemas.stock_fundamental import StockFundamentalResponse

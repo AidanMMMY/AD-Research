@@ -9,9 +9,6 @@ from __future__ import annotations
 import asyncio
 import json
 from datetime import datetime
-from decimal import Decimal
-
-import pytest
 
 from app.services.news.sentiment import (
     LLMPipelineMonitor,
@@ -20,7 +17,6 @@ from app.services.news.sentiment import (
     prompts,
 )
 from app.services.news.sentiment.sentiment_pipeline import PipelineResult
-
 
 # ---------------------------------------------------------------------------
 # Stub LLM service
@@ -317,7 +313,7 @@ def test_process_article_cache_hit_skips_llm(db_session, fake_redis):
     pipe = _make_pipeline(db_session, fake_redis)
     a = _article()
 
-    res1 = asyncio.run(pipe.process_article(a))
+    asyncio.run(pipe.process_article(a))
     calls_after_first = len(pipe.llm.provider.calls)
 
     res2 = asyncio.run(pipe.process_article(a))

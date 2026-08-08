@@ -15,12 +15,11 @@ import pytest
 import requests
 
 from app.data.providers.eastmoney_zh_provider import (
-    EastMoneyZhProvider,
-    _NEGATIVE_CACHE_TTL,
     _CACHE_TTL_SECONDS,
+    _NEGATIVE_CACHE_TTL,
+    EastMoneyZhProvider,
     _infer_us_market_id,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -462,7 +461,7 @@ def test_eastmoney_negative_cache_does_not_block_sina_on_different_symbols():
     EM failing on AAPL must not cause us to skip Sina on MSFT.
     """
     def fake_get(url, params=None, timeout=None, headers=None):
-        secid = (params or {}).get("secid", "") if url.startswith("https://push2.eastmoney.com") else ""
+        (params or {}).get("secid", "") if url.startswith("https://push2.eastmoney.com") else ""
         if url.startswith("https://push2.eastmoney.com"):
             return _http_error(502)
         if url.startswith("https://hq.sinajs.cn"):

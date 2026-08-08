@@ -14,7 +14,7 @@ import logging
 import secrets
 import uuid
 from collections.abc import Generator
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import bcrypt
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -93,7 +93,7 @@ def _generate_jti() -> str:
 
 def create_access_token(username: str, role: str, jti: str) -> str:
     """Create a short-lived JWT with a unique jti for revocation."""
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     expire = now + timedelta(minutes=ACCESS_TOKEN_MINUTES)
     payload = {
         "sub": username,
@@ -107,7 +107,7 @@ def create_access_token(username: str, role: str, jti: str) -> str:
 
 def _remaining_ttl(exp: int | float) -> int:
     """Seconds until a Unix timestamp. Minimum 1."""
-    return max(1, int(exp - datetime.now(timezone.utc).timestamp()))
+    return max(1, int(exp - datetime.now(UTC).timestamp()))
 
 
 # ── Endpoints ──
@@ -160,7 +160,7 @@ def login(request: LoginRequest, http_request: Request, db: Session = Depends(_g
         RefreshToken(
             user_id=user.id,
             token_hash=refresh_hash,
-            expires_at=datetime.now(timezone.utc) + timedelta(days=REFRESH_TOKEN_DAYS),
+            expires_at=datetime.now(UTC) + timedelta(days=REFRESH_TOKEN_DAYS),
         )
     )
     db.commit()
@@ -195,9 +195,9 @@ def refresh(request: RefreshRequest, db: Session = Depends(_get_db)):
     # SQLite drops tzinfo on DateTime(timezone=True); treat naive as UTC
     expires_at = stored.expires_at if stored else None
     if expires_at is not None and expires_at.tzinfo is None:
-        expires_at = expires_at.replace(tzinfo=timezone.utc)
+        expires_at = expires_at.replace(tzinfo=UTC)
 
-    if not stored or expires_at < datetime.now(timezone.utc):
+    if not stored or expires_at < datetime.now(UTC):
         raise HTTPException(status_code=401, detail="Invalid or expired refresh token")
 
     # Revoke old refresh token (rotation)
@@ -210,7 +210,7 @@ def refresh(request: RefreshRequest, db: Session = Depends(_get_db)):
         RefreshToken(
             user_id=stored.user_id,
             token_hash=new_hash,
-            expires_at=datetime.now(timezone.utc) + timedelta(days=REFRESH_TOKEN_DAYS),
+            expires_at=datetime.now(UTC) + timedelta(days=REFRESH_TOKEN_DAYS),
         )
     )
     db.commit()
@@ -236,7 +236,7 @@ def refresh(request: RefreshRequest, db: Session = Depends(_get_db)):
                 UserDevice.id == stored.device_id,
                 UserDevice.user_id == user.id,
             )
-            .update({"last_active_at": datetime.now(timezone.utc)})
+            .update({"last_active_at": datetime.now(UTC)})
         )
         db.commit()
 

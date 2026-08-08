@@ -15,7 +15,7 @@ from datetime import date
 # Ensure app modules are importable
 sys.path.insert(0, "/app")
 
-from sqlalchemy import select, text
+from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert
 
 from app.core.database import SessionLocal

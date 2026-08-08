@@ -78,7 +78,7 @@ class BrowserPool:
         """Whether ``playwright`` is installed and we can launch browsers."""
         return self._available
 
-    async def __aenter__(self) -> "BrowserPool":
+    async def __aenter__(self) -> BrowserPool:
         await self.start()
         self._entered = True
         return self

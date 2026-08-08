@@ -6,7 +6,6 @@ Pydantic ValidationError that the frontend mis-rendered as
 "用户名密码不正确".
 """
 
-from datetime import date
 from unittest.mock import patch
 
 import pytest
@@ -15,7 +14,6 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
-from app.api import deps as api_deps
 from app.api.v1 import auth as auth_module
 from app.core.database import Base
 from app.main import app

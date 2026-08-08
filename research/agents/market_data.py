@@ -8,7 +8,7 @@ from pathlib import Path
 
 import akshare as ak
 
-from research.agents.base import save_raw, save_note
+from research.agents.base import save_note, save_raw
 
 logger = logging.getLogger("research.agents.market_data")
 

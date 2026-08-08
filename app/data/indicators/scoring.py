@@ -31,10 +31,7 @@ def _legacy_rank(dim_values: list[float]) -> np.ndarray:
     arr = np.asarray(dim_values, dtype=float)
     ranks = rankdata(arr, method="average")
     n = len(arr)
-    if n > 1:
-        percentiles = ((ranks - 1) / (n - 1)) * 100
-    else:
-        percentiles = np.full_like(ranks, 50.0, dtype=float)
+    percentiles = (ranks - 1) / (n - 1) * 100 if n > 1 else np.full_like(ranks, 50.0, dtype=float)
     return percentiles
 
 
@@ -66,7 +63,7 @@ def bucket_aware_rank(
 
     result = pd.Series(np.nan, index=dim_values.index, dtype=float)
 
-    for bucket, idx in categories.groupby(categories).groups.items():
+    for _bucket, idx in categories.groupby(categories).groups.items():
         bucket_idx = list(idx)
         bucket_vals = dim_values.loc[bucket_idx]
 
@@ -79,10 +76,7 @@ def bucket_aware_rank(
 
         ranks = rankdata(valid_vals, method="average")
         n = len(valid_vals)
-        if n > 1:
-            pct = (ranks - 1) / (n - 1)
-        else:
-            pct = np.full_like(ranks, 0.5, dtype=float)
+        pct = (ranks - 1) / (n - 1) if n > 1 else np.full_like(ranks, 0.5, dtype=float)
 
         # Place ranked values back at their original positions.
         bucket_result = pd.Series(np.nan, index=bucket_vals.index, dtype=float)
@@ -113,7 +107,7 @@ def _bucket_zscored_rank(
 
     result = pd.Series(np.nan, index=dim_values.index, dtype=float)
 
-    for bucket, idx in categories.groupby(categories).groups.items():
+    for _bucket, idx in categories.groupby(categories).groups.items():
         bucket_idx = list(idx)
         bucket_vals = dim_values.loc[bucket_idx]
 
@@ -132,10 +126,7 @@ def _bucket_zscored_rank(
 
         ranks = rankdata(z, method="average")
         n = len(ranks)
-        if n > 1:
-            pct = (ranks - 1) / (n - 1)
-        else:
-            pct = np.full_like(ranks, 0.5, dtype=float)
+        pct = (ranks - 1) / (n - 1) if n > 1 else np.full_like(ranks, 0.5, dtype=float)
 
         bucket_result = pd.Series(np.nan, index=bucket_vals.index, dtype=float)
         bucket_result.loc[valid_mask] = pct

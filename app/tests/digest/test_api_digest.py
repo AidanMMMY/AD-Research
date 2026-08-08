@@ -22,11 +22,11 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
-from app.api import deps as api_deps
-from app.core.database import Base
-
 # 注册全部 ORM 模型（create_all 需要，同 test_service.py）
 import app.models  # noqa: F401
+from app.api import deps as api_deps
+from app.core.database import Base
+from app.main import app
 from app.models import (  # noqa: F401
     etf_scan_log,
     etl,
@@ -36,7 +36,6 @@ from app.models import (  # noqa: F401
     research,
     user_article_state,
 )
-from app.main import app
 from app.models.digest import DailyDigest
 
 BASE = "/api/v1/digest"
@@ -325,8 +324,9 @@ def test_regenerate_accepts_and_dispatches(admin_client):
 
 
 def test_regenerate_default_date_is_today_shanghai(admin_client):
-    from app.services.digest.collector import SHANGHAI
     from datetime import datetime as dt
+
+    from app.services.digest.collector import SHANGHAI
 
     expected = dt.now(SHANGHAI).date()
     fake_run = MagicMock()

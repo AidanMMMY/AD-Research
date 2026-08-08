@@ -17,7 +17,6 @@ Point budget (Tushare free tier, 5000 pts/day):
 
 import logging
 import time
-from datetime import date
 
 import pandas as pd
 from sqlalchemy.dialects.postgresql import insert

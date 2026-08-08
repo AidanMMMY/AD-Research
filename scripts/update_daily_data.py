@@ -22,7 +22,7 @@ from sqlalchemy.orm import sessionmaker
 from app.config import get_settings
 from app.data.indicators.calculator import batch_calculate_indicators
 from app.data.providers.akshare_provider import AkshareProvider
-from app.models.etf import InstrumentDailyBar, ETFIndicator, ETFInfo
+from app.models.etf import ETFIndicator, ETFInfo, InstrumentDailyBar
 from app.models.etl import BacktestResult, Signal, StrategyConfig
 from app.services.backtest_service import BacktestService
 from app.services.scoring_service import ScoringService

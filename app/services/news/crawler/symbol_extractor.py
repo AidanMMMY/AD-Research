@@ -19,7 +19,7 @@ to ``news_article_symbol``. The function never raises — best-effort.
 from __future__ import annotations
 
 import re
-from typing import Iterable
+from collections.abc import Iterable
 
 # Common English words that look like tickers but almost never are.
 # 1-3 letter combinations that collide with pronouns / articles / prepositions.
@@ -27,7 +27,7 @@ _STOPWORDS = {
     "A", "I", "AM", "AN", "AS", "AT", "BE", "BY", "DO", "GO", "HE", "IF",
     "IN", "IS", "IT", "ME", "MY", "NO", "OF", "OH", "OK", "ON", "OR", "SO",
     "TO", "UP", "US", "WE", "ALL", "AND", "ANY", "ARE", "BIG", "BUT", "CAN",
-    "DID", "DO", "FOR", "GET", "GOT", "HAS", "HAD", "HER", "HIM", "HIS",
+    "DID", "FOR", "GET", "GOT", "HAS", "HAD", "HER", "HIM", "HIS",
     "HOW", "ITS", "LET", "MAY", "NEW", "NOT", "NOW", "OLD", "ONE", "OUR",
     "OUT", "OWN", "PUT", "RUN", "SAY", "SET", "SHE", "THE", "TOO", "TWO",
     "USE", "WAS", "WAY", "WHO", "WHY", "YET", "YOU", "YOUR", "FROM",
@@ -35,16 +35,16 @@ _STOPWORDS = {
     "OVER", "AFTER", "THAN", "WHAT", "WHEN", "THEY", "THEM", "THEN",
     "ALSO", "ONLY", "MORE", "MOST", "MUCH", "SOME", "VERY", "SUCH", "EACH",
     "BOTH", "MANY", "HIGH", "LAST", "LONG", "REAL", "STILL", "TAKE",
-    "GOOD", "WELL", "EVEN", "BACK", "WORK", "MUCH", "KEEP", "NEVER",
+    "GOOD", "WELL", "EVEN", "BACK", "WORK", "KEEP", "NEVER",
     "EVER", "FREE", "BEST", "FULL", "ETF", "ETFS", "IPO", "GDP", "FED",
     "CEO", "CFO", "EPS", "PE", "PB", "PS", "ROE", "ROA", "USD", "CNY",
     "HKD", "JPY", "EUR", "GBP", "API", "AI", "ML", "DD", "YOLO", "IMO",
     "TLDR", "EDIT", "UPDATE", "NEWS", "RATE", "YEAR", "WEEK", "DAY",
     "TIME", "DAYS", "WEEKS", "YEARS", "PRICE", "PRICES", "STOCK", "STOCKS",
-    "CUT", "RATE", "FED", "HINT", "HIKE", "BOND", "BULL", "BEAR",
+    "CUT", "HINT", "HIKE", "BOND", "BULL", "BEAR",
     "RALLY", "RALLIES", "SURGE", "SURGES", "DIP", "DIPS", "JUMP", "JUMPS",
     "MARKET", "MARKETS", "TRADE", "TRADES", "TRADING", "BUY", "SELL",
-    "LONG", "SHORT", "CALL", "PUT", "PUTS", "CALLS", "HOLD", "HOLDER",
+    "SHORT", "CALL", "PUTS", "CALLS", "HOLD", "HOLDER",
     "HOLDERS", "SHARE", "SHARES", "OPTION", "OPTIONS",
 }
 

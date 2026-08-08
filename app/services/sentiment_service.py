@@ -9,7 +9,6 @@ GDELT: completely free, unlimited, pre-computed "tone" scores.
 
 import json
 import logging
-import os
 from datetime import date, datetime, timedelta
 from typing import Any
 
@@ -18,7 +17,7 @@ from sqlalchemy.orm import Session
 from app.data.providers.finnhub_provider import FinnhubProvider
 from app.models.etf import ETFInfo
 from app.models.research import SentimentData
-from app.services.llm import get_llm_provider, LLMService
+from app.services.llm import LLMService, get_llm_provider
 from app.services.symbol_mapper import internal_code
 
 logger = logging.getLogger(__name__)
@@ -322,7 +321,7 @@ class SentimentService:
         if not value:
             return None
         try:
-            if isinstance(value, (int, float)):
+            if isinstance(value, int | float):
                 return datetime.fromtimestamp(value)
             return datetime.fromisoformat(str(value).replace("Z", "+00:00"))
         except (ValueError, TypeError):

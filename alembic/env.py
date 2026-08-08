@@ -17,19 +17,19 @@ if config.config_file_name is not None:
 # add your model's MetaData object here
 # for 'autogenerate' support
 from app.core.database import Base
+from app.models.audit_log import *
+from app.models.digest import *
 from app.models.etf import *
 from app.models.etf_scan_log import *
 from app.models.etl import *
 from app.models.favorite import *
 from app.models.listing import *
+from app.models.news_source_meta import *
 from app.models.notification import *
 from app.models.pool import *
 from app.models.research import *
 from app.models.scoring import *
-from app.models.audit_log import *
-from app.models.news_source_meta import *
 from app.models.user_article_state import *
-from app.models.digest import *
 
 target_metadata = Base.metadata
 

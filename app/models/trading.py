@@ -13,11 +13,10 @@ Live trading (phase 3) tables:
 """
 
 from sqlalchemy import (
+    DECIMAL,
     Boolean,
     Column,
-    Date,
     DateTime,
-    DECIMAL,
     ForeignKey,
     Index,
     Integer,
@@ -29,7 +28,6 @@ from sqlalchemy import (
 from sqlalchemy.orm import relationship
 
 from app.core.database import Base
-
 
 # ---------------------------------------------------------------------------
 # Phase 2 – Paper (simulated) trading

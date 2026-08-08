@@ -803,10 +803,7 @@ def _preprocess_html_for_llm(html: str) -> str:
         cand_text = _html_to_text(cand)
         if len(cand_text) > len(best_text):
             best_text = cand_text
-    if len(best_text) >= _LLM_CANDIDATE_MIN_CHARS:
-        text = best_text
-    else:
-        text = _html_to_text(cleaned)
+    text = best_text if len(best_text) >= _LLM_CANDIDATE_MIN_CHARS else _html_to_text(cleaned)
     return text[:_LLM_MAX_INPUT_CHARS]
 
 

@@ -29,8 +29,9 @@ from __future__ import annotations
 import asyncio
 import logging
 import xml.etree.ElementTree as ET
-from datetime import date, datetime, timedelta, timezone
-from typing import Any, Iterable
+from collections.abc import Iterable
+from datetime import UTC, date, datetime, timedelta
+from typing import Any
 
 import httpx
 
@@ -94,7 +95,7 @@ class YahooFinanceCrawler:
         # from settings on first fallback attempt.
         self._finnhub_provider_override = finnhub_provider
 
-    async def __aenter__(self) -> "YahooFinanceCrawler":
+    async def __aenter__(self) -> YahooFinanceCrawler:
         if self._client is None:
             self._client = await self._build_client()
         return self
@@ -131,10 +132,7 @@ class YahooFinanceCrawler:
         On a 429 / 403 the per-ticker fetch transparently falls back
         to Finnhub's company-news endpoint.
         """
-        if isinstance(tickers, str):
-            ticker_list = [tickers]
-        else:
-            ticker_list = [t for t in tickers if t]
+        ticker_list = [tickers] if isinstance(tickers, str) else [t for t in tickers if t]
         if not ticker_list:
             return []
 
@@ -265,7 +263,7 @@ class YahooFinanceCrawler:
             author = (item.findtext("author") or item.findtext("dc:creator") or "").strip()
             if not title or not link:
                 continue
-            published_at = _parse_rfc822_date(pub) or datetime.now(tz=timezone.utc)
+            published_at = _parse_rfc822_date(pub) or datetime.now(tz=UTC)
 
             art = RawArticle(
                 source=self.source_name,
@@ -302,17 +300,17 @@ def _finnhub_item_to_article(
         return None
 
     ts = item.get("datetime")
-    if isinstance(ts, (int, float)):
-        published_at = datetime.fromtimestamp(int(ts), tz=timezone.utc)
+    if isinstance(ts, int | float):
+        published_at = datetime.fromtimestamp(int(ts), tz=UTC)
     elif isinstance(ts, str) and ts:
         try:
             published_at = datetime.fromisoformat(ts)
             if published_at.tzinfo is None:
-                published_at = published_at.replace(tzinfo=timezone.utc)
+                published_at = published_at.replace(tzinfo=UTC)
         except ValueError:
-            published_at = datetime.now(tz=timezone.utc)
+            published_at = datetime.now(tz=UTC)
     else:
-        published_at = datetime.now(tz=timezone.utc)
+        published_at = datetime.now(tz=UTC)
 
     summary = (item.get("summary") or "").strip()
     source_name = (item.get("source") or "").strip() or None
@@ -358,7 +356,7 @@ def _parse_rfc822_date(value: str) -> datetime | None:
         if dt is None:
             return None
         if dt.tzinfo is None:
-            dt = dt.replace(tzinfo=timezone.utc)
-        return dt.astimezone(timezone.utc)
+            dt = dt.replace(tzinfo=UTC)
+        return dt.astimezone(UTC)
     except (TypeError, ValueError):
         return None

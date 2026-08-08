@@ -16,7 +16,6 @@ import sys
 # Ensure the project root is on sys.path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from datetime import date
 
 from app.core.database import SessionLocal
 from app.data.providers.finnhub_provider import FinnhubProvider

@@ -3,7 +3,7 @@
 import logging
 import threading
 import time
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, Depends, Request, Response, status
 from sqlalchemy import func
@@ -262,7 +262,7 @@ def web_vitals_summary(
     entry has ``name``, ``count``, ``p50``, ``p75``, ``p95`` and
     ``ratings`` (good/needs-improvement/poor counts).
     """
-    cutoff = datetime.now(timezone.utc) - timedelta(hours=24)
+    cutoff = datetime.now(UTC) - timedelta(hours=24)
 
     rows = (
         db.query(
@@ -317,6 +317,6 @@ def web_vitals_summary(
 
     return {
         "window_hours": 24,
-        "as_of": datetime.now(timezone.utc).isoformat(),
+        "as_of": datetime.now(UTC).isoformat(),
         "metrics": metrics,
     }

@@ -42,6 +42,8 @@ from pathlib import Path
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_PROJECT_ROOT))
 
+import contextlib
+
 from app.core.database import SessionLocal
 from app.services.cninfo_report_service import CninfoReportService
 
@@ -118,7 +120,6 @@ def main(argv: list[str]) -> int:
                 written = service.fetch_for_stock(ts_code, start_date, end_date)
             else:
                 # Fetch a single report type only (faster).
-                from app.data.providers.cninfo_provider import CninfoProvider
                 provider = service.provider
                 org_id = provider.get_org_id(ts_code)
                 if not org_id:
@@ -133,17 +134,15 @@ def main(argv: list[str]) -> int:
                 written = 0
                 stock_code = ts_code.split(".")[0]
                 for rec in raw:
-                    try:
+                    with contextlib.suppress(Exception):
                         written += service._upsert(rec, ts_code, stock_code, org_id)
-                    except Exception:
-                        pass
             if written > 0:
                 total_written += written
         except Exception as exc:
             log.warning("[%d/%d] %s FAILED: %s", idx + 1, len(shard), ts_code, exc)
             continue
 
-        elapsed = time.time() - iter_start
+        time.time() - iter_start
         if (idx + 1) % _ETA_INTERVAL == 0:
             done = idx + 1
             avg = (time.time() - t0) / done

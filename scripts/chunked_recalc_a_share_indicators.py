@@ -53,11 +53,11 @@ from app.core.cache import cache_invalidate_pattern
 from app.core.database import SessionLocal
 from app.data.indicators.calculator import (
     _INDICATOR_COLUMNS,
-    _build_indicator_record,
     _MIN_BARS,
+    _build_indicator_record,
     calculate_single_etf,
 )
-from app.models.etf import ETFInfo, ETFIndicator, InstrumentDailyBar
+from app.models.etf import ETFIndicator, ETFInfo, InstrumentDailyBar
 from app.models.etl import ETLLog
 
 logger = logging.getLogger("chunked_recalc_a_share_indicators")
@@ -101,7 +101,7 @@ def _log_etl(
 def _load_progress(path: str) -> dict[str, Any]:
     """Load progress JSON; return empty dict if missing or corrupt."""
     try:
-        with open(path, "r", encoding="utf-8") as f:
+        with open(path, encoding="utf-8") as f:
             return json.load(f)
     except Exception:
         return {}

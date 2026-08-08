@@ -6,8 +6,9 @@ Create Date: 2026-07-01
 """
 
 import sqlalchemy as sa
-from alembic import op
 from sqlalchemy.dialects.postgresql import JSONB
+
+from alembic import op
 
 revision = "b2_news_schema_enrich"
 down_revision = "a1b1c2d3e4f5"

@@ -26,7 +26,6 @@ from app.api.v1 import sector_rotation as sector_rotation_module
 from app.core.database import Base
 from app.models.etf import ETFIndicator, ETFInfo
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------

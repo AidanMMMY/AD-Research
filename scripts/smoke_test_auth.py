@@ -21,7 +21,6 @@ from __future__ import annotations
 import os
 import sys
 import time
-from typing import Callable
 
 import requests
 

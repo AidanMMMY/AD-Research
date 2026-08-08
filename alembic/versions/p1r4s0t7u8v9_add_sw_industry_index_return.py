@@ -18,16 +18,17 @@ Revision ID: p1r4s0t7u8v9
 Revises: c38dfe612183
 Create Date: 2026-07-19
 """
-from typing import Sequence, Union
+from collections.abc import Sequence
 
 import sqlalchemy as sa
+
 from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = "p1r4s0t7u8v9"
-down_revision: Union[str, Sequence[str], None] = "c38dfe612183"
-branch_labels: Union[str, Sequence[str], None] = None
-depends_on: Union[str, Sequence[str], None] = None
+down_revision: str | Sequence[str] | None = "c38dfe612183"
+branch_labels: str | Sequence[str] | None = None
+depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:

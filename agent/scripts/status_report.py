@@ -17,9 +17,8 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -197,7 +196,7 @@ def _fmt_ts(value: Any) -> str:
     # Try to normalise a few common ISO formats to a compact form
     try:
         dt = datetime.fromisoformat(s.replace("Z", "+00:00"))
-        return dt.astimezone(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+        return dt.astimezone(UTC).strftime("%Y-%m-%d %H:%M UTC")
     except ValueError:
         return s[:19]
 
@@ -212,7 +211,7 @@ def read_source(data_root: Path, source: str) -> dict[str, Any] | None:
         # capture file mtime BEFORE summarize so list-payload paths can
         # fall back to it (some sources dump a bare JSON list with no
         # fetched_at key).
-        mtime = datetime.fromtimestamp(path.stat().st_mtime, tz=timezone.utc)
+        mtime = datetime.fromtimestamp(path.stat().st_mtime, tz=UTC)
         result = summarize(source, payload)
         if not result.get("_fetched_iso"):
             result["_fetched_iso"] = mtime.isoformat()
@@ -227,7 +226,7 @@ def read_source(data_root: Path, source: str) -> dict[str, Any] | None:
 
 
 def render_markdown(rows: list[dict[str, Any]], data_root: Path) -> str:
-    now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+    now = datetime.now(UTC).strftime("%Y-%m-%d %H:%M UTC")
     lines: list[str] = []
     lines.append(f"### AD-Research worker status — {now}")
     lines.append("")
@@ -270,7 +269,7 @@ def render_markdown(rows: list[dict[str, Any]], data_root: Path) -> str:
 
 def render_json(rows: list[dict[str, Any]]) -> str:
     return json.dumps(
-        {"generated_at": datetime.now(timezone.utc).isoformat(), "sources": rows},
+        {"generated_at": datetime.now(UTC).isoformat(), "sources": rows},
         ensure_ascii=False,
         indent=2,
     )
@@ -306,9 +305,9 @@ def read_overnight_v2(data_root: Path) -> dict[str, Any] | None:
     log_path = latest / "overnight_research_v2.log"
     if not db_path.exists():
         return None
-    db_mtime = datetime.fromtimestamp(db_path.stat().st_mtime, tz=timezone.utc)
+    db_mtime = datetime.fromtimestamp(db_path.stat().st_mtime, tz=UTC)
     log_mtime = (
-        datetime.fromtimestamp(log_path.stat().st_mtime, tz=timezone.utc)
+        datetime.fromtimestamp(log_path.stat().st_mtime, tz=UTC)
         if log_path.exists() else None
     )
     # crude item count: best-effort via db size proxy; the real count
@@ -374,7 +373,7 @@ def main() -> int:
     if args.source:
         sources = [args.source]
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     rows: list[dict[str, Any]] = []
     for src in sources:
         summary = read_source(data_root, src)

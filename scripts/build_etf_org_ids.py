@@ -34,7 +34,6 @@ from pathlib import Path
 
 import requests
 
-
 _REPO_ROOT = Path(__file__).resolve().parents[1]
 _TABLE_PATH = _REPO_ROOT / "app" / "data" / "static" / "cninfo_org_ids.json"
 _TOPSEARCH_URL = "http://www.cninfo.com.cn/new/information/topSearch/query"

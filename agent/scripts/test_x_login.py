@@ -1,5 +1,5 @@
-import asyncio
 from playwright.sync_api import sync_playwright
+
 with sync_playwright() as p:
     ctx = p.chromium.launch_persistent_context(
         user_data_dir="/profile",

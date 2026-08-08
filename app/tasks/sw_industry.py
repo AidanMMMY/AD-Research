@@ -12,7 +12,6 @@ import logging
 
 from app.core.celery_app import celery_app
 from app.data.pipelines.sw_industry_index import (
-    SWIndustryIndexPipeline,
     run_once as _run_once,
 )
 

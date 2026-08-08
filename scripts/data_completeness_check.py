@@ -11,7 +11,7 @@ from sqlalchemy import func, text
 
 from app.core.calendar import get_trading_dates
 from app.core.database import SessionLocal
-from app.models.etf import InstrumentDailyBar, ETFIndicator, ETFInfo
+from app.models.etf import ETFIndicator, ETFInfo, InstrumentDailyBar
 from app.models.etf_scan_log import ETFScanLog
 from app.models.etl import BacktestResult, ETLLog, Signal, StrategyConfig
 from app.models.notification import NotificationConfig, NotificationLog

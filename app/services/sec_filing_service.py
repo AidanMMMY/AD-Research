@@ -19,7 +19,7 @@ Public methods
 """
 
 import logging
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 from typing import Any
 
 from sqlalchemy import func, select
@@ -143,7 +143,7 @@ class SecFilingService:
 
         filing.extracted_metrics = metrics
         filing.extraction_status = "success"
-        filing.extracted_at = datetime.now(timezone.utc)
+        filing.extracted_at = datetime.now(UTC)
         self.db.commit()
         return True
 
@@ -395,7 +395,7 @@ class SecFilingService:
 
     def _mark_extraction_failed(self, filing: SecFiling, *, error: str) -> None:
         filing.extraction_status = "failed"
-        filing.extracted_at = datetime.now(timezone.utc)
+        filing.extracted_at = datetime.now(UTC)
         # Stash the error inside extracted_metrics so the UI can surface it
         # without growing the schema.
         filing.extracted_metrics = {"_error": error[:500]}

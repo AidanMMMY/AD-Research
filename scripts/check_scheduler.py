@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
-import requests
 import json
+
+import requests
 
 # Login
 r = requests.post('http://localhost:8000/api/v1/auth/login', json={'username': 'admin', 'password': 'Admin123!Test'})

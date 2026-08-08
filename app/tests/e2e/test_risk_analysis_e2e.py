@@ -15,7 +15,6 @@ import pytest
 
 from app.services.risk_analysis_service import RiskAnalysisService
 
-
 # ---------------------------------------------------------------------------
 # Helper
 # ---------------------------------------------------------------------------
@@ -73,7 +72,7 @@ def test_risk_analysis_single_instrument_returns_documented_metrics(db_session):
 
     # Sanity: every metric is finite
     for key, val in result.items():
-        if isinstance(val, (int, float)):
+        if isinstance(val, int | float):
             assert not math.isnan(val), f"{key} is NaN"
             assert not math.isinf(val), f"{key} is inf"
 

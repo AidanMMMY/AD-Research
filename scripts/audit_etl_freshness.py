@@ -22,7 +22,7 @@ from __future__ import annotations
 import argparse
 import os
 import sys
-from datetime import date, datetime, timedelta, timezone
+from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -30,7 +30,6 @@ sys.path.insert(0, str(PROJECT_ROOT))
 
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import Engine
-
 
 THRESHOLD_OK = "OK"
 THRESHOLD_WARN = "WARN"
@@ -54,7 +53,7 @@ class CheckResult:
 
 
 def _now() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 def _parse_date(val) -> date | None:
@@ -135,7 +134,7 @@ def check_etl_success(
         )
 
     if latest.tzinfo is None:
-        latest = latest.replace(tzinfo=timezone.utc)
+        latest = latest.replace(tzinfo=UTC)
     hours = (_now() - latest).total_seconds() / 3600
 
     if hours <= threshold_hours:
@@ -197,9 +196,9 @@ def check_redis_locks() -> CheckResult | None:
 
         client = get_redis_client()
         # Look for lock:* keys older than 2 hours
-        lock_keys = [k for k in client.scan_iter(match="lock:*")]
+        lock_keys = list(client.scan_iter(match="lock:*"))
         stale = []
-        now = _now().timestamp()
+        _now().timestamp()
         for key in lock_keys:
             ttl = client.ttl(key)
             # A lock with no TTL or very long TTL is suspicious

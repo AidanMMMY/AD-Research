@@ -24,7 +24,6 @@ than letting a single attempt through.
 from __future__ import annotations
 
 import logging
-from typing import Tuple
 
 from app.core.redis_client import get_redis_client
 
@@ -37,7 +36,7 @@ _USER_LIMIT = 20
 _USER_WINDOW_SECONDS = 3600
 
 
-def _incr_with_ttl(key: str, ttl_seconds: int) -> Tuple[int, int]:
+def _incr_with_ttl(key: str, ttl_seconds: int) -> tuple[int, int]:
     """Atomically increment ``key`` with TTL semantics.
 
     Returns ``(count, ttl)`` after the increment.  ``ttl`` is the
@@ -57,7 +56,7 @@ def _incr_with_ttl(key: str, ttl_seconds: int) -> Tuple[int, int]:
 def check_login_rate_limit(
     ip: str | None,
     username: str | None,
-) -> Tuple[bool, int]:
+) -> tuple[bool, int]:
     """Raise-style rate-limit guard for the login endpoint.
 
     Returns ``(allowed, retry_after_seconds)``.  When ``allowed`` is

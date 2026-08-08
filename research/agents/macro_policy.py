@@ -7,10 +7,9 @@ import logging
 import time
 from pathlib import Path
 
-import requests
 from bs4 import BeautifulSoup
 
-from research.agents.base import save_raw, save_note, safe_get
+from research.agents.base import safe_get, save_note, save_raw
 
 logger = logging.getLogger("research.agents.macro_policy")
 
@@ -73,10 +72,7 @@ def run_macro_policy_agent(data_dir: str, agent_name: str = "macro_policy") -> N
     all_items = []
     for src in SOURCES:
         try:
-            if src["kind"] == "rss":
-                items = _fetch_rss(src["url"])
-            else:
-                items = _fetch_html_list(src["url"])
+            items = _fetch_rss(src["url"]) if src["kind"] == "rss" else _fetch_html_list(src["url"])
             all_items.extend({"source": src["name"], **it} for it in items)
             logger.info("%s fetched %d items", src["name"], len(items))
         except Exception as exc:  # noqa: BLE001

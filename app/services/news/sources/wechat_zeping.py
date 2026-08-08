@@ -49,9 +49,10 @@ from __future__ import annotations
 
 import logging
 import re
+from collections.abc import Iterable
 from dataclasses import dataclass
-from datetime import datetime, timezone
-from typing import Any, Iterable
+from datetime import UTC, datetime
+from typing import Any
 
 import httpx
 
@@ -306,7 +307,7 @@ class _ClientCtx:
     the caller owns.
     """
 
-    def __init__(self, crawler: "WechatZepingCrawler") -> None:
+    def __init__(self, crawler: WechatZepingCrawler) -> None:
         self._crawler = crawler
 
     async def __aenter__(self) -> httpx.AsyncClient:
@@ -327,9 +328,9 @@ def _coerce_published_at(value: Any) -> datetime | None:
     """Parse the variety of date formats wewe-rss has shipped over time."""
     if not value:
         return None
-    if isinstance(value, (int, float)):
+    if isinstance(value, int | float):
         try:
-            return datetime.fromtimestamp(float(value), tz=timezone.utc)
+            return datetime.fromtimestamp(float(value), tz=UTC)
         except (OverflowError, OSError, ValueError):
             return None
     if isinstance(value, str):
@@ -344,8 +345,8 @@ def _coerce_published_at(value: Any) -> datetime | None:
         except ValueError:
             return None
         if dt.tzinfo is None:
-            dt = dt.replace(tzinfo=timezone.utc)
-        return dt.astimezone(timezone.utc)
+            dt = dt.replace(tzinfo=UTC)
+        return dt.astimezone(UTC)
     return None
 
 
@@ -413,7 +414,7 @@ def _item_to_raw_article(
     published_at = (
         _coerce_published_at(item.get("date_published"))
         or _coerce_published_at(item.get("date_modified"))
-        or datetime.now(tz=timezone.utc)
+        or datetime.now(tz=UTC)
     )
 
     body_text, body_html = _pick_body(item)

@@ -10,12 +10,10 @@ Answers the four canonical questions:
 from __future__ import annotations
 
 import math
-from datetime import date
 
 import pytest
 
 from app.services.scoring_service import ScoringService
-
 
 # ---------------------------------------------------------------------------
 # Smoke: full daily-scoring pipeline

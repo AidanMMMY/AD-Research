@@ -29,7 +29,7 @@ from __future__ import annotations
 
 import logging
 import re
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from app.services.news.crawler.base import BaseCrawler, _Response
 from app.services.news.crawler.types import RawArticle
@@ -168,7 +168,7 @@ class CninfoCrawler(BaseCrawler):
             # Beijing, stamped 7-28 00:00 Beijing). Storing that raw value
             # makes the news feed show future-dated articles. Clamp to the
             # crawl time so ``published_at`` is never in the future.
-            now = datetime.now(tz=timezone.utc)
+            now = datetime.now(tz=UTC)
             published_at = min(parsed_at, now) if parsed_at is not None else now
             stock_code = (item.get("secCode") or "").strip()
             stock_name = (item.get("secName") or "").strip()
@@ -176,10 +176,7 @@ class CninfoCrawler(BaseCrawler):
             # ``announcementId`` may be an int (cninfo's common case) or
             # a stringified form. Normalize to str for the source_id
             # column and fall back to the URL on missing.
-            if ann_id is None or ann_id == "":
-                source_id = adj_url
-            else:
-                source_id = str(ann_id)
+            source_id = adj_url if ann_id is None or ann_id == "" else str(ann_id)
 
             art = RawArticle(
                 source=self.source_name,
@@ -264,6 +261,6 @@ def _ms_to_dt(value) -> datetime | None:
         return None
     seconds = ms / 1000.0
     try:
-        return datetime.fromtimestamp(seconds, tz=timezone.utc)
+        return datetime.fromtimestamp(seconds, tz=UTC)
     except (OverflowError, OSError, ValueError):
         return None

@@ -19,7 +19,7 @@ After running this script once, the scheduler will maintain data freshness
 
 import argparse
 import sys
-from datetime import date, timedelta
+from datetime import date
 
 
 def parse_date(value: str | None) -> date | None:

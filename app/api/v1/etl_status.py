@@ -6,7 +6,7 @@ data freshness, for the operations dashboard.
 
 from __future__ import annotations
 
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 from typing import Any
 
 from fastapi import APIRouter, Depends
@@ -104,9 +104,9 @@ def _build_task_summary(db: Session) -> list[dict[str, Any]]:
             start = last_run.start_time
             end = last_run.end_time
             if start.tzinfo is None:
-                start = start.replace(tzinfo=timezone.utc)
+                start = start.replace(tzinfo=UTC)
             if end.tzinfo is None:
-                end = end.replace(tzinfo=timezone.utc)
+                end = end.replace(tzinfo=UTC)
             duration = round((end - start).total_seconds(), 2)
 
         tasks.append(
@@ -165,7 +165,7 @@ def get_etl_status(
 
     return {
         "last_run_at": last_run_at,
-        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "generated_at": datetime.now(UTC).isoformat(),
         "stale_markets": stale_markets,
         "tasks": tasks,
         "data_freshness": data_freshness,

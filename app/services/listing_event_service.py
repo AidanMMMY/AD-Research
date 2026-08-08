@@ -4,7 +4,7 @@ Provides paginated listing / filtering helpers and a facets method for
 populating dropdowns.
 """
 
-from datetime import date, datetime
+from datetime import date
 from typing import Any
 
 from sqlalchemy import distinct, func, select
@@ -12,7 +12,6 @@ from sqlalchemy.orm import Session
 
 from app.core.cache import cache_get, cache_set
 from app.models.listing import ListingEvent
-
 
 DATE_FIELDS = ("list_date", "issue_date")
 SORTABLE_FIELDS = (

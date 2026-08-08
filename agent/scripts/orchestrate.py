@@ -36,13 +36,11 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 import re
 import subprocess
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Iterable
 
 WORKERS_DIR = Path("/root/ad-research/agent/workers")
 RUN_WORKER = Path("/root/ad-research/agent/scripts/run_worker.sh")
@@ -104,7 +102,7 @@ def run_worker_local(worker: str, hours: int, output_host: Path,
 def collect(workers: list[str], hours: int, mode: str,
             aggregate_path: Path) -> dict:
     summary: dict = {
-        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "generated_at": datetime.now(UTC).isoformat(),
         "hours": hours,
         "mode": mode,
         "results": {},

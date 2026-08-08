@@ -31,7 +31,6 @@ from app.data.indicators.risk import (
     calculate_risk_indicators,
 )
 
-
 # ---------------------------------------------------------------------------
 # calculate_return_indicators: pure-period-return contract
 # ---------------------------------------------------------------------------

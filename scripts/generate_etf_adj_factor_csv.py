@@ -20,7 +20,6 @@ from __future__ import annotations
 import argparse
 import json
 import logging
-import os
 import sys
 import threading
 import time
@@ -244,7 +243,7 @@ def main() -> int:
                 progress["failed_codes"] = sorted(failed)
                 progress["total_rows"] = total_rows
                 _save_progress(args.progress_file, progress)
-            except Exception as exc:
+            except Exception:
                 logger.exception("%s 未捕获异常", code)
                 failed.add(code)
                 progress["failed_codes"] = sorted(failed)

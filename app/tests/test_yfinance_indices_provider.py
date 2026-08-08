@@ -18,13 +18,12 @@ The yfinance HTTP layer is patched out — we never touch the network.
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pandas as pd
 import pytest
 
 from app.data.providers import yfinance_indices_provider as yip
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -82,8 +81,8 @@ def test_forex_registry_codes_match_fred_codes():
     """The yfinance codes must be identical to FRED's so latest_snapshot
     can pick the newer source on the (code, region) tie-break."""
     from app.services.macro.fred_service import (
-        SERIES_REGISTRY,
         _GLOBAL_SERIES,
+        SERIES_REGISTRY,
     )
     fred_us_codes = {m.code for m in SERIES_REGISTRY}
     fred_global_codes = {m.code for m in _GLOBAL_SERIES}

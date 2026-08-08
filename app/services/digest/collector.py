@@ -31,7 +31,7 @@ Shanghai 窗口边界转 naive UTC 再比较。
 from __future__ import annotations
 
 import logging
-from datetime import date, datetime, time, timedelta, timezone
+from datetime import UTC, date, datetime, time, timedelta
 from typing import Any
 from zoneinfo import ZoneInfo
 
@@ -41,15 +41,16 @@ from sqlalchemy.orm import Session
 from app.config import get_settings
 from app.models.etf import ETFInfo, InstrumentDailyBar
 from app.models.favorite import UserFavorite
-# 注意：app/models/news.py 被 app/models/news/ 包遮蔽（平台历史坑），
-# NewsArticle 必须经 _model_loader 导入（见该模块 docstring）。
-from app.services.news._model_loader import NewsArticle, NewsArticleSymbol
 from app.models.research_report import ResearchReport
 from app.models.scoring import ETFScore
 from app.models.trading import PaperTradeAccount, PaperTradePosition
 from app.models.user import User
 from app.services import fund_flow_service, microstructure_service
 from app.services.digest.context import DigestContext
+
+# 注意：app/models/news.py 被 app/models/news/ 包遮蔽（平台历史坑），
+# NewsArticle 必须经 _model_loader 导入（见该模块 docstring）。
+from app.services.news._model_loader import NewsArticle, NewsArticleSymbol
 
 logger = logging.getLogger(__name__)
 
@@ -282,8 +283,8 @@ class DigestDataCollector:
 
     def _collect_news(self, ctx: DigestContext) -> None:
         # published_at 是 naive UTC —— Shanghai 窗口边界先转 UTC 再去时区
-        start_utc = ctx.window_start.astimezone(timezone.utc).replace(tzinfo=None)
-        end_utc = ctx.window_end.astimezone(timezone.utc).replace(tzinfo=None)
+        start_utc = ctx.window_start.astimezone(UTC).replace(tzinfo=None)
+        end_utc = ctx.window_end.astimezone(UTC).replace(tzinfo=None)
         window_cond = (
             (NewsArticle.published_at >= start_utc)
             & (NewsArticle.published_at < end_utc)
@@ -400,8 +401,8 @@ class DigestDataCollector:
         position_map = {p.instrument_code: p for p in position_rows}
         codes = sorted(set(fav_codes) | set(position_map))
 
-        start_utc = ctx.window_start.astimezone(timezone.utc).replace(tzinfo=None)
-        end_utc = ctx.window_end.astimezone(timezone.utc).replace(tzinfo=None)
+        start_utc = ctx.window_start.astimezone(UTC).replace(tzinfo=None)
+        end_utc = ctx.window_end.astimezone(UTC).replace(tzinfo=None)
 
         items = []
         for code in codes:

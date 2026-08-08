@@ -1,11 +1,13 @@
 """Tests for the strategy registry and built-in strategies."""
 
 import pandas as pd
-import pytest
 
-from app.strategies.base import StrategyRegistry, register_strategy
-from app.strategies.base import Strategy, ParamSpec, SignalResult
-
+from app.strategies.base import (
+    SignalResult,
+    Strategy,
+    StrategyRegistry,
+    register_strategy,
+)
 
 SAMPLE_DF = pd.DataFrame({
     "trade_date": pd.date_range("2024-01-01", periods=100, freq="D"),

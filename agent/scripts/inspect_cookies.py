@@ -1,5 +1,6 @@
 import sqlite3
 from pathlib import Path
+
 p = Path("/profile/Default/Cookies")
 print(f"File size: {p.stat().st_size}")
 conn = sqlite3.connect(str(p))

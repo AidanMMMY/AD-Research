@@ -9,7 +9,6 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-
 # Adjunct type used in the cninfo ``category`` parameter.  Mapped 1:1 to
 # ``CninfoReport.adjunct_type``.
 AdjunctType = Literal["annual", "semi", "q1", "q3", "other"]

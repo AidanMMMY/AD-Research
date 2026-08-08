@@ -4,7 +4,6 @@ Reads existing instrument_daily_bar and major index moves from the DB,
 then links them to known policy/event dates for exploratory analysis.
 """
 
-import json
 import logging
 import os
 from datetime import date
@@ -13,7 +12,7 @@ from pathlib import Path
 
 from sqlalchemy import create_engine, text
 
-from research.agents.base import save_raw, save_note
+from research.agents.base import save_note, save_raw
 
 logger = logging.getLogger("research.agents.event_price")
 

@@ -52,15 +52,12 @@ Usage:
 """
 from __future__ import annotations
 
-import argparse
 import re
 import sys
 import time
-import xml.etree.ElementTree as ET
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
-from urllib.parse import quote_plus
 
 import requests
 
@@ -195,7 +192,7 @@ def _relative_to_dt(ago: str) -> Any:
     delta = {"m": timedelta(minutes=n), "h": timedelta(hours=n), "d": timedelta(days=n)}.get(unit)
     if not delta:
         return None
-    return datetime.now(tz=timezone.utc) - delta
+    return datetime.now(tz=UTC) - delta
 
 
 def _curl_cffi_get(url: str, logger, timeout: int = 20, retries: int = 1) -> Any:

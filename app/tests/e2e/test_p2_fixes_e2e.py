@@ -37,19 +37,15 @@ import pytest
 
 from app.services import (
     attribution_service,
-    backtest_engine,
-    paper_trading_service,
     risk_analysis_service,
     signal_generator,
 )
 from app.services.attribution_service import AttributionService
 from app.services.backtest_engine import BacktestResult, run_backtest
 from app.services.paper_trading_service import (
-    PaperTradingError,
     PaperTradingService,
 )
 from app.services.risk_analysis_service import RiskAnalysisService
-
 
 # ---------------------------------------------------------------------------
 # Helpers

@@ -150,10 +150,10 @@ class Strategy(ABC):
                     self_value = self.params[key]
                     other_value = self.params[other_name]
                     if op_name in ("lt", "le"):
-                        if isinstance(self_value, (int, float)) and isinstance(other_value, (int, float)):
+                        if isinstance(self_value, int | float) and isinstance(other_value, int | float):
                             self.params[key] = other_value - 1 if op_name == "lt" else other_value
                     elif op_name in ("gt", "ge"):
-                        if isinstance(self_value, (int, float)) and isinstance(other_value, (int, float)):
+                        if isinstance(self_value, int | float) and isinstance(other_value, int | float):
                             self.params[key] = other_value + 1 if op_name == "gt" else other_value
                     elif op_name == "eq":
                         self.params[key] = other_value
@@ -384,13 +384,13 @@ class CompositeStrategy(Strategy):
             for comp in (self.params.get("components") or [])
             if StrategyRegistry.get(comp.get("type")) is not None
         ]
-        for (ctype, _series), w in zip(components, weights):
+        for (ctype, _series), w in zip(components, weights, strict=False):
             weights_by_type[ctype] = w
         # We capture (type, signal, weight) per bar for the strongest /
         # dissent components so generate() can expose them in metadata.
         for i in range(len(components[0][1]) if components else 0):
             row: list[tuple[str, int, float]] = []
-            for (ctype, series), w in zip(components, weights):
+            for (ctype, series), w in zip(components, weights, strict=False):
                 row.append((ctype, int(series.iloc[i]), w))
             per_bar.append(row)
 

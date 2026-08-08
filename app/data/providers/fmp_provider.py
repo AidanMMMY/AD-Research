@@ -10,7 +10,7 @@ API docs: https://site.financialmodelingprep.com/developer/docs
 import os
 import re
 import time
-from datetime import date, timedelta
+from datetime import date
 from typing import Any
 
 import pandas as pd

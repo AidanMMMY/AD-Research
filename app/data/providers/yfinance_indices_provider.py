@@ -219,7 +219,7 @@ def _history_frame_to_rows(h, meta: IndexMeta) -> list[dict]:
     h.index = idx
 
     closes = h["Close"].tolist()
-    dates = [d for d in idx]
+    dates = list(idx)
     invert = bool(getattr(meta, "invert_value", False))
 
     out: list[dict] = []

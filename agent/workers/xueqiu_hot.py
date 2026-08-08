@@ -40,8 +40,13 @@ import requests
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from common import (  # noqa: E402
-    LOG, add_common_args, configure_logging, fetch_with_retry,
-    to_iso_utc, truncate, write_output,
+    LOG,
+    add_common_args,
+    configure_logging,
+    fetch_with_retry,
+    to_iso_utc,
+    truncate,
+    write_output,
 )
 
 SOURCE = "雪球"

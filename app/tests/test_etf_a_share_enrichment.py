@@ -26,7 +26,6 @@ from app.data.pipelines.etf_metadata_enrichment import ETFMetadataEnrichmentPipe
 from app.models.etf import ETFInfo
 from app.services.etf_scanner_service import ETFScannerService
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------

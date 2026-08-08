@@ -328,7 +328,7 @@ class AsiaEnBatchCrawler:
         rows = ASIA_EN_BATCHES.get(self._batch_key, [])
         return [
             _Feed(slug=s, display_name=n, url=u, market=m, language=l)
-            for s, n, u, m, l in rows
+            for s, n, u, m, row in rows
         ]
 
     async def fetch_recent(self) -> list[RawArticle]:

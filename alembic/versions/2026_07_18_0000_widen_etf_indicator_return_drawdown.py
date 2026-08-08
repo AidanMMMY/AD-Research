@@ -14,6 +14,7 @@ Create Date: 2026-07-18
 from __future__ import annotations
 
 import sqlalchemy as sa
+
 from alembic import op
 
 revision = "2026_07_18_0000_widen_etf_indicator_return_drawdown"

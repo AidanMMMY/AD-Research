@@ -7,7 +7,7 @@ times by +8 hours.  The news jobs were unaffected because they go through
 ``app.core.etl_log_helper`` which already used ``datetime.now(timezone.utc)``.
 """
 
-from datetime import timedelta
+from datetime import UTC, timedelta
 from unittest.mock import MagicMock
 
 import pandas as pd
@@ -58,9 +58,9 @@ def test_pipeline_update_log_writes_utc_end_time():
 
 def test_indicator_calculator_log_etl_writes_utc_end_time():
     db = MagicMock()
-    from datetime import datetime, timezone
+    from datetime import datetime
 
-    start = datetime.now(timezone.utc)
+    start = datetime.now(UTC)
     _log_etl(db, "indicator_calc", "success", 10, start, None)
 
     log = db.add.call_args[0][0]

@@ -30,7 +30,7 @@ PK，见 ``app.models.user_article_state``）：feed 用 LEFT JOIN 把
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import and_, func, select
@@ -131,7 +131,7 @@ def learning_feed(
             detail=f"difficulty must be one of {', '.join(DIFFICULTIES)}",
         )
 
-    cutoff = datetime.now(tz=timezone.utc) - timedelta(days=days)
+    cutoff = datetime.now(tz=UTC) - timedelta(days=days)
     # published_at 是 naive UTC（crawler 入库前统一转 UTC 后去时区），
     # 比较时同样用 naive 值。
     cutoff_naive = cutoff.replace(tzinfo=None)
@@ -202,7 +202,7 @@ def learning_topics(
     返回全部 7 个主题（含 research 兜底类），无文章的主题计数为 0，
     保证前端 Tab 列表稳定。
     """
-    cutoff_naive = (datetime.now(tz=timezone.utc) - timedelta(days=days)).replace(
+    cutoff_naive = (datetime.now(tz=UTC) - timedelta(days=days)).replace(
         tzinfo=None
     )
     rows = db.execute(
@@ -258,7 +258,7 @@ def toggle_bookmark(
     """
     state = _get_or_create_state(db, user_id=user.id, article_id=article_id)
     if state.bookmarked_at is None:
-        state.bookmarked_at = datetime.now(tz=timezone.utc)
+        state.bookmarked_at = datetime.now(tz=UTC)
     else:
         state.bookmarked_at = None
     db.commit()
@@ -282,7 +282,7 @@ def mark_read(
     """
     state = _get_or_create_state(db, user_id=user.id, article_id=article_id)
     if state.read_at is None:
-        state.read_at = datetime.now(tz=timezone.utc)
+        state.read_at = datetime.now(tz=UTC)
         db.commit()
     return {
         "article_id": article_id,

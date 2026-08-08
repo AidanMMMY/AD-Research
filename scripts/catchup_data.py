@@ -26,7 +26,7 @@ from app.config import get_settings
 from app.core.calendar import get_trading_dates
 from app.data.indicators.calculator import batch_calculate_indicators
 from app.data.providers.akshare_provider import AkshareProvider
-from app.models.etf import InstrumentDailyBar, ETFIndicator
+from app.models.etf import ETFIndicator, InstrumentDailyBar
 from app.services.scoring_service import ScoringService
 
 settings = get_settings()

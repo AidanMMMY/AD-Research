@@ -30,11 +30,7 @@ from types import ModuleType
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
-    from app.models._news_article import (  # type: ignore[import-not-found]
-        NewsArticle,
-        NewsArticleSymbol,
-        RedditCommentCache,
-    )
+    pass
 
 _LOADED_KEY = "app.models._news_article"
 _NEWS_FILE = os.path.normpath(

@@ -12,13 +12,13 @@ LLMPipelineMonitor  - cost / call / cache-hit accounting
 prompts             - prompt template library
 """
 
+from app.services.news.sentiment import prompts
 from app.services.news.sentiment.cache import SentimentCache
 from app.services.news.sentiment.monitor import LLMPipelineMonitor
 from app.services.news.sentiment.sentiment_pipeline import (
-    SentimentPipeline,
     PipelineResult,
+    SentimentPipeline,
 )
-from app.services.news.sentiment import prompts
 
 __all__ = [
     "SentimentPipeline",

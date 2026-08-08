@@ -26,7 +26,7 @@ from __future__ import annotations
 import hmac
 import logging
 import os
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -223,7 +223,7 @@ def record_orchestrate_alert(
         config_id=config_id,
         status="failed" if failed_count >= max(payload.threshold, 3) else "success",
         error_msg=summary[:500],  # column size cap (String(500))
-        sent_at=datetime.now(timezone.utc),
+        sent_at=datetime.now(UTC),
     )
     db.add(log_row)
     db.commit()

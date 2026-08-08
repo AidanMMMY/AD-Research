@@ -10,7 +10,7 @@ dedicated crypto service is needed — all downstream systems are
 already instrument-agnostic.
 """
 
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
@@ -33,7 +33,7 @@ from app.schemas.crypto import (
     IndicatorHistoryOut,
     IndicatorOut,
 )
-from app.schemas.etf import ETFInfoResponse, ETFFilterParams
+from app.schemas.etf import ETFFilterParams, ETFInfoResponse
 from app.services.etf_service import ETFService
 from app.services.indicator_service import IndicatorService
 from app.services.market_data_service import MarketDataService
@@ -68,7 +68,7 @@ def _enrich_with_realtime(
         quotes = {}
 
     enriched: list[CryptoInfoOut] = []
-    last_updated = datetime.now(timezone.utc)
+    last_updated = datetime.now(UTC)
     for item in items:
         q = quotes.get(item.code, {}) if quotes else {}
         change_pct = q.get("price_change_pct")

@@ -12,10 +12,8 @@ from decimal import Decimal
 
 import numpy as np
 import pandas as pd
-import pytest
 
 from app.services.backtest_engine import run_backtest
-
 
 # ---------------------------------------------------------------------------
 # Helper: build a deterministic price series (60 trading days)
@@ -157,7 +155,7 @@ def test_backtest_sharpe_ratio_is_finite_on_clean_data(db_session):
     sharpe = result.metrics["sharpe_ratio"]
     # Sharpe may be 0 (int) when no trades occur or as default; the contract
     # is just that it's finite and numeric.
-    assert isinstance(sharpe, (int, float))
+    assert isinstance(sharpe, int | float)
     assert math.isfinite(float(sharpe)), f"Sharpe not finite: {sharpe}"
 
 

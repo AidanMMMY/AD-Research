@@ -13,7 +13,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Literal
 
-
 Market = Literal["A股", "US", "CRYPTO"]
 
 

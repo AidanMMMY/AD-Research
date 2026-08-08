@@ -6,7 +6,7 @@ scoring, report generation, market scan, and signal generation jobs.
 
 import json
 import logging
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 from pathlib import Path
 from typing import Any
 
@@ -15,12 +15,9 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.interval import IntervalTrigger
 
-from app.core.celery_app import celery_app
 from app.core.database import SessionLocal
 from app.core.etl_log_helper import record_etl
 from app.core.redis_client import get_redis_client, redis_lock
-from app.tasks.cninfo import refresh_cninfo_reports_daily
-from app.tasks.indicator import calculate_indicators
 from app.data.pipelines.a_share import AShareETLPipeline
 from app.data.pipelines.a_share_stock_daily import AStockDailyPipeline
 from app.data.pipelines.a_share_stock_discovery import AShareStockDiscoveryPipeline
@@ -28,10 +25,9 @@ from app.data.pipelines.a_share_stock_financials import AStockFinancialsPipeline
 from app.data.pipelines.a_share_stock_fundamental import AStockFundamentalPipeline
 from app.data.pipelines.crypto_daily import CryptoDailyPipeline
 from app.data.pipelines.etf_holdings import ETFHoldingsPipeline
-from app.scripts.backfill_a_share_adj_factor import backfill_adj_factor
 from app.data.pipelines.etf_metadata_enrichment import ETFMetadataEnrichmentPipeline
-from app.data.pipelines.futures import FuturesContractDiscoveryPipeline, FuturesDailyPipeline
 from app.data.pipelines.fund_flow import FundFlowPipeline
+from app.data.pipelines.futures import FuturesContractDiscoveryPipeline, FuturesDailyPipeline
 from app.data.pipelines.listing_events import ListingEventsPipeline
 from app.data.pipelines.market_fund_flow import MarketFundFlowPipeline
 from app.data.pipelines.microstructure import MicrostructurePipeline
@@ -46,11 +42,14 @@ from app.data.pipelines.us_stock_enrichment import USStockEnrichmentPipeline
 from app.models.etf import ETFInfo
 from app.models.etl import ETLLog, StrategyConfig
 from app.models.pool import ETFPools
+from app.scripts.backfill_a_share_adj_factor import backfill_adj_factor
 from app.services.etf_scanner_service import ETFScannerService
 from app.services.report_service import ReportService
 from app.services.scoring_service import ScoringService
 from app.services.signal_service import SignalService
 from app.strategies.base import StrategyRegistry
+from app.tasks.cninfo import refresh_cninfo_reports_daily
+from app.tasks.indicator import calculate_indicators
 
 # Limit the default APScheduler thread pool. The default 20 workers can
 # launch too many long-running DB-holding jobs concurrently and exhaust the
@@ -218,7 +217,7 @@ def cleanup_stuck_etl_jobs(threshold_minutes: int = _STUCK_ETL_THRESHOLD_MINUTES
     """
     from datetime import timedelta
 
-    cutoff = datetime.now(timezone.utc) - timedelta(minutes=threshold_minutes)
+    cutoff = datetime.now(UTC) - timedelta(minutes=threshold_minutes)
     cleaned = 0
 
     with SessionLocal() as db:
@@ -247,7 +246,7 @@ def cleanup_stuck_etl_jobs(threshold_minutes: int = _STUCK_ETL_THRESHOLD_MINUTES
             logger.info("Cleaning up stuck ETL job %s (started %s)", job_name, start)
 
             log.status = "failed"
-            log.end_time = datetime.now(timezone.utc)
+            log.end_time = datetime.now(UTC)
             log.error_msg = (
                 (log.error_msg or "")
                 + "; [scheduler-cleanup] process terminated or lease expired"
@@ -1210,7 +1209,6 @@ def run_research_reports_daily():
     ``research_reports`` table. Safe to re-run thanks to the unique
     constraint on ``(ts_code, title, publish_date)``.
     """
-    from app.data.pipelines.research_reports import ResearchReportsPipeline
 
     with redis_lock("research_reports_daily", expire_seconds=3600) as acquired:
         if not acquired:
@@ -1785,8 +1783,8 @@ def init_scheduler():
     )
     # ── Macro (FRED) — daily after FRED publishes (~15:00 ET)
     try:
+        from app.core.redis_client import redis_lock
         from app.services.news.scheduler_jobs import run_fred_refresh
-        from app.core.redis_client import get_redis_client, redis_lock
 
         def _fred_wrapper():
             with redis_lock("fred_macro_daily", expire_seconds=1800) as acquired:
@@ -1815,19 +1813,34 @@ def init_scheduler():
     # NOTE: xinhua RSS endpoints are currently 404; disabled to avoid log spam.
     try:
         from app.services.news.scheduler_jobs import (
-            run_caixin_crawl, run_chinanews_finance_crawl,
-            run_cninfo_crawl, run_huxiu_crawl, run_jiemian_crawl,
-            run_kr36_crawl,
-            run_sina_crawl, run_stats_gov_crawl, run_wallstreetcn_crawl,
-            run_wechat_zeping_crawl,
-            run_yahoo_crawl, run_cnbc_crawl, run_sec_edgar_crawl,
-            run_reddit_crawl,
-            run_coindesk_crawl, run_cointelegraph_crawl,
-            run_cls_crawl, run_marketwatch_crawl, run_zerohedge_crawl,
-            run_seekingalpha_crawl, run_ft_crawl, run_investing_crawl,
-            run_decrypt_crawl, run_federal_reserve_crawl, run_ecb_crawl,
-            run_bankofengland_crawl, run_bbc_business_crawl,
             run_arxiv_qfin_crawl,
+            run_bankofengland_crawl,
+            run_bbc_business_crawl,
+            run_caixin_crawl,
+            run_chinanews_finance_crawl,
+            run_cls_crawl,
+            run_cnbc_crawl,
+            run_cninfo_crawl,
+            run_coindesk_crawl,
+            run_cointelegraph_crawl,
+            run_decrypt_crawl,
+            run_ecb_crawl,
+            run_federal_reserve_crawl,
+            run_ft_crawl,
+            run_huxiu_crawl,
+            run_investing_crawl,
+            run_jiemian_crawl,
+            run_kr36_crawl,
+            run_marketwatch_crawl,
+            run_reddit_crawl,
+            run_sec_edgar_crawl,
+            run_seekingalpha_crawl,
+            run_sina_crawl,
+            run_stats_gov_crawl,
+            run_wallstreetcn_crawl,
+            run_wechat_zeping_crawl,
+            run_yahoo_crawl,
+            run_zerohedge_crawl,
         )
         scheduler.add_job(
             run_cninfo_crawl,
@@ -2524,7 +2537,7 @@ def _scheduler_heartbeat():
     """
     try:
         client = get_redis_client()
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(UTC).isoformat()
         jobs: list[dict[str, Any]] = []
         if scheduler.running:
             for job in scheduler.get_jobs():

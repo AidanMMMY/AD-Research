@@ -147,10 +147,7 @@ class YFinanceProvider(DataProvider):
                 # Parse batch result: MultiIndex columns when >1 ticker
                 for code, ticker in zip(chunk_codes, tickers, strict=False):
                     try:
-                        if len(tickers) == 1:
-                            series = data
-                        else:
-                            series = data.xs(ticker, level=1, axis=1)
+                        series = data if len(tickers) == 1 else data.xs(ticker, level=1, axis=1)
                         for trade_date_val, row in series.iterrows():
                             td = (
                                 trade_date_val.date()

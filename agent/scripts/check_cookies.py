@@ -1,5 +1,6 @@
 import sqlite3
 from pathlib import Path
+
 from playwright.sync_api import sync_playwright
 
 # Check the raw cookies file
@@ -29,5 +30,5 @@ with sync_playwright() as p:
     cookies = ctx.cookies()
     print(f"Playwright sees {len(cookies)} cookies:")
     for c in cookies:
-        print(f"  {c[domain]} | {c[name]} = {c[value][:20]}...")
+        print(f"  {c['domain']} | {c['name']} = {c['value'][:20]}...")
     ctx.close()

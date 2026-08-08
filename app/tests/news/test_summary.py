@@ -16,7 +16,7 @@ Mirrors the fixture/patching patterns in ``test_translation.py`` and
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -25,7 +25,6 @@ from fastapi.testclient import TestClient
 
 from app.core.database import Base
 from app.services.news._model_loader import NewsArticle
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -96,7 +95,7 @@ def _make_article(
     importance: int = 4,
     source_id: str = "s-1",
 ) -> NewsArticle:
-    now = datetime.now(tz=timezone.utc)
+    now = datetime.now(tz=UTC)
     a = NewsArticle(
         source="cls",
         source_id=source_id,

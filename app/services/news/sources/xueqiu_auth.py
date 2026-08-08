@@ -24,8 +24,8 @@ import logging
 import os
 import random
 import time
+from collections.abc import Iterable
 from dataclasses import dataclass, field
-from typing import Iterable
 
 import httpx
 
@@ -105,7 +105,7 @@ class XueqiuAuth:
                     params=_PROBE_PARAMS,
                     cookies=self._cookies,
                 )
-        except (httpx.HTTPError, asyncio.TimeoutError) as exc:
+        except (TimeoutError, httpx.HTTPError) as exc:
             logger.warning("Xueqiu auth probe network error: %s", exc)
             self._probe_ok = False
             self._probed_at = time.time()
@@ -120,9 +120,7 @@ class XueqiuAuth:
             else:
                 # Xueqiu sometimes returns 200 with an HTML login page or a
                 # {"error_*": ...} envelope when the cookie is stale.
-                if not isinstance(payload, dict) or "list" not in payload:
-                    ok = False
-                elif payload.get("error_code") not in (None, "0", 0):
+                if not isinstance(payload, dict) or "list" not in payload or payload.get("error_code") not in (None, "0", 0):
                     ok = False
 
         self._probe_ok = ok

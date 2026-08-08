@@ -30,11 +30,12 @@ Exit codes:
 from __future__ import annotations
 
 import argparse
+import contextlib
 import os
 import sys
 import time
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable
 
 from playwright.sync_api import sync_playwright  # noqa: E402
 
@@ -86,13 +87,6 @@ def wait_for_login(context, page, cookie_names: list[str], verify_url: str, time
                 pass
         time.sleep(2)
     return False
-    while time.time() < deadline:
-        cookies = context.cookies()
-        for c in cookies:
-            if c.get("name") == cookie_name:
-                return True
-        time.sleep(2)
-    return False
 
 
 def login_one_platform(p, profile_dir: Path, timeout: int, log: Callable) -> bool:
@@ -129,13 +123,11 @@ def login_one_platform(p, profile_dir: Path, timeout: int, log: Callable) -> boo
         if success:
             log(f"  ✓ Login verified for {name} (cookie + protected URL accessible).")
         else:
-            log(f"  ✗ Timed out after {timeout}s waiting for cookie `{cookie_name}`.")
+            log(f"  ✗ Timed out after {timeout}s waiting for cookies {cookie_names}.")
             log("    (you can re-run this script later to retry this platform only)")
 
-        try:
+        with contextlib.suppress(Exception):
             context.close()
-        except Exception:
-            pass
         return success
 
 
@@ -175,7 +167,7 @@ def main():
     for p in selected:
         results[p[0]] = login_one_platform(p, profile_dir, args.timeout, print)
         if not results[p[0]]:
-            user_input = input(f"  Continue to next platform? (y/N): ").strip().lower()
+            user_input = input("  Continue to next platform? (y/N): ").strip().lower()
             if user_input != "y":
                 break
 
@@ -183,7 +175,7 @@ def main():
     for name, ok in results.items():
         print(f"  {name:10s} {'OK' if ok else 'FAIL'}")
     if all(results.values()):
-        print(f"\nAll platforms logged in. Next:")
+        print("\nAll platforms logged in. Next:")
         print(f"  scp -r {profile_dir} root@<ECS>:/root/.playwright-profile/")
         sys.exit(0)
     else:

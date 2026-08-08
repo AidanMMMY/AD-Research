@@ -11,14 +11,12 @@ reclassify path (with a stubbed provider), and the fail-open behaviour.
 from __future__ import annotations
 
 import asyncio
-import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 import httpx
 import pytest
 
-from app.services.news.crawler.types import RawArticle
 from app.services.news.filters.wechat_marketing_filter import (
     DEFAULT_MARKETING_KEYWORDS,
     WechatMarketingFilter,
@@ -28,7 +26,6 @@ from app.services.news.sources.wechat_zeping import (
     _build_feed_url,
     _item_to_raw_article,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -193,7 +190,7 @@ class TestItemParser:
         art = _item_to_raw_article(item, feed_id="f")
         assert art is not None
         # Falls back to now (within the last few seconds).
-        delta = abs((datetime.now(tz=timezone.utc) - art.published_at).total_seconds())
+        delta = abs((datetime.now(tz=UTC) - art.published_at).total_seconds())
         assert delta < 5
 
 

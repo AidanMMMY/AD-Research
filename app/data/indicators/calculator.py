@@ -23,8 +23,8 @@ call time so the operator can A/B test without a redeploy).
 import logging
 import os
 import time
-from datetime import date, datetime, timezone
-from typing import Iterable
+from collections.abc import Iterable
+from datetime import UTC, date, datetime
 
 import pandas as pd
 from sqlalchemy import or_, select
@@ -35,7 +35,7 @@ from app.core.cache import cache_invalidate_pattern
 from app.data.indicators.market_config import get_market_config, normalise_market
 from app.data.indicators.risk import calculate_return_indicators, calculate_risk_indicators
 from app.data.indicators.technical import calculate_technical_indicators
-from app.models.etf import InstrumentDailyBar, ETFIndicator, ETFInfo
+from app.models.etf import ETFIndicator, ETFInfo, InstrumentDailyBar
 from app.models.etl import ETLLog
 
 logger = logging.getLogger(__name__)
@@ -338,7 +338,7 @@ def batch_calculate_indicators(
     Returns:
         Number of indicator records updated/inserted.
     """
-    start_time = datetime.now(timezone.utc)
+    start_time = datetime.now(UTC)
     updated_count = 0
     errors = []
 
@@ -691,7 +691,7 @@ def _log_etl(
         job_name=job_name,
         status=status,
         start_time=start_time,
-        end_time=datetime.now(timezone.utc),
+        end_time=datetime.now(UTC),
         records_count=records_count,
         error_msg=error_msg,
     )

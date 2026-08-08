@@ -11,7 +11,7 @@ from __future__ import annotations
 import bisect
 import math
 import threading
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 
@@ -45,7 +45,7 @@ class Stats:
     # ------------------------------------------------------------------
     def record_success(self, *, bytes: int = 0, latency_ms: float | None = None) -> None:
         """Record a successful response."""
-        now = datetime.now(tz=timezone.utc)
+        now = datetime.now(tz=UTC)
         with self._lock:
             self.success += 1
             self.total_bytes += max(int(bytes), 0)
@@ -58,7 +58,7 @@ class Stats:
             self.failed += 1
             self.total_bytes += max(int(bytes), 0)
             self._track_latency(latency_ms)
-            self._touch(datetime.now(tz=timezone.utc))
+            self._touch(datetime.now(tz=UTC))
 
     def record_timeout(self, *, bytes: int = 0, latency_ms: float | None = None) -> None:
         """Record a timeout event."""
@@ -66,7 +66,7 @@ class Stats:
             self.timeout += 1
             self.total_bytes += max(int(bytes), 0)
             self._track_latency(latency_ms)
-            self._touch(datetime.now(tz=timezone.utc))
+            self._touch(datetime.now(tz=UTC))
 
     def record_blocked(self, *, bytes: int = 0, latency_ms: float | None = None) -> None:
         """Record a blocked / 403 / anti-bot response."""
@@ -74,7 +74,7 @@ class Stats:
             self.blocked += 1
             self.total_bytes += max(int(bytes), 0)
             self._track_latency(latency_ms)
-            self._touch(datetime.now(tz=timezone.utc))
+            self._touch(datetime.now(tz=UTC))
 
     # ------------------------------------------------------------------
     # Reading

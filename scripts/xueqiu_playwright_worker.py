@@ -22,6 +22,7 @@ Anti-bot hardening:
 from __future__ import annotations
 
 import argparse
+import contextlib
 import json
 import logging
 import random
@@ -659,10 +660,8 @@ def main() -> int:
         else:
             logger.warning(f"login_state={login_state}; skipping fetch")
 
-        try:
+        with contextlib.suppress(Exception):
             ctx.close()
-        except Exception:
-            pass
 
     # Dedup by (url, title-prefix) and trim
     deduped: list[dict[str, Any]] = []

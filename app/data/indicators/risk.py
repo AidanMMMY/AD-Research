@@ -29,7 +29,6 @@ import pandas as pd
 
 from app.data.indicators.market_config import get_market_config
 
-
 # Minimum number of observations required before the long-window risk
 # metrics (``sharpe_1y`` / ``max_drawdown_1y``) are considered trustworthy.
 # 60 ≈ one trading quarter — short enough to react to new listings, long

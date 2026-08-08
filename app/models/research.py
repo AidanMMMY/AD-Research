@@ -6,12 +6,12 @@ AI chat conversations.
 
 from sqlalchemy import (
     DECIMAL,
+    JSON,
     Column,
     DateTime,
     ForeignKey,
     Index,
     Integer,
-    JSON,
     String,
     Text,
     func,

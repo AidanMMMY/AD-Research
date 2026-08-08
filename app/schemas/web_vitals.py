@@ -16,7 +16,6 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict
 
-
 # Whitelist of Core Web Vitals names. Adding a new metric here requires
 # bumping the column comment in app/models/web_vitals.py and re-checking
 # the summary aggregation in app/api/v1/stats.py.

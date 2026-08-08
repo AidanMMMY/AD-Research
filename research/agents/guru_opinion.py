@@ -8,7 +8,7 @@ and fetches a couple of publicly available pages without authentication.
 import logging
 from pathlib import Path
 
-from research.agents.base import save_raw, save_note, safe_get
+from research.agents.base import safe_get, save_note, save_raw
 
 logger = logging.getLogger("research.agents.guru_opinion")
 

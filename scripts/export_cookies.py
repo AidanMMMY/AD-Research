@@ -8,6 +8,7 @@ them so they can be re-imported on Linux where Keychain is unavailable.
 import argparse
 import json
 import os
+
 from playwright.sync_api import sync_playwright
 
 

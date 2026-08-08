@@ -35,7 +35,6 @@ from sqlalchemy import text
 
 from app.core.database import SessionLocal
 
-
 # 目标过滤：A股 + ETF 或 STOCK
 _TARGET_FILTER = """
     e.market = 'A股'
@@ -130,8 +129,8 @@ def main():
         print("=" * 70)
         print("Backfill A-share adj_factor -> 1.0")
         print(f"  mode        : {'DRY-RUN' if is_dry else 'COMMIT'}")
-        print(f"  target      : market='A股' AND instrument_type IN ('ETF','STOCK')")
-        print(f"  fix criteria: adj_factor IS NULL OR adj_factor = 0")
+        print("  target      : market='A股' AND instrument_type IN ('ETF','STOCK')")
+        print("  fix criteria: adj_factor IS NULL OR adj_factor = 0")
         print("=" * 70)
 
         stats = _count_rows_needing_fix(db)

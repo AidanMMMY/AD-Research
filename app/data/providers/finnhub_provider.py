@@ -9,7 +9,7 @@ API docs: https://finnhub.io/docs/api
 import os
 import re
 import time
-from datetime import date, timedelta
+from datetime import date
 from typing import Any
 from urllib.parse import urlencode
 
@@ -18,7 +18,6 @@ import requests
 
 from app.core.exceptions import DataProviderError
 from app.data.providers.base import DataProvider, ETFInfo, MarketHours
-
 
 # ---------------------------------------------------------------------------
 # Free tier rate limit: 60 requests/minute → safe at 1 request/second with

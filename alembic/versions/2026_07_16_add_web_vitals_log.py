@@ -21,8 +21,8 @@ Indexes:
 from __future__ import annotations
 
 import sqlalchemy as sa
-from alembic import op
 
+from alembic import op
 
 revision = "2026_07_16_add_web_vitals_log"
 down_revision = "2026_07_16_add_audit_log_and_encrypted_webhook"

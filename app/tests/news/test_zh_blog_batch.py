@@ -204,7 +204,7 @@ class TestSchedulerWiring:
     def test_batch_jobs_materialized(self):
         from app.services.news import scheduler_jobs as sj
 
-        for job_id, _label, batch in sj.ZH_BLOG_BATCH_JOBS:
+        for _job_id, _label, batch in sj.ZH_BLOG_BATCH_JOBS:
             fn = getattr(sj, f"run_zh_blog_{batch}_crawl")
             assert callable(fn)
             assert fn.__name__ == f"run_zh_blog_{batch}_crawl"

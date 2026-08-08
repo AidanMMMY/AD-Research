@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import asyncio
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 
@@ -251,7 +251,7 @@ class TestClsCrawler:
         assert a.url == "https://www.cls.cn/detail/2433191"
         assert a.author == "财联社"
         # ctime is unix seconds -> tz-aware datetime.
-        assert a.published_at == datetime(2025, 7, 21, 14, 40, tzinfo=timezone.utc)
+        assert a.published_at == datetime(2025, 7, 21, 14, 40, tzinfo=UTC)
         # Body is HTML-stripped; raw HTML kept in body_html.
         assert a.body is not None and "<p>" not in a.body
         assert a.body_html is not None and "<p>" in a.body_html

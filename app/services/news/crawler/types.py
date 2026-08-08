@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import asdict, dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 
@@ -68,10 +68,7 @@ class RawArticle:
     def __post_init__(self) -> None:
         """Normalize ``published_at`` to a UTC-aware datetime."""
         ts = self.published_at
-        if ts.tzinfo is None:
-            ts = ts.replace(tzinfo=timezone.utc)
-        else:
-            ts = ts.astimezone(timezone.utc)
+        ts = ts.replace(tzinfo=UTC) if ts.tzinfo is None else ts.astimezone(UTC)
         self.published_at = ts
 
     # ------------------------------------------------------------------
@@ -88,14 +85,14 @@ class RawArticle:
         return json.dumps(self.to_dict(), ensure_ascii=False, default=str)
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "RawArticle":
+    def from_dict(cls, data: dict[str, Any]) -> RawArticle:
         """Build a RawArticle from a dict (inverse of ``to_dict``)."""
         payload = dict(data)
         raw_ts = payload.get("published_at")
         if isinstance(raw_ts, str):
             ts = datetime.fromisoformat(raw_ts)
             if ts.tzinfo is None:
-                ts = ts.replace(tzinfo=timezone.utc)
+                ts = ts.replace(tzinfo=UTC)
             payload["published_at"] = ts
         return cls(**payload)
 

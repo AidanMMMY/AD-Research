@@ -127,12 +127,12 @@ class OBVTrendStrategy(Strategy):
 
         obv = self._calc_obv(df)
         obv_ma = obv.rolling(window=window).mean()
-        obv_std = obv.rolling(window=window).std()
+        obv.rolling(window=window).std()
 
         prev_obv = obv.iloc[-2]
         curr_obv = obv.iloc[-1]
         prev_ma = obv_ma.iloc[-2]
-        curr_ma = obv_ma.iloc[-1]
+        obv_ma.iloc[-1]
 
         if pd.isna(prev_ma) or prev_ma == 0:
             return None

@@ -14,10 +14,9 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
+import app.models  # noqa: F401  注册全部 ORM（create_all 需要）
 from app.api import deps as api_deps
 from app.core.database import Base
-
-import app.models  # noqa: F401  注册全部 ORM（create_all 需要）
 from app.main import app
 from app.models.etf import ETFInfo
 from app.models.scoring import ETFScore, ScoreTemplate

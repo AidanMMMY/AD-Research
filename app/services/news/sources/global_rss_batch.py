@@ -238,8 +238,8 @@ class GlobalRssBatchCrawler:
     def feeds(self) -> list[_Feed]:
         rows = GLOBAL_RSS_BATCHES.get(self._batch_key, [])
         return [
-            _Feed(slug=s, display_name=n, url=u, language=l, market=m)
-            for s, n, u, l, m in rows
+            _Feed(slug=s, display_name=n, url=u, language=row, market=m)
+            for s, n, u, row, m in rows
         ]
 
     async def fetch_recent(self) -> list[RawArticle]:

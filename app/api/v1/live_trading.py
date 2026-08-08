@@ -23,7 +23,6 @@ Risk control:
 import base64
 import hashlib
 import json
-from datetime import datetime, timezone
 from decimal import Decimal
 from typing import Any
 
@@ -33,13 +32,13 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user, get_db, require_admin
 from app.config import get_settings
+from app.models.etf import ETFInfo
 from app.models.trading import (
     LiveTradeConfig,
     LiveTradeOrder,
     LiveTradePosition,
     RiskRule,
 )
-from app.models.etf import ETFInfo
 from app.schemas.auth import UserResponse
 from app.schemas.trading import (
     LiveAccountOut,
@@ -52,7 +51,7 @@ from app.schemas.trading import (
     RiskRuleOut,
     RiskStatusOut,
 )
-from app.services.risk_control import CircuitBreaker, RiskControl
+from app.services.risk_control import RiskControl
 from app.services.trading.binance_client import BinanceClient, BinanceClientError
 
 router = APIRouter()
@@ -560,7 +559,7 @@ def _sync_positions_from_binance(db: Session, config: LiveTradeConfig) -> None:
         return
 
     # Remove USDT itself (quote currency, not a position)
-    usdt_info = balances.pop("USDT", None)
+    balances.pop("USDT", None)
 
     for asset, info in balances.items():
         code = BinanceClient.from_binance_symbol(asset + "USDT")

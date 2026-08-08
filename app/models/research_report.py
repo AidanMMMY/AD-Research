@@ -11,7 +11,6 @@ A free-form ``raw_payload`` JSON column preserves the original upstream
 record for audit.
 """
 
-from datetime import datetime
 
 from sqlalchemy import (
     JSON,

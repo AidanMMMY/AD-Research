@@ -31,9 +31,9 @@ from app.services.news._model_loader import (
 )
 from app.services.news.content_fetcher import (
     ContentFetcher,
-    _JinaError,
     _clean_jina_body,
     _html_to_text,
+    _JinaError,
     _looks_flattened,
     _reset_jina_breaker,
 )
@@ -205,7 +205,7 @@ def test_clean_body_normalizes_paragraph_spacing() -> None:
     raw = "第一段。\n\n\n\n第二段。\n\n\n\n\n第三段。"
     cleaned = _clean_jina_body(raw, "不相关标题")
     assert "\n\n\n" not in cleaned
-    assert "第一段。\n\n第二段。\n\n第三段。" == cleaned
+    assert cleaned == "第一段。\n\n第二段。\n\n第三段。"
 
 
 # ---------------------------------------------------------------------------
@@ -248,9 +248,8 @@ def test_jina_breaker_expires(db_session) -> None:
     with patch(
         "app.services.news.content_fetcher.httpx.get",
         return_value=_fake_response("InsufficientBalanceError", status_code=402),
-    ):
-        with pytest.raises(_JinaError):
-            fetcher._call_jina("https://example.com/a")
+    ), pytest.raises(_JinaError):
+        fetcher._call_jina("https://example.com/a")
     # 把时间快进到冷却期之后。
     cf._jina_breaker_until = 0.0
     with patch(

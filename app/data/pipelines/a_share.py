@@ -16,7 +16,7 @@ from sqlalchemy.orm import Session
 from app.core.cache import cache_invalidate_pattern
 from app.data.pipelines.base import ETLPipeline
 from app.data.providers.akshare_provider import AkshareProvider
-from app.models.etf import InstrumentDailyBar, ETFInfo
+from app.models.etf import ETFInfo, InstrumentDailyBar
 
 logger = logging.getLogger(__name__)
 

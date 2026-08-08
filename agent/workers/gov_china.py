@@ -24,7 +24,6 @@ Usage:
 """
 from __future__ import annotations
 
-import argparse
 import os
 import re
 import sys
@@ -42,7 +41,6 @@ from common import (  # noqa: E402
     make_session,
     parse_dt,
     setup_logger,
-    utcnow,
     within_hours,
     write_json,
 )
@@ -181,7 +179,6 @@ NOISE_TITLE_KEYWORDS: set[str] = {
     "关于本网",
     "网站声明",
     "法律声明",
-    "归档数据",
 }
 
 # Soft navigation keywords: trigger LLM review if any substring matches.
@@ -359,9 +356,7 @@ def _looks_like_article_url(url: str) -> bool:
     if path.endswith("/content.shtml"):
         return True
     # PBC timestamp directory: /2026070815104519914/
-    if re.search(r"/\d{14,}/", path):
-        return True
-    return False
+    return bool(re.search("/\\d{14,}/", path))
 
 
 def _is_noise_url(url: str) -> bool:
@@ -371,10 +366,7 @@ def _is_noise_url(url: str) -> bool:
     path = parsed.path.lower()
     if path.endswith(("/index.html", "/index.htm", "/index.shtml", "/")):
         return True
-    for p in NOISE_URL_PATHS:
-        if p in path:
-            return True
-    return False
+    return any(p in path for p in NOISE_URL_PATHS)
 
 
 def _is_noise_title(title: str) -> bool:
@@ -383,20 +375,14 @@ def _is_noise_title(title: str) -> bool:
     t = title.strip()
     if len(t) < 4:
         return True
-    for kw in NOISE_TITLE_KEYWORDS:
-        if kw in t:
-            return True
-    return False
+    return any(kw in t for kw in NOISE_TITLE_KEYWORDS)
 
 
 def _title_looks_nav(title: str) -> bool:
     if not title:
         return True
     t = title.strip()
-    for kw in NAV_TITLE_KEYWORDS:
-        if kw in t:
-            return True
-    return False
+    return any(kw in t for kw in NAV_TITLE_KEYWORDS)
 
 
 def _extract_list_date(element: Any) -> str | None:

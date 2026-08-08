@@ -1,5 +1,6 @@
 """Verify the legacy single-ETF code path still works after refactor."""
 import time
+
 from app.data.providers.tushare_provider import TushareProvider
 
 p = TushareProvider()

@@ -18,7 +18,6 @@ Focuses on:
 """
 
 from datetime import date
-from decimal import Decimal
 from unittest.mock import patch
 
 import pandas as pd
@@ -39,7 +38,6 @@ from app.data.pipelines.futures import (
     fetch_all_markets,
 )
 from app.models.futures import FuturesContract, FuturesDailyBar
-
 
 # ---------------------------------------------------------------------------
 # Helper functions

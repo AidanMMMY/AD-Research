@@ -18,9 +18,8 @@ Usage::
 
 import hashlib
 import hmac
-import json
 import time
-from decimal import Decimal, ROUND_DOWN
+from decimal import ROUND_DOWN, Decimal
 from typing import Any
 from urllib.parse import urlencode
 

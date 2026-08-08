@@ -197,7 +197,6 @@ def run_translate_pending(batch_size: int | None = None) -> dict[str, Any]:
     """
     from app.config import get_settings
     from app.core.database import SessionLocal
-    from app.services.news.translation_service import NewsTranslationService
 
     settings = get_settings()
     limit = batch_size or settings.news_translation_batch_size

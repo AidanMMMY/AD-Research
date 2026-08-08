@@ -21,7 +21,6 @@ sys.path.insert(0, str(_PROJECT_ROOT))
 
 from app.tasks.indicator import calculate_indicators
 
-
 _INSTRUMENT_TYPE_CHOICES = ("ETF", "STOCK")
 
 

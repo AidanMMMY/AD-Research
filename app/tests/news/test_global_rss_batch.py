@@ -169,7 +169,7 @@ class TestSchedulerWiring:
         from app.services.news import scheduler_jobs as sj
 
         assert len(sj.GLOBAL_RSS_BATCH_JOBS) == len(GLOBAL_RSS_BATCHES)
-        for job_id, _label, batch in sj.GLOBAL_RSS_BATCH_JOBS:
+        for _job_id, _label, batch in sj.GLOBAL_RSS_BATCH_JOBS:
             fn = getattr(sj, f"run_global_rss_{batch}_crawl")
             assert callable(fn)
             assert fn.__name__ == f"run_global_rss_{batch}_crawl"

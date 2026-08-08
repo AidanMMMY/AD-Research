@@ -11,7 +11,6 @@ import pytest
 
 from app.services.attribution_service import AttributionService
 
-
 # ---------------------------------------------------------------------------
 # Full Brinson attribution on a seeded backtest
 # ---------------------------------------------------------------------------
@@ -34,7 +33,7 @@ def test_attribution_analyze_backtest_returns_documented_fields(db_session, back
     # 3. Sanity: every numeric is finite
     for key in ("total_return", "benchmark_return", "excess_return"):
         v = result[key]
-        assert isinstance(v, (int, float))
+        assert isinstance(v, int | float)
         assert not math.isnan(v)
         assert not math.isinf(v)
 

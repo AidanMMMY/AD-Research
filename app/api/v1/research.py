@@ -8,7 +8,7 @@ import asyncio
 import json
 import logging
 from collections.abc import AsyncGenerator
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -22,7 +22,7 @@ from app.models.research import SentimentData
 from app.models.user import User
 from app.services.chat_service import ChatService
 from app.services.research_service import ResearchService
-from app.services.sentiment_service import SentimentService, SentimentFetchError
+from app.services.sentiment_service import SentimentFetchError, SentimentService
 
 logger = logging.getLogger(__name__)
 
@@ -360,10 +360,7 @@ def _iso_utc(value: datetime | None) -> str | None:
     """Serialize a naive-UTC datetime as an explicit UTC ISO-8601 string."""
     if value is None:
         return None
-    if value.tzinfo is None:
-        value = value.replace(tzinfo=timezone.utc)
-    else:
-        value = value.astimezone(timezone.utc)
+    value = value.replace(tzinfo=UTC) if value.tzinfo is None else value.astimezone(UTC)
     return value.isoformat(timespec="seconds")
 
 
@@ -606,7 +603,7 @@ async def _chat_stream(
     try:
         # Run synchronous LLM call + persistence in a worker thread so it
         # doesn't block the event loop while we stream chunks out.
-        def _call() -> "AIChatMessage":
+        def _call() -> Any:
             svc = ChatService(db)
             return svc.send_message(session_id, content, user_id=user_id)
 

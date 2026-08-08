@@ -12,8 +12,8 @@ import os
 from app.services.llm.anthropic_provider import AnthropicProvider
 from app.services.llm.base import LLMProvider
 from app.services.llm.deepseek_provider import DeepSeekProvider
-from app.services.llm.minimax_provider import MiniMaxProvider
 from app.services.llm.llm_service import LLMService
+from app.services.llm.minimax_provider import MiniMaxProvider
 
 
 def get_llm_provider(model: str | None = None) -> LLMProvider:

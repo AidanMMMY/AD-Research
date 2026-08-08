@@ -18,9 +18,9 @@ existing scheduler / dashboard / API code paths are unchanged.
 
 import logging
 import warnings
+from collections.abc import Iterable
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import date, datetime, timedelta
-from typing import Iterable
 
 import akshare as ak
 import numpy as np
@@ -30,7 +30,7 @@ from sqlalchemy.orm import Session
 from app.core.cache import cache_invalidate_pattern
 from app.data.pipelines.base import ETLPipeline, ETLResult
 from app.data.providers.base import DataProvider, ETFInfo, MarketHours
-from app.models.futures import FuturesContract, FuturesDailyBar
+from app.models.futures import FuturesContract
 from app.services.futures_service import FuturesService
 
 logger = logging.getLogger(__name__)
@@ -213,7 +213,7 @@ def _coerce_int(value) -> int | None:
         return None
     try:
         # numpy/pandas NaN check before int conversion (which would raise)
-        if isinstance(value, (float, np.floating)) and np.isnan(value):
+        if isinstance(value, float | np.floating) and np.isnan(value):
             return None
         result = int(float(value))
         return result
@@ -669,14 +669,14 @@ def _to_native(value) -> int | float | None:
     """
     if value is None:
         return None
-    if isinstance(value, (np.integer,)):
+    if isinstance(value, np.integer):
         return int(value)
-    if isinstance(value, (np.floating,)):
+    if isinstance(value, np.floating):
         f = float(value)
         if np.isnan(f):
             return None
         return f
-    if isinstance(value, (np.bool_,)):
+    if isinstance(value, np.bool_):
         return bool(value)
     return value
 

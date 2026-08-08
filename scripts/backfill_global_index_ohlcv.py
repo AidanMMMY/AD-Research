@@ -54,12 +54,12 @@ def main() -> None:
     codes = [c.strip() for c in args.codes.split(",")] if args.codes else None
 
     # 注意：app.db 模块不存在，SessionLocal 从这里拿（项目已知坑）
-    from app.tasks.cninfo import SessionLocal
     from app.services.macro.global_index_bar_service import GlobalIndexBarService
     from app.services.macro.global_indices_fetcher import (
         A_SHARE_INDEX_REGISTRY,
         fetch_a_share_ohlcv,
     )
+    from app.tasks.cninfo import SessionLocal
 
     all_bars: list[dict] = []
 

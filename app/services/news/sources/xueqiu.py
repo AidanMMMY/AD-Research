@@ -24,13 +24,19 @@ import json
 import logging
 import random
 import re
+from collections.abc import Iterable
 from dataclasses import asdict, dataclass, field
-from datetime import datetime, timezone
-from typing import Any, Iterable
+from datetime import UTC, datetime
+from typing import Any
 
 import httpx
 
-from app.services.news.crawler.base import DEFAULT_HEADERS, DEFAULT_USER_AGENTS, RateLimiter, make_client
+from app.services.news.crawler.base import (
+    DEFAULT_HEADERS,
+    DEFAULT_USER_AGENTS,
+    RateLimiter,
+    make_client,
+)
 from app.services.news.crawler.rate_limiter import AsyncTokenBucket
 from app.services.news.crawler.symbol_extractor import extract_symbols as _shared_extract_symbols
 from app.services.news.crawler.types import RawArticle
@@ -136,15 +142,15 @@ def _parse_xueqiu_time(value: Any) -> datetime | None:
     """Parse Xueqiu's ``created_at`` (epoch millis OR ISO string)."""
     if value is None:
         return None
-    if isinstance(value, (int, float)):
-        return datetime.fromtimestamp(value / 1000, tz=timezone.utc)
+    if isinstance(value, int | float):
+        return datetime.fromtimestamp(value / 1000, tz=UTC)
     if isinstance(value, str):
         s = value.strip()
         if not s:
             return None
         if s.isdigit():
             try:
-                return datetime.fromtimestamp(int(s) / 1000, tz=timezone.utc)
+                return datetime.fromtimestamp(int(s) / 1000, tz=UTC)
             except (ValueError, OSError):
                 return None
         # Xueqiu's mobile API returns ISO-8601 with Z suffix sometimes.
@@ -192,7 +198,7 @@ class RawXueqiuPost:
 
     def to_article(self) -> RawArticle:
         """Convert to Agent A's shared :class:`RawArticle`."""
-        published = self.published_at or datetime.now(tz=timezone.utc)
+        published = self.published_at or datetime.now(tz=UTC)
         return RawArticle(
             source=self.source,
             source_id=self.source_id or None,
@@ -331,7 +337,7 @@ class XueqiuCrawler:
                         params=params,
                         cookies=self.auth.as_httpx_cookies(),
                     )
-            except (httpx.HTTPError, asyncio.TimeoutError) as exc:
+            except (TimeoutError, httpx.HTTPError) as exc:
                 last_exc = exc
                 logger.warning("Xueqiu GET %s failed (attempt %d): %s", url, attempt, exc)
                 if attempt < max_attempts:

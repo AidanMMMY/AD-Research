@@ -14,7 +14,6 @@ under cninfo's ~30 req/min budget.
 
 from __future__ import annotations
 
-import json
 import logging
 import time
 from datetime import date, datetime
@@ -24,8 +23,8 @@ from app.core.celery_app import celery_app
 from app.core.database import SessionLocal
 from app.data.providers.exchange_provider import ExchangeProvider
 from app.services.cninfo_report_service import (
-    CninfoReportService,
     _DEFAULT_PDF_DIR,
+    CninfoReportService,
 )
 from app.tasks.cninfo import _load_ts_codes
 
@@ -106,7 +105,7 @@ def download_cninfo_pdfs(
         # One session-scoped ExchangeProvider so we reuse TCP connections
         # across many resolutions inside the shard.
         exchange_provider = ExchangeProvider()
-    
+
         scanned = 0
         downloaded = 0
         extracted = 0
@@ -115,7 +114,7 @@ def download_cninfo_pdfs(
         total_bytes = 0
         fallback_used = 0
         t0 = time.time()
-    
+
         log.info(
             "download_cninfo_pdfs START shard=[%d:%d] start_date=%s type=%s "
             "download=%s extract=%s pdf_dir=%s",
@@ -127,7 +126,7 @@ def download_cninfo_pdfs(
             extract_text,
             PDF_DIR,
         )
-    
+
         for idx, ts_code in enumerate(shard):
             try:
                 # Step 1: ensure metadata exists.  fetch_for_stock is a no-op
@@ -142,7 +141,7 @@ def download_cninfo_pdfs(
                 except Exception as exc:
                     # Don't blow up the whole shard on a single fetch hiccup.
                     log.warning("metadata fetch failed for %s: %s", ts_code, exc)
-    
+
                 # Step 2: list pending reports.
                 try:
                     reports = service.list_reports_for_download(
@@ -155,16 +154,16 @@ def download_cninfo_pdfs(
                     log.warning("DB query failed for %s: %s", ts_code, exc)
                     failed += 1
                     continue
-    
+
                 if not reports:
                     skipped += 1
                     scanned += 1
                     continue
-    
+
                 for report in reports:
                     scanned += 1
                     rid = report.id
-    
+
                     # Step 3: download (with exchange fallback).
                     if download and not report.file_path:
                         try:
@@ -180,7 +179,7 @@ def download_cninfo_pdfs(
                             )
                             failed += 1
                             continue
-    
+
                         path = result.get("path")
                         source = result.get("source") or "?"
                         if path is None:
@@ -190,7 +189,7 @@ def download_cninfo_pdfs(
                             # permanent skip so we don't tight-loop on it.
                             failed += 1
                             continue
-    
+
                         downloaded += 1
                         if result.get("fallback_used"):
                             fallback_used += 1
@@ -204,12 +203,12 @@ def download_cninfo_pdfs(
                             total_bytes += path.stat().st_size
                         except OSError:  # pragma: no cover - defensive
                             pass
-    
+
                         # Polite pacing between consecutive downloads — the
                         # metadata backfill uses ~2s but the static.cninfo
                         # CDN tolerates more.
                         time.sleep(_DOWNLOAD_SLEEP)
-    
+
                     # Step 4: extract text.
                     if extract_text:
                         try:
@@ -227,7 +226,7 @@ def download_cninfo_pdfs(
                             extracted += 1
                         # If ok is False the service has already marked the
                         # row ``failed``; don't double-count.
-    
+
                 if (idx + 1) % _ETA_INTERVAL == 0:
                     done = idx + 1
                     avg = (time.time() - t0) / max(done, 1)
@@ -248,7 +247,7 @@ def download_cninfo_pdfs(
                         avg,
                         eta_min,
                     )
-    
+
             except Exception as exc:
                 # Last-resort guard: never let one bad stock kill the shard.
                 log.exception("unhandled error on %s: %s", ts_code, exc)

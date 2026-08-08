@@ -101,7 +101,7 @@ class TestSchedulerWiring:
     def test_batch_jobs_materialized(self):
         from app.services.news import scheduler_jobs as sj
 
-        for job_id, _label, batch in sj.WECHAT2RSS_BATCH_JOBS:
+        for _job_id, _label, batch in sj.WECHAT2RSS_BATCH_JOBS:
             fn = getattr(sj, f"run_wechat2rss_{batch}_crawl")
             assert callable(fn)
             assert fn.__name__ == f"run_wechat2rss_{batch}_crawl"

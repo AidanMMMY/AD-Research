@@ -29,7 +29,6 @@ from app.main import app
 from app.models.research_report import ResearchReport
 from app.services.research_report_service import ResearchReportService
 
-
 # The router defines ``prefix="/research-reports"`` and is mounted with
 # an additional ``prefix="/research-reports"`` in main.py, so the live
 # URL is the doubled path below.
@@ -67,10 +66,6 @@ def db_session():
     # Build a one-off Table definition that mirrors the ORM model but
     # omits the duplicate ``Index`` declarations. The ORM stays the
     # single source of truth for the test.
-    from sqlalchemy import (
-        JSON, Column, Date, DateTime, Integer, Numeric, String, Text,
-        UniqueConstraint, func,
-    )
     test_table = ResearchReport.__table__.to_metadata(Base.metadata)
     # Drop all extra indexes; keep only those from Column(index=True).
     test_table.indexes.clear()

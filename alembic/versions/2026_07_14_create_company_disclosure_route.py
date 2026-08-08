@@ -18,8 +18,8 @@ There was no pre-existing table when this migration was authored, so
 from __future__ import annotations
 
 import sqlalchemy as sa
-from alembic import op
 
+from alembic import op
 
 revision = "2026_07_14_create_company_disclosure_route"
 down_revision = "h8i9j0k1l2m3"

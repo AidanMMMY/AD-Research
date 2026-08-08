@@ -15,7 +15,6 @@ requested explicitly by callers that need them.
 import os
 
 import httpx
-
 from openai import OpenAI
 
 from app.services.llm.base import LLMProvider

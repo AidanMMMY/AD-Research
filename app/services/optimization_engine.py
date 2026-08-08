@@ -95,7 +95,7 @@ def grid_search(
     results: list[dict[str, Any]] = []
     for combo in combinations:
         merged = dict(base_params)
-        for k, v in zip(keys, combo):
+        for k, v in zip(keys, combo, strict=False):
             merged[k] = v
 
         try:

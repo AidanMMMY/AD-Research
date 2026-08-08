@@ -14,18 +14,14 @@
 from __future__ import annotations
 
 import logging
-import threading
 import time
 from dataclasses import dataclass
 from datetime import date
 from typing import Any
 
-import pandas as pd
-
 from app.data.providers.fund_flow_provider import (
-    _RateLimiter,
-    _coerce_date,
     _coerce_float,
+    _RateLimiter,
 )
 
 logger = logging.getLogger(__name__)
@@ -99,9 +95,7 @@ class EtfFlowProvider:
 
             if raw_code.startswith("5"):
                 ts_code = f"{raw_code}.SH"
-            elif raw_code.startswith("1"):
-                ts_code = f"{raw_code}.SZ"
-            elif raw_code.startswith(("15", "16", "18")):
+            elif raw_code.startswith("1") or raw_code.startswith(("15", "16", "18")):
                 ts_code = f"{raw_code}.SZ"
             else:
                 continue

@@ -16,8 +16,8 @@ sys.path.insert(0, os.environ.get("APP_ROOT", os.path.dirname(os.path.dirname(os
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import sessionmaker
 
-from app.models.user import User
 from app.api.v1.auth import _hash_password
+from app.models.user import User
 
 DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql+psycopg2://etf:etf_local@postgres:5432/ad_research")
 ADMIN_USERNAME = os.environ.get("ADMIN_USERNAME", "admin")

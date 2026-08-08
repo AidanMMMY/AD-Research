@@ -15,11 +15,13 @@ is fixed by the APScheduler registrations in
 """
 
 import asyncio
+import contextlib
 import logging
 import time
-from datetime import datetime, timezone
+from collections.abc import Callable
+from datetime import UTC, datetime
 from functools import wraps
-from typing import Any, Callable
+from typing import Any
 
 from app.core.etl_log_helper import record_etl
 from app.models.etl import ETLLog
@@ -60,7 +62,7 @@ def _record_etl(job_id: str) -> Callable[[Callable[..., dict[str, Any]]], Callab
                 log_row = ETLLog(
                     job_name=job_id,
                     status="running",
-                    start_time=datetime.now(timezone.utc),
+                    start_time=datetime.now(UTC),
                 )
                 db.add(log_row)
                 db.commit()
@@ -78,15 +80,13 @@ def _record_etl(job_id: str) -> Callable[[Callable[..., dict[str, Any]]], Callab
                 try:
                     if log_row is not None:
                         log_row.status = "failed"
-                        log_row.end_time = datetime.now(timezone.utc)
+                        log_row.end_time = datetime.now(UTC)
                         log_row.records_count = 0
                         log_row.error_msg = str(exc)[:1000]
                         db.commit()
                 except Exception:  # pragma: no cover - defensive
-                    try:
+                    with contextlib.suppress(Exception):
                         db.rollback()
-                    except Exception:
-                        pass
                 finally:
                     db.close()
                 raise
@@ -95,7 +95,7 @@ def _record_etl(job_id: str) -> Callable[[Callable[..., dict[str, Any]]], Callab
             try:
                 if log_row is not None:
                     log_row.status = "success"
-                    log_row.end_time = datetime.now(timezone.utc)
+                    log_row.end_time = datetime.now(UTC)
                     records = int(
                         result.get("written")
                         if isinstance(result, dict) and result.get("written") is not None
@@ -121,10 +121,8 @@ def _record_etl(job_id: str) -> Callable[[Callable[..., dict[str, Any]]], Callab
                     db.commit()
             except Exception as exc:  # pragma: no cover - best effort
                 logger.debug("etl_log finish update failed for %s: %s", job_id, exc)
-                try:
+                with contextlib.suppress(Exception):
                     db.rollback()
-                except Exception:
-                    pass
             finally:
                 db.close()
             return result
@@ -220,8 +218,6 @@ def run_xinhua_crawl() -> dict[str, int]:
     # so callers that wire it explicitly still work, but we skip the
     # @_record_etl decorator since there is no scheduler job id.
     from app.services.news.sources.xinhua import XinhuaCrawler
-    from app.services.news.normalizer import NewsNormalizer
-    from app.core.database import SessionLocal
 
     async def _go():
         async with XinhuaCrawler() as c:
@@ -1545,12 +1541,13 @@ def run_cnbc_crawl() -> dict[str, int]:
 
 @_record_etl("news_sec_edgar_30m")
 def run_sec_edgar_crawl() -> dict[str, int]:
-    from datetime import datetime, timedelta, timezone
+    from datetime import datetime, timedelta
+
     from app.services.news.sources.sec_edgar import SecEdgarCrawler
 
     async def _go():
         async with SecEdgarCrawler() as c:
-            since = datetime.now(timezone.utc) - timedelta(days=7)
+            since = datetime.now(UTC) - timedelta(days=7)
             return await c.fetch(_SEC_EDGAR_TICKER_TO_CIK, since=since)
 
     try:

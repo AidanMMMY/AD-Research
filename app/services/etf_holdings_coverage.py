@@ -33,7 +33,6 @@ from sqlalchemy.orm import Session
 
 from app.models.etf import ETFHolding, ETFHoldingUnavailable, ETFInfo
 
-
 # ---------------------------------------------------------------------------
 # Tunables — coverage alert thresholds.
 # ---------------------------------------------------------------------------

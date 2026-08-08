@@ -36,6 +36,7 @@ _PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_PROJECT_ROOT))
 
 from sqlalchemy import select
+
 from app.core.database import SessionLocal
 from app.models.cninfo_report import CninfoReport
 from app.services.cninfo_report_service import CninfoReportService

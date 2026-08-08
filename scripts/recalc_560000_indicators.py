@@ -16,7 +16,7 @@ from app.data.indicators.calculator import (
     _build_indicator_record,
     calculate_single_etf,
 )
-from app.models.etf import InstrumentDailyBar, ETFIndicator
+from app.models.etf import ETFIndicator, InstrumentDailyBar
 
 TARGET_CODE = "560000.SH"
 

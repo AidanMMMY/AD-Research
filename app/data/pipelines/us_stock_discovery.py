@@ -10,7 +10,6 @@ Scheduled to run weekly (Sunday 02:00 Beijing time).
 """
 
 import logging
-from datetime import date, timedelta
 
 import pandas as pd
 from sqlalchemy.dialects.postgresql import insert

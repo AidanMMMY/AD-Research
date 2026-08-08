@@ -30,15 +30,14 @@ import asyncio
 import logging
 import os
 import sys
-from datetime import datetime
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from sqlalchemy import text
 
 from app.core.database import SessionLocal
-from app.services.news.sentiment import SentimentPipeline
 from app.services.news._model_loader import NewsArticle
+from app.services.news.sentiment import SentimentPipeline
 
 logging.basicConfig(
     level=logging.INFO,
@@ -162,7 +161,7 @@ def main() -> int:
 
             batch_updated = 0
             batch_failed = 0
-            for row, res in zip(rows, results):
+            for row, res in zip(rows, results, strict=False):
                 if res.success:
                     batch_updated += 1
                 else:
@@ -175,7 +174,7 @@ def main() -> int:
             # Commit per batch so partial progress is preserved.
             try:
                 db.commit()
-            except Exception as exc:
+            except Exception:
                 logger.exception("Batch commit failed, rolling back")
                 db.rollback()
                 failed += len(rows)

@@ -49,6 +49,7 @@ Exit codes:
 from __future__ import annotations
 
 import argparse
+import contextlib
 import os
 import sys
 import time
@@ -100,10 +101,7 @@ def _has_u_cookie(context) -> bool:
         cookies = context.cookies()
     except Exception:
         return False
-    for c in cookies:
-        if c.get("name") == "u" and c.get("domain", "").endswith("xueqiu.com"):
-            return True
-    return False
+    return any(c.get("name") == "u" and c.get("domain", "").endswith("xueqiu.com") for c in cookies)
 
 
 def _homepage_has_username(page) -> bool:
@@ -128,7 +126,7 @@ def main() -> int:
 
     print(f"[xueqiu_warmup] profile_dir = {profile_dir}", flush=True)
     print(f"[xueqiu_warmup] opening {args.url} in headed Chromium ...", flush=True)
-    print(f"[xueqiu_warmup] >>> please scan QR / type credentials in the browser window <<<", flush=True)
+    print("[xueqiu_warmup] >>> please scan QR / type credentials in the browser window <<<", flush=True)
 
     deadline = time.monotonic() + args.timeout
     try:
@@ -153,10 +151,8 @@ def main() -> int:
             # If we landed on the login page automatically, that's fine - user
             # will interact with it. Otherwise, navigate.
             if "login" not in page.url.lower():
-                try:
+                with contextlib.suppress(Exception):
                     page.goto(XUEQIU_LOGIN_PAGE, wait_until="domcontentloaded", timeout=15000)
-                except Exception:
-                    pass
 
             print(f"[xueqiu_warmup] current URL: {page.url}", flush=True)
             print(f"[xueqiu_warmup] polling for `u` cookie (timeout {args.timeout}s) ...", flush=True)
@@ -175,10 +171,8 @@ def main() -> int:
                 return 1
 
             # Persist state to disk before exit.
-            try:
+            with contextlib.suppress(Exception):
                 page.wait_for_load_state("networkidle", timeout=10000)
-            except Exception:
-                pass
             context.close()
 
     except Exception as exc:

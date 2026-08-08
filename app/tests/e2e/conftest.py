@@ -8,7 +8,7 @@ without touching the dev or production database.
 
 from __future__ import annotations
 
-from datetime import date, datetime, timedelta, timezone
+from datetime import date
 from decimal import Decimal
 from typing import Any
 
@@ -20,18 +20,12 @@ from sqlalchemy.orm import sessionmaker
 
 from app.core.database import Base
 from app.models.etf import ETFIndicator, ETFInfo, InstrumentDailyBar
-from app.models.etl import BacktestResult, Signal, StrategyConfig
-from app.models.scoring import ETFScore, ScoreTemplate
+from app.models.etl import BacktestResult, StrategyConfig
+from app.models.scoring import ScoreTemplate
 from app.models.trading import (
     LiveTradeConfig,
-    LiveTradeOrder,
-    LiveTradePosition,
-    PaperTradeAccount,
-    PaperTradeOrder,
-    PaperTradePosition,
 )
 from app.models.user import User
-
 
 # ---------------------------------------------------------------------------
 # Database

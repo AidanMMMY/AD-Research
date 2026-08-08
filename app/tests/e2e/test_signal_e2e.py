@@ -10,10 +10,8 @@ from datetime import date
 
 import numpy as np
 import pandas as pd
-import pytest
 
 from app.services.signal_generator import generate_signals_for_strategy
-
 
 # ---------------------------------------------------------------------------
 # Seeded price history: clear uptrend and clear downtrend
@@ -22,8 +20,9 @@ from app.services.signal_generator import generate_signals_for_strategy
 
 def _seed_price_history(db_session, code: str, prices: list[float]):
     """Insert a deterministic OHLCV series for one instrument."""
-    from app.models.etf import ETFInfo, InstrumentDailyBar
     from decimal import Decimal
+
+    from app.models.etf import ETFInfo, InstrumentDailyBar
 
     # Ensure ETFInfo row exists
     if not db_session.get(ETFInfo, code):

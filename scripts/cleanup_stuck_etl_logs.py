@@ -16,7 +16,7 @@ Exit codes:
 
 import logging
 import sys
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from app.core.database import SessionLocal
 from app.core.redis_client import get_redis_client
@@ -82,7 +82,7 @@ def main() -> int:
     threshold_minutes = int(
         sys.argv[1] if len(sys.argv) > 1 else DEFAULT_STUCK_THRESHOLD_MINUTES
     )
-    cutoff = datetime.now(timezone.utc) - timedelta(minutes=threshold_minutes)
+    cutoff = datetime.now(UTC) - timedelta(minutes=threshold_minutes)
 
     db = SessionLocal()
     redis_client = get_redis_client()
@@ -113,7 +113,7 @@ def main() -> int:
             logger.info("Cleaning up %s (started %s)", job_name, start)
 
             log.status = "failed"
-            log.end_time = datetime.now(timezone.utc)
+            log.end_time = datetime.now(UTC)
             log.error_msg = (
                 log.error_msg or ""
             ) + "; [cleanup] process terminated or lease expired"
@@ -132,7 +132,7 @@ def main() -> int:
         try:
             db.commit()
             logger.info("Updated %d ETL log row(s) to failed", len(stuck_logs))
-        except Exception as exc:
+        except Exception:
             db.rollback()
             logger.exception("Failed to commit ETL log cleanup")
             return 1

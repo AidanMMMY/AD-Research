@@ -45,7 +45,6 @@ from app.core.database import SessionLocal
 from app.data.providers.eastmoney_zh_provider import EastMoneyZhProvider
 from app.models.etf import ETFInfo
 
-
 logger = logging.getLogger("backfill_us_zh")
 
 

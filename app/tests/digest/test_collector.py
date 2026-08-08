@@ -19,11 +19,10 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
-from app.core.database import Base
-
 # 注册全部 ORM 模型（create_all 需要）：app.models 覆盖大部分，
 # favorite/notification/research 等未进 __init__ 的模块单独 import。
 import app.models  # noqa: F401
+from app.core.database import Base
 from app.models import (  # noqa: F401
     etf_scan_log,
     etl,
@@ -38,14 +37,15 @@ from app.models.favorite import UserFavorite
 from app.models.scoring import ETFScore
 from app.models.trading import PaperTradeAccount, PaperTradePosition
 from app.models.user import User
-# NewsArticle 须走 _model_loader（app/models/news.py 被同名包遮蔽）
-from app.services.news._model_loader import NewsArticle, NewsArticleSymbol
 from app.services.digest.collector import (
     NEWS_TOTAL_LIMIT,
     SHANGHAI,
     DigestDataCollector,
 )
 from app.services.digest.context import DigestContext
+
+# NewsArticle 须走 _model_loader（app/models/news.py 被同名包遮蔽）
+from app.services.news._model_loader import NewsArticle, NewsArticleSymbol
 
 REPORT_DATE = date(2026, 8, 3)
 # 窗口 [2026-08-01 22:30 UTC, 2026-08-02 22:30 UTC)

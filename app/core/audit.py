@@ -24,9 +24,11 @@ The function signature intentionally uses primitive types (no FastAPI
 
 from __future__ import annotations
 
+import contextlib
 import json
 import logging
-from typing import Any, Iterable
+from collections.abc import Iterable
+from typing import Any
 
 from sqlalchemy.orm import Session
 
@@ -43,7 +45,7 @@ _DEFAULT_REDACT_KEYS = frozenset(
 
 def _scrub(value: Any, redact_keys: Iterable[str]) -> Any:
     """Replace sensitive values with ``"***"`` inside nested dicts/lists."""
-    redact = {k for k in redact_keys}
+    redact = set(redact_keys)
     if isinstance(value, dict):
         return {
             k: ("***" if k in redact else _scrub(v, redact)) for k, v in value.items()
@@ -101,10 +103,8 @@ def record_audit(
         db.commit()
     except Exception as exc:  # pragma: no cover — observability must not break ops
         logger.warning("audit_log insert failed for action=%s: %s", action, exc)
-        try:
+        with contextlib.suppress(Exception):
             db.rollback()
-        except Exception:
-            pass
 
 
 def client_ip_from_headers(headers: dict[str, str] | None) -> str | None:

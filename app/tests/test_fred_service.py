@@ -5,7 +5,6 @@ and the read path (list/get_series).  The FRED provider is replaced
 with a stub so we never touch the network.
 """
 
-from datetime import date
 from unittest.mock import MagicMock
 
 import pytest
@@ -15,13 +14,12 @@ from sqlalchemy.orm import sessionmaker
 from app.core.database import Base
 from app.models.macro import MacroIndicator
 from app.services.macro.fred_service import (
-    FredService,
-    SERIES_REGISTRY,
     _EU_SERIES,
     _GLOBAL_SERIES,
     _SERIES_ALL,
+    SERIES_REGISTRY,
+    FredService,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures

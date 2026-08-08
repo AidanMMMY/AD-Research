@@ -23,8 +23,8 @@ P0 batch (2026-07-16):
 from __future__ import annotations
 
 import sqlalchemy as sa
-from alembic import op
 
+from alembic import op
 
 revision = "2026_07_16_add_audit_log_and_encrypted_webhook"
 down_revision = "2026_07_14_create_fund_flow_tables"

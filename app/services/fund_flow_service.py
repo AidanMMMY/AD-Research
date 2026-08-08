@@ -9,7 +9,7 @@ API 路由层通过 ``app/api/v1/fund_flow.py`` 调用本 service。
 from __future__ import annotations
 
 import logging
-from datetime import date, timedelta
+from datetime import date
 from typing import Any
 
 from sqlalchemy import func, or_, select
@@ -463,12 +463,6 @@ def _parse_sort(sort: str, default_col: str, model: Any) -> tuple[Any, str]:
     table "individual_fund_flow"）；``ts_code`` / 兜底 ``trade_date``
     同样踩坑。
     """
-    from app.models.fund_flow import (
-        EtfFundFlow as _Etf,
-        FlowSignal as _Fs,
-        IndividualFundFlow as _Iff,
-        SectorFundFlow as _Sff,
-    )
 
     if not sort:
         sort = f"-{default_col}"

@@ -11,7 +11,7 @@ from app.services.notification_service import NotificationService
 
 
 class _FakeSMTPBase:
-    instances: list["_FakeSMTPBase"] = []
+    instances: list[_FakeSMTPBase] = []
 
     def __init__(self, host, port, timeout=None):
         self.host = host
@@ -35,11 +35,11 @@ class _FakeSMTPBase:
 
 
 class FakeSMTPPlain(_FakeSMTPBase):
-    instances: list["_FakeSMTPBase"] = []
+    instances: list[_FakeSMTPBase] = []
 
 
 class FakeSMTPSSL(_FakeSMTPBase):
-    instances: list["_FakeSMTPBase"] = []
+    instances: list[_FakeSMTPBase] = []
 
 
 def _patch_smtp(monkeypatch):

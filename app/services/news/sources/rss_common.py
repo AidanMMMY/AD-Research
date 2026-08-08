@@ -11,9 +11,8 @@ from __future__ import annotations
 import logging
 import re
 import xml.etree.ElementTree as ET
-from datetime import datetime, timezone, tzinfo
+from datetime import UTC, datetime, timezone, tzinfo
 from email.utils import parsedate_to_datetime
-from typing import Iterable
 
 from app.services.news.crawler.types import RawArticle
 
@@ -187,7 +186,7 @@ def _extract_guid(item: ET.Element) -> str | None:
 def _extract_pub_date(
     item: ET.Element,
     *,
-    default_tz: timezone = timezone.utc,
+    default_tz: timezone = UTC,
     tz_override: tzinfo | None = None,
 ) -> datetime | None:
     """Extract and normalize the item's publication timestamp."""
@@ -209,10 +208,10 @@ def _extract_pub_date(
         # nocutnews 的 dc:date 是韩国本地墙钟时间 KST 却标注 "GMT"，
         # 入库后前端 +8 显示成"未来时间"）。对这类 feed 忽略其自带的
         # 时区标注，按发行方本地时区重新解释墙钟时间。
-        return dt.replace(tzinfo=None).replace(tzinfo=tz_override).astimezone(timezone.utc)
+        return dt.replace(tzinfo=None).replace(tzinfo=tz_override).astimezone(UTC)
     if dt.tzinfo is None:
         dt = dt.replace(tzinfo=default_tz)
-    return dt.astimezone(timezone.utc)
+    return dt.astimezone(UTC)
 
 
 def parse_rss_items(
@@ -223,7 +222,7 @@ def parse_rss_items(
     language: str = "zh",
     default_author: str | None = None,
     max_items: int | None = None,
-    default_tz: timezone = timezone.utc,
+    default_tz: timezone = UTC,
     tz_override: tzinfo | None = None,
     default_category: str | None = None,
 ) -> list[RawArticle]:
@@ -328,7 +327,7 @@ def parse_rss_items(
         published_at = _extract_pub_date(
             item, default_tz=default_tz, tz_override=tz_override
         ) or datetime.now(
-            tz=timezone.utc
+            tz=UTC
         )
 
         category = _find_text(item, "category", f"{{{_RSS_NAMESPACES['dc']}}}subject")

@@ -28,6 +28,7 @@ running pytest against the ECS Postgres (see
 
 from __future__ import annotations
 
+import contextlib
 import logging
 import math
 from datetime import date, timedelta
@@ -45,7 +46,6 @@ from app.data.indicators.sql_calculator import (
     build_indicator_payload,
     build_indicator_query_sql,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -443,10 +443,8 @@ def parity_db():
         yield db, _register_cleanup
     finally:
         for code in created_codes:
-            try:
+            with contextlib.suppress(Exception):
                 _cleanup_synthetic(db, code)
-            except Exception:
-                pass
         db.close()
 
 
@@ -649,7 +647,7 @@ def test_sql_indicator_backend_dispatch(parity_db) -> None:
         # Force only our synthetic code to be returned by the active
         # universe query by deactivating every other A-share row for
         # the duration of the test, then restoring at the end.
-        snapshot = db.execute(
+        db.execute(
             text(
                 "SELECT code, status FROM etf_info "
                 "WHERE market = 'A股' AND code != :code"

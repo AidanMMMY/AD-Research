@@ -7,8 +7,8 @@
 - ``service``   : DailyDigestService 门面（聚合→生成→落库→伴随行→通知）
 """
 
-from app.services.digest.context import DigestContext
 from app.services.digest.collector import DigestDataCollector
+from app.services.digest.context import DigestContext
 from app.services.digest.generator import DigestGenerator, DigestResult
 from app.services.digest.service import DailyDigestService
 

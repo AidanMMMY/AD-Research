@@ -17,8 +17,7 @@ about:
 
 from __future__ import annotations
 
-import json
-from datetime import date, datetime, timezone
+from datetime import UTC, date
 from typing import Any
 
 import httpx
@@ -29,7 +28,6 @@ from app.services.news.sources.yahoo_rss import (
     YAHOO_RSS_URL,
     YahooFinanceCrawler,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures & helpers
@@ -163,7 +161,7 @@ async def test_yahoo_429_falls_back_to_finnhub(
         assert art.extra.get("ticker") == "AAPL"
         # published_at should be a UTC-aware datetime.
         assert art.published_at.tzinfo is not None
-        assert art.published_at == art.published_at.astimezone(timezone.utc)
+        assert art.published_at == art.published_at.astimezone(UTC)
 
     titles = [a.title for a in arts]
     assert "Apple beats $AAPL earnings" in titles

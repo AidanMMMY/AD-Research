@@ -106,7 +106,7 @@ def get_search_trends_dashboard(
     db: Session = Depends(get_db),
 ) -> SearchTrendDashboardResponse:
     """Return latest-day summary for the dashboard."""
-    today = date.today()
+    date.today()
     summary: dict[str, Any] = {"as_of": None}
 
     for source in ("baidu", "google"):

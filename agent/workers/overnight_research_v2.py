@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """
 overnight_research_v2.py — 20 小时连续自主研究 worker（改进版）。
 
@@ -34,12 +33,11 @@ import sqlite3
 import sys
 import threading
 import time
-import traceback
 import xml.etree.ElementTree as ET
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
 
 import requests
 from anthropic import Anthropic
@@ -139,12 +137,12 @@ def setup_logging(output_dir: Path) -> None:
 # --------------------------------------------------------------------------- #
 
 class ResearchRecord(BaseModel):
-    id: str = Field(default_factory=lambda: f"rec-{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}-{os.urandom(4).hex()}")
+    id: str = Field(default_factory=lambda: f"rec-{datetime.now(UTC).strftime('%Y%m%d%H%M%S')}-{os.urandom(4).hex()}")
     title: str
     source: str = ""
     url: str = ""
     date: str = ""
-    accessed_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).strftime("%Y-%m-%d"))
+    accessed_at: str = Field(default_factory=lambda: datetime.now(UTC).strftime("%Y-%m-%d"))
     category: str
     tags: list[str] = Field(default_factory=list)
     summary: str = ""
@@ -863,7 +861,7 @@ class AgentDB:
                     json.dumps(rec.cross_refs, ensure_ascii=False),
                     rec.original_text,
                     json.dumps(rec.extra, ensure_ascii=False),
-                    datetime.now(timezone.utc).isoformat(),
+                    datetime.now(UTC).isoformat(),
                 ),
             )
             conn.commit()
@@ -896,7 +894,7 @@ class AgentDB:
                     reflection.gaps,
                     json.dumps(reflection.new_queries, ensure_ascii=False),
                     reflection.notes,
-                    datetime.now(timezone.utc).isoformat(),
+                    datetime.now(UTC).isoformat(),
                 ),
             )
             conn.commit()
@@ -951,7 +949,7 @@ class AgentDB:
         try:
             cur = conn.execute("SELECT * FROM records")
             cols = [d[0] for d in cur.description]
-            return [dict(zip(cols, row)) for row in cur.fetchall()]
+            return [dict(zip(cols, row, strict=False)) for row in cur.fetchall()]
         finally:
             conn.close()
 
@@ -1115,9 +1113,9 @@ class ThemeAgent:
     def run(self) -> None:
         logger.info(
             "[%s] ThemeAgent v2 starting, phase=%d deadline=%s",
-            self.theme, self.phase, datetime.fromtimestamp(self.deadline, tz=timezone.utc),
+            self.theme, self.phase, datetime.fromtimestamp(self.deadline, tz=UTC),
         )
-        self.db.set_meta("started_at", datetime.now(timezone.utc).isoformat())
+        self.db.set_meta("started_at", datetime.now(UTC).isoformat())
         self.db.set_meta("theme", self.theme)
         self.db.set_meta("phase", str(self.phase))
 
@@ -1168,7 +1166,7 @@ class ThemeAgent:
         # 最终反思
         self._reflect()
         _write_agent_stats(self.output_dir, self.theme, self.stats)
-        self.db.set_meta("finished_at", datetime.now(timezone.utc).isoformat())
+        self.db.set_meta("finished_at", datetime.now(UTC).isoformat())
         logger.info("[%s] agent finished, records=%d", self.theme, self.db.count_records())
 
     def _process_feeds(self) -> None:
@@ -1226,7 +1224,7 @@ class ThemeAgent:
                 rec.original_text = content[:2000]
                 rec.quality_score = self._compute_quality_score(rec)
                 # 强制生成唯一 id，避免 LLM 返回重复 id 或多进程偶发碰撞
-                rec.id = f"rec-{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S%f')}-{os.urandom(4).hex()}"
+                rec.id = f"rec-{datetime.now(UTC).strftime('%Y%m%d%H%M%S%f')}-{os.urandom(4).hex()}"
                 content_hash = _short_hash(rec.url + rec.title + rec.summary[:200])
                 rec.extra = {
                     "query": query,
@@ -1404,7 +1402,7 @@ class Supervisor:
         self._shutdown_signal_time: float | None = None
 
     def start(self) -> None:
-        logger.info("Supervisor starting, runtime=%.1fh, deadline=%s", RUNTIME_HOURS, datetime.fromtimestamp(self.deadline, tz=timezone.utc))
+        logger.info("Supervisor starting, runtime=%.1fh, deadline=%s", RUNTIME_HOURS, datetime.fromtimestamp(self.deadline, tz=UTC))
         for theme in CATEGORIES:
             self._spawn_theme(theme)
 
@@ -1453,7 +1451,7 @@ class Supervisor:
             return summary
         try:
             data = json.loads(stats_path.read_text(encoding="utf-8"))
-            for theme, s in data.items():
+            for _theme, s in data.items():
                 if isinstance(s, dict):
                     for k in summary:
                         summary[k] += s.get(k, 0)
@@ -1560,7 +1558,7 @@ class Supervisor:
         try:
             Merger(self.output_dir).merge()
             ReportBuilder(self.output_dir, is_final=is_final).build_snapshot()
-            logger.info("snapshot generated at %s", datetime.now(timezone.utc).isoformat())
+            logger.info("snapshot generated at %s", datetime.now(UTC).isoformat())
         except Exception as exc:
             logger.warning("snapshot failed: %s", exc)
 
@@ -1682,7 +1680,7 @@ class Merger:
             cols = [d[0] for d in cur.description]
             rows = cur.fetchall()
             for row in rows:
-                rec = dict(zip(cols, row))
+                rec = dict(zip(cols, row, strict=False))
                 rec["theme"] = theme
                 all_records.append((theme, rec))
             stats[theme] = len(rows)
@@ -1793,8 +1791,8 @@ class ReportBuilder:
         lines = [
             f"# {title}",
             "",
-            f"- **生成时间**：{datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')} UTC",
-            f"- **数据来源**：公开网络搜索 + RSS/feed + LLM 结构化提取",
+            f"- **生成时间**：{datetime.now(UTC).strftime('%Y-%m-%d %H:%M:%S')} UTC",
+            "- **数据来源**：公开网络搜索 + RSS/feed + LLM 结构化提取",
             f"- **记录总数**：{self.total}",
             f"- **高质量记录（quality_score >= 60）**：{self.high_quality}",
             "",
@@ -1871,13 +1869,13 @@ def main() -> None:
 
     # 保存状态
     state_path = output_dir / "state_v2.json"
-    started_at = datetime.now(timezone.utc).isoformat()
+    started_at = datetime.now(UTC).isoformat()
     state_path.write_text(
         json.dumps({"started_at": started_at, "runtime_hours": RUNTIME_HOURS}, ensure_ascii=False, indent=2),
         encoding="utf-8",
     )
 
-    deadline = datetime.now(timezone.utc).timestamp() + RUNTIME_HOURS * 3600
+    deadline = datetime.now(UTC).timestamp() + RUNTIME_HOURS * 3600
     Supervisor(output_dir, deadline).run()
 
 

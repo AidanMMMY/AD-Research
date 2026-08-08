@@ -4,19 +4,19 @@ Provides the standard Extract-Transform-Load flow with logging,
 validation, and retry logic for all data ingestion pipelines.
 """
 
+import contextlib
 import time
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pandas as pd
 from sqlalchemy.orm import Session
 
 from app.data.providers.base import DataProvider
 from app.data.transformers.normalizer import normalize
-from app.data.transformers.validator import validate_all, CHANGE_PCT_THRESHOLDS
+from app.data.transformers.validator import validate_all
 from app.models.etl import ETLLog
-
 
 # Map data provider names to the market they represent, used for market-specific
 # validation thresholds.
@@ -71,7 +71,7 @@ class ETLPipeline(ABC):
             job_name=self.job_name,
             source=self.provider.name,
             status="running",
-            start_time=datetime.now(timezone.utc),
+            start_time=datetime.now(UTC),
         )
         self.db.add(log)
         self.db.commit()
@@ -89,7 +89,7 @@ class ETLPipeline(ABC):
         if self._log is None:
             return
         self._log.status = status
-        self._log.end_time = datetime.now(timezone.utc)
+        self._log.end_time = datetime.now(UTC)
         self._log.records_count = records
         if error:
             self._log.error_msg = error
@@ -189,10 +189,8 @@ class ETLPipeline(ABC):
                         error_msg=error_msg,
                     )
                 finally:
-                    try:
+                    with contextlib.suppress(Exception):
                         alert_db.close()
-                    except Exception:
-                        pass
             except Exception:
                 # Never let an alerting failure mask the original error.
                 pass

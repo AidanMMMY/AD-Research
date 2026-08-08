@@ -30,8 +30,8 @@ from __future__ import annotations
 
 import logging
 import os
-from datetime import datetime, timezone
-from typing import Iterable
+from collections.abc import Iterable
+from datetime import UTC, datetime
 
 import httpx
 
@@ -81,7 +81,7 @@ class SecEdgarCrawler:
             "SEC_USER_AGENT",
         ) or get_settings().sec_user_agent
 
-    async def __aenter__(self) -> "SecEdgarCrawler":
+    async def __aenter__(self) -> SecEdgarCrawler:
         if self._client is None:
             self._client = await self._build_client()
         return self
@@ -254,6 +254,6 @@ def _parse_iso_date(value: str) -> datetime | None:
     if not value:
         return None
     try:
-        return datetime.strptime(value, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+        return datetime.strptime(value, "%Y-%m-%d").replace(tzinfo=UTC)
     except (TypeError, ValueError):
         return None

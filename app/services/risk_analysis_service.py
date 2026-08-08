@@ -122,7 +122,7 @@ class RiskAnalysisService:
             contributions = weights_arr * marginal / np.sqrt(port_var)
             result["volatility_contribution_pct"] = {
                 code: round(float(c) * 100, 2)
-                for code, c in zip(codes, contributions)
+                for code, c in zip(codes, contributions, strict=False)
             }
 
         return result

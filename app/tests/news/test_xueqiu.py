@@ -7,10 +7,8 @@ canned JSON, mirroring the response shapes Xueqiu's web app produces.
 
 from __future__ import annotations
 
-import asyncio
 import json
-import os
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 from unittest.mock import patch
 
@@ -19,19 +17,16 @@ import pytest
 
 from app.services.news.crawler.types import RawArticle
 from app.services.news.sources.xueqiu import (
-    RawXueqiuPost,
     XueqiuCrawler,
     _parse_xueqiu_time,
     extract_symbols,
     to_xueqiu_symbol,
 )
 from app.services.news.sources.xueqiu_auth import (
-    XUEQIU_BASE_URL,
     XueqiuAuth,
     XueqiuAuthError,
     _parse_cookie_string,
 )
-
 
 # ---------------------------------------------------------------------------
 # Cookie parsing / auth
@@ -154,7 +149,7 @@ def _now_ts() -> float:
     # datetime.timestamp on aware datetimes uses the platform's UTC
     # implementation; we just need a relative comparison so the float
     # is fine.
-    return datetime.now(tz=timezone.utc).timestamp()
+    return datetime.now(tz=UTC).timestamp()
 
 
 # ---------------------------------------------------------------------------

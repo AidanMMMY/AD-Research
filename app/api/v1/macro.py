@@ -14,7 +14,7 @@ Phase 2 adds the China-specific surface backed by akshare:
 """
 
 import logging
-from datetime import date
+from datetime import UTC, date
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -291,9 +291,9 @@ def get_global_indices_realtime() -> dict[str, Any]:
     Best-effort: per-ticker failures are logged and skipped; the
     response always returns 200 even when some tickers fail.
     """
-    from datetime import datetime, timedelta, timezone
+    from datetime import datetime, timedelta
 
-    started = datetime.now(timezone.utc)
+    started = datetime.now(UTC)
 
     try:
         # Phase 6b: yfinance now covers indices + FX + rates + commodity
@@ -301,6 +301,7 @@ def get_global_indices_realtime() -> dict[str, Any]:
         from app.data.providers.yfinance_indices_provider import (
             fetch_all_macro_realtime,
         )
+
         # A-share indices are still pulled via akshare (separate path,
         # no parallelisation needed — three calls).
         from app.services.macro.global_indices_fetcher import (
@@ -392,7 +393,7 @@ def get_global_indices_realtime() -> dict[str, Any]:
             continue
         try:
             as_of_dt = datetime.fromisoformat(str(as_of)).replace(
-                tzinfo=timezone.utc,
+                tzinfo=UTC,
             )
         except (TypeError, ValueError):
             stale_count += 1

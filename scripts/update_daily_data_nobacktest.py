@@ -1,4 +1,4 @@
-406 /opt/ad-research/scripts/update_daily_data_nobacktest.py
+# 406 /opt/ad-research/scripts/update_daily_data_nobacktest.py
 """增量更新 daily_bar、indicator、score、signal、backtest 数据到最新日期.
 
 获取所有活跃 ETF 的缺失日期历史数据，重新计算技术指标、评分、信号和回测.
@@ -23,7 +23,7 @@ from sqlalchemy.orm import sessionmaker
 from app.config import get_settings
 from app.data.indicators.calculator import batch_calculate_indicators
 from app.data.providers.akshare_provider import AkshareProvider
-from app.models.etf import InstrumentDailyBar, ETFIndicator, ETFInfo
+from app.models.etf import ETFIndicator, ETFInfo, InstrumentDailyBar
 from app.models.etl import BacktestResult, Signal, StrategyConfig
 from app.services.backtest_service import BacktestService
 from app.services.scoring_service import ScoringService

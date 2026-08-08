@@ -28,7 +28,6 @@ from app.core.database import Base
 from app.main import app
 from app.models.futures import FuturesContract, FuturesDailyBar
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------

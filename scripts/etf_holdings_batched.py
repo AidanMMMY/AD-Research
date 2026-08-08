@@ -30,6 +30,7 @@ Improvements over v3 (/tmp/etf_holdings_batched.py):
 from __future__ import annotations
 
 import argparse
+import contextlib
 import datetime as _dt
 import json
 import logging
@@ -393,9 +394,9 @@ def main() -> int:
         # ---- collected for `--help` / `--dry-run` even if the
         # ---- app package is missing.
         try:
+            from app.api.deps import get_db  # type: ignore
             from app.data.pipelines.etf_holdings import ETFHoldingsPipeline
             from app.models.etf import ETFInfo
-            from app.api.deps import get_db  # type: ignore
         except Exception as exc:
             fatal_error = f"import_failed: {exc}"
             log.error("import_failed", extra={"error": str(exc)})
@@ -610,10 +611,8 @@ def main() -> int:
             summary["reason"] = fatal_error
         # Single-line JSON summary to stdout, also to status file.
         print("===SUMMARY===" + json.dumps(summary, ensure_ascii=False))
-        try:
+        with contextlib.suppress(OSError):
             _write_atomic(STATUS_FILE, json.dumps(summary, ensure_ascii=False, indent=2))
-        except OSError:
-            pass
         log.info(
             "etf_holdings_end",
             extra={

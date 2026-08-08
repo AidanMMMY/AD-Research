@@ -13,6 +13,7 @@ from the public cninfo ``hisAnnouncement/query`` endpoint.  Mirrors
 from collections.abc import Sequence
 
 import sqlalchemy as sa
+
 from alembic import op
 
 revision: str = "c1d2e3f4a5b6"

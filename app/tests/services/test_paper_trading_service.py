@@ -11,9 +11,8 @@ import pandas as pd
 import pytest
 
 from app.models.etf import ETFInfo
-from app.models.trading import PaperTradeAccount, PaperTradeOrder, PaperTradePosition
+from app.models.trading import PaperTradePosition
 from app.services.paper_trading_service import PaperTradingError, PaperTradingService
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -119,9 +118,8 @@ def test_buy_insufficient_cash_raises(seeded_db):
     account = svc.create_account("Y", Decimal("10"), user_id=1)  # very little cash
     with patch.object(
         PaperTradingService, "_get_provider_for_code", return_value=_make_provider_mock(100)
-    ):
-        with pytest.raises(PaperTradingError, match="Insufficient cash"):
-            svc.place_order(account.id, "BTC.US", "BUY", Decimal("1"))
+    ), pytest.raises(PaperTradingError, match="Insufficient cash"):
+        svc.place_order(account.id, "BTC.US", "BUY", Decimal("1"))
 
 
 def test_buy_unknown_instrument_raises(seeded_db):
@@ -129,9 +127,8 @@ def test_buy_unknown_instrument_raises(seeded_db):
     account = svc.create_account("Z", Decimal("10000"), user_id=1)
     with patch.object(
         PaperTradingService, "_get_provider_for_code", return_value=_make_provider_mock(100)
-    ):
-        with pytest.raises(PaperTradingError, match="not found"):
-            svc.place_order(account.id, "GHOST.US", "BUY", Decimal("0.1"))
+    ), pytest.raises(PaperTradingError, match="not found"):
+        svc.place_order(account.id, "GHOST.US", "BUY", Decimal("0.1"))
 
 
 def test_sell_reduces_position_and_realises_pnl(seeded_db):

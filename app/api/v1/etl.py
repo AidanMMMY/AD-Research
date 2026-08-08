@@ -6,7 +6,7 @@ triggers, and one-shot ETL re-runs (ops P1-1 / P1-4).
 """
 
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
@@ -116,6 +116,6 @@ def rerun_etl_job(
         ) from err
     return {
         "task_id": result["task_id"],
-        "queued_at": result.get("queued_at", datetime.now(timezone.utc).isoformat()),
+        "queued_at": result.get("queued_at", datetime.now(UTC).isoformat()),
     }
 

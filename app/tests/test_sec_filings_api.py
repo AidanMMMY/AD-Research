@@ -21,11 +21,9 @@ from sqlalchemy.pool import StaticPool
 
 from app.api import deps as api_deps
 from app.api.v1 import sec_filings as sec_filings_module
-from app.core.database import Base
 from app.main import app
 from app.models.sec_filing import SecFiling
 from app.services.sec_filing_service import SecFilingService
-
 
 # ---------------------------------------------------------------------------
 # Fixtures

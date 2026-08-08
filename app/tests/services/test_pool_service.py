@@ -11,7 +11,6 @@ from app.schemas.auth import UserResponse
 from app.schemas.pool import PoolCreate, PoolMemberCreate, PoolUpdate
 from app.services.pool_service import PoolService
 
-
 TEST_USER = UserResponse(id=1, username="test", role="user")
 ADMIN_USER = UserResponse(id=2, username="admin", role="admin")
 
@@ -32,7 +31,7 @@ def test_create_pool_returns_response(db_session):
 
 def test_list_pools_excludes_deleted(db_session):
     svc = PoolService(db_session)
-    p1 = svc.create_pool(PoolCreate(name="A", description=""), current_user=TEST_USER)
+    svc.create_pool(PoolCreate(name="A", description=""), current_user=TEST_USER)
     p2 = svc.create_pool(PoolCreate(name="B", description=""), current_user=TEST_USER)
     svc.delete_pool(p2.id, current_user=TEST_USER)
     visible = [p.name for p in svc.list_pools(current_user=TEST_USER)]

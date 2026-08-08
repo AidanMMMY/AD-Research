@@ -140,7 +140,7 @@ def _coerce_key_points(value: Any) -> list[str] | None:
 def _coerce_target_price(value: Any) -> float | None:
     if value is None:
         return None
-    if isinstance(value, (int, float)):
+    if isinstance(value, int | float):
         return float(value) if value > 0 else None
     if isinstance(value, str):
         m = re.search(r"(\d+(?:\.\d+)?)", value)

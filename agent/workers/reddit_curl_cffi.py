@@ -27,7 +27,7 @@ from pathlib import Path
 
 try:
     from curl_cffi import requests as cffi_requests
-    from curl_cffi.requests import BrowserType
+    from curl_cffi.requests import BrowserType  # noqa: F401 — import 即探测 curl_cffi 可用性
 except ImportError:
     print("ERROR: curl_cffi not installed. "
           "Run: pip3 install --break-system-packages curl_cffi", file=sys.stderr)
@@ -37,7 +37,7 @@ except ImportError:
 #     has diverged across worker revisions and no longer exports LOG/truncate/
 #     to_iso_utc/etc. used here).
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 LOG = logging.getLogger("ad-research.reddit_curl_cffi")
 
@@ -53,9 +53,9 @@ UA_SAFARI  = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
 
 def _iso_utc(ts):
     if ts is None:
-        return datetime.now(tz=timezone.utc).isoformat()
+        return datetime.now(tz=UTC).isoformat()
     try:
-        return datetime.fromtimestamp(float(ts), tz=timezone.utc).isoformat()
+        return datetime.fromtimestamp(float(ts), tz=UTC).isoformat()
     except (TypeError, ValueError, OSError, OverflowError):
         return str(ts)
 
@@ -70,14 +70,14 @@ def _truncate(text, n=500):
 def _filter_by_hours(items, hours):
     if hours <= 0:
         return list(items)
-    cutoff = datetime.now(tz=timezone.utc).timestamp() - hours * 3600
+    cutoff = datetime.now(tz=UTC).timestamp() - hours * 3600
     out = []
     for it in items:
         ts = it.get("published_at", "")
         try:
             dt = datetime.fromisoformat(ts.replace("Z", "+00:00"))
             if dt.tzinfo is None:
-                dt = dt.replace(tzinfo=timezone.utc)
+                dt = dt.replace(tzinfo=UTC)
             if dt.timestamp() < cutoff:
                 continue
         except (ValueError, AttributeError):

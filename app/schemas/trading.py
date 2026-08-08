@@ -1,10 +1,9 @@
 """Trading request / response schemas (Phase 2 – paper trading & Phase 3 – live)."""
 
-from datetime import date, datetime
+from datetime import datetime
 from decimal import Decimal
 
 from pydantic import BaseModel, ConfigDict, Field
-
 
 # ---------------------------------------------------------------------------
 # Phase 2 – Paper trading

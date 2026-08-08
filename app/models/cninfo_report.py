@@ -7,7 +7,6 @@ Stores metadata + extracted text for A-share periodic reports
 text excerpt is stored alongside the metadata for search / preview.
 """
 
-from datetime import datetime
 
 from sqlalchemy import (
     BigInteger,

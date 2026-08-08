@@ -8,7 +8,7 @@ sys.path.insert(0, "/Users/aidanliu/Documents/vibe-trading/etf-research-platform
 from sqlalchemy import func, text
 
 from app.core.database import SessionLocal, engine
-from app.models.etf import InstrumentDailyBar, ETFIndicator, ETFInfo
+from app.models.etf import ETFIndicator, ETFInfo, InstrumentDailyBar
 from app.models.etl import BacktestResult, Signal, StrategyConfig
 from app.models.pool import ETFPools, PoolMember, PoolSnapshot, PoolWeight
 from app.models.scoring import ETFScore, ReportMetadata, ScoreTemplate

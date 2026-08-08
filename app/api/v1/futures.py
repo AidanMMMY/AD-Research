@@ -24,7 +24,6 @@ from app.data.pipelines.futures import (
 from app.schemas.auth import UserResponse
 from app.schemas.futures import (
     FuturesContractListResponse,
-    FuturesContractOut,
     FuturesDailyBarListResponse,
     FuturesDailyBarOut,
     FuturesDashboardResponse,

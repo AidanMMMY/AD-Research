@@ -52,12 +52,11 @@ def test_enrichment_populates_missing_category_and_sector(db_session):
     with patch(
         "app.data.pipelines.us_stock_enrichment.pd.read_csv",
         return_value=_mock_csv_df(),
+    ), patch(
+        "app.data.pipelines.us_stock_enrichment.requests.get",
+        return_value=MagicMock(text="csv", raise_for_status=MagicMock()),
     ):
-        with patch(
-            "app.data.pipelines.us_stock_enrichment.requests.get",
-            return_value=MagicMock(text="csv", raise_for_status=MagicMock()),
-        ):
-            result = pipeline.run()
+        result = pipeline.run()
 
     assert result.success is True
     assert result.records == 1
@@ -88,12 +87,11 @@ def test_enrichment_skips_stocks_with_existing_category(db_session):
     with patch(
         "app.data.pipelines.us_stock_enrichment.pd.read_csv",
         return_value=_mock_csv_df(),
+    ), patch(
+        "app.data.pipelines.us_stock_enrichment.requests.get",
+        return_value=MagicMock(text="csv", raise_for_status=MagicMock()),
     ):
-        with patch(
-            "app.data.pipelines.us_stock_enrichment.requests.get",
-            return_value=MagicMock(text="csv", raise_for_status=MagicMock()),
-        ):
-            result = pipeline.run()
+        result = pipeline.run()
 
     assert result.success is True
     assert result.records == 0
@@ -121,12 +119,11 @@ def test_enrichment_ignores_tickers_not_in_csv(db_session):
     with patch(
         "app.data.pipelines.us_stock_enrichment.pd.read_csv",
         return_value=_mock_csv_df(),
+    ), patch(
+        "app.data.pipelines.us_stock_enrichment.requests.get",
+        return_value=MagicMock(text="csv", raise_for_status=MagicMock()),
     ):
-        with patch(
-            "app.data.pipelines.us_stock_enrichment.requests.get",
-            return_value=MagicMock(text="csv", raise_for_status=MagicMock()),
-        ):
-            result = pipeline.run()
+        result = pipeline.run()
 
     assert result.success is True
     assert result.records == 0

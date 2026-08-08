@@ -47,14 +47,11 @@ Usage:
 """
 from __future__ import annotations
 
-import argparse
 import concurrent.futures
-import json
-import logging
 import re
 import sys
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 from urllib.parse import quote_plus
@@ -437,7 +434,7 @@ def _normalize_tweet(user: str, tid: str, raw: dict, source_api: str) -> dict:
     if created_epoch is None:
         created_epoch = _snowflake_to_epoch(tid)
     if created_at is None and created_epoch is not None:
-        created_at = datetime.fromtimestamp(created_epoch, tz=timezone.utc).isoformat()
+        created_at = datetime.fromtimestamp(created_epoch, tz=UTC).isoformat()
 
     return {
         "id": tid,
@@ -520,7 +517,7 @@ def fetch_via_ddg_jina(session, query: str, logger, per_query_limit: int = 8) ->
             # orchestrator, even if it was only a text snippet.
             if it.get("created_at") is None and it.get("created_epoch") is not None:
                 it["created_at"] = datetime.fromtimestamp(
-                    it["created_epoch"], tz=timezone.utc
+                    it["created_epoch"], tz=UTC
                 ).isoformat()
             items.append(it)
     return items
@@ -609,7 +606,7 @@ def fetch_via_x_profiles(
             "author_name": user,
             "author_handle": user,
             "text": "",
-            "created_at": datetime.fromtimestamp(epoch, tz=timezone.utc).isoformat() if epoch else None,
+            "created_at": datetime.fromtimestamp(epoch, tz=UTC).isoformat() if epoch else None,
             "created_epoch": epoch,
             "lang": None,
             "source": None,
@@ -757,9 +754,9 @@ def filter_by_hours(items: list[dict], hours: int) -> list[dict]:
     for it in items:
         ts = it.get("created_epoch") or it.get("created_at") or it.get("published_at")
         dt = None
-        if isinstance(ts, (int, float)):
+        if isinstance(ts, int | float):
             try:
-                dt = datetime.fromtimestamp(float(ts), tz=timezone.utc)
+                dt = datetime.fromtimestamp(float(ts), tz=UTC)
             except (OverflowError, OSError, ValueError):
                 dt = None
         if dt is None:

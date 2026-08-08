@@ -6,9 +6,7 @@ for common research patterns.
 """
 
 import hashlib
-import json
 import logging
-from datetime import datetime, timezone
 
 from app.core.cache import cache_get, cache_set
 from app.core.exceptions import DataProviderError

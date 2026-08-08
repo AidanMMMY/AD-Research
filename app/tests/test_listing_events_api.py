@@ -28,7 +28,6 @@ from app.main import app
 from app.models.listing import ListingEvent
 from app.services.listing_event_service import ListingEventService
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------

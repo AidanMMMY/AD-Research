@@ -26,7 +26,6 @@ from app.main import app
 from app.models.cninfo_report import CninfoReport
 from app.services.cninfo_report_service import CninfoReportService
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------

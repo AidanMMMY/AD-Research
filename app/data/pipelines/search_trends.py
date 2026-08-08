@@ -26,7 +26,7 @@ finished refreshing their intraday data).
 """
 
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from sqlalchemy.dialects.postgresql import insert as pg_insert
@@ -188,7 +188,7 @@ class SearchTrendsPipeline(ETLPipeline):
                         "value": int(entry.get("value") or 0),
                         "is_partial": bool(entry.get("is_partial", False)),
                         "category": self._category_for(registry, slot, kw),
-                        "fetched_at": datetime.now(timezone.utc),
+                        "fetched_at": datetime.now(UTC),
                     }
                 )
         return self._upsert_rows(rows)

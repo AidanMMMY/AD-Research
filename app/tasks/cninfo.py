@@ -4,6 +4,7 @@ These tasks offload network-I/O-heavy periodic report fetching from the
 backend container to dedicated celery workers.
 """
 
+import contextlib
 import json
 import logging
 import time
@@ -13,7 +14,6 @@ from pathlib import Path
 from app.core.celery_app import celery_app
 from app.core.database import SessionLocal
 from app.data.pipelines.cninfo_reports import CninfoReportsPipeline
-from app.data.providers.cninfo_provider import CninfoProvider
 from app.services.cninfo_report_service import CninfoReportService
 
 log = logging.getLogger("celery.cninfo")
@@ -85,17 +85,15 @@ def backfill_cninfo_reports(
                     written = 0
                     stock_code = ts_code.split(".")[0]
                     for rec in raw:
-                        try:
+                        with contextlib.suppress(Exception):
                             written += service._upsert(rec, ts_code, stock_code, org_id)
-                        except Exception:
-                            pass
                 if written > 0:
                     total_written += written
             except Exception as exc:
                 log.warning("[%d/%d] %s FAILED: %s", idx + 1, len(shard), ts_code, exc)
                 continue
 
-            elapsed = time.time() - iter_start
+            time.time() - iter_start
             if (idx + 1) % _ETA_INTERVAL == 0:
                 done = idx + 1
                 avg = (time.time() - t0) / done

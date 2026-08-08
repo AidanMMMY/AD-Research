@@ -6,7 +6,6 @@ production database. Instead we drive the *router* directly via FastAPI's
 ``APIRouter`` + ``TestClient`` and patch ``os.environ`` per test via
 ``monkeypatch``.
 """
-import os
 import importlib
 
 import pytest
@@ -44,7 +43,6 @@ def fake_db_session():
     ``id`` is set explicitly via ``refresh()``) so we don't need a real
     SQLAlchemy session.
     """
-    from app.models.notification import NotificationConfig, NotificationLog
 
     class _FakeQuery:
         def __init__(self, result):
@@ -140,8 +138,8 @@ def test_orchestrate_alert_below_threshold_does_not_log(client):
 
 def test_orchestrate_alert_at_threshold_log_calls_get_db(client, app_instance, fake_db_session):
     """Two worker failures with threshold=2 should call into ``get_db`` and log."""
-    from app.models.notification import NotificationConfig, NotificationLog
     from app.api.deps import get_db
+    from app.models.notification import NotificationConfig, NotificationLog
 
     # FastAPI's ``dependency_overrides`` is the canonical way to substitute
     # a ``Depends(get_db)`` resolution without monkey-patching module-level

@@ -35,8 +35,9 @@ from __future__ import annotations
 import logging
 import threading
 import time
-from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeoutError
-from datetime import date, datetime, timezone
+from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import TimeoutError as FutureTimeoutError
+from datetime import UTC, date, datetime
 from typing import Any
 
 from sqlalchemy import create_engine, text
@@ -94,7 +95,8 @@ def _get_executor() -> ThreadPoolExecutor:
 
 def _classify_exception(exc: Exception) -> dict[str, Any]:
     """Return a structured error dict that distinguishes pool exhaustion."""
-    from sqlalchemy.exc import OperationalError, TimeoutError as SATimeoutError
+    from sqlalchemy.exc import OperationalError
+    from sqlalchemy.exc import TimeoutError as SATimeoutError
 
     detail = exc.__class__.__name__
     if isinstance(exc, SATimeoutError):
@@ -294,7 +296,7 @@ def readiness_check() -> dict[str, Any]:
         "ready": critical_ok,
         "version": __import__("app.main", fromlist=["__version__"]).__version__,
         "git_sha": __import__("app.main", fromlist=["GIT_SHA"]).GIT_SHA,
-        "checked_at": datetime.now(timezone.utc).isoformat(),
+        "checked_at": datetime.now(UTC).isoformat(),
         "pool": _pool_status(),
         "components": components,
     }

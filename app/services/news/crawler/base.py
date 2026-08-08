@@ -27,8 +27,9 @@ import random
 import re
 import time
 from abc import ABC, abstractmethod
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from typing import Any, AsyncIterator, ClassVar
+from typing import Any, ClassVar
 
 import httpx
 
@@ -213,18 +214,18 @@ class BaseCrawler(ABC):
     # ------------------------------------------------------------------
     # Context manager — owning the AsyncClient
     # ------------------------------------------------------------------
-    async def __aenter__(self) -> "BaseCrawler":
+    async def __aenter__(self) -> BaseCrawler:
         if self._client is None:
             timeout = httpx.Timeout(self.request_timeout)
             # ``trust_env=True`` lets the underlying urllib loop pick up
             # HTTP_PROXY/HTTPS_PROXY env vars when no proxy is set on
             # the request itself.
-            kwargs: dict[str, Any] = dict(
-                timeout=timeout,
-                follow_redirects=True,
-                headers=dict(DEFAULT_HEADERS),
-                trust_env=True,
-            )
+            kwargs: dict[str, Any] = {
+                "timeout": timeout,
+                "follow_redirects": True,
+                "headers": dict(DEFAULT_HEADERS),
+                "trust_env": True,
+            }
             # HTTP/2 is a nice-to-have; degrade silently when ``h2`` is
             # missing so the crawler still works in minimal environments.
             try:
@@ -376,7 +377,7 @@ class BaseCrawler(ABC):
                     text=resp.text,
                     content=content,
                     status_code=status,
-                    headers={k: v for k, v in resp.headers.items()},
+                    headers=dict(resp.headers.items()),
                 )
 
             except httpx.TimeoutException as exc:

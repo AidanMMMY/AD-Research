@@ -15,10 +15,7 @@ The tests use the shared ``db_session`` fixture from
 
 from __future__ import annotations
 
-import json
-from datetime import datetime, timedelta, timezone
-from types import SimpleNamespace
-from unittest.mock import MagicMock
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from fastapi.testclient import TestClient
@@ -33,7 +30,6 @@ from app.services.news.sources.cninfo import CninfoCrawler
 from app.services.news.sources.sina import SinaCrawler
 from app.services.news.sources.xinhua import XinhuaCrawler
 from app.services.news.symbol_extractor import SymbolExtractor
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -165,7 +161,7 @@ def _raw(*, source="xinhua_rss", source_id="abc", url="https://x/a",
         body=body,
         body_html=body_html,
         author=None,
-        published_at=published_at or datetime(2026, 7, 1, tzinfo=timezone.utc),
+        published_at=published_at or datetime(2026, 7, 1, tzinfo=UTC),
         language=language,
         market=market,
     )
@@ -232,7 +228,7 @@ class TestNewsNormalizer:
             source_id="ann-1",
             url="http://static.cninfo.com.cn/finalpage/2026-07-01/123.PDF",
             title="公司公告",
-            published_at=datetime(2026, 7, 1, tzinfo=timezone.utc),
+            published_at=datetime(2026, 7, 1, tzinfo=UTC),
             market="cn_a",
             language="zh",
             extra={"stock_code": "600519", "stock_name": "贵州茅台"},
@@ -253,7 +249,7 @@ class TestNewsNormalizer:
             source_id="x1",
             url="http://x",
             title="",
-            published_at=datetime(2026, 7, 1, tzinfo=timezone.utc),
+            published_at=datetime(2026, 7, 1, tzinfo=UTC),
         )
         assert normalizer.normalize(raw) is None
 
@@ -264,7 +260,7 @@ class TestNewsNormalizer:
             source_id="x2",
             url="",
             title="title",
-            published_at=datetime(2026, 7, 1, tzinfo=timezone.utc),
+            published_at=datetime(2026, 7, 1, tzinfo=UTC),
         )
         assert normalizer.normalize(raw) is None
 
@@ -294,6 +290,7 @@ class _FakeUser:
 def api_client(news_db):
     """Build a TestClient with the get_db dep overridden to use ``news_db``."""
     from fastapi import FastAPI
+
     from app.api.v1 import news as news_module
 
     def _override_db():
@@ -319,7 +316,7 @@ def api_client(news_db):
 
 def _seed_articles(news_db, n: int = 3):
     """Insert a handful of articles so list/detail have something to return."""
-    now = datetime.now(tz=timezone.utc)
+    now = datetime.now(tz=UTC)
     rows = []
     for i in range(n):
         a = NewsArticle(
@@ -343,7 +340,7 @@ def _seed_articles(news_db, n: int = 3):
 
 class TestNewsApi:
     def test_list_returns_seeded(self, api_client, news_db):
-        seeded = _seed_articles(news_db, n=3)
+        _seed_articles(news_db, n=3)
         resp = api_client.get("/api/v1/news", params={"page": 1, "page_size": 10})
         assert resp.status_code == 200
         payload = resp.json()
@@ -364,7 +361,7 @@ class TestNewsApi:
                 title="US Article",
                 language="en",
                 market="us",
-                published_at=datetime.now(tz=timezone.utc),
+                published_at=datetime.now(tz=UTC),
             )
         )
         news_db.commit()
@@ -392,7 +389,7 @@ class TestNewsApi:
                 title="Global US",
                 language="en",
                 market="us",
-                published_at=datetime.now(tz=timezone.utc),
+                published_at=datetime.now(tz=UTC),
             )
         )
         # One crypto row.
@@ -405,7 +402,7 @@ class TestNewsApi:
                 title="Global Crypto",
                 language="en",
                 market="crypto",
-                published_at=datetime.now(tz=timezone.utc),
+                published_at=datetime.now(tz=UTC),
             )
         )
         news_db.commit()
@@ -443,7 +440,7 @@ class TestNewsApi:
     def test_retail_sentiment_returns_aggregate(self, api_client, news_db):
         from app.models.etf import ETFInfo
         news_db.add(ETFInfo(code="510300.SH", name="沪深300ETF", market="A股", instrument_type="ETF", status="active"))
-        now = datetime.now(tz=timezone.utc)
+        now = datetime.now(tz=UTC)
         article = NewsArticle(
             source="reddit",
             source_id="r-1",
@@ -529,7 +526,7 @@ class TestNewsApi:
 
     def test_health_returns_all_sources(self, api_client, news_db):
         # Seed a single recent article on cninfo to confirm aggregation.
-        now = datetime.now(tz=timezone.utc)
+        now = datetime.now(tz=UTC)
         news_db.add(
             NewsArticle(
                 source="cninfo",
@@ -679,7 +676,7 @@ class TestNewsApi:
             title="US Article",
             language="en",
             market="us",
-            published_at=datetime.now(tz=timezone.utc),
+            published_at=datetime.now(tz=UTC),
         )
         news_db.add(us_article)
         news_db.commit()
@@ -800,13 +797,13 @@ class TestCrawlerParsing:
 
     def test_cninfo_clamps_future_announcement_date(self):
         import asyncio
-        from datetime import datetime, timedelta, timezone
+        from datetime import datetime, timedelta
 
         # cninfo stamps evening filings at midnight Beijing of the NEXT
         # disclosure day — a future instant at crawl time. The crawler
         # must clamp published_at to "now" so the feed never shows
         # future-dated articles.
-        future = datetime.now(tz=timezone.utc) + timedelta(days=1)
+        future = datetime.now(tz=UTC) + timedelta(days=1)
         future_ms = int(future.timestamp() * 1000)
         payload = {
             "announcements": [
@@ -828,17 +825,17 @@ class TestCrawlerParsing:
                 },
             ]
         }
-        before = datetime.now(tz=timezone.utc)
+        before = datetime.now(tz=UTC)
         crawler = CninfoCrawler()
         articles = asyncio.run(crawler.parse(payload))
-        after = datetime.now(tz=timezone.utc)
+        after = datetime.now(tz=UTC)
         assert len(articles) == 2
         future_art = next(a for a in articles if a.extra["announcement_id"] == "99901")
         past_art = next(a for a in articles if a.extra["announcement_id"] == "99902")
         # Future stamp is clamped into the [before, after] window.
         assert before <= future_art.published_at <= after
         # Past stamp is preserved as-is.
-        assert past_art.published_at == datetime(2024, 7, 4, tzinfo=timezone.utc)
+        assert past_art.published_at == datetime(2024, 7, 4, tzinfo=UTC)
 
     def test_sina_parses_roll_payload(self):
         import asyncio

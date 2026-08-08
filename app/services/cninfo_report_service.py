@@ -755,7 +755,7 @@ class CninfoReportService:
         rows = self.db.execute(
             select(ETFInfo.code, ETFInfo.name).where(ETFInfo.code.in_(ts_codes))
         ).all()
-        return {code: name for code, name in rows}
+        return dict(rows)
 
     def get_report(self, report_id: int) -> dict[str, Any] | None:
         report = self.db.get(CninfoReport, report_id)
@@ -834,7 +834,7 @@ class CninfoReportService:
                 )
             except ValueError:
                 announcement_time = datetime.utcnow()
-        elif isinstance(announcement_time, (int, float)):
+        elif isinstance(announcement_time, int | float):
             # cninfo returns epoch MILLISECONDS as a number.  0 / very
             # small values are treated as missing — fall back to now().
             try:

@@ -5,7 +5,6 @@ populated from Tushare's ``new_share`` endpoint (or the ``stock_basic``
 fallback for free-tier users).
 """
 
-from datetime import datetime
 
 from sqlalchemy import (
     JSON,

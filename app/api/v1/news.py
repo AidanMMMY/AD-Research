@@ -20,7 +20,7 @@ cache columns).
 from __future__ import annotations
 
 import logging
-from datetime import date, datetime, timedelta, timezone
+from datetime import UTC, date, datetime, timedelta
 from typing import Any
 
 import redis
@@ -114,10 +114,7 @@ def _iso_utc(value: datetime | None) -> str | None:
     """
     if value is None:
         return None
-    if value.tzinfo is None:
-        value = value.replace(tzinfo=timezone.utc)
-    else:
-        value = value.astimezone(timezone.utc)
+    value = value.replace(tzinfo=UTC) if value.tzinfo is None else value.astimezone(UTC)
     # ``timespec='seconds'`` keeps the wire format compact while still
     # giving the frontend a sub-minute resolution.
     return value.isoformat(timespec="seconds")
@@ -209,7 +206,7 @@ def _parse_iso(value: str | None) -> datetime | None:
     except (TypeError, ValueError):
         return None
     if dt.tzinfo is None:
-        dt = dt.replace(tzinfo=timezone.utc)
+        dt = dt.replace(tzinfo=UTC)
     return dt
 
 
@@ -504,7 +501,7 @@ def source_stats(db: Session = Depends(get_db)) -> dict:
     ``news_article.fetched_at`` so they reflect rows that were
     actually persisted.
     """
-    now = datetime.now(tz=timezone.utc)
+    now = datetime.now(tz=UTC)
     cutoff_7d = now - timedelta(days=7)
     cutoff_24h = now - timedelta(hours=24)
 
@@ -833,7 +830,7 @@ def _worker_articles_24h(db: Session, job_id: str) -> int:
     source = _WORKER_JOB_TO_SOURCE.get(job_id)
     if not source:
         return 0
-    cutoff = datetime.now(tz=timezone.utc) - timedelta(hours=24)
+    cutoff = datetime.now(tz=UTC) - timedelta(hours=24)
     return (
         db.execute(
             select(func.count(NewsArticle.id)).where(
@@ -948,7 +945,7 @@ _SOURCE_TO_JOB: dict[str, str] = {
 
 def _source_health_row(db: Session, source: str) -> dict[str, Any]:
     """Build the diagnostics row for a single NewsArticle source."""
-    now = datetime.now(tz=timezone.utc)
+    now = datetime.now(tz=UTC)
     cutoff_24h = now - timedelta(hours=24)
 
     # Aggregate total + last 24h + latest published_at + latest fetched_at
@@ -1017,7 +1014,7 @@ def news_health(db: Session = Depends(get_db)) -> dict[str, Any]:
     the 8 news / sentiment workers so the frontend can render the
     scheduler job grid without a second endpoint.
     """
-    now = datetime.now(tz=timezone.utc)
+    now = datetime.now(tz=UTC)
 
     sources = [_source_health_row(db, src) for src in _NEWS_SOURCES]
 
@@ -1113,7 +1110,7 @@ def get_retail_sentiment(
     except ValueError:
         days = 7
     days = max(1, min(days, 90))
-    since = datetime.now(tz=timezone.utc) - timedelta(days=days)
+    since = datetime.now(tz=UTC) - timedelta(days=days)
 
     # Retail sources first; if nothing matches, fall back to any linked article.
     retail_sources = {"reddit", "xueqiu"}
@@ -1172,7 +1169,7 @@ def get_retail_sentiment(
             themes[article.event_category] = themes.get(article.event_category, 0.0) + weight
 
     if total_weight > 0 and scores:
-        overall = sum(s * w for s, w in zip(scores, weights)) / total_weight
+        overall = sum(s * w for s, w in zip(scores, weights, strict=False)) / total_weight
     else:
         overall = 0.0
 
@@ -1181,10 +1178,7 @@ def get_retail_sentiment(
     bear_ratio = bear / sentiment_total
 
     # Controversy: high when bull and bear are close in size.
-    if bull + bear > 0:
-        controversy = 1.0 - abs(bull - bear) / (bull + bear)
-    else:
-        controversy = 0.0
+    controversy = 1.0 - abs(bull - bear) / (bull + bear) if bull + bear > 0 else 0.0
     controversy = max(0.0, min(1.0, controversy))
 
     # Top themes by weighted share.
@@ -1421,7 +1415,7 @@ def event_signals(
     ``sentiment_label`` and ``signal_strength`` from ``importance`` (1-5
     mapped to 1-100).  Used by the SignalDashboard "事件信号" integration.
     """
-    since = datetime.now(tz=timezone.utc) - timedelta(days=days)
+    since = datetime.now(tz=UTC) - timedelta(days=days)
 
     stmt = select(NewsArticle).where(
         NewsArticle.event_category.isnot(None),

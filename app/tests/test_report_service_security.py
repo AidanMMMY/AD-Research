@@ -112,9 +112,9 @@ def test_generate_report_owner_and_shared_visible(db_session, owner_scoped):
 
 def test_report_request_schema_allowlist():
     """Schema must reject path-traversal report_type / format at the API layer."""
-    with pytest.raises(Exception):
+    with pytest.raises(ValueError):
         ReportGenerateRequest(report_type="../../etc/passwd", format="html", pool_id=1)
-    with pytest.raises(Exception):
+    with pytest.raises(ValueError):
         ReportGenerateRequest(report_type="pool_weekly", format="../../x", pool_id=1)
     ok = ReportGenerateRequest(report_type="pool_weekly", format="html", pool_id=1)
     assert ok.report_type == "pool_weekly"

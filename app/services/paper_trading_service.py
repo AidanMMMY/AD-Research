@@ -8,11 +8,10 @@ Binance price.  Limit orders are supported but also fill at market if the
 limit price is better than or equal to the market price.
 """
 
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 from decimal import Decimal
 from typing import TYPE_CHECKING
 
-from sqlalchemy import and_, func
 from sqlalchemy.orm import Session
 
 from app.data.providers.akshare_provider import AkshareProvider
@@ -62,7 +61,7 @@ class PaperTradingService:
 
     def __init__(self, db: Session):
         self.db = db
-        self._providers: dict[str, "DataProvider"] = {}
+        self._providers: dict[str, DataProvider] = {}
 
     def _get_provider_for_code(self, instrument_code: str) -> "DataProvider":
         """Select the appropriate provider based on instrument code suffix.
@@ -264,7 +263,7 @@ class PaperTradingService:
             filled_quantity=quantity,  # immediate fill
             status="filled",
             signal_id=signal_id,
-            filled_at=datetime.now(timezone.utc),
+            filled_at=datetime.now(UTC),
         )
         order.instrument_name = instrument.name
         self.db.add(order)

@@ -290,7 +290,7 @@ class TushareProvider(DataProvider):
             for _, row in df.iterrows():
                 ts_code = str(row.get("ts_code", ""))
                 name = str(row.get("name", ""))
-                area = str(row.get("area", ""))
+                str(row.get("area", ""))
                 industry = str(row.get("industry", ""))
                 list_date_val = row.get("list_date")
 
@@ -302,12 +302,10 @@ class TushareProvider(DataProvider):
                 # Parse listing date (Tushare returns YYYYMMDD as string or int)
                 inception_date: date | None = None
                 if list_date_val and str(list_date_val).isdigit():
-                    try:
+                    with contextlib.suppress(ValueError, TypeError):
                         inception_date = datetime.strptime(
                             str(list_date_val), "%Y%m%d"
                         ).date()
-                    except (ValueError, TypeError):
-                        pass
 
                 # Derive listing market (上海/深圳/北京) and board
                 # (主板/创业板/科创板/北交所) from the Tushare ts_code prefix.

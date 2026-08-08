@@ -4,6 +4,7 @@ Provides GitHub Actions workflow history, Docker container health stats,
 and log streaming via Redis pub/sub — used by the Vercel-style admin page.
 """
 
+import contextlib
 import http.client
 import json
 import logging
@@ -11,7 +12,7 @@ import os
 import re
 import socket as socket_module
 import threading
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import redis
 
@@ -408,7 +409,7 @@ def start_log_tailer(container: str) -> None:
                     ts, msg = ("", line)
                     if " " in line:
                         ts, msg = line.split(" ", 1)
-                    try:
+                    with contextlib.suppress(redis.RedisError):
                         redis_client.publish(
                             channel,
                             json.dumps(
@@ -419,8 +420,6 @@ def start_log_tailer(container: str) -> None:
                                 }
                             ),
                         )
-                    except redis.RedisError:
-                        pass
         except Exception:
             logger.exception("Log tailer for %s exited", container)
         finally:
@@ -450,5 +449,5 @@ def get_server_health() -> dict:
     containers = get_container_stats()
     return {
         "containers": containers,
-        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "timestamp": datetime.now(UTC).isoformat(),
     }

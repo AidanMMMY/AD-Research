@@ -31,10 +31,10 @@ from sqlalchemy.pool import StaticPool
 from app.core.database import Base
 from app.services.news._model_loader import NewsArticle, load_news_models
 from app.services.news.content_fetcher import (
+    _LLM_MAX_INPUT_CHARS,
     ContentFetcher,
     _extract_with_llm,
     _JinaError,
-    _LLM_MAX_INPUT_CHARS,
     _looks_like_real_page,
     _preprocess_html_for_llm,
     _trip_jina_breaker,

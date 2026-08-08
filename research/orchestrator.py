@@ -12,15 +12,15 @@ import json
 import logging
 import os
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from multiprocessing import Process
 from pathlib import Path
 
-from research.agents.macro_policy import run_macro_policy_agent
-from research.agents.market_data import run_market_data_agent
 from research.agents.academic import run_academic_agent
 from research.agents.event_price import run_event_price_agent
 from research.agents.guru_opinion import run_guru_opinion_agent
+from research.agents.macro_policy import run_macro_policy_agent
+from research.agents.market_data import run_market_data_agent
 
 logging.basicConfig(
     level=logging.INFO,
@@ -55,7 +55,7 @@ def main() -> int:
     DATA_DIR.mkdir(parents=True, exist_ok=True)
     (DATA_DIR / "status.json").write_text(
         json.dumps({
-            "started_at": datetime.now(timezone.utc).isoformat(),
+            "started_at": datetime.now(UTC).isoformat(),
             "planned_runtime_hours": RUNTIME_HOURS,
             "agents": [a[0] for a in AGENTS],
         }, ensure_ascii=False, indent=2)
@@ -94,7 +94,7 @@ def main() -> int:
                     p.kill()
         (DATA_DIR / "status.json").write_text(
             json.dumps({
-                "finished_at": datetime.now(timezone.utc).isoformat(),
+                "finished_at": datetime.now(UTC).isoformat(),
                 "agents": [a[0] for a in AGENTS],
             }, ensure_ascii=False, indent=2)
         )

@@ -26,8 +26,9 @@ from __future__ import annotations
 import logging
 import threading
 import uuid
-from datetime import datetime, timezone
-from typing import Any, Callable
+from collections.abc import Callable
+from datetime import UTC, datetime
+from typing import Any
 
 from sqlalchemy import desc
 from sqlalchemy.orm import Session
@@ -109,9 +110,9 @@ def _duration_ms(log: ETLLog) -> int | None:
         return None
     start, end = log.start_time, log.end_time
     if start.tzinfo is None:
-        start = start.replace(tzinfo=timezone.utc)
+        start = start.replace(tzinfo=UTC)
     if end.tzinfo is None:
-        end = end.replace(tzinfo=timezone.utc)
+        end = end.replace(tzinfo=UTC)
     delta = (end - start).total_seconds()
     return int(round(delta * 1000)) if delta >= 0 else None
 
@@ -205,7 +206,7 @@ def run_now(job_id: str, *, notify: bool = False) -> dict[str, Any]:
         raise JobNotRunnable(job_id)
 
     task_id = uuid.uuid4().hex
-    queued_at = datetime.now(timezone.utc).isoformat()
+    queued_at = datetime.now(UTC).isoformat()
 
     thread = threading.Thread(
         target=_run_and_notify,

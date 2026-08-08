@@ -34,6 +34,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import contextlib
 import logging
 import sys
 import time
@@ -116,8 +117,8 @@ def _fetch_tiingo_bars(
     """Fetch bars from Tiingo. Returns {code: [bar_dict, ...]}."""
     import os
     import re
+
     import requests
-    from urllib.parse import urlencode
 
     api_key = os.getenv("TIINGO_API_KEY", "")
     if not api_key:
@@ -295,6 +296,7 @@ def _compute_yf_adj_factors(hist) -> dict:
 def _upsert_bars(db_session, bars: list[dict]) -> int:
     """Insert or update bars into instrument_daily_bar. Returns count of rows written."""
     from sqlalchemy.dialects.postgresql import insert
+
     from app.models.etf import InstrumentDailyBar
 
     if not bars:
@@ -339,10 +341,8 @@ def _get_offset(redis_client) -> int:
 
 
 def _set_offset(redis_client, offset: int) -> None:
-    try:
+    with contextlib.suppress(Exception):
         redis_client.set(_OFFSET_KEY, str(offset))
-    except Exception:
-        pass
 
 
 def _tiingo_count_key(ym: str) -> str:
@@ -358,10 +358,8 @@ def _get_tiingo_consumed(redis_client, ym: str) -> int:
 
 
 def _incr_tiingo_consumed(redis_client, ym: str, delta: int) -> None:
-    try:
+    with contextlib.suppress(Exception):
         redis_client.incrby(_tiingo_count_key(ym), delta)
-    except Exception:
-        pass
 
 
 # ── main ───────────────────────────────────────────────────────────────

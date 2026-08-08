@@ -28,7 +28,6 @@ from app.schemas.fund_flow import (
     EtfFundFlowListResponse,
     FlowSignalListResponse,
     IndividualFundFlowListResponse,
-    MarketFundFlowListResponse,
     MarketFundFlowOut,
     SectorFundFlowListResponse,
 )
@@ -139,7 +138,7 @@ def list_sector_history(
     end = date.today()
     start = end - timedelta(days=days)
     # 通过 start_date/end_date 过滤 — 复用 list_sector 接口
-    from sqlalchemy import func, select
+    from sqlalchemy import select
 
     from app.models.fund_flow import SectorFundFlow
 

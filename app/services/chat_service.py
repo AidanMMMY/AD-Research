@@ -7,7 +7,6 @@ indicator/score data for instruments mentioned in the conversation.
 Uses AnthropicProvider with data pre-loading for grounded responses.
 """
 
-import json
 import logging
 from datetime import datetime
 from typing import Any
@@ -18,7 +17,7 @@ from sqlalchemy.orm import Session
 from app.models.etf import ETFIndicator, ETFInfo
 from app.models.research import AIChatMessage, AIChatSession
 from app.models.scoring import ETFScore
-from app.services.llm import get_llm_provider, LLMService
+from app.services.llm import LLMService, get_llm_provider
 
 logger = logging.getLogger(__name__)
 

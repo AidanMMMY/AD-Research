@@ -2,9 +2,8 @@
 
 import json
 import logging
-import os
 import re
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -48,7 +47,7 @@ def save_raw(
     default: Any = None,
 ) -> Path:
     """Save raw agent output to a timestamped file."""
-    now = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+    now = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
     folder = data_dir / agent / "raw"
     folder.mkdir(parents=True, exist_ok=True)
     path = folder / f"{sanitize_filename(name)}_{now}.{ext}"
@@ -65,7 +64,7 @@ def save_raw(
 
 def save_note(data_dir: Path, agent: str, title: str, body: str) -> Path:
     """Save a synthesized markdown note."""
-    now = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+    now = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
     folder = data_dir / agent / "notes"
     folder.mkdir(parents=True, exist_ok=True)
     path = folder / f"{sanitize_filename(title)}_{now}.md"

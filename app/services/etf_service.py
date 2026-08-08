@@ -6,8 +6,8 @@ PE, PB) from the stock_fundamental table.
 """
 
 
+from collections.abc import Iterable
 from datetime import date as _date
-from typing import Iterable
 
 from sqlalchemy import and_, func
 from sqlalchemy.orm import Session
@@ -636,10 +636,7 @@ class ETFService:
                 status = "removed"
                 removed += 1
             else:
-                if f_w is None and t_w is None:
-                    delta = 0.0
-                else:
-                    delta = (t_w or 0.0) - (f_w or 0.0)
+                delta = 0.0 if f_w is None and t_w is None else (t_w or 0.0) - (f_w or 0.0)
                 # 1bp (0.0001) tolerance for floating-point noise
                 if delta > 0.0001:
                     status = "increased"

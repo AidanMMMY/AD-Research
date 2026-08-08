@@ -59,11 +59,10 @@ from datetime import date
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from sqlalchemy import func, text
+from sqlalchemy import func
 
 from app.core.database import SessionLocal
 from app.models.etf import ETFInfo, InstrumentDailyBar
-
 
 # Tier 2: 核心宽基 ETF（流动性最高、跟踪市场主要指数的 ETF）
 # 涵盖：美股大盘 + 国际 / 新兴 + 债券 — 这些都是「市场风向标」级别的 ETF。

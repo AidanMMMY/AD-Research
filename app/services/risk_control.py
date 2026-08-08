@@ -24,16 +24,14 @@ Usage::
         raise HTTPException(400, result.reason)
 """
 
-from datetime import date, datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
-from functools import lru_cache
 from zoneinfo import ZoneInfo
 
-from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from app.config import Settings, get_settings
-from app.models.trading import LiveTradeConfig, LiveTradeOrder, RiskRule
+from app.config import Settings
+from app.models.trading import LiveTradeConfig, LiveTradeOrder
 from app.services.trading.binance_client import BinanceClient, BinanceClientError
 
 
@@ -68,7 +66,7 @@ class CircuitBreaker:
 
     @classmethod
     def trip(cls, config_id: int, reason: str) -> None:
-        cls._tripped[config_id] = (datetime.now(timezone.utc), reason)
+        cls._tripped[config_id] = (datetime.now(UTC), reason)
 
     @classmethod
     def reset(cls, config_id: int) -> None:
@@ -364,7 +362,7 @@ class RiskControl:
         self, code: str, side: str, qty: Decimal, px: Decimal, order_type: str
     ) -> RiskCheckResult:
         """Reject orders with identical (symbol, side) within 60 seconds."""
-        window_start = datetime.now(timezone.utc) - timedelta(seconds=60)
+        window_start = datetime.now(UTC) - timedelta(seconds=60)
         duplicate = (
             self.db.query(LiveTradeOrder)
             .filter(

@@ -32,7 +32,7 @@ from __future__ import annotations
 
 import json as _json
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from app.services.news.crawler.base import BaseCrawler, _Response
@@ -139,7 +139,7 @@ class SinaCrawler(BaseCrawler):
             url = (item.get("url") or "").strip()
             if not title or not url:
                 continue
-            published_at = _parse_ctime(item.get("ctime")) or datetime.now(tz=timezone.utc)
+            published_at = _parse_ctime(item.get("ctime")) or datetime.now(tz=UTC)
             intro = (item.get("intro") or "").strip() or None
             media_name = (item.get("media_name") or "").strip() or None
             source_id = (item.get("id") or url).strip()
@@ -193,6 +193,6 @@ def _parse_ctime(value) -> datetime | None:
     if seconds <= 0:
         return None
     try:
-        return datetime.fromtimestamp(seconds, tz=timezone.utc)
+        return datetime.fromtimestamp(seconds, tz=UTC)
     except (OverflowError, OSError, ValueError):
         return None

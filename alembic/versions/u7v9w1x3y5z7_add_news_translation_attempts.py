@@ -16,16 +16,17 @@ Revises: t6u8v0w2x4y6
 Create Date: 2026-07-31
 """
 
-from typing import Sequence, Union
+from collections.abc import Sequence
 
 import sqlalchemy as sa
+
 from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = "u7v9w1x3y5z7"
-down_revision: Union[str, Sequence[str], None] = "t6u8v0w2x4y6"
-branch_labels: Union[str, Sequence[str], None] = None
-depends_on: Union[str, Sequence[str], None] = None
+down_revision: str | Sequence[str] | None = "t6u8v0w2x4y6"
+branch_labels: str | Sequence[str] | None = None
+depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:

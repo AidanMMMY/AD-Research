@@ -13,12 +13,9 @@ Configuration (environment variables):
   APNS_USE_SANDBOX   - "true" for development, "false" for production
 """
 
-import datetime
-import json
 import logging
 import time
 from pathlib import Path
-from typing import Optional
 
 import httpx
 from jose import jwt
@@ -45,8 +42,8 @@ class PushService:
         self.topic = push_settings.apns_topic or None
         self.use_sandbox = push_settings.apns_use_sandbox
 
-        self._key_data: Optional[str] = None
-        self._jwt: Optional[str] = None
+        self._key_data: str | None = None
+        self._jwt: str | None = None
         self._jwt_expires_at: float = 0.0
 
         self.base_url = APNS_DEVELOPMENT_URL if self.use_sandbox else APNS_PRODUCTION_URL
@@ -101,10 +98,10 @@ class PushService:
         device_token: str,
         title: str,
         body: str,
-        badge: Optional[int] = None,
+        badge: int | None = None,
         sound: str = "default",
-        category: Optional[str] = None,
-        custom_payload: Optional[dict] = None,
+        category: str | None = None,
+        custom_payload: dict | None = None,
     ) -> bool:
         """Send a push notification to a single device.
 
@@ -230,7 +227,7 @@ class PushService:
 
 # ── Singleton ──
 
-_push_service: Optional[PushService] = None
+_push_service: PushService | None = None
 
 
 def get_push_service() -> PushService:

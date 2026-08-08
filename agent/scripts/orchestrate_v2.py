@@ -33,9 +33,11 @@ import shlex
 import subprocess
 import sys
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
+
+import requests
 
 # --------------------------------------------------------------------------- #
 # Configuration                                                               #
@@ -184,7 +186,7 @@ def resolve_workers(args: argparse.Namespace) -> list[str]:
 
 def configure_logging(log_dir: Path) -> tuple[logging.Logger, Path]:
     log_dir.mkdir(parents=True, exist_ok=True)
-    stamp = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
+    stamp = datetime.now(UTC).strftime("%Y%m%d-%H%M%S")
     log_path = log_dir / f"orchestrate-{stamp}.log"
 
     logger = logging.getLogger("orchestrate_v2")
@@ -364,7 +366,7 @@ def main() -> int:
         exit_codes[key] = exit_codes.get(key, 0) + 1
 
     aggregate = {
-        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "generated_at": datetime.now(UTC).isoformat(),
         "duration_seconds": duration_total,
         "schedule": args.schedule or "explicit",
         "results": results,

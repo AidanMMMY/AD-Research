@@ -1,10 +1,8 @@
 """Crypto request / response schemas."""
 
 from datetime import date, datetime
-from decimal import Decimal
 
 from pydantic import BaseModel, Field
-
 
 # ---------------------------------------------------------------------------
 # Filter / list

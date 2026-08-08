@@ -16,7 +16,7 @@ from __future__ import annotations
 from datetime import date, datetime
 from typing import Any
 
-from sqlalchemy import desc, distinct, func, select
+from sqlalchemy import desc, func, select
 from sqlalchemy.dialects.mysql import insert as mysql_insert
 from sqlalchemy.orm import Session
 
@@ -417,10 +417,7 @@ def _compute_freshness_hint(
     lag_days = (today - period).days
     if lag_days <= 1:
         return None
-    if lag_days >= 7:
-        days = "7+"
-    else:
-        days = str(lag_days)
+    days = "7+" if lag_days >= 7 else str(lag_days)
     return (
         f"FRED 数据为 H.10 周度发布，约延迟 1 天；当前最新期 {period.isoformat()}"
         f"（滞后 {days} 天）。"

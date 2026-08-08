@@ -17,6 +17,7 @@ keep working unchanged.
 
 import logging
 from concurrent.futures import ThreadPoolExecutor
+from datetime import UTC
 
 import pandas as pd
 from sqlalchemy.dialects.postgresql import insert as pg_insert
@@ -352,8 +353,8 @@ class ETFHoldingsPipeline(ETLPipeline):
         if not failed_codes:
             return
         try:
-            from datetime import datetime, timezone
-            now = datetime.now(timezone.utc)
+            from datetime import datetime
+            now = datetime.now(UTC)
             # Try to bump retry_count where the row already exists;
             # otherwise insert a fresh row. Done in two statements
             # because SQLite/Postgres UPSERT semantics differ.

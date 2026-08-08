@@ -16,10 +16,9 @@ from datetime import date
 
 import pytest
 
-from app.config import get_settings
-
 # 注册全部 ORM 模型（create_all 需要）
 import app.models  # noqa: F401
+from app.config import get_settings
 from app.models.digest import DailyDigest
 from app.models.notification import NotificationConfig, NotificationLog
 from app.models.scoring import ReportMetadata
@@ -62,7 +61,7 @@ class FakeResponse:
 class FakeSMTP:
     """记录 sendmail 调用，替代真实 SMTP。"""
 
-    instances: list["FakeSMTP"] = []
+    instances: list[FakeSMTP] = []
 
     def __init__(self, host, port, timeout=None):
         self.host = host

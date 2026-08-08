@@ -26,7 +26,6 @@ from app.schemas.scoring import (
 )
 from app.services.scoring_service import ScoringService
 
-
 # ---------------------------------------------------------------------------
 # CRUD round-trip (service layer)
 # ---------------------------------------------------------------------------
@@ -185,7 +184,7 @@ def test_response_schema_serializes_frontend_consumable_json():
     # The TypeScript interface declares weights as Record<string, number>;
     # values must be plain floats, not Decimal, not str.
     for k, v in parsed.weights.items():
-        assert isinstance(v, (int, float)), f"weight {k}={v!r} is not a primitive number"
+        assert isinstance(v, int | float), f"weight {k}={v!r} is not a primitive number"
         assert not isinstance(v, bool), "weight must be a number, not a bool"
     dumped = parsed.model_dump(mode="json")
     assert dumped["is_default"] is True

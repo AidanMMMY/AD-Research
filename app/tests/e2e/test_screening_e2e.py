@@ -5,12 +5,7 @@ Verifies multi-condition ETF screening on a seeded universe.
 
 from __future__ import annotations
 
-import math
-
-import pytest
-
 from app.services.screening_service import ScreeningService
-
 
 # ---------------------------------------------------------------------------
 # Multi-condition screen
@@ -69,7 +64,7 @@ def test_screening_sort_order_desc(db_session, seeded_etf_universe):
     assert len(items) >= 2
     sharpes = [it["sharpe_1y"] for it in items if it["sharpe_1y"] is not None]
     # Non-increasing
-    for a, b in zip(sharpes, sharpes[1:]):
+    for a, b in zip(sharpes, sharpes[1:], strict=False):
         assert a >= b, f"Sharpe sequence not descending: {sharpes}"
 
 

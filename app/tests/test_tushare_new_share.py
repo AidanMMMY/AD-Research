@@ -13,7 +13,7 @@ Covers:
 """
 
 from datetime import date, timedelta
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pandas as pd
 import pytest
@@ -26,7 +26,6 @@ from app.data.providers.tushare_provider import (
     derive_board,
     derive_market,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helper unit tests

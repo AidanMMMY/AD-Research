@@ -9,7 +9,7 @@ timezone so the CronTrigger value is 08:05 local time.
 """
 
 import logging
-from datetime import date, datetime, timedelta, timezone
+from datetime import UTC, date, datetime, timedelta
 
 import pandas as pd
 from sqlalchemy.dialects.postgresql import insert
@@ -18,8 +18,8 @@ from sqlalchemy.orm import Session
 from app.core.cache import cache_invalidate_pattern
 from app.core.exceptions import DataProviderError
 from app.data.pipelines.base import ETLPipeline
-from app.data.providers.binance_provider import BinanceProvider, _DEFAULT_CRYPTO
-from app.models.etf import InstrumentDailyBar, ETFInfo
+from app.data.providers.binance_provider import _DEFAULT_CRYPTO, BinanceProvider
+from app.models.etf import ETFInfo, InstrumentDailyBar
 
 logger = logging.getLogger(__name__)
 
@@ -124,7 +124,7 @@ class CryptoDailyPipeline(ETLPipeline):
         # because the daily candle closes at 00:00 UTC.  Use a 90-day window
         # so missed days can be backfilled automatically.
         target_date = self.target_date or (
-            datetime.now(timezone.utc).date() - timedelta(days=1)
+            datetime.now(UTC).date() - timedelta(days=1)
         )
         start_date = target_date - timedelta(days=90)
         end_date = target_date

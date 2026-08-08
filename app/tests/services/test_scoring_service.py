@@ -19,7 +19,7 @@ def test_service_initializes_with_calculator(db_session):
 
 def test_dimension_map_has_required_fields(db_session):
     svc = ScoringService(db_session)
-    for dim, conf in svc.DIMENSION_MAP.items():
+    for _dim, conf in svc.DIMENSION_MAP.items():
         assert "metrics" in conf and len(conf["metrics"]) > 0
         assert "weight" in conf
         assert conf["weight"] > 0

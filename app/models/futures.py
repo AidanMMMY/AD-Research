@@ -26,7 +26,6 @@ from sqlalchemy import (
 
 from app.core.database import Base
 
-
 # Exchanges
 EX_SHFE = "SHFE"  # 上期所 - Shanghai Futures Exchange
 EX_DCE = "DCE"    # 大商所 - Dalian Commodity Exchange

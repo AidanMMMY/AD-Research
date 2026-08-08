@@ -29,7 +29,7 @@ from __future__ import annotations
 
 import logging
 import re
-from typing import Iterable
+from collections.abc import Iterable
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -114,7 +114,7 @@ class SymbolExtractor:
             "公告", "新闻", "财经", "市场", "公司", "集团", "股份", "证券",
             "投资", "基金", "货币", "指数", "上海", "深圳", "北京", "中国",
             "美国", "香港", "中国基金", "上证", "深证", "创业板", "科创板",
-            "市场", "行业", "板块", "概念", "主题", "热点", "今日", "昨日",
+            "行业", "板块", "概念", "主题", "热点", "今日", "昨日",
         }
     )
 
@@ -254,7 +254,7 @@ class SymbolExtractor:
         for source_text, confidence in ((title, 0.85), (body, 0.80)):
             if not source_text:
                 continue
-            for key, (sym, market) in self._iter_name_matches(source_text):
+            for _key, (sym, market) in self._iter_name_matches(source_text):
                 if sym not in found or found[sym][1] < confidence:
                     found[sym] = (sym, confidence, market)
 

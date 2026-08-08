@@ -12,10 +12,10 @@ from typing import Any
 from sqlalchemy.orm import Session
 
 from app.core.exceptions import DataProviderError
-from app.models.etf import InstrumentDailyBar, ETFIndicator, ETFInfo
+from app.models.etf import ETFIndicator, ETFInfo, InstrumentDailyBar
 from app.models.research import ResearchNote
 from app.models.scoring import ETFScore
-from app.services.llm import get_llm_provider, LLMService
+from app.services.llm import LLMService, get_llm_provider
 
 logger = logging.getLogger(__name__)
 

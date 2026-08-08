@@ -26,15 +26,20 @@ import html
 import re
 import sys
 import time
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import requests
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from common import (  # noqa: E402
-    LOG, add_common_args, configure_logging, fetch_with_retry,
-    to_iso_utc, truncate, write_output,
+    LOG,
+    add_common_args,
+    configure_logging,
+    fetch_with_retry,
+    to_iso_utc,
+    truncate,
+    write_output,
 )
 
 SOURCE = "东方财富"
@@ -204,7 +209,7 @@ def _fetch_announcements(sess: requests.Session, ann_type: str, label: str,
                          hours: int, page_size: int, max_pages: int,
                          timeout: int, max_retries: int, rate: float,
                          seen: set[str], out: list[dict], max_items: int) -> None:
-    cutoff = datetime.now(timezone.utc) - timedelta(hours=hours)
+    cutoff = datetime.now(UTC) - timedelta(hours=hours)
     for page in range(1, max_pages + 1):
         params = {
             "cb": "",
@@ -238,7 +243,7 @@ def _fetch_announcements(sess: requests.Session, ann_type: str, label: str,
                     rec["published_at"].replace("Z", "+00:00")
                 )
                 if rec_dt.tzinfo is None:
-                    rec_dt = rec_dt.replace(tzinfo=timezone.utc)
+                    rec_dt = rec_dt.replace(tzinfo=UTC)
                 if oldest is None or rec_dt < oldest:
                     oldest = rec_dt
                 if rec_dt < cutoff:

@@ -1,7 +1,6 @@
 """Authentication-related Pydantic schemas."""
 
 from datetime import datetime
-from typing import Optional
 
 from pydantic import BaseModel, Field
 
@@ -37,7 +36,7 @@ class RefreshResponse(BaseModel):
 class RegisterDeviceRequest(BaseModel):
     device_name: str = Field(..., description="e.g. 'iPhone 16 Pro'")
     platform: str = Field(default="ios", description="ios / android / web")
-    push_token: Optional[str] = Field(default=None, description="APNs or FCM device token")
+    push_token: str | None = Field(default=None, description="APNs or FCM device token")
 
 
 class DeviceResponse(BaseModel):

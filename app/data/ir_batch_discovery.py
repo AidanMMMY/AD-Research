@@ -6,7 +6,10 @@
 3. 结果写入 result_{batch}.json
 """
 
-import json, sys, os
+import json
+import os
+import sys
+
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 BATCH_DIR = os.path.join(

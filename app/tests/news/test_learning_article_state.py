@@ -18,7 +18,7 @@ Coverage:
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from fastapi.testclient import TestClient
@@ -30,7 +30,6 @@ from app.core.database import Base
 from app.models.news_source_meta import NewsSourceMeta
 from app.models.user_article_state import UserArticleState
 from app.services.news._model_loader import NewsArticle
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -66,7 +65,7 @@ def _add_article(db, *, source: str, source_id: str, title: str = "t") -> NewsAr
         summary="s",
         language="zh",
         market="cn_a",
-        published_at=datetime.now(tz=timezone.utc).replace(tzinfo=None),
+        published_at=datetime.now(tz=UTC).replace(tzinfo=None),
     )
     db.add(row)
     db.commit()
@@ -90,6 +89,7 @@ def _make_client(db, user: _FakeUser | None):
     要覆盖的路径。
     """
     from fastapi import FastAPI
+
     from app.api.v1 import learning as learning_module
 
     def _override_db():
@@ -122,7 +122,7 @@ def client(db):
 
 class TestUserArticleStateCRUD:
     def test_insert_and_read(self, db):
-        now = datetime.now(tz=timezone.utc)
+        now = datetime.now(tz=UTC)
         db.add(UserArticleState(user_id=1, article_id=10, bookmarked_at=now))
         db.commit()
         row = db.get(UserArticleState, (1, 10))
@@ -287,7 +287,7 @@ class TestFeedStateFlags:
         """用户 2 的收藏/已读绝不能出现在用户 1 的 feed 布尔里。"""
         a1, _ = self._seed(db)
         # 用户 2 收藏 + 已读 a1
-        now = datetime.now(tz=timezone.utc)
+        now = datetime.now(tz=UTC)
         db.add(
             UserArticleState(
                 user_id=2, article_id=a1.id, bookmarked_at=now, read_at=now
@@ -312,7 +312,7 @@ class TestBookmarksList:
     def test_only_own_bookmarks(self, db):
         a1 = _add_article(db, source="s", source_id="1", title="我收藏的")
         a2 = _add_article(db, source="s", source_id="2", title="别人收藏的")
-        now = datetime.now(tz=timezone.utc)
+        now = datetime.now(tz=UTC)
         db.add(UserArticleState(user_id=1, article_id=a1.id, bookmarked_at=now))
         db.add(UserArticleState(user_id=2, article_id=a2.id, bookmarked_at=now))
         db.commit()
@@ -328,7 +328,7 @@ class TestBookmarksList:
     def test_ordered_by_bookmarked_at_desc(self, client, db):
         a1 = _add_article(db, source="s", source_id="1", title="先收藏")
         a2 = _add_article(db, source="s", source_id="2", title="后收藏")
-        now = datetime.now(tz=timezone.utc)
+        now = datetime.now(tz=UTC)
         db.add(
             UserArticleState(
                 user_id=1, article_id=a1.id, bookmarked_at=now - timedelta(hours=1)
@@ -358,7 +358,7 @@ class TestBookmarksList:
         assert item["bookmarked"] is True
 
     def test_pagination(self, client, db):
-        now = datetime.now(tz=timezone.utc)
+        now = datetime.now(tz=UTC)
         for i in range(3):
             a = _add_article(db, source="s", source_id=str(i))
             db.add(

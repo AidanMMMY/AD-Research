@@ -11,14 +11,15 @@
 """
 
 import json
-import sys
 import os
+import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
+from sqlalchemy import select
+
 from app.core.database import SessionLocal
 from app.models.disclosure_route import CompanyDisclosureRoute
-from sqlalchemy import select, func
 
 
 def get_batch(offset: int, limit: int) -> list[dict]:

@@ -25,8 +25,9 @@ The provider exposes two methods:
 """
 
 import logging
+from collections.abc import Iterable
 from datetime import date, datetime
-from typing import Any, Iterable
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -50,24 +51,18 @@ def _to_iso_date(value: Any) -> date | None:
 
 def _serialize_row(row: Any) -> dict[str, Any]:
     """Convert a row to dict, serializing all values to JSON-compatible types."""
-    import json
     import pandas as pd
 
-    if hasattr(row, "to_dict"):
-        d = row.to_dict()
-    else:
-        d = dict(row)
+    d = row.to_dict() if hasattr(row, "to_dict") else dict(row)
 
     # Handle pandas types and other non-JSON-serializable objects
     result = {}
     for k, v in d.items():
-        if isinstance(v, (date, datetime)):
-            result[k] = v.isoformat()
-        elif isinstance(v, pd.Timestamp):
+        if isinstance(v, date | datetime | pd.Timestamp):
             result[k] = v.isoformat()
         elif pd.isna(v):
             result[k] = None
-        elif isinstance(v, (int, float, str, bool, list, dict)):
+        elif isinstance(v, int | float | str | bool | list | dict):
             result[k] = v
         else:
             # Convert to string for anything else

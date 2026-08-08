@@ -32,7 +32,6 @@ sys.path.insert(0, str(PROJECT_ROOT))
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import Engine
 
-
 # 阈值与状态映射
 THRESHOLD_WARN = 0.95
 THRESHOLD_CRITICAL = 0.90

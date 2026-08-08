@@ -16,9 +16,7 @@ fixture defined in this directory's ``conftest.py``.
 
 from __future__ import annotations
 
-import json
-import threading
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
@@ -28,7 +26,6 @@ from fastapi.testclient import TestClient
 
 from app.core.database import Base
 from app.services.news._model_loader import NewsArticle
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -101,7 +98,7 @@ def api_client(news_db, fake_redis, monkeypatch):
 
 
 def _make_english_article(news_db, *, body: str | None = "Hello world.") -> NewsArticle:
-    now = datetime.now(tz=timezone.utc)
+    now = datetime.now(tz=UTC)
     a = NewsArticle(
         source="cnbc",
         source_id="t-1",
@@ -121,7 +118,7 @@ def _make_english_article(news_db, *, body: str | None = "Hello world.") -> News
 
 
 def _make_chinese_article(news_db) -> NewsArticle:
-    now = datetime.now(tz=timezone.utc)
+    now = datetime.now(tz=UTC)
     a = NewsArticle(
         source="xinhua_rss",
         source_id="t-zh",
@@ -273,9 +270,8 @@ class TestNewsTranslationService:
         with patch(
             "app.services.llm.get_llm_provider",
             return_value=_NoKeyProvider(),
-        ):
-            with pytest.raises(RuntimeError) as exc:
-                NewsTranslationService(news_db).translate(article.id)
+        ), pytest.raises(RuntimeError) as exc:
+            NewsTranslationService(news_db).translate(article.id)
         assert "_NoKeyProvider" in str(exc.value)
         assert "not configured" in str(exc.value)
 
@@ -391,7 +387,7 @@ class TestTranslateEndpoint:
     def test_get_article_includes_translation_fields(self, api_client, news_db):
         article = _make_english_article(news_db)
         article.translated_zh = "示例译文"
-        article.translation_generated_at = datetime.now(tz=timezone.utc)
+        article.translation_generated_at = datetime.now(tz=UTC)
         news_db.commit()
 
         resp = api_client.get(f"/api/v1/news/{article.id}")
@@ -519,12 +515,13 @@ class TestAutoTranslate:
         ``full_content``, the reader was stuck with a translated teaser.
         """
         from datetime import timedelta
+
         from app.services.news.translation_service import NewsTranslationService
 
         article = _make_english_article(news_db)
         article.title_zh = "已有标题"
         article.translated_zh = "摘要的旧译文"
-        article.translation_generated_at = datetime.now(tz=timezone.utc).replace(tzinfo=None)
+        article.translation_generated_at = datetime.now(tz=UTC).replace(tzinfo=None)
         # Full body lands 10 minutes AFTER the excerpt translation.
         article.full_content = "The complete full body of the article."
         article.full_content_fetched_at = (
@@ -546,12 +543,13 @@ class TestAutoTranslate:
     def test_fresh_translation_not_redone(self, news_db):
         """A translation made AFTER the full body arrived is kept."""
         from datetime import timedelta
+
         from app.services.news.translation_service import NewsTranslationService
 
         article = _make_english_article(news_db)
         article.title_zh = "已有标题"
         article.full_content = "Full body."
-        article.full_content_fetched_at = datetime.now(tz=timezone.utc).replace(tzinfo=None)
+        article.full_content_fetched_at = datetime.now(tz=UTC).replace(tzinfo=None)
         article.translated_zh = "新鲜译文"
         article.translation_generated_at = (
             article.full_content_fetched_at + timedelta(minutes=1)

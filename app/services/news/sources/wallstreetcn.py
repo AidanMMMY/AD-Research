@@ -20,7 +20,7 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from app.services.news.crawler.base import BaseCrawler, _Response
@@ -132,7 +132,7 @@ class WallstreetcnCrawler(BaseCrawler):
         try:
             seconds = int(value)
             if seconds > 0:
-                return datetime.fromtimestamp(seconds, tz=timezone.utc)
+                return datetime.fromtimestamp(seconds, tz=UTC)
         except (TypeError, ValueError):
             pass
-        return datetime.now(tz=timezone.utc)
+        return datetime.now(tz=UTC)

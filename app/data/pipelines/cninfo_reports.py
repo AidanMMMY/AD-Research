@@ -12,7 +12,7 @@ re-use the parent's ``run_with_retry`` for the backoff logic.
 """
 
 import logging
-from datetime import date, datetime, timedelta
+from datetime import date, timedelta
 from typing import Any
 
 from app.data.pipelines.base import ETLPipeline, ETLResult

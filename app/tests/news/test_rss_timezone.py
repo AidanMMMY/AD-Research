@@ -16,7 +16,7 @@
 from __future__ import annotations
 
 import asyncio
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from zoneinfo import ZoneInfo
 
 import httpx
@@ -87,7 +87,7 @@ class TestOffsetParsing:
         arts = parse_rss_items(_RSS_KO_OFFSET, source="t", language="ko")
         assert len(arts) == 1
         # 22:06:42 +0900 == 13:06:42 UTC
-        assert arts[0].published_at == datetime(2026, 8, 1, 13, 6, 42, tzinfo=timezone.utc)
+        assert arts[0].published_at == datetime(2026, 8, 1, 13, 6, 42, tzinfo=UTC)
 
     def test_naive_date_uses_default_tz(self):
         arts = parse_rss_items(
@@ -95,11 +95,11 @@ class TestOffsetParsing:
         )
         assert len(arts) == 1
         # 10:08:56 +0800 == 02:08:56 UTC
-        assert arts[0].published_at == datetime(2026, 8, 1, 2, 8, 56, tzinfo=timezone.utc)
+        assert arts[0].published_at == datetime(2026, 8, 1, 2, 8, 56, tzinfo=UTC)
 
     def test_naive_date_defaults_to_utc_without_default_tz(self):
         arts = parse_rss_items(_RSS_TW_NAIVE, source="t", language="zh")
-        assert arts[0].published_at == datetime(2026, 8, 1, 10, 8, 56, tzinfo=timezone.utc)
+        assert arts[0].published_at == datetime(2026, 8, 1, 10, 8, 56, tzinfo=UTC)
 
 
 class TestTzOverride:
@@ -113,7 +113,7 @@ class TestTzOverride:
         assert len(arts) == 1
         # 墙钟 21:06:42 按 KST(+9) 解释 == 12:06:42 UTC，
         # 而不是按字面 GMT 的 21:06:42 UTC（后者就是"未来时间"的来源）。
-        assert arts[0].published_at == datetime(2026, 8, 1, 12, 6, 42, tzinfo=timezone.utc)
+        assert arts[0].published_at == datetime(2026, 8, 1, 12, 6, 42, tzinfo=UTC)
 
     def test_without_override_mislabeled_gmt_passes_through(self):
         # 不加 override 时保持旧行为（按字面信任 GMT）——证明 override
@@ -121,7 +121,7 @@ class TestTzOverride:
         arts = parse_rss_items(
             _RSS_KO_MISLABELED_GMT, source="global_nocutnews", language="ko"
         )
-        assert arts[0].published_at == datetime(2026, 8, 1, 21, 6, 42, tzinfo=timezone.utc)
+        assert arts[0].published_at == datetime(2026, 8, 1, 21, 6, 42, tzinfo=UTC)
 
     def test_override_does_not_change_wall_time_only_interpretation(self):
         # override 作用于 aware 时间（GMT 标注解析后是 aware），验证
@@ -131,7 +131,7 @@ class TestTzOverride:
         )
         # 22:06:42 的墙钟按 KST 重解释 == 13:06:42 UTC（与原 +0900 一致，
         # 因为该 feed 标注本来就是对的 KST）。
-        assert arts[0].published_at == datetime(2026, 8, 1, 13, 6, 42, tzinfo=timezone.utc)
+        assert arts[0].published_at == datetime(2026, 8, 1, 13, 6, 42, tzinfo=UTC)
 
 
 class TestGlobalBatchOverrideWiring:
@@ -154,7 +154,7 @@ class TestGlobalBatchOverrideWiring:
         nocut = [a for a in articles if a.source == "global_nocutnews"]
         assert len(nocut) == 1
         assert nocut[0].published_at == datetime(
-            2026, 8, 1, 12, 6, 42, tzinfo=timezone.utc
+            2026, 8, 1, 12, 6, 42, tzinfo=UTC
         )
 
     def test_override_table_slugs_exist_in_feed_table(self):
@@ -205,30 +205,30 @@ def _raw_with_ts(ts: datetime, *, source_id: str = "tz-1") -> RawArticle:
 
 class TestFutureClamp:
     def test_far_future_published_at_clamped_to_now(self, news_db):
-        now = datetime.now(tz=timezone.utc)
+        now = datetime.now(tz=UTC)
         raw = _raw_with_ts(now + timedelta(hours=9))  # nocutnews 事故形态
         article = NewsNormalizer(news_db).normalize(raw)
         assert article is not None
         # 钳到 now（SQLite 存 naive，比较前统一 naive UTC）。
-        stored = article.published_at.replace(tzinfo=timezone.utc)
+        stored = article.published_at.replace(tzinfo=UTC)
         assert abs((stored - now).total_seconds()) < 60
 
     def test_within_tolerance_not_clamped(self, news_db):
-        now = datetime.now(tz=timezone.utc)
+        now = datetime.now(tz=UTC)
         # 10 分钟 < 15 分钟容忍窗口：CMS 时钟漂移/定时发布，原样保留。
         ts = now + timedelta(minutes=10)
         raw = _raw_with_ts(ts, source_id="tz-2")
         article = NewsNormalizer(news_db).normalize(raw)
         assert article is not None
-        stored = article.published_at.replace(tzinfo=timezone.utc)
+        stored = article.published_at.replace(tzinfo=UTC)
         assert abs((stored - ts).total_seconds()) < 2
 
     def test_past_published_at_untouched(self, news_db):
-        ts = datetime(2026, 8, 1, 12, 6, 42, tzinfo=timezone.utc)
+        ts = datetime(2026, 8, 1, 12, 6, 42, tzinfo=UTC)
         raw = _raw_with_ts(ts, source_id="tz-3")
         article = NewsNormalizer(news_db).normalize(raw)
         assert article is not None
-        stored = article.published_at.replace(tzinfo=timezone.utc)
+        stored = article.published_at.replace(tzinfo=UTC)
         assert stored == ts
 
 
@@ -262,19 +262,19 @@ class TestNonStandardDateOnlyFormats:
         arts = parse_rss_items(_RSS_HOOVER_DATEONLY, source="t", language="en")
         assert len(arts) == 1
         # naive 按 UTC 解释：2026-07-31 00:00 UTC（不再是抓取时间）
-        assert arts[0].published_at == datetime(2026, 7, 31, 0, 0, tzinfo=timezone.utc)
+        assert arts[0].published_at == datetime(2026, 7, 31, 0, 0, tzinfo=UTC)
 
     def test_rfc2822_style_date_without_time(self):
         arts = parse_rss_items(_RSS_FCA_DATEONLY, source="t", language="en")
         assert len(arts) == 1
-        assert arts[0].published_at == datetime(2026, 7, 31, 0, 0, tzinfo=timezone.utc)
+        assert arts[0].published_at == datetime(2026, 7, 31, 0, 0, tzinfo=UTC)
 
     def test_dateonly_with_default_tz(self):
         arts = parse_rss_items(
             _RSS_HOOVER_DATEONLY, source="t", language="en", default_tz=CST
         )
         # 墙钟 2026-07-31 00:00 +0800 == 2026-07-30 16:00 UTC
-        assert arts[0].published_at == datetime(2026, 7, 30, 16, 0, tzinfo=timezone.utc)
+        assert arts[0].published_at == datetime(2026, 7, 30, 16, 0, tzinfo=UTC)
 
     def test_garbage_still_returns_none_fallback(self):
         bad = _RSS_HOOVER_DATEONLY.replace("July 31, 2026", "not a date")

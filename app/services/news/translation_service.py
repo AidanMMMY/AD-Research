@@ -38,7 +38,7 @@ from __future__ import annotations
 import logging
 import re
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from sqlalchemy.orm import Session
@@ -325,7 +325,7 @@ class NewsTranslationService:
 
         # Persist. We use a fresh ``now`` rather than func.now() so the
         # returned ``generated_at`` matches what was actually written.
-        now = datetime.now(tz=timezone.utc).replace(tzinfo=None)
+        now = datetime.now(tz=UTC).replace(tzinfo=None)
         article.translated_zh = content
         article.translation_generated_at = now
         self.db.commit()

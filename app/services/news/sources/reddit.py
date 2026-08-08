@@ -35,8 +35,9 @@ import base64
 import logging
 import os
 import time
-from datetime import datetime, timezone
-from typing import Any, Iterable
+from collections.abc import Iterable
+from datetime import UTC, datetime
+from typing import Any
 
 import httpx
 
@@ -183,7 +184,7 @@ class RedditCrawler:
     def has_credentials(self) -> bool:
         return bool(self._client_id and self._client_secret)
 
-    async def __aenter__(self) -> "RedditCrawler":
+    async def __aenter__(self) -> RedditCrawler:
         if self._client is None:
             self._client = await self._build_client()
         return self
@@ -392,9 +393,9 @@ def _post_to_article(d: dict, *, subreddit: str) -> RawArticle:
     author = d.get("author") or ""
     created_utc = float(d.get("created_utc") or 0.0)
     published_at = (
-        datetime.fromtimestamp(created_utc, tz=timezone.utc)
+        datetime.fromtimestamp(created_utc, tz=UTC)
         if created_utc
-        else datetime.now(tz=timezone.utc)
+        else datetime.now(tz=UTC)
     )
     score = int(d.get("score") or 0)
     upvote_ratio = float(d.get("upvote_ratio") or 0.0)

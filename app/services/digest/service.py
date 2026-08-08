@@ -18,7 +18,7 @@ NotificationService 内部按 report_type=="daily_digest" 分流。
 from __future__ import annotations
 
 import logging
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 from typing import Any
 
 from sqlalchemy import select
@@ -68,7 +68,7 @@ class DailyDigestService:
             target_date = datetime.now(SHANGHAI).date()
 
         digest = self._get_or_create(target_date)
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         digest.status = "running"
         digest.started_at = now
         digest.error_msg = None
@@ -86,7 +86,7 @@ class DailyDigestService:
         except Exception as exc:
             digest.status = "failed"
             digest.error_msg = str(exc)
-            digest.finished_at = datetime.now(timezone.utc)
+            digest.finished_at = datetime.now(UTC)
             self.db.commit()
             raise
 
@@ -170,7 +170,7 @@ class DailyDigestService:
         digest.llm_model = result.llm_model
         digest.status = result.status
         digest.error_msg = None
-        digest.finished_at = datetime.now(timezone.utc)
+        digest.finished_at = datetime.now(UTC)
 
     def _upsert_report_metadata(self, digest: DailyDigest) -> ReportMetadata:
         """report_metadata 伴随行：通知通道沿用 report_id 语义。

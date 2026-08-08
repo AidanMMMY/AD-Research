@@ -299,8 +299,8 @@ class FundFlowProvider:
         else:
             market = "sh"
 
-        end_str = date.today().strftime("%Y%m%d")
-        start_str = (date.today() - timedelta(days=days * 2)).strftime("%Y%m%d")
+        date.today().strftime("%Y%m%d")
+        (date.today() - timedelta(days=days * 2)).strftime("%Y%m%d")
 
         for attempt in range(_MAX_RETRIES):
             try:

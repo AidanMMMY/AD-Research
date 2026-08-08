@@ -4,12 +4,13 @@
       (使最新日因子 = 1.0，符合"后复权因子"的通用语义)
 """
 import sys
+
 sys.path.insert(0, '/app')
 import logging
-from datetime import date
+
 from sqlalchemy import text
+
 from app.core.database import SessionLocal
-from app.models.etf import InstrumentDailyBar
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s [%(levelname)s] %(message)s')
 logger = logging.getLogger("normalize_adj")

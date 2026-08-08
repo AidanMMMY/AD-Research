@@ -13,8 +13,7 @@ Coverage:
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
-from types import SimpleNamespace
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from fastapi.testclient import TestClient
@@ -31,7 +30,6 @@ from app.models.news_source_meta import (
 )
 from app.services.news._model_loader import NewsArticle
 from app.services.news.source_meta_seed import SOURCE_META_SEED, seed_source_meta
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -118,6 +116,7 @@ class _FakeUser:
 def api_client(learning_db):
     """TestClient mounting only the learning router against ``learning_db``."""
     from fastapi import FastAPI
+
     from app.api.v1 import learning as learning_module
 
     def _override_db():
@@ -258,7 +257,7 @@ class TestSeed:
 @pytest.fixture
 def seeded_db(learning_db):
     """两打标源 + 一未打标源的文章，覆盖过滤/排序/窗口分支。"""
-    now = datetime.now(tz=timezone.utc).replace(tzinfo=None)
+    now = datetime.now(tz=UTC).replace(tzinfo=None)
     _add_meta(learning_db, source="deep_macro", content_type="deep", topic="macro")
     _add_meta(learning_db, source="edu_alloc", content_type="edu", topic="allocation", difficulty="beginner")
     # 未打标源（快讯）——绝不能出现在 feed 里
@@ -493,7 +492,7 @@ class TestWechatCategoryPersisted:
             source="wechat_zepinghongguan",
             url="https://example.com/1",
             title="t",
-            published_at=datetime.now(tz=timezone.utc),
+            published_at=datetime.now(tz=UTC),
             extra={"category": "macro"},
         )
         assert _derive_category(raw) == "macro"

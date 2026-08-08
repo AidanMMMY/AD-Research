@@ -41,7 +41,7 @@ from __future__ import annotations
 import json
 import logging
 import re
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from app.services.news.crawler.base import BaseCrawler, _Response
@@ -152,9 +152,9 @@ class ClsCrawler(BaseCrawler):
             return None
 
         try:
-            published_at = datetime.fromtimestamp(int(item.get("ctime", 0)), tz=timezone.utc)
+            published_at = datetime.fromtimestamp(int(item.get("ctime", 0)), tz=UTC)
         except (TypeError, ValueError, OSError):
-            published_at = datetime.now(tz=timezone.utc)
+            published_at = datetime.now(tz=UTC)
 
         return RawArticle(
             source=self.source_name,

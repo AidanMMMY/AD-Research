@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import asyncio
 import time
-from typing import Awaitable, Callable
+from collections.abc import Awaitable, Callable
 
 
 class AsyncTokenBucket:
@@ -98,7 +98,7 @@ class AsyncTokenBucket:
                 finally:
                     await self._lock.acquire()
 
-    async def __aenter__(self) -> "AsyncTokenBucket":
+    async def __aenter__(self) -> AsyncTokenBucket:
         await self.acquire()
         return self
 

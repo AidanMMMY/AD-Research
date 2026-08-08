@@ -29,7 +29,7 @@ from __future__ import annotations
 import logging
 import re
 import xml.etree.ElementTree as ET
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from email.utils import parsedate_to_datetime
 
 import httpx
@@ -60,7 +60,7 @@ class CoinDeskCrawler:
         self._owns_client = client is None
         self._limiter = rate_limiter or AsyncTokenBucket(self.rate_limit_per_min)
 
-    async def __aenter__(self) -> "CoinDeskCrawler":
+    async def __aenter__(self) -> CoinDeskCrawler:
         if self._client is None:
             self._client = await self._build_client()
         return self
@@ -130,7 +130,7 @@ class CoinDeskCrawler:
             if not title or not link:
                 continue
 
-            published_at = _parse_pub_date(pub) or datetime.now(tz=timezone.utc)
+            published_at = _parse_pub_date(pub) or datetime.now(tz=UTC)
             plain_summary = _strip_html(description) or None
             art = RawArticle(
                 source=self.source_name,
@@ -159,8 +159,8 @@ def _parse_pub_date(value: str) -> datetime | None:
         if dt is None:
             return None
         if dt.tzinfo is None:
-            dt = dt.replace(tzinfo=timezone.utc)
-        return dt.astimezone(timezone.utc)
+            dt = dt.replace(tzinfo=UTC)
+        return dt.astimezone(UTC)
     except (TypeError, ValueError):
         return None
 

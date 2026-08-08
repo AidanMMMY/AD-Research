@@ -5,6 +5,7 @@ accessible only by admin users.
 """
 
 import asyncio
+import contextlib
 import json
 import logging
 
@@ -12,10 +13,10 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import StreamingResponse
 from jose import JWTError, jwt
 
-from app.config import auth_settings
 from app.api.deps import require_admin
+from app.config import auth_settings
 from app.schemas.auth import UserResponse
-from app.schemas.deployment import ContainerStats, DeploymentRun, LogLine, ServerHealth
+from app.schemas.deployment import DeploymentRun, ServerHealth
 from app.services.deployment_service import (
     get_container_logs,
     get_run_logs,
@@ -190,10 +191,8 @@ async def api_stream_logs(
         except Exception:
             logger.exception("SSE stream error for %s", container)
         finally:
-            try:
+            with contextlib.suppress(Exception):
                 pubsub.unsubscribe(channel)
-            except Exception:
-                pass
 
     return StreamingResponse(
         event_generator(),

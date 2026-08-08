@@ -12,7 +12,6 @@ Focuses on:
 from datetime import date, timedelta
 from unittest.mock import patch
 
-import pandas as pd
 import pytest
 
 from app.data.pipelines.listing_events import (
@@ -22,7 +21,6 @@ from app.data.pipelines.listing_events import (
     _to_upsert_dict,
 )
 from app.models.listing import ListingEvent
-
 
 # ---------------------------------------------------------------------------
 # _coerce_date

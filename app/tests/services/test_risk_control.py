@@ -4,7 +4,7 @@ Uses a mock Settings object instead of real environment configuration
 so the master trading switch can be toggled on/off per test.
 """
 
-from datetime import datetime, timezone
+from datetime import datetime
 from decimal import Decimal
 from zoneinfo import ZoneInfo
 
@@ -17,7 +17,6 @@ from app.services.risk_control import (
     RiskCheckResult,
     RiskControl,
 )
-
 
 # RiskControl._today_start() is anchored in Asia/Shanghai.
 # We use the same zone in fixtures so SQLite compares consistently.
@@ -50,16 +49,16 @@ def _make_settings(trading_enabled: bool = True) -> Settings:
 
 
 def _make_config(**overrides) -> LiveTradeConfig:
-    defaults = dict(
-        user_id=1,
-        name="test-config",
-        is_testnet=True,
-        is_enabled=True,
-        max_order_value=Decimal("100"),
-        max_daily_loss=Decimal("500"),
-        max_daily_orders=20,
-        allowed_symbols=None,
-    )
+    defaults = {
+        "user_id": 1,
+        "name": "test-config",
+        "is_testnet": True,
+        "is_enabled": True,
+        "max_order_value": Decimal("100"),
+        "max_daily_loss": Decimal("500"),
+        "max_daily_orders": 20,
+        "allowed_symbols": None,
+    }
     defaults.update(overrides)
     return LiveTradeConfig(**defaults)
 

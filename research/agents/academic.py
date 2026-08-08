@@ -7,7 +7,7 @@ import logging
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
-from research.agents.base import save_raw, save_note, safe_get
+from research.agents.base import safe_get, save_note, save_raw
 
 logger = logging.getLogger("research.agents.academic")
 
@@ -22,7 +22,6 @@ def _parse_arxiv_feed(url: str) -> list[dict]:
     if not resp:
         return []
     root = ET.fromstring(resp.content)
-    ns = {"atom": "http://www.w3.org/2005/Atom"}
     items = []
     # arXiv RSS uses <item> elements
     for item in root.findall(".//item")[:20]:

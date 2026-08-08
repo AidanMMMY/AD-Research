@@ -29,7 +29,7 @@ from __future__ import annotations
 import logging
 import re
 import xml.etree.ElementTree as ET
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from email.utils import parsedate_to_datetime
 
 from app.services.news.crawler.base import BaseCrawler, _Response
@@ -111,7 +111,7 @@ class XinhuaCrawler(BaseCrawler):
             author = (item.findtext("author") or item.findtext("dc:creator") or "").strip()
             if not title or not link:
                 continue
-            published_at = _parse_pub_date(pub) or datetime.now(tz=timezone.utc)
+            published_at = _parse_pub_date(pub) or datetime.now(tz=UTC)
             # Strip any HTML tags Xinhua sometimes leaves inside <description>.
             summary = _strip_html(description) if description else None
 
@@ -183,5 +183,5 @@ def _parse_pub_date(value: str) -> datetime | None:
     if dt is None:
         return None
     if dt.tzinfo is None:
-        dt = dt.replace(tzinfo=timezone.utc)
-    return dt.astimezone(timezone.utc)
+        dt = dt.replace(tzinfo=UTC)
+    return dt.astimezone(UTC)

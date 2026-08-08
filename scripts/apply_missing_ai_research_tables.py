@@ -29,11 +29,10 @@ from __future__ import annotations
 import logging
 import os
 import sys
-from typing import Iterable
+from collections.abc import Iterable
 
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import Engine
-
 
 logger = logging.getLogger("apply_missing_ai_research_tables")
 

@@ -35,7 +35,6 @@ import pandas as pd
 from app.data.repositories import price_repository
 from app.strategies.base import StrategyRegistry
 
-
 # ---------------------------------------------------------------------------
 # China A-share friction constants (standard retail rates, mid-2024).
 # ---------------------------------------------------------------------------

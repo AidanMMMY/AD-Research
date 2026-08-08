@@ -18,9 +18,10 @@ import json
 import logging
 import os
 import sys
-from datetime import datetime, timedelta, timezone
+from collections.abc import Iterable
+from datetime import UTC, datetime, timedelta, timezone
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
 
 import requests
 from requests.adapters import HTTPAdapter
@@ -35,7 +36,7 @@ DEFAULT_USER_AGENT = (
 )
 
 CST = timezone(timedelta(hours=8))  # China Standard Time
-UTC = timezone.utc
+UTC = UTC
 
 
 # ---------- Logging ----------
@@ -152,7 +153,7 @@ def parse_dt(value: Any) -> datetime | None:
     """Best-effort parse ISO-8601 / RFC-822 / epoch into tz-aware UTC datetime."""
     if value is None:
         return None
-    if isinstance(value, (int, float)):
+    if isinstance(value, int | float):
         try:
             return datetime.fromtimestamp(float(value), tz=UTC)
         except (OverflowError, OSError, ValueError):
@@ -260,13 +261,11 @@ def first_nonempty(*vals: Any) -> Any:
 # Some older workers (xueqiu_hot, eastmoney_news, cls, reddit_finance) were
 # written against an earlier version of common.py. Re-export the old names.
 # ---------------------------------------------------------------------------
-import logging as _logging
-import time as _time
-import json as _json
 import datetime as _datetime
-from typing import Any as _Any, Callable as _Callable
+import json as _json
+import logging as _logging
 import os as _os
-import sys as _sys
+import time as _time
 
 LOG = _logging.getLogger("ad-research.worker")
 
@@ -308,13 +307,13 @@ def to_iso_utc(dt):
     if dt is None:
         return None
     try:
-        if isinstance(dt, (int, float)):
+        if isinstance(dt, int | float):
             ts = float(dt) / 1000.0 if dt > 1e11 else float(dt)
-            return _datetime.datetime.fromtimestamp(ts, tz=_datetime.timezone.utc).isoformat()
+            return _datetime.datetime.fromtimestamp(ts, tz=_datetime.UTC).isoformat()
         if isinstance(dt, str):
             try:
                 ms = int(dt)
-                return _datetime.datetime.fromtimestamp(ms / 1000.0, tz=_datetime.timezone.utc).isoformat()
+                return _datetime.datetime.fromtimestamp(ms / 1000.0, tz=_datetime.UTC).isoformat()
             except ValueError:
                 pass
             return dt
@@ -322,7 +321,7 @@ def to_iso_utc(dt):
             return dt.isoformat()
         if isinstance(dt, _datetime.datetime):
             if dt.tzinfo is None:
-                dt = dt.replace(tzinfo=_datetime.timezone.utc)
+                dt = dt.replace(tzinfo=_datetime.UTC)
             return dt.isoformat()
     except Exception:
         return None

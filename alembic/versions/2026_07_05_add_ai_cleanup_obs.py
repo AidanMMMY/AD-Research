@@ -38,17 +38,16 @@ Revises: 2026_07_05_add_user_id_to_8_business_tables
 Create Date: 2026-07-05 12:00:00.000000
 """
 
-from typing import Union
 
-from alembic import op
 import sqlalchemy as sa
 
+from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = "2026_07_05_add_ai_cleanup_obs"
-down_revision: Union[str, None] = "2026_07_05_add_user_id_to_8_business_tables"
-branch_labels: Union[str, None] = None
-depends_on: Union[str, None] = None
+down_revision: str | None = "2026_07_05_add_user_id_to_8_business_tables"
+branch_labels: str | None = None
+depends_on: str | None = None
 
 
 def upgrade() -> None:

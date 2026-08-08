@@ -37,7 +37,7 @@ from app.core.cache import cache_invalidate_pattern
 from app.core.redis_client import get_redis_client
 from app.data.pipelines.base import ETLPipeline
 from app.data.providers.tiingo_provider import TiingoProvider
-from app.models.etf import InstrumentDailyBar, ETFInfo
+from app.models.etf import ETFInfo, InstrumentDailyBar
 
 logger = logging.getLogger(__name__)
 

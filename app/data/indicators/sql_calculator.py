@@ -40,8 +40,8 @@ from __future__ import annotations
 import logging
 import os
 import time
+from collections.abc import Iterable
 from datetime import date
-from typing import Iterable
 
 import pandas as pd
 from sqlalchemy import bindparam, text
@@ -428,7 +428,7 @@ def build_indicator_query_sql(
     ma_frags = ",\n            ".join(
         f"AVG(b.qfq_close) OVER (PARTITION BY b.etf_code ORDER BY b.trade_date "
         f"ROWS BETWEEN {w - 1} PRECEDING AND CURRENT ROW) AS {col}"
-        for col, w in zip(ma_labels, config.ma_windows)
+        for col, w in zip(ma_labels, config.ma_windows, strict=False)
     )
     # Period returns on 前复权 close. PostgreSQL's GREATEST/LEAST skip
     # NULL arguments, so clamping ``LAG(...)`` inline would turn a
@@ -721,7 +721,7 @@ def _execute_indicator_query(
         conn.execute(text(f"SET statement_timeout = '{INDICATOR_SQL_STATEMENT_TIMEOUT_MS}'"))
         with conn.execute(stmt, params) as result:
             columns = result.keys()
-            rows = [dict(zip(columns, row)) for row in result.fetchall()]
+            rows = [dict(zip(columns, row, strict=False)) for row in result.fetchall()]
     finally:
         elapsed = time.perf_counter() - start
         conn.detach()

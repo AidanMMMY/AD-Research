@@ -43,11 +43,13 @@ Behaviour::
 
 from __future__ import annotations
 
+import contextlib
 import logging
 import time
-from datetime import datetime, timezone
+from collections.abc import Callable
+from datetime import UTC, datetime
 from functools import wraps
-from typing import Any, Callable
+from typing import Any
 
 from app.models.etl import ETLLog
 
@@ -76,7 +78,7 @@ def start_log(job_id: str, source: str | None = None) -> tuple[Any, Any]:
             job_name=job_id,
             source=source,
             status="running",
-            start_time=datetime.now(timezone.utc),
+            start_time=datetime.now(UTC),
         )
         db.add(log_row)
         db.commit()
@@ -110,7 +112,7 @@ def finish_log(
         return
     try:
         log_row.status = status
-        log_row.end_time = datetime.now(timezone.utc)
+        log_row.end_time = datetime.now(UTC)
         log_row.records_count = records_count
         if error_msg:
             log_row.error_msg = error_msg[:1000]
@@ -124,10 +126,8 @@ def finish_log(
         db.commit()
     except Exception as exc:  # pragma: no cover - defensive
         logger.debug("etl_log finish update failed: %s", exc)
-        try:
+        with contextlib.suppress(Exception):
             db.rollback()
-        except Exception:
-            pass
     finally:
         try:
             db.close()

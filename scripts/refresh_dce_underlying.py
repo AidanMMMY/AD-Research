@@ -37,7 +37,7 @@ import logging
 import os
 import sys
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from datetime import date, datetime, timedelta
+from datetime import date, timedelta
 
 # Make `app` importable when running from the scripts/ directory.
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -211,10 +211,7 @@ def main() -> int:
 
     session = SessionLocal()
     try:
-        if args.roots:
-            roots = sorted({r.upper() for r in args.roots})
-        else:
-            roots = _dce_roots(session)
+        roots = sorted({r.upper() for r in args.roots}) if args.roots else _dce_roots(session)
         if not roots:
             logger.error("No DCE roots to process.")
             return 1

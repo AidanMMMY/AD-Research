@@ -26,11 +26,10 @@ import logging
 import os
 import sys
 import time
-from datetime import date, datetime
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-import numpy as np
 import pandas as pd
 from sqlalchemy import text
 from sqlalchemy.orm import Session
@@ -59,7 +58,7 @@ def _to_internal_code(ts_code: str) -> str:
 def _load_progress(path: str) -> set[str]:
     """Load set of completed codes from progress file."""
     try:
-        with open(path, "r", encoding="utf-8") as f:
+        with open(path, encoding="utf-8") as f:
             data = json.load(f)
         return set(data.get("completed", []))
     except Exception:

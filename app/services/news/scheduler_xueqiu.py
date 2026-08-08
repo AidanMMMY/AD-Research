@@ -24,8 +24,9 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from datetime import datetime, timedelta, timezone
-from typing import Any, Callable, Iterable
+from collections.abc import Callable, Iterable
+from datetime import UTC, datetime, timedelta
+from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -38,7 +39,6 @@ from app.models.news import XueqiuFetchState, XueqiuUserCache
 from app.services.news.sources.xueqiu import (
     RawXueqiuPost,
     XueqiuCrawler,
-    to_xueqiu_symbol,
 )
 from app.services.news.sources.xueqiu_auth import XueqiuAuth, XueqiuAuthError
 
@@ -79,7 +79,7 @@ def _select_watchlist(
         return []
 
     if last_seen:
-        rows = sorted(rows, key=lambda c: (last_seen.get(c) or datetime.min.replace(tzinfo=timezone.utc), c))
+        rows = sorted(rows, key=lambda c: (last_seen.get(c) or datetime.min.replace(tzinfo=UTC), c))
 
     return list(rows[:batch_size])
 
@@ -98,7 +98,7 @@ def _record_fetch_state(
     status: str,
     error: str | None = None,
 ) -> None:
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     next_at = now + timedelta(minutes=5)
     row = db.get(XueqiuFetchState, symbol)
     if row is None:
@@ -149,7 +149,7 @@ def _user_cache_is_fresh(db: Session, user_id: int, *, ttl_days: int) -> bool:
     row = db.get(XueqiuUserCache, user_id)
     if row is None or row.fetched_at is None:
         return False
-    return (datetime.now(timezone.utc) - row.fetched_at) < timedelta(days=ttl_days)
+    return (datetime.now(UTC) - row.fetched_at) < timedelta(days=ttl_days)
 
 
 # ---------------------------------------------------------------------------
@@ -275,8 +275,8 @@ async def run_xueqiu_crawl(
                 if posts:
                     await _refresh_user_cache(
                         db, crawler, posts, ttl_days=user_ttl_days,
-                        on_record=lambda payload: _record_user(
-                            db,
+                        on_record=lambda payload, _db=db: _record_user(
+                            _db,
                             user_id=int(payload["id"]),
                             payload=payload,
                         ),

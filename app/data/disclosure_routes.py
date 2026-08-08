@@ -8,15 +8,14 @@
 """
 
 import logging
-from datetime import date, datetime, timezone
-from typing import Optional
+from datetime import UTC, datetime
 
 from sqlalchemy import func, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
-from app.models.etf import ETFInfo
 from app.models.disclosure_route import CompanyDisclosureRoute
+from app.models.etf import ETFInfo
 
 logger = logging.getLogger(__name__)
 
@@ -150,7 +149,7 @@ def update_ir_url(
             ir_website_url=ir_url,
             ir_discovery_method=method,
             verification_status="verified",
-            last_verified_at=datetime.now(timezone.utc),
+            last_verified_at=datetime.now(UTC),
             verification_notes="agent 发现",
         ).on_conflict_do_update(
             index_elements=["code"],
@@ -158,7 +157,7 @@ def update_ir_url(
                 "ir_website_url": ir_url,
                 "ir_discovery_method": method,
                 "verification_status": "verified",
-                "last_verified_at": datetime.now(timezone.utc),
+                "last_verified_at": datetime.now(UTC),
                 "verification_notes": "agent 发现",
             },
         )
@@ -179,13 +178,13 @@ def update_verification(
             name="",
             exchange_code="SSE",
             verification_status=status,
-            last_verified_at=datetime.now(timezone.utc),
+            last_verified_at=datetime.now(UTC),
             verification_notes=notes,
         ).on_conflict_do_update(
             index_elements=["code"],
             set_={
                 "verification_status": status,
-                "last_verified_at": datetime.now(timezone.utc),
+                "last_verified_at": datetime.now(UTC),
                 "verification_notes": notes,
             },
         )

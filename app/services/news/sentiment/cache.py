@@ -156,7 +156,6 @@ class SentimentCache:
         day = day or date.today()
         out: dict = {"date": day.isoformat(), "by_model": {}}
         total_calls = 0
-        total_cost = 0.0
         # scan for the day, cheap because key space is bounded
         for key in self.redis.scan_iter(f"{self.PREFIX_LLM_CALLS}:{day.isoformat()}:*"):
             model = key.split(":")[-1]
@@ -196,4 +195,4 @@ class SentimentCache:
 
     def top_hot_symbols(self, n: int = 50) -> list[str]:
         items = self.redis.zrevrange(self.PREFIX_HOT, 0, n - 1)
-        return [s for s in items]
+        return list(items)

@@ -16,7 +16,7 @@ token bucket to drain.
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 import httpx
@@ -33,7 +33,6 @@ from app.services.news.sources.reddit import (
 )
 from app.services.news.sources.sec_edgar import SUPPORTED_FORMS, SecEdgarCrawler, _parse_submissions
 from app.services.news.sources.yahoo_rss import YahooFinanceCrawler
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -110,7 +109,7 @@ async def test_yahoo_rss_parses_articles(no_rate_limit):
     assert any("MSFT.US" in s for s in sym_sets)
     # Date parsed to UTC.
     assert all(a.published_at.tzinfo is not None for a in arts)
-    assert all(a.published_at == a.published_at.astimezone(timezone.utc) for a in arts)
+    assert all(a.published_at == a.published_at.astimezone(UTC) for a in arts)
     assert any("rss/2.0/headline" in u and "s=AAPL" in u for u in captured)
 
 
@@ -245,7 +244,7 @@ def test_sec_parse_submissions_filters_forms():
 
 
 def test_sec_parse_submissions_since_filter():
-    cutoff = datetime(2026, 4, 1, tzinfo=timezone.utc)
+    cutoff = datetime(2026, 4, 1, tzinfo=UTC)
     arts = _parse_submissions(
         _sec_submissions_payload(),
         ticker="AAPL",

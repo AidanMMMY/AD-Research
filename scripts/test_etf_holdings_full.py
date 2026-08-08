@@ -5,7 +5,6 @@ legacy 31.5 min per-ETF loop.
 """
 import sys
 import time
-from datetime import datetime
 
 from app.core.database import SessionLocal
 from app.data.pipelines.etf_holdings import ETFHoldingsPipeline

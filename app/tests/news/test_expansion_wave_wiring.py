@@ -91,7 +91,6 @@ class TestEduWiring:
 
     def test_batch_jobs_materialized(self):
         from app.services.news import scheduler_jobs as sj
-
         from app.services.news.sources.edu_batch import EDU_BATCHES
 
         for _job_id, _label, batch in sj.EDU_BATCH_JOBS:

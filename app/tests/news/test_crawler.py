@@ -21,7 +21,7 @@ from __future__ import annotations
 import asyncio
 import json
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import httpx
 import pytest
@@ -34,7 +34,6 @@ from app.services.news.crawler import (
     Stats,
 )
 from app.services.news.crawler.base import _Response
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -58,7 +57,7 @@ class _DummyCrawler(BaseCrawler):
                 source=self.source_name,
                 url=response.url,
                 title="parsed",
-                published_at=datetime.now(tz=timezone.utc),
+                published_at=datetime.now(tz=UTC),
             )
         ]
 
@@ -82,10 +81,10 @@ class TestRawArticle:
         assert a.engagement == {}
         assert a.extra == {}
         # tz-naive inputs are forced to UTC.
-        assert a.published_at.tzinfo is timezone.utc
+        assert a.published_at.tzinfo is UTC
 
     def test_to_dict_round_trip(self):
-        ts = datetime(2026, 7, 1, 12, 0, 0, tzinfo=timezone.utc)
+        ts = datetime(2026, 7, 1, 12, 0, 0, tzinfo=UTC)
         a = RawArticle(
             source="reddit_wsb",
             url="https://reddit.com/r/wsb/x",
@@ -110,14 +109,14 @@ class TestRawArticle:
         assert rehydrated.body == a.body
         assert rehydrated.engagement == a.engagement
         assert rehydrated.published_at == a.published_at
-        assert rehydrated.published_at.tzinfo is timezone.utc
+        assert rehydrated.published_at.tzinfo is UTC
 
     def test_identity_key_prefers_source_id(self):
         a = RawArticle(
             source="x",
             url="https://example.com/a",
             title="t",
-            published_at=datetime.now(tz=timezone.utc),
+            published_at=datetime.now(tz=UTC),
             source_id="abc",
         )
         assert a.identity_key() == "x:abc"
@@ -127,7 +126,7 @@ class TestRawArticle:
             source="x",
             url="https://example.com/a",
             title="t",
-            published_at=datetime.now(tz=timezone.utc),
+            published_at=datetime.now(tz=UTC),
         )
         assert a.identity_key() == "x:https://example.com/a"
 
@@ -136,7 +135,7 @@ class TestRawArticle:
             source="x",
             url="https://example.com/a",
             title="t",
-            published_at=datetime.now(tz=timezone.utc),
+            published_at=datetime.now(tz=UTC),
         )
         raw = a.to_json()
         # No exceptions on load.

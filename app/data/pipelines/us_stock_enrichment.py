@@ -16,7 +16,7 @@ import requests
 from sqlalchemy.orm import Session
 
 from app.data.pipelines.base import ETLPipeline, ETLResult
-from app.data.providers.base import DataProvider, ETFInfo, MarketHours
+from app.data.providers.base import DataProvider, MarketHours
 from app.models.etf import ETFInfo
 
 logger = logging.getLogger(__name__)
@@ -98,7 +98,6 @@ class USStockEnrichmentPipeline(ETLPipeline):
 
     def _fetch_sector_lookup(self) -> dict[str, dict[str, str | None]]:
         """Download S&P 500 CSV and build a ticker-to-metadata lookup."""
-        import requests
 
         resp = requests.get(_SP500_CSV_URL, timeout=30)
         resp.raise_for_status()

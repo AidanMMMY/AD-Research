@@ -34,7 +34,7 @@ flake never blanks out the daily refresh.
 import json
 import logging
 import time
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 from pathlib import Path
 from typing import Any
 
@@ -351,7 +351,7 @@ def refresh_all(
     as a cap so a runaway registry can't blow out memory.
     """
     registry = load_keyword_registry()
-    started = datetime.now(timezone.utc)
+    started = datetime.now(UTC)
 
     rows_by_source: dict[str, list[dict[str, Any]]] = {"baidu": [], "google": []}
 
@@ -386,7 +386,7 @@ def refresh_all(
                     }
                 )
 
-    finished = datetime.now(timezone.utc)
+    finished = datetime.now(UTC)
     return {
         "started_at": started.isoformat(),
         "finished_at": finished.isoformat(),

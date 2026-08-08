@@ -11,7 +11,7 @@ from __future__ import annotations
 import logging
 import os
 import threading
-from typing import Iterable
+from collections.abc import Iterable
 
 logger = logging.getLogger(__name__)
 
@@ -39,7 +39,7 @@ class ProxyPool:
             logger.info("ProxyPool initialized with %d proxies", len(self._proxies))
 
     @classmethod
-    def from_env(cls, env_var: str = "PROXY_LIST") -> "ProxyPool":
+    def from_env(cls, env_var: str = "PROXY_LIST") -> ProxyPool:
         """Build a ProxyPool from a comma-separated env variable.
 
         The env value format is ``"http://a:1,http://b:2,..."``.

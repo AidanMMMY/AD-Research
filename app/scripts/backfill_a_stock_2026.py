@@ -47,10 +47,8 @@ Workflow:
 
 import argparse
 import logging
-import sys
 import time
-from datetime import date, datetime, timedelta
-from typing import Optional
+from datetime import date, timedelta
 
 import pandas as pd
 from sqlalchemy.dialects.postgresql import insert
@@ -103,17 +101,17 @@ def backfill_bars(
     and are skipped automatically.
     """
     from app.data.providers.tushare_provider import TushareProvider
-    from app.models.etf import InstrumentDailyBar, ETFInfo
+    from app.models.etf import ETFInfo, InstrumentDailyBar
 
     provider = TushareProvider()
 
     # Pre-load known A-share stock codes
-    known_codes: set[str] = set(
+    known_codes: set[str] = {
         row[0]
         for row in db.query(ETFInfo.code)
         .filter(ETFInfo.market == "A股", ETFInfo.instrument_type == "STOCK")
         .all()
-    )
+    }
     logger.info("Known A-share stock codes: %d", len(known_codes))
     if not known_codes:
         logger.error("No A-share stocks registered. Run discovery pipeline first.")
@@ -236,7 +234,7 @@ def backfill_bars_per_stock(
         batch_offset: Starting offset into sorted stock list.
     """
     from app.data.providers.tushare_provider import TushareProvider
-    from app.models.etf import InstrumentDailyBar, ETFInfo
+    from app.models.etf import ETFInfo, InstrumentDailyBar
 
     provider = TushareProvider()
 
@@ -360,12 +358,12 @@ def backfill_fundamental(
 
     provider = TushareProvider()
 
-    known_codes: set[str] = set(
+    known_codes: set[str] = {
         row[0]
         for row in db.query(ETFInfo.code)
         .filter(ETFInfo.market == "A股", ETFInfo.instrument_type == "STOCK")
         .all()
-    )
+    }
     logger.info("Known A-share stock codes: %d", len(known_codes))
 
     dates = date_range(start, end)

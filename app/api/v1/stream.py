@@ -10,9 +10,8 @@ import asyncio
 import json
 import logging
 from collections.abc import AsyncGenerator
-from datetime import datetime, timezone
+from datetime import datetime
 from decimal import Decimal
-from typing import Optional
 
 from fastapi import APIRouter, Query
 from fastapi.responses import StreamingResponse
@@ -90,7 +89,7 @@ def _candidate_codes(code: str) -> list[str]:
     return candidates
 
 
-def _fetch_snapshot(db: Session, code: str) -> Optional[dict]:
+def _fetch_snapshot(db: Session, code: str) -> dict | None:
     """Look up a single instrument's latest price snapshot.
 
     Returns ``None`` if neither ETFInfo nor InstrumentDailyBar has any row
@@ -103,11 +102,11 @@ def _fetch_snapshot(db: Session, code: str) -> Optional[dict]:
     if not candidates:
         return None
 
-    matched_code: Optional[str] = None
+    matched_code: str | None = None
 
     # 1) Try ETFInfo for any candidate form (preferred because it gives us
     #    the human-readable name and market).
-    instrument: Optional[ETFInfo] = None
+    instrument: ETFInfo | None = None
     for cand in candidates:
         instrument = (
             db.query(ETFInfo).filter(ETFInfo.code == cand).first()
@@ -134,7 +133,7 @@ def _fetch_snapshot(db: Session, code: str) -> Optional[dict]:
     #    rather than an ETF. Fall back to InstrumentDailyBar — it covers
     #    stocks and ETFs alike.
     if instrument is None:
-        bar_code: Optional[str] = None
+        bar_code: str | None = None
         for cand in candidates:
             row = (
                 db.query(InstrumentDailyBar.etf_code)
@@ -214,7 +213,7 @@ def _fetch_snapshot(db: Session, code: str) -> Optional[dict]:
     }
 
 
-def _collect_payload(codes: list[str]) -> Optional[dict]:
+def _collect_payload(codes: list[str]) -> dict | None:
     """Fetch all snapshots in one short-lived session.
 
     The session is fully closed (returning its pooled connection)

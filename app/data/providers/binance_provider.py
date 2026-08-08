@@ -11,7 +11,7 @@ Rate limit: 0.1 s sleep per request (~10 req/s) leaves comfortable headroom.
 
 import json
 import time
-from datetime import date, datetime, timedelta, timezone
+from datetime import UTC, date, datetime, timedelta
 
 import pandas as pd
 import requests
@@ -63,10 +63,6 @@ _DEFAULT_CRYPTO_TOP = _DEFAULT_CRYPTO[:10]
 
 
 class BinanceProvider(DataProvider):
-    @property
-    def name(self) -> str:
-        return "binance"
-
     """Binance data provider for cryptocurrency daily bars.
 
     Uses Binance's public REST API (no authentication required for the
@@ -234,10 +230,10 @@ class BinanceProvider(DataProvider):
         # the target day's candle (open_time = target_date 00:00 UTC) is
         # included even when the container runs in Asia/Shanghai timezone.
         start_dt = datetime.combine(
-            start_date, datetime.min.time(), tzinfo=timezone.utc
+            start_date, datetime.min.time(), tzinfo=UTC
         )
         end_dt = datetime.combine(
-            end_date + timedelta(days=1), datetime.min.time(), tzinfo=timezone.utc
+            end_date + timedelta(days=1), datetime.min.time(), tzinfo=UTC
         )
         start_ms = int(start_dt.timestamp() * 1000)
         end_ms = int(end_dt.timestamp() * 1000)
@@ -278,7 +274,7 @@ class BinanceProvider(DataProvider):
                     # conversion to UTC so the trade date does not depend
                     # on the container's local timezone.
                     trade_date_val = datetime.fromtimestamp(
-                        open_time_ms / 1000, tz=timezone.utc
+                        open_time_ms / 1000, tz=UTC
                     ).date()
                     open_px = float(candle[1])
                     close_px = float(candle[4])

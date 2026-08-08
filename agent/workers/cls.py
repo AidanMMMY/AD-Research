@@ -52,12 +52,13 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import contextlib
 import json
 import logging
 import os
 import sys
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -116,7 +117,7 @@ def _iso_utc(ts: Any) -> str | None:
         v = float(ts)
         if v > 1e11:  # ms
             v = v / 1000.0
-        return datetime.fromtimestamp(v, tz=timezone.utc).isoformat()
+        return datetime.fromtimestamp(v, tz=UTC).isoformat()
     except (TypeError, ValueError, OSError, OverflowError):
         return str(ts) if ts else None
 
@@ -158,7 +159,7 @@ def _write_output(path: str | None, items: list, *,
     Path(out_path).parent.mkdir(parents=True, exist_ok=True)
     payload = {
         "source": source,
-        "fetched_at": datetime.now(tz=timezone.utc)
+        "fetched_at": datetime.now(tz=UTC)
             .isoformat(timespec="seconds").replace("+00:00", "Z"),
         "count": len(items),
         "method_attempted": method_attempted,
@@ -423,10 +424,8 @@ def collect_playwright(*, hours: int, timeout: int, headless: bool) -> tuple[lis
                     })
                 LOG.info("scraped %d telegraph IDs from rendered DOM", len(items))
 
-            try:
+            with contextlib.suppress(Exception):
                 context.close()
-            except Exception:
-                pass
     except Exception as e:  # noqa: BLE001
         LOG.warning("playwright fallback failed: %s: %s",
                     type(e).__name__, e)
@@ -487,7 +486,7 @@ def main() -> int:
     _configure_logging(args.verbose)
 
     if args.output is None:
-        ts = datetime.now(tz=timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+        ts = datetime.now(tz=UTC).strftime("%Y%m%dT%H%M%SZ")
         args.output = os.path.join(args.data_root, "cls", f"{ts}.json")
 
     profiles = ([args.impersonate] if args.impersonate

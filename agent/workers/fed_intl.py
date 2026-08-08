@@ -15,7 +15,6 @@ Usage:
 """
 from __future__ import annotations
 
-import argparse
 import sys
 from pathlib import Path
 from typing import Any
@@ -113,9 +112,10 @@ def fetch_source(session, key: str, cfg: dict[str, Any], logger) -> list[dict]:
     # Homepage scrape fallback (helps when RSS is blocked, e.g. IMF)
     if not items and cfg.get("homepage"):
         try:
-            from common import http_get as _http_get  # local alias for readability
             import re as _re
             from urllib.parse import urljoin as _urljoin
+
+            from common import http_get as _http_get  # local alias for readability
             resp = _http_get(session, cfg["homepage"], timeout=20)
             if resp is not None and resp.status_code == 200:
                 html = resp.text

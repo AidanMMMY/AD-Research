@@ -20,7 +20,7 @@ Region tag:
 
 import logging
 from dataclasses import dataclass
-from datetime import date, datetime, timedelta, timezone
+from datetime import UTC, date, datetime, timedelta
 from typing import Any
 
 from sqlalchemy import func
@@ -346,12 +346,12 @@ class FredService:
                 "written": 0,
                 "series_count": 0,
                 "failed": [m.series_id for m, _ in _SERIES_ALL],
-                "started_at": datetime.now(timezone.utc),
-                "finished_at": datetime.now(timezone.utc),
+                "started_at": datetime.now(UTC),
+                "finished_at": datetime.now(UTC),
                 "skipped_reason": "FRED_API_KEY not configured",
             }
 
-        started = datetime.now(timezone.utc)
+        started = datetime.now(UTC)
         end = date.today()
         start = end - timedelta(days=lookback_days)
 
@@ -413,7 +413,7 @@ class FredService:
             if own_session:
                 db.close()
 
-        finished = datetime.now(timezone.utc)
+        finished = datetime.now(UTC)
         logger.info(
             "FRED refresh done: written=%d series_count=%d failed=%d elapsed=%.1fs",
             written, total_series, len(failed),

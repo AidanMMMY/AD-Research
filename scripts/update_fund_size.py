@@ -43,7 +43,6 @@ sys.path.insert(0, str(PROJECT_ROOT))
 from app.core.database import SessionLocal
 from app.models.etf import ETFInfo
 
-
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------

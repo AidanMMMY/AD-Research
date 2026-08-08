@@ -22,7 +22,7 @@ import hashlib
 import json
 import logging
 import re
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from simhash import Simhash
@@ -59,8 +59,8 @@ _FUTURE_TOLERANCE = timedelta(minutes=15)
 def _clamp_future_published_at(ts: datetime, *, source: str) -> datetime:
     """Clamp future ``published_at`` to now (with a 15-minute tolerance)."""
     if ts.tzinfo is None:
-        ts = ts.replace(tzinfo=timezone.utc)
-    now = datetime.now(tz=timezone.utc)
+        ts = ts.replace(tzinfo=UTC)
+    now = datetime.now(tz=UTC)
     if ts > now + _FUTURE_TOLERANCE:
         logger.warning(
             "normalize: %s published_at %s 超前当前时间超过 %s，已钳制到 now",

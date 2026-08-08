@@ -12,7 +12,6 @@ import pytest
 
 from app.services.risk_control import CircuitBreaker, RiskCheckResult, RiskControl
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------

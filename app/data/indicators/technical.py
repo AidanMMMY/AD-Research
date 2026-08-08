@@ -167,7 +167,7 @@ def calculate_technical_indicators(
     # fixed by the ETFIndicator schema, but the lookback windows are read
     # from the market config so crypto can use 7/14/30/90 calendar days.
     ma_labels = ("ma5", "ma10", "ma20", "ma60")
-    for label, window in zip(ma_labels, ma_windows):
+    for label, window in zip(ma_labels, ma_windows, strict=False):
         result[label] = calc_ma(close, window=window)
 
     # RSI

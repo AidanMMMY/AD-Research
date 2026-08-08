@@ -15,8 +15,7 @@
 from __future__ import annotations
 
 import logging
-import math
-from datetime import date, datetime
+from datetime import date
 from typing import Any
 
 import pandas as pd
@@ -318,7 +317,6 @@ class FundFlowPipeline(ETLPipeline):
 
     def _run_etf(self) -> int:
         """ETF 现价 + 折溢价 + 份额差分 → etf_fund_flow。"""
-        spot = self._ff_provider if False else None  # 静态 lint
         spot_rows = self._etf_provider.fetch_etf_spot()
         fund_daily_rows = self._etf_provider.fetch_etf_fund_daily()
 

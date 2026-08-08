@@ -72,7 +72,7 @@ class AStockFundamentalPipeline(ETLPipeline):
         """
 
         target_date = self.target_date or (date.today() - timedelta(days=1))
-        target_date_str = target_date.strftime("%Y%m%d")
+        target_date.strftime("%Y%m%d")
 
         logger.info("AStockFundamentalPipeline: Fetching daily_basic for %s", target_date)
 
@@ -102,12 +102,12 @@ class AStockFundamentalPipeline(ETLPipeline):
             return 0
 
         # Filter to known instrument codes to avoid FK violations
-        known_codes = set(
+        known_codes = {
             row[0] for row in
             self.db.query(ETFInfo.code)
             .filter(ETFInfo.market == "A股", ETFInfo.instrument_type == "STOCK")
             .all()
-        )
+        }
         data = data[data["etf_code"].isin(known_codes)].copy()
         if data.empty:
             logger.warning("AStockFundamentalPipeline: No data after filtering to known codes")

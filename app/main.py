@@ -13,6 +13,8 @@ from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.types import Scope
 
+# Import strategy modules so all built-in strategies self-register.
+import app.strategies  # noqa: F401
 from app.api.v1 import (
     admin_users,
     analysis,
@@ -35,8 +37,8 @@ from app.api.v1 import (
     indicators,
     internal,
     learning,
-    live_trading,
     listing_events,
+    live_trading,
     macro,
     market_data,
     microstructure,
@@ -60,11 +62,7 @@ from app.api.v1 import (
     stream,
 )
 from app.config import get_settings
-from app.core.celery_app import celery_app
 from app.core.scheduler import init_scheduler, scheduler, shutdown_scheduler
-
-# Import strategy modules so all built-in strategies self-register.
-import app.strategies  # noqa: F401
 
 settings = get_settings()
 

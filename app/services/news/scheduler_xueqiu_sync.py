@@ -18,9 +18,10 @@ so the news-health endpoint can show real run history (job id
 """
 
 import asyncio
+import contextlib
 import logging
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from functools import wraps
 
 from app.models.etl import ETLLog
@@ -50,7 +51,7 @@ def _record_etl(job_id: str):
                 log_row = ETLLog(
                     job_name=job_id,
                     status="running",
-                    start_time=datetime.now(timezone.utc),
+                    start_time=datetime.now(UTC),
                 )
                 db.add(log_row)
                 db.commit()
@@ -64,15 +65,13 @@ def _record_etl(job_id: str):
                 try:
                     if log_row is not None:
                         log_row.status = "failed"
-                        log_row.end_time = datetime.now(timezone.utc)
+                        log_row.end_time = datetime.now(UTC)
                         log_row.records_count = 0
                         log_row.error_msg = str(exc)[:1000]
                         db.commit()
                 except Exception:  # pragma: no cover - defensive
-                    try:
+                    with contextlib.suppress(Exception):
                         db.rollback()
-                    except Exception:
-                        pass
                 finally:
                     db.close()
                 raise
@@ -80,7 +79,7 @@ def _record_etl(job_id: str):
             try:
                 if log_row is not None and isinstance(result, dict):
                     log_row.status = "success"
-                    log_row.end_time = datetime.now(timezone.utc)
+                    log_row.end_time = datetime.now(UTC)
                     records = int(result.get("posts") or 0)
                     log_row.records_count = records
                     log_row.extra_data = {
@@ -94,10 +93,8 @@ def _record_etl(job_id: str):
                     db.commit()
             except Exception as exc:  # pragma: no cover - best effort
                 logger.debug("etl_log finish update failed for %s: %s", job_id, exc)
-                try:
+                with contextlib.suppress(Exception):
                     db.rollback()
-                except Exception:
-                    pass
             finally:
                 db.close()
             return result
@@ -149,10 +146,8 @@ def _make_write_posts():
             return written
         except Exception as exc:  # pragma: no cover - defensive
             logger.warning("xueqiu write_posts raised: %s", exc)
-            try:
+            with contextlib.suppress(Exception):
                 db.rollback()
-            except Exception:
-                pass
             return 0
         finally:
             # Re-open the session for the next tick (commit() keeps it

@@ -40,7 +40,7 @@ import logging
 import re
 import time
 from dataclasses import dataclass, field
-from datetime import date, datetime
+from datetime import datetime
 from decimal import Decimal
 from typing import Any
 

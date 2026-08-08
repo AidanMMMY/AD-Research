@@ -10,7 +10,6 @@ API docs: https://platform.minimax.io/docs
 import os
 
 import httpx
-
 from openai import OpenAI
 
 from app.services.llm.base import LLMProvider
