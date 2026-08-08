@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import ReactECharts from 'echarts-for-react';
+import ReactECharts from 'echarts-for-react/lib/core';
+import echarts from '@/utils/echarts';
 import type { EChartsOption } from 'echarts';
 import { useIsMobile } from '@/hooks/useBreakpoint';
 import { resolveChartColors } from '@/utils/chartColors';
@@ -16,7 +17,7 @@ interface ScoreRadarProps {
 
 export default function ScoreRadar({ data }: ScoreRadarProps) {
   const isMobile = useIsMobile();
-  const [, setThemeTick] = useState(0);
+  const [themeTick, setThemeTick] = useState(0);
   useEffect(() => {
     const handler = () => setThemeTick((t) => t + 1);
     document.addEventListener('themechange', handler);
@@ -25,31 +26,31 @@ export default function ScoreRadar({ data }: ScoreRadarProps) {
 
   const accent = useMemo(
     () => resolveChartColors(['--accent'], ['#2563EB'])[0],
-    [],
+    [themeTick],
   );
   const accentDim = useMemo(
     () => resolveChartColors(['--accent-dim'], ['rgba(37, 99, 235, 0.08)'])[0],
-    [],
+    [themeTick],
   );
   const textTertiary = useMemo(
     () => resolveChartColors(['--text-tertiary'], ['#8894A4'])[0],
-    [],
+    [themeTick],
   );
   const textSecondary = useMemo(
     () => resolveChartColors(['--text-secondary'], ['#5B6778'])[0],
-    [],
+    [themeTick],
   );
   const borderDefault = useMemo(
     () => resolveChartColors(['--border-default'], ['#e5e7eb'])[0],
-    [],
+    [themeTick],
   );
   const bgElevated = useMemo(
     () => resolveChartColors(['--bg-elevated'], ['#F3F5F7'])[0],
-    [],
+    [themeTick],
   );
   const textPrimary = useMemo(
     () => resolveChartColors(['--text-primary'], ['#0F1115'])[0],
-    [],
+    [themeTick],
   );
 
   const option: EChartsOption = {
@@ -108,5 +109,5 @@ export default function ScoreRadar({ data }: ScoreRadarProps) {
     },
   };
 
-  return <ReactECharts option={option} style={{ height: isMobile ? 240 : 300 }} role="img" aria-label="评分雷达图" />;
+  return <ReactECharts echarts={echarts} option={option} style={{ height: isMobile ? 240 : 300 }} role="img" aria-label="评分雷达图" />;
 }

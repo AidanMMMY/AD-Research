@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import ReactECharts from 'echarts-for-react';
+import ReactECharts from 'echarts-for-react/lib/core';
+import echarts from '@/utils/echarts';
 import type { EChartsOption } from 'echarts';
 import { useIsMobile } from '@/hooks/useBreakpoint';
 import { resolveChartColors } from '@/utils/chartColors';
@@ -91,5 +92,5 @@ export default function CategoryPie({ data, mode = 'count' }: CategoryPieProps) 
     }],
   };
 
-  return <ReactECharts option={option} style={{ height: isMobile ? 220 : 280 }} role="img" aria-label="分类占比饼图" />;
+  return <ReactECharts echarts={echarts} option={option} style={{ height: isMobile ? 220 : 280 }} role="img" aria-label="分类占比饼图" />;
 }

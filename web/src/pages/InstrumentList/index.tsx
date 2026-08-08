@@ -1,6 +1,6 @@
 import './styles.css';
 
-import { useState, useEffect, useMemo } from 'react';
+import { memo, useState, useEffect, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Table,
@@ -51,7 +51,7 @@ import ExportButton from '@/components/ExportButton';
 
 /** Row-level live price cell. Reads from the shared MarketStream map so we
  *  do not open one SSE connection per row. */
-function LivePriceCell({ tick }: { code: string; tick: ReturnType<typeof useMarketStream>['latest'][string] | undefined }) {
+function LivePriceCellImpl({ tick }: { code: string; tick: ReturnType<typeof useMarketStream>['latest'][string] | undefined }) {
   if (!tick) {
     return (
       <span className="tabular-nums mobile-list-item__meta font-mono">
@@ -73,6 +73,16 @@ function LivePriceCell({ tick }: { code: string; tick: ReturnType<typeof useMark
     </div>
   );
 }
+
+// 2026-08 前端审计：SSE 每 ~3s 更新一次 liveLatest，antd Table 会因 columns
+// 重建而整表 re-render。memo 后只有 price/change_pct 真正变化的行才更新 DOM。
+const LivePriceCell = memo(LivePriceCellImpl, (prev, next) => {
+  if (prev.code !== next.code) return false;
+  return (
+    prev.tick?.price === next.tick?.price &&
+    prev.tick?.change_pct === next.tick?.change_pct
+  );
+});
 
 const PAGE_SIZE = 50;
 
@@ -337,7 +347,10 @@ export default function InstrumentList() {
 
   const tableWrapClass = 'ad-table-scroll ad-table-sticky';
 
-  const columns = [
+  // 前端审计 2026-08-06：columns 此前每次渲染重建（~50 列），SSE 每 3s 的
+  // liveLatest 更新 + 任意 state 变化都会让 antd Table 全列重算。memo 后
+  // 只有 liveLatest 变化（或依赖列表变化）才重建。
+  const columns = useMemo(() => [
     {
       title: '标的',
       render: (_: unknown, record: any) => (
@@ -487,7 +500,8 @@ export default function InstrumentList() {
         <LivePriceCell code={record.code} tick={liveLatest[record.code]} />
       ),
     },
-  ];
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- 列定义只依赖实时价格
+  ], [liveLatest]);
 
   // Active filter count for the mobile 筛选 badge.
   const activeFilterCount = [

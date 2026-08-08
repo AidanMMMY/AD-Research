@@ -17,7 +17,8 @@ import { useAttribution } from '@/hooks/useAttribution';
 import { useAIHelp } from '@/hooks/useAIHelp';
 import { useSettingsStore } from '@/stores/settings';
 import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
-import ReactECharts from 'echarts-for-react';
+import ReactECharts from 'echarts-for-react/lib/core';
+import echarts from '@/utils/echarts';
 import type { EChartsOption } from 'echarts';
 import { buildBacktestDetailContext } from '@/utils/helpContext';
 import { getQuickQuestions } from '@/utils/helpPrompts';
@@ -44,6 +45,55 @@ export default function BacktestDetail() {
   useEffect(
     () => subscribeChartThemeCache(() => setThemeTick((t) => t + 1)),
     [],
+  );
+
+  const navData: BacktestNAV[] = data?.daily_nav || [];
+  // dataviz P0-1: ECharts cannot resolve `var(--xxx)` inside `option`. Read
+  // computed CSS values once per render (memoised on themeTick) so the
+  // line/grid/axis/tooltip colors track the active theme.
+  const navColors = useMemo(
+    () => ({
+      axisLine: resolveChartColor('--text-tertiary'),
+      splitLine: resolveChartColor('--border-default'),
+      accent: resolveChartColor('--accent'),
+      accentDim: resolveChartColor('--accent-dim'),
+    }),
+    [themeTick],
+  );
+  const navOption: EChartsOption = useMemo(
+    () => ({
+      // Apple Design #4 Springs: critically-damped equivalent (cubicOut,
+      // no overshoot) for the initial draw; disabled under reduced motion.
+      animation: !prefersReducedMotion,
+      animationDuration: prefersReducedMotion ? 0 : 350,
+      animationEasing: 'cubicOut',
+      tooltip: {
+        trigger: 'axis',
+        transitionDuration: prefersReducedMotion ? 0 : 0.2,
+        axisPointer: { type: 'line', snap: true },
+      },
+      grid: { left: 50, right: 20, top: 30, bottom: 30 },
+      xAxis: {
+        type: 'category',
+        data: navData.map((d: BacktestNAV) => d.date),
+        axisLine: { lineStyle: { color: navColors.axisLine } },
+      },
+      yAxis: {
+        type: 'value',
+        splitLine: { lineStyle: { color: navColors.splitLine } },
+      },
+      series: [
+        {
+          type: 'line',
+          data: navData.map((d: BacktestNAV) => d.nav),
+          smooth: true,
+          lineStyle: { color: navColors.accent, width: 2 },
+          itemStyle: { color: navColors.accent },
+          areaStyle: { color: navColors.accentDim },
+        },
+      ],
+    }),
+    [navData, navColors, prefersReducedMotion],
   );
 
   if (isLoading) {
@@ -114,54 +164,6 @@ export default function BacktestDetail() {
   // instantly instead of animating in (cross-fade/instant is the Apple
   // reduced-motion pattern for non-interactive content). Uses the
   // usePrefersReducedMotion hook above so live OS changes are observed.
-  const navData: BacktestNAV[] = data.daily_nav || [];
-  // dataviz P0-1: ECharts cannot resolve `var(--xxx)` inside `option`. Read
-  // computed CSS values once per render (memoised on themeTick) so the
-  // line/grid/axis/tooltip colors track the active theme.
-  const navColors = useMemo(
-    () => ({
-      axisLine: resolveChartColor('--text-tertiary'),
-      splitLine: resolveChartColor('--border-default'),
-      accent: resolveChartColor('--accent'),
-      accentDim: resolveChartColor('--accent-dim'),
-    }),
-    [themeTick],
-  );
-  const navOption: EChartsOption = useMemo(
-    () => ({
-      // Apple Design #4 Springs: critically-damped equivalent (cubicOut,
-      // no overshoot) for the initial draw; disabled under reduced motion.
-      animation: !prefersReducedMotion,
-      animationDuration: prefersReducedMotion ? 0 : 350,
-      animationEasing: 'cubicOut',
-      tooltip: {
-        trigger: 'axis',
-        transitionDuration: prefersReducedMotion ? 0 : 0.2,
-        axisPointer: { type: 'line', snap: true },
-      },
-      grid: { left: 50, right: 20, top: 30, bottom: 30 },
-      xAxis: {
-        type: 'category',
-        data: navData.map((d: BacktestNAV) => d.date),
-        axisLine: { lineStyle: { color: navColors.axisLine } },
-      },
-      yAxis: {
-        type: 'value',
-        splitLine: { lineStyle: { color: navColors.splitLine } },
-      },
-      series: [
-        {
-          type: 'line',
-          data: navData.map((d: BacktestNAV) => d.nav),
-          smooth: true,
-          lineStyle: { color: navColors.accent, width: 2 },
-          itemStyle: { color: navColors.accent },
-          areaStyle: { color: navColors.accentDim },
-        },
-      ],
-    }),
-    [navData, navColors, prefersReducedMotion],
-  );
 
   const formatSigned = (v?: number | null) => {
     if (v == null) return '—';
@@ -259,7 +261,7 @@ export default function BacktestDetail() {
           />
         }
       >
-        <ReactECharts option={navOption} className="detail-chart" role="img" aria-label="回测净值图" />
+        <ReactECharts echarts={echarts} option={navOption} className="detail-chart" role="img" aria-label="回测净值图" />
       </Panel>
     </div>
   );

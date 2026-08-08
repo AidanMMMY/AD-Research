@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import ReactECharts from 'echarts-for-react';
+import ReactECharts from 'echarts-for-react/lib/core';
+import echarts from '@/utils/echarts';
 import type { EChartsOption } from 'echarts';
 import { useIsMobile } from '@/hooks/useBreakpoint';
 import { resolveChartColor, subscribeChartThemeCache } from '@/utils/chartColors';
@@ -139,5 +140,5 @@ export default function CorrelationHeatmap({ codes, matrix }: CorrelationHeatmap
     }],
   };
 
-  return <ReactECharts option={option} style={{ height: '100%' }} role="img" aria-label="相关性热力图" />;
+  return <ReactECharts echarts={echarts} option={option} style={{ height: '100%' }} role="img" aria-label="相关性热力图" />;
 }

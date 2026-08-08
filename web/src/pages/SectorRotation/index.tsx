@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Alert, Segmented, Select, Table, Tabs, Tag, Tooltip } from 'antd';
 import { InfoCircleOutlined } from '@ant-design/icons';
-import ReactECharts from 'echarts-for-react';
+import ReactECharts from 'echarts-for-react/lib/core';
+import echarts from '@/utils/echarts';
 import type { EChartsOption } from 'echarts';
 import {
   useSectorConstituents,
@@ -721,7 +722,7 @@ export default function SectorRotation() {
                   description={`当前 A 股范围内无${clsLabel}板块数据，请稍后重试或检查 ETL。`}
                 />
               ) : (
-                <ReactECharts option={rankOption} role="img" aria-label="行业轮动排名" />
+                <ReactECharts echarts={echarts} option={rankOption} role="img" aria-label="行业轮动排名" />
               )}
             </div>
           </Panel>
@@ -746,7 +747,7 @@ export default function SectorRotation() {
                   description={`当前 A 股范围内无${clsLabel}板块数据。`}
                 />
               ) : (
-                <ReactECharts option={rsOption} role="img" aria-label="相对强弱图" />
+                <ReactECharts echarts={echarts} option={rsOption} role="img" aria-label="相对强弱图" />
               )}
             </div>
           </Panel>
@@ -776,7 +777,7 @@ export default function SectorRotation() {
               className="ad-chart-container sector-rotation__heatmap-container"
               style={{ height: heatmapHeight, minHeight: heatmapHeight }}
             >
-              <ReactECharts option={heatmapOption} role="img" aria-label="相关性热力图" />
+              <ReactECharts echarts={echarts} option={heatmapOption} role="img" aria-label="相关性热力图" />
             </div>
           )}
         </Panel>

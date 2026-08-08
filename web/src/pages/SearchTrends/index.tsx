@@ -5,7 +5,8 @@ import {
 } from 'antd';
 import { ReloadOutlined, SearchOutlined, FireOutlined, GoogleOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
-import ReactECharts from 'echarts-for-react';
+import ReactECharts from 'echarts-for-react/lib/core';
+import echarts from '@/utils/echarts';
 import type { EChartsOption } from 'echarts';
 import PageShell from '@/components/PageShell';
 import PageHeader from '@/components/PageHeader';
@@ -397,7 +398,7 @@ export default function SearchTrendsPage() {
                     <>
                       {compareChartOption && (
                         <div className="ad-chart-container">
-                          <ReactECharts option={compareChartOption} notMerge />
+                          <ReactECharts echarts={echarts} option={compareChartOption} notMerge />
                         </div>
                       )}
                       <div className="ad-table-scroll ad-table-sticky">

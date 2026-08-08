@@ -20,7 +20,6 @@ import LoadingBlock from '@/components/LoadingBlock';
 import DigestSummaryCard from '@/components/DigestSummaryCard';
 import ReturnTag from '@/components/ReturnTag';
 import { clickableProps } from '@/utils/a11y';
-import { usePriceStream } from '@/hooks/usePriceStream';
 import { useMarketStream } from '@/hooks/useMarketStream';
 import type { NewsArticle } from '@/types/news';
 import {
@@ -184,7 +183,8 @@ function useGlobalPulseData() {
   });
 
   const INDEX_CODES = ['510300.SH', '159915.SZ', 'SPY.US', 'BTC.US'];
-  const { prices } = usePriceStream(INDEX_CODES);
+  // 单连接：useMarketStream 已覆盖 usePriceStream 的字段（price/change_pct），
+  // 此前两个 hook 订阅同一 /stream/prices 造成 2 倍 SSE 连接（前端审计 2026-08-06）。
   const { latest: marketLatest } = useMarketStream(INDEX_CODES);
 
   const lookup = useMemo(() => {
@@ -222,7 +222,7 @@ function useGlobalPulseData() {
           value = entry?.value ?? null;
           change = entry?.change_pct ?? null;
         } else {
-          const tick = marketLatest[tile.code] ?? (prices[tile.code] ? { ...prices[tile.code], ts: 0 } : undefined);
+          const tick = marketLatest[tile.code];
           value = tick?.price ?? null;
           change = tick?.change_pct ?? null;
         }
@@ -236,7 +236,7 @@ function useGlobalPulseData() {
         };
       }),
     }));
-  }, [lookup, marketLatest, prices]);
+  }, [lookup, marketLatest]);
 
   return { groups, isLoading };
 }
@@ -301,7 +301,6 @@ export default function Dashboard() {
   const { signals, hotNews } = useSignalStream();
 
   const favCodes = useMemo(() => (favorites || []).map((f: any) => f.etf_code), [favorites]);
-  const { prices: favPrices } = usePriceStream(favCodes);
   const { latest: favMarketLatest } = useMarketStream(favCodes);
 
   const now = new Date();
@@ -644,7 +643,7 @@ export default function Dashboard() {
               ) : (
                 <div className="row-list">
                   {favorites.slice(0, 6).map((item: any) => {
-                  const tick = favMarketLatest[item.etf_code] ?? favPrices[item.etf_code];
+                  const tick = favMarketLatest[item.etf_code];
                   const price = tick?.price;
                   const change = tick?.change_pct;
                   const score = item.composite_score ?? 0;

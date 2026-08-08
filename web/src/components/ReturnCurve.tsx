@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import ReactECharts from 'echarts-for-react';
+import ReactECharts from 'echarts-for-react/lib/core';
+import echarts from '@/utils/echarts';
 import type { EChartsOption } from 'echarts';
 import { useIsMobile } from '@/hooks/useBreakpoint';
 import { resolveChartColors } from '@/utils/chartColors';
@@ -122,5 +123,5 @@ export default function ReturnCurve({ series }: ReturnCurveProps) {
     })),
   };
 
-  return <ReactECharts option={option} style={{ height: isMobile ? 240 : 320 }} role="img" aria-label="收益曲线图" />;
+  return <ReactECharts echarts={echarts} option={option} style={{ height: isMobile ? 240 : 320 }} role="img" aria-label="收益曲线图" />;
 }

@@ -38,6 +38,10 @@ const queryClient = new QueryClient({
     queries: {
       staleTime: 60_000,
       refetchOnWindowFocus: false,
+      // 前端审计 2026-08-06：默认 3 次重试 × 30s 超时，后端挂掉时体验极差
+      // （每个页面卡 1.5min+ 且重复弹错误 toast）。读接口 1 次重试足够。
+      retry: 1,
+      retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 8000),
     },
   },
 });

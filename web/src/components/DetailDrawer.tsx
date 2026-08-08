@@ -120,7 +120,7 @@ export default function DetailDrawer({
   // 2) Tab / Shift+Tab 在抽屉内循环（简易 focus trap，见面板 onKeyDown）；
   // 3) 背景兄弟容器 inert（移出 Tab 序 + 命中测试），配合上面的
   //    useFocusRestore 在关闭后把焦点还给触发元素。
-  const overlayRef = useRef<HTMLDivElement | null>(null);
+  const overlayRef = useRef<HTMLButtonElement | null>(null);
   const panelRef = useRef<HTMLDivElement | null>(null);
 
   // (1) Focus into the drawer on open. Wait one frame so the panel is
@@ -147,8 +147,10 @@ export default function DetailDrawer({
     const overlay = overlayRef.current;
     const parent = overlay?.parentElement;
     if (!parent) return;
+    const panel = panelRef.current;
     const siblings = Array.from(parent.children).filter(
-      (el): el is HTMLElement => el instanceof HTMLElement && el !== overlay,
+      (el): el is HTMLElement =>
+        el instanceof HTMLElement && el !== overlay && el !== panel,
     );
     siblings.forEach((el) => el.setAttribute('inert', ''));
     return () => {
@@ -156,32 +158,38 @@ export default function DetailDrawer({
     };
   }, [open]);
 
-  // (2) Simple focus trap: Tab on the last focusable wraps to the first,
-  // Shift+Tab on the first wraps to the last.
-  const handlePanelKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
-    if (e.key !== 'Tab') return;
-    const panel = panelRef.current;
-    if (!panel) return;
-    const focusables = Array.from(
-      panel.querySelectorAll<HTMLElement>(
-        'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
-      ),
-    );
-    if (focusables.length === 0) return;
-    const first = focusables[0];
-    const last = focusables[focusables.length - 1];
-    const active = document.activeElement as HTMLElement | null;
-    const focusInside = active != null && panel.contains(active);
-    if (e.shiftKey) {
-      if (!focusInside || active === first) {
+  // (2) Simple focus trap — 挂在 document 上而不是 dialog 元素上：
+  // WAI-ARIA 对话框模式的 Tab 循环逻辑不依赖元素上的事件 handler，避免
+  // jsx-a11y/no-noninteractive-element-interactions 对 role="dialog" 的误报。
+  useEffect(() => {
+    if (!open || !mounted) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== 'Tab') return;
+      const panel = panelRef.current;
+      if (!panel) return;
+      const focusables = Array.from(
+        panel.querySelectorAll<HTMLElement>(
+          'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+        ),
+      );
+      if (focusables.length === 0) return;
+      const first = focusables[0];
+      const last = focusables[focusables.length - 1];
+      const active = document.activeElement as HTMLElement | null;
+      const focusInside = active != null && panel.contains(active);
+      if (e.shiftKey) {
+        if (!focusInside || active === first) {
+          e.preventDefault();
+          last.focus();
+        }
+      } else if (!focusInside || active === last) {
         e.preventDefault();
-        last.focus();
+        first.focus();
       }
-    } else if (!focusInside || active === last) {
-      e.preventDefault();
-      first.focus();
-    }
-  };
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [open, mounted]);
 
   if (!mounted) return null;
 
@@ -199,16 +207,19 @@ export default function DetailDrawer({
   ].join(' ');
 
   return (
-    // Close only when the scrim itself is clicked (``e.target`` is the
-    // overlay); clicks inside the panel bubble up with a different
-    // target and are ignored — no stopPropagation needed on the panel.
-    <div
-      ref={overlayRef}
-      className={overlayClasses}
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
-    >
+    <>
+      {/* Scrim 作为真实可交互控件（button）满足 jsx-a11y 规则；与 panel
+          平级避免 button 嵌套（axe nested-interactive）。对读屏隐藏
+          aria-hidden——显式关闭按钮 + Escape 已提供可访问的关闭路径，
+          避免读屏读出两个"关闭"（面板内关闭按钮才是 AT 的入口）。 */}
+      <button
+        type="button"
+        ref={overlayRef}
+        className={overlayClasses}
+        aria-hidden="true"
+        tabIndex={-1}
+        onClick={onClose}
+      />
       <div
         ref={panelRef}
         className={drawerClasses}
@@ -217,7 +228,6 @@ export default function DetailDrawer({
         aria-labelledby={title ? titleId : undefined}
         aria-label={title ? undefined : ariaLabel}
         tabIndex={-1}
-        onKeyDown={handlePanelKeyDown}
       >
         <div className="ad-detail-drawer__header">
           {title ? (
@@ -240,6 +250,6 @@ export default function DetailDrawer({
           <div className="ad-detail-drawer__footer">{footer}</div>
         ) : null}
       </div>
-    </div>
+    </>
   );
 }

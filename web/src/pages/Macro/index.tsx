@@ -19,7 +19,8 @@ import {
   ExclamationCircleOutlined,
 } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
-import ReactECharts from 'echarts-for-react';
+import ReactECharts from 'echarts-for-react/lib/core';
+import echarts from '@/utils/echarts';
 import type { EChartsOption } from 'echarts';
 import PageShell from '@/components/PageShell';
 import PageHeader from '@/components/PageHeader';
@@ -511,7 +512,7 @@ export default function Macro() {
               <Spin spinning={seriesLoading}>
                 {chartOption ? (
                   <div className="ad-chart-container ad-chart-container--tall">
-                    <ReactECharts
+                    <ReactECharts echarts={echarts}
                       option={{
                         ...chartOption,
                         animation: !reducedMotion,

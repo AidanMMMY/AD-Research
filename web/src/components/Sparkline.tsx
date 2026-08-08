@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 
 export interface SparklineProps {
   /** 数据序列（已排序，最旧在前，最新在后） */
@@ -85,31 +85,11 @@ export default function Sparkline({
     return `${path} L ${effectiveWidth} ${height} L 0 ${height} Z`;
   }, [path, effectiveWidth, height]);
 
-  const gradientId = useMemo(
-    () => `spark-grad-${Math.random().toString(36).slice(2, 9)}`,
-    [stroke]
-  );
-
-  if (!data || data.length === 0) {
-    return (
-      <span
-        className={`sparkline__empty ${className || ''}`}
-        style={{
-          // dynamic: empty placeholder dimensions come from props
-          maxWidth: width,
-          height,
-          lineHeight: `${height}px`,
-          ...style,
-        }}
-      >
-        —
-      </span>
-    );
-  }
-
   // Compute direction for the right-edge arrow marker (color-blind friendly cue).
   // We render a tiny triangle inside the SVG so it scales with the same width/height
-  // and does not cause layout reflow in callers.
+  // and does not cause layout reflow in callers. MUST stay above the early return
+  // (Rules of Hooks — a row whose data goes empty→non-empty across renders would
+  // otherwise crash with "rendered more hooks than during the previous render").
   const directionMarker = useMemo(() => {
     if (!data || data.length < 2) return null;
     const first = data[0];
@@ -136,6 +116,26 @@ export default function Sparkline({
     if (last === first) return 'sparkline flat';
     return last > first ? 'sparkline up' : 'sparkline down';
   })();
+
+  // useId 每次渲染稳定；去掉冒号以得到合法的 SVG url(#...) id。
+  const gradientId = useId().replace(/:/g, '');
+
+  if (!data || data.length === 0) {
+    return (
+      <span
+        className={`sparkline__empty ${className || ''}`}
+        style={{
+          // dynamic: empty placeholder dimensions come from props
+          maxWidth: width,
+          height,
+          lineHeight: `${height}px`,
+          ...style,
+        }}
+      >
+        —
+      </span>
+    );
+  }
 
   return (
     <svg

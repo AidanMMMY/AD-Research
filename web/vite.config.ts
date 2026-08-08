@@ -21,8 +21,11 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     emptyOutDir: true,
-    sourcemap: true,
-    chunkSizeWarningLimit: 1200,
+    // 生产不发 sourcemap：dist 里 .map 曾达 ~8.5MB（echarts 单文件 5.9MB），
+    // 既翻倍部署体积又完整暴露源码（前端审计 2026-08-06）。本地调试不受影响。
+    sourcemap: false,
+    // 调回 500KB 让超大 chunk（echarts/ui ~1MB+）在 CI build 时暴露告警。
+    chunkSizeWarningLimit: 500,
     rollupOptions: {
       output: {
         manualChunks(id) {
