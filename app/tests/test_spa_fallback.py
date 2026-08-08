@@ -31,6 +31,19 @@ class TestSpaFallback:
         assert r.status_code == 200
         assert '<div id="root">' in r.text
 
+    def test_a_share_suffixed_code_returns_index_html(self):
+        # A 股带后缀代码（510300.SH）含点号，必须走 SPA fallback——
+        # 此前被误判为静态资源返回 JSON 404，详情页直达/刷新全挂
+        # （2026-08-08 修复）。
+        for path in ("/instruments/510300.SH", "/instruments/600519.SH"):
+            r = client.get(path)
+            assert r.status_code == 200, path
+            assert '<div id="root">' in r.text, path
+
+    def test_missing_js_asset_still_404(self):
+        r = client.get("/assets/definitely-missing-12345.js")
+        assert r.status_code == 404
+
     def test_api_404_stays_json(self):
         r = client.get("/api/v1/definitely-not-an-endpoint")
         assert r.status_code == 404

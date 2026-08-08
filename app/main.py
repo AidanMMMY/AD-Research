@@ -357,6 +357,14 @@ web_dist = Path(__file__).parent.parent / "web" / "dist"
 # API 端点会返回 HTML 而不是 JSON 404）。
 _NON_SPA_PREFIXES = ("/api/", "/health", "/docs", "/redoc", "/openapi.json")
 
+# 真正的静态资源扩展名。判断必须是白名单而不是"路径含点"——A 股带后缀
+# 代码（如 /instruments/510300.SH）也会含点，黑名单式判断会把它们误判为
+# 静态资源而不做 SPA fallback，导致详情页直达/刷新 404（2026-08-08 修复）。
+_STATIC_EXTENSIONS = {
+    ".js", ".css", ".png", ".jpg", ".jpeg", ".gif", ".svg", ".ico", ".webp",
+    ".woff", ".woff2", ".ttf", ".eot", ".map",
+}
+
 
 class CacheControlledStaticFiles(StaticFiles):
     """StaticFiles subclass that sets cache headers for hashed assets and HTML entry.
@@ -396,11 +404,14 @@ class CacheControlledStaticFiles(StaticFiles):
         request_path = scope.get("path", "/")
         if any(request_path.startswith(p) for p in _NON_SPA_PREFIXES):
             return False
-        # 带文件扩展名的路径（.js/.css/.png/.svg 等）是静态资源请求，
-        # 404 时不应回退 HTML——返回 404 让构建/缓存问题显性化。
+        # 白名单式判断：只有真正的静态资源扩展名才不 fallback，避免把
+        # A 股带后缀代码（510300.SH）误判为文件。
         last = request_path.rsplit("/", 1)[-1]
-        if "." in last:
-            return False
+        dot = last.rfind(".")
+        if dot > 0:
+            ext = last[dot:].lower()
+            if ext in _STATIC_EXTENSIONS:
+                return False
         return True
 
 
