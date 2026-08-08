@@ -140,3 +140,31 @@
    `navigator.sendBeacon`。
 6. `/analysis/ranking|screen` 全表 GROUP BY 缓存、SSE 阻塞事件循环等
    （见前文性能章节）。
+
+---
+
+# 追加：2026-08-08(2) OCR 工具 + 美股指数限流修复
+
+## OCR 工具（本轮新增能力）
+- **macOS Vision OCR**（`tmp/shots/ocr`，Swift 编译）：中英混排原生识别，质量最佳。
+- **批量巡检脚本** `tmp/shots/ocr_report.py`：对目录下所有截图逐张 OCR →
+  Markdown 报告（健康度评级 + 异常信号关键词命中）。
+- 实测：24 张截图（15 桌面 + 8 移动 + 登录页）全部正常；
+  用图像分析抓到的"详情页纯白"已定位为 SPA fallback 误判带后缀 code
+  并修复（`6dd8854`）。
+- tesseract 已装（仅英文；中文需 tesseract-lang ~500MB，质量不如 Vision，未装）。
+
+## 美股指数显示 "-"（Dewey 子代理排查 + 修复 `84cdae9`）
+- **根因**：Yahoo 非官方 chart API 对匿名突发请求限流（HTTP 429），
+  `_fetch_frame` 静默吞掉失败无重试；批量 40 请求 + 首页实时 21 并行，
+  大陆出口 IP 更易整批全 0。已排除代码 bug / symbol 漂移（直连全成功）。
+- **修复**：429 指数退避重试（5/15/30s）；`_PER_TICKER_SLEEP` 1.5→2.5s、
+  并行度 6→3；`/macro/indices/global` 实时端点 Redis 90s 缓存。
+- **顺带发现**：纳斯达克 tile 用 `global_nasdaq`（FRED），yfinance 注册表是
+  `global_ndx`（^NDX），即使 yfinance 正常实时端点也不返回 global_nasdaq——
+  建议单独评审统一（前后端多文件 + 语义）。
+- **测试隔离**（`e4feec0`）：yfinance provider 测试 7min+ → 0.7s——
+  屏蔽节流 sleep + 补 mock OHLCV 段（此前真实网络在沙箱时代碰巧快速失败）。
+
+## 验证
+- 全量 pytest：**1831 passed, 2 skipped in 110s**。
