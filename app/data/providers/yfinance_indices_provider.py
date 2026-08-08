@@ -74,7 +74,11 @@ class IndexMeta:
 # Finance's canonical symbols (caret-prefixed for indices).
 GLOBAL_INDEX_REGISTRY: list[IndexMeta] = [
     IndexMeta("^GSPC",  "global_sp500",  "标普500",         "S&P 500"),
-    IndexMeta("^NDX",   "global_ndx",    "纳斯达克100",      "NASDAQ-100"),
+    # 纳斯达克综合指数（^IXIC）→ global_nasdaq，与 FRED NASDAQCOM 同 code 同语义。
+    # 2026-08-08：此前误用 ^NDX（纳指100）映射 global_ndx，而前端三处 tile
+    # 用的是 global_nasdaq——实时端点永远返回不了该 code，纳斯达克 tile 只能
+    # 靠 FRED 兜底（且 global_ndx 无任何消费方）。
+    IndexMeta("^IXIC",  "global_nasdaq", "纳斯达克综合指数", "NASDAQ Composite"),
     IndexMeta("^DJI",   "global_dow",    "道琼斯工业指数",   "Dow Jones Industrial Average"),
     IndexMeta("^HSI",   "global_hsi",    "恒生指数",        "Hang Seng Index"),
     IndexMeta("^N225",  "global_n225",   "日经225",         "Nikkei 225"),
