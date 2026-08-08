@@ -59,13 +59,20 @@ export interface InstrumentFilterParams {
   exchange?: string;
 }
 
+/** 单个快照条目（后端 SnapshotItem：etf_code/etf_name/change_pct）。 */
+export interface MarketSnapshotItem {
+  etf_code: string;
+  etf_name?: string | null;
+  close?: number | null;
+  change_pct?: number | null;
+  volume?: number | null;
+  amount?: number | null;
+}
+
+/** /market-data/snapshot 返回 {items, count}（2026-08-08 对齐后端形状）。 */
 export interface MarketSnapshot {
-  code: string;
-  name: string;
-  close: number;
-  change_percent: number;
-  volume: number;
-  amount: number;
+  items: MarketSnapshotItem[];
+  count: number;
 }
 
 export interface OHLCV {

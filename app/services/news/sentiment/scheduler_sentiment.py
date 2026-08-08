@@ -24,7 +24,8 @@ from datetime import date, datetime, timedelta
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.interval import IntervalTrigger
-from sqlalchemy import desc
+from sqlalchemy import desc, exists
+from sqlalchemy.orm import aliased
 
 from app.core.database import SessionLocal
 from app.core.redis_client import redis_lock
@@ -70,9 +71,22 @@ def run_sentiment_batch(limit: int = 100) -> int:
             # Pick latest non-pipeline rows that don't already have a
             # parallel LLM-pipeline row.  The unique fingerprint is
             # (url, source='llm_pipeline') — we filter on url.
+            # 2026-08-08 循环/断点审计：此前的查询注释声称过滤但实际只有
+            # source != 'llm_pipeline'，导致已成功处理的行每 30s 被无限重选
+            # （成功后是 100 次 Redis GET/tick 的空转）。补上 NOT EXISTS。
+            pipeline_alias = aliased(SentimentData)
+            has_pipeline_row = (
+                db.query(pipeline_alias.id)
+                .filter(
+                    pipeline_alias.source == "llm_pipeline",
+                    pipeline_alias.url == SentimentData.url,
+                )
+                .exists()
+            )
             recent = (
                 db.query(SentimentData)
                 .filter(SentimentData.source != "llm_pipeline")
+                .filter(~has_pipeline_row)
                 .order_by(desc(SentimentData.ingested_at))
                 .limit(limit)
                 .all()

@@ -50,7 +50,7 @@ export default function ReturnComparison() {
 
   const nameMap = useMemo(() => {
     const map = new Map<string, string>();
-    snapshots?.forEach((s) => map.set(s.code, s.name));
+    snapshots?.items?.forEach((s) => map.set(s.etf_code, s.etf_name || s.etf_code));
     return map;
   }, [snapshots]);
 

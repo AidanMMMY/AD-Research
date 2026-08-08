@@ -2,6 +2,14 @@ import { useQuery } from '@tanstack/react-query';
 import { instrumentApi } from '@/api';
 import type { InstrumentFilterParams } from '@/types/instrument';
 
+export function useEtfOptions() {
+  return useQuery({
+    queryKey: ['etf-options'],
+    queryFn: () => instrumentApi.options().then((r) => r.data),
+    staleTime: 300_000,
+  });
+}
+
 export function useInstrumentList(params?: InstrumentFilterParams) {
   return useQuery({
     queryKey: ['instruments', params],

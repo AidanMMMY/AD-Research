@@ -245,6 +245,12 @@ class SentimentPipeline:
             result.importance = cached.get("importance", 0)
             return result
 
+        # 失败防抖：最近 10 分钟失败过的行直接跳过，避免 30s 周期反复调 LLM
+        # （2026-08-08 循环/断点审计）。
+        if self.cache.is_article_failed(url):
+            result.error = "failed recently; debounced"
+            return result
+
         self.monitor.record_cache_miss()
 
         try:
@@ -332,6 +338,11 @@ class SentimentPipeline:
             logger.exception("process_article failed for %s", url)
             result.error = str(exc)
             result.duration_ms = int((time.time() - start) * 1000)
+            # 失败标记（10 分钟 TTL）——下次调度周期直接跳过，防烧钱重试。
+            try:
+                self.cache.mark_article_failed(url)
+            except Exception:
+                pass
             return result
 
     # ------------------------------------------------------------------

@@ -28,6 +28,7 @@ class IndicatorService:
         Returns:
             IndicatorResponse or None if no data.
         """
+        code = self._resolve_a_share_code(code)
         cache_key = f"indicator:latest:{code}"
         cached = cache_get(cache_key)
         if cached is not None:
@@ -42,6 +43,25 @@ class IndicatorService:
         response = self._to_response(indicator) if indicator else None
         cache_set(cache_key, response.model_dump() if response else None, ttl=300)
         return response
+
+    def _resolve_a_share_code(self, code: str) -> str:
+        """A 股无后缀（510300）→ 补交易所后缀（510300.SH）。
+
+        2026-08-08 功能审计：详情页首次加载时次级请求可能用无后缀 code，
+        后端补全后避免 404（详情页随后会用规范 code 重定向）。
+        """
+        if not code or not code.isdigit():
+            return code
+        for suffix in (".SH", ".SZ", ".BJ"):
+            candidate = code + suffix
+            exists = (
+                self.db.query(ETFIndicator.etf_code)
+                .filter(ETFIndicator.etf_code == candidate)
+                .first()
+            )
+            if exists:
+                return candidate
+        return code
 
     def get_history(
         self,
@@ -59,6 +79,7 @@ class IndicatorService:
         Returns:
             List of IndicatorResponse.
         """
+        code = self._resolve_a_share_code(code)
         cache_key = f"indicator:history:{code}:{start}:{end}"
         cached = cache_get(cache_key)
         if cached is not None:

@@ -10,6 +10,7 @@ from pathlib import Path
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from starlette.exceptions import HTTPException
 from fastapi.staticfiles import StaticFiles
 from starlette.types import Scope
 
@@ -352,13 +353,33 @@ app.include_router(
 web_dist = Path(__file__).parent.parent / "web" / "dist"
 
 
+# 这些路径属于后端 API/文档，绝不能 SPA fallback 到 index.html（否则不存在的
+# API 端点会返回 HTML 而不是 JSON 404）。
+_NON_SPA_PREFIXES = ("/api/", "/health", "/docs", "/redoc", "/openapi.json")
+
+
 class CacheControlledStaticFiles(StaticFiles):
-    """StaticFiles subclass that sets cache headers for hashed assets and HTML entry."""
+    """StaticFiles subclass that sets cache headers for hashed assets and HTML entry.
+
+    2026-08-08（功能可用性审计）：补 SPA fallback —— 此前 uvicorn 直接服务时
+    深层路由（/login、/dashboard 等）刷新/直达返回 404（生产靠 nginx try_files
+    兜底，但后端直连端口会断）。非 API 路径文件不存在时回退 index.html。
+    """
 
     async def get_response(self, path: str, scope: Scope):
-        response = await super().get_response(path, scope)
-        request_path = scope.get("path", "/")
+        try:
+            response = await super().get_response(path, scope)
+        except HTTPException as exc:
+            if exc.status_code == 404 and self._is_spa_path(scope):
+                # SPA fallback：深层路由交给前端 router 渲染。
+                index = await super().get_response("index.html", scope)
+                index.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+                index.headers["Pragma"] = "no-cache"
+                index.headers["Expires"] = "0"
+                return index
+            raise
 
+        request_path = scope.get("path", "/")
         if request_path in ("/", "/index.html") or request_path.endswith(".html"):
             response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
             response.headers["Pragma"] = "no-cache"
@@ -368,6 +389,19 @@ class CacheControlledStaticFiles(StaticFiles):
             response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
 
         return response
+
+    @staticmethod
+    def _is_spa_path(scope: Scope) -> bool:
+        """True when a 404 should fall back to the SPA shell (not an API route)."""
+        request_path = scope.get("path", "/")
+        if any(request_path.startswith(p) for p in _NON_SPA_PREFIXES):
+            return False
+        # 带文件扩展名的路径（.js/.css/.png/.svg 等）是静态资源请求，
+        # 404 时不应回退 HTML——返回 404 让构建/缓存问题显性化。
+        last = request_path.rsplit("/", 1)[-1]
+        if "." in last:
+            return False
+        return True
 
 
 if web_dist.exists():

@@ -116,7 +116,9 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-    command: celery -A app.core.celery_app worker -l info -c 2 -Q celery,cninfo
+    # industry 队列（申万行业）此前 dev 无消费者，sw_industry 任务永远 PENDING
+    # （与生产 -Q celery,cninfo,industry 对齐，2026-08-08 审计）。
+    command: celery -A app.core.celery_app worker -l info -c 2 -Q celery,cninfo,industry
     networks:
       - ad-research-dev-network
 

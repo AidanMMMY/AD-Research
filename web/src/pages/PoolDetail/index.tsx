@@ -12,7 +12,7 @@ import {
   useAddPoolMember,
   useRemovePoolMember,
 } from '@/hooks/usePoolDetail';
-import { useInstrumentList } from '@/hooks/useInstrumentList';
+import { useEtfOptions } from '@/hooks/useInstrumentList';
 import { useAIHelp } from '@/hooks/useAIHelp';
 import { useSettingsStore } from '@/stores/settings';
 import CorrelationHeatmap from '@/components/CorrelationHeatmap';
@@ -49,7 +49,8 @@ export default function PoolDetail() {
   const { data: pool } = usePoolDetail(poolId);
   const { data: analytics } = usePoolAnalytics(poolId);
   const { data: correlation } = usePoolCorrelation(poolId);
-  const { data: etfList } = useInstrumentList({ page_size: 10000 });
+  // 2026-08-08：改用轻量 options 端点
+  const { data: etfList } = useEtfOptions();
   const updatePool = useUpdatePool();
   const addMember = useAddPoolMember();
   const removeMember = useRemovePoolMember();
@@ -109,7 +110,7 @@ export default function PoolDetail() {
   const existingCodes = useMemo(() => new Set(pool?.members?.map((m: any) => m.etf_code) || []), [pool]);
 
   const etfOptions = useMemo(() => {
-    return (etfList?.items || [])
+    return (etfList || [])
       .filter((item) => !existingCodes.has(item.code))
       .map((item) => ({
         label: `${item.code} ${item.name}`,

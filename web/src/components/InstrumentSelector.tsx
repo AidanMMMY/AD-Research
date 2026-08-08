@@ -2,17 +2,11 @@ import { useMemo, useState } from 'react';
 import { Select, Button, Space, message } from 'antd';
 import { FolderOpenOutlined } from '@ant-design/icons';
 import ThemeTag from '@/components/ThemeTag';
-import { useInstrumentList } from '@/hooks/useInstrumentList';
+import { useEtfOptions } from '@/hooks/useInstrumentList';
 import { usePoolList } from '@/hooks/usePoolDetail';
+import type { EtfOptionItem } from '@/api/instrument';
 
 const PRESET_TOP_N = 4;
-
-interface InstrumentItem {
-  code: string;
-  name: string;
-  category?: string;
-  fund_size?: number;
-}
 
 interface InstrumentSelectorProps {
   value: string[];
@@ -33,12 +27,13 @@ export default function InstrumentSelector({
 }: InstrumentSelectorProps) {
   const [showAllPresets, setShowAllPresets] = useState(false);
 
-  const { data: instrumentList } = useInstrumentList({ page_size: 10000 });
+  // 2026-08-08：改用轻量 options 端点（page_size=10000 会触发后端 422）
+  const { data: instrumentList } = useEtfOptions();
   const { data: pools, isLoading: poolsLoading } = usePoolList();
 
   const presetGroups = useMemo(() => {
-    const items: InstrumentItem[] = instrumentList?.items || [];
-    const byCategory: Record<string, InstrumentItem[]> = {};
+    const items: EtfOptionItem[] = instrumentList || [];
+    const byCategory: Record<string, EtfOptionItem[]> = {};
     items.forEach((item) => {
       const category = item.category || '未分类';
       if (!byCategory[category]) byCategory[category] = [];
@@ -62,7 +57,7 @@ export default function InstrumentSelector({
     return presetGroups.slice(0, 8);
   }, [presetGroups, showAllPresets]);
 
-  const instrumentOptions = (instrumentList?.items || []).map((item) => ({
+  const instrumentOptions = (instrumentList || []).map((item) => ({
     label: `${item.code} ${item.name}`,
     value: item.code,
   }));

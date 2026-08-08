@@ -157,6 +157,14 @@ def _article_to_dict(
         # renders it as a single digest line under the title when present.
         "summary_zh": article.summary_zh,
         "summary": article.summary,
+        # 2026-08-08 功能审计：以下 5 个字段模型有列但序列化遗漏，前端
+        # NewsCard / News/detail 按必填读取，导致重要性星级、事件分类、
+        # 情绪置信度/驱动词区块静默不渲染。
+        "body": article.body,
+        "importance": article.importance,
+        "event_category": article.event_category,
+        "sentiment_confidence": article.sentiment_confidence,
+        "sentiment_drivers": article.sentiment_drivers,
         "author": article.author,
         "language": article.language,
         "market": article.market,
@@ -1215,6 +1223,101 @@ def get_retail_sentiment(
     }
 
 
+@router.get("/event-signals")
+def event_signals(
+    days: int = Query(7, ge=1, le=30),
+    market: str | None = Query(None, description="Filter by market (cn_a | us | crypto | global)"),
+    category: list[str] | None = Query(
+        None,
+        description=(
+            "Filter by event_category. Repeatable. Allowed: "
+            "earnings|m&a|product|macro|regulation|guidance|analyst|legal|rumor"
+            "|geopolitics|central_bank|election|trade_war|sanction|other"
+        ),
+    ),
+    limit: int = Query(50, ge=1, le=200),
+    db: Session = Depends(get_db),
+) -> dict[str, Any]:
+    """Event-driven signals from ``news_article``.
+
+    Returns articles whose ``event_category`` is set and ``importance >= 3``
+    as actionable signals.  ``signal_direction`` is derived from
+    ``sentiment_label`` and ``signal_strength`` from ``importance`` (1-5
+    mapped to 1-100).  Used by the SignalDashboard "事件信号" integration.
+    """
+    since = datetime.now(tz=UTC) - timedelta(days=days)
+
+    stmt = select(NewsArticle).where(
+        NewsArticle.event_category.isnot(None),
+        NewsArticle.importance >= 3,
+        NewsArticle.published_at >= since,
+    )
+    count_stmt = select(func.count(NewsArticle.id)).where(
+        NewsArticle.event_category.isnot(None),
+        NewsArticle.importance >= 3,
+        NewsArticle.published_at >= since,
+    )
+    stmt, count_stmt = _apply_market_filter(stmt, count_stmt, market)
+    if category:
+        cats = [c for c in category if c]
+        if cats:
+            stmt = stmt.where(NewsArticle.event_category.in_(cats))
+            count_stmt = count_stmt.where(NewsArticle.event_category.in_(cats))
+
+    rows = db.execute(
+        stmt.order_by(NewsArticle.published_at.desc()).limit(limit)
+    ).scalars().all()
+
+    # Hydrate linked symbols.
+    article_ids = [row.id for row in rows]
+    symbols_by_article: dict[int, list[dict[str, Any]]] = {}
+    if article_ids:
+        symbol_rows = db.execute(
+            select(
+                NewsArticleSymbol.article_id,
+                NewsArticleSymbol.symbol,
+                NewsArticleSymbol.name,
+                NewsArticleSymbol.name_zh,
+            ).where(NewsArticleSymbol.article_id.in_(article_ids))
+        ).all()
+        for article_id, symbol, name, name_zh in symbol_rows:
+            symbols_by_article.setdefault(article_id, []).append(
+                {"symbol": symbol, "name": name, "name_zh": name_zh}
+            )
+
+    items: list[dict[str, Any]] = []
+    for article in rows:
+        if article.sentiment_label == "positive" or article.sentiment_label == "bullish":
+            direction = "bullish"
+        elif article.sentiment_label == "negative" or article.sentiment_label == "bearish":
+            direction = "bearish"
+        else:
+            direction = "neutral"
+
+        strength = (article.importance or 3) * 20
+
+        items.append(
+            {
+                "id": article.id,
+                "title": article.title,
+                "title_zh": article.title_zh,
+                "source": article.source,
+                "url": article.url,
+                "market": article.market,
+                "event_category": article.event_category,
+                "importance": article.importance,
+                "sentiment_score": article.sentiment_score,
+                "sentiment_label": article.sentiment_label,
+                "published_at": _iso_utc(article.published_at),
+                "summary": article.summary,
+                "symbols": symbols_by_article.get(article.id, []),
+                "signal_direction": direction,
+                "signal_strength": strength,
+            }
+        )
+
+    return {"items": items}
+
 @router.get("/{article_id}")
 def get_article(article_id: int, db: Session = Depends(get_db)) -> dict:
     """Return a single article plus its linked symbols.
@@ -1393,99 +1496,5 @@ def translate_article(
         return result
 
 
-@router.get("/event-signals")
-def event_signals(
-    days: int = Query(7, ge=1, le=30),
-    market: str | None = Query(None, description="Filter by market (cn_a | us | crypto | global)"),
-    category: list[str] | None = Query(
-        None,
-        description=(
-            "Filter by event_category. Repeatable. Allowed: "
-            "earnings|m&a|product|macro|regulation|guidance|analyst|legal|rumor"
-            "|geopolitics|central_bank|election|trade_war|sanction|other"
-        ),
-    ),
-    limit: int = Query(50, ge=1, le=200),
-    db: Session = Depends(get_db),
-) -> dict[str, Any]:
-    """Event-driven signals from ``news_article``.
-
-    Returns articles whose ``event_category`` is set and ``importance >= 3``
-    as actionable signals.  ``signal_direction`` is derived from
-    ``sentiment_label`` and ``signal_strength`` from ``importance`` (1-5
-    mapped to 1-100).  Used by the SignalDashboard "事件信号" integration.
-    """
-    since = datetime.now(tz=UTC) - timedelta(days=days)
-
-    stmt = select(NewsArticle).where(
-        NewsArticle.event_category.isnot(None),
-        NewsArticle.importance >= 3,
-        NewsArticle.published_at >= since,
-    )
-    count_stmt = select(func.count(NewsArticle.id)).where(
-        NewsArticle.event_category.isnot(None),
-        NewsArticle.importance >= 3,
-        NewsArticle.published_at >= since,
-    )
-    stmt, count_stmt = _apply_market_filter(stmt, count_stmt, market)
-    if category:
-        cats = [c for c in category if c]
-        if cats:
-            stmt = stmt.where(NewsArticle.event_category.in_(cats))
-            count_stmt = count_stmt.where(NewsArticle.event_category.in_(cats))
-
-    rows = db.execute(
-        stmt.order_by(NewsArticle.published_at.desc()).limit(limit)
-    ).scalars().all()
-
-    # Hydrate linked symbols.
-    article_ids = [row.id for row in rows]
-    symbols_by_article: dict[int, list[dict[str, Any]]] = {}
-    if article_ids:
-        symbol_rows = db.execute(
-            select(
-                NewsArticleSymbol.article_id,
-                NewsArticleSymbol.symbol,
-                NewsArticleSymbol.name,
-                NewsArticleSymbol.name_zh,
-            ).where(NewsArticleSymbol.article_id.in_(article_ids))
-        ).all()
-        for article_id, symbol, name, name_zh in symbol_rows:
-            symbols_by_article.setdefault(article_id, []).append(
-                {"symbol": symbol, "name": name, "name_zh": name_zh}
-            )
-
-    items: list[dict[str, Any]] = []
-    for article in rows:
-        if article.sentiment_label == "positive" or article.sentiment_label == "bullish":
-            direction = "bullish"
-        elif article.sentiment_label == "negative" or article.sentiment_label == "bearish":
-            direction = "bearish"
-        else:
-            direction = "neutral"
-
-        strength = (article.importance or 3) * 20
-
-        items.append(
-            {
-                "id": article.id,
-                "title": article.title,
-                "title_zh": article.title_zh,
-                "source": article.source,
-                "url": article.url,
-                "market": article.market,
-                "event_category": article.event_category,
-                "importance": article.importance,
-                "sentiment_score": article.sentiment_score,
-                "sentiment_label": article.sentiment_label,
-                "published_at": _iso_utc(article.published_at),
-                "summary": article.summary,
-                "symbols": symbols_by_article.get(article.id, []),
-                "signal_direction": direction,
-                "signal_strength": strength,
-            }
-        )
-
-    return {"items": items}
 
 

@@ -3,7 +3,7 @@
 from datetime import date, datetime
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class ParamSpecSchema(BaseModel):
@@ -30,12 +30,17 @@ class StrategyCatalogItem(BaseModel):
 
 
 class StrategyTemplate(BaseModel):
-    """Preset strategy template."""
+    """Preset strategy template.
+
+    ``params`` 在模板里是可选的：模板描述的是参数*规格*（``param_specs``），
+    只有用户保存的具体策略才有具体 ``params``（2026-08-08 功能审计——
+    此前必填导致 /strategies/templates 整页 500）。
+    """
 
     name: str
     description: str
     strategy_type: str
-    params: dict[str, Any]
+    params: dict[str, Any] = Field(default_factory=dict)
 
 
 class StrategyBase(BaseModel):

@@ -9,7 +9,7 @@ from datetime import date, timedelta
 from typing import Any
 
 import pandas as pd
-from sqlalchemy import case
+from sqlalchemy import case, func
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
@@ -54,7 +54,21 @@ class AShareETLPipeline(ETLPipeline):
         self._expected_codes = codes
 
         # 2. Determine target trade date
-        target_date = self.target_date or (date.today() - timedelta(days=1))
+        # 2026-08-08 循环/断点审计：此前硬编码"昨天"，单日上游失败即永久
+        # 断档（下游指标/评分/信号锚定最新日期而静默跳过缺日）。改为从
+        # 库内最新交易日的次日续抓（与"昨天"取较小者），断档日自动补数；
+        # 幂等 upsert 保证重复抓取无害。
+        if self.target_date:
+            target_date = self.target_date
+        else:
+            latest = (
+                self.db.query(func.max(InstrumentDailyBar.trade_date)).scalar()
+            )
+            yesterday = date.today() - timedelta(days=1)
+            if latest is None:
+                target_date = yesterday
+            else:
+                target_date = min(yesterday, latest + timedelta(days=1))
 
         # 3. Fetch daily bars (fetch a small window to cover weekends/holidays)
         start_date = target_date - timedelta(days=7)

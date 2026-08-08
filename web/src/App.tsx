@@ -141,7 +141,11 @@ export default function App() {
                 ))}
             </Route>
           </Routes>
-          <AIHelpDrawer />
+          {/* AIHelpDrawer 仅登录后需要；全局渲染会让 /login 在未登录时也
+              调用 /research/ai/status 触发 403（2026-08-08 回归修复）。 */}
+          <RequireAuth>
+            <AIHelpDrawer />
+          </RequireAuth>
         </AIHelpProvider>
       </BrowserRouter>
     </GlobalErrorBoundary>

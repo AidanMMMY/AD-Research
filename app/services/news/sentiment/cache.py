@@ -46,6 +46,9 @@ class SentimentCache:
 
     ARTICLE_TTL_SECONDS = 30 * 24 * 3600  # 30 days
     RETAIL_TTL_SECONDS = 30 * 60          # 30 minutes
+    # 失败防抖：LLM 故障期间避免 30s 周期对同一批文章反复真实调用
+    # （2026-08-08 循环/断点审计）。
+    FAIL_TTL_SECONDS = 10 * 60            # 10 minutes
 
     def __init__(self, redis_client: Any | None = None) -> None:
         self._redis = redis_client
@@ -68,6 +71,15 @@ class SentimentCache:
 
     def article_key(self, url: str) -> str:
         return f"{self.PREFIX_ARTICLE}:{self.url_hash(url)}"
+
+    def article_fail_key(self, url: str) -> str:
+        return f"{self.PREFIX_ARTICLE}:fail:{self.url_hash(url)}"
+
+    def is_article_failed(self, url: str) -> bool:
+        return self.redis.get(self.article_fail_key(url)) is not None
+
+    def mark_article_failed(self, url: str) -> None:
+        self.redis.setex(self.article_fail_key(url), self.FAIL_TTL_SECONDS, "1")
 
     def retail_key(self, symbol: str, window_hours: int) -> str:
         return f"{self.PREFIX_RETAIL}:{symbol.upper()}:{window_hours}"

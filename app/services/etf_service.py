@@ -196,6 +196,41 @@ class ETFService:
         cache_set(cache_key, response.model_dump(), ttl=300)
         return response
 
+    def list_options(self) -> list[dict]:
+        """轻量全量标的列表（选择器用）——只取少量列，Redis 缓存 10min。"""
+        cache_key = "etf:options:v1"
+        cached = cache_get(cache_key)
+        if cached is not None:
+            return cached
+        rows = (
+            self.db.query(
+                ETFInfo.code,
+                ETFInfo.name,
+                ETFInfo.name_zh,
+                ETFInfo.market,
+                ETFInfo.category,
+                ETFInfo.fund_size,
+                ETFInfo.instrument_type,
+            )
+            .filter(ETFInfo.status == "active")
+            .order_by(ETFInfo.fund_size.desc().nullslast())
+            .all()
+        )
+        items = [
+            {
+                "code": r.code,
+                "name": r.name,
+                "name_zh": r.name_zh,
+                "market": r.market,
+                "category": r.category,
+                "fund_size": float(r.fund_size) if r.fund_size is not None else None,
+                "instrument_type": r.instrument_type,
+            }
+            for r in rows
+        ]
+        cache_set(cache_key, items, ttl=600)
+        return items
+
     def get_etf(self, code: str) -> ETFInfoResponse | None:
         """Get a single ETF by code, enriched with latest fundamental data."""
         cache_key = f"etf:detail:{code}"
@@ -204,6 +239,17 @@ class ETFService:
             return ETFInfoResponse(**cached) if cached else None
 
         etf = self.db.query(ETFInfo).filter(ETFInfo.code == code).first()
+        if etf is None and code.isdigit():
+            # A 股无后缀访问（/instruments/510300）→ 尝试补交易所后缀
+            # （2026-08-08 功能审计：此前详情页直达 404）。
+            for suffix in (".SH", ".SZ", ".BJ"):
+                etf = (
+                    self.db.query(ETFInfo)
+                    .filter(ETFInfo.code == code + suffix)
+                    .first()
+                )
+                if etf is not None:
+                    break
         if etf is None:
             cache_set(cache_key, None, ttl=600)
             return None

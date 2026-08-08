@@ -86,6 +86,12 @@ export interface AttributionSummary {
   interaction_pct?: number;
 }
 
+export interface AttributionBreakdown {
+  allocation_effect?: number;
+  selection_effect?: number;
+  interaction_effect?: number;
+}
+
 export interface AttributionTradeStats {
   total_trades?: number;
   winning_trades?: number;
@@ -99,6 +105,8 @@ export interface AttributionResponse {
   total_return?: number;
   benchmark_return?: number;
   excess_return?: number;
+  /** 单桶 Brinson 归因（后端实际返回；effects 数组后端不存在，2026-08-08 对齐）。 */
+  attribution?: AttributionBreakdown;
   effects?: AttributionEffect[];
   summary?: AttributionSummary;
   trade_stats?: AttributionTradeStats;

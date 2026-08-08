@@ -9,7 +9,13 @@ import { message } from 'antd';
  *
  * 注意：仍由调用方在 hook 返回值里暴露 `error`，本 hook 只做 toast，
  * 不吞错。
+ *
+ * 2026-08-08 UX 优化：同一 queryKey 的错误在 10s 冷却窗口内只弹一次，
+ * 避免多个查询同时失败（或 react-query retry）时 toast 轰炸。
  */
+const TOAST_COOLDOWN_MS = 10_000;
+const lastToastAt = new Map<string, number>();
+
 export function useApiErrorToast(
   queryKey: string,
   error: unknown,
@@ -17,6 +23,10 @@ export function useApiErrorToast(
 ): void {
   useEffect(() => {
     if (!error) return;
+    const now = Date.now();
+    const last = lastToastAt.get(queryKey) ?? 0;
+    if (now - last < TOAST_COOLDOWN_MS) return;
+    lastToastAt.set(queryKey, now);
     const hash = generateErrorHash();
     const detail = extractErrorMessage(error);
     const baseMsg = fallbackMsg ?? '请求失败';

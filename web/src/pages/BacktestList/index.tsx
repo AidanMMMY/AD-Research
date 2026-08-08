@@ -11,7 +11,7 @@ import EmptyState from '@/components/EmptyState';
 import LoadingBlock from '@/components/LoadingBlock';
 import { useBacktests } from '@/hooks/useBacktests';
 import { useStrategies } from '@/hooks/useStrategies';
-import { useInstrumentList } from '@/hooks/useInstrumentList';
+import { useEtfOptions } from '@/hooks/useInstrumentList';
 import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
 import { useIsMobile } from '@/hooks/useBreakpoint';
 import { clickableRow } from '@/utils/a11y';
@@ -19,7 +19,7 @@ import { PlusOutlined, EyeOutlined } from '@ant-design/icons';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import dayjs from 'dayjs';
 import type { BacktestListItem, BacktestMetrics } from '@/types/backtest';
-import type { InstrumentInfo } from '@/types/instrument';
+import type { EtfOptionItem } from '@/api/instrument';
 
 export default function BacktestList() {
   const navigate = useNavigate();
@@ -43,7 +43,8 @@ export default function BacktestList() {
 
   const { backtests, isLoading, create, isCreating } = useBacktests(strategyIdParam);
   const { strategies } = useStrategies();
-  const { data: etfList, isLoading: etfLoading } = useInstrumentList({ page_size: 10000 });
+  // 2026-08-08：改用轻量 options 端点（page_size=10000 触发后端 422）
+  const { data: etfOptionsData, isLoading: etfLoading } = useEtfOptions();
 
   const strategyNameById = useMemo(
     () => new Map<number, string>((strategies || []).map((s: any) => [s.id, s.name])),
@@ -59,7 +60,7 @@ export default function BacktestList() {
     );
   }, [backtests, strategies, strategyTypeParam]);
 
-  const etfOptions = (etfList?.items || []).map((item: InstrumentInfo) => ({
+  const etfOptions = (etfOptionsData || []).map((item: EtfOptionItem) => ({
     label: `${item.code} ${item.name}`,
     value: item.code,
   }));

@@ -57,12 +57,21 @@ export function useContainerLogs(container: string, tail = 200) {
 }
 
 /** Hook for live SSE log streaming. */
+const MAX_RECONNECT_BACKOFF_MS = 30_000;
+const DEFAULT_RECONNECT_BACKOFF_MS = 1_000;
+
 export function useLogStream(container: string) {
   const [lines, setLines] = useState<LogLine[]>([]);
   const [connected, setConnected] = useState(false);
   const eventSourceRef = useRef<EventSource | null>(null);
+  const reconnectTimeoutRef = useRef<number | null>(null);
+  const backoffRef = useRef(DEFAULT_RECONNECT_BACKOFF_MS);
 
   const connect = useCallback(() => {
+    if (reconnectTimeoutRef.current !== null) {
+      window.clearTimeout(reconnectTimeoutRef.current);
+      reconnectTimeoutRef.current = null;
+    }
     if (eventSourceRef.current) {
       eventSourceRef.current.close();
     }
@@ -75,6 +84,7 @@ export function useLogStream(container: string) {
     es.addEventListener('connected', () => {
       setConnected(true);
       setLines([]);
+      backoffRef.current = DEFAULT_RECONNECT_BACKOFF_MS;
     });
 
     es.addEventListener('log', (e) => {
@@ -93,12 +103,28 @@ export function useLogStream(container: string) {
     es.onerror = () => {
       setConnected(false);
       es.close();
+      // 封顶退避自动重连（2026-08-08 循环/断点审计：此前断线后永不重连，
+      // 部署日志视图在任意网络抖动后永久停在"未连接"）。
+      if (reconnectTimeoutRef.current !== null) return;
+      const delay = backoffRef.current;
+      backoffRef.current = Math.min(
+        backoffRef.current * 2,
+        MAX_RECONNECT_BACKOFF_MS,
+      );
+      reconnectTimeoutRef.current = window.setTimeout(() => {
+        reconnectTimeoutRef.current = null;
+        connect();
+      }, delay);
     };
 
     eventSourceRef.current = es;
   }, [container]);
 
   const disconnect = useCallback(() => {
+    if (reconnectTimeoutRef.current !== null) {
+      window.clearTimeout(reconnectTimeoutRef.current);
+      reconnectTimeoutRef.current = null;
+    }
     if (eventSourceRef.current) {
       eventSourceRef.current.close();
       eventSourceRef.current = null;

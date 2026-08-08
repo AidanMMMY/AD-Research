@@ -180,15 +180,17 @@ def _resolve_a_share_target_date(
 def _acquire_indicator_date_lock(target_date: date, full_history: bool) -> bool:
     """以日期维度获取 Redis 锁，防止同一日期的指标任务被重复调度。
 
-    锁的 TTL 设为 12 小时，覆盖指标任务最长运行时间；任务完成后即使未主动
-    释放，也会在下一个交易日自动过期。
+    锁的 TTL 设为 6 小时，覆盖指标任务最长运行时间（soft 4h / hard 6h）；
+    任务成功或最终失败会主动释放（见 app/tasks/indicator.py）。TTL 从 12h
+    缩短（2026-08-08 循环/断点审计：旧值在任务失败后让 17:00 兜底连续
+    多日被挡）。
     """
     client = get_redis_client()
     lock_key = (
         f"ad_research:indicator:a_share:{target_date.isoformat()}"
         f":fh={full_history}"
     )
-    return client.set(lock_key, "1", nx=True, ex=12 * 3600) is True
+    return client.set(lock_key, "1", nx=True, ex=6 * 3600) is True
 
 
 def _lock_names_for_job(job_name: str) -> list[str]:

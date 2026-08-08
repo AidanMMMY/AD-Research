@@ -43,6 +43,24 @@ class ETFListResponse(BaseModel):
     page_size: int
 
 
+class EtfOptionItem(BaseModel):
+    """轻量标的选项（选择器专用，2026-08-08 功能审计）。
+
+    此前 InstrumentSelector / PoolDetail / BacktestList 用
+    ``page_size=10000`` 拉全量 ETFInfoResponse，触发后端
+    ``page_size le=200`` 校验（422），选择器整体失效。新增本端点只返回
+    选择器需要的少量列，规避连接池饱和并恢复可用性。
+    """
+
+    code: str
+    name: str
+    name_zh: str | None = None
+    market: str | None = None
+    category: str | None = None
+    fund_size: float | None = None
+    instrument_type: str | None = None
+
+
 class ETFFilterParams(BaseModel):
     market: str | None = None
     category: str | None = None

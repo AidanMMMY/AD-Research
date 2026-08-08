@@ -115,6 +115,14 @@ export default function InstrumentDetail() {
   const colorConvention = useSettingsStore((s) => s.colorConvention);
   const mode = useSettingsStore((s) => s.mode);
   const { data: instrument, isLoading: instrumentLoading, error: instrumentError } = useInstrumentDetail(code || '');
+  // A 股无后缀直达（/instruments/510300）时，后端会归一到规范 code
+  // （510300.SH）。拿到规范 code 后重定向，让 sparkline/history/score
+  // 等次级请求全部使用规范 code（2026-08-08 功能审计）。
+  useEffect(() => {
+    if (instrument?.code && instrument.code !== code) {
+      navigate(`/instruments/${encodeURIComponent(instrument.code)}`, { replace: true });
+    }
+  }, [instrument, code, navigate]);
   const { data: score } = useInstrumentScore(code || '');
   const { isFavorite: serverIsFavorite, toggle } = useFavoriteStatus(code || '');
   /* Response: optimistic favorite flip — the UI reflects the new state on

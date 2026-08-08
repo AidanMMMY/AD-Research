@@ -31,6 +31,15 @@ from app.models.research import *
 from app.models.scoring import *
 from app.models.user_article_state import *
 
+# Agent-B 的 master news 模型（news_article / news_article_symbol /
+# reddit_comment_cache）定义在 ``app/models/news.py``，与 ``app/models/news/``
+# 包同名冲突，普通 import 解析不到。必须经 _model_loader 显式加载，
+# 否则这些表脱离 alembic autogenerate 的 target_metadata，模型列变更
+# （如 2026-08 的 news_article.duplicate_of）永远不会生成迁移，
+# 生产查询直接 UndefinedColumn 500（2026-08-08 审计发现）。
+from app.services.news._model_loader import load_news_models
+load_news_models()
+
 target_metadata = Base.metadata
 
 # other values from the config, defined by the needs of env.py,

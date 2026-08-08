@@ -8,7 +8,28 @@ from datetime import date
 
 from app.core.celery_app import celery_app
 from app.core.database import SessionLocal
+from app.core.redis_client import get_redis_client
 from app.data.indicators.calculator import batch_calculate_indicators
+
+
+def _release_indicator_date_lock(target_date: date | None, full_history: bool) -> None:
+    """释放调度器预定的指标日期锁（2026-08-08 循环/断点审计）。
+
+    调度侧 ``_acquire_indicator_date_lock`` 只预定不释放；若任务失败，
+    17:00 兜底会连续多日被同一把锁挡住。任务成功或最终失败后在此释放。
+    """
+    if target_date is None:
+        return
+    try:
+        client = get_redis_client()
+        lock_key = (
+            f"ad_research:indicator:a_share:{target_date.isoformat()}"
+            f":fh={full_history}"
+        )
+        client.delete(lock_key)
+    except Exception:
+        # 释放失败不阻塞任务结果上报；锁有 6h TTL 兜底。
+        pass
 
 
 def _parse_date(value: date | str | None) -> date | None:
@@ -67,8 +88,13 @@ def calculate_indicators(
             instrument_type_filter=instrument_type_filter,
             code_prefix=code_prefix,
         )
+        # 成功即释放调度侧日期锁，让 17:00 兜底 / 次日主跑不受残留锁阻塞。
+        _release_indicator_date_lock(effective_date, full_history)
         return count
     except Exception as exc:
+        if self.request.retries >= self.max_retries:
+            # 重试耗尽（最终失败）：释放锁，避免后续兜底被永久挡住。
+            _release_indicator_date_lock(effective_date, full_history)
         # Retry on transient DB/lock errors; permanent errors will raise after
         # max_retries.
         raise self.retry(exc=exc)

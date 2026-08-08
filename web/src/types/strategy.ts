@@ -21,7 +21,8 @@ export interface StrategyTemplate {
   name: string;
   description: string;
   strategy_type: string;
-  params: Record<string, any>;
+  /** 模板没有具体参数（参数规格在 param_specs），对齐后端 2026-08-08。 */
+  params?: Record<string, any>;
 }
 
 export interface Strategy {

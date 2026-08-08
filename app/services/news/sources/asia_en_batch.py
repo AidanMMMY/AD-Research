@@ -327,7 +327,7 @@ class AsiaEnBatchCrawler:
     def feeds(self) -> list[_Feed]:
         rows = ASIA_EN_BATCHES.get(self._batch_key, [])
         return [
-            _Feed(slug=s, display_name=n, url=u, market=m, language=l)
+            _Feed(slug=s, display_name=n, url=u, market=m, language=row)
             for s, n, u, m, row in rows
         ]
 

@@ -17,6 +17,7 @@ from app.schemas.etf import (
     ETFHoldingSnapshotListResponse,
     ETFInfoResponse,
     ETFListResponse,
+    EtfOptionItem,
     SparklineOut,
 )
 from app.services.etf_service import ETFService
@@ -84,6 +85,12 @@ def list_etfs(
 ):
     """List ETFs with optional filtering and pagination."""
     return service.list_etfs(params)
+
+
+@router.get("/options", response_model=list[EtfOptionItem])
+def list_etf_options(service: ETFService = Depends(get_etf_service)):
+    """轻量全量标的选项（选择器用）。放在 /{code} 之前避免被当作 code。"""
+    return service.list_options()
 
 
 @router.get("/{code}", response_model=ETFInfoResponse)

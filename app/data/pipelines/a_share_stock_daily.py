@@ -61,7 +61,19 @@ class AStockDailyPipeline(ETLPipeline):
         logger.info("AStockDailyPipeline: Processing %d active A-share stocks", len(codes))
 
         # 2. Determine target trade date
-        target_date = self.target_date or (date.today() - timedelta(days=1))
+        # 2026-08-08 循环/断点审计：与 a_share.py 一致——从库内最新交易日
+        # 次日续抓（与"昨天"取较小者），断档日自动补数。
+        if self.target_date:
+            target_date = self.target_date
+        else:
+            latest = (
+                self.db.query(func.max(InstrumentDailyBar.trade_date)).scalar()
+            )
+            yesterday = date.today() - timedelta(days=1)
+            if latest is None:
+                target_date = yesterday
+            else:
+                target_date = min(yesterday, latest + timedelta(days=1))
 
         # 3. Fetch daily bars — use bulk endpoint for single-date fetches
         #    (1 API call for ~5000 stocks vs 5000 per-stock calls)

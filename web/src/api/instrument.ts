@@ -14,9 +14,21 @@ export interface SparklineResponse {
   dates: string[];
 }
 
+export interface EtfOptionItem {
+  code: string;
+  name: string;
+  name_zh?: string | null;
+  market?: string | null;
+  category?: string | null;
+  fund_size?: number | null;
+  instrument_type?: string | null;
+}
+
 export const instrumentApi = {
   list: (params?: InstrumentFilterParams) =>
     client.get<InstrumentListResponse>('/etfs', { params }),
+  /** 轻量全量选项（选择器用）——避免 page_size=10000 触发后端 422（2026-08-08）。 */
+  options: () => client.get<EtfOptionItem[]>('/etfs/options'),
   get: (code: string) => client.get<InstrumentInfo>(`/etfs/${code}`),
   categories: (params?: InstrumentFilterParams) =>
     client.get<{ categories: string[] }>('/etfs/categories/list', { params }),

@@ -288,7 +288,19 @@ export default function BacktestDetail() {
           <LoadingBlock size="sm" />
         ) : (
           <Table
-            dataSource={(attribution?.effects || []).map((e: AttributionEffect, i: number) => ({ ...e, key: e.sector || `${i}` }))}
+            // 后端是单桶 Brinson 归因（attribution.allocation/selection/interaction_effect），
+            // 不是分行业 effects 数组（2026-08-08 对齐：此前恒为空表）。
+            dataSource={(() => {
+              const b = attribution?.attribution;
+              const rows: AttributionEffect[] = b
+                ? [
+                    { sector: '配置效应', allocation: b.allocation_effect },
+                    { sector: '选股效应', selection: b.selection_effect },
+                    { sector: '交互效应', interaction: b.interaction_effect },
+                  ]
+                : [];
+              return rows.map((e, i) => ({ ...e, key: e.sector || `${i}` }));
+            })()}
             columns={attributionColumns}
             rowKey="key"
             size="small"
