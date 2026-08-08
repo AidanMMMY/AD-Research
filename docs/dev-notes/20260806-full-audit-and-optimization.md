@@ -82,3 +82,61 @@
 ## 4. 过程资产
 - 审计原始报告：`tmp/audit/{security,performance}.md`（subagent 产出，含完整 file:line 证据）。
 - 建议清理：`tmp/audit/` 为一次性资产，可删除。
+
+---
+
+# 追加：2026-08-08 功能可用性 / 逻辑循环 / UX 审计与修复
+
+> 方法：本地起全栈（Postgres/Redis + uvicorn + Playwright）实测 35 个页面，
+> 2 个并行只读审计（前后端契约、调度/管道循环），逐端点复现 500/422/404。
+
+## 已修复（`486d79e`）
+
+### 功能断点（页面实测）
+- **news / learning 全页 500**：`alembic/env.py` 从未加载 `app/models/news.py`
+  （`app/models/news` 包遮蔽），`news_article` 的 `duplicate_of`/`embedding` 等列
+  从未迁移 → 生产查询 UndefinedColumn。修复：env.py 经 `_model_loader` 加载 +
+  2 个补列迁移（`f0b2d4e6f8a0` / `f0b2d4e6f8a1`），本地库已验证生效。
+- **SPA fallback**：uvicorn 直连时深层路由 404（生产靠 nginx try_files 兜底，
+  后端直连端口断）。非 API 路径 404 → index.html；API/带扩展名仍 404。
+- **/strategies/templates 500**：`params` 必填但模板只有 `param_specs` → 改可选。
+- **/news/event-signals 422**：路由顺序 bug（`/{article_id}` 抢匹配）→ 调整顺序。
+- **选择器 422**：3 处 `page_size=10000` 触发后端 `le=200` → 新增轻量
+  `GET /etfs/options` + `useEtfOptions`（规避连接池饱和历史问题）。
+- **详情页 404**：A 股无后缀（510300）→ `get_etf`/indicators 补后缀 fallback +
+  前端规范 code 重定向。
+- **ReturnComparison 崩溃**：`/market-data/snapshot` 对象当数组 → 类型对齐。
+- **BacktestDetail 归因空表**：渲染后端真实单桶 attribution。
+- **news 序列化缺 5 字段**（body/importance/event_category/sentiment_confidence/
+  sentiment_drivers）→ 前端信息位恢复。
+- **AIHelpDrawer 403 回归**：全局渲染导致 /login 未登录调 ai/status → 移入 RequireAuth。
+
+### 逻辑循环 / 断点（Cicero 审计 + 本地修复）
+- **A 股日终 ETL 无跨日补数**（HIGH）：从库内最新交易日次日续抓，断档日自动补数。
+- **指标日期锁 12h 永不释放**（HIGH）：6h TTL + 任务成功/最终失败主动释放。
+- **情绪批处理 30s 无限重选**（HIGH）：NOT EXISTS 过滤已处理行 + 失败 10min 防抖缓存。
+- **部署日志 SSE 断线不重连**（MEDIUM）：封顶退避重连。
+- **dev celery 无 industry 队列消费者**（MEDIUM）：compose 对齐生产。
+- 修复 E741 改名引入的 `asia_en_batch.py` 回归。
+
+### UX
+- useApiErrorToast 同 key 10s 冷却去重（避免 toast 轰炸）。
+
+## 验证
+- 全量 pytest：**1829+ 通过**（本地 Redis flushdb 后；2 例需共享缓存隔离）。
+- 前端 tsc + vite build 通过；eslint 0 error。
+- Playwright 35 页实测：无 JS 崩溃、无 document 级横向溢出；
+  页面内容量修复前后明显提升（如详情页 461→966）。
+- 截图资产：`tmp/shots/desktop-*.png`、`mobile-*.png`、`login.png`（共 43 张）。
+
+## 遗留（建议后续）
+1. **新闻全文/摘要毒行无限重试**（每 10min force 重抓/调 LLM，需加 attempt 列）。
+2. **score/signal 不写 ETLLog + job_name 命名错位**（运维面板显示 never_run、
+   stuck 清理删错锁，需统一命名 + `@record_etl`）。
+3. **测试 Redis 缓存隔离**（共享 Redis 导致 test_etf_service 偶发失败，
+   建议 conftest 加 autouse flush 或独立 db）。
+4. **详情页移动端**：内容最小宽度 ~980px（内部横向滚动），需实测调优。
+5. **web-vitals 上报**：70 次 ERR_ABORTED（页面切换中断遥测），建议改
+   `navigator.sendBeacon`。
+6. `/analysis/ranking|screen` 全表 GROUP BY 缓存、SSE 阻塞事件循环等
+   （见前文性能章节）。
