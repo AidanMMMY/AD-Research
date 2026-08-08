@@ -214,3 +214,6 @@ agent/overnight_hermes.env
 *.pem
 *.p8
 reports/credentials.md
+
+# 测试生成的报告产物（test_report_service_security 副作用），不入库
+reports/report_pool_weekly_*.html
