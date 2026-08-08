@@ -25,6 +25,17 @@ import pytest
 
 from app.data.providers import yfinance_indices_provider as yip
 
+
+@pytest.fixture(autouse=True)
+def _no_sleep(monkeypatch):
+    """屏蔽 provider 的节流 sleep（每个 ticker 2.5s）。
+
+    测试验证的是逻辑而非节流等待；此前这些批量函数在测试里真实 sleep，
+    单文件 16 个用例要跑 7 分钟+。monkeypatch 自动恢复，不影响其他模块。
+    """
+    monkeypatch.setattr(yip.time, "sleep", lambda _seconds: None)
+
+
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -323,6 +334,20 @@ def test_macro_latest_uses_default_period_when_no_dates(monkeypatch):
 # ---------------------------------------------------------------------------
 
 
+def _patch_ohlcv(monkeypatch):
+    """屏蔽 run_global_indices_refresh 的 OHLCV 段（真实网络，测试不依赖）。"""
+    from app.services.macro import global_indices_fetcher as gif
+    monkeypatch.setattr(gif, "fetch_a_share_ohlcv", lambda **kw: [])
+    monkeypatch.setattr(
+        "app.data.providers.yfinance_indices_provider.fetch_yfinance_ohlcv_bars",
+        lambda **kw: [],
+    )
+    monkeypatch.setattr(
+        "app.services.macro.global_index_bar_service.GlobalIndexBarService",
+        lambda db: MagicMock(),
+    )
+
+
 def test_refresh_calls_macro_fetcher(monkeypatch):
     """``run_global_indices_refresh`` must invoke ``fetch_macro_fx_rates_commodities``
     and upsert each region returned by it."""
@@ -372,6 +397,7 @@ def test_refresh_calls_macro_fetcher(monkeypatch):
 
     monkeypatch.setattr(gif, "MacroDataService", _FakeService)
     monkeypatch.setattr(gif, "SessionLocal", lambda: MagicMock())
+    _patch_ohlcv(monkeypatch)
 
     result = gif.run_global_indices_refresh()
 
@@ -420,6 +446,7 @@ def test_refresh_survives_empty_macro(monkeypatch):
 
     monkeypatch.setattr(gif, "MacroDataService", _FakeService)
     monkeypatch.setattr(gif, "SessionLocal", lambda: MagicMock())
+    _patch_ohlcv(monkeypatch)
 
     result = gif.run_global_indices_refresh()
 
