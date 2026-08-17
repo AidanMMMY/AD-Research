@@ -98,6 +98,16 @@ MAX_CONTENT_CHARS: Final[int] = 10_000
 # Cache TTL applied by callers when deciding whether to re-fetch.
 CACHE_TTL: Final[timedelta] = timedelta(hours=24)
 
+# Retry budget for the full-content drain (2026-08-17), mirroring
+# ``translation_service._MAX_TRANSLATION_ATTEMPTS``. A row whose fetch
+# keeps failing (anti-bot page, dead URL, Jina outage) increments
+# ``fulltext_attempts`` on every failed ``fetch``; once it reaches this
+# cap the 10-minute drain stops selecting it, so a handful of poison
+# rows can no longer occupy the newest-first batch window forever and
+# starve the real backlog. The daily ``news_attempts_daily_reset`` job
+# zeroes capped rows so a transient outage window self-heals.
+_MAX_FULLTEXT_ATTEMPTS: Final[int] = 5
+
 # ---------------------------------------------------------------------------
 # Flattened-body detection (2026-08-01, huxiu 段落粘连)
 # ---------------------------------------------------------------------------
@@ -1037,6 +1047,9 @@ class ContentFetcher:
             # retrying; only the observability fields are set.
             article.ai_cleaned_at = datetime.now(tz=UTC)
             article.ai_cleanup_status = "failed"
+            # 2026-08-17: count the failed attempt so the drain stops
+            # picking permanently-failing rows at the cap.
+            self._record_attempt_outcome(article, succeeded=False)
             try:
                 self.db.commit()
             except Exception as exc:  # noqa: BLE001
@@ -1078,6 +1091,7 @@ class ContentFetcher:
             article.full_content_fetched_at = datetime.now(tz=UTC)
             article.ai_cleaned_at = datetime.now(tz=UTC)
             article.ai_cleanup_status = "cleaned"
+            self._record_attempt_outcome(article, succeeded=True)
             try:
                 self.db.commit()
             except Exception as exc:  # noqa: BLE001
@@ -1106,6 +1120,7 @@ class ContentFetcher:
             )
             article.ai_cleaned_at = datetime.now(tz=UTC)
             article.ai_cleanup_status = "failed"
+            self._record_attempt_outcome(article, succeeded=False)
             try:
                 self.db.commit()
             except Exception as exc:  # noqa: BLE001
@@ -1143,6 +1158,7 @@ class ContentFetcher:
         article.full_content_fetched_at = datetime.now(tz=UTC)
         article.ai_cleaned_at = datetime.now(tz=UTC)
         article.ai_cleanup_status = ai_status
+        self._record_attempt_outcome(article, succeeded=True)
         try:
             self.db.commit()
         except Exception as exc:  # noqa: BLE001
@@ -1184,6 +1200,25 @@ class ContentFetcher:
             )
             self.db.rollback()
             return False
+
+    def _record_attempt_outcome(self, article: NewsArticle, *, succeeded: bool) -> None:
+        """Update ``fulltext_attempts`` after a fetch pass; never raises.
+
+        Success resets the counter so a later re-fetch (stale cache,
+        flattened body) gets a fresh budget; failure increments it, and
+        the drain stops selecting the row at ``_MAX_FULLTEXT_ATTEMPTS``.
+        """
+        try:
+            if succeeded:
+                if article.fulltext_attempts:
+                    article.fulltext_attempts = 0
+            else:
+                article.fulltext_attempts = (article.fulltext_attempts or 0) + 1
+        except Exception as exc:  # pragma: no cover - defensive
+            logger.info(
+                "ContentFetcher: fulltext_attempts update failed for %s: %s",
+                article.id, exc,
+            )
 
     # ------------------------------------------------------------------
     # Internals

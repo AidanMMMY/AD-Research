@@ -102,6 +102,7 @@ def fetch_full_content_for_ids(
     by the 10-minute scheduler job.
     """
     from app.config import get_settings
+    from app.services.news.content_fetcher import _MAX_FULLTEXT_ATTEMPTS
 
     settings = get_settings()
     if not settings.news_content_fetch_on_ingest:
@@ -121,6 +122,7 @@ def fetch_full_content_for_ids(
                 .where(NewsArticle.id.in_(ids))
                 .where(NewsArticle.full_content.is_(None))
                 .where(NewsArticle.url.isnot(None))
+                .where(NewsArticle.fulltext_attempts < _MAX_FULLTEXT_ATTEMPTS)
             )
             .scalars()
             .all()
@@ -149,13 +151,22 @@ def fetch_full_content_for_ids(
 
 def run_fetch_full_content():
     """Fetch full content for articles that don't have it yet."""
+    from app.services.news.content_fetcher import _MAX_FULLTEXT_ATTEMPTS
+
     db = SessionLocal()
     try:
-        # Find articles without full_content, preferring recent ones
+        # Find articles without full_content, preferring recent ones.
+        # Poison-queue guard (2026-08-17): rows whose fetch keeps failing
+        # increment ``fulltext_attempts`` and leave the newest-first
+        # window at the cap, so a handful of anti-bot / dead-URL rows can
+        # no longer consume every batch. The daily
+        # ``news_attempts_daily_reset`` job zeroes capped rows so a
+        # transient outage (e.g. Jina 402 window) self-heals.
         stmt = (
             select(NewsArticle)
             .where(NewsArticle.full_content.is_(None))
             .where(NewsArticle.url.isnot(None))
+            .where(NewsArticle.fulltext_attempts < _MAX_FULLTEXT_ATTEMPTS)
             .order_by(NewsArticle.published_at.desc())
             .limit(BATCH_SIZE)
         )

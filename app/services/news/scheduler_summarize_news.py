@@ -35,8 +35,16 @@ def _pending_summary_ids(db, limit: int) -> list[int]:
     Importance-desc then newest-first so the headlines that matter get
     a digest line first; the drain job then walks backwards into the
     archive one batch per tick.
+
+    Poison-queue guard (2026-08-17): rows whose summary keeps failing
+    increment ``summary_attempts`` and leave the window at
+    ``_MAX_SUMMARY_ATTEMPTS``, so a transient LLM outage window can no
+    longer pin a batch of unlucky rows at the top of the selection
+    forever. The daily ``news_attempts_daily_reset`` job zeroes capped
+    rows so they re-enter the pool without a manual reset.
     """
     from app.services.news._model_loader import NewsArticle
+    from app.services.news.summary_service import _MAX_SUMMARY_ATTEMPTS
 
     stmt = (
         select(NewsArticle.id)
@@ -44,6 +52,7 @@ def _pending_summary_ids(db, limit: int) -> list[int]:
             NewsArticle.summary_zh.is_(None),
             NewsArticle.importance.isnot(None),
             NewsArticle.importance >= 3,
+            NewsArticle.summary_attempts < _MAX_SUMMARY_ATTEMPTS,
         )
         .order_by(NewsArticle.importance.desc(), NewsArticle.published_at.desc())
         .limit(limit)
