@@ -116,6 +116,26 @@ main,
   .page-padding-lg {
     padding: var(--space-block);
   }
+
+  /* 2026-08-17 审计遗留 #4：详情页移动端内部横向滚动（实测内容最小宽度
+     ~466px，生产真实数据下 ~980px）。根因：.page-header-actions 是
+     不换行的 flex 行，且 .page-header-extra 定了 flex-shrink: 0——
+     extra 被冻结在 max-content 宽度（详情页 extra = 两个按钮 + 最新价
+     KPI 块），把整条 header row 顶出视口，由 .app-layout__content
+     (overflow: auto) 接住变成页面级内部横向滚动。
+     修复：移动端允许 actions 换行、extra 可收缩，内部
+     .detail-hero__actions 本就有 flex-wrap + KPI width:100% 的移动端
+     规则，宽度一旦受约束即自动堆叠。桌面行为不变。 */
+  .page-header-actions {
+    flex-wrap: wrap;
+    min-width: 0;
+  }
+
+  .page-header-extra {
+    flex-shrink: 1;
+    min-width: 0;
+    max-width: 100%;
+  }
 }
 
 /* ============================================================
