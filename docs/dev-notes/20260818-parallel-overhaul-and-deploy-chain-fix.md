@@ -67,7 +67,7 @@ yaml.safe_load(...)"` 过一遍再 push；CI 加强制门禁时必须先把存�
 | # | 项目 | commit | 要点 |
 |---|---|---|---|
 | 1 | DeepSeek→MiniMax 代码默认化 | `c96656f` | 24 文件；DeepSeekProvider 类保留作回滚 |
-| 2 | 评分域 | 2 commits | score/signal 补 @record_etl + job_name 三方对齐 + `_ETL_JOB_LOCK_MAP` 补映射；/scores 双扫→10min 缓存+算分主动失效；/analysis ranking|screen 30min 参数哈希缓存；cache.py 加容错变体（Redis 宕回退 DB） |
+| 2 | 评分域 | 2 commits | score/signal 补 @record_etl + job_name 三方对齐 + `_ETL_JOB_LOCK_MAP` 补映射；/scores 双扫→10min 缓存+算分主动失效；/analysis ranking·screen 30min 参数哈希缓存；cache.py 加容错变体（Redis 宕回退 DB） |
 | 3 | 新闻毒行 | `6fe30ae` | `fulltext_attempts`/`summary_attempts`（迁移 `d1e3f5a7b9c1`，server_default=0）；撞顶 5 次出窗；每日 03:45 自动回零自愈（`news_attempts_daily_reset`）；provider_unavailable 不计数 |
 | 4 | Docker 多阶段瘦身 | `915d564` | 三阶段（frontend/python-build/runtime），gcc+poetry 出运行时镜像；本机实测 1.75G→1.29G（生产预估 2.67G→2.2G）；compose/update.sh 零改动 |
 | 5 | 前端 | `1213724` | web-vitals 三级降级（sendBeacon Blob application/json → fetch keepalive → axios）；详情页移动端横滚根治（`.page-header-extra` 冻结宽度，Playwright 375px 实测归零） |
@@ -86,15 +86,33 @@ web `check:ci` + vitest 全绿，alembic 单 head `d1e3f5a7b9c1`。
 
 ## 四、本次部署（5b83d25）验证清单
 
-- [ ] `/health` git_sha = 5b83d25，db/redis ok
-- [ ] alembic current = d1e3f5a7b9c1（f0b2d4e6f8a0/f0b2d4e6f8a1 补列 + attempts 列全落地）
-- [ ] news / learning 页面不再 500（Codex 的 UndefinedColumn 修复首次上生产）
-- [ ] 首个 slim 镜像 x86 构建：backend healthcheck + 两 worker 启动日志正常
-- [ ] TLS：`curl -I https://www.alloyresearch.net` 200（挂载换路径后证书仍在）
-- [ ] 8000 收敛：`curl http://<IP>:8000` 外网不通，`curl http://127.0.0.1:8000/health` 本机通
-- [ ] MiniMax：营销过滤/summary 日志不再 fall through
-- [ ] 次日 06:30 digest 用 MiniMax 正常出报
-- [ ] update.sh 第 5 步清理旧镜像后 /data 占用下降
+- [x] `/health` git_sha = 689c02d，db/redis ok
+- [x] alembic current = d1e3f5a7b9c1（见下方"部署中新增的三个坑"）
+- [x] news 列查询生产验证：223,554 行带 duplicate_of 过滤 + attempts 列默认 0（Codex 的 UndefinedColumn 修复首次上生产）
+- [x] 首个 slim 镜像 x86 构建成功：**1.27GB vs 旧 2.67GB（-52%）**，backend 22s healthy，两 worker 正常
+- [x] TLS：nginx 新挂载路径下 https /health 200
+- [x] 8000 收敛：`ss -tln` 确认 127.0.0.1:8000，443 保持公开
+- [x] MiniMax：容器内 get_llm_provider() = MiniMaxProvider available=True
+- [ ] 次日 06:30 digest 用 MiniMax 正常出报（待观察）
+
+## 四·补、部署过程中新增的三个坑（全部实踩实修）
+
+1. **/opt 根目录游离 `ssl/` 目录挡部署**：7 月初遗留的未跟踪目录触发 sync step
+   脏工作树保护（Action-253 的反丢失设计），每次部署 1.3s 即 exit 1，且失败
+   摘要只写 previous=current 不写明原因。**排查口诀：deploy 失败先看
+   `cd /opt/ad-research && git status --porcelain`**。已挪 /root/stray-ssl-backup-20260818。
+2. **生产 DB 与迁移漂移**：prod `news_article` 的 `duplicate_of`/`embedding`/
+   `embedding_model`/`embedded_at` 四列已存在（8/8 有人手动补过——Codex 修
+   500 时），但 alembic_version 停在 `c4d6e8f0a2b4` → f0b2d4e6f8a0 迁移
+   DuplicateColumn 崩溃 → backend 崩循环 → 全栈起不来。修法：逐列核对齐全后
+   `docker compose run --rm --no-deps --entrypoint alembic backend stamp f0b2d4e6f8a1`
+   + `upgrade head`。**教训：手动改生产库结构后必须当场 alembic stamp，
+   否则下次部署必炸。**
+3. **`/data/ad-research` 是 agent 管线的 git checkout**（部署时同步 + clean
+   未跟踪文件）：TLS 出仓第一步错把证书放进去，02:44 部署时被清掉 → nginx
+   读不到证书崩循环。**正确位置是 `/data/alloy-research/ssl`**（cninfo 数据
+   目录旁，非 git 管理）。compose 已改（`3180bfa`）。另外 nginx 崩溃后 docker
+   restart 退避会拉长到分钟级，恢复文件后记得 `docker restart` 强制立即重试。
 
 ## 五、遗留清单（更新版）
 
