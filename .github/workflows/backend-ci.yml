@@ -54,6 +54,9 @@ jobs:
     #     (HTTP is mocked; a dummy token is enough — tushare only
     #     validates it on a real API call).
     # Provide both here instead of skip-markers so the coverage stays.
+    # 2026-08-17: tests no longer share the dev Redis db 0 — app/tests/conftest.py
+    # forces REDIS_URL to db 15 and flushdb's it around every test, so the
+    # service below only ever sees test traffic on its own isolated db.
     services:
       redis:
         image: redis:7-alpine
