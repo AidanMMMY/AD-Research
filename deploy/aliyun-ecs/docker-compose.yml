@@ -290,10 +290,12 @@ services:
       - web_dist:/usr/share/nginx/html:ro
       - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
       # 2026-08-17 TLS 私钥出仓第一步：证书/私钥/ACME .well-known 移到
-      # 仓库外 /data/ad-research/ssl（服务器已 cp -a 同步）。此后仓库内的
-      # deploy/aliyun-ecs/ssl/ 不再被挂载，可安全走"重签发+filter-repo
-      # 清历史"流程而不会影响线上 TLS。
-      - /data/ad-research/ssl:/etc/nginx/ssl:ro
+      # 仓库外 /data/alloy-research/ssl（服务器已 cp -a 同步）。注意不能放
+      # /data/ad-research——那是 agent 管线的 git checkout，部署时 git clean
+      # 会清掉未跟踪文件（8/18  nginx 因此读不到证书崩溃循环，实踩）。
+      # 此后仓库内的 deploy/aliyun-ecs/ssl/ 不再被挂载，可安全走"重签发+
+      # filter-repo 清历史"流程而不会影响线上 TLS。
+      - /data/alloy-research/ssl:/etc/nginx/ssl:ro
     depends_on:
       backend:
         condition: service_healthy
