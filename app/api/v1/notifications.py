@@ -6,10 +6,14 @@ import json
 import logging
 from collections.abc import AsyncGenerator
 
+# anyio 随 FastAPI/Starlette 传递安装，to_thread.run_sync 与 FastAPI
+# 内部共用同一线程池。
+import anyio.to_thread
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import StreamingResponse
 
 from app.api.deps import get_current_user, get_notification_service
+from app.core.database import SessionLocal
 from app.core.log_sanitize import sanitize
 from app.schemas.notification import (
     NotificationConfigCreate,
@@ -109,9 +113,22 @@ def get_logs(
     return service.get_logs(page=page, page_size=page_size, user_id=current_user.id)
 
 
-async def _notification_event_stream(
-    service: NotificationService, user_id: int
-) -> AsyncGenerator[str, None]:
+def _poll_recent_logs(user_id: int) -> dict:
+    """SSE 轮询用的同步查询：每次调用新建并关闭独立 Session。
+
+    由 async 生成器经 ``anyio.to_thread.run_sync`` 丢到线程池执行——
+    同步 SQLAlchemy 查询直接在 async 生成器里跑会阻塞 uvicorn 事件
+    循环（2026-08-17 审计 HIGH）。session 不跨线程共享，也不复用
+    请求作用域的 session（后者会在整条 SSE 存活期内占用池连接）。
+    """
+    db = SessionLocal()
+    try:
+        return NotificationService(db).get_logs(page=1, page_size=5, user_id=user_id)
+    finally:
+        db.close()
+
+
+async def _notification_event_stream(user_id: int) -> AsyncGenerator[str, None]:
     """Yield SSE events describing the caller's most recent notification logs.
 
     Emits an initial ``connected`` event, then re-polls the log every
@@ -127,7 +144,7 @@ async def _notification_event_stream(
 
     while loop.time() < deadline:
         try:
-            page = service.get_logs(page=1, page_size=5, user_id=user_id)
+            page = await anyio.to_thread.run_sync(_poll_recent_logs, user_id)
             items = page.get("items", [])
             newest_id = items[0]["id"] if items else None
             if newest_id != last_seen_id:
@@ -144,7 +161,6 @@ async def _notification_event_stream(
 @router.get("/stream")
 async def notification_stream(
     request: Request,
-    service: NotificationService = Depends(get_notification_service),
     current_user=Depends(get_current_user),
 ):
     """SSE stream of the caller's notification activity (ops P1-2).
@@ -175,7 +191,7 @@ async def notification_stream(
         )
 
     return StreamingResponse(
-        _notification_event_stream(service, current_user.id),
+        _notification_event_stream(current_user.id),
         media_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache",

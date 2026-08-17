@@ -3,7 +3,7 @@
 Coverage:
   - split_telegram_chunks: 分段不切段落、单段超长硬切、全段越限正确累积。
   - md_to_telegram_html / md_to_email_html: HTML 转义、标题/粗体/列表转换。
-  - bot_token Fernet 加密往返（create_config 落库 enc: 前缀，get_configs 解密）。
+  - bot_token Fernet 加密往返（create_config 落库 enc: 前缀，get_configs 回掩码）。
   - _send_telegram: digest 场景首条=标题+summary、content 分段发送、
     段间 sleep；sendMessage 失败 → NotificationLog failed 且不抛异常。
   - digest 邮件分支: report_type=daily_digest 走全文模板（summary+content），
@@ -195,9 +195,11 @@ def test_bot_token_encrypted_at_rest(db_session):
     stored = row.config_json["bot_token"]
     assert stored.startswith("enc:")
     assert "123:ABC-token" not in stored
-    # 对外暴露时解密回明文
+    # 对外暴露时只回掩码（2026-08-17 安全审计 LOW：不再下发明文）
     exposed = svc.get_configs(user_id=1)[0]
-    assert exposed["config_json"]["bot_token"] == "123:ABC-token"
+    assert exposed["config_json"]["bot_token"] == "****oken"
+    # 发送链路内部仍能解密出明文
+    assert svc._expose_config_json(row.config_json)["bot_token"] == "123:ABC-token"
 
 
 # ── Telegram 发送 ──

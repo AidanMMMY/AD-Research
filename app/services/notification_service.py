@@ -200,6 +200,13 @@ class NotificationService:
     # Marker for encrypted values stored in config_json
     _ENCRYPTED_PREFIX = "enc:"
 
+    # 读取路径掩码协议（2026-08-17 安全审计 LOW）：GET 列表/详情不再下发
+    # 解密后的 SMTP 密码 / webhook 密钥 / bot_token，统一返回
+    # "****" + 末 4 位。更新路径收到掩码值或空值时保留库里的加密原值，
+    # 收到新值才重新加密入库；webhook_url 同理（掩码回传 = 不修改）。
+    _MASK_PREFIX = "****"
+    _SENSITIVE_CONFIG_KEYS = ("smtp_password", "webhook_secret", "bot_token")
+
     def __init__(self, db: Session):
         self.db = db
         self._fernet = self._get_fernet()
@@ -240,18 +247,57 @@ class NotificationService:
         """Encrypt sensitive values before persisting config_json."""
         protected = dict(config_json)
         # B7: telegram 的 bot_token 与 smtp_password 同级敏感，照抄 Fernet 惯例
-        for key in ("smtp_password", "webhook_secret", "bot_token"):
+        for key in self._SENSITIVE_CONFIG_KEYS:
             if key in protected and protected[key]:
                 protected[key] = self._encrypt_value(str(protected[key]))
         return protected
 
     def _expose_config_json(self, config_json: dict[str, Any]) -> dict[str, Any]:
-        """Decrypt sensitive values when returning config_json to callers."""
+        """Decrypt sensitive values when returning config_json to callers.
+
+        仅供发送链路（``send_notification`` 等内部调用）使用——API 读取
+        路径必须走 :meth:`_mask_config_json`，绝不下发明文。
+        """
         exposed = dict(config_json)
-        for key in ("smtp_password", "webhook_secret", "bot_token"):
+        for key in self._SENSITIVE_CONFIG_KEYS:
             if key in exposed and exposed[key]:
                 exposed[key] = self._decrypt_value(str(exposed[key]))
         return exposed
+
+    @staticmethod
+    def _mask_secret(plain: str) -> str:
+        """``****`` + 末 4 位；过短的值整体遮蔽，避免掩码即全文。"""
+        if not plain:
+            return ""
+        tail = plain[-4:] if len(plain) > 4 else ""
+        return f"{NotificationService._MASK_PREFIX}{tail}"
+
+    def _mask_config_json(self, config_json: dict[str, Any]) -> dict[str, Any]:
+        """读取路径用：敏感字段解密后只回掩码，绝不下发明文。"""
+        masked = dict(config_json)
+        for key in self._SENSITIVE_CONFIG_KEYS:
+            raw = masked.get(key)
+            if not raw:
+                continue
+            masked[key] = self._mask_secret(self._decrypt_value(str(raw)))
+        return masked
+
+    def _config_response(self, config: NotificationConfig) -> dict[str, Any]:
+        """API 响应视图：config_json 敏感字段掩码，webhook_url 也只回掩码。"""
+        masked = self._mask_config_json(config.config_json or {})
+        webhook_url = self._resolve_webhook_url(config)
+        if webhook_url:
+            masked["webhook_url"] = self._mask_secret(webhook_url)
+        updated_at = getattr(config, "updated_at", None)
+        return {
+            "id": config.id,
+            "name": config.name,
+            "channel_type": config.channel_type,
+            "config_json": masked,
+            "is_active": config.is_active,
+            "created_at": config.created_at.isoformat() if config.created_at else None,
+            "updated_at": updated_at.isoformat() if updated_at else None,
+        }
 
     def _encrypt_webhook_url(self, webhook_url: str | None) -> str | None:
         """Encrypt ``webhook_url`` for the dedicated ``webhook_url_encrypted`` column.
@@ -302,22 +348,12 @@ class NotificationService:
         return None
 
     def get_configs(self, user_id: int | None = None) -> list[dict[str, Any]]:
-        """Get all notification configurations."""
+        """Get all notification configurations (secrets masked)."""
         query = self.db.query(NotificationConfig)
         if user_id:
             query = query.filter(NotificationConfig.user_id == user_id)
         configs = query.all()
-        return [
-            {
-                "id": c.id,
-                "name": c.name,
-                "channel_type": c.channel_type,
-                "config_json": self._expose_config_json(c.config_json or {}),
-                "is_active": c.is_active,
-                "created_at": c.created_at.isoformat() if c.created_at else None,
-            }
-            for c in configs
-        ]
+        return [self._config_response(c) for c in configs]
 
     def create_config(self, name: str, channel_type: str, config_json: dict[str, Any], user_id: int | None = None) -> dict[str, Any]:
         """Create a new notification configuration.
@@ -343,15 +379,7 @@ class NotificationService:
         self.db.add(config)
         self.db.commit()
         self.db.refresh(config)
-        return {
-            "id": config.id,
-            "name": config.name,
-            "channel_type": config.channel_type,
-            "config_json": self._expose_config_json(config.config_json or {}),
-            "is_active": config.is_active,
-            "created_at": config.created_at.isoformat() if config.created_at else None,
-            "updated_at": config.updated_at.isoformat() if config.updated_at else None,
-        }
+        return self._config_response(config)
 
     def update_config(self, config_id: int, user_id: int | None = None, **kwargs) -> dict[str, Any] | None:
         """Update a notification configuration.
@@ -360,6 +388,11 @@ class NotificationService:
         ``webhook_url`` key, the plaintext value is encrypted into the
         dedicated column (or re-encrypted if it was already there) and
         stripped from ``config_json``.
+
+        掩码协议（2026-08-17）：敏感字段（smtp_password / webhook_secret /
+        bot_token）收到空值或以 ``****`` 开头的掩码回传时，保留库里的
+        加密原值不改动；只有收到真实新值才重新加密入库。``webhook_url``
+        同理：掩码回传 = 不修改，空字符串 = 清除（沿用旧语义）。
         """
         query = self.db.query(NotificationConfig).filter(NotificationConfig.id == config_id)
         if user_id:
@@ -371,27 +404,36 @@ class NotificationService:
             if not hasattr(config, key):
                 continue
             if key == "config_json" and isinstance(value, dict):
-                protected = self._protect_config_json(value)
+                incoming = dict(value)
+                # 掩码/空值回传的敏感字段：摘出入参，回填库存加密原值。
+                carried: dict[str, Any] = {}
+                existing = config.config_json or {}
+                for skey in self._SENSITIVE_CONFIG_KEYS:
+                    if skey not in incoming:
+                        continue
+                    raw = incoming[skey]
+                    if raw is None or not str(raw).strip() or str(raw).startswith(self._MASK_PREFIX):
+                        incoming.pop(skey)
+                        if existing.get(skey):
+                            carried[skey] = existing[skey]  # 已是 enc: 存储形态
+                protected = self._protect_config_json(incoming)
+                protected.update(carried)
                 new_webhook_url = protected.pop("webhook_url", None)
                 if new_webhook_url is not None:
-                    # Skip validation for already-encrypted round-trips.
-                    if not str(new_webhook_url).startswith(self._ENCRYPTED_PREFIX):
-                        _validate_webhook_url(str(new_webhook_url))
-                    config.webhook_url_encrypted = self._encrypt_webhook_url(new_webhook_url)
+                    url_text = str(new_webhook_url)
+                    if url_text.startswith(self._MASK_PREFIX):
+                        pass  # 掩码回传：保留 webhook_url_encrypted 原值
+                    else:
+                        # Skip validation for already-encrypted round-trips.
+                        if not url_text.startswith(self._ENCRYPTED_PREFIX):
+                            _validate_webhook_url(url_text)
+                        config.webhook_url_encrypted = self._encrypt_webhook_url(url_text)
                 setattr(config, key, protected)
             else:
                 setattr(config, key, value)
         self.db.commit()
         self.db.refresh(config)
-        return {
-            "id": config.id,
-            "name": config.name,
-            "channel_type": config.channel_type,
-            "config_json": self._expose_config_json(config.config_json or {}),
-            "is_active": config.is_active,
-            "created_at": config.created_at.isoformat() if config.created_at else None,
-            "updated_at": config.updated_at.isoformat() if config.updated_at else None,
-        }
+        return self._config_response(config)
 
     def delete_config(self, config_id: int, user_id: int | None = None) -> bool:
         """Delete a notification configuration."""

@@ -13,8 +13,12 @@ from collections.abc import AsyncGenerator
 from datetime import datetime
 from decimal import Decimal
 
+# anyio 随 FastAPI/Starlette 传递安装（fastapi 强依赖 starlette→anyio），
+# to_thread.run_sync 与 FastAPI 内部共用同一线程池。
+import anyio.to_thread
 from fastapi import APIRouter, Query
 from fastapi.responses import StreamingResponse
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.core.database import SessionLocal
@@ -89,103 +93,131 @@ def _candidate_codes(code: str) -> list[str]:
     return candidates
 
 
-def _fetch_snapshot(db: Session, code: str) -> dict | None:
-    """Look up a single instrument's latest price snapshot.
+def _resolve_matches(
+    db: Session, codes: list[str]
+) -> dict[str, tuple[str, "object | None"]]:
+    """Map each requested code to ``(matched_db_code, ETFInfo | None)``.
 
-    Returns ``None`` if neither ETFInfo nor InstrumentDailyBar has any row
-    for the supplied code (in any of the candidate forms). The caller is
-    responsible for emitting an ``unknown`` status event for those codes.
+    批量版（2026-08-17）：原先逐 code、逐 candidate 的循环查询在每 3s 的
+    SSE tick 里会放大成 N×M 次round-trip，这里改成两次 IN 批量查询
+    （ETFInfo 一次、InstrumentDailyBar 存在性一次），LIKE 模糊兜底仅对
+    仍未命中的 code 逐个执行（正常路径不会走到）。
+
+    Candidate 优先级语义保持不变：每个请求 code 仍按
+    :func:`_candidate_codes` 的顺序取第一个在库中存在的形态。
     """
     from app.models.etf import ETFInfo, InstrumentDailyBar
 
-    candidates = _candidate_codes(code)
-    if not candidates:
-        return None
+    cand_map: dict[str, list[str]] = {c: _candidate_codes(c) for c in codes}
+    all_cands = {cand for cands in cand_map.values() for cand in cands}
+    if not all_cands:
+        return {}
 
-    matched_code: str | None = None
+    matched: dict[str, tuple[str, object | None]] = {}
 
-    # 1) Try ETFInfo for any candidate form (preferred because it gives us
-    #    the human-readable name and market).
-    instrument: ETFInfo | None = None
-    for cand in candidates:
-        instrument = (
-            db.query(ETFInfo).filter(ETFInfo.code == cand).first()
-        )
-        if instrument is not None:
-            matched_code = instrument.code
-            break
-
-    # 2) If still nothing, do a fuzzy LIKE lookup as a last resort. This
-    #    handles rows where the DB stored something like ``510300`` while
-    #    the client sent ``510300.SH`` (or vice versa).
-    if instrument is None:
-        base = code.split(".", 1)[0] if "." in code else code
-        if base:
-            instrument = (
-                db.query(ETFInfo)
-                .filter(ETFInfo.code.like(f"{base}%"))
-                .first()
-            )
-            if instrument is not None:
-                matched_code = instrument.code
-
-    # 3) If ETFInfo still has nothing, the instrument might be a stock
-    #    rather than an ETF. Fall back to InstrumentDailyBar — it covers
-    #    stocks and ETFs alike.
-    if instrument is None:
-        bar_code: str | None = None
-        for cand in candidates:
-            row = (
-                db.query(InstrumentDailyBar.etf_code)
-                .filter(InstrumentDailyBar.etf_code == cand)
-                .order_by(InstrumentDailyBar.trade_date.desc())
-                .first()
-            )
-            if row is not None:
-                bar_code = row[0]
+    # 1) ETFInfo 批量 IN 查询（取代逐 candidate 循环）。
+    instruments = {
+        inst.code: inst
+        for inst in db.query(ETFInfo).filter(ETFInfo.code.in_(all_cands)).all()
+    }
+    for code in codes:
+        for cand in cand_map[code]:
+            if cand in instruments:
+                matched[code] = (instruments[cand].code, instruments[cand])
                 break
 
-        if bar_code is None and base:
+    # 2) ETFInfo 未命中者的 LIKE 兜底（与旧逻辑一致，逐 code 但极少触发）。
+    def _base(code: str) -> str:
+        return code.split(".", 1)[0] if "." in code else code
+
+    for code in codes:
+        if code in matched:
+            continue
+        base = _base(code)
+        if not base:
+            continue
+        inst = (
+            db.query(ETFInfo)
+            .filter(ETFInfo.code.like(f"{base}%"))
+            .first()
+        )
+        if inst is not None:
+            matched[code] = (inst.code, inst)
+
+    # 3) 仍未命中：InstrumentDailyBar 存在性批量 IN（股票等非 ETF 行）。
+    remaining = [c for c in codes if c not in matched]
+    if remaining:
+        rem_cands = {cand for c in remaining for cand in cand_map[c]}
+        bar_codes: set[str] = set()
+        if rem_cands:
+            bar_codes = {
+                row[0]
+                for row in db.query(InstrumentDailyBar.etf_code)
+                .filter(InstrumentDailyBar.etf_code.in_(rem_cands))
+                .distinct()
+                .all()
+            }
+        for code in remaining:
+            for cand in cand_map[code]:
+                if cand in bar_codes:
+                    matched[code] = (cand, None)
+                    break
+
+        # 4) LIKE 兜底（旧逻辑的 last-resort 分支，仅对彻底未命中者）。
+        for code in [c for c in remaining if c not in matched]:
+            base = _base(code)
+            if not base:
+                continue
             row = (
                 db.query(InstrumentDailyBar.etf_code)
                 .filter(InstrumentDailyBar.etf_code.like(f"{base}%"))
-                .order_by(InstrumentDailyBar.trade_date.desc())
                 .first()
             )
             if row is not None:
-                bar_code = row[0]
+                matched[code] = (row[0], None)
 
-        if bar_code is None:
-            logger.debug(
-                "SSE snapshot: no match for code=%s (tried %s)", code, candidates
-            )
-            return None
+    return matched
 
-        matched_code = bar_code
 
-    # 4) We have a matched code; fetch the latest two bars for change %.
-    latest = (
-        db.query(InstrumentDailyBar)
-        .filter(InstrumentDailyBar.etf_code == matched_code)
-        .order_by(InstrumentDailyBar.trade_date.desc())
-        .first()
-    )
+def _fetch_latest_two_bars(db: Session, matched_codes: set[str]) -> dict:
+    """批量取每个 code 最新两根 bar：``{code: {1: latest_row, 2: prev_row}}``。
 
-    if not latest:
-        logger.debug(
-            "SSE snapshot: matched %s in ETFInfo but no InstrumentDailyBar rows",
-            matched_code,
+    row_number 窗口一次查询取代逐 code 的 latest/prev 两次查询
+    （PostgreSQL / SQLite 均支持窗口函数）。
+    """
+    from app.models.etf import InstrumentDailyBar
+
+    if not matched_codes:
+        return {}
+
+    rn = func.row_number().over(
+        partition_by=InstrumentDailyBar.etf_code,
+        order_by=InstrumentDailyBar.trade_date.desc(),
+    ).label("rn")
+    sub = (
+        db.query(
+            InstrumentDailyBar.etf_code.label("etf_code"),
+            InstrumentDailyBar.close.label("close"),
+            InstrumentDailyBar.volume.label("volume"),
+            InstrumentDailyBar.trade_date.label("trade_date"),
+            rn,
         )
-        return None
-
-    prev = (
-        db.query(InstrumentDailyBar)
-        .filter(InstrumentDailyBar.etf_code == matched_code)
-        .order_by(InstrumentDailyBar.trade_date.desc())
-        .offset(1)
-        .first()
+        .filter(InstrumentDailyBar.etf_code.in_(matched_codes))
+        .subquery()
     )
+    bars: dict[str, dict[int, object]] = {}
+    for row in db.query(sub).filter(sub.c.rn <= 2).all():
+        bars.setdefault(row.etf_code, {})[row.rn] = row
+    return bars
 
+
+def _build_snapshot(
+    matched_code: str,
+    instrument: "object | None",
+    latest,
+    prev,
+) -> dict:
+    """由最新/前一根 bar 组装 SSE 载荷（与旧 _fetch_snapshot 输出一致）。"""
     latest_close = latest.close or Decimal("0")
     prev_close = prev.close if prev else None
 
@@ -222,19 +254,41 @@ def _collect_payload(codes: list[str]) -> dict | None:
     client. Previously the connection stayed checked out across the
     ``yield`` and the network flush, which piled up under slow or
     zombie SSE clients and contributed to pool exhaustion.
+
+    本函数是纯同步实现，由 async 生成器经 ``anyio.to_thread.run_sync``
+    丢到线程池执行，避免同步 SQLAlchemy 查询阻塞 uvicorn 事件循环
+    （2026-08-17 审计 HIGH）。session 每轮迭代新建并关闭，不跨线程共享。
     """
     db = SessionLocal()
     try:
+        matched = _resolve_matches(db, codes)
+        bars = _fetch_latest_two_bars(
+            db, {mc for mc, _ in matched.values()}
+        )
+
         snapshots = []
         unknown: list[str] = []
         seen_codes: set[str] = set()
         for code in codes:
-            snap = _fetch_snapshot(db, code)
-            if snap and snap["code"] not in seen_codes:
+            entry = matched.get(code)
+            bar_pair = bars.get(entry[0]) if entry else None
+            latest = bar_pair.get(1) if bar_pair else None
+            if entry is None or latest is None:
+                if entry is not None:
+                    logger.debug(
+                        "SSE snapshot: matched %s but no InstrumentDailyBar rows",
+                        entry[0],
+                    )
+                else:
+                    logger.debug("SSE snapshot: no match for code=%s", code)
+                unknown.append(code)
+                continue
+            snap = _build_snapshot(
+                entry[0], entry[1], latest, bar_pair.get(2)
+            )
+            if snap["code"] not in seen_codes:
                 snapshots.append(snap)
                 seen_codes.add(snap["code"])
-            elif snap is None:
-                unknown.append(code)
 
         if snapshots or unknown:
             return {"data": snapshots, "unknown": unknown}
@@ -251,7 +305,8 @@ async def _price_stream(
 
     while asyncio.get_event_loop().time() < deadline:
         try:
-            payload = _collect_payload(codes)
+            # 同步 DB 查询丢线程池，避免阻塞事件循环（2026-08-17 审计 HIGH）。
+            payload = await anyio.to_thread.run_sync(_collect_payload, codes)
         except Exception as e:
             logger.error(f"SSE stream error: {e}")
             yield f"event: error\ndata: {json.dumps({'error': str(e)})}\n\n"
