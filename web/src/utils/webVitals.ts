@@ -74,24 +74,85 @@ function emit(sample: WebVitalsSample) {
 /* --------------------------------------------------------------------
  * Fire-and-forget POST.
  *
- * We deliberately don't `await` this in the metric callback — the API
- * helper is built around react-query / axios, which always returns a
- * Promise. Swallowing the rejection keeps LCP/INP/CLS callbacks clean
- * and guarantees we never block user input on telemetry.
+ * Transport strategy (2026-08-17, 审计遗留 #5):
+ *   1. `navigator.sendBeacon` — survives page unload / SPA route
+ *      transitions. web-vitals v5 flushes LCP/INP/CLS on
+ *      visibilitychange/pagehide, and the old axios/fetch path was
+ *      aborted mid-flight (70× ERR_ABORTED observed in the field).
+ *      The payload is wrapped in a `Blob` typed `application/json`
+ *      because the backend (`app/api/v1/stats.py::ingest_web_vital`)
+ *      is a FastAPI Pydantic endpoint that only parses JSON bodies —
+ *      sendBeacon's default `text/plain` would 422.
+ *      Note: sendBeacon cannot set headers, so the request is
+ *      anonymous; the endpoint accepts that (`user_id` optional).
+ *   2. `fetch(..., { keepalive: true })` — for environments without
+ *      sendBeacon (older WebViews); keepalive lets the request
+ *      outlive the page too.
+ *   3. axios fallback (statsApi.webVitals) — last resort for jsdom /
+ *      exotic runtimes; may be aborted on navigation but never throws.
+ *
+ * All paths are fire-and-forget: failures are swallowed so telemetry
+ * never blocks the UI thread or pollutes the console.
  * ------------------------------------------------------------------ */
-function reportToBackend(sample: WebVitalsSample) {
+
+/** Resolve the absolute endpoint URL (same base as the axios client). */
+function webVitalsUrl(): string {
+  const base = import.meta.env.VITE_API_BASE_URL || '/api/v1';
+  return `${base}/stats/web-vitals`;
+}
+
+/**
+ * Exported for unit tests (tests/web-vitals-beacon.test.ts). Not part of
+ * the public API — callers should go through `reportWebVitals()`.
+ */
+export function reportToBackend(sample: WebVitalsSample) {
+  /* Strip the reporter-only `ts` field — the backend schema
+     (WebVitalsPayload) is a strict subset of the sample. */
+  const { ts: _ts, ...payload } = sample;
+  const body = JSON.stringify(payload);
+
   try {
-    void statsApi.webVitals(sample).catch((err) => {
+    if (typeof navigator !== 'undefined' && typeof navigator.sendBeacon === 'function') {
+      const queued = navigator.sendBeacon(
+        webVitalsUrl(),
+        new Blob([body], { type: 'application/json' }),
+      );
+      // `false` means the UA rejected the queue (quota, size) — fall through.
+      if (queued) return;
+    }
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.debug('[web-vitals] sendBeacon threw, falling back to fetch:', err);
+  }
+
+  try {
+    if (typeof fetch === 'function') {
+      void fetch(webVitalsUrl(), {
+        method: 'POST',
+        body,
+        headers: { 'Content-Type': 'application/json' },
+        keepalive: true,
+        credentials: 'same-origin',
+      }).catch((err) => {
+        if (import.meta.env.DEV) {
+          // eslint-disable-next-line no-console
+          console.debug('[web-vitals] keepalive fetch failed:', err?.message ?? err);
+        }
+      });
+      return;
+    }
+  } catch {
+    // fall through to axios
+  }
+
+  try {
+    void statsApi.webVitals(payload).catch((err) => {
       if (import.meta.env.DEV) {
-        // In dev we surface the failure so the developer knows the
-        // endpoint isn't wired up yet. In prod we stay silent.
         // eslint-disable-next-line no-console
         console.debug('[web-vitals] backend POST failed:', err?.message ?? err);
       }
     });
   } catch (err) {
-    // Defensive — statsApi.webVitals() itself is synchronous, but a future
-    // refactor (e.g. lazy import) could throw. Don't let it bubble.
     // eslint-disable-next-line no-console
     console.debug('[web-vitals] reporter threw:', err);
   }
