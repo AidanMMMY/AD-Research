@@ -4,16 +4,19 @@ Layered on top of :class:`EastMoneyResearchProvider`:
 
 * :meth:`fetch_for_stock` / :meth:`fetch_recent_reports` — ingest raw
   rows from Eastmoney and upsert them into ``research_reports``.
-* :meth:`summarize_with_deepseek` — call DeepSeek on a single stored
-  report to fill in ``summary``, ``key_points``, ``target_price``.
+* :meth:`summarize_with_deepseek` — call the configured LLM provider
+  (MiniMax by default) on a single stored report to fill in
+  ``summary``, ``key_points``, ``target_price``. (Method name kept for
+  backward compatibility with callers/tests.)
 * :meth:`summarize_pending_reports` — batch the LLM call for the
   scheduled catch-up job.
 * Listing/facets/get helpers for the API layer.
 
-The LLM call uses :class:`DeepSeekProvider` (configurable). To keep
+The LLM call goes through ``get_llm_provider()`` (MiniMax default,
+DeepSeek legacy rollback). To keep
 costs in check, the prompt truncates the upstream ``title + industry +
 rating`` to 300 characters and asks for a 200-character summary plus
-3-5 bullet key points.  DeepSeek 429s are retried once after 2s; 5s
+3-5 bullet key points.  429s are retried once after 2s; 5s
 timeouts skip the row to avoid blocking the batch.
 """
 
@@ -294,7 +297,7 @@ class ResearchReportService:
     # ---- LLM summary ----------------------------------------------------
 
     def summarize_with_deepseek(self, report_id: int) -> str:
-        """Call DeepSeek for one report and persist the result.
+        """Call the configured LLM provider for one report and persist the result.
 
         Returns the generated ``summary`` text.  The function is
         idempotent: re-running will overwrite a previous summary.
@@ -329,7 +332,7 @@ class ResearchReportService:
         return report.summary or ""
 
     def _call_llm_with_retry(self, provider, system: str, user: str) -> str | None:
-        """Single DeepSeek call with one 429-retry after 2s.
+        """Single LLM call with one 429-retry after 2s.
 
         Returns ``None`` if no API key is configured (and we got the
         placeholder message back), if the call times out (>5s), or if
@@ -350,9 +353,13 @@ class ResearchReportService:
                     return None
                 if not content:
                     return None
-                # The DeepSeek provider returns the NO_KEY placeholder
-                # when the key is missing — treat that as a no-op.
-                if "AI 功能未配置" in content or "DEEPSEEK_API_KEY" in content:
+                # Providers return a NO_KEY placeholder when the key is
+                # missing — treat that as a no-op.
+                if (
+                    "AI 功能未配置" in content
+                    or "MINIMAX_API_KEY" in content
+                    or "DEEPSEEK_API_KEY" in content
+                ):
                     logger.info("ResearchReport LLM: no API key configured, skipping")
                     return None
                 return content
@@ -379,7 +386,7 @@ class ResearchReportService:
 
         provider = get_llm_provider()
         if not provider.is_available:
-            logger.info("summarize_pending_reports: DeepSeek API key not set, skipping")
+            logger.info("summarize_pending_reports: LLM API key not set, skipping")
             return 0
 
         rows = (

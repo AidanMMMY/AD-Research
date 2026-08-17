@@ -48,7 +48,7 @@ AD_AGENT_TIMEOUT="${AD_AGENT_TIMEOUT:-600}"
 AD_AGENT_ENV_FILE="${AD_AGENT_ENV_FILE:-}"
 
 # Default to the platform deployment env file if no custom env file is supplied.
-# This lets workers (e.g. gov_china) pick up secrets like DEEPSEEK_API_KEY.
+# This lets workers (e.g. gov_china) pick up secrets like MINIMAX_API_KEY / DEEPSEEK_API_KEY.
 if [[ -z "$AD_AGENT_ENV_FILE" && -f "/opt/ad-research/deploy/aliyun-ecs/.env" ]]; then
   AD_AGENT_ENV_FILE="/opt/ad-research/deploy/aliyun-ecs/.env"
 fi

@@ -78,7 +78,7 @@ const REPORT: DigestReport = {
     { key: 'macro', title: '宏观数据', status: 'degraded', chars: 300, retries: 2 },
     { key: 'flow', title: '资金流', status: 'ok', chars: 900, retries: 0 },
   ],
-  llm_model: 'deepseek-v4-flash',
+  llm_model: 'minimax-m3',
   finished_at: '2026-08-02T22:30:00+00:00',
 };
 

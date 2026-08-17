@@ -130,7 +130,7 @@ def summarize_research_report(
     report_id: int,
     current_user: UserResponse = Depends(get_current_user),
 ) -> dict[str, str]:
-    """Run DeepSeek summary for a single report.
+    """Run LLM (MiniMax default) summary for a single report.
 
     Open to any authenticated user, but rate-limited to
     ``research_report_summarize_daily_limit`` calls per user per

@@ -48,8 +48,8 @@ class ResearchReport(Base):
     publish_date = Column(Date, nullable=False, index=True, comment="发布日期")
     rating = Column(String(32), comment="东财评级: 买入/增持/中性/减持/卖出")
     pdf_url = Column(String(1000), comment="PDF 链接")
-    summary = Column(Text, comment="DeepSeek 生成摘要 (≤200 字)")
-    key_points = Column(JSON, comment="DeepSeek 提取的核心要点 (JSON 数组)")
+    summary = Column(Text, comment="LLM (MiniMax 默认) 生成摘要 (≤200 字)")
+    key_points = Column(JSON, comment="LLM (MiniMax 默认) 提取的核心要点 (JSON 数组)")
     target_price = Column(Numeric(12, 4), comment="目标价 (元)")
     current_price_at_publish = Column(Numeric(12, 4), comment="发布时收盘价 (元)")
     source = Column(

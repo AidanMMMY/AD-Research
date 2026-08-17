@@ -445,7 +445,7 @@ export default function ResearchReports() {
       <PageHeader
         eyebrow="研究"
         title="券商研报"
-        description="A股券商分析师研报聚合，覆盖个股研报、机构、评级、行业；可选 DeepSeek 自动摘要"
+        description="A股券商分析师研报聚合，覆盖个股研报、机构、评级、行业；可选 AI 自动摘要"
         extra={
           <Space size="middle">
             <LastUpdated at={dataUpdatedAt} loading={isFetching && !data} />

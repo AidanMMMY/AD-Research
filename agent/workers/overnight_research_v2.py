@@ -4,7 +4,7 @@ overnight_research_v2.py — 20 小时连续自主研究 worker（改进版）�
 
 主要改进点：
 1. Supervisor 循环：theme agent 结束后自动换方向/换子主题重新 spawn，直到 deadline。
-2. 多 provider LLM fallback：Anthropic → OpenAI → DeepSeek → MiniMax，自动处理敏感内容报错。
+2. 多 provider LLM fallback：Anthropic → OpenAI → MiniMax → DeepSeek，自动处理敏感内容报错。
 3. 更丰富的搜索与提取：Jina Reader / Jina Search、SearXNG、RSS、readability-lxml、Playwright 兜底。
 4. 增强记录字段：arguments、evidence、impact_chain、investment_implications、risk_factors、quality_score 等。
 5. 跨主题去重与链接：基于 URL/title/content hash 的多层去重，合并相似记录并建立 cross-reference。
@@ -655,20 +655,20 @@ class LLMClient:
             self.providers.append(_OpenAICompatibleProvider("openai", open_model, client, 1))
             logger.info("LLMClient registered openai model=%s", open_model)
 
-        # 3) MiniMax
+        # 3) MiniMax (平台默认主链路)
         minimax_key = os.environ.get("MINIMAX_CN_API_KEY", "") or os.environ.get("MINIMAX_API_KEY", "")
         if minimax_key:
             minimax_model = os.environ.get("MINIMAX_MODEL", "minimax-m3")
             client = OpenAI(api_key=minimax_key, base_url="https://api.minimaxi.com/v1")
-            self.providers.append(_OpenAICompatibleProvider("minimax", minimax_model, client, 3))
+            self.providers.append(_OpenAICompatibleProvider("minimax", minimax_model, client, 2))
             logger.info("LLMClient registered minimax model=%s", minimax_model)
 
-        # 4) DeepSeek
+        # 4) DeepSeek (legacy 回滚)
         deepseek_key = os.environ.get("DEEPSEEK_API_KEY", "")
         if deepseek_key:
             deepseek_model = os.environ.get("DEEPSEEK_MODEL", "deepseek-v4-flash")
             client = OpenAI(api_key=deepseek_key, base_url="https://api.deepseek.com")
-            self.providers.append(_OpenAICompatibleProvider("deepseek", deepseek_model, client, 2))
+            self.providers.append(_OpenAICompatibleProvider("deepseek", deepseek_model, client, 3))
             logger.info("LLMClient registered deepseek model=%s", deepseek_model)
 
         # 按优先级排序
@@ -1809,7 +1809,7 @@ class ReportBuilder:
             "",
             "v2 相对 v1 的主要改进：",
             "1. **Supervisor 循环**：theme agent 结束后自动换方向重新 spawn，避免空等 deadline。",
-            "2. **LLM 多 provider fallback**：Anthropic → OpenAI → DeepSeek → MiniMax。",
+            "2. **LLM 多 provider fallback**：Anthropic → OpenAI → MiniMax → DeepSeek。",
             "3. **搜索与提取增强**：Jina Reader / Jina Search、SearXNG、RSS、readability-lxml、Playwright 兜底。",
             "4. **增强记录字段**：核心论点、数据论据、影响链条、投资启示、风险点、质量分。",
             "5. **跨主题去重与链接**：URL + title 相似度去重。",

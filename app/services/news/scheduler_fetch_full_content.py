@@ -7,7 +7,7 @@ Jina Reader → LLM fallback).
 M22-3 (2026-07-05) observability: every fetch now records the
 AI-cleanup outcome (``ai_cleanup_status``) on the row. The scheduler
 also aggregates a per-run breakdown so the ops dashboard can answer
-"how many of yesterday's fetches were actually cleaned by DeepSeek?"
+"how many of yesterday's fetches were actually cleaned by the LLM?"
 without scanning the whole ``news_article`` table.
 
 2026-07-21: ingestion-time fetching. ``_write_to_db`` in
