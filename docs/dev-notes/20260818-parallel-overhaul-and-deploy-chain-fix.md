@@ -1,0 +1,111 @@
+# 2026-08-18 并行大修：部署链 11 天瘫痪修复 + 7 路并行技术债清零
+
+> 范围：Codex 15 commit 部署落地 + 审计遗留 8 项技术债 + 生产 LLM 切换 + 部署链两个致命 bug
+> 方法：主会话负责部署/ECS 操作，7 个子 agent worktree 并行开发，统一合并验证
+
+## 〇、最重要发现：部署链从 8/6 起完全瘫痪（11 天无部署）
+
+**双雷叠加**：
+
+1. **deploy.yml YAML 语法破损**（Codex `7757f45` 引入）：CI 门禁 step 里内联的多行
+   `python3 -c "..."` 续行顶格写（`import json, sys` 在列 1），直接终结 `run: |`
+   块标量 → 整个 workflow 文件无法解析 → 8/6 起每次 push 的 deploy run 全部
+   **workflow-level failure（0 个 job 被创建）**，GitHub UI 只显示一个失败叉，
+   无日志可看。**排查口诀：deploy run 显示 failure 但 jobs 列表为空 = workflow
+   文件本身坏了，先本地 `yaml.safe_load` 验证。**
+2. **backend-ci 新增 Ruff job 必败**（同属 `7757f45`）：强制 `ruff check` vs
+   仓库当时 128+ 存量违规 → 8/8 起 Backend CI 连跪。即使 deploy.yml 没坏，
+   CI 门禁也会拦下所有部署。
+
+**修复**：
+- 门禁逻辑抽成 `scripts/ci_gate.sh` + `scripts/ci_gate_parse.py`（可本地 bash 单测），
+  顺带修正端点错误：`/commits/{sha}/status`（combined status）**看不到 GitHub
+  Actions 的 check run**，必须用 `/check-runs`；排除 deploy 自身 check run；
+  无 check 的 SHA（docs-only）放行；15min 超时中止。已用真实 API（3e18488 成功 /
+  3b08edc 失败）+ 空响应/坏 JSON 边界验证。
+- ruff：`--fix` 清掉全部安全项（12 文件），16 条需人工判断的规则显式 ignore +
+  burn-down 注释（pyproject.toml），gate 恢复绿色且保留对新违规类型的拦截。
+
+**教训**：改 .github/workflows/*.yml 后必须本地 `python3 -c "import yaml;
+yaml.safe_load(...)"` 过一遍再 push；CI 加强制门禁时必须先把存量清绿或豁免，
+否则等于封站。
+
+## 一、生产紧急修复（已生效）
+
+### 1. DeepSeek → MiniMax 切换（DeepSeek 402 余额耗尽）
+- ECS `.env`：`LLM_PROVIDER=deepseek → minimax`；**MINIMAX_API_KEY / MINIMAX_CN_API_KEY
+  两行此前被注释（第四次 .env 漂移）**，已解注并同步本地真 key（len=125）。
+- `docker compose up -d backend celery-worker-*` 重建后 live call 实测通过。
+- 代码侧默认全仓 MiniMax 化（子 agent `c96656f`，24 文件）：compose 默认值、
+  情绪费率兜底、agent/workers fallback 顺序、前端告警文案等。
+- 备份：`/root/env-backup-20260817-*`。
+- **遗留**：`monitor.py` 费率表缺 `minimax-m3` 官方定价条目（暂用近似费率），
+  拿到官方价后补一行 `DEFAULT_PRICING`。
+
+### 2. backend 每日 OOM 实锤与止痛
+- dmesg 铁证：uvicorn RSS 缓涨顶到 2GiB memcg 被杀，每天 1~2 次，14 次
+  restart 全因此（其余容器 0 重启）。当前宿主机 available ~9.4GiB。
+- compose backend `memory: 2G → 3G`（止痛药，随本次部署生效）。
+- **立项待办**：backend 内存增长根因排查（嫌疑：ORM session 未释放/全局缓存/
+  LLM 流式连接），建议非高峰 tracemalloc 采样。
+
+### 3. TLS 私钥出仓第一步（CRITICAL 决策项的安全半步）
+- `/opt/ad-research/deploy/aliyun-ecs/ssl/` → `cp -a` 到 `/data/ad-research/ssl/`
+  （chmod 700/600），compose 挂载改指 `/data` 路径。
+- **此后仓库内 ssl/ 不再被挂载**，可安全走「重签发 → filter-repo 清历史」，
+  不会再触发"git rm 导致线上证书被 pull 删掉"的陷阱。
+- **新发现：证书续期机制不存在**（无 certbot/acme.sh cron），证书 2026-09-30
+  到期，需在此前手动续期或装 acme.sh（新证书直接放 /data/ad-research/ssl +
+  `docker exec alloyresearch-nginx nginx -s reload`）。
+
+### 4. nginx 8000 端口收敛
+- `"8000:8000"` → `"127.0.0.1:8000:8000"`（审计 HIGH：明文 HTTP 绕过 TLS
+  直连后端）。宿主机内部 healthcheck/调试不受影响。
+
+## 二、7 路并行技术债（全部合并入 `5b83d25`）
+
+| # | 项目 | commit | 要点 |
+|---|---|---|---|
+| 1 | DeepSeek→MiniMax 代码默认化 | `c96656f` | 24 文件；DeepSeekProvider 类保留作回滚 |
+| 2 | 评分域 | 2 commits | score/signal 补 @record_etl + job_name 三方对齐 + `_ETL_JOB_LOCK_MAP` 补映射；/scores 双扫→10min 缓存+算分主动失效；/analysis ranking|screen 30min 参数哈希缓存；cache.py 加容错变体（Redis 宕回退 DB） |
+| 3 | 新闻毒行 | `6fe30ae` | `fulltext_attempts`/`summary_attempts`（迁移 `d1e3f5a7b9c1`，server_default=0）；撞顶 5 次出窗；每日 03:45 自动回零自愈（`news_attempts_daily_reset`）；provider_unavailable 不计数 |
+| 4 | Docker 多阶段瘦身 | `915d564` | 三阶段（frontend/python-build/runtime），gcc+poetry 出运行时镜像；本机实测 1.75G→1.29G（生产预估 2.67G→2.2G）；compose/update.sh 零改动 |
+| 5 | 前端 | `1213724` | web-vitals 三级降级（sendBeacon Blob application/json → fetch keepalive → axios）；详情页移动端横滚根治（`.page-header-extra` 冻结宽度，Playwright 375px 实测归零） |
+| 6 | SSE+掩码 | `76183c7`/`9ead6e6` | stream.py/notifications.py 同步 DB 进 anyio.to_thread + 批量 IN 重写；通知配置读取统一 `****`+末4位，留空=不改，发送链路明文不受影响 |
+| 7 | 测试 Redis 隔离 | `e1063e5` | 测试强制 db 15 + function 级 autouse flushdb（双保险断言防误清开发库）；全量两遍绿 |
+
+合并验证：全量 pytest **1872 passed / 2 skipped**（两遍，含 ruff fix 后复跑），
+web `check:ci` + vitest 全绿，alembic 单 head `d1e3f5a7b9c1`。
+
+## 三、ECS 资源审计结论（只读 agent）
+
+- CPU 4C load 0.2、宿主内存 14.7G used 5.3G、/data 48%、系统盘 46%——**全部健康，无需扩容**。
+- docker：镜像 3.7G、卷 32.6G、build cache 507M。
+- 可释放：旧 pg 备份 16G（有 7 天 retention，正常）、孤儿卷 ~100M；
+  cninfo_pdfs 15G 是业务决策项（提取价值低，删留待用户拍板）。
+
+## 四、本次部署（5b83d25）验证清单
+
+- [ ] `/health` git_sha = 5b83d25，db/redis ok
+- [ ] alembic current = d1e3f5a7b9c1（f0b2d4e6f8a0/f0b2d4e6f8a1 补列 + attempts 列全落地）
+- [ ] news / learning 页面不再 500（Codex 的 UndefinedColumn 修复首次上生产）
+- [ ] 首个 slim 镜像 x86 构建：backend healthcheck + 两 worker 启动日志正常
+- [ ] TLS：`curl -I https://www.alloyresearch.net` 200（挂载换路径后证书仍在）
+- [ ] 8000 收敛：`curl http://<IP>:8000` 外网不通，`curl http://127.0.0.1:8000/health` 本机通
+- [ ] MiniMax：营销过滤/summary 日志不再 fall through
+- [ ] 次日 06:30 digest 用 MiniMax 正常出报
+- [ ] update.sh 第 5 步清理旧镜像后 /data 占用下降
+
+## 五、遗留清单（更新版）
+
+1. TLS：重签发轮换 + filter-repo 清历史（前置已就绪）；**9/30 前必须续期**（无自动续期机制）
+2. backend 内存增长根因排查（3G 只是止痛）
+3. MiniMax 官方定价补 monitor.py 费率表
+4. `summarize_with_deepseek` 方法名残留（API/scheduler/测试多处引用，纯改名无收益，暂留）
+5. credentials.md 明文密码人工轮换（用户动作）
+6. Fernet 独立 NOTIFICATION_ENCRYPTION_KEY（用户配 .env）
+7. ruff burn-down：16 条豁免规则逐项清理
+8. paper_trade_auto / paper_trade_market_update 仍不写 ETLLog（运维面板 never_run）
+9. analysis 缓存无主动失效（指标重算后最长 30min 旧数据，可手动清 `analysis:*`）
+10. 每日 digest 06:30 MiniMax 首跑观察
+11. 用户动作：DeepSeek 不再充值（已切 MiniMax）；Jina 充值（45 反爬源）；163 邮箱授权码；TIINGO key；wewe-rss 重扫码；xcodebuild license
