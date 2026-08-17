@@ -199,7 +199,7 @@ def main() -> int:
     bars["trade_date"] = pd.to_datetime(bars["trade_date"]).dt.date
     bars["close"] = pd.to_numeric(bars["close"], errors="coerce")
 
-    grouped = [(code, group) for code, group in bars.groupby("etf_code")]
+    grouped = list(bars.groupby("etf_code"))
     if args.limit:
         grouped = grouped[:args.limit]
 

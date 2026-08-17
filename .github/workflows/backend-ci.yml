@@ -177,7 +177,7 @@ jobs:
           python-version: '3.11'
 
       - name: Install ruff
-        run: pip install ruff==0.8
+        run: pip install ruff==0.8.6  # 与本地/pyproject 解析一致（0.8.0 的 C416 行为不同）
 
       - name: Run ruff check
         run: ruff check app agent research scripts alembic
