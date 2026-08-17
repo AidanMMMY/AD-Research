@@ -88,40 +88,19 @@ jobs:
           git reset --hard "${TARGET_REF}"
           echo "[INFO] 已同步到：$(git rev-parse --short HEAD)"
 
-      # ── 2.4 CI 门禁（2026-08-06 deploy audit）──
-      # push main 会并行触发 backend-ci / web-ci；此前 deploy 不等 CI 结果，
-      # 一个会破坏 pytest/tsc 的提交也会被部署到生产。这里轮询该 SHA 的
-      # combined commit status：failure → 中止部署；pending → 等待；该 SHA
-      # 没有任何 check（如 docs-only 推送）→ 放行。GITHUB_TOKEN 只读 API。
+      # ── 2.4 CI 门禁 ──
+      # 2026-08-06 deploy audit 首版；2026-08-18 重写：内联多行 python3 -c
+      # 未缩进导致整个 deploy.yml YAML 解析失败（8/6~8/17 所有部署全部
+      # workflow-level failure、0 jobs），且 /status 端点看不到 check run。
+      # 逻辑移入 scripts/ci_gate.sh（可本地 bash 单测）。
       - name: Gate deployment on CI checks
         id: ci_gate
         run: |
           set -euo pipefail
           cd "${PROJECT_ROOT}"
           SHA="$(git rev-parse HEAD)"
-          REPO="${{ github.repository }}"
-          echo "[INFO] 等待 CI checks 通过（SHA=${SHA:0:7}）..."
-          for i in $(seq 1 90); do
-            BODY="$(curl -sS -H "Authorization: Bearer ${GITHUB_TOKEN}" \
-              -H "Accept: application/vnd.github+json" \
-              "https://api.github.com/repos/${REPO}/commits/${SHA}/status" || echo '{}')"
-            STATE="$(printf '%s' "${BODY}" | python3 -c "
-import json, sys
-try:
-    d = json.load(sys.stdin)
-    print(d.get('state', 'error'))
-except Exception:
-    print('error')
-")"
-            echo "attempt=${i}/90 state=${STATE}"
-            case "${STATE}" in
-              success) echo "[OK] 所有 CI 通过，继续部署"; exit 0 ;;
-              failure|error) echo "::error::CI 状态=${STATE}，中止部署以避免坏代码上线"; exit 1 ;;
-              *) sleep 10 ;;
-            esac
-          done
-          echo "::error::等待 CI 超时（15 分钟），为安全起见中止部署"
-          exit 1
+          bash "${PROJECT_ROOT}/scripts/ci_gate.sh" \
+            "${{ github.repository }}" "${SHA}" "${GITHUB_TOKEN}" "deploy"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

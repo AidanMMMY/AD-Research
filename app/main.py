@@ -10,8 +10,8 @@ from pathlib import Path
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from starlette.exceptions import HTTPException
 from fastapi.staticfiles import StaticFiles
+from starlette.exceptions import HTTPException
 from starlette.types import Scope
 
 # Import strategy modules so all built-in strategies self-register.

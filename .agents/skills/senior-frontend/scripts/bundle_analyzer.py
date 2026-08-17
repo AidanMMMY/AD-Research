@@ -13,12 +13,9 @@ Usage:
 
 import argparse
 import json
-import os
 import re
 import sys
 from pathlib import Path
-from typing import Dict, List, Optional, Any, Tuple
-
 
 # Known heavy packages and their lighter alternatives
 HEAVY_PACKAGES = {
@@ -98,7 +95,7 @@ DEV_ONLY_PACKAGES = [
 ]
 
 
-def load_package_json(project_dir: Path) -> Optional[Dict]:
+def load_package_json(project_dir: Path) -> dict | None:
     """Load and parse package.json."""
     package_path = project_dir / "package.json"
     if not package_path.exists():
@@ -111,7 +108,7 @@ def load_package_json(project_dir: Path) -> Optional[Dict]:
         return None
 
 
-def analyze_dependencies(package_json: Dict) -> Dict:
+def analyze_dependencies(package_json: dict) -> dict:
     """Analyze dependencies for issues."""
     deps = package_json.get("dependencies", {})
     dev_deps = package_json.get("devDependencies", {})
@@ -177,7 +174,7 @@ def analyze_dependencies(package_json: Dict) -> Dict:
     }
 
 
-def check_nextjs_config(project_dir: Path) -> Dict:
+def check_nextjs_config(project_dir: Path) -> dict:
     """Check Next.js configuration for optimizations."""
     config_paths = [
         project_dir / "next.config.js",
@@ -217,7 +214,7 @@ def check_nextjs_config(project_dir: Path) -> Dict:
     }
 
 
-def analyze_imports(project_dir: Path) -> Dict:
+def analyze_imports(project_dir: Path) -> dict:
     """Analyze import patterns in source files."""
     issues = []
     src_dirs = [project_dir / "src", project_dir / "app", project_dir / "pages"]
@@ -256,7 +253,7 @@ def analyze_imports(project_dir: Path) -> Dict:
     }
 
 
-def calculate_score(analysis: Dict) -> Tuple[int, str]:
+def calculate_score(analysis: dict) -> tuple[int, str]:
     """Calculate bundle health score."""
     score = 100
 
@@ -290,7 +287,7 @@ def calculate_score(analysis: Dict) -> Tuple[int, str]:
     return score, grade
 
 
-def print_report(analysis: Dict) -> None:
+def print_report(analysis: dict) -> None:
     """Print human-readable report."""
     score, grade = calculate_score(analysis)
 

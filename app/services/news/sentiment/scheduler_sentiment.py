@@ -24,7 +24,7 @@ from datetime import date, datetime, timedelta
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.interval import IntervalTrigger
-from sqlalchemy import desc, exists
+from sqlalchemy import desc
 from sqlalchemy.orm import aliased
 
 from app.core.database import SessionLocal

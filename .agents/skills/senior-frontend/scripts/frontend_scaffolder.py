@@ -13,11 +13,8 @@ Usage:
 
 import argparse
 import json
-import os
 import sys
 from pathlib import Path
-from typing import Dict, List, Optional
-
 
 # Project templates
 TEMPLATES = {
@@ -546,9 +543,9 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
 
 def generate_structure(
     base_path: Path,
-    structure: Dict,
+    structure: dict,
     dry_run: bool = False
-) -> List[str]:
+) -> list[str]:
     """Generate directory structure recursively."""
     created_files = []
 
@@ -575,9 +572,9 @@ def generate_config_files(
     project_path: Path,
     template: str,
     project_name: str,
-    features: List[str],
+    features: list[str],
     dry_run: bool = False
-) -> List[str]:
+) -> list[str]:
     """Generate configuration files."""
     created_files = []
     config_templates = get_config_templates(project_name, template, features)
@@ -593,7 +590,7 @@ def generate_config_files(
     return created_files
 
 
-def get_config_templates(name: str, template: str, features: List[str]) -> Dict[str, str]:
+def get_config_templates(name: str, template: str, features: list[str]) -> dict[str, str]:
     """Get configuration file contents."""
     deps = {
         "nextjs": {
@@ -836,9 +833,9 @@ def scaffold_project(
     name: str,
     output_dir: Path,
     template: str = "nextjs",
-    features: Optional[List[str]] = None,
+    features: list[str] | None = None,
     dry_run: bool = False,
-) -> Dict:
+) -> dict:
     """Scaffold a complete frontend project."""
     features = features or []
     project_path = output_dir / name
@@ -893,7 +890,7 @@ def scaffold_project(
     }
 
 
-def print_result(result: Dict) -> None:
+def print_result(result: dict) -> None:
     """Print scaffolding result."""
     if "error" in result:
         print(f"Error: {result['error']}", file=sys.stderr)
@@ -909,7 +906,7 @@ def print_result(result: Dict) -> None:
     if result["features"]:
         print(f"Features: {', '.join(result['features'])}")
 
-    print(f"\nNext Steps:")
+    print("\nNext Steps:")
     for step in result["next_steps"]:
         print(f"  $ {step}")
 

@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """将 overnight research 的 raw/*.json 整合进 SQLite 可搜索数据库。"""
 
 import json
 import sqlite3
+from datetime import UTC
 from pathlib import Path
 
 BASE_DIR = Path(__file__).parent
@@ -189,8 +189,8 @@ def build():
             built_at TEXT
         )
     """)
-    from datetime import datetime, timezone
-    built_at = datetime.now(timezone.utc).isoformat()
+    from datetime import datetime
+    built_at = datetime.now(UTC).isoformat()
     for table, count in stats.items():
         conn.execute(
             "INSERT OR REPLACE INTO stats (table_name, count, built_at) VALUES (?, ?, ?)",

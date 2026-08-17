@@ -12,11 +12,8 @@ Usage:
 """
 
 import argparse
-import os
 import sys
 from pathlib import Path
-from datetime import datetime
-
 
 # Component templates
 TEMPLATES = {
@@ -228,7 +225,7 @@ def print_result(result: dict, verbose: bool = False) -> None:
     print(f"{'='*50}")
     print(f"Type: {result['type']}")
     print(f"Directory: {result['directory']}")
-    print(f"\nFiles created:")
+    print("\nFiles created:")
     for file in result['files']:
         print(f"  - {file}")
     print(f"{'='*50}\n")
@@ -300,7 +297,7 @@ def main():
     pascal_name = to_pascal_case(args.name)
 
     if args.dry_run:
-        print(f"\nDry run - would generate:")
+        print("\nDry run - would generate:")
         print(f"  Component: {pascal_name}")
         print(f"  Type: {args.type}")
         print(f"  Directory: {output_dir / pascal_name if not args.flat else output_dir}")
