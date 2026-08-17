@@ -1226,7 +1226,7 @@ def run_research_reports_daily():
 
 
 def run_summarize_pending_reports():
-    """DeepSeek-summarize up to 20 unsummarized reports (every 2h).
+    """LLM-summarize (MiniMax default) up to 20 unsummarized reports (every 2h).
 
     Idempotent: only touches rows where ``summary IS NULL``. Rows that
     fail (timeout / 429 / no API key) are left for the next run.
@@ -1441,7 +1441,7 @@ def init_scheduler():
       - Futures daily ETL at 16:30 daily
       - Futures contract refresh on day-1 at 03:00 monthly
       - Research reports daily ETL at 18:00 daily
-      - Research report DeepSeek summarization every 2 hours
+      - Research report LLM summarization every 2 hours
     """
     # Clean up any ETL jobs that were killed during a previous deployment
     # before starting today's schedule.
@@ -1778,7 +1778,7 @@ def init_scheduler():
         run_summarize_pending_reports,
         trigger=IntervalTrigger(hours=2),
         id="research_summarize",
-        name="研报 DeepSeek 摘要补齐",
+        name="研报 LLM 摘要补齐",
         replace_existing=True,
         max_instances=1,
         coalesce=True,

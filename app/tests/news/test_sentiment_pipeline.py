@@ -117,7 +117,7 @@ class StubProvider:
         return True
 
 
-def _make_pipeline(db_session, fake_redis, responses=None, model="deepseek-v4-flash"):
+def _make_pipeline(db_session, fake_redis, responses=None, model="minimax-m3"):
     """Build a pipeline wired to a stub provider."""
     from app.services.llm import LLMService
 
@@ -164,7 +164,7 @@ def test_pipeline_routes_through_provider_factory(monkeypatch, db_session, fake_
     assert captured["model"] is None
     # No explicit model and stub exposes none → cost tag falls back to the
     # platform default so monitor pricing keeps working.
-    assert pipe.model == "deepseek-v4-flash"
+    assert pipe.model == "minimax-m3"
 
     # An explicit model override is forwarded to the factory verbatim.
     pipe2 = SentimentPipeline(

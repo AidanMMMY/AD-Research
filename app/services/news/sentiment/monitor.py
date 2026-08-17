@@ -2,13 +2,18 @@
 
 The class is intentionally a thin facade over ``SentimentCache`` so all
 Redis key conventions live in one place.  Pricing is hard-coded here —
-it is the only place the model → USD map exists, so updating DeepSeek
+it is the only place the model → USD map exists, so updating LLM
 pricing means editing one dict.
+
+The platform default provider is MiniMax (``minimax-m3``); DeepSeek
+rates below are retained for historical rows and as the generic
+fallback rate for unknown models (approximation only — add a
+``minimax-m3`` entry once official MiniMax pricing is confirmed).
 
 Pricing (USD per 1K tokens, derived from DeepSeek 2026-07 docs;
 CNY per 1M tokens × 0.14 USD/CNY ÷ 1000):
 
-    deepseek-v4-flash       in 0.00014  out 0.00028   (platform default)
+    deepseek-v4-flash       in 0.00014  out 0.00028   (generic fallback rate)
     deepseek-v4-pro         in 0.00042  out 0.00084   (opt-in for heavy reasoning)
     deepseek-v4-pro-reasoner  in 0.00077  out 0.00168   (placeholder, ~2x v4-pro; verify against official docs)
     claude-3-5-sonnet       in 0.003   out 0.015     (fallback estimate)
@@ -26,7 +31,10 @@ logger = logging.getLogger(__name__)
 
 
 # USD per 1K tokens, {model: {"input": x, "output": y}}
-# Platform default is deepseek-v4-flash; v4-pro entries retained for opt-in callers.
+# DeepSeek entries retained for historical rows / opt-in callers; they also
+# serve as the generic fallback rate for unknown models (approximation).
+# TODO: add official MiniMax (minimax-m3) rates once confirmed — unknown-model
+# fallback already prefers a "minimax-m3" entry when one exists.
 # Pricing derived from DeepSeek official docs (CNY per 1M tokens → USD per 1K tokens,
 # 1 CNY ≈ 0.14 USD). Old `deepseek-chat` / `deepseek-reasoner` aliases were
 # deprecated 2026-07-24 (both map to v4-flash thinking / non-thinking mode).
@@ -37,6 +45,11 @@ DEFAULT_PRICING: dict[str, dict[str, float]] = {
     "claude-3-5-sonnet": {"input": 0.003, "output": 0.015},
     "claude-sonnet-4": {"input": 0.003, "output": 0.015},
 }
+
+# Preferred rate table entries for unknown models, in priority order.
+# MiniMax first (platform default provider); DeepSeek v4-flash as the
+# historical catch-all so the estimate never hard-fails.
+_FALLBACK_RATE_MODELS = ("minimax-m3", "deepseek-v4-flash")
 
 
 class LLMPipelineMonitor:
@@ -58,8 +71,14 @@ class LLMPipelineMonitor:
     ) -> float:
         rate = self.pricing.get(model)
         if rate is None:
-            logger.debug("No pricing for model %s, defaulting to deepseek-v4-flash", model)
-            rate = self.pricing["deepseek-v4-flash"]
+            fallback = next(
+                (m for m in _FALLBACK_RATE_MODELS if m in self.pricing),
+                None,
+            )
+            logger.debug("No pricing for model %s, defaulting to %s", model, fallback)
+            if fallback is None:  # custom pricing table without any fallback entry
+                return 0.0
+            rate = self.pricing[fallback]
         usd_in = (prompt_tokens / 1000.0) * rate["input"]
         usd_out = (completion_tokens / 1000.0) * rate["output"]
         return round(usd_in + usd_out, 6)

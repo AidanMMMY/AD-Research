@@ -1,8 +1,8 @@
 """LLM services package.
 
 Provider selection is controlled by the ``LLM_PROVIDER`` env var in .env:
-  - ``LLM_PROVIDER=deepseek`` → DeepSeek (production main chain since 2026-08)
-  - ``LLM_PROVIDER=minimax``  → MiniMax (backup / rollback target)
+  - ``LLM_PROVIDER=minimax``  → MiniMax (production main chain)
+  - ``LLM_PROVIDER=deepseek`` → DeepSeek (legacy / rollback target)
 
 When unset, we probe MiniMax first and fall back to DeepSeek.
 """
@@ -20,8 +20,8 @@ def get_llm_provider(model: str | None = None) -> LLMProvider:
     """Factory: return the configured LLM provider based on LLM_PROVIDER env.
 
     Priority:
-    1. ``LLM_PROVIDER=minimax``  → MiniMax
-    2. ``LLM_PROVIDER=deepseek`` → DeepSeek
+    1. ``LLM_PROVIDER=minimax``  → MiniMax (default / main chain)
+    2. ``LLM_PROVIDER=deepseek`` → DeepSeek (legacy rollback)
     3. Unset → auto-detect: MiniMax if MINIMAX_API_KEY is set, else DeepSeek
     """
     provider_name = os.getenv("LLM_PROVIDER", "").strip().lower()

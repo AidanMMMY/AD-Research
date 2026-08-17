@@ -6,10 +6,14 @@ Requires DEEPSEEK_API_KEY env var.
 Default model: deepseek-v4-flash
 API docs: https://api-docs.deepseek.com/zh-cn/
 
-Model selection rationale: v4-flash is the platform default because most
+Model selection rationale: v4-flash is this provider's default because most
 AI features (news cleanup, sentiment classification, brief summarization)
 don't need pro-tier reasoning. v4-pro / v4-pro-reasoner can still be
 requested explicitly by callers that need them.
+
+Note: DeepSeek is the legacy / rollback provider — the platform default
+is MiniMax (see ``app.services.llm.get_llm_provider``). This class is
+kept intact so rollback is a one-line env change (``LLM_PROVIDER=deepseek``).
 """
 
 import os

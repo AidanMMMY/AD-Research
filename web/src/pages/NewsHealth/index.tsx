@@ -418,7 +418,7 @@ export default function NewsHealth() {
 
       {/* AI cleanup observability (M22-3, 2026-07-05).
           Surfaces the silent-degradation case in ContentFetcher:
-          rows that Jina fetched but DeepSeek refused to clean.
+          rows that Jina fetched but the LLM refused to clean.
           The four-statistics strip mirrors the
           /api/v1/news/health `ai_cleanup_24h` block. */}
       <Panel title="AI 清理 (近 24h)" padding="md" className="ad-mb-4">
@@ -436,9 +436,9 @@ export default function NewsHealth() {
                     <strong>
                       {data.ai_cleanup_24h.cleaned_pct.toFixed(1)}%
                     </strong>{' '}
-                    的抓取被 DeepSeek 成功清理（阈值{' '}
+                    的抓取被 AI 成功清理（阈值{' '}
                     {data.ai_cleanup_24h.alert_threshold_pct.toFixed(1)}%）。
-                    请检查 DeepSeek API Key 与配额。
+                    请检查 LLM API Key（MiniMax）与配额。
                   </>
                 }
               />

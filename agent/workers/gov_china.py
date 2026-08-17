@@ -13,7 +13,7 @@ Strategy:
   2. Fetch the article detail page (via jina.ai reader, fallback to direct HTML)
      to extract the full body and confirm the publish time.
   3. Drop navigation/portal noise using title/URL blacklists and a lightweight
-     DeepSeek LLM classifier for edge cases.
+     MiniMax (default) / DeepSeek (fallback) LLM classifier for edge cases.
   4. Output items with: title, url, published_at (ISO-8601 UTC), summary, content,
      agency, agency_name, source.
 
@@ -237,22 +237,50 @@ _DATE_RE = re.compile(
 )
 
 
-def _load_deepseek_key(logger) -> str | None:
-    """Read DEEPSEEK_API_KEY from env or common env files."""
-    key = os.environ.get("DEEPSEEK_API_KEY")
-    if key and key not in ("", "placeholder"):
-        return key
-    # When running directly on the ECS host, fall back to known env files.
-    for path in ["/opt/ad-research/deploy/aliyun-ecs/.env", "/root/.claude/.env"]:
-        try:
-            with open(path, encoding="utf-8") as f:
-                for line in f:
-                    if line.startswith("DEEPSEEK_API_KEY="):
+def _load_llm_config(logger) -> dict | None:
+    """Resolve the LLM noise-filter config (provider/key/url/model).
+
+    MiniMax first (platform main chain); DeepSeek is the legacy fallback.
+    Keys are read from env first, then from known env files when running
+    directly on the ECS host.
+    """
+    candidates = [
+        # (provider, env var names in priority order, api url, default model env/values)
+        ("minimax", ("MINIMAX_CN_API_KEY", "MINIMAX_API_KEY"),
+         "https://api.minimaxi.com/v1/chat/completions", "MINIMAX_MODEL", "minimax-m3"),
+        ("deepseek", ("DEEPSEEK_API_KEY",),
+         "https://api.deepseek.com/chat/completions", "DEEPSEEK_MODEL", "deepseek-chat"),
+    ]
+    env_files = ["/opt/ad-research/deploy/aliyun-ecs/.env", "/root/.claude/.env"]
+    for provider, env_names, api_url, model_env, default_model in candidates:
+        for name in env_names:
+            key = os.environ.get(name)
+            if key and key not in ("", "placeholder"):
+                return {
+                    "provider": provider,
+                    "key": key,
+                    "url": api_url,
+                    "model": os.environ.get(model_env) or default_model,
+                }
+        # Fall back to known env files.
+        for path in env_files:
+            try:
+                with open(path, encoding="utf-8") as f:
+                    lines = f.readlines()
+            except Exception as exc:
+                logger.debug("could not read %s: %s", path, exc)
+                continue
+            for name in env_names:
+                for line in lines:
+                    if line.startswith(f"{name}="):
                         val = line.split("=", 1)[1].strip()
                         if val and val not in ("", "placeholder"):
-                            return val
-        except Exception as exc:
-            logger.debug("could not read %s: %s", path, exc)
+                            return {
+                                "provider": provider,
+                                "key": val,
+                                "url": api_url,
+                                "model": os.environ.get(model_env) or default_model,
+                            }
     return None
 
 
@@ -809,11 +837,7 @@ def _extract_article(session, url: str, logger) -> dict[str, Any]:
 # LLM noise classification
 # ---------------------------------------------------------------------------
 
-LLM_API_URL = "https://api.deepseek.com/chat/completions"
-LLM_MODEL = "deepseek-chat"
-
-
-def _llm_classify(title: str, url: str, content: str, api_key: str, logger) -> bool:
+def _llm_classify(title: str, url: str, content: str, llm: dict, logger) -> bool:
     """Return True if the item is a real policy/news/announcement."""
     prompt = (
         "判断以下中国政府网站条目是否属于「真实政策/新闻/公告」资讯，而不是导航入口、"
@@ -827,13 +851,13 @@ def _llm_classify(title: str, url: str, content: str, api_key: str, logger) -> b
         import requests
 
         resp = requests.post(
-            LLM_API_URL,
+            llm["url"],
             headers={
-                "Authorization": f"Bearer {api_key}",
+                "Authorization": f"Bearer {llm['key']}",
                 "Content-Type": "application/json",
             },
             json={
-                "model": LLM_MODEL,
+                "model": llm["model"],
                 "messages": [{"role": "user", "content": prompt}],
                 "max_tokens": 10,
                 "temperature": 0,
@@ -855,7 +879,7 @@ def _llm_classify(title: str, url: str, content: str, api_key: str, logger) -> b
 # Main orchestration
 # ---------------------------------------------------------------------------
 
-def fetch_one(session, key: str, cfg: dict[str, Any], logger, llm_key: str | None) -> list[dict]:
+def fetch_one(session, key: str, cfg: dict[str, Any], logger, llm: dict | None) -> list[dict]:
     items = _try_feedparser(session, cfg.get("rss_candidates", []), logger)
     if not items:
         items = _scrape_homepage(session, cfg, logger)
@@ -900,8 +924,8 @@ def fetch_one(session, key: str, cfg: dict[str, Any], logger, llm_key: str | Non
 
         # LLM review for short/suspicious items
         if len(content) < 50 or _title_looks_nav(title):
-            if llm_key:
-                if not _llm_classify(title, url, content, llm_key, logger):
+            if llm:
+                if not _llm_classify(title, url, content, llm, logger):
                     logger.debug("llm-filtered noise: %s", title)
                     continue
             else:
@@ -939,17 +963,20 @@ def main(argv: list[str] | None = None) -> int:
     logger = setup_logger(SOURCE, level="DEBUG" if args.verbose else "INFO")
     session = make_session()
     selected = [s.strip() for s in args.sources.split(",") if s.strip() in SOURCES]
-    llm_key = _load_deepseek_key(logger)
-    if llm_key:
-        logger.info("DeepSeek API key loaded; LLM noise filter enabled")
+    llm = _load_llm_config(logger)
+    if llm:
+        logger.info(
+            "LLM noise filter enabled (provider=%s model=%s)",
+            llm["provider"], llm["model"],
+        )
     else:
-        logger.warning("DeepSeek API key not found; LLM noise filter disabled")
+        logger.warning("No LLM API key found (MiniMax/DeepSeek); LLM noise filter disabled")
 
     all_items: list[dict] = []
     for key in selected:
         cfg = SOURCES[key]
         try:
-            items = fetch_one(session, key, cfg, logger, llm_key)
+            items = fetch_one(session, key, cfg, logger, llm)
         except Exception as exc:
             logger.warning("source %s raised: %s", key, exc)
             continue

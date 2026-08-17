@@ -9,7 +9,7 @@ frontend consumers:
 * ``GET  /news/stats/sources``            — per-source ingestion volume (last 7d)
 * ``GET  /news/health``                   — per-source diagnostics + scheduler status
 * ``POST /news/{article_id}/fetch-content``  — Jina Reader full-text fetch
-* ``POST /news/{article_id}/translate``   — DeepSeek translate (en → zh), cached
+* ``POST /news/{article_id}/translate``   — LLM translate (en → zh), cached
 
 All routes require a valid JWT. Crawler / scheduler backends hit the
 DB directly via :mod:`app.services.news.normalizer` — these endpoints
@@ -1070,7 +1070,7 @@ def news_health(db: Session = Depends(get_db)) -> dict[str, Any]:
     ai_skipped = int(ai_counts.skipped or 0)
     ai_failed = int(ai_counts.failed or 0)
     # ``cleaned_pct`` is the share of *processed* rows (excludes
-    # skipped — if DeepSeek was never configured, the alert would
+    # skipped — if the LLM was never configured, the alert would
     # fire even though nothing is actually broken).
     processed = ai_cleaned + ai_failed
     ai_cleaned_pct = round(ai_cleaned / processed * 100, 1) if processed else 0.0
@@ -1419,7 +1419,7 @@ def fetch_article_content(
 
 
 # ---------------------------------------------------------------------------
-# Translation (en → zh, DeepSeek)
+# Translation (en → zh, LLM: MiniMax default / DeepSeek legacy)
 # ---------------------------------------------------------------------------
 
 
@@ -1432,7 +1432,7 @@ def translate_article(
     db: Session = Depends(get_db),
     current_user: UserResponse = Depends(get_current_user),
 ) -> dict:
-    """Translate an English news article to Chinese via DeepSeek.
+    """Translate an English news article to Chinese via the configured LLM.
 
     Mirrors the ``/research-reports/{id}/summarize`` flow:
 

@@ -110,12 +110,13 @@ class SentimentPipeline:
         self.monitor = monitor or LLMPipelineMonitor(cache=self.cache)
         self.semaphore = asyncio.Semaphore(max_concurrency)
         # Cost-accounting tag: explicit override wins, else whatever the
-        # provider resolved to. Unknown names fall back to v4-flash rates
-        # inside LLMPipelineMonitor, so this stays an approximation only.
+        # provider resolved to. Unknown names fall back to the default
+        # rates inside LLMPipelineMonitor, so this stays an approximation
+        # only.
         self.model = (
             model
             or getattr(self.llm.provider, "model", None)
-            or "deepseek-v4-flash"
+            or "minimax-m3"
         )
 
     # ------------------------------------------------------------------
@@ -191,8 +192,8 @@ class SentimentPipeline:
         result = await self._llm_complete(system, user_prompt, max_tokens=max_tokens)
         elapsed_ms = int((time.time() - start) * 1000)
         parsed = self._parse_json(result)
-        # DeepSeek does not return token counts on every endpoint, so we
-        # estimate.  Rough heuristic: ~1 token / 1.5 Chinese chars
+        # MiniMax / DeepSeek do not return token counts on every endpoint,
+        # so we estimate.  Rough heuristic: ~1 token / 1.5 Chinese chars
         p_tok = max(1, int(len(user_prompt) / 1.5))
         c_tok = max(1, int(len(result) / 1.5))
         cost = self.monitor.record_call(

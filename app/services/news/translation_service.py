@@ -137,7 +137,7 @@ _MAX_INPUT_CHARS = 30_000
 # is money already spent. The SDK client timeout is the real backstop.
 _MAX_LLM_CALL_SEC = 240.0
 
-# Detect the DeepSeek "no API key configured" placeholder so callers
+# Detect the provider "no API key configured" placeholder so callers
 # can distinguish a real response from the missing-config no-op.
 _NO_KEY_HINT = "AI 功能未配置"
 
@@ -201,7 +201,8 @@ def translation_is_stale(article: NewsArticle) -> bool:
 
 
 class NewsTranslationService:
-    """Translate English news articles to Chinese using DeepSeek.
+    """Translate English news articles to Chinese using the configured LLM
+    (MiniMax default, DeepSeek legacy rollback).
 
     Holds a DB session and writes the result back to the
     ``NewsArticle`` row. Stateless apart from ``self.db``; safe to
@@ -250,7 +251,7 @@ class NewsTranslationService:
               variant).
             - Article has no body / full_content to translate.
         RuntimeError
-            - DeepSeek call failed (timeout, 429, no key configured).
+            - LLM call failed (timeout, 429, no key configured).
         """
         if target_language and target_language != "zh":
             # v1 only ships zh; reject anything else loudly so future

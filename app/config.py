@@ -82,8 +82,9 @@ class Settings(BaseSettings):
     binance_max_daily_orders: int = 20              # Max orders per calendar day
     binance_market_order_slippage: float = 0.001    # Slippage buffer for MARKET order risk checks (0.1%)
 
-    # AI / LLM
-    deepseek_api_key: str = ""   # https://platform.deepseek.com/
+    # AI / LLM — 主链路是 MiniMax（provider 直接读 MINIMAX_API_KEY /
+    # MINIMAX_CN_API_KEY env）；DeepSeek 仅作 legacy 回滚路径保留。
+    deepseek_api_key: str = ""   # legacy rollback: https://platform.deepseek.com/
 
     # Per-user daily cap on the research-reports "生成摘要" on-demand
     # endpoint. Counted in Redis with a 24h TTL keyed by user + date.
@@ -97,11 +98,11 @@ class Settings(BaseSettings):
 
     # M22-3 (2026-07-05) — ``/api/v1/news/health`` returns an
     # ``ai_cleanup_24h`` block with the share of fetched articles
-    # whose DeepSeek cleanup actually ran (``ai_cleanup_status =
-    # 'cleaned'``). When ``cleaned_pct`` drops below this threshold
-    # the dashboard flips the alert card on. Skipped (DeepSeek
-    # unconfigured) rows are excluded from the denominator so an
-    # entirely-off environment does not page anyone.
+    # whose LLM (MiniMax default) cleanup actually ran
+    # (``ai_cleanup_status = 'cleaned'``). When ``cleaned_pct`` drops
+    # below this threshold the dashboard flips the alert card on.
+    # Skipped (LLM unconfigured) rows are excluded from the denominator
+    # so an entirely-off environment does not page anyone.
     news_ai_cleanup_alert_pct: float = 70.0
 
     # News full-content pipeline (2026-07-21). Articles get their body

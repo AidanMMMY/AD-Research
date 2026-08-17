@@ -65,7 +65,7 @@ def _wewe_rss_item(
 
 
 class _StubLLMProvider:
-    """Minimal stand-in for :class:`DeepSeekProvider`.
+    """Minimal stand-in for the configured LLM provider.
 
     Returns a pre-canned JSON string from :meth:`complete` and
     ``is_available=True``. Tests build an instance with a

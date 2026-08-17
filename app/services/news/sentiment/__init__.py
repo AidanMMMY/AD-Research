@@ -1,6 +1,6 @@
 """News sentiment LLM pipeline subpackage.
 
-Async, batched DeepSeek sentiment processing for news articles.
+Async, batched LLM (MiniMax default) sentiment processing for news articles.
 Reuses the shared ``app.services.llm`` providers; never instantiates
 its own LLM client.
 
