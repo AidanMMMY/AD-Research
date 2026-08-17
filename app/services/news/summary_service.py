@@ -65,6 +65,16 @@ _SUMMARY_SYSTEM = (
 # makes the input-token side the dominant cost, so we keep it tight.
 _MAX_INPUT_CHARS = 4_000
 
+# Retry budget for the summary drain (2026-08-17), mirroring
+# ``translation_service._MAX_TRANSLATION_ATTEMPTS``. A row whose summary
+# keeps failing (LLM outage window, empty output) increments
+# ``summary_attempts`` on every failed ``summarize``; once it reaches
+# this cap the 10-minute drain stops selecting it, so poison rows can no
+# longer occupy the importance-desc / newest-first batch window forever.
+# The daily ``news_attempts_daily_reset`` job zeroes capped rows so a
+# transient failure window self-heals without a manual reset.
+_MAX_SUMMARY_ATTEMPTS = 5
+
 
 def _truncate_input(text: str) -> str:
     """Cap the source text fed to the LLM (cost control)."""
@@ -152,13 +162,18 @@ class NewsSummaryService:
         if not source:
             # Title-only articles can't yield a summary with any
             # information increment over the headline — skip rather than
-            # burn tokens on a title paraphrase.
+            # burn tokens on a title paraphrase. Still counts as a failed
+            # attempt: the body may arrive later (full-content drain),
+            # and the daily reset gives the row a fresh budget.
+            self._record_attempt_outcome(article, succeeded=False)
             return {"article_id": article_id, "skipped": True, "reason": "no_body"}
 
         from app.services.llm import get_llm_provider
 
         provider = get_llm_provider()
         if not provider.is_available:
+            # Systemic, not row-specific — do NOT count it against the
+            # row (the drain job also gates on this up-front).
             return {
                 "article_id": article_id,
                 "skipped": True,
@@ -168,19 +183,45 @@ class NewsSummaryService:
         user = f"标题：{article.title.strip()}\n\n正文：{_truncate_input(source)}"
         content, _tokens = self._call_llm_with_retry(provider, _SUMMARY_SYSTEM, user)
         if not content:
+            self._record_attempt_outcome(article, succeeded=False)
             return {"article_id": article_id, "skipped": True, "reason": "llm_failed"}
 
         summary = _enforce_shape(content)
         if not summary:
+            self._record_attempt_outcome(article, succeeded=False)
             return {"article_id": article_id, "skipped": True, "reason": "empty_output"}
 
         article.summary_zh = summary[:500]
+        self._record_attempt_outcome(article, succeeded=True)
         self.db.commit()
         return {
             "article_id": article_id,
             "skipped": False,
             "summary": article.summary_zh,
         }
+
+    # ---- attempt bookkeeping ---------------------------------------------
+
+    def _record_attempt_outcome(self, article: NewsArticle, *, succeeded: bool) -> None:
+        """Update ``summary_attempts`` after a summarize pass; never raises.
+
+        Success resets the counter; failure increments it, and the drain
+        stops selecting the row at ``_MAX_SUMMARY_ATTEMPTS``. Commits on
+        the failure path so the increment survives even though no summary
+        was written.
+        """
+        try:
+            if succeeded:
+                if article.summary_attempts:
+                    article.summary_attempts = 0
+            else:
+                article.summary_attempts = (article.summary_attempts or 0) + 1
+                self.db.commit()
+        except Exception as exc:  # pragma: no cover - defensive
+            logger.info(
+                "summary_attempts update failed for %s: %s", article.id, exc
+            )
+            self.db.rollback()
 
     # ---- LLM helpers ----------------------------------------------------
 

@@ -1730,6 +1730,61 @@ def run_summarize_pending_job() -> dict[str, int]:
         return {"fetched": 0, "written": 0}
 
 
+# ── Retry-counter self-heal (added 2026-08-17) ──
+
+@_record_etl("news_attempts_daily_reset")
+def run_news_attempts_reset_job() -> dict[str, int]:
+    """Zero capped ``fulltext_attempts`` / ``summary_attempts`` once a day.
+
+    Both drains exclude rows that hit the retry cap (5). Without this
+    job, a transient failure window (Jina 402 balance outage, LLM 429
+    storm) would permanently evict every row unlucky enough to fail 5
+    times during it — exactly the 2026-08-02 translation-drain incident
+    that needed a manual ``UPDATE ... SET translation_attempts = 0``.
+    Resetting only the capped rows keeps the per-day LLM spend bounded:
+    a genuinely un-fetchable / un-summarizable row burns at most one
+    cap's worth of retries per day, then leaves the window again.
+
+    ``translation_attempts`` is deliberately NOT reset here: rows at
+    that cap are mostly deterministic MiniMax 422 "sensitive"
+    rejections, and re-trying them daily would burn tokens on
+    guaranteed failures.
+    """
+    from sqlalchemy import update
+
+    from app.core.database import SessionLocal
+    from app.services.news._model_loader import NewsArticle
+    from app.services.news.content_fetcher import _MAX_FULLTEXT_ATTEMPTS
+    from app.services.news.summary_service import _MAX_SUMMARY_ATTEMPTS
+
+    db = SessionLocal()
+    try:
+        fulltext_reset = db.execute(
+            update(NewsArticle)
+            .where(NewsArticle.fulltext_attempts >= _MAX_FULLTEXT_ATTEMPTS)
+            .values(fulltext_attempts=0)
+        ).rowcount or 0
+        summary_reset = db.execute(
+            update(NewsArticle)
+            .where(NewsArticle.summary_attempts >= _MAX_SUMMARY_ATTEMPTS)
+            .values(summary_attempts=0)
+        ).rowcount or 0
+        db.commit()
+        total = fulltext_reset + summary_reset
+        if total:
+            logger.info(
+                "news attempts daily reset: fulltext=%d summary=%d rows back in pool",
+                fulltext_reset, summary_reset,
+            )
+        return {"fetched": total, "written": total}
+    except Exception as exc:
+        logger.exception("news attempts reset failed: %s", exc)
+        db.rollback()
+        return {"fetched": 0, "written": 0}
+    finally:
+        db.close()
+
+
 # ── Macro (FRED) ──
 
 @record_etl("fred_macro_daily", source="fred")

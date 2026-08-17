@@ -2416,6 +2416,25 @@ def init_scheduler():
     except ImportError:
         pass
 
+    # News retry-counter self-heal (2026-08-17): the full-content and
+    # summary drains exclude rows whose attempts hit the cap; this daily
+    # job zeroes the capped counters so rows evicted by a transient
+    # outage window (Jina 402, LLM 429 storm) re-enter the pool on their
+    # own — no manual UPDATE like the 2026-08-02 translation reset.
+    try:
+        from app.services.news.scheduler_jobs import run_news_attempts_reset_job
+        scheduler.add_job(
+            run_news_attempts_reset_job,
+            trigger=CronTrigger(hour=3, minute=45, timezone="Asia/Shanghai"),
+            id="news_attempts_daily_reset",
+            name="资讯重试计数每日回零",
+            replace_existing=True,
+            max_instances=1,
+            coalesce=True,
+        )
+    except ImportError:
+        pass
+
     # LLM sentiment pipeline (Agent E)
     try:
         from app.services.news.sentiment.scheduler_sentiment import init_sentiment_jobs

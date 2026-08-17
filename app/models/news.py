@@ -136,6 +136,28 @@ class NewsArticle(Base):
         String(500),
         comment="AI-generated one-sentence Chinese summary (<=80 chars, drain job news_summarize_10m)",
     )
+    # Full-text / summary retry bookkeeping (2026-08-17), mirroring
+    # ``translation_attempts`` above. The 10-minute drains select pending
+    # rows newest-first, so a row whose full-text fetch (anti-bot page,
+    # dead URL) or summary LLM call keeps failing would otherwise occupy
+    # the batch window forever and starve the real backlog behind it.
+    # Each failed attempt increments the counter; rows that reach the cap
+    # (``_MAX_FULLTEXT_ATTEMPTS`` / ``_MAX_SUMMARY_ATTEMPTS``) are excluded
+    # from the drain selection, and the daily ``news_attempts_daily_reset``
+    # job zeroes capped rows so a transient outage window heals itself
+    # without a manual reset (the 2026-08-02 translation drain lesson).
+    fulltext_attempts = Column(
+        Integer,
+        nullable=False,
+        server_default="0",
+        comment="Failed full-content fetch attempts; drain skips rows at the cap",
+    )
+    summary_attempts = Column(
+        Integer,
+        nullable=False,
+        server_default="0",
+        comment="Failed AI summary attempts; drain skips rows at the cap",
+    )
 
     # AI-cleanup observability (M22-3, 2026-07-05). Until now the
     # DeepSeek call in ``ContentFetcher._clean_with_ai`` was a silent
