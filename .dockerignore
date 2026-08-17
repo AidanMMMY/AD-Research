@@ -46,6 +46,16 @@ docs/
 reports/
 # scripts/ 保留，部署时需要 scripts/seed_users.py 初始化管理员账号
 
+# 一次性研究/原生应用/代理产物，运行时无关（2026-08-17 瘦身补排）
+data/
+agent/
+.agents/
+ios/
+native/
+research/
+tmp/
+.github/
+
 # Data files
 *.csv
 *.parquet
