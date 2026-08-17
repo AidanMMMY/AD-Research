@@ -5,11 +5,14 @@ and TTL. Keys are prefixed with ``etf:`` to avoid collisions.
 """
 
 import json
+import logging
 from collections.abc import Callable
 from functools import wraps
 from typing import Any, TypeVar
 
 from app.core.redis_client import get_redis_client
+
+logger = logging.getLogger(__name__)
 
 F = TypeVar("F", bound=Callable[..., Any])
 
@@ -51,6 +54,35 @@ def cache_invalidate_pattern(pattern: str) -> None:
     client = get_redis_client()
     for key in client.scan_iter(match=pattern):
         client.delete(key)
+
+
+def try_cache_get(key: str) -> Any | None:
+    """Fault-tolerant :func:`cache_get` — Redis 故障时返回 None（视同未命中）。
+
+    用于热路径（评分榜 / 分析端点）：缓存宕机不应把只读查询打成 5xx，
+    回退去查 DB 即可。故障只记 debug 日志，避免刷屏。
+    """
+    try:
+        return cache_get(key)
+    except Exception as exc:
+        logger.debug("cache_get(%s) failed, falling back to DB: %s", key, exc)
+        return None
+
+
+def try_cache_set(key: str, value: Any, ttl: int = DEFAULT_TTL) -> None:
+    """Fault-tolerant :func:`cache_set` — Redis 故障时静默跳过写入。"""
+    try:
+        cache_set(key, value, ttl=ttl)
+    except Exception as exc:
+        logger.debug("cache_set(%s) failed, skipping: %s", key, exc)
+
+
+def try_cache_invalidate_pattern(pattern: str) -> None:
+    """Fault-tolerant :func:`cache_invalidate_pattern` — Redis 故障时静默跳过。"""
+    try:
+        cache_invalidate_pattern(pattern)
+    except Exception as exc:
+        logger.debug("cache_invalidate_pattern(%s) failed, skipping: %s", pattern, exc)
 
 
 def cached(ttl: int = DEFAULT_TTL, key_func: Callable[..., str] | None = None):

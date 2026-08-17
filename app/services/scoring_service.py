@@ -3,15 +3,30 @@
 Provides score calculation, template management, and score queries.
 """
 
+import logging
 from datetime import date
 from typing import Any
 
-from sqlalchemy import func
+from sqlalchemy import and_, false, func, or_
 from sqlalchemy.orm import Session
 
+from app.core.cache import (
+    try_cache_get,
+    try_cache_invalidate_pattern,
+    try_cache_set,
+)
 from app.data.indicators.scoring import ScoreCalculator
 from app.models.etf import ETFIndicator, ETFInfo
 from app.models.scoring import ETFScore, ScoreTemplate
+
+logger = logging.getLogger(__name__)
+
+# ``GET /scores`` 热路径原先每次请求都把 etf_score（~1M 行）GROUP BY
+# 扫两遍（get_scores + count_scores 各解析一次每市场最新日期）。评分
+# 每天只算一次，把 "market -> 最新评分日期" 映射缓存 10 分钟，并在
+# ``calculate_daily_scores`` 完成时主动失效即可。
+_LATEST_SCORE_DATES_CACHE_TTL = 600  # 10 分钟
+_LATEST_SCORE_DATES_CACHE_PREFIX = "scores:latest_dates"
 
 
 def _safe_float(value: Any) -> float | None:
@@ -211,6 +226,10 @@ class ScoringService:
         # ``service.last_buckets_used`` after running
         # ``calculate_daily_scores``.
         self.last_buckets_used = buckets_by_template
+
+        # 评分已推进到新交易日：主动失效 "每市场最新评分日期" 缓存，
+        # 否则 GET /scores 要等 TTL（10 分钟）才看到新分数。
+        try_cache_invalidate_pattern(f"{_LATEST_SCORE_DATES_CACHE_PREFIX}:*")
 
         return results
 
@@ -490,24 +509,78 @@ class ScoringService:
             query = query.filter(ETFInfo.instrument_type == instrument_type)
         return query
 
-    def _latest_dates_by_market_subquery(self, template_id: int):
-        """Subquery of the latest scored trade_date per market.
+    def _latest_dates_by_market(
+        self, template_id: int
+    ) -> list[tuple[str | None, date | None]]:
+        """Per-market latest scored trade_date, Redis-cached.
 
         Mirrors the per-market date resolution in
         :meth:`calculate_daily_scores` so a lagging market (e.g. A股)
         is not filtered out when another market (e.g. US) has already
         advanced to a newer date.
+
+        2026-08-17 性能修复：原实现把这个 GROUP BY 子查询直接嵌进
+        ``get_scores`` / ``count_scores``，导致 ``GET /scores`` 每次
+        请求把 etf_score（~1M 行）扫两遍。评分每天只算一次，这里把
+        映射结果缓存 10 分钟（``calculate_daily_scores`` 完成时主动
+        失效）。缓存未命中时的 GROUP BY 走
+        ``(template_id, trade_date, rank_overall)`` 索引最左前缀。
         """
-        return (
+        cache_key = f"{_LATEST_SCORE_DATES_CACHE_PREFIX}:{template_id}"
+        cached = try_cache_get(cache_key)
+        if cached is not None:
+            return [
+                (
+                    row["market"],
+                    date.fromisoformat(row["max_date"])
+                    if row.get("max_date")
+                    else None,
+                )
+                for row in cached
+            ]
+
+        rows: list[tuple[str | None, date | None]] = (
             self.db.query(
-                ETFInfo.market.label("market"),
-                func.max(ETFScore.trade_date).label("max_date"),
+                ETFInfo.market,
+                func.max(ETFScore.trade_date),
             )
             .join(ETFInfo, ETFScore.etf_code == ETFInfo.code)
             .filter(ETFScore.template_id == template_id)
             .group_by(ETFInfo.market)
-            .subquery()
+            .all()
         )
+        try_cache_set(
+            cache_key,
+            [
+                {
+                    "market": market,
+                    "max_date": max_date.isoformat() if max_date else None,
+                }
+                for market, max_date in rows
+            ],
+            ttl=_LATEST_SCORE_DATES_CACHE_TTL,
+        )
+        return rows
+
+    def _apply_latest_dates_filter(self, query, template_id: int):
+        """Filter a score query to each market's latest scored date.
+
+        语义与原 ``latest_dates`` 子查询 JOIN 完全等价：market 为 NULL
+        的分组在 JOIN 里永不匹配，这里同样跳过；没有任何评分日期时
+        返回恒空结果集（与原 JOIN 空子查询一致）。
+
+        用 OR 条件替代 JOIN 子查询后，热路径在缓存命中时完全不再触碰
+        GROUP BY 全扫；``(template_id, trade_date, ...)`` 索引可直接
+        服务 ``template_id = ? AND trade_date IN (...)`` 的过滤。
+        """
+        conditions = [
+            and_(ETFInfo.market == market, ETFScore.trade_date == max_date)
+            for market, max_date in self._latest_dates_by_market(template_id)
+            if market is not None and max_date is not None
+        ]
+        if not conditions:
+            return query.filter(false())
+        return query.filter(or_(*conditions))
 
     def get_scores(
         self,
@@ -558,12 +631,7 @@ class ScoringService:
         if trade_date is not None:
             query = query.filter(ETFScore.trade_date == trade_date)
         else:
-            latest_sq = self._latest_dates_by_market_subquery(template_id)
-            query = query.join(
-                latest_sq,
-                (ETFInfo.market == latest_sq.c.market)
-                & (ETFScore.trade_date == latest_sq.c.max_date),
-            )
+            query = self._apply_latest_dates_filter(query, template_id)
 
         query = self._apply_ranking_filters(query, market, instrument_type)
         if category:
@@ -636,12 +704,7 @@ class ScoringService:
         if trade_date is not None:
             query = query.filter(ETFScore.trade_date == trade_date)
         else:
-            latest_sq = self._latest_dates_by_market_subquery(template_id)
-            query = query.join(
-                latest_sq,
-                (ETFInfo.market == latest_sq.c.market)
-                & (ETFScore.trade_date == latest_sq.c.max_date),
-            )
+            query = self._apply_latest_dates_filter(query, template_id)
         query = self._apply_ranking_filters(query, market, instrument_type)
         if category:
             query = query.filter(ETFInfo.category == category)

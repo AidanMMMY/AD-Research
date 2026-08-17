@@ -133,6 +133,12 @@ _ETL_JOB_LOCK_MAP: dict[str, str | list[str]] = {
     "global_indices_daily": "global_indices_daily",
     "cninfo_reports_daily": "cninfo_reports_daily",
     "daily_digest": "daily_digest",
+    # score / signal 与 A 股日线共用 daily_pipeline 锁（见 run_* 内注释：
+    # 信号生成要等日线 pipeline 完成，paper_trade_auto 再等信号生成），
+    # 因此锁名都映射到 daily_pipeline——stuck 清理时按 ETLLog.job_name
+    # 反查这里定位 Redis 锁。
+    "score_calculation": "daily_pipeline",
+    "signal_generation": "daily_pipeline",
 }
 
 
@@ -684,6 +690,10 @@ def run_a_share_indicator_fallback(target_date: date | None = None):
 def run_score_calculation(target_date: date | None = None):
     """Run the daily ETF composite score calculation for all templates.
 
+    ETLLog 由 :func:`_run_score_calculation_locked` 上的 ``@record_etl``
+    记录（job_name="score_calculation"，与 scheduler job id 及运维面板
+    ``_TRACKED_JOBS`` 对齐）。
+
     Args:
         target_date: If provided, calculate scores for this date.
     """
@@ -691,12 +701,25 @@ def run_score_calculation(target_date: date | None = None):
         if not acquired:
             print("⚠️ [SCHEDULER_WARN] Score calculation skipped: could not acquire pipeline lock")
             return
+        return _run_score_calculation_locked(target_date)
 
-        with SessionLocal() as db:
-            service = ScoringService(db)
-            results = service.calculate_daily_scores(trade_date=target_date)
-            total = sum(results.values())
-            print(f"[Scheduler] Score calculation (target={target_date}): {total} scores across {len(results)} templates")
+
+@record_etl("score_calculation")
+def _run_score_calculation_locked(target_date: date | None = None) -> dict[str, Any]:
+    """在 ``daily_pipeline`` 锁内执行评分计算，并落一行 ETLLog。
+
+    返回 dict 遵循 ``record_etl`` 约定：``written`` 为写入的评分行数，
+    ``per_series`` 携带各 template 的行数供运维面板钻取。
+    """
+    with SessionLocal() as db:
+        service = ScoringService(db)
+        results = service.calculate_daily_scores(trade_date=target_date)
+        total = sum(results.values())
+        print(f"[Scheduler] Score calculation (target={target_date}): {total} scores across {len(results)} templates")
+        return {
+            "written": total,
+            "per_series": {str(tid): count for tid, count in results.items()},
+        }
 
 
 def run_sw_industry_index_refresh():
@@ -1312,15 +1335,15 @@ def run_paper_trade_auto():
 def run_signal_generation(target_date: date | None = None):
     """Generate trading signals for all active strategies (daily 09:00).
 
+    ETLLog 由 :func:`_run_signal_generation_locked` 上的 ``@record_etl``
+    记录（job_name="signal_generation"，与 scheduler job id 及运维面板
+    ``_TRACKED_JOBS`` 对齐）。
+
     Args:
         target_date: If provided, generate signals for this date instead of today.
     """
     # Short-lived session: only read config and the instrument universe.
     with SessionLocal() as db:
-        # Scheduler-generated signals are system-wide: user_id stays NULL so
-        # every authenticated user can see them (see SignalService.get_signals).
-        default_user_id = None
-
         # Query active strategy configs directly (bypass StrategyService which
         # requires user_id scoping — the scheduler operates system-wide).
         active_configs = (
@@ -1347,53 +1370,80 @@ def run_signal_generation(target_date: date | None = None):
             print("⚠️ [SCHEDULER_WARN] Signal generation skipped: could not acquire pipeline lock")
             return
 
-        # Create a fresh session for the actual signal generation so the
-        # config-reading session above can be closed promptly.
-        with SessionLocal() as db:
-            signal_service = SignalService(db)
-            trade_date = target_date or date.today()
-            total_signals = 0
-            etf_codes = [e.code for e in etfs]
+        return _run_signal_generation_locked(active_strategies, etfs, target_date)
 
-            for strategy in active_strategies:
-                strategy_type = strategy["strategy_type"]
-                params = strategy["params"]
-                strategy_id = strategy["id"]
 
-                strategy_class = StrategyRegistry.get(strategy_type)
-                is_cross_sectional = (
-                    strategy_class is not None and strategy_class.family == "cross_sectional"
-                )
+@record_etl("signal_generation")
+def _run_signal_generation_locked(
+    active_strategies: list[dict[str, Any]],
+    etfs: list[ETFInfo],
+    target_date: date | None = None,
+) -> dict[str, Any]:
+    """在 ``daily_pipeline`` 锁内生成信号，并落一行 ETLLog。
 
-                try:
-                    if is_cross_sectional:
-                        signals = signal_service.generate_signals_universe(
-                            strategy_id=strategy_id,
-                            etf_codes=etf_codes,
-                            strategy_type=strategy_type,
-                            params=params,
-                            trade_date=trade_date,
-                            user_id=default_user_id,
-                        )
-                        total_signals += len(signals)
-                    else:
-                        for etf in etfs:
-                            try:
-                                signals = signal_service.generate_signals(
-                                    strategy_id=strategy_id,
-                                    etf_code=etf.code,
-                                    strategy_type=strategy_type,
-                                    params=params,
-                                    trade_date=trade_date,
-                                    user_id=default_user_id,
-                                )
-                                total_signals += len(signals)
-                            except Exception as e:
-                                print(f"[Scheduler] Signal generation failed for {etf.code}: {e}")
-                except Exception as e:
-                    print(f"[Scheduler] Signal generation failed for strategy {strategy_id}: {e}")
+    返回 dict 遵循 ``record_etl`` 约定：``written`` 为生成的信号总数；
+    单策略 / 单标的失败不中断整轮（与改造前行为一致），失败项收集进
+    ``failed``（封顶 50 条，避免 extra_data 膨胀）使 ETLLog 记 partial。
+    """
+    # Create a fresh session for the actual signal generation so the
+    # config-reading session in the caller can be closed promptly.
+    with SessionLocal() as db:
+        signal_service = SignalService(db)
+        trade_date = target_date or date.today()
+        total_signals = 0
+        failed_items: list[str] = []
+        etf_codes = [e.code for e in etfs]
+        # Scheduler-generated signals are system-wide: user_id stays NULL so
+        # every authenticated user can see them (see SignalService.get_signals).
+        default_user_id = None
 
-            print(f"[Scheduler] Signal generation (target={target_date}): {total_signals} signals generated")
+        for strategy in active_strategies:
+            strategy_type = strategy["strategy_type"]
+            params = strategy["params"]
+            strategy_id = strategy["id"]
+
+            strategy_class = StrategyRegistry.get(strategy_type)
+            is_cross_sectional = (
+                strategy_class is not None and strategy_class.family == "cross_sectional"
+            )
+
+            try:
+                if is_cross_sectional:
+                    signals = signal_service.generate_signals_universe(
+                        strategy_id=strategy_id,
+                        etf_codes=etf_codes,
+                        strategy_type=strategy_type,
+                        params=params,
+                        trade_date=trade_date,
+                        user_id=default_user_id,
+                    )
+                    total_signals += len(signals)
+                else:
+                    for etf in etfs:
+                        try:
+                            signals = signal_service.generate_signals(
+                                strategy_id=strategy_id,
+                                etf_code=etf.code,
+                                strategy_type=strategy_type,
+                                params=params,
+                                trade_date=trade_date,
+                                user_id=default_user_id,
+                            )
+                            total_signals += len(signals)
+                        except Exception as e:
+                            print(f"[Scheduler] Signal generation failed for {etf.code}: {e}")
+                            if len(failed_items) < 50:
+                                failed_items.append(f"etf:{etf.code}")
+            except Exception as e:
+                print(f"[Scheduler] Signal generation failed for strategy {strategy_id}: {e}")
+                if len(failed_items) < 50:
+                    failed_items.append(f"strategy:{strategy_id}")
+
+        print(f"[Scheduler] Signal generation (target={target_date}): {total_signals} signals generated")
+        result: dict[str, Any] = {"written": total_signals}
+        if failed_items:
+            result["failed"] = failed_items
+        return result
 
 
 def run_cninfo_reports_daily():

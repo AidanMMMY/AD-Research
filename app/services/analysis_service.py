@@ -3,13 +3,27 @@
 Provides correlation analysis, ranking, and screening capabilities.
 """
 
+import hashlib
+import json
 from typing import Literal
 
 import numpy as np
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
+from app.core.cache import try_cache_get, try_cache_set
 from app.models.etf import ETFIndicator, ETFInfo
+
+# /analysis/ranking 与 /analysis/screen 的 "每标的最新指标" 子查询要对
+# etf_indicator（~16M 行）做全表 GROUP BY。指标一天一算（日终批），
+# 结果缓存 30 分钟即可；key 带全部查询参数哈希，避免不同筛选串味。
+_ANALYSIS_CACHE_TTL = 1800  # 30 分钟
+
+
+def _params_hash(params: dict) -> str:
+    """对查询参数做稳定哈希，用于缓存 key（避免 key 过长/特殊字符）。"""
+    blob = json.dumps(params, sort_keys=True, default=str)
+    return hashlib.md5(blob.encode()).hexdigest()[:16]
 
 
 class AnalysisService:
@@ -151,6 +165,13 @@ class AnalysisService:
         Returns:
             List of dicts with ETF code, name, and indicator values.
         """
+        cache_key = "analysis:ranking:" + _params_hash({
+            "sort_by": sort_by, "order": order, "limit": limit, "market": market,
+        })
+        cached = try_cache_get(cache_key)
+        if cached is not None:
+            return cached
+
         # Subquery: latest trade_date per ETF
         latest_dates = (
             self.db.query(
@@ -185,7 +206,7 @@ class AnalysisService:
 
         results = query.limit(limit).all()
 
-        return [
+        items = [
             {
                 "etf_code": r.ETFIndicator.etf_code,
                 "etf_name": r.etf_name,
@@ -211,6 +232,8 @@ class AnalysisService:
             }
             for r in results
         ]
+        try_cache_set(cache_key, items, ttl=_ANALYSIS_CACHE_TTL)
+        return items
 
     def screen(
         self,
@@ -237,6 +260,15 @@ class AnalysisService:
         Returns:
             List of dicts with ETF code, name, and indicator values.
         """
+        cache_key = "analysis:screen:" + _params_hash({
+            "market": market, "category": category,
+            "rsi_min": rsi_min, "rsi_max": rsi_max,
+            "sharpe_min": sharpe_min, "volatility_max": volatility_max,
+        })
+        cached = try_cache_get(cache_key)
+        if cached is not None:
+            return cached
+
         # Subquery: latest trade_date per ETF
         latest_dates = (
             self.db.query(
@@ -278,7 +310,7 @@ class AnalysisService:
 
         results = query.all()
 
-        return [
+        items = [
             {
                 "etf_code": r.ETFIndicator.etf_code,
                 "etf_name": r.etf_name,
@@ -303,3 +335,5 @@ class AnalysisService:
             }
             for r in results
         ]
+        try_cache_set(cache_key, items, ttl=_ANALYSIS_CACHE_TTL)
+        return items
