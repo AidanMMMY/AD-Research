@@ -8,11 +8,30 @@ API docs: https://platform.minimax.io/docs
 """
 
 import os
+import re
 
 import httpx
 from openai import OpenAI
 
 from app.services.llm.base import LLMProvider
+
+# MiniMax 推理模型（minimax-m3 等）会把思维链以 <think>...</think> 形式
+# 混在正文里返回。2026-08-18 实踩：切换 MiniMax 主链路后每日研报 35k 字
+# 里一半是 think 原文直接出站。翻译管线在 app/services/news/
+# translation_service.py 有自己的 _strip_think_tags，但 digest/研报/营销
+# 过滤等调用方没有——统一在 provider 出口剥除，一次修复全部调用方。
+# 未闭合的 think 块（输出截断）一并剥到文末；整块只有 think 时返回空串，
+# 让调用方走既有的"空输出=失败/降级"路径。
+_THINK_TAG_RE = re.compile(r"<think>.*?</think>", re.DOTALL | re.IGNORECASE)
+_THINK_UNCLOSED_RE = re.compile(r"<think>.*$", re.DOTALL | re.IGNORECASE)
+
+
+def _strip_think(text: str) -> str:
+    if not text or "<think>" not in text.lower():
+        return text
+    stripped = _THINK_TAG_RE.sub("", text)
+    stripped = _THINK_UNCLOSED_RE.sub("", stripped)
+    return stripped.strip()
 
 _DEFAULT_MODEL = "minimax-m3"
 # Global endpoint (for users outside China)
@@ -87,7 +106,7 @@ class MiniMaxProvider(LLMProvider):
             "temperature": temperature,
         }
         response = self._client.chat.completions.create(**kwargs)
-        return response.choices[0].message.content or ""
+        return _strip_think(response.choices[0].message.content or "")
 
     def chat(
         self,
@@ -116,7 +135,7 @@ class MiniMaxProvider(LLMProvider):
             "temperature": temperature,
         }
         response = self._client.chat.completions.create(**kwargs)
-        return response.choices[0].message.content or ""
+        return _strip_think(response.choices[0].message.content or "")
 
     def check_health(self) -> bool:
         if not self._available:
