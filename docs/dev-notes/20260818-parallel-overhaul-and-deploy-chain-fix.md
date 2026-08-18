@@ -95,6 +95,20 @@ web `check:ci` + vitest 全绿，alembic 单 head `d1e3f5a7b9c1`。
 - [x] MiniMax：容器内 get_llm_provider() = MiniMaxProvider available=True
 - [ ] 次日 06:30 digest 用 MiniMax 正常出报（待观察）
 
+## 四·补2、MiniMax 主链路首个生产 bug：think 块出站（已修 `be2e269`）
+
+- 现象：切 MiniMax 后每日研报 33-45k 字被判 partial（超 8000 字保险丝），
+  正文里混着 `<think>` 思维链原文直接发布到站+邮件。
+- 根因：think 剥除只在翻译管线（translation_service._strip_think_tags）做了，
+  MiniMax provider 出口没做，digest/研报等调用方全部裸奔。
+- 修复：`minimax_provider.py` 的 `complete()`/`chat()` 出口统一剥除
+  （含未闭合截断块；think-only → 空串走调用方降级路径），8 用例。
+- 验证：手动重生成 8/17（7298 字 success）+ 8/18（7889 字 success），
+  think_pos=0；邮件/企微/飞书重推全 success；**次日 06:30 定时任务
+  （8/19 报）在新代码下自动跑出 7763 字 success**——定时管线自愈确认。
+- 附记：`run_daily_digest(target_date)` 支持手动补历史日期（upsert +
+  redis_lock，不影响定时任务）；MiniMax 走 token plan，费率表不补。
+
 ## 四·补、部署过程中新增的三个坑（全部实踩实修）
 
 1. **/opt 根目录游离 `ssl/` 目录挡部署**：7 月初遗留的未跟踪目录触发 sync step

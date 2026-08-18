@@ -84,7 +84,7 @@ yaml.safe_load(...)"</code> 过一遍再 push；CI 加强制门禁时必须先�
 <td>2</td>
 <td>评分域</td>
 <td>2 commits</td>
-<td>score/signal 补 @record_etl + job_name 三方对齐 + <code>_ETL_JOB_LOCK_MAP</code> 补映射；/scores 双扫→10min 缓存+算分主动失效；/analysis ranking</td>
+<td>score/signal 补 @record_etl + job_name 三方对齐 + <code>_ETL_JOB_LOCK_MAP</code> 补映射；/scores 双扫→10min 缓存+算分主动失效；/analysis ranking·screen 30min 参数哈希缓存；cache.py 加容错变体（Redis 宕回退 DB）</td>
 </tr>
 <tr>
 <td>3</td>
@@ -129,16 +129,48 @@ web <code>check:ci</code> + vitest 全绿，alembic 单 head <code>d1e3f5a7b9c1<
 </ul>
 <h2>四、本次部署（5b83d25）验证清单</h2>
 <ul>
-<li>[ ] <code>/health</code> git_sha = 5b83d25，db/redis ok</li>
-<li>[ ] alembic current = d1e3f5a7b9c1（f0b2d4e6f8a0/f0b2d4e6f8a1 补列 + attempts 列全落地）</li>
-<li>[ ] news / learning 页面不再 500（Codex 的 UndefinedColumn 修复首次上生产）</li>
-<li>[ ] 首个 slim 镜像 x86 构建：backend healthcheck + 两 worker 启动日志正常</li>
-<li>[ ] TLS：<code>curl -I https://www.alloyresearch.net</code> 200（挂载换路径后证书仍在）</li>
-<li>[ ] 8000 收敛：<code>curl http://&lt;IP&gt;:8000</code> 外网不通，<code>curl http://127.0.0.1:8000/health</code> 本机通</li>
-<li>[ ] MiniMax：营销过滤/summary 日志不再 fall through</li>
-<li>[ ] 次日 06:30 digest 用 MiniMax 正常出报</li>
-<li>[ ] update.sh 第 5 步清理旧镜像后 /data 占用下降</li>
+<li>[x] <code>/health</code> git_sha = 689c02d，db/redis ok</li>
+<li>[x] alembic current = d1e3f5a7b9c1（见下方"部署中新增的三个坑"）</li>
+<li>[x] news 列查询生产验证：223,554 行带 duplicate_of 过滤 + attempts 列默认 0（Codex 的 UndefinedColumn 修复首次上生产）</li>
+<li>[x] 首个 slim 镜像 x86 构建成功：<strong>1.27GB vs 旧 2.67GB（-52%）</strong>，backend 22s healthy，两 worker 正常</li>
+<li>[x] TLS：nginx 新挂载路径下 https /health 200</li>
+<li>[x] 8000 收敛：<code>ss -tln</code> 确认 127.0.0.1:8000，443 保持公开</li>
+<li>[x] MiniMax：容器内 get_llm_provider() = MiniMaxProvider available=True</li>
+<li>[ ] 次日 06:30 digest 用 MiniMax 正常出报（待观察）</li>
 </ul>
+<h2>四·补2、MiniMax 主链路首个生产 bug：think 块出站（已修 <code>be2e269</code>）</h2>
+<ul>
+<li>现象：切 MiniMax 后每日研报 33-45k 字被判 partial（超 8000 字保险丝），
+  正文里混着 <code>&lt;think&gt;</code> 思维链原文直接发布到站+邮件。</li>
+<li>根因：think 剥除只在翻译管线（translation_service._strip_think_tags）做了，
+  MiniMax provider 出口没做，digest/研报等调用方全部裸奔。</li>
+<li>修复：<code>minimax_provider.py</code> 的 <code>complete()</code>/<code>chat()</code> 出口统一剥除
+  （含未闭合截断块；think-only → 空串走调用方降级路径），8 用例。</li>
+<li>验证：手动重生成 8/17（7298 字 success）+ 8/18（7889 字 success），
+  think_pos=0；邮件/企微/飞书重推全 success；<strong>次日 06:30 定时任务
+  （8/19 报）在新代码下自动跑出 7763 字 success</strong>——定时管线自愈确认。</li>
+<li>附记：<code>run_daily_digest(target_date)</code> 支持手动补历史日期（upsert +
+  redis_lock，不影响定时任务）；MiniMax 走 token plan，费率表不补。</li>
+</ul>
+<h2>四·补、部署过程中新增的三个坑（全部实踩实修）</h2>
+<ol>
+<li><strong>/opt 根目录游离 <code>ssl/</code> 目录挡部署</strong>：7 月初遗留的未跟踪目录触发 sync step
+   脏工作树保护（Action-253 的反丢失设计），每次部署 1.3s 即 exit 1，且失败
+   摘要只写 previous=current 不写明原因。<strong>排查口诀：deploy 失败先看
+   <code>cd /opt/ad-research &amp;&amp; git status --porcelain</code></strong>。已挪 /root/stray-ssl-backup-20260818。</li>
+<li><strong>生产 DB 与迁移漂移</strong>：prod <code>news_article</code> 的 <code>duplicate_of</code>/<code>embedding</code>/
+   <code>embedding_model</code>/<code>embedded_at</code> 四列已存在（8/8 有人手动补过——Codex 修
+   500 时），但 alembic_version 停在 <code>c4d6e8f0a2b4</code> → f0b2d4e6f8a0 迁移
+   DuplicateColumn 崩溃 → backend 崩循环 → 全栈起不来。修法：逐列核对齐全后
+   <code>docker compose run --rm --no-deps --entrypoint alembic backend stamp f0b2d4e6f8a1</code></li>
+<li><code>upgrade head</code>。<strong>教训：手动改生产库结构后必须当场 alembic stamp，
+   否则下次部署必炸。</strong></li>
+<li><strong><code>/data/ad-research</code> 是 agent 管线的 git checkout</strong>（部署时同步 + clean
+   未跟踪文件）：TLS 出仓第一步错把证书放进去，02:44 部署时被清掉 → nginx
+   读不到证书崩循环。<strong>正确位置是 <code>/data/alloy-research/ssl</code></strong>（cninfo 数据
+   目录旁，非 git 管理）。compose 已改（<code>3180bfa</code>）。另外 nginx 崩溃后 docker
+   restart 退避会拉长到分钟级，恢复文件后记得 <code>docker restart</code> 强制立即重试。</li>
+</ol>
 <h2>五、遗留清单（更新版）</h2>
 <ol>
 <li>TLS：重签发轮换 + filter-repo 清历史（前置已就绪）；<strong>9/30 前必须续期</strong>（无自动续期机制）</li>
