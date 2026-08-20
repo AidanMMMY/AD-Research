@@ -94,8 +94,13 @@ def test_generate_success_assembly(ctx, no_sleep):
     assert result.llm_model == "fake-model-v1"
     # 6 次章节 + 1 次摘要
     assert len(provider.calls) == 7
-    # 6 个 ## 标题齐全且按序
-    assert result.content_md.count("\n## ") == 6
+    # content_md 只含 6 个 ## 章节，不内嵌 `# 标题` H1（标题唯一来源是
+    # title 列；2026-08-21 前内嵌 H1 导致网页/邮件/TG/原生端四端双标题）
+    assert not result.content_md.startswith("# ")
+    assert result.content_md.startswith(f"## {SECTIONS[0].title}")
+    assert result.title not in result.content_md.splitlines()[0]
+    # 6 个 ## 标题齐全且按序（行首计数，含文档开头的第一节）
+    assert len(gen_mod._SECTION_HEADING_RE.findall(result.content_md)) == 6
     for spec in SECTIONS:
         assert f"## {spec.title}" in result.content_md
     assert all(s["status"] == "success" for s in result.sections)
@@ -200,4 +205,17 @@ def test_extra_llm_subheadings_do_not_fail_heading_check(ctx, no_sleep):
 
     result = DigestGenerator(provider=SubProvider()).generate(ctx)
     assert result.status == "success"
-    assert result.content_md.count("\n## ") == 12
+    # 6 章节 + 6 个正文自带子标题 = 12 个行首 ##（含文档开头的第一节）
+    assert len(gen_mod._SECTION_HEADING_RE.findall(result.content_md)) == 12
+
+
+def test_first_section_heading_at_doc_start_counts(ctx, no_sleep):
+    """首节 `##` 位于文档开头时 heading 校验仍计 6 个——防退回
+    count("\\n## ") 的数法（会漏掉没有前置换行的第一节 → 永远 partial）。"""
+
+    result = DigestGenerator(provider=FakeProvider()).generate(ctx)
+
+    # 字符串数法只能数到 5 个（首节前面没有 \n），正则行首数法才是 6
+    assert result.content_md.count("\n## ") == 5
+    assert len(gen_mod._SECTION_HEADING_RE.findall(result.content_md)) == 6
+    assert result.status == "success"

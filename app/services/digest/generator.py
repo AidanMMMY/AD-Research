@@ -18,6 +18,7 @@
 from __future__ import annotations
 
 import logging
+import re
 from dataclasses import dataclass, field
 from time import sleep as _sleep
 from typing import Any
@@ -47,6 +48,10 @@ MAX_TOTAL_CHARS = 12000
 
 # provider 无 key 时返回的中文占位串特征（不抛错，必须按内容识别）
 _PLACEHOLDER_MARKERS = ("AI 功能未配置", "DEEPSEEK_API_KEY", "MINIMAX_API_KEY")
+
+# 行首 `## ` 计数（章节标题校验用；字符串 count("\n## ") 会漏掉文档
+# 开头的第一个章节标题，见 generate() 内注释）
+_SECTION_HEADING_RE = re.compile(r"^## ", re.MULTILINE)
 
 
 def _strip_leading_heading(text: str) -> str:
@@ -159,10 +164,10 @@ class DigestGenerator:
             brief = text[:100] if ok else "（本节生成失败）"
             prev_summaries.append((spec.title, brief))
 
-        # 拼装全文：# 标题 + 6 个 ## 章节
-        parts = [f"# {title}"]
-        for spec, text, _ok in bodies:
-            parts.append(f"## {spec.title}\n\n{text}")
+        # 拼装全文：仅 6 个 ## 章节，不再内嵌 `# {title}` H1——
+        # 标题唯一来源是 title 列（2026-08-21 修复：网页 hero/邮件头/
+        # TG 首条/原生端都单独渲染 title，内嵌 H1 导致四端标题重复）。
+        parts = [f"## {spec.title}\n\n{text}" for spec, text, _ok in bodies]
         content_md = "\n\n".join(parts)
 
         # 第 7 次调用：≤200 字摘要；失败 → 第 1 节前 200 字兜底
@@ -181,7 +186,10 @@ class DigestGenerator:
             status = "partial"
         # 标题校验：6 个章节标题由上方拼装保证必含；LLM 正文可能自带
         # ## 子标题（首跑实测 8 个），所以只查下限不查精确相等。
-        heading_count = content_md.count("\n## ")
+        # 必须用多行正则从行首计数：content_md 不再以 `# 标题` 开头后，
+        # 第一节 `##` 位于文档起始、前面没有 \n，字符串 count("\n## ")
+        # 会少计 1 导致每篇误判 partial（2026-08-21 同步修复的暗坑）。
+        heading_count = len(_SECTION_HEADING_RE.findall(content_md))
         total_chars = len(content_md)
         if heading_count < len(SECTIONS):
             logger.warning(

@@ -1,0 +1,58 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>2026-08-21 每日研报标题四端重复修复</title>
+<style>body{max-width:860px;margin:40px auto;padding:0 20px;font-family:-apple-system,BlinkMacSystemFont,"PingFang SC",sans-serif;line-height:1.75;color:#1e293b}
+code{background:#f1f5f9;padding:2px 6px;border-radius:4px;font-size:.9em}
+pre{background:#f8fafc;padding:14px;border-radius:8px;overflow-x:auto}
+pre code{background:none;padding:0}
+blockquote{border-left:3px solid #818cf8;margin:0;padding-left:16px;color:#64748b}
+h1,h2{line-height:1.3}table{border-collapse:collapse}td,th{border:1px solid #e2e8f0;padding:6px 12px}</style>
+</head><body><h1>2026-08-21 每日研报标题四端重复修复</h1>
+<blockquote>
+<p>触发：用户截图实锤——/digest 页面 hero 卡标题下方，正文区又渲染一遍
+<code># 2026-08-17 每日综合研报</code> H1；邮件同样双标题。</p>
+</blockquote>
+<h2>根因</h2>
+<p>标题被存了两份：<code>daily_digest.title</code> 列一份，<code>content_md</code> 开头又被
+<code>generator.py</code> 拼装了 <code># {title}</code> H1。四个消费端都先单独渲染 title、
+再渲染 content_md 全文 → <strong>网页 / 邮件 / Telegram / macOS 原生端全部双标题</strong>。</p>
+<h2>修复（三处）</h2>
+<ol>
+<li><strong>源头去重</strong>（<code>app/services/digest/generator.py</code>）：拼装全文不再
+   prepend <code># {title}</code>，content_md 只含 6 个 <code>##</code> 章节；标题唯一来源
+   是 title 列。
+   ⚠️ <strong>暗坑</strong>：章节数校验原来是 <code>content_md.count("\n## ")</code>——去掉 H1
+   后第一节 <code>##</code> 位于文档开头、前面没有 <code>\n</code>，会少计 1 → 每篇误判
+   partial。已改为行首多行正则 <code>_SECTION_HEADING_RE = re.compile(r"^## ",
+   re.MULTILINE)</code> 计数，并补了防退回测试
+   （<code>test_first_section_heading_at_doc_start_counts</code>）。</li>
+<li><strong>前端防御</strong>（<code>web/src/pages/Digest/index.tsx</code> <code>splitContent</code>）：
+   intro（首个 <code>##</code> 之前）里残留的 <code>#</code> 一级标题行直接丢弃，双保险；
+   章节正文内的 <code>#</code> 行不受影响。函数导出供 vitest。</li>
+<li><strong>存量清洗</strong>（<code>scripts/strip_digest_title_h1.py</code>）：剥掉历史
+   daily_digest 行开头的 H1 + 后续空行。默认 dry-run，<code>--apply</code> 才写。
+   ECS 上跑：
+   <code>docker exec etf-backend python3 scripts/strip_digest_title_h1.py --dry-run</code>
+   → 确认行数后 <code>--apply</code>。</li>
+</ol>
+<p>邮件 / TG / 原生端零改动——数据干净后重复自然消失。已发出的邮件无法
+回收，不管。</p>
+<h2>验证</h2>
+<ul>
+<li>后端：digest 套件 42/42，全量 pytest 1881 passed / 2 skipped，ruff 绿</li>
+<li>前端：digest vitest 8/8（新增 splitContent 3 单测 + 旧数据集成回归
+  「标题只显示一次」），全量 vitest 83/83，check:ci 绿</li>
+<li>清洗正则用 5 个边界用例本地验证（单 H1/多 H1/无空行/无 H1/纯 H1）</li>
+</ul>
+<h2>口诀</h2>
+<ul>
+<li><strong>存 content 的地方别再嵌标题</strong>——标题是元数据列，渲染端各自负责；
+  在内容里再写一遍，每加一个消费端就多一处重复。</li>
+<li>数 markdown 标题用行首正则，不用 <code>count("\n## ")</code>（文档开头的第一个
+  标题永远数不到）。</li>
+</ul>
+<h2>相关</h2>
+<ul>
+<li>[[20260818 并行大修+部署链复活]]（digest think 块修复 be2e269）</li>
+<li>20260803 每日AI综合研报上线（heading 校验初版教训）</li>
+</ul></body></html>

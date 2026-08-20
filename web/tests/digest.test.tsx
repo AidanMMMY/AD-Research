@@ -15,7 +15,7 @@ import { cleanup, fireEvent, render, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import DigestSummaryCard from '@/components/DigestSummaryCard';
-import Digest from '@/pages/Digest';
+import Digest, { splitContent } from '@/pages/Digest';
 import { digestApi } from '@/api/digest';
 import type { DigestLatestSummary, DigestReport } from '@/api/digest';
 
@@ -123,8 +123,55 @@ describe('DigestSummaryCard', () => {
   });
 });
 
+describe('splitContent', () => {
+  it('剥掉 intro 里残留的一级标题行（旧数据双标题防御，2026-08-21）', () => {
+    // 2026-08-21 前入库的 content_md 以 `# {title}` H1 开头，hero 卡
+    // 已渲染 title → 不剥会在正文区再显示一次标题
+    const md = '# 2026-08-02 每日综合研报\n\n开场段落：风险偏好回升。\n\n## 全球市场\n美股齐涨。';
+    const { intro, sections } = splitContent(md);
+    expect(intro).toBe('开场段落：风险偏好回升。');
+    expect(sections).toHaveLength(1);
+    expect(sections[0].title).toBe('全球市场');
+    expect(sections[0].body).toBe('美股齐涨。');
+  });
+
+  it('无 H1 时 intro 原样保留；章节正文内的 # 行不剥', () => {
+    const md = '开场段落。\n\n## 全球市场\n# 这是正文里的行\n正文。';
+    const { intro, sections } = splitContent(md);
+    expect(intro).toBe('开场段落。');
+    expect(sections[0].body).toContain('# 这是正文里的行');
+  });
+
+  it('连续多个 H1 + 空行全剥', () => {
+    const md = '# 标题一\n# 标题二\n\n\n## 章节\n正文。';
+    const { intro, sections } = splitContent(md);
+    expect(intro).toBe('');
+    expect(sections).toHaveLength(1);
+  });
+});
+
 describe('Digest 页', () => {
   beforeEach(() => vi.clearAllMocks());
+
+  it('旧数据（content_md 自带 # 标题 H1）：标题只显示一次，不出双标题', async () => {
+    // 回归：2026-08-21 前 generator 把 `# {title}` 焊进 content_md，
+    // hero 卡 + 正文 intro 双重渲染（用户截图实锤）。服务端清洗 + splitContent
+    // 防御后，即使拿到旧格式数据页面也只显示一次标题。
+    const LEGACY: DigestReport = {
+      ...REPORT,
+      title: '2026-08-02 每日综合研报',
+      content_md:
+        '# 2026-08-02 每日综合研报\n\n## 全球市场\n美股三大指数齐涨。\n\n## 宏观数据\n美债收益率回落。',
+    };
+    mocked.getLatest.mockResolvedValue({ data: LEGACY } as any);
+    const { getAllByText } = renderWithProviders(<Digest />);
+    await waitFor(() => {
+      expect(getAllByText('2026-08-02 每日综合研报')).toHaveLength(1);
+    });
+    // 正文区没有任何一级标题元素
+    expect(document.querySelector('.digest-body h1')).toBeNull();
+    expect(document.querySelector('.digest-body__intro')).toBeNull();
+  });
 
   it('partial 报告：徽章「部分章节数据缺失」+ markdown 章节 + 目录锚点', async () => {
     mocked.getLatest.mockResolvedValue({ data: REPORT } as any);

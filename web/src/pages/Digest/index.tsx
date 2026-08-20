@@ -42,9 +42,8 @@ interface ContentSection {
   body: string;
   anchor: string;
 }
-
-/** 把 content_md 按 `## ` 二级标题切成可锚点定位的章节。 */
-function splitContent(md: string): { intro: string; sections: ContentSection[] } {
+/** 把 content_md 按 `## ` 二级标题切成可锚点定位的章节。导出供 vitest 单测。 */
+export function splitContent(md: string): { intro: string; sections: ContentSection[] } {
   const lines = md.split('\n');
   const sections: ContentSection[] = [];
   const introLines: string[] = [];
@@ -68,7 +67,10 @@ function splitContent(md: string): { intro: string; sections: ContentSection[] }
       };
     } else if (current) {
       current.body += `${line}\n`;
-    } else {
+    } else if (!/^#\s+/.test(line)) {
+      // 防御：intro（首个 ## 之前）里残留的一级标题行直接丢弃——
+      // 标题由 hero 卡渲染，2026-08-21 前入库的旧数据可能自带 `# 标题`
+      // H1（已在服务端清洗，此处双保险），不剥会显示成双标题。
       introLines.push(line);
     }
   }
