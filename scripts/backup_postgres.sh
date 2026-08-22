@@ -51,13 +51,19 @@ log_info "开始备份 ${POSTGRES_DB} → ${BACKUP_FILE}"
 #      否则占用 retention 槽位让人误以为当天有备份。
 MIN_BACKUP_BYTES="${MIN_BACKUP_BYTES:-104857600}"  # 100MB；当前全量 ~3.2G
 
+# 2026-08-22 修复：分支顺序改为 postgres 容器优先。
+# 根因：8/4 探针从「完整试跑 pg_dump」改为「pg_dump --version」后，
+# backend 容器（镜像内置 pg_dump 17）探针必中，而其分支用 -h localhost，
+# 容器内 localhost 指向容器自身 → connection refused，致 8/4 起 18 天零备份。
+# 现在首选 postgres 容器内本地导出（pg_dump 版本与 server 一致，无网络依赖），
+# backend 分支保底并改走 compose 网络服务名 postgres（DNS 已验证可解析）。
 dump_ok=1
 if [ -n "$COMPOSE_FILE" ] && [ -f "$COMPOSE_FILE" ]; then
     docker compose -f "$COMPOSE_FILE" exec -T postgres pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" | gzip > "$BACKUP_FILE" || dump_ok=0
-elif docker exec "$BACKEND_CONTAINER" pg_dump --version >/dev/null 2>&1; then
-    docker exec "$BACKEND_CONTAINER" pg_dump -h "$POSTGRES_HOST" -p "$POSTGRES_PORT" -U "$POSTGRES_USER" -d "$POSTGRES_DB" | gzip > "$BACKUP_FILE" || dump_ok=0
 elif docker exec alloyresearch-postgres pg_dump --version >/dev/null 2>&1; then
     docker exec alloyresearch-postgres pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" | gzip > "$BACKUP_FILE" || dump_ok=0
+elif docker exec "$BACKEND_CONTAINER" pg_dump --version >/dev/null 2>&1; then
+    docker exec "$BACKEND_CONTAINER" pg_dump -h postgres -p "$POSTGRES_PORT" -U "$POSTGRES_USER" -d "$POSTGRES_DB" | gzip > "$BACKUP_FILE" || dump_ok=0
 elif command -v pg_dump >/dev/null 2>&1; then
     log_warn "容器内 pg_dump 均不可用，回退本地 pg_dump"
     pg_dump -h "$POSTGRES_HOST" -p "$POSTGRES_PORT" -U "$POSTGRES_USER" -d "$POSTGRES_DB" | gzip > "$BACKUP_FILE" || dump_ok=0

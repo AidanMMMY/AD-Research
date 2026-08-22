@@ -1,0 +1,95 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>2026-08-22 PG 备份链修复 + 磁盘定期清理</title>
+<style>body{max-width:860px;margin:40px auto;padding:0 20px;font-family:-apple-system,BlinkMacSystemFont,"PingFang SC",sans-serif;line-height:1.75;color:#1e293b}
+code{background:#f1f5f9;padding:2px 6px;border-radius:4px;font-size:.9em}
+pre{background:#f8fafc;padding:14px;border-radius:8px;overflow-x:auto}
+pre code{background:none;padding:0}
+blockquote{border-left:3px solid #818cf8;margin:0;padding-left:16px;color:#64748b}
+h1,h2{line-height:1.3}table{border-collapse:collapse}td,th{border:1px solid #e2e8f0;padding:6px 12px}</style>
+</head><body><h1>2026-08-22 PG 备份链 18 天停摆修复 + 磁盘定期清理落地</h1>
+<blockquote>
+<p>触发：磁盘审计子 agent 发现 /data/backups/postgres 最新备份停在
+2026-08-04，18 天零备份。两个子 agent 并行处理（备份链 / 磁盘清理），
+主会话装 cron + 修仓库脚本。</p>
+</blockquote>
+<h2>一、PG 备份链：根因与修复</h2>
+<p><strong>根因（一句话）</strong>：8/4 事故修复时把 backend 容器探针从「完整试跑一次
+pg_dump」改成 <code>pg_dump --version</code>——backend 镜像内置 pg_dump 17，探针
+必中，而该分支用 <code>-h localhost</code> 连库；容器内 localhost 指向容器自身
+（postgres 是独立容器）→ connection refused → 只产出 20B 空 gzip 被
+100MB 底线校验删除。<strong>8/4 起连续 18 天每天 02:30 准时失败</strong>，cron/
+daemon/脚本调度全都正常，是分支逻辑钉死了错误路径。旧探针会完整试跑、
+连不上就失败、自然跌进 postgres 容器分支成功导出——探针"优化"反而
+引入了必败分支。</p>
+<p><strong>修复</strong>（<code>/root/backup_postgres.sh</code>，改前备份 <code>.bak-20260822</code>）：
+1. 分支顺序改为 <strong>alloyresearch-postgres 容器优先</strong>（容器内本地导出，
+   pg_dump 16 与 server 版本一致，零网络依赖）
+2. backend 分支降保底，主机从 <code>localhost</code> 改为 compose 服务名
+   <code>postgres</code>（DNS 已验证解析 172.22.0.4）
+3. 仓库 <code>scripts/backup_postgres.sh</code> 带同一 bug（commit 1559ac7 引入），
+   已同步修复（cron 调的是 /root 副本，仓库版是防复发）</p>
+<p><strong>验证</strong>：手动跑通 <code>ad_research_20260822_210124.sql.gz</code> <strong>3.7G</strong>，
+<code>gunzip -t</code> 全量 GZIP_OK，头部 <code>-- PostgreSQL database dump</code> + 尾部
+<code>\unrestrict</code> 终结标记齐全。cron 行无需改动，当晚 02:30 自动生效。
+retention（5 天）顺带清掉 8/4 前 5 份旧备份（-12G）。</p>
+<p><strong>口诀</strong>：容器里 <code>-h localhost</code> 永远指向容器自己——跨容器连库必须走
+compose 服务名；探针要验证「真实依赖路径」而不是「二进制存在」，
+<code>--version</code> 探针验证不了网络/主机名/认证任何一项。</p>
+<h2>二、磁盘定期清理：机制全景与新增 janitor</h2>
+<table>
+<thead>
+<tr>
+<th>机制</th>
+<th>频率</th>
+<th>覆盖</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>update.sh 部署清理</td>
+<td>每次部署</td>
+<td>保留当前 sha+latest；builder prune 72h</td>
+</tr>
+<tr>
+<td>docker-cleanup.sh（cron 周日 03:00）</td>
+<td>每周</td>
+<td>dangling/builder <code>-a</code> 168h/ad-research 留 3 sha/PROTECTED_IMAGES</td>
+</tr>
+<tr>
+<td><strong>disk-janitor.sh（cron 周日 04:30，本次新增）</strong></td>
+<td>每周</td>
+<td>dangling、ad-research 留 2 sha（含 previous_head 回滚指针）、builder until=168h（不加 -a）、白名单核验、df 前后对比日志</td>
+</tr>
+<tr>
+<td>site_watchdog</td>
+<td>每 5 分钟</td>
+<td>拨测+自愈，不管磁盘</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li>新脚本 <code>/root/disk-janitor.sh</code>：<code>flock</code> 自锁 + <strong>部署锁
+  <code>/var/run/ad-research-deploy.lock</code> 被持有时跳过</strong>；只 <code>image prune -f</code>
+  绝不 <code>prune -a</code>（2026-08-04 nginx 被删事故教训）；PROTECTED_IMAGES
+  复用 <code>:__keep__</code> tag 技巧</li>
+<li>cron：<code>/etc/cron.d/disk-janitor</code> = <code>30 4 * * 0</code>（已装，与 03:00 的
+  docker-cleanup 错开且幂等兼容）</li>
+<li>实测：释放 ~1.4G（悬空镜像 734M + runner 旧版 2.335.1 的
+  bin/externals 674M，进程确认在 2.336.0 上），七容器全程 Up，
+  /data 51%→50%；叠加备份 retention 的 12G，<strong>一天净释放 ~13.4G</strong></li>
+</ul>
+<p><strong>遗留</strong>：
+1. containerd 7.4G 缓增——只观察，严禁裸 prune（2026-08-02 教训）
+2. docker-cleanup（留 3 sha）与 janitor（留 2 sha）并存无副作用；
+   想单一口径可停前者
+3. <strong>备份失败无告警</strong>——18 天零产出无人察觉。待办：backup.log 的
+   <code>[ERROR]</code> 接 site_watchdog 告警通道
+4. 当前只剩 1 份备份，当晚 cron 后恢复冗余</p>
+<h2>相关</h2>
+<ul>
+<li>[[20260804 站点断访20h事故]]（裸 prune 删 nginx）</li>
+<li>[[20260805 首页/研报故障+满盘停摆复盘]]（update.sh 自动清理由来）</li>
+<li>[[20260719-orchestrate-image-fix]]（PROTECTED_IMAGES 由来）</li>
+<li>[[20260821-digest-title-dedup]]（同日 MiniMax 额度耗尽发现）</li>
+</ul></body></html>
