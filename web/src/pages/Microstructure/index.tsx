@@ -1,7 +1,7 @@
 import { useMemo, useState, type ReactNode } from 'react';
 import './styles.css';
 import {
-  Table, List, Input, Select, Button, Space, Tag, message, Statistic, Tabs,
+  Table, List, Input, Select, Button, Space, Tag, message, Tabs,
 } from 'antd';
 import { ReloadOutlined, SearchOutlined, FundOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
@@ -13,12 +13,13 @@ import LoadingBlock from '@/components/LoadingBlock';
 import FilterToolbar from '@/components/FilterToolbar';
 import EmptyState from '@/components/EmptyState';
 import ResponsiveGrid from '@/components/ResponsiveGrid';
+import StatCard from '@/components/StatCard';
 import LastUpdated from '@/components/LastUpdated';
-import ThemeTag from '@/components/ThemeTag';
 import ReturnTagPct from '@/components/ReturnTagPct';
 import InstrumentCodeTag from '@/components/InstrumentCodeTag';
 import { NULL_PLACEHOLDER } from '@/utils/format';
 import { getReturnColor } from '@/utils/color';
+import { clickableRow } from '@/utils/a11y';
 import { useDebounce } from '@/hooks/useDebounce';
 import { useIsMobile } from '@/hooks/useBreakpoint';
 import {
@@ -162,7 +163,9 @@ export default function MicrostructurePage() {
 
   const lhbColumns: ColumnsType<LhbRecord> = [
     { title: '日期', dataIndex: 'trade_date', key: 'trade_date', width: 110 },
-    { title: '代码', dataIndex: 'ts_code', key: 'ts_code', width: 110, render: (v: string) => <ThemeTag variant="accent">{v}</ThemeTag> },
+    /* 桌面端与移动端一致：整行可点进标的详情（onRow），代码列用统一的
+       InstrumentCodeTag，不再用 accent ThemeTag 假可点外观。 */
+    { title: '代码', dataIndex: 'ts_code', key: 'ts_code', width: 110, render: (v: string) => <InstrumentCodeTag code={v} /> },
     { title: '名称', dataIndex: 'name', key: 'name', width: 100, ellipsis: true },
     { title: '涨跌幅', dataIndex: 'pct_change', key: 'pct_change', width: 90, className: 'tabular-nums', render: (v: number | null) => <ReturnTagPct value={v} /> },
     { title: '净买额', dataIndex: 'lhb_net_amount', key: 'lhb_net_amount', width: 120, className: 'tabular-nums', render: (v: number | null) => <span style={{ color: getReturnColor(v) }}>{formatMoney(v)}</span> },
@@ -178,7 +181,7 @@ export default function MicrostructurePage() {
 
   const marginColumns: ColumnsType<MarginBalance> = [
     { title: '日期', dataIndex: 'trade_date', key: 'trade_date', width: 110 },
-    { title: '代码', dataIndex: 'ts_code', key: 'ts_code', width: 110, render: (v: string) => <ThemeTag variant="accent">{v}</ThemeTag> },
+    { title: '代码', dataIndex: 'ts_code', key: 'ts_code', width: 110, render: (v: string) => <InstrumentCodeTag code={v} /> },
     { title: '名称', dataIndex: 'name', key: 'name', width: 100, ellipsis: true },
     { title: '交易所', dataIndex: 'exchange', key: 'exchange', width: 80, render: (v: string) => <Tag>{v}</Tag> },
     { title: '融资余额', dataIndex: 'financing_balance', key: 'financing_balance', width: 120, className: 'tabular-nums', render: (v: number | null) => formatMoney(v) },
@@ -187,7 +190,7 @@ export default function MicrostructurePage() {
 
   const releaseColumns: ColumnsType<RestrictedRelease> = [
     { title: '解禁日', dataIndex: 'restricted_date', key: 'restricted_date', width: 120 },
-    { title: '代码', dataIndex: 'ts_code', key: 'ts_code', width: 110, render: (v: string) => <ThemeTag variant="accent">{v}</ThemeTag> },
+    { title: '代码', dataIndex: 'ts_code', key: 'ts_code', width: 110, render: (v: string) => <InstrumentCodeTag code={v} /> },
     { title: '名称', dataIndex: 'name', key: 'name', width: 100, ellipsis: true },
     { title: '类型', dataIndex: 'restricted_type', key: 'restricted_type', width: 90 },
     { title: '解禁数量', dataIndex: 'restricted_number', key: 'restricted_number', width: 120, className: 'tabular-nums', render: (v: number | null) => v?.toLocaleString() ?? NULL_PLACEHOLDER },
@@ -332,36 +335,31 @@ export default function MicrostructurePage() {
       />
 
       <ResponsiveGrid cols={4} gap="md" className="ad-mb-5">
-        <Panel>
-          <Statistic
-            title="最新龙虎榜条数"
-            value={summary?.lhb?.count ?? 0}
-            prefix={<FundOutlined />}
-            suffix={summary?.lhb?.trade_date ? ` (${summary.lhb.trade_date})` : ''}
-          />
-        </Panel>
-        <Panel>
-          <Statistic
-            title="北向净流入"
-            value={summary?.hsgt?.north_net ?? 0}
-            precision={2}
-            valueStyle={{ color: getReturnColor(summary?.hsgt?.north_net) }}
-            suffix="亿元"
-          />
-        </Panel>
-        <Panel>
-          <Statistic
-            title="融资余额合计"
-            value={formatMoney(summary?.margin?.total_financing_balance)}
-          />
-        </Panel>
-        <Panel>
-          <Statistic
-            title="30 日内解禁"
-            value={summary?.release?.upcoming_30d_count ?? 0}
-            suffix="次"
-          />
-        </Panel>
+        {/* KPI 统一走共享 StatCard（原裸 antd Statistic 套 Panel） */}
+        <StatCard
+          title="最新龙虎榜条数"
+          value={summary?.lhb?.count ?? 0}
+          icon={<FundOutlined />}
+          suffix={summary?.lhb?.trade_date ? `(${summary.lhb.trade_date})` : undefined}
+        />
+        <StatCard
+          title="北向净流入"
+          value={
+            <span style={{ color: getReturnColor(summary?.hsgt?.north_net) }}>
+              {(summary?.hsgt?.north_net ?? 0).toFixed(2)}
+            </span>
+          }
+          suffix="亿元"
+        />
+        <StatCard
+          title="融资余额合计"
+          value={formatMoney(summary?.margin?.total_financing_balance)}
+        />
+        <StatCard
+          title="30 日内解禁"
+          value={summary?.release?.upcoming_30d_count ?? 0}
+          suffix="次"
+        />
       </ResponsiveGrid>
 
       <FilterToolbar total={`共 ${totalCount} 条`} className="ad-mb-5">
@@ -427,6 +425,7 @@ export default function MicrostructurePage() {
                     columns={lhbColumns}
                     size="small"
                     scroll={{ x: 'max-content' }}
+                    onRow={(r) => clickableRow(() => navigate(`/instruments/${r.ts_code}`))}
                     pagination={{
                       current: lhbPage,
                       pageSize: 20,
@@ -496,6 +495,7 @@ export default function MicrostructurePage() {
                     columns={marginColumns}
                     size="small"
                     scroll={{ x: 'max-content' }}
+                    onRow={(r) => clickableRow(() => navigate(`/instruments/${r.ts_code}`))}
                     pagination={false}
                   />
                 </div>
@@ -536,6 +536,7 @@ export default function MicrostructurePage() {
                     columns={releaseColumns}
                     size="small"
                     scroll={{ x: 'max-content' }}
+                    onRow={(r) => clickableRow(() => navigate(`/instruments/${r.ts_code}`))}
                     pagination={{
                       current: releasePage,
                       pageSize: 20,

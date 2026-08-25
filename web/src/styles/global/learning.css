@@ -67,14 +67,16 @@
    Phase 3 (2026-07-08): drop the inner header — the section heading
    "今日一课" already lives on the outer SectionHeading, so the card
    itself only carries body (category tag + lesson title + content +
-   tip) and footer (weekly progress hint + action buttons). */
+   tip) and footer (weekly progress hint + action buttons).
+   2026-08-25: 去卡片化——它曾是同 Tab 唯一 elevated 容器（底色+边框+
+   阴影+大 padding），与周围扁平 hairline Panel 风格分裂；改为扁平
+   hairline 分隔，与 Panel 体系对齐。 */
 .daily-lesson {
   margin: 0;
-  padding: var(--space-4) var(--space-5);
-  background: var(--bg-elevated);
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-card);
+  padding: var(--space-4) 0;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--hairline);
   position: relative;
 }
 

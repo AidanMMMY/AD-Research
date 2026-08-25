@@ -326,7 +326,7 @@ export default function Dashboard() {
           <input
             className="cc-topbar__search-input"
             type="search"
-            placeholder="搜索标的、新闻、研报…"
+            placeholder="搜索标的…"
             aria-label="搜索标的"
             onKeyDown={(e) => {
               if (e.key === 'Enter') {
@@ -402,7 +402,11 @@ export default function Dashboard() {
                             }
                           }}
                         >
-                          <span className="cc-pulse-item__code">{tile.title}</span>
+                          <span className="cc-pulse-item__code">
+                            {tile.title}
+                            {/* 宏观类 tile 落点是 /macro 而非标的详情页，加角标让用户预判 */}
+                            {tile.type === 'macro' && <span className="cc-pulse-item__tag">宏观</span>}
+                          </span>
                           <span className="cc-pulse-item__value tnum">
                             {pulseLoading && !tile.value ? '—' : formatTileValue(tile.value, tile.unit)}
                           </span>
@@ -563,18 +567,13 @@ export default function Dashboard() {
               </div>
               <div className="row-list">
                 {signals.slice(0, 3).map((sig: any, i: number) => (
+                // 无 ts_code 的信号行无落点，不渲染手型/role/tabIndex 的可点暗示
                 <div
                   key={sig.ts_code || i}
-                  className="cc-signal"
-                  onClick={() => sig.ts_code && navigate(`/instruments/${sig.ts_code}`)}
-                  role="button"
-                  tabIndex={0}
-                  onKeyDown={(e) => {
-                    if ((e.key === 'Enter' || e.key === ' ') && sig.ts_code) {
-                      e.preventDefault();
-                      navigate(`/instruments/${sig.ts_code}`);
-                    }
-                  }}
+                  className={`cc-signal${sig.ts_code ? ' cc-signal--clickable' : ''}`}
+                  {...(sig.ts_code
+                    ? clickableProps(() => navigate(`/instruments/${sig.ts_code}`))
+                    : {})}
                 >
                   <span className="cc-signal__time">{sig.trade_date}</span>
                   <span className="cc-signal__badge" style={{ color: 'var(--cc-accent)' }}>资金</span>
@@ -590,7 +589,7 @@ export default function Dashboard() {
               {hotNews.slice(0, 2).map((article: NewsArticle) => (
                 <div
                   key={`news-${article.id}`}
-                  className="cc-signal"
+                  className="cc-signal cc-signal--clickable"
                   onClick={() => navigate(`/news/${article.id}`)}
                   role="button"
                   tabIndex={0}
@@ -722,15 +721,16 @@ export default function Dashboard() {
               )}
             </section>
 
-            {/* Decision Queue */}
+            {/* Platform Overview（原「决策队列」：与页脚计数重复且行不可点，
+                改为单行横排的静态概览，去掉 hairline 行的可点暗示） */}
             <section className="cc-card">
               <div className="cc-card__header">
                 <div>
-                  <div className="cc-card__title">决策队列</div>
-                  <div className="cc-card__subtitle">平台数据与覆盖概览</div>
+                  <div className="cc-card__title">平台概览</div>
+                  <div className="cc-card__subtitle">平台数据与覆盖</div>
                 </div>
               </div>
-              <div className="row-list">
+              <div className="cc-decision-strip">
                 <div className="cc-decision">
                   <span className="cc-decision__label">标的总数</span>
                   <span className="cc-decision__value tnum">{statsKpis.etf.toLocaleString()}</span>
@@ -759,7 +759,7 @@ export default function Dashboard() {
             <span className="cc-footer__dot" />
             <span>系统运行正常</span>
             <span className="cc-footer__meta">
-              {statsKpis.etf.toLocaleString()} 标的 · {statsKpis.score.toLocaleString()} 评分 · 更新于{' '}
+              更新于{' '}
               {statsKpis.updatedAt ? formatDateTime(new Date(statsKpis.updatedAt).toISOString()) : '—'}
             </span>
           </footer>

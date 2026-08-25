@@ -257,7 +257,20 @@ export default function SignalDashboard() {
       title: '标的',
       dataIndex: 'etf_code',
       render: (_: string, record: Signal) => (
-        <InstrumentCodeTag code={record.etf_code} name={record.etf_name} name_zh={record.name_zh} />
+        /* 行点击是开信号抽屉；chip 语义统一为跳标的详情，
+           必须 stopPropagation 否则被 onRow 吃掉。 */
+        <span
+          className="instrument-code-tag--clickable"
+          {...clickableProps(
+            (e) => {
+              e.stopPropagation();
+              navigate(`/instruments/${record.etf_code}`);
+            },
+            { role: 'link' },
+          )}
+        >
+          <InstrumentCodeTag code={record.etf_code} name={record.etf_name} name_zh={record.name_zh} />
+        </span>
       ),
     },
     { title: '日期', dataIndex: 'trade_date', responsive: ['sm'] as Array<'sm' | 'md' | 'lg' | 'xl' | 'xs' | 'xxl'> },
@@ -325,6 +338,7 @@ export default function SignalDashboard() {
       title: '标题',
       dataIndex: 'title',
       render: (v: string, record: EventSignal) => (
+        /* 外链只挂标题/链接图标，整行不再跳外站（2026-08-25 收窄） */
         <span className="signal-dashboard__event-title">
           <LinkOutlined
             className="signal-dashboard__event-link"
@@ -333,7 +347,14 @@ export default function SignalDashboard() {
               window.open(record.url, '_blank', 'noopener,noreferrer');
             })}
           />
-          <span>{v}</span>
+          <span
+            {...clickableProps((e) => {
+              e.stopPropagation();
+              window.open(record.url, '_blank', 'noopener,noreferrer');
+            }, { role: 'link' })}
+          >
+            {v}
+          </span>
         </span>
       ),
     },
@@ -680,9 +701,8 @@ export default function SignalDashboard() {
           </ContextHint>
 
           {isMobile ? (
-            /* Mobile: hairline row-list. Row click opens the original
-               article (same as desktop row click); 生成 stays as an
-               inline action in the meta line. */
+            /* Mobile: hairline row-list. 点标题开原文（外链唯一入口）；
+               生成 stays as an inline action in the meta line. */
             <>
               <div className="row-list">
                 {pagedEventSignals.map((record) => {
@@ -690,18 +710,21 @@ export default function SignalDashboard() {
                   return (
                     <div
                       key={record.id}
-                      className="hairline-row hairline-row--clickable signal-dashboard-mrow"
-                      {...clickableRow(
-                        () => {
-                          if (record.url) {
-                            window.open(record.url, '_blank', 'noopener,noreferrer');
-                          }
-                        },
-                        { role: 'link' },
-                      )}
+                      /* 2026-08-25：整行跳外站太隐晦，行不再可点；
+                         外链收窄为标题触发。 */
+                      className="hairline-row signal-dashboard-mrow"
                     >
                       <div className="signal-dashboard-mrow__main">
-                        <div className="signal-dashboard-mrow__title">{record.title}</div>
+                        <div className="signal-dashboard-mrow__title">
+                          <span
+                            {...clickableProps(
+                              () => window.open(record.url, '_blank', 'noopener,noreferrer'),
+                              { role: 'link' },
+                            )}
+                          >
+                            {record.title}
+                          </span>
+                        </div>
                         <div className="signal-dashboard-mrow__meta">
                           <ThemeTag variant="accent">
                             {record.event_category
@@ -774,13 +797,8 @@ export default function SignalDashboard() {
                   />
                 ),
               }}
-              onRow={(record) =>
-                clickableRow(() => {
-                  if (record.url) {
-                    window.open(record.url, '_blank', 'noopener,noreferrer');
-                  }
-                })
-              }
+              /* 2026-08-25：整行点击 window.open 外站太隐晦，已移除；
+                 外链收窄为「标题 / 链接图标」触发。 */
             />
           </div>
           )}

@@ -122,7 +122,7 @@
 }
 
 .cc-header__title {
-  font-size: 30px;
+  font-size: var(--text-h1-size);
   font-weight: 700;
   color: var(--cc-text);
   margin-top: var(--space-1);
@@ -266,6 +266,16 @@
   flex-shrink: 0;
 }
 
+/* 宏观类 tile 角标：与 realtime 类（跳 /instruments）区分落点 */
+.cc-pulse-item__tag {
+  margin-left: var(--space-1);
+  padding: 0 4px;
+  border: 1px solid var(--hairline);
+  border-radius: 4px;
+  font-size: var(--text-label-size);
+  color: var(--cc-muted);
+}
+
 .cc-pulse-item__value {
   font-size: 13px;
   font-weight: 500;
@@ -306,7 +316,7 @@
 }
 
 .cc-fund-flow__value {
-  font-size: 40px;
+  font-size: var(--data-num-xl);
   font-weight: 700;
   /* Neutral default; index.tsx overrides with rise/fall per total sign. */
   color: var(--cc-text2);
@@ -442,11 +452,15 @@
   padding: var(--space-2) 0;
   min-height: var(--density-row-h-compact);
   border-bottom: 1px solid var(--hairline);
-  cursor: pointer;
   transition: background 120ms ease;
 }
 
-.cc-signal:hover {
+/* 仅真正有落点（ts_code 非空）的行才给手型与 hover 底色 */
+.cc-signal--clickable {
+  cursor: pointer;
+}
+
+.cc-signal--clickable:hover {
   background: var(--cc-surface-hover);
 }
 
@@ -647,18 +661,19 @@
   white-space: nowrap;
 }
 
-/* Decision queue — 桌面端同样并入 hairline 行列表（与移动端段一致）。 */
-.cc-decision {
+/* Decision queue —— 2026-08 改版「平台概览」：单行横排，行不可点，
+   数值用纯文本样式，不再渲染成 pill 造成可点暗示。 */
+.cc-decision-strip {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: var(--space-3) 0;
-  min-height: var(--density-row-h-compact);
-  border-bottom: 1px solid var(--hairline);
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-4);
 }
 
-.cc-decision:last-child {
-  border-bottom: none;
+.cc-decision {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  padding: var(--space-2) 0;
 }
 
 .cc-decision__label {
@@ -667,16 +682,9 @@
 }
 
 .cc-decision__value {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 36px;
-  height: 26px;
-  padding: 0 var(--space-2);
-  border-radius: 6px;
-  background: var(--cc-surface-hover);
   font-size: 13px;
   font-weight: 700;
+  color: var(--cc-text);
   font-family: var(--font-mono);
 }
 
@@ -822,16 +830,11 @@
     padding-right: var(--density-row-pad-x);
   }
 
-  .cc-fund-flow__value {
-    font-size: 32px;
-  }
-
   /* Full-bleed data rows with >=48px touch targets (density tokens). */
   .cc-watch-row,
   .cc-signal,
   .cc-brief,
-  .cc-sector-row,
-  .cc-decision {
+  .cc-sector-row {
     min-height: var(--density-row-h);
     padding-left: var(--density-row-pad-x);
     padding-right: var(--density-row-pad-x);
@@ -844,13 +847,10 @@
     border-radius: 0;
   }
 
-  /* Decision queue rows join the hairline list. */
-  .cc-decision {
-    border-bottom: 1px solid var(--hairline);
-  }
-
-  .cc-decision:last-child {
-    border-bottom: none;
+  /* 平台概览横排条保留页边距 */
+  .cc-decision-strip {
+    padding-left: var(--density-row-pad-x);
+    padding-right: var(--density-row-pad-x);
   }
 
   .cc-footer {

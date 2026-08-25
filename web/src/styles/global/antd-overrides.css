@@ -119,8 +119,15 @@ body {
 }
 
 .ant-table-row {
-  cursor: pointer;
   min-height: var(--density-row-h-compact);
+}
+
+/* 2026-08-25 假可点击治理：手型只给 clickableRow()（utils/a11y.ts）标记的
+   行。此前全局 cursor:pointer 让期货榜/扫描历史/加密信号等不可点表格的
+   每一行都假装可点（悬停手型+变色，点了没反应）。行 hover 底色保留——
+   数据表的行追踪辅助，不构成可点暗示。 */
+.ant-table-row.table-row--clickable {
+  cursor: pointer;
 }
 
 .ant-table-tbody > tr.ant-table-row-selected > td,

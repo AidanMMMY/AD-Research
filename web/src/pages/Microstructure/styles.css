@@ -33,7 +33,8 @@
   min-width: 20px;
   height: 18px;
   padding: 0 5px;
-  font-size: 11px;
+  /* 2026-08-25 假可点治理：11px → 12px 档（全局字号下限 12px） */
+  font-size: var(--text-label-size);
   line-height: 1;
   color: var(--text-secondary);
   background: var(--bg-surface);
@@ -50,9 +51,5 @@
   width: 90px;
 }
 
-/* Statistic suffix (e.g. trade date) should read as meta text, not as part
-   of the big KPI number. */
-.microstructure .ant-statistic-content-suffix {
-  font-size: var(--text-small-size);
-  color: var(--text-tertiary);
-}
+/* 2026-08-25：KPI 区已从裸 antd Statistic 换为共享 StatCard，
+   原 .ant-statistic-content-suffix 覆盖随之删除（StatCard 自带 suffix 样式）。 */

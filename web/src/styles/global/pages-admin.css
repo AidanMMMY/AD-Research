@@ -117,7 +117,8 @@
 }
 
 .admin-text-error {
-  color: var(--color-loss);
+  /* --color-loss 全站未定义（2026-08-25 修复：错误文本此前不掉红） */
+  color: var(--color-error);
 }
 
 .admin-text-muted {

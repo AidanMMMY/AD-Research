@@ -75,16 +75,14 @@ const REPORT_BROWSER_PAGE_STYLE = `
    under the mobile breakpoint. Rows compose theme.css utilities
    (.row-list / .hairline-row / .tabular-nums) with page-local parts. */
 @media (max-width: 767px) {
-  .report-browser__filters .filter-toolbar__filters,
-  .report-browser__chips .filter-toolbar__filters {
+  .report-browser__filters .filter-toolbar__filters {
     flex-wrap: nowrap;
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
     width: 100%;
   }
-  .report-browser__filters .filter-toolbar__filters::-webkit-scrollbar,
-  .report-browser__chips .filter-toolbar__filters::-webkit-scrollbar {
+  .report-browser__filters .filter-toolbar__filters::-webkit-scrollbar {
     display: none;
   }
   .report-browser__filters .filter-toolbar__filters > * {
@@ -232,7 +230,16 @@ export default function ReportBrowser() {
       width: 180,
       render: (_: unknown, record: ReportMetadata) => (
         <Space>
-          <Button type="link" icon={<EyeOutlined />} onClick={() => setSelectedReport(record)}>预览</Button>
+          {/* 预览面板仅 status==='done' 才挂载，非 done 行禁用预览按钮，
+              避免点了没反应的假 affordance */}
+          <Button
+            type="link"
+            icon={<EyeOutlined />}
+            disabled={record.status !== 'done'}
+            onClick={() => setSelectedReport(record)}
+          >
+            预览
+          </Button>
           {record.status === 'done' && (
             <Button type="link" icon={<DownloadOutlined />} href={reportApi.downloadUrl(record.id)}>下载</Button>
           )}
@@ -291,8 +298,11 @@ export default function ReportBrowser() {
         description="浏览和下载已生成的组合报告，支持按标的池定制报告"
       />
 
+      {/* 状态 chips 与筛选控件合并为一条工具栏（2026-08-25：原两条
+          FilterToolbar 上下堆叠，视觉割裂） */}
       <FilterToolbar
-        className="report-browser__chips"
+        total={`共 ${filteredReports.length} 条`}
+        className="report-browser__filters"
         extra={
           <Button type="primary" icon={<PlusOutlined />} onClick={() => setIsModalOpen(true)}>
             生成报告
@@ -311,9 +321,6 @@ export default function ReportBrowser() {
             <span className="tabular-nums">{statusCounts[s.value]}</span>
           </button>
         ))}
-      </FilterToolbar>
-
-      <FilterToolbar total={`共 ${filteredReports.length} 条`} className="report-browser__filters">
         <Select
           className="ad-w-full"
           value={typeFilter}
@@ -364,8 +371,11 @@ export default function ReportBrowser() {
           {filteredReports.map((r) => (
             <div
               key={r.id}
-              className="hairline-row hairline-row--clickable report-browser-mrow"
-              {...clickableRow(() => setSelectedReport(r), { role: 'button' })}
+              className={`hairline-row report-browser-mrow${r.status === 'done' ? ' hairline-row--clickable' : ''}`}
+              // 仅 done 行可点开预览（与桌面「预览」按钮的禁用态一致）
+              {...(r.status === 'done'
+                ? clickableRow(() => setSelectedReport(r), { role: 'button' })
+                : {})}
             >
               <div className="report-browser-mrow__main">
                 <div className="report-browser-mrow__title">

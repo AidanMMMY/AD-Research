@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { List, Tag, Badge, Spin, Skeleton, Tooltip } from 'antd';
@@ -10,6 +11,7 @@ import {
 } from '@/utils/datetime';
 import Panel from './Panel';
 import EmptyState from './EmptyState';
+import NewsDetailDrawer from './NewsDetailDrawer';
 
 const SENTIMENT_COLORS: Record<SentimentLabel, string> = {
   positive: 'var(--color-rise)',
@@ -44,6 +46,10 @@ function formatRelative(iso: string): string {
  */
 export default function NewsListPanel({ symbol, limit = 10, bare = false }: NewsListPanelProps) {
   const navigate = useNavigate();
+  // 阅读面板内选中的文章——与 /news 列表统一：点击原地开
+  // NewsDetailDrawer，不再整页跳 /news/:id（抽屉页脚保留
+  // 「打开完整页面」作为深链出口）。
+  const [selected, setSelected] = useState<NewsArticle | null>(null);
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ['news-by-symbol', symbol, limit],
@@ -70,14 +76,14 @@ export default function NewsListPanel({ symbol, limit = 10, bare = false }: News
         return (
           <List.Item
             className="news-list-panel__item"
-            role="link"
+            role="button"
             tabIndex={0}
-            aria-label={`${a.title} — 查看新闻详情`}
-            onClick={() => navigate(`/news/${a.id}`)}
+            aria-label={`${a.title} — 打开资讯详情`}
+            onClick={() => setSelected(a)}
             onKeyDown={(e) => {
               if (e.key === 'Enter' || e.key === ' ') {
                 e.preventDefault();
-                navigate(`/news/${a.id}`);
+                setSelected(a);
               }
             }}
           >
@@ -143,7 +149,25 @@ export default function NewsListPanel({ symbol, limit = 10, bare = false }: News
     />
   );
 
-  if (bare) return <div>{body}</div>;
+  // 面板内没有 feed 筛选语境——抽屉 chip 旁的筛选按钮退化为跳
+  // /news?symbol=... 全量列表（与「查看全部」出口一致）。
+  const drawer = (
+    <NewsDetailDrawer
+      article={selected}
+      onClose={() => setSelected(null)}
+      onPickSymbol={(sym) =>
+        navigate(`/news?symbol=${encodeURIComponent(sym)}`)
+      }
+    />
+  );
+
+  if (bare)
+    return (
+      <div>
+        {body}
+        {drawer}
+      </div>
+    );
 
   return (
     <Panel
@@ -160,6 +184,7 @@ export default function NewsListPanel({ symbol, limit = 10, bare = false }: News
       padding="md"
     >
       {body}
+      {drawer}
     </Panel>
   );
 }

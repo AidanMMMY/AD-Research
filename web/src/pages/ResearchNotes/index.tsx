@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { CSSProperties } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Select, Button, Modal, message, Popconfirm } from 'antd';
+import { Select, Button, Modal, message, Popconfirm, Tag } from 'antd';
 import { RobotOutlined, SearchOutlined, DeleteOutlined } from '@ant-design/icons';
 import './styles.css';
 import { researchApi, ResearchNote } from '@/api/research';
@@ -101,6 +102,9 @@ export default function ResearchNotes() {
      triggering card via CSS variables on the modal wrap. */
   const [modalAnchor, setModalAnchor] = useState<{ x: number; y: number } | null>(null);
   const queryClient = useQueryClient();
+  // 支持 ?symbol= 深链过滤（标的详情页「查看全部研报 →」跳入）
+  const [searchParams, setSearchParams] = useSearchParams();
+  const symbolFilter = searchParams.get('symbol');
 
   // Debounce the search text so we don't hammer the backend on every keystroke.
   useEffect(() => {
@@ -114,6 +118,22 @@ export default function ResearchNotes() {
     queryKey: ['research-notes', 'history', noteType],
     queryFn: () => researchApi.getMyNotes(noteType).then((r) => r.data),
   });
+
+  // ?symbol= 过滤：code 可能带/不带交易所后缀（510300 vs 510300.SH），
+  // 统一剥后缀后大小写不敏感比较
+  const normalizeCode = (c: string) =>
+    c.trim().toUpperCase().replace(/\.(SH|SZ|BJ|SS)$/i, '');
+  const filteredNotes = useMemo(() => {
+    if (!symbolFilter) return notes;
+    const target = normalizeCode(symbolFilter);
+    return notes?.filter((n) => normalizeCode(n.instrument_code) === target);
+  }, [notes, symbolFilter]);
+
+  const clearSymbolFilter = () => {
+    const next = new URLSearchParams(searchParams);
+    next.delete('symbol');
+    setSearchParams(next, { replace: true });
+  };
 
   const { data: instrumentSearch, isFetching: isSearchingInstruments } = useInstrumentList({
     search: debouncedSearch || undefined,
@@ -224,16 +244,34 @@ export default function ResearchNotes() {
       </Panel>
 
       <div className="ad-section">
+        {symbolFilter && (
+          <div className="ad-mb-3">
+            <Tag closable onClose={clearSymbolFilter}>
+              筛选标的：{symbolFilter}
+            </Tag>
+          </div>
+        )}
         {isLoading ? (
           <LoadingBlock size="lg" />
-        ) : !notes?.length ? (
+        ) : !filteredNotes?.length ? (
           <div className="ad-empty">
             <EmptyState
-              title="暂无研报历史，输入或选择标的代码后点击「生成研报」开始 AI 分析"
+              title={
+                symbolFilter
+                  ? `暂无 ${symbolFilter} 的研报，点击上方「生成研报」开始 AI 分析`
+                  : '暂无研报历史，输入或选择标的代码后点击「生成研报」开始 AI 分析'
+              }
+              action={
+                symbolFilter ? (
+                  <Button size="small" onClick={clearSymbolFilter}>
+                    清除筛选查看全部
+                  </Button>
+                ) : undefined
+              }
             />
           </div>
         ) : (
-          notes.map((note) => (
+          filteredNotes.map((note) => (
             <Panel
               key={note.id}
               variant="default"

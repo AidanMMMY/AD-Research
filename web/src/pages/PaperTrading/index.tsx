@@ -1,5 +1,6 @@
 import './styles.css';
 import { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Button,
   Dropdown,
@@ -26,6 +27,7 @@ import Panel from '@/components/Panel';
 import LoadingBlock from '@/components/LoadingBlock';
 import EmptyState from '@/components/EmptyState';
 import InstrumentCodeTag from '@/components/InstrumentCodeTag';
+import ThemeTag from '@/components/ThemeTag';
 import HelpPopover from '@/components/HelpPopover';
 import { useSettingsStore } from '@/stores/settings';
 import { useIsMobile } from '@/hooks/useBreakpoint';
@@ -78,9 +80,22 @@ function formatDateTime(v: string | null | undefined): string {
   return d.toLocaleString('zh-CN');
 }
 
+/** 模拟订单状态枚举 → 中文 + ThemeTag variant（与 Portfolio 的 PAPER_STATUS_MAP 同款写法） */
+const PAPER_ORDER_STATUS_MAP: Record<
+  string,
+  { label: string; variant: 'success' | 'accent' | 'neutral' | 'error' }
+> = {
+  filled: { label: '已成交', variant: 'success' },
+  pending: { label: '待成交', variant: 'accent' },
+  cancelled: { label: '已撤销', variant: 'neutral' },
+  rejected: { label: '已拒绝', variant: 'error' },
+};
+
 export default function PaperTrading() {
   const mode = useSettingsStore((s) => s.mode);
   const isMobile = useIsMobile();
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { data: accountsData, isLoading: accountsLoading } = usePaperAccounts();
   const accounts = accountsData?.items || [];
 
@@ -90,9 +105,13 @@ export default function PaperTrading() {
 
   useEffect(() => {
     if (!selectedAccountId && accounts.length > 0) {
-      setSelectedAccountId(accounts[0].id);
+      // Portfolio 持仓列「查看」带 ?account={id} 直达本页：URL 参数优先，
+      // 无效 id 回退第一个账户（修复此前参数被完全忽略的真 bug）。
+      const fromUrl = Number(searchParams.get('account'));
+      const valid = Number.isInteger(fromUrl) && accounts.some((a) => a.id === fromUrl);
+      setSelectedAccountId(valid ? fromUrl : accounts[0].id);
     }
-  }, [accounts, selectedAccountId]);
+  }, [accounts, selectedAccountId, searchParams]);
 
   const {
     data: account,
@@ -190,12 +209,15 @@ export default function PaperTrading() {
       dataIndex: 'instrument_code',
       key: 'code',
       render: (_: unknown, r: PaperPosition) => (
-        <span>
-          <span className="phase5c-inline-code--bold">{r.instrument_code}</span>
-          {r.instrument_name && (
-            <span className="phase5c-detail-line">{r.instrument_name}</span>
-          )}
-        </span>
+        // 与订单表一致：统一 InstrumentCodeTag 可点 chip，跳标的详情页
+        // （表格无 onRow，无需 stopPropagation）。
+        <button
+          type="button"
+          className="instrument-code-tag--clickable instrument-code-tag--button"
+          onClick={() => navigate(`/instruments/${r.instrument_code}`)}
+        >
+          <InstrumentCodeTag code={r.instrument_code} name={r.instrument_name} />
+        </button>
       ),
     },
     {
@@ -288,7 +310,13 @@ export default function PaperTrading() {
       dataIndex: 'instrument_code',
       key: 'code',
       render: (_: string, r: PaperOrder) => (
-        <InstrumentCodeTag code={r.instrument_code} name={r.instrument_name} />
+        <button
+          type="button"
+          className="instrument-code-tag--clickable instrument-code-tag--button"
+          onClick={() => navigate(`/instruments/${r.instrument_code}`)}
+        >
+          <InstrumentCodeTag code={r.instrument_code} name={r.instrument_name} />
+        </button>
       ),
     },
     {
@@ -308,13 +336,9 @@ export default function PaperTrading() {
       dataIndex: 'status',
       key: 'status',
       render: (v: string) => {
-        const classMap: Record<string, string> = {
-          filled: 'phase5c-status--filled',
-          pending: 'phase5c-status--pending',
-          cancelled: 'phase5c-status--cancelled',
-          rejected: 'phase5c-status--rejected',
-        };
-        return <span className={classMap[v] || 'ad-text-secondary'}>{v}</span>;
+        // 状态枚举中文化 + ThemeTag（不再裸英文 phase5c-status 色块）
+        const meta = PAPER_ORDER_STATUS_MAP[v] ?? { label: v, variant: 'neutral' as const };
+        return <ThemeTag variant={meta.variant}>{meta.label}</ThemeTag>;
       },
     },
   ];
@@ -486,8 +510,9 @@ export default function PaperTrading() {
         <>
           {/* 桌面去卡片化（2026-07-29）：5 张统计卡合并为一个 KPI strip
               Panel — hairline 分隔的指标行，tabular-nums 大数字，
-              卡片容器退场。 */}
-          <Panel title="账户概览" className="phase5c-section">
+              卡片容器退场。Panel 间距统一走 .ad-panel+.ad-panel 兄弟规则，
+              不再叠加 phase5c-section 的 margin-bottom。 */}
+          <Panel title="账户概览">
             <div className="kpi-strip paper-kpi-strip">
               <div className="kpi-cell">
                 <Statistic
@@ -562,9 +587,11 @@ export default function PaperTrading() {
                   scroll={{ x: 'max-content' }}
                 />
               ) : (
-                <div className="phase5c-empty">
-                  <EmptyState title="暂无持仓" description="当前账户没有持仓记录" />
-                </div>
+                <EmptyState
+                  className="empty-state--in-card"
+                  title="暂无持仓"
+                  description="当前账户没有持仓记录"
+                />
               )}
             </div>
           </Panel>
@@ -583,9 +610,11 @@ export default function PaperTrading() {
                   scroll={{ x: 'max-content' }}
                 />
               ) : (
-                <div className="phase5c-empty">
-                  <EmptyState title="暂无订单" description="当前账户没有订单记录" />
-                </div>
+                <EmptyState
+                  className="empty-state--in-card"
+                  title="暂无订单"
+                  description="当前账户没有订单记录"
+                />
               )}
             </div>
           </Panel>

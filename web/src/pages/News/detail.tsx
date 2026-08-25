@@ -40,6 +40,7 @@ import ResponsiveGrid from '@/components/ResponsiveGrid';
 import StatCard from '@/components/StatCard';
 import InstrumentCodeTag from '@/components/InstrumentCodeTag';
 import { NewsMarkdown } from '@/components/Markdown';
+import NewsDetailDrawer from '@/components/NewsDetailDrawer';
 import { EventCategoryTag, SOURCE_LABELS } from '@/components/NewsCard';
 import { formatDateTime, formatDateTimeCompact } from '@/utils/datetime';
 import { SENTIMENT_COLORS, SENTIMENT_LABELS, formatSentimentScore } from '@/utils/sentiment';
@@ -204,6 +205,10 @@ export default function NewsDetail() {
     enabled: !!primarySymbol,
   });
 
+  // 相关资讯点击与 /news 列表统一——原地开 NewsDetailDrawer，不再
+  // 整页跳 /news/:id（抽屉页脚保留「打开完整页面」作为深链出口）。
+  const [relatedSelected, setRelatedSelected] = useState<NewsArticle | null>(null);
+
   // Lazy full-text fetch via Jina Reader. The button shows a spinner
   // for 5-15s while we wait for r.jina.ai to return Markdown.
   const fetchFullContent = useMutation({
@@ -309,6 +314,15 @@ export default function NewsDetail() {
 
   const showSocial = SOCIAL_SOURCES.has(data.source);
   const sentiment = data.sentiment_label;
+  // 互动数据四字段全 null 时整个 Panel 不渲染（否则是 4 张全「—」
+  // 的 StatCard）——判定逻辑与 NewsDetailDrawer 的 hasEngagement 同源。
+  const engagement = data.engagement;
+  const hasEngagement =
+    engagement != null &&
+    (engagement.likes != null ||
+      engagement.comments != null ||
+      engagement.shares != null ||
+      engagement.views != null);
   const fetchedAt = data.full_content_fetched_at;
   const fullContentCached = data.full_content && !renderedFullContent;
   const showFetchError =
@@ -652,31 +666,33 @@ export default function NewsDetail() {
 
         {/* Right column: meta + related */}
         <div className="dashboard-side-stack">
-          {/* Engagement */}
-          <Panel variant="default" title="互动数据" padding="md">
-            <ResponsiveGrid cols={2} gap="sm">
-              <StatCard
-                title="点赞"
-                value={formatBigNumber(data.engagement?.likes)}
-                icon={<LikeOutlined />}
-              />
-              <StatCard
-                title="评论"
-                value={formatBigNumber(data.engagement?.comments)}
-                icon={<MessageOutlined />}
-              />
-              <StatCard
-                title="转发"
-                value={formatBigNumber(data.engagement?.shares)}
-                icon={<ShareAltOutlined />}
-              />
-              <StatCard
-                title="阅读"
-                value={formatBigNumber(data.engagement?.views)}
-                icon={<EyeOutlined />}
-              />
-            </ResponsiveGrid>
-          </Panel>
+          {/* Engagement — 至少一个字段非 null 才渲染 */}
+          {hasEngagement && (
+            <Panel variant="default" title="互动数据" padding="md">
+              <ResponsiveGrid cols={2} gap="sm">
+                <StatCard
+                  title="点赞"
+                  value={formatBigNumber(data.engagement?.likes)}
+                  icon={<LikeOutlined />}
+                />
+                <StatCard
+                  title="评论"
+                  value={formatBigNumber(data.engagement?.comments)}
+                  icon={<MessageOutlined />}
+                />
+                <StatCard
+                  title="转发"
+                  value={formatBigNumber(data.engagement?.shares)}
+                  icon={<ShareAltOutlined />}
+                />
+                <StatCard
+                  title="阅读"
+                  value={formatBigNumber(data.engagement?.views)}
+                  icon={<EyeOutlined />}
+                />
+              </ResponsiveGrid>
+            </Panel>
+          )}
 
           {/* Other symbols mentioned */}
           {otherSymbols.length > 0 && (
@@ -717,7 +733,7 @@ export default function NewsDetail() {
                 renderItem={(item) => (
                   <List.Item
                     className="ad-cursor-pointer"
-                    onClick={() => navigate(`/news/${item.id}`)}
+                    onClick={() => setRelatedSelected(item)}
                   >
                     <List.Item.Meta
                       title={
@@ -753,6 +769,16 @@ export default function NewsDetail() {
           </Panel>
         </div>
       </div>
+
+      {/* 相关资讯阅读抽屉——本页无 feed 筛选语境，chip 旁的筛选按钮
+          退化为跳 /news?symbol=... 全量列表。 */}
+      <NewsDetailDrawer
+        article={relatedSelected}
+        onClose={() => setRelatedSelected(null)}
+        onPickSymbol={(sym) =>
+          navigate(`/news?symbol=${encodeURIComponent(sym)}`)
+        }
+      />
     </PageShell>
   );
 }

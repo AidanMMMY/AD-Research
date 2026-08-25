@@ -10,6 +10,10 @@ export interface AccessibleRowProps {
  * 把 Table onRow 返回的 `{ onClick: ... }` 对象包装成可键盘访问的行。
  * 自动添加 tabIndex=0、role="link"、以及 Enter/Space 触发 onClick 的 onKeyDown。
  * 在 onClick 不存在时原样返回，避免影响没有交互行为的行。
+ *
+ * 同时标记 className="table-row--clickable"——2026-08-25 假可点击治理后，
+ * 全局表格行不再默认 cursor:pointer，只有经本函数标记的行才显示手型
+ * （见 styles/global/antd-overrides.css）。
  */
 export function clickableRow(
   onClick: (() => void) | ((e: React.MouseEvent<HTMLTableRowElement>) => void),
@@ -18,6 +22,7 @@ export function clickableRow(
   return {
     tabIndex,
     role,
+    className: 'table-row--clickable',
     onClick,
     onKeyDown: (e: React.KeyboardEvent<HTMLTableRowElement>) => {
       if (e.key === 'Enter' || e.key === ' ') {

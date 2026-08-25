@@ -1021,7 +1021,7 @@ export default function FundFlowPage() {
           ) : (
           <Table<FlowSignal>
             rowKey="ts_code"
-            size="middle"
+            size="small"
             columns={signalColumns}
             dataSource={signalRows}
             loading={signalLoading}
@@ -1038,15 +1038,16 @@ export default function FundFlowPage() {
               rowExpandable: (record) =>
                 !!record.score_breakdown &&
                 Object.keys(record.score_breakdown).length > 0,
-              expandIcon: ({ expanded, onExpand, record }) =>
-                expanded ? null : (
-                  <CaretRightOutlined
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onExpand(record, e);
-                    }}
-                  />
-                ),
+              expandIcon: ({ expanded, onExpand, record }) => (
+                // 展开后旋转 90° 作收起图标，保证可再次收起（沿用 CaretRightOutlined rotate 写法）
+                <CaretRightOutlined
+                  rotate={expanded ? 90 : 0}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onExpand(record, e);
+                  }}
+                />
+              ),
             }}
             locale={{
               emptyText: (
@@ -1130,7 +1131,7 @@ export default function FundFlowPage() {
                     ) : (
                     <Table<IndividualFundFlow>
                       rowKey={(r) => `${r.trade_date}-${r.ts_code}`}
-                      size="middle"
+                      size="small"
                       columns={individualColumns}
                       dataSource={individualRows}
                       loading={individualLoading}
@@ -1210,7 +1211,7 @@ export default function FundFlowPage() {
                     ) : (
                     <Table<SectorFundFlow>
                       rowKey={(r) => `${r.trade_date}-${r.sector_name}`}
-                      size="middle"
+                      size="small"
                       columns={sectorColumns}
                       dataSource={sectorRows}
                       loading={sectorLoading}
@@ -1273,7 +1274,7 @@ export default function FundFlowPage() {
                     ) : (
                     <Table<EtfFundFlow>
                       rowKey={(r) => `${r.trade_date}-${r.ts_code}`}
-                      size="middle"
+                      size="small"
                       columns={etfColumns}
                       dataSource={etfRows}
                       loading={etfLoading}

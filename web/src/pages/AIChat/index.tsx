@@ -118,7 +118,8 @@ export default function AIChat() {
             className="ad-list-compact"
             dataSource={sessions}
             renderItem={(s: ChatSession) => (
-              <div
+              <button
+                type="button"
                 onClick={() => setActiveSession(s.id)}
                 className={`phase5c-chat-sidebar__item ${activeSession === s.id ? 'phase5c-chat-sidebar__item--active' : ''}`}
               >
@@ -138,7 +139,7 @@ export default function AIChat() {
                     onClick={(e) => e.stopPropagation()}
                   />
                 </Popconfirm>
-              </div>
+              </button>
             )}
           />
         )}

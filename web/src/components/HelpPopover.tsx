@@ -206,9 +206,13 @@ export default function HelpPopover({
         role="button"
         tabIndex={0}
         aria-label={`${term.title} — 查看解释`}
+        // 嵌在可排序表头等可点容器里时，点击 ⓘ 不应连带触发外层
+        // 排序 / 行跳转（2026-08-25：ScoreRanking / Screen 表头实测连击）
+        onClick={(e) => e.stopPropagation()}
         onKeyDown={(e) => {
           if (e.key === 'Enter' || e.key === ' ') {
             e.preventDefault();
+            e.stopPropagation();
             // Programmatically focus the wrapped element to open the
             // popover for keyboard users (Popover's `focus` trigger
             // listens to focus events).

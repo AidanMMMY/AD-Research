@@ -116,15 +116,17 @@
   flex-shrink: 0;
 }
 
-/* ---- Chat Area ---- */
+/* ---- Chat Area ----
+   扁平 hairline 容器（2026-08-25 平台风格统一）：去卡片底色/阴影，
+   只保留 1px 描边与圆角，与全站「排版层级代替容器层级」一致。 */
 .phase5c-chat-area {
   flex: 1;
   display: flex;
   flex-direction: column;
-  background: var(--card-bg);
+  background: transparent;
   border-radius: var(--card-radius);
-  border: 1px solid var(--card-border);
-  box-shadow: var(--shadow-card);
+  border: 1px solid var(--hairline);
+  box-shadow: none;
   overflow: hidden;
 }
 

@@ -57,6 +57,13 @@ const ADX_STYLE = `
   cursor: pointer;
   user-select: none;
 }
+/* 2026-08-25：单标情绪结果卡内容只有约 320px 一列，铺满整行显空；
+   给结果区加 max-width 居中约束。 */
+.adx-sentiment-dashboard .sentiment-result-card {
+  max-width: 720px;
+  margin-left: auto;
+  margin-right: auto;
+}
 .adx-sentiment-dashboard h1,
 .adx-sentiment-dashboard h2,
 .adx-sentiment-dashboard .ant-typography h1,
@@ -271,7 +278,7 @@ function SentimentCard({ sentiment }: { sentiment: SentimentAggregate }) {
     sentiment.label === 'negative' ? 'fall' : 'neutral';
 
   return (
-    <Panel variant="minimal">
+    <Panel variant="minimal" className="sentiment-result-card">
       <div className="ad-text-center">
         <div className="ad-text-small ad-text-tertiary ad-mb-1">
           <InstrumentCodeTag

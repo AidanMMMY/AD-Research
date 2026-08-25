@@ -7,3 +7,44 @@
 
    If future iterations add page-specific overrides they belong here.
    ========================================================================== */
+
+/* Apple Design #1/#10: clickable instrument tags get a spring-press on
+   pointer-down (direct-manipulation feel). #14: reduced motion keeps the
+   global background feedback but drops the scale transform.
+   （2026-08-25 自 index.tsx 内联 <style> 下沉，保持本页 zero inline styles。） */
+.instrument-code-tag--clickable {
+  display: inline-block;
+  transition: transform var(--transition-spring-fast),
+    background var(--transition-fast, 150ms ease);
+}
+
+/* Reset native <button> chrome so it stays visually identical to the
+   prior <span> while gaining keyboard semantics. */
+.instrument-code-tag--button {
+  background: none;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.instrument-code-tag--button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+.instrument-code-tag--clickable:active {
+  transform: scale(var(--press-scale-subtle, 0.99));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .instrument-code-tag--clickable {
+    transition: background var(--transition-fast, 150ms ease);
+  }
+  .instrument-code-tag--clickable:active {
+    transform: none;
+  }
+}

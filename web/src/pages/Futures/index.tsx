@@ -1,7 +1,7 @@
-import { useMemo, type ReactNode } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import './styles.css';
 import {
-  Tabs, Table, Space, Statistic, Row, Col,
+  Tabs, Table, Space, Row, Col,
 } from 'antd';
 import {
   CaretUpOutlined, CaretDownOutlined, GoldOutlined, FireOutlined, SunOutlined, BarChartOutlined,
@@ -79,7 +79,10 @@ function BarTable({ bars, showHeader = false, maxRows = 10 }: BarTableProps) {
       dataIndex: 'code',
       width: 120,
       render: (v: string, record: FuturesDailyBarOut) => (
-        <InstrumentCodeTag code={v} name={record.name} />
+        /* 期货主力合约独立于 instruments 体系（app/models/futures.py 注明
+           distinct from ETF/Instrument），没有 /instruments/:code 详情页，
+           用 static 中性变体避免假可点外观。 */
+        <InstrumentCodeTag code={v} name={record.name} variant="static" />
       ),
     },
     {
@@ -134,26 +137,6 @@ function BarTable({ bars, showHeader = false, maxRows = 10 }: BarTableProps) {
   );
 }
 
-interface ProductSummaryProps {
-  section: FuturesDashboardSection | undefined;
-}
-
-function ProductSummary({ section }: ProductSummaryProps) {
-  const mode = useSettingsStore((s) => s.mode);
-  const count = section?.count ?? 0;
-  return (
-    <Row gutter={16}>
-      <Col xs={24} sm={8}>
-        <Statistic
-          title={<HelpPopover termKey="dominant_contract" mode={mode}>主力合约数</HelpPopover>}
-          value={count}
-          suffix="个"
-        />
-      </Col>
-    </Row>
-  );
-}
-
 interface TabContentProps {
   product: Product;
   section: FuturesDashboardSection | undefined;
@@ -172,10 +155,8 @@ function ProductTab({ product, section }: TabContentProps) {
 
   return (
     <div>
-      <Panel title="板块概况" className="ad-mb-5">
-        <ProductSummary section={section} />
-      </Panel>
-
+      {/* 「板块概况」已并入页首「市场概况」StatCard 网格（当前板块主力合约数），
+          不再单独占位一个稀疏 Panel。 */}
       <Row gutter={16} className="ad-mb-5">
         <Col xs={24} md={12}>
           <Panel
@@ -225,6 +206,8 @@ export default function Futures() {
   const { data: gainers } = useFuturesLeaderboard('gainers');
   const { data: losers } = useFuturesLeaderboard('losers');
   const { data: stats } = useFuturesStats();
+  // 当前选中的板块 tab —— 页首「市场概况」网格里的「主力合约数」跟随它。
+  const [activeProduct, setActiveProduct] = useState<Product>('金属');
 
   const sectionsByProduct = useMemo(() => {
     const map: Record<string, FuturesDashboardSection> = {};
@@ -252,6 +235,8 @@ export default function Futures() {
   const topGainer = (gainers?.items ?? [])[0];
   const topLoser = (losers?.items ?? [])[0];
   const latestDate = dashboard?.trade_date ?? stats?.latest_trade_date ?? null;
+  // 当前板块的主力合约数（原「板块概况」Panel 的唯一内容，2026-08-25 并入此网格）。
+  const activeSectionCount = sectionsByProduct[activeProduct]?.count ?? 0;
 
   return (
     <div className="adx-motion">
@@ -280,18 +265,24 @@ export default function Futures() {
             value={latestDate ?? NULL_PLACEHOLDER}
           />
           <StatCard
+            title={`${activeProduct}主力合约数`}
+            value={activeSectionCount}
+            suffix="个"
+          />
+          <StatCard
             title="领头羊 / 领跌"
             value={
               topGainer && topLoser ? (
                 <span className="ad-flex ad-gap-2 ad-items-center">
-                  <InstrumentCodeTag code={topGainer.code} name={topGainer.name} />
+                  {/* 期货合约无标的详情页，用 static 中性变体（纯展示） */}
+                  <InstrumentCodeTag code={topGainer.code} name={topGainer.name} variant="static" />
                   <span className="ad-text-tertiary ad-text-small">/</span>
-                  <InstrumentCodeTag code={topLoser.code} name={topLoser.name} />
+                  <InstrumentCodeTag code={topLoser.code} name={topLoser.name} variant="static" />
                 </span>
               ) : topGainer ? (
-                <InstrumentCodeTag code={topGainer.code} name={topGainer.name} />
+                <InstrumentCodeTag code={topGainer.code} name={topGainer.name} variant="static" />
               ) : topLoser ? (
-                <InstrumentCodeTag code={topLoser.code} name={topLoser.name} />
+                <InstrumentCodeTag code={topLoser.code} name={topLoser.name} variant="static" />
               ) : (
                 NULL_PLACEHOLDER
               )
@@ -300,7 +291,11 @@ export default function Futures() {
         </ResponsiveGrid>
       </Panel>
 
-        <Tabs items={tabItems} defaultActiveKey="金属" />
+        <Tabs
+          items={tabItems}
+          activeKey={activeProduct}
+          onChange={(key) => setActiveProduct(key as Product)}
+        />
       </PageShell>
     </div>
   );

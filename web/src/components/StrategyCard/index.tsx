@@ -15,8 +15,9 @@ const FAMILY_LABELS: Record<string, string> = {
   event: '事件驱动',
 };
 
-/** 卡片上最多展示的参数数，超出折叠为 "+N" */
-const MAX_VISIBLE_PARAMS = 4;
+/** 卡片上最多展示的参数数，超出折叠为 "+N"
+    （2026-08-25：桌面行收紧为 ≤2 组，与移动端一致，缓解行内信息密度） */
+const MAX_VISIBLE_PARAMS = 2;
 /** 移动端行式变体只内联 ≤2 个参数摘要（参数面板不常驻，详见 components-cleanup.css 移动端段） */
 const MAX_VISIBLE_PARAMS_MOBILE = 2;
 

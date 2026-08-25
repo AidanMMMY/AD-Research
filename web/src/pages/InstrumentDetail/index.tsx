@@ -401,7 +401,9 @@ export default function InstrumentDetail() {
       />
 
       <div className="detail-hero">
-        <InstrumentCodeTag code={instrument.code} name_zh={instrument.name_zh} />
+        {/* hero 区 chip 是纯展示（当前页即该标的详情），用 static 中性变体，
+            避免 accent 可点外观误导。 */}
+        <InstrumentCodeTag code={instrument.code} name_zh={instrument.name_zh} variant="static" />
         {instrument.instrument_type && (
           <ThemeTag variant={instrument.instrument_type === 'ETF' ? 'default' : 'accent'}>
             {INSTRUMENT_TYPE_LABELS[instrument.instrument_type] || instrument.instrument_type}
@@ -705,7 +707,7 @@ export default function InstrumentDetail() {
                     <Button
                       type="link"
                       size="small"
-                      onClick={() => navigate(`/research`)}
+                      onClick={() => navigate(`/research?symbol=${encodeURIComponent(code || '')}`)}
                       className="detail-link-button"
                     >
                       查看全部研报 →
@@ -734,7 +736,9 @@ export default function InstrumentDetail() {
                 padding="md"
               >
                 {sentiment ? (
-                  <div className="ai-empty">
+                  /* 有数据态用紧凑容器（padding 与相邻 AI 笔记面板对齐），
+                     .ai-empty 仅保留给空态。 */
+                  <div className="sentiment-panel-body">
                     <div
                       className="sentiment-score"
                       style={{ color: SENTIMENT_COLORS[sentiment.label] || 'var(--text-secondary)' }}

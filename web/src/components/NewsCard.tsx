@@ -1,11 +1,9 @@
 import { Badge, Space, Tag, Tooltip } from 'antd';
+import { useNavigate } from 'react-router-dom';
 import {
   StarFilled,
   LinkOutlined,
-  LikeOutlined,
-  MessageOutlined,
-  ShareAltOutlined,
-  EyeOutlined,
+  FilterOutlined,
   BookFilled,
   BookOutlined,
 } from '@ant-design/icons';
@@ -154,6 +152,74 @@ export function formatBigNumber(n: number): string {
   return String(n);
 }
 
+/**
+ * 标的 chip —— 全站统一点击语义：点 chip 跳 ``/instruments/:symbol``
+ * 标的详情；原「点击 chip 筛选 feed」挪到 chip 旁的独立小图标按钮
+ * （FilterOutlined，title="筛选该标的"）。NewsCard 与
+ * NewsDetailDrawer 共用本组件，保证两端行为一致。
+ *
+ * 单独成组件的另一个原因：``useNavigate`` 需要 Router 上下文，而
+ * NewsCard 的部分单测在无 Router 环境渲染——symbols 为空时本组件
+ * 不挂载，那些用例不受影响。
+ */
+export function NewsSymbolChip({
+  symbol,
+  name,
+  name_zh,
+  onPickSymbol,
+}: {
+  symbol: string;
+  name?: string | null;
+  name_zh?: string | null;
+  onPickSymbol: (sym: string) => void;
+}) {
+  const navigate = useNavigate();
+  const goDetail = () =>
+    navigate(`/instruments/${encodeURIComponent(symbol)}`);
+  return (
+    <span className="ad-news-card__chip">
+      <Tag
+        color="default"
+        className="ad-mr-1 ad-chip-tag"
+        role="link"
+        tabIndex={0}
+        aria-label={`查看 ${symbol} 标的详情`}
+        onClick={(e) => {
+          e.stopPropagation();
+          goDetail();
+        }}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            e.stopPropagation();
+            goDetail();
+          }
+        }}
+      >
+        <InstrumentCodeTag
+          code={symbol}
+          name={name ?? undefined}
+          name_zh={name_zh}
+        />
+      </Tag>
+      <Tooltip title="筛选该标的">
+        <button
+          type="button"
+          className="ad-news-card__chip-filter"
+          aria-label={`筛选 ${symbol}`}
+          onClick={(e) => {
+            e.stopPropagation();
+            onPickSymbol(symbol);
+          }}
+          onKeyDown={(e) => e.stopPropagation()}
+        >
+          <FilterOutlined />
+        </button>
+      </Tooltip>
+    </span>
+  );
+}
+
 /** 学习中心 P2：难度标签（入门/进阶）——只在知识库语境渲染。 */
 const DIFFICULTY_LABELS: Record<string, string> = {
   beginner: '入门',
@@ -207,6 +273,18 @@ export default function NewsCard({
     showDifficulty && article.difficulty_default
       ? article.difficulty_default
       : null;
+  // 互动数据是纯静态统计（入库时抓取的社交计数，不可交互），用纯
+  // 文字「1.2k 赞 · 340 评」呈现，去掉图标按钮感。
+  const engagement = article.engagement;
+  const engagementParts: string[] = [];
+  if (engagement?.likes != null)
+    engagementParts.push(`${formatBigNumber(engagement.likes)} 赞`);
+  if (engagement?.comments != null)
+    engagementParts.push(`${formatBigNumber(engagement.comments)} 评`);
+  if (engagement?.shares != null)
+    engagementParts.push(`${formatBigNumber(engagement.shares)} 转`);
+  if (engagement?.views != null)
+    engagementParts.push(`${formatBigNumber(engagement.views)} 阅`);
 
   return (
     // Custom button: a semantic ``<article>`` cannot carry
@@ -301,31 +379,13 @@ export default function NewsCard({
       <div className="ad-news-card__footer">
         <Space size={8} wrap>
           {article.symbols.slice(0, 6).map((s) => (
-            <Tag
+            <NewsSymbolChip
               key={`${s.symbol}-${s.match_type}`}
-              color="default"
-              className="ad-mr-1 ad-chip-tag"
-              role="button"
-              tabIndex={0}
-              aria-label={`筛选 ${s.symbol}`}
-              onClick={(e) => {
-                e.stopPropagation();
-                onPickSymbol(s.symbol);
-              }}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  onPickSymbol(s.symbol);
-                }
-              }}
-            >
-              <InstrumentCodeTag
-                code={s.symbol}
-                name={s.name ?? undefined}
-                name_zh={s.name_zh}
-              />
-            </Tag>
+              symbol={s.symbol}
+              name={s.name}
+              name_zh={s.name_zh}
+              onPickSymbol={onPickSymbol}
+            />
           ))}
         </Space>
 
@@ -357,24 +417,9 @@ export default function NewsCard({
           </Tooltip>
         )}
 
-        {article.engagement?.likes != null && (
+        {engagementParts.length > 0 && (
           <span className="ad-news-card__engagement">
-            <LikeOutlined /> {formatBigNumber(article.engagement.likes)}
-          </span>
-        )}
-        {article.engagement?.comments != null && (
-          <span className="ad-news-card__engagement">
-            <MessageOutlined /> {formatBigNumber(article.engagement.comments)}
-          </span>
-        )}
-        {article.engagement?.shares != null && (
-          <span className="ad-news-card__engagement">
-            <ShareAltOutlined /> {formatBigNumber(article.engagement.shares)}
-          </span>
-        )}
-        {article.engagement?.views != null && (
-          <span className="ad-news-card__engagement">
-            <EyeOutlined /> {formatBigNumber(article.engagement.views)}
+            {engagementParts.join(' · ')}
           </span>
         )}
         <Tooltip title="查看原文">

@@ -202,7 +202,7 @@ export default function Portfolio() {
           <div className="ad-table-scroll">
             <Table<PaperAccountRow>
               rowKey="key"
-              size="middle"
+              size="small"
               columns={accountColumns}
               dataSource={accounts}
               pagination={false}
@@ -212,9 +212,7 @@ export default function Portfolio() {
         )}
       </Panel>
 
-      <div className="ad-mb-4" />
-
-      {/* 区块 2：真实账户列表 */}
+      {/* 区块 2：真实账户列表（与上方 Panel 的间距走 .ad-panel+.ad-panel 兄弟规则） */}
       <Panel variant="default" padding="md">
         <SectionHeading
           title={
@@ -254,7 +252,7 @@ export default function Portfolio() {
           <div className="ad-table-scroll">
             <Table<LiveAccountRow>
               rowKey="key"
-              size="middle"
+              size="small"
               columns={liveColumns}
               dataSource={liveRows}
               pagination={false}

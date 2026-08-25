@@ -428,7 +428,7 @@ export default function SectorRotation() {
             {r.return_source === 'official_index' && (
               <Tag
                 color="blue"
-                style={{ marginLeft: 6, fontSize: 10, lineHeight: '14px', padding: '0 4px' }}
+                style={{ marginLeft: 6 }}
                 title={`申万一级指数 ${r.sw_l1_code ?? ''} 当日收盘 ${
                   r.official_close != null
                     ? r.official_close.toLocaleString('zh-CN', { maximumFractionDigits: 2 })
@@ -441,7 +441,7 @@ export default function SectorRotation() {
             {r.return_source === 'constituents_equal_weight' && r.sw_l1_code && (
               <Tag
                 color="default"
-                style={{ marginLeft: 6, fontSize: 10, lineHeight: '14px', padding: '0 4px' }}
+                style={{ marginLeft: 6 }}
                 title={`申万一级 ${r.sw_l1_code} 暂无官方指数回报,当前显示等权 ETF+STOCK 回报`}
               >
                 等权

@@ -1,0 +1,16 @@
+/* ==========================================================================
+   InstrumentCodeTag — 组件级样式补充
+   基础样式（accent 变体 / --clickable 交互态）在 styles/global/components.css，
+   这里只放 2026-08-25 新增的 static 中性变体：纯展示场景使用，
+   无 accent 底色/边框、默认光标，避免「看着能点其实不能点」的假 affordance。
+   ========================================================================== */
+
+.instrument-code-tag--static {
+  cursor: default;
+}
+
+.instrument-code-tag--static .instrument-code-tag__code {
+  color: var(--text-secondary);
+  background: var(--bg-hover);
+  border-color: var(--border-default);
+}

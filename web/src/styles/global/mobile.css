@@ -151,8 +151,8 @@
 }
 
 .learning-scenario-card__initial-q-label {
-  color: var(--accent);
-  font-weight: 600;
+  /* 纯静态文字——用三级文本色，去掉 accent+加粗的链接感。 */
+  color: var(--text-tertiary);
   margin-right: 4px;
 }
 
@@ -181,10 +181,8 @@
   transition: background 150ms, border-color 150ms;
 }
 
-.learning-terms__item:hover {
-  background: var(--accent-dim);
-  border-color: var(--accent-border);
-}
+/* 整行不再 hover 高亮——行内只有标题可交互（HelpPopover 触发器），
+   hover 高亮收窄到 .learning-terms__title（见 Learning/styles.css）。 */
 
 .learning-terms__title {
   font-size: 13px;

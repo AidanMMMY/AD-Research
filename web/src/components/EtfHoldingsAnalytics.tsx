@@ -30,6 +30,7 @@ import { useSettingsStore } from '@/stores/settings';
 import { useIsMobile } from '@/hooks/useBreakpoint';
 import { NULL_PLACEHOLDER } from '@/utils/format';
 import { fmtShares, fmtWeight, isNavigableCode } from '@/utils/etfHoldings';
+import { clickableProps } from '@/utils/a11y';
 import './EtfHoldingsAnalytics.css';
 import type { ETFHoldingDiffEntry, ETFHoldingSnapshot } from '@/types/instrument';
 
@@ -214,10 +215,22 @@ export function EtfHoldingsDiffView({ code, snapshots, bare = false }: EtfHoldin
         dataIndex: 'holding_code',
         key: 'holding_code',
         width: 220,
-        render: (v: string) => (
+        render: (v: string) =>
           // No `name` prop — the adjacent 名称 column already shows it.
-          <InstrumentCodeTag code={v} />
-        ),
+          // 2026-08-25：整行点击收敛为仅代码 chip 可点（跳标的详情）。
+          isNavigableCode(v) ? (
+            <span
+              className="instrument-code-tag--clickable"
+              {...clickableProps(
+                () => navigate(`/instruments/${v}`),
+                { role: 'link' },
+              )}
+            >
+              <InstrumentCodeTag code={v} />
+            </span>
+          ) : (
+            <InstrumentCodeTag code={v} />
+          ),
       },
       {
         title: '名称',
@@ -286,7 +299,7 @@ export function EtfHoldingsDiffView({ code, snapshots, bare = false }: EtfHoldin
         ),
       },
     ],
-    [colorConvention],
+    [colorConvention, navigate],
   );
 
   const pickerTitle = (
@@ -361,14 +374,6 @@ export function EtfHoldingsDiffView({ code, snapshots, bare = false }: EtfHoldin
     <div className="ad-table-scroll">
       <Table
         size="small"
-        onRow={(row) =>
-          isNavigableCode(row.holding_code)
-            ? {
-                onClick: () => navigate(`/instruments/${row.holding_code}`),
-                style: { cursor: 'pointer' },
-              }
-            : { title: '代码缺少市场后缀，暂不支持跳转标的详情' }
-        }
         rowKey={(r) => r.holding_code}
         columns={diffColumns}
         dataSource={diffQ.data.entries}

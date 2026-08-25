@@ -345,7 +345,13 @@ export default function ResearchReports() {
       render: (_: unknown, record: ResearchReportOut) => (
         <Space size="small">
           {record.pdf_url ? (
-            <a href={record.pdf_url} target="_blank" rel="noreferrer">
+            // 整行 onRow 会开详情弹窗，链接/按钮都要拦冒泡（与代码列对齐）
+            <a
+              href={record.pdf_url}
+              target="_blank"
+              rel="noreferrer"
+              onClick={(e) => e.stopPropagation()}
+            >
               PDF
             </a>
           ) : null}
@@ -354,7 +360,10 @@ export default function ResearchReports() {
             size="small"
             icon={<ThunderboltOutlined />}
             loading={summarizeMutation.isPending && summarizeMutation.variables === record.id}
-            onClick={() => handleSummarize(record.id)}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleSummarize(record.id);
+            }}
           >
             摘要
           </Button>

@@ -8,28 +8,11 @@ import Panel from '@/components/Panel';
 import SectionHeading from '@/components/SectionHeading';
 import ThemeTag from '@/components/ThemeTag';
 import EmptyState from '@/components/EmptyState';
+import StatusTag from '@/components/StatusTag';
 
+// 共享 StatusTag 输出中文标签（success→成功 等）；null 状态 = 从未运行
 function statusBadge(value: string | null | undefined) {
-  const key = (value || 'never_run').toLowerCase();
-  const variant =
-    key === 'success'
-      ? 'success'
-      : key === 'failed'
-      ? 'error'
-      : key === 'running'
-      ? 'warning'
-      : 'neutral';
-  const label =
-    key === 'success'
-      ? 'SUCCESS'
-      : key === 'failed'
-      ? 'FAILED'
-      : key === 'running'
-      ? 'RUNNING'
-      : key === 'pending'
-      ? 'PENDING'
-      : 'NEVER RUN';
-  return <ThemeTag variant={variant}>{label}</ThemeTag>;
+  return <StatusTag status={value ?? '从未运行'} />;
 }
 
 function freshnessBadge(value: string | null | undefined, now: Date) {
@@ -340,7 +323,7 @@ export default function ETLOpsDashboard() {
           <Panel variant="default" padding="md">
             <Table
               rowKey="name"
-              size="middle"
+              size="small"
               columns={columns}
               dataSource={tasks}
               pagination={{ pageSize: 20, hideOnSinglePage: true }}
@@ -373,7 +356,7 @@ export default function ETLOpsDashboard() {
           <Panel variant="default" padding="md">
             <Table<SchedulerJob>
               rowKey="id"
-              size="middle"
+              size="small"
               loading={jobsLoading}
               columns={jobColumns}
               dataSource={jobs}

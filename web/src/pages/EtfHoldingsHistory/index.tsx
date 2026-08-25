@@ -51,6 +51,7 @@ import { useInstrumentDetail } from '@/hooks/useInstrumentList';
 import { etfHoldingsHistoryApi } from '@/api/etfHoldingsHistory';
 import { NULL_PLACEHOLDER } from '@/utils/format';
 import { fmtShares, fmtWeight, isNavigableCode, mergeHoldings } from '@/utils/etfHoldings';
+import { clickableProps } from '@/utils/a11y';
 import './styles.css';
 import type { ETFHoldingItem, ETFHoldingSnapshot } from '@/types/instrument';
 
@@ -131,12 +132,26 @@ export default function EtfHoldingsHistoryPage() {
         width: 220,
         render: (v: string) => (
           <Space size={4}>
-            {/* No `name` prop — the adjacent 名称 column already shows it. */}
-            <InstrumentCodeTag code={v} />
-            {!isNavigableCode(v) && (
-              <Tooltip title="代码缺少市场后缀，暂不支持跳转标的详情">
-                <ThemeTag variant="neutral">未标准化</ThemeTag>
-              </Tooltip>
+            {/* No `name` prop — the adjacent 名称 column already shows it.
+                2026-08-25：整行点击收敛为仅代码 chip 可点（跳标的详情），
+                行本身不再整体可点，数字列不再被误带走。 */}
+            {isNavigableCode(v) ? (
+              <span
+                className="instrument-code-tag--clickable"
+                {...clickableProps(
+                  () => navigate(`/instruments/${v}`),
+                  { role: 'link' },
+                )}
+              >
+                <InstrumentCodeTag code={v} />
+              </span>
+            ) : (
+              <>
+                <InstrumentCodeTag code={v} />
+                <Tooltip title="代码缺少市场后缀，暂不支持跳转标的详情">
+                  <ThemeTag variant="neutral">未标准化</ThemeTag>
+                </Tooltip>
+              </>
             )}
           </Space>
         ),
@@ -179,7 +194,7 @@ export default function EtfHoldingsHistoryPage() {
         ),
       },
     ],
-    [],
+    [navigate],
   );
 
   // ------------------------------------------------------------------------
@@ -343,14 +358,6 @@ export default function EtfHoldingsHistoryPage() {
                 <div className="ad-table-scroll">
                   <Table
                     size="small"
-                    onRow={(row) =>
-                      isNavigableCode(row.holding_code)
-                        ? {
-                            onClick: () => navigate(`/instruments/${row.holding_code}`),
-                            style: { cursor: 'pointer' },
-                          }
-                        : { title: '代码缺少市场后缀，暂不支持跳转标的详情' }
-                    }
                     rowKey="holding_code"
                     columns={snapshotColumns}
                     dataSource={mergedHoldings}

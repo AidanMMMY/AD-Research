@@ -12,6 +12,7 @@ import { useIsMobile } from '@/hooks/useBreakpoint';
 import { useDebounce } from '@/hooks/useDebounce';
 import PageShell from '@/components/PageShell';
 import Panel from '@/components/Panel';
+import SectionHeading from '@/components/SectionHeading';
 import PageHeader from '@/components/PageHeader';
 import { FilterSheetButton } from '@/components/BottomSheet';
 import EmptyState from '@/components/EmptyState';
@@ -503,6 +504,24 @@ export default function Screen() {
       )}
 
       <div className="ad-mt-5">
+        {/* 与 ScoreRanking 对齐：SectionHeading + Panel(padding=md) 包裹结果区 */}
+        <SectionHeading
+          title="筛选结果"
+          action={
+            /* Hide export when the result set is empty — nothing to export. */
+            (results?.items?.length ?? 0) > 0 ? (
+              <ExportButton
+                rows={(results?.items || []) as unknown as Record<string, unknown>[]}
+                filename={`screen-${
+                  [filters.market, filters.category, preset].filter(Boolean).join('-') || 'all'
+                }`}
+                headers={['code', 'name', 'category', 'composite_score', 'rsi14', 'sharpe_1y', 'return_1m', 'return_3m', 'return_1y', 'volatility_20d']}
+                successPrefix="已导出筛选结果"
+              />
+            ) : undefined
+          }
+        />
+        <Panel variant="default" padding="md">
         {results?.items && results.items.length === 0 && !isLoading ? (
           <EmptyState
             title="暂无筛选结果"
@@ -515,19 +534,6 @@ export default function Screen() {
           />
         ) : (
           <>
-            {/* Hide export when the result set is empty — nothing to export. */}
-            {(results?.items?.length ?? 0) > 0 && (
-              <div className="ad-flex ad-justify-end ad-mb-2">
-                <ExportButton
-                  rows={(results?.items || []) as unknown as Record<string, unknown>[]}
-                  filename={`screen-${
-                    [filters.market, filters.category, preset].filter(Boolean).join('-') || 'all'
-                  }`}
-                  headers={['code', 'name', 'category', 'composite_score', 'rsi14', 'sharpe_1y', 'return_1m', 'return_3m', 'return_1y', 'volatility_20d']}
-                  successPrefix="已导出筛选结果"
-                />
-              </div>
-            )}
           {isMobile ? (
             /* 移动端：hairline 行式列表（density token 几何）。
                主信息 = 代码+名称，右侧 = 综合评分 + 1月收益；次行放
@@ -635,6 +641,7 @@ export default function Screen() {
           )}
           </>
         )}
+        </Panel>
       </div>
     </PageShell>
   );

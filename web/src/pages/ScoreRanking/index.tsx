@@ -177,7 +177,13 @@ export default function ScoreRanking() {
               <ResponsiveGrid cols={4} gap="md">
                 <Panel variant="default" className="score-summary-card">
                   <div className="score-summary-card__label">榜首标的</div>
-                  <InstrumentCodeTag code={scoresData.items[0].etf_code} name={scoresData.items[0].etf_name} name_zh={scoresData.items[0].name_zh} />
+                  {/* 与表格内同款 chip 行为一致：点击跳标的详情 */}
+                  <Link
+                    to={`/instruments/${encodeURIComponent(scoresData.items[0].etf_code)}`}
+                    className="instrument-code-tag--clickable"
+                  >
+                    <InstrumentCodeTag code={scoresData.items[0].etf_code} name={scoresData.items[0].etf_name} name_zh={scoresData.items[0].name_zh} />
+                  </Link>
                   <div className="tabular-nums score-summary-card__value score-summary-card__value--spaced">
                     {scoresData.items[0].composite_score?.toFixed(1) ?? '—'}
                   </div>

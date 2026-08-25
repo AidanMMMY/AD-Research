@@ -86,7 +86,7 @@ export default function AIChatConversation({
           <RobotOutlined className="phase5c-empty-icon" />
           <div className="phase5c-chat-empty__title">开始你的 AI 投研对话</div>
           <div className="phase5c-chat-empty__desc">
-            点下面的建议问题直接开始，或在底部输入框提问
+            点下面的建议问题填入输入框，或直接在底部输入提问
           </div>
           <div className="phase5c-chat-empty__prompts">
             {QUICK_PROMPTS.map((s) => (
@@ -94,7 +94,8 @@ export default function AIChatConversation({
                 key={s.label}
                 type="button"
                 className="phase5c-chat-empty__prompt-card"
-                onClick={() => void handleSend(s.prompt)}
+                // 与输入栏快捷 Tag 行为统一：点击仅填充输入框，不直接发送
+                onClick={() => setInput(s.prompt)}
                 disabled={sending}
               >
                 <span className="phase5c-chat-empty__prompt-label">{s.label}</span>

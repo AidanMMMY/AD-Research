@@ -224,18 +224,16 @@ export default function BacktestDetail() {
     },
   ];
 
+  // 概览 Panel 只放顶部 4 张 StatCard 之外的增量指标（总收益/夏普/最大回撤/
+  // 胜率已在 Tab 上方展示，不再重复）
   const overviewMetrics = [
-    { title: <HelpPopover termKey="total_return" mode={mode}>总收益</HelpPopover>, value: metrics.total_return, suffix: '%' },
     { title: <HelpPopover termKey="annualized_return" mode={mode}>年化收益</HelpPopover>, value: metrics.annualized_return, suffix: '%' },
-    { title: <HelpPopover termKey="max_drawdown_1y" mode={mode}>最大回撤</HelpPopover>, value: metrics.max_drawdown, suffix: '%' },
-    { title: <HelpPopover termKey="sharpe_ratio" mode={mode}>夏普比率</HelpPopover>, value: metrics.sharpe_ratio },
-    { title: <HelpPopover termKey="win_rate" mode={mode}>胜率</HelpPopover>, value: metrics.win_rate, suffix: '%' },
     { title: <HelpPopover termKey="trade_count" mode={mode}>交易次数</HelpPopover>, value: metrics.trade_count, precision: undefined },
   ];
 
   const overviewTab = (
     <div className="detail-tab-panel">
-      <Panel title={`回测详情 #${data.id}`} padding="md" extra={<HelpTrigger tooltip="AI 解释回测指标" onClick={handleOpenHelp} />}>
+      <Panel title="核心指标概览" padding="md" extra={<HelpTrigger tooltip="AI 解释回测指标" onClick={handleOpenHelp} />}>
         <ResponsiveGrid cols={3} gap="md">
           {overviewMetrics.map((m, idx) => (
             <Statistic
@@ -365,7 +363,7 @@ export default function BacktestDetail() {
   return (
     <PageShell maxWidth="wide">
       <PageHeader
-        eyebrow={<span><ExperimentOutlined className="detail-eyebrow-icon" />回测 #{data.id}</span>}
+        eyebrow={<span><ExperimentOutlined className="detail-eyebrow-icon" />回测</span>}
         title={`回测详情 #${data.id}`}
         description={
           [

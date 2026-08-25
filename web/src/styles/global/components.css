@@ -228,13 +228,15 @@
 
 /* 2026-07-29: hover 守卫 — 触屏设备 (hover: none) 不应用 hover 态，
    避免点按后样式粘滞；focus-visible 保留（键盘可达性）。
-   桌面去 chrome 后 hover 收敛为单层背景 tint，不再抬升/加阴影。 */
+   桌面去 chrome 后 hover 收敛为单层背景 tint，不再抬升/加阴影。
+   2026-08-25 假可点击治理：hover/focus 反馈只给 --clickable 变体——
+   此前未传 onClick 的纯展示 KPI 卡悬停也亮底，构成可点错觉。 */
 @media (hover: hover) {
-  .stat-card:hover {
+  .stat-card--clickable:hover {
     background: var(--hover-overlay);
   }
 }
-.stat-card:focus-visible {
+.stat-card--clickable:focus-visible {
   background: var(--hover-overlay);
   outline: 2px solid var(--accent);
   outline-offset: -2px;

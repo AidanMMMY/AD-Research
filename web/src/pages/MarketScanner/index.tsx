@@ -94,23 +94,13 @@ export default function MarketScanner() {
       `}</style>
       <PageHeader
         title="标的库同步"
-        description="自动发现新增、退市、变更的标的，保持数据库与市场同步"
-      />
-
-      <Panel
-        className="ad-mb-5"
-        title="标的库同步"
+        description="对比 akshare 最新标的列表与数据库，自动发现新增、退市、变更的标的。定时任务：每周日凌晨 03:00 自动执行。"
         extra={
           <Button type="primary" icon={<ReloadOutlined />} onClick={handleScan} loading={isScanning}>
             立即扫描
           </Button>
         }
-      >
-        <p>
-          对比 akshare 最新标的列表与数据库，自动发现新增、退市、变更的标的。
-          定时任务：每周日凌晨 03:00 自动执行。
-        </p>
-      </Panel>
+      />
 
       {result && (
         <div
@@ -153,7 +143,7 @@ export default function MarketScanner() {
       )}
 
       <Panel title="扫描历史">
-        <FilterToolbar total={logs.length}>{null}</FilterToolbar>
+        <FilterToolbar total={logs.length} />
         {isMobile ? (
           /* 移动端：hairline 行式列表（无详情页，静态行）。
              主信息 = 扫描日期，右侧 = 新增/退市/变更计数 + 状态。 */

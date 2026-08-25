@@ -1,5 +1,6 @@
 import './styles.css';
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Badge,
   Button,
@@ -94,6 +95,7 @@ function RiskBadge({ risk }: { risk: RiskStatus | undefined }) {
 
 export default function TradingPanel() {
   const isMobile = useIsMobile();
+  const navigate = useNavigate();
   const { data: configs = [], isLoading: configsLoading } = useLiveConfigs();
 
   const [selectedConfigId, setSelectedConfigId] = useState<number | undefined>(
@@ -195,7 +197,14 @@ export default function TradingPanel() {
       dataIndex: 'instrument_code',
       key: 'code',
       render: (_: string, r: LivePosition) => (
-        <InstrumentCodeTag code={r.instrument_code} name={r.instrument_name} />
+        // 标的 chip 统一可点，跳标的详情页（表格无 onRow，无需 stopPropagation）
+        <button
+          type="button"
+          className="instrument-code-tag--clickable instrument-code-tag--button"
+          onClick={() => navigate(`/instruments/${r.instrument_code}`)}
+        >
+          <InstrumentCodeTag code={r.instrument_code} name={r.instrument_name} />
+        </button>
       ),
     },
     {
@@ -270,7 +279,13 @@ export default function TradingPanel() {
       dataIndex: 'instrument_code',
       key: 'code',
       render: (_: string, r: LiveOrder) => (
-        <InstrumentCodeTag code={r.instrument_code} name={r.instrument_name} />
+        <button
+          type="button"
+          className="instrument-code-tag--clickable instrument-code-tag--button"
+          onClick={() => navigate(`/instruments/${r.instrument_code}`)}
+        >
+          <InstrumentCodeTag code={r.instrument_code} name={r.instrument_name} />
+        </button>
       ),
     },
     {

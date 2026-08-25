@@ -48,17 +48,8 @@
 }
 
 /* ── Apple Design: scenario cards ──
-   Spring-eased press feedback on pointer-down; transform/opacity only. */
-.learning-scenario-card {
-  transition:
-    transform var(--transition-spring-fast),
-    box-shadow var(--transition-fast);
-  will-change: transform;
-}
-
-.learning-scenario-card:active {
-  transform: scale(0.995);
-}
+   卡片本身不可点（交互都在内部按钮上），不做整卡 :active 按压反馈，
+   避免误示可点；按压反馈只保留在按钮（antd 自带）。 */
 
 /* ── Typography: size-specific tracking & inverse leading ──
    Titles (largest) get negative tracking + tight leading; taglines
@@ -117,14 +108,15 @@
   opacity: 1;
 }
 
-/* ── Term quick-reference rows: fast hover + press feedback ── */
+/* ── Term quick-reference rows: hover 高亮收窄到标题 ──
+   整行不可交互（只有标题是 HelpPopover 触发器），行级 hover 高亮
+   会误示整行可点，故只留标题变色。 */
 .learning-terms__item {
   border-radius: var(--radius-md);
-  transition: background var(--transition-fast);
 }
 
-.learning-terms__item:hover {
-  background: var(--bg-hover);
+.learning-terms__title:hover {
+  color: var(--accent);
 }
 
 .learning-terms__title {

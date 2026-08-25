@@ -305,7 +305,9 @@ function TermQuickReference({
       <ul className="learning-terms__list">
         {list.map((t) => (
           <li key={t.key} className="learning-terms__item">
-            <HelpPopover termKey={t.key} mode={mode}>
+            {/* 文案承诺「鼠标悬停或点击标题可看浮层」——桌面默认
+                trigger=focus 不支持悬停，这里显式指定 hover。 */}
+            <HelpPopover termKey={t.key} mode={mode} trigger="hover">
               <span className="learning-terms__title">{t.title}</span>
             </HelpPopover>
             <span className="learning-terms__desc">{t.shortDesc}</span>

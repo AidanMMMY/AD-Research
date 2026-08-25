@@ -298,18 +298,18 @@
 }
 
 .ai-note-confidence {
-  font-size: 11px;
+  font-size: var(--text-label-size);
   color: var(--text-tertiary);
 }
 
 .ai-note-time {
-  font-size: 11px;
+  font-size: var(--text-label-size);
   color: var(--text-tertiary);
   margin-left: auto;
 }
 
 .ai-note-summary {
-  font-size: 13px;
+  font-size: var(--text-small-size);
   color: var(--text-secondary);
   line-height: 1.6;
   white-space: pre-wrap;
@@ -337,7 +337,14 @@
 }
 
 .ai-empty__hint {
-  font-size: 12px;
+  font-size: var(--text-label-size);
+}
+
+/* 情绪面板有数据态：紧凑居中容器，padding 与相邻 AI 笔记面板对齐；
+   .ai-empty 仅用于空态。 */
+.sentiment-panel-body {
+  text-align: center;
+  padding-top: var(--space-2);
 }
 
 .ai-assistant-cta {
@@ -389,7 +396,7 @@
 }
 
 .sentiment-counts__item {
-  font-size: 13px;
+  font-size: var(--text-small-size);
 }
 
 .sentiment-counts__item--positive {

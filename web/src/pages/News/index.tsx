@@ -19,7 +19,7 @@ import {
   SearchOutlined,
   StarFilled,
   StarOutlined,
-  LinkOutlined,
+  FilterOutlined,
   FireOutlined,
 } from '@ant-design/icons';
 import { type Dayjs } from 'dayjs';
@@ -723,8 +723,8 @@ export default function NewsFeed() {
                 <StarOutlined className="ad-icon-warning" /> 重要性 1-5
               </div>
               <div className="ad-text-small ad-text-tertiary ad-mt-2">
-                <LinkOutlined className="ad-mr-1" />
-                点击标的 chip 自动筛选
+                <FilterOutlined className="ad-mr-1" />
+                点击标的旁筛选图标只看该标的；点 chip 跳详情页
               </div>
             </Space>
           </Panel>

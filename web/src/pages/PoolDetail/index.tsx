@@ -17,6 +17,7 @@ import { useAIHelp } from '@/hooks/useAIHelp';
 import { useSettingsStore } from '@/stores/settings';
 import CorrelationHeatmap from '@/components/CorrelationHeatmap';
 import InstrumentCodeTag from '@/components/InstrumentCodeTag';
+import EmptyState from '@/components/EmptyState';
 import Panel from '@/components/Panel';
 import PageShell from '@/components/PageShell';
 import PageHeader from '@/components/PageHeader';
@@ -204,7 +205,7 @@ export default function PoolDetail() {
               </Button>
             </div>
           </div>
-          <Table dataSource={pool?.members || []} columns={memberColumns} rowKey="etf_code" scroll={{ x: 'max-content' }} pagination={false} loading={!pool} />
+          <Table dataSource={pool?.members || []} columns={memberColumns} rowKey="etf_code" size="small" scroll={{ x: 'max-content' }} pagination={false} loading={!pool} />
         </Panel>
       ),
     },
@@ -230,13 +231,17 @@ export default function PoolDetail() {
               }
             />
           </div>
-          <Panel title="相关性热力图" padding="md">
+          {/* 标题与 tab 标签重复，不再挂 Panel title */}
+          <Panel padding="md">
             <CorrelationHeatmap codes={correlation.codes} matrix={correlation.matrix} />
           </Panel>
         </div>
       ) : (
-        <Panel title="相关性热力图" padding="md">
-          <div>暂无数据</div>
+        <Panel padding="md">
+          <EmptyState
+            title="暂无相关性数据"
+            description="池中标的数量不足或行情数据缺失，暂无法计算相关性"
+          />
         </Panel>
       ),
     },
@@ -267,35 +272,8 @@ export default function PoolDetail() {
     <PageShell maxWidth="wide">
       {/* Apple Design #1/#10: clickable instrument tags get a spring-press on
           pointer-down (direct-manipulation feel). #14: reduced motion keeps the
-          global background feedback but drops the scale transform. */}
-      <style>{`
-        .instrument-code-tag--clickable {
-          display: inline-block;
-          transition: transform var(--transition-spring-fast),
-            background var(--transition-fast, 150ms ease);
-        }
-        /* Reset native <button> chrome so it stays visually identical to the
-           prior <span> while gaining keyboard semantics. */
-        .instrument-code-tag--button {
-          background: none;
-          border: 0;
-          padding: 0;
-          font: inherit;
-          color: inherit;
-          cursor: pointer;
-          text-align: left;
-        }
-        .instrument-code-tag--button:focus-visible {
-          outline: 2px solid var(--accent, #0072B2);
-          outline-offset: 2px;
-          border-radius: 4px;
-        }
-        .instrument-code-tag--clickable:active { transform: scale(var(--press-scale-subtle, 0.99)); }
-        @media (prefers-reduced-motion: reduce) {
-          .instrument-code-tag--clickable { transition: background var(--transition-fast, 150ms ease); }
-          .instrument-code-tag--clickable:active { transform: none; }
-        }
-      `}</style>
+          global background feedback but drops the scale transform.
+          样式已下沉到同目录 styles.css（本页 zero inline styles）。 */}
       <Button
         type="text"
         icon={<ArrowLeftOutlined />}

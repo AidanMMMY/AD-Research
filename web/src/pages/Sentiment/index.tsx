@@ -33,6 +33,7 @@ import type {
   SentimentAggregateItem,
 } from '@/types/news';
 import { SENTIMENT_LABELS } from '@/utils/sentiment';
+import { clickableProps } from '@/utils/a11y';
 import PageShell from '@/components/PageShell';
 import PageHeader from '@/components/PageHeader';
 import FilterToolbar from '@/components/FilterToolbar';
@@ -401,19 +402,18 @@ function SentimentAggregateTable({
       fixed: 'left',
       render: (_, row) => (
         <div className="ad-sentiment-symbol-cell">
-          <InstrumentCodeTag
-            code={row.symbol}
-            name={row.name ?? undefined}
-            name_zh={row.name_zh}
-          />
-          <Button
-            type="link"
-            size="small"
-            className="ad-sentiment-symbol-link"
-            onClick={() => onSymbolClick(row.symbol)}
+          {/* 2026-08-25：点代码 chip 即看该标的详情（与原「详情」按钮合并，
+              chip 不再是无行为的链接样式）。 */}
+          <span
+            className="instrument-code-tag--clickable"
+            {...clickableProps(() => onSymbolClick(row.symbol), { role: 'link' })}
           >
-            详情
-          </Button>
+            <InstrumentCodeTag
+              code={row.symbol}
+              name={row.name ?? undefined}
+              name_zh={row.name_zh}
+            />
+          </span>
         </div>
       ),
     },

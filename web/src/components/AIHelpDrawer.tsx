@@ -105,7 +105,8 @@ export default function AIHelpDrawer() {
   };
 
   const handleQuickQuestion = (question: string) => {
-    if (isLoading) return;
+    // 与 quick-tag 的 --disabled 视觉态对齐：AI 未配置时点击不应发出请求
+    if (isLoading || !aiAvailable) return;
     sendMessage(question);
   };
 
@@ -143,7 +144,8 @@ export default function AIHelpDrawer() {
       {messages.length === 0 && !isLoading && (
         <div className="ai-drawer__empty">
           <RobotOutlined className="ai-drawer__empty-icon" />
-          <div>点击右上角帮助图标开始提问</div>
+          {/* 抽屉已打开，空态文案应指向面板内操作而非右上角图标 */}
+          <div>在下方输入框提问，或点快捷问题开始</div>
         </div>
       )}
 

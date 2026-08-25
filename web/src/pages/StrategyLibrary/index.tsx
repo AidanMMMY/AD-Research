@@ -73,7 +73,9 @@ export default function StrategyLibrary() {
   };
 
   const handleBacktest = (strategy: StrategyCatalogItem) => {
-    navigate(`/backtests?strategy_type=${strategy.strategy_type}`);
+    // create=1：落地回测列表后自动打开新建弹窗并按 strategy_type 预填，
+    // 避免从未创建过配置的策略落到空列表（BacktestList 侧处理预填/引导）
+    navigate(`/backtests?strategy_type=${strategy.strategy_type}&create=1`);
   };
 
   const handleCreateSubmit = async (values: any) => {

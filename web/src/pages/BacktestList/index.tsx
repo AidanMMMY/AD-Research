@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import {
   Table, Button, Modal, Form, Select, DatePicker, InputNumber, Space, message, Pagination,
 } from 'antd';
@@ -42,7 +42,7 @@ export default function BacktestList() {
   const strategyTypeParam = searchParams.get('strategy_type') || undefined;
 
   const { backtests, isLoading, create, isCreating } = useBacktests(strategyIdParam);
-  const { strategies } = useStrategies();
+  const { strategies, isLoading: strategiesLoading } = useStrategies();
   // 2026-08-08：改用轻量 options 端点（page_size=10000 触发后端 422）
   const { data: etfOptionsData, isLoading: etfLoading } = useEtfOptions();
 
@@ -116,6 +116,26 @@ export default function BacktestList() {
     if (presetStrategyId) form.setFieldsValue({ strategy_id: presetStrategyId });
     setIsModalOpen(true);
   };
+
+  // 策略库「回测」按钮带 ?strategy_type=xxx&create=1 跳入：等策略列表加载
+  // 完成后自动打开新建弹窗并预填匹配配置；该策略类型尚无配置时退回空态
+  // 提示（见下方 EmptyState 的引导文案），弹窗不再无预填强开。
+  const autoCreateHandled = useRef(false);
+  useEffect(() => {
+    if (autoCreateHandled.current) return;
+    if (searchParams.get('create') !== '1') return;
+    if (strategiesLoading) return;
+    autoCreateHandled.current = true;
+    const hasConfig = (strategies || []).some(
+      (s: any) => s.strategy_type === strategyTypeParam,
+    );
+    if (strategyTypeParam && !hasConfig) {
+      message.warning('该策略类型还没有已保存的配置，请先在策略库创建配置后再回测');
+      return;
+    }
+    openCreateModal();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, strategies, strategiesLoading, strategyTypeParam]);
 
   const rowSize = 'small';
   const tableWrapClass = 'ad-table-scroll ad-table-sticky';
@@ -196,6 +216,25 @@ export default function BacktestList() {
         {!isLoading && displayedBacktests.length === 0 ? (
           // No rows: skip the empty 10-column header and show a direct CTA.
           <div className="ad-p-5">
+            {strategyTypeParam &&
+            !(strategies || []).some((s: any) => s.strategy_type === strategyTypeParam) ? (
+              /* 从策略库跳入但该策略类型尚无配置：给出去策略库建配置的入口，
+                 而不是一个点开也选不到策略的新建弹窗 */
+              <EmptyState
+                className="empty-state--in-card"
+                title="该策略类型还没有已保存的配置"
+                description="先到策略库为该策略创建配置，再回来运行回测"
+                action={
+                  <Button
+                    type="primary"
+                    icon={<PlusOutlined />}
+                    onClick={() => navigate('/strategy-library')}
+                  >
+                    去策略库创建配置
+                  </Button>
+                }
+              />
+            ) : (
             <EmptyState
             className="empty-state--in-card"
               title="暂无回测"
@@ -206,6 +245,7 @@ export default function BacktestList() {
                 </Button>
               }
             />
+            )}
           </div>
         ) : isMobile ? (
           /* Mobile: hairline row-list; row click navigates to the same

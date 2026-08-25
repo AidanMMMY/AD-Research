@@ -151,13 +151,8 @@
   min-width: 0;
 }
 
-.sentiment-page .ad-sentiment-symbol-link {
-  padding: 0;
-  height: auto;
-  line-height: 1;
-  font-size: var(--text-small-size, 12px);
-  white-space: nowrap;
-}
+/* 2026-08-25：「详情」按钮已并入可点代码 chip（instrument-code-tag--clickable），
+   原 .ad-sentiment-symbol-link 规则随之删除。 */
 
 .sentiment-page .ad-sentiment-breakdown {
   display: flex;
@@ -191,10 +186,6 @@
   }
 
   .sentiment-page .ad-sentiment-breakdown-text {
-    display: none;
-  }
-
-  .sentiment-page .ad-sentiment-symbol-link {
     display: none;
   }
 }

@@ -44,7 +44,8 @@
 
 .digest-hero__title {
   margin: 0 0 var(--space-3);
-  font-size: var(--reading-h2);
+  /* hero 是页面主标题，用 reading-h1 与章节标题（reading-h2）拉开层级 */
+  font-size: var(--reading-h1);
   line-height: var(--reading-title-lh);
   color: var(--text-primary);
 }

@@ -144,7 +144,7 @@ export default function NotificationLogs() {
                 setPage(p);
                 setPageSize(ps);
               },
-              showTotal: (total) => `共 ${total} 条`,
+              // FilterToolbar 已渲染「共 N 条」，这里不再重复 showTotal
             }}
             scroll={{ x: 'max-content' }}
             locale={{

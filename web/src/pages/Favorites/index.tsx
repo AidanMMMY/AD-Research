@@ -343,7 +343,15 @@ export default function Favorites() {
         pagination={false}
         scroll={{ x: 720 }}
         onRow={(record: any) => ({
-          ...clickableRow(() => navigate(`/instruments/${record.etf_code}`)),
+          ...clickableRow((e) => {
+            // 操作列按钮 / 链接（移除 Popconfirm、详情）不触发行跳转，
+            // 与主表 497-511 行的守卫保持一致
+            const target = e.target as HTMLElement;
+            if (target.closest('button') || target.closest('a')) {
+              return;
+            }
+            navigate(`/instruments/${record.etf_code}`);
+          }),
           style: { cursor: 'pointer' },
         })}
       />

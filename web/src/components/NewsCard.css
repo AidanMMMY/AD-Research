@@ -11,6 +11,33 @@
   transform: scale(var(--press-scale-subtle, 0.99));
 }
 
+/* 标的 chip 组（2026-08-25 统一语义）：chip 本体点击跳
+   /instruments/:symbol 标的详情；旁挂的筛选小图标按钮承担原
+   「点击 chip 筛选 feed」功能。样式对齐下方的收藏按钮。 */
+.ad-news-card__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.ad-news-card__chip-filter {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px;
+  border: none;
+  background: transparent;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  line-height: 1;
+  transition: color 0.15s ease;
+}
+
+.ad-news-card__chip-filter:hover {
+  color: var(--color-accent);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .ad-news-card {
     transition: none;

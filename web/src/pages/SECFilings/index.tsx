@@ -4,6 +4,7 @@ import {
 } from 'antd';
 import { ReloadOutlined, SearchOutlined, FileTextOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
+import { useNavigate } from 'react-router-dom';
 import PageShell from '@/components/PageShell';
 import PageHeader from '@/components/PageHeader';
 import LoadingBlock from '@/components/LoadingBlock';
@@ -23,7 +24,7 @@ import {
 import type { SecFiling } from '@/api/secFilings';
 import { useDebounce } from '@/hooks/useDebounce';
 import { useIsMobile } from '@/hooks/useBreakpoint';
-import { clickableRow } from '@/utils/a11y';
+import { clickableRow, clickableProps } from '@/utils/a11y';
 import './styles.css';
 
 const FORM_TYPES = ['10-K', '10-Q', '20-F', '20-F/A', '10-K/A', '10-Q/A'];
@@ -42,6 +43,7 @@ const STATUS_LABELS: Record<string, string> = {
 
 export default function SECFilingsPage() {
   const isMobile = useIsMobile();
+  const navigate = useNavigate();
   const [ticker, setTicker] = useState<string | undefined>();
   const [formType, setFormType] = useState<string | undefined>();
   const [searchText, setSearchText] = useState<string>('');
@@ -135,9 +137,17 @@ export default function SECFilingsPage() {
       width: 160,
       fixed: 'left',
       render: (v: string, row: SecFiling) => (
-        <Tag color="blue">
+        /* 点代码 = 跳标的详情（平台统一语义）；原 <Tag color="blue"> 包裹
+           是纯展示却有链接观感，已去掉。 */
+        <span
+          className="instrument-code-tag--clickable"
+          {...clickableProps(
+            () => navigate(`/instruments/${encodeURIComponent(v)}`),
+            { role: 'link' },
+          )}
+        >
           <InstrumentCodeTag code={v} name={row.company_name ?? undefined} />
-        </Tag>
+        </span>
       ),
     },
     {
@@ -199,7 +209,7 @@ export default function SECFilingsPage() {
   const lastRefreshResult = refreshMutation.data;
 
   return (
-    <PageShell maxWidth="full">
+    <PageShell maxWidth="wide">
       <PageHeader
         title="SEC 公告"
         description="由 SEC EDGAR 公开数据自动采集 S&P 500 成分股的 10-K / 10-Q / 20-F 公告及 GAAP 财务指标。每周六 06:00 UTC 自动刷新。"
@@ -357,18 +367,26 @@ export default function SECFilingsPage() {
              SEC EDGAR (same target as the desktop 备案号 link). */
           <>
             <div className="row-list">
-              {visibleItems.map((row) => (
+              {visibleItems.map((row) => {
+                const filingUrl = row.filing_url ?? null;
+                return (
                 <div
                   key={row.id}
-                  className="hairline-row hairline-row--clickable sec-filings-mrow"
-                  {...clickableRow(
-                    () => {
-                      if (row.filing_url) {
-                        window.open(row.filing_url, '_blank', 'noopener,noreferrer');
-                      }
-                    },
-                    { role: 'link' },
-                  )}
+                  /* filing_url 可空：无链接时降级为纯展示行，
+                     不挂 clickableRow / role，避免「点了没反应」。 */
+                  className={
+                    filingUrl
+                      ? 'hairline-row hairline-row--clickable sec-filings-mrow'
+                      : 'hairline-row sec-filings-mrow'
+                  }
+                  {...(filingUrl
+                    ? clickableRow(
+                        () => {
+                          window.open(filingUrl, '_blank', 'noopener,noreferrer');
+                        },
+                        { role: 'link' },
+                      )
+                    : {})}
                 >
                   <div className="sec-filings-mrow__main">
                     <div className="sec-filings-mrow__title">
@@ -386,7 +404,8 @@ export default function SECFilingsPage() {
                     </Tag>
                   </div>
                 </div>
-              ))}
+                );
+              })}
             </div>
             <Pagination
               current={page}

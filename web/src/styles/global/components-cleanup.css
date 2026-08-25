@@ -1034,6 +1034,8 @@
   flex-direction: row;
   align-items: center;
   gap: var(--space-4);
+  /* 2026-08-25：行高 40px 全站最挤，提到 48px 与常规数据行对齐 */
+  min-height: 48px;
   padding: var(--space-2) var(--density-row-pad-x);
   background: transparent;
   border: none;
@@ -1046,11 +1048,8 @@
     box-shadow var(--transition-fast);
 }
 
-.strategy-card:hover {
-  background: var(--hover-overlay);
-  border-color: transparent;
-  border-bottom-color: var(--hairline);
-}
+/* 卡片本体不可点（仅右侧按钮可点），不提供整行 hover 背景，
+   避免「看似可点其实不可点」的假 affordance */
 
 /* 桌面：最后一行不出 hairline（移动端保留末行 hairline，见下方移动段） */
 @media (min-width: 768px) {

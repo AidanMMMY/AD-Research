@@ -96,7 +96,8 @@
 /* Sentiment heatmap grid. */
 .ad-heatmap-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  /* P0-4 字号铁律：score/count 抬到 12px 后单元格略加宽补偿。 */
+  grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
   gap: var(--space-2);
 }
 
@@ -138,12 +139,12 @@
 }
 
 .ad-heatmap-cell__score {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 500;
 }
 
 .ad-heatmap-cell__count {
-  font-size: 10px;
+  font-size: 12px;
   color: var(--text-tertiary);
 }
 
@@ -252,7 +253,8 @@
 }
 
 .ad-news-card__engagement {
-  font-size: 11px;
+  /* P0-4 字号铁律：不低于 12px。 */
+  font-size: 12px;
   color: var(--text-tertiary);
   display: inline-flex;
   align-items: center;
@@ -295,7 +297,7 @@
 
   .ad-news-card__meta {
     gap: var(--density-gap);
-    font-size: 11px;
+    font-size: 12px;
     margin-bottom: var(--space-1);
   }
 
@@ -317,7 +319,7 @@
 
   .ad-news-card__footer {
     gap: var(--density-gap);
-    font-size: 11px;
+    font-size: 12px;
   }
 
   /* Symbol chips drop out of the row on mobile — each InstrumentCodeTag

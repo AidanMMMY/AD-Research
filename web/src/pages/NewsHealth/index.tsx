@@ -336,11 +336,8 @@ export default function NewsHealth() {
         description="按数据源展示最近 24h 收录量与最新发布时间，并附 scheduler 任务运行状态。自动每 30 秒刷新。"
         extra={
           <div className="ad-flex ad-items-center ad-gap-3">
-            <span className="ad-timestamp">
-              {dataUpdatedAt
-                ? `更新于 ${new Date(dataUpdatedAt).toLocaleTimeString()}`
-                : '加载中…'}
-            </span>
+            {/* 更新时间只留 DataFreshnessHint 一份——原先旁边的
+                ad-timestamp「更新于 HH:MM:SS」与它同源重复，已移除。 */}
             <DataFreshnessHint at={dataUpdatedAt} prefix="上次更新" />
             <Button size="small" onClick={() => refetch()} loading={isRefetching}>
               立即刷新

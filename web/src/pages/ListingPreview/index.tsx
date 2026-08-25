@@ -4,6 +4,7 @@ import {
 } from 'antd';
 import { SearchOutlined, ReloadOutlined, CalendarOutlined, FileTextOutlined } from '@ant-design/icons';
 import { type Dayjs } from 'dayjs';
+import { useNavigate } from 'react-router-dom';
 import PageShell from '@/components/PageShell';
 import Panel from '@/components/Panel';
 import LoadingBlock from '@/components/LoadingBlock';
@@ -13,6 +14,7 @@ import SectionHeading from '@/components/SectionHeading';
 import EmptyState from '@/components/EmptyState';
 import HelpTrigger from '@/components/HelpTrigger';
 import ThemeTag from '@/components/ThemeTag';
+import InstrumentCodeTag from '@/components/InstrumentCodeTag';
 import LastUpdated from '@/components/LastUpdated';
 import {
   useListingEventList,
@@ -22,7 +24,7 @@ import {
 } from '@/api/listingEvents';
 import { useAIHelp } from '@/hooks/useAIHelp';
 import { useIsMobile } from '@/hooks/useBreakpoint';
-import { clickableRow } from '@/utils/a11y';
+import { clickableRow, clickableProps } from '@/utils/a11y';
 import { buildListingPreviewContext } from '@/utils/helpContext';
 import { getQuickQuestions } from '@/utils/helpPrompts';
 import type { ListingEvent, ListingStatus } from '@/types/listingEvent';
@@ -96,12 +98,11 @@ const formatPe = (v: number | null | undefined): string => {
 
 interface StatusChipProps {
   status: ListingStatus;
-  count: number;
   active: boolean;
   onClick: () => void;
 }
 
-function StatusChip({ status, count, active, onClick }: StatusChipProps) {
+function StatusChip({ status, active, onClick }: StatusChipProps) {
   return (
     <button
       type="button"
@@ -111,13 +112,13 @@ function StatusChip({ status, count, active, onClick }: StatusChipProps) {
       <Tag color={STATUS_COLOR[status]} className="ad-detail-tag">
         {STATUS_LABEL[status]}
       </Tag>
-      <span className="tabular-nums">{count}</span>
     </button>
   );
 }
 
 export default function ListingPreview() {
   const { open } = useAIHelp();
+  const navigate = useNavigate();
   /* 2026-07-29 mobile feed-ification: ≤767px swaps the wide table for
      hairline feed rows (Direction A, same pattern as InstrumentList). */
   const isMobile = useIsMobile();
@@ -162,23 +163,6 @@ export default function ListingPreview() {
   const { data: facets } = useListingEventFacets();
   const { data: detail, isLoading: detailLoading } = useListingEventDetail(detailId);
   const refreshMutation = useRefreshListingEvents();
-
-  // Compute summary counts for the status chips. We do a lightweight extra
-  // fetch (page_size=1) per status so the chips reflect the *current filter
-  // set minus that single status*. Cheap because the count query is cheap.
-  const statusCounts = useMemo(() => {
-    const counts: Record<ListingStatus, number> = {
-      upcoming: 0,
-      subscribing: 0,
-      listed: 0,
-      unknown: 0,
-    };
-    if (!data?.items) return counts;
-    for (const item of data.items) {
-      counts[item.status] = (counts[item.status] ?? 0) + 1;
-    }
-    return counts;
-  }, [data?.items]);
 
   const handleReset = () => {
     setSearch('');
@@ -244,21 +228,21 @@ export default function ListingPreview() {
       title: '证券代码',
       dataIndex: 'ts_code',
       width: 110,
-      render: (v: string, record: ListingEvent) => (
-        <Button
-          type="link"
-          size="small"
-          className="tabular-nums"
-          onClick={(e) => {
-            e.stopPropagation();
-            handleOpenDetail(
-              record.id,
-              (e.currentTarget as HTMLElement | null) ?? null,
-            );
-          }}
+      render: (v: string) => (
+        /* 平台统一语义：点代码 = 跳标的详情；上市预告弹窗入口交给整行点击。
+           stopPropagation 防止冒泡到 onRow 打开弹窗。 */
+        <span
+          className="instrument-code-tag--clickable"
+          {...clickableProps(
+            (e) => {
+              e.stopPropagation();
+              navigate(`/instruments/${encodeURIComponent(v)}`);
+            },
+            { role: 'link' },
+          )}
         >
-          {v}
-        </Button>
+          <InstrumentCodeTag code={v} />
+        </span>
       ),
     },
     {
@@ -360,7 +344,6 @@ export default function ListingPreview() {
             <StatusChip
               key={s}
               status={s}
-              count={statusCounts[s]}
               active={statuses.includes(s)}
               onClick={() => {
                 setPage(1);

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Badge, Button, Segmented, Space, Tag, Tooltip } from 'antd';
+import { Badge, Button, Segmented, Space, Tooltip } from 'antd';
 import {
   LinkOutlined,
   LikeOutlined,
@@ -14,13 +14,13 @@ import type { NewsArticle } from '@/types/news';
 import DetailDrawer from '@/components/DetailDrawer';
 import { NewsMarkdown } from '@/components/Markdown';
 import EmptyState from '@/components/EmptyState';
-import InstrumentCodeTag from '@/components/InstrumentCodeTag';
 import ThemeTag from '@/components/ThemeTag';
 import { formatDateTimeSeconds } from '@/utils/datetime';
 import {
   EventCategoryTag,
   ImportanceStars,
   MARKET_BADGE,
+  NewsSymbolChip,
   SOURCE_LABELS,
   formatBigNumber,
 } from '@/components/NewsCard';
@@ -156,8 +156,10 @@ export default function NewsDetailDrawer({
             </div>
           )}
 
-          {/* Related symbols — clicking pivots the feed filter, same as
-              the chip on the card. */}
+          {/* Related symbols — 与卡片 chip 同一组件（NewsSymbolChip）：
+              点 chip 跳 /instruments/:symbol 标的详情且**不关抽屉**
+              （读者可看完详情再回来继续读）；筛选 feed 由 chip 旁的
+              小图标按钮承担。 */}
           {shown.symbols.length > 0 && (
             <div className="ad-mt-4">
               <div className="ad-text-small ad-text-tertiary ad-mb-2">
@@ -165,31 +167,13 @@ export default function NewsDetailDrawer({
               </div>
               <Space size={4} wrap>
                 {shown.symbols.map((s) => (
-                  <Tag
+                  <NewsSymbolChip
                     key={`${s.symbol}-${s.match_type}`}
-                    color="default"
-                    className="ad-mr-1 ad-chip-tag"
-                    role="button"
-                    tabIndex={0}
-                    aria-label={`筛选 ${s.symbol}`}
-                    onClick={() => {
-                      onPickSymbol(s.symbol);
-                      onClose();
-                    }}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault();
-                        onPickSymbol(s.symbol);
-                        onClose();
-                      }
-                    }}
-                  >
-                    <InstrumentCodeTag
-                      code={s.symbol}
-                      name={s.name ?? undefined}
-                      name_zh={s.name_zh}
-                    />
-                  </Tag>
+                    symbol={s.symbol}
+                    name={s.name}
+                    name_zh={s.name_zh}
+                    onPickSymbol={onPickSymbol}
+                  />
                 ))}
               </Space>
             </div>
