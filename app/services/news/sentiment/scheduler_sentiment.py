@@ -172,13 +172,22 @@ def run_sentiment_low_latency(window_minutes: int = 5) -> int:
             db.close()
 
 
-def run_news_article_categorization(limit: int = 30) -> int:
+def run_news_article_categorization(limit: int = 60) -> int:
     """Categorize recent ``news_article`` rows that lack ``event_category``.
 
     This job wires the LLM sentiment pipeline directly to the crawler-
     generated ``news_article`` table so that geopolitics / central_bank /
     election / trade_war / sanction categories are populated for the
     Global Markets page and downstream event-driven strategies.
+
+    Throughput (2026-08-25): batch 30 → 60 + concurrency 5 → 10. The
+    old settings theoretically allowed 43k rows/day but MiniMax queues
+    server-side (30-160s/call under load), so real throughput was
+    ~14k/day against a ~12k/day inflow — zero headroom, and measured
+    ``importance`` coverage sat at ~15% of rows. The translation body
+    gate and summary gate both key off ``importance``, so coverage
+    directly controls how much of the archive those drains can ever
+    reach. Token-neutral: every article is still processed exactly once.
     """
     with redis_lock(f"{_LOCK_BATCH}_news", expire_seconds=600) as acquired:
         if not acquired:
@@ -216,7 +225,7 @@ def run_news_article_categorization(limit: int = 30) -> int:
             pipe = SentimentPipeline(db)
 
             async def _go():
-                return await pipe.process_batch(articles, concurrency=5)
+                return await pipe.process_batch(articles, concurrency=10)
 
             results = _run_async(_go())
             ok = sum(1 for r in results if r.success)

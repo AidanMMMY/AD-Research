@@ -4,18 +4,18 @@ Entry point:
 
 * :func:`run_summarize_pending` — 10-minute APScheduler drain job
   (``news_summarize_10m``) that picks articles with
-  ``summary_zh IS NULL AND importance >= 3`` and generates a
-  one-sentence Chinese summary via :class:`NewsSummaryService`,
-  highest-importance / newest first.
+  ``summary_zh IS NULL AND importance >= news_summary_min_importance``
+  (default 3) and generates a one-sentence Chinese summary via
+  :class:`NewsSummaryService`, highest-importance / newest first.
 
 Fully fail-safe, mirroring ``scheduler_translate_news``: an LLM outage
 records a skipped run instead of crashing the scheduler, and a failure
 on one row leaves it untouched so the next tick retries.
 
-Only ``importance >= 3`` rows are summarized — the summary is a
-feed-scanning aid for notable news, and gating keeps the LLM spend
-proportional to what users actually read (see the cost note on
-``news_summary_batch_size`` in ``app/config.py``).
+Only rows at/above ``news_summary_min_importance`` (default 3) are
+summarized — the summary is a feed-scanning aid for notable news, and
+gating keeps the LLM spend proportional to what users actually read
+(see the cost note on ``news_summary_batch_size`` in ``app/config.py``).
 """
 
 from __future__ import annotations
@@ -43,6 +43,7 @@ def _pending_summary_ids(db, limit: int) -> list[int]:
     forever. The daily ``news_attempts_daily_reset`` job zeroes capped
     rows so they re-enter the pool without a manual reset.
     """
+    from app.config import get_settings
     from app.services.news._model_loader import NewsArticle
     from app.services.news.summary_service import _MAX_SUMMARY_ATTEMPTS
 
@@ -51,7 +52,7 @@ def _pending_summary_ids(db, limit: int) -> list[int]:
         .where(
             NewsArticle.summary_zh.is_(None),
             NewsArticle.importance.isnot(None),
-            NewsArticle.importance >= 3,
+            NewsArticle.importance >= get_settings().news_summary_min_importance,
             NewsArticle.summary_attempts < _MAX_SUMMARY_ATTEMPTS,
         )
         .order_by(NewsArticle.importance.desc(), NewsArticle.published_at.desc())

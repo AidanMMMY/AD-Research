@@ -195,6 +195,21 @@ def translation_is_stale(article: NewsArticle) -> bool:
     return False
 
 
+def body_translation_importance_ok(article: NewsArticle) -> bool:
+    """True when the article clears the importance gate for BODY translation.
+
+    2026-08-25 token plan 治理：正文调用是全站最大 LLM 开销
+    （~2-4k tok/篇 vs 标题 ~80 tok），所以只给
+    ``importance >= news_translation_body_min_importance`` 的行翻正文；
+    标题翻译不受此门控。``importance is None``（分类管线还没落值）
+    按不过门处理——分类落值 >= 门后 drain 会自动捡回，不会漏译。
+    """
+    from app.config import get_settings
+
+    gate = get_settings().news_translation_body_min_importance
+    return article.importance is not None and article.importance >= gate
+
+
 # ---------------------------------------------------------------------------
 # Service
 # ---------------------------------------------------------------------------
@@ -388,9 +403,12 @@ class NewsTranslationService:
         "title_new", "translated", "cached"}``:
 
         * ``skipped=True`` (with ``reason``) for Chinese articles,
-          missing rows, and rows with nothing left to translate
+          missing rows, rows with nothing left to translate
           (``reason="nothing_to_do"`` — title already cached and no
-          source text for the body).
+          source text for the body), and rows whose only remaining work
+          is a body translation their importance doesn't clear
+          (``reason="below_importance_gate"`` — 2026-08-25 token-plan
+          gate, see :func:`body_translation_importance_ok`).
         * ``translated=True`` only when the BODY was **newly**
           translated this call; ``title_new=True`` only when the TITLE
           was newly translated. Callers must aggregate on these two
@@ -414,17 +432,31 @@ class NewsTranslationService:
         had_title = bool(article.title_zh)
         stale = translation_is_stale(article)
         has_text = _pick_source(article) is not None
-        work_to_do = (not had_title) or (
-            has_text and (not article.translated_zh or stale)
+        # 2026-08-25 重要性门：正文调用（~2-4k tok）只给过门的行；
+        # 标题（~80 tok）永远翻。被门挡住不算失败、不增 attempts——
+        # 分类落值后 drain 会捡回（NULL），或永久跳过（低分）。
+        body_blocked_by_gate = has_text and not body_translation_importance_ok(
+            article
         )
+        body_needed = (
+            has_text
+            and (not article.translated_zh or stale)
+            and not body_blocked_by_gate
+        )
+        work_to_do = (not had_title) or body_needed
         if not work_to_do:
             # E.g. title already translated but the source has no body
-            # text (paywalled excerpt-only feeds). Reported as skipped
-            # so the batch stats only count real new translations.
+            # text (paywalled excerpt-only feeds), or the only remaining
+            # work is a gated-out body. Reported as skipped so the batch
+            # stats only count real new translations.
             return {
                 "article_id": article_id,
                 "skipped": True,
-                "reason": "nothing_to_do",
+                "reason": (
+                    "below_importance_gate"
+                    if body_blocked_by_gate
+                    else "nothing_to_do"
+                ),
                 "title_zh": None,
                 "title_new": False,
                 "translated": False,
@@ -449,7 +481,7 @@ class NewsTranslationService:
         if article.translated_zh and not stale:
             # Body already done — the row was only here for the title.
             body_status = {"cached": True, "translated": False}
-        elif has_text:
+        elif body_needed:
             try:
                 self.translate(article_id, force=stale)
                 body_status = {"cached": False, "translated": True}

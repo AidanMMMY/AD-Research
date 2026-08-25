@@ -155,6 +155,14 @@ class Settings(BaseSettings):
     # Keep modest so we don't trip MiniMax rate limits alongside the
     # summary/sentiment jobs sharing the same provider.
     news_translation_concurrency: int = 4
+    # 2026-08-25 token plan 治理：正文翻译加重要性门。正文调用是全站
+    # 最大 LLM 开销（实测 ~6-7k 篇/天 × 2-4k tok ≈ 20M tok/天）；
+    # 标题翻译不受门控（单篇 ~80 tok，保住中文信息流体验）。
+    # importance 由分类管线落值——NULL（未分类）的行先只翻标题，
+    # 分类落值 >= 门后由 drain 自动捡回正文；WHERE 层排除不占窗口，
+    # 不会重演 2026-07-31 毒丸堵窗。生产 7 日数据：已分类行 >=3 占
+    # ~69%，预计正文翻译量砍 ~90%。
+    news_translation_body_min_importance: int = 3
 
     # News AI one-sentence summary pipeline (方向 D, 2026-07-29). The
     # 10-minute ``news_summarize_10m`` drain job generates a ≤80-char
@@ -166,6 +174,9 @@ class Settings(BaseSettings):
     # because only ≥3-importance rows qualify and the gate already
     # filters most of the ~1k/day inflow down to a few hundred.
     news_summary_batch_size: int = 20
+    # 摘要重要性门（原硬编码 3，2026-08-25 参数化）——想再省 token 时
+    # 提到 4 即可，无需改代码。
+    news_summary_min_importance: int = 3
 
     # Xueqiu (雪球) cookie — raw "Cookie:" header value from a logged-in
     # browser session. Must include xq_a_token=...; u=...; device_id=...

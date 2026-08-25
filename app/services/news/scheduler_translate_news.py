@@ -141,11 +141,28 @@ def _pending_translation_ids(db, limit: int) -> list[int]:
       failing increment ``translation_attempts``; at
       ``_MAX_TRANSLATION_ATTEMPTS`` (or immediately for deterministic
       MiniMax 422 "sensitive" rejections) they leave the window.
+
+    Importance gate (2026-08-25): the BODY branches additionally require
+    ``importance >= news_translation_body_min_importance`` — the body
+    call is the expensive one (~2-4k tok vs ~80 for a title) and is
+    reserved for notable news. The title branch is NOT gated, so every
+    non-Chinese article still gets a Chinese headline. Rows below the
+    gate (or not yet categorized) are excluded at the WHERE layer —
+    they never enter the selection, so the gate cannot recreate the
+    poison-queue pattern; a NULL-importance row whose categorization
+    later lands >= gate automatically re-enters via the body branch.
     """
+    from app.config import get_settings
     from app.services.news._model_loader import NewsArticle
     from app.services.news.translation_service import (
         _CHINESE_LANGUAGE_CODES,
         _MAX_TRANSLATION_ATTEMPTS,
+    )
+
+    gate = get_settings().news_translation_body_min_importance
+    body_importance_ok = and_(
+        NewsArticle.importance.isnot(None),
+        NewsArticle.importance >= gate,
     )
 
     has_source_text = or_(
@@ -167,6 +184,7 @@ def _pending_translation_ids(db, limit: int) -> list[int]:
             or_(
                 NewsArticle.title_zh.is_(None),
                 and_(
+                    body_importance_ok,
                     NewsArticle.translated_zh.is_(None),
                     has_source_text,
                 ),
@@ -175,6 +193,7 @@ def _pending_translation_ids(db, limit: int) -> list[int]:
                 # afterwards — redo it so the reader gets the FULL Chinese
                 # text, not a translated teaser.
                 and_(
+                    body_importance_ok,
                     NewsArticle.translated_zh.isnot(None),
                     NewsArticle.full_content_fetched_at.isnot(None),
                     NewsArticle.translation_generated_at.isnot(None),

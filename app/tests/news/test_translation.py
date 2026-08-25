@@ -97,19 +97,30 @@ def api_client(news_db, fake_redis, monkeypatch):
     test_app.dependency_overrides.clear()
 
 
-def _make_english_article(news_db, *, body: str | None = "Hello world.") -> NewsArticle:
+def _make_english_article(
+    news_db,
+    *,
+    body: str | None = "Hello world.",
+    importance: int | None = 4,
+    key: str = "1",
+) -> NewsArticle:
+    """Build a non-Chinese article; ``importance`` defaults to 4 (already
+    categorized, above the 2026-08-25 body-translation gate) so existing
+    tests keep exercising the body path — gate-specific tests pass an
+    explicit value. ``key`` uniquifies url/url_hash for multi-row tests."""
     now = datetime.now(tz=UTC)
     a = NewsArticle(
         source="cnbc",
-        source_id="t-1",
-        url="https://example.com/a",
-        url_hash="hash-1",
+        source_id=f"t-{key}",
+        url=f"https://example.com/a-{key}",
+        url_hash=f"hash-{key}",
         title="An English article",
         summary="Short intro",
         body=body,
         language="en",
         market="us",
         published_at=now,
+        importance=importance,
     )
     news_db.add(a)
     news_db.commit()
@@ -847,3 +858,181 @@ class TestSensitiveErrorClassification:
             content, tokens = service._call_llm_with_retry(provider, "sys", "user")
         assert content is None
         assert provider.chat.call_count == 2
+
+
+# ---------------------------------------------------------------------------
+# Importance gate for BODY translation (2026-08-25 token-plan 治理)
+# ---------------------------------------------------------------------------
+
+
+class TestBodyTranslationImportanceGate:
+    """``auto_translate`` gates the expensive body call on
+    ``news_translation_body_min_importance`` (default 3); the cheap title
+    call is never gated. Gated rows are NOT failures — no attempts
+    increment, no partial state."""
+
+    def test_below_gate_translates_title_only(self, news_db):
+        from app.services.news.translation_service import NewsTranslationService
+
+        article = _make_english_article(news_db, importance=2)
+        ctx, fake_provider = _patch_provider("中文标题")
+        with ctx:
+            result = NewsTranslationService(news_db).auto_translate(article.id)
+
+        news_db.refresh(article)
+        assert article.title_zh == "中文标题"
+        assert article.translated_zh is None
+        assert result["title_new"] is True
+        assert result["translated"] is False
+        # Exactly one LLM call (title) — the body call was gated out.
+        assert fake_provider.chat.call_count == 1
+
+    def test_below_gate_with_cached_title_reports_gate_reason(self, news_db):
+        from app.services.news.translation_service import NewsTranslationService
+
+        article = _make_english_article(news_db, importance=1)
+        article.title_zh = "已有标题"
+        news_db.commit()
+
+        ctx, fake_provider = _patch_provider("不应被调用")
+        with ctx:
+            result = NewsTranslationService(news_db).auto_translate(article.id)
+
+        assert result["skipped"] is True
+        assert result["reason"] == "below_importance_gate"
+        assert fake_provider.chat.call_count == 0
+
+    def test_uncategorized_row_waits_for_importance(self, news_db):
+        """importance NULL (categorizer hasn't reached the row) = body
+        gated for now; the drain picks the body up once categorization
+        lands >= gate."""
+        from app.services.news.translation_service import NewsTranslationService
+
+        article = _make_english_article(news_db, importance=None)
+        ctx, fake_provider = _patch_provider("中文标题")
+        with ctx:
+            result = NewsTranslationService(news_db).auto_translate(article.id)
+
+        news_db.refresh(article)
+        assert article.title_zh == "中文标题"
+        assert article.translated_zh is None
+        assert fake_provider.chat.call_count == 1
+
+    def test_at_gate_translates_body(self, news_db):
+        from app.services.news.translation_service import NewsTranslationService
+
+        article = _make_english_article(news_db, importance=3)
+        ctx, fake_provider = _patch_provider("中文文本")
+        with ctx:
+            result = NewsTranslationService(news_db).auto_translate(article.id)
+
+        assert result["translated"] is True
+        assert fake_provider.chat.call_count == 2
+
+    def test_gate_value_is_config_driven(self, news_db, monkeypatch):
+        """Raising the gate via settings must take effect without a
+        code change (the lever for further token savings)."""
+        from app.config import get_settings
+        from app.services.news.translation_service import NewsTranslationService
+
+        monkeypatch.setattr(
+            get_settings(), "news_translation_body_min_importance", 5
+        )
+        article = _make_english_article(news_db, importance=4)
+        article.title_zh = "已有标题"
+        news_db.commit()
+
+        ctx, fake_provider = _patch_provider("不应被调用")
+        with ctx:
+            result = NewsTranslationService(news_db).auto_translate(article.id)
+
+        assert result["reason"] == "below_importance_gate"
+        assert fake_provider.chat.call_count == 0
+
+    def test_gated_body_does_not_increment_attempts(self, news_db):
+        """A gate skip is not a failure — the row must not march toward
+        the retry cap (it would never re-enter after categorization)."""
+        from app.services.news.translation_service import NewsTranslationService
+
+        article = _make_english_article(news_db, importance=2)
+        article.title_zh = "已有标题"
+        article.translation_attempts = 0
+        news_db.commit()
+
+        ctx, _ = _patch_provider()
+        with ctx:
+            NewsTranslationService(news_db).auto_translate(article.id)
+
+        news_db.refresh(article)
+        assert article.translation_attempts == 0
+
+
+class TestPendingTranslationImportanceGate:
+    """``_pending_translation_ids``: body branches require the importance
+    gate; the title branch does not. Exclusion happens at the WHERE
+    layer so gated rows never occupy the newest-first window."""
+
+    def test_below_gate_body_only_row_excluded(self, news_db):
+        from app.services.news.scheduler_translate_news import (
+            _pending_translation_ids,
+        )
+
+        article = _make_english_article(news_db, importance=2)
+        article.title_zh = "标题已翻译"
+        news_db.commit()
+
+        assert _pending_translation_ids(news_db, 100) == []
+
+    def test_below_gate_missing_title_kept(self, news_db):
+        """Title translation is cheap and ungated — the row stays
+        eligible for its headline even below the body gate."""
+        from app.services.news.scheduler_translate_news import (
+            _pending_translation_ids,
+        )
+
+        article = _make_english_article(news_db, importance=2)
+        news_db.commit()
+
+        assert _pending_translation_ids(news_db, 100) == [article.id]
+
+    def test_uncategorized_body_only_row_excluded(self, news_db):
+        from app.services.news.scheduler_translate_news import (
+            _pending_translation_ids,
+        )
+
+        article = _make_english_article(news_db, importance=None)
+        article.title_zh = "标题已翻译"
+        news_db.commit()
+
+        assert _pending_translation_ids(news_db, 100) == []
+
+    def test_at_gate_body_row_kept(self, news_db):
+        from app.services.news.scheduler_translate_news import (
+            _pending_translation_ids,
+        )
+
+        article = _make_english_article(news_db, importance=3)
+        article.title_zh = "标题已翻译"
+        news_db.commit()
+
+        assert _pending_translation_ids(news_db, 100) == [article.id]
+
+    def test_stale_retranslation_gated_too(self, news_db):
+        """The expensive stale-retranslation branch respects the gate."""
+        from datetime import timedelta
+
+        from app.services.news.scheduler_translate_news import (
+            _pending_translation_ids,
+        )
+
+        article = _make_english_article(news_db, importance=2)
+        article.title_zh = "已有标题"
+        article.translated_zh = "摘要的旧译文"
+        article.translation_generated_at = datetime.now(tz=UTC).replace(tzinfo=None)
+        article.full_content = "The complete full body."
+        article.full_content_fetched_at = (
+            article.translation_generated_at + timedelta(minutes=10)
+        )
+        news_db.commit()
+
+        assert _pending_translation_ids(news_db, 100) == []

@@ -1716,7 +1716,8 @@ def run_translate_pending_job() -> dict[str, int]:
 
 @_record_etl("news_summarize_10m")
 def run_summarize_pending_job() -> dict[str, int]:
-    """Drain ≥3-importance articles that still lack a Chinese AI summary.
+    """Drain articles at/above ``news_summary_min_importance`` (default 3)
+    that still lack a Chinese AI summary.
 
     Fully fail-safe — an LLM outage records a skipped/failed run instead
     of crashing the scheduler; untouched rows retry on the next tick.
