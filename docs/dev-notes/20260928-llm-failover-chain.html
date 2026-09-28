@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>2026-09-28 主次 LLM 自动切换链</title>
+<style>
+body{font-family:-apple-system,'PingFang SC',sans-serif;max-width:860px;margin:40px auto;padding:0 20px;line-height:1.7;color:#1a1a2e}
+h1{border-bottom:2px solid #4a6cf7;padding-bottom:8px}
+h2{margin-top:32px;color:#2b3a67}
+table{border-collapse:collapse;width:100%;margin:12px 0}
+th,td{border:1px solid #ddd;padding:6px 10px;font-size:14px}
+th{background:#f4f6fb}
+blockquote{border-left:4px solid #4a6cf7;margin:0;padding:4px 16px;background:#f8f9ff;color:#555}
+code{background:#f0f2f8;padding:1px 5px;border-radius:4px;font-size:13px}
+pre{background:#f6f8fa;padding:12px;border-radius:8px;overflow-x:auto}
+pre code{background:none;padding:0}
+ol,ul{padding-left:24px}
+</style></head><body><h1>2026-09-28 主次 LLM 自动切换链（MiniMax → GLM → Kimi）</h1>
+<blockquote>
+<p>触发：MiniMax token plan 周额度只够 2-3 天全站用量（8/20 耗尽后
+全站 LLM 归零两天、digest 全降级）。用户另有 GLM / Kimi Coding
+Plan 订阅。要求：主挂了自动切下一个，plan 重置后自动切回。
+commit <code>3bbebc9</code>（未 push）。</p>
+</blockquote>
+<h2>一、架构</h2>
+<pre><code>13 个消费方（digest/情绪/翻译/摘要/研报/AI对话…）
+  → get_llm_provider()  →  FallbackProvider（同一 LLMProvider 接口）
+      ├── minimax（主，token plan）
+      ├── glm（兜底1，Coding Plan 订阅）
+      └── kimi（兜底2，Coding Plan 订阅）
+</code></pre>
+<ul>
+<li>链顺序：<code>LLM_PROVIDER_CHAIN=minimax,glm,kimi</code>（默认）；旧
+  <code>LLM_PROVIDER</code> 变量置首。<strong>没配 key 的成员不进链</strong>——链上没配
+  GLM/Kimi key 时行为与改前完全一致（单 minimax）。</li>
+<li>新 provider：<code>glm_provider.py</code>（默认 Coding Plan 端点
+  <code>api/coding/paas/v4</code>，模型 <code>glm-4.6</code>）、<code>kimi_provider.py</code>
+  （<code>api.moonshot.cn/v1</code>，<code>kimi-k2-0905-preview</code>），均可 env 覆盖。
+  <code>strip_think_tags</code> 提到 <code>base.py</code> 共用；两家都不传 max_tokens
+  （对齐 MiniMax/DeepSeek，防 digest 长文被默认 1024 截断）。</li>
+</ul>
+<h2>二、切换语义（关键设计决策）</h2>
+<table>
+<thead>
+<tr>
+<th>错误</th>
+<th>判定</th>
+<th>行为</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>429 + quota 标记（2056/用量上限/quota/insufficient/balance）</td>
+<td>配额耗尽</td>
+<td><strong>切换</strong> + Redis 冷却</td>
+</tr>
+<tr>
+<td>402 余额不足 / 401 / 403</td>
+<td>账单/key 失效</td>
+<td><strong>切换</strong> + Redis 冷却</td>
+</tr>
+<tr>
+<td>裸 429（分钟级限流）</td>
+<td>瞬时</td>
+<td>原样抛回，调用方重试，<strong>不切</strong></td>
+</tr>
+<tr>
+<td>5xx / 超时 / 断网</td>
+<td>瞬时</td>
+<td>原样抛回，<strong>不切</strong>（防备用被拖下水）</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li><strong>冷却回主</strong>：配额错误写 <code>llm:provider_down:{name}</code>（TTL
+  <code>LLM_PROVIDER_COOLDOWN_SEC</code>，默认 6h），期间零浪费请求直走下一个；
+  TTL 到期自动重试主——token plan 周期重置后无感切回。Redis 共享 =
+  scheduler/celery/web 同状态；Redis 不可达降级进程内 map。</li>
+<li><strong>全链冷却中</strong>：抛 <code>AllProvidersDownError</code>（带 429+quota 语义，
+  上游分类逻辑能正确识别为配额问题走降级路径）。</li>
+<li><strong>全链无 key</strong>：返回「AI 功能未配置」占位串（改前行为，消费方已有
+  占位串特判）。</li>
+<li><strong>legacy 兼容</strong>：默认链全没 key 时扫描所有已知 provider（只有
+  DeepSeek key 的老开发机不回退）。</li>
+</ul>
+<h2>三、可观测</h2>
+<ul>
+<li><code>/health</code> → <code>check_llm_health()</code>：<code>chain_order</code> / <code>active_chain</code>
+  （实际进链成员）/ <code>cooling_down</code> / <code>last_used_provider</code> /
+  各家 <code>*_available</code></li>
+<li>每次切换 WARNING 日志（含原错误）；可接 site_watchdog</li>
+</ul>
+<h2>四、ECS 上线步骤</h2>
+<ol>
+<li>push 部署（等用户指令）</li>
+<li>ECS <code>.env</code> 加：<code>GLM_API_KEY=</code>、<code>KIMI_API_KEY=</code>（用户从各自平台
+   取；Coding Plan key 即可，GLM_BASE_URL/KIMI_BASE_URL 留空用默认）</li>
+<li>重建 backend 容器（redeploy.sh），<code>/health</code> 确认
+   <code>active_chain: ["minimax","glm","kimi"]</code></li>
+<li>验证切换：可临时把 GLM key 改错触发 401 → 看日志 failover +
+   <code>cooling_down</code>；或等下次 MiniMax 自然耗尽观察</li>
+<li>若 GLM 按量付费 key（非 Coding Plan），<code>GLM_BASE_URL</code> 需改
+   <code>https://open.bigmodel.cn/api/paas/v4</code></li>
+</ol>
+<h2>五、口诀</h2>
+<ol>
+<li><strong>切换只认确定性配额错</strong>（429+标记/402/401/403）；瞬时故障
+   原样抛，别替调用方做决定。</li>
+<li><strong>冷却写 Redis 不写 DB</strong>——要的是 TTL 自动回主，不是永久黑名单。</li>
+<li><strong>新 provider 三件套</strong>：不传 max_tokens、剥 think 块、keyless
+   返回占位串而非 raise（消费方靠占位串特判降级）。</li>
+<li>加新成员 = 写 provider 类 + 注册 <code>_PROVIDER_CLASSES</code> +
+   <code>LLM_PROVIDER_CHAIN</code> 加名字，消费方永远零改动。</li>
+</ol>
+<p>测试：<code>app/tests/test_llm_fallback.py</code> 20 用例；全量 1912 过。
+相关：[[20260825 重要性门 token 治理]]（砍量 85%，与本链互补：
+一个省 token、一个保可用性）、[[20260821 MiniMax 耗尽始末]]</p></body></html>
