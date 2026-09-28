@@ -174,20 +174,31 @@ def _check_llm_keys() -> dict[str, Any]:
         info = check_llm_health()
         minimax_ok = bool(info.get("minimax_available"))
         deepseek_ok = bool(info.get("deepseek_available"))
-        active = info.get("active_provider", "auto")
-        if minimax_ok or deepseek_ok:
+        # 2026-09-29 主次 LLM 切换链：透传链状态，方便排障时一眼看到
+        # 谁在干活、谁在冷却。minimax/deepseek_configured 保留向后兼容
+        # （前端目前未消费这些字段，但外部监控可能依赖）。
+        chain_fields = {
+            "chain_order": info.get("chain_order", []),
+            "active_chain": info.get("active_chain", []),
+            "cooling_down": info.get("cooling_down", []),
+            "last_used_provider": info.get("last_used_provider"),
+        }
+        any_keyed = any(
+            v for k, v in info.items() if k.endswith("_available") and v
+        )
+        if any_keyed:
             return {
                 "status": "ok",
-                "active_provider": active,
                 "minimax_configured": minimax_ok,
                 "deepseek_configured": deepseek_ok,
+                **chain_fields,
             }
         return {
             "status": "warn",
             "detail": "no_llm_keys_configured",
-            "active_provider": active,
             "minimax_configured": False,
             "deepseek_configured": False,
+            **chain_fields,
         }
     except FutureTimeoutError:
         return {"status": "warn", "detail": "probe_timeout"}
