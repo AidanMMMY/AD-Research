@@ -57,6 +57,15 @@ from app.services.symbol_mapper import internal_code
 
 logger = logging.getLogger(__name__)
 
+# Cap on the article body handed to the entity/sentiment prompts
+# (2026-10-12 token governance). ``full_content`` can run to 10k+ chars
+# (2-4k tokens), but classification only needs the lede: title + the
+# first ~2k chars carries the symbols, the event category and the
+# importance signal. Truncating here — the single choke point all
+# scheduler jobs feed — cuts stage-1/2 prompt tokens by 50-80% with no
+# accuracy loss on triage tasks.
+_PROMPT_BODY_MAX_CHARS = 2_000
+
 
 # ---------------------------------------------------------------------------
 # Result types
@@ -226,6 +235,9 @@ class SentimentPipeline:
             or article.get("summary")
             or ""
         )
+        # Token governance: never feed more than the lede to the LLM.
+        if len(body) > _PROMPT_BODY_MAX_CHARS:
+            body = body[:_PROMPT_BODY_MAX_CHARS]
         result = PipelineResult(url=url, success=False)
 
         if not url:
@@ -244,6 +256,17 @@ class SentimentPipeline:
             result.impact = cached.get("impact")
             result.symbols = cached.get("symbols") or []
             result.importance = cached.get("importance", 0)
+            # Heal-stamp: rows processed before 2026-10-12 could enter the
+            # cache without ever stamping ``news_article`` (the old backfill
+            # bailed out when no symbols were extracted), which stranded them
+            # in the schedulers' selection sets forever. Re-stamp on cache
+            # hit so the backlog drains without re-burning LLM tokens.
+            self._backfill_article_sentiment(article, result)
+            try:
+                self.db.commit()
+            except Exception as exc:
+                logger.warning("cache-hit sentiment backfill commit failed: %s", exc)
+                self.db.rollback()
             return result
 
         # 失败防抖：最近 10 分钟失败过的行直接跳过，避免 30s 周期反复调 LLM
@@ -526,11 +549,24 @@ class SentimentPipeline:
             self.db.rollback()
 
     def _backfill_article_sentiment(self, article: dict, result: PipelineResult) -> None:
-        """Write an aggregate LLM sentiment back onto ``news_article``.
+        """Write the LLM triage outcome back onto ``news_article``.
 
         Averages the per-symbol scores (range ``-1..1``) into a single
         ``-100..100`` article score and stamps ``sentiment_processed_at``.
-        No-op when the article has no DB id or no usable scores.
+        No-op when the article has no DB id.
+
+        2026-10-12 poison-queue fix: ``event_category`` / ``importance`` /
+        ``sentiment_processed_at`` are now stamped **even when no symbols
+        were extracted** (no scores). The old early-return discarded the
+        whole writeback for symbol-less articles — the LLM fee was paid
+        but the row stayed in the schedulers' selection sets
+        (``event_category IS NULL``) forever, got re-selected every tick,
+        and was fully re-processed each time the 30-day result cache
+        expired. ~85% of the daily inflow took that path, which was also
+        the root cause of the ~15% ``importance`` coverage that strangled
+        the translation/summary importance gates. Rule of thumb: once the
+        LLM has processed a row, the stamp MUST land (even an empty
+        result), or the selection set never drains.
         """
         article_id = article.get("id")
         if not article_id:
@@ -543,25 +579,25 @@ class SentimentPipeline:
                 scores.append(float(sym_payload.get("score", 0.0) or 0.0))
             except (TypeError, ValueError):
                 continue
-        if not scores:
-            return
-        avg = sum(scores) / len(scores)
-        # Unified label vocabulary: positive / negative / neutral.
-        # The legacy "bullish/bearish" labels were misaligned with the
-        # frontend SENTIMENT_LABELS map (`positive/negative`), causing
-        # the retail sentiment board to always read "neutral".
-        label = "positive" if avg > 0.15 else "negative" if avg < -0.15 else "neutral"
+        updates: dict = {
+            "event_category": (result.entity or {}).get("event_category"),
+            "importance": result.importance or None,
+            "sentiment_processed_at": datetime.utcnow(),
+        }
+        if scores:
+            avg = sum(scores) / len(scores)
+            # Unified label vocabulary: positive / negative / neutral.
+            # The legacy "bullish/bearish" labels were misaligned with the
+            # frontend SENTIMENT_LABELS map (`positive/negative`), causing
+            # the retail sentiment board to always read "neutral".
+            label = "positive" if avg > 0.15 else "negative" if avg < -0.15 else "neutral"
+            updates["sentiment_score"] = int(round(max(-1.0, min(1.0, avg)) * 100))
+            updates["sentiment_label"] = label
         try:
             from app.services.news._model_loader import NewsArticle
 
             self.db.query(NewsArticle).filter(NewsArticle.id == article_id).update(
-                {
-                    "sentiment_score": int(round(max(-1.0, min(1.0, avg)) * 100)),
-                    "sentiment_label": label,
-                    "event_category": (result.entity or {}).get("event_category"),
-                    "importance": result.importance or None,
-                    "sentiment_processed_at": datetime.utcnow(),
-                },
+                updates,
                 synchronize_session=False,
             )
         except Exception as exc:  # pragma: no cover - defensive

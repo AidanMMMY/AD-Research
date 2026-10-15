@@ -173,7 +173,7 @@ def run_sentiment_low_latency(window_minutes: int = 5) -> int:
 
 
 def run_news_article_categorization(limit: int = 60) -> int:
-    """Categorize recent ``news_article`` rows that lack ``event_category``.
+    """Categorize recent ``news_article`` rows not yet seen by the LLM.
 
     This job wires the LLM sentiment pipeline directly to the crawler-
     generated ``news_article`` table so that geopolitics / central_bank /
@@ -188,6 +188,15 @@ def run_news_article_categorization(limit: int = 60) -> int:
     gate and summary gate both key off ``importance``, so coverage
     directly controls how much of the archive those drains can ever
     reach. Token-neutral: every article is still processed exactly once.
+
+    Selection set (2026-10-12): switched from ``event_category IS NULL``
+    to ``sentiment_processed_at IS NULL``. The pipeline now stamps the
+    triage outcome (category / importance / processed-at) even when no
+    symbols were extracted, so ``sentiment_processed_at`` is the only
+    trustworthy "has the LLM seen this row" marker — a row whose entity
+    extraction legitimately returns a null category must not be
+    re-selected forever. Rows stranded by the old writeback bug heal
+    via the pipeline's cache-hit backfill without re-burning tokens.
     """
     with redis_lock(f"{_LOCK_BATCH}_news", expire_seconds=600) as acquired:
         if not acquired:
@@ -199,7 +208,7 @@ def run_news_article_categorization(limit: int = 60) -> int:
 
             recent = (
                 db.query(NewsArticle)
-                .filter(NewsArticle.event_category.is_(None))
+                .filter(NewsArticle.sentiment_processed_at.is_(None))
                 .order_by(desc(NewsArticle.published_at))
                 .limit(limit)
                 .all()

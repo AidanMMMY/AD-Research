@@ -1750,13 +1750,21 @@ def run_news_attempts_reset_job() -> dict[str, int]:
     that cap are mostly deterministic MiniMax 422 "sensitive"
     rejections, and re-trying them daily would burn tokens on
     guaranteed failures.
+
+    2026-10-12: also zeroes ``research_reports.summary_attempts`` (cap 3)
+    so reports that hit a MiniMax weekly-quota window re-enter the pool
+    after recharge instead of being permanently evicted.
     """
     from sqlalchemy import update
 
     from app.core.database import SessionLocal
+    from app.models.research_report import ResearchReport
     from app.services.news._model_loader import NewsArticle
     from app.services.news.content_fetcher import _MAX_FULLTEXT_ATTEMPTS
     from app.services.news.summary_service import _MAX_SUMMARY_ATTEMPTS
+    from app.services.research_report_service import (
+        _MAX_SUMMARY_ATTEMPTS as _MAX_REPORT_SUMMARY_ATTEMPTS,
+    )
 
     db = SessionLocal()
     try:
@@ -1770,12 +1778,17 @@ def run_news_attempts_reset_job() -> dict[str, int]:
             .where(NewsArticle.summary_attempts >= _MAX_SUMMARY_ATTEMPTS)
             .values(summary_attempts=0)
         ).rowcount or 0
+        report_reset = db.execute(
+            update(ResearchReport)
+            .where(ResearchReport.summary_attempts >= _MAX_REPORT_SUMMARY_ATTEMPTS)
+            .values(summary_attempts=0)
+        ).rowcount or 0
         db.commit()
-        total = fulltext_reset + summary_reset
+        total = fulltext_reset + summary_reset + report_reset
         if total:
             logger.info(
-                "news attempts daily reset: fulltext=%d summary=%d rows back in pool",
-                fulltext_reset, summary_reset,
+                "news attempts daily reset: fulltext=%d summary=%d report=%d rows back in pool",
+                fulltext_reset, summary_reset, report_reset,
             )
         return {"fetched": total, "written": total}
     except Exception as exc:

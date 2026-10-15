@@ -1236,6 +1236,18 @@ class ContentFetcher:
         """
         if not _llm_extract_enabled():
             return None
+        # 重要性门（2026-10-12 token 治理）：LLM 兜底单篇可达 ~8k tok，
+        # 只对分类管线判定为重要的文章开火；NULL（未落章）不烧，等
+        # drain 在落章后捡回。门槛与正文翻译/摘要门对齐。
+        min_importance = get_settings().news_content_llm_min_importance
+        if article.importance is None or article.importance < min_importance:
+            logger.info(
+                "ContentFetcher: llm_extract skip article=%s — importance=%s 低于门 %d",
+                article.id,
+                article.importance,
+                min_importance,
+            )
+            return None
         if html is None:
             html = self._fetch_html(article.url)
         if not _looks_like_real_page(html):

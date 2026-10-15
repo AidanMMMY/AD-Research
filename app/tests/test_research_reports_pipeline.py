@@ -150,3 +150,112 @@ def test_fetch_recent_report_rows_empty_universe(db_session):
 
     assert service.fetch_recent_report_rows(limit=200) == []
     provider.fetch_for_codes.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
+# 2026-10-12 token governance: summarize slow-call acceptance + attempts cap
+# ---------------------------------------------------------------------------
+
+_LLM_OK_JSON = (
+    '{"summary": "业绩超预期，上调盈利预测。", '
+    '"key_points": ["营收增长", "毛利率提升"], "target_price": 1800.0}'
+)
+
+
+def _seed_report(db_session, *, title="贵州茅台：季报点评") -> ResearchReport:
+    report = ResearchReport(
+        ts_code="600519.SH",
+        name="贵州茅台",
+        title=title,
+        org_name="中信证券",
+        industry="食品饮料",
+        publish_date=date(2026, 10, 10),
+        rating="买入",
+        source="eastmoney",
+    )
+    db_session.add(report)
+    db_session.commit()
+    db_session.refresh(report)
+    return report
+
+
+class _FakeChatProvider:
+    def __init__(self, content=_LLM_OK_JSON, *, delay=0.0, fail=False):
+        self.content = content
+        self.delay = delay
+        self.fail = fail
+        self.calls = 0
+        self.is_available = True
+
+    def chat(self, messages, system=None, **kwargs):
+        self.calls += 1
+        if self.fail:
+            raise RuntimeError("boom")
+        if self.delay:
+            import time as _t
+
+            _t.sleep(self.delay)
+        return self.content
+
+
+def _patch_provider(monkeypatch, provider):
+    monkeypatch.setattr(
+        "app.services.llm.get_llm_provider", lambda *a, **k: provider
+    )
+
+
+def test_summarize_slow_call_result_kept(db_session, monkeypatch):
+    """A slow LLM call's result must be USED, not discarded — the
+    2026-10-12 fix. MiniMax's normal latency under load is 30-160s; the
+    old ">5s discard" rule burned 100% of the tokens it spent and left
+    the row to be retried forever. There is no wall-clock gate anymore,
+    so a valid response is always persisted."""
+    report = _seed_report(db_session)
+    provider = _FakeChatProvider()
+    _patch_provider(monkeypatch, provider)
+
+    service = ResearchReportService(db_session)
+    summary = service.summarize_with_deepseek(report.id)
+
+    assert summary == "业绩超预期，上调盈利预测。"
+    db_session.refresh(report)
+    assert report.summary == "业绩超预期，上调盈利预测。"
+    assert report.key_points == ["营收增长", "毛利率提升"]
+    assert report.target_price == 1800.0
+    assert report.summary_attempts == 1
+
+
+def test_summarize_increments_attempts_on_failure(db_session, monkeypatch):
+    """Every LLM-bound try accrues an attempt, even when the call fails."""
+    report = _seed_report(db_session)
+    provider = _FakeChatProvider(fail=True)
+    _patch_provider(monkeypatch, provider)
+
+    service = ResearchReportService(db_session)
+    out = service.summarize_with_deepseek(report.id)
+
+    assert out == ""
+    db_session.refresh(report)
+    assert report.summary is None
+    assert report.summary_attempts == 1
+
+
+def test_pending_reports_excludes_capped_rows(db_session, monkeypatch):
+    """Rows at the attempts cap leave the batch selection for good."""
+    capped = _seed_report(db_session, title="已经失败 3 次的研报")
+    capped.summary_attempts = 3
+    fresh = _seed_report(db_session, title="平安银行：深度报告")
+    db_session.commit()
+
+    provider = _FakeChatProvider()
+    _patch_provider(monkeypatch, provider)
+
+    service = ResearchReportService(db_session)
+    done = service.summarize_pending_reports(batch_size=20)
+
+    assert done == 1
+    db_session.refresh(capped)
+    db_session.refresh(fresh)
+    assert capped.summary is None  # never picked up
+    assert capped.summary_attempts == 3  # untouched
+    assert fresh.summary is not None

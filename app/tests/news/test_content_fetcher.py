@@ -324,6 +324,9 @@ def test_fetch_endpoint_missing_article(fastapi_client) -> None:
 def _seed_full_text_article(db_session, body: str = "x" * 200) -> NewsArticle:
     """Create a row without ``full_content`` so the fetcher is forced
     to call Jina and run the deterministic cleanup.
+
+    ``importance=4`` keeps the 2026-10-12 tier-3 importance gate
+    (default 3) open so the LLM-fallback tests keep exercising that tier.
     """
     normalizer = NewsNormalizer(db_session)
     raw = RawArticle(
@@ -334,6 +337,7 @@ def _seed_full_text_article(db_session, body: str = "x" * 200) -> NewsArticle:
         body=body,
     )
     article = normalizer.normalize(raw)
+    article.importance = 4
     db_session.commit()
     return article
 

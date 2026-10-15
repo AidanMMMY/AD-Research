@@ -16,8 +16,11 @@ The LLM call goes through ``get_llm_provider()`` (MiniMax default,
 DeepSeek legacy rollback). To keep
 costs in check, the prompt truncates the upstream ``title + industry +
 rating`` to 300 characters and asks for a 200-character summary plus
-3-5 bullet key points.  429s are retried once after 2s; 5s
-timeouts skip the row to avoid blocking the batch.
+3-5 bullet key points.  429s are retried once after 2s; failing rows
+increment ``summary_attempts`` and leave the batch selection at the cap
+(2026-10-12: the old ">5s discard the result" rule dated from the
+DeepSeek era — MiniMax's normal latency is 30-160s, so it burned 100%
+of the tokens it spent and retried forever).
 """
 
 from __future__ import annotations
@@ -38,6 +41,9 @@ from app.data.providers.eastmoney_research_provider import EastMoneyResearchProv
 from app.models.research_report import ResearchReport
 
 logger = logging.getLogger(__name__)
+
+# Batch selection excludes rows that have failed this many times.
+_MAX_SUMMARY_ATTEMPTS = 3
 
 
 # ---------------------------------------------------------------------------
@@ -308,6 +314,14 @@ class ResearchReportService:
         if report is None:
             raise ValueError(f"ResearchReport {report_id} not found")
 
+        # Attempt bookkeeping: count every LLM-bound try up front and
+        # commit it independently, so a row that keeps failing (quota
+        # windows, unparseable output) still accrues attempts and
+        # eventually leaves the batch selection set. Without this the
+        # 2h scheduler re-burned the same rows forever.
+        report.summary_attempts = (report.summary_attempts or 0) + 1
+        self.db.commit()
+
         system, user = _build_prompt(report)
         provider = get_llm_provider()
 
@@ -335,22 +349,17 @@ class ResearchReportService:
         """Single LLM call with one 429-retry after 2s.
 
         Returns ``None`` if no API key is configured (and we got the
-        placeholder message back), if the call times out (>5s), or if
-        both attempts fail.
+        placeholder message back) or if both attempts fail. Slow calls
+        are NOT discarded: MiniMax's normal latency under load is
+        30-160s, and throwing away a paid-for result because it crossed
+        an arbitrary wall-clock line burns 100% of the spend.
         """
         for attempt in range(2):
             try:
-                start = time.monotonic()
                 content = provider.chat(
                     messages=[{"role": "user", "content": user}],
                     system=system,
                 )
-                elapsed = time.monotonic() - start
-                if elapsed > 5.0:
-                    logger.warning(
-                        "ResearchReport LLM call took %.2fs (>5s); skipping", elapsed
-                    )
-                    return None
                 if not content:
                     return None
                 # Providers return a NO_KEY placeholder when the key is
@@ -380,7 +389,9 @@ class ResearchReportService:
         """Summarize a batch of unsummarized reports.
 
         Returns the number of rows successfully summarized.  Rows that
-        fail (timeout / 429 / no key) are left for the next run.
+        fail (429 / no key / unparseable output) accrue
+        ``summary_attempts`` and leave the selection set for good once
+        they hit ``_MAX_SUMMARY_ATTEMPTS``.
         """
         from app.services.llm import get_llm_provider
 
@@ -392,6 +403,7 @@ class ResearchReportService:
         rows = (
             self.db.query(ResearchReport)
             .filter(ResearchReport.summary.is_(None))
+            .filter(ResearchReport.summary_attempts < _MAX_SUMMARY_ATTEMPTS)
             .order_by(ResearchReport.publish_date.desc(), ResearchReport.id.asc())
             .limit(batch_size)
             .all()

@@ -118,6 +118,15 @@ class Settings(BaseSettings):
     news_content_fetch_on_ingest: bool = True
     news_content_ingest_time_budget_sec: int = 120
     news_content_llm_fallback: bool = True
+    # 2026-10-12 token 治理：LLM 正文抽取层（tier-3）加重要性门。
+    # tier-1（trafilatura）与 tier-2（Jina Reader）不受门控——只有两者
+    # 都失败时的 LLM 兜底被门。单篇 LLM 抽取可达 ~8k tok，Jina 欠费
+    # 窗口期它是唯一全文来源，曾对全部入库文章无差别开火。现在只对
+    # importance >= 门的文章启用（与正文翻译/摘要同一道门槛：不值得
+    # 翻译的文章也不值得花 8k tok 救正文）。NULL（分类管线尚未落章）
+    # 一律不烧——入库即抓的新文先走确定性层，等分类落章后由
+    # ``news_full_content_10m`` drain 自动捡回，不丢正文。
+    news_content_llm_min_importance: int = 3
 
     # Jina Reader API key (2026-07-29). Optional. Jina blocks anonymous
     # access to abuse-heavy domains (e.g. investing.com answers HTTP 403

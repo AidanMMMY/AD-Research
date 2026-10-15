@@ -118,13 +118,15 @@ def is_chinese_language(language: str | None) -> bool:
     """
     return (language or "").strip().lower() in _CHINESE_LANGUAGE_CODES
 
-# Soft cap: 30,000 chars ≈ 8-10k tokens of input. MiniMax / DeepSeek
-# both handle this easily; we leave headroom for system prompt +
-# output. The rare longer article gets truncated with an explicit
-# marker so the reader can see we cut something. Raised from 12k on
-# 2026-07-27 — the product requirement is FULL-body translation, and
-# 12k was clipping longer Substack / blog essays.
-_MAX_INPUT_CHARS = 30_000
+# Soft cap: 16,000 chars ≈ 4-5k tokens of input. History: 12k → 30k on
+# 2026-07-27 (full-body translation for long Substack/blog essays) →
+# 16k on 2026-10-12 (token governance). The volume control now lives in
+# the importance gate (body translation only fires for importance ≥ 3),
+# so per-call length is the remaining lever: 16k halves the worst-case
+# spend versus 30k while still covering the vast majority of essays
+# unclipped. The rare longer article gets truncated with an explicit
+# marker so the reader can see we cut something.
+_MAX_INPUT_CHARS = 16_000
 
 # Slow-call budget for a single LLM translation request. Raised from
 # 30s on 2026-07-29: full-body translations of long articles legitimately

@@ -453,3 +453,146 @@ def test_process_unprocessed_counts_legacy_rows(db_session, fake_redis):
     out = pipe.process_unprocessed(limit=10)
     assert out["scanned"] == 1
     assert out["reclassified"] == 1
+
+
+# ---------------------------------------------------------------------------
+# 7. 2026-10-12 token governance: poison-queue fix + prompt truncation
+# ---------------------------------------------------------------------------
+
+
+def _news_article(db_session, *, url: str, key: str):
+    """Seed a minimal ``news_article`` row for the writeback path."""
+    from app.services.news._model_loader import NewsArticle
+
+    a = NewsArticle(
+        source="cnbc",
+        source_id=f"t-{key}",
+        url=url,
+        url_hash=f"hash-{key}",
+        title="Fed officials signal patience on rates",
+        body="Federal Reserve officials signaled patience ...",
+        language="en",
+        market="us",
+        published_at=datetime(2026, 10, 1, 10, 0),
+    )
+    db_session.add(a)
+    db_session.commit()
+    db_session.refresh(a)
+    return a
+
+
+_NO_SYMBOL_ENTITY = json.dumps(
+    {
+        "symbols": [],
+        "event_category": "central_bank",
+        "importance": 3,
+        "reasoning": "macro commentary, no single ticker",
+    },
+    ensure_ascii=False,
+)
+
+
+def test_symbol_less_article_still_stamped(db_session, fake_redis):
+    """No extractable symbols → the triage stamp MUST still land.
+
+    Regression test for the 2026-10-12 poison queue: the old backfill
+    returned early when no scores existed, leaving event_category /
+    importance / sentiment_processed_at NULL and the row in the
+    schedulers' selection sets forever (re-burned every cache expiry).
+    """
+    from app.services.news._model_loader import NewsArticle
+
+    a = _news_article(db_session, url="https://example.com/macro1", key="m1")
+    pipe = _make_pipeline(
+        db_session, fake_redis, responses={"entity": _NO_SYMBOL_ENTITY}
+    )
+    res = asyncio.run(
+        pipe.process_article(
+            {
+                "id": a.id,
+                "url": a.url,
+                "title": a.title,
+                "body": a.body,
+                "published_at": a.published_at,
+            }
+        )
+    )
+    assert res.success is True
+    assert res.symbols == []
+
+    db_session.expire_all()
+    row = db_session.get(NewsArticle, a.id)
+    assert row.event_category == "central_bank"
+    assert row.importance == 3
+    assert row.sentiment_processed_at is not None
+    # No scores → score/label left untouched (NULL), not fabricated.
+    assert row.sentiment_score is None
+    assert row.sentiment_label is None
+
+
+def test_cache_hit_heals_unstamped_row(db_session, fake_redis):
+    """A row cached by the old buggy writeback heals on cache hit —
+    no new LLM calls, just the stamp."""
+    from app.services.news._model_loader import NewsArticle
+
+    a = _news_article(db_session, url="https://example.com/macro2", key="m2")
+    pipe = _make_pipeline(
+        db_session, fake_redis, responses={"entity": _NO_SYMBOL_ENTITY}
+    )
+    art = {
+        "id": a.id,
+        "url": a.url,
+        "title": a.title,
+        "body": a.body,
+        "published_at": a.published_at,
+    }
+    asyncio.run(pipe.process_article(art))
+    calls_after_first = len(pipe.llm.provider.calls)
+
+    # Simulate the pre-fix state: cached, but the DB stamp was lost.
+    db_session.query(NewsArticle).filter(NewsArticle.id == a.id).update(
+        {
+            "event_category": None,
+            "importance": None,
+            "sentiment_processed_at": None,
+        },
+        synchronize_session=False,
+    )
+    db_session.commit()
+
+    res2 = asyncio.run(pipe.process_article(art))
+    assert res2.cache_hit is True
+    assert len(pipe.llm.provider.calls) == calls_after_first  # zero re-burn
+
+    db_session.expire_all()
+    row = db_session.get(NewsArticle, a.id)
+    assert row.event_category == "central_bank"
+    assert row.importance == 3
+    assert row.sentiment_processed_at is not None
+
+
+def test_prompt_body_truncated_to_lede(db_session, fake_redis):
+    """Long full_content bodies must not reach the LLM prompts whole —
+    only the first ``_PROMPT_BODY_MAX_CHARS`` chars (the lede) do."""
+    from app.services.news.sentiment.sentiment_pipeline import (
+        _PROMPT_BODY_MAX_CHARS,
+    )
+
+    tail_marker = "TAIL_MARKER_NEVER_SENT"
+    long_body = ("Opening paragraph with the actual news. " * 100) + tail_marker
+    assert len(long_body) > _PROMPT_BODY_MAX_CHARS
+
+    pipe = _make_pipeline(db_session, fake_redis)
+    res = asyncio.run(
+        pipe.process_article(
+            {
+                "url": "https://example.com/long-body",
+                "title": "AAPL beats Q3",
+                "body": long_body,
+                "published_at": datetime(2026, 10, 1, 10, 0),
+            }
+        )
+    )
+    assert res.success is True
+    for call in pipe.llm.provider.calls:
+        assert tail_marker not in call["prompt"]

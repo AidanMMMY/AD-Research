@@ -66,7 +66,10 @@ def db_session():
         session.close()
 
 
-def _seed_article(db_session) -> NewsArticle:
+def _seed_article(db_session, *, importance: int | None = 4) -> NewsArticle:
+    """Seed an article for the LLM-tier tests. ``importance`` defaults to
+    4 so the 2026-10-12 tier-3 importance gate (default 3) stays open —
+    gate-specific tests pass an explicit value."""
     normalizer = NewsNormalizer(db_session)
     raw = RawArticle(
         source="businesstoday_my",
@@ -76,6 +79,7 @@ def _seed_article(db_session) -> NewsArticle:
         body="x" * 200,
     )
     article = normalizer.normalize(raw)
+    article.importance = importance
     db_session.commit()
     assert article is not None and article.id is not None
     return article
@@ -371,3 +375,59 @@ def test_llm_skipped_when_env_disabled(db_session, monkeypatch) -> None:
 
     assert result.success is False
     assert provider.calls == 0
+
+
+# ---------------------------------------------------------------------------
+# 2026-10-12: tier-3 importance gate (token governance)
+# ---------------------------------------------------------------------------
+
+
+def test_llm_tier_blocked_below_importance_gate(db_session) -> None:
+    """importance < 门 → LLM 兜底不开火（provider 零调用，抓取判负）。"""
+    article = _seed_article(db_session, importance=2)
+    provider = _FakeProvider(_LLM_BODY)
+    _trip_jina_breaker(402, "")
+
+    p_html, p_traf, p_llm = _llm_tier_patches(
+        _real_article_html(article.title), provider
+    )
+    with p_html, p_traf, p_llm:
+        result = ContentFetcher(db_session).fetch(article.id, force=True)
+
+    assert result.success is False
+    assert provider.calls == 0
+
+
+def test_llm_tier_blocked_when_importance_unknown(db_session) -> None:
+    """importance NULL（分类管线未落章）→ 不烧 LLM，等 drain 落章后捡回。"""
+    article = _seed_article(db_session, importance=None)
+    provider = _FakeProvider(_LLM_BODY)
+    _trip_jina_breaker(402, "")
+
+    p_html, p_traf, p_llm = _llm_tier_patches(
+        _real_article_html(article.title), provider
+    )
+    with p_html, p_traf, p_llm:
+        result = ContentFetcher(db_session).fetch(article.id, force=True)
+
+    assert result.success is False
+    assert provider.calls == 0
+
+
+def test_llm_tier_gate_threshold_configurable(db_session, monkeypatch) -> None:
+    """门槛走 ``news_content_llm_min_importance``，调配置即可升降。"""
+    from app.config import get_settings
+
+    monkeypatch.setattr(get_settings(), "news_content_llm_min_importance", 2)
+    article = _seed_article(db_session, importance=2)
+    provider = _FakeProvider(_LLM_BODY)
+    _trip_jina_breaker(402, "")
+
+    p_html, p_traf, p_llm = _llm_tier_patches(
+        _real_article_html(article.title), provider
+    )
+    with p_html, p_traf, p_llm:
+        result = ContentFetcher(db_session).fetch(article.id, force=True)
+
+    assert result.success is True
+    assert provider.calls == 1

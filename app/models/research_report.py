@@ -49,6 +49,12 @@ class ResearchReport(Base):
     rating = Column(String(32), comment="东财评级: 买入/增持/中性/减持/卖出")
     pdf_url = Column(String(1000), comment="PDF 链接")
     summary = Column(Text, comment="LLM (MiniMax 默认) 生成摘要 (≤200 字)")
+    summary_attempts = Column(
+        Integer,
+        nullable=False,
+        server_default="0",
+        comment="LLM 摘要失败次数；达到封顶后批次任务跳过该行（防永久重试烧钱）",
+    )
     key_points = Column(JSON, comment="LLM (MiniMax 默认) 提取的核心要点 (JSON 数组)")
     target_price = Column(Numeric(12, 4), comment="目标价 (元)")
     current_price_at_publish = Column(Numeric(12, 4), comment="发布时收盘价 (元)")
